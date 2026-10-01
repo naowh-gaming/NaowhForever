@@ -1,7 +1,7 @@
 -------------------------------------------------------------------------------
---  NaowhForever_GroupXP.lua -- the QoL group XP bars, fed by addon messages from members running
---  Naowh Forever. Messages: "1 level xp max" is someone's numbers, "R" asks everyone for theirs,
---  "O" says the sender switched it off.
+--  NaowhForever_GroupXP.lua -- the QoL group XP bars, fed by addon messages from every member
+--  running Naowh Forever; the setting only shows the bars. Messages: "1 level xp max" is
+--  someone's numbers, "R" asks everyone for theirs, "O" (older builds) says the sender stopped.
 -------------------------------------------------------------------------------
 local ns = _G.NaowhForever
 local S = ns.QoLSettings
@@ -12,7 +12,7 @@ local GROUP_CHANNELS = { PARTY = true, RAID = true, INSTANCE_CHAT = true }
 local GRADIENT = "Interface\\AddOns\\NaowhForever\\Media\\NaowhGradient.tga"
 local ROW_H, NAME_W, GAP = 18, 90, 2
 
-local frame, unlocked, prefixed, active, sendQueued, sendAfterCombat, requestPending, offAfterCombat
+local frame, unlocked, sendQueued, sendAfterCombat, requestPending
 -- "Name" for your realm, "Name-Realm" otherwise -> { level, xp, max }, from their messages.
 local others = {}
 local rows = {}
@@ -55,12 +55,6 @@ local function Send()
     C_ChatInfo.SendAddonMessage(PREFIX, ("1 %d %d %d"):format(own.level, own.xp, own.max), channel)
 end
 
--- Tells the group to drop your bar rather than leave it at your last numbers.
-local function SendOff()
-    local channel = Channel()
-    if channel then C_ChatInfo.SendAddonMessage(PREFIX, "O", channel) end
-end
-
 -- XP arrives with every kill, so sends are held to one every two seconds. request also asks
 -- the group for their numbers.
 local function SendSoon(request)
@@ -69,7 +63,7 @@ local function SendSoon(request)
     sendQueued = true
     C_Timer.After(2, function()
         sendQueued = false
-        if On() then Send() end
+        Send()
     end)
 end
 
@@ -231,14 +225,6 @@ events:SetScript("OnEvent", function(_, event, ...)
     elseif event == "PLAYER_XP_UPDATE" or event == "PLAYER_LEVEL_UP" then
         SendSoon()
     elseif event == "PLAYER_REGEN_ENABLED" then
-        if offAfterCombat then
-            offAfterCombat = false
-            if not On() then
-                SendOff()
-                events:UnregisterAllEvents()
-                return
-            end
-        end
         if not sendAfterCombat then return end
         sendAfterCombat = false
         Send()
@@ -248,20 +234,7 @@ events:SetScript("OnEvent", function(_, event, ...)
 end)
 
 local function Apply()
-    events:UnregisterAllEvents()
     if not On() then
-        -- Switched off in combat, the message waits for it to end.
-        if active or offAfterCombat then
-            if InCombatLockdown() then
-                offAfterCombat = true
-                events:RegisterEvent("PLAYER_REGEN_ENABLED")
-            else
-                offAfterCombat = false
-                SendOff()
-            end
-        end
-        active = false
-        wipe(others)
         if frame then frame:Hide() end
         return
     end
@@ -271,19 +244,8 @@ local function Apply()
         frame:SetClampedToScreen(true)
         frame.mover = ns.UI.AttachMover(frame, "Group XP", function(pos) S.Set("groupXPPos", pos) end)
     end
-    if not prefixed then
-        prefixed = true
-        C_ChatInfo.RegisterAddonMessagePrefix(PREFIX)
-    end
     Place()
     frame.mover:SetShown(unlocked == true)
-    for _, event in ipairs({ "CHAT_MSG_ADDON", "GROUP_ROSTER_UPDATE", "PLAYER_ENTERING_WORLD",
-        "PLAYER_XP_UPDATE", "PLAYER_LEVEL_UP", "UNIT_LEVEL", "PLAYER_REGEN_ENABLED" }) do
-        events:RegisterEvent(event)
-    end
-    Prune()
-    SendSoon(not active)
-    active = true
     Refresh()
 end
 
@@ -305,4 +267,11 @@ end)
 
 local boot = CreateFrame("Frame")
 boot:RegisterEvent("PLAYER_LOGIN")
-boot:SetScript("OnEvent", Apply)
+boot:SetScript("OnEvent", function()
+    C_ChatInfo.RegisterAddonMessagePrefix(PREFIX)
+    for _, event in ipairs({ "CHAT_MSG_ADDON", "GROUP_ROSTER_UPDATE", "PLAYER_ENTERING_WORLD",
+        "PLAYER_XP_UPDATE", "PLAYER_LEVEL_UP", "UNIT_LEVEL", "PLAYER_REGEN_ENABLED" }) do
+        events:RegisterEvent(event)
+    end
+    Apply()
+end)

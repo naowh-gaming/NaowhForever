@@ -119,12 +119,16 @@ local function boot(settings)
     return s
 end
 
-do -- off: nothing registered, nothing built, nothing sent
+do -- off: no display, but numbers are still shared and kept
     local s = boot({ groupXP = false })
-    check("off registers no events", next(s.events.events) == nil)
     check("off builds no display", #s.created == 2)
-    s.run(5)
-    check("off sends nothing", #s.sent == 0)
+    s.fire("PLAYER_ENTERING_WORLD")
+    s.run(2)
+    check("off still shares", s.messages() == "R,1 20 500 1000")
+    s.msg("1 21 300 1200", "Tank-HomeRealm")
+    s.S.Set("groupXP", true)
+    check("switching on shows what was heard while off",
+        s.rows() == "You: Lv 20  50.0% | Tank: Lv 21  25.0% | Mage: Lv 19  " .. NO_ADDON)
 end
 
 do -- starting: asks the group and sends its own numbers, once, after the throttle
@@ -185,46 +189,21 @@ do -- "O" drops the sender's bar
     check("switched-off member shows no addon", s.rows():find("Tank: Lv 21  " .. NO_ADDON, 1, true) ~= nil)
 end
 
-do -- switching off tells the group, once
+do -- switching off hides the bars and keeps sharing, with no O
     local s = boot()
+    s.fire("PLAYER_ENTERING_WORLD")
     s.run(2)
     s.sent = {}
     s.S.Set("groupXP", false)
-    check("off sends O", s.messages() == "O")
-    s.S.Set("enabled", false)
-    check("only once", s.messages() == "O")
-    s.S.Set("enabled", true); s.S.Set("groupXP", true)
+    check("hidden when off", not s.display.shown)
+    check("no O sent", #s.sent == 0)
+    s.fire("PLAYER_XP_UPDATE")
     s.run(2)
-    check("back on asks again", s.messages() == "O,R,1 20 500 1000")
-end
-
-do -- switched off in combat: the O waits for combat to end, and survives a second switch-off
-    local s = boot()
-    s.run(2)
+    check("XP still shared while off", s.messages() == "1 20 500 1000")
     s.sent = {}
-    s.combat = true
-    s.S.Set("groupXP", false)
-    s.S.Set("enabled", false)
-    check("nothing sent in combat", #s.sent == 0)
-    check("only combat's end is listened for", s.events.events.PLAYER_REGEN_ENABLED
-        and not s.events.events.CHAT_MSG_ADDON)
-    s.combat = false
-    s.fire("PLAYER_REGEN_ENABLED")
-    check("O sent once combat ends", s.messages() == "O")
-    check("then nothing registered", next(s.events.events) == nil)
-end
-
-do -- switched off and back on within one fight: no O
-    local s = boot()
+    s.msg("R", "Tank-HomeRealm")
     s.run(2)
-    s.sent = {}
-    s.combat = true
-    s.S.Set("groupXP", false)
-    s.S.Set("groupXP", true)
-    s.combat = false
-    s.fire("PLAYER_REGEN_ENABLED")
-    s.run(2)
-    check("no O, just the request and numbers", s.messages() == "R,1 20 500 1000")
+    check("requests still answered while off", s.messages() == "1 20 500 1000")
 end
 
 do -- a member who leaves is dropped
@@ -240,6 +219,7 @@ end
 
 do -- combat: sends wait and go out once combat ends
     local s = boot()
+    s.fire("PLAYER_ENTERING_WORLD")
     s.combat = true
     s.run(2)
     check("no send in combat", #s.sent == 0)
