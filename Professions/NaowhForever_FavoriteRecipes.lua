@@ -193,7 +193,8 @@ local function BuildTrainer()
 end
 
 RenderTrainer = function()
-    if not (OnTrainer() and trainerOpen) then return trainer and trainer:Hide() end
+    local frame = _G.ClassTrainerFrame
+    if not (OnTrainer() and (trainerOpen or frame and frame:IsShown())) then return trainer and trainer:Hide() end
     local offers = TrainerOffers()
     if #offers == 0 then return trainer and trainer:Hide() end
     if not trainer then BuildTrainer() end
@@ -218,7 +219,6 @@ RenderTrainer = function()
     trainer.all:SetEnabled(GetMoney() >= total)
     trainer.all:SetAlpha(GetMoney() >= total and 1 or 0.45)
     trainer.note:SetText(#offers > MAX_ROWS and ("+%d more"):format(#offers - MAX_ROWS) or "")
-    local frame = _G.ClassTrainerFrame
     trainer:ClearAllPoints()
     if frame and frame:IsShown() then
         trainer:SetPoint("TOPLEFT", frame, "TOPRIGHT", 8, 0)
@@ -300,6 +300,7 @@ end
 --   Again), byamount (Search), unconfirmed
 local SEARCH_TIMEOUT, BUY_TIMEOUT = 5, 15
 local buy   -- { item, name, key, state, auctionID, price, gen }
+local bids = {}   -- auctionID -> itemID, for every bid Accept placed and not yet answered
 local RenderConfirm
 
 local function StartBuy(item, name)
@@ -354,7 +355,7 @@ local lookupWait    -- the LOOKUP_GAP after an answer, before the next search
 local RenderMarket
 
 local function NextLookup()
-    if lookup or lookupWait or (buy and buy.state == "searching") then return end
+    if lookup or lookupWait or (buy and (buy.state == "searching" or buy.state == "placing")) then return end
     local item = table.remove(lookups, 1)
     if not item then return end
     local key = C_AuctionHouse.MakeItemKey(item)
@@ -388,6 +389,7 @@ local function Accept()
     if buy.state == "byamount" then return Search(buy.name) end
     if buy.state ~= "ready" or GetMoney() < buy.price then return end
     C_AuctionHouse.PlaceBid(buy.auctionID, buy.price)
+    bids[buy.auctionID] = buy.item
     buy.state = "placing"
     local placed = buy
     C_Timer.After(BUY_TIMEOUT, function()
@@ -399,14 +401,18 @@ local function Accept()
     RenderConfirm()
 end
 
--- AUCTION_HOUSE_PURCHASE_COMPLETED for the listing Accept bid on.
-local function Purchased()
-    buy.state = "bought"
+-- AUCTION_HOUSE_PURCHASE_COMPLETED for a listing Accept bid on, whatever the box shows now.
+local function Purchased(auctionID)
+    local item = bids[auctionID]
+    bids[auctionID] = nil
     -- On its way by mail: off the list, one is all it takes to learn.
-    Bought()[buy.item] = time()
+    Bought()[item] = time()
     -- That listing is gone: the row looks its price up again.
-    live[buy.item], looked[buy.item] = nil, nil
-    RenderConfirm()
+    live[item], looked[item] = nil, nil
+    if buy and buy.auctionID == auctionID then
+        buy.state = "bought"
+        RenderConfirm()
+    end
     C_Timer.After(1, function() if RenderMarket then RenderMarket() end end)
 end
 
@@ -617,9 +623,7 @@ events:SetScript("OnEvent", function(_, event, name)
         end
         return
     elseif event == "AUCTION_HOUSE_PURCHASE_COMPLETED" then
-        if buy and (buy.state == "placing" or buy.state == "unconfirmed") and name == buy.auctionID then
-            Purchased()
-        end
+        if bids[name] then Purchased(name) end
         return
     elseif event == "AUCTION_HOUSE_SHOW_ERROR" then
         if buy and buy.state == "placing" then
