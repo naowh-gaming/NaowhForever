@@ -128,7 +128,7 @@ end
 --  The group
 -------------------------------------------------------------------------------
 local function Readable(v)
-    return v ~= nil and v ~= "" and not Secret(v)
+    return not Secret(v) and v ~= nil and v ~= ""
 end
 
 -- The names a group header can know a member by: it matches nameList against UnitName in a
@@ -143,16 +143,17 @@ local function HeaderNames(member, realm, firstNames, raid)
             out[#out + 1] = name
         end
     end
-    if (firstNames[member.who] or 0) <= 1 then Add(member.who) end
-    if not member.who:find("-", 1, true) then Add(member.who .. "-" .. realm) end
-    for _, name in ipairs({ member.short, member.rosterName }) do
-        if Readable(name) and firstNames[name] == 1 then Add(name) end
+    for _, name in ipairs(member.candidates) do
+        if firstNames[name] == 1 then Add(name) end
     end
-    if Readable(member.short) and Readable(member.server) then Add(member.short .. "-" .. member.server) end
+    if not member.who:find("-", 1, true) then Add(member.who .. "-" .. realm) end
     -- The name the header itself compares (UnitName, with the server, in a party).
-    local seenBy = raid and member.rosterName
-        or (Readable(member.short) and Readable(member.server) and member.short .. "-" .. member.server)
-        or member.short
+    local seenBy
+    if raid then
+        seenBy = member.rosterName
+    elseif Readable(member.short) then
+        seenBy = Readable(member.server) and member.short .. "-" .. member.server or member.short
+    end
     return table.concat(out, ","), Readable(seenBy) and seen[seenBy] == true
 end
 
@@ -180,11 +181,17 @@ local function Roster()
             local short, server = UnitName(unit)
             local member = { unit = unit, guid = guid, class = class, who = who, short = short,
                 server = server, rosterName = raid and (GetRaidRosterInfo(i)) or nil }
+            -- Every name the header could compare for them, each counted once per member.
+            local names = { who, short, member.rosterName }
+            if Readable(short) and Readable(server) then names[4] = short .. "-" .. server end
+            member.candidates = {}
             local counted = {}
-            for _, n in ipairs({ who, short, member.rosterName }) do
+            for k = 1, 4 do
+                local n = names[k]
                 if Readable(n) and not counted[n] then
                     counted[n] = true
                     firstNames[n] = (firstNames[n] or 0) + 1
+                    member.candidates[#member.candidates + 1] = n
                 end
             end
             list[#list + 1] = member
@@ -285,8 +292,8 @@ local function Survey(members)
             if has ~= nil and range ~= false then
                 s.reachable = true
                 local r = not has and 0 or (remaining and remaining < EXPIRING and 1 or 2)
-                -- Only a member the game says is in range lights the button.
-                if range == true and r < 2 then
+                -- Only a member in range the button can reach lights it.
+                if range == true and r < 2 and member.targetable then
                     if r == 0 then s.missingNear = s.missingNear + 1 else s.expiringNear = s.expiringNear + 1 end
                     if not players[member.guid] then
                         s.classDue = s.classDue + 1
@@ -294,7 +301,6 @@ local function Survey(members)
                     end
                 end
                 local l = remaining or math.huge
-                -- A member the group header cannot find by name stays out of the click queue.
                 if member.targetable then
                     queue[#queue + 1] = { names = member.names, spell = spell, rank = r, left = l }
                     if not s.target or r < rank or (r == rank and l < left) then
@@ -343,6 +349,7 @@ local CLASS_STEP = [[
     local n = self:GetAttribute("count") or 0
     local i = self:GetAttribute("step") or 1
     local header = self:GetParent()
+    if not header:IsVisible() then return false end
     for _ = 1, n do
         if i > n then i = 1 end
         header:SetAttribute("nameList", self:GetAttribute("queueNames" .. i))
@@ -772,7 +779,7 @@ local function PrepareCell(cell)
     SetNames(cell.header, queue[1] and queue[1].names or "-")
     cell.target, cell.queued = s.target, #queue
     -- Red: someone in range is missing the class blessing; yellow: only running out; blue: only
-    -- players on their own blessing need theirs. Only red glows.
+    -- players on their own blessing need theirs.
     local color = s.classMissing > 0 and RED or s.classDue > 0 and YELLOW
         or s.missingNear + s.expiringNear > 0 and BLUE or nil
     cell.icon:SetDesaturated(not s.reachable)
@@ -1114,10 +1121,9 @@ events:SetScript("OnEvent", function(_, event, ...)
         if buildAfterCombat then
             buildAfterCombat = false
             Apply()
-            SendPending()
-            return
+        elseif dirty then
+            Refresh()
         end
-        if dirty then Refresh() end
         if broadcastAfterCombat then
             broadcastAfterCombat = false
             BroadcastSoon()
@@ -1320,9 +1326,10 @@ local function Presets()
 end
 
 local function SavePreset()
-    if #Paladins() == 0 then return false end
+    local paladins = Paladins()
+    if #paladins == 0 then return false end
     local preset = {}
-    for _, p in ipairs(Paladins()) do
+    for _, p in ipairs(paladins) do
         local plan = p.you and Store() or others[p.who]
         local classes = {}
         for class, key in pairs(plan.classes) do classes[class] = key end
@@ -1357,6 +1364,7 @@ ns.Blessings = {
     SavePreset = SavePreset,
     LoadPreset = LoadPreset,
     HasPreset = function() return next(Presets()) ~= nil end,
+    HasPaladins = function() return #Paladins() > 0 end,
     CLASSES = CLASSES, BLESSINGS = BLESSINGS, AURAS = AURAS,
     Store = Store, Roster = Roster, Learned = Learned, IsPaladin = IsPaladin, CanAssign = CanAssign, MyName = MyName,
     SpellName = SpellName, SpellIcon = SpellIcon, ClassName = ClassName, SetOwn = SetOwn,

@@ -85,4 +85,21 @@ check("raid: the header can find them by it", Member(list, "Mara Stone").targeta
 local tor = Names(list, "Tor Ashby")
 check("raid: a server from UnitName is joined to the first name", tor["Tor-Elsewhere"])
 
+-- Two from the same other realm with one first name look alike to the header, whatever it reads.
+units = {
+    player = { "Glyadin Skywolf", "Glyadin", nil, "PALADIN" },
+    party1 = { "Bob Smith-Elsewhere", "Bob", "Elsewhere", "WARRIOR" },
+    party2 = { "Bob Jones-Elsewhere", "Bob", "Elsewhere", "MAGE" },
+}
+raid = false
+list = Roster()
+check("cross-realm namesakes: neither claims Bob-Elsewhere", not Names(list, "Bob Smith-Elsewhere")["Bob-Elsewhere"]
+    and not Names(list, "Bob Jones-Elsewhere")["Bob-Elsewhere"])
+check("cross-realm namesakes: the header cannot find either", not Member(list, "Bob Smith-Elsewhere").targetable
+    and not Member(list, "Bob Jones-Elsewhere").targetable)
+
+units = { raid1 = { "Mara Stone", "Mara", nil, "WARRIOR", nil } }
+raid = true
+check("raid: a member whose roster entry has not loaded is not findable", not Roster()[1].targetable)
+
 print(("test-blessing-names: %d checks passed"):format(checks))
