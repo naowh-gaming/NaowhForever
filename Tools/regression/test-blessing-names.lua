@@ -31,6 +31,10 @@ local fn = assert(loadstring(chunk))
 setfenv(fn, setmetatable(env, { __index = _G }))
 local Roster = fn()
 
+local function Member(list, who)
+    for _, member in ipairs(list) do if member.who == who then return member end end
+end
+
 local function Names(list, who)
     for _, member in ipairs(list) do
         if member.who == who then
@@ -51,6 +55,7 @@ local mine = Names(list, "Glyadin Skywolf")
 check("party: the header's UnitName first name is listed", mine["Glyadin"])
 check("party: the full name is listed", mine["Glyadin Skywolf"] and mine["Glyadin Skywolf-Forever"])
 check("party: the other member's first name too", Names(list, "Mara Stone")["Mara"])
+check("party: the header can find both", Member(list, "Glyadin Skywolf").targetable and Member(list, "Mara Stone").targetable)
 
 units.party2 = { "Mara Vale", "Mara", nil, "MAGE" }
 list = Roster()
@@ -65,6 +70,7 @@ units = {
 list = Roster()
 check("party: a surname-less name clashes with another's first name", not Names(list, "Bob Smith")["Bob"])
 check("party: so the surname-less one does not claim it either", not Names(list, "Bob")["Bob"])
+check("party: and the header cannot find either", not Member(list, "Bob").targetable and not Member(list, "Bob Smith").targetable)
 
 units = {
     raid1 = { "Glyadin Skywolf", "Glyadin", nil, "PALADIN", "Glyadin" },
@@ -75,6 +81,7 @@ raid = true
 list = Roster()
 check("raid: a first name read twice for one member still counts once", Names(list, "Glyadin Skywolf")["Glyadin"])
 check("raid: GetRaidRosterInfo's full name is listed", Names(list, "Mara Stone")["Mara Stone"])
+check("raid: the header can find them by it", Member(list, "Mara Stone").targetable and Member(list, "Glyadin Skywolf").targetable)
 local tor = Names(list, "Tor Ashby")
 check("raid: a server from UnitName is joined to the first name", tor["Tor-Elsewhere"])
 

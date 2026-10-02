@@ -34,47 +34,47 @@ local fn = assert(loadstring(chunk))
 setfenv(fn, setmetatable(env, { __index = _G }))
 local Survey = fn()
 
-local members = { { unit = "party1", guid = "party1", names = "party1" },
-    { unit = "party2", guid = "party2", names = "party2" } }
+local function Member(unit) return { unit = unit, guid = unit, names = unit, targetable = true } end
+local members = { Member("party1"), Member("party2") }
 
 state = { party1 = { true, 3000, true }, party2 = { false, nil, false } }
-local target, _, missing, _, reachable, missingNear, expiringNear = Survey(members)
-check("one missing, but out of range: counted as missing", missing == 1)
-check("nobody in range is missing it", missingNear == 0 and expiringNear == 0)
-check("the blessed one in range is still a target", reachable and target == members[1])
+local s = Survey(members)
+check("one missing, but out of range: counted as missing", s.missing == 1)
+check("nobody in range is missing it", s.missingNear == 0 and s.expiringNear == 0)
+check("the blessed one in range is still a target", s.reachable and s.target == members[1])
 
 state = { party1 = { true, 3000, true }, party2 = { false, nil, nil } }
-target, _, missing, _, _, missingNear = Survey(members)
-check("no range answer: does not light the button", missing == 1 and missingNear == 0)
-check("no range answer: still left to the cast", target == members[2])
+s = Survey(members)
+check("no range answer: does not light the button", s.missing == 1 and s.missingNear == 0)
+check("no range answer: still left to the cast", s.target == members[2])
 
 state = { party1 = { true, 3000, true }, party2 = { false, nil, true } }
-target, _, _, _, _, missingNear = Survey(members)
-check("missing and in range: lights the button and is the target", missingNear == 1 and target == members[2])
+s = Survey(members)
+check("missing and in range: lights the button and is the target", s.missingNear == 1 and s.target == members[2])
 
 state = { party1 = { true, 120, true }, party2 = { true, 3000, true } }
-_, _, _, _, _, missingNear, expiringNear = Survey(members)
-check("running out in range counts as expiring, not missing", missingNear == 0 and expiringNear == 1)
+s = Survey(members)
+check("running out in range counts as expiring, not missing", s.missingNear == 0 and s.expiringNear == 1)
 
 -- The click queue: those in range who need it, most urgent first; the buffed and the out of
 -- range left out.
 state = { party1 = { true, 1500, true }, party2 = { false, nil, true }, party3 = { true, 200, true },
     party4 = { false, nil, false } }
-members[3] = { unit = "party3", guid = "party3", names = "party3" }
-members[4] = { unit = "party4", guid = "party4", names = "party4" }
-local queue = select(8, Survey(members))
+members[3] = Member("party3")
+members[4] = Member("party4")
+local queue = Survey(members).queue
 check("queue: missing, then running out, nobody already blessed", #queue == 2 and queue[1].names == "party2"
     and queue[2].names == "party3")
 
 state = { party1 = { true, 1500, true }, party2 = { true, 2500, true }, party3 = { true, 3000, true },
     party4 = { true, 900, false } }
-queue = select(8, Survey(members))
+queue = Survey(members).queue
 check("queue: with nobody due, the one in range with least left", #queue == 1 and queue[1].names == "party1")
 
 castSpell = 25782
 state = { party1 = { false, nil, true }, party2 = { false, nil, true }, party3 = { true, 200, true },
     party4 = { false, nil, false } }
-queue = select(8, Survey(members))
+queue = Survey(members).queue
 check("queue: a Greater Blessing is cast once for the class", #queue == 1)
 castSpell = 19740
 
@@ -82,7 +82,14 @@ castSpell = 19740
 state = { party1 = { true, 1500, true }, party2 = { false, nil, true }, party3 = { true, 200, true },
     party4 = { false, nil, false } }
 players = { party2 = "kings" }
-local classDue, classMissing = select(9, Survey(members))
-check("only the class blessing's members count for red and yellow", classDue == 1 and classMissing == 0)
+s = Survey(members)
+check("only the class blessing's members count for red and yellow", s.classDue == 1 and s.classMissing == 0)
+
+-- A member the group header cannot find by name never enters the click queue.
+players = {}
+members[2].targetable = false
+queue = Survey(members).queue
+check("queue: a member the header cannot find is left out", queue[1].names == "party3")
+members[2].targetable = true
 
 print(("test-blessing-range: %d checks passed"):format(checks))

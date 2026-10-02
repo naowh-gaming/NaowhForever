@@ -4,9 +4,9 @@
 
 ### Added
 - Blessings: in combat each click on a class button blesses the next member of that class who
-  needed it when the fight began, instead of the same player every time. It follows them by
-  name, so the raid being rearranged mid-fight does not send it to someone else, and a Greater
-  Blessing is cast once for the class.
+  needed it when the fight began, then round again, instead of the same player every time. It
+  follows them by name, so the raid being rearranged mid-fight does not send it to someone
+  else, skips anyone who has left, and a Greater Blessing is cast once for the class.
 - Blessings: class buttons show what is needed at a glance: red when someone in range is
   missing the class blessing, yellow when it is only running out, blue when only players with
   their own blessing need theirs.

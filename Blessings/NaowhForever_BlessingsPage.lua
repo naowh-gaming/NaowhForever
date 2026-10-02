@@ -124,8 +124,11 @@ function ns.BuildBlessingAssignmentsPage(parent, y)
         { type = "button", text = "Save the plan below as the preset", buttonText = "Save",
           onClick = function()
               local function Save()
-                  B.SavePreset()
-                  ns.Print("Blessings preset saved.")
+                  if B.SavePreset() then
+                      ns.Print("Blessings preset saved.")
+                  else
+                      ns.Print("No paladins running Naowh Forever to save a plan for.")
+                  end
               end
               if B.HasPreset() then ns.Confirm("Replace the saved preset?", Save) else Save() end
           end },
