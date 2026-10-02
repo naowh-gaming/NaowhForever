@@ -125,6 +125,7 @@ local function fixture(settings)
         bis = {}, worn = {}, owned = {}, names = {}, sources = {}, looks = {},
         log = {}, repQuests = {}, readyQuests = {},
         sent = {}, timers = {}, pushed = {}, fonts = {}, atlases = {}, dressable = {}, hasLook = {}, buttons = {},
+        cvars = { questLogOpen = "1" },
         standings = {}, rankRewards = {},
         currency = { name = "Honor", quantity = 1234, iconFileID = 1455894 },
     }
@@ -246,6 +247,9 @@ local function fixture(settings)
             return i.name, nil, nil, nil, nil, nil, nil, i.id
         end,
         InCombatLockdown = function() return state.combat end,
+        -- The game's settings, kept for a test to read.
+        GetCVar = function(name) return state.cvars[name] end,
+        SetCVar = function(name, value) state.cvars[name] = tostring(value) end,
         IsControlKeyDown = function() return state.ctrl == true end,
         LOCALIZED_CLASS_NAMES_MALE = { WARLOCK = "Warlock", PALADIN = "Paladin", MAGE = "Mage" },
         hooksecurefunc = function(t, key, fn)
@@ -803,7 +807,7 @@ do
     S.Set("enabled", true)
     check("turning the module on hooks the map", #state.hooks == 3)
     check("and makes four frames, the kill count's, the loot's, the share asks' and the quartermasters', "
-        .. "until the map shows in a dungeon", state.frames == 4)
+        .. "until the map shows in a dungeon, and the one that folds the quest log there", state.frames == 5)
     -- Each by what it listens to.
     local counter, looted, asks, vendors
     for _, frame in ipairs(state.made) do
@@ -818,13 +822,27 @@ do
     check("which listen for boss fights", counter.events.ENCOUNTER_START and counter.events.ENCOUNTER_END)
     check("and for loading screens, not loot, outside a dungeon", looted.events.PLAYER_ENTERING_WORLD
         and not looted.events.CHAT_MSG_LOOT)
+    -- A loading screen into a dungeon the Journal has: the game's quest log beside the map
+    -- folds, and comes back as it was on leaving.
+    local function LoadingScreen()
+        for _, frame in ipairs(state.made) do
+            if frame.events.PLAYER_ENTERING_WORLD then frame.scripts.OnEvent(frame, "PLAYER_ENTERING_WORLD") end
+        end
+    end
+    state.instance = { id = 36, name = "The Deadmines" }
+    LoadingScreen()
+    check("in a dungeon, the quest log beside the map folds", state.cvars.questLogOpen == "0")
+    check("what it was is kept", state.account.journalQuestLogWas == "1")
+    state.instance = nil
+    LoadingScreen()
+    check("and comes back on leaving", state.cvars.questLogOpen == "1" and state.account.journalQuestLogWas == nil)
     S.Set("enabled", false)
     check("off again, they stop listening", next(counter.events) == nil and next(looted.events) == nil
         and next(asks.events) == nil and next(vendors.events) == nil)
     S.Set("enabled", true)
     ns.Apply()
     check("and hooks the map only once", #state.hooks == 3)
-    check("and makes its frames only once", state.frames == 4)
+    check("and makes its frames only once", state.frames == 5)
 end
 
 -------------------------------------------------------------------------------

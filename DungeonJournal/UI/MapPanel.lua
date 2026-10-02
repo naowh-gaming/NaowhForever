@@ -4,7 +4,11 @@
 --  map fills the screen. With Factions Beside the Map on, in a zone or a battleground the
 --  page of a faction earned there sits in the same place (a switch when there are two).
 --  Inside a dungeon with a map (Data/Maps.lua) the dungeon's map also fills the world map's
---  picture (UI/DungeonMap.lua); this file tells it when. The panel is the addon's own frame; the map is only watched, with
+--  picture (UI/DungeonMap.lua); this file tells it when. And there the game's quest log
+--  beside the map folds away, so the Journal sits against the map: the game's own setting
+--  for it (questLogOpen, which the map reads each time it opens) is set on entering, and put
+--  back as it was on leaving (kept for the account meanwhile, so a logout inside keeps it).
+--  The panel is the addon's own frame; the map is only watched, with
 --  HookScript, and the hooks go on the first time the panel is switched on. Until then, and
 --  whenever it is off, nothing runs.
 -------------------------------------------------------------------------------
@@ -141,9 +145,28 @@ local function MapResized()
     J.FitMapOnWorldMap()
 end
 
+-- Inside a dungeon the Journal has: the quest log folded, what it was kept. Elsewhere, or
+-- switched off: put back. Not in combat (it waits for the next loading screen).
+local folder
+local function FoldQuestLog()
+    if InCombatLockdown() then return end
+    local account = ns.AccountSettings()
+    if On() and S.Get("mapPanel") and J.Current() then
+        if account.journalQuestLogWas == nil then
+            account.journalQuestLogWas = GetCVar("questLogOpen") or "1"
+            SetCVar("questLogOpen", "0")
+        end
+    elseif account.journalQuestLogWas ~= nil then
+        SetCVar("questLogOpen", account.journalQuestLogWas)
+        account.journalQuestLogWas = nil
+    end
+end
+
 local function Hook()
     if hooked then return end
     hooked = true
+    folder = CreateFrame("Frame")
+    folder:SetScript("OnEvent", FoldQuestLog)
     WorldMapFrame:HookScript("OnShow", Refresh)
     WorldMapFrame:HookScript("OnHide", Hide)
     WorldMapFrame:HookScript("OnSizeChanged", MapResized)
@@ -151,11 +174,17 @@ end
 
 local function HookAndRefresh()
     Hook()
+    folder:RegisterEvent("PLAYER_ENTERING_WORLD")
+    FoldQuestLog()
     Refresh()
 end
 
 -- Hooks the map the first time the panel is on; the map may load after this file does.
 local function Sync()
+    if folder then
+        if On() then folder:RegisterEvent("PLAYER_ENTERING_WORLD") else folder:UnregisterAllEvents() end
+        FoldQuestLog()
+    end
     if not On() then
         Hide()
         return

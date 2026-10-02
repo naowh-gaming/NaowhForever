@@ -523,6 +523,8 @@ end
 -------------------------------------------------------------------------------
 local OVERLAY_LEVEL = 50   -- over the map's picture, under its own buttons' strata
 local HINT_PAD = 10
+local BAR_H = 28           -- the strip along the map's foot: the floor switch and the hint
+local BAR_ALPHA = 0.55
 local overlay, overlayView
 
 -- Right-click: up to the zone the dungeon is in, as the world map goes up a level. In combat
@@ -537,14 +539,15 @@ local function OverlayClicked(_, button)
     if button == "RightButton" then UpToZone() end
 end
 
--- As big as the map's picture lets it be, in the middle; black round it.
+-- The whole picture: as big as it fits, in the middle (the art is the map's own shape, so
+-- nothing or little shows round it); the floor switch and the hint over its foot.
 local function Fit()
     local w, h = overlay:GetWidth(), overlay:GetHeight()
-    local scale = math.max(0.1, math.min(w / MAP_W, (h - FLOOR_H - HINT_PAD) / MAP_H))
+    local scale = math.max(0.1, math.min(w / MAP_W, h / MAP_H))
     overlayView.scale = scale
     overlayView.canvas:SetScale(scale)
     overlayView.canvas:ClearAllPoints()
-    overlayView.canvas:SetPoint("TOP", overlay, "TOP", 0, 0)
+    overlayView.canvas:SetPoint("CENTER", overlay, "CENTER", 0, 0)
 end
 
 local function BuildOverlay()
@@ -559,12 +562,19 @@ local function BuildOverlay()
     overlay:SetScript("OnMouseUp", OverlayClicked)
     overlay:SetScript("OnMouseWheel", function() end)
     ns.Solid(overlay, "BACKGROUND", { r = 0, g = 0, b = 0 }, 1):SetAllPoints()
-    overlayView = NewView(overlay, overlay, false)
+    -- The strip over the map's foot, above the art and its pins: the switch and the hint.
+    local bar = CreateFrame("Frame", nil, overlay)
+    bar:SetPoint("BOTTOMLEFT")
+    bar:SetPoint("BOTTOMRIGHT")
+    bar:SetHeight(BAR_H)
+    ns.Solid(bar, "BACKGROUND", { r = 0, g = 0, b = 0 }, BAR_ALPHA):SetAllPoints()
+    overlayView = NewView(overlay, bar, false)
+    bar:SetFrameLevel(overlayView.canvas:GetFrameLevel() + 20)
     overlay:SetScript("OnHide", function() ViewHidden(overlayView) end)
     overlayView.onRightClick = UpToZone
-    overlayView.down:SetPoint("BOTTOMLEFT", HINT_PAD, HINT_PAD / 2)
-    overlay.hint = ns.Font(overlay, 12, nil, T.muted)
-    overlay.hint:SetPoint("BOTTOMRIGHT", -HINT_PAD, HINT_PAD / 2 + 4)
+    overlayView.down:SetPoint("LEFT", HINT_PAD, 0)
+    overlay.hint = ns.Font(bar, 12, nil, T.fg)
+    overlay.hint:SetPoint("RIGHT", -HINT_PAD, 0)
 end
 
 -- The map panel's say: the dungeon to show on the world map (it is open, inside one), or
