@@ -140,6 +140,7 @@
   Modifier to look at one first.
 
 ### Changed
+- The options window's sidebar header pairs a sharper high-resolution shield with stacked blue-and-white NAOWH FOREVER lettering, the first R flowing into a blue infinity flourish, and a soft blue glow behind FOREVER.
 - The Naowh logo now has the closed infinity loop at the bottom, on the addon list, the main window and the small popups.
 - The Minimap Button switch and the per-module minimap buttons moved from Settings to the Top Bar page, so /nf shows them straight away.
 - Loot Feed Appearance options sit inside the Loot Feed dropdown instead of a second one.
