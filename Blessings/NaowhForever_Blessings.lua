@@ -133,7 +133,8 @@ end
 
 -- The names a group header can know a member by: it matches nameList against UnitName in a
 -- party and GetRaidRosterInfo in a raid, which on Forever can be the first name alone.
--- A first name two members share is left out, so the header cannot pick the wrong one.
+-- A name two members share (two of them "Bob" to the header) is left out for both, so the
+-- header cannot pick the wrong one; their class buttons skip them.
 local function HeaderNames(member, realm, firstNames)
     local seen, out = {}, {}
     local function Add(name)
@@ -142,10 +143,10 @@ local function HeaderNames(member, realm, firstNames)
             out[#out + 1] = name
         end
     end
-    Add(member.who)
+    if (firstNames[member.who] or 0) <= 1 then Add(member.who) end
     if not member.who:find("-", 1, true) then Add(member.who .. "-" .. realm) end
     for _, name in ipairs({ member.short, member.rosterName }) do
-        if Readable(name) and (firstNames[name] == 1 or name == member.who) then Add(name) end
+        if Readable(name) and firstNames[name] == 1 then Add(name) end
     end
     if Readable(member.short) and Readable(member.server) then Add(member.short .. "-" .. member.server) end
     return table.concat(out, ",")
@@ -750,6 +751,8 @@ local function PrepareCell(cell)
         cell.cast:SetAttribute("count", #queue)
     end
     cell.cast:SetAttribute("step", 1)
+    -- A click in combat moves the header on without SetNames knowing, so it is always re-aimed.
+    cell.header.names = nil
     SetNames(cell.header, queue[1] and queue[1].names or "-")
     cell.target, cell.queued = target, #queue
     -- Red: someone in range is missing the class blessing; yellow: only running out; blue: only

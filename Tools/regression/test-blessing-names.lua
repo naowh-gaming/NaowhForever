@@ -64,6 +64,7 @@ units = {
 }
 list = Roster()
 check("party: a surname-less name clashes with another's first name", not Names(list, "Bob Smith")["Bob"])
+check("party: so the surname-less one does not claim it either", not Names(list, "Bob")["Bob"])
 
 units = {
     raid1 = { "Glyadin Skywolf", "Glyadin", nil, "PALADIN", "Glyadin" },
