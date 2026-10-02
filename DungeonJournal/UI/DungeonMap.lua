@@ -726,8 +726,8 @@ local function WindowDrawn()
     if not Folded() then DrawLegend() end
 end
 
--- The map's own height, and under it, unless folded, the legend and the loot: as tall as the
--- window it was opened beside, else LOWER_MIN.
+-- The map's own height, and under it, unless folded, the legend and the loot: exactly as
+-- tall as the window it was opened beside, so their edges line up; with none, LOWER_MIN.
 local MAP_PART = PANEL_HEADER + MAP_H * WINDOW_SCALE + FLOOR_H + PANEL_PAD * 2
 
 local function Size(owner)
@@ -739,8 +739,7 @@ local function Size(owner)
     if folded then
         window:SetHeight(MAP_PART)
     else
-        local tall = owner and owner:GetHeight() or 0
-        window:SetHeight(math.max(MAP_PART + LOWER_GAP + LOWER_MIN, tall))
+        window:SetHeight(owner and owner:GetHeight() or MAP_PART + LOWER_GAP + LOWER_MIN)
     end
 end
 
