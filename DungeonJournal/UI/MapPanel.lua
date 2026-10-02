@@ -67,6 +67,7 @@ local function Build()
     scroll:SetPoint("TOPLEFT", PANEL_PAD, -PANEL_HEADER - 4)
     scroll:SetPoint("BOTTOMRIGHT", -PANEL_PAD - SCROLL_GAP, PANEL_PAD)
     view = J.View.New(scroll)
+    view.onWorldMap = true   -- no Map: the dungeon's map is on the world map beside it
     view:SetWidth(PANEL_W - PANEL_PAD * 2 - SCROLL_GAP)
     scroll:SetScrollChild(view)
     panel.scroll = scroll

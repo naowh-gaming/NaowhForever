@@ -650,7 +650,8 @@ function ViewMixin:Draw(dungeon)
             end
         end
         local title = wing.name or (i == 1 and "Bosses")
-        if title and i == 1 and J.Maps[dungeon.key] then
+        -- Not beside the world map: the dungeon's map is on the world map there.
+        if title and i == 1 and J.Maps[dungeon.key] and not self.onWorldMap then
             -- Map on the first title's right: the dungeon's map, in a small window.
             self:Add("section", title, cards > 0 and cards or nil, nil, nil, "Map", OpenMap, dungeon)
         elseif title then
