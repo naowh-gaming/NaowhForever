@@ -57,6 +57,10 @@ me = plans["Glyadin Skywolf"]
 check("raid: a lone paladin gives mages Salvation first", me.classes.MAGE == "salvation")
 check("raid: warriors get Might, not Salvation", me.classes.WARRIOR == "might")
 check("raid: druids never get Salvation", me.classes.DRUID ~= "salvation")
+for _, raid in ipairs({ true, false }) do
+    local p = AutoPlans(raid)["Glyadin Skywolf"]
+    check("paladins never get Salvation", p.classes.PALADIN ~= "salvation")
+end
 plans = AutoPlans(false)
 check("party: a lone paladin gives mages Wisdom", plans["Glyadin Skywolf"].classes.MAGE == "wisdom")
 

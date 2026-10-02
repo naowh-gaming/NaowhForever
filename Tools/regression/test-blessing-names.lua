@@ -59,6 +59,13 @@ check("party: a first name two members share is left out", not Names(list, "Mara
 check("party: a unique first name is still listed", Names(list, "Glyadin Skywolf")["Glyadin"])
 
 units = {
+    player = { "Bob", "Bob", nil, "PALADIN" },
+    party1 = { "Bob Smith", "Bob", nil, "WARRIOR" },
+}
+list = Roster()
+check("party: a surname-less name clashes with another's first name", not Names(list, "Bob Smith")["Bob"])
+
+units = {
     raid1 = { "Glyadin Skywolf", "Glyadin", nil, "PALADIN", "Glyadin" },
     raid2 = { "Mara Stone", "Mara", nil, "WARRIOR", "Mara Stone" },
     raid3 = { "Tor Ashby", "Tor", "Elsewhere", "PRIEST", "Tor-Elsewhere" },

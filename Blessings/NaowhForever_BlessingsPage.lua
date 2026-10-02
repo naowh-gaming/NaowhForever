@@ -22,7 +22,7 @@ function ns.BuildQoLBlessingsPage(parent, y)
         .. "a class to choose its blessing or open its player list, where each player can have "
         .. "their own. A Greater Blessing is only used while the whole class shares one and you "
         .. "carry Symbols of Kings. In combat each click on a class button blesses the next member "
-        .. "of that class who was in range when the fight began.|n|nRed means someone in range is "
+        .. "of that class who needed it when the fight began.|n|nRed means someone in range is "
         .. "missing the class blessing, yellow that it is only running out, blue that only players "
         .. "with their own blessing need theirs.|n|nNext Blessing and Next Greater Blessing can be bound below, or in Key "
         .. "Bindings > AddOns > Naowh Forever. Each press blesses the next player who needs it, most urgent "

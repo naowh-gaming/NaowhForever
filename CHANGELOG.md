@@ -4,13 +4,16 @@
 
 ### Added
 - Blessings: in combat each click on a class button blesses the next member of that class who
-  was in range when the fight began, going round, instead of the same player every time.
+  needed it when the fight began, instead of the same player every time. It follows them by
+  name, so the raid being rearranged mid-fight does not send it to someone else, and a Greater
+  Blessing is cast once for the class.
 - Blessings: class buttons show what is needed at a glance: red when someone in range is
   missing the class blessing, yellow when it is only running out, blue when only players with
   their own blessing need theirs.
 - Blessings: Auto-Assign on the Assignments page spreads blessings and auras across every
   paladin in the group running Naowh Forever, the most useful blessing for each class first,
-  with Salvation first for casters and rogues in a raid and never for warriors or druids. The
+  with Salvation first for casters and rogues in a raid and never for warriors, druids or
+  paladins. The
   group leader or an assistant can run it for everyone; a paladin on their own for themselves.
 - Blessings: a preset on the Assignments page saves the whole group's plan and loads it again
   later for the paladins who are there.
