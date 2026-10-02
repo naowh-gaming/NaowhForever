@@ -15,13 +15,14 @@ it again. Be gentle with the sites: the scripts wait between requests on purpose
 
 | Tool | What it does | Why |
 | --- | --- | --- |
-| `build_journal.py` | Builds every dungeon's bosses and loot into `DungeonJournal/Data/`. | The heart of the Journal. How it decides what a boss drops is drawn in `DungeonJournal/README.md`. |
+| `build_journal.py` | Builds every dungeon's bosses and loot into `DungeonJournal/Data/`. `--offline` asks Wowhead nothing (its cache and the game's tables only), for CI. | The heart of the Journal. How it decides what a boss drops is drawn in `DungeonJournal/README.md`. |
 | `journal_bosses.json` | The bosses per dungeon, in kill order, with rares, optional bosses, chests and hand fixes. | Kept by hand: no source has the right list for Forever. |
-| `wowsrc.py` | Reads wowsrc.com's Forever loot pages into `wowsrc_loot.json`. `--resolve` maps their item names to IDs in `item_names.json`. `--check` says what changed on their pages since (daily in CI). | Wowhead hasn't tied Forever's new items to bosses yet; wowsrc has. They gave us permission. |
+| `wowsrc.py` | Reads wowsrc.com's Forever loot pages into `wowsrc_loot.json`. `--resolve` maps their item names to IDs in `item_names.json` (`--offline`: without Wowhead). `--check` says what changed on their pages since (daily in CI). | Wowhead hasn't tied Forever's new items to bosses yet; wowsrc has. They gave us permission. |
+| `journal_cache.json`, `wowsrc_loot.json`, `item_names.json` | Every Wowhead answer the build used; wowsrc's pages as last read; their item names to IDs. | Committed, so a rebuild (and CI) gives the same data without asking again. |
 | `build_factions.py` | Builds the Reputation and PvP tabs from `journal_factions.json` and the game's own item tables. | Rewards, standings and prices are in the client, so we read them from there, not a website. |
 | `build_quest_chains.py` | Builds each dungeon quest's chain and what you need first, from Wowhead Forever. | So the Journal can say "do this first". |
 | `wago.py` | Reads the game's own tables (DB2) for a Forever build from wago.tools, hotfixes included. `BUILD` is the build our data comes from. | The one source that is the game itself. |
-| `watch_build.py` | Compares a new Forever build with ours: faction rewards, kill-count encounters, new dungeons, new gear the Journal doesn't list yet. `--update` moves us to it. | Runs daily in CI (`.github/workflows/daily-watch.yml`), so a new build never sneaks past us. |
+| `watch_build.py` | Compares a new Forever build with ours: faction rewards, kill-count encounters, new dungeons, new dungeon floor maps, new gear the Journal doesn't list yet. `--update` moves us to it. | Runs daily in CI (`.github/workflows/daily-watch.yml`), so a new build never sneaks past us. |
 
 ## BiS List
 
@@ -55,6 +56,7 @@ it again. Be gentle with the sites: the scripts wait between requests on purpose
 | `hooks/check-pr.sh` | PR rules: a CHANGELOG line for addon changes, TOC version untouched. |
 | `hooks/check_toc.py`, `hooks/toc_files.py` | Every file the TOC loads exists, with the right letter case. |
 | `hooks/check-package.sh` | The built zip has one `NaowhForever/` folder, everything it loads, and no tooling. |
+| `hooks/daily-pull-request.sh` | The daily watch's pull request: commits what a job changed, opens the PR or brings the open one up to date, or an issue with a link where workflows may not open PRs. |
 | `release.py` | Release helper for `.github/workflows/release.yml`: version bump, notes, changelog. |
 
 ## What CI runs
@@ -74,5 +76,5 @@ it again. Be gentle with the sites: the scripts wait between requests on purpose
   `--offline` asks Wowhead nothing: a new item's facts come from the game's own tables, and
   what they can't settle (an old classic item) is listed in the PR for a run on our machines.
 - **Not in CI:** anything that reads Wowhead. Their terms don't allow scraping it from a
-  server, so `build_journal.py`, `build_quest_chains.py` and `build_dungeon_loot.py` run on
-  our machines, by hand.
+  server, so a full `build_journal.py` (CI only runs it `--offline`), `build_quest_chains.py`
+  and `build_dungeon_loot.py` run on our machines, by hand.
