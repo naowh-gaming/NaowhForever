@@ -138,9 +138,14 @@
 - Dungeon Journal: Accept Shared Dungeon Quests (off by default, in the Journal's settings)
   accepts a dungeon quest a group member shares with you as soon as it opens. Hold the Skip
   Modifier to look at one first.
+- Threat Meter: Status Line (Layout) moves the line with your distance to pulling aggro and
+  the entry count from under the bars to the top, between the title bar and the bars.
+  Bottom by default.
 
 ### Changed
 - The options window's sidebar header pairs a sharper high-resolution shield with stacked blue-and-white NAOWH FOREVER lettering, the first R flowing into a blue infinity flourish, and a soft blue glow behind FOREVER.
+- Flight Timer: with Land Early Button on, Blizzard's own Request Stop button is hidden
+  during the flight, so there is only one. It comes back when you land.
 - The Naowh logo now has the closed infinity loop at the bottom, on the addon list, the main window and the small popups.
 - The Minimap Button switch and the per-module minimap buttons moved from Settings to the Top Bar page, so /nf shows them straight away.
 - Loot Feed Appearance options sit inside the Loot Feed dropdown instead of a second one.
