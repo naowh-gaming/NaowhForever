@@ -1151,6 +1151,19 @@ do
         and legendRows["Taragaman the Hungerer"] and legendRows["Jergosh the Invoker"])
     pickRow.scripts.OnClick(pickRow)
     check("a row picks its boss", rawget(pickRow.bar, "shown") == true)
+    -- The Naowh mark in its title: back to the Journal, on the dungeon's page.
+    local openJournal = ns.OpenJournalWindow
+    local openedOn
+    ns.OpenJournalWindow = function(dungeon) openedOn = dungeon end
+    for _, made in ipairs(state.made) do
+        local icon = rawget(made, "icon")
+        if icon and made.scripts.OnClick and made.scripts.OnEnter and rawget(icon, "alpha") == nil
+            and made.scripts.OnDragStart == nil and not rawget(made, "boss") then
+            made.scripts.OnClick(made)
+        end
+    end
+    ns.OpenJournalWindow = openJournal
+    check("its title opens the Journal on the dungeon's page", openedOn == ragefire)
     check("one the data places too", onMap["Jergosh the Invoker"])
     check("one not placed yet is not", not onMap["Bazzalan"])
     ns.DungeonMapCommand("mappins")

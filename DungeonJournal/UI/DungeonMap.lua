@@ -11,7 +11,8 @@
 --    mark where a quest in your log needs it, and your BiS there; beside them the loot of
 --    the boss picked (a pin or a row). The chevron in its title folds that part away, for
 --    the map alone (kept for the account). It closes with that window unless pinned (the
---    pin in its title, kept for the account too).
+--    pin in its title, kept for the account too); the Naowh mark in its title, or its name,
+--    opens the Dungeon Journal on the dungeon's page again.
 --  - The world map: press M inside a dungeon and its map fills the map's picture, while the
 --    Journal sits beside the map (UI/MapPanel.lua says when: it already watches the map).
 --    Right-click goes up to the zone the dungeon is in, as the world map goes up a level;
@@ -743,6 +744,26 @@ local function Size(owner)
     end
 end
 
+-- Back to the Journal, on the dungeon's page: the Naowh mark in the title, or the name.
+local function OpenJournalPage()
+    if windowView.dungeon then ns.OpenJournalWindow(windowView.dungeon) end
+end
+
+local function JournalEnter(button)
+    if button.icon then button.icon:SetAlpha(1) end
+    window.title:SetTextColor(T.accent.r, T.accent.g, T.accent.b)
+    GameTooltip:SetOwner(button, "ANCHOR_BOTTOM")
+    GameTooltip:SetText("Open in the Dungeon Journal", 1, 1, 1)
+    GameTooltip:AddLine("Its page: quests, bosses and loot.", T.muted.r, T.muted.g, T.muted.b)
+    GameTooltip:Show()
+end
+
+local function JournalLeave(button)
+    if button.icon then button.icon:SetAlpha(0.8) end
+    window.title:SetTextColor(T.accentSoft.r, T.accentSoft.g, T.accentSoft.b)
+    GameTooltip:Hide()
+end
+
 local function FoldEnter(button)
     button.icon:SetVertexColor(T.fg.r, T.fg.g, T.fg.b)
     GameTooltip:SetOwner(button, "ANCHOR_BOTTOM")
@@ -844,7 +865,28 @@ local function Build()
     PaintPin(pin)
     window.pin = pin
     fold:SetPoint("RIGHT", pin, "LEFT", -2, 0)
-    window.title:SetPoint("RIGHT", -34 - PIN_BUTTON * 2 - 6, 0)
+    local journal = CreateFrame("Button", nil, window)
+    journal:SetSize(PIN_BUTTON, PIN_BUTTON)
+    journal:SetPoint("RIGHT", fold, "LEFT", -2, 0)
+    journal.icon = journal:CreateTexture(nil, "ARTWORK")
+    journal.icon:SetTexture(St.LOGO_SMALL, nil, nil, "TRILINEAR")
+    journal.icon:SetSize(PIN_ICON, PIN_ICON)
+    journal.icon:SetPoint("CENTER")
+    journal.icon:SetAlpha(0.8)
+    journal:SetScript("OnEnter", JournalEnter)
+    journal:SetScript("OnLeave", JournalLeave)
+    journal:SetScript("OnClick", OpenJournalPage)
+    window.title:SetPoint("RIGHT", -34 - PIN_BUTTON * 3 - 8, 0)
+    -- The name does the same; dragging it still moves the window.
+    local name = CreateFrame("Button", nil, window)
+    name:SetPoint("TOPLEFT", window.title, "TOPLEFT", -4, 4)
+    name:SetPoint("BOTTOMRIGHT", window.title, "BOTTOMRIGHT", 0, -4)
+    name:RegisterForDrag("LeftButton")
+    name:SetScript("OnDragStart", function() window:StartMoving() end)
+    name:SetScript("OnDragStop", function() window:StopMovingOrSizing() end)
+    name:SetScript("OnEnter", JournalEnter)
+    name:SetScript("OnLeave", JournalLeave)
+    name:SetScript("OnClick", OpenJournalPage)
 end
 
 -------------------------------------------------------------------------------
