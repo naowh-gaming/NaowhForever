@@ -15,7 +15,18 @@ that crafts it, the vendor that sells it or the container it comes in, in that o
 or World drop when many NPCs drop it. Answers are cached in bis_sources.json, where
 an entry can be edited by hand the same way.
 
-Usage: python Tools/build_bis_data.py [--sources-only]
+--check is the daily check (.github/workflows/daily-watch.yml): it reads the spec pages again
+and says, slot by slot, where they differ from NaowhForever_BiSData.lua: a new #1, items
+added to a slot or taken off it, a new spec page. The rest of the order is left out. It
+only reads wowsrc: an item it has not looked up yet is named, and building it in needs
+Wowhead, so that stays a run on our machines.
+
+--offline (the daily watch, in CI) asks Wowhead nothing: a new item is found by name, quality
+and item level in the game's own item table (Tools/wago.py), and one it cannot settle there,
+or a source it would ask Wowhead for, is left for a run on our machines (and listed).
+
+Usage: python Tools/build_bis_data.py [--sources-only] [--offline]
+       python Tools/build_bis_data.py --check [--report report.md] [--github-output $GITHUB_OUTPUT]
   --sources-only keeps the specs in NaowhForever_BiSData.lua as they are and only
   fills in the sources missing for items already in it.
 """
@@ -97,7 +108,29 @@ def parse_spec(slug):
     return title, slots
 
 
+OFFLINE = "--offline" in sys.argv
+game_rows = None
+
+
+def game_lookup(item):
+    """The Forever items with the item's name, quality and item level, from the game's own item
+    table (the --offline build)."""
+    global game_rows
+    if game_rows is None:
+        import wago
+        forever = {r["ID"] for r in wago.table("Item", wago.BUILD)}
+        game_rows = {}
+        for r in wago.table("ItemSparse", wago.BUILD):
+            if r["ID"] in forever:
+                game_rows.setdefault(r.get("Display_lang", "").lower(), []).append(r)
+    return [int(r["ID"]) for r in game_rows.get(item["name"].lower(), [])
+            if int(r["OverallQualityID"]) == item["quality"]
+            and (not item["ilvl"] or int(r["ItemLevel"]) == item["ilvl"])]
+
+
 def lookup(item):
+    if OFFLINE:
+        return game_lookup(item)
     url = ("https://www.wowhead.com/forever/search/suggestions-template?q="
            + urllib.parse.quote(item["name"]))
     results = json.loads(fetch(url)).get("results", [])
@@ -174,6 +207,9 @@ def fill_sources(sources, ranked):
     cache = json.loads(SOURCES.read_text(encoding="utf-8")) if SOURCES.exists() else {}
     missing = []
     for item_id in sorted(ranked - sources.keys()):
+        if OFFLINE and f"item={item_id}" not in cache:
+            missing.append(item_id)
+            continue
         source = wowhead_source(item_id, cache)
         SOURCES.write_text(json.dumps(cache, indent=1, sort_keys=True), encoding="utf-8")
         if source:
@@ -216,6 +252,12 @@ def lua_string(s):
 
 
 def main():
+    if "--check" in sys.argv:
+        args = sys.argv[1:]
+
+        def value(flag):
+            return args[args.index(flag) + 1] if flag in args else None
+        return check(value("--report"), value("--github-output"))
     if "--sources-only" in sys.argv:
         report_missing(refill_sources())
         return
@@ -232,9 +274,11 @@ def main():
                 key = item_key(item)
                 if key not in cache:
                     matches = lookup(item)
-                    cache[key] = matches[0] if len(matches) == 1 else None
                     candidates[key] = matches
-                item_id = cache[key]
+                    # Offline, an item it cannot settle is left for Wowhead, not set to null.
+                    if len(matches) == 1 or not OFFLINE:
+                        cache[key] = matches[0] if len(matches) == 1 else None
+                item_id = cache.get(key)
                 if not item_id:
                     left_out.add(key)
                 if item_id and item_id not in ids:
@@ -277,6 +321,75 @@ def main():
             found = f"  candidates={candidates[key]}" if key in candidates else ""
             print(f"  {key}{found}", file=sys.stderr)
     report_missing(missing)
+
+
+REPORT_MAX = 60000
+
+
+def current_specs():
+    """spec slug -> {inventory slot: [item IDs]}, as NaowhForever_BiSData.lua has them."""
+    text = OUT.read_text(encoding="utf-8")
+    specs = {}
+    for slug, body in re.findall(r'key = "([^"]+)", name = "[^"]*", slots = \{(.*?)\} \},', text, re.S):
+        specs[slug] = {int(inv): [int(i) for i in re.findall(r"\d+", ids)]
+                       for inv, ids in re.findall(r"\[(\d+)\] = \{([^}]*)\}", body)}
+    return specs
+
+
+def bis_changes(ours, theirs, cache):
+    """What theirs ({slug: (title, {inv: [items]})}, read now) says that ours (current_specs)
+    does not, as Markdown lines; [] when nothing."""
+    names = {item_id: key.split("|", 1)[0] for key, item_id in cache.items() if item_id}
+    slot_names = {inv: key.replace("-", " ") for key, inv in SLOTS}
+    lines = []
+    for slug, (title, slots) in sorted(theirs.items()):
+        if slug not in ours:
+            lines.append(f"- **{title}**: a new spec page.")
+            continue
+        for _, inv in SLOTS:
+            items = slots.get(inv, [])
+            now = [cache.get(item_key(i)) for i in items]
+            before = ours[slug].get(inv, [])
+            said = []
+            if now and before and now[0] != before[0]:
+                said.append(f"#1 is now {items[0]['name']} (was {names.get(before[0], before[0])})")
+            added = [i["name"] + ("" if cache.get(item_key(i)) else " (not looked up yet)")
+                     for i, item_id in zip(items, now) if item_id not in before]
+            gone = [names.get(i, str(i)) for i in before if i not in now]
+            if added:
+                said.append("added " + ", ".join(added))
+            if gone:
+                said.append("taken off " + ", ".join(gone))
+            if said:
+                lines.append(f"- **{title}**, {slot_names[inv]}: {'; '.join(said)}.")
+    return lines
+
+
+def check(report_path=None, github_output=None):
+    """The daily check: wowsrc's spec pages now against NaowhForever_BiSData.lua."""
+    cache = json.loads(CACHE.read_text(encoding="utf-8")) if CACHE.exists() else {}
+    theirs = {}
+    for _, slug in spec_slugs():
+        theirs[slug] = parse_spec(slug)
+        time.sleep(1)   # one page at a time, gently
+    found = bis_changes(current_specs(), theirs, cache)
+    head = ["## wowsrc.com: BiS lists changed", ""]
+    if found:
+        head += ["Their spec pages differ from `BiS/NaowhForever_BiSData.lua`. To bring it in, on your machine "
+                 "(it needs Wowhead for new items):", "", "```", "python Tools/build_bis_data.py", "```", ""]
+    else:
+        head.append("Their spec pages match `BiS/NaowhForever_BiSData.lua`: nothing new.")
+    # A GitHub issue holds 65536 characters: a long report is cut, and says so.
+    while len("\n".join(head + found)) > REPORT_MAX and found:
+        found = found[:-25] + [f"- ... and more: run the build to see them all."] if len(found) > 25 else []
+    text = "\n".join(head + found) + "\n"
+    if report_path:
+        Path(report_path).write_text(text, encoding="utf-8")
+    else:
+        print(text)
+    if github_output:
+        with open(github_output, "a", encoding="utf-8") as f:
+            f.write(f"changes={'true' if found else 'false'}\n")
 
 
 def report_missing(missing):

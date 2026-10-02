@@ -530,6 +530,10 @@ local function OpenTracker(dungeon)
     ns.OpenQuestTracker(dungeon)
 end
 
+local function OpenMap(dungeon, link)
+    J.OpenDungeonMap(dungeon, link)
+end
+
 -- Closed until you open it, so the loot comes first; its title says how many there are, and
 -- Tracker on its right opens them in a small window of their own.
 function ViewMixin:DrawQuests(list)
@@ -646,7 +650,10 @@ function ViewMixin:Draw(dungeon)
             end
         end
         local title = wing.name or (i == 1 and "Bosses")
-        if title then
+        if title and i == 1 and J.Maps[dungeon.key] then
+            -- Map on the first title's right: the dungeon's map, in a small window.
+            self:Add("section", title, cards > 0 and cards or nil, nil, nil, "Map", OpenMap, dungeon)
+        elseif title then
             self:Section(title, cards > 0 and cards or nil)
             self:Space(SECTION_SPACE)
         end

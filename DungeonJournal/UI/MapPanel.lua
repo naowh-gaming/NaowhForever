@@ -2,7 +2,9 @@
 --  UI/MapPanel.lua -- the Dungeon Journal beside the world map: open the map (M) inside a
 --  dungeon and its bosses and loot sit on the map's right, or inside its right edge when the
 --  map fills the screen. With Factions Beside the Map on, in a zone or a battleground the
---  page of a faction earned there sits in the same place (a switch when there are two). The panel is the addon's own frame; the map is only watched, with
+--  page of a faction earned there sits in the same place (a switch when there are two).
+--  Inside a dungeon with a map (Data/Maps.lua) the dungeon's map also fills the world map's
+--  picture (UI/DungeonMap.lua); this file tells it when. The panel is the addon's own frame; the map is only watched, with
 --  HookScript, and the hooks go on the first time the panel is switched on. Until then, and
 --  whenever it is off, nothing runs.
 -------------------------------------------------------------------------------
@@ -30,6 +32,8 @@ end
 local function DrawShown()
     local page = pages[shownIndex]
     if pagesAreFactions then view:DrawFaction(page) else view:Draw(page) end
+    -- The dungeon's map on the world map, while its page shows.
+    J.ShowMapOnWorldMap(not pagesAreFactions and page or nil)
 end
 
 -- Two dungeons in one instance, or two factions in one zone: this flips between them.
@@ -53,6 +57,7 @@ end
 
 local function Build()
     panel = J.View.Parts.Panel("DUNGEON JOURNAL", true)
+    panel.onWorldMap = true   -- its Map shows the dungeon's map on the world map
     panel.backdrop:Card(4, PANEL_HEADER, 4, 4)
     panel.title:SetTextColor(T.accentSoft.r, T.accentSoft.g, T.accentSoft.b)
     panel.switch = ns.Button(panel, "Other half", 90, 20, OtherHalf)
@@ -111,6 +116,7 @@ local function Refresh()
     Pick()
     if not pages then
         if panel then panel:Hide() end
+        J.ShowMapOnWorldMap(nil)
         return
     end
     if not panel then Build() end
@@ -125,11 +131,13 @@ end
 
 local function Hide()
     if panel then panel:Hide() end
+    J.ShowMapOnWorldMap(nil)
 end
 
 -- The map changes size when it is maximised or made small again.
 local function MapResized()
     if panel and panel:IsShown() then Place() end
+    J.FitMapOnWorldMap()
 end
 
 local function Hook()

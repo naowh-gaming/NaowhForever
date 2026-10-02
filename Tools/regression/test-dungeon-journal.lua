@@ -75,6 +75,7 @@ local METHODS = {
     Hide = function(frame) frame.shown = false end,
     SetShown = function(frame, shown) frame.shown = shown and true or false end,
     CreateTexture = function(frame) return Frame(rawget(frame, "state"), frame) end,
+    CreateMaskTexture = function(frame) return Frame(rawget(frame, "state"), frame) end,
     CreateFontString = function(frame) return Frame(rawget(frame, "state"), frame) end,
     IsMouseOver = function(frame)
         local state = rawget(frame, "state")
@@ -123,7 +124,7 @@ local function fixture(settings)
         refreshes = 0, made = {}, logged = {}, watched = {}, objectives = {}, account = {}, guid = "Player-4613-006EB819", now = 1000, clock = 50,
         bis = {}, worn = {}, owned = {}, names = {}, sources = {}, looks = {},
         log = {}, repQuests = {}, readyQuests = {},
-        sent = {}, timers = {}, pushed = {}, fonts = {}, atlases = {}, dressable = {}, hasLook = {},
+        sent = {}, timers = {}, pushed = {}, fonts = {}, atlases = {}, dressable = {}, hasLook = {}, buttons = {},
         standings = {}, rankRewards = {},
         currency = { name = "Honor", quantity = 1234, iconFileID = 1455894 },
     }
@@ -180,7 +181,13 @@ local function fixture(settings)
         -- As ns.Border: its frame, and a way to colour it.
         -- Its SetColor takes numbers, as the game's SetColorTexture does: a colour table errors.
         Border = function(parent) return { _frame = Frame(state, parent), SetColor = BORDER_SET_COLOR } end,
-        Button = function(parent) return Frame(state, parent) end,
+        -- Its words and what a click does, kept for a test to press it.
+        Button = function(parent, text, _, _, onClick)
+            local button = Frame(state, parent)
+            button.label, button.onClick = text, onClick
+            state.buttons[#state.buttons + 1] = button
+            return button
+        end,
         BlackBorder = function(frame) return frame end,
         AccentBorder = function(frame) return frame end,
         BisListIsEmpty = function() return false end,
@@ -1077,6 +1084,91 @@ do
     check("the quest tracker opens on the dungeon", titled == 1)
     ns.OpenQuestTracker(deadmines)
     check("and closes on a second click", true)
+
+    -- The dungeon map: Map on the Bosses title opens it, the bosses stand where they were
+    -- placed, and placing's Copy gives the dungeon's line for Data/Maps.lua.
+    local J = ns.Journal
+    local ragefire = J.Get("RagefireChasm")
+    ns.OpenJournalWindow(ragefire)
+    local mapTitle
+    for _, made in ipairs(state.made) do
+        local titleLink = rawget(made, "link")
+        if rawget(made, "linkArg") == ragefire and titleLink and rawget(titleLink.text, "text") == "Map" then
+            mapTitle = made
+        end
+    end
+    check("the Bosses title has Map", mapTitle ~= nil)
+    -- Placed on this account over the data: Oggleflint moved, Bazzalan taken off the data.
+    local bazzalan = J.Maps.RagefireChasm.pins[11519]
+    J.Maps.RagefireChasm.pins[11519] = nil
+    state.account.journalMapPins = { RagefireChasm = { [11517] = { 1, 0.5, 0.4 }, entrance = { 1, 0.5, 0.9 } } }
+    mapTitle.onLink(mapTitle.linkArg)
+    local onMap = {}
+    for _, made in ipairs(state.made) do
+        local boss = rawget(made, "boss")
+        if rawget(made, "key") and boss and rawget(made, "shown") ~= false then onMap[boss.name] = true end
+    end
+    check("a placed boss is on the map", onMap["Oggleflint"])
+    check("one the data places too", onMap["Jergosh the Invoker"])
+    check("one not placed yet is not", not onMap["Bazzalan"])
+    ns.DungeonMapCommand("mappins")
+    local copy
+    for _, button in ipairs(state.buttons) do
+        if button.label == "Copy" then copy = button end
+    end
+    copy.onClick()
+    local text = state.copied and state.copied.text or ""
+    check("Copy gives where each boss stands", text:find("[11517] = { 1, 0.5, 0.4 },   -- Oggleflint", 1, true) ~= nil)
+    check("and the entrance", text:find("entrance = { 1, 0.5, 0.9 },", 1, true) ~= nil)
+    check("and its art", text:find('RagefireChasm = { art = "Ragefire", floors = 1,', 1, true) ~= nil)
+    ns.DungeonMapCommand("mappins")
+    J.OpenDungeonMap(ragefire)
+    check("a second Map closes it", true)
+    -- On the world map, inside the Stockade: its map over the map's picture; a right-click
+    -- goes up to Stormwind, and not in combat.
+    local stockade = J.Get("Stockade")
+    J.ShowMapOnWorldMap(stockade)
+    local overlay
+    for _, made in ipairs(state.made) do
+        if made.scripts.OnMouseWheel then overlay = made end
+    end
+    check("the dungeon's map shows on the world map", overlay ~= nil and rawget(overlay, "shown") ~= false)
+    local onWorld = {}
+    for _, made in ipairs(state.made) do
+        local boss = rawget(made, "boss")
+        if rawget(made, "key") and boss and rawget(made, "shown") ~= false then onWorld[boss.name] = true end
+    end
+    check("with its bosses", onWorld["Bazil Thredd"] and onWorld["Dextren Ward"])
+    state.mapOpened = nil
+    overlay.scripts.OnMouseUp(overlay, "RightButton")
+    check("a right-click goes up to its zone", state.mapOpened == stockade.entrance.map
+        and rawget(overlay, "shown") == false)
+    J.ShowMapOnWorldMap(stockade)
+    state.mapOpened, state.combat = nil, true
+    overlay.scripts.OnMouseUp(overlay, "RightButton")
+    check("in combat it only steps aside", state.mapOpened == nil and rawget(overlay, "shown") == false)
+    state.combat = false
+    J.ShowMapOnWorldMap(nil)
+    state.account.journalMapPins, state.copied = nil, nil
+    J.Maps.RagefireChasm.pins[11519] = bazzalan
+    for key, map in pairs(J.Maps) do
+        local dungeon = J.Get(key)
+        check("a map is for a dungeon the Journal has: " .. key, dungeon ~= nil)
+        check("its art and floors: " .. key, type(map.art) == "string" and map.floors >= 1)
+        -- Every pin is one of its bosses, on one of its floors, on the map.
+        local bosses = {}
+        for _, wing in ipairs(dungeon.wings) do
+            for _, boss in ipairs(wing.bosses) do
+                if boss.npc then bosses[boss.npc] = true end
+                if boss.chest then bosses[-boss.chest] = true end
+            end
+        end
+        for id, spot in pairs(map.pins) do
+            check("a pin is a boss of " .. key .. ": " .. id, bosses[id] == true)
+            check("on its map: " .. key .. " " .. id, spot[1] >= 1 and spot[1] <= map.floors
+                and spot[2] >= 0 and spot[2] <= 1 and spot[3] >= 0 and spot[3] <= 1)
+        end
+    end
 
     -- Ctrl+F, with the mouse on the window: the search box.
     local frame = state.made[1]

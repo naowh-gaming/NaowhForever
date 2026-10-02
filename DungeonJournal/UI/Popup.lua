@@ -43,6 +43,9 @@ local function Open(boss, dungeon)
     view:DrawBossLoot(boss, dungeon)
 end
 
+-- A boss pin on the dungeon map opens the same panel, at the mouse.
+J.View.OpenBossLoot = Open
+
 -- The binding's action (Bindings.xml).
 function NaowhForever_BossLoot()
     if popup and popup:IsShown() then

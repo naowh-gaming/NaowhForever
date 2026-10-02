@@ -19,11 +19,15 @@ search: a name not in it is reported, never guessed.
 --check is the daily check (.github/workflows/daily-watch.yml): it reads the pages fresh and
 says what changed on them since wowsrc_loot.json, which the Journal was last built from:
 items a boss gained or lost, bosses and dungeon pages added or gone. Drop chances are left
-out (they move with every kill counted). It only reads wowsrc; bringing a change in needs
-Wowhead (an item's details), so that stays a run on our machines.
+out (they move with every kill counted). Each item gained says its ID where we know it:
+from item_names.json, else the game's own item table (wago.tools; Forever's new items are
+all there by name), so only an old classic item waits for --resolve. It only reads wowsrc
+and the game's tables; bringing a change in needs Wowhead (an item's details), so that stays
+a run on our machines.
 
 Usage: python Tools/wowsrc.py [--fresh]     fetch and read the loot pages
        python Tools/wowsrc.py --resolve     add the names not mapped yet to item_names.json
+                                            (--offline: from our data and the game's tables only)
        python Tools/wowsrc.py --check [--report report.md] [--github-output $GITHUB_OUTPUT]
 """
 import html
@@ -145,7 +149,7 @@ def resolve():
     left = []
     for i, key in enumerate(wanted):
         ids = {x for x in local.get(key, ()) if x in forever}
-        if not ids:
+        if not ids and "--offline" not in sys.argv:
             global last
             wait = last + PAUSE - time.time()
             if wait > 0:
@@ -184,10 +188,31 @@ def read_all(fresh=False):
     return loot
 
 
-def changes(old, new):
+def game_ids(keys):
+    """name_key -> item ID for the names given, from the game's own item table (ItemSparse, for
+    the builds the data is read from), where one Forever item has the name; {} when wago.tools
+    cannot be read (the report then just says the name is not mapped)."""
+    try:
+        import wago
+        forever = {r["ID"] for build in (wago.BUILD, wago.CARRY_FROM) if build for r in wago.table("Item", build)}
+        found = {}
+        for build in (wago.BUILD, wago.CARRY_FROM):
+            if build:
+                for r in wago.table("ItemSparse", build):
+                    key = name_key(r.get("Display_lang"))
+                    if key in keys and r["ID"] in forever:
+                        found.setdefault(key, set()).add(int(r["ID"]))
+        return {key: ids.pop() for key, ids in found.items() if len(ids) == 1}
+    except Exception as e:   # a check that cannot reach the tables still reports the rest
+        print(f"the game's item table could not be read: {e}", file=sys.stderr)
+        return {}
+
+
+def changes(old, new, game=None):
     """What new (pages read now) says that old (wowsrc_loot.json) does not, as Markdown lines
-    under headings; [] when nothing. Items by name, bosses by name, chances left out."""
-    mapped = item_names()
+    under headings; [] when nothing. Items by name, bosses by name, chances left out. game:
+    name_key -> ID from the game's tables, for names item_names.json does not have."""
+    mapped = dict(game or {}, **item_names())
     added_pages = [new[s]["name"] or s for s in sorted(set(new) - set(old))]
     gone_pages = [old[s]["name"] or s for s in sorted(set(old) - set(new))]
     added_bosses, gone_bosses, gained, lost = [], [], [], []
@@ -203,8 +228,9 @@ def changes(old, new):
             had = {name_key(i["name"]) for i in before[boss]}
             for item in after[boss]:
                 if name_key(item["name"]) not in had:
-                    marks = [m for m, on in (("new in Forever", item["new"]),
-                                             ("name not mapped yet", name_key(item["name"]) not in mapped)) if on]
+                    item_id = mapped.get(name_key(item["name"]))
+                    marks = [m for m, on in ((f"ID {item_id}", item_id), ("new in Forever", item["new"]),
+                                             ("name not mapped yet", not item_id)) if on]
                     gained.append(f"- {page} / {boss}: {item['name']}" + (f" ({', '.join(marks)})" if marks else ""))
             has = {name_key(i["name"]) for i in after[boss]}
             for item in before[boss]:
@@ -226,7 +252,15 @@ def changes(old, new):
 def check(report_path=None, github_output=None):
     """The daily check: wowsrc's pages now against wowsrc_loot.json."""
     old = json.loads(OUT.read_text(encoding="utf-8"))
-    found = changes(old, read_all(fresh=True))
+    new = read_all(fresh=True)
+    found = changes(old, new)
+    if found:
+        # Names not mapped yet: the game's tables have Forever's new items by name.
+        known = item_names()
+        wanted = {name_key(i["name"]) for d in new.values() for b in d["bosses"] for i in b["items"]} - set(known)
+        game = game_ids(wanted) if wanted else {}
+        if game:
+            found = changes(old, new, game)
     head = ["## wowsrc.com: loot the Journal does not have yet", ""]
     if found:
         head += ["Their loot pages changed since `Tools/wowsrc_loot.json`, which the Journal was last",

@@ -15,7 +15,10 @@
   party. The group icon counts who else is on each quest; click it on one you don't have
   and a member running Naowh Forever shares it with you (Quest Share Requests, in the
   Journal's settings). Tracker opens a dungeon's quests in a small window to keep on
-  screen while you run it. Each dungeon says whose ground its entrance is on, and the pin
+  screen while you run it, and Map opens its map: the bosses where they stand, with their
+  portraits and kill order, and the entrance; click a boss for its loot, and pin the map to
+  keep it open. Inside a dungeon its map shows on the world map (M); right-click for its
+  zone. Each dungeon says whose ground its entrance is on, and the pin
   by its name points you there. Open the world map inside a dungeon and it sits beside the map; browse any
   dungeon in its own window with /nfjournal (or /nfdj), or bind Boss Loot at Cursor to see
   what the boss you hover drops. Search every dungeon for an item or boss, or list only

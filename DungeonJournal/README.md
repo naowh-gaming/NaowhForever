@@ -33,6 +33,7 @@ DungeonJournal/
     Quests.lua         every dungeon quest, from Wowhead's Forever guide, with hand additions
     QuestChains.lua    each quest's chain, prerequisites and required level, generated
     Tips.lua           Naowh's tips, by hand
+    Maps.lua           each dungeon's map art and where its bosses stand, by hand
   View/                draws one page (a dungeon, a faction, the PvP rank); used by the window,
                        the map panel and the popup
     Style.lua          every colour, size, spacing and icon
@@ -53,6 +54,7 @@ DungeonJournal/
     MapPanel.lua       beside the world map, inside a dungeon
     Popup.lua          Boss Loot at Cursor (a key binding)
     QuestTracker.lua   a dungeon's quests in a small window, one line each
+    DungeonMap.lua     a dungeon's map in a small window: its bosses where they stand
     SettingsPage.lua   its page in the options window
 ```
 
@@ -72,6 +74,7 @@ calls are on `ns`.
 | An item a boss drops that no source has placed yet | `"add": { "Boss Name": [itemID] }` on the dungeon (`"Trash"` for its trash) |
 | A boss wowsrc names differently | `"wowsrcNames": { "Their Name": "Our Name" }` on the dungeon |
 | A boss's NPC ID the build cannot find | `"npcs": { "Name": ID }` on the dungeon in `Tools/journal_bosses.json` |
+| Where a boss stands on its dungeon's map | `/nf mappins` in game, drag the pins, Copy, and paste the line into `Data/Maps.lua`. `/nf mapcheck` says which map art and floors the client has |
 | An icon's drawing | its function in `Tools/make_media.py`, then run it (writes `Media/*.tga`) |
 | What counts as usable, BiS, an upgrade, a new look | `Loot.lua` |
 | A quest's state, the list's order, where its waypoint goes | `Quests.lua` |

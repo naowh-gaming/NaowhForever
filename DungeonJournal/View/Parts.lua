@@ -444,9 +444,10 @@ local function SectionClicked(row)
     if row.onToggle then row.onToggle() end
 end
 
+-- The link comes too, for a window to open beside what it was clicked in (Map).
 local function SectionLinkClicked(link)
     local row = link:GetParent()
-    row.onLink(row.linkArg)
+    row.onLink(row.linkArg, link)
 end
 
 -- A section title over a line: its title, a muted count after it, and either a chevron
