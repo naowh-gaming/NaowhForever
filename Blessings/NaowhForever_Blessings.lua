@@ -51,10 +51,12 @@ local EXPIRING = 300          -- seconds left that count as due for a refresh
 local SYMBOL_OF_KINGS = 21177 -- the reagent every Greater Blessing uses
 local QUESTION = 134400
 local RED = { r = 0.97, g = 0.27, b = 0.27 }
+local YELLOW = { r = 1, g = 0.85, b = 0.3 }
+local BLUE = { r = 0.35, g = 0.6, b = 1 }
 local ICON_BORDER = { r = 0, g = 0, b = 0 }
 
 local others = {}             -- paladin name (realm when not ours) -> { classes, aura, known }
-local bar, cells, flyout, rows, auraButton, furyButton, keyNext, keyGreater
+local bar, cells, flyout, rows, auraButton, furyButton, keyNext, keyGreater, secureHandler
 local flyoutClass, dirty, ticker, unlocked
 local buildAfterCombat, broadcastAfterCombat
 
@@ -241,13 +243,21 @@ local function InRange(member, spell)
     return Secret(inRange) or inRange == true
 end
 
--- Who a class button blesses next: missing first, then running out, then whoever has the
--- least left, skipping anyone dead, offline or out of range. Also the class summary, with
--- how many of those in range are missing it or running out (only they light the button).
+local function ByUrgency(a, b)
+    if a.rank ~= b.rank then return a.rank < b.rank end
+    return a.left < b.left
+end
+
+-- Who a class button blesses, in order: missing first, then running out, then whoever has
+-- the least left, skipping anyone dead, offline or out of range. Also the class summary, with
+-- how many of those in range are missing it or running out (only they light the button),
+-- and how many of those are on the class blessing rather than their own.
 local function Survey(members)
     local target, targetSpell, rank, left
     local missing, shortest, reachable = 0, nil, false
-    local missingNear, expiringNear = 0, 0
+    local missingNear, expiringNear, classDue, classMissing = 0, 0, 0, 0
+    local queue = {}
+    local players = Store().players
     local spells = {}
     for _, member in ipairs(members) do
         local key = Assigned(member)
@@ -265,14 +275,21 @@ local function Survey(members)
                 reachable = true
                 local r = not has and 0 or (remaining and remaining < EXPIRING and 1 or 2)
                 if r == 0 then missingNear = missingNear + 1 elseif r == 1 then expiringNear = expiringNear + 1 end
+                if r < 2 and not players[member.guid] then
+                    classDue = classDue + 1
+                    if r == 0 then classMissing = classMissing + 1 end
+                end
                 local l = remaining or math.huge
+                queue[#queue + 1] = { unit = member.unit, spell = spell, rank = r, left = l }
                 if not target or r < rank or (r == rank and l < left) then
                     target, targetSpell, rank, left = member, spell, r, l
                 end
             end
         end
     end
-    return target, targetSpell, missing, shortest, reachable, missingNear, expiringNear
+    table.sort(queue, ByUrgency)
+    return target, targetSpell, missing, shortest, reachable, missingNear, expiringNear, queue,
+        classDue, classMissing
 end
 
 -------------------------------------------------------------------------------
@@ -290,6 +307,19 @@ local STEP = [[
     if i > n then return false end
     self:SetAttribute("unit", self:GetAttribute("unit" .. i))
     self:SetAttribute("spell", self:GetAttribute("spell" .. i))
+    self:SetAttribute("step", i + 1)
+]]
+
+-- A class button's left-click: the next member of its queue, wrapping round, so in combat
+-- (where the queue is the one from before the pull) repeated clicks go through the class.
+local CLASS_STEP = [[
+    if button ~= "LeftButton" then return end
+    local n = self:GetAttribute("count") or 0
+    if n == 0 then return false end
+    local i = self:GetAttribute("step") or 1
+    if i > n then i = 1 end
+    self:SetAttribute("unit1", self:GetAttribute("queueUnit" .. i))
+    self:SetAttribute("spell1", self:GetAttribute("queueSpell" .. i))
     self:SetAttribute("step", i + 1)
 ]]
 
@@ -311,11 +341,6 @@ local function Due(member, key, spell)
     local has, remaining = BuffState(member.unit, key)
     if has == false then return 0, 0 end
     if has and remaining and remaining < EXPIRING then return 1, remaining end
-end
-
-local function ByUrgency(a, b)
-    if a.rank ~= b.rank then return a.rank < b.rank end
-    return a.left < b.left
 end
 
 local function SetQueue(btn, list)
@@ -655,17 +680,24 @@ end
 
 local function PrepareCell(cell)
     local members = cell.members
-    local target, spell, missing, shortest, reachable, missingNear, expiringNear = Survey(members)
+    local target, spell, missing, shortest, reachable, missingNear, expiringNear, queue, classDue, classMissing =
+        Survey(members)
     local key = Store().classes[cell.class]
     local shown = spell or (key and CastSpell(key, members))
     cell.icon:SetTexture(shown and C_Spell.GetSpellTexture(shown) or QUESTION)
-    -- With nobody to bless the last target stays, but without a spell to cast on them.
-    if target then SetNames(cell.header, target.names) end
-    cell.cast:SetAttribute("spell1", spell)
-    cell.target = target
-    local due = missingNear + expiringNear > 0
+    for i, entry in ipairs(queue) do
+        cell.cast:SetAttribute("queueUnit" .. i, entry.unit)
+        cell.cast:SetAttribute("queueSpell" .. i, entry.spell)
+    end
+    cell.cast:SetAttribute("count", #queue)
+    cell.cast:SetAttribute("step", 1)
+    cell.target, cell.queued = target, #queue
+    -- Red: someone in range is missing the class blessing; yellow: only running out; blue: only
+    -- players on their own blessing need theirs.
+    local color = classMissing > 0 and RED or classDue > 0 and YELLOW
+        or missingNear + expiringNear > 0 and BLUE or nil
     cell.icon:SetDesaturated(not reachable)
-    cell.icon:SetVertexColor(due and RED.r or 1, due and RED.g or 1, due and RED.b or 1)
+    cell.icon:SetVertexColor(color and color.r or 1, color and color.g or 1, color and color.b or 1)
     cell.mark:SetText(missing > 0 and missing or "")
     cell.timer:SetText(S.Get("blessTimers") and shortest and shortest > 0
         and math.ceil(shortest / 60) .. "m" or "")
@@ -688,22 +720,28 @@ local function NewCell(class)
     cell.label = ns.Font(cell, 10, "OUTLINE")
     cell.label:SetPoint("TOP", cell, "BOTTOM", 0, -2)
     cell.label:SetText(ClassName(class))
-    cell.header, cell.cast = Recipient(cell, "NaowhForeverBless" .. class)
+    cell.cast = CreateFrame("Button", "NaowhForeverBless" .. class, cell, "SecureActionButtonTemplate")
+    cell.cast:SetAllPoints(cell)
+    -- A mouse click acts on release, so up only: one step per click.
+    cell.cast:RegisterForClicks("AnyUp")
+    cell.cast:SetAttribute("type1", "spell")
+    cell.cast:SetAttribute("count", 0)
+    cell.cast:SetHighlightTexture("Interface\\Buttons\\ButtonHilight-Square", "ADD")
+    -- Out of combat a click re-reads the class first, so it starts from whoever needs it most.
     cell.cast:SetScript("PreClick", function(_, button)
-        if button == "LeftButton" and not InCombatLockdown() then PrepareCell(cell) end
+        if button == "LeftButton" and not InCombatLockdown() and not C_Secrets.ShouldAurasBeSecret() then
+            PrepareCell(cell)
+        end
     end)
+    SecureHandlerWrapScript(cell.cast, "OnClick", secureHandler, CLASS_STEP)
     cell.cast:SetScript("PostClick", function(self, button, down)
         if button == "RightButton" and not down then ClassMenu(self, class) end
     end)
     ns.Tooltip(cell.cast, ClassName(class), function()
         local target = cell.target and Ambiguate(cell.target.who, "short")
         return (target and "Left-click: bless " .. target .. ".\n" or "")
+            .. ((cell.queued or 0) > 1 and "In combat each click blesses the next of them.\n" or "")
             .. "Right-click: choose the blessing, the player list or assignments."
-    end)
-    -- The secure button hides while nobody can be blessed; the menu still opens from the icon.
-    cell:EnableMouse(true)
-    cell:SetScript("OnMouseUp", function(self, button)
-        if button == "RightButton" then ClassMenu(self, class) end
     end)
     return cell
 end
@@ -902,11 +940,10 @@ function Refresh()
             cell = cell or NewCell(class)
             cells[class] = cell
             cell.members = members
-            SizeRecipient(cell.header, cell.cast, size)
             Place(cell)
             PrepareCell(cell)
         elseif cell then
-            SetNames(cell.header, "-")
+            cell.cast:SetAttribute("count", 0)
             LibStub("LibCustomGlow-1.0").PixelGlow_Stop(cell, "NaowhBless")
             cell.glowing = nil
             cell:Hide()
@@ -940,9 +977,9 @@ local function BuildBar()
     furyButton = NewSelfButton("NaowhForeverBlessFury")
     ns.Tooltip(furyButton, C_Spell.GetSpellName(FURY.ranks[1]) or "Righteous Fury",
         "Left-click: cast it on yourself.")
-    local handler = CreateFrame("Frame", nil, UIParent, "SecureHandlerBaseTemplate")
-    keyNext = NewKeyButton("NaowhForeverBlessNext", handler)
-    keyGreater = NewKeyButton("NaowhForeverBlessNextGreater", handler)
+    secureHandler = CreateFrame("Frame", nil, UIParent, "SecureHandlerBaseTemplate")
+    keyNext = NewKeyButton("NaowhForeverBlessNext", secureHandler)
+    keyGreater = NewKeyButton("NaowhForeverBlessNextGreater", secureHandler)
     BuildFlyout()
 end
 
