@@ -21,7 +21,8 @@
   and the game's quest log beside it folds away so the Journal sits against the map (back as
   you had it once you leave). Each dungeon says whose ground its entrance is on, and the pin
   by its name points you there. Open the world map inside a dungeon and it sits beside the map; browse any
-  dungeon in its own window with /nfjournal (or /nfdj), or bind Boss Loot at Cursor to see
+  dungeon in its own window with /nfjournal (or /nfdj) or its own key (Open Dungeon Journal, in
+  its settings or Key Bindings), or bind Boss Loot at Cursor to see
   what the boss you hover drops. Search every dungeon for an item or boss, or list only
   the BiS you are still missing, or only your upgrades. The switch beside the search
   lists the dungeons on Alliance or Horde ground, or both. Loot your class can't use is hidden, and nearly every

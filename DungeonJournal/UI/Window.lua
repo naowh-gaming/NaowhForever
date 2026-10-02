@@ -969,3 +969,11 @@ end
 function ns.ToggleJournalWindow()
     if window and window:IsShown() then window:Hide() else ns.OpenJournalWindow() end
 end
+
+-- A key binding of its own (Bindings.xml, Naowh Forever's section of Key Bindings): opens the
+-- window, or closes it.
+BINDING_NAME_NAOWHFOREVER_JOURNAL = "Open Dungeon Journal"
+
+function NaowhForever_ToggleJournal()
+    ns.ToggleJournalWindow()
+end
