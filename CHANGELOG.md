@@ -158,6 +158,8 @@
 - Blessings: a group leader's or assistant's changes to another paladin's blessings now reach
   them; they were dropped because of the surname. Changes made during combat are sent once
   it ends instead of being lost.
+- Blessings: a class button no longer glows red when the only members missing their blessing
+  are out of range. It lights up only for someone you can bless from where you stand.
 - Recipe Finder and rank alerts: Stormwind and Eastern Plaguelands trainers and vendors
   (Lucan Cordell, the Stormwind enchanting trainer, among them) were placed at their Classic
   positions, so their waypoints pointed at the wrong spot on Forever's redrawn maps.

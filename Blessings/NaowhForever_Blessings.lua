@@ -233,18 +233,21 @@ local function BuffState(unit, key)
     return false
 end
 
--- Range does not apply to every spell and unit pair; nil leaves it to the cast.
+-- nil is a member the game cannot check range to (not nearby); a secret answer is left to
+-- the cast.
 local function InRange(member, spell)
     if member.guid == UnitGUID("player") then return true end
     local inRange = C_Spell.IsSpellInRange(spell, member.unit)
-    return Secret(inRange) or inRange ~= false
+    return Secret(inRange) or inRange == true
 end
 
 -- Who a class button blesses next: missing first, then running out, then whoever has the
--- least left, skipping anyone dead, offline or out of range. Also the class summary.
+-- least left, skipping anyone dead, offline or out of range. Also the class summary, with
+-- how many of those in range are missing it or running out (only they light the button).
 local function Survey(members)
     local target, targetSpell, rank, left
     local missing, shortest, reachable = 0, nil, false
+    local missingNear, expiringNear = 0, 0
     local spells = {}
     for _, member in ipairs(members) do
         local key = Assigned(member)
@@ -261,6 +264,7 @@ local function Survey(members)
             if has ~= nil and UnitIsVisible(member.unit) and InRange(member, spell) then
                 reachable = true
                 local r = not has and 0 or (remaining and remaining < EXPIRING and 1 or 2)
+                if r == 0 then missingNear = missingNear + 1 elseif r == 1 then expiringNear = expiringNear + 1 end
                 local l = remaining or math.huge
                 if not target or r < rank or (r == rank and l < left) then
                     target, targetSpell, rank, left = member, spell, r, l
@@ -268,7 +272,7 @@ local function Survey(members)
             end
         end
     end
-    return target, targetSpell, missing, shortest, reachable
+    return target, targetSpell, missing, shortest, reachable, missingNear, expiringNear
 end
 
 -------------------------------------------------------------------------------
@@ -651,7 +655,7 @@ end
 
 local function PrepareCell(cell)
     local members = cell.members
-    local target, spell, missing, shortest, reachable = Survey(members)
+    local target, spell, missing, shortest, reachable, missingNear, expiringNear = Survey(members)
     local key = Store().classes[cell.class]
     local shown = spell or (key and CastSpell(key, members))
     cell.icon:SetTexture(shown and C_Spell.GetSpellTexture(shown) or QUESTION)
@@ -659,13 +663,13 @@ local function PrepareCell(cell)
     if target then SetNames(cell.header, target.names) end
     cell.cast:SetAttribute("spell1", spell)
     cell.target = target
-    local due = missing > 0 or (shortest and shortest < EXPIRING)
+    local due = missingNear + expiringNear > 0
     cell.icon:SetDesaturated(not reachable)
     cell.icon:SetVertexColor(due and RED.r or 1, due and RED.g or 1, due and RED.b or 1)
     cell.mark:SetText(missing > 0 and missing or "")
     cell.timer:SetText(S.Get("blessTimers") and shortest and shortest > 0
         and math.ceil(shortest / 60) .. "m" or "")
-    local glow = missing > 0 and reachable
+    local glow = missingNear > 0
     if glow ~= cell.glowing then
         cell.glowing = glow
         local LCG = LibStub("LibCustomGlow-1.0")
