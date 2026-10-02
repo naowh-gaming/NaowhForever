@@ -690,6 +690,14 @@ local function ScanLabel(text, tooltip)
         feature = scan.feature, featureName = scan.featureName }
 end
 
+-- A builder that draws its own controls (the XP Bar preview) names them for the search here;
+-- outside the scan it does nothing. The frame it builds lists them in _searchLabels, so the
+-- search can jump to it.
+function UI.ScanLabels(labels, tooltip)
+    if not UI.searchScan then return end
+    for _, text in ipairs(labels) do ScanLabel(text, tooltip) end
+end
+
 -- While a search is typed (UI.searchWords), rows holding every word in their name or
 -- tooltip get a soft band.
 local function Mark(frame, text, tooltip)
@@ -1021,22 +1029,33 @@ function UI.BuildColorSwatchControl(parent, get, set, hasAlpha)
     PaintSwatch()
     swatchBtn._refreshValue = PaintSwatch
 
+    -- The picker calls swatchFunc as it opens and cancelFunc on Escape or a click away, so
+    -- nothing is saved until the color actually moves off the one it opened with.
     swatchBtn:SetScript("OnClick", function()
         local r, g, b, a = get()
+        r, g, b, a = r or 1, g or 1, b or 1, a or 1
+        local changed = false
         local function Apply()
             local nr, ng, nb = ColorPickerFrame:GetColorRGB()
             local na = hasAlpha and ColorPickerFrame:GetColorAlpha() or 1
+            local near = 1 / 255
+            if not changed and math.abs(nr - r) <= near and math.abs(ng - g) <= near
+                and math.abs(nb - b) <= near and math.abs(na - a) <= near then
+                return
+            end
+            changed = true
             set(nr, ng, nb, na)
             PaintSwatch()
         end
         ColorPickerFrame:SetupColorPickerAndShow({
-            r = r or 1, g = g or 1, b = b or 1,
-            opacity = a or 1,
+            r = r, g = g, b = b,
+            opacity = a,
             hasOpacity = hasAlpha and true or false,
             swatchFunc = Apply,
             opacityFunc = Apply,
             cancelFunc = function()
-                set(r or 1, g or 1, b or 1, a or 1)
+                if not changed then return end
+                set(r, g, b, a)
                 PaintSwatch()
             end,
         })
