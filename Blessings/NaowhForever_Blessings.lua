@@ -95,6 +95,12 @@ local function ClassName(class)
     return LOCALIZED_CLASS_NAMES_MALE[class] or class
 end
 
+-- Forever names carry a surname: UnitName gives only the first name ("Glyadin"), while
+-- UnitFullName and addon message senders give the whole one ("Glyadin Skywolf").
+local function MyName()
+    return (UnitFullName("player"))
+end
+
 local function Store()
     local account = ns.AccountSettings()
     account.blessings = account.blessings or {}
@@ -115,18 +121,43 @@ end
 -------------------------------------------------------------------------------
 --  The group
 -------------------------------------------------------------------------------
+local function Readable(v)
+    return v ~= nil and v ~= "" and not Secret(v)
+end
+
+-- The names a group header can know a member by: it matches nameList against UnitName in a
+-- party and GetRaidRosterInfo in a raid, which on Forever can be the first name alone.
+-- A first name two members share is left out, so the header cannot pick the wrong one.
+local function HeaderNames(member, realm, firstNames)
+    local seen, out = {}, {}
+    local function Add(name)
+        if Readable(name) and not seen[name] then
+            seen[name] = true
+            out[#out + 1] = name
+        end
+    end
+    Add(member.who)
+    if not member.who:find("-", 1, true) then Add(member.who .. "-" .. realm) end
+    for _, name in ipairs({ member.short, member.rosterName }) do
+        if Readable(name) and (firstNames[name] == 1 or name == member.who) then Add(name) end
+    end
+    if Readable(member.short) and Readable(member.server) then Add(member.short .. "-" .. member.server) end
+    return table.concat(out, ",")
+end
+
 -- Names as addon message senders carry them: the realm only when it is not ours.
 local function Roster()
     local units = { "player" }
-    if IsInRaid() then
+    local raid = IsInRaid()
+    if raid then
         units = {}
         for i = 1, GetNumGroupMembers() do units[#units + 1] = "raid" .. i end
     else
         for i = 1, GetNumSubgroupMembers() do units[#units + 1] = "party" .. i end
     end
     local realm = GetNormalizedRealmName()
-    local list = {}
-    for _, unit in ipairs(units) do
+    local list, firstNames = {}, {}
+    for i, unit in ipairs(units) do
         local name, unitRealm = UnitFullName(unit)
         local _, class = UnitClass(unit)
         local guid = UnitGUID(unit)
@@ -135,10 +166,21 @@ local function Roster()
         if name and not (Secret(name) or Secret(unitRealm) or Secret(class) or Secret(guid)) and class then
             local who = name
             if unitRealm and unitRealm ~= "" and unitRealm ~= realm then who = name .. "-" .. unitRealm end
-            list[#list + 1] = { unit = unit, guid = guid, class = class, who = who,
-                -- Group headers know same-realm members by the bare name.
-                names = who == name and (name .. "," .. name .. "-" .. realm) or who }
+            local short, server = UnitName(unit)
+            local member = { unit = unit, guid = guid, class = class, who = who, short = short,
+                server = server, rosterName = raid and (GetRaidRosterInfo(i)) or nil }
+            local counted = {}
+            for _, n in ipairs({ short, member.rosterName }) do
+                if Readable(n) and n ~= who and not counted[n] then
+                    counted[n] = true
+                    firstNames[n] = (firstNames[n] or 0) + 1
+                end
+            end
+            list[#list + 1] = member
         end
+    end
+    for _, member in ipairs(list) do
+        member.names = HeaderNames(member, realm, firstNames)
     end
     return list
 end
@@ -362,10 +404,23 @@ local function Channel()
     if IsInGroup() then return "PARTY" end
 end
 
-local function Send(msg)
+-- Nothing is sent in combat. What would have been is kept, the latest per kind and target,
+-- and sent once combat ends.
+local pending = {}
+
+local function Send(msg, key)
+    if InCombatLockdown() then
+        pending[key or msg] = msg
+        return
+    end
     local channel = Channel()
-    if channel and not InCombatLockdown() then
-        C_ChatInfo.SendAddonMessage(PREFIX, msg, channel)
+    if channel then C_ChatInfo.SendAddonMessage(PREFIX, msg, channel) end
+end
+
+local function SendPending()
+    for key, msg in pairs(pending) do
+        pending[key] = nil
+        Send(msg)
     end
 end
 
@@ -401,7 +456,7 @@ end
 -- leader or an assistant can set someone else's plan.
 local function OnMessage(msg, sender)
     local who = Ambiguate(sender, "none")
-    if who == UnitName("player") then return end
+    if who == MyName() then return end
     if msg == "R" then
         BroadcastSoon()
         return
@@ -411,7 +466,7 @@ local function OnMessage(msg, sender)
         local from = InGroup(who)
         local classes, aura = DecodePlan(plan)
         if not (IsPaladin() and classes and from and CanAssign(from.unit)
-                and target == UnitName("player") .. "-" .. GetNormalizedRealmName()) then
+                and target == MyName() .. "-" .. GetNormalizedRealmName()) then
             return
         end
         local store = Store()
@@ -940,6 +995,7 @@ events:SetScript("OnEvent", function(_, event, ...)
             broadcastAfterCombat = false
             BroadcastSoon()
         end
+        SendPending()
         if unlocked and bar then bar.mover:Show() end
     elseif event == "PLAYER_REGEN_DISABLED" then
         -- The bar holds secure buttons, so it cannot be dragged in combat.
@@ -1028,7 +1084,7 @@ boot:SetScript("OnEvent", Apply)
 -- For the options pages.
 ns.Blessings = {
     CLASSES = CLASSES, BLESSINGS = BLESSINGS, AURAS = AURAS,
-    Store = Store, Roster = Roster, Learned = Learned, IsPaladin = IsPaladin, CanAssign = CanAssign,
+    Store = Store, Roster = Roster, Learned = Learned, IsPaladin = IsPaladin, CanAssign = CanAssign, MyName = MyName,
     SpellName = SpellName, SpellIcon = SpellIcon, ClassName = ClassName, SetOwn = SetOwn,
     Others = function() return others end,
     -- The leader's edit to another paladin's plan: kept here until their broadcast confirms it.
@@ -1037,7 +1093,7 @@ ns.Blessings = {
         if not plan then return end
         if column == "AURA" then plan.aura = key else plan.classes[column] = key end
         local full = who:find("-") and who or who .. "-" .. GetNormalizedRealmName()
-        Send("S|" .. full .. "|" .. EncodePlan(plan.classes, plan.aura))
+        Send("S|" .. full .. "|" .. EncodePlan(plan.classes, plan.aura), "S|" .. full)
     end,
     OpenMenu = Menu,
 }

@@ -112,7 +112,7 @@ function ns.BuildBlessingAssignmentsPage(parent, y)
     local rows = {}
     if B.IsPaladin() then
         local store = B.Store()
-        rows[1] = { who = UnitName("player"), you = true, plan = store, can = B.Learned, set = B.SetOwn }
+        rows[1] = { who = B.MyName(), you = true, plan = store, can = B.Learned, set = B.SetOwn }
     end
     local others = B.Others()
     local names = {}

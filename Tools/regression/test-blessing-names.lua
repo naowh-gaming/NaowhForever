@@ -1,0 +1,73 @@
+-- Run with Lua 5.1 from the repository root: the Blessings roster on Forever, where names carry a
+-- surname. UnitName gives the first name only, UnitFullName and addon senders the whole one, and
+-- a group header matches its nameList against UnitName (party) or GetRaidRosterInfo (raid). Each
+-- member's names must include what the header sees, without a first name two members share.
+local checks = 0
+local function check(label, value) assert(value, label); checks = checks + 1 end
+
+local f = assert(io.open("Blessings/NaowhForever_Blessings.lua", "rb"))
+local source = f:read("*a"):gsub("\r\n", "\n")
+f:close()
+local first = assert(source:find("local function Readable(v)", 1, true))
+local roster = assert(source:find("local function Roster()", first, true))
+local last = assert(source:find("\nend\n", roster, true))
+local chunk = source:sub(first, last + 4) .. "return Roster"
+
+-- unit -> { full name, first name, server (UnitName's), class, roster name in a raid }
+local units, raid = {}, false
+local env = {
+    Secret = function() return false end,
+    IsInRaid = function() return raid end,
+    GetNumGroupMembers = function() local n = 0 for k in pairs(units) do if k:find("^raid") then n = n + 1 end end return n end,
+    GetNumSubgroupMembers = function() local n = 0 for k in pairs(units) do if k:find("^party") then n = n + 1 end end return n end,
+    GetNormalizedRealmName = function() return "Forever" end,
+    UnitFullName = function(unit) return units[unit] and units[unit][1] end,
+    UnitName = function(unit) local u = units[unit] if u then return u[2], u[3] end end,
+    UnitClass = function(unit) local u = units[unit] if u then return u[4], u[4] end end,
+    UnitGUID = function(unit) return units[unit] and ("Player-" .. unit) end,
+    GetRaidRosterInfo = function(i) local u = units["raid" .. i] return u and u[5] end,
+}
+local fn = assert(loadstring(chunk))
+setfenv(fn, setmetatable(env, { __index = _G }))
+local Roster = fn()
+
+local function Names(list, who)
+    for _, member in ipairs(list) do
+        if member.who == who then
+            local set = {}
+            for name in member.names:gmatch("[^,]+") do set[name] = true end
+            return set
+        end
+    end
+end
+
+units = {
+    player = { "Glyadin Skywolf", "Glyadin", nil, "PALADIN" },
+    party1 = { "Mara Stone", "Mara", nil, "WARRIOR" },
+}
+local list = Roster()
+check("party: the sender name is the full name", list[1].who == "Glyadin Skywolf")
+local mine = Names(list, "Glyadin Skywolf")
+check("party: the header's UnitName first name is listed", mine["Glyadin"])
+check("party: the full name is listed", mine["Glyadin Skywolf"] and mine["Glyadin Skywolf-Forever"])
+check("party: the other member's first name too", Names(list, "Mara Stone")["Mara"])
+
+units.party2 = { "Mara Vale", "Mara", nil, "MAGE" }
+list = Roster()
+check("party: a first name two members share is left out", not Names(list, "Mara Stone")["Mara"]
+    and not Names(list, "Mara Vale")["Mara"])
+check("party: a unique first name is still listed", Names(list, "Glyadin Skywolf")["Glyadin"])
+
+units = {
+    raid1 = { "Glyadin Skywolf", "Glyadin", nil, "PALADIN", "Glyadin" },
+    raid2 = { "Mara Stone", "Mara", nil, "WARRIOR", "Mara Stone" },
+    raid3 = { "Tor Ashby", "Tor", "Elsewhere", "PRIEST", "Tor-Elsewhere" },
+}
+raid = true
+list = Roster()
+check("raid: a first name read twice for one member still counts once", Names(list, "Glyadin Skywolf")["Glyadin"])
+check("raid: GetRaidRosterInfo's full name is listed", Names(list, "Mara Stone")["Mara Stone"])
+local tor = Names(list, "Tor Ashby")
+check("raid: a server from UnitName is joined to the first name", tor["Tor-Elsewhere"])
+
+print(("test-blessing-names: %d checks passed"):format(checks))

@@ -152,6 +152,12 @@
 - Dungeon Journal: its data is updated to WoW Forever build 1.60.1.70170: 4 faction rewards changed (item levels, required levels).
 
 ### Fixed
+- Blessings: the class buttons and the player list cast on the right player again in a party.
+  Forever names carry a surname, and the buttons were looking players up by the whole name
+  while the game knows party members by their first name.
+- Blessings: a group leader's or assistant's changes to another paladin's blessings now reach
+  them; they were dropped because of the surname. Changes made during combat are sent once
+  it ends instead of being lost.
 - Recipe Finder and rank alerts: Stormwind and Eastern Plaguelands trainers and vendors
   (Lucan Cordell, the Stormwind enchanting trainer, among them) were placed at their Classic
   positions, so their waypoints pointed at the wrong spot on Forever's redrawn maps.
