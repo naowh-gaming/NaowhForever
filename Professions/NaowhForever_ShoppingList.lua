@@ -10,10 +10,9 @@
 --                  and the ones well above your last scan, or short on supply, turn red;
 --    Buy All       each material in turn asks the auction house for its final price, shown
 --                  in red when it has moved well above the check, and Confirm pays it.
---  Clicking Buy All agrees to the checked total: a final price within DRIFT of the check (and
---  paid for) is then confirmed without asking. Starting a purchase is protected, though: only
---  a click may (ADDON_ACTION_BLOCKED when tried on its own, confirmed in game 2026-09-30), so
---  each material after the first takes one click on Buy Next. Bought materials leave the list.
+--  Starting a purchase is protected: only a click may (ADDON_ACTION_BLOCKED when tried on its
+--  own, confirmed in game 2026-09-30), so each material after the first takes one click on Buy
+--  Next. Bought materials leave the list.
 -------------------------------------------------------------------------------
 local ns = _G.NaowhForever
 local S = ns.ProfessionSettings
@@ -200,10 +199,10 @@ local function BuildSide(win)
     side.total:SetPoint("RIGHT", -100, 0)
     side.total:SetJustifyH("LEFT")
     side.total:SetWordWrap(true)
-    side.clear = ns.BlackBorder(ns.Button(side, "Clear", 80, 24, function()
+    side.clear = ns.Button(side, "Clear", 80, 24, function()
         wipe(List())
         if Render then Render() end
-    end))
+    end)
     side.clear:SetPoint("BOTTOMRIGHT", -10, 10)
     ns.Tooltip(side.clear, "Clear", "Empties the shopping list.")
     side:Hide()
@@ -231,12 +230,12 @@ local function SideRender()
         local row = (e or side.crafts[i]) and SideRow(side.crafts, i, true)
         if row and e and i <= SIDE_CRAFTS then
             if not row.remove then
-                row.remove = ns.BlackBorder(ns.Button(row, "X", 16, 16, function()
+                row.remove = ns.Button(row, "X", 16, 16, function()
                     if row.recipeID then
                         List()[row.recipeID] = nil
                         if Render then Render() end
                     end
-                end))
+                end)
                 row.remove:SetPoint("RIGHT")
                 ns.Tooltip(row.remove, "Remove", "Takes this craft and its materials off the list.")
                 row.note:SetPoint("RIGHT", row.remove, "LEFT", -6, 0)
@@ -307,16 +306,16 @@ function ns.ShoppingListAttach(win)
     row:SetSize(ADD_ROW_W, 24)
     row:Hide()
     addRow = row
-    row.add = ns.BlackBorder(ns.Button(row, "Add to List", 90, 24, function()
+    row.add = ns.Button(row, "Add to List", 90, 24, function()
         local info = ns.ProfWindowAPI.SelectedInfo()
         if info then Add(info, Crafts()) end
-    end))
+    end)
     row.add:SetPoint("RIGHT")
     ns.Tooltip(row.add, "Add to Shopping List", "Puts the materials for that many crafts on your "
         .. "shopping list: every checked reagent that vendors do not sell, whatever is in your "
         .. "bags. Uncheck a reagent to leave it out. At the auction house the list shows beside "
         .. "it, to check the prices and buy it all.")
-    local qty = ns.BlackBorder(ns.NewEditBox(row))
+    local qty = ns.NewEditBox(row)
     qty:SetSize(40, 24)
     qty:SetNumeric(true)
     qty:SetMaxLetters(3)
@@ -325,14 +324,14 @@ function ns.ShoppingListAttach(win)
     qty:SetScript("OnEscapePressed", qty.ClearFocus)
     qty:SetScript("OnEnterPressed", qty.ClearFocus)
     row.qty = qty
-    local plus = ns.BlackBorder(ns.Button(row, "+", 22, 24, function()
+    local plus = ns.Button(row, "+", 22, 24, function()
         qty:SetText(tostring(math.min(999, Crafts() + 1)))
-    end))
+    end)
     plus:SetPoint("RIGHT", row.add, "LEFT", -12, 0)
     qty:SetPoint("RIGHT", plus, "LEFT", -2, 0)
-    local minus = ns.BlackBorder(ns.Button(row, "-", 22, 24, function()
+    local minus = ns.Button(row, "-", 22, 24, function()
         qty:SetText(tostring(math.max(1, Crafts() - 1)))
-    end))
+    end)
     minus:SetPoint("RIGHT", qty, "LEFT", -2, 0)
     ns.Tooltip(qty, "Crafts", "How many crafts Add to List adds the materials for.")
 end
@@ -462,34 +461,6 @@ local function NextBuy()
     Render()
 end
 
--- Watches for the game blocking the automatic confirm: ADDON_ACTION_BLOCKED (or _FORBIDDEN)
--- naming this addon just after it was tried. It has not been blocked on Forever.
-local blockWatch = CreateFrame("Frame")
-blockWatch:SetScript("OnEvent", function(_, _, addon)
-    if addon ~= "NaowhForever" or not run or not run.trying then return end
-    local step = run.trying
-    run.trying = nil
-    blockWatch:UnregisterAllEvents()
-    if step == "confirm" then
-        -- The purchase needs a click after all: back to Confirm, for the rest of the run.
-        run.manualConfirm = true
-        if run.state == "buying" then run.state = "quoted" end
-    end
-    Render()
-end)
-
-local function Try(step)
-    run.trying = step
-    blockWatch:RegisterEvent("ADDON_ACTION_BLOCKED")
-    blockWatch:RegisterEvent("ADDON_ACTION_FORBIDDEN")
-    C_Timer.After(1, function()
-        if run and run.trying == step then
-            run.trying = nil
-            blockWatch:UnregisterAllEvents()
-        end
-    end)
-end
-
 -- From a click (Buy All, Buy Next, Try Again): ask the auction house for the current
 -- material's final price. Only a click may start a purchase.
 local function Quote()
@@ -509,15 +480,13 @@ local function Quote()
     Render()
 end
 
--- The only thing here that spends gold: from Confirm's click, or during Buy All on its own
--- (`auto`) for a final price inside what you agreed to.
-local function Confirm(auto)
+-- The only thing here that spends gold, from Confirm's click.
+local function Confirm()
     local e = Current()
     if not (e and run.state == "quoted") or GetMoney() < run.total then return end
     run.state = "buying"
     run.gen = run.gen + 1
     local gen = run.gen
-    if auto then Try("confirm") end
     pcall(C_AuctionHouse.ConfirmCommoditiesPurchase, e.item, e.buy)
     C_Timer.After(BUY_TIMEOUT, function()
         if run and run.gen == gen and run.state == "buying" then
@@ -548,8 +517,8 @@ local function Primary()
     local state = run and run.state
     if not run then return StartCheck() end
     if state == "checked" then
-        -- Buy All: agreed to the checked total; the first material's price at once, in this
-        -- click. Each one after takes a click on Buy Next.
+        -- Buy All: the first material's price at once, in this click. Each one after takes a
+        -- click on Buy Next.
         run.agreed = true
         run.index = 0
         NextBuy()
@@ -590,12 +559,12 @@ local function Build()
         row.icon:SetSize(ROW_H - 4, ROW_H - 4)
         row.icon:SetPoint("LEFT")
         row.icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
-        row.remove = ns.BlackBorder(ns.Button(row, "X", 18, 18, function()
+        row.remove = ns.Button(row, "X", 18, 18, function()
             if row.item and not run then
                 Drop(row.item)
                 Render()
             end
-        end))
+        end)
         row.remove:SetPoint("RIGHT")
         ns.Tooltip(row.remove, "Remove", "Takes this material off the shopping list.")
         row.note = ns.Font(row, 12, nil, T.muted)
@@ -629,15 +598,15 @@ local function Build()
     panel.line2:SetWidth(WIDTH - 20)
     panel.line2:SetJustifyH("LEFT")
     panel.line2:SetWordWrap(true)
-    panel.primary = ns.BlackBorder(ns.Button(panel, "Check Prices", 180, 24, Primary))
+    panel.primary = ns.Button(panel, "Check Prices", 180, 24, Primary)
     panel.primary:SetPoint("BOTTOMLEFT", 10, 10)
-    panel.cancel = ns.BlackBorder(ns.Button(panel, "Clear", 90, 24, function()
+    panel.cancel = ns.Button(panel, "Clear", 90, 24, function()
         if run then return CancelRun() end
         wipe(List())
         Render()
-    end))
+    end)
     panel.cancel:SetPoint("BOTTOMRIGHT", -10, 10)
-    panel.skip = ns.BlackBorder(ns.Button(panel, "Skip", 80, 24, Skip))
+    panel.skip = ns.Button(panel, "Skip", 80, 24, Skip)
     panel.skip:SetPoint("RIGHT", panel.cancel, "LEFT", -6, 0)
     panel:Hide()
 end
@@ -708,10 +677,8 @@ local function RunText()
                 or (muted .. "Buy All asks each final price; you confirm each one.|r"),
             ("Buy All (%s)"):format(Money(total)), count > 0 and not short, "Cancel", false
     elseif state == "ready" then
-        -- Only a click may start a purchase; within the agreed total it is then bought on its own.
         return ("Next: %dx %s, about %s"):format(e.buy, name, Money(e.cost)),
-            muted .. ("Bought %d so far. The game starts each purchase only from a click; within "
-                .. "the checked total it is then bought without asking."):format(run.bought) .. "|r",
+            muted .. ("Bought %d so far. The game starts each purchase only from a click."):format(run.bought) .. "|r",
             run.agreed and ("Buy Next (%s)"):format(Money(e.cost)) or "Get Price", true, "Cancel", true
     elseif state == "quoting" then
         return ("%dx %s: getting the final price..."):format(e.buy, name),
@@ -724,8 +691,7 @@ local function RunText()
             Money(run.total), muted, Money(run.unit)),
             short and (RED .. "You do not have enough gold.|r")
                 or moved and (RED .. ("Careful: up from %s at the check."):format(Money(e.cost)) .. "|r")
-                or (muted .. ("Checked at %s.%s"):format(Money(e.cost),
-                    run.agreed and run.manualConfirm and " The game wants a click to buy." or "") .. "|r"),
+                or (muted .. ("Checked at %s."):format(Money(e.cost)) .. "|r"),
             "Confirm", not short, "Cancel", true
     elseif state == "buying" then
         return ("Buying %dx %s..."):format(e.buy, name), "", "Confirm", false, "Cancel", false
@@ -828,10 +794,6 @@ events:SetScript("OnEvent", function(_, event, a, b)
         C_Timer.After(GAP, CheckNext)
     elseif event == "COMMODITY_PRICE_UPDATED" and state == "quoting" then
         run.state, run.unit, run.total = "quoted", a, b
-        -- Inside what Buy All agreed to (and affordable): bought without asking.
-        if run.agreed and not run.manualConfirm and b <= e.cost * DRIFT and GetMoney() >= b then
-            return Confirm(true)
-        end
         Render()
     elseif event == "COMMODITY_PRICE_UNAVAILABLE" and state == "quoting" then
         run.state = "unavailable"
@@ -853,7 +815,6 @@ events:SetScript("OnEvent", function(_, event, a, b)
                 end
             end
         end
-        if run.trying == "confirm" then run.trying = nil end
         NextBuy()
     elseif event == "COMMODITY_PURCHASE_FAILED" and state == "buying" then
         run.state = "failed"

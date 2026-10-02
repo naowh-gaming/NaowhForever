@@ -21,8 +21,6 @@ local S = UI.ModuleSettings("professions", {
     vendorMaterials = false,
     -- Craft Orders: another player's linked profession in this window, to order crafts from.
     craftOrders = false, orderTip = 10,
-    -- The professions key reopens the page the window was last on.
-    rememberTab = false,
     -- Crafting several at once shows the batch's time on the flight timer's bar.
     craftTimer = false,
     -- Materials for crafts added from the recipe pane, bought together at the auction house.
@@ -46,7 +44,6 @@ local MID_X = PAD + LEFT_W + PAD
 local W = MID_X + MID_W + PAD
 -- Another player's profession adds the order column on the right.
 local ORDER_W = 260
-local W_LINKED = W + ORDER_W + PAD
 local TOP_Y = -68
 -- The next-rank banner sits under the skill bar and pushes both columns down while shown.
 local BANNER_Y, BANNER_H, BANNER_SHIFT = -64, 40, 46
@@ -3066,7 +3063,7 @@ local function Build()
         if not IsModifiedClick("CHATLINK") then return end
         local link = self.item and select(2, C_Item.GetItemInfo(self.item))
             or self.spell and C_Spell.GetSpellLink and C_Spell.GetSpellLink(self.spell)
-        if link then ChatEdit_InsertLink(link) end
+        if link then ChatFrameUtil.InsertLink(link) end
     end)
     FILTERS.favorites.BuildLearnStar(l)
     l.name = ns.Font(l, 16, nil)
@@ -3387,7 +3384,7 @@ local function Activate(mode)
     local linked = mode == "linked"
     -- The right column: another player's order, or your shopping list while that is on.
     local wide = linked or (mode == "craft" and ns.ShoppingListWide and ns.ShoppingListWide())
-    local width = wide and W_LINKED or W
+    local width = wide and W + ORDER_W + PAD or W
     -- Never narrower or shorter than Blizzard's window, so none of it is left clickable.
     -- Resizing waits for peace: the overview's secure buttons may hang off this window.
     if not InCombatLockdown() then
@@ -3424,31 +3421,6 @@ end
 -- hook below.
 local keyOpenedAt
 
--- Remember Last Tab: the page the window was last on, per character ("book" for the overview,
--- else the profession's skill line), which the professions key then opens again. `want` is
--- the page the key is opening.
-local LastTab = {}
-
-function LastTab.Store()
-    local account = ns.AccountSettings()
-    if type(account.profLastTab) ~= "table" then account.profLastTab = {} end
-    return account.profLastTab
-end
-
-function LastTab.Key()
-    return (UnitName("player") or "?") .. "-" .. (GetRealmName() or "?")
-end
-
-function LastTab.Get()
-    return LastTab.Store()[LastTab.Key()]
-end
-
--- Saved when the window closes, from the page it was showing then (`LastTab.current`): the
--- professions Forever opens by itself while the window opens never count.
-function LastTab.Save()
-    if LastTab.current then LastTab.Store()[LastTab.Key()] = LastTab.current end
-end
-
 -- The overview tab shows Blizzard's book page (invisible, like the rest of its window); the
 -- keybind can open it with no profession open at all.
 local function BookOpen()
@@ -3465,15 +3437,8 @@ local function Update()
     if not Own() then return Deactivate() end
     -- Just opened with the key for the overview: the overview, even while Forever is still
     -- opening professions.
-    if BookOpen() or (keyOpenedAt and LastTab.want == "book") then
-        LastTab.current = "book"
-        return Activate("book")
-    end
-    local prof = Profession()
-    if prof then
-        LastTab.current = prof.id
-        return Activate("craft")
-    end
+    if BookOpen() or keyOpenedAt then return Activate("book") end
+    if Profession() then return Activate("craft") end
     Deactivate()
 end
 
@@ -3492,72 +3457,21 @@ ns.ProfWindowRefresh = Queue
 -- Forever opens every one of your professions in turn (First Aid, Smelting, Fishing...) and
 -- stays on the last, never the overview. Traced in game 2026-09-30. The window shows the
 -- overview meanwhile, and once the burst is over, Blizzard's overview tab is clicked so its
--- window (and which tab is lit) matches. The first press after a reload opens the overview as
--- it should. The tab is a plain Frame on Forever, with no Click method: its OnMouseUp is what
--- a click on it runs, confirmed in game.
--- With Remember Last Tab on and a profession last open, the key opens that profession instead
--- (C_TradeSkillUI.OpenTradeSkill, as the profession spell would), from the overview too.
--- That call is protected on Forever: from a timer it was blocked (ADDON_ACTION_BLOCKED,
--- 2026-09-30), so it runs at once inside the key press, after Forever's burst. Blocked there
--- too, it is given up for the session, with one line in chat, and the key opens the overview.
-local KEY_SETTLE = 0.3
-
-function LastTab.ShowOverview()
-    local tab = ProfessionsFrame.ProfessionsOverviewTab
-    if BookOpen() or not tab then return end
-    for _, script in ipairs({ "OnClick", "OnMouseUp", "OnMouseDown" }) do
-        local handler = tab:HasScript(script) and tab:GetScript(script)
-        if handler then
-            pcall(handler, tab, "LeftButton", true)
-            return
-        end
-    end
-end
-
--- Opens a profession while the key press is still going on. The game reports a blocked call
--- as ADDON_ACTION_BLOCKED right after; one naming this addon then ends the tries.
-LastTab.watch = CreateFrame("Frame")
-LastTab.watch:SetScript("OnEvent", function(_, _, addon)
-    if addon ~= "NaowhForever" or not LastTab.tried or GetTime() - LastTab.tried > 1 then return end
-    LastTab.tried = nil
-    if LastTab.blocked then return end
-    LastTab.blocked = true
-    LastTab.watch:UnregisterAllEvents()
-    ns.Print("Remember Last Tab: the game does not let addons open a profession, so the "
-        .. "professions key opens the overview. Click the profession's tab to switch.")
-end)
-
-function LastTab.ShowProfession(id)
-    local prof = Profession()
-    if not BookOpen() and prof and prof.id == id then return true end
-    if LastTab.blocked or InCombatLockdown() then return false end
-    LastTab.watch:RegisterEvent("ADDON_ACTION_BLOCKED")
-    LastTab.tried = GetTime()
-    pcall(C_TradeSkillUI.OpenTradeSkill, id)
-    return true
-end
-
+-- window (and which tab is lit) matches. The tab is a plain Frame on Forever, with no Click
+-- method: its OnMouseUp is what a click on it runs, confirmed in game.
 if type(ToggleProfessionsBook) == "function" then
+    local KEY_SETTLE = 0.3
     hooksecurefunc("ToggleProfessionsBook", function()
-        if not (On() and ProfessionsFrame and ProfessionsFrame:IsShown()) then return end
-        local last = S.Get("rememberTab") and not LastTab.blocked and LastTab.Get()
-        local want = type(last) == "number" and last or "book"
-        -- A profession opens now, inside the key press; the overview once the burst is over.
-        if want ~= "book" and not LastTab.ShowProfession(want) then want = "book" end
-        if want == "book" and BookOpen() then return end
-        keyOpenedAt, LastTab.want = GetTime(), want
+        if not (On() and ProfessionsFrame and ProfessionsFrame:IsShown()) or BookOpen() then return end
+        keyOpenedAt = GetTime()
         Queue()
         C_Timer.After(KEY_SETTLE, function()
             -- Cleared first: a failing click must not leave the window stuck on the overview.
-            keyOpenedAt, LastTab.want = nil, nil
-            -- The profession did not come up (blocked, or Forever landed elsewhere after it):
-            -- the overview rather than whatever the burst left open.
-            local prof = Profession()
-            if want ~= "book" and (LastTab.blocked or BookOpen() or not (prof and prof.id == want)) then
-                want = "book"
-            end
-            if want == "book" and ProfessionsFrame:IsShown() and not InCombatLockdown() then
-                LastTab.ShowOverview()
+            keyOpenedAt = nil
+            local tab = ProfessionsFrame.ProfessionsOverviewTab
+            if tab and ProfessionsFrame:IsShown() and not BookOpen() and not InCombatLockdown() then
+                local handler = tab:GetScript("OnMouseUp")
+                if handler then pcall(handler, tab, "LeftButton", true) end
             end
             Queue()
         end)
@@ -3671,8 +3585,6 @@ events:SetScript("OnEvent", function(_, event, name)
         hooked = true
         ProfessionsFrame:HookScript("OnShow", Queue)
         ProfessionsFrame:HookScript("OnHide", function()
-            -- The page you close on is the one the professions key opens next time.
-            if win and win:IsShown() and not linkedMode and not keyOpenedAt then LastTab.Save() end
             EndLinkView()
             Deactivate()
         end)
@@ -3746,22 +3658,16 @@ function ns.BuildProfessionsPage(parent, y)
             .. "your bank.")
     ); y = y - h
     _, h = W:DualRow(parent, y,
-        S.Toggle("rememberTab", "Remember Last Tab",
-            "The professions key (K) opens the page you last had open, the overview or one of "
-            .. "your professions, instead of always the overview. Remembered per character."),
         S.Toggle("craftTimer", "Total Craft Timer",
             "Crafting several at once (Create All, or Create with a count) shows one bar for the "
             .. "whole batch, drawn like the Flight Timer: the recipe, how many are done and the "
             .. "time left on all of them, in place of the cast bar that fills for every craft. "
             .. "It sits where the Flight Timer is, as nobody crafts in flight: move it in Unlock "
-            .. "Mode as the Flight Timer.")
-    ); y = y - h
-    _, h = W:DualRow(parent, y,
+            .. "Mode as the Flight Timer."),
         S.Toggle("trainFavorites", "Train Favorites",
             "At a profession trainer who teaches any of your favourite recipes that you can "
             .. "learn now (star one before its name, or right-click it in the list), a window "
-            .. "beside the trainer's lists them with their cost: Learn one, or Learn All."),
-        { type = "label", text = "" }
+            .. "beside the trainer's lists them with their cost: Learn one, or Learn All.")
     ); y = y - h
     _, h = W:DualRow(parent, y,
         S.Toggle("craftOrders", "Craft Orders",
@@ -3827,8 +3733,8 @@ function ns.BuildProfessionsPage(parent, y)
             "Adds \"- [1] + Add to List\" under a recipe's reagents: the materials Buy on AH would "
             .. "buy for that many crafts go on a shopping list, from anywhere. At the auction house "
             .. "the list shows beside it: Check Prices looks each one up and warns in red when one "
-            .. "is well above your last scan, then Buy All buys the list at that total, asking "
-            .. "again only for a material whose final price moved more than 10%.")
+            .. "is well above your last scan, then Buy All goes through the list one material at a "
+            .. "time, each bought only when you confirm its final price.")
     ); y = y - h
 
     _, h = W:SectionHeader(parent, "GATHERING", y); y = y - h

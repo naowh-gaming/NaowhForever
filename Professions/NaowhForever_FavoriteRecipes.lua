@@ -62,7 +62,7 @@ local function Panel(title)
     p.title = ns.Font(p, 13, nil, T.accent)
     p.title:SetPoint("TOPLEFT", 10, -11)
     p.title:SetText(title)
-    p.close = ns.BlackBorder(ns.Button(p, "X", 20, 20, function() p.dismissed = true; p:Hide() end))
+    p.close = ns.Button(p, "X", 20, 20, function() p.dismissed = true; p:Hide() end)
     p.close:SetPoint("TOPRIGHT", -7, -7)
     p.note = ns.Font(p, 11, nil, T.muted)
     p.note:SetPoint("BOTTOMLEFT", 10, 12)
@@ -87,7 +87,7 @@ local function Row(p, i, label, onClick)
     row.icon:SetSize(ROW_H - 4, ROW_H - 4)
     row.icon:SetPoint("LEFT")
     row.icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
-    row.button = ns.BlackBorder(ns.Button(row, label, 64, 20, function() onClick(row) end))
+    row.button = ns.Button(row, label, 64, 20, function() onClick(row) end)
     row.button:SetPoint("RIGHT")
     row.note = ns.Font(row, 12, nil, T.muted)
     row.note:SetPoint("RIGHT", row.button, "LEFT", -8, 0)
@@ -170,6 +170,25 @@ local function TrainerOffers()
 end
 
 local RenderTrainer
+
+-- Learns the offers you can pay for, from Learn's click. Last index first: buying a service
+-- can renumber the ones after it.
+local function Learn(offers)
+    local money = GetMoney()
+    table.sort(offers, function(a, b) return a.index > b.index end)
+    for _, o in ipairs(offers) do
+        if o.cost <= money then
+            BuyTrainerService(o.index)
+            money = money - o.cost
+        end
+    end
+end
+
+local function BuildTrainer()
+    trainer = Panel("Train Favorites")
+    trainer.all = ns.AccentBorder(ns.Button(trainer, "Learn All", 140, 22, function() Learn(trainer.offers) end))
+    trainer.all:SetPoint("BOTTOMRIGHT", -10, 8)
+end
 
 RenderTrainer = function()
     if not OnTrainer() then return trainer and trainer:Hide() end
@@ -385,12 +404,12 @@ local function BuildConfirm()
     c.line2 = ns.Font(c, 12, nil)
     c.line2:SetPoint("TOP", c.line1, "BOTTOM", 0, -4)
     c.line2:SetWidth(WIDTH - 20)
-    c.accept = ns.BlackBorder(ns.Button(c, "Accept", 120, 22, Accept))
+    c.accept = ns.Button(c, "Accept", 120, 22, Accept)
     c.accept:SetPoint("BOTTOMRIGHT", c, "BOTTOM", -4, 8)
-    c.cancel = ns.BlackBorder(ns.Button(c, "Cancel", 120, 22, function()
+    c.cancel = ns.Button(c, "Cancel", 120, 22, function()
         buy = nil
         c:Hide()
-    end))
+    end)
     c.cancel:SetPoint("BOTTOMLEFT", c, "BOTTOM", 4, 8)
     market.confirm = c
     c:HookScript("OnShow", function() if ns.ShoppingListPlace then ns.ShoppingListPlace() end end)
