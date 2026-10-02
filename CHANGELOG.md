@@ -3,6 +3,19 @@
 ## Unreleased
 
 ### Added
+- Blessings: in combat each click on a class button blesses the next member of that class who
+  was in range when the fight began, going round, instead of the same player every time.
+- Blessings: class buttons show what is needed at a glance: red when someone in range is
+  missing the class blessing, yellow when it is only running out, blue when only players with
+  their own blessing need theirs.
+- Blessings: Auto-Assign on the Assignments page spreads blessings and auras across every
+  paladin in the group running Naowh Forever, the most useful blessing for each class first,
+  with Salvation first for casters and rogues in a raid and never for warriors or druids. The
+  group leader or an assistant can run it for everyone; a paladin on their own for themselves.
+- Blessings: a preset on the Assignments page saves the whole group's plan and loads it again
+  later for the paladins who are there.
+- Blessings: a paladin's own blessings for single players are shared with the group, and show
+  in the tooltip of that class on the Assignments page.
 - Group Tools on QoL > Questing: a Disband Group button for leaders and an Invite Player button where you type the name.
 - Dungeon Journal: every dungeon's bosses in the order you meet them, what each one drops
   and how often, with your BiS marked and how many of them each boss has. Upgrade marks

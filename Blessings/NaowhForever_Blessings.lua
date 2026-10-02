@@ -453,6 +453,31 @@ local function SendPending()
     end
 end
 
+-- Per-player choices for members of the group, as GUID=code pairs. "P|1|" starts the list
+-- over, so an empty one clears what the others had.
+local PLAYER_BATCH = 200
+
+local function SendPlayers()
+    local players = Store().players
+    local parts, n, chunk = {}, 1, ""
+    for _, member in ipairs(Roster()) do
+        local key = players[member.guid]
+        if key then
+            local part = member.guid .. "=" .. BY_KEY[key].code
+            if #chunk + #part > PLAYER_BATCH then
+                parts[#parts + 1] = chunk
+                chunk = ""
+            end
+            chunk = chunk == "" and part or chunk .. "," .. part
+        end
+    end
+    parts[#parts + 1] = chunk
+    for _, body in ipairs(parts) do
+        Send("P|" .. n .. "|" .. body, "P|" .. n)
+        n = n + 1
+    end
+end
+
 local function Broadcast()
     if not IsPaladin() then return end
     if InCombatLockdown() then
@@ -461,6 +486,7 @@ local function Broadcast()
     end
     local store = Store()
     Send("F|" .. EncodePlan(store.classes, store.aura) .. "|" .. KnownCodes())
+    SendPlayers()
 end
 
 -- Every client asks on a roster change, so answers are batched into one send.
@@ -509,6 +535,18 @@ local function OnMessage(msg, sender)
         Changed()
         return
     end
+    local part, list = msg:match("^P|(%d+)|(.*)$")
+    if part then
+        local from = others[who]
+        if not from then return end
+        if part == "1" then from.players = {} end
+        for guid, code in list:gmatch("(Player%-[%w%-]+)=(%a)") do
+            local entry = BY_CODE[code]
+            if entry and entry.blessing then from.players[guid] = entry.key end
+        end
+        if ns.UI.RefreshPage then ns.UI:RefreshPage(true) end
+        return
+    end
     local body, known = msg:match("^F|(%S+)|(%a*)$")
     local member = body and InGroup(who)
     if not (member and member.class == "PALADIN") then return end
@@ -518,7 +556,7 @@ local function OnMessage(msg, sender)
     for code in known:gmatch(".") do
         if BY_CODE[code] then set[BY_CODE[code].key] = true end
     end
-    others[who] = { classes = classes, aura = aura, known = set }
+    others[who] = { classes = classes, aura = aura, known = set, players = others[who] and others[who].players or {} }
     if ns.UI.RefreshPage then ns.UI:RefreshPage(true) end
 end
 
@@ -1122,8 +1160,153 @@ local boot = CreateFrame("Frame")
 boot:RegisterEvent("PLAYER_LOGIN")
 boot:SetScript("OnEvent", Apply)
 
+-------------------------------------------------------------------------------
+--  Auto-assign and presets
+-------------------------------------------------------------------------------
+-- Each class's blessings, most wanted first. In a raid Salvation moves up for classes that
+-- do not tank; warriors and druids keep it off so a tank is never handed it.
+local WANTED = {
+    WARRIOR = { "might", "kings", "light" },
+    ROGUE = { "might", "kings", "salvation", "light" },
+    HUNTER = { "might", "kings", "wisdom", "salvation", "light" },
+    PALADIN = { "wisdom", "kings", "might", "salvation", "light" },
+    PRIEST = { "wisdom", "kings", "salvation", "light" },
+    MAGE = { "wisdom", "kings", "salvation", "light" },
+    WARLOCK = { "wisdom", "kings", "salvation", "light" },
+    SHAMAN = { "wisdom", "kings", "might", "salvation", "light" },
+    DRUID = { "wisdom", "kings", "might", "light" },
+}
+local WANTED_RAID = {
+    ROGUE = { "salvation", "might", "kings", "light" },
+    HUNTER = { "salvation", "might", "kings", "wisdom", "light" },
+    PRIEST = { "salvation", "wisdom", "kings", "light" },
+    MAGE = { "salvation", "wisdom", "kings", "light" },
+    WARLOCK = { "salvation", "wisdom", "kings", "light" },
+    SHAMAN = { "salvation", "wisdom", "kings", "might", "light" },
+}
+local AURA_ORDER = { "devotion", "retribution", "concentration", "fire", "frost", "shadow", "sanctity" }
+
+-- The paladins a plan can be made for: you, and every paladin whose plan has arrived.
+local function Paladins()
+    local list = {}
+    if IsPaladin() then
+        local known = {}
+        for _, entry in ipairs(BLESSINGS) do if Learned(entry) then known[entry.key] = true end end
+        for _, entry in ipairs(AURAS) do if Learned(entry) then known[entry.key] = true end end
+        list[1] = { who = MyName(), known = known, you = true }
+    end
+    for who, plan in pairs(others) do list[#list + 1] = { who = who, known = plan.known } end
+    for _, p in ipairs(list) do
+        p.count = 0
+        for _ in pairs(p.known) do p.count = p.count + 1 end
+    end
+    -- Whoever knows least picks first, so a paladin with few blessings is not left with none.
+    table.sort(list, function(a, b)
+        if a.count ~= b.count then return a.count < b.count end
+        return a.who < b.who
+    end)
+    return list
+end
+
+-- One blessing per paladin per class, the most wanted first; one aura each.
+local function AutoPlans(raid)
+    local paladins = Paladins()
+    local plans = {}
+    for _, p in ipairs(paladins) do plans[p.who] = { classes = {} } end
+    for _, class in ipairs(CLASSES) do
+        local wanted = raid and WANTED_RAID[class] or WANTED[class]
+        local free = {}
+        for _, p in ipairs(paladins) do free[#free + 1] = p end
+        for _, key in ipairs(wanted) do
+            for i, p in ipairs(free) do
+                if p.known[key] then
+                    plans[p.who].classes[class] = key
+                    table.remove(free, i)
+                    break
+                end
+            end
+        end
+    end
+    local free = {}
+    for _, p in ipairs(paladins) do free[#free + 1] = p end
+    for _, key in ipairs(AURA_ORDER) do
+        for i, p in ipairs(free) do
+            if p.known[key] then
+                plans[p.who].aura = key
+                table.remove(free, i)
+                break
+            end
+        end
+    end
+    return plans
+end
+
+-- Your own plan, and everyone else's through the leader's S message.
+local function ApplyPlans(plans)
+    local store = Store()
+    for who, plan in pairs(plans) do
+        if who == MyName() then
+            store.classes = {}
+            for class, key in pairs(plan.classes) do store.classes[class] = key end
+            store.aura = plan.aura
+            BroadcastSoon()
+        elseif others[who] then
+            others[who].classes, others[who].aura = plan.classes, plan.aura
+            local full = who:find("-") and who or who .. "-" .. GetNormalizedRealmName()
+            Send("S|" .. full .. "|" .. EncodePlan(plan.classes, plan.aura), "S|" .. full)
+        end
+    end
+    Changed()
+end
+
+-- Everyone's plan when another paladin is involved needs the leader or an assistant.
+local function CanPlanAll()
+    return next(others) == nil or CanAssign("player")
+end
+
+-- One saved set of plans for the account, by paladin name.
+local function Presets()
+    local account = ns.AccountSettings()
+    account.blessingPreset = account.blessingPreset or {}
+    return account.blessingPreset
+end
+
+local function SavePreset()
+    local preset = {}
+    for _, p in ipairs(Paladins()) do
+        local plan = p.you and Store() or others[p.who]
+        local classes = {}
+        for class, key in pairs(plan.classes) do classes[class] = key end
+        preset[p.who] = { classes = classes, aura = plan.aura }
+    end
+    ns.AccountSettings().blessingPreset = preset
+end
+
+-- Only the paladins in the preset who are here now; each keeps to what they have learned.
+local function LoadPreset()
+    local plans = {}
+    for _, p in ipairs(Paladins()) do
+        local saved = Presets()[p.who]
+        if saved then
+            local plan = { classes = {} }
+            for class, key in pairs(saved.classes or {}) do
+                if p.known[key] then plan.classes[class] = key end
+            end
+            plan.aura = saved.aura and p.known[saved.aura] and saved.aura or nil
+            plans[p.who] = plan
+        end
+    end
+    ApplyPlans(plans)
+    return next(plans) ~= nil
+end
+
 -- For the options pages.
 ns.Blessings = {
+    AutoAssign = function() ApplyPlans(AutoPlans(IsInRaid())) end,
+    CanPlanAll = CanPlanAll,
+    SavePreset = SavePreset,
+    LoadPreset = LoadPreset,
+    HasPreset = function() return next(Presets()) ~= nil end,
     CLASSES = CLASSES, BLESSINGS = BLESSINGS, AURAS = AURAS,
     Store = Store, Roster = Roster, Learned = Learned, IsPaladin = IsPaladin, CanAssign = CanAssign, MyName = MyName,
     SpellName = SpellName, SpellIcon = SpellIcon, ClassName = ClassName, SetOwn = SetOwn,
