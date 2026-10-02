@@ -1116,6 +1116,17 @@ do
         end
     end
     check("the Bosses title has Map", mapTitle ~= nil)
+    -- A dungeon with no map yet: Map, muted, saying so on hover; a click does nothing.
+    ns.OpenJournalWindow(J.Get("ExcavationSite"))
+    local soon
+    for _, made in ipairs(state.made) do
+        local titleLink = rawget(made, "link")
+        if titleLink and rawget(titleLink, "tip") == "Coming soon" and rawget(titleLink, "shown") ~= false then soon = titleLink end
+    end
+    check("a dungeon with no map has Map, coming soon", soon ~= nil and soon.disabled == true)
+    soon.scripts.OnClick(soon)
+    check("which does nothing", true)
+    ns.OpenJournalWindow(ragefire)
     -- Placed on this account over the data: Oggleflint moved, Bazzalan taken off the data.
     local bazzalan = J.Maps.RagefireChasm.pins[11519]
     J.Maps.RagefireChasm.pins[11519] = nil

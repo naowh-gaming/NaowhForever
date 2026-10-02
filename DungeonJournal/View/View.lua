@@ -650,12 +650,19 @@ function ViewMixin:Draw(dungeon)
             end
         end
         local title = wing.name or (i == 1 and "Bosses")
-        -- Not beside the world map: the dungeon's map is on the world map there.
-        if title and i == 1 and J.Maps[dungeon.key] and not self.onWorldMap then
-            -- Map on the first title's right: the dungeon's map, in a small window.
-            self:Add("section", title, cards > 0 and cards or nil, nil, nil, "Map", OpenMap, dungeon)
+        -- Map on the first title's right: the dungeon's map, in a small window; muted, and
+        -- "Coming soon" on hover, for one with no map yet. Not beside the world map: the
+        -- dungeon's map is on the world map there.
+        local count = cards > 0 and cards or nil
+        if title and i == 1 and not self.onWorldMap then
+            if J.Maps[dungeon.key] then
+                self:Add("section", title, count, nil, nil, "Map", OpenMap, dungeon)
+            else
+                self:Add("section", title, count, nil, nil, "Map", nil, nil, "Coming soon", "No map of this dungeon yet.")
+            end
+            self:Space(SECTION_SPACE)
         elseif title then
-            self:Section(title, cards > 0 and cards or nil)
+            self:Section(title, count)
             self:Space(SECTION_SPACE)
         end
         self:DrawGrid()
