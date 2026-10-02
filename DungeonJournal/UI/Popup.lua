@@ -76,6 +76,7 @@ function NaowhForever_BossLoot()
         ns.Print("That is not a boss the Dungeon Journal can read right now.")
         return
     end
+    J.View.ForgetMapLoot()
     local boss, dungeon = J.Boss(npc)
     if not boss then
         ns.Print(("%s is not a boss the Dungeon Journal knows."):format(UnitName(unit) or "That"))

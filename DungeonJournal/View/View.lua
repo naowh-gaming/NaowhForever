@@ -651,10 +651,10 @@ function ViewMixin:Draw(dungeon)
         end
         local title = wing.name or (i == 1 and "Bosses")
         -- Map on the first title's right: the dungeon's map, in a small window; muted, and
-        -- "Coming soon" on hover, for one with no map yet. Not beside the world map: the
-        -- dungeon's map is on the world map there.
+        -- "Coming soon" on hover, for one with no map yet. Beside the world map only once the
+        -- dungeon's map stepped aside there (another map shown): it brings it back.
         local count = cards > 0 and cards or nil
-        if title and i == 1 and not self.onWorldMap then
+        if title and i == 1 and (not self.onWorldMap or J.DungeonMapAway()) then
             if J.Maps[dungeon.key] then
                 self:Add("section", title, count, nil, nil, "Map", OpenMap, dungeon)
             else

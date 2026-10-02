@@ -956,7 +956,10 @@ end
 
 -- Opens the window on the dungeon given, else the one you are in, else where it was.
 ---@param dungeon? JournalDungeon
+local awayForMap = false   -- put away by the world map opening (J.WindowAwayForMap)
+
 function ns.OpenJournalWindow(dungeon)
+    awayForMap = false   -- opened by hand: the map closing has nothing to bring back
     J.TurnOn()
     if not window then Build() end
     window:SetScale(ns.UIScale())
@@ -972,7 +975,6 @@ end
 
 -- The world map opening (M) puts the window away while it is open, and the map closing (M
 -- again) brings it back as it was; the map panel (UI/MapPanel.lua) says when.
-local awayForMap = false
 
 ---@param mapShown boolean
 function J.WindowAwayForMap(mapShown)

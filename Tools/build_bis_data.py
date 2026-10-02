@@ -118,11 +118,17 @@ def game_lookup(item):
     global game_rows
     if game_rows is None:
         import wago
-        forever = {r["ID"] for r in wago.table("Item", wago.BUILD)}
-        game_rows = {}
-        for r in wago.table("ItemSparse", wago.BUILD):
-            if r["ID"] in forever:
-                game_rows.setdefault(r.get("Display_lang", "").lower(), []).append(r)
+        game_rows, seen = {}, set()
+        # The build itself first, then the carried one's (hotfixed items wago has not recorded
+        # for the new build yet), each item once.
+        for build in (wago.BUILD, wago.CARRY_FROM):
+            if not build:
+                continue
+            forever = {r["ID"] for r in wago.table("Item", build)}
+            for r in wago.table("ItemSparse", build):
+                if r["ID"] in forever and r["ID"] not in seen:
+                    seen.add(r["ID"])
+                    game_rows.setdefault(r.get("Display_lang", "").lower(), []).append(r)
     return [int(r["ID"]) for r in game_rows.get(item["name"].lower(), [])
             if int(r["OverallQualityID"]) == item["quality"]
             and (not item["ilvl"] or int(r["ItemLevel"]) == item["ilvl"])]
@@ -395,8 +401,8 @@ def check(report_path=None, github_output=None):
             "| Wowhead is never asked in CI |",
             "", "### What changed (#1 picks, items added or taken off)", ""]
     # A GitHub issue holds 65536 characters: a long report is cut, and says so.
-    while len("\n".join(head + found)) > REPORT_MAX and found:
-        found = found[:-25] + [f"- ... and more: run the build to see them all."] if len(found) > 25 else []
+    while len("\n".join(head + found)) > REPORT_MAX and len(found) > 1:
+        found = found[:-2] + ["- ... and more: run the build to see them all."]
     tail = ["", "### Before merging", "",
             "- An item the build lists below as left out could not be settled from the game's tables: "
             "run `python Tools/build_bis_data.py` on your machine (it asks Wowhead).",

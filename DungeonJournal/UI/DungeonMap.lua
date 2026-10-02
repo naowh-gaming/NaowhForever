@@ -56,6 +56,12 @@ local ICON = 13                  -- a row's quest mark, tick and star
 local LOWER_GAP = 10             -- the map's floor line to the legend; the legend to the loot
 local LOWER_MIN = 260            -- the part under the map, opened with no window to match
 local SCROLL_GAP = 16
+local UNDER_MAP_GAP = 6          -- the map to the floor switch's line
+local KILLED_ALPHA = 0.45        -- a pin killed this run, on the map
+local UNPLACED_ALPHA = 0.7       -- placing: a pin waiting along the top
+-- A legend row, left to right: its number, portrait and name, each after a gap; what the
+-- quest mark, the star and its count take on the right.
+local ROW_PAD, NUMBER_W, ROW_GAP, MARKS_W = 6, 18, 6, 70
 local MASK = "Interface\\AddOns\\NaowhForever\\Media\\circle_mask.tga"
 
 local placing = false            -- /nf mappins, in the window
@@ -152,6 +158,8 @@ end
 local function DragStop(frame)
     frame:StopMovingOrSizing()
     local view = frame.view
+    -- The game ends a drag on any pin a click moved a little: only placing keeps where it is.
+    if not view:Placing() then return end
     local x, y = frame:GetCenter()
     local left, top = view.canvas:GetLeft(), view.canvas:GetTop()
     if x and left then
@@ -288,12 +296,25 @@ end
 
 -- The floors the switch offers: those something stands on, else (placing, or nothing placed
 -- yet) every floor of the art.
+-- The view being filled, for the callbacks below (EachBoss's, made once: no garbage).
+local filling
+
+local function OfferBoss(_, _, key)
+    filling:Offer(Spot(filling.dungeon, key))
+end
+
+local function FirstFloor(_, _, key)
+    local spot = Spot(filling.dungeon, key)
+    if not filling.floor and type(spot) == "table" then filling.floor = spot[1] end
+end
+
 function View:FillFloors()
     local dungeon, floors = self.dungeon, self.floors
     wipe(floors)
     if not self:Placing() then
         self:Offer(Spot(dungeon, "entrance"))
-        EachBoss(dungeon, function(_, _, key) self:Offer(Spot(dungeon, key)) end)
+        filling = self
+        EachBoss(dungeon, OfferBoss)
         table.sort(floors)
     end
     if #floors == 0 then
@@ -305,10 +326,8 @@ end
 -- Shows the dungeon, on the floor its first placed boss is on, else its first.
 function View:Open(dungeon)
     self.dungeon, self.floor = dungeon, nil
-    EachBoss(dungeon, function(_, _, key)
-        local spot = Spot(dungeon, key)
-        if not self.floor and type(spot) == "table" then self.floor = spot[1] end
-    end)
+    filling = self
+    EachBoss(dungeon, FirstFloor)
     self:FillFloors()
 end
 
@@ -330,13 +349,13 @@ function View:DrawPin(boss, number, key)
     if here then
         self:At(pin, spot[2], spot[3])
         -- Killed this run, in the dungeon you are in: dimmed.
-        pin:SetAlpha(self.inside and J.Kills.ThisRun(boss) and 0.45 or 1)
+        pin:SetAlpha(self.inside and J.Kills.ThisRun(boss) and KILLED_ALPHA or 1)
     else
         -- Not placed yet: along the top, to drag from.
         self.tray = self.tray + 1
         pin:ClearAllPoints()
         pin:SetPoint("TOPLEFT", self.canvas, "TOPLEFT", (self.tray - 1) * TRAY_STEP + 8, -8)
-        pin:SetAlpha(0.7)
+        pin:SetAlpha(UNPLACED_ALPHA)
     end
     pin:Show()
 end
@@ -531,23 +550,45 @@ end
 -- What a quest in your log needs of the boss: an objective naming it (its head, its death).
 -- Read from your log's own words, so it is a match by name: none when the game words it
 -- otherwise.
+-- Kept and reused from draw to draw (a draw makes no garbage): each boss's list, and each
+-- need in it, { quest's name, objective's text, done }.
+local lists, needs = {}, {}
+local listsUsed, needsUsed = 0, 0
+-- The objective being matched against each boss (EachBoss's callback, made once).
+local matchLower, matchQuest, matchText, matchDone
+
+local function MatchBoss(boss)
+    if not (boss.npc and matchLower:find(boss.name:lower(), 1, true)) then return end
+    local list = quests[boss]
+    if not list then
+        listsUsed = listsUsed + 1
+        list = lists[listsUsed] or {}
+        lists[listsUsed] = list
+        wipe(list)
+        quests[boss] = list
+    end
+    needsUsed = needsUsed + 1
+    local need = needs[needsUsed] or {}
+    needs[needsUsed] = need
+    need[1], need[2], need[3] = J.Quests.Name(matchQuest), matchText, matchDone
+    list[#list + 1] = need
+end
+
 local function FillQuests(dungeon)
     wipe(quests)
+    listsUsed, needsUsed = 0, 0
     local list = dungeon.quests and dungeon.quests.quests
     if not list then return end
     for _, quest in ipairs(list) do
         local id = J.Quests.LoggedID(quest)
         local objectives = id and C_QuestLog.GetQuestObjectives(id)
-        for _, objective in ipairs(objectives or {}) do
-            local text = objective.text
-            if text and text ~= "" and not issecretvalue(text) then
-                local lower = text:lower()
-                EachBoss(dungeon, function(boss)
-                    if boss.npc and lower:find(boss.name:lower(), 1, true) then
-                        quests[boss] = quests[boss] or {}
-                        table.insert(quests[boss], { J.Quests.Name(quest), text, objective.finished })
-                    end
-                end)
+        if objectives then
+            for _, objective in ipairs(objectives) do
+                local text = objective.text
+                if text and text ~= "" and not issecretvalue(text) then
+                    matchLower, matchQuest, matchText, matchDone = text:lower(), quest, text, objective.finished
+                    EachBoss(dungeon, MatchBoss)
+                end
             end
         end
     end
@@ -642,17 +683,17 @@ local function NewRow(parent)
     row.bar:SetWidth(2)
     row.bar:Hide()
     row.number = ns.Font(row, 11, nil, T.muted)
-    row.number:SetPoint("LEFT", 6, 0)
-    row.number:SetWidth(18)
+    row.number:SetPoint("LEFT", ROW_PAD, 0)
+    row.number:SetWidth(NUMBER_W)
     row.number:SetJustifyH("RIGHT")
     row.tick = Icon(row, St.CHECK)
     row.tick:SetPoint("CENTER", row.number, "CENTER", 2, 0)
     row.face = row:CreateTexture(nil, "ARTWORK")
     row.face:SetSize(FACE, FACE)
-    row.face:SetPoint("LEFT", row.number, "RIGHT", 6, 0)
+    row.face:SetPoint("LEFT", row.number, "RIGHT", ROW_GAP, 0)
     Round(row, row.face)
     row.name = ns.Font(row, 12, nil, T.fg)
-    row.name:SetPoint("LEFT", row.face, "RIGHT", 6, 0)
+    row.name:SetPoint("LEFT", row.face, "RIGHT", ROW_GAP, 0)
     row.name:SetJustifyH("LEFT")
     row.name:SetWordWrap(false)
     row.tag = ns.Font(row, 9, nil, T.muted)
@@ -669,14 +710,14 @@ local function NewRow(parent)
     return row
 end
 
-local function DrawLegend()
-    local dungeon = windowView.dungeon
-    FillQuests(dungeon)
-    local inside = windowView.inside
-    local width = LEGEND_W - SCROLL_GAP
-    local n, killed, total = 0, 0, 0
-    EachBoss(dungeon, function(boss, number, key)
-        n = n + 1
+-- One draw's count and settings, for LegendRow (EachBoss's callback, made once).
+local drawN, drawKilled, drawTotal, drawInside
+local ROW_W = LEGEND_W - SCROLL_GAP
+local NAME_ROOM = ROW_W - ROW_PAD - NUMBER_W - ROW_GAP - FACE - ROW_GAP - MARKS_W
+
+local function LegendRow(boss, number, key)
+        drawN = drawN + 1
+        local n, width, inside = drawN, ROW_W, drawInside
         local row = rows[n] or NewRow(legend.child)
         rows[n] = row
         row.boss, row.key = boss, key
@@ -685,8 +726,8 @@ local function DrawLegend()
         row:SetPoint("TOPLEFT", 0, -(n - 1) * ROW_H)
         row.killed = inside and J.Kills.ThisRun(boss)
         if number then
-            total = total + 1
-            if row.killed then killed = killed + 1 end
+            drawTotal = drawTotal + 1
+            if row.killed then drawKilled = drawKilled + 1 end
         end
         row.number:SetText(number or "")
         row.number:SetShown(not row.killed)
@@ -702,21 +743,24 @@ local function DrawLegend()
         row.bis, row.haveBis = J.Loot.BossBis(boss)
         row.star:SetShown(row.bis > 0)
         row.bisText:SetText(row.bis > 0 and row.bis or "")
-        local needs = quests[boss]
-        row.quest:SetShown(needs ~= nil)
+        row.quest:SetShown(quests[boss] ~= nil)
         row.quest:ClearAllPoints()
         row.quest:SetPoint("RIGHT", row.bis > 0 and row.star or row.bisText, "LEFT", -6, 0)
-        -- The name keeps what the marks on the right leave it.
-        local room = width - 6 - 18 - 6 - FACE - 6 - 70
-        row.name:SetWidth(math.min(math.ceil(row.name:GetStringWidth()) + 1, room))
+        row.name:SetWidth(math.min(math.ceil(row.name:GetStringWidth()) + 1, NAME_ROOM))
         row.bar:SetShown(boss == picked)
         row.hover:SetShown(boss == picked)
         row:Show()
-    end)
-    for i = n + 1, #rows do rows[i]:Hide() end
-    legend.child:SetSize(width, math.max(1, n * ROW_H))
-    legend.title:SetText("BOSSES" .. (inside and total > 0
-        and ns.Color("muted", ("   %d of %d down"):format(killed, total)) or ""))
+end
+
+local function DrawLegend()
+    local dungeon = windowView.dungeon
+    FillQuests(dungeon)
+    drawN, drawKilled, drawTotal, drawInside = 0, 0, 0, windowView.inside
+    EachBoss(dungeon, LegendRow)
+    for i = drawN + 1, #rows do rows[i]:Hide() end
+    legend.child:SetSize(ROW_W, math.max(1, drawN * ROW_H))
+    legend.title:SetText("BOSSES" .. (drawInside and drawTotal > 0
+        and ns.Color("muted", ("   %d of %d down"):format(drawKilled, drawTotal)) or ""))
 end
 
 local function WindowDrawn()
@@ -793,7 +837,6 @@ local function Build()
     window:SetSize(MAP_W * WINDOW_SCALE + PANEL_PAD * 2, PANEL_HEADER + MAP_H * WINDOW_SCALE + FLOOR_H + PANEL_PAD * 2)
     window.backdrop:Card(4, PANEL_HEADER, 4, 4)
     window.title:SetTextColor(T.accentSoft.r, T.accentSoft.g, T.accentSoft.b)
-    window.title:SetPoint("RIGHT", -34 - PIN_BUTTON - 4, 0)
     window:SetToplevel(true)
     window:SetMovable(true)
     window:SetClampedToScreen(true)
@@ -807,14 +850,17 @@ local function Build()
     local canvas = windowView.canvas
     canvas:SetScale(WINDOW_SCALE)
     canvas:SetPoint("TOPLEFT", PANEL_PAD / WINDOW_SCALE, -PANEL_HEADER / WINDOW_SCALE)
-    windowView.down:SetPoint("BOTTOMLEFT", PANEL_PAD, PANEL_PAD)
     -- The floor switch and Copy on a line under the map.
-    local underMap = -(PANEL_HEADER + MAP_H * WINDOW_SCALE + 6)
-    windowView.down:ClearAllPoints()
+    local underMap = -(PANEL_HEADER + MAP_H * WINDOW_SCALE + UNDER_MAP_GAP)
     windowView.down:SetPoint("TOPLEFT", PANEL_PAD, underMap)
     window.copy = ns.Button(window, "Copy", COPY_W, FLOOR_H - 2, function() Copy(windowView.dungeon) end)
     window.copy:SetPoint("TOPRIGHT", -PANEL_PAD, underMap)
-    windowView.onPick = Pick
+    -- Folded, the loot pane is away: a pin opens its loot at the mouse instead.
+    windowView.onPick = function(boss)
+        if not Folded() then return Pick(boss) end
+        lootFrom = windowView
+        J.View.OpenBossLoot(boss, windowView.dungeon)
+    end
     windowView.onPinHover = Light
     -- Under them, the legend on the left and the picked boss's loot on the right.
     local lowerTop = -(MAP_PART - PANEL_PAD + LOWER_GAP)
@@ -959,8 +1005,31 @@ function J.ShowMapOnWorldMap(dungeon)
     overlayView:Open(dungeon)
     overlay.hint:SetText(dungeon.entrance and dungeon.zone and ("Right-click: " .. dungeon.zone) or "")
     overlay:Show()
+    overlay.mapID = WorldMapFrame:GetMapID()   -- the map it covers; another one, and it steps aside
     Fit()
     overlayView:Draw()
+end
+
+-- The map shown on the world map changed (its own buttons, its dropdown, a right-click up to
+-- the zone): the dungeon's map steps aside for it. Map on the panel beside it brings it back.
+function J.WorldMapChanged()
+    if overlay and overlay:IsShown() and WorldMapFrame:GetMapID() ~= overlay.mapID then overlay:Hide() end
+end
+
+-- Whether the dungeon's map stepped aside on an open world map (the panel offers Map then).
+function J.DungeonMapAway()
+    return overlay ~= nil and not overlay:IsShown() and WorldMapFrame:IsShown()
+end
+
+-- A kill was counted: the maps showing tick and dim it.
+function J.RedrawDungeonMaps()
+    if window and window:IsShown() then windowView:Draw() end
+    if overlay and overlay:IsShown() then overlayView:Draw() end
+end
+
+-- The key's Boss Loot opens its own: the map no longer closes it.
+function J.View.ForgetMapLoot()
+    lootFrom = nil
 end
 
 -- The world map changed size (maximised, or small again).

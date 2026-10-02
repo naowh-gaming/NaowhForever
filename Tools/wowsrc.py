@@ -249,6 +249,9 @@ def changes(old, new, game=None):
     return lines
 
 
+REPORT_MAX = 60000
+
+
 def counts(found):
     """How many rows each heading of a report has: {"Items a boss gained": 3, ...}."""
     seen, heading = {}, None
@@ -310,6 +313,9 @@ def check(report_path=None, github_output=None):
     if not found:
         text = "## Boss loot from wowsrc.com\n\nTheir loot pages match `Tools/wowsrc_loot.json`: nothing new.\n"
     else:
+        # A GitHub description holds 65536 characters: a long list is cut, and says so.
+        while len("\n".join(loot_body(found))) > REPORT_MAX and len(found) > 1:
+            found = found[:-2] + ["- ... and more: run `python Tools/wowsrc.py --check` to see them all."]
         text = "\n".join(loot_body(found)) + "\n"
     if report_path:
         Path(report_path).write_text(text, encoding="utf-8")

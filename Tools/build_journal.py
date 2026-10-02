@@ -117,8 +117,14 @@ def game_item(item_id):
     global game_items
     if game_items is None:
         import wago
-        sparse = {r["ID"]: r for r in wago.table("ItemSparse", wago.BUILD)}
-        game_items = {r["ID"]: (r, sparse[r["ID"]]) for r in wago.table("Item", wago.BUILD) if r["ID"] in sparse}
+        game_items = {}
+        # The build carried from first (wago.CARRY_FROM: hotfixed items wago has not recorded for
+        # the new one yet), then the build itself over it, as the faction data reads them.
+        for build in (wago.CARRY_FROM, wago.BUILD):
+            if build:
+                sparse = {r["ID"]: r for r in wago.table("ItemSparse", build)}
+                game_items.update({r["ID"]: (r, sparse[r["ID"]]) for r in wago.table("Item", build)
+                                   if r["ID"] in sparse})
     found = game_items.get(str(item_id))
     if not found:
         offline_missed.append(f"item:{item_id}")
@@ -360,6 +366,11 @@ def merge_wowsrc(loot, listed):
         facts = item_facts(theirs["id"])
         if facts and facts["quality"] >= MIN_QUALITY and facts["slot"] in EQUIPPABLE:
             kept.append(dict(facts, chance=theirs["chance"], new=theirs["new"]))
+        elif not facts:
+            # Not known here (offline, an item neither cache nor tables have): the list is not
+            # whole, so what the boss had stays rather than lose loot over it.
+            have = {item["id"] for item in kept}
+            kept += [item for item in loot if item["id"] not in have]
     kept.sort(key=lambda i: (i["chance"] is None, -(i["chance"] or 0), -i["quality"], i["id"]))
     return kept
 

@@ -4,7 +4,8 @@
 --  map fills the screen. With Factions Beside the Map on, in a zone or a battleground the
 --  page of a faction earned there sits in the same place (a switch when there are two).
 --  Inside a dungeon with a map (Data/Maps.lua) the dungeon's map also fills the world map's
---  picture (UI/DungeonMap.lua); this file tells it when. And there the game's quest log
+--  picture (UI/DungeonMap.lua); this file tells it when, and when another map is shown
+--  (it steps aside, and the page offers Map to bring it back). And there the game's quest log
 --  beside the map folds away, so the Journal sits against the map: the game's own setting
 --  for it (questLogOpen, which the map reads each time it opens) is set on entering, and put
 --  back as it was on leaving (kept for the account meanwhile, so a logout inside keeps it).
@@ -21,6 +22,7 @@ local St = J.Style
 local PANEL_W, PANEL_PAD, PANEL_HEADER = St.PANEL_W, St.PANEL_PAD, St.PANEL_HEADER
 
 local SCROLL_GAP = 20   -- the view's right edge to the panel's, for the scrollbar
+local PANEL_LEVEL = 100 -- over the map: above the dungeon's map on its picture too
 
 local panel, view
 local hooked, waitingForMap = false, false
@@ -80,7 +82,8 @@ end
 local function Place()
     local map = WorldMapFrame
     panel:SetFrameStrata(map:GetFrameStrata())
-    panel:SetFrameLevel(map:GetFrameLevel() + 20)
+    -- Above the dungeon's map over the picture (UI/DungeonMap.lua), when it sits inside it.
+    panel:SetFrameLevel(map:GetFrameLevel() + PANEL_LEVEL)
     panel:SetScale(ns.UIScale())
     panel:ClearAllPoints()
     local mapRight = (map:GetRight() or 0) * map:GetEffectiveScale()
@@ -149,7 +152,12 @@ end
 -- switched off: put back. Not in combat (it waits for the next loading screen).
 local folder
 local function FoldQuestLog()
-    if InCombatLockdown() then return end
+    if InCombatLockdown() then
+        -- Put back, or folded, once combat ends.
+        if folder then folder:RegisterEvent("PLAYER_REGEN_ENABLED") end
+        return
+    end
+    if folder then folder:UnregisterEvent("PLAYER_REGEN_ENABLED") end
     local account = ns.AccountSettings()
     if On() and S.Get("mapPanel") and J.Current() then
         if account.journalQuestLogWas == nil then
@@ -173,6 +181,16 @@ local function MapHidden()
     J.WindowAwayForMap(false)
 end
 
+-- Another map shown (Blizzard's buttons, its dropdown, a right-click up to the zone): the
+-- dungeon's map steps aside, and the panel's page is drawn again, offering Map to bring it
+-- back.
+local function MapChanged()
+    if not (panel and panel:IsShown()) then return end
+    local away = J.DungeonMapAway()
+    J.WorldMapChanged()
+    if J.DungeonMapAway() ~= away then view:Redraw() end
+end
+
 local function Hook()
     if hooked then return end
     hooked = true
@@ -180,6 +198,7 @@ local function Hook()
     folder:SetScript("OnEvent", FoldQuestLog)
     WorldMapFrame:HookScript("OnShow", MapShown)
     WorldMapFrame:HookScript("OnHide", MapHidden)
+    hooksecurefunc(WorldMapFrame, "OnMapChanged", MapChanged)
     WorldMapFrame:HookScript("OnSizeChanged", MapResized)
 end
 
@@ -194,8 +213,9 @@ end
 local function Sync()
     if folder then
         if On() then folder:RegisterEvent("PLAYER_ENTERING_WORLD") else folder:UnregisterAllEvents() end
-        FoldQuestLog()
     end
+    -- Folded or put back; off, a quest log left folded by a logout inside is put back too.
+    FoldQuestLog()
     if not On() then
         Hide()
         return

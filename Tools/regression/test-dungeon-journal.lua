@@ -1151,6 +1151,31 @@ do
         and legendRows["Taragaman the Hungerer"] and legendRows["Jergosh the Invoker"])
     pickRow.scripts.OnClick(pickRow)
     check("a row picks its boss", rawget(pickRow.bar, "shown") == true)
+    -- A drag on a pin while not placing keeps nothing: only placing saves where a pin stands.
+    state.account.journalMapPins = nil
+    for _, made in ipairs(state.made) do
+        if rawget(made, "glow") and made.scripts.OnDragStop and rawget(made, "shown") ~= false then
+            made.scripts.OnDragStop(made)
+        end
+    end
+    check("a drag outside placing saves nothing", state.account.journalMapPins == nil)
+    state.account.journalMapPins = { RagefireChasm = { [11517] = { 1, 0.5, 0.4 }, entrance = { 1, 0.5, 0.9 } } }
+    -- This run: from a loading screen into the dungeon; a login outside ends it.
+    local Kills = J.Kills
+    state.instance = { id = 36, name = "The Deadmines" }
+    Kills.NoteRun(J.Current(), false)
+    local run = state.account
+    for _, all in pairs(state.account) do
+        if type(all) == "table" and all[state.guid] and all[state.guid].at then run = all[state.guid] end
+    end
+    check("a loading screen into a dungeon starts a run", run ~= state.account and run.at ~= nil)
+    state.instance = nil
+    Kills.NoteRun(nil, false)
+    check("leaving keeps it, for a run back", run.at ~= nil and run.left ~= nil)
+    Kills.NoteRun(nil, true)
+    check("a login outside ends it", run.at == nil)
+    Measure("the dungeon map and its legend drawn", 2, function() J.DrawDungeonMap() end)
+    Measure("a boss picked on the map, its loot drawn", 2, function() pickRow.scripts.OnClick(pickRow) end)
     -- The Naowh mark in its title: back to the Journal, on the dungeon's page.
     local openJournal = ns.OpenJournalWindow
     local openedOn
@@ -1206,6 +1231,7 @@ do
         if rawget(made, "glow") and boss and rawget(made, "shown") ~= false then onWorld[boss.name] = true end
     end
     check("with its bosses", onWorld["Bazil Thredd"] and onWorld["Dextren Ward"])
+    Measure("the dungeon's map shown on the world map", 2, function() J.ShowMapOnWorldMap(stockade) end)
     -- A boss's loot from its pin closes with the map.
     local opened, closed = 0, 0
     local open, close = J.View.OpenBossLoot, J.View.CloseBossLoot

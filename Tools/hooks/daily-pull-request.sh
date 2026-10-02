@@ -38,6 +38,7 @@ git push --force origin "$branch"
   echo "---"
   echo "Opened by the daily watch (.github/workflows/daily-watch.yml); last run: $SERVER/$REPO/actions/runs/$RUN_ID."
   echo "Checks do not run on a pull request a workflow opens: close and reopen it to run them."
+  echo "The branch is rebuilt from main by each run: merge or close it, don't push to it."
 } > pr.md
 
 pr="$(gh pr list --head "$branch" --state open --json url --jq '.[0].url // empty')"
@@ -46,8 +47,13 @@ if [ -n "$pr" ]; then
   echo "Brought up to date: $pr"
   exit 0
 fi
-if gh pr create --base main --head "$branch" --title "$title" --body-file pr.md; then
+if gh pr create --base main --head "$branch" --title "$title" --body-file pr.md 2> create.err; then
   exit 0
+fi
+cat create.err >&2
+if ! grep -qi "not permitted to create" create.err; then
+  echo "::error::The pull request could not be opened (see above)."
+  exit 1
 fi
 
 echo "::warning::Workflows may not open pull requests here: an issue instead."
