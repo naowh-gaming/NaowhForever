@@ -188,6 +188,7 @@
 - Dungeon Journal: its data is updated to WoW Forever build 1.60.1.70170: 4 faction rewards changed (item levels, required levels).
 - Campfire: Show Active Camp Buffs is a dropdown: Off, Always or On Mouseover, which shows
   the buffs only while the mouse is over the camp icon. Your current setting is kept.
+- Dungeon Journal: its data is updated to WoW Forever build 1.60.1.70178.
 
 ### Fixed
 - Themes: the hint lines in the Library Books tracker and its map pins, and in the town map pins, follow your lighter Accent instead of staying light blue. Looks the same with the default theme.
