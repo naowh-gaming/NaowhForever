@@ -3,6 +3,24 @@
 ## Unreleased
 
 ### Added
+- Top Bar: Faded Opacity (with Show On Mouseover) sets how visible the bar and the FPS / MS
+  readout stay while the mouse is away. 0% by default, invisible as before.
+- Blessings: in combat each click on a class button blesses the next member of that class who
+  needed it when the fight began, then round again, instead of the same player every time. It
+  follows them by name, so the raid being rearranged mid-fight does not send it to someone
+  else, skips anyone who has left, and a Greater Blessing is cast once for the class.
+- Blessings: class buttons show what is needed at a glance: red when someone in range is
+  missing the class blessing, yellow when it is only running out, blue when only players with
+  their own blessing need theirs.
+- Blessings: Auto-Assign on the Assignments page spreads blessings and auras across every
+  paladin in the group running Naowh Forever, the most useful blessing for each class first,
+  with Salvation first for casters and rogues in a raid and never for warriors, druids or
+  paladins. The
+  group leader or an assistant can run it for everyone; a paladin on their own for themselves.
+- Blessings: a preset on the Assignments page saves the whole group's plan and loads it again
+  later for the paladins who are there.
+- Blessings: a paladin's own blessings for single players are shared with the group, and show
+  in the tooltip of that class on the Assignments page.
 - Group Tools on QoL > Questing: a Disband Group button for leaders and an Invite Player button where you type the name.
 - Dungeon Journal: every dungeon's bosses in the order you meet them, what each one drops
   and how often (Forever's new items included; a boss whose loot is not known yet says so),
@@ -68,6 +86,7 @@
 - Professions: Shift-Click Searches AH (off by default). While the auction house is open,
   Shift-click a recipe or a reagent and the search for the item runs straight away; while
   you type in chat, it still links it.
+- Settings: six color chips beside the Theme dropdown preview the selected theme's colors before you reload.
 - Professions: Buy at Vendor (Buying and Selling, off by default). At a merchant, "- [1] +
   Buy" under the chosen recipe's reagents buys every checked reagent the merchant sells for
   that many crafts in one click, such as Coarse Thread or Weak Flux. The total shows beside
@@ -122,8 +141,15 @@
 - Dungeon Journal: Accept Shared Dungeon Quests (off by default, in the Journal's settings)
   accepts a dungeon quest a group member shares with you as soon as it opens. Hold the Skip
   Modifier to look at one first.
+- Threat Meter: Status Line (Layout) moves the line with your distance to pulling aggro and
+  the entry count from under the bars to the top, between the title bar and the bars.
+  Bottom by default.
+- Swing Timer: Apply Theme to Bar Colours (Colours, off by default) colors the main hand bar with your theme's Accent, the off hand bar with its lighter Accent and the ranged bar with a deeper shade of it, instead of the colors picked there.
 
 ### Changed
+- The options window's sidebar header shows the NaowhUI Forever logo, and the search box beside it is narrower.
+- Flight Timer: with Land Early Button on, Blizzard's own Request Stop button is hidden
+  during the flight, so there is only one. It comes back when you land.
 - The Naowh logo now has the closed infinity loop at the bottom, on the addon list, the main window and the small popups.
 - The Minimap Button switch and the per-module minimap buttons moved from Settings to the Top Bar page, so /nf shows them straight away.
 - Loot Feed Appearance options sit inside the Loot Feed dropdown instead of a second one.
@@ -153,9 +179,32 @@
 - QoL: the auction house price on item tooltips is now switched in QoL > Tooltip Display
   (Auction House Price), with the other tooltip settings. Your setting is kept.
 - Dungeon Journal: its data is updated to WoW Forever build 1.60.1.70170: 4 faction rewards changed (item levels, required levels).
+- Campfire: Show Active Camp Buffs is a dropdown: Off, Always or On Mouseover, which shows
+  the buffs only while the mouse is over the camp icon. Your current setting is kept.
 
 ### Fixed
 - Themes: the hint lines in the Library Books tracker and its map pins, and in the town map pins, follow your lighter Accent instead of staying light blue. Looks the same with the default theme.
+- Group XP: every group member running Naowh Forever now shares their XP, even with Group XP
+  switched off, so the bars no longer say "no addon" for players who never turned it on.
+- Group XP: bars show everyone's XP again. Forever sends a character's full name with surname
+  with each update, which never matched the party list, so every member read "no addon". Older
+  versions can't be read: everyone needs this version to see each other.
+- Themes: the Top Bar's clock, its FPS / MS labels and its tooltips follow your Text and Secondary Text colors instead of staying white and grey, and the tooltips of the Naowh buttons (minimap, top bar) use your Accent for the title and Text for the lines. Looks the same with the default theme.
+- Themes: the Loot Feed follows your theme: the Dark style uses your Background, the Light style uses your Panels and Borders & Lines, and the glow uses your Accent. Looks the same with the default theme.
+- Themes: the XP Bar's quest and rested segments and text follow your theme's Accent instead of staying gold and blue. Looks the same with the default theme.
+- A copy downloaded with GitHub's green Code button has none of the addon's libraries, and
+  parts of it then failed with Lua errors (Low Health's glow on a level up, among others). It
+  now says at login which libraries are missing and where to download the full addon.
+- Loot Feed: turning in a quest no longer shows its experience twice, once on the quest's line
+  and again as Experience. With quest lines turned off it still shows as Experience.
+- Blessings: the class buttons and the player list cast on the right player again in a party.
+  Forever names carry a surname, and the buttons were looking players up by the whole name
+  while the game knows party members by their first name.
+- Blessings: a group leader's or assistant's changes to another paladin's blessings now reach
+  them; they were dropped because of the surname. Changes made during combat are sent once
+  it ends instead of being lost.
+- Blessings: a class button no longer glows red when the only members missing their blessing
+  are out of range. It lights up only for someone you can bless from where you stand.
 - Recipe Finder and rank alerts: Stormwind and Eastern Plaguelands trainers and vendors
   (Lucan Cordell, the Stormwind enchanting trainer, among them) were placed at their Classic
   positions, so their waypoints pointed at the wrong spot on Forever's redrawn maps.
@@ -766,7 +815,7 @@ its page.
 ## 0.5.9-beta
 
 ### Added
-- Blessings: Next Blessing and Next Greater Blessing keybinds, like Pally Power's. Bind
+- Blessings: Next Blessing and Next Greater Blessing keybinds. Bind
   them on the Blessings page or in Key Bindings > AddOns > Naowh Forever. Each press
   blesses the next player who needs it; the Greater key only covers classes that share one
   blessing, while you carry Symbols of Kings. In combat a key steps through the players who
