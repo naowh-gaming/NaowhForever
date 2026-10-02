@@ -82,6 +82,40 @@ function Kills.Record(boss)
     if type(record) == "table" and type(record.n) == "number" then return record end
 end
 
+-------------------------------------------------------------------------------
+--  This run: the kills since you came into the dungeon you are in
+-------------------------------------------------------------------------------
+-- Back in the same dungeon this soon after leaving it (a death and the run back, a reload):
+-- the same run. Kept per character (J.CharacterData), so a reload inside keeps it too.
+local RUN_GRACE = 15 * 60
+
+-- A loading screen (Looted.lua's): inside a dungeon the Journal lists, a run starts now unless
+-- it is the one you just left; outside, when you left it is kept.
+---@param here? JournalDungeon[] J.Current()
+function Kills.NoteRun(here)
+    local run = J.CharacterData("journalRun", true)
+    if not run then return end
+    local now = time()
+    if here then
+        local _, _, _, _, _, _, _, map = GetInstanceInfo()
+        if run.map ~= map or not run.at or (run.left and now - run.left > RUN_GRACE) then
+            run.map, run.at = map, now
+        end
+        run.left = nil
+    elseif run.at and not run.left then
+        run.left = now
+    end
+end
+
+-- Killed in this run: its latest kill came after the run started, and you are in the run.
+function Kills.ThisRun(boss)
+    local run = J.CharacterData("journalRun")
+    local record = run and run.at and not run.left and Kills.Record(boss)
+    local at = record and record.at
+    local last = at and at[#at]
+    return type(last) == "number" and last >= run.at
+end
+
 ---@return number kills on this character
 function Kills.Count(boss)
     local record = Kills.Record(boss)

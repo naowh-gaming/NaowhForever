@@ -4,9 +4,14 @@
 --  and the entrance. Hover a boss for its name, click it for its loot; a dungeon on several
 --  floors has a switch under the map. It shows in two places, each a view of its own:
 --
---  - A small window, from Map on a dungeon page's Bosses title: in front of the window that
---    holds the page, beside it where the screen has room (else over its top right). It
---    closes with that window unless pinned (the pin in its title, kept for the account).
+--  - A window, from Map on a dungeon page's Bosses title: in front of the window that holds
+--    the page, beside it where the screen has room (else over its top right), as tall as it.
+--    Under the map, the bosses in kill order (the legend: hover one to light its pin, a pin
+--    to light its row), each with a tick once killed this run (and its pin dimmed), a quest
+--    mark where a quest in your log needs it, and your BiS there; beside them the loot of
+--    the boss picked (a pin or a row). The chevron in its title folds that part away, for
+--    the map alone (kept for the account). It closes with that window unless pinned (the
+--    pin in its title, kept for the account too).
 --  - The world map: press M inside a dungeon and its map fills the map's picture, while the
 --    Journal sits beside the map (UI/MapPanel.lua says when: it already watches the map).
 --    Right-click goes up to the zone the dungeon is in, as the world map goes up a level;
@@ -43,6 +48,13 @@ local FLOOR_STEP_W = 22
 local COPY_W = 52
 local PIN_BUTTON = 20            -- the window's pin, beside its close button
 local PIN_ICON = 14
+local LEGEND_W = 320             -- the bosses under the map; their loot takes the rest
+local ROW_H = 22
+local FACE = 18                  -- a row's portrait
+local ICON = 13                  -- a row's quest mark, tick and star
+local LOWER_GAP = 10             -- the map's floor line to the legend; the legend to the loot
+local LOWER_MIN = 260            -- the part under the map, opened with no window to match
+local SCROLL_GAP = 16
 local MASK = "Interface\\AddOns\\NaowhForever\\Media\\circle_mask.tga"
 
 local placing = false            -- /nf mappins, in the window
@@ -106,6 +118,12 @@ local function PinEnter(pin)
     GameTooltip:AddLine(pin.view:Placing() and "Drag to place it." or "Click for its loot.",
         T.accentSoft.r, T.accentSoft.g, T.accentSoft.b)
     GameTooltip:Show()
+    if pin.view.onPinHover then pin.view.onPinHover(pin.key, true) end
+end
+
+local function PinLeave(pin)
+    GameTooltip:Hide()
+    if pin.view.onPinHover then pin.view.onPinHover(pin.key, false) end
 end
 
 local function PinClicked(pin, button)
@@ -115,6 +133,8 @@ local function PinClicked(pin, button)
         return
     end
     if pin.view:Placing() then return end
+    -- The window shows it in its own loot pane; the world map at the mouse.
+    if pin.view.onPick then return pin.view.onPick(pin.boss) end
     lootFrom = pin.view
     J.View.OpenBossLoot(pin.boss, pin.view.dungeon)
 end
@@ -169,6 +189,13 @@ function View:NewPin()
     pin.view = self
     pin:SetSize(PIN, PIN)
     pin:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+    -- Lit while its legend row is hovered: the accent, round, just outside its ring.
+    pin.glow = pin:CreateTexture(nil, "BACKGROUND", nil, -1)
+    pin.glow:SetPoint("CENTER")
+    pin.glow:SetSize(PIN + 12, PIN + 12)
+    pin.glow:SetColorTexture(T.accent.r, T.accent.g, T.accent.b, 0.9)
+    Round(pin, pin.glow)
+    pin.glow:Hide()
     pin.ring = pin:CreateTexture(nil, "BACKGROUND")
     pin.ring:SetPoint("CENTER")
     pin.ring:SetColorTexture(0, 0, 0, 1)
@@ -192,7 +219,7 @@ function View:NewPin()
     pin.badge.text = ns.Font(pin.badge, 11, nil, T.fg)
     pin.badge.text:SetPoint("CENTER")
     pin:SetScript("OnEnter", PinEnter)
-    pin:SetScript("OnLeave", GameTooltip_Hide)
+    pin:SetScript("OnLeave", PinLeave)
     pin:SetScript("OnClick", PinClicked)
     Draggable(pin)
     return pin
@@ -298,9 +325,11 @@ function View:DrawPin(boss, number, key)
     self.pins[self.used] = pin
     pin.boss, pin.key = boss, key
     SetFace(pin, boss, number, 1 / self.scale)
+    pin.glow:Hide()
     if here then
         self:At(pin, spot[2], spot[3])
-        pin:SetAlpha(1)
+        -- Killed this run, in the dungeon you are in: dimmed.
+        pin:SetAlpha(self.inside and J.Kills.ThisRun(boss) and 0.45 or 1)
     else
         -- Not placed yet: along the top, to drag from.
         self.tray = self.tray + 1
@@ -319,9 +348,20 @@ local function DrawPinOf(view)
     return function(boss, number, key) view:DrawPin(boss, number, key) end
 end
 
+-- Whether you are in the dungeon shown (its run's progress shows then).
+local function Inside(dungeon)
+    local here = J.Current()
+    if not here then return false end
+    for i = 1, #here do
+        if here[i] == dungeon then return true end
+    end
+    return false
+end
+
 function View:Draw()
     local dungeon = self.dungeon
     if not dungeon then return end
+    self.inside = Inside(dungeon)
     local map = J.Maps[dungeon.key]
     for i = 1, 12 do self.tiles[i]:SetTexture(ART:format(map.art, map.art, self.floor, i)) end
     for i = 1, self.used do self.pins[i]:Hide() end
@@ -476,10 +516,256 @@ local function PinButtonClicked(button)
     PinButtonEnter(button)
 end
 
+-------------------------------------------------------------------------------
+--  Under the map: the legend and the loot
+-------------------------------------------------------------------------------
+local legend, lootView, picked
+local rows = {}
+local quests = {}   -- boss -> what your quests need of it, filled each draw: { text, done }
+
+local function Folded()
+    return ns.AccountSettings().journalMapFolded == true
+end
+
+-- What a quest in your log needs of the boss: an objective naming it (its head, its death).
+-- Read from your log's own words, so it is a match by name: none when the game words it
+-- otherwise.
+local function FillQuests(dungeon)
+    wipe(quests)
+    local list = dungeon.quests and dungeon.quests.quests
+    if not list then return end
+    for _, quest in ipairs(list) do
+        local id = J.Quests.LoggedID(quest)
+        local objectives = id and C_QuestLog.GetQuestObjectives(id)
+        for _, objective in ipairs(objectives or {}) do
+            local text = objective.text
+            if text and text ~= "" and not issecretvalue(text) then
+                local lower = text:lower()
+                EachBoss(dungeon, function(boss)
+                    if boss.npc and lower:find(boss.name:lower(), 1, true) then
+                        quests[boss] = quests[boss] or {}
+                        table.insert(quests[boss], { J.Quests.Name(quest), text, objective.finished })
+                    end
+                end)
+            end
+        end
+    end
+end
+
+local function PinOf(key)
+    for i = 1, windowView.used do
+        if windowView.pins[i].key == key then return windowView.pins[i] end
+    end
+end
+
+local function RowOf(key)
+    for _, row in ipairs(rows) do
+        if row:IsShown() and row.key == key then return row end
+    end
+end
+
+-- A row hovered lights its pin; a pin hovered lights its row.
+local function Light(key, on)
+    local pin = PinOf(key)
+    if pin then pin.glow:SetShown(on) end
+    local row = RowOf(key)
+    if row then row.hover:SetShown(on or row.boss == picked) end
+end
+
+local function Pick(boss)
+    picked = boss
+    for _, row in ipairs(rows) do
+        row.bar:SetShown(row:IsShown() and row.boss == picked)
+        row.hover:SetShown(row:IsShown() and row.boss == picked)
+    end
+    window.hint:SetShown(boss == nil)
+    if boss then lootView:DrawBossLoot(boss, windowView.dungeon) else lootView:Hide() end
+    if boss then lootView:Show() end
+end
+
+local function RowEnter(row)
+    Light(row.key, true)
+    local boss = row.boss
+    GameTooltip:SetOwner(row, "ANCHOR_RIGHT")
+    GameTooltip:SetText(boss.name, 1, 1, 1)
+    if row.killed then GameTooltip:AddLine("Killed this run", St.HAVE_RGB.r, St.HAVE_RGB.g, St.HAVE_RGB.b) end
+    for _, need in ipairs(quests[boss] or {}) do
+        GameTooltip:AddLine(need[1], 1, 0.82, 0)
+        GameTooltip:AddLine("  " .. need[2], need[3] and T.muted.r or 1, need[3] and T.muted.g or 1,
+            need[3] and T.muted.b or 1, true)
+    end
+    if row.bis > 0 then
+        GameTooltip:AddLine(("%d of your BiS, %d of them yours"):format(row.bis, row.haveBis),
+            St.BIS_RGB.r, St.BIS_RGB.g, St.BIS_RGB.b)
+    end
+    if not Spot(windowView.dungeon, row.key) then
+        GameTooltip:AddLine("Not on the map yet.", T.muted.r, T.muted.g, T.muted.b)
+    end
+    GameTooltip:AddLine("Click for its loot.", T.accentSoft.r, T.accentSoft.g, T.accentSoft.b)
+    GameTooltip:Show()
+end
+
+local function RowLeave(row)
+    Light(row.key, false)
+    GameTooltip:Hide()
+end
+
+-- A click shows its loot, and its floor on the map.
+local function RowClicked(row)
+    local spot = Spot(windowView.dungeon, row.key)
+    if type(spot) == "table" and spot[1] ~= windowView.floor and windowView:FloorAt(spot[1]) then
+        windowView.floor = spot[1]
+        windowView:Draw()
+    end
+    Pick(row.boss)
+end
+
+local function Icon(row, texture)
+    local icon = row:CreateTexture(nil, "ARTWORK")
+    icon:SetSize(ICON, ICON)
+    icon:SetTexture(texture, nil, nil, "TRILINEAR")
+    return icon
+end
+
+-- Its place in the kill order (a tick once killed this run), its portrait, its name and
+-- tag; on the right its quest mark and your BiS there.
+local function NewRow(parent)
+    local row = CreateFrame("Button", nil, parent)
+    row:SetHeight(ROW_H)
+    row.hover = ns.Solid(row, "BACKGROUND", T.fg, 0.06)
+    row.hover:SetAllPoints()
+    row.hover:Hide()
+    row.bar = ns.Solid(row, "ARTWORK", T.accent, 1)
+    row.bar:SetPoint("TOPLEFT")
+    row.bar:SetPoint("BOTTOMLEFT")
+    row.bar:SetWidth(2)
+    row.bar:Hide()
+    row.number = ns.Font(row, 11, nil, T.muted)
+    row.number:SetPoint("LEFT", 6, 0)
+    row.number:SetWidth(18)
+    row.number:SetJustifyH("RIGHT")
+    row.tick = Icon(row, St.CHECK)
+    row.tick:SetPoint("CENTER", row.number, "CENTER", 2, 0)
+    row.face = row:CreateTexture(nil, "ARTWORK")
+    row.face:SetSize(FACE, FACE)
+    row.face:SetPoint("LEFT", row.number, "RIGHT", 6, 0)
+    Round(row, row.face)
+    row.name = ns.Font(row, 12, nil, T.fg)
+    row.name:SetPoint("LEFT", row.face, "RIGHT", 6, 0)
+    row.name:SetJustifyH("LEFT")
+    row.name:SetWordWrap(false)
+    row.tag = ns.Font(row, 9, nil, T.muted)
+    row.tag:SetPoint("LEFT", row.name, "RIGHT", 6, 0)
+    row.star = Icon(row, St.STAR)
+    row.star:SetVertexColor(St.BIS_RGB.r, St.BIS_RGB.g, St.BIS_RGB.b)
+    row.bisText = ns.Font(row, 11, nil, T.fg)
+    row.bisText:SetPoint("RIGHT", -4, 0)
+    row.star:SetPoint("RIGHT", row.bisText, "LEFT", -2, 0)
+    row.quest = Icon(row, St.BANG)
+    row:SetScript("OnEnter", RowEnter)
+    row:SetScript("OnLeave", RowLeave)
+    row:SetScript("OnClick", RowClicked)
+    return row
+end
+
+local function DrawLegend()
+    local dungeon = windowView.dungeon
+    FillQuests(dungeon)
+    local inside = windowView.inside
+    local width = LEGEND_W - SCROLL_GAP
+    local n, killed, total = 0, 0, 0
+    EachBoss(dungeon, function(boss, number, key)
+        n = n + 1
+        local row = rows[n] or NewRow(legend.child)
+        rows[n] = row
+        row.boss, row.key = boss, key
+        row:SetWidth(width)
+        row:ClearAllPoints()
+        row:SetPoint("TOPLEFT", 0, -(n - 1) * ROW_H)
+        row.killed = inside and J.Kills.ThisRun(boss)
+        if number then
+            total = total + 1
+            if row.killed then killed = killed + 1 end
+        end
+        row.number:SetText(number or "")
+        row.number:SetShown(not row.killed)
+        row.tick:SetShown(row.killed == true)
+        local face = boss.model and SetPortraitTextureFromCreatureDisplayID
+        if face then SetPortraitTextureFromCreatureDisplayID(row.face, boss.model) end
+        row.face:SetShown(face ~= nil)
+        row.name:SetWidth(0)
+        row.name:SetText(boss.name)
+        row.name:SetTextColor(row.killed and T.muted.r or T.fg.r, row.killed and T.muted.g or T.fg.g,
+            row.killed and T.muted.b or T.fg.b)
+        row.tag:SetText(boss.rare and "RARE" or boss.optional and "OPTIONAL" or boss.chest and "CHEST" or "")
+        row.bis, row.haveBis = J.Loot.BossBis(boss)
+        row.star:SetShown(row.bis > 0)
+        row.bisText:SetText(row.bis > 0 and row.bis or "")
+        local needs = quests[boss]
+        row.quest:SetShown(needs ~= nil)
+        row.quest:ClearAllPoints()
+        row.quest:SetPoint("RIGHT", row.bis > 0 and row.star or row.bisText, "LEFT", -6, 0)
+        -- The name keeps what the marks on the right leave it.
+        local room = width - 6 - 18 - 6 - FACE - 6 - 70
+        row.name:SetWidth(math.min(math.ceil(row.name:GetStringWidth()) + 1, room))
+        row.bar:SetShown(boss == picked)
+        row.hover:SetShown(boss == picked)
+        row:Show()
+    end)
+    for i = n + 1, #rows do rows[i]:Hide() end
+    legend.child:SetSize(width, math.max(1, n * ROW_H))
+    legend.title:SetText("BOSSES" .. (inside and total > 0
+        and ns.Color("muted", ("   %d of %d down"):format(killed, total)) or ""))
+end
+
 local function WindowDrawn()
     window.title:SetText(windowView.dungeon.name:upper()
         .. (placing and ns.Color("muted", "   PLACING PINS") or ""))
     window.copy:SetShown(placing)
+    if not Folded() then DrawLegend() end
+end
+
+-- The map's own height, and under it, unless folded, the legend and the loot: as tall as the
+-- window it was opened beside, else LOWER_MIN.
+local MAP_PART = PANEL_HEADER + MAP_H * WINDOW_SCALE + FLOOR_H + PANEL_PAD * 2
+
+local function Size(owner)
+    local folded = Folded()
+    legend:SetShown(not folded)
+    window.lootScroll:SetShown(not folded)
+    window.hint:SetShown(not folded and picked == nil)
+    window.fold:SetRotation(folded and 0 or -math.pi / 2)
+    if folded then
+        window:SetHeight(MAP_PART)
+    else
+        local tall = owner and owner:GetHeight() or 0
+        window:SetHeight(math.max(MAP_PART + LOWER_GAP + LOWER_MIN, tall))
+    end
+end
+
+local function FoldEnter(button)
+    button.icon:SetVertexColor(T.fg.r, T.fg.g, T.fg.b)
+    GameTooltip:SetOwner(button, "ANCHOR_BOTTOM")
+    GameTooltip:SetText(Folded() and "Show the bosses" or "Map only", 1, 1, 1)
+    GameTooltip:AddLine(Folded() and "The bosses in kill order and their loot, under the map."
+        or "Folds the bosses and their loot away: the map alone, to keep on screen.",
+        T.muted.r, T.muted.g, T.muted.b, true)
+    GameTooltip:Show()
+end
+
+local function FoldLeave(button)
+    button.icon:SetVertexColor(T.muted.r, T.muted.g, T.muted.b)
+    GameTooltip:Hide()
+end
+
+local function FoldClicked(button)
+    ns.AccountSettings().journalMapFolded = not Folded() or nil
+    Size(window.owner)
+    if not Folded() then
+        DrawLegend()
+        Pick(picked)
+    end
+    FoldEnter(button)
 end
 
 local function Build()
@@ -502,8 +788,49 @@ local function Build()
     canvas:SetScale(WINDOW_SCALE)
     canvas:SetPoint("TOPLEFT", PANEL_PAD / WINDOW_SCALE, -PANEL_HEADER / WINDOW_SCALE)
     windowView.down:SetPoint("BOTTOMLEFT", PANEL_PAD, PANEL_PAD)
+    -- The floor switch and Copy on a line under the map.
+    local underMap = -(PANEL_HEADER + MAP_H * WINDOW_SCALE + 6)
+    windowView.down:ClearAllPoints()
+    windowView.down:SetPoint("TOPLEFT", PANEL_PAD, underMap)
     window.copy = ns.Button(window, "Copy", COPY_W, FLOOR_H - 2, function() Copy(windowView.dungeon) end)
-    window.copy:SetPoint("BOTTOMRIGHT", -PANEL_PAD, PANEL_PAD)
+    window.copy:SetPoint("TOPRIGHT", -PANEL_PAD, underMap)
+    windowView.onPick = Pick
+    windowView.onPinHover = Light
+    -- Under them, the legend on the left and the picked boss's loot on the right.
+    local lowerTop = -(MAP_PART - PANEL_PAD + LOWER_GAP)
+    legend = CreateFrame("Frame", nil, window)
+    legend:SetPoint("TOPLEFT", PANEL_PAD, lowerTop)
+    legend:SetPoint("BOTTOMLEFT", PANEL_PAD, PANEL_PAD)
+    legend:SetWidth(LEGEND_W)
+    legend.title = ns.Font(legend, 12, nil, T.accentSoft)
+    legend.title:SetPoint("TOPLEFT", 0, 0)
+    local list = ns.UI.SlimScroll(legend)
+    list:SetPoint("TOPLEFT", 0, -20)
+    list:SetPoint("BOTTOMRIGHT")
+    legend.child = CreateFrame("Frame", nil, list)
+    list:SetScrollChild(legend.child)
+    local lootScroll = ns.UI.SlimScroll(window)
+    lootScroll:SetPoint("TOPLEFT", PANEL_PAD + LEGEND_W + LOWER_GAP, lowerTop)
+    lootScroll:SetPoint("BOTTOMRIGHT", -PANEL_PAD - SCROLL_GAP, PANEL_PAD)
+    lootView = J.View.New(lootScroll)
+    lootView:SetWidth(MAP_W * WINDOW_SCALE - LEGEND_W - LOWER_GAP - SCROLL_GAP)
+    lootScroll:SetScrollChild(lootView)
+    window.lootScroll = lootScroll
+    window.hint = ns.Font(window, 12, nil, T.muted)
+    window.hint:SetPoint("CENTER", lootScroll, "CENTER", 0, 0)
+    window.hint:SetText("Click a boss for its loot.")
+    -- The chevron: fold the part under the map away, or open it.
+    local fold = CreateFrame("Button", nil, window)
+    fold:SetSize(PIN_BUTTON, PIN_BUTTON)
+    fold.icon = fold:CreateTexture(nil, "ARTWORK")
+    fold.icon:SetTexture(St.ARROW, nil, nil, "TRILINEAR")
+    fold.icon:SetSize(PIN_ICON, PIN_ICON)
+    fold.icon:SetPoint("CENTER")
+    fold.icon:SetVertexColor(T.muted.r, T.muted.g, T.muted.b)
+    fold:SetScript("OnEnter", FoldEnter)
+    fold:SetScript("OnLeave", FoldLeave)
+    fold:SetScript("OnClick", FoldClicked)
+    window.fold = fold.icon
     local pin = CreateFrame("Button", nil, window)
     pin:SetSize(PIN_BUTTON, PIN_BUTTON)
     pin:SetPoint("RIGHT", window.close, "LEFT", -4, 0)
@@ -516,6 +843,8 @@ local function Build()
     pin:SetScript("OnClick", PinButtonClicked)
     PaintPin(pin)
     window.pin = pin
+    fold:SetPoint("RIGHT", pin, "LEFT", -2, 0)
+    window.title:SetPoint("RIGHT", -34 - PIN_BUTTON * 2 - 6, 0)
 end
 
 -------------------------------------------------------------------------------
@@ -621,9 +950,19 @@ function J.OpenDungeonMap(dungeon, from)
     windowView:Open(dungeon)
     Paint()
     Place(from)
+    window.owner = from and Owner(from)
+    Size(window.owner)
     window:Show()
     window:Raise()
+    -- The boss to go for next: the first in kill order not killed this run.
+    picked = nil
     windowView:Draw()
+    if not Folded() then
+        EachBoss(dungeon, function(boss, number)
+            if not picked and number and not (windowView.inside and J.Kills.ThisRun(boss)) then picked = boss end
+        end)
+        Pick(picked)
+    end
 end
 
 -- What the window shows, drawn again (a test, a setting).

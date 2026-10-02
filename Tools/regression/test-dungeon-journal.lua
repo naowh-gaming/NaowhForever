@@ -1135,9 +1135,22 @@ do
     local onMap = {}
     for _, made in ipairs(state.made) do
         local boss = rawget(made, "boss")
-        if rawget(made, "key") and boss and rawget(made, "shown") ~= false then onMap[boss.name] = true end
+        if rawget(made, "glow") and boss and rawget(made, "shown") ~= false then onMap[boss.name] = true end
     end
     check("a placed boss is on the map", onMap["Oggleflint"])
+    -- Under the map, the legend: every boss in kill order, a click picks one for its loot.
+    local legendRows, pickRow = {}, nil
+    for _, made in ipairs(state.made) do
+        local boss = rawget(made, "boss")
+        if rawget(made, "tick") and boss and rawget(made, "shown") ~= false then
+            legendRows[boss.name] = true
+            if boss.name == "Bazzalan" then pickRow = made end
+        end
+    end
+    check("the legend lists every boss, placed or not", legendRows["Oggleflint"] and legendRows["Bazzalan"]
+        and legendRows["Taragaman the Hungerer"] and legendRows["Jergosh the Invoker"])
+    pickRow.scripts.OnClick(pickRow)
+    check("a row picks its boss", rawget(pickRow.bar, "shown") == true)
     check("one the data places too", onMap["Jergosh the Invoker"])
     check("one not placed yet is not", not onMap["Bazzalan"])
     ns.DungeonMapCommand("mappins")
@@ -1153,6 +1166,18 @@ do
     ns.DungeonMapCommand("mappins")
     J.OpenDungeonMap(ragefire)
     check("a second Map closes it", true)
+    -- The world map opening (M) puts the Journal's window away; closing it brings it back.
+    ns.OpenJournalWindow(ragefire)
+    local journalWindow
+    for _, made in ipairs(state.made) do
+        if made.scripts.OnKeyDown then journalWindow = made end
+    end
+    J.WindowAwayForMap(true)
+    check("M puts the Journal away", rawget(journalWindow, "shown") == false)
+    J.WindowAwayForMap(false)
+    check("and M again brings it back", rawget(journalWindow, "shown") == true)
+    J.WindowAwayForMap(false)
+    check("a map closed with no Journal put away leaves it as it is", rawget(journalWindow, "shown") == true)
     -- On the world map, inside the Stockade: its map over the map's picture; a right-click
     -- goes up to Stormwind, and not in combat.
     local stockade = J.Get("Stockade")
@@ -1165,7 +1190,7 @@ do
     local onWorld = {}
     for _, made in ipairs(state.made) do
         local boss = rawget(made, "boss")
-        if rawget(made, "key") and boss and rawget(made, "shown") ~= false then onWorld[boss.name] = true end
+        if rawget(made, "glow") and boss and rawget(made, "shown") ~= false then onWorld[boss.name] = true end
     end
     check("with its bosses", onWorld["Bazil Thredd"] and onWorld["Dextren Ward"])
     -- A boss's loot from its pin closes with the map.

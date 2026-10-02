@@ -970,6 +970,23 @@ function ns.ToggleJournalWindow()
     if window and window:IsShown() then window:Hide() else ns.OpenJournalWindow() end
 end
 
+-- The world map opening (M) puts the window away while it is open, and the map closing (M
+-- again) brings it back as it was; the map panel (UI/MapPanel.lua) says when.
+local awayForMap = false
+
+---@param mapShown boolean
+function J.WindowAwayForMap(mapShown)
+    if mapShown then
+        if window and window:IsShown() then
+            awayForMap = true
+            window:Hide()
+        end
+    elseif awayForMap then
+        awayForMap = false
+        if window and S.Get("enabled") then window:Show() end
+    end
+end
+
 -- A key binding of its own (Bindings.xml, Naowh Forever's section of Key Bindings): opens the
 -- window, or closes it.
 BINDING_NAME_NAOWHFOREVER_JOURNAL = "Open Dungeon Journal"

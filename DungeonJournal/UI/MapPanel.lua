@@ -162,13 +162,24 @@ local function FoldQuestLog()
     end
 end
 
+-- The map opening puts the Journal's window away, and closing brings it back (Window.lua).
+local function MapShown()
+    J.WindowAwayForMap(true)
+    Refresh()
+end
+
+local function MapHidden()
+    Hide()
+    J.WindowAwayForMap(false)
+end
+
 local function Hook()
     if hooked then return end
     hooked = true
     folder = CreateFrame("Frame")
     folder:SetScript("OnEvent", FoldQuestLog)
-    WorldMapFrame:HookScript("OnShow", Refresh)
-    WorldMapFrame:HookScript("OnHide", Hide)
+    WorldMapFrame:HookScript("OnShow", MapShown)
+    WorldMapFrame:HookScript("OnHide", MapHidden)
     WorldMapFrame:HookScript("OnSizeChanged", MapResized)
 end
 

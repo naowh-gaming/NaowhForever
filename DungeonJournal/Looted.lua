@@ -205,6 +205,7 @@ local frame
 -- comes with a loading screen, and PLAYER_ENTERING_WORLD after it.
 local function Listen()
     here = J.Current()
+    J.Kills.NoteRun(here)   -- this run's start, for the dungeon map's progress
     if here then
         frame:RegisterEvent("CHAT_MSG_LOOT")
         if C_LootHistory then frame:RegisterEvent("LOOT_HISTORY_UPDATE_DROP") end
