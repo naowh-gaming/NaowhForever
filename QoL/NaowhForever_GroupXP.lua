@@ -1,7 +1,7 @@
 -------------------------------------------------------------------------------
 --  NaowhForever_GroupXP.lua -- the QoL group XP bars, fed by addon messages from every member
---  running Naowh Forever; the setting only shows the bars. Messages: "1 level xp max" is
---  someone's numbers, "R" asks everyone for theirs, "O" (older builds) says the sender stopped.
+--  running Naowh Forever; the setting only shows the bars. Messages: "2 guid level xp max" is
+--  someone's numbers, "R" asks everyone for theirs.
 -------------------------------------------------------------------------------
 local ns = _G.NaowhForever
 local S = ns.QoLSettings
@@ -13,7 +13,8 @@ local GRADIENT = "Interface\\AddOns\\NaowhForever\\Media\\NaowhGradient.tga"
 local ROW_H, NAME_W, GAP = 18, 90, 2
 
 local frame, unlocked, sendQueued, sendAfterCombat, requestPending
--- "Name" for your realm, "Name-Realm" otherwise -> { level, xp, max }, from their messages.
+-- GUID -> { level, xp, max }, from their messages. Forever's addon message sender is the
+-- character's full name with surname, which no unit API returns, so members are matched by GUID.
 local others = {}
 local rows = {}
 
@@ -52,7 +53,8 @@ local function Send()
         C_ChatInfo.SendAddonMessage(PREFIX, "R", channel)
     end
     local own = Own()
-    C_ChatInfo.SendAddonMessage(PREFIX, ("1 %d %d %d"):format(own.level, own.xp, own.max), channel)
+    C_ChatInfo.SendAddonMessage(PREFIX, ("2 %s %d %d %d"):format(UnitGUID("player"), own.level, own.xp, own.max),
+        channel)
 end
 
 -- XP arrives with every kill, so sends are held to one every two seconds. request also asks
@@ -79,15 +81,12 @@ local function Roster()
     else
         for i = 1, GetNumSubgroupMembers() do units[#units + 1] = "party" .. i end
     end
-    local realm = GetNormalizedRealmName()
     local list = {}
     for _, unit in ipairs(units) do
-        local name, unitRealm = UnitFullName(unit)
+        local name, guid = UnitName(unit), UnitGUID(unit)
         local _, class = UnitClass(unit)
-        if name and not (Secret(name) or Secret(unitRealm) or Secret(class)) then
-            local who = name
-            if unitRealm and unitRealm ~= "" and unitRealm ~= realm then who = name .. "-" .. unitRealm end
-            list[#list + 1] = { unit = unit, name = name, class = class, who = who }
+        if name and guid and not (Secret(name) or Secret(guid) or Secret(class)) then
+            list[#list + 1] = { unit = unit, name = name, class = class, guid = guid }
         end
     end
     return list
@@ -156,7 +155,7 @@ local function Refresh()
                 local level = UnitLevel(m.unit)
                 if Secret(level) then level = nil end
                 list[#list + 1] = { name = m.name, class = m.class, level = level,
-                    data = m.unit == "player" and Own() or others[m.who] }
+                    data = m.unit == "player" and Own() or others[m.guid] }
             end
         end
     end
@@ -179,27 +178,21 @@ end
 -- Someone who left the group keeps nothing behind.
 local function Prune()
     local inGroup = {}
-    for _, m in ipairs(Roster()) do inGroup[m.who] = true end
-    for who in pairs(others) do
-        if not inGroup[who] then others[who] = nil end
+    for _, m in ipairs(Roster()) do inGroup[m.guid] = true end
+    for guid in pairs(others) do
+        if not inGroup[guid] then others[guid] = nil end
     end
 end
 
-local function OnMessage(msg, sender)
-    if Secret(sender) then return end
-    local who = Ambiguate(sender, "none")
-    if who == UnitName("player") then return end
+local function OnMessage(msg)
+    if Secret(msg) then return end
     if msg == "R" then
         SendSoon()
         return
-    elseif msg == "O" then
-        others[who] = nil
-        Refresh()
-        return
     end
-    local version, level, xp, max = msg:match("^(%d+) (%d+) (%d+) (%d+)$")
-    if version ~= "1" then return end
-    others[who] = { level = tonumber(level), xp = tonumber(xp), max = tonumber(max) }
+    local guid, level, xp, max = msg:match("^2 (%S+) (%d+) (%d+) (%d+)$")
+    if not guid or guid == UnitGUID("player") then return end
+    others[guid] = { level = tonumber(level), xp = tonumber(xp), max = tonumber(max) }
     Refresh()
 end
 
@@ -216,8 +209,8 @@ end
 local events = CreateFrame("Frame")
 events:SetScript("OnEvent", function(_, event, ...)
     if event == "CHAT_MSG_ADDON" then
-        local prefix, msg, channel, sender = ...
-        if prefix == PREFIX and GROUP_CHANNELS[channel] then OnMessage(msg, sender) end
+        local prefix, msg, channel = ...
+        if prefix == PREFIX and GROUP_CHANNELS[channel] then OnMessage(msg) end
         return
     elseif event == "GROUP_ROSTER_UPDATE" or event == "PLAYER_ENTERING_WORLD" then
         Prune()
