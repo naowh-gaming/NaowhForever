@@ -27,7 +27,7 @@ it again. Be gentle with the sites: the scripts wait between requests on purpose
 
 | Tool | What it does | Why |
 | --- | --- | --- |
-| `build_bis_data.py` | Builds `BiS/NaowhForever_BiSData.lua` from wowsrc.com's per-spec BiS pages. Item IDs are cached in `bis_item_ids.json`. | The BiS List's picks, with permission from wowsrc. |
+| `build_bis_data.py` | Builds `BiS/NaowhForever_BiSData.lua` from wowsrc.com's per-spec BiS pages. Item IDs are cached in `bis_item_ids.json`. `--check` says what changed on their pages, `--offline` builds without Wowhead (both daily in CI). | The BiS List's picks, with permission from wowsrc. |
 | `build_dungeon_loot.py` | Builds `BiS/NaowhForever_DungeonLoot.lua`: everything a dungeon drops, from Wowhead's zone pages. Also holds the shared Wowhead `fetch`. | So a BiS item can say where it drops. |
 
 ## Boss reminders
@@ -61,13 +61,18 @@ it again. Be gentle with the sites: the scripts wait between requests on purpose
 
 - **Every PR** (`checks.yml`): luacheck and pre-commit, the Lua regression tests, PR rules,
   and a package check.
-- **Daily** (`daily-watch.yml`), two jobs:
+- **Daily** (`daily-watch.yml`), three jobs. Each opens one pull request when there's
+  something (`loot` and `bis` through `hooks/daily-pull-request.sh`, which keeps it up to
+  date); where workflows may not open one, an issue with a one-click link:
   - `watch`: `watch_build.py`. Only reads the game's tables through wago.tools. If there's a
-    new build, it opens a PR that moves our faction data to it, with a report of what
-    changed (including new gear the Journal doesn't list yet).
-  - `loot`: `wowsrc.py --check`. Reads wowsrc's loot pages and compares them with
-    `wowsrc_loot.json`. If a boss gained or lost items, or there's a new boss or page, it
-    keeps one issue up to date with the list, and closes it once we've rebuilt.
+    new build, a PR moves our faction data to it, with a report of what changed (new gear
+    the Journal doesn't list yet, new dungeon floor maps in the game's map table).
+  - `loot`: `wowsrc.py --check`. If wowsrc's loot pages changed (a boss gained or lost items,
+    a new boss or page), it rebuilds the Journal with `--offline` and opens a PR.
+  - `bis`: `build_bis_data.py --check`, the same for wowsrc's BiS lists.
+
+  `--offline` asks Wowhead nothing: a new item's facts come from the game's own tables, and
+  what they can't settle (an old classic item) is listed in the PR for a run on our machines.
 - **Not in CI:** anything that reads Wowhead. Their terms don't allow scraping it from a
   server, so `build_journal.py`, `build_quest_chains.py` and `build_dungeon_loot.py` run on
   our machines, by hand.

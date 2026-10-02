@@ -373,16 +373,35 @@ def check(report_path=None, github_output=None):
         theirs[slug] = parse_spec(slug)
         time.sleep(1)   # one page at a time, gently
     found = bis_changes(current_specs(), theirs, cache)
-    head = ["## wowsrc.com: BiS lists changed", ""]
-    if found:
-        head += ["Their spec pages differ from `BiS/NaowhForever_BiSData.lua`. To bring it in, on your machine "
-                 "(it needs Wowhead for new items):", "", "```", "python Tools/build_bis_data.py", "```", ""]
+    if not found:
+        head = ["## BiS lists from wowsrc.com", "",
+                "Their spec pages match `BiS/NaowhForever_BiSData.lua`: nothing new."]
     else:
-        head.append("Their spec pages match `BiS/NaowhForever_BiSData.lua`: nothing new.")
+        import wago
+        specs = len({line.split("**")[1] for line in found if line.startswith("- **")})
+        head = [
+            "## BiS lists from wowsrc.com's latest pages", "",
+            "wowsrc.com's spec pages changed since the BiS List's data was built from them. This "
+            "rebuilds it from them, without asking Wowhead anything.", "",
+            f"**{len(found)}** slot changes across **{specs}** specs", "",
+            "### Where each part comes from", "",
+            "| What | From | How |",
+            "| --- | --- | --- |",
+            "| Each spec's picks per slot, best first | [wowsrc.com](https://wowsrc.com) spec pages, read "
+            "today (with their permission) | `Tools/build_bis_data.py --offline` |",
+            "| An item's name to its ID | `Tools/bis_item_ids.json`, else the game's own item table "
+            f"(ItemSparse, build {wago.BUILD}) by name, quality and item level | `--offline` |",
+            "| Where an item comes from (its source line) | wowsrc's own; else `Tools/bis_sources.json` "
+            "| Wowhead is never asked in CI |",
+            "", "### What changed (#1 picks, items added or taken off)", ""]
     # A GitHub issue holds 65536 characters: a long report is cut, and says so.
     while len("\n".join(head + found)) > REPORT_MAX and found:
         found = found[:-25] + [f"- ... and more: run the build to see them all."] if len(found) > 25 else []
-    text = "\n".join(head + found) + "\n"
+    tail = ["", "### Before merging", "",
+            "- An item the build lists below as left out could not be settled from the game's tables: "
+            "run `python Tools/build_bis_data.py` on your machine (it asks Wowhead).",
+            "- Items with no source line: `python Tools/build_bis_data.py --sources-only`."] if found else []
+    text = "\n".join(head + found + tail) + "\n"
     if report_path:
         Path(report_path).write_text(text, encoding="utf-8")
     else:

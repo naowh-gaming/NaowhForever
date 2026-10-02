@@ -249,6 +249,52 @@ def changes(old, new, game=None):
     return lines
 
 
+def counts(found):
+    """How many rows each heading of a report has: {"Items a boss gained": 3, ...}."""
+    seen, heading = {}, None
+    for line in found:
+        if line.startswith("### "):
+            heading = line[4:]
+        elif line.startswith("- ") and heading:
+            seen[heading] = seen.get(heading, 0) + 1
+    return seen
+
+
+def loot_body(found):
+    """The pull request's description: what changed, where each part of the Journal comes
+    from, and what is left for a run on our machines."""
+    import wago
+    n = counts(found)
+    said = [f"**{n.get(h, 0)}** {w}" for h, w in (("Items a boss gained", "items gained"),
+                                                    ("Items a boss lost (moved, or gone)", "lost"),
+                                                    ("New bosses", "new bosses"), ("New loot pages", "new pages"))]
+    return [
+        "## Boss loot from wowsrc.com's latest pages", "",
+        "wowsrc.com's WoW Forever loot pages changed since the Journal was last built from them. "
+        "This rebuilds the Journal's boss loot from them, without asking Wowhead anything.", "",
+        " &middot; ".join(said), "",
+        "### Where each part comes from", "",
+        "| What | From | How |",
+        "| --- | --- | --- |",
+        "| Which items each boss, chest and trash drops | [wowsrc.com](https://wowsrc.com) loot pages, read today "
+        "(they allow crawling and gave us permission) | `Tools/wowsrc.py` &rarr; `Tools/wowsrc_loot.json` |",
+        "| An item's name to its ID | `Tools/item_names.json`, else the game's own item table (ItemSparse) "
+        "| `wowsrc.py --resolve --offline` |",
+        f"| A new item's level, slot, type and quality | the game's own tables (Item, ItemSparse), build "
+        f"{wago.BUILD}, through [wago.tools](https://wago.tools) | `build_journal.py --offline` |",
+        "| Drop chances | wowsrc's where it gives one; else Wowhead's, from our last run "
+        "(`Tools/journal_cache.json`) | Wowhead is never asked in CI |",
+        "| Bosses, kill order, rares, optional bosses, chests | `Tools/journal_bosses.json`, by hand "
+        "| not touched |",
+        "", "### What changed on their pages"] + found + [
+        "", "### Before merging", "",
+        "- Anything the build lists below as not in the cache nor the game's tables (an old classic "
+        "item, a boss never fetched) is left out: run `python Tools/wowsrc.py --resolve` and "
+        "`python Tools/build_journal.py` on your machine for it.",
+        "- A boss wowsrc lists that we do not (\"wowsrc boss not listed\") gets in through "
+        "`Tools/journal_bosses.json`."]
+
+
 def check(report_path=None, github_output=None):
     """The daily check: wowsrc's pages now against wowsrc_loot.json."""
     old = json.loads(OUT.read_text(encoding="utf-8"))
@@ -261,15 +307,10 @@ def check(report_path=None, github_output=None):
         game = game_ids(wanted) if wanted else {}
         if game:
             found = changes(old, new, game)
-    head = ["## wowsrc.com: loot the Journal does not have yet", ""]
-    if found:
-        head += ["Their loot pages changed since `Tools/wowsrc_loot.json`, which the Journal was last",
-                 "built from. To bring it in, on your machine (it needs Wowhead for item details):",
-                 "", "```", "python Tools/wowsrc.py", "python Tools/wowsrc.py --resolve",
-                 "python Tools/build_journal.py", "```"]
+    if not found:
+        text = "## Boss loot from wowsrc.com\n\nTheir loot pages match `Tools/wowsrc_loot.json`: nothing new.\n"
     else:
-        head.append("Their loot pages match `Tools/wowsrc_loot.json`: nothing new.")
-    text = "\n".join(head + found) + "\n"
+        text = "\n".join(loot_body(found)) + "\n"
     if report_path:
         Path(report_path).write_text(text, encoding="utf-8")
     else:

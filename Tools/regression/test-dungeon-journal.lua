@@ -1139,6 +1139,23 @@ do
         if rawget(made, "key") and boss and rawget(made, "shown") ~= false then onWorld[boss.name] = true end
     end
     check("with its bosses", onWorld["Bazil Thredd"] and onWorld["Dextren Ward"])
+    -- A boss's loot from its pin closes with the map.
+    local opened, closed = 0, 0
+    local open, close = J.View.OpenBossLoot, J.View.CloseBossLoot
+    J.View.OpenBossLoot = function() opened = opened + 1 end
+    J.View.CloseBossLoot = function() closed = closed + 1 end
+    for _, made in ipairs(state.made) do
+        local boss = rawget(made, "boss")
+        if boss and boss.name == "Bazil Thredd" and made.scripts.OnClick and rawget(made, "shown") ~= false then
+            made.scripts.OnClick(made, "LeftButton")
+        end
+    end
+    overlay:Hide()
+    if overlay.scripts.OnHide then overlay.scripts.OnHide(overlay) end
+    check("a boss's pin opens its loot", opened == 1)
+    check("which closes with the map", closed == 1)
+    J.View.OpenBossLoot, J.View.CloseBossLoot = open, close
+    J.ShowMapOnWorldMap(stockade)
     state.mapOpened = nil
     overlay.scripts.OnMouseUp(overlay, "RightButton")
     check("a right-click goes up to its zone", state.mapOpened == stockade.entrance.map

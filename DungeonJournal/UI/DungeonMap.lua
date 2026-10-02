@@ -46,6 +46,7 @@ local PIN_ICON = 14
 local MASK = "Interface\\AddOns\\NaowhForever\\Media\\circle_mask.tga"
 
 local placing = false            -- /nf mappins, in the window
+local lootFrom                   -- the view whose pin opened the boss's loot, to close it with
 
 -------------------------------------------------------------------------------
 --  Where a pin stands: what was placed on this account while placing, else the data
@@ -114,7 +115,16 @@ local function PinClicked(pin, button)
         return
     end
     if pin.view:Placing() then return end
+    lootFrom = pin.view
     J.View.OpenBossLoot(pin.boss, pin.view.dungeon)
+end
+
+-- A map closes (the world map, M again; the window): the loot one of its pins opened goes too.
+local function ViewHidden(view)
+    if lootFrom == view then
+        lootFrom = nil
+        J.View.CloseBossLoot()
+    end
 end
 
 -- A drag ends: where the pin's middle is on the map, 0 to 1 across and down, kept.
@@ -485,6 +495,7 @@ local function Build()
     window:SetScript("OnDragStart", window.StartMoving)
     window:SetScript("OnDragStop", window.StopMovingOrSizing)
     windowView = NewView(window, window, true)
+    window:HookScript("OnHide", function() ViewHidden(windowView) end)
     windowView.scale = WINDOW_SCALE
     windowView.onDraw = WindowDrawn
     local canvas = windowView.canvas
@@ -549,6 +560,7 @@ local function BuildOverlay()
     overlay:SetScript("OnMouseWheel", function() end)
     ns.Solid(overlay, "BACKGROUND", { r = 0, g = 0, b = 0 }, 1):SetAllPoints()
     overlayView = NewView(overlay, overlay, false)
+    overlay:SetScript("OnHide", function() ViewHidden(overlayView) end)
     overlayView.onRightClick = UpToZone
     overlayView.down:SetPoint("BOTTOMLEFT", HINT_PAD, HINT_PAD / 2)
     overlay.hint = ns.Font(overlay, 12, nil, T.muted)
