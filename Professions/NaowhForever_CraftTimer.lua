@@ -177,6 +177,11 @@ events:SetScript("OnEvent", function(_, event, _, _, spellID)
         Resync(job.gap + job.cast)
         Show()
     else
+        -- Pressing Create again mid-craft fails that press ("Another action is in progress")
+        -- while the batch casts on.
+        if event == "UNIT_SPELLCAST_FAILED" and select(9, UnitCastingInfo("player")) == job.recipeID then
+            return
+        end
         -- Interrupted or failed: moving, combat, a reagent run out. The rest is not crafted.
         Stop()
     end

@@ -152,9 +152,6 @@
 - Dungeon Journal: its data is updated to WoW Forever build 1.60.1.70170: 4 faction rewards changed (item levels, required levels).
 
 ### Fixed
-- Professions: the professions key (K) opens the overview again, not the last of your
-  professions (First Aid or Blacksmithing). With the window opened once before, the game
-  opened every profession in turn and stayed on the last one.
 - Recipe Finder and rank alerts: Stormwind and Eastern Plaguelands trainers and vendors
   (Lucan Cordell, the Stormwind enchanting trainer, among them) were placed at their Classic
   positions, so their waypoints pointed at the wrong spot on Forever's redrawn maps.

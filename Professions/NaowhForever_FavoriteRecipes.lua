@@ -121,6 +121,7 @@ end
 --  At a trainer
 -------------------------------------------------------------------------------
 local trainer
+local trainerOpen   -- between TRAINER_SHOW and TRAINER_CLOSED
 
 -- A trainer service's name, whether it can be learned ("available", "unavailable", "used" or
 -- "header") and its icon. Forever returns these in another order than Blizzard's documented
@@ -172,12 +173,13 @@ end
 local RenderTrainer
 
 -- Learns the offers you can pay for, from Learn's click. Last index first: buying a service
--- can renumber the ones after it.
+-- can renumber the ones after it, and one whose index now names another service (a click
+-- before the list was drawn again) is skipped.
 local function Learn(offers)
     local money = GetMoney()
     table.sort(offers, function(a, b) return a.index > b.index end)
     for _, o in ipairs(offers) do
-        if o.cost <= money then
+        if o.cost <= money and ServiceInfo(o.index) == o.name then
             BuyTrainerService(o.index)
             money = money - o.cost
         end
@@ -191,7 +193,7 @@ local function BuildTrainer()
 end
 
 RenderTrainer = function()
-    if not OnTrainer() then return trainer and trainer:Hide() end
+    if not (OnTrainer() and trainerOpen) then return trainer and trainer:Hide() end
     local offers = TrainerOffers()
     if #offers == 0 then return trainer and trainer:Hide() end
     if not trainer then BuildTrainer() end
@@ -294,8 +296,9 @@ end
 -- Buy: the cheapest listing of a pattern, bought only once Accept is clicked, as the auction
 -- house's own buyout asks. Buy's click searches (patterns are single listings, so the
 -- answer is ITEM_SEARCH_RESULTS_UPDATED); the states RenderConfirm shows:
---   searching -> ready (Accept) -> bought, or none, noanswer (Try Again), byamount (Search)
-local SEARCH_TIMEOUT = 5
+--   searching -> ready (Accept) -> placing -> bought, or none, noanswer and failed (Try
+--   Again), byamount (Search), unconfirmed
+local SEARCH_TIMEOUT, BUY_TIMEOUT = 5, 15
 local buy   -- { item, name, key, state, auctionID, price, gen }
 local RenderConfirm
 
@@ -347,10 +350,11 @@ end
 -- limit on searches is never hit. Buy takes precedence; the list waits for it.
 local LOOKUP_TIMEOUT, LOOKUP_GAP = 3, 0.3
 local lookup, lookups, looked = nil, {}, {}
+local lookupWait    -- the LOOKUP_GAP after an answer, before the next search
 local RenderMarket
 
 local function NextLookup()
-    if lookup or (buy and buy.state == "searching") then return end
+    if lookup or lookupWait or (buy and buy.state == "searching") then return end
     local item = table.remove(lookups, 1)
     if not item then return end
     local key = C_AuctionHouse.MakeItemKey(item)
@@ -369,18 +373,34 @@ end
 
 local function LookupDone()
     Cheapest(lookup.key)
-    lookup = nil
+    lookup, lookupWait = nil, true
     RenderMarket()
-    C_Timer.After(LOOKUP_GAP, NextLookup)
+    C_Timer.After(LOOKUP_GAP, function()
+        lookupWait = nil
+        NextLookup()
+    end)
 end
 
 -- Accept, in its click as the game requires: the only thing here that spends gold.
 local function Accept()
     if not buy then return end
-    if buy.state == "noanswer" then return StartBuy(buy.item, buy.name) end
+    if buy.state == "noanswer" or buy.state == "failed" then return StartBuy(buy.item, buy.name) end
     if buy.state == "byamount" then return Search(buy.name) end
     if buy.state ~= "ready" or GetMoney() < buy.price then return end
     C_AuctionHouse.PlaceBid(buy.auctionID, buy.price)
+    buy.state = "placing"
+    local placed = buy
+    C_Timer.After(BUY_TIMEOUT, function()
+        if buy == placed and buy.state == "placing" then
+            buy.state = "unconfirmed"
+            RenderConfirm()
+        end
+    end)
+    RenderConfirm()
+end
+
+-- AUCTION_HOUSE_PURCHASE_COMPLETED for the listing Accept bid on.
+local function Purchased()
     buy.state = "bought"
     -- On its way by mail: off the list, one is all it takes to learn.
     Bought()[buy.item] = time()
@@ -445,13 +465,21 @@ RenderConfirm = function()
     elseif buy.state == "byamount" then
         line1, line2, accept, enabled = "Sold by amount, not as single listings.",
             muted .. "Search shows it on the Buy tab.|r", "Search", true
+    elseif buy.state == "placing" then
+        line1, line2 = "Buying", name
+    elseif buy.state == "failed" then
+        line1, line2, accept, enabled = "The purchase failed.",
+            muted .. "Someone may have bought it first.|r", "Try Again", true
+    elseif buy.state == "unconfirmed" then
+        line1, line2, cancel = "No answer to the purchase yet.",
+            muted .. "Check your mailbox before buying it again.|r", "Close"
     elseif buy.state == "bought" then
         line1, line2, cancel = "Bought " .. name .. ".", muted .. "It is on its way to your mailbox.|r", "Close"
     end
     c.line1:SetText(line1)
     c.line2:SetText(line2)
     ns.SetButtonText(c.accept, accept)
-    local alone = buy.state == "none" or buy.state == "bought"
+    local alone = buy.state == "none" or buy.state == "bought" or buy.state == "unconfirmed"
     c.accept:SetShown(not alone)
     -- Cancel beside Accept, or centred on its own as Close.
     c.cancel:ClearAllPoints()
@@ -528,6 +556,7 @@ end
 -- so opening looks again a few times.
 local OPEN_TRIES = { 0.2, 0.6, 1.5 }
 local function TrainerOpened()
+    trainerOpen = true
     if trainer then trainer.dismissed = nil end
     for _, delay in ipairs(OPEN_TRIES) do
         C_Timer.After(delay, function()
@@ -557,6 +586,7 @@ events:SetScript("OnEvent", function(_, event, name)
         TrainerOpened()
         return
     elseif event == "TRAINER_CLOSED" then
+        trainerOpen = false
         if trainer then trainer:Hide() end
         return
     elseif event == "AUCTION_HOUSE_SHOW" then
@@ -586,6 +616,17 @@ events:SetScript("OnEvent", function(_, event, name)
             C_Timer.After(LOOKUP_GAP, NextLookup)
         end
         return
+    elseif event == "AUCTION_HOUSE_PURCHASE_COMPLETED" then
+        if buy and (buy.state == "placing" or buy.state == "unconfirmed") and name == buy.auctionID then
+            Purchased()
+        end
+        return
+    elseif event == "AUCTION_HOUSE_SHOW_ERROR" then
+        if buy and buy.state == "placing" then
+            buy.state = "failed"
+            RenderConfirm()
+        end
+        return
     elseif event == "ITEM_DATA_LOAD_RESULT" and not (market and market:IsShown()) then
         return
     end
@@ -599,7 +640,8 @@ local function Apply()
     if not (OnTrainer() or OnAH()) then return end
     for _, event in ipairs({ "TRAINER_SHOW", "TRAINER_UPDATE", "TRAINER_CLOSED", "AUCTION_HOUSE_SHOW",
         "AUCTION_HOUSE_CLOSED", "PLAYER_MONEY", "ITEM_DATA_LOAD_RESULT", "ADDON_LOADED",
-        "ITEM_SEARCH_RESULTS_UPDATED", "COMMODITY_SEARCH_RESULTS_UPDATED" }) do
+        "ITEM_SEARCH_RESULTS_UPDATED", "COMMODITY_SEARCH_RESULTS_UPDATED", "AUCTION_HOUSE_PURCHASE_COMPLETED",
+        "AUCTION_HOUSE_SHOW_ERROR" }) do
         pcall(events.RegisterEvent, events, event)
     end
     HookTrainerFrame()

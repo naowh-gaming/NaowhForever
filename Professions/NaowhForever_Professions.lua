@@ -956,12 +956,16 @@ function Order.Parse(text)
     if text == "" then return end
     local gold = tonumber(text)
     if gold then return math.max(0, math.floor(gold * 10000 + 0.5)) end
-    local total, found = 0, false
-    for n, coin in text:gmatch("(%d+)([gsc])") do
-        total = total + tonumber(n) * (coin == "g" and 10000 or coin == "s" and 100 or 1)
-        found = true
-    end
-    return found and total or nil
+    -- Every part must be an amount with its coin ("2.5g", "1g50s"): anything left over is not a tip.
+    local total, bad = 0, false
+    local rest = text:gsub("([%d%.]+)([gsc])", function(n, coin)
+        n = tonumber(n)
+        if not n then bad = true return "" end
+        total = total + n * (coin == "g" and 10000 or coin == "s" and 100 or 1)
+        return ""
+    end)
+    if bad or rest ~= "" then return end
+    return math.floor(total + 0.5)
 end
 
 function Order.Link(itemID, fallback)
@@ -1513,8 +1517,8 @@ RenderDetail = function()
     end
     -- More crafts than the bags have room for: Create All stops at what fits.
     local can = Craftable(info)
-    local room = ns.CraftBagRoom and ns.CraftBagRoom(output, made, Reagents(info.recipeID), can)
-    if not linkedMode and room and can > room then
+    local room = not linkedMode and ns.CraftBagRoom and ns.CraftBagRoom(output, made, Reagents(info.recipeID), can)
+    if room and can > room then
         lines[#lines + 1] = ("|cffff4d4dBags: room for %d of %d.|r"):format(room, can)
     end
     win.createAll.count = room and math.min(can, room) or can
@@ -3417,10 +3421,6 @@ local function Activate(mode)
     end
 end
 
--- Set for a moment after the professions key opens the window; see the ToggleProfessionsBook
--- hook below.
-local keyOpenedAt
-
 -- The overview tab shows Blizzard's book page (invisible, like the rest of its window); the
 -- keybind can open it with no profession open at all.
 local function BookOpen()
@@ -3435,9 +3435,7 @@ local function Update()
         return Deactivate()
     end
     if not Own() then return Deactivate() end
-    -- Just opened with the key for the overview: the overview, even while Forever is still
-    -- opening professions.
-    if BookOpen() or keyOpenedAt then return Activate("book") end
+    if BookOpen() then return Activate("book") end
     if Profession() then return Activate("craft") end
     Deactivate()
 end
@@ -3452,31 +3450,6 @@ local function Queue()
     end)
 end
 ns.ProfWindowRefresh = Queue
-
--- The professions key (K) with Blizzard's window loaded but closed: inside that one call
--- Forever opens every one of your professions in turn (First Aid, Smelting, Fishing...) and
--- stays on the last, never the overview. Traced in game 2026-09-30. The window shows the
--- overview meanwhile, and once the burst is over, Blizzard's overview tab is clicked so its
--- window (and which tab is lit) matches. The tab is a plain Frame on Forever, with no Click
--- method: its OnMouseUp is what a click on it runs, confirmed in game.
-if type(ToggleProfessionsBook) == "function" then
-    local KEY_SETTLE = 0.3
-    hooksecurefunc("ToggleProfessionsBook", function()
-        if not (On() and ProfessionsFrame and ProfessionsFrame:IsShown()) or BookOpen() then return end
-        keyOpenedAt = GetTime()
-        Queue()
-        C_Timer.After(KEY_SETTLE, function()
-            -- Cleared first: a failing click must not leave the window stuck on the overview.
-            keyOpenedAt = nil
-            local tab = ProfessionsFrame.ProfessionsOverviewTab
-            if tab and ProfessionsFrame:IsShown() and not BookOpen() and not InCombatLockdown() then
-                local handler = tab:GetScript("OnMouseUp")
-                if handler then pcall(handler, tab, "LeftButton", true) end
-            end
-            Queue()
-        end)
-    end)
-end
 
 -- A link clicked while Blizzard's window was loaded but closed makes Forever cast every one of
 -- your own professions at once and land on the last, never the link's. A second click opens it,

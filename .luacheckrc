@@ -108,7 +108,7 @@ read_globals = {
     "StaticPopup_FindVisible", "StaticPopup_Hide", "StaticPopup_Show", "StatusTrackingBarInfo",
     "StatusTrackingBarManager", "strlower", "strsplit", "strsub", "strtrim", "strupper",
     "SubZoneTextFrame", "TaxiGetNodeSlot", "TaxiNodeGetType", "TaxiNodeName", "TaxiRequestEarlyLanding",
-    "tContains", "TextToSpeech_GetSelectedVoice", "time", "ToggleCalendar", "ToggleProfessionsBook", "TomTom",
+    "tContains", "TextToSpeech_GetSelectedVoice", "time", "ToggleCalendar", "TomTom",
     "TooltipDataProcessor", "TRADE_SKILLS", "TSM_API", "UIErrorsFrame", "UiMapPoint",
     "UIParent", "UNKNOWNOBJECT", "UnitAffectingCombat", "UnitAttackSpeed", "UnitCanAttack",
     "UnitCastingDuration", "UnitCastingInfo", "UnitChannelDuration", "UnitChannelInfo",

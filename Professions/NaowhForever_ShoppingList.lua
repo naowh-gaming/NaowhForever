@@ -54,7 +54,8 @@ end
 -------------------------------------------------------------------------------
 --  The list
 -------------------------------------------------------------------------------
--- Per character: recipeID -> { name, count (crafts), need = { itemID -> per craft } }.
+-- Per character: recipeID -> { name, count (crafts), need = { itemID -> per craft },
+-- got = { itemID -> already bought, when less than all of it was } }.
 local function List()
     local account = ns.AccountSettings()
     if type(account.profShopping) ~= "table" then account.profShopping = {} end
@@ -67,7 +68,9 @@ end
 local function Materials()
     local total = {}
     for _, craft in pairs(List()) do
-        for item, per in pairs(craft.need) do total[item] = (total[item] or 0) + per * craft.count end
+        for item, per in pairs(craft.need) do
+            total[item] = (total[item] or 0) + per * craft.count - (craft.got and craft.got[item] or 0)
+        end
     end
     local out = {}
     for item, qty in pairs(total) do out[#out + 1] = { item = item, qty = qty } end
@@ -84,6 +87,7 @@ local function Drop(item)
     local list = List()
     for recipeID, craft in pairs(list) do
         craft.need[item] = nil
+        if craft.got then craft.got[item] = nil end
         if next(craft.need) == nil then list[recipeID] = nil end
     end
 end
@@ -374,6 +378,8 @@ local function Current()
     return run and run.items[run.index]
 end
 
+local ScheduleCheck
+
 -- The next material to check, or the check is done.
 local function CheckNext()
     run.index = run.index + 1
@@ -404,10 +410,20 @@ local function CheckNext()
             e.noanswer = (e.noanswer or 0) + 1
             -- Once more before giving the material up.
             if e.noanswer < 2 then run.index = run.index - 1 end
-            C_Timer.After(GAP, CheckNext)
+            ScheduleCheck()
         end
     end)
     Render()
+end
+
+-- The next check after GAP. A new one replaces any still waiting, and ends the current
+-- material's timeout: a late or repeated answer moves the check on once, not twice.
+function ScheduleCheck()
+    run.gen = run.gen + 1
+    local gen = run.gen
+    C_Timer.After(GAP, function()
+        if run and run.gen == gen and run.state == "checking" then CheckNext() end
+    end)
 end
 
 local function StartCheck()
@@ -440,7 +456,7 @@ local function ReadListings(e)
     e.short = have < e.qty
     -- Buy what is there when the amount is not.
     e.buy = have
-    C_Timer.After(GAP, CheckNext)
+    ScheduleCheck()
 end
 
 -- The total now of everything that can be bought.
@@ -487,7 +503,7 @@ local function Confirm()
     run.state = "buying"
     run.gen = run.gen + 1
     local gen = run.gen
-    pcall(C_AuctionHouse.ConfirmCommoditiesPurchase, e.item, e.buy)
+    C_AuctionHouse.ConfirmCommoditiesPurchase(e.item, e.buy)
     C_Timer.After(BUY_TIMEOUT, function()
         if run and run.gen == gen and run.state == "buying" then
             run.state = "unconfirmed"
@@ -791,7 +807,7 @@ events:SetScript("OnEvent", function(_, event, a, b)
         and a.itemID == e.item then
         -- Sold as single listings, not by amount: left to buy by hand.
         e.single, e.buy = true, 0
-        C_Timer.After(GAP, CheckNext)
+        ScheduleCheck()
     elseif event == "COMMODITY_PRICE_UPDATED" and state == "quoting" then
         run.state, run.unit, run.total = "quoted", a, b
         Render()
@@ -806,12 +822,18 @@ events:SetScript("OnEvent", function(_, event, a, b)
         if e.buy >= e.qty then
             Drop(e.item)
         else
-            for _, craft in pairs(list) do
-                if craft.need[e.item] then
-                    local want = craft.need[e.item] * craft.count
-                    local took = math.min(want, e.buy)
+            for recipeID, craft in pairs(list) do
+                if craft.need[e.item] and e.buy > 0 then
+                    craft.got = craft.got or {}
+                    local got = craft.got[e.item] or 0
+                    local took = math.min(craft.need[e.item] * craft.count - got, e.buy)
                     e.buy = e.buy - took
-                    if took >= want then craft.need[e.item] = nil end
+                    if got + took >= craft.need[e.item] * craft.count then
+                        craft.need[e.item], craft.got[e.item] = nil, nil
+                        if next(craft.need) == nil then list[recipeID] = nil end
+                    else
+                        craft.got[e.item] = got + took
+                    end
                 end
             end
         end
