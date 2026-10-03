@@ -13,7 +13,7 @@ local ns = _G.NaowhForever
 local UI = ns.UI
 
 local S = UI.ModuleSettings("training", { enabled = false, levelUpToast = true, trainerPanel = true,
-    showLearned = false, miniShown = false })
+    showLearned = false, miniShown = false, windowAlpha = 1 })
 ns.TrainingSettings = S
 
 local Training = {}
@@ -589,20 +589,31 @@ end)
 -------------------------------------------------------------------------------
 --  Settings page
 -------------------------------------------------------------------------------
+-- The module card's two lines: what you can train now, then the road to 60 and your builds.
+local function CardLines()
+    local plan = Plan()
+    local headline
+    if #plan.now > 0 then
+        headline = ("%d %s to train now, %s"):format(#plan.now, #plan.now == 1 and "spell" or "spells",
+            Training.Coins(Training.Total(plan.now)))
+    elseif plan.soon[1] or plan.later[1] then
+        headline = "New spells at level " .. (plan.soon[1] or plan.later[1])[1]
+    else
+        headline = "Every spell your class trains, you know"
+    end
+    local _, _, classID = UnitClass("player")
+    local builds = #Training.Builds(classID)
+    return headline, ("%s left to pay on the road to 60. %d talent %s for your class."):format(
+        Training.Coins(Training.ToSixty(plan)), builds, builds == 1 and "build" or "builds")
+end
+
 function ns.BuildTrainingSettingsPage(parent, y)
     local W = UI.Widgets
+    local St = ns.Shared.Style
     local _, h
-    _, h = W:Note(parent, "What you can train now and what each level brings, with the trainer's "
-        .. "price and a road to 60. Opening your class trainer updates the prices to what it asks, "
-        .. "reputation discounts included. Open it with /nftraining, its minimap or top bar "
-        .. "button, or here.", y)
-    y = y - h
-    -- The planner opens in place of the options window, which would otherwise sit over it.
-    _, h = W:Button(parent, "Open Training Planner", y, function()
-        ns.StashOptionsWindow()
-        ns.OpenTrainingWindow()
-    end)
-    y = y - h
+    local headline, detail = CardLines()
+    y = ns.Shared.Parts.SettingsCard(parent, y, "trainingCard", "Open Training Planner",
+        function() ns.OpenTrainingWindow() end, headline, detail)
 
     _, h = W:SectionHeader(parent, "ON THE WAY" .. UI.STATUS.untested, y); y = y - h
     _, h = W:DualRow(parent, y,
@@ -612,6 +623,15 @@ function ns.BuildTrainingSettingsPage(parent, y)
         S.Toggle("trainerPanel", "Panel at the Trainer",
             "Beside your class trainer, the spells you can learn now, ticked, with their total "
             .. "and Learn All I Can Afford. Untick one to leave it.", "enabled")
+    ); y = y - h
+
+    _, h = W:SectionHeader(parent, "WINDOW", y); y = y - h
+    _, h = W:DualRow(parent, y,
+        S.Toggle("miniShown", "Mini Bar", "A small bar with your next trainer visit and your gold, to leave "
+            .. "up while you level. Move it by dragging.", "enabled"),
+        { type = "slider", text = "Window Opacity", min = St.OPACITY_MIN, max = 100, step = 5,
+          tooltip = "How solid the planner's window is, in percent. Also on its title bar.",
+          getValue = Training.OpacityGet, setValue = Training.OpacitySet }
     ); y = y - h
     return y
 end
