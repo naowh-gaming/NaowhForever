@@ -297,6 +297,7 @@ end
 -------------------------------------------------------------------------------
 local BUILD_PREFIX = "!NFB1!"
 local MAX_POINTS = 51      -- one a level, 10 to 60
+local ROW_POINTS = 5       -- points in a column for each row above a talent
 
 local function Saved(classID)
     local all = Account("trainingBuilds")
@@ -321,6 +322,39 @@ function Training.Ranks(talents)
     return ranks
 end
 
+-- Why these points cannot be taken in this order, or nil when they can. tree is a class's
+-- entry in ns.TrainingBuilds; the first point that breaks a rule is the one explained.
+function Training.CheckBuild(tree, points)
+    local count, spent = {}, {}
+    for i, node in ipairs(points) do
+        local talent = tree.talents[node]
+        if not talent then return "That talent is not in this class's tree." end
+        if i > MAX_POINTS then return "All " .. MAX_POINTS .. " points are spent." end
+        local rank = (count[node] or 0) + 1
+        if rank > talent[2] then return "Already at full rank." end
+        local need = talent[6]
+        if need and (count[need] or 0) < tree.talents[need][2] then
+            return "Needs " .. (C_Spell.GetSpellName(tree.talents[need][1]) or "the talent above it") .. " at full rank first."
+        end
+        local col, row = talent[4], talent[3]
+        if (spent[col] or 0) < ROW_POINTS * (row - 1) then
+            return ("Needs %d points in %s first."):format(ROW_POINTS * (row - 1), tree.specs[col])
+        end
+        count[node], spent[col] = rank, (spent[col] or 0) + 1
+    end
+end
+
+-- The column with the most points names a build's spec.
+local function MainSpec(tree, points)
+    local spent, best = {}, nil
+    for _, node in ipairs(points) do
+        local col = tree.talents[node][4]
+        spent[col] = (spent[col] or 0) + 1
+        if not best or spent[col] > spent[best] then best = col end
+    end
+    return best and tree.specs[best] or "No points yet"
+end
+
 local function Codec()
     return LibStub("LibSerialize"), LibStub("LibDeflate")
 end
@@ -336,8 +370,8 @@ function Training.ExportBuild(classID, build)
     })))
 end
 
--- Parsed as data, never run: the class must have a tree here, and every point be a node of
--- it, taken no more often than its talent has ranks.
+-- Parsed as data, never run: the class must have a tree here, and its points pass
+-- Training.CheckBuild.
 local function DecodeBuild(text)
     local LS, LD = Codec()
     local body = type(text) == "string" and text:match("^%s*" .. BUILD_PREFIX:gsub("!", "%%!") .. "(%S+)%s*$")
@@ -348,15 +382,12 @@ local function DecodeBuild(text)
     if not (ok and type(data) == "table" and data.v == 1 and type(data.points) == "table") then return end
     local tree = ns.TrainingBuilds[data.class]
     if not tree then return end
-    local points, count = {}, {}
+    local points = {}
     for i, node in ipairs(data.points) do
-        local talent = tree.talents[node]
-        if i > MAX_POINTS or not talent then return end
-        count[node] = (count[node] or 0) + 1
-        if count[node] > talent[2] then return end
+        if i > MAX_POINTS then return end
         points[i] = node
     end
-    if #points == 0 then return end
+    if #points == 0 or Training.CheckBuild(tree, points) then return end
     return data.class, { name = BuildName(data.name, "Imported Build"), spec = BuildName(data.spec, "Imported"),
         points = points, saved = true }
 end
@@ -403,6 +434,61 @@ function Training.SaveMyTalents(name)
     saved[#saved + 1] = { name = BuildName(name, "My Talents"), spec = "Your talents", points = points, saved = true }
     Changed()
     return classID, #tree + #saved
+end
+
+-- A new saved build, empty or a copy of another. Returns its index in Training.Builds.
+function Training.NewBuild(classID, name, from)
+    local points = {}
+    for i, node in ipairs(from and from.points or {}) do points[i] = node end
+    local saved = Saved(classID)
+    saved[#saved + 1] = { name = BuildName(name, "New Build"), spec = from and from.spec or "No points yet",
+        points = points, saved = true }
+    Changed()
+    return #(ns.TrainingBuilds[classID]) + #saved
+end
+
+-- Editing a saved build: each returns why not, or nil once done.
+function Training.AddPoint(tree, build, node)
+    local points = build.points
+    points[#points + 1] = node
+    local why = Training.CheckBuild(tree, points)
+    if why then
+        points[#points] = nil
+        return why
+    end
+    build.spec = MainSpec(tree, points)
+    Changed()
+end
+
+-- Gives back node's latest point, unless a later point needs it.
+function Training.RemovePoint(tree, build, node)
+    local points = build.points
+    for i = #points, 1, -1 do
+        if points[i] == node then
+            table.remove(points, i)
+            local why = Training.CheckBuild(tree, points)
+            if why then
+                table.insert(points, i, node)
+                return "A later point needs it. " .. why
+            end
+            build.spec = MainSpec(tree, points)
+            Changed()
+            return
+        end
+    end
+    return "No points in it to give back."
+end
+
+function Training.UndoPoint(tree, build)
+    build.points[#build.points] = nil
+    build.spec = MainSpec(tree, build.points)
+    Changed()
+end
+
+function Training.ClearPoints(build)
+    wipe(build.points)
+    build.spec = "No points yet"
+    Changed()
 end
 
 function Training.DeleteBuild(classID, build)

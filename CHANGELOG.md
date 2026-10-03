@@ -19,9 +19,12 @@
   Off by default.
 - Training Planner: a Builds tab with talent builds for every class. Pick a class and a build
   to see it level by level, which points you have already taken and which one comes next.
-  Export gives any build as text to share, Import a Build adds one someone shared with you,
-  and Save My Talents keeps the talents you have now as a build of your own. The built-in
-  builds are placeholders for testing; Naowh's own are on the way.
+  New Build opens your class's talent tree: click talents in the order you take them and the
+  build fills in level by level, keeping to the tree's rules (Undo, Clear, right-click to give
+  a point back). Copy makes an editable copy of a built-in build. Export gives any build as text
+  to share, Import a Build adds one someone shared with you, and Save My Talents keeps the
+  talents you have now as a build of your own. The built-in builds are placeholders for
+  testing; Naowh's own are on the way.
 - Top Bar: Faded Opacity (with Show On Mouseover) sets how visible the bar and the FPS / MS
   readout stay while the mouse is away. 0% by default, invisible as before.
 - Blessings: in combat each click on a class button blesses the next member of that class who

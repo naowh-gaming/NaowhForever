@@ -7,13 +7,16 @@ local function Slice(a, b)
     return source:sub(first, assert(source:find(b, first + #a, true)) - 1)
 end
 
--- A mage tree of four nodes over two rows, and one Naowh build. node = { spell, ranks, row }.
+-- A mage tree: two rows of Arcane, one talent in Fire, and one Naowh build.
+-- node = { spell, ranks, row, column, slot, the node it needs at full rank }.
 local TREE = { [8] = {
-    talents = { [11] = { 1001, 3, 2 }, [12] = { 1002, 1, 1 }, [13] = { 1003, 5, 1 }, [14] = { 1004, 2, 2 } },
-    { name = "Fire Leveling", spec = "Fire", points = { 13, 13, 12, 11 } },
+    specs = { "Arcane", "Fire", "Frost" },
+    talents = { [11] = { 1001, 3, 2, 1, 1, 12 }, [12] = { 1002, 1, 1, 1, 1 }, [13] = { 1003, 5, 1, 1, 2 },
+        [14] = { 1004, 2, 2, 1, 2 }, [15] = { 1005, 5, 1, 2, 1 } },
+    { name = "Arcane Leveling", spec = "Arcane", points = { 13, 13, 13, 13, 12, 11 } },
 } }
 -- A warrior tree, so a mage node in a warrior build can be caught.
-TREE[1] = { talents = { [21] = { 2001, 5, 1 } } }
+TREE[1] = { specs = { "Arms", "Fury", "Protection" }, talents = { [21] = { 2001, 5, 1, 1, 1 } } }
 
 local function Fixture(o)
     o = o or {}
@@ -32,6 +35,8 @@ local function Fixture(o)
         end,
         Changed = function() changes = changes + 1 end,
         UnitClass = function() return "Mage", "MAGE", 8 end,
+        C_Spell = { GetSpellName = function(id) return "Talent " .. id end },
+        wipe = function(t) for k in pairs(t) do t[k] = nil end end,
         GetClassInfo = function(id) return ({ [1] = "Warrior", [8] = "Mage" })[id] end,
         C_ClassTalents = { GetActiveConfigID = function() return o.config end },
         C_Traits = { GetNodeInfo = function(_, node) return { activeRank = (o.ranks or {})[node] or 0 } end },
@@ -83,8 +88,8 @@ Case("an exported build imports as a saved build of its class, shown after Naowh
     local got = Import(t, text)
     assert(got and got[1] == 8 and got[2] == 2, "onAdded")
     local list = t.T.Builds(8)
-    assert(#list == 2 and list[2].saved and list[2].name == "Fire Leveling", "listed")
-    assert(table.concat(list[2].points, " ") == "13 13 12 11", table.concat(list[2].points, " "))
+    assert(#list == 2 and list[2].saved and list[2].name == "Arcane Leveling", "listed")
+    assert(table.concat(list[2].points, " ") == "13 13 13 13 12 11", table.concat(list[2].points, " "))
 end)
 
 Case("strings that are not a build, or break the tree, are turned away", function()
@@ -99,6 +104,8 @@ Case("strings that are not a build, or break the tree, are turned away", functio
         t.Pack({ v = 1, class = 8, points = {} }),
         t.Pack({ v = 1, class = 8, points = "13" }),
         t.Pack({ v = 1, class = 8, points = { "13" } }),
+        t.Pack({ v = 1, class = 8, points = { 13, 13, 13, 13, 13, 11 } }),
+        t.Pack({ v = 1, class = 8, points = { 12, 14 } }),
     }
     local many = {}
     for i = 1, 52 do many[i] = 13 end
@@ -143,6 +150,58 @@ Case("deleting a saved build removes only that one", function()
     t.T.DeleteBuild(8, first)
     assert(#t.Saved(8) == 1 and t.Saved(8)[1].name == "Two", "kept the other")
     assert(#t.T.Builds(8) == 2, "Naowh's stays")
+end)
+
+Case("the rules: full ranks, the talent above at full rank, five points a row, 51 at most", function()
+    local t, tree = Fixture(), TREE[8]
+    assert(t.T.CheckBuild(tree, { 13, 13, 13, 13, 12, 11 }) == nil, "valid")
+    assert(t.T.CheckBuild(tree, { 12, 12 }) == "Already at full rank.", "ranks")
+    assert(t.T.CheckBuild(tree, { 13, 13, 13, 13, 13, 11 }) == "Needs Talent 1002 at full rank first.", "needs")
+    assert(t.T.CheckBuild(tree, { 12, 15, 15, 15, 15, 14 }) == "Needs 5 points in Arcane first.", "row")
+    assert(t.T.CheckBuild(tree, { 21 }) == "That talent is not in this class's tree.", "tree")
+end)
+
+Case("clicking talents builds the order, and a point a later one needs cannot be given back", function()
+    local t, tree = Fixture(), TREE[8]
+    local index = t.T.NewBuild(8, "Mine")
+    local build = t.T.Builds(8)[index]
+    assert(build.saved and #build.points == 0 and build.spec == "No points yet", "empty")
+    for _ = 1, 4 do assert(t.T.AddPoint(tree, build, 13) == nil) end
+    assert(t.T.AddPoint(tree, build, 11) == "Needs Talent 1002 at full rank first.", "blocked")
+    assert(t.T.AddPoint(tree, build, 12) == nil and t.T.AddPoint(tree, build, 11) == nil, "then allowed")
+    assert(t.T.AddPoint(tree, build, 15) == nil and build.spec == "Arcane", "spec follows the points")
+    assert(t.T.RemovePoint(tree, build, 12):find("^A later point needs it"), "12 is needed")
+    assert(t.T.RemovePoint(tree, build, 15) == nil, "15 is not")
+    assert(table.concat(build.points, " ") == "13 13 13 13 12 11", table.concat(build.points, " "))
+    t.T.UndoPoint(tree, build)
+    assert(#build.points == 5, "undo")
+    t.T.ClearPoints(build)
+    assert(#build.points == 0 and build.spec == "No points yet", "clear")
+end)
+
+Case("a copy of a built-in build is a saved build of its own", function()
+    local t = Fixture()
+    local index = t.T.NewBuild(8, "Arcane Leveling Copy", TREE[8][1])
+    local copy = t.T.Builds(8)[index]
+    assert(index == 2 and copy.saved and copy.points ~= TREE[8][1].points, "own table")
+    t.T.UndoPoint(TREE[8], copy)
+    assert(#TREE[8][1].points == 6, "the built-in one is untouched")
+end)
+
+Case("every build that ships passes the rules", function()
+    local data = assert(io.open("Training/NaowhForever_TrainingBuilds.lua", "rb")):read("*a")
+    local ns = {}
+    local chunk = assert(loadstring(data)); setfenv(chunk, { _G = { NaowhForever = ns } }); chunk()
+    local t, n = Fixture(), 0
+    for class, tree in pairs(ns.TrainingBuilds) do
+        assert(#tree.specs == 3, "specs " .. class)
+        for _, build in ipairs(tree) do
+            local why = t.T.CheckBuild(tree, build.points)
+            assert(why == nil and #build.points == 51, class .. " " .. build.name .. ": " .. tostring(why))
+            n = n + 1
+        end
+    end
+    assert(n == 27, n)
 end)
 
 print(("test-training-builds: %d cases passed"):format(count))
