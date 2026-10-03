@@ -19,6 +19,8 @@ ns.TrainingSettings = S
 local Training = {}
 ns.Training = Training
 
+local Apply   -- registers what the module listens to (At the trainer, below)
+
 local SOON = 2            -- levels ahead that count as coming soon
 Training.SOON = SOON
 
@@ -364,8 +366,10 @@ local function Codec()
     return LibStub("LibSerialize"), LibStub("LibDeflate")
 end
 
+-- A name as it is kept: no escape codes or line breaks, so it shows and shares as typed.
 local function BuildName(text, default)
-    return type(text) == "string" and text ~= "" and (text:sub(1, 40):gsub("|", "||")) or default
+    local name = type(text) == "string" and text:gsub("[|\r\n]", ""):sub(1, 40) or ""
+    return name ~= "" and name or default
 end
 
 function Training.ExportBuild(classID, build)
@@ -521,7 +525,57 @@ function Training.LearnBuild(classID, build)
     return bought
 end
 
+-- A build's lasting key: a saved build's own number, given the first time it is asked for,
+-- or a built-in build's place in the data. Names repeat, so they cannot be keys.
+local function BuildKey(classID, build)
+    if build.saved then
+        if not build.id then
+            local serial = Account("trainingBuildSerial")
+            serial.n = (serial.n or 0) + 1
+            build.id = serial.n
+        end
+        return build.id
+    end
+    for i, b in ipairs(ns.TrainingBuilds[classID] or {}) do
+        if b == build then return "naowh" .. i end
+    end
+end
+
+-------------------------------------------------------------------------------
+--  Following a build: this character's new talent points spent on it as they come
+-------------------------------------------------------------------------------
+-- The build this character follows and its class, or nil.
+function Training.Followed()
+    local followed = Account("trainingFollow")[CharKey()]
+    if not followed then return nil end
+    for _, build in ipairs(Training.Builds(followed.class)) do
+        if BuildKey(followed.class, build) == followed.key then return build, followed.class end
+    end
+end
+
+-- build nil stops following.
+function Training.Follow(classID, build)
+    Account("trainingFollow")[CharKey()] = build and { class = classID, key = BuildKey(classID, build) } or nil
+    Apply()
+    Changed()
+end
+
+function Training.LearnFollowed()
+    local build, classID = Training.Followed()
+    if not build then return end
+    local bought = Training.LearnBuild(classID, build)
+    if bought > 0 then
+        ns.Print(("Learned %d talent %s from %s."):format(bought, bought == 1 and "point" or "points", build.name))
+    end
+end
+
+-- Nobody follows a deleted build any more.
 function Training.DeleteBuild(classID, build)
+    local key = BuildKey(classID, build)
+    local follows = Account("trainingFollow")
+    for char, followed in pairs(follows) do
+        if followed.class == classID and followed.key == key then follows[char] = nil end
+    end
     local saved = Saved(classID)
     for i, b in ipairs(saved) do
         if b == build then
@@ -530,6 +584,13 @@ function Training.DeleteBuild(classID, build)
         end
     end
     Changed()
+end
+
+-- Where the build picked at index selected is once the one at deleted is gone; nil when it was
+-- that one.
+function Training.SelectionAfterDelete(deleted, selected)
+    if deleted == selected then return nil end
+    return deleted < selected and selected - 1 or selected
 end
 
 -------------------------------------------------------------------------------
@@ -583,7 +644,7 @@ local function QueueScan()
 end
 
 local events
-local function Apply()
+function Apply()
     if not On() then
         if events then events:UnregisterAllEvents() end
         return
@@ -610,34 +671,6 @@ local function Apply()
         if follow then events:RegisterEvent(event) else events:UnregisterEvent(event) end
     end
     if follow then Training.LearnFollowed() end
-end
-
--------------------------------------------------------------------------------
---  Following a build: this character's new talent points spent on it as they come
--------------------------------------------------------------------------------
--- The build this character follows and its class, or nil. Kept by name, per character.
-function Training.Followed()
-    local followed = Account("trainingFollow")[CharKey()]
-    if not followed then return nil end
-    for _, build in ipairs(Training.Builds(followed.class)) do
-        if build.name == followed.name then return build, followed.class end
-    end
-end
-
--- build nil stops following.
-function Training.Follow(classID, build)
-    Account("trainingFollow")[CharKey()] = build and { class = classID, name = build.name } or nil
-    Apply()
-    Changed()
-end
-
-function Training.LearnFollowed()
-    local build, classID = Training.Followed()
-    if not build then return end
-    local bought = Training.LearnBuild(classID, build)
-    if bought > 0 then
-        ns.Print(("Learned %d talent %s from %s."):format(bought, bought == 1 and "point" or "points", build.name))
-    end
 end
 
 S.OnChange(function(key)

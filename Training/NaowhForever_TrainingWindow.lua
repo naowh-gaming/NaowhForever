@@ -640,7 +640,12 @@ local function BuildCards(classID, builds, y)
         end
         c.export._onClick = function() ns.ShowCopyBox(build.name, Training.ExportBuild(classID, build)) end
         c.delete._onClick = function()
-            ns.Confirm(("Delete the build %s?"):format(build.name), function() Training.DeleteBuild(classID, build) end)
+            ns.Confirm(("Delete the build %s?"):format(build.name), function()
+                -- The pick moves with the list; deleting the open build closes the editor.
+                local after = Training.SelectionAfterDelete(i, buildIndex)
+                buildIndex, editing = after or 1, after ~= nil and editing
+                Training.DeleteBuild(classID, build)
+            end)
         end
         -- A saved build has Edit and Delete, a built-in one Copy; both Export.
         local shown = { [c.edit] = saved, [c.copy] = not saved, [c.export] = true, [c.delete] = saved }

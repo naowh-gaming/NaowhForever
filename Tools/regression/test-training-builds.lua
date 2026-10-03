@@ -35,6 +35,8 @@ local function Fixture(o)
             return account[key]
         end,
         Changed = function() changes = changes + 1 end,
+        Apply = function() end,
+        CharKey = function() return "Me-Realm" end,
         UnitClass = function() return "Mage", "MAGE", 8 end,
         C_Spell = { GetSpellName = function(id) return "Talent " .. id end },
         wipe = function(t) for k in pairs(t) do t[k] = nil end end,
@@ -129,13 +131,60 @@ Case("strings that are not a build, or break the tree, are turned away", functio
     assert(#t.Printed == #bad, "each one said so")
 end)
 
-Case("an imported name is cut to 40 letters and cannot carry escape codes", function()
+Case("an imported name is cut to 40 letters and cannot carry escape codes or line breaks", function()
     local t = Fixture()
-    Import(t, t.Pack({ v = 1, class = 8, name = "|cffff0000" .. string.rep("x", 60), points = { 12 } }))
+    Import(t, t.Pack({ v = 1, class = 8, name = "|cffff0000Red\n" .. string.rep("x", 60), points = { 12 } }))
     local name = t.Saved(8)[1].name
-    assert(name:sub(1, 2) == "||" and #name == 41, name)
+    assert(not name:find("[|\n]") and #name == 40 and name:sub(1, 12) == "cffff0000Red", name)
     Import(t, t.Pack({ v = 1, class = 8, name = 5, spec = {}, points = { 12 } }))
     assert(t.Saved(8)[2].name == "Imported Build" and t.Saved(8)[2].spec == "Imported", "defaults")
+    Import(t, t.Pack({ v = 1, class = 8, name = "|||", points = { 12 } }))
+    assert(t.Saved(8)[3].name == "Imported Build", "nothing left of it")
+end)
+
+Case("a name shared and shared again comes back as it went", function()
+    local t = Fixture()
+    Import(t, t.Pack({ v = 1, class = 8, name = "A|B", spec = "Fire|Frost", points = { 12 } }))
+    local first = t.Saved(8)[1]
+    Import(t, t.T.ExportBuild(8, first))
+    Import(t, t.T.ExportBuild(8, t.Saved(8)[2]))
+    local third = t.Saved(8)[3]
+    assert(third.name == first.name and third.spec == first.spec, third.name .. " / " .. third.spec)
+end)
+
+Case("a followed build is the one picked, even when another has its name", function()
+    local t = Fixture()
+    t.T.NewBuild(8, "Same")
+    local secondIndex = t.T.NewBuild(8, "Same")
+    local second = t.T.Builds(8)[secondIndex]
+    t.T.Follow(8, second)
+    assert(t.T.Followed() == second, "the second one")
+    t.T.Follow(8, TREE[8][1])
+    assert(t.T.Followed() == TREE[8][1], "a built-in one")
+    t.T.Follow(8, nil)
+    assert(t.T.Followed() == nil, "stopped")
+end)
+
+Case("deleting a followed build stops following it, and nothing else takes its place", function()
+    local t = Fixture()
+    local firstIndex = t.T.NewBuild(8, "Same")
+    local first = t.T.Builds(8)[firstIndex]
+    local secondIndex = t.T.NewBuild(8, "Same")
+    local second = t.T.Builds(8)[secondIndex]
+    t.T.Follow(8, second)
+    t.T.DeleteBuild(8, second)
+    assert(t.T.Followed() == nil, "not the other Same")
+    t.T.Follow(8, first)
+    local index = t.T.NewBuild(8, "Other")
+    t.T.DeleteBuild(8, t.T.Builds(8)[index])
+    assert(t.T.Followed() == first, "deleting another build leaves it")
+end)
+
+Case("the pick moves with the list when a build is deleted", function()
+    local t = Fixture()
+    assert(t.T.SelectionAfterDelete(2, 4) == 3, "one above it")
+    assert(t.T.SelectionAfterDelete(5, 4) == 4, "one below it")
+    assert(t.T.SelectionAfterDelete(4, 4) == nil, "itself")
 end)
 
 Case("saving your talents lists them row by row, each up to its ranks", function()
