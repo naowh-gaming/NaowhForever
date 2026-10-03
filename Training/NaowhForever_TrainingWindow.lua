@@ -51,6 +51,8 @@ local TAB_X, TAB_W = 250, 84   -- the Spells and Builds tabs, from the window's 
 local TAB_MARK = 2             -- the active tab's underline
 local CLASS_H, CLASS_GAP = 26, 6
 local BUILD_H = 54
+local SHARE_W = 56         -- Export and Delete on a build card
+local IMPORT_W, SAVE_W = 120, 130
 local FIRST_TALENT_LEVEL = 10
 local CLASSES = { 1, 2, 3, 4, 5, 7, 8, 9, 11 }
 
@@ -592,12 +594,16 @@ local function NewBuildCard()
     c.name:SetPoint("TOPLEFT", 12, -10)
     c.spec = Text(c, 12, nil, T.muted)
     c.spec:SetPoint("BOTTOMLEFT", 12, 10)
+    c.export = ns.Button(c, "Export", SHARE_W, SKIP_H)
+    c.export:SetPoint("BOTTOMRIGHT", -8, 8)
+    c.delete = ns.Button(c, "Delete", SHARE_W, SKIP_H)
+    c.delete:SetPoint("RIGHT", c.export, "LEFT", -4, 0)
     c:SetScript("OnEnter", function(self) self.border:SetColor(T.accent.r, T.accent.g, T.accent.b, 1) end)
     c:SetScript("OnLeave", function(self) self.border:SetColor(self.rest.r, self.rest.g, self.rest.b, 1) end)
     return c
 end
 
-local function BuildCards(builds, y)
+local function BuildCards(classID, builds, y)
     local w = math.floor((body:GetWidth() - (COLS - 1) * CARD_GAP) / COLS)
     for i, build in ipairs(builds) do
         local col, line = (i - 1) % COLS, math.floor((i - 1) / COLS)
@@ -606,6 +612,11 @@ local function BuildCards(builds, y)
         c:SetWidth(w)
         c.name:SetText(build.name)
         c.spec:SetText(build.spec .. ", " .. #build.points .. " points")
+        c.export._onClick = function() ns.ShowCopyBox(build.name, Training.ExportBuild(classID, build)) end
+        c.delete:SetShown(build.saved == true)
+        c.delete._onClick = function()
+            ns.Confirm(("Delete the build %s?"):format(build.name), function() Training.DeleteBuild(classID, build) end)
+        end
         c.rest = i == buildIndex and T.accent or T.line
         c.border:SetColor(c.rest.r, c.rest.g, c.rest.b, 1)
         c:SetScript("OnClick", function()
@@ -684,25 +695,18 @@ local function Steps(build, talents, ranks, level, y)
     return y
 end
 
--- talent node -> your rank in it, from the active talent config.
-local function Ranks(talents)
-    local config = C_ClassTalents.GetActiveConfigID()
-    if not config then return nil end
-    local ranks = {}
-    for node in pairs(talents) do ranks[node] = C_Traits.GetNodeInfo(config, node).activeRank end
-    return ranks
-end
-
 local function DrawBuilds(level, y)
     local _, _, myClass = UnitClass("player")
     local classID = buildClass or myClass
     y = ClassRow(classID, y)
-    local builds = ns.TrainingBuilds[classID]
-    if not builds then return Header(y, "NO BUILDS YET", nil, "Builds for this class are on the way") end
-    y = Header(y, "BUILDS", #builds, "Placeholders for testing until Naowh's builds are in")
-    y = BuildCards(builds, y) - SECTION_GAP
+    local tree = ns.TrainingBuilds[classID]
+    local builds = Training.Builds(classID)
+    if #builds == 0 then return Header(y, "NO BUILDS YET", nil, "Builds for this class are on the way") end
+    if not builds[buildIndex] then buildIndex = 1 end
+    y = Header(y, "BUILDS", #builds, "The built-in builds are placeholders until Naowh's are in")
+    y = BuildCards(classID, builds, y) - SECTION_GAP
     local build = builds[buildIndex]
-    local ranks = classID == myClass and Ranks(builds.talents) or nil
+    local ranks = classID == myClass and Training.Ranks(tree.talents) or nil
     local note = "Another class's build, to look at"
     if ranks then
         local taken, count = 0, {}
@@ -713,7 +717,7 @@ local function DrawBuilds(level, y)
         note = ("%d of %d points taken"):format(taken, #build.points)
     end
     y = Header(y, build.name:upper(), nil, note)
-    return Steps(build, builds.talents, ranks, level, y)
+    return Steps(build, tree.talents, ranks, level, y)
 end
 
 -- Every spell of your class whose name holds the search, learned or not, as cards in level order.
@@ -969,6 +973,8 @@ local function SetTab(key)
     window.search:SetShown(spells)
     window.learned:SetShown(spells)
     window.back:SetShown(spells and selected ~= nil)
+    window.import:SetShown(not spells)
+    window.save:SetShown(not spells)
     scroll:SetPoint("TOPLEFT", PAD, -(spells and (HEADER + HERO_H + ROAD_H + 2 + PAD) or (HEADER + PAD)))
 end
 
@@ -1044,6 +1050,26 @@ local function Build()
     window.search:SetPoint("RIGHT", window.learned, "LEFT", -10, 0)
     window.back = ns.Button(window, "All Levels", 100, 24, function() Select(nil) end)
     window.back:SetPoint("RIGHT", window.search, "LEFT", -10, 0)
+    -- The Builds tab's own, where the search sits on Spells.
+    local function ShowBuild(classID, index)
+        buildClass, buildIndex = classID, index
+        Render()
+    end
+    window.import = ns.Button(window, "Import a Build", IMPORT_W, 24, function()
+        ns.PromptText("Paste a Naowh Forever talent build", "", 0, function(text)
+            Training.ImportBuild(text, ShowBuild)
+        end)
+    end)
+    window.import:SetPoint("RIGHT", miniButton, "LEFT", -8, 0)
+    window.save = ns.Button(window, "Save My Talents", SAVE_W, 24, function()
+        ns.PromptText("Name for your current talents", "", 40, function(name)
+            local classID, index = Training.SaveMyTalents(name)
+            if classID then ShowBuild(classID, index) end
+        end)
+    end)
+    window.save:SetPoint("RIGHT", window.import, "LEFT", -8, 0)
+    ns.Tooltip(window.save, "Save My Talents", "Keep the talents you have now as a build you can export. "
+        .. "The game does not keep the order you took them in, so it lists them row by row.")
     local rule = ns.Solid(window, "ARTWORK", T.line, 1)
     rule:SetPoint("TOPLEFT", 0, -HEADER)
     rule:SetPoint("TOPRIGHT", 0, -HEADER)
