@@ -17,6 +17,9 @@
   panel ticks what you can learn with Learn All I Can Afford, then puts the new ranks on your
   bars. Opening the trainer updates prices to what it asks, reputation discounts included.
   Off by default.
+- Training Planner: a Builds tab with talent builds for every class. Pick a class and a build
+  to see it level by level, which points you have already taken and which one comes next.
+  The builds in it for now are placeholders for testing; Naowh's own are on the way.
 - Top Bar: Faded Opacity (with Show On Mouseover) sets how visible the bar and the FPS / MS
   readout stay while the mouse is away. 0% by default, invisible as before.
 - Blessings: in combat each click on a class button blesses the next member of that class who
