@@ -39,7 +39,10 @@ local ROAD_TICKS = { 1, 10, 20, 30, 40, 50, 60 }
 local MAX_LEVEL = 60
 local COLS = 3
 local CARD_H, CARD_GAP, CARD_ICON = 58, 10, 36
-local ROW_H, ROW_GAP, ROW_ICON = 30, 4, 22
+local ROW_H, ROW_ICON = 30, 22
+-- A list as the Dungeon Journal draws one: rows touching, no edges, every other row a faint
+-- band, and a soft band under the mouse.
+local STRIPE, HOVER = St.STRIPE, 0.05
 local LATER_ICON, LATER_ICONS = 20, 5   -- a later level's spells, as icons before their names
 local SECTION_H = St.SECTION_H
 local SECTION_GAP = 18
@@ -139,7 +142,11 @@ local function UpgradeTag(entry)
 end
 
 local function SpellEnter(self)
-    self.border:SetColor(T.accent.r, T.accent.g, T.accent.b, 1)
+    if self.band then
+        self.band:SetAlpha(HOVER)
+    else
+        self.border:SetColor(T.accent.r, T.accent.g, T.accent.b, 1)
+    end
     GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
     GameTooltip:SetSpellByID(self.entry[2])
     local up = Training.Upgrade(self.entry)
@@ -160,7 +167,11 @@ local function SpellEnter(self)
 end
 
 local function SpellLeave(self)
-    self.border:SetColor(BLACK.r, BLACK.g, BLACK.b, 1)
+    if self.band then
+        self.band:SetAlpha(0)
+    else
+        self.border:SetColor(BLACK.r, BLACK.g, BLACK.b, 1)
+    end
     GameTooltip:Hide()
 end
 
@@ -190,13 +201,34 @@ local function PriceText(entry)
     return ns.Color("muted", "At the trainer")
 end
 
-local function SpellButton(height)
+local function ListRow(b)
+    b.stripe = ns.Solid(b, "BACKGROUND", T.fg, STRIPE)
+    b.stripe:SetAllPoints()
+    b.band = ns.Solid(b, "BACKGROUND", T.fg, 1)
+    b.band:SetAllPoints()
+    b.band:SetAlpha(0)
+end
+
+-- Every other row of a section is banded, the first plain; a section title starts it again.
+local listed = 0
+
+local function Stripe(row)
+    listed = listed + 1
+    row.stripe:SetShown(listed % 2 == 0)
+end
+
+-- list: a row of a list, banded; else a card in its edge.
+local function SpellButton(height, list)
     local b = CreateFrame("Button", nil, body)
     b:SetHeight(height)
     b:RegisterForClicks("LeftButtonUp", "RightButtonUp")
-    b.bg = ns.Solid(b, "BACKGROUND", T.fg, FILL)
-    b.bg:SetAllPoints()
-    b.border = ns.Border(b, BLACK)
+    if list then
+        ListRow(b)
+    else
+        b.bg = ns.Solid(b, "BACKGROUND", T.fg, FILL)
+        b.bg:SetAllPoints()
+        b.border = ns.Border(b, BLACK)
+    end
     b:SetScript("OnEnter", SpellEnter)
     b:SetScript("OnLeave", SpellLeave)
     b:SetScript("OnClick", SpellClick)
@@ -255,7 +287,7 @@ local function Card(entry, state, x, y, w)
 end
 
 local function NewRow()
-    local r = SpellButton(ROW_H)
+    local r = SpellButton(ROW_H, true)
     r.icon = Icon(r, ROW_ICON)
     r.icon.edge:SetPoint("LEFT", 5, 0)
     r.name = Text(r, 13, nil)
@@ -287,7 +319,8 @@ local function Row(entry, state, y, why)
     r.why:SetShown(state ~= "ignored")
     r.restore:SetShown(state == "ignored")
     r.restore._onClick = function() Training.SetIgnored(entry[2], false, false) end
-    return y - ROW_H - ROW_GAP
+    Stripe(r)
+    return y - ROW_H
 end
 
 -- A section title as every page draws it: small capitals in the soft accent, a muted count,
@@ -312,6 +345,7 @@ local function Header(y, title, count, note)
     h:SetPoint("TOPRIGHT", body, "TOPRIGHT", 0, y)
     h.title:SetText(title .. (count and ("   " .. ns.Color("muted", count)) or ""))
     h.note:SetText(note or "")
+    listed = 0
     return y - SECTION_H - St.SECTION_SPACE
 end
 
@@ -327,9 +361,7 @@ end
 local function NewLater()
     local b = CreateFrame("Button", nil, body)
     b:SetHeight(ROW_H)
-    b.bg = ns.Solid(b, "BACKGROUND", T.fg, FILL)
-    b.bg:SetAllPoints()
-    b.border = ns.Border(b, BLACK)
+    ListRow(b)
     b.level = Text(b, 13, nil)
     b.level:SetPoint("LEFT", 10, 0)
     b.level:SetWidth(70)
@@ -348,8 +380,8 @@ local function NewLater()
     b.names:SetPoint("RIGHT", b.price, "LEFT", -12, 0)
     b.names:SetJustifyH("LEFT")
     b.names:SetWordWrap(false)
-    b:SetScript("OnEnter", function(self) self.border:SetColor(T.accent.r, T.accent.g, T.accent.b, 1) end)
-    b:SetScript("OnLeave", function(self) self.border:SetColor(BLACK.r, BLACK.g, BLACK.b, 1) end)
+    b:SetScript("OnEnter", function(self) self.band:SetAlpha(HOVER) end)
+    b:SetScript("OnLeave", function(self) self.band:SetAlpha(0) end)
     return b
 end
 
@@ -548,7 +580,8 @@ local function DrawAll(plan, y)
             end
             b.price:SetText(Training.Coins(Training.Total(groups[level])))
             b:SetScript("OnClick", function() Select(level) end)
-            y = y - ROW_H - ROW_GAP
+            Stripe(b)
+            y = y - ROW_H
         end
         if #levels > MAX_LATER then
             y = Header(y, "", nil, ("and %d more levels on the road above"):format(#levels - MAX_LATER))
@@ -669,6 +702,7 @@ local function BuildCards(classID, builds, y)
 end
 
 local function StepEnter(self)
+    self.band:SetAlpha(HOVER)
     GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
     GameTooltip:SetSpellByID(self.spell)
     GameTooltip:Show()
@@ -677,8 +711,7 @@ end
 local function NewStep()
     local r = CreateFrame("Button", nil, body)
     r:SetHeight(ROW_H)
-    ns.Solid(r, "BACKGROUND", T.fg, FILL):SetAllPoints()
-    ns.Border(r, BLACK)
+    ListRow(r)
     r.level = Text(r, 13, nil)
     r.level:SetPoint("LEFT", 10, 0)
     r.level:SetWidth(90)
@@ -692,7 +725,10 @@ local function NewStep()
     r.state = Text(r, 12, nil)
     r.state:SetPoint("RIGHT", -10, 0)
     r:SetScript("OnEnter", StepEnter)
-    r:SetScript("OnLeave", GameTooltip_Hide)
+    r:SetScript("OnLeave", function(self)
+        self.band:SetAlpha(0)
+        GameTooltip:Hide()
+    end)
     return r
 end
 
@@ -730,7 +766,8 @@ local function Steps(build, talents, ranks, level, y)
         end
         r.state:SetText(text)
         Paint(r.state, color)
-        y = y - ROW_H - ROW_GAP
+        Stripe(r)
+        y = y - ROW_H
         i = j + 1
     end
     return y
