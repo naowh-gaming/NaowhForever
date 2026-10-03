@@ -5,6 +5,9 @@
 ### Added
 - Unlock Mode: right-click anything on screen for Element Options, which leaves Unlock Mode and
   opens that element's settings in /nf, its section already open.
+- Swing Timer: Color by Seal for paladins (Swing Timer > Bars, under Seals). The melee bars take
+  the color of the seal you have up, one color per seal. In combat that is the last seal you
+  cast until a Judgement uses it up; out of combat it is read from your buffs. Off by default.
 - Macros > Consumables: Food & Drink Bar (off by default), two buttons for the best food and the
   best drink in your bags, conjured first. Click to eat or drink; move it in Unlock Mode.
 - Training Planner (/nftraining, or its minimap and top bar button): a window with what your
@@ -187,6 +190,12 @@
 - Swing Timer: Apply Theme to Bar Colours (Colours, off by default) colors the main hand bar with your theme's Accent, the off hand bar with its lighter Accent and the ranged bar with a deeper shade of it, instead of the colors picked there.
 
 ### Changed
+- Training Planner: the Builds tab is laid out as the Dungeon Journal is, the class's builds in a
+  list down the left and the one you pick beside it, with its buttons (Learn Next Points, Follow
+  This Build, Edit or Copy, Export, Delete) over it. Its lists (a build level by level, the spells
+  waiting on a rank, talent or later level, and the later levels) are one continuous list, every
+  other row faintly banded, instead of a box round each row. In the talent tree each talent's
+  ranks sit under it instead of over its corner.
 - Top Bar settings moved from their own sidebar page to the top of QoL > General, with a Top Bar switch in place of the page's Enable switch. /nf still opens on them.
 - The options window's sidebar header shows the NaowhUI Forever logo, and the search box beside it is narrower.
 - Flight Timer: with Land Early Button on, Blizzard's own Request Stop button is hidden
