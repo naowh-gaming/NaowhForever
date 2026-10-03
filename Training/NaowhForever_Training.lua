@@ -38,13 +38,18 @@ local function Prices()
     return Account("trainingPrices")
 end
 
--- spellID -> true for the spells this character chose not to see in the lists.
 local charKey
+local function CharKey()
+    charKey = charKey or UnitName("player") .. "-" .. GetRealmName()
+    return charKey
+end
+
+-- spellID -> true for the spells this character chose not to see in the lists.
 local function Ignored()
     local all = Account("trainingIgnored")
-    charKey = charKey or UnitName("player") .. "-" .. GetRealmName()
-    all[charKey] = all[charKey] or {}
-    return all[charKey]
+    local key = CharKey()
+    all[key] = all[key] or {}
+    return all[key]
 end
 
 local function ClassSpells()
@@ -491,6 +496,31 @@ function Training.ClearPoints(build)
     Changed()
 end
 
+-- Buys the build's points you have not taken, in its order, until the game says no (no points
+-- left, or the next talent cannot be taken now), then commits them once. Your own class only,
+-- out of combat. Returns how many points it took.
+local learning = false
+
+function Training.LearnBuild(classID, build)
+    local _, _, myClass = UnitClass("player")
+    local tree = ns.TrainingBuilds[classID]
+    local config = C_ClassTalents.GetActiveConfigID()
+    if learning or classID ~= myClass or InCombatLockdown() or not (tree and config) then return 0 end
+    local ranks, count, bought = Training.Ranks(tree.talents), {}, 0
+    -- Committing fires the talent events that start a followed build's learning again.
+    learning = true
+    for _, node in ipairs(build.points) do
+        count[node] = (count[node] or 0) + 1
+        if ranks[node] < count[node] then
+            if not C_Traits.PurchaseRank(config, node) then break end
+            bought = bought + 1
+        end
+    end
+    if bought > 0 then C_Traits.CommitConfig(config) end
+    learning = false
+    return bought
+end
+
 function Training.DeleteBuild(classID, build)
     local saved = Saved(classID)
     for i, b in ipairs(saved) do
@@ -563,6 +593,8 @@ local function Apply()
         events:SetScript("OnEvent", function(_, event)
             if event == "TRAINER_SHOW" or event == "TRAINER_UPDATE" then
                 QueueScan()
+            elseif event == "TRAIT_TREE_CURRENCY_INFO_UPDATED" or event == "PLAYER_REGEN_ENABLED" then
+                Training.LearnFollowed()
             else
                 Changed()
             end
@@ -572,6 +604,40 @@ local function Apply()
     events:RegisterEvent("TRAINER_UPDATE")
     events:RegisterEvent("PLAYER_LEVEL_UP")
     events:RegisterEvent("LEARNED_SPELL_IN_SKILL_LINE")
+    -- Following a build: a new talent point, or the end of the fight that held one back.
+    local follow = Training.Followed() ~= nil
+    for _, event in ipairs({ "TRAIT_TREE_CURRENCY_INFO_UPDATED", "PLAYER_REGEN_ENABLED" }) do
+        if follow then events:RegisterEvent(event) else events:UnregisterEvent(event) end
+    end
+    if follow then Training.LearnFollowed() end
+end
+
+-------------------------------------------------------------------------------
+--  Following a build: this character's new talent points spent on it as they come
+-------------------------------------------------------------------------------
+-- The build this character follows and its class, or nil. Kept by name, per character.
+function Training.Followed()
+    local followed = Account("trainingFollow")[CharKey()]
+    if not followed then return nil end
+    for _, build in ipairs(Training.Builds(followed.class)) do
+        if build.name == followed.name then return build, followed.class end
+    end
+end
+
+-- build nil stops following.
+function Training.Follow(classID, build)
+    Account("trainingFollow")[CharKey()] = build and { class = classID, name = build.name } or nil
+    Apply()
+    Changed()
+end
+
+function Training.LearnFollowed()
+    local build, classID = Training.Followed()
+    if not build then return end
+    local bought = Training.LearnBuild(classID, build)
+    if bought > 0 then
+        ns.Print(("Learned %d talent %s from %s."):format(bought, bought == 1 and "point" or "points", build.name))
+    end
 end
 
 S.OnChange(function(key)

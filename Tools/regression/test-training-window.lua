@@ -168,8 +168,9 @@ local env = setmetatable({
     },
     C_SpellBook = { IsSpellKnown = function() return false end },
     C_Item = {},
-    C_ClassTalents = { GetActiveConfigID = function() return 1 end },
-    C_Traits = { GetNodeInfo = function() return { activeRank = 0 } end },
+    C_ClassTalents = { GetActiveConfigID = function() return 1 end, HasUnspentTalentPoints = function() return true end },
+    C_Traits = { GetNodeInfo = function() return { activeRank = 0 } end, PurchaseRank = function() return true end,
+        CommitConfig = function() return true end },
     C_Timer = { After = function(_, fn) fn() end },
     PixelUtil = { SetPoint = NOTHING, SetSize = NOTHING },
     MenuUtil = { CreateContextMenu = NOTHING },
@@ -235,6 +236,7 @@ Click(window.import)
 for _ = 1, 2 do
     for _, f in ipairs(Clickables()) do Click(f) end
 end
+check("following a build is kept for the character", account.trainingFollow ~= nil)
 window.switch.onPick("spells")
 check("back on Spells", window.hero:IsShown())
 

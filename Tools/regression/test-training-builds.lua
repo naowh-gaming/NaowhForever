@@ -21,6 +21,7 @@ TREE[1] = { specs = { "Arms", "Fury", "Protection" }, talents = { [21] = { 2001,
 local function Fixture(o)
     o = o or {}
     local account, printed, changes = {}, {}, 0
+    local bought, commits = {}, 0
     -- A stand-in codec: what goes into the payload and what comes back out is the point here.
     local vault = {}
     local env = {
@@ -39,7 +40,17 @@ local function Fixture(o)
         wipe = function(t) for k in pairs(t) do t[k] = nil end end,
         GetClassInfo = function(id) return ({ [1] = "Warrior", [8] = "Mage" })[id] end,
         C_ClassTalents = { GetActiveConfigID = function() return o.config end },
-        C_Traits = { GetNodeInfo = function(_, node) return { activeRank = (o.ranks or {})[node] or 0 } end },
+        C_Traits = {
+            GetNodeInfo = function(_, node) return { activeRank = (o.ranks or {})[node] or 0 } end,
+            -- Buys while points are left: o.points of them.
+            PurchaseRank = function(_, node)
+                if (o.points or 0) <= #bought then return false end
+                bought[#bought + 1] = node
+                return true
+            end,
+            CommitConfig = function() commits = commits + 1; return true end,
+        },
+        InCombatLockdown = function() return o.combat == true end,
         LibStub = function(name)
             if name == "LibSerialize" then
                 return {
@@ -69,7 +80,8 @@ local function Fixture(o)
         return "!NFB1!S" .. #vault
     end
     return { T = training, Pack = Pack, Saved = function(class) return (account.trainingBuilds or {})[class] or {} end,
-        Printed = printed, Changes = function() return changes end }
+        Printed = printed, Changes = function() return changes end,
+        Bought = function() return table.concat(bought, " ") end, Commits = function() return commits end }
 end
 
 local count = 0
@@ -203,6 +215,22 @@ Case("every build that ships passes the rules, and every class has one", functio
         classes = classes + 1
     end
     assert(classes == 9, classes)
+end)
+
+Case("learning a build buys the points not taken, in order, while points last, then commits once", function()
+    local t = Fixture({ config = 1, points = 3, ranks = { [13] = 2 } })
+    assert(t.T.LearnBuild(8, TREE[8][1]) == 3, "three bought")
+    assert(t.Bought() == "13 13 12", t.Bought())
+    assert(t.Commits() == 1, "one commit")
+    local none = Fixture({ config = 1, points = 0 })
+    assert(none.T.LearnBuild(8, TREE[8][1]) == 0 and none.Commits() == 0, "nothing to spend, nothing committed")
+end)
+
+Case("no learning in combat, for another class, or without a talent config", function()
+    local build = TREE[8][1]
+    assert(Fixture({ config = 1, points = 5, combat = true }).T.LearnBuild(8, build) == 0, "combat")
+    assert(Fixture({ config = 1, points = 5 }).T.LearnBuild(1, build) == 0, "another class")
+    assert(Fixture({ points = 5 }).T.LearnBuild(8, build) == 0, "no config")
 end)
 
 print(("test-training-builds: %d cases passed"):format(count))

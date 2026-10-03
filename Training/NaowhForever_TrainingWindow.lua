@@ -59,6 +59,7 @@ local CLASS_H, CLASS_GAP = 26, 6
 local BUILD_H = 94
 local SHARE_W = 56         -- the buttons on a build card
 local EDIT_W = 80          -- Undo, Clear and Done above the talent tree
+local LEARN_W, FOLLOW_W = 140, 140   -- Learn Next Points and Follow This Build on your build
 local NODE, NODE_GAP, NODE_ROW = 36, 12, 48   -- a talent in the tree, its gap, a row's height
 local TREE_ROWS, TREE_SLOTS = 7, 4
 local SPEC_H = 28          -- a tree column's name, above it
@@ -850,6 +851,38 @@ local function DrawEditor(tree, build, level, y)
     return Steps(build, tree.talents, nil, level, y)
 end
 
+local function NewLearnButton()
+    return ns.Button(body, "", LEARN_W, SKIP_H + 6)
+end
+
+-- Your own class's build: learn its next points now, or follow it as you level.
+local function LearnButtons(classID, build, y)
+    local learn = Take("learn", NewLearnButton)
+    learn:SetPoint("TOPLEFT", body, "TOPLEFT", 0, y)
+    ns.SetButtonText(learn, "Learn Next Points")
+    learn._onClick = function()
+        local bought = Training.LearnBuild(classID, build)
+        if bought > 0 then
+            ns.Print(("Learned %d talent %s from %s."):format(bought, bought == 1 and "point" or "points", build.name))
+        elseif InCombatLockdown() then
+            ns.Print("Talents can be learned once the fight is over.")
+        elseif not C_ClassTalents.HasUnspentTalentPoints() then
+            ns.Print("You have no talent points to spend.")
+        else
+            ns.Print("The build's next talent cannot be taken now: your talents are not the build's.")
+        end
+    end
+    local follow = Take("learn", NewLearnButton)
+    follow:SetWidth(FOLLOW_W)
+    follow:SetPoint("LEFT", learn, "RIGHT", 6, 0)
+    local following = Training.Followed() == build
+    ns.SetButtonText(follow, following and "Stop Following" or "Follow This Build")
+    follow._rest = following and T.accent or BLACK
+    follow._border:SetColor(follow._rest.r, follow._rest.g, follow._rest.b, 1)
+    follow._onClick = function() Training.Follow(classID, not following and build or nil) end
+    return y - SKIP_H - 6 - SECTION_GAP
+end
+
 local function DrawBuilds(level, y)
     local _, _, myClass = UnitClass("player")
     local classID = buildClass or myClass
@@ -871,8 +904,10 @@ local function DrawBuilds(level, y)
             if ranks[node] >= count[node] then taken = taken + 1 end
         end
         note = ("%d of %d points taken"):format(taken, #build.points)
+            .. (Training.Followed() == build and ", following it as you level" or "")
     end
     y = Header(y, build.name:upper(), nil, note)
+    if ranks then y = LearnButtons(classID, build, y) end
     return Steps(build, tree.talents, ranks, level, y)
 end
 
