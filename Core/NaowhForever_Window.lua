@@ -926,14 +926,15 @@ local function CreateWindow()
         if group ~= "" then
             local label = ns.Font(nav, 11, nil, T.muted)
             label:SetPoint("TOPLEFT", 20, ny - 10); label:SetText(ns.L(group))
-            ny = ny - 30
+            ny = ny - 28
         end
         for _, mod in ipairs(grouped[group]) do
             local btn = NavigationButton(nav, DisplayName(mod), ny,
                 function() ShowPage(lastPages[mod.name] or mod.tabs[1].key) end, mod.navIcon)
-            btn:SetHeight(32)
+            -- Spaced to fit every module in the default 790-high window (test-navigation.lua).
+            btn:SetHeight(30)
             navButtons[mod.name] = btn
-            ny = ny - 34
+            ny = ny - 32
         end
     end
     nav:SetHeight(-ny)
