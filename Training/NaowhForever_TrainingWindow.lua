@@ -1240,7 +1240,7 @@ local function Build()
     scroll:SetScrollChild(body)
 
     Parts.FooterBrand(window, PAGE, CARD_INSET)
-    Parts.FooterNote(window, "Spells from Wowhead Forever; prices from your trainer")
+    Parts.FooterNote(window, "Prices from your trainer")
 
     window:SetScript("OnShow", function(self)
         if not InCombatLockdown() then
