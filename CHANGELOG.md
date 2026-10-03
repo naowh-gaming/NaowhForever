@@ -3,6 +3,9 @@
 ## Unreleased
 
 ### Added
+- QoL > Questing: On-Screen Buttons (off by default) puts Invite and Disband on your screen,
+  stacked or side by side, to move in Unlock Mode. Invite invites your target, in combat
+  too; Disband removes everyone (group leader, out of combat).
 - Unlock Mode: right-click anything on screen for Element Options, which leaves Unlock Mode and
   opens that element's settings in /nf, its section already open.
 - Swing Timer: Color by Seal for paladins (Swing Timer > Bars, under Seals). The melee bars take
