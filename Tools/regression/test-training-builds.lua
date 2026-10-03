@@ -188,20 +188,21 @@ Case("a copy of a built-in build is a saved build of its own", function()
     assert(#TREE[8][1].points == 6, "the built-in one is untouched")
 end)
 
-Case("every build that ships passes the rules", function()
+Case("every build that ships passes the rules, and every class has one", function()
     local data = assert(io.open("Training/NaowhForever_TrainingBuilds.lua", "rb")):read("*a")
     local ns = {}
     local chunk = assert(loadstring(data)); setfenv(chunk, { _G = { NaowhForever = ns } }); chunk()
-    local t, n = Fixture(), 0
+    local t, classes = Fixture(), 0
     for class, tree in pairs(ns.TrainingBuilds) do
-        assert(#tree.specs == 3, "specs " .. class)
+        assert(#tree.specs == 3 and #tree > 0, "specs and builds " .. class)
         for _, build in ipairs(tree) do
             local why = t.T.CheckBuild(tree, build.points)
-            assert(why == nil and #build.points == 51, class .. " " .. build.name .. ": " .. tostring(why))
-            n = n + 1
+            assert(why == nil and #build.points > 0, class .. " " .. build.name .. ": " .. tostring(why))
+            assert(type(build.source) == "string", "credited " .. build.name)
         end
+        classes = classes + 1
     end
-    assert(n == 27, n)
+    assert(classes == 9, classes)
 end)
 
 print(("test-training-builds: %d cases passed"):format(count))

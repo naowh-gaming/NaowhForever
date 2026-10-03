@@ -50,7 +50,7 @@ local MINI_W, MINI_H, MINI_PAD, MINI_LOGO = 340, 74, 10, 16
 local TAB_X, TAB_W = 250, 84   -- the Spells and Builds tabs, from the window's left edge
 local TAB_MARK = 2             -- the active tab's underline
 local CLASS_H, CLASS_GAP = 26, 6
-local BUILD_H = 80
+local BUILD_H = 94
 local SHARE_W = 56         -- the buttons on a build card
 local IMPORT_W, SAVE_W, NEW_W = 120, 130, 100
 local EDIT_W = 80          -- Undo, Clear and Done above the talent tree
@@ -599,6 +599,8 @@ local function NewBuildCard()
     c.name:SetPoint("TOPLEFT", 12, -10)
     c.spec = Text(c, 12, nil, T.muted)
     c.spec:SetPoint("TOPLEFT", c.name, "BOTTOMLEFT", 0, -6)
+    c.source = Text(c, 12, nil, T.muted)
+    c.source:SetPoint("TOPLEFT", c.spec, "BOTTOMLEFT", 0, -4)
     c.edit = ns.Button(c, "Edit", SHARE_W, SKIP_H)
     c.copy = ns.Button(c, "Copy", SHARE_W, SKIP_H)
     c.export = ns.Button(c, "Export", SHARE_W, SKIP_H)
@@ -618,6 +620,7 @@ local function BuildCards(classID, builds, y)
         c.name:SetText(build.name)
         c.spec:SetText(build.spec .. ", " .. #build.points .. " points")
         local saved = build.saved == true
+        c.source:SetText(build.source or (saved and "Saved by you" or ""))
         c.edit._onClick = function()
             buildIndex, editing = i, true
             Render()
@@ -848,7 +851,7 @@ local function DrawBuilds(level, y)
     local builds = Training.Builds(classID)
     if #builds == 0 then return Header(y, "NO BUILDS YET", nil, "Builds for this class are on the way") end
     if not builds[buildIndex] then buildIndex = 1 end
-    y = Header(y, "BUILDS", #builds, "The built-in builds are placeholders until Naowh's are in")
+    y = Header(y, "BUILDS", #builds, "Leveling builds from Mobalytics' WoW Forever guides, levels 10 to 30")
     y = BuildCards(classID, builds, y) - SECTION_GAP
     local build = builds[buildIndex]
     if editing and build.saved then return DrawEditor(tree, build, level, y) end
