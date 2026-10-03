@@ -66,6 +66,14 @@ local MODULES = {
           { name = "Books", build = "BuildDiscoveryBooksPage", reuse = true, noscan = true },
           { name = "Settings", build = "BuildDiscoverySettingsPage", reuse = true },
       } },
+    -- The planner itself is a window of its own (open); only its settings live here.
+    { name = "Training Planner", group = "ADVENTURE", navIcon = "notes", settings = "TrainingSettings",
+      open = "ToggleTrainingWindow",
+      command = "training", short = "Training", icon = "Interface\\Icons\\INV_Misc_Book_11",
+      subtitle = "What you can train now, what each level brings and what it costs.",
+      tabs = {
+          { name = "Settings", build = "BuildTrainingSettingsPage", reuse = true },
+      } },
     { name = "Gear & Trinkets", group = "COMBAT", navIcon = "shield", settings = "QoLSettings", enabledKey = "gearSets",
       command = "gear", short = "Gear", icon = "Interface\\Icons\\INV_Chest_Plate04",
       subtitle = "Swap equipment sets from a bar, or on their own while you ride or rest.",
