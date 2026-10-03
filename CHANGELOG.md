@@ -6,6 +6,8 @@
 - QoL > Questing: On-Screen Buttons (off by default) puts Invite and Disband on your screen,
   stacked or side by side, to move in Unlock Mode. Invite invites your target, in combat
   too; Disband removes everyone (group leader, out of combat).
+- QoL > Loot & Items: Auto-Replace Enchants (off by default) says yes for you when an enchant
+  would replace the one already on an item. Hold Shift to be asked.
 - Unlock Mode: right-click anything on screen for Element Options, which leaves Unlock Mode and
   opens that element's settings in /nf, its section already open.
 - Swing Timer: Color by Seal for paladins (Swing Timer > Bars, under Seals). The melee bars take
@@ -255,6 +257,8 @@
   can no longer hide the empty window, so choose With Threat for that.
 
 ### Fixed
+- Blessings: the options window opens again while the bar shows your blessing buffs. Opening
+  it, or changing the UI scale, raised a Lua error and left the window broken.
 - Borders and divider lines no longer lose a side at some UI scales (the trainer popup's X
   missing its left edge, a panel without its top line), and icons keep their black edge all
   round. Every border, line and icon edge is now exactly one screen pixel, refitted when the
