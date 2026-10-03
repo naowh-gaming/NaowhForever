@@ -462,7 +462,10 @@ local function Register(region, fit)
     local owner = region:GetObjectType() == "Texture" and region:GetParent() or region
     if not fitters[owner] then
         fitters[owner] = setmetatable({}, { __mode = "k" })
-        owner:HookScript("OnShow", FitOwner)
+        -- A child frame of ours shows with its owner. Hooking the owner's own OnShow is not
+        -- enough: a module setting OnShow with SetScript after its lines are made drops the hook.
+        local watch = CreateFrame("Frame", nil, owner)
+        watch:SetScript("OnShow", function() FitOwner(owner) end)
     end
     fitters[owner][region] = fit
     fit(OnePixel(region))

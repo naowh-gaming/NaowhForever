@@ -473,6 +473,7 @@ local function FitMainWindow()
     local fit = math.min((UIParent:GetWidth() - 32) / window:GetWidth(),
         (UIParent:GetHeight() - 32) / window:GetHeight())
     window:SetScale(math.min(ns.UIScale(), math.max(0.25, fit)))
+    ns.RefitPixels()
 end
 
 function ns.SetWindowScale(pct)

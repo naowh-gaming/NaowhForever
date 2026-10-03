@@ -8,17 +8,21 @@ local last = assert(source:find("-- Four 1px edges", first, true))
 
 local factor = 768 / 1440          -- a 1440p screen
 local function Frame(scale, parent)
-    local o = { scale = scale, parent = parent, points = {}, hooks = {}, visible = true }
+    local o = { scale = scale, parent = parent, points = {}, children = {}, visible = true }
     function o:GetObjectType() return self.texture and "Texture" or "Frame" end
     function o:GetParent() return self.parent end
     function o:GetEffectiveScale() return self.parent and self.parent:GetEffectiveScale() or self.scale end
-    function o:HookScript(_, fn) self.hooks[#self.hooks + 1] = fn end
+    function o:SetScript(_, fn) self.onShow = fn end
     function o:IsVisible() return self.visible end
     function o:SetHeight(h) self.height = h end
     function o:SetWidth(w) self.width = w end
     function o:ClearAllPoints() self.points = {} end
     function o:SetPoint(point, _, _, x, y) self.points[point] = { x, y } end
-    function o:Show() for _, fn in ipairs(self.hooks) do fn(self) end end
+    -- Showing a frame shows its children: each child's OnShow runs.
+    function o:Show()
+        if self.onShow then self.onShow(self) end
+        for _, child in ipairs(self.children) do child:Show() end
+    end
     return o
 end
 local function Texture(parent)
@@ -29,7 +33,12 @@ end
 
 local ns = {}
 local env = setmetatable({ ns = ns, PixelUtil = { GetPixelToUIUnitFactor = function() return factor end },
-    CreateFrame = function() return { RegisterEvent = function() end, SetScript = function() end } end },
+    CreateFrame = function(_, _, parent)
+        local child = Frame(1, parent)
+        if parent then parent.children[#parent.children + 1] = child end
+        child.RegisterEvent = function() end
+        return child
+    end },
     { __index = _G })
 local chunk = assert(loadstring(source:sub(first, last - 1))); setfenv(chunk, env); chunk()
 
@@ -58,7 +67,9 @@ Case("a frame showing again after a scale change refits its lines once", functio
     local line = Texture(panel)
     ns.Hairline(line, "h")
     ns.Hairline(line, "h")
-    assert(#panel.hooks == 1, "one show hook per frame, however often a line registers")
+    assert(#panel.children == 1, "one watcher per frame, however often a line registers")
+    -- A module setting the frame's own OnShow afterwards does not stop the refit.
+    panel:SetScript("OnShow", function() end)
     panel.scale = 1.4
     panel:Show()
     assert(Near(line.height, factor / 1.4), "refitted to the new scale")
