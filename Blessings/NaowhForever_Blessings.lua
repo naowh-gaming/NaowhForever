@@ -622,8 +622,9 @@ local function Watch(frame)
         c:AddAuraSlot("buff", "HELPFUL", {
             candidateFilters = { includeSpellIDs = {} },
             initializeFrame = function(button)
-                -- Inset like the button's own icon, so its black border still shows.
-                ns.PixelInset(button, 1, c)
+                -- Over the button's own icon, so its black border still shows. Not PixelInset:
+                -- a Blizzard aura button's IsVisible is secret, and refitting it raises.
+                button:SetAllPoints(frame.icon)
                 button:EnableMouse(false)
                 local icon = button:CreateTexture(nil, "ARTWORK")
                 icon:SetAllPoints()
@@ -1052,7 +1053,7 @@ local function BuildBar()
     bar:SetMovable(true)
     bar:SetClampedToScreen(true)
     cells = {}
-    bar.mover = ns.UI.AttachMover(bar, "Blessings", function(pos) S.Set("blessPos", pos) end)
+    bar.mover = ns.UI.AttachMover(bar, "Blessings", function(pos) S.Set("blessPos", pos) end, "Blessings/Bar")
     local pos = S.Get("blessPos")
     if pos then
         bar:SetPoint(pos.point, UIParent, pos.relPoint, pos.x, pos.y)
