@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
 --  NaowhForever_ActionBarsWindow.lua -- Action Bars' own window (/nfbars, /nf bars, Open
---  Action Bars on its settings page): your class's saved bar sets to save, restore, test,
+--  Action Bars on its settings page): your class's saved bar sets to save, import, test,
 --  rename and delete, drawn by ns.BuildActionBarsPage.
 -------------------------------------------------------------------------------
 local ns = _G.NaowhForever
@@ -52,7 +52,7 @@ local function Build()
     window = Parts.Window(WIDTH, HEIGHT, "actionBarsWindow")
     window.backdrop:Card(CARD, HEADER + CARD, CARD, FOOTER + CARD)
     local close = Parts.TitleBar(window, "Action Bars",
-        "Your action bars saved by name and put back whenever you want them.", PAGE)
+        "Save your bars, macros and keybinds, then import them on any character.", PAGE)
     local _, opacity = Parts.Opacity(window, close, Opacity, SetOpacity)
     window.opacity = opacity
     Parts.FooterBrand(window, PAGE)

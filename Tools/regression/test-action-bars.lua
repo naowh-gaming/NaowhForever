@@ -9,8 +9,8 @@ local SPELLS = {
 }
 
 local function World(known)
-    local w = { bars = {}, macros = {}, cursor = nil, opts = {}, account = {}, printed = {},
-        combat = false }
+    local w = { bars = {}, macros = {}, charMacros = {}, binds = {}, cursor = nil, opts = {}, account = {},
+        printed = {}, combat = false }
     local book = {}
     for _, id in ipairs(known) do
         book[#book + 1] = { name = SPELLS[id][1], subName = "Rank " .. SPELLS[id][2], actionID = id,
@@ -19,7 +19,7 @@ local function World(known)
     local function Known(id)
         for _, item in ipairs(book) do if item.actionID == id then return true end end
     end
-    w.opts.enabled = true
+    w.opts.enabled, w.opts.importMacros, w.opts.importBindings = true, true, true
     local S = {
         Get = function(k) return w.opts[k] end,
         Toggle = function(_, text) return { type = "toggle", text = text } end,
@@ -33,7 +33,10 @@ local function World(known)
             f[m] = function() end
         end
         f.GetStringHeight = function() return 12 end
-        f.SetText = function(_, text) if key == "barsName" then w.lastName = text end end
+        f.SetText = function(_, text)
+            if key == "barsName" then w.lastName = text end
+            if key == "barsHas" then w.lastHas = text end
+        end
         fake[key] = f
         return f
     end
@@ -99,15 +102,44 @@ local function World(known)
         PickupAction = function(slot) w.cursor, w.bars[slot] = w.bars[slot], nil end,
         GetMacroIndexByName = function(name)
             for i, m in ipairs(w.macros) do if m.name == name then return i end end
+            for i, m in ipairs(w.charMacros) do if m.name == name then return 120 + i end end
             return 0
         end,
-        GetMacroInfo = function(i) local m = w.macros[i]; return m.name, m.icon, m.body end,
-        GetNumMacros = function() return #w.macros + (w.otherMacros or 0), 0 end,
-        CreateMacro = function(name, icon, body) w.macros[#w.macros + 1] = { name = name, icon = icon, body = body } end,
+        GetMacroInfo = function(i)
+            local m = i > 120 and w.charMacros[i - 120] or w.macros[i]
+            if m then return m.name, m.icon, m.body end
+        end,
+        GetNumMacros = function() return #w.macros + (w.otherMacros or 0), #w.charMacros end,
+        CreateMacro = function(name, icon, body, perCharacter)
+            local list = perCharacter and w.charMacros or w.macros
+            list[#list + 1] = { name = name, icon = icon, body = body }
+            return (perCharacter and 120 or 0) + #list
+        end,
         PickupMacro = function(i)
             -- A macro slot reports the spell it shows; this one shows nothing.
-            w.cursor = { kind = "macro", id = 0, name = w.macros[i].name }
+            local m = i > 120 and w.charMacros[i - 120] or w.macros[i]
+            w.cursor = { kind = "macro", id = 0, name = m.name }
         end,
+        GetNumBindings = function() return #w.binds end,
+        GetBinding = function(i) local b = w.binds[i]; return b[1], "HEADER", b[2], b[3] end,
+        SetBinding = function(key, command)
+            if command == "NO_SUCH_ADDON" then return false end
+            for _, b in ipairs(w.binds) do
+                if b[2] == key then b[2] = b[3]; b[3] = nil end
+                if b[3] == key then b[3] = nil end
+            end
+            for _, b in ipairs(w.binds) do
+                if b[1] == command then
+                    if b[2] then b[3] = key else b[2] = key end
+                    return true
+                end
+            end
+            w.binds[#w.binds + 1] = { command, key }
+            return true
+        end,
+        C_KeyBindings = { GetBindingContextForAction = function() return 1 end },
+        GetCurrentBindingSet = function() return 2 end,
+        SaveBindings = function(set) w.savedBindings = set end,
         InCombatLockdown = function() return w.combat end,
         UnitClass = function() return "Priest", "PRIEST" end,
         UnitName = function() return "Preview" end,
@@ -151,12 +183,12 @@ end
 local count = 0
 local function Case(name, fn) fn(); count = count + 1; print("PASS " .. name) end
 
-Case("restore puts every slot back and clears slots the set left empty", function()
+Case("import puts every slot back and clears slots the set left empty", function()
     local w = World({ 2055, 598 })
     w.bars = { [1] = Spell(2055), [3] = Spell(598), [185] = { kind = "item", id = 6948 } }
     w.run("save Raid")
     w.bars = { [1] = Spell(598), [2] = Spell(2055) }
-    w.run("restore Raid")
+    w.run("import Raid")
     assert(Bars(w) == "1=spell2055 3=spell598 185=item6948", Bars(w))
     assert(w.cursor == nil, "nothing left on the cursor")
 end)
@@ -182,7 +214,7 @@ Case("without Highest Rank a known saved rank stays, for downranking", function(
     w.run("restore Heals")
     assert(Bars(w) == "1=spell2054 2=spell6064", Bars(w))
 end)
-Case("a test restore changes nothing and lists what would be left empty", function()
+Case("a test import changes nothing and lists what would be left empty", function()
     local w = World({ 2055 })
     w.account.barSets = { PRIEST = { Set = { saved = 0, slots = { [1] = { kind = "spell", id = 585, name = "Smite" } } } } }
     w.bars = { [5] = Spell(2055) }
@@ -190,7 +222,7 @@ Case("a test restore changes nothing and lists what would be left empty", functi
     assert(Bars(w) == "5=spell2055", Bars(w))
     assert(w.printed[#w.printed]:find("Smite", 1, true), w.printed[#w.printed])
 end)
-Case("macros are found by name and restored", function()
+Case("restore still imports, and macros are found by name", function()
     local w = World({})
     w.macros = { { name = "Pull", icon = 1, body = "/say pull" } }
     w.bars = { [7] = Macro("Pull") }
@@ -199,19 +231,103 @@ Case("macros are found by name and restored", function()
     w.run("restore M")
     assert(Bars(w) == "7=Pull", Bars(w))
 end)
-Case("a deleted macro is left empty unless Recreate Deleted Macros is on", function()
+Case("a missing macro is made on import, and left empty with Import Macros off", function()
     local w = World({})
     w.macros = { { name = "Pull", icon = 1, body = "/say pull" } }
     w.bars = { [7] = Macro("Pull") }
     w.run("save M")
     w.macros, w.bars = {}, {}
-    w.run("restore M")
+    w.opts.importMacros = false
+    w.run("import M")
     assert(Bars(w) == "" and #w.macros == 0)
-    w.opts.recreateMacros = true
+    w.opts.importMacros = true
     w.run("test M")
     assert(#w.macros == 0, "a test does not make macros")
-    w.run("restore M")
+    w.run("import M")
     assert(Bars(w) == "7=Pull" and w.macros[1].body == "/say pull", Bars(w))
+end)
+Case("an alt gets the macros it lacks once, and keeps its own", function()
+    local w = World({})
+    w.macros = { { name = "Pull", icon = 1, body = "/say pull" } }
+    w.charMacros = { { name = "Bop", icon = 2, body = "/cast Blessing of Protection" } }
+    w.bars = { [1] = Macro("Pull"), [2] = Macro("Bop") }
+    w.run("save Main")
+    w.charMacros, w.bars = { { name = "Mine", icon = 3, body = "/dance" } }, {}
+    w.run("import Main")
+    assert(Bars(w) == "1=Pull 2=Bop", Bars(w))
+    assert(#w.macros == 1, "the account macro was already there")
+    assert(#w.charMacros == 2 and w.charMacros[1].name == "Mine", "the alt's own macro is kept")
+    w.run("import Main")
+    assert(#w.macros == 1 and #w.charMacros == 2, "a second import makes nothing")
+end)
+Case("a macro already here under another name is used, not copied", function()
+    local w = World({})
+    w.charMacros = { { name = "Bop", icon = 2, body = "/cast Blessing of Protection" } }
+    w.bars = { [4] = Macro("Bop") }
+    w.run("save Main")
+    w.charMacros, w.bars = { { name = "BoP2", icon = 2, body = "/cast Blessing of Protection\r\n" } }, {}
+    w.run("import Main")
+    assert(#w.charMacros == 1 and Bars(w) == "4=BoP2", Bars(w))
+end)
+Case("a macro of the same name with other text is never overwritten", function()
+    local w = World({})
+    w.macros = { { name = "Pull", icon = 1, body = "/say pull" } }
+    w.bars = { [7] = Macro("Pull") }
+    w.run("save M")
+    w.macros[1].body = "/yell PULLING"
+    w.run("import M")
+    assert(w.macros[1].body == "/yell PULLING" and w.macros[2].body == "/say pull", "made alongside")
+end)
+Case("a #showtooltip macro is made with the question mark so it follows its spell", function()
+    local w = World({})
+    w.charMacros = { { name = "Heal", icon = 135913, body = "#showtooltip\n/cast Heal" } }
+    w.run("save M")
+    w.charMacros = {}
+    w.run("import M")
+    assert(w.charMacros[1].icon == 134400, tostring(w.charMacros[1].icon))
+end)
+Case("keybinds are saved and imported, keys the set leaves free keep theirs", function()
+    local w = World({})
+    w.binds = { { "ACTIONBUTTON1", "1" }, { "MOVEFORWARD", "W", "UP" }, { "TOGGLEBAG", "B" } }
+    w.run("save Keys")
+    w.binds = { { "ACTIONBUTTON1", "Q" }, { "STRAFELEFT", "1" }, { "TOGGLEMAP", "M" } }
+    w.run("test Keys")
+    assert(w.binds[1][2] == "Q" and not w.savedBindings, "a test binds nothing")
+    w.run("import Keys")
+    local keys = {}
+    for _, b in ipairs(w.binds) do
+        for i = 2, 3 do if b[i] then keys[b[i]] = b[1] end end
+    end
+    assert(keys["1"] == "ACTIONBUTTON1" and keys.W == "MOVEFORWARD" and keys.UP == "MOVEFORWARD"
+        and keys.B == "TOGGLEBAG", "the set's keys")
+    assert(keys.M == "TOGGLEMAP" and keys.Q == "ACTIONBUTTON1", "keys the set leaves free are kept")
+    assert(w.savedBindings == 2, "saved to the binding set in use")
+    assert(w.printed[#w.printed]:find("4 keybinds", 1, true), w.printed[#w.printed])
+end)
+Case("Import Keybinds off leaves keys alone", function()
+    local w = World({})
+    w.binds = { { "ACTIONBUTTON1", "1" } }
+    w.run("save Keys")
+    w.binds = { { "STRAFELEFT", "1" } }
+    w.opts.importBindings = false
+    w.run("import Keys")
+    assert(w.binds[1][1] == "STRAFELEFT" and w.binds[1][2] == "1" and not w.savedBindings)
+end)
+Case("a key whose command is not here is not counted", function()
+    local w = World({})
+    w.account.barSets = { PRIEST = { Old = { saved = 0, slots = {},
+        bindings = { ["1"] = "ACTIONBUTTON1", F = "NO_SUCH_ADDON" } } } }
+    w.run("import Old")
+    assert(w.printed[#w.printed]:find("1 keybind", 1, true), w.printed[#w.printed])
+end)
+Case("the set row says what it holds", function()
+    local w = World({ 598 })
+    w.macros = { { name = "Pull", icon = 1, body = "/say pull" } }
+    w.binds = { { "ACTIONBUTTON1", "1", "F1" } }
+    w.bars = { [2] = Spell(598), [3] = Macro("Pull") }
+    w.run("save Raid")
+    More(w, "Raid")
+    assert(w.lastHas == "2 actions, 1 macro, 2 keybinds", w.lastHas)
 end)
 Case("set names match whatever the case", function()
     local w = World({ 598 })
@@ -289,16 +405,17 @@ Case("slots no set can restore are left as they are", function()
     w.bars = { [4] = Spell(598) }
     w.run("restore Mount")
     assert(Bars(w) == "2=spell598 4=spell598", Bars(w))
-    assert(w.printed[#w.printed] == "Restored Mount.", w.printed[#w.printed])
+    assert(w.printed[#w.printed] == "Imported Mount: 1 of 1 actions, 0 keybinds.", w.printed[#w.printed])
 end)
 Case("a test counts the macros it would make against the free room", function()
     local w = World({})
     w.macros = { { name = "A", icon = 1, body = "/a" }, { name = "B", icon = 1, body = "/b" } }
     w.bars = { [1] = Macro("A"), [2] = Macro("B") }
     w.run("save M")
-    w.macros, w.otherMacros, w.opts.recreateMacros = {}, 119, true
+    w.macros, w.otherMacros = {}, 119
     w.run("test M")
     assert(w.printed[#w.printed]:find("Slot 2", 1, true), "one free slot, so the second is reported")
+    assert(w.printed[#w.printed - 2]:find("No room for 1 macro: B", 1, true), w.printed[#w.printed - 2])
 end)
 Case("no name opens the window", function()
     local w = World({})
