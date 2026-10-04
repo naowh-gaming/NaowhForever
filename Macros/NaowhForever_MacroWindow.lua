@@ -673,8 +673,32 @@ local function BuildEditor(parent)
             scroll:SetVerticalScroll(cursorTop + cursorHeight - shown)
         end
     end
-    code:SetScript("OnCursorChanged", function(_, _, y, _, h)
+    -- The client draws no insertion cursor in this box, so it gets its own.
+    local caret = code:CreateTexture(nil, "OVERLAY")
+    caret:SetColorTexture(T.accent.r, T.accent.g, T.accent.b, 1)
+    caret:SetWidth(2)
+    caret:Hide()
+    local blink = 0
+    local function Blink(self, elapsed)
+        blink = blink + elapsed
+        caret:SetShown(blink % (2 * self:GetBlinkSpeed()) < self:GetBlinkSpeed())
+    end
+    code:SetScript("OnEditFocusGained", function(self)
+        blink = 0
+        caret:Show()
+        self:SetScript("OnUpdate", Blink)
+    end)
+    code:SetScript("OnEditFocusLost", function(self)
+        self:SetScript("OnUpdate", nil)
+        caret:Hide()
+    end)
+    code:SetScript("OnCursorChanged", function(self, x, y, _, h)
         cursorTop, cursorHeight = -y, h
+        caret:ClearAllPoints()
+        caret:SetPoint("TOPLEFT", x, y)
+        caret:SetHeight(h)
+        blink = 0
+        caret:SetShown(self:HasFocus())
         Follow()
     end)
     scroll:HookScript("OnScrollRangeChanged", Follow)
@@ -1117,21 +1141,11 @@ local function DrawSmart()
         end
     end
     view.body:SetHeight(math.ceil(#ns.MacroSmart.list / CARD_COLS) * (SMART_H + CARD_GAP))
-    local side = window.smartSide
-    local food, drink = ns.MacroSmart.BestFoodAndDrink()
-    for i, id in ipairs({ food or false, drink or false }) do
-        local b = side.bar[i]
-        b.icon:SetTexture(id and C_Item.GetItemIconByID(id) or (i == 1 and 133971 or 132794))
-        b.icon:SetDesaturated(not id)
-        b.count:SetText(id and C_Item.GetItemCount(id) or "")
-    end
-    side.toggle._refreshValue()
     local on = 0
     for _, m in ipairs(ns.MacroSmart.list) do
         if S.Get(m.key) then on = on + 1 end
     end
-    side.summary:SetText(("%d of %d Smart Macros on. They are account macros, rewritten as your bags change "
-        .. "and after a fight, never during one."):format(on, #ns.MacroSmart.list))
+    window.smartSummary:SetText(("%d of %d Smart Macros on."):format(on, #ns.MacroSmart.list))
 end
 
 -------------------------------------------------------------------------------
@@ -1447,38 +1461,23 @@ local function Build()
     window.smart = smart
     local sideArea = Area(inspectorLeft, CARD_INSET)
     sideArea:SetParent(window.smartView)
-    local side = {}
     local sideTitle = NewSection(sideArea)
     sideTitle:SetPoint("TOPLEFT")
     sideTitle:SetPoint("TOPRIGHT")
-    SetSection(sideTitle, "Food & Drink Bar")
+    SetSection(sideTitle, "How They Work")
+    window.smartSummary = Text14(sideArea, 13)
+    window.smartSummary:SetPoint("TOPLEFT", PAD, -(SECTION_H + 12))
+    window.smartSummary:SetPoint("RIGHT", -PAD, 0)
+    window.smartSummary:SetJustifyH("LEFT")
     local sideNote = Text14(sideArea, 12, T.muted)
-    sideNote:SetPoint("TOPLEFT", PAD, -(SECTION_H + 12))
+    sideNote:SetPoint("TOPLEFT", window.smartSummary, "BOTTOMLEFT", 0, -10)
     sideNote:SetPoint("RIGHT", -PAD, 0)
     sideNote:SetJustifyH("LEFT")
-    sideNote:SetText("Two buttons on your screen, your best food and drink, conjured first. Move it in Unlock Mode.")
-    side.toggle = UI.BuildToggleControl(sideArea, sideArea:GetFrameLevel() + 2,
-        function() return ns.MacroSettings.Get("foodBar") == true end, function(v) ns.MacroSettings.Set("foodBar", v) end)
-    side.toggle:SetPoint("TOPLEFT", sideNote, "BOTTOMLEFT", 0, -12)
-    local barHolder = CreateFrame("Frame", nil, sideArea)
-    barHolder:SetSize(2 * 44 + 4, 44)
-    barHolder:SetPoint("TOP", sideNote, "BOTTOM", 0, -46)
-    side.bar = {}
-    for i = 1, 2 do
-        local b = CreateFrame("Frame", nil, barHolder)
-        b:SetSize(44, 44)
-        b:SetPoint("LEFT", (i - 1) * 48, 0)
-        b.icon = Icon(b, 42)
-        b.icon.edge:SetPoint("TOPLEFT")
-        b.count = Text14(b, 13)
-        b.count:SetPoint("BOTTOMRIGHT", -2, 2)
-        side.bar[i] = b
-    end
-    side.summary = Text14(sideArea, 12, T.muted)
-    side.summary:SetPoint("TOPLEFT", barHolder, "BOTTOM", -(INSPECTOR_W / 2 - PAD), -20)
-    side.summary:SetPoint("RIGHT", -PAD, 0)
-    side.summary:SetJustifyH("LEFT")
-    window.smartSide = side
+    sideNote:SetSpacing(3)
+    sideNote:SetText("Each one is an account macro. Put it on a bar once and it keeps itself current: loot a "
+        .. "better potion, conjure fresh food or pick up bandages and the macro is rewritten to use the best "
+        .. "you carry.\n\nThe game does not let macros change mid-fight, so a change during combat waits "
+        .. "until it ends.")
 
     -- Library.
     window.libView = CreateFrame("Frame", nil, window)
