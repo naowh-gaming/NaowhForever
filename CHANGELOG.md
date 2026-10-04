@@ -40,6 +40,8 @@
   its own, in place of its level.
   The ! is yellow when you can pick the quest up now, grey when other quests come first and
   red when it is too high for you; hover the mark for what it means.
+  A quest that needs another one done first says Requires: (the quest) under its name, and
+  Prerequisite as its state, in place of Do first.
 - Dungeon Journal: a quest's card shows on hovering its name only, on the quest tracker, the
   dungeon's page and beside the map. The rest of its row still lights up and takes clicks.
 - Dungeon Journal: Link in Chat on a quest's menu sends the link straight away: to party chat in

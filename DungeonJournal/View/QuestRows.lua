@@ -49,7 +49,7 @@ local PIN_MARGIN, CHAIN_MARGIN = 4, 2
 --  Words, marks and colours for each state
 -------------------------------------------------------------------------------
 local STATUS = {
-    prereq = "Do first", prereqLog = "Do first", low = "Level %d to pick up", pickup = "To pick up",
+    prereq = "Prerequisite", prereqLog = "Prerequisite", low = "Level %d to pick up", pickup = "To pick up",
     tooHigh = "Too high (%d)", next = "Next step", active = "In log", ready = "Complete",
 }
 local CHAIN_STATE = {
@@ -77,7 +77,7 @@ local MARKS = {
     low = { BANG, RED }, tooHigh = { BANG, RED },
     active = { QUESTION, T.muted }, ready = { QUESTION },
 }
--- Do first needs no words on hover: the line under the title names the quest to do.
+-- A prerequisite needs no words on hover: the line under the title names the quest to do.
 local SAID_BELOW = { prereq = true, prereqLog = true }
 
 -- The state the row shows: a quest to pick up that is too high for you is told apart.
@@ -343,7 +343,7 @@ local function QuestEnter(hit)
     GameTooltip:Show()
 end
 
--- Over the ! or ?: what it means. Do first: the quest to do (the tracker's one line leaves
+-- Over the ! or ?: what it means. A prerequisite: the quest to do (the tracker's one line leaves
 -- it out); too high, how hard; in your log, how far along it is.
 local function MarkEnter(hit)
     local row = hit:GetParent()
