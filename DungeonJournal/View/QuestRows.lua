@@ -147,24 +147,36 @@ local function QuestLink(id)
     return GetQuestLink(id)
 end
 
--- Where Link in Chat sends the quest: your party (or instance group) chat in a group, Say out
--- of one.
+-- Where Link in Chat sends the quest: your party (or instance group) chat in a group; out of
+-- one, only into the chat box while it is open, never to Say.
 local function LinkChannel()
     if IsInGroup() then return Parts.PartyChat(), "Party" end
-    return "SAY", "Say"
+    return nil, "Chat"
+end
+
+local function ChatBoxOpen()
+    return ChatFrameUtil.GetActiveWindow() ~= nil
+end
+
+local NO_CHAT = "Join a group, or open your chat box first."
+
+local function NoChatTip(tooltip)
+    GameTooltip_SetTitle(tooltip, NO_CHAT)
 end
 
 -- Into the chat box while you have it open, so it joins what you are typing; otherwise sent
--- straight to LinkChannel's chat. The chat box is never opened from here: opening it from
+-- straight to your group's chat. The chat box is never opened from here: opening it from
 -- addon code (ChatFrameUtil.OpenChat) taints it, and the game then blocks the next message.
 local function LinkInChat(id)
     local link = QuestLink(id)
     if not link or ChatFrameUtil.InsertLink(link) then return end
+    local channel = LinkChannel()
+    if not channel then return end
     if C_ChatInfo.InChatMessagingLockdown() then
         ns.Print("Chat is locked right now.")
         return
     end
-    C_ChatInfo.SendChatMessage(link, (LinkChannel()))
+    C_ChatInfo.SendChatMessage(link, channel)
 end
 
 -- Sharing first, then finding it, then its Wowhead page. The menu keeps the quest it was
@@ -179,8 +191,12 @@ local function OpenQuestMenu(row)
         root:CreateButton(SHARE_QUEST, function()
             QuestLogPushQuest(C_QuestLog.GetLogIndexForQuestID(logged))
         end):SetEnabled(shareable)
-        root:CreateButton("Link in " .. select(2, LinkChannel()), function() LinkInChat(linkID) end)
-            :SetEnabled(QuestLink(linkID) ~= nil)
+        local channel, where = LinkChannel()
+        local linkable = QuestLink(linkID) ~= nil
+        local reachable = channel ~= nil or ChatBoxOpen()
+        local link = root:CreateButton("Link in " .. where, function() LinkInChat(linkID) end)
+        link:SetEnabled(linkable and reachable)
+        if linkable and not reachable then link:SetTooltip(NoChatTip) end
         root:CreateDivider()
         if canWaypoint then root:CreateButton("Waypoint", function() Quests.Waypoint(quest) end) end
         if Quests.Chain(quest) then root:CreateButton("Show Chain", function() OpenChain(row, quest) end) end

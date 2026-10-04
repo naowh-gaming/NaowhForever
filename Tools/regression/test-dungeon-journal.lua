@@ -286,7 +286,11 @@ local function fixture(settings)
         InCombatLockdown = function() return state.combat end,
         GetQuestLink = function(id) return "|Hquest:" .. id .. "|h[Quest " .. id .. "]|h" end,
         -- The chat box: open while state.chatOpen.
-        ChatFrameUtil = { InsertLink = function() return state.chatOpen == true end },
+        ChatFrameUtil = {
+            InsertLink = function() return state.chatOpen == true end,
+            GetActiveWindow = function() return state.chatOpen and {} or nil end,
+        },
+        GameTooltip_SetTitle = function(tooltip, text) tooltip.title = text end,
         SHARE_QUEST = "Share Quest",
         -- Key bindings, kept for a test to read: key -> action.
         GetBindingKey = function(action)
@@ -342,11 +346,17 @@ local function fixture(settings)
         Menu = { GetManager = function() return { IsAnyMenuOpen = function() return false end } end },
         MenuUtil = { CreateContextMenu = function(_, build)
             local entries = {}
-            local entry = { SetEnabled = function() end, SetTitleAndTextTooltip = function() end }
             local root = {
                 CreateTitle = function(_, text) entries.title = text end,
                 CreateDivider = function() end,
-                CreateButton = function(_, text, onClick) entries[#entries + 1] = { text = text, click = onClick }; return entry end,
+                CreateButton = function(_, text, onClick)
+                    local item = { text = text, click = onClick, enabled = true,
+                        SetEnabled = function(self, on) self.enabled = on end,
+                        SetTooltip = function(self, tip) self.tooltip = tip end,
+                        SetTitleAndTextTooltip = function() end }
+                    entries[#entries + 1] = item
+                    return item
+                end,
             }
             build(nil, root)
             state.menu = entries
@@ -1974,19 +1984,29 @@ do
     logged.markHit.scripts.OnEnter(logged.markHit)
     state.tooltip.SetText = nil
     check("its mark says what it means on hover", type(said) == "string" and said:find("In log") ~= nil)
-    -- Link in chat: out of a group it goes to Say, in one to party chat, and into the chat
-    -- box instead while you have it open.
+    -- Link in chat: in a group it goes to party chat, into the chat box instead while you have
+    -- it open, and out of a group only there: never to Say.
     local function LinkItem()
         logged.scripts.OnMouseUp(logged, "RightButton")
         for _, item in ipairs(state.menu) do
             if item.text:find("^Link in ") then return item end
         end
     end
+    local sayCount = #state.said
     local link = LinkItem()
-    check("its menu links it in Say out of a group", link and link.text == "Link in Say")
+    check("out of a group with the chat box shut, Link in Chat is greyed out",
+        link and link.text == "Link in Chat" and link.enabled == false)
+    local tip = {}
+    if link.tooltip then link.tooltip(tip) end
+    check("and says why", tip.title == "Join a group, or open your chat box first.")
     link.click()
-    local line = state.said[#state.said]
-    check("straight to Say", line and line.channel == "SAY" and line.text:find("Quest 70001", 1, true))
+    check("it never sends to Say", #state.said == sayCount)
+    state.chatOpen = true
+    link = LinkItem()
+    check("with the chat box open it can be linked", link.enabled == true and link.tooltip == nil)
+    link.click()
+    check("into the chat box, nothing sent", #state.said == sayCount)
+    state.chatOpen = nil
     state.party = { { name = "Ally" } }
     link = LinkItem()
     check("in a group, in party chat", link.text == "Link in Party")
