@@ -33,8 +33,8 @@ local trail, trailPoints = nil, {}
 
 local state = {
     inCombat = false, inInstance = false, afk = false, rightDown = false,
-    castStart = 0, castEnd = 0, casting = false,
-    gcd = nil, castSwipeAllowed = false, gcdSwipeAllowed = true,
+    castStart = 0, castEnd = 0, casting = false, castPending = false,
+    gcd = nil, gcdOwned = false, castSwipeAllowed = false, gcdSwipeAllowed = true,
     outOfMelee = false, lastInRange = nil,
     lastMove = 0, idleAlpha = 1,
 }
@@ -369,8 +369,10 @@ function UpdateRender()
         StartSweep("cast", state.castStart, state.castEnd - state.castStart, 1,
             Color("mouseCastColor", "mouseCastClassColor"), sweepAlpha)
     elseif gcdOn and state.gcd and state.gcdSwipeAllowed then
+        -- A hard cast's own GCD still runs to time the ready ring, unseen, so the cast sweep is the only one.
         StartSweep("gcd", state.gcd.startTime, state.gcd.duration, state.gcd.modRate or 1,
-            Color("mouseGCDColor", "mouseGCDClassColor"), sweepAlpha)
+            Color("mouseGCDColor", "mouseGCDClassColor"),
+            state.gcdOwned and S.Get("mouseCastSwipe") and 0 or sweepAlpha)
     else
         sweepState.active, sweepState.mode = false, nil
         Look.HideSweep(sweep)
@@ -449,6 +451,7 @@ local function DelaySwipe(field, timerVar)
 end
 
 local function ReadCast()
+    state.castPending = false
     local _, _, _, startMs, endMs = UnitCastingInfo("player")
     if not startMs then _, _, _, startMs, endMs = UnitChannelInfo("player") end
     if startMs and not Secret(startMs) and not Secret(endMs) then
@@ -468,6 +471,9 @@ local function ReadGCD()
     if info and info.isOnGCD and not Secret(info.duration) and not Secret(info.startTime)
         and not Secret(info.modRate) then
         local wasReady = state.gcd == nil
+        if wasReady or state.gcd.startTime ~= info.startTime then
+            state.gcdOwned = state.castPending or state.casting
+        end
         state.gcd = info
         if wasReady then gcdDelay = DelaySwipe("gcdSwipeAllowed", gcdDelay) end
     else
@@ -485,12 +491,17 @@ local function RefreshZone()
 end
 
 local events = CreateFrame("Frame")
-events:SetScript("OnEvent", function(_, event)
+events:SetScript("OnEvent", function(_, event, _, _, _, spellID)
     if event == "PLAYER_TARGET_CHANGED" or event == "SPELLS_CHANGED" or event == "UPDATE_SHAPESHIFT_FORM" then
         state.lastInRange = nil
         StopAlarm()
         SetOutOfMelee(false)
         EvaluateMelee()
+        return
+    elseif event == "UNIT_SPELLCAST_SENT" then
+        -- On Forever the GCD starts with the send and UNIT_SPELLCAST_START follows a round trip later.
+        local info = C_Spell.GetSpellInfo(spellID)
+        state.castPending = info ~= nil and info.castTime > 0
         return
     elseif event == "SPELL_UPDATE_COOLDOWN" then
         if S.Get("mouseGCD") then ReadGCD() end
@@ -532,7 +543,7 @@ local function Apply()
         "SPELL_UPDATE_COOLDOWN", "SPELLS_CHANGED", "PLAYER_TARGET_CHANGED", "UPDATE_SHAPESHIFT_FORM" }) do
         events:RegisterEvent(event)
     end
-    for _, event in ipairs({ "PLAYER_FLAGS_CHANGED", "UNIT_SPELLCAST_START", "UNIT_SPELLCAST_STOP",
+    for _, event in ipairs({ "PLAYER_FLAGS_CHANGED", "UNIT_SPELLCAST_SENT", "UNIT_SPELLCAST_START", "UNIT_SPELLCAST_STOP",
         "UNIT_SPELLCAST_FAILED", "UNIT_SPELLCAST_INTERRUPTED", "UNIT_SPELLCAST_CHANNEL_START",
         "UNIT_SPELLCAST_CHANNEL_STOP", "UNIT_SPELLCAST_DELAYED", "UNIT_SPELLCAST_CHANNEL_UPDATE" }) do
         events:RegisterUnitEvent(event, "player")
