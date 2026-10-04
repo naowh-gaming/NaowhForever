@@ -61,6 +61,7 @@
   button beside Games.
 - Character Panel: the grey Legendary badge for players without a badge is now off by default;
   turn on Legendary Badge Preview (QoL > Character) to see it. Your own badge still shows.
+- BiS List: picks updated from wowsrc.com's latest lists.
 
 ### Fixed
 - Naowh Score: no more Lua error after seeing more than 300 players, like in a busy city.
