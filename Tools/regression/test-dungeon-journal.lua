@@ -2007,7 +2007,11 @@ do
     link.click()
     check("into the chat box, nothing sent", #state.said == sayCount)
     state.chatOpen = nil
-    state.party = { { name = "Ally" } }
+    check("solo, a quest row shows no group count", not logged.party:IsShown())
+    state.party = { { name = "Ally", quests = {} } }
+    logged:GetParent():Redraw()
+    logged = QuestRow("Quest 70001")
+    check("in a group, it does", logged.party:IsShown())
     link = LinkItem()
     check("in a group, in party chat", link.text == "Link in Party")
     link.click()

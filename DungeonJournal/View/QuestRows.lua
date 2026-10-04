@@ -36,8 +36,8 @@ local IconButton, Plain = Parts.IconButton, Parts.Plain
 local ROW_LEFT = 6
 local MARK_LEFT = ROW_LEFT + WAYPOINT_SLOT + 4
 local TITLE_LEFT = MARK_LEFT + MARK + 6
--- The fixed slots on the right, from the right: who in your group has it (always shown, 0
--- out of a group, so the slots never leave a gap), then Chain.
+-- The fixed slots on the right, from the right: who in your group has it (only while you are
+-- in a group; its slot stays, so the columns still line up), then Chain.
 local QUEST_RIGHT = St.QUEST_RIGHT
 local PARTY_RIGHT = QUEST_RIGHT
 local CHAIN_RIGHT = PARTY_RIGHT + PARTY_SLOT + GAP * 2
@@ -459,10 +459,7 @@ local function PartyEnter(button)
     button.label:SetTextColor(T.fg.r, T.fg.g, T.fg.b)
     local entry = button:GetParent().entry
     if not Tip(button, "ANCHOR_TOP") then return end
-    if not IsInGroup() then
-        GameTooltip:SetText("Not in a group", 1, 1, 1)
-        GameTooltip:AddLine("In a group, this counts who else is on the quest.", T.muted.r, T.muted.g, T.muted.b)
-    elseif button.count == 0 then
+    if button.count == 0 then
         GameTooltip:SetText("No one else in your group is on this quest", 1, 1, 1)
     else
         GameTooltip:SetText("In your group on this quest", 1, 1, 1)
@@ -601,6 +598,7 @@ Kinds.quest = {
         local width = row:GetWidth() - left - RIGHT_W - GAP * 2
         row.party.count = entry.party
         row.party.label:SetText(entry.party)
+        row.party:SetShown(IsInGroup())
         PaintParty(row.party)
         row.title:SetWidth(width)
         row.forever = entry.quest ~= nil and IsForever("quests", entry.quest[1])
