@@ -125,7 +125,10 @@ ns.Journal.Maps = {
     },
     -- Santiago Reyes's recreation, as Ruins of Lordaeron's is.
     ExcavationSite = { image = "Interface\\AddOns\\NaowhForever\\Media\\Maps\\ExcavationSite",
-        floors = 1, pins = {} },
+        floors = 1,
+        entrance = { 1, 0.078, 0.611 },
+        pins = {},
+    },
     Gnomeregan = { art = "Gnomeregan", floors = 4,
         entrance = { 1, 0.642, 0.278 },
         pins = {
