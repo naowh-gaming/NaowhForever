@@ -1134,12 +1134,12 @@ end
 -- exchange of plans per second.
 local refreshQueued, syncQueued
 -- Except right after our own cast: the bar shows the blessing landing on the next frame, so
--- a click is not answered by a second of the old red. One frame, so a Greater Blessing's
--- whole class is in.
+-- a click is not answered by a second of the old red. The window stays open for the second,
+-- at most one rescan a frame: in a group other auras change first, and a Greater Blessing's
+-- class can land over more than one frame.
 local landing, landingQueued
 
 local function RefreshLanded()
-    landing = nil
     if landingQueued then return end
     landingQueued = true
     C_Timer.After(0, function()
