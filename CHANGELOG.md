@@ -60,6 +60,8 @@
   against your stats from just before, until your gear or level changes.
 - Loot Feed: looting coins again while the Coins line is still up adds to it instead of throwing
   a Lua error, and the loot after that line fades shows up again.
+- Auto-Fill Delete Confirmation: Yes can be clicked again once DELETE is filled in for you;
+  it stayed greyed out on Forever.
 - Settings: a module's window opened from /nf (Open Dungeon Journal, or the small window button
   beside a module) brings /nf back when you close it the first time too, not only from the
   second time on.
