@@ -33,6 +33,8 @@
   loaded, it uses TomTom's arrow.
 
 ### Changed
+- Discovery: its window has two tabs, Library Books (every book for your faction, a tick on
+  those handed in, in place of To Find and All Books) and Sleeping Bag.
 - Discovery: its settings are two tabs, Library Books and Sleeping Bags, and each tracker has its
   own opacity apart from the Discovery window's (they start at the one you had set).
 - Discovery: the Library Books tracker has the Dungeon Quest Tracker's look: the Journal's

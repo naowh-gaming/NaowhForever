@@ -21,7 +21,7 @@ local HEADER, FOOTER, PAD = St.WINDOW_HEADER, St.WINDOW_FOOTER, St.WINDOW_PAD
 local INSET, SCROLLBAR, TAB_H, TAB_GAP = St.CONTENT_INSET, St.SCROLLBAR, St.TAB_H, St.TAB_GAP
 local PAGE = "Discovery/Library Books"
 local CARD = 6
-local TABS_W = 330
+local TABS_W = 260
 local HERO_H = 166
 local BAR_H = 4                 -- the road's stripes
 local SEGMENT_GAP = 2           -- between two books' stripes
@@ -42,13 +42,12 @@ local MISSING_RGB = { r = 0.97, g = 0.44, b = 0.44 }
 local EVENTS = { "BAG_UPDATE_DELAYED", "QUEST_TURNED_IN", "QUEST_ACCEPTED", "PLAYERBANKSLOTS_CHANGED" }
 
 local FILTERS = {
-    { key = "find", label = "To Find", tip = "The books you have not handed in yet." },
-    { key = "all", label = "All Books", tip = "Every book for your faction, handed in or not." },
+    { key = "books", label = "Library Books", tip = "Every book for your faction, a tick on those handed in." },
     { key = "bag", label = "Sleeping Bag", tip = "The Cozy Sleeping Bag's hidden quest chain, step by step." },
 }
 
 local window, scroll, view, kinds
-local filter = "find"
+local filter = "books"
 
 local function Opacity()
     return math.floor((S.Get("windowAlpha") or 1) * 100 + 0.5)
@@ -475,7 +474,7 @@ local function DrawBag(self)
 end
 
 local function Shows(book)
-    return Library.ForMe(book) and (filter == "all" or not Library.Done(book))
+    return Library.ForMe(book)
 end
 
 local Draw = {}
@@ -537,7 +536,7 @@ function Draw:Redraw()
         end
     end
     if shown + unplaced == 0 then
-        self:Note("Every book for your faction is handed in. Switch to All Books to see them.")
+        self:Note("No books for your faction yet.")
     end
     self:Fit(EVENTS)
 end
@@ -601,7 +600,7 @@ hooksecurefunc(ns, "Apply", function()
     end
 end)
 
--- tab: "find", "all" or "bag" to open it on that tab; else the one it was on.
+-- tab: "books" or "bag" to open it on that tab; else the one it was on.
 function ns.OpenDiscoveryWindow(tab)
     if tab then filter = tab end
     if not window then Build() end
