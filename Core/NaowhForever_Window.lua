@@ -1291,6 +1291,8 @@ SlashCmdList["NAOWHFOREVER"] = function(msg)
         ns.LockoutsCommand()
     elseif cmd == "ranks" and ns.TrainerRankCheck then
         ns.TrainerRankCheck()
+    elseif cmd == "trainer" and ns.Training then
+        ns.Training.WaypointToTrainer()
     elseif cmd == "profrank" and ns.ProfessionRankCheck then
         ns.ProfessionRankCheck()
     elseif cmd == "recipes" and ns.RecipeFinderDebug then
@@ -1301,6 +1303,8 @@ SlashCmdList["NAOWHFOREVER"] = function(msg)
         ns.DungeonMapCommand(cmd)
     elseif cmd == "badges" and ns.BadgesCommand then
         ns.BadgesCommand(arg)
+    elseif cmd == "scrap" and ns.ToggleScrapList then
+        ns.ToggleScrapList()
     else
         ns.ToggleOptionsWindow()
     end

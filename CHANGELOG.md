@@ -3,19 +3,6 @@
 ## Unreleased
 
 ### Added
-- Dungeon Journal: Open Tracker in Dungeons (on by default, Dungeon Journal > Quest Tracker)
-  opens the quest tracker when you enter a dungeon with quests for you. Close it and it stays
-  closed until you leave that dungeon.
-- Dungeon Journal: Show Outside Dungeons (off by default, Dungeon Journal > Quest Tracker):
-  out in the world the quest tracker opens after a loading screen or login, on the first
-  dungeon with one of your quests in your log, else the first for your level with quests to
-  pick up. Close it and it stays closed until you have been in a dungeon.
-- Dungeon Journal: Hide the Game's Quest Tracker (on by default, next to Open Tracker in
-  Dungeons): while the quest tracker is open in a dungeon, the game's own quest tracker is
-  hidden. It comes back when you close the tracker or leave, if it was up before.
-- Dungeon Journal: Shift+J opens it, as on retail. Bound once, the first time the Journal is
-  on, and only while Shift+J is free and nothing else opens the Journal; a key you change or
-  clear in Key Bindings stays as you set it.
 - Settings: click the dot beside a setting you changed to put it back to its default; hover it to
   see what the default is.
 - Aim Trainer (QoL > Travel, on by default): a shooting game for flight paths. Click the other
@@ -29,33 +16,27 @@
   starts; it closes when you land or enter combat. Move it in Unlock Mode.
 - Flight Games (QoL > Travel, under the Flight Timer): one choice of what opens by itself when a
   flight starts, Nothing, the Quiz or the Aim Trainer (the default).
+- Scrap Marker (QoL > Loot & Items, off by default): Alt-click an item in your bags, the game's
+  or EllesmereUI's, to mark it as scrap, and again to unmark it. Marks count on every character,
+  or on this one only (New Marks), and the next vendor sells your scrap, even items the game
+  doesn't count as junk. At the Vendor can instead ask first, on a panel beside the vendor, or do
+  nothing. Scrap shows an icon on its bag slot and a line on its tooltip. Your BiS and gear sets
+  are protected, and quest items, keys and items with no sell price can't be marked.
+  - Rules, each off by default, count gear your class can't wear and old grey and white gear as
+    scrap too; the X on a rule's item keeps it.
+  - The Scrap List (Open Scrap List on its settings page, or /nf scrap): every scrap item with
+    what you carry and what it sells for, a search, an X to unmark, Account or Character on each
+    mark, drop an item on it to mark it, Clear All, and Export and Import to share a list.
+  - Bag Space puts your scrap first and shows the slots it will free, like +3.
+- Training Planner: a waypoint to your nearest class trainer, from Waypoint to nearest trainer at
+  the top of the planner, the Waypoint button on the level-up toast, or /nf trainer. With TomTom
+  loaded, it uses TomTom's arrow.
 
 ### Changed
-- Dungeon Journal: its settings are three tabs: Journal (what it lists, its window, its key),
-  Quest Tracker (the tracker and sharing quests) and Map (the Journal beside the world map,
-  and Boss Loot at Cursor's key).
-- Dungeon Journal: each part has its own Window Opacity: the Journal (and the panels it opens
-  beside it), the Dungeon Quest Tracker, and the map (its window, the Journal beside the world
-  map and Boss Loot at Cursor). They start at the opacity you had set for them all.
-- Dungeon Journal: the quest tracker is titled Dungeon Quest Tracker (click it for the Journal's
-  settings), with a dropdown under it to show any dungeon with quests, its level range beside it.
-  The dropdown shows them all at once, each range in the quest log's colours for your level. It
-  widens to show its quests' names in full, and keeps room for a scrollbar only while the list
-  scrolls.
-- Dungeon Journal: the quest tracker's Share is Share All, and a cog under its quests opens its
-  settings (Dungeon Journal > Quest Tracker). It grows to 70% of the screen's height before
-  its list scrolls.
-- Dungeon Journal: a quest on its own shows no chain icon; one in a chain still shows its step.
-  A quest row starts with its waypoint pin and its quest mark (! or ?), each in a column of
-  its own, in place of its level.
-  The ! is yellow when you can pick the quest up now, grey when other quests come first and
-  red when it is too high for you; hover the mark for what it means.
-  A quest that needs another one done first says Requires: (the quest) under its name, and
-  Prerequisite as its state, in place of Do first.
-- Dungeon Journal: a quest's card shows on hovering its name only, on the quest tracker, the
-  dungeon's page and beside the map. The rest of its row still lights up and takes clicks.
-- Dungeon Journal: Link in Chat on a quest's menu sends the link straight away: to party chat in
-  a group, to Say out of one (the menu says which). With your chat box open it still goes there.
+- Dungeon Journal: Scarlet Monastery is its four wings, each a dungeon of its own: Scarlet
+  Monastery - Graveyard (26-36), Library (29-39), Armory (32-42) and Cathedral (35-45), with its
+  bosses, loot, quests and floor of the map. Inside, the subzone you stand in says which wing
+  you are in; where it cannot tell, the Graveyard comes first.
 - QoL has a Character tab: Character Panel, Slot Marks and Naowh Score moved there from the BiS
   List's settings, and Supporter Badges from Interface. The BiS List's page keeps what is about
   your BiS.
@@ -83,6 +64,23 @@
 
 ### Fixed
 - Naowh Score: no more Lua error after seeing more than 300 players, like in a busy city.
+- Hovering items and players no longer fills BugSack with "secret value" errors on Forever: the
+  upgrade line and bag arrows wait while the game keeps your stats hidden, Naowh Score copes with
+  a player it can no longer read, and the supporter plate and ID lines stop hooking the game's
+  tooltip, which was reported breaking its own player-name colours.
+- Naowh's Forge: no more Lua error when a macro line is just a "/" with no command yet.
+- Character panel: while the game keeps your stats hidden (combat, encounters), your spec's stats
+  still show where the game allows it (primary stats, armor, healing, each school's spell damage,
+  crit, dodge, block), a dash for the rest, instead of a Lua error.
+- Stat Weights: upgrade lines and bag arrows keep working while your stats are hidden, worked out
+  against your stats from just before, until your gear or level changes.
+- Loot Feed: looting coins again while the Coins line is still up adds to it instead of throwing
+  a Lua error, and the loot after that line fades shows up again.
+- Auto-Fill Delete Confirmation: Yes can be clicked again once DELETE is filled in for you;
+  it stayed greyed out on Forever.
+- Settings: a module's window opened from /nf (Open Dungeon Journal, or the small window button
+  beside a module) brings /nf back when you close it the first time too, not only from the
+  second time on.
 
 ## 0.5.19-beta
 
