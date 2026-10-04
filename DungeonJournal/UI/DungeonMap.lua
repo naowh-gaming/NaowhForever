@@ -137,6 +137,14 @@ local function PinLeave(pin)
     if pin.view.onPinHover then pin.view.onPinHover(pin.key, false) end
 end
 
+-- Whether the world map fills the screen; a client that cannot tell counts as so.
+local function MapMaximised()
+    local map = WorldMapFrame
+    if map.IsMaximized then return map:IsMaximized() end
+    if map.isMaximized ~= nil then return map.isMaximized end
+    return true
+end
+
 local function PinClicked(pin, button)
     -- A right-click goes to the view (on the world map: up to the zone).
     if button == "RightButton" then
@@ -146,8 +154,10 @@ local function PinClicked(pin, button)
     if pin.view:Placing() then return end
     -- The window shows it in its own loot pane; the world map at the mouse.
     if pin.view.onPick then return pin.view.onPick(pin.boss) end
-    lootFrom = pin.view
     pin.view:Pick(pin.key)
+    -- The small world map has the Journal beside it, its loot on it: only ringed then.
+    if pin.view.onWorldMap and not MapMaximised() then return end
+    lootFrom = pin.view
     J.View.OpenBossLoot(pin.boss, pin.view.dungeon)
 end
 
@@ -1041,6 +1051,7 @@ local function BuildOverlay()
     bar:SetFrameLevel(overlayView.canvas:GetFrameLevel() + 20)
     overlay:SetScript("OnHide", function() ViewHidden(overlayView) end)
     overlayView.onRightClick = UpToZone
+    overlayView.onWorldMap = true
     overlayView.down:SetPoint("LEFT", HINT_PAD, 0)
     overlay.hint = ns.Font(bar, 12, nil, T.fg)
     overlay.hint:SetPoint("RIGHT", -HINT_PAD, 0)
@@ -1089,6 +1100,12 @@ end
 
 -- The world map changed size (maximised, or small again).
 function J.FitMapOnWorldMap()
+    -- Small again: the loot a pin opened at the mouse goes, the Journal beside it has it; its
+    -- pin stays ringed.
+    if overlayView and lootFrom == overlayView and not MapMaximised() then
+        lootFrom = nil
+        J.View.CloseBossLoot()
+    end
     if overlay and overlay:IsShown() then
         Fit()
         overlayView:Draw()
