@@ -410,7 +410,7 @@ end
 
 -- One boss and its loot, for the boss loot window.
 -- A boss's own page: its name and kill count on top, Naowh's tip written out under it (so no
--- (i) on its name), then its Loot, the Quests that need it and its Abilities, each under a
+-- (i) on its name), then the Quests that need it, its Abilities and its Loot, each under a
 -- title that opens and closes it (kept: bossLootOpen and the rest) and left out where there
 -- is none.
 function ViewMixin:DrawBossLoot(boss, dungeon)
@@ -423,8 +423,8 @@ function ViewMixin:DrawBossLoot(boss, dungeon)
         self:Add("tip", boss, tip)
         self:CloseCard(self.detailCard, self.detailTop)
     end
-    self:DrawBossItems(boss)
     self:DrawBossDetails(boss)
+    self:DrawBossItems(boss)
     self:Finish()
 end
 
