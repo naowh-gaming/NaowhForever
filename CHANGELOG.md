@@ -7,6 +7,9 @@
   see what the default is.
 
 ### Changed
+- QoL has a Character tab: Character Panel, Slot Marks and Naowh Score moved there from the BiS
+  List's settings, and Supporter Badges from Interface. The BiS List's page keeps what is about
+  your BiS.
 - Loot Feed: Spacing goes down to -1, now the default, so neighbouring lines share one border
   instead of two. Its coins line up on every line, and it is the first card on QoL > Loot &
   Items. Edit it right in its preview: drag its right edge for width and a line's bottom for
