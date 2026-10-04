@@ -81,8 +81,6 @@
 - Settings: a module's window opened from /nf (Open Dungeon Journal, or the small window button
   beside a module) brings /nf back when you close it the first time too, not only from the
   second time on.
-- Blessings: a class button clears as soon as your blessing lands, instead of staying red for
-  about a second.
 
 ## 0.5.19-beta
 
