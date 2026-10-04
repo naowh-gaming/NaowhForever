@@ -54,10 +54,13 @@ local function BarTooltip(bar)
     GameTooltip:AddLine(("%d of %d books handed in"):format(done, total), 1, 1, 1)
     for _, goal in ipairs(ns.LibraryGoals) do
         local state, r, g, b
-        if C_QuestLog.IsQuestFlaggedCompleted(goal.quest) then
+        local now = L.GoalState(goal, done)
+        if now == "claimed" then
             state, r, g, b = "Claimed", 0.61, 0.64, 0.69
-        elseif done >= goal.books then
+        elseif now == "ready" then
             state, r, g, b = "Ready to hand in", READY.r, READY.g, READY.b
+        elseif now == "level" then
+            state, r, g, b = ("At level %d"):format(goal.level), 1, 0.82, 0
         else
             state, r, g, b = ("%d to go"):format(goal.books - done), 1, 1, 1
         end
@@ -305,7 +308,7 @@ local function RenderBar()
     local goal = L.NextGoal()
     local accent = T.accent
     if goal then
-        local ready = done >= goal.books
+        local ready = L.GoalState(goal, done) == "ready"
         bar:SetMinMaxValues(0, goal.books)
         bar:SetValue(math.min(done, goal.books))
         local c = ready and READY or accent

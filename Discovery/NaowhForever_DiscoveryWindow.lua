@@ -2,7 +2,9 @@
 --  NaowhForever_DiscoveryWindow.lua -- Discovery's own window (/nfdiscovery, its minimap and
 --  top bar button, the tracker's title, Open Discovery on its settings page): your progress
 --  toward the Friend of the Library rewards and who takes the books, then every book for your
---  faction by zone, where it is, whether you carry it, and a waypoint to it.
+--  faction by zone, where it is, whether you carry it, and a waypoint to it. The progress is a
+--  road, as the Training Planner's: a line to every book, filled as far as you have handed in,
+--  a dot at each reward quest (10, 20, 25) with its choice of rewards under it.
 -------------------------------------------------------------------------------
 local ns = _G.NaowhForever
 local T = ns.THEME
@@ -17,8 +19,12 @@ local INSET, SCROLLBAR, TAB_H, TAB_GAP = St.CONTENT_INSET, St.SCROLLBAR, St.TAB_
 local PAGE = "Discovery/Settings"
 local CARD = 6
 local TABS_W = 220
-local HERO_H = 96
-local BAR_H = 6
+local HERO_H = 150
+local BAR_H = 4                 -- the road's line
+local DOT = 12                  -- a reward quest's dot on it
+local DOT_EDGE = 2
+local REWARD = 26               -- a reward's icon, under its dot
+local REWARD_GAP = 4
 local ROW_TOP, ROW_BOTTOM, LINE_GAP = 6, 8, 3
 local LEVEL_W = 24
 local TICK = 14
@@ -59,6 +65,81 @@ local function LibrarianClicked()
     Library.WaypointNpc(ns.LibraryTurnIns.librarian[Library.Side()])
 end
 
+-------------------------------------------------------------------------------
+--  The road: your books to every reward
+-------------------------------------------------------------------------------
+-- A reward quest's state, in words and colour (Library.GoalState).
+local GOAL_STATE = {
+    claimed = { "Handed in", T.muted }, ready = { "Ready to hand in", St.HAVE_RGB },
+    level = { "Enough books; at level %d", STORED_RGB }, ahead = { "%d to go", T.fg },
+}
+
+local function DotEnter(dot)
+    local goal, done = dot.goal, dot.done
+    GameTooltip:SetOwner(dot, "ANCHOR_TOP")
+    GameTooltip:SetText(goal.name, 1, 1, 1)
+    GameTooltip:AddLine(("%d books"):format(goal.books), T.muted.r, T.muted.g, T.muted.b)
+    if goal.level then
+        GameTooltip:AddLine(("Needs level %d"):format(goal.level), T.muted.r, T.muted.g, T.muted.b)
+    end
+    local state = Library.GoalState(goal, done)
+    local words, c = GOAL_STATE[state][1], GOAL_STATE[state][2]
+    if state == "level" then words = words:format(goal.level) end
+    if state == "ahead" then words = words:format(goal.books - done) end
+    GameTooltip:AddLine(words, c.r, c.g, c.b)
+    if goal.reported then
+        GameTooltip:AddLine("The book count is what players report; not confirmed yet.", T.muted.r, T.muted.g,
+            T.muted.b, true)
+    end
+    GameTooltip:AddLine("Pick one of the rewards under it.", T.accentSoft.r, T.accentSoft.g, T.accentSoft.b, true)
+    GameTooltip:Show()
+end
+
+local function RewardEnter(icon)
+    GameTooltip:SetOwner(icon, "ANCHOR_TOP")
+    GameTooltip:SetItemByID(icon.item)
+    GameTooltip:Show()
+end
+
+local function Disc(parent, layer, sublevel)
+    local tex = parent:CreateTexture(nil, layer, nil, sublevel)
+    tex:SetTexture(St.ROUND, "CLAMP", "CLAMP", "TRILINEAR")
+    tex:SetTexelSnappingBias(0)
+    tex:SetSnapToPixelGrid(false)
+    return tex
+end
+
+-- A reward quest on the road: its dot, its count under the line, its rewards under that.
+local function NewMilestone(hero, goal)
+    local m = { goal = goal }
+    m.dot = CreateFrame("Frame", nil, hero)
+    m.dot:SetSize(DOT, DOT)
+    m.dot:SetFrameLevel(hero:GetFrameLevel() + 2)
+    m.dot.edge = Disc(m.dot, "ARTWORK", 1)
+    m.dot.edge:SetAllPoints()
+    m.dot.fill = Disc(m.dot, "ARTWORK", 2)
+    m.dot.fill:SetPoint("TOPLEFT", DOT_EDGE, -DOT_EDGE)
+    m.dot.fill:SetPoint("BOTTOMRIGHT", -DOT_EDGE, DOT_EDGE)
+    m.dot.goal = goal
+    m.dot:EnableMouse(true)
+    m.dot:SetScript("OnEnter", DotEnter)
+    m.dot:SetScript("OnLeave", GameTooltip_Hide)
+    m.label = ns.Font(hero, 10, nil, T.muted)
+    m.label:SetPoint("TOP", m.dot, "BOTTOM", 0, -3)
+    m.label:SetText(goal.books)
+    m.icons = {}
+    for i, reward in ipairs(goal.rewards) do
+        local icon = Parts.ItemIcon(hero, REWARD)
+        icon.texture:SetTexture(C_Item.GetItemIconByID(reward[1]) or 134400)
+        icon.item = reward[1]
+        icon:EnableMouse(true)
+        icon:SetScript("OnEnter", RewardEnter)
+        icon:SetScript("OnLeave", GameTooltip_Hide)
+        m.icons[i] = icon
+    end
+    return m
+end
+
 local function NewHero(parent)
     local hero = CreateFrame("Frame", nil, parent)
     ns.Solid(hero, "BACKGROUND", T.fg, St.CARD_FILL):SetAllPoints()
@@ -79,14 +160,7 @@ local function NewHero(parent)
     hero.fill:SetPoint("TOPLEFT", hero.track, "TOPLEFT")
     hero.fill:SetHeight(BAR_H)
     hero.marks = {}
-    for i, goal in ipairs(ns.LibraryGoals) do
-        local mark = ns.Solid(hero, "OVERLAY", T.fg, 1)
-        mark:SetSize(2, BAR_H + 6)
-        local label = ns.Font(hero, 10, nil, T.muted)
-        label:SetPoint("TOP", mark, "BOTTOM", 0, -2)
-        label:SetText(goal.books)
-        hero.marks[i] = { mark = mark, label = label, goal = goal }
-    end
+    for i, goal in ipairs(ns.LibraryGoals) do hero.marks[i] = NewMilestone(hero, goal) end
     hero.pin = Parts.IconButton(hero, LibrarianClicked, St.PIN, 0, "Waypoint")
     hero.pin.hint = "To who takes the books."
     hero.pin:SetPoint("TOPRIGHT", -10, -14)
@@ -101,7 +175,7 @@ local function SetHero(hero)
     local goal = Library.NextGoal()
     hero.count:SetText(("%d / %d"):format(done, total))
     hero.goal:SetText(goal and ("%d to go for %s"):format(math.max(0, goal.books - done), goal.name)
-        or "Both rewards earned")
+        or "Every reward earned")
     local librarian = ns.LibraryTurnIns.librarian[Library.Side()]
     hero.who:SetText("Hand them to " .. ns.Color("fg", librarian.name) .. "\n" .. librarian.place)
     local width = hero:GetWidth() - 32
@@ -110,13 +184,33 @@ local function SetHero(hero)
     hero.fill:SetShown(share > 0)
     for _, m in ipairs(hero.marks) do
         local x = total > 0 and width * math.min(1, m.goal.books / total) or 0
-        m.mark:ClearAllPoints()
-        m.mark:SetPoint("CENTER", hero.track, "LEFT", x, 0)
-        local reached = done >= m.goal.books
-        local c = reached and T.accent or T.fg
-        m.mark:SetColorTexture(c.r, c.g, c.b, 1)
-        local lc = reached and T.accentSoft or T.muted
+        m.dot.done = done
+        m.dot:ClearAllPoints()
+        m.dot:SetPoint("CENTER", hero.track, "LEFT", x, 0)
+        -- Handed in: filled grey. Ready (or waiting on your level): filled accent. Ahead: a ring.
+        local state = Library.GoalState(m.goal, done)
+        local edge, inside = T.muted, T.bg
+        if state == "claimed" then
+            edge, inside = T.line, T.line
+        elseif state == "ready" or state == "level" then
+            edge, inside = T.accent, T.accent
+        end
+        m.dot.edge:SetVertexColor(edge.r, edge.g, edge.b, 1)
+        m.dot.fill:SetVertexColor(inside.r, inside.g, inside.b, 1)
+        local lc = state == "ahead" and T.muted or T.accentSoft
         m.label:SetTextColor(lc.r, lc.g, lc.b)
+        -- The rewards in a row under its count, centred on the dot; once handed in, the one you
+        -- have in colour and the others greyed.
+        local n = #m.icons
+        local rowW = n * REWARD + (n - 1) * REWARD_GAP
+        for i, icon in ipairs(m.icons) do
+            icon:ClearAllPoints()
+            icon:SetPoint("TOPLEFT", m.label, "BOTTOM", -rowW / 2 + (i - 1) * (REWARD + REWARD_GAP), -6)
+            local owned = C_Item.GetItemCount(icon.item, true) > 0
+            local grey = state == "claimed" and not owned
+            icon.texture:SetDesaturated(grey)
+            icon.texture:SetAlpha(grey and 0.5 or 1)
+        end
     end
     return HERO_H
 end

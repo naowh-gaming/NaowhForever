@@ -87,6 +87,15 @@ function Library.NextGoal()
     end
 end
 
+-- Where a reward quest stands for you: "claimed" (handed in), "ready" (enough books and the
+-- level it needs), "level" (enough books, your level too low) or "ahead".
+function Library.GoalState(goal, done)
+    if C_QuestLog.IsQuestFlaggedCompleted(goal.quest) then return "claimed" end
+    if done < goal.books then return "ahead" end
+    if goal.level and UnitLevel("player") < goal.level then return "level" end
+    return "ready"
+end
+
 local function State(book)
     if Library.Done(book) then return "done" end
     if Library.Carried(book) then return "carried" end
@@ -146,7 +155,7 @@ end
 local function Detail()
     local goal = Library.NextGoal()
     local librarian = ns.LibraryTurnIns.librarian[Library.Side()]
-    if not goal then return "Both rewards earned. " .. librarian.name .. " thanks you." end
+    if not goal then return "Every reward earned. " .. librarian.name .. " thanks you." end
     return ("Next: %s at %d. Hand them to %s."):format(goal.name, goal.books, librarian.name)
 end
 
