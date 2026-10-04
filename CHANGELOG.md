@@ -31,9 +31,6 @@
 - Training Planner: a waypoint to your nearest class trainer, from Waypoint to nearest trainer at
   the top of the planner, the Waypoint button on the level-up toast, or /nf trainer. With TomTom
   loaded, it uses TomTom's arrow.
-- Naowh's Forge: To Library in the editor saves the macro to the Library under your class, for
-  every character of that class. Your Library macros show as YOURS, with Add, Open in Editor and
-  Remove; saving one again under the same name replaces it.
 
 ### Changed
 - Dungeon Journal: Scarlet Monastery is its four wings, each a dungeon of its own: Scarlet
@@ -64,10 +61,6 @@
   button beside Games.
 - Character Panel: the grey Legendary badge for players without a badge is now off by default;
   turn on Legendary Badge Preview (QoL > Character) to see it. Your own badge still shows.
-- Naowh's Forge: the Smart Macros tab no longer has the Food & Drink Bar panel (it stays under
-  Macros settings); that side now explains how Smart Macros keep themselves up to date.
-- Naowh's Forge: a class with nothing in the Library shows just its name, without the import
-  message and button.
 
 ### Fixed
 - Naowh Score: no more Lua error after seeing more than 300 players, like in a busy city.
@@ -76,7 +69,6 @@
   a player it can no longer read, and the supporter plate and ID lines stop hooking the game's
   tooltip, which was reported breaking its own player-name colours.
 - Naowh's Forge: no more Lua error when a macro line is just a "/" with no command yet.
-- Naowh's Forge: the macro editor shows a blinking cursor where you type.
 - Character panel: while the game keeps your stats hidden (combat, encounters), your spec's stats
   still show where the game allows it (primary stats, armor, healing, each school's spell damage,
   crit, dodge, block), a dash for the rest, instead of a Lua error.
