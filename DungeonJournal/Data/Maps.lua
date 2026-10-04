@@ -6,13 +6,17 @@
 --
 --  [dungeon key] = {
 --      art = the folder, floors = how many, names = { a name per floor } (else "Floor n"),
+--      or image = the addon's own picture (Media/Maps), for a dungeon the game has no art
+--      for yet: one floor, a 1024 square TGA with the map in its top 1024 by 683. Its
+--      pins are placed on that picture, so when the game's art comes they are placed again.
 --      entrance = { floor, x, y },
 --      pins = { [NPC ID] = { floor, x, y } },   a chest by minus its object ID
 --  }
 --  x and y run 0 to 1 across and down the map. Placed in game: /nf mappins, drag each pin,
 --  then Copy (UI/DungeonMap.lua). /nf mapcheck says which art and floors the client has.
---  A dungeon not listed has no Map; the ones new in Forever have no art in the client yet,
---  nor has Zul'Farrak (not under "ZulFarrak"). Floor counts as /nf mapcheck found them in
+--  A dungeon not listed has no Map; the ones new in Forever have no art in the client yet
+--  (three have the addon's own picture until they do), nor has Zul'Farrak (not under
+--  "ZulFarrak"). Floor counts as /nf mapcheck found them in
 --  the client, build 1.60.1.70170.
 -------------------------------------------------------------------------------
 local ns = _G.NaowhForever
@@ -27,6 +31,9 @@ ns.Journal.Maps = {
             [11519] = { 1, 0.422, 0.842 },   -- Bazzalan
         },
     },
+    -- Santiago Reyes's recreation, as Ruins of Lordaeron's is.
+    HallOfThanes = { image = "Interface\\AddOns\\NaowhForever\\Media\\Maps\\HallOfThanes",
+        floors = 1, pins = {} },
     WailingCaverns = { art = "WailingCaverns", floors = 1,
         entrance = { 1, 0.465, 0.59 },
         pins = {
@@ -55,6 +62,10 @@ ns.Journal.Maps = {
             [1763] = { 2, 0.122, 0.755 },   -- Gilnid
         },
     },
+    -- Santiago Reyes's recreation (Atlas de Azeroth: Forever, 2026), credited on the map,
+    -- until the game has art of its own for Forever's Ruins of Lordaeron.
+    RuinsOfLordaeron = { image = "Interface\\AddOns\\NaowhForever\\Media\\Maps\\RuinsOfLordaeron",
+        floors = 1, pins = {} },
     ShadowfangKeep = { art = "ShadowfangKeep", floors = 7,
         entrance = { 1, 0.705, 0.605 },
         pins = {
@@ -95,6 +106,9 @@ ns.Journal.Maps = {
             [1663] = { 1, 0.735, 0.575 },   -- Dextren Ward
         },
     },
+    -- Santiago Reyes's recreation, as Ruins of Lordaeron's is.
+    ExcavationSite = { image = "Interface\\AddOns\\NaowhForever\\Media\\Maps\\ExcavationSite",
+        floors = 1, pins = {} },
     Gnomeregan = { art = "Gnomeregan", floors = 4,
         entrance = { 1, 0.642, 0.278 },
         pins = {
