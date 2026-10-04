@@ -36,7 +36,8 @@
   settings (Dungeon Journal > Settings > Quests). It grows to 70% of the screen's height before
   its list scrolls.
 - Dungeon Journal: a quest on its own shows no chain icon; one in a chain still shows its step.
-  A quest's waypoint pin sits in front of its level, in a column of its own.
+  A quest row starts with its waypoint pin and its quest mark (! or ?), each in a column of
+  its own, in place of its level.
 - Dungeon Journal: a quest's card shows on hovering its name only, on the quest tracker, the
   dungeon's page and beside the map. The rest of its row still lights up and takes clicks.
 - Dungeon Journal: Link in Chat on a quest's menu sends the link straight away: to party chat in
