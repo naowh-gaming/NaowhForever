@@ -57,8 +57,13 @@ local first=assert(core:find('function ns.ShowCopyBox',1,true))
 local last=assert(core:find('-- Confirm for a reload',first,true))
 local copy=assert(loadstring(core:sub(first,last-1)));setfenv(copy,setmetatable({ns=ns},{__index=env}));copy()
 local chunk=assert(loadfile('QoL/NaowhForever_GlobalCopy.lua'));setfenv(chunk,env);chunk()
+-- The game gives a tooltip a new primary info each time it builds it afresh.
+local function Primary(self) return self.info end
+for _,tip in ipairs({tooltip,env.ItemRefTooltip,env.ShoppingTooltip1,env.ShoppingTooltip2}) do
+ tip.info={};tip.GetPrimaryTooltipInfo=Primary
+end
 local function clear()
- tooltip.lines={};if tooltip.scripts.OnTooltipCleared then tooltip.scripts.OnTooltipCleared(tooltip) end
+ tooltip.lines={};tooltip.info={}
 end
 local function show(data)
  clear();tooltip.data=data;callbacks[data.type](tooltip,data)
@@ -66,6 +71,7 @@ end
 local function boot(event) for _,f in ipairs(frames) do if f.events[event] then f.scripts.OnEvent(f,event) end end end
 local function keyboard() for _,f in ipairs(frames) do if f.scripts.OnKeyDown then return f end end end
 show({type=1,id=133});check('spell footer',tooltip.lines[2][1]=='Spell ID' and tooltip.lines[2][2]=='133')
+check('no hook on the tooltip being cleared',tooltip.scripts.OnTooltipCleared==nil)
 callbacks[1](tooltip,tooltip.data);check('no duplicate footer',#tooltip.lines==3)
 settings.tooltipCopyHint=false;show({type=1,id=133});check('hint off: the ID stays, its key line goes',#tooltip.lines==2 and tooltip.lines[2][2]=='133');settings.tooltipCopyHint=true
 show({type=2,id=6948});check('item footer',tooltip.lines[2][2]=='6948')
