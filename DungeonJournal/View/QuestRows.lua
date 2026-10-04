@@ -18,7 +18,7 @@ local Quests = J.Quests
 
 local St = J.Style
 local QUEST_CODE, HAVE_RGB, BANG, QUESTION = St.QUEST_CODE, St.HAVE_RGB, St.BANG, St.QUESTION
-local PIN, CHAIN, CHECK, GAP, INDENT = St.PIN, St.CHAIN, St.CHECK, St.GAP, St.INDENT
+local PIN, CHAIN, CHECK, GAP = St.PIN, St.CHAIN, St.CHECK, St.GAP
 local PEOPLE, PARTY_SLOT, BAG = St.PEOPLE, St.PARTY_SLOT, St.BAG
 local GetItemCount, GetItemIconByID, GetItemNameByID = C_Item.GetItemCount, C_Item.GetItemIconByID,
     C_Item.GetItemNameByID
@@ -31,9 +31,10 @@ local View = J.View
 local Kinds, Parts = View.Kinds, View.Parts
 local IconButton, Plain = Parts.IconButton, Parts.Plain
 
--- The columns on the left: Waypoint's pin (empty for a quest with nowhere to go, so the
--- columns still line up), then the mark; the title after them.
-local MARK_LEFT = INDENT + WAYPOINT_SLOT + 4
+-- The columns on the left, from the row's edge: Waypoint's pin (empty for a quest with nowhere
+-- to go, so the columns still line up), then the mark; the title after them.
+local ROW_LEFT = 6
+local MARK_LEFT = ROW_LEFT + WAYPOINT_SLOT + 4
 local TITLE_LEFT = MARK_LEFT + MARK + 6
 -- The fixed slots on the right, from the right: who in your group has it (always shown, 0
 -- out of a group, so the slots never leave a gap), then Chain.
@@ -466,7 +467,7 @@ Kinds.quest = {
         row.hover:SetAllPoints()
         row.hover:Hide()
         row.divider = ns.Solid(row, "BORDER", T.line, 0.6)
-        row.divider:SetPoint("BOTTOMLEFT", INDENT, 0)
+        row.divider:SetPoint("BOTTOMLEFT", ROW_LEFT, 0)
         row.divider:SetPoint("BOTTOMRIGHT")
         ns.Hairline(row.divider, "h")
         row.waypoint = IconButton(row, WaypointClicked, PIN, PIN_MARGIN)
@@ -571,7 +572,7 @@ Kinds.quest = {
         row.party:SetPoint("RIGHT", row, anchor, -PARTY_RIGHT, y)
         -- The pin and the mark in front of the title, on its line.
         local line = -(QUEST_TOP + math.ceil(row.title:GetStringHeight()) / 2)
-        row.waypoint:SetPoint("CENTER", row, "TOPLEFT", INDENT + WAYPOINT_SLOT / 2, line)
+        row.waypoint:SetPoint("CENTER", row, "TOPLEFT", ROW_LEFT + WAYPOINT_SLOT / 2, line)
         row.mark:SetPoint("CENTER", row, "TOPLEFT", MARK_LEFT + MARK / 2, line)
         row.chain:SetPoint("RIGHT", row, anchor, -CHAIN_RIGHT, y)
         return height
