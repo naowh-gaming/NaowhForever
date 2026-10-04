@@ -185,8 +185,7 @@ function Parts.ItemIcon(parent, size)
     frame:SetSize(size, size)
     frame.edge = ns.Border(frame, BORDER_RGB)
     frame.texture = Smooth(frame:CreateTexture(nil, "ARTWORK"))
-    frame.texture:SetPoint("TOPLEFT", 1, -1)
-    frame.texture:SetPoint("BOTTOMRIGHT", -1, 1)
+    ns.PixelInset(frame.texture, 1)
     frame.texture:SetTexCoord(0.08, 0.92, 0.08, 0.92)
     -- WoW Forever's mark in the opposite corner, just inside the icon's edge: no box, its own
     -- dark outline keeps it readable on the icon's art.
@@ -270,7 +269,7 @@ function Parts.Link(parent, onClick, arrow)
     link.underline = ns.Solid(link, "ARTWORK", T.fg, 1)
     link.underline:SetPoint("TOPLEFT", link.text, "BOTTOMLEFT", 0, -1)
     link.underline:SetPoint("TOPRIGHT", link.text, "BOTTOMRIGHT", 0, -1)
-    link.underline:SetHeight(1)
+    ns.Hairline(link.underline, "h")
     link.underline:Hide()
     link:SetScript("OnClick", onClick)
     link:SetScript("OnEnter", LinkEnter)
@@ -368,7 +367,7 @@ function Backdrop:Card(left, top, right, bottom)
         local line = self:Keep(frame:CreateTexture(nil, "BORDER"), BORDER_RGB, CARD_EDGE)
         line:SetPoint(edge[1], fill)
         line:SetPoint(edge[2], fill)
-        if edge[3] then line:SetWidth(1) else line:SetHeight(1) end
+        ns.Hairline(line, edge[3] and "v" or "h")
         parts[#parts + 1] = line
     end
     return parts
