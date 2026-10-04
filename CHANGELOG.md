@@ -63,6 +63,8 @@
   turn on Legendary Badge Preview (QoL > Character) to see it. Your own badge still shows.
 - Naowh's Forge: the Smart Macros tab no longer has the Food & Drink Bar panel (it stays under
   Macros settings); that side now explains how Smart Macros keep themselves up to date.
+- Naowh's Forge: a class with nothing in the Library shows just its name, without the import
+  message and button.
 
 ### Fixed
 - Naowh Score: no more Lua error after seeing more than 300 players, like in a busy city.

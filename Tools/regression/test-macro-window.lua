@@ -184,7 +184,6 @@ local ns = {
     ShowCopyBox = function(_, text) account.lastCopy = text end,
     StashOptionsWindow = NOTHING, OpenOptionsWindow = NOTHING, Apply = NOTHING,
     DB = function() return { utilityReminders = { classMacros = packMacros } } end,
-    ShowPackImport = function() account.packImport = true end,
     HEALTHSTONES = { 5509 }, HEALING_POTIONS = { 13446 },
 }
 local lastPrompt
@@ -337,20 +336,19 @@ Click(health.toggle)
 check("its switch turns the macro on", settings.health == true)
 
 window.switch.onPick("lib")
-check("the Library starts empty, with Import", window.lib.empty:IsShown() and window.lib.importEmpty:IsShown())
+check("the Library starts empty, with nothing but the class name", not window.lib.lead:IsShown()
+    and #Shown(function(f) return rawget(f, "open") ~= nil and rawget(f, "add") ~= nil end) == 0)
 packMacros.MAGE = { { name = "Naowh Sheep", body = "#showtooltip Polymorph\n/cast Polymorph", note = "Naowh's" } }
 window.switch.onPick("mine")
 window.switch.onPick("lib")
 local libCards = Shown(function(f) return rawget(f, "open") ~= nil and rawget(f, "add") ~= nil end)
-check("the pack's macros fill it", #libCards == 1 and not window.lib.empty:IsShown())
+check("the pack's macros fill it", #libCards == 1 and window.lib.lead:IsShown())
 Click(libCards[1].add)
 check("Add makes a character macro", store.character[2] and store.character[2].name == "Naowh Sheep")
 
 -------------------------------------------------------------------------------
 --  Import
 -------------------------------------------------------------------------------
-Click(window.lib.importEmpty)
-check("the Library's button opens the profile pack import", account.packImport == true)
 Click(importButton)
 lastPrompt(account.lastCopy)
 check("a macro whose name you already have is not imported again", #store.character == 2
@@ -483,7 +481,7 @@ packMacros.MAGE = {}
 window.switch.onPick("lib")
 packMacros.MAGE = { { name = "Iconic", body = "/cast Blink", icon = 135736 } }
 for _, fn in ipairs(applyHooks) do fn() end
-check("a pack import fills the open Library", LibCard("Iconic") ~= nil and not window.lib.empty:IsShown())
+check("a pack import fills the open Library", LibCard("Iconic") ~= nil and window.lib.lead:IsShown())
 
 -- Pack macros keep the pack's icon.
 store.character = {}

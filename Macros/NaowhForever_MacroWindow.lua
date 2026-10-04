@@ -4,8 +4,8 @@
 --  in the editor, with its size against the game's 255 bytes, the lines that will not work
 --  and, beside it, what it does in plain words, a condition builder, the commands, and icons.
 --  Smart Macros: the macros the module keeps up to date, with what each will use right now.
---  Library: Naowh's macros by class, as your profile pack brings them; empty until you import
---  them. Built the first time it opens.
+--  Library: Naowh's macros by class, as your profile pack brings them; empty without one.
+--  Built the first time it opens.
 -------------------------------------------------------------------------------
 local ns = _G.NaowhForever
 local T = ns.THEME
@@ -1284,8 +1284,7 @@ local function DrawLibrary()
         end
     end
     view.body:SetHeight(math.max(1, math.ceil(#list / 2) * (LIB_H + CARD_GAP)))
-    view.empty:SetShown(#list == 0)
-    view.importEmpty:SetShown(#list == 0)
+    view.lead:SetShown(#list > 0)
 end
 
 -------------------------------------------------------------------------------
@@ -1408,7 +1407,7 @@ local function Build()
     window.switch = Parts.Tabs(window, SWITCH_W, {
         { key = "mine", label = "My Macros", tip = "Your macros, and the editor." },
         { key = "smart", label = "Smart Macros", tip = "Macros that keep themselves up to date." },
-        { key = "lib", label = "Library", tip = "Naowh's macros by class, once you import them." },
+        { key = "lib", label = "Library", tip = "Macros by class." },
     }, SetTab)
     window.switch:SetPoint("TOPLEFT", CARD_INSET, -(HEADER + TOOL_GAP))
     window.search = Parts.SearchBox(window, "Search your macros", function() if tab == "mine" then DrawList() end end)
@@ -1500,14 +1499,6 @@ local function Build()
     lib.scroll, lib.body = Scroller(libArea, 64)
     lib.scroll:SetPoint("TOPLEFT", PAD, -64)
     lib.cards = Pool(function() return NewLibCard(lib.body) end)
-    lib.empty = Text14(libArea, 13, T.muted)
-    lib.empty:SetPoint("TOPLEFT", PAD, -76)
-    lib.empty:SetPoint("RIGHT", -PAD, 0)
-    lib.empty:SetJustifyH("LEFT")
-    lib.empty:SetText("Nothing here yet. Naowh's macros come with his profile pack: import it and they show up "
-        .. "here by class. A macro string someone shares goes into My Macros, from Import at the top.")
-    lib.importEmpty = ns.AccentBorder(ns.Button(libArea, "Import Naowh's Pack", 180, BUTTON_H, ns.ShowPackImport))
-    lib.importEmpty:SetPoint("TOPLEFT", lib.empty, "BOTTOMLEFT", 0, -14)
     window.lib = lib
 
     Parts.FooterBrand(window, PAGE, CARD_INSET)
