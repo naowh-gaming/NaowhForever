@@ -604,4 +604,17 @@ window.switch.onPick("lib")
 check("Remove takes it out of the Library", #account.libraryMacros.MAGE == 1 and LibCard("My Blink") == nil
     and LibCard("My Script") ~= nil)
 
+-- A pack script copied to the Library keeps the pack's warning.
+store.character = {}
+packMacros.MAGE = { { name = "Pack Run", body = "/run print(2)" } }
+window.switch.onPick("lib")
+Click(LibCard("Pack Run").open)
+Click(editorButtons[5])
+check("a pack macro's copy is marked as from the pack", account.libraryMacros.MAGE[2].pack == true)
+account.lastConfirm = nil
+packMacros.MAGE = {}
+window.switch.onPick("lib")
+Click(LibCard("Pack Run").add)
+check("and its script still asks first", (account.lastConfirm or ""):find("runs a script from a shared pack", 1, true))
+
 print(("test-macro-window: %d checks passed"):format(checks))

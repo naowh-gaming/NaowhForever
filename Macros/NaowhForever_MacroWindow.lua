@@ -206,7 +206,8 @@ local function PackMacros(class)
     return (S.Get("classMacros") or {})[class] or {}
 end
 
--- Macros the player saved to the Library, by class, for every character: { name, body, icon }.
+-- Macros the player saved to the Library, by class, for every character: { name, body, icon, pack }.
+-- pack marks a copy of a pack macro, whose script still gets the shared-pack warning.
 local function OwnMacros(class)
     local own = ns.AccountSettings().libraryMacros
     return own and own[class] or {}
@@ -314,7 +315,7 @@ local function SaveToLibrary()
     account.libraryMacros[class] = account.libraryMacros[class] or {}
     local list = account.libraryMacros[class]
     local icon = (draft.picked or draft.source == "game") and draft.icon ~= QUESTION and draft.icon or nil
-    local entry = { name = name, body = body, icon = icon }
+    local entry = { name = name, body = body, icon = icon, pack = draft.source == "pack" or nil }
     for i, e in ipairs(list) do
         if e.name == name then
             list[i] = entry
@@ -574,7 +575,7 @@ RenderEditor = function()
     editor.scopeCharacter.fill:SetShown(not draft.account)
     editor.where:SetText(draft.index and "Drag the icon to an action bar" or
         (draft.source == "pack" and "From your pack: Create makes it yours"
-        or draft.source == "library" and "From your Library: Save makes it a macro" or "Not saved yet"))
+        or draft.source == "library" and "From your Library: Create makes it a macro" or "Not saved yet"))
     editor.grip:SetShown(draft.index ~= nil)
     local dirty = draft.saved ~= nil and changed
     editor.revert:SetEnabled(dirty)
@@ -1196,7 +1197,9 @@ local function AddFromPack(entry)
     local function Add()
         if InCombatLockdown() then Toast("Macros can be added once the fight is over.") return end
         local index = Find(entry.name, entry.body, false)
-        local icon = (entry.own and entry.icon or ns.MacroEntryIcon(entry)) or QUESTION
+        local icon = entry.icon
+        if not entry.own then icon = ns.MacroEntryIcon(entry) end
+        icon = icon or QUESTION
         if not index then
             if GetMacroIndexByName(entry.name) > 0 then
                 Toast("You already have a different macro called " .. entry.name .. ". Rename it to add this one.")
@@ -1212,7 +1215,7 @@ local function AddFromPack(entry)
         Open({ index = index, account = false, name = entry.name, icon = icon, body = entry.body })
         Render()
     end
-    if RunsScript(entry.body) and not entry.own then
+    if RunsScript(entry.body) and (entry.pack or not entry.own) then
         ns.Confirm(entry.name .. " runs a script from a shared pack. Open it in the editor to read it first. Add it?",
             Add)
     else
@@ -1291,7 +1294,8 @@ local function DrawLibrary()
     view.cards.Release()
     local list = {}
     for _, entry in ipairs(OwnMacros(libClass)) do
-        list[#list + 1] = { name = entry.name, note = "", body = entry.body, icon = entry.icon, own = true }
+        list[#list + 1] = { name = entry.name, note = "", body = entry.body, icon = entry.icon, own = true,
+            pack = entry.pack }
     end
     for _, entry in ipairs(PackMacros(libClass)) do
         if type(entry.name) == "string" and type(entry.body) == "string" then
@@ -1308,7 +1312,8 @@ local function DrawLibrary()
         local col, line = (i - 1) % 2, math.floor((i - 1) / 2)
         c:SetPoint("TOPLEFT", view.body, "TOPLEFT", col * (w + CARD_GAP), -line * (LIB_H + CARD_GAP))
         c:SetWidth(w)
-        local icon = entry.own and entry.icon or ns.MacroEntryIcon(entry)
+        local icon = entry.icon
+        if not entry.own then icon = ns.MacroEntryIcon(entry) end
         c.icon:SetTexture(ShownIcon(nil, icon, entry.body))
         c.title:SetText(entry.name)
         if entry.own then
