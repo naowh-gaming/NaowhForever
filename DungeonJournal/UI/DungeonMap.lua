@@ -326,7 +326,13 @@ function View:FillFloors()
         table.sort(floors)
     end
     if #floors == 0 then
-        for n = 1, J.Maps[dungeon.key].floors do floors[n] = n end
+        local map = J.Maps[dungeon.key]
+        -- A dungeon on one floor of shared art (map.floor) offers only that one.
+        if map.floor then
+            floors[1] = map.floor
+        else
+            for n = 1, map.floors do floors[n] = n end
+        end
     end
     if not self:FloorAt(self.floor) then self.floor = floors[1] end
 end
@@ -442,7 +448,8 @@ end
 local function Copy(dungeon)
     local map = J.Maps[dungeon.key]
     local source = map.image and ("image = %q"):format(map.image) or ("art = %q"):format(map.art)
-    local lines = { ("    %s = { %s, floors = %d,"):format(dungeon.key, source, map.floors) }
+    local lines = { ("    %s = { %s, floors = %d,%s"):format(dungeon.key, source, map.floors,
+        map.floor and (" floor = %d,"):format(map.floor) or "") }
     if map.names then
         local names = {}
         for i, name in ipairs(map.names) do names[i] = ("%q"):format(name) end

@@ -80,6 +80,20 @@ comment, sent back for changes, or merged and fixed up by me.
   and movable frames through `UI.AttachMover` so they show up in Unlock Mode.
 - Keep comments short and only where the code cannot speak for itself.
 
+### Shared components
+
+- Build every piece of UI from the shared components: `Shared/` (listed in
+  `Shared/README.md`) and the `ns.UI` widgets in `Core/NaowhForever_Widgets.lua`. Windows,
+  title bars, buttons, tabs, links, borders, fonts, colours, settings cards, confirmations
+  and tooltips all have one.
+- Never hand-roll a part that already exists, and never copy one into your module to change
+  it.
+- If a shared part is close but not quite what you need, make it more flexible: add an
+  optional input that leaves every current caller working as before.
+- If nothing fits, add a new component to `Shared/`, list it in `Shared/README.md`, and use
+  it from your module, so the next module can use it too.
+- Colours come from `ns.THEME` and `Shared/Style.lua`, never written as numbers in a module.
+
 ### Style
 
 - Every colour, size and gap is a named value, with a comment when the name alone does not
@@ -105,10 +119,11 @@ comment, sent back for changes, or merged and fixed up by me.
 
 ## Changelog and versions
 
-- Add a line under `## Unreleased` in `CHANGELOG.md`, written for players: what changed
-  for them and where to find it.
-- Do **not** touch the TOC `## Version`, `ns.CODE_BUILD` or tags. The Release workflow
-  sets them (README, "Releasing a new version").
+- Write the changelog under `## Changelog` in the PR description, for players: what changed
+  for them and where to find it. One line per change, each starting `Added:`, `Changed:`
+  or `Fixed:`. The release copies them into `CHANGELOG.md`, so PRs never conflict over it.
+- Do **not** touch `CHANGELOG.md`, the TOC `## Version`, `ns.CODE_BUILD` or tags. The
+  Release workflow sets them (README, "Releasing a new version").
 
 ## Getting set up
 
@@ -127,7 +142,7 @@ Every pull request runs these on GitHub. Get them green before you ask for a rev
 | --- | --- |
 | `pre-commit` | luacheck; CRLF and ASCII in addon files; every TOC file exists with the right letter case; valid XML and YAML; merge markers, trailing whitespace, mixed line endings, private keys and files over 5 MB; the workflows through actionlint and zizmor. The list is in `.pre-commit-config.yaml`. |
 | `tests` | Every test in `Tools/regression` on Lua 5.1, including `test-syntax.lua`, which compiles every file the TOC loads, so `goto` or `//` fails here instead of at login; and the release script's tests in `Tools/tests`. |
-| `pr-rules` | Addon changes add a line under `## Unreleased` in `CHANGELOG.md`, and the TOC `## Version` and `ns.CODE_BUILD` stay as they are. Label the PR `no changelog` when nothing changes for players, or `release` for the release commit. |
+| `pr-rules` | Addon changes have a changelog line under `## Changelog` in the PR description, and the TOC `## Version` and `ns.CODE_BUILD` stay as they are. Label the PR `no changelog` when nothing changes for players, or `release` for the release commit. Editing the description re-runs it. |
 | `package` | The release packager builds the zip without uploading it, then every TOC file and library must be inside and no tooling may ship. |
 | `title` | The PR title is `type: summary` (see [PR etiquette](#pr-etiquette)), since a squash merge turns it into the commit on main. |
 
