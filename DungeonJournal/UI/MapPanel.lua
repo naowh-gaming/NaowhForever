@@ -74,7 +74,7 @@ end
 -- In the Journal window's look rather than the plain dark panel's, so the two match: its
 -- gradient faded by its Opacity, its card behind the page, and its titles' blue.
 local function Paint()
-    panel.backdrop:Paint(S.Get("windowAlpha") or 1)
+    panel.backdrop:Paint(S.Get("mapAlpha") or 1)
 end
 
 -- The page as wide as the panel, or less the scrollbar's room; drawn again when it changes
@@ -286,7 +286,7 @@ local function SettingChanged(key)
     if key == "enabled" or key == "mapPanel" or key == "mapFactions" then
         Sync()
         if hooked then Refresh() end
-    elseif key == "windowAlpha" then
+    elseif key == "mapAlpha" then
         -- Only the backdrop: the page itself is unchanged.
         if panel then Paint() end
     elseif panel and panel:IsShown() then

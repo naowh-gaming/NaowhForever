@@ -176,6 +176,17 @@ function Parts.Fraction(part, whole)
     return text
 end
 
+local coins = {}
+
+function Parts.Coins(copper)
+    local text = coins[copper]
+    if not text then
+        text = C_CurrencyInfo.GetCoinTextureString(copper)
+        coins[copper] = text
+    end
+    return text
+end
+
 -------------------------------------------------------------------------------
 --  Pieces
 -------------------------------------------------------------------------------
@@ -467,6 +478,7 @@ local function PartyChat()
     if IsInGroup(LE_PARTY_CATEGORY_INSTANCE) then return "INSTANCE_CHAT" end
     return "PARTY"
 end
+Parts.PartyChat = PartyChat
 
 -- The Trade channel's number while you are in it (in a city), else nil.
 local function TradeChannel()

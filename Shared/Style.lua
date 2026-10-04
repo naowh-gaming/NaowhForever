@@ -41,6 +41,8 @@ Shared.Style = {
     -- WoW Forever's own: the pale gold of its logo, on what is new in Forever.
     FOREVER_CODE = "|cffeed69e",
     FOREVER_RGB = { r = 0xee / 255, g = 0xd6 / 255, b = 0x9e / 255 },
+    -- What you carry and can hand in, in the game's quest gold.
+    CARRIED_RGB = { r = 1, g = 0.82, b = 0 },
 
     ---------------------------------------------------------------------------
     --  Icons: the addon's own (Media/, drawn by Tools/make_media.py, white so they take
@@ -51,6 +53,8 @@ Shared.Style = {
     HANGER = MEDIA .. "hanger",             -- new looks
     STAR = MEDIA .. "star",                 -- your BiS in BIS_RGB, your second pick in SECOND_RGB
     UPGRADE_ATLAS = "bags-greenarrow",      -- an upgrade: the game's own green arrow from the bags
+    SCRAP_ATLAS = "bags-icon-scrappable",   -- scrap to sell at a vendor: the game's own bag scrap icon
+    SCRAP_RATIO = 32 / 36,                  -- that icon's height to its width
     PIN = MEDIA .. "pin",                   -- waypoints and places
     INFO = MEDIA .. "info",                 -- Naowh's tip
     LOGO = MEDIA .. "LogoAddon",            -- the Naowh logo, left of a window's title
@@ -87,6 +91,7 @@ Shared.Style = {
     NOTE_PAD = 6,           -- under a note
     ACTION = 16,            -- an icon button in a row
     STRIPE = 0.025,         -- every other row of a long list: a faint band in the text colour
+    HOVER = 0.05,           -- the row under the mouse: a band in the text colour, a little stronger
 
     -- Cards: a faint fill with a hairline edge, as many across as fit at CARD_MIN_W each,
     -- up to MAX_COLUMNS; the cards in a row share a height.
@@ -132,4 +137,24 @@ Shared.Style = {
     PANEL_PAD = 10,
     PANEL_HEADER = 30,
     PANEL_BUTTONS = 34,     -- a side panel's buttons along its bottom
+
+    ---------------------------------------------------------------------------
+    --  A tracker (Parts.TrackerPanel): a small window kept on screen, its rows a table with
+    --  a waypoint pin in a column of its own
+    ---------------------------------------------------------------------------
+    TRACKER_W = 320,
+    TRACKER_SLOT = 24,      -- the progress bar and the dropdown under its title
+    TRACKER_BAR_RGB = { r = 0x14 / 255, g = 0x16 / 255, b = 0x19 / 255 },  -- behind the bar, the theme's panel once changed
+    TRACKER_GAP = 6,        -- under each of them
+    TRACKER_SCROLL = 20,    -- the body's right edge to the window's, for the scrollbar, while it scrolls
+    CLOSE_ROOM = 34,        -- the title stops short of the close button
+    ROW_LEFT = 6,           -- a row's pin column, from its left edge
+    WAYPOINT_SLOT = 20,     -- the pin's column
+    ROW_TOP = 6,            -- over a row's text
+    ROW_LINE_GAP = 3,       -- between its text and the line under it
+    ROW_BOTTOM = 8,         -- under its text
+    ROW_RIGHT = 10,         -- right of its text
+    ROW_HOVER = 0.04,       -- the row under the mouse: a band in the text colour
+    ROW_DIVIDER = 0.6,      -- the line under each row, in the theme's line colour
+    ROW_TICK = 16,          -- the tick in the pin's column once a row is done
 }

@@ -68,11 +68,11 @@ it again. Be gentle with the sites: the scripts wait between requests on purpose
 | --- | --- |
 | `regression/` | Offline Lua tests against stubs. `bash Tools/regression/run-all.sh` runs them all (set `LUA=` to your lua.exe). `load_files.lua` loads a module's real files into a test, `measure.lua` times a draw and fails on garbage, `toc_files.lua` lists what the TOC loads. |
 | `tests/` | Python tests for the tools: `python -m unittest discover -s Tools/tests`. |
-| `hooks/check-pr.sh` | PR rules: a CHANGELOG line for addon changes, TOC version untouched. |
+| `hooks/check-pr.sh` | PR rules: a changelog line in the PR description for addon changes, TOC version untouched. |
 | `hooks/check_toc.py`, `hooks/toc_files.py` | Every file the TOC loads exists, with the right letter case. |
 | `hooks/check-package.sh` | The built zip has one `NaowhForever/` folder, everything it loads, and no tooling. |
-| `hooks/daily-pull-request.sh` | The daily watch's one pull request: `add` commits what a check changed, `open` squashes them into one commit (a title saying what is in it, a short list) and opens the PR or brings the open one up to date, or an issue with a link where workflows may not open PRs. |
-| `release.py` | Release helper for `.github/workflows/release.yml`: version bump, notes, changelog. |
+| `hooks/daily-pull-request.sh` | The daily watch's one pull request: `add` commits what a check changed, `open` squashes them into one commit (a title saying what is in it, a short list) and opens the PR or brings the open one up to date, with the checks' changelog lines under `## Changelog` in its description (labelled `no changelog` when there are none), or an issue with a link where workflows may not open PRs. |
+| `release.py` | Release helper for `.github/workflows/release.yml`: version bump, notes, changelog (from the merged PRs' descriptions). |
 
 ## What CI runs
 
@@ -81,8 +81,10 @@ it again. Be gentle with the sites: the scripts wait between requests on purpose
 - **Daily** (`daily-watch.yml`), three checks, one after another on one branch, each on what
   the one before changed. Whatever they change goes in **one** pull request, as one commit (we
   squash merge): its title says what is in it (`chore(data): WoW Forever build 1.60.1.70205,
-  boss loot and BiS lists`), its description lists the changes with each check's report folded
-  away (`hooks/daily-pull-request.sh`, which keeps it up to date). A check that fails leaves out
+  boss loot and BiS lists`), its description lists the changes, their lines for players under
+  `## Changelog` (labelled `no changelog` when there are none; CHANGELOG.md is left to the
+  release), and each check's report folded away (`hooks/daily-pull-request.sh`, which keeps it
+  up to date). A check that fails leaves out
   only its own change, and the run says so. A new BiS pick CI could not find a source for (it
   may not read Wowhead) keeps the pull request a draft that says what to run on our machines.
   A change CI cannot make at all (wowsrc lists items the game's tables don't have yet) goes in
@@ -93,8 +95,8 @@ it again. Be gentle with the sites: the scripts wait between requests on purpose
     new build, the change moves our faction data to it, with a report of what changed (new
     gear the Journal doesn't list yet, new dungeon floor maps in the game's map table). The same
     change refits the Naowh Score (`fit_naowh_score.py --write`): `Formula.lua` changes when
-    the constants move enough, and the report gets a "Naowh Score" section (old against
-    new, the fit's quality, its gates). A manual run reports it too; a failed fit only says
+    the constants move enough, with a changelog line (every player's score moves), and the
+    report gets a "Naowh Score" section (old against new, the fit's quality, its gates). A manual run reports it too; a failed fit only says
     so.
   - `loot`: `wowsrc.py --check`. If wowsrc's loot pages changed (a boss gained or lost items,
     a new boss or page), it rebuilds the Journal with `--offline`.

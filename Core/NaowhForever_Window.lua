@@ -67,7 +67,9 @@ local MODULES = {
       command = "journal", alias = "dj", short = "Journal", icon = "Interface\\Icons\\INV_Misc_Book_09",
       subtitle = "Every dungeon and raid: what drops, your quests, and more.",
       tabs = {
-          { name = "Settings", reuse = true },
+          { name = "Journal", reuse = true },
+          { name = "Quest Tracker", reuse = true },
+          { name = "Map", reuse = true },
       } },
     -- The list itself is a window of its own (open); only its settings live here.
     { name = "BiS List", group = "ADVENTURE", navIcon = "trophy", settings = "QoLSettings", enabledKey = "bis",
@@ -91,7 +93,8 @@ local MODULES = {
       command = "discovery", short = "Discovery", icon = "Interface\\Icons\\INV_Misc_Book_07",
       subtitle = "Library books to find around Azeroth, and who to hand them to.",
       tabs = {
-          { name = "Settings", reuse = true },
+          { name = "Library Books", reuse = true },
+          { name = "Sleeping Bag", reuse = true },
       } },
     -- The sets are a window of their own (open); only their settings live here.
     { name = "Gear & Trinkets", group = "COMBAT", navIcon = "shield", settings = "QoLSettings", enabledKey = "gearSets",
@@ -1289,6 +1292,8 @@ SlashCmdList["NAOWHFOREVER"] = function(msg)
         ns.LockoutsCommand()
     elseif cmd == "ranks" and ns.TrainerRankCheck then
         ns.TrainerRankCheck()
+    elseif cmd == "trainer" and ns.Training then
+        ns.Training.WaypointToTrainer()
     elseif cmd == "profrank" and ns.ProfessionRankCheck then
         ns.ProfessionRankCheck()
     elseif cmd == "recipes" and ns.RecipeFinderDebug then
@@ -1299,6 +1304,8 @@ SlashCmdList["NAOWHFOREVER"] = function(msg)
         ns.DungeonMapCommand(cmd)
     elseif cmd == "badges" and ns.BadgesCommand then
         ns.BadgesCommand(arg)
+    elseif cmd == "scrap" and ns.ToggleScrapList then
+        ns.ToggleScrapList()
     else
         ns.ToggleOptionsWindow()
     end
