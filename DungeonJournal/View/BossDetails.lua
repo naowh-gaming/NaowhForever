@@ -44,7 +44,7 @@ local QUESTION = 134400   -- the game's question mark, for a spell with no icon
 local MARK = 14           -- the Naowh mark beside the tip; a done quest's tick
 local QUEST_H = 22
 local STATE_W = 120       -- a quest's state, on the right
-local SHARE = 18          -- the tip's share button
+local SHARE = St.ACTION   -- the tip's share button
 local TIP_MARK = St.ICON  -- the Naowh mark beside the tip, as big as a loot icon
 local BUBBLE = "Interface\\GossipFrame\\GossipGossipIcon"
 
@@ -113,21 +113,8 @@ Kinds.bossHeader = {
 -------------------------------------------------------------------------------
 --  Naowh's tip
 -------------------------------------------------------------------------------
-local function ShareEnter(button)
-    button.icon:SetVertexColor(1, 1, 1)
-    GameTooltip:SetOwner(button, "ANCHOR_RIGHT")
-    GameTooltip:SetText("Share Naowh's tip", 1, 1, 1)
-    GameTooltip:AddLine("Say, Party, Raid, Guild or your target.", T.muted.r, T.muted.g, T.muted.b)
-    GameTooltip:Show()
-end
-
-local function ShareLeave(button)
-    button.icon:SetVertexColor(T.muted.r, T.muted.g, T.muted.b)
-    GameTooltip:Hide()
-end
-
 local function ShareClicked(button)
-    Parts.ShareTip(button, button.boss, button.tip)
+    Parts.ShareTip(button, button.boss, button.tipText)
 end
 
 Kinds.tip = {
@@ -137,17 +124,8 @@ Kinds.tip = {
         row.mark:SetTexture(St.LOGO_SMALL, nil, nil, "TRILINEAR")
         row.mark:SetSize(TIP_MARK, TIP_MARK)
         row.mark:SetPoint("TOPLEFT", 0, -ROW_PAD)
-        local share = CreateFrame("Button", nil, row)
-        share:SetSize(SHARE, SHARE)
-        share:SetPoint("RIGHT", 0, 0)
-        share.icon = share:CreateTexture(nil, "ARTWORK")
-        share.icon:SetTexture(BUBBLE)
-        share.icon:SetAllPoints()
-        share.icon:SetVertexColor(T.muted.r, T.muted.g, T.muted.b)
-        share:SetScript("OnEnter", ShareEnter)
-        share:SetScript("OnLeave", ShareLeave)
-        share:SetScript("OnClick", ShareClicked)
-        row.share = share
+        row.share = Parts.IconButton(row, ShareClicked, BUBBLE, 0, "Share Naowh's tip in chat")
+        row.share:SetPoint("RIGHT", 0, 0)
         row.text = ns.Font(row, 12, nil, T.fg)
         row.text:SetPoint("TOPLEFT", row.mark, "TOPRIGHT", TEXT_GAP, 0)
         row.text:SetJustifyH("LEFT")
@@ -157,7 +135,7 @@ Kinds.tip = {
     ---@param boss JournalBoss
     ---@param tip string
     Set = function(row, boss, tip)
-        row.share.boss, row.share.tip = boss, tip
+        row.share.boss, row.share.tipText = boss, tip
         row.text:SetWidth(row:GetWidth() - TIP_MARK - TEXT_GAP * 2 - SHARE)
         row.text:SetText(tip)
         -- Beside the mark, in the middle of it while it is the taller.
