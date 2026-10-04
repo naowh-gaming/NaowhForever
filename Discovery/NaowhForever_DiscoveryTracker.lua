@@ -4,9 +4,8 @@
 --  such a zone; Always Show keeps it up in every zone. In the Dungeon Quest Tracker's look:
 --  the Journal's window style (its gradient faded by the window's Opacity, a card behind the
 --  list, its titles' blue), the progress bar and the zone dropdown under the title, rows like
---  its quest rows (a waypoint pin, then a mark: a ! for a book to find, red while it is above
---  your level, a ? for the books in your bags to hand in, a tick for one handed in) and a cog
---  for its settings in the bottom right.
+--  its quest rows (a waypoint pin in front, a tick in its place once a book is handed in) and
+--  a cog for its settings in the bottom right.
 -------------------------------------------------------------------------------
 local ns = _G.NaowhForever
 local S = ns.DiscoverySettings
@@ -25,7 +24,6 @@ local function SoftBlue(r, g, b)
 end
 local BAR_BG = { r = 0x14 / 255, g = 0x16 / 255, b = 0x19 / 255 }
 local READY = { r = 0x19 / 255, g = 1, b = 0x19 / 255 }
-local RED = { r = 1, g = 0x4d / 255, b = 0x4d / 255 }   -- the quest log's too-high red
 
 -- The window: as the Dungeon Quest Tracker's (UI/QuestTracker.lua), its parts on the same
 -- measures.
@@ -35,14 +33,11 @@ local BODY_W = PANEL_W - PANEL_PAD * 2
 local BAR_H, BAR_GAP = 24, 6               -- the progress bar, as tall as the dropdown under it
 local FOOTER = St.ACTION + 6               -- the cog under the list, and the room above it
 local SETTINGS_PAGE = "Discovery/Settings"
--- A row, as a quest row (View/QuestRows.lua): the pin and the mark in columns of their own,
--- then the name with where it is under it.
-local ROW_LEFT, WAYPOINT_SLOT, MARK = 6, 20, 16
-local MARK_LEFT = ROW_LEFT + WAYPOINT_SLOT + 4
-local TITLE_LEFT = MARK_LEFT + MARK + 6
+-- A row, as a quest row (View/QuestRows.lua): the pin in a column of its own (a tick there
+-- once the book is handed in), then the name with where it is under it.
+local ROW_LEFT, WAYPOINT_SLOT, TICK = 6, 20, 16
+local TITLE_LEFT = ROW_LEFT + WAYPOINT_SLOT + 6
 local ROW_TOP, ROW_LINE_GAP, ROW_BOTTOM = 6, 3, 8
-local BANG = "Interface/GossipFrame/AvailableQuestIcon"
-local QUESTION = "Interface/GossipFrame/ActiveQuestIcon"
 
 local panel, zoneEvents, shownEvents
 local dismissedZone   -- the zone the X closed it in, until you leave
@@ -213,23 +208,6 @@ local function PinClick(pin)
     if entry and entry.waypoint then entry.waypoint() end
 end
 
--- Over the ! or ?: what it means.
-local function MarkEnter(hit)
-    local row = hit:GetParent()
-    row.hover:Show()
-    local entry = row.entry
-    if not (entry and entry.markTip) then return end
-    GameTooltip:SetOwner(hit, "ANCHOR_RIGHT")
-    entry.markTip()
-    GameTooltip:Show()
-end
-
-local function MarkLeave(hit)
-    local row = hit:GetParent()
-    if not row:IsMouseOver() then row.hover:Hide() end
-    GameTooltip:Hide()
-end
-
 local function Row(i)
     local row = panel.rows[i]
     if row then return row end
@@ -247,14 +225,9 @@ local function Row(i)
     ns.Hairline(row.divider, "h")
     row.pin = Parts.IconButton(row, PinClick, St.PIN, 4, "Waypoint")
     row.pin.hint = "Click to mark it on your map."
-    row.mark = row:CreateTexture(nil, "ARTWORK")
-    row.mark:SetSize(MARK, MARK)
-    row.markHit = CreateFrame("Frame", nil, row)
-    row.markHit:SetSize(MARK + 4, MARK + 4)
-    row.markHit:SetPoint("CENTER", row.mark)
-    row.markHit:EnableMouse(true)
-    row.markHit:SetScript("OnEnter", MarkEnter)
-    row.markHit:SetScript("OnLeave", MarkLeave)
+    row.tick = row:CreateTexture(nil, "ARTWORK")
+    row.tick:SetTexture(St.CHECK)
+    row.tick:SetSize(TICK, TICK)
     row.text = ns.Font(row, 13, nil, T.fg)
     row.text:SetPoint("TOPLEFT", TITLE_LEFT, -ROW_TOP)
     row.text:SetJustifyH("LEFT")
@@ -269,25 +242,8 @@ local function Row(i)
     return row
 end
 
--- A mark's look: { texture, tint or nil, desaturated }.
-local MARKS = {
-    find = { BANG }, high = { BANG, RED }, handIn = { QUESTION },
-    done = { St.CHECK },
-}
-
-local function PaintMark(row, kind)
-    local look = MARKS[kind]
-    row.mark:SetShown(look ~= nil)
-    row.markHit:SetShown(look ~= nil)
-    if not look then return end
-    row.mark:SetTexture(look[1])
-    local tint = look[2]
-    row.mark:SetDesaturated(tint ~= nil)
-    if tint then row.mark:SetVertexColor(tint.r, tint.g, tint.b) else row.mark:SetVertexColor(1, 1, 1) end
-end
-
--- entries: { text, sub?, mark?, markTip?, waypoint?, tip? }. Every row keeps the pin's and the
--- mark's columns, so the names line up whether or not a row has them.
+-- entries: { text, sub?, done?, waypoint?, tip? }. Every row keeps the pin's column, so the
+-- names line up whether or not a row has one.
 local function Layout(entries)
     local y = 0
     local width = BODY_W - TITLE_LEFT - PANEL_PAD
@@ -303,14 +259,14 @@ local function Layout(entries)
         row.sub:SetText(entry.sub or "")
         row.sub:SetShown(entry.sub ~= nil)
         if entry.sub then h = h + ROW_LINE_GAP + math.ceil(row.sub:GetStringHeight()) end
-        -- The pin and the mark on the name's line.
+        -- The pin, or the tick of a book handed in, on the name's line.
         local line = -(ROW_TOP + math.ceil(row.text:GetStringHeight()) / 2)
         row.pin:ClearAllPoints()
         row.pin:SetPoint("CENTER", row, "TOPLEFT", ROW_LEFT + WAYPOINT_SLOT / 2, line)
         row.pin:SetShown(entry.waypoint ~= nil)
-        row.mark:ClearAllPoints()
-        row.mark:SetPoint("CENTER", row, "TOPLEFT", MARK_LEFT + MARK / 2, line)
-        PaintMark(row, entry.mark)
+        row.tick:ClearAllPoints()
+        row.tick:SetPoint("CENTER", row, "TOPLEFT", ROW_LEFT + WAYPOINT_SLOT / 2, line)
+        row.tick:SetShown(entry.done == true)
         row:SetHeight(h)
         row:ClearAllPoints()
         row:SetPoint("TOPLEFT", panel.body, "TOPLEFT", 0, -y)
@@ -411,14 +367,8 @@ local function Render(zone, left)
                 local npc = ns.LibraryTurnIns[kind][L.Side()]
                 local books = n == 1 and "1 book" or (n .. " books")
                 entries[#entries + 1] = {
-                    text = books .. " in your " .. place,
+                    text = "|cffffd100" .. books .. " in your " .. place .. "|r",   -- gold: ready to hand in
                     sub = "Hand in to " .. npc.name .. ", " .. npc.place,
-                    mark = "handIn",
-                    markTip = function()
-                        GameTooltip:SetText("Ready to hand in", 1, 0.82, 0)
-                        GameTooltip:AddLine(("%s in your %s for %s, %s."):format(books, place, npc.name, npc.place),
-                            1, 1, 1, true)
-                    end,
                     waypoint = function() L.WaypointNpc(npc) end,
                 }
             end
@@ -428,27 +378,17 @@ local function Render(zone, left)
     if #toFind == 0 then
         entries[#entries + 1] = { text = ns.Color("muted", "No more books in this area.") }
     end
-    local level = UnitLevel("player")
     for _, item in ipairs(toFind) do
         local book, spot = item[1], item[2]
         local sub = L.Where(spot)
         if book.turnIn == "trainer" then sub = sub .. ", mage trainer" end
-        local high = level < book.tier
         entries[#entries + 1] = {
             text = book.name, sub = sub,
-            mark = high and "high" or "find",
-            markTip = function()
-                if high then
-                    GameTooltip:SetText(("Level %d"):format(book.tier), RED.r, RED.g, RED.b)
-                    GameTooltip:AddLine("Above your level: where it lies may be hard for now.", 1, 1, 1, true)
-                else
-                    GameTooltip:SetText("To find", 1, 0.82, 0)
-                    GameTooltip:AddLine(("A level %d book."):format(book.tier), 1, 1, 1)
-                end
-            end,
             waypoint = function() L.WaypointBook(book, spot) end,
             tip = function()
                 GameTooltip:SetText(book.name)
+                local c = GetQuestDifficultyColor(book.tier)
+                GameTooltip:AddLine(("Level %d"):format(book.tier), c.r, c.g, c.b)
                 if spot[5] then GameTooltip:AddLine(spot[5], 1, 1, 1, true) end
                 local npc = L.TurnIn(book)
                 local hr, hg, hb = SoftBlue(0.3, 0.7, 0.95)
@@ -458,8 +398,7 @@ local function Render(zone, left)
     end
     for _, item in ipairs(L.DoneOnMap(listZone)) do
         entries[#entries + 1] = {
-            text = ns.Color("muted", item[1].name), mark = "done",
-            markTip = function() GameTooltip:SetText("Handed in", 0.61, 0.64, 0.69) end,
+            text = ns.Color("muted", item[1].name), done = true,
         }
     end
     panel.title:SetText("LIBRARY BOOKS  " .. ns.Color("muted", L.ZoneName(zone)))
