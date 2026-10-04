@@ -45,6 +45,7 @@
 
 ### Fixed
 - Naowh Score: no more Lua error after seeing more than 300 players, like in a busy city.
+- Naowh's Forge: no more Lua error when a macro line is just a "/" with no command yet.
 
 ## 0.5.19-beta
 
