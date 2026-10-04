@@ -1,14 +1,20 @@
 -------------------------------------------------------------------------------
 --  NaowhForever_DiscoveryTracker.lua -- the library book tracker: in a zone with books you
 --  still need, a small window lists them with a waypoint for each. It pops up on entering
---  such a zone; Always Show keeps it up in every zone.
+--  such a zone; Always Show keeps it up in every zone. In the Dungeon Quest Tracker's look:
+--  the Journal's window style (its gradient faded by the window's Opacity, a card behind the
+--  list, its titles' blue), the progress bar and the zone dropdown under the title, rows like
+--  its quest rows (a waypoint pin, then a mark: a ! for a book to find, red while it is above
+--  your level, a ? for the books in your bags to hand in, a tick for one handed in) and a cog
+--  for its settings in the bottom right.
 -------------------------------------------------------------------------------
 local ns = _G.NaowhForever
 local S = ns.DiscoverySettings
 local L = ns.Library
 local T = ns.THEME
+local Parts = ns.Shared.Parts
+local St = ns.Shared.Style
 
-local GOLD = "|cffffd100"
 -- The light blue of the hint lines: the shade each one always was (r, g, b), or the theme's
 -- lighter Accent once the theme has changed the Accent. Returns r, g, b, so where it is not
 -- the last argument its values are put in locals first.
@@ -17,12 +23,26 @@ local function SoftBlue(r, g, b)
     if c then return c.r, c.g, c.b end
     return r, g, b
 end
-local BLACK = { r = 0, g = 0, b = 0 }
 local BAR_BG = { r = 0x14 / 255, g = 0x16 / 255, b = 0x19 / 255 }
 local READY = { r = 0x19 / 255, g = 1, b = 0x19 / 255 }
+local RED = { r = 1, g = 0x4d / 255, b = 0x4d / 255 }   -- the quest log's too-high red
 
--- NUDGE lifts the text inside its row: the font leaves room above its capitals.
-local PANEL_W, BODY_W, PIN, INSET, GAP, NUDGE = 300, 284, 18, 4, 5, 2
+-- The window: as the Dungeon Quest Tracker's (UI/QuestTracker.lua), its parts on the same
+-- measures.
+local PANEL_W = 320
+local PANEL_PAD, PANEL_HEADER = St.PANEL_PAD, St.PANEL_HEADER
+local BODY_W = PANEL_W - PANEL_PAD * 2
+local BAR_H, BAR_GAP = 24, 6               -- the progress bar, as tall as the dropdown under it
+local FOOTER = St.ACTION + 6               -- the cog under the list, and the room above it
+local SETTINGS_PAGE = "Discovery/Settings"
+-- A row, as a quest row (View/QuestRows.lua): the pin and the mark in columns of their own,
+-- then the name with where it is under it.
+local ROW_LEFT, WAYPOINT_SLOT, MARK = 6, 20, 16
+local MARK_LEFT = ROW_LEFT + WAYPOINT_SLOT + 4
+local TITLE_LEFT = MARK_LEFT + MARK + 6
+local ROW_TOP, ROW_LINE_GAP, ROW_BOTTOM = 6, 3, 8
+local BANG = "Interface/GossipFrame/AvailableQuestIcon"
+local QUESTION = "Interface/GossipFrame/ActiveQuestIcon"
 
 local panel, zoneEvents, shownEvents
 local dismissedZone   -- the zone the X closed it in, until you leave
@@ -30,16 +50,6 @@ local pickedZone      -- the zone the dropdown is listing, while it shows
 
 local function On()
     return S.Get("enabled") and S.Get("tracker")
-end
-
-local function SetPinTexture(tex)
-    for _, atlas in ipairs({ "Waypoint-MapPin-ChatIcon", "Waypoint-MapPin-Untracked" }) do
-        if C_Texture and C_Texture.GetAtlasInfo and C_Texture.GetAtlasInfo(atlas) then
-            tex:SetAtlas(atlas)
-            return
-        end
-    end
-    tex:SetTexture("Interface\\Minimap\\MiniMap-QuestArrow")
 end
 
 local function BarTooltip(bar)
@@ -82,23 +92,22 @@ end
 -------------------------------------------------------------------------------
 --  The window
 -------------------------------------------------------------------------------
+-- Its look's opacity: the Discovery window's (windowAlpha), so the two match.
+local function Paint()
+    panel.backdrop:Paint(S.Get("windowAlpha") or 1)
+end
+
 local function BuildPanel()
-    panel = CreateFrame("Frame", "NaowhForeverLibraryBooks", UIParent)
+    panel = Parts.Panel("LIBRARY BOOKS", true)
+    panel.backdrop:Card(4, PANEL_HEADER, 4, 4)
+    panel.title:SetTextColor(T.accentSoft.r, T.accentSoft.g, T.accentSoft.b)
+    panel:SetWidth(PANEL_W)
     panel:SetScale(S.Get("trackerScale"))
     panel:SetMovable(true)
-    panel:SetClampedToScreen(true)
-    panel:SetWidth(PANEL_W)
-    ns.Solid(panel, "BACKGROUND", BLACK, 0.7):SetAllPoints()
-    ns.Border(panel, BLACK)
-
-    panel.title = ns.Font(panel, 14, "OUTLINE", T.accent)
-    panel.title:SetPoint("TOPLEFT", 8, -8)
-    panel.title:SetPoint("RIGHT", -28, 0)
-    panel.title:SetJustifyH("LEFT")
-    panel.title:SetWordWrap(false)
+    panel:SetFrameStrata("MEDIUM")
     -- The X closes it until you change zone, and switches Always Show off, so switching that
     -- back on is how to bring it back.
-    panel.close = ns.Button(panel, "X", 18, 18, function()
+    panel.close:SetScript("OnClick", function()
         dismissedZone = L.PlayerZone()
         panel:Hide()
         if S.Get("trackerAlways") then
@@ -106,32 +115,28 @@ local function BuildPanel()
             ns.UI:RefreshPage(true)
         end
     end)
-    panel.close:SetPoint("TOPRIGHT", -5, -5)
     local titleBtn = CreateFrame("Button", nil, panel)
     titleBtn:SetPoint("TOPLEFT", panel.title, "TOPLEFT", -4, 4)
     titleBtn:SetPoint("BOTTOMRIGHT", panel.title, "BOTTOMRIGHT", 0, -4)
     titleBtn:SetScript("OnClick", function() ns.OpenDiscoveryWindow() end)
     titleBtn:SetScript("OnEnter", function(self)
-        local c = T.accentSoft
-        panel.title:SetTextColor(c.r, c.g, c.b, 1)
+        panel.title:SetTextColor(T.accent.r, T.accent.g, T.accent.b)
         GameTooltip:SetOwner(self, "ANCHOR_LEFT")
         GameTooltip:SetText("Library Books")
         GameTooltip:AddLine("Click to open the Books page.", SoftBlue(0.3, 0.7, 0.95))
         GameTooltip:Show()
     end)
     titleBtn:SetScript("OnLeave", function()
-        local c = T.accent
-        panel.title:SetTextColor(c.r, c.g, c.b, 1)
+        panel.title:SetTextColor(T.accentSoft.r, T.accentSoft.g, T.accentSoft.b)
         GameTooltip:Hide()
     end)
 
     local bar = CreateFrame("StatusBar", nil, panel)
-    -- As tall as the dropdown under it, and spaced like it.
-    bar:SetSize(BODY_W, 24)
-    bar:SetPoint("TOPLEFT", panel.title, "BOTTOMLEFT", 0, -6)
+    bar:SetSize(BODY_W, BAR_H)
+    bar:SetPoint("TOPLEFT", PANEL_PAD, -PANEL_HEADER - 4)
     bar:SetStatusBarTexture("Interface\\Buttons\\WHITE8X8")
     ns.Solid(bar, "BACKGROUND", ns.ThemeTint("panel", BAR_BG), 1):SetAllPoints()
-    ns.Border(bar, BLACK)
+    ns.Border(bar, St.BORDER_RGB)
     bar.text = ns.Font(bar, 12, "OUTLINE")
     bar.text:SetPoint("CENTER", 0, 0)
     bar:EnableMouse(true)
@@ -144,24 +149,35 @@ local function BuildPanel()
     panel.picker = ns.UI.BuildDropdownControl(panel, BODY_W, panel:GetFrameLevel() + 3, {}, {},
         function() return pickedZone end,
         function(id) S.Set("trackerZone", id) end)
-    panel.picker:SetPoint("TOPLEFT", bar, "BOTTOMLEFT", 0, -6)
+    panel.picker:SetPoint("TOPLEFT", bar, "BOTTOMLEFT", 0, -BAR_GAP)
     panel.picker:Hide()
 
     panel.body = CreateFrame("Frame", nil, panel)
     panel.body:SetWidth(BODY_W)
     panel.rows = {}
 
-    panel.mover = ns.UI.AttachMover(panel, "Library Books", function(pos) S.Set("trackerPos", pos) end, "Discovery/Settings")
+    -- Bottom right, under the list: the tracker's settings.
+    panel.settings = Parts.IconButton(panel, function()
+        ns.OpenOptionsWindow(SETTINGS_PAGE)
+        ns.UI.GoToSetting(SETTINGS_PAGE, nil, SETTINGS_PAGE .. ":tracker")
+    end, ns.UI.COGS_ICON, 0, "Library Books settings")
+    panel.settings:SetPoint("BOTTOMRIGHT", -PANEL_PAD, PANEL_PAD)
+    panel.settings.hint = "Opens Discovery's tracker settings."
+
+    panel.mover = ns.UI.AttachMover(panel, "Library Books", function(pos) S.Set("trackerPos", pos) end,
+        "Discovery/Settings")
     local pos = S.Get("trackerPos")
     if pos then
         panel:SetPoint(pos.point, UIParent, pos.relPoint, pos.x, pos.y)
     else
         panel:SetPoint("RIGHT", UIParent, "RIGHT", -260, -120)
     end
+    Paint()
     panel:Hide()
 end
 
-local function RowTooltip(row)
+local function RowEnter(row)
+    row.hover:Show()
     local entry = row.entry
     if not (entry and entry.tip) then return end
     GameTooltip:SetOwner(row, "ANCHOR_LEFT")
@@ -169,16 +185,31 @@ local function RowTooltip(row)
     GameTooltip:Show()
 end
 
+local function RowLeave(row)
+    row.hover:Hide()
+    GameTooltip:Hide()
+end
+
 local function PinClick(pin)
     local entry = pin:GetParent().entry
     if entry and entry.waypoint then entry.waypoint() end
 end
 
-local function PinTooltip(pin)
-    GameTooltip:SetOwner(pin, "ANCHOR_LEFT")
-    GameTooltip:SetText("Waypoint")
-    GameTooltip:AddLine("Click to mark it on your map.", SoftBlue(0.3, 0.7, 0.95))
+-- Over the ! or ?: what it means.
+local function MarkEnter(hit)
+    local row = hit:GetParent()
+    row.hover:Show()
+    local entry = row.entry
+    if not (entry and entry.markTip) then return end
+    GameTooltip:SetOwner(hit, "ANCHOR_RIGHT")
+    entry.markTip()
     GameTooltip:Show()
+end
+
+local function MarkLeave(hit)
+    local row = hit:GetParent()
+    if not row:IsMouseOver() then row.hover:Hide() end
+    GameTooltip:Hide()
 end
 
 local function Row(i)
@@ -186,71 +217,88 @@ local function Row(i)
     if row then return row end
     row = CreateFrame("Button", nil, panel.body)
     row:SetWidth(BODY_W)
-    row.text = ns.Font(row, 12, nil)
+    -- Every other row on a faint band, lit on hover, a line under each, as a quest row.
+    row.stripe = ns.Solid(row, "BACKGROUND", T.fg, St.STRIPE)
+    row.stripe:SetAllPoints()
+    row.hover = ns.Solid(row, "BACKGROUND", T.fg, 0.04)
+    row.hover:SetAllPoints()
+    row.hover:Hide()
+    row.divider = ns.Solid(row, "BORDER", T.line, 0.6)
+    row.divider:SetPoint("BOTTOMLEFT", ROW_LEFT, 0)
+    row.divider:SetPoint("BOTTOMRIGHT")
+    ns.Hairline(row.divider, "h")
+    row.pin = Parts.IconButton(row, PinClick, St.PIN, 4, "Waypoint")
+    row.pin.hint = "Click to mark it on your map."
+    row.mark = row:CreateTexture(nil, "ARTWORK")
+    row.mark:SetSize(MARK, MARK)
+    row.markHit = CreateFrame("Frame", nil, row)
+    row.markHit:SetSize(MARK + 4, MARK + 4)
+    row.markHit:SetPoint("CENTER", row.mark)
+    row.markHit:EnableMouse(true)
+    row.markHit:SetScript("OnEnter", MarkEnter)
+    row.markHit:SetScript("OnLeave", MarkLeave)
+    row.text = ns.Font(row, 13, nil, T.fg)
+    row.text:SetPoint("TOPLEFT", TITLE_LEFT, -ROW_TOP)
     row.text:SetJustifyH("LEFT")
     row.text:SetWordWrap(true)
-    row.sub = ns.Font(row, 12, nil, T.muted)
+    row.sub = ns.Font(row, 11, nil, T.muted)
+    row.sub:SetPoint("TOPLEFT", row.text, "BOTTOMLEFT", 0, -ROW_LINE_GAP)
     row.sub:SetJustifyH("LEFT")
     row.sub:SetWordWrap(true)
-    row.pin = CreateFrame("Button", nil, row)
-    row.pin:SetSize(PIN, PIN)
-    row.pin.tex = row.pin:CreateTexture(nil, "ARTWORK")
-    row.pin.tex:SetAllPoints()
-    SetPinTexture(row.pin.tex)
-    row.pin:SetScript("OnClick", PinClick)
-    row.pin:SetScript("OnEnter", PinTooltip)
-    row.pin:SetScript("OnLeave", GameTooltip_Hide)
-    row.stripe = ns.Solid(row, "BACKGROUND", ns.ThemeTint("panel", BAR_BG), 1)
-    row.stripe:SetAllPoints()
-    for _, e in ipairs({
-        { "TOPLEFT", "TOPRIGHT", true }, { "BOTTOMLEFT", "BOTTOMRIGHT", true },
-        { "TOPLEFT", "BOTTOMLEFT", false }, { "TOPRIGHT", "BOTTOMRIGHT", false },
-    }) do
-        local edge = ns.Solid(row, "ARTWORK", BLACK, 1)
-        edge:SetPoint(e[1])
-        edge:SetPoint(e[2])
-        ns.Hairline(edge, e[3] and "h" or "v")
-    end
-    row.divider = ns.Solid(row, "ARTWORK", T.accent, 1)
-    row.divider:SetPoint("TOPLEFT", row, "BOTTOMLEFT")
-    row.divider:SetPoint("TOPRIGHT", row, "BOTTOMRIGHT")
-    ns.Hairline(row.divider, "h")
-    row:SetScript("OnEnter", RowTooltip)
-    row:SetScript("OnLeave", GameTooltip_Hide)
+    row:SetScript("OnEnter", RowEnter)
+    row:SetScript("OnLeave", RowLeave)
     panel.rows[i] = row
     return row
 end
 
--- entries: { text, sub?, waypoint?, tip? }. Every row leaves room for the pin, so the names
--- line up whether or not a row has one.
+-- A mark's look: { texture, tint or nil, desaturated }.
+local MARKS = {
+    find = { BANG }, high = { BANG, RED }, handIn = { QUESTION },
+    done = { St.CHECK },
+}
+
+local function PaintMark(row, kind)
+    local look = MARKS[kind]
+    row.mark:SetShown(look ~= nil)
+    row.markHit:SetShown(look ~= nil)
+    if not look then return end
+    row.mark:SetTexture(look[1])
+    local tint = look[2]
+    row.mark:SetDesaturated(tint ~= nil)
+    if tint then row.mark:SetVertexColor(tint.r, tint.g, tint.b) else row.mark:SetVertexColor(1, 1, 1) end
+end
+
+-- entries: { text, sub?, mark?, markTip?, waypoint?, tip? }. Every row keeps the pin's and the
+-- mark's columns, so the names line up whether or not a row has them.
 local function Layout(entries)
     local y = 0
-    local x = INSET + PIN + 3
+    local width = BODY_W - TITLE_LEFT - PANEL_PAD
     for i, entry in ipairs(entries) do
         local row = Row(i)
         row.entry = entry
-        row.text:ClearAllPoints()
-        row.text:SetPoint("TOPLEFT", x, NUDGE - 1 - GAP)
-        row.text:SetWidth(BODY_W - x - INSET)
+        row.stripe:SetShown(i % 2 == 0)
+        row.hover:Hide()
+        row.text:SetWidth(width)
         row.text:SetText(entry.text)
-        local h = math.ceil(row.text:GetStringHeight()) + 3 + GAP * 2
-        row.sub:ClearAllPoints()
-        row.sub:SetPoint("TOPLEFT", row.text, "BOTTOMLEFT", 0, -3)
-        row.sub:SetWidth(BODY_W - x - INSET)
+        local h = ROW_TOP + math.ceil(row.text:GetStringHeight()) + ROW_BOTTOM
+        row.sub:SetWidth(width)
         row.sub:SetText(entry.sub or "")
         row.sub:SetShown(entry.sub ~= nil)
-        if entry.sub then h = h + math.ceil(row.sub:GetStringHeight()) + 3 end
+        if entry.sub then h = h + ROW_LINE_GAP + math.ceil(row.sub:GetStringHeight()) end
+        -- The pin and the mark on the name's line.
+        local line = -(ROW_TOP + math.ceil(row.text:GetStringHeight()) / 2)
         row.pin:ClearAllPoints()
-        row.pin:SetPoint("TOPLEFT", INSET, NUDGE + 1 - GAP)
+        row.pin:SetPoint("CENTER", row, "TOPLEFT", ROW_LEFT + WAYPOINT_SLOT / 2, line)
         row.pin:SetShown(entry.waypoint ~= nil)
-        row:EnableMouse(entry.tip ~= nil)
+        row.mark:ClearAllPoints()
+        row.mark:SetPoint("CENTER", row, "TOPLEFT", MARK_LEFT + MARK / 2, line)
+        PaintMark(row, entry.mark)
         row:SetHeight(h)
         row:ClearAllPoints()
         row:SetPoint("TOPLEFT", panel.body, "TOPLEFT", 0, -y)
+        row.divider:SetShown(entries[i + 1] ~= nil)
         row:Show()
-        local divided = entries[i + 1] ~= nil
-        row.divider:SetShown(divided)
-        y = y + h + (divided and 1 or 0)
+        y = y + h
     end
     for i = #entries + 1, #panel.rows do panel.rows[i]:Hide() end
     panel.body:SetHeight(math.max(y, 1))
@@ -335,7 +383,7 @@ local function Render(zone, left)
     local listZone = left and Pick(left) or zone
     panel.picker:SetShown(left ~= nil)
     panel.body:ClearAllPoints()
-    panel.body:SetPoint("TOPLEFT", left and panel.picker or panel.bar, "BOTTOMLEFT", 0, -6)
+    panel.body:SetPoint("TOPLEFT", left and panel.picker or panel.bar, "BOTTOMLEFT", 0, -BAR_GAP)
     local entries = {}
     local carried = CarriedByTurnIn()
     for _, kind in ipairs({ "librarian", "trainer" }) do
@@ -343,9 +391,16 @@ local function Render(zone, left)
             local n = carried[kind .. "/" .. place]
             if n then
                 local npc = ns.LibraryTurnIns[kind][L.Side()]
+                local books = n == 1 and "1 book" or (n .. " books")
                 entries[#entries + 1] = {
-                    text = GOLD .. (n == 1 and "1 book" or (n .. " books")) .. " in your " .. place .. "|r",
+                    text = books .. " in your " .. place,
                     sub = "Hand in to " .. npc.name .. ", " .. npc.place,
+                    mark = "handIn",
+                    markTip = function()
+                        GameTooltip:SetText("Ready to hand in", 1, 0.82, 0)
+                        GameTooltip:AddLine(("%s in your %s for %s, %s."):format(books, place, npc.name, npc.place),
+                            1, 1, 1, true)
+                    end,
                     waypoint = function() L.WaypointNpc(npc) end,
                 }
             end
@@ -355,12 +410,24 @@ local function Render(zone, left)
     if #toFind == 0 then
         entries[#entries + 1] = { text = ns.Color("muted", "No more books in this area.") }
     end
+    local level = UnitLevel("player")
     for _, item in ipairs(toFind) do
         local book, spot = item[1], item[2]
         local sub = L.Where(spot)
-        if book.turnIn == "trainer" then sub = sub .. " - mage trainer" end
+        if book.turnIn == "trainer" then sub = sub .. ", mage trainer" end
+        local high = level < book.tier
         entries[#entries + 1] = {
-            text = L.Title(book), sub = sub,
+            text = book.name, sub = sub,
+            mark = high and "high" or "find",
+            markTip = function()
+                if high then
+                    GameTooltip:SetText(("Level %d"):format(book.tier), RED.r, RED.g, RED.b)
+                    GameTooltip:AddLine("Above your level: where it lies may be hard for now.", 1, 1, 1, true)
+                else
+                    GameTooltip:SetText("To find", 1, 0.82, 0)
+                    GameTooltip:AddLine(("A level %d book."):format(book.tier), 1, 1, 1)
+                end
+            end,
             waypoint = function() L.WaypointBook(book, spot) end,
             tip = function()
                 GameTooltip:SetText(book.name)
@@ -372,15 +439,18 @@ local function Render(zone, left)
         }
     end
     for _, item in ipairs(L.DoneOnMap(listZone)) do
-        entries[#entries + 1] = { text = L.Title(item[1]) }
+        entries[#entries + 1] = {
+            text = ns.Color("muted", item[1].name), mark = "done",
+            markTip = function() GameTooltip:SetText("Handed in", 0.61, 0.64, 0.69) end,
+        }
     end
-    panel.title:SetText("Library Books  " .. ns.Color("muted", L.ZoneName(zone)))
+    panel.title:SetText("LIBRARY BOOKS  " .. ns.Color("muted", L.ZoneName(zone)))
     RenderBar()
     local listH = Layout(entries)
-    -- 8 above the title, 6 above and below the bar and the dropdown, 8 under the list.
-    local pickerH = left and (panel.picker:GetHeight() + 6) or 0
-    panel:SetHeight(8 + math.ceil(panel.title:GetStringHeight()) + 6 + panel.bar:GetHeight() + 6
-        + pickerH + listH + 8)
+    -- The header, the bar and the dropdown each with the gap under them, the list, then the
+    -- cog's footer.
+    local pickerH = left and (panel.picker:GetHeight() + BAR_GAP) or 0
+    panel:SetHeight(PANEL_HEADER + 4 + BAR_H + BAR_GAP + pickerH + listH + FOOTER + PANEL_PAD)
 end
 
 -------------------------------------------------------------------------------
@@ -456,6 +526,7 @@ local OWN_KEYS = { enabled = true, tracker = true, trackerAlways = true, tracker
 
 hooksecurefunc(S, "Set", function(key, value)
     if key == "trackerScale" and panel then panel:SetScale(value) end
+    if key == "windowAlpha" and panel then Paint() end
     if not OWN_KEYS[key] then return end
     -- Switching Always Show back on brings the tracker back here, whatever the X closed.
     -- Switching it off closes it, unless the zone you are in has books to find.

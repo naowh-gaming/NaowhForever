@@ -21,6 +21,11 @@
   loaded, it uses TomTom's arrow.
 
 ### Changed
+- Discovery: the Library Books tracker has the Dungeon Quest Tracker's look: the Journal's
+  window style (with the Discovery window's opacity), the progress bar and zone dropdown under
+  its title, and rows like its quest rows: a waypoint pin, then a ! for a book to find (red
+  while it is above your level), a ? for the books in your bags to hand in, a tick for one
+  handed in; hover a mark for what it means. A cog under the list opens its settings.
 - QoL has a Character tab: Character Panel, Slot Marks and Naowh Score moved there from the BiS
   List's settings, and Supporter Badges from Interface. The BiS List's page keeps what is about
   your BiS.
