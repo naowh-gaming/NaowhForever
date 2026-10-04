@@ -1,7 +1,10 @@
 -------------------------------------------------------------------------------
---  View/BossDetails.lua -- the rows under a boss's loot on its own page (ViewMixin:
---  DrawBossLoot), each list in a card of its own:
+--  View/BossDetails.lua -- the rows of a boss's own page (ViewMixin:DrawBossLoot) beside
+--  its loot, each list in a card of its own:
 --
+--  - bossHeader: the page's top, as a dungeon's is: its name, large, with its kill count on
+--    the right; under it its title, level and classification and creature type, as its
+--    Wowhead Forever page has them (Data/BossInfo.lua).
 --  - tip: Naowh's tip (Data/Tips.lua), written out beside the Naowh mark (a loot icon's
 --    size), at the top of the page; the chat bubble on its right shares it (Say, Party,
 --    Raid, Guild, your target).
@@ -25,6 +28,9 @@ local IsSpellDataCached = C_Spell.IsSpellDataCached
 local Quests = J.Quests
 
 local St = J.Style
+local TITLE_SIZE, TITLE_H, TITLE_GAP = St.TITLE_SIZE, St.TITLE_H, St.TITLE_GAP
+local WHERE_H, HEADER_PAD, PLACE_DOT = St.WHERE_H, St.HEADER_PAD, St.PLACE_DOT
+local HEADER_TOP = 8   -- over the name: room from the panel's edge, as the cards keep inside theirs
 local CARD_PAD, QUEST_CODE, HAVE_RGB, CHECK = St.CARD_PAD, St.QUEST_CODE, St.HAVE_RGB, St.CHECK
 
 local View = J.View
@@ -41,6 +47,68 @@ local STATE_W = 120       -- a quest's state, on the right
 local SHARE = 18          -- the tip's share button
 local TIP_MARK = St.ICON  -- the Naowh mark beside the tip, as big as a loot icon
 local BUBBLE = "Interface\\GossipFrame\\GossipGossipIcon"
+
+-------------------------------------------------------------------------------
+--  The page's header
+-------------------------------------------------------------------------------
+-- Data/BossInfo.lua's numbers, as Wowhead has them.
+local CLASSIFICATION = { [1] = "Elite", [2] = "Rare Elite", [3] = "Boss", [4] = "Rare" }
+local CREATURE_TYPE = {
+    [1] = "Beast", [2] = "Dragonkin", [3] = "Demon", [4] = "Elemental", [5] = "Giant", [6] = "Undead",
+    [7] = "Humanoid", [8] = "Critter", [9] = "Mechanical", [11] = "Totem", [15] = "Aberration",
+}
+
+-- "Level 16 Elite", "Level 15-16", "Level ?? Boss".
+local function LevelText(info)
+    local low, high = info[1], info[2]
+    local level = (high < 0 or low < 0) and "??" or low == high and tostring(low) or (low .. "-" .. high)
+    local kind = CLASSIFICATION[info[3]]
+    return "Level " .. ns.Color("fg", level) .. (kind and " " .. kind or "")
+end
+
+-- Its title, its level and kind, its creature type; what Wowhead has of them.
+local parts = {}
+
+local function AboutText(boss)
+    local info = boss.npc and J.BossInfo[boss.npc]
+    wipe(parts)
+    if info then
+        if info[5] then parts[#parts + 1] = ns.Color("fg", info[5]) end
+        parts[#parts + 1] = LevelText(info)
+        if CREATURE_TYPE[info[4]] then parts[#parts + 1] = CREATURE_TYPE[info[4]] end
+    end
+    if boss.rare then parts[#parts + 1] = "Rare spawn" elseif boss.optional then parts[#parts + 1] = "Optional" end
+    return table.concat(parts, PLACE_DOT)
+end
+
+Kinds.bossHeader = {
+    New = function(view)
+        local row = CreateFrame("Frame", nil, view)
+        row.title = ns.Font(row, TITLE_SIZE, nil, T.fg)
+        row.title:SetPoint("TOPLEFT", 0, -HEADER_TOP)
+        row.title:SetJustifyH("LEFT")
+        row.title:SetWordWrap(false)
+        row.kills = Parts.KillCount(row)
+        row.kills:SetPoint("RIGHT", row, "TOPRIGHT", 0, -HEADER_TOP - TITLE_H / 2)
+        row.about = ns.Font(row, 12, nil, T.muted)
+        row.about:SetPoint("TOPLEFT", row.title, "BOTTOMLEFT", 0, -TITLE_GAP)
+        row.about:SetPoint("RIGHT")
+        row.about:SetJustifyH("LEFT")
+        row.about:SetWordWrap(false)
+        return row
+    end,
+    ---@param boss JournalBoss
+    Set = function(row, boss)
+        -- No fight to count for a chest or the trash.
+        local showKills = row:GetParent().showKills and not boss.trash and not boss.chest
+        row.kills:SetShown(showKills)
+        if showKills then Parts.SetKillCount(row.kills, boss) end
+        row.title:SetText(boss.name)
+        row.title:SetWidth(math.max(1, row:GetWidth() - (showKills and row.kills:GetWidth() + 10 or 0)))
+        row.about:SetText(AboutText(boss))
+        return HEADER_TOP + TITLE_H + TITLE_GAP + WHERE_H + HEADER_PAD
+    end,
+}
 
 -------------------------------------------------------------------------------
 --  Naowh's tip

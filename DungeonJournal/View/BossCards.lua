@@ -153,6 +153,31 @@ local function KillsLeave(button)
     GameTooltip:Hide()
 end
 
+-- The skull and its count, on a row whose parent is the view (it reads its dungeon); placed
+-- by its caller. Also the header of a boss's page (View/BossDetails.lua).
+function J.View.Parts.KillCount(row)
+    local kills = CreateFrame("Button", nil, row)
+    kills:SetHeight(KILL_ICON + 4)
+    kills.icon = kills:CreateTexture(nil, "ARTWORK")
+    kills.icon:SetTexture(SKULL)
+    kills.icon:SetSize(KILL_ICON, KILL_ICON)
+    kills.icon:SetPoint("LEFT")
+    kills.count = ns.Font(kills, 11)
+    kills.count:SetPoint("LEFT", kills.icon, "RIGHT", KILL_GAP, 0)
+    kills:SetScript("OnEnter", KillsEnter)
+    kills:SetScript("OnLeave", KillsLeave)
+    kills:SetScript("OnClick", OpenHistory)
+    return kills
+end
+
+-- Its count for the boss ("-" where the game does not report its death), and as wide as it.
+function J.View.Parts.SetKillCount(kills, boss)
+    kills.boss, kills.kills = boss, Kills.Count(boss)
+    kills.count:SetText(Kills.Counted(boss) and kills.kills or "-")
+    PaintKills(kills)
+    kills:SetWidth(KILL_ICON + KILL_GAP + math.ceil(kills.count:GetStringWidth()))
+end
+
 -------------------------------------------------------------------------------
 --  The card's header
 -------------------------------------------------------------------------------
@@ -258,18 +283,8 @@ Kinds.boss = {
         row.stats = ns.Font(row, 11)
         row.stats:SetJustifyH("RIGHT")
         row.stats:SetWordWrap(false)
-        local kills = CreateFrame("Button", nil, row)
-        kills:SetHeight(KILL_ICON + 4)
+        local kills = J.View.Parts.KillCount(row)
         kills:SetPoint("RIGHT", row, "TOPRIGHT", 0, -(STATS_TOP + 6))
-        kills.icon = kills:CreateTexture(nil, "ARTWORK")
-        kills.icon:SetTexture(SKULL)
-        kills.icon:SetSize(KILL_ICON, KILL_ICON)
-        kills.icon:SetPoint("LEFT")
-        kills.count = ns.Font(kills, 11)
-        kills.count:SetPoint("LEFT", kills.icon, "RIGHT", KILL_GAP, 0)
-        kills:SetScript("OnEnter", KillsEnter)
-        kills:SetScript("OnLeave", KillsLeave)
-        kills:SetScript("OnClick", OpenHistory)
         row.kills = kills
         row.rule = ns.Solid(row, "ARTWORK", T.line, 0.7)
         row.rule:SetPoint("BOTTOMLEFT")
@@ -309,10 +324,7 @@ Kinds.boss = {
         row.stats:ClearAllPoints()
         local right = 0   -- what the kill count takes on the right
         if showKills then
-            kills.boss, kills.kills = boss, Kills.Count(boss)
-            kills.count:SetText(Kills.Counted(boss) and kills.kills or "-")
-            PaintKills(kills)
-            kills:SetWidth(KILL_ICON + KILL_GAP + math.ceil(kills.count:GetStringWidth()))
+            J.View.Parts.SetKillCount(kills, boss)
             row.stats:SetPoint("RIGHT", kills, "LEFT", -KILLS_GAP, 0)
             right = kills:GetWidth() + KILLS_GAP
         else

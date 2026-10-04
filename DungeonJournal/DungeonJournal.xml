@@ -80,9 +80,10 @@
     <Script file="Data\Factions\TheramoreExpeditionaryForce.lua"/>
     <Script file="Data\Factions\DarkspearRaiders.lua"/>
     <Script file="Data\Tips.lua"/>
-    <!-- What each boss does in its fight, as spell IDs (Tools/build_abilities.py), and the
-         quests that need it (Tools/build_boss_quests.py) -->
+    <!-- What each boss does in its fight, as spell IDs, and its level and kind
+         (Tools/build_abilities.py), and the quests that need it (Tools/build_boss_quests.py) -->
     <Script file="Data\Abilities.lua"/>
+    <Script file="Data\BossInfo.lua"/>
     <Script file="Data\BossQuests.lua"/>
     <!-- The rules: loot, quests, your standing and PvP rank, who was in your group, the kills
          and loot this character has counted, asking the group to share a quest, and where

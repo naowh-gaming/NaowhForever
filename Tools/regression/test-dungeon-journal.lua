@@ -147,7 +147,7 @@ local function fixture(settings)
         enabled = false, mapPanel = true, usableOnly = true, showChance = true,
         showAlliance = true, showHorde = true, showKills = true, shareRequests = true,
         showAppearance = false, showTips = true, missingBisOnly = false, myRecipes = true, showCosmetic = true,
-        repQuestsOpen = true, bossLootOpen = true, bossQuestsOpen = true, bossAbilitiesOpen = true,
+        repQuestsOpen = true, bossTipOpen = true, bossLootOpen = true, bossQuestsOpen = true, bossAbilitiesOpen = true,
     }
     for k, v in pairs(settings or {}) do values[k] = v end
     -- The kit's module settings: Set tells every listener, as UI.ModuleSettings does.
@@ -1204,6 +1204,15 @@ do
             and rawget(made, "shown") ~= false then tipRow = made end
     end
     check("and Naowh's tip, written out", tipRow ~= nil)
+    local bossHeader
+    for _, made in ipairs(state.made) do
+        if rawget(made, "about") and rawget(made.title, "text") == "Bazzalan" and rawget(made, "shown") ~= false then
+            bossHeader = made
+        end
+    end
+    check("its page has its name on top", bossHeader ~= nil)
+    check("and its level, where Wowhead has it", not J.BossInfo[11519]
+        or tostring(rawget(bossHeader.about, "text")):find("Level") ~= nil)
     -- Each of its sections opens and closes by its title.
     local abilitiesTitle
     for _, made in ipairs(state.made) do

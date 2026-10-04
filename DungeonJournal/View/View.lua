@@ -410,16 +410,15 @@ end
 
 -- One boss and its loot, for the boss loot window.
 -- A boss's own page: its name and kill count on top, Naowh's tip written out under it (so no
--- (i) on its name), then the Quests that need it, its Abilities and its Loot, each under a
--- title that opens and closes it (kept: bossLootOpen and the rest) and left out where there
--- is none.
+-- (i) on its name), then the Quests that need it, its Abilities and its Loot; each, the tip
+-- too, under a title that opens and closes it (kept: bossTipOpen and the rest) and left out
+-- where there is none.
 function ViewMixin:DrawBossLoot(boss, dungeon)
     self:Begin(dungeon, boss)
     local tip = self.showTips and J.Tip(boss)
     self.showTips = false
     self:DrawBossName(boss)
-    if tip then
-        self:OpenDetailCard("Naowh's Tip")
+    if tip and self:OpenDetailCard("Naowh's Tip") then
         self:Add("tip", boss, tip)
         self:CloseCard(self.detailCard, self.detailTop)
     end
@@ -428,19 +427,16 @@ function ViewMixin:DrawBossLoot(boss, dungeon)
     self:Finish()
 end
 
--- Its name and kill count alone, in a card of their own: the sections go under it.
+-- Its name, kill count and what it is, on top as a dungeon's page has its own: the sections
+-- go under it.
 function ViewMixin:DrawBossName(boss)
-    local top = self.cursor
-    local card = self:OpenCard(0, self:GetWidth())
-    local header = self:Add("boss", boss, nil, 0, 0)
-    header.card = card
-    header:EnableMouse(true)   -- a right-click: its Wowhead link
-    self:CloseCard(card, top)
+    self:Add("bossHeader", boss)
 end
 
 -- A section's title, opened and closed by a click (the setting key keeps which); true while
 -- open, with its card opened for its rows.
-local SECTION_KEYS = { Loot = "bossLootOpen", Quests = "bossQuestsOpen", Abilities = "bossAbilitiesOpen" }
+local SECTION_KEYS = { ["Naowh's Tip"] = "bossTipOpen", Loot = "bossLootOpen", Quests = "bossQuestsOpen",
+    Abilities = "bossAbilitiesOpen" }
 
 function ViewMixin:ToggleFor(title)
     self.toggles = self.toggles or {}
