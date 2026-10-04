@@ -352,6 +352,11 @@ local function fixture(settings)
         GetTime = function() return state.clock end,
         WorldMapFrame = Frame(state),
         EventUtil = { ContinueOnAddOnLoaded = function() end },
+        -- A boss's abilities: every spell loaded, with a name and a line saying what it does.
+        C_Spell = { GetSpellName = function(id) return "Spell " .. id end,
+            GetSpellTexture = function() return 136243 end,
+            GetSpellDescription = function() return "Hits the tank." end,
+            IsSpellDataCached = function() return true end },
         C_Map = { OpenWorldMap = function(map) state.mapOpened = map end,
             GetMapInfo = function(map)
                 return state.mapInfo and state.mapInfo[map] or map == 52 and { name = "Westfall" } or nil
@@ -1187,6 +1192,18 @@ do
         and legendRows["Taragaman the Hungerer"] and legendRows["Jergosh the Invoker"])
     pickRow.scripts.OnClick(pickRow)
     check("a row picks its boss", rawget(pickRow.bar, "shown") == true)
+    -- Its loot, and under it what it does in the fight.
+    local spells, ability = J.Abilities[11519], nil
+    for _, made in ipairs(state.made) do
+        if spells and rawget(made, "spell") == spells[1] and rawget(made, "shown") ~= false then ability = made end
+    end
+    check("its abilities are under its loot", ability ~= nil and rawget(ability.desc, "text") == "Hits the tank.")
+    local tipRow
+    for _, made in ipairs(state.made) do
+        if rawget(made, "mark") and rawget(made, "text") and rawget(made.text, "text") == J.Tips[11519]
+            and rawget(made, "shown") ~= false then tipRow = made end
+    end
+    check("and Naowh's tip, written out", tipRow ~= nil)
     -- A drag on a pin while not placing keeps nothing: only placing saves where a pin stands.
     state.account.journalMapPins = nil
     for _, made in ipairs(state.made) do
@@ -1284,6 +1301,8 @@ do
     bazil.scripts.OnClick(bazil, "LeftButton")
     check("the small map opens no loot at the mouse", opened == 0)
     check("but rings the boss", rawget(bazil.gold, "shown") == true)
+    bazil.scripts.OnClick(bazil, "LeftButton")
+    check("clicked again, it is no longer picked", rawget(bazil.gold, "shown") == false)
     state.mapMaximised = true
     bazil.scripts.OnClick(bazil, "LeftButton")
     overlay:Hide()

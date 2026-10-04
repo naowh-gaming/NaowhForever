@@ -53,12 +53,15 @@ local function TipMessage(boss, tip)
 end
 
 -- Shared from the share menu (Parts.ShareMenu): cut to one message in chat, whole to copy.
+-- Also the share button beside a tip written out on a boss's page (View/BossDetails.lua).
+function J.View.Parts.ShareTip(owner, boss, tip)
+    local name = boss.name
+    J.View.Parts.ShareMenu(owner, "Share Naowh's tip", TipMessage(boss, tip),
+        "Naowh's tip: " .. name, TIP_TEXT:format(name, tip), nil, nil, true)
+end
+
 local function OpenTipMenu(button)
-    local tip = button.tip
-    if not tip then return end
-    local name = button.boss.name
-    J.View.Parts.ShareMenu(button, "Share Naowh's tip", TipMessage(button.boss, tip),
-        "Naowh's tip: " .. name, TIP_TEXT:format(name, tip))
+    if button.tip then J.View.Parts.ShareTip(button, button.boss, button.tip) end
 end
 
 local function AddTip(tip)

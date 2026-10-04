@@ -409,10 +409,58 @@ function ViewMixin:DrawBisNote()
 end
 
 -- One boss and its loot, for the boss loot window.
+-- A boss's own page: Naowh's tip written out on top (so no (i) on its name), its loot, then
+-- the quests that need it and its abilities (View/BossDetails.lua).
 function ViewMixin:DrawBossLoot(boss, dungeon)
     self:Begin(dungeon, boss)
+    local tip = self.showTips and J.Tip(boss)
+    if tip then
+        self:OpenDetailCard("Naowh's Tip")
+        self:Add("tip", boss, tip)
+        self:CloseCard(self.detailCard, self.detailTop)
+        self:Space(SECTION_SPACE)
+        self.showTips = false
+    end
     self:DrawBoss(boss, nil, self:ShownCount(boss), nil, 0, self:GetWidth())
+    self:DrawBossDetails(boss)
     self:Finish()
+end
+
+-- A section title over a card, its rows added after (View/BossDetails.lua); a space above it
+-- when something is drawn there already.
+function ViewMixin:OpenDetailCard(title, count)
+    if self.cursor > 0 then self:Space(SECTION_SPACE) end
+    self:Section(title, count)
+    self:Space(SECTION_SPACE)
+    self.detailTop = self.cursor
+    self.detailCard = self:OpenCard(0, self:GetWidth())
+end
+
+function ViewMixin:DetailCard(title, count, kind, list)
+    self:OpenDetailCard(title, count)
+    for i = 1, #list do self:Add(kind, list[i]) end
+    self:CloseCard(self.detailCard, self.detailTop)
+end
+
+-- Under a boss's loot: the quests that need it (for you, done ones too) and what it does in
+-- the fight; each left out where there is none.
+function ViewMixin:DrawBossDetails(boss)
+    local ids = boss.npc and J.BossQuests[boss.npc]
+    if ids then
+        local list = self.bossQuests or {}
+        self.bossQuests = list
+        wipe(list)
+        for i = 1, #ids do
+            local quest = Quests.ByID(ids[i])
+            if quest and Quests.ForMe(quest) then list[#list + 1] = quest end
+        end
+        if #list > 0 then
+            self:DetailCard("Quests", #list, "bossQuest", list)
+            self.watchQuestLog = true   -- drawn again as they move on
+        end
+    end
+    local spells = boss.npc and J.Abilities[boss.npc]
+    if spells then self:DetailCard("Abilities", #spells, "ability", spells) end
 end
 
 -- "1 Rhahk'Zor": a folded boss's label, the same on every draw, so made once. Bosses are

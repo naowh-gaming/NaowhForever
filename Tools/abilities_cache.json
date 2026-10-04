@@ -1,0 +1,3653 @@
+{
+ "10081": [
+  [
+   12251,
+   "Virulent Poison"
+  ],
+  [
+   15667,
+   "Sinister Strike"
+  ]
+ ],
+ "10082": [
+  [
+   6533,
+   "Net"
+  ],
+  [
+   12551,
+   "Frost Shot"
+  ],
+  [
+   15547,
+   "Shoot"
+  ],
+  [
+   403233,
+   "Meathook"
+  ]
+ ],
+ "10184": [
+  [
+   15847,
+   "Tail Sweep"
+  ],
+  [
+   17086,
+   "Breath"
+  ],
+  [
+   18351,
+   "Breath"
+  ],
+  [
+   18392,
+   "Fireball"
+  ],
+  [
+   18435,
+   "Flame Breath"
+  ],
+  [
+   18500,
+   "Wing Buffet"
+  ],
+  [
+   18564,
+   "Breath"
+  ],
+  [
+   18576,
+   "Breath"
+  ],
+  [
+   18584,
+   "Breath"
+  ],
+  [
+   18596,
+   "Breath"
+  ],
+  [
+   18609,
+   "Breath"
+  ],
+  [
+   18617,
+   "Breath"
+  ],
+  [
+   19633,
+   "Knock Away"
+  ],
+  [
+   19983,
+   "Cleave"
+  ],
+  [
+   20019,
+   "Engulfing Flames"
+  ],
+  [
+   20279,
+   "Summon Player"
+  ],
+  [
+   20311,
+   "Summon Player"
+  ],
+  [
+   21131,
+   "Breath"
+  ],
+  [
+   22191,
+   "Heated Ground"
+  ],
+  [
+   22195,
+   "Heated Ground"
+  ],
+  [
+   22199,
+   "Heated Ground"
+  ],
+  [
+   22200,
+   "Heated Ground"
+  ],
+  [
+   22201,
+   "Heated Ground"
+  ],
+  [
+   22202,
+   "Heated Ground"
+  ]
+ ],
+ "10220": [
+  [
+   3391,
+   "Thrash"
+  ],
+  [
+   13738,
+   "Rend"
+  ]
+ ],
+ "10263": [
+  [
+   15548,
+   "Thunderclap"
+  ],
+  [
+   15580,
+   "Strike"
+  ],
+  [
+   16046,
+   "Blast Wave"
+  ],
+  [
+   16074,
+   "Burning Felguard Spawn"
+  ]
+ ],
+ "10264": [
+  [
+   16727,
+   "War Stomp"
+  ]
+ ],
+ "10268": [
+  [
+   8269,
+   "Enrage"
+  ],
+  [
+   16128,
+   "Infected Bite"
+  ],
+  [
+   16495,
+   "Fatal Bite"
+  ]
+ ],
+ "10339": [
+  [
+   10101,
+   "Knock Away"
+  ],
+  [
+   16328,
+   "Summon Rend Blackhand"
+  ],
+  [
+   16350,
+   "Freeze"
+  ],
+  [
+   16359,
+   "Corrosive Acid Breath"
+  ],
+  [
+   16390,
+   "Flame Breath"
+  ]
+ ],
+ "10363": [
+  [
+   15588,
+   "Thunderclap"
+  ]
+ ],
+ "10376": [
+  [
+   16416,
+   "Summon Spire Spiderling"
+  ]
+ ],
+ "10393": [
+  [
+   6136,
+   "Chilled"
+  ],
+  [
+   12544,
+   "Frost Armor"
+  ],
+  [
+   15230,
+   "Arcane Bolt"
+  ],
+  [
+   15499,
+   "Frost Shock"
+  ],
+  [
+   16799,
+   "Frostbolt"
+  ]
+ ],
+ "10429": [
+  [
+   8269,
+   "Enrage"
+  ],
+  [
+   13736,
+   "Whirlwind"
+  ],
+  [
+   15708,
+   "Mortal Strike"
+  ],
+  [
+   15754,
+   "Cleave"
+  ]
+ ],
+ "10430": [
+  [
+   14100,
+   "Terrifying Roar"
+  ],
+  [
+   15570,
+   "Immolate"
+  ],
+  [
+   16144,
+   "Fire Blast"
+  ],
+  [
+   16636,
+   "Berserker Charge"
+  ],
+  [
+   16785,
+   "Flamebreak"
+  ],
+  [
+   16788,
+   "Fireball"
+  ],
+  [
+   20477,
+   "Summon Player"
+  ]
+ ],
+ "10432": [
+  [
+   16046,
+   "Blast Wave"
+  ],
+  [
+   18399,
+   "Flamestrike"
+  ]
+ ],
+ "10433": [
+  [
+   17697,
+   "Defiling Aura"
+  ]
+ ],
+ "10435": [
+  [
+   10887,
+   "Crowd Pummel"
+  ],
+  [
+   14099,
+   "Mighty Blow"
+  ],
+  [
+   16791,
+   "Furious Anger"
+  ],
+  [
+   16793,
+   "Draining Blow"
+  ]
+ ],
+ "10436": [
+  [
+   16867,
+   "Banshee Curse"
+  ]
+ ],
+ "10437": [
+  [
+   4962,
+   "Encasing Webs"
+  ],
+  [
+   6016,
+   "Pierce Armor"
+  ],
+  [
+   16795,
+   "Crypt Scarabs"
+  ],
+  [
+   17235,
+   "Raise Undead Scarab"
+  ]
+ ],
+ "10438": [
+  [
+   6136,
+   "Chilled"
+  ],
+  [
+   16869,
+   "Ice Tomb"
+  ],
+  [
+   17238,
+   "Drain Life"
+  ],
+  [
+   17243,
+   "Drain Mana"
+  ],
+  [
+   17503,
+   "Frostbolt"
+  ]
+ ],
+ "10439": [
+  [
+   5568,
+   "Trample"
+  ],
+  [
+   17307,
+   "Knockout"
+  ],
+  [
+   17687,
+   "Flurry"
+  ]
+ ],
+ "10440": [
+  [
+   15708,
+   "Mortal Strike"
+  ],
+  [
+   15754,
+   "Cleave"
+  ],
+  [
+   17393,
+   "Shadow Bolt"
+  ],
+  [
+   17434,
+   "Shadow Bolt"
+  ],
+  [
+   17435,
+   "Shadow Bolt"
+  ],
+  [
+   17467,
+   "Unholy Aura"
+  ]
+ ],
+ "10502": [
+  [
+   12528,
+   "Silence"
+  ],
+  [
+   12542,
+   "Fear"
+  ],
+  [
+   14515,
+   "Dominate Mind"
+  ],
+  [
+   17289,
+   "Shadow Shock"
+  ],
+  [
+   18671,
+   "Curse of Agony"
+  ]
+ ],
+ "10503": [
+  [
+   16098,
+   "Curse of Blood"
+  ]
+ ],
+ "10504": [
+  [
+   15570,
+   "Immolate"
+  ],
+  [
+   17467,
+   "Unholy Aura"
+  ],
+  [
+   17820,
+   "Veil of Shadow"
+  ]
+ ],
+ "10505": [
+  [
+   8362,
+   "Renew"
+  ],
+  [
+   13747,
+   "Slow"
+  ],
+  [
+   15586,
+   "Heal"
+  ],
+  [
+   17831,
+   "Call of the Grave"
+  ],
+  [
+   17843,
+   "Flash Heal"
+  ],
+  [
+   18376,
+   "Corruption"
+  ]
+ ],
+ "10506": [
+  [
+   6016,
+   "Pierce Armor"
+  ],
+  [
+   8379,
+   "Disarm"
+  ],
+  [
+   12882,
+   "Wing Flap"
+  ],
+  [
+   12889,
+   "Curse of Tongues"
+  ],
+  [
+   14515,
+   "Dominate Mind"
+  ],
+  [
+   16467,
+   "Kirtonos Transform"
+  ],
+  [
+   17228,
+   "Shadow Bolt Volley"
+  ],
+  [
+   18144,
+   "Swoop"
+  ]
+ ],
+ "10507": [
+  [
+   15550,
+   "Trample"
+  ],
+  [
+   15584,
+   "Cleave"
+  ],
+  [
+   17963,
+   "Sundering Cleave"
+  ],
+  [
+   18670,
+   "Knock Away"
+  ]
+ ],
+ "10508": [
+  [
+   8398,
+   "Frostbolt Volley"
+  ],
+  [
+   11130,
+   "Knock Away"
+  ],
+  [
+   12096,
+   "Fear"
+  ],
+  [
+   18099,
+   "Chill Nova"
+  ],
+  [
+   18100,
+   "Frost Armor"
+  ],
+  [
+   18101,
+   "Chilled"
+  ],
+  [
+   18763,
+   "Freeze"
+  ]
+ ],
+ "10509": [
+  [
+   11972,
+   "Shield Bash"
+  ],
+  [
+   14516,
+   "Strike"
+  ],
+  [
+   15749,
+   "Shield Charge"
+  ],
+  [
+   403233,
+   "Meathook"
+  ]
+ ],
+ "10516": [
+  [
+   6136,
+   "Chilled"
+  ],
+  [
+   14907,
+   "Frost Nova"
+  ]
+ ],
+ "10558": [
+  [
+   14443,
+   "Multi-Shot"
+  ],
+  [
+   16100,
+   "Shoot"
+  ],
+  [
+   16244,
+   "Demoralizing Shout"
+  ],
+  [
+   16798,
+   "Enchanting Lullaby"
+  ]
+ ],
+ "10584": [
+  [
+   15580,
+   "Strike"
+  ],
+  [
+   16508,
+   "Intimidating Roar"
+  ],
+  [
+   16509,
+   "Rend"
+  ]
+ ],
+ "10596": [
+  [
+   16103,
+   "Summon Spire Spiderling"
+  ],
+  [
+   16104,
+   "Crystallize"
+  ],
+  [
+   16468,
+   "Mother's Milk"
+  ]
+ ],
+ "10808": [
+  [
+   8599,
+   "Enrage"
+  ],
+  [
+   17470,
+   "Ravenous Claw"
+  ]
+ ],
+ "10809": [
+  [
+   14331,
+   "Vicious Rend"
+  ]
+ ],
+ "10811": [
+  [
+   17274,
+   "Pyroblast"
+  ],
+  [
+   17293,
+   "Burning Winds"
+  ],
+  [
+   17366,
+   "Fire Nova"
+  ]
+ ],
+ "10812": [
+  [
+   12098,
+   "Sleep"
+  ],
+  [
+   13704,
+   "Psychic Scream"
+  ],
+  [
+   17281,
+   "Crusader Strike"
+  ],
+  [
+   17284,
+   "Holy Strike"
+  ],
+  [
+   17286,
+   "Crusader's Hammer"
+  ],
+  [
+   17287,
+   "Mind Blast"
+  ],
+  [
+   17399,
+   "Shadow Shock"
+  ],
+  [
+   17405,
+   "Domination"
+  ],
+  [
+   18647,
+   "Banish"
+  ]
+ ],
+ "10813": [],
+ "10899": [
+  [
+   6253,
+   "Backhand"
+  ],
+  [
+   15580,
+   "Strike"
+  ],
+  [
+   16172,
+   "Head Crack"
+  ],
+  [
+   403233,
+   "Meathook"
+  ]
+ ],
+ "10901": [
+  [
+   8245,
+   "Corrosive Acid"
+  ]
+ ],
+ "10997": [
+  [
+   10101,
+   "Knock Away"
+  ],
+  [
+   15615,
+   "Pummel"
+  ],
+  [
+   16496,
+   "Shoot"
+  ],
+  [
+   17279,
+   "Summon Crimson Rifleman"
+  ]
+ ],
+ "11143": [
+  [
+   12741,
+   "Curse of Weakness"
+  ]
+ ],
+ "11261": [
+  [
+   8269,
+   "Enrage"
+  ],
+  [
+   16509,
+   "Rend"
+  ],
+  [
+   18103,
+   "Backhand"
+  ]
+ ],
+ "11467": [
+  [
+   12540,
+   "Gouge"
+  ],
+  [
+   15581,
+   "Sinister Strike"
+  ],
+  [
+   15582,
+   "Backstab"
+  ],
+  [
+   21060,
+   "Blind"
+  ]
+ ],
+ "11486": [
+  [
+   3391,
+   "Thrash"
+  ],
+  [
+   15589,
+   "Whirlwind"
+  ],
+  [
+   20537,
+   "Counterspell"
+  ],
+  [
+   22920,
+   "Arcane Blast"
+  ],
+  [
+   22995,
+   "Summon"
+  ]
+ ],
+ "11487": [
+  [
+   7645,
+   "Dominate Mind"
+  ],
+  [
+   17146,
+   "Shadow Word: Pain"
+  ],
+  [
+   17287,
+   "Mind Blast"
+  ],
+  [
+   22917,
+   "Shadowform"
+  ],
+  [
+   22919,
+   "Mind Flay"
+  ]
+ ],
+ "11488": [
+  [
+   14301,
+   "Immolation Trap Effect"
+  ],
+  [
+   20735,
+   "Multi-Shot"
+  ],
+  [
+   22908,
+   "Volley"
+  ],
+  [
+   22910,
+   "Immolation Trap"
+  ],
+  [
+   22914,
+   "Concussive Shot"
+  ],
+  [
+   22915,
+   "Improved Concussive Shot"
+  ]
+ ],
+ "11489": [
+  [
+   5568,
+   "Trample"
+  ],
+  [
+   22916,
+   "Uppercut"
+  ],
+  [
+   22924,
+   "Grasping Vines"
+  ],
+  [
+   22994,
+   "Entangle"
+  ]
+ ],
+ "11490": [
+  [
+   22478,
+   "Intense Pain"
+  ]
+ ],
+ "11492": [
+  [
+   22662,
+   "Wither"
+  ],
+  [
+   22689,
+   "Mangle"
+  ]
+ ],
+ "11496": [
+  [
+   5568,
+   "Trample"
+  ],
+  [
+   8269,
+   "Enrage"
+  ],
+  [
+   16128,
+   "Infected Bite"
+  ],
+  [
+   22899,
+   "Eye of Immol'thar"
+  ],
+  [
+   22950,
+   "Portal of Immol'thar"
+  ]
+ ],
+ "11501": [
+  [
+   15572,
+   "Sunder Armor"
+  ]
+ ],
+ "11517": [
+  [
+   5532,
+   "Cleave"
+  ]
+ ],
+ "11518": [
+  [
+   18267,
+   "Curse of Weakness"
+  ],
+  [
+   20800,
+   "Immolate"
+  ]
+ ],
+ "11519": [
+  [
+   744,
+   "Poison"
+  ],
+  [
+   14873,
+   "Sinister Strike"
+  ]
+ ],
+ "11520": [
+  [
+   11970,
+   "Fire Nova"
+  ],
+  [
+   18072,
+   "Uppercut"
+  ]
+ ],
+ "11622": [
+  [
+   16727,
+   "War Stomp"
+  ]
+ ],
+ "12201": [
+  [
+   3391,
+   "Thrash"
+  ],
+  [
+   21832,
+   "Boulder"
+  ],
+  [
+   21869,
+   "Repulsive Gaze"
+  ],
+  [
+   21909,
+   "Dust Field"
+  ],
+  [
+   22592,
+   "Knockdown"
+  ]
+ ],
+ "12203": [
+  [
+   5568,
+   "Trample"
+  ],
+  [
+   18670,
+   "Knock Away"
+  ],
+  [
+   21727,
+   "Summon Player"
+  ],
+  [
+   21808,
+   "Summon Shardlings"
+  ]
+ ],
+ "12225": [
+  [
+   12747,
+   "Entangling Roots"
+  ],
+  [
+   21793,
+   "Twisted Tranquility"
+  ],
+  [
+   21807,
+   "Wrath"
+  ],
+  [
+   21968,
+   "Corrupt Forces of Nature"
+  ]
+ ],
+ "12236": [
+  [
+   7964,
+   "Smoke Bomb"
+  ],
+  [
+   16100,
+   "Shoot"
+  ],
+  [
+   21390,
+   "Multi-Shot"
+  ],
+  [
+   21655,
+   "Blink"
+  ]
+ ],
+ "12237": [
+  [
+   13446,
+   "Strike"
+  ],
+  [
+   15593,
+   "War Stomp"
+  ]
+ ],
+ "12258": [
+  [
+   11427,
+   "Cleave"
+  ],
+  [
+   15976,
+   "Puncture"
+  ]
+ ],
+ "12876": [
+  [
+   15043,
+   "Frostbolt"
+  ],
+  [
+   15531,
+   "Frost Nova"
+  ]
+ ],
+ "12902": [
+  [
+   12167,
+   "Lightning Bolt"
+  ],
+  [
+   12550,
+   "Lightning Shield"
+  ]
+ ],
+ "13280": [
+  [
+   22420,
+   "Submersion"
+  ]
+ ],
+ "13282": [
+  [
+   21687,
+   "Toxic Volley"
+  ]
+ ],
+ "13596": [
+  [
+   15976,
+   "Puncture"
+  ],
+  [
+   16495,
+   "Fatal Bite"
+  ]
+ ],
+ "13601": [
+  [
+   9143,
+   "Bomb"
+  ],
+  [
+   16100,
+   "Shoot"
+  ],
+  [
+   21833,
+   "Goblin Dragon Gun"
+  ],
+  [
+   29419,
+   "Flash Bomb"
+  ]
+ ],
+ "14321": [
+  [
+   22817,
+   "Fengus' Ferocity"
+  ]
+ ],
+ "14322": [
+  [
+   8269,
+   "Enrage"
+  ],
+  [
+   15577,
+   "Whirlwind"
+  ],
+  [
+   16740,
+   "War Stomp"
+  ],
+  [
+   22833,
+   "Booze Spit"
+  ],
+  [
+   22835,
+   "Drunken Rage"
+  ]
+ ],
+ "14323": [
+  [
+   22820,
+   "Slip'kik's Savvy"
+  ]
+ ],
+ "14324": [
+  [
+   15531,
+   "Frost Nova"
+  ]
+ ],
+ "14325": [
+  [
+   8599,
+   "Enrage"
+  ],
+  [
+   19134,
+   "Intimidating Shout"
+  ],
+  [
+   22857,
+   "Retaliation"
+  ],
+  [
+   22859,
+   "Mortal Cleave"
+  ],
+  [
+   22860,
+   "Call Reavers"
+  ],
+  [
+   29544,
+   "Intimidating Shout"
+  ]
+ ],
+ "14326": [
+  [
+   22818,
+   "Mol'dar's Moxie"
+  ]
+ ],
+ "14327": [
+  [
+   12742,
+   "Immolate"
+  ],
+  [
+   13338,
+   "Curse of Tongues"
+  ],
+  [
+   16247,
+   "Curse of Thorns"
+  ],
+  [
+   17228,
+   "Shadow Bolt Volley"
+  ],
+  [
+   22709,
+   "Void Bolt"
+  ],
+  [
+   22710,
+   "Enlarge"
+  ]
+ ],
+ "14354": [
+  [
+   14145,
+   "Fire Blast"
+  ],
+  [
+   15228,
+   "Fireball"
+  ],
+  [
+   22424,
+   "Blast Wave"
+  ],
+  [
+   22735,
+   "Spirit of Runn Tum"
+  ]
+ ],
+ "14506": [
+  [
+   17146,
+   "Shadow Word: Pain"
+  ],
+  [
+   18670,
+   "Knock Away"
+  ],
+  [
+   20989,
+   "Sleep"
+  ],
+  [
+   23224,
+   "Veil of Shadow"
+  ]
+ ],
+ "14516": [
+  [
+   15754,
+   "Cleave"
+  ],
+  [
+   17393,
+   "Shadow Bolt"
+  ],
+  [
+   22644,
+   "Blood Leech"
+  ],
+  [
+   23261,
+   "Summon Darkreaver's Fallen Charger"
+  ],
+  [
+   429688,
+   "Dominate Mind"
+  ]
+ ],
+ "14682": [
+  [
+   8269,
+   "Enrage"
+  ],
+  [
+   16508,
+   "Intimidating Roar"
+  ],
+  [
+   17745,
+   "Diseased Spit"
+  ],
+  [
+   403233,
+   "Meathook"
+  ]
+ ],
+ "14684": [
+  [
+   8398,
+   "Frostbolt Volley"
+  ],
+  [
+   12096,
+   "Fear"
+  ],
+  [
+   15244,
+   "Cone of Cold"
+  ],
+  [
+   16799,
+   "Frostbolt"
+  ],
+  [
+   403233,
+   "Meathook"
+  ]
+ ],
+ "14686": [
+  [
+   16838,
+   "Banshee Shriek"
+  ],
+  [
+   17105,
+   "Banshee Curse"
+  ],
+  [
+   22743,
+   "Ribbon of Souls"
+  ],
+  [
+   429688,
+   "Dominate Mind"
+  ]
+ ],
+ "14690": [
+  [
+   6136,
+   "Chilled"
+  ],
+  [
+   14907,
+   "Frost Nova"
+  ],
+  [
+   15245,
+   "Shadow Bolt Volley"
+  ]
+ ],
+ "14693": [
+  [
+   15531,
+   "Frost Nova"
+  ],
+  [
+   17165,
+   "Mind Flay"
+  ],
+  [
+   22643,
+   "Frostbolt Volley"
+  ],
+  [
+   28873,
+   "Lich Slap"
+  ],
+  [
+   403233,
+   "Meathook"
+  ]
+ ],
+ "14695": [
+  [
+   7964,
+   "Smoke Bomb"
+  ],
+  [
+   11972,
+   "Shield Bash"
+  ],
+  [
+   16496,
+   "Shoot"
+  ],
+  [
+   21390,
+   "Multi-Shot"
+  ],
+  [
+   403233,
+   "Meathook"
+  ]
+ ],
+ "16042": [
+  [
+   27249,
+   "Summon Spectral Assassin"
+  ],
+  [
+   27286,
+   "Shadow Wrath"
+  ],
+  [
+   27338,
+   "Shadow Staff"
+  ],
+  [
+   27382,
+   "Shadow Bolt Volley"
+  ]
+ ],
+ "16080": [
+  [
+   15605,
+   "Shock"
+  ],
+  [
+   20989,
+   "Sleep"
+  ],
+  [
+   22271,
+   "Arcane Explosion"
+  ],
+  [
+   27527,
+   "Healing Touch"
+  ],
+  [
+   27530,
+   "Hurricane"
+  ],
+  [
+   27532,
+   "Rejuvenation"
+  ],
+  [
+   27543,
+   "Bear Form"
+  ],
+  [
+   27545,
+   "Cat Form"
+  ],
+  [
+   27546,
+   "Faerie Dragon Form"
+  ],
+  [
+   27551,
+   "Demoralizing Roar"
+  ],
+  [
+   27553,
+   "Maul"
+  ],
+  [
+   27554,
+   "Swipe"
+  ],
+  [
+   27555,
+   "Shred"
+  ],
+  [
+   27556,
+   "Rake"
+  ],
+  [
+   27557,
+   "Ferocious Bite"
+  ],
+  [
+   27564,
+   "Reflection"
+  ],
+  [
+   27567,
+   "Chain Lightning"
+  ],
+  [
+   27737,
+   "Moonfire"
+  ]
+ ],
+ "16097": [
+  [
+   12024,
+   "Net"
+  ],
+  [
+   14443,
+   "Multi-Shot"
+  ],
+  [
+   22907,
+   "Shoot"
+  ],
+  [
+   25164,
+   "Vengeance"
+  ],
+  [
+   27636,
+   "Starshards"
+  ],
+  [
+   27637,
+   "Regrowth"
+  ],
+  [
+   27639,
+   "Call Pet"
+  ]
+ ],
+ "16118": [
+  [
+   8269,
+   "Enrage"
+  ],
+  [
+   17228,
+   "Shadow Bolt Volley"
+  ],
+  [
+   27687,
+   "Summon Bone Minions"
+  ],
+  [
+   27688,
+   "Bone Shield"
+  ],
+  [
+   27689,
+   "Bloodlust"
+  ],
+  [
+   27695,
+   "Summon Bone Mages"
+  ]
+ ],
+ "1663": [
+  [
+   7165,
+   "Battle Stance"
+  ],
+  [
+   11976,
+   "Strike"
+  ],
+  [
+   19134,
+   "Intimidating Shout"
+  ],
+  [
+   29544,
+   "Intimidating Shout"
+  ]
+ ],
+ "1666": [
+  [
+   3419,
+   "Improved Blocking"
+  ],
+  [
+   7164,
+   "Defensive Stance"
+  ],
+  [
+   8242,
+   "Shield Slam"
+  ]
+ ],
+ "1696": [
+  [
+   3391,
+   "Thrash"
+  ],
+  [
+   8599,
+   "Enrage"
+  ]
+ ],
+ "1716": [
+  [
+   7964,
+   "Smoke Bomb"
+  ],
+  [
+   9128,
+   "Battle Shout"
+  ]
+ ],
+ "1717": [
+  [
+   421,
+   "Chain Lightning"
+  ],
+  [
+   6742,
+   "Bloodlust"
+  ]
+ ],
+ "1720": [
+  [
+   1604,
+   "Dazed"
+  ],
+  [
+   5101,
+   "Dazed"
+  ],
+  [
+   13496,
+   "Dazed"
+  ],
+  [
+   15571,
+   "Dazed"
+  ]
+ ],
+ "1763": [
+  [
+   5213,
+   "Molten Metal"
+  ]
+ ],
+ "1853": [
+  [
+   12040,
+   "Shadow Shield"
+  ],
+  [
+   17950,
+   "Shadow Portal"
+  ],
+  [
+   18702,
+   "Curse of the Darkmaster"
+  ]
+ ],
+ "246017": [],
+ "246020": [],
+ "247032": [],
+ "249787": [],
+ "249790": [],
+ "250070": [],
+ "250074": [],
+ "250075": [],
+ "250076": [],
+ "250077": [],
+ "250078": [],
+ "250079": [],
+ "250082": [],
+ "250483": [
+  [
+   3358,
+   "Leech Poison"
+  ]
+ ],
+ "250631": [
+  [
+   6136,
+   "Chilled"
+  ],
+  [
+   14907,
+   "Frost Nova"
+  ],
+  [
+   1266011,
+   "Life Drain"
+  ]
+ ],
+ "250657": [
+  [
+   13376,
+   "Fire Shield"
+  ],
+  [
+   18399,
+   "Flamestrike"
+  ]
+ ],
+ "250660": [
+  [
+   5568,
+   "Trample"
+  ],
+  [
+   17307,
+   "Knockout"
+  ]
+ ],
+ "253861": [],
+ "255699": [],
+ "256035": [
+  [
+   3358,
+   "Leech Poison"
+  ]
+ ],
+ "256097": [
+  [
+   14099,
+   "Mighty Blow"
+  ],
+  [
+   1301635,
+   "Anti-Magic Shield"
+  ]
+ ],
+ "257638": [],
+ "259866": [],
+ "259867": [],
+ "259902": [],
+ "259904": [],
+ "259905": [],
+ "259907": [],
+ "259911": [],
+ "259912": [],
+ "260322": [
+  [
+   3604,
+   "Tendon Rip"
+  ],
+  [
+   16495,
+   "Fatal Bite"
+  ],
+  [
+   1316382,
+   "Dust Storm"
+  ]
+ ],
+ "260325": [
+  [
+   13445,
+   "Rend"
+  ],
+  [
+   14100,
+   "Terrifying Roar"
+  ],
+  [
+   1284435,
+   "Enrage"
+  ]
+ ],
+ "260326": [
+  [
+   8078,
+   "Thunderclap"
+  ],
+  [
+   8374,
+   "Arcing Smash"
+  ],
+  [
+   10101,
+   "Knock Away"
+  ],
+  [
+   11876,
+   "War Stomp"
+  ],
+  [
+   1284450,
+   "Stasis"
+  ]
+ ],
+ "260808": [
+  [
+   9616,
+   "Wild Regeneration"
+  ],
+  [
+   1316480,
+   "Entangling Roots"
+  ]
+ ],
+ "261306": [
+  [
+   13860,
+   "Mind Blast"
+  ],
+  [
+   1292602,
+   "Anvilmar's Curse"
+  ]
+ ],
+ "261311": [
+  [
+   11130,
+   "Knock Away"
+  ],
+  [
+   21055,
+   "Crush Armor"
+  ],
+  [
+   22911,
+   "Charge"
+  ]
+ ],
+ "261316": [
+  [
+   11970,
+   "Fire Nova"
+  ],
+  [
+   1293228,
+   "Combust"
+  ]
+ ],
+ "261319": [
+  [
+   11977,
+   "Rend"
+  ],
+  [
+   19134,
+   "Intimidating Shout"
+  ],
+  [
+   25710,
+   "Heroic Strike"
+  ],
+  [
+   29544,
+   "Intimidating Shout"
+  ]
+ ],
+ "270882": [],
+ "270883": [],
+ "270884": [],
+ "270885": [],
+ "270886": [],
+ "2748": [
+  [
+   6524,
+   "Ground Tremor"
+  ],
+  [
+   8269,
+   "Enrage"
+  ],
+  [
+   10252,
+   "Awaken Earthen Guardians"
+  ],
+  [
+   10258,
+   "Awaken Vault Warder"
+  ]
+ ],
+ "3586": [],
+ "3653": [
+  [
+   14917,
+   "Growl"
+  ],
+  [
+   14918,
+   "Growl"
+  ],
+  [
+   17256,
+   "Bite"
+  ],
+  [
+   17257,
+   "Bite"
+  ],
+  [
+   17258,
+   "Bite"
+  ],
+  [
+   26064,
+   "Shell Shield"
+  ]
+ ],
+ "3654": [
+  [
+   7399,
+   "Terrify"
+  ],
+  [
+   7967,
+   "Naralex's Nightmare"
+  ],
+  [
+   8150,
+   "Thundercrack"
+  ]
+ ],
+ "3669": [
+  [
+   744,
+   "Poison"
+  ],
+  [
+   5188,
+   "Healing Touch"
+  ],
+  [
+   7965,
+   "Cobrahn Serpent Form"
+  ],
+  [
+   8040,
+   "Druid's Slumber"
+  ],
+  [
+   9532,
+   "Lightning Bolt"
+  ]
+ ],
+ "3670": [
+  [
+   700,
+   "Sleep"
+  ],
+  [
+   5187,
+   "Healing Touch"
+  ],
+  [
+   8147,
+   "Thunderclap"
+  ],
+  [
+   9532,
+   "Lightning Bolt"
+  ]
+ ],
+ "3671": [
+  [
+   700,
+   "Sleep"
+  ],
+  [
+   5187,
+   "Healing Touch"
+  ],
+  [
+   8148,
+   "Thorns Aura"
+  ],
+  [
+   9532,
+   "Lightning Bolt"
+  ]
+ ],
+ "3673": [
+  [
+   700,
+   "Sleep"
+  ],
+  [
+   6778,
+   "Healing Touch"
+  ],
+  [
+   9532,
+   "Lightning Bolt"
+  ]
+ ],
+ "3674": [
+  [
+   6254,
+   "Chained Bolt"
+  ]
+ ],
+ "3864": [
+  [
+   7139,
+   "Fel Stomp"
+  ]
+ ],
+ "3872": [
+  [
+   5532,
+   "Cleave"
+  ],
+  [
+   7165,
+   "Battle Stance"
+  ],
+  [
+   9080,
+   "Hamstring"
+  ]
+ ],
+ "3886": [],
+ "3887": [
+  [
+   7068,
+   "Veil of Shadow"
+  ]
+ ],
+ "3914": [
+  [
+   7295,
+   "Soul Drain"
+  ]
+ ],
+ "3927": [
+  [
+   7487,
+   "Call Bleak Worg"
+  ],
+  [
+   7488,
+   "Call Slavering Worg"
+  ],
+  [
+   7489,
+   "Call Lupine Horror"
+  ]
+ ],
+ "3974": [
+  [
+   6192,
+   "Battle Shout"
+  ],
+  [
+   6742,
+   "Bloodlust"
+  ]
+ ],
+ "3975": [
+  [
+   8260,
+   "Rushing Charge"
+  ],
+  [
+   8269,
+   "Enrage"
+  ],
+  [
+   8989,
+   "Whirlwind"
+  ],
+  [
+   22540,
+   "Cleave"
+  ]
+ ],
+ "3976": [
+  [
+   1020,
+   "Divine Shield"
+  ],
+  [
+   5589,
+   "Hammer of Justice"
+  ],
+  [
+   8990,
+   "Retribution Aura"
+  ],
+  [
+   9257,
+   "Lay on Hands"
+  ],
+  [
+   14518,
+   "Crusader Strike"
+  ],
+  [
+   25771,
+   "Forbearance"
+  ]
+ ],
+ "3977": [
+  [
+   9232,
+   "Scarlet Resurrection"
+  ],
+  [
+   9256,
+   "Deep Sleep"
+  ],
+  [
+   9481,
+   "Holy Smite"
+  ],
+  [
+   12039,
+   "Heal"
+  ],
+  [
+   14515,
+   "Dominate Mind"
+  ],
+  [
+   22187,
+   "Power Word: Shield"
+  ]
+ ],
+ "3983": [
+  [
+   2767,
+   "Shadow Word: Pain"
+  ],
+  [
+   9034,
+   "Immolate"
+  ]
+ ],
+ "4274": [
+  [
+   7125,
+   "Toxic Saliva"
+  ]
+ ],
+ "4275": [
+  [
+   6547,
+   "Rend"
+  ],
+  [
+   7588,
+   "Void Bolt"
+  ],
+  [
+   7621,
+   "Arugal's Curse"
+  ],
+  [
+   7803,
+   "Thundershock"
+  ],
+  [
+   13797,
+   "Immolation Trap Effect"
+  ]
+ ],
+ "4278": [
+  [
+   642,
+   "Divine Shield"
+  ],
+  [
+   1026,
+   "Holy Light"
+  ],
+  [
+   5588,
+   "Hammer of Justice"
+  ],
+  [
+   25771,
+   "Forbearance"
+  ]
+ ],
+ "4279": [
+  [
+   7481,
+   "Howling Rage"
+  ],
+  [
+   7483,
+   "Howling Rage"
+  ],
+  [
+   7484,
+   "Howling Rage"
+  ]
+ ],
+ "4420": [
+  [
+   7165,
+   "Battle Stance"
+  ],
+  [
+   9128,
+   "Battle Shout"
+  ],
+  [
+   15548,
+   "Thunderclap"
+  ]
+ ],
+ "4421": [
+  [
+   6077,
+   "Renew"
+  ],
+  [
+   8292,
+   "Chain Bolt"
+  ],
+  [
+   8358,
+   "Mana Spike"
+  ],
+  [
+   8361,
+   "Purity"
+  ]
+ ],
+ "4422": [
+  [
+   8260,
+   "Rushing Charge"
+  ],
+  [
+   8269,
+   "Enrage"
+  ],
+  [
+   8285,
+   "Rampage"
+  ],
+  [
+   8359,
+   "Left for Dead"
+  ],
+  [
+   8555,
+   "Left for Dead"
+  ]
+ ],
+ "4424": [
+  [
+   6192,
+   "Battle Shout"
+  ],
+  [
+   8286,
+   "Summon Boar Spirit"
+  ],
+  [
+   14900,
+   "Chain Heal"
+  ]
+ ],
+ "4425": [
+  [
+   14920,
+   "Growl"
+  ],
+  [
+   17260,
+   "Bite"
+  ],
+  [
+   23147,
+   "Dive"
+  ],
+  [
+   23148,
+   "Dive"
+  ],
+  [
+   24577,
+   "Demoralizing Screech"
+  ],
+  [
+   24578,
+   "Demoralizing Screech"
+  ]
+ ],
+ "4428": [
+  [
+   9613,
+   "Shadow Bolt"
+  ],
+  [
+   14515,
+   "Dominate Mind"
+  ]
+ ],
+ "4438": [
+  [
+   8148,
+   "Thorns Aura"
+  ],
+  [
+   8259,
+   "Whirling Barrage"
+  ]
+ ],
+ "4542": [
+  [
+   8282,
+   "Curse of Blood"
+  ],
+  [
+   8399,
+   "Sleep"
+  ],
+  [
+   11647,
+   "Power Word: Shield"
+  ],
+  [
+   12039,
+   "Heal"
+  ],
+  [
+   12096,
+   "Fear"
+  ],
+  [
+   15090,
+   "Dispel Magic"
+  ]
+ ],
+ "4543": [
+  [
+   8053,
+   "Flame Shock"
+  ],
+  [
+   8814,
+   "Flame Spike"
+  ],
+  [
+   9613,
+   "Shadow Bolt"
+  ],
+  [
+   12470,
+   "Fire Nova"
+  ]
+ ],
+ "4627": [
+  [
+   7154,
+   "Dark Offering"
+  ]
+ ],
+ "4829": [
+  [
+   3490,
+   "Frenzied Rage"
+  ],
+  [
+   3815,
+   "Poison Cloud"
+  ]
+ ],
+ "4830": [
+  [
+   8433,
+   "Leech Pulse"
+  ],
+  [
+   1604,
+   "Dazed"
+  ],
+  [
+   5101,
+   "Dazed"
+  ],
+  [
+   13496,
+   "Dazed"
+  ],
+  [
+   15571,
+   "Dazed"
+  ]
+ ],
+ "4831": [
+  [
+   246,
+   "Slow"
+  ],
+  [
+   865,
+   "Frost Nova"
+  ],
+  [
+   6660,
+   "Shoot"
+  ],
+  [
+   8435,
+   "Forked Lightning"
+  ]
+ ],
+ "4832": [
+  [
+   8399,
+   "Sleep"
+  ]
+ ],
+ "4842": [
+  [
+   2484,
+   "Earthbind Totem"
+  ],
+  [
+   8270,
+   "Summon Earth Rumbler"
+  ],
+  [
+   9532,
+   "Lightning Bolt"
+  ]
+ ],
+ "4854": [
+  [
+   6742,
+   "Bloodlust"
+  ],
+  [
+   8143,
+   "Tremor Totem"
+  ],
+  [
+   8292,
+   "Chain Bolt"
+  ],
+  [
+   9532,
+   "Lightning Bolt"
+  ],
+  [
+   11892,
+   "Shrink"
+  ]
+ ],
+ "4887": [
+  [
+   5568,
+   "Trample"
+  ]
+ ],
+ "5708": [
+  [
+   12280,
+   "Acid of Hakkar"
+  ],
+  [
+   17260,
+   "Bite"
+  ],
+  [
+   23148,
+   "Dive"
+  ],
+  [
+   25011,
+   "Lightning Breath"
+  ],
+  [
+   403233,
+   "Meathook"
+  ]
+ ],
+ "5709": [
+  [
+   3391,
+   "Thrash"
+  ],
+  [
+   11876,
+   "War Stomp"
+  ],
+  [
+   12890,
+   "Deep Slumber"
+  ],
+  [
+   12891,
+   "Acid Breath"
+  ]
+ ],
+ "5710": [
+  [
+   8376,
+   "Earthgrab Totem"
+  ],
+  [
+   12468,
+   "Flamestrike"
+  ],
+  [
+   12480,
+   "Hex of Jammal'an"
+  ],
+  [
+   12492,
+   "Healing Wave"
+  ]
+ ],
+ "5711": [
+  [
+   11639,
+   "Shadow Word: Pain"
+  ],
+  [
+   12471,
+   "Shadow Bolt"
+  ],
+  [
+   12493,
+   "Curse of Weakness"
+  ]
+ ],
+ "5719": [
+  [
+   12882,
+   "Wing Flap"
+  ],
+  [
+   12884,
+   "Acid Breath"
+  ]
+ ],
+ "5720": [
+  [
+   12882,
+   "Wing Flap"
+  ],
+  [
+   12884,
+   "Acid Breath"
+  ]
+ ],
+ "5721": [
+  [
+   12882,
+   "Wing Flap"
+  ],
+  [
+   12884,
+   "Acid Breath"
+  ]
+ ],
+ "5722": [
+  [
+   12882,
+   "Wing Flap"
+  ],
+  [
+   12884,
+   "Acid Breath"
+  ]
+ ],
+ "5775": [
+  [
+   8142,
+   "Grasping Vines"
+  ]
+ ],
+ "5912": [],
+ "6168": [
+  [
+   8270,
+   "Summon Earth Rumbler"
+  ],
+  [
+   9532,
+   "Lightning Bolt"
+  ]
+ ],
+ "6228": [
+  [
+   184,
+   "Fire Shield II"
+  ],
+  [
+   2601,
+   "Fire Shield III"
+  ],
+  [
+   9053,
+   "Fireball"
+  ],
+  [
+   10870,
+   "Summon Burning Servant"
+  ],
+  [
+   15228,
+   "Fireball"
+  ],
+  [
+   22425,
+   "Fireball Volley"
+  ]
+ ],
+ "6229": [
+  [
+   5568,
+   "Trample"
+  ],
+  [
+   8374,
+   "Arcing Smash"
+  ],
+  [
+   10887,
+   "Crowd Pummel"
+  ]
+ ],
+ "6231": [
+  [
+   10852,
+   "Battle Net"
+  ],
+  [
+   10855,
+   "Lag"
+  ],
+  [
+   10858,
+   "Summon Dupe Bug"
+  ],
+  [
+   10860,
+   "Patch"
+  ]
+ ],
+ "6235": [
+  [
+   11082,
+   "Megavolt"
+  ],
+  [
+   11084,
+   "Shock"
+  ],
+  [
+   11085,
+   "Chain Bolt"
+  ]
+ ],
+ "6243": [
+  [
+   6533,
+   "Net"
+  ],
+  [
+   7165,
+   "Battle Stance"
+  ]
+ ],
+ "639": [
+  [
+   3391,
+   "Thrash"
+  ],
+  [
+   5200,
+   "VanCleef's Allies"
+  ]
+ ],
+ "642": [
+  [
+   3603,
+   "Distracting Pain"
+  ],
+  [
+   5141,
+   "Eject Sneed"
+  ],
+  [
+   7399,
+   "Terrify"
+  ]
+ ],
+ "643": [
+  [
+   6713,
+   "Disarm"
+  ]
+ ],
+ "644": [
+  [
+   6304,
+   "Rhahk'Zor Slam"
+  ]
+ ],
+ "645": [
+  [
+   5174,
+   "Cookie's Cooking"
+  ],
+  [
+   6306,
+   "Acid Splash"
+  ]
+ ],
+ "646": [
+  [
+   3391,
+   "Thrash"
+  ],
+  [
+   6264,
+   "Nimble Reflexes"
+  ],
+  [
+   6432,
+   "Smite Stomp"
+  ],
+  [
+   6435,
+   "Smite Slam"
+  ]
+ ],
+ "647": [
+  [
+   5208,
+   "Poisoned Harpoon"
+  ],
+  [
+   5532,
+   "Cleave"
+  ]
+ ],
+ "6487": [
+  [
+   8988,
+   "Silence"
+  ],
+  [
+   9433,
+   "Arcane Explosion"
+  ],
+  [
+   9435,
+   "Detonation"
+  ],
+  [
+   9438,
+   "Arcane Bubble"
+  ],
+  [
+   13323,
+   "Polymorph"
+  ]
+ ],
+ "6488": [
+  [
+   7366,
+   "Berserker Stance"
+  ],
+  [
+   15496,
+   "Cleave"
+  ],
+  [
+   403233,
+   "Meathook"
+  ]
+ ],
+ "6489": [
+  [
+   3815,
+   "Poison Cloud"
+  ],
+  [
+   21007,
+   "Curse of Weakness"
+  ]
+ ],
+ "6490": [
+  [
+   5137,
+   "Call of the Grave"
+  ],
+  [
+   7399,
+   "Terrify"
+  ],
+  [
+   9373,
+   "Soul Siphon"
+  ]
+ ],
+ "6906": [
+  [
+   14516,
+   "Strike"
+  ],
+  [
+   15620,
+   "Shoot"
+  ]
+ ],
+ "6907": [
+  [
+   6268,
+   "Rushing Charge"
+  ]
+ ],
+ "6908": [
+  [
+   8242,
+   "Shield Slam"
+  ]
+ ],
+ "6910": [
+  [
+   15801,
+   "Lightning Bolt"
+  ],
+  [
+   16006,
+   "Chain Lightning"
+  ]
+ ],
+ "7023": [
+  [
+   10061,
+   "Summon Obsidian Shard"
+  ],
+  [
+   10072,
+   "Splintered Obsidian"
+  ]
+ ],
+ "7079": [
+  [
+   1604,
+   "Dazed"
+  ],
+  [
+   5101,
+   "Dazed"
+  ],
+  [
+   13496,
+   "Dazed"
+  ],
+  [
+   15571,
+   "Dazed"
+  ]
+ ],
+ "7206": [
+  [
+   10094,
+   "Sand Storms"
+  ],
+  [
+   10132,
+   "Sand Storms"
+  ]
+ ],
+ "7228": [
+  [
+   8374,
+   "Arcing Smash"
+  ],
+  [
+   10101,
+   "Knock Away"
+  ],
+  [
+   11876,
+   "War Stomp"
+  ]
+ ],
+ "7267": [
+  [
+   7366,
+   "Berserker Stance"
+  ],
+  [
+   8269,
+   "Enrage"
+  ],
+  [
+   11837,
+   "Wide Slash"
+  ],
+  [
+   15623,
+   "Cleave"
+  ]
+ ],
+ "7271": [
+  [
+   11086,
+   "Ward of Zum'rah"
+  ],
+  [
+   12491,
+   "Healing Wave"
+  ],
+  [
+   12739,
+   "Shadow Bolt"
+  ],
+  [
+   15245,
+   "Shadow Bolt Volley"
+  ]
+ ],
+ "7272": [
+  [
+   8600,
+   "Fevered Plague"
+  ]
+ ],
+ "7273": [
+  [
+   11131,
+   "Icicle"
+  ],
+  [
+   11836,
+   "Freeze Solid"
+  ],
+  [
+   11902,
+   "Gahz'rilla Slam"
+  ]
+ ],
+ "7275": [
+  [
+   8362,
+   "Renew"
+  ],
+  [
+   12039,
+   "Heal"
+  ],
+  [
+   13704,
+   "Psychic Scream"
+  ],
+  [
+   15537,
+   "Shadow Bolt"
+  ]
+ ],
+ "7291": [
+  [
+   3356,
+   "Flame Lash"
+  ],
+  [
+   8053,
+   "Flame Shock"
+  ],
+  [
+   9482,
+   "Amplify Flames"
+  ],
+  [
+   11969,
+   "Fire Nova"
+  ]
+ ],
+ "7354": [
+  [
+   7645,
+   "Dominate Mind"
+  ],
+  [
+   11639,
+   "Shadow Word: Pain"
+  ],
+  [
+   12039,
+   "Heal"
+  ],
+  [
+   12471,
+   "Shadow Bolt"
+  ]
+ ],
+ "7355": [
+  [
+   12255,
+   "Curse of Tuten'kash"
+  ]
+ ],
+ "7356": [
+  [
+   11442,
+   "Withered Touch"
+  ],
+  [
+   12946,
+   "Putrid Stench"
+  ]
+ ],
+ "7357": [
+  [
+   12466,
+   "Fireball"
+  ],
+  [
+   12470,
+   "Fire Nova"
+  ]
+ ],
+ "7358": [
+  [
+   6136,
+   "Chilled"
+  ],
+  [
+   12642,
+   "Summon Frost Spectres"
+  ],
+  [
+   13009,
+   "Amnennar's Wrath"
+  ],
+  [
+   15530,
+   "Frostbolt"
+  ],
+  [
+   15531,
+   "Frost Nova"
+  ]
+ ],
+ "7361": [],
+ "7604": [
+  [
+   3639,
+   "Improved Blocking"
+  ],
+  [
+   11972,
+   "Shield Bash"
+  ],
+  [
+   12170,
+   "Revenge"
+  ],
+  [
+   403233,
+   "Meathook"
+  ]
+ ],
+ "7795": [
+  [
+   11086,
+   "Ward of Zum'rah"
+  ],
+  [
+   12491,
+   "Healing Wave"
+  ],
+  [
+   12739,
+   "Shadow Bolt"
+  ],
+  [
+   15245,
+   "Shadow Bolt Volley"
+  ]
+ ],
+ "7796": [
+  [
+   8600,
+   "Fevered Plague"
+  ]
+ ],
+ "7800": [
+  [
+   10101,
+   "Knock Away"
+  ],
+  [
+   11130,
+   "Knock Away"
+  ],
+  [
+   11518,
+   "Activate Bomb 01"
+  ],
+  [
+   11521,
+   "Activate Bomb 02"
+  ],
+  [
+   11524,
+   "Activate Bomb 04"
+  ],
+  [
+   11526,
+   "Activate Bomb 05"
+  ],
+  [
+   11527,
+   "Activate Bomb 06"
+  ],
+  [
+   11798,
+   "Activate Bomb 03B"
+  ]
+ ],
+ "8127": [
+  [
+   2860,
+   "Chain Lightning"
+  ],
+  [
+   8376,
+   "Earthgrab Totem"
+  ],
+  [
+   10413,
+   "Earth Shock"
+  ],
+  [
+   10915,
+   "Flash Heal"
+  ],
+  [
+   11893,
+   "Warder Despawn"
+  ],
+  [
+   11894,
+   "Antu'sul's Minion"
+  ],
+  [
+   11895,
+   "Healing Wave of Antu'sul"
+  ],
+  [
+   11899,
+   "Healing Ward"
+  ]
+ ],
+ "8443": [],
+ "8567": [
+  [
+   12627,
+   "Disease Cloud"
+  ],
+  [
+   12795,
+   "Enrage"
+  ]
+ ],
+ "8580": [
+  [
+   6524,
+   "Ground Tremor"
+  ],
+  [
+   12887,
+   "Sweeping Slam"
+  ]
+ ],
+ "8923": [
+  [
+   403233,
+   "Meathook"
+  ]
+ ],
+ "8929": [
+  [
+   8362,
+   "Renew"
+  ],
+  [
+   15537,
+   "Shadow Bolt"
+  ],
+  [
+   15586,
+   "Heal"
+  ],
+  [
+   15587,
+   "Mind Blast"
+  ],
+  [
+   15654,
+   "Shadow Word: Pain"
+  ]
+ ],
+ "8983": [
+  [
+   15305,
+   "Chain Lightning"
+  ],
+  [
+   15507,
+   "Lightning Shield"
+  ],
+  [
+   15605,
+   "Shock"
+  ]
+ ],
+ "9016": [
+  [
+   13895,
+   "Summon Spawn of Bael'Gar"
+  ],
+  [
+   23379,
+   "Magma Splash"
+  ]
+ ],
+ "9017": [
+  [
+   13899,
+   "Fire Storm"
+  ],
+  [
+   13900,
+   "Fiery Burst"
+  ],
+  [
+   14099,
+   "Mighty Blow"
+  ],
+  [
+   26977,
+   "Curse of the Elemental Lord"
+  ]
+ ],
+ "9018": [
+  [
+   12040,
+   "Shadow Shield"
+  ],
+  [
+   13704,
+   "Psychic Scream"
+  ],
+  [
+   14032,
+   "Shadow Word: Pain"
+  ],
+  [
+   14033,
+   "Mana Burn"
+  ]
+ ],
+ "9019": [
+  [
+   15636,
+   "Avatar of Flame"
+  ],
+  [
+   17492,
+   "Hand of Thaurissan"
+  ]
+ ],
+ "9024": [
+  [
+   15038,
+   "Scorching Totem"
+  ],
+  [
+   15041,
+   "Fire Ward"
+  ],
+  [
+   15095,
+   "Molten Blast"
+  ],
+  [
+   15616,
+   "Flame Shock"
+  ]
+ ],
+ "9025": [
+  [
+   6524,
+   "Ground Tremor"
+  ],
+  [
+   13728,
+   "Earth Shock"
+  ],
+  [
+   13729,
+   "Flame Shock"
+  ]
+ ],
+ "9027": [
+  [
+   13736,
+   "Whirlwind"
+  ],
+  [
+   15708,
+   "Mortal Strike"
+  ],
+  [
+   21049,
+   "Bloodlust"
+  ]
+ ],
+ "9028": [
+  [
+   6524,
+   "Ground Tremor"
+  ],
+  [
+   8269,
+   "Enrage"
+  ],
+  [
+   15579,
+   "Cleave"
+  ]
+ ],
+ "9029": [
+  [
+   7121,
+   "Anti-Magic Shield"
+  ],
+  [
+   14331,
+   "Vicious Rend"
+  ],
+  [
+   15245,
+   "Shadow Bolt Volley"
+  ]
+ ],
+ "9030": [
+  [
+   13323,
+   "Polymorph"
+  ],
+  [
+   13747,
+   "Slow"
+  ],
+  [
+   15254,
+   "Arcane Bolt"
+  ],
+  [
+   15453,
+   "Arcane Explosion"
+  ]
+ ],
+ "9031": [
+  [
+   8994,
+   "Banish"
+  ],
+  [
+   12493,
+   "Curse of Weakness"
+  ],
+  [
+   13787,
+   "Demon Armor"
+  ],
+  [
+   15470,
+   "Curse of Tongues"
+  ],
+  [
+   15471,
+   "Enveloping Web"
+  ],
+  [
+   15472,
+   "Shadow Bolt"
+  ]
+ ],
+ "9032": [
+  [
+   15475,
+   "Baneful Poison"
+  ]
+ ],
+ "9033": [
+  [
+   15572,
+   "Sunder Armor"
+  ]
+ ],
+ "9041": [
+  [
+   6136,
+   "Chilled"
+  ],
+  [
+   12544,
+   "Frost Armor"
+  ],
+  [
+   12674,
+   "Frost Nova"
+  ],
+  [
+   12675,
+   "Frostbolt"
+  ],
+  [
+   15044,
+   "Frost Ward"
+  ]
+ ],
+ "9042": [
+  [
+   15042,
+   "Curse of Blood"
+  ]
+ ],
+ "9056": [
+  [
+   8258,
+   "Devotion Aura"
+  ],
+  [
+   11978,
+   "Kick"
+  ],
+  [
+   13953,
+   "Holy Strike"
+  ],
+  [
+   15346,
+   "Seal of Reckoning"
+  ],
+  [
+   15493,
+   "Holy Light"
+  ]
+ ],
+ "9156": [
+  [
+   14744,
+   "Burning Spirit"
+  ]
+ ],
+ "9196": [
+  [
+   8269,
+   "Enrage"
+  ],
+  [
+   10101,
+   "Knock Away"
+  ]
+ ],
+ "9217": [
+  [
+   8365,
+   "Enlarge"
+  ],
+  [
+   13323,
+   "Polymorph"
+  ],
+  [
+   15230,
+   "Arcane Bolt"
+  ],
+  [
+   16170,
+   "Bloodlust"
+  ],
+  [
+   403233,
+   "Meathook"
+  ]
+ ],
+ "9218": [
+  [
+   403233,
+   "Meathook"
+  ]
+ ],
+ "9219": [
+  [
+   403233,
+   "Meathook"
+  ],
+  [
+   1604,
+   "Dazed"
+  ],
+  [
+   5101,
+   "Dazed"
+  ],
+  [
+   13496,
+   "Dazed"
+  ],
+  [
+   15571,
+   "Dazed"
+  ]
+ ],
+ "9236": [
+  [
+   16098,
+   "Curse of Blood"
+  ]
+ ],
+ "9237": [
+  [
+   3391,
+   "Thrash"
+  ],
+  [
+   10966,
+   "Uppercut"
+  ],
+  [
+   15615,
+   "Pummel"
+  ],
+  [
+   15618,
+   "Snap Kick"
+  ],
+  [
+   15708,
+   "Mortal Strike"
+  ],
+  [
+   15754,
+   "Cleave"
+  ],
+  [
+   16075,
+   "Throw Axe"
+  ]
+ ],
+ "9319": [
+  [
+   13730,
+   "Demoralizing Shout"
+  ],
+  [
+   15615,
+   "Pummel"
+  ],
+  [
+   21049,
+   "Bloodlust"
+  ]
+ ],
+ "9499": [
+  [
+   8994,
+   "Banish"
+  ],
+  [
+   12739,
+   "Shadow Bolt"
+  ],
+  [
+   12742,
+   "Immolate"
+  ],
+  [
+   13338,
+   "Curse of Tongues"
+  ],
+  [
+   13787,
+   "Demon Armor"
+  ]
+ ],
+ "9502": [
+  [
+   14099,
+   "Mighty Blow"
+  ],
+  [
+   15285,
+   "Fireball Volley"
+  ],
+  [
+   15588,
+   "Thunderclap"
+  ]
+ ],
+ "9537": [
+  [
+   9573,
+   "Flame Breath"
+  ],
+  [
+   14872,
+   "Drunken Rage"
+  ]
+ ],
+ "9543": [
+  [
+   9080,
+   "Hamstring"
+  ],
+  [
+   12540,
+   "Gouge"
+  ]
+ ],
+ "9568": [
+  [
+   12887,
+   "Sweeping Slam"
+  ],
+  [
+   15663,
+   "Cleave"
+  ],
+  [
+   16244,
+   "Demoralizing Shout"
+  ]
+ ],
+ "9596": [
+  [
+   403233,
+   "Meathook"
+  ]
+ ],
+ "9718": [
+  [
+   403233,
+   "Meathook"
+  ]
+ ],
+ "9736": [
+  [
+   15504,
+   "Drink Healing Potion"
+  ],
+  [
+   15609,
+   "Hooked Net"
+  ],
+  [
+   16496,
+   "Shoot"
+  ],
+  [
+   16497,
+   "Stun Bomb"
+  ]
+ ],
+ "9816": [
+  [
+   16078,
+   "Emberseer Despawn"
+  ],
+  [
+   16079,
+   "Fire Nova"
+  ],
+  [
+   16536,
+   "Flame Buffet"
+  ]
+ ],
+ "9938": [
+  [
+   15593,
+   "War Stomp"
+  ],
+  [
+   15668,
+   "Fiery Burst"
+  ]
+ ]
+}

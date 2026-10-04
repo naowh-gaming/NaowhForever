@@ -152,20 +152,33 @@ local function PinClicked(pin, button)
         return
     end
     if pin.view:Placing() then return end
-    -- The window shows it in its own loot pane; the world map at the mouse.
-    if pin.view.onPick then return pin.view.onPick(pin.boss) end
-    pin.view:Pick(pin.key)
-    -- The small world map has the Journal beside it, its loot on it: only ringed then.
-    if pin.view.onWorldMap and not MapMaximised() then return end
-    lootFrom = pin.view
-    J.View.OpenBossLoot(pin.boss, pin.view.dungeon)
+    local view = pin.view
+    -- The window shows it in its own loot pane.
+    if view.onPick then return view.onPick(pin.boss) end
+    -- The world map: the Journal beside it shows the boss's page (its loot and abilities);
+    -- the boss clicked again, the dungeon's page again.
+    local again = view.picked == pin.key
+    view:Pick(not again and pin.key or nil)
+    J.ShowBossBesideMap(not again and pin.boss or nil)
+    if again then
+        if lootFrom == view then
+            lootFrom = nil
+            J.View.CloseBossLoot()
+        end
+        return
+    end
+    -- Maximised, the Journal sits over the map's edge: its loot at the mouse too.
+    if not MapMaximised() then return end
+    lootFrom = view
+    J.View.OpenBossLoot(pin.boss, view.dungeon)
 end
 
--- A map closes (the world map, M again; the window): the loot one of its pins opened goes too.
+-- A map closes (the world map, M again; the window): no pin is picked, and the loot one of
+-- its pins opened goes too.
 local function ViewHidden(view)
+    view:Pick(nil)
     if lootFrom == view then
         lootFrom = nil
-        view:Pick(nil)
         J.View.CloseBossLoot()
     end
 end
@@ -1066,7 +1079,10 @@ function J.ShowMapOnWorldMap(dungeon)
         return
     end
     if not overlay then BuildOverlay() end
+    -- Drawn again on the same dungeon (a setting, the panel placed again): its boss stays picked.
+    local keep = overlay:IsShown() and overlayView.dungeon == dungeon and overlayView.picked or nil
     overlayView:Open(dungeon)
+    overlayView.picked = keep
     overlay.hint:SetText(dungeon.entrance and dungeon.zone and ("Right-click: " .. dungeon.zone) or "")
     overlay:Show()
     overlay.mapID = WorldMapFrame:GetMapID()   -- the map it covers; another one, and it steps aside
@@ -1092,10 +1108,16 @@ function J.RedrawDungeonMaps()
 end
 
 -- The key's Boss Loot opens its own, or the loot at the mouse closed: the map no longer
--- closes it, and its pin's gold ring goes.
+-- closes it, and the window's pin loses its gold ring (the world map's follows the Journal
+-- beside it, which still shows the boss).
 function J.View.ForgetMapLoot()
-    if lootFrom then lootFrom:Pick(nil) end
+    if lootFrom and not lootFrom.onWorldMap then lootFrom:Pick(nil) end
     lootFrom = nil
+end
+
+-- The Journal beside the world map went back to the dungeon's page: no pin is picked.
+function J.UnpickOnWorldMap()
+    if overlayView then overlayView:Pick(nil) end
 end
 
 -- The world map changed size (maximised, or small again).
