@@ -16,6 +16,18 @@
   starts; it closes when you land or enter combat. Move it in Unlock Mode.
 - Flight Games (QoL > Travel, under the Flight Timer): one choice of what opens by itself when a
   flight starts, Nothing, the Quiz or the Aim Trainer (the default).
+- Scrap Marker (QoL > Loot & Items, off by default): Alt-click an item in your bags, the game's
+  or EllesmereUI's, to mark it as scrap, and again to unmark it. Marks count on every character,
+  or on this one only (New Marks), and the next vendor sells your scrap, even items the game
+  doesn't count as junk. At the Vendor can instead ask first, on a panel beside the vendor, or do
+  nothing. Scrap shows an icon on its bag slot and a line on its tooltip. Your BiS and gear sets
+  are protected, and quest items, keys and items with no sell price can't be marked.
+  - Rules, each off by default, count gear your class can't wear and old grey and white gear as
+    scrap too; the X on a rule's item keeps it.
+  - The Scrap List (Open Scrap List on its settings page, or /nf scrap): every scrap item with
+    what you carry and what it sells for, a search, an X to unmark, Account or Character on each
+    mark, drop an item on it to mark it, Clear All, and Export and Import to share a list.
+  - Bag Space puts your scrap first and shows the slots it will free, like +3.
 
 ### Changed
 - QoL has a Character tab: Character Panel, Slot Marks and Naowh Score moved there from the BiS
