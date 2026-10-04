@@ -30,7 +30,7 @@ local CARD_PAD, QUEST_CODE, HAVE_RGB, CHECK = St.CARD_PAD, St.QUEST_CODE, St.HAV
 local View = J.View
 local Kinds, Parts = View.Kinds, View.Parts
 
-local ICON = 22           -- smaller than an item's: an ability is read, not collected
+local ICON = St.ICON      -- as big as a loot icon
 local TEXT_GAP = 8        -- the icon to its name and description
 local NAME_DESC_GAP = 2
 local ROW_PAD = 5         -- above and under each ability
@@ -196,7 +196,7 @@ Kinds.ability = {
         row.hover:Hide()
         local frame = Parts.ItemIcon(row, ICON)
         frame:SetPoint("TOPLEFT", 0, -ROW_PAD)
-        row.icon = frame.texture
+        row.icon, row.iconFrame = frame.texture, frame
         row.name = ns.Font(row, 12, nil, T.fg)
         row.name:SetPoint("TOPLEFT", frame, "TOPRIGHT", TEXT_GAP, 0)
         row.name:SetPoint("RIGHT")
@@ -225,6 +225,8 @@ Kinds.ability = {
         row.desc:SetShown(desc ~= "")
         local text = row.name:GetStringHeight()
         if desc ~= "" then text = text + NAME_DESC_GAP + row.desc:GetStringHeight() end
+        -- Beside the icon, in the middle of it while it is the taller, as an item's lines are.
+        row.name:SetPoint("TOPLEFT", row.iconFrame, "TOPRIGHT", TEXT_GAP, -math.max(0, (ICON - text) / 2))
         return math.ceil(math.max(ICON, text)) + ROW_PAD * 2
     end,
 }
