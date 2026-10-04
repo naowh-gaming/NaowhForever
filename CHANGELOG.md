@@ -58,6 +58,8 @@
   crit, dodge, block), a dash for the rest, instead of a Lua error.
 - Stat Weights: upgrade lines and bag arrows keep working while your stats are hidden, worked out
   against your stats from just before, until your gear or level changes.
+- Loot Feed: looting coins again while the Coins line is still up adds to it instead of throwing
+  a Lua error, and the loot after that line fades shows up again.
 - Settings: a module's window opened from /nf (Open Dungeon Journal, or the small window button
   beside a module) brings /nf back when you close it the first time too, not only from the
   second time on.
