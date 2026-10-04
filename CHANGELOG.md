@@ -31,6 +31,9 @@
 - Training Planner: a waypoint to your nearest class trainer, from Waypoint to nearest trainer at
   the top of the planner, the Waypoint button on the level-up toast, or /nf trainer. With TomTom
   loaded, it uses TomTom's arrow.
+- Naowh's Forge: To Library in the editor saves the macro to the Library under your class, for
+  every character of that class. Your Library macros show as YOURS, with Add, Open in Editor and
+  Remove; saving one again under the same name replaces it.
 
 ### Changed
 - Dungeon Journal: Scarlet Monastery is its four wings, each a dungeon of its own: Scarlet

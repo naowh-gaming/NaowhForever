@@ -4,7 +4,7 @@
 --  in the editor, with its size against the game's 255 bytes, the lines that will not work
 --  and, beside it, what it does in plain words, a condition builder, the commands, and icons.
 --  Smart Macros: the macros the module keeps up to date, with what each will use right now.
---  Library: Naowh's macros by class, as your profile pack brings them; empty without one.
+--  Library: by class, the macros you saved to it from the editor and those your profile pack brings.
 --  Built the first time it opens.
 -------------------------------------------------------------------------------
 local ns = _G.NaowhForever
@@ -206,6 +206,12 @@ local function PackMacros(class)
     return (S.Get("classMacros") or {})[class] or {}
 end
 
+-- Macros the player saved to the Library, by class, for every character: { name, body, icon }.
+local function OwnMacros(class)
+    local own = ns.AccountSettings().libraryMacros
+    return own and own[class] or {}
+end
+
 -------------------------------------------------------------------------------
 --  Opening a macro in the editor
 -------------------------------------------------------------------------------
@@ -226,7 +232,7 @@ local function Open(macro)
     draft.saved = draft.index and draft.body or nil
     draft.savedName = draft.index and draft.name or nil
     -- A pack macro is made with the icon the pack (or the player, on the Class Macros page) gave it.
-    draft.picked = draft.source == "pack" and macro.icon ~= nil or nil
+    draft.picked = (draft.source == "pack" or draft.source == "library") and macro.icon ~= nil or nil
     if window then
         window.name:SetText(draft.name)
         SetCode(draft.body)
@@ -295,6 +301,30 @@ local function Delete()
         NewDraft()
         Render()
     end)
+end
+
+-- A copy of what is in the editor into the Library under this class, replacing one of the same name.
+local function SaveToLibrary()
+    local name, body = strtrim(window.name:GetText()), Code()
+    if name == "" or #name > 16 then Toast("A macro's name is 1 to 16 bytes.") return end
+    if body == "" or #body > Text.LIMIT then Toast("A macro's text is 1 to 255 bytes.") return end
+    local _, class = UnitClass("player")
+    local account = ns.AccountSettings()
+    account.libraryMacros = account.libraryMacros or {}
+    account.libraryMacros[class] = account.libraryMacros[class] or {}
+    local list = account.libraryMacros[class]
+    local icon = (draft.picked or draft.source == "game") and draft.icon ~= QUESTION and draft.icon or nil
+    local entry = { name = name, body = body, icon = icon }
+    for i, e in ipairs(list) do
+        if e.name == name then
+            list[i] = entry
+            Toast("Updated " .. name .. " in your Library.")
+            return
+        end
+    end
+    list[#list + 1] = entry
+    Toast(("Saved %s to your Library, for every %s you play."):format(name,
+        LOCALIZED_CLASS_NAMES_MALE[class] or class))
 end
 
 local function Drag()
@@ -543,7 +573,8 @@ RenderEditor = function()
     editor.scopeAccount.fill:SetShown(draft.account)
     editor.scopeCharacter.fill:SetShown(not draft.account)
     editor.where:SetText(draft.index and "Drag the icon to an action bar" or
-        (draft.source == "pack" and "From your pack: Create makes it yours" or "Not saved yet"))
+        (draft.source == "pack" and "From your pack: Create makes it yours"
+        or draft.source == "library" and "From your Library: Save makes it a macro" or "Not saved yet"))
     editor.grip:SetShown(draft.index ~= nil)
     local dirty = draft.saved ~= nil and changed
     editor.revert:SetEnabled(dirty)
@@ -722,10 +753,10 @@ local function BuildEditor(parent)
         editor.issueLines[i] = fs
     end
     -- The actions.
-    local save = ns.AccentBorder(ns.Button(editor, "Save", 96, BUTTON_H, Save))
+    local save = ns.AccentBorder(ns.Button(editor, "Save", 80, BUTTON_H, Save))
     save:SetPoint("BOTTOMLEFT", PAD, PAD)
     editor.saveLabel = save.label
-    local shorten = ns.Button(editor, "Shorten", 86, BUTTON_H, function()
+    local shorten = ns.Button(editor, "Shorten", 74, BUTTON_H, function()
         local before = Code()
         local after = Text.Shorten(before)
         SetCode(after)
@@ -735,14 +766,14 @@ local function BuildEditor(parent)
     shorten:SetPoint("LEFT", save, "RIGHT", 6, 0)
     ns.Tooltip(shorten, "Shorten", "Saves bytes with spellings the game reads the same way: @ for target=, "
         .. "mod: and btn:, and no spaces around ; and ,.")
-    local export = ns.Button(editor, "Export", 76, BUTTON_H, function()
+    local export = ns.Button(editor, "Export", 64, BUTTON_H, function()
         local name, body = strtrim(window.name:GetText()), Code()
         if name == "" or #name > 16 then Toast("A macro's name is 1 to 16 bytes.") return end
         if body == "" or #body > Text.LIMIT then Toast("A macro's text is 1 to 255 bytes.") return end
         ns.ShowCopyBox(name, Export({ { name = name, body = body } }))
     end)
     export:SetPoint("LEFT", shorten, "RIGHT", 6, 0)
-    local revert = ns.Button(editor, "Revert", 76, BUTTON_H, function()
+    local revert = ns.Button(editor, "Revert", 64, BUTTON_H, function()
         if not draft.saved then return end
         window.name:SetText(draft.savedName)
         SetCode(draft.saved)
@@ -750,7 +781,11 @@ local function BuildEditor(parent)
     end)
     revert:SetPoint("LEFT", export, "RIGHT", 6, 0)
     editor.revert = revert
-    local delete = ns.Button(editor, "Delete", 76, BUTTON_H, Delete)
+    local toLibrary = ns.Button(editor, "To Library", 80, BUTTON_H, SaveToLibrary)
+    toLibrary:SetPoint("LEFT", revert, "RIGHT", 6, 0)
+    ns.Tooltip(toLibrary, "Save to Library", "Keeps a copy in the Library under your class, for every character "
+        .. "of that class. Saving it again under the same name replaces it.")
+    local delete = ns.Button(editor, "Delete", 64, BUTTON_H, Delete)
     delete:SetPoint("BOTTOMRIGHT", -PAD, PAD)
 end
 
@@ -1161,7 +1196,7 @@ local function AddFromPack(entry)
     local function Add()
         if InCombatLockdown() then Toast("Macros can be added once the fight is over.") return end
         local index = Find(entry.name, entry.body, false)
-        local icon = ns.MacroEntryIcon(entry) or QUESTION
+        local icon = (entry.own and entry.icon or ns.MacroEntryIcon(entry)) or QUESTION
         if not index then
             if GetMacroIndexByName(entry.name) > 0 then
                 Toast("You already have a different macro called " .. entry.name .. ". Rename it to add this one.")
@@ -1177,7 +1212,7 @@ local function AddFromPack(entry)
         Open({ index = index, account = false, name = entry.name, icon = icon, body = entry.body })
         Render()
     end
-    if RunsScript(entry.body) then
+    if RunsScript(entry.body) and not entry.own then
         ns.Confirm(entry.name .. " runs a script from a shared pack. Open it in the editor to read it first. Add it?",
             Add)
     else
@@ -1226,6 +1261,8 @@ local function NewLibCard(parent)
     c.add:SetPoint("BOTTOMRIGHT", -12, 10)
     c.open = ns.Button(c, "Open in Editor", 110, BUTTON_H)
     c.open:SetPoint("RIGHT", c.add, "LEFT", -6, 0)
+    c.remove = ns.Button(c, "Remove", 70, BUTTON_H)
+    c.remove:SetPoint("BOTTOMLEFT", 12, 10)
     return c
 end
 
@@ -1241,7 +1278,7 @@ local function DrawLibrary()
         b:SetPoint("TOPRIGHT", view.classBody, "TOPRIGHT", 0, y)
         local color = RAID_CLASS_COLORS[class]
         b.name:SetText(color:WrapTextInColorCode(LOCALIZED_CLASS_NAMES_MALE[class] or class))
-        local n = #PackMacros(class)
+        local n = #OwnMacros(class) + #PackMacros(class)
         b.count:SetText(n > 0 and (n .. " macros") or "")
         b.stripe:SetShown(i % 2 == 0)
         Pick(b, class == libClass)
@@ -1253,6 +1290,9 @@ local function DrawLibrary()
     end
     view.cards.Release()
     local list = {}
+    for _, entry in ipairs(OwnMacros(libClass)) do
+        list[#list + 1] = { name = entry.name, note = "", body = entry.body, icon = entry.icon, own = true }
+    end
     for _, entry in ipairs(PackMacros(libClass)) do
         if type(entry.name) == "string" and type(entry.body) == "string" then
             list[#list + 1] = { name = entry.name, note = entry.note or "", body = entry.body, icon = entry.icon }
@@ -1260,7 +1300,7 @@ local function DrawLibrary()
     end
     local color = RAID_CLASS_COLORS[libClass]
     view.title:SetText(color:WrapTextInColorCode(LOCALIZED_CLASS_NAMES_MALE[libClass] or libClass))
-    view.lead:SetText(libClass == myClass and "Naowh's macros for your class. Open one to change it first, or Add it as it is."
+    view.lead:SetText(libClass == myClass and "Macros for your class. Open one to change it first, or Add it as it is."
         or "Another class's macros, to read. Add them on a character of that class.")
     local w = math.floor((view.body:GetWidth() - CARD_GAP) / 2)
     for i, entry in ipairs(list) do
@@ -1268,9 +1308,27 @@ local function DrawLibrary()
         local col, line = (i - 1) % 2, math.floor((i - 1) / 2)
         c:SetPoint("TOPLEFT", view.body, "TOPLEFT", col * (w + CARD_GAP), -line * (LIB_H + CARD_GAP))
         c:SetWidth(w)
-        c.icon:SetTexture(ShownIcon(nil, ns.MacroEntryIcon(entry), entry.body))
+        local icon = entry.own and entry.icon or ns.MacroEntryIcon(entry)
+        c.icon:SetTexture(ShownIcon(nil, icon, entry.body))
         c.title:SetText(entry.name)
-        c.tag:SetText(GOLD_CODE .. "NAOWH|r")
+        if entry.own then
+            c.tag:SetText("YOURS")
+            Paint(c.tag, T.accent)
+        else
+            c.tag:SetText(GOLD_CODE .. "NAOWH|r")
+            Paint(c.tag, T.fg)
+        end
+        c.remove:SetShown(entry.own == true)
+        c.remove._onClick = function()
+            ns.Confirm(("Remove %s from your Library? Macros already made from it stay."):format(entry.name),
+                function()
+                    local saved = OwnMacros(libClass)
+                    for k, e in ipairs(saved) do
+                        if e.name == entry.name then table.remove(saved, k) break end
+                    end
+                    DrawLibrary()
+                end)
+        end
         c.note:SetText(entry.note or "")
         c.body:SetText(entry.body:gsub("|", "||"))
         local own = libClass == myClass
@@ -1278,8 +1336,8 @@ local function DrawLibrary()
         c.add:SetAlpha(own and 1 or 0.4)
         c.add._onClick = function() AddFromPack(entry) end
         c.open._onClick = function()
-            Open({ name = entry.name, body = entry.body, icon = ns.MacroEntryIcon(entry), account = false,
-                source = "pack" })
+            Open({ name = entry.name, body = entry.body, icon = icon, account = false,
+                source = entry.own and "library" or "pack" })
             window.SetTab("mine")
         end
     end
@@ -1407,7 +1465,7 @@ local function Build()
     window.switch = Parts.Tabs(window, SWITCH_W, {
         { key = "mine", label = "My Macros", tip = "Your macros, and the editor." },
         { key = "smart", label = "Smart Macros", tip = "Macros that keep themselves up to date." },
-        { key = "lib", label = "Library", tip = "Macros by class." },
+        { key = "lib", label = "Library", tip = "Macros by class, for every character. Add yours with To Library in the editor." },
     }, SetTab)
     window.switch:SetPoint("TOPLEFT", CARD_INSET, -(HEADER + TOOL_GAP))
     window.search = Parts.SearchBox(window, "Search your macros", function() if tab == "mine" then DrawList() end end)
