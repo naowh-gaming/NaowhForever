@@ -1,32 +1,50 @@
 {
- "10081": [
-  [
-   12251,
-   "Virulent Poison"
+ "10081": {
+  "abilities": [
+   [
+    12251,
+    "Virulent Poison"
+   ],
+   [
+    15667,
+    "Sinister Strike"
+   ]
   ],
-  [
-   15667,
-   "Sinister Strike"
-  ]
- ],
- "10082": [
-  [
-   6533,
-   "Net"
+  "npc": {
+   "classification": 2,
+   "maxlevel": 45,
+   "minlevel": 45,
+   "tag": null,
+   "type": 7
+  }
+ },
+ "10082": {
+  "abilities": [
+   [
+    6533,
+    "Net"
+   ],
+   [
+    12551,
+    "Frost Shot"
+   ],
+   [
+    15547,
+    "Shoot"
+   ],
+   [
+    403233,
+    "Meathook"
+   ]
   ],
-  [
-   12551,
-   "Frost Shot"
-  ],
-  [
-   15547,
-   "Shoot"
-  ],
-  [
-   403233,
-   "Meathook"
-  ]
- ],
+  "npc": {
+   "classification": 2,
+   "maxlevel": 45,
+   "minlevel": 45,
+   "tag": null,
+   "type": 7
+  }
+ },
  "10184": {
   "abilities": [
    [
@@ -4103,7 +4121,16 @@
    "type": 4
   }
  },
- "5912": [],
+ "5912": {
+  "abilities": [],
+  "npc": {
+   "classification": 2,
+   "maxlevel": 20,
+   "minlevel": 20,
+   "tag": null,
+   "type": 2
+  }
+ },
  "6168": {
   "abilities": [
    [
@@ -4639,80 +4666,125 @@
    "type": 5
   }
  },
- "7267": [
-  [
-   7366,
-   "Berserker Stance"
+ "7267": {
+  "abilities": [
+   [
+    7366,
+    "Berserker Stance"
+   ],
+   [
+    8269,
+    "Enrage"
+   ],
+   [
+    11837,
+    "Wide Slash"
+   ],
+   [
+    15623,
+    "Cleave"
+   ]
   ],
-  [
-   8269,
-   "Enrage"
+  "npc": {
+   "classification": 1,
+   "maxlevel": 48,
+   "minlevel": 48,
+   "tag": null,
+   "type": 7
+  }
+ },
+ "7271": {
+  "abilities": [
+   [
+    11086,
+    "Ward of Zum'rah"
+   ],
+   [
+    12491,
+    "Healing Wave"
+   ],
+   [
+    12739,
+    "Shadow Bolt"
+   ],
+   [
+    15245,
+    "Shadow Bolt Volley"
+   ]
   ],
-  [
-   11837,
-   "Wide Slash"
+  "npc": {
+   "classification": 1,
+   "maxlevel": 46,
+   "minlevel": 46,
+   "tag": null,
+   "type": 7
+  }
+ },
+ "7272": {
+  "abilities": [
+   [
+    8600,
+    "Fevered Plague"
+   ]
   ],
-  [
-   15623,
-   "Cleave"
-  ]
- ],
- "7271": [
-  [
-   11086,
-   "Ward of Zum'rah"
+  "npc": {
+   "classification": 1,
+   "maxlevel": 46,
+   "minlevel": 45,
+   "tag": null,
+   "type": 6
+  }
+ },
+ "7273": {
+  "abilities": [
+   [
+    11131,
+    "Icicle"
+   ],
+   [
+    11836,
+    "Freeze Solid"
+   ],
+   [
+    11902,
+    "Gahz'rilla Slam"
+   ]
   ],
-  [
-   12491,
-   "Healing Wave"
+  "npc": {
+   "classification": 1,
+   "maxlevel": 46,
+   "minlevel": 46,
+   "tag": null,
+   "type": 10
+  }
+ },
+ "7275": {
+  "abilities": [
+   [
+    8362,
+    "Renew"
+   ],
+   [
+    12039,
+    "Heal"
+   ],
+   [
+    13704,
+    "Psychic Scream"
+   ],
+   [
+    15537,
+    "Shadow Bolt"
+   ]
   ],
-  [
-   12739,
-   "Shadow Bolt"
-  ],
-  [
-   15245,
-   "Shadow Bolt Volley"
-  ]
- ],
- "7272": [
-  [
-   8600,
-   "Fevered Plague"
-  ]
- ],
- "7273": [
-  [
-   11131,
-   "Icicle"
-  ],
-  [
-   11836,
-   "Freeze Solid"
-  ],
-  [
-   11902,
-   "Gahz'rilla Slam"
-  ]
- ],
- "7275": [
-  [
-   8362,
-   "Renew"
-  ],
-  [
-   12039,
-   "Heal"
-  ],
-  [
-   13704,
-   "Psychic Scream"
-  ],
-  [
-   15537,
-   "Shadow Bolt"
-  ]
- ],
+  "npc": {
+   "classification": 1,
+   "maxlevel": 47,
+   "minlevel": 47,
+   "tag": null,
+   "type": 7
+  }
+ },
  "7291": {
   "abilities": [
    [
@@ -4861,48 +4933,75 @@
    "type": 7
   }
  },
- "7604": [
-  [
-   3639,
-   "Improved Blocking"
+ "7604": {
+  "abilities": [
+   [
+    3639,
+    "Improved Blocking"
+   ],
+   [
+    11972,
+    "Shield Bash"
+   ],
+   [
+    12170,
+    "Revenge"
+   ],
+   [
+    403233,
+    "Meathook"
+   ]
   ],
-  [
-   11972,
-   "Shield Bash"
+  "npc": {
+   "classification": 1,
+   "maxlevel": 45,
+   "minlevel": 45,
+   "tag": null,
+   "type": 7
+  }
+ },
+ "7795": {
+  "abilities": [
+   [
+    11086,
+    "Ward of Zum'rah"
+   ],
+   [
+    12491,
+    "Healing Wave"
+   ],
+   [
+    12739,
+    "Shadow Bolt"
+   ],
+   [
+    15245,
+    "Shadow Bolt Volley"
+   ]
   ],
-  [
-   12170,
-   "Revenge"
+  "npc": {
+   "classification": 1,
+   "maxlevel": 46,
+   "minlevel": 46,
+   "tag": null,
+   "type": 7
+  }
+ },
+ "7796": {
+  "abilities": [
+   [
+    8600,
+    "Fevered Plague"
+   ]
   ],
-  [
-   403233,
-   "Meathook"
-  ]
- ],
- "7795": [
-  [
-   11086,
-   "Ward of Zum'rah"
-  ],
-  [
-   12491,
-   "Healing Wave"
-  ],
-  [
-   12739,
-   "Shadow Bolt"
-  ],
-  [
-   15245,
-   "Shadow Bolt Volley"
-  ]
- ],
- "7796": [
-  [
-   8600,
-   "Fevered Plague"
-  ]
- ],
+  "npc": {
+   "classification": 1,
+   "maxlevel": 46,
+   "minlevel": 45,
+   "tag": null,
+   "type": 6
+  }
+ },
  "7800": {
   "abilities": [
    [
@@ -4946,40 +5045,49 @@
    "type": 9
   }
  },
- "8127": [
-  [
-   2860,
-   "Chain Lightning"
+ "8127": {
+  "abilities": [
+   [
+    2860,
+    "Chain Lightning"
+   ],
+   [
+    8376,
+    "Earthgrab Totem"
+   ],
+   [
+    10413,
+    "Earth Shock"
+   ],
+   [
+    10915,
+    "Flash Heal"
+   ],
+   [
+    11893,
+    "Warder Despawn"
+   ],
+   [
+    11894,
+    "Antu'sul's Minion"
+   ],
+   [
+    11895,
+    "Healing Wave of Antu'sul"
+   ],
+   [
+    11899,
+    "Healing Ward"
+   ]
   ],
-  [
-   8376,
-   "Earthgrab Totem"
-  ],
-  [
-   10413,
-   "Earth Shock"
-  ],
-  [
-   10915,
-   "Flash Heal"
-  ],
-  [
-   11893,
-   "Warder Despawn"
-  ],
-  [
-   11894,
-   "Antu'sul's Minion"
-  ],
-  [
-   11895,
-   "Healing Wave of Antu'sul"
-  ],
-  [
-   11899,
-   "Healing Ward"
-  ]
- ],
+  "npc": {
+   "classification": 1,
+   "maxlevel": 48,
+   "minlevel": 48,
+   "tag": "Overseer of Sul",
+   "type": 7
+  }
+ },
  "8443": {
   "abilities": [],
   "npc": {

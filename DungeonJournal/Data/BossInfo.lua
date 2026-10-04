@@ -274,4 +274,17 @@ ns.Journal.BossInfo = {
     [3673] = { 21, 21, 1, 7, "Fanglord" },  -- Lord Serpentis
     [5775] = { 21, 21, 1, 4, nil },  -- Verdan the Everliving
     [3654] = { 22, 22, 1, 7, nil },  -- Mutanus the Devourer
+    [5912] = { 20, 20, 2, 2, nil },  -- Deviate Faerie Dragon
+    -- Zul'Farrak
+    [8127] = { 48, 48, 1, 7, "Overseer of Sul" },  -- Antu'sul
+    [7272] = { 45, 46, 1, 6, nil },  -- Theka the Martyr
+    [7271] = { 46, 46, 1, 7, nil },  -- Witch Doctor Zum'rah
+    [7796] = { 45, 46, 1, 6, nil },  -- Nekrum Gutchewer
+    [7275] = { 47, 47, 1, 7, nil },  -- Shadowpriest Sezz'ziz
+    [7604] = { 45, 45, 1, 7, nil },  -- Sergeant Bly
+    [7795] = { 46, 46, 1, 7, nil },  -- Hydromancer Velratha
+    [7273] = { 46, 46, 1, 10, nil },  -- Gahz'rilla
+    [7267] = { 48, 48, 1, 7, nil },  -- Chief Ukorz Sandscalp
+    [10082] = { 45, 45, 2, 7, nil },  -- Zerillis
+    [10081] = { 45, 45, 2, 7, nil },  -- Dustwraith
 }
