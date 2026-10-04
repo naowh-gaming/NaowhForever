@@ -434,6 +434,8 @@ function ViewMixin:OpenDetailCard(title, count)
     self:Space(SECTION_SPACE)
     self.detailTop = self.cursor
     self.detailCard = self:OpenCard(0, self:GetWidth())
+    -- As much room over its first row as CloseCard leaves under its last.
+    self:Space(St.CARD_BOTTOM)
 end
 
 function ViewMixin:DetailCard(title, count, kind, list)
