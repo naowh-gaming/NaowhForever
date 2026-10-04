@@ -19,9 +19,9 @@
 - Dungeon map: the boss you clicked (its loot showing) is ringed in gold with a soft pulsing
   glow, on the map window and on the world map, until you pick another or close its loot.
   On the world map, clicking a boss shows its own page in the Journal beside the map:
-  Naowh's tip on top (the chat bubble beside it shares it in Say, Party, Raid, Guild or to
-  your target), its loot, the dungeon quests that need it with where each stands for you
-  (done ones too), and its abilities; click the Loot, Quests or Abilities title to fold it
+  its name, Naowh's tip (the chat bubble beside it shares it in Say, Party, Raid, Guild or
+  to your target), the dungeon quests that need it with where each stands for you (done ones
+  too), its abilities and its loot; click the Quests, Abilities or Loot title to fold it
   away (kept). Back, or the boss clicked again, goes back to the
   dungeon. The loot at the mouse now opens only on the maximised map.
 - Dungeon Journal: the Journal beside the world map uses its full width while everything
