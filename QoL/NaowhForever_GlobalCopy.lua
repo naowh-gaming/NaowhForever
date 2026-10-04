@@ -261,13 +261,18 @@ local function Decorate(tooltip, data)
     local info, id, hidden = Resolve(data)
     if not info or not S.Get(info.setting) then return end
     if hidden and S.Get("tooltipRestricted") ~= "hidden" then return end
-    -- Once per build: the game makes the tooltip a new primary info each time it builds it
-    -- afresh. Never hook OnTooltipCleared for this; see the Badges plate.
-    local primary = tooltip:GetPrimaryTooltipInfo()
-    if decorated[tooltip] == primary then return end
-    decorated[tooltip] = primary
+    -- Once per build: our line is still there unless the game has built the tooltip again (a
+    -- rebuild clears the lines but keeps the same info). Never hook OnTooltipCleared for this;
+    -- see the Badges plate.
+    local at = decorated[tooltip]
+    if at and at <= tooltip:NumLines() then
+        local left = _G[tooltip:GetName() .. "TextLeft" .. at]
+        local text = left and left:GetText()
+        if text and not Secret(text) and text == info.label then return end
+    end
     tooltip:AddLine(" ")
     tooltip:AddDoubleLine(info.label, hidden and "Hidden" or tostring(id), T.accent.r, T.accent.g, T.accent.b, 0.85, 0.89, 0.93)
+    decorated[tooltip] = tooltip:NumLines()
     if not hidden and S.Get("tooltipCopy") and S.Get("tooltipCopyHint")
         and (tooltip == GameTooltip or tooltip == ItemRefTooltip) then
         tooltip:AddLine(CopyHint(S.Get("tooltipModifier"), S.Get("tooltipKey")), T.muted.r, T.muted.g, T.muted.b)
