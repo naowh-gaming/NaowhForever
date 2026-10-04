@@ -171,7 +171,7 @@ Kinds.tip = {
 --  The quests that need it
 -------------------------------------------------------------------------------
 local STATE = {
-    prereq = "Do first", prereqLog = "Do first", low = "Level %d to pick up", pickup = "To pick up",
+    prereq = "Prerequisite", prereqLog = "Prerequisite", low = "Level %d to pick up", pickup = "To pick up",
     next = "Next step", active = "In log", ready = "Complete", done = "Done",
 }
 
