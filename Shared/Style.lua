@@ -19,6 +19,10 @@ Shared.Style = {
     -- Naowh's house style: a 1px black border round cards, badges, chips, icons, buttons
     -- and panels. The accent (Naowh blue, the theme's T.accent) marks what is picked.
     BORDER_RGB = { r = 0, g = 0, b = 0 },
+    HUD_SHADOW_RGB = { r = 0, g = 0, b = 0 },
+    HUD_SHADOW_ALPHA = 0.8,
+    HUD_SHADOW_X = 1,
+    HUD_SHADOW_Y = -1,
     -- An item level above yours.
     RED_CODE = "|cfff87171",
     RED_RGB = { r = 0.97, g = 0.44, b = 0.44 },

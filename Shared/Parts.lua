@@ -43,6 +43,20 @@ function Parts.Inline(texture, color, drop)
 end
 local Inline = Parts.Inline
 
+local HUD_SHADOW, HUD_ALPHA = St.HUD_SHADOW_RGB, St.HUD_SHADOW_ALPHA
+local HUD_X, HUD_Y = St.HUD_SHADOW_X, St.HUD_SHADOW_Y
+
+function Parts.HudText(fs, shadow)
+    if shadow == false then
+        fs:SetShadowOffset(0, 0)
+        fs:SetShadowColor(HUD_SHADOW.r, HUD_SHADOW.g, HUD_SHADOW.b, 0)
+    else
+        fs:SetShadowOffset(HUD_X, HUD_Y)
+        fs:SetShadowColor(HUD_SHADOW.r, HUD_SHADOW.g, HUD_SHADOW.b, HUD_ALPHA)
+    end
+    return fs
+end
+
 -------------------------------------------------------------------------------
 --  Ranks on your BiS list: your BiS (#1) an orange star, your second pick a silver one, the
 --  rest a muted number. Made once per rank and drop.
