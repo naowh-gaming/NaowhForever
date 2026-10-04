@@ -15,7 +15,8 @@ local CONDITIONS = {}
 for _, word in ipairs({ "help", "harm", "exists", "dead", "combat", "mod", "modifier", "mounted", "outdoors",
     "indoors", "stealth", "channeling", "channel", "form", "stance", "btn", "button", "group", "swimming",
     "flying", "flyable", "pet", "equipped", "worn", "known", "spec", "talent", "actionbar", "bar", "bonusbar",
-    "cursor", "extrabar", "party", "raid", "resting", "unithasvehicleui", "vehicleui" }) do
+    "cursor", "extrabar", "party", "raid", "resting", "unithasvehicleui", "vehicleui", "petbattle", "overridebar",
+    "possessbar", "shapeshift", "canexitvehicle" }) do
     CONDITIONS[word] = true
 end
 local UNITS = { player = true, target = true, focus = true, mouseover = true, pet = true, cursor = true,

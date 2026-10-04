@@ -214,6 +214,8 @@ local function Open(macro)
         icon = macro.icon or QUESTION, body = macro.body or "", source = macro.source or "game" }
     draft.saved = draft.index and draft.body or nil
     draft.savedName = draft.index and draft.name or nil
+    -- A pack macro is made with the icon the pack (or the player, on the Class Macros page) gave it.
+    draft.picked = draft.source == "pack" and macro.icon ~= nil or nil
     if window then
         window.name:SetText(draft.name)
         window.code:SetText(draft.body)
@@ -246,6 +248,10 @@ local function Save()
     local name, body = strtrim(window.name:GetText()), window.code:GetText()
     if name == "" or #name > 16 then Toast("A macro's name is 1 to 16 bytes.") return end
     if #body > Text.LIMIT then Toast(("%d bytes over the game's 255: shorten it first."):format(#body - Text.LIMIT)) return end
+    if name ~= draft.savedName and GetMacroIndexByName(name) > 0 then
+        Toast("You already have a macro called " .. name .. ". Give this one another name.")
+        return
+    end
     if draft.index then
         local index = Current()
         if not index then return Lost() end
@@ -322,11 +328,12 @@ local function Decode(text)
     local out = {}
     local maxAccount, maxCharacter = Limits()
     for i, m in ipairs(data.macros) do
-        if i > maxAccount + maxCharacter or type(m) ~= "table" or type(m.name) ~= "string" or type(m.body) ~= "string"
-            or #m.name < 1 or #m.name > 16 or #m.body > Text.LIMIT then
+        if i > maxAccount + maxCharacter or type(m) ~= "table" or type(m.name) ~= "string" or type(m.body) ~= "string" then
             return
         end
-        out[i] = { name = (m.name:gsub("[|\r\n]", "")), body = m.body }
+        local name = m.name:gsub("[|\r\n]", "")
+        if #name < 1 or #name > 16 or #m.body < 1 or #m.body > Text.LIMIT then return end
+        out[i] = { name = name, body = m.body }
     end
     return #out > 0 and out or nil
 end
@@ -340,15 +347,22 @@ local function Import()
         ns.Confirm(("Add %d %s as character macros?%s"):format(#macros, #macros == 1 and "macro" or "macros",
             runs and " One runs a script: read it in the editor before you use it." or ""), function()
             if InCombatLockdown() then Toast("Macros can be added once the fight is over.") return end
-            local added = 0
+            local added, taken, full = 0, 0, 0
             for _, m in ipairs(macros) do
-                if Room(false) then
+                if GetMacroIndexByName(m.name) > 0 then
+                    taken = taken + 1
+                elseif Room(false) then
                     CreateMacro(m.name, QUESTION, m.body, true)
                     added = added + 1
+                else
+                    full = full + 1
                 end
             end
+            local why = {}
+            if taken > 0 then why[#why + 1] = taken .. " use a name you already have" end
+            if full > 0 then why[#why + 1] = "character macros are full" end
             Toast(added == #macros and ("Added %d."):format(added)
-                or ("Added %d of %d: character macros are full."):format(added, #macros))
+                or ("Added %d of %d: %s."):format(added, #macros, table.concat(why, ", ")))
             Render()
         end)
     end)
@@ -405,8 +419,8 @@ local function DrawList()
     end
     for _, entry in ipairs(PackMacros(class)) do
         if type(entry.name) == "string" and type(entry.body) == "string" then
-            groups[3].rows[#groups[3].rows + 1] = { name = entry.name, body = entry.body, icon = entry.icon,
-                source = "pack" }
+            groups[3].rows[#groups[3].rows + 1] = { name = entry.name, body = entry.body,
+                icon = ns.MacroEntryIcon(entry), source = "pack" }
         end
     end
     local current = Current()
@@ -475,6 +489,9 @@ local function Gutter()
         measure:SetText(line ~= "" and line or " ")
         y = y + math.max(CODE_SIZE + 3, measure:GetStringHeight())
     end
+    local height = math.max(editor.scroll:GetHeight(), y + 12)
+    editor.page:SetHeight(height)
+    window.code:SetHeight(height)
 end
 
 RenderEditor = function()
@@ -581,19 +598,26 @@ local function BuildEditor(parent)
     box:SetHeight(CODE_LINES * (CODE_SIZE + 4) + 12)
     ns.Solid(box, "BACKGROUND", T.bg, 1):SetAllPoints()
     ns.Border(box, BLACK)
-    editor.gutter = CreateFrame("Frame", nil, box)
-    editor.gutter:SetClipsChildren(true)
+    local scroll = UI.SlimScroll(box)
+    scroll:SetPoint("TOPLEFT", 1, -1)
+    scroll:SetPoint("BOTTOMRIGHT", -12, 1)
+    local page = CreateFrame("Frame", nil, scroll)
+    page:SetSize(1, box:GetHeight())
+    scroll:SetScrollChild(page)
+    scroll:SetScript("OnSizeChanged", function(_, w) page:SetWidth(w) end)
+    editor.scroll, editor.page = scroll, page
+    editor.gutter = CreateFrame("Frame", nil, page)
     editor.gutter:SetPoint("TOPLEFT")
     editor.gutter:SetPoint("BOTTOMLEFT")
     editor.gutter:SetWidth(GUTTER_W)
-    local rule = ns.Solid(box, "ARTWORK", T.line, 1)
+    local rule = ns.Solid(page, "ARTWORK", T.line, 1)
     rule:SetPoint("TOPLEFT", editor.gutter, "TOPRIGHT")
     rule:SetPoint("BOTTOMLEFT", editor.gutter, "BOTTOMRIGHT")
     ns.Hairline(rule, "v")
     editor.numbers = Pool(function() return Text14(editor.gutter, 11, T.muted) end)
-    local code = CreateFrame("EditBox", nil, box)
+    local code = CreateFrame("EditBox", nil, page)
     code:SetPoint("TOPLEFT", GUTTER_W + 1, 0)
-    code:SetPoint("BOTTOMRIGHT")
+    code:SetPoint("TOPRIGHT")
     code:SetMultiLine(true)
     code:SetAutoFocus(false)
     code:SetMaxLetters(0)
@@ -602,11 +626,26 @@ local function BuildEditor(parent)
     code:SetTextInsets(10, 10, 6, 6)
     code:SetScript("OnEscapePressed", code.ClearFocus)
     code:SetScript("OnTextChanged", function() RenderEditor() end)
+    -- Keep the cursor's line in view; the range can grow a frame after the text does.
+    local cursorTop, cursorHeight = 0, 0
+    local function Follow()
+        local at, shown = scroll:GetVerticalScroll(), scroll:GetHeight()
+        if cursorTop < at then
+            scroll:SetVerticalScroll(cursorTop)
+        elseif cursorTop + cursorHeight > at + shown then
+            scroll:SetVerticalScroll(cursorTop + cursorHeight - shown)
+        end
+    end
+    code:SetScript("OnCursorChanged", function(_, _, y, _, h)
+        cursorTop, cursorHeight = -y, h
+        Follow()
+    end)
+    scroll:HookScript("OnScrollRangeChanged", Follow)
     box:EnableMouse(true)
     box:SetScript("OnMouseDown", function() code:SetFocus() end)
     window.code = code
     -- The same font at the same width, to find where each line wraps.
-    editor.measure = box:CreateFontString(nil, "ARTWORK")
+    editor.measure = page:CreateFontString(nil, "ARTWORK")
     editor.measure:SetFont(CODE_FONT, CODE_SIZE, "")
     editor.measure:SetPoint("TOPLEFT", code, "TOPLEFT", 10, 0)
     editor.measure:SetPoint("RIGHT", code, "RIGHT", -10, 0)
@@ -643,7 +682,10 @@ local function BuildEditor(parent)
     end)
     export:SetPoint("LEFT", shorten, "RIGHT", 6, 0)
     local revert = ns.Button(editor, "Revert", 76, BUTTON_H, function()
-        if draft.saved then window.code:SetText(draft.saved) end
+        if not draft.saved then return end
+        window.name:SetText(draft.savedName)
+        window.code:SetText(draft.saved)
+        RenderEditor()
     end)
     revert:SetPoint("LEFT", export, "RIGHT", 6, 0)
     local delete = ns.Button(editor, "Delete", 76, BUTTON_H, Delete)
@@ -1055,15 +1097,20 @@ local function AddFromPack(entry)
     local function Add()
         if InCombatLockdown() then Toast("Macros can be added once the fight is over.") return end
         local index = Find(entry.name, entry.body, false)
+        local icon = ns.MacroEntryIcon(entry) or QUESTION
         if not index then
+            if GetMacroIndexByName(entry.name) > 0 then
+                Toast("You already have a different macro called " .. entry.name .. ". Rename it to add this one.")
+                return
+            end
             if not Room(false) then Toast("Character macros are full. Delete one to make room.") return end
-            CreateMacro(entry.name, QUESTION, entry.body, true)
+            CreateMacro(entry.name, icon, entry.body, true)
             index = Find(entry.name, entry.body, false)
             Toast("Added " .. entry.name .. " to this character. Drag it to a bar from My Macros.")
         else
             Toast(entry.name .. " is already one of this character's macros.")
         end
-        Open({ index = index, account = false, name = entry.name, icon = QUESTION, body = entry.body })
+        Open({ index = index, account = false, name = entry.name, icon = icon, body = entry.body })
         Render()
     end
     if RunsScript(entry.body) then
@@ -1144,7 +1191,7 @@ local function DrawLibrary()
     local list = {}
     for _, entry in ipairs(PackMacros(libClass)) do
         if type(entry.name) == "string" and type(entry.body) == "string" then
-            list[#list + 1] = { name = entry.name, note = entry.note or "", body = entry.body }
+            list[#list + 1] = { name = entry.name, note = entry.note or "", body = entry.body, icon = entry.icon }
         end
     end
     local color = RAID_CLASS_COLORS[libClass]
@@ -1157,7 +1204,7 @@ local function DrawLibrary()
         local col, line = (i - 1) % 2, math.floor((i - 1) / 2)
         c:SetPoint("TOPLEFT", view.body, "TOPLEFT", col * (w + CARD_GAP), -line * (LIB_H + CARD_GAP))
         c:SetWidth(w)
-        c.icon:SetTexture(BodyIcon(entry.body))
+        c.icon:SetTexture(ShownIcon(nil, ns.MacroEntryIcon(entry), entry.body))
         c.title:SetText(entry.name)
         c.tag:SetText(GOLD_CODE .. "NAOWH|r")
         c.note:SetText(entry.note or "")
@@ -1167,7 +1214,8 @@ local function DrawLibrary()
         c.add:SetAlpha(own and 1 or 0.4)
         c.add._onClick = function() AddFromPack(entry) end
         c.open._onClick = function()
-            NewDraft(entry.body, entry.name, "pack")
+            Open({ name = entry.name, body = entry.body, icon = ns.MacroEntryIcon(entry), account = false,
+                source = "pack" })
             window.SetTab("mine")
         end
     end
@@ -1255,6 +1303,7 @@ local function Build()
         function()
             local all = {}
             for _, m in ipairs(GameMacros()) do all[#all + 1] = m end
+            if #all == 0 then Toast("You have no macros to export yet.") return end
             ns.ShowCopyBox("Your macros", Export(all))
         end, "Export")
     exportButton:SetPoint("RIGHT", opacityIcon, "LEFT", -St.BAR_GAP - 6, 0)
@@ -1382,9 +1431,9 @@ local function Build()
     lib.empty:SetPoint("TOPLEFT", PAD, -76)
     lib.empty:SetPoint("RIGHT", -PAD, 0)
     lib.empty:SetJustifyH("LEFT")
-    lib.empty:SetText("Nothing here yet. Import Naowh's macros from a string he shares, or load his profile "
-        .. "pack, and they show up here by class. Your own macros are in My Macros.")
-    lib.importEmpty = ns.AccentBorder(ns.Button(libArea, "Import Naowh's Macros", 180, BUTTON_H, Import))
+    lib.empty:SetText("Nothing here yet. Naowh's macros come with his profile pack: import it and they show up "
+        .. "here by class. A macro string someone shares goes into My Macros, from Import at the top.")
+    lib.importEmpty = ns.AccentBorder(ns.Button(libArea, "Import Naowh's Pack", 180, BUTTON_H, ns.ShowPackImport))
     lib.importEmpty:SetPoint("TOPLEFT", lib.empty, "BOTTOMLEFT", 0, -14)
     window.lib = lib
 
@@ -1417,6 +1466,9 @@ end
 function ns.ToggleMacroWindow()
     if window and window:IsShown() then window:Hide() else ns.OpenMacroWindow() end
 end
+
+-- A pack import or a profile switch changes what the Library holds.
+hooksecurefunc(ns, "Apply", function() Render() end)
 
 -- The Smart Macros and the window both read the module's settings.
 hooksecurefunc(S, "Set", function(key)

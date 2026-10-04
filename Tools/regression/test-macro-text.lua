@@ -101,4 +101,10 @@ Case("/focus with a unit says that unit", function()
     assert(Plain(Text.Explain("/focus")[1]) == "Sets your focus to your target.")
 end)
 
+Case("bar and vehicle conditions are known", function()
+    local said = Issues("/cast [petbattle] A\n/cast [nooverridebar,nopossessbar] B\n/cast [canexitvehicle] C\n"
+        .. "/cast [shapeshift] D")
+    assert(said == "", said)
+end)
+
 print(("test-macro-text: %d cases passed"):format(count))

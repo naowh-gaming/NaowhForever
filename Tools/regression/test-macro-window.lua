@@ -95,6 +95,11 @@ local macroAPI = {
         table.remove(list, i)
     end,
     PickupMacro = function(index) picked = index end,
+    GetMacroIndexByName = function(name)
+        for i, m in ipairs(store.account) do if m.name == name then return i end end
+        for i, m in ipairs(store.character) do if m.name == name then return MAX_ACCOUNT + i end end
+        return 0
+    end,
 }
 
 -------------------------------------------------------------------------------
@@ -102,7 +107,7 @@ local macroAPI = {
 -------------------------------------------------------------------------------
 local WHITE = { r = 1, g = 1, b = 1 }
 local account, printed, settings, packMacros = {}, {}, {}, {}
-local setHooks = {}
+local setHooks, applyHooks = {}, {}
 local UI = {
     STATUS = { untested = "" },
     CONTENT_PAD = 10,
@@ -177,6 +182,7 @@ local ns = {
     ShowCopyBox = function(_, text) account.lastCopy = text end,
     StashOptionsWindow = NOTHING, OpenOptionsWindow = NOTHING, Apply = NOTHING,
     DB = function() return { utilityReminders = { classMacros = packMacros } } end,
+    ShowPackImport = function() account.packImport = true end,
     HEALTHSTONES = { 5509 }, HEALING_POTIONS = { 13446 },
 }
 local lastPrompt
@@ -191,6 +197,7 @@ local env = setmetatable({
     CreateColor = function() return { SetRGBA = NOTHING } end,
     hooksecurefunc = function(t, name, fn)
         if type(t) == "table" and name == "Set" then setHooks[#setHooks + 1] = fn end
+        if t == ns and name == "Apply" then applyHooks[#applyHooks + 1] = fn end
     end,
     InCombatLockdown = function() return false end,
     IsMouseButtonDown = function() return false end,
@@ -208,7 +215,6 @@ local env = setmetatable({
     GetLooseMacroItemIcons = NOTHING,
     GetMacroIcons = function(t) t[#t + 1] = 134400; t[#t + 1] = 135846 end,
     GetMacroItemIcons = NOTHING,
-    GetMacroIndexByName = function() return 0 end,
     GetMacroBody = function() return nil end,
     GetInventoryItemID = function() return 19949 end,
     NUM_BAG_SLOTS = 0,
@@ -293,7 +299,12 @@ check("Export gives a share string", (account.lastCopy or ""):find("^!NFM1!"))
 
 -- New macro on the account, then delete it.
 local newButton
-for _, f in ipairs(frames) do if rawget(f, "tip") == "New Macro" then newButton = f end end
+local importButton, exportAllButton
+for _, f in ipairs(frames) do
+    local tip = rawget(f, "tip")
+    if tip == "New Macro" then newButton = f elseif tip == "Import" then importButton = f
+    elseif tip == "Export" then exportAllButton = f end
+end
 Click(newButton)
 check("New starts an empty macro", window.name:GetText() == "New Macro")
 Click(window.editor.scopeAccount)
@@ -337,6 +348,13 @@ check("Add makes a character macro", store.character[2] and store.character[2].n
 --  Import
 -------------------------------------------------------------------------------
 Click(window.lib.importEmpty)
+check("the Library's button opens the profile pack import", account.packImport == true)
+Click(importButton)
+lastPrompt(account.lastCopy)
+check("a macro whose name you already have is not imported again", #store.character == 2
+    and printed[#printed]:find("Added 0 of 1: 1 use a name you already have", 1, true))
+store.character[1].name = "Bsheep"
+Click(importButton)
 lastPrompt(account.lastCopy)
 check("a share string imports as character macros", #store.character == 3)
 lastPrompt("not a string")
@@ -386,19 +404,23 @@ check("the icon stays the question mark", store.character[1].icon == 134400
 local twenty = {}
 for i = 1, 20 do twenty[i] = { name = "M" .. i, body = "/cast Spell " .. i } end
 vault[1] = { v = 1, macros = twenty }
-Click(window.lib.importEmpty)
+Click(importButton)
 lastPrompt("!NFM1!S")
 check("all 20 are read, as many added as fit", #store.character == 18
     and printed[#printed]:find("Added 17 of 20", 1, true))
 store.character = {}
 for _, body in ipairs({ "/RUN print(1)", "/dump GetTime()" }) do
     vault[1] = { v = 1, macros = { { name = "X", body = body } } }
-    Click(window.lib.importEmpty)
+    Click(importButton)
     lastPrompt("!NFM1!S")
     check("a script is called out: " .. body, account.lastConfirm:find("runs a script", 1, true))
 end
 
-check("line numbers stay inside the editor box", window.editor.gutter.clips == true)
+window.switch.onPick("mine")
+window.code:SetText(string.rep("/cast A\n", 12))
+check("the text scrolls inside the editor box", window.code.parent == window.editor.page
+    and window.editor.page.parent == window.editor.scroll and window.code.h == window.editor.page.h
+    and window.editor.page.h > 12 * 17)
 
 -------------------------------------------------------------------------------
 --  Second review
@@ -450,5 +472,60 @@ Click(LibCard("Plain").add)
 window.switch.onPick("lib")
 Click(LibCard("Plain").add)
 check("adding it twice makes one macro", #store.character == 2 and printed[#printed]:find("already", 1, true))
+
+-------------------------------------------------------------------------------
+--  Third review
+-------------------------------------------------------------------------------
+-- A pack import refreshes the Library.
+packMacros.MAGE = {}
+window.switch.onPick("lib")
+packMacros.MAGE = { { name = "Iconic", body = "/cast Blink", icon = 135736 } }
+for _, fn in ipairs(applyHooks) do fn() end
+check("a pack import fills the open Library", LibCard("Iconic") ~= nil and not window.lib.empty:IsShown())
+
+-- Pack macros keep the pack's icon.
+store.character = {}
+Click(LibCard("Iconic").add)
+check("Add makes it with the pack's icon", store.character[1] and store.character[1].icon == 135736)
+store.character = {}
+window.switch.onPick("lib")
+Click(LibCard("Iconic").open)
+Click(editorButtons[1])
+check("Create from the pack uses its icon too", store.character[1] and store.character[1].icon == 135736)
+
+-- A name already in use is not taken twice.
+Click(newButton)
+window.name:SetText("Iconic")
+window.code:SetText("/cast Frostbolt")
+Click(editorButtons[1])
+check("Save will not make a second macro of a name", #store.character == 1
+    and printed[#printed]:find("already have a macro called Iconic", 1, true))
+store.character = { { name = "Iconic", icon = 134400, body = "/cast Something Else" } }
+packMacros.MAGE = { { name = "Iconic", body = "/cast Blink", icon = 135736 } }
+window.switch.onPick("lib")
+Click(LibCard("Iconic").add)
+check("Library Add will not take a name in use", #store.character == 1
+    and printed[#printed]:find("different macro called Iconic", 1, true))
+
+-- Revert puts the name back as well.
+OpenNamed("Iconic")
+window.name:SetText("Typed")
+window.code:SetText("/cast Typed")
+Click(editorButtons[4])
+check("Revert restores the name and the text", window.name:GetText() == "Iconic"
+    and window.code:GetText() == "/cast Something Else")
+
+-- A name that is only stripped characters is turned away.
+vault[1] = { v = 1, macros = { { name = "|", body = "/cast X" } } }
+Click(importButton)
+lastPrompt("!NFM1!S")
+check("an import name stripped to nothing is turned away", #store.character == 1
+    and printed[#printed]:find("not a Naowh Forever macro string", 1, true))
+
+-- Nothing to export.
+store.account, store.character = {}, {}
+account.lastCopy = nil
+Click(exportAllButton)
+check("with no macros, Export says so", account.lastCopy == nil and printed[#printed]:find("no macros to export", 1, true))
 
 print(("test-macro-window: %d checks passed"):format(checks))

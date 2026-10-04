@@ -135,6 +135,8 @@ local function EntryIcon(entry)
     return IconChoices()[entry.name] or entry.icon
 end
 
+ns.MacroEntryIcon = EntryIcon
+
 local function SetEntryIcon(entry, icon)
     if InCombatLockdown() then ns.Print("Change macro icons outside combat.") return end
     IconChoices()[entry.name] = icon
