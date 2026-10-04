@@ -16,9 +16,8 @@
 --  x and y run 0 to 1 across and down the map. Placed in game: /nf mappins, drag each pin,
 --  then Copy (UI/DungeonMap.lua). /nf mapcheck says which art and floors the client has.
 --  A dungeon not listed has no Map; the ones new in Forever have no art in the client yet
---  (three have the addon's own picture until they do), nor has Zul'Farrak (not under
---  "ZulFarrak"). Floor counts as /nf mapcheck found them in
---  the client, build 1.60.1.70170.
+--  (two have the addon's own picture until they do), nor has Zul'Farrak (not under
+--  "ZulFarrak"). Floor counts as /nf mapcheck found them in the client, build 1.60.1.70170.
 -------------------------------------------------------------------------------
 local ns = _G.NaowhForever
 
@@ -124,9 +123,6 @@ ns.Journal.Maps = {
             [1663] = { 1, 0.735, 0.575 },   -- Dextren Ward
         },
     },
-    -- Santiago Reyes's recreation, as Ruins of Lordaeron's is.
-    ExcavationSite = { image = "Interface\\AddOns\\NaowhForever\\Media\\Maps\\ExcavationSite",
-        floors = 1, pins = {} },
     Gnomeregan = { art = "Gnomeregan", floors = 4,
         entrance = { 1, 0.642, 0.278 },
         pins = {
