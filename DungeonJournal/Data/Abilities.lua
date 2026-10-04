@@ -13,7 +13,7 @@ ns.Journal.Abilities = {
     [12902] = { 12167, 12550 },  -- Lorgus Jett: Lightning Bolt, Lightning Shield
     [12876] = { 15043, 15531 },  -- Baron Aquanis: Frostbolt, Frost Nova
     [4832] = { 8399 },  -- Twilight Lord Kelris: Sleep
-    [4830] = { 8433, 1604, 5101, 13496, 15571 },  -- Old Serra'kis: Leech Pulse, Dazed, Dazed, Dazed, Dazed
+    [4830] = { 8433, 1604 },  -- Old Serra'kis: Leech Pulse, Dazed
     [4829] = { 3490, 3815 },  -- Aku'mai: Frenzied Rage, Poison Cloud
     -- Blackrock Depths
     [9018] = { 12040, 13704, 14032, 14033 },  -- High Interrogator Gerstahn: Shadow Shield, Psychic Scream, Shadow Word: Pain, Mana Burn
@@ -70,7 +70,7 @@ ns.Journal.Abilities = {
     [14322] = { 8269, 15577, 16740, 22833, 22835 },  -- Stomper Kreeg: Enrage, Whirlwind, War Stomp, Booze Spit, Drunken Rage
     [14321] = { 22817 },  -- Guard Fengus: Fengus' Ferocity
     [14323] = { 22820 },  -- Guard Slip'kik: Slip'kik's Savvy
-    [14325] = { 8599, 19134, 22857, 22859, 22860, 29544 },  -- Captain Kromcrush: Enrage, Intimidating Shout, Retaliation, Mortal Cleave, Call Reavers, Intimidating Shout
+    [14325] = { 8599, 19134, 22857, 22859, 22860 },  -- Captain Kromcrush: Enrage, Intimidating Shout, Retaliation, Mortal Cleave, Call Reavers
     [11501] = { 15572 },  -- King Gordok: Sunder Armor
     [14324] = { 15531 },  -- Cho'Rush the Observer: Frost Nova
     -- Excavation Site: Wetlands
@@ -79,17 +79,17 @@ ns.Journal.Abilities = {
     [260808] = { 9616, 1316480 },  -- Highland Horror: Wild Regeneration, Entangling Roots
     [260326] = { 8078, 8374, 10101, 11876, 1284450 },  -- Relic Guardian: Thunderclap, Arcing Smash, Knock Away, War Stomp, Stasis
     -- Gnomeregan
-    [7079] = { 1604, 5101, 13496, 15571 },  -- Viscous Fallout: Dazed, Dazed, Dazed, Dazed
+    [7079] = { 1604 },  -- Viscous Fallout: Dazed
     [6235] = { 11082, 11084, 11085 },  -- Electrocutioner 6000: Megavolt, Shock, Chain Bolt
     [6229] = { 5568, 8374, 10887 },  -- Crowd Pummeler 9-60: Trample, Arcing Smash, Crowd Pummel
-    [7800] = { 10101, 11130, 11518, 11521, 11524, 11526, 11527, 11798 },  -- Mekgineer Thermaplugg: Knock Away, Knock Away, Activate Bomb 01, Activate Bomb 02, Activate Bomb 04, Activate Bomb 05, Activate Bomb 06, Activate Bomb 03B
-    [6228] = { 184, 2601, 9053, 10870, 15228, 22425 },  -- Dark Iron Ambassador: Fire Shield II, Fire Shield III, Fireball, Summon Burning Servant, Fireball, Fireball Volley
+    [7800] = { 10101, 11518, 11521, 11524, 11526, 11527, 11798 },  -- Mekgineer Thermaplugg: Knock Away, Activate Bomb 01, Activate Bomb 02, Activate Bomb 04, Activate Bomb 05, Activate Bomb 06, Activate Bomb 03B
+    [6228] = { 184, 2601, 9053, 10870, 22425 },  -- Dark Iron Ambassador: Fire Shield II, Fire Shield III, Fireball, Summon Burning Servant, Fireball Volley
     [6231] = { 10852, 10855, 10858, 10860 },  -- Techbot: Battle Net, Lag, Summon Dupe Bug, Patch
     -- The Hall of Thanes
     [261306] = { 13860, 1292602 },  -- Faldrim Anvilmar: Mind Blast, Anvilmar's Curse
     [261316] = { 11970, 1293228 },  -- Magmatus: Fire Nova, Combust
     [261311] = { 11130, 21055, 22911 },  -- Plunder: Knock Away, Crush Armor, Charge
-    [261319] = { 11977, 19134, 25710, 29544 },  -- Durgen Dirgehammer: Rend, Intimidating Shout, Heroic Strike, Intimidating Shout
+    [261319] = { 11977, 19134, 25710 },  -- Durgen Dirgehammer: Rend, Intimidating Shout, Heroic Strike
     -- Lower Blackrock Spire
     [9196] = { 8269, 10101 },  -- Highlord Omokk: Enrage, Knock Away
     [9236] = { 16098 },  -- Shadow Hunter Vosh'gajin: Curse of Blood
@@ -100,7 +100,7 @@ ns.Journal.Abilities = {
     [10268] = { 8269, 16128, 16495 },  -- Gizrul the Slavener: Enrage, Infected Bite, Fatal Bite
     [10220] = { 3391, 13738 },  -- Halycon: Thrash, Rend
     [9568] = { 12887, 15663, 16244 },  -- Overlord Wyrmthalak: Sweeping Slam, Cleave, Demoralizing Shout
-    [9219] = { 403233, 1604, 5101, 13496, 15571 },  -- Spirestone Butcher: Meathook, Dazed, Dazed, Dazed, Dazed
+    [9219] = { 403233, 1604 },  -- Spirestone Butcher: Meathook, Dazed
     [9218] = { 403233 },  -- Spirestone Battle Lord: Meathook
     [9217] = { 8365, 13323, 15230, 16170, 403233 },  -- Spirestone Lord Magus: Enlarge, Polymorph, Arcane Bolt, Bloodlust, Meathook
     [9596] = { 403233 },  -- Bannok Grimaxe: Meathook
@@ -119,7 +119,7 @@ ns.Journal.Abilities = {
     [12201] = { 3391, 21832, 21869, 21909, 22592 },  -- Princess Theradras: Thrash, Boulder, Repulsive Gaze, Dust Field, Knockdown
     [12237] = { 13446, 15593 },  -- Meshlok the Harvester: Strike, War Stomp
     -- Onyxia's Lair
-    [10184] = { 15847, 17086, 18351, 18392, 18435, 18500, 18564, 18576, 18584, 18596, 18609, 18617, 19633, 19983, 20019, 20279, 20311, 21131, 22191, 22195, 22199, 22200, 22201, 22202 },  -- Onyxia: Tail Sweep, Breath, Breath, Fireball, Flame Breath, Wing Buffet, Breath, Breath, Breath, Breath, Breath, Breath, Knock Away, Cleave, Engulfing Flames, Summon Player, Summon Player, Breath, Heated Ground, Heated Ground, Heated Ground, Heated Ground, Heated Ground, Heated Ground
+    [10184] = { 15847, 17086, 18392, 18435, 18500, 19633, 19983, 20019, 20279, 22191 },  -- Onyxia: Tail Sweep, Breath, Fireball, Flame Breath, Wing Buffet, Knock Away, Cleave, Engulfing Flames, Summon Player, Heated Ground
     -- Ragefire Chasm
     [11517] = { 5532 },  -- Oggleflint: Cleave
     [11520] = { 11970, 18072 },  -- Taragaman the Hungerer: Fire Nova, Uppercut
@@ -137,9 +137,9 @@ ns.Journal.Abilities = {
     [4424] = { 6192, 8286, 14900 },  -- Aggem Thorncurse: Battle Shout, Summon Boar Spirit, Chain Heal
     [4428] = { 9613, 14515 },  -- Death Speaker Jargba: Shadow Bolt, Dominate Mind
     [4420] = { 7165, 9128, 15548 },  -- Overlord Ramtusk: Battle Stance, Battle Shout, Thunderclap
-    [4422] = { 8260, 8269, 8285, 8359, 8555 },  -- Agathelos the Raging: Rushing Charge, Enrage, Rampage, Left for Dead, Left for Dead
+    [4422] = { 8260, 8269, 8285, 8359 },  -- Agathelos the Raging: Rushing Charge, Enrage, Rampage, Left for Dead
     [4421] = { 6077, 8292, 8358, 8361 },  -- Charlga Razorflank: Renew, Chain Bolt, Mana Spike, Purity
-    [4425] = { 14920, 17260, 23147, 23148, 24577, 24578 },  -- Blind Hunter: Growl, Bite, Dive, Dive, Demoralizing Screech, Demoralizing Screech
+    [4425] = { 14920, 17260, 23147, 24577 },  -- Blind Hunter: Growl, Bite, Dive, Demoralizing Screech
     [4842] = { 2484, 8270, 9532 },  -- Earthcaller Halmgar: Earthbind Totem, Summon Earth Rumbler, Lightning Bolt
     [4438] = { 8148, 8259 },  -- Razorfen Spearhide: Thorns Aura, Whirling Barrage
     [6168] = { 8270, 9532 },  -- Roogug: Summon Earth Rumbler, Lightning Bolt
@@ -150,19 +150,22 @@ ns.Journal.Abilities = {
     [250631] = { 6136, 14907, 1266011 },  -- The Abandoned: Chilled, Frost Nova, Life Drain
     [256097] = { 14099, 1301635 },  -- Bjork: Mighty Blow, Anti-Magic Shield
     [250657] = { 13376, 18399 },  -- Rath'mael: Fire Shield, Flamestrike
-    -- Scarlet Monastery
+    -- Scarlet Monastery - Armory
+    [3975] = { 8260, 8269, 8989, 22540 },  -- Herod: Rushing Charge, Enrage, Whirlwind, Cleave
+    -- Scarlet Monastery - Cathedral
+    [4542] = { 8282, 8399, 11647, 12039, 12096, 15090 },  -- High Inquisitor Fairbanks: Curse of Blood, Sleep, Power Word: Shield, Heal, Fear, Dispel Magic
+    [3976] = { 1020, 5589, 8990, 9257, 14518, 25771 },  -- Scarlet Commander Mograine: Divine Shield, Hammer of Justice, Retribution Aura, Lay on Hands, Crusader Strike, Forbearance
+    [3977] = { 9232, 9256, 9481, 12039, 14515, 22187 },  -- High Inquisitor Whitemane: Scarlet Resurrection, Deep Sleep, Holy Smite, Heal, Dominate Mind, Power Word: Shield
+    -- Scarlet Monastery - Graveyard
     [3983] = { 2767, 9034 },  -- Interrogator Vishas: Shadow Word: Pain, Immolate
     [4543] = { 8053, 8814, 9613, 12470 },  -- Bloodmage Thalnos: Flame Shock, Flame Spike, Shadow Bolt, Fire Nova
     [6490] = { 5137, 7399, 9373 },  -- Azshir the Sleepless: Call of the Grave, Terrify, Soul Siphon
     [6488] = { 7366, 15496, 403233 },  -- Fallen Champion: Berserker Stance, Cleave, Meathook
     [6489] = { 3815, 21007 },  -- Ironspine: Poison Cloud, Curse of Weakness
     [14693] = { 15531, 17165, 22643, 28873, 403233 },  -- Scorn: Frost Nova, Mind Flay, Frostbolt Volley, Lich Slap, Meathook
+    -- Scarlet Monastery - Library
     [3974] = { 6192, 6742 },  -- Houndmaster Loksey: Battle Shout, Bloodlust
     [6487] = { 8988, 9433, 9435, 9438, 13323 },  -- Arcanist Doan: Silence, Arcane Explosion, Detonation, Arcane Bubble, Polymorph
-    [3975] = { 8260, 8269, 8989, 22540 },  -- Herod: Rushing Charge, Enrage, Whirlwind, Cleave
-    [4542] = { 8282, 8399, 11647, 12039, 12096, 15090 },  -- High Inquisitor Fairbanks: Curse of Blood, Sleep, Power Word: Shield, Heal, Fear, Dispel Magic
-    [3976] = { 1020, 5589, 8990, 9257, 14518, 25771 },  -- Scarlet Commander Mograine: Divine Shield, Hammer of Justice, Retribution Aura, Lay on Hands, Crusader Strike, Forbearance
-    [3977] = { 9232, 9256, 9481, 12039, 14515, 22187 },  -- High Inquisitor Whitemane: Scarlet Resurrection, Deep Sleep, Holy Smite, Heal, Dominate Mind, Power Word: Shield
     -- Scholomance
     [10506] = { 6016, 8379, 12882, 12889, 14515, 16467, 17228, 18144 },  -- Kirtonos the Herald: Pierce Armor, Disarm, Wing Flap, Curse of Tongues, Dominate Mind, Kirtonos Transform, Shadow Bolt Volley, Swoop
     [10503] = { 16098 },  -- Jandice Barov: Curse of Blood
@@ -184,7 +187,7 @@ ns.Journal.Abilities = {
     [3914] = { 7295 },  -- Rethilgore: Soul Drain
     [3887] = { 7068 },  -- Baron Silverlaine: Veil of Shadow
     [4278] = { 642, 1026, 5588, 25771 },  -- Commander Springvale: Divine Shield, Holy Light, Hammer of Justice, Forbearance
-    [4279] = { 7481, 7483, 7484 },  -- Odo the Blindwatcher: Howling Rage, Howling Rage, Howling Rage
+    [4279] = { 7481 },  -- Odo the Blindwatcher: Howling Rage
     [4274] = { 7125 },  -- Fenrus the Devourer: Toxic Saliva
     [3927] = { 7487, 7488, 7489 },  -- Wolf Master Nandos: Call Bleak Worg, Call Slavering Worg, Call Lupine Horror
     [4275] = { 6547, 7588, 7621, 7803, 13797 },  -- Archmage Arugal: Rend, Void Bolt, Arugal's Curse, Thundershock, Immolation Trap Effect
@@ -197,8 +200,8 @@ ns.Journal.Abilities = {
     [1666] = { 3419, 7164, 8242 },  -- Kam Deepfury: Improved Blocking, Defensive Stance, Shield Slam
     [1717] = { 421, 6742 },  -- Hamhock: Chain Lightning, Bloodlust
     [1716] = { 7964, 9128 },  -- Bazil Thredd: Smoke Bomb, Battle Shout
-    [1663] = { 7165, 11976, 19134, 29544 },  -- Dextren Ward: Battle Stance, Strike, Intimidating Shout, Intimidating Shout
-    [1720] = { 1604, 5101, 13496, 15571 },  -- Bruegal Ironknuckle: Dazed, Dazed, Dazed, Dazed
+    [1663] = { 7165, 11976, 19134 },  -- Dextren Ward: Battle Stance, Strike, Intimidating Shout
+    [1720] = { 1604 },  -- Bruegal Ironknuckle: Dazed
     -- Stratholme
     [10808] = { 8599, 17470 },  -- Timmy the Cruel: Enrage, Ravenous Claw
     [10516] = { 6136, 14907 },  -- The Unforgiven: Chilled, Frost Nova
@@ -215,7 +218,7 @@ ns.Journal.Abilities = {
     [10437] = { 4962, 6016, 16795, 17235 },  -- Nerub'enkan: Encasing Webs, Pierce Armor, Crypt Scarabs, Raise Undead Scarab
     [10438] = { 6136, 16869, 17238, 17243, 17503 },  -- Maleki the Pallid: Chilled, Ice Tomb, Drain Life, Drain Mana, Frostbolt
     [10439] = { 5568, 17307, 17687 },  -- Ramstein the Gorger: Trample, Knockout, Flurry
-    [10440] = { 15708, 15754, 17393, 17434, 17435, 17467 },  -- Baron Rivendare: Mortal Strike, Cleave, Shadow Bolt, Shadow Bolt, Shadow Bolt, Unholy Aura
+    [10440] = { 15708, 15754, 17393, 17467 },  -- Baron Rivendare: Mortal Strike, Cleave, Shadow Bolt, Unholy Aura
     -- Sunken Temple
     [8580] = { 6524, 12887 },  -- Atal'alarion: Ground Tremor, Sweeping Slam
     [5721] = { 12882, 12884 },  -- Dreamscythe: Wing Flap, Acid Breath
@@ -230,7 +233,7 @@ ns.Journal.Abilities = {
     [6910] = { 15801, 16006 },  -- Revelosh: Lightning Bolt, Chain Lightning
     [7228] = { 8374, 10101, 11876 },  -- Ironaya: Arcing Smash, Knock Away, War Stomp
     [7023] = { 10061, 10072 },  -- Obsidian Sentinel: Summon Obsidian Shard, Splintered Obsidian
-    [7206] = { 10094, 10132 },  -- Ancient Stone Keeper: Sand Storms, Sand Storms
+    [7206] = { 10094 },  -- Ancient Stone Keeper: Sand Storms
     [7291] = { 3356, 8053, 9482, 11969 },  -- Galgann Firehammer: Flame Lash, Flame Shock, Amplify Flames, Fire Nova
     [4854] = { 6742, 8143, 8292, 9532, 11892 },  -- Grimlok: Bloodlust, Tremor Totem, Chain Bolt, Lightning Bolt, Shrink
     [2748] = { 6524, 8269, 10252, 10258 },  -- Archaedas: Ground Tremor, Enrage, Awaken Earthen Guardians, Awaken Vault Warder
@@ -250,7 +253,7 @@ ns.Journal.Abilities = {
     -- Wailing Caverns
     [3671] = { 700, 5187, 8148, 9532 },  -- Lady Anacondra: Sleep, Healing Touch, Thorns Aura, Lightning Bolt
     [3669] = { 744, 5188, 7965, 8040, 9532 },  -- Lord Cobrahn: Poison, Healing Touch, Cobrahn Serpent Form, Druid's Slumber, Lightning Bolt
-    [3653] = { 14917, 14918, 17256, 17257, 17258, 26064 },  -- Kresh: Growl, Growl, Bite, Bite, Bite, Shell Shield
+    [3653] = { 14917, 17256, 26064 },  -- Kresh: Growl, Bite, Shell Shield
     [3670] = { 700, 5187, 8147, 9532 },  -- Lord Pythas: Sleep, Healing Touch, Thunderclap, Lightning Bolt
     [3674] = { 6254 },  -- Skum: Chained Bolt
     [3673] = { 700, 6778, 9532 },  -- Lord Serpentis: Sleep, Healing Touch, Lightning Bolt

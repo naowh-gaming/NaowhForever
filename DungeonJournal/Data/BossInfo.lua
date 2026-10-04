@@ -165,19 +165,22 @@ ns.Journal.BossInfo = {
     [256097] = { -1, -1, 1, 6, nil },  -- Bjork
     [250657] = { -1, -1, 1, 6, nil },  -- Rath'mael
     [255699] = { -1, -1, 2, 6, nil },  -- Lordaeron Captain
-    -- Scarlet Monastery
+    -- Scarlet Monastery - Armory
+    [3975] = { 40, 40, 1, 7, "The Scarlet Champion" },  -- Herod
+    -- Scarlet Monastery - Cathedral
+    [4542] = { 40, 40, 1, 6, nil },  -- High Inquisitor Fairbanks
+    [3976] = { 42, 42, 1, 7, nil },  -- Scarlet Commander Mograine
+    [3977] = { 42, 42, 1, 7, nil },  -- High Inquisitor Whitemane
+    -- Scarlet Monastery - Graveyard
     [3983] = { 32, 32, 1, 7, nil },  -- Interrogator Vishas
     [4543] = { 34, 34, 1, 6, nil },  -- Bloodmage Thalnos
     [6490] = { 33, 33, 2, 6, nil },  -- Azshir the Sleepless
     [6488] = { 33, 33, 2, 6, nil },  -- Fallen Champion
     [6489] = { 33, 33, 2, 6, nil },  -- Ironspine
     [14693] = { 34, 34, 1, 6, nil },  -- Scorn
+    -- Scarlet Monastery - Library
     [3974] = { 34, 34, 1, 7, nil },  -- Houndmaster Loksey
     [6487] = { 37, 37, 1, 7, nil },  -- Arcanist Doan
-    [3975] = { 40, 40, 1, 7, "The Scarlet Champion" },  -- Herod
-    [4542] = { 40, 40, 1, 6, nil },  -- High Inquisitor Fairbanks
-    [3976] = { 42, 42, 1, 7, nil },  -- Scarlet Commander Mograine
-    [3977] = { 42, 42, 1, 7, nil },  -- High Inquisitor Whitemane
     -- Scholomance
     [10506] = { 60, 60, 1, 6, nil },  -- Kirtonos the Herald
     [10503] = { 61, 61, 1, 6, nil },  -- Jandice Barov

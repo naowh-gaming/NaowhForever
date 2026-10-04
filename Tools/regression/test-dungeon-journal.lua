@@ -622,6 +622,23 @@ do
     end
     check("nearly every boss has a tip", tips > 150)
     check("a boss with no NPC ID has no tip", J.Tip({ name = "Nobody" }) == nil)
+    -- Each boss names an ability once: Wowhead lists Old Serra'kis's Dazed four times.
+    local withAbilities = 0
+    for line in io.lines("DungeonJournal/Data/Abilities.lua") do
+        local npc, ids, names = line:match("^%s*%[(%d+)%] = { ([%d, ]+) },  %-%- [^:]+: (.-)\r?$")
+        if npc then
+            local seen, count = {}, 0
+            for name in (names .. ", "):gmatch("(.-), ") do
+                check("boss " .. npc .. " lists " .. name .. " once", not seen[name])
+                seen[name], count = true, count + 1
+            end
+            local _, commas = ids:gsub(",", "")
+            check("boss " .. npc .. " names each of its spells", count == commas + 1
+                and #J.Abilities[tonumber(npc)] == count)
+            withAbilities = withAbilities + 1
+        end
+    end
+    check("hundreds of bosses have abilities", withAbilities > 150)
 
     -- The Filters menu and the settings page are both built from J.OPTION_GROUPS.
     local labels, offered = {}, {}

@@ -2,7 +2,8 @@
 Wowhead Forever NPC page:
 
 - its abilities, from the page's Abilities tab, to DungeonJournal/Data/Abilities.lua as spell
-  IDs keyed by NPC ID. Only the IDs: the game gives each one's name, icon and description.
+  IDs keyed by NPC ID, each name once (the first Wowhead lists). Only the IDs: the game gives
+  each one's name, icon and description.
 - its level, classification (Elite, Rare...), creature type and title ("Ragefire
   Chieftain"), to DungeonJournal/Data/BossInfo.lua, for the page's header.
 
@@ -96,6 +97,16 @@ def abilities(page):
     return [(int(spell), name) for name, spell in ABILITY.findall(page[data:end])]
 
 
+def unique_by_name(spells):
+    """The (spell ID, name) pairs with each name once: the first of each, in Wowhead's order."""
+    seen, out = set(), []
+    for spell, name in spells:
+        if name not in seen:
+            seen.add(name)
+            out.append((spell, name))
+    return out
+
+
 def main():
     refresh = "--refresh" in sys.argv
     cache = {}
@@ -125,7 +136,7 @@ def main():
             cache[key] = entry
             with open(CACHE, "w", encoding="utf-8", newline="\n") as f:
                 json.dump(cache, f, indent=1, sort_keys=True)
-        spells, facts = entry["abilities"], entry["npc"]
+        spells, facts = unique_by_name(entry["abilities"]), entry["npc"]
         if facts:
             if dungeon != info_dungeon_was:
                 info_lines.append(f"    -- {dungeon}")
