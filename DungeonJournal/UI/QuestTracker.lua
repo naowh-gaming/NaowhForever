@@ -30,7 +30,7 @@ local TOP = PANEL_HEADER + 4 + PICKER_H + PICKER_GAP   -- the window's top to it
 local NAME_SIZE = 13      -- a quest row's title font (View/QuestRows.lua)
 local SHARE_W, SHARE_H = 70, 20
 local FOOTER = ns.Shared.Style.ACTION + 6   -- the cog under the quests, and the room above it
-local SETTINGS_PAGE = "Dungeon Journal/Settings"
+local SETTINGS_PAGE = "Dungeon Journal/Quest Tracker"
 local TITLE_RIGHT = -34 - SHARE_W - 4   -- the title stops short of Share and the close button
 
 local panel, view, scroll
@@ -174,7 +174,7 @@ local function Build()
     local titleBtn = CreateFrame("Button", nil, panel)
     titleBtn:SetPoint("TOPLEFT", panel.title, "TOPLEFT", -4, 4)
     titleBtn:SetPoint("BOTTOMRIGHT", panel.title, "BOTTOMRIGHT", 0, -4)
-    titleBtn:SetScript("OnClick", function() ns.OpenOptionsWindow("Dungeon Journal") end)
+    titleBtn:SetScript("OnClick", function() ns.OpenOptionsWindow(SETTINGS_PAGE) end)
     titleBtn:RegisterForDrag("LeftButton")
     titleBtn:SetScript("OnDragStart", function() panel:StartMoving() end)
     titleBtn:SetScript("OnDragStop", function() DragStop(panel) end)
@@ -213,7 +213,7 @@ local function Build()
         ns.UI.GoToSetting(SETTINGS_PAGE, nil, SETTINGS_PAGE .. ":quests")
     end, ns.UI.COGS_ICON, 0, "Dungeon Quest Tracker settings")
     panel.settings:SetPoint("BOTTOMRIGHT", -PANEL_PAD, PANEL_PAD)
-    panel.settings.hint = "Opens the Quests settings of the Dungeon Journal."
+    panel.settings.hint = "Opens the Dungeon Journal's Quest Tracker settings."
     -- Every dungeon the Journal has quests for, in its order, with its level range in the quest
     -- log's colours for you (Labels, on every draw, as your level changes): the one it shows,
     -- and a pick to show another. All of them at once, never scrolled.

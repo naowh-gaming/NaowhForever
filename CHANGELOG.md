@@ -3,7 +3,7 @@
 ## Unreleased
 
 ### Added
-- Dungeon Journal: Open Tracker in Dungeons (on by default, Dungeon Journal > Settings > Quests)
+- Dungeon Journal: Open Tracker in Dungeons (on by default, Dungeon Journal > Quest Tracker)
   opens the quest tracker when you enter a dungeon with quests for you. Close it and it stays
   closed until you leave that dungeon.
 - Dungeon Journal: Hide the Game's Quest Tracker (on by default, next to Open Tracker in
@@ -27,13 +27,16 @@
   flight starts, Nothing, the Quiz or the Aim Trainer (the default).
 
 ### Changed
+- Dungeon Journal: its settings are three tabs: Journal (what it lists, its window, its key),
+  Quest Tracker (the tracker and sharing quests) and Map (the Journal beside the world map,
+  and Boss Loot at Cursor's key).
 - Dungeon Journal: the quest tracker is titled Dungeon Quest Tracker (click it for the Journal's
   settings), with a dropdown under it to show any dungeon with quests, its level range beside it.
   The dropdown shows them all at once, each range in the quest log's colours for your level. It
   widens to show its quests' names in full, and keeps room for a scrollbar only while the list
   scrolls.
 - Dungeon Journal: the quest tracker's Share is Share All, and a cog under its quests opens its
-  settings (Dungeon Journal > Settings > Quests). It grows to 70% of the screen's height before
+  settings (Dungeon Journal > Quest Tracker). It grows to 70% of the screen's height before
   its list scrolls.
 - Dungeon Journal: a quest on its own shows no chain icon; one in a chain still shows its step.
   A quest row starts with its waypoint pin and its quest mark (! or ?), each in a column of

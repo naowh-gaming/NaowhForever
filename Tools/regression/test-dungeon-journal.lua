@@ -1183,8 +1183,8 @@ do
     check("its Share button shares them all", rawget(tracker, "share").label == "Share All")
     local cog = rawget(tracker, "settings")
     cog.scripts.OnClick(cog)
-    check("its cog opens the Quests settings", state.optionsOpened == "Dungeon Journal/Settings"
-        and state.wentTo == "Dungeon Journal/Settings:quests")
+    check("its cog opens the Quest Tracker settings", state.optionsOpened == "Dungeon Journal/Quest Tracker"
+        and state.wentTo == "Dungeon Journal/Quest Tracker:quests")
     check("which lists every dungeon with quests", picker and picker.values[deadmines.key] ~= nil
         and #picker.order > 10)
     check("with its level range", picker.values[deadmines.key]:find("17-26", 1, true) ~= nil)
