@@ -237,8 +237,8 @@ end
 local page = Settings.Page("Discovery/Library Books", S)
 
 page:Window({
-    text = "Open Discovery",
-    open = function() ns.OpenDiscoveryWindow() end,
+    text = "Open Library Books",
+    open = function() ns.OpenDiscoveryWindow("books") end,
     headline = Headline,
     detail = Detail,
 })
@@ -316,7 +316,28 @@ local function BagSummary()
     return ("Step %d of %d"):format(at, #Bag.Steps())
 end
 
+local function BagHeadline()
+    local _, at = Bag.Current()
+    local n = #Bag.Steps()
+    if not at then return "You have the Cozy Sleeping Bag" end
+    return ("Cozy Sleeping Bag: step %d of %d"):format(at, n)
+end
+
+local function BagDetail()
+    local step = Bag.Current()
+    if not step then return "Rest in it for a bonus to experience." end
+    if not Bag.Level() then return ("It starts at level %d."):format(ns.SleepingBag.level) end
+    return ("Next: %s, %s."):format(step.object, Library.ZoneName(step.map))
+end
+
 local bags = Settings.Page("Discovery/Sleeping Bags", S)
+
+bags:Window({
+    text = "Open Sleeping Bags",
+    open = function() ns.OpenDiscoveryWindow("bag") end,
+    headline = BagHeadline,
+    detail = BagDetail,
+})
 
 bags:Card({
     id = "bagtracker", name = "Tracker", order = 10, switch = "bagTracker",
