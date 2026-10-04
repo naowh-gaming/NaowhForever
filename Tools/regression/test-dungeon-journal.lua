@@ -1923,6 +1923,12 @@ do
     local logged = QuestRow("Quest 70001")
     check("a quest in your log that raises it, in a quest row", logged and logged.entry.inLog)
     check("a quest on its own shows no chain icon", not logged.chain:IsShown())
+    -- Its ! or ? says what it means on hover: in your log, its state's words.
+    local said
+    state.tooltip.SetText = function(_, text) said = text end
+    logged.markHit.scripts.OnEnter(logged.markHit)
+    state.tooltip.SetText = nil
+    check("its mark says what it means on hover", type(said) == "string" and said:find("In log") ~= nil)
     -- Link in chat: out of a group it goes to Say, in one to party chat, and into the chat
     -- box instead while you have it open.
     local function LinkItem()

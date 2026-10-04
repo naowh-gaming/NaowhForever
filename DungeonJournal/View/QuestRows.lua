@@ -336,6 +336,25 @@ local function QuestEnter(hit)
     GameTooltip:Show()
 end
 
+-- Over the ! or ?: what it means. Do first: the quest to do (the tracker's one line leaves
+-- it out); too high, how hard; in your log, how far along it is.
+local function MarkEnter(hit)
+    local row = hit:GetParent()
+    row.hover:Show()
+    local entry = row.entry
+    if not Tip(hit, "ANCHOR_RIGHT") then return end
+    GameTooltip:SetText(StatusText(entry))
+    if SAID_BELOW[entry.kind] and entry.where then
+        GameTooltip:AddLine(Plain(entry.where), 1, 1, 1, true)
+    end
+    if entry.tooHigh then
+        GameTooltip:AddLine(("It is level %d, five or more above you, so it will be hard for now.")
+            :format(entry.level), 1, 1, 1, true)
+    end
+    ProgressLines(entry)
+    GameTooltip:Show()
+end
+
 local function QuestLeave(hit)
     local row = hit:GetParent()
     if not row:IsMouseOver() then row.hover:Hide() end
@@ -488,6 +507,14 @@ Kinds.quest = {
         row.party:SetScript("OnLeave", PartyLeave)
         row.mark = row:CreateTexture(nil, "ARTWORK")
         row.mark:SetSize(MARK, MARK)
+        -- Hovered, it says what it means (MarkEnter).
+        row.markHit = CreateFrame("Frame", nil, row)
+        row.markHit:SetSize(MARK + 4, MARK + 4)
+        row.markHit:SetPoint("CENTER", row.mark)
+        row.markHit:EnableMouse(true)
+        row.markHit:SetScript("OnEnter", MarkEnter)
+        row.markHit:SetScript("OnLeave", QuestLeave)
+        row.markHit:SetScript("OnMouseUp", NameClicked)   -- its clicks are the row's
         row.title = ns.Font(row, 13, nil, T.fg)
         row.title:SetPoint("TOPLEFT", TITLE_LEFT, -QUEST_TOP)
         row.title:SetJustifyH("LEFT")
