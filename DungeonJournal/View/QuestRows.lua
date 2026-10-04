@@ -23,7 +23,6 @@ local PEOPLE, PARTY_SLOT, BAG = St.PEOPLE, St.PARTY_SLOT, St.BAG
 local GetItemCount, GetItemIconByID, GetItemNameByID = C_Item.GetItemCount, C_Item.GetItemIconByID,
     C_Item.GetItemNameByID
 local QUESTION_ICON = 134400   -- the game's question mark icon, for an item not loaded yet
-local STRIPE = St.STRIPE
 local QUEST_TOP, QUEST_LINE_GAP, QUEST_BOTTOM = St.QUEST_TOP, St.QUEST_LINE_GAP, St.QUEST_BOTTOM
 local MARK, CHAIN_SLOT, WAYPOINT_SLOT = St.MARK, St.CHAIN_SLOT, St.WAYPOINT_SLOT
 
@@ -33,7 +32,7 @@ local IconButton, Plain = Parts.IconButton, Parts.Plain
 
 -- The columns on the left, from the row's edge: Waypoint's pin (empty for a quest with nowhere
 -- to go, so the columns still line up), then the mark; the title after them.
-local ROW_LEFT = 6
+local ROW_LEFT = St.ROW_LEFT
 local MARK_LEFT = ROW_LEFT + WAYPOINT_SLOT + 4
 local TITLE_LEFT = MARK_LEFT + MARK + 6
 -- The fixed slots on the right, from the right: who in your group has it (only while you are
@@ -502,15 +501,7 @@ end
 Kinds.quest = {
     New = function(view)
         local row = CreateFrame("Frame", nil, view)
-        row.stripe = ns.Solid(row, "BACKGROUND", T.fg, STRIPE)
-        row.stripe:SetAllPoints()
-        row.hover = ns.Solid(row, "BACKGROUND", T.fg, 0.04)
-        row.hover:SetAllPoints()
-        row.hover:Hide()
-        row.divider = ns.Solid(row, "BORDER", T.line, 0.6)
-        row.divider:SetPoint("BOTTOMLEFT", ROW_LEFT, 0)
-        row.divider:SetPoint("BOTTOMRIGHT")
-        ns.Hairline(row.divider, "h")
+        Parts.RowBands(row, ROW_LEFT)
         row.waypoint = IconButton(row, WaypointClicked, PIN, PIN_MARGIN)
         row.waypoint.tip = "Waypoint"
         row.waypoint.hint = "Right-click to share it in chat, or copy it."

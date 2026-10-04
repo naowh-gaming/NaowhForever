@@ -14,7 +14,8 @@ local J = ns.Journal
 local S = J.Settings
 
 local St = J.Style
-local PANEL_PAD, PANEL_HEADER = St.PANEL_PAD, St.PANEL_HEADER
+local PANEL_PAD = St.PANEL_PAD
+local Parts = ns.Shared.Parts
 
 local MIN_W, MAX_W = 420, 640   -- it widens to show its longest quest name in full, up to MAX_W
 -- Taller than this it scrolls: 70% of the screen's height, at the window's scale, and 420 at
@@ -24,40 +25,27 @@ local function MaxH()
     local screen = (UIParent:GetHeight() or 0) * SCREEN_SHARE / ns.UIScale()
     return math.max(MIN_MAX_H, math.floor(screen))
 end
-local SCROLL_GAP = 20     -- the view's right edge to the window's, for the scrollbar, while it scrolls
-local PICKER_H, PICKER_GAP = 24, 6   -- the dungeon dropdown under the title, and the room under it
-local TOP = PANEL_HEADER + 4 + PICKER_H + PICKER_GAP   -- the window's top to its quests
 local NAME_SIZE = 13      -- a quest row's title font (View/QuestRows.lua)
 local SHARE_W, SHARE_H = 70, 20
-local FOOTER = ns.Shared.Style.ACTION + 6   -- the cog under the quests, and the room above it
 local SETTINGS_PAGE = "Dungeon Journal/Quest Tracker"
-local TITLE_RIGHT = -34 - SHARE_W - 4   -- the title stops short of Share and the close button
 
-local panel, view, scroll
-local scrolling = false   -- taller than MaxH(): the scrollbar has its room
+local panel, view
 local shown               -- the dungeon it shows
 local closedIn            -- closed inside this dungeon (Open Tracker in Dungeons), until you leave it
 local closedOutside       -- closed out in the world (Show Outside Dungeons), until you have been in one
 
 -- Where you left it, kept for the account.
-local function SavePosition()
-    local point, _, relativePoint, x, y = panel:GetPoint(1)
+local function SavePosition(point, relativePoint, x, y)
     ns.AccountSettings().journalTracker = { point, relativePoint, x, y }
 end
 
-local function Place()
-    panel:ClearAllPoints()
+local function LoadPosition()
     local saved = ns.AccountSettings().journalTracker
-    if type(saved) == "table" and type(saved[1]) == "string" then
-        panel:SetPoint(saved[1], UIParent, saved[2], saved[3], saved[4])
-    else
-        panel:SetPoint("RIGHT", UIParent, "RIGHT", -60, 60)
-    end
+    if type(saved) == "table" then return saved[1], saved[2], saved[3], saved[4] end
 end
 
 -- The width that shows every quest name of the dungeon in full, between MIN_W and MAX_W.
 local measured, measurePool = {}, {}
-local Parts = ns.Shared.Parts
 
 local function WidthFor(dungeon)
     local widest = 0
@@ -73,18 +61,7 @@ local function WidthFor(dungeon)
             widest = math.max(widest, math.ceil(w) + 1)
         end
     end
-    local gap = scrolling and SCROLL_GAP or 0
-    return math.max(MIN_W, math.min(MAX_W, J.View.QuestRowWidth(widest) + PANEL_PAD * 2 + gap))
-end
-
--- The window, its dropdown and its list at width w; the list leaves the scrollbar room only
--- while it scrolls.
-local function Size(w)
-    local gap = scrolling and SCROLL_GAP or 0
-    panel:SetWidth(w)
-    panel.picker:SetWidth(w - PANEL_PAD * 2)
-    scroll:SetPoint("BOTTOMRIGHT", -PANEL_PAD - gap, PANEL_PAD + FOOTER)
-    view:SetWidth(w - PANEL_PAD * 2 - gap)
+    return math.max(MIN_W, math.min(MAX_W, J.View.QuestRowWidth(widest) + PANEL_PAD * 2 + panel:ScrollGap()))
 end
 
 -- The dropdown's names, each dungeon's range coloured for your level now.
@@ -99,22 +76,18 @@ local function Draw(dungeon)
     shown = dungeon
     Labels()
     panel.picker._refreshLabel()
-    Size(WidthFor(dungeon))
+    panel:SetTrackerWidth(WidthFor(dungeon))
     view:DrawTracker(dungeon)
+end
+
+local function Redraw()
+    if panel:IsShown() and shown then Draw(shown) end
 end
 
 -- As tall as its quests, up to MaxH(). Starting or stopping to scroll changes the list's
 -- width, so it is drawn again at the new one.
 local function Fit(height)
-    local maxH = MaxH()
-    panel:SetHeight(math.min(maxH, TOP + height + FOOTER + PANEL_PAD))
-    local scrolls = TOP + height + FOOTER + PANEL_PAD > maxH
-    if scrolls ~= scrolling then
-        scrolling = scrolls
-        C_Timer.After(0, function()
-            if panel:IsShown() and shown then Draw(shown) end
-        end)
-    end
+    if panel:Fit(height) then C_Timer.After(0, Redraw) end
 end
 
 -- PLAYER_ENTERING_WORLD: a new instance, and its dungeon when the Journal lists one.
@@ -133,11 +106,6 @@ local function OnEvent()
         if dungeon and dungeon ~= shown then Draw(dungeon) end
     end
     SyncGameTracker()
-end
-
-local function DragStop(frame)
-    frame:StopMovingOrSizing()
-    SavePosition()
 end
 
 local function OnShow(frame)
@@ -159,38 +127,57 @@ end
 
 -- In the Journal window's look rather than the plain dark panel's, so the two match side by
 -- side: its gradient faded by its Opacity, its card behind the quests, and its titles' blue.
+local function Opacity()
+    return S.Get("trackerAlpha") or 1
+end
+
 local function Paint()
-    panel.backdrop:Paint(S.Get("trackerAlpha") or 1)
+    panel:Paint()
+end
+
+local function OpenSettings()
+    ns.OpenOptionsWindow(SETTINGS_PAGE)
+end
+
+local function NewView(scroll)
+    view = J.View.New(scroll)
+    view.tracker = true   -- it draws a dungeon's quests alone, each on one line
+    return view
+end
+
+local function PickedKey()
+    return shown and shown.key
+end
+
+local function Pick(key)
+    Draw(J.Get(key))
+end
+
+local function MenuHeight()
+    return UIParent:GetHeight()
 end
 
 local function Build()
-    panel = J.View.Parts.Panel("DUNGEON QUEST TRACKER", true)
-    panel.backdrop:Card(4, PANEL_HEADER, 4, 4)
-    panel.title:SetTextColor(T.accentSoft.r, T.accentSoft.g, T.accentSoft.b)
-    panel:SetFrameStrata("MEDIUM")
-    panel:SetMovable(true)
-    panel:RegisterForDrag("LeftButton")
-    panel:SetScript("OnDragStart", panel.StartMoving)
-    panel:SetScript("OnDragStop", DragStop)
-    panel.title:SetPoint("RIGHT", TITLE_RIGHT, 0)
-    local titleBtn = CreateFrame("Button", nil, panel)
-    titleBtn:SetPoint("TOPLEFT", panel.title, "TOPLEFT", -4, 4)
-    titleBtn:SetPoint("BOTTOMRIGHT", panel.title, "BOTTOMRIGHT", 0, -4)
-    titleBtn:SetScript("OnClick", function() ns.OpenOptionsWindow(SETTINGS_PAGE) end)
-    titleBtn:RegisterForDrag("LeftButton")
-    titleBtn:SetScript("OnDragStart", function() panel:StartMoving() end)
-    titleBtn:SetScript("OnDragStop", function() DragStop(panel) end)
-    titleBtn:SetScript("OnEnter", function(self)
-        panel.title:SetTextColor(T.accent.r, T.accent.g, T.accent.b)
-        GameTooltip:SetOwner(self, "ANCHOR_LEFT")
-        GameTooltip:SetText("Dungeon Quest Tracker")
-        GameTooltip:AddLine("Click to open the Dungeon Journal settings.", T.accentSoft.r, T.accentSoft.g, T.accentSoft.b)
-        GameTooltip:Show()
-    end)
-    titleBtn:SetScript("OnLeave", function()
-        panel.title:SetTextColor(T.accentSoft.r, T.accentSoft.g, T.accentSoft.b)
-        GameTooltip:Hide()
-    end)
+    -- Every dungeon the Journal has quests for, in its order, with its level range in the quest
+    -- log's colours for you (Labels, on every draw, as your level changes): the one it shows,
+    -- and a pick to show another. All of them at once, never scrolled.
+    local values, order = {}, {}
+    for _, dungeon in ipairs(J.Dungeons()) do
+        if dungeon.quests and #dungeon.quests.quests > 0 then order[#order + 1] = dungeon.key end
+    end
+    panel = Parts.TrackerPanel("DUNGEON QUEST TRACKER", {
+        width = MIN_W, titleRoom = SHARE_W + 4, maxHeight = MaxH,
+        onTitle = OpenSettings, titleTip = "Dungeon Quest Tracker",
+        titleHint = "Click to open the Dungeon Journal settings.",
+        picker = { values = values, order = order, get = PickedKey, set = Pick, menuHeight = MenuHeight },
+        newBody = NewView,
+        settings = { page = SETTINGS_PAGE, card = "quests", tip = "Dungeon Quest Tracker settings",
+            hint = "Opens the Dungeon Journal's Quest Tracker settings." },
+        opacity = Opacity,
+        load = LoadPosition, save = SavePosition, place = { "RIGHT", "RIGHT", -60, 60 },
+    })
+    view.onResize = Fit
+    panel.dungeonNames = values
     panel.share = ns.Button(panel, "Share All", SHARE_W, SHARE_H, function() J.Sharing.ShareAll(shown) end)
     panel.share:SetPoint("RIGHT", panel.close, "LEFT", -4, 0)
     panel.share:HookScript("OnEnter", function(self)
@@ -208,37 +195,9 @@ local function Build()
         GameTooltip:Show()
     end)
     panel.share:HookScript("OnLeave", GameTooltip_Hide)
-    -- Bottom right, under the quests: the tracker's own settings, the Quests card on the
-    -- Journal's settings page.
-    panel.settings = J.View.Parts.IconButton(panel, function()
-        ns.OpenOptionsWindow(SETTINGS_PAGE)
-        ns.UI.GoToSetting(SETTINGS_PAGE, nil, SETTINGS_PAGE .. ":quests")
-    end, ns.UI.COGS_ICON, 0, "Dungeon Quest Tracker settings")
-    panel.settings:SetPoint("BOTTOMRIGHT", -PANEL_PAD, PANEL_PAD)
-    panel.settings.hint = "Opens the Dungeon Journal's Quest Tracker settings."
-    -- Every dungeon the Journal has quests for, in its order, with its level range in the quest
-    -- log's colours for you (Labels, on every draw, as your level changes): the one it shows,
-    -- and a pick to show another. All of them at once, never scrolled.
-    local values, order = {}, {}
-    for _, dungeon in ipairs(J.Dungeons()) do
-        if dungeon.quests and #dungeon.quests.quests > 0 then order[#order + 1] = dungeon.key end
-    end
-    panel.dungeonNames = values
-    panel.picker = ns.UI.BuildDropdownControl(panel, MIN_W - PANEL_PAD * 2, panel:GetFrameLevel() + 3, values, order,
-        function() return shown and shown.key end,
-        function(key) Draw(J.Get(key)) end)
-    panel.picker:SetPoint("TOPLEFT", PANEL_PAD, -PANEL_HEADER - 4)
-    panel.picker._menuHeight = function() return UIParent:GetHeight() end
     -- Measures the quest names (WidthFor), as a quest row writes them; never shown.
     panel.measure = ns.Font(panel, NAME_SIZE)
     panel.measure:Hide()
-    scroll = ns.UI.SlimScroll(panel)
-    scroll:SetPoint("TOPLEFT", PANEL_PAD, -TOP)
-    view = J.View.New(scroll)
-    Size(MIN_W)
-    view.tracker = true   -- it draws a dungeon's quests alone, each on one line
-    view.onResize = Fit
-    scroll:SetScrollChild(view)
     panel:SetScript("OnEvent", OnEvent)
     panel:SetScript("OnShow", OnShow)
     panel:SetScript("OnHide", OnHide)
@@ -248,7 +207,7 @@ local function Show(dungeon)
     if not panel then Build() end
     panel:SetScale(ns.UIScale())
     Paint()
-    Place()
+    panel:Place()
     panel:Show()
     Draw(dungeon)
     SyncGameTracker()

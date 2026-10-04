@@ -1219,6 +1219,7 @@ do
     end
     local picker = tracker and rawget(tracker, "picker")
     check("the quest tracker opens, under its title", tracker ~= nil and tracker:IsShown())
+    check("on the shared tracker window, its quests under the dropdown", tracker.SetRows ~= nil and tracker:Top() == 64)
     check("on the dungeon, in its dropdown", picker and picker.get() == deadmines.key)
     check("its Share button shares them all", rawget(tracker, "share").label == "Share All")
     local cog = rawget(tracker, "settings")
