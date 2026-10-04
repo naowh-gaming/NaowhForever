@@ -688,17 +688,9 @@ do
     check("and says so once", #state.printed == 1)
     J.TurnOn()
     check("not again while it is on", #state.printed == 1)
-    check("turned on, Shift+J opens it", state.bindings["SHIFT-J"] == "NAOWHFOREVER_JOURNAL" and state.bindingsSaved)
-    state.bindings["SHIFT-J"] = nil
     S.Set("enabled", false)
     S.Set("enabled", true)
-    check("only once: a key you cleared stays cleared", state.bindings["SHIFT-J"] == nil)
-    do
-        local otherNs, other = fixture()
-        other.bindings["SHIFT-J"] = "SOMETHING_ELSE"
-        otherNs.Journal.TurnOn()
-        check("a Shift+J you use for something else is left alone", other.bindings["SHIFT-J"] == "SOMETHING_ELSE")
-    end
+    check("turned on, it binds no key: players set their own", next(state.bindings) == nil and not state.bindingsSaved)
 
     -- The faction switch: a dungeon on one side's ground is listed while that side is on;
     -- a contested one always.
