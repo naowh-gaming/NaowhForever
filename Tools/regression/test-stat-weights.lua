@@ -247,6 +247,12 @@ do
     check("secret stats: gains go on", math.abs(SW.Gain(1, 10, weights, SW.Power(weights)) - 100 * 10 / before) < 1e-6)
     check("secret stats: a swing at the speed last read", SW.SwingDamage(weights, 16) == 7 / 2)
     check("secret stats, weights never read: no worth", SW.Power({ agi = 1 }) == nil)
+    -- Your gear changes while they are secret: the worth last read no longer holds.
+    for _, watcher in ipairs(state.watchers) do
+        if watcher.events.PLAYER_EQUIPMENT_CHANGED then watcher.onEvent(watcher, "PLAYER_EQUIPMENT_CHANGED") end
+    end
+    check("secret stats after a gear change: no worth", SW.Power(weights) == nil)
+    check("secret stats after a gear change: a swing at the usual speed", SW.SwingDamage(weights, 16) == 7 / 2.6)
     state.secret = false
 end
 
