@@ -239,12 +239,14 @@ do
         SW.SwingDamage(weights, 16) == 7 / 2 and SW.SwingDamage(weights, 17) == 7 * 0.5 / 1.5)
     state.worn[10] = nil
     check("over nothing worn, its whole worth", math.abs(SW.Gain(1, 10, weights, SW.Power(weights)) - 100 * 10 / SW.Power(weights)) < 1e-6)
-    -- Stats the game keeps secret (reported on Forever, every item hovered): no worth, no gain,
-    -- no error.
+    -- Stats the game keeps secret (reported on Forever, every item hovered): no error, and gains
+    -- against your stats as last read.
+    local before = SW.Power(weights)
     state.secret = true
-    check("secret stats: no worth", SW.Power(weights) == nil)
-    check("secret stats: no gain", SW.Gain(1, 10, weights, SW.Power(weights)) == nil)
-    check("secret stats: a swing at the usual speed", SW.SwingDamage(weights, 16) == 7 / 2.6)
+    check("secret stats: the worth last read", SW.Power(weights) == before)
+    check("secret stats: gains go on", math.abs(SW.Gain(1, 10, weights, SW.Power(weights)) - 100 * 10 / before) < 1e-6)
+    check("secret stats: a swing at the speed last read", SW.SwingDamage(weights, 16) == 7 / 2)
+    check("secret stats, weights never read: no worth", SW.Power({ agi = 1 }) == nil)
     state.secret = false
 end
 

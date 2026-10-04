@@ -25,6 +25,14 @@ local METHODS = {
     HookScript = function(f, script, fn) f.hooks[script] = fn end,
     GetParent = function(f) return rawget(f, "parent") end,
     SetText = function(f, text) f.text = text end,
+    -- A secret (see UnitStat below) formats as its value, as the game shows one.
+    SetFormattedText = function(f, format, ...)
+        local args = { ... }
+        for i = 1, select("#", ...) do
+            if type(args[i]) == "table" then args[i] = args[i].value end
+        end
+        f.text = format:format(unpack(args))
+    end,
     Show = function(f) f.shown = true end,
     Hide = function(f) f.shown = false end,
     SetShown = function(f, shown) f.shown = shown and true or false end,
@@ -189,6 +197,7 @@ ns.BiS = {
 local tooltip = Frame()
 tooltip.SetText = function(self, text) self.lines = { text } end
 tooltip.AddLine = function(self, text) self.lines[#self.lines + 1] = text end
+tooltip.NumLines = function(self) return #self.lines end
 
 local env = setmetatable({
     NaowhForever = ns,
@@ -237,14 +246,21 @@ local env = setmetatable({
     CharacterLevelText = levelText,
     CharacterStatsPaneScrollBox = statsList,
     CharacterFrameRightPaneHostStoneBg = "stoneArt",
-    UnitArmor = function() return 250, 250 end,
-    -- While state.statsSecret, the game keeps your stats secret: a value that fails any arithmetic.
+    UnitArmor = function()
+        if state.statsSecret then return { value = 250 }, { value = 250 } end
+        return 250, 250
+    end,
+    GetCombatRatingBonus = function() if state.statsSecret then return { value = 0 } end return 0 end,
+    -- While state.statsSecret, the game keeps your stats secret: a value that fails any arithmetic
+    -- or comparison, which only the calls that take a secret can show.
     UnitStat = function(_, index)
-        if state.statsSecret then return {}, {} end
+        if state.statsSecret then return { value = 0 }, { value = STATS[index] or 0 } end
         return 0, STATS[index] or 0
     end,
     C_Secrets = { ShouldUnitStatsBeSecret = function() return state.statsSecret == true end },
-    GetCombatRatingBonus = function() return 0 end,
+    C_StringUtil = { FloorToNearestString = function(n)
+        return tostring(math.floor(type(n) == "table" and n.value or n))
+    end },
     GetHitModifier = function() return 3 end,
     CR_HIT_MELEE = 6,
     -- What a spec weighing many stats reads (its totals' own numbers do not matter here).
@@ -442,8 +458,16 @@ Measure(check)("your spec's stats repainted", 1, function() spec.scripts.OnEvent
 -- Reported on Forever: your stats go secret under the game's addon restrictions.
 state.statsSecret = true
 spec.scripts.OnEvent(spec, "UNIT_STATS", "player")
-check("secret stats: each total a dash, no error", rows[1].total.text == "-" and rows[5].total.text == "-"
-    and rows[1].name.text == "Agility")
+check("secret stats: shown through the calls that take a secret", rows[1].total.text == "80"
+    and rows[5].total.text == "250")
+check("one we would have to add up ourselves, a dash", rows[3].name.text == "Hit %" and rows[3].total.text == "-")
+for i = 1, 6 do
+    env["GameTooltipTextLeft" .. i] = { SetFormattedText = function(_, format, value)
+        tooltip.lines[i] = format:format(value)
+    end }
+end
+rows[1].scripts.OnEnter(rows[1])
+check("and its hover card's total, written the same way", tooltip.lines[#tooltip.lines] == "You: 80")
 state.statsSecret = false
 spec.scripts.OnEvent(spec, "ADDON_RESTRICTION_STATE_CHANGED", 0, 0)
 check("and back when the restriction lifts", rows[1].total.text == "80")

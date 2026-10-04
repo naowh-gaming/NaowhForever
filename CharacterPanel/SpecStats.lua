@@ -121,6 +121,33 @@ for school, index in pairs(SCHOOLS) do
     TOTAL[school] = function() return Whole(GetSpellBonusDamage(index)) end
 end
 
+-- While the game keeps your stats secret: the ones it can still show, set straight on the row's
+-- text by the calls that take a secret (a font string's SetText and SetFormattedText, and
+-- C_StringUtil's rounding). A total we would have to add up or compare ourselves shows HIDDEN.
+local function Rounded(read)
+    return function(text) text:SetText(C_StringUtil.FloorToNearestString(read())) end
+end
+local function Percented(read)
+    return function(text) text:SetFormattedText("%.1f%%", read()) end
+end
+local SECRET_TOTAL = {
+    armor = Rounded(function() return select(2, UnitArmor("player")) end),
+    heal = Rounded(GetSpellBonusHealing),
+    crit = Percented(GetCritChance),
+    haste = Percented(GetMeleeHaste),
+    scrit = Percented(GetSpellCritChance),
+    dodge = Percented(GetDodgeChance),
+    block = Percented(GetBlockChance),
+    -- Defense skill is never secret.
+    def = function(text) text:SetText(TOTAL.def()) end,
+}
+for i, stat in ipairs({ "str", "agi", "sta", "int", "spi" }) do
+    SECRET_TOTAL[stat] = Rounded(function() return select(2, UnitStat("player", i)) end)
+end
+for school, index in pairs(SCHOOLS) do
+    SECRET_TOTAL[school] = Rounded(function() return GetSpellBonusDamage(index) end)
+end
+
 local NAME = {}
 for _, stat in ipairs(SW.STATS) do NAME[stat[1]] = stat[2] end
 -- The row's name where the full one does not fit its column; the hover card says it in full.
@@ -235,7 +262,13 @@ local function RowEnter(row)
     GameTooltip:SetText(NAME[row.stat] or row.stat, 1, 1, 1)
     GameTooltip:AddLine(WorthLine(row), a.r, a.g, a.b, true)
     if DOES[row.stat] then GameTooltip:AddLine(DOES[row.stat], m.r, m.g, m.b, true) end
-    GameTooltip:AddLine(YOU_LINE:format(row.total:GetText() or ""), fg.r, fg.g, fg.b)
+    if row.secret then
+        -- The total is secret: written into the line by the call that takes one.
+        GameTooltip:AddLine(" ", fg.r, fg.g, fg.b)
+        _G["GameTooltipTextLeft" .. GameTooltip:NumLines()]:SetFormattedText(YOU_LINE, row.total:GetText())
+    else
+        GameTooltip:AddLine(YOU_LINE:format(row.total:GetText() or ""), fg.r, fg.g, fg.b)
+    end
     GameTooltip:Show()
 end
 
@@ -293,7 +326,12 @@ local function Paint()
             local weight = weights and weights[stat] or 0
             row.stat, row.weight = stat, weight
             row.name:SetText(SHORT[stat] or NAME[stat] or stat)
-            row.total:SetText(hidden and HIDDEN or TOTAL[stat]())
+            row.secret = hidden and SECRET_TOTAL[stat] ~= nil
+            if row.secret then
+                SECRET_TOTAL[stat](row.total)
+            else
+                row.total:SetText(hidden and HIDDEN or TOTAL[stat]())
+            end
             -- The worth's bar, as long as its share of the heaviest weight by the square root,
             -- so a small one still shows beside the big ones, as the BiS List's gains.
             row.track:SetShown(weight > 0)

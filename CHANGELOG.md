@@ -53,8 +53,11 @@
   a player it can no longer read, and the supporter plate and ID lines stop hooking the game's
   tooltip, which was reported breaking its own player-name colours.
 - Naowh's Forge: no more Lua error when a macro line is just a "/" with no command yet.
-- Character panel: your spec's stats show a dash while the game keeps your stats hidden, instead
-  of a Lua error, and fill back in when it lets them go.
+- Character panel: while the game keeps your stats hidden (combat, encounters), your spec's stats
+  still show where the game allows it (primary stats, armor, spell power, crit, dodge, block),
+  a dash for the rest, instead of a Lua error.
+- Stat Weights: upgrade lines and bag arrows keep working while your stats are hidden, worked out
+  against your stats from just before.
 
 ## 0.5.19-beta
 
