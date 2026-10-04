@@ -60,7 +60,9 @@ local BAND_PAD = 4
 local TRACK_ALPHA = 0.08     -- the bar's track: the text colour, this faint
 local BAR_DROP = Parts.CARD_DROP   -- level with the letters, as on the house's cards
 
-local EVENTS = { "PLAYER_EQUIPMENT_CHANGED", "COMBAT_RATING_UPDATE" }
+-- ADDON_RESTRICTION_STATE_CHANGED: your stats can go secret under the game's addon restrictions
+-- (combat, an encounter, some maps); painted again when one lifts.
+local EVENTS = { "PLAYER_EQUIPMENT_CHANGED", "COMBAT_RATING_UPDATE", "ADDON_RESTRICTION_STATE_CHANGED" }
 local UNIT_EVENTS = { "UNIT_STATS", "UNIT_ATTACK_POWER", "UNIT_RANGED_ATTACK_POWER", "UNIT_DAMAGE",
     "UNIT_ATTACK_SPEED", "UNIT_RESISTANCES" }
 
@@ -68,6 +70,7 @@ local UNIT_EVENTS = { "UNIT_STATS", "UNIT_ATTACK_POWER", "UNIT_RANGED_ATTACK_POW
 -- list works them out. A percent's text says so; threat has none to show.
 local SCHOOLS = { holy = 2, fire = 3, nature = 4, frost = 5, shadow = 6, arcane = 7 }
 
+local HIDDEN = "-"   -- a total the game keeps secret for now, as a dps with no weapon speed
 local function Percent(value) return ("%.1f%%"):format(value or 0) end
 local function Whole(value) return ("%d"):format(math.floor((value or 0) + 0.5)) end
 
@@ -282,6 +285,7 @@ local function Paint()
         end
     end
     Lay(math.min(#keys, ROWS))
+    local hidden = C_Secrets.ShouldUnitStatsBeSecret()
     for i, row in ipairs(view.rows) do
         local stat = keys[i]
         row:SetShown(stat ~= nil)
@@ -289,7 +293,7 @@ local function Paint()
             local weight = weights and weights[stat] or 0
             row.stat, row.weight = stat, weight
             row.name:SetText(SHORT[stat] or NAME[stat] or stat)
-            row.total:SetText(TOTAL[stat]())
+            row.total:SetText(hidden and HIDDEN or TOTAL[stat]())
             -- The worth's bar, as long as its share of the heaviest weight by the square root,
             -- so a small one still shows beside the big ones, as the BiS List's gains.
             row.track:SetShown(weight > 0)

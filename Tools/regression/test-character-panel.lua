@@ -238,7 +238,12 @@ local env = setmetatable({
     CharacterStatsPaneScrollBox = statsList,
     CharacterFrameRightPaneHostStoneBg = "stoneArt",
     UnitArmor = function() return 250, 250 end,
-    UnitStat = function(_, index) return 0, STATS[index] or 0 end,
+    -- While state.statsSecret, the game keeps your stats secret: a value that fails any arithmetic.
+    UnitStat = function(_, index)
+        if state.statsSecret then return {}, {} end
+        return 0, STATS[index] or 0
+    end,
+    C_Secrets = { ShouldUnitStatsBeSecret = function() return state.statsSecret == true end },
     GetCombatRatingBonus = function() return 0 end,
     GetHitModifier = function() return 3 end,
     CR_HIT_MELEE = 6,
@@ -434,6 +439,14 @@ check("one the spec does not weigh says so", tooltip.lines[2] == "Assassination 
 -- Repainted as your stats change, with no garbage.
 spec.IsVisible = function() return true end
 Measure(check)("your spec's stats repainted", 1, function() spec.scripts.OnEvent(spec) end)
+-- Reported on Forever: your stats go secret under the game's addon restrictions.
+state.statsSecret = true
+spec.scripts.OnEvent(spec, "UNIT_STATS", "player")
+check("secret stats: each total a dash, no error", rows[1].total.text == "-" and rows[5].total.text == "-"
+    and rows[1].name.text == "Agility")
+state.statsSecret = false
+spec.scripts.OnEvent(spec, "ADDON_RESTRICTION_STATE_CHANGED", 0, 0)
+check("and back when the restriction lifts", rows[1].total.text == "80")
 -- A spec weighing many stats: 14 rows still fit (17 each), the rest of the rows hidden.
 local For = ns.StatWeights.For
 ns.StatWeights.For = function()
