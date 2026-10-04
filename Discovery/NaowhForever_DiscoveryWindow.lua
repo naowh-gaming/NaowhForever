@@ -363,7 +363,7 @@ local function NewBagHero(parent)
     ns.Border(hero, St.BORDER_RGB)
     hero.kicker = ns.Font(hero, 10, nil, T.accentSoft)
     hero.kicker:SetPoint("TOPLEFT", 16, -14)
-    hero.kicker:SetText("COZY SLEEPING BAG")
+    hero.kicker:SetText("SLEEPING BAG")
     hero.count = ns.Font(hero, 22, nil, T.fg)
     hero.count:SetPoint("TOPLEFT", hero.kicker, "BOTTOMLEFT", 0, -4)
     hero.next = ns.Font(hero, 12, nil, T.muted)
@@ -388,7 +388,7 @@ local function SetBagHero(hero)
     local step, at = Bag.Current()
     local done = (at or #steps + 1) - 1
     hero.count:SetText(("%d / %d"):format(done, #steps))
-    hero.next:SetText(step and ("Next: %s"):format(step.object) or "You have the Cozy Sleeping Bag")
+    hero.next:SetText(step and ("Next: %s"):format(Bag.Name(step)) or "You have the Cozy Sleeping Bag")
     local about = "A hidden quest chain across Azeroth: click each thing in the world in turn. It gives a lot "
         .. "of experience, and ends in the Cozy Sleeping Bag; rest in it for a bonus to experience."
     if not Bag.Level() then
@@ -411,7 +411,7 @@ local function StepEnter(row)
     row.hover:Show()
     if not Parts.Tip(row, "ANCHOR_RIGHT") then return end
     local step, m = row.step, T.muted
-    GameTooltip:SetText(step.object, 1, 1, 1)
+    GameTooltip:SetText(Bag.Name(step), 1, 1, 1)
     GameTooltip:AddLine(Bag.Where(step), m.r, m.g, m.b, true)
     if step.tip then GameTooltip:AddLine(step.tip, 1, 1, 1, true) end
     GameTooltip:AddLine(" ")
@@ -447,7 +447,7 @@ local function SetStep(row, step, number, state, stripe)
     row.bag:Hide()
     local textW = row:GetWidth() - St.INDENT - LEVEL_W - 4 - PIN_RIGHT - STATUS_W
     row.title:SetWidth(textW)
-    row.title:SetText(step.object)
+    row.title:SetText(Bag.Name(step))
     local tc = done and T.muted or T.fg
     row.title:SetTextColor(tc.r, tc.g, tc.b)
     row.where:SetWidth(textW)

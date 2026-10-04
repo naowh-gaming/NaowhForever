@@ -1,11 +1,10 @@
 -------------------------------------------------------------------------------
 --  NaowhForever_DiscoveryTracker.lua -- the library book tracker: in a zone with books you
 --  still need, a small window lists them with a waypoint for each. It pops up on entering
---  such a zone; Always Show keeps it up in every zone. In the Dungeon Quest Tracker's look:
---  the Journal's window style (its gradient faded by the window's Opacity, a card behind the
---  list, its titles' blue), the progress bar and the zone dropdown under the title, rows like
---  its quest rows (a waypoint pin in front, a tick in its place once a book is handed in) and
---  a cog for its settings in the bottom right.
+--  such a zone; Always Show keeps it up in every zone. Built on the shared tracker window
+--  (Parts.TrackerPanel, as the Dungeon Quest Tracker): the progress bar and the zone dropdown
+--  under the title, a row per book (a waypoint pin in front, a tick in its place once a book
+--  is handed in) and a cog for its settings in the bottom right.
 -------------------------------------------------------------------------------
 local ns = _G.NaowhForever
 local S = ns.DiscoverySettings
@@ -22,26 +21,17 @@ local function SoftBlue(r, g, b)
     if c then return c.r, c.g, c.b end
     return r, g, b
 end
-local BAR_BG = { r = 0x14 / 255, g = 0x16 / 255, b = 0x19 / 255 }
 local READY = { r = 0x19 / 255, g = 1, b = 0x19 / 255 }
-
--- The window: as the Dungeon Quest Tracker's (UI/QuestTracker.lua), its parts on the same
--- measures.
-local PANEL_W = 320
-local PANEL_PAD, PANEL_HEADER = St.PANEL_PAD, St.PANEL_HEADER
-local BODY_W = PANEL_W - PANEL_PAD * 2
-local BAR_H, BAR_GAP = 24, 6               -- the progress bar, as tall as the dropdown under it
-local FOOTER = St.ACTION + 6               -- the cog under the list, and the room above it
 local SETTINGS_PAGE = "Discovery/Library Books"
--- A row, as a quest row (View/QuestRows.lua): the pin in a column of its own (a tick there
--- once the book is handed in), then the name with where it is under it.
-local ROW_LEFT, WAYPOINT_SLOT, TICK = 6, 20, 16
-local TITLE_LEFT = ROW_LEFT + WAYPOINT_SLOT + 6
-local ROW_TOP, ROW_LINE_GAP, ROW_BOTTOM = 6, 3, 8
+local TURN_INS = { "librarian", "trainer" }
+local STORES = { "bags", "bank" }
 
 local panel, zoneEvents, shownEvents
 local dismissedZone   -- the zone the X closed it in, until you leave
 local pickedZone      -- the zone the dropdown is listing, while it shows
+local zoneNames, zoneOrder = {}, {}
+local entries, pool, count = {}, {}, 0
+local carried = {}
 
 local function On()
     return S.Get("enabled") and S.Get("tracker")
@@ -90,216 +80,83 @@ end
 -------------------------------------------------------------------------------
 --  The window
 -------------------------------------------------------------------------------
--- Its look's opacity: its own (trackerAlpha).
-local function Paint()
-    panel.backdrop:Paint(S.Get("trackerAlpha") or 1)
+local function Opacity()
+    return S.Get("trackerAlpha") or 1
 end
 
--- Dragged by its body or its title, as the Dungeon Quest Tracker is: kept where you leave it,
--- the same place Unlock Mode's mover keeps (trackerPos).
-local function DragStop()
-    panel:StopMovingOrSizing()
-    local point, _, relPoint, x, y = panel:GetPoint(1)
+local function LoadPosition()
+    local pos = S.Get("trackerPos")
+    if type(pos) == "table" then return pos.point, pos.relPoint, pos.x, pos.y end
+end
+
+local function SavePosition(point, relPoint, x, y)
     S.Set("trackerPos", { point = point, relPoint = relPoint, x = x, y = y })
 end
 
-local function DragStart()
-    panel:StartMoving()
+local function Mover(frame, onMoved)
+    return ns.UI.AttachMover(frame, "Library Books", onMoved, "Discovery/Library Books")
+end
+
+-- The X closes it until you change zone, and switches Always Show off, so switching that
+-- back on is how to bring it back.
+local function Close()
+    dismissedZone = L.PlayerZone()
+    panel:Hide()
+    if S.Get("trackerAlways") then
+        S.Set("trackerAlways", false)
+        ns.UI:RefreshPage(true)
+    end
+end
+
+local function OpenBooks()
+    ns.OpenDiscoveryWindow("books")
+end
+
+local function PickedZone()
+    return pickedZone
+end
+
+local function PickZone(id)
+    S.Set("trackerZone", id)
 end
 
 local function BuildPanel()
-    panel = Parts.Panel("LIBRARY BOOKS", true)
-    panel.backdrop:Card(4, PANEL_HEADER, 4, 4)
-    panel.title:SetTextColor(T.accentSoft.r, T.accentSoft.g, T.accentSoft.b)
-    panel:SetWidth(PANEL_W)
+    panel = Parts.TrackerPanel("LIBRARY BOOKS", {
+        onTitle = OpenBooks, titleTip = "Library Books", titleHint = "Click to open the Books page.",
+        onClose = Close,
+        bar = true,
+        picker = { values = zoneNames, order = zoneOrder, get = PickedZone, set = PickZone },
+        settings = { page = SETTINGS_PAGE, card = "tracker", tip = "Library Books settings",
+            hint = "Opens the Library Books tracker's settings." },
+        opacity = Opacity,
+        load = LoadPosition, save = SavePosition, place = { "RIGHT", "RIGHT", -260, -120 },
+        mover = Mover,
+    })
     panel:SetScale(S.Get("trackerScale"))
-    panel:SetMovable(true)
-    panel:SetFrameStrata("MEDIUM")
-    panel:RegisterForDrag("LeftButton")
-    panel:SetScript("OnDragStart", DragStart)
-    panel:SetScript("OnDragStop", DragStop)
-    -- The X closes it until you change zone, and switches Always Show off, so switching that
-    -- back on is how to bring it back.
-    panel.close:SetScript("OnClick", function()
-        dismissedZone = L.PlayerZone()
-        panel:Hide()
-        if S.Get("trackerAlways") then
-            S.Set("trackerAlways", false)
-            ns.UI:RefreshPage(true)
-        end
-    end)
-    local titleBtn = CreateFrame("Button", nil, panel)
-    titleBtn:SetPoint("TOPLEFT", panel.title, "TOPLEFT", -4, 4)
-    titleBtn:SetPoint("BOTTOMRIGHT", panel.title, "BOTTOMRIGHT", 0, -4)
-    titleBtn:SetScript("OnClick", function() ns.OpenDiscoveryWindow("books") end)
-    titleBtn:RegisterForDrag("LeftButton")
-    titleBtn:SetScript("OnDragStart", DragStart)
-    titleBtn:SetScript("OnDragStop", DragStop)
-    titleBtn:SetScript("OnEnter", function(self)
-        panel.title:SetTextColor(T.accent.r, T.accent.g, T.accent.b)
-        GameTooltip:SetOwner(self, "ANCHOR_LEFT")
-        GameTooltip:SetText("Library Books")
-        GameTooltip:AddLine("Click to open the Books page.", SoftBlue(0.3, 0.7, 0.95))
-        GameTooltip:Show()
-    end)
-    titleBtn:SetScript("OnLeave", function()
-        panel.title:SetTextColor(T.accentSoft.r, T.accentSoft.g, T.accentSoft.b)
-        GameTooltip:Hide()
-    end)
-
-    local bar = CreateFrame("StatusBar", nil, panel)
-    bar:SetSize(BODY_W, BAR_H)
-    bar:SetPoint("TOPLEFT", PANEL_PAD, -PANEL_HEADER - 4)
-    bar:SetStatusBarTexture("Interface\\Buttons\\WHITE8X8")
-    ns.Solid(bar, "BACKGROUND", ns.ThemeTint("panel", BAR_BG), 1):SetAllPoints()
-    ns.Border(bar, St.BORDER_RGB)
-    bar.text = ns.Font(bar, 12, "OUTLINE")
-    bar.text:SetPoint("CENTER", 0, 0)
-    bar:EnableMouse(true)
-    bar:SetScript("OnEnter", BarTooltip)
-    bar:SetScript("OnLeave", GameTooltip_Hide)
-    panel.bar = bar
-
-    -- With Always Show, in a zone with no books left: pick another zone to list. Its zones
-    -- are handed to it on every redraw.
-    panel.picker = ns.UI.BuildDropdownControl(panel, BODY_W, panel:GetFrameLevel() + 3, {}, {},
-        function() return pickedZone end,
-        function(id) S.Set("trackerZone", id) end)
-    panel.picker:SetPoint("TOPLEFT", bar, "BOTTOMLEFT", 0, -BAR_GAP)
+    panel.bar:EnableMouse(true)
+    panel.bar:SetScript("OnEnter", BarTooltip)
+    panel.bar:SetScript("OnLeave", GameTooltip_Hide)
     panel.picker:Hide()
-
-    panel.body = CreateFrame("Frame", nil, panel)
-    panel.body:SetWidth(BODY_W)
-    panel.rows = {}
-
-    -- Bottom right, under the list: the tracker's settings.
-    panel.settings = Parts.IconButton(panel, function()
-        ns.OpenOptionsWindow(SETTINGS_PAGE)
-        ns.UI.GoToSetting(SETTINGS_PAGE, nil, SETTINGS_PAGE .. ":tracker")
-    end, ns.UI.COGS_ICON, 0, "Library Books settings")
-    panel.settings:SetPoint("BOTTOMRIGHT", -PANEL_PAD, PANEL_PAD)
-    panel.settings.hint = "Opens the Library Books tracker's settings."
-
-    panel.mover = ns.UI.AttachMover(panel, "Library Books", function(pos) S.Set("trackerPos", pos) end,
-        "Discovery/Library Books")
-    local pos = S.Get("trackerPos")
-    if pos then
-        panel:SetPoint(pos.point, UIParent, pos.relPoint, pos.x, pos.y)
-    else
-        panel:SetPoint("RIGHT", UIParent, "RIGHT", -260, -120)
-    end
-    Paint()
+    panel:Place()
+    panel:Paint()
     panel:Hide()
-end
-
-local function RowEnter(row)
-    row.hover:Show()
-    local entry = row.entry
-    if not (entry and entry.tip) then return end
-    GameTooltip:SetOwner(row, "ANCHOR_LEFT")
-    entry.tip()
-    GameTooltip:Show()
-end
-
-local function RowLeave(row)
-    row.hover:Hide()
-    GameTooltip:Hide()
-end
-
-local function PinClick(pin)
-    local entry = pin:GetParent().entry
-    if entry and entry.waypoint then entry.waypoint() end
-end
-
-local function Row(i)
-    local row = panel.rows[i]
-    if row then return row end
-    row = CreateFrame("Button", nil, panel.body)
-    row:SetWidth(BODY_W)
-    -- Every other row on a faint band, lit on hover, a line under each, as a quest row.
-    row.stripe = ns.Solid(row, "BACKGROUND", T.fg, St.STRIPE)
-    row.stripe:SetAllPoints()
-    row.hover = ns.Solid(row, "BACKGROUND", T.fg, 0.04)
-    row.hover:SetAllPoints()
-    row.hover:Hide()
-    row.divider = ns.Solid(row, "BORDER", T.line, 0.6)
-    row.divider:SetPoint("BOTTOMLEFT", ROW_LEFT, 0)
-    row.divider:SetPoint("BOTTOMRIGHT")
-    ns.Hairline(row.divider, "h")
-    -- Centred in its column, so the pin sits over the tick a book handed in shows there
-    -- (measured in game, 2026-10-04: 4 to the right put the pin 4px right of the tick, 2 put it
-    -- 2px right).
-    row.pin = Parts.IconButton(row, PinClick, St.PIN, 0, "Waypoint")
-    row.pin.hint = "Click to mark it on your map."
-    row.tick = row:CreateTexture(nil, "ARTWORK")
-    row.tick:SetTexture(St.CHECK)
-    row.tick:SetSize(TICK, TICK)
-    row.text = ns.Font(row, 13, nil, T.fg)
-    row.text:SetPoint("TOPLEFT", TITLE_LEFT, -ROW_TOP)
-    row.text:SetJustifyH("LEFT")
-    row.text:SetWordWrap(true)
-    row.sub = ns.Font(row, 11, nil, T.muted)
-    row.sub:SetPoint("TOPLEFT", row.text, "BOTTOMLEFT", 0, -ROW_LINE_GAP)
-    row.sub:SetJustifyH("LEFT")
-    row.sub:SetWordWrap(true)
-    row:SetScript("OnEnter", RowEnter)
-    row:SetScript("OnLeave", RowLeave)
-    panel.rows[i] = row
-    return row
-end
-
--- entries: { text, sub?, done?, waypoint?, tip? }. Every row keeps the pin's column, so the
--- names line up whether or not a row has one.
-local function Layout(entries)
-    local y = 0
-    local width = BODY_W - TITLE_LEFT - PANEL_PAD
-    for i, entry in ipairs(entries) do
-        local row = Row(i)
-        row.entry = entry
-        row.stripe:SetShown(i % 2 == 0)
-        row.hover:Hide()
-        row.text:SetWidth(width)
-        row.text:SetText(entry.text)
-        local h = ROW_TOP + math.ceil(row.text:GetStringHeight()) + ROW_BOTTOM
-        row.sub:SetWidth(width)
-        row.sub:SetText(entry.sub or "")
-        row.sub:SetShown(entry.sub ~= nil)
-        if entry.sub then h = h + ROW_LINE_GAP + math.ceil(row.sub:GetStringHeight()) end
-        -- The pin, or the tick of a book handed in, on the name's line.
-        local line = -(ROW_TOP + math.ceil(row.text:GetStringHeight()) / 2)
-        row.pin:ClearAllPoints()
-        row.pin:SetPoint("CENTER", row, "TOPLEFT", ROW_LEFT + WAYPOINT_SLOT / 2, line)
-        row.pin:SetShown(entry.waypoint ~= nil)
-        row.tick:ClearAllPoints()
-        row.tick:SetPoint("CENTER", row, "TOPLEFT", ROW_LEFT + WAYPOINT_SLOT / 2, line)
-        row.tick:SetShown(entry.done == true)
-        row:SetHeight(h)
-        row:ClearAllPoints()
-        row:SetPoint("TOPLEFT", panel.body, "TOPLEFT", 0, -y)
-        row.divider:SetShown(entries[i + 1] ~= nil)
-        row:Show()
-        y = y + h
-    end
-    for i = #entries + 1, #panel.rows do panel.rows[i]:Hide() end
-    panel.body:SetHeight(math.max(y, 1))
-    return y
 end
 
 -------------------------------------------------------------------------------
 --  What it lists
 -------------------------------------------------------------------------------
 -- Books looted and not handed in, counted per person who takes them and where they are
--- kept: out["librarian/bags"] and so on.
+-- kept: carried["librarian/bags"] and so on.
 local function CarriedByTurnIn()
-    local out = {}
+    wipe(carried)
     for _, book in ipairs(ns.LibraryBooks) do
         local stored = L.ForMe(book) and L.Stored(book)
         if stored then
             local key = (book.turnIn or "librarian") .. "/" .. stored
-            out[key] = (out[key] or 0) + 1
+            carried[key] = (carried[key] or 0) + 1
         end
     end
-    return out
+    return carried
 end
 
 local function RenderBar()
@@ -344,17 +201,46 @@ end
 -- Points the dropdown at the zones left and returns the one to list: the saved pick, which
 -- ZonesLeft keeps even once it runs out, else the first.
 local function Pick(left)
-    local saved, values, order = S.Get("trackerZone"), {}, {}
+    local saved = S.Get("trackerZone")
+    wipe(zoneNames)
+    wipe(zoneOrder)
     pickedZone = nil
-    for _, z in ipairs(left) do
-        values[z[1]] = L.ZoneName(z[1]) .. "  " .. ns.Color("muted", "(" .. z[2] .. ")")
-        order[#order + 1] = z[1]
+    for i, z in ipairs(left) do
+        zoneNames[z[1]] = L.ZoneName(z[1]) .. "  " .. ns.Color("muted", "(" .. z[2] .. ")")
+        zoneOrder[i] = z[1]
         if z[1] == saved then pickedZone = saved end
     end
     pickedZone = pickedZone or left[1][1]
-    panel.picker._values, panel.picker._order = values, order
     panel.picker._refreshLabel()
     return pickedZone
+end
+
+local function Add(text, color)
+    count = count + 1
+    local entry = pool[count]
+    if entry then wipe(entry) else entry = {}; pool[count] = entry end
+    entry.text, entry.color = text, color
+    entries[count] = entry
+    return entry
+end
+
+local function NpcWaypoint(entry)
+    L.WaypointNpc(entry.npc)
+end
+
+local function BookWaypoint(entry)
+    L.WaypointBook(entry.book, entry.spot)
+end
+
+local function BookTip(row)
+    local book, spot = row.entry.book, row.entry.spot
+    GameTooltip:SetText(book.name)
+    local c = GetQuestDifficultyColor(book.tier)
+    GameTooltip:AddLine(("Level %d"):format(book.tier), c.r, c.g, c.b)
+    if spot[5] then GameTooltip:AddLine(spot[5], 1, 1, 1, true) end
+    local npc = L.TurnIn(book)
+    local hr, hg, hb = SoftBlue(0.3, 0.7, 0.95)
+    GameTooltip:AddLine("Hand in to " .. npc.name .. ", " .. npc.place, hr, hg, hb, true)
 end
 
 -- zone is where you stand; left, when given, is the zones for the dropdown, and the list is
@@ -362,58 +248,37 @@ end
 local function Render(zone, left)
     local listZone = left and Pick(left) or zone
     panel.picker:SetShown(left ~= nil)
-    panel.body:ClearAllPoints()
-    panel.body:SetPoint("TOPLEFT", left and panel.picker or panel.bar, "BOTTOMLEFT", 0, -BAR_GAP)
-    local entries = {}
-    local carried = CarriedByTurnIn()
-    for _, kind in ipairs({ "librarian", "trainer" }) do
-        for _, place in ipairs({ "bags", "bank" }) do
+    count = 0
+    CarriedByTurnIn()
+    for _, kind in ipairs(TURN_INS) do
+        for _, place in ipairs(STORES) do
             local n = carried[kind .. "/" .. place]
             if n then
                 local npc = ns.LibraryTurnIns[kind][L.Side()]
                 local books = n == 1 and "1 book" or (n .. " books")
-                entries[#entries + 1] = {
-                    text = "|cffffd100" .. books .. " in your " .. place .. "|r",   -- gold: ready to hand in
-                    sub = "Hand in to " .. npc.name .. ", " .. npc.place,
-                    waypoint = function() L.WaypointNpc(npc) end,
-                }
+                local entry = Add(books .. " in your " .. place, St.CARRIED_RGB)
+                entry.sub = "Hand in to " .. npc.name .. ", " .. npc.place
+                entry.npc, entry.waypoint = npc, NpcWaypoint
             end
         end
     end
     local toFind = L.OnMap(listZone)
-    if #toFind == 0 then
-        entries[#entries + 1] = { text = ns.Color("muted", "No more books in this area.") }
-    end
+    if #toFind == 0 then Add("No more books in this area.", T.muted) end
     for _, item in ipairs(toFind) do
         local book, spot = item[1], item[2]
         local sub = L.Where(spot)
         if book.turnIn == "trainer" then sub = sub .. ", mage trainer" end
-        entries[#entries + 1] = {
-            text = book.name, sub = sub,
-            waypoint = function() L.WaypointBook(book, spot) end,
-            tip = function()
-                GameTooltip:SetText(book.name)
-                local c = GetQuestDifficultyColor(book.tier)
-                GameTooltip:AddLine(("Level %d"):format(book.tier), c.r, c.g, c.b)
-                if spot[5] then GameTooltip:AddLine(spot[5], 1, 1, 1, true) end
-                local npc = L.TurnIn(book)
-                local hr, hg, hb = SoftBlue(0.3, 0.7, 0.95)
-                GameTooltip:AddLine("Hand in to " .. npc.name .. ", " .. npc.place, hr, hg, hb, true)
-            end,
-        }
+        local entry = Add(book.name)
+        entry.sub, entry.book, entry.spot = sub, book, spot
+        entry.waypoint, entry.tip = BookWaypoint, BookTip
     end
     for _, item in ipairs(L.DoneOnMap(listZone)) do
-        entries[#entries + 1] = {
-            text = ns.Color("muted", item[1].name), done = true,
-        }
+        Add(item[1].name, T.muted).done = true
     end
+    for i = count + 1, #entries do entries[i] = nil end
     panel.title:SetText("LIBRARY BOOKS  " .. ns.Color("muted", L.ZoneName(zone)))
     RenderBar()
-    local listH = Layout(entries)
-    -- The header, the bar and the dropdown each with the gap under them, the list, then the
-    -- cog's footer.
-    local pickerH = left and (panel.picker:GetHeight() + BAR_GAP) or 0
-    panel:SetHeight(PANEL_HEADER + 4 + BAR_H + BAR_GAP + pickerH + listH + FOOTER + PANEL_PAD)
+    panel:Fit(panel:SetRows(entries))
 end
 
 -------------------------------------------------------------------------------
@@ -460,13 +325,16 @@ end
 
 -- Loot and turn-ins can fire several events at once; gather them into one redraw.
 local redrawQueued
+
+local function QueuedRefresh()
+    redrawQueued = false
+    Refresh()
+end
+
 local function QueueRefresh()
     if redrawQueued then return end
     redrawQueued = true
-    C_Timer.After(0.2, function()
-        redrawQueued = false
-        Refresh()
-    end)
+    C_Timer.After(0.2, QueuedRefresh)
 end
 
 local function Apply()
@@ -489,7 +357,7 @@ local OWN_KEYS = { enabled = true, tracker = true, trackerAlways = true, tracker
 
 hooksecurefunc(S, "Set", function(key, value)
     if key == "trackerScale" and panel then panel:SetScale(value) end
-    if key == "trackerAlpha" and panel then Paint() end
+    if key == "trackerAlpha" and panel then panel:Paint() end
     if not OWN_KEYS[key] then return end
     -- Switching Always Show back on brings the tracker back here, whatever the X closed.
     -- Switching it off closes it, unless the zone you are in has books to find.

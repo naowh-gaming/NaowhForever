@@ -94,7 +94,7 @@ local MODULES = {
       subtitle = "Library books to find around Azeroth, and who to hand them to.",
       tabs = {
           { name = "Library Books", reuse = true },
-          { name = "Sleeping Bags", reuse = true },
+          { name = "Sleeping Bag", reuse = true },
       } },
     -- The sets are a window of their own (open); only their settings live here.
     { name = "Gear & Trinkets", group = "COMBAT", navIcon = "shield", settings = "QoLSettings", enabledKey = "gearSets",

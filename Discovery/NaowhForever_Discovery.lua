@@ -3,7 +3,7 @@
 --  find, how many you have handed in toward the Friend of the Library rewards, and who takes
 --  them for your faction (NaowhForever_DiscoveryData.lua); and the Cozy Sleeping Bag's hidden
 --  quest chain, step by step (NaowhForever_SleepingBagData.lua). Its settings are two tabs,
---  Library Books and Sleeping Bags.
+--  Library Books and Sleeping Bag.
 --
 --  Off by default, every feature too. The tracker, map pin and nearby files register nothing
 --  but a login check until their feature is switched on.
@@ -162,6 +162,7 @@ end
 -------------------------------------------------------------------------------
 local Bag = {}
 ns.SleepingBagChain = Bag
+local names, subs, nowSubs = {}, {}, {}
 
 -- Your faction's steps, in order.
 function Bag.Steps()
@@ -190,6 +191,30 @@ end
 
 function Bag.Where(step)
     return ("%s, %s (%.1f, %.1f)"):format(Library.ZoneName(step.map), step.place, step.x, step.y)
+end
+
+function Bag.Name(step)
+    local name = names[step]
+    if name then return name end
+    name = step.object
+    for _, other in ipairs(Bag.Steps()) do
+        if other ~= step and other.object == step.object and other.map ~= step.map then
+            name = ("%s (%s)"):format(step.object, Library.ZoneName(step.map))
+            break
+        end
+    end
+    names[step] = name
+    return name
+end
+
+function Bag.Sub(step, now)
+    local cache = now and step.tip and nowSubs or subs
+    local sub = cache[step]
+    if sub then return sub end
+    sub = ("%s, %s"):format(Library.ZoneName(step.map), step.place)
+    if cache == nowSubs then sub = sub .. "\n" .. step.tip end
+    cache[step] = sub
+    return sub
 end
 
 function Bag.Waypoint(step)
@@ -308,7 +333,7 @@ page:Card({
 })
 
 -------------------------------------------------------------------------------
---  Sleeping Bags
+--  Sleeping Bag
 -------------------------------------------------------------------------------
 local function BagSummary()
     local _, at = Bag.Current()
@@ -320,7 +345,7 @@ local function BagHeadline()
     local _, at = Bag.Current()
     local n = #Bag.Steps()
     if not at then return "You have the Cozy Sleeping Bag" end
-    return ("Cozy Sleeping Bag: step %d of %d"):format(at, n)
+    return ("Sleeping Bag: step %d of %d"):format(at, n)
 end
 
 local function BagDetail()
@@ -330,10 +355,10 @@ local function BagDetail()
     return ("Next: %s, %s."):format(step.object, Library.ZoneName(step.map))
 end
 
-local bags = Settings.Page("Discovery/Sleeping Bags", S)
+local bags = Settings.Page("Discovery/Sleeping Bag", S)
 
 bags:Window({
-    text = "Open Sleeping Bags",
+    text = "Open Sleeping Bag",
     open = function() ns.OpenDiscoveryWindow("bag") end,
     headline = BagHeadline,
     detail = BagDetail,
@@ -341,10 +366,7 @@ bags:Window({
 
 bags:Card({
     id = "bagtracker", name = "Tracker", order = 10, switch = "bagTracker",
-    help = "The Cozy Sleeping Bag's hidden quest chain, step by step: the thing to click next, where, how to "
-        .. "get there and a waypoint. It shows from level 14 until you have the bag; the X on it switches "
-        .. "it off. Move it in Unlock Mode or drag it. Every step is also on the Sleeping Bag tab of "
-        .. "the Discovery window.",
+    help = "Shows each Sleeping Bag step, with how to reach the next one and a waypoint.",
     summary = BagSummary,
     rows = {
         { key = "bagTrackerScale", label = "Scale", slider = { 50, 150, 5 }, unit = "%", scale = 0.01, needs = On,
@@ -356,9 +378,7 @@ bags:Card({
 
 bags:Card({
     id = "bagmappins", name = "Map Pins", order = 20, switch = "bagMapPins",
-    help = "The steps still to do on their zone's map: the sleeping bag's icon with the step's number, the "
-        .. "next one in full and the ones after it faded. Hover a pin for what to click and how to get there; "
-        .. "click it for a waypoint.",
+    help = "Shows the Sleeping Bag steps still to do on your map; click one for a waypoint.",
     rows = {
         { key = "bagMapPinSize", label = "Pin Size", slider = { 12, 32, 1 }, needs = On, why = DISCOVERY_OFF,
           help = "How big the pins are on the map." },

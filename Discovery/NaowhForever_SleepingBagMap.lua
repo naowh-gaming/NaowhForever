@@ -59,8 +59,8 @@ end
 function NaowhForeverSleepingBagPinMixin:OnMouseEnter()
     local entry, step = self.entry, self.entry.step
     GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-    GameTooltip:SetText(("Cozy Sleeping Bag, step %d"):format(entry.number), 1, 1, 1)
-    GameTooltip:AddLine(step.object, 1, 0.82, 0)
+    GameTooltip:SetText(("Sleeping Bag, step %d"):format(entry.number), 1, 1, 1)
+    GameTooltip:AddLine(Bag.Name(step), 1, 0.82, 0)
     GameTooltip:AddLine(Bag.Where(step), T.muted.r, T.muted.g, T.muted.b, true)
     if step.tip then GameTooltip:AddLine(step.tip, 1, 1, 1, true) end
     if not entry.now then GameTooltip:AddLine("A later step.", T.muted.r, T.muted.g, T.muted.b) end
@@ -115,6 +115,15 @@ local function Redraw()
     if added and WorldMapFrame:IsShown() then provider:RefreshAllData() end
 end
 
+local function OnEvent(frame, event)
+    if event ~= "QUEST_LOG_UPDATE" then
+        frame:RegisterEvent("QUEST_LOG_UPDATE")
+        return
+    end
+    frame:UnregisterEvent("QUEST_LOG_UPDATE")
+    Redraw()
+end
+
 local function Apply()
     if On() then
         if not added then
@@ -123,8 +132,7 @@ local function Apply()
         end
         if not events then
             events = CreateFrame("Frame")
-            -- The quest log has the change a moment later.
-            events:SetScript("OnEvent", function() C_Timer.After(0.2, Redraw) end)
+            events:SetScript("OnEvent", OnEvent)
         end
         -- A step taken or handed in moves the pins on.
         events:RegisterEvent("QUEST_ACCEPTED")
