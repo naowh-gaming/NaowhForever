@@ -16,23 +16,6 @@
   starts; it closes when you land or enter combat. Move it in Unlock Mode.
 - Flight Games (QoL > Travel, under the Flight Timer): one choice of what opens by itself when a
   flight starts, Nothing, the Quiz or the Aim Trainer (the default).
-- Dungeon map: the boss you clicked (its loot showing) is ringed in gold with a soft pulsing
-  glow, on the map window and on the world map, until you pick another or close its loot.
-  On the world map, clicking a boss shows its own page in the Journal beside the map:
-  its name with its title, level, classification and creature type, Naowh's tip (the chat
-  bubble beside it shares it in Say, Party, Raid, Guild or to your target), the dungeon
-  quests that need it with where each stands for you (done ones too), its abilities and its
-  loot; click a section's title to fold it away (kept). Back, or the boss clicked again, goes back to the
-  dungeon. The loot at the mouse now opens only on the maximised map.
-- Dungeon map: the boss you clicked is ringed in gold with a soft pulsing glow, on the map
-  window and on the world map. On the world map, clicking a boss shows its own page in the
-  Journal beside the map: its name with its title, level, classification and creature type,
-  Naowh's tip (the chat bubble beside it shares it in Say, Party, Raid, Guild or to your
-  target), the dungeon quests that need it with where each stands for you (done ones too),
-  its abilities (the game's icon, name and description) and its loot. Click a section's
-  title to fold it away (kept, but Loot opens again on the next boss). Back, or the boss
-  clicked again, goes back to the dungeon. The loot at the mouse now opens only on the
-  maximised map; the map window's loot and Boss Loot at Cursor show the same boss page.
 - Dungeon map: the boss you clicked is ringed in gold (or your theme's Accent) with a soft
   pulsing glow, on the map window and on the world map. On the world map, clicking a boss
   shows its own page in the Journal beside the map: its name with its title, level,
