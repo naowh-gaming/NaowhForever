@@ -1305,6 +1305,22 @@ do
     S.Set("trackerAuto", false)
     state.instance = nil
     EnterWorld()
+    -- Show Outside Dungeons: out in the world it opens on the dungeon your quests are for.
+    check("outside, off, it stays closed", not tracker:IsShown())
+    S.Set("trackerOutside", true)
+    check("on, out in the world it opens", tracker:IsShown())
+    tracker:Hide()
+    tracker.scripts.OnHide(tracker)
+    EnterWorld()
+    check("closed out there, it stays closed", not tracker:IsShown())
+    state.instance = { id = 36, name = "The Deadmines" }
+    EnterWorld()
+    state.instance = nil
+    EnterWorld()
+    check("until you have been in a dungeon", tracker:IsShown())
+    tracker:Hide()
+    tracker.scripts.OnHide(tracker)
+    S.Set("trackerOutside", false)
 
     -- The dungeon map: Map on the Bosses title opens it, the bosses stand where they were
     -- placed, and placing's Copy gives the dungeon's line for Data/Maps.lua.

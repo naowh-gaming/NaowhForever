@@ -100,6 +100,8 @@ local S = ns.UI.ModuleSettings("journal", {
     trackerAuto = true,
     -- On with it: in a dungeon the tracker takes the game's quest tracker's place.
     hideGameTracker = true,
+    -- Out in the world too, on the dungeon your quests are for (off, as a new option is).
+    trackerOutside = false,
 })
 ns.JournalSettings = S
 

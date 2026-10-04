@@ -37,6 +37,7 @@ local panel, view, scroll
 local scrolling = false   -- taller than MaxH(): the scrollbar has its room
 local shown               -- the dungeon it shows
 local closedIn            -- closed inside this dungeon (Open Tracker in Dungeons), until you leave it
+local closedOutside       -- closed out in the world (Show Outside Dungeons), until you have been in one
 
 -- Where you left it, kept for the account.
 local function SavePosition()
@@ -152,6 +153,7 @@ local function OnHide(frame)
     frame:UnregisterAllEvents()
     local here = J.Current()
     if here and here[1] == shown then closedIn = shown end
+    if not here then closedOutside = true end
     SyncGameTracker()
 end
 
@@ -316,18 +318,45 @@ function SyncGameTracker()
 end
 
 -------------------------------------------------------------------------------
---  Open Tracker in Dungeons (trackerAuto)
+--  Open Tracker in Dungeons (trackerAuto) and Show Outside Dungeons (trackerOutside)
 -------------------------------------------------------------------------------
 -- Entering a dungeon the Journal lists, with quests for you there, opens the tracker on it.
--- Closed inside it, it stays closed until you leave. Listened for only while the Journal
--- and the option are on.
+-- Closed inside it, it stays closed until you leave. Out in the world (Show Outside
+-- Dungeons), every loading screen, a login too, opens it on the dungeon your quests are for;
+-- closed out there, it stays closed until you have been in a dungeon. Listened for only while
+-- the Journal and one of the options are on.
 local autoFrame
+
+-- Out in the world: the first dungeon (the Journal's order, by level) with one of your
+-- quests in your log; else the first for your level with quests still to pick up; else nil.
+local function QuestsFor()
+    local level = UnitLevel("player")
+    local forLevel
+    for _, dungeon in ipairs(J.Dungeons()) do
+        local data = dungeon.quests
+        if data then
+            local toPickUp, inLog = J.Quests.Count(data)
+            if inLog > 0 then return dungeon end
+            local levels = not forLevel and toPickUp > 0 and J.Levels(dungeon)
+            if levels and level >= levels[1] and level <= levels[2] then forLevel = dungeon end
+        end
+    end
+    return forLevel
+end
 
 local function OnEnterWorld()
     local here = J.Current()
     local dungeon = here and here[1]
     if dungeon ~= closedIn then closedIn = nil end
-    if not dungeon or dungeon == closedIn or (panel and panel:IsShown() and shown == dungeon) then return end
+    if dungeon then closedOutside = nil end
+    if panel and panel:IsShown() and (not dungeon or shown == dungeon) then return end
+    if not dungeon then
+        if not S.Get("trackerOutside") or closedOutside then return end
+        local pick = QuestsFor()
+        if pick then Show(pick) end
+        return
+    end
+    if not S.Get("trackerAuto") or dungeon == closedIn then return end
     local data = dungeon.quests
     if not data then return end
     local toPickUp, inLog = J.Quests.Count(data)
@@ -335,7 +364,7 @@ local function OnEnterWorld()
 end
 
 local function SyncAuto()
-    local on = S.Get("enabled") and S.Get("trackerAuto")
+    local on = S.Get("enabled") and (S.Get("trackerAuto") or S.Get("trackerOutside"))
     if not (on or autoFrame) then return end
     if not autoFrame then
         autoFrame = CreateFrame("Frame")
@@ -354,7 +383,7 @@ hooksecurefunc(ns, "Apply", SyncAuto)
 
 -- The Journal switched off: the tracker goes with it. Its own Opacity (trackerAlpha): it follows.
 S.OnChange(function(key)
-    if key == "enabled" or key == "trackerAuto" then SyncAuto() end
+    if key == "enabled" or key == "trackerAuto" or key == "trackerOutside" then SyncAuto() end
     if key == "enabled" or key == "hideGameTracker" then SyncGameTracker() end
     if not panel then return end
     if key == "enabled" and not S.Get("enabled") then

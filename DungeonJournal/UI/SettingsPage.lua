@@ -120,7 +120,9 @@ local function QuestsSummary(store)
     elseif accept then
         text = "Accepts shared quests"
     end
-    if store.Get("trackerAuto") then text = text == "Off" and "Tracker in dungeons" or text .. ", tracker in dungeons" end
+    local where = store.Get("trackerAuto") and (store.Get("trackerOutside") and "everywhere" or "in dungeons")
+        or store.Get("trackerOutside") and "outside dungeons"
+    if where then text = text == "Off" and "Tracker " .. where or text .. ", tracker " .. where end
     return text
 end
 
@@ -183,6 +185,12 @@ tracker:Card({
         { key = "trackerAuto", label = "Open Tracker in Dungeons", toggle = true, needs = JournalOn, why = JOURNAL_OFF,
           help = "Entering a dungeon with quests for you opens the quest tracker on it, as Tracker on its page "
               .. "does. Close it and it stays closed until you leave the dungeon." },
+        { key = "trackerOutside", label = "Show Outside Dungeons", toggle = true, needs = JournalOn,
+          why = JOURNAL_OFF,
+          help = "Out in the world, the tracker opens after every loading screen (a login too) on the dungeon "
+              .. "your quests are for: the first with one of your quests in your log, else the first for your "
+              .. "level with quests to pick up. The dropdown picks another. Close it and it stays closed until "
+              .. "you have been in a dungeon." },
         { key = "hideGameTracker", label = "Hide the Game's Quest Tracker", toggle = true, needs = JournalOn,
           why = JOURNAL_OFF,
           help = "While the quest tracker is open in a dungeon, the game's own quest tracker is hidden. It comes "

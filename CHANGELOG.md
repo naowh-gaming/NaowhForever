@@ -6,6 +6,10 @@
 - Dungeon Journal: Open Tracker in Dungeons (on by default, Dungeon Journal > Quest Tracker)
   opens the quest tracker when you enter a dungeon with quests for you. Close it and it stays
   closed until you leave that dungeon.
+- Dungeon Journal: Show Outside Dungeons (off by default, Dungeon Journal > Quest Tracker):
+  out in the world the quest tracker opens after a loading screen or login, on the first
+  dungeon with one of your quests in your log, else the first for your level with quests to
+  pick up. Close it and it stays closed until you have been in a dungeon.
 - Dungeon Journal: Hide the Game's Quest Tracker (on by default, next to Open Tracker in
   Dungeons): while the quest tracker is open in a dungeon, the game's own quest tracker is
   hidden. It comes back when you close the tracker or leave, if it was up before.
