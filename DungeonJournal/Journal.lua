@@ -91,6 +91,11 @@ local S = ns.UI.ModuleSettings("journal", {
     showHorde = true,
     shareRequests = true,
     acceptShared = false,
+    -- On by default, an exception to off by default: the tracker is the Journal's own, and
+    -- the Journal itself starts off.
+    trackerAuto = true,
+    -- On with it: in a dungeon the tracker takes the game's quest tracker's place.
+    hideGameTracker = true,
 })
 ns.JournalSettings = S
 
@@ -345,6 +350,19 @@ function J.LevelRange(dungeon)
     if not levels then return nil end
     if levels[1] == levels[2] then return tostring(levels[1]) end
     return levels[1] .. "-" .. levels[2]
+end
+
+-- The range in the quest log's colours for you: still above you, its lowest level's (orange,
+-- red); your level in it, yellow; outgrown, its highest level's (green, then grey). nil
+-- without a range.
+---@return string? range
+function J.ColoredLevelRange(dungeon)
+    local range = J.LevelRange(dungeon)
+    if not range then return nil end
+    local levels, mine = J.Levels(dungeon), UnitLevel("player")
+    local level = mine < levels[1] and levels[1] or mine > levels[2] and levels[2] or mine
+    local c = GetQuestDifficultyColor(level)
+    return ("|cff%02x%02x%02x%s|r"):format(c.r * 255, c.g * 255, c.b * 255, range)
 end
 
 ---@return string? tip Naowh's tip for the boss (Data/Tips.lua); whether to show it is the view's

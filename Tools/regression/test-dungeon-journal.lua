@@ -131,10 +131,20 @@ local function fixture(settings)
         log = {}, repQuests = {}, readyQuests = {},
         sent = {}, timers = {}, pushed = {}, fonts = {}, atlases = {}, dressable = {}, hasLook = {}, buttons = {},
         cvars = { questLogOpen = "1" },
+        bindings = {},
+        said = {},
         standings = {}, rankRewards = {},
         currency = { name = "Honor", quantity = 1234, iconFileID = 1455894 },
     }
     state.tooltip = Frame(state)   -- the game's, kept so a test can read what it says
+    -- The game's quest tracker: shown and its alpha, for a test to read.
+    state.gameTracker = {
+        shown = true, alpha = 1,
+        IsShown = function(self) return self.shown end,
+        Show = function(self) self.shown = true end,
+        Hide = function(self) self.shown = false end,
+        SetAlpha = function(self, alpha) self.alpha = alpha end,
+    }
     local values = {
         enabled = false, mapPanel = true, usableOnly = true, showChance = true,
         showAlliance = true, showHorde = true, showKills = true, shareRequests = true,
@@ -169,6 +179,16 @@ local function fixture(settings)
                 return track
             end,
             CloseOnEscape = function() end,
+            -- The settings page, opened on a card: kept for a test to read.
+            GoToSetting = function(_, _, feature) state.wentTo = feature end,
+            -- The quest tracker's dungeon dropdown, kept for a test to pick from.
+            BuildDropdownControl = function(parent, _, _, choices, order, get, set)
+                local dropdown = Frame(state, parent)
+                dropdown.values, dropdown.order, dropdown.get, dropdown.set = choices, order, get, set
+                dropdown._refreshLabel = function() end
+                state.dropdown = dropdown
+                return dropdown
+            end,
             STATUS = { untested = "" },
             RefreshPage = function() state.refreshes = state.refreshes + 1 end },
         QoLSettings = { Get = function(key) return key == "bis" and state.bisList end },
@@ -233,7 +253,7 @@ local function fixture(settings)
         end,
     }
     local env = {
-        _G = { NaowhForever = ns },
+        _G = { NaowhForever = ns, ObjectiveTrackerFrame = state.gameTracker },
         strsplit = strsplit,
         strtrim = function(s) return (s:gsub("^%s+", ""):gsub("%s+$", "")) end,
         wipe = function(t) for k in pairs(t) do t[k] = nil end return t end,
@@ -262,6 +282,20 @@ local function fixture(settings)
             return i.name, nil, nil, nil, nil, nil, nil, i.id
         end,
         InCombatLockdown = function() return state.combat end,
+        GetQuestLink = function(id) return "|Hquest:" .. id .. "|h[Quest " .. id .. "]|h" end,
+        -- The chat box: open while state.chatOpen.
+        ChatFrameUtil = { InsertLink = function() return state.chatOpen == true end },
+        SHARE_QUEST = "Share Quest",
+        -- Key bindings, kept for a test to read: key -> action.
+        GetBindingKey = function(action)
+            for key, bound in pairs(state.bindings) do
+                if bound == action then return key end
+            end
+        end,
+        GetBindingAction = function(key) return state.bindings[key] or "" end,
+        SetBinding = function(key, action) state.bindings[key] = action end,
+        SaveBindings = function() state.bindingsSaved = true end,
+        GetCurrentBindingSet = function() return 1 end,
         -- The game's settings, kept for a test to read.
         GetCVar = function(name) return state.cvars[name] end,
         SetCVar = function(name, value) state.cvars[name] = tostring(value) end,
@@ -316,6 +350,8 @@ local function fixture(settings)
         end },
         C_ChatInfo = {
             InChatMessagingLockdown = function() return state.locked end,
+            -- Chat lines sent, kept for a test to read.
+            SendChatMessage = function(text, channel) state.said[#state.said + 1] = { text = text, channel = channel } end,
             RegisterAddonMessagePrefix = function(prefix) state.prefix = prefix end,
             SendAddonMessage = function(prefix, text, channel)
                 state.sent[#state.sent + 1] = { prefix = prefix, text = text, channel = channel }
@@ -332,7 +368,8 @@ local function fixture(settings)
         BreakUpLargeNumbers = function(n) return tostring(n) end,
         QuestUtils_IsQuestWatched = function(id) return state.watched[id] == true end,
         IsMouseButtonDown = function() return false end,
-        GetQuestDifficultyColor = function() return {} end,
+        -- The level asked about kept, for a test to read.
+        GetQuestDifficultyColor = function(level) state.difficultyAsked = level; return { r = 1, g = 1, b = 1 } end,
         QuestDifficultyColors = { trivial = {} },
         UnitGUID = function(unit)
             if unit == "player" then return state.guid end
@@ -631,6 +668,17 @@ do
     check("and says so once", #state.printed == 1)
     J.TurnOn()
     check("not again while it is on", #state.printed == 1)
+    check("turned on, Shift+J opens it", state.bindings["SHIFT-J"] == "NAOWHFOREVER_JOURNAL" and state.bindingsSaved)
+    state.bindings["SHIFT-J"] = nil
+    S.Set("enabled", false)
+    S.Set("enabled", true)
+    check("only once: a key you cleared stays cleared", state.bindings["SHIFT-J"] == nil)
+    do
+        local otherNs, other = fixture()
+        other.bindings["SHIFT-J"] = "SOMETHING_ELSE"
+        otherNs.Journal.TurnOn()
+        check("a Shift+J you use for something else is left alone", other.bindings["SHIFT-J"] == "SOMETHING_ELSE")
+    end
 
     -- The faction switch: a dungeon on one side's ground is listed while that side is on;
     -- a contested one always.
@@ -1121,15 +1169,122 @@ do
     Measure("the dungeon list's repaint", 2, function() List.Paint(deadmines) end)
     state.bis[first], state.owned[first] = nil, nil
 
-    -- The quest tracker: the dungeon's quests alone, each on one line.
-    local titled = 0
+    -- The quest tracker: the dungeon's quests alone, each on one line, under its title and a
+    -- dropdown of every dungeon with quests.
     ns.OpenQuestTracker(deadmines)
-    for _, font in ipairs(state.fonts) do
-        if rawget(font, "text") == "THE DEADMINES" then titled = titled + 1 end
+    local tracker
+    for _, made in ipairs(state.made) do
+        local title = rawget(made, "title")
+        if title and rawget(made, "share") and rawget(title, "text") == "DUNGEON QUEST TRACKER" then tracker = made end
     end
-    check("the quest tracker opens on the dungeon", titled == 1)
+    local picker = tracker and rawget(tracker, "picker")
+    check("the quest tracker opens, under its title", tracker ~= nil and tracker:IsShown())
+    check("on the dungeon, in its dropdown", picker and picker.get() == deadmines.key)
+    check("its Share button shares them all", rawget(tracker, "share").label == "Share All")
+    local cog = rawget(tracker, "settings")
+    cog.scripts.OnClick(cog)
+    check("its cog opens the Quests settings", state.optionsOpened == "Dungeon Journal/Settings"
+        and state.wentTo == "Dungeon Journal/Settings:quests")
+    check("which lists every dungeon with quests", picker and picker.values[deadmines.key] ~= nil
+        and #picker.order > 10)
+    check("with its level range", picker.values[deadmines.key]:find("17-26", 1, true) ~= nil)
+    check("the whole list at once: its menu as tall as the screen", type(picker._menuHeight) == "function")
+    -- Its range in the quest log's colours for you: its lowest level while above you, yours
+    -- inside it, its highest once outgrown.
+    local level = state.level
+    state.level = 12
+    ns.Journal.ColoredLevelRange(deadmines)
+    check("above you: coloured as its lowest level", state.difficultyAsked == 17)
+    state.level = 20
+    ns.Journal.ColoredLevelRange(deadmines)
+    check("for you: coloured as your level", state.difficultyAsked == 20)
+    state.level = 40
+    ns.Journal.ColoredLevelRange(deadmines)
+    check("outgrown: coloured as its highest", state.difficultyAsked == 26)
+    state.level = level
+    local ragefireKey = ns.Journal.Get("RagefireChasm").key
+    picker.set(ragefireKey)
+    check("picking another shows it", picker.get() == ragefireKey and tracker:IsShown())
+    picker.set(deadmines.key)
     ns.OpenQuestTracker(deadmines)
-    check("and closes on a second click", true)
+    check("and closes on a second click", not tracker:IsShown())
+
+    -- Open Tracker in Dungeons: a loading screen into a dungeon with quests for you opens the
+    -- tracker on it; closed there, it stays closed until you leave the dungeon.
+    local function EnterWorld()
+        for _, frame in ipairs(state.made) do
+            if frame.events.PLAYER_ENTERING_WORLD then frame.scripts.OnEvent(frame, "PLAYER_ENTERING_WORLD") end
+        end
+    end
+    check("the tracker is found", tracker ~= nil)
+    check("off, entering a dungeon leaves it closed", (function()
+        state.instance = { id = 36, name = "The Deadmines" }
+        EnterWorld()
+        return not tracker:IsShown()
+    end)())
+    S.Set("trackerAuto", true)
+    S.Set("hideGameTracker", true)
+    state.instance = nil
+    EnterWorld()
+    state.instance = { id = 36, name = "The Deadmines" }
+    EnterWorld()
+    check("on, entering a dungeon with quests for you opens it", tracker:IsShown())
+    -- Hide the Game's Quest Tracker: hidden while this one is up in the dungeon.
+    local game = state.gameTracker
+    check("the game's quest tracker is hidden", not game.shown)
+    game:Show()
+    check("and stays hidden when the game shows it again", not game.shown)
+    state.combat = true
+    game:Show()
+    check("in combat it is faded instead", game.shown and game.alpha == 0)
+    state.combat = false
+    for _, frame in ipairs(state.made) do
+        if frame.events.PLAYER_REGEN_ENABLED then frame.scripts.OnEvent(frame, "PLAYER_REGEN_ENABLED") end
+    end
+    check("and hidden once combat ends", not game.shown and game.alpha == 1)
+    tracker:Hide()
+    tracker.scripts.OnHide(tracker)
+    check("closing this one brings the game's back", game.shown)
+    EnterWorld()
+    check("closed in there, it stays closed", not tracker:IsShown())
+    state.instance = nil
+    EnterWorld()
+    state.instance = { id = 36, name = "The Deadmines" }
+    EnterWorld()
+    check("until you leave and come back", tracker:IsShown())
+    -- A /reload inside: the settings are applied during that loading screen's own event, so
+    -- applying them has to look where you are.
+    tracker:Hide()
+    state.instance = nil
+    tracker.scripts.OnHide(tracker)
+    state.instance = { id = 36, name = "The Deadmines" }
+    S.Set("trackerAuto", true)   -- the settings applied, as a reload does
+    check("a reload inside a dungeon opens it", tracker:IsShown())
+    check("and hides the game's quest tracker", not game.shown)
+    check("hiding the game's again", not game.shown)
+    state.instance = nil
+    tracker.scripts.OnEvent(tracker, "PLAYER_ENTERING_WORLD")
+    check("leaving the dungeon with it open brings the game's back", game.shown)
+    S.Set("hideGameTracker", false)
+    state.instance = { id = 36, name = "The Deadmines" }
+    tracker.scripts.OnEvent(tracker, "PLAYER_ENTERING_WORLD")
+    check("switched off, the game's is left alone", game.shown)
+    S.Set("hideGameTracker", true)
+    check("switched on again, it is hidden", not game.shown)
+    tracker:Hide()
+    tracker.scripts.OnHide(tracker)
+    check("closed again, the game's is back", game.shown)
+    -- The game's own was down (no quests to watch): it stays down after.
+    game.shown = false
+    ns.OpenQuestTracker(deadmines)
+    check("opened again over a game tracker that was down", tracker:IsShown() and not game.shown)
+    tracker:Hide()
+    tracker.scripts.OnHide(tracker)
+    check("one that was not up before stays down", not game.shown)
+    game.shown = true
+    S.Set("trackerAuto", false)
+    state.instance = nil
+    EnterWorld()
 
     -- The dungeon map: Map on the Bosses title opens it, the bosses stand where they were
     -- placed, and placing's Copy gives the dungeon's line for Data/Maps.lua.
@@ -1767,6 +1922,30 @@ do
     check("its quests are under a title", Said("QUESTS"))
     local logged = QuestRow("Quest 70001")
     check("a quest in your log that raises it, in a quest row", logged and logged.entry.inLog)
+    check("a quest on its own shows no chain icon", not logged.chain:IsShown())
+    -- Link in chat: out of a group it goes to Say, in one to party chat, and into the chat
+    -- box instead while you have it open.
+    local function LinkItem()
+        logged.scripts.OnMouseUp(logged, "RightButton")
+        for _, item in ipairs(state.menu) do
+            if item.text:find("^Link in ") then return item end
+        end
+    end
+    local link = LinkItem()
+    check("its menu links it in Say out of a group", link and link.text == "Link in Say")
+    link.click()
+    local line = state.said[#state.said]
+    check("straight to Say", line and line.channel == "SAY" and line.text:find("Quest 70001", 1, true))
+    state.party = { { name = "Ally" } }
+    link = LinkItem()
+    check("in a group, in party chat", link.text == "Link in Party")
+    link.click()
+    check("straight to party", state.said[#state.said].channel == "PARTY")
+    state.chatOpen = true
+    local count = #state.said
+    link.click()
+    check("into the chat box instead while it is open", #state.said == count)
+    state.party, state.chatOpen = nil, nil
     check("not one that raises another faction", not QuestRow("Quest 70002"))
     local feathers = QuestRow("Feathers")
     check("a hand-in, in a quest row, with what one gives", feathers and feathers.entry.name:find("+25 rep", 1, true))
@@ -1779,6 +1958,7 @@ do
     check("and opens the map to it", state.mapOpened == 2521)
     check("enough in your bags: the ? to hand it in", feathers.entry.held == 2 and feathers.entry.kind == "ready")
     check("its bag says how many times", feathers.chain.tip:find("2 times", 1, true) ~= nil)
+    check("a hand-in's bag shows, chain or not", feathers.chain:IsShown())
     state.owned[12840] = 5
     ns.OpenJournalWindow(druids)
     feathers = QuestRow("Feathers")

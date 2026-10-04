@@ -143,13 +143,24 @@ local function QuestLink(id)
     return GetQuestLink(id)
 end
 
--- Into the chat box you have open. Never opened from here: opening it from addon code
--- (ChatFrameUtil.OpenChat) taints it, and the game then blocks the next message you send.
+-- Where Link in Chat sends the quest: your party (or instance group) chat in a group, Say out
+-- of one.
+local function LinkChannel()
+    if IsInGroup() then return Parts.PartyChat(), "Party" end
+    return "SAY", "Say"
+end
+
+-- Into the chat box while you have it open, so it joins what you are typing; otherwise sent
+-- straight to LinkChannel's chat. The chat box is never opened from here: opening it from
+-- addon code (ChatFrameUtil.OpenChat) taints it, and the game then blocks the next message.
 local function LinkInChat(id)
     local link = QuestLink(id)
-    if link and not ChatFrameUtil.InsertLink(link) then
-        ns.Print("Open your chat box first (Enter), then link the quest.")
+    if not link or ChatFrameUtil.InsertLink(link) then return end
+    if C_ChatInfo.InChatMessagingLockdown() then
+        ns.Print("Chat is locked right now.")
+        return
     end
+    C_ChatInfo.SendChatMessage(link, (LinkChannel()))
 end
 
 -- Sharing first, then finding it, then its Wowhead page. The menu keeps the quest it was
@@ -164,7 +175,8 @@ local function OpenQuestMenu(row)
         root:CreateButton(SHARE_QUEST, function()
             QuestLogPushQuest(C_QuestLog.GetLogIndexForQuestID(logged))
         end):SetEnabled(shareable)
-        root:CreateButton("Link in Chat", function() LinkInChat(linkID) end):SetEnabled(QuestLink(linkID) ~= nil)
+        root:CreateButton("Link in " .. select(2, LinkChannel()), function() LinkInChat(linkID) end)
+            :SetEnabled(QuestLink(linkID) ~= nil)
         root:CreateDivider()
         if canWaypoint then root:CreateButton("Waypoint", function() Quests.Waypoint(quest) end) end
         if Quests.Chain(quest) then root:CreateButton("Show Chain", function() OpenChain(row, quest) end) end
@@ -287,11 +299,14 @@ local function TurnInLines(entry)
     end
 end
 
-local function QuestEnter(row)
+-- Over the quest's name only (row.name, sized to it): the card. The rest of the row lights
+-- up and takes clicks, but shows nothing.
+local function QuestEnter(hit)
+    local row = hit:GetParent()
     row.hover:Show()
     local entry = row.entry
     local kind = entry.kind
-    if not Tip(row, "ANCHOR_CURSOR_RIGHT", 16, 0) then return end
+    if not Tip(hit, "ANCHOR_CURSOR_RIGHT", 16, 0) then return end
     GameTooltip:SetText(entry.name)
     if row.forever then GameTooltip:AddLine(ForeverLine()) end
     if entry.turnin then
@@ -324,9 +339,18 @@ local function QuestEnter(row)
     GameTooltip:Show()
 end
 
-local function QuestLeave(row)
-    row.hover:Hide()
+local function QuestLeave(hit)
+    local row = hit:GetParent()
+    if not row:IsMouseOver() then row.hover:Hide() end
     GameTooltip:Hide()
+end
+
+local function RowEnter(row)
+    row.hover:Show()
+end
+
+local function RowLeave(row)
+    if not row.name:IsMouseOver() then row.hover:Hide() end
 end
 
 -- Right-click: the menu. Left-click on a quest in your log: its details beside the window.
@@ -336,6 +360,11 @@ local function QuestMouseUp(row, button)
     elseif row.entry.loggedID then
         View.QuestPanel.Show(row.entry.loggedID, row)
     end
+end
+
+-- A click on the name is the row's.
+local function NameClicked(hit, button)
+    QuestMouseUp(hit:GetParent(), button)
 end
 
 -- A click puts the waypoint on your map; a right-click shares where it is, with a map pin
@@ -356,8 +385,8 @@ local function ChainClicked(button)
     OpenChain(button, button:GetParent().quest)
 end
 
--- Its step in its chain, always shown so the slots line up: a quest on its own is 1/1,
--- muted, as the group count is at 0.
+-- Its step in its chain, in the accent. A quest on its own shows nothing there; the slot
+-- stays, so the icons beside it still line up.
 local function PaintChain(button)
     local color = button.chained and T.accentSoft or T.muted
     button.icon:SetVertexColor(color.r, color.g, color.b)
@@ -475,9 +504,16 @@ Kinds.quest = {
         row.where:SetJustifyH("LEFT")
         row.where:SetWordWrap(true)
         row:EnableMouse(true)
-        row:SetScript("OnEnter", QuestEnter)
-        row:SetScript("OnLeave", QuestLeave)
+        row:SetScript("OnEnter", RowEnter)
+        row:SetScript("OnLeave", RowLeave)
         row:SetScript("OnMouseUp", QuestMouseUp)
+        -- Over the title's text, as wide as the name shows (Set): its hover is the card.
+        row.name = CreateFrame("Button", nil, row)
+        row.name:SetPoint("TOPLEFT", row.title, "TOPLEFT", 0, 2)
+        row.name:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+        row.name:SetScript("OnEnter", QuestEnter)
+        row.name:SetScript("OnLeave", QuestLeave)
+        row.name:SetScript("OnClick", NameClicked)
         return row
     end,
     ---@param entry JournalQuestEntry the view's own entry
@@ -506,6 +542,7 @@ Kinds.quest = {
             chain.tip = chain.chained and ("Chain: step %d of %d"):format(entry.step, entry.steps)
                 or "On its own: no quest leads to it or follows it"
         end
+        chain:SetShown(entry.turnin ~= nil or chain.chained)
         PaintChain(chain)
         PaintMark(row.mark, entry)
         local color = entry.level and GetQuestDifficultyColor(entry.level) or T.fg
@@ -529,6 +566,8 @@ Kinds.quest = {
         row.where:SetWidth(compact and row:GetWidth() - left or width)
         row.where:SetText(Plain(entry.where))
         row.where:SetShown(not tight)
+        row.name:SetSize(math.max(1, math.min(math.ceil(row.title:GetStringWidth()), width)),
+            math.ceil(row.title:GetStringHeight()) + 4)
         local height = QUEST_TOP + math.ceil(row.title:GetStringHeight()) + QUEST_BOTTOM
         if not tight then height = height + QUEST_LINE_GAP + math.ceil(row.where:GetStringHeight()) end
         row.mark:ClearAllPoints()
@@ -547,3 +586,11 @@ Kinds.quest = {
         return height
     end,
 }
+
+-- How wide a quest row must be to show a title this wide in full, beside its level and the
+-- icons on its right (the quest tracker sizes itself by it).
+---@param titleWidth number
+---@return number width
+function View.QuestRowWidth(titleWidth)
+    return INDENT + QUEST_LEVEL_W + 4 + titleWidth + RIGHT_W + GAP * 2
+end

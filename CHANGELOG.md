@@ -3,6 +3,15 @@
 ## Unreleased
 
 ### Added
+- Dungeon Journal: Open Tracker in Dungeons (on by default, Dungeon Journal > Settings > Quests)
+  opens the quest tracker when you enter a dungeon with quests for you. Close it and it stays
+  closed until you leave that dungeon.
+- Dungeon Journal: Hide the Game's Quest Tracker (on by default, next to Open Tracker in
+  Dungeons): while the quest tracker is open in a dungeon, the game's own quest tracker is
+  hidden. It comes back when you close the tracker or leave, if it was up before.
+- Dungeon Journal: Shift+J opens it, as on retail. Bound once, the first time the Journal is
+  on, and only while Shift+J is free and nothing else opens the Journal; a key you change or
+  clear in Key Bindings stays as you set it.
 - Settings: click the dot beside a setting you changed to put it back to its default; hover it to
   see what the default is.
 - Aim Trainer (QoL > Travel, on by default): a shooting game for flight paths. Click the other
@@ -18,6 +27,19 @@
   flight starts, Nothing, the Quiz or the Aim Trainer (the default).
 
 ### Changed
+- Dungeon Journal: the quest tracker is titled Dungeon Quest Tracker (click it for the Journal's
+  settings), with a dropdown under it to show any dungeon with quests, its level range beside it.
+  The dropdown shows them all at once, each range in the quest log's colours for your level. It
+  widens to show its quests' names in full, and keeps room for a scrollbar only while the list
+  scrolls.
+- Dungeon Journal: the quest tracker's Share is Share All, and a cog under its quests opens its
+  settings (Dungeon Journal > Settings > Quests). It grows to 70% of the screen's height before
+  its list scrolls.
+- Dungeon Journal: a quest on its own shows no chain icon; one in a chain still shows its step.
+- Dungeon Journal: a quest's card shows on hovering its name only, on the quest tracker, the
+  dungeon's page and beside the map. The rest of its row still lights up and takes clicks.
+- Dungeon Journal: Link in Chat on a quest's menu sends the link straight away: to party chat in
+  a group, to Say out of one (the menu says which). With your chat box open it still goes there.
 - QoL has a Character tab: Character Panel, Slot Marks and Naowh Score moved there from the BiS
   List's settings, and Supporter Badges from Interface. The BiS List's page keeps what is about
   your BiS.

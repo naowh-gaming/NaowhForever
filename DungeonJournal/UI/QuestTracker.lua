@@ -16,14 +16,27 @@ local S = J.Settings
 local St = J.Style
 local PANEL_PAD, PANEL_HEADER = St.PANEL_PAD, St.PANEL_HEADER
 
-local TRACKER_W = 420     -- room for a quest's name beside its icons
-local MAX_H = 420         -- taller than this, it scrolls
-local SCROLL_GAP = 20     -- the view's right edge to the window's, for the scrollbar
-local SHARE_W, SHARE_H = 52, 20
+local MIN_W, MAX_W = 420, 640   -- it widens to show its longest quest name in full, up to MAX_W
+-- Taller than this it scrolls: 70% of the screen's height, at the window's scale, and 420 at
+-- the least.
+local MIN_MAX_H, SCREEN_SHARE = 420, 0.7
+local function MaxH()
+    local screen = (UIParent:GetHeight() or 0) * SCREEN_SHARE / ns.UIScale()
+    return math.max(MIN_MAX_H, math.floor(screen))
+end
+local SCROLL_GAP = 20     -- the view's right edge to the window's, for the scrollbar, while it scrolls
+local PICKER_H, PICKER_GAP = 24, 6   -- the dungeon dropdown under the title, and the room under it
+local TOP = PANEL_HEADER + 4 + PICKER_H + PICKER_GAP   -- the window's top to its quests
+local NAME_SIZE = 13      -- a quest row's title font (View/QuestRows.lua)
+local SHARE_W, SHARE_H = 70, 20
+local FOOTER = ns.Shared.Style.ACTION + 6   -- the cog under the quests, and the room above it
+local SETTINGS_PAGE = "Dungeon Journal/Settings"
 local TITLE_RIGHT = -34 - SHARE_W - 4   -- the title stops short of Share and the close button
 
-local panel, view
+local panel, view, scroll
+local scrolling = false   -- taller than MaxH(): the scrollbar has its room
 local shown               -- the dungeon it shows
+local closedIn            -- closed inside this dungeon (Open Tracker in Dungeons), until you leave it
 
 -- Where you left it, kept for the account.
 local function SavePosition()
@@ -41,21 +54,84 @@ local function Place()
     end
 end
 
--- As tall as its quests, up to MAX_H.
-local function Fit(height)
-    panel:SetHeight(math.min(MAX_H, PANEL_HEADER + 4 + height + PANEL_PAD))
+-- The width that shows every quest name of the dungeon in full, between MIN_W and MAX_W.
+local measured, measurePool = {}, {}
+local Parts = ns.Shared.Parts
+
+local function WidthFor(dungeon)
+    local widest = 0
+    if dungeon.quests then
+        for _, entry in ipairs(J.Quests.List(dungeon.quests, measured, measurePool)) do
+            local name = entry.name
+            if entry.quest and Parts.IsForever("quests", entry.quest[1]) then
+                name = name .. Parts.ForeverInline(11, Parts.CARD_DROP)
+            end
+            panel.measure:SetText(name)
+            local w = panel.measure.GetUnboundedStringWidth and panel.measure:GetUnboundedStringWidth()
+                or panel.measure:GetStringWidth()
+            widest = math.max(widest, math.ceil(w) + 1)
+        end
+    end
+    local gap = scrolling and SCROLL_GAP or 0
+    return math.max(MIN_W, math.min(MAX_W, J.View.QuestRowWidth(widest) + PANEL_PAD * 2 + gap))
+end
+
+-- The window, its dropdown and its list at width w; the list leaves the scrollbar room only
+-- while it scrolls.
+local function Size(w)
+    local gap = scrolling and SCROLL_GAP or 0
+    panel:SetWidth(w)
+    panel.picker:SetWidth(w - PANEL_PAD * 2)
+    scroll:SetPoint("BOTTOMRIGHT", -PANEL_PAD - gap, PANEL_PAD + FOOTER)
+    view:SetWidth(w - PANEL_PAD * 2 - gap)
+end
+
+-- The dropdown's names, each dungeon's range coloured for your level now.
+local function Labels()
+    for _, dungeon in ipairs(J.Dungeons()) do
+        local range = J.ColoredLevelRange(dungeon)
+        panel.dungeonNames[dungeon.key] = range and dungeon.name .. "  " .. range or dungeon.name
+    end
 end
 
 local function Draw(dungeon)
     shown = dungeon
-    panel.title:SetText(dungeon.name:upper())
+    Labels()
+    panel.picker._refreshLabel()
+    Size(WidthFor(dungeon))
     view:DrawTracker(dungeon)
 end
 
+-- As tall as its quests, up to MaxH(). Starting or stopping to scroll changes the list's
+-- width, so it is drawn again at the new one.
+local function Fit(height)
+    local maxH = MaxH()
+    panel:SetHeight(math.min(maxH, TOP + height + FOOTER + PANEL_PAD))
+    local scrolls = TOP + height + FOOTER + PANEL_PAD > maxH
+    if scrolls ~= scrolling then
+        scrolling = scrolls
+        C_Timer.After(0, function()
+            if panel:IsShown() and shown then Draw(shown) end
+        end)
+    end
+end
+
 -- PLAYER_ENTERING_WORLD: a new instance, and its dungeon when the Journal lists one.
+local SyncGameTracker   -- below: the game's quest tracker, hidden while this one is up in a dungeon
+
+-- A loading screen, or a new subzone inside (a shared instance's wing is told by it, and
+-- the subzone may only be known after the loading screen): it moves to the dungeon you are
+-- in when that changes, so one picked from the dropdown stays until you go elsewhere.
+local lastHere
+
 local function OnEvent()
     local here = J.Current()
-    if here and here[1] ~= shown then Draw(here[1]) end
+    local dungeon = here and here[1]
+    if dungeon ~= lastHere then
+        lastHere = dungeon
+        if dungeon and dungeon ~= shown then Draw(dungeon) end
+    end
+    SyncGameTracker()
 end
 
 local function DragStop(frame)
@@ -64,11 +140,19 @@ local function DragStop(frame)
 end
 
 local function OnShow(frame)
+    lastHere = J.Current() and J.Current()[1]
     frame:RegisterEvent("PLAYER_ENTERING_WORLD")
+    frame:RegisterEvent("ZONE_CHANGED")
+    frame:RegisterEvent("ZONE_CHANGED_INDOORS")
 end
 
+-- Closed while inside the dungeon it shows (its X, or Tracker again): Open Tracker in Dungeons
+-- leaves it closed there until you leave.
 local function OnHide(frame)
     frame:UnregisterAllEvents()
+    local here = J.Current()
+    if here and here[1] == shown then closedIn = shown end
+    SyncGameTracker()
 end
 
 -- In the Journal window's look rather than the plain dark panel's, so the two match side by
@@ -78,10 +162,9 @@ local function Paint()
 end
 
 local function Build()
-    panel = J.View.Parts.Panel("", true)
+    panel = J.View.Parts.Panel("DUNGEON QUEST TRACKER", true)
     panel.backdrop:Card(4, PANEL_HEADER, 4, 4)
     panel.title:SetTextColor(T.accentSoft.r, T.accentSoft.g, T.accentSoft.b)
-    panel:SetWidth(TRACKER_W)
     panel:SetFrameStrata("MEDIUM")
     panel:SetMovable(true)
     panel:RegisterForDrag("LeftButton")
@@ -98,7 +181,7 @@ local function Build()
     titleBtn:SetScript("OnEnter", function(self)
         panel.title:SetTextColor(T.accent.r, T.accent.g, T.accent.b)
         GameTooltip:SetOwner(self, "ANCHOR_LEFT")
-        GameTooltip:SetText("Dungeon Journal")
+        GameTooltip:SetText("Dungeon Quest Tracker")
         GameTooltip:AddLine("Click to open the Dungeon Journal settings.", T.accentSoft.r, T.accentSoft.g, T.accentSoft.b)
         GameTooltip:Show()
     end)
@@ -106,7 +189,7 @@ local function Build()
         panel.title:SetTextColor(T.accentSoft.r, T.accentSoft.g, T.accentSoft.b)
         GameTooltip:Hide()
     end)
-    panel.share = ns.Button(panel, "Share", SHARE_W, SHARE_H, function() J.Sharing.ShareAll(shown) end)
+    panel.share = ns.Button(panel, "Share All", SHARE_W, SHARE_H, function() J.Sharing.ShareAll(shown) end)
     panel.share:SetPoint("RIGHT", panel.close, "LEFT", -4, 0)
     panel.share:HookScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_LEFT")
@@ -123,11 +206,34 @@ local function Build()
         GameTooltip:Show()
     end)
     panel.share:HookScript("OnLeave", GameTooltip_Hide)
-    local scroll = ns.UI.SlimScroll(panel)
-    scroll:SetPoint("TOPLEFT", PANEL_PAD, -PANEL_HEADER - 4)
-    scroll:SetPoint("BOTTOMRIGHT", -PANEL_PAD - SCROLL_GAP, PANEL_PAD)
+    -- Bottom right, under the quests: the tracker's own settings, the Quests card on the
+    -- Journal's settings page.
+    panel.settings = J.View.Parts.IconButton(panel, function()
+        ns.OpenOptionsWindow(SETTINGS_PAGE)
+        ns.UI.GoToSetting(SETTINGS_PAGE, nil, SETTINGS_PAGE .. ":quests")
+    end, ns.UI.COGS_ICON, 0, "Dungeon Quest Tracker settings")
+    panel.settings:SetPoint("BOTTOMRIGHT", -PANEL_PAD, PANEL_PAD)
+    panel.settings.hint = "Opens the Quests settings of the Dungeon Journal."
+    -- Every dungeon the Journal has quests for, in its order, with its level range in the quest
+    -- log's colours for you (Labels, on every draw, as your level changes): the one it shows,
+    -- and a pick to show another. All of them at once, never scrolled.
+    local values, order = {}, {}
+    for _, dungeon in ipairs(J.Dungeons()) do
+        if dungeon.quests and #dungeon.quests.quests > 0 then order[#order + 1] = dungeon.key end
+    end
+    panel.dungeonNames = values
+    panel.picker = ns.UI.BuildDropdownControl(panel, MIN_W - PANEL_PAD * 2, panel:GetFrameLevel() + 3, values, order,
+        function() return shown and shown.key end,
+        function(key) Draw(J.Get(key)) end)
+    panel.picker:SetPoint("TOPLEFT", PANEL_PAD, -PANEL_HEADER - 4)
+    panel.picker._menuHeight = function() return UIParent:GetHeight() end
+    -- Measures the quest names (WidthFor), as a quest row writes them; never shown.
+    panel.measure = ns.Font(panel, NAME_SIZE)
+    panel.measure:Hide()
+    scroll = ns.UI.SlimScroll(panel)
+    scroll:SetPoint("TOPLEFT", PANEL_PAD, -TOP)
     view = J.View.New(scroll)
-    view:SetWidth(TRACKER_W - PANEL_PAD * 2 - SCROLL_GAP)
+    Size(MIN_W)
     view.tracker = true   -- it draws a dungeon's quests alone, each on one line
     view.onResize = Fit
     scroll:SetScrollChild(view)
@@ -136,23 +242,120 @@ local function Build()
     panel:SetScript("OnHide", OnHide)
 end
 
--- Opens the tracker on the dungeon's quests; on the dungeon it shows already, closes it.
----@param dungeon JournalDungeon
-function ns.OpenQuestTracker(dungeon)
+local function Show(dungeon)
     if not panel then Build() end
-    if panel:IsShown() and shown == dungeon then
-        panel:Hide()
-        return
-    end
     panel:SetScale(ns.UIScale())
     Paint()
     Place()
     panel:Show()
     Draw(dungeon)
+    SyncGameTracker()
 end
+
+-- Opens the tracker on the dungeon's quests; on the dungeon it shows already, closes it.
+---@param dungeon JournalDungeon
+function ns.OpenQuestTracker(dungeon)
+    if panel and panel:IsShown() and shown == dungeon then
+        panel:Hide()
+        return
+    end
+    Show(dungeon)
+end
+
+-------------------------------------------------------------------------------
+--  Hide the Game's Quest Tracker (hideGameTracker)
+-------------------------------------------------------------------------------
+-- While the tracker is up inside a dungeon, the game's quest tracker (ObjectiveTrackerFrame)
+-- is hidden, and shown again on closing the tracker or leaving, only if it was up before.
+-- It is hidden rather than faded: faded, its quest lines still take clicks. Edit Mode runs
+-- its Hide and Show through protected code, blocked in combat, so they are only called out
+-- of combat (a loading screen always is); a Show the game makes in combat is faded instead,
+-- and hidden properly once combat ends.
+local gameHidden, gameWasShown = false, false
+local gameHooked, regenFrame
+
+local function HideGame(frame)
+    if InCombatLockdown() then
+        frame:SetAlpha(0)
+        if not regenFrame then
+            regenFrame = CreateFrame("Frame")
+            regenFrame:SetScript("OnEvent", function(self)
+                self:UnregisterAllEvents()
+                SyncGameTracker()
+            end)
+        end
+        regenFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
+    else
+        frame:SetAlpha(1)
+        frame:Hide()
+    end
+end
+
+function SyncGameTracker()
+    local frame = _G.ObjectiveTrackerFrame
+    if not frame then return end
+    local hide = S.Get("enabled") and S.Get("hideGameTracker") and panel ~= nil and panel:IsShown()
+        and J.Current() ~= nil
+    if hide then
+        if not gameHooked then
+            gameHooked = true
+            hooksecurefunc(frame, "Show", function(self)
+                if gameHidden then HideGame(self) end
+            end)
+        end
+        if not gameHidden then
+            gameHidden, gameWasShown = true, frame:IsShown()
+        end
+        if frame:IsShown() then HideGame(frame) end
+    elseif gameHidden then
+        if InCombatLockdown() then return HideGame(frame) end
+        gameHidden = false
+        frame:SetAlpha(1)
+        if gameWasShown and not frame:IsShown() then frame:Show() end
+    end
+end
+
+-------------------------------------------------------------------------------
+--  Open Tracker in Dungeons (trackerAuto)
+-------------------------------------------------------------------------------
+-- Entering a dungeon the Journal lists, with quests for you there, opens the tracker on it.
+-- Closed inside it, it stays closed until you leave. Listened for only while the Journal
+-- and the option are on.
+local autoFrame
+
+local function OnEnterWorld()
+    local here = J.Current()
+    local dungeon = here and here[1]
+    if dungeon ~= closedIn then closedIn = nil end
+    if not dungeon or dungeon == closedIn or (panel and panel:IsShown() and shown == dungeon) then return end
+    local data = dungeon.quests
+    if not data then return end
+    local toPickUp, inLog = J.Quests.Count(data)
+    if toPickUp + inLog > 0 then Show(dungeon) end
+end
+
+local function SyncAuto()
+    local on = S.Get("enabled") and S.Get("trackerAuto")
+    if not (on or autoFrame) then return end
+    if not autoFrame then
+        autoFrame = CreateFrame("Frame")
+        autoFrame:SetScript("OnEvent", OnEnterWorld)
+    end
+    if on then
+        autoFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
+        -- Where you are now too: after a /reload this runs inside that loading screen's own
+        -- PLAYER_ENTERING_WORLD, too late to hear it, so a reload in a dungeon opened nothing.
+        OnEnterWorld()
+    else
+        autoFrame:UnregisterAllEvents()
+    end
+end
+hooksecurefunc(ns, "Apply", SyncAuto)
 
 -- The Journal switched off: the tracker goes with it. Its Opacity: the tracker follows.
 S.OnChange(function(key)
+    if key == "enabled" or key == "trackerAuto" then SyncAuto() end
+    if key == "enabled" or key == "hideGameTracker" then SyncGameTracker() end
     if not panel then return end
     if key == "enabled" and not S.Get("enabled") then
         panel:Hide()

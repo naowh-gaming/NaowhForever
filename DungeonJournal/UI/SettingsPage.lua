@@ -111,10 +111,16 @@ end
 
 local function QuestsSummary(store)
     local ask, accept = store.Get("shareRequests"), store.Get("acceptShared")
-    if ask and accept then return "Asks and accepts shared quests" end
-    if ask then return "Asks for shared quests" end
-    if accept then return "Accepts shared quests" end
-    return "Off"
+    local text = "Off"
+    if ask and accept then
+        text = "Asks and accepts shared quests"
+    elseif ask then
+        text = "Asks for shared quests"
+    elseif accept then
+        text = "Accepts shared quests"
+    end
+    if store.Get("trackerAuto") then text = text == "Off" and "Tracker in dungeons" or text .. ", tracker in dungeons" end
+    return text
 end
 
 local function WindowSummary(store)
@@ -153,9 +159,16 @@ page:Card({
 
 page:Card({
     id = "quests", name = "Quests", order = 30,
-    help = "Sharing dungeon quests with a group that runs Naowh Forever.",
+    help = "The quest tracker, and sharing dungeon quests with a group that runs Naowh Forever.",
     summary = QuestsSummary,
     rows = {
+        { key = "trackerAuto", label = "Open Tracker in Dungeons", toggle = true, needs = JournalOn, why = JOURNAL_OFF,
+          help = "Entering a dungeon with quests for you opens the quest tracker on it, as Tracker on its page "
+              .. "does. Close it and it stays closed until you leave the dungeon." },
+        { key = "hideGameTracker", label = "Hide the Game's Quest Tracker", toggle = true, needs = JournalOn,
+          why = JOURNAL_OFF,
+          help = "While the quest tracker is open in a dungeon, the game's own quest tracker is hidden. It comes "
+              .. "back when you close the tracker or leave the dungeon." },
         { key = "shareRequests", label = "Quest Share Requests", toggle = true, needs = JournalOn, why = JOURNAL_OFF,
           help = "Click the group icon on a dungeon quest you do not have: the members on it are asked one at a "
               .. "time, and the first running Naowh Forever shares it. Off, you neither ask nor answer." },

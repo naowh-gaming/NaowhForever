@@ -675,3 +675,25 @@ BINDING_NAME_NAOWHFOREVER_JOURNAL = "Open Dungeon Journal"
 function NaowhForever_ToggleJournal()
     ns.ToggleJournalWindow()
 end
+
+-- Shift+J opens the Journal by default, as it opens the Adventure Guide on retail. Bound
+-- once per account, the first time the Journal is on outside combat, and only while nothing
+-- opens the Journal yet and Shift+J is free; never again after that, so a key you clear or
+-- change in Key Bindings stays as you set it.
+local DEFAULT_KEY = "SHIFT-J"
+
+local function DefaultBinding()
+    if not S.Get("enabled") or InCombatLockdown() then return end
+    local account = ns.AccountSettings()
+    if account.journalKeySet then return end
+    account.journalKeySet = true
+    if GetBindingKey("NAOWHFOREVER_JOURNAL") then return end
+    local taken = GetBindingAction(DEFAULT_KEY)
+    if taken and taken ~= "" then return end
+    SetBinding(DEFAULT_KEY, "NAOWHFOREVER_JOURNAL")
+    SaveBindings(GetCurrentBindingSet())
+end
+hooksecurefunc(ns, "Apply", DefaultBinding)
+S.OnChange(function(key)
+    if key == "enabled" then DefaultBinding() end
+end)
