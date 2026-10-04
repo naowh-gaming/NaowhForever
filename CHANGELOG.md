@@ -49,6 +49,8 @@
   upgrade line and bag arrows wait while the game keeps your stats hidden, Naowh Score copes with
   a player it can no longer read, and the supporter plate and ID lines stop hooking the game's
   tooltip, which was reported breaking its own player-name colours.
+- Loot Feed: looting coins again while the Coins line is still up adds to it instead of throwing
+  a Lua error, and the loot after that line fades shows up again.
 
 ## 0.5.19-beta
 
