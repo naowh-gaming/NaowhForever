@@ -15,7 +15,7 @@ Shared/
                gear slots, what fits where, what you wear, weapons in short ("1h Sword"),
                waiting on item data
   Places.lua   zones by name, and showing one on the world map
-  Parts.lua    components: rank stars, item icon and its check, links, icon buttons, the
+  Parts.lua    components: rank stars, item icon and its check, an item's slot marks (item level, star, Forever's mark), links, icon buttons, the
                backdrop and its cards, panels, the side panel, chat sharing, lined-up numbers
   Window.lua   a window: the frame, title bar, icons, opacity slider, switch, search, footer,
                and a module's card on its settings page

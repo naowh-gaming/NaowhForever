@@ -87,7 +87,7 @@ local S = UI.ModuleSettings("qol", {
     townBank = true, townStable = false, townRepair = true, townSupplies = true,
     townVendors = false, townMail = false, townPinSize = 16,
     gearSets = true, gearBarVisible = true, trinketBar = false, trinketSize = 36, trinketSpacing = 4, gearBarSize = 32, gearMounted = "", gearResting = "",
-    bis = true, bisTooltip = true, bisLootAlert = true, bisWindowAlpha = 1,
+    bis = true, bisTooltip = true, bisBagMarks = false, bisLootAlert = true, bisWindowAlpha = 1,
     -- Drop Alert: which picks, what it does, and its on-screen alert (BiS/View/Toast.lua).
     bisAlertFor = "all", bisAlertChat = true, bisAlertBadge = true, bisToast = true,
     bisDropSound = "game:raidwarning", bisYoursSound = "game:epicloot",

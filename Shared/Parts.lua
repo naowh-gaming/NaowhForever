@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
 --  Parts.lua -- the components a page is made of (ns.Shared.Parts): the chevron, text links,
---  icon buttons, icons inline in text, rank stars, an item's icon, the backdrop with its
+--  icon buttons, icons inline in text, rank stars, an item's icon and its marks, the backdrop with its
 --  cards, the panel a view sits in and the side panel that opens beside a window, numbers
 --  lined up to the pixel, and sharing a line in chat. A window's own pieces (title bar,
 --  opacity, switch, search, footer) are Window.lua's.
@@ -17,6 +17,15 @@ local PANEL_HEADER, PANEL_BUTTONS = St.PANEL_HEADER, St.PANEL_BUTTONS
 local CARD_FILL, CARD_EDGE = St.WINDOW_CARD_FILL, St.WINDOW_CARD_EDGE
 -- Forever's mark on an icon's corner: this share of the icon tall, never under FOREVER_MIN.
 local FOREVER_MIN, FOREVER_SHARE = 7, 0.32
+-- An item's marks on a slot (Parts.ItemMarks): the item level and the star this big, outlined,
+-- this far in from the icon's edge, over a shade this share of the icon tall and this dark at
+-- its foot, so the numbers read on any icon's art.
+local MARK_SIZE, MARK_IN = 13, 2
+local SHADE_SHARE, SHADE_ALPHA = 0.5, 0.8
+-- The star 1px over the line's middle (a negative drop raises it), level with the item level's
+-- outlined digits across the icon; a tooltip's 1px drop left it low (seen in game, 3 Oct 2026).
+local MARK_STAR_DROP = -1
+Parts.MARK_IN = MARK_IN
 
 -------------------------------------------------------------------------------
 --  Icons in text
@@ -179,6 +188,18 @@ function Parts.Arrow(parent, size, color)
 end
 local Arrow = Parts.Arrow
 
+-- WoW Forever's mark in an icon's top-left corner, just inside its edge: no box, its own dark
+-- outline keeps it readable on the icon's art. Hidden until shown.
+local function IconForever(over, size)
+    local h = math.max(FOREVER_MIN, math.floor(size * FOREVER_SHARE))
+    local sign = Smooth(over:CreateTexture(nil, "OVERLAY"), St.FOREVER_ICON)
+    sign:SetVertexColor(FOREVER_RGB.r, FOREVER_RGB.g, FOREVER_RGB.b)
+    sign:SetSize(h * 2, h)
+    sign:SetPoint("TOPLEFT", 1, -1)
+    sign:Hide()
+    return sign
+end
+
 -- icon.texture is what to set.
 function Parts.ItemIcon(parent, size)
     local frame = CreateFrame("Frame", nil, parent)
@@ -187,24 +208,54 @@ function Parts.ItemIcon(parent, size)
     frame.texture = Smooth(frame:CreateTexture(nil, "ARTWORK"))
     ns.PixelInset(frame.texture, 1)
     frame.texture:SetTexCoord(0.08, 0.92, 0.08, 0.92)
-    -- WoW Forever's mark in the opposite corner, just inside the icon's edge: no box, its own
-    -- dark outline keeps it readable on the icon's art.
-    local h = math.max(FOREVER_MIN, math.floor(size * FOREVER_SHARE))
-    local forever = CreateFrame("Frame", nil, frame)
-    forever:SetSize(h * 2, h)
-    forever:SetPoint("TOPLEFT", 1, -1)
-    forever:SetFrameLevel(frame:GetFrameLevel() + 3)
-    local sign = Smooth(forever:CreateTexture(nil, "OVERLAY"), St.FOREVER_ICON)
-    sign:SetVertexColor(FOREVER_RGB.r, FOREVER_RGB.g, FOREVER_RGB.b)
-    sign:SetAllPoints()
-    frame.forever = forever
-    forever:Hide()
+    local over = CreateFrame("Frame", nil, frame)
+    over:SetAllPoints()
+    over:SetFrameLevel(frame:GetFrameLevel() + 3)
+    frame.forever = IconForever(over, size)
     return frame
 end
 
 -- Forever's badge on an item icon, for an item new in Forever.
 function Parts.MarkForever(icon, itemID)
     icon.forever:SetShown(Parts.IsForever("items", itemID))
+end
+
+-- An item's marks on a slot, the same wherever we draw one (the BiS List's paperdoll, the
+-- character panel, your bags): its item level in the bottom-right, your BiS's star in the
+-- bottom-left, Forever's mark in the top-left, and a shade rising from the foot behind them.
+-- A frame over icon (an item icon of ours, whose own Forever mark it takes, or a game's button);
+-- size is the icon's. Painted with Parts.PaintItemMarks.
+function Parts.ItemMarks(icon, size)
+    local set = CreateFrame("Frame", nil, icon)
+    set:SetAllPoints()
+    set:SetFrameLevel(icon:GetFrameLevel() + 4)
+    local shade = set:CreateTexture(nil, "ARTWORK")
+    shade:SetColorTexture(1, 1, 1, 1)
+    shade:SetGradient("VERTICAL", CreateColor(0, 0, 0, SHADE_ALPHA), CreateColor(0, 0, 0, 0))
+    shade:SetPoint("BOTTOMLEFT", 1, 1)
+    shade:SetPoint("BOTTOMRIGHT", -1, 1)
+    shade:SetHeight(size * SHADE_SHARE)
+    set.shade = shade
+    set.level = ns.Font(set, MARK_SIZE, "OUTLINE", T.fg)
+    set.level:SetPoint("BOTTOMRIGHT", -MARK_IN, MARK_IN)
+    set.rank = ns.Font(set, MARK_SIZE, "OUTLINE", T.fg)
+    set.rank:SetPoint("BOTTOMLEFT", MARK_IN, MARK_IN)
+    set.forever = icon.forever or IconForever(set, size)
+    return set
+end
+
+-- level: the item level (none at 1 or under); rank: your list's rank for it, for its star;
+-- forever: whether it is new in Forever. The shade only behind a number or a star.
+---@param level? number|false
+---@param rank? number
+---@return boolean shown whether it shows an item level
+function Parts.PaintItemMarks(set, level, rank, forever)
+    local shown = level and level > 1 or false
+    set.level:SetText(shown and level or "")
+    set.rank:SetText(rank and Parts.RankMark(rank, MARK_STAR_DROP) or "")
+    set.forever:SetShown(forever == true)
+    set.shade:SetShown(shown or rank ~= nil)
+    return shown
 end
 
 -- The tooltip's owner set, for a hover card; nothing while a menu is open, so moving the mouse

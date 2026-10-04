@@ -22,14 +22,15 @@
     <Script file="Alerts.lua"/>
     <Script file="Quests.lua"/>
     <Script file="Sources.lua"/>
-    <!-- Drawing a page: its look, the view, its rows, a pick's menu, the paperdoll and the
-         Quests page -->
+    <!-- Drawing a page: its look, the view, its rows, a pick's menu, the paperdoll, the drop
+         toast, the marks on your bags' items and the Quests page -->
     <Script file="View\Style.lua"/>
     <Script file="View\View.lua"/>
     <Script file="View\Rows.lua"/>
     <Script file="View\ScoreCard.lua"/>
     <Script file="View\Paperdoll.lua"/>
     <Script file="View\Toast.lua"/>
+    <Script file="View\Bags.lua"/>
     <Script file="View\QuestsPage.lua"/>
     <!-- Where it shows: what you can do with a list, a slot's picker, the window, the settings page -->
     <Script file="UI\Actions.lua"/>

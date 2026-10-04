@@ -31,6 +31,7 @@ read_globals = {
     "AnchorUtil", "AuraContainerSortMethod", "AuraUtil", "BACKPACK_CONTAINER", "BigWigsLoader",
     "bit", "BNET_CLIENT_WOW", "BNGetInfo", "BNGetNumFriends", "BreakUpLargeNumbers", "BuyMerchantItem", "BuyTrainerService",
     "canaccessallvalues", "canaccesstable", "canaccessvalue", "CanInspect", "CanMerchantRepair",
+    "ContainerFrameContainer", "ContainerFrameCombinedBags",
     "CharacterFrame", "CharacterFrameTitleText", "CharacterLevelText", "CharacterLevelTextBackground",
     "CharacterModelScene", "CharacterStatsPaneScrollBox", "CharacterFrameRightPaneHostStoneBg", "ScrollUtil",
     "CR_HIT_MELEE", "GetBlockChance", "GetCombatRatingBonus", "GetCritChance", "GetDodgeChance",

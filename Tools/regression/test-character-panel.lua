@@ -303,23 +303,23 @@ for _, button in ipairs(buttons) do Update(button) end
 local h, c, w, s = Ours(head), Ours(chest), Ours(weapon), Ours(shirt)
 check("ours over every slot, each knowing its slot", h and h.slot == 1 and c.slot == 5 and s.slot == 4)
 check("an empty ammo slot (the game says item 0) is empty, its level not asked for",
-    Ours(buttons[0]).level.text == "" and Ours(buttons[0]).forever.shown == false)
+    Ours(buttons[0]).marks.level.text == "" and Ours(buttons[0]).marks.forever.shown == false)
 check("each slot's edge in its item's quality colour; an empty one black", h.edge.r == 0.64 and s.edge.r == 0)
-check("its item level in the corner; none for an empty slot or a level 1 item", h.level.text == 30
-    and c.level.text == 25 and w.level.text == "" and s.level.text == "")
-check("Forever's mark on an item new in Forever, only there", h.forever.shown == true and c.forever.shown == false)
-check("your BiS's star on it, nothing on what is not on your list", h.rank.text ~= "" and c.rank.text == "")
+check("its item level in the corner; none for an empty slot or a level 1 item", h.marks.level.text == 30
+    and c.marks.level.text == 25 and w.marks.level.text == "" and s.marks.level.text == "")
+check("Forever's mark on an item new in Forever, only there", h.marks.forever.shown == true and c.marks.forever.shown == false)
+check("your BiS's star on it, nothing on what is not on your list", h.marks.rank.text ~= "" and c.marks.rank.text == "")
 check("where your BiS is something you do not wear: no arrow, nothing on the slot", c.up == nil
-    and c.rank.text == "" and state.gains == 0)
+    and c.marks.rank.text == "" and state.gains == 0)
 check("the enchant dot where a better enchant waits", c.wand.shown == true and h.wand.shown == false)
 Update(chest)
 
 -- Settings: each part on its own.
 S.Set("characterPanelLevels", false)
-check("Item Level off: no levels", h.level.text == "" and c.level.text == "")
+check("Item Level off: no levels", h.marks.level.text == "" and c.marks.level.text == "")
 S.Set("characterPanelLevels", true)
 S.Set("characterPanelMarks", false)
-check("BiS Marks off: no star, no mark", h.rank.text == "" and h.forever.shown == false)
+check("BiS Marks off: no star, no mark", h.marks.rank.text == "" and h.marks.forever.shown == false)
 S.Set("characterPanelMarks", true)
 S.Set("characterPanelEnchants", false)
 check("Enchant Dots off: no dot", c.wand.shown == false)
@@ -403,8 +403,8 @@ check("Stamina and Armor shown whatever your spec weighs them, without a bar", r
 local openedPage
 ns.OpenOptionsWindow = function(page) openedPage = page end
 spec.weights.scripts.OnClick(spec.weights)
-check("under the rows, a link to the stat weights, to change them", spec.weights.text.text == "Edit stat weights"
-    and openedPage == "BiS List/Stat Weights")
+check("on the title's line, the scales: a click to the stat weights, to change them",
+    spec.weights.tip == "Stat Weights" and openedPage == "BiS List/Stat Weights")
 check("not what it does not weigh", rows[6].shown == false)
 -- 300 tall, less the title and headings (48) and the bottom gap (4): 5 rows would get 49 each,
 -- held to the roomy 30.
@@ -458,10 +458,10 @@ env.EllesmereUI = { GetBlizzWindowStyle = function(key) return key == "charsheet
 S.Set("characterPanel", true)
 check("EllesmereUI styles the panel: Naowh's stands down", not CP.On() and head.normal.alpha == 1
     and h.shown == false)
-local paints = h.level.text
+local paints = h.marks.level.text
 state.links.link1 = 31
 Update(head)
-check("and the game's updates paint nothing of ours", h.level.text == paints)
+check("and the game's updates paint nothing of ours", h.marks.level.text == paints)
 env.EllesmereUI = { GetBlizzWindowStyle = function() return "off" end }
 S.Set("characterPanel", true)
 check("its sheet at Blizz Default: Naowh's is on again", CP.On() and head.normal.alpha == 0 and h.shown == true)

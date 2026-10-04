@@ -233,6 +233,8 @@ local function Fixture()
             t[key] = function(...) original(...); fn(...) end
         end,
         C_Timer = { After = function(_, fn) state.timers[#state.timers + 1] = fn end },
+        -- Bag Marks' bag reads (its own test is test-bag-marks's; off here).
+        C_Container = { GetContainerItemID = function() end, GetContainerItemLink = function() end },
         C_Item = {
             GetItemInfoInstant = function(item)
                 local id = tonumber(tostring(item):match("item:(%d+)")) or item
@@ -307,7 +309,7 @@ local Measure = dofile("Tools/regression/measure.lua")(check)
 -------------------------------------------------------------------------------
 local ns, state, S = Fixture()
 local B = ns.BiS
-check("BiS.xml loads its files", #TocFiles("^BiS/.*%.lua$") == 25)
+check("BiS.xml loads its files", #TocFiles("^BiS/.*%.lua$") == 26)
 
 ns.OpenBisWindow()
 local view = Views(state, B)[1]
@@ -365,7 +367,9 @@ local function DollButton(slot)
 end
 local head, neck = DollButton(1), DollButton(2)
 check("a BiS you wear has the green line under its icon", head.worn.shown == true)
-check("and its item level in the corner", head.level.text ~= nil and head.level.text ~= "")
+check("and the marks every slot has: its item level in the corner, no star (each is your BiS)",
+    head.marks.level.text ~= nil and head.marks.level.text ~= "" and head.marks.rank.text == ""
+    and head.marks.forever == head.iconFrame.forever)
 check("one you do not wear has no line, and keeps its colour", head.iconFrame.badge == nil
     and neck.worn.shown == false
     and neck.icon.desaturated == false)
@@ -849,8 +853,9 @@ ns.UI.Widgets = {
 }
 ns.UI.STATUS, ns.UI.KeyField = { untested = "" }, NOTHING
 local bottom = ns.BuildQoLBiSSettingsPage(page, 0)
-check("the page is shorter: about 790 tall", bottom < -780 and bottom > -800)
+check("the page is shorter: about 840 tall, Bag Marks' row included", bottom < -830 and bottom > -850)
 check("its rows by their new names", cfgs["Your List"] and cfgs["Key Binding"] and cfgs["Manage Lists"]
+    and cfgs["Bag Marks"]
     and #cfgs["Manage Lists"].buttons == 5 and not cfgs["Test Drop Alert"] and not cfgs["Open BiS List"])
 check("what Drop Alert does needs the module and Drop Alert on", cfgs["Chat Line"].on[2] == "bisLootAlert"
     and cfgs["Alert For"].on[1] == "bis" and cfgs["Drop Alert"].on[1] == "bis")

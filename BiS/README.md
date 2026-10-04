@@ -43,6 +43,8 @@ BiS/
                      out, and what your BiS gets you
     QuestsPage.lua   the Quests page: the Journal's quest and item rows, on a Journal view
     Toast.lua        Drop Alert's alert on screen, drawn by your settings, live and in its preview (B.Toast)
+    Bags.lua         Bag Marks: the slot marks (Shared.Parts.ItemMarks) on your bags' items, the
+                     game's bags or EllesmereUI's through its overlay hook
   UI/
     Actions.lua      new, rename, delete, import, export, test: the window and page share them
     Picker.lua       a slot's picker, in a side panel beside the window

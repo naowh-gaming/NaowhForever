@@ -67,8 +67,8 @@
   it for the BiS List). Its stats show your spec's first: the stats your spec weighs, in a fixed
   order (Agility, Strength, Attack Power, Crit, Hit, Haste, then Stamina and Armor), each with
   a bar for what it is worth against your spec's yardstick (VS AGI) and your total now; hover a
-  row for what the stat is worth and what it does. A switch at the bottom gives the game's All
-  Stats. A BiS List
+  row for what the stat is worth and what it does, or click the scales by its title to change
+  the weights. A switch at the bottom gives the game's All Stats. A BiS List
   button replaces the model's zoom buttons (drag the model to turn it, scroll to zoom). Your
   supporter badge sits big in its top corner; without one, the Legendary badge in grey: click
   it for what it is and where it shows, with more on Naowh's Discord.
@@ -77,6 +77,10 @@
   Forever's mark on what is new in Forever, your BiS's star, and a dot where a better enchant
   waits. With EllesmereUI, turning it on swaps EllesmereUI's character panel for
   this one, and turning it off swaps them back (after a reload).
+- Bag Marks (BiS List > Settings, off by default): the BiS List's slot marks on the items in
+  your bags: each piece of gear's item level, your BiS's star and Forever's mark on what is new
+  in Forever. Works in the game's bags and in EllesmereUI's bags, reagent bag and bank, where
+  ours replace its item level and leave room for its BoE text and Pawn's upgrade arrow.
 - Stat Weights (BiS List > Stat Weights, and the scales in the BiS List's title bar): what each
   stat is worth to your spec, which it reads from your talents, only the stats it uses, each a
   bar and a number you can type over, with your BiS list's best upgrades by them right under

@@ -174,7 +174,9 @@ local function Build()
         -- The link itself in the pane's top-right corner, on your badge's middle (Badge.lua),
         -- beside the game's toggle for the stats.
         local bis = ns.Shared.Parts.Link(cover, function() ns.OpenBisWindow() end, true)
-        ns.Shared.Parts.SetLink(bis, "BiS List")
+        -- The BiS star before its name, as the BiS List marks your BiS.
+        ns.Shared.Parts.SetLink(bis, ns.Shared.Parts.Inline(St.STAR, St.BIS_RGB, ns.Shared.Parts.CARD_DROP)
+            .. " BiS List")
         bis:SetPoint("RIGHT", frame.LeftPaneHost, "TOPRIGHT", -(TOGGLE_EDGE + TOGGLE_W + LINK_GAP),
             -(CP.BADGE_MID or 32))
         chrome.cover = cover

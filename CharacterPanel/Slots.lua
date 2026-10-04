@@ -1,15 +1,15 @@
 -------------------------------------------------------------------------------
 --  Slots.lua -- the character panel's slots in the BiS List's look: the icon cropped in a 1px
 --  edge of its quality's colour, its item level in the corner, Forever's mark on what is new in
---  Forever, the enchant dot while a better enchant waits, and your BiS's star. Where your BiS
---  is something else, nothing here says so: it shows in your bags with its star.
+--  Forever, the enchant dot while a better enchant waits, and your BiS's star: the marks every
+--  slot of ours has (Shared.Parts.ItemMarks). Where your BiS is something else, nothing here
+--  says so: it shows in your bags with its star.
 --
 --  Blizzard's own slot buttons stay where they are and do what they do: ours is a frame over
 --  each (state on it, none on theirs), their art faded, painted from a post-hook of the game's
 --  slot update. Turned off, the art comes back and ours hides.
 -------------------------------------------------------------------------------
 local ns = _G.NaowhForever
-local T = ns.THEME
 local S = ns.QoLSettings
 local CP = ns.CharacterPanel
 local B = ns.BiS
@@ -19,17 +19,6 @@ local Items, Parts, St = Shared.Items, Shared.Parts, Shared.Style
 local GetInventoryItemID = GetInventoryItemID
 local GetInventoryItemLink = GetInventoryItemLink
 local GetDetailedItemLevelInfo = C_Item.GetDetailedItemLevelInfo
-
--- The game's slots are smaller than the BiS List's (37px), so the marks are a size up and a
--- shade rises from the icon's bottom behind them, for the numbers to read on any icon's art.
-local LEVEL_SIZE = 13     -- the item level, in the icon's bottom-right corner
-local RANK_SIZE = 13      -- your BiS's star, in the bottom-left
--- The star 1px over the line's middle (a negative drop raises it), level with the item level's
--- outlined digits across the icon; a tooltip's 1px drop left it low (seen in game, 3 Oct 2026).
-local STAR_DROP = -1
-local FOREVER_H = 10      -- Forever's mark, in the top-left corner
-local MARK_IN = 2         -- the corner marks this far in from the icon's edge
-local SHADE_SHARE, SHADE_ALPHA = 0.5, 0.8   -- the shade: this share of the icon tall, this dark at its foot
 
 -- Inventory slot -> the game's button for it ("Character" .. name .. "Slot").
 local SLOTS = {
@@ -65,13 +54,9 @@ local function Paint(over)
     local color = id and Items.QualityColor(id) or St.BORDER_RGB
     over.edge:SetColor(color.r, color.g, color.b, 1)
     local link = id and S.Get("characterPanelLevels") and GetInventoryItemLink("player", slot)
-    local level = link and GetDetailedItemLevelInfo(link)
-    over.level:SetText(level and level > 1 and level or "")
-    over.shade:SetShown(id ~= nil)
     local marks = id and S.Get("characterPanelMarks")
-    over.forever:SetShown(marks and Parts.IsForever("items", id) or false)
-    local rank = marks and ns.IsBisItem(id)
-    over.rank:SetText(rank and Parts.RankMark(rank, STAR_DROP) or "")
+    Parts.PaintItemMarks(over.marks, link and GetDetailedItemLevelInfo(link), marks and ns.IsBisItem(id) or nil,
+        marks and Parts.IsForever("items", id))
     if S.Get("characterPanelEnchants") and id then
         B.View.PaintEnchantBadge(over.wand, slot)
     else
@@ -102,18 +87,7 @@ local function Over(button, slot)
     local ring = CreateFrame("Frame", nil, over)
     ns.PixelInset(ring, -1, over)
     ns.Border(ring, St.BORDER_RGB)
-    over.shade = over:CreateTexture(nil, "ARTWORK")
-    over.shade:SetColorTexture(1, 1, 1, 1)
-    over.shade:SetGradient("VERTICAL", CreateColor(0, 0, 0, SHADE_ALPHA), CreateColor(0, 0, 0, 0))
-    over.shade:SetPoint("BOTTOMLEFT", 1, 1)
-    over.shade:SetPoint("BOTTOMRIGHT", -1, 1)
-    over.shade:SetHeight(button:GetHeight() * SHADE_SHARE)
-    over.level = ns.Font(over, LEVEL_SIZE, "OUTLINE", T.fg)
-    over.level:SetPoint("BOTTOMRIGHT", -MARK_IN, MARK_IN)
-    over.forever = Parts.ForeverMark(over, FOREVER_H)
-    over.forever:SetPoint("TOPLEFT", 1, -1)
-    over.rank = ns.Font(over, RANK_SIZE, "OUTLINE", T.fg)
-    over.rank:SetPoint("BOTTOMLEFT", MARK_IN, MARK_IN)
+    over.marks = Parts.ItemMarks(over, button:GetHeight())
     over.wand = B.View.EnchantBadge(over)
     return over
 end

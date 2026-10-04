@@ -44,9 +44,7 @@ local TITLE_SIZE, HEAD_SIZE = 11, 10
 local LINE_Y = SECTION_TOP + 16
 local HEAD_GAP = 5           -- the headings under the line
 local ROWS_TOP = LINE_Y + 20
--- Under the rows, over the switch: a link to the stat weights, to change them.
-local LINK_H, LINK_GAP = 18, 4
-local ROWS_BOTTOM = LINK_GAP + LINK_H + LINK_GAP   -- the last row clear of the link
+local ROWS_BOTTOM = 4        -- the last row clear of the switch's gap
 -- A row's height: the room down to the switch shared out, never over ROW_MAX (a few stats
 -- stay a list, not a spread), in bigger type from ROW_ROOMY up; ROW_FLOOR only when a spec
 -- weighs more than the pane can hold.
@@ -392,10 +390,12 @@ local function Build()
     view:EnableMouseWheel(true)
     view:SetScript("OnEvent", OnEvent)
     view:SetScript("OnSizeChanged", Resized)
-    -- The weights these come from, a click away: change them as you like.
-    local weights = Parts.Link(view, function() ns.OpenOptionsWindow("BiS List/Stat Weights") end, true)
-    Parts.SetLink(weights, "Edit stat weights")
-    weights:SetPoint("BOTTOMRIGHT", view, "BOTTOMRIGHT", -EDGE, LINK_GAP)
+    -- The weights these come from, a click away on the title's line: the scales, as the BiS
+    -- List's title bar has them for Stat Weights.
+    local weights = Parts.IconButton(view, function() ns.OpenOptionsWindow("BiS List/Stat Weights") end,
+        ns.Shared.Style.SCALES, nil, "Stat Weights")
+    weights.hint = "What each stat is worth to your spec: change them as you like."
+    weights:SetPoint("RIGHT", view, "TOPRIGHT", -EDGE, -(SECTION_TOP + TITLE_SIZE / 2))
     view.weights = weights
     view.title = ns.Font(view, TITLE_SIZE, nil, T.accentSoft)
     view.title:SetPoint("TOPLEFT", EDGE, -SECTION_TOP)

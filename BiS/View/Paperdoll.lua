@@ -18,7 +18,6 @@ local St = B.Style
 local SLOT, SLOT_GAP, MODEL_GAP, DOLL_W = St.SLOT, St.SLOT_GAP, St.MODEL_GAP, St.DOLL_W
 local LOOK_W, TURN_SPEED, ZOOM_STEP, ZOOM_MAX = St.LOOK_W, St.TURN_SPEED, St.ZOOM_STEP, St.ZOOM_MAX
 local CAMERA, GAINS_H, BORDER_RGB = St.CAMERA, St.GAINS_H, St.BORDER_RGB
-local LEVEL_SIZE = 11   -- a slot's item level, in its icon's corner
 local WORN_DROP = 2     -- what you wear: its green line this far under the icon
 local PLACE_DOT = St.PLACE_DOT
 
@@ -164,13 +163,10 @@ local function SlotButton(doll, slot, x, y)
         return
     end
     button.wand = B.View.EnchantBadge(button)
-    -- Its item level in the bottom-right corner, above the icon's marks; and what you wear,
-    -- a green line under the icon, as the list's rows have one at their edge.
-    local over = CreateFrame("Frame", nil, button)
-    over:SetAllPoints()
-    over:SetFrameLevel(button:GetFrameLevel() + 4)
-    button.level = ns.Font(over, LEVEL_SIZE, "OUTLINE", T.fg)
-    button.level:SetPoint("BOTTOMRIGHT", -2, 2)
+    -- The marks every slot of ours has (its item level, Forever's mark; no star, as every slot
+    -- here is your BiS); and what you wear, a green line under the icon, as the list's rows
+    -- have one at their edge.
+    button.marks = Parts.ItemMarks(icon, SLOT)
     button.worn = ns.Solid(button, "ARTWORK", St.HAVE_RGB, 1)
     button.worn:SetPoint("TOPLEFT", button, "BOTTOMLEFT", 0, -WORN_DROP)
     button.worn:SetPoint("TOPRIGHT", button, "BOTTOMRIGHT", 0, -WORN_DROP)
@@ -221,9 +217,8 @@ function Doll:Paint(list)
         button.edge:SetColor(edge.r, edge.g, edge.b, 1)
         button.icon:SetDesaturated(slot == 17 and B.OffHandIdle(list))
         button.worn:SetShown(id ~= nil and Items.Wearing(slot, id))
-        local level = id and (B.Rankings.ItemLevel(id) or C_Item.GetDetailedItemLevelInfo(id))
-        button.level:SetText(level and level > 1 and level or "")
-        Parts.MarkForever(button.iconFrame, id)
+        Parts.PaintItemMarks(button.marks, id and (B.Rankings.ItemLevel(id) or C_Item.GetDetailedItemLevelInfo(id)),
+            nil, Parts.IsForever("items", id))
         B.View.PaintEnchantBadge(button.wand, slot)
     end
     local outfit = Outfit(list)
