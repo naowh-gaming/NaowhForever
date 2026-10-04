@@ -223,9 +223,10 @@ local function Row(i)
     row.divider:SetPoint("BOTTOMLEFT", ROW_LEFT, 0)
     row.divider:SetPoint("BOTTOMRIGHT")
     ns.Hairline(row.divider, "h")
-    -- The pin's image leaves 4px empty on its right: 2 to the right centres the pin itself in its
-    -- column, over the tick a book handed in shows there.
-    row.pin = Parts.IconButton(row, PinClick, St.PIN, 2, "Waypoint")
+    -- Centred in its column, so the pin sits over the tick a book handed in shows there
+    -- (measured in game, 2026-10-04: 4 to the right put the pin 4px right of the tick, 2 put it
+    -- 2px right).
+    row.pin = Parts.IconButton(row, PinClick, St.PIN, 0, "Waypoint")
     row.pin.hint = "Click to mark it on your map."
     row.tick = row:CreateTexture(nil, "ARTWORK")
     row.tick:SetTexture(St.CHECK)
