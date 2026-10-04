@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+### Fixed
+- Opening the Training Planner from /nf no longer raises a Lua error.
+
 ## 0.5.19-beta
 
 ### Added
