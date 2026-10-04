@@ -41,7 +41,6 @@ local QUESTION = 134400    -- the question mark: #showtooltip then shows the spe
 local WARN = { r = 0.94, g = 0.70, b = 0.29 }
 local ERR = { r = 0.97, g = 0.44, b = 0.44 }
 local OK = { r = 0.30, g = 0.82, b = 0.48 }
-local GOLD = { r = 0.94, g = 0.70, b = 0.29 }
 local METER_W = 54         -- the slot meters beside the subtitle
 local GOLD_CODE = St.GOLD_CODE
 local CARD_COLS, CARD_GAP = 3, 10
@@ -1287,11 +1286,13 @@ local function Subtitle()
     end
     local _, class = UnitClass("player")
     local className = LOCALIZED_CLASS_NAMES_MALE[class] or class
-    window.subtitle:SetText(UnitName("player") .. ", " .. className)
+    local classColor = RAID_CLASS_COLORS[class]
+    window.subtitle:SetText(classColor:WrapTextInColorCode(UnitName("player") .. ", " .. className))
     local meters = window.meters
     meters[1].fill:SetWidth(math.max(1, METER_W * math.min(1, accountCount / maxAccount)))
     meters[1].label:SetText("Account " .. Count(accountCount, maxAccount))
     meters[2].fill:SetWidth(math.max(1, METER_W * math.min(1, characterCount / maxCharacter)))
+    meters[2].fill:SetColorTexture(classColor.r, classColor.g, classColor.b, 1)
     meters[2].label:SetText(className .. " " .. Count(characterCount, maxCharacter))
 end
 
@@ -1356,11 +1357,11 @@ local function Build()
     window.opacity = slider
     window.meters = {}
     local after = window.subtitle
-    for i, color in ipairs({ T.accent, GOLD }) do
+    for i = 1, 2 do
         local track = ns.Solid(window, "ARTWORK", T.line, 1)
         track:SetSize(METER_W, 3)
         track:SetPoint("LEFT", after, "RIGHT", i == 1 and 12 or 14, 0)
-        local fill = ns.Solid(window, "OVERLAY", color, 1)
+        local fill = ns.Solid(window, "OVERLAY", T.accent, 1)
         fill:SetPoint("TOPLEFT", track)
         fill:SetHeight(3)
         local label = Text14(window, 11, T.muted)
