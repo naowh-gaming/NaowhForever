@@ -124,8 +124,11 @@ local function QuestsSummary(store)
     return text
 end
 
-local function WindowSummary(store)
-    return ("%d%% opacity"):format(math.floor((store.Get("windowAlpha") or 1) * 100 + 0.5))
+-- "80% opacity", for the part whose setting is key.
+local function OpacitySummary(key)
+    return function(store)
+        return ("%d%% opacity"):format(math.floor((store.Get(key) or 1) * 100 + 0.5))
+    end
 end
 
 -------------------------------------------------------------------------------
@@ -150,10 +153,11 @@ page:Card({
 page:Card({
     id = "window", name = "Window", order = 20,
     help = "The Journal's own window.",
-    summary = WindowSummary,
+    summary = OpacitySummary("windowAlpha"),
     rows = {
         { key = "windowAlpha", label = "Window Opacity", slider = { OPACITY_MIN, 100, 5 }, unit = "%", scale = 0.01,
-          help = "How solid the Journal's window is, in percent. Also on its title bar." },
+          help = "How solid the Journal's window and the panels it opens beside it are, in percent. Also on "
+              .. "its title bar." },
     },
 })
 
@@ -193,6 +197,16 @@ tracker:Card({
     },
 })
 
+tracker:Card({
+    id = "trackerwindow", name = "Window", order = 20,
+    help = "The Dungeon Quest Tracker's window.",
+    summary = OpacitySummary("trackerAlpha"),
+    rows = {
+        { key = "trackerAlpha", label = "Window Opacity", slider = { OPACITY_MIN, 100, 5 }, unit = "%", scale = 0.01,
+          help = "How solid the Dungeon Quest Tracker is, in percent." },
+    },
+})
+
 -------------------------------------------------------------------------------
 --  Map
 -------------------------------------------------------------------------------
@@ -209,6 +223,17 @@ map:Card({
         { key = "mapFactions", label = "Factions Beside the Map", toggle = true, needs = JournalOn, why = JOURNAL_OFF,
           help = "In a zone or a battleground, opening the world map (M) shows the factions earned there: your "
               .. "standing, their rewards and the quests that raise them." },
+    },
+})
+
+map:Card({
+    id = "mapwindow", name = "Window", order = 15,
+    help = "The map's window, the Journal beside the world map and Boss Loot at Cursor.",
+    summary = OpacitySummary("mapAlpha"),
+    rows = {
+        { key = "mapAlpha", label = "Window Opacity", slider = { OPACITY_MIN, 100, 5 }, unit = "%", scale = 0.01,
+          help = "How solid the map's window, the Journal beside the world map and Boss Loot at Cursor are, "
+              .. "in percent." },
     },
 })
 

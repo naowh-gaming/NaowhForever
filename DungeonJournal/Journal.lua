@@ -81,7 +81,11 @@ local S = ns.UI.ModuleSettings("journal", {
     questsOpen = false,
     repQuestsOpen = true,
     missingBisOnly = false,
+    -- Each part's opacity: the Journal's window and its side panels; the quest tracker; the
+    -- map window, the Journal beside the world map and Boss Loot at Cursor.
     windowAlpha = 1,
+    trackerAlpha = 1,
+    mapAlpha = 1,
     listHidden = false,
     closedGroup1 = false,
     closedGroup2 = false,
@@ -98,6 +102,18 @@ local S = ns.UI.ModuleSettings("journal", {
     hideGameTracker = true,
 })
 ns.JournalSettings = S
+
+-- The parts' opacity was one setting (windowAlpha) before each had its own: a player who set
+-- it keeps it on the tracker and the map until they set theirs. Once, on the first login with
+-- them: a part's own setting, once set, is never written over.
+local function SplitOpacity()
+    local was = S.Raw("windowAlpha")
+    if was == nil then return end
+    for _, key in ipairs({ "trackerAlpha", "mapAlpha" }) do
+        if S.Raw(key) == nil then S.Set(key, was) end
+    end
+end
+hooksecurefunc(ns, "Apply", SplitOpacity)
 
 local J = { Settings = S }
 ns.Journal = J

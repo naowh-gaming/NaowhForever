@@ -156,6 +156,8 @@ local function fixture(settings)
     local listeners = {}
     local S = {}
     function S.Get(key) return values[key] end
+    -- What the player set, and nothing for a key left at its default.
+    function S.Raw(key) return values[key] end
     function S.Set(key, value)
         values[key] = value
         for i = 1, #listeners do listeners[i](key, value) end
@@ -871,6 +873,22 @@ do
 end
 
 -------------------------------------------------------------------------------
+--  Each part's opacity, from the one setting it was before
+-------------------------------------------------------------------------------
+do
+    local ns, _, S = fixture({ windowAlpha = 0.5 })
+    ns.Apply()
+    check("the tracker and the map keep the opacity set before they had their own",
+        S.Get("trackerAlpha") == 0.5 and S.Get("mapAlpha") == 0.5)
+    ns, _, S = fixture({ windowAlpha = 0.5, mapAlpha = 0.9 })
+    ns.Apply()
+    check("a part's own opacity, once set, is kept", S.Get("mapAlpha") == 0.9 and S.Get("trackerAlpha") == 0.5)
+    ns, _, S = fixture({})
+    ns.Apply()
+    check("none set: each part at its default", S.Raw("trackerAlpha") == nil and S.Raw("mapAlpha") == nil)
+end
+
+-------------------------------------------------------------------------------
 --  Off means off
 -------------------------------------------------------------------------------
 do
@@ -1147,6 +1165,8 @@ do
     S.Set("listHidden", true)
     S.Set("listHidden", false)
     S.Set("windowAlpha", 0.6)
+    S.Set("trackerAlpha", 0.7)
+    S.Set("mapAlpha", 0.8)
     check("and takes its settings without an error", true)
     -- The list: the BiS here you still miss, and nothing once you have them all.
     local List, deadmines = ns.Journal.DungeonList, ns.Journal.Get("Deadmines")

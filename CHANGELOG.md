@@ -30,6 +30,9 @@
 - Dungeon Journal: its settings are three tabs: Journal (what it lists, its window, its key),
   Quest Tracker (the tracker and sharing quests) and Map (the Journal beside the world map,
   and Boss Loot at Cursor's key).
+- Dungeon Journal: each part has its own Window Opacity: the Journal (and the panels it opens
+  beside it), the Dungeon Quest Tracker, and the map (its window, the Journal beside the world
+  map and Boss Loot at Cursor). They start at the opacity you had set for them all.
 - Dungeon Journal: the quest tracker is titled Dungeon Quest Tracker (click it for the Journal's
   settings), with a dropdown under it to show any dungeon with quests, its level range beside it.
   The dropdown shows them all at once, each range in the quest log's colours for your level. It

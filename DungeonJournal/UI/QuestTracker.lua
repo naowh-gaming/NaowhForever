@@ -158,7 +158,7 @@ end
 -- In the Journal window's look rather than the plain dark panel's, so the two match side by
 -- side: its gradient faded by its Opacity, its card behind the quests, and its titles' blue.
 local function Paint()
-    panel.backdrop:Paint(S.Get("windowAlpha") or 1)
+    panel.backdrop:Paint(S.Get("trackerAlpha") or 1)
 end
 
 local function Build()
@@ -352,14 +352,14 @@ local function SyncAuto()
 end
 hooksecurefunc(ns, "Apply", SyncAuto)
 
--- The Journal switched off: the tracker goes with it. Its Opacity: the tracker follows.
+-- The Journal switched off: the tracker goes with it. Its own Opacity (trackerAlpha): it follows.
 S.OnChange(function(key)
     if key == "enabled" or key == "trackerAuto" then SyncAuto() end
     if key == "enabled" or key == "hideGameTracker" then SyncGameTracker() end
     if not panel then return end
     if key == "enabled" and not S.Get("enabled") then
         panel:Hide()
-    elseif key == "windowAlpha" then
+    elseif key == "trackerAlpha" then
         Paint()
     end
 end)
