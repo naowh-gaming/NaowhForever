@@ -69,7 +69,7 @@ local S = UI.ModuleSettings("qol", {
     -- On by default, an exception to off by default: marks on the game's own panel, no restyle.
     characterPanelSlotMarks = true, characterPanelLevels = true, characterPanelMarks = true,
     characterPanelEnchants = true, characterPanelScore = true, characterPanelBadge = true, characterPanelStats = "spec",
-    characterPanelTookOver = false,
+    characterPanelTookOver = false, characterPanelAsked = false,
     xpBar = false, xpBarLeftText = "level", xpBarCenterText = "xp", xpBarRightText = "percent",
     xpBarTopLeft = "played", xpBarTopRight = "none", xpBarBottomLeft = "leveling",
     xpBarBottom = "none", xpBarBottomRight = "xphour", xpBarTop = "none", xpBarLeft = "none",

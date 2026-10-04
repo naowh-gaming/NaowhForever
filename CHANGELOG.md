@@ -11,7 +11,7 @@
   List's settings, and Supporter Badges from Interface. The BiS List's page keeps what is about
   your BiS.
 - The Naowh Character Panel and Bag Marks are now on by default. With EllesmereUI's character
-  panel in use, it stays: switch Character Panel off and on to use Naowh's instead.
+  panel in use, you're asked once at login which one you want.
 - Loot Feed: Spacing goes down to -1, now the default, so neighbouring lines share one border
   instead of two. Its coins line up on every line, and it is the first card on QoL > Loot &
   Items. Edit it right in its preview: drag its right edge for width and a line's bottom for
