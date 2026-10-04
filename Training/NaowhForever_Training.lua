@@ -308,7 +308,7 @@ local function WorldPos(map, x, y)
 end
 
 -- Your class's trainer for your faction nearest you on your continent. With none there, or no
--- position to go by (in an instance), one in a capital city.
+-- position to go by (in an instance), one in your faction's capital, then in a shared one.
 function Training.NearestTrainer()
     local _, class = UnitClass("player")
     local side = UnitFactionGroup("player") == "Horde" and "H" or "A"
@@ -320,14 +320,14 @@ function Training.NearestTrainer()
     for npcMap, npcs in pairs(ns.TownNPCs) do
         for _, npc in ipairs(npcs) do
             if npc[3] == "class" and npc[6] == class and npc[7]:find(side, 1, true) then
-                local tier, dist = 2, 0
+                local tier, dist = 3, 0
                 local c, p = WorldPos(npcMap, npc[1] / 100, npc[2] / 100)
                 if cont and c == cont then
                     local x1, y1 = pos:GetXY()
                     local x2, y2 = p:GetXY()
                     tier, dist = 0, (x1 - x2) ^ 2 + (y1 - y2) ^ 2
                 elseif ns.TownCapitals[npcMap] then
-                    tier = 1
+                    tier = npc[7] == side and 1 or 2
                 end
                 if not best or tier < bestTier or tier == bestTier
                     and (dist < bestDist or dist == bestDist and npc[4] < best[4]) then

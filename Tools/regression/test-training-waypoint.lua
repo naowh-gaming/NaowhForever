@@ -12,6 +12,7 @@ local MAPS = {
     [1413] = { cont = 1, x = -1500, y = 0, size = 2000 },  -- The Barrens
     [1453] = { cont = 0, x = 0, y = 0, size = 300 },       -- Stormwind
     [1429] = { cont = 0, x = 400, y = 0, size = 1000 },    -- Elwynn
+    [2521] = { cont = 2, x = 0, y = 0, size = 500 },       -- Zephras Isle
 }
 local NPCS = {
     [1411] = {
@@ -19,7 +20,11 @@ local NPCS = {
         { 52.0, 43.7, "class", "Kaplak", "Rogue Trainer", "ROGUE", "H" },
         { 50.0, 50.0, "vendor", "Duokna", "General Goods", nil, "H" },
     },
-    [1454] = { { 80.0, 30.0, "class", "Grezz Ragefist", "Warrior Trainer", "WARRIOR", "H" } },
+    [1454] = {
+        { 80.0, 30.0, "class", "Grezz Ragefist", "Warrior Trainer", "WARRIOR", "H" },
+        { 43.9, 54.6, "class", "Shenthul", "Rogue Trainer", "ROGUE", "H" },
+    },
+    [2521] = { { 40.0, 40.0, "class", "Akeri Duskblade", "Rogue Trainer", "ROGUE", "AH" } },
     [1413] = { { 10.0, 10.0, "class", "Far Off", "Warrior Trainer", "WARRIOR", "H" } },
     [1453] = { { 78.0, 45.0, "class", "Wu Shen", "Warrior Trainer", "WARRIOR", "A" } },
     [1429] = { { 41.0, 65.0, "class", "Lyria Du Lac", "Warrior Trainer", "WARRIOR", "A" } },
@@ -31,7 +36,7 @@ local function Vector(x, y) return { GetXY = function() return x, y end } end
 -- as fractions), or nowhere with a position when `at` is nil.
 local function Nearest(class, faction, at)
     local env = {
-        ns = { TownNPCs = NPCS, TownCapitals = { [1453] = true, [1454] = true } },
+        ns = { TownNPCs = NPCS, TownCapitals = { [1453] = true, [1454] = true, [2521] = true } },
         Training = {},
         UnitClass = function() return "", class end,
         UnitFactionGroup = function() return faction end,
@@ -77,6 +82,12 @@ Case("with none on your continent, or no position, a capital's trainer", functio
     assert(got == "Wu Shen@1453", got)
     got = Nearest("WARRIOR", "Horde", nil)
     assert(got == "Grezz Ragefist@1454", got)
+end)
+Case("your faction's capital before one both factions share", function()
+    local got = Nearest("ROGUE", "Horde", nil)
+    assert(got == "Shenthul@1454", got)
+    got = Nearest("ROGUE", "Alliance", nil)
+    assert(got == "Akeri Duskblade@2521", got)
 end)
 
 print(("%d cases passed"):format(count))
