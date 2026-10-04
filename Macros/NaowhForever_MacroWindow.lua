@@ -636,7 +636,11 @@ local function BuildEditor(parent)
     local page = CreateFrame("Frame", nil, scroll)
     page:SetSize(1, box:GetHeight())
     scroll:SetScrollChild(page)
-    scroll:SetScript("OnSizeChanged", function(_, w) page:SetWidth(w) end)
+    -- The first draw can come before the page has its width: draw again so lines wrap at it.
+    scroll:SetScript("OnSizeChanged", function(_, w)
+        page:SetWidth(w)
+        RenderEditor()
+    end)
     editor.scroll, editor.page = scroll, page
     editor.gutter = CreateFrame("Frame", nil, page)
     editor.gutter:SetPoint("TOPLEFT")

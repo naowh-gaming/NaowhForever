@@ -333,6 +333,17 @@ window.code:SetText("/cast Frostbolt")
 check("sizing the code box does not draw it over and over", sized <= 2)
 window.code.SetHeight = nil
 
+-- The first draw can come while the page is 1 pixel wide, wrapping every line; once the scroll
+-- frame has its width, the editor must draw again at it.
+local measure, page = window.editor.measure, window.editor.page
+measure.GetStringHeight = function() return page:GetWidth() < 100 and 1000 or 16 end
+page:SetWidth(1)
+window.code:SetText("/cast Frostbolt")
+local narrow = window.code.h
+window.editor.scroll.scripts.OnSizeChanged(window.editor.scroll, 600)
+check("the editor draws again once the page has its width", page.w == 600 and window.code.h < narrow)
+measure.GetStringHeight = nil
+
 -- The inspector's panes.
 for _, key in ipairs({ "conditions", "commands", "icons", "explain" }) do window.inspector.Show(key) end
 
