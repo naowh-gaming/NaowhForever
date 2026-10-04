@@ -409,20 +409,20 @@ function ViewMixin:DrawBisNote()
 end
 
 -- One boss and its loot, for the boss loot window.
--- A boss's own page: Naowh's tip written out on top (so no (i) on its name), its name and
--- kill count, then its Loot, the Quests that need it and its Abilities, each under a title
--- that opens and closes it (kept: bossLootOpen and the rest) and left out where there is none.
+-- A boss's own page: its name and kill count on top, Naowh's tip written out under it (so no
+-- (i) on its name), then its Loot, the Quests that need it and its Abilities, each under a
+-- title that opens and closes it (kept: bossLootOpen and the rest) and left out where there
+-- is none.
 function ViewMixin:DrawBossLoot(boss, dungeon)
     self:Begin(dungeon, boss)
     local tip = self.showTips and J.Tip(boss)
+    self.showTips = false
+    self:DrawBossName(boss)
     if tip then
         self:OpenDetailCard("Naowh's Tip")
         self:Add("tip", boss, tip)
         self:CloseCard(self.detailCard, self.detailTop)
-        self:Space(SECTION_SPACE)
-        self.showTips = false
     end
-    self:DrawBossName(boss)
     self:DrawBossItems(boss)
     self:DrawBossDetails(boss)
     self:Finish()
