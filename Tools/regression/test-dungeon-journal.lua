@@ -142,7 +142,7 @@ local function fixture(settings)
         shown = true, alpha = 1,
         IsShown = function(self) return self.shown end,
         Show = function(self) self.shown = true end,
-        Hide = function(self) self.shown = false end,
+        Hide = function(self) self.shown = false; state.gameHides = (state.gameHides or 0) + 1 end,
         SetAlpha = function(self, alpha) self.alpha = alpha end,
     }
     local values = {
@@ -1260,6 +1260,7 @@ do
         EnterWorld()
         return not tracker:IsShown()
     end)())
+    check("fading the game's quest tracker is off by default", state.defaults.hideGameTracker == false)
     S.Set("trackerAuto", true)
     S.Set("hideGameTracker", true)
     state.instance = nil
@@ -1267,22 +1268,20 @@ do
     state.instance = { id = 36, name = "The Deadmines" }
     EnterWorld()
     check("on, entering a dungeon with quests for you opens it", tracker:IsShown())
-    -- Hide the Game's Quest Tracker: hidden while this one is up in the dungeon.
+    -- Hide the Game's Quest Tracker: faded while this one is up in the dungeon, never hidden.
     local game = state.gameTracker
-    check("the game's quest tracker is hidden", not game.shown)
+    check("the game's quest tracker is faded", game.shown and game.alpha == 0)
+    game:SetAlpha(1)
     game:Show()
-    check("and stays hidden when the game shows it again", not game.shown)
+    check("and stays faded when the game shows it again", game.shown and game.alpha == 0)
     state.combat = true
+    game:SetAlpha(1)
     game:Show()
-    check("in combat it is faded instead", game.shown and game.alpha == 0)
+    check("in combat too", game.shown and game.alpha == 0)
     state.combat = false
-    for _, frame in ipairs(state.made) do
-        if frame.events.PLAYER_REGEN_ENABLED then frame.scripts.OnEvent(frame, "PLAYER_REGEN_ENABLED") end
-    end
-    check("and hidden once combat ends", not game.shown and game.alpha == 1)
     tracker:Hide()
     tracker.scripts.OnHide(tracker)
-    check("closing this one brings the game's back", game.shown)
+    check("closing this one brings the game's back", game.shown and game.alpha == 1)
     EnterWorld()
     check("closed in there, it stays closed", not tracker:IsShown())
     state.instance = nil
@@ -1298,20 +1297,19 @@ do
     state.instance = { id = 36, name = "The Deadmines" }
     S.Set("trackerAuto", true)   -- the settings applied, as a reload does
     check("a reload inside a dungeon opens it", tracker:IsShown())
-    check("and hides the game's quest tracker", not game.shown)
-    check("hiding the game's again", not game.shown)
+    check("and fades the game's quest tracker", game.alpha == 0)
     state.instance = nil
     tracker.scripts.OnEvent(tracker, "PLAYER_ENTERING_WORLD")
-    check("leaving the dungeon with it open brings the game's back", game.shown)
+    check("leaving the dungeon with it open brings the game's back", game.alpha == 1)
     S.Set("hideGameTracker", false)
     state.instance = { id = 36, name = "The Deadmines" }
     tracker.scripts.OnEvent(tracker, "PLAYER_ENTERING_WORLD")
-    check("switched off, the game's is left alone", game.shown)
+    check("switched off, the game's is left alone", game.alpha == 1)
     S.Set("hideGameTracker", true)
-    check("switched on again, it is hidden", not game.shown)
+    check("switched on again, it is faded", game.alpha == 0)
     tracker:Hide()
     tracker.scripts.OnHide(tracker)
-    check("closed again, the game's is back", game.shown)
+    check("closed again, the game's is back", game.alpha == 1)
     -- The game's own was down (no quests to watch): it stays down after.
     game.shown = false
     ns.OpenQuestTracker(deadmines)
@@ -1320,6 +1318,7 @@ do
     tracker.scripts.OnHide(tracker)
     check("one that was not up before stays down", not game.shown)
     game.shown = true
+    check("the game's quest tracker is never hidden or shown by it", state.gameHides == nil)
     S.Set("trackerAuto", false)
     state.instance = nil
     EnterWorld()

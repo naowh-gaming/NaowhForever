@@ -118,7 +118,7 @@ local function Fit(height)
 end
 
 -- PLAYER_ENTERING_WORLD: a new instance, and its dungeon when the Journal lists one.
-local SyncGameTracker   -- below: the game's quest tracker, hidden while this one is up in a dungeon
+local SyncGameTracker   -- below: the game's quest tracker, faded while this one is up in a dungeon
 
 -- A loading screen, or a new subzone inside (a shared instance's wing is told by it, and
 -- the subzone may only be known after the loading screen): it moves to the dungeon you are
@@ -268,52 +268,29 @@ end
 --  Hide the Game's Quest Tracker (hideGameTracker)
 -------------------------------------------------------------------------------
 -- While the tracker is up inside a dungeon, the game's quest tracker (ObjectiveTrackerFrame)
--- is hidden, and shown again on closing the tracker or leaving, only if it was up before.
--- It is hidden rather than faded: faded, its quest lines still take clicks. Edit Mode runs
--- its Hide and Show through protected code, blocked in combat, so they are only called out
--- of combat (a loading screen always is); a Show the game makes in combat is faded instead,
--- and hidden properly once combat ends.
-local gameHidden, gameWasShown = false, false
-local gameHooked, regenFrame
+-- is faded out, and faded back in on closing the tracker or leaving. Only its alpha is set:
+-- it is an Edit Mode frame with secure quest item buttons, so it is never hidden or shown.
+local gameFaded, gameHooked = false, false
 
-local function HideGame(frame)
-    if InCombatLockdown() then
-        frame:SetAlpha(0)
-        if not regenFrame then
-            regenFrame = CreateFrame("Frame")
-            regenFrame:SetScript("OnEvent", function(self)
-                self:UnregisterAllEvents()
-                SyncGameTracker()
-            end)
-        end
-        regenFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
-    else
-        frame:SetAlpha(1)
-        frame:Hide()
-    end
+local function KeepFaded(frame)
+    if gameFaded then frame:SetAlpha(0) end
 end
 
 function SyncGameTracker()
     local frame = _G.ObjectiveTrackerFrame
     if not frame then return end
-    local hide = S.Get("enabled") and S.Get("hideGameTracker") and panel ~= nil and panel:IsShown()
+    local fade = S.Get("enabled") and S.Get("hideGameTracker") and panel ~= nil and panel:IsShown()
         and J.Current() ~= nil
-    if hide then
+    if fade then
         if not gameHooked then
             gameHooked = true
-            hooksecurefunc(frame, "Show", function(self)
-                if gameHidden then HideGame(self) end
-            end)
+            hooksecurefunc(frame, "Show", KeepFaded)
         end
-        if not gameHidden then
-            gameHidden, gameWasShown = true, frame:IsShown()
-        end
-        if frame:IsShown() then HideGame(frame) end
-    elseif gameHidden then
-        if InCombatLockdown() then return HideGame(frame) end
-        gameHidden = false
+        gameFaded = true
+        frame:SetAlpha(0)
+    elseif gameFaded then
+        gameFaded = false
         frame:SetAlpha(1)
-        if gameWasShown and not frame:IsShown() then frame:Show() end
     end
 end
 

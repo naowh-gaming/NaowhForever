@@ -193,8 +193,7 @@ tracker:Card({
               .. "you have been in a dungeon." },
         { key = "hideGameTracker", label = "Hide the Game's Quest Tracker", toggle = true, needs = JournalOn,
           why = JOURNAL_OFF,
-          help = "While the quest tracker is open in a dungeon, the game's own quest tracker is hidden. It comes "
-              .. "back when you close the tracker or leave the dungeon." },
+          help = "Fades out the game's quest tracker while this one is open in a dungeon." },
         { key = "shareRequests", label = "Quest Share Requests", toggle = true, needs = JournalOn, why = JOURNAL_OFF,
           help = "Click the group icon on a dungeon quest you do not have: the members on it are asked one at a "
               .. "time, and the first running Naowh Forever shares it. Off, you neither ask nor answer." },

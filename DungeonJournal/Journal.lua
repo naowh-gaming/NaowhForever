@@ -98,8 +98,8 @@ local S = ns.UI.ModuleSettings("journal", {
     -- On by default, an exception to off by default: the tracker is the Journal's own, and
     -- the Journal itself starts off.
     trackerAuto = true,
-    -- On with it: in a dungeon the tracker takes the game's quest tracker's place.
-    hideGameTracker = true,
+    -- In a dungeon, the game's quest tracker faded while this one is open.
+    hideGameTracker = false,
     -- Out in the world too, on the dungeon your quests are for (off, as a new option is).
     trackerOutside = false,
 })
