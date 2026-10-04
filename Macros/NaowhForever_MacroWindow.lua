@@ -505,7 +505,12 @@ local function Gutter()
     end
     local height = math.max(editor.scroll:GetHeight(), y + 12)
     editor.page:SetHeight(height)
-    window.code:SetHeight(height)
+    -- Sizing the edit box fires its OnTextChanged, which draws this again: sized every time,
+    -- that ran every frame and the cursor never got to blink.
+    if height ~= editor.codeHeight then
+        editor.codeHeight = height
+        window.code:SetHeight(height)
+    end
 end
 
 RenderEditor = function()

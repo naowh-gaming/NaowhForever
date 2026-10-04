@@ -45,6 +45,7 @@
 
 ### Fixed
 - Naowh Score: no more Lua error after seeing more than 300 players, like in a busy city.
+- Macros: the macro editor shows a blinking cursor again while you type.
 
 ## 0.5.19-beta
 

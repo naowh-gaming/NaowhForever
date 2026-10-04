@@ -321,6 +321,18 @@ check("Delete removes it from the game", #store.account == 1)
 window.code:SetText("#showtooltip\n/castsequnce Scorch, Fire Blast")
 check("an unknown command is caught", window.editor.issueLines[1]:GetText():find("^L2", 1) ~= nil)
 
+-- In the game, sizing the edit box fires its OnTextChanged, and the editor sizes it when the
+-- text changes: at the same height it must leave it alone, or that runs every frame.
+local sized = 0
+window.code.SetHeight = function(f, h)
+    f.h = h
+    sized = sized + 1
+    if sized < 50 then f.scripts.OnTextChanged(f, false) end
+end
+window.code:SetText("/cast Frostbolt")
+check("sizing the code box does not draw it over and over", sized <= 2)
+window.code.SetHeight = nil
+
 -- The inspector's panes.
 for _, key in ipairs({ "conditions", "commands", "icons", "explain" }) do window.inspector.Show(key) end
 
