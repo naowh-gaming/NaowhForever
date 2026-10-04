@@ -151,7 +151,7 @@ page:Card({
 })
 
 page:Card({
-    id = "window", name = "Window", order = 20,
+    id = "window", name = "Window", order = 90,
     help = "The Journal's own window.",
     summary = OpacitySummary("windowAlpha"),
     rows = {
@@ -198,7 +198,7 @@ tracker:Card({
 })
 
 tracker:Card({
-    id = "trackerwindow", name = "Window", order = 20,
+    id = "trackerwindow", name = "Window", order = 90,
     help = "The Dungeon Quest Tracker's window.",
     summary = OpacitySummary("trackerAlpha"),
     rows = {
@@ -227,7 +227,7 @@ map:Card({
 })
 
 map:Card({
-    id = "mapwindow", name = "Window", order = 15,
+    id = "mapwindow", name = "Window", order = 90,
     help = "The map's window, the Journal beside the world map and Boss Loot at Cursor.",
     summary = OpacitySummary("mapAlpha"),
     rows = {
