@@ -82,6 +82,11 @@ local METHODS = {
     CreateTexture = function(frame) return Frame(rawget(frame, "state"), frame) end,
     CreateMaskTexture = function(frame) return Frame(rawget(frame, "state"), frame) end,
     CreateFontString = function(frame) return Frame(rawget(frame, "state"), frame) end,
+    -- The world map: maximised when a test says so.
+    IsMaximized = function(frame)
+        local state = rawget(frame, "state")
+        return state ~= nil and state.mapMaximised == true
+    end,
     -- Animations: groups and their steps, which play nothing here.
     CreateAnimationGroup = function(frame) return Frame(rawget(frame, "state"), frame) end,
     CreateAnimation = function(frame) return Frame(rawget(frame, "state"), frame) end,
@@ -1268,16 +1273,25 @@ do
     local open, close = J.View.OpenBossLoot, J.View.CloseBossLoot
     J.View.OpenBossLoot = function() opened = opened + 1 end
     J.View.CloseBossLoot = function() closed = closed + 1 end
+    local bazil
     for _, made in ipairs(state.made) do
         local boss = rawget(made, "boss")
         if boss and boss.name == "Bazil Thredd" and made.scripts.OnClick and rawget(made, "shown") ~= false then
-            made.scripts.OnClick(made, "LeftButton")
+            bazil = made
         end
     end
+    -- The small map has the Journal beside it: the pin is only ringed in gold.
+    bazil.scripts.OnClick(bazil, "LeftButton")
+    check("the small map opens no loot at the mouse", opened == 0)
+    check("but rings the boss", rawget(bazil.gold, "shown") == true)
+    state.mapMaximised = true
+    bazil.scripts.OnClick(bazil, "LeftButton")
     overlay:Hide()
     if overlay.scripts.OnHide then overlay.scripts.OnHide(overlay) end
     check("a boss's pin opens its loot", opened == 1)
     check("which closes with the map", closed == 1)
+    check("and takes the ring with it", rawget(bazil.gold, "shown") == false)
+    state.mapMaximised = nil
     J.View.OpenBossLoot, J.View.CloseBossLoot = open, close
     J.ShowMapOnWorldMap(stockade)
     state.mapOpened = nil
