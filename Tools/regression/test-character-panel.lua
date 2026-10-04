@@ -110,7 +110,8 @@ local S = {
     OnChange = function(fn) state.listeners[#state.listeners + 1] = fn end,
 }
 -- The QoL defaults this module adds, and the QoL switch on.
-state.values = { enabled = true, characterPanel = false, characterPanelLevels = true,
+-- Slot Marks is on by default; off here, to start from nothing (its own checks turn it on).
+state.values = { enabled = true, characterPanel = false, characterPanelSlotMarks = false, characterPanelLevels = true,
     characterPanelMarks = true, characterPanelEnchants = true, characterPanelScore = true,
     characterPanelBadge = true, characterPanelStats = "spec" }
 

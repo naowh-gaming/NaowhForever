@@ -55,7 +55,7 @@ function ns.BuildQoLCharacterPanelPage(parent, y)
     _, h = W:Feature(parent, y,
         S.Toggle("characterPanelSlotMarks", "Slot Marks",
             "The marks on the game's own character panel, as it looks (or EllesmereUI's), without the "
-            .. "Naowh Character Panel. With it on, its slots have them already.")
+            .. "Naowh Character Panel. With it on, its slots have them already. On by default.")
     ); y = y - h
     _, h = W:DualRow(parent, y,
         OnSlots(S.Toggle("characterPanelLevels", "Item Level",
