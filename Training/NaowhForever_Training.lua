@@ -317,7 +317,7 @@ function Training.NearestTrainer()
     local cont, pos
     if here then cont, pos = WorldPos(map, here:GetXY()) end
     local best, bestMap, bestTier, bestDist
-    for npcMap, npcs in pairs(ns.TownNPCs or {}) do
+    for npcMap, npcs in pairs(ns.TownNPCs) do
         for _, npc in ipairs(npcs) do
             if npc[3] == "class" and npc[6] == class and npc[7]:find(side, 1, true) then
                 local tier, dist = 2, 0
@@ -326,9 +326,8 @@ function Training.NearestTrainer()
                     local x1, y1 = pos:GetXY()
                     local x2, y2 = p:GetXY()
                     tier, dist = 0, (x1 - x2) ^ 2 + (y1 - y2) ^ 2
-                else
-                    local info = C_Map.GetMapInfo(npcMap)
-                    if info and info.mapType == Enum.UIMapType.City then tier = 1 end
+                elseif ns.TownCapitals[npcMap] then
+                    tier = 1
                 end
                 if not best or tier < bestTier or tier == bestTier
                     and (dist < bestDist or dist == bestDist and npc[4] < best[4]) then

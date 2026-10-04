@@ -5,14 +5,13 @@ local function Slice(a, b)
     return source:sub(first, assert(source:find(b, first + #a, true)) - 1)
 end
 
-local CITY, ZONE = 4, 3
--- uiMapID -> its continent, its corner in world units, its size and its type.
+-- uiMapID -> its continent, its corner in world units and its size.
 local MAPS = {
-    [1411] = { cont = 1, x = 0, y = 0, size = 1000, type = ZONE },      -- Durotar
-    [1454] = { cont = 1, x = 200, y = -800, size = 200, type = CITY },  -- Orgrimmar
-    [1413] = { cont = 1, x = -1500, y = 0, size = 2000, type = ZONE },  -- The Barrens
-    [1453] = { cont = 0, x = 0, y = 0, size = 300, type = CITY },       -- Stormwind
-    [1429] = { cont = 0, x = 400, y = 0, size = 1000, type = ZONE },    -- Elwynn
+    [1411] = { cont = 1, x = 0, y = 0, size = 1000 },      -- Durotar
+    [1454] = { cont = 1, x = 200, y = -800, size = 200 },  -- Orgrimmar
+    [1413] = { cont = 1, x = -1500, y = 0, size = 2000 },  -- The Barrens
+    [1453] = { cont = 0, x = 0, y = 0, size = 300 },       -- Stormwind
+    [1429] = { cont = 0, x = 400, y = 0, size = 1000 },    -- Elwynn
 }
 local NPCS = {
     [1411] = {
@@ -22,7 +21,7 @@ local NPCS = {
     },
     [1454] = { { 80.0, 30.0, "class", "Grezz Ragefist", "Warrior Trainer", "WARRIOR", "H" } },
     [1413] = { { 10.0, 10.0, "class", "Far Off", "Warrior Trainer", "WARRIOR", "H" } },
-    [1453] = { { 78.0, 45.0, "class", "Ander Germaine", "Warrior Trainer", "WARRIOR", "A" } },
+    [1453] = { { 78.0, 45.0, "class", "Wu Shen", "Warrior Trainer", "WARRIOR", "A" } },
     [1429] = { { 41.0, 65.0, "class", "Lyria Du Lac", "Warrior Trainer", "WARRIOR", "A" } },
 }
 
@@ -32,16 +31,14 @@ local function Vector(x, y) return { GetXY = function() return x, y end } end
 -- as fractions), or nowhere with a position when `at` is nil.
 local function Nearest(class, faction, at)
     local env = {
-        ns = { TownNPCs = NPCS },
+        ns = { TownNPCs = NPCS, TownCapitals = { [1453] = true, [1454] = true } },
         Training = {},
         UnitClass = function() return "", class end,
         UnitFactionGroup = function() return faction end,
         CreateVector2D = Vector,
-        Enum = { UIMapType = { City = CITY } },
         C_Map = {
             GetBestMapForUnit = function() return at and at[1] or 1411 end,
             GetPlayerMapPosition = function() return at and Vector(at[2], at[3]) end,
-            GetMapInfo = function(map) return { mapType = MAPS[map].type } end,
             GetWorldPosFromMapPos = function(map, pos)
                 local m = MAPS[map]
                 local x, y = pos:GetXY()
@@ -77,7 +74,7 @@ Case("other factions' trainers and other services are left out", function()
 end)
 Case("with none on your continent, or no position, a capital's trainer", function()
     local got = Nearest("WARRIOR", "Alliance", { 1411, 0.5, 0.5 })
-    assert(got == "Ander Germaine@1453", got)
+    assert(got == "Wu Shen@1453", got)
     got = Nearest("WARRIOR", "Horde", nil)
     assert(got == "Grezz Ragefist@1454", got)
 end)
