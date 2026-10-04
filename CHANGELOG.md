@@ -16,6 +16,9 @@
   starts; it closes when you land or enter combat. Move it in Unlock Mode.
 - Flight Games (QoL > Travel, under the Flight Timer): one choice of what opens by itself when a
   flight starts, Nothing, the Quiz or the Aim Trainer (the default).
+- Training Planner: a waypoint to your nearest class trainer, from Waypoint to nearest trainer at
+  the top of the planner, the Waypoint button on the level-up toast, or /nf trainer. With TomTom
+  loaded, it uses TomTom's arrow.
 
 ### Changed
 - QoL has a Character tab: Character Panel, Slot Marks and Naowh Score moved there from the BiS
@@ -45,6 +48,10 @@
 
 ### Fixed
 - Naowh Score: no more Lua error after seeing more than 300 players, like in a busy city.
+- Hovering items and players no longer fills BugSack with "secret value" errors on Forever: the
+  upgrade line and bag arrows wait while the game keeps your stats hidden, Naowh Score copes with
+  a player it can no longer read, and the supporter plate and ID lines stop hooking the game's
+  tooltip, which was reported breaking its own player-name colours.
 - Blessings: a class button clears as soon as your blessing lands, instead of staying red for
   about a second.
 
