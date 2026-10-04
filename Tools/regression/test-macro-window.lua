@@ -46,6 +46,7 @@ local METHODS = {
     IsShown = function(f) return rawget(f, "shown") ~= false end,
     IsVisible = function(f) return rawget(f, "shown") ~= false end,
     SetEnabled = function(f, on) f.enabled = on end,
+    SetClipsChildren = function(f, on) f.clips = on end,
     CreateTexture = function(f) return Frame(f) end,
     CreateFontString = function(f) return Frame(f) end,
 }
@@ -73,9 +74,10 @@ local function At(index)
 end
 local macroAPI = {
     GetNumMacros = function() return #store.account, #store.character end,
+    -- As the game does, a question mark macro reports the icon #showtooltip shows.
     GetMacroInfo = function(index)
         local m = At(index)
-        if m then return m.name, m.icon, m.body end
+        if m then return m.name, (m.icon == 134400 and m.body:find("^#showtooltip")) and 135846 or m.icon, m.body end
     end,
     GetMacroSpell = function() return nil end,
     CreateMacro = function(name, icon, body, perCharacter)
@@ -171,7 +173,7 @@ local ns = {
     UIScale = function() return 1 end,
     AccountSettings = function() return account end,
     Print = function(m) printed[#printed + 1] = m end,
-    Confirm = function(_, yes) yes() end,
+    Confirm = function(text, yes) account.lastConfirm = text; yes() end,
     ShowCopyBox = function(_, text) account.lastCopy = text end,
     StashOptionsWindow = NOTHING, OpenOptionsWindow = NOTHING, Apply = NOTHING,
     DB = function() return { utilityReminders = { classMacros = packMacros } } end,
@@ -339,5 +341,63 @@ lastPrompt(account.lastCopy)
 check("a share string imports as character macros", #store.character == 3)
 lastPrompt("not a string")
 check("anything else is turned away", printed[#printed]:find("not a Naowh Forever macro string", 1, true))
+
+-------------------------------------------------------------------------------
+--  The game moves macros: the editor follows the one it has open
+-------------------------------------------------------------------------------
+local function OpenNamed(name)
+    window.switch.onPick("mine")
+    for _, r in ipairs(Shown(function(f) return rawget(f, "macro") ~= nil end)) do
+        if r.macro.name == name then return Click(r) end
+    end
+    error("no row for " .. name)
+end
+
+store.account = { { name = "Zed", icon = 136243, body = "/cast Zed" } }
+OpenNamed("Zed")
+macroAPI.CreateMacro("Abc", 134400, "/cast Abc", false)   -- a Smart Macro made meanwhile sorts before it
+window.code:SetText("/cast Zed 2")
+Click(editorButtons[1])
+check("Save follows the open macro to its new slot", store.account[1].body == "/cast Abc"
+    and store.account[2].name == "Zed" and store.account[2].body == "/cast Zed 2")
+macroAPI.CreateMacro("Aaa", 134400, "/cast Aaa", false)
+Click(editorButtons[5])
+check("Delete removes the open macro, not whatever moved into its slot", #store.account == 2
+    and store.account[1].name == "Aaa" and store.account[2].name == "Abc")
+
+OpenNamed("Abc")
+macroAPI.DeleteMacro(2)   -- removed outside the Forge
+window.code:SetText("/cast Abc 2")
+Click(editorButtons[1])
+check("a macro gone from under it is not saved over another", #store.account == 1 and store.account[1].name == "Aaa"
+    and printed[#printed]:find("changed or removed outside", 1, true))
+Click(editorButtons[1])
+check("Save then makes it again as a new macro", #store.account == 2 and store.account[2].body == "/cast Abc 2")
+
+-- Saving text leaves a question mark icon alone, so it keeps following #showtooltip.
+store.character = { { name = "Show", icon = 134400, body = "#showtooltip Polymorph\n/cast Polymorph" } }
+OpenNamed("Show")
+window.code:SetText("#showtooltip Polymorph\n/stopcasting\n/cast Polymorph")
+Click(editorButtons[1])
+check("the icon stays the question mark", store.character[1].icon == 134400
+    and store.character[1].body:find("/stopcasting", 1, true))
+
+-- Import: any number, as many as fit; a script in any case is called out.
+local twenty = {}
+for i = 1, 20 do twenty[i] = { name = "M" .. i, body = "/cast Spell " .. i } end
+vault[1] = { v = 1, macros = twenty }
+Click(window.lib.importEmpty)
+lastPrompt("!NFM1!S")
+check("all 20 are read, as many added as fit", #store.character == 18
+    and printed[#printed]:find("Added 17 of 20", 1, true))
+store.character = {}
+for _, body in ipairs({ "/RUN print(1)", "/dump GetTime()" }) do
+    vault[1] = { v = 1, macros = { { name = "X", body = body } } }
+    Click(window.lib.importEmpty)
+    lastPrompt("!NFM1!S")
+    check("a script is called out: " .. body, account.lastConfirm:find("runs a script", 1, true))
+end
+
+check("line numbers stay inside the editor box", window.editor.gutter.clips == true)
 
 print(("test-macro-window: %d checks passed"):format(checks))

@@ -90,9 +90,10 @@ function MacroText.Check(body, known)
                 Add(n, "warning", "Does nothing: a line has to start with /.")
             else
                 command = command:lower()
+                -- A warning: commands of addons that are not loaded are missing from the list.
                 if not (known[command] or command:find("^/%d+$")) then
                     local guess = Nearest(command, known)
-                    Add(n, "error", command .. " is not a command the game knows"
+                    Add(n, "warning", command .. " is not a command the game knows"
                         .. (guess and (". Did you mean " .. guess .. "?") or "."))
                 end
                 if not SCRIPT[command] then
@@ -241,7 +242,9 @@ function MacroText.Explain(body)
         elseif lower:find("^/focus") then
             sentence = Clause(text:match("^/%a+%s*(.*)$"), nil, "Sets your focus to") .. "."
         elseif lower:find("^/tm ") then
-            sentence = "Puts raid marker " .. text:match("(%d+)%s*$") .. " on " .. (text:find("@focus") and "your focus" or "your target") .. "."
+            local marker = text:match("(%d+)%s*$")
+            sentence = (marker and ("Puts raid marker " .. marker) or "Puts a raid marker (1 to 8)") .. " on "
+                .. (text:find("@focus") and "your focus" or "your target") .. "."
         elseif lower:find("^/dismount") then
             sentence = "Gets you off your mount."
         elseif lower:find("^/click") then

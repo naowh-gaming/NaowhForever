@@ -32,7 +32,13 @@ end)
 
 Case("an unknown command says what was meant", function()
     local said = Issues("#showtooltip\n/castsequnce reset=3 Scorch, Fire Blast")
-    assert(said == "2 error: /castsequnce is not a command the game knows. Did you mean /castsequence?", said)
+    -- A warning, not an error: commands of addons that are not loaded are missing from the list.
+    assert(said == "2 warning: /castsequnce is not a command the game knows. Did you mean /castsequence?", said)
+end)
+
+Case("a raid marker line half typed is explained, not an error", function()
+    assert(Plain(Text.Explain("/tm [@focus] ")[1]) == "Puts a raid marker (1 to 8) on your focus.")
+    assert(Plain(Text.Explain("/tm 8")[1]) == "Puts raid marker 8 on your target.")
 end)
 
 Case("a missing bracket, a misspelt condition and an unknown unit", function()

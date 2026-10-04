@@ -213,6 +213,7 @@ local function Open(macro)
     draft = { index = macro.index, account = macro.account == true, name = macro.name or "New Macro",
         icon = macro.icon or QUESTION, body = macro.body or "", source = macro.source or "game" }
     draft.saved = draft.index and draft.body or nil
+    draft.savedName = draft.index and draft.name or nil
     if window then
         window.name:SetText(draft.name)
         window.code:SetText(draft.body)
@@ -224,24 +225,40 @@ local function NewDraft(body, name, source)
     Open({ name = name or "New Macro", body = body or "#showtooltip\n/cast ", account = false, source = source or "new" })
 end
 
--- Save into the game: a new macro where the editor says, an existing one in place.
+-- Where the open macro is now. The game sorts macros by name and moves them whenever any is
+-- added, renamed or deleted (a Smart Macro, an import), so the index it was opened at is only a
+-- hint: it is found again by the name and text it was last saved with.
+local function Current()
+    return draft and draft.index and Find(draft.savedName, draft.saved, draft.account)
+end
+
+-- The open macro is no longer where it was saved: it becomes a new one, nothing else is touched.
+local function Lost()
+    draft.index, draft.saved, draft.savedName = nil, nil, nil
+    Toast("That macro was changed or removed outside the Forge. Save makes it again as a new macro.")
+    Render()
+end
+
+-- Save into the game: a new macro where the editor says, an existing one in place. The icon is
+-- written only when one was picked; otherwise a question mark keeps following #showtooltip.
 local function Save()
     if InCombatLockdown() then Toast("Macros can be saved once the fight is over.") return end
     local name, body = strtrim(window.name:GetText()), window.code:GetText()
     if name == "" or #name > 16 then Toast("A macro's name is 1 to 16 bytes.") return end
     if #body > Text.LIMIT then Toast(("%d bytes over the game's 255: shorten it first."):format(#body - Text.LIMIT)) return end
-    local icon = draft.icon ~= QUESTION and draft.icon or QUESTION
     if draft.index then
-        EditMacro(draft.index, name, icon, body)
+        local index = Current()
+        if not index then return Lost() end
+        EditMacro(index, name, draft.picked and draft.icon or nil, body)
     else
         if not Room(draft.account) then
             Toast((draft.account and "Account" or "Character") .. " macros are full. Delete one to make room.")
             return
         end
-        CreateMacro(name, icon, body, not draft.account)
+        CreateMacro(name, draft.picked and draft.icon or QUESTION, body, not draft.account)
     end
     draft.index = Find(name, body, draft.account)
-    draft.name, draft.body, draft.saved, draft.source = name, body, body, "game"
+    draft.name, draft.body, draft.saved, draft.savedName, draft.source = name, body, body, name, "game"
     Toast("Saved " .. name .. ". Drag its icon to an action bar.")
     Render()
 end
@@ -254,20 +271,32 @@ local function Delete()
     end
     ns.Confirm(("Delete %s? Its action bar buttons go with it."):format(draft.name), function()
         if InCombatLockdown() then Toast("Macros can be deleted once the fight is over.") return end
-        DeleteMacro(draft.index)
+        local index = Current()
+        if not index then return Lost() end
+        DeleteMacro(index)
         NewDraft()
         Render()
     end)
 end
 
 local function Drag()
-    if draft and draft.index and not InCombatLockdown() then PickupMacro(draft.index) end
+    local index = Current()
+    if index and not InCombatLockdown() then PickupMacro(index) end
 end
 
 -------------------------------------------------------------------------------
 --  Sharing: one macro or many as a string
 -------------------------------------------------------------------------------
 local SHARE = "!NFM1!"
+local SCRIPTS = { ["/run"] = true, ["/script"] = true, ["/dump"] = true }
+
+local function RunsScript(body)
+    for line in body:gmatch("[^\n]+") do
+        local command = line:match("^%s*(/%a+)")
+        if command and SCRIPTS[command:lower()] then return true end
+    end
+    return false
+end
 
 local function Codec()
     return LibStub("LibSerialize"), LibStub("LibDeflate")
@@ -280,7 +309,8 @@ local function Export(macros)
     return SHARE .. LD:EncodeForPrint(LD:CompressDeflate(LS:Serialize({ v = 1, macros = out })))
 end
 
--- Parsed as data, never run: names and bodies within the game's limits, at most 18.
+-- Parsed as data, never run: names and bodies within the game's limits, no more than the game
+-- holds in all.
 local function Decode(text)
     local LS, LD = Codec()
     local body = type(text) == "string" and text:match("^%s*" .. SHARE:gsub("!", "%%!") .. "(%S+)%s*$")
@@ -290,8 +320,9 @@ local function Decode(text)
     local ok, data = LS:Deserialize(raw)
     if not (ok and type(data) == "table" and data.v == 1 and type(data.macros) == "table") then return end
     local out = {}
+    local maxAccount, maxCharacter = Limits()
     for i, m in ipairs(data.macros) do
-        if i > 18 or type(m) ~= "table" or type(m.name) ~= "string" or type(m.body) ~= "string"
+        if i > maxAccount + maxCharacter or type(m) ~= "table" or type(m.name) ~= "string" or type(m.body) ~= "string"
             or #m.name < 1 or #m.name > 16 or #m.body > Text.LIMIT then
             return
         end
@@ -305,9 +336,7 @@ local function Import()
         local macros = Decode(text)
         if not macros then Toast("That is not a Naowh Forever macro string.") return end
         local runs = false
-        for _, m in ipairs(macros) do
-            if m.body:find("/run") or m.body:find("/script") then runs = true end
-        end
+        for _, m in ipairs(macros) do runs = runs or RunsScript(m.body) end
         ns.Confirm(("Add %d %s as character macros?%s"):format(#macros, #macros == 1 and "macro" or "macros",
             runs and " One runs a script: read it in the editor before you use it." or ""), function()
             if InCombatLockdown() then Toast("Macros can be added once the fight is over.") return end
@@ -318,7 +347,8 @@ local function Import()
                     added = added + 1
                 end
             end
-            Toast(("Added %d of %d."):format(added, #macros))
+            Toast(added == #macros and ("Added %d."):format(added)
+                or ("Added %d of %d: character macros are full."):format(added, #macros))
             Render()
         end)
     end)
@@ -471,7 +501,7 @@ RenderEditor = function()
         end
     end
     Gutter()
-    editor.icon:SetTexture(ShownIcon(draft.index, draft.icon, body))
+    editor.icon:SetTexture(ShownIcon(Current(), draft.picked and draft.icon or (draft.index and draft.icon), body))
     local changed = draft.saved == nil or draft.saved ~= body or (draft.index and window.name:GetText() ~= draft.name)
     editor.saveLabel:SetText(draft.index and (changed and "Save" or "Saved") or "Create")
     editor.scopeAccount:SetEnabled(draft.index == nil)
@@ -551,6 +581,7 @@ local function BuildEditor(parent)
     ns.Solid(box, "BACKGROUND", T.bg, 1):SetAllPoints()
     ns.Border(box, BLACK)
     editor.gutter = CreateFrame("Frame", nil, box)
+    editor.gutter:SetClipsChildren(true)
     editor.gutter:SetPoint("TOPLEFT")
     editor.gutter:SetPoint("BOTTOMLEFT")
     editor.gutter:SetWidth(GUTTER_W)
@@ -776,10 +807,10 @@ local function BuildInspector(parent)
             if button == "RightButton" then
                 Favorites()[self.fileID] = not Favorites()[self.fileID] or nil
             else
-                draft.icon = self.fileID
-                if draft.index and not InCombatLockdown() then
-                    EditMacro(draft.index, draft.name, draft.icon, draft.saved or draft.body)
-                    draft.index = Find(draft.name, draft.saved or draft.body, draft.account) or draft.index
+                draft.icon, draft.picked = self.fileID, true
+                local index = Current()
+                if index and not InCombatLockdown() then
+                    EditMacro(index, draft.savedName, draft.icon, draft.saved)
                 end
                 Render()
             end
