@@ -611,13 +611,13 @@ local function BuildEditor(parent)
     -- The byte meter.
     editor.track = ns.Solid(editor, "ARTWORK", T.line, 1)
     editor.track:SetPoint("TOPLEFT", iconButton, "BOTTOMLEFT", 0, -16)
-    editor.track:SetPoint("RIGHT", -150, 0)
+    editor.track:SetPoint("RIGHT", -200, 0)
     editor.track:SetHeight(METER_H)
     editor.fill = editor:CreateTexture(nil, "OVERLAY")
     editor.fill:SetPoint("TOPLEFT", editor.track)
     editor.fill:SetHeight(METER_H)
     editor.count = Text14(editor, 12, T.muted)
-    editor.count:SetFont(CODE_FONT, 12, "")
+    editor.count:SetFont(CODE_FONT, 11, "")
     editor.count:SetPoint("LEFT", editor.track, "RIGHT", 10, 0)
     -- The text, with its line numbers beside it.
     local box = CreateFrame("Frame", nil, editor)
@@ -799,8 +799,9 @@ local function BuildInspector(parent)
         row.number:SetPoint("CENTER")
         row.text = Text14(row, 13)
         row.text:SetPoint("TOPLEFT", 30, 0)
-        row.text:SetPoint("RIGHT")
+        row.text:SetWidth(INSPECTOR_W - 2 * PAD - 30)
         row.text:SetJustifyH("LEFT")
+        row.text:SetWordWrap(true)
         row.text:SetSpacing(2)
         return row
     end)
@@ -929,7 +930,7 @@ local function BuildInspector(parent)
             for i, sentence in ipairs(said) do
                 local row = lines.Take()
                 row:SetPoint("TOPLEFT", 0, y)
-                row:SetPoint("RIGHT")
+                row:SetPoint("TOPRIGHT", 0, y)
                 row.number:SetText(i)
                 row.box:Show()
                 row.text:SetText(sentence)
@@ -940,7 +941,7 @@ local function BuildInspector(parent)
             if #said == 0 then
                 local row = lines.Take()
                 row:SetPoint("TOPLEFT", 0, y)
-                row:SetPoint("RIGHT")
+                row:SetPoint("TOPRIGHT", 0, y)
                 row.box:Hide()
                 row.text:SetText(ns.Color("muted", "Write a line and this says what it does."))
                 row:SetHeight(18)
@@ -1020,17 +1021,17 @@ local function Uses(key, body)
             text = id and (C_Item.GetItemNameByID(id) or "Your trinket") or "No trinket worn", count = "slot " .. slot }
     end
     if key == "focus" then
-        uses[#uses + 1] = { icon = 132212, text = "Focus your mouseover, else your target", count = "" }
+        uses[#uses + 1] = { icon = 132212, text = "Mouseover, else target", count = "" }
     elseif key == "acceptPopup" then
-        uses[#uses + 1] = { icon = 136814, text = "Clicks Yes on the popup on top", count = "" }
+        uses[#uses + 1] = { icon = 136814, text = "Clicks Yes on popups", count = "" }
     end
-    if #uses == 0 then uses[1] = { icon = QUESTION, text = "Nothing in your bags for it", count = "" } end
+    if #uses == 0 then uses[1] = { icon = QUESTION, text = "Nothing in your bags", count = "" } end
     return uses
 end
 
-local SMART_NOTES = { health = "Healthstone or potion, as you set", mana = "Your best mana potion",
-    food = "Best food and drink, conjured first", bandage = "On yourself", trinket1 = "Top trinket slot",
-    trinket2 = "Bottom trinket slot", focus = "Optionally marks and announces it", acceptPopup = "Ready checks, summons" }
+local SMART_NOTES = { health = "Healthstone or potion", mana = "Best mana potion", food = "Conjured food first",
+    bandage = "On yourself", trinket1 = "Top trinket slot", trinket2 = "Bottom trinket slot",
+    focus = "Marks and announces", acceptPopup = "Ready checks, summons" }
 
 local function NewSmartCard(parent)
     local c = CreateFrame("Frame", nil, parent)
@@ -1045,8 +1046,12 @@ local function NewSmartCard(parent)
     c.icon.edge:SetPoint("TOPLEFT")
     c.title = Text14(c, 16)
     c.title:SetPoint("TOPLEFT", c.drag, "TOPRIGHT", 10, 0)
+    c.title:SetJustifyH("LEFT")
+    c.title:SetWordWrap(false)
     c.note = Text14(c, 11, T.muted)
     c.note:SetPoint("TOPLEFT", c.title, "BOTTOMLEFT", 0, -3)
+    c.note:SetJustifyH("LEFT")
+    c.note:SetWordWrap(false)
     c.toggle = UI.BuildToggleControl(c, c:GetFrameLevel() + 2, function() return S.Get(c.key) == true end,
         function(v) S.Set(c.key, v) end)
     c.toggle:SetPoint("TOPRIGHT", -12, -14)
@@ -1062,17 +1067,15 @@ local function NewSmartCard(parent)
         row.lead:SetJustifyH("LEFT")
         row.icon = Icon(row, 20)
         row.icon.edge:SetPoint("LEFT", 36, 0)
-        row.text = Text14(row, 12)
-        row.text:SetPoint("LEFT", row.icon.edge, "RIGHT", 8, 0)
-        row.text:SetPoint("RIGHT", -50, 0)
-        row.text:SetJustifyH("LEFT")
-        row.text:SetWordWrap(false)
         row.count = Text14(row, 11, T.muted)
         row.count:SetPoint("RIGHT")
+        row.text = Text14(row, 12)
+        row.text:SetPoint("LEFT", row.icon.edge, "RIGHT", 8, 0)
+        row.text:SetPoint("RIGHT", row.count, "LEFT", -6, 0)
+        row.text:SetJustifyH("LEFT")
+        row.text:SetWordWrap(false)
         c.uses[i] = row
     end
-    c.foot = Text14(c, 11, T.muted)
-    c.foot:SetPoint("BOTTOMLEFT", 12, 10)
     c.dragHint = Text14(c, 11, T.muted)
     c.dragHint:SetPoint("BOTTOMRIGHT", -12, 10)
     c.dragHint:SetText("Drag the icon to a bar")
@@ -1093,6 +1096,10 @@ local function DrawSmart()
         c.key = m.key
         local on = S.Get(m.key) == true
         c:SetAlpha(on and 1 or 0.6)
+        -- The title and note stop short of the switch.
+        local textW = w - 12 - (ROW_ICON + 2) - 10 - 8 - c.toggle:GetWidth() - 12
+        c.title:SetWidth(textW)
+        c.note:SetWidth(textW)
         c.title:SetText(m.name)
         c.note:SetText(SMART_NOTES[m.key] or "")
         c.toggle._refreshValue()
@@ -1109,7 +1116,6 @@ local function DrawSmart()
                 row.count:SetText(use.count)
             end
         end
-        c.foot:SetText(on and "On your account" or "Off")
     end
     view.body:SetHeight(math.ceil(#ns.MacroSmart.list / CARD_COLS) * (SMART_H + CARD_GAP))
     local side = window.smartSide
@@ -1190,7 +1196,7 @@ local function NewLibCard(parent)
     c.tag:SetPoint("TOPRIGHT", -12, -16)
     c.note = Text14(c, 12, T.muted)
     c.note:SetPoint("TOPLEFT", c.icon.edge, "BOTTOMLEFT", 0, -8)
-    c.note:SetPoint("RIGHT", -12, 0)
+    c.note:SetPoint("TOPRIGHT", -12, -(12 + ROW_ICON + 2 + 8))
     c.note:SetJustifyH("LEFT")
     local code = CreateFrame("Frame", nil, c)
     code:SetPoint("TOPLEFT", c.note, "BOTTOMLEFT", 0, -8)
