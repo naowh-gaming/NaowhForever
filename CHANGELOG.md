@@ -81,7 +81,6 @@
 - Settings: a module's window opened from /nf (Open Dungeon Journal, or the small window button
   beside a module) brings /nf back when you close it the first time too, not only from the
   second time on.
-- Macros: the macro editor shows a blinking cursor again while you type.
 
 ## 0.5.19-beta
 
