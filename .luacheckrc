@@ -63,7 +63,7 @@ read_globals = {
     "GetInstanceInfo", "GetInventoryItemDurability", "GetInventoryItemID",
     "GetInventoryItemLink", "GetInventoryItemQuality", "GetInventoryItemTexture",
     "GetLootRollItemLink", "GetLootSlotInfo", "GetLootSlotLink", "GetLootThreshold",
-    "GetMacroBody", "GetMacroInfo", "GetMacroIndexByName", "GetMaxLevelForPlayerExpansion",
+    "GetMacroBody", "GetMacroInfo", "GetMacroIndexByName", "GetMacroSpell", "GetMaxLevelForPlayerExpansion",
     "GetMerchantItemID", "GetMerchantItemInfo", "GetMerchantItemLink",
     "GetMerchantItemMaxStack", "GetMerchantNumItems", "GetMoney", "GetMoneyString",
     "GetMouseFoci", "GetNetStats", "GetNormalizedRealmName", "GetNumActiveQuests",
