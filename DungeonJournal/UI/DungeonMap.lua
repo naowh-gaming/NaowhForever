@@ -1,8 +1,8 @@
 -------------------------------------------------------------------------------
 --  UI/DungeonMap.lua -- a dungeon's map: the game's own map art of the dungeon (Data/Maps.lua),
 --  or, for one the game has no art for yet, a picture the addon ships (image), with its
---  maker's credit in the map's corner; its bosses as round portraits where they stand, each with its place in the kill order,
---  and the entrance. Hover a boss for its name, click it for its loot; a dungeon on several
+--  maker's credit in the map's corner; its bosses as round portraits where they stand,
+--  each with its place in the kill order, and the entrance. Hover a boss for its name, click it for its loot; a dungeon on several
 --  floors has a switch under the map. It shows in two places, each a view of its own:
 --
 --  - A window, from Map on a dungeon page's Bosses title: in front of the window that holds
