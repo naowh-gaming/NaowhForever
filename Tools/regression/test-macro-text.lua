@@ -84,4 +84,21 @@ Case("Shorten saves bytes with spellings the game reads the same way", function(
     assert(Text.Shorten("/run print( 'a ; b' )") == "/run print( 'a ; b' )", "a script is left as it is")
 end)
 
+Case("Shorten leaves chat as it was written", function()
+    local chat = "/say Pull in 3 ; target=me [ go ]\n/p modifier: shift , please"
+    assert(Text.Shorten(chat) == chat, Text.Shorten(chat))
+end)
+
+Case("a player's or pet's name is a unit; a near miss of one is a typo", function()
+    assert(Issues("/cast [@Thrall,help] Blessing of Kings\n/cast [@party1pet,help] Mend Pet") == "")
+    local said = Issues("/cast [@mousover] Blink")
+    assert(said == "1 warning: @mousover is not a unit the game knows. Did you mean @mouseover?", said)
+end)
+
+Case("/focus with a unit says that unit", function()
+    assert(Plain(Text.Explain("/focus arena1")[1]) == "Sets your focus to arena1.", Plain(Text.Explain("/focus arena1")[1]))
+    assert(Plain(Text.Explain("/focus mouseover")[1]) == "Sets your focus to the unit under your mouse.")
+    assert(Plain(Text.Explain("/focus")[1]) == "Sets your focus to your target.")
+end)
+
 print(("test-macro-text: %d cases passed"):format(count))

@@ -30,6 +30,7 @@ local function Unit(word)
     return UNITS[word] or word:find("^party%d$") or word:find("^raid%d+$") or word:find("^arena%d$")
         or word:find("^boss%d$") or word:find("^partypet%d$") or word:find("^raidpet%d+$")
         or word:find("^nameplate%d+$") or (word:find("target$") and Unit(word:sub(1, -7)))
+        or (word:find("pet$") and Unit(word:sub(1, -4)))
 end
 
 -- Edit distance, for "did you mean".
@@ -107,8 +108,12 @@ function MacroText.Check(body, known)
                             part = strtrim(part):lower()
                             local unit = part:match("^@(.+)$") or part:match("^target=(.+)$")
                             if unit then
-                                if not Unit(unit) then
-                                    Add(n, "warning", "@" .. unit .. " is not a unit the game knows.")
+                                -- Any other word is a player's or a pet's name, which the game
+                                -- takes; one close to a unit is a typo.
+                                local guess = not Unit(unit) and Nearest(unit, UNITS)
+                                if guess then
+                                    Add(n, "warning", "@" .. unit .. " is not a unit the game knows. Did you mean @"
+                                        .. guess .. "?")
                                 end
                             elseif part ~= "" then
                                 local word = part:match("^([%a]+)")
@@ -182,7 +187,11 @@ local function Clause(clause, verb, lead)
         clause = rest
     end
     local what = SPELL .. (clause ~= "" and clause or "it") .. "|r"
-    if not any then return lead and (lead .. " your target") or (verb .. " " .. what) end
+    if not any then
+        if not lead then return verb .. " " .. what end
+        local unit = clause:lower()
+        return lead .. " " .. WHO .. (clause ~= "" and (UNIT_WORDS[unit] or clause) or "your target") .. "|r"
+    end
     local out = {}
     for i, group in ipairs(said) do
         local who = WHO .. (group.unit and (UNIT_WORDS[group.unit] or ("@" .. group.unit)) or "your target") .. "|r"
@@ -266,13 +275,23 @@ end
 -------------------------------------------------------------------------------
 --  Shorter
 -------------------------------------------------------------------------------
+-- Commands that take [conditions]. Everything else (chat, emotes, scripts) is left as written.
+local CONDITIONAL = {}
+for _, command in ipairs({ "/cast", "/use", "/castsequence", "/castrandom", "/userandom", "/target", "/targetenemy",
+    "/targetfriend", "/targetparty", "/targetraid", "/targetexact", "/focus", "/assist", "/startattack",
+    "/stopattack", "/petattack", "/petfollow", "/petstay", "/petpassive", "/petdefensive", "/petaggressive",
+    "/cancelaura", "/cancelform", "/stopcasting", "/stopmacro", "/click", "/equip", "/equipslot", "/dismount",
+    "/tm", "/cleartarget", "/clearfocus" }) do
+    CONDITIONAL[command] = true
+end
+
 -- The same macro in fewer bytes, by spellings the game reads the same way: @ for target=,
 -- mod: and btn: for modifier: and button:, and no spaces around ; and , or at line ends.
 function MacroText.Shorten(body)
     local lines = {}
     for line in (body .. "\n"):gmatch("([^\n]*)\n") do
         local text = line:gsub("%s+$", "")
-        if text:sub(1, 1) == "/" and not SCRIPT[(text:match("^(/%a+)") or ""):lower()] then
+        if CONDITIONAL[(text:match("^(/%a+)") or ""):lower()] then
             text = text:gsub("[Tt]arget=", "@"):gsub("modifier:", "mod:"):gsub("button:", "btn:")
                 :gsub("%s*;%s*", ";"):gsub("%[%s*", "["):gsub("%s*%]", "]")
             text = text:gsub("%b[]", function(group) return (group:gsub("%s*,%s*", ",")) end)

@@ -409,6 +409,7 @@ local function DrawList()
                 source = "pack" }
         end
     end
+    local current = Current()
     local y = 0
     for _, g in ipairs(groups) do
         local shown = {}
@@ -437,7 +438,7 @@ local function DrawList()
                 r.dot:SetShown(worst ~= nil)
                 if worst then r.dot:SetColorTexture(worst.r, worst.g, worst.b, 1) end
                 r.stripe:SetShown(i % 2 == 0)
-                Pick(r, draft ~= nil and ((m.index and m.index == draft.index)
+                Pick(r, draft ~= nil and ((m.index and m.index == current)
                     or (not m.index and draft.source == "pack" and draft.name == m.name)))
                 r:SetScript("OnClick", function()
                     Open(m)
@@ -635,7 +636,10 @@ local function BuildEditor(parent)
     ns.Tooltip(shorten, "Shorten", "Saves bytes with spellings the game reads the same way: @ for target=, "
         .. "mod: and btn:, and no spaces around ; and ,.")
     local export = ns.Button(editor, "Export", 76, BUTTON_H, function()
-        ns.ShowCopyBox(draft.name, Export({ { name = window.name:GetText(), body = window.code:GetText() } }))
+        local name, body = strtrim(window.name:GetText()), window.code:GetText()
+        if name == "" or #name > 16 then Toast("A macro's name is 1 to 16 bytes.") return end
+        if body == "" or #body > Text.LIMIT then Toast("A macro's text is 1 to 255 bytes.") return end
+        ns.ShowCopyBox(name, Export({ { name = name, body = body } }))
     end)
     export:SetPoint("LEFT", shorten, "RIGHT", 6, 0)
     local revert = ns.Button(editor, "Revert", 76, BUTTON_H, function()
@@ -1041,6 +1045,35 @@ end
 -------------------------------------------------------------------------------
 --  Library
 -------------------------------------------------------------------------------
+-- A pack macro onto this character, as the Class Macros page adds one: within the game's limits,
+-- once, and a script from a shared pack only after the player says so.
+local function AddFromPack(entry)
+    if #entry.name < 1 or #entry.name > 16 or #entry.body < 1 or #entry.body > Text.LIMIT then
+        Toast(entry.name .. " is not a macro the game can hold: a name is 1 to 16 bytes, its text 1 to 255.")
+        return
+    end
+    local function Add()
+        if InCombatLockdown() then Toast("Macros can be added once the fight is over.") return end
+        local index = Find(entry.name, entry.body, false)
+        if not index then
+            if not Room(false) then Toast("Character macros are full. Delete one to make room.") return end
+            CreateMacro(entry.name, QUESTION, entry.body, true)
+            index = Find(entry.name, entry.body, false)
+            Toast("Added " .. entry.name .. " to this character. Drag it to a bar from My Macros.")
+        else
+            Toast(entry.name .. " is already one of this character's macros.")
+        end
+        Open({ index = index, account = false, name = entry.name, icon = QUESTION, body = entry.body })
+        Render()
+    end
+    if RunsScript(entry.body) then
+        ns.Confirm(entry.name .. " runs a script from a shared pack. Open it in the editor to read it first. Add it?",
+            Add)
+    else
+        Add()
+    end
+end
+
 local function NewClassRow(parent)
     local b = CreateFrame("Button", nil, parent)
     b:SetHeight(34)
@@ -1132,15 +1165,7 @@ local function DrawLibrary()
         local own = libClass == myClass
         c.add:SetEnabled(own)
         c.add:SetAlpha(own and 1 or 0.4)
-        c.add._onClick = function()
-            if InCombatLockdown() then Toast("Macros can be added once the fight is over.") return end
-            if not Room(false) then Toast("Character macros are full. Delete one to make room.") return end
-            CreateMacro(entry.name, QUESTION, entry.body, true)
-            Open({ index = Find(entry.name, entry.body, false), account = false, name = entry.name, icon = QUESTION,
-                body = entry.body })
-            Toast("Added " .. entry.name .. " to this character. Drag it to a bar from My Macros.")
-            Render()
-        end
+        c.add._onClick = function() AddFromPack(entry) end
         c.open._onClick = function()
             NewDraft(entry.body, entry.name, "pack")
             window.SetTab("mine")
@@ -1194,13 +1219,7 @@ local function SetTab(key)
         for _, card in ipairs(cards) do ShowCard(card, name == key) end
     end
     window.search:SetShown(key == "mine")
-    if window:IsShown() then
-        if key == "mine" and draft then
-            window.name:SetText(draft.name)
-            window.code:SetText(draft.body)
-        end
-        Render()
-    end
+    if window:IsShown() then Render() end
 end
 
 -- A card's area on the window, as a frame its contents can fill.

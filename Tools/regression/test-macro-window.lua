@@ -400,4 +400,55 @@ end
 
 check("line numbers stay inside the editor box", window.editor.gutter.clips == true)
 
+-------------------------------------------------------------------------------
+--  Second review
+-------------------------------------------------------------------------------
+-- The list lights the open macro after the game re-sorts.
+store.account = { { name = "Zed", icon = 136243, body = "/cast Zed" } }
+OpenNamed("Zed")
+macroAPI.CreateMacro("Abc", 134400, "/cast Abc", false)
+window.switch.onPick("smart")
+window.switch.onPick("mine")
+local lit = Shown(function(f) return rawget(f, "macro") ~= nil and f.picked end)
+check("the open macro's row is lit, not its old slot", #lit == 1 and lit[1].macro.name == "Zed")
+
+-- Switching tabs keeps what you typed.
+window.name:SetText("Zed Renamed")
+window.code:SetText("/cast Zed 3")
+window.switch.onPick("lib")
+window.switch.onPick("mine")
+check("a tab switch keeps an unsaved name and text", window.name:GetText() == "Zed Renamed"
+    and window.code:GetText() == "/cast Zed 3")
+
+-- Export only what Import takes.
+account.lastCopy = nil
+window.code:SetText(string.rep("x", 300))
+Click(editorButtons[3])
+check("an oversize macro is not exported", account.lastCopy == nil and printed[#printed]:find("1 to 255", 1, true))
+
+-- Library Add: the pack's checks.
+store.character = {}
+packMacros.MAGE = {
+    { name = "Scripted", body = "/run print(1)\n/cast Polymorph" },
+    { name = "A name far too long", body = "/cast Frostbolt" },
+    { name = "Plain", body = "/cast Frost Nova" },
+}
+account.lastConfirm = nil
+window.switch.onPick("lib")
+local function LibCard(name)
+    for _, c in ipairs(Shown(function(f) return rawget(f, "add") ~= nil end)) do
+        if c.title.text == name then return c end
+    end
+end
+Click(LibCard("Scripted").add)
+check("a pack script needs the player's yes", (account.lastConfirm or ""):find("runs a script from a shared pack", 1, true))
+Click(LibCard("A name far too long").add)
+check("a name the game cannot hold is turned away", printed[#printed]:find("not a macro the game can hold", 1, true)
+    and #store.character == 1)
+window.switch.onPick("lib")
+Click(LibCard("Plain").add)
+window.switch.onPick("lib")
+Click(LibCard("Plain").add)
+check("adding it twice makes one macro", #store.character == 2 and printed[#printed]:find("already", 1, true))
+
 print(("test-macro-window: %d checks passed"):format(checks))
