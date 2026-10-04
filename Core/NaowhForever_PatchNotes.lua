@@ -11,6 +11,12 @@ local NOTES = {
             .. "your gold, a road to 60 with every level that brings spells, and the spells you "
             .. "can train now with how much stronger each rank is. A toast on level-up, Learn All "
             .. "I Can Afford beside your class trainer, search, Show Learned and a Mini bar.",
+        "Talent Builds (Training Planner): a leveling build for every class, an editor to make "
+            .. "your own, Export and Import to share them, and Follow This Build spends each new "
+            .. "talent point for you.",
+        "Naowh's Forge (/nfmacros): a macro window that colours a macro as you type, counts its "
+            .. "255 bytes, flags typos and explains each line in plain words. Smart Macros and "
+            .. "Naowh's Library live there too.",
         "Dungeon Journal (/nfjournal or /nfdj): every dungeon's bosses in kill order with what "
             .. "they drop, your BiS and upgrades marked, your quests with waypoints, dungeon maps "
             .. "with the bosses where they stand, kill counts with who was there and who won what, "
@@ -51,7 +57,13 @@ local NOTES = {
             .. "Ctrl-click Camp Nearby to dismiss it.",
         "Food & Drink Bar (Macros, Consumables): two buttons for the best food and drink in your "
             .. "bags, conjured first.",
-        "Also: Group Tools (Disband, Invite), Skip Modifier for quest automation, Shift-click a "
+        "Swing Timer: Color by Seal for paladins, the melee bars take the colour of your seal, "
+            .. "Seal of Martyrdom included.",
+        "Mailboxes (QoL, Interface): every mailbox on the world map, in towns and out in the "
+            .. "world.",
+        "Also: Group Tools (Disband, Invite, and as buttons on screen), Auto-Replace Enchants "
+            .. "(hold Shift to be asked), right-click anything in Unlock Mode for its options, "
+            .. "Skip Modifier for quest automation, Shift-click a "
             .. "recipe to search the AH, Flight Timer hides Blizzard's Request Stop, sound "
             .. "dropdowns play your pick and list None once.",
         "Fixed: borders and lines no longer lose a side at some UI scales, Group XP sees "
