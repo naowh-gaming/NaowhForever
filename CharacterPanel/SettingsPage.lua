@@ -18,7 +18,7 @@ end
 
 local function PanelSummary(store)
     if CP.EllesmereSheet() then
-        return store.Get("characterPanel") and "EllesmereUI's panel was turned back on: switch this off and on"
+        return store.Get("characterPanel") and "EllesmereUI's panel is in use: switch this off and on for this one"
             or "Takes over from EllesmereUI's panel, after a reload"
     end
     local badge, score = store.Get("characterPanelBadge"), store.Get("characterPanelScore")

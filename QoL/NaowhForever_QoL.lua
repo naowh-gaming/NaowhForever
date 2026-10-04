@@ -65,7 +65,7 @@ local S = UI.ModuleSettings("qol", {
     groupXP = false, groupXPShowSelf = true, groupXPWidth = 260,
     naowhScore = true, naowhScoreTooltip = true, naowhScoreScan = true, naowhScoreNearby = true,
     naowhScoreCompare = "max",
-    characterPanel = false,
+    characterPanel = true,
     -- On by default, an exception to off by default: marks on the game's own panel, no restyle.
     characterPanelSlotMarks = true, characterPanelLevels = true, characterPanelMarks = true,
     characterPanelEnchants = true, characterPanelScore = true, characterPanelBadge = true, characterPanelStats = "spec",
@@ -90,7 +90,7 @@ local S = UI.ModuleSettings("qol", {
     townVendors = false, townMail = false, townPinSize = 16,
     gearSets = true, gearBarVisible = true, trinketBar = false, trinketSize = 36, trinketSpacing = 4, gearBarSize = 32, gearMounted = "", gearResting = "",
     gearWindowAlpha = 1,
-    bis = true, bisTooltip = true, bisBagMarks = false, bisLootAlert = true, bisWindowAlpha = 1,
+    bis = true, bisTooltip = true, bisBagMarks = true, bisLootAlert = true, bisWindowAlpha = 1,
     -- Drop Alert: which picks, what it does, and its on-screen alert (BiS/View/Toast.lua).
     bisAlertFor = "all", bisAlertChat = true, bisAlertBadge = true, bisToast = true,
     bisDropSound = "game:raidwarning", bisYoursSound = "game:epicloot",
