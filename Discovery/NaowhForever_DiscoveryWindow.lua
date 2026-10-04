@@ -5,7 +5,9 @@
 --  faction by zone, where it is, whether you carry it, and a waypoint to it. The progress is a
 --  road, as the Training Planner's: a short stripe for every book, blue for those handed in,
 --  YOU over where you are, and a dot at each reward quest (10, 20, 25) with its choice of
---  rewards under it.
+--  rewards under it. A Sleeping Bag tab lists the Cozy Sleeping Bag's hidden chain instead:
+--  how far along you are and its reward, then every step, what to click, where and how to get
+--  there, with a waypoint.
 -------------------------------------------------------------------------------
 local ns = _G.NaowhForever
 local T = ns.THEME
@@ -17,9 +19,9 @@ local Parts, St = Shared.Parts, Shared.Style
 local WIDTH, HEIGHT = 760, 720
 local HEADER, FOOTER, PAD = St.WINDOW_HEADER, St.WINDOW_FOOTER, St.WINDOW_PAD
 local INSET, SCROLLBAR, TAB_H, TAB_GAP = St.CONTENT_INSET, St.SCROLLBAR, St.TAB_H, St.TAB_GAP
-local PAGE = "Discovery/Settings"
+local PAGE = "Discovery/Library Books"
 local CARD = 6
-local TABS_W = 220
+local TABS_W = 330
 local HERO_H = 166
 local BAR_H = 4                 -- the road's stripes
 local SEGMENT_GAP = 2           -- between two books' stripes
@@ -37,11 +39,12 @@ local STATUS_GAP = 10
 local STRIPE, HOVER = 0.025, 0.04
 local STORED_RGB = { r = 1, g = 0.82, b = 0 }
 local MISSING_RGB = { r = 0.97, g = 0.44, b = 0.44 }
-local EVENTS = { "BAG_UPDATE_DELAYED", "QUEST_TURNED_IN", "PLAYERBANKSLOTS_CHANGED" }
+local EVENTS = { "BAG_UPDATE_DELAYED", "QUEST_TURNED_IN", "QUEST_ACCEPTED", "PLAYERBANKSLOTS_CHANGED" }
 
 local FILTERS = {
     { key = "find", label = "To Find", tip = "The books you have not handed in yet." },
     { key = "all", label = "All Books", tip = "Every book for your faction, handed in or not." },
+    { key = "bag", label = "Sleeping Bag", tip = "The Cozy Sleeping Bag's hidden quest chain, step by step." },
 }
 
 local window, scroll, view, kinds
@@ -349,6 +352,128 @@ local function SetBook(row, book, spot, sub, stripe)
         + ROW_BOTTOM
 end
 
+-------------------------------------------------------------------------------
+--  The Sleeping Bag tab
+-------------------------------------------------------------------------------
+local Bag = ns.SleepingBagChain
+
+-- Its card: how far along you are, the level it needs, and the bag itself.
+local function NewBagHero(parent)
+    local hero = CreateFrame("Frame", nil, parent)
+    ns.Solid(hero, "BACKGROUND", T.fg, St.CARD_FILL):SetAllPoints()
+    ns.Border(hero, St.BORDER_RGB)
+    hero.kicker = ns.Font(hero, 10, nil, T.accentSoft)
+    hero.kicker:SetPoint("TOPLEFT", 16, -14)
+    hero.kicker:SetText("COZY SLEEPING BAG")
+    hero.count = ns.Font(hero, 22, nil, T.fg)
+    hero.count:SetPoint("TOPLEFT", hero.kicker, "BOTTOMLEFT", 0, -4)
+    hero.next = ns.Font(hero, 12, nil, T.muted)
+    hero.next:SetPoint("BOTTOMLEFT", hero.count, "BOTTOMRIGHT", 10, 3)
+    hero.about = ns.Font(hero, 11, nil, T.muted)
+    hero.about:SetPoint("TOPLEFT", hero.count, "BOTTOMLEFT", 0, -8)
+    hero.about:SetPoint("RIGHT", -80, 0)
+    hero.about:SetJustifyH("LEFT")
+    hero.about:SetWordWrap(true)
+    hero.reward = Parts.ItemIcon(hero, 36)
+    hero.reward:SetPoint("TOPRIGHT", -16, -16)
+    hero.reward.item = ns.SleepingBag.item
+    hero.reward.texture:SetTexture(C_Item.GetItemIconByID(ns.SleepingBag.item) or 134400)
+    hero.reward:EnableMouse(true)
+    hero.reward:SetScript("OnEnter", RewardEnter)
+    hero.reward:SetScript("OnLeave", GameTooltip_Hide)
+    return hero
+end
+
+local function SetBagHero(hero)
+    local steps = Bag.Steps()
+    local step, at = Bag.Current()
+    local done = (at or #steps + 1) - 1
+    hero.count:SetText(("%d / %d"):format(done, #steps))
+    hero.next:SetText(step and ("Next: %s"):format(step.object) or "You have the Cozy Sleeping Bag")
+    local about = "A hidden quest chain across Azeroth: click each thing in the world in turn. It gives a lot "
+        .. "of experience, and ends in the Cozy Sleeping Bag; rest in it for a bonus to experience."
+    if not Bag.Level() then
+        about = about .. ns.Color("fg", (" Needs level %d."):format(ns.SleepingBag.level))
+    end
+    hero.about:SetText(about)
+    return 26 + math.ceil(hero.count:GetStringHeight()) + 8 + math.ceil(hero.about:GetStringHeight()) + 16
+end
+
+local function StepPin(button, mouse)
+    local row = button:GetParent()
+    if mouse == "RightButton" then
+        local step = row.step
+        return Parts.SharePlace(button, "Share where it is", step.object, step.map, step.x, step.y, step.place)
+    end
+    Bag.Waypoint(row.step)
+end
+
+local function StepEnter(row)
+    row.hover:Show()
+    if not Parts.Tip(row, "ANCHOR_RIGHT") then return end
+    local step, m = row.step, T.muted
+    GameTooltip:SetText(step.object, 1, 1, 1)
+    GameTooltip:AddLine(Bag.Where(step), m.r, m.g, m.b, true)
+    if step.tip then GameTooltip:AddLine(step.tip, 1, 1, 1, true) end
+    GameTooltip:AddLine(" ")
+    GameTooltip:AddLine("Pin: waypoint    Right-click it: Share", T.accentSoft.r, T.accentSoft.g, T.accentSoft.b)
+    GameTooltip:Show()
+end
+
+local function NewStep(parent)
+    local row = NewBook(parent)
+    row:SetScript("OnEnter", StepEnter)
+    row:SetScript("OnMouseUp", nil)
+    row.pin:SetScript("OnClick", StepPin)
+    return row
+end
+
+-- A step: its number (a tick once done), what to click and where with how to get there, and
+-- where it stands on the right.
+local function SetStep(row, step, number, state, stripe)
+    row.step = step
+    row.stripe:SetShown(stripe)
+    row.hover:Hide()
+    local done = state == "done"
+    row.pin:SetShown(not done)
+    row.tick:SetShown(done)
+    row.level:SetShown(not done)
+    row.level:SetText(number)
+    row.level:SetTextColor(T.muted.r, T.muted.g, T.muted.b)
+    local words = state == "done" and "Done" or state == "now" and "Next" or state == "optional" and "Optional"
+        or "Later"
+    local color = state == "now" and St.HAVE_RGB or T.muted
+    row.status:SetText(words)
+    row.status:SetTextColor(color.r, color.g, color.b)
+    row.bag:Hide()
+    local textW = row:GetWidth() - St.INDENT - LEVEL_W - 4 - PIN_RIGHT - STATUS_W
+    row.title:SetWidth(textW)
+    row.title:SetText(step.object)
+    local tc = done and T.muted or T.fg
+    row.title:SetTextColor(tc.r, tc.g, tc.b)
+    row.where:SetWidth(textW)
+    row.where:SetText(Bag.Where(step) .. (step.tip and not done and ("\n" .. step.tip) or ""))
+    return ROW_TOP + math.ceil(row.title:GetStringHeight()) + LINE_GAP + math.ceil(row.where:GetStringHeight())
+        + ROW_BOTTOM
+end
+
+local function DrawBag(self)
+    self:Add("bagHero")
+    self:Space(8)
+    local steps = Bag.Steps()
+    local _, at = Bag.Current()
+    self:Section("Steps", #steps)
+    for i, step in ipairs(steps) do
+        local state = (not at or i < at) and "done" or i == at and "now" or "later"
+        self:Add("step", step, i, state, i % 2 == 0)
+    end
+    local side = ns.SleepingBag.optional
+    self:Section("Optional")
+    local sideDone = C_QuestLog.IsQuestFlaggedCompleted(side.done)
+    self:Add("step", side, "", sideDone and "done" or "optional", false)
+    self:Fit(EVENTS)
+end
+
 local function Shows(book)
     return Library.ForMe(book) and (filter == "all" or not Library.Done(book))
 end
@@ -375,6 +500,7 @@ local zones
 function Draw:Redraw()
     zones = zones or ZoneOrder()
     self:Clear()
+    if filter == "bag" then return DrawBag(self) end
     self:Add("hero")
     self:Space(8)
     local shown = 0
@@ -421,6 +547,8 @@ local function Kinds()
     kinds = Shared.View.NewKinds()
     kinds.hero = { New = NewHero, Set = SetHero }
     kinds.book = { New = NewBook, Set = SetBook }
+    kinds.bagHero = { New = NewBagHero, Set = SetBagHero }
+    kinds.step = { New = NewStep, Set = SetStep }
     return kinds
 end
 
@@ -473,7 +601,9 @@ hooksecurefunc(ns, "Apply", function()
     end
 end)
 
-function ns.OpenDiscoveryWindow()
+-- tab: "find", "all" or "bag" to open it on that tab; else the one it was on.
+function ns.OpenDiscoveryWindow(tab)
+    if tab then filter = tab end
     if not window then Build() end
     window:SetScale(ns.UIScale())
     window:Show()

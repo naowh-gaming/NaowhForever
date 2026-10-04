@@ -3,6 +3,11 @@
 ## Unreleased
 
 ### Added
+- Discovery: the Cozy Sleeping Bag, its hidden quest chain step by step (from level 14). A
+  Sleeping Bag tab in the Discovery window lists every step: what to click, where, how to get
+  there (the jumps and climbs), where you stand, and a waypoint; the optional campfire too. A
+  Sleeping Bag tracker (off by default, Discovery > Sleeping Bags) shows the steps with the
+  next one and its way there, until you have the bag; the X closes it until you log in again.
 - Discovery: the third library reward, Greater Friend of the Library at 25 books (level 30):
   Truthseeker's Bow, Crest of Elucidation or Researcher's Night Light. The book count is what
   players report so far.
@@ -28,6 +33,8 @@
   loaded, it uses TomTom's arrow.
 
 ### Changed
+- Discovery: its settings are two tabs, Library Books and Sleeping Bags, and each tracker has its
+  own opacity apart from the Discovery window's (they start at the one you had set).
 - Discovery: the Library Books tracker has the Dungeon Quest Tracker's look: the Journal's
   window style (with the Discovery window's opacity), the progress bar and zone dropdown under
   its title, and rows like its quest rows: a waypoint pin in front, a tick in its place once a

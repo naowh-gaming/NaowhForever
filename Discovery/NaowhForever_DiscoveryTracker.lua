@@ -32,7 +32,7 @@ local PANEL_PAD, PANEL_HEADER = St.PANEL_PAD, St.PANEL_HEADER
 local BODY_W = PANEL_W - PANEL_PAD * 2
 local BAR_H, BAR_GAP = 24, 6               -- the progress bar, as tall as the dropdown under it
 local FOOTER = St.ACTION + 6               -- the cog under the list, and the room above it
-local SETTINGS_PAGE = "Discovery/Settings"
+local SETTINGS_PAGE = "Discovery/Library Books"
 -- A row, as a quest row (View/QuestRows.lua): the pin in a column of its own (a tick there
 -- once the book is handed in), then the name with where it is under it.
 local ROW_LEFT, WAYPOINT_SLOT, TICK = 6, 20, 16
@@ -90,9 +90,9 @@ end
 -------------------------------------------------------------------------------
 --  The window
 -------------------------------------------------------------------------------
--- Its look's opacity: the Discovery window's (windowAlpha), so the two match.
+-- Its look's opacity: its own (trackerAlpha).
 local function Paint()
-    panel.backdrop:Paint(S.Get("windowAlpha") or 1)
+    panel.backdrop:Paint(S.Get("trackerAlpha") or 1)
 end
 
 -- Dragged by its body or its title, as the Dungeon Quest Tracker is: kept where you leave it,
@@ -178,10 +178,10 @@ local function BuildPanel()
         ns.UI.GoToSetting(SETTINGS_PAGE, nil, SETTINGS_PAGE .. ":tracker")
     end, ns.UI.COGS_ICON, 0, "Library Books settings")
     panel.settings:SetPoint("BOTTOMRIGHT", -PANEL_PAD, PANEL_PAD)
-    panel.settings.hint = "Opens Discovery's tracker settings."
+    panel.settings.hint = "Opens the Library Books tracker's settings."
 
     panel.mover = ns.UI.AttachMover(panel, "Library Books", function(pos) S.Set("trackerPos", pos) end,
-        "Discovery/Settings")
+        "Discovery/Library Books")
     local pos = S.Get("trackerPos")
     if pos then
         panel:SetPoint(pos.point, UIParent, pos.relPoint, pos.x, pos.y)
@@ -489,7 +489,7 @@ local OWN_KEYS = { enabled = true, tracker = true, trackerAlways = true, tracker
 
 hooksecurefunc(S, "Set", function(key, value)
     if key == "trackerScale" and panel then panel:SetScale(value) end
-    if key == "windowAlpha" and panel then Paint() end
+    if key == "trackerAlpha" and panel then Paint() end
     if not OWN_KEYS[key] then return end
     -- Switching Always Show back on brings the tracker back here, whatever the X closed.
     -- Switching it off closes it, unless the zone you are in has books to find.
