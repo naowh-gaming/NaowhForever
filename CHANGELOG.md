@@ -18,9 +18,13 @@
   flight starts, Nothing, the Quiz or the Aim Trainer (the default).
 - Dungeon map: the boss you clicked (its loot showing) is ringed in gold with a soft pulsing
   glow, on the map window and on the world map, until you pick another or close its loot.
-  On the world map, clicking a boss shows its own page in the Journal beside the map: its
-  loot and its abilities (Back, or the boss clicked again, goes back to the dungeon). The
-  loot at the mouse now opens only on the maximised map.
+  On the world map, clicking a boss shows its own page in the Journal beside the map:
+  Naowh's tip on top (the chat bubble beside it shares it in Say, Party, Raid, Guild or to
+  your target), its loot, the dungeon quests that need it with where each stands for you
+  (done ones too), and its abilities. Back, or the boss clicked again, goes back to the
+  dungeon. The loot at the mouse now opens only on the maximised map.
+- Dungeon Journal: the Journal beside the world map uses its full width while everything
+  fits, instead of leaving the scrollbar's room empty.
 - Dungeon Journal: a boss's loot (the world map's Journal, the map window, Boss Loot at
   Cursor) lists its abilities under it, each with the game's icon, name and description.
 
