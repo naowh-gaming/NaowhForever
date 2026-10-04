@@ -147,7 +147,7 @@ local function fixture(settings)
         enabled = false, mapPanel = true, usableOnly = true, showChance = true,
         showAlliance = true, showHorde = true, showKills = true, shareRequests = true,
         showAppearance = false, showTips = true, missingBisOnly = false, myRecipes = true, showCosmetic = true,
-        repQuestsOpen = true,
+        repQuestsOpen = true, bossLootOpen = true, bossQuestsOpen = true, bossAbilitiesOpen = true,
     }
     for k, v in pairs(settings or {}) do values[k] = v end
     -- The kit's module settings: Set tells every listener, as UI.ModuleSettings does.
@@ -1204,6 +1204,17 @@ do
             and rawget(made, "shown") ~= false then tipRow = made end
     end
     check("and Naowh's tip, written out", tipRow ~= nil)
+    -- Each of its sections opens and closes by its title.
+    local abilitiesTitle
+    for _, made in ipairs(state.made) do
+        local text = rawget(made, "text")
+        if rawget(made, "onToggle") and text and tostring(rawget(text, "text")):find("^ABILITIES")
+            and rawget(made, "shown") ~= false then abilitiesTitle = made end
+    end
+    abilitiesTitle.onToggle()
+    check("a section closes by its title", rawget(ability, "shown") == false)
+    abilitiesTitle.onToggle()
+    check("and opens again", rawget(ability, "shown") ~= false)
     -- A drag on a pin while not placing keeps nothing: only placing saves where a pin stands.
     state.account.journalMapPins = nil
     for _, made in ipairs(state.made) do

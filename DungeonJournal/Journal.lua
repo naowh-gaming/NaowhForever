@@ -79,6 +79,10 @@ local S = ns.UI.ModuleSettings("journal", {
     upgradesOnly = false,
     showCosmetic = true,
     questsOpen = false,
+    -- A boss's page: its Loot, Quests and Abilities, each opened and closed by its title.
+    bossLootOpen = true,
+    bossQuestsOpen = true,
+    bossAbilitiesOpen = true,
     repQuestsOpen = true,
     missingBisOnly = false,
     windowAlpha = 1,

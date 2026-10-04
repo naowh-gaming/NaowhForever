@@ -409,8 +409,9 @@ function ViewMixin:DrawBisNote()
 end
 
 -- One boss and its loot, for the boss loot window.
--- A boss's own page: Naowh's tip written out on top (so no (i) on its name), its loot, then
--- the quests that need it and its abilities (View/BossDetails.lua).
+-- A boss's own page: Naowh's tip written out on top (so no (i) on its name), its name and
+-- kill count, then its Loot, the Quests that need it and its Abilities, each under a title
+-- that opens and closes it (kept: bossLootOpen and the rest) and left out where there is none.
 function ViewMixin:DrawBossLoot(boss, dungeon)
     self:Begin(dungeon, boss)
     local tip = self.showTips and J.Tip(boss)
@@ -421,31 +422,86 @@ function ViewMixin:DrawBossLoot(boss, dungeon)
         self:Space(SECTION_SPACE)
         self.showTips = false
     end
-    self:DrawBoss(boss, nil, self:ShownCount(boss), nil, 0, self:GetWidth())
+    self:DrawBossName(boss)
+    self:DrawBossItems(boss)
     self:DrawBossDetails(boss)
     self:Finish()
 end
 
+-- Its name and kill count alone, in a card of their own: the sections go under it.
+function ViewMixin:DrawBossName(boss)
+    local top = self.cursor
+    local card = self:OpenCard(0, self:GetWidth())
+    local header = self:Add("boss", boss, nil, 0, 0)
+    header.card = card
+    header:EnableMouse(true)   -- a right-click: its Wowhead link
+    self:CloseCard(card, top)
+end
+
+-- A section's title, opened and closed by a click (the setting key keeps which); true while
+-- open, with its card opened for its rows.
+local SECTION_KEYS = { Loot = "bossLootOpen", Quests = "bossQuestsOpen", Abilities = "bossAbilitiesOpen" }
+
+function ViewMixin:ToggleFor(title)
+    self.toggles = self.toggles or {}
+    local toggle = self.toggles[title]
+    if not toggle then
+        local key = SECTION_KEYS[title]
+        toggle = function()
+            S.Set(key, not S.Get(key))
+            self:Redraw()
+        end
+        self.toggles[title] = toggle
+    end
+    return toggle
+end
+
 -- A section title over a card, its rows added after (View/BossDetails.lua); a space above it
--- when something is drawn there already.
+-- when something is drawn there already. One of the boss's sections (SECTION_KEYS) opens and
+-- closes by its title: closed, no card, and false.
 function ViewMixin:OpenDetailCard(title, count)
     if self.cursor > 0 then self:Space(SECTION_SPACE) end
-    self:Section(title, count)
+    local key = SECTION_KEYS[title]
+    local open = not key or S.Get(key)
+    if key then
+        self:SectionToggle(title, count, open, self:ToggleFor(title))
+    else
+        self:Section(title, count)
+    end
+    if not open then return false end
     self:Space(SECTION_SPACE)
     self.detailTop = self.cursor
     self.detailCard = self:OpenCard(0, self:GetWidth())
     -- As much room over its first row as CloseCard leaves under its last.
     self:Space(St.CARD_BOTTOM)
+    return true
 end
 
 function ViewMixin:DetailCard(title, count, kind, list)
-    self:OpenDetailCard(title, count)
+    if not self:OpenDetailCard(title, count) then return end
     for i = 1, #list do self:Add(kind, list[i]) end
     self:CloseCard(self.detailCard, self.detailTop)
 end
 
--- Under a boss's loot: the quests that need it (for you, done ones too) and what it does in
--- the fight; each left out where there is none.
+-- Its loot as the filters show it, or why none is listed.
+function ViewMixin:DrawBossItems(boss)
+    local loot = boss.loot or EMPTY
+    if #loot == 0 then return end
+    local shown = self:ShownCount(boss)
+    if not self:OpenDetailCard("Loot", shown) then return end
+    local chance = boss.chance
+    for i = 1, #loot do
+        local id = loot[i]
+        if self:Listed(id) then
+            local item = self:Add("item", id, chance and chance[i], self:ItemRank(id), self:ItemUpgrade(id))
+            item.boss = boss
+        end
+    end
+    if shown == 0 then self:Note(View.Parts.BossEmptyText(shown, boss)) end
+    self:CloseCard(self.detailCard, self.detailTop)
+end
+
+-- The quests that need it (for you, done ones too) and what it does in the fight.
 function ViewMixin:DrawBossDetails(boss)
     local ids = boss.npc and J.BossQuests[boss.npc]
     if ids then
