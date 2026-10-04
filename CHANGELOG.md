@@ -5,7 +5,8 @@
 ### Added
 - Dungeon map: Ruins of Lordaeron, Hall of Thanes and the Excavation Site have a map, from
   Santiago Reyes's Atlas de Azeroth: Forever (credited on the map and in Credits), until the
-  game has art of its own for them. Their bosses are not placed on it yet.
+  game has art of its own for them. Ruins of Lordaeron's and Hall of Thanes's bosses stand on
+  theirs; the Excavation Site's are still to be placed.
 - Settings: click the dot beside a setting you changed to put it back to its default; hover it to
   see what the default is.
 - Aim Trainer (QoL > Travel, on by default): a shooting game for flight paths. Click the other

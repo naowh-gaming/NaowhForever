@@ -32,8 +32,15 @@ ns.Journal.Maps = {
         },
     },
     -- Santiago Reyes's recreation, as Ruins of Lordaeron's is.
-    HallOfThanes = { image = "Interface\\AddOns\\NaowhForever\\Media\\Maps\\HallOfThanes",
-        floors = 1, pins = {} },
+    HallOfThanes = { image = "Interface\\AddOns\\NaowhForever\\Media\\Maps\\HallOfThanes", floors = 1,
+        entrance = { 1, 0.512, 0.95 },
+        pins = {
+            [261306] = { 1, 0.479, 0.671 },   -- Faldrim Anvilmar
+            [261316] = { 1, 0.72, 0.47 },   -- Magmatus
+            [261311] = { 1, 0.51, 0.519 },   -- Plunder
+            [261319] = { 1, 0.51, 0.17 },   -- Durgen Dirgehammer
+        },
+    },
     WailingCaverns = { art = "WailingCaverns", floors = 1,
         entrance = { 1, 0.465, 0.59 },
         pins = {
@@ -64,8 +71,18 @@ ns.Journal.Maps = {
     },
     -- Santiago Reyes's recreation (Atlas de Azeroth: Forever, 2026), credited on the map,
     -- until the game has art of its own for Forever's Ruins of Lordaeron.
-    RuinsOfLordaeron = { image = "Interface\\AddOns\\NaowhForever\\Media\\Maps\\RuinsOfLordaeron",
-        floors = 1, pins = {} },
+    RuinsOfLordaeron = { image = "Interface\\AddOns\\NaowhForever\\Media\\Maps\\RuinsOfLordaeron", floors = 1,
+        entrance = { 1, 0.616, 0.217 },
+        pins = {
+            [250483] = { 1, 0.707, 0.397 },   -- Witherfang
+            [250660] = { 1, 0.594, 0.694 },   -- The Baron
+            [256035] = { 1, 0.382, 0.675 },   -- Viktor the Vile
+            [250631] = { 1, 0.406, 0.532 },   -- The Abandoned
+            [256097] = { 1, 0.409, 0.309 },   -- Bjork
+            [250657] = { 1, 0.468, 0.616 },   -- Rath'mael
+            [255699] = { 1, 0.349, 0.378 },   -- Lordaeron Captain
+        },
+    },
     ShadowfangKeep = { art = "ShadowfangKeep", floors = 7,
         entrance = { 1, 0.705, 0.605 },
         pins = {
