@@ -2,10 +2,10 @@
 -- through the /nf bars command the way a player would.
 local PATH = arg[1] or "ActionBars/NaowhForever_ActionBars.lua"
 
--- Spells by id: name and rank.
+-- Spells by id: name, rank and the level it is learned at.
 local SPELLS = {
-    [2054] = { "Heal", 1 }, [2055] = { "Heal", 2 }, [6064] = { "Heal", 4 },
-    [585] = { "Smite", 1 }, [598] = { "Smite", 3 },
+    [2054] = { "Heal", 1, 16 }, [2055] = { "Heal", 2, 22 }, [6064] = { "Heal", 4, 34 },
+    [585] = { "Smite", 1, 1 }, [598] = { "Smite", 3, 14 },
 }
 
 local function World(known)
@@ -19,9 +19,19 @@ local function World(known)
     local function Known(id)
         for _, item in ipairs(book) do if item.actionID == id then return true end end
     end
+    function w.learn(id)
+        book[#book + 1] = { name = SPELLS[id][1], subName = "Rank " .. SPELLS[id][2], actionID = id,
+            itemType = 1, isPassive = false }
+    end
     w.opts.enabled, w.opts.importMacros, w.opts.importBindings = true, true, true
+    local listeners = {}
     local S = {
         Get = function(k) return w.opts[k] end,
+        Set = function(k, v)
+            w.opts[k] = v
+            for _, fn in ipairs(listeners) do fn(k, v) end
+        end,
+        OnChange = function(fn) listeners[#listeners + 1] = fn end,
         Toggle = function(_, text) return { type = "toggle", text = text } end,
     }
     local fake = {}
@@ -62,6 +72,8 @@ local function World(known)
             DualRow = function(_, _, _, left, right) w.rows[#w.rows + 1] = { left, right }; return nil, 0 end,
         } },
         OpenActionBarsWindow = function() w.opened = "window" end,
+        OpenActionBarsBuilder = function(key) w.opened = "builder " .. tostring(key) end,
+        OpenActionBarsImport = function(key) w.opened = "import " .. tostring(key) end,
         PromptText = function(_, _, _, accept) accept(w.answer) end,
         Confirm = function(text, yes) w.confirmed = text; yes() end,
     }
@@ -81,6 +93,7 @@ local function World(known)
         C_Spell = {
             GetSpellName = function(id) return SPELLS[id][1] end,
             PickupSpell = function(id) if Known(id) then w.cursor = { kind = "spell", id = id } end end,
+            GetSpellLevelLearned = function(id) return SPELLS[id][3] end,
         },
         C_Item = {
             PickupItem = function(id) w.cursor = { kind = "item", id = id } end,
@@ -145,7 +158,14 @@ local function World(known)
         UnitName = function() return "Preview" end,
         GetRealmName = function() return "Realm" end,
         CreateFrame = function()
-            return { RegisterEvent = function() end, SetScript = function(f, _, fn) f.handler = fn; w.events = f end }
+            local f = { registered = {} }
+            f.RegisterEvent = function(self, event) self.registered[event] = true end
+            f.UnregisterEvent = function(self, event) self.registered[event] = nil end
+            f.SetScript = function(self, _, fn)
+                self.handler = fn
+                w.events = self
+            end
+            return f
         end,
         strtrim = function(s) return s:match("^%s*(.-)%s*$") end,
         time = os.time, date = os.date,
@@ -362,10 +382,10 @@ Case("Save on Logout writes back the last set used, only when on", function()
     w.bars = { [2] = Spell(598) }
     w.run("save Daily")
     w.bars = { [2] = Spell(2055) }
-    w.events.handler()
+    w.events.handler(w.events, "PLAYER_LOGOUT")
     assert(w.account.barSets.PRIEST.Daily.slots[2].id == 598, "off: left alone")
     w.opts.saveOnLogout = true
-    w.events.handler()
+    w.events.handler(w.events, "PLAYER_LOGOUT")
     assert(w.account.barSets.PRIEST.Daily.slots[2].id == 2055, "on: saved again")
 end)
 Case("renaming a set to its own name keeps it", function()
@@ -387,16 +407,23 @@ Case("a rename moves Save on Logout only for characters of this class", function
     assert(w.account.barSetLast["Preview-Realm"].name == "Main")
     assert(w.account.barSetLast["Warrior-Realm"].name == "Raid", "the warrior keeps its own set")
 end)
-Case("Save Current Bars asks before replacing a set of the same name", function()
-    local w = World({ 598, 2055 })
+Case("Save Current Bars opens the builder, and More can edit a set there", function()
+    local w = World({ 598 })
     w.bars = { [2] = Spell(598) }
     w.run("save Raid")
-    w.bars = { [2] = Spell(2055) }
-    More(w, "Raid")
-    w.answer, w.confirmed = "raid", nil
+    More(w, "Raid")["Edit and Save Again"]()
+    assert(w.opened == "builder Raid", w.opened)
     w.buttons["Save Current Bars"]()
-    assert(w.confirmed and w.confirmed:find("Raid", 1, true), "asked")
-    assert(w.account.barSets.PRIEST.Raid.slots[2].id == 2055 and not w.account.barSets.PRIEST.raid)
+    assert(w.opened == "builder nil", w.opened)
+end)
+Case("the row's Import opens the preview", function()
+    local w = World({ 598 })
+    w.bars = { [2] = Spell(598) }
+    w.run("save Raid")
+    w.rows, w.buttons = {}, {}
+    w.ns.BuildActionBarsPage(nil, 0)
+    w.buttons.Import()
+    assert(w.opened == "import Raid", w.opened)
 end)
 Case("slots no set can restore are left as they are", function()
     local w = World({ 598 })
@@ -421,5 +448,146 @@ Case("no name opens the window", function()
     local w = World({})
     w.run("")
     assert(w.opened == "window")
+end)
+local Sets
+local function Choices(skip, keys, macros, macroOff)
+    return { skip = skip or {}, keys = keys ~= false, macros = macros ~= false, macroOff = macroOff or {} }
+end
+
+Case("slots left out are not saved, and an import leaves them as they are", function()
+    local w = World({ 598, 2055 })
+    Sets = w.ns.ActionBarSets
+    w.bars = { [1] = Spell(598), [2] = Spell(2055) }
+    Sets.Save("Part", Choices({ [2] = true, [3] = true }))
+    local set = w.account.barSets.PRIEST.Part
+    assert(set.slots[1] and not set.slots[2], "the left-out slot is not in the set")
+    w.bars = { [2] = Spell(598), [3] = Spell(2055) }
+    w.run("import Part")
+    assert(Bars(w) == "1=spell598 2=spell598 3=spell2055", Bars(w))
+end)
+Case("a whole bar left out is never touched", function()
+    local w = World({ 598 })
+    Sets = w.ns.ActionBarSets
+    local skip = {}
+    for slot = 61, 72 do skip[slot] = true end
+    w.bars = { [1] = Spell(598) }
+    Sets.Save("NoBar2", Choices(skip))
+    w.bars = { [61] = Spell(598), [70] = { kind = "item", id = 6948 } }
+    w.run("import NoBar2")
+    assert(Bars(w) == "1=spell598 61=spell598 70=item6948", Bars(w))
+end)
+Case("keybinds switched off are not saved", function()
+    local w = World({})
+    Sets = w.ns.ActionBarSets
+    w.binds = { { "ACTIONBUTTON1", "1" } }
+    Sets.Save("NoKeys", Choices(nil, false))
+    assert(w.account.barSets.PRIEST.NoKeys.bindings == nil)
+end)
+Case("macros left out stay out, except ones on a kept slot", function()
+    local w = World({})
+    Sets = w.ns.ActionBarSets
+    w.macros = { { name = "Pull", icon = 1, body = "/say pull" }, { name = "Dance", icon = 1, body = "/dance" },
+        { name = "Wave", icon = 1, body = "/wave" } }
+    w.bars = { [1] = Macro("Pull") }
+    local off = { [Sets.MacroKey("Pull", "/say pull")] = true, [Sets.MacroKey("Dance", "/dance")] = true }
+    Sets.Save("M", Choices(nil, true, true, off))
+    local names = {}
+    for _, m in ipairs(w.account.barSets.PRIEST.M.macros) do names[#names + 1] = m.name end
+    assert(table.concat(names, ",") == "Pull,Wave", table.concat(names, ","))
+    Sets.Save("OnlyBars", Choices(nil, true, false))
+    assert(#w.account.barSets.PRIEST.OnlyBars.macros == 1, "macros off: only the ones on the bars")
+end)
+Case("saving again, by hand or on logout, keeps the set's choices", function()
+    local w = World({ 598, 2055 })
+    Sets = w.ns.ActionBarSets
+    w.bars = { [1] = Spell(598), [2] = Spell(2055) }
+    Sets.Save("Keep", Choices({ [2] = true }, false))
+    w.run("save Keep")
+    local set = w.account.barSets.PRIEST.Keep
+    assert(not set.slots[2] and set.bindings == nil, "slash save keeps the picks")
+    w.opts.saveOnLogout = true
+    w.events.handler(w.events, "PLAYER_LOGOUT")
+    set = w.account.barSets.PRIEST.Keep
+    assert(not set.slots[2] and set.bindings == nil and set.choices.skip[2], "logout keeps the picks")
+end)
+-- The set saved on one character, then the same account on a level 20 alt who knows Smite only.
+local function Alt(known)
+    local w = World({ 598, 6064 })
+    w.macros = { { name = "Pull", icon = 1, body = "/say pull" } }
+    w.binds = { { "ACTIONBUTTON1", "1" } }
+    w.bars = { [1] = Spell(598), [2] = Spell(6064), [3] = Macro("Pull"), [5] = Spell(598) }
+    w.ns.ActionBarSets.Save("P", Choices({ [5] = true }))
+    local alt = World(known or { 598 })
+    alt.account = w.account
+    alt.events.handler(alt.events, "PLAYER_LOGIN")
+    return alt
+end
+Case("the preview says what each slot becomes and changes nothing", function()
+    local alt = Alt()
+    alt.bars = { [4] = Spell(598), [5] = Spell(598) }
+    local r = alt.ns.ActionBarSets.Preview("P")
+    assert(r.slots[1].state == "ok" and r.slots[3].state == "new", r.slots[3].state)
+    assert(r.slots[2].state == "later" and r.slots[2].level == 34, r.slots[2].state)
+    assert(r.slots[4].state == "clear" and r.slots[5].state == "skip")
+    assert(r.placed == 2 and r.actions == 3 and r.bound == 1, r.placed .. "/" .. r.actions)
+    assert(r.macros[1].fate == "new", r.macros[1].fate)
+    assert(Bars(alt) == "4=spell598 5=spell598" and #alt.macros == 0 and not alt.savedBindings, Bars(alt))
+end)
+Case("a spell learned later goes into its slot when Fill In is on", function()
+    local alt = Alt()
+    alt.opts.fillLater = true
+    alt.run("import P")
+    assert(Bars(alt) == "1=spell598 3=Pull", Bars(alt))
+    assert(alt.events.registered.LEARNED_SPELL_IN_SKILL_LINE, "waiting for the spell")
+    assert(alt.printed[#alt.printed]:find("learn later", 1, true), alt.printed[#alt.printed])
+    alt.learn(6064)
+    alt.events.handler(alt.events, "LEARNED_SPELL_IN_SKILL_LINE", 6064)
+    assert(Bars(alt) == "1=spell598 3=Pull", "not before the spellbook has it")
+    alt.events.handler(alt.events, "SPELLS_CHANGED")
+    assert(Bars(alt) == "1=spell598 2=spell6064 3=Pull", Bars(alt))
+    assert(alt.printed[#alt.printed]:find("Heal is on your bars", 1, true), alt.printed[#alt.printed])
+    assert(not alt.events.registered.LEARNED_SPELL_IN_SKILL_LINE, "nothing left to wait for")
+    assert(next(alt.account.barSetPending) == nil)
+end)
+Case("Fill In waits out combat", function()
+    local alt = Alt()
+    alt.opts.fillLater = true
+    alt.run("import P")
+    alt.learn(6064)
+    alt.combat = true
+    alt.events.handler(alt.events, "LEARNED_SPELL_IN_SKILL_LINE", 6064)
+    alt.events.handler(alt.events, "SPELLS_CHANGED")
+    assert(not alt.bars[2] and alt.events.registered.PLAYER_REGEN_ENABLED, "waits")
+    alt.combat = false
+    alt.events.handler(alt.events, "PLAYER_REGEN_ENABLED")
+    assert(alt.bars[2] and alt.bars[2].id == 6064, Bars(alt))
+end)
+Case("a slot filled meanwhile is the player's", function()
+    local alt = Alt()
+    alt.opts.fillLater = true
+    alt.run("import P")
+    alt.bars[2] = Spell(598)
+    alt.learn(6064)
+    alt.events.handler(alt.events, "LEARNED_SPELL_IN_SKILL_LINE", 6064)
+    alt.events.handler(alt.events, "SPELLS_CHANGED")
+    assert(alt.bars[2].id == 598 and next(alt.account.barSetPending) == nil, Bars(alt))
+end)
+Case("a copy the game put in a slot the set keeps empty is taken off", function()
+    local alt = Alt()
+    alt.opts.fillLater = true
+    alt.run("import P")
+    alt.learn(6064)
+    alt.bars[7] = Spell(6064)
+    alt.events.handler(alt.events, "LEARNED_SPELL_IN_SKILL_LINE", 6064)
+    alt.events.handler(alt.events, "SPELLS_CHANGED")
+    assert(Bars(alt) == "1=spell598 2=spell6064 3=Pull", Bars(alt))
+end)
+Case("with Fill In off nothing waits", function()
+    local alt = Alt()
+    alt.run("import P")
+    assert(not alt.events.registered.LEARNED_SPELL_IN_SKILL_LINE and next(alt.account.barSetPending) == nil)
+    alt.opts.fillLater = true
+    alt.ns.ActionBarSettings.Set("fillLater", true)
+    assert(not alt.events.registered.LEARNED_SPELL_IN_SKILL_LINE, "nothing pending, so nothing to wait for")
 end)
 print(count .. " action bar set regressions passed")

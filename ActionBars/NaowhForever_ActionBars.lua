@@ -7,11 +7,31 @@ local ns = _G.NaowhForever
 local UI = ns.UI
 local S = UI.ModuleSettings("actionBars", {
     enabled = true, highestRank = false, importMacros = true, importBindings = true, saveOnLogout = false,
-    windowAlpha = 1,
+    fillLater = false, windowAlpha = 1,
 })
 ns.ActionBarSettings = S
 
 local KEYBOARD_SLOTS = 180
+
+-- The bars as the game numbers them: a page of 12 slots each and the binding its buttons
+-- answer to. The main bar's second page and the stance bars share the main bar's keys.
+local BARS = {
+    { page = 1, name = "Action Bar 1", button = "ACTIONBUTTON" },
+    { page = 6, name = "Action Bar 2", button = "MULTIACTIONBAR1BUTTON" },
+    { page = 5, name = "Action Bar 3", button = "MULTIACTIONBAR2BUTTON" },
+    { page = 3, name = "Action Bar 4", button = "MULTIACTIONBAR3BUTTON" },
+    { page = 4, name = "Action Bar 5", button = "MULTIACTIONBAR4BUTTON" },
+    { page = 13, name = "Action Bar 6", button = "MULTIACTIONBAR5BUTTON" },
+    { page = 14, name = "Action Bar 7", button = "MULTIACTIONBAR6BUTTON" },
+    { page = 15, name = "Action Bar 8", button = "MULTIACTIONBAR7BUTTON" },
+    { page = 2, name = "Action Bar 1, Page 2", button = "ACTIONBUTTON" },
+    { page = 7, name = "Stance Bar 1", button = "ACTIONBUTTON" },
+    { page = 8, name = "Stance Bar 2", button = "ACTIONBUTTON" },
+    { page = 9, name = "Stance Bar 3", button = "ACTIONBUTTON" },
+    { page = 10, name = "Stance Bar 4", button = "ACTIONBUTTON" },
+    { page = 11, name = "Extra Bar 1", button = "ACTIONBUTTON" },
+    { page = 12, name = "Extra Bar 2", button = "ACTIONBUTTON" },
+}
 local PLAYER_BANK = Enum.SpellBookSpellBank.Player
 local MACRO_ICON = 134400
 
@@ -175,9 +195,28 @@ local function CaptureBindings()
     return bindings
 end
 
-local function Snapshot()
-    return { saved = time(), by = UnitName("player"), slots = Capture(), macros = CaptureMacros(),
-        bindings = CaptureBindings() }
+-- choices come from the set builder: slots left out (skip), whether keybinds come along
+-- (keys), whether macros off the bars do (macros) and which are left out (macroOff, by
+-- MacroKey). A macro on a kept slot always comes.
+local function Snapshot(choices)
+    local slots, macros, bindings = Capture(), CaptureMacros(), CaptureBindings()
+    if choices then
+        for slot in pairs(choices.skip) do slots[slot] = nil end
+        local onBars, kept = {}, {}
+        for _, entry in pairs(slots) do
+            if entry.kind == "macro" then onBars[MacroKey(entry.name, entry.body)] = true end
+        end
+        for _, macro in ipairs(macros) do
+            local key = MacroKey(macro.name, macro.body)
+            if onBars[key] or (choices.macros ~= false and not choices.macroOff[key]) then
+                kept[#kept + 1] = macro
+            end
+        end
+        macros = kept
+        if not choices.keys then bindings = nil end
+    end
+    return { saved = time(), by = UnitName("player"), slots = slots, macros = macros, bindings = bindings,
+        choices = choices }
 end
 
 local function Ready(what)
@@ -186,13 +225,14 @@ local function Ready(what)
     return true
 end
 
-local function Save(name)
+local function Save(name, choices)
     if not Ready("saved") then return end
     local key = Find(name) or name
-    Sets()[key] = Snapshot()
+    Sets()[key] = Snapshot(choices or (Sets()[key] and Sets()[key].choices))
     SetLast(key)
     ns.Print(("Saved your bars, macros and keybinds as %s."):format(key))
     if UI.RefreshPage then UI:RefreshPage(true) end
+    return key
 end
 
 -------------------------------------------------------------------------------
@@ -230,11 +270,15 @@ local function SetMacros(set)
 end
 
 -- A macro this character lacks is made in the scope it was saved in. One it already has is
--- used as it is. In a test, the macros it would make go in the index as true.
+-- used as it is. In a test, the macros it would make go in the index as true. Returns the
+-- index, the keys of the macros made and each macro's fate (have, new or full).
 local function ImportMacros(set, test)
-    local index, plan, made, full = MacroIndex(), { account = 0, character = 0 }, 0, {}
+    local index, plan, fresh, fates = MacroIndex(), { account = 0, character = 0 }, {}, {}
+    local made = false
     for _, macro in ipairs(SetMacros(set)) do
+        local fate = "have"
         if not Lookup(index, macro) then
+            fate = "full"
             if MacroRoom(macro.perCharacter, plan) then
                 if test then
                     local kind = macro.perCharacter and "character" or "account"
@@ -246,15 +290,15 @@ local function ImportMacros(set, test)
                     CreateMacro(macro.name, icon or MACRO_ICON, macro.body or "", macro.perCharacter)
                 end
                 index.text[MacroKey(macro.name, macro.body)] = true
-                made = made + 1
-            else
-                full[#full + 1] = macro.name
+                fresh[MacroKey(macro.name, macro.body)] = true
+                fate, made = "new", true
             end
         end
+        fates[#fates + 1] = { name = macro.name, fate = fate, perCharacter = macro.perCharacter }
     end
     -- Macros are kept sorted by name, so making one moves the others.
-    if made > 0 and not test then index = MacroIndex() end
-    return index, made, full
+    if made and not test then index = MacroIndex() end
+    return index, fresh, fates
 end
 
 local function ImportBindings(set, test)
@@ -294,48 +338,156 @@ local function Plural(n, word)
     return ("%d %s%s"):format(n, word, n == 1 and "" or "s")
 end
 
--- Every slot ends as it was saved: a slot the set leaves empty is cleared, and so is one
--- whose action cannot come back. A slot saved holding something no set can import (a
--- mount, a pet, a flyout) is left as it is. Keys the set leaves free keep what they do here.
+local function Count(fates, fate)
+    local n = 0
+    for _, m in ipairs(fates) do if m.fate == fate then n = n + 1 end end
+    return n
+end
+
+-- One pass over the bars, for an import or a test of one. Every slot ends as it was saved: a
+-- slot the set keeps empty is cleared, and so is one whose action cannot come back. A slot
+-- left out of the set, or saved holding something no set can import (a mount, a pet, a
+-- flyout), is left as it is. Keys the set leaves free keep what they do here. Each slot's
+-- result: ok, new (a macro made for it), later (a spell not known yet), gone, clear or skip.
+local function Run(set, test)
+    local skip = set.choices and set.choices.skip or {}
+    local result = { slots = {}, actions = 0, placed = 0, later = {}, macros = {} }
+    local index, fresh = MacroIndex(), {}
+    if S.Get("importMacros") then index, fresh, result.macros = ImportMacros(set, test) end
+    local best = HighestRanks()
+    for _, slot in ipairs(Slots()) do
+        local entry = set.slots[slot]
+        local row
+        if skip[slot] or (entry and not RESTORABLE[entry.kind]) then
+            row = { entry = entry, state = "skip" }
+        elseif not entry then
+            row = { state = "clear" }
+            if not test and GetActionInfo(slot) then PickupAction(slot) end
+        else
+            result.actions = result.actions + 1
+            if PickUp(entry, best, index, test) then
+                result.placed = result.placed + 1
+                local new = entry.kind == "macro" and fresh[MacroKey(entry.name, entry.body)]
+                row = { entry = entry, state = new and "new" or "ok" }
+                if not test then PlaceAction(slot) end
+            else
+                row = { entry = entry, state = entry.kind == "spell" and "later" or "gone" }
+                if entry.kind == "spell" then
+                    row.level = C_Spell.GetSpellLevelLearned(entry.id)
+                    result.later[#result.later + 1] = { slot = slot, entry = entry }
+                end
+                if not test and GetActionInfo(slot) then PickupAction(slot) end
+            end
+        end
+        ClearCursor()
+        result.slots[slot] = row
+    end
+    if set.bindings and S.Get("importBindings") then result.bound = ImportBindings(set, test) end
+    return result
+end
+
+local function Pending()
+    local pending = Account("barSetPending")[CharKey()]
+    if pending and pending.class == Class() then return pending end
+end
+
+local events = CreateFrame("Frame")
+events:RegisterEvent("PLAYER_LOGIN")
+events:RegisterEvent("PLAYER_LOGOUT")
+
+local function Watch()
+    if S.Get("enabled") and S.Get("fillLater") and Pending() then
+        events:RegisterEvent("LEARNED_SPELL_IN_SKILL_LINE")
+    else
+        events:UnregisterEvent("LEARNED_SPELL_IN_SKILL_LINE")
+        events:UnregisterEvent("SPELLS_CHANGED")
+        events:UnregisterEvent("PLAYER_REGEN_ENABLED")
+    end
+end
+
+-- Spells the import could not place wait for their slots, which they take when learned.
+local function Remember(key, result)
+    local pending
+    if S.Get("fillLater") and #result.later > 0 then
+        pending = { class = Class(), set = key, slots = {} }
+        for _, later in ipairs(result.later) do pending.slots[later.slot] = later.entry end
+    end
+    Account("barSetPending")[CharKey()] = pending
+    Watch()
+    return pending
+end
+
+-- A slot the player has filled meanwhile is theirs. The game may also have put a spell on
+-- the bars when it was learned; a copy in a slot the set keeps empty is taken off.
+local function FillPending()
+    local pending = Pending()
+    if not pending then return end
+    local set = Sets()[pending.set]
+    local skip = set and set.choices and set.choices.skip or {}
+    local best, placed = HighestRanks(), {}
+    for slot, entry in pairs(pending.slots) do
+        if GetActionInfo(slot) then
+            pending.slots[slot] = nil
+        elseif PickUp(entry, best) then
+            PlaceAction(slot)
+            pending.slots[slot] = nil
+            local _, id = GetActionInfo(slot)
+            placed[#placed + 1] = { slot = slot, id = id, name = Describe(entry) }
+        end
+        ClearCursor()
+    end
+    for _, spell in ipairs(placed) do
+        if set then
+            for _, slot in ipairs(Slots()) do
+                if slot ~= spell.slot and not set.slots[slot] and not skip[slot] and not pending.slots[slot] then
+                    local kind, id = GetActionInfo(slot)
+                    if kind == "spell" and id == spell.id then
+                        PickupAction(slot)
+                        ClearCursor()
+                    end
+                end
+            end
+        end
+        ns.Print(("%s is on your bars where %s keeps it."):format(spell.name, pending.set))
+    end
+    if next(pending.slots) == nil then Account("barSetPending")[CharKey()] = nil end
+    Watch()
+end
+
 local function Import(name, test)
     if not Ready("imported") then return end
     local key = Find(name)
     if not key then ns.Print(("No bar set called %s for your class."):format(name)) return end
-    local set = Sets()[key]
-    local index, made, full
-    if S.Get("importMacros") then
-        index, made, full = ImportMacros(set, test)
-    else
-        index, made, full = MacroIndex(), 0, {}
-    end
-    local best, failed, actions = HighestRanks(), {}, 0
-    for _, slot in ipairs(Slots()) do
-        local entry = set.slots[slot]
-        if not entry or RESTORABLE[entry.kind] then
-            if entry then actions = actions + 1 end
-            if entry and PickUp(entry, best, index, test) then
-                if not test then PlaceAction(slot) end
-            else
-                if entry then failed[#failed + 1] = ("Slot %d: %s"):format(slot, Describe(entry)) end
-                if not test and GetActionInfo(slot) then PickupAction(slot) end
-            end
-            ClearCursor()
-        end
-    end
-    local bound = set.bindings and S.Get("importBindings") and ImportBindings(set, test)
+    local result = Run(Sets()[key], test)
+    local pending = not test and Remember(key, result)
     if not test then SetLast(key) end
 
-    local parts = { ("%d of %d actions"):format(actions - #failed, actions) }
+    local parts = { ("%d of %d actions"):format(result.placed, result.actions) }
+    local made = Count(result.macros, "new")
     if made > 0 then parts[#parts + 1] = Plural(made, "new macro") end
-    if bound then parts[#parts + 1] = Plural(bound, "keybind") end
+    if result.bound then parts[#parts + 1] = Plural(result.bound, "keybind") end
     ns.Print(("%s %s: %s."):format(test and "Test import of" or "Imported", key, table.concat(parts, ", ")))
+    local full = {}
+    for _, m in ipairs(result.macros) do
+        if m.fate == "full" then full[#full + 1] = m.name end
+    end
     if #full > 0 then
         print(("   No room for %s: %s"):format(Plural(#full, "macro"), table.concat(full, ", ")))
+    end
+    local failed = {}
+    for _, slot in ipairs(Slots()) do
+        local row = result.slots[slot]
+        if row.state == "later" or row.state == "gone" then
+            failed[#failed + 1] = ("Slot %d: %s"):format(slot, Describe(row.entry))
+        end
     end
     if #failed > 0 then
         print(test and "   These slots would be left empty:" or "   These slots were left empty:")
         for _, line in ipairs(failed) do print("      " .. line) end
     end
+    if pending then print("   Spells you learn later go into their slots then.") end
+    if UI.RefreshPage then UI:RefreshPage(true) end
+    return result
 end
 
 local function Delete(key)
@@ -357,30 +509,12 @@ local function Rename(key, new)
     if UI.RefreshPage then UI:RefreshPage(true) end
 end
 
-local function PromptSave()
-    ns.PromptText("Name for your current bars", "", 40, function(name)
-        local key = Find(name)
-        if key then
-            ns.Confirm(("Replace %s with the bars you have now?"):format(key), function() Save(key) end)
-        else
-            Save(name)
-        end
-    end)
-end
-
 -------------------------------------------------------------------------------
 --  Options and slash command
 -------------------------------------------------------------------------------
-local function ConfirmImport(key)
-    ns.Confirm(("Import %s? Your action bars and keybinds are replaced."):format(key), function() Import(key) end)
-end
-
 local function SetMenu(key)
     MenuUtil.CreateContextMenu(UIParent, function(_, root)
-        root:CreateButton("Test Import", function() Import(key, true) end)
-        root:CreateButton("Save Current Bars Here", function()
-            ns.Confirm(("Replace %s with the bars you have now?"):format(key), function() Save(key) end)
-        end)
+        root:CreateButton("Edit and Save Again", function() ns.OpenActionBarsBuilder(key) end)
         root:CreateButton("Rename", function()
             ns.PromptText("New name for " .. key, key, 40, function(new) Rename(key, new) end)
         end)
@@ -429,7 +563,7 @@ local function SetRow(parent, y, key, set, stripe)
     local more = UI.KeepButton(parent, "barsMore", "More", ROW_BUTTON_W, BUTTON_H, function() SetMenu(key) end)
     more:ClearAllPoints()
     more:SetPoint("RIGHT", parent, "TOPRIGHT", -x, y - h / 2)
-    local import = UI.KeepButton(parent, "barsImport", "Import", ROW_BUTTON_W, BUTTON_H, function() ConfirmImport(key) end)
+    local import = UI.KeepButton(parent, "barsImport", "Import", ROW_BUTTON_W, BUTTON_H, function() ns.OpenActionBarsImport(key) end)
     import:ClearAllPoints()
     import:SetPoint("RIGHT", more, "LEFT", -ROW_GAP, 0)
     band:SetHeight(h)
@@ -440,7 +574,7 @@ function ns.BuildActionBarsPage(parent, y)
     local W = UI.Widgets
     local T, x = ns.THEME, UI.CONTENT_PAD
     local _, h
-    local save = UI.KeepButton(parent, "barsSave", "Save Current Bars", SAVE_W, BUTTON_H, PromptSave)
+    local save = UI.KeepButton(parent, "barsSave", "Save Current Bars", SAVE_W, BUTTON_H, function() ns.OpenActionBarsBuilder() end)
     ns.AccentBorder(save)
     save:ClearAllPoints()
     save:SetPoint("TOPLEFT", parent, "TOPLEFT", x, y - ROW_PAD)
@@ -486,13 +620,28 @@ function ns.ActionBarsCommand(text)
     end
 end
 
-local events = CreateFrame("Frame")
-events:RegisterEvent("PLAYER_LOGOUT")
-events:SetScript("OnEvent", function()
-    if not (S.Get("enabled") and S.Get("saveOnLogout")) then return end
-    local last = Account("barSetLast")[CharKey()]
-    local key = last and last.name
-    if key and Sets()[key] then Sets()[key] = Snapshot() end
+events:SetScript("OnEvent", function(_, event)
+    if event == "PLAYER_LOGIN" then
+        Watch()
+    elseif event == "LEARNED_SPELL_IN_SKILL_LINE" then
+        -- The spellbook takes the new spell on its next update.
+        events:RegisterEvent("SPELLS_CHANGED")
+    elseif event == "SPELLS_CHANGED" or event == "PLAYER_REGEN_ENABLED" then
+        events:UnregisterEvent(event)
+        if InCombatLockdown() then
+            events:RegisterEvent("PLAYER_REGEN_ENABLED")
+        else
+            FillPending()
+        end
+    elseif S.Get("enabled") and S.Get("saveOnLogout") then
+        local last = Account("barSetLast")[CharKey()]
+        local key = last and last.name
+        if key and Sets()[key] then Sets()[key] = Snapshot(Sets()[key].choices) end
+    end
+end)
+
+S.OnChange(function(key)
+    if key == "enabled" or key == "fillLater" then Watch() end
 end)
 
 local function On() return S.Get("enabled") == true end
@@ -514,7 +663,16 @@ local function Detail()
     return "Save your bars from the window, or with /nf bars save and a name."
 end
 
-ns.ActionBarSets = { Headline = Headline, Detail = Detail }
+-- For the window: the bars in order, a set by name, saving with the builder's choices, and
+-- an import or the test of one that the preview draws.
+ns.ActionBarSets = {
+    Headline = Headline, Detail = Detail, BARS = BARS, Find = Find,
+    Get = function(key) return Sets()[key] end,
+    SlotList = Slots, Capture = Capture, CaptureMacros = CaptureMacros, CaptureBindings = CaptureBindings,
+    MacroKey = MacroKey, Describe = Describe,
+    Save = Save, Import = Import,
+    Preview = function(key) return Run(Sets()[key], true) end,
+}
 
 local Settings = ns.Shared and ns.Shared.Settings
 if not Settings then return end
@@ -525,6 +683,7 @@ local function ImportingSummary(store)
     local parts = { store.Get("highestRank") and "Highest ranks" or "Saved ranks" }
     if store.Get("importMacros") then parts[#parts + 1] = "macros" end
     if store.Get("importBindings") then parts[#parts + 1] = "keybinds" end
+    if store.Get("fillLater") then parts[#parts + 1] = "fills in later" end
     if store.Get("saveOnLogout") then parts[#parts + 1] = "saves on logout" end
     return table.concat(parts, ", ")
 end
@@ -552,6 +711,9 @@ page:Card({
               .. "and text or by text alone, is used as it is: never copied twice or changed." },
         { key = "importBindings", label = "Import Keybinds", toggle = true, needs = On, why = BARS_OFF,
           help = "Binds every key the set has bound. Keys the set leaves free keep what they do here." },
+        { key = "fillLater", label = "Fill In As You Learn", toggle = true, needs = On, why = BARS_OFF,
+          help = "A spell an import could not place because you do not know it yet goes into its saved slot "
+              .. "when you learn it, unless you have put something else there." },
         { key = "saveOnLogout", label = "Save on Logout", toggle = true, needs = On, why = BARS_OFF,
           help = "When you log out, the set this character saved or imported last is saved again with your "
               .. "bars, macros and keybinds as they are." },
