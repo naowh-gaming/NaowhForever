@@ -45,6 +45,8 @@
 
 ### Fixed
 - Naowh Score: no more Lua error after seeing more than 300 players, like in a busy city.
+- Blessings: a class button clears as soon as your blessing lands, instead of staying red for
+  about a second.
 
 ## 0.5.19-beta
 
