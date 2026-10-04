@@ -1163,7 +1163,7 @@ do
     end
     check("the Bosses title has Map", mapTitle ~= nil)
     -- A dungeon with no map yet: Map, muted, saying so on hover; a click does nothing.
-    ns.OpenJournalWindow(J.Get("ExcavationSite"))
+    ns.OpenJournalWindow(J.Get("DrownedCity"))
     local soon
     for _, made in ipairs(state.made) do
         local titleLink = rawget(made, "link")
