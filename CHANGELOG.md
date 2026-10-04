@@ -21,7 +21,8 @@
   On the world map, clicking a boss shows its own page in the Journal beside the map:
   Naowh's tip on top (the chat bubble beside it shares it in Say, Party, Raid, Guild or to
   your target), its loot, the dungeon quests that need it with where each stands for you
-  (done ones too), and its abilities. Back, or the boss clicked again, goes back to the
+  (done ones too), and its abilities; click the Loot, Quests or Abilities title to fold it
+  away (kept). Back, or the boss clicked again, goes back to the
   dungeon. The loot at the mouse now opens only on the maximised map.
 - Dungeon Journal: the Journal beside the world map uses its full width while everything
   fits, instead of leaving the scrollbar's room empty.
