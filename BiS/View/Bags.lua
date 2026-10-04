@@ -1,8 +1,10 @@
 -------------------------------------------------------------------------------
 --  View/Bags.lua -- the marks every slot of ours has (Shared.Parts.ItemMarks), on the items in
---  your bags: an item's level in the bottom-right, your BiS's star in the bottom-left and
---  Forever's mark in the top-left. In the game's bags, or in EllesmereUI's (its bags, reagent
---  bag and bank) through the hook it offers other addons for their marks.
+--  your bags: an item's level in the bottom-right, your BiS's star in the bottom-left,
+--  Forever's mark in the top-left, and the green upgrade arrow in the top-right on gear better
+--  than what you wear by your spec's stat weights (the gear tooltip's "+N% upgrade", BiS or
+--  not). In the game's bags, or in EllesmereUI's (its bags, reagent bag and bank) through the
+--  hook it offers other addons for their marks.
 --
 --  Ours is a frame over each bag button, kept in our own table (nothing stored on theirs), and
 --  painted after the bag paints the slot. Off, nothing is hooked or made; turned off after
@@ -13,10 +15,12 @@ local S = ns.QoLSettings
 local B = ns.BiS
 local Shared = ns.Shared
 local Items, Parts = Shared.Items, Shared.Parts
+local SW = ns.StatWeights
 
 local GetContainerItemID = C_Container.GetContainerItemID
 local GetContainerItemLink = C_Container.GetContainerItemLink
 local GetDetailedItemLevelInfo = C_Item.GetDetailedItemLevelInfo
+local GetTime = GetTime
 
 local OVERLAY = "NaowhForever"   -- our name on EllesmereUI's list of item overlays
 local ELLESMERE_BAGS = { "EUI_Bags", "EUI_BagsReagent" }   -- its windows with a refresh of their own
@@ -25,6 +29,9 @@ local sets = {}         -- a bag's item button -> our marks over it
 local ellesmere = {}    -- EllesmereUI's buttons among them, whose own item level ours stands in for
 local frames = {}       -- the game's bag frames, hooked
 local installed, registered = false, false
+-- Your spec's weights and what your gear is worth by them, read once a frame: a bag paints
+-- every slot in one go, EllesmereUI one slot per call.
+local weights, power, readAt
 
 local function On()
     return B.On() and S.Get("bisBagMarks") == true
@@ -45,8 +52,19 @@ local function Marks(button, over)
     return set
 end
 
--- An item's marks; none for an empty slot. Its level on gear only (a level on a potion says
--- nothing).
+local function Weights()
+    local now = GetTime()
+    if now ~= readAt then
+        readAt = now
+        local key = SW.ActiveSpec()
+        weights = key and SW.For(key)
+        power = weights and SW.Power(weights)
+    end
+    return weights, power
+end
+
+-- An item's marks; none for an empty slot. Its level and arrow on gear only (a level on a
+-- potion says nothing).
 ---@return boolean shown whether it shows an item level
 local function Paint(set, id, link)
     if not id then
@@ -54,8 +72,10 @@ local function Paint(set, id, link)
         return false
     end
     set:Show()
-    local level = Items.SlotsFor(id) and GetDetailedItemLevelInfo(link or id) or nil
-    return Parts.PaintItemMarks(set, level, ns.IsBisItem(id), Parts.IsForever("items", id))
+    local gear = Items.SlotsFor(id) ~= nil
+    local level = gear and GetDetailedItemLevelInfo(link or id) or nil
+    local upgrade = gear and SW.BestGain(id, link, Weights()) ~= nil
+    return Parts.PaintItemMarks(set, level, ns.IsBisItem(id), Parts.IsForever("items", id), upgrade)
 end
 
 -------------------------------------------------------------------------------

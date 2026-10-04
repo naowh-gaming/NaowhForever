@@ -1,7 +1,7 @@
 -- Run with Lua 5.1 from the repository root: Bag Marks, the BiS List's slot marks on the items
 -- in your bags, loaded from the Shared files and BiS/View/Bags.lua against stubs of the game's
 -- bags and EllesmereUI's. Checks that it is off and hooks nothing by default; on, gear shows its
--- item level, your BiS its star and what is new in Forever its mark, in the game's bags and in
+-- item level, your BiS its star, what is new in Forever its mark and an upgrade its arrow, in the game's bags and in
 -- EllesmereUI's (where ours stand in for its item level and make room for its BoE word and
 -- Pawn's arrow); a new list paints the stars again; off again, ours hide and EllesmereUI's item
 -- level comes back; and painting a bag makes no garbage.
@@ -95,6 +95,17 @@ local ns = {
     Apply = NOTHING,
     IsBisItem = function(id) return RANK[id] end,
 }
+-- Stat Weights: the chest is an upgrade by your spec's weights (its own test weighs them).
+local WEIGHTS = { agi = 1 }
+ns.StatWeights = {
+    ActiveSpec = function() return "assassination-rogue" end,
+    For = function() return WEIGHTS end,
+    Power = function() state.powerReads = (state.powerReads or 0) + 1; return 100 end,
+    BestGain = function(id, _, weights, power)
+        return weights == WEIGHTS and power == 100 and state.upgrades[id] or nil
+    end,
+}
+state.upgrades = { [102] = 4 }
 ns.BiS = {
     On = function() return state.values.bis end,
     OnListChange = function(fn) state.lists[#state.lists + 1] = fn end,
@@ -142,6 +153,7 @@ local env = setmetatable({
     GameTooltip = Frame(),
     UIParent = Frame(),
     CreateColor = function() return {} end,
+    GetTime = function() return state.now or 0 end,
 }, { __index = _G })
 env._G = env
 env.wipe = function(t) for k in pairs(t) do t[k] = nil end return t end
@@ -182,6 +194,10 @@ check("your BiS's star on it, nothing on what is not on your list", helm.rank.te
 check("Forever's mark on what is new in Forever, only there", helm.forever.shown == true
     and chest.forever.shown == false)
 check("the shade behind a number or a star only", helm.shade.shown == true and potion.shade.shown == false)
+check("the upgrade arrow on gear better than what you wear, BiS or not; none on the rest",
+    chest.up.shown == true and helm.up.shown == false and potion.up.shown == false)
+check("your gear's worth read once a frame, not once a slot", state.powerReads == 1)
+state.now = 1
 state.bags[1] = nil
 bagFrame:UpdateItems()
 check("a slot emptied: its marks hide", helm.shown == false)

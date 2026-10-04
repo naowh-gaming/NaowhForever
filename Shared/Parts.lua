@@ -26,6 +26,7 @@ local SHADE_SHARE, SHADE_ALPHA = 0.5, 0.8
 -- outlined digits across the icon; a tooltip's 1px drop left it low (seen in game, 3 Oct 2026).
 local MARK_STAR_DROP = -1
 Parts.MARK_IN = MARK_IN
+local MARK_UP = 14   -- the upgrade arrow, square, in the top-right corner
 
 -------------------------------------------------------------------------------
 --  Icons in text
@@ -222,7 +223,9 @@ end
 
 -- An item's marks on a slot, the same wherever we draw one (the BiS List's paperdoll, the
 -- character panel, your bags): its item level in the bottom-right, your BiS's star in the
--- bottom-left, Forever's mark in the top-left, and a shade rising from the foot behind them.
+-- bottom-left, Forever's mark in the top-left, the game's green upgrade arrow in the top-right
+-- (in your bags, for gear better than what you wear), and a shade rising from the foot behind
+-- the level and the star.
 -- A frame over icon (an item icon of ours, whose own Forever mark it takes, or a game's button);
 -- size is the icon's. Painted with Parts.PaintItemMarks.
 function Parts.ItemMarks(icon, size)
@@ -241,19 +244,27 @@ function Parts.ItemMarks(icon, size)
     set.rank = ns.Font(set, MARK_SIZE, "OUTLINE", T.fg)
     set.rank:SetPoint("BOTTOMLEFT", MARK_IN, MARK_IN)
     set.forever = icon.forever or IconForever(set, size)
+    local up = set:CreateTexture(nil, "OVERLAY")
+    up:SetAtlas(St.UPGRADE_ATLAS)
+    up:SetSize(MARK_UP, MARK_UP)
+    up:SetPoint("TOPRIGHT", -1, -1)
+    up:Hide()
+    set.up = up
     return set
 end
 
 -- level: the item level (none at 1 or under); rank: your list's rank for it, for its star;
--- forever: whether it is new in Forever. The shade only behind a number or a star.
+-- forever: whether it is new in Forever; upgrade: whether it is one. The shade only behind a
+-- number or a star.
 ---@param level? number|false
 ---@param rank? number
 ---@return boolean shown whether it shows an item level
-function Parts.PaintItemMarks(set, level, rank, forever)
+function Parts.PaintItemMarks(set, level, rank, forever, upgrade)
     local shown = level and level > 1 or false
     set.level:SetText(shown and level or "")
     set.rank:SetText(rank and Parts.RankMark(rank, MARK_STAR_DROP) or "")
     set.forever:SetShown(forever == true)
+    set.up:SetShown(upgrade == true)
     set.shade:SetShown(shown or rank ~= nil)
     return shown
 end

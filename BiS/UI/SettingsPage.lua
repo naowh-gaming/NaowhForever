@@ -147,7 +147,8 @@ function ns.BuildQoLBiSSettingsPage(parent, y)
         S.Toggle("bisTooltip", "Show on Tooltips", "Your list's rank on the items in it.", NEEDS_BIS)); y = y - h
     _, h = W:DualRow(parent, y,
         S.Toggle("bisBagMarks", "Bag Marks", "The marks your BiS List's slots have, on the items in your "
-            .. "bags: each item's level, your BiS's star and Forever's mark on what is new in Forever. "
+            .. "bags: each item's level, your BiS's star, Forever's mark on what is new in Forever, and "
+            .. "the green arrow on gear better than what you wear by your stat weights. "
             .. "In the game's bags or EllesmereUI's, where ours stand in for its item level.", NEEDS_BIS)); y = y - h
     y = DropAlert(parent, y)
 

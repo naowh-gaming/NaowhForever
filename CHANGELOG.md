@@ -78,8 +78,9 @@
   waits. With EllesmereUI, turning it on swaps EllesmereUI's character panel for
   this one, and turning it off swaps them back (after a reload).
 - Bag Marks (BiS List > Settings, off by default): the BiS List's slot marks on the items in
-  your bags: each piece of gear's item level, your BiS's star and Forever's mark on what is new
-  in Forever. Works in the game's bags and in EllesmereUI's bags, reagent bag and bank, where
+  your bags: each piece of gear's item level, your BiS's star, Forever's mark on what is new in
+  Forever, and the green upgrade arrow on gear better than what you wear by your spec's stat
+  weights (BiS or not). Works in the game's bags and in EllesmereUI's bags, reagent bag and bank, where
   ours replace its item level and leave room for its BoE text and Pawn's upgrade arrow.
 - Stat Weights (BiS List > Stat Weights, and the scales in the BiS List's title bar): what each
   stat is worth to your spec, which it reads from your talents, only the stats it uses, each a

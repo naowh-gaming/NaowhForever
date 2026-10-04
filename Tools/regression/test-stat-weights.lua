@@ -87,7 +87,9 @@ local function Fixture(class)
         GetInventoryItemLink = function(_, slot) return state.worn[slot] and "item:" .. state.worn[slot] end,
         GetInventoryItemID = function(_, slot) return state.worn[slot] end,
         C_Item = {
-            GetItemInfoInstant = function(id) return id, "", "", ITEMS[id] and ITEMS[id][1] end,
+            -- Every item armour (class 4, subclass 2); none needs a level.
+            GetItemInfoInstant = function(id) return id, "", "", ITEMS[id] and ITEMS[id][1], 0, 4, 2 end,
+            GetItemInfo = function() return "name", "link", 3, 10, 0 end,
             GetItemStats = function(link)
                 local item = ITEMS[tonumber(link:match("item:(%d+)"))]
                 return item and item[2]
@@ -263,6 +265,22 @@ do
     lines = Lines(3)
     check("a ring is weighed against the weaker you wear", lines[1] and lines[1]:find("+", 1, true))
     check("not gear, no line", #Lines(999) == 0)
+    -- A comparison tooltip (what you wear, beside the item's) has no GetItem on Forever.
+    local shopping = { lines = {} }
+    function shopping.AddLine(self, text) self.lines[#self.lines + 1] = text end
+    function shopping.IsForbidden() return false end
+    OnItem(shopping, { id = 1 })
+    check("a comparison tooltip, which has no GetItem: no error, weighed by its ID", #shopping.lines == 1)
+    -- The BiS List's class rules: what your class does not wear is no upgrade.
+    local asked
+    ns.ClassCanUse = function(class, item) asked = class .. " " .. item[1] .. " " .. item[2]; return false end
+    check("nor on gear your class does not wear, by the BiS List's rules", #Lines(1) == 0
+        and asked == "ROGUE 4 2")
+    ITEMS[1][1] = "INVTYPE_CLOAK"
+    Lines(1)
+    check("a cloak asked as anyone's, not as cloth", asked == "ROGUE 4 0")
+    ITEMS[1][1] = "INVTYPE_HAND"
+    ns.ClassCanUse = nil
     S.Set("enabled", false)
     check("the module off, no line", #Lines(1) == 0)
 end

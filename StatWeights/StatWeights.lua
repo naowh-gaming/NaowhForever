@@ -7,9 +7,11 @@
 -------------------------------------------------------------------------------
 local ns = _G.NaowhForever
 local UI = ns.UI
+local Items = ns.Shared.Items
 
 local GetItemStats = C_Item.GetItemStats
 local IsItemDataCachedByID = C_Item.IsItemDataCachedByID
+local GetItemInfo, GetItemInfoInstant = C_Item.GetItemInfo, C_Item.GetItemInfoInstant
 
 local SW = {}
 ns.StatWeights = SW
@@ -338,6 +340,49 @@ function SW.Gain(item, slot, weights, power, also)
     local other = also and WornWorth(also, weights) or 0
     if not (stats and worn and other) then return nil end
     return 100 * (Worth(stats, weights, DpsShare(slot)) - worn - other) / power
+end
+
+local MIN_GAIN = 0.5   -- percent: less than this is not an upgrade
+local facts = {}       -- an item's { class, subclass, item level, required level }, refilled
+local myClass
+
+-- Your class wears its kind (the BiS List's rules: your armour type for your level, the
+-- weapons you can learn); nil while its data has not loaded.
+local function Usable(id, link)
+    local canUse = ns.ClassCanUse
+    if not canUse then return true end
+    local _, _, _, equipLoc, _, itemClass, subclass = GetItemInfoInstant(id)
+    local _, _, _, _, required = GetItemInfo(link or id)
+    if not (itemClass and required) then return nil end
+    myClass = myClass or select(2, UnitClass("player"))
+    -- The game files a cloak under cloth; everyone wears one (the rules' data has them as 0).
+    if equipLoc == "INVTYPE_CLOAK" then subclass = 0 end
+    facts[1], facts[2], facts[4] = itemClass, subclass, required
+    return canUse(myClass, facts)
+end
+
+--- The most the item makes you stronger in a slot it goes in, in percent of power (see Gain):
+--- a ring or trinket against the weaker of the two you wear, a two-hander against both hands.
+--- nil where it is no upgrade (under half a percent), you wear it, your class does not wear
+--- its kind, or its data has not loaded. The gear tooltip's line and the bags' arrow.
+---@param id number the item's ID
+---@param link? string its link, for its own stats where it has random ones
+---@return number? percent
+function SW.BestGain(id, link, weights, power)
+    local slots = Items.SlotsFor(id)
+    if not (slots and weights) then return nil end
+    for i = 1, #slots do
+        if Items.Wearing(slots[i], id) then return nil end
+    end
+    if not Usable(id, link) then return nil end
+    local twoHand = Items.IsTwoHand(id)
+    local best
+    for i = 1, #slots do
+        local slot = slots[i]
+        local gain = SW.Gain(link or id, slot, weights, power, twoHand and slot == 16 and 17 or nil)
+        if gain and (not best or gain > best) then best = gain end
+    end
+    return best and best >= MIN_GAIN and best or nil
 end
 
 -------------------------------------------------------------------------------
