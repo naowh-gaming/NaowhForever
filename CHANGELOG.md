@@ -18,6 +18,8 @@
   flight starts, Nothing, the Quiz or the Aim Trainer (the default).
 - Dungeon map: the boss you clicked (its loot showing) is ringed in gold with a soft pulsing
   glow, on the map window and on the world map, until you pick another or close its loot.
+  On the small world map a boss's loot no longer opens at the mouse (the Journal beside the
+  map has it); the maximised map still opens it.
 
 ### Changed
 - QoL has a Character tab: Character Panel, Slot Marks and Naowh Score moved there from the BiS
