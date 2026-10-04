@@ -8,6 +8,8 @@
   there (the jumps and climbs), where you stand, and a waypoint; the optional campfire too. A
   Sleeping Bag tracker (off by default, Discovery > Sleeping Bags) shows the steps with the
   next one and its way there, until you have the bag; the X closes it until you log in again.
+  Sleeping Bag map pins (off by default): the bag's icon with the step's number on every step
+  still to do, the next one in full; click one for a waypoint.
 - Discovery: the third library reward, Greater Friend of the Library at 25 books (level 30):
   Truthseeker's Bow, Crest of Elucidation or Researcher's Night Light. The book count is what
   players report so far.

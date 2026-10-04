@@ -124,6 +124,7 @@ Discovery\NaowhForever_DiscoveryWindow.lua
 Discovery\NaowhForever_DiscoveryTracker.lua
 Discovery\NaowhForever_SleepingBagTracker.lua
 Discovery\NaowhForever_DiscoveryMap.xml
+Discovery\NaowhForever_SleepingBagMap.xml
 Discovery\NaowhForever_DiscoveryNearby.lua
 # Training Planner: the data loads first; the module reads it.
 Training\NaowhForever_TrainingData.lua

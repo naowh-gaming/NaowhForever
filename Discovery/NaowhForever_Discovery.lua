@@ -18,7 +18,7 @@ local S = UI.ModuleSettings("discovery", {
     -- Each window's own opacity: the Discovery window (windowAlpha), the Library Books tracker,
     -- the Sleeping Bag tracker.
     trackerAlpha = 1,
-    bagTracker = false, bagTrackerScale = 1, bagTrackerAlpha = 1,
+    bagTracker = false, bagTrackerScale = 1, bagTrackerAlpha = 1, bagMapPins = false, bagMapPinSize = 20,
 })
 ns.DiscoverySettings = S
 
@@ -351,5 +351,16 @@ bags:Card({
           why = DISCOVERY_OFF, help = "How big the tracker is." },
         { key = "bagTrackerAlpha", label = "Opacity", slider = { ns.Shared.Style.OPACITY_MIN, 100, 5 }, unit = "%",
           scale = 0.01, needs = On, why = DISCOVERY_OFF, help = "How solid the tracker is, in percent." },
+    },
+})
+
+bags:Card({
+    id = "bagmappins", name = "Map Pins", order = 20, switch = "bagMapPins",
+    help = "The steps still to do on their zone's map: the sleeping bag's icon with the step's number, the "
+        .. "next one in full and the ones after it faded. Hover a pin for what to click and how to get there; "
+        .. "click it for a waypoint.",
+    rows = {
+        { key = "bagMapPinSize", label = "Pin Size", slider = { 12, 32, 1 }, needs = On, why = DISCOVERY_OFF,
+          help = "How big the pins are on the map." },
     },
 })
