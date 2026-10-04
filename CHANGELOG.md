@@ -53,6 +53,18 @@
   a player it can no longer read, and the supporter plate and ID lines stop hooking the game's
   tooltip, which was reported breaking its own player-name colours.
 - Naowh's Forge: no more Lua error when a macro line is just a "/" with no command yet.
+- Character panel: while the game keeps your stats hidden (combat, encounters), your spec's stats
+  still show where the game allows it (primary stats, armor, healing, each school's spell damage,
+  crit, dodge, block), a dash for the rest, instead of a Lua error.
+- Stat Weights: upgrade lines and bag arrows keep working while your stats are hidden, worked out
+  against your stats from just before, until your gear or level changes.
+- Loot Feed: looting coins again while the Coins line is still up adds to it instead of throwing
+  a Lua error, and the loot after that line fades shows up again.
+- Auto-Fill Delete Confirmation: Yes can be clicked again once DELETE is filled in for you;
+  it stayed greyed out on Forever.
+- Settings: a module's window opened from /nf (Open Dungeon Journal, or the small window button
+  beside a module) brings /nf back when you close it the first time too, not only from the
+  second time on.
 - Macros: the macro editor shows a blinking cursor again while you type.
 
 ## 0.5.19-beta
