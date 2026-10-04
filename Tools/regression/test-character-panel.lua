@@ -2,7 +2,8 @@
 -- files Shared.xml and CharacterPanel.xml load, against stubs of the game's slot buttons. Checks
 -- that it is off and hooks nothing by default; on, the game's art fades and each slot shows its
 -- edge, item level, Forever's mark and your BiS's star, and no upgrade arrow; your score and your
--- spec's stats (their yardstick, worth bars, row height and hover cards); it stands down while
+-- spec's stats (their yardstick, worth bars, row height and hover cards); Slot Marks alone puts
+-- the marks on the game's own panel as it looks; it stands down while
 -- EllesmereUI styles the panel; off again, the game's art comes back; and neither a slot's update
 -- nor a repaint of the stats makes garbage.
 local Load = dofile("Tools/regression/load_files.lua")
@@ -478,6 +479,25 @@ check("the frame's art back, its title and level in the game's font again", char
     and levelText.object == "GameFontNormal")
 Update(head)
 check("and the game's updates paint nothing of ours", h.shown == false)
+
+-------------------------------------------------------------------------------
+--  Slot Marks alone: the game's own panel as it looks (no EllesmereUI, ours off), with the
+--  marks on its slots.
+-------------------------------------------------------------------------------
+S.Set("characterPanelSlotMarks", true)
+check("Slot Marks: the game's art and whole icon kept, our edge hidden", not CP.On()
+    and head.normal.alpha == 1 and head.IconBorder.alpha == 1 and head.icon.crop == 0 and h.look.shown == false)
+check("and the marks on its slots: level, star, Forever's mark, enchant dot", h.shown == true
+    and h.marks.level.text == 31 and h.marks.rank.text ~= "" and h.marks.forever.shown == true
+    and c.wand.shown == true)
+Update(head)
+check("the game's slot update paints them, leaving its icon whole", h.shown == true and head.icon.crop == 0)
+S.Set("characterPanel", true)
+check("with the Naowh Character Panel too: its look, the marks the same", head.normal.alpha == 0
+    and h.look.shown == true and h.marks.level.text == 31)
+S.Set("characterPanel", false)
+S.Set("characterPanelSlotMarks", false)
+check("both off: ours hidden", h.shown == false and head.normal.alpha == 1)
 
 -------------------------------------------------------------------------------
 --  The switch swaps EllesmereUI's character panel for ours, and back: its own switch, after a

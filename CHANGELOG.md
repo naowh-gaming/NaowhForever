@@ -76,7 +76,9 @@
   its corner, its edge in its quality's colour,
   Forever's mark on what is new in Forever, your BiS's star, and a dot where a better enchant
   waits. With EllesmereUI, turning it on swaps EllesmereUI's character panel for
-  this one, and turning it off swaps them back (after a reload).
+  this one, and turning it off swaps them back (after a reload). Rather keep the game's own
+  panel (or EllesmereUI's)? Slot Marks, on the same page and off by default, puts just the
+  marks on its slots.
 - Bag Marks (BiS List > Settings, off by default): the BiS List's slot marks on the items in
   your bags: each piece of gear's item level, your BiS's star, Forever's mark on what is new in
   Forever, and the green upgrade arrow on gear better than what you wear by your spec's stat

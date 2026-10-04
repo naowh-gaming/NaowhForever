@@ -6,8 +6,10 @@
 --  says so: it shows in your bags with its star.
 --
 --  Blizzard's own slot buttons stay where they are and do what they do: ours is a frame over
---  each (state on it, none on theirs), their art faded, painted from a post-hook of the game's
---  slot update. Turned off, the art comes back and ours hides.
+--  each (state on it, none on theirs), painted from a post-hook of the game's slot update. With
+--  the Naowh Character Panel, their art fades and ours draws the edge; with Slot Marks alone,
+--  the marks go on the game's own panel (or EllesmereUI's) as it looks. Turned off, the art
+--  comes back and ours hides.
 -------------------------------------------------------------------------------
 local ns = _G.NaowhForever
 local S = ns.QoLSettings
@@ -68,11 +70,18 @@ local function PaintAll()
     for _, over in pairs(overs) do Paint(over) end
 end
 
--- The game's update for a slot: its icon set again, so cropped again, and ours painted.
+-- The marks show with the Naowh Character Panel, or on the game's own panel with Slot Marks.
+local function MarksOn()
+    return CP.On() or (S.Get("enabled") == true and S.Get("characterPanelSlotMarks") == true)
+end
+CP.MarksOn = MarksOn
+
+-- The game's update for a slot: its icon set again, so cropped again in our look, and ours
+-- painted.
 local function SlotUpdated(button)
     local over = overs[button]
-    if not over or not CP.On() then return end
-    Crop(button, true)
+    if not over or not MarksOn() then return end
+    if CP.On() then Crop(button, true) end
     Paint(over)
 end
 
@@ -81,10 +90,13 @@ local function Over(button, slot)
     over:SetAllPoints()
     over:SetFrameLevel(button:GetFrameLevel() + 3)
     over.slot = slot
-    over.edge = ns.Border(over, St.BORDER_RGB)
+    -- Our look's edge, only with the Naowh Character Panel (the game's panel keeps its own).
+    over.look = CreateFrame("Frame", nil, over)
+    over.look:SetAllPoints()
+    over.edge = ns.Border(over.look, St.BORDER_RGB)
     -- A black ring outside the quality's edge, the house's border, so the edge stands off the
     -- dark panel round it.
-    local ring = CreateFrame("Frame", nil, over)
+    local ring = CreateFrame("Frame", nil, over.look)
     ns.PixelInset(ring, -1, over)
     ns.Border(ring, St.BORDER_RGB)
     over.marks = Parts.ItemMarks(over, button:GetHeight())
@@ -103,17 +115,18 @@ local function Install()
     end
     hooksecurefunc("PaperDollItemSlotButton_Update", SlotUpdated)
     -- A new list or pick: the stars again.
-    B.OnListChange(function() if CP.On() then PaintAll() end end)
+    B.OnListChange(function() if MarksOn() then PaintAll() end end)
 end
 
 local function Apply()
-    local on = CP.On()
-    if on and not installed then Install() end
+    local styled, marked = CP.On(), MarksOn()
+    if marked and not installed then Install() end
     if not installed then return end
     for button, over in pairs(overs) do
-        Fade(button, on and 0 or 1)
-        Crop(button, on)
-        if on then Paint(over) else over:Hide() end
+        Fade(button, styled and 0 or 1)
+        Crop(button, styled)
+        over.look:SetShown(styled)
+        if marked then Paint(over) else over:Hide() end
     end
 end
 CP.ApplySlots = Apply
