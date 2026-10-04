@@ -33,6 +33,16 @@
   title to fold it away (kept, but Loot opens again on the next boss). Back, or the boss
   clicked again, goes back to the dungeon. The loot at the mouse now opens only on the
   maximised map; the map window's loot and Boss Loot at Cursor show the same boss page.
+- Dungeon map: the boss you clicked is ringed in gold (or your theme's Accent) with a soft
+  pulsing glow, on the map window and on the world map. On the world map, clicking a boss
+  shows its own page in the Journal beside the map: its name with its title, level,
+  classification and creature type, Naowh's tip (the chat bubble beside it shares it in Say,
+  Party, Raid, Guild or to your target), the dungeon quests that need it with where each
+  stands for you (done ones too), its abilities (the game's icon, name and description) and
+  its loot. Click a section's title to fold it away (kept, but Loot opens again on the next
+  boss). Back, or the boss clicked again, goes back to the dungeon. The loot at the mouse
+  now opens only on the maximised map; the map window's loot and Boss Loot at Cursor show
+  the same boss page.
 - Dungeon Journal: the Journal beside the world map uses its full width while everything
   fits, instead of leaving the scrollbar's room empty.
 
