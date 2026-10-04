@@ -82,6 +82,9 @@ local METHODS = {
     CreateTexture = function(frame) return Frame(rawget(frame, "state"), frame) end,
     CreateMaskTexture = function(frame) return Frame(rawget(frame, "state"), frame) end,
     CreateFontString = function(frame) return Frame(rawget(frame, "state"), frame) end,
+    -- Animations: groups and their steps, which play nothing here.
+    CreateAnimationGroup = function(frame) return Frame(rawget(frame, "state"), frame) end,
+    CreateAnimation = function(frame) return Frame(rawget(frame, "state"), frame) end,
     IsMouseOver = function(frame)
         local state = rawget(frame, "state")
         return state ~= nil and state.mouseOver == true

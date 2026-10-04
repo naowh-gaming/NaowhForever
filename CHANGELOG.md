@@ -16,6 +16,8 @@
   starts; it closes when you land or enter combat. Move it in Unlock Mode.
 - Flight Games (QoL > Travel, under the Flight Timer): one choice of what opens by itself when a
   flight starts, Nothing, the Quiz or the Aim Trainer (the default).
+- Dungeon map: the boss you clicked (its loot showing) is ringed in gold with a soft pulsing
+  glow, on the map window and on the world map, until you pick another or close its loot.
 
 ### Changed
 - QoL has a Character tab: Character Panel, Slot Marks and Naowh Score moved there from the BiS

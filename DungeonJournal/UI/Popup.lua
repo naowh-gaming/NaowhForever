@@ -35,6 +35,8 @@ local function Build()
     view:SetPoint("TOPLEFT", PANEL_PAD, -PANEL_HEADER)
     view:SetWidth(PANEL_W - PANEL_PAD * 2)
     view.onResize = Drawn
+    -- Closed (its X, the key, its map): the pin that opened it is no longer ringed.
+    popup:HookScript("OnHide", J.View.ForgetMapLoot)
 end
 
 local function Open(boss, dungeon)
