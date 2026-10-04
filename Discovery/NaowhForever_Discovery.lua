@@ -342,8 +342,8 @@ bags:Window({
 bags:Card({
     id = "bagtracker", name = "Tracker", order = 10, switch = "bagTracker",
     help = "The Cozy Sleeping Bag's hidden quest chain, step by step: the thing to click next, where, how to "
-        .. "get there and a waypoint. It shows from level 14 until you have the bag; the X closes it until "
-        .. "you log in again. Move it in Unlock Mode or drag it. Every step is also on the Sleeping Bag tab of "
+        .. "get there and a waypoint. It shows from level 14 until you have the bag; the X on it switches "
+        .. "it off. Move it in Unlock Mode or drag it. Every step is also on the Sleeping Bag tab of "
         .. "the Discovery window.",
     summary = BagSummary,
     rows = {

@@ -3,7 +3,8 @@
 --  a small window, as the Library Books tracker looks: how far along you are, then each step
 --  with a waypoint pin (a tick once done), the step to do now in full white with how to get
 --  there under it. Off by default; on, it shows from level 14 until you have the bag. The X
---  closes it until you log in again. Drag it or move it in Unlock Mode.
+--  switches it off (the Tracker switch on the Sleeping Bags settings tab brings it back). Drag
+--  it or move it in Unlock Mode.
 -------------------------------------------------------------------------------
 local ns = _G.NaowhForever
 local S = ns.DiscoverySettings
@@ -25,7 +26,6 @@ local TITLE_LEFT = ROW_LEFT + WAYPOINT_SLOT + 6
 local ROW_TOP, ROW_LINE_GAP, ROW_BOTTOM = 6, 3, 8
 
 local panel, events
-local closed   -- the X closed it, until you log in again
 
 local function On()
     return S.Get("enabled") and S.Get("bagTracker")
@@ -80,9 +80,10 @@ local function BuildPanel()
     panel:RegisterForDrag("LeftButton")
     panel:SetScript("OnDragStart", DragStart)
     panel:SetScript("OnDragStop", DragStop)
+    -- The X switches the tracker off, as its switch in the settings does.
     panel.close:SetScript("OnClick", function()
-        closed = true
-        panel:Hide()
+        S.Set("bagTracker", false)
+        ns.UI:RefreshPage(true)
     end)
     local titleBtn = CreateFrame("Button", nil, panel)
     titleBtn:SetPoint("TOPLEFT", panel.title, "TOPLEFT", -4, 4)
@@ -224,7 +225,7 @@ end
 --  When it shows
 -------------------------------------------------------------------------------
 local function Refresh()
-    local show = On() and not closed and Bag.Level() and Bag.Current() ~= nil
+    local show = On() and Bag.Level() and Bag.Current() ~= nil
     if not show then
         if panel then panel:Hide() end
         return
