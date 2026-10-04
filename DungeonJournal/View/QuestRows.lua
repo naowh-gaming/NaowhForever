@@ -1,9 +1,9 @@
 -------------------------------------------------------------------------------
---  View/QuestRows.lua -- your quests in the dungeon, as rows laid out like a table: the
---  quest's level in a column of its own; its title with where to go under it (or what to do
---  first); and on the right, in fixed slots so every column lines up, Chain as an icon, its
---  state as the game's own quest mark (a yellow ! to pick up, a ? in your log), and
---  Waypoint as a pin. Hover says what the mark means, how far along it is and who in your
+--  View/QuestRows.lua -- your quests in the dungeon, as rows laid out like a table: Waypoint
+--  as a pin in front, then the quest's level, each in a column of its own; its title with
+--  where to go under it (or what to do first); and on the right, in fixed slots so every
+--  column lines up, Chain as an icon and its state as the game's own quest mark (a yellow !
+--  to pick up, a ? in your log). Hover says what the mark means, how far along it is and who in your
 --  party has it; right-click shares it, links it, tracks it or copies its Wowhead link.
 --  The rules are Quests.lua's; the words and colours are here.
 -------------------------------------------------------------------------------
@@ -32,13 +32,17 @@ local View = J.View
 local Kinds, Parts = View.Kinds, View.Parts
 local IconButton, Plain = Parts.IconButton, Parts.Plain
 
--- The fixed slots on the right, from the right: Waypoint, the mark, then Chain.
+-- The columns on the left: Waypoint's pin (empty for a quest with nowhere to go, so the
+-- levels still line up), then the level; the title after them.
+local LEVEL_LEFT = INDENT + WAYPOINT_SLOT + 4
+local TITLE_LEFT = LEVEL_LEFT + QUEST_LEVEL_W + 4
+-- The fixed slots on the right, from the right: the mark, then Chain.
 local QUEST_RIGHT = St.QUEST_RIGHT
-local MARK_SLOT = QUEST_RIGHT + WAYPOINT_SLOT + GAP * 2
--- The mark (a thin ! or ? in the middle of its box) goes this much right of its slot, so
--- what you see of it is midway between the pin's shape and the group icon's, which stand in
--- from their boxes by different amounts. Measured in game (2026-10-01): the space either
--- side of it was 20 and 28; this makes both 24.
+local MARK_SLOT = QUEST_RIGHT
+-- The mark (a thin ! or ? in the middle of its box) goes this much right of its slot, away
+-- from the group icon, which stands in from its box less than the mark does. Measured in
+-- game (2026-10-01, with the pin then on its right): the space either side of it was 20 and
+-- 28, and this made both 24.
 local MARK_SHIFT = 4
 local MARK_RIGHT = MARK_SLOT - MARK_SHIFT
 -- Who in your group is on it, always shown (0 out of a group), so the slots never leave a gap.
@@ -492,11 +496,11 @@ Kinds.quest = {
         row.mark = row:CreateTexture(nil, "ARTWORK")
         row.mark:SetSize(MARK, MARK)
         row.level = ns.Font(row, 12)
-        row.level:SetPoint("TOPLEFT", INDENT, -(QUEST_TOP + 1))
+        row.level:SetPoint("TOPLEFT", LEVEL_LEFT, -(QUEST_TOP + 1))
         row.level:SetWidth(QUEST_LEVEL_W)
         row.level:SetJustifyH("LEFT")
         row.title = ns.Font(row, 13, nil, T.fg)
-        row.title:SetPoint("TOPLEFT", INDENT + QUEST_LEVEL_W + 4, -QUEST_TOP)
+        row.title:SetPoint("TOPLEFT", TITLE_LEFT, -QUEST_TOP)
         row.title:SetJustifyH("LEFT")
         row.title:SetWordWrap(false)
         row.where = ns.Font(row, 11, nil, T.muted)
@@ -555,7 +559,7 @@ Kinds.quest = {
         local view = row:GetParent()
         local tight = view.tight
         local compact = view.compact and not tight
-        local left = INDENT + QUEST_LEVEL_W + 4
+        local left = TITLE_LEFT
         local width = row:GetWidth() - left - RIGHT_W - GAP * 2
         row.party.count = entry.party
         row.party.label:SetText(entry.party)
@@ -580,17 +584,19 @@ Kinds.quest = {
             anchor, y = "TOPRIGHT", -(QUEST_TOP + math.ceil(row.title:GetStringHeight()) / 2)
         end
         row.party:SetPoint("RIGHT", row, anchor, -PARTY_RIGHT, y)
-        row.waypoint:SetPoint("RIGHT", row, anchor, -QUEST_RIGHT, y)
+        -- In front of the level, on the title's line.
+        row.waypoint:SetPoint("CENTER", row, "TOPLEFT", INDENT + WAYPOINT_SLOT / 2,
+            -(QUEST_TOP + math.ceil(row.title:GetStringHeight()) / 2))
         row.mark:SetPoint("RIGHT", row, anchor, -MARK_RIGHT, y)
         row.chain:SetPoint("RIGHT", row, anchor, -CHAIN_RIGHT, y)
         return height
     end,
 }
 
--- How wide a quest row must be to show a title this wide in full, beside its level and the
--- icons on its right (the quest tracker sizes itself by it).
+-- How wide a quest row must be to show a title this wide in full, beside its pin and level and
+-- the icons on its right (the quest tracker sizes itself by it).
 ---@param titleWidth number
 ---@return number width
 function View.QuestRowWidth(titleWidth)
-    return INDENT + QUEST_LEVEL_W + 4 + titleWidth + RIGHT_W + GAP * 2
+    return TITLE_LEFT + titleWidth + RIGHT_W + GAP * 2
 end
