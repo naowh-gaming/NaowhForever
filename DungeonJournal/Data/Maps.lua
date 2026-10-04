@@ -6,6 +6,7 @@
 --
 --  [dungeon key] = {
 --      art = the folder, floors = how many, names = { a name per floor } (else "Floor n"),
+--      floor = the one floor it is on, where dungeons share the art (Scarlet Monastery's wings),
 --      entrance = { floor, x, y },
 --      pins = { [NPC ID] = { floor, x, y } },   a chest by minus its object ID
 --  }
@@ -115,11 +116,30 @@ ns.Journal.Maps = {
             [4422] = { 1, 0.082, 0.686 },   -- Agathelos the Raging
         },
     },
-    ScarletMonastery = { art = "ScarletMonastery", floors = 4,
+    -- Scarlet Monastery's wings share its art, a floor each, in the order the art has them.
+    ScarletMonasteryGraveyard = { art = "ScarletMonastery", floors = 4, floor = 1,
         entrance = { 1, 0.841, 0.831 },
         pins = {
             [4543] = { 1, 0.246, 0.566 },   -- Bloodmage Thalnos
             [3983] = { 1, 0.724, 0.6 },   -- Interrogator Vishas
+        },
+    },
+    ScarletMonasteryLibrary = { art = "ScarletMonastery", floors = 4, floor = 2,
+        pins = {
+            [3974] = { 2, 0.308, 0.878 },   -- Houndmaster Loksey
+            [6487] = { 2, 0.832, 0.745 },   -- Arcanist Doan
+        },
+    },
+    ScarletMonasteryArmory = { art = "ScarletMonastery", floors = 4, floor = 3,
+        pins = {
+            [3975] = { 3, 0.786, 0.108 },   -- Herod
+        },
+    },
+    ScarletMonasteryCathedral = { art = "ScarletMonastery", floors = 4, floor = 4,
+        pins = {
+            [4542] = { 4, 0.554, 0.261 },   -- High Inquisitor Fairbanks
+            [3976] = { 4, 0.491, 0.272 },   -- Scarlet Commander Mograine
+            [3977] = { 4, 0.49, 0.169 },   -- High Inquisitor Whitemane
         },
     },
     RazorfenDowns = { art = "RazorfenDowns", floors = 1, pins = {} },

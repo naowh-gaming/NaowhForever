@@ -3,20 +3,6 @@
 ## Unreleased
 
 ### Added
-- Discovery: the Cozy Sleeping Bag, its hidden quest chain step by step (from level 14). A
-  Sleeping Bag tab in the Discovery window lists every step: what to click, where, how to get
-  there (the jumps and climbs), where you stand, and a waypoint; the optional campfire too. A
-  Sleeping Bag tracker (off by default, Discovery > Sleeping Bags) shows the steps with the
-  next one and its way there, until you have the bag; its X switches it off.
-  Sleeping Bag map pins (off by default): the bag's icon with the step's number on every step
-  still to do, the next one in full; click one for a waypoint.
-- Discovery: the third library reward, Greater Friend of the Library at 25 books (level 30):
-  Truthseeker's Bow, Crest of Elucidation or Researcher's Night Light. The book count is what
-  players report so far.
-- Discovery: the progress at the top of its window is a road, as the Training Planner's: a
-  short stripe per book (blue once handed in), YOU over where you are, and a dot at 10, 20 and
-  25 books with the rewards to choose from under each (hover one for the item), grey once
-  handed in with the one you have still in colour.
 - Settings: click the dot beside a setting you changed to put it back to its default; hover it to
   see what the default is.
 - Aim Trainer (QoL > Travel, on by default): a shooting game for flight paths. Click the other
@@ -30,20 +16,27 @@
   starts; it closes when you land or enter combat. Move it in Unlock Mode.
 - Flight Games (QoL > Travel, under the Flight Timer): one choice of what opens by itself when a
   flight starts, Nothing, the Quiz or the Aim Trainer (the default).
+- Scrap Marker (QoL > Loot & Items, off by default): Alt-click an item in your bags, the game's
+  or EllesmereUI's, to mark it as scrap, and again to unmark it. Marks count on every character,
+  or on this one only (New Marks), and the next vendor sells your scrap, even items the game
+  doesn't count as junk. At the Vendor can instead ask first, on a panel beside the vendor, or do
+  nothing. Scrap shows an icon on its bag slot and a line on its tooltip. Your BiS and gear sets
+  are protected, and quest items, keys and items with no sell price can't be marked.
+  - Rules, each off by default, count gear your class can't wear and old grey and white gear as
+    scrap too; the X on a rule's item keeps it.
+  - The Scrap List (Open Scrap List on its settings page, or /nf scrap): every scrap item with
+    what you carry and what it sells for, a search, an X to unmark, Account or Character on each
+    mark, drop an item on it to mark it, Clear All, and Export and Import to share a list.
+  - Bag Space puts your scrap first and shows the slots it will free, like +3.
 - Training Planner: a waypoint to your nearest class trainer, from Waypoint to nearest trainer at
   the top of the planner, the Waypoint button on the level-up toast, or /nf trainer. With TomTom
   loaded, it uses TomTom's arrow.
 
 ### Changed
-- Discovery: its window has two tabs, Library Books (every book for your faction, a tick on
-  those handed in, in place of To Find and All Books) and Sleeping Bag.
-- Discovery: its settings are two tabs, Library Books and Sleeping Bags, and each tracker has its
-  own opacity apart from the Discovery window's (they start at the one you had set).
-- Discovery: the Library Books tracker has the Dungeon Quest Tracker's look: the Journal's
-  window style (with the Discovery window's opacity), the progress bar and zone dropdown under
-  its title, and rows like its quest rows: a waypoint pin in front, a tick in its place once a
-  book is handed in, and a book's level in its tooltip. A cog under the list opens its
-  settings, and it can be dragged by its title or body (Unlock Mode still moves it too).
+- Dungeon Journal: Scarlet Monastery is its four wings, each a dungeon of its own: Scarlet
+  Monastery - Graveyard (26-36), Library (29-39), Armory (32-42) and Cathedral (35-45), with its
+  bosses, loot, quests and floor of the map. Inside, the subzone you stand in says which wing
+  you are in; where it cannot tell, the Graveyard comes first.
 - QoL has a Character tab: Character Panel, Slot Marks and Naowh Score moved there from the BiS
   List's settings, and Supporter Badges from Interface. The BiS List's page keeps what is about
   your BiS.
@@ -75,6 +68,19 @@
   upgrade line and bag arrows wait while the game keeps your stats hidden, Naowh Score copes with
   a player it can no longer read, and the supporter plate and ID lines stop hooking the game's
   tooltip, which was reported breaking its own player-name colours.
+- Naowh's Forge: no more Lua error when a macro line is just a "/" with no command yet.
+- Character panel: while the game keeps your stats hidden (combat, encounters), your spec's stats
+  still show where the game allows it (primary stats, armor, healing, each school's spell damage,
+  crit, dodge, block), a dash for the rest, instead of a Lua error.
+- Stat Weights: upgrade lines and bag arrows keep working while your stats are hidden, worked out
+  against your stats from just before, until your gear or level changes.
+- Loot Feed: looting coins again while the Coins line is still up adds to it instead of throwing
+  a Lua error, and the loot after that line fades shows up again.
+- Auto-Fill Delete Confirmation: Yes can be clicked again once DELETE is filled in for you;
+  it stayed greyed out on Forever.
+- Settings: a module's window opened from /nf (Open Dungeon Journal, or the small window button
+  beside a module) brings /nf back when you close it the first time too, not only from the
+  second time on.
 
 ## 0.5.19-beta
 
