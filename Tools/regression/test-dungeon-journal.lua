@@ -147,7 +147,7 @@ local function fixture(settings)
         enabled = false, mapPanel = true, usableOnly = true, showChance = true,
         showAlliance = true, showHorde = true, showKills = true, shareRequests = true,
         showAppearance = false, showTips = true, missingBisOnly = false, myRecipes = true, showCosmetic = true,
-        repQuestsOpen = true, bossTipOpen = true, bossLootOpen = true, bossQuestsOpen = true, bossAbilitiesOpen = true,
+        repQuestsOpen = true, bossTipOpen = true, bossQuestsOpen = true, bossAbilitiesOpen = true,
     }
     for k, v in pairs(settings or {}) do values[k] = v end
     -- The kit's module settings: Set tells every listener, as UI.ModuleSettings does.
@@ -1224,6 +1224,36 @@ do
     check("a section closes by its title", rawget(ability, "shown") == false)
     abilitiesTitle.onToggle()
     check("and opens again", rawget(ability, "shown") ~= false)
+    -- Loot opens again on the next boss: closing it lasts for that boss only.
+    local function LootTitle()
+        for _, made in ipairs(state.made) do
+            local text = rawget(made, "text")
+            if rawget(made, "onToggle") and text and tostring(rawget(text, "text")):find("^LOOT")
+                and rawget(made, "shown") ~= false then return made end
+        end
+    end
+    local lootPage = rawget(LootTitle(), "parent")
+    local function LootShown(name)
+        for _, made in ipairs(state.made) do
+            local boss = rawget(made, "boss")
+            if rawget(made, "chanceText") and boss and boss.name == name and rawget(made, "shown") ~= false
+                and rawget(made, "parent") == lootPage then
+                return true
+            end
+        end
+        return false
+    end
+    check("its loot shows", LootShown("Bazzalan"))
+    LootTitle().onToggle()
+    check("its loot closes by its title", not LootShown("Bazzalan"))
+    local otherRow
+    for _, made in ipairs(state.made) do
+        local boss = rawget(made, "boss")
+        if rawget(made, "tick") and boss and boss.name == "Oggleflint" then otherRow = made end
+    end
+    otherRow.scripts.OnClick(otherRow)
+    check("and opens again on the next boss", LootShown("Oggleflint"))
+    pickRow.scripts.OnClick(pickRow)
     -- A drag on a pin while not placing keeps nothing: only placing saves where a pin stands.
     state.account.journalMapPins = nil
     for _, made in ipairs(state.made) do

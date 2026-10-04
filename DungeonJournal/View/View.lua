@@ -411,8 +411,8 @@ end
 -- One boss and its loot, for the boss loot window.
 -- A boss's own page: its name and kill count on top, Naowh's tip written out under it (so no
 -- (i) on its name), then the Quests that need it, its Abilities and its Loot; each, the tip
--- too, under a title that opens and closes it (kept: bossTipOpen and the rest) and left out
--- where there is none.
+-- too, under a title that opens and closes it (kept: bossTipOpen and the rest; Loot opens
+-- again on the next boss) and left out where there is none.
 function ViewMixin:DrawBossLoot(boss, dungeon)
     self:Begin(dungeon, boss)
     local tip = self.showTips and J.Tip(boss)
@@ -435,8 +435,15 @@ end
 
 -- A section's title, opened and closed by a click (the setting key keeps which); true while
 -- open, with its card opened for its rows.
-local SECTION_KEYS = { ["Naowh's Tip"] = "bossTipOpen", Loot = "bossLootOpen", Quests = "bossQuestsOpen",
+-- Loot is "loot", not a setting: it opens on every boss, and closing it lasts for that boss
+-- only (view.lootClosed is the boss it was closed on).
+local SECTION_KEYS = { ["Naowh's Tip"] = "bossTipOpen", Loot = "loot", Quests = "bossQuestsOpen",
     Abilities = "bossAbilitiesOpen" }
+
+function ViewMixin:SectionOpen(key)
+    if key == "loot" then return self.lootClosed ~= self.boss end
+    return S.Get(key)
+end
 
 function ViewMixin:ToggleFor(title)
     self.toggles = self.toggles or {}
@@ -444,7 +451,11 @@ function ViewMixin:ToggleFor(title)
     if not toggle then
         local key = SECTION_KEYS[title]
         toggle = function()
-            S.Set(key, not S.Get(key))
+            if key == "loot" then
+                self.lootClosed = self:SectionOpen(key) and self.boss or nil
+            else
+                S.Set(key, not S.Get(key))
+            end
             self:Redraw()
         end
         self.toggles[title] = toggle
@@ -458,7 +469,7 @@ end
 function ViewMixin:OpenDetailCard(title, count)
     if self.cursor > 0 then self:Space(SECTION_SPACE) end
     local key = SECTION_KEYS[title]
-    local open = not key or S.Get(key)
+    local open = not key or self:SectionOpen(key)
     if key then
         self:SectionToggle(title, count, open, self:ToggleFor(title))
     else

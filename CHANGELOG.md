@@ -30,9 +30,9 @@
   Naowh's tip (the chat bubble beside it shares it in Say, Party, Raid, Guild or to your
   target), the dungeon quests that need it with where each stands for you (done ones too),
   its abilities (the game's icon, name and description) and its loot. Click a section's
-  title to fold it away (kept). Back, or the boss clicked again, goes back to the dungeon.
-  The loot at the mouse now opens only on the maximised map; the map window's loot and Boss
-  Loot at Cursor show the same boss page.
+  title to fold it away (kept, but Loot opens again on the next boss). Back, or the boss
+  clicked again, goes back to the dungeon. The loot at the mouse now opens only on the
+  maximised map; the map window's loot and Boss Loot at Cursor show the same boss page.
 - Dungeon Journal: the Journal beside the world map uses its full width while everything
   fits, instead of leaving the scrollbar's room empty.
 
