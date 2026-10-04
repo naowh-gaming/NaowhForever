@@ -65,7 +65,7 @@ local UNDER_MAP_GAP = 6          -- the map to the floor switch's line
 local KILLED_ALPHA = 0.45        -- a pin killed this run, on the map
 local UNPLACED_ALPHA = 0.7       -- placing: a pin waiting along the top
 -- The picked pin's ring and its glow: gold, or the theme's Accent once the player picked one.
-local GOLD = { r = 1, g = 0.82, b = 0 }
+local PICKED_RGB = St.PICKED_RGB
 local PICKED_RING = 8            -- the ring round the picked pin's portrait, edge to edge
 local PICKED_GLOW = 24           -- and the glow pulsing round it
 local GLOW_LOW, GLOW_HIGH, GLOW_PULSE = 0.15, 0.55, 0.9
@@ -234,7 +234,7 @@ function View:NewPin()
     pin:SetSize(PIN, PIN)
     pin:RegisterForClicks("LeftButtonUp", "RightButtonUp")
     -- Picked (its loot is showing): a ring round its portrait in a slow glow, gold or the
-    -- theme's Accent (GOLD).
+    -- theme's Accent (PICKED_RGB).
     pin.halo = pin:CreateTexture(nil, "BACKGROUND", nil, -3)
     pin.halo:SetPoint("CENTER")
     pin.halo:SetSize(PIN + PICKED_GLOW, PIN + PICKED_GLOW)
@@ -309,7 +309,7 @@ local function ShowPicked(pin, on)
     pin.halo:SetShown(on)
     if on then
         -- Read as it shows, so a theme changed since follows on the next pick.
-        local c = ns.ThemeTint("accent", GOLD)
+        local c = ns.ThemeTint("accent", PICKED_RGB)
         pin.gold:SetColorTexture(c.r, c.g, c.b, 1)
         pin.halo:SetColorTexture(c.r, c.g, c.b, 1)
         if not pin.pulse:IsPlaying() then pin.pulse:Play() end

@@ -32,6 +32,8 @@ local TITLE_SIZE, TITLE_H, TITLE_GAP = St.TITLE_SIZE, St.TITLE_H, St.TITLE_GAP
 local WHERE_H, HEADER_PAD, PLACE_DOT = St.WHERE_H, St.HEADER_PAD, St.PLACE_DOT
 local HEADER_TOP = 8   -- over the name: room from the panel's edge, as the cards keep inside theirs
 local CARD_PAD, QUEST_CODE, HAVE_RGB, CHECK = St.CARD_PAD, St.QUEST_CODE, St.HAVE_RGB, St.CHECK
+local HOVER = St.HOVER
+local KILLS_GAP = 10      -- the name to the kill count on its right
 
 local View = J.View
 local Kinds, Parts = View.Kinds, View.Parts
@@ -44,6 +46,7 @@ local QUESTION = 134400   -- the game's question mark, for a spell with no icon
 local MARK = 14           -- the Naowh mark beside the tip; a done quest's tick
 local QUEST_H = 22
 local STATE_W = 120       -- a quest's state, on the right
+local TICK_GAP = 4        -- a done quest's tick to its state
 local SHARE = St.ACTION   -- the tip's share button
 local TIP_MARK = St.ICON  -- the Naowh mark beside the tip, as big as a loot icon
 local BUBBLE = "Interface\\GossipFrame\\GossipGossipIcon"
@@ -104,7 +107,7 @@ Kinds.bossHeader = {
         row.kills:SetShown(showKills)
         if showKills then Parts.SetKillCount(row.kills, boss) end
         row.title:SetText(boss.name)
-        row.title:SetWidth(math.max(1, row:GetWidth() - (showKills and row.kills:GetWidth() + 10 or 0)))
+        row.title:SetWidth(math.max(1, row:GetWidth() - (showKills and row.kills:GetWidth() + KILLS_GAP or 0)))
         row.about:SetText(AboutText(boss))
         return HEADER_TOP + TITLE_H + TITLE_GAP + WHERE_H + HEADER_PAD
     end,
@@ -169,7 +172,7 @@ end
 Kinds.bossQuest = {
     New = function(view)
         local row = CreateFrame("Frame", nil, view)
-        row.hover = ns.Solid(row, "BACKGROUND", T.fg, 0.05)
+        row.hover = ns.Solid(row, "BACKGROUND", T.fg, HOVER)
         row.hover:SetPoint("TOPLEFT", -CARD_PAD + 1, 0)
         row.hover:SetPoint("BOTTOMRIGHT", CARD_PAD - 1, 0)
         row.hover:Hide()
@@ -179,7 +182,7 @@ Kinds.bossQuest = {
         row.tick = row:CreateTexture(nil, "ARTWORK")
         row.tick:SetTexture(CHECK)
         row.tick:SetSize(MARK, MARK)
-        row.tick:SetPoint("RIGHT", row.state, "LEFT", -4, 0)
+        row.tick:SetPoint("RIGHT", row.state, "LEFT", -TICK_GAP, 0)
         row.name = ns.Font(row, 12)
         row.name:SetPoint("LEFT", 0, 0)
         row.name:SetPoint("RIGHT", -STATE_W, 0)
@@ -236,7 +239,7 @@ Kinds.ability = {
     New = function(view)
         local row = CreateFrame("Button", nil, view)
         -- The hover reaches out to the card's edges, as an item's does.
-        row.hover = ns.Solid(row, "BACKGROUND", T.fg, 0.05)
+        row.hover = ns.Solid(row, "BACKGROUND", T.fg, HOVER)
         row.hover:SetPoint("TOPLEFT", -CARD_PAD + 1, 0)
         row.hover:SetPoint("BOTTOMRIGHT", CARD_PAD - 1, 0)
         row.hover:Hide()
