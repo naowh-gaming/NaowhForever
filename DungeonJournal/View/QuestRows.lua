@@ -64,15 +64,17 @@ local function RGB(code)
         b = tonumber(hex:sub(5, 6), 16) / 255 }
 end
 
--- The game's quest marks, as every quest giver shows them: a yellow ! to pick up, a grey ?
--- while it is in your log, a yellow ? to hand in. The tinted ones are greyed and coloured
--- with the state: orange to do something first, grey while your level is too low, red when
--- it is too high for you. (The game's newer in-progress icon, a speech bubble with dots,
--- did not read as a quest.)
+-- The game's quest marks, as every quest giver shows them: a ? grey while it is in your log
+-- and yellow to hand in; a ! yellow when you can pick it up now, grey when other quests come
+-- first, red when it is too high for you (your level too low to take it, or five or more
+-- above you). The tinted ones are greyed and coloured. (The game's newer in-progress icon, a
+-- speech bubble with dots, did not read as a quest.)
+local GREY, RED = RGB(QUEST_CODE.low), RGB(QUEST_CODE.tooHigh)
+local YELLOW = RGB(QUEST_CODE.prereqLog)   -- the quest log's yellow: the untinted marks' words
 local MARKS = {
     pickup = { BANG }, next = { BANG },
-    prereq = { BANG, RGB(QUEST_CODE.prereq) }, prereqLog = { BANG, RGB(QUEST_CODE.prereqLog) },
-    low = { BANG, RGB(QUEST_CODE.low) }, tooHigh = { BANG, RGB(QUEST_CODE.tooHigh) },
+    prereq = { BANG, GREY }, prereqLog = { BANG, GREY },
+    low = { BANG, RED }, tooHigh = { BANG, RED },
     active = { QUESTION, T.muted }, ready = { QUESTION },
 }
 -- Do first needs no words on hover: the line under the title names the quest to do.
@@ -83,12 +85,17 @@ local function Shown(entry)
     return entry.tooHigh and "tooHigh" or entry.kind
 end
 
-local function StatusText(entry)
+-- Its state in words ("Level 30 to pick up").
+local function StatusWords(entry)
     local shown = Shown(entry)
     local text = STATUS[shown]
     if shown == "low" then text = text:format(Quests.MinLevel(entry.quest)) end
     if shown == "tooHigh" then text = text:format(entry.level) end
-    return QUEST_CODE[shown] .. text .. "|r"
+    return text
+end
+
+local function StatusText(entry)
+    return QUEST_CODE[Shown(entry)] .. StatusWords(entry) .. "|r"
 end
 
 local function PaintMark(mark, entry)
@@ -343,7 +350,9 @@ local function MarkEnter(hit)
     row.hover:Show()
     local entry = row.entry
     if not Tip(hit, "ANCHOR_RIGHT") then return end
-    GameTooltip:SetText(StatusText(entry))
+    -- In the mark's own colour.
+    local c = (MARKS[Shown(entry)] or MARKS.pickup)[2] or YELLOW
+    GameTooltip:SetText(StatusWords(entry), c.r, c.g, c.b)
     if SAID_BELOW[entry.kind] and entry.where then
         GameTooltip:AddLine(Plain(entry.where), 1, 1, 1, true)
     end

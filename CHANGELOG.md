@@ -38,6 +38,8 @@
 - Dungeon Journal: a quest on its own shows no chain icon; one in a chain still shows its step.
   A quest row starts with its waypoint pin and its quest mark (! or ?), each in a column of
   its own, in place of its level.
+  The ! is yellow when you can pick the quest up now, grey when other quests come first and
+  red when it is too high for you; hover the mark for what it means.
 - Dungeon Journal: a quest's card shows on hovering its name only, on the quest tracker, the
   dungeon's page and beside the map. The rest of its row still lights up and takes clicks.
 - Dungeon Journal: Link in Chat on a quest's menu sends the link straight away: to party chat in
