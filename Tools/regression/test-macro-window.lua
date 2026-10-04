@@ -47,6 +47,7 @@ local METHODS = {
     IsVisible = function(f) return rawget(f, "shown") ~= false end,
     SetEnabled = function(f, on) f.enabled = on end,
     SetClipsChildren = function(f, on) f.clips = on end,
+    SetCursorPosition = function(f, at) f.cursor = at end,
     CreateTexture = function(f) return Frame(f) end,
     CreateFontString = function(f) return Frame(f) end,
 }
@@ -352,7 +353,7 @@ check("the Library's button opens the profile pack import", account.packImport =
 Click(importButton)
 lastPrompt(account.lastCopy)
 check("a macro whose name you already have is not imported again", #store.character == 2
-    and printed[#printed]:find("Added 0 of 1: 1 use a name you already have", 1, true))
+    and printed[#printed]:find("Added 0 of 1: 1 uses a name you already have", 1, true))
 store.character[1].name = "Bsheep"
 Click(importButton)
 lastPrompt(account.lastCopy)
@@ -527,5 +528,26 @@ store.account, store.character = {}, {}
 account.lastCopy = nil
 Click(exportAllButton)
 check("with no macros, Export says so", account.lastCopy == nil and printed[#printed]:find("no macros to export", 1, true))
+
+-------------------------------------------------------------------------------
+--  Last review
+-------------------------------------------------------------------------------
+-- Export everything: an empty macro still imports, the Smart Macros stay home.
+store.account = { { name = "NF Health", icon = 134400, body = "/use item:5509" },
+    { name = "Blank", icon = 134400, body = "" } }
+store.character = { { name = "Mine", icon = 134400, body = "/cast Blink" } }
+Click(exportAllButton)
+local exported = vault[1].macros
+check("Export leaves the Smart Macros out", #exported == 2 and exported[1].name == "Blank"
+    and exported[2].name == "Mine")
+store.account, store.character = {}, {}
+Click(importButton)
+lastPrompt(account.lastCopy)
+check("an export with an empty macro imports whole", #store.character == 2
+    and printed[#printed]:find("Added 2.", 1, true))
+
+-- A macro opens at its first line.
+OpenNamed("Mine")
+check("an opened macro starts at the top", window.code.cursor == 0)
 
 print(("test-macro-window: %d checks passed"):format(checks))

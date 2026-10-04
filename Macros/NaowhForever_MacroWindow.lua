@@ -219,7 +219,8 @@ local function Open(macro)
     if window then
         window.name:SetText(draft.name)
         window.code:SetText(draft.body)
-        window.code:SetCursorPosition(#draft.body)
+        window.code:SetCursorPosition(0)
+        window.editor.scroll:SetVerticalScroll(0)
     end
 end
 
@@ -332,7 +333,7 @@ local function Decode(text)
             return
         end
         local name = m.name:gsub("[|\r\n]", "")
-        if #name < 1 or #name > 16 or #m.body < 1 or #m.body > Text.LIMIT then return end
+        if #name < 1 or #name > 16 or #m.body > Text.LIMIT then return end
         out[i] = { name = name, body = m.body }
     end
     return #out > 0 and out or nil
@@ -359,7 +360,7 @@ local function Import()
                 end
             end
             local why = {}
-            if taken > 0 then why[#why + 1] = taken .. " use a name you already have" end
+            if taken > 0 then why[#why + 1] = taken .. (taken == 1 and " uses" or " use") .. " a name you already have" end
             if full > 0 then why[#why + 1] = "character macros are full" end
             Toast(added == #macros and ("Added %d."):format(added)
                 or ("Added %d of %d: %s."):format(added, #macros, table.concat(why, ", ")))
@@ -1302,7 +1303,11 @@ local function Build()
     local exportButton = Parts.BarButton(window, St.EXPORT, "Export", "Every macro in the list, as one string to share.",
         function()
             local all = {}
-            for _, m in ipairs(GameMacros()) do all[#all + 1] = m end
+            local smart = {}
+            for _, m in ipairs(ns.MacroSmart.list) do smart[m.name] = true end
+            for _, m in ipairs(GameMacros()) do
+                if not smart[m.name] then all[#all + 1] = m end
+            end
             if #all == 0 then Toast("You have no macros to export yet.") return end
             ns.ShowCopyBox("Your macros", Export(all))
         end, "Export")
