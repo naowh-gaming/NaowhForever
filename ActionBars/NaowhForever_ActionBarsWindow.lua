@@ -921,6 +921,8 @@ local function Build()
     window.note = Parts.FooterNote(window, "")
     Parts.SetLink(window.backLink, "Saved Sets")
     window.backLink:SetScript("OnClick", function() Show("sets") end)
+    -- The builder's switches read the draft when they are made.
+    if not draft then NewDraft() end
     window:SetScript("OnEvent", OnEvent)
     window:HookScript("OnHide", function()
         for _, v in pairs(views) do

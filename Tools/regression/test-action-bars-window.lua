@@ -114,7 +114,9 @@ ns = {
         end,
         BuildToggleControl = function(parent, _, get, set)
             local toggle = Frame(parent)
-            toggle._get, toggle._set, toggle._refreshValue = get, set, NOTHING
+            -- The real switch reads its value when it is made.
+            toggle._get, toggle._set, toggle._refreshValue = get, set, function() get() end
+            toggle._refreshValue()
             toggle.scripts.OnClick = function() set(not get()) end
             return toggle
         end,
