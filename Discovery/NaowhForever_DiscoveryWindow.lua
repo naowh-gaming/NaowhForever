@@ -3,8 +3,9 @@
 --  top bar button, the tracker's title, Open Discovery on its settings page): your progress
 --  toward the Friend of the Library rewards and who takes the books, then every book for your
 --  faction by zone, where it is, whether you carry it, and a waypoint to it. The progress is a
---  road, as the Training Planner's: a line to every book, filled as far as you have handed in,
---  a dot at each reward quest (10, 20, 25) with its choice of rewards under it.
+--  road, as the Training Planner's: a short stripe for every book, blue for those handed in,
+--  YOU over where you are, and a dot at each reward quest (10, 20, 25) with its choice of
+--  rewards under it.
 -------------------------------------------------------------------------------
 local ns = _G.NaowhForever
 local T = ns.THEME
@@ -19,8 +20,10 @@ local INSET, SCROLLBAR, TAB_H, TAB_GAP = St.CONTENT_INSET, St.SCROLLBAR, St.TAB_
 local PAGE = "Discovery/Settings"
 local CARD = 6
 local TABS_W = 220
-local HERO_H = 150
-local BAR_H = 4                 -- the road's line
+local HERO_H = 166
+local BAR_H = 4                 -- the road's stripes
+local SEGMENT_GAP = 2           -- between two books' stripes
+local YOU_GAP = 4               -- the YOU tag over the road, as the Training Planner's
 local DOT = 12                  -- a reward quest's dot on it
 local DOT_EDGE = 2
 local REWARD = 26               -- a reward's icon, under its dot
@@ -32,7 +35,6 @@ local PIN_RIGHT = 10
 local STATUS_W = 110
 local STATUS_GAP = 10
 local STRIPE, HOVER = 0.025, 0.04
-local TRACK_RGB = 0.16
 local STORED_RGB = { r = 1, g = 0.82, b = 0 }
 local MISSING_RGB = { r = 0.97, g = 0.44, b = 0.44 }
 local EVENTS = { "BAG_UPDATE_DELAYED", "QUEST_TURNED_IN", "PLAYERBANKSLOTS_CHANGED" }
@@ -151,14 +153,14 @@ local function NewHero(parent)
     hero.count:SetPoint("TOPLEFT", hero.kicker, "BOTTOMLEFT", 0, -4)
     hero.goal = ns.Font(hero, 12, nil, T.muted)
     hero.goal:SetPoint("BOTTOMLEFT", hero.count, "BOTTOMRIGHT", 10, 3)
-    hero.track = ns.Solid(hero, "ARTWORK", { r = TRACK_RGB, g = TRACK_RGB, b = TRACK_RGB }, 1)
-    hero.track:SetPoint("TOPLEFT", hero.count, "BOTTOMLEFT", 0, -10)
+    -- Where the road runs, unseen: its stripes and dots are placed along it.
+    hero.track = CreateFrame("Frame", nil, hero)
+    hero.track:SetPoint("TOPLEFT", hero.count, "BOTTOMLEFT", 0, -26)
     hero.track:SetPoint("RIGHT", -16, 0)
     hero.track:SetHeight(BAR_H)
-    hero.fill = ns.Solid(hero, "ARTWORK", T.accent, 1)
-    hero.fill:SetDrawLayer("ARTWORK", 1)
-    hero.fill:SetPoint("TOPLEFT", hero.track, "TOPLEFT")
-    hero.fill:SetHeight(BAR_H)
+    hero.segments = {}
+    hero.you = ns.Font(hero, 11, nil, T.accent)
+    hero.you:SetText("YOU")
     hero.marks = {}
     for i, goal in ipairs(ns.LibraryGoals) do hero.marks[i] = NewMilestone(hero, goal) end
     hero.pin = Parts.IconButton(hero, LibrarianClicked, St.PIN, 0, "Waypoint")
@@ -179,9 +181,29 @@ local function SetHero(hero)
     local librarian = ns.LibraryTurnIns.librarian[Library.Side()]
     hero.who:SetText("Hand them to " .. ns.Color("fg", librarian.name) .. "\n" .. librarian.place)
     local width = hero:GetWidth() - 32
-    local share = total > 0 and math.min(1, done / total) or 0
-    hero.fill:SetWidth(math.max(1, width * share))
-    hero.fill:SetShown(share > 0)
+    -- A stripe per book, a small gap between two: blue for those handed in, grey for the rest.
+    local step = total > 0 and width / total or 0
+    for i = 1, total do
+        local seg = hero.segments[i]
+        if not seg then
+            seg = hero:CreateTexture(nil, "ARTWORK")
+            seg:SetHeight(BAR_H)
+            hero.segments[i] = seg
+        end
+        seg:ClearAllPoints()
+        seg:SetPoint("LEFT", hero.track, "LEFT", (i - 1) * step, 0)
+        seg:SetWidth(math.max(1, step - SEGMENT_GAP))
+        if i <= done then
+            seg:SetColorTexture(T.accent.r, T.accent.g, T.accent.b, 1)
+        else
+            seg:SetColorTexture(T.line.r, T.line.g, T.line.b, 1)
+        end
+        seg:Show()
+    end
+    for i = total + 1, #hero.segments do hero.segments[i]:Hide() end
+    -- YOU over the end of the last book handed in (the road's start before the first).
+    hero.you:ClearAllPoints()
+    hero.you:SetPoint("BOTTOM", hero.track, "LEFT", math.max(0, done * step - SEGMENT_GAP / 2), DOT / 2 + YOU_GAP)
     for _, m in ipairs(hero.marks) do
         local x = total > 0 and width * math.min(1, m.goal.books / total) or 0
         m.dot.done = done

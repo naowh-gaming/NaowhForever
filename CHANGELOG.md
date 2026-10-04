@@ -6,9 +6,10 @@
 - Discovery: the third library reward, Greater Friend of the Library at 25 books (level 30):
   Truthseeker's Bow, Crest of Elucidation or Researcher's Night Light. The book count is what
   players report so far.
-- Discovery: the progress at the top of its window is a road, as the Training Planner's: a dot
-  at 10, 20 and 25 books with the rewards to choose from under each (hover one for the item),
-  grey once handed in with the one you have still in colour.
+- Discovery: the progress at the top of its window is a road, as the Training Planner's: a
+  short stripe per book (blue once handed in), YOU over where you are, and a dot at 10, 20 and
+  25 books with the rewards to choose from under each (hover one for the item), grey once
+  handed in with the one you have still in colour.
 - Settings: click the dot beside a setting you changed to put it back to its default; hover it to
   see what the default is.
 - Aim Trainer (QoL > Travel, on by default): a shooting game for flight paths. Click the other
