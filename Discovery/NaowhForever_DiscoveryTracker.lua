@@ -97,6 +97,18 @@ local function Paint()
     panel.backdrop:Paint(S.Get("windowAlpha") or 1)
 end
 
+-- Dragged by its body or its title, as the Dungeon Quest Tracker is: kept where you leave it,
+-- the same place Unlock Mode's mover keeps (trackerPos).
+local function DragStop()
+    panel:StopMovingOrSizing()
+    local point, _, relPoint, x, y = panel:GetPoint(1)
+    S.Set("trackerPos", { point = point, relPoint = relPoint, x = x, y = y })
+end
+
+local function DragStart()
+    panel:StartMoving()
+end
+
 local function BuildPanel()
     panel = Parts.Panel("LIBRARY BOOKS", true)
     panel.backdrop:Card(4, PANEL_HEADER, 4, 4)
@@ -105,6 +117,9 @@ local function BuildPanel()
     panel:SetScale(S.Get("trackerScale"))
     panel:SetMovable(true)
     panel:SetFrameStrata("MEDIUM")
+    panel:RegisterForDrag("LeftButton")
+    panel:SetScript("OnDragStart", DragStart)
+    panel:SetScript("OnDragStop", DragStop)
     -- The X closes it until you change zone, and switches Always Show off, so switching that
     -- back on is how to bring it back.
     panel.close:SetScript("OnClick", function()
@@ -119,6 +134,9 @@ local function BuildPanel()
     titleBtn:SetPoint("TOPLEFT", panel.title, "TOPLEFT", -4, 4)
     titleBtn:SetPoint("BOTTOMRIGHT", panel.title, "BOTTOMRIGHT", 0, -4)
     titleBtn:SetScript("OnClick", function() ns.OpenDiscoveryWindow() end)
+    titleBtn:RegisterForDrag("LeftButton")
+    titleBtn:SetScript("OnDragStart", DragStart)
+    titleBtn:SetScript("OnDragStop", DragStop)
     titleBtn:SetScript("OnEnter", function(self)
         panel.title:SetTextColor(T.accent.r, T.accent.g, T.accent.b)
         GameTooltip:SetOwner(self, "ANCHOR_LEFT")
