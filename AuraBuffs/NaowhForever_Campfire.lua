@@ -7,8 +7,8 @@
 --  state keeps the fire, the words and the bar's size the same; the down states leave the time's
 --  place empty. The bar is never narrower than four wide bonuses need at its text size
 --  (MIN_LABELS), and its text never under 11. Hovering it lists each bonus, the time left and
---  when to refresh. With Round, the Camp Nearby alert is the same bar (Bar.Nearby), hugging its
---  words, larger by its own scale, with the camp's time left when it still runs; it fades in,
+--  when to refresh. With Round, the Camp Nearby alert is the same bar (Bar.Nearby), at the bar's
+--  own width, larger by its own scale, with the camp's time left when it still runs; it fades in,
 --  breathes and fades out through animation groups (FADE), never OnUpdate.
 --  The bonuses come from the hidden aura each camp feature puts on you, by spell ID, else from
 --  Camp Benefits' tooltip (spell 1229741, wago.tools build 1.60.1.70205), read once per Camp
@@ -457,7 +457,7 @@ local function Fader(a, from, to, duration, finished)
 end
 
 local function AlertLook(a)
-    a.bar = Bar.New(a, { hug = true })
+    a.bar = Bar.New(a)
     a.fadeIn = Fader(a, 0, 1, FADE.IN, AlertShown)
     a.fadeOut = Fader(a, 1, 0, FADE.OUT, AlertFaded)
     a.breathe = Fader(a, 1, FADE.LOW, FADE.BREATHE)

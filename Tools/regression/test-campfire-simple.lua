@@ -586,9 +586,9 @@ do
     check("Camp Nearby is the bar's own component: same builder, same words, same sizes", ab
         and ab.backdrop and ab.line and ab.labels and ab.note.text == bar.nearbyText
         and ab.note.size == bar.note.size and ab.campSize == bar.campSize and ab.labelX == bar.labelX
-        and rawget(ab.camp, "plate") == nil and ab.hug == true and rawget(alert, "text") == nil)
-    check("Camp Nearby hugs its words and is drawn larger by its own scale",
-        alert.w == math.ceil(29 + W("Camp Nearby" .. s.St.PLACE_DOT .. "sit to refresh") + 10) and alert.h == 26)
+        and rawget(ab.camp, "plate") == nil and ab.hug == false and rawget(alert, "text") == nil)
+    check("Camp Nearby is the bar's own size, the same rectangle as every other state",
+        alert.w == ab.width and ab.width == bar.width and alert.h == 26)
     s.ns.HideRaidReminderAnchorConfig()
     check("leaving Unlock Mode fades it out, then hides it, its animations stopped", alert.shown == false
         and not alert.breathe.playing and not alert.fadeIn.playing and alert.fadeOut.plays > 0)
@@ -610,7 +610,7 @@ do
     check("camp still running: its time left on the right, in red, over a running line, the fire lit",
         alert.shown == true and ab.time.shown ~= false and ab.line.binding.enabled == true and ab.slot == ab.timeW
         and Same(ab.time, s.St.TIME_OUT_RGB) and ab.camp.tex.desaturated == false
-        and alert.w == math.ceil(29 + W("Camp Nearby" .. s.St.PLACE_DOT .. "sit to refresh") + 10 + 12 + ab.timeW))
+        and alert.w == ab.width)
     s.auras[CAMP] = nil
     s.fire("UNIT_AURA")
     alert.scripts.OnHide(alert)
