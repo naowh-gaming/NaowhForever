@@ -624,22 +624,25 @@ function Parts.Cells(parent, size, color, count)
 end
 
 local WHITE = "Interface\\Buttons\\WHITE8X8"
-local LINE_TRACK_ALPHA = 0.8
+local LINE_TRACK_ALPHA = 1
 local LINE_FROM_SHARE = 0.45
 local LINE_GLOW_W, LINE_GLOW_ALPHA = 28, 0.55
-local shortTime
+local shortTimes = {}
 
-function Parts.ShortTime()
-    if shortTime then return shortTime end
+function Parts.ShortTime(prefix)
+    prefix = prefix or ""
+    local formatter = shortTimes[prefix]
+    if formatter then return formatter end
     local Up, Down = Enum.NumericRuleFormatRounding.Up, Enum.NumericRuleFormatRounding.Down
-    shortTime = C_StringUtil.CreateNumericRuleFormatter()
-    shortTime:SetBreakpoints({
-        { threshold = 0, format = "%ds", step = 1, rounding = Up },
-        { threshold = 60, format = "%dm", step = 1, rounding = Up, components = { { div = 60 } } },
-        { threshold = 61, format = "%dm", step = 1, rounding = Down, components = { { div = 60 } } },
-        { threshold = 3600, format = "%dh", step = 1, rounding = Down, components = { { div = 3600 } } },
+    formatter = C_StringUtil.CreateNumericRuleFormatter()
+    formatter:SetBreakpoints({
+        { threshold = 0, format = prefix .. "%ds", step = 1, rounding = Up },
+        { threshold = 60, format = prefix .. "%dm", step = 1, rounding = Up, components = { { div = 60 } } },
+        { threshold = 61, format = prefix .. "%dm", step = 1, rounding = Down, components = { { div = 60 } } },
+        { threshold = 3600, format = prefix .. "%dh", step = 1, rounding = Down, components = { { div = 3600 } } },
     })
-    return shortTime
+    shortTimes[prefix] = formatter
+    return formatter
 end
 
 local function LineTimed()
@@ -647,9 +650,16 @@ local function LineTimed()
         and Enum.StatusBarInterpolation and true or false
 end
 
-local function LineRun(line, start, duration)
+local function LineRun(line, start, duration, prefix)
     if line.dur then
         line.dur:SetTimeFromStart(start, duration)
+        if line.binding then
+            local formatter = Parts.ShortTime(prefix)
+            if formatter ~= line.formatter then
+                line.formatter = formatter
+                line.binding:SetFormatter(formatter)
+            end
+        end
         line:SetTimerDuration(line.dur, Enum.StatusBarInterpolation.Immediate,
             Enum.StatusBarTimerDirection.RemainingTime)
         if line.binding then line.binding:SetEnabled(true) end
@@ -671,7 +681,7 @@ local function LineStop(line)
     if line.text then line.text:SetText("") end
 end
 
-local function LinePaint(line, color)
+local function LinePaint(line, color, textColor)
     local share = LINE_FROM_SHARE
     line.from:SetRGBA(color.r * share, color.g * share, color.b * share, 1)
     line.to:SetRGBA(color.r, color.g, color.b, 1)
@@ -679,7 +689,8 @@ local function LinePaint(line, color)
     line.glowFrom:SetRGBA(color.r, color.g, color.b, 0)
     line.glowTo:SetRGBA(color.r, color.g, color.b, LINE_GLOW_ALPHA)
     line.glow:SetGradient("HORIZONTAL", line.glowFrom, line.glowTo)
-    if line.text then line.text:SetTextColor(color.r, color.g, color.b) end
+    local c = textColor or color
+    if line.text then line.text:SetTextColor(c.r, c.g, c.b) end
 end
 
 function Parts.TimerLine(parent, height, text)
@@ -708,7 +719,8 @@ function Parts.TimerLine(parent, height, text)
             local binding = C_DurationUtil.CreateDurationTextBinding()
             binding:SetFontString(text)
             binding:SetDuration(line.dur)
-            binding:SetFormatter(Parts.ShortTime())
+            line.formatter = Parts.ShortTime()
+            binding:SetFormatter(line.formatter)
             binding:SetZeroDurationText("")
             binding:SetExpiredText("")
             binding:SetEnabled(false)
@@ -720,23 +732,46 @@ function Parts.TimerLine(parent, height, text)
     return line
 end
 
-local function RowSetLabels(row, list, n)
+local function RowItem(row, i)
+    local label = row.labels[i]
+    if label then return label end
+    label = ns.Font(row, row.size, row.flags, row.color)
+    label:SetJustifyH("CENTER")
+    label:SetWordWrap(false)
+    row.labels[i] = label
+    if row.iconSize then
+        local icon = Parts.ItemIcon(row, row.iconSize)
+        icon:Hide()
+        row.icons[i] = icon
+    end
+    if row.sep and i > 1 then
+        local sep = ns.Font(row, row.size, row.flags, row.sepColor)
+        sep:SetText(row.sep)
+        row.seps[i] = sep
+    end
+    return label
+end
+
+local function RowSetLabels(row, list, n, icons)
     local labels, widest = row.labels, 0
     for i = 1, math.max(n, #labels) do
-        local label = labels[i]
+        local label = i <= n and RowItem(row, i) or labels[i]
+        local icon, sep = row.icons[i], row.seps[i]
         if i <= n then
-            if not label then
-                label = ns.Font(row, row.size, row.flags, row.color)
-                label:SetJustifyH("CENTER")
-                label:SetWordWrap(false)
-                labels[i] = label
-            end
             label:SetText(list[i])
             label:Show()
             local w = label:GetStringWidth()
             if w > widest then widest = w end
-        elseif label then
+            if icon then
+                local texture = icons and icons[i]
+                if texture then icon.texture:SetTexture(texture) end
+                icon:SetShown(texture and true or false)
+            end
+            if sep then sep:Show() end
+        else
             label:Hide()
+            if icon then icon:Hide() end
+            if sep then sep:Hide() end
         end
     end
     row.count = n
@@ -755,18 +790,60 @@ local function RowSpread(row, width)
     end
 end
 
+local function RowPack(row)
+    local x = 0
+    for i = 1, row.count do
+        local sep, icon, label = row.seps[i], row.icons[i], row.labels[i]
+        if sep then
+            sep:ClearAllPoints()
+            sep:SetPoint("LEFT", row, "LEFT", x, 0)
+            x = x + sep:GetStringWidth()
+        end
+        if icon and icon:IsShown() then
+            icon:ClearAllPoints()
+            icon:SetPoint("LEFT", row, "LEFT", x, -row.iconDrop)
+            x = x + row.iconSize + row.iconGap
+        end
+        label:ClearAllPoints()
+        label:SetPoint("LEFT", row, "LEFT", x, 0)
+        x = x + label:GetStringWidth()
+    end
+    row:SetWidth(math.max(1, x))
+    return x
+end
+
+local function RowTextSize(row, size)
+    if size == row.size then return end
+    row.size = size
+    row:SetHeight(size)
+    if row.iconGrow then row.iconSize = size + row.iconGrow end
+    local font, labels, seps, icons = ns.UIFontPath(), row.labels, row.seps, row.icons
+    for i = 1, #labels do
+        labels[i]:SetFont(font, size, row.flags or "")
+        if seps[i] then seps[i]:SetFont(font, size, row.flags or "") end
+        if icons[i] then icons[i]:SetSize(row.iconSize, row.iconSize) end
+    end
+end
+
 local function RowColor(row, color)
     row.color = color
     local labels = row.labels
     for i = 1, #labels do labels[i]:SetTextColor(color.r, color.g, color.b) end
 end
 
-function Parts.LabelRow(parent, size, flags, color)
+function Parts.LabelRow(parent, size, flags, color, opts)
     local row = CreateFrame("Frame", nil, parent)
     row:SetHeight(size)
     row.size, row.flags, row.color = size, flags, color or T.fg
-    row.labels, row.count = {}, 0
-    row.SetLabels, row.Spread, row.SetColor = RowSetLabels, RowSpread, RowColor
+    row.labels, row.icons, row.seps, row.count = {}, {}, {}, 0
+    if opts then
+        row.iconGrow = opts.iconGrow
+        row.iconSize = opts.icon or (opts.iconGrow and size + opts.iconGrow)
+        row.iconGap, row.iconDrop = opts.iconGap or St.GAP, opts.iconDrop or 0
+        row.sep, row.sepColor = opts.separator, opts.separatorColor or T.muted
+    end
+    row.SetLabels, row.Spread, row.Pack, row.SetColor = RowSetLabels, RowSpread, RowPack, RowColor
+    row.SetTextSize = RowTextSize
     return row
 end
 

@@ -29,31 +29,44 @@ local TEXT_SIZE, ALERT_SIZE = 16, 28
 -- The plate behind the campfire art; ns.ThemeTint swaps in the player's Panels color.
 local PLATE = { r = 0.14, g = 0.15, b = 0.16 }
 
-local BAR_W, BAR_H, BAR_PAD, BAR_ALPHA, BAR_DIM = 220, 22, 10, 0.92, 0.6
-local BAR_TEXT, LABEL_GAP, TIME_W, TIME_GAP = 12, 10, 30, 6
-local LINE_H, SHEEN_ALPHA, TEXT_LIFT = 3, 0.06, 1
-local TEXT_Y = TEXT_LIFT + math.floor(LINE_H / 2)
-local CAMP_SIZE, CAMP_SINK = 32, 4
-local HALOS = { { 44, 0.16 }, { 38, 0.26 } }
-local UNLOCK_TAGS, UNLOCK_TEXT = { "+Rested", "+Crit" }, "+Rested\n+Crit"
+local BAR_PAD, BAR_ALPHA, BAR_DIM, SHEEN_ALPHA = 8, 1, 0.6, 0.05
+local BAR_TEXT, TIME_W, TIME_GAP, NOTE_GAP = 12, 40, 8, 6
+local LINE_H, TEXT_LIFT = 2, 1
+local CAMP_TRIM, CAMP_GAP, CAMP_SEAT = 2, 8, 0
+local INNER_RING, TIME_RING, OUTER_RING = 1, 2, 1
+local RING_OUT = INNER_RING + TIME_RING + OUTER_RING
+local PILL_ICON_TRIM, PILL_GAP = 8, 6
+local HALO_GROW, HALO_ALPHA = 10, 0.18
+local BONUS_ICON_GROW, BONUS_ICON_GAP, BONUS_ICON_DROP = 1, 3, 1
+local SIT_PREFIX = "in "
+local UNLOCK_TEXT = "+Rested\n+Crit"
 
 local FEATURES = {
-    { id = 1229451, tag = "+Rested", name = "Camp Tent", stat = "Rested experience" },
-    { id = 1230587, tag = "+MP5", name = "Mana Well", stat = "Mana every 5 sec", amount = "+%d Mana every 5 sec" },
-    { id = 1230172, tag = "+STR", name = "Sharpening Wheel", stat = "Strength", amount = "+%d Strength" },
-    { id = 1230653, tag = "+ARM", name = "Enchanted Lute", stat = "Armor, all stats and resistances",
+    { id = 1229451, tag = "+Rested", short = "Rested", name = "Camp Tent", stat = "Rested experience" },
+    { id = 1230587, tag = "+MP5", short = "Mana", name = "Mana Well", stat = "Mana every 5 sec",
+      amount = "+%d Mana every 5 sec" },
+    { id = 1230172, tag = "+STR", short = "Str", name = "Sharpening Wheel", stat = "Strength",
+      amount = "+%d Strength" },
+    { id = 1230653, tag = "+ARM", short = "Armor", name = "Enchanted Lute", stat = "Armor, all stats and resistances",
       amount = "+%d Armor, +%d all stats, +%d resistances", points = 3 },
-    { id = 1230124, tag = "+STA", name = "First Aid Kit", stat = "Stamina", amount = "+%d Stamina" },
-    { id = 1230098, tag = "+Stats", name = "Fish Bowl", stat = "All stats", amount = "+%d%% all stats" },
-    { id = 1229513, tag = "+INT", name = "Incense Candle", stat = "Intellect", amount = "+%d Intellect" },
-    { id = 1230164, tag = "+ATK", name = "Lodestone", stat = "Melee Attack Power", amount = "+%d Melee Attack Power" },
-    { id = 1229519, tag = "+Crit", name = "Camp Chair", stat = "Critical Strike", amount = "+%d%% Critical Strike" },
-    { id = 1229718, tag = "+Spirit", name = "Faction Banner", stat = "Spirit", amount = "+%d Spirit" },
+    { id = 1230124, tag = "+STA", short = "Sta", name = "First Aid Kit", stat = "Stamina", amount = "+%d Stamina" },
+    { id = 1230098, tag = "+Stats", short = "Stats", unit = "%", name = "Fish Bowl", stat = "All stats",
+      amount = "+%d%% all stats" },
+    { id = 1229513, tag = "+INT", short = "Int", name = "Incense Candle", stat = "Intellect", amount = "+%d Intellect" },
+    { id = 1230164, tag = "+ATK", short = "Attack", name = "Lodestone", stat = "Melee Attack Power",
+      amount = "+%d Melee Attack Power" },
+    { id = 1229519, tag = "+Crit", short = "Crit", unit = "%", name = "Camp Chair", stat = "Critical Strike",
+      amount = "+%d%% Critical Strike" },
+    { id = 1229718, tag = "+Spirit", short = "Spirit", name = "Faction Banner", stat = "Spirit", amount = "+%d Spirit" },
 }
+local FEATURE_BY_TAG = {}
 for i, feature in ipairs(FEATURES) do
     feature.bit = 2 ^ (i - 1)
     feature.points = feature.points or 1
+    feature.labels = {}
+    FEATURE_BY_TAG[feature.tag] = feature
 end
+local SAMPLE_BONUSES = { { FEATURES[1] }, { FEATURES[9], 2 }, { FEATURES[5], 56 } }
 
 local function CampArt(icon)
     icon.tex = Parts.Smooth(icon:CreateTexture(nil, "ARTWORK"), CAMPFIRE_ART)
@@ -178,15 +191,79 @@ end
 
 local Bar = {}
 
+local function Disc(owner, inset, sublevel, color)
+    local disc = owner:CreateTexture(nil, "BACKGROUND", nil, sublevel)
+    ns.PixelInset(disc, -inset)
+    if color then disc:SetColorTexture(color.r, color.g, color.b, 1) end
+    local mask = owner:CreateMaskTexture()
+    mask:SetAllPoints(disc)
+    mask:SetTexture(CIRCLE_MASK, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE", "TRILINEAR")
+    disc:AddMaskTexture(mask)
+    return disc
+end
+
+local function Edge(f, axis)
+    local edge = ns.Solid(f.edges, "OVERLAY", St.BORDER_RGB, 1)
+    ns.Hairline(edge, axis)
+    return edge
+end
+
+local function NewEdges(f)
+    f.edges = CreateFrame("Frame", nil, f.bar)
+    f.edges:SetAllPoints()
+    f.edges:SetFrameLevel(f.line:GetFrameLevel() + 1)
+    f.topLeft, f.topRight = Edge(f, "h"), Edge(f, "h")
+    local bottom, left, right = Edge(f, "h"), Edge(f, "v"), Edge(f, "v")
+    bottom:SetPoint("BOTTOMLEFT")
+    bottom:SetPoint("BOTTOMRIGHT")
+    left:SetPoint("TOPLEFT")
+    left:SetPoint("BOTTOMLEFT")
+    right:SetPoint("TOPRIGHT")
+    right:SetPoint("BOTTOMRIGHT")
+end
+
+local function Notch(f, from, to)
+    f.notchFrom, f.notchTo = from, to
+    f.topLeft:ClearAllPoints()
+    f.topLeft:SetPoint("TOPLEFT", f.bar, "TOPLEFT", 0, 0)
+    f.topRight:ClearAllPoints()
+    if not from then
+        f.topLeft:SetPoint("TOPRIGHT", f.bar, "TOPRIGHT", 0, 0)
+        f.topRight:Hide()
+        return
+    end
+    f.topLeft:SetPoint("TOPRIGHT", f.bar, "TOPLEFT", from, 0)
+    f.topRight:SetPoint("TOPLEFT", f.bar, "TOPLEFT", to, 0)
+    f.topRight:SetPoint("TOPRIGHT", f.bar, "TOPRIGHT", 0, 0)
+    f.topRight:Show()
+end
+
+function Bar.Layout(f)
+    local size, height = S.Get("campSimpleTextSize"), S.Get("campSimpleHeight")
+    f.width, f.height = S.Get("campSimpleWidth"), height
+    f.campSize = height - CAMP_TRIM
+    f.radius = f.campSize / 2 + RING_OUT * ns.OnePixel(f.bar)
+    f.rise = f.radius + CAMP_SEAT
+    f.campX = BAR_PAD + f.radius
+    f.labelX = f.campX + f.radius + CAMP_GAP
+    f.pillIcon = height - PILL_ICON_TRIM
+    f.bar:SetHeight(height)
+    local font = ns.UIFontPath()
+    f.time:SetFont(font, size, "")
+    f.note:SetFont(font, size, "")
+    f.labels:SetTextSize(size)
+    f.halo:SetSize(f.campSize + HALO_GROW, f.campSize + HALO_GROW)
+end
+
 function Bar.New(host)
     local f = CreateFrame("Frame", nil, host)
     f:SetAllPoints()
     f.host = host
+    f.plate = ns.ThemeTint("panel", PLATE)
     f.bar = CreateFrame("Frame", nil, f)
     f.bar:SetPoint("BOTTOMLEFT")
     f.bar:SetPoint("BOTTOMRIGHT")
-    f.bar:SetHeight(BAR_H)
-    f.bg = ns.Solid(f.bar, "BACKGROUND", ns.ThemeTint("panel", PLATE), BAR_ALPHA)
+    f.bg = ns.Solid(f.bar, "BACKGROUND", f.plate, BAR_ALPHA)
     f.bg:SetAllPoints()
     local fg = T.fg
     f.sheen = f.bar:CreateTexture(nil, "BACKGROUND", nil, 1)
@@ -194,65 +271,92 @@ function Bar.New(host)
     f.sheen:SetColorTexture(fg.r, fg.g, fg.b, 1)
     f.sheen:SetGradient("VERTICAL", CreateColor(fg.r, fg.g, fg.b, 0), CreateColor(fg.r, fg.g, fg.b, SHEEN_ALPHA))
 
+    f.inner = ns.PixelInset(CreateFrame("Frame", nil, f.bar), 1)
     f.time = ns.Font(f.bar, BAR_TEXT, nil, fg)
     f.time:SetJustifyH("RIGHT")
-    f.time:SetPoint("RIGHT", f.bar, "RIGHT", -BAR_PAD, TEXT_Y)
-    f.line = Parts.TimerLine(f.bar, LINE_H, f.time)
+    f.line = Parts.TimerLine(f.inner, LINE_H, f.time)
     f.line:SetPoint("BOTTOMLEFT")
     f.line:SetPoint("BOTTOMRIGHT")
-    f.edge = ns.Border(f.bar, St.BORDER_RGB)
-    f.edge._frame:SetFrameLevel(f.line:GetFrameLevel() + 1)
-    f.labels = Parts.LabelRow(f.bar, BAR_TEXT)
-    f.labels:SetPoint("LEFT", f.bar, "LEFT", BAR_PAD, TEXT_Y)
+    NewEdges(f)
+    f.labels = Parts.LabelRow(f.bar, BAR_TEXT, nil, fg, { iconGrow = BONUS_ICON_GROW, iconGap = BONUS_ICON_GAP,
+        iconDrop = BONUS_ICON_DROP, separator = St.PLACE_DOT, separatorColor = T.muted })
     f.note = ns.Font(f.bar, BAR_TEXT, nil, T.accentSoft)
     f.note:SetWordWrap(false)
+    f.refreshText = ns.Color("accent", "Refresh") .. " Camp"
+    f.nearbyText = ns.Color("accent", "Camp nearby") .. ": sit to refresh"
 
+    f.capClip = CreateFrame("Frame", nil, f)
+    f.capClip:SetPoint("BOTTOMLEFT", f.bar, "TOPLEFT")
+    f.capClip:SetPoint("TOPRIGHT", f, "TOPRIGHT")
+    f.capClip:SetClipsChildren(true)
+    f.capClip:SetFrameLevel(f.edges:GetFrameLevel() + 1)
     f.camp = CreateFrame("Frame", nil, f)
-    f.camp:SetSize(CAMP_SIZE, CAMP_SIZE)
-    f.camp:SetPoint("BOTTOM", f.bar, "TOP", 0, -CAMP_SINK)
-    f.camp:SetFrameLevel(f.edge._frame:GetFrameLevel() + 1)
+    f.camp:SetFrameLevel(f.capClip:GetFrameLevel() + 2)
+    f.cap = CreateFrame("Frame", nil, f.capClip)
+    f.cap:SetAllPoints(f.camp)
+    f.cap:SetFrameLevel(f.capClip:GetFrameLevel() + 1)
+    f.outerRing = Disc(f.cap, RING_OUT, 0, St.BORDER_RGB)
     CampArt(f.camp)
-    f.halos = {}
-    for i, halo in ipairs(HALOS) do
-        local glow = Parts.Smooth(f:CreateTexture(nil, "BACKGROUND", nil, i), St.ROUND)
-        glow:SetBlendMode("ADD")
-        glow:SetSize(halo[1], halo[1])
-        glow:SetPoint("CENTER", f.camp)
-        f.halos[i] = glow
-    end
-    Bar.Paint(f, T.accent)
+    f.timeRing = Disc(f.camp, INNER_RING + TIME_RING, -1)
+    f.halo = Parts.Smooth(f:CreateTexture(nil, "BACKGROUND"), St.ROUND)
+    f.halo:SetBlendMode("ADD")
+    f.halo:SetPoint("CENTER", f.camp)
+    f.lit, f.low, f.lead, f.group, f.side, f.pill, f.pillW = true, false, 0, 0, 0, false, 0
+    Bar.Layout(f)
+    Bar.Paint(f, T.accent, false)
     return f
 end
 
-local function BarFit(f, tags, n, right)
-    local widest = f.labels:SetLabels(tags, n)
-    local side = right > 0 and right + TIME_GAP or 0
-    local w = math.max(BAR_W, math.ceil(BAR_PAD * 2 + n * (widest + LABEL_GAP) + side))
-    f.host:SetSize(w, BAR_H + CAMP_SIZE - CAMP_SINK)
-    f.labels:Spread(w - BAR_PAD * 2 - side)
+local function BarSize(f)
+    local w, h = f.pillW, f.height + f.rise
+    if not f.pill then w = math.max(f.width, math.ceil(f.labelX + f.lead + f.group + f.side + BAR_PAD)) end
+    f.host:SetSize(w, h)
 end
 
-local function BarNote(f, text, color, right)
+local function Medallion(f)
+    f.pill = false
+    f.cap:Show()
+    local y = TEXT_LIFT + LINE_H / 2
+    f.camp:ClearAllPoints()
+    f.camp:SetSize(f.campSize, f.campSize)
+    f.camp:SetPoint("CENTER", f.bar, "TOPLEFT", f.campX, CAMP_SEAT)
+    Notch(f, f.campX - f.radius, f.campX + f.radius)
+    f.labels:ClearAllPoints()
+    f.labels:SetPoint("LEFT", f.bar, "LEFT", f.labelX + f.lead, y)
+    f.note:ClearAllPoints()
+    f.note:SetPoint("LEFT", f.bar, "LEFT", f.labelX, y)
+    f.time:ClearAllPoints()
+    f.time:SetPoint("RIGHT", f.bar, "RIGHT", -BAR_PAD, y)
+end
+
+local function BarFit(f, labels, icons, n, timed)
+    f.labels:SetLabels(labels, n, icons)
+    f.group = f.labels:Pack()
+    f.side = timed and TIME_W + TIME_GAP or 0
+    Medallion(f)
+    BarSize(f)
+end
+
+local function BarNote(f, text, color)
     f.note:SetText(text)
     f.note:SetTextColor(color.r, color.g, color.b)
-    f.note:ClearAllPoints()
-    if right then
-        f.note:SetPoint("RIGHT", f.bar, "RIGHT", -BAR_PAD, TEXT_Y)
-    else
-        f.note:SetPoint("CENTER", f.bar, "CENTER", 0, TEXT_Y)
-    end
     f.note:Show()
 end
 
 local function BarLit(f, on)
+    f.lit = on
     f.bg:SetAlpha(on and 1 or BAR_DIM)
     f.camp.tex:SetDesaturated(not on)
-    for i = 1, #f.halos do f.halos[i]:SetShown(on) end
+    f.timeRing:SetShown(on)
+    f.halo:SetShown(on and f.low)
 end
 
-function Bar.Paint(f, color)
-    f.line:Paint(color)
-    for i, halo in ipairs(HALOS) do f.halos[i]:SetVertexColor(color.r, color.g, color.b, halo[2]) end
+function Bar.Paint(f, color, low)
+    f.low = low and true or false
+    f.line:Paint(color, f.low and color or T.fg)
+    f.timeRing:SetColorTexture(color.r, color.g, color.b, 1)
+    f.halo:SetVertexColor(color.r, color.g, color.b, HALO_ALPHA)
+    f.halo:SetShown(f.lit and f.low)
 end
 
 function Bar.Timed(f, on)
@@ -262,25 +366,43 @@ function Bar.Timed(f, on)
     f.time:SetShown(on)
 end
 
-function Bar.Up(f, tags, n, timed)
+function Bar.Up(f, labels, icons, n, timed)
     BarLit(f, true)
+    f.lead = 0
     f.labels:SetColor(T.fg)
-    if n > 0 then f.note:Hide() else BarNote(f, "Camp Benefits", T.fg, false) end
-    BarFit(f, tags, n, timed and TIME_W or 0)
+    if n > 0 then f.note:Hide() else BarNote(f, "Camp Benefits", T.fg) end
+    BarFit(f, labels, icons, n, timed)
 end
 
-function Bar.Sitting(f, timed)
+function Bar.Sitting(f, labels, icons, n, timed, upcoming)
     BarLit(f, true)
-    BarNote(f, "Resting", T.accentSoft, false)
-    BarFit(f, nil, 0, timed and TIME_W or 0)
+    f.lead = 0
+    if upcoming then
+        f.note:Hide()
+        f.labels:SetColor(T.accentSoft)
+    else
+        BarNote(f, "Resting", T.accentSoft)
+        f.labels:SetColor(T.muted)
+        if n > 0 then f.lead = math.ceil(f.note:GetStringWidth()) + NOTE_GAP end
+    end
+    BarFit(f, labels, icons, n, timed)
 end
 
-function Bar.Missing(f, tags, n)
+function Bar.Missing(f, nearby)
     BarLit(f, false)
-    f.labels:SetColor(T.muted)
-    BarNote(f, "Refresh Camp", T.accentSoft, n > 0)
-    BarFit(f, tags, n, n > 0 and math.ceil(f.note:GetStringWidth()) or 0)
+    f.pill = true
+    f.cap:Hide()
+    Notch(f, nil)
+    f.labels:SetLabels(nil, 0)
+    BarNote(f, nearby and f.nearbyText or f.refreshText, T.fg)
+    f.camp:ClearAllPoints()
+    f.camp:SetSize(f.pillIcon, f.pillIcon)
+    f.camp:SetPoint("LEFT", f.bar, "LEFT", BAR_PAD, 0)
+    f.note:ClearAllPoints()
+    f.note:SetPoint("LEFT", f.camp, "RIGHT", PILL_GAP, TEXT_LIFT)
+    f.pillW = math.ceil(BAR_PAD + f.pillIcon + PILL_GAP + f.note:GetStringWidth() + BAR_PAD)
     Bar.Timed(f, false)
+    BarSize(f)
 end
 
 local icon, unlocked
@@ -293,9 +415,11 @@ local alertDismissed -- Ctrl-clicked away; back once you leave the campfire's ra
 local ringGen = 0    -- invalidates an older ring colour change
 local showGen = 0    -- invalidates an older "drops under the Show Only When Low time" timer
 local showArmed      -- the expiry and minutes that timer was set for
-local bonusTags, bonusFeatures, fallbackTags, joinedTags = {}, {}, {}, {}
-local bonusCount, bonusText = 0, ""
-local campState, campExpiry
+local bonusTags, bonusFeatures, bonusLabels = {}, {}, {}
+local barLabels, barIcons, sampleLabels, sampleIcons = {}, {}, {}, {}
+local fallbackTags, joinedTags = {}, {}
+local bonusCount, barCount, bonusText = 0, 0, ""
+local campState, campExpiry, campUpcoming
 local simpleBar
 
 local function On()
@@ -332,18 +456,80 @@ local function TimeWords(left)
     return ("%d sec"):format(math.max(0, math.ceil(left)))
 end
 
-local function BonusWords(feature, readable)
-    if not (feature.amount and readable) then return feature.stat end
-    local aura = C_UnitAuras.GetPlayerAuraBySpellID(feature.id)
-    local points = aura and aura.points
-    if not points or (issecretvalue and issecretvalue(points)) or type(points) ~= "table" then
-        return feature.stat
-    end
+local function Points(feature, aura)
+    if not aura then return nil end
+    local points = aura.points
+    if issecretvalue and issecretvalue(points) then return nil end
+    if type(points) ~= "table" then return nil end
     for i = 1, feature.points do
         local v = points[i]
-        if (issecretvalue and issecretvalue(v)) or type(v) ~= "number" then return feature.stat end
+        if (issecretvalue and issecretvalue(v)) or type(v) ~= "number" then return nil end
     end
+    return points
+end
+
+local function BonusWords(feature, readable)
+    local points = feature.amount and readable and Points(feature, C_UnitAuras.GetPlayerAuraBySpellID(feature.id))
+    if not points then return feature.stat end
     return feature.amount:format(points[1], points[2], points[3])
+end
+
+local function BonusLabel(feature, amount)
+    if not amount then return feature.short end
+    local text = feature.labels[amount]
+    if not text then
+        text = ns.Color("muted", ("+%d%s"):format(amount, feature.unit or "")) .. " " .. feature.short
+        feature.labels[amount] = text
+    end
+    return text
+end
+
+local function FeatureIcon(feature)
+    if feature.icon == nil then feature.icon = C_Spell.GetSpellTexture(feature.id) or false end
+    return feature.icon
+end
+
+local function Hidden(feature)
+    local hidden = S.Get("campHiddenBonuses")
+    return feature and hidden and hidden[feature.id] and true or false
+end
+
+local function FilterBar()
+    local icons, n = S.Get("campBonusIcons"), 0
+    for i = 1, bonusCount do
+        local feature = bonusFeatures[i]
+        if not Hidden(feature) then
+            n = n + 1
+            barLabels[n] = bonusLabels[i]
+            barIcons[n] = icons and feature and FeatureIcon(feature) or false
+        end
+    end
+    barCount = n
+end
+
+local function FillSamples(filter)
+    local icons, n = S.Get("campBonusIcons"), 0
+    for i = 1, #SAMPLE_BONUSES do
+        local feature, amount = SAMPLE_BONUSES[i][1], SAMPLE_BONUSES[i][2]
+        if not (filter and Hidden(feature)) then
+            n = n + 1
+            sampleLabels[n] = BonusLabel(feature, amount)
+            sampleIcons[n] = icons and FeatureIcon(feature) or false
+        end
+    end
+    return n
+end
+
+local function TipBonuses(tip, readable)
+    local fg, muted = T.fg, T.muted
+    for i = 1, bonusCount do
+        local feature = bonusFeatures[i]
+        if feature then
+            tip:AddDoubleLine(BonusWords(feature, readable), feature.name, fg.r, fg.g, fg.b, muted.r, muted.g, muted.b)
+        else
+            tip:AddLine(bonusTags[i], fg.r, fg.g, fg.b)
+        end
+    end
 end
 
 local function ShowTip(owner)
@@ -352,20 +538,17 @@ local function ShowTip(owner)
     tip:SetText("Camp Benefits", T.accent.r, T.accent.g, T.accent.b)
     local readable = not (InCombatLockdown() or C_Secrets.ShouldAurasBeSecret())
     if campState == "sitting" then
-        tip:AddLine("Resting at a campfire", fg.r, fg.g, fg.b)
+        if campUpcoming then
+            tip:AddLine("You'll get:", fg.r, fg.g, fg.b)
+            TipBonuses(tip, readable)
+        else
+            tip:AddLine("Resting at a campfire", fg.r, fg.g, fg.b)
+        end
         if campExpiry then
             tip:AddLine("Camp Benefits in " .. TimeWords(campExpiry - GetTime()), muted.r, muted.g, muted.b)
         end
     elseif campState == "up" then
-        for i = 1, bonusCount do
-            local feature = bonusFeatures[i]
-            if feature then
-                tip:AddDoubleLine(BonusWords(feature, readable), feature.name, fg.r, fg.g, fg.b,
-                    muted.r, muted.g, muted.b)
-            else
-                tip:AddLine(bonusTags[i], fg.r, fg.g, fg.b)
-            end
-        end
+        TipBonuses(tip, readable)
         if campExpiry then
             local left = campExpiry - GetTime()
             local c = Look.Step(left)[2]
@@ -388,6 +571,16 @@ local function HideTip()
     GameTooltip:Hide()
 end
 
+local function SavePos(pos)
+    local x, y = icon:GetCenter()
+    if x and y then
+        pos = { point = "CENTER", relPoint = "BOTTOMLEFT", x = x, y = y }
+        icon:ClearAllPoints()
+        icon:SetPoint("CENTER", UIParent, "BOTTOMLEFT", x, y)
+    end
+    S.Set("campPos", pos)
+end
+
 local function Build()
     icon = CreateFrame("Frame", "NaowhForeverCampfire", UIParent)
     icon:SetMovable(true)
@@ -400,8 +593,7 @@ local function Build()
     icon:SetScript("OnEnter", PaintBuffs)
     icon:SetScript("OnLeave", PaintBuffs)
 
-    icon.mover = ns.UI.AttachMover(icon, "Campfire", function(pos) S.Set("campPos", pos) end,
-        "AuraBuffs/Settings", "AuraBuffs/Settings:campfire")
+    icon.mover = ns.UI.AttachMover(icon, "Campfire", SavePos, "AuraBuffs/Settings", "AuraBuffs/Settings:campfire")
     icon:Hide()
 end
 
@@ -431,17 +623,17 @@ local function BarShown()
     return simpleBar ~= nil and simpleBar:IsShown()
 end
 
-local function PaintTime(color)
+local function PaintTime(color, low)
     if BarShown() then
-        Bar.Paint(simpleBar, color)
+        Bar.Paint(simpleBar, color, low)
     else
         icon.drain:SetSwipeColor(color.r, color.g, color.b, 1)
     end
 end
 
-local function RunTimer(start, duration)
+local function RunTimer(start, duration, prefix)
     if BarShown() then
-        simpleBar.line:Run(start, duration)
+        simpleBar.line:Run(start, duration, prefix)
     else
         icon.timer:SetCooldown(start, duration)
         icon.drain:SetCooldown(start, duration)
@@ -457,7 +649,7 @@ local function ColorRing(expiry)
     ringGen = ringGen + 1
     local left = expiry - GetTime()
     local step = Look.Step(left)
-    PaintTime(step[2])
+    PaintTime(step[2], step ~= TIME_STEPS[1])
     if step[1] > 0 then
         local gen = ringGen
         C_Timer.After(left - step[1] + 0.1, function()
@@ -466,11 +658,11 @@ local function ColorRing(expiry)
     end
 end
 
-local function ShowUp(duration, expiry, text, tags, n)
+local function ShowUp(duration, expiry, text, labels, icons, n)
     local timed = S.Get("campTimer") and duration and duration > 0 and true or false
     campState, campExpiry = "up", expiry
     if BarShown() then
-        Bar.Up(simpleBar, tags, n, timed)
+        Bar.Up(simpleBar, labels, icons, n, timed)
     else
         Look.Up(icon, ns.CampBuffMode() ~= "off" and text or "")
         PaintBuffs()
@@ -490,14 +682,18 @@ local function ShowUp(duration, expiry, text, tags, n)
     icon:Show()
 end
 
-local function ShowSitting(duration, expiry)
-    local timed = S.Get("campTimer")
-    campState, campExpiry = "sitting", expiry
-    if BarShown() then Bar.Sitting(simpleBar, timed) else Look.Sitting(icon) end
+local function ShowSitting(duration, expiry, upcoming)
+    local timed = S.Get("campTimer") and true or false
+    campState, campExpiry, campUpcoming = "sitting", expiry, upcoming
+    if BarShown() then
+        Bar.Sitting(simpleBar, barLabels, barIcons, barCount, timed, upcoming)
+    else
+        Look.Sitting(icon)
+    end
     ringGen = ringGen + 1
     if timed and shownExpiry ~= expiry then
-        RunTimer(expiry - duration, duration)
-        PaintTime(T.accent)
+        RunTimer(expiry - duration, duration, SIT_PREFIX)
+        PaintTime(T.accent, false)
         shownExpiry = expiry
     elseif not timed then
         shownExpiry = nil
@@ -506,9 +702,9 @@ local function ShowSitting(duration, expiry)
     icon:Show()
 end
 
-local function ShowMissing()
+local function ShowMissing(nearby)
     campState, campExpiry = "missing", nil
-    if BarShown() then Bar.Missing(simpleBar, bonusTags, bonusCount) else Look.Missing(icon) end
+    if BarShown() then Bar.Missing(simpleBar, nearby) else Look.Missing(icon) end
     ringGen = ringGen + 1
     shownExpiry = nil
     icon:SetShown(S.Get("campShowMissing") or unlocked == true)
@@ -622,9 +818,12 @@ local function ReadBonuses(aura)
     local n, mask = 0, 0
     for i = 1, #FEATURES do
         local feature = FEATURES[i]
-        if C_UnitAuras.GetPlayerAuraBySpellID(feature.id) then
+        local found = C_UnitAuras.GetPlayerAuraBySpellID(feature.id)
+        if found then
             n = n + 1
+            local points = feature.amount and Points(feature, found)
             bonusTags[n], bonusFeatures[n] = feature.tag, feature
+            bonusLabels[n] = BonusLabel(feature, points and points[1])
             mask = mask + feature.bit
         end
     end
@@ -635,11 +834,20 @@ local function ReadBonuses(aura)
             joinedTags[mask] = text
         end
         bonusText = text
-    else
+    elseif aura then
         bonusText, n = ActiveBuffs(aura, fallbackTags)
-        for i = 1, n do bonusTags[i], bonusFeatures[i] = fallbackTags[i], false end
+        for i = 1, n do
+            local tag = fallbackTags[i]
+            local feature = FEATURE_BY_TAG[tag]
+            bonusTags[i], bonusFeatures[i] = tag, feature or false
+            bonusLabels[i] = feature and feature.short or tag
+        end
+    else
+        return false
     end
     bonusCount = n
+    FilterBar()
+    return n > 0
 end
 
 local function DisarmAlert()
@@ -691,7 +899,7 @@ end
 function Refresh(_, event)
     if not icon then return end
     if unlocked then
-        ShowUp(3600, GetTime() + 2400, UNLOCK_TEXT, UNLOCK_TAGS, #UNLOCK_TAGS)
+        ShowUp(3600, GetTime() + 2400, UNLOCK_TEXT, sampleLabels, sampleIcons, FillSamples(true))
         SetAlert(S.Get("campNearbyAlert"))
         return
     end
@@ -714,7 +922,7 @@ function Refresh(_, event)
     local sitDuration, sitExpiry = sitting and sitting.duration, sitting and sitting.expirationTime
     if sitting and not (issecretvalue and (issecretvalue(sitDuration) or issecretvalue(sitExpiry)))
         and sitDuration > 0 then
-        ShowSitting(sitDuration, sitExpiry)
+        ShowSitting(sitDuration, sitExpiry, Simple() and ReadBonuses(nil) or false)
         DisarmAlert()
         SetAlert(false)
         return
@@ -746,10 +954,10 @@ function Refresh(_, event)
                 showGen = showGen + 1
             end
             if Simple() or ns.CampBuffMode() ~= "off" then ReadBonuses(aura) end
-            ShowUp(duration, expiry, bonusText, bonusTags, bonusCount)
+            ShowUp(duration, expiry, bonusText, barLabels, barIcons, barCount)
         end
     else
-        ShowMissing()
+        ShowMissing(C_UnitAuras.GetPlayerAuraBySpellID(CAMPFIRE_NEARBY) ~= nil)
         if had and S.Get("campSound") then
             ns.UI._PlayLSMSound(ns.UI.SoundPathFor(S.Get("campSoundKey")))
         end
@@ -774,7 +982,7 @@ local function Apply()
     local simple = Simple()
     UseStyle(simple)
     icon:EnableMouse(not simple and ns.CampBuffMode() == "hover")
-    if not simple then Look.Layout(icon) end
+    if simple then Bar.Layout(simpleBar) else Look.Layout(icon) end
     Place()
     icon.mover:SetShown(unlocked == true)
     if On() then
@@ -827,38 +1035,95 @@ if not Settings then return end
 local Group = Settings.Group
 
 local OFF = "Turn on AuraBuffs"
-local ROUND_ONLY = "Round style only"
-local STAGE_H, ALERT_H, NOTE_Y, NOTE_SIZE, STAGE_MARGIN = 230, 90, 10, 11, 16
+local ROUND_ONLY, SIMPLE_ONLY = "Round style only", "Simple style only"
+local STAGE_H, ALERT_H, NOTE_Y, NOTE_SIZE, NOTE_GAP_Y, STAGE_MARGIN, HINT_ROOM = 230, 90, 10, 11, 4, 16, 30
 local CAMP_HOUR, SIT_TIME, BUFF_GAP = 3600, 60, 12
+local EDGE_HIT, HIDDEN_ALPHA, DRAG_FACTOR = 8, 0.35, 2
+local WIDTH_RANGE, TEXT_RANGE, HEIGHT_RANGE = { 160, 400, 5 }, { 10, 16, 1 }, { 20, 36, 1 }
 local SAMPLE_BUFFS = "+Rested\n+Crit"
-local PREVIEW_TAGS = { "+Rested", "+Crit", "+STA" }
-local BAR_HINT = "Hover the bar for each bonus and when to refresh."
+local SIMPLE_HINT = "Drag the right edge for width. Wheel: text size (Shift: height). Click a bonus or the time "
+    .. "to show or hide it. Right-click for more."
+local SIMPLE_OFF_HINT = "Turn on the Campfire reminder to edit the bar here."
 local SAMPLES = { up = 2400, low = 240, sitting = 35 }
 local STYLES = { { round = "Round", simple = "Simple" }, { "round", "simple" } }
 local BUFF_MODES = { { off = "Off", always = "Always", hover = "On Mouseover" }, { "off", "always", "hover" } }
 local SIDES = { { below = "Below", above = "Above", left = "Left", right = "Right" },
     { "below", "above", "left", "right" } }
+local BAR_KEYS = { campSimpleWidth = true, campSimpleHeight = true, campSimpleTextSize = true,
+    campBonusIcons = true, campHiddenBonuses = true }
+
+local function NearbyState() return Simple() and S.Get("campShowMissing") and true or false end
+
 local STATES = {
-    { key = "up", label = "Camp Up", tip = "Camp Benefits with most of its hour left." },
+    { key = "up", label = "Active", tip = "Camp Benefits with most of its hour left." },
     { key = "low", label = "Running Low", tip = "Camp Benefits about to run out." },
-    { key = "sitting", label = "Sitting", tip = "Sitting at a campfire, before Camp Benefits lands." },
-    { key = "missing", label = "Refresh Camp", tip = "No Camp Benefits, out in the world.",
-      needs = "campShowMissing" },
+    { key = "sitting", label = "Resting", tip = "Sitting at a campfire, before Camp Benefits lands." },
+    { key = "missing", label = "Refresh", tip = "No Camp Benefits, out in the world.", needs = "campShowMissing" },
+    { key = "nearby", label = "Camp Nearby", tip = "No Camp Benefits, with a campfire in range.", needs = NearbyState },
 }
 local ALERT_STATES = {
     { key = "nearby", label = "Camp Nearby", tip = "A campfire in range while your camp needs refreshing." },
 }
 
+local campCard
+
 local function Enabled() return S.Get("enabled") and true or false end
 local function Needs(key) return function() return S.Get("enabled") and S.Get(key) and true or false end end
 local function CampOn() return S.Get("enabled") and S.Get("campfire") and true or false end
 local function RoundOn() return S.Get("enabled") and not Simple() and true or false end
+local function SimpleOn() return S.Get("enabled") and Simple() and true or false end
 local function PickBuffMode(v) S.Set("campBuffMode", v) end
 
-local function Hidden(state)
+local function HiddenNote(state)
     if state == "up" and S.Get("campShowUnder") and SAMPLES.up > S.Get("campShowUnderMinutes") * 60 then
         return ("Show Only When Low: hidden until under %d min."):format(S.Get("campShowUnderMinutes"))
     end
+end
+
+local function ToggleBonus(feature)
+    local copy = {}
+    for id, on in pairs(S.Get("campHiddenBonuses") or {}) do copy[id] = on end
+    if copy[feature.id] then copy[feature.id] = nil else copy[feature.id] = true end
+    S.Set("campHiddenBonuses", copy)
+end
+
+local function ShowAllBonuses() S.Set("campHiddenBonuses", {}) end
+local function BonusShown(feature) return not Hidden(feature) end
+local function Toggled(key) return S.Get(key) == true end
+local function Toggle(key) S.Set(key, not S.Get(key)) end
+local function StylePicked(style) return S.Get("campStyle") == style end
+local function PickStyle(style) S.Set("campStyle", style) end
+local function BonusClicked(zone) ToggleBonus(zone.feature) end
+local function TimeClicked() Toggle("campTimer") end
+local function WidthGet() return S.Get("campSimpleWidth") end
+local function WidthSet(v) S.Set("campSimpleWidth", v) end
+
+local function ResetBar()
+    for _, row in ipairs(campCard.rows) do
+        if BAR_KEYS[row.key] then Settings.ResetRow(row) end
+    end
+end
+
+local function BarWheel(_, delta)
+    local key, range = "campSimpleTextSize", TEXT_RANGE
+    if IsShiftKeyDown() then key, range = "campSimpleHeight", HEIGHT_RANGE end
+    local v = Settings.Snap(S.Get(key) + delta * range[3], range)
+    if v ~= S.Get(key) then S.Set(key, v) end
+end
+
+local function BarMenu(_, root)
+    root:CreateTitle("Style")
+    root:CreateRadio("Round", StylePicked, PickStyle, "round")
+    root:CreateRadio("Simple", StylePicked, PickStyle, "simple")
+    root:CreateDivider()
+    root:CreateCheckbox("Bonus Icons", Toggled, Toggle, "campBonusIcons")
+    root:CreateCheckbox("Show Timer", Toggled, Toggle, "campTimer")
+    local list = root:CreateButton("Bonuses")
+    for _, feature in ipairs(FEATURES) do
+        list:CreateCheckbox(feature.short .. St.PLACE_DOT .. feature.name, BonusShown, ToggleBonus, feature)
+    end
+    root:CreateDivider()
+    root:CreateButton("Reset Bar", ResetBar)
 end
 
 local function NewPreview(stage)
@@ -866,8 +1131,10 @@ local function NewPreview(stage)
     shot:SetAllPoints()
     shot.icon = CreateFrame("Frame", nil, shot)
     Look.New(shot.icon)
+    shot.hint = ns.Font(shot, NOTE_SIZE, nil, T.muted)
+    shot.hint:SetPoint("BOTTOMLEFT", STAGE_MARGIN, NOTE_Y)
+    shot.hint:SetPoint("BOTTOMRIGHT", -STAGE_MARGIN, NOTE_Y)
     shot.note = ns.Font(shot, NOTE_SIZE, nil, T.muted)
-    shot.note:SetPoint("BOTTOM", 0, NOTE_Y)
     return shot
 end
 
@@ -889,60 +1156,103 @@ local function Run(f, left, duration)
     Look.Timed(f, S.Get("campTimer"))
 end
 
+local function Zone(shot, opts)
+    opts.wheel, opts.menu = BarWheel, BarMenu
+    local zone = Settings.EditZone(shot.bar, opts)
+    zone:SetFrameLevel(shot.bar.camp:GetFrameLevel() + #shot.zones + 1)
+    shot.zones[#shot.zones + 1] = zone
+    return zone
+end
+
 local function PreviewBar(shot)
-    if not shot.bar then
-        shot.barHost = CreateFrame("Frame", nil, shot)
-        shot.bar = Bar.New(shot.barHost)
+    if shot.bar then return shot.bar end
+    shot.barHost = CreateFrame("Frame", nil, shot)
+    local f = Bar.New(shot.barHost)
+    shot.bar, shot.zones, shot.bonusZones = f, {}, {}
+    local body = Zone(shot, {})
+    body:SetAllPoints(f.bar)
+    f.labels:SetLabels(sampleLabels, FillSamples(false))
+    for i = 1, #SAMPLE_BONUSES do
+        local zone = Zone(shot, { click = BonusClicked, wash = true })
+        zone.feature = SAMPLE_BONUSES[i][1]
+        zone:SetAllPoints(f.labels.labels[i])
+        shot.bonusZones[i] = zone
     end
-    return shot.bar
+    shot.timeZone = Zone(shot, { click = TimeClicked, wash = true })
+    shot.timeZone:SetPoint("TOPRIGHT", f.bar, "TOPRIGHT")
+    shot.timeZone:SetPoint("BOTTOMRIGHT", f.bar, "BOTTOMRIGHT")
+    shot.timeZone:SetWidth(TIME_W + BAR_PAD)
+    shot.widthZone = Zone(shot, { edge = true, drag = { get = WidthGet, set = WidthSet, range = WIDTH_RANGE,
+        factor = DRAG_FACTOR, live = function(v) f.width = v; BarSize(f) end } })
+    shot.widthZone:SetPoint("TOP", f.bar, "TOPRIGHT")
+    shot.widthZone:SetPoint("BOTTOM", f.bar, "BOTTOMRIGHT")
+    shot.widthZone:SetWidth(EDGE_HIT)
+    return f
 end
 
 local function FitBar(shot)
     local host = shot.barHost
     local w, h = host:GetWidth(), host:GetHeight()
     local roomW = shot:GetWidth() - STAGE_MARGIN * 2
-    local roomH = shot:GetHeight() - STAGE_MARGIN * 2 - NOTE_Y * 2
+    local roomH = shot:GetHeight() - STAGE_MARGIN * 2 - HINT_ROOM
     local scale = 1
     if roomW > 0 and w > roomW then scale = roomW / w end
     if roomH > 0 and h * scale > roomH then scale = roomH / h end
     host:SetScale(scale)
     host:ClearAllPoints()
-    host:SetPoint("CENTER", shot, "CENTER", 0, NOTE_Y / scale)
+    host:SetPoint("CENTER", shot, "CENTER", 0, HINT_ROOM / 2 / scale)
 end
 
-local function RunBar(f, left, duration, timed)
-    if timed then f.line:Run(GetTime() - (duration - left), duration) end
+local function RunBar(f, left, duration, timed, prefix)
+    if timed then f.line:Run(GetTime() - (duration - left), duration, prefix) end
     Bar.Timed(f, timed)
 end
 
 local function PaintBarPreview(shot, state, hidden)
     local f = PreviewBar(shot)
+    Bar.Layout(f)
     local timed = S.Get("campTimer") and true or false
-    if state == "missing" then
-        Bar.Missing(f, PREVIEW_TAGS, #PREVIEW_TAGS)
+    local n = FillSamples(false)
+    local pill = state == "missing" or state == "nearby"
+    if pill then
+        Bar.Missing(f, state == "nearby")
     elseif state == "sitting" then
-        Bar.Sitting(f, timed)
-        Bar.Paint(f, T.accent)
-        RunBar(f, SAMPLES.sitting, SIT_TIME, timed)
+        Bar.Sitting(f, sampleLabels, sampleIcons, n, timed, true)
+        Bar.Paint(f, T.accent, false)
+        RunBar(f, SAMPLES.sitting, SIT_TIME, timed, SIT_PREFIX)
     else
-        Bar.Up(f, PREVIEW_TAGS, #PREVIEW_TAGS, timed)
-        Bar.Paint(f, Look.Step(SAMPLES[state])[2])
+        Bar.Up(f, sampleLabels, sampleIcons, n, timed)
+        local step = Look.Step(SAMPLES[state])
+        Bar.Paint(f, step[2], step ~= TIME_STEPS[1])
         RunBar(f, SAMPLES[state], CAMP_HOUR, timed)
     end
+    local editable = CampOn()
+    for i, zone in ipairs(shot.bonusZones) do
+        local alpha = Hidden(zone.feature) and HIDDEN_ALPHA or 1
+        f.labels.labels[i]:SetAlpha(alpha)
+        if f.labels.icons[i] then f.labels.icons[i]:SetAlpha(alpha) end
+    end
+    for _, zone in ipairs(shot.zones) do zone:SetShown(editable and (not pill or zone == shot.zones[1])) end
     FitBar(shot)
     shot.barHost:SetShown(not hidden)
-    shot.note:SetText(hidden or ((state == "up" or state == "low") and BAR_HINT) or "")
+    shot.hint:SetText(editable and SIMPLE_HINT or SIMPLE_OFF_HINT)
+    shot.note:ClearAllPoints()
+    shot.note:SetPoint("BOTTOM", shot.hint, "TOP", 0, NOTE_GAP_Y)
+    shot.note:SetText(hidden or "")
 end
 
 local function PaintPreview(shot, state)
     local f = shot.icon
-    local hidden = Hidden(state)
+    local hidden = HiddenNote(state)
     if Simple() then
         f:Hide()
         PaintBarPreview(shot, state, hidden)
         return
     end
     if shot.barHost then shot.barHost:Hide() end
+    shot.hint:SetText("")
+    shot.note:ClearAllPoints()
+    shot.note:SetPoint("BOTTOM", shot, "BOTTOM", 0, NOTE_Y)
     Look.Layout(f)
     Fit(shot)
     local mode = ns.CampBuffMode()
@@ -979,6 +1289,7 @@ local function PaintAlert() end
 local function CampSummary(store)
     if store.Get("campStyle") == "simple" then
         local parts = { "Simple bar", store.Get("campTimer") and "timer" or "no timer" }
+        if store.Get("campBonusIcons") then parts[#parts + 1] = "bonus icons" end
         if store.Get("campSound") then parts[#parts + 1] = "a sound to refresh" end
         return table.concat(parts, ", ")
     end
@@ -996,7 +1307,7 @@ end
 
 local page = Settings.Page("AuraBuffs/Settings", S)
 
-page:Card({
+campCard = page:Card({
     id = "campfire", name = "Campfire", order = 20, switch = "campfire",
     help = "Your camp's bonuses and time left on screen, and a reminder when Camp Benefits runs out.",
     summary = CampSummary,
@@ -1016,6 +1327,16 @@ page:Card({
               .. "still show." },
         { key = "campShowUnderMinutes", label = "Show Under", slider = { 1, 59, 1 }, unit = " min",
           needs = Needs("campShowUnder"), why = "Needs Show Only When Low" },
+        Group("Simple Bar"),
+        { key = "campSimpleWidth", label = "Bar Width", slider = WIDTH_RANGE, needs = SimpleOn, why = SIMPLE_ONLY,
+          help = "How wide the bar is at least; it grows to fit more bonuses." },
+        { key = "campSimpleHeight", label = "Bar Height", slider = HEIGHT_RANGE, needs = SimpleOn, why = SIMPLE_ONLY },
+        { key = "campSimpleTextSize", label = "Text Size", slider = TEXT_RANGE, needs = SimpleOn, why = SIMPLE_ONLY },
+        { key = "campBonusIcons", label = "Bonus Icons", toggle = true, needs = SimpleOn, why = SIMPLE_ONLY,
+          help = "A small icon before each bonus on the bar." },
+        { key = "campHiddenBonuses", label = "Hidden Bonuses", buttonText = "Show All", button = ShowAllBonuses,
+          needs = SimpleOn, why = SIMPLE_ONLY,
+          help = "Shows every bonus again; click a bonus on the preview to hide it." },
         Group("Camp Buffs"),
         { key = "campBuffMode", label = "Show Active Camp Buffs", choice = BUFF_MODES, get = ns.CampBuffMode,
           set = PickBuffMode, needs = RoundOn, why = ROUND_ONLY,
