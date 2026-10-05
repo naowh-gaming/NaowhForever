@@ -76,7 +76,7 @@ local function List() return Mine("profShopping") end
 -- itemID -> how many of it the list need not buy any more: bought, or taken off with X.
 local function Have() return Mine("profShopHave") end
 
--- itemID -> { recipe, made (per craft), need = { itemID -> per craft } }: what this
+-- itemID -> { recipe, made (per craft), need = { itemID -> per craft }, cooldown }: what this
 -- character's known recipes make, recorded as each profession opens.
 local function Makes() return Mine("profMakes") end
 
@@ -87,9 +87,32 @@ local function Keep()
     return account.profShopKeep
 end
 
--- An empty list forgets what it had: the next crafts start from nothing bought.
-local function Emptied()
-    if next(List()) == nil then wipe(Have()) end
+-- itemID -> the most of it the crafts on the list could use, at any level down: made or
+-- bought, whichever the plan picks.
+local function Reach()
+    local reach, makes = {}, Makes()
+    local function Use(item, qty, depth)
+        reach[item] = (reach[item] or 0) + qty
+        local m = makes[item]
+        if m and depth < MAX_DEPTH then
+            local crafts = math.ceil(qty / m.made)
+            for part, per in pairs(m.need) do Use(part, per * crafts, depth + 1) end
+        end
+    end
+    for _, craft in pairs(List()) do
+        for item, per in pairs(craft.need) do Use(item, per * craft.count, 0) end
+    end
+    return reach
+end
+
+-- A craft taken off takes what was bought for it along: what the list counts as had never
+-- passes what the crafts left could use, so an empty list starts from nothing bought.
+local function Trim()
+    local have, reach = Have(), Reach()
+    for item, qty in pairs(have) do
+        local most = reach[item] or 0
+        if qty > most then have[item] = most > 0 and most or nil end
+    end
 end
 
 -- What one of an item costs to buy: the last scan's price, or a vendor's when lower.
@@ -103,12 +126,13 @@ local function BuyPrice(item)
 end
 
 -- The cheapest way to one of an item: its cost (nil when unpriced) and whether to make it.
--- plan memoizes both; ignoreKeep asks what making would cost an item kept to buy.
+-- plan memoizes both; ignoreKeep asks what making would cost an item kept to buy. A recipe
+-- with a cooldown (the transmutes, Mooncloth) is never planned: it makes only a few a day.
 local function Cheapest(item, plan, depth, ignoreKeep)
     if not ignoreKeep and plan.cost[item] ~= nil then return plan.cost[item] or nil, plan.make[item] end
     local buy, make = BuyPrice(item), false
     local cost, m = buy, Makes()[item]
-    if m and depth < MAX_DEPTH and not plan.busy[item] and (ignoreKeep or not Keep()[item]) then
+    if m and not m.cooldown and depth < MAX_DEPTH and not plan.busy[item] and (ignoreKeep or not Keep()[item]) then
         plan.busy[item] = true
         local total = 0
         for part, per in pairs(m.need) do
@@ -137,34 +161,66 @@ local function Materials()
             demand[item] = (demand[item] or 0) + per * craft.count - (craft.got and craft.got[item] or 0)
         end
     end
-    -- Made where cheaper: the crafts it takes go to made, their parts to what is needed (not
-    -- the ones you have, nor vendor ones, as Add to List leaves those off), a level a pass.
-    for _ = 1, MAX_DEPTH do
-        local nextDemand, more = {}, false
-        for item, qty in pairs(demand) do
-            local _, make = Cheapest(item, plan, 0)
-            if qty > 0 and make then
-                local m = makes[item]
-                local crafts = math.ceil(qty / m.made)
-                made[item] = (made[item] or 0) + crafts * m.made
-                for part, per in pairs(m.need) do
-                    if not plan.owned[part] and not (api and api.IsVendorItem(part)) then
-                        nextDemand[part] = (nextDemand[part] or 0) + per * crafts
-                    end
+    -- Parts on the list: not the ones you have, nor vendor ones, as Add to List leaves those off.
+    local function Listed(part)
+        return not plan.owned[part] and not (api and api.IsVendorItem(part))
+    end
+    -- What was bought counts at every level, whatever the plan is now: ore bought to smelt
+    -- still counts once the bars are bought instead. Supply takes up to want of an item from
+    -- pool, as it is or made from its parts there, a craft at a time, and says how many.
+    local pool = {}
+    for item, qty in pairs(Have()) do pool[item] = qty end
+    local function Supply(item, want, from, into, depth)
+        local got = math.min(want, from[item] or 0)
+        if got > 0 then from[item] = from[item] - got end
+        local m = makes[item]
+        if not m or m.cooldown or depth >= MAX_DEPTH then return got end
+        -- Only bought parts make it here; one with none on the list is never made from them.
+        local listed = false
+        for part in pairs(m.need) do listed = listed or Listed(part) end
+        while listed and got < want do
+            local trial, trialMade, whole = {}, {}, true
+            for k, v in pairs(from) do trial[k] = v end
+            for part, per in pairs(m.need) do
+                if Listed(part) and Supply(part, per, trial, trialMade, depth + 1) < per then
+                    whole = false
+                    break
                 end
-                more = true
-            else
-                nextDemand[item] = (nextDemand[item] or 0) + qty
+            end
+            if not whole then break end
+            for k in pairs(from) do from[k] = trial[k] end
+            for k, v in pairs(trialMade) do into[k] = (into[k] or 0) + v end
+            into[item] = (into[item] or 0) + m.made
+            got = got + m.made
+        end
+        return got
+    end
+    -- What is left: made where cheaper, the crafts it takes going to made and their parts to
+    -- what is needed, a level a pass; bought otherwise.
+    local buy = {}
+    for depth = 0, MAX_DEPTH do
+        local nextDemand = {}
+        for item, qty in pairs(demand) do
+            if qty > 0 then qty = qty - Supply(item, qty, pool, made, depth) end
+            if qty > 0 then
+                local _, make = Cheapest(item, plan, 0)
+                if make and depth < MAX_DEPTH then
+                    local m = makes[item]
+                    local crafts = math.ceil(qty / m.made)
+                    made[item] = (made[item] or 0) + crafts * m.made
+                    for part, per in pairs(m.need) do
+                        if Listed(part) then nextDemand[part] = (nextDemand[part] or 0) + per * crafts end
+                    end
+                else
+                    buy[item] = (buy[item] or 0) + qty
+                end
             end
         end
         demand = nextDemand
-        if not more then break end
+        if next(demand) == nil then break end
     end
-    local have, out = Have(), {}
-    for item, qty in pairs(demand) do
-        qty = qty - (have[item] or 0)
-        if qty > 0 then out[#out + 1] = { item = item, qty = qty } end
-    end
+    local out = {}
+    for item, qty in pairs(buy) do out[#out + 1] = { item = item, qty = qty } end
     table.sort(out, function(a, b)
         local na, nb = ItemName(a.item) or "", ItemName(b.item) or ""
         if na ~= nb then return na < nb end
@@ -179,10 +235,21 @@ local function Drop(item, qty)
     have[item] = (have[item] or 0) + (qty or 0)
 end
 
--- Records what this character's open profession makes, for Materials.
+-- A recipe with a cooldown: its spell's own, or one running now. Transmutes share theirs, which
+-- the spell may not report, so one seen running is remembered (`was`).
+local function HasCooldown(recipeID, was)
+    if was then return true end
+    local base = GetSpellBaseCooldown and GetSpellBaseCooldown(recipeID)
+    if base and base > 0 then return true end
+    local ok, left = pcall(C_TradeSkillUI.GetRecipeCooldown, recipeID)
+    return ok and left and left > 0 or false
+end
+
+-- Records what this character's open profession makes, for Materials: only its own, never
+-- another player's opened from a link, a guild's or an NPC's.
 local function Learn()
     local api = ns.ProfWindowAPI
-    if not (api and C_TradeSkillUI.GetAllRecipeIDs) or api.Linked() then return end
+    if not (api and api.Own and C_TradeSkillUI.GetAllRecipeIDs) or not api.Own() then return end
     local makes = Makes()
     for _, id in ipairs(C_TradeSkillUI.GetAllRecipeIDs() or {}) do
         local info = C_TradeSkillUI.GetRecipeInfo(id)
@@ -194,7 +261,9 @@ local function Learn()
                 local okR, reagents = pcall(api.Reagents, id)
                 for _, r in ipairs(okR and reagents or {}) do need[r.itemID] = r.need end
                 if next(need) then
-                    makes[output] = { recipe = id, made = math.max(1, schematic.quantityMin or 1), need = need }
+                    local old = makes[output]
+                    makes[output] = { recipe = id, made = math.max(1, schematic.quantityMin or 1), need = need,
+                        cooldown = HasCooldown(id, old and old.recipe == id and old.cooldown) }
                 end
             end
         end
@@ -345,7 +414,7 @@ local function BuildSide(win)
     side.total:SetWordWrap(true)
     side.clear = ns.Button(side, "Clear", 80, 24, function()
         wipe(List())
-        Emptied()
+        Trim()
         if Render then Render() end
     end)
     side.clear:SetPoint("BOTTOMRIGHT", -10, 10)
@@ -379,7 +448,7 @@ local function SideRender()
                 row.remove = ns.Button(row, "X", 16, 16, function()
                     if row.recipeID then
                         List()[row.recipeID] = nil
-                        Emptied()
+                        Trim()
                         if Render then Render() end
                     end
                 end)
@@ -473,11 +542,19 @@ local function SideRender()
                 ns.Tooltip(row.keep, "Buy It", "Buys it as it is instead of its parts.")
                 row.note:SetPoint("RIGHT", row.keep, "LEFT", -6, 0)
             end
+            -- Made from parts already bought, though the plan buys it now: nothing to switch.
+            local planned = plan.make[e.item]
+            row.keep:SetShown(planned and true or false)
+            row.note:SetPoint("RIGHT", planned and row.keep or row, planned and "LEFT" or "RIGHT", planned and -6 or 0, 0)
             local buy, cost = BuyPrice(e.item), plan.cost[e.item]
             row.item = e.item
             row.icon:SetTexture(C_Item.GetItemIconByID(e.item))
             row.name:SetText(("%dx %s"):format(e.qty, ItemName(e.item) or ("item " .. e.item)))
-            row.note:SetText(buy and cost and ("saves ~" .. Money((buy - cost) * e.qty)) or "no AH price")
+            if not planned then
+                row.note:SetText("parts bought")
+            else
+                row.note:SetText(buy and cost and ("saves ~" .. Money((buy - cost) * e.qty)) or "no AH price")
+            end
             row:ClearAllPoints()
             row:SetPoint("TOPLEFT", 8, y)
             row:Show()
@@ -817,7 +894,7 @@ local function Build()
     panel.cancel = ns.Button(panel, "Clear", 90, 24, function()
         if run then return CancelRun() end
         wipe(List())
-        Emptied()
+        Trim()
         Render()
     end)
     panel.cancel:SetPoint("BOTTOMRIGHT", -10, 10)
@@ -1029,7 +1106,7 @@ events:SetScript("OnEvent", function(_, event, a, b)
         Drop(e.item, e.buy)
         if #(Materials()) == 0 then
             wipe(List())
-            Emptied()
+            Trim()
         end
         NextBuy()
     elseif event == "COMMODITY_PURCHASE_FAILED" and state == "buying" then

@@ -9,6 +9,11 @@
   lands it as a new profile; your own profiles and BiS lists are never overwritten. They replace
   the Smart Reminders-only Share and Import buttons, and a Smart Reminders pack string pasted
   into Import still opens in the pack import.
+- Professions: the Shopping List's crafts have - and + to change how many, and a material you
+  can make for less from its parts (smelting the ore, say) buys the parts instead and shows under
+  Make First, with Buy to buy it as it is. What you bought counts however the plan changes later,
+  a craft taken off takes its purchases along, and recipes with a cooldown (the transmutes,
+  Mooncloth) are always bought. Scan Prices shows how long ago the last scan was.
 
 ### Changed
 - Profiles: Match My Spec and Merge a Profile In are gone. Forever gives each class one spec, so
