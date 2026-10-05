@@ -81,7 +81,7 @@ end
 -- Separate clickable pins keep ordinary vendor/trainer pins click-through.
 NaowhForeverZoneLinkPinMixin = CreateFromMixins(MapCanvasPinMixin)
 function NaowhForeverZoneLinkPinMixin:OnLoad()
-    self:UseFrameLevelType("PIN_FRAME_LEVEL_AREA_POI")
+    self:UseFrameLevelType("PIN_FRAME_LEVEL_MAP_LINK")
 end
 function NaowhForeverZoneLinkPinMixin:CheckMouseButtonPassthrough() end
 function NaowhForeverZoneLinkPinMixin:OnAcquired(link)
@@ -90,8 +90,8 @@ function NaowhForeverZoneLinkPinMixin:OnAcquired(link)
     self.Icon:SetAtlas(link.atlasName)
     self:SetPosition(link.position:GetXY())
 end
-function NaowhForeverZoneLinkPinMixin:OnClick(button)
-    if button == "LeftButton" and self.link then self:GetMap():SetMapID(self.link.linkedUiMapID) end
+function NaowhForeverZoneLinkPinMixin:OnClick()
+    if self.link then self:GetMap():SetMapID(self.link.linkedUiMapID) end
 end
 function NaowhForeverZoneLinkPinMixin:OnMouseEnter()
     GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
@@ -145,13 +145,29 @@ function provider:RefreshAllData()
     end
 end
 
+-- Blizzard's own exit arrow sits on top of ours and only super tracks on left click, so it
+-- is faded out and made click-through while ours are shown.
+local function FadeBlizzardLinks()
+    local fade = On() and S.Get("townZoneLinks")
+    for pin in WorldMapFrame:EnumeratePinsByTemplate("MapLinkPinTemplate") do
+        pin:SetAlpha(fade and 0 or 1)
+        pin:EnableMouse(not fade)
+    end
+end
+
 local added
 local function Apply()
     if not added then
         WorldMapFrame:AddDataProvider(provider)
+        for dp in pairs(WorldMapFrame.dataProviders) do
+            if dp.RefreshAllData == MapLinkDataProviderMixin.RefreshAllData then
+                hooksecurefunc(dp, "RefreshAllData", FadeBlizzardLinks)
+            end
+        end
         added = true
     end
     if WorldMapFrame:IsShown() then provider:RefreshAllData() end
+    FadeBlizzardLinks()
 end
 
 hooksecurefunc(S, "Set", function(key)
