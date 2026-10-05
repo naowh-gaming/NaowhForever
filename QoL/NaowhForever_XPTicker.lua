@@ -1,11 +1,15 @@
 -------------------------------------------------------------------------------
 --  NaowhForever_XPTicker.lua -- the QoL XP per hour ticker: a small card with the rate, time to
 --  level, session time and recent level times, and its settings card with a live preview.
+--  Level times are kept per character by GUID; a character's first login after that change takes
+--  over the old entry under its first name and realm, once, if no one else has and its level fits.
 -------------------------------------------------------------------------------
 local ns = _G.NaowhForever
 local S = ns.QoLSettings
 local T = ns.THEME
 local Parts, St = ns.Shared.Parts, ns.Shared.Style
+local CharacterData = ns.Shared.CharacterData
+local SPLITS_KEY = "levelSplits"
 
 local OUTLINE = "OUTLINE"
 local PAD, UNIT_GAP, LABEL_GAP, HEAD_GAP, COL_GAP = 8, 4, 4, 10, 16
@@ -399,37 +403,68 @@ function Look.Paint(f, rate, ding, elapsed, isPaused, keys, levels, trend, xp, r
     if changed then Look.Fit(f) end
 end
 
+local function NameEntry()
+    local name, realm = UnitName("player"), GetRealmName()
+    if not (name and realm) then return end
+    local all = ns.AccountSettings()[SPLITS_KEY]
+    local old = type(all) == "table" and all[name .. "-" .. realm]
+    return type(old) == "table" and old or nil
+end
+
+local function Inherit(mine, old, guid)
+    local c = old.current
+    if old.claimedBy or (type(c) == "table" and c.level ~= UnitLevel("player")) then return end
+    old.claimedBy = guid
+    if type(old.levels) == "table" then
+        for level, record in pairs(old.levels) do
+            if type(level) == "number" and type(record) == "table" then
+                mine.levels[level] = { total = record.total }
+            end
+        end
+    end
+    if type(c) == "table" then mine.current = { level = c.level, base = c.base, partial = c.partial } end
+    mine.migrated = true
+end
+
 local function Splits()
-    local account = ns.AccountSettings()
-    account.levelSplits = account.levelSplits or {}
-    local key = UnitName("player") .. "-" .. GetRealmName()
-    account.levelSplits[key] = account.levelSplits[key] or { levels = {} }
-    return account.levelSplits[key]
+    local mine = CharacterData(SPLITS_KEY)
+    if mine then
+        if type(mine.levels) ~= "table" then mine.levels = {} end
+        return mine
+    end
+    mine = CharacterData(SPLITS_KEY, true)
+    if not mine then return end
+    mine.levels = {}
+    local old = NameEntry()
+    if old then Inherit(mine, old, UnitGUID("player")) end
+    return mine
 end
 
 local function LevelTime()
     return cur.base + (anchor and GetTime() - anchor or 0)
 end
 
-local function StartLevel(fromStart, level)
+local function StartLevel(splits, fromStart, level)
     cur = { level = level or UnitLevel("player"), base = 0, partial = not fromStart }
     anchor = not paused and GetTime() or nil
-    Splits().current = cur
+    splits.current = cur
 end
 
 local function TrackSplits(newLevel)
+    local splits = Splits()
+    if not splits then return end
     if not cur then
-        local saved = Splits().current
+        local saved = splits.current
         if saved and saved.level == UnitLevel("player") then
             cur, anchor = saved, not paused and GetTime() or nil
         else
-            StartLevel(UnitXP("player") == 0)
+            StartLevel(splits, UnitXP("player") == 0)
         end
     end
     local level = newLevel or UnitLevel("player")
     if level > cur.level then
-        Splits().levels[cur.level] = { total = not cur.partial and LevelTime() or nil }
-        StartLevel(true, level)
+        splits.levels[cur.level] = { total = not cur.partial and LevelTime() or nil }
+        StartLevel(splits, true, level)
     elseif not anchor and not paused then
         anchor = GetTime()
     end
@@ -441,8 +476,9 @@ end
 
 local function History()
     wipe(historyKeys)
-    if not (cur and S.Get("xpTickerSplits")) then return historyKeys end
-    local levels = Splits().levels
+    local splits = cur and S.Get("xpTickerSplits") and Splits()
+    if not splits then return historyKeys end
+    local levels = splits.levels
     for level, record in pairs(levels) do
         if type(level) == "number" and level < cur.level and record.total then
             historyKeys[#historyKeys + 1] = level

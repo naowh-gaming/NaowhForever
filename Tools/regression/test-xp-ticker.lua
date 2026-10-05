@@ -8,7 +8,9 @@
 -- alone, the font settings, the preview's states and edits, theme colors, the saved place, and no
 -- garbage or text work on an unchanged update. Then its colors with meaning: the level progress
 -- line with rested XP ahead of it, the rate in the accent only while earning, its trend arrow,
--- Ding turning soft blue near a level, and paused muting the rate and the line.
+-- Ding turning soft blue near a level, and paused muting the rate and the line. And level history
+-- kept per character by GUID: three characters sharing a first name, the old name-keyed entry
+-- taken over once by the one whose level fits, kept in place, and a GUID not known yet at login.
 local Load = dofile("Tools/regression/load_files.lua")
 
 local checks = 0
@@ -81,6 +83,8 @@ end
 
 local now = 1000
 local xp, xpMax, rested = 500, 1000, nil
+local MAIN = "Player-4613-006EB819"
+local guid, level = MAIN, 20
 local tick
 local menu, menuOpen
 local tip = { lines = {} }
@@ -103,8 +107,9 @@ local function TipRight(left)
     end
 end
 
-local function Boot(account, settings)
+local function Boot(account, settings, who)
     for i = #created, 1, -1 do created[i] = nil end
+    if who then guid, level = who.guid, who.level else guid, level = MAIN, 20 end
     now, tick, menu, menuOpen = 1000, nil, nil, false
     tip.owner, tip.shown = nil, false
     xp, xpMax, rested = 500, 1000, nil
@@ -115,7 +120,8 @@ local function Boot(account, settings)
         UIParent = Frame(),
         PixelUtil = { GetPixelToUIUnitFactor = function() return 1 end },
         GetTime = function() return now end,
-        UnitLevel = function() return 20 end,
+        UnitLevel = function() return level end,
+        UnitGUID = function() return guid end,
         UnitXP = function() return xp end,
         UnitXPMax = function() return xpMax end,
         GetXPExhaustion = function() return rested end,
@@ -176,7 +182,8 @@ local function Boot(account, settings)
     for _, f in ipairs(created) do
         if f.events.PLAYER_XP_UPDATE then events = f end
     end
-    return { ns = ns, S = ns.QoLSettings, ticker = ticker, card = card, T = ns.THEME, events = events }
+    return { ns = ns, S = ns.QoLSettings, ticker = ticker, card = card, T = ns.THEME, events = events,
+        account = env.NaowhForeverDB.account }
 end
 
 local St
@@ -505,6 +512,63 @@ do
     local grown = collectgarbage("count") - mem
     collectgarbage("restart")
     check(("the running level makes no garbage within a second (%.3f KB)"):format(grown), grown < 0.05)
+end
+
+do
+    local DUDU, PRI = "Player-4613-006EB8A0", "Player-4613-006EB8B1"
+    local old = { current = { level = 20, base = 600, partial = false },
+        levels = { [19] = { total = 2391 }, [18] = { total = 2248 } } }
+    local account = { levelSplits = { ["Die-Realm"] = old } }
+
+    local s = Boot(account, nil, { guid = MAIN, level = 20 })
+    local all = s.account.levelSplits
+    local mine = all[MAIN]
+    check("kept under the character's GUID", mine and mine ~= old and mine.levels ~= old.levels)
+    check("the first to log in whose level fits takes over the old entry", mine.migrated == true
+        and mine.levels[19].total == 2391 and mine.levels[18].total == 2248 and mine.current.level == 20)
+    check("its history shows", s.ticker.history[1].label.text == "Level 19" and s.ticker.history[2].on)
+    check("the old entry stays, marked taken", all["Die-Realm"] == old and old.claimedBy == MAIN
+        and old.levels[19].total == 2391 and old.current.base == 600)
+    xp, xpMax = 0, 2000
+    s.events.scripts.OnEvent(s.events, "PLAYER_LEVEL_UP", 21)
+    check("a ding writes to the GUID entry only", mine.levels[20] and old.levels[20] == nil
+        and old.current.level == 20)
+
+    s = Boot(account, nil, { guid = DUDU, level = 20 })
+    local dudu = all[DUDU]
+    check("a second Die starts clean, even at the same level", dudu and not dudu.migrated
+        and next(dudu.levels) == nil and not s.ticker.history[1].on)
+    Boot(account, nil, { guid = PRI, level = 12 })
+    check("a third Die starts clean", all[PRI] and not all[PRI].migrated and next(all[PRI].levels) == nil)
+    check("each its own level", all[PRI].current.level == 12 and all[DUDU].current.level == 20)
+
+    s = Boot(account, nil, { guid = MAIN, level = 21 })
+    check("logging in again keeps the entry", all[MAIN] == mine and mine.levels[19].total == 2391
+        and mine.levels[20] and s.ticker.history[1].label.text == "Level 20")
+    check("nothing lost: the old entry as it was", old.levels[19].total == 2391 and old.levels[18].total == 2248
+        and old.claimedBy == MAIN)
+
+    local lone = { current = { level = 30, base = 0 }, levels = { [29] = { total = 999 } } }
+    s = Boot({ levelSplits = { ["Die-Realm"] = lone } }, nil, { guid = DUDU, level = 31 })
+    check("an old entry at another level is left alone", not s.account.levelSplits[DUDU].migrated
+        and lone.claimedBy == nil and not s.ticker.history[1].on)
+    s = Boot({ levelSplits = { ["Die-Realm"] = lone } }, nil, { guid = PRI, level = 30 })
+    check("and taken by the character it fits", s.account.levelSplits[PRI].migrated
+        and s.ticker.history[1].label.text == "Level 29")
+
+    s = Boot({ levelSplits = { ["Die-Realm"] = { levels = { [5] = { total = 300 } } } } }, nil, { guid = MAIN, level = 6 })
+    check("an old entry with no level in progress is taken too", s.account.levelSplits[MAIN].migrated
+        and s.ticker.history[1].label.text == "Level 5")
+
+    s = Boot({}, nil, { guid = nil, level = 20 })
+    local t = s.ticker
+    check("no GUID at login: the card still shows", t and t.shown and t.rate.text == "--")
+    check("no history kept under a name meanwhile", s.account.levelSplits == nil and not t.current.on)
+    guid = MAIN
+    xp = 600
+    s.events.scripts.OnEvent(s.events, "PLAYER_XP_UPDATE")
+    check("once the GUID is known, kept under it", s.account.levelSplits[MAIN] and t.current.on
+        and t.current.label.text == "Level 20")
 end
 
 do
