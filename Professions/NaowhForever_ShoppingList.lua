@@ -73,7 +73,9 @@ local function Materials()
         end
     end
     local out = {}
-    for item, qty in pairs(total) do out[#out + 1] = { item = item, qty = qty } end
+    for item, qty in pairs(total) do
+        if qty > 0 then out[#out + 1] = { item = item, qty = qty } end
+    end
     table.sort(out, function(a, b)
         local na, nb = ItemName(a.item) or "", ItemName(b.item) or ""
         if na ~= nb then return na < nb end
@@ -130,10 +132,19 @@ end
 --  The list in the profession window's right column
 -------------------------------------------------------------------------------
 -- While the list is on, your own professions get a right column, where another player's show
--- their order: the crafts on the list (each with X), every material with an estimate from
--- the last scan, and Clear. Add to List fills it at once, so it is plain what it did.
+-- their order: the crafts on the list (each with - and + for how many, and X), every material
+-- with an estimate from the last scan, and Clear. Add to List fills it at once, so it is plain
+-- what it did.
 local SIDE_W, SIDE_ROW_H, SIDE_CRAFTS, SIDE_MATERIALS = 260, 20, 6, 12
 local side
+
+-- One craft more or fewer of a recipe on the list; never under one (X takes it off).
+local function Step(recipeID, by)
+    local craft = recipeID and List()[recipeID]
+    if not craft then return end
+    craft.count = math.max(1, math.min(999, craft.count + by))
+    if Render then Render() end
+end
 
 -- The profession window widens for the column (its Activate asks).
 function ns.ShoppingListWide()
@@ -242,8 +253,16 @@ local function SideRender()
                 end)
                 row.remove:SetPoint("RIGHT")
                 ns.Tooltip(row.remove, "Remove", "Takes this craft and its materials off the list.")
-                row.note:SetPoint("RIGHT", row.remove, "LEFT", -6, 0)
+                row.plus = ns.Button(row, "+", 16, 16, function() Step(row.recipeID, 1) end)
+                row.plus:SetPoint("RIGHT", row.remove, "LEFT", -6, 0)
+                ns.Tooltip(row.plus, "One More", "Adds the materials for one more craft.")
+                row.minus = ns.Button(row, "-", 16, 16, function() Step(row.recipeID, -1) end)
+                row.minus:SetPoint("RIGHT", row.plus, "LEFT", -2, 0)
+                ns.Tooltip(row.minus, "One Fewer", "Takes the materials for one craft off the list.")
+                row.note:SetPoint("RIGHT", row.minus, "LEFT", -6, 0)
             end
+            row.minus:SetEnabled(e.craft.count > 1)
+            row.minus:SetAlpha(e.craft.count > 1 and 1 or 0.45)
             row.recipeID, row.spell = e.id, e.id
             -- Crafts added before the icon was kept read it from the recipe.
             row.icon:SetTexture(e.craft.icon or C_Spell.GetSpellTexture(e.id))
