@@ -1,7 +1,8 @@
 -- Loads NaowhForever_BagSpace.lua, after the Shared files it draws with, against stubbed bag,
 -- item and frame APIs and checks what the row offers, what the clicks do, stacking, the card's
--- look (header, shared marks and coins, no outline, colors by state), its settings preview,
--- and what a scan costs.
+-- look (header, shared marks, the clock and quest badges drawn from the game's atlases, prices in
+-- their largest coin centred under even cells, no outline, colors by state), the tooltip lines
+-- that explain the badges, its settings preview, and what a scan costs.
 -- Run from the repo root: lua Tools/regression/test-bag-space.lua
 local f = assert(io.open(arg[1] or "QoL/NaowhForever_BagSpace.lua", "rb"))
 local source = f:read("*a"); f:close()
@@ -53,7 +54,6 @@ local function Fixture(opts)
     local function Noop() end
     -- Any method a stub lacks does nothing; a field never set is nil, as on a real frame.
     local noopMeta = { __index = function(_, k) if type(k) == "string" and k:find("^%u") then return Noop end end }
-    local function Stub() return setmetatable({}, noopMeta) end
     local Widget
     local methods = setmetatable({
         Show = function(self) self.shown = true end,
@@ -73,6 +73,8 @@ local function Fixture(opts)
         GetFrameLevel = function() return 1 end,
         GetStringWidth = function() return 20 end,
         SetTexture = function(self, v) self.texture = v end,
+        SetAtlas = function(self, v) self.atlas = v end,
+        SetVertexColor = function(self, r, g, b, a) self.vr, self.vg, self.vb, self.va = r, g, b, a end,
         SetScript = function(self, name, fn) self[name] = fn end,
         CreateTexture = function() return Widget("region") end,
         CreateFontString = function() return Widget("region") end,
@@ -86,6 +88,11 @@ local function Fixture(opts)
         return setmetatable({ kind = kind, shown = true }, widgetMeta)
     end
     local border = { SetColor = Noop }
+    local tipLines = {}
+    local tooltip = setmetatable({
+        SetOwner = function() for i = #tipLines, 1, -1 do tipLines[i] = nil end end,
+        AddLine = function(_, text, r, g, b) tipLines[#tipLines + 1] = { text = text, r = r, g = g, b = b } end,
+    }, noopMeta)
     local cards = {}
 
     local ns = {
@@ -162,7 +169,7 @@ local function Fixture(opts)
         InCombatLockdown = function() return false end,
         IsControlKeyDown = function() return ctrl end,
         IsModifiedClick = function() return false end,
-        GameTooltip = Stub(),
+        GameTooltip = tooltip,
         GameTooltip_Hide = function() end,
         C_Timer = { After = function(_, fn) fn() end },
         C_Container = {
@@ -220,12 +227,12 @@ local function Fixture(opts)
         shared()
     end
     local Parts = ns.Shared.Parts
-    -- Every corner tag the shared part makes, so the row's OLD and "!" can be traced to it.
-    local tags, ItemTag = {}, Parts.ItemTag
-    function Parts.ItemTag(...)
-        local tag = ItemTag(...)
-        tags[tag] = true
-        return tag
+    -- Every corner badge the shared part makes, so the row's clock and "!" can be traced to it.
+    local tags, ItemBadge = {}, Parts.ItemBadge
+    function Parts.ItemBadge(...)
+        local badge = ItemBadge(...)
+        tags[badge] = true
+        return badge
     end
     if opts.studio then
         ns.Shared.Settings = {
@@ -236,7 +243,7 @@ local function Fixture(opts)
     local chunk = assert(loadstring(source)); setfenv(chunk, env)
     chunk()
 
-    local t = { ns = ns, printed = printed, env = env, buttons = buttons, Parts = Parts, tags = tags,
+    local t = { ns = ns, printed = printed, env = env, buttons = buttons, Parts = Parts, tags = tags, tipLines = tipLines,
         Style = ns.Shared.Style, cards = cards, settings = settings }
     function t.Made() return made end
     function t.Fire(event, ...)
@@ -477,9 +484,10 @@ do
     Check("shown after inventory full", t.Row(), "Small Egg, Coyote Meat")
 end
 
--- The card's look: OLD and the quest "!" are the shared corner tags in their Style colors, the
--- stack count is the shared marks' number, prices are the shared compact coins, the text has
--- the house shadow and no outline, and the free count is colored by how full the bags are.
+-- The card's look: the outlevelled clock and the quest "!" are the shared corner badges, the
+-- game's own atlases on a dark round backing, no text; the stack count is the shared marks'
+-- number, prices are the shared compact coins centred under each icon, the text has the house
+-- shadow and no outline, and the free count is colored by how full the bags are.
 do
     local t = Fixture({
         settings = { bagSpaceOldFirst = true },
@@ -491,18 +499,49 @@ do
     local St, Parts, T = t.Style, t.Parts, t.ns.THEME
     Check("look: the order", t.Row(), "Tough Jerky, Small Egg, Linen Cloth")
     local old, egg, quest = t.Button(1), t.Button(2), t.Button(3)
-    Check("look: OLD is a shared tag", t.tags[old.old] and old.old.shown, true)
-    Check("look: OLD's word", old.old.text.text, "OLD")
-    Check("look: OLD in the warning color", old.old.text.color, St.WARN_RGB)
-    Check("look: no OLD on fresh food", egg.old.shown, false)
-    Check("look: the quest mark is a shared tag", t.tags[quest.quest] and quest.quest.shown, true)
-    Check("look: the quest mark's sign", quest.quest.text.text, "!")
-    Check("look: the quest mark in quest gold", quest.quest.text.color, St.CARRIED_RGB)
+    Check("look: the old mark is a shared badge", t.tags[old.old] and old.old.shown, true)
+    Check("look: a clock from the game's atlas", old.old.art.atlas, St.CLOCK_ATLAS)
+    Check("look: the clock atlas", St.CLOCK_ATLAS, "auctionhouse-icon-clock")
+    Check("look: the white clock tinted the warning color", old.old.art.vr == St.WARN_RGB.r
+        and old.old.art.vg == St.WARN_RGB.g and old.old.art.vb == St.WARN_RGB.b, true)
+    Check("look: no text on the badge", old.old.text, nil)
+    Check("look: in the top-left corner", old.old.point, "TOPLEFT")
+    Check("look: about 12px of art on a 14px round backing", old.old.art.w == 12 and old.old.w == 14
+        and old.old.back.texture == St.ROUND, true)
+    Check("look: the backing dark, in the house edge color", old.old.back.vr == St.BORDER_RGB.r
+        and old.old.back.va == 0.75, true)
+    Check("look: no clock on fresh food", egg.old.shown, false)
+    Check("look: the quest mark is a shared badge", t.tags[quest.quest] and quest.quest.shown, true)
+    Check("look: the game's quest bang", quest.quest.art.atlas, St.QUEST_ATLAS)
+    Check("look: the quest bang atlas", St.QUEST_ATLAS, "smallquestbang")
+    Check("look: its own gold, untinted", quest.quest.art.vr, nil)
+    Check("look: in the top-right corner", quest.quest.point, "TOPRIGHT")
+    Check("look: no OLD or ! text left", source:find('"OLD"', 1, true) == nil and source:find('"!"', 1, true) == nil, true)
+    local function TipHas(cell, atlas, words)
+        cell.OnEnter(cell)
+        for _, line in ipairs(t.tipLines) do
+            if type(line.text) == "string" and line.text:find("|A:" .. atlas .. ":", 1, true)
+                and line.text:find(words, 1, true) then return line end
+        end
+    end
+    local oldTip = TipHas(old, St.CLOCK_ATLAS, "Outlevelled: 10 or more levels below you")
+    Check("look: the tooltip explains the clock, with it", oldTip ~= nil, true)
+    Check("look: in the warning color", oldTip and oldTip.r == St.WARN_RGB.r, true)
+    Check("look: the clock in the tooltip tinted too", oldTip and oldTip.text:find(":251:146:60|a", 1, true) ~= nil, true)
+    Check("look: the tooltip explains the bang", TipHas(quest, St.QUEST_ATLAS, "Needed for Linen Trouble (2/6)") ~= nil, true)
+    Check("look: no clock line on fresh food", TipHas(egg, St.CLOCK_ATLAS, "Outlevelled"), nil)
     Check("look: stack count in the shared marks", old.marks.level.text, 20)
     Check("look: no count on a single item", quest.marks.level.text, "")
     Check("look: price from the shared coins", old.price.text, Parts.Coins(20, true))
     Check("look: the coins are the game's", old.price.text, CoinString(20))
-    Check("look: compact coins keep the two largest", Parts.Coins(12345, true), CoinString(12300))
+    Check("look: compact coins keep the largest, to the nearest", Parts.Coins(12345, true), CoinString(10000))
+    Check("look: silver to the nearest", Parts.Coins(236, true), CoinString(200))
+    Check("look: half a silver rounds up", Parts.Coins(250, true), CoinString(300))
+    Check("look: copper as it is", Parts.Coins(95, true), CoinString(95))
+    Check("look: the full amount without compact", Parts.Coins(236), CoinString(236))
+    Check("look: the price centred under its icon", old.price.point == "TOP" and old.price.x == 0
+        and old.price.y == -3, true)
+    Check("look: cells as wide as the icons, evenly spaced", egg.x - old.x == 36 + 6 and quest.x - egg.x == 36 + 6, true)
     Check("look: prices muted", old.price.color, T.muted)
     Check("look: no own money formatter", source:find("Money(", 1, true), nil)
     local free = t.buttons.row.free
@@ -511,8 +550,10 @@ do
         Check("look: the house shadow", text.shadowX == St.HUD_SHADOW_X and text.shadowY == St.HUD_SHADOW_Y, true)
     end
     Check("look: room to spare in the text color", free.text.r, T.fg.r)
-    -- Three cells 44 wide (a 36 icon, widened for its price), 6 apart, inside the card's padding.
-    Check("look: the card wraps the row", t.buttons.row.card.w, 3 * 44 + 2 * 6 + 2 * 6)
+    Check("look: the card wraps the row", t.buttons.row.card.w, 3 * 36 + 2 * 6 + 2 * 6)
+    t.Set("bagSpaceSize", 24)
+    Check("look: small icons keep room for a price", egg.x - old.x, 32 + 6)
+    t.Set("bagSpaceSize", 36)
     t.Set("bagSpacePrices", false)
     Check("look: Show Prices off", old.price.shown, false)
     t.Set("bagSpaceGrow", "DOWN")
@@ -561,7 +602,7 @@ do
     Check("studio: the free count", view.free.text.text, "28/52")
     Check("studio: Scrap Marker's +N", view.free.scrap.text, "+2")
     Check("studio: the Stack button", view.stack.shown, true)
-    Check("studio: OLD on the jerky", view.cells[3].old.shown, true)
+    Check("studio: the clock on the jerky", view.cells[3].old.shown and view.cells[3].old.art.atlas == t.Style.CLOCK_ATLAS, true)
     Check("studio: the quest mark on the linen", view.cells[4].quest.shown, true)
     Check("studio: prices from the shared coins", view.cells[1].price.text, t.Parts.Coins(150, true))
     local made = t.Made()

@@ -44,10 +44,12 @@ local STACK_PAD = 8       -- the Stack button's label to its edges
 local PRICE_SIZE = 10     -- the price under each icon: small and muted
 local PRICE_H = 12
 local PRICE_GAP = 3       -- an icon to its price
-local PRICE_W = 44        -- a cell this wide at least while prices show, so "2s 36c" fits a small icon
+local PRICE_W = 32
 local LOW_SHARE = 0.1     -- under this share of your slots free, the count turns orange
 local QUEST_RGB = St.CARRIED_RGB    -- the game's quest gold
-local OLD_TEXT, QUEST_TEXT, FREE_TEXT = "OLD", "!", "free"
+local FREE_TEXT = "free"
+local OLD_TIP = ("Outlevelled: %d or more levels below you"):format(OUTLEVEL)
+local TIP_ICON, TIP_ICON_TINTED = "|A:%s:0:0:0:%d|a ", "|A:%s:0:0:0:%d:%d:%d:%d|a "
 local STACK_TEXT = "Stack +%d"
 
 -- Never offered whatever they are worth: you need them, or they free no bag space.
@@ -672,19 +674,29 @@ local function Worth(each, count)
     return Coins(each * count) .. ("  " .. ns.Color("muted", "(%s each x%d)")):format(Coins(each), count)
 end
 
+local oldLine, questMark
+
+local function TipMarks()
+    local c = St.WARN_RGB
+    oldLine = TIP_ICON_TINTED:format(St.CLOCK_ATLAS, -Parts.TOOLTIP_DROP, c.r * 255, c.g * 255, c.b * 255) .. OLD_TIP
+    questMark = TIP_ICON:format(St.QUEST_ATLAS, -Parts.TOOLTIP_DROP)
+end
+
 -- The lines Bag Space adds under an item's own tooltip; ah is its auction price each, if known.
 -- Each can be turned off; the quest warning always shows, since it is what stops a needed item
 -- going by mistake.
 local function AddTipLines(e, ah)
+    if not oldLine then TipMarks() end
     local vendor, auction = S.Get("bagSpaceTipVendor"), S.Get("bagSpaceTipAuction")
     local deleteHint, ignoreHint = S.Get("bagSpaceTipDelete"), S.Get("bagSpaceTipIgnore")
-    if vendor or auction or deleteHint or ignoreHint or e.quest then GameTooltip:AddLine(" ") end
+    if vendor or auction or deleteHint or ignoreHint or e.quest or e.old then GameTooltip:AddLine(" ") end
     if vendor then GameTooltip:AddDoubleLine("Vendor", Worth(e.vendor, e.count), 1, 1, 1, 1, 1, 1) end
     if auction then
         GameTooltip:AddDoubleLine("Auction", ah and Worth(ah, e.count) or ns.Color("muted", "unknown"), 1, 1, 1, 1, 1, 1)
     end
+    if e.old then GameTooltip:AddLine(oldLine, St.WARN_RGB.r, St.WARN_RGB.g, St.WARN_RGB.b) end
     if e.quest then
-        GameTooltip:AddLine("Needed for " .. QuestText(e.quest), QUEST_RGB.r, QUEST_RGB.g, QUEST_RGB.b)
+        GameTooltip:AddLine(questMark .. "Needed for " .. QuestText(e.quest), QUEST_RGB.r, QUEST_RGB.g, QUEST_RGB.b)
     end
     if deleteHint then
         if e.quest then
@@ -797,16 +809,16 @@ local function NewView(view, onClick, onEnter, onStack, live)
 end
 
 -- An item's cell: the house item icon (1px edge in its quality's color), the shared marks (the
--- stack count in the bottom-right over a shade), OLD and the quest "!" as corner tags, and the
--- price under it.
+-- stack count in the bottom-right over a shade), the outlevelled clock and the quest bang as corner
+-- badges, and the price under it in its largest coin.
 local function NewCell(view, i, size)
     local b = CreateFrame("Button", nil, view.card)
     local icon = Parts.ItemIcon(b, size)
     icon:SetAllPoints()
     b.icon, b.edge = icon.texture, icon.edge
     b.marks = Parts.ItemMarks(icon, size)
-    b.old = Parts.ItemTag(b.marks, "TOPLEFT", OLD_TEXT, St.WARN_RGB)
-    b.quest = Parts.ItemTag(b.marks, "TOPRIGHT", QUEST_TEXT, QUEST_RGB)
+    b.old = Parts.ItemBadge(b.marks, "TOPLEFT", St.CLOCK_ATLAS, St.WARN_RGB)
+    b.quest = Parts.ItemBadge(b.marks, "TOPRIGHT", St.QUEST_ATLAS)
     b.price = Parts.HudText(ns.Font(b, PRICE_SIZE, nil, T.muted))
     b.price:SetPoint("TOP", b, "BOTTOM", 0, -PRICE_GAP)
     b.price:SetWordWrap(false)
@@ -1196,8 +1208,7 @@ Settings.Page("QoL/Loot & Items", S):Card({
         { key = "bagSpaceJunkFirst", label = "Grey Items First", toggle = true,
           help = "Grey items come before everything else, whatever they sell for." },
         { key = "bagSpaceOldFirst", label = "Outlevelled Food & Potions First", toggle = true,
-          help = "Food, drink and potions 10 or more levels below you are marked OLD; this puts them "
-              .. "first." },
+          help = "Puts food, drink and potions 10 or more levels below you, marked with a clock, first." },
         { key = "bagSpaceAuction", label = "Count Auction Prices", toggle = true,
           help = "An item worth more at the auction house than at a vendor is valued at its auction "
               .. "price, from your last Scan Prices or TradeSkillMaster." },
@@ -1224,7 +1235,7 @@ Settings.Page("QoL/Loot & Items", S):Card({
         { key = "bagSpaceSize", label = "Icon Size", slider = { 24, 56, 1 } },
         { key = "bagSpaceGrow", label = "Direction", choice = DIRECTION },
         { key = "bagSpacePrices", label = "Show Prices", toggle = true,
-          help = "What each stack is worth, under its icon." },
+          help = "What each stack is worth, in its largest coin, under its icon." },
         Group("Tooltips"),
         { key = "bagSpaceTipVendor", label = "Tooltip: Vendor Price", toggle = true,
           help = "What the whole stack sells for at a vendor, and each item's price." },

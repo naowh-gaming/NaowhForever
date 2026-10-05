@@ -19,8 +19,8 @@ Shared/
   Places.lua   zones by name, and showing one on the world map
   Parts.lua    components: rank stars, item icon and its check, an item's slot marks (item level, star, Forever's mark), links, icon buttons, the
                backdrop and its cards, panels, the side panel, chat sharing, lined-up numbers,
-               money with its coins (Parts.Coins, made once each; compact for its two largest
-               coins), a word on an icon's top corner (Parts.ItemTag, Bag Space's OLD and "!"), a timer line the client runs
+               money with its coins (Parts.Coins, made once each; compact, its largest coin only),
+               an atlas badge on an icon's top corner (Parts.ItemBadge, Bag Space's clock and quest "!"), a timer line the client runs
                down by itself (Parts.TimerLine), a row of labels spread evenly (Parts.LabelRow)
   Window.lua   a window: the frame, title bar, icons, opacity slider, switch, search, footer,
                and a module's card on its settings page

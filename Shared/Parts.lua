@@ -28,9 +28,7 @@ local SHADE_SHARE, SHADE_ALPHA = 0.5, 0.8
 local MARK_STAR_DROP = -1
 Parts.MARK_IN = MARK_IN
 local MARK_UP = 14   -- the upgrade arrow, square, in the top-right corner
--- A word on an icon's top corner (Parts.ItemTag): its text this big, on a chip this tall and
--- this dark, its text this far from the chip's ends, the chip just inside the icon's 1px edge.
-local TAG_SIZE, TAG_H, TAG_ALPHA, TAG_PAD, TAG_IN = 9, 11, 0.75, 2, 1
+local BADGE_SIZE, BADGE_ART, BADGE_ALPHA, BADGE_IN = 14, 12, 0.75, 1
 
 -------------------------------------------------------------------------------
 --  Icons in text
@@ -238,10 +236,13 @@ local coins = {}
 local GOLD, SILVER = 10000, 100   -- copper in a gold coin, in a silver one
 
 -- The amount with the game's coin icons ("1g 50s 25c"), made once each. With compact, only its
--- two largest coins ("1g 50s", "2s 36c"), for a price under a small icon.
+-- largest coin, to the nearest ("1g", "2s", "36c"), for a price under a small icon.
 ---@param compact? boolean
 function Parts.Coins(copper, compact)
-    if compact and copper >= GOLD then copper = copper - copper % SILVER end
+    if compact then
+        local unit = copper >= GOLD and GOLD or copper >= SILVER and SILVER or 1
+        copper = math.floor(copper / unit + 0.5) * unit
+    end
     local text = coins[copper]
     if not text then
         text = C_CurrencyInfo.GetCoinTextureString(copper)
@@ -348,22 +349,20 @@ function Parts.SizeItemMarks(set, size)
     set.shade:SetHeight(size * SHADE_SHARE)
 end
 
--- A word or a sign in a top corner of an item's marks, in color on a dark chip so it reads on
--- any icon's art with no outline: Bag Space's OLD and its quest "!". corner is "TOPLEFT" or
--- "TOPRIGHT", where Forever's mark and the upgrade arrow go, so a slot shows one or the other.
--- Hidden until shown.
----@param corner "TOPLEFT"|"TOPRIGHT"
----@param color { r: number, g: number, b: number }
-function Parts.ItemTag(set, corner, text, color)
-    local tag = CreateFrame("Frame", nil, set)
-    tag:SetPoint(corner, corner == "TOPLEFT" and TAG_IN or -TAG_IN, -TAG_IN)
-    ns.Solid(tag, "BACKGROUND", BORDER_RGB, TAG_ALPHA):SetAllPoints()
-    tag.text = ns.Font(tag, TAG_SIZE, nil, color)
-    tag.text:SetPoint("CENTER", 0, -Parts.CARD_DROP)
-    tag.text:SetText(text)
-    tag:SetSize(math.ceil(tag.text:GetStringWidth()) + TAG_PAD * 2, TAG_H)
-    tag:Hide()
-    return tag
+function Parts.ItemBadge(set, corner, atlas, color)
+    local badge = CreateFrame("Frame", nil, set)
+    badge:SetSize(BADGE_SIZE, BADGE_SIZE)
+    badge:SetPoint(corner, corner == "TOPLEFT" and BADGE_IN or -BADGE_IN, -BADGE_IN)
+    badge.back = Smooth(badge:CreateTexture(nil, "BACKGROUND"), St.ROUND)
+    badge.back:SetAllPoints()
+    badge.back:SetVertexColor(BORDER_RGB.r, BORDER_RGB.g, BORDER_RGB.b, BADGE_ALPHA)
+    badge.art = Smooth(badge:CreateTexture(nil, "ARTWORK"))
+    badge.art:SetAtlas(atlas)
+    badge.art:SetSize(BADGE_ART, BADGE_ART)
+    badge.art:SetPoint("CENTER")
+    if color then badge.art:SetVertexColor(color.r, color.g, color.b) end
+    badge:Hide()
+    return badge
 end
 
 -- The tooltip's owner set, for a hover card; nothing while a menu is open, so moving the mouse
