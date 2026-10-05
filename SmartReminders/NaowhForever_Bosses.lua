@@ -1705,40 +1705,26 @@ function ns.BuildProfileSettings(parent, y)
                   .. "account's default profile.", "Delete", v, ns.DeleteProfile)
           end }
     ); y = y - h
-    local packRow
-    packRow, h = W:DualRow(parent, y,
-        { type = "label", text = "      Share your Smart Reminders" },
+    -- The whole profile as one string, out and back in (NaowhForever_ProfileShare.lua).
+    local shareRow
+    shareRow, h = W:DualRow(parent, y,
+        { type = "label", text = "" },
         { type = "label", text = "" }
     ); y = y - h
-    -- Not AttachInline: this right half has no control, so it would anchor off the row's
-    -- midpoint and overlap the label.
-    if packRow and packRow._rightRegion then
-        local rgn = packRow._rightRegion
-        rgn._btn = rgn._btn or ns.Button(rgn, "Share your Profile", 130, 22, function()
-            if ns.ShowPackExport then ns.ShowPackExport() end
-        end)
-        local btn = rgn._btn
-        btn:SetPoint("RIGHT", packRow._rightRegion, "RIGHT", -14, 0)
-        ns.Tooltip(btn, "Share your Smart Reminders",
-            "Everything a curator sets up -- priority lists, per-boss orders, callouts and "
-            .. "written reminders -- as one string to share. A profile built from someone "
-            .. "else's imported pack cannot be shared onward.")
-    end
-    local packRow2
-    packRow2, h = W:DualRow(parent, y,
-        { type = "label", text = "      Import Smart Reminder Profile" },
-        { type = "label", text = "" }
-    ); y = y - h
-    if packRow2 and packRow2._rightRegion then
-        local rgn = packRow2._rightRegion
-        rgn._btn = rgn._btn or ns.Button(rgn, "Import Profile", 120, 22, function()
-            if ns.ShowPackImport then ns.ShowPackImport() end
-        end)
-        local btn = rgn._btn
-        btn:SetPoint("RIGHT", packRow2._rightRegion, "RIGHT", -14, 0)
-        ns.Tooltip(btn, "Import Profile",
-            "Paste a profile string. Nothing applies until you press Import, and a damaged "
-            .. "string is refused outright.")
+    if shareRow then
+        local left, right = shareRow._leftRegion, shareRow._rightRegion
+        left._exportBtn = left._exportBtn or ns.Button(left, "Export Profile", 150, 22,
+            function() ns.ShowProfileExport() end)
+        left._exportBtn:SetPoint("LEFT", left, "LEFT", 20, 0)
+        ns.Tooltip(left._exportBtn, "Export Profile", "The profile you are in as one string to "
+            .. "share: every module's settings and positions, your macros, Smart Reminders, "
+            .. "your BiS lists and the look (theme, font, window scale).")
+        right._importBtn = right._importBtn or ns.Button(right, "Import Profile", 150, 22,
+            function() ns.ShowProfileImport() end)
+        right._importBtn:SetPoint("LEFT", right, "LEFT", 20, 0)
+        ns.Tooltip(right._importBtn, "Import Profile", "Paste a profile string, untick what you "
+            .. "don't want, and it lands as a new profile you switch to. Your profiles are not "
+            .. "touched. A Smart Reminders pack string opens in the pack import.")
     end
 
     return y
