@@ -1,8 +1,9 @@
 -- Loads NaowhForever_BagSpace.lua, after the Shared files it draws with, against stubbed bag,
 -- item and frame APIs and checks what the row offers, what the clicks do, stacking, the card's
 -- look (header, shared marks, the clock and quest badges drawn from the game's atlases, prices in
--- their largest coin centred under even cells, no outline, colors by state), the tooltip lines
--- that explain the badges, its settings preview, and what a scan costs.
+-- their largest coin centred under even cells, no outline, colors by state), its Background (the
+-- card, a soft fade or none, from the shared HUD backdrop, with the matching text shadow), the
+-- tooltip lines that explain the badges, its settings preview, and what a scan costs.
 -- Run from the repo root: lua Tools/regression/test-bag-space.lua
 local f = assert(io.open(arg[1] or "QoL/NaowhForever_BagSpace.lua", "rb"))
 local source = f:read("*a"); f:close()
@@ -37,6 +38,7 @@ local function Fixture(opts)
         bagSpaceHideCombat = true, bagSpaceOnFull = true, bagSpaceShowFree = true,
         bagSpaceStack = true, bagSpaceOldFirst = false, bagSpacePrices = true,
         bagSpaceTipVendor = true, bagSpaceTipAuction = true, bagSpaceTipDelete = true, bagSpaceTipIgnore = true,
+        bagSpaceBackground = "card",
     }
     local db, printed, buttons = {}, {}, {}
     local made = 0                         -- frames made, all told
@@ -63,6 +65,8 @@ local function Fixture(opts)
         SetText = function(self, v) self.text = v end,
         SetTextColor = function(self, r, g, b) self.r, self.g, self.b = r, g, b end,
         SetShadowOffset = function(self, x, y) self.shadowX, self.shadowY = x, y end,
+        SetShadowColor = function(self, _, _, _, a) self.shadowA = a end,
+        SetTexCoord = function(self, l, r, t, b) self.coords = l + r * 10 + t * 100 + b * 1000 end,
         SetSize = function(self, w, h) self.w, self.h = w, h end,
         SetWidth = function(self, w) self.w = w end,
         SetHeight = function(self, h) self.h = h end,
@@ -88,9 +92,10 @@ local function Fixture(opts)
         return setmetatable({ kind = kind, shown = true }, widgetMeta)
     end
     local border = {}
-    function border.SetColor(self, r, g, b)
-        if r == WHITE.r and g == WHITE.g and b == WHITE.b then self.white = true end
+    function border.SetColor(_, r, g, b)
+        if r == WHITE.r and g == WHITE.g and b == WHITE.b then border.white = true end
     end
+    local borderMeta = { __index = border }
     local tipLines = {}
     local tooltip = setmetatable({
         SetOwner = function() for i = #tipLines, 1, -1 do tipLines[i] = nil end end,
@@ -118,7 +123,7 @@ local function Fixture(opts)
         end,
         Solid = function() return Widget("texture") end,
         PixelInset = function(region) return region end,
-        Border = function() return border end,
+        Border = function() return setmetatable({ _frame = Widget("frame") }, borderMeta) end,
         -- ns.Button, keeping its label and click so the Stack button can be read and pressed.
         Button = function(_, text, _, _, onClick)
             local w = Widget("button")
@@ -561,6 +566,10 @@ do
         Check("look: the house shadow", text.shadowX == St.HUD_SHADOW_X and text.shadowY == St.HUD_SHADOW_Y, true)
     end
     Check("look: room to spare in the text color", free.text.r, T.fg.r)
+    local backdrop = t.buttons.row.backdrop
+    Check("look: the card is the shared HUD backdrop", backdrop and backdrop.mode, "card")
+    Check("look: the card and its edge shown", backdrop.fill.shown and backdrop.border._frame.shown, true)
+    Check("look: no soft fade made until it is picked", backdrop.soft, nil)
     Check("look: the card wraps the row", t.buttons.row.card.w, 3 * 36 + 2 * 6 + 2 * 6)
     t.Set("bagSpaceSize", 24)
     Check("look: small icons keep room for a price", egg.x - old.x, 32 + 6)
@@ -569,6 +578,78 @@ do
     Check("look: Show Prices off", old.price.shown, false)
     t.Set("bagSpaceGrow", "DOWN")
     Check("look: down, one under another", egg.x == 0 and egg.y < 0, true)
+end
+
+-- Background: the card by default; Soft swaps it for the shared fade with the stronger shadow on
+-- the header and the prices, cells made afterwards too; None shows neither, the icons keep their
+-- edges; and a scan in either makes no garbage.
+do
+    local t = Fixture({ settings = { bagSpaceCount = 2 },
+        bags = { [0] = Bag(16, { { 9, 20 }, { 1, 3 }, { 2, 4 }, { 3, 5 }, { 10, 1 }, { 4, 2 } }) } })
+    local St, row = t.Style, t.buttons.row
+    local backdrop, free = row.backdrop, row.free
+    local function Texts()
+        local list = { free.text, free.word, free.scrap }
+        for _, b in ipairs(row.cells) do list[#list + 1] = b.price end
+        return list
+    end
+    local function AllShadow(x, y, a)
+        for _, text in ipairs(Texts()) do
+            if text.flags ~= nil or text.shadowX ~= x or text.shadowY ~= y or text.shadowA ~= a then return false end
+        end
+        return true
+    end
+    local function SoftShown(on)
+        if not backdrop.soft then return not on end
+        for _, tex in ipairs(backdrop.soft) do
+            if tex.shown ~= on then return false end
+        end
+        return true
+    end
+    Check("background: Card by default", backdrop.mode == "card" and backdrop.fill.shown
+        and backdrop.border._frame.shown, true)
+    Check("background: the card's alpha", St.HUD_CARD_ALPHA, 0.85)
+    Check("background: the house shadow on the card", AllShadow(St.HUD_SHADOW_X, St.HUD_SHADOW_Y, St.HUD_SHADOW_ALPHA), true)
+    t.Set("bagSpaceBackground", "soft")
+    Check("background: Soft hides the card and its edge", backdrop.fill.shown or backdrop.border._frame.shown, false)
+    Check("background: Soft is nine pieces of the round shade", backdrop.soft and #backdrop.soft, 9)
+    Check("background: all shown", SoftShown(true), true)
+    local shade = true
+    for _, tex in ipairs(backdrop.soft) do
+        if tex.texture ~= St.SOFT_SHADE or tex.va ~= St.HUD_SOFT_ALPHA or tex.vr ~= t.ns.THEME.bg.r then shade = false end
+    end
+    Check("background: the shade in the theme's background, at the soft alpha", shade, true)
+    Check("background: Soft's stronger shadow, no outline", AllShadow(St.HUD_SHADOW_X, St.HUD_SHADOW_Y,
+        St.HUD_SOFT_SHADOW_ALPHA), true)
+    local cells = #row.cells
+    t.Set("bagSpaceCount", 6)
+    Check("background: more cells made in Soft", #row.cells > cells, true)
+    Check("background: a cell made in Soft gets its shadow", AllShadow(St.HUD_SHADOW_X, St.HUD_SHADOW_Y,
+        St.HUD_SOFT_SHADOW_ALPHA), true)
+    local pieces = backdrop.soft
+    t.Set("bagSpaceBackground", "none")
+    Check("background: None shows no card", backdrop.fill.shown or backdrop.border._frame.shown, false)
+    Check("background: and no fade", SoftShown(false) and backdrop.soft == pieces, true)
+    Check("background: None's shadow, no outline", AllShadow(St.HUD_BARE_SHADOW_X, St.HUD_BARE_SHADOW_Y,
+        St.HUD_BARE_SHADOW_ALPHA), true)
+    Check("background: the icons keep their edges", row.cells[1].edge._frame ~= nil and row.cells[1].edge._frame.shown, true)
+    for _, mode in ipairs({ "soft", "none" }) do
+        t.Set("bagSpaceBackground", mode)
+        for _ = 1, 50 do t.Fire("BAG_UPDATE_DELAYED") end
+        collectgarbage("collect")
+        collectgarbage("stop")
+        local kb = collectgarbage("count")
+        for _ = 1, 500 do t.Fire("BAG_UPDATE_DELAYED") end
+        local grown = collectgarbage("count") - kb
+        collectgarbage("restart")
+        Check("background: no garbage per scan in " .. mode, grown / 500 < 0.05, true)
+    end
+    t.Set("bagSpaceBackground", "card")
+    Check("background: back to the card", backdrop.fill.shown and backdrop.border._frame.shown and SoftShown(false), true)
+    Check("background: the house shadow again", AllShadow(St.HUD_SHADOW_X, St.HUD_SHADOW_Y, St.HUD_SHADOW_ALPHA), true)
+    local qol = io.open("QoL/NaowhForever_QoL.lua", "rb")
+    local defaults = qol:read("*a"); qol:close()
+    Check("background: Card by default in the settings", defaults:find('bagSpaceBackground = "card"', 1, true) ~= nil, true)
 end
 
 -- Few slots free: the count turns orange; none: red.
@@ -656,6 +737,30 @@ do
     Check("studio: Show Free Slots off", view.free.shown, false)
     view.cells[1].OnEnter(view.cells[1])
     Check("studio: a sample only shows a tooltip", rawget(view.cells[1], "OnClick"), nil)
+    Check("studio: the card by default", view.backdrop.mode == "card" and view.backdrop.fill.shown, true)
+    t.Set("bagSpaceBackground", "soft")
+    studio.paint(preview, "bags")
+    Check("studio: Soft in the preview", view.backdrop.mode == "soft" and view.backdrop.fill.shown == false
+        and view.backdrop.soft ~= nil and view.backdrop.soft[1].shown, true)
+    Check("studio: its prices with Soft's shadow", view.cells[1].price.shadowA, t.Style.HUD_SOFT_SHADOW_ALPHA)
+    t.Set("bagSpaceBackground", "none")
+    studio.paint(preview, "bags")
+    Check("studio: None in the preview", view.backdrop.mode == "none" and view.backdrop.fill.shown == false
+        and view.backdrop.soft[1].shown == false, true)
+    t.Set("bagSpaceBackground", "card")
+    studio.paint(preview, "bags")
+    local rows = {}
+    for _, r in ipairs(t.cards.bagSpace.rows) do
+        if r.key then rows[r.key] = r end
+    end
+    local bg = rows.bagSpaceBackground
+    Check("studio: Background is a choice", bg and bg.choice == t.Parts.HUD_BACKGROUNDS and bg.label, "Background")
+    Check("studio: its help one short sentence", bg.help and #bg.help < 100 and not bg.help:find("%. %u"), true)
+    local look
+    for i, r in ipairs(t.cards.bagSpace.rows) do
+        if r.group == "Look" then look = i end
+        if r == bg then Check("studio: Background in the Look group", look ~= nil and i > look, true) end
+    end
     for _ = 1, 20 do studio.paint(preview, "bags") end
     collectgarbage("collect")
     collectgarbage("stop")

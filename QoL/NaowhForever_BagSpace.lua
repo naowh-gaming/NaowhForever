@@ -1,6 +1,7 @@
 -------------------------------------------------------------------------------
 --  NaowhForever_BagSpace.lua -- the QoL Bag Space row: the cheapest things in your bags as
---  icons on a small card, under your free slots, to delete, sell or ignore.
+--  icons on a small card, under your free slots, to delete, sell or ignore. Its Background is the
+--  card, a soft fade or none (Parts.HudBackdrop); the icons keep their own edges in each.
 -------------------------------------------------------------------------------
 local ns = _G.NaowhForever
 local UI = ns.UI
@@ -795,8 +796,7 @@ end
 -- stacks; live: the real row, whose counter lists your bags on hover.
 local function NewView(view, onClick, onEnter, onStack, live)
     local card = CreateFrame("Frame", nil, view)
-    ns.Solid(card, "BACKGROUND", T.bg, CARD_ALPHA):SetAllPoints()
-    ns.Border(card, BORDER_RGB)
+    view.backdrop = Parts.HudBackdrop(card, { alpha = CARD_ALPHA })
     view.card = card
     view.free = NewFreeCounter(card, live)
     view.free:SetPoint("TOPLEFT", PAD, -PAD)
@@ -820,7 +820,7 @@ local function NewCell(view, i, size)
     b.marks = Parts.ItemMarks(icon, size)
     b.old = Parts.ItemBadge(b.marks, "TOPLEFT", St.CLOCK_ATLAS, St.WARN_RGB)
     b.quest = Parts.ItemBadge(b.marks, "TOPRIGHT", St.QUEST_ATLAS)
-    b.price = Parts.HudText(ns.Font(b, PRICE_SIZE, nil, T.muted))
+    b.price = Parts.HudText(ns.Font(b, PRICE_SIZE, nil, T.muted), view.shadow)
     b.price:SetPoint("TOP", b, "BOTTOM", 0, -PRICE_GAP)
     b.price:SetWordWrap(false)
     if view.onClick then
@@ -871,6 +871,17 @@ local function ShowStack(view, saves)
     return w
 end
 
+local function ShowBackground(view)
+    local mode = view.backdrop:SetMode(S.Get("bagSpaceBackground"))
+    if view.shadow == mode then return end
+    view.shadow = mode
+    local f, cells = view.free, view.cells
+    Parts.HudText(f.text, mode)
+    Parts.HudText(f.word, mode)
+    Parts.HudText(f.scrap, mode)
+    for i = 1, #cells do Parts.HudText(cells[i].price, mode) end
+end
+
 local STEP = { RIGHT = { 1, 0 }, LEFT = { -1, 0 }, UP = { 0, 1 }, DOWN = { 0, -1 } }
 
 -- shown cells from the first icon in the row's direction, even gaps between them, and the card
@@ -880,6 +891,7 @@ local function Layout(view, shown, headW)
     local size = S.Get("bagSpaceSize")
     local prices = S.Get("bagSpacePrices")
     local dir = STEP[S.Get("bagSpaceGrow")] or STEP.RIGHT
+    ShowBackground(view)
     local half = size / 2
     local cellW = prices and math.max(size, PRICE_W) or size
     local cellH = prices and size + PRICE_GAP + PRICE_H or size
@@ -1237,6 +1249,8 @@ Settings.Page("QoL/Loot & Items", S):Card({
         { key = "bagSpaceGrow", label = "Direction", choice = DIRECTION },
         { key = "bagSpacePrices", label = "Show Prices", toggle = true,
           help = "What each stack is worth, in its largest coin, under its icon." },
+        { key = "bagSpaceBackground", label = "Background", choice = Parts.HUD_BACKGROUNDS,
+          help = "A card behind the row, a soft dark fade, or nothing at all." },
         Group("Tooltips"),
         { key = "bagSpaceTipVendor", label = "Tooltip: Vendor Price", toggle = true,
           help = "What the whole stack sells for at a vendor, and each item's price." },
