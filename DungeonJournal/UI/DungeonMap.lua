@@ -555,10 +555,13 @@ local function Copy(dungeon)
         end
         lines[#lines + 1] = "        names = { " .. table.concat(names, ", ") .. " },"
     end
+    -- One images line, as with names: a second `images =` in the table would replace the first.
     if map.images then
+        local images = {}
         for i = 1, map.floors do
-            if map.images[i] then lines[#lines + 1] = ("        images = { [%d] = %q },"):format(i, map.images[i]) end
+            if map.images[i] then images[#images + 1] = ("[%d] = %q"):format(i, map.images[i]) end
         end
+        lines[#lines + 1] = "        images = { " .. table.concat(images, ", ") .. " },"
     end
     local door = Spot(dungeon, "entrance")
     if door then lines[#lines + 1] = "        entrance = " .. SpotText(door) .. "," end

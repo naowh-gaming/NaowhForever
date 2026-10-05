@@ -316,8 +316,9 @@ ns.Journal.Maps = {
     },
     -- Lower's are the art's first six floors; the art has only the seventh of Upper's levels.
     -- The other two are screenshots of Blizzard's later map (Wowhead screenshots 852258 and
-    -- 852257), until the client has them.
-    UpperBlackrockSpire = { art = "BlackrockSpire", floors = 9, order = { 7, 8, 9 },
+    -- 852257), until the client has them. You walk them backwards: in at Dragonspire Hall (9),
+    -- Emberseer and Solakar on 8, Rend and Drakkisath on the art's 7.
+    UpperBlackrockSpire = { art = "BlackrockSpire", floors = 9, order = { 9, 8, 7 },
         names = { [8] = "Hall of Binding and the Rookery", [9] = "Dragonspire Hall" },
         images = {
             [8] = "Interface\\AddOns\\NaowhForever\\Media\\Maps\\UpperBlackrockSpire8",
