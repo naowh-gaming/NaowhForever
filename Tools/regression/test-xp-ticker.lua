@@ -2,7 +2,8 @@
 -- parts and window parts and the ticker's own file are loaded against stubs, and the ticker and
 -- its settings preview are checked: the card (theme background, black border), the rate with its
 -- unit on one line, the empty session ("--", "no XP yet", no Ding), the footer (Ding and
--- the session time on one line, the level percent at its right), the history rows, the icon
+-- the session time on one line, the level percent at its right), the level in progress as it
+-- runs (marked + when not timed from its ding) over the completed levels, the icon
 -- buttons beside the rate shown on hover, the card's tooltip, Background off giving outlined text
 -- alone, the font settings, the preview's states and edits, theme colors, the saved place, and no
 -- garbage or text work on an unchanged update. Then its colors with meaning: the level progress
@@ -215,7 +216,11 @@ do
     check("the level percent at the footer's right", t.percent.text == "50%" and Is(t.percent, T.muted)
         and t.percent.p1 == "TOPRIGHT" and t.percent.p4 == -8 and t.percent.p5 == t.time.value.p5)
     check("no history rows without completed levels", not t.history[1].on)
-    check("a short card: the rate, then the footer", t.h == 8 + 24 + 6 + 12 + 8)
+    check("the level in progress over the footer", t.current.on and t.current.label.text == "Level 20"
+        and t.current.label.p5 > t.percent.p5)
+    check("timed from part way: marked +", t.current.value.text == "0:00+")
+    check("all muted", Is(t.current.label, T.muted) and Is(t.current.value, T.muted))
+    check("a short card: the rate, this level, the footer", t.h == 8 + 24 + 6 + 12 + 6 + 12 + 8)
 
     xp = 700
     s.events.scripts.OnEvent(s.events, "PLAYER_XP_UPDATE")
@@ -257,6 +262,8 @@ do
     check("tooltip: level, percent and rested", TipRight("Level 20") == "70%" and TipRight("Session") == "0:00")
     check("tooltip: the session's numbers", TipRight("XP gained") == "200" and TipRight("Rate") == "12.0k xp/hr"
         and TipRight("Ding in") == "1m")
+    check("tooltip: this level, and why it has a +", TipRight("This level") == "0:00+"
+        and TipRight("Timed from part way through the level.") ~= nil)
     t.over = true
     t.scripts.OnLeave(t)
     check("still shown moving onto a button", c.shown)
@@ -360,13 +367,23 @@ do
     s.S.Set("xpTickerHistoryCount", 1)
     check("Levels Shown caps them", t.history[1].on and not t.history[2].on)
 
+    check("the level in progress first, timed from its ding", t.current.on and t.current.label.text == "Level 20"
+        and t.current.value.text == "0:00" and t.current.label.p5 > t.history[1].label.p5)
     local before = textsSet
     tick()
     tick()
     check("an unchanged update sets no text", textsSet == before)
     now = now + 1
     tick()
-    check("a new second sets one text, the clock", textsSet == before + 1)
+    check("a new second sets two texts, the clocks", textsSet == before + 2)
+    now = now + 124
+    tick()
+    check("this level counts up", t.current.value.text == "2:05" and t.time.value.text == "2:05")
+    s.ns.PauseXPTicker()
+    now = now + 30
+    tick()
+    check("and stops while paused", t.current.value.text == "2:05")
+    s.ns.StartXPTicker()
     for _ = 1, 50 do tick() end
     collectgarbage("collect")
     collectgarbage("stop")
@@ -391,10 +408,13 @@ do
     check("levelling: the rate and rows", p.rate.text == "48.2k" and p.unit.text == "xp/hr"
         and p.ding.value.text == "8m" and p.time.value.text == "1:12:40" and p.percent.text == "62%")
     check("levelling: sample history", p.history[1].label.text == "Level 22" and p.history[5].on)
+    check("levelling: a sample level in progress", p.current.on and p.current.label.text == "Level 23"
+        and p.current.value.text == "14:02")
     check("the preview's buttons do nothing", p.toggle.mouse == false and p.reset.mouse == false)
     studio.paint(preview, "starting")
     check("starting: no rate yet", p.rate.text == "--" and p.unit.text == "no XP yet" and not p.ding.on
         and p.time.value.text == "3:12")
+    check("starting: a level timed from part way", p.current.value.text == "9:47+")
     p.scripts.OnEnter(p)
     check("starting: the tooltip's rate", TipRight("Rate") == "--" and TipRight("Level 23") == "62% \194\183 rested +15%")
     p.scripts.OnLeave(p)
@@ -458,6 +478,33 @@ end
 do
     local s = Boot(nil, { xpTickerOutline = true })
     check("a saved Outlined Text loads outlined", All(s.ticker, Outlined))
+end
+
+do
+    local s = Boot()
+    local t = s.ticker
+    check("Level History on: the level in progress", t.current.on and t.current.value.text == "0:00+")
+    s.S.Set("xpTickerSplits", false)
+    check("Level History off: no level in progress", not t.current.on and t.current.label.shown == false
+        and t.current.value.shown == false)
+    local short = t.h
+    s.S.Set("xpTickerSplits", true)
+    check("and back on with it, the card a row taller", t.current.on and t.h == short + 6 + 12)
+    xp, xpMax = 0, 2000
+    s.events.scripts.OnEvent(s.events, "PLAYER_LEVEL_UP", 21)
+    check("a ding starts the next level, timed from its start", t.current.label.text == "Level 21"
+        and t.current.value.text == "0:00")
+    now = now + 61
+    tick()
+    check("which counts up", t.current.value.text == "1:01")
+    for _ = 1, 50 do tick() end
+    collectgarbage("collect")
+    collectgarbage("stop")
+    local mem = collectgarbage("count")
+    for _ = 1, 2000 do tick() end
+    local grown = collectgarbage("count") - mem
+    collectgarbage("restart")
+    check(("the running level makes no garbage within a second (%.3f KB)"):format(grown), grown < 0.05)
 end
 
 do

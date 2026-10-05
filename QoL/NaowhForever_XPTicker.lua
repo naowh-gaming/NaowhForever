@@ -16,9 +16,10 @@ local WIDTH_PER_SIZE, WIDTH_STEP = 6, 8
 local LINE_H, TREND_SHARE, TREND_MIN, TREND_GAP = 2, 0.5, 8, 4
 local TREND_WINDOW, TREND_MIN_SHARE, DING_SOON = 180, 0.05, 600
 local UNIT, PAUSED, EMPTY, NONE = "xp/hr", "paused", "no XP yet", "--"
-local DING, LEVEL, PERCENT, DOT = "Ding", "Level %d", "%d%%", St.PLACE_DOT
+local DING, LEVEL, PERCENT, DOT, PARTIAL = "Ding", "Level %d", "%d%%", St.PLACE_DOT, "+"
 local TIP_TITLE, TIP_RESTED, TIP_PAUSED = "XP per Hour", "%s" .. St.PLACE_DOT .. "rested +%s", "Paused"
 local TIP_SESSION, TIP_GAINED, TIP_RATE, TIP_DING = "Session", "XP gained", "Rate", "Ding in"
+local TIP_LEVEL_TIME, TIP_PARTIAL = "This level", "Timed from part way through the level."
 local PAUSE_TIP, PAUSE_HINT = "Pause", "Stops the clock and the XP count."
 local START_TIP, START_HINT = "Start", "Carries on from where you paused."
 local RESET_TIP, RESET_HINT = "Reset", "Starts the session again from zero."
@@ -29,6 +30,7 @@ local paused, pausedAt, pausedTotal = false, nil, 0
 local lastXP, lastXPMax
 local cur, anchor
 local historyKeys = {}
+local running = { level = 0, time = 0, partial = false }
 local trendBase, trendAt, trendDir = 0, 0, 0
 
 local function On()
@@ -105,12 +107,15 @@ local function ShowTip(f)
         if f.restedShare > 0 then percent = TIP_RESTED:format(percent, Percent(f.restedShare)) end
         TipLine(LEVEL:format(f.level), percent)
     end
+    local run = f.running
+    if run then TipLine(TIP_LEVEL_TIME, Clock(run.time) .. (run.partial and PARTIAL or "")) end
     if f.elapsed then
         TipLine(TIP_SESSION, Clock(f.elapsed))
         TipLine(TIP_GAINED, Short(f.xp))
         TipLine(TIP_RATE, f.rateValue > 0 and Short(f.rateValue) .. " " .. UNIT or NONE)
         if f.dingValue then TipLine(TIP_DING, Duration(f.dingValue)) end
     end
+    if run and run.partial then GameTooltip:AddLine(TIP_PARTIAL, T.muted.r, T.muted.g, T.muted.b, true) end
     if f.paused then GameTooltip:AddLine(TIP_PAUSED, T.muted.r, T.muted.g, T.muted.b) end
     GameTooltip:Show()
 end
@@ -156,6 +161,7 @@ function Look.New(f)
     f.trend:SetPoint("LEFT", f.unit, "RIGHT", TREND_GAP, 0)
     f.trend:Hide()
     f.trendDir = 0
+    f.current = NewRow(f, nil, T.muted)
     f.history = {}
     for i = 1, HISTORY_MAX do f.history[i] = NewRow(f) end
     f.ding = NewRow(f, DING)
@@ -204,6 +210,7 @@ function Look.Fonts(f)
     f.unit:SetPoint("BOTTOMLEFT", f.rate, "BOTTOMRIGHT", UNIT_GAP, (size - small) * DESCENT_SHARE)
     f.trendSize = math.max(TREND_MIN, math.floor(size * TREND_SHARE))
     f.trend:SetSize(f.trendSize, f.trendSize)
+    RowFont(f.current, font, small, flags)
     for i = 1, HISTORY_MAX do RowFont(f.history[i], font, small, flags) end
     RowFont(f.ding, font, small, flags)
     RowFont(f.time, font, small, flags)
@@ -249,13 +256,15 @@ local function PlaceFooter(f, showDing, showTime, y)
     return y + f.percent:GetStringHeight()
 end
 
-local function Arrange(f, showDing, showTime, count)
-    local key = (showDing and 1 or 0) + (showTime and 2 or 0) + count * 4
+local function Arrange(f, showDing, showTime, showCurrent, count)
+    local key = (showDing and 1 or 0) + (showTime and 2 or 0) + (showCurrent and 4 or 0) + count * 8
     if f.arranged == key then return false end
     f.arranged = key
     local rateH = f.rate:GetStringHeight()
     local y = math.ceil(PAD + math.max(rateH, (rateH + f.controls:GetHeight()) / 2))
     local gap = SECTION_GAP
+    ShowRow(f.current, showCurrent)
+    if showCurrent then y, gap = PlaceRow(f, f.current, y + gap), ROW_GAP end
     for i = 1, HISTORY_MAX do
         local row = f.history[i]
         ShowRow(row, i <= count)
@@ -286,6 +295,7 @@ function Look.Fit(f)
     local head = f.rate:GetStringWidth() + UNIT_GAP + f.unit:GetStringWidth()
         + (f.trendDir ~= 0 and TREND_GAP + f.trendSize or 0)
     local w = math.max(f.minW, head + HEAD_GAP + f.controls:GetWidth(), FooterWidth(f))
+    w = RowWidth(w, f.current)
     for i = 1, HISTORY_MAX do w = RowWidth(w, f.history[i]) end
     f:SetSize(math.ceil(w / WIDTH_STEP) * WIDTH_STEP + 2 * PAD, f.height)
 end
@@ -328,9 +338,25 @@ function Look.Progress(f, value, rested, level)
     if SetValue(f.percent, Percent(value)) then Look.Fit(f) end
 end
 
-function Look.Paint(f, rate, ding, elapsed, isPaused, keys, levels, trend, xp)
+local function ShowCurrent(row, run)
+    local changed = false
+    if row.level ~= run.level then
+        row.level = run.level
+        row.label:SetText(LEVEL:format(run.level))
+        changed = true
+    end
+    local sec, partial = math.max(0, math.floor(run.time + 0.5)), run.partial == true
+    if row.sec ~= sec or row.partial ~= partial then
+        row.sec, row.partial = sec, partial
+        row.value:SetText(partial and Clock(sec) .. PARTIAL or Clock(sec))
+        changed = true
+    end
+    return changed
+end
+
+function Look.Paint(f, rate, ding, elapsed, isPaused, keys, levels, trend, xp, run)
     isPaused = isPaused and true or false
-    f.rateValue, f.dingValue, f.elapsed, f.xp = rate, ding, elapsed, xp
+    f.rateValue, f.dingValue, f.elapsed, f.xp, f.running = rate, ding, elapsed, xp, run
     local empty = rate <= 0
     local changed = SetValue(f.rate, empty and NONE or Short(rate))
     if SetValue(f.unit, isPaused and PAUSED or empty and EMPTY or UNIT) then changed = true end
@@ -352,6 +378,8 @@ function Look.Paint(f, rate, ding, elapsed, isPaused, keys, levels, trend, xp)
             changed = true
         end
     end
+    local showCurrent = (run and S.Get("xpTickerSplits")) and true or false
+    if showCurrent and ShowCurrent(f.current, run) then changed = true end
     local count = math.min(#keys, S.Get("xpTickerHistoryCount") or HISTORY_MAX, HISTORY_MAX)
     for i = 1, count do
         local row, level = f.history[i], keys[i]
@@ -367,7 +395,7 @@ function Look.Paint(f, rate, ding, elapsed, isPaused, keys, levels, trend, xp)
             changed = true
         end
     end
-    if Arrange(f, showDing, showTime, count) then changed = true end
+    if Arrange(f, showDing, showTime, showCurrent, count) then changed = true end
     if changed then Look.Fit(f) end
 end
 
@@ -443,7 +471,12 @@ local function Update()
         trendBase, trendAt = rate, now
     end
     local keys, levels = History()
-    Look.Paint(ticker, rate, ding, elapsed, paused, keys, levels, trendDir, sessionXP)
+    local run
+    if cur then
+        running.level, running.time, running.partial = cur.level, LevelTime(), cur.partial == true
+        run = running
+    end
+    Look.Paint(ticker, rate, ding, elapsed, paused, keys, levels, trendDir, sessionXP, run)
     ticker:Show()
 end
 
@@ -583,6 +616,8 @@ local SAMPLE_RATE, SAMPLE_DING, SAMPLE_TIME = 48200, 8 * 60, 72 * 60 + 40
 local SAMPLE_PROGRESS, SAMPLE_RESTED, SAMPLE_RESTING_RESTED = 0.62, 0.15, 0.3
 local SAMPLE_PAUSED_TIME, SAMPLE_RESTING_RATE, SAMPLE_RESTING_DING = 41 * 60 + 5, 31600, 35 * 60
 local SAMPLE_LEVEL, SAMPLE_START_TIME, SECONDS_PER_HOUR = 23, 3 * 60 + 12, 3600
+local SAMPLE_RUN = { level = SAMPLE_LEVEL, time = 14 * 60 + 2, partial = false }
+local SAMPLE_START_RUN = { level = SAMPLE_LEVEL, time = 9 * 60 + 47, partial = true }
 local SAMPLE_KEYS = { 22, 21, 20, 19, 18 }
 local SAMPLE_LEVELS = { [22] = { total = 3125 }, [21] = { total = 2864 }, [20] = { total = 2702 },
     [19] = { total = 2391 }, [18] = { total = 2248 } }
@@ -697,6 +732,7 @@ local function NewPreview(stage)
     preview.hits = {}
     NewHit(preview, f.ding, "xpTickerLevel")
     NewHit(preview, f.time, "xpTickerElapsed")
+    NewHit(preview, f.current, "xpTickerSplits")
     for i = 1, HISTORY_MAX do NewHit(preview, f.history[i], "xpTickerSplits") end
     preview.hint = ns.Font(preview, NOTE_SIZE, nil, T.muted)
     preview.hint:SetPoint("BOTTOMLEFT", STAGE_MARGIN, NOTE_Y)
@@ -724,18 +760,18 @@ local function PaintPreview(preview, state)
     local keys = S.Get("xpTickerSplits") and SAMPLE_KEYS or NO_KEYS
     if state == "paused" then
         Look.Paint(f, SAMPLE_RATE, SAMPLE_DING, SAMPLE_PAUSED_TIME, true, keys, SAMPLE_LEVELS, 1,
-            SAMPLE_RATE * SAMPLE_PAUSED_TIME / SECONDS_PER_HOUR)
+            SAMPLE_RATE * SAMPLE_PAUSED_TIME / SECONDS_PER_HOUR, SAMPLE_RUN)
         Look.Progress(f, SAMPLE_PROGRESS, SAMPLE_RESTED, SAMPLE_LEVEL)
     elseif state == "resting" then
         Look.Paint(f, SAMPLE_RESTING_RATE, SAMPLE_RESTING_DING, SAMPLE_TIME, false, keys, SAMPLE_LEVELS, -1,
-            SAMPLE_RESTING_RATE * SAMPLE_TIME / SECONDS_PER_HOUR)
+            SAMPLE_RESTING_RATE * SAMPLE_TIME / SECONDS_PER_HOUR, SAMPLE_RUN)
         Look.Progress(f, SAMPLE_PROGRESS, SAMPLE_RESTING_RESTED, SAMPLE_LEVEL)
     elseif state == "starting" then
-        Look.Paint(f, 0, nil, SAMPLE_START_TIME, false, keys, SAMPLE_LEVELS, 0, 0)
+        Look.Paint(f, 0, nil, SAMPLE_START_TIME, false, keys, SAMPLE_LEVELS, 0, 0, SAMPLE_START_RUN)
         Look.Progress(f, SAMPLE_PROGRESS, SAMPLE_RESTED, SAMPLE_LEVEL)
     else
         Look.Paint(f, SAMPLE_RATE, SAMPLE_DING, SAMPLE_TIME, false, keys, SAMPLE_LEVELS, 1,
-            SAMPLE_RATE * SAMPLE_TIME / SECONDS_PER_HOUR)
+            SAMPLE_RATE * SAMPLE_TIME / SECONDS_PER_HOUR, SAMPLE_RUN)
         Look.Progress(f, SAMPLE_PROGRESS, SAMPLE_RESTED, SAMPLE_LEVEL)
     end
     FitPreview(preview)
@@ -755,7 +791,7 @@ end
 
 local function Summary(store)
     if store.Get("xpTickerSplits") then
-        return ("Rate, time to level and the last %d levels"):format(store.Get("xpTickerHistoryCount"))
+        return ("Rate, time to level, this level and the last %d"):format(store.Get("xpTickerHistoryCount"))
     end
     return "Rate and time to level"
 end
@@ -775,7 +811,7 @@ ns.Shared.Settings.Page("QoL/XP", S):Card({
         { key = "xpTickerHideResting", label = "Hide While Resting", toggle = true, help = "Hidden in cities and inns." },
         Group("Level History"),
         { key = "xpTickerSplits", label = "Level History", toggle = true,
-          help = "Completed levels, newest first. No placeholder rows." },
+          help = "The level you are on as it runs, then completed levels, newest first." },
         { key = "xpTickerHistoryCount", label = "Levels Shown", slider = { 1, HISTORY_MAX, 1 }, needs = "xpTickerSplits",
           help = "The most recent completed levels." },
         Group("Look"),
