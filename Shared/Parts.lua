@@ -617,6 +617,7 @@ function Parts.Panel(title, windowLook)
     local panel = CreateFrame("Frame", nil, UIParent)
     panel:SetWidth(PANEL_W)
     panel:SetClampedToScreen(true)
+    ns.AllowOffscreen(panel)
     panel:EnableMouse(true)
     if windowLook then
         panel.backdrop = Parts.Backdrop(panel)

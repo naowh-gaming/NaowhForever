@@ -827,21 +827,12 @@ local function EnterUnlockMode()
     if ns.ShowRaidReminderAnchorConfig then ns.ShowRaidReminderAnchorConfig() end
 end
 
--- Up to 90% of a window can go off the sides and bottom, but the top edge stays on screen
--- so the title bar can always be grabbed again.
-local OFFSCREEN = 0.9
-
-local function ClampOffscreen(self, w, h)
-    self:SetClampRectInsets(w * OFFSCREEN, -w * OFFSCREEN, 0, h * OFFSCREEN)
-end
-
 local function DragRegion(frame, target)
     frame:EnableMouse(true)
     frame:RegisterForDrag("LeftButton")
     frame:SetScript("OnDragStart", function() target:StartMoving() end)
     frame:SetScript("OnDragStop", function() target:StopMovingOrSizing() end)
-    ClampOffscreen(target, target:GetWidth(), target:GetHeight())
-    target:HookScript("OnSizeChanged", ClampOffscreen)
+    ns.AllowOffscreen(target)
 end
 
 -- A grip in the bottom-right corner, with the size kept per window in the account store.
