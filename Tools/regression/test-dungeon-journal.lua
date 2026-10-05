@@ -1740,6 +1740,23 @@ do
     overlay.scripts.OnMouseUp(overlay, "RightButton")
     check("in combat it only steps aside", state.mapOpened == nil and rawget(overlay, "shown") == false)
     state.combat = false
+    local bfd = J.Get("BlackfathomDeeps")
+    J.ShowMapOnWorldMap(bfd)
+    local floorText, up
+    for _, font in ipairs(state.fonts) do
+        if rawget(font, "text") == "Floor 1" and rawget(font, "shown") ~= false then floorText = font end
+    end
+    for _, button in ipairs(state.buttons) do
+        if button.label == ">" and floorText and button:GetParent() == floorText:GetParent() then up = button end
+    end
+    check("Blackfathom Deeps opens on its first floor, with a switch", floorText ~= nil and up ~= nil)
+    up.onClick()
+    check("the switch goes to its second floor", floorText.text == "Floor 2")
+    J.ShowMapOnWorldMap(bfd)
+    check("and drawn again for a boss's page, it stays there", floorText.text == "Floor 2")
+    J.ShowMapOnWorldMap(stockade)
+    J.ShowMapOnWorldMap(bfd)
+    check("another dungeon in between: it starts on its first floor again", floorText.text == "Floor 1")
     J.ShowMapOnWorldMap(nil)
     state.account.journalMapPins, state.copied = nil, nil
     J.Maps.RagefireChasm.pins[11519] = bazzalan
