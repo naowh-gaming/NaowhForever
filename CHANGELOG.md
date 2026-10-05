@@ -10,6 +10,11 @@
   the Smart Reminders-only Share and Import buttons, and a Smart Reminders pack string pasted
   into Import still opens in the pack import.
 
+### Changed
+- Profiles: Match My Spec and Merge a Profile In are gone. Forever gives each class one spec, so
+  picking a profile already is what Match My Spec did, and Merge was for Smart Reminders packs,
+  which come back with that module.
+
 ## 0.5.20-beta
 
 ### Added

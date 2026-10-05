@@ -1572,10 +1572,9 @@ function ns.BuildProfileSettings(parent, y)
             EUI:RefreshPage(true)
         end
         -- The rows are reused, so their buttons are made once and re-pointed on each build.
-        local left, right = profRow._leftRegion, profRow._rightRegion
+        local left = profRow._leftRegion
         left._newBtn = left._newBtn or ns.Button(left, "New Profile", 110, 22)
         left._copyBtn = left._copyBtn or ns.Button(left, "Save As New Profile", 150, 22)
-        right._mergeBtn = right._mergeBtn or ns.Button(right, "Merge a Profile In", 150, 22)
 
         local newBtn = left._newBtn
         newBtn._onClick = function()
@@ -1629,17 +1628,6 @@ function ns.BuildProfileSettings(parent, y)
         ns.Tooltip(copyBtn, "Save As New Profile", "Stores everything set up right now as a "
             .. "new profile under a name you choose, and switches to it. Your current "
             .. "profile is left as it was.")
-
-        -- Import always lands a new profile; this merges into an existing one.
-        local mergeBtn = right._mergeBtn
-        mergeBtn._onClick = function()
-            if ns.ShowProfileMergeDialog then ns.ShowProfileMergeDialog() end
-        end
-        mergeBtn:SetPoint("LEFT", profRow._rightRegion, "LEFT", 20, 0)
-        ns.Tooltip(mergeBtn, "Merge a Profile In", "Takes a profile string somebody else "
-            .. "maintains and merges it into one of yours. A spec they look after "
-            .. "replaces yours for that spec; specs they do not cover are left exactly "
-            .. "as they are, and per-boss reminders are added rather than swapped.")
     end
 
     -- Reset and Delete pick their target, so deleting a profile does not mean loading it first.
