@@ -8,7 +8,8 @@
 -- what four wide bonuses need at the text size, nor the text under 11; the card's preview edits
 -- the bar from a fixed spot; its rows follow the style; and a refresh makes no garbage. The Camp
 -- Nearby alert is the same bar, fading in, breathing while shown and stopping when hidden, with
--- an editable preview.
+-- an editable preview. Both looks share one saved spot, the Round icon's centre on the bar's fire,
+-- converted from the settings when placed, so switching styles never drifts.
 
 local Load = dofile("Tools/regression/load_files.lua")
 local TocFiles = dofile("Tools/regression/toc_files.lua")
@@ -571,11 +572,11 @@ do
     s.auras[NEARBY] = nil
     s.fire("UNIT_AURA")
 
-    s.S.Set("campPos", { point = "TOPLEFT", relPoint = "TOPLEFT", x = 40, y = -40 })
-    icon.cx, icon.cy, icon.left = 300, 500, 250
+    s.S.Set("campPos", { point = "LEFT", relPoint = "BOTTOMLEFT", x = 288, y = 500 })
     s.S.Set("campStyle", "round")
     local pos = s.S.Get("campPos")
-    check("switching to Round keeps it centred where it was", pos.point == "CENTER" and pos.x == 300 and pos.y == 500)
+    check("switching to Round centres the icon on the bar's fire", pos.point == "CENTER" and pos.x == 300
+        and pos.y == 500 and icon.pt.CENTER == 300)
     check("Round again: the bar hidden, the round art back", bar.shown == false and icon.tex.shown == true
         and icon.label.text == "Refresh Camp")
     check("Round: Refresh Camp in the house text style, a shadow and no outline",
@@ -631,7 +632,64 @@ do
     check("Simple: the alert hides, the bar's own pill covers it", alert.shown == false and bar.pill
         and Plain(bar.note.text) == "Camp Nearby" .. s.St.PLACE_DOT .. "sit to refresh")
     pos = s.S.Get("campPos")
-    check("switching to Simple keeps its left edge where it was", pos.point == "LEFT" and pos.x == 250)
+    check("switching to Simple puts the bar's fire where the icon was", pos.point == "LEFT" and pos.x == 288
+        and pos.y == 500)
+end
+
+do
+    local function Fire(s)
+        local pos = s.S.Get("campPos")
+        if pos.point == "LEFT" then return pos.x + 3 + (s.S.Get("campSimpleHeight") - 8) / 2, pos.y end
+        return pos.x, pos.y
+    end
+    local s = Fixture({ campStyle = "simple", campPos = { point = "CENTER", relPoint = "BOTTOMLEFT", x = 300, y = 500 } })
+    s.fire("PLAYER_LOGIN")
+    local icon = s.named.NaowhForeverCampfire
+    local pos = s.S.Get("campPos")
+    check("an old CENTER spot loads in Simple with the fire on it, saved once as LEFT", pos.point == "LEFT"
+        and pos.x == 288 and pos.y == 500 and pos.relPoint == "BOTTOMLEFT" and icon.pt.LEFT == 288
+        and icon.pty.LEFT == 500 and icon.pt.LEFT + s.bar().campX == 300)
+    local drift = false
+    for _ = 1, 5 do
+        s.S.Set("campStyle", "round")
+        local x, y = Fire(s)
+        drift = drift or x ~= 300 or y ~= 500 or icon.pt.CENTER ~= 300
+        s.S.Set("campStyle", "simple")
+        x, y = Fire(s)
+        drift = drift or x ~= 300 or y ~= 500 or icon.pt.LEFT ~= 288
+    end
+    check("Simple, Round, Simple again and again: the same spot, no drift", not drift)
+    s.S.Set("campSimpleHeight", 31)
+    check("a Bar Height change keeps the bar's left, the fire moving with its size", s.S.Get("campPos").x == 288
+        and icon.pt.LEFT + s.bar().campX == 302.5)
+    s.S.Set("campStyle", "round")
+    check("the next switch centres the icon on the fire at its new height", s.S.Get("campPos").x == 302.5
+        and icon.pt.CENTER == 302.5)
+    s.S.Set("campStyle", "simple")
+    check("and back, the bar's left where it was", s.S.Get("campPos").x == 288 and icon.pt.LEFT == 288)
+
+    local off = Fixture({ campfire = false, campPos = { point = "CENTER", relPoint = "BOTTOMLEFT", x = 300, y = 500 } })
+    off.fire("PLAYER_LOGIN")
+    off.S.Set("campStyle", "simple")
+    check("switching style while the reminder is off builds nothing and keeps the spot",
+        off.named.NaowhForeverCampfire == nil and off.S.Get("campPos").point == "CENTER")
+    off.S.Set("campfire", true)
+    local oicon = off.named.NaowhForeverCampfire
+    check("turned on later: the bar's fire lands where the icon was", off.S.Get("campPos").point == "LEFT"
+        and off.S.Get("campPos").x == 288 and oicon.pt.LEFT + off.bar().campX == 300)
+
+    local old = Fixture({ campStyle = "simple", campIconSize = 64,
+        campPos = { point = "TOPLEFT", relPoint = "TOPLEFT", x = 40, y = -40 } })
+    old.fire("PLAYER_LOGIN")
+    pos = old.S.Get("campPos")
+    check("an older corner spot is read as the Round icon's, its centre the fire", pos.point == "LEFT"
+        and pos.relPoint == "TOPLEFT" and pos.x == 72 - 12 and pos.y == -72)
+
+    local fresh = Fixture({ campStyle = "simple" })
+    fresh.fire("PLAYER_LOGIN")
+    local ficon = fresh.named.NaowhForeverCampfire
+    check("no saved spot: the default fire is the Round icon's default centre, nothing saved",
+        fresh.S.Get("campPos") == nil and ficon.pt.LEFT + fresh.bar().campX == -260 and ficon.pty.LEFT == 120)
 end
 
 -- The tooltip reader: every feature line of Camp Benefits' description, matched by name, with amounts.

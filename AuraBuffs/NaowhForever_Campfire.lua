@@ -17,6 +17,9 @@
 --  Well's mana, then its 5 seconds). FONT_LIFT raises the bar's words: the Naowh font sits low.
 --  The bar's fire has no plate or ring: the art (transparent round its fire) sits on the bar's
 --  own backdrop, ART_CROP trimming its empty margin so the fire fills the square.
+--  Both looks keep the fire on one screen spot: Round's centre is the Simple fire's centre. The
+--  saved spot is LEFT for Simple and CENTER for Round (an older corner point is the Round icon's),
+--  converted to the current style once, when placed, from the settings alone.
 -------------------------------------------------------------------------------
 local ns = _G.NaowhForever
 local S = ns.AuraBuffSettings
@@ -50,6 +53,9 @@ local MIN_LABELS = { "+8% Stats", "+308 Armor", "+2% Crit", "+29 MP5" }
 local SIT_PREFIX = "in "
 local TIME_SAMPLE, SIT_SAMPLE = "44m", SIT_PREFIX .. "44s"
 local DEFAULT_X, DEFAULT_Y, ALERT_Y = -260, 120, 150
+local Spot = { DEFAULT = { point = "CENTER", relPoint = "CENTER", x = DEFAULT_X, y = DEFAULT_Y } }
+Spot.CORNERS = { TOPLEFT = { 1, -1 }, TOP = { 0, -1 }, TOPRIGHT = { -1, -1 }, RIGHT = { -1, 0 },
+    BOTTOMLEFT = { 1, 1 }, BOTTOM = { 0, 1 }, BOTTOMRIGHT = { -1, 1 } }
 local UNLOCK_TEXT = "+Rested\n+Crit"
 
 local FEATURES = {
@@ -246,12 +252,20 @@ local function MinWidth(f, size)
 
 end
 
+function Bar.CampSize(height)
+    return height - 2 * (BAR.EDGE + BAR.ICON_PAD) - BAR.LINE_H
+end
+
+function Bar.FireX(height)
+    return BAR.EDGE + BAR.ICON_PAD + Bar.CampSize(height) / 2
+end
+
 function Bar.Layout(f)
     local size = math.max(BAR.TEXT_MIN, S.Get("campSimpleTextSize"))
     local height = S.Get("campSimpleHeight")
     f.height, f.size = height, size
-    f.campSize = height - 2 * (BAR.EDGE + BAR.ICON_PAD) - BAR.LINE_H
-    f.campX = BAR.EDGE + BAR.ICON_PAD + f.campSize / 2
+    f.campSize = Bar.CampSize(height)
+    f.campX = Bar.FireX(height)
     f.labelX = f.campX + f.campSize / 2 + BAR.CAMP_GAP
     f.textY = BAR.FONT_LIFT + BAR.LINE_H / 2
     local font = ns.UIFontPath()
@@ -730,16 +744,27 @@ local function UseStyle(simple)
     Look.Shown(icon, not simple)
 end
 
-local function Place()
-    local pos = S.Get("campPos")
-    icon:ClearAllPoints()
-    if pos then
-        icon:SetPoint(pos.point, UIParent, pos.relPoint, pos.x, pos.y)
-    elseif Simple() then
-        icon:SetPoint("LEFT", UIParent, "CENTER", DEFAULT_X - S.Get("campIconSize") / 2, DEFAULT_Y)
-    else
-        icon:SetPoint("CENTER", UIParent, "CENTER", DEFAULT_X, DEFAULT_Y)
+function Spot.ForStyle(pos)
+    local want = Simple() and "LEFT" or "CENTER"
+    if pos.point == want then return pos end
+    local x, y = pos.x, pos.y
+    local corner = Spot.CORNERS[pos.point]
+    if corner then
+        local half = S.Get("campIconSize") / 2
+        x, y = x + corner[1] * half, y + corner[2] * half
+    elseif pos.point == "LEFT" then
+        x = x + Bar.FireX(S.Get("campSimpleHeight"))
     end
+    if want == "LEFT" then x = x - Bar.FireX(S.Get("campSimpleHeight")) end
+    return { point = want, relPoint = pos.relPoint, x = x, y = y }
+end
+
+local function Place()
+    local saved = S.Get("campPos")
+    local pos = Spot.ForStyle(saved or Spot.DEFAULT)
+    if saved and pos ~= saved then S.Set("campPos", pos) end
+    icon:ClearAllPoints()
+    icon:SetPoint(pos.point, UIParent, pos.relPoint, pos.x, pos.y)
 end
 
 local function BarShown()
@@ -1223,26 +1248,10 @@ local function Apply()
     end
 end
 
-local function Restyle()
-    local x, y, left
-    if icon and S.Get("campPos") then
-        x, y = icon:GetCenter()
-        left = icon:GetLeft()
-    end
-    Apply()
-    if not (x and y and left and icon) then return end
-    local pos = Anchored(Simple(), left, x, y)
-    icon:ClearAllPoints()
-    icon:SetPoint(pos.point, UIParent, pos.relPoint, pos.x, pos.y)
-    S.Set("campPos", pos)
-end
-
 hooksecurefunc(S, "Set", function(key)
     -- A timer armed for the old threshold would fire at the wrong time.
     if key == "campNearbyMinutes" then DisarmAlert() end
-    if key == "campStyle" then
-        Restyle()
-    elseif key == "enabled" or (key:find("^camp") and key ~= "campPos" and key ~= "campAlertPos") then
+    if key == "enabled" or (key:find("^camp") and key ~= "campPos" and key ~= "campAlertPos") then
         Apply()
     end
 end)
