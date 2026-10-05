@@ -23,6 +23,7 @@ Shared.Style = {
     HUD_SHADOW_ALPHA = 0.8,
     HUD_SHADOW_X = 1,
     HUD_SHADOW_Y = -1,
+    HUD_CARD_ALPHA = 0.85,
     -- An item level above yours.
     RED_CODE = "|cfff87171",
     RED_RGB = { r = 0.97, g = 0.44, b = 0.44 },
@@ -83,6 +84,9 @@ Shared.Style = {
     LIST_SHOWN = MEDIA .. "sidebar_shown",  -- a window's list button, while the list shows
     LIST_HIDDEN = MEDIA .. "sidebar_hidden",
     SEARCH = MEDIA .. "Navigation\\search.tga",
+    PLAY = MEDIA .. "play",
+    PAUSE = MEDIA .. "pause",
+    RESET = MEDIA .. "reset",
     -- The game's ready check: done, had.
     CHECK = "Interface\\RaidFrame\\ReadyCheck-Ready",
     -- Between a place and a person, or what an item is and its level: a middle dot.

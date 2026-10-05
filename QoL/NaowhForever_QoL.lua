@@ -61,7 +61,7 @@ local S = UI.ModuleSettings("qol", {
     altCounts = false, mailAlts = false, mailQuickAttach = false, mailExpiry = false,
     xpTicker = true, xpTickerLevel = true, xpTickerElapsed = true,
     xpTickerHideResting = false, xpTickerFont = "", xpTickerFontSize = 24, xpTickerOutline = false,
-    xpTickerSplits = true, xpTickerHistoryCount = 10,
+    xpTickerSplits = true, xpTickerHistoryCount = 10, xpTickerBackground = true,
     groupXP = false, groupXPShowSelf = true, groupXPWidth = 260,
     naowhScore = true, naowhScoreTooltip = true, naowhScoreScan = true, naowhScoreNearby = true,
     naowhScoreCompare = "max",
