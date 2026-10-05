@@ -899,6 +899,10 @@ do
     check("a loaded one is in lower case", Loot.LowerName(101) == "cowl of the magus")
     state.names[101] = nil
     check("and kept", Loot.LowerName(101) == "cowl of the magus")
+    ns.Shared.Items.Refuse(4242)
+    local asked = #state.requested
+    check("a name the server would not send: nil", Loot.LowerName(4242) == nil)
+    check("and not asked for again", #state.requested == asked)
 end
 
 -------------------------------------------------------------------------------
@@ -1094,6 +1098,19 @@ do
         end
     end
     check("Sunken Temple's bosses say their loot is still to come", toCome >= 10 and unknown == 0)
+    -- An item the server will not send: no redraw for it, never waited on again.
+    ns.OpenJournalWindow(ns.Journal.Get("Deadmines"))
+    local view, refusedID
+    for _, frame in ipairs(state.made) do
+        local waiting = rawget(frame, "waitingFor")
+        if waiting and frame:IsVisible() and next(waiting) then view, refusedID = frame, next(waiting) end
+    end
+    check("the Deadmines waits on its names", view ~= nil)
+    local queued = #state.timers
+    view:OnEvent("GET_ITEM_INFO_RECEIVED", refusedID, false)
+    check("refused: no redraw", #state.timers == queued and view.waitingFor[refusedID] == nil)
+    view:Redraw()
+    check("drawn again: not waited on", view.waitingFor[refusedID] == nil and next(view.waitingFor) ~= nil)
     -- A wing's trash: a card of its own, last, with no number and no kill count.
     ns.OpenJournalWindow(ns.Journal.Get("ShadowfangKeep"))
     local trashRow
