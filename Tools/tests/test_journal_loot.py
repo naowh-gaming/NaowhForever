@@ -11,6 +11,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import build_journal  # noqa: E402
+import wago  # noqa: E402
 
 
 def drop(item_id, count, kills, new=False, quality=3):
@@ -78,6 +79,42 @@ class WowsrcMerge(unittest.TestCase):
         kept = build_journal.merge_wowsrc(loot, listed)
         self.assertEqual([i["id"] for i in kept], [3191])
         self.assertEqual(kept[0]["chance"], 35.7, "wowsrc's chance wins")
+
+
+class InGame(unittest.TestCase):
+    """in_game: only items the game's own tables name are listed. Forever 1.60.1's Item table has
+    a row for every Classic item, but most of Classic's dungeon loot above level 30 has no
+    ItemSparse row: the server never sends it, so the Journal showed "Item 10800"."""
+
+    def setUp(self):
+        self.tables = build_journal.game_items
+        self.wago_table = wago.table
+        build_journal.game_items = None
+        rows = {"Item": [{"ID": "10800", "ClassID": "4", "SubclassID": "2"},
+                         {"ID": "3191", "ClassID": "2", "SubclassID": "1"},
+                         {"ID": "273025", "ClassID": "4", "SubclassID": "3"}],
+                "ItemSparse": [{"ID": "3191"}, {"ID": "273025"}]}
+        wago.table = lambda name, build=None, hotfixes=True: rows[name]
+
+    def tearDown(self):
+        build_journal.game_items = self.tables
+        wago.table = self.wago_table
+
+    def test_the_game_names_only_items_with_a_sparse_row(self):
+        self.assertEqual(set(build_journal.game_tables()), {"3191", "273025"})
+
+    def test_an_item_the_game_cannot_name_is_left_out(self):
+        held = set()
+        loot = [dict(drop(10800, 1468, 3847), chance=38.0), dict(drop(3191, 5241, 15624), chance=33.0),
+                dict(drop(273025, 2, 4227, new=True), chance=None)]
+        kept = build_journal.in_game(loot, held)
+        self.assertEqual([i["id"] for i in kept], [3191, 273025])
+        self.assertEqual(held, {10800}, "Darkwater Bracers: an Item row, no ItemSparse row")
+
+    def test_nothing_left_out_when_the_game_has_it_all(self):
+        held = set()
+        self.assertEqual(build_journal.in_game([drop(3191, 1, 1)], held), [drop(3191, 1, 1)])
+        self.assertEqual(held, set())
 
 
 if __name__ == "__main__":
