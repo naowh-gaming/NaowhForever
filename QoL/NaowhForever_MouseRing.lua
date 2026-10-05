@@ -491,7 +491,7 @@ local function RefreshZone()
 end
 
 local events = CreateFrame("Frame")
-events:SetScript("OnEvent", function(_, event, _, _, _, spellID)
+events:SetScript("OnEvent", function(_, event, _, arg2, arg3, arg4)
     if event == "PLAYER_TARGET_CHANGED" or event == "SPELLS_CHANGED" or event == "UPDATE_SHAPESHIFT_FORM" then
         state.lastInRange = nil
         StopAlarm()
@@ -500,12 +500,22 @@ events:SetScript("OnEvent", function(_, event, _, _, _, spellID)
         return
     elseif event == "UNIT_SPELLCAST_SENT" then
         -- On Forever the GCD starts with the send and UNIT_SPELLCAST_START follows a round trip later.
-        local info = C_Spell.GetSpellInfo(spellID)
-        state.castPending = info ~= nil and info.castTime > 0
+        state.castPending, state.sentGUID = false, nil
+        if S.Get("mouseGCD") and S.Get("mouseCastSwipe") and not Secret(arg4) and not Secret(arg3) then
+            local info = C_Spell.GetSpellInfo(arg4)
+            local castTime = info and info.castTime
+            if not Secret(castTime) and castTime and castTime > 0 then
+                state.castPending, state.sentGUID = true, arg3
+            end
+        end
         return
     elseif event == "SPELL_UPDATE_COOLDOWN" then
         if S.Get("mouseGCD") then ReadGCD() end
     elseif event:find("^UNIT_SPELLCAST") then
+        if (event == "UNIT_SPELLCAST_INTERRUPTED" or event == "UNIT_SPELLCAST_FAILED")
+            and state.sentGUID and not Secret(arg2) and arg2 == state.sentGUID then
+            state.gcdOwned, state.sentGUID = false, nil
+        end
         ReadCast()
     else
         RefreshZone()
