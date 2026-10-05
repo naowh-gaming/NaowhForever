@@ -148,6 +148,8 @@ Training\NaowhForever_TrainingTrainer.lua
 QoL\NaowhForever_TownData.lua
 QoL\NaowhForever_TownMailboxes.lua
 QoL\NaowhForever_TownMap.xml
+QoL\NaowhForever_MapOverlays.lua
+QoL\NaowhForever_Unexplored.xml
 GearSets\NaowhForever_GearSets.lua
 GearSets\NaowhForever_GearSetsWindow.lua
 # Naowh Score: one number for a character's gear, on the item level scale, for you and the
