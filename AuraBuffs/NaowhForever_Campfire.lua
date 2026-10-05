@@ -25,7 +25,7 @@ local CAMPFIRE_ART = "Interface\\AddOns\\NaowhForever\\Media\\CampfireHD.tga"
 local TIME_STEPS = { { 1800, St.TIME_OK_RGB }, { 300, St.TIME_LOW_RGB }, { 0, St.TIME_OUT_RGB } }
 local REFRESH_NOW = TIME_STEPS[2][1]
 
-local TEXT_SIZE = 16
+local TEXT_SIZE, ALERT_SIZE = 16, 28
 -- The plate behind the campfire art; ns.ThemeTint swaps in the player's Panels color.
 local PLATE = { r = 0.14, g = 0.15, b = 0.16 }
 
@@ -107,11 +107,11 @@ function Look.New(icon)
     icon.drain:SetDrawBling(false)
     icon.drain:SetHideCountdownNumbers(true)
 
-    icon.label = ns.Font(icon, TEXT_SIZE, "OUTLINE", T.accentSoft)
+    icon.label = Parts.HudText(ns.Font(icon, TEXT_SIZE, nil, T.accentSoft))
     icon.label:SetPoint("TOP", icon, "BOTTOM", 0, -4)
     icon.label:SetText("Refresh Camp")
 
-    icon.buffs = ns.Font(icon, TEXT_SIZE, "OUTLINE")
+    icon.buffs = Parts.HudText(ns.Font(icon, TEXT_SIZE))
     icon.buffs:SetPoint("TOP", icon, "BOTTOM", 0, -4)
     icon.buffs:SetJustifyH("CENTER")
 end
@@ -119,7 +119,7 @@ end
 function Look.Layout(icon)
     local size = S.Get("campIconSize")
     icon:SetSize(size, size)
-    icon.buffs:SetFont(ns.UIFontPath(), S.Get("campBuffTextSize"), "OUTLINE")
+    icon.buffs:SetFont(ns.UIFontPath(), S.Get("campBuffTextSize"), "")
     icon.buffs:ClearAllPoints()
     local side = S.Get("campBuffSide")
     icon.buffs:SetJustifyH(side == "right" and "LEFT" or side == "left" and "RIGHT" or "CENTER")
@@ -170,9 +170,9 @@ function Look.Missing(icon)
 end
 
 function Look.Alert(alert)
-    alert.text = ns.Font(alert, 28, "OUTLINE", T.accent)
+    alert.text = Parts.HudText(ns.Font(alert, ALERT_SIZE, nil, T.fg))
     alert.text:SetPoint("CENTER")
-    alert.text:SetText("Camp Nearby")
+    alert.text:SetText(ns.Color("accent", "Camp") .. " Nearby")
     alert:SetSize(alert.text:GetStringWidth() + 16, 40)
 end
 

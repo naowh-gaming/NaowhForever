@@ -65,6 +65,7 @@ local function Fixture(settings)
             return fill
         end,
         ClearAllPoints = function() end,
+        SetShadowColor = function(f, _, _, _, a) f.shadow = a end,
         EnableMouse = function() end,
         CreateTexture = function(f) return Frame(f) end,
         CreateMaskTexture = function(f) return Frame(f) end,
@@ -102,8 +103,9 @@ local function Fixture(settings)
     local ns = {
         THEME = T,
         Color = function(_, text) return tostring(text) end,
-        Font = function(parent, _, _, color)
+        Font = function(parent, _, flags, color)
             local fs = Frame(parent)
+            fs.flags = flags
             local c = color or T.fg
             fs.r, fs.g, fs.b = c.r, c.g, c.b
             return fs
@@ -329,6 +331,12 @@ do
     check("switching looks keeps it centred where it was", pos.point == "CENTER" and pos.x == 300 and pos.y == 500)
     check("Round again: the bar hidden, the round art back", bar.shown == false and icon.tex.shown == true
         and icon.label.text == "Refresh Camp")
+    check("Round: Refresh Camp in the house text style, a shadow and no outline",
+        icon.label.flags == nil and icon.label.shadow == s.ns.Shared.Style.HUD_SHADOW_ALPHA)
+    s.ns.ShowRaidReminderAnchorConfig()
+    local alert = s.named.NaowhForeverCampNearby
+    check("Camp Nearby in the house text style, in the theme's text colour", alert and alert.text.flags == nil
+        and alert.text.shadow == s.ns.Shared.Style.HUD_SHADOW_ALPHA and Same(alert.text, s.T.fg))
 end
 
 do
