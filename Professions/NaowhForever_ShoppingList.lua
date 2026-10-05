@@ -13,6 +13,10 @@
 --  Starting a purchase is protected: only a click may (ADDON_ACTION_BLOCKED when tried on its
 --  own, confirmed in game 2026-09-30), so each material after the first takes one click on Buy
 --  Next. Bought materials leave the list.
+--
+--  A material this character can make for less from its parts (smelting the ore, say) is not
+--  bought: its parts are, a few levels down, and it shows under Make First. The recipes known
+--  are recorded as each of your professions opens; prices are your last auction house scan's.
 -------------------------------------------------------------------------------
 local ns = _G.NaowhForever
 local S = ns.ProfessionSettings
@@ -54,26 +58,111 @@ end
 -------------------------------------------------------------------------------
 --  The list
 -------------------------------------------------------------------------------
--- Per character: recipeID -> { name, count (crafts), need = { itemID -> per craft },
--- got = { itemID -> already bought, when less than all of it was } }.
-local function List()
+local MAX_DEPTH = 4   -- how many levels down a material is made from its parts
+
+-- A per-character table in the account's settings.
+local function Mine(name)
     local account = ns.AccountSettings()
-    if type(account.profShopping) ~= "table" then account.profShopping = {} end
+    if type(account[name]) ~= "table" then account[name] = {} end
     local key = (UnitName("player") or "?") .. "-" .. (GetRealmName() or "?")
-    account.profShopping[key] = account.profShopping[key] or {}
-    return account.profShopping[key]
+    account[name][key] = account[name][key] or {}
+    return account[name][key]
 end
 
--- Every material on the list with its total amount, by name.
+-- recipeID -> { name, count (crafts), need = { itemID -> per craft }, got = { itemID ->
+-- already bought, kept from before Have } }.
+local function List() return Mine("profShopping") end
+
+-- itemID -> how many of it the list need not buy any more: bought, or taken off with X.
+local function Have() return Mine("profShopHave") end
+
+-- itemID -> { recipe, made (per craft), need = { itemID -> per craft } }: what this
+-- character's known recipes make, recorded as each profession opens.
+local function Makes() return Mine("profMakes") end
+
+-- Account-wide: items always bought as they are (Buy on a Make First row).
+local function Keep()
+    local account = ns.AccountSettings()
+    if type(account.profShopKeep) ~= "table" then account.profShopKeep = {} end
+    return account.profShopKeep
+end
+
+-- An empty list forgets what it had: the next crafts start from nothing bought.
+local function Emptied()
+    if next(List()) == nil then wipe(Have()) end
+end
+
+-- What one of an item costs to buy: the last scan's price, or a vendor's when lower.
+local function BuyPrice(item)
+    local scan = ns.AuctionPrice and ns.AuctionPrice(item)
+    local api = ns.ProfWindowAPI
+    local vendor = api and api.IsVendorItem(item) and ns.AccountSettings().profVendorPrices
+    vendor = vendor and vendor[item]
+    if scan and vendor then return math.min(scan, vendor) end
+    return scan or vendor
+end
+
+-- The cheapest way to one of an item: its cost (nil when unpriced) and whether to make it.
+-- plan memoizes both; ignoreKeep asks what making would cost an item kept to buy.
+local function Cheapest(item, plan, depth, ignoreKeep)
+    if not ignoreKeep and plan.cost[item] ~= nil then return plan.cost[item] or nil, plan.make[item] end
+    local buy, make = BuyPrice(item), false
+    local cost, m = buy, Makes()[item]
+    if m and depth < MAX_DEPTH and not plan.busy[item] and (ignoreKeep or not Keep()[item]) then
+        plan.busy[item] = true
+        local total = 0
+        for part, per in pairs(m.need) do
+            local c = plan.owned[part] and 0 or Cheapest(part, plan, depth + 1)
+            if not c then
+                total = nil
+                break
+            end
+            total = total + c * per
+        end
+        plan.busy[item] = nil
+        if total and (not buy or total / m.made < buy) then cost, make = total / m.made, true end
+    end
+    if not ignoreKeep then plan.cost[item], plan.make[item] = cost or false, make end
+    return cost, make
+end
+
+-- What to buy: every material on the list with its amount, by name; what is made first,
+-- itemID -> how many; and the plan that chose, for the savings.
 local function Materials()
-    local total = {}
+    local api = ns.ProfWindowAPI
+    local plan = { cost = {}, make = {}, busy = {}, owned = api and api.Owned() or {} }
+    local demand, made, makes = {}, {}, Makes()
     for _, craft in pairs(List()) do
         for item, per in pairs(craft.need) do
-            total[item] = (total[item] or 0) + per * craft.count - (craft.got and craft.got[item] or 0)
+            demand[item] = (demand[item] or 0) + per * craft.count - (craft.got and craft.got[item] or 0)
         end
     end
-    local out = {}
-    for item, qty in pairs(total) do
+    -- Made where cheaper: the crafts it takes go to made, their parts to what is needed (not
+    -- the ones you have, nor vendor ones, as Add to List leaves those off), a level a pass.
+    for _ = 1, MAX_DEPTH do
+        local nextDemand, more = {}, false
+        for item, qty in pairs(demand) do
+            local _, make = Cheapest(item, plan, 0)
+            if qty > 0 and make then
+                local m = makes[item]
+                local crafts = math.ceil(qty / m.made)
+                made[item] = (made[item] or 0) + crafts * m.made
+                for part, per in pairs(m.need) do
+                    if not plan.owned[part] and not (api and api.IsVendorItem(part)) then
+                        nextDemand[part] = (nextDemand[part] or 0) + per * crafts
+                    end
+                end
+                more = true
+            else
+                nextDemand[item] = (nextDemand[item] or 0) + qty
+            end
+        end
+        demand = nextDemand
+        if not more then break end
+    end
+    local have, out = Have(), {}
+    for item, qty in pairs(demand) do
+        qty = qty - (have[item] or 0)
         if qty > 0 then out[#out + 1] = { item = item, qty = qty } end
     end
     table.sort(out, function(a, b)
@@ -81,17 +170,55 @@ local function Materials()
         if na ~= nb then return na < nb end
         return a.item < b.item
     end)
-    return out
+    return out, made, plan
 end
 
--- A material taken off every craft; a craft with nothing left goes too.
-local function Drop(item)
-    local list = List()
-    for recipeID, craft in pairs(list) do
-        craft.need[item] = nil
-        if craft.got then craft.got[item] = nil end
-        if next(craft.need) == nil then list[recipeID] = nil end
+-- A material taken off the list (X at the auction house): as if you had it.
+local function Drop(item, qty)
+    local have = Have()
+    have[item] = (have[item] or 0) + (qty or 0)
+end
+
+-- Records what this character's open profession makes, for Materials.
+local function Learn()
+    local api = ns.ProfWindowAPI
+    if not (api and C_TradeSkillUI.GetAllRecipeIDs) or api.Linked() then return end
+    local makes = Makes()
+    for _, id in ipairs(C_TradeSkillUI.GetAllRecipeIDs() or {}) do
+        local info = C_TradeSkillUI.GetRecipeInfo(id)
+        if info and info.learned then
+            local ok, schematic = pcall(C_TradeSkillUI.GetRecipeSchematic, id, false)
+            local output = ok and schematic and schematic.outputItemID
+            if output and output > 0 then
+                local need = {}
+                local okR, reagents = pcall(api.Reagents, id)
+                for _, r in ipairs(okR and reagents or {}) do need[r.itemID] = r.need end
+                if next(need) then
+                    makes[output] = { recipe = id, made = math.max(1, schematic.quantityMin or 1), need = need }
+                end
+            end
+        end
     end
+end
+
+-- "2h ago": how long since the last scan.
+local function Ago(t)
+    local seconds = time() - t
+    if seconds < 3600 then return math.max(1, math.floor(seconds / 60)) .. "m ago" end
+    if seconds < 86400 then return math.floor(seconds / 3600) .. "h ago" end
+    return math.floor(seconds / 86400) .. "d ago"
+end
+
+-- "About 1g 20s at your last scan, 2h ago"; materials without a price are counted out.
+local function Estimate(materials, unpriced)
+    local est, missing = 0, 0
+    for _, m in ipairs(materials) do
+        local price = BuyPrice(m.item)
+        if price then est = est + price * m.qty else missing = missing + 1 end
+    end
+    local at = ns.AuctionScanTime and ns.AuctionScanTime()
+    return ("About %s at your last scan%s%s"):format(Money(est), at and (", " .. Ago(at)) or " (none yet)",
+        missing > 0 and (", %d %s"):format(missing, unpriced) or "")
 end
 
 -- What Add to List would add for a recipe: its checked reagents vendors do not sell.
@@ -135,7 +262,7 @@ end
 -- their order: the crafts on the list (each with - and + for how many, and X), every material
 -- with an estimate from the last scan, and Clear. Add to List fills it at once, so it is plain
 -- what it did.
-local SIDE_W, SIDE_ROW_H, SIDE_CRAFTS, SIDE_MATERIALS = 260, 20, 6, 12
+local SIDE_W, SIDE_ROW_H, SIDE_CRAFTS, SIDE_MATERIALS, SIDE_MADE = 260, 20, 6, 12, 6
 local side
 
 -- One craft more or fewer of a recipe on the list; never under one (X takes it off).
@@ -208,7 +335,9 @@ local function BuildSide(win)
     side.craftsHead:SetText("Crafts")
     side.materialsHead = ns.Font(side, 12, nil, { r = 1, g = 0.82, b = 0 })
     side.materialsHead:SetText("Materials")
-    side.crafts, side.materials = {}, {}
+    side.madeHead = ns.Font(side, 12, nil, { r = 1, g = 0.82, b = 0 })
+    side.madeHead:SetText("Make First")
+    side.crafts, side.materials, side.made = {}, {}, {}
     side.total = ns.Font(side, 12, nil)
     side.total:SetPoint("BOTTOMLEFT", 10, 16)
     side.total:SetPoint("RIGHT", -100, 0)
@@ -216,6 +345,7 @@ local function BuildSide(win)
     side.total:SetWordWrap(true)
     side.clear = ns.Button(side, "Clear", 80, 24, function()
         wipe(List())
+        Emptied()
         if Render then Render() end
     end)
     side.clear:SetPoint("BOTTOMRIGHT", -10, 10)
@@ -227,7 +357,8 @@ local function SideRender()
     if not side then return end
     local api = ns.ProfWindowAPI
     if not On() or (api and api.Linked()) then return side:Hide() end
-    local list, materials = List(), Materials()
+    local list = List()
+    local materials, made, plan = Materials()
     local crafts = {}
     for recipeID, craft in pairs(list) do crafts[#crafts + 1] = { id = recipeID, craft = craft } end
     table.sort(crafts, function(a, b) return (a.craft.name or "") < (b.craft.name or "") end)
@@ -248,6 +379,7 @@ local function SideRender()
                 row.remove = ns.Button(row, "X", 16, 16, function()
                     if row.recipeID then
                         List()[row.recipeID] = nil
+                        Emptied()
                         if Render then Render() end
                     end
                 end)
@@ -282,32 +414,79 @@ local function SideRender()
         side.materialsHead:SetPoint("TOPLEFT", 10, y)
         y = y - 18
     end
-    local est, missing = 0, 0
     for i = 1, math.max(#materials, #side.materials) do
         local m = materials[i]
         local row = (m or side.materials[i]) and SideRow(side.materials, i, true)
-        if m then
-            local scan = ns.AuctionPrice and ns.AuctionPrice(m.item)
-            if scan then est = est + scan * m.qty else missing = missing + 1 end
-            if i <= SIDE_MATERIALS then
-                if not row.note:GetPoint() then row.note:SetPoint("RIGHT") end
-                row.item = m.item
-                row.icon:SetTexture(C_Item.GetItemIconByID(m.item))
-                row.name:SetText(("%dx %s"):format(m.qty, ItemName(m.item) or ("item " .. m.item)))
-                row.note:SetText(scan and ("~" .. Money(scan * m.qty)) or "no price")
-                row:ClearAllPoints()
-                row:SetPoint("TOPLEFT", 8, y)
-                row:Show()
-                y = y - SIDE_ROW_H
-            else
-                row:Hide()
+        if m and i <= SIDE_MATERIALS then
+            local price = BuyPrice(m.item)
+            -- Kept to buy, though making it would cost less: Make goes back to that.
+            local make = false
+            if Keep()[m.item] then make = select(2, Cheapest(m.item, plan, 0, true)) end
+            if make and not row.make then
+                row.make = ns.Button(row, "Make", 40, 16, function()
+                    if row.item then
+                        Keep()[row.item] = nil
+                        if Render then Render() end
+                    end
+                end)
+                row.make:SetPoint("RIGHT")
+                ns.Tooltip(row.make, "Make It", "Buys its cheaper parts instead, to make it yourself.")
             end
+            if row.make then row.make:SetShown(make and true or false) end
+            row.note:ClearAllPoints()
+            if make then row.note:SetPoint("RIGHT", row.make, "LEFT", -6, 0) else row.note:SetPoint("RIGHT") end
+            row.item = m.item
+            row.icon:SetTexture(C_Item.GetItemIconByID(m.item))
+            row.name:SetText(("%dx %s"):format(m.qty, ItemName(m.item) or ("item " .. m.item)))
+            row.note:SetText(price and ("~" .. Money(price * m.qty)) or "no price")
+            row:ClearAllPoints()
+            row:SetPoint("TOPLEFT", 8, y)
+            row:Show()
+            y = y - SIDE_ROW_H
         elseif row then
             row:Hide()
         end
     end
-    side.total:SetText(#materials > 0 and ("About %s at your last scan%s"):format(Money(est),
-        missing > 0 and (", %d unpriced"):format(missing) or "") or "")
+    -- What is made first, with what it saves on buying it.
+    local makes = {}
+    for item, qty in pairs(made) do makes[#makes + 1] = { item = item, qty = qty } end
+    table.sort(makes, function(a, b) return (ItemName(a.item) or "") < (ItemName(b.item) or "") end)
+    side.madeHead:SetShown(#makes > 0)
+    if #makes > 0 then
+        y = y - 8
+        side.madeHead:ClearAllPoints()
+        side.madeHead:SetPoint("TOPLEFT", 10, y)
+        y = y - 18
+    end
+    for i = 1, math.max(#makes, #side.made) do
+        local e = makes[i]
+        local row = (e or side.made[i]) and SideRow(side.made, i, true)
+        if e and i <= SIDE_MADE then
+            if not row.keep then
+                row.keep = ns.Button(row, "Buy", 34, 16, function()
+                    if row.item then
+                        Keep()[row.item] = true
+                        if Render then Render() end
+                    end
+                end)
+                row.keep:SetPoint("RIGHT")
+                ns.Tooltip(row.keep, "Buy It", "Buys it as it is instead of its parts.")
+                row.note:SetPoint("RIGHT", row.keep, "LEFT", -6, 0)
+            end
+            local buy, cost = BuyPrice(e.item), plan.cost[e.item]
+            row.item = e.item
+            row.icon:SetTexture(C_Item.GetItemIconByID(e.item))
+            row.name:SetText(("%dx %s"):format(e.qty, ItemName(e.item) or ("item " .. e.item)))
+            row.note:SetText(buy and cost and ("saves ~" .. Money((buy - cost) * e.qty)) or "no AH price")
+            row:ClearAllPoints()
+            row:SetPoint("TOPLEFT", 8, y)
+            row:Show()
+            y = y - SIDE_ROW_H
+        elseif row then
+            row:Hide()
+        end
+    end
+    side.total:SetText(#materials > 0 and Estimate(materials, "unpriced") or "")
     side.clear:SetShown(#crafts > 0)
     side:Show()
 end
@@ -596,7 +775,7 @@ local function Build()
         row.icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
         row.remove = ns.Button(row, "X", 18, 18, function()
             if row.item and not run then
-                Drop(row.item)
+                Drop(row.item, row.qty)
                 Render()
             end
         end)
@@ -638,6 +817,7 @@ local function Build()
     panel.cancel = ns.Button(panel, "Clear", 90, 24, function()
         if run then return CancelRun() end
         wipe(List())
+        Emptied()
         Render()
     end)
     panel.cancel:SetPoint("BOTTOMRIGHT", -10, 10)
@@ -678,8 +858,8 @@ local function RowNote(m)
     end
     if e and e.noanswer and not e.cost then return RED .. "no answer|r" end
     if e and e.single then return Hex(T.muted) .. "single listings: buy by hand|r" end
-    local scan = ns.AuctionPrice and ns.AuctionPrice(m.item)
-    return scan and (Hex(T.muted) .. "~" .. Money(scan * m.qty) .. "|r") or (Hex(T.muted) .. "no price|r")
+    local price = BuyPrice(m.item)
+    return price and (Hex(T.muted) .. "~" .. Money(price * m.qty) .. "|r") or (Hex(T.muted) .. "no price|r")
 end
 
 -- What the run says, and what its buttons do, for its state.
@@ -689,13 +869,7 @@ local function RunText()
     local e = Current()
     local name = e and (ItemName(e.item) or ("item " .. e.item))
     if not run then
-        local est, missing = 0, 0
-        for _, m in ipairs(Materials()) do
-            local scan = ns.AuctionPrice and ns.AuctionPrice(m.item)
-            if scan then est = est + scan * m.qty else missing = missing + 1 end
-        end
-        return ("About %s at your last scan%s."):format(Money(est),
-            missing > 0 and (", %d without a price"):format(missing) or ""),
+        return Estimate((Materials()), "without a price") .. ".",
             muted .. "Check Prices looks each one up first; nothing is bought before you confirm it.|r",
             "Check Prices", true, "Clear", false
     elseif state == "checking" then
@@ -748,13 +922,13 @@ Render = function()
     -- The profession window's column shows the same list.
     SideRender()
     if not (On() and AuctionHouseOpen()) then return panel and panel:Hide() end
-    local materials = Materials()
+    local materials, made = Materials()
     if #materials == 0 and not run then return panel and panel:Hide() end
     if not panel then Build() end
     local shown = math.min(#materials, MAX_ROWS)
     for i, row in ipairs(panel.rows) do
         local m = materials[i]
-        row.item = m and m.item
+        row.item, row.qty = m and m.item, m and m.qty
         if m then
             local name = ItemName(m.item)
             row.icon:SetTexture(C_Item.GetItemIconByID(m.item))
@@ -775,9 +949,13 @@ Render = function()
     local names = {}
     for _, craft in pairs(List()) do names[#names + 1] = ("%dx %s"):format(craft.count, craft.name or "?") end
     table.sort(names)
+    local first = {}
+    for item, qty in pairs(made) do first[#first + 1] = ("%dx %s"):format(qty, ItemName(item) or ("item " .. item)) end
+    table.sort(first)
     panel.crafts:ClearAllPoints()
     panel.crafts:SetPoint("TOPLEFT", 10, y - 4)
-    panel.crafts:SetText(#names > 0 and ("For " .. table.concat(names, ", ")) or "")
+    panel.crafts:SetText((#names > 0 and ("For " .. table.concat(names, ", ")) or "")
+        .. (#first > 0 and (". Make first: " .. table.concat(first, ", ")) or ""))
     y = y - 4 - (#names > 0 and panel.crafts:GetStringHeight() or 0) - 10
     local line1, line2, primary, enabled, cancel, skip = RunText()
     panel.line1:ClearAllPoints()
@@ -802,8 +980,19 @@ end
 --  Events
 -------------------------------------------------------------------------------
 local events = CreateFrame("Frame")
+local learnAt = 0
 events:SetScript("OnEvent", function(_, event, a, b)
-    if event == "AUCTION_HOUSE_SHOW" then
+    if event == "TRADE_SKILL_SHOW" or event == "TRADE_SKILL_LIST_UPDATE" then
+        -- Once the list settles: it updates in bursts as a profession opens.
+        learnAt = GetTime()
+        local at = learnAt
+        return C_Timer.After(0.5, function()
+            if learnAt == at and On() then
+                Learn()
+                if Render then Render() end
+            end
+        end)
+    elseif event == "AUCTION_HOUSE_SHOW" then
         return C_Timer.After(0.3, Render)
     elseif event == "AUCTION_HOUSE_CLOSED" then
         if run then CancelRun() end
@@ -835,26 +1024,12 @@ events:SetScript("OnEvent", function(_, event, a, b)
         Render()
     elseif event == "COMMODITY_PURCHASE_SUCCEEDED" and (state == "buying" or state == "unconfirmed") then
         run.bought = run.bought + 1
-        -- All of it bought: off the list. Less than the list wanted (not enough listed): the
-        -- rest stays on it.
-        local list = List()
-        if e.buy >= e.qty then
-            Drop(e.item)
-        else
-            for recipeID, craft in pairs(list) do
-                if craft.need[e.item] and e.buy > 0 then
-                    craft.got = craft.got or {}
-                    local got = craft.got[e.item] or 0
-                    local took = math.min(craft.need[e.item] * craft.count - got, e.buy)
-                    e.buy = e.buy - took
-                    if got + took >= craft.need[e.item] * craft.count then
-                        craft.need[e.item], craft.got[e.item] = nil, nil
-                        if next(craft.need) == nil then list[recipeID] = nil end
-                    else
-                        craft.got[e.item] = got + took
-                    end
-                end
-            end
+        -- Bought: off the list; less than it wanted (not enough listed), the rest stays on it.
+        -- With everything bought, the list is done.
+        Drop(e.item, e.buy)
+        if #(Materials()) == 0 then
+            wipe(List())
+            Emptied()
         end
         NextBuy()
     elseif event == "COMMODITY_PURCHASE_FAILED" and state == "buying" then
@@ -874,7 +1049,7 @@ local function Apply()
     for _, event in ipairs({ "AUCTION_HOUSE_SHOW", "AUCTION_HOUSE_CLOSED", "ITEM_DATA_LOAD_RESULT",
         "COMMODITY_SEARCH_RESULTS_UPDATED", "ITEM_SEARCH_RESULTS_UPDATED", "COMMODITY_PRICE_UPDATED",
         "COMMODITY_PRICE_UNAVAILABLE", "COMMODITY_PURCHASE_SUCCEEDED", "COMMODITY_PURCHASE_FAILED",
-        "AUCTION_HOUSE_THROTTLED_SYSTEM_READY" }) do
+        "AUCTION_HOUSE_THROTTLED_SYSTEM_READY", "TRADE_SKILL_SHOW", "TRADE_SKILL_LIST_UPDATE" }) do
         pcall(events.RegisterEvent, events, event)
     end
 end
