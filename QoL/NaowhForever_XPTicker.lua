@@ -3,6 +3,8 @@
 --  level, session time and recent level times, and its settings card with a live preview.
 --  Level times are kept per character by GUID; a character's first login after that change takes
 --  over the old entry under its first name and realm, once, if no one else has and its level fits.
+--  Its Background is the card, a soft fade or none (Parts.HudBackdrop); the old on/off setting is
+--  read as Card for on and Soft for off, and saved that way on the next Apply.
 -------------------------------------------------------------------------------
 local ns = _G.NaowhForever
 local S = ns.QoLSettings
@@ -36,9 +38,21 @@ local cur, anchor
 local historyKeys = {}
 local running = { level = 0, time = 0, partial = false }
 local trendBase, trendAt, trendDir = 0, 0, 0
+local LEGACY_BACKGROUND = { [true] = "card", [false] = "soft" }
 
 local function On()
     return S.Get("enabled") and S.Get("xpTicker")
+end
+
+local function Background()
+    local mode = S.Get("xpTickerBackground")
+    return LEGACY_BACKGROUND[mode] or mode
+end
+
+local function MigrateBackground()
+    local db = S.DB()
+    local mode = LEGACY_BACKGROUND[db.xpTickerBackground]
+    if mode then db.xpTickerBackground = mode end
 end
 
 local function AtMaxLevel()
@@ -153,9 +167,7 @@ end
 
 function Look.New(f)
     f.texts = {}
-    f.bg = ns.Solid(f, "BACKGROUND", T.bg, St.HUD_CARD_ALPHA)
-    f.bg:SetAllPoints()
-    f.border = ns.Border(f, St.BORDER_RGB)
+    f.backdrop = Parts.HudBackdrop(f)
     f.rate = NewText(f, T.fg)
     f.rate:SetPoint("TOPLEFT", PAD, -PAD)
     f.unit = NewText(f, T.muted)
@@ -204,8 +216,8 @@ end
 
 function Look.Fonts(f)
     local font, size = ns.UI.FontPath(S.Get("xpTickerFont")), S.Get("xpTickerFontSize")
-    local card = S.Get("xpTickerBackground") and true or false
-    local outlined = (S.Get("xpTickerOutline") or not card) and true or false
+    local mode = f.backdrop:SetMode(Background())
+    local outlined = S.Get("xpTickerOutline") and true or false
     local flags = outlined and OUTLINE or ""
     local small = math.max(ROW_MIN, math.floor(size * ROW_SHARE))
     f.rate:SetFont(font, size, flags)
@@ -220,11 +232,11 @@ function Look.Fonts(f)
     RowFont(f.time, font, small, flags)
     f.dot:SetFont(font, small, flags)
     f.percent:SetFont(font, small, flags)
-    for i = 1, #f.texts do Parts.HudText(f.texts[i], not outlined) end
+    local shadow = not outlined and mode
+    for i = 1, #f.texts do Parts.HudText(f.texts[i], shadow) end
+    f.line.track:SetShown(mode == "card")
     f.controls:ClearAllPoints()
     f.controls:SetPoint("RIGHT", f, "TOPRIGHT", -CONTROLS_INSET, -(PAD + size / 2))
-    f.bg:SetShown(card)
-    f.border._frame:SetShown(card)
     f.minW = size * WIDTH_PER_SIZE
     f.arranged = nil
 end
@@ -587,6 +599,7 @@ local function Place()
 end
 
 local function Apply()
+    MigrateBackground()
     if not On() then
         if cur and anchor then cur.base, anchor = LevelTime(), nil end
         events:UnregisterAllEvents()
@@ -667,10 +680,7 @@ local STATES = {
     { key = "paused", label = "Paused", tip = "Paused from its header: the clock and the count stop." },
     { key = "resting", label = "Resting", tip = "In a city or an inn." },
 }
-local LOOK_TOGGLES = {
-    { "xpTickerBackground", "Background" },
-    { "xpTickerOutline", "Outlined Text" },
-}
+local BACKGROUNDS = Parts.HUD_BACKGROUNDS
 local LINE_TOGGLES = {
     { "xpTickerLevel", "Show Ding Time" },
     { "xpTickerElapsed", "Show Time" },
@@ -689,11 +699,22 @@ local function AddToggles(root, list)
     for i = 1, #list do root:CreateCheckbox(list[i][2], Toggled, Toggle, list[i][1]) end
 end
 
+local function PickedBackground(mode)
+    return Background() == mode
+end
+
+local function SetBackground(mode)
+    S.Set("xpTickerBackground", mode)
+end
+
 local function CardMenu(_, root)
     root:CreateTitle("XP per Hour")
-    AddToggles(root, LOOK_TOGGLES)
-    root:CreateDivider()
     AddToggles(root, LINE_TOGGLES)
+    root:CreateDivider()
+    root:CreateTitle("Background")
+    local order = BACKGROUNDS[2]
+    for i = 1, #order do root:CreateRadio(BACKGROUNDS[1][order[i]], PickedBackground, SetBackground, order[i]) end
+    root:CreateCheckbox("Outlined Text", Toggled, Toggle, "xpTickerOutline")
     root:CreateDivider()
     root:CreateButton("Reset XP per Hour", ResetClicked)
 end
@@ -851,9 +872,9 @@ ns.Shared.Settings.Page("QoL/XP", S):Card({
         { key = "xpTickerHistoryCount", label = "Levels Shown", slider = { 1, HISTORY_MAX, 1 }, needs = "xpTickerSplits",
           help = "The most recent completed levels." },
         Group("Look"),
-        { key = "xpTickerBackground", label = "Background", toggle = true,
-          help = "A dark card behind the text; off leaves outlined text alone." },
-        { key = "xpTickerOutline", label = "Outlined Text", toggle = true, needs = "xpTickerBackground",
+        { key = "xpTickerBackground", label = "Background", choice = BACKGROUNDS, get = Background,
+          set = SetBackground, help = "A card behind the text, a soft dark fade, or nothing at all." },
+        { key = "xpTickerOutline", label = "Outlined Text", toggle = true,
           help = "A thick black outline round the text, in place of the soft shadow." },
         { key = "xpTickerFont", label = "Font", font = true },
         { key = "xpTickerFontSize", label = "Font Size", slider = SIZE_RANGE },

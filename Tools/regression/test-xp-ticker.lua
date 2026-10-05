@@ -4,9 +4,10 @@
 -- unit on one line, the empty session ("--", "no XP yet", no Ding), the footer (Ding and
 -- the session time on one line, the level percent at its right), the level in progress as it
 -- runs (marked + when not timed from its ding) over the completed levels, the icon
--- buttons beside the rate shown on hover, the card's tooltip, Background off giving outlined text
--- alone, the font settings, the preview's states and edits, theme colors, the saved place, and no
--- garbage or text work on an unchanged update. Then its colors with meaning: the level progress
+-- buttons beside the rate shown on hover, the card's tooltip, the Background choice (the card, a
+-- soft fade, or none: the shared HUD backdrop, the stronger shadow and no outline unless asked for,
+-- the old on/off setting saved as Card or Soft), the font settings, the preview's states and edits,
+-- theme colors, the saved place, and no garbage or text work on an unchanged update. Then its colors with meaning: the level progress
 -- line with rested XP ahead of it, the rate in the accent only while earning, its trend arrow,
 -- Ding turning soft blue near a level, and paused muting the rate and the line. And level history
 -- kept per character by GUID: three characters sharing a first name, the old name-keyed entry
@@ -36,7 +37,7 @@ local METHODS = {
     SetColorTexture = function(f, r, g, b, a) f.r, f.g, f.b, f.a = r, g, b, a end,
     SetTexture = function(f, tex) f.tex = tex end,
     SetTexCoord = function(f, l, r, t, b) f.l, f.r2, f.t, f.b2 = l, r, t, b end,
-    SetVertexColor = function(f, r, g, b) f.vr, f.vg, f.vb = r, g, b end,
+    SetVertexColor = function(f, r, g, b, a) f.vr, f.vg, f.vb, f.va = r, g, b, a end,
     SetValue = function(f, v) f.value = v end,
     SetStatusBarColor = function(f, r, g, b, a) f.sr, f.sg, f.sb, f.sa = r, g, b, a end,
     GetStatusBarTexture = function(f)
@@ -154,11 +155,12 @@ local function Boot(account, settings, who)
 
     local defaults = { enabled = true, xpTicker = true, xpTickerLevel = true, xpTickerElapsed = true,
         xpTickerHideResting = false, xpTickerFont = "", xpTickerFontSize = 24, xpTickerOutline = false,
-        xpTickerSplits = true, xpTickerHistoryCount = 10, xpTickerBackground = true }
+        xpTickerSplits = true, xpTickerHistoryCount = 10, xpTickerBackground = "card" }
     local db = settings or {}
     ns.QoLSettings = {
         Get = function(k) if db[k] == nil then return defaults[k] end return db[k] end,
         Set = function(k, v) db[k] = v end,
+        DB = function() return db end,
     }
     ns.UI = { FontPath = function(name) return name ~= "" and "font:" .. name or "naowh" end,
         AttachMover = function(parent) return Frame(parent) end }
@@ -183,7 +185,7 @@ local function Boot(account, settings, who)
         if f.events.PLAYER_XP_UPDATE then events = f end
     end
     return { ns = ns, S = ns.QoLSettings, ticker = ticker, card = card, T = ns.THEME, events = events,
-        account = env.NaowhForeverDB.account }
+        account = env.NaowhForeverDB.account, db = db }
 end
 
 local St
@@ -193,6 +195,25 @@ local function Shadowed(fs)
 end
 local function Plain(fs) return fs.flags == "" and Shadowed(fs) end
 local function Outlined(fs) return fs.flags == "OUTLINE" and fs.offset[1] == 0 and fs.shadow[4] == 0 end
+local function SoftShadow(fs)
+    return fs.flags == "" and fs.offset[1] == St.HUD_SHADOW_X and fs.offset[2] == St.HUD_SHADOW_Y
+        and fs.shadow[1] == St.HUD_SHADOW_RGB.r and fs.shadow[4] == St.HUD_SOFT_SHADOW_ALPHA
+end
+local function BareShadow(fs)
+    return fs.flags == "" and fs.offset[1] == St.HUD_BARE_SHADOW_X and fs.offset[2] == St.HUD_BARE_SHADOW_Y
+        and fs.shadow[1] == St.HUD_SHADOW_RGB.r and fs.shadow[4] == St.HUD_BARE_SHADOW_ALPHA
+end
+local function Shown(region) return region.shown ~= false end
+local function CardShown(f) return Shown(f.backdrop.fill) and Shown(f.backdrop.border._frame) end
+local function CardHidden(f) return f.backdrop.fill.shown == false and f.backdrop.border._frame.shown == false end
+local function SoftShown(f, on)
+    local soft = f.backdrop.soft
+    if not soft then return not on end
+    for _, tex in ipairs(soft) do
+        if Shown(tex) ~= on then return false end
+    end
+    return true
+end
 local function Is(fs, c) return fs.r == c.r and fs.g == c.g and fs.b == c.b end
 local function All(t, test)
     for _, fs in ipairs(t.texts) do
@@ -206,10 +227,14 @@ do
     local ns, t, T = s.ns, s.ticker, s.T
     St = ns.Shared.Style
     check("the ticker is built on login", t and t.shown)
-    check("the card is the theme's background", t.bg.shown and Is(t.bg, T.bg))
-    check("at the card alpha the Flight Timer uses", t.bg.a == St.HUD_CARD_ALPHA and St.HUD_CARD_ALPHA == 0.85
+    local fill = t.backdrop and t.backdrop.fill
+    check("the card is the shared HUD backdrop", fill and t.backdrop.SetMode and t.backdrop.mode == "card")
+    check("the card is the theme's background", Shown(fill) and Is(fill, T.bg))
+    check("at the card alpha the Flight Timer uses", fill.a == St.HUD_CARD_ALPHA and St.HUD_CARD_ALPHA == 0.85
         and Read("QoL/NaowhForever_Flight.lua"):find("CARD_ALPHA = 380, 10, 6, St.HUD_CARD_ALPHA", 1, true))
-    check("with the black border", t.border._frame.shown ~= false)
+    check("with the black border", Shown(t.backdrop.border._frame))
+    check("no soft fade made until it is picked", t.backdrop.soft == nil)
+    check("the progress line's track on the card", Shown(t.line.track))
 
     check("no XP yet: the rate a muted --", t.rate.text == "--" and Is(t.rate, T.muted) and t.rate.size == 24)
     check("the rate at the card's top left", t.rate.p1 == "TOPLEFT" and t.rate.p2 == 8 and t.rate.p3 == -8)
@@ -321,15 +346,47 @@ do
     check("still no outline", All(t, Plain))
 
     s.S.Set("xpTickerOutline", true)
-    check("Outlined Text outlines the card's text", All(t, Outlined) and t.bg.shown)
+    check("Outlined Text outlines the card's text", All(t, Outlined) and CardShown(t))
     s.S.Set("xpTickerOutline", false)
     check("turning it off brings the shadow back", All(t, Plain))
 
-    s.S.Set("xpTickerBackground", false)
-    check("Background off: no card", t.bg.shown == false and t.border._frame.shown == false)
-    check("and the text outlined", All(t, Outlined))
-    s.S.Set("xpTickerBackground", true)
-    check("Background on: the card is back", t.bg.shown and t.border._frame.shown and All(t, Plain))
+    s.S.Set("xpTickerBackground", "soft")
+    local soft = t.backdrop.soft
+    check("Soft: no card and no border", CardHidden(t))
+    check("Soft: nine pieces of the round shade", soft and #soft == 9 and SoftShown(t, true))
+    local corners, spans, flat = 0, 0, 0
+    for _, tex in ipairs(soft) do
+        check("Soft: the shade texture, in the theme's background", tex.tex == St.SOFT_SHADE
+            and tex.vr == T.bg.r and tex.vg == T.bg.g and tex.vb == T.bg.b and tex.va == St.HUD_SOFT_ALPHA)
+        if tex.l ~= tex.r2 and tex.t ~= tex.b2 then corners = corners + 1
+        elseif tex.l == tex.r2 and tex.t == tex.b2 then flat = flat + 1
+        else spans = spans + 1 end
+    end
+    check("Soft: four round corners, four fading sides, one middle", corners == 4 and spans == 4 and flat == 1)
+    check("Soft: the corners reach out past the card", soft[1].p1 == "TOPLEFT" and soft[1].p2 == t
+        and soft[1].p4 == -(St.HUD_SOFT_FADE - St.HUD_SOFT_INSET) and soft[1].w == St.HUD_SOFT_FADE)
+    check("Soft: a low alpha, clear at its edge", St.HUD_SOFT_ALPHA > 0 and St.HUD_SOFT_ALPHA < St.HUD_CARD_ALPHA
+        and St.HUD_SOFT_INSET < St.HUD_SOFT_FADE)
+    check("Soft: no outline, the stronger soft shadow", All(t, SoftShadow))
+    check("Soft: the progress line without its track", t.line.track.shown == false)
+    s.S.Set("xpTickerOutline", true)
+    check("Soft: Outlined Text still outlines on request", All(t, Outlined))
+    s.S.Set("xpTickerOutline", false)
+
+    s.S.Set("xpTickerBackground", "none")
+    check("None: no card", CardHidden(t))
+    check("None: no fade", SoftShown(t, false) and t.backdrop.soft == soft)
+    check("None: no outline, the strongest shadow", All(t, BareShadow))
+    check("None: the line's fill without its track", t.line.track.shown == false and t.line.fill)
+    s.S.Set("xpTickerOutline", true)
+    check("None: Outlined Text on request", All(t, Outlined))
+    s.S.Set("xpTickerOutline", false)
+
+    s.S.Set("xpTickerBackground", "card")
+    check("Card: the card is back", CardShown(t) and SoftShown(t, false) and All(t, Plain) and Shown(t.line.track))
+    s.S.Set("xpTickerBackground", "fancy")
+    check("an unknown value is the card", t.backdrop.mode == "card" and CardShown(t))
+    s.S.Set("xpTickerBackground", "card")
 
     xp = 800
     s.events.scripts.OnEvent(s.events, "PLAYER_XP_UPDATE")
@@ -349,13 +406,25 @@ do
         if r.label then labels[r.label] = r end
     end
     local bg, outline = rows.xpTickerBackground, rows.xpTickerOutline
-    check("Background is a toggle on the card", bg and bg.toggle and bg.label == "Background")
-    check("Outlined Text is kept", outline and outline.toggle and outline.label == "Outlined Text")
+    local Parts = ns.Shared.Parts
+    check("Background is a choice on the card", bg and bg.choice == Parts.HUD_BACKGROUNDS and bg.label == "Background")
+    check("Card, Soft and None, in that order", table.concat(bg.choice[2], ",") == "card,soft,none"
+        and bg.choice[1].card == "Card" and bg.choice[1].soft == "Soft" and bg.choice[1].none == "None")
+    check("Outlined Text is kept, in every mode", outline and outline.toggle and outline.label == "Outlined Text"
+        and outline.needs == nil)
     for _, r in ipairs({ bg, outline }) do
         check(r.label .. ": one short sentence", r.help and #r.help < 100 and not r.help:find("%. %u"))
     end
+    bg.set("soft")
+    check("the row sets the mode", s.S.Get("xpTickerBackground") == "soft" and bg.get() == "soft"
+        and t.backdrop.mode == "soft")
+    s.db.xpTickerBackground = true
+    check("the row reads an old on as Card", bg.get() == "card")
+    s.db.xpTickerBackground = false
+    check("and an old off as Soft", bg.get() == "soft")
+    bg.set("card")
     local qol = Read("QoL/NaowhForever_QoL.lua")
-    check("Background on by default", qol:find("xpTickerBackground = true", 1, true))
+    check("Background is Card by default", qol:find('xpTickerBackground = "card"', 1, true))
     check("Outlined Text off by default", qol:find("xpTickerOutline = false", 1, true))
     check("the Color spelling in player text", not Read("QoL/NaowhForever_XPTicker.lua"):find("[Cc]olour"))
     check("Reset XP per Hour is still on the card", labels["Reset XP per Hour"])
@@ -411,7 +480,8 @@ do
     local preview = studio.new(Frame())
     local p = preview.ticker
     studio.paint(preview, "levelling")
-    check("the preview draws the card", p.bg.shown and Is(p.bg, T.bg) and p.bg.a == St.HUD_CARD_ALPHA)
+    local pbg = p.backdrop.fill
+    check("the preview draws the card", Shown(pbg) and Is(pbg, T.bg) and pbg.a == St.HUD_CARD_ALPHA)
     check("levelling: the rate and rows", p.rate.text == "48.2k" and p.unit.text == "xp/hr"
         and p.ding.value.text == "8m" and p.time.value.text == "1:12:40" and p.percent.text == "62%")
     check("levelling: sample history", p.history[1].label.text == "Level 22" and p.history[5].on)
@@ -456,16 +526,26 @@ do
     local root = {
         CreateTitle = NOTHING, CreateDivider = NOTHING,
         CreateCheckbox = function(_, label, _, set, data) items[label] = { set = set, data = data } end,
+        CreateRadio = function(_, label, picked, set, data) items[label] = { picked = picked, set = set, data = data } end,
         CreateButton = function(_, label, fn) items[label] = { fn = fn } end,
     }
     menu.gen(p, root)
-    check("the menu has Background, Outlined Text and Reset", items.Background and items["Outlined Text"]
-        and items["Reset XP per Hour"] and items["Show Ding Time"])
+    check("the menu has the backgrounds, Outlined Text and Reset", items.Card and items.Soft and items.None
+        and items["Outlined Text"] and items["Reset XP per Hour"] and items["Show Ding Time"])
+    check("the menu's Card picked", items.Card.picked(items.Card.data) and not items.Soft.picked(items.Soft.data))
     items["Show Ding Time"].set(items["Show Ding Time"].data)
     check("and turns rows back on", s.S.Get("xpTickerLevel") == true)
-    items.Background.set(items.Background.data)
+    items.Soft.set(items.Soft.data)
     studio.paint(preview, "levelling")
-    check("Background off in the preview too", p.bg.shown == false and All(p, Outlined))
+    check("Soft from the menu, in the preview too", s.S.Get("xpTickerBackground") == "soft" and CardHidden(p)
+        and SoftShown(p, true) and All(p, SoftShadow) and items.Soft.picked(items.Soft.data))
+    items.None.set(items.None.data)
+    studio.paint(preview, "levelling")
+    check("None in the preview", CardHidden(p) and SoftShown(p, false) and All(p, BareShadow)
+        and p.line.track.shown == false)
+    items.Card.set(items.Card.data)
+    studio.paint(preview, "levelling")
+    check("and the card back in the preview", CardShown(p) and SoftShown(p, false) and All(p, Plain))
 
     s.S.Set("xpTicker", false)
     studio.paint(preview, "levelling")
@@ -478,13 +558,57 @@ do
     local s = Boot({ themePreset = "slate" })
     local ns, t, T = s.ns, s.ticker, s.T
     check("a theme preset changes the colors", ns.Color("muted") ~= "|cff9a9ea6")
-    check("the card follows the theme", Is(t.bg, T.bg) and Is(t.unit, T.muted) and Is(t.rate, T.muted)
+    check("the card follows the theme", Is(t.backdrop.fill, T.bg) and Is(t.unit, T.muted) and Is(t.rate, T.muted)
         and Is(t.ding.label, T.muted) and Is(t.time.value, T.fg) and Is(t.percent, T.muted))
 end
 
 do
     local s = Boot(nil, { xpTickerOutline = true })
     check("a saved Outlined Text loads outlined", All(s.ticker, Outlined))
+end
+
+do
+    local s = Boot(nil, { xpTickerBackground = true })
+    check("an old Background on is saved as Card", s.db.xpTickerBackground == "card"
+        and s.ticker.backdrop.mode == "card" and All(s.ticker, Plain))
+    s = Boot(nil, { xpTickerBackground = false })
+    local t = s.ticker
+    check("an old Background off is saved as Soft", s.db.xpTickerBackground == "soft" and t.backdrop.mode == "soft")
+    check("with the soft shadow, no longer outlined", All(t, SoftShadow))
+    s.ns.Apply()
+    s.S.Set("xpTickerFontSize", 20)
+    check("the migration runs once: Soft stays Soft", s.db.xpTickerBackground == "soft")
+    s.S.Set("xpTickerBackground", "none")
+    check("and a later pick is kept", s.db.xpTickerBackground == "none" and t.backdrop.mode == "none")
+    s = Boot(nil, { xpTickerBackground = false, xpTickerOutline = true })
+    check("an old off with Outlined Text keeps its outline", s.db.xpTickerBackground == "soft"
+        and All(s.ticker, Outlined))
+    s = Boot()
+    check("nothing saved: nothing written", s.db.xpTickerBackground == nil and s.ticker.backdrop.mode == "card")
+    s = Boot(nil, { xpTicker = false, xpTickerBackground = false })
+    check("migrated while XP per Hour is off too, with nothing built", s.db.xpTickerBackground == "soft"
+        and s.ticker == nil)
+end
+
+do
+    local s = Boot(nil, { xpTickerBackground = "soft" })
+    local t = s.ticker
+    for _ = 1, 50 do tick() end
+    collectgarbage("collect")
+    collectgarbage("stop")
+    local mem = collectgarbage("count")
+    for _ = 1, 2000 do tick() end
+    local grown = collectgarbage("count") - mem
+    collectgarbage("restart")
+    check(("Soft: no garbage per update (%.3f KB over 2000)"):format(grown), grown < 0.05 and t.backdrop.mode == "soft")
+    s.S.Set("xpTickerBackground", "none")
+    collectgarbage("collect")
+    collectgarbage("stop")
+    mem = collectgarbage("count")
+    for _ = 1, 2000 do tick() end
+    grown = collectgarbage("count") - mem
+    collectgarbage("restart")
+    check(("None: no garbage per update (%.3f KB over 2000)"):format(grown), grown < 0.05)
 end
 
 do
