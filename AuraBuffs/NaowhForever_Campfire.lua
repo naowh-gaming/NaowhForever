@@ -7,7 +7,9 @@
 --  state keeps the fire, the words and the bar's size the same; the down states leave the time's
 --  place empty. The bar is never narrower than four wide bonuses need at its text size
 --  (MIN_LABELS), and its text never under 11. Hovering it lists each bonus, the time left and
---  when to refresh.
+--  when to refresh. With Round, the Camp Nearby alert is the same bar (Bar.Nearby), hugging its
+--  words, larger by its own scale, with the camp's time left when it still runs; it fades in,
+--  breathes and fades out through animation groups (FADE), never OnUpdate.
 --  The bonuses come from the hidden aura each camp feature puts on you, by spell ID, else from
 --  Camp Benefits' tooltip (spell 1229741, wago.tools build 1.60.1.70205), read once per Camp
 --  Benefits: one line per feature, matched by the feature's name as the client spells it, its
@@ -36,7 +38,8 @@ local ART_CROP = { 40 / 1024, 993 / 1024, 36 / 1024, 988 / 1024 }
 local TIME_STEPS = { { 1800, St.TIME_OK_RGB }, { 300, St.TIME_LOW_RGB }, { 0, St.TIME_OUT_RGB } }
 local REFRESH_NOW = TIME_STEPS[2][1]
 
-local TEXT_SIZE, ALERT_SIZE = 16, 28
+local TEXT_SIZE = 16
+local FADE = { IN = 0.3, OUT = 0.4, BREATHE = 0.8, LOW = 0.6 }
 -- The plate behind the campfire art; ns.ThemeTint swaps in the player's Panels color.
 local PLATE = { r = 0.14, g = 0.15, b = 0.16 }
 
@@ -46,7 +49,7 @@ local BAR = { PAD = St.PANEL_PAD, TEXT = 12, TEXT_MIN = 11, LINE_H = 2, FONT_LIF
 local MIN_LABELS = { "+8% Stats", "+308 Armor", "+2% Crit", "+29 MP5" }
 local SIT_PREFIX = "in "
 local TIME_SAMPLE, SIT_SAMPLE = "44m", SIT_PREFIX .. "44s"
-local DEFAULT_X, DEFAULT_Y = -260, 120
+local DEFAULT_X, DEFAULT_Y, ALERT_Y = -260, 120, 150
 local UNLOCK_TEXT = "+Rested\n+Crit"
 
 local FEATURES = {
@@ -206,13 +209,6 @@ function Look.Missing(icon)
     Look.Timed(icon, false)
 end
 
-function Look.Alert(alert)
-    alert.text = Parts.HudText(ns.Font(alert, ALERT_SIZE, nil, T.fg))
-    alert.text:SetPoint("CENTER")
-    alert.text:SetText(ns.Color("accent", "Camp") .. " Nearby")
-    alert:SetSize(alert.text:GetStringWidth() + 16, 40)
-end
-
 local Bar = {}
 
 local function Edge(f, axis)
@@ -275,10 +271,10 @@ function Bar.Layout(f)
     f.time:SetPoint("RIGHT", f.bar, "RIGHT", -BAR.PAD, f.textY)
 end
 
-function Bar.New(host)
+function Bar.New(host, opts)
     local f = CreateFrame("Frame", nil, host)
     f:SetAllPoints()
-    f.host = host
+    f.host, f.hug = host, opts and opts.hug or false
     f.bar = CreateFrame("Frame", nil, f)
     f.bar:SetAllPoints()
     f.backdrop = Parts.Backdrop(f.bar)
@@ -324,7 +320,12 @@ local function MoreText(n)
 end
 
 local function BarSize(f)
-    f.host:SetSize(f.width, f.height)
+    local w = f.width
+    if f.hug then
+        w = f.labelX + f.note:GetStringWidth() + BAR.PAD
+        if f.slot > 0 then w = w + BAR.TIME_GAP + f.slot end
+    end
+    f.host:SetSize(math.ceil(w), f.height)
 end
 
 local function PlaceLabels(f)
@@ -398,8 +399,8 @@ function Bar.Sitting(f, labels, icons, n, timed, upcoming)
     BarFit(f, labels, icons, n, timed and f.sitW or 0)
 end
 
-function Bar.Missing(f, nearby)
-    BarLit(f, false)
+function Bar.Missing(f, nearby, lit)
+    BarLit(f, lit and true or false)
     f.lead, f.more, f.group = 0, 0, 0
     f.labels:SetLabels(nil, 0)
     PlaceLabels(f)
@@ -407,6 +408,80 @@ function Bar.Missing(f, nearby)
     Bar.Timed(f, false)
     f.pill, f.slot = true, 0
     BarSize(f)
+end
+
+function Bar.Nearby(f, start, duration)
+    Bar.Missing(f, true, start ~= nil)
+    if start then
+        Bar.Paint(f, Look.Step(start + duration - GetTime())[2], true)
+        if f.runStart ~= start or f.runLength ~= duration then
+            f.runStart, f.runLength = start, duration
+            f.line:Run(start, duration)
+        end
+        Bar.Timed(f, true)
+        f.slot = f.timeW
+        BarSize(f)
+    else
+        f.runStart, f.runLength = nil, nil
+    end
+end
+
+local function AlertFaded(a)
+    a.leaving = false
+    a:Hide()
+end
+
+local function AlertShown(a)
+    if S.Get("campAlertFade") then a.breathe:Play() end
+end
+
+local function AlertStop(a)
+    a.fadeIn:Stop()
+    a.breathe:Stop()
+    a.fadeOut:Stop()
+    a.leaving = false
+end
+
+local function Fader(a, from, to, duration, finished)
+    local group = a:CreateAnimationGroup()
+    local anim = group:CreateAnimation("Alpha")
+    anim:SetFromAlpha(from)
+    anim:SetToAlpha(to)
+    anim:SetDuration(duration)
+    anim:SetSmoothing("IN_OUT")
+    if finished then
+        group:SetToFinalAlpha(true)
+        group:SetScript("OnFinished", function() finished(a) end)
+    end
+    return group
+end
+
+local function AlertLook(a)
+    a.bar = Bar.New(a, { hug = true })
+    a.fadeIn = Fader(a, 0, 1, FADE.IN, AlertShown)
+    a.fadeOut = Fader(a, 1, 0, FADE.OUT, AlertFaded)
+    a.breathe = Fader(a, 1, FADE.LOW, FADE.BREATHE)
+    a.breathe:SetLooping("BOUNCE")
+    a.leaving = false
+end
+
+local function AlertFade(a, show)
+    local fade = S.Get("campAlertFade")
+    if show then
+        if a:IsShown() and not a.leaving then return end
+        AlertStop(a)
+        a:SetAlpha(1)
+        a:Show()
+        if fade then a.fadeIn:Play() end
+    elseif a:IsShown() and not a.leaving then
+        AlertStop(a)
+        if fade then
+            a.leaving = true
+            a.fadeOut:Play()
+        else
+            a:Hide()
+        end
+    end
 end
 
 local icon, unlocked
@@ -758,7 +833,7 @@ local function BuildAlert()
     alert = CreateFrame("Frame", "NaowhForeverCampNearby", UIParent)
     alert:SetMovable(true)
     alert:SetClampedToScreen(true)
-    Look.Alert(alert)
+    AlertLook(alert)
     -- Ctrl-click dismisses it. It takes the mouse only while Ctrl is down, so an ordinary click
     -- or camera drag in the middle of the screen still reaches the world.
     alert:EnableMouse(false)
@@ -766,31 +841,45 @@ local function BuildAlert()
         self:EnableMouse(IsControlKeyDown())
         self:RegisterEvent("MODIFIER_STATE_CHANGED")
     end)
-    alert:SetScript("OnHide", function(self) self:UnregisterEvent("MODIFIER_STATE_CHANGED") end)
+    alert:SetScript("OnHide", function(self)
+        AlertStop(self)
+        self:UnregisterEvent("MODIFIER_STATE_CHANGED")
+    end)
     alert:SetScript("OnEvent", function(self) self:EnableMouse(IsControlKeyDown()) end)
     alert:SetScript("OnMouseUp", function(self, button)
         if button == "LeftButton" and IsControlKeyDown() and not unlocked then
             alertDismissed = true
-            self:Hide()
+            AlertFade(self, false)
         end
     end)
-    alert.mover = ns.UI.AttachMover(alert, "Camp Nearby", function(pos) S.Set("campAlertPos", pos) end,
-        "AuraBuffs/Settings", "AuraBuffs/Settings:campNearby")
-    local pos = S.Get("campAlertPos")
-    if pos then
-        alert:SetPoint(pos.point, UIParent, pos.relPoint, pos.x, pos.y)
-    else
-        alert:SetPoint("CENTER", UIParent, "CENTER", 0, 150)
-    end
+    alert.mover = ns.UI.AttachMover(alert, "Camp Nearby", function(pos)
+        local scale = alert:GetScale()
+        S.Set("campAlertPos", { point = pos.point, relPoint = pos.relPoint, x = pos.x * scale, y = pos.y * scale })
+    end, "AuraBuffs/Settings", "AuraBuffs/Settings:campNearby")
     alert:Hide()
 end
 
-local function SetAlert(show)
+local function LayoutAlert()
+    local scale = S.Get("campAlertScale")
+    alert:SetScale(scale)
+    Bar.Layout(alert.bar)
+    local pos = S.Get("campAlertPos")
+    alert:ClearAllPoints()
+    if pos then
+        alert:SetPoint(pos.point, UIParent, pos.relPoint, pos.x / scale, pos.y / scale)
+    else
+        alert:SetPoint("CENTER", UIParent, "CENTER", 0, ALERT_Y / scale)
+    end
+end
+
+local function SetAlert(show, start, duration)
     if not alert then
         if not show then return end
         BuildAlert()
+        LayoutAlert()
     end
-    alert:SetShown(show)
+    if show then Bar.Nearby(alert.bar, start, duration) end
+    AlertFade(alert, show)
 end
 
 local EFFECT_TAGS = {
@@ -1002,7 +1091,10 @@ local function UpdateAlert(aura)
         return
     end
     local low = S.Get("campNearbyMinutes") * 60
-    SetAlert(not aura or left < low)
+    local duration = aura and aura.duration
+    if duration and (Secret(duration) or duration <= 0) then duration = nil end
+    local timed = aura and duration and left < low
+    SetAlert(not aura or left < low, timed and expiry - duration or nil, timed and duration or nil)
     if not (aura and left >= low) then
         DisarmAlert()
     elseif alertArmed ~= expiry then
@@ -1119,7 +1211,10 @@ local function Apply()
     end
     shownExpiry = nil
     Refresh()
-    if alert then alert.mover:SetShown(unlocked == true) end
+    if alert then
+        LayoutAlert()
+        alert.mover:SetShown(unlocked == true)
+    end
 end
 
 local function Restyle()
@@ -1164,7 +1259,7 @@ if not Settings then return end
 local Group = Settings.Group
 
 local OFF = "Turn on AuraBuffs"
-local STAGE_H, ALERT_H, NOTE_Y, NOTE_SIZE, NOTE_GAP_Y, STAGE_MARGIN, HINT_ROOM = 230, 90, 10, 11, 4, 16, 30
+local STAGE_H, ALERT_H, NOTE_Y, NOTE_SIZE, NOTE_GAP_Y, STAGE_MARGIN, HINT_ROOM = 230, 120, 10, 11, 4, 16, 30
 local CAMP_HOUR, SIT_TIME, BUFF_GAP = 3600, 60, 12
 local EDGE_HIT, HIDDEN_ALPHA, DRAG_FACTOR = 8, 0.35, 2
 local WIDTH_RANGE, TEXT_RANGE, HEIGHT_RANGE = { 200, 480, 5 }, { BAR.TEXT_MIN, 16, 1 }, { 20, 36, 1 }
@@ -1172,7 +1267,7 @@ local SAMPLE_BUFFS = "+Rested\n+Crit"
 local SIMPLE_HINT = "Drag the right edge for width. Wheel: text size (Shift: height). Click a bonus or the time "
     .. "to show or hide it. Right-click for more."
 local SIMPLE_OFF_HINT = "Turn on the Campfire reminder to edit the bar here."
-local SAMPLES = { up = 2400, low = 720, sitting = 35, unread = 2400 }
+local SAMPLES = { up = 2400, low = 720, sitting = 35, unread = 2400, alert = 100 }
 local STYLES = { { round = "Round", simple = "Simple" }, { "round", "simple" } }
 local BUFF_MODES = { { off = "Off", always = "Always", hover = "On Mouseover" }, { "off", "always", "hover" } }
 local SIDES = { { below = "Below", above = "Above", left = "Left", right = "Right" },
@@ -1191,8 +1286,11 @@ local STATES = {
     { key = "unread", label = "No Bonuses", tip = "Camp Benefits up, with no bonuses listed on it.", needs = Simple },
 }
 local ALERT_STATES = {
-    { key = "nearby", label = "Camp Nearby", tip = "A campfire in range while your camp needs refreshing." },
+    { key = "nearby", label = "Camp Nearby", tip = "A campfire in range and no Camp Benefits." },
+    { key = "low", label = "Running Low", tip = "A campfire in range and Camp Benefits about to run out." },
 }
+local ALERT_SCALE = { 100, 250, 10 }
+local ALERT_HINT = "Wheel: size. Right-click for more."
 
 local campCard
 
@@ -1413,16 +1511,59 @@ local function PaintPreview(shot, state)
     shot.note:SetText(note or "")
 end
 
+local alertCard
+
+local function AlertWheel(_, delta)
+    local v = Settings.Snap(S.Get("campAlertScale") * 100 + delta * ALERT_SCALE[3], ALERT_SCALE) / 100
+    if v ~= S.Get("campAlertScale") then S.Set("campAlertScale", v) end
+end
+
+local function ResetAlert()
+    for _, row in ipairs(alertCard.rows) do
+        if row.key == "campAlertScale" or row.key == "campAlertFade" then Settings.ResetRow(row) end
+    end
+end
+
+local function AlertMenu(_, root)
+    root:CreateTitle("Camp Nearby")
+    root:CreateCheckbox("Fade", Toggled, Toggle, "campAlertFade")
+    root:CreateDivider()
+    root:CreateButton("Reset", ResetAlert)
+end
+
 local function NewAlert(stage)
     local shot = CreateFrame("Frame", nil, stage)
     shot:SetAllPoints()
     shot.alert = CreateFrame("Frame", nil, shot)
-    Look.Alert(shot.alert)
-    shot.alert:SetPoint("CENTER")
+    AlertLook(shot.alert)
+    shot.zone = Settings.EditZone(shot.alert, { wheel = AlertWheel, menu = AlertMenu })
+    shot.zone:SetAllPoints()
+    shot.hint = ns.Font(shot, NOTE_SIZE, nil, T.muted)
+    shot.hint:SetPoint("BOTTOMLEFT", STAGE_MARGIN, NOTE_Y)
+    shot.hint:SetPoint("BOTTOMRIGHT", -STAGE_MARGIN, NOTE_Y)
     return shot
 end
 
-local function PaintAlert() end
+local function PaintAlert(shot, state)
+    local a, f = shot.alert, shot.alert.bar
+    Bar.Layout(f)
+    if state == "low" then
+        Bar.Nearby(f, GetTime() - (CAMP_HOUR - SAMPLES.alert), CAMP_HOUR)
+    else
+        Bar.Nearby(f)
+    end
+    local scale = S.Get("campAlertScale")
+    local half = (f.labelX + f.note:GetStringWidth() + BAR.PAD) / 2
+    a:SetScale(scale)
+    a:ClearAllPoints()
+    a:SetPoint("LEFT", shot, "CENTER", -half, HINT_ROOM / 2 / scale)
+    AlertStop(a)
+    a:SetAlpha(1)
+    if S.Get("campAlertFade") then a.breathe:Play() end
+    local editable = RoundCampOn() and S.Get("campNearbyAlert") and true or false
+    shot.zone:SetShown(editable)
+    shot.hint:SetText(editable and ALERT_HINT or "")
+end
 
 local function CampSummary(store)
     if store.Get("campStyle") == "simple" then
@@ -1502,14 +1643,19 @@ campCard = page:Card({
     },
 })
 
-page:Card({
+alertCard = page:Card({
     id = "campNearby", name = "Camp Nearby", order = 30, switch = "campNearbyAlert",
-    help = "With the Round style, a big \"Camp Nearby\" when a campfire is in range and your camp needs refreshing.",
+    help = "With the Round style, a Camp Nearby bar when a campfire is in range and your camp needs a refresh.",
     summary = AlertSummary,
     studio = { height = ALERT_H, states = ALERT_STATES, new = NewAlert, paint = PaintAlert },
     rows = {
         { key = "campNearbyMinutes", label = "Alert Under", slider = { 1, 59, 1 }, unit = " min",
           needs = RoundCampOn, why = "Needs the Campfire reminder, Round style",
           help = "How little Camp Benefits time counts as needing a refresh." },
+        { key = "campAlertScale", label = "Alert Size", slider = ALERT_SCALE, unit = "%", scale = 0.01,
+          needs = RoundCampOn, why = "Needs the Campfire reminder, Round style" },
+        { key = "campAlertFade", label = "Fade", toggle = true,
+          needs = RoundCampOn, why = "Needs the Campfire reminder, Round style",
+          help = "Fades the alert in and out, breathing softly while it shows." },
     },
 })

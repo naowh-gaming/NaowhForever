@@ -6,7 +6,9 @@
 -- the Mana Well's mana and period). The bar is one rectangle with the fire inside it, sized from
 -- its height; every state keeps the fire and the words in one place; the width never drops under
 -- what four wide bonuses need at the text size, nor the text under 11; the card's preview edits
--- the bar from a fixed spot; its rows follow the style; and a refresh makes no garbage.
+-- the bar from a fixed spot; its rows follow the style; and a refresh makes no garbage. The Camp
+-- Nearby alert is the same bar, fading in, breathing while shown and stopping when hidden, with
+-- an editable preview.
 
 local Load = dofile("Tools/regression/load_files.lua")
 local TocFiles = dofile("Tools/regression/toc_files.lua")
@@ -80,6 +82,7 @@ end
 local function Fixture(settings)
     local state = { now = 1000, auras = {}, frames = {}, named = {}, timers = {}, bars = 0, tips = {},
         tooltipReads = 0, secret = false, combat = false, cursorX = 0, cursorY = 0, shift = false, menus = 0,
+        groups = {},
         tooltip = { lines = { { leftText = "Camp Benefits" } } }, spellNames = {} }
     for id, name in pairs(NAMES) do state.spellNames[id] = name end
     local widths = {}
@@ -150,6 +153,30 @@ local function Fixture(settings)
         CreateTexture = function(f) return Frame(f) end,
         CreateMaskTexture = function(f) return Frame(f) end,
         CreateFontString = function(f) return Frame(f) end,
+        CreateAnimationGroup = function(f)
+            local group = { owner = f, playing = false, plays = 0, scripts = {} }
+            function group.CreateAnimation(g)
+                g.anim = setmetatable({}, { __index = function(anim, key)
+                    return function(_, v) anim[key .. "Value"] = v end
+                end })
+                return g.anim
+            end
+            function group.SetLooping(g, mode) g.looping = mode end
+            function group.SetToFinalAlpha(g, on) g.final = on end
+            function group.SetScript(g, script, fn) g.scripts[script] = fn end
+            function group.IsPlaying(g) return g.playing end
+            function group.Stop(g) g.playing = false end
+            function group.Play(g)
+                g.plays = g.plays + 1
+                g.playing = true
+                if not g.looping and g.scripts.OnFinished then
+                    g.playing = false
+                    g.scripts.OnFinished(g)
+                end
+            end
+            state.groups[#state.groups + 1] = group
+            return group
+        end,
     }
     setmetatable(METHODS, { __index = function(_, key)
         if type(key) == "string" and key:find("^%u") then return NOTHING end
@@ -555,14 +582,51 @@ do
         icon.label.flags == nil and icon.label.shadow == s.St.HUD_SHADOW_ALPHA)
     s.ns.ShowRaidReminderAnchorConfig()
     local alert = s.named.NaowhForeverCampNearby
-    check("Camp Nearby in the house text style, in the theme's text color", alert and alert.text.flags == nil
-        and alert.text.shadow == s.St.HUD_SHADOW_ALPHA and Same(alert.text, s.T.fg))
+    local ab = alert and alert.bar
+    check("Camp Nearby is the bar's own component: same builder, same words, same sizes", ab
+        and ab.backdrop and ab.line and ab.labels and ab.note.text == bar.nearbyText
+        and ab.note.size == bar.note.size and ab.campSize == bar.campSize and ab.labelX == bar.labelX
+        and rawget(ab.camp, "plate") == nil and ab.hug == true and rawget(alert, "text") == nil)
+    check("Camp Nearby hugs its words and is drawn larger by its own scale",
+        alert.w == math.ceil(29 + W("Camp Nearby" .. s.St.PLACE_DOT .. "sit to refresh") + 10) and alert.h == 26)
     s.ns.HideRaidReminderAnchorConfig()
+    check("leaving Unlock Mode fades it out, then hides it, its animations stopped", alert.shown == false
+        and not alert.breathe.playing and not alert.fadeIn.playing and alert.fadeOut.plays > 0)
+    local fadeIns = alert.fadeIn.plays
     s.auras[NEARBY] = {}
     s.fire("UNIT_AURA")
-    check("Round: the big Camp Nearby alert shows as before", alert.shown == true)
+    check("Round: Camp Nearby shows, fading in, then breathing softly while shown", alert.shown == true
+        and alert.fadeIn.plays == fadeIns + 1 and alert.breathe.playing and alert.breathe.looping == "BOUNCE"
+        and alert.breathe.anim.SetToAlphaValue == 0.6 and alert.fadeIn.anim.SetFromAlphaValue == 0)
+    s.fire("UNIT_AURA")
+    check("an aura change while shown does not restart the fade", alert.fadeIn.plays == fadeIns + 1)
+    local timers = 0
+    for _, f in ipairs(s.frames) do if f.scripts.OnUpdate then timers = timers + 1 end end
+    check("no OnUpdate: the client runs the fade", timers == 0)
+    check("no camp time to show: the time's place empty, the fire grey", ab.time.shown == false
+        and ab.camp.tex.desaturated == true)
+    s.auras[CAMP] = { duration = 3600, expirationTime = s.now + 90, auraInstanceID = 9 }
+    s.fire("UNIT_AURA")
+    check("camp still running: its time left on the right, in red, over a running line, the fire lit",
+        alert.shown == true and ab.time.shown ~= false and ab.line.binding.enabled == true and ab.slot == ab.timeW
+        and Same(ab.time, s.St.TIME_OUT_RGB) and ab.camp.tex.desaturated == false
+        and alert.w == math.ceil(29 + W("Camp Nearby" .. s.St.PLACE_DOT .. "sit to refresh") + 10 + 12 + ab.timeW))
+    s.auras[CAMP] = nil
+    s.fire("UNIT_AURA")
+    alert.scripts.OnHide(alert)
+    check("hidden: every animation stops", not alert.breathe.playing and not alert.fadeIn.playing)
+    alert.shown = true
+    s.S.Set("campAlertFade", false)
+    local played = alert.fadeOut.plays
+    s.auras[NEARBY] = nil
+    s.fire("UNIT_AURA")
+    check("Fade off: it goes at once, no animation", alert.shown == false and alert.fadeOut.plays == played)
+    s.auras[NEARBY] = {}
+    s.fire("UNIT_AURA")
+    check("Fade off: it comes back at once, no breathing", alert.shown == true and not alert.breathe.playing)
+    s.S.Set("campAlertFade", true)
     s.S.Set("campStyle", "simple")
-    check("Simple: the big alert hides, the bar's own pill covers it", alert.shown == false and bar.pill
+    check("Simple: the alert hides, the bar's own pill covers it", alert.shown == false and bar.pill
         and Plain(bar.note.text) == "Camp Nearby" .. s.St.PLACE_DOT .. "sit to refresh")
     pos = s.S.Get("campPos")
     check("switching to Simple keeps its left edge where it was", pos.point == "LEFT" and pos.x == 250)
@@ -884,6 +948,45 @@ do
         if row.help and (#row.help > 100 or row.help:find("%. %u")) then short = false; print("  long: " .. row.key) end
     end
     check("rows: every help is one short sentence", short)
+end
+
+-- The Camp Nearby card's preview: the alert in the bar's style, breathing, sized by the wheel.
+do
+    local s = Fixture()
+    s.fire("PLAYER_LOGIN")
+    local card = s.ns.Shared.Settings.pages["AuraBuffs/Settings"].cards.campNearby
+    local shot = card.studio.new(s.Frame())
+    shot.w, shot.h = 700, 120
+    card.studio.paint(shot, "nearby")
+    local a = shot.alert
+    check("alert preview: the shared bar, Camp Nearby with the fire grey and no time", a.bar.pill
+        and Plain(a.bar.note.text) == "Camp Nearby" .. s.St.PLACE_DOT .. "sit to refresh"
+        and a.bar.time.shown == false and a.bar.camp.tex.desaturated == true)
+    check("alert preview: it breathes while shown", a.breathe.playing and a.breathe.looping == "BOUNCE")
+    local left = a.pt.LEFT
+    card.studio.paint(shot, "low")
+    check("alert preview Running Low: the time on the right, the same left edge", a.bar.time.shown ~= false
+        and a.bar.slot == a.bar.timeW and a.pt.LEFT == left and a.w > math.ceil(29 + W("Camp Nearby"
+        .. s.St.PLACE_DOT .. "sit to refresh") + 10))
+    check("alert preview: editable, with its hint", shot.zone.shown ~= false and shot.hint.text:find("Wheel", 1, true))
+    shot.zone.scripts.OnMouseWheel(shot.zone, 1)
+    check("wheel: the alert grows a step", math.abs(s.S.Get("campAlertScale") - 1.5) < 1e-9)
+    for _ = 1, 20 do shot.zone.scripts.OnMouseWheel(shot.zone, 1) end
+    check("wheel: never past its largest", math.abs(s.S.Get("campAlertScale") - 2.5) < 1e-9)
+    shot.zone.over = true
+    shot.zone.scripts.OnMouseUp(shot.zone, "RightButton")
+    local entries = s.menuEntries()
+    check("right-click: Fade and Reset", entries:find("check:Fade", 1, true) and entries:find("button:Reset", 1, true))
+    s.S.Set("campAlertFade", false)
+    card.studio.paint(shot, "nearby")
+    check("alert preview with Fade off: still, at full strength", not a.breathe.playing and a.alpha == 1)
+    local rows = {}
+    for _, row in ipairs(card.rows) do rows[#rows + 1] = row.key end
+    check("alert card: Alert Under, Alert Size and Fade", table.concat(rows, " ")
+        == "campNearbyMinutes campAlertScale campAlertFade")
+    s.values.campStyle = "simple"
+    card.studio.paint(shot, "nearby")
+    check("alert preview: not editable with the Simple style", shot.zone.shown == false and shot.hint.text == "")
 end
 
 print(checks .. " campfire look checks passed")
