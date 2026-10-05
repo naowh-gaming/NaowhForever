@@ -1098,6 +1098,31 @@ do
         end
     end
     check("Sunken Temple's bosses say their loot is still to come", toCome >= 10 and unknown == 0)
+    local function findBoss(key, name)
+        for _, wing in ipairs(ns.Journal.Get(key).wings) do
+            for _, b in ipairs(wing.bosses) do
+                if b.name == name then return b end
+            end
+        end
+    end
+    for _, name in ipairs({ "Saltspine", "Shadetooth", "Relic Guardian" }) do
+        local b = findBoss("ExcavationSite", name)
+        local known = b.loot and #b.loot >= 3 and b.chance and #b.chance == #b.loot
+        for _, c in ipairs(known and b.chance or {}) do known = known and c > 0 end
+        check("Excavation Site: " .. name .. "'s loot, each with its chance", known)
+    end
+    check("Excavation Site is open: Highland Horror's loot is unknown, not still to come",
+        Parts.BossEmptyText(0, findBoss("ExcavationSite", "Highland Horror")) == "No boss loot known yet")
+    check("Scarlet Monastery is open: Herod's loot is unknown, not still to come",
+        Parts.BossEmptyText(0, findBoss("ScarletMonasteryArmory", "Herod")) == "No boss loot known yet")
+    for _, key in ipairs({ "ScarletMonasteryGraveyard", "ScarletMonasteryLibrary", "ScarletMonasteryArmory",
+        "ScarletMonasteryCathedral", "ExcavationSite", "HallOfThanes", "RuinsOfLordaeron" }) do
+        local still = false
+        for _, wing in ipairs(ns.Journal.Get(key).wings) do
+            for _, b in ipairs(wing.bosses) do still = still or b.notInGame ~= nil end
+        end
+        check("an open dungeon says nothing is still to come: " .. key, not still)
+    end
     -- An item the server will not send: no redraw for it, never waited on again.
     ns.OpenJournalWindow(ns.Journal.Get("Deadmines"))
     local view, refusedID
