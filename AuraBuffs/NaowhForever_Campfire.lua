@@ -1,11 +1,13 @@
 -------------------------------------------------------------------------------
 --  NaowhForever_Campfire.lua -- the AuraBuffs campfire reminder, in two looks on one mover:
---  Round, a camp icon with a time ring and a countdown, and Simple, a slim bar in the windows'
---  backdrop with the campfire seated on its top-left corner, the camp's bonuses with their
---  amounts, and the time left on the right over a line that runs down green, yellow, then red.
---  Every Simple state (active, running low, resting, refresh, camp nearby, no bonuses read)
---  keeps the fire and the words in the same place; the down states hug their words. Hovering
---  the bar lists each bonus with its camp feature, the time left and when to refresh.
+--  Round, a camp icon with a time ring and a countdown, and Simple, a self-contained bar in the
+--  windows' backdrop: the campfire inside it at the left, sized from the bar's height, the
+--  camp's bonuses with their amounts, and the time left on the right over a line that runs down
+--  green, yellow, then red. Nothing draws outside the bar, so it can sit anywhere. Every Simple
+--  state keeps the fire and the words in the same place; the down states hug their words. The
+--  bar is never narrower than four wide bonuses need at its text size (MIN_LABELS), and its text
+--  never under 11. Hovering it lists each bonus, the time left and when to refresh.
+
 --  The bonuses come from the hidden aura each camp feature puts on you, by spell ID, else from
 --  Camp Benefits' tooltip (spell 1229741, wago.tools build 1.60.1.70205), read once per Camp
 --  Benefits: one line per feature, matched by the feature's name as the client spells it, its
@@ -35,10 +37,10 @@ local TEXT_SIZE, ALERT_SIZE = 16, 28
 -- The plate behind the campfire art; ns.ThemeTint swaps in the player's Panels color.
 local PLATE = { r = 0.14, g = 0.15, b = 0.16 }
 
-local BAR = { PAD = St.PANEL_PAD, TEXT = 12, LINE_H = 2, FONT_LIFT = 1, CAMP_TRIM = 2, CAMP_GAP = 8,
-    BONUS_GAP = 10, TIME_GAP = 12, INNER_RING = 1, TIME_RING = 2, OUTER_RING = 1,
-    HALO_GROW = 10, HALO_ALPHA = 0.18, BONUS_ICON_GROW = 1, BONUS_ICON_GAP = 3, BONUS_ICON_DROP = 1 }
-BAR.RING_OUT = BAR.INNER_RING + BAR.TIME_RING + BAR.OUTER_RING
+local BAR = { PAD = St.PANEL_PAD, TEXT = 12, TEXT_MIN = 11, LINE_H = 2, FONT_LIFT = 1, EDGE = 1, ICON_PAD = 2,
+    ICON_RING = 1, CAMP_GAP = 8, BONUS_GAP = 10, TIME_GAP = 12, BONUS_ICON_GROW = 1, BONUS_ICON_GAP = 3,
+    BONUS_ICON_DROP = 1 }
+local MIN_LABELS = { "+8% Stats", "+308 Armor", "+2% Crit", "+29 MP5" }
 local SIT_PREFIX = "in "
 local TIME_SAMPLE, SIT_SAMPLE = "44m", SIT_PREFIX .. "44s"
 local DEFAULT_X, DEFAULT_Y = -260, 120
@@ -205,17 +207,6 @@ end
 
 local Bar = {}
 
-local function Disc(owner, inset, sublevel, color)
-    local disc = owner:CreateTexture(nil, "BACKGROUND", nil, sublevel)
-    ns.PixelInset(disc, -inset)
-    if color then disc:SetColorTexture(color.r, color.g, color.b, 1) end
-    local mask = owner:CreateMaskTexture()
-    mask:SetAllPoints(disc)
-    mask:SetTexture(CIRCLE_MASK, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE", "TRILINEAR")
-    disc:AddMaskTexture(mask)
-    return disc
-end
-
 local function Edge(f, axis)
     local edge = ns.Solid(f.edges, "OVERLAY", St.BORDER_RGB, 1)
     ns.Hairline(edge, axis)
@@ -227,6 +218,8 @@ local function NewEdges(f)
     f.edges:SetAllPoints()
     f.edges:SetFrameLevel(f.line:GetFrameLevel() + 1)
     f.top, f.bottom, f.left, f.right = Edge(f, "h"), Edge(f, "h"), Edge(f, "v"), Edge(f, "v")
+    f.top:SetPoint("TOPLEFT")
+    f.top:SetPoint("TOPRIGHT")
     f.bottom:SetPoint("BOTTOMLEFT")
     f.bottom:SetPoint("BOTTOMRIGHT")
     f.left:SetPoint("TOPLEFT")
@@ -237,31 +230,37 @@ end
 
 local function TextWidth(f, text)
     f.probe:SetText(text)
-    return math.ceil(f.probe:GetStringWidth())
+    return f.probe:GetStringWidth()
+end
+
+local function MinWidth(f, size)
+    local text = 0
+    for i = 1, #MIN_LABELS do text = text + TextWidth(f, MIN_LABELS[i]) end
+    local icons = S.Get("campBonusIcons") and #MIN_LABELS * (size + BAR.BONUS_ICON_GROW + BAR.BONUS_ICON_GAP) or 0
+    local time = S.Get("campTimer") and BAR.TIME_GAP + f.timeW or 0
+    return math.ceil(f.labelX + text + icons + (#MIN_LABELS - 1) * BAR.BONUS_GAP + time + BAR.PAD)
+
 end
 
 function Bar.Layout(f)
-    local size, height = S.Get("campSimpleTextSize"), S.Get("campSimpleHeight")
-    f.width, f.height = S.Get("campSimpleWidth"), height
-    f.campSize = height - BAR.CAMP_TRIM
-    f.radius = f.campSize / 2 + BAR.RING_OUT * ns.OnePixel(f.bar)
-    f.notch = 2 * f.radius
-    f.labelX = f.notch + BAR.CAMP_GAP
+    local size = math.max(BAR.TEXT_MIN, S.Get("campSimpleTextSize"))
+    local height = S.Get("campSimpleHeight")
+    f.height, f.size = height, size
+    f.campSize = height - 2 * (BAR.EDGE + BAR.ICON_PAD + BAR.ICON_RING) - BAR.LINE_H
+    f.campX = BAR.EDGE + BAR.ICON_PAD + BAR.ICON_RING + f.campSize / 2
+    f.labelX = f.campX + f.campSize / 2 + BAR.ICON_RING + BAR.CAMP_GAP
     f.textY = BAR.FONT_LIFT + BAR.LINE_H / 2
-    f.bar:SetHeight(height)
     local font = ns.UIFontPath()
     f.time:SetFont(font, size, "")
     f.note:SetFont(font, size, "")
     f.probe:SetFont(font, size, "")
     f.labels:SetTextSize(size)
-    f.timeW, f.sitW = TextWidth(f, TIME_SAMPLE), TextWidth(f, SIT_SAMPLE)
-    f.halo:SetSize(f.campSize + BAR.HALO_GROW, f.campSize + BAR.HALO_GROW)
+    f.timeW, f.sitW = math.ceil(TextWidth(f, TIME_SAMPLE)), math.ceil(TextWidth(f, SIT_SAMPLE))
+    f.minW = MinWidth(f, size)
+    f.width = math.max(S.Get("campSimpleWidth"), f.minW)
     f.camp:ClearAllPoints()
     f.camp:SetSize(f.campSize, f.campSize)
-    f.camp:SetPoint("CENTER", f.bar, "TOPLEFT", f.radius, 0)
-    f.top:ClearAllPoints()
-    f.top:SetPoint("TOPLEFT", f.bar, "TOPLEFT", f.notch, 0)
-    f.top:SetPoint("TOPRIGHT", f.bar, "TOPRIGHT", 0, 0)
+    f.camp:SetPoint("CENTER", f.bar, "LEFT", f.campX, BAR.LINE_H / 2)
     f.note:ClearAllPoints()
     f.note:SetPoint("LEFT", f.bar, "LEFT", f.labelX, f.textY)
     f.time:ClearAllPoints()
@@ -273,8 +272,7 @@ function Bar.New(host)
     f:SetAllPoints()
     f.host = host
     f.bar = CreateFrame("Frame", nil, f)
-    f.bar:SetPoint("BOTTOMLEFT")
-    f.bar:SetPoint("BOTTOMRIGHT")
+    f.bar:SetAllPoints()
     f.backdrop = Parts.Backdrop(f.bar)
     f.backdrop:Paint(St.BACKDROP_ALPHA)
 
@@ -291,29 +289,16 @@ function Bar.New(host)
     f.note:SetWordWrap(false)
     f.probe = ns.Font(f.bar, BAR.TEXT)
     f.probe:Hide()
-    f.campText = "Camp Benefits"
+    f.campText = "Camp Active" .. ns.Color("muted", St.PLACE_DOT .. "no bonuses")
     f.restText = "Resting"
     f.refreshText = ns.Color("accent", "Refresh") .. " Camp"
     f.nearbyText = ns.Color("accent", "Camp Nearby") .. ns.Color("muted", St.PLACE_DOT .. "sit to refresh")
     f.moreLabels, f.moreIcons, f.more = {}, {}, 0
 
-    f.capClip = CreateFrame("Frame", nil, f)
-    f.capClip:SetPoint("BOTTOMLEFT", f.bar, "TOPLEFT")
-    f.capClip:SetPoint("TOPRIGHT", f, "TOPRIGHT")
-    f.capClip:SetClipsChildren(true)
-    f.capClip:SetFrameLevel(f.edges:GetFrameLevel() + 1)
-    f.camp = CreateFrame("Frame", nil, f)
-    f.camp:SetFrameLevel(f.capClip:GetFrameLevel() + 2)
-    f.cap = CreateFrame("Frame", nil, f.capClip)
-    f.cap:SetAllPoints(f.camp)
-    f.cap:SetFrameLevel(f.capClip:GetFrameLevel() + 1)
-    f.outerRing = Disc(f.cap, BAR.RING_OUT, 0, St.BORDER_RGB)
+    f.camp = CreateFrame("Frame", nil, f.bar)
+    f.camp:SetFrameLevel(f.edges:GetFrameLevel() + 1)
     CampArt(f.camp)
-    f.timeRing = Disc(f.camp, BAR.INNER_RING + BAR.TIME_RING, -1)
-    f.halo = Parts.Smooth(f:CreateTexture(nil, "BACKGROUND"), St.ROUND)
-    f.halo:SetBlendMode("ADD")
-    f.halo:SetPoint("CENTER", f.camp)
-    f.lit, f.low, f.lead, f.group, f.pill, f.pillW, f.slot, f.color = true, false, 0, 0, false, 0, 0, T.accent
+    f.lit, f.low, f.lead, f.group, f.pill, f.pillW, f.slot = true, false, 0, 0, false, 0, 0
     Bar.Layout(f)
     Bar.Paint(f, T.accent, false)
     return f
@@ -331,7 +316,7 @@ local function MoreText(n)
 end
 
 local function BarSize(f)
-    f.host:SetSize(f.pill and f.pillW or f.width, f.height + f.radius)
+    f.host:SetSize(f.pill and f.pillW or f.width, f.height)
 end
 
 local function PlaceLabels(f)
@@ -366,25 +351,14 @@ local function BarNote(f, text, color)
     f.note:Show()
 end
 
-local function RingColor(f)
-    local c = f.lit and f.color or T.muted
-    f.timeRing:SetColorTexture(c.r, c.g, c.b, 1)
-end
-
 local function BarLit(f, on)
     f.lit = on
     f.camp.tex:SetDesaturated(not on)
-    RingColor(f)
-    f.halo:SetShown(on and f.low)
 end
 
 function Bar.Paint(f, color, low)
     f.low = low and true or false
-    f.color = color
     f.line:Paint(color, f.low and color or T.fg)
-    RingColor(f)
-    f.halo:SetVertexColor(color.r, color.g, color.b, BAR.HALO_ALPHA)
-    f.halo:SetShown(f.lit and f.low)
 end
 
 function Bar.Timed(f, on)
@@ -422,13 +396,11 @@ function Bar.Missing(f, nearby)
     f.labels:SetLabels(nil, 0)
     PlaceLabels(f)
     BarNote(f, nearby and f.nearbyText or f.refreshText, T.fg)
-
     Bar.Timed(f, false)
     f.pill, f.slot = true, 0
     f.pillW = math.ceil(f.labelX + f.note:GetStringWidth() + BAR.PAD)
     BarSize(f)
 end
-
 
 local icon, unlocked
 local hasCamp       -- nil until the first read
@@ -597,7 +569,8 @@ local function ShowTip(owner)
         if bonusCount > 0 then
             TipBonuses(tip)
         else
-            tip:AddLine("No bonuses listed on it yet", muted.r, muted.g, muted.b)
+            tip:AddLine("Camp Benefits is up, but it lists no bonuses: this camp may have no features, or they "
+                .. "can't be read yet.", muted.r, muted.g, muted.b, true)
         end
         if campExpiry then
             local left = campExpiry - GetTime()
@@ -1187,7 +1160,7 @@ local OFF = "Turn on AuraBuffs"
 local STAGE_H, ALERT_H, NOTE_Y, NOTE_SIZE, NOTE_GAP_Y, STAGE_MARGIN, HINT_ROOM = 230, 90, 10, 11, 4, 16, 30
 local CAMP_HOUR, SIT_TIME, BUFF_GAP = 3600, 60, 12
 local EDGE_HIT, HIDDEN_ALPHA, DRAG_FACTOR = 8, 0.35, 2
-local WIDTH_RANGE, TEXT_RANGE, HEIGHT_RANGE = { 200, 480, 5 }, { 10, 16, 1 }, { 20, 36, 1 }
+local WIDTH_RANGE, TEXT_RANGE, HEIGHT_RANGE = { 200, 480, 5 }, { BAR.TEXT_MIN, 16, 1 }, { 20, 36, 1 }
 local SAMPLE_BUFFS = "+Rested\n+Crit"
 local SIMPLE_HINT = "Drag the right edge for width. Wheel: text size (Shift: height). Click a bonus or the time "
     .. "to show or hide it. Right-click for more."
@@ -1245,7 +1218,6 @@ local function StylePicked(style) return S.Get("campStyle") == style end
 local function PickStyle(style) S.Set("campStyle", style) end
 local function BonusClicked(zone) ToggleBonus(zone.feature) end
 local function TimeClicked() Toggle("campTimer") end
-local function WidthGet() return S.Get("campSimpleWidth") end
 local function WidthSet(v) S.Set("campSimpleWidth", v) end
 
 local function ResetBar()
@@ -1332,7 +1304,9 @@ local function PreviewBar(shot)
     shot.timeZone = Zone(shot, { click = TimeClicked, wash = true })
     shot.timeZone:SetPoint("TOPRIGHT", f.bar, "TOPRIGHT")
     shot.timeZone:SetPoint("BOTTOMRIGHT", f.bar, "BOTTOMRIGHT")
-    shot.widthZone = Zone(shot, { edge = true, drag = { get = WidthGet, set = WidthSet, range = WIDTH_RANGE,
+    shot.dragRange = { WIDTH_RANGE[1], WIDTH_RANGE[2], WIDTH_RANGE[3] }
+    shot.widthZone = Zone(shot, { edge = true, drag = { get = function() return f.width end, set = WidthSet,
+        range = shot.dragRange,
         factor = DRAG_FACTOR, live = function(v) f.width = v; BarSize(f) end } })
     shot.widthZone:SetPoint("TOP", f.bar, "TOPRIGHT")
     shot.widthZone:SetPoint("BOTTOM", f.bar, "BOTTOMRIGHT")
@@ -1342,7 +1316,7 @@ end
 
 local function FitBar(shot)
     local host, f = shot.barHost, shot.bar
-    local w, h = f.width, host:GetHeight()
+    local w, h = WIDTH_RANGE[2], f.height
     local roomW = shot:GetWidth() - STAGE_MARGIN * 2
     local roomH = shot:GetHeight() - STAGE_MARGIN * 2 - HINT_ROOM
     local scale = 1
@@ -1350,7 +1324,7 @@ local function FitBar(shot)
     if roomH > 0 and h * scale > roomH then scale = roomH / h end
     host:SetScale(scale)
     host:ClearAllPoints()
-    host:SetPoint("LEFT", shot, "CENTER", -w / 2, HINT_ROOM / 2 / scale)
+    host:SetPoint("LEFT", shot, "LEFT", STAGE_MARGIN / scale, HINT_ROOM / 2 / scale)
 end
 
 local function RunBar(f, left, duration, timed, prefix)
@@ -1386,6 +1360,9 @@ local function PaintBarPreview(shot, state, hidden)
         if i > bonuses then zone:Hide() end
     end
     shot.timeZone:SetWidth(f.timeW + BAR.PAD)
+    local step = WIDTH_RANGE[3]
+    shot.dragRange[1] = math.max(WIDTH_RANGE[1], math.ceil(f.minW / step) * step)
+
     FitBar(shot)
     shot.barHost:SetShown(not hidden)
     shot.hint:SetText(editable and SIMPLE_HINT or SIMPLE_OFF_HINT)

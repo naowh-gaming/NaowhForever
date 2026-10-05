@@ -3,9 +3,11 @@
 -- own widths. Round stays the default and the Simple bar is built only once picked. The bonuses
 -- come from the camp features' own auras, else from Camp Benefits' tooltip, read once per Camp
 -- Benefits and matched by the client's own feature names, with every amount (the Lute's three,
--- the Mana Well's mana and period). Every state keeps the fire and the words in one place, four
--- bonuses with amounts fit at the default width beside the time, the card's preview edits the
--- bar, its rows follow the style, and a refresh makes no garbage.
+-- the Mana Well's mana and period). The bar is one rectangle with the fire inside it, sized from
+-- its height; every state keeps the fire and the words in one place; the width never drops under
+-- what four wide bonuses need at the text size, nor the text under 11; the card's preview edits
+-- the bar from a fixed spot; its rows follow the style; and a refresh makes no garbage.
+
 local Load = dofile("Tools/regression/load_files.lua")
 local TocFiles = dofile("Tools/regression/toc_files.lua")
 local Measure = dofile("Tools/regression/measure.lua")
@@ -106,6 +108,7 @@ local function Fixture(settings)
         GetHeight = function(f) return rawget(f, "h") or 230 end,
         SetPoint = function(f, a, rel, _, d, e) f.pt[a], f.pty[a], f.rel[a] = d or 0, e or 0, rel end,
         ClearAllPoints = function() end,
+        SetAllPoints = function(f, rel) f.all = rel or true end,
         SetShadowColor = function(f, _, _, _, a) f.shadow = a end,
         GetCenter = function(f) return rawget(f, "cx"), rawget(f, "cy") end,
         GetLeft = function(f) return rawget(f, "left") end,
@@ -423,21 +426,29 @@ do
         and math.abs(labels[2].pt.LEFT - (W("Rested") + 10)) < 1e-9
         and math.abs(labels[3].pt.LEFT - labels[2].pt.LEFT - W("+56 Sta") - 10) < 1e-9)
 
-    check("the fire: 24px art in a 32px disc, its centre on the bar's top-left corner edge",
-        bar.campSize == 24 and bar.radius == 16 and bar.camp.pt.CENTER == 16 and bar.camp.pty.CENTER == 0
-        and bar.camp.rel.CENTER == bar.bar and bar.cap.shown ~= false)
-    check("the top edge starts where the disc ends: one notch, the left edge runs up to the disc",
-        bar.top.pt.TOPLEFT == 32 and bar.notch == 32 and bar.left.pt.TOPLEFT == 0)
-    check("the words start a named gap after the disc, a pixel above the line's middle", bar.labelX == 40
-        and bar.labels.pt.LEFT == 40 and bar.labels.pty.LEFT == 2 and bar.note.pt.LEFT == 40)
+    local function Inside(f)
+        local half = f.campSize / 2 + 1
+        local bottom, top = 1 + 2 + 2, f.height - 1 - 2
+        local cy = f.height / 2 + f.camp.pty.CENTER
+        return f.camp.rel.CENTER == f.bar and f.camp.pt.CENTER - half == 1 + 2
+            and cy - half == bottom and cy + half == top and f.camp.parent == f.bar
+    end
+    check("the fire sits inside the bar at the left, framed, padded and centred above the line",
+        bar.campSize == 16 and bar.campX == 12 and Inside(bar) and bar.camp.tex.texture ~= nil)
+    check("one plain rectangle: four full edges, no notch, nothing above it", bar.top.pt.TOPLEFT == 0
+        and bar.top.pt.TOPRIGHT == 0 and bar.left.pt.TOPLEFT == 0 and rawget(bar, "cap") == nil
+        and rawget(bar, "halo") == nil and rawget(bar, "notch") == nil)
+    check("the words start a named gap after the fire, a pixel above the line's middle", bar.labelX == 29
+        and bar.labels.pt.LEFT == 29 and bar.labels.pty.LEFT == 2 and bar.note.pt.LEFT == 29)
     check("the time sits on the right, inside the bar's padding, level with the words",
         bar.time.pt.RIGHT == -10 and bar.time.pty.RIGHT == 2 and bar.time.rel.RIGHT == bar.bar)
-    check("the bar is as tall as set, the disc's top half above it", icon.h == 26 + 16 and bar.bar.h == 26)
+    check("the host is the bar: same width and height, the bar fills it", icon.w == 360 and icon.h == 26
+        and bar.all == true and bar.bar.all == true and next(bar.bar.pt) == nil)
+
     check("the house backdrop and black edge, no custom alpha", bar.backdrop and rawget(bar, "bg") == nil
         and bar.top.color == s.St.BORDER_RGB and s.St.BACKDROP_ALPHA
         and not Read("AuraBuffs/NaowhForever_Campfire.lua"):find("BAR%.ALPHA"))
-    check("a thin time-colored ring inside the black edge", bar.timeRing.shown ~= false
-        and Same(bar.outerRing, s.St.BORDER_RGB))
+    check("the fire is framed in a 1px black ring", bar.camp.ring and Same(bar.camp.ring, s.St.BORDER_RGB))
     check("panel text: no HUD shadow on the bar's words", bar.time.shadow == nil and bar.note.shadow == nil)
     local track
     for _, f in ipairs(s.frames) do if f.parent == bar.line and f.color == s.T.line then track = f end end
@@ -450,12 +461,11 @@ do
     check("the time text is bound to the same timer", line.binding.fontString == bar.time
         and line.binding.enabled == true and bar.time.shown ~= false)
     check("plenty of time: a green line and ring, the time in the text color, no glow",
-        Same(line.to, s.St.TIME_OK_RGB) and Same(bar.timeRing, s.St.TIME_OK_RGB) and Same(bar.time, s.T.fg)
-        and bar.halo.shown == false)
+        Same(line.to, s.St.TIME_OK_RGB) and Same(bar.time, s.T.fg))
     s.advance(700)
     check("the line has shrunk", line:GetValue() < early)
     check("running low: the line, ring and time in yellow, a soft glow", Same(line.to, s.St.TIME_LOW_RGB)
-        and Same(bar.timeRing, s.St.TIME_LOW_RGB) and Same(bar.time, s.St.TIME_LOW_RGB) and bar.halo.shown == true)
+        and Same(bar.time, s.St.TIME_LOW_RGB))
     s.tips = {}
     bar.scripts.OnEnter(bar)
     local text = s.tipText()
@@ -479,8 +489,10 @@ do
     s.fire("UNIT_AURA")
 
     s.S.Set("campSimpleHeight", 30)
-    check("the seat and the notch follow the height", bar.campSize == 28 and bar.radius == 18
-        and bar.top.pt.TOPLEFT == 36 and bar.labelX == 44 and icon.h == 30 + 18)
+    check("the fire grows with Bar Height and stays inside", bar.campSize == 20 and bar.labelX == 33
+        and Inside(bar) and icon.h == 30)
+    s.S.Set("campSimpleHeight", 20)
+    check("the smallest bar still holds the fire inside", bar.campSize == 10 and Inside(bar) and icon.h == 20)
     s.S.Set("campSimpleHeight", 26)
 
     s.S.Set("campHiddenBonuses", { [CHAIR] = true })
@@ -507,11 +519,10 @@ do
     check("down: Refresh Camp, the key word in the accent", s.labels(bar) == "" and bar.note.text
         == "{accent:Refresh} Camp" and bar.note.shown ~= false and Same(bar.note, s.T.fg))
     check("down: the bar hugs its words, the fire still seated in the same place",
-        bar.pill and icon.w == math.ceil(40 + W("Refresh Camp") + 10) and bar.camp.pt.CENTER == 16
-        and bar.camp.pty.CENTER == 0 and bar.note.pt.LEFT == 40 and icon.h == 26 + 16)
+        bar.pill and icon.w == math.ceil(29 + W("Refresh Camp") + 10) and bar.camp.pt.CENTER == 12
+        and Inside(bar) and bar.note.pt.LEFT == 29 and icon.h == 26)
     check("down: the fire grey in a muted ring, no time line", bar.camp.tex.desaturated == true
-        and Same(bar.timeRing, s.T.muted) and bar.line.shown == false and bar.time.shown == false
-        and bar.halo.shown == false)
+        and bar.line.shown == false and bar.time.shown == false)
     check("Simple: no big Camp Nearby alert", s.named.NaowhForeverCampNearby == nil)
     s.tips = {}
     bar.scripts.OnEnter(bar)
@@ -522,8 +533,8 @@ do
     s.fire("UNIT_AURA")
     check("down with a campfire in range: the same pattern, a muted hint after a dot",
         bar.note.text == "{accent:Camp Nearby}{muted:" .. s.St.PLACE_DOT .. "sit to refresh}"
-        and bar.note.pt.LEFT == 40 and icon.w > refreshW
-        and icon.w == math.ceil(40 + W("Camp Nearby" .. s.St.PLACE_DOT .. "sit to refresh") + 10))
+        and bar.note.pt.LEFT == 29 and icon.w > refreshW
+        and icon.w == math.ceil(29 + W("Camp Nearby" .. s.St.PLACE_DOT .. "sit to refresh") + 10))
     s.auras[NEARBY] = nil
     s.fire("UNIT_AURA")
 
@@ -594,24 +605,44 @@ do
         .. "increased by 13, and all resistances increased by 22.", "Camp Chair: Critical strike chance with all "
         .. "spells and attacks increased by 2%.", "Mana Well: Restores 29 Mana every 5 seconds." }, 3)
     check("the widest common four fit at the default width beside the time",
-        s.labels(bar) == "+8% Stats +308 Armor +2% Crit +29 MP5" and bar.more == 0 and s.named.NaowhForeverCampfire.w == 340
-        and bar.group <= 340 - 40 - 10 - bar.timeW - 12)
+        s.labels(bar) == "+8% Stats +308 Armor +2% Crit +29 MP5" and bar.more == 0 and s.named.NaowhForeverCampfire.w == 360
+        and bar.group <= 360 - 29 - 10 - bar.timeW - 12)
+    local minimum = math.ceil(29 + W("+8% Stats") + W("+308 Armor") + W("+2% Crit") + W("+29 MP5") + 3 * 10 + 12
+        + math.ceil(W("44m")) + 10)
+    check("the minimum width is what those four need beside the time, well under the default",
+        bar.minW == minimum and minimum <= 330)
+    s.S.Set("campSimpleWidth", 255)
+    check("a saved width under the minimum draws at the minimum, the saved value kept",
+        bar.width == minimum and s.named.NaowhForeverCampfire.w == minimum and s.S.Get("campSimpleWidth") == 255
+        and bar.more == 0 and s.labels(bar) == "+8% Stats +308 Armor +2% Crit +29 MP5")
+    s.S.Set("campSimpleTextSize", 14)
+    check("a larger text size raises the minimum, and the four still fit", bar.minW > minimum and bar.more == 0
+        and bar.width == bar.minW and bar.labels.size == 14)
+    s.S.Set("campSimpleTextSize", 10)
+    check("text size never draws under 11", bar.labels.size == 11 and bar.time.size == 11 and bar.note.size == 11)
+    s.S.Set("campSimpleTextSize", 12)
+    s.S.Set("campBonusIcons", true)
+    check("bonus icons widen the minimum by four icons", bar.minW == minimum + 4 * (12 + 1 + 3))
+    s.S.Set("campBonusIcons", false)
+    s.S.Set("campSimpleWidth", 360)
     s.camp({ "Tent: rest experience.", "First Aid Kit: Stamina increased by 56.", "Incense Candle: Intellect "
         .. "increased by 25.", "Faction Banner: Spirit increased by 32.", "Camp Chair: Critical strike chance "
         .. "increased by 2%." }, 4)
     check("five common bonuses fit at the default width too", s.labels(bar) == "Rested +56 Sta +25 Int +32 Spi +2% Crit"
         and bar.more == 0)
     s.S.Set("campSimpleWidth", 220)
-    check("narrower: the rest as +N more, never under the time", bar.more > 0
-        and s.labels(bar):find("+" .. bar.more .. " more$") and bar.group <= 220 - 40 - 10 - bar.timeW - 12)
-    local timedMore = bar.more
+    s.camp(TEMPLATE, 5)
+    check("at the minimum, the rest as +N more, never under the time", bar.width == bar.minW and bar.more > 0
+        and s.labels(bar):find("+" .. bar.more .. " more$") and bar.group <= bar.minW - 29 - 10 - bar.timeW - 12)
+    s.S.Set("campSimpleWidth", 400)
+    local timedMore, timedMin = bar.more, bar.minW
     s.S.Set("campTimer", false)
     local untimed = bar.more
     check("without the timer the time's room goes to the bonuses", untimed < timedMore and bar.time.shown == false
+        and bar.group <= 400 - 29 - 10 and bar.minW == timedMin - bar.timeW - 12)
 
-        and bar.group <= 220 - 40 - 10)
     s.S.Set("campTimer", true)
-    s.S.Set("campSimpleWidth", 340)
+    s.S.Set("campSimpleWidth", 360)
 
     s.spellNames[BANNER], s.spellNames[WELL], s.spellNames[CHAIR] = "Fraktionsbanner", "Manabrunnen", "Zhuozi"
     local l = Fixture({ campStyle = "simple" })
@@ -643,12 +674,15 @@ do
     s.fire("UNIT_AURA")
     check("no description yet: still trying", s.tooltipReads == 2)
     s.camp({ "Gained the following camp benefits:" })
-    check("no bonuses read: Camp Benefits in the text color, with its time", Plain(bar.note.text) == "Camp Benefits"
+    check("no bonuses read: Camp Active, then no bonuses muted, with its time", bar.note.text
+        == "Camp Active{muted:" .. s.St.PLACE_DOT .. "no bonuses}"
         and bar.note.shown ~= false and Same(bar.note, s.T.fg) and s.labels(bar) == "" and bar.time.shown ~= false
-        and bar.line.shown ~= false and icon.w == 340 and not bar.pill)
+        and bar.line.shown ~= false and icon.w == 360 and not bar.pill)
     s.tips = {}
     bar.scripts.OnEnter(bar)
-    check("no bonuses read: the tooltip says so, and still gives the time", s.tipText():find("No bonuses listed", 1, true)
+    check("no bonuses read: the tooltip says why, and still gives the time",
+        s.tipText():find("Camp Benefits is up, but it lists no bonuses: this camp may have no features, or they "
+        .. "can't be read yet.", 1, true)
         and s.tipText():find("Time left | 56 min", 1, true))
     local reads = s.tooltipReads
     s.fire("UNIT_AURA")
@@ -658,7 +692,7 @@ do
     local layout = {}
     local function Snap(name)
         layout[#layout + 1] = { name = name, campX = bar.camp.pt.CENTER, campY = bar.camp.pty.CENTER,
-            note = bar.note.pt.LEFT, noteY = bar.note.pty.LEFT, top = bar.top.pt.TOPLEFT, h = icon.h,
+            note = bar.note.pt.LEFT, noteY = bar.note.pty.LEFT, h = icon.h,
             time = bar.time.pt.RIGHT, timeY = bar.time.pty.RIGHT, labels = bar.labels.pt.LEFT - bar.lead,
             labelsY = bar.labels.pty.LEFT }
     end
@@ -670,7 +704,7 @@ do
         bar.note.text == "Resting" and Same(bar.note, s.T.accentSoft) and s.labels(bar) == "Rested +2% Crit"
         and Same(bar.labels.labels[1], s.T.muted) and bar.lead == math.ceil(W("Resting")) + 10)
     check("resting: the countdown reads in 35s, in the accent", bar.line.binding.formatter.points[1].format == "in %ds"
-        and Same(bar.line.to, s.T.accent) and Same(bar.timeRing, s.T.accent))
+        and Same(bar.line.to, s.T.accent))
     s.tips = {}
     bar.scripts.OnEnter(bar)
     check("resting tooltip: when it lands", s.tipText():find("Resting at a campfire", 1, true)
@@ -704,7 +738,7 @@ do
     local same = true
     for _, snap in ipairs(layout) do
         local first = layout[1]
-        for _, key in ipairs({ "campX", "campY", "note", "noteY", "top", "h", "time", "timeY", "labels", "labelsY" }) do
+        for _, key in ipairs({ "campX", "campY", "note", "noteY", "h", "time", "timeY", "labels", "labelsY" }) do
             if snap[key] ~= first[key] then same = false; print("  moved in " .. snap.name .. ": " .. key) end
         end
     end
@@ -734,7 +768,7 @@ do
     card.studio.paint(shot, "low")
     local f = shot.bar
     check("preview: the Simple bar once picked, Running Low in yellow", s.bars == 1 and shot.barHost.shown ~= false
-        and shot.icon.shown == false and Same(f.line.to, s.St.TIME_LOW_RGB) and f.halo.shown == true)
+        and shot.icon.shown == false and Same(f.line.to, s.St.TIME_LOW_RGB))
     check("preview: four sample bonuses with amounts", s.labels(f) == "Rested +56 Sta +25 Int +2% Crit"
         and f.more == 0)
     check("preview: not editable while the reminder is off", shot.widthZone.shown == false
@@ -750,9 +784,18 @@ do
     edge.scripts.OnMouseDown(edge, "LeftButton")
     s.cursorX = 130
     edge.scripts.OnUpdate(edge)
-    check("drag: the bar grows live", shot.barHost.w == 400)
+    check("drag: the bar grows live", shot.barHost.w == 420)
     edge.scripts.OnMouseUp(edge, "LeftButton")
-    check("drag: the right edge sets the width", s.S.Get("campSimpleWidth") == 400)
+    check("drag: the right edge sets the width", s.S.Get("campSimpleWidth") == 420)
+    s.cursorX = 100
+    edge.scripts.OnMouseDown(edge, "LeftButton")
+    s.cursorX = -200
+    edge.scripts.OnUpdate(edge)
+    check("drag: it stops at the width four bonuses need", shot.barHost.w == math.ceil(f.minW / 5) * 5
+        and shot.barHost.w >= f.minW)
+    edge.scripts.OnMouseUp(edge, "LeftButton")
+    check("drag: the stop is what is saved", s.S.Get("campSimpleWidth") == math.ceil(f.minW / 5) * 5)
+    s.S.Set("campSimpleWidth", 360)
 
     local body = shot.zones[1]
     body.scripts.OnMouseWheel(body, 1)
@@ -784,20 +827,20 @@ do
         and entries:find("check:Bonus Icons", 1, true) and entries:find("check:Show Timer", 1, true)
         and entries:find("button:Bonuses", 1, true) and entries:find("button:Reset Bar", 1, true))
 
-    s.S.Set("campSimpleWidth", 205)
     card.studio.paint(shot, "up")
-    check("preview narrow: a bonus behind +N more takes no clicks", f.more > 0
-        and shot.bonusZones[4].shown == false and shot.bonusZones[1].shown ~= false)
-    s.S.Set("campSimpleWidth", 340)
+    local left, leftY = shot.barHost.pt.LEFT, shot.barHost.pty.LEFT
+    check("preview: the bar sits at the stage's left middle", shot.barHost.rel.LEFT == shot and left == 16)
+    s.S.Set("campSimpleWidth", 440)
     card.studio.paint(shot, "up")
-
-    local left = shot.barHost.pt.LEFT
+    check("preview: a wider bar keeps its place", shot.barHost.pt.LEFT == left and shot.barHost.pty.LEFT == leftY)
+    s.S.Set("campSimpleWidth", 360)
 
     card.studio.paint(shot, "sitting")
     check("preview Resting: Resting, then the bonuses muted", f.note.text == "Resting"
         and Same(f.labels.labels[1], s.T.muted) and Same(f.line.to, s.T.accent) and shot.barHost.pt.LEFT == left)
     card.studio.paint(shot, "unread")
-    check("preview No Bonuses: Camp Benefits and the time, no bonus zones", Plain(f.note.text) == "Camp Benefits"
+    check("preview No Bonuses: Camp Active, no bonus zones", Plain(f.note.text) == "Camp Active"
+        .. s.St.PLACE_DOT .. "no bonuses" and shot.barHost.pt.LEFT == left
         and f.labels.count == 0 and shot.bonusZones[1].shown == false and f.time.shown ~= false)
     card.studio.paint(shot, "nearby")
     check("preview Camp Nearby: the hugging pill, only the body editable", f.pill
@@ -805,7 +848,8 @@ do
         and shot.widthZone.shown == false and shot.zones[1].shown ~= false)
     card.studio.paint(shot, "missing")
     check("preview Refresh: the pill, the fire in the same seat", f.pill and Plain(f.note.text) == "Refresh Camp"
-        and f.camp.pt.CENTER == f.radius and shot.barHost.pt.LEFT == left)
+        and f.camp.pt.CENTER == f.campX and shot.barHost.pt.LEFT == left and shot.barHost.pty.LEFT == leftY)
+
 
     local byKey, groups = {}, {}
     for _, row in ipairs(card.rows) do
