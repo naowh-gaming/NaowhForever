@@ -148,8 +148,9 @@ local cursor = { x = 0, y = 0 }
 local combat, shift = false, false
 local settings = { anchors = {} }
 local printed, tooltip = {}, nil
-local T = { accent = { r = 0, g = 0.5, b = 1 }, fg = { r = 1, g = 1, b = 1 }, line = { r = 0, g = 0, b = 0 },
-    panel = { r = 0, g = 0, b = 0 } }
+local T = { accent = { r = 0, g = 0.5, b = 1 }, accentSoft = { r = 0.3, g = 0.7, b = 1 }, fg = { r = 1, g = 1, b = 1 },
+    muted = { r = 0.6, g = 0.6, b = 0.6 }, line = { r = 0.2, g = 0.2, b = 0.2 }, grey = { r = 0.2, g = 0.2, b = 0.2 },
+    panel = { r = 0.1, g = 0.1, b = 0.1 }, bg = { r = 0, g = 0, b = 0 } }
 local ns = {
     THEME = T,
     UnlockModeSettings = {
@@ -166,6 +167,7 @@ local ns = {
     Font = function(parent) return parent:CreateFontString() end,
     UIFontPath = function() return "font" end,
     L = function(text) return text end,
+    Color = function(_, text) return text end,
     Print = function(msg) printed[#printed + 1] = msg end,
     HideRaidReminderAnchorConfig = NOOP,
     OpenOptionsWindow = NOOP,
@@ -173,6 +175,7 @@ local ns = {
 }
 local UI = {
     COGS_ICON = "cog",
+    CHEVRON = "chevron",
     ShowWidgetTooltip = function(_, text) tooltip = text end,
     HideWidgetTooltip = function() tooltip = nil end,
 }
@@ -294,7 +297,7 @@ Check(info and info.target == "Threat Meter" and info.side == "TOP" and info.off
     "the anchor is kept with no offset")
 Check(Last(swingSaved).point == "CENTER" and Near(Last(swingSaved).x, 0) and Near(Last(swingSaved).y, -170),
     "its spot is saved too, CENTER on the screen centre")
-Check(swingMover.text.color[1] == 1 and swingMover.text.color[2] == 0.7, "an anchored element's name turns orange")
+Check(swingMover._placement.chain:IsShown(), "an anchored element shows the chain by its name")
 Check(link.label:GetText() == "Anchored", "the link reads Anchored")
 
 -- Arrow keys move an anchored element by its offsets, one pixel at a time.
@@ -360,6 +363,7 @@ Check(not MenuRow("Offset X"), "Escape closes the menu")
 local before = Center(swing)
 Fire(link, "OnClick")
 Check(not settings.anchors["Swing Timer"] and Near(Center(swing), before), "clicking Anchored unanchors it in place")
+Check(not swingMover._placement.chain:IsShown(), "and the chain goes")
 Check(Last(swingSaved).point == "CENTER" and Near(Last(swingSaved).x, before - 960), "and saves where it is")
 Check(link.label:GetText() == "Anchor", "the link reads Anchor again")
 
@@ -368,7 +372,8 @@ Click(swingMover, "RightButton")
 Fire(MenuRow("Relative to Screen"), "OnEnter")
 Check(MenuRow("Left") and MenuRow("Right") and MenuRow("Top") and MenuRow("Bottom") and MenuRow("Center"),
     "Relative to Screen offers the four edges and Center")
-Check(MenuRow("Center").label.color[2] == 0.7, "Center is the current one while nothing is anchored")
+Check(MenuRow("Center").label.color[3] == T.accent.b and MenuRow("Left").label.color[3] == T.fg.b,
+    "Center is the current one while nothing is anchored")
 local x0, y0 = Center(swing)
 Fire(MenuRow("Right"), "OnClick")
 info = settings.anchors["Swing Timer"]
@@ -395,6 +400,26 @@ W, H = 1920, 1080
 Click(swingMover, "RightButton")
 Fire(MenuRow("Center on Screen"), "OnClick")
 Check(Near(Center(swing), 960), "Center on Screen centres it across")
+
+-- A picked snap target is what a drag lines up with, even with another element nearer.
+local nx, ny = Center(swing)
+local _, nearMover = Display("Durability", 40, 40, nx - W / 2 + 90, ny - H / 2 + 50)
+Click(swingMover, "RightButton")
+Fire(MenuRow("Select Snap Target"), "OnClick")
+Click(meterMover, "LeftButton")
+Check(swingMover._placement.snapTarget == "Threat Meter", "clicking an element makes it the snap target")
+Click(swingMover, "RightButton")
+Check(MenuRow("Snap Target: Threat Meter"), "the cog menu names it")
+Fire(keys, "OnKeyDown", "ESCAPE")
+local mL = meter:GetLeft()
+local sx, sy = Center(swing)
+cursor.x, cursor.y = sx, sy
+UI.StartMoverDrag(swingMover)
+cursor.x = sx + (mL - swing:GetLeft()) + 4
+Drive()
+UI.StopMoverDrag(swingMover)
+Check(Near(swing:GetLeft(), mL), "a drag near its edge snaps to the snap target")
+nearMover:Hide()
 
 -- At login and after a profile switch every anchor is re-applied, parents first.
 settings.anchors["Swing Timer"] = { target = "Threat Meter", side = "BOTTOM", offsetX = 0, offsetY = -10 }

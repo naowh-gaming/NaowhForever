@@ -8,16 +8,16 @@ local ns = _G.NaowhForever
 local T = ns.THEME
 local UI = ns.UI
 
-local ORANGE = { r = 1, g = 0.7, b = 0.3 }
-local MENU_BG = { r = 0.075, g = 0.113, b = 0.141 }
-local MENU_W, SUB_W, DD_W, ITEM_H = 210, 150, 160, 24
+local BLACK = { r = 0, g = 0, b = 0 }
+local WARNING = { r = 1, g = 0.35, b = 0.35 }
+local CHAIN_TEX = "Interface\\AddOns\\NaowhForever\\Media\\chain.tga"
+local MENU_W, SUB_W, DD_W, ITEM_H = 220, 150, 170, 24
 local HOVER_DELAY, ANIM_DUR = 0.12, 0.15
 local SNAP_THRESH = 6          -- UI units a dragged edge snaps from
 local DIM_ALPHA, DIM_FADE = 0.30, 0.5
 local MAX_DEPTH = 20           -- anchor chain length followed at most
 local LINE_TEX = "Interface\\AddOns\\NaowhForever\\Media\\soft-line.tga"
 local PULSE_TEX = "Interface\\AnimaChannelingDevice\\AnimaChannelingDeviceLineVerticalMask"
-local ARROW_TEX = "Interface\\AddOns\\NaowhForever\\Media\\right-arrow.png"
 
 local placement = { active = false, items = {}, byLabel = {} }
 
@@ -293,7 +293,7 @@ local function Dim(on)
         f:SetAllPoints()
         f.tex = f:CreateTexture(nil, "BACKGROUND")
         f.tex:SetAllPoints()
-        f.tex:SetColorTexture(0.02, 0.03, 0.04, 0)
+        f.tex:SetColorTexture(T.bg.r, T.bg.g, T.bg.b, 0)
         f.alpha = 0
         placement.dim = f
     end
@@ -304,7 +304,7 @@ local function Dim(on)
         elapsed = elapsed + dt
         local t = math.min(elapsed / DIM_FADE, 1)
         self.alpha = from + (to - from) * t
-        self.tex:SetColorTexture(0.02, 0.03, 0.04, self.alpha)
+        self.tex:SetColorTexture(T.bg.r, T.bg.g, T.bg.b, self.alpha)
         if t >= 1 then
             self:SetScript("OnUpdate", nil)
             if to == 0 then self:Hide() end
@@ -315,7 +315,7 @@ end
 local function FlashRed(item)
     local h = item.handle
     if not h._redBorder then
-        h._redBorder = ns.Border(h, { r = 1, g = 0.2, b = 0.2 }, 0)
+        h._redBorder = ns.Border(h, WARNING, 0)
         h._redBorder._frame:SetFrameLevel(h:GetFrameLevel() + 4)
         h._redFlash = CreateFrame("Frame", nil, h)
     end
@@ -323,11 +323,11 @@ local function FlashRed(item)
     h._redFlash:SetScript("OnUpdate", function(self, dt)
         elapsed = elapsed + dt
         if elapsed < 0.8 then
-            h._redBorder:SetColor(1, 0.2, 0.2, 0.5 + 0.5 * math.sin(elapsed * 10))
+            h._redBorder:SetColor(WARNING.r, WARNING.g, WARNING.b, 0.5 + 0.5 * math.sin(elapsed * 10))
         elseif elapsed < 1.5 then
-            h._redBorder:SetColor(1, 0.2, 0.2, math.max(0, 1 - (elapsed - 0.8) / 0.7))
+            h._redBorder:SetColor(WARNING.r, WARNING.g, WARNING.b, math.max(0, 1 - (elapsed - 0.8) / 0.7))
         else
-            h._redBorder:SetColor(1, 0.2, 0.2, 0)
+            h._redBorder:SetColor(WARNING.r, WARNING.g, WARNING.b, 0)
             self:SetScript("OnUpdate", nil)
         end
     end)
@@ -382,7 +382,7 @@ local function UpdateLines()
                     local line, pulse = lines.Get(idx)
                     line:SetStartPoint("BOTTOMLEFT", UIParent, x1, y1)
                     line:SetEndPoint("BOTTOMLEFT", UIParent, x1 + (x2 - x1) * ease, y1 + (y2 - y1) * ease)
-                    line:SetVertexColor(1, 0.7, 0.3, 0.75 * ease)
+                    line:SetVertexColor(T.accent.r, T.accent.g, T.accent.b, 0.75 * ease)
                     line:Show()
                     pulse:Hide()
                     if ease >= 1 then
@@ -396,7 +396,7 @@ local function UpdateLines()
                             if head > tail then
                                 pulse:SetStartPoint("BOTTOMLEFT", UIParent, x1 + (x2 - x1) * tail, y1 + (y2 - y1) * tail)
                                 pulse:SetEndPoint("BOTTOMLEFT", UIParent, x1 + (x2 - x1) * head, y1 + (y2 - y1) * head)
-                                pulse:SetVertexColor(1, 0.89, 0.625, 0.5 * math.max(0, fade))
+                                pulse:SetVertexColor(T.accentSoft.r, T.accentSoft.g, T.accentSoft.b, 0.5 * math.max(0, fade))
                                 pulse:Show()
                             end
                         end
@@ -455,7 +455,7 @@ local function EdgeMarker(key, flash)
         f:SetFrameLevel(400)
         f:SetAllPoints()
         f.tex = f:CreateTexture(nil, "OVERLAY")
-        f.tex:SetColorTexture(1, 0.7, 0.3, 0.9)
+        f.tex:SetColorTexture(T.accent.r, T.accent.g, T.accent.b, 0.9)
         placement.marker = f
     end
     local f, tex = placement.marker, placement.marker.tex
@@ -490,9 +490,9 @@ local function MenuFrame(level)
     f:SetClampedToScreen(true)
     f:EnableMouse(true)
     f.rows = {}
-    f.bg = ns.Solid(f, "BACKGROUND", MENU_BG, 0.95)
+    f.bg = ns.Solid(f, "BACKGROUND", T.panel, 0.98)
     f.bg:SetAllPoints()
-    ns.Border(f, { r = 1, g = 1, b = 1 }, 0.20)
+    ns.Border(f, BLACK)
     f:Hide()
     return f
 end
@@ -525,7 +525,7 @@ local function Row(menu)
         row:RegisterForClicks("AnyUp")
         row.hl = row:CreateTexture(nil, "ARTWORK")
         row.hl:SetAllPoints()
-        row.label = ns.Font(row, 11, "OUTLINE")
+        row.label = ns.Font(row, 12, nil)
         row.label:SetJustifyH("LEFT")
         row.label:SetWordWrap(false)
         row.divider = row:CreateTexture(nil, "ARTWORK")
@@ -536,13 +536,13 @@ local function Row(menu)
     row:SetScript("OnLeave", nil)
     row:SetScript("OnClick", nil)
     row:EnableMouse(true)
-    row.hl:SetColorTexture(1, 1, 1, 0)
+    row.hl:SetColorTexture(T.grey.r, T.grey.g, T.grey.b, 0)
     row.label:ClearAllPoints()
     row.label:SetPoint("LEFT", row, "LEFT", 10, 0)
     row.label:SetPoint("RIGHT", row, "RIGHT", -8, 0)
     row.label:SetJustifyH("LEFT")
     row.label:SetWordWrap(false)
-    row.label:SetFont(ns.UIFontPath(), 11, "OUTLINE")
+    row.label:SetFont(ns.UIFontPath(), 12, "")
     row.label:SetText("")
     row.label:Show()
     row.divider:Hide()
@@ -566,29 +566,21 @@ local function Divider(menu)
     row.divider:SetPoint("LEFT")
     row.divider:SetPoint("RIGHT")
     row.divider:SetHeight(Mult())
-    row.divider:SetColorTexture(1, 1, 1, 0.10)
+    row.divider:SetColorTexture(T.line.r, T.line.g, T.line.b, 1)
     row.divider:Show()
     menu.y = menu.y + ITEM_H - 9
 end
 
-local function Paint(row, c, a) row.label:SetTextColor(c.r, c.g, c.b, a) end
-local GREY = { r = 0.75, g = 0.75, b = 0.75 }
-local WHITE = { r = 1, g = 1, b = 1 }
+local function Paint(row, c) row.label:SetTextColor(c.r, c.g, c.b, 1) end
 
--- A clickable row: grey, white on hover. color overrides the resting colour.
-local function Action(menu, text, onClick, color, hoverColor)
+-- A clickable row, filled grey on hover. color: its text colour, when not the theme's.
+local function Action(menu, text, onClick, color)
     local row = Row(menu)
-    local rest = color or GREY
+    local rest = color or T.fg
     row.label:SetText(ns.L(text))
-    Paint(row, rest, color and 1 or 0.9)
-    row:SetScript("OnEnter", function()
-        row.hl:SetColorTexture(1, 1, 1, 0.08)
-        Paint(row, hoverColor or WHITE, 1)
-    end)
-    row:SetScript("OnLeave", function()
-        row.hl:SetColorTexture(1, 1, 1, 0)
-        Paint(row, rest, color and 1 or 0.9)
-    end)
+    Paint(row, rest)
+    row:SetScript("OnEnter", function() row.hl:SetColorTexture(T.grey.r, T.grey.g, T.grey.b, 1) end)
+    row:SetScript("OnLeave", function() row.hl:SetColorTexture(T.grey.r, T.grey.g, T.grey.b, 0) end)
     row:SetScript("OnClick", onClick)
     return row
 end
@@ -752,13 +744,13 @@ local function ShowGuides()
         if target then
             local h = target.handle
             if not h._snapBorder then
-                h._snapBorder = ns.Border(h, WHITE, 0)
+                h._snapBorder = ns.Border(h, T.fg, 0)
                 h._snapBorder._frame:SetFrameLevel(h:GetFrameLevel() + 3)
             end
             local elapsed = 0
             g.pulse:SetScript("OnUpdate", function(_, dt)
                 elapsed = elapsed + dt
-                h._snapBorder:SetColor(1, 1, 1, (0.45 + 0.45 * math.sin(elapsed * 9.42)) * 0.9)
+                h._snapBorder:SetColor(T.fg.r, T.fg.g, T.fg.b, (0.45 + 0.45 * math.sin(elapsed * 9.42)) * 0.9)
             end)
         else
             g.pulse:SetScript("OnUpdate", nil)
@@ -894,7 +886,7 @@ local function ShowSideMenu(child, target)
             CloseMenus()
             ClearAnchorInfo(child.label)
             Refresh(child)
-        end, { r = 0.9, g = 0.3, b = 0.3 }, { r = 1, g = 0.4, b = 0.4 })
+        end, WARNING)
     end
     AtCursor(menu)
     Catcher()
@@ -975,18 +967,16 @@ local function ShowEdgeMenu(item, row)
     for _, e in ipairs(EDGE_ITEMS) do
         local current = (e.key and (e.key == primary or e.key == edge)) or (not e.key and not info)
         local r = Row(menu)
-        local rest = current and ORANGE or GREY
+        local rest = current and 0.5 or 0
         r.label:SetText(ns.L(e.text))
-        Paint(r, rest, current and 1 or 0.9)
-        r.hl:SetColorTexture(1, 1, 1, current and 0.04 or 0)
+        Paint(r, current and T.accent or T.fg)
+        r.hl:SetColorTexture(T.grey.r, T.grey.g, T.grey.b, rest)
         r:SetScript("OnEnter", function()
-            r.hl:SetColorTexture(1, 1, 1, 0.08)
-            Paint(r, current and { r = 1, g = 0.8, b = 0.5 } or WHITE, 1)
+            r.hl:SetColorTexture(T.grey.r, T.grey.g, T.grey.b, 1)
             if e.key then EdgeMarker(e.key) end
         end)
         r:SetScript("OnLeave", function()
-            r.hl:SetColorTexture(1, 1, 1, current and 0.04 or 0)
-            Paint(r, rest, current and 1 or 0.9)
+            r.hl:SetColorTexture(T.grey.r, T.grey.g, T.grey.b, rest)
             EdgeMarker(nil)
         end)
         r:SetScript("OnClick", function()
@@ -1021,14 +1011,18 @@ end
 local function OffsetBox(row, item, key)
     if not row.box then
         local box = CreateFrame("EditBox", nil, row)
-        box:SetSize(50, 18)
+        box:SetSize(54, 20)
         box:SetPoint("RIGHT", row, "RIGHT", -8, 0)
-        box:SetFont(ns.UIFontPath(), 10, "")
-        box:SetTextColor(1, 1, 1, 0.9)
+        box:SetFont(ns.UIFontPath(), 12, "")
+        box:SetTextColor(T.fg.r, T.fg.g, T.fg.b, 1)
+        box:SetTextInsets(4, 4, 0, 0)
         box:SetJustifyH("CENTER")
         box:SetAutoFocus(false)
         box:SetMaxLetters(6)
-        ns.Solid(box, "BACKGROUND", { r = 0, g = 0, b = 0 }, 0.4):SetAllPoints()
+        ns.Solid(box, "BACKGROUND", T.bg, 1):SetAllPoints()
+        local border = ns.Border(box, BLACK)
+        box:SetScript("OnEnter", function() border:SetColor(T.accent.r, T.accent.g, T.accent.b, 1) end)
+        box:SetScript("OnLeave", function() border:SetColor(0, 0, 0, 1) end)
         row.box = box
     end
     local box = row.box
@@ -1072,10 +1066,10 @@ local function OpenCogMenu(item)
     hint.label:ClearAllPoints()
     hint.label:SetPoint("TOPLEFT", hint, "TOPLEFT", 7, -4)
     hint.label:SetPoint("TOPRIGHT", hint, "TOPRIGHT", -7, -4)
-    hint.label:SetFont(ns.UIFontPath(), 10, "")
+    hint.label:SetFont(ns.UIFontPath(), 11, "")
     hint.label:SetJustifyH("CENTER")
     hint.label:SetWordWrap(true)
-    hint.label:SetTextColor(0.7, 0.7, 0.7, 0.85)
+    hint.label:SetTextColor(T.muted.r, T.muted.g, T.muted.b, 1)
     hint.label:SetText(ns.L("Use arrow keys to move selected element 1px any direction") .. ". "
         .. ns.L("Shift+Right Click to temporarily hide overlay"))
     local hintH = hint.label:GetStringHeight()
@@ -1099,7 +1093,7 @@ local function OpenCogMenu(item)
         to:SetHeight(22)
         menu.y = menu.y + 2
         to.label:SetText(ns.L("Anchored to: %s"):format(LabelOf(info.target)))
-        to.label:SetTextColor(0.55, 0.55, 0.55, 0.9)
+        to.label:SetTextColor(T.muted.r, T.muted.g, T.muted.b, 1)
         local boxes = {}
         for _, key in ipairs({ "offsetX", "offsetY" }) do
             local row = Row(menu)
@@ -1107,7 +1101,7 @@ local function OpenCogMenu(item)
             row:SetHeight(22)
             menu.y = menu.y + 2
             row.label:SetText(ns.L(key == "offsetX" and "Offset X" or "Offset Y"))
-            Paint(row, GREY, 0.9)
+            Paint(row, T.fg)
             local box, Px = OffsetBox(row, item, key)
             boxes[#boxes + 1] = { box = box, px = Px }
         end
@@ -1120,7 +1114,7 @@ local function OpenCogMenu(item)
     end
 
     local picked = item.snapTarget and placement.byLabel[item.snapTarget]
-    Action(menu, picked and ns.L("Snap Target: %s"):format("|cFF0CD29D" .. item.snapTarget .. "|r")
+    Action(menu, picked and ns.L("Snap Target: %s"):format(ns.Color("accent", item.snapTarget))
         or "Select Snap Target", function()
         CloseMenus()
         if picked then
@@ -1141,22 +1135,22 @@ local function OpenCogMenu(item)
     if not item.ownAnchor then
         Divider(menu)
         local linked = info and (SCREEN[info.target] or (type(info.edge) == "table" and SCREEN[info.edge.key]))
-        local row = Action(menu, "Relative to Screen", function() end, linked and ORANGE or nil)
+        local row = Action(menu, "Relative to Screen", function() end, linked and T.accent or nil)
         if not row.arrow then
             row.arrow = row:CreateTexture(nil, "ARTWORK")
             row.arrow:SetSize(10, 10)
             row.arrow:SetPoint("RIGHT", row, "RIGHT", -8, 0)
-            row.arrow:SetTexture(ARROW_TEX)
+            row.arrow:SetTexture(UI.CHEVRON)
         end
-        row.arrow:SetAlpha(0.7)
+        row.arrow:SetVertexColor(T.muted.r, T.muted.g, T.muted.b, 1)
         row.arrow:Show()
         row:SetScript("OnClick", function() ShowEdgeMenu(item, row) end)
         row:HookScript("OnEnter", function()
-            row.arrow:SetAlpha(0.9)
+            row.arrow:SetVertexColor(T.fg.r, T.fg.g, T.fg.b, 1)
             ShowEdgeMenu(item, row)
         end)
         row:HookScript("OnLeave", function()
-            row.arrow:SetAlpha(0.7)
+            row.arrow:SetVertexColor(T.muted.r, T.muted.g, T.muted.b, 1)
             C_Timer.After(0.05, function()
                 local sub = placement.edgeMenu
                 if sub and sub:IsShown() and not sub:IsMouseOver() and not row:IsMouseOver() then sub:Hide() end
@@ -1179,19 +1173,15 @@ function Refresh(item)
     if not item then return end
     local h = item.handle
     local lit = item.selected or item.hovered or item.dragging
-    if lit then h._border:SetColor(1, 1, 1, 0.9) else h._border:SetColor(T.accent.r, T.accent.g, T.accent.b, 1) end
+    if lit then h._border:SetColor(T.fg.r, T.fg.g, T.fg.b, 1) else h._border:SetColor(T.accent.r, T.accent.g, T.accent.b, 1) end
     h:SetFrameLevel(item.baseLevel + (lit and 100 or 0))
     if item.cog then item.cog:SetFrameLevel(h:GetFrameLevel() + 10) end
     local anchored = not item.ownAnchor and AnchorOf(item.label) ~= nil
-    local text = h.text
-    if anchored then text:SetTextColor(ORANGE.r, ORANGE.g, ORANGE.b, 0.85)
-    else text:SetTextColor(T.fg.r, T.fg.g, T.fg.b, 1) end
+    item.chain:SetShown(anchored)
     if item.link then
         item.link.label:SetText(ns.L(anchored and "Anchored" or "Anchor"))
-        if not item.link:IsMouseOver() then
-            if anchored then item.link.label:SetTextColor(ORANGE.r, ORANGE.g, ORANGE.b, 0.85)
-            else item.link.label:SetTextColor(T.accent.r, T.accent.g, T.accent.b, 0.85) end
-        end
+        local c = item.link:IsMouseOver() and T.accentSoft or T.fg
+        item.link.label:SetTextColor(c.r, c.g, c.b, 1)
     end
 end
 
@@ -1350,29 +1340,33 @@ local function BuildChrome(item)
 
     local link = CreateFrame("Button", nil, h)
     link:RegisterForClicks("LeftButtonUp")
-    link.label = ns.Font(link, 9, "OUTLINE")
+    link.label = ns.Font(link, 10, "OUTLINE")
     link.label:SetPoint("CENTER")
     link:SetPoint("TOP", text, "BOTTOM", 0, -4)
     link:Hide()
     item.link = not item.ownAnchor and link or nil
 
     local cog = CreateFrame("Button", nil, h)
-    cog:SetSize(22, 22)
-    cog:SetPoint("TOPRIGHT", h, "TOPRIGHT", -1, -1)
+    cog:SetSize(16, 16)
+    cog:SetPoint("TOPRIGHT", h, "TOPRIGHT", -3, -3)
     cog:RegisterForClicks("AnyUp")
-    cog.bg = ns.Solid(cog, "BACKGROUND", MENU_BG, 0.9)
-    cog.bg:SetAllPoints()
-    cog.border = ns.Border(cog, WHITE, 0.20)
     cog.icon = cog:CreateTexture(nil, "ARTWORK")
-    cog.icon:SetSize(18, 18)
-    cog.icon:SetPoint("CENTER")
+    cog.icon:SetAllPoints()
     cog.icon:SetTexture(UI.COGS_ICON)
-    cog.icon:SetAlpha(0.7)
+    cog.icon:SetVertexColor(T.accentSoft.r, T.accentSoft.g, T.accentSoft.b)
     cog:Hide()
     item.cog = cog
 
-    local pick = ns.Font(h, 10, "OUTLINE")
-    pick:SetTextColor(1, 1, 1, 0.85)
+    local chain = h:CreateTexture(nil, "OVERLAY")
+    chain:SetSize(12, 12)
+    chain:SetPoint("RIGHT", text, "LEFT", -3, 0)
+    chain:SetTexture(CHAIN_TEX)
+    chain:SetVertexColor(T.accentSoft.r, T.accentSoft.g, T.accentSoft.b)
+    chain:Hide()
+    item.chain = chain
+
+    local pick = ns.Font(h, 11, "OUTLINE")
+    pick:SetTextColor(T.fg.r, T.fg.g, T.fg.b, 1)
     pick:SetPoint("CENTER", h, "CENTER")
     pick:SetJustifyH("CENTER")
     pick:Hide()
@@ -1470,7 +1464,7 @@ local function BuildChrome(item)
     end
 
     link:SetScript("OnEnter", function()
-        link.label:SetTextColor(1, 1, 1, 1)
+        link.label:SetTextColor(T.accentSoft.r, T.accentSoft.g, T.accentSoft.b, 1)
         item.hovered = true
         Refresh(item)
         local info = AnchorOf(item.label)
@@ -1491,16 +1485,12 @@ local function BuildChrome(item)
     end)
 
     cog:SetScript("OnEnter", function()
-        cog.bg:SetColorTexture(MENU_BG.r, MENU_BG.g, MENU_BG.b, 0.98)
-        cog.border:SetColor(1, 1, 1, 0.30)
-        cog.icon:SetAlpha(1)
+        cog.icon:SetVertexColor(T.fg.r, T.fg.g, T.fg.b)
         item.hovered = true
         Refresh(item)
     end)
     cog:SetScript("OnLeave", function()
-        cog.bg:SetColorTexture(MENU_BG.r, MENU_BG.g, MENU_BG.b, 0.9)
-        cog.border:SetColor(1, 1, 1, 0.20)
-        cog.icon:SetAlpha(0.7)
+        cog.icon:SetVertexColor(T.accentSoft.r, T.accentSoft.g, T.accentSoft.b)
     end)
     cog:SetScript("OnClick", function()
         if item.menuOpen then CloseMenus() else UI.SelectMover(h); OpenCogMenu(item) end
