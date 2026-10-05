@@ -587,6 +587,8 @@ do
         and ab.backdrop and ab.line and ab.labels and ab.note.text == bar.nearbyText
         and ab.note.size == bar.note.size and ab.campSize == bar.campSize and ab.labelX == bar.labelX
         and rawget(ab.camp, "plate") == nil and ab.hug == false and rawget(alert, "text") == nil)
+    check("Camp Nearby is drawn bare: no backdrop, edge or line, the fire and words alone", ab.bare == true
+        and ab.edges.shown == false and ab.line.shown == false)
     check("Camp Nearby is the bar's own size, the same rectangle as every other state",
         alert.w == ab.width and ab.width == bar.width and alert.h == 26)
     s.ns.HideRaidReminderAnchorConfig()

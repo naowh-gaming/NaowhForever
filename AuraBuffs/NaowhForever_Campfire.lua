@@ -7,8 +7,8 @@
 --  state keeps the fire, the words and the bar's size the same; the down states leave the time's
 --  place empty. The bar is never narrower than four wide bonuses need at its text size
 --  (MIN_LABELS), and its text never under 11. Hovering it lists each bonus, the time left and
---  when to refresh. With Round, the Camp Nearby alert is the same bar (Bar.Nearby), at the bar's
---  own width, larger by its own scale, with the camp's time left when it still runs; it fades in,
+--  when to refresh. With Round, the Camp Nearby alert is the same bar (Bar.Nearby) drawn bare: no
+--  backdrop, edge or line, the fire and words alone, larger by its own scale, with the camp's time left when it still runs; it fades in,
 --  breathes and fades out through animation groups (FADE), never OnUpdate.
 --  The bonuses come from the hidden aura each camp feature puts on you, by spell ID, else from
 --  Camp Benefits' tooltip (spell 1229741, wago.tools build 1.60.1.70205), read once per Camp
@@ -275,10 +275,11 @@ function Bar.New(host, opts)
     local f = CreateFrame("Frame", nil, host)
     f:SetAllPoints()
     f.host, f.hug = host, opts and opts.hug or false
+    f.bare = opts and opts.bare or false
     f.bar = CreateFrame("Frame", nil, f)
     f.bar:SetAllPoints()
     f.backdrop = Parts.Backdrop(f.bar)
-    f.backdrop:Paint(St.BACKDROP_ALPHA)
+    f.backdrop:Paint(f.bare and 0 or St.BACKDROP_ALPHA)
 
     f.inner = ns.PixelInset(CreateFrame("Frame", nil, f.bar), 1)
     f.time = ns.Font(f.bar, BAR.TEXT, nil, T.fg)
@@ -287,12 +288,17 @@ function Bar.New(host, opts)
     f.line:SetPoint("BOTTOMLEFT")
     f.line:SetPoint("BOTTOMRIGHT")
     NewEdges(f)
+    f.edges:SetShown(not f.bare)
     f.labels = Parts.LabelRow(f.bar, BAR.TEXT, nil, T.fg, { gap = BAR.BONUS_GAP, iconGrow = BAR.BONUS_ICON_GROW,
         iconGap = BAR.BONUS_ICON_GAP, iconDrop = BAR.BONUS_ICON_DROP })
     f.note = ns.Font(f.bar, BAR.TEXT, nil, T.fg)
     f.note:SetWordWrap(false)
     f.probe = ns.Font(f.bar, BAR.TEXT)
     f.probe:Hide()
+    if f.bare then
+        Parts.HudText(f.note)
+        Parts.HudText(f.time)
+    end
     f.campText = "Camp Active" .. ns.Color("muted", St.PLACE_DOT .. "no bonuses")
     f.restText = "Resting"
     f.refreshText = ns.Color("accent", "Refresh") .. " Camp"
@@ -373,7 +379,7 @@ end
 function Bar.Timed(f, on)
     on = on and true or false
     if not on then f.line:Stop() end
-    f.line:SetShown(on)
+    f.line:SetShown(on and not f.bare)
     f.time:SetShown(on)
 end
 
@@ -457,7 +463,7 @@ local function Fader(a, from, to, duration, finished)
 end
 
 local function AlertLook(a)
-    a.bar = Bar.New(a)
+    a.bar = Bar.New(a, { bare = true })
     a.fadeIn = Fader(a, 0, 1, FADE.IN, AlertShown)
     a.fadeOut = Fader(a, 1, 0, FADE.OUT, AlertFaded)
     a.breathe = Fader(a, 1, FADE.LOW, FADE.BREATHE)
