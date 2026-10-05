@@ -12,7 +12,9 @@
 -- converted from the settings when placed, so switching styles never drifts. With Simple the alert
 -- shows while the camp is still up and low, and the bar's own pill covers it once gone. While
 -- resting, every bar setting repaints the live bar at once. A feature's own aura and the tooltip
--- merge, and an empty tooltip is tried again every few seconds until it lists something.
+-- merge, and an empty tooltip is tried again every few seconds until it lists something. The bare
+-- alert is sized to its words with the time inline, centred on its spot, and a right-click hides
+-- it until you leave the campfire while left clicks pass through.
 
 local Load = dofile("Tools/regression/load_files.lua")
 local TocFiles = dofile("Tools/regression/toc_files.lua")
@@ -111,6 +113,10 @@ local function Fixture(settings)
         SetWidth = function(f, w) f.w = w end,
         SetHeight = function(f, h) f.h = h end,
         SetSize = function(f, w, h) f.w, f.h = w, h end,
+        RegisterForClicks = function(f, ...) f.clicks = { ... } end,
+        SetScale = function(f, scale) f.scale = scale end,
+        GetScale = function(f) return rawget(f, "scale") or 1 end,
+        SetPassThroughButtons = function(f, ...) f.passThrough = { ... } end,
         GetWidth = function(f) return rawget(f, "w") or 600 end,
         GetHeight = function(f) return rawget(f, "h") or 230 end,
         SetPoint = function(f, a, rel, _, d, e) f.pt[a], f.pty[a], f.rel[a] = d or 0, e or 0, rel end,
@@ -238,7 +244,11 @@ local function Fixture(settings)
                 if not kept then kept = make(parent); parent[key] = kept end
                 return kept
             end,
-            AttachMover = function(frame) return Frame(frame) end,
+            AttachMover = function(frame, _, onMoved)
+                local mover = Frame(frame)
+                mover.onMoved = onMoved
+                return mover
+            end,
             ModuleSettings = function(_, given)
                 for key, value in pairs(given) do
                     defaults[key] = value
@@ -590,11 +600,13 @@ do
     check("Camp Nearby is the bar's own component: same builder, same words, same sizes", ab
         and ab.backdrop and ab.line and ab.labels and ab.note.text == bar.nearbyText
         and ab.note.size == bar.note.size and ab.campSize == bar.campSize and ab.labelX == bar.labelX
-        and rawget(ab.camp, "plate") == nil and ab.hug == false and rawget(alert, "text") == nil)
+        and rawget(ab.camp, "plate") == nil and rawget(alert, "text") == nil)
     check("Camp Nearby is drawn bare: no backdrop, edge or line, the fire and words alone", ab.bare == true
         and ab.edges.shown == false and ab.line.shown == false)
-    check("Camp Nearby is the bar's own size, the same rectangle as every other state",
-        alert.w == ab.width and ab.width == bar.width and alert.h == 26)
+    check("Camp Nearby is sized to what it says, centred on its spot, the bar's height",
+        alert.w == math.ceil(ab.labelX + W(ab.note.text) + 10) and alert.w < bar.width and alert.h == 26
+        and math.abs(alert.pt.CENTER) < 1e-9 and math.abs(alert.pty.CENTER - 150 / 1.4) < 1e-9)
+    check("Unlock Mode: the alert takes no clicks, its mover does", alert.click.mouse == false)
     s.ns.HideRaidReminderAnchorConfig()
     check("leaving Unlock Mode fades it out, then hides it, its animations stopped", alert.shown == false
         and not alert.breathe.playing and not alert.fadeIn.playing and alert.fadeOut.plays > 0)
@@ -603,7 +615,8 @@ do
     s.fire("UNIT_AURA")
     check("Round: Camp Nearby shows, fading in, then breathing softly while shown", alert.shown == true
         and alert.fadeIn.plays == fadeIns + 1 and alert.breathe.playing and alert.breathe.looping == "BOUNCE"
-        and alert.breathe.anim.SetToAlphaValue == 0.6 and alert.fadeIn.anim.SetFromAlphaValue == 0)
+        and alert.breathe.anim.SetToAlphaValue == 0.6 and alert.fadeIn.anim.SetFromAlphaValue == 0
+        and alert.click.mouse == true)
     s.fire("UNIT_AURA")
     check("an aura change while shown does not restart the fade", alert.fadeIn.plays == fadeIns + 1)
     local timers = 0
@@ -613,10 +626,13 @@ do
         and ab.camp.tex.desaturated == true)
     s.auras[CAMP] = { duration = 3600, expirationTime = s.now + 90, auraInstanceID = 9 }
     s.fire("UNIT_AURA")
-    check("camp still running: its time left on the right, in red, over a running line, the fire lit",
+    check("camp still running: its time left in red, inline after a muted dot, the fire lit",
         alert.shown == true and ab.time.shown ~= false and ab.line.binding.enabled == true and ab.slot == ab.timeW
         and Same(ab.time, s.St.TIME_OUT_RGB) and ab.camp.tex.desaturated == false
-        and alert.w == ab.width)
+        and ab.time.rel.LEFT == ab.dot and ab.dot.rel.LEFT == ab.note and ab.dot.shown ~= false
+        and ab.dot.text == s.St.PLACE_DOT and Same(ab.dot, s.T.muted)
+        and alert.w == math.ceil(ab.labelX + W(ab.note.text) + W(s.St.PLACE_DOT) + ab.timeW + 10))
+    check("the Simple bar keeps its time at the right", bar.time.rel.RIGHT == bar.bar and rawget(bar, "dot") == nil)
     s.auras[CAMP] = nil
     s.fire("UNIT_AURA")
     alert.scripts.OnHide(alert)
@@ -1037,6 +1053,7 @@ do
         and Plain(a.bar.note.text) == "Camp Nearby" .. s.St.PLACE_DOT .. "sit to refresh"
         and a.bar.time.shown == false and a.bar.camp.tex.desaturated == true)
     check("alert preview: it breathes while shown", a.breathe.playing and a.breathe.looping == "BOUNCE")
+    check("alert preview: no dismiss button taking the mouse", rawget(a, "click") == nil)
     local left = a.pt.LEFT
     card.studio.paint(shot, "low")
     check("alert preview Running Low: the time on the right, the same left edge", a.bar.time.shown ~= false
@@ -1146,6 +1163,49 @@ do
     s.fire("UNIT_AURA")
     check("a feature aura going away updates the list, the tooltip unread again",
         icon.buffs.text == "+Rested\n+5 Luck" and s.tooltipReads == 2)
+end
+
+do
+    local s = Fixture({ campAlertPos = { point = "LEFT", relPoint = "CENTER", x = -252, y = 210 } })
+    s.fire("PLAYER_LOGIN")
+    s.auras[NEARBY] = {}
+    s.fire("UNIT_AURA")
+    local alert = s.named.NaowhForeverCampNearby
+    local pos = s.S.Get("campAlertPos")
+    check("an older edge spot is turned once into the centre of the full-width bar it was saved for",
+        pos.point == "CENTER" and pos.relPoint == "CENTER" and math.abs(pos.x) < 1e-9 and pos.y == 210
+        and math.abs(alert.pt.CENTER) < 1e-9 and math.abs(alert.pty.CENTER - 150) < 1e-9)
+    alert.cx, alert.cy = 500, 400
+    alert.mover.onMoved({ point = "TOPLEFT", relPoint = "TOPLEFT", x = 1, y = 2 })
+    pos = s.S.Get("campAlertPos")
+    check("moving it saves its centre", pos.point == "CENTER" and pos.relPoint == "BOTTOMLEFT"
+        and math.abs(pos.x - 700) < 1e-9 and math.abs(pos.y - 560) < 1e-9 and alert.pt.CENTER == 500)
+    alert.cx, alert.cy = nil, nil
+    alert.mover.onMoved({ point = "TOPLEFT", relPoint = "TOPLEFT", x = 10, y = -20 })
+    pos = s.S.Get("campAlertPos")
+    check("moved with no centre to read: its corner turned into the centre", pos.point == "CENTER"
+        and math.abs(pos.x - (10 + alert.w / 2) * 1.4) < 1e-9 and math.abs(pos.y - (-20 - alert.h / 2) * 1.4) < 1e-9)
+
+    local click = alert.click
+    check("only right clicks, the left ones and camera drags pass through", #click.clicks == 1
+        and click.clicks[1] == "RightButtonUp" and #click.passThrough == 1 and click.passThrough[1] == "LeftButton"
+        and click.mouse == true and click.all == true and click.parent == alert)
+    s.tips = {}
+    click.scripts.OnEnter(click)
+    check("hovering it: how to dismiss it", s.tipText() == "Right-click to dismiss until you leave the campfire.")
+    click.scripts.OnClick(click, "LeftButton")
+    check("a left click does nothing", alert.shown == true)
+    local fades = alert.fadeOut.plays
+    click.scripts.OnClick(click, "RightButton")
+    check("right-click: it fades out and stops taking the mouse", alert.shown == false
+        and alert.fadeOut.plays == fades + 1 and click.mouse == false)
+    s.fire("UNIT_AURA")
+    check("dismissed: it stays away while in range", alert.shown == false and click.mouse == false)
+    s.auras[NEARBY] = nil
+    s.fire("UNIT_AURA")
+    s.auras[NEARBY] = {}
+    s.fire("UNIT_AURA")
+    check("back in range after leaving: it shows again", alert.shown == true and click.mouse == true)
 end
 
 print(checks .. " campfire look checks passed")
