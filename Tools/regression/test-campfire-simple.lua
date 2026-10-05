@@ -12,6 +12,14 @@ local checks = 0
 local function check(label, value) assert(value, label); checks = checks + 1 end
 
 local CAMP, NEARBY, TENT, KIT, CHAIR, SITTING = 1229741, 1283391, 1229451, 1230124, 1229519, 1229739
+local CANDLE = 1229513
+
+local function Read(path)
+    local f = assert(io.open(path, "rb"))
+    local text = f:read("*a")
+    f:close()
+    return text
+end
 
 local function Fixture(settings)
     local state = { now = 1000, auras = {}, frames = {}, named = {}, timers = {}, bars = 0, tips = {},
@@ -36,6 +44,7 @@ local function Fixture(settings)
         ClearAllPoints = function() end,
         SetShadowColor = function(f, _, _, _, a) f.shadow = a end,
         GetCenter = function(f) return rawget(f, "cx"), rawget(f, "cy") end,
+        GetLeft = function(f) return rawget(f, "left") end,
         SetText = function(f, text) f.text = text end,
         GetText = function(f) return rawget(f, "text") or "" end,
         SetTextColor = function(f, r, g, b) f.r, f.g, f.b = r, g, b end,
@@ -301,11 +310,16 @@ do
         and seps[2].text == s.St.PLACE_DOT and Same(seps[2], s.T.muted) and bar.labels.pt.LEFT == bar.labelX)
 
     local size = bar.campSize
-    check("the fire is seated on the bar's top edge, its centre on the edge",
-        size == 24 and bar.camp.pt.CENTER == bar.campX and bar.camp.pty.CENTER == 0 and bar.cap.shown ~= false)
-    local gap = bar.topRight.pt.TOPLEFT - bar.topLeft.pt.TOPRIGHT
-    check("the top border has a gap under the fire, as wide as its outline", gap == size + 2 * 4
-        and bar.topLeft.pt.TOPRIGHT == bar.campX - gap / 2 and bar.topRight.shown ~= false)
+    check("the fire is seated on the bar's top-left corner, its centre on the top edge",
+        size == 24 and bar.campX == bar.radius and bar.camp.pt.CENTER == bar.campX and bar.camp.pty.CENTER == 0
+        and bar.cap.shown ~= false)
+    local gap = bar.topRight.pt.TOPLEFT - bar.notchFrom
+    check("the top border has a gap under the fire, as wide as its outline, from the left edge", gap == size + 2 * 4
+        and bar.notchFrom == 0 and bar.topLeft.shown == false and bar.topRight.shown ~= false)
+    check("the house backdrop and black edge, no custom alpha", bar.backdrop and rawget(bar, "bg") == nil
+        and bar.topRight.color == s.St.BORDER_RGB and s.St.BACKDROP_ALPHA
+        and not Read("AuraBuffs/NaowhForever_Campfire.lua"):find("BAR%.ALPHA")
+        and not Read("AuraBuffs/NaowhForever_Campfire.lua"):find("SHEEN"))
     check("a thin time-colored ring inside the black edge", bar.timeRing.shown ~= false
         and Same(bar.outerRing, s.St.BORDER_RGB))
     local track
@@ -344,7 +358,7 @@ do
     s.fire("UNIT_AURA")
 
     s.S.Set("campSimpleHeight", 30)
-    gap = bar.topRight.pt.TOPLEFT - bar.topLeft.pt.TOPRIGHT
+    gap = bar.topRight.pt.TOPLEFT - bar.notchFrom
     check("the notch follows the fire's size", bar.campSize == 28 and gap == 28 + 2 * 4)
     s.S.Set("campSimpleHeight", 26)
 
@@ -357,6 +371,17 @@ do
         and icons[1].texture.texture == TENT and icons[3].texture.texture == CHAIR)
     s.S.Set("campBonusIcons", false)
     check("bonus icons off by default and hidden", icons[1].shown == false)
+
+    s.auras[CANDLE] = Aura({ 25 })
+    s.fire("UNIT_AURA")
+    check("the default width fits four bonuses", s.labels(bar) == "Rested +56 Sta +25 Int +2% Crit" and bar.more == 0
+        and icon.w == 340)
+    s.S.Set("campSimpleWidth", 200)
+    check("too narrow: the rest as +N more", bar.more > 0 and s.labels(bar):find("+" .. bar.more .. " more$")
+        and icon.w == 200)
+    s.S.Set("campSimpleWidth", 340)
+    s.auras[CANDLE] = nil
+    s.fire("UNIT_AURA")
 
     local editing = 0
     for _, f in ipairs(s.frames) do if f.scripts.OnMouseWheel then editing = editing + 1 end end
@@ -371,21 +396,27 @@ do
     s.auras[CAMP], s.auras[TENT], s.auras[KIT], s.auras[CHAIR] = nil, nil, nil, nil
     s.fire("UNIT_AURA")
     check("down: a compact pill around the fire and the words", bar.pill and icon.w < fullW
-        and icon.w == math.ceil(8 + bar.pillIcon + 6 + #"Refresh Camp" * 6 + 8))
-    check("down: the fire inline at the pill's left, grey, no notch", bar.camp.pt.LEFT == 8
-        and bar.camp.tex.desaturated == true and bar.cap.shown == false and bar.topRight.shown == false)
+        and icon.w == math.ceil(8 + 3 * 2 + bar.pillIcon + 6 + #"Refresh Camp" * 6 + 8))
+    check("down: the fire inline at the pill's left, grey in a muted frame, no notch", bar.camp.pt.LEFT == 8 + 3
+        and bar.camp.tex.desaturated == true and Same(bar.timeRing, s.T.muted) and bar.cap.shown == false
+        and bar.topRight.shown == false and bar.topLeft.shown ~= false)
+    check("Simple: no big Camp Nearby alert", s.named.NaowhForeverCampNearby == nil)
     check("down: it reads Refresh Camp, no time line", bar.note.text == "Refresh Camp"
         and bar.line.shown == false and bar.time.shown == false)
+    local refreshW = icon.w
     s.auras[NEARBY] = {}
     s.fire("UNIT_AURA")
-    check("down with a campfire in range: sit to refresh", bar.note.text == "Camp nearby: sit to refresh")
+    check("down with a campfire in range: one pattern, the same left edge",
+        bar.note.text == "Camp Nearby" .. s.St.PLACE_DOT .. "sit to refresh" and bar.camp.pt.LEFT == 8 + 3
+        and icon.w > refreshW and (s.named.NaowhForeverCampNearby == nil or not s.named.NaowhForeverCampNearby.shown))
     s.auras[NEARBY] = nil
+    s.fire("UNIT_AURA")
 
     s.S.Set("campPos", { point = "TOPLEFT", relPoint = "TOPLEFT", x = 40, y = -40 })
-    icon.cx, icon.cy = 300, 500
+    icon.cx, icon.cy, icon.left = 300, 500, 250
     s.S.Set("campStyle", "round")
     local pos = s.S.Get("campPos")
-    check("switching looks keeps it centred where it was", pos.point == "CENTER" and pos.x == 300 and pos.y == 500)
+    check("switching to Round keeps it centred where it was", pos.point == "CENTER" and pos.x == 300 and pos.y == 500)
     check("Round again: the bar hidden, the round art back", bar.shown == false and icon.tex.shown == true
         and icon.label.text == "Refresh Camp")
     check("Round: Refresh Camp in the house text style, a shadow and no outline",
@@ -394,6 +425,15 @@ do
     local alert = s.named.NaowhForeverCampNearby
     check("Camp Nearby in the house text style, in the theme's text color", alert and alert.text.flags == nil
         and alert.text.shadow == s.St.HUD_SHADOW_ALPHA and Same(alert.text, s.T.fg))
+    s.ns.HideRaidReminderAnchorConfig()
+    s.auras[NEARBY] = {}
+    s.fire("UNIT_AURA")
+    check("Round: the big Camp Nearby alert shows as before", alert.shown == true)
+    s.S.Set("campStyle", "simple")
+    check("Simple: the big alert hides, the bar's pill covers it", alert.shown == false and bar.pill
+        and bar.note.text == "Camp Nearby" .. s.St.PLACE_DOT .. "sit to refresh")
+    pos = s.S.Get("campPos")
+    check("switching to Simple keeps its left edge where it was", pos.point == "LEFT" and pos.x == 250)
 end
 
 do
@@ -453,7 +493,8 @@ do
     local f = shot.bar
     check("preview: the Simple bar once picked", s.bars == 1 and shot.barHost.shown ~= false
         and shot.icon.shown == false and Same(f.line.to, s.St.TIME_OUT_RGB))
-    check("preview: grouped sample bonuses", s.labels(f) == "Rested +2% Crit +56 Sta")
+    check("preview: grouped sample bonuses, four of them", s.labels(f) == "Rested +2% Crit +56 Sta +25 Int"
+        and f.more == 0)
     check("preview: not editable while the reminder is off", shot.widthZone.shown == false
         and shot.hint.text:find("Turn on", 1, true))
     s.values.campfire = true
@@ -466,9 +507,9 @@ do
     edge.scripts.OnMouseDown(edge, "LeftButton")
     s.cursorX = 130
     edge.scripts.OnUpdate(edge)
-    check("drag: the bar grows live", shot.barHost.w == 280)
+    check("drag: the bar grows live", shot.barHost.w == 400)
     edge.scripts.OnMouseUp(edge, "LeftButton")
-    check("drag: the right edge sets the width", s.S.Get("campSimpleWidth") == 280)
+    check("drag: the right edge sets the width", s.S.Get("campSimpleWidth") == 400)
 
     local body = shot.zones[1]
     body.scripts.OnMouseWheel(body, 1)
@@ -499,13 +540,18 @@ do
         and entries:find("check:Bonus Icons", 1, true) and entries:find("check:Show Timer", 1, true)
         and entries:find("button:Bonuses", 1, true) and entries:find("button:Reset Bar", 1, true))
 
+    local left = shot.barHost.pt.LEFT
     card.studio.paint(shot, "sitting")
+    local sittingLeft = shot.barHost.pt.LEFT
     check("preview Resting: upcoming bonuses", Same(f.labels.labels[1], s.T.accentSoft) and f.note.shown == false)
     card.studio.paint(shot, "nearby")
-    check("preview Camp Nearby: the pill", f.pill and f.note.text == "Camp nearby: sit to refresh"
+    check("preview Camp Nearby: the pill, one pattern", f.pill
+        and f.note.text == "Camp Nearby" .. s.St.PLACE_DOT .. "sit to refresh"
         and shot.widthZone.shown == false)
     card.studio.paint(shot, "missing")
     check("preview Refresh: the pill", f.pill and f.note.text == "Refresh Camp")
+    check("preview: every state starts at the same left edge", sittingLeft == left
+        and shot.barHost.pt.LEFT == left and f.camp.pt.LEFT == 8 + 3)
 end
 
 print(checks .. " campfire look checks passed")

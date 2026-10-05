@@ -29,16 +29,13 @@ local TEXT_SIZE, ALERT_SIZE = 16, 28
 -- The plate behind the campfire art; ns.ThemeTint swaps in the player's Panels color.
 local PLATE = { r = 0.14, g = 0.15, b = 0.16 }
 
-local BAR_PAD, BAR_ALPHA, BAR_DIM, SHEEN_ALPHA = 8, 1, 0.6, 0.05
-local BAR_TEXT, TIME_W, TIME_GAP, NOTE_GAP = 12, 40, 8, 6
-local LINE_H, TEXT_LIFT = 2, 1
-local CAMP_TRIM, CAMP_GAP, CAMP_SEAT = 2, 8, 0
-local INNER_RING, TIME_RING, OUTER_RING = 1, 2, 1
-local RING_OUT = INNER_RING + TIME_RING + OUTER_RING
-local PILL_ICON_TRIM, PILL_GAP = 8, 6
-local HALO_GROW, HALO_ALPHA = 10, 0.18
-local BONUS_ICON_GROW, BONUS_ICON_GAP, BONUS_ICON_DROP = 1, 3, 1
+local BAR = { PAD = 8, TEXT = 12, TIME_W = 40, TIME_GAP = 8,
+    NOTE_GAP = 6, LINE_H = 2, TEXT_LIFT = 1, CAMP_TRIM = 2, CAMP_GAP = 8, CAMP_SEAT = 0, CAMP_INSET = 0,
+    INNER_RING = 1, TIME_RING = 2, OUTER_RING = 1, PILL_ICON_TRIM = 8, PILL_GAP = 6,
+    HALO_GROW = 10, HALO_ALPHA = 0.18, BONUS_ICON_GROW = 1, BONUS_ICON_GAP = 3, BONUS_ICON_DROP = 1 }
+BAR.RING_OUT = BAR.INNER_RING + BAR.TIME_RING + BAR.OUTER_RING
 local SIT_PREFIX = "in "
+local DEFAULT_X, DEFAULT_Y = -260, 120
 local UNLOCK_TEXT = "+Rested\n+Crit"
 
 local FEATURES = {
@@ -66,7 +63,7 @@ for i, feature in ipairs(FEATURES) do
     feature.labels = {}
     FEATURE_BY_TAG[feature.tag] = feature
 end
-local SAMPLE_BONUSES = { { FEATURES[1] }, { FEATURES[9], 2 }, { FEATURES[5], 56 } }
+local SAMPLE_BONUSES = { { FEATURES[1] }, { FEATURES[9], 2 }, { FEATURES[5], 56 }, { FEATURES[7], 25 } }
 
 local function CampArt(icon)
     icon.tex = Parts.Smooth(icon:CreateTexture(nil, "ARTWORK"), CAMPFIRE_ART)
@@ -229,9 +226,11 @@ local function Notch(f, from, to)
     f.topRight:ClearAllPoints()
     if not from then
         f.topLeft:SetPoint("TOPRIGHT", f.bar, "TOPRIGHT", 0, 0)
+        f.topLeft:Show()
         f.topRight:Hide()
         return
     end
+    f.topLeft:SetShown(from > 0)
     f.topLeft:SetPoint("TOPRIGHT", f.bar, "TOPLEFT", from, 0)
     f.topRight:SetPoint("TOPLEFT", f.bar, "TOPLEFT", to, 0)
     f.topRight:SetPoint("TOPRIGHT", f.bar, "TOPRIGHT", 0, 0)
@@ -241,49 +240,47 @@ end
 function Bar.Layout(f)
     local size, height = S.Get("campSimpleTextSize"), S.Get("campSimpleHeight")
     f.width, f.height = S.Get("campSimpleWidth"), height
-    f.campSize = height - CAMP_TRIM
-    f.radius = f.campSize / 2 + RING_OUT * ns.OnePixel(f.bar)
-    f.rise = f.radius + CAMP_SEAT
-    f.campX = BAR_PAD + f.radius
-    f.labelX = f.campX + f.radius + CAMP_GAP
-    f.pillIcon = height - PILL_ICON_TRIM
+    f.campSize = height - BAR.CAMP_TRIM
+    f.radius = f.campSize / 2 + BAR.RING_OUT * ns.OnePixel(f.bar)
+    f.rise = f.radius + BAR.CAMP_SEAT
+    f.campX = BAR.CAMP_INSET + f.radius
+    f.labelX = f.campX + f.radius + BAR.CAMP_GAP
+    f.pillRing = (BAR.INNER_RING + BAR.TIME_RING) * ns.OnePixel(f.bar)
+    f.pillIcon = height - BAR.PILL_ICON_TRIM
     f.bar:SetHeight(height)
     local font = ns.UIFontPath()
     f.time:SetFont(font, size, "")
     f.note:SetFont(font, size, "")
     f.labels:SetTextSize(size)
-    f.halo:SetSize(f.campSize + HALO_GROW, f.campSize + HALO_GROW)
+    f.halo:SetSize(f.campSize + BAR.HALO_GROW, f.campSize + BAR.HALO_GROW)
 end
 
 function Bar.New(host)
     local f = CreateFrame("Frame", nil, host)
     f:SetAllPoints()
     f.host = host
-    f.plate = ns.ThemeTint("panel", PLATE)
     f.bar = CreateFrame("Frame", nil, f)
     f.bar:SetPoint("BOTTOMLEFT")
     f.bar:SetPoint("BOTTOMRIGHT")
-    f.bg = ns.Solid(f.bar, "BACKGROUND", f.plate, BAR_ALPHA)
-    f.bg:SetAllPoints()
+    f.backdrop = Parts.Backdrop(f.bar)
+    f.backdrop:Paint(St.BACKDROP_ALPHA)
     local fg = T.fg
-    f.sheen = f.bar:CreateTexture(nil, "BACKGROUND", nil, 1)
-    f.sheen:SetAllPoints()
-    f.sheen:SetColorTexture(fg.r, fg.g, fg.b, 1)
-    f.sheen:SetGradient("VERTICAL", CreateColor(fg.r, fg.g, fg.b, 0), CreateColor(fg.r, fg.g, fg.b, SHEEN_ALPHA))
 
     f.inner = ns.PixelInset(CreateFrame("Frame", nil, f.bar), 1)
-    f.time = ns.Font(f.bar, BAR_TEXT, nil, fg)
+    f.time = ns.Font(f.bar, BAR.TEXT, nil, fg)
     f.time:SetJustifyH("RIGHT")
-    f.line = Parts.TimerLine(f.inner, LINE_H, f.time)
+    f.line = Parts.TimerLine(f.inner, BAR.LINE_H, f.time)
     f.line:SetPoint("BOTTOMLEFT")
     f.line:SetPoint("BOTTOMRIGHT")
     NewEdges(f)
-    f.labels = Parts.LabelRow(f.bar, BAR_TEXT, nil, fg, { iconGrow = BONUS_ICON_GROW, iconGap = BONUS_ICON_GAP,
-        iconDrop = BONUS_ICON_DROP, separator = St.PLACE_DOT, separatorColor = T.muted })
-    f.note = ns.Font(f.bar, BAR_TEXT, nil, T.accentSoft)
+    f.labels = Parts.LabelRow(f.bar, BAR.TEXT, nil, fg, { iconGrow = BAR.BONUS_ICON_GROW, iconGap = BAR.BONUS_ICON_GAP,
+        iconDrop = BAR.BONUS_ICON_DROP, separator = St.PLACE_DOT, separatorColor = T.muted })
+    Parts.HudText(f.time)
+    f.note = Parts.HudText(ns.Font(f.bar, BAR.TEXT, nil, T.accentSoft))
     f.note:SetWordWrap(false)
     f.refreshText = ns.Color("accent", "Refresh") .. " Camp"
-    f.nearbyText = ns.Color("accent", "Camp nearby") .. ": sit to refresh"
+    f.nearbyText = ns.Color("accent", "Camp Nearby") .. ns.Color("muted", St.PLACE_DOT) .. "sit to refresh"
+    f.moreLabels, f.moreIcons, f.more = {}, {}, 0
 
     f.capClip = CreateFrame("Frame", nil, f)
     f.capClip:SetPoint("BOTTOMLEFT", f.bar, "TOPLEFT")
@@ -295,44 +292,65 @@ function Bar.New(host)
     f.cap = CreateFrame("Frame", nil, f.capClip)
     f.cap:SetAllPoints(f.camp)
     f.cap:SetFrameLevel(f.capClip:GetFrameLevel() + 1)
-    f.outerRing = Disc(f.cap, RING_OUT, 0, St.BORDER_RGB)
+    f.outerRing = Disc(f.cap, BAR.RING_OUT, 0, St.BORDER_RGB)
     CampArt(f.camp)
-    f.timeRing = Disc(f.camp, INNER_RING + TIME_RING, -1)
+    f.timeRing = Disc(f.camp, BAR.INNER_RING + BAR.TIME_RING, -1)
     f.halo = Parts.Smooth(f:CreateTexture(nil, "BACKGROUND"), St.ROUND)
     f.halo:SetBlendMode("ADD")
     f.halo:SetPoint("CENTER", f.camp)
-    f.lit, f.low, f.lead, f.group, f.side, f.pill, f.pillW = true, false, 0, 0, 0, false, 0
+    f.lit, f.low, f.lead, f.group, f.side, f.pill, f.pillW, f.color = true, false, 0, 0, 0, false, 0, T.accent
     Bar.Layout(f)
     Bar.Paint(f, T.accent, false)
     return f
 end
 
+local moreTexts = {}
+
+local function MoreText(n)
+    local text = moreTexts[n]
+    if not text then
+        text = ns.Color("muted", ("+%d more"):format(n))
+        moreTexts[n] = text
+    end
+    return text
+end
+
 local function BarSize(f)
-    local w, h = f.pillW, f.height + f.rise
-    if not f.pill then w = math.max(f.width, math.ceil(f.labelX + f.lead + f.group + f.side + BAR_PAD)) end
-    f.host:SetSize(w, h)
+    f.host:SetSize(f.pill and f.pillW or f.width, f.height + f.rise)
 end
 
 local function Medallion(f)
     f.pill = false
     f.cap:Show()
-    local y = TEXT_LIFT + LINE_H / 2
+    local y = BAR.TEXT_LIFT + BAR.LINE_H / 2
     f.camp:ClearAllPoints()
     f.camp:SetSize(f.campSize, f.campSize)
-    f.camp:SetPoint("CENTER", f.bar, "TOPLEFT", f.campX, CAMP_SEAT)
+    f.camp:SetPoint("CENTER", f.bar, "TOPLEFT", f.campX, BAR.CAMP_SEAT)
     Notch(f, f.campX - f.radius, f.campX + f.radius)
     f.labels:ClearAllPoints()
     f.labels:SetPoint("LEFT", f.bar, "LEFT", f.labelX + f.lead, y)
     f.note:ClearAllPoints()
     f.note:SetPoint("LEFT", f.bar, "LEFT", f.labelX, y)
     f.time:ClearAllPoints()
-    f.time:SetPoint("RIGHT", f.bar, "RIGHT", -BAR_PAD, y)
+    f.time:SetPoint("RIGHT", f.bar, "RIGHT", -BAR.PAD, y)
 end
 
 local function BarFit(f, labels, icons, n, timed)
+    f.side = timed and BAR.TIME_W + BAR.TIME_GAP or 0
+    local room = f.width - f.labelX - f.lead - f.side - BAR.PAD
     f.labels:SetLabels(labels, n, icons)
     f.group = f.labels:Pack()
-    f.side = timed and TIME_W + TIME_GAP or 0
+    f.more = 0
+    local kept = n - 1
+    while f.group > room and kept >= 1 do
+        local list, marks = f.moreLabels, f.moreIcons
+        for i = 1, kept do list[i], marks[i] = labels[i], icons and icons[i] or false end
+        list[kept + 1], marks[kept + 1] = MoreText(n - kept), false
+        f.labels:SetLabels(list, kept + 1, marks)
+        f.group = f.labels:Pack()
+        f.more = n - kept
+        kept = kept - 1
+    end
     Medallion(f)
     BarSize(f)
 end
@@ -343,19 +361,24 @@ local function BarNote(f, text, color)
     f.note:Show()
 end
 
+local function RingColor(f)
+    local c = f.lit and f.color or T.muted
+    f.timeRing:SetColorTexture(c.r, c.g, c.b, 1)
+end
+
 local function BarLit(f, on)
     f.lit = on
-    f.bg:SetAlpha(on and 1 or BAR_DIM)
     f.camp.tex:SetDesaturated(not on)
-    f.timeRing:SetShown(on)
+    RingColor(f)
     f.halo:SetShown(on and f.low)
 end
 
 function Bar.Paint(f, color, low)
     f.low = low and true or false
+    f.color = color
     f.line:Paint(color, f.low and color or T.fg)
-    f.timeRing:SetColorTexture(color.r, color.g, color.b, 1)
-    f.halo:SetVertexColor(color.r, color.g, color.b, HALO_ALPHA)
+    RingColor(f)
+    f.halo:SetVertexColor(color.r, color.g, color.b, BAR.HALO_ALPHA)
     f.halo:SetShown(f.lit and f.low)
 end
 
@@ -383,7 +406,7 @@ function Bar.Sitting(f, labels, icons, n, timed, upcoming)
     else
         BarNote(f, "Resting", T.accentSoft)
         f.labels:SetColor(T.muted)
-        if n > 0 then f.lead = math.ceil(f.note:GetStringWidth()) + NOTE_GAP end
+        if n > 0 then f.lead = math.ceil(f.note:GetStringWidth()) + BAR.NOTE_GAP end
     end
     BarFit(f, labels, icons, n, timed)
 end
@@ -397,10 +420,10 @@ function Bar.Missing(f, nearby)
     BarNote(f, nearby and f.nearbyText or f.refreshText, T.fg)
     f.camp:ClearAllPoints()
     f.camp:SetSize(f.pillIcon, f.pillIcon)
-    f.camp:SetPoint("LEFT", f.bar, "LEFT", BAR_PAD, 0)
+    f.camp:SetPoint("LEFT", f.bar, "LEFT", BAR.PAD + f.pillRing, 0)
     f.note:ClearAllPoints()
-    f.note:SetPoint("LEFT", f.camp, "RIGHT", PILL_GAP, TEXT_LIFT)
-    f.pillW = math.ceil(BAR_PAD + f.pillIcon + PILL_GAP + f.note:GetStringWidth() + BAR_PAD)
+    f.note:SetPoint("LEFT", f.camp, "RIGHT", BAR.PILL_GAP + f.pillRing, BAR.TEXT_LIFT)
+    f.pillW = math.ceil(BAR.PAD + f.pillRing * 2 + f.pillIcon + BAR.PILL_GAP + f.note:GetStringWidth() + BAR.PAD)
     Bar.Timed(f, false)
     BarSize(f)
 end
@@ -571,12 +594,18 @@ local function HideTip()
     GameTooltip:Hide()
 end
 
+local function Anchored(simple, left, x, y)
+    if simple then return { point = "LEFT", relPoint = "BOTTOMLEFT", x = left, y = y } end
+    return { point = "CENTER", relPoint = "BOTTOMLEFT", x = x, y = y }
+end
+
 local function SavePos(pos)
     local x, y = icon:GetCenter()
-    if x and y then
-        pos = { point = "CENTER", relPoint = "BOTTOMLEFT", x = x, y = y }
+    local left = icon:GetLeft()
+    if x and y and left then
+        pos = Anchored(Simple(), left, x, y)
         icon:ClearAllPoints()
-        icon:SetPoint("CENTER", UIParent, "BOTTOMLEFT", x, y)
+        icon:SetPoint(pos.point, UIParent, pos.relPoint, pos.x, pos.y)
     end
     S.Set("campPos", pos)
 end
@@ -614,8 +643,10 @@ local function Place()
     icon:ClearAllPoints()
     if pos then
         icon:SetPoint(pos.point, UIParent, pos.relPoint, pos.x, pos.y)
+    elseif Simple() then
+        icon:SetPoint("LEFT", UIParent, "CENTER", DEFAULT_X - S.Get("campIconSize") / 2, DEFAULT_Y)
     else
-        icon:SetPoint("CENTER", UIParent, "CENTER", -260, 120)
+        icon:SetPoint("CENTER", UIParent, "CENTER", DEFAULT_X, DEFAULT_Y)
     end
 end
 
@@ -857,7 +888,7 @@ end
 
 -- UNIT_AURA fires often, so the timer is only set again for a new expiry.
 local function UpdateAlert(aura)
-    if not (S.Get("campNearbyAlert") and C_UnitAuras.GetPlayerAuraBySpellID(CAMPFIRE_NEARBY)) then
+    if Simple() or not (S.Get("campNearbyAlert") and C_UnitAuras.GetPlayerAuraBySpellID(CAMPFIRE_NEARBY)) then
         alertDismissed = nil
         DisarmAlert()
         SetAlert(false)
@@ -900,7 +931,7 @@ function Refresh(_, event)
     if not icon then return end
     if unlocked then
         ShowUp(3600, GetTime() + 2400, UNLOCK_TEXT, sampleLabels, sampleIcons, FillSamples(true))
-        SetAlert(S.Get("campNearbyAlert"))
+        SetAlert(S.Get("campNearbyAlert") and not Simple())
         return
     end
     if not (On() and InOpenWorld()) then
@@ -997,14 +1028,17 @@ local function Apply()
 end
 
 local function Restyle()
-    local pos = S.Get("campPos")
-    local x, y
-    if icon and pos and pos.point ~= "CENTER" then x, y = icon:GetCenter() end
+    local x, y, left
+    if icon and S.Get("campPos") then
+        x, y = icon:GetCenter()
+        left = icon:GetLeft()
+    end
     Apply()
-    if not (x and y and icon) then return end
+    if not (x and y and left and icon) then return end
+    local pos = Anchored(Simple(), left, x, y)
     icon:ClearAllPoints()
-    icon:SetPoint("CENTER", UIParent, "BOTTOMLEFT", x, y)
-    S.Set("campPos", { point = "CENTER", relPoint = "BOTTOMLEFT", x = x, y = y })
+    icon:SetPoint(pos.point, UIParent, pos.relPoint, pos.x, pos.y)
+    S.Set("campPos", pos)
 end
 
 hooksecurefunc(S, "Set", function(key)
@@ -1039,7 +1073,7 @@ local ROUND_ONLY, SIMPLE_ONLY = "Round style only", "Simple style only"
 local STAGE_H, ALERT_H, NOTE_Y, NOTE_SIZE, NOTE_GAP_Y, STAGE_MARGIN, HINT_ROOM = 230, 90, 10, 11, 4, 16, 30
 local CAMP_HOUR, SIT_TIME, BUFF_GAP = 3600, 60, 12
 local EDGE_HIT, HIDDEN_ALPHA, DRAG_FACTOR = 8, 0.35, 2
-local WIDTH_RANGE, TEXT_RANGE, HEIGHT_RANGE = { 160, 400, 5 }, { 10, 16, 1 }, { 20, 36, 1 }
+local WIDTH_RANGE, TEXT_RANGE, HEIGHT_RANGE = { 200, 480, 5 }, { 10, 16, 1 }, { 20, 36, 1 }
 local SAMPLE_BUFFS = "+Rested\n+Crit"
 local SIMPLE_HINT = "Drag the right edge for width. Wheel: text size (Shift: height). Click a bonus or the time "
     .. "to show or hide it. Right-click for more."
@@ -1070,6 +1104,7 @@ local campCard
 local function Enabled() return S.Get("enabled") and true or false end
 local function Needs(key) return function() return S.Get("enabled") and S.Get(key) and true or false end end
 local function CampOn() return S.Get("enabled") and S.Get("campfire") and true or false end
+local function RoundCampOn() return CampOn() and not Simple() end
 local function RoundOn() return S.Get("enabled") and not Simple() and true or false end
 local function SimpleOn() return S.Get("enabled") and Simple() and true or false end
 local function PickBuffMode(v) S.Set("campBuffMode", v) end
@@ -1181,7 +1216,7 @@ local function PreviewBar(shot)
     shot.timeZone = Zone(shot, { click = TimeClicked, wash = true })
     shot.timeZone:SetPoint("TOPRIGHT", f.bar, "TOPRIGHT")
     shot.timeZone:SetPoint("BOTTOMRIGHT", f.bar, "BOTTOMRIGHT")
-    shot.timeZone:SetWidth(TIME_W + BAR_PAD)
+    shot.timeZone:SetWidth(BAR.TIME_W + BAR.PAD)
     shot.widthZone = Zone(shot, { edge = true, drag = { get = WidthGet, set = WidthSet, range = WIDTH_RANGE,
         factor = DRAG_FACTOR, live = function(v) f.width = v; BarSize(f) end } })
     shot.widthZone:SetPoint("TOP", f.bar, "TOPRIGHT")
@@ -1191,8 +1226,8 @@ local function PreviewBar(shot)
 end
 
 local function FitBar(shot)
-    local host = shot.barHost
-    local w, h = host:GetWidth(), host:GetHeight()
+    local host, f = shot.barHost, shot.bar
+    local w, h = f.width, host:GetHeight()
     local roomW = shot:GetWidth() - STAGE_MARGIN * 2
     local roomH = shot:GetHeight() - STAGE_MARGIN * 2 - HINT_ROOM
     local scale = 1
@@ -1200,7 +1235,7 @@ local function FitBar(shot)
     if roomH > 0 and h * scale > roomH then scale = roomH / h end
     host:SetScale(scale)
     host:ClearAllPoints()
-    host:SetPoint("CENTER", shot, "CENTER", 0, HINT_ROOM / 2 / scale)
+    host:SetPoint("LEFT", shot, "CENTER", -w / 2, HINT_ROOM / 2 / scale)
 end
 
 local function RunBar(f, left, duration, timed, prefix)
@@ -1329,7 +1364,7 @@ campCard = page:Card({
           needs = Needs("campShowUnder"), why = "Needs Show Only When Low" },
         Group("Simple Bar"),
         { key = "campSimpleWidth", label = "Bar Width", slider = WIDTH_RANGE, needs = SimpleOn, why = SIMPLE_ONLY,
-          help = "How wide the bar is at least; it grows to fit more bonuses." },
+          help = "How wide the bar is; bonuses that do not fit show as +N more." },
         { key = "campSimpleHeight", label = "Bar Height", slider = HEIGHT_RANGE, needs = SimpleOn, why = SIMPLE_ONLY },
         { key = "campSimpleTextSize", label = "Text Size", slider = TEXT_RANGE, needs = SimpleOn, why = SIMPLE_ONLY },
         { key = "campBonusIcons", label = "Bonus Icons", toggle = true, needs = SimpleOn, why = SIMPLE_ONLY,
@@ -1354,15 +1389,12 @@ campCard = page:Card({
 
 page:Card({
     id = "campNearby", name = "Camp Nearby", order = 30, switch = "campNearbyAlert",
-    help = "\"Camp Nearby\" in the middle of the screen when a campfire is in range and your camp needs "
-        .. "refreshing: no Camp Benefits, or less than Alert Under minutes left. Ctrl-click it to dismiss "
-        .. "it until you leave that campfire. Part of the Campfire reminder, so it needs that on. Move it "
-        .. "in Unlock Mode.",
+    help = "With the Round style, a big \"Camp Nearby\" when a campfire is in range and your camp needs refreshing.",
     summary = AlertSummary,
     studio = { height = ALERT_H, states = ALERT_STATES, new = NewAlert, paint = PaintAlert },
     rows = {
         { key = "campNearbyMinutes", label = "Alert Under", slider = { 1, 59, 1 }, unit = " min",
-          needs = CampOn, why = "Needs the Campfire reminder",
+          needs = RoundCampOn, why = "Needs the Campfire reminder, Round style",
           help = "How little Camp Benefits time counts as needing a refresh." },
     },
 })

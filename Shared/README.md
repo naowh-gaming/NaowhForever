@@ -87,6 +87,9 @@ Shared/
   entries and refill them, with shared functions that read the entry, and a redraw makes no
   garbage. See `DungeonJournal/UI/QuestTracker.lua`, and the Discovery trackers for `bar`,
   `SetRows` and `mover`.
+- **A HUD panel:** an on-screen bar or pill uses the windows' own backdrop, `Parts.Backdrop(frame)`
+  painted at `Style.BACKDROP_ALPHA` (near opaque, so the world does not tint it), with the 1px black
+  edge (`Style.BORDER_RGB`). The Campfire's Simple bar is one.
 - **A timer line:** `Parts.TimerLine(parent, height, text)` is a thin StatusBar the client runs
   down by itself (`SetTimerDuration`), so no Lua runs while it counts: a full-width track in the
   theme's line color, a fill in a gradient into its color, and a soft glow where the fill ends.
