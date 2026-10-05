@@ -65,7 +65,7 @@ local S = UI.ModuleSettings("qol", {
     xpTickerPlayed = true, xpTickerPace = false, xpTickerSplitPlayed = true,
     groupXP = false, groupXPShowSelf = true, groupXPWidth = 260,
     naowhScore = true, naowhScoreTooltip = true, naowhScoreScan = true, naowhScoreNearby = true,
-    naowhScoreCompare = "max",
+    naowhScoreCompare = "both",
     characterPanel = true,
     -- On by default, an exception to off by default: marks on the game's own panel, no restyle.
     characterPanelSlotMarks = true, characterPanelLevels = true, characterPanelMarks = true,
