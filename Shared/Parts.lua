@@ -791,9 +791,10 @@ local function RowSpread(row, width)
 end
 
 local function RowPack(row)
-    local x = 0
+    local x, gap = 0, row.gap
     for i = 1, row.count do
         local sep, icon, label = row.seps[i], row.icons[i], row.labels[i]
+        if i > 1 then x = x + gap end
         if sep then
             sep:ClearAllPoints()
             sep:SetPoint("LEFT", row, "LEFT", x, 0)
@@ -835,8 +836,9 @@ function Parts.LabelRow(parent, size, flags, color, opts)
     local row = CreateFrame("Frame", nil, parent)
     row:SetHeight(size)
     row.size, row.flags, row.color = size, flags, color or T.fg
-    row.labels, row.icons, row.seps, row.count = {}, {}, {}, 0
+    row.labels, row.icons, row.seps, row.count, row.gap = {}, {}, {}, 0, 0
     if opts then
+        row.gap = opts.gap or 0
         row.iconGrow = opts.iconGrow
         row.iconSize = opts.icon or (opts.iconGrow and size + opts.iconGrow)
         row.iconGap, row.iconDrop = opts.iconGap or St.GAP, opts.iconDrop or 0

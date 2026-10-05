@@ -45,7 +45,9 @@ Shared/
 - **Settings:** a module declares its settings next to its code, on the page they show on:
   `ns.Shared.Settings.Page("QoL/General", S):Card({ id, name, help, switch, summary, order,
   studio, rows = { ... } })`, rows like `{ key = "iconSize", label = "Icon Size", slider = { 12,
-  32, 1 } }` and `Settings.Group("Clock")` between them (see `Settings/Settings.lua`). The page
+  32, 1 } }` and `Settings.Group("Clock")` between them (see `Settings/Settings.lua`). A row or
+  group with `hidden` is left off the page: `true` for one set on the preview instead, or a
+  function, so rows for one choice only (the Campfire's Round and Simple rows) show with it. The page
   in the options window, its search entries, the dot on what you changed and each card's reset
   all come from that one declaration. Settings pages hold settings only: a module's lists and
   editors live in its own window, opened from the page's `page:Window{ ... }` card (first on
@@ -89,7 +91,8 @@ Shared/
   `SetRows` and `mover`.
 - **A HUD panel:** an on-screen bar or pill uses the windows' own backdrop, `Parts.Backdrop(frame)`
   painted at `Style.BACKDROP_ALPHA` (near opaque, so the world does not tint it), with the 1px black
-  edge (`Style.BORDER_RGB`). The Campfire's Simple bar is one.
+  edge (`Style.BORDER_RGB`). The Campfire's Simple bar is one: its words are panel text (no HUD
+  shadow), an amount in the text colour before its muted stat, and the accent only on a key word.
 - **A timer line:** `Parts.TimerLine(parent, height, text)` is a thin StatusBar the client runs
   down by itself (`SetTimerDuration`), so no Lua runs while it counts: a full-width track in the
   theme's line color, a fill in a gradient into its color, and a soft glow where the fill ends.
@@ -103,11 +106,12 @@ Shared/
   `size` optional) makes a frame of pooled labels. `row:SetLabels(list, n, icons)` writes the first
   `n` strings of `list` and returns the widest; `row:Pack()` lines them up left to right and
   returns the width, `row:Spread(width)` centres each in an equal share of `width` instead;
-  `row:SetColor(color)` and `row:SetTextSize(size)` restyle them. `opts`: `separator` (text
-  between labels, e.g. `Style.PLACE_DOT`) in `separatorColor` (muted by default), and an item icon
-  before each label (`Parts.ItemIcon`, the house edge) sized `icon`, or `iconGrow` more than the
-  text, `iconGap` from it and `iconDrop` lower; `icons[i]` is its texture, false for none. Anchor
-  the row by its left edge. Refilling it with the same strings makes no garbage.
+  `row:SetColor(color)` and `row:SetTextSize(size)` restyle them. `opts`: `gap` (space between
+  labels as they are packed), `separator` (text between labels, e.g. `Style.PLACE_DOT`) in
+  `separatorColor` (muted by default), and an item icon before each label (`Parts.ItemIcon`, the
+  house edge) sized `icon`, or `iconGrow` more than the text, `iconGap` from it and `iconDrop`
+  lower; `icons[i]` is its texture, false for none. Anchor the row by its left edge.
+  Refilling it with the same strings makes no garbage.
 - **Copying:** `Parts.CopyWowhead(kind, id, name)` opens the copy card on an item, quest or
   NPC's Wowhead link; a menu's Copy uses `ns.ShowCopyLine(title, text, icon)` (QoL's Global
   Copy) for any line.
