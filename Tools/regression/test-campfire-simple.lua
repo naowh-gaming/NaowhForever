@@ -71,10 +71,6 @@ local function Fixture(settings)
             return fill
         end,
         CreateTexture = function(f) return Frame(f) end,
-        CreateAnimationGroup = function(f) return Frame(f) end,
-        CreateAnimation = function(f) return Frame(f) end,
-        Play = function(f) f.played = (rawget(f, "played") or 0) + 1 end,
-        SetPassThroughButtons = function(f, button) f.passThrough = button end,
         CreateMaskTexture = function(f) return Frame(f) end,
         CreateFontString = function(f) return Frame(f) end,
     }
@@ -128,7 +124,6 @@ local function Fixture(settings)
         UIFontPath = function() return "font" end,
         AccountSettings = function() return {} end,
         Apply = NOTHING, ShowRaidReminderAnchorConfig = NOTHING, HideRaidReminderAnchorConfig = NOTHING,
-        Print = function(msg) state.printed = msg end,
         UI = {
             Keep = function(parent, key, make)
                 local kept = rawget(parent, key)
@@ -144,7 +139,6 @@ local function Fixture(settings)
                 return S
             end,
             _PlayLSMSound = NOTHING, SoundPathFor = NOTHING,
-            PlaySoundKey = function(key) state.sounds = (state.sounds or 0) + 1; state.soundKey = key end,
         },
     }
     local tooltip = Frame()
@@ -512,105 +506,6 @@ do
         and shot.widthZone.shown == false)
     card.studio.paint(shot, "missing")
     check("preview Refresh: the pill", f.pill and f.note.text == "Refresh Camp")
-end
-
-do
-    local s = Fixture()
-    s.auras[CAMP] = { duration = 3600, expirationTime = s.now + 100, auraInstanceID = 1 }
-    s.auras[TENT] = Aura({ 5 })
-    s.fire("PLAYER_LOGIN")
-    check("Camp Nearby: nothing built until a campfire is in range", s.named.NaowhForeverCampNearby == nil)
-    s.auras[NEARBY] = {}
-    s.fire("UNIT_AURA")
-    local alert = s.named.NaowhForeverCampNearby
-    check("Camp Nearby: the fire, the words and the time left", alert.shown and alert.camp.shown ~= false
-        and alert.sub.shown ~= false and alert.clock.binding.enabled == true
-        and alert.clock.binding.formatter.points[1].format == "%ds left"
-        and alert.clock.dur.start == s.now + 100 - 3600)
-    check("Camp Nearby: a pulse as it appears, no sound by default", alert.pulseGroup.played == 1 and s.sounds == nil)
-    check("Camp Nearby: left clicks fall through, its box only as big as its words",
-        alert.passThrough == "LeftButton" and alert.w == 28 + 6 + #"Camp Nearby" * 6 and alert.h == 28 + 2 + 14)
-    s.tips = {}
-    alert.scripts.OnEnter(alert)
-    check("Camp Nearby: hover says how to snooze", s.tipText():find("Right-click to snooze for 30 min", 1, true))
-
-    do
-        local frame, onEvent = s.listener("UNIT_AURA")
-        Measure(check)("a refresh with Camp Nearby up", 1, function() onEvent(frame, "UNIT_AURA") end)
-    end
-
-    alert.scripts.OnMouseUp(alert, "LeftButton")
-    check("Camp Nearby: a left click does nothing", alert.shown)
-    alert.scripts.OnMouseUp(alert, "RightButton")
-    check("Camp Nearby: right-click snoozes it, with one line", alert.shown == false
-        and s.printed == "Camp Nearby snoozed for 30 min.")
-    s.fire("UNIT_AURA")
-    check("Camp Nearby: stays snoozed", alert.shown == false)
-    s.auras[CAMP] = { duration = 3600, expirationTime = s.now + 110, auraInstanceID = 2 }
-    s.fire("UNIT_AURA")
-    check("Camp Nearby: a refreshed camp ends the snooze", alert.shown == true)
-    alert.scripts.OnMouseUp(alert, "RightButton")
-    s.advance(29 * 60)
-    check("Camp Nearby: still snoozed before its length", alert.shown == false)
-    s.auras[CAMP] = nil
-    s.advance(60 + 1)
-    check("Camp Nearby: back after the snooze length, Sit to refresh with the camp down", alert.shown == true
-        and alert.sub.text == "Sit to refresh" and alert.clock.binding.enabled == false)
-
-    s.S.Set("campNearbySnooze", 10)
-    alert.scripts.OnMouseUp(alert, "RightButton")
-    check("Camp Nearby: the snooze length is the setting's", s.printed == "Camp Nearby snoozed for 10 min.")
-    s.advance(10 * 60 + 1)
-    check("Camp Nearby: back after 10 min", alert.shown == true)
-
-    s.auras[NEARBY] = nil
-    s.fire("UNIT_AURA")
-    s.S.Set("campNearbySound", true)
-    s.S.Set("campNearbyPulse", false)
-    local pulses = alert.pulseGroup.played
-    s.auras[NEARBY] = {}
-    s.fire("UNIT_AURA")
-    check("Camp Nearby: the sound when on, and no pulse when off", s.sounds == 1 and s.soundKey == "none"
-        and alert.pulseGroup.played == pulses)
-    local wide = alert.w
-    s.S.Set("campNearbyIcon", false)
-    check("Camp Nearby: Show Icon off", alert.camp.shown == false and alert.w < wide)
-    s.S.Set("campNearbyTimeLeft", false)
-    check("Camp Nearby: Show Time Left off", alert.sub.shown == false and alert.h == 28)
-    s.S.Set("campNearbyTextSize", 20)
-    check("Camp Nearby: Text Size", alert.text.size == 20 and alert.h == 20)
-end
-
-do
-    local s = Fixture({ campfire = false })
-    s.auras[NEARBY] = {}
-    s.fire("PLAYER_LOGIN")
-    s.fire("UNIT_AURA")
-    check("Camp Nearby: free while the reminder is off", s.named.NaowhForeverCampNearby == nil)
-    s.values.campfire = true
-    local card = s.ns.Shared.Settings.pages["AuraBuffs/Settings"].cards.campNearby
-    local shot = card.studio.new(s.Frame())
-    card.studio.paint(shot, "low")
-    local a = shot.alert
-    check("Camp Nearby preview: running low, its time left counting", a.clock.binding.enabled == true
-        and shot.hint.text:find("Wheel: text size", 1, true) and shot.zones[1].shown ~= false)
-    local body, iconZone, lineZone = shot.zones[1], shot.zones[2], shot.zones[3]
-    body.scripts.OnMouseWheel(body, 1)
-    check("Camp Nearby preview: wheel for text size", s.S.Get("campNearbyTextSize") == 29)
-    iconZone.over = true
-    iconZone.scripts.OnMouseUp(iconZone, "LeftButton")
-    check("Camp Nearby preview: click the icon to hide it", s.S.Get("campNearbyIcon") == false)
-    lineZone.over = true
-    lineZone.scripts.OnMouseUp(lineZone, "LeftButton")
-    check("Camp Nearby preview: click the time line to hide it", s.S.Get("campNearbyTimeLeft") == false)
-    body.over = true
-    body.scripts.OnMouseUp(body, "RightButton")
-    local entries = s.menuEntries()
-    check("Camp Nearby preview: right-click shows the snooze and the menu",
-        shot.note.text:find("Snoozed for 30 min", 1, true) and entries:find("check:Pulse", 1, true)
-        and entries:find("check:Sound", 1, true) and entries:find("button:Reset", 1, true))
-    card.studio.paint(shot, "down")
-    check("Camp Nearby preview: camp down reads Sit to refresh", a.sub.text == "Sit to refresh")
 end
 
 print(checks .. " campfire look checks passed")

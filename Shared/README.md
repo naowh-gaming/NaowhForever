@@ -57,7 +57,7 @@ Shared/
   `drag = { get, set, live, range, axis, factor }` (a drag along `axis`, "x" by default, snapped to
   `range` `{ low, high, step }` with `Settings.Snap`, drawn through `live` and saved through `set`
   on release), and a hover mark: `wash` (a faint fill) or `edge` (an accent line down its middle).
-  Nothing runs per frame except while dragging. The Campfire's Simple bar and Camp Nearby previews use it.
+  Nothing runs per frame except while dragging. The Campfire's Simple bar preview uses it.
 - **A window:** `Parts.Window`, `Parts.TitleBar`, `Parts.Opacity`, `Parts.BarButton`,
   `Parts.FooterBrand`. See `BiS/UI/Window.lua` for a short one.
 - **A tracker:** `Parts.TrackerPanel(title, opts)` builds a tracker's window once, on first
@@ -91,17 +91,11 @@ Shared/
   down by itself (`SetTimerDuration`), so no Lua runs while it counts: a full-width track in the
   theme's line color, a fill in a gradient into its color, and a soft glow where the fill ends.
   Give it a FontString as `text` (optional) and the time left is written into it the same way,
-  short (`35s`, `42m`, `1h`: `Parts.ShortTime(prefix, suffix)`, one formatter per pair, made once).
+  short (`35s`, `42m`, `1h`: `Parts.ShortTime(prefix)`, one formatter per prefix, made once).
   `line:Run(start, duration, prefix)` starts it (`prefix` optional, e.g. `"in "`), `line:Stop()`
   empties it, and `line:Paint(color, textColor)` colors the fill and the glow, and the text in
   `textColor` when given, else in `color`. The Campfire's Simple bar uses it, in
   `Style.TIME_OK_RGB`, `TIME_LOW_RGB` and `TIME_OUT_RGB` (plenty, running low, nearly out).
-- **Time text:** `Parts.TimeText(fontString, prefix, suffix)` writes a countdown into a FontString
-  the same way, with no line: `clock:Run(start, duration)` and `clock:Stop()`. Camp Nearby's
-  "45s left" uses it.
-- **A pulse:** `Parts.Pulse(frame, scale, duration, times)` (all but `frame` optional) is an
-  animation group that grows and settles the frame `times` times; `:Play()` it when the frame
-  appears. It stops when the frame hides, and runs nothing otherwise.
 - **Labels in a row:** `Parts.LabelRow(parent, size, flags, color, opts)` (all but `parent` and
   `size` optional) makes a frame of pooled labels. `row:SetLabels(list, n, icons)` writes the first
   `n` strings of `list` and returns the widest; `row:Pack()` lines them up left to right and
