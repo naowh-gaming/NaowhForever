@@ -2,20 +2,23 @@
 --  UI/DungeonMap.lua -- a dungeon's map: the game's own map art of the dungeon (Data/Maps.lua),
 --  or, for one the game has no art for yet, a picture the addon ships (image), with its
 --  maker's credit in the map's corner; its bosses as round portraits where they stand, each
---  with its place in the kill order, and the entrance. Hover a boss for its name, click it
+--  with its place in the kill order, and the entrance (its label on a side clear of the pins
+--  and the map's edge, or none when every side is taken). Hover a boss for its name, click it
 --  for its loot; a dungeon on several floors has a switch under the map. It shows in two
 --  places, each a view of its own:
 --
 --  - A window, from Map on a dungeon page's Bosses title: in front of the window that holds
 --    the page, beside it where the screen has room (else over its top right), as tall as it.
 --    The floor switch has a line under the map only with several floors (or Copy, placing).
---    Under the map, the bosses in kill order as a strip of chips (hover one to light its
---    pin, a pin to light its chip; too many for two rows and they show only their number and
---    portrait), each with a tick once killed this run (and its pin dimmed, and the run's
---    count in the title), a quest mark where a quest in your log needs it, and your BiS
---    there. Under the strip, the page of the boss picked (a pin or a chip), compact, to read
+--    Under the map, the bosses in kill order as a grid of equal chips, up to five across and
+--    the full width (hover one to light its pin, a pin to light its chip; past ten they show
+--    only their number and portrait, spread across), each with a tick once killed this run
+--    (and its pin dimmed, and the run's count in the title), a quest mark where a quest in
+--    your log needs it, your BiS there, and the tag of one with no number (RARE, QUEST...).
+--    Under the strip, the page of the boss picked (a pin or a chip), compact, to read
 --    at a glance (View's DrawBossPage): its name and level on one line, Naowh's tip, its loot
---    and its abilities side by side, its quests; it scrolls only when it must. The chevron in
+--    and its abilities side by side (what each ability does on two lines while the page has
+--    the room, else one), its quests; it scrolls only when it must. The chevron in
 --    its title folds that part away, for the map alone (kept for the account), and a pin
 --    then opens its loot at the mouse. It closes with that window unless pinned (the pin in
 --    its title, kept for the account too); the Naowh mark in its title, or its name, opens
@@ -69,11 +72,15 @@ local CHIP_PART_GAP = 4
 local CHIP_NAME_GAP = 6
 local CHIP_STAR_GAP = 2
 local CHIP_NUMBER_W = 14
-local CHIP_NAME_MAX = 150
 local CHIP_MARK = 13
 local CHIP_FILL = 0.04
 local CHIP_GAP = St.CHIP_GAP
-local STRIP_ROWS = 2
+local STRIP_COLUMNS, STRIP_ROWS = 5, 2
+local COMPACT_W = CHIP_PAD * 2 + CHIP_NUMBER_W + CHIP_PART_GAP + CHIP_FACE + 2
+local TAG_SHORT = { RARE = "R", OPTIONAL = "O", QUEST = "Q", CHEST = "C" }
+local LABEL_GAP = 4
+local LABEL_CLEAR = 8
+local LABEL_SIDES = { "RIGHT", "LEFT", "BELOW", "ABOVE" }
 local DOWN_KEY = 100
 local LOWER_GAP = 10
 local STRIP_GAP = 8
@@ -350,7 +357,6 @@ local function NewView(parent, holder, editable)
     door.icon:SetAllPoints()
     door.icon:SetAtlas("dungeon")
     door.text = ns.Font(door, 16, "OUTLINE", T.fg)
-    door.text:SetPoint("LEFT", door, "RIGHT", 4, 0)
     door.text:SetText("Entrance")
     door.key, door.view = "entrance", view
     Draggable(door)
@@ -446,6 +452,8 @@ function View:DrawPin(boss, number, key)
     SetFace(pin, boss, number, 1 / self.scale)
     pin.glow:Hide()
     ShowPicked(pin, self.picked ~= nil and key == self.picked and not self:Placing())
+    pin.atX = here and spot[2] * MAP_W or nil
+    pin.atY = here and spot[3] * MAP_H or nil
     if here then
         self:At(pin, spot[2], spot[3])
         -- Killed this run, in the dungeon you are in: dimmed.
@@ -458,6 +466,51 @@ function View:DrawPin(boss, number, key)
         pin:SetAlpha(UNPLACED_ALPHA)
     end
     pin:Show()
+end
+
+local function LabelBox(side, cx, cy, w, h)
+    local half = ENTRANCE / 2
+    if side == "RIGHT" then return cx + half + LABEL_GAP, cy - h / 2 end
+    if side == "LEFT" then return cx - half - LABEL_GAP - w, cy - h / 2 end
+    if side == "BELOW" then return cx - w / 2, cy + half + LABEL_GAP end
+    return cx - w / 2, cy - half - LABEL_GAP - h
+end
+
+function View:LabelFree(left, top, w, h)
+    if left < 0 or top < 0 or left + w > MAP_W or top + h > MAP_H then return false end
+    local reach = PIN / 2 + LABEL_CLEAR
+    for i = 1, self.used do
+        local pin = self.pins[i]
+        local x, y = pin.atX, pin.atY
+        if x and left < x + reach and left + w > x - reach and top < y + reach and top + h > y - reach then
+            return false
+        end
+    end
+    return true
+end
+
+local LABEL_ANCHOR = {
+    RIGHT = { "LEFT", "RIGHT", LABEL_GAP, 0 }, LEFT = { "RIGHT", "LEFT", -LABEL_GAP, 0 },
+    BELOW = { "TOP", "BOTTOM", 0, -LABEL_GAP }, ABOVE = { "BOTTOM", "TOP", 0, LABEL_GAP },
+}
+
+function View:PlaceDoorLabel(cx, cy)
+    local text = self.door.text
+    local w, h = math.ceil(text:GetStringWidth()), math.ceil(text:GetStringHeight())
+    local side
+    for i = 1, #LABEL_SIDES do
+        local left, top = LabelBox(LABEL_SIDES[i], cx, cy, w, h)
+        if self:LabelFree(left, top, w, h) then
+            side = LABEL_SIDES[i]
+            break
+        end
+    end
+    self.door.side = side
+    text:SetShown(side ~= nil)
+    if not side then return end
+    local anchor = LABEL_ANCHOR[side]
+    text:ClearAllPoints()
+    text:SetPoint(anchor[1], self.door, anchor[2], anchor[3], anchor[4])
 end
 
 local function FloorName(map, n)
@@ -503,9 +556,11 @@ function View:Draw()
     self.door:SetShown(here or self:Placing())
     if here then
         self:At(self.door, door[2], door[3])
+        self:PlaceDoorLabel(door[2] * MAP_W, door[3] * MAP_H)
     elseif self:Placing() then
         self.door:ClearAllPoints()
         self.door:SetPoint("TOPRIGHT", self.canvas, "TOPRIGHT", -8, -8)
+        self:PlaceDoorLabel(MAP_W - 8 - ENTRANCE / 2, 8 + ENTRANCE / 2)
     end
     local several = #self.floors > 1
     self.floorName:SetShown(several)
@@ -659,6 +714,18 @@ local function Folded()
     return ns.AccountSettings().journalMapFolded == true
 end
 
+local function FloorLine()
+    return #windowView.floors > 1 or placing
+end
+
+local function MapFoot()
+    return PANEL_HEADER + MAP_SHOWN_H + (FloorLine() and UNDER_MAP_GAP + FLOOR_H or 0)
+end
+
+local function PageRoom()
+    return window:GetHeight() - MapFoot() - LOWER_GAP - strip:GetHeight() - STRIP_GAP - PANEL_PAD
+end
+
 -- What a quest in your log needs of the boss: an objective naming it (its head, its death).
 -- Read from your log's own words, so it is a match by name: none when the game words it
 -- otherwise.
@@ -752,11 +819,12 @@ local function Pick(boss)
     end
     lootView:Show()
     if not again then page:SetVerticalScroll(0) end
+    lootView.fitHeight = PageRoom()
     lootView:DrawBossPage(boss, windowView.dungeon)
 end
 
 local function PageDrawn(height)
-    local scrolls = height > page:GetHeight()
+    local scrolls = height > PageRoom()
     local want = scrolls and PAGE_W - SCROLL_GAP or PAGE_W
     if math.abs(lootView:GetWidth() - want) < 1 then return end
     page:SetPoint("BOTTOMRIGHT", -(PANEL_PAD + (scrolls and SCROLL_GAP or 0)), PANEL_PAD)
@@ -811,8 +879,9 @@ local function Mark(chip, texture)
 end
 
 -- In the house's chip look (a faint fill in a 1px black edge): its place in the kill order (a
--- tick once killed this run), its portrait in a black ring, its name and tag; a quest mark and
--- your BiS there after them.
+-- tick once killed this run), its portrait in a ring (black, muted for a boss with no number),
+-- its name cut to fit and its tag; a quest mark and your BiS there after them. Compact, its
+-- number (or its tag's letter) and portrait, in the middle.
 local function NewChip()
     local chip = CreateFrame("Button", nil, strip)
     chip:SetHeight(CHIP_H)
@@ -860,31 +929,49 @@ local function PlacePart(part, x, gap, width)
     return x + width
 end
 
-local function LayChip(chip, compact)
+local function MarksWidth(chip)
+    local w = 0
+    if chip.tagW > 0 then w = w + CHIP_PART_GAP + chip.tagW end
+    if chip.needed then w = w + CHIP_NAME_GAP + CHIP_MARK end
+    if chip.bis > 0 then w = w + CHIP_NAME_GAP + CHIP_MARK + CHIP_STAR_GAP + chip.bisW end
+    return w
+end
+
+local function LayChip(chip, compact, width)
     local named = not compact or not chip.hasFace
-    local numbered = chip.numbered or chip.killed
-    local x = CHIP_PAD
-    chip.number:SetShown(numbered and not chip.killed)
+    local short = compact and chip.short
+    local slot = chip.numbered or chip.killed or short and true
+    chip.number:SetText(short or chip.numberText)
+    chip.number:SetShown(slot and not chip.killed)
     chip.tick:SetShown(chip.killed == true)
-    if numbered then x = PlacePart(chip.number, x, 0, CHIP_NUMBER_W) end
     chip.ring:SetShown(chip.hasFace)
     chip.face:SetShown(chip.hasFace)
-    if chip.hasFace then x = PlacePart(chip.ring, x, CHIP_PART_GAP, CHIP_FACE + 2) end
     chip.name:SetShown(named)
     chip.tag:SetShown(named and chip.tagW > 0)
     chip.quest:SetShown(named and chip.needed)
     chip.star:SetShown(named and chip.bis > 0)
     chip.bisText:SetShown(named and chip.bis > 0)
-    if named then
-        x = PlacePart(chip.name, x, CHIP_NAME_GAP, chip.nameW)
-        if chip.tagW > 0 then x = PlacePart(chip.tag, x, CHIP_PART_GAP, chip.tagW) end
-        if chip.needed then x = PlacePart(chip.quest, x, CHIP_NAME_GAP, CHIP_MARK) end
-        if chip.bis > 0 then
-            x = PlacePart(chip.star, x, CHIP_NAME_GAP, CHIP_MARK)
-            x = PlacePart(chip.bisText, x, CHIP_STAR_GAP, chip.bisW)
-        end
+    local x = CHIP_PAD
+    if not named then
+        local content = (slot and CHIP_NUMBER_W + CHIP_PART_GAP or 0) + CHIP_FACE + 2
+        x = math.max(CHIP_PAD, math.floor((width - content) / 2))
+        if slot then x = PlacePart(chip.number, x, 0, CHIP_NUMBER_W) + CHIP_PART_GAP end
+        chip.ring:ClearAllPoints()
+        chip.ring:SetPoint("LEFT", chip, "LEFT", x, 0)
+        return
     end
-    return x + CHIP_PAD
+    if slot then x = PlacePart(chip.number, x, 0, CHIP_NUMBER_W) end
+    if chip.hasFace then x = PlacePart(chip.ring, x, CHIP_PART_GAP, CHIP_FACE + 2) end
+    local room = width - CHIP_PAD - (x > CHIP_PAD and x + CHIP_NAME_GAP or x) - MarksWidth(chip)
+    local nameW = math.max(1, math.min(chip.nameW, room))
+    chip.name:SetWidth(nameW)
+    x = PlacePart(chip.name, x, CHIP_NAME_GAP, nameW)
+    if chip.tagW > 0 then x = PlacePart(chip.tag, x, CHIP_PART_GAP, chip.tagW) end
+    if chip.needed then x = PlacePart(chip.quest, x, CHIP_NAME_GAP, CHIP_MARK) end
+    if chip.bis > 0 then
+        x = PlacePart(chip.star, x, CHIP_NAME_GAP, CHIP_MARK)
+        PlacePart(chip.bisText, x, CHIP_STAR_GAP, chip.bisW)
+    end
 end
 
 -- One draw's count and settings, for StripChip (EachBoss's callback, made once).
@@ -901,43 +988,47 @@ local function StripChip(boss, number, key)
         drawTotal = drawTotal + 1
         if chip.killed then drawKilled = drawKilled + 1 end
     end
-    chip.number:SetText(number or "")
+    chip.numberText = number or ""
     local face = boss.model and SetPortraitTextureFromCreatureDisplayID
     if face then SetPortraitTextureFromCreatureDisplayID(chip.face, boss.model) end
     chip.hasFace = face ~= nil
     chip.face:SetDesaturated(chip.killed)
     chip.name:SetWidth(0)
     chip.name:SetText(boss.name)
-    chip.nameW = math.min(math.ceil(chip.name:GetStringWidth()) + 1, CHIP_NAME_MAX)
-    chip.name:SetWidth(chip.nameW)
+    chip.nameW = math.ceil(chip.name:GetStringWidth()) + 1
     local tag = J.BossTag(boss)
+    chip.short = tag and TAG_SHORT[tag]
     chip.tag:SetText(tag or "")
     chip.tagW = tag and math.ceil(chip.tag:GetStringWidth()) or 0
+    local ring = tag and T.muted or St.BORDER_RGB
+    chip.ring:SetColorTexture(ring.r, ring.g, ring.b, 1)
     chip.needed = quests[boss] ~= nil
     chip.bis, chip.haveBis = J.Loot.BossBis(boss)
     chip.bisText:SetText(chip.bis > 0 and chip.bis or "")
     chip.bisW = chip.bis > 0 and math.ceil(chip.bisText:GetStringWidth()) or 0
-    chip.fullW = LayChip(chip, false)
-    chip.compactW = LayChip(chip, true)
     PaintChip(chip)
     chip:Show()
 end
 
-local function Flow(compact, place)
-    local x, rows = 0, 1
+local function Columns(n, most)
+    local columns = math.max(1, math.min(n, most))
+    local rows = math.ceil(n / columns)
+    return math.ceil(n / rows), rows
+end
+
+local function Grid(compact)
+    local most = compact and math.floor((PAGE_W + CHIP_GAP) / (COMPACT_W + CHIP_GAP)) or STRIP_COLUMNS
+    local columns, rows = Columns(drawN, most)
+    local step = (PAGE_W + CHIP_GAP) / columns
     for i = 1, drawN do
         local chip = chips[i]
-        local w = compact and chip.compactW or chip.fullW
-        if x > 0 and x + w > PAGE_W then
-            x, rows = 0, rows + 1
-        end
-        if place then
-            LayChip(chip, compact)
-            chip:SetWidth(w)
-            chip:ClearAllPoints()
-            chip:SetPoint("TOPLEFT", x, -(rows - 1) * (CHIP_H + CHIP_GAP))
-        end
-        x = x + w + CHIP_GAP
+        local column, row = (i - 1) % columns, math.floor((i - 1) / columns)
+        local left = math.floor(column * step + 0.5)
+        local width = math.floor((column + 1) * step + 0.5) - CHIP_GAP - left
+        chip:SetWidth(width)
+        chip:ClearAllPoints()
+        chip:SetPoint("TOPLEFT", left, -row * (CHIP_H + CHIP_GAP))
+        LayChip(chip, compact, width)
     end
     return rows
 end
@@ -960,18 +1051,9 @@ local function DrawStrip()
     drawN, drawKilled, drawTotal, drawInside = 0, 0, 0, windowView.inside
     EachBoss(dungeon, StripChip)
     for i = drawN + 1, #chips do chips[i]:Hide() end
-    local compact = Flow(false, false) > STRIP_ROWS
-    local rows = Flow(compact, true)
+    local rows = Grid(drawN > STRIP_COLUMNS * STRIP_ROWS)
     strip:SetHeight(rows * CHIP_H + (rows - 1) * CHIP_GAP)
     return drawInside and drawTotal > 0 and DownText(drawKilled, drawTotal) or ""
-end
-
-local function FloorLine()
-    return #windowView.floors > 1 or placing
-end
-
-local function MapFoot()
-    return PANEL_HEADER + MAP_SHOWN_H + (FloorLine() and UNDER_MAP_GAP + FLOOR_H or 0)
 end
 
 -- The map, and under it, unless folded, the strip and the page: exactly as tall as the window

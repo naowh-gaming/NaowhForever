@@ -17,9 +17,10 @@
 --  - questChips: the same quests as chips on one line (wrapping when they do not fit), each
 --    its name in that color and its state, for the compact page.
 --  - ability: one of its abilities (Data/Abilities.lua): its icon in a black border, its
---    name, and under it, muted, what the game says it does: wrapped, or when dense on one
---    line, cut short. Its tooltip is the game's, whole, and Shift-click links it. A spell the
---    client has not loaded yet draws again once it has, as an item's name does.
+--    name, and under it, muted, what the game says it does: wrapped, or when dense cut short
+--    on two lines (view.abilityLines 2: the page has the room) or one. Its tooltip is the
+--    game's, whole, and Shift-click links it. A spell the client has not loaded yet draws
+--    again once it has, as an item's name does.
 -------------------------------------------------------------------------------
 local ns = _G.NaowhForever
 local T = ns.THEME
@@ -55,7 +56,9 @@ local STATE_W = 120       -- a quest's state, on the right
 local TICK_GAP = 4        -- a done quest's tick to its state
 local SHARE = St.ACTION   -- the tip's share button
 local TIP_MARK = St.ICON  -- the Naowh mark beside the tip, as big as a loot icon
-local DENSE_H, DENSE_ICON = St.DENSE_H, St.DENSE_ICON
+local DENSE_H, DENSE_TALL_H, DENSE_ICON = St.DENSE_H, St.DENSE_TALL_H, St.DENSE_ICON
+local DENSE_TALL_TOP = 4
+local TALL_LINES = 2
 local DENSE_PAD = St.CARD_BOTTOM
 local DENSE_NAME_TOP = 1
 local TITLE_LINE_TOP = 2
@@ -422,18 +425,27 @@ Kinds.ability = {
         if desc == "" and IsSpellDataCached and not IsSpellDataCached(spell) and Spell then
             Spell:CreateFromSpellID(spell):ContinueOnSpellLoad(row.loaded)
         end
-        local frame, dense = row.iconFrame, row:GetParent().dense
+        local view = row:GetParent()
+        local frame, dense = row.iconFrame, view.dense
+        local tall = dense and view.abilityLines == TALL_LINES
         frame:ClearAllPoints()
         row.desc:ClearAllPoints()
-        row.desc:SetWordWrap(not dense)
+        row.desc:SetWordWrap(not dense or tall)
+        row.desc:SetMaxLines(tall and TALL_LINES or 0)
         if dense then
             frame:SetSize(DENSE_ICON, DENSE_ICON)
-            frame:SetPoint("LEFT", 0, 0)
-            row.name:SetPoint("TOPLEFT", frame, "TOPRIGHT", TEXT_GAP, -DENSE_NAME_TOP)
-            row.desc:SetPoint("BOTTOMLEFT", frame, "BOTTOMRIGHT", TEXT_GAP, DENSE_NAME_TOP)
             row.desc:SetWidth(row:GetWidth() - DENSE_ICON - TEXT_GAP)
             row.desc:SetText(desc ~= "" and OneLine(spell, desc) or "")
             row.desc:SetShown(desc ~= "")
+            if tall then
+                frame:SetPoint("TOPLEFT", 0, -DENSE_TALL_TOP)
+                row.name:SetPoint("TOPLEFT", frame, "TOPRIGHT", TEXT_GAP, -DENSE_NAME_TOP)
+                row.desc:SetPoint("TOPLEFT", row.name, "BOTTOMLEFT", 0, -NAME_DESC_GAP)
+                return DENSE_TALL_H
+            end
+            frame:SetPoint("LEFT", 0, 0)
+            row.name:SetPoint("TOPLEFT", frame, "TOPRIGHT", TEXT_GAP, -DENSE_NAME_TOP)
+            row.desc:SetPoint("BOTTOMLEFT", frame, "BOTTOMRIGHT", TEXT_GAP, DENSE_NAME_TOP)
             return DENSE_H
         end
         frame:SetSize(ICON, ICON)

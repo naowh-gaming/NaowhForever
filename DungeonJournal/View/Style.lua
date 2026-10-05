@@ -87,6 +87,7 @@ J.Style = setmetatable({
     CHANCE_FAIR = 10,
 
     DENSE_H = 30,
+    DENSE_TALL_H = 44,
     DENSE_ICON = 26,
     DENSE_CHANCE_TOP = 5,
     DENSE_BAR_BOTTOM = 6,

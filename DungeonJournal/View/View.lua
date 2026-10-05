@@ -16,7 +16,8 @@
 --  draw, read once in Begin: view.compact (narrower than COMPACT_W: the map panel),
 --  view.playerLevel, view.filters (JournalFilters), view.showChance, view.showTips,
 --  view.dense and view.tightTitles (the dungeon map's compact boss page: shorter rows and
---  titles),
+--  titles; its abilities on two lines each while it fits in view.fitHeight, set by its
+--  caller, else one: view.abilityLines),
 --  view.showKills, view.column (the items' right column: nil the drop chance, "price" or
 --  "none"; set by its caller around them), view.tight (each quest on one line: the quest
 --  tracker), view.bare (items
@@ -462,8 +463,20 @@ function ViewMixin:DrawBossLoot(boss, dungeon)
 end
 
 function ViewMixin:DrawBossPage(boss, dungeon)
+    local room = self.fitHeight
+    self.abilityLines = room and 2 or 1
+    self:DrawBossPageRows(boss, dungeon)
+    if room and self.cursor > room and self.abilitiesDrawn then
+        self.abilityLines = 1
+        self:DrawBossPageRows(boss, dungeon)
+    end
+    self:Finish()
+end
+
+function ViewMixin:DrawBossPageRows(boss, dungeon)
     self.bossPage = true
     self:Begin(dungeon, boss)
+    self.abilitiesDrawn = false
     self.dense, self.tightTitles = true, true
     self:Add("bossTitle", boss)
     local tip = self.showTips and J.Tip(boss)
@@ -491,7 +504,6 @@ function ViewMixin:DrawBossPage(boss, dungeon)
         self:Space(PAGE_GAP)
         self:Add("questChips", quests)
     end
-    self:Finish()
 end
 
 function ViewMixin:Column(x, w, top)
@@ -529,6 +541,7 @@ function ViewMixin:DrawBossColumns(boss, loot, spells)
     if #spells > 0 then
         local whole = #loot == 0
         self:Column(whole and 0 or width - half, whole and width or half, top)
+        self.abilitiesDrawn = true
         self:Section("Abilities", #spells)
         self:Space(COLUMN_TITLE_GAP)
         for i = 1, #spells do self:Add("ability", spells[i]) end

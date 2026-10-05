@@ -1556,7 +1556,7 @@ do
     local function Chips()
         local list = {}
         for _, made in ipairs(state.made) do
-            if rawget(made, "compactW") and rawget(made, "shown") ~= false then list[#list + 1] = made end
+            if rawget(made, "numberText") and rawget(made, "shown") ~= false then list[#list + 1] = made end
         end
         return list
     end
@@ -1593,7 +1593,17 @@ do
     end
     check("in kill order, each with its number and name", inOrder)
     local strip = shownChips[1]:GetParent()
-    check("four bosses fit on one row", rawget(strip, "h") == 24)
+    local PAGE_W, CHIP_GAP = 1002 * 0.7, J.Style.CHIP_GAP
+    local function GridOf(list, columns)
+        local sum, low, high = 0, math.huge, 0
+        for i = 1, columns do
+            local w = list[i].w
+            sum, low, high = sum + w, math.min(low, w), math.max(high, w)
+        end
+        return high - low <= 1 and math.abs(sum + CHIP_GAP * (columns - 1) - PAGE_W) <= 1
+    end
+    check("four bosses: one row", rawget(strip, "h") == 24)
+    check("four equal chips across the whole width", GridOf(shownChips, 4))
     local pickRow = ChipFor("Bazzalan")
     pickRow.scripts.OnClick(pickRow)
     check("a chip picks its boss, accented", rawget(pickRow.fill, "shown") == true and rawget(pickRow.line, "shown") == true)
@@ -1661,9 +1671,18 @@ do
     check("its items in the left column, compact", pageItem ~= nil and pageItem.w == lootTitle.w
         and pageItem.h == St.DENSE_H)
     local ability = PageRow(pageView, function(made) return rawget(made, "spell") == spells[1] end)
-    check("its abilities in the right one, each a row as tall as an item", ability ~= nil
-        and ability.w == abilitiesTitle.w and ability.h == St.DENSE_H)
-    check("what it does on one line", rawget(ability.desc, "text") == "Hits the tank. Then the healer.")
+    check("its abilities in the right one", ability ~= nil and ability.w == abilitiesTitle.w)
+    check("with room below, what each does on two lines", pageView.abilityLines == 2
+        and ability.h == St.DENSE_TALL_H and rawget(ability.desc, "text") == "Hits the tank. Then the healer.")
+    local mapWindow = strip:GetParent()
+    local roomy = mapWindow:GetHeight()
+    mapWindow:SetHeight(roomy - 200)
+    pickRow.scripts.OnClick(pickRow)
+    check("without, on one line, cut short, as tall as an item", pageView.abilityLines == 1
+        and ability.h == St.DENSE_H and rawget(ability.desc, "text") == "Hits the tank. Then the healer.")
+    mapWindow:SetHeight(roomy)
+    pickRow.scripts.OnClick(pickRow)
+    check("and two again once there is room", pageView.abilityLines == 2 and ability.h == St.DENSE_TALL_H)
     local spellShown
     local spellLines = {}
     rawset(state.tooltip, "SetSpellByID", function(_, id) spellShown = id end)
@@ -1760,17 +1779,87 @@ do
         and quests.top > Section(pageView, "LOOT").top)
     local portraits = rawget(_G, "SetPortraitTextureFromCreatureDisplayID")
     _G.SetPortraitTextureFromCreatureDisplayID = function() end
+    local wailing = J.Get("WailingCaverns")
+    local wailingBosses = wailing.wings[1].bosses
+    local trash = table.remove(wailingBosses)
+    local function Named(list)
+        for i = 1, #list do
+            if rawget(list[i].name, "shown") == false then return false end
+        end
+        return true
+    end
+    J.OpenDungeonMap(wailing)
+    local wc = Chips()
+    check("Wailing Caverns: nine chips, five and four", #wc == 9 and rawget(strip, "h") == 24 * 2 + CHIP_GAP)
+    check("five equal chips across", GridOf(wc, 5) and math.abs(wc[6].w - wc[1].w) <= 1)
+    rawset(wc[1].name, "GetStringWidth", function() return 300 end)
+    J.DrawDungeonMap()
+    check("each with its name, a long one cut to fit", Named(wc) and wc[1].name.w < wc[1].w - 40)
+    rawset(wc[1].name, "GetStringWidth", nil)
+    local dragon = ChipFor("Deviate Faerie Dragon")
+    check("a rare: its tag after its name, no number", rawget(dragon.tag, "shown") ~= false
+        and rawget(dragon.tag, "text") == "RARE" and rawget(dragon.number, "shown") == false)
+    check("the numbered ones have no tag", rawget(ChipFor("Kresh").tag, "shown") == false)
+    wailingBosses[#wailingBosses + 1] = { npc = 990001, name = "Tenth Boss" }
+    J.DrawDungeonMap()
+    wc = Chips()
+    check("ten bosses: still two rows, with names", #wc == 10 and rawget(strip, "h") == 24 * 2 + CHIP_GAP
+        and Named(wc) and GridOf(wc, 5))
+    wailingBosses[#wailingBosses + 1] = { npc = 990002, name = "Eleventh Boss" }
+    J.DrawDungeonMap()
+    wc = Chips()
+    check("eleven: compact, number and portrait", #wc == 11 and rawget(wc[1].name, "shown") == false
+        and rawget(wc[1].face, "shown") ~= false and rawget(wc[1].number, "shown") ~= false)
+    check("spread evenly across the whole width, on one row", rawget(strip, "h") == 24 and GridOf(wc, 11))
+    dragon = ChipFor("Deviate Faerie Dragon")
+    check("a compact rare shows its tag's letter where a number goes", rawget(dragon.number, "shown") ~= false
+        and rawget(dragon.number, "text") == "R" and rawget(dragon.tag, "shown") == false)
+    wailingBosses[#wailingBosses] = nil
+    wailingBosses[#wailingBosses] = nil
+    wailingBosses[#wailingBosses + 1] = trash
     local brd = J.Get("BlackrockDepths")
     J.OpenDungeonMap(brd)
     local brdChips = Chips()
     check("Blackrock Depths: a chip for each of its bosses", #brdChips == #KillOrder(brd))
-    check("wrapped onto more rows", rawget(strip, "h") > 24)
+    check("in even rows across the whole width", rawget(strip, "h") > 24 * 2 + CHIP_GAP
+        and GridOf(brdChips, 10))
     check("compact, their names in their tooltips", rawget(brdChips[1].name, "shown") == false
         and rawget(brdChips[1].face, "shown") ~= false)
     J.OpenDungeonMap(ragefire)
-    check("a dungeon that fits keeps their names", rawget(ChipFor("Oggleflint").name, "shown") ~= false
-        and rawget(strip, "h") == 24)
+    check("a dungeon that fits keeps their names", Named(Chips()) and rawget(strip, "h") == 24)
     _G.SetPortraitTextureFromCreatureDisplayID = portraits
+
+    local function Door()
+        for _, made in ipairs(state.made) do
+            if rawget(made, "key") == "entrance" and made.view.editable then return made end
+        end
+    end
+    local door = Door()
+    rawset(door.text, "GetStringWidth", function() return 75 end)
+    J.OpenDungeonMap(wailing)
+    check("Wailing Caverns: the entrance's label clear of the rare on its right", door.side == "LEFT"
+        and rawget(door.text, "shown") ~= false)
+    local placedPins = state.account.journalMapPins
+    state.account.journalMapPins = { RagefireChasm = { entrance = { 1, 0.5, 0.5 },
+        [11517] = { 1, 0.1, 0.1 }, [11520] = { 1, 0.9, 0.1 }, [11518] = { 1, 0.1, 0.9 }, [11519] = { 1, 0.9, 0.9 } } }
+    J.OpenDungeonMap(ragefire)
+    check("with room, the label is on the right", door.side == "RIGHT")
+    state.account.journalMapPins.RagefireChasm[11519] = { 1, 0.56, 0.5 }
+    J.DrawDungeonMap()
+    check("a pin there: on the left", door.side == "LEFT")
+    state.account.journalMapPins.RagefireChasm.entrance = { 1, 0.045, 0.5 }
+    state.account.journalMapPins.RagefireChasm[11519] = { 1, 0.1, 0.47 }
+    J.DrawDungeonMap()
+    check("the map's edge on the left and a pin on the right: below", door.side == "BELOW")
+    state.account.journalMapPins.RagefireChasm = { entrance = { 1, 0.5, 0.5 },
+        [11517] = { 1, 0.44, 0.5 }, [11520] = { 1, 0.56, 0.5 }, [11518] = { 1, 0.5, 0.46 }, [11519] = { 1, 0.5, 0.54 } }
+    J.DrawDungeonMap()
+    check("boxed in: no label", door.side == nil and rawget(door.text, "shown") == false)
+    check("but the entrance still shows", rawget(door, "shown") ~= false)
+    state.account.journalMapPins = placedPins
+    rawset(door.text, "GetStringWidth", nil)
+    J.OpenDungeonMap(J.Get("Deadmines"))
+    J.OpenDungeonMap(ragefire)
     local window = strip:GetParent()
     local fold = window.fold:GetParent()
     local atMouse, openLoot = 0, J.View.OpenBossLoot
