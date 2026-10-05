@@ -10,7 +10,7 @@ through `Shared.xml`. Nothing is made or listened to at load.
 Shared/
   Shared.xml   what loads, in order
   Shared.lua   the namespace (ns.Shared)
-  Style.lua    the house look: colours (BiS stars, worn green, looks), icons, sizes
+  Style.lua    the house look: colors (BiS stars, worn green, looks, red and warning orange), icons, sizes
   Items.lua    item and gear helpers: an ID from a link or URL, your loot lines, quality colour, In Bag,
                gear slots, what fits where, what you wear, weapons in short ("1h Sword"),
                waiting on item data
@@ -19,7 +19,8 @@ Shared/
   Places.lua   zones by name, and showing one on the world map
   Parts.lua    components: rank stars, item icon and its check, an item's slot marks (item level, star, Forever's mark), links, icon buttons, the
                backdrop and its cards, panels, the side panel, chat sharing, lined-up numbers,
-               money with its coins (Parts.Coins, made once each), a timer line the client runs
+               money with its coins (Parts.Coins, made once each; compact for its two largest
+               coins), a word on an icon's top corner (Parts.ItemTag, Bag Space's OLD and "!"), a timer line the client runs
                down by itself (Parts.TimerLine), a row of labels spread evenly (Parts.LabelRow)
   Window.lua   a window: the frame, title bar, icons, opacity slider, switch, search, footer,
                and a module's card on its settings page

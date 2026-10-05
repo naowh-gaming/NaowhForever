@@ -25,9 +25,12 @@ Shared.Style = {
     HUD_SHADOW_X = 1,
     HUD_SHADOW_Y = -1,
     HUD_CARD_ALPHA = 0.85,
-    -- An item level above yours.
+    -- An item level above yours; bags with no room left.
     RED_CODE = "|cfff87171",
     RED_RGB = { r = 0.97, g = 0.44, b = 0.44 },
+    -- Running low, or likely junk: few bag slots left, food and potions you have outlevelled.
+    WARN_CODE = "|cfffb923c",
+    WARN_RGB = { r = 0xfb / 255, g = 0x92 / 255, b = 0x3c / 255 },
     -- Naowh's gold: tips, and the contested zones.
     GOLD_CODE = "|cffe6cc80",
     TIP_RGB = { r = 0.9, g = 0.8, b = 0.5 },
