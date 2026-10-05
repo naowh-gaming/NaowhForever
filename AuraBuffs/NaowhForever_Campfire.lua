@@ -335,7 +335,8 @@ function Bar.New(host, opts)
     f.campText = "Camp Active" .. ns.Color("muted", St.PLACE_DOT .. "no bonuses")
     f.restText = "Resting"
     f.refreshText = ns.Color("accent", "Refresh") .. " Camp"
-    f.nearbyText = ns.Color("accent", "Camp Nearby") .. ns.Color("muted", St.PLACE_DOT .. "sit to refresh")
+    f.nearbyText = f.bare and ns.Color("accent", "Camp Nearby")
+        or ns.Color("accent", "Camp Nearby") .. ns.Color("muted", St.PLACE_DOT .. "sit to refresh")
     f.moreLabels, f.moreIcons, f.more = {}, {}, 0
 
     f.camp = CreateFrame("Frame", nil, f.bar)

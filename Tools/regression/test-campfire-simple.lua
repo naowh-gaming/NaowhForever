@@ -597,8 +597,8 @@ do
     s.ns.ShowRaidReminderAnchorConfig()
     local alert = s.named.NaowhForeverCampNearby
     local ab = alert and alert.bar
-    check("Camp Nearby is the bar's own component: same builder, same words, same sizes", ab
-        and ab.backdrop and ab.line and ab.labels and ab.note.text == bar.nearbyText
+    check("Camp Nearby is the bar's own component: same builder, the words without the sit hint, same sizes", ab
+        and ab.backdrop and ab.line and ab.labels and Plain(ab.note.text) == "Camp Nearby"
         and ab.note.size == bar.note.size and ab.campSize == bar.campSize and ab.labelX == bar.labelX
         and rawget(ab.camp, "plate") == nil and rawget(alert, "text") == nil)
     check("Camp Nearby is drawn bare: no backdrop, edge or line, the fire and words alone", ab.bare == true
@@ -1049,16 +1049,15 @@ do
     shot.w, shot.h = 700, 120
     card.studio.paint(shot, "nearby")
     local a = shot.alert
-    check("alert preview: the shared bar, Camp Nearby with the fire grey and no time", a.bar.pill
-        and Plain(a.bar.note.text) == "Camp Nearby" .. s.St.PLACE_DOT .. "sit to refresh"
+    check("alert preview: the shared bar, Camp Nearby alone, with the fire grey and no time", a.bar.pill
+        and Plain(a.bar.note.text) == "Camp Nearby"
         and a.bar.time.shown == false and a.bar.camp.tex.desaturated == true)
     check("alert preview: it breathes while shown", a.breathe.playing and a.breathe.looping == "BOUNCE")
     check("alert preview: no dismiss button taking the mouse", rawget(a, "click") == nil)
     local left = a.pt.LEFT
     card.studio.paint(shot, "low")
     check("alert preview Running Low: the time on the right, the same left edge", a.bar.time.shown ~= false
-        and a.bar.slot == a.bar.timeW and a.pt.LEFT == left and a.w > math.ceil(29 + W("Camp Nearby"
-        .. s.St.PLACE_DOT .. "sit to refresh") + 10))
+        and a.bar.slot == a.bar.timeW and a.pt.LEFT == left and a.w > math.ceil(29 + W("Camp Nearby") + 10))
     check("alert preview: editable, with its hint", shot.zone.shown ~= false and shot.hint.text:find("Wheel", 1, true))
     shot.zone.scripts.OnMouseWheel(shot.zone, 1)
     check("wheel: the alert grows a step", math.abs(s.S.Get("campAlertScale") - 1.5) < 1e-9)
