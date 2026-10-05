@@ -29,6 +29,7 @@ DungeonJournal/
                        with it, and the rolls (J.Looted)
   Sharing.lua          asking a group member with Naowh Forever to share a quest (J.Sharing)
   Quartermasters.lua   where each faction's quartermaster stands, learned at the vendor
+  ItemProbe.lua        /nf itemprobe: asks the server for every item listed, for Tools/items_in_game.py
   Data/                data, no logic
     Dungeons/*.lua     one per dungeon, generated
     Factions/*.lua     one per faction with rewards, generated
@@ -147,15 +148,24 @@ The rules, in plain words:
   them in `Tools/item_names.json`.
 - **By hand** (`"add"`): items two other sources agree on that neither Wowhead nor wowsrc
   places yet.
-- **Only what the game can name.** Forever keeps a row in its Item table for every Classic item,
-  but only the items in the game have their name and level (ItemSparse, read through wago.tools);
-  the server never sends the rest, so the Journal could only show "Item 10800". Those are left
-  out, and the build lists them; a build whose tables have them brings them back.
-- **Open or not.** A dungeon is open when the game's tables have at least half of its
+- **Everything, and what is not in Forever yet marked.** Forever keeps a row in its Item table
+  for every Classic item, but the server only sends the items in the game; asked for any other,
+  the client shows "Item 10800" and its tooltip waits forever. An item is in the game when its
+  tables have it (ItemSparse, read through wago.tools, hotfixes in) or the server sent it
+  (`Tools/items_in_game.json`, see below). The rest are still listed, as `NotYet` in
+  `Data/Items.lua`: name, quality, levels and icon from Classic Era's tables, drawn without
+  asking the server, tagged "Not in Forever yet", with a tooltip of our own. They are never
+  your BiS, an upgrade or a look to collect, and nothing outside the Journal (the Naowh Score,
+  the BiS List's sources and picker) sees them. A build that has them makes them ordinary.
+- **What the game sends.** wago.tools records the items Blizzard adds by hotfix late, and not
+  always all of them (Ravager loads in game with no row there). `python Tools/items_in_game.py`
+  reads what a Forever client was sent, from its hotfix cache (`Cache/ADB/enUS/DBCache.bin`)
+  and from `/nf itemprobe`, which asks the server for every item the Journal lists and keeps
+  the answers for it at `/reload`. It writes `Tools/items_in_game.json`; commit it, then rebuild.
+- **Open or not.** A dungeon is open when the game's own tables have at least half of its
   instance's boss loot (Scarlet Monastery's four wings are one instance), or `"open"` on it in
-  `Tools/journal_bosses.json` says so. In a dungeon not open, a boss left with nothing says its
-  loot arrives when Forever opens the dungeon (`notInGame` in its data); in an open one it says
-  no loot is known yet.
+  `Tools/journal_bosses.json` says so; an item the server sends on request does not count. One
+  not open says "Not open on Forever yet." at the top of its page (`closed` in its data).
 - A boss nobody has loot for yet says so on its card. Keys, quest items and recipes are left
   out: the Journal lists gear.
 

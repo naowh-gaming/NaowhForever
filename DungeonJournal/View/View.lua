@@ -574,6 +574,7 @@ function ViewMixin:Draw(dungeon)
     end
     self:Add("header", dungeon)
     if dungeon.note then self:Note(dungeon.note) end
+    if dungeon.closed then self:Note(J.CLOSED_NOTE) end
     -- The factions earned here, each a link to its page.
     if self.navigate and dungeon.factions then
         self:Add("links", "Reputation", dungeon.factions)
