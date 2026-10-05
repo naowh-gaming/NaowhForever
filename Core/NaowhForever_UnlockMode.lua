@@ -263,7 +263,7 @@ local function RunBatch()
     queued = {}
     for label, kind in pairs(labels) do
         local item = placement.byLabel[label]
-        if kind == "size" and item and item ~= placement.dragging then Apply(item) end
+        if kind == "size" and item and item ~= placement.dragging and not item.sizing then Apply(item) end
         Propagate(label)
     end
 end
@@ -1577,12 +1577,18 @@ function UI.BindMover(handle, frame, label, onMoved, page, feature, ownAnchor)
     placement.items[#placement.items + 1] = item
     placement.byLabel[label] = item
     frame:HookScript("OnSizeChanged", function() Queue(label, "size") end)
+    -- The mover can cover more than the frame (a reminder's sample), and grows with it.
+    handle:HookScript("OnSizeChanged", function() Queue(label, "size") end)
     hooksecurefunc(frame, "SetPoint", function()
         if not item.dragging then C_Timer.After(0, function() Moved(item) end) end
     end)
-    -- A module's own drag (a window dragged by its title): an anchored element keeps its anchor
-    -- with the gap it was dropped at, as an Unlock Mode drag does.
+    -- A module's own resize grip sizes the frame from a corner of its choosing: the anchor
+    -- leaves it be until the grip lets go.
+    hooksecurefunc(frame, "StartSizing", function() item.sizing = true end)
+    -- A module's own drag (a window dragged by its title) or resize: an anchored element keeps
+    -- its anchor with the gap it was dropped at, as an Unlock Mode drag does.
     hooksecurefunc(frame, "StopMovingOrSizing", function()
+        item.sizing = nil
         C_Timer.After(0, function()
             Recapture(item)
             Propagate(label)

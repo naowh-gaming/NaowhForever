@@ -445,6 +445,11 @@ Flush()
 Check(Near(sample:GetBottom(), meter:GetTop()) and Near(select(1, sample:GetCenter()), select(1, meter:GetCenter())),
     "the sample, not the frame behind it, sits flush on its target")
 Check(Last(reminderSaved).point == "CENTER", "and the frame's spot is saved")
+sample:SetSize(120, 80)
+reminderMover:SetAllPoints(sample)
+Fire(reminderMover, "OnSizeChanged")
+Flush()
+Check(Near(sample:GetBottom(), meter:GetTop()), "a sample that grows is put back flush")
 settings.anchors["Reminder Bar"] = nil
 reminderMover:Hide()
 
@@ -458,6 +463,20 @@ swing:StopMovingOrSizing()
 Flush()
 info = settings.anchors["Swing Timer"]
 Check(info and Near(info.offsetX, 25) and Near(Center(swing), sx0 + 25), "a module drag keeps the anchor with the new offset")
+
+-- While a module's grip resizes it, the anchor leaves it be; letting go keeps the new gap.
+swing:StartSizing("BOTTOMRIGHT")
+local gx, gt = swing:GetLeft(), swing:GetTop()
+swing:ClearAllPoints()
+swing:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", gx, gt)
+swing:SetSize(160, 40)
+Flush()
+Check(Near(swing:GetLeft(), gx), "a grip resize from its corner is not fought")
+swing:StopMovingOrSizing()
+Flush()
+Check(settings.anchors["Swing Timer"] and Near(settings.anchors["Swing Timer"].offsetX, 55), "and letting go keeps the new gap")
+swing:SetSize(100, 40)
+Flush()
 
 -- A nudge waits while the target is missing, instead of piling up.
 settings.anchors["Swing Timer"] = { target = "Gone", side = "BOTTOM", offsetX = 0, offsetY = 0 }
