@@ -18,6 +18,7 @@ local CAMP_BENEFITS = 1229741
 local CAMPFIRE_NEARBY = 1283391
 -- The 60 second aura while sitting at a campfire, before Camp Benefits lands; probed 2026-09-25.
 local WELCOMING_CAMPFIRE = 1229739
+local WELCOMING_CAMPFIRE_CRAFT = 1289723
 local CIRCLE_MASK = "Interface\\AddOns\\NaowhForever\\Media\\circle_mask.tga"
 local CIRCLE_RING = "Interface\\AddOns\\NaowhForever\\Media\\circle_ring.tga"
 local CAMPFIRE_ART = "Interface\\AddOns\\NaowhForever\\Media\\CampfireHD.tga"
@@ -40,21 +41,24 @@ local UNLOCK_TEXT = "+Rested\n+Crit"
 
 local FEATURES = {
     { id = 1229451, tag = "+Rested", short = "Rested", name = "Camp Tent", stat = "Rested experience" },
-    { id = 1230587, tag = "+MP5", short = "Mana", name = "Mana Well", stat = "Mana every 5 sec",
-      amount = "+%d Mana every 5 sec" },
     { id = 1230172, tag = "+STR", short = "Str", name = "Sharpening Wheel", stat = "Strength",
       amount = "+%d Strength" },
-    { id = 1230653, tag = "+ARM", short = "Armor", name = "Enchanted Lute", stat = "Armor, all stats and resistances",
-      amount = "+%d Armor, +%d all stats, +%d resistances", points = 3 },
     { id = 1230124, tag = "+STA", short = "Sta", name = "First Aid Kit", stat = "Stamina", amount = "+%d Stamina" },
+    { id = 1229513, tag = "+INT", short = "Int", name = "Incense Candle", stat = "Intellect", amount = "+%d Intellect" },
+    { id = 1229718, tag = "+Spirit", short = "Spirit", name = "Faction Banner", stat = "Spirit", amount = "+%d Spirit" },
     { id = 1230098, tag = "+Stats", short = "Stats", unit = "%", name = "Fish Bowl", stat = "All stats",
       amount = "+%d%% all stats" },
-    { id = 1229513, tag = "+INT", short = "Int", name = "Incense Candle", stat = "Intellect", amount = "+%d Intellect" },
+    { id = 1230653, tag = "+ARM", short = "Armor", name = "Enchanted Lute", stat = "Armor, all stats and resistances",
+      amount = "+%d Armor, +%d all stats, +%d resistances", points = 3 },
     { id = 1230164, tag = "+ATK", short = "Attack", name = "Lodestone", stat = "Melee Attack Power",
       amount = "+%d Melee Attack Power" },
+    { id = 1230552, tag = "+Spell", short = "Spell", stat = "Spell damage and healing",
+      amount = "+%d spell damage, +%d healing", points = 2 },
     { id = 1229519, tag = "+Crit", short = "Crit", unit = "%", name = "Camp Chair", stat = "Critical Strike",
       amount = "+%d%% Critical Strike" },
-    { id = 1229718, tag = "+Spirit", short = "Spirit", name = "Faction Banner", stat = "Spirit", amount = "+%d Spirit" },
+    { id = 1230587, tag = "+MP5", short = "MP5", name = "Mana Well", stat = "Mana every 5 sec",
+      amount = "+%d Mana every 5 sec" },
+    { id = 1283701, tag = "+Disenchant", short = "Disenchant", name = "Arcane Salvager" },
 }
 local FEATURE_BY_TAG = {}
 for i, feature in ipairs(FEATURES) do
@@ -63,7 +67,7 @@ for i, feature in ipairs(FEATURES) do
     feature.labels = {}
     FEATURE_BY_TAG[feature.tag] = feature
 end
-local SAMPLE_BONUSES = { { FEATURES[1] }, { FEATURES[9], 2 }, { FEATURES[5], 56 }, { FEATURES[7], 25 } }
+local SAMPLE_BONUSES = { { FEATURES[1] }, { FEATURES[3], 56 }, { FEATURES[4], 25 }, { FEATURES[10], 2 } }
 
 local function CampArt(icon)
     icon.tex = Parts.Smooth(icon:CreateTexture(nil, "ARTWORK"), CAMPFIRE_ART)
@@ -491,10 +495,17 @@ local function Points(feature, aura)
     return points
 end
 
+local function AuraName(aura)
+    local name = aura and aura.name
+    if name == nil or (issecretvalue and issecretvalue(name)) or type(name) ~= "string" then return nil end
+    return name
+end
+
 local function BonusWords(feature, readable)
-    local points = feature.amount and readable and Points(feature, C_UnitAuras.GetPlayerAuraBySpellID(feature.id))
-    if not points then return feature.stat end
-    return feature.amount:format(points[1], points[2], points[3])
+    local aura = readable and C_UnitAuras.GetPlayerAuraBySpellID(feature.id)
+    local points = feature.amount and Points(feature, aura)
+    if points then return feature.amount:format(points[1], points[2], points[3]) end
+    return feature.stat or AuraName(aura) or feature.short or feature.tag
 end
 
 local function BonusLabel(feature, amount)
@@ -548,7 +559,8 @@ local function TipBonuses(tip, readable)
     for i = 1, bonusCount do
         local feature = bonusFeatures[i]
         if feature then
-            tip:AddDoubleLine(BonusWords(feature, readable), feature.name, fg.r, fg.g, fg.b, muted.r, muted.g, muted.b)
+            tip:AddDoubleLine(BonusWords(feature, readable), feature.name or "", fg.r, fg.g, fg.b,
+                muted.r, muted.g, muted.b)
         else
             tip:AddLine(bonusTags[i], fg.r, fg.g, fg.b)
         end
@@ -950,6 +962,7 @@ function Refresh(_, event)
     local had = hasCamp
     hasCamp = aura ~= nil
     local sitting = C_UnitAuras.GetPlayerAuraBySpellID(WELCOMING_CAMPFIRE)
+        or C_UnitAuras.GetPlayerAuraBySpellID(WELCOMING_CAMPFIRE_CRAFT)
     local sitDuration, sitExpiry = sitting and sitting.duration, sitting and sitting.expirationTime
     if sitting and not (issecretvalue and (issecretvalue(sitDuration) or issecretvalue(sitExpiry)))
         and sitDuration > 0 then
@@ -1155,7 +1168,8 @@ local function BarMenu(_, root)
     root:CreateCheckbox("Show Timer", Toggled, Toggle, "campTimer")
     local list = root:CreateButton("Bonuses")
     for _, feature in ipairs(FEATURES) do
-        list:CreateCheckbox(feature.short .. St.PLACE_DOT .. feature.name, BonusShown, ToggleBonus, feature)
+        list:CreateCheckbox(feature.name and feature.short .. St.PLACE_DOT .. feature.name or feature.short,
+            BonusShown, ToggleBonus, feature)
     end
     root:CreateDivider()
     root:CreateButton("Reset Bar", ResetBar)

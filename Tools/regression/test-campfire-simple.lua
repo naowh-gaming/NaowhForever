@@ -493,7 +493,7 @@ do
     local f = shot.bar
     check("preview: the Simple bar once picked", s.bars == 1 and shot.barHost.shown ~= false
         and shot.icon.shown == false and Same(f.line.to, s.St.TIME_OUT_RGB))
-    check("preview: grouped sample bonuses, four of them", s.labels(f) == "Rested +2% Crit +56 Sta +25 Int"
+    check("preview: grouped sample bonuses, four of them", s.labels(f) == "Rested +56 Sta +25 Int +2% Crit"
         and f.more == 0)
     check("preview: not editable while the reminder is off", shot.widthZone.shown == false
         and shot.hint.text:find("Turn on", 1, true))
@@ -519,12 +519,12 @@ do
     s.shift = false
     check("shift-wheel: bar height", s.S.Get("campSimpleHeight") == 27)
 
-    local crit = shot.bonusZones[2]
+    local crit = shot.bonusZones[4]
     crit.over = true
     crit.scripts.OnMouseUp(crit, "LeftButton")
     card.studio.paint(shot, "up")
     check("click a bonus: hidden, and dimmed in the preview", s.S.Get("campHiddenBonuses")[CHAIR] == true
-        and f.labels.labels[2].alpha < 1 and f.labels.labels[1].alpha == 1)
+        and f.labels.labels[4].alpha < 1 and f.labels.labels[1].alpha == 1)
     crit.scripts.OnMouseUp(crit, "LeftButton")
     check("click it again: shown", s.S.Get("campHiddenBonuses")[CHAIR] == nil)
 
@@ -552,6 +552,48 @@ do
     check("preview Refresh: the pill", f.pill and f.note.text == "Refresh Camp")
     check("preview: every state starts at the same left edge", sittingLeft == left
         and shot.barHost.pt.LEFT == left and f.camp.pt.LEFT == 8 + 3)
+end
+
+do
+    local s = Fixture()
+    s.S.Set("campStyle", "simple")
+    s.auras[CAMP] = { duration = 3600, expirationTime = s.now + 3000, auraInstanceID = 1 }
+    local ALL = {
+        { 1229451, { 5 } }, { 1230172, { 34 } }, { 1230124, { 56 } }, { 1229513, { 25 } }, { 1229718, { 32 } },
+        { 1230098, { 8 } }, { 1230653, { 308, 13, 22 } }, { 1230164, { 90 } }, { 1230552 }, { 1229519, { 2 } },
+        { 1230587, { 29 } }, { 1283701 },
+    }
+    for _, entry in ipairs(ALL) do s.auras[entry[1]] = { points = entry[2], name = "Boosted " .. entry[1] } end
+    s.auras[1283701].name = "Boosted Disenchanting"
+    s.fire("PLAYER_LOGIN")
+    local bar = s.bar()
+    local WANT = { "Rested", "+34 Str", "+56 Sta", "+25 Int", "+32 Spirit", "+8% Stats", "+308 Armor", "+90 Attack",
+        "Spell", "+2% Crit", "+29 MP5", "Disenchant" }
+    local shown = bar.labels.count - 1
+    local inOrder = bar.more == #WANT - shown and bar.labels.labels[shown + 1].text == "+" .. bar.more .. " more"
+    for i = 1, shown do inOrder = inOrder and bar.labels.labels[i].text == WANT[i] end
+    check("every camp feature read, Rested first, then stats, then utility, the rest as +N more", inOrder
+        and shown >= 3)
+    s.tips = {}
+    bar.scripts.OnEnter(bar)
+    local text, last, ordered = s.tipText(), 0, true
+    for _, line in ipairs({ "Rested experience | Camp Tent", "+34 Strength | Sharpening Wheel",
+        "+308 Armor, +13 all stats, +22 resistances | Enchanted Lute", "+90 Melee Attack Power | Lodestone",
+        "Spell damage and healing | ", "+29 Mana every 5 sec | Mana Well",
+        "Boosted Disenchanting | Arcane Salvager" }) do
+        local at = text:find(line, 1, true)
+        ordered = ordered and at ~= nil and at > last
+        last = at or last
+    end
+    check("the tooltip lists every bonus with its amount and feature, in the same order", ordered)
+    check("an aura with no readable amount still shows, by its name or stat", text:find("Spell damage and healing", 1, true)
+        and text:find("Boosted Disenchanting", 1, true))
+
+    s.auras[CAMP] = nil
+    s.auras[1289723] = { duration = 60, expirationTime = s.now + 40 }
+    s.fire("UNIT_AURA")
+    check("the crafting Welcoming Campfire counts as resting too", bar.labels.labels[1].text == "Rested"
+        and Same(bar.labels.labels[1], s.T.accentSoft))
 end
 
 print(checks .. " campfire look checks passed")
