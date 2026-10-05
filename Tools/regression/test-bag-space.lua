@@ -87,7 +87,10 @@ local function Fixture(opts)
         made = made + 1
         return setmetatable({ kind = kind, shown = true }, widgetMeta)
     end
-    local border = { SetColor = Noop }
+    local border = {}
+    function border.SetColor(self, r, g, b)
+        if r == WHITE.r and g == WHITE.g and b == WHITE.b then self.white = true end
+    end
     local tipLines = {}
     local tooltip = setmetatable({
         SetOwner = function() for i = #tipLines, 1, -1 do tipLines[i] = nil end end,
@@ -244,6 +247,7 @@ local function Fixture(opts)
     chunk()
 
     local t = { ns = ns, printed = printed, env = env, buttons = buttons, Parts = Parts, tags = tags, tipLines = tipLines,
+        border = border,
         Style = ns.Shared.Style, cards = cards, settings = settings }
     function t.Made() return made end
     function t.Fire(event, ...)
@@ -333,6 +337,13 @@ do
     }) } })
     Check("cheapest stack first", t.Row(), "Small Egg, Coyote Meat, Chipped Boar Tusk, Light Feather")
     Check("counter reads free out of total", t.FreeText(), "8/16")
+end
+
+-- Poor and Common items keep the house 1px black edge; only Uncommon and better show their color.
+do
+    local t = Fixture({ bags = { [0] = Bag(16, { { 4, 2 }, { 1, 3 } }) } })
+    Check("Poor and Common items keep the black edge, not their quality color",
+        t.Row() .. " " .. tostring(t.border.white == true), "Small Egg, Chipped Boar Tusk false")
 end
 
 -- Scrap Marker's scrap goes first, even above the quality limit, and the counter shows the

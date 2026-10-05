@@ -24,6 +24,7 @@ local FULL_SHOW = 20      -- seconds the row stays up after an "Inventory is ful
 local OUTLEVEL = 10       -- a consumable this many levels below you is flagged as old
 local MERGE_STEPS = 60    -- a stack merge gives up after this many moves
 local QUEST_CONFIRM = 5   -- seconds a second Ctrl-click has to delete an item a quest needs
+local EDGE_COLORED = 2     -- Uncommon: from here up an item's edge shows its quality color
 local DIRECT_DELETE = 1   -- highest quality Ctrl-click deletes; better goes on the cursor
 
 -- The card: the house panel (the theme's background, a 1px black edge) round a slim header
@@ -925,8 +926,8 @@ local function Fill(b, e, icon, price, count, quality, old, quest)
     Parts.PaintItemMarks(b.marks, count, nil, false, false)
     b.old:SetShown(old == true)
     b.quest:SetShown(quest ~= nil)
-    -- Common items take the house 1px black border; every other quality shows its colour.
-    local c = quality ~= 1 and ITEM_QUALITY_COLORS[quality] or BORDER_RGB
+    -- Poor and Common items take the house 1px black border; Uncommon and better show their color.
+    local c = quality and quality >= EDGE_COLORED and ITEM_QUALITY_COLORS[quality] or BORDER_RGB
     b.edge:SetColor(c.r, c.g, c.b, 1)
 end
 
