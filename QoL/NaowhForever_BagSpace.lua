@@ -752,7 +752,7 @@ local function FreeTooltip(self)
     GameTooltip:Show()
 end
 
--- The header's left: the bag, "28/52" in its state's colour, "free", and Scrap Marker's "+2".
+-- The header's left: the bag, "28/52" in its state's color, "free", and Scrap Marker's "+2".
 -- With live, hovering it lists your bags.
 local function NewFreeCounter(parent, live)
     local f = CreateFrame("Frame", nil, parent)
@@ -796,7 +796,7 @@ local function NewView(view, onClick, onEnter, onStack, live)
     return view
 end
 
--- An item's cell: the house item icon (1px edge in its quality's colour), the shared marks (the
+-- An item's cell: the house item icon (1px edge in its quality's color), the shared marks (the
 -- stack count in the bottom-right over a shade), OLD and the quest "!" as corner tags, and the
 -- price under it.
 local function NewCell(view, i, size)
@@ -1102,6 +1102,84 @@ local function BagSpaceSummary(store)
         QUALITY[1][store.Get("bagSpaceMaxQuality")] or "Common")
 end
 
+-- The card's preview on its settings page: the same card, drawn by the code above on plain
+-- frames, from samples of the addon's own; no bags are read and no click acts. Hovering a
+-- sample shows the lines its tooltip would have.
+local STAGE_H, STAGE_MARGIN = 150, 14
+local PREVIEW_SLOTS, PREVIEW_SCRAP, PREVIEW_STACK = 52, 2, 1
+local PREVIEW_FREE = { bags = 28, low = 4, full = 0 }
+local STATES = {
+    { key = "bags", label = "Bags", tip = "Room to spare: 28 of 52 slots free." },
+    { key = "low", label = "Low", tip = "Under a tenth of your slots free.", needs = "bagSpaceShowFree" },
+    { key = "full", label = "Full", tip = "Not a slot free.", needs = "bagSpaceShowFree" },
+}
+
+-- Made when the card first opens: an item of each quality from Poor to Rare, with a stack, an
+-- outlevelled one and one a quest needs.
+local function Samples()
+    local quest = { title = "Linen for Lakeshire", have = 2, need = 6 }
+    local list = {
+        { name = "Worn Leather Pants", icon = "Interface\\Icons\\INV_Pants_04", quality = 2, count = 1, vendor = 150 },
+        { name = "Ruined Pelt", icon = "Interface\\Icons\\INV_Misc_Pelt_Wolf_01", quality = 0, count = 4, vendor = 59 },
+        { name = "Tough Jerky", icon = "Interface\\Icons\\INV_Misc_Food_14", quality = 1, count = 20, vendor = 15,
+          old = true },
+        { name = "Linen Cloth", icon = "Interface\\Icons\\INV_Fabric_Linen_01", quality = 1, count = 7, vendor = 13,
+          quest = quest },
+        { name = "Jade Ring", icon = "Interface\\Icons\\INV_Jewelry_Ring_03", quality = 3, count = 1, vendor = 920 },
+    }
+    for i, e in ipairs(list) do
+        e.bag, e.slot, e.scrap, e.value = 0, i, false, e.vendor * e.count
+    end
+    return list
+end
+
+local function PreviewEnter(self)
+    local e = self.pick
+    if not e then return end
+    local c = ITEM_QUALITY_COLORS[e.quality] or ITEM_QUALITY_COLORS[1]
+    GameTooltip:SetOwner(self, "ANCHOR_TOP")
+    GameTooltip:SetText(e.name, c.r, c.g, c.b)
+    AddTipLines(e, nil)
+    GameTooltip:Show()
+end
+
+local function NewPreview(stage)
+    local preview = CreateFrame("Frame", nil, stage)
+    preview:SetAllPoints()
+    preview.view = NewView(CreateFrame("Frame", nil, preview), nil, PreviewEnter, nil, false)
+    preview.samples, preview.list, preview.n = Samples(), {}, 0
+    return preview
+end
+
+-- The samples the card's settings offer, in its order, then the card, shrunk to fit the stage.
+local function PaintPreview(preview, state)
+    local list, samples, maxQuality = preview.list, preview.samples, S.Get("bagSpaceMaxQuality")
+    local n = 0
+    for i = 1, #samples do
+        local e = samples[i]
+        if e.quality <= maxQuality then
+            n = n + 1
+            list[n] = e
+        end
+    end
+    for i = n + 1, preview.n do list[i] = nil end
+    preview.n = n
+    -- A scan sets these again before it sorts.
+    junkFirst, oldFirst = S.Get("bagSpaceJunkFirst"), S.Get("bagSpaceOldFirst")
+    table.sort(list, Cheaper)
+    local view = preview.view
+    Draw(view, list, math.min(n, S.Get("bagSpaceCount")), PREVIEW_FREE[state] or PREVIEW_FREE.bags,
+        PREVIEW_SLOTS, PREVIEW_SCRAP, S.Get("bagSpaceStack") and PREVIEW_STACK or 0)
+    local scale = 1
+    local roomW = preview:GetWidth() - STAGE_MARGIN * 2
+    local roomH = preview:GetHeight() - STAGE_MARGIN * 2
+    if roomW > 0 and view.cardW > roomW then scale = roomW / view.cardW end
+    if roomH > 0 and view.cardH * scale > roomH then scale = roomH / view.cardH end
+    view:SetScale(scale)
+    view:ClearAllPoints()
+    view:SetPoint("CENTER", preview, "CENTER", -view.cardX, -view.cardY)
+end
+
 Settings.Page("QoL/Loot & Items", S):Card({
     id = "bagSpace", name = "Bag Space", order = 60, switch = "bagSpace",
     help = "The cheapest items in your bags as a row of icons, cheapest first. Ctrl-click an icon "
@@ -1109,6 +1187,7 @@ Settings.Page("QoL/Loot & Items", S):Card({
         .. "an item. "
         .. "Move it in Unlock Mode.",
     summary = BagSpaceSummary,
+    studio = { height = STAGE_H, states = STATES, new = NewPreview, paint = PaintPreview },
     rows = {
         Group("Offered"),
         { key = "bagSpaceCount", label = "Items Shown", slider = { 1, 8, 1 } },

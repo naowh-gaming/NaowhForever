@@ -1,6 +1,6 @@
 -- Loads NaowhForever_BagSpace.lua, after the Shared files it draws with, against stubbed bag,
 -- item and frame APIs and checks what the row offers, what the clicks do, stacking, the card's
--- look (header, shared marks and coins, no outline, colours by state), its settings preview,
+-- look (header, shared marks and coins, no outline, colors by state), its settings preview,
 -- and what a scan costs.
 -- Run from the repo root: lua Tools/regression/test-bag-space.lua
 local f = assert(io.open(arg[1] or "QoL/NaowhForever_BagSpace.lua", "rb"))
@@ -51,7 +51,8 @@ local function Fixture(opts)
 
     -- Methods are made once and shared, so the stubs add no garbage to the cost measured below.
     local function Noop() end
-    local noopMeta = { __index = function() return Noop end }
+    -- Any method a stub lacks does nothing; a field never set is nil, as on a real frame.
+    local noopMeta = { __index = function(_, k) if type(k) == "string" and k:find("^%u") then return Noop end end }
     local function Stub() return setmetatable({}, noopMeta) end
     local Widget
     local methods = setmetatable({
@@ -476,9 +477,9 @@ do
     Check("shown after inventory full", t.Row(), "Small Egg, Coyote Meat")
 end
 
--- The card's look: OLD and the quest "!" are the shared corner tags in their Style colours, the
+-- The card's look: OLD and the quest "!" are the shared corner tags in their Style colors, the
 -- stack count is the shared marks' number, prices are the shared compact coins, the text has
--- the house shadow and no outline, and the free count is coloured by how full the bags are.
+-- the house shadow and no outline, and the free count is colored by how full the bags are.
 do
     local t = Fixture({
         settings = { bagSpaceOldFirst = true },
@@ -492,7 +493,7 @@ do
     local old, egg, quest = t.Button(1), t.Button(2), t.Button(3)
     Check("look: OLD is a shared tag", t.tags[old.old] and old.old.shown, true)
     Check("look: OLD's word", old.old.text.text, "OLD")
-    Check("look: OLD in the warning colour", old.old.text.color, St.WARN_RGB)
+    Check("look: OLD in the warning color", old.old.text.color, St.WARN_RGB)
     Check("look: no OLD on fresh food", egg.old.shown, false)
     Check("look: the quest mark is a shared tag", t.tags[quest.quest] and quest.quest.shown, true)
     Check("look: the quest mark's sign", quest.quest.text.text, "!")
@@ -506,10 +507,10 @@ do
     Check("look: no own money formatter", source:find("Money(", 1, true), nil)
     local free = t.buttons.row.free
     for _, text in ipairs({ old.price, free.text, free.word, free.scrap }) do
-        Check("look: no outline", rawget(text, "flags"), nil)
+        Check("look: no outline", text.flags, nil)
         Check("look: the house shadow", text.shadowX == St.HUD_SHADOW_X and text.shadowY == St.HUD_SHADOW_Y, true)
     end
-    Check("look: room to spare in the text colour", free.text.r, T.fg.r)
+    Check("look: room to spare in the text color", free.text.r, T.fg.r)
     -- Three cells 44 wide (a 36 icon, widened for its price), 6 apart, inside the card's padding.
     Check("look: the card wraps the row", t.buttons.row.card.w, 3 * 44 + 2 * 6 + 2 * 6)
     t.Set("bagSpacePrices", false)
@@ -530,6 +531,87 @@ do
     Check("low: orange", low.buttons.row.free.text.r, low.Style.WARN_RGB.r)
     Check("full: none free", full.FreeText(), "0/16")
     Check("full: red", full.buttons.row.free.text.r, full.Style.RED_RGB.r)
+end
+
+-- The settings card's preview: nothing built until the card opens (and nothing at all while Bag
+-- Space is off), then the same card from the addon's samples, following Items Shown, Highest
+-- Quality Offered, Icon Size, Direction, the sort settings, Offer to Stack and Show Free Slots,
+-- with Low and Full states, a hover that acts on nothing, and no garbage per paint.
+do
+    local t = Fixture({ studio = true, settings = { bagSpace = false }, bags = { [0] = Bag(16, { { 1, 3 } }) } })
+    local studio = t.cards.bagSpace and t.cards.bagSpace.studio
+    Check("studio: declared on the card", studio ~= nil, true)
+    Check("studio: no card while Bag Space is off", t.buttons.row, nil)
+    local before = t.Made()
+    local stage = t.env.CreateFrame("Frame")
+    local preview = studio.new(stage)
+    Check("studio: built when the card opens", t.Made() > before + 1, true)
+    preview.w, preview.h = 500, studio.height
+    local view = preview.view
+    local function Names()
+        local out = {}
+        for _, b in ipairs(view.cells) do
+            if b.shown then out[#out + 1] = b.pick.name end
+        end
+        return table.concat(out, ", ")
+    end
+    studio.paint(preview, "bags")
+    Check("studio: cheapest first, the quest item last", Names(),
+        "Worn Leather Pants, Ruined Pelt, Tough Jerky, Linen Cloth")
+    Check("studio: the free count", view.free.text.text, "28/52")
+    Check("studio: Scrap Marker's +N", view.free.scrap.text, "+2")
+    Check("studio: the Stack button", view.stack.shown, true)
+    Check("studio: OLD on the jerky", view.cells[3].old.shown, true)
+    Check("studio: the quest mark on the linen", view.cells[4].quest.shown, true)
+    Check("studio: prices from the shared coins", view.cells[1].price.text, t.Parts.Coins(150, true))
+    local made = t.Made()
+    studio.paint(preview, "bags")
+    Check("studio: a repaint makes no frames", t.Made(), made)
+    t.Set("bagSpaceCount", 2)
+    studio.paint(preview, "bags")
+    Check("studio: Items Shown", Names(), "Worn Leather Pants, Ruined Pelt")
+    t.Set("bagSpaceCount", 8)
+    t.Set("bagSpaceMaxQuality", 0)
+    studio.paint(preview, "bags")
+    Check("studio: Highest Quality Offered", Names(), "Ruined Pelt")
+    t.Set("bagSpaceMaxQuality", 3)
+    t.Set("bagSpaceJunkFirst", true)
+    studio.paint(preview, "bags")
+    Check("studio: Grey Items First", Names(), "Ruined Pelt, Worn Leather Pants, Tough Jerky, Jade Ring, Linen Cloth")
+    t.Set("bagSpaceJunkFirst", false)
+    t.Set("bagSpaceOldFirst", true)
+    studio.paint(preview, "bags")
+    Check("studio: Outlevelled First", Names():match("^[^,]+"), "Tough Jerky")
+    t.Set("bagSpaceSize", 48)
+    t.Set("bagSpaceGrow", "UP")
+    studio.paint(preview, "bags")
+    Check("studio: Icon Size", view.cells[1].w, 48)
+    Check("studio: Direction", view.cells[2].x == 0 and view.cells[2].y > 0, true)
+    Check("studio: shrunk to fit the stage", view.scale < 1, true)
+    t.Set("bagSpaceStack", false)
+    studio.paint(preview, "bags")
+    Check("studio: Offer to Stack off", view.stack.shown, false)
+    studio.paint(preview, "low")
+    Check("studio: Low", view.free.text.text, "4/52")
+    Check("studio: Low in orange", view.free.text.r, t.Style.WARN_RGB.r)
+    studio.paint(preview, "full")
+    Check("studio: Full", view.free.text.text, "0/52")
+    Check("studio: Full in red", view.free.text.r, t.Style.RED_RGB.r)
+    Check("studio: Low and Full need the free count", studio.states[2].needs == "bagSpaceShowFree"
+        and studio.states[3].needs == "bagSpaceShowFree", true)
+    t.Set("bagSpaceShowFree", false)
+    studio.paint(preview, "bags")
+    Check("studio: Show Free Slots off", view.free.shown, false)
+    view.cells[1].OnEnter(view.cells[1])
+    Check("studio: a sample only shows a tooltip", rawget(view.cells[1], "OnClick"), nil)
+    for _ = 1, 20 do studio.paint(preview, "bags") end
+    collectgarbage("collect")
+    collectgarbage("stop")
+    local kb = collectgarbage("count")
+    for _ = 1, 500 do studio.paint(preview, "full") end
+    local grown = collectgarbage("count") - kb
+    collectgarbage("restart")
+    Check("studio: no garbage per paint", grown / 500 < 0.05, true)
 end
 
 -- Cost: a full set of bags, scanned the way loot triggers it.

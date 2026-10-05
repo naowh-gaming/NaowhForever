@@ -10,7 +10,7 @@ through `Shared.xml`. Nothing is made or listened to at load.
 Shared/
   Shared.xml   what loads, in order
   Shared.lua   the namespace (ns.Shared)
-  Style.lua    the house look: colours (BiS stars, worn green, looks, red and warning orange), icons, sizes
+  Style.lua    the house look: colors (BiS stars, worn green, looks, red and warning orange), icons, sizes
   Items.lua    item and gear helpers: an ID from a link or URL, your loot lines, quality colour, In Bag,
                gear slots, what fits where, what you wear, weapons in short ("1h Sword"),
                waiting on item data
