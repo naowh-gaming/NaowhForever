@@ -1,12 +1,13 @@
 -- Run with Lua 5.1 from the repository root: the XP Ticker's card. The real Core, Shared style,
 -- parts and window parts and the ticker's own file are loaded against stubs, and the ticker and
--- its settings preview are checked: the card (theme background, black border), the header's
--- kicker, rate and Paused tag, the two-column rows, the icon buttons in the header shown on
--- hover, Background off giving outlined text alone, the font settings, the preview's states and
--- edits, theme colors, the saved place, and no garbage or text work on an unchanged update. Then
--- its colors with meaning: the level progress line with rested XP ahead of it, the rate in the
--- accent only while earning, its trend arrow, Ding turning soft blue near a level, and paused
--- muting the kicker, the rate and the line.
+-- its settings preview are checked: the card (theme background, black border), the rate with its
+-- unit on one line, the empty session ("--", "no XP yet", no Ding), the footer (Ding and
+-- the session time on one line, the level percent at its right), the history rows, the icon
+-- buttons beside the rate shown on hover, the card's tooltip, Background off giving outlined text
+-- alone, the font settings, the preview's states and edits, theme colors, the saved place, and no
+-- garbage or text work on an unchanged update. Then its colors with meaning: the level progress
+-- line with rested XP ahead of it, the rate in the accent only while earning, its trend arrow,
+-- Ding turning soft blue near a level, and paused muting the rate and the line.
 local Load = dofile("Tools/regression/load_files.lua")
 
 local checks = 0
@@ -80,11 +81,31 @@ end
 local now = 1000
 local xp, xpMax, rested = 500, 1000, nil
 local tick
-local menu
+local menu, menuOpen
+local tip = { lines = {} }
+local function TipRecord(kind)
+    return function(_, left, right) tip.lines[#tip.lines + 1] = { kind = kind, left = left, right = right } end
+end
+local GameTooltip = {
+    SetOwner = function(_, owner)
+        tip.owner, tip.shown = owner, false
+        for i = #tip.lines, 1, -1 do tip.lines[i] = nil end
+    end,
+    SetText = TipRecord("title"), AddLine = TipRecord("line"), AddDoubleLine = TipRecord("double"),
+    Show = function() tip.shown = true end,
+    Hide = function() tip.shown, tip.owner = false, nil end,
+    IsOwned = function(_, owner) return tip.owner == owner end,
+}
+local function TipRight(left)
+    for _, line in ipairs(tip.lines) do
+        if line.left == left then return line.right or "" end
+    end
+end
 
 local function Boot(account, settings)
     for i = #created, 1, -1 do created[i] = nil end
-    now, tick, menu = 1000, nil, nil
+    now, tick, menu, menuOpen = 1000, nil, nil, false
+    tip.owner, tip.shown = nil, false
     xp, xpMax, rested = 500, 1000, nil
     local env = {
         CreateFrame = function(_, name, parent) return Frame(parent, name) end,
@@ -108,6 +129,8 @@ local function Boot(account, settings)
         wipe = function(t) for k in pairs(t) do t[k] = nil end return t end,
         C_Timer = { After = NOTHING, NewTicker = function(_, fn) tick = fn; return { Cancel = NOTHING } end },
         MenuUtil = { CreateContextMenu = function(owner, gen) menu = { owner = owner, gen = gen } end },
+        Menu = { GetManager = function() return { IsAnyMenuOpen = function() return menuOpen end } end },
+        GameTooltip = GameTooltip,
         hooksecurefunc = function(t, k, fn)
             local old = t[k]
             t[k] = function(...) local r = old(...); fn(...); return r end
@@ -180,32 +203,41 @@ do
         and Read("QoL/NaowhForever_Flight.lua"):find("CARD_ALPHA = 380, 10, 6, St.HUD_CARD_ALPHA", 1, true))
     check("with the black border", t.border._frame.shown ~= false)
 
-    check("the kicker reads XP / HOUR", t.kicker.text == "XP / HOUR")
-    check("the kicker in the accent, small", Is(t.kicker, T.accentSoft) and t.kicker.size == 10)
-    check("the kicker at the card's top left", t.kicker.p1 == "TOPLEFT" and t.kicker.p2 == 8 and t.kicker.p3 == -8)
-    check("the rate big, muted while it is 0", Is(t.rate, T.muted) and t.rate.size == 24 and t.rate.text == "0")
-    check("the rate under the kicker", t.rate.p1 == "TOPLEFT" and t.rate.p2 == t.kicker and t.rate.p3 == "BOTTOMLEFT")
-    check("no Paused tag while running", t.tag.shown == false and t.tag.text == "PAUSED" and Is(t.tag, T.muted))
-
-    check("Ding and Time rows", t.ding.label.text == "Ding" and t.time.label.text == "Time"
-        and t.ding.on and t.time.on)
-    check("labels muted on the left", Is(t.ding.label, T.muted) and t.ding.label.p1 == "TOPLEFT"
-        and t.ding.label.p4 == 8)
-    check("values in the text color on the right", Is(t.time.value, T.fg) and t.ding.value.p1 == "TOPRIGHT"
-        and t.ding.value.p4 == -8)
-    check("a label and its value share a line", t.ding.label.p5 == t.ding.value.p5
-        and t.time.label.p5 == t.time.value.p5)
-    check("Time under Ding", t.time.label.p5 < t.ding.label.p5)
-    check("no ding yet", t.ding.value.text == "--")
-    check("the session time", t.time.value.text == "0:00")
-    check("rows smaller than the rate", t.ding.label.size == 14 and t.ding.value.size == 14)
+    check("no XP yet: the rate a muted --", t.rate.text == "--" and Is(t.rate, T.muted) and t.rate.size == 24)
+    check("the rate at the card's top left", t.rate.p1 == "TOPLEFT" and t.rate.p2 == 8 and t.rate.p3 == -8)
+    check("no XP yet: no XP yet in place of the unit", t.unit.text == "no XP yet" and Is(t.unit, T.muted))
+    check("the unit beside the rate, on its baseline", t.unit.p1 == "BOTTOMLEFT" and t.unit.p2 == t.rate
+        and t.unit.p3 == "BOTTOMRIGHT" and t.unit.p4 == 4 and math.abs(t.unit.p5 - (24 - 12) * 0.2) < 1e-9)
+    check("the unit at the row size", t.unit.size == 12)
+    check("no Ding without a rate", not t.ding.on and t.ding.label.shown == false and t.dot.shown == false)
+    check("the session time alone at the footer's left", t.time.on and t.time.value.text == "0:00"
+        and t.time.value.p1 == "TOPLEFT" and t.time.value.p4 == 8)
+    check("the level percent at the footer's right", t.percent.text == "50%" and Is(t.percent, T.muted)
+        and t.percent.p1 == "TOPRIGHT" and t.percent.p4 == -8 and t.percent.p5 == t.time.value.p5)
     check("no history rows without completed levels", not t.history[1].on)
+    check("a short card: the rate, then the footer", t.h == 8 + 24 + 6 + 12 + 8)
+
+    xp = 700
+    s.events.scripts.OnEvent(s.events, "PLAYER_XP_UPDATE")
+    check("XP in: the rate in the accent", t.rate.text == "12.0k" and Is(t.rate, T.accent))
+    check("XP in: the unit", t.unit.text == "xp/hr" and Is(t.unit, T.muted))
+    check("Ding and the time share the footer", t.ding.on and t.ding.label.text == "Ding"
+        and t.ding.value.text == "1m" and t.dot.shown and t.time.value.text == "0:00")
+    check("Ding's label muted on the left", Is(t.ding.label, T.muted) and t.ding.label.p1 == "TOPLEFT"
+        and t.ding.label.p4 == 8)
+    check("its value after it, then a dot, then the time", t.ding.value.p1 == "LEFT" and t.ding.value.p2 == t.ding.label
+        and t.dot.p2 == t.ding.value and t.time.value.p1 == "LEFT" and t.time.value.p2 == t.dot)
+    check("the dot muted", Is(t.dot, T.muted) and t.dot.text == ns.Shared.Style.PLACE_DOT)
+    check("the time in the text color", Is(t.time.value, T.fg))
+    check("the percent follows XP", t.percent.text == "70%")
+    check("footer rows at the row size", t.ding.label.size == 12 and t.time.value.size == 12 and t.percent.size == 12)
 
     check("the text has no outline, the soft shadow", All(t, Plain))
     check("no hand-written color codes", not Read("QoL/NaowhForever_XPTicker.lua"):find("|cff", 1, true))
 
     local c = t.controls
-    check("the buttons sit in the card's header", c.parent == t and c.p1 == "TOPRIGHT" and c.p2 < 0 and c.p3 < 0)
+    check("the buttons beside the rate, centred on it", c.parent == t and c.p1 == "RIGHT" and c.p2 == t
+        and c.p3 == "TOPRIGHT" and c.p4 == -6 and c.p5 == -(8 + 24 / 2))
     check("two icon buttons: pause and reset", t.toggle.parent == c and t.reset.parent == c
         and t.toggle.icon.tex == St.PAUSE and t.reset.icon.tex == St.RESET)
     check("with tooltips", t.toggle.tip == "Pause" and t.toggle.hint and t.reset.tip == "Reset" and t.reset.hint)
@@ -217,24 +249,43 @@ do
         f:close()
     end
     check("hidden until hovered", c.shown == false)
-    check("no button outside the card", t.w >= c.w - c.p2 + 8 and t.h >= c.h - c.p3)
+    check("room for the buttons right of the rate", t.w >= 8 + t.rate.text:len() * 12 + 4 + c.w + 6)
+    check("the buttons inside the card", 8 + 12 - c.h / 2 >= 0 and t.h >= 8 + 12 + c.h / 2)
     t.scripts.OnEnter(t)
     check("shown on hover", c.shown)
+    check("the card's tooltip", tip.shown and tip.owner == t and tip.lines[1].left == "XP per Hour")
+    check("tooltip: level, percent and rested", TipRight("Level 20") == "70%" and TipRight("Session") == "0:00")
+    check("tooltip: the session's numbers", TipRight("XP gained") == "200" and TipRight("Rate") == "12.0k xp/hr"
+        and TipRight("Ding in") == "1m")
     t.over = true
     t.scripts.OnLeave(t)
     check("still shown moving onto a button", c.shown)
     t.over = false
     t.toggle.hooks.OnLeave(t.toggle)
-    check("hidden once the mouse leaves the card", c.shown == false)
+    check("hidden once the mouse leaves the card", c.shown == false and not tip.shown)
+    rested = 150
+    s.events.scripts.OnEvent(s.events, "PLAYER_XP_UPDATE")
+    t.scripts.OnEnter(t)
+    check("tooltip: rested XP as a share of the level", TipRight("Level 20") == "70% \194\183 rested +15%")
+    t.scripts.OnLeave(t)
+    menuOpen = true
+    t.scripts.OnEnter(t)
+    check("no tooltip while a menu is open", not tip.shown)
+    t.scripts.OnLeave(t)
+    menuOpen = false
+    rested = nil
 
     t.toggle.scripts.OnClick(t.toggle)
-    check("the pause button pauses", t.tag.shown and t.toggle.icon.tex == St.PLAY and t.toggle.tip == "Start")
+    check("the pause button pauses", t.unit.text == "paused" and t.toggle.icon.tex == St.PLAY and t.toggle.tip == "Start")
+    t.scripts.OnEnter(t)
+    check("tooltip: paused", tip.lines[#tip.lines].left == "Paused")
+    t.scripts.OnLeave(t)
     t.toggle.scripts.OnClick(t.toggle)
-    check("and starts again", t.tag.shown == false and t.toggle.icon.tex == St.PAUSE)
+    check("and starts again", t.unit.text == "xp/hr" and t.toggle.icon.tex == St.PAUSE)
     ns.XPTickerCommand("pause")
-    check("/naowh xp pause still works", t.tag.shown)
+    check("/naowh xp pause still works", t.unit.text == "paused")
     ns.XPTickerCommand("start")
-    check("/naowh xp start still works", t.tag.shown == false)
+    check("/naowh xp start still works", t.unit.text == "xp/hr")
     now = now + 125
     tick()
     check("the clock runs", t.time.value.text == "2:05")
@@ -248,11 +299,11 @@ do
     s.S.Set("xpTickerFont", "Expressway")
     s.S.Set("xpTickerFontSize", 12)
     check("a picked font and size apply", t.rate.font == "font:Expressway" and t.rate.size == 12)
-    check("the kicker and rows follow", t.kicker.font == "font:Expressway" and t.kicker.size == 9
-        and t.ding.value.size == 10 and t.ding.label.font == "font:Expressway")
+    check("the unit and rows follow", t.unit.font == "font:Expressway" and t.unit.size == 9
+        and t.time.value.size == 9 and t.percent.font == "font:Expressway")
     local small = t.w
     s.S.Set("xpTickerFontSize", 32)
-    check("the card is sized from the font size", t.w > small and t.rate.size == 32 and t.ding.value.size == 19)
+    check("the card is sized from the font size", t.w > small and t.rate.size == 32 and t.time.value.size == 16)
     check("still no outline", All(t, Plain))
 
     s.S.Set("xpTickerOutline", true)
@@ -266,10 +317,16 @@ do
     s.S.Set("xpTickerBackground", true)
     check("Background on: the card is back", t.bg.shown and t.border._frame.shown and All(t, Plain))
 
-    local timeAt = t.time.label.p5
+    xp = 800
+    s.events.scripts.OnEvent(s.events, "PLAYER_XP_UPDATE")
+    check("Ding shown again once XP comes in", t.ding.on and t.time.value.p2 == t.dot)
     s.S.Set("xpTickerLevel", false)
-    check("Show Ding Time off hides its row", not t.ding.on and t.ding.label.shown == false)
-    check("Time moves up", t.time.on and t.time.label.p5 > timeAt)
+    check("Show Ding Time off hides it", not t.ding.on and t.ding.label.shown == false and t.dot.shown == false)
+    check("the time moves to the footer's left", t.time.on and t.time.value.p1 == "TOPLEFT" and t.time.value.p4 == 8)
+    s.S.Set("xpTickerElapsed", false)
+    check("Show Time off leaves the percent alone", not t.time.on and t.time.value.shown == false
+        and t.percent.shown ~= false)
+    s.S.Set("xpTickerElapsed", true)
     s.S.Set("xpTickerLevel", true)
 
     local rows, labels = {}, {}
@@ -298,8 +355,8 @@ do
     check("completed levels as rows, newest first", t.history[1].on and t.history[1].label.text == "Level 19"
         and t.history[2].label.text == "Level 18" and not t.history[3].on)
     check("their times on the right", t.history[1].value.text == "39:51" and t.history[1].value.p1 == "TOPRIGHT")
-    check("history a little smaller", t.history[1].label.size == 12 and t.history[1].label.size < t.time.label.size)
-    check("under the session rows", t.history[1].label.p5 < t.time.label.p5)
+    check("history at the row size", t.history[1].label.size == 12 and t.history[1].label.size == t.time.value.size)
+    check("between the rate and the footer", t.history[1].label.p5 < -32 and t.history[2].label.p5 > t.percent.p5)
     s.S.Set("xpTickerHistoryCount", 1)
     check("Levels Shown caps them", t.history[1].on and not t.history[2].on)
 
@@ -325,17 +382,24 @@ do
     local studio, T = s.card.studio, s.T
     local keys = {}
     for _, state in ipairs(studio.states) do keys[#keys + 1] = state.key end
-    check("preview states: Levelling, Paused, Resting", table.concat(keys, ",") == "levelling,paused,resting")
+    check("preview states: Levelling, Starting, Paused, Resting",
+        table.concat(keys, ",") == "levelling,starting,paused,resting")
     local preview = studio.new(Frame())
     local p = preview.ticker
     studio.paint(preview, "levelling")
     check("the preview draws the card", p.bg.shown and Is(p.bg, T.bg) and p.bg.a == St.HUD_CARD_ALPHA)
-    check("levelling: the rate and rows", p.rate.text == "48.2k" and p.ding.value.text == "8 mins"
-        and p.time.value.text == "1:12:40" and p.tag.shown == false)
+    check("levelling: the rate and rows", p.rate.text == "48.2k" and p.unit.text == "xp/hr"
+        and p.ding.value.text == "8m" and p.time.value.text == "1:12:40" and p.percent.text == "62%")
     check("levelling: sample history", p.history[1].label.text == "Level 22" and p.history[5].on)
     check("the preview's buttons do nothing", p.toggle.mouse == false and p.reset.mouse == false)
+    studio.paint(preview, "starting")
+    check("starting: no rate yet", p.rate.text == "--" and p.unit.text == "no XP yet" and not p.ding.on
+        and p.time.value.text == "3:12")
+    p.scripts.OnEnter(p)
+    check("starting: the tooltip's rate", TipRight("Rate") == "--" and TipRight("Level 23") == "62% \194\183 rested +15%")
+    p.scripts.OnLeave(p)
     studio.paint(preview, "paused")
-    check("paused: the tag and the play icon", p.tag.shown and p.toggle.icon.tex == St.PLAY)
+    check("paused: the unit and the play icon", p.unit.text == "paused" and p.toggle.icon.tex == St.PLAY)
     studio.paint(preview, "resting")
     check("resting: shown while Hide While Resting is off", p.shown ~= false and preview.note.text == "")
     s.S.Set("xpTickerHideResting", true)
@@ -387,8 +451,8 @@ do
     local s = Boot({ themePreset = "slate" })
     local ns, t, T = s.ns, s.ticker, s.T
     check("a theme preset changes the colors", ns.Color("muted") ~= "|cff9a9ea6")
-    check("the card follows the theme", Is(t.bg, T.bg) and Is(t.kicker, T.accentSoft) and Is(t.rate, T.muted)
-        and Is(t.ding.label, T.muted) and Is(t.time.value, T.fg) and Is(t.ding.value, T.muted))
+    check("the card follows the theme", Is(t.bg, T.bg) and Is(t.unit, T.muted) and Is(t.rate, T.muted)
+        and Is(t.ding.label, T.muted) and Is(t.time.value, T.fg) and Is(t.percent, T.muted))
 end
 
 do
@@ -421,7 +485,7 @@ do
     check("rested ahead of it in the soft accent, fainter", AheadIn(line, T.accentSoft) and line.ahead.sa < 1)
 
     check("the rate muted at 0", Is(t.rate, T.muted))
-    check("-- muted", t.ding.value.text == "--" and Is(t.ding.value, T.muted))
+    check("no Ding at 0", not t.ding.on)
     xp, rested = 700, 200
     ev.scripts.OnEvent(ev, "PLAYER_XP_UPDATE")
     check("the line follows XP", line.fill.value == 0.7)
@@ -436,19 +500,19 @@ do
 
     check("the rate in the accent while earning", t.rate.text ~= "0" and Is(t.rate, T.accent))
     check("the only bright number: the rest in the text color", Is(t.time.value, T.fg))
-    check("Ding under 10 minutes in the soft accent", t.ding.value.text == "1 min" and Is(t.ding.value, T.accentSoft))
+    check("Ding under 10 minutes in the soft accent", t.ding.value.text == "1m" and Is(t.ding.value, T.accentSoft))
     xpMax = 100000
     tick()
-    check("Ding further off in the text color", t.ding.value.text:find("hours", 1, true) and Is(t.ding.value, T.fg))
+    check("Ding further off in the text color", t.ding.value.text:find("h$") and Is(t.ding.value, T.fg))
     xpMax = 1000
 
-    check("the kicker in the soft accent while running", Is(t.kicker, T.accentSoft))
+    check("the unit muted while running", Is(t.unit, T.muted) and t.unit.text == "xp/hr")
     ns.PauseXPTicker()
-    check("paused: the kicker muted", Is(t.kicker, T.muted))
+    check("paused: the unit says so", t.unit.text == "paused")
     check("paused: the rate muted", Is(t.rate, T.muted))
     check("paused: the line muted", LineIn(line, T.muted) and AheadIn(line, T.muted))
     ns.StartXPTicker()
-    check("running again: the colors are back", Is(t.kicker, T.accentSoft) and Is(t.rate, T.accent)
+    check("running again: the colors are back", t.unit.text == "xp/hr" and Is(t.rate, T.accent)
         and LineIn(line, T.accent) and AheadIn(line, T.accentSoft))
 
     check("no trend arrow at first", t.trend.shown == false)
@@ -461,7 +525,7 @@ do
     tick()
     check("an up arrow while the rate climbs", t.trend.shown and t.trend.tex == ns.Shared.Style.UP
         and t.trend.t == 0 and t.trend.vr == St.HAVE_RGB.r and t.trend.vg == St.HAVE_RGB.g)
-    check("beside the rate", t.trend.p1 == "LEFT" and t.trend.p2 == t.rate)
+    check("after the unit", t.trend.p1 == "LEFT" and t.trend.p2 == t.unit)
     now = now + 900
     tick()
     check("a down arrow while it falls", t.trend.shown and t.trend.t == 1 and t.trend.vr == St.RED_RGB.r)
@@ -494,13 +558,13 @@ do
     studio.paint(preview, "levelling")
     check("preview: sample progress with rested", p.line.fill.value == 0.62 and math.abs(p.line.ahead.value - 0.77) < 1e-9)
     check("preview: the rate in the accent with an up arrow", Is(p.rate, T.accent) and p.trend.shown and p.trend.t == 0)
-    check("preview: Ding close, in the soft accent", p.ding.value.text == "8 mins" and Is(p.ding.value, T.accentSoft))
+    check("preview: Ding close, in the soft accent", p.ding.value.text == "8m" and Is(p.ding.value, T.accentSoft))
     studio.paint(preview, "paused")
-    check("preview paused: muted kicker, rate and line, no arrow", Is(p.kicker, T.muted) and Is(p.rate, T.muted)
+    check("preview paused: paused unit, muted rate and line, no arrow", p.unit.text == "paused" and Is(p.rate, T.muted)
         and LineIn(p.line, T.muted) and p.trend.shown == false)
     studio.paint(preview, "resting")
     check("preview resting: more rested, the rate falling", math.abs(p.line.ahead.value - 0.92) < 1e-9
-        and p.trend.shown and p.trend.t == 1 and Is(p.kicker, T.accentSoft))
+        and p.trend.shown and p.trend.t == 1 and Is(p.rate, T.accent))
 end
 
 print(("PASS xp ticker: %d checks"):format(checks))
