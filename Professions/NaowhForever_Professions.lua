@@ -3479,6 +3479,11 @@ end
 
 local function Update()
     if not (On() and ProfessionsFrame and ProfessionsFrame:IsShown()) then return Deactivate() end
+    -- K opens the book while the game still holds the last linked profession: the book wins,
+    -- unless a link was just clicked.
+    if BookOpen() and not viewingLink and not C_TradeSkillUI.IsTradeSkillGuild() then
+        return Activate("book")
+    end
     if Linked() then
         if Profession() then return Activate("linked") end
         return Deactivate()
