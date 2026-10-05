@@ -15,6 +15,7 @@ local function SoftBlue(r, g, b)
     return r, g, b
 end
 local LINK_TEMPLATE = "NaowhForeverZoneLinkPinTemplate"
+local TRAVEL_ATLAS = "vehicle-templeofkotmogu-cyanball"
 local CAPITALS = ns.TownCapitals
 
 -- Category -> the setting that shows it, its icon and the label in the tooltip.
@@ -129,6 +130,14 @@ function provider:RefreshAllData()
     end
     local faction = UnitFactionGroup("player") == "Horde" and "H" or "A"
     local _, class = UnitClass("player")
+    if S.Get("townTravel") then
+        for _, dock in ipairs(ns.TownTravel[mapID] or {}) do
+            if dock[5]:find(faction, 1, true) then
+                self:GetMap():AcquirePin(LINK_TEMPLATE, { name = dock[3], atlasName = TRAVEL_ATLAS,
+                    position = CreateVector2D(dock[1] / 100, dock[2] / 100), linkedUiMapID = dock[4] })
+            end
+        end
+    end
     for _, npc in ipairs(list or {}) do
         local cat = CATEGORIES[npc[3]]
         if npc[7]:find(faction, 1, true) and S.Get(cat[1])
@@ -209,7 +218,7 @@ function ns.TownAudit()
 end
 
 local Group = ns.Shared.Settings.Group
-local TOWN_SHOW = { "townSpiritHealers", "townZoneLinks", "townClass", "townProfession", "townFlight",
+local TOWN_SHOW = { "townSpiritHealers", "townZoneLinks", "townTravel", "townClass", "townProfession", "townFlight",
     "townInn", "townBank", "townRepair", "townSupplies", "townStable", "townVendors", "townMail" }
 
 local function TownSummary(store)
@@ -235,6 +244,8 @@ ns.Shared.Settings.Page("QoL/Interface", S):Card({
           help = "Shows graveyards supplied by the game map." },
         { key = "townZoneLinks", label = "Clickable Zone Exits", toggle = true,
           help = "Click an exit to open the adjoining zone map." },
+        { key = "townTravel", label = "Boats & Zeppelins", toggle = true,
+          help = "Every dock and zeppelin tower; click one to open where it goes." },
         { key = "townClass", label = "Class Trainers", toggle = true, help = "Your class's trainers only." },
         { key = "townProfession", label = "Profession Trainers", toggle = true },
         { key = "townFlight", label = "Flight Masters", toggle = true },
