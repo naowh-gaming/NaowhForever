@@ -45,7 +45,7 @@ local env = setmetatable({
     CreateFrame = function(_, _, parent) local f = NewFrame(); f.parent = parent; return f end,
     hooksecurefunc = function() end,
     WorldMapFrame = { AddDataProvider = function() end, IsShown = function() return false end,
-        dataProviders = {} },
+        dataProviders = {}, EnumeratePinsByTemplate = function() return function() end end },
     Minimap = { GetWidth = function() return 200 end, GetHeight = function() return 200 end },
     C_Map = {
         GetBestMapForUnit = function() return 1 end,
