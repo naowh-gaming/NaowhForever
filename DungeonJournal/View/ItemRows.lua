@@ -86,6 +86,7 @@ local NOT_YET_TAG = "   " .. J.NOT_YET
 
 -- What a click on an item does, at the foot of its tooltip.
 local CLICK_HINT = "Right-click: menu" .. PLACE_DOT .. "Shift-click: link"
+local MENU_HINT = "Right-click: menu"
 
 -- What each mark means, under the item's tooltip: the icon, without the gap it has after a
 -- name, then the words.
@@ -179,7 +180,7 @@ local function ItemEnter(row)
     -- Stat Weights, when on, says how much on every tooltip: the bare word would be twice.
     if row.upgrade and not (ns.StatWeights and ns.StatWeights.On()) then GameTooltip:AddLine(UPGRADE_LINE) end
     if row.newLook then GameTooltip:AddLine(NEW_LOOK_LINE) end
-    GameTooltip:AddLine(CLICK_HINT, muted.r, muted.g, muted.b)
+    GameTooltip:AddLine(notYet and MENU_HINT or CLICK_HINT, muted.r, muted.g, muted.b)
     GameTooltip:Show()
 end
 

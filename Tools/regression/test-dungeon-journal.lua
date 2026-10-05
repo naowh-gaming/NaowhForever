@@ -1149,6 +1149,7 @@ do
     row.scripts.OnEnter(row)
     check("its tooltip is the Journal's own", setByID == 0 and rawget(state.tooltip, "text") == notYetName)
     check("which says it is not in Forever yet", Has(tipLines, DJ.NOT_YET))
+    check("and offers the menu, not a link it cannot give", Has(tipLines, "Right-click: menu"))
     state.bis[notYet] = nil
     local herod = findBoss("ScarletMonasteryArmory", "Herod")
     check("Herod: Ravager, which Forever sends", Has(herod.loot, 7717) and DJ.Items[7717] ~= nil)
