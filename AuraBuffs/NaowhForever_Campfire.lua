@@ -4,10 +4,10 @@
 --  windows' backdrop: the campfire inside it at the left, sized from the bar's height, the
 --  camp's bonuses with their amounts, and the time left on the right over a line that runs down
 --  green, yellow, then red. Nothing draws outside the bar, so it can sit anywhere. Every Simple
---  state keeps the fire and the words in the same place; the down states hug their words. The
---  bar is never narrower than four wide bonuses need at its text size (MIN_LABELS), and its text
---  never under 11. Hovering it lists each bonus, the time left and when to refresh.
-
+--  state keeps the fire, the words and the bar's size the same; the down states leave the time's
+--  place empty. The bar is never narrower than four wide bonuses need at its text size
+--  (MIN_LABELS), and its text never under 11. Hovering it lists each bonus, the time left and
+--  when to refresh.
 --  The bonuses come from the hidden aura each camp feature puts on you, by spell ID, else from
 --  Camp Benefits' tooltip (spell 1229741, wago.tools build 1.60.1.70205), read once per Camp
 --  Benefits: one line per feature, matched by the feature's name as the client spells it, its
@@ -306,7 +306,7 @@ function Bar.New(host)
     f.camp = CreateFrame("Frame", nil, f.bar)
     f.camp:SetFrameLevel(f.edges:GetFrameLevel() + 1)
     CampArt(f.camp, true)
-    f.lit, f.low, f.lead, f.group, f.pill, f.pillW, f.slot = true, false, 0, 0, false, 0, 0
+    f.lit, f.low, f.lead, f.group, f.pill, f.slot = true, false, 0, 0, false, 0
     Bar.Layout(f)
     Bar.Paint(f, T.accent, false)
     return f
@@ -324,7 +324,7 @@ local function MoreText(n)
 end
 
 local function BarSize(f)
-    f.host:SetSize(f.pill and f.pillW or f.width, f.height)
+    f.host:SetSize(f.width, f.height)
 end
 
 local function PlaceLabels(f)
@@ -406,7 +406,6 @@ function Bar.Missing(f, nearby)
     BarNote(f, nearby and f.nearbyText or f.refreshText, T.fg)
     Bar.Timed(f, false)
     f.pill, f.slot = true, 0
-    f.pillW = math.ceil(f.labelX + f.note:GetStringWidth() + BAR.PAD)
     BarSize(f)
 end
 

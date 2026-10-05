@@ -526,23 +526,21 @@ do
     s.fire("UNIT_AURA")
     check("down: Refresh Camp, the key word in the accent", s.labels(bar) == "" and bar.note.text
         == "{accent:Refresh} Camp" and bar.note.shown ~= false and Same(bar.note, s.T.fg))
-    check("down: the bar hugs its words, the fire still seated in the same place",
-        bar.pill and icon.w == math.ceil(29 + W("Refresh Camp") + 10) and bar.camp.pt.CENTER == 12
+    check("down: the bar keeps its full width, the fire and the words where the bonuses start",
+        bar.pill and icon.w == 360 and bar.camp.pt.CENTER == 12
         and Inside(bar) and bar.note.pt.LEFT == 29 and icon.h == 26)
-    check("down: the fire grey in a muted ring, no time line", bar.camp.tex.desaturated == true
+    check("down: the fire grey, the time's place empty, no time line", bar.camp.tex.desaturated == true
         and bar.line.shown == false and bar.time.shown == false)
     check("Simple: no big Camp Nearby alert", s.named.NaowhForeverCampNearby == nil)
     s.tips = {}
     bar.scripts.OnEnter(bar)
     check("down tooltip: what to do", s.tipText():find("No Camp Benefits", 1, true)
         and s.tipText():find("Sit at a campfire to refresh", 1, true))
-    local refreshW = icon.w
     s.auras[NEARBY] = {}
     s.fire("UNIT_AURA")
-    check("down with a campfire in range: the same pattern, a muted hint after a dot",
+    check("down with a campfire in range: the same pattern and size, a muted hint after a dot",
         bar.note.text == "{accent:Camp Nearby}{muted:" .. s.St.PLACE_DOT .. "sit to refresh}"
-        and bar.note.pt.LEFT == 29 and icon.w > refreshW
-        and icon.w == math.ceil(29 + W("Camp Nearby" .. s.St.PLACE_DOT .. "sit to refresh") + 10))
+        and bar.note.pt.LEFT == 29 and icon.w == 360 and icon.h == 26 and bar.time.shown == false)
     s.auras[NEARBY] = nil
     s.fire("UNIT_AURA")
 
@@ -700,7 +698,7 @@ do
     local layout = {}
     local function Snap(name)
         layout[#layout + 1] = { name = name, campX = bar.camp.pt.CENTER, campY = bar.camp.pty.CENTER,
-            note = bar.note.pt.LEFT, noteY = bar.note.pty.LEFT, h = icon.h,
+            note = bar.note.pt.LEFT, noteY = bar.note.pty.LEFT, h = icon.h, w = icon.w,
             time = bar.time.pt.RIGHT, timeY = bar.time.pty.RIGHT, labels = bar.labels.pt.LEFT - bar.lead,
             labelsY = bar.labels.pty.LEFT }
     end
@@ -746,7 +744,7 @@ do
     local same = true
     for _, snap in ipairs(layout) do
         local first = layout[1]
-        for _, key in ipairs({ "campX", "campY", "note", "noteY", "h", "time", "timeY", "labels", "labelsY" }) do
+        for _, key in ipairs({ "campX", "campY", "note", "noteY", "h", "w", "time", "timeY", "labels", "labelsY" }) do
             if snap[key] ~= first[key] then same = false; print("  moved in " .. snap.name .. ": " .. key) end
         end
     end
@@ -859,11 +857,13 @@ do
         .. s.St.PLACE_DOT .. "no bonuses" and shot.barHost.pt.LEFT == left
         and f.labels.count == 0 and shot.bonusZones[1].shown == false and f.time.shown ~= false)
     card.studio.paint(shot, "nearby")
-    check("preview Camp Nearby: the hugging pill, only the body editable", f.pill
+    local stateW = shot.barHost.w
+    check("preview Camp Nearby: the same rectangle, only the body editable", f.pill and shot.barHost.w == stateW
         and Plain(f.note.text) == "Camp Nearby" .. s.St.PLACE_DOT .. "sit to refresh"
         and shot.widthZone.shown == false and shot.zones[1].shown ~= false)
     card.studio.paint(shot, "missing")
-    check("preview Refresh: the pill, the fire in the same seat", f.pill and Plain(f.note.text) == "Refresh Camp"
+    check("preview Refresh: the same rectangle, the fire in the same seat", f.pill
+        and Plain(f.note.text) == "Refresh Camp" and shot.barHost.w == stateW and shot.barHost.h == f.height
         and f.camp.pt.CENTER == f.campX and shot.barHost.pt.LEFT == left and shot.barHost.pty.LEFT == leftY)
 
 
