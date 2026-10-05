@@ -109,6 +109,7 @@ local function Fixture(settings)
         SetPoint = function(f, a, rel, _, d, e) f.pt[a], f.pty[a], f.rel[a] = d or 0, e or 0, rel end,
         ClearAllPoints = function() end,
         SetAllPoints = function(f, rel) f.all = rel or true end,
+        SetTexCoord = function(f, l, r, t, b) f.coords = { l, r, t, b } end,
         SetShadowColor = function(f, _, _, _, a) f.shadow = a end,
         GetCenter = function(f) return rawget(f, "cx"), rawget(f, "cy") end,
         GetLeft = function(f) return rawget(f, "left") end,
@@ -448,8 +449,14 @@ do
     check("the house backdrop and black edge, no custom alpha", bar.backdrop and rawget(bar, "bg") == nil
         and bar.top.color == s.St.BORDER_RGB and s.St.BACKDROP_ALPHA
         and not Read("AuraBuffs/NaowhForever_Campfire.lua"):find("BAR%.ALPHA"))
-    check("the fire has no ring or outline, just its round mask, drawn smooth", rawget(bar.camp, "ring") == nil
-        and rawget(bar.camp, "ringMask") == nil and bar.camp.mask ~= nil and bar.camp.tex.texture ~= nil)
+    local behind = 0
+    for _, f in ipairs(s.frames) do if f.parent == bar.camp then behind = behind + 1 end end
+    local c = bar.camp.tex.coords
+    check("the fire is only its art on the bar's backdrop: no plate, mask or ring", behind == 1
+        and rawget(bar.camp, "plate") == nil and rawget(bar.camp, "mask") == nil and rawget(bar.camp, "ring") == nil
+        and bar.camp.tex.texture ~= nil)
+    check("the art's empty margin is cropped to its fire, square", c and c[1] > 0 and c[2] < 1 and c[3] > 0
+        and c[4] < 1 and math.abs((c[2] - c[1]) - (c[4] - c[3])) < 1e-3)
     check("panel text: no HUD shadow on the bar's words", bar.time.shadow == nil and bar.note.shadow == nil)
     local track
     for _, f in ipairs(s.frames) do if f.parent == bar.line and f.color == s.T.line then track = f end end

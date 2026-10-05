@@ -13,6 +13,8 @@
 --  Benefits: one line per feature, matched by the feature's name as the client spells it, its
 --  numbers read in the description's order (the Lute's armor, stats, resistances; the Mana
 --  Well's mana, then its 5 seconds). FONT_LIFT raises the bar's words: the Naowh font sits low.
+--  The bar's fire has no plate or ring: the art (transparent round its fire) sits on the bar's
+--  own backdrop, ART_CROP trimming its empty margin so the fire fills the square.
 -------------------------------------------------------------------------------
 local ns = _G.NaowhForever
 local S = ns.AuraBuffSettings
@@ -29,6 +31,7 @@ local WELCOMING_CAMPFIRE_CRAFT = 1289723
 local CIRCLE_MASK = "Interface\\AddOns\\NaowhForever\\Media\\circle_mask.tga"
 local CIRCLE_RING = "Interface\\AddOns\\NaowhForever\\Media\\circle_ring.tga"
 local CAMPFIRE_ART = "Interface\\AddOns\\NaowhForever\\Media\\CampfireHD.tga"
+local ART_CROP = { 40 / 1024, 993 / 1024, 36 / 1024, 988 / 1024 }
 -- The time ring's colour by minutes left: green above 30, yellow above 5, red below.
 local TIME_STEPS = { { 1800, St.TIME_OK_RGB }, { 300, St.TIME_LOW_RGB }, { 0, St.TIME_OUT_RGB } }
 local REFRESH_NOW = TIME_STEPS[2][1]
@@ -87,6 +90,10 @@ local SAMPLE_BONUSES = { { FEATURES[1] }, { FEATURES[3], 56 }, { FEATURES[4], 25
 local function CampArt(icon, bare)
     icon.tex = Parts.Smooth(icon:CreateTexture(nil, "ARTWORK"), CAMPFIRE_ART)
     icon.tex:SetAllPoints()
+    if bare then
+        icon.tex:SetTexCoord(ART_CROP[1], ART_CROP[2], ART_CROP[3], ART_CROP[4])
+        return
+    end
     icon.plate = icon:CreateTexture(nil, "BACKGROUND", nil, 1)
     icon.plate:SetAllPoints()
     local plate = ns.ThemeTint("panel", PLATE)
