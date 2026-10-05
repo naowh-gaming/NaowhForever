@@ -9,7 +9,8 @@
 -- the bar from a fixed spot; its rows follow the style; and a refresh makes no garbage. The Camp
 -- Nearby alert is the same bar, fading in, breathing while shown and stopping when hidden, with
 -- an editable preview. Both looks share one saved spot, the Round icon's centre on the bar's fire,
--- converted from the settings when placed, so switching styles never drifts.
+-- converted from the settings when placed, so switching styles never drifts. With Simple the alert
+-- shows while the camp is still up and low, and the bar's own pill covers it once gone.
 
 local Load = dofile("Tools/regression/load_files.lua")
 local TocFiles = dofile("Tools/regression/toc_files.lua")
@@ -559,7 +560,7 @@ do
         and Inside(bar) and bar.note.pt.LEFT == 29 and icon.h == 26)
     check("down: the fire grey, the time's place empty, no time line", bar.camp.tex.desaturated == true
         and bar.line.shown == false and bar.time.shown == false)
-    check("Simple: no big Camp Nearby alert", s.named.NaowhForeverCampNearby == nil)
+    check("Simple, camp gone: no big Camp Nearby alert", s.named.NaowhForeverCampNearby == nil)
     s.tips = {}
     bar.scripts.OnEnter(bar)
     check("down tooltip: what to do", s.tipText():find("No Camp Benefits", 1, true)
@@ -1046,7 +1047,39 @@ do
         == "campNearbyMinutes campAlertScale campAlertFade")
     s.values.campStyle = "simple"
     card.studio.paint(shot, "nearby")
-    check("alert preview: not editable with the Simple style", shot.zone.shown == false and shot.hint.text == "")
+    check("alert preview: editable with the Simple style too", shot.zone.shown ~= false
+        and shot.hint.text:find("Wheel", 1, true))
+    local live = true
+    for _, row in ipairs(card.rows) do live = live and row.needs() end
+    check("alert card: its rows work with either style", live and #card.help < 100
+        and not card.help:find("Round", 1, true))
+end
+
+do
+    local s = Fixture({ campStyle = "simple" })
+    s.fire("PLAYER_LOGIN")
+    local bar = s.bar()
+    s.auras[NEARBY] = {}
+    s.auras[CAMP] = { duration = 3600, expirationTime = s.now + 90, auraInstanceID = 1 }
+    s.fire("UNIT_AURA")
+    local alert = s.named.NaowhForeverCampNearby
+    check("Simple, camp low and a campfire in range: the Camp Nearby alert, with the time left", alert
+        and alert.shown == true and alert.bar.time.shown ~= false and not bar.pill)
+    s.auras[CAMP] = nil
+    s.fire("UNIT_AURA")
+    check("Simple, camp gone and a campfire in range: the bar's own pill, no alert", alert.shown == false
+        and bar.pill and Plain(bar.note.text) == "Camp Nearby" .. s.St.PLACE_DOT .. "sit to refresh")
+    s.auras[CAMP] = { duration = 3600, expirationTime = s.now + 1800, auraInstanceID = 2 }
+    s.fire("UNIT_AURA")
+    check("Simple, plenty of camp left: no alert yet", alert.shown == false)
+    s.advance(1800 - 120 + 1)
+    check("Simple: the alert comes once the camp drops under Alert Under", alert.shown == true)
+    s.auras[NEARBY] = nil
+    s.fire("UNIT_AURA")
+    check("Simple: out of range, the alert goes", alert.shown == false)
+    s.ns.ShowRaidReminderAnchorConfig()
+    check("Simple: Unlock Mode shows the alert to move", alert.shown == true)
+    s.ns.HideRaidReminderAnchorConfig()
 end
 
 print(checks .. " campfire look checks passed")

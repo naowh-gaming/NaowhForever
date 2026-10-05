@@ -7,9 +7,11 @@
 --  state keeps the fire, the words and the bar's size the same; the down states leave the time's
 --  place empty. The bar is never narrower than four wide bonuses need at its text size
 --  (MIN_LABELS), and its text never under 11. Hovering it lists each bonus, the time left and
---  when to refresh. With Round, the Camp Nearby alert is the same bar (Bar.Nearby) drawn bare: no
---  backdrop, edge or line, the fire and words alone, larger by its own scale, with the camp's time left when it still runs; it fades in,
---  breathes and fades out through animation groups (FADE), never OnUpdate.
+--  when to refresh. The Camp Nearby alert is the same bar (Bar.Nearby) drawn bare: no backdrop,
+--  edge or line, the fire and words alone, larger by its own scale, with the camp's time left when
+--  it still runs; it fades in, breathes and fades out through animation groups (FADE), never
+--  OnUpdate. With Simple it shows only while Camp Benefits is still up and low: once it is gone,
+--  the bar's own Camp Nearby pill says it.
 --  The bonuses come from the hidden aura each camp feature puts on you, by spell ID, else from
 --  Camp Benefits' tooltip (spell 1229741, wago.tools build 1.60.1.70205), read once per Camp
 --  Benefits: one line per feature, matched by the feature's name as the client spells it, its
@@ -1102,13 +1104,13 @@ end
 
 -- UNIT_AURA fires often, so the timer is only set again for a new expiry.
 local function UpdateAlert(aura)
-    if Simple() or not (S.Get("campNearbyAlert") and C_UnitAuras.GetPlayerAuraBySpellID(CAMPFIRE_NEARBY)) then
+    if not (S.Get("campNearbyAlert") and C_UnitAuras.GetPlayerAuraBySpellID(CAMPFIRE_NEARBY)) then
         alertDismissed = nil
         DisarmAlert()
         SetAlert(false)
         return
     end
-    if alertDismissed then
+    if alertDismissed or (Simple() and not aura) then
         DisarmAlert()
         SetAlert(false)
         return
@@ -1148,7 +1150,7 @@ function Refresh(_, event)
     if not icon then return end
     if unlocked then
         ShowUp(3600, GetTime() + 2400, UNLOCK_TEXT, sampleLabels, sampleIcons, FillSamples(true))
-        SetAlert(S.Get("campNearbyAlert") and not Simple())
+        SetAlert(S.Get("campNearbyAlert"))
         return
     end
     if not (On() and InOpenWorld()) then
@@ -1312,7 +1314,6 @@ local campCard
 local function Enabled() return S.Get("enabled") and true or false end
 local function Needs(key) return function() return S.Get("enabled") and S.Get(key) and true or false end end
 local function CampOn() return S.Get("enabled") and S.Get("campfire") and true or false end
-local function RoundCampOn() return CampOn() and not Simple() end
 local function RoundStyle() return not Simple() end
 local function PickBuffMode(v) S.Set("campBuffMode", v) end
 
@@ -1575,7 +1576,7 @@ local function PaintAlert(shot, state)
     AlertStop(a)
     a:SetAlpha(1)
     if S.Get("campAlertFade") then a.breathe:Play() end
-    local editable = RoundCampOn() and S.Get("campNearbyAlert") and true or false
+    local editable = CampOn() and S.Get("campNearbyAlert") and true or false
     shot.zone:SetShown(editable)
     shot.hint:SetText(editable and ALERT_HINT or "")
 end
@@ -1660,17 +1661,17 @@ campCard = page:Card({
 
 alertCard = page:Card({
     id = "campNearby", name = "Camp Nearby", order = 30, switch = "campNearbyAlert",
-    help = "With the Round style, a Camp Nearby bar when a campfire is in range and your camp needs a refresh.",
+    help = "Camp Nearby on screen when a campfire is in range and your camp needs a refresh.",
     summary = AlertSummary,
     studio = { height = ALERT_H, states = ALERT_STATES, new = NewAlert, paint = PaintAlert },
     rows = {
         { key = "campNearbyMinutes", label = "Alert Under", slider = { 1, 59, 1 }, unit = " min",
-          needs = RoundCampOn, why = "Needs the Campfire reminder, Round style",
+          needs = CampOn, why = "Needs the Campfire reminder",
           help = "How little Camp Benefits time counts as needing a refresh." },
         { key = "campAlertScale", label = "Alert Size", slider = ALERT_SCALE, unit = "%", scale = 0.01,
-          needs = RoundCampOn, why = "Needs the Campfire reminder, Round style" },
+          needs = CampOn, why = "Needs the Campfire reminder" },
         { key = "campAlertFade", label = "Fade", toggle = true,
-          needs = RoundCampOn, why = "Needs the Campfire reminder, Round style",
+          needs = CampOn, why = "Needs the Campfire reminder",
           help = "Fades the alert in and out, breathing softly while it shows." },
     },
 })
