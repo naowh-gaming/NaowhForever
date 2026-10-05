@@ -1135,7 +1135,17 @@ local function BuildConfigToolbar()
     local exitRow = (#CONFIG_ORDER % 2 == 1) and lastRow or (lastRow + 1)
     ns.Button(f, "Exit Config", CONFIG_COL_W - 14, 22, function() ns.HideRaidReminderAnchorConfig() end)
         :SetPoint("TOPLEFT", f, "TOPLEFT", 14 + exitCol * CONFIG_COL_W, -31 - exitRow * CONFIG_ROW_H)
-    f:SetHeight(44 + (exitRow + 1) * CONFIG_ROW_H)
+    -- Saved spots from before screen anchors held from the centre; this holds them all at once.
+    local anchorCol = 1 - exitCol
+    local anchorRow = exitCol == 0 and exitRow or exitRow + 1
+    local anchorAll = ns.Button(f, "Anchor All to Screen", CONFIG_COL_W - 14, 22, function()
+        ns.Print(("%d elements held to the nearest part of the screen."):format(ns.UI.AnchorAllMovers()))
+    end)
+    anchorAll:SetPoint("TOPLEFT", f, "TOPLEFT", 14 + anchorCol * CONFIG_COL_W, -31 - anchorRow * CONFIG_ROW_H)
+    ns.Tooltip(anchorAll, "Anchor All to Screen", "Holds every element shown to the corner, edge or "
+        .. "centre of the screen nearest it, where it sits, so the same layout fits every resolution. "
+        .. "Moving an element does the same for it. Right-click an element to pick its anchor.")
+    f:SetHeight(44 + (anchorRow + 1) * CONFIG_ROW_H)
 
     f._checks = checks
     configToolbar = f

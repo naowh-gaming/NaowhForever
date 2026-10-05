@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+### Added
+- Unlock Mode: everything you place is held to the nearest corner, edge or centre of the screen,
+  so one profile sits right at every resolution and UI scale. Right-click an element, Anchor to
+  Screen, to pick its anchor yourself (Automatic by default); two small squares show where it is
+  held. Anchor All to Screen in the Unlock Mode toolbar does every element at once, for layouts
+  you placed before this.
+
+### Changed
+- The Level-Up Toast and the Aim Trainer are no longer in Unlock Mode: drag them where they are,
+  and they stay there.
+
 ## 0.5.21-beta
 
 ### Added

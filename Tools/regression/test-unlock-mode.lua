@@ -44,9 +44,27 @@ end
 function Frame:SetSize(w, h) self.w, self.h = w, h end
 function Frame:GetWidth() return self.w or 0 end
 function Frame:GetHeight() return self.h or 0 end
-function Frame:GetLeft() return 100 end
-function Frame:GetBottom() return 200 end
-function Frame:GetCenter() return 150, 220 end
+-- Bounds from the first point, taken against UIParent (every frame here is placed on it).
+local FRACTION = { TOPLEFT = { 0, 1 }, TOP = { 0.5, 1 }, TOPRIGHT = { 1, 1 }, LEFT = { 0, 0.5 },
+    CENTER = { 0.5, 0.5 }, RIGHT = { 1, 0.5 }, BOTTOMLEFT = { 0, 0 }, BOTTOM = { 0.5, 0 }, BOTTOMRIGHT = { 1, 0 } }
+local SCREEN_W, SCREEN_H = 1920, 1080
+local function Bounds(self)
+    local p = self.points[1]
+    if not p or not FRACTION[p[1]] or not FRACTION[p[3]] then return 100, 200, 150, 220 end
+    local w, h = self.w or 0, self.h or 0
+    local ax = SCREEN_W * FRACTION[p[3]][1] + p[4]
+    local ay = SCREEN_H * FRACTION[p[3]][2] + p[5]
+    local left, bottom = ax - w * FRACTION[p[1]][1], ay - h * FRACTION[p[1]][2]
+    return left, bottom, left + w, bottom + h
+end
+function Frame:GetLeft() return (Bounds(self)) end
+function Frame:GetBottom() return select(2, Bounds(self)) end
+function Frame:GetRight() return select(3, Bounds(self)) end
+function Frame:GetTop() return select(4, Bounds(self)) end
+function Frame:GetCenter()
+    local l, b, r, t = Bounds(self)
+    return (l + r) / 2, (b + t) / 2
+end
 function Frame:GetEffectiveScale() return 1 end
 function Frame:GetFrameLevel() return 1 end
 function Frame:RegisterEvent(e) self.events[e] = true end
@@ -61,12 +79,20 @@ for _, name in ipairs({ "SetFrameStrata", "SetFrameLevel", "RegisterForDrag" }) 
     Frame[name] = function() end
 end
 
+-- The right-click menu's radios by label, and the anchors picked.
+local anchorDB, radios = {}, {}
+local function MenuEntry()
+    return { CreateRadio = function(_, text, isSelected, set) radios[text] = { selected = isSelected, set = set } end }
+end
+local menuRoot = { CreateTitle = function() end,
+    CreateButton = function() return MenuEntry() end }
 local UIParent = NewFrame()
-UIParent.w, UIParent.h = 1920, 1080
+UIParent.w, UIParent.h = SCREEN_W, SCREEN_H
 local combat, shift = false, false
 local env = setmetatable({
     UI = {}, T = { accent = {}, accentSoft = {} }, BLACK = {},
     ns = {
+        UnlockModeSettings = { DB = function() return anchorDB end },
         Solid = function(parent) return parent:CreateTexture() end,
         Border = function(frame) return NewFrame(frame) end,
         Font = function(parent) return parent:CreateFontString() end,
@@ -78,7 +104,7 @@ local env = setmetatable({
     InCombatLockdown = function() return combat end,
     IsShiftKeyDown = function() return shift end,
     GetCurrentKeyBoardFocus = function() return nil end,
-    MenuUtil = { CreateContextMenu = function() end },
+    MenuUtil = { CreateContextMenu = function(_, build) build(nil, menuRoot) end },
 }, { __index = _G })
 local chunk = assert(loadstring(body))
 setfenv(chunk, env)
@@ -88,7 +114,8 @@ local UI = env.UI
 Check(not source:find("placement.hud", 1, true), "the position box is gone from Widgets.lua")
 
 local display = NewFrame(UIParent)
-display:SetPoint("LEFT", UIParent, "BOTTOMLEFT", 1118, 1117)
+display:SetSize(100, 40)
+display:SetPoint("LEFT", UIParent, "BOTTOMLEFT", 1118, 117)
 local saved = {}
 local mover = UI.AttachMover(display, "Campfire", function(pos) saved[#saved + 1] = pos end, "QoL/General")
 mover:Show()
@@ -115,14 +142,15 @@ Check(outline ~= nil, "the outline still shows around the selected display")
 
 keys.scripts.OnKeyDown(keys, "RIGHT")
 local last = saved[#saved]
-Check(last and last.point == "LEFT" and last.relPoint == "BOTTOMLEFT" and last.x == 1119 and last.y == 1117,
-    "an arrow nudges by 1 and saves")
+-- Low on the screen and between its thirds across: held to the bottom's middle, at its distance.
+Check(last and last.point == "BOTTOM" and last.relPoint == "BOTTOM" and last.x == 209 and last.y == 97,
+    "an arrow nudges by 1 and saves, held to the nearest part of the screen")
 Check(keys.propagate == false, "a used arrow key is not passed on")
 shift = true
 keys.scripts.OnKeyDown(keys, "UP")
 shift = false
 last = saved[#saved]
-Check(last.x == 1119 and last.y == 1127, "Shift + arrow nudges by 10 and saves")
+Check(last.point == "BOTTOM" and last.x == 209 and last.y == 107, "Shift + arrow nudges by 10 and saves")
 
 local count = #saved
 mover.scripts.OnDragStart()
@@ -132,7 +160,24 @@ display:SetPoint("CENTER", UIParent, "CENTER", -40, 25)
 mover.scripts.OnDragStop()
 last = saved[#saved]
 Check(#saved == count + 1 and last.point == "CENTER" and last.x == -40 and last.y == 25,
-    "a drag saves where it was dropped")
+    "a drag saves where it was dropped; in the middle it stays held to the centre")
+
+-- Anchor to Screen: a pick holds it where it is, nudges keep the pick, Automatic lets it go.
+mover.scripts.OnMouseDown(mover, "RightButton")
+Check(radios.Automatic and radios.Automatic.selected() and radios["Top Right"], "the menu offers the anchors")
+radios["Top Right"].set()
+last = saved[#saved]
+Check(last.point == "TOPRIGHT" and last.relPoint == "TOPRIGHT" and last.x == -950 and last.y == -495,
+    "Top Right holds it to that corner where it is")
+Check(anchorDB.anchors.Campfire == "TOPRIGHT" and radios["Top Right"].selected(), "the pick is kept")
+keys.scripts.OnKeyDown(keys, "RIGHT")
+last = saved[#saved]
+Check(last.point == "TOPRIGHT" and last.x == -949, "a nudge keeps the picked anchor")
+radios.Automatic.set()
+last = saved[#saved]
+Check(last.point == "CENTER" and last.x == -39 and last.y == 25 and anchorDB.anchors.Campfire == nil,
+    "Automatic goes back to the nearest")
+Check(UI.AnchorAllMovers() == 1, "Anchor All holds every element shown")
 
 combat = true
 keys.scripts.OnEvent(keys, "PLAYER_REGEN_DISABLED")

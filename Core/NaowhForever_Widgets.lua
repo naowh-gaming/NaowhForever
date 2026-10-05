@@ -1237,7 +1237,7 @@ end
 -- Shared placement controls for ordinary display plates and reminder anchor handles.
 -- All geometry belongs to this addon; the guide is positioned numerically on UIParent,
 -- never anchored to a protected display such as the Top Bar.
-local placement = { active = false }
+local placement = { active = false, items = {} }
 
 local function PlacementPoint(item)
     local point, relative, relPoint, x, y = item.frame:GetPoint(1)
@@ -1252,12 +1252,100 @@ local function PlacementPoint(item)
     return point, relPoint, x, y
 end
 
+-- Screen anchors: an element is held to a corner, an edge or the centre of the screen, at its
+-- distance from there, so one saved layout sits right at every resolution and UI scale. The
+-- point is the same on the element and the screen; x and y are fractions across each.
+local ANCHORS = {
+    TOPLEFT = { 0, 1 }, TOP = { 0.5, 1 }, TOPRIGHT = { 1, 1 },
+    LEFT = { 0, 0.5 }, CENTER = { 0.5, 0.5 }, RIGHT = { 1, 0.5 },
+    BOTTOMLEFT = { 0, 0 }, BOTTOM = { 0.5, 0 }, BOTTOMRIGHT = { 1, 0 },
+}
+local ANCHOR_ORDER = { "TOPLEFT", "TOP", "TOPRIGHT", "LEFT", "CENTER", "RIGHT", "BOTTOMLEFT", "BOTTOM", "BOTTOMRIGHT" }
+local ANCHOR_MARK = 8   -- the squares showing the selected element's anchor
+local ANCHOR_NAMES = { TOPLEFT = "Top Left", TOP = "Top", TOPRIGHT = "Top Right", LEFT = "Left",
+    CENTER = "Center", RIGHT = "Right", BOTTOMLEFT = "Bottom Left", BOTTOM = "Bottom", BOTTOMRIGHT = "Bottom Right" }
+
+-- Unlock Mode's own settings (ns.UnlockModeSettings, made with the module settings further
+-- down): the anchor picked for an element, by its label. One not picked is Automatic.
+local function PickedAnchor(item)
+    local anchors = ns.UnlockModeSettings.DB().anchors
+    return type(anchors) == "table" and anchors[item.label] or nil
+end
+
+local function PickAnchor(item, anchor)
+    local db = ns.UnlockModeSettings.DB()
+    if type(db.anchors) ~= "table" then db.anchors = {} end
+    db.anchors[item.label] = anchor
+end
+
+-- The anchor for where a frame sits: the ninth of the screen its centre is in.
+local function NearestAnchor(cx, cy, width, height)
+    local col = cx < width / 3 and "LEFT" or cx > width * 2 / 3 and "RIGHT" or ""
+    local row = cy > height * 2 / 3 and "TOP" or cy < height / 3 and "BOTTOM" or ""
+    local anchor = row .. col
+    return anchor == "" and "CENTER" or anchor
+end
+
+-- The frame where it is now, as anchor and offsets in its own units; nil before it has a size.
+local function ScreenOffsets(frame, anchor)
+    local left, right, top, bottom = frame:GetLeft(), frame:GetRight(), frame:GetTop(), frame:GetBottom()
+    if not (left and right and top and bottom) then return end
+    local ratio = frame:GetEffectiveScale() / UIParent:GetEffectiveScale()
+    left, right, top, bottom = left * ratio, right * ratio, top * ratio, bottom * ratio
+    local width, height = UIParent:GetWidth(), UIParent:GetHeight()
+    anchor = anchor or NearestAnchor((left + right) / 2, (top + bottom) / 2, width, height)
+    local fx, fy = ANCHORS[anchor][1], ANCHORS[anchor][2]
+    local x = left + (right - left) * fx - width * fx
+    local y = bottom + (top - bottom) * fy - height * fy
+    return anchor, x / ratio, y / ratio
+end
+
+--- Holds a frame to the screen where it is now (to anchor, else the nearest) and returns the
+--- position to save. For windows that drag themselves outside Unlock Mode.
+---@return table? pos { point, relPoint, x, y }, nil before the frame has a size
+function UI.AnchorToScreen(frame, anchor)
+    local point, x, y = ScreenOffsets(frame, anchor)
+    if not point then return end
+    frame:ClearAllPoints()
+    frame:SetPoint(point, UIParent, point, x, y)
+    return { point = point, relPoint = point, x = x, y = y }
+end
+
 local function SavePlacement(item, point, relPoint, x, y)
     if not point then point, relPoint, x, y = PlacementPoint(item) end
     if not point then return end
     item.frame:ClearAllPoints()
     item.frame:SetPoint(point, UIParent, relPoint, x, y)
+    -- A spot already held to its anchor keeps the offsets given: reading them back can round.
+    if not item.ownAnchor then
+        local anchor, ax, ay = ScreenOffsets(item.frame, PickedAnchor(item))
+        if anchor and not (point == anchor and relPoint == anchor) then
+            point, relPoint, x, y = anchor, anchor, ax, ay
+            item.frame:ClearAllPoints()
+            item.frame:SetPoint(point, UIParent, relPoint, x, y)
+        end
+    end
     item.save({ point = point, relPoint = relPoint, x = x, y = y })
+end
+
+local function SetAnchor(item, anchor)
+    PickAnchor(item, anchor)
+    SavePlacement(item)
+    UI.RefreshMoverSelection()
+end
+
+--- Unlock Mode's Anchor All: every element shown held to its anchor where it sits, as moving
+--- each would. Returns how many.
+function UI.AnchorAllMovers()
+    if InCombatLockdown() then return 0 end
+    local count = 0
+    for _, item in ipairs(placement.items) do
+        if item.handle:IsVisible() and not item.ownAnchor then
+            SavePlacement(item)
+            count = count + 1
+        end
+    end
+    return count
 end
 
 local function StopPlacementDrag(item)
@@ -1274,6 +1362,8 @@ function UI.ClearMoverSelection()
     placement.selected = nil
     if not placement.keys then return end
     placement.outline:Hide()
+    placement.screenMark:Hide()
+    placement.elementMark:Hide()
     placement.vertical:Hide()
     placement.horizontal:Hide()
     if not InCombatLockdown() then placement.keys:SetPropagateKeyboardInput(true) end
@@ -1294,6 +1384,17 @@ function UI.RefreshMoverSelection()
         placement.outline:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", left, bottom)
         placement.outline:SetSize(width, height)
         placement.outline:Show()
+    end
+    -- Its anchor as two marks, on the element and on the screen; no text over what is placed.
+    local point, relative, relPoint = frame:GetPoint(1)
+    local held = not item.ownAnchor and relative == UIParent and point == relPoint and ANCHORS[point] ~= nil
+    placement.screenMark:SetShown(held)
+    placement.elementMark:SetShown(held)
+    if held then
+        placement.screenMark:ClearAllPoints()
+        placement.screenMark:SetPoint(point, UIParent, point, 0, 0)
+        placement.elementMark:ClearAllPoints()
+        placement.elementMark:SetPoint("CENTER", placement.outline, point, 0, 0)
     end
     local cx, cy = frame:GetCenter()
     if cx and cy then
@@ -1346,6 +1447,10 @@ function UI.BeginMoverMode()
         placement.outline:SetFrameLevel(499)
         ns.Solid(placement.outline, "BACKGROUND", { r = 1, g = 1, b = 1 }, 0.10):SetAllPoints()
         ns.Border(placement.outline, { r = 1, g = 1, b = 1 })
+        placement.screenMark = ns.Solid(placement.outline, "OVERLAY", T.accent, 1)
+        placement.screenMark:SetSize(ANCHOR_MARK, ANCHOR_MARK)
+        placement.elementMark = ns.Solid(placement.outline, "OVERLAY", T.accent, 1)
+        placement.elementMark:SetSize(ANCHOR_MARK, ANCHOR_MARK)
         local guides = CreateFrame("Frame", nil, UIParent)
         guides:SetFrameStrata("BACKGROUND")
         guides:SetFrameLevel(2)
@@ -1424,19 +1529,31 @@ local function OpenElementOptions(item)
 end
 
 -- page: the options page that sets the element up ("QoL/General"); feature: the section on
--- it to open, if it has one.
-function UI.BindMover(handle, frame, label, onMoved, page, feature)
-    local item = { handle = handle, frame = frame, label = label, save = onMoved, page = page, feature = feature }
+-- it to open, if it has one. ownAnchor: it holds itself to the screen its own way, so it
+-- takes no anchor from Unlock Mode.
+function UI.BindMover(handle, frame, label, onMoved, page, feature, ownAnchor)
+    local item = { handle = handle, frame = frame, label = label, save = onMoved, page = page, feature = feature,
+        ownAnchor = ownAnchor }
     handle._placement = item
+    placement.items[#placement.items + 1] = item
     handle:EnableMouse(true)
     handle:RegisterForDrag("LeftButton")
     handle:SetScript("OnMouseDown", function(_, button)
         if button == "LeftButton" then
             UI.SelectMover(handle)
-        elseif button == "RightButton" and page and not InCombatLockdown() then
+        elseif button == "RightButton" and not InCombatLockdown() and (page or not item.ownAnchor) then
             MenuUtil.CreateContextMenu(handle, function(_, root)
                 root:CreateTitle(label)
-                root:CreateButton("Element Options", function() OpenElementOptions(item) end)
+                if not item.ownAnchor then
+                    local anchors = root:CreateButton("Anchor to Screen")
+                    anchors:CreateRadio("Automatic", function() return PickedAnchor(item) == nil end,
+                        function() SetAnchor(item, nil) end)
+                    for _, anchor in ipairs(ANCHOR_ORDER) do
+                        anchors:CreateRadio(ANCHOR_NAMES[anchor], function() return PickedAnchor(item) == anchor end,
+                            function() SetAnchor(item, anchor) end)
+                    end
+                end
+                if page then root:CreateButton("Element Options", function() OpenElementOptions(item) end) end
             end)
         end
     end)
@@ -1448,9 +1565,9 @@ function UI.BindMover(handle, frame, label, onMoved, page, feature)
     end)
 end
 
--- Unlock Mode plate for an on-screen display. Hidden until the caller shows it. page and
--- feature: where its options are (UI.BindMover).
-function UI.AttachMover(frame, label, onMoved, page, feature)
+-- Unlock Mode plate for an on-screen display. Hidden until the caller shows it. page,
+-- feature and ownAnchor: as UI.BindMover's.
+function UI.AttachMover(frame, label, onMoved, page, feature, ownAnchor)
     local mover = CreateFrame("Frame", nil, frame)
     mover:SetAllPoints()
     mover:SetFrameLevel(frame:GetFrameLevel() + 20)
@@ -1460,7 +1577,7 @@ function UI.AttachMover(frame, label, onMoved, page, feature)
     text:SetPoint("CENTER")
     text:SetText(label)
     mover.text = text
-    UI.BindMover(mover, frame, label, onMoved, page, feature)
+    UI.BindMover(mover, frame, label, onMoved, page, feature, ownAnchor)
     mover:Hide()
     return mover
 end
@@ -1678,6 +1795,8 @@ function UI.ModuleSettings(key, defaults)
     end
     return S
 end
+
+ns.UnlockModeSettings = UI.ModuleSettings("unlockMode", { anchors = {} })
 
 -------------------------------------------------------------------------------
 --  Sounds
