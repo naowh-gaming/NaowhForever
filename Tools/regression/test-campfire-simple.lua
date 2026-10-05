@@ -11,7 +11,8 @@
 -- an editable preview. Both looks share one saved spot, the Round icon's centre on the bar's fire,
 -- converted from the settings when placed, so switching styles never drifts. With Simple the alert
 -- shows while the camp is still up and low, and the bar's own pill covers it once gone. While
--- resting, every bar setting repaints the live bar at once.
+-- resting, every bar setting repaints the live bar at once. A feature's own aura and the tooltip
+-- merge, and an empty tooltip is tried again every few seconds until it lists something.
 
 local Load = dofile("Tools/regression/load_files.lua")
 local TocFiles = dofile("Tools/regression/toc_files.lua")
@@ -402,7 +403,7 @@ do
     check("the default look is Round", s.S.Get("campStyle") == "round")
     check("Round: no Simple bar built", s.bars == 0 and s.bar() == nil)
     check("Round: the camp icon shows its bonuses, from the features' auras",
-        icon.shown and icon.buffs.text == "+Rested\n+STA\n+Crit" and s.tooltipReads == 0)
+        icon.shown and icon.buffs.text == "+Rested\n+STA\n+Crit" and s.tooltipReads == 1)
     do
         local frame, onEvent = s.listener("UNIT_AURA")
         Measure(check)("a Round refresh", 1, function() onEvent(frame, "UNIT_AURA") end)
@@ -449,7 +450,7 @@ do
     check("Simple: the round art hidden, the bar shown", icon.tex.shown == false and icon.timer.shown == false
         and bar.shown ~= false)
     check("Simple: each bonus with its amount, Rested with none", s.labels(bar) == "Rested +56 Sta +2% Crit"
-        and s.tooltipReads == 0)
+        and s.tooltipReads == 1)
     check("Simple: the amount in the text color, the stat muted", s.labels(bar, true)
         == "Rested +56 {muted:Sta} +2% {muted:Crit}" and Same(bar.labels.labels[1], s.T.fg))
     local labels = bar.labels.labels
@@ -802,9 +803,10 @@ do
     s.auras[CAMP] = { duration = 3600, expirationTime = s.now + 3000, auraInstanceID = 1 }
     s.fire("UNIT_AURA")
     local bar, icon = s.bar(), s.named.NaowhForeverCampfire
-    check("no description yet: read again on the next change", s.tooltipReads == 1)
     s.fire("UNIT_AURA")
-    check("no description yet: still trying", s.tooltipReads == 2)
+    check("no description yet: not read again on every aura change", s.tooltipReads == 1)
+    s.advance(5)
+    check("no description yet: tried again a few seconds later", s.tooltipReads == 2)
     s.camp({ "Gained the following camp benefits:" })
     check("no bonuses read: Camp Active, then no bonuses muted, with its time", bar.note.text
         == "Camp Active{muted:" .. s.St.PLACE_DOT .. "no bonuses}"
@@ -817,8 +819,18 @@ do
         .. "can't be read yet.", 1, true)
         and s.tipText():find("Time left | 56 min", 1, true))
     local reads = s.tooltipReads
-    s.fire("UNIT_AURA")
-    check("an empty list is still read only once", s.tooltipReads == reads)
+    for _ = 1, 3 do s.fire("UNIT_AURA") end
+    check("an empty list is not read again on every aura change", s.tooltipReads == reads)
+    s.advance(5)
+    check("an empty list is tried again a few seconds later", s.tooltipReads == reads + 1)
+    s.tooltip = { lines = { { leftText = "Camp Benefits" }, { leftText = "Tent: rest experience." },
+        { leftText = "Camp Chair: Critical strike chance increased by 2%." } } }
+    s.advance(5)
+    check("a full tooltip on a later try brings the bonuses back", s.tooltipReads == reads + 2
+        and s.labels(bar) == "Rested +2% Crit")
+    s.advance(30)
+    for _ = 1, 3 do s.fire("UNIT_AURA") end
+    check("a full read is not repeated", s.tooltipReads == reads + 2)
 
     s.camp({ "Tent: rest experience.", "Camp Chair: Critical strike chance increased by 2%." }, 2)
     local layout = {}
@@ -1114,6 +1126,26 @@ do
     local tbar = t.bar()
     check("resting with Camp Benefits still up: its tooltip read, the bonuses shown as upcoming",
         t.tooltipReads == 1 and t.labels(tbar) == "Rested +2% Crit" and Same(tbar.labels.labels[1], t.T.accentSoft))
+end
+
+do
+    local s = Fixture({ campStyle = "simple" })
+    s.fire("PLAYER_LOGIN")
+    s.auras[CHAIR] = Aura({ 3 })
+    s.camp({ "Tent: rest experience.", "First Aid Kit: Stamina increased by 56.",
+        "Incense Candle: Intellect increased by 25.", "Camp Chair: Critical strike chance increased by 2%." })
+    local bar = s.bar()
+    check("one feature's own aura plus three more on the tooltip: all four, in order, none twice",
+        s.labels(bar) == "Rested +56 Sta +25 Int +3% Crit" and bar.labels.count == 4 and s.tooltipReads == 1)
+    s.S.Set("campStyle", "round")
+    local icon = s.named.NaowhForeverCampfire
+    check("Round lists the same four", icon.buffs.text == "+Rested\n+STA\n+INT\n+Crit")
+    s.camp({ "Tent: rest experience.", "Mystery Totem: +5 Luck" }, 7)
+    check("an unknown tooltip line joins the merged list", icon.buffs.text == "+Rested\n+Crit\n+5 Luck")
+    s.auras[CHAIR] = nil
+    s.fire("UNIT_AURA")
+    check("a feature aura going away updates the list, the tooltip unread again",
+        icon.buffs.text == "+Rested\n+5 Luck" and s.tooltipReads == 2)
 end
 
 print(checks .. " campfire look checks passed")

@@ -12,9 +12,10 @@
 --  it still runs; it fades in, breathes and fades out through animation groups (FADE), never
 --  OnUpdate. With Simple it shows only while Camp Benefits is still up and low: once it is gone,
 --  the bar's own Camp Nearby pill says it.
---  The bonuses come from the hidden aura each camp feature puts on you, by spell ID, else from
---  Camp Benefits' tooltip (spell 1229741, wago.tools build 1.60.1.70205), read once per Camp
---  Benefits: one line per feature, matched by the feature's name as the client spells it, its
+--  The bonuses come from the hidden aura each camp feature puts on you, by spell ID, and for the
+--  rest from Camp Benefits' tooltip (spell 1229741, wago.tools build 1.60.1.70205), in FEATURES
+--  order with no feature twice. The tooltip is kept once per Camp Benefits as soon as a read finds
+--  anything; an empty read is tried again at most every LINE.RETRY seconds. One line per feature, matched by the feature's name as the client spells it, its
 --  numbers read in the description's order (the Lute's armor, stats, resistances; the Mana
 --  Well's mana, then its 5 seconds). FONT_LIFT raises the bar's words: the Naowh font sits low.
 --  The bar's fire has no plate or ring: the art (transparent round its fire) sits on the bar's
@@ -521,7 +522,7 @@ local bonusTags, bonusFeatures = {}, {}
 local barLabels, barIcons, sampleLabels, sampleIcons = {}, {}, {}, {}
 local joinedTags, numberTexts = {}, {}
 local bonusCount, barCount, bonusText = 0, 0, ""
-local Reader = { gen = 0, unknown = 0, unknownTexts = {} }
+local Reader = { gen = 0, unknown = 0, unknownTexts = {}, tryGen = 0, nextTry = 0 }
 local campState, campExpiry, campUpcoming
 local simpleBar
 
@@ -924,7 +925,7 @@ local EFFECT_TAGS = {
     { "stats", "+Stats" },
 }
 local LINE = { PATTERN = "^%s*(.-)%s*:%s*(%S.-)%s*$", WIDE = "^%s*(.-)%s*\239\188\154%s*(%S.-)%s*$",
-    NUMBER = "(%d+)([%.,]?)(%d*)", MAX_UNKNOWN = 4, SHORT_EFFECT = 28 }
+    NUMBER = "(%d+)([%.,]?)(%d*)", MAX_UNKNOWN = 4, SHORT_EFFECT = 28, RETRY = 5 }
 
 function Reader.Names()
     local GetSpellName = C_Spell and C_Spell.GetSpellName
@@ -993,7 +994,7 @@ end
 function Reader.Line(row)
     local label, effect = row:match(LINE.PATTERN)
     if not label then label, effect = row:match(LINE.WIDE) end
-    if not label or label == "" or label:find("[%d|]") or label:find("ID$") then return end
+    if not label or label == "" or label:find("[%d|]") or label:find("ID$") then return false end
     local feature = Reader.FeatureOf(label, effect)
     if not feature then
         Reader.Unknown(#effect <= LINE.SHORT_EFFECT and effect or label)
@@ -1001,28 +1002,56 @@ function Reader.Line(row)
         feature.tipGen, feature.lineName = Reader.gen, label
         Reader.Numbers(feature, effect)
     end
+    return true
+end
+
+function Reader.Settle()
+    Reader.tryInstance, Reader.tryExpiry, Reader.tryGen = nil, nil, Reader.tryGen + 1
+end
+
+function Reader.Again(instance, expiry)
+    if instance ~= Reader.tryInstance or expiry ~= Reader.tryExpiry then
+        Reader.tryInstance, Reader.tryExpiry, Reader.tryGen = instance, expiry, Reader.tryGen + 1
+    end
+    Reader.nextTry, Reader.armedGen = GetTime() + LINE.RETRY, Reader.tryGen
+    if not Reader.armed then
+        Reader.armed = true
+        C_Timer.After(LINE.RETRY, Reader.Retry)
+    end
 end
 
 function Reader.Camp(aura)
     local instance, expiry = aura.auraInstanceID, aura.expirationTime
     if Secret(instance) or Secret(expiry) then
         Reader.gen, Reader.instance, Reader.unknown = Reader.gen + 1, nil, 0
+        Reader.Settle()
         return
     end
     if instance ~= nil and instance == Reader.instance and expiry == Reader.expiry then return end
+    if instance ~= nil and instance == Reader.tryInstance and expiry == Reader.tryExpiry
+        and GetTime() < Reader.nextTry then return end
     Reader.Names()
     Reader.gen, Reader.instance, Reader.expiry, Reader.unknown = Reader.gen + 1, nil, nil, 0
     local data = instance and C_TooltipInfo.GetUnitBuffByAuraInstanceID("player", instance)
     local lines = data and data.lines
-    if type(lines) ~= "table" or #lines < 2 then return end
-    for i = 2, #lines do
-        local text = lines[i] and lines[i].leftText
-        if text ~= nil and not Secret(text) and type(text) == "string" then
-            text = text:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")
-            for row in text:gmatch("[^\n]+") do Reader.Line(row) end
+    local found = false
+    if type(lines) == "table" then
+        for i = 2, #lines do
+            local text = lines[i] and lines[i].leftText
+            if text ~= nil and not Secret(text) and type(text) == "string" then
+                text = text:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")
+                for row in text:gmatch("[^\n]+") do
+                    if Reader.Line(row) then found = true end
+                end
+            end
         end
     end
-    Reader.instance, Reader.expiry = instance, expiry
+    if found then
+        Reader.instance, Reader.expiry = instance, expiry
+        Reader.Settle()
+    elseif instance ~= nil then
+        Reader.Again(instance, expiry)
+    end
 end
 
 function Reader.Add(n, feature, a1, a2, a3)
@@ -1033,7 +1062,7 @@ function Reader.Add(n, feature, a1, a2, a3)
     return n
 end
 
-function Reader.Own()
+function Reader.Merge(tip)
     local n, mask = 0, 0
     for i = 1, #FEATURES do
         local feature = FEATURES[i]
@@ -1043,21 +1072,12 @@ function Reader.Own()
             n = Reader.Add(n, feature, p and p[1] or nil, p and count >= 2 and p[2] or nil,
                 p and count >= 3 and p[3] or nil)
             mask = mask + feature.bit
-        end
-    end
-    return n, mask
-end
-
-function Reader.Tip()
-    if not Reader.instance then return 0, 0 end
-    local n, mask = 0, 0
-    for i = 1, #FEATURES do
-        local feature = FEATURES[i]
-        if feature.tipGen == Reader.gen then
+        elseif tip and feature.tipGen == Reader.gen then
             n = Reader.Add(n, feature, feature.t1, feature.t2, feature.t3)
             mask = mask + feature.bit
         end
     end
+    if not tip then return n, mask end
     local texts = Reader.unknownTexts
     for i = 1, Reader.unknown do
         n = n + 1
@@ -1068,8 +1088,9 @@ end
 
 function Reader.Join(n, mask, unknown)
     if unknown then
-        if Reader.joinedGen ~= Reader.gen then
-            Reader.joined, Reader.joinedGen = table.concat(bonusTags, "\n", 1, n), Reader.gen
+        if Reader.joinedGen ~= Reader.gen or Reader.joinedMask ~= mask then
+            Reader.joined = table.concat(bonusTags, "\n", 1, n)
+            Reader.joinedGen, Reader.joinedMask = Reader.gen, mask
         end
         return Reader.joined
     end
@@ -1083,16 +1104,24 @@ end
 
 local Refresh
 
-local function ReadBonuses(aura)
-    local n, mask = Reader.Own()
-    local unknown = false
-    if n == 0 then
-        if not aura then return false end
-        Reader.Camp(aura)
-        n, mask = Reader.Tip()
-        unknown = Reader.instance ~= nil and Reader.unknown > 0
+function Reader.Retry()
+    Reader.armed = false
+    if Reader.armedGen ~= Reader.tryGen or not Reader.tryInstance then return end
+    local wait = Reader.nextTry - GetTime()
+    if wait > 0 then
+        Reader.armed = true
+        C_Timer.After(wait, Reader.Retry)
+        return
     end
-    bonusText = Reader.Join(n, mask, unknown)
+    Refresh()
+end
+
+local function ReadBonuses(aura)
+    if aura then Reader.Camp(aura) end
+    local tip = aura ~= nil and Reader.instance ~= nil
+    local n, mask = Reader.Merge(tip)
+    if n == 0 and not aura then return false end
+    bonusText = Reader.Join(n, mask, tip and Reader.unknown > 0)
     bonusCount = n
     if Simple() then FilterBar() end
     return n > 0
