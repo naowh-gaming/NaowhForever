@@ -21,7 +21,8 @@
 --  own backdrop, ART_CROP trimming its empty margin so the fire fills the square.
 --  Both looks keep the fire on one screen spot: Round's centre is the Simple fire's centre. The
 --  saved spot is LEFT for Simple and CENTER for Round (an older corner point is the Round icon's),
---  converted to the current style once, when placed, from the settings alone.
+--  converted to the current style once, when placed, from the settings alone. A setting change
+--  refilters the last bonuses read (FilterBar), so the bar repaints in every state, resting too.
 -------------------------------------------------------------------------------
 local ns = _G.NaowhForever
 local S = ns.AuraBuffSettings
@@ -1173,7 +1174,7 @@ function Refresh(_, event)
     local sitDuration, sitExpiry = sitting and sitting.duration, sitting and sitting.expirationTime
     if sitting and not (issecretvalue and (issecretvalue(sitDuration) or issecretvalue(sitExpiry)))
         and sitDuration > 0 then
-        ShowSitting(sitDuration, sitExpiry, Simple() and ReadBonuses(nil) or false)
+        ShowSitting(sitDuration, sitExpiry, Simple() and ReadBonuses(aura) or false)
         DisarmAlert()
         SetAlert(false)
         return
@@ -1233,7 +1234,12 @@ local function Apply()
     local simple = Simple()
     UseStyle(simple)
     icon:EnableMouse(not simple and ns.CampBuffMode() == "hover")
-    if simple then Bar.Layout(simpleBar) else Look.Layout(icon) end
+    if simple then
+        Bar.Layout(simpleBar)
+        FilterBar()
+    else
+        Look.Layout(icon)
+    end
     Place()
     icon.mover:SetShown(unlocked == true)
     if On() then

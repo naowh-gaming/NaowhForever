@@ -10,7 +10,8 @@
 -- Nearby alert is the same bar, fading in, breathing while shown and stopping when hidden, with
 -- an editable preview. Both looks share one saved spot, the Round icon's centre on the bar's fire,
 -- converted from the settings when placed, so switching styles never drifts. With Simple the alert
--- shows while the camp is still up and low, and the bar's own pill covers it once gone.
+-- shows while the camp is still up and low, and the bar's own pill covers it once gone. While
+-- resting, every bar setting repaints the live bar at once.
 
 local Load = dofile("Tools/regression/load_files.lua")
 local TocFiles = dofile("Tools/regression/toc_files.lua")
@@ -1080,6 +1081,39 @@ do
     s.ns.ShowRaidReminderAnchorConfig()
     check("Simple: Unlock Mode shows the alert to move", alert.shown == true)
     s.ns.HideRaidReminderAnchorConfig()
+end
+
+do
+    local s = Fixture()
+    s.fire("PLAYER_LOGIN")
+    s.camp({ "Tent: rest experience.", "First Aid Kit: Stamina increased by 56.",
+        "Camp Chair: Critical strike chance increased by 2%." })
+    s.auras[CAMP] = nil
+    s.auras[SITTING] = { duration = 60, expirationTime = s.now + 35 }
+    s.fire("UNIT_AURA")
+    check("Round, resting", s.named.NaowhForeverCampfire.label.text == "Resting")
+    s.S.Set("campStyle", "simple")
+    local bar = s.bar()
+    check("switching to Simple while resting: the last bonuses at once", bar.note.text == "Resting"
+        and s.labels(bar) == "Rested +56 Sta +2% Crit")
+    s.S.Set("campHiddenBonuses", { [KIT] = true })
+    check("hiding a bonus while resting: gone at once", s.labels(bar) == "Rested +2% Crit")
+    s.S.Set("campBonusIcons", true)
+    check("bonus icons while resting: shown at once", bar.labels.icons[1].shown ~= false
+        and bar.labels.icons[1].texture.texture == TENT and bar.labels.icons[2].texture.texture == CHAIR)
+    s.S.Set("campBonusIcons", false)
+    check("bonus icons off while resting: gone at once", bar.labels.icons[1].shown == false)
+
+    local t = Fixture({ campBuffMode = "off" })
+    t.fire("PLAYER_LOGIN")
+    t.camp({ "Tent: rest experience.", "Camp Chair: Critical strike chance increased by 2%." })
+    check("Round without camp buffs reads no tooltip", t.tooltipReads == 0)
+    t.auras[SITTING] = { duration = 60, expirationTime = t.now + 35 }
+    t.fire("UNIT_AURA")
+    t.S.Set("campStyle", "simple")
+    local tbar = t.bar()
+    check("resting with Camp Benefits still up: its tooltip read, the bonuses shown as upcoming",
+        t.tooltipReads == 1 and t.labels(tbar) == "Rested +2% Crit" and Same(tbar.labels.labels[1], t.T.accentSoft))
 end
 
 print(checks .. " campfire look checks passed")
