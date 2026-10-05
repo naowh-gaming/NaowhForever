@@ -5,6 +5,7 @@ npc_drops caches. From the repo root:
 
     python -m unittest discover -s Tools/tests
 """
+import re
 import sys
 import unittest
 from pathlib import Path
@@ -129,6 +130,28 @@ class InGame(unittest.TestCase):
         boss = {"npc": 1, "name": "Boss", "rare": False, "encounters": [], "loot": [dict(drop(3191, 1, 1), chance=None)]}
         build_journal.leave_out(boss, set())
         self.assertNotIn("notInGame", build_journal.lua_boss(boss))
+
+
+class DailyWatchLog(unittest.TestCase):
+    """The loot job's filter on the build's output (.github/workflows/daily-watch.yml) hides the
+    per-dungeon counts and keeps the build's report lines, which start with two spaces."""
+
+    def setUp(self):
+        workflow = Path(__file__).resolve().parents[2] / ".github" / "workflows" / "daily-watch.yml"
+        found = re.search(r'grep -Ev "([^"]+)" "\$RUNNER_TEMP/build.txt"', workflow.read_text(encoding="utf-8"))
+        self.assertIsNotNone(found, "the loot job filters build.txt with grep -Ev")
+        self.hidden = re.compile(found.group(1))
+
+    def test_counts_are_hidden(self):
+        self.assertTrue(self.hidden.search("   12  Ragefire Chasm"))
+        self.assertTrue(self.hidden.search("  133  Dire Maul"))
+
+    def test_report_lines_are_kept(self):
+        for line in ("  not in the game's item tables, left out: 47 items (Sunken Temple): 10624",
+                     "  no NPC found: Lord Roccor",
+                     "  wowsrc item not mapped: Dreadmist Mask (Darkmaster Gandling, Scholomance)",
+                     "383 items, 35 dungeons"):
+            self.assertFalse(self.hidden.search(line), line)
 
 
 if __name__ == "__main__":
