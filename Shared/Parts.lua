@@ -3,7 +3,8 @@
 --  icon buttons, icons inline in text, rank stars, an item's icon and its marks, the backdrop with its
 --  cards, the panel a view sits in and the side panel that opens beside a window, numbers
 --  lined up to the pixel, and sharing a line in chat. A window's own pieces (title bar,
---  opacity, switch, search, footer) are Window.lua's.
+--  opacity, switch, search, footer) are Window.lua's. Also a timer line the client runs down by
+--  itself (Parts.TimerLine) and a row of short labels spread evenly (Parts.LabelRow).
 -------------------------------------------------------------------------------
 local ns = _G.NaowhForever
 local T = ns.THEME
@@ -602,6 +603,153 @@ function Parts.Cells(parent, size, color, count)
         cells[i] = cell
     end
     return cells
+end
+
+local WHITE = "Interface\\Buttons\\WHITE8X8"
+local LINE_TRACK_ALPHA = 0.8
+local LINE_FROM_SHARE = 0.45
+local LINE_GLOW_W, LINE_GLOW_ALPHA = 28, 0.55
+local shortTime
+
+function Parts.ShortTime()
+    if shortTime then return shortTime end
+    local Up, Down = Enum.NumericRuleFormatRounding.Up, Enum.NumericRuleFormatRounding.Down
+    shortTime = C_StringUtil.CreateNumericRuleFormatter()
+    shortTime:SetBreakpoints({
+        { threshold = 0, format = "%ds", step = 1, rounding = Up },
+        { threshold = 60, format = "%dm", step = 1, rounding = Up, components = { { div = 60 } } },
+        { threshold = 61, format = "%dm", step = 1, rounding = Down, components = { { div = 60 } } },
+        { threshold = 3600, format = "%dh", step = 1, rounding = Down, components = { { div = 3600 } } },
+    })
+    return shortTime
+end
+
+local function LineTimed()
+    return C_DurationUtil and C_DurationUtil.CreateDuration and Enum and Enum.StatusBarTimerDirection
+        and Enum.StatusBarInterpolation and true or false
+end
+
+local function LineRun(line, start, duration)
+    if line.dur then
+        line.dur:SetTimeFromStart(start, duration)
+        line:SetTimerDuration(line.dur, Enum.StatusBarInterpolation.Immediate,
+            Enum.StatusBarTimerDirection.RemainingTime)
+        if line.binding then line.binding:SetEnabled(true) end
+    else
+        line:SetValue(math.max(0, math.min(1, (start + duration - GetTime()) / duration)))
+    end
+    line.glow:Show()
+end
+
+local function LineStop(line)
+    if line.dur then
+        line.dur:SetTimeFromStart(GetTime() - 1, 1)
+        line:SetTimerDuration(line.dur, Enum.StatusBarInterpolation.Immediate,
+            Enum.StatusBarTimerDirection.RemainingTime)
+        if line.binding then line.binding:SetEnabled(false) end
+    end
+    line:SetValue(0)
+    line.glow:Hide()
+    if line.text then line.text:SetText("") end
+end
+
+local function LinePaint(line, color)
+    local share = LINE_FROM_SHARE
+    line.from:SetRGBA(color.r * share, color.g * share, color.b * share, 1)
+    line.to:SetRGBA(color.r, color.g, color.b, 1)
+    line:GetStatusBarTexture():SetGradient("HORIZONTAL", line.from, line.to)
+    line.glowFrom:SetRGBA(color.r, color.g, color.b, 0)
+    line.glowTo:SetRGBA(color.r, color.g, color.b, LINE_GLOW_ALPHA)
+    line.glow:SetGradient("HORIZONTAL", line.glowFrom, line.glowTo)
+    if line.text then line.text:SetTextColor(color.r, color.g, color.b) end
+end
+
+function Parts.TimerLine(parent, height, text)
+    local line = CreateFrame("StatusBar", nil, parent)
+    line:SetHeight(height)
+    line:SetStatusBarTexture(WHITE)
+    line:SetMinMaxValues(0, 1)
+    line:SetValue(0)
+    line:SetClipsChildren(true)
+    ns.Solid(line, "BACKGROUND", T.line, LINE_TRACK_ALPHA):SetAllPoints()
+    line.from, line.to = CreateColor(1, 1, 1, 1), CreateColor(1, 1, 1, 1)
+    line.glowFrom, line.glowTo = CreateColor(1, 1, 1, 0), CreateColor(1, 1, 1, 1)
+    local over = CreateFrame("Frame", nil, line)
+    over:SetAllPoints()
+    line.glow = over:CreateTexture(nil, "OVERLAY")
+    line.glow:SetTexture(WHITE)
+    line.glow:SetBlendMode("ADD")
+    line.glow:SetSize(LINE_GLOW_W, height)
+    line.glow:SetPoint("RIGHT", line:GetStatusBarTexture(), "RIGHT")
+    line.glow:Hide()
+    line.text = text
+    if LineTimed() then
+        line.dur = C_DurationUtil.CreateDuration()
+        if text and C_DurationUtil.CreateDurationTextBinding and C_StringUtil
+            and C_StringUtil.CreateNumericRuleFormatter and Enum.NumericRuleFormatRounding then
+            local binding = C_DurationUtil.CreateDurationTextBinding()
+            binding:SetFontString(text)
+            binding:SetDuration(line.dur)
+            binding:SetFormatter(Parts.ShortTime())
+            binding:SetZeroDurationText("")
+            binding:SetExpiredText("")
+            binding:SetEnabled(false)
+            line.binding = binding
+        end
+    end
+    line.Run, line.Stop, line.Paint = LineRun, LineStop, LinePaint
+    LinePaint(line, T.accent)
+    return line
+end
+
+local function RowSetLabels(row, list, n)
+    local labels, widest = row.labels, 0
+    for i = 1, math.max(n, #labels) do
+        local label = labels[i]
+        if i <= n then
+            if not label then
+                label = ns.Font(row, row.size, row.flags, row.color)
+                label:SetJustifyH("CENTER")
+                label:SetWordWrap(false)
+                labels[i] = label
+            end
+            label:SetText(list[i])
+            label:Show()
+            local w = label:GetStringWidth()
+            if w > widest then widest = w end
+        elseif label then
+            label:Hide()
+        end
+    end
+    row.count = n
+    return widest
+end
+
+local function RowSpread(row, width)
+    row:SetWidth(width)
+    local n = row.count
+    if n == 0 then return end
+    local share = width / n
+    local labels = row.labels
+    for i = 1, n do
+        labels[i]:ClearAllPoints()
+        labels[i]:SetPoint("CENTER", row, "LEFT", share * (i - 0.5), 0)
+    end
+end
+
+local function RowColor(row, color)
+    row.color = color
+    local labels = row.labels
+    for i = 1, #labels do labels[i]:SetTextColor(color.r, color.g, color.b) end
+end
+
+function Parts.LabelRow(parent, size, flags, color)
+    local row = CreateFrame("Frame", nil, parent)
+    row:SetHeight(size)
+    row.size, row.flags, row.color = size, flags, color or T.fg
+    row.labels, row.count = {}, 0
+    row.SetLabels, row.Spread, row.SetColor = RowSetLabels, RowSpread, RowColor
+    return row
 end
 
 -------------------------------------------------------------------------------

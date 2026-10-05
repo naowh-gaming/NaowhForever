@@ -43,6 +43,9 @@ Shared.Style = {
     FOREVER_RGB = { r = 0xee / 255, g = 0xd6 / 255, b = 0x9e / 255 },
     -- What you carry and can hand in, in the game's quest gold.
     CARRIED_RGB = { r = 1, g = 0.82, b = 0 },
+    TIME_OK_RGB = { r = 0.29, g = 0.87, b = 0.5 },
+    TIME_LOW_RGB = { r = 0.98, g = 0.8, b = 0.08 },
+    TIME_OUT_RGB = { r = 0.97, g = 0.27, b = 0.27 },
 
     ---------------------------------------------------------------------------
     --  Icons: the addon's own (Media/, drawn by Tools/make_media.py, white so they take

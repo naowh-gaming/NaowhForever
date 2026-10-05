@@ -19,7 +19,8 @@ Shared/
   Places.lua   zones by name, and showing one on the world map
   Parts.lua    components: rank stars, item icon and its check, an item's slot marks (item level, star, Forever's mark), links, icon buttons, the
                backdrop and its cards, panels, the side panel, chat sharing, lined-up numbers,
-               money with its coins (Parts.Coins, made once each)
+               money with its coins (Parts.Coins, made once each), a timer line the client runs
+               down by itself (Parts.TimerLine), a row of labels spread evenly (Parts.LabelRow)
   Window.lua   a window: the frame, title bar, icons, opacity slider, switch, search, footer,
                and a module's card on its settings page
   Tracker.lua  a tracker's small window (Parts.TrackerPanel), and a list row's bands
@@ -80,6 +81,19 @@ Shared/
   entries and refill them, with shared functions that read the entry, and a redraw makes no
   garbage. See `DungeonJournal/UI/QuestTracker.lua`, and the Discovery trackers for `bar`,
   `SetRows` and `mover`.
+- **A timer line:** `Parts.TimerLine(parent, height, text)` is a thin StatusBar the client runs
+  down by itself (`SetTimerDuration`), so no Lua runs while it counts: a track in the theme's line
+  colour, a fill in a gradient into its colour, and a soft glow where the fill ends. Give it a
+  FontString as `text` (optional) and the time left is written into it the same way, short
+  (`35s`, `42m`, `1h`: `Parts.ShortTime()`, the formatter, made once). `line:Run(start, duration)`
+  starts it, `line:Stop()` empties it, `line:Paint(color)` colours the fill, the glow and the text.
+  The Campfire's Simple bar uses it, in `Style.TIME_OK_RGB`, `TIME_LOW_RGB` and `TIME_OUT_RGB`
+  (plenty, running low, nearly out).
+- **Labels in a row:** `Parts.LabelRow(parent, size, flags, color)` (all but `parent` and `size`
+  optional) makes a frame; `row:SetLabels(list, n)` writes the first `n` strings of `list` into
+  pooled labels and returns the widest, `row:Spread(width)` centres each in an equal share of
+  `width`, and `row:SetColor(color)` recolours them. Anchor the row by its left edge. Refilling it
+  with the same strings makes no garbage.
 - **Copying:** `Parts.CopyWowhead(kind, id, name)` opens the copy card on an item, quest or
   NPC's Wowhead link; a menu's Copy uses `ns.ShowCopyLine(title, text, icon)` (QoL's Global
   Copy) for any line.
