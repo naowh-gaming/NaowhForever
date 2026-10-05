@@ -91,13 +91,27 @@ function NaowhForeverZoneLinkPinMixin:OnAcquired(link)
     self.Icon:SetAtlas(link.atlasName)
     self:SetPosition(link.position:GetXY())
 end
+-- A zeppelin tower's pin has a second destination, on right click.
 function NaowhForeverZoneLinkPinMixin:OnClick(button)
-    if button == "LeftButton" and self.link then self:GetMap():SetMapID(self.link.linkedUiMapID) end
+    local link = self.link
+    if button == "RightButton" and link.rightUiMapID then
+        self:GetMap():SetMapID(link.rightUiMapID)
+    elseif button == "LeftButton" then
+        self:GetMap():SetMapID(link.linkedUiMapID)
+    end
 end
 function NaowhForeverZoneLinkPinMixin:OnMouseEnter()
+    local link = self.link
     GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-    GameTooltip:SetText(self.link.name)
-    GameTooltip:AddLine("Click to open this zone", SoftBlue(0.3, 0.71, 0.96))
+    GameTooltip:SetText(link.name)
+    if link.rightUiMapID then
+        GameTooltip:AddLine(link.rightName, 1, 1, 1)
+        local r, g, b = SoftBlue(0.3, 0.71, 0.96)
+        GameTooltip:AddLine("Left-click: " .. C_Map.GetMapInfo(link.linkedUiMapID).name, r, g, b)
+        GameTooltip:AddLine("Right-click: " .. C_Map.GetMapInfo(link.rightUiMapID).name, r, g, b)
+    elseif link.linkedUiMapID ~= self:GetMap():GetMapID() then
+        GameTooltip:AddLine("Click to open this zone", SoftBlue(0.3, 0.71, 0.96))
+    end
     GameTooltip:Show()
 end
 function NaowhForeverZoneLinkPinMixin:OnMouseLeave() GameTooltip:Hide() end
@@ -132,9 +146,10 @@ function provider:RefreshAllData()
     local _, class = UnitClass("player")
     if S.Get("townTravel") then
         for _, dock in ipairs(ns.TownTravel[mapID] or {}) do
-            if dock[5]:find(faction, 1, true) then
-                self:GetMap():AcquirePin(LINK_TEMPLATE, { name = dock[3], atlasName = TRAVEL_ATLAS,
-                    position = CreateVector2D(dock[1] / 100, dock[2] / 100), linkedUiMapID = dock[4] })
+            if dock[3]:find(faction, 1, true) then
+                self:GetMap():AcquirePin(LINK_TEMPLATE, { name = dock[4], atlasName = TRAVEL_ATLAS,
+                    position = CreateVector2D(dock[1] / 100, dock[2] / 100), linkedUiMapID = dock[5],
+                    rightName = dock[6], rightUiMapID = dock[7] })
             end
         end
     end
