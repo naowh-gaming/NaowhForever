@@ -1116,6 +1116,22 @@ do
     end
     ns.OpenJournalWindow(DJ.Get("Deadmines"))
     check("an open dungeon: no line saying it is not open", not PageSays(DJ.CLOSED_NOTE))
+    local trashTitle, trashItem
+    for _, frame in ipairs(state.made) do
+        local line = rawget(frame, "text")
+        if type(line) == "table" and rawget(frame, "shown") ~= false and type(rawget(line, "text")) == "string"
+            and rawget(line, "text"):upper():find("^TRASH") then trashTitle = true end
+    end
+    for _, wing in ipairs(DJ.Get("Deadmines").wings) do
+        for _, b in ipairs(wing.bosses) do
+            if b.trash then
+                for _, id in ipairs(b.loot) do
+                    if not trashItem and Row(id) then trashItem = id end
+                end
+            end
+        end
+    end
+    check("the trash in its own section, after the bosses", trashTitle and trashItem ~= nil)
     local notYet
     for _, wing in ipairs(DJ.Get("SunkenTemple").wings) do
         for _, b in ipairs(wing.bosses) do
@@ -1181,16 +1197,20 @@ do
     check("refused: no redraw", #state.timers == queued and view.waitingFor[refusedID] == nil)
     view:Redraw()
     check("drawn again: not waited on", view.waitingFor[refusedID] == nil and next(view.waitingFor) ~= nil)
-    -- A wing's trash: a card of its own, last, with no number and no kill count.
+    -- The trash: under its own section title, in two columns, with no header of its own.
     ns.OpenJournalWindow(ns.Journal.Get("ShadowfangKeep"))
-    local trashRow
+    local trashHeader, items = nil, {}
     for _, frame in ipairs(state.made) do
         local boss = rawget(frame, "boss")
-        if boss and boss.trash and rawget(frame, "badge") then trashRow = frame end
+        if boss and boss.trash and rawget(frame, "shown") ~= false then
+            if rawget(frame, "badge") then
+                trashHeader = frame
+            elseif rawget(frame, "itemID") then
+                items[#items + 1] = frame
+            end
+        end
     end
-    check("Shadowfang Keep lists its trash", trashRow ~= nil)
-    check("the trash has no number", rawget(trashRow.badge, "shown") == false)
-    check("nor a kill count", rawget(trashRow.kills, "shown") == false)
+    check("Shadowfang Keep lists its trash, with no header of its own", #items > 1 and trashHeader == nil)
     -- Right-click: an item's and a boss's Wowhead Forever link, in the copy box.
     local function MenuEntry(text)
         for _, e in ipairs(state.menu or {}) do
