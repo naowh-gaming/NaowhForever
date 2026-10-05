@@ -1765,10 +1765,15 @@ do
         check("a map is for a dungeon the Journal has: " .. key, dungeon ~= nil)
         check("its art and floors: " .. key, (type(map.art) == "string" or type(map.image) == "string")
             and map.floors >= 1)
-        -- The addon's own picture is in Media/Maps, one floor, for a dungeon the game has no art for.
+        -- The addon's own picture is in Media/Maps, for a dungeon the game has no art for.
         if map.image then
             check("its picture is the addon's: " .. key, map.image:find("^Interface\\AddOns\\NaowhForever\\Media\\Maps\\") ~= nil
-                and map.floors == 1 and map.art == nil)
+                and map.art == nil)
+        end
+        -- A floor the art lacks, as the addon's own picture.
+        for n, path in pairs(map.images or {}) do
+            check("its floor's picture is the addon's: " .. key .. " " .. n, type(map.art) == "string"
+                and n >= 1 and n <= map.floors and path:find("^Interface\\AddOns\\NaowhForever\\Media\\Maps\\") ~= nil)
         end
         -- Every pin is one of its bosses, on one of its floors, on the map.
         local bosses = {}
