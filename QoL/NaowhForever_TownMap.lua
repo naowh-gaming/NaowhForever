@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
 --  NaowhForever_TownMap.lua -- the QoL town map: service NPCs from NaowhForever_TownData.lua,
---  and mailboxes from NaowhForever_TownMailboxes.lua, pinned on the world map for your faction.
+--  mailboxes and spirit healers from their own files, pinned on the world map for your faction.
 -------------------------------------------------------------------------------
 local ns = _G.NaowhForever
 local S = ns.QoLSettings
@@ -116,12 +116,6 @@ function provider:RefreshAllData()
     if not On() then return end
     local mapID = self:GetMap():GetMapID()
     local list = (not S.Get("townCapitalsOnly") or CAPITALS[mapID]) and ns.TownNPCs[mapID] or {}
-    if S.Get("townSpiritHealers") and C_DeathInfo and C_DeathInfo.GetGraveyardsForMap then
-        for _, grave in ipairs(C_DeathInfo.GetGraveyardsForMap(mapID) or {}) do
-            local x, y = grave.position:GetXY()
-            self:GetMap():AcquirePin(TEMPLATE, { x * 100, y * 100, "spirit", grave.name, "Spirit Healer", nil, "AH" })
-        end
-    end
     if S.Get("townZoneLinks") and C_Map.GetMapLinksForMap then
         for _, link in ipairs(C_Map.GetMapLinksForMap(mapID) or {}) do
             self:GetMap():AcquirePin(LINK_TEMPLATE, link)
@@ -141,6 +135,11 @@ function provider:RefreshAllData()
     if S.Get("townMail") then
         for _, mailbox in ipairs(ns.TownMailboxes[mapID] or {}) do
             self:GetMap():AcquirePin(TEMPLATE, mailbox)
+        end
+    end
+    if S.Get("townSpiritHealers") then
+        for _, healer in ipairs(ns.TownSpiritHealers[mapID] or {}) do
+            self:GetMap():AcquirePin(TEMPLATE, healer)
         end
     end
 end
@@ -232,7 +231,7 @@ ns.Shared.Settings.Page("QoL/Interface", S):Card({
           help = "Keeps vendors and trainers off questing maps." },
         Group("Show"),
         { key = "townSpiritHealers", label = "Spirit Healers", toggle = true,
-          help = "Shows graveyards supplied by the game map." },
+          help = "Every graveyard's spirit healer, in towns and out in the world." },
         { key = "townZoneLinks", label = "Clickable Zone Exits", toggle = true,
           help = "Click an exit to open the adjoining zone map." },
         { key = "townClass", label = "Class Trainers", toggle = true, help = "Your class's trainers only." },
