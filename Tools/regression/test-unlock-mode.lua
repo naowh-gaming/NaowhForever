@@ -219,6 +219,7 @@ local function Display(label, w, h, x, y)
 end
 
 local function Center(frame) return frame:GetCenter() end
+local watcherFor
 local function Last(saved) return saved[#saved] end
 
 -- A shown menu's row by its text.
@@ -420,6 +421,61 @@ Drive()
 UI.StopMoverDrag(swingMover)
 Check(Near(swing:GetLeft(), mL), "a drag near its edge snaps to the snap target")
 nearMover:Hide()
+
+-- A mover laid over something other than its frame (a reminder's sample hangs below its small
+-- anchor frame): anchoring reads what is seen.
+local anchorFrame = NewFrame("Frame", UIParent)
+anchorFrame:SetSize(10, 10)
+anchorFrame:SetPoint("CENTER", UIParent, "CENTER", 500, 0)
+local reminderSaved = {}
+local reminderMover = UI.AttachMover(anchorFrame, "Reminder Bar", function(pos) reminderSaved[#reminderSaved + 1] = pos end)
+local sample = NewFrame("Frame", anchorFrame)
+sample:SetSize(120, 50)
+sample:SetPoint("TOP", anchorFrame, "TOP", 0, 0)
+reminderMover:ClearAllPoints()
+reminderMover:SetAllPoints(sample)
+reminderMover:Show()
+settings.anchors["Reminder Bar"] = { target = "Threat Meter", side = "TOP" }
+watcherFor = nil
+for _, fr in ipairs(made) do
+    if fr.events.PLAYER_ENTERING_WORLD then watcherFor = fr end
+end
+watcherFor.scripts.OnEvent(watcherFor, "PLAYER_ENTERING_WORLD")
+Flush()
+Check(Near(sample:GetBottom(), meter:GetTop()) and Near(select(1, sample:GetCenter()), select(1, meter:GetCenter())),
+    "the sample, not the frame behind it, sits flush on its target")
+Check(Last(reminderSaved).point == "CENTER", "and the frame's spot is saved")
+settings.anchors["Reminder Bar"] = nil
+reminderMover:Hide()
+
+-- A module's own drag of an anchored element keeps the anchor with the new gap.
+settings.anchors["Swing Timer"] = { target = "Threat Meter", side = "BOTTOM", offsetX = 0, offsetY = 0 }
+UI.ReapplyAnchors()
+local sx0, sy0 = Center(swing)
+swing:ClearAllPoints()
+swing:SetPoint("CENTER", UIParent, "CENTER", sx0 - W / 2 + 25, sy0 - H / 2)
+swing:StopMovingOrSizing()
+Flush()
+info = settings.anchors["Swing Timer"]
+Check(info and Near(info.offsetX, 25) and Near(Center(swing), sx0 + 25), "a module drag keeps the anchor with the new offset")
+
+-- A nudge waits while the target is missing, instead of piling up.
+settings.anchors["Swing Timer"] = { target = "Gone", side = "BOTTOM", offsetX = 0, offsetY = 0 }
+UI.SelectMover(swingMover)
+Fire(keys, "OnKeyDown", "RIGHT")
+Check(settings.anchors["Swing Timer"].offsetX == 0, "no nudge while the target is missing")
+settings.anchors["Swing Timer"] = nil
+UI.ClearMoverSelection()
+
+-- Closing the cog menu with the cursor elsewhere shrinks the mover back.
+Hover(swingMover)
+Click(swingMover, "RightButton")
+swingMover.mouseOver = false
+Fire(swingMover, "OnLeave")
+Flush()
+Check(swingMover._placement.hoverConfirmed, "the open menu keeps it grown")
+Fire(keys, "OnKeyDown", "ESCAPE")
+Check(not swingMover._placement.hoverConfirmed and not swingMover._placement.hovered, "closing the menu lets it go")
 
 -- At login and after a profile switch every anchor is re-applied, parents first.
 settings.anchors["Swing Timer"] = { target = "Threat Meter", side = "BOTTOM", offsetX = 0, offsetY = -10 }

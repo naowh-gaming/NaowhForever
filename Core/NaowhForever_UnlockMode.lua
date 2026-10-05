@@ -19,7 +19,7 @@ local MAX_DEPTH = 20           -- anchor chain length followed at most
 local LINE_TEX = "Interface\\AddOns\\NaowhForever\\Media\\soft-line.tga"
 local PULSE_TEX = "Interface\\AnimaChannelingDevice\\AnimaChannelingDeviceLineVerticalMask"
 
-local placement = { active = false, items = {}, byLabel = {} }
+local placement = { active = false, items = {}, byLabel = {}, unsaved = {} }
 
 -------------------------------------------------------------------------------
 --  Pixels: one physical pixel in UIParent units, and EllesmereUI's snaps.
@@ -92,6 +92,19 @@ local function Bounds(frame)
     return l * ratio, r * ratio, t * ratio, b * ratio, ratio
 end
 
+-- The element as the player sees it: its mover's rect, which is the frame's unless a module laid
+-- the mover over something else (a reminder's sample hangs below its anchor frame). While the
+-- mover is grown on hover, the rect it had before. The ratio is the frame's.
+local function Box(item)
+    local fl, fr, ft, fb, ratio = Bounds(item.frame)
+    if not fl then return end
+    local i = item.inset
+    if i then return fl + i[1], fr + i[2], ft + i[3], fb + i[4], ratio end
+    local hl, hr, ht, hb = Bounds(item.handle)
+    if hl then return hl, hr, ht, hb, ratio end
+    return fl, fr, ft, fb, ratio
+end
+
 -- A screen edge is a strip one unit thick just outside the screen, so its inner edge is the
 -- screen's edge and its centre on the other axis the screen's centre.
 local function Rect(key)
@@ -101,7 +114,7 @@ local function Rect(key)
     if key == "SCREEN_TOP" then return 0, w, h + 1, h end
     if key == "SCREEN_BOTTOM" then return 0, w, 0, -1 end
     local item = placement.byLabel[key]
-    if item then return Bounds(item.frame) end
+    if item then return Box(item) end
 end
 
 -- The element's centre for its record, given the target's rect and its own size.
@@ -129,7 +142,7 @@ end
 -- Offsets for a side from where the element is now.
 local function CaptureOffsets(item, target, side)
     local tL, tR, tT, tB = Rect(target)
-    local cL, cR, cT, cB = Bounds(item.frame)
+    local cL, cR, cT, cB = Box(item)
     if not (tL and cL) then return end
     local tCX, tCY, cCX, cCY = (tL + tR) / 2, (tT + tB) / 2, (cL + cR) / 2, (cT + cB) / 2
     if side == "LEFT" then return cR - tL, cCY - tCY end
@@ -140,7 +153,7 @@ end
 
 local function CaptureEdgeOffset(item, key, side)
     local el, er, et, eb = Rect(key)
-    local cL, cR, cT, cB = Bounds(item.frame)
+    local cL, cR, cT, cB = Box(item)
     if not cL then return end
     if SCREEN[key] == "X" then
         if side == "RIGHT" then return cL - er end
@@ -150,10 +163,16 @@ local function CaptureEdgeOffset(item, key, side)
     return cT - eb
 end
 
--- Puts a frame's centre at (cx, cy) in UIParent units, CENTER on the screen centre and snapped
--- to whole pixels, and saves it there. False when it is already there.
+-- Puts the element's centre (its Box) at (cx, cy) in UIParent units: its frame CENTER on the
+-- screen centre, snapped to whole pixels, and saved there; during a drag the save waits for the
+-- drop. False when it is already there.
 local function MoveTo(item, cx, cy, raw)
     local frame = item.frame
+    local bl, br, bt, bb = Box(item)
+    local fl, fr, ft, fb = Bounds(frame)
+    if not (bl and fl) then return false end
+    cx = cx - ((bl + br) - (fl + fr)) / 2
+    cy = cy - ((bt + bb) - (ft + fb)) / 2
     local es, ratio = frame:GetEffectiveScale(), frame:GetEffectiveScale() / UIParent:GetEffectiveScale()
     local x = (cx - UIParent:GetWidth() / 2) / ratio
     local y = (cy - UIParent:GetHeight() / 2) / ratio
@@ -168,7 +187,11 @@ local function MoveTo(item, cx, cy, raw)
     end
     frame:ClearAllPoints()
     frame:SetPoint("CENTER", UIParent, "CENTER", x, y)
-    item.save({ point = "CENTER", relPoint = "CENTER", x = x, y = y })
+    if placement.dragging then
+        placement.unsaved[item] = true
+    else
+        item.save({ point = "CENTER", relPoint = "CENTER", x = x, y = y })
+    end
     return true
 end
 
@@ -177,10 +200,10 @@ local function Apply(item)
     local info = not item.ownAnchor and AnchorOf(item.label)
     if not info then return end
     local tL, tR, tT, tB = Rect(info.target)
-    local _, _, _, _, ratio = Bounds(item.frame)
-    if not (tL and ratio) then return end
+    local cL, cR, cT, cB = Box(item)
+    if not (tL and cL) then return end
     if info.offsetX == nil or info.offsetY == nil then info.offsetX, info.offsetY = 0, 0 end
-    local cx, cy = Place(info, tL, tR, tT, tB, item.frame:GetWidth() * ratio, item.frame:GetHeight() * ratio)
+    local cx, cy = Place(info, tL, tR, tT, tB, cR - cL, cT - cB)
     if InCombatLockdown() and item.frame:IsProtected() then
         placement.parked = true
         return
@@ -229,22 +252,24 @@ local function ReapplyAll()
 end
 UI.ReapplyAnchors = ReapplyAll
 
--- Size and position changes outside a drag: one pass a frame, whatever asked.
+-- Size and position changes outside a drag: one pass a frame, whatever asked. A size change
+-- re-places the element itself (its near edge stays on its target); a move, whoever made it,
+-- only takes what is anchored to it along.
 local queued, batchQueued = {}, false
 
 local function RunBatch()
     batchQueued = false
     local labels = queued
     queued = {}
-    for label in pairs(labels) do
+    for label, kind in pairs(labels) do
         local item = placement.byLabel[label]
-        if item and item ~= placement.dragging then Apply(item) end
+        if kind == "size" and item and item ~= placement.dragging then Apply(item) end
         Propagate(label)
     end
 end
 
-local function Queue(label)
-    queued[label] = true
+local function Queue(label, kind)
+    if queued[label] ~= "size" then queued[label] = kind or "move" end
     if batchQueued then return end
     batchQueued = true
     C_Timer.After(0, RunBatch)
@@ -277,7 +302,6 @@ local function WatchAnchors()
     screen:SetScript("OnSizeChanged", function()
         for key in pairs(SCREEN) do Queue(key) end
     end)
-    placement.watcher = events
 end
 
 -------------------------------------------------------------------------------
@@ -595,8 +619,15 @@ function CloseMenus()
         if menu then menu:Hide() end
     end
     if placement.catcher then placement.catcher:Hide() end
-    if placement.menuItem then placement.menuItem.menuOpen = false end
+    local item = placement.menuItem
     placement.menuItem = nil
+    if not item then return end
+    item.menuOpen = false
+    if not item.handle:IsMouseOver() then
+        item.hovered = false
+        item.Collapse()
+        Refresh(item)
+    end
 end
 
 local function AtCursor(menu)
@@ -626,6 +657,7 @@ local function Nudge(item, dx, dy)
     if InCombatLockdown() then return end
     if not item.menuOpen then item.Collapse(true) end
     local info = not item.ownAnchor and AnchorOf(item.label)
+    if info and not Rect(info.target) then return end
     if info then
         info.offsetX, info.offsetY = (info.offsetX or 0) + dx, (info.offsetY or 0) + dy
         local e = info.edge
@@ -634,7 +666,7 @@ local function Nudge(item, dx, dy)
         end
         Apply(item)
     else
-        local l, r, t, b = Bounds(item.frame)
+        local l, r, t, b = Box(item)
         if not l then return end
         MoveTo(item, (l + r) / 2 + dx, (t + b) / 2 + dy, true)
     end
@@ -788,11 +820,11 @@ local function DragUpdate()
     cx, cy = math.max(0, math.min(w, cx)), math.max(0, math.min(h, cy))
     local _, _, _, _, ratio = Bounds(item.frame)
     if not ratio then return end
-    cx, cy = SnapPosition(item, cx, cy, item.frame:GetWidth() * ratio / 2, item.frame:GetHeight() * ratio / 2)
+    cx, cy = SnapPosition(item, cx, cy, item.dragHalfW, item.dragHalfH)
     ShowGuides()
     local snap = placement.snapInfo
     local es = item.frame:GetEffectiveScale()
-    local x, y = (cx - w / 2) / ratio, (cy - h / 2) / ratio
+    local x, y = (cx - item.dragBoxX - w / 2) / ratio, (cy - item.dragBoxY - h / 2) / ratio
     if not snap.x then x = SnapCenter(x, item.frame:GetWidth(), es) end
     if not snap.y then y = SnapCenter(y, item.frame:GetHeight(), es) end
     item.frame:ClearAllPoints()
@@ -820,12 +852,14 @@ local function StopPlacementDrag(item)
         Recapture(item)
         Propagate(item.label)
     end
+    for other in pairs(placement.unsaved) do SaveWhereItIs(other) end
+    wipe(placement.unsaved)
     Refresh(item)
 end
 
 local function CenterOnScreen(item)
     if InCombatLockdown() then return end
-    local l, r = Bounds(item.frame)
+    local l, r = Box(item)
     if not l then return end
     local px = ToPixels((l + r) / 2 - UIParent:GetWidth() / 2)
     if px ~= 0 then Nudge(item, FromPixels(-px), 0) end
@@ -1308,14 +1342,17 @@ function UI.StartMoverDrag(handle)
     CloseMenus()
     item.Collapse(true)
     UI.SelectMover(handle)
-    local l, r, t, b = Bounds(item.frame)
-    if not l then return end
+    local l, r, t, b = Box(item)
+    local fl, fr, ft, fb = Bounds(item.frame)
+    if not (l and fl) then return end
     local scale = UIParent:GetEffectiveScale()
     local mx, my = GetCursorPosition()
     mx, my = mx / scale, my / scale
     item.dragStartX, item.dragStartY = mx, my
     item.dragStartCX, item.dragStartCY = (l + r) / 2, (t + b) / 2
-    item.dragStartL, item.dragStartT = l, t
+    item.dragHalfW, item.dragHalfH = (r - l) / 2, (t - b) / 2
+    item.dragBoxX, item.dragBoxY = (l + r - fl - fr) / 2, (t + b - ft - fb) / 2
+    item.dragStartL, item.dragStartT = fl, ft
     item.dragX, item.dragY = item.dragStartCX - mx, item.dragStartCY - my
     item.dragAxis = nil
     item.dragging = true
@@ -1396,6 +1433,9 @@ local function BuildChrome(item)
             local hx, hy = h:GetCenter()
             local fx, fy = frame:GetCenter()
             if (hoverW > w or hoverH > hh) and hx and fx then
+                local hl, hr, ht, hb = Bounds(h)
+                local fl, fr, ft, fb = Bounds(frame)
+                item.inset = { hl - fl, hr - fr, ht - ft, hb - fb }
                 rest = { w = w, h = hh }
                 for i = 1, h:GetNumPoints() do rest[i] = { h:GetPoint(i) } end
                 h:ClearAllPoints()
@@ -1410,6 +1450,7 @@ local function BuildChrome(item)
                 for _, p in ipairs(rest) do h:SetPoint(unpack(p)) end
                 if #rest == 1 then h:SetSize(rest.w, rest.h) end
                 rest = nil
+                item.inset = nil
             end
         end
     end
@@ -1535,10 +1576,17 @@ function UI.BindMover(handle, frame, label, onMoved, page, feature, ownAnchor)
     end
     placement.items[#placement.items + 1] = item
     placement.byLabel[label] = item
-    if not placement.watcher then WatchAnchors() end
-    frame:HookScript("OnSizeChanged", function() Queue(label) end)
+    frame:HookScript("OnSizeChanged", function() Queue(label, "size") end)
     hooksecurefunc(frame, "SetPoint", function()
         if not item.dragging then C_Timer.After(0, function() Moved(item) end) end
+    end)
+    -- A module's own drag (a window dragged by its title): an anchored element keeps its anchor
+    -- with the gap it was dropped at, as an Unlock Mode drag does.
+    hooksecurefunc(frame, "StopMovingOrSizing", function()
+        C_Timer.After(0, function()
+            Recapture(item)
+            Propagate(label)
+        end)
     end)
 
     handle:EnableMouse(true)
@@ -1617,3 +1665,5 @@ function UI.CenterPosition(frame)
     frame:SetPoint("CENTER", UIParent, "CENTER", x, y)
     return { point = "CENTER", relPoint = "CENTER", x = x, y = y }
 end
+
+WatchAnchors()

@@ -64,6 +64,8 @@ local function ToastDragStop()
     toast:StopMovingOrSizing()
     toast.dragging = false
     S.Set("toastPos", UI.CenterPosition(toast))
+    -- Its time ran out mid-drag.
+    if toast.expired then toast:Hide() end
 end
 
 local function BuildToast()
@@ -146,10 +148,13 @@ local function ShowToast(level)
     if not toast then BuildToast() end
     FillToast(level, plan)
     toast:Show()
+    toast.expired = false
     toastGen = toastGen + 1
     local gen = toastGen
     C_Timer.After(TOAST_SECONDS, function()
-        if gen == toastGen and not toast.dragging then toast:Hide() end
+        if gen ~= toastGen then return end
+        toast.expired = true
+        if not toast.dragging then toast:Hide() end
     end)
 end
 
