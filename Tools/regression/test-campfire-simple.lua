@@ -1,9 +1,11 @@
 -- Run with Lua 5.1 from the repository root: the campfire reminder's two looks, loaded from the
--- real Shared files, AuraBuffs and Campfire against stubs. Round stays the default and the
--- Simple bar is built only once picked; its bonuses come from the camp features' own auras, as
--- one tidy group with their amounts; the fire sits in a notch of the bar's top edge; the time
--- line runs down on a full track; the down state is a compact pill; resting shows the bonuses
--- to come; the card's preview can be edited with the mouse; and a refresh makes no garbage.
+-- real Shared files, AuraBuffs and Campfire against stubs that measure text in the Naowh font's
+-- own widths. Round stays the default and the Simple bar is built only once picked. The bonuses
+-- come from the camp features' own auras, else from Camp Benefits' tooltip, read once per Camp
+-- Benefits and matched by the client's own feature names, with every amount (the Lute's three,
+-- the Mana Well's mana and period). Every state keeps the fire and the words in one place, four
+-- bonuses with amounts fit at the default width beside the time, the card's preview edits the
+-- bar, its rows follow the style, and a refresh makes no garbage.
 local Load = dofile("Tools/regression/load_files.lua")
 local TocFiles = dofile("Tools/regression/toc_files.lua")
 local Measure = dofile("Tools/regression/measure.lua")
@@ -11,8 +13,60 @@ local Measure = dofile("Tools/regression/measure.lua")
 local checks = 0
 local function check(label, value) assert(value, label); checks = checks + 1 end
 
-local CAMP, NEARBY, TENT, KIT, CHAIR, SITTING = 1229741, 1283391, 1229451, 1230124, 1229519, 1229739
-local CANDLE = 1229513
+local CAMP, NEARBY, SITTING, SITTING_CRAFT = 1229741, 1283391, 1229739, 1289723
+local TENT, WHEEL, KIT, CANDLE, BANNER, BOWL = 1229451, 1230172, 1230124, 1229513, 1229718, 1230098
+local LUTE, LODESTONE, SPELL, CHAIR, WELL, DISENCHANT = 1230653, 1230164, 1230552, 1229519, 1230587, 1283701
+local SECRET_TEXT = "Secret: hidden text"
+local WIDE_COLON = "\239\188\154"
+
+-- The Naowh font's advance widths, characters 32 to 126, per 1000 units of its size
+-- (Media/Fonts/Naowh.ttf).
+local ADVANCE = {
+    295, 277, 325, 555, 555, 837, 684, 218, 407, 407, 573, 600, 208, 353, 208, 499, 537, 316, 527, 544,
+    570, 550, 553, 476, 534, 553, 208, 208, 583, 579, 583, 518, 760, 683, 580, 782, 738, 530, 492, 837,
+    671, 258, 483, 611, 450, 935, 738, 846, 570, 837, 604, 501, 407, 646, 684, 906, 649, 590, 465, 407,
+    499, 407, 600, 500, 555, 692, 687, 627, 686, 642, 277, 697, 624, 236, 240, 529, 236, 970, 624, 674,
+    685, 685, 320, 432, 282, 623, 527, 785, 530, 574, 425, 333, 555, 333, 650,
+}
+local DOT_ADVANCE = 277
+
+local function Plain(text)
+    return (text:gsub("{%a+:", ""):gsub("}", ""))
+end
+
+local function W(text, size)
+    local units, plain, i = 0, Plain(text), 1
+    while i <= #plain do
+        local byte = plain:byte(i)
+        if byte == 194 then
+            units, i = units + DOT_ADVANCE, i + 2
+        else
+            units, i = units + (ADVANCE[byte - 31] or 600), i + 1
+        end
+    end
+    return units * (size or 12) / 1000
+end
+
+local NAMES = { [TENT] = "Tent", [WHEEL] = "Sharpening Wheel", [KIT] = "First Aid Kit", [CANDLE] = "Incense Candle",
+    [BANNER] = "Faction Banner", [BOWL] = "Fish Bowl", [LUTE] = "Enchanted Lute", [LODESTONE] = "Lodestone",
+    [SPELL] = "Boosted Spell Power", [CHAIR] = "Camp Chair", [WELL] = "Mana Well",
+    [DISENCHANT] = "Boosted Disenchanting" }
+
+local TEMPLATE = {
+    "Gained the following camp benefits:",
+    "Tent: You received a small amount of rest experience. You can only receive this effect once per 1 hour.",
+    "Sharpening Wheel: Strength increased by 34.",
+    "First Aid Kit: Stamina increased by 56.",
+    "Incense Candle: Intellect increased by 25.",
+    "Faction Banner: Spirit increased by 32.",
+    "Fish Bowl: All stats increased by 8%.",
+    "Enchanted Lute: Armor increased by 308, all attributes increased by 13, and all resistances increased by 22.",
+    "Lodestone: Melee attack power increased by 90.",
+    "Boosted Spell Power: Spell damage increased by 23 and healing increased by 23.",
+    "Camp Chair: Critical strike chance with all spells and attacks increased by 2%.",
+    "Mana Well: Restores 29 Mana every 5 seconds.",
+    "Boosted Disenchanting: Disenchanting gives more materials.",
+}
 
 local function Read(path)
     local f = assert(io.open(path, "rb"))
@@ -23,7 +77,17 @@ end
 
 local function Fixture(settings)
     local state = { now = 1000, auras = {}, frames = {}, named = {}, timers = {}, bars = 0, tips = {},
-        tooltipReads = 0, secret = false, combat = false, cursorX = 0, cursorY = 0, shift = false, menus = 0 }
+        tooltipReads = 0, secret = false, combat = false, cursorX = 0, cursorY = 0, shift = false, menus = 0,
+        tooltip = { lines = { { leftText = "Camp Benefits" } } }, spellNames = {} }
+    for id, name in pairs(NAMES) do state.spellNames[id] = name end
+    local widths = {}
+    local function Width(text, size)
+        local bySize = widths[size]
+        if not bySize then bySize = {}; widths[size] = bySize end
+        local w = bySize[text]
+        if not w then w = W(text, size); bySize[text] = w end
+        return w
+    end
     local NOTHING = function() end
     local Frame
     local METHODS = {
@@ -40,7 +104,7 @@ local function Fixture(settings)
         SetSize = function(f, w, h) f.w, f.h = w, h end,
         GetWidth = function(f) return rawget(f, "w") or 600 end,
         GetHeight = function(f) return rawget(f, "h") or 230 end,
-        SetPoint = function(f, a, _, _, d, e) f.pt[a], f.pty[a] = d or 0, e or 0 end,
+        SetPoint = function(f, a, rel, _, d, e) f.pt[a], f.pty[a], f.rel[a] = d or 0, e or 0, rel end,
         ClearAllPoints = function() end,
         SetShadowColor = function(f, _, _, _, a) f.shadow = a end,
         GetCenter = function(f) return rawget(f, "cx"), rawget(f, "cy") end,
@@ -48,7 +112,7 @@ local function Fixture(settings)
         SetText = function(f, text) f.text = text end,
         GetText = function(f) return rawget(f, "text") or "" end,
         SetTextColor = function(f, r, g, b) f.r, f.g, f.b = r, g, b end,
-        GetStringWidth = function(f) return #(rawget(f, "text") or "") * 6 end,
+        GetStringWidth = function(f) return Width(rawget(f, "text") or "", rawget(f, "size") or 12) end,
         SetFont = function(f, _, size) f.size = size end,
         SetAlpha = function(f, a) f.alpha = a end,
         SetDesaturated = function(f, on) f.desaturated = on end,
@@ -88,7 +152,7 @@ local function Fixture(settings)
     end })
     local META = { __index = METHODS }
     function Frame(parent, name)
-        local f = setmetatable({ scripts = {}, events = {}, parent = parent, pt = {}, pty = {} }, META)
+        local f = setmetatable({ scripts = {}, events = {}, parent = parent, pt = {}, pty = {}, rel = {} }, META)
         state.frames[#state.frames + 1] = f
         if name then state.named[name] = f end
         return f
@@ -114,10 +178,10 @@ local function Fixture(settings)
         Raw = function(k) return values[k] end, Default = function(k) return defaults[k] end }
     local ns = {
         THEME = T,
-        Color = function(_, text) return tostring(text) end,
-        Font = function(parent, _, flags, color)
+        Color = function(token, text) return "{" .. token .. ":" .. tostring(text) .. "}" end,
+        Font = function(parent, size, flags, color)
             local fs = Frame(parent)
-            fs.flags = flags
+            fs.flags, fs.size = flags, size
             local c = color or T.fg
             fs.r, fs.g, fs.b = c.r, c.g, c.b
             return fs
@@ -177,13 +241,14 @@ local function Fixture(settings)
         IsShiftKeyDown = function() return state.shift end,
         InCombatLockdown = function() return state.combat end,
         IsInInstance = function() return false end,
-        issecretvalue = function(v) return state.secret and type(v) == "number" and v == 2 end,
+        issecretvalue = function(v) return v == SECRET_TEXT or (state.secret and v == 2) end,
         C_Secrets = { ShouldAurasBeSecret = function() return false end },
         C_UnitAuras = { GetPlayerAuraBySpellID = function(id) return state.auras[id] end },
-        C_Spell = { GetSpellTexture = function(id) return id end },
+        C_Spell = { GetSpellTexture = function(id) return id end,
+            GetSpellName = function(id) return state.spellNames[id] end },
         C_TooltipInfo = { GetUnitBuffByAuraInstanceID = function()
             state.tooltipReads = state.tooltipReads + 1
-            return { lines = { { leftText = "Camp Benefits" }, { leftText = "Camp Tent: Rested XP" } } }
+            return state.tooltip
         end },
         C_Timer = { After = function(delay, fn)
             state.timers[#state.timers + 1] = { at = state.now + delay, fn = fn }
@@ -252,15 +317,26 @@ local function Fixture(settings)
             end
         end
     end
-    function state.labels(bar)
+    function state.labels(bar, raw)
         local out = {}
-        for i = 1, bar.labels.count do out[i] = bar.labels.labels[i].text end
+        for i = 1, bar.labels.count do
+            local text = bar.labels.labels[i].text
+            out[i] = raw and text or Plain(text)
+        end
         return table.concat(out, " ")
     end
     function state.tipText()
         local out = {}
         for i, line in ipairs(state.tips) do out[i] = line[1] .. (line[2] and " | " .. line[2] or "") end
         return table.concat(out, "\n")
+    end
+    function state.camp(lines, instance)
+        local tip = { { leftText = "Camp Benefits" } }
+        for i, text in ipairs(lines) do tip[i + 1] = { leftText = text } end
+        tip[#tip + 1] = { leftText = "56 minutes remaining" }
+        state.tooltip = { lines = tip }
+        state.auras[CAMP] = { duration = 3600, expirationTime = state.now + 3360, auraInstanceID = instance or 1 }
+        state.fire("UNIT_AURA")
     end
     function state.menuEntries()
         local entries = {}
@@ -282,6 +358,7 @@ end
 local function Same(c, want) return c.r == want.r and c.g == want.g and c.b == want.b end
 local function Aura(points) return { points = points } end
 
+-- Round: the default, its tags from the same reader as the bar.
 do
     local s = Fixture()
     s.auras[CAMP] = { duration = 3600, expirationTime = s.now + 2400, auraInstanceID = 1 }
@@ -296,32 +373,72 @@ do
         local frame, onEvent = s.listener("UNIT_AURA")
         Measure(check)("a Round refresh", 1, function() onEvent(frame, "UNIT_AURA") end)
     end
+    s.auras[TENT], s.auras[KIT], s.auras[CHAIR] = nil, nil, nil
+    local cases = {
+        { { "Camp Tent: You received a small amount of rest experience. You can only receive this effect once per 1 hour.",
+            "Target Dummy: Critical strike chance with all spells and attacks increased by 2%." }, "+Rested\n+Crit" },
+        { { "Dummy: Critical strike chance increased by 2.5%." }, "+Crit" },
+        { { "Mana Well: Mana regeneration increased by 5%." }, "+MP5" },
+        { { "Mystery Totem: An unfamiliar effect with a very long description." }, "Mystery Totem" },
+        { { "Incense Candle: An unfamiliar effect with a very long description." }, "+INT" },
+        { { "Faction Banner: Spirit increased by 27." }, "+Spirit" },
+        { { "Lodestone: Melee attack power increased by 49." }, "+ATK" },
+        { { "Enchanted Lute: Armor increased by 114 and all stats by 7." }, "+ARM" },
+        { { "Fish Bowl: All stats increased by 8%." }, "+Stats" },
+        { { "Fish Bowl: Strength, Agility, Stamina, Intellect and Spirit increased by 8%." }, "+Stats" },
+        { { "Anvil: Strength increased by 20.", "Toxin Study: Stamina increased by 34." }, "+STR\n+STA" },
+        { { "|cffffffffCamp Tent: You gained rested experience.|r", "Chair: Rested experience granted." }, "+Rested" },
+        { { "Benefits:", "Spell ID: 1229741", "24 |4minute:minutes; remaining", SECRET_TEXT }, "" },
+        { { "Mana Well: 10 MP5" }, "+MP5" },
+        { { "Mystery Totem: +5 Luck" }, "+5 Luck" },
+    }
+    for i, case in ipairs(cases) do
+        s.camp(case[1], 100 + i)
+        check("Round tags " .. i .. ": " .. case[2]:gsub("\n", " "), icon.buffs.text == case[2])
+    end
+    s.tooltip = nil
+    s.auras[CAMP].auraInstanceID = 200
+    s.fire("UNIT_AURA")
+    check("Round tags: no tooltip data, no tags", icon.buffs.text == "")
+end
 
+-- Simple, from the features' own auras: the amounts, the seat, the time and its colors.
+do
+    local s = Fixture()
+    s.auras[CAMP] = { duration = 3600, expirationTime = s.now + 2400, auraInstanceID = 1 }
+    s.auras[TENT], s.auras[KIT], s.auras[CHAIR] = Aura({ 5 }), Aura({ 56 }), Aura({ 2 })
+    s.fire("PLAYER_LOGIN")
+    local icon = s.named.NaowhForeverCampfire
     s.S.Set("campStyle", "simple")
     local bar = s.bar()
     check("Simple: built once picked, with one time line", bar ~= nil and s.bars == 1)
     check("Simple: the round art hidden, the bar shown", icon.tex.shown == false and icon.timer.shown == false
         and bar.shown ~= false)
-    check("Simple: one group, title case, amounts inline, Rested with no number",
-        s.labels(bar) == "Rested +56 Sta +2% Crit" and Same(bar.labels.labels[1], s.T.fg))
-    local labels, seps = bar.labels.labels, bar.labels.seps
-    check("Simple: packed left to right after the fire, a muted dot between",
-        labels[1].pt.LEFT == 0 and labels[2].pt.LEFT > labels[1].pt.LEFT and labels[3].pt.LEFT > labels[2].pt.LEFT
-        and seps[2].text == s.St.PLACE_DOT and Same(seps[2], s.T.muted) and bar.labels.pt.LEFT == bar.labelX)
+    check("Simple: each bonus with its amount, Rested with none", s.labels(bar) == "Rested +56 Sta +2% Crit"
+        and s.tooltipReads == 0)
+    check("Simple: the amount in the text color, the stat muted", s.labels(bar, true)
+        == "Rested +56 {muted:Sta} +2% {muted:Crit}" and Same(bar.labels.labels[1], s.T.fg))
+    local labels = bar.labels.labels
+    check("Simple: no dots between bonuses, a named gap instead", bar.labels.seps[2] == nil
+        and math.abs(labels[2].pt.LEFT - (W("Rested") + 10)) < 1e-9
+        and math.abs(labels[3].pt.LEFT - labels[2].pt.LEFT - W("+56 Sta") - 10) < 1e-9)
 
-    local size = bar.campSize
-    check("the fire is seated on the bar's top-left corner, its centre on the top edge",
-        size == 24 and bar.campX == bar.radius and bar.camp.pt.CENTER == bar.campX and bar.camp.pty.CENTER == 0
-        and bar.cap.shown ~= false)
-    local gap = bar.topRight.pt.TOPLEFT - bar.notchFrom
-    check("the top border has a gap under the fire, as wide as its outline, from the left edge", gap == size + 2 * 4
-        and bar.notchFrom == 0 and bar.topLeft.shown == false and bar.topRight.shown ~= false)
+    check("the fire: 24px art in a 32px disc, its centre on the bar's top-left corner edge",
+        bar.campSize == 24 and bar.radius == 16 and bar.camp.pt.CENTER == 16 and bar.camp.pty.CENTER == 0
+        and bar.camp.rel.CENTER == bar.bar and bar.cap.shown ~= false)
+    check("the top edge starts where the disc ends: one notch, the left edge runs up to the disc",
+        bar.top.pt.TOPLEFT == 32 and bar.notch == 32 and bar.left.pt.TOPLEFT == 0)
+    check("the words start a named gap after the disc, a pixel above the line's middle", bar.labelX == 40
+        and bar.labels.pt.LEFT == 40 and bar.labels.pty.LEFT == 2 and bar.note.pt.LEFT == 40)
+    check("the time sits on the right, inside the bar's padding, level with the words",
+        bar.time.pt.RIGHT == -10 and bar.time.pty.RIGHT == 2 and bar.time.rel.RIGHT == bar.bar)
+    check("the bar is as tall as set, the disc's top half above it", icon.h == 26 + 16 and bar.bar.h == 26)
     check("the house backdrop and black edge, no custom alpha", bar.backdrop and rawget(bar, "bg") == nil
-        and bar.topRight.color == s.St.BORDER_RGB and s.St.BACKDROP_ALPHA
-        and not Read("AuraBuffs/NaowhForever_Campfire.lua"):find("BAR%.ALPHA")
-        and not Read("AuraBuffs/NaowhForever_Campfire.lua"):find("SHEEN"))
+        and bar.top.color == s.St.BORDER_RGB and s.St.BACKDROP_ALPHA
+        and not Read("AuraBuffs/NaowhForever_Campfire.lua"):find("BAR%.ALPHA"))
     check("a thin time-colored ring inside the black edge", bar.timeRing.shown ~= false
         and Same(bar.outerRing, s.St.BORDER_RGB))
+    check("panel text: no HUD shadow on the bar's words", bar.time.shadow == nil and bar.note.shadow == nil)
     local track
     for _, f in ipairs(s.frames) do if f.parent == bar.line and f.color == s.T.line then track = f end end
     check("the time line runs on a full-width track in the line color", track ~= nil)
@@ -332,22 +449,26 @@ do
         line.direction == 1 and math.abs(early - 2400 / 3600) < 1e-6)
     check("the time text is bound to the same timer", line.binding.fontString == bar.time
         and line.binding.enabled == true and bar.time.shown ~= false)
-    check("plenty of time: a green line, the time in the text color, no glow",
-        Same(line.to, s.St.TIME_OK_RGB) and Same(bar.time, s.T.fg) and bar.halo.shown == false)
+    check("plenty of time: a green line and ring, the time in the text color, no glow",
+        Same(line.to, s.St.TIME_OK_RGB) and Same(bar.timeRing, s.St.TIME_OK_RGB) and Same(bar.time, s.T.fg)
+        and bar.halo.shown == false)
     s.advance(700)
     check("the line has shrunk", line:GetValue() < early)
-    check("running low: the line and the time in yellow, a soft glow", Same(line.to, s.St.TIME_LOW_RGB)
-        and Same(bar.time, s.St.TIME_LOW_RGB) and bar.halo.shown == true)
+    check("running low: the line, ring and time in yellow, a soft glow", Same(line.to, s.St.TIME_LOW_RGB)
+        and Same(bar.timeRing, s.St.TIME_LOW_RGB) and Same(bar.time, s.St.TIME_LOW_RGB) and bar.halo.shown == true)
     s.tips = {}
     bar.scripts.OnEnter(bar)
     local text = s.tipText()
-    check("tooltip: each bonus with its amount", text:find("+56 Stamina | First Aid Kit", 1, true)
-        and text:find("+2% Critical Strike | Camp Chair", 1, true)
-        and text:find("Rested experience | Camp Tent", 1, true))
+    check("tooltip: a title, then each bonus with its amount and its feature", s.tips[1][1] == "Camp Benefits"
+        and text:find("+56 Stamina | First Aid Kit", 1, true) and text:find("+2% Critical Strike | Camp Chair", 1, true)
+        and text:find("Rested experience | Tent", 1, true))
     check("tooltip: the time left and when to refresh", text:find("Time left | 29 min", 1, true)
         and text:find("Refresh in 24 min", 1, true))
     s.advance(1500)
-    check("out: red", Same(line.to, s.St.TIME_OUT_RGB) and Same(bar.time, s.St.TIME_OUT_RGB))
+    check("nearly out: red", Same(line.to, s.St.TIME_OUT_RGB) and Same(bar.time, s.St.TIME_OUT_RGB))
+    s.tips = {}
+    bar.scripts.OnEnter(bar)
+    check("tooltip: refresh now once under five minutes", s.tipText():find("Refresh now", 1, true))
     s.secret = true
     s.fire("UNIT_AURA")
     s.tips = {}
@@ -358,8 +479,8 @@ do
     s.fire("UNIT_AURA")
 
     s.S.Set("campSimpleHeight", 30)
-    gap = bar.topRight.pt.TOPLEFT - bar.notchFrom
-    check("the notch follows the fire's size", bar.campSize == 28 and gap == 28 + 2 * 4)
+    check("the seat and the notch follow the height", bar.campSize == 28 and bar.radius == 18
+        and bar.top.pt.TOPLEFT == 36 and bar.labelX == 44 and icon.h == 30 + 18)
     s.S.Set("campSimpleHeight", 26)
 
     s.S.Set("campHiddenBonuses", { [CHAIR] = true })
@@ -372,43 +493,37 @@ do
     s.S.Set("campBonusIcons", false)
     check("bonus icons off by default and hidden", icons[1].shown == false)
 
-    s.auras[CANDLE] = Aura({ 25 })
-    s.fire("UNIT_AURA")
-    check("the default width fits four bonuses", s.labels(bar) == "Rested +56 Sta +25 Int +2% Crit" and bar.more == 0
-        and icon.w == 340)
-    s.S.Set("campSimpleWidth", 200)
-    check("too narrow: the rest as +N more", bar.more > 0 and s.labels(bar):find("+" .. bar.more .. " more$")
-        and icon.w == 200)
-    s.S.Set("campSimpleWidth", 340)
-    s.auras[CANDLE] = nil
-    s.fire("UNIT_AURA")
-
     local editing = 0
     for _, f in ipairs(s.frames) do if f.scripts.OnMouseWheel then editing = editing + 1 end end
     check("nothing on the live HUD takes the wheel or clicks", editing == 0)
 
     do
         local frame, onEvent = s.listener("UNIT_AURA")
-        Measure(check)("a Simple refresh", 1, function() onEvent(frame, "UNIT_AURA") end)
+        Measure(check)("a Simple refresh from the features' auras", 1, function() onEvent(frame, "UNIT_AURA") end)
     end
 
-    local fullW = icon.w
     s.auras[CAMP], s.auras[TENT], s.auras[KIT], s.auras[CHAIR] = nil, nil, nil, nil
     s.fire("UNIT_AURA")
-    check("down: a compact pill around the fire and the words", bar.pill and icon.w < fullW
-        and icon.w == math.ceil(8 + 3 * 2 + bar.pillIcon + 6 + #"Refresh Camp" * 6 + 8))
-    check("down: the fire inline at the pill's left, grey in a muted frame, no notch", bar.camp.pt.LEFT == 8 + 3
-        and bar.camp.tex.desaturated == true and Same(bar.timeRing, s.T.muted) and bar.cap.shown == false
-        and bar.topRight.shown == false and bar.topLeft.shown ~= false)
+    check("down: Refresh Camp, the key word in the accent", s.labels(bar) == "" and bar.note.text
+        == "{accent:Refresh} Camp" and bar.note.shown ~= false and Same(bar.note, s.T.fg))
+    check("down: the bar hugs its words, the fire still seated in the same place",
+        bar.pill and icon.w == math.ceil(40 + W("Refresh Camp") + 10) and bar.camp.pt.CENTER == 16
+        and bar.camp.pty.CENTER == 0 and bar.note.pt.LEFT == 40 and icon.h == 26 + 16)
+    check("down: the fire grey in a muted ring, no time line", bar.camp.tex.desaturated == true
+        and Same(bar.timeRing, s.T.muted) and bar.line.shown == false and bar.time.shown == false
+        and bar.halo.shown == false)
     check("Simple: no big Camp Nearby alert", s.named.NaowhForeverCampNearby == nil)
-    check("down: it reads Refresh Camp, no time line", bar.note.text == "Refresh Camp"
-        and bar.line.shown == false and bar.time.shown == false)
+    s.tips = {}
+    bar.scripts.OnEnter(bar)
+    check("down tooltip: what to do", s.tipText():find("No Camp Benefits", 1, true)
+        and s.tipText():find("Sit at a campfire to refresh", 1, true))
     local refreshW = icon.w
     s.auras[NEARBY] = {}
     s.fire("UNIT_AURA")
-    check("down with a campfire in range: one pattern, the same left edge",
-        bar.note.text == "Camp Nearby" .. s.St.PLACE_DOT .. "sit to refresh" and bar.camp.pt.LEFT == 8 + 3
-        and icon.w > refreshW and (s.named.NaowhForeverCampNearby == nil or not s.named.NaowhForeverCampNearby.shown))
+    check("down with a campfire in range: the same pattern, a muted hint after a dot",
+        bar.note.text == "{accent:Camp Nearby}{muted:" .. s.St.PLACE_DOT .. "sit to refresh}"
+        and bar.note.pt.LEFT == 40 and icon.w > refreshW
+        and icon.w == math.ceil(40 + W("Camp Nearby" .. s.St.PLACE_DOT .. "sit to refresh") + 10))
     s.auras[NEARBY] = nil
     s.fire("UNIT_AURA")
 
@@ -430,52 +545,173 @@ do
     s.fire("UNIT_AURA")
     check("Round: the big Camp Nearby alert shows as before", alert.shown == true)
     s.S.Set("campStyle", "simple")
-    check("Simple: the big alert hides, the bar's pill covers it", alert.shown == false and bar.pill
-        and bar.note.text == "Camp Nearby" .. s.St.PLACE_DOT .. "sit to refresh")
+    check("Simple: the big alert hides, the bar's own pill covers it", alert.shown == false and bar.pill
+        and Plain(bar.note.text) == "Camp Nearby" .. s.St.PLACE_DOT .. "sit to refresh")
     pos = s.S.Get("campPos")
     check("switching to Simple keeps its left edge where it was", pos.point == "LEFT" and pos.x == 250)
 end
 
+-- The tooltip reader: every feature line of Camp Benefits' description, matched by name, with amounts.
 do
-    local s = Fixture()
-    s.S.Set("campStyle", "simple")
-    s.auras[CAMP] = { duration = 3600, expirationTime = s.now + 2400, auraInstanceID = 1 }
+    local s = Fixture({ campStyle = "simple" })
     s.fire("PLAYER_LOGIN")
+    s.camp(TEMPLATE)
     local bar = s.bar()
-    check("no feature auras readable: the tooltip's tags, in title case", s.labels(bar) == "Rested"
-        and s.tooltipReads > 0)
-
-    s.auras[CAMP] = nil
-    s.auras[SITTING] = { duration = 60, expirationTime = s.now + 35 }
-    s.auras[TENT], s.auras[CHAIR] = Aura({ 5 }), Aura({ 2 })
-    s.fire("UNIT_AURA")
-    check("resting: the bonuses to come, from the features' auras", s.labels(bar) == "Rested +2% Crit"
-        and bar.note.shown == false)
-    check("resting: styled as upcoming, the line in the accent", Same(bar.labels.labels[1], s.T.accentSoft)
-        and Same(bar.line.to, s.T.accent))
-    check("resting: the countdown reads in 35s", bar.line.binding.formatter.points[1].format == "in %ds")
+    local WANT = { "Rested", "+34 Str", "+56 Sta", "+25 Int", "+32 Spi", "+8% Stats", "+308 Armor", "+90 AP",
+        "+23 SP", "+2% Crit", "+29 MP5", "Disenchant" }
+    local shown = bar.labels.count - 1
+    local inOrder = bar.more == #WANT - shown and Plain(bar.labels.labels[shown + 1].text) == "+" .. bar.more .. " more"
+    for i = 1, shown do inOrder = inOrder and Plain(bar.labels.labels[i].text) == WANT[i] end
+    check("every feature line read with its amount, Rested first, the rest as +N more", inOrder and shown >= 4
+        and s.tooltipReads == 1)
     s.tips = {}
     bar.scripts.OnEnter(bar)
-    check("resting tooltip: what you'll get and when", s.tipText():find("You'll get:", 1, true)
-        and s.tipText():find("+2% Critical Strike | Camp Chair", 1, true)
-        and s.tipText():find("Camp Benefits in 35 sec", 1, true))
-    local restingW, restingX = s.named.NaowhForeverCampfire.w, bar.labels.labels[2].pt.LEFT
-    s.auras[SITTING] = nil
-    s.auras[CAMP] = { duration = 3600, expirationTime = s.now + 3600, auraInstanceID = 1 }
-    s.fire("UNIT_AURA")
-    check("landing: the same labels in the normal style, no jump", s.labels(bar) == "Rested +2% Crit"
-        and Same(bar.labels.labels[1], s.T.fg) and s.named.NaowhForeverCampfire.w == restingW
-        and bar.labels.labels[2].pt.LEFT == restingX)
-    check("landing: the countdown drops its prefix", bar.line.binding.formatter.points[1].format == "%ds")
+    local text, last, ordered = s.tipText(), 0, true
+    for _, line in ipairs({ "Rested experience | Tent", "+34 Strength | Sharpening Wheel", "+56 Stamina | First Aid Kit",
+        "+25 Intellect | Incense Candle", "+32 Spirit | Faction Banner", "+8% all stats | Fish Bowl",
+        "+308 Armor, +13 all stats, +22 resistances | Enchanted Lute", "+90 Melee Attack Power | Lodestone",
+        "+23 spell damage, +23 healing | Boosted Spell Power", "+2% Critical Strike | Camp Chair",
+        "+29 Mana every 5 sec | Mana Well", "Better disenchanting | Boosted Disenchanting" }) do
+        local at = text:find(line, 1, true)
+        ordered = ordered and at ~= nil and at > last
+        last = at or last
+    end
+    check("the tooltip lists every bonus in full, the Lute's three numbers and the Mana Well's period", ordered)
+    check("the description's header and the time line are not bonuses", not text:find("Gained", 1, true)
+        and not text:find("remaining", 1, true))
 
-    s.auras[CAMP], s.auras[TENT], s.auras[CHAIR] = nil, nil, nil
-    s.auras[SITTING] = { duration = 60, expirationTime = s.now + 35 }
+    for _ = 1, 5 do s.fire("UNIT_AURA") end
+    check("read once per Camp Benefits, not on every aura change", s.tooltipReads == 1)
+    do
+        local frame, onEvent = s.listener("UNIT_AURA")
+        Measure(check)("a Simple refresh from the tooltip", 1, function() onEvent(frame, "UNIT_AURA") end)
+    end
+    s.auras[CAMP] = { duration = 3600, expirationTime = s.now + 3600, auraInstanceID = 2 }
     s.fire("UNIT_AURA")
-    check("resting, nothing readable: Resting with the last bonuses greyed", bar.note.text == "Resting"
-        and bar.note.shown ~= false and s.labels(bar) == "Rested +2% Crit"
-        and Same(bar.labels.labels[1], s.T.muted) and bar.lead > 0)
+    check("a new Camp Benefits is read again", s.tooltipReads == 2)
+
+    s.camp({ "Fish Bowl: All stats increased by 8%.", "Enchanted Lute: Armor increased by 308, all attributes "
+        .. "increased by 13, and all resistances increased by 22.", "Camp Chair: Critical strike chance with all "
+        .. "spells and attacks increased by 2%.", "Mana Well: Restores 29 Mana every 5 seconds." }, 3)
+    check("the widest common four fit at the default width beside the time",
+        s.labels(bar) == "+8% Stats +308 Armor +2% Crit +29 MP5" and bar.more == 0 and s.named.NaowhForeverCampfire.w == 340
+        and bar.group <= 340 - 40 - 10 - bar.timeW - 12)
+    s.camp({ "Tent: rest experience.", "First Aid Kit: Stamina increased by 56.", "Incense Candle: Intellect "
+        .. "increased by 25.", "Faction Banner: Spirit increased by 32.", "Camp Chair: Critical strike chance "
+        .. "increased by 2%." }, 4)
+    check("five common bonuses fit at the default width too", s.labels(bar) == "Rested +56 Sta +25 Int +32 Spi +2% Crit"
+        and bar.more == 0)
+    s.S.Set("campSimpleWidth", 220)
+    check("narrower: the rest as +N more, never under the time", bar.more > 0
+        and s.labels(bar):find("+" .. bar.more .. " more$") and bar.group <= 220 - 40 - 10 - bar.timeW - 12)
+    local timedMore = bar.more
+    s.S.Set("campTimer", false)
+    local untimed = bar.more
+    check("without the timer the time's room goes to the bonuses", untimed < timedMore and bar.time.shown == false
+
+        and bar.group <= 220 - 40 - 10)
+    s.S.Set("campTimer", true)
+    s.S.Set("campSimpleWidth", 340)
+
+    s.spellNames[BANNER], s.spellNames[WELL], s.spellNames[CHAIR] = "Fraktionsbanner", "Manabrunnen", "Zhuozi"
+    local l = Fixture({ campStyle = "simple" })
+    l.spellNames[BANNER], l.spellNames[WELL], l.spellNames[CHAIR] = "Fraktionsbanner", "Manabrunnen", "Zhuozi"
+    l.spellNames[KIT] = "Verbandskasten"
+    l.fire("PLAYER_LOGIN")
+    l.camp({ "Fraktionsbanner: Willenskraft um 32 erhoeht.", "Manabrunnen: Stellt alle 5 Sek. 29 Mana wieder her.",
+        "Zhuozi" .. WIDE_COLON .. "Baoji 2,5%", "Verbandskasten: Ausdauer um 1.056 erhoeht." })
+    local lbar = l.bar()
+    check("another language: matched by the client's own feature names, amounts in order",
+        l.labels(lbar) == "+1056 Sta +32 Spi +2.5% Crit +29 MP5")
+    l.tips = {}
+    lbar.scripts.OnEnter(lbar)
+    check("another language: the tooltip names each feature as the client does",
+        l.tipText():find("+32 Spirit | Fraktionsbanner", 1, true)
+        and l.tipText():find("+29 Mana every 5 sec | Manabrunnen", 1, true)
+        and l.tipText():find("+2.5% Critical Strike | Zhuozi", 1, true))
 end
 
+-- No bonuses read, Resting, and every state sharing one layout.
+do
+    local s = Fixture({ campStyle = "simple" })
+    s.fire("PLAYER_LOGIN")
+    s.tooltip = { lines = { { leftText = "Camp Benefits" } } }
+    s.auras[CAMP] = { duration = 3600, expirationTime = s.now + 3000, auraInstanceID = 1 }
+    s.fire("UNIT_AURA")
+    local bar, icon = s.bar(), s.named.NaowhForeverCampfire
+    check("no description yet: read again on the next change", s.tooltipReads == 1)
+    s.fire("UNIT_AURA")
+    check("no description yet: still trying", s.tooltipReads == 2)
+    s.camp({ "Gained the following camp benefits:" })
+    check("no bonuses read: Camp Benefits in the text color, with its time", Plain(bar.note.text) == "Camp Benefits"
+        and bar.note.shown ~= false and Same(bar.note, s.T.fg) and s.labels(bar) == "" and bar.time.shown ~= false
+        and bar.line.shown ~= false and icon.w == 340 and not bar.pill)
+    s.tips = {}
+    bar.scripts.OnEnter(bar)
+    check("no bonuses read: the tooltip says so, and still gives the time", s.tipText():find("No bonuses listed", 1, true)
+        and s.tipText():find("Time left | 56 min", 1, true))
+    local reads = s.tooltipReads
+    s.fire("UNIT_AURA")
+    check("an empty list is still read only once", s.tooltipReads == reads)
+
+    s.camp({ "Tent: rest experience.", "Camp Chair: Critical strike chance increased by 2%." }, 2)
+    local layout = {}
+    local function Snap(name)
+        layout[#layout + 1] = { name = name, campX = bar.camp.pt.CENTER, campY = bar.camp.pty.CENTER,
+            note = bar.note.pt.LEFT, noteY = bar.note.pty.LEFT, top = bar.top.pt.TOPLEFT, h = icon.h,
+            time = bar.time.pt.RIGHT, timeY = bar.time.pty.RIGHT, labels = bar.labels.pt.LEFT - bar.lead,
+            labelsY = bar.labels.pty.LEFT }
+    end
+    Snap("active")
+    s.auras[CAMP] = nil
+    s.auras[SITTING] = { duration = 60, expirationTime = s.now + 35 }
+    s.fire("UNIT_AURA")
+    check("resting, nothing new readable: Resting, then the last bonuses muted after a gap",
+        bar.note.text == "Resting" and Same(bar.note, s.T.accentSoft) and s.labels(bar) == "Rested +2% Crit"
+        and Same(bar.labels.labels[1], s.T.muted) and bar.lead == math.ceil(W("Resting")) + 10)
+    check("resting: the countdown reads in 35s, in the accent", bar.line.binding.formatter.points[1].format == "in %ds"
+        and Same(bar.line.to, s.T.accent) and Same(bar.timeRing, s.T.accent))
+    s.tips = {}
+    bar.scripts.OnEnter(bar)
+    check("resting tooltip: when it lands", s.tipText():find("Resting at a campfire", 1, true)
+        and s.tipText():find("Camp Benefits in | 35 sec", 1, true))
+    Snap("resting")
+    s.auras[SITTING] = nil
+    s.fire("UNIT_AURA")
+    Snap("refresh")
+    s.auras[NEARBY] = {}
+    s.fire("UNIT_AURA")
+    Snap("nearby")
+    s.auras[NEARBY] = nil
+    s.auras[TENT], s.auras[CHAIR] = Aura({ 5 }), Aura({ 2 })
+    s.auras[SITTING_CRAFT] = { duration = 60, expirationTime = s.now + 40 }
+    s.fire("UNIT_AURA")
+    check("the crafting Welcoming Campfire counts as resting; readable bonuses show as upcoming",
+        bar.note.shown == false and s.labels(bar) == "Rested +2% Crit" and Same(bar.labels.labels[1], s.T.accentSoft)
+        and bar.lead == 0)
+    s.tips = {}
+    bar.scripts.OnEnter(bar)
+    check("upcoming tooltip: what you'll get", s.tipText():find("You'll get:", 1, true)
+        and s.tipText():find("+2% Critical Strike | Camp Chair", 1, true))
+    Snap("upcoming")
+    local upcomingX = bar.labels.labels[2].pt.LEFT
+    s.auras[SITTING_CRAFT] = nil
+    s.auras[CAMP] = { duration = 3600, expirationTime = s.now + 3600, auraInstanceID = 3 }
+    s.fire("UNIT_AURA")
+    check("landing: the same bonuses in the text color, nothing moves", Same(bar.labels.labels[1], s.T.fg)
+        and bar.labels.labels[2].pt.LEFT == upcomingX and bar.line.binding.formatter.points[1].format == "%ds")
+    Snap("landed")
+    local same = true
+    for _, snap in ipairs(layout) do
+        local first = layout[1]
+        for _, key in ipairs({ "campX", "campY", "note", "noteY", "top", "h", "time", "timeY", "labels", "labelsY" }) do
+            if snap[key] ~= first[key] then same = false; print("  moved in " .. snap.name .. ": " .. key) end
+        end
+    end
+    check("every state keeps the fire, the words, the time and the height in one place", same and #layout == 6)
+end
+
+-- Off, the card's preview, and its rows.
 do
     local s = Fixture({ campfire = false })
     s.fire("PLAYER_LOGIN")
@@ -488,19 +724,26 @@ do
     local shot = card.studio.new(s.Frame())
     card.studio.paint(shot, "up")
     check("preview: Round by default, no bar", s.bars == 0 and shot.icon.shown ~= false)
+    local tabs = {}
+    for _, state in ipairs(card.studio.states) do
+        local needs = state.needs
+        if type(needs) ~= "function" or needs() then tabs[#tabs + 1] = state.key end
+    end
+    check("preview: No Bonuses is a Simple-only tab", not table.concat(tabs, " "):find("unread", 1, true))
     s.values.campStyle = "simple"
     card.studio.paint(shot, "low")
     local f = shot.bar
-    check("preview: the Simple bar once picked", s.bars == 1 and shot.barHost.shown ~= false
-        and shot.icon.shown == false and Same(f.line.to, s.St.TIME_OUT_RGB))
-    check("preview: grouped sample bonuses, four of them", s.labels(f) == "Rested +56 Sta +25 Int +2% Crit"
+    check("preview: the Simple bar once picked, Running Low in yellow", s.bars == 1 and shot.barHost.shown ~= false
+        and shot.icon.shown == false and Same(f.line.to, s.St.TIME_LOW_RGB) and f.halo.shown == true)
+    check("preview: four sample bonuses with amounts", s.labels(f) == "Rested +56 Sta +25 Int +2% Crit"
         and f.more == 0)
     check("preview: not editable while the reminder is off", shot.widthZone.shown == false
         and shot.hint.text:find("Turn on", 1, true))
     s.values.campfire = true
     card.studio.paint(shot, "up")
     check("preview: editable, with its hint", shot.widthZone.shown ~= false
-        and shot.hint.text:find("Drag the right edge", 1, true))
+        and shot.hint.text:find("Drag the right edge", 1, true) and Same(f.line.to, s.St.TIME_OK_RGB))
+    check("preview: the time's zone covers the time and its padding", shot.timeZone.w == f.timeW + 10)
 
     local edge = shot.widthZone
     s.cursorX = 100
@@ -531,6 +774,7 @@ do
     shot.timeZone.over = true
     shot.timeZone.scripts.OnMouseUp(shot.timeZone, "LeftButton")
     check("click the time: Show Camp Timer off", s.S.Get("campTimer") == false)
+    s.S.Set("campTimer", true)
 
     body.over = true
     body.scripts.OnMouseUp(body, "RightButton")
@@ -540,60 +784,46 @@ do
         and entries:find("check:Bonus Icons", 1, true) and entries:find("check:Show Timer", 1, true)
         and entries:find("button:Bonuses", 1, true) and entries:find("button:Reset Bar", 1, true))
 
+    s.S.Set("campSimpleWidth", 205)
+    card.studio.paint(shot, "up")
+    check("preview narrow: a bonus behind +N more takes no clicks", f.more > 0
+        and shot.bonusZones[4].shown == false and shot.bonusZones[1].shown ~= false)
+    s.S.Set("campSimpleWidth", 340)
+    card.studio.paint(shot, "up")
+
     local left = shot.barHost.pt.LEFT
+
     card.studio.paint(shot, "sitting")
-    local sittingLeft = shot.barHost.pt.LEFT
-    check("preview Resting: upcoming bonuses", Same(f.labels.labels[1], s.T.accentSoft) and f.note.shown == false)
+    check("preview Resting: Resting, then the bonuses muted", f.note.text == "Resting"
+        and Same(f.labels.labels[1], s.T.muted) and Same(f.line.to, s.T.accent) and shot.barHost.pt.LEFT == left)
+    card.studio.paint(shot, "unread")
+    check("preview No Bonuses: Camp Benefits and the time, no bonus zones", Plain(f.note.text) == "Camp Benefits"
+        and f.labels.count == 0 and shot.bonusZones[1].shown == false and f.time.shown ~= false)
     card.studio.paint(shot, "nearby")
-    check("preview Camp Nearby: the pill, one pattern", f.pill
-        and f.note.text == "Camp Nearby" .. s.St.PLACE_DOT .. "sit to refresh"
-        and shot.widthZone.shown == false)
+    check("preview Camp Nearby: the hugging pill, only the body editable", f.pill
+        and Plain(f.note.text) == "Camp Nearby" .. s.St.PLACE_DOT .. "sit to refresh"
+        and shot.widthZone.shown == false and shot.zones[1].shown ~= false)
     card.studio.paint(shot, "missing")
-    check("preview Refresh: the pill", f.pill and f.note.text == "Refresh Camp")
-    check("preview: every state starts at the same left edge", sittingLeft == left
-        and shot.barHost.pt.LEFT == left and f.camp.pt.LEFT == 8 + 3)
-end
+    check("preview Refresh: the pill, the fire in the same seat", f.pill and Plain(f.note.text) == "Refresh Camp"
+        and f.camp.pt.CENTER == f.radius and shot.barHost.pt.LEFT == left)
 
-do
-    local s = Fixture()
-    s.S.Set("campStyle", "simple")
-    s.auras[CAMP] = { duration = 3600, expirationTime = s.now + 3000, auraInstanceID = 1 }
-    local ALL = {
-        { 1229451, { 5 } }, { 1230172, { 34 } }, { 1230124, { 56 } }, { 1229513, { 25 } }, { 1229718, { 32 } },
-        { 1230098, { 8 } }, { 1230653, { 308, 13, 22 } }, { 1230164, { 90 } }, { 1230552 }, { 1229519, { 2 } },
-        { 1230587, { 29 } }, { 1283701 },
-    }
-    for _, entry in ipairs(ALL) do s.auras[entry[1]] = { points = entry[2], name = "Boosted " .. entry[1] } end
-    s.auras[1283701].name = "Boosted Disenchanting"
-    s.fire("PLAYER_LOGIN")
-    local bar = s.bar()
-    local WANT = { "Rested", "+34 Str", "+56 Sta", "+25 Int", "+32 Spirit", "+8% Stats", "+308 Armor", "+90 Attack",
-        "Spell", "+2% Crit", "+29 MP5", "Disenchant" }
-    local shown = bar.labels.count - 1
-    local inOrder = bar.more == #WANT - shown and bar.labels.labels[shown + 1].text == "+" .. bar.more .. " more"
-    for i = 1, shown do inOrder = inOrder and bar.labels.labels[i].text == WANT[i] end
-    check("every camp feature read, Rested first, then stats, then utility, the rest as +N more", inOrder
-        and shown >= 3)
-    s.tips = {}
-    bar.scripts.OnEnter(bar)
-    local text, last, ordered = s.tipText(), 0, true
-    for _, line in ipairs({ "Rested experience | Camp Tent", "+34 Strength | Sharpening Wheel",
-        "+308 Armor, +13 all stats, +22 resistances | Enchanted Lute", "+90 Melee Attack Power | Lodestone",
-        "Spell damage and healing | ", "+29 Mana every 5 sec | Mana Well",
-        "Boosted Disenchanting | Arcane Salvager" }) do
-        local at = text:find(line, 1, true)
-        ordered = ordered and at ~= nil and at > last
-        last = at or last
+    local byKey, groups = {}, {}
+    for _, row in ipairs(card.rows) do
+        if row.key then byKey[row.key] = row end
+        if row.group then groups[row.group] = row end
     end
-    check("the tooltip lists every bonus with its amount and feature, in the same order", ordered)
-    check("an aura with no readable amount still shows, by its name or stat", text:find("Spell damage and healing", 1, true)
-        and text:find("Boosted Disenchanting", 1, true))
-
-    s.auras[CAMP] = nil
-    s.auras[1289723] = { duration = 60, expirationTime = s.now + 40 }
-    s.fire("UNIT_AURA")
-    check("the crafting Welcoming Campfire counts as resting too", bar.labels.labels[1].text == "Rested"
-        and Same(bar.labels.labels[1], s.T.accentSoft))
+    local function Hides(row) return type(row.hidden) == "function" and row.hidden() end
+    check("rows: Simple shows the bar's rows and hides the Round icon's", not Hides(byKey.campSimpleWidth)
+        and not Hides(groups["Simple Bar"]) and Hides(byKey.campIconSize) and Hides(byKey.campBuffMode)
+        and Hides(groups["Round Icon"]))
+    s.values.campStyle = "round"
+    check("rows: Round hides the bar's rows", Hides(byKey.campSimpleWidth) and Hides(byKey.campBonusIcons)
+        and Hides(groups["Simple Bar"]) and not Hides(byKey.campIconSize))
+    local short = true
+    for _, row in ipairs(card.rows) do
+        if row.help and (#row.help > 100 or row.help:find("%. %u")) then short = false; print("  long: " .. row.key) end
+    end
+    check("rows: every help is one short sentence", short)
 end
 
 print(checks .. " campfire look checks passed")

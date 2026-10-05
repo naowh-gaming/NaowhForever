@@ -1,11 +1,16 @@
 -------------------------------------------------------------------------------
 --  NaowhForever_Campfire.lua -- the AuraBuffs campfire reminder, in two looks on one mover:
---  Round, a camp icon with a time ring and a countdown, and Simple, a slim bar listing the
---  camp's bonuses with a time line, the campfire sitting on top. Both show a greyed-out
---  "Refresh Camp" reminder when Camp Benefits is gone, and hovering the Simple bar lists each
---  bonus, the time left and when to refresh. The bonuses are read from the hidden aura each
---  camp feature puts on you, by spell ID (Camp Benefits' own description, spell 1229741,
---  wago.tools build 1.60.1.70205), with the aura's tooltip as the fallback.
+--  Round, a camp icon with a time ring and a countdown, and Simple, a slim bar in the windows'
+--  backdrop with the campfire seated on its top-left corner, the camp's bonuses with their
+--  amounts, and the time left on the right over a line that runs down green, yellow, then red.
+--  Every Simple state (active, running low, resting, refresh, camp nearby, no bonuses read)
+--  keeps the fire and the words in the same place; the down states hug their words. Hovering
+--  the bar lists each bonus with its camp feature, the time left and when to refresh.
+--  The bonuses come from the hidden aura each camp feature puts on you, by spell ID, else from
+--  Camp Benefits' tooltip (spell 1229741, wago.tools build 1.60.1.70205), read once per Camp
+--  Benefits: one line per feature, matched by the feature's name as the client spells it, its
+--  numbers read in the description's order (the Lute's armor, stats, resistances; the Mana
+--  Well's mana, then its 5 seconds). FONT_LIFT raises the bar's words: the Naowh font sits low.
 -------------------------------------------------------------------------------
 local ns = _G.NaowhForever
 local S = ns.AuraBuffSettings
@@ -30,42 +35,50 @@ local TEXT_SIZE, ALERT_SIZE = 16, 28
 -- The plate behind the campfire art; ns.ThemeTint swaps in the player's Panels color.
 local PLATE = { r = 0.14, g = 0.15, b = 0.16 }
 
-local BAR = { PAD = 8, TEXT = 12, TIME_W = 40, TIME_GAP = 8,
-    NOTE_GAP = 6, LINE_H = 2, TEXT_LIFT = 1, CAMP_TRIM = 2, CAMP_GAP = 8, CAMP_SEAT = 0, CAMP_INSET = 0,
-    INNER_RING = 1, TIME_RING = 2, OUTER_RING = 1, PILL_ICON_TRIM = 8, PILL_GAP = 6,
+local BAR = { PAD = St.PANEL_PAD, TEXT = 12, LINE_H = 2, FONT_LIFT = 1, CAMP_TRIM = 2, CAMP_GAP = 8,
+    BONUS_GAP = 10, TIME_GAP = 12, INNER_RING = 1, TIME_RING = 2, OUTER_RING = 1,
     HALO_GROW = 10, HALO_ALPHA = 0.18, BONUS_ICON_GROW = 1, BONUS_ICON_GAP = 3, BONUS_ICON_DROP = 1 }
 BAR.RING_OUT = BAR.INNER_RING + BAR.TIME_RING + BAR.OUTER_RING
 local SIT_PREFIX = "in "
+local TIME_SAMPLE, SIT_SAMPLE = "44m", SIT_PREFIX .. "44s"
 local DEFAULT_X, DEFAULT_Y = -260, 120
 local UNLOCK_TEXT = "+Rested\n+Crit"
 
 local FEATURES = {
-    { id = 1229451, tag = "+Rested", short = "Rested", name = "Camp Tent", stat = "Rested experience" },
+    { id = 1229451, tag = "+Rested", short = "Rested", name = "Camp Tent", stat = "Rested experience", points = 0,
+      aliases = { "Tent", "Camp Tent", "Tanning Rack", "Sewing Machine" } },
     { id = 1230172, tag = "+STR", short = "Str", name = "Sharpening Wheel", stat = "Strength",
-      amount = "+%d Strength" },
-    { id = 1230124, tag = "+STA", short = "Sta", name = "First Aid Kit", stat = "Stamina", amount = "+%d Stamina" },
-    { id = 1229513, tag = "+INT", short = "Int", name = "Incense Candle", stat = "Intellect", amount = "+%d Intellect" },
-    { id = 1229718, tag = "+Spirit", short = "Spirit", name = "Faction Banner", stat = "Spirit", amount = "+%d Spirit" },
+      amount = "+%s Strength", aliases = { "Sharpening Wheel", "Anvil", "Master Forge" } },
+    { id = 1230124, tag = "+STA", short = "Sta", name = "First Aid Kit", stat = "Stamina", amount = "+%s Stamina",
+      aliases = { "First Aid Kit", "Toxin Study", "Plague Doctor's Laboratory" } },
+    { id = 1229513, tag = "+INT", short = "Int", name = "Incense Candle", stat = "Intellect",
+      amount = "+%s Intellect", aliases = { "Incense Candle", "Greenhouse", "Seed Hybridizer" } },
+    { id = 1229718, tag = "+Spirit", short = "Spi", name = "Faction Banner", stat = "Spirit", amount = "+%s Spirit",
+      aliases = { "Faction Banner", "Spinning Wheel", "Loom" } },
     { id = 1230098, tag = "+Stats", short = "Stats", unit = "%", name = "Fish Bowl", stat = "All stats",
-      amount = "+%d%% all stats" },
+      amount = "+%s%% all stats", aliases = { "Fish Bowl", "Fishing Rack", "Fishing Hut" } },
     { id = 1230653, tag = "+ARM", short = "Armor", name = "Enchanted Lute", stat = "Armor, all stats and resistances",
-      amount = "+%d Armor, +%d all stats, +%d resistances", points = 3 },
-    { id = 1230164, tag = "+ATK", short = "Attack", name = "Lodestone", stat = "Melee Attack Power",
-      amount = "+%d Melee Attack Power" },
-    { id = 1230552, tag = "+Spell", short = "Spell", stat = "Spell damage and healing",
-      amount = "+%d spell damage, +%d healing", points = 2 },
+      amount = "+%s Armor, +%s all stats, +%s resistances", points = 3, aliases = { "Enchanted Lute" } },
+    { id = 1230164, tag = "+ATK", short = "AP", name = "Lodestone", stat = "Melee Attack Power",
+      amount = "+%s Melee Attack Power", aliases = { "Lodestone", "Rock Garden", "Molten Foundry" } },
+    { id = 1230552, tag = "+Spell", short = "SP", stat = "Spell damage and healing",
+      amount = "+%s spell damage, +%s healing", points = 2 },
     { id = 1229519, tag = "+Crit", short = "Crit", unit = "%", name = "Camp Chair", stat = "Critical Strike",
-      amount = "+%d%% Critical Strike" },
+      amount = "+%s%% Critical Strike", aliases = { "Camp Chair", "Trapper's Workbench", "Field Guide" } },
     { id = 1230587, tag = "+MP5", short = "MP5", name = "Mana Well", stat = "Mana every 5 sec",
-      amount = "+%d Mana every 5 sec" },
-    { id = 1283701, tag = "+Disenchant", short = "Disenchant", name = "Arcane Salvager" },
+      amount = "+%s Mana every %s sec", numbers = 2, period = 5,
+      aliases = { "Mana Well", "Fermenter", "Alchemy Laboratory" } },
+    { id = 1283701, tag = "+Disenchant", short = "Disenchant", name = "Arcane Salvager", stat = "Better disenchanting",
+      points = 0 },
 }
-local FEATURE_BY_TAG = {}
+local FEATURE_BY_TAG, featureByName = {}, {}
 for i, feature in ipairs(FEATURES) do
     feature.bit = 2 ^ (i - 1)
     feature.points = feature.points or 1
+    feature.numbers = feature.numbers or feature.points
     feature.labels = {}
     FEATURE_BY_TAG[feature.tag] = feature
+    for _, alias in ipairs(feature.aliases or {}) do featureByName[alias] = feature end
 end
 local SAMPLE_BONUSES = { { FEATURES[1] }, { FEATURES[3], 56 }, { FEATURES[4], 25 }, { FEATURES[10], 2 } }
 
@@ -213,32 +226,18 @@ local function NewEdges(f)
     f.edges = CreateFrame("Frame", nil, f.bar)
     f.edges:SetAllPoints()
     f.edges:SetFrameLevel(f.line:GetFrameLevel() + 1)
-    f.topLeft, f.topRight = Edge(f, "h"), Edge(f, "h")
-    local bottom, left, right = Edge(f, "h"), Edge(f, "v"), Edge(f, "v")
-    bottom:SetPoint("BOTTOMLEFT")
-    bottom:SetPoint("BOTTOMRIGHT")
-    left:SetPoint("TOPLEFT")
-    left:SetPoint("BOTTOMLEFT")
-    right:SetPoint("TOPRIGHT")
-    right:SetPoint("BOTTOMRIGHT")
+    f.top, f.bottom, f.left, f.right = Edge(f, "h"), Edge(f, "h"), Edge(f, "v"), Edge(f, "v")
+    f.bottom:SetPoint("BOTTOMLEFT")
+    f.bottom:SetPoint("BOTTOMRIGHT")
+    f.left:SetPoint("TOPLEFT")
+    f.left:SetPoint("BOTTOMLEFT")
+    f.right:SetPoint("TOPRIGHT")
+    f.right:SetPoint("BOTTOMRIGHT")
 end
 
-local function Notch(f, from, to)
-    f.notchFrom, f.notchTo = from, to
-    f.topLeft:ClearAllPoints()
-    f.topLeft:SetPoint("TOPLEFT", f.bar, "TOPLEFT", 0, 0)
-    f.topRight:ClearAllPoints()
-    if not from then
-        f.topLeft:SetPoint("TOPRIGHT", f.bar, "TOPRIGHT", 0, 0)
-        f.topLeft:Show()
-        f.topRight:Hide()
-        return
-    end
-    f.topLeft:SetShown(from > 0)
-    f.topLeft:SetPoint("TOPRIGHT", f.bar, "TOPLEFT", from, 0)
-    f.topRight:SetPoint("TOPLEFT", f.bar, "TOPLEFT", to, 0)
-    f.topRight:SetPoint("TOPRIGHT", f.bar, "TOPRIGHT", 0, 0)
-    f.topRight:Show()
+local function TextWidth(f, text)
+    f.probe:SetText(text)
+    return math.ceil(f.probe:GetStringWidth())
 end
 
 function Bar.Layout(f)
@@ -246,17 +245,27 @@ function Bar.Layout(f)
     f.width, f.height = S.Get("campSimpleWidth"), height
     f.campSize = height - BAR.CAMP_TRIM
     f.radius = f.campSize / 2 + BAR.RING_OUT * ns.OnePixel(f.bar)
-    f.rise = f.radius + BAR.CAMP_SEAT
-    f.campX = BAR.CAMP_INSET + f.radius
-    f.labelX = f.campX + f.radius + BAR.CAMP_GAP
-    f.pillRing = (BAR.INNER_RING + BAR.TIME_RING) * ns.OnePixel(f.bar)
-    f.pillIcon = height - BAR.PILL_ICON_TRIM
+    f.notch = 2 * f.radius
+    f.labelX = f.notch + BAR.CAMP_GAP
+    f.textY = BAR.FONT_LIFT + BAR.LINE_H / 2
     f.bar:SetHeight(height)
     local font = ns.UIFontPath()
     f.time:SetFont(font, size, "")
     f.note:SetFont(font, size, "")
+    f.probe:SetFont(font, size, "")
     f.labels:SetTextSize(size)
+    f.timeW, f.sitW = TextWidth(f, TIME_SAMPLE), TextWidth(f, SIT_SAMPLE)
     f.halo:SetSize(f.campSize + BAR.HALO_GROW, f.campSize + BAR.HALO_GROW)
+    f.camp:ClearAllPoints()
+    f.camp:SetSize(f.campSize, f.campSize)
+    f.camp:SetPoint("CENTER", f.bar, "TOPLEFT", f.radius, 0)
+    f.top:ClearAllPoints()
+    f.top:SetPoint("TOPLEFT", f.bar, "TOPLEFT", f.notch, 0)
+    f.top:SetPoint("TOPRIGHT", f.bar, "TOPRIGHT", 0, 0)
+    f.note:ClearAllPoints()
+    f.note:SetPoint("LEFT", f.bar, "LEFT", f.labelX, f.textY)
+    f.time:ClearAllPoints()
+    f.time:SetPoint("RIGHT", f.bar, "RIGHT", -BAR.PAD, f.textY)
 end
 
 function Bar.New(host)
@@ -268,22 +277,24 @@ function Bar.New(host)
     f.bar:SetPoint("BOTTOMRIGHT")
     f.backdrop = Parts.Backdrop(f.bar)
     f.backdrop:Paint(St.BACKDROP_ALPHA)
-    local fg = T.fg
 
     f.inner = ns.PixelInset(CreateFrame("Frame", nil, f.bar), 1)
-    f.time = ns.Font(f.bar, BAR.TEXT, nil, fg)
+    f.time = ns.Font(f.bar, BAR.TEXT, nil, T.fg)
     f.time:SetJustifyH("RIGHT")
     f.line = Parts.TimerLine(f.inner, BAR.LINE_H, f.time)
     f.line:SetPoint("BOTTOMLEFT")
     f.line:SetPoint("BOTTOMRIGHT")
     NewEdges(f)
-    f.labels = Parts.LabelRow(f.bar, BAR.TEXT, nil, fg, { iconGrow = BAR.BONUS_ICON_GROW, iconGap = BAR.BONUS_ICON_GAP,
-        iconDrop = BAR.BONUS_ICON_DROP, separator = St.PLACE_DOT, separatorColor = T.muted })
-    Parts.HudText(f.time)
-    f.note = Parts.HudText(ns.Font(f.bar, BAR.TEXT, nil, T.accentSoft))
+    f.labels = Parts.LabelRow(f.bar, BAR.TEXT, nil, T.fg, { gap = BAR.BONUS_GAP, iconGrow = BAR.BONUS_ICON_GROW,
+        iconGap = BAR.BONUS_ICON_GAP, iconDrop = BAR.BONUS_ICON_DROP })
+    f.note = ns.Font(f.bar, BAR.TEXT, nil, T.fg)
     f.note:SetWordWrap(false)
+    f.probe = ns.Font(f.bar, BAR.TEXT)
+    f.probe:Hide()
+    f.campText = "Camp Benefits"
+    f.restText = "Resting"
     f.refreshText = ns.Color("accent", "Refresh") .. " Camp"
-    f.nearbyText = ns.Color("accent", "Camp Nearby") .. ns.Color("muted", St.PLACE_DOT) .. "sit to refresh"
+    f.nearbyText = ns.Color("accent", "Camp Nearby") .. ns.Color("muted", St.PLACE_DOT .. "sit to refresh")
     f.moreLabels, f.moreIcons, f.more = {}, {}, 0
 
     f.capClip = CreateFrame("Frame", nil, f)
@@ -302,7 +313,7 @@ function Bar.New(host)
     f.halo = Parts.Smooth(f:CreateTexture(nil, "BACKGROUND"), St.ROUND)
     f.halo:SetBlendMode("ADD")
     f.halo:SetPoint("CENTER", f.camp)
-    f.lit, f.low, f.lead, f.group, f.side, f.pill, f.pillW, f.color = true, false, 0, 0, 0, false, 0, T.accent
+    f.lit, f.low, f.lead, f.group, f.pill, f.pillW, f.slot, f.color = true, false, 0, 0, false, 0, 0, T.accent
     Bar.Layout(f)
     Bar.Paint(f, T.accent, false)
     return f
@@ -320,28 +331,18 @@ local function MoreText(n)
 end
 
 local function BarSize(f)
-    f.host:SetSize(f.pill and f.pillW or f.width, f.height + f.rise)
+    f.host:SetSize(f.pill and f.pillW or f.width, f.height + f.radius)
 end
 
-local function Medallion(f)
-    f.pill = false
-    f.cap:Show()
-    local y = BAR.TEXT_LIFT + BAR.LINE_H / 2
-    f.camp:ClearAllPoints()
-    f.camp:SetSize(f.campSize, f.campSize)
-    f.camp:SetPoint("CENTER", f.bar, "TOPLEFT", f.campX, BAR.CAMP_SEAT)
-    Notch(f, f.campX - f.radius, f.campX + f.radius)
+local function PlaceLabels(f)
     f.labels:ClearAllPoints()
-    f.labels:SetPoint("LEFT", f.bar, "LEFT", f.labelX + f.lead, y)
-    f.note:ClearAllPoints()
-    f.note:SetPoint("LEFT", f.bar, "LEFT", f.labelX, y)
-    f.time:ClearAllPoints()
-    f.time:SetPoint("RIGHT", f.bar, "RIGHT", -BAR.PAD, y)
+    f.labels:SetPoint("LEFT", f.bar, "LEFT", f.labelX + f.lead, f.textY)
 end
 
-local function BarFit(f, labels, icons, n, timed)
-    f.side = timed and BAR.TIME_W + BAR.TIME_GAP or 0
-    local room = f.width - f.labelX - f.lead - f.side - BAR.PAD
+local function BarFit(f, labels, icons, n, slot)
+    f.pill, f.slot = false, slot
+    local room = f.width - f.labelX - f.lead - BAR.PAD
+    if slot > 0 then room = room - slot - BAR.TIME_GAP end
     f.labels:SetLabels(labels, n, icons)
     f.group = f.labels:Pack()
     f.more = 0
@@ -355,7 +356,7 @@ local function BarFit(f, labels, icons, n, timed)
         f.more = n - kept
         kept = kept - 1
     end
-    Medallion(f)
+    PlaceLabels(f)
     BarSize(f)
 end
 
@@ -397,8 +398,8 @@ function Bar.Up(f, labels, icons, n, timed)
     BarLit(f, true)
     f.lead = 0
     f.labels:SetColor(T.fg)
-    if n > 0 then f.note:Hide() else BarNote(f, "Camp Benefits", T.fg) end
-    BarFit(f, labels, icons, n, timed)
+    if n > 0 then f.note:Hide() else BarNote(f, f.campText, T.fg) end
+    BarFit(f, labels, icons, n, timed and f.timeW or 0)
 end
 
 function Bar.Sitting(f, labels, icons, n, timed, upcoming)
@@ -408,29 +409,26 @@ function Bar.Sitting(f, labels, icons, n, timed, upcoming)
         f.note:Hide()
         f.labels:SetColor(T.accentSoft)
     else
-        BarNote(f, "Resting", T.accentSoft)
+        BarNote(f, f.restText, T.accentSoft)
         f.labels:SetColor(T.muted)
-        if n > 0 then f.lead = math.ceil(f.note:GetStringWidth()) + BAR.NOTE_GAP end
+        if n > 0 then f.lead = math.ceil(f.note:GetStringWidth()) + BAR.BONUS_GAP end
     end
-    BarFit(f, labels, icons, n, timed)
+    BarFit(f, labels, icons, n, timed and f.sitW or 0)
 end
 
 function Bar.Missing(f, nearby)
     BarLit(f, false)
-    f.pill = true
-    f.cap:Hide()
-    Notch(f, nil)
+    f.lead, f.more, f.group = 0, 0, 0
     f.labels:SetLabels(nil, 0)
+    PlaceLabels(f)
     BarNote(f, nearby and f.nearbyText or f.refreshText, T.fg)
-    f.camp:ClearAllPoints()
-    f.camp:SetSize(f.pillIcon, f.pillIcon)
-    f.camp:SetPoint("LEFT", f.bar, "LEFT", BAR.PAD + f.pillRing, 0)
-    f.note:ClearAllPoints()
-    f.note:SetPoint("LEFT", f.camp, "RIGHT", BAR.PILL_GAP + f.pillRing, BAR.TEXT_LIFT)
-    f.pillW = math.ceil(BAR.PAD + f.pillRing * 2 + f.pillIcon + BAR.PILL_GAP + f.note:GetStringWidth() + BAR.PAD)
+
     Bar.Timed(f, false)
+    f.pill, f.slot = true, 0
+    f.pillW = math.ceil(f.labelX + f.note:GetStringWidth() + BAR.PAD)
     BarSize(f)
 end
+
 
 local icon, unlocked
 local hasCamp       -- nil until the first read
@@ -442,10 +440,11 @@ local alertDismissed -- Ctrl-clicked away; back once you leave the campfire's ra
 local ringGen = 0    -- invalidates an older ring colour change
 local showGen = 0    -- invalidates an older "drops under the Show Only When Low time" timer
 local showArmed      -- the expiry and minutes that timer was set for
-local bonusTags, bonusFeatures, bonusLabels = {}, {}, {}
+local bonusTags, bonusFeatures = {}, {}
 local barLabels, barIcons, sampleLabels, sampleIcons = {}, {}, {}, {}
-local fallbackTags, joinedTags = {}, {}
+local joinedTags, numberTexts = {}, {}
 local bonusCount, barCount, bonusText = 0, 0, ""
+local Reader = { gen = 0, unknown = 0, unknownTexts = {} }
 local campState, campExpiry, campUpcoming
 local simpleBar
 
@@ -483,39 +482,52 @@ local function TimeWords(left)
     return ("%d sec"):format(math.max(0, math.ceil(left)))
 end
 
+local function Secret(v)
+    return issecretvalue ~= nil and issecretvalue(v) and true or false
+end
+
 local function Points(feature, aura)
     if not aura then return nil end
     local points = aura.points
-    if issecretvalue and issecretvalue(points) then return nil end
-    if type(points) ~= "table" then return nil end
+    if Secret(points) or type(points) ~= "table" then return nil end
     for i = 1, feature.points do
         local v = points[i]
-        if (issecretvalue and issecretvalue(v)) or type(v) ~= "number" then return nil end
+        if Secret(v) or type(v) ~= "number" then return nil end
     end
     return points
 end
 
-local function AuraName(aura)
-    local name = aura and aura.name
-    if name == nil or (issecretvalue and issecretvalue(name)) or type(name) ~= "string" then return nil end
-    return name
-end
-
-local function BonusWords(feature, readable)
-    local aura = readable and C_UnitAuras.GetPlayerAuraBySpellID(feature.id)
-    local points = feature.amount and Points(feature, aura)
-    if points then return feature.amount:format(points[1], points[2], points[3]) end
-    return feature.stat or AuraName(aura) or feature.short or feature.tag
+local function NumberText(v)
+    local text = numberTexts[v]
+    if not text then
+        text = v == math.floor(v) and ("%d"):format(v) or ("%.1f"):format(v)
+        numberTexts[v] = text
+    end
+    return text
 end
 
 local function BonusLabel(feature, amount)
     if not amount then return feature.short end
     local text = feature.labels[amount]
     if not text then
-        text = ns.Color("muted", ("+%d%s"):format(amount, feature.unit or "")) .. " " .. feature.short
+        text = "+" .. NumberText(amount) .. (feature.unit or "") .. " " .. ns.Color("muted", feature.short)
         feature.labels[amount] = text
     end
     return text
+end
+
+local function BonusWords(feature)
+    local a1, a2, a3, count = feature.a1, feature.a2, feature.a3, feature.numbers
+    if not (feature.amount and a1) then return feature.stat or feature.short end
+    if count == 1 or (count == 2 and a2) or (count == 3 and a2 and a3) then
+        return feature.amount:format(NumberText(a1), a2 and NumberText(a2), a3 and NumberText(a3))
+    end
+    return "+" .. NumberText(a1) .. (feature.unit or "") .. " " .. feature.stat
+end
+
+local function FeatureName(feature)
+    Reader.Names()
+    return feature.lineName or feature.localName or feature.name or ""
 end
 
 local function FeatureIcon(feature)
@@ -534,7 +546,7 @@ local function FilterBar()
         local feature = bonusFeatures[i]
         if not Hidden(feature) then
             n = n + 1
-            barLabels[n] = bonusLabels[i]
+            barLabels[n] = feature and BonusLabel(feature, feature.a1) or bonusTags[i]
             barIcons[n] = icons and feature and FeatureIcon(feature) or false
         end
     end
@@ -554,13 +566,12 @@ local function FillSamples(filter)
     return n
 end
 
-local function TipBonuses(tip, readable)
+local function TipBonuses(tip)
     local fg, muted = T.fg, T.muted
     for i = 1, bonusCount do
         local feature = bonusFeatures[i]
         if feature then
-            tip:AddDoubleLine(BonusWords(feature, readable), feature.name or "", fg.r, fg.g, fg.b,
-                muted.r, muted.g, muted.b)
+            tip:AddDoubleLine(BonusWords(feature), FeatureName(feature), fg.r, fg.g, fg.b, muted.r, muted.g, muted.b)
         else
             tip:AddLine(bonusTags[i], fg.r, fg.g, fg.b)
         end
@@ -571,31 +582,39 @@ local function ShowTip(owner)
     if unlocked or not Parts.Tip(owner, "ANCHOR_TOP") then return end
     local tip, fg, muted, soft = GameTooltip, T.fg, T.muted, T.accentSoft
     tip:SetText("Camp Benefits", T.accent.r, T.accent.g, T.accent.b)
-    local readable = not (InCombatLockdown() or C_Secrets.ShouldAurasBeSecret())
     if campState == "sitting" then
         if campUpcoming then
             tip:AddLine("You'll get:", fg.r, fg.g, fg.b)
-            TipBonuses(tip, readable)
+            TipBonuses(tip)
         else
             tip:AddLine("Resting at a campfire", fg.r, fg.g, fg.b)
         end
         if campExpiry then
-            tip:AddLine("Camp Benefits in " .. TimeWords(campExpiry - GetTime()), muted.r, muted.g, muted.b)
+            tip:AddDoubleLine("Camp Benefits in", TimeWords(campExpiry - GetTime()), muted.r, muted.g, muted.b,
+                soft.r, soft.g, soft.b)
         end
     elseif campState == "up" then
-        TipBonuses(tip, readable)
+        if bonusCount > 0 then
+            TipBonuses(tip)
+        else
+            tip:AddLine("No bonuses listed on it yet", muted.r, muted.g, muted.b)
+        end
         if campExpiry then
             local left = campExpiry - GetTime()
             local c = Look.Step(left)[2]
             tip:AddDoubleLine("Time left", TimeWords(left), muted.r, muted.g, muted.b, c.r, c.g, c.b)
-            local advice = left <= REFRESH_NOW and "Refresh now" or "Refresh in " .. TimeWords(left - REFRESH_NOW)
-            tip:AddLine(advice, c.r, c.g, c.b)
+            if left <= REFRESH_NOW then
+                tip:AddLine("Refresh now", c.r, c.g, c.b)
+            else
+                tip:AddLine("Refresh in " .. TimeWords(left - REFRESH_NOW), muted.r, muted.g, muted.b)
+            end
         end
     else
         local out = St.TIME_OUT_RGB
         tip:AddLine("No Camp Benefits", muted.r, muted.g, muted.b)
-        tip:AddLine("Refresh now", out.r, out.g, out.b)
+        tip:AddLine("Sit at a campfire to refresh", out.r, out.g, out.b)
     end
+    local readable = not (InCombatLockdown() or C_Secrets.ShouldAurasBeSecret())
     if readable and C_UnitAuras.GetPlayerAuraBySpellID(CAMPFIRE_NEARBY) then
         tip:AddLine("A campfire is in range", soft.r, soft.g, soft.b)
     end
@@ -794,102 +813,185 @@ local function SetAlert(show)
     alert:SetShown(show)
 end
 
--- The same tags found in the effect text, for a camp feature not in FEATURE_TAGS. Armor comes
--- before stats, since the Enchanted Lute's effect names both.
 local EFFECT_TAGS = {
-    { "rested", "+Rested" }, { "rest experience", "+Rested" }, { "critical strike", "+Crit" },
+    { "rested", "+Rested" }, { "rest experience", "+Rested" }, { "disenchant", "+Disenchant" },
+    { "critical strike", "+Crit" }, { "spell damage", "+Spell" }, { "spell power", "+Spell" },
     { "armor", "+ARM" }, { "attack power", "+ATK" }, { "strength", "+STR" }, { "stamina", "+STA" },
     { "intellect", "+INT" }, { "spirit", "+Spirit" }, { "mana", "+MP5" }, { "mp5", "+MP5" },
     { "stats", "+Stats" },
 }
--- Each camp feature's benefit as a short stat tag. Upgraded features give the benefit of the
--- one they replace (Wowhead's Forever item data, 2026-09-30). Matched by name first, so a
--- benefit text that names other stats (all stats spelled out one by one) cannot mislabel it.
-local FEATURE_TAGS = {
-    ["Camp Tent"] = "+Rested", ["Tanning Rack"] = "+Rested", ["Sewing Machine"] = "+Rested",
-    ["Camp Chair"] = "+Crit", ["Trapper's Workbench"] = "+Crit", ["Field Guide"] = "+Crit",
-    ["Enchanted Lute"] = "+ARM", ["Arcane Salvager"] = "+ARM", ["Arcane Forge"] = "+ARM",
-    ["Lodestone"] = "+ATK", ["Rock Garden"] = "+ATK", ["Molten Foundry"] = "+ATK",
-    ["Sharpening Wheel"] = "+STR", ["Anvil"] = "+STR", ["Master Forge"] = "+STR",
-    ["First Aid Kit"] = "+STA", ["Toxin Study"] = "+STA", ["Plague Doctor's Laboratory"] = "+STA",
-    ["Incense Candle"] = "+INT", ["Greenhouse"] = "+INT", ["Seed Hybridizer"] = "+INT",
-    ["Faction Banner"] = "+Spirit", ["Spinning Wheel"] = "+Spirit", ["Loom"] = "+Spirit",
-    ["Mana Well"] = "+MP5", ["Fermenter"] = "+MP5", ["Alchemy Laboratory"] = "+MP5",
-    ["Fish Bowl"] = "+Stats", ["Fishing Rack"] = "+Stats", ["Fishing Hut"] = "+Stats",
-}
+local LINE = { PATTERN = "^%s*(.-)%s*:%s*(%S.-)%s*$", WIDE = "^%s*(.-)%s*\239\188\154%s*(%S.-)%s*$",
+    NUMBER = "(%d+)([%.,]?)(%d*)", MAX_UNKNOWN = 4, SHORT_EFFECT = 28 }
 
--- Anything neither list knows keeps a short effect text, or else the camp feature's name.
-local function ShortCampBuff(label, effect)
-    if FEATURE_TAGS[label] then return FEATURE_TAGS[label] end
-    local lower = effect:lower()
-    for _, tag in ipairs(EFFECT_TAGS) do
-        if lower:find(tag[1], 1, true) then return tag[2] end
-    end
-    if #effect > 0 and #effect <= 28 then return effect end
-    return label
-end
-
--- Only readable benefit rows, excluding the tooltip header, timer and ID metadata.
-local function ActiveBuffs(aura, out)
-    local data = C_TooltipInfo.GetUnitBuffByAuraInstanceID("player", aura.auraInstanceID)
-    local names, seen, n = out or {}, {}, 0
-    for i, line in ipairs(data and data.lines or {}) do
-        local text = line.leftText
-        if i > 1 and type(text) == "string" and not (issecretvalue and issecretvalue(text)) then
-            text = text:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")
-            for row in text:gmatch("[^\n]+") do
-                local label = row:match("^%s*([^:]+):%s*%S")
-                if label and not label:find("[%d|]") and not label:find("ID$") then
-                    label = label:match("^%s*(.-)%s*$")
-                    local effect = row:match("^[^:]+:%s*(.-)%s*$") or ""
-                    local short = ShortCampBuff(label, effect)
-                    if not seen[short] then
-                        n = n + 1
-                        names[n] = short
-                        seen[short] = true
-                    end
-                end
+function Reader.Names()
+    local GetSpellName = C_Spell and C_Spell.GetSpellName
+    if Reader.named or not GetSpellName then return end
+    local all = true
+    for i = 1, #FEATURES do
+        local feature = FEATURES[i]
+        if not feature.localName then
+            local name = GetSpellName(feature.id)
+            if name ~= nil and not Secret(name) and type(name) == "string" and name ~= "" then
+                feature.localName = name
+                featureByName[name] = feature
+            else
+                all = false
             end
         end
     end
-    return table.concat(names, "\n", 1, n), n
+    Reader.named = all
 end
 
-local Refresh
+function Reader.FeatureOf(label, effect)
+    local feature = featureByName[label]
+    if feature then return feature end
+    local lower = effect:lower()
+    for i = 1, #EFFECT_TAGS do
+        local entry = EFFECT_TAGS[i]
+        if lower:find(entry[1], 1, true) then return FEATURE_BY_TAG[entry[2]] end
+    end
+end
 
-local function ReadBonuses(aura)
+function Reader.Number(whole, mark, part)
+    if mark ~= "" and part ~= "" then
+        if #part == 3 then return tonumber(whole .. part) end
+        return tonumber(whole .. "." .. part)
+    end
+    return tonumber(whole)
+end
+
+function Reader.Numbers(feature, effect)
+    feature.t1, feature.t2, feature.t3 = nil, nil, nil
+    local want, k = feature.numbers, 0
+    if want == 0 then return end
+    for whole, mark, part in effect:gmatch(LINE.NUMBER) do
+        k = k + 1
+        local v = Reader.Number(whole, mark, part)
+        if k == 1 then feature.t1 = v elseif k == 2 then feature.t2 = v else feature.t3 = v end
+        if k >= want then break end
+    end
+    local period = feature.period
+    if period and feature.t1 == period and feature.t2 and feature.t2 ~= period then
+        feature.t1, feature.t2 = feature.t2, feature.t1
+    end
+end
+
+function Reader.Unknown(text)
+    local texts = Reader.unknownTexts
+    for i = 1, Reader.unknown do
+        if texts[i] == text then return end
+    end
+    if Reader.unknown < LINE.MAX_UNKNOWN then
+        Reader.unknown = Reader.unknown + 1
+        texts[Reader.unknown] = text
+    end
+end
+
+function Reader.Line(row)
+    local label, effect = row:match(LINE.PATTERN)
+    if not label then label, effect = row:match(LINE.WIDE) end
+    if not label or label == "" or label:find("[%d|]") or label:find("ID$") then return end
+    local feature = Reader.FeatureOf(label, effect)
+    if not feature then
+        Reader.Unknown(#effect <= LINE.SHORT_EFFECT and effect or label)
+    elseif feature.tipGen ~= Reader.gen then
+        feature.tipGen, feature.lineName = Reader.gen, label
+        Reader.Numbers(feature, effect)
+    end
+end
+
+function Reader.Camp(aura)
+    local instance, expiry = aura.auraInstanceID, aura.expirationTime
+    if Secret(instance) or Secret(expiry) then
+        Reader.gen, Reader.instance, Reader.unknown = Reader.gen + 1, nil, 0
+        return
+    end
+    if instance ~= nil and instance == Reader.instance and expiry == Reader.expiry then return end
+    Reader.Names()
+    Reader.gen, Reader.instance, Reader.expiry, Reader.unknown = Reader.gen + 1, nil, nil, 0
+    local data = instance and C_TooltipInfo.GetUnitBuffByAuraInstanceID("player", instance)
+    local lines = data and data.lines
+    if type(lines) ~= "table" or #lines < 2 then return end
+    for i = 2, #lines do
+        local text = lines[i] and lines[i].leftText
+        if text ~= nil and not Secret(text) and type(text) == "string" then
+            text = text:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")
+            for row in text:gmatch("[^\n]+") do Reader.Line(row) end
+        end
+    end
+    Reader.instance, Reader.expiry = instance, expiry
+end
+
+function Reader.Add(n, feature, a1, a2, a3)
+    n = n + 1
+    if feature.period and a1 and not a2 then a2 = feature.period end
+    feature.a1, feature.a2, feature.a3 = a1, a2, a3
+    bonusTags[n], bonusFeatures[n] = feature.tag, feature
+    return n
+end
+
+function Reader.Own()
     local n, mask = 0, 0
     for i = 1, #FEATURES do
         local feature = FEATURES[i]
         local found = C_UnitAuras.GetPlayerAuraBySpellID(feature.id)
         if found then
-            n = n + 1
-            local points = feature.amount and Points(feature, found)
-            bonusTags[n], bonusFeatures[n] = feature.tag, feature
-            bonusLabels[n] = BonusLabel(feature, points and points[1])
+            local p, count = feature.amount and Points(feature, found), feature.points
+            n = Reader.Add(n, feature, p and p[1] or nil, p and count >= 2 and p[2] or nil,
+                p and count >= 3 and p[3] or nil)
             mask = mask + feature.bit
         end
     end
-    if n > 0 then
-        local text = joinedTags[mask]
-        if not text then
-            text = table.concat(bonusTags, "\n", 1, n)
-            joinedTags[mask] = text
+    return n, mask
+end
+
+function Reader.Tip()
+    if not Reader.instance then return 0, 0 end
+    local n, mask = 0, 0
+    for i = 1, #FEATURES do
+        local feature = FEATURES[i]
+        if feature.tipGen == Reader.gen then
+            n = Reader.Add(n, feature, feature.t1, feature.t2, feature.t3)
+            mask = mask + feature.bit
         end
-        bonusText = text
-    elseif aura then
-        bonusText, n = ActiveBuffs(aura, fallbackTags)
-        for i = 1, n do
-            local tag = fallbackTags[i]
-            local feature = FEATURE_BY_TAG[tag]
-            bonusTags[i], bonusFeatures[i] = tag, feature or false
-            bonusLabels[i] = feature and feature.short or tag
-        end
-    else
-        return false
     end
+    local texts = Reader.unknownTexts
+    for i = 1, Reader.unknown do
+        n = n + 1
+        bonusTags[n], bonusFeatures[n] = texts[i], false
+    end
+    return n, mask
+end
+
+function Reader.Join(n, mask, unknown)
+    if unknown then
+        if Reader.joinedGen ~= Reader.gen then
+            Reader.joined, Reader.joinedGen = table.concat(bonusTags, "\n", 1, n), Reader.gen
+        end
+        return Reader.joined
+    end
+    local text = joinedTags[mask]
+    if not text then
+        text = table.concat(bonusTags, "\n", 1, n)
+        joinedTags[mask] = text
+    end
+    return text
+end
+
+local Refresh
+
+local function ReadBonuses(aura)
+    local n, mask = Reader.Own()
+    local unknown = false
+    if n == 0 then
+        if not aura then return false end
+        Reader.Camp(aura)
+        n, mask = Reader.Tip()
+        unknown = Reader.instance ~= nil and Reader.unknown > 0
+    end
+    bonusText = Reader.Join(n, mask, unknown)
     bonusCount = n
-    FilterBar()
+    if Simple() then FilterBar() end
     return n > 0
 end
 
@@ -1082,7 +1184,6 @@ if not Settings then return end
 local Group = Settings.Group
 
 local OFF = "Turn on AuraBuffs"
-local ROUND_ONLY, SIMPLE_ONLY = "Round style only", "Simple style only"
 local STAGE_H, ALERT_H, NOTE_Y, NOTE_SIZE, NOTE_GAP_Y, STAGE_MARGIN, HINT_ROOM = 230, 90, 10, 11, 4, 16, 30
 local CAMP_HOUR, SIT_TIME, BUFF_GAP = 3600, 60, 12
 local EDGE_HIT, HIDDEN_ALPHA, DRAG_FACTOR = 8, 0.35, 2
@@ -1091,7 +1192,7 @@ local SAMPLE_BUFFS = "+Rested\n+Crit"
 local SIMPLE_HINT = "Drag the right edge for width. Wheel: text size (Shift: height). Click a bonus or the time "
     .. "to show or hide it. Right-click for more."
 local SIMPLE_OFF_HINT = "Turn on the Campfire reminder to edit the bar here."
-local SAMPLES = { up = 2400, low = 240, sitting = 35 }
+local SAMPLES = { up = 2400, low = 720, sitting = 35, unread = 2400 }
 local STYLES = { { round = "Round", simple = "Simple" }, { "round", "simple" } }
 local BUFF_MODES = { { off = "Off", always = "Always", hover = "On Mouseover" }, { "off", "always", "hover" } }
 local SIDES = { { below = "Below", above = "Above", left = "Left", right = "Right" },
@@ -1103,10 +1204,11 @@ local function NearbyState() return Simple() and S.Get("campShowMissing") and tr
 
 local STATES = {
     { key = "up", label = "Active", tip = "Camp Benefits with most of its hour left." },
-    { key = "low", label = "Running Low", tip = "Camp Benefits about to run out." },
+    { key = "low", label = "Running Low", tip = "Camp Benefits running down." },
     { key = "sitting", label = "Resting", tip = "Sitting at a campfire, before Camp Benefits lands." },
     { key = "missing", label = "Refresh", tip = "No Camp Benefits, out in the world.", needs = "campShowMissing" },
     { key = "nearby", label = "Camp Nearby", tip = "No Camp Benefits, with a campfire in range.", needs = NearbyState },
+    { key = "unread", label = "No Bonuses", tip = "Camp Benefits up, with no bonuses listed on it.", needs = Simple },
 }
 local ALERT_STATES = {
     { key = "nearby", label = "Camp Nearby", tip = "A campfire in range while your camp needs refreshing." },
@@ -1118,12 +1220,12 @@ local function Enabled() return S.Get("enabled") and true or false end
 local function Needs(key) return function() return S.Get("enabled") and S.Get(key) and true or false end end
 local function CampOn() return S.Get("enabled") and S.Get("campfire") and true or false end
 local function RoundCampOn() return CampOn() and not Simple() end
-local function RoundOn() return S.Get("enabled") and not Simple() and true or false end
-local function SimpleOn() return S.Get("enabled") and Simple() and true or false end
+local function RoundStyle() return not Simple() end
 local function PickBuffMode(v) S.Set("campBuffMode", v) end
 
 local function HiddenNote(state)
-    if state == "up" and S.Get("campShowUnder") and SAMPLES.up > S.Get("campShowUnderMinutes") * 60 then
+    if (state == "up" or state == "unread") and S.Get("campShowUnder")
+        and SAMPLES.up > S.Get("campShowUnderMinutes") * 60 then
         return ("Show Only When Low: hidden until under %d min."):format(S.Get("campShowUnderMinutes"))
     end
 end
@@ -1230,7 +1332,6 @@ local function PreviewBar(shot)
     shot.timeZone = Zone(shot, { click = TimeClicked, wash = true })
     shot.timeZone:SetPoint("TOPRIGHT", f.bar, "TOPRIGHT")
     shot.timeZone:SetPoint("BOTTOMRIGHT", f.bar, "BOTTOMRIGHT")
-    shot.timeZone:SetWidth(BAR.TIME_W + BAR.PAD)
     shot.widthZone = Zone(shot, { edge = true, drag = { get = WidthGet, set = WidthSet, range = WIDTH_RANGE,
         factor = DRAG_FACTOR, live = function(v) f.width = v; BarSize(f) end } })
     shot.widthZone:SetPoint("TOP", f.bar, "TOPRIGHT")
@@ -1266,22 +1367,25 @@ local function PaintBarPreview(shot, state, hidden)
     if pill then
         Bar.Missing(f, state == "nearby")
     elseif state == "sitting" then
-        Bar.Sitting(f, sampleLabels, sampleIcons, n, timed, true)
+        Bar.Sitting(f, sampleLabels, sampleIcons, n, timed, false)
         Bar.Paint(f, T.accent, false)
         RunBar(f, SAMPLES.sitting, SIT_TIME, timed, SIT_PREFIX)
     else
-        Bar.Up(f, sampleLabels, sampleIcons, n, timed)
+        Bar.Up(f, sampleLabels, sampleIcons, state == "unread" and 0 or n, timed)
         local step = Look.Step(SAMPLES[state])
         Bar.Paint(f, step[2], step ~= TIME_STEPS[1])
         RunBar(f, SAMPLES[state], CAMP_HOUR, timed)
     end
     local editable = CampOn()
+    for _, zone in ipairs(shot.zones) do zone:SetShown(editable and (not pill or zone == shot.zones[1])) end
+    local bonuses = f.labels.count - (f.more > 0 and 1 or 0)
     for i, zone in ipairs(shot.bonusZones) do
         local alpha = Hidden(zone.feature) and HIDDEN_ALPHA or 1
         f.labels.labels[i]:SetAlpha(alpha)
         if f.labels.icons[i] then f.labels.icons[i]:SetAlpha(alpha) end
+        if i > bonuses then zone:Hide() end
     end
-    for _, zone in ipairs(shot.zones) do zone:SetShown(editable and (not pill or zone == shot.zones[1])) end
+    shot.timeZone:SetWidth(f.timeW + BAR.PAD)
     FitBar(shot)
     shot.barHost:SetShown(not hidden)
     shot.hint:SetText(editable and SIMPLE_HINT or SIMPLE_OFF_HINT)
@@ -1315,9 +1419,9 @@ local function PaintPreview(shot, state)
     else
         Look.Up(f, mode ~= "off" and SAMPLE_BUFFS or "")
         f.buffs:SetAlpha(1)
-        local color = Look.Step(SAMPLES[state])[2]
+        local color = Look.Step(SAMPLES[state] or SAMPLES.up)[2]
         f.drain:SetSwipeColor(color.r, color.g, color.b, 1)
-        Run(f, SAMPLES[state], CAMP_HOUR)
+        Run(f, SAMPLES[state] or SAMPLES.up, CAMP_HOUR)
         if not note and mode == "hover" then note = "The buffs show while you hover the icon." end
     end
     f:SetShown(not hidden)
@@ -1354,6 +1458,11 @@ local function AlertSummary(store)
     return ("Under %d min"):format(store.Get("campNearbyMinutes"))
 end
 
+local function Only(group, hidden)
+    group.hidden = hidden
+    return group
+end
+
 local page = Settings.Page("AuraBuffs/Settings", S)
 
 campCard = page:Card({
@@ -1363,36 +1472,38 @@ campCard = page:Card({
     studio = { height = STAGE_H, states = STATES, new = NewPreview, paint = PaintPreview },
     rows = {
         { key = "campStyle", label = "Style", choice = STYLES, needs = Enabled, why = OFF,
-          help = "Round shows the camp icon; Simple shows a slim bar listing your camp's bonuses." },
-        Group("Icon"),
-        { key = "campIconSize", label = "Icon Size", slider = { 24, 110, 1 }, needs = RoundOn, why = ROUND_ONLY },
+          help = "Round shows the camp icon; Simple shows a slim bar with your camp's bonuses." },
+        Group("Reminder"),
         { key = "campTimer", label = "Show Camp Timer", toggle = true, needs = Enabled, why = OFF,
-          help = "A countdown, and a ring or line that drains green, yellow, then red as the camp runs down." },
+          help = "The time left, turning yellow, then red, as the camp runs down." },
         { key = "campShowMissing", label = "Show Refresh Reminder", toggle = true, needs = Enabled, why = OFF,
-          help = "The camp icon, greyed out and saying Refresh Camp, while you have no Camp Benefits." },
+          help = "Stays on screen, greyed out, while you have no Camp Benefits." },
         { key = "campShowUnder", label = "Show Only When Low", toggle = true, needs = Enabled, why = OFF,
-          help = "Keeps the icon hidden while Camp Benefits has more time left than Show Under, and shows "
-              .. "it once the camp drops under that. The sitting countdown and the Refresh Camp reminder "
-              .. "still show." },
+          help = "Hides it until the camp drops under Show Under." },
         { key = "campShowUnderMinutes", label = "Show Under", slider = { 1, 59, 1 }, unit = " min",
           needs = Needs("campShowUnder"), why = "Needs Show Only When Low" },
-        Group("Simple Bar"),
-        { key = "campSimpleWidth", label = "Bar Width", slider = WIDTH_RANGE, needs = SimpleOn, why = SIMPLE_ONLY,
-          help = "How wide the bar is; bonuses that do not fit show as +N more." },
-        { key = "campSimpleHeight", label = "Bar Height", slider = HEIGHT_RANGE, needs = SimpleOn, why = SIMPLE_ONLY },
-        { key = "campSimpleTextSize", label = "Text Size", slider = TEXT_RANGE, needs = SimpleOn, why = SIMPLE_ONLY },
-        { key = "campBonusIcons", label = "Bonus Icons", toggle = true, needs = SimpleOn, why = SIMPLE_ONLY,
-          help = "A small icon before each bonus on the bar." },
+        Only(Group("Simple Bar"), RoundStyle),
+        { key = "campSimpleWidth", label = "Bar Width", slider = WIDTH_RANGE, needs = Enabled, why = OFF,
+          hidden = RoundStyle, help = "Bonuses that do not fit show as +N more." },
+        { key = "campSimpleHeight", label = "Bar Height", slider = HEIGHT_RANGE, needs = Enabled, why = OFF,
+          hidden = RoundStyle },
+        { key = "campSimpleTextSize", label = "Text Size", slider = TEXT_RANGE, needs = Enabled, why = OFF,
+          hidden = RoundStyle },
+        { key = "campBonusIcons", label = "Bonus Icons", toggle = true, needs = Enabled, why = OFF,
+          hidden = RoundStyle, help = "Each camp feature's own icon before its bonus." },
         { key = "campHiddenBonuses", label = "Hidden Bonuses", buttonText = "Show All", button = ShowAllBonuses,
-          needs = SimpleOn, why = SIMPLE_ONLY,
-          help = "Shows every bonus again; click a bonus on the preview to hide it." },
-        Group("Camp Buffs"),
+          needs = Enabled, why = OFF, hidden = RoundStyle,
+          help = "Shows every bonus again; click one on the preview to hide it." },
+        Only(Group("Round Icon"), Simple),
+        { key = "campIconSize", label = "Icon Size", slider = { 24, 110, 1 }, needs = Enabled, why = OFF,
+          hidden = Simple },
         { key = "campBuffMode", label = "Show Active Camp Buffs", choice = BUFF_MODES, get = ns.CampBuffMode,
-          set = PickBuffMode, needs = RoundOn, why = ROUND_ONLY,
-          help = "The active effects reported in your Camp Benefits tooltip. On Mouseover shows them while "
-              .. "the mouse is over the camp icon." },
-        { key = "campBuffTextSize", label = "Buff Text Size", slider = { 8, 28, 1 }, needs = RoundOn, why = ROUND_ONLY },
-        { key = "campBuffSide", label = "Buff Text Position", choice = SIDES, needs = RoundOn, why = ROUND_ONLY },
+          set = PickBuffMode, needs = Enabled, why = OFF, hidden = Simple,
+          help = "Your camp's bonuses by the icon, always or while you hover it." },
+        { key = "campBuffTextSize", label = "Buff Text Size", slider = { 8, 28, 1 }, needs = Enabled, why = OFF,
+          hidden = Simple },
+        { key = "campBuffSide", label = "Buff Text Position", choice = SIDES, needs = Enabled, why = OFF,
+          hidden = Simple },
         Group("Sound"),
         { key = "campSound", label = "Play a Sound to Refresh", toggle = true, needs = Enabled, why = OFF,
           help = "Plays when it is time to refresh the camp." },
