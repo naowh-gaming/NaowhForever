@@ -1,251 +1,429 @@
--- Run with Lua 5.1 from the repository root: Unlock Mode's placement controls, cut out of
--- Core/NaowhForever_Widgets.lua and run against frame stubs. No position box is drawn, and
--- selecting, nudging, dragging and combat still work and save.
-local f = assert(io.open("Core/NaowhForever_Widgets.lua", "rb"))
-local source = f:read("*a"):gsub("\r\n", "\n"); f:close()
-local body = assert(source:match("\n(local placement = .-)\n%-%- Font dropdown data"), "placement section")
-
+-- Run with Lua 5.1 from the repository root: Unlock Mode and its anchors, run against frame
+-- stubs with real geometry. Anchoring snaps an element flush to the side picked, nudges and
+-- drags move it by its offsets, it follows its target, screen edges hold their distance, and
+-- loops are refused.
 local checks = 0
 local function Check(ok, label) assert(ok, label); checks = checks + 1 end
+local function Near(a, b) return a and b and math.abs(a - b) < 0.01 end
 
-local made = { frames = {}, textures = 0, fonts = 0 }
+local W, H = 1920, 1080
+local FRACTION = { TOPLEFT = { 0, 1 }, TOP = { 0.5, 1 }, TOPRIGHT = { 1, 1 }, LEFT = { 0, 0.5 },
+    CENTER = { 0.5, 0.5 }, RIGHT = { 1, 0.5 }, BOTTOMLEFT = { 0, 0 }, BOTTOM = { 0.5, 0 }, BOTTOMRIGHT = { 1, 0 } }
+local NOOP = function() end
+
+local made = {}
 local Frame = {}
-Frame.__index = Frame
-local function NewFrame(parent)
-    local fr = setmetatable({ parent = parent, scripts = {}, hooks = {}, shown = true, points = {}, events = {} }, Frame)
-    made.frames[#made.frames + 1] = fr
-    return fr
+-- Methods the code only calls for looks (SetFrameStrata, SetAlpha...) do nothing.
+local FrameMeta = { __index = function(_, k)
+    if Frame[k] then return Frame[k] end
+    if type(k) == "string" and k:match("^%u") then return NOOP end
+end }
+local UIParent
+
+local function NewFrame(kind, parent)
+    local f = setmetatable({ kind = kind, parent = parent, scripts = {}, hooks = {}, shown = true, points = {},
+        events = {}, level = 1, w = 0, h = 0 }, FrameMeta)
+    made[#made + 1] = f
+    return f
 end
-local function Region()
-    return setmetatable({}, { __index = function() return function() end end })
+
+-- Left, bottom, right, top on the screen.
+local function Rect(f)
+    if f == UIParent then return 0, 0, W, H end
+    if f.allRel then return Rect(f.allRel) end
+    local p = f.points[1]
+    if not p then return end
+    local rl, rb, rr, rt = Rect(p[2])
+    if not rl then return end
+    local ax = rl + (rr - rl) * FRACTION[p[3]][1] + p[4]
+    local ay = rb + (rt - rb) * FRACTION[p[3]][2] + p[5]
+    local w, h = f:GetWidth(), f:GetHeight()
+    local l, b = ax - w * FRACTION[p[1]][1], ay - h * FRACTION[p[1]][2]
+    return l, b, l + w, b + h
 end
-function Frame:CreateTexture() made.textures = made.textures + 1; self.drawn = true; return Region() end
-function Frame:CreateFontString() made.fonts = made.fonts + 1; self.drawn = true; return Region() end
-function Frame:SetScript(name, fn) self.scripts[name] = fn end
-function Frame:HookScript(name, fn) self.hooks[name] = fn end
-function Frame:Show() self.shown = true end
+
+local function Fire(f, name, ...)
+    if f.scripts[name] then f.scripts[name](f, ...) end
+    for _, fn in ipairs(f.hooks[name] or {}) do fn(f, ...) end
+end
+
+function Frame:SetScript(name, fn) self.scripts[name] = fn; self.hooks[name] = nil end
+function Frame:GetScript(name) return self.scripts[name] end
+function Frame:HookScript(name, fn)
+    self.hooks[name] = self.hooks[name] or {}
+    table.insert(self.hooks[name], fn)
+end
+function Frame:Show()
+    if self.shown then return end
+    self.shown = true
+    Fire(self, "OnShow")
+end
 function Frame:Hide()
-    local was = self.shown
+    if not self.shown then return end
     self.shown = false
-    if was and self.hooks.OnHide then self.hooks.OnHide(self) end
+    Fire(self, "OnHide")
 end
 function Frame:SetShown(v) if v then self:Show() else self:Hide() end end
 function Frame:IsShown() return self.shown end
-function Frame:IsVisible() return self.shown and (not self.parent or self.parent:IsVisible()) end
-function Frame:ClearAllPoints() self.points = {} end
+function Frame:IsVisible() return self.shown and (not self.parent or self.parent == UIParent or self.parent:IsVisible()) end
+function Frame:IsMouseOver() return self.mouseOver == true end
+function Frame:ClearAllPoints() self.points = {}; self.allRel = nil end
 function Frame:SetPoint(point, rel, relPoint, x, y)
-    self.points[#self.points + 1] = { point, rel, relPoint, x or 0, y or 0 }
+    if type(rel) == "number" then rel, relPoint, x, y = nil, point, rel, relPoint end
+    self.allRel = nil
+    self.points[#self.points + 1] = { point, rel or self.parent, relPoint or point, x or 0, y or 0 }
+    local a, b = self.points[1], self.points[2]
+    if b and a[1] == "TOPLEFT" and b[1] == "BOTTOMRIGHT" and a[2] == b[2] then self:SetAllPoints(a[2]) end
 end
-function Frame:SetAllPoints() self.points = { { "TOPLEFT", self.parent, "TOPLEFT", 0, 0 } } end
+function Frame:SetAllPoints(rel) self.points = {}; self.allRel = rel or self.parent end
+function Frame:GetNumPoints()
+    if self.allRel then return 2 end
+    return #self.points
+end
 function Frame:GetPoint(i)
-    local p = self.points[i]
+    if self.allRel then
+        if i == 2 then return "BOTTOMRIGHT", self.allRel, "BOTTOMRIGHT", 0, 0 end
+        return "TOPLEFT", self.allRel, "TOPLEFT", 0, 0
+    end
+    local p = self.points[i or 1]
     if p then return p[1], p[2], p[3], p[4], p[5] end
 end
-function Frame:SetSize(w, h) self.w, self.h = w, h end
-function Frame:GetWidth() return self.w or 0 end
-function Frame:GetHeight() return self.h or 0 end
--- Bounds from the first point, taken against UIParent (every frame here is placed on it).
-local FRACTION = { TOPLEFT = { 0, 1 }, TOP = { 0.5, 1 }, TOPRIGHT = { 1, 1 }, LEFT = { 0, 0.5 },
-    CENTER = { 0.5, 0.5 }, RIGHT = { 1, 0.5 }, BOTTOMLEFT = { 0, 0 }, BOTTOM = { 0.5, 0 }, BOTTOMRIGHT = { 1, 0 } }
-local SCREEN_W, SCREEN_H = 1920, 1080
-local function Bounds(self)
-    local p = self.points[1]
-    if not p or not FRACTION[p[1]] or not FRACTION[p[3]] then return 100, 200, 150, 220 end
-    local w, h = self.w or 0, self.h or 0
-    local ax = SCREEN_W * FRACTION[p[3]][1] + p[4]
-    local ay = SCREEN_H * FRACTION[p[3]][2] + p[5]
-    local left, bottom = ax - w * FRACTION[p[1]][1], ay - h * FRACTION[p[1]][2]
-    return left, bottom, left + w, bottom + h
+function Frame:SetSize(w, h)
+    local changed = w ~= self.w or h ~= self.h
+    self.w, self.h = w, h
+    if changed then Fire(self, "OnSizeChanged", w, h) end
 end
-function Frame:GetLeft() return (Bounds(self)) end
-function Frame:GetBottom() return select(2, Bounds(self)) end
-function Frame:GetRight() return select(3, Bounds(self)) end
-function Frame:GetTop() return select(4, Bounds(self)) end
+function Frame:SetWidth(w) self:SetSize(w, self.h) end
+function Frame:SetHeight(h) self:SetSize(self.w, h) end
+function Frame:GetWidth()
+    if self.allRel then return self.allRel:GetWidth() end
+    return self.w
+end
+function Frame:GetHeight()
+    if self.allRel then return self.allRel:GetHeight() end
+    return self.h
+end
+function Frame:GetLeft() local l = Rect(self); return l end
+function Frame:GetBottom() local _, b = Rect(self); return b end
+function Frame:GetRight() local _, _, r = Rect(self); return r end
+function Frame:GetTop() local _, _, _, t = Rect(self); return t end
 function Frame:GetCenter()
-    local l, b, r, t = Bounds(self)
-    return (l + r) / 2, (b + t) / 2
+    local l, b, r, t = Rect(self)
+    if l then return (l + r) / 2, (b + t) / 2 end
 end
 function Frame:GetEffectiveScale() return 1 end
-function Frame:GetFrameLevel() return 1 end
+function Frame:GetFrameLevel() return self.level end
+function Frame:SetFrameLevel(v) self.level = v end
 function Frame:RegisterEvent(e) self.events[e] = true end
 function Frame:UnregisterAllEvents() self.events = {} end
 function Frame:EnableKeyboard(v) self.keyboard = v end
-function Frame:EnableMouse(v) self.mouse = v end
 function Frame:SetPropagateKeyboardInput(v) self.propagate = v end
-function Frame:StartMoving() self.moving = true end
-function Frame:StopMovingOrSizing() self.moving = false end
-function Frame:IsProtected() return false end
-for _, name in ipairs({ "SetFrameStrata", "SetFrameLevel", "RegisterForDrag" }) do
-    Frame[name] = function() end
+function Frame:IsProtected() return self.protected == true end
+function Frame:SetText(text) self.text_ = text end
+function Frame:GetText() return self.text_ end
+function Frame:HasFocus() return false end
+function Frame:CreateTexture() return NewFrame("Texture", self) end
+function Frame:CreateLine() return NewFrame("Line", self) end
+function Frame:CreateFontString() return NewFrame("FontString", self) end
+function Frame:GetStringWidth() return #(self.text_ or "") * 6 end
+function Frame:GetStringHeight() return 12 end
+function Frame:SetTextColor(r, g, b, a) self.color = { r, g, b, a } end
+
+UIParent = NewFrame("Frame")
+UIParent.w, UIParent.h = W, H
+function UIParent:GetWidth() return W end
+function UIParent:GetHeight() return H end
+
+local timers = {}
+local function Flush()
+    for _ = 1, 20 do
+        if #timers == 0 then return end
+        local run = timers
+        timers = {}
+        for _, fn in ipairs(run) do fn() end
+    end
 end
 
--- The right-click menu's radios and buttons by label, and the anchors and links picked.
-local anchorDB, radios, buttons, printed = {}, {}, {}, {}
-local function MenuEntry()
-    return { CreateRadio = function(_, text, isSelected, set) radios[text] = { selected = isSelected, set = set } end }
-end
-local menuRoot = { CreateTitle = function() end,
-    CreateButton = function(_, text, fn) buttons[text] = fn; return MenuEntry() end }
-local UIParent = NewFrame()
-UIParent.w, UIParent.h = SCREEN_W, SCREEN_H
+local cursor = { x = 0, y = 0 }
 local combat, shift = false, false
-local env = setmetatable({
-    UI = {}, T = { accent = {}, accentSoft = {} }, BLACK = {},
-    ns = {
-        UnlockModeSettings = { DB = function() return anchorDB end },
-        Solid = function(parent) return parent:CreateTexture() end,
-        Border = function(frame) return NewFrame(frame) end,
-        Font = function(parent) return parent:CreateFontString() end,
-        HideRaidReminderAnchorConfig = function() end,
-        OpenOptionsWindow = function() end,
-        Print = function(msg) printed[#printed + 1] = msg end,
+local settings = { anchors = {} }
+local printed, tooltip = {}, nil
+local T = { accent = { r = 0, g = 0.5, b = 1 }, fg = { r = 1, g = 1, b = 1 }, line = { r = 0, g = 0, b = 0 },
+    panel = { r = 0, g = 0, b = 0 } }
+local ns = {
+    THEME = T,
+    UnlockModeSettings = {
+        DB = function() return settings end,
+        Get = function(k) return settings[k] end,
+        Set = function(k, v) settings[k] = v end,
     },
+    Solid = function(parent) return parent:CreateTexture() end,
+    Border = function(frame)
+        local b = { _frame = NewFrame("Frame", frame) }
+        function b.SetColor(_, r, g, bl, a) b.color = { r, g, bl, a } end
+        return b
+    end,
+    Font = function(parent) return parent:CreateFontString() end,
+    UIFontPath = function() return "font" end,
+    L = function(text) return text end,
+    Print = function(msg) printed[#printed + 1] = msg end,
+    HideRaidReminderAnchorConfig = NOOP,
+    OpenOptionsWindow = NOOP,
+    Apply = NOOP,
+}
+local UI = {
+    COGS_ICON = "cog",
+    ShowWidgetTooltip = function(_, text) tooltip = text end,
+    HideWidgetTooltip = function() tooltip = nil end,
+}
+ns.UI = UI
+
+local env = setmetatable({
+    NaowhForever = ns,
     UIParent = UIParent,
-    CreateFrame = function(_, _, parent) return NewFrame(parent) end,
+    CreateFrame = function(kind, _, parent) return NewFrame(kind, parent) end,
+    PixelUtil = { GetPixelToUIUnitFactor = function() return 1 end },
+    C_Timer = { After = function(_, fn) timers[#timers + 1] = fn end },
     InCombatLockdown = function() return combat end,
     IsShiftKeyDown = function() return shift end,
     GetCurrentKeyBoardFocus = function() return nil end,
-    MenuUtil = { CreateContextMenu = function(_, build) build(nil, menuRoot) end },
+    GetCursorPosition = function() return cursor.x, cursor.y end,
+    GetTime = function() return 0 end,
+    wipe = function(t) for k in pairs(t) do t[k] = nil end return t end,
+    hooksecurefunc = function(tbl, name, fn)
+        local orig = tbl[name]
+        tbl[name] = function(...)
+            orig(...)
+            fn(...)
+        end
+    end,
 }, { __index = _G })
-local chunk = assert(loadstring(body))
+env._G = env
+local f = assert(io.open("Core/NaowhForever_UnlockMode.lua", "rb"))
+local source = f:read("*a"):gsub("\r\n", "\n"); f:close()
+local chunk = assert(loadstring(source, "Core/NaowhForever_UnlockMode.lua"))
 setfenv(chunk, env)
 chunk()
-local UI = env.UI
 
-Check(not source:find("placement.hud", 1, true), "the position box is gone from Widgets.lua")
+local function Display(label, w, h, x, y)
+    local frame = NewFrame("Frame", UIParent)
+    frame:SetSize(w, h)
+    frame:SetPoint("CENTER", UIParent, "CENTER", x, y)
+    local saved = {}
+    local mover = UI.AttachMover(frame, label, function(pos) saved[#saved + 1] = pos end, "QoL/General")
+    mover:Show()
+    return frame, mover, saved
+end
 
-local display = NewFrame(UIParent)
-display:SetSize(100, 40)
-display:SetPoint("LEFT", UIParent, "BOTTOMLEFT", 1118, 117)
-local saved = {}
-local mover = UI.AttachMover(display, "Campfire", function(pos) saved[#saved + 1] = pos end, "QoL/General")
-mover:Show()
-local meter = NewFrame(UIParent)
-meter:SetSize(200, 20)
-meter:SetPoint("CENTER", UIParent, "CENTER", 0, -200)
-local meterSaved = {}
-local meterMover = UI.AttachMover(meter, "Threat Meter", function(pos) meterSaved[#meterSaved + 1] = pos end)
+local function Center(frame) return frame:GetCenter() end
+local function Last(saved) return saved[#saved] end
 
-local before = { frames = #made.frames, textures = made.textures, fonts = made.fonts }
+-- A shown menu's row by its text.
+local function MenuRow(text)
+    for _, fr in ipairs(made) do
+        if fr.rows and fr:IsShown() then
+            for _, row in ipairs(fr.rows) do
+                if row:IsShown() and row.label and row.label:GetText() == text then return row end
+            end
+        end
+    end
+end
+
+local function Click(handle, button)
+    Fire(handle, "OnMouseDown", button)
+    Fire(handle, "OnMouseUp", button)
+end
+
+-- The drag driver's frame update.
+local function Drive()
+    for _, fr in ipairs(made) do
+        if fr.scripts.OnUpdate and fr.kind == "Frame" and fr.parent == nil then fr.scripts.OnUpdate(fr, 0) end
+    end
+end
+
+-- Hover long enough for the row to grow in all the way.
+local function Hover(item)
+    item.mouseOver = true
+    Fire(item, "OnEnter")
+    Flush()
+    for _, fr in ipairs(made) do
+        if fr.parent == item and fr.scripts.OnUpdate then fr.scripts.OnUpdate(fr, 1) end
+    end
+end
+
+local meter, meterMover, meterSaved = Display("Threat Meter", 200, 20, 0, -200)
+local swing, swingMover, swingSaved = Display("Swing Timer", 100, 40, -40, 25)
 UI.BeginMoverMode()
-Check(made.fonts == before.fonts, "Unlock Mode draws no text of its own")
 local keys
-for i = before.frames + 1, #made.frames do
-    if made.frames[i].scripts.OnKeyDown then keys = made.frames[i] end
+for _, fr in ipairs(made) do
+    if fr.scripts.OnKeyDown then keys = fr end
 end
-Check(keys ~= nil, "a frame takes the arrow keys")
-Check(not keys.drawn and not keys.mouse, "the key frame draws nothing and takes no clicks")
-Check(keys.events.PLAYER_REGEN_DISABLED and keys.events.PLAYER_REGEN_ENABLED, "combat is still watched")
+Check(keys and keys.keyboard and keys.events.PLAYER_REGEN_DISABLED, "Unlock Mode takes the arrow keys and watches combat")
 
-UI.SelectMover(mover)
-Check(made.fonts == before.fonts, "selecting a display draws no text")
-local outline
-for i = before.frames + 1, #made.frames do
-    local fr = made.frames[i]
-    if fr ~= keys and fr.w and fr.w > 1 and fr.h and fr.h > 1 and fr.shown then outline = fr end
+-- The hover row: the name moves up and "Anchor" shows under it, with the cog.
+Hover(swingMover)
+local link = swingMover._placement.link
+Check(link:IsShown() and link.label:GetText() == "Anchor", "hovering shows the Anchor link")
+Check(swingMover._placement.cog:IsShown(), "and the cog")
+Check(swingMover:GetHeight() > swing:GetHeight() and Near(select(2, swingMover:GetCenter()), select(2, swing:GetCenter())),
+    "a mover too small for its row grows around its centre")
+swingMover._placement.Collapse(true)
+Check(swingMover:GetLeft() == swing:GetLeft() and swingMover:GetTop() == swing:GetTop() and swingMover:GetHeight() == 40,
+    "and covers its element again after")
+Hover(swingMover)
+
+-- Anchor: pick mode, then the target, then the side. A new anchor sits flush on that side,
+-- centred on the other axis.
+Fire(link, "OnClick")
+Check(not link:IsShown(), "picking hides the link row")
+local pickText
+for _, fr in ipairs(made) do
+    if fr.kind == "FontString" and fr.parent == swingMover and fr:GetText() == "Click any element\nto anchor to it" then pickText = fr end
 end
-Check(outline ~= nil, "the outline still shows around the selected display")
+Check(pickText and pickText:IsShown(), "the mover asks for the element to anchor to")
+Click(meterMover, "LeftButton")
+Check(MenuRow("Anchor to Left") and MenuRow("Anchor to Right") and MenuRow("Anchor to Top") and MenuRow("Anchor to Bottom"),
+    "clicking the target offers its four sides")
+Check(not MenuRow("Remove Anchor"), "nothing to remove yet")
+Fire(MenuRow("Anchor to Top"), "OnClick")
+Flush()
+local cx, cy = Center(swing)
+Check(Near(cx, 960) and Near(cy, 370), "Anchor to Top puts it flush on top, centred")
+local info = settings.anchors["Swing Timer"]
+Check(info and info.target == "Threat Meter" and info.side == "TOP" and info.offsetX == 0 and info.offsetY == 0,
+    "the anchor is kept with no offset")
+Check(Last(swingSaved).point == "CENTER" and Near(Last(swingSaved).x, 0) and Near(Last(swingSaved).y, -170),
+    "its spot is saved too, CENTER on the screen centre")
+Check(swingMover.text.color[1] == 1 and swingMover.text.color[2] == 0.7, "an anchored element's name turns orange")
+Check(link.label:GetText() == "Anchored", "the link reads Anchored")
 
-keys.scripts.OnKeyDown(keys, "RIGHT")
-local last = saved[#saved]
--- Low on the screen and between its thirds across: held to the bottom's middle, at its distance.
-Check(last and last.point == "BOTTOM" and last.relPoint == "BOTTOM" and last.x == 209 and last.y == 97,
-    "an arrow nudges by 1 and saves, held to the nearest part of the screen")
-Check(keys.propagate == false, "a used arrow key is not passed on")
+-- Arrow keys move an anchored element by its offsets, one pixel at a time.
+UI.SelectMover(swingMover)
+Fire(keys, "OnKeyDown", "RIGHT")
+Check(info.offsetX == 1 and Near(Center(swing), 961), "an arrow nudges the offset by a pixel")
 shift = true
-keys.scripts.OnKeyDown(keys, "UP")
+Fire(keys, "OnKeyDown", "UP")
 shift = false
-last = saved[#saved]
-Check(last.point == "BOTTOM" and last.x == 209 and last.y == 107, "Shift + arrow nudges by 10 and saves")
+Check(info.offsetY == 100, "Shift + arrow nudges by 100")
+Fire(keys, "OnKeyDown", "DOWN")
+for _ = 1, 99 do Fire(keys, "OnKeyDown", "DOWN") end
+Check(info.offsetY == 0, "and back")
 
-local count = #saved
-mover.scripts.OnDragStart()
-Check(display.moving, "dragging moves the display")
-display:ClearAllPoints()
-display:SetPoint("CENTER", UIParent, "CENTER", -40, 25)
-mover.scripts.OnDragStop()
-last = saved[#saved]
-Check(#saved == count + 1 and last.point == "CENTER" and last.x == -40 and last.y == 25,
-    "a drag saves where it was dropped; in the middle it stays held to the centre")
+-- Dragging the target: the anchored element follows the whole way.
+cursor.x, cursor.y = 960, 340
+UI.StartMoverDrag(meterMover)
+cursor.x, cursor.y = 1060, 390
+Drive()
+local mx, my = Center(meter)
+Check(Near(mx, 1060) and Near(my, 390), "the target moves with the cursor")
+Check(Near(Center(swing), 1061), "its anchored element follows while it is dragged")
+UI.StopMoverDrag(meterMover)
+Check(Near(Last(meterSaved).x, 100) and Near(Last(meterSaved).y, -150), "the drop saves the target's spot")
 
--- Anchor to Screen: a pick holds it where it is, nudges keep the pick, Automatic lets it go.
-mover.scripts.OnMouseDown(mover, "RightButton")
-Check(radios.Automatic and radios.Automatic.selected() and radios["Top Right"], "the menu offers the anchors")
-radios["Top Right"].set()
-last = saved[#saved]
-Check(last.point == "TOPRIGHT" and last.relPoint == "TOPRIGHT" and last.x == -950 and last.y == -495,
-    "Top Right holds it to that corner where it is")
-Check(anchorDB.anchors.Campfire == "TOPRIGHT" and radios["Top Right"].selected(), "the pick is kept")
-keys.scripts.OnKeyDown(keys, "RIGHT")
-last = saved[#saved]
-Check(last.point == "TOPRIGHT" and last.x == -949, "a nudge keeps the picked anchor")
-radios.Automatic.set()
-last = saved[#saved]
-Check(last.point == "CENTER" and last.x == -39 and last.y == 25 and anchorDB.anchors.Campfire == nil,
-    "Automatic goes back to the nearest")
-Check(UI.AnchorAllMovers() == 1, "Anchor All holds every element shown")
+-- Dragging the anchored element keeps the anchor and its side; the offset is where it landed.
+cursor.x, cursor.y = 1061, 420
+UI.StartMoverDrag(swingMover)
+cursor.x, cursor.y = 1091, 420
+Drive()
+UI.StopMoverDrag(swingMover)
+info = settings.anchors["Swing Timer"]
+Check(info.target == "Threat Meter" and info.side == "TOP" and Near(info.offsetX, 31) and Near(info.offsetY, 0),
+    "a drag rewrites the offsets, not the anchor")
 
--- Anchor to Element: Campfire above the Threat Meter follows it, keeps its gap, and lets go.
-meterMover:Show()
-mover.scripts.OnMouseDown(mover, "RightButton")
-Check(buttons["Anchor to Element..."] and not buttons["Detach from Threat Meter"], "the menu offers Anchor to Element")
-buttons["Anchor to Element..."]()
-meterMover.scripts.OnMouseDown(meterMover, "LeftButton")
-Check(buttons["Above it"] and buttons["Left of it"], "clicking the target offers the sides")
-count = #saved
-buttons["Above it"]()
-local link = anchorDB.links.Campfire
-Check(link and link.to == "Threat Meter" and link.side == "TOP" and link.x == -39 and link.y == 195,
-    "the link keeps the gap from where it is")
-Check(#saved == count, "linking does not move it")
-
-UI.SelectMover(meterMover)
-keys.scripts.OnKeyDown(keys, "RIGHT")
-last = saved[#saved]
-Check(meterSaved[#meterSaved].x == 1 and last.point == "CENTER" and last.x == -38 and last.y == 25,
-    "a nudged target takes its linked element along, saved as its screen spot")
+-- A target that changes size pushes its anchored element out.
 meter:SetSize(200, 60)
-meter.hooks.OnSizeChanged(meter)
-last = saved[#saved]
-Check(last.x == -38 and last.y == 65, "a target that grows (upward, held to the bottom) pushes its linked element out")
+Flush()
+Check(Near(select(2, Center(swing)), 390 + 30 + 20), "a target that grows pushes it out")
 
-meterMover.scripts.OnMouseDown(meterMover, "RightButton")
-buttons["Anchor to Element..."]()
-mover.scripts.OnMouseDown(mover, "LeftButton")
-buttons["Below it"]()
-Check(anchorDB.links["Threat Meter"] == nil and printed[#printed]:find("already follows"), "a loop is refused")
+-- Loops are refused: the target already follows the element.
+Hover(meterMover)
+Fire(meterMover._placement.link, "OnClick")
+Click(swingMover, "LeftButton")
+Check(tooltip == "This would create a circular anchor" and not MenuRow("Anchor to Top"), "a loop is refused")
+Check(not settings.anchors["Threat Meter"], "and nothing is anchored")
+Flush()
 
-buttons["Above it"] = nil
-mover.scripts.OnMouseDown(mover, "RightButton")
-buttons["Anchor to Element..."]()
-keys.scripts.OnKeyDown(keys, "ESCAPE")
-meterMover.scripts.OnMouseDown(meterMover, "LeftButton")
-Check(buttons["Above it"] == nil, "Esc cancels picking")
+-- The cog menu: who it is anchored to, and its offsets typed in pixels.
+Click(swingMover, "RightButton")
+Check(MenuRow("Anchored to: Threat Meter") and MenuRow("Offset X") and MenuRow("Offset Y"), "the cog menu shows the anchor")
+Check(MenuRow("Element Options") and MenuRow("Center on Screen") and MenuRow("Relative to Screen"),
+    "with Element Options, Center on Screen and Relative to Screen")
+local box = MenuRow("Offset X").box
+Check(box:GetText() == "31", "Offset X reads the offset in pixels")
+box:SetText("40")
+Fire(box, "OnEnterPressed")
+Check(Near(info.offsetX, 40) and Near(Center(swing), 1100), "typing an offset moves it there")
 
-mover.scripts.OnMouseDown(mover, "RightButton")
-buttons["Detach from Threat Meter"]()
-Check(anchorDB.links.Campfire == nil, "Detach lets it go")
-count = #saved
-UI.SelectMover(meterMover)
-keys.scripts.OnKeyDown(keys, "LEFT")
-Check(#saved == count, "a detached element stays put")
+-- Clicking Anchored lets go; the element stays where it is.
+Fire(keys, "OnKeyDown", "ESCAPE")
+Check(not MenuRow("Offset X"), "Escape closes the menu")
+local before = Center(swing)
+Fire(link, "OnClick")
+Check(not settings.anchors["Swing Timer"] and Near(Center(swing), before), "clicking Anchored unanchors it in place")
+Check(Last(swingSaved).point == "CENTER" and Near(Last(swingSaved).x, before - 960), "and saves where it is")
+Check(link.label:GetText() == "Anchor", "the link reads Anchor again")
 
-combat = true
-keys.scripts.OnEvent(keys, "PLAYER_REGEN_DISABLED")
-Check(not keys:IsShown(), "the key frame stops in combat")
-count = #saved
-keys.scripts.OnKeyDown(keys, "LEFT")
-Check(#saved == count, "no nudge in combat")
-combat = false
-keys.scripts.OnEvent(keys, "PLAYER_REGEN_ENABLED")
-Check(keys:IsShown(), "Unlock Mode carries on after combat")
-UI.SelectMover(mover)
-count = #saved
-keys.scripts.OnKeyDown(keys, "LEFT")
-Check(#saved == count + 1, "nudges work again after combat")
+-- Relative to Screen: the element stays put and keeps its distance to that edge.
+Click(swingMover, "RightButton")
+Fire(MenuRow("Relative to Screen"), "OnEnter")
+Check(MenuRow("Left") and MenuRow("Right") and MenuRow("Top") and MenuRow("Bottom") and MenuRow("Center"),
+    "Relative to Screen offers the four edges and Center")
+Check(MenuRow("Center").label.color[2] == 0.7, "Center is the current one while nothing is anchored")
+local x0, y0 = Center(swing)
+Fire(MenuRow("Right"), "OnClick")
+info = settings.anchors["Swing Timer"]
+Check(info.target == "SCREEN_RIGHT" and info.side == "LEFT" and Near(info.offsetX, x0 + 50 - W), "Right holds the distance to the right edge")
+Check(Near(Center(swing), x0), "without moving it")
+Click(swingMover, "RightButton")
+Fire(MenuRow("Relative to Screen"), "OnEnter")
+Fire(MenuRow("Top"), "OnClick")
+Check(info.edge and info.edge.key == "SCREEN_TOP" and Near(info.edge.offset, y0 + 20 - H), "Top holds the other axis")
+W, H = 2560, 1440
+for _, fr in ipairs(made) do
+    if fr.allRel == UIParent and fr.scripts.OnSizeChanged then fr.scripts.OnSizeChanged(fr) end
+end
+Flush()
+local x1, y1 = Center(swing)
+Check(Near(x1 + 50, W - (1920 - x0 - 50)) and Near(y1 + 20, H - (1080 - y0 - 20)), "a bigger screen keeps it in the corner")
+Click(swingMover, "RightButton")
+Fire(MenuRow("Relative to Screen"), "OnEnter")
+Fire(MenuRow("Center"), "OnClick")
+Check(not settings.anchors["Swing Timer"] and Near(Center(swing), x1), "Center lets go of the screen")
+W, H = 1920, 1080
 
+-- Center on Screen: the X centre goes to the middle.
+Click(swingMover, "RightButton")
+Fire(MenuRow("Center on Screen"), "OnClick")
+Check(Near(Center(swing), 960), "Center on Screen centres it across")
+
+-- At login and after a profile switch every anchor is re-applied, parents first.
+settings.anchors["Swing Timer"] = { target = "Threat Meter", side = "BOTTOM", offsetX = 0, offsetY = -10 }
 UI.EndMoverMode()
-Check(not keys:IsShown() and keys.keyboard == false, "leaving Unlock Mode stops the keys")
-Check(made.fonts == before.fonts, "nothing in Unlock Mode drew text")
+meter:ClearAllPoints()
+meter:SetPoint("CENTER", UIParent, "CENTER", -300, 0)
+Flush()
+local watcher
+for _, fr in ipairs(made) do
+    if fr.events.PLAYER_ENTERING_WORLD then watcher = fr end
+end
+watcher.scripts.OnEvent(watcher, "PLAYER_ENTERING_WORLD")
+Flush()
+cx, cy = Center(swing)
+Check(Near(cx, 660) and Near(cy, 540 - 30 - 10 - 20), "a login places it under its target")
+meter:ClearAllPoints()
+meter:SetPoint("CENTER", UIParent, "CENTER", -200, 0)
+Flush()
+Check(Near(Center(swing), 760), "a target its module moves takes it along")
+
+-- In combat a protected element waits.
+swing.protected, combat = true, true
+meter:ClearAllPoints()
+meter:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
+Flush()
+Check(Near(Center(swing), 760), "a protected element does not move in combat")
+combat = false
+watcher.scripts.OnEvent(watcher, "PLAYER_REGEN_ENABLED")
+Flush()
+Check(Near(Center(swing), 960), "and catches up after it")
 
 print(("test-unlock-mode: %d checks passed"):format(checks))

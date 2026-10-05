@@ -1007,7 +1007,7 @@ local function EnsureConfigHandle(displayType, a)
 
     local gear = CreateFrame("Button", nil, h)
     gear:SetSize(16, 16)
-    gear:SetPoint("TOPRIGHT", h, "TOPRIGHT", -2, -2)
+    gear:SetPoint("TOPLEFT", h, "TOPLEFT", 2, -2)
     local gearTex = gear:CreateTexture(nil, "ARTWORK")
     gearTex:SetAllPoints()
     gearTex:SetTexture("Interface\\Buttons\\UI-OptionsButton")
@@ -1135,17 +1135,18 @@ local function BuildConfigToolbar()
     local exitRow = (#CONFIG_ORDER % 2 == 1) and lastRow or (lastRow + 1)
     ns.Button(f, "Exit Config", CONFIG_COL_W - 14, 22, function() ns.HideRaidReminderAnchorConfig() end)
         :SetPoint("TOPLEFT", f, "TOPLEFT", 14 + exitCol * CONFIG_COL_W, -31 - exitRow * CONFIG_ROW_H)
-    -- Saved spots from before screen anchors held from the centre; this holds them all at once.
-    local anchorCol = 1 - exitCol
-    local anchorRow = exitCol == 0 and exitRow or exitRow + 1
-    local anchorAll = ns.Button(f, "Anchor All to Screen", CONFIG_COL_W - 14, 22, function()
-        ns.Print(("%d elements held to the nearest part of the screen."):format(ns.UI.AnchorAllMovers()))
-    end)
-    anchorAll:SetPoint("TOPLEFT", f, "TOPLEFT", 14 + anchorCol * CONFIG_COL_W, -31 - anchorRow * CONFIG_ROW_H)
-    ns.Tooltip(anchorAll, "Anchor All to Screen", "Holds every element shown to the corner, edge or "
-        .. "centre of the screen nearest it, where it sits, so the same layout fits every resolution. "
-        .. "Moving an element does the same for it. Right-click an element to pick its anchor.")
-    f:SetHeight(44 + (anchorRow + 1) * CONFIG_ROW_H)
+    local snapCol = 1 - exitCol
+    local snapRow = exitCol == 0 and exitRow or exitRow + 1
+    local snap = CreateFrame("CheckButton", nil, f, "UICheckButtonTemplate")
+    snap:SetSize(20, 20)
+    snap:SetPoint("TOPLEFT", f, "TOPLEFT", 14 + snapCol * CONFIG_COL_W, -32 - snapRow * CONFIG_ROW_H)
+    local snapLbl = ns.Font(f, 11, nil, T.fg)
+    snapLbl:SetPoint("LEFT", snap, "RIGHT", 2, 1)
+    snapLbl:SetText("Snap Elements")
+    snap:SetScript("OnClick", function(self) ns.UnlockModeSettings.Set("snap", self:GetChecked() and true or false) end)
+    ns.Tooltip(snap, "Snap Elements", "A dragged element lines its edges and centre up with the nearest one.")
+    f._snap = snap
+    f:SetHeight(44 + (snapRow + 1) * CONFIG_ROW_H)
 
     f._checks = checks
     configToolbar = f
@@ -1170,6 +1171,7 @@ function ns.ShowRaidReminderAnchorConfig()
             chk:SetEnabled(on)
         end
     end
+    f._snap:SetChecked(ns.UnlockModeSettings.Get("snap") ~= false)
     f:Show()
     ns.SetAnchorGridShown(true)
     RefreshAllConfigVisuals()

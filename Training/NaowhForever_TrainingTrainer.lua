@@ -54,7 +54,7 @@ local function PlaceToast()
     end
 end
 
--- Not in Unlock Mode: it drags by itself, held to the nearest part of the screen.
+-- Not in Unlock Mode: it drags by itself.
 local function ToastDragStart()
     toast.dragging = true
     toast:StartMoving()
@@ -63,7 +63,7 @@ end
 local function ToastDragStop()
     toast:StopMovingOrSizing()
     toast.dragging = false
-    S.Set("toastPos", UI.AnchorToScreen(toast))
+    S.Set("toastPos", UI.CenterPosition(toast))
 end
 
 local function BuildToast()

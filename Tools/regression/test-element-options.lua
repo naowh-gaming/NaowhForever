@@ -121,13 +121,13 @@ for path, s in pairs(sources) do
 end
 Check(movers >= 30, "every mover was found (" .. movers .. ")")
 
--- The right-click itself: a menu with Anchor to Screen, and Element Options only with a page;
--- opening the options leaves Unlock Mode.
-local widgets = Read("Core/NaowhForever_Widgets.lua")
-Check(widgets:find('button == "RightButton" and not InCombatLockdown() and (page or not item.ownAnchor)', 1, true),
-    "right-click needs a page or an anchor to pick")
-Check(widgets:find('if page then root:CreateButton("Element Options"', 1, true), "Element Options needs a page")
-Check(widgets:find("ns.HideRaidReminderAnchorConfig()\n    ns.OpenOptionsWindow(item.page)", 1, true),
+-- The cog menu (a right-click opens it too) has Element Options only with a page; opening the
+-- options leaves Unlock Mode.
+local unlock = Read("Core/NaowhForever_UnlockMode.lua")
+Check(unlock:find('if item.page then\n        Action(menu, "Element Options"', 1, true), "Element Options needs a page")
+Check(unlock:find('elseif button == "RightButton" then', 1, true) and unlock:find("UI.SelectMover(handle)\n            OpenCogMenu(item)", 1, true),
+    "a right-click opens the cog menu")
+Check(unlock:find("ns.HideRaidReminderAnchorConfig()\n    ns.OpenOptionsWindow(item.page)", 1, true),
     "Element Options leaves Unlock Mode before opening the page")
 
 print(("test-element-options: %d checks passed"):format(checks))

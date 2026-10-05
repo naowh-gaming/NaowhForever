@@ -703,7 +703,7 @@ end
 
 local function DragStop()
     panel:StopMovingOrSizing()
-    S.Set("aimPos", UI.AnchorToScreen(panel))
+    S.Set("aimPos", UI.CenterPosition(panel))
 end
 
 local function Shown(self)
