@@ -1554,18 +1554,9 @@ function ns.BuildProfileSettings(parent, y)
               ns.SwitchProfile(v)
               EUI:RefreshPage(true)
           end },
-        { type = "toggle", text = "Match My Spec",
-          tooltip = "Loads the profile bound to whatever spec you switch to, on login and on "
-          .. "every spec change. A whole-file import sets those bindings up; after that, "
-          .. "picking a profile yourself binds it to the spec you are playing.",
-          getValue = function() return ns.AutoSpecProfile() end,
-          setValue = function(v)
-              ns.AutoSpecProfile(v)
-              if v and ns.ApplySpecProfile and ns.CurrentSpec then
-                  ns.ApplySpecProfile((ns.CurrentSpec()))
-              end
-              EUI:RefreshPage(true)
-          end }
+        -- No Match My Spec: Forever gives each class one spec, so picking a profile already
+        -- is the binding it would make.
+        { type = "label", text = "" }
     ); y = y - h
 
     -- Assigned below; the save buttons' closures need it in scope.
