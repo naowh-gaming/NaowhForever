@@ -52,7 +52,8 @@ Shared/
   all come from that one declaration. Settings pages hold settings only: a module's lists and
   editors live in its own window, opened from the page's `page:Window{ ... }` card (first on
   the page, or where its `order` puts it). A card that
-  shows something on screen can carry a live preview (`studio`, see `Settings/Studio.lua`),
+  shows something on screen can carry a live preview (`studio`, see `Settings/Studio.lua`; its
+  `height` a number, or a function for a stage that changes with a setting),
   drawn by the module's own drawing code on plain frames, never on its real (secure) frames.
   `Settings.EditZone(parent, opts)` makes part of a preview editable, every option optional:
   `click(zone)`, `menu(owner, root)` (the house context menu on right-click), `wheel(zone, delta)`,

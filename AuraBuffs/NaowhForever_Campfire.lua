@@ -38,7 +38,7 @@ local TEXT_SIZE, ALERT_SIZE = 16, 28
 local PLATE = { r = 0.14, g = 0.15, b = 0.16 }
 
 local BAR = { PAD = St.PANEL_PAD, TEXT = 12, TEXT_MIN = 11, LINE_H = 2, FONT_LIFT = 1, EDGE = 1, ICON_PAD = 2,
-    ICON_RING = 1, CAMP_GAP = 8, BONUS_GAP = 10, TIME_GAP = 12, BONUS_ICON_GROW = 1, BONUS_ICON_GAP = 3,
+    CAMP_GAP = 8, BONUS_GAP = 10, TIME_GAP = 12, BONUS_ICON_GROW = 1, BONUS_ICON_GAP = 3,
     BONUS_ICON_DROP = 1 }
 local MIN_LABELS = { "+8% Stats", "+308 Armor", "+2% Crit", "+29 MP5" }
 local SIT_PREFIX = "in "
@@ -84,7 +84,7 @@ for i, feature in ipairs(FEATURES) do
 end
 local SAMPLE_BONUSES = { { FEATURES[1] }, { FEATURES[3], 56 }, { FEATURES[4], 25 }, { FEATURES[10], 2 } }
 
-local function CampArt(icon)
+local function CampArt(icon, bare)
     icon.tex = Parts.Smooth(icon:CreateTexture(nil, "ARTWORK"), CAMPFIRE_ART)
     icon.tex:SetAllPoints()
     icon.plate = icon:CreateTexture(nil, "BACKGROUND", nil, 1)
@@ -96,6 +96,7 @@ local function CampArt(icon)
     icon.mask:SetTexture(CIRCLE_MASK, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
     icon.tex:AddMaskTexture(icon.mask)
     icon.plate:AddMaskTexture(icon.mask)
+    if bare then return end
 
     -- A black circle one pixel wider on every side, behind the icon: a 1px round border.
     icon.ring = icon:CreateTexture(nil, "BACKGROUND")
@@ -246,9 +247,9 @@ function Bar.Layout(f)
     local size = math.max(BAR.TEXT_MIN, S.Get("campSimpleTextSize"))
     local height = S.Get("campSimpleHeight")
     f.height, f.size = height, size
-    f.campSize = height - 2 * (BAR.EDGE + BAR.ICON_PAD + BAR.ICON_RING) - BAR.LINE_H
-    f.campX = BAR.EDGE + BAR.ICON_PAD + BAR.ICON_RING + f.campSize / 2
-    f.labelX = f.campX + f.campSize / 2 + BAR.ICON_RING + BAR.CAMP_GAP
+    f.campSize = height - 2 * (BAR.EDGE + BAR.ICON_PAD) - BAR.LINE_H
+    f.campX = BAR.EDGE + BAR.ICON_PAD + f.campSize / 2
+    f.labelX = f.campX + f.campSize / 2 + BAR.CAMP_GAP
     f.textY = BAR.FONT_LIFT + BAR.LINE_H / 2
     local font = ns.UIFontPath()
     f.time:SetFont(font, size, "")
@@ -297,7 +298,7 @@ function Bar.New(host)
 
     f.camp = CreateFrame("Frame", nil, f.bar)
     f.camp:SetFrameLevel(f.edges:GetFrameLevel() + 1)
-    CampArt(f.camp)
+    CampArt(f.camp, true)
     f.lit, f.low, f.lead, f.group, f.pill, f.pillW, f.slot = true, false, 0, 0, false, 0, 0
     Bar.Layout(f)
     Bar.Paint(f, T.accent, false)
@@ -1316,15 +1317,16 @@ end
 
 local function FitBar(shot)
     local host, f = shot.barHost, shot.bar
-    local w, h = WIDTH_RANGE[2], f.height
-    local roomW = shot:GetWidth() - STAGE_MARGIN * 2
+    local half = S.Default("campSimpleWidth") / 2
+    local reach, h = WIDTH_RANGE[2] - half, f.height
+    local roomW = shot:GetWidth() / 2 - STAGE_MARGIN
     local roomH = shot:GetHeight() - STAGE_MARGIN * 2 - HINT_ROOM
     local scale = 1
-    if roomW > 0 and w > roomW then scale = roomW / w end
+    if roomW > 0 and reach > roomW then scale = roomW / reach end
     if roomH > 0 and h * scale > roomH then scale = roomH / h end
     host:SetScale(scale)
     host:ClearAllPoints()
-    host:SetPoint("LEFT", shot, "LEFT", STAGE_MARGIN / scale, HINT_ROOM / 2 / scale)
+    host:SetPoint("LEFT", shot, "CENTER", -half, HINT_ROOM / 2 / scale)
 end
 
 local function RunBar(f, left, duration, timed, prefix)
@@ -1435,6 +1437,11 @@ local function AlertSummary(store)
     return ("Under %d min"):format(store.Get("campNearbyMinutes"))
 end
 
+local function StageHeight()
+    if Simple() then return STAGE_MARGIN * 2 + HEIGHT_RANGE[2] + HINT_ROOM end
+    return STAGE_H
+end
+
 local function Only(group, hidden)
     group.hidden = hidden
     return group
@@ -1446,7 +1453,7 @@ campCard = page:Card({
     id = "campfire", name = "Campfire", order = 20, switch = "campfire",
     help = "Your camp's bonuses and time left on screen, and a reminder when Camp Benefits runs out.",
     summary = CampSummary,
-    studio = { height = STAGE_H, states = STATES, new = NewPreview, paint = PaintPreview },
+    studio = { height = StageHeight, states = STATES, new = NewPreview, paint = PaintPreview },
     rows = {
         { key = "campStyle", label = "Style", choice = STYLES, needs = Enabled, why = OFF,
           help = "Round shows the camp icon; Simple shows a slim bar with your camp's bonuses." },

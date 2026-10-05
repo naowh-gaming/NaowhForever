@@ -57,6 +57,7 @@ local function SetStudio(row, card)
     local studio = card.studio
     row.card = card
     local height = studio.height or DEFAULT_H
+    if type(height) == "function" then height = height() end
     for owner, preview in pairs(row.previews) do preview:SetShown(owner == card) end
     local preview = row.previews[card]
     if not preview then

@@ -427,14 +427,14 @@ do
         and math.abs(labels[3].pt.LEFT - labels[2].pt.LEFT - W("+56 Sta") - 10) < 1e-9)
 
     local function Inside(f)
-        local half = f.campSize / 2 + 1
+        local half = f.campSize / 2
         local bottom, top = 1 + 2 + 2, f.height - 1 - 2
         local cy = f.height / 2 + f.camp.pty.CENTER
         return f.camp.rel.CENTER == f.bar and f.camp.pt.CENTER - half == 1 + 2
             and cy - half == bottom and cy + half == top and f.camp.parent == f.bar
     end
     check("the fire sits inside the bar at the left, framed, padded and centred above the line",
-        bar.campSize == 16 and bar.campX == 12 and Inside(bar) and bar.camp.tex.texture ~= nil)
+        bar.campSize == 18 and bar.campX == 12 and Inside(bar) and bar.camp.tex.texture ~= nil)
     check("one plain rectangle: four full edges, no notch, nothing above it", bar.top.pt.TOPLEFT == 0
         and bar.top.pt.TOPRIGHT == 0 and bar.left.pt.TOPLEFT == 0 and rawget(bar, "cap") == nil
         and rawget(bar, "halo") == nil and rawget(bar, "notch") == nil)
@@ -448,7 +448,8 @@ do
     check("the house backdrop and black edge, no custom alpha", bar.backdrop and rawget(bar, "bg") == nil
         and bar.top.color == s.St.BORDER_RGB and s.St.BACKDROP_ALPHA
         and not Read("AuraBuffs/NaowhForever_Campfire.lua"):find("BAR%.ALPHA"))
-    check("the fire is framed in a 1px black ring", bar.camp.ring and Same(bar.camp.ring, s.St.BORDER_RGB))
+    check("the fire has no ring or outline, just its round mask, drawn smooth", rawget(bar.camp, "ring") == nil
+        and rawget(bar.camp, "ringMask") == nil and bar.camp.mask ~= nil and bar.camp.tex.texture ~= nil)
     check("panel text: no HUD shadow on the bar's words", bar.time.shadow == nil and bar.note.shadow == nil)
     local track
     for _, f in ipairs(s.frames) do if f.parent == bar.line and f.color == s.T.line then track = f end end
@@ -489,10 +490,10 @@ do
     s.fire("UNIT_AURA")
 
     s.S.Set("campSimpleHeight", 30)
-    check("the fire grows with Bar Height and stays inside", bar.campSize == 20 and bar.labelX == 33
+    check("the fire grows with Bar Height and stays inside", bar.campSize == 22 and bar.labelX == 33
         and Inside(bar) and icon.h == 30)
     s.S.Set("campSimpleHeight", 20)
-    check("the smallest bar still holds the fire inside", bar.campSize == 10 and Inside(bar) and icon.h == 20)
+    check("the smallest bar still holds the fire inside", bar.campSize == 12 and Inside(bar) and icon.h == 20)
     s.S.Set("campSimpleHeight", 26)
 
     s.S.Set("campHiddenBonuses", { [CHAIR] = true })
@@ -827,9 +828,17 @@ do
         and entries:find("check:Bonus Icons", 1, true) and entries:find("check:Show Timer", 1, true)
         and entries:find("button:Bonuses", 1, true) and entries:find("button:Reset Bar", 1, true))
 
+    shot.w, shot.h = 700, 98
     card.studio.paint(shot, "up")
     local left, leftY = shot.barHost.pt.LEFT, shot.barHost.pty.LEFT
-    check("preview: the bar sits at the stage's left middle", shot.barHost.rel.LEFT == shot and left == 16)
+    check("preview: the bar's left is fixed, centred on the stage for the default width",
+        shot.barHost.rel.LEFT == shot and left == -360 / 2 and leftY == 15)
+    local stage = card.studio.height
+    check("the stage is the bar's tallest, its padding and the hint: no dead space", type(stage) == "function"
+        and stage() == 16 * 2 + 36 + 30)
+    s.values.campStyle = "round"
+    check("the Round style keeps its taller stage", stage() == 230)
+    s.values.campStyle = "simple"
     s.S.Set("campSimpleWidth", 440)
     card.studio.paint(shot, "up")
     check("preview: a wider bar keeps its place", shot.barHost.pt.LEFT == left and shot.barHost.pty.LEFT == leftY)
