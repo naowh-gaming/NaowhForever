@@ -50,6 +50,9 @@ Shared.Style = {
     TIME_OK_RGB = { r = 0.29, g = 0.87, b = 0.5 },
     TIME_LOW_RGB = { r = 0.98, g = 0.8, b = 0.08 },
     TIME_OUT_RGB = { r = 0.97, g = 0.27, b = 0.27 },
+    -- A boss picked on a dungeon map: its pin's ring, in the same gold, until the player
+    -- picks an Accent of their own.
+    PICKED_RGB = { r = 1, g = 0.82, b = 0 },
 
     ---------------------------------------------------------------------------
     --  Icons: the addon's own (Media/, drawn by Tools/make_media.py, white so they take
