@@ -50,6 +50,12 @@ local function RestedDefault()
         or RESTED
 end
 
+-- The border is black, as the rest of the UI's; a theme changes it to its line colour, as it
+-- does the other themed borders.
+local function BorderDefault()
+    return ns.ThemeTint("line", EDGE)
+end
+
 -- Incomplete quests, unpicked: the completed quests colour faded over the background, as
 -- its swatch shows it.
 local function OpenDefault()
@@ -65,7 +71,7 @@ local function PaintBar(b)
     local q = S.Get("xpBarQuestColor") or QuestDefault()
     local r = S.Get("xpBarRestedColor") or RestedDefault()
     local bg = S.Get("xpBarBgColor") or T.bg
-    local e = S.Get("xpBarBorderColor") or EDGE
+    local e = S.Get("xpBarBorderColor") or BorderDefault()
     b.done:SetColorTexture(q.r, q.g, q.b, 1)
     if b.open then
         -- A picked colour is drawn as picked; unpicked, the quest colour faded.
@@ -102,7 +108,7 @@ function ns.XPBarDefaultColor(key)
     if key == "xpBarQuestColor" then return QuestDefault() end
     if key == "xpBarOpenColor" then return OpenDefault() end
     if key == "xpBarRestedColor" then return RestedDefault() end
-    if key == "xpBarBorderColor" then return EDGE end
+    if key == "xpBarBorderColor" then return BorderDefault() end
     return T.bg
 end
 
