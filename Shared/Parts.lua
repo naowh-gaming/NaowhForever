@@ -4,7 +4,8 @@
 --  cards, the panel a view sits in and the side panel that opens beside a window, numbers
 --  lined up to the pixel, and sharing a line in chat. A window's own pieces (title bar,
 --  opacity, switch, search, footer) are Window.lua's. Also a timer line the client runs down by
---  itself (Parts.TimerLine) and a row of short labels spread evenly (Parts.LabelRow).
+--  itself (Parts.TimerLine), time text the client writes (Parts.TimeText), a pulse
+--  (Parts.Pulse) and a row of short labels (Parts.LabelRow).
 -------------------------------------------------------------------------------
 local ns = _G.NaowhForever
 local T = ns.THEME
@@ -629,19 +630,21 @@ local LINE_FROM_SHARE = 0.45
 local LINE_GLOW_W, LINE_GLOW_ALPHA = 28, 0.55
 local shortTimes = {}
 
-function Parts.ShortTime(prefix)
-    prefix = prefix or ""
-    local formatter = shortTimes[prefix]
+function Parts.ShortTime(prefix, suffix)
+    prefix, suffix = prefix or "", suffix or ""
+    local key = prefix .. "|" .. suffix
+    local formatter = shortTimes[key]
     if formatter then return formatter end
     local Up, Down = Enum.NumericRuleFormatRounding.Up, Enum.NumericRuleFormatRounding.Down
     formatter = C_StringUtil.CreateNumericRuleFormatter()
     formatter:SetBreakpoints({
-        { threshold = 0, format = prefix .. "%ds", step = 1, rounding = Up },
-        { threshold = 60, format = prefix .. "%dm", step = 1, rounding = Up, components = { { div = 60 } } },
-        { threshold = 61, format = prefix .. "%dm", step = 1, rounding = Down, components = { { div = 60 } } },
-        { threshold = 3600, format = prefix .. "%dh", step = 1, rounding = Down, components = { { div = 3600 } } },
+        { threshold = 0, format = prefix .. "%ds" .. suffix, step = 1, rounding = Up },
+        { threshold = 60, format = prefix .. "%dm" .. suffix, step = 1, rounding = Up, components = { { div = 60 } } },
+        { threshold = 61, format = prefix .. "%dm" .. suffix, step = 1, rounding = Down, components = { { div = 60 } } },
+        { threshold = 3600, format = prefix .. "%dh" .. suffix, step = 1, rounding = Down,
+          components = { { div = 3600 } } },
     })
-    shortTimes[prefix] = formatter
+    shortTimes[key] = formatter
     return formatter
 end
 
@@ -730,6 +733,63 @@ function Parts.TimerLine(parent, height, text)
     line.Run, line.Stop, line.Paint = LineRun, LineStop, LinePaint
     LinePaint(line, T.accent)
     return line
+end
+
+local function TextTimed()
+    return LineTimed() and C_DurationUtil.CreateDurationTextBinding and C_StringUtil
+        and C_StringUtil.CreateNumericRuleFormatter and Enum.NumericRuleFormatRounding and true or false
+end
+
+local function ClockRun(clock, start, duration)
+    if not clock.binding then return end
+    clock.dur:SetTimeFromStart(start, duration)
+    clock.binding:SetEnabled(true)
+end
+
+local function ClockStop(clock)
+    if clock.binding then clock.binding:SetEnabled(false) end
+end
+
+function Parts.TimeText(text, prefix, suffix)
+    local clock = { text = text, Run = ClockRun, Stop = ClockStop }
+    if TextTimed() then
+        clock.dur = C_DurationUtil.CreateDuration()
+        local binding = C_DurationUtil.CreateDurationTextBinding()
+        binding:SetFontString(text)
+        binding:SetDuration(clock.dur)
+        binding:SetFormatter(Parts.ShortTime(prefix, suffix))
+        binding:SetZeroDurationText("")
+        binding:SetExpiredText("")
+        binding:SetEnabled(false)
+        clock.binding = binding
+    end
+    return clock
+end
+
+local PULSE_SCALE, PULSE_TIME, PULSE_TIMES = 1.08, 0.18, 2
+
+local function PulseHidden(frame)
+    frame.pulseGroup:Stop()
+end
+
+function Parts.Pulse(frame, scale, duration, times)
+    scale, duration, times = scale or PULSE_SCALE, duration or PULSE_TIME, times or PULSE_TIMES
+    local group = frame:CreateAnimationGroup()
+    for i = 1, times do
+        local grow = group:CreateAnimation("Scale")
+        grow:SetOrder(i * 2 - 1)
+        grow:SetDuration(duration)
+        grow:SetScaleFrom(1, 1)
+        grow:SetScaleTo(scale, scale)
+        local shrink = group:CreateAnimation("Scale")
+        shrink:SetOrder(i * 2)
+        shrink:SetDuration(duration)
+        shrink:SetScaleFrom(scale, scale)
+        shrink:SetScaleTo(1, 1)
+    end
+    frame.pulseGroup = group
+    frame:HookScript("OnHide", PulseHidden)
+    return group
 end
 
 local function RowItem(row, i)

@@ -1,7 +1,7 @@
 -- Tests the real camp tooltip formatter with readable synthetic tooltip data.
 local f = assert(io.open("AuraBuffs/NaowhForever_Campfire.lua", "r"))
 local source = f:read("*a"); f:close()
-local block = assert(source:match("(local EFFECT_TAGS.-)\nlocal Refresh"))
+local block = assert(source:match("(local EFFECT_TAGS.-)\nlocal function ReadBonuses"))
 local data
 local secret = "Secret: hidden text"
 local env = setmetatable({
