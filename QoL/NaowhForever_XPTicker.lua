@@ -5,9 +5,9 @@
 local ns = _G.NaowhForever
 local S = ns.QoLSettings
 local T = ns.THEME
+local Parts = ns.Shared.Parts
 
--- Naowh's scheme: his blue for the labels, the theme's near-white for the values.
-local DIM = "|cff9ca3af"
+local SIZE, SPLITS_SHARE, SPLITS_MIN, OUTLINE = 14, 0.6, 10, "OUTLINE"
 
 local ticker, clock, clockRate, unlocked
 local sessionStart, sessionXP = 0, 0
@@ -52,29 +52,33 @@ local function Clock(seconds)
 end
 
 
-local function Line(label, value)
-    return ns.Color("accent", label .. ":") .. " " .. ns.Color("fg", value)
+local function Line(label, value, token)
+    return ns.Color("muted", label .. ":") .. " " .. ns.Color(token or "fg", value)
 end
 
 local Look = {}
 
 function Look.New(f)
-    f.text = ns.Font(f, 14, "OUTLINE")
+    f.text = ns.Font(f, SIZE)
     f.text:SetPoint("TOPLEFT", 4, -4)
     f.text:SetJustifyH("LEFT")
-    f.splits = ns.Font(f, 14, "OUTLINE")
+    f.splits = ns.Font(f, SIZE)
     f.splits:SetPoint("TOPLEFT", f.text, "BOTTOMLEFT", 0, -4)
     f.splits:SetJustifyH("LEFT")
 end
 
 function Look.Fonts(f)
     local font, size = ns.UI.FontPath(S.Get("xpTickerFont")), S.Get("xpTickerFontSize")
-    f.text:SetFont(font, size, "OUTLINE")
-    f.splits:SetFont(font, math.max(10, math.floor(size * 0.6)), "OUTLINE")
+    local outlined = S.Get("xpTickerOutline")
+    local flags = outlined and OUTLINE or ""
+    f.text:SetFont(font, size, flags)
+    f.splits:SetFont(font, math.max(SPLITS_MIN, math.floor(size * SPLITS_SHARE)), flags)
+    Parts.HudText(f.text, not outlined)
+    Parts.HudText(f.splits, not outlined)
 end
 
 function Look.Text(rate, ding, elapsed, isPaused)
-    local lines = { Line("XP/hr", Short(rate)) .. (isPaused and "  " .. DIM .. "(paused)|r" or "") }
+    local lines = { Line("XP/hr", Short(rate), "accent") .. (isPaused and "  " .. ns.Color("muted", "(paused)") or "") }
     if S.Get("xpTickerLevel") then
         lines[#lines + 1] = Line("Ding", ding and Duration(ding) or "--")
     end
@@ -388,6 +392,8 @@ ns.Shared.Settings.Page("QoL/XP", S):Card({
         Group("Text"),
         { key = "xpTickerFont", label = "Font", font = true },
         { key = "xpTickerFontSize", label = "Font Size", slider = { 8, 32, 1 } },
+        { key = "xpTickerOutline", label = "Outlined Text", toggle = true,
+          help = "A thick black outline round the text, in place of the soft shadow." },
         { label = "Reset XP per Hour", buttonText = "Reset", button = ns.ResetXPTicker,
           help = "Starts the session again: its time, XP and rate. The XP Bar's XP/Hour starts again with it." },
     },
