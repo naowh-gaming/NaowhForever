@@ -3,7 +3,10 @@
 -- its settings preview are checked: the card (theme background, black border), the header's
 -- kicker, rate and Paused tag, the two-column rows, the icon buttons in the header shown on
 -- hover, Background off giving outlined text alone, the font settings, the preview's states and
--- edits, theme colors, the saved place, and no garbage or text work on an unchanged update.
+-- edits, theme colors, the saved place, and no garbage or text work on an unchanged update. Then
+-- its colors with meaning: the level progress line with rested XP ahead of it, the rate in the
+-- accent only while earning, its trend arrow, Ding turning soft blue near a level, and paused
+-- muting the kicker, the rate and the line.
 local Load = dofile("Tools/regression/load_files.lua")
 
 local checks = 0
@@ -28,6 +31,16 @@ local METHODS = {
     SetTextColor = function(f, r, g, b) f.r, f.g, f.b = r, g, b end,
     SetColorTexture = function(f, r, g, b, a) f.r, f.g, f.b, f.a = r, g, b, a end,
     SetTexture = function(f, tex) f.tex = tex end,
+    SetTexCoord = function(f, l, r, t, b) f.l, f.r2, f.t, f.b2 = l, r, t, b end,
+    SetVertexColor = function(f, r, g, b) f.vr, f.vg, f.vb = r, g, b end,
+    SetValue = function(f, v) f.value = v end,
+    SetStatusBarColor = function(f, r, g, b, a) f.sr, f.sg, f.sb, f.sa = r, g, b, a end,
+    GetStatusBarTexture = function(f)
+        local tex = rawget(f, "barTex")
+        if not tex then tex = Frame(f, nil, "Texture"); f.barTex = tex end
+        return tex
+    end,
+    SetGradient = function(f, dir, from, to) f.dir, f.from, f.to = dir, from, to end,
     SetShadowColor = function(f, r, g, b, a) f.shadow = { r, g, b, a } end,
     SetShadowOffset = function(f, x, y) f.offset = { x, y } end,
     SetText = function(f, text) f.text = text; textsSet = textsSet + 1 end,
@@ -65,12 +78,14 @@ local function Read(path)
 end
 
 local now = 1000
+local xp, xpMax, rested = 500, 1000, nil
 local tick
 local menu
 
 local function Boot(account, settings)
     for i = #created, 1, -1 do created[i] = nil end
     now, tick, menu = 1000, nil, nil
+    xp, xpMax, rested = 500, 1000, nil
     local env = {
         CreateFrame = function(_, name, parent) return Frame(parent, name) end,
         NaowhForeverDB = { account = account or {}, profiles = {}, charActive = {} },
@@ -79,8 +94,12 @@ local function Boot(account, settings)
         PixelUtil = { GetPixelToUIUnitFactor = function() return 1 end },
         GetTime = function() return now end,
         UnitLevel = function() return 20 end,
-        UnitXP = function() return 500 end,
-        UnitXPMax = function() return 1000 end,
+        UnitXP = function() return xp end,
+        UnitXPMax = function() return xpMax end,
+        GetXPExhaustion = function() return rested end,
+        CreateColor = function(r, g, b, a)
+            return { r = r, g = g, b = b, a = a, SetRGBA = function(c, r2, g2, b2, a2) c.r, c.g, c.b, c.a = r2, g2, b2, a2 end }
+        end,
         UnitName = function() return "Die" end,
         GetRealmName = function() return "Realm" end,
         GetMaxLevelForPlayerExpansion = function() return 60 end,
@@ -129,7 +148,11 @@ local function Boot(account, settings)
     for _, f in ipairs(created) do
         if f.name == "NaowhForeverXPTicker" then ticker = f end
     end
-    return { ns = ns, S = ns.QoLSettings, ticker = ticker, card = card, T = ns.THEME }
+    local events
+    for _, f in ipairs(created) do
+        if f.events.PLAYER_XP_UPDATE then events = f end
+    end
+    return { ns = ns, S = ns.QoLSettings, ticker = ticker, card = card, T = ns.THEME, events = events }
 end
 
 local St
@@ -160,7 +183,7 @@ do
     check("the kicker reads XP / HOUR", t.kicker.text == "XP / HOUR")
     check("the kicker in the accent, small", Is(t.kicker, T.accentSoft) and t.kicker.size == 10)
     check("the kicker at the card's top left", t.kicker.p1 == "TOPLEFT" and t.kicker.p2 == 8 and t.kicker.p3 == -8)
-    check("the rate big, in the text color", Is(t.rate, T.fg) and t.rate.size == 24 and t.rate.text == "0")
+    check("the rate big, muted while it is 0", Is(t.rate, T.muted) and t.rate.size == 24 and t.rate.text == "0")
     check("the rate under the kicker", t.rate.p1 == "TOPLEFT" and t.rate.p2 == t.kicker and t.rate.p3 == "BOTTOMLEFT")
     check("no Paused tag while running", t.tag.shown == false and t.tag.text == "PAUSED" and Is(t.tag, T.muted))
 
@@ -168,7 +191,7 @@ do
         and t.ding.on and t.time.on)
     check("labels muted on the left", Is(t.ding.label, T.muted) and t.ding.label.p1 == "TOPLEFT"
         and t.ding.label.p4 == 8)
-    check("values in the text color on the right", Is(t.ding.value, T.fg) and t.ding.value.p1 == "TOPRIGHT"
+    check("values in the text color on the right", Is(t.time.value, T.fg) and t.ding.value.p1 == "TOPRIGHT"
         and t.ding.value.p4 == -8)
     check("a label and its value share a line", t.ding.label.p5 == t.ding.value.p5
         and t.time.label.p5 == t.time.value.p5)
@@ -307,7 +330,7 @@ do
     local p = preview.ticker
     studio.paint(preview, "levelling")
     check("the preview draws the card", p.bg.shown and Is(p.bg, T.bg) and p.bg.a == St.HUD_CARD_ALPHA)
-    check("levelling: the rate and rows", p.rate.text == "48.2k" and p.ding.value.text == "23 mins"
+    check("levelling: the rate and rows", p.rate.text == "48.2k" and p.ding.value.text == "8 mins"
         and p.time.value.text == "1:12:40" and p.tag.shown == false)
     check("levelling: sample history", p.history[1].label.text == "Level 22" and p.history[5].on)
     check("the preview's buttons do nothing", p.toggle.mouse == false and p.reset.mouse == false)
@@ -364,8 +387,8 @@ do
     local s = Boot({ themePreset = "slate" })
     local ns, t, T = s.ns, s.ticker, s.T
     check("a theme preset changes the colors", ns.Color("muted") ~= "|cff9a9ea6")
-    check("the card follows the theme", Is(t.bg, T.bg) and Is(t.kicker, T.accentSoft) and Is(t.rate, T.fg)
-        and Is(t.ding.label, T.muted) and Is(t.ding.value, T.fg))
+    check("the card follows the theme", Is(t.bg, T.bg) and Is(t.kicker, T.accentSoft) and Is(t.rate, T.muted)
+        and Is(t.ding.label, T.muted) and Is(t.time.value, T.fg) and Is(t.ding.value, T.muted))
 end
 
 do
@@ -378,6 +401,106 @@ do
     local s = Boot(nil, { xpTickerPos = pos })
     local t = s.ticker
     check("the card sits at the saved place", t.p1 == "TOPLEFT" and t.p3 == "CENTER" and t.p4 == -500 and t.p5 == 120)
+end
+
+local function Same(a, b) return math.abs(a.r - b.r) < 1e-6 and math.abs(a.g - b.g) < 1e-6 and math.abs(a.b - b.b) < 1e-6 end
+local function LineIn(line, c) return Same(line.fill.barTex.to, c) end
+local function AheadIn(line, c) return Same({ r = line.ahead.sr, g = line.ahead.sg, b = line.ahead.sb }, c) end
+
+do
+    local s = Boot()
+    local ns, t, T, ev = s.ns, s.ticker, s.T, s.events
+    local line = t.line
+    check("a progress line from the shared parts", line and line.SetProgress and ns.Shared.Parts.ProgressLine)
+    check("along the card's bottom edge, inside the border", line.parent == t.inner and line.p1 == "BOTTOMRIGHT"
+        and t.inner.parent == t)
+    check("2px high", line.h == 2)
+    check("it shows XP to the next level", line.fill.value == 0.5 and line.ahead.value == 0.5)
+    check("the fill in the accent, a gradient into it", LineIn(line, T.accent) and line.fill.barTex.dir == "HORIZONTAL"
+        and not Same(line.fill.barTex.from, T.accent))
+    check("rested ahead of it in the soft accent, fainter", AheadIn(line, T.accentSoft) and line.ahead.sa < 1)
+
+    check("the rate muted at 0", Is(t.rate, T.muted))
+    check("-- muted", t.ding.value.text == "--" and Is(t.ding.value, T.muted))
+    xp, rested = 700, 200
+    ev.scripts.OnEvent(ev, "PLAYER_XP_UPDATE")
+    check("the line follows XP", line.fill.value == 0.7)
+    check("and rested", math.abs(line.ahead.value - 0.9) < 1e-9)
+    rested = 900
+    ev.scripts.OnEvent(ev, "PLAYER_XP_UPDATE")
+    check("rested stops at the end of the level", line.ahead.value == 1)
+    xp = 900
+    tick()
+    check("the clock does not move the line", line.fill.value == 0.7)
+    xp = 700
+
+    check("the rate in the accent while earning", t.rate.text ~= "0" and Is(t.rate, T.accent))
+    check("the only bright number: the rest in the text color", Is(t.time.value, T.fg))
+    check("Ding under 10 minutes in the soft accent", t.ding.value.text == "1 min" and Is(t.ding.value, T.accentSoft))
+    xpMax = 100000
+    tick()
+    check("Ding further off in the text color", t.ding.value.text:find("hours", 1, true) and Is(t.ding.value, T.fg))
+    xpMax = 1000
+
+    check("the kicker in the soft accent while running", Is(t.kicker, T.accentSoft))
+    ns.PauseXPTicker()
+    check("paused: the kicker muted", Is(t.kicker, T.muted))
+    check("paused: the rate muted", Is(t.rate, T.muted))
+    check("paused: the line muted", LineIn(line, T.muted) and AheadIn(line, T.muted))
+    ns.StartXPTicker()
+    check("running again: the colors are back", Is(t.kicker, T.accentSoft) and Is(t.rate, T.accent)
+        and LineIn(line, T.accent) and AheadIn(line, T.accentSoft))
+
+    check("no trend arrow at first", t.trend.shown == false)
+    now = now + 180
+    tick()
+    check("still none after one window", t.trend.shown == false)
+    xp = 1000 - 1
+    ev.scripts.OnEvent(ev, "PLAYER_XP_UPDATE")
+    now = now + 180
+    tick()
+    check("an up arrow while the rate climbs", t.trend.shown and t.trend.tex == ns.Shared.Style.UP
+        and t.trend.t == 0 and t.trend.vr == St.HAVE_RGB.r and t.trend.vg == St.HAVE_RGB.g)
+    check("beside the rate", t.trend.p1 == "LEFT" and t.trend.p2 == t.rate)
+    now = now + 900
+    tick()
+    check("a down arrow while it falls", t.trend.shown and t.trend.t == 1 and t.trend.vr == St.RED_RGB.r)
+    ns.PauseXPTicker()
+    check("no arrow while paused", t.trend.shown == false)
+    ns.StartXPTicker()
+    ns.ResetXPTicker()
+    check("a reset clears it", t.trend.shown == false)
+
+    for _ = 1, 50 do tick() end
+    collectgarbage("collect")
+    collectgarbage("stop")
+    local mem = collectgarbage("count")
+    for _ = 1, 1000 do
+        tick()
+        ev.scripts.OnEvent(ev, "PLAYER_XP_UPDATE")
+    end
+    local grown = collectgarbage("count") - mem
+    collectgarbage("restart")
+    check(("no garbage per update or XP event (%.3f KB)"):format(grown), grown < 0.05)
+    local source = Read("QoL/NaowhForever_XPTicker.lua")
+    check("no hand-written colors", not source:find("SetTextColor%(%d") and not source:find("SetVertexColor%(%d"))
+end
+
+do
+    local s = Boot()
+    local studio, T = s.card.studio, s.T
+    local preview = studio.new(Frame())
+    local p = preview.ticker
+    studio.paint(preview, "levelling")
+    check("preview: sample progress with rested", p.line.fill.value == 0.62 and math.abs(p.line.ahead.value - 0.77) < 1e-9)
+    check("preview: the rate in the accent with an up arrow", Is(p.rate, T.accent) and p.trend.shown and p.trend.t == 0)
+    check("preview: Ding close, in the soft accent", p.ding.value.text == "8 mins" and Is(p.ding.value, T.accentSoft))
+    studio.paint(preview, "paused")
+    check("preview paused: muted kicker, rate and line, no arrow", Is(p.kicker, T.muted) and Is(p.rate, T.muted)
+        and LineIn(p.line, T.muted) and p.trend.shown == false)
+    studio.paint(preview, "resting")
+    check("preview resting: more rested, the rate falling", math.abs(p.line.ahead.value - 0.92) < 1e-9
+        and p.trend.shown and p.trend.t == 1 and Is(p.kicker, T.accentSoft))
 end
 
 print(("PASS xp ticker: %d checks"):format(checks))

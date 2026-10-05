@@ -57,6 +57,46 @@ function Parts.HudText(fs, shadow)
     return fs
 end
 
+local PROGRESS_TEXTURE = "Interface\\Buttons\\WHITE8X8"
+local PROGRESS_TRACK_ALPHA, PROGRESS_FROM_SHARE, PROGRESS_AHEAD_ALPHA = 1, 0.45, 0.45
+
+local function ProgressBar(line)
+    local bar = CreateFrame("StatusBar", nil, line)
+    bar:SetAllPoints()
+    bar:SetStatusBarTexture(PROGRESS_TEXTURE)
+    bar:SetMinMaxValues(0, 1)
+    bar:SetValue(0)
+    return bar
+end
+
+local function ProgressSet(line, value, ahead)
+    value = math.max(0, math.min(1, value))
+    line.fill:SetValue(value)
+    line.ahead:SetValue(math.min(1, value + math.max(0, ahead or 0)))
+end
+
+local function ProgressPaint(line, color, aheadColor)
+    local share = PROGRESS_FROM_SHARE
+    line.from:SetRGBA(color.r * share, color.g * share, color.b * share, 1)
+    line.to:SetRGBA(color.r, color.g, color.b, 1)
+    line.fill:GetStatusBarTexture():SetGradient("HORIZONTAL", line.from, line.to)
+    local c = aheadColor or color
+    line.ahead:SetStatusBarColor(c.r, c.g, c.b, PROGRESS_AHEAD_ALPHA)
+end
+
+function Parts.ProgressLine(parent, height)
+    local line = CreateFrame("Frame", nil, parent)
+    line:SetHeight(height)
+    ns.Solid(line, "BACKGROUND", T.line, PROGRESS_TRACK_ALPHA):SetAllPoints()
+    line.ahead = ProgressBar(line)
+    line.fill = ProgressBar(line)
+    line.fill:SetFrameLevel(line.ahead:GetFrameLevel() + 1)
+    line.from, line.to = CreateColor(1, 1, 1, 1), CreateColor(1, 1, 1, 1)
+    line.SetProgress, line.Paint = ProgressSet, ProgressPaint
+    ProgressPaint(line, T.accent)
+    return line
+end
+
 -------------------------------------------------------------------------------
 --  Ranks on your BiS list: your BiS (#1) an orange star, your second pick a silver one, the
 --  rest a muted number. Made once per rank and drop.

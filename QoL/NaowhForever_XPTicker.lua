@@ -13,6 +13,8 @@ local SECTION_GAP, ROW_GAP, CONTROL_GAP, CONTROLS_INSET = 6, 3, 2, 6
 local KICKER_SHARE, KICKER_MIN, ROW_SHARE, ROW_MIN = 0.42, 9, 0.6, 10
 local HISTORY_SHARE, HISTORY_MIN, HISTORY_MAX = 0.5, 9, 10
 local WIDTH_PER_SIZE, WIDTH_STEP = 6, 8
+local LINE_H, TREND_SHARE, TREND_MIN, TREND_GAP = 2, 0.5, 8, 4
+local TREND_WINDOW, TREND_MIN_SHARE, DING_SOON = 180, 0.05, 600
 local KICKER, PAUSED, NONE, LEVEL = "XP / HOUR", "PAUSED", "--", "Level %d"
 local PAUSE_TIP, PAUSE_HINT = "Pause", "Stops the clock and the XP count."
 local START_TIP, START_HINT = "Start", "Carries on from where you paused."
@@ -24,6 +26,7 @@ local paused, pausedAt, pausedTotal = false, nil, 0
 local lastXP, lastXPMax
 local cur, anchor
 local historyKeys = {}
+local trendBase, trendAt, trendDir = 0, 0, 0
 
 local function On()
     return S.Get("enabled") and S.Get("xpTicker")
@@ -88,6 +91,12 @@ local function ButtonLeave(button)
     CardLeave(button.card)
 end
 
+local function Tone(fs, color)
+    if fs.tone == color then return end
+    fs.tone = color
+    fs:SetTextColor(color.r, color.g, color.b)
+end
+
 local function NewButton(f, texture, tip, hint)
     local button = Parts.BarButton(f.controls, texture, tip, hint)
     button.card = f
@@ -109,6 +118,11 @@ function Look.New(f)
     f.tag:Hide()
     f.rate = NewText(f, T.fg)
     f.rate:SetPoint("TOPLEFT", f.kicker, "BOTTOMLEFT", 0, -KICKER_GAP)
+    f.trend = f:CreateTexture(nil, "OVERLAY")
+    f.trend:SetTexture(St.UP)
+    f.trend:SetPoint("LEFT", f.rate, "RIGHT", TREND_GAP, 0)
+    f.trend:Hide()
+    f.trendDir = 0
     f.ding, f.time = NewRow(f, "Ding"), NewRow(f, "Time")
     f.history = {}
     for i = 1, HISTORY_MAX do f.history[i] = NewRow(f) end
@@ -121,6 +135,11 @@ function Look.New(f)
     f.reset:SetPoint("LEFT", f.toggle, "RIGHT", CONTROL_GAP, 0)
     f.controls:SetSize(f.toggle:GetWidth() + CONTROL_GAP + f.reset:GetWidth(), f.toggle:GetHeight())
     f.controls:Hide()
+    f.inner = ns.PixelInset(CreateFrame("Frame", nil, f), 1)
+    f.line = Parts.ProgressLine(f.inner, LINE_H)
+    f.line:SetPoint("BOTTOMLEFT")
+    f.line:SetPoint("BOTTOMRIGHT")
+    f.line:Paint(T.accent, T.accentSoft)
     f:EnableMouse(true)
     f:SetScript("OnEnter", CardEnter)
     f:SetScript("OnLeave", CardLeave)
@@ -140,6 +159,8 @@ function Look.Fonts(f)
     f.kicker:SetFont(font, small, flags)
     f.tag:SetFont(font, small, flags)
     f.rate:SetFont(font, size, flags)
+    f.trendSize = math.max(TREND_MIN, math.floor(size * TREND_SHARE))
+    f.trend:SetSize(f.trendSize, f.trendSize)
     local rowSize = math.max(ROW_MIN, math.floor(size * ROW_SHARE))
     RowFont(f.ding, font, rowSize, flags)
     RowFont(f.time, font, rowSize, flags)
@@ -196,7 +217,8 @@ local function RowWidth(w, row)
 end
 
 function Look.Fit(f)
-    local head = math.max(f.kicker:GetStringWidth() + TAG_GAP + f.tag:GetStringWidth(), f.rate:GetStringWidth())
+    local rateW = f.rate:GetStringWidth() + (f.trendDir ~= 0 and TREND_GAP + f.trendSize or 0)
+    local head = math.max(f.kicker:GetStringWidth() + TAG_GAP + f.tag:GetStringWidth(), rateW)
     local w = math.max(f.minW, head + HEAD_GAP + f.controls:GetWidth())
     w = RowWidth(RowWidth(w, f.ding), f.time)
     for i = 1, HISTORY_MAX do w = RowWidth(w, f.history[i]) end
@@ -218,14 +240,42 @@ local function ShowPaused(f, isPaused)
     toggle.icon:SetTexture(isPaused and St.PLAY or St.PAUSE)
     toggle.tip = isPaused and START_TIP or PAUSE_TIP
     toggle.hint = isPaused and START_HINT or PAUSE_HINT
+    Tone(f.kicker, isPaused and T.muted or T.accentSoft)
+    f.line:Paint(isPaused and T.muted or T.accent, isPaused and T.muted or T.accentSoft)
 end
 
-function Look.Paint(f, rate, ding, elapsed, isPaused, keys, levels)
+local function ShowTrend(f, dir)
+    if f.trendDir == dir then return false end
+    f.trendDir = dir
+    local trend = f.trend
+    trend:SetShown(dir ~= 0)
+    if dir > 0 then
+        trend:SetTexCoord(0, 1, 0, 1)
+        trend:SetVertexColor(St.HAVE_RGB.r, St.HAVE_RGB.g, St.HAVE_RGB.b)
+    elseif dir < 0 then
+        trend:SetTexCoord(0, 1, 1, 0)
+        trend:SetVertexColor(St.RED_RGB.r, St.RED_RGB.g, St.RED_RGB.b)
+    end
+    return true
+end
+
+function Look.Progress(f, value, rested)
+    f.line:SetProgress(value, rested)
+end
+
+function Look.Paint(f, rate, ding, elapsed, isPaused, keys, levels, trend)
     local changed = SetValue(f.rate, Short(rate))
-    ShowPaused(f, isPaused and true or false)
+    isPaused = isPaused and true or false
+    ShowPaused(f, isPaused)
+    local earning = rate > 0 and not isPaused
+    Tone(f.rate, earning and T.accent or T.muted)
+    if ShowTrend(f, earning and trend or 0) then changed = true end
     local showDing = S.Get("xpTickerLevel") and true or false
     local showTime = S.Get("xpTickerElapsed") and true or false
-    if showDing and SetValue(f.ding.value, ding and Duration(ding) or NONE) then changed = true end
+    if showDing then
+        if SetValue(f.ding.value, ding and Duration(ding) or NONE) then changed = true end
+        Tone(f.ding.value, not ding and T.muted or ding < DING_SOON and T.accentSoft or T.fg)
+    end
     if showTime then
         local sec = math.max(0, math.floor(elapsed + 0.5))
         if f.time.sec ~= sec then
@@ -319,13 +369,26 @@ local function Update()
     if rate > 0 and S.Get("xpTickerLevel") then
         ding = (UnitXPMax("player") - UnitXP("player")) / rate * 3600
     end
+    if not paused and now - trendAt >= TREND_WINDOW then
+        local diff = rate - trendBase
+        trendDir = (trendBase > 0 and math.abs(diff) > trendBase * TREND_MIN_SHARE) and (diff > 0 and 1 or -1) or 0
+        trendBase, trendAt = rate, now
+    end
     local keys, levels = History()
-    Look.Paint(ticker, rate, ding, elapsed, paused, keys, levels)
+    Look.Paint(ticker, rate, ding, elapsed, paused, keys, levels, trendDir)
     ticker:Show()
+end
+
+local function Progress()
+    if not ticker then return end
+    local max = UnitXPMax("player")
+    if max <= 0 then return end
+    Look.Progress(ticker, UnitXP("player") / max, (GetXPExhaustion() or 0) / max)
 end
 
 function ns.ResetXPTicker()
     sessionStart, sessionXP, pausedTotal = GetTime(), 0, 0
+    trendBase, trendAt, trendDir = 0, sessionStart, 0
     if paused then pausedAt = sessionStart end
     Update()
     ns.ResetXPBarSession()
@@ -370,6 +433,7 @@ events:SetScript("OnEvent", function(_, event, arg1)
         local gained = xp >= lastXP and xp - lastXP or (lastXPMax - lastXP) + xp
         lastXP, lastXPMax = xp, max
         if not paused then sessionXP = sessionXP + gained end
+        Progress()
     end
     TrackSplits(event == "PLAYER_LEVEL_UP" and arg1 or nil)
     Update()
@@ -403,6 +467,7 @@ local function Apply()
         ticker.mover = ns.UI.AttachMover(ticker, "XP per Hour", function(pos) S.Set("xpTickerPos", pos) end,
             "QoL/XP", "QoL/XP:xpTicker")
         sessionStart, sessionXP = GetTime(), 0
+        trendAt = sessionStart
     end
     Look.Fonts(ticker)
     Place()
@@ -412,6 +477,7 @@ local function Apply()
     events:RegisterEvent("PLAYER_LEVEL_UP")
     events:RegisterEvent("PLAYER_LOGOUT")
     TrackSplits()
+    Progress()
     local rate = S.Get("xpTickerSplits") and 1 or 5
     if AtMaxLevel() and not unlocked then rate = nil end
     if clock and clockRate ~= rate then clock:Cancel(); clock = nil end
@@ -445,7 +511,8 @@ local STAGE_H, STAGE_MARGIN, TEXT_ROOM = 210, 16, 44
 local NOTE_Y, NOTE_SIZE, NOTE_GAP = 8, 11, 4
 local HOVER_ALPHA, HIT_PAD = 0.12, 1
 local SIZE_RANGE = { 8, 32, 1 }
-local SAMPLE_RATE, SAMPLE_DING, SAMPLE_TIME = 48200, 23 * 60, 72 * 60 + 40
+local SAMPLE_RATE, SAMPLE_DING, SAMPLE_TIME = 48200, 8 * 60, 72 * 60 + 40
+local SAMPLE_PROGRESS, SAMPLE_RESTED, SAMPLE_RESTING_RESTED = 0.62, 0.15, 0.3
 local SAMPLE_PAUSED_TIME, SAMPLE_RESTING_RATE, SAMPLE_RESTING_DING = 41 * 60 + 5, 31600, 35 * 60
 local SAMPLE_KEYS = { 22, 21, 20, 19, 18 }
 local SAMPLE_LEVELS = { [22] = { total = 3125 }, [21] = { total = 2864 }, [20] = { total = 2702 },
@@ -586,11 +653,14 @@ local function PaintPreview(preview, state)
     Look.Fonts(f)
     local keys = S.Get("xpTickerSplits") and SAMPLE_KEYS or NO_KEYS
     if state == "paused" then
-        Look.Paint(f, SAMPLE_RATE, SAMPLE_DING, SAMPLE_PAUSED_TIME, true, keys, SAMPLE_LEVELS)
+        Look.Paint(f, SAMPLE_RATE, SAMPLE_DING, SAMPLE_PAUSED_TIME, true, keys, SAMPLE_LEVELS, 1)
+        Look.Progress(f, SAMPLE_PROGRESS, SAMPLE_RESTED)
     elseif state == "resting" then
-        Look.Paint(f, SAMPLE_RESTING_RATE, SAMPLE_RESTING_DING, SAMPLE_TIME, false, keys, SAMPLE_LEVELS)
+        Look.Paint(f, SAMPLE_RESTING_RATE, SAMPLE_RESTING_DING, SAMPLE_TIME, false, keys, SAMPLE_LEVELS, -1)
+        Look.Progress(f, SAMPLE_PROGRESS, SAMPLE_RESTING_RESTED)
     else
-        Look.Paint(f, SAMPLE_RATE, SAMPLE_DING, SAMPLE_TIME, false, keys, SAMPLE_LEVELS)
+        Look.Paint(f, SAMPLE_RATE, SAMPLE_DING, SAMPLE_TIME, false, keys, SAMPLE_LEVELS, 1)
+        Look.Progress(f, SAMPLE_PROGRESS, SAMPLE_RESTED)
     end
     FitPreview(preview)
     local hidden = state == "resting" and S.Get("xpTickerHideResting") and true or false
