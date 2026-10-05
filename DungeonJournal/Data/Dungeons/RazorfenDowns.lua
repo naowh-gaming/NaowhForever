@@ -11,13 +11,14 @@ ns.Journal.AddDungeon("RazorfenDowns", {
     entrance = { map = 1413, x = 50.9, y = 92.9 },
     wings = {
         { bosses = {
-            { npc = 7355, name = "Tuten'kash", model = 7845, encounters = { 2780 } },
-            { npc = 7357, name = "Mordresh Fire Eye", model = 8055, encounters = { 2782 } },
-            { npc = 8567, name = "Glutton", model = 7864, encounters = { 2784 } },
-            { npc = 7358, name = "Amnennar the Coldbringer", model = 7971, encounters = { 2785 } },
-            { npc = 7354, name = "Ragglesnout", model = 11382, rare = true, encounters = { 2783 } },
-            { npc = 7356, name = "Plaguemaw the Rotting", model = 6124, rare = true, encounters = { 2781 } },
-            { npc = 14686, name = "Lady Falther'ess", model = 10698, optional = true },
+            { npc = 7355, name = "Tuten'kash", model = 7845, encounters = { 2780 }, notInGame = 3 },
+            { npc = 7357, name = "Mordresh Fire Eye", model = 8055, encounters = { 2782 }, notInGame = 3 },
+            { npc = 8567, name = "Glutton", model = 7864, encounters = { 2784 }, notInGame = 2 },
+            { npc = 7358, name = "Amnennar the Coldbringer", model = 7971, encounters = { 2785 }, notInGame = 5 },
+            { npc = 7354, name = "Ragglesnout", model = 11382, rare = true, encounters = { 2783 }, notInGame = 3 },
+            { npc = 7356, name = "Plaguemaw the Rotting", model = 6124, rare = true, encounters = { 2781 }, notInGame = 2 },
+            { npc = 14686, name = "Lady Falther'ess", model = 10698, optional = true, notInGame = 2 },
+            { npc = nil, name = "Trash", trash = true, notInGame = 7 },
         } },
     },
 })

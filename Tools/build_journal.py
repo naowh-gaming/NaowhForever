@@ -130,12 +130,12 @@ def game_tables():
 
 
 def in_game(loot, held):
-    """The loot the game can name. Forever's Item table keeps a row for every Classic item, but
-    only the items in the game have an ItemSparse row (their name, level and quality): the
-    rest are never sent by the server, so the client shows them as "Item 10800" and their
-    tooltip waits forever (most of Classic's dungeon loot above level 30, on 1.60.1). Those
-    are left out and added to held (a set of IDs); a build whose tables have them brings them
-    back."""
+    """The loot the game can name, and how many items were left out. Forever's Item table keeps
+    a row for every Classic item, but only the items in the game have an ItemSparse row (their
+    name, level and quality): the rest are never sent by the server, so the client shows them
+    as "Item 10800" and their tooltip waits forever (most of Classic's dungeon loot above level
+    30, on 1.60.1). Those are left out and added to held (a set of IDs); a build whose tables
+    have them brings them back."""
     names = game_tables()
     kept = []
     for item in loot:
@@ -143,7 +143,13 @@ def in_game(loot, held):
             kept.append(item)
         else:
             held.add(item["id"])
-    return kept
+    return kept, len(loot) - len(kept)
+
+
+def leave_out(boss, held):
+    """The boss's loot without what the game cannot name; notInGame counts what went, so its
+    card can say its loot is still to come rather than unknown."""
+    boss["loot"], boss["notInGame"] = in_game(boss["loot"], held)
 
 
 def game_item(item_id):
@@ -533,6 +539,8 @@ def lua_boss(boss):
         fields.append("encounters = { " + ", ".join(str(e) for e in boss["encounters"]) + " }")
     if boss.get("with"):
         fields.append(f"with = {lua_string(boss['with'])}")
+    if boss.get("notInGame"):
+        fields.append(f"notInGame = {boss['notInGame']}")
     if boss["loot"]:
         fields.append("loot = { " + ", ".join(str(i["id"]) for i in boss["loot"]) + " }")
         if any(i["chance"] is not None for i in boss["loot"]):
@@ -648,21 +656,22 @@ def main():
             bosses += [boss_entry(n, False, pinned, extra, kept, report, listed.get((here, n.lower())), "chest", o)
                        for n, o in wing.get("chests", {}).items()]
             for boss in bosses:
-                boss["loot"] = in_game(boss["loot"], held)
+                leave_out(boss, held)
             # The wing's trash, last: what its other mobs drop, by wowsrc's list.
             trash = merge_wowsrc([], (listed.get((here, "trash")) or {"items": [], "complete": True}))
             if here == dungeon["wings"][-1].get("name"):   # placed by hand ("add": { "Trash": [...] })
                 have = {i["id"] for i in trash}
                 trash += [dict(i, chance=None) for i in extra.get("trash", []) if i["id"] not in have
                           and i["quality"] >= MIN_QUALITY and i["slot"] in EQUIPPABLE]
-            trash = in_game(trash, held)
-            if trash:
-                for item in trash:
+            trash = {"npc": None, "name": "Trash", "rare": False, "trash": True, "loot": trash}
+            leave_out(trash, held)
+            if trash["loot"] or trash["notInGame"]:
+                for item in trash["loot"]:
                     kept[item["id"]] = item
-                bosses.append({"npc": None, "name": "Trash", "rare": False, "trash": True, "loot": trash})
+                bosses.append(trash)
             if not dungeon.get("loot", True):
                 for boss in bosses:
-                    boss["loot"] = []
+                    boss["loot"], boss["notInGame"] = [], 0
             for boss in bosses:
                 boss["encounters"] = [] if boss.get("trash") or boss.get("chest") else (
                     boss_encounters(boss["name"], renamed, encounters) or pinned_encounters.get(boss["name"], []))

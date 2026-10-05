@@ -556,6 +556,10 @@ do
                         check("chance is a percent, 0 when unknown: " .. boss.name, c >= 0 and c <= 100)
                     end
                 end
+                if boss.notInGame then
+                    check("left out by the build: a count, " .. boss.name,
+                        type(boss.notInGame) == "number" and boss.notInGame > 0 and boss.notInGame % 1 == 0)
+                end
                 for _, id in ipairs(boss.loot or {}) do
                     items = items + 1
                     local facts = J.Items[id]
@@ -1071,6 +1075,25 @@ do
         end
     end
     check("an empty boss's card says so in its body", inBody)
+    -- A boss whose loot is all still to come in Forever says that instead.
+    local Parts = ns.Journal.View.Parts
+    check("loot left out by the build: still to come",
+        Parts.BossEmptyText(0, { notInGame = 3 }) == "Loot arrives when Forever opens this dungeon")
+    check("none known: unknown", Parts.BossEmptyText(0, {}) == "No boss loot known yet")
+    check("loot, all filtered: for your class", Parts.BossEmptyText(0, { loot = { 1 }, notInGame = 2 })
+        == "Nothing for your class")
+    check("loot shown: nothing to say", Parts.BossEmptyText(2, { notInGame = 2 }) == "")
+    ns.OpenJournalWindow(ns.Journal.Get("SunkenTemple"))
+    local toCome, unknown = 0, 0
+    for _, frame in ipairs(state.made) do
+        local note = rawget(frame, "note")
+        if note and rawget(note, "shown") ~= false then
+            local text = rawget(note, "text")
+            if text == "Loot arrives when Forever opens this dungeon" then toCome = toCome + 1 end
+            if text == "No boss loot known yet" then unknown = unknown + 1 end
+        end
+    end
+    check("Sunken Temple's bosses say their loot is still to come", toCome >= 10 and unknown == 0)
     -- A wing's trash: a card of its own, last, with no number and no kill count.
     ns.OpenJournalWindow(ns.Journal.Get("ShadowfangKeep"))
     local trashRow

@@ -107,14 +107,28 @@ class InGame(unittest.TestCase):
         held = set()
         loot = [dict(drop(10800, 1468, 3847), chance=38.0), dict(drop(3191, 5241, 15624), chance=33.0),
                 dict(drop(273025, 2, 4227, new=True), chance=None)]
-        kept = build_journal.in_game(loot, held)
+        kept, gone = build_journal.in_game(loot, held)
         self.assertEqual([i["id"] for i in kept], [3191, 273025])
+        self.assertEqual(gone, 1)
         self.assertEqual(held, {10800}, "Darkwater Bracers: an Item row, no ItemSparse row")
 
     def test_nothing_left_out_when_the_game_has_it_all(self):
         held = set()
-        self.assertEqual(build_journal.in_game([drop(3191, 1, 1)], held), [drop(3191, 1, 1)])
+        self.assertEqual(build_journal.in_game([drop(3191, 1, 1)], held), ([drop(3191, 1, 1)], 0))
         self.assertEqual(held, set())
+
+    def test_a_boss_whose_loot_all_went_says_so_in_its_data(self):
+        boss = {"npc": 8580, "name": "Atal'alarion", "rare": False, "encounters": [3582],
+                "loot": [dict(drop(10800, 1468, 3847), chance=38.0)]}
+        build_journal.leave_out(boss, set())
+        self.assertEqual((boss["loot"], boss["notInGame"]), ([], 1))
+        self.assertIn("notInGame = 1", build_journal.lua_boss(boss))
+        self.assertNotIn("loot =", build_journal.lua_boss(boss))
+
+    def test_a_boss_with_nothing_left_out_has_no_flag(self):
+        boss = {"npc": 1, "name": "Boss", "rare": False, "encounters": [], "loot": [dict(drop(3191, 1, 1), chance=None)]}
+        build_journal.leave_out(boss, set())
+        self.assertNotIn("notInGame", build_journal.lua_boss(boss))
 
 
 if __name__ == "__main__":

@@ -147,7 +147,8 @@ The rules, in plain words:
 - **Only what the game can name.** Forever keeps a row in its Item table for every Classic item,
   but only the items in the game have their name and level (ItemSparse, read through wago.tools);
   the server never sends the rest, so the Journal could only show "Item 10800". Those are left
-  out, and the build lists them; a build whose tables have them brings them back.
+  out, and the build lists them; a build whose tables have them brings them back. A boss
+  left with nothing says its loot arrives when Forever opens the dungeon (`notInGame` in its data).
 - A boss nobody has loot for yet says so on its card. Keys, quest items and recipes are left
   out: the Journal lists gear.
 
