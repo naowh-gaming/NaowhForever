@@ -13,6 +13,7 @@ local RESTED    = { r = 0x1e / 255, g = 0x40 / 255, b = 0xaf / 255 }
 local QUEST_HEX, RESTED_HEX = "|cfff2a900", "|cff6b8cff"
 local OPEN_ALPHA = 0.4  -- incomplete quests: the completed quests colour, faded
 local BG_ALPHA = 0.85
+local EDGE = { r = 0, g = 0, b = 0 }  -- the bar's border: black, as the rest of the UI's
 local FILL_DARK = 0.55  -- how dark the fill's left end is against its colour
 local RESTED_DARK = 0.7 -- how dark rested is against a theme's changed accent
 
@@ -565,7 +566,7 @@ function Look.New(b)
     b.open:SetDrawLayer("ARTWORK", 1)
 
     -- Above the track, whose own frame would otherwise cover the border.
-    ns.Border(b)._frame:SetFrameLevel(b:GetFrameLevel() + 4)
+    ns.Border(b, EDGE)._frame:SetFrameLevel(b:GetFrameLevel() + 4)
 
     local text = CreateFrame("Frame", nil, b)
     text:SetAllPoints()
