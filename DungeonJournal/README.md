@@ -85,6 +85,7 @@ calls are on `ns`.
 | An item a boss drops that no source has placed yet | `"add": { "Boss Name": [itemID] }` on the dungeon (`"Trash"` for its trash) |
 | A boss wowsrc names differently | `"wowsrcNames": { "Their Name": "Our Name" }` on the dungeon |
 | A boss's NPC ID the build cannot find | `"npcs": { "Name": ID }` on the dungeon in `Tools/journal_bosses.json` |
+| Whether a dungeon is open, where the game's tables say otherwise | `"open": true` or `false` on the dungeon in `Tools/journal_bosses.json` |
 | Where a boss stands on its dungeon's map | `/nf mappins` in game, drag the pins, Copy, and paste the line into `Data/Maps.lua`. `/nf mapcheck` says which map art and floors the client has |
 | A dungeon's map | `Data/Maps.lua`: its art folder (`Interface\WorldMap\<art>`) and floor count, as `/nf mapcheck` finds them; with none, Map says "Coming soon" |
 | A key binding | `Bindings.xml` and its `BINDING_NAME_...` line (Open Dungeon Journal is in `UI/Window.lua`, Boss Loot at Cursor in `UI/Popup.lua`) |
@@ -136,7 +137,9 @@ The rules, in plain words:
 - **Wowhead** gives the drops and how often. It counts Classic Era's kills and Forever's
   together, so a new Forever item looks rarer than it is: it's kept once it has dropped
   twice, and shows no chance. A boss that's new in Forever has only Forever's kills, so its
-  chances are real. Under 10 kills, no chance is shown.
+  chances are real. Under 10 kills, no chance is shown, and a full build reads its page
+  again. A new item Wowhead finds on three or more bosses is a random drop, not any one boss's,
+  and is left out unless wowsrc or a hand list places it.
 - **wowsrc.com** lists what each boss drops in Forever (they gave us permission to use
   their site). It wins where it disagrees: its items go in, its chance is used, and an old
   item it lists somewhere else is taken off the boss. It's also where each Trash card comes
@@ -147,8 +150,12 @@ The rules, in plain words:
 - **Only what the game can name.** Forever keeps a row in its Item table for every Classic item,
   but only the items in the game have their name and level (ItemSparse, read through wago.tools);
   the server never sends the rest, so the Journal could only show "Item 10800". Those are left
-  out, and the build lists them; a build whose tables have them brings them back. A boss
-  left with nothing says its loot arrives when Forever opens the dungeon (`notInGame` in its data).
+  out, and the build lists them; a build whose tables have them brings them back.
+- **Open or not.** A dungeon is open when the game's tables have at least half of its
+  instance's boss loot (Scarlet Monastery's four wings are one instance), or `"open"` on it in
+  `Tools/journal_bosses.json` says so. In a dungeon not open, a boss left with nothing says its
+  loot arrives when Forever opens the dungeon (`notInGame` in its data); in an open one it says
+  no loot is known yet.
 - A boss nobody has loot for yet says so on its card. Keys, quest items and recipes are left
   out: the Journal lists gear.
 

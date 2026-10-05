@@ -132,6 +132,76 @@ class InGame(unittest.TestCase):
         self.assertNotIn("notInGame", build_journal.lua_boss(boss))
 
 
+class NewBosses(unittest.TestCase):
+    """A boss new in Forever: its drops read again while under MIN_KILLS kills, and an item
+    Wowhead flags as a world drop is its own only at WORLD_DROP_BOSS percent or more."""
+
+    def test_a_new_boss_read_from_few_kills_is_read_again(self):
+        self.assertTrue(build_journal.stale({"new": True, "items": [drop(273023, 1, 2)]}),
+                        "Saltspine at 2 kills: no chance to show")
+        self.assertTrue(build_journal.stale({"new": True, "items": []}))
+        self.assertFalse(build_journal.stale({"new": True, "items": [drop(273023, 62, 210)]}))
+        self.assertFalse(build_journal.stale({"new": False, "items": [drop(7717, 1, 2)]}), "a classic boss")
+        self.assertFalse(build_journal.stale([]))
+
+    def test_a_world_drop_flag_on_its_own_item(self):
+        drape = dict(drop(271097, 59, 157, new=True), world=True)    # Faldrim Anvilmar's, 38%
+        stray = dict(drop(3047, 2, 68), world=True)                   # Highland Horror's, 3%
+        kept = build_journal.choose([drape, stray], npc_new=True)
+        self.assertEqual([i["id"] for i in kept], [271097])
+        self.assertAlmostEqual(kept[0]["chance"], 100 * 59 / 157)
+
+
+class SharedDrops(unittest.TestCase):
+    """shared_drops: a new item Wowhead places on SHARED_DROP or more bosses is a random drop."""
+
+    def setUp(self):
+        self.cache = build_journal.cache
+        helm = drop(252455, 2, 5377, new=True)
+        build_journal.cache = {f"drops5:{npc}": {"new": False, "items": [helm]} for npc in (4829, 4842, 4543)}
+        build_journal.cache["drops5:3983"] = {"new": False, "items": [drop(274290, 22, 13863, new=True)]}
+
+    def tearDown(self):
+        build_journal.cache = self.cache
+
+    def test_a_helm_from_many_bosses_is_left_out(self):
+        helm = dict(drop(252455, 2, 5377, new=True), chance=None)
+        buckler = dict(drop(274290, 22, 13863, new=True), chance=None)
+        boss = {"loot": [helm, buckler]}
+        shared = build_journal.shared_drops([({}, [{"bosses": [boss]}])])
+        self.assertEqual(shared, {252455})
+        self.assertEqual([i["id"] for i in boss["loot"]], [274290], "Painwalker Buckler: Vishas's alone")
+
+    def test_wowsrc_or_a_hand_list_keeps_it(self):
+        listed = dict(drop(252455, 2, 5377, new=True), chance=None, listed=True)
+        by_hand = {"id": 252455, "chance": None, "quality": 3, "slot": 1}
+        boss = {"loot": [listed, by_hand]}
+        build_journal.shared_drops([({}, [{"bosses": [boss]}])])
+        self.assertEqual(len(boss["loot"]), 2)
+
+
+class OpenDungeons(unittest.TestCase):
+    """opened: a dungeon is open when the game has OPEN_SHARE of its instance's boss loot."""
+
+    @staticmethod
+    def wing(*bosses):
+        return [{"bosses": [{"loot": [1] * have, "notInGame": out} for have, out in bosses]}]
+
+    def test_wings_of_one_instance_count_together(self):
+        built = [({"key": "Graveyard", "name": "SM - Graveyard"}, self.wing((14, 2))),
+                 ({"key": "Armory", "name": "SM - Armory"}, self.wing((0, 3))),
+                 ({"key": "Uldaman", "name": "Uldaman"}, self.wing((6, 18)))]
+        maps = {"SM - Graveyard": "189", "SM - Armory": "189", "Uldaman": "70"}
+        found = {d["key"]: is_open for d, _, is_open in build_journal.opened(built, maps.get)}
+        self.assertEqual(found, {"Graveyard": True, "Armory": True, "Uldaman": False})
+
+    def test_no_loot_known_is_not_open_and_the_list_can_say_so(self):
+        built = [({"key": "DrownedCity", "name": "The Drowned City"}, self.wing((0, 0))),
+                 ({"key": "Dalaran", "name": "City of Dalaran", "open": True}, self.wing((0, 2)))]
+        found = {d["key"]: is_open for d, _, is_open in build_journal.opened(built, lambda name: None)}
+        self.assertEqual(found, {"DrownedCity": False, "Dalaran": True})
+
+
 class DailyWatchLog(unittest.TestCase):
     """The loot job's filter on the build's output (.github/workflows/daily-watch.yml) hides the
     per-dungeon counts and keeps the build's report lines, which start with two spaces."""
@@ -150,6 +220,8 @@ class DailyWatchLog(unittest.TestCase):
         for line in ("  not in the game's item tables, left out: 47 items (Sunken Temple): 10624",
                      "  no NPC found: Lord Roccor",
                      "  wowsrc item not mapped: Dreadmist Mask (Darkmaster Gandling, Scholomance)",
+                     "  dropped by many bosses, left out: 252455, 252512",
+                     "  not open yet: Razorfen Downs",
                      "383 items, 35 dungeons"):
             self.assertFalse(self.hidden.search(line), line)
 
