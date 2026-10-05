@@ -48,7 +48,7 @@ ns.StatWeightDefaults = {
     Spec("MAGE", "frost-mage", "Frost", CASTER, { frost = 1, int = 0.35, spi = 0.15, mp5 = 0.8, shit = 14,
         scrit = 11, haste = 11 }),
     Spec("PALADIN", "holy-paladin", "Holy", HEALER, { int = 0.6, spi = 0.1, mp5 = 2, scrit = 6, haste = 5 }),
-    Spec("PALADIN", "protection-paladin", "Protection", TANK, { agi = 0.45, str = 0.35, int = 0.3, spell = 0.45,
+    Spec("PALADIN", "protection-paladin", "Protection", TANK, { str = 0.45, agi = 0.4, int = 0.3, spell = 0.45,
         holy = 0.45, block = 6, hit = 3, shit = 3, mp5 = 0.6, dps = 3 }),
     Spec("PALADIN", "retribution-paladin", "Retribution", MELEE, { str = 1, agi = 0.5, ap = 0.5, int = 0.25,
         spell = 0.25, holy = 0.25, mp5 = 0.3, crit = 10.5, hit = 12, shit = 2, haste = 6, dps = 8 }),
@@ -79,6 +79,6 @@ ns.StatWeightDefaults = {
         haste = 7, dps = 8 }),
     Spec("WARRIOR", "fury-warrior", "Fury", MELEE, { str = 1, agi = 0.6, ap = 0.5, crit = 12, hit = 15,
         haste = 9, dps = 7.5 }),
-    Spec("WARRIOR", "protection-warrior", "Protection", TANK, { agi = 0.6, str = 0.5, ap = 0.25, block = 4,
+    Spec("WARRIOR", "protection-warrior", "Protection", TANK, { str = 0.65, agi = 0.5, ap = 0.3, block = 4,
         hit = 8, crit = 3, dps = 4 }),
 }

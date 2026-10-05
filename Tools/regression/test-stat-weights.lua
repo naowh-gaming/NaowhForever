@@ -183,6 +183,10 @@ do
             check("within the editor's range: " .. spec.key .. " " .. stat,
                 worth >= range[stat][3] and worth <= range[stat][4])
         end
+        -- Plate wearers (Warriors, and Paladins who melee or tank) never value Agility over Strength.
+        if (spec.class == "WARRIOR" or spec.class == "PALADIN") and (spec.weights.str or 0) > 0 then
+            check("plate: Strength over Agility: " .. spec.key, spec.weights.str > (spec.weights.agi or 0))
+        end
     end
     check("28 specs: three a class, and a druid's Feral Tank", count == 28 and SW.Spec("feral-tank-druid") ~= nil)
     -- A druid picks between all four, the bear by hand.
