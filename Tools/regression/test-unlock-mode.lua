@@ -79,13 +79,13 @@ for _, name in ipairs({ "SetFrameStrata", "SetFrameLevel", "RegisterForDrag" }) 
     Frame[name] = function() end
 end
 
--- The right-click menu's radios by label, and the anchors picked.
-local anchorDB, radios = {}, {}
+-- The right-click menu's radios and buttons by label, and the anchors and links picked.
+local anchorDB, radios, buttons, printed = {}, {}, {}, {}
 local function MenuEntry()
     return { CreateRadio = function(_, text, isSelected, set) radios[text] = { selected = isSelected, set = set } end }
 end
 local menuRoot = { CreateTitle = function() end,
-    CreateButton = function() return MenuEntry() end }
+    CreateButton = function(_, text, fn) buttons[text] = fn; return MenuEntry() end }
 local UIParent = NewFrame()
 UIParent.w, UIParent.h = SCREEN_W, SCREEN_H
 local combat, shift = false, false
@@ -98,6 +98,7 @@ local env = setmetatable({
         Font = function(parent) return parent:CreateFontString() end,
         HideRaidReminderAnchorConfig = function() end,
         OpenOptionsWindow = function() end,
+        Print = function(msg) printed[#printed + 1] = msg end,
     },
     UIParent = UIParent,
     CreateFrame = function(_, _, parent) return NewFrame(parent) end,
@@ -119,6 +120,11 @@ display:SetPoint("LEFT", UIParent, "BOTTOMLEFT", 1118, 117)
 local saved = {}
 local mover = UI.AttachMover(display, "Campfire", function(pos) saved[#saved + 1] = pos end, "QoL/General")
 mover:Show()
+local meter = NewFrame(UIParent)
+meter:SetSize(200, 20)
+meter:SetPoint("CENTER", UIParent, "CENTER", 0, -200)
+local meterSaved = {}
+local meterMover = UI.AttachMover(meter, "Threat Meter", function(pos) meterSaved[#meterSaved + 1] = pos end)
 
 local before = { frames = #made.frames, textures = made.textures, fonts = made.fonts }
 UI.BeginMoverMode()
@@ -179,6 +185,51 @@ Check(last.point == "CENTER" and last.x == -39 and last.y == 25 and anchorDB.anc
     "Automatic goes back to the nearest")
 Check(UI.AnchorAllMovers() == 1, "Anchor All holds every element shown")
 
+-- Anchor to Element: Campfire above the Threat Meter follows it, keeps its gap, and lets go.
+meterMover:Show()
+mover.scripts.OnMouseDown(mover, "RightButton")
+Check(buttons["Anchor to Element..."] and not buttons["Detach from Threat Meter"], "the menu offers Anchor to Element")
+buttons["Anchor to Element..."]()
+meterMover.scripts.OnMouseDown(meterMover, "LeftButton")
+Check(buttons["Above it"] and buttons["Left of it"], "clicking the target offers the sides")
+count = #saved
+buttons["Above it"]()
+local link = anchorDB.links.Campfire
+Check(link and link.to == "Threat Meter" and link.side == "TOP" and link.x == -39 and link.y == 195,
+    "the link keeps the gap from where it is")
+Check(#saved == count, "linking does not move it")
+
+UI.SelectMover(meterMover)
+keys.scripts.OnKeyDown(keys, "RIGHT")
+last = saved[#saved]
+Check(meterSaved[#meterSaved].x == 1 and last.point == "CENTER" and last.x == -38 and last.y == 25,
+    "a nudged target takes its linked element along, saved as its screen spot")
+meter:SetSize(200, 60)
+meter.hooks.OnSizeChanged(meter)
+last = saved[#saved]
+Check(last.x == -38 and last.y == 65, "a target that grows (upward, held to the bottom) pushes its linked element out")
+
+meterMover.scripts.OnMouseDown(meterMover, "RightButton")
+buttons["Anchor to Element..."]()
+mover.scripts.OnMouseDown(mover, "LeftButton")
+buttons["Below it"]()
+Check(anchorDB.links["Threat Meter"] == nil and printed[#printed]:find("already follows"), "a loop is refused")
+
+buttons["Above it"] = nil
+mover.scripts.OnMouseDown(mover, "RightButton")
+buttons["Anchor to Element..."]()
+keys.scripts.OnKeyDown(keys, "ESCAPE")
+meterMover.scripts.OnMouseDown(meterMover, "LeftButton")
+Check(buttons["Above it"] == nil, "Esc cancels picking")
+
+mover.scripts.OnMouseDown(mover, "RightButton")
+buttons["Detach from Threat Meter"]()
+Check(anchorDB.links.Campfire == nil, "Detach lets it go")
+count = #saved
+UI.SelectMover(meterMover)
+keys.scripts.OnKeyDown(keys, "LEFT")
+Check(#saved == count, "a detached element stays put")
+
 combat = true
 keys.scripts.OnEvent(keys, "PLAYER_REGEN_DISABLED")
 Check(not keys:IsShown(), "the key frame stops in combat")
@@ -189,6 +240,7 @@ combat = false
 keys.scripts.OnEvent(keys, "PLAYER_REGEN_ENABLED")
 Check(keys:IsShown(), "Unlock Mode carries on after combat")
 UI.SelectMover(mover)
+count = #saved
 keys.scripts.OnKeyDown(keys, "LEFT")
 Check(#saved == count + 1, "nudges work again after combat")
 

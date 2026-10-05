@@ -1237,7 +1237,7 @@ end
 -- Shared placement controls for ordinary display plates and reminder anchor handles.
 -- All geometry belongs to this addon; the guide is positioned numerically on UIParent,
 -- never anchored to a protected display such as the Top Bar.
-local placement = { active = false, items = {} }
+local placement = { active = false, items = {}, byLabel = {} }
 
 local function PlacementPoint(item)
     local point, relative, relPoint, x, y = item.frame:GetPoint(1)
@@ -1266,16 +1266,51 @@ local ANCHOR_NAMES = { TOPLEFT = "Top Left", TOP = "Top", TOPRIGHT = "Top Right"
     CENTER = "Center", RIGHT = "Right", BOTTOMLEFT = "Bottom Left", BOTTOM = "Bottom", BOTTOMRIGHT = "Bottom Right" }
 
 -- Unlock Mode's own settings (ns.UnlockModeSettings, made with the module settings further
--- down): the anchor picked for an element, by its label. One not picked is Automatic.
+-- down), by element label: the screen anchor picked (none is Automatic), and links.
+local function Store(key)
+    local db = ns.UnlockModeSettings.DB()
+    if type(db[key]) ~= "table" then db[key] = {} end
+    return db[key]
+end
+
 local function PickedAnchor(item)
-    local anchors = ns.UnlockModeSettings.DB().anchors
-    return type(anchors) == "table" and anchors[item.label] or nil
+    return Store("anchors")[item.label]
 end
 
 local function PickAnchor(item, anchor)
-    local db = ns.UnlockModeSettings.DB()
-    if type(db.anchors) ~= "table" then db.anchors = {} end
-    db.anchors[item.label] = anchor
+    Store("anchors")[item.label] = anchor
+end
+
+-- Links: an element held beside another, so it follows it. side is where it sits next to the
+-- target; x and y run from the target's point to the element's, in UIParent units: the gap
+-- edge to edge one way, centre to centre the other.
+local SIDES = {
+    LEFT = { child = "RIGHT", target = "LEFT", name = "Left of it" },
+    RIGHT = { child = "LEFT", target = "RIGHT", name = "Right of it" },
+    TOP = { child = "BOTTOM", target = "TOP", name = "Above it" },
+    BOTTOM = { child = "TOP", target = "BOTTOM", name = "Below it" },
+}
+local SIDE_ORDER = { "LEFT", "RIGHT", "TOP", "BOTTOM" }
+local FOLLOW_DEPTH = 10   -- links followed in a chain at most
+
+local function LinkOf(item)
+    local link = Store("links")[item.label]
+    return type(link) == "table" and SIDES[link.side] and link or nil
+end
+
+-- The frame's edges in UIParent units; nil before it has a size.
+local function Bounds(frame)
+    local left, right, top, bottom = frame:GetLeft(), frame:GetRight(), frame:GetTop(), frame:GetBottom()
+    if not (left and right and top and bottom) then return end
+    local ratio = frame:GetEffectiveScale() / UIParent:GetEffectiveScale()
+    return left * ratio, right * ratio, top * ratio, bottom * ratio, ratio
+end
+
+local function PointAt(frame, point)
+    local left, right, top, bottom = Bounds(frame)
+    if not left then return end
+    local f = ANCHORS[point]
+    return left + (right - left) * f[1], bottom + (top - bottom) * f[2]
 end
 
 -- The anchor for where a frame sits: the ninth of the screen its centre is in.
@@ -1288,10 +1323,8 @@ end
 
 -- The frame where it is now, as anchor and offsets in its own units; nil before it has a size.
 local function ScreenOffsets(frame, anchor)
-    local left, right, top, bottom = frame:GetLeft(), frame:GetRight(), frame:GetTop(), frame:GetBottom()
-    if not (left and right and top and bottom) then return end
-    local ratio = frame:GetEffectiveScale() / UIParent:GetEffectiveScale()
-    left, right, top, bottom = left * ratio, right * ratio, top * ratio, bottom * ratio
+    local left, right, top, bottom, ratio = Bounds(frame)
+    if not left then return end
     local width, height = UIParent:GetWidth(), UIParent:GetHeight()
     anchor = anchor or NearestAnchor((left + right) / 2, (top + bottom) / 2, width, height)
     local fx, fy = ANCHORS[anchor][1], ANCHORS[anchor][2]
@@ -1328,9 +1361,120 @@ local function SavePlacement(item, point, relPoint, x, y)
     item.save({ point = point, relPoint = relPoint, x = x, y = y })
 end
 
+local Follow
+
+local function FollowLinked(target, depth)
+    if depth > FOLLOW_DEPTH then return end
+    for label, link in pairs(Store("links")) do
+        local child = type(link) == "table" and link.to == target.label and placement.byLabel[label]
+        if child then Follow(child, depth) end
+    end
+end
+
+-- Moves an element to its place beside its target, saved as its screen spot too so it is there
+-- at login before anything follows. A protected one waits out combat.
+function Follow(item, depth)
+    local link = LinkOf(item)
+    local target = link and placement.byLabel[link.to]
+    if not target or item.ownAnchor then return end
+    local tx, ty = PointAt(target.frame, SIDES[link.side].target)
+    local cx, cy = PointAt(item.frame, SIDES[link.side].child)
+    if not (tx and cx) then return end
+    local dx, dy = tx + link.x - cx, ty + link.y - cy
+    if math.abs(dx) >= 0.5 or math.abs(dy) >= 0.5 then
+        if InCombatLockdown() and item.frame:IsProtected() then return end
+        local _, _, _, _, ratio = Bounds(item.frame)
+        item.frame:ClearAllPoints()
+        item.frame:SetPoint(SIDES[link.side].child, UIParent, "BOTTOMLEFT", (cx + dx) / ratio, (cy + dy) / ratio)
+        SavePlacement(item)
+    end
+    FollowLinked(item, depth + 1)
+end
+
+-- A linked element's gap, from where it is now.
+local function CaptureLink(item)
+    local link = LinkOf(item)
+    local target = link and placement.byLabel[link.to]
+    if not target then return end
+    local tx, ty = PointAt(target.frame, SIDES[link.side].target)
+    local cx, cy = PointAt(item.frame, SIDES[link.side].child)
+    if tx and cx then link.x, link.y = cx - tx, cy - ty end
+end
+
+-- A target that changes size (a wider bar, a meter that grows) takes its linked elements along.
+local function WatchSize(item)
+    if item.watched then return end
+    item.watched = true
+    item.frame:HookScript("OnSizeChanged", function() FollowLinked(item, 1) end)
+end
+
+-- Every link at once: after a reload, a profile switch or combat.
+local function FollowAll()
+    for label, link in pairs(Store("links")) do
+        local target = type(link) == "table" and placement.byLabel[link.to]
+        if target and placement.byLabel[label] then WatchSize(target) end
+    end
+    for _, item in ipairs(placement.items) do
+        if not LinkOf(item) then FollowLinked(item, 1) end
+    end
+end
+UI.FollowAllMovers = FollowAll
+
+-- Linked elements take their place beside their targets once the modules have placed
+-- themselves: at login, after every profile switch, and after combat held a protected one back.
+local function WatchFollow()
+    local events = CreateFrame("Frame")
+    events:RegisterEvent("PLAYER_ENTERING_WORLD")
+    events:RegisterEvent("PLAYER_REGEN_ENABLED")
+    events:SetScript("OnEvent", function()
+        if not placement.followsApply then
+            placement.followsApply = true
+            hooksecurefunc(ns, "Apply", function() C_Timer.After(0, FollowAll) end)
+        end
+        C_Timer.After(0, FollowAll)
+    end)
+    placement.followEvents = events
+end
+
+-- After the player moved an element: a linked one keeps its link with the new gap, and what
+-- is linked to it follows.
+local function Moved(item)
+    CaptureLink(item)
+    FollowLinked(item, 1)
+end
+
 local function SetAnchor(item, anchor)
     PickAnchor(item, anchor)
     SavePlacement(item)
+    Moved(item)
+    UI.RefreshMoverSelection()
+end
+
+-- Whether linking from to to would make a loop: to already follows from, however far back.
+local function LinksBack(from, to)
+    local label = to.label
+    for _ = 1, FOLLOW_DEPTH * 5 do
+        local link = Store("links")[label]
+        if type(link) ~= "table" then return false end
+        if link.to == from.label then return true end
+        label = link.to
+    end
+    return true
+end
+
+local function Link(item, target, side)
+    if target == item or LinksBack(item, target) then
+        ns.Print(("%s can't be anchored to %s: %s already follows it."):format(item.label, target.label, target.label))
+        return
+    end
+    Store("links")[item.label] = { to = target.label, side = side, x = 0, y = 0 }
+    CaptureLink(item)
+    WatchSize(target)
+    UI.RefreshMoverSelection()
+end
+
+local function Unlink(item)
+    Store("links")[item.label] = nil
     UI.RefreshMoverSelection()
 end
 
@@ -1345,6 +1489,7 @@ function UI.AnchorAllMovers()
             count = count + 1
         end
     end
+    FollowAll()
     return count
 end
 
@@ -1355,6 +1500,7 @@ local function StopPlacementDrag(item)
     item.handle:SetScript("OnUpdate", nil)
     item.frame:StopMovingOrSizing()
     SavePlacement(item)
+    Moved(item)
 end
 
 function UI.ClearMoverSelection()
@@ -1385,12 +1531,22 @@ function UI.RefreshMoverSelection()
         placement.outline:SetSize(width, height)
         placement.outline:Show()
     end
-    -- Its anchor as two marks, on the element and on the screen; no text over what is placed.
+    -- Its anchor as two marks, on the element and on the screen or the element it follows; no
+    -- text over what is placed.
     local point, relative, relPoint = frame:GetPoint(1)
     local held = not item.ownAnchor and relative == UIParent and point == relPoint and ANCHORS[point] ~= nil
-    placement.screenMark:SetShown(held)
-    placement.elementMark:SetShown(held)
-    if held then
+    local link = not item.ownAnchor and LinkOf(item)
+    local target = link and placement.byLabel[link.to]
+    local tx, ty
+    if target then tx, ty = PointAt(target.frame, SIDES[link.side].target) end
+    placement.screenMark:SetShown(held or tx ~= nil)
+    placement.elementMark:SetShown(held or tx ~= nil)
+    if tx then
+        placement.screenMark:ClearAllPoints()
+        placement.screenMark:SetPoint("CENTER", UIParent, "BOTTOMLEFT", tx, ty)
+        placement.elementMark:ClearAllPoints()
+        placement.elementMark:SetPoint("CENTER", placement.outline, SIDES[link.side].child, 0, 0)
+    elseif held then
         placement.screenMark:ClearAllPoints()
         placement.screenMark:SetPoint(point, UIParent, point, 0, 0)
         placement.elementMark:ClearAllPoints()
@@ -1413,6 +1569,12 @@ end
 local function PlacementKey(self, key)
     if InCombatLockdown() then return end
     self:SetPropagateKeyboardInput(true)
+    if key == "ESCAPE" and placement.picking then
+        placement.picking = nil
+        ns.Print("Anchoring cancelled.")
+        self:SetPropagateKeyboardInput(false)
+        return
+    end
     local item = placement.selected
     if not placement.active or not item or item.dragging or GetCurrentKeyBoardFocus() then return end
     if key == "ESCAPE" then UI.ClearMoverSelection(); self:SetPropagateKeyboardInput(false); return end
@@ -1426,6 +1588,7 @@ local function PlacementKey(self, key)
     if not point then return end
     -- Save the requested offsets directly; layout readback can round fractional points.
     SavePlacement(item, point, relPoint, x + dx * step, y + dy * step)
+    Moved(item)
     UI.RefreshMoverSelection()
     self:SetPropagateKeyboardInput(false)
 end
@@ -1487,6 +1650,7 @@ end
 
 function UI.EndMoverMode()
     placement.active = false
+    placement.picking = nil
     UI.ClearMoverSelection()
     if placement.keys then
         placement.keys:Hide()
@@ -1528,6 +1692,20 @@ local function OpenElementOptions(item)
     if item.feature then UI.GoToSetting(item.page, nil, item.feature) end
 end
 
+-- Anchor to Element: the element picked first (right-click), then the one it goes beside (a
+-- click), then the side.
+local function PickTarget(item, handle)
+    local child = placement.picking
+    placement.picking = nil
+    if child == item then return end
+    MenuUtil.CreateContextMenu(handle, function(_, root)
+        root:CreateTitle(("Anchor %s to %s"):format(child.label, item.label))
+        for _, side in ipairs(SIDE_ORDER) do
+            root:CreateButton(SIDES[side].name, function() Link(child, item, side) end)
+        end
+    end)
+end
+
 -- page: the options page that sets the element up ("QoL/General"); feature: the section on
 -- it to open, if it has one. ownAnchor: it holds itself to the screen its own way, so it
 -- takes no anchor from Unlock Mode.
@@ -1536,10 +1714,14 @@ function UI.BindMover(handle, frame, label, onMoved, page, feature, ownAnchor)
         ownAnchor = ownAnchor }
     handle._placement = item
     placement.items[#placement.items + 1] = item
+    placement.byLabel[label] = item
+    if not placement.followEvents then WatchFollow() end
     handle:EnableMouse(true)
     handle:RegisterForDrag("LeftButton")
     handle:SetScript("OnMouseDown", function(_, button)
-        if button == "LeftButton" then
+        if button == "LeftButton" and placement.picking and not InCombatLockdown() then
+            PickTarget(item, handle)
+        elseif button == "LeftButton" then
             UI.SelectMover(handle)
         elseif button == "RightButton" and not InCombatLockdown() and (page or not item.ownAnchor) then
             MenuUtil.CreateContextMenu(handle, function(_, root)
@@ -1552,6 +1734,14 @@ function UI.BindMover(handle, frame, label, onMoved, page, feature, ownAnchor)
                         anchors:CreateRadio(ANCHOR_NAMES[anchor], function() return PickedAnchor(item) == anchor end,
                             function() SetAnchor(item, anchor) end)
                     end
+                    local link = LinkOf(item)
+                    if link then
+                        root:CreateButton(("Detach from %s"):format(link.to), function() Unlink(item) end)
+                    end
+                    root:CreateButton("Anchor to Element...", function()
+                        placement.picking = item
+                        ns.Print(("Click the element to anchor %s to. Esc cancels."):format(label))
+                    end)
                 end
                 if page then root:CreateButton("Element Options", function() OpenElementOptions(item) end) end
             end)
@@ -1796,7 +1986,7 @@ function UI.ModuleSettings(key, defaults)
     return S
 end
 
-ns.UnlockModeSettings = UI.ModuleSettings("unlockMode", { anchors = {} })
+ns.UnlockModeSettings = UI.ModuleSettings("unlockMode", { anchors = {}, links = {} })
 
 -------------------------------------------------------------------------------
 --  Sounds
