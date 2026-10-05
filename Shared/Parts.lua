@@ -4,7 +4,8 @@
 --  cards, the panel a view sits in and the side panel that opens beside a window, numbers
 --  lined up to the pixel, and sharing a line in chat. A window's own pieces (title bar,
 --  opacity, switch, search, footer) are Window.lua's. Also a timer line the client runs down by
---  itself (Parts.TimerLine) and a row of short labels spread evenly (Parts.LabelRow).
+--  itself (Parts.TimerLine), a row of short labels spread evenly (Parts.LabelRow), and a HUD
+--  card's background: the card, a soft fade or none (Parts.HudBackdrop).
 -------------------------------------------------------------------------------
 local ns = _G.NaowhForever
 local T = ns.THEME
@@ -48,15 +49,96 @@ local Inline = Parts.Inline
 local HUD_SHADOW, HUD_ALPHA = St.HUD_SHADOW_RGB, St.HUD_SHADOW_ALPHA
 local HUD_X, HUD_Y = St.HUD_SHADOW_X, St.HUD_SHADOW_Y
 
+local HOUSE_SHADOW = { x = HUD_X, y = HUD_Y, a = HUD_ALPHA }
+local SHADOWS = {
+    card = HOUSE_SHADOW,
+    soft = { x = HUD_X, y = HUD_Y, a = St.HUD_SOFT_SHADOW_ALPHA },
+    none = { x = St.HUD_BARE_SHADOW_X, y = St.HUD_BARE_SHADOW_Y, a = St.HUD_BARE_SHADOW_ALPHA },
+}
+
 function Parts.HudText(fs, shadow)
     if shadow == false then
         fs:SetShadowOffset(0, 0)
         fs:SetShadowColor(HUD_SHADOW.r, HUD_SHADOW.g, HUD_SHADOW.b, 0)
     else
-        fs:SetShadowOffset(HUD_X, HUD_Y)
-        fs:SetShadowColor(HUD_SHADOW.r, HUD_SHADOW.g, HUD_SHADOW.b, HUD_ALPHA)
+        local s = SHADOWS[shadow] or HOUSE_SHADOW
+        fs:SetShadowOffset(s.x, s.y)
+        fs:SetShadowColor(HUD_SHADOW.r, HUD_SHADOW.g, HUD_SHADOW.b, s.a)
     end
     return fs
+end
+
+Parts.HUD_BACKGROUNDS = { { card = "Card", soft = "Soft", none = "None" }, { "card", "soft", "none" } }
+local BACKGROUND_NAMES, NO_OPTS = Parts.HUD_BACKGROUNDS[1], {}
+local SOFT_CORNERS = {   -- point, its x and y outwards, then the round texture's quarter: left, right, top, bottom
+    { "TOPLEFT", -1, 1, 0, 0.5, 0, 0.5 },
+    { "TOPRIGHT", 1, 1, 0.5, 1, 0, 0.5 },
+    { "BOTTOMLEFT", -1, -1, 0, 0.5, 0.5, 1 },
+    { "BOTTOMRIGHT", 1, -1, 0.5, 1, 0.5, 1 },
+}
+local SOFT_SPANS = {     -- from a corner's point to another's, over the texture's middle row, column or texel
+    { 1, "TOPRIGHT", 2, "BOTTOMLEFT", 0.5, 0.5, 0, 0.5 },
+    { 3, "TOPRIGHT", 4, "BOTTOMLEFT", 0.5, 0.5, 0.5, 1 },
+    { 1, "BOTTOMLEFT", 3, "TOPRIGHT", 0, 0.5, 0.5, 0.5 },
+    { 2, "BOTTOMLEFT", 4, "TOPRIGHT", 0.5, 1, 0.5, 0.5 },
+    { 1, "BOTTOMRIGHT", 4, "TOPLEFT", 0.5, 0.5, 0.5, 0.5 },
+}
+
+local function SoftPiece(backdrop, l, r, t, b)
+    local tex = Parts.Smooth(backdrop.frame:CreateTexture(nil, "BACKGROUND"), St.SOFT_SHADE)
+    tex:SetTexCoord(l, r, t, b)
+    local c = backdrop.color
+    tex:SetVertexColor(c.r, c.g, c.b, backdrop.softAlpha)
+    local soft = backdrop.soft
+    soft[#soft + 1] = tex
+    return tex
+end
+
+local function BuildSoft(backdrop)
+    backdrop.soft = {}
+    local frame, fade = backdrop.frame, backdrop.fade
+    local out = fade - backdrop.inset
+    for i = 1, #SOFT_CORNERS do
+        local c = SOFT_CORNERS[i]
+        local tex = SoftPiece(backdrop, c[4], c[5], c[6], c[7])
+        tex:SetSize(fade, fade)
+        tex:SetPoint(c[1], frame, c[1], c[2] * out, c[3] * out)
+    end
+    local soft = backdrop.soft
+    for i = 1, #SOFT_SPANS do
+        local s = SOFT_SPANS[i]
+        local tex = SoftPiece(backdrop, s[5], s[6], s[7], s[8])
+        tex:SetPoint("TOPLEFT", soft[s[1]], s[2])
+        tex:SetPoint("BOTTOMRIGHT", soft[s[3]], s[4])
+    end
+end
+
+local function BackdropMode(backdrop, mode)
+    if not BACKGROUND_NAMES[mode] then mode = "card" end
+    if backdrop.mode == mode then return mode end
+    backdrop.mode = mode
+    local card, soft = mode == "card", mode == "soft"
+    backdrop.fill:SetShown(card)
+    backdrop.border._frame:SetShown(card)
+    if soft and not backdrop.soft then BuildSoft(backdrop) end
+    local pieces = backdrop.soft
+    if pieces then
+        for i = 1, #pieces do pieces[i]:SetShown(soft) end
+    end
+    return mode
+end
+
+function Parts.HudBackdrop(frame, opts)
+    opts = opts or NO_OPTS
+    local color = opts.color or T.bg
+    local backdrop = { frame = frame, color = color, SetMode = BackdropMode,
+        softAlpha = opts.softAlpha or St.HUD_SOFT_ALPHA, fade = opts.fade or St.HUD_SOFT_FADE,
+        inset = opts.inset or St.HUD_SOFT_INSET }
+    backdrop.fill = ns.Solid(frame, "BACKGROUND", color, opts.alpha or St.HUD_CARD_ALPHA)
+    backdrop.fill:SetAllPoints()
+    backdrop.border = ns.Border(frame, BORDER_RGB)
+    BackdropMode(backdrop, opts.mode)
+    return backdrop
 end
 
 local PROGRESS_TEXTURE = "Interface\\Buttons\\WHITE8X8"
@@ -89,7 +171,8 @@ end
 function Parts.ProgressLine(parent, height)
     local line = CreateFrame("Frame", nil, parent)
     line:SetHeight(height)
-    ns.Solid(line, "BACKGROUND", T.line, PROGRESS_TRACK_ALPHA):SetAllPoints()
+    line.track = ns.Solid(line, "BACKGROUND", T.line, PROGRESS_TRACK_ALPHA)
+    line.track:SetAllPoints()
     line.ahead = ProgressBar(line)
     line.fill = ProgressBar(line)
     line.fill:SetFrameLevel(line.ahead:GetFrameLevel() + 1)

@@ -25,6 +25,16 @@ Shared.Style = {
     HUD_SHADOW_X = 1,
     HUD_SHADOW_Y = -1,
     HUD_CARD_ALPHA = 0.85,
+    -- HUD text without the card (Parts.HudBackdrop): Soft fades from HUD_SOFT_ALPHA behind the text
+    -- to clear over HUD_SOFT_FADE, HUD_SOFT_INSET of it inside the card's edge; its text shadow is at
+    -- full strength. None has no backdrop: the shadow at full strength, as close (2px doubles small text).
+    HUD_SOFT_ALPHA = 0.7,
+    HUD_SOFT_FADE = 32,
+    HUD_SOFT_INSET = 12,
+    HUD_SOFT_SHADOW_ALPHA = 1,
+    HUD_BARE_SHADOW_ALPHA = 1,
+    HUD_BARE_SHADOW_X = 1,
+    HUD_BARE_SHADOW_Y = -1,
     -- An item level above yours; bags with no room left.
     RED_CODE = "|cfff87171",
     RED_RGB = { r = 0.97, g = 0.44, b = 0.44 },
@@ -96,6 +106,7 @@ Shared.Style = {
     PLAY = MEDIA .. "play",
     PAUSE = MEDIA .. "pause",
     RESET = MEDIA .. "reset",
+    SOFT_SHADE = MEDIA .. "soft_shade",   -- round, opaque in the middle and clear at its edge: Soft's fade
     -- The game's ready check: done, had.
     CHECK = "Interface\\RaidFrame\\ReadyCheck-Ready",
     -- Between a place and a person, or what an item is and its level: a middle dot.

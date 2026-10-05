@@ -500,6 +500,15 @@ def reset(x, y, size):
     return (255, 255, 255, max(ring, tip))
 
 
+def soft_shade(x, y, size):
+    # Soft's fade behind HUD text (Parts.HudBackdrop): opaque in the middle, clear at the edge, a
+    # smoothstep with no slope at either end. Sliced nine ways and stretched, it shows no edge: the
+    # middle row and column are the sides' fades, the quarters the rounded corners.
+    c = size / 2.0
+    t = max(0.0, min(1.0, 1.0 - math.hypot(x - c, y - c) / c))
+    return (255, 255, 255, int(round(255 * t * t * (3 - 2 * t))))
+
+
 def write_wide_tga(path, width, height, pixel_fn, samples=4):
     # As write_tga, for a texture wider than tall, each pixel the average of samples x samples
     # points across it: a small mark drawn near its own size stays smooth, as text icons are
@@ -627,3 +636,4 @@ write_tga(os.path.join(OUT, "speaker.tga"), 64, speaker)
 write_tga(os.path.join(OUT, "play.tga"), 64, play)
 write_tga(os.path.join(OUT, "pause.tga"), 64, pause)
 write_tga(os.path.join(OUT, "reset.tga"), 64, reset)
+write_tga(os.path.join(OUT, "soft_shade.tga"), 64, soft_shade)
