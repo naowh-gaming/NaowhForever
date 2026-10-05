@@ -1695,15 +1695,11 @@ function ns.BuildProfileSettings(parent, y)
         left._exportBtn = left._exportBtn or ns.Button(left, "Export Profile", 150, 22,
             function() ns.ShowProfileExport() end)
         left._exportBtn:SetPoint("LEFT", left, "LEFT", 20, 0)
-        ns.Tooltip(left._exportBtn, "Export Profile", "The profile you are in as one string to "
-            .. "share: every module's settings and positions, your macros, Smart Reminders, "
-            .. "your BiS lists and the look (theme, font, window scale).")
+        ns.Tooltip(left._exportBtn, "Export Profile", "Share the profile you are in, picking which parts go in.")
         right._importBtn = right._importBtn or ns.Button(right, "Import Profile", 150, 22,
             function() ns.ShowProfileImport() end)
         right._importBtn:SetPoint("LEFT", right, "LEFT", 20, 0)
-        ns.Tooltip(right._importBtn, "Import Profile", "Paste a profile string, untick what you "
-            .. "don't want, and it lands as a new profile you switch to. Your profiles are not "
-            .. "touched. A Smart Reminders pack string opens in the pack import.")
+        ns.Tooltip(right._importBtn, "Import Profile", "Paste any Naowh Forever string: a profile, macros, a build or a BiS list.")
     end
 
     return y

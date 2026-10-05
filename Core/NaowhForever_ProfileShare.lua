@@ -1,10 +1,10 @@
 -------------------------------------------------------------------------------
 --  NaowhForever_ProfileShare.lua -- the Profiles page's Export and Import. Export makes the
---  profile in use one string: every module's settings and positions, the macros, Smart
---  Reminders, the BiS lists and the account's look. Import shows what a string holds, takes
---  the parts left ticked into a new profile and switches to it; no existing profile changes.
---  A Smart Reminders pack (NSRPACK2) goes to the pack import, which knows its specs and
---  licence.
+--  parts ticked of the profile in use one string: every module's settings and positions, the
+--  macros, the macro Library, Smart Reminders, talent builds, the BiS lists and the account's
+--  look. Import shows what a string holds, takes the parts left ticked into a new profile and
+--  switches to it; no existing profile changes. Any other Naowh Forever string pasted there
+--  goes to its own import: a Smart Reminders pack, Forge macros, a talent build, a BiS list.
 -------------------------------------------------------------------------------
 local ns = _G.NaowhForever
 local UI = ns.UI
@@ -22,7 +22,9 @@ local LOOK = { "themePreset", "themeColors", "uiFont", "windowScale" }
 local PARTS = {
     { key = "settings", label = "Settings", help = "Every module's settings and positions" },
     { key = "macros", label = "Macros", help = "Your class macros and the Macros settings" },
+    { key = "library", label = "Macro Library", help = "Added next to your Library, never over it" },
     { key = "smartReminders", label = "Smart Reminders", help = "Reminders, priorities and callouts" },
+    { key = "builds", label = "Talent Builds", help = "Added next to your saved builds" },
     { key = "bisLists", label = "BiS Lists", help = "Added next to your own lists, never over them" },
     { key = "look", label = "Look", help = "Theme colours, font and window scale, for every profile" },
 }
@@ -65,12 +67,8 @@ local function Checked(values, defaults)
     return out
 end
 
---- The profile in use as a string. Returns it and, when a part had to stay behind, why.
----@return string? text
----@return string? note an error when text is nil, else what was left out
-function ns.ExportProfile()
-    local LS, LD = Codec()
-    if not LS then return nil, "The serializer libraries are missing from this build." end
+-- Every part the profile in use can share, what had to stay behind, and whether it is too big.
+local function Collect()
     local root, account = ns.SettingsRoot(), ns.AccountSettings()
     local budget = { n = 0 }
     local parts, note = {}, nil
@@ -117,14 +115,59 @@ function ns.ExportProfile()
         if next(lists) then parts.bisLists = lists end
     end
 
+    -- A Library copy of a pack macro stays with the pack's curator, as the pack's macros do.
+    if type(account.libraryMacros) == "table" then
+        local library, copies = {}, false
+        for class, list in pairs(account.libraryMacros) do
+            local own = {}
+            for _, m in ipairs(list) do
+                if m.pack then copies = true else own[#own + 1] = Plain(m, 1, budget) end
+            end
+            if #own > 0 then library[class] = own end
+        end
+        if next(library) then parts.library = library end
+        if copies then
+            note = (note and note .. "\n" or "") .. "Library macros copied from a pack are left out."
+        end
+    end
+
+    if type(account.trainingBuilds) == "table" then
+        local builds = {}
+        for classID, list in pairs(account.trainingBuilds) do
+            local out = {}
+            for i, b in ipairs(list) do
+                out[i] = { name = b.name, spec = b.spec, points = Plain(b.points, 1, budget) }
+            end
+            if #out > 0 then builds[classID] = out end
+        end
+        if next(builds) then parts.builds = builds end
+    end
+
     local look = {}
     for _, key in ipairs(LOOK) do
         if account[key] ~= nil then look[key] = Plain(account[key], 1, budget) end
     end
     if next(look) then parts.look = look end
 
-    if budget.over then return nil, "This profile is too big to share." end
-    if not next(parts) then return nil, "There is nothing to export yet." end
+    return parts, note, budget.over
+end
+
+--- The parts ticked in wanted ({ [partKey] = true }, nil for all) of the profile in use as a
+--- string. Returns it and, when a part had to stay behind, why.
+---@return string? text
+---@return string? note an error when text is nil, else what was left out
+function ns.ExportProfile(wanted)
+    local LS, LD = Codec()
+    if not LS then return nil, "The serializer libraries are missing from this build." end
+    local all, note, over = Collect()
+    if over then return nil, "This profile is too big to share." end
+    local parts = {}
+    for key, data in pairs(all) do
+        if not wanted or wanted[key] then parts[key] = data end
+    end
+    if not next(parts) then
+        return nil, next(all) and "Tick a part to share." or "There is nothing to export yet."
+    end
     local payload = {
         format = FORMAT, name = ns.ActiveProfileName(), author = UnitName("player"),
         made = date("%Y-%m-%d"), build = ns.CODE_BUILD, parts = parts,
@@ -177,12 +220,13 @@ function ns.ProfileStringParts(payload)
                     if type(list) == "table" then n = n + Count(list) end
                 end
                 detail = ("%d class macros"):format(n)
-            elseif part.key == "bisLists" then
+            elseif part.key == "bisLists" or part.key == "library" or part.key == "builds" then
                 local n = 0
-                for _, lists in pairs(data) do
-                    if type(lists) == "table" then n = n + #lists end
+                for _, list in pairs(data) do
+                    if type(list) == "table" then n = n + #list end
                 end
-                detail = ("%d lists"):format(n)
+                detail = ("%d %s"):format(n, part.key == "bisLists" and "lists"
+                    or part.key == "library" and "macros" or "builds")
             end
             out[#out + 1] = { key = part.key, label = part.label, help = part.help, detail = detail }
         end
@@ -250,10 +294,77 @@ local function AddBisLists(incoming)
     return added
 end
 
+-- Each macro joins its class's Library when it fits a macro; a name already there keeps yours.
+local function AddLibrary(incoming)
+    local account = ns.AccountSettings()
+    account.libraryMacros = type(account.libraryMacros) == "table" and account.libraryMacros or {}
+    local added = 0
+    for class, list in pairs(incoming) do
+        if type(class) == "string" and type(list) == "table" then
+            local mine = account.libraryMacros[class] or {}
+            for _, m in ipairs(list) do
+                local name = type(m) == "table" and type(m.name) == "string" and m.name:gsub("[|\r\n]", "")
+                local body = name and m.body
+                local taken = false
+                for _, e in ipairs(mine) do taken = taken or e.name == name end
+                if name and #name >= 1 and #name <= 16 and type(body) == "string" and #body >= 1
+                    and #body <= ns.MacroText.LIMIT and not taken then
+                    local icon = (type(m.icon) == "number" or type(m.icon) == "string") and m.icon or nil
+                    mine[#mine + 1] = { name = name, body = body, icon = icon }
+                    account.libraryMacros[class] = mine
+                    added = added + 1
+                end
+            end
+        end
+    end
+    return added
+end
+
+local function SameBuild(a, b)
+    if a.name ~= b.name or #a.points ~= #b.points then return false end
+    for i, node in ipairs(a.points) do if b.points[i] ~= node then return false end end
+    return true
+end
+
+-- Each build joins its class's saved builds when its points can be taken in that order; one
+-- already there as it is, is skipped.
+local function AddBuilds(incoming)
+    local Training = ns.Training
+    local account = ns.AccountSettings()
+    account.trainingBuilds = type(account.trainingBuilds) == "table" and account.trainingBuilds or {}
+    local added = 0
+    for classID, list in pairs(incoming) do
+        local tree = ns.TrainingBuilds[classID]
+        if tree and type(list) == "table" then
+            local saved = account.trainingBuilds[classID] or {}
+            for _, b in ipairs(list) do
+                local points = {}
+                for i, node in ipairs(type(b) == "table" and type(b.points) == "table" and b.points or {}) do
+                    points[i] = node
+                end
+                if #points > 0 and not Training.CheckBuild(tree, points) then
+                    local build = { name = Training.BuildName(b.name, "Imported Build"),
+                        spec = Training.BuildName(b.spec, "Imported"), points = points, saved = true }
+                    local have = false
+                    for _, mine in ipairs(saved) do have = have or SameBuild(mine, build) end
+                    if not have then
+                        saved[#saved + 1] = build
+                        account.trainingBuilds[classID] = saved
+                        added = added + 1
+                    end
+                end
+            end
+        end
+    end
+    if added > 0 then Training.Changed() end
+    return added
+end
+
 --- The parts of a decoded string ticked in wanted ({ [partKey] = true }), as a new profile
---- named name (made free if taken), then switched to. The look and BiS lists are account-wide.
+--- named name (made free if taken), then switched to. The look, Library, builds and BiS lists
+--- are account-wide.
 ---@return string name the profile made
----@return number bisAdded
+---@return table added how many { bisLists, library, builds } joined the account's
 function ns.ImportProfile(payload, wanted, name)
     local parts = payload.parts
     name = FreeProfileName(name or payload.name)
@@ -280,8 +391,10 @@ function ns.ImportProfile(payload, wanted, name)
             sr.utilityReminders.classMacros = macros.classMacros
         end
     end
-    local added = 0
-    if wanted.bisLists and type(parts.bisLists) == "table" then added = AddBisLists(parts.bisLists) end
+    local added = { bisLists = 0, library = 0, builds = 0 }
+    if wanted.bisLists and type(parts.bisLists) == "table" then added.bisLists = AddBisLists(parts.bisLists) end
+    if wanted.library and type(parts.library) == "table" then added.library = AddLibrary(parts.library) end
+    if wanted.builds and type(parts.builds) == "table" then added.builds = AddBuilds(parts.builds) end
     if wanted.look and type(parts.look) == "table" then
         local account = ns.AccountSettings()
         for _, key in ipairs(LOOK) do
@@ -297,12 +410,64 @@ end
 -------------------------------------------------------------------------------
 --  The two dialogs, in the house modal
 -------------------------------------------------------------------------------
-local EXPORT_W, EXPORT_H, BOX_H = 560, 360, 180
-local IMPORT_W, IMPORT_H, PASTE_H = 600, 470, 110
+local EXPORT_W, EXPORT_H, BOX_H = 560, 460, 180
+local IMPORT_W, IMPORT_H, PASTE_H = 600, 520, 110
 local PAD, ROW_H, BUTTON_W, BUTTON_H = 14, 24, 120, 26
 local TOGGLE_W, TOGGLE_H = 32, 16
+local TICKS_TOP = 62               -- export: the part ticks start under the profile's name
+local TICK_LINES = 4               -- export: two columns, room for every part
+
+-- Strings another import takes in: what the dialog says, and the button that hands them over.
+local HANDOFFS = {
+    { prefix = PACK_PREFIX, button = "Open Pack Import",
+      what = "This is a Smart Reminders pack. The pack import takes it in, with its specs and licence.",
+      go = function(text) ns.ShowPackImport(text) end },
+    { prefix = "!NFM1!", button = "Add Macros",
+      what = "These are Forge macros. They are added as character macros on this character.",
+      go = function(text) ns.ImportMacroString(text) end },
+    { prefix = "!NFB1!", button = "Add Build",
+      what = "This is a talent build. It is added to your builds in the Training Planner.",
+      go = function(text) ns.Training.ImportBuild(text, function() end) end },
+    { prefix = "!NBIS1!", button = "Add BiS List",
+      what = "This is a BiS list. It is added next to your own lists.",
+      go = function(text) ns.ImportBisList(text) end },
+}
+
+-- A dialog's i-th part row with its tick; dialog.onTick runs after a tick changes.
+local function PartRow(dialog, i)
+    local row = dialog.rows[i]
+    if row then return row end
+    row = CreateFrame("Frame", nil, dialog.panel)
+    row:SetHeight(ROW_H)
+    row.toggle = UI.BuildToggleControl(row, nil, function() return dialog.wanted[row.key] end,
+        function(on)
+            dialog.wanted[row.key] = on == true
+            if dialog.onTick then dialog.onTick() end
+        end, TOGGLE_W, TOGGLE_H)
+    row.toggle:SetPoint("LEFT", 0, 0)
+    row.label = UI.KeepFont(row, "label", 12, nil, ns.THEME.fg)
+    row.label:SetPoint("LEFT", row.toggle, "RIGHT", 10, 0)
+    row.help = UI.KeepFont(row, "help", 11, nil, ns.THEME.muted)
+    row.help:SetPoint("LEFT", row.label, "RIGHT", 10, 0)
+    dialog.rows[i] = row
+    return row
+end
 
 local export
+
+local function PaintExport()
+    local text, note = ns.ExportProfile(export.wanted)
+    if text then
+        export.text = ns.WrapForDisplay(text, export.box:GetParent():GetWidth())
+        export.box:SetText(export.text)
+        export.status:SetText(("%d characters. Click the text, then Ctrl+A and Ctrl+C.%s"):format(#text,
+            note and ("\n" .. note) or ""))
+    else
+        export.text = ""
+        export.box:SetText("")
+        export.status:SetText(note or "")
+    end
+end
 
 function ns.ShowProfileExport()
     if not export then
@@ -314,31 +479,37 @@ function ns.ShowProfileExport()
         what:SetPoint("TOPLEFT", PAD, -40)
         what:SetPoint("RIGHT", -PAD, 0)
         what:SetJustifyH("LEFT")
-        local box = ns.MakeMultilineBox(panel, -62, BOX_H)
+        local boxTop = TICKS_TOP + TICK_LINES * ROW_H + 8
+        local box = ns.MakeMultilineBox(panel, -boxTop, BOX_H)
         box:SetScript("OnEditFocusGained", function(self) self:HighlightText() end)
         -- The text is the export: typing in it is undone.
         box:SetScript("OnTextChanged", function(self, user) if user then self:SetText(export.text or "") end end)
         local status = UI.KeepFont(panel, "status", 11, nil, ns.THEME.fg)
-        status:SetPoint("TOPLEFT", PAD, -(62 + BOX_H + 12))
+        status:SetPoint("TOPLEFT", PAD, -(boxTop + BOX_H + 12))
         status:SetPoint("RIGHT", -PAD, 0)
         status:SetJustifyH("LEFT")
         local close = ns.Button(panel, "Close", BUTTON_W, BUTTON_H, function() dimmer:Hide() end)
         close:SetPoint("BOTTOM", 0, PAD)
-        export = { dimmer = dimmer, box = box, what = what, status = status }
+        export = { dimmer = dimmer, panel = panel, box = box, what = what, status = status, rows = {},
+            wanted = {}, onTick = PaintExport }
     end
-    local text, note = ns.ExportProfile()
-    export.what:SetText(("Profile: %s. Settings, macros, Smart Reminders, BiS lists and the look, "
-        .. "as one string."):format(ns.ActiveProfileName() or "?"))
-    if text then
-        export.text = ns.WrapForDisplay(text, export.box:GetParent():GetWidth())
-        export.box:SetText(export.text)
-        export.status:SetText(("%d characters. Click the text, then Ctrl+A and Ctrl+C.%s"):format(#text,
-            note and ("\n" .. note) or ""))
-    else
-        export.text = ""
-        export.box:SetText("")
-        export.status:SetText(note or "")
+    export.what:SetText(("Profile: %s. Untick what you don't want to share."):format(ns.ActiveProfileName() or "?"))
+    wipe(export.wanted)
+    for _, row in ipairs(export.rows) do row:Hide() end
+    local colW = (EXPORT_W - 2 * PAD) / 2
+    for i, part in ipairs(ns.ProfileStringParts({ parts = (Collect()) })) do
+        local row = PartRow(export, i)
+        row.key = part.key
+        export.wanted[part.key] = true
+        row.label:SetText(part.label)
+        row.help:SetText(part.detail or "")
+        row.toggle._refreshValue()
+        row:ClearAllPoints()
+        row:SetPoint("TOPLEFT", PAD + ((i - 1) % 2) * colW, -(TICKS_TOP + math.floor((i - 1) / 2) * ROW_H))
+        row:SetWidth(colW)
+        row:Show()
     end
+    PaintExport()
     export.dimmer:Show()
 end
 
@@ -346,40 +517,34 @@ local import
 
 local function PaintImport()
     local text = import.box:GetText()
-    local payload, err = ns.DecodeProfile(text)
-    import.payload, import.pack = payload, err == "pack"
+    local flat = text:gsub("%s", "")
+    import.handoff = nil
+    for _, handoff in ipairs(HANDOFFS) do
+        if flat:sub(1, #handoff.prefix) == handoff.prefix then import.handoff = handoff end
+    end
     for _, row in ipairs(import.rows) do row:Hide() end
-    import.nameRow:SetShown(payload ~= nil)
-    if import.pack then
-        import.preview:SetText("This is a Smart Reminders pack. The pack import takes it in, "
-            .. "with its specs and licence.")
-        ns.SetButtonText(import.go, "Open Pack Import")
+    if import.handoff then
+        import.payload = nil
+        import.nameRow:Hide()
+        import.preview:SetText(import.handoff.what)
+        ns.SetButtonText(import.go, import.handoff.button)
         import.go:Show()
         return
     end
+    local payload, err = ns.DecodeProfile(text)
+    import.payload = payload
+    import.nameRow:SetShown(payload ~= nil)
     ns.SetButtonText(import.go, "Import")
     import.go:SetShown(payload ~= nil)
     if not payload then
-        import.preview:SetText(err or "Paste a profile string above.")
+        import.preview:SetText(err or "Paste a profile, macro, talent build or BiS list string above.")
         return
     end
     import.preview:SetText(("%s, shared by %s on %s. Untick what you don't want."):format(
         tostring(payload.name or "A profile"), tostring(payload.author or "someone"), tostring(payload.made or "?")))
     local y = -(40 + PASTE_H + 44)
     for i, part in ipairs(ns.ProfileStringParts(payload)) do
-        local row = import.rows[i]
-        if not row then
-            row = CreateFrame("Frame", nil, import.panel)
-            row:SetHeight(ROW_H)
-            row.toggle = UI.BuildToggleControl(row, nil, function() return import.wanted[row.key] end,
-                function(on) import.wanted[row.key] = on == true end, TOGGLE_W, TOGGLE_H)
-            row.toggle:SetPoint("LEFT", 0, 0)
-            row.label = UI.KeepFont(row, "label", 12, nil, ns.THEME.fg)
-            row.label:SetPoint("LEFT", row.toggle, "RIGHT", 10, 0)
-            row.help = UI.KeepFont(row, "help", 11, nil, ns.THEME.muted)
-            row.help:SetPoint("LEFT", row.label, "RIGHT", 10, 0)
-            import.rows[i] = row
-        end
+        local row = PartRow(import, i)
         row.key = part.key
         if import.wanted[part.key] == nil then import.wanted[part.key] = true end
         row.label:SetText(part.label)
@@ -398,10 +563,10 @@ local function PaintImport()
 end
 
 local function Go()
-    if import.pack then
+    if import.handoff then
         local text = import.box:GetText()
         import.dimmer:Hide()
-        ns.ShowPackImport(text)
+        import.handoff.go(text)
         return
     end
     local payload = import.payload
@@ -409,8 +574,12 @@ local function Go()
     local name, added = ns.ImportProfile(payload, import.wanted, import.nameBox:GetText())
     import.dimmer:Hide()
     if UI.RefreshPage then UI:RefreshPage(true) end
-    local bis = added > 0 and (" %d BiS lists added."):format(added) or ""
-    ns.ConfirmReload(("Imported as %s and switched to it.%s Reload so every module picks it up?"):format(name, bis))
+    local joined = {}
+    if added.library > 0 then joined[#joined + 1] = added.library .. " Library macros" end
+    if added.builds > 0 then joined[#joined + 1] = added.builds .. " talent builds" end
+    if added.bisLists > 0 then joined[#joined + 1] = added.bisLists .. " BiS lists" end
+    local extra = #joined > 0 and (" Added %s."):format(table.concat(joined, ", ")) or ""
+    ns.ConfirmReload(("Imported as %s and switched to it.%s Reload so every module picks it up?"):format(name, extra))
 end
 
 function ns.ShowProfileImport()
@@ -418,7 +587,7 @@ function ns.ShowProfileImport()
         local dimmer, panel = ns.MakeModal(IMPORT_W, IMPORT_H, "profileImport")
         local title = ns.Font(panel, 14, "OUTLINE")
         title:SetPoint("TOP", 0, -PAD)
-        title:SetText("Import Profile")
+        title:SetText("Import")
         local box = ns.MakeMultilineBox(panel, -40, PASTE_H)
         local preview = UI.KeepFont(panel, "preview", 12, nil, ns.THEME.fg)
         preview:SetPoint("TOPLEFT", PAD, -(40 + PASTE_H + 14))
