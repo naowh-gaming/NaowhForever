@@ -140,6 +140,7 @@ ns = {
     Font = function(parent) return Frame(parent) end,
     Solid = function(parent) return Frame(parent) end,
     Hairline = function(region) return region end,
+    AllowOffscreen = function() end,
     Border = function(parent)
         local edge = Frame(parent)
         edge.SetColor = function(self, r) self.red = r end
