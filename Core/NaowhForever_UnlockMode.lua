@@ -218,6 +218,7 @@ function CloseMenus()
     local item = placement.menuItem
     placement.menuItem = nil
     if not item then return end
+    ShowPosition()
     item.menuOpen = false
     if not item.handle:IsMouseOver() then
         item.hovered = false
@@ -469,15 +470,19 @@ local function OpenCogMenu(item)
     menu:SetPoint("TOPLEFT", item.cog, "BOTTOMLEFT", 0, -2)
     Catcher()
     Finish(menu)
+    ShowPosition()
 end
 
 -------------------------------------------------------------------------------
---  Position: the selected element's X and Y in whole pixels, its centre from the screen's
---  centre as it is saved, live while it moves, and typed to move it.
+--  Position: a tag just outside the selected mover with its X and Y in whole pixels, its
+--  centre from the screen's centre as it is saved, live while it moves, and typed to move it.
 -------------------------------------------------------------------------------
-local READOUT_H, BOX_W, BOX_H = 40, 54, 20
-local LETTER_W, AXIS_GAP, PAIR_GAP = 8, 4, 10   -- an axis letter, from it to its box, between the pairs
-local BOXES_W = 2 * (LETTER_W + AXIS_GAP + BOX_W) + PAIR_GAP
+local BOX_W, BOX_H = 46, 18
+local TAG_PAD, TAG_GAP = 3, 4                    -- inside the tag's edge, from it to the mover
+local LETTER_W, AXIS_GAP, PAIR_GAP = 8, 3, 8     -- an axis letter, from it to its box, between the pairs
+local TAG_W = 2 * (LETTER_W + AXIS_GAP + BOX_W + TAG_PAD) + PAIR_GAP
+local TAG_H = BOX_H + 2 * TAG_PAD
+local TAG_LEVEL = 230                            -- over the movers, under the cog menu's catcher
 
 local function Position(item)
     local l, r, t, b = Bounds(item.frame)
@@ -489,28 +494,6 @@ local function SetBox(box, v)
     if box:HasFocus() or box.value == v then return end
     box.value = v
     box:SetText(tostring(v))
-end
-
-function ShowPosition()
-    local r = placement.readout
-    if not r then return end
-    local item = placement.selected
-    local x, y
-    if item then x, y = Position(item) end
-    r.boxes:SetShown(x ~= nil)
-    if r.item ~= item or not x then
-        r.item = item
-        r.x.value, r.y.value = nil, nil
-        if not x then
-            r.name:SetText(ns.L("Nothing selected"))
-            r.where:SetText(ns.L("Click an element to see where it is"))
-            return
-        end
-        r.name:SetText(item.label)
-        r.where:SetText(ns.L("From the screen center"))
-    end
-    SetBox(r.x, x)
-    SetBox(r.y, y)
 end
 
 -- Enter moves the element by what the typed number differs from where it is.
@@ -527,37 +510,31 @@ local function Typed(box)
 end
 
 local function Revert(box)
+    box.border:SetColor(0, 0, 0, 1)
     box.value = nil
     ShowPosition()
 end
 
---- The selected element's position for Unlock Mode's toolbar: its name, what X and Y are
---- measured from, and a box for each. Made once.
-function UI.PositionReadout(parent)
-    if placement.readout then return placement.readout end
-    local r = CreateFrame("Frame", nil, parent)
-    r:SetHeight(READOUT_H)
-    r.boxes = CreateFrame("Frame", nil, r)
-    r.boxes:SetPoint("TOPRIGHT")
-    r.boxes:SetPoint("BOTTOMRIGHT")
-    r.boxes:SetWidth(BOXES_W)
-    r.name = ns.Font(r, 12)
-    r.name:SetPoint("TOPLEFT", r, "TOPLEFT", 0, -4)
-    r.name:SetPoint("RIGHT", r.boxes, "LEFT", -PAIR_GAP, 0)
-    r.where = ns.Font(r, 11, nil, T.muted)
-    r.where:SetPoint("TOPLEFT", r.name, "BOTTOMLEFT", 0, -4)
-    r.where:SetPoint("RIGHT", r.name, "RIGHT")
-    for _, fs in ipairs({ r.name, r.where }) do
-        fs:SetJustifyH("LEFT")
-        fs:SetWordWrap(false)
-    end
-    local left = r.boxes
+local function PositionTag()
+    local tag = CreateFrame("Frame", nil, UIParent)
+    tag:SetSize(TAG_W, TAG_H)
+    tag:SetFrameStrata("FULLSCREEN_DIALOG")
+    tag:SetFrameLevel(TAG_LEVEL)
+    tag:SetClampedToScreen(true)
+    tag:EnableMouse(true)
+    ns.Solid(tag, "BACKGROUND", T.panel, 0.98):SetAllPoints()
+    ns.Border(tag, BLACK)
+    local left
     for _, axis in ipairs({ "X", "Y" }) do
-        local letter = ns.Font(r.boxes, 12, nil, T.muted)
+        local letter = ns.Font(tag, 11, nil, T.muted)
         letter:SetText(axis)
         letter:SetWidth(LETTER_W)
-        letter:SetPoint("LEFT", left, left == r.boxes and "LEFT" or "RIGHT", left == r.boxes and 0 or PAIR_GAP, 0)
-        local box = ns.NewEditBox(r.boxes)
+        if left then
+            letter:SetPoint("LEFT", left, "RIGHT", PAIR_GAP, 0)
+        else
+            letter:SetPoint("LEFT", tag, "LEFT", TAG_PAD, 0)
+        end
+        local box = ns.NewEditBox(tag)
         box.axis = axis
         box:SetSize(BOX_W, BOX_H)
         box:SetPoint("LEFT", letter, "RIGHT", AXIS_GAP, 0)
@@ -566,15 +543,52 @@ function UI.PositionReadout(parent)
         box:SetMaxLetters(6)
         box:SetScript("OnEnterPressed", Typed)
         box:SetScript("OnEscapePressed", box.ClearFocus)
+        box:SetScript("OnEditFocusGained", function() box.border:SetColor(T.accent.r, T.accent.g, T.accent.b, 1) end)
         box:SetScript("OnEditFocusLost", Revert)
-        r[axis:lower()] = box
+        box:HookScript("OnLeave", function()
+            if box:HasFocus() then box.border:SetColor(T.accent.r, T.accent.g, T.accent.b, 1) end
+        end)
+        tag[axis:lower()] = box
         left = box
     end
-    r.x:SetScript("OnTabPressed", function() r.y:SetFocus() end)
-    r.y:SetScript("OnTabPressed", function() r.x:SetFocus() end)
-    placement.readout = r
-    ShowPosition()
-    return r
+    tag.x:SetScript("OnTabPressed", function() tag.y:SetFocus() end)
+    tag.y:SetScript("OnTabPressed", function() tag.x:SetFocus() end)
+    return tag
+end
+
+-- Below the mover, above it when the screen ends first; hidden while its cog menu is open,
+-- which drops down over the same spot.
+function ShowPosition()
+    local item = placement.selected
+    local x, y
+    if item and placement.menuItem ~= item then x, y = Position(item) end
+    local tag = placement.tag
+    if not x then
+        if tag then
+            tag:Hide()
+            tag.item = nil
+        end
+        return
+    end
+    if not tag then
+        tag = PositionTag()
+        placement.tag = tag
+    end
+    local _, _, _, bottom = Bounds(item.handle)
+    local above = bottom ~= nil and bottom - TAG_GAP - TAG_H < 0
+    if tag.item ~= item or tag.above ~= above then
+        tag.item, tag.above = item, above
+        tag.x.value, tag.y.value = nil, nil
+        tag:ClearAllPoints()
+        if above then
+            tag:SetPoint("BOTTOM", item.handle, "TOP", 0, TAG_GAP)
+        else
+            tag:SetPoint("TOP", item.handle, "BOTTOM", 0, -TAG_GAP)
+        end
+    end
+    tag:Show()
+    SetBox(tag.x, x)
+    SetBox(tag.y, y)
 end
 
 -------------------------------------------------------------------------------

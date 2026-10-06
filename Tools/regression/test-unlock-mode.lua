@@ -167,6 +167,7 @@ local ns = {
     Font = function(parent) return parent:CreateFontString() end,
     NewEditBox = function(parent)
         local box = NewFrame("EditBox", parent)
+        box.border = { SetColor = NOOP }
         function box:SetFocus() self.focus = true end
         function box:HasFocus() return self.focus == true end
         function box:ClearFocus()
@@ -299,41 +300,57 @@ for _ = 1, 99 do Fire(keys, "OnKeyDown", "DOWN") end
 Check(Near(Last(swingSaved).y, 25), "and back")
 Check(settings.anchors == nil, "nothing is anchored")
 
--- The toolbar's position readout: its centre from the screen centre, kept up by the arrow
--- keys, and typed to move it.
-local readout = UI.PositionReadout(UIParent)
-local function Reads(x, y) return readout.x:GetText() == x and readout.y:GetText() == y end
+-- The X and Y tag on the selected mover: its centre from the screen centre, kept up by the
+-- arrow keys, and typed to move it. Just below the mover, above it at the screen's bottom.
+local function Tag()
+    for _, fr in ipairs(made) do
+        if fr.x and fr.y and fr.x.axis == "X" then return fr end
+    end
+end
+local tag = Tag()
+local function Reads(x, y) return tag.x:GetText() == x and tag.y:GetText() == y end
 local function Type(box, text)
     box:SetFocus()
     box:SetText(text)
     Fire(box, "OnEnterPressed")
 end
-Check(readout.name:GetText() == "Swing Timer" and readout.where:GetText() == "From the screen center" and Reads("-39", "25"),
-    "the readout shows the selected element's centre from the screen centre")
+local function Below(handle) return tag:IsShown() and tag:GetTop() < handle:GetBottom() and tag:GetTop() > handle:GetBottom() - 10 end
+Check(tag and tag.parent == UIParent and tag:GetPoint() == "TOP" and select(2, tag:GetPoint()) == swingMover and Below(swingMover),
+    "the tag sits just below the selected mover")
+Check(Reads("-39", "25"), "and shows its centre from the screen centre")
 Fire(keys, "OnKeyDown", "LEFT")
-Check(Reads("-40", "25"), "an arrow key updates it")
-Type(readout.x, "25")
+Check(Reads("-40", "25") and Below(swingMover), "an arrow key updates it and it moves along")
+Type(tag.x, "25")
 Check(Near(Center(swing), 985) and Near(Last(swingSaved).x, 25) and Reads("25", "25"), "a typed X moves it there and saves it")
-Type(readout.y, "abc")
-Check(Reads("25", "25") and not readout.y:HasFocus(), "what is not a number goes back")
+Type(tag.y, "abc")
+Check(Reads("25", "25") and not tag.y:HasFocus(), "what is not a number goes back")
 
 UI.SelectMover(meterMover)
-Check(readout.name:GetText() == "Threat Meter" and Reads("0", "-200"), "selecting another element reads it")
+Check(select(2, tag:GetPoint()) == meterMover and Reads("0", "-200"), "selecting another element moves the tag to it")
 cursor.x, cursor.y = 960, 340
 UI.StartMoverDrag(meterMover)
 cursor.x, cursor.y = 1000, 330
 Drive()
-Check(Reads("40", "-210"), "and follows a drag as it happens")
+Check(Reads("40", "-210") and Below(meterMover), "and it follows a drag as it happens")
 UI.StopMoverDrag(meterMover)
 Check(Last(meterSaved).point == "CENTER" and Near(Last(meterSaved).x, 40) and Near(Last(meterSaved).y, -210),
     "the drop saves it CENTER on the screen centre")
 Check(Near(Center(swing), 985), "and nothing else moves with it")
-Type(readout.x, "0")
-Type(readout.y, "-200")
+Type(tag.x, "0")
+Type(tag.y, "-200")
 Check(Near(Center(meter), 960) and Near(select(2, Center(meter)), 340) and Near(Last(meterSaved).y, -200),
     "typed numbers move it there and save it")
+Type(tag.y, "-525")
+Check(tag:GetPoint() == "BOTTOM" and tag:GetBottom() > meterMover:GetTop() and tag:GetBottom() < meterMover:GetTop() + 10,
+    "with no room below it flips above the mover")
+Type(tag.y, "-200")
+Check(tag:GetPoint() == "TOP" and Below(meterMover), "and back below with room again")
+Click(meterMover, "RightButton")
+Check(not tag:IsShown(), "the cog menu hides it")
+Fire(keys, "OnKeyDown", "ESCAPE")
+Check(Below(meterMover), "and closing the menu brings it back")
 UI.ClearMoverSelection()
-Check(readout.name:GetText() == "Nothing selected" and not readout.boxes:IsShown(), "with nothing selected the boxes hide")
+Check(not tag:IsShown(), "with nothing selected there is no tag")
 
 -- The cog menu: Element Options, Select Snap Target and Center on Screen, and nothing about
 -- anchoring.
