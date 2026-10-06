@@ -258,7 +258,7 @@ function Look.New(f)
 end
 
 function StyleText(f, fs, size)
-    fs:SetFont(f.font, size, f.outline)
+    fs:SetFont(f.font, size, f.outline == "NONE" and "" or f.outline)
     Parts.HudText(fs, f.shadow)
 end
 
@@ -274,7 +274,12 @@ function Look.Style(f)
     end
     local bare = alpha < SHADOW_BELOW
     f.font, f.outline = ns.UI.FontPath(S.Get("flightTimerFont")), S.Get("flightTimerOutline")
-    f.shadow = bare and f.outline == "" and "none"
+    -- Over a faded card plain text takes a shadow too, or the world behind it swallows it.
+    if f.outline == "" then
+        f.shadow = bare and "none" or "card"
+    else
+        f.shadow = bare and f.outline == "NONE" and "none"
+    end
     for _, t in ipairs(f.texts) do StyleText(f, t[1], t[2]) end
     local c = bare and T.fg or T.muted
     for _, fs in ipairs({ f.from, f.nextKey, f.sep }) do fs:SetTextColor(c.r, c.g, c.b, 1) end

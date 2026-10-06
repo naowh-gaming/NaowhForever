@@ -35,7 +35,7 @@ local function fixture(settings)
     function leave:EnableMouse(v) self.mouse = v; self.mouseCalls = self.mouseCalls + 1 end
     s.leave = leave
     local defaults = { enabled = true, flightTimer = true, flightEarlyLanding = false, flightTimerScale = 1,
-        flightTimerAlpha = 1, flightGame = 'aim', flightTimerFont = '', flightTimerOutline = '', flightTimerTexture = '' }
+        flightTimerAlpha = 1, flightGame = 'aim', flightTimerFont = '', flightTimerOutline = 'NONE', flightTimerTexture = '' }
     local S = { Get = function(k) if s.settings[k] ~= nil then return s.settings[k] end return defaults[k] end,
         Set = function(k, v) s.settings[k] = v end, DB = function() return s.settings end,
         Raw = function(k) return s.settings[k] end }
@@ -257,10 +257,12 @@ do -- the look: today's card by default, then Font, Outline, Bar Texture and Bac
     check('Background Opacity fades the card and its buttons', bar.bg.alpha == 0.3 and bar.border._frame.alpha == 0.3
         and land._bg.alpha == 0.3 and land._border._frame.alpha == 0.3)
     check('an outline needs no shadow; muted labels go bright', bar.time.shadow == false and bar.from.red == 1)
-    s.set('flightTimerOutline', '')
-    check('unoutlined text over a faded card gets a shadow', bar.time.shadow == 'none')
+    s.set('flightTimerOutline', 'NONE')
+    check('plain text over a faded card gets a shadow', bar.time.shadow == 'none' and bar.time.font == 'font:Arial 20 ')
     s.set('flightTimerAlpha', 1)
     check('and loses it on a solid card', bar.time.shadow == false and bar.from.red == 0.5)
+    s.set('flightTimerOutline', '')
+    check('Shadow keeps one on a solid card', bar.time.shadow == 'card')
 end
 
 print(checks .. ' flight request-stop checks passed')
