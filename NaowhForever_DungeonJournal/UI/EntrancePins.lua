@@ -4,8 +4,9 @@
 --  on its zone's map and on every map that holds the spot (the continent, a neighbouring
 --  zone). Entrances on one spot (the Scarlet Monastery's wings, Blackrock Spire's halves)
 --  share a pin. Only the dungeons the window lists show (the faction switch). Hover a pin for
---  each one's levels; click it for a waypoint. Their size is set per kind of map (a zone, a
---  continent, the world), and halved while the map fills the screen, where it draws larger.
+--  each one's levels; click it for a waypoint. Their size follows the kind of map (a zone, a
+--  continent, the world), is halved while the map fills the screen, where it draws larger,
+--  and Icon Size scales it all.
 --  Built like Discovery's book pins; nothing is made or added to the map until it is
 --  switched on.
 -------------------------------------------------------------------------------
@@ -14,11 +15,12 @@ local J = ns.Journal
 local S = J.Settings
 
 local TEMPLATE = "NaowhForeverEntrancePinTemplate"
-local PIN_SIZE = 22   -- at 100%: each kind of map's size setting scales it
+local PIN_SIZE = 22
 -- The game's kinds of map (Enum.UIMapType): the world and above, a continent; any other is a
--- zone's (a city's, a cave's) size.
+-- zone's (a city's, a cave's). Each one's size, as PIN_SIZE times this: the zone's matches
+-- the game's own entrance icons, smaller further out.
 local MAP_COSMIC, MAP_WORLD, MAP_CONTINENT = 0, 1, 2
-local SIZE_KEYS = { mapEntranceZone = true, mapEntranceContinent = true, mapEntranceWorld = true }
+local ZONE_SIZE, CONTINENT_SIZE, WORLD_SIZE = 2, 1.5, 1.2
 local ICON = "dungeon"   -- the door the dungeon map draws on its own entrance
 local RAID_ICON = "raid"
 
@@ -28,13 +30,13 @@ local function On()
     return S.Get("enabled") and S.Get("mapEntrances")
 end
 
--- A pin's size on the map shown: its kind of map's setting, half that full screen.
+-- A pin's size on the map shown: its kind of map's, times Icon Size, half that full screen.
 local function PinSize(map)
     local info = C_Map.GetMapInfo(map:GetMapID())
     local kind = info and info.mapType
-    local key = (kind == MAP_COSMIC or kind == MAP_WORLD) and "mapEntranceWorld"
-        or kind == MAP_CONTINENT and "mapEntranceContinent" or "mapEntranceZone"
-    local size = PIN_SIZE * (S.Get(key) or 1)
+    local step = (kind == MAP_COSMIC or kind == MAP_WORLD) and WORLD_SIZE
+        or kind == MAP_CONTINENT and CONTINENT_SIZE or ZONE_SIZE
+    local size = PIN_SIZE * step * (S.Get("mapEntranceScale") or 1)
     if map:IsMaximized() then size = size / 2 end
     return size
 end
@@ -183,7 +185,7 @@ local function Event(_, event)
     Redraw()
 end
 
--- The pins shown take their size again: a size setting changed, or the map was made full
+-- The pins shown take their size again: Icon Size changed, or the map was made full
 -- screen or small again. Only sizes change, so this is safe in combat too.
 local function Resize()
     if not (added and WorldMapFrame:IsShown()) then return end
@@ -231,7 +233,7 @@ end
 S.OnChange(function(key)
     if key == "enabled" or key == "mapEntrances" or key == "showAlliance" or key == "showHorde" then
         Apply()
-    elseif SIZE_KEYS[key] then
+    elseif key == "mapEntranceScale" then
         Resize()
     end
 end)

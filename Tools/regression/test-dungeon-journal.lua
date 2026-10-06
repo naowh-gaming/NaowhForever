@@ -3625,9 +3625,7 @@ end
 --  The entrances on the world map
 -------------------------------------------------------------------------------
 do
-    -- The sizes at their defaults (Journal.lua's), which the stub settings do not read.
-    local ns, state, S = fixture({ enabled = true, mapEntranceZone = 2, mapEntranceContinent = 1.5,
-        mapEntranceWorld = 1.2 })
+    local ns, state, S = fixture({ enabled = true })
     local J, map = ns.Journal, state.worldMap
     local pins, providers, shownMap = {}, {}, 1420   -- Tirisfal Glades
     map.AddDataProvider = function(_, provider) providers[#providers + 1] = provider end
@@ -3696,8 +3694,8 @@ do
     local shown = { pin }
     map.EnumeratePinsByTemplate = function() local i = 0; return function() i = i + 1; return shown[i] end end
     local count = #pins
-    S.Set("mapEntranceZone", 1)
-    check("a size changed resizes the pins shown without drawing them again", pin.w == 22 and #pins == count)
+    S.Set("mapEntranceScale", 0.5)
+    check("Icon Size resizes the pins shown without drawing them again", pin.w == 22 and #pins == count)
     state.mapInfo = nil
     pin:OnMouseEnter()
     pin:OnClick("LeftButton")

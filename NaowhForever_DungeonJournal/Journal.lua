@@ -75,10 +75,8 @@ local S = ns.UI.ModuleSettings("journal", {
     mapPanel = true,
     mapFactions = false,
     mapEntrances = false,
-    -- The entrance pins' size on each kind of map; halved while the map is full screen.
-    mapEntranceZone = 2,
-    mapEntranceContinent = 1.5,
-    mapEntranceWorld = 1.2,
+    -- The entrance pins' size, on top of each kind of map's own (UI/EntrancePins.lua).
+    mapEntranceScale = 1,
     usableOnly = true,
     myRecipes = true,
     openUnreleased = false,
