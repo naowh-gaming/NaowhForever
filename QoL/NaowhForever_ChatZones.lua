@@ -213,6 +213,21 @@ local function ScaleRoles(entry, on)
     scaled[entry] = on or nil
 end
 
+-- The screen x of the leftmost thing shown in a frame: its block is wider than the icons in it.
+local function LeftmostShown(frame, best)
+    for _, region in ipairs({ frame:GetRegions() }) do
+        local left = region:IsVisible() and region:GetLeft()
+        if left then
+            left = left * region:GetEffectiveScale()
+            if not best or left < best then best = left end
+        end
+    end
+    for _, child in ipairs({ frame:GetChildren() }) do
+        if child:IsVisible() then best = LeftmostShown(child, best) end
+    end
+    return best
+end
+
 local function UpdateRow(entry)
     ScaleRoles(entry, FinderOn())
     local zone = FinderOn() and entry.resultID and entry:IsShown() and LeaderZone(entry.resultID)
@@ -229,11 +244,10 @@ local function UpdateRow(entry)
     fs:ClearAllPoints()
     fs:SetPoint("LEFT", entry.ActivityName, "RIGHT", 8, 0)
     -- Stop short of the role icons: their frame's left edge when laid out, else the template's width.
-    -- GetLeft is in the scaled frame's own units, so scale it back to the row's.
-    local display = entry.DataDisplay
-    local stop = display and display:GetLeft() and display:GetLeft() * display:GetScale()
+    -- Measured on screen (the icons are scaled), then back in the row's units.
+    local stop = entry.DataDisplay and LeftmostShown(entry.DataDisplay)
     local start = entry.ActivityName:GetRight()
-    local width = (stop and start) and (stop - start - 16)
+    local width = (stop and start) and ((stop / entry:GetEffectiveScale()) - start - 16)
         or (entry:GetWidth() - DATA_DISPLAY_SPACE - 26 - entry.ActivityName:GetStringWidth())
     fs:SetWidth(math.max(1, width))
     fs:SetText(zone)
