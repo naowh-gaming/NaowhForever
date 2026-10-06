@@ -52,6 +52,8 @@ local function Fixture(opts)
         function f:RegisterEvent(e) f.events[e] = true end
         function f:RegisterUnitEvent(e) f.events[e] = true end
         function f:UnregisterAllEvents() f.events = {} end
+        function f:SetPoint(_, relativeTo) f.anchor = relativeTo end
+        function f:ClearAllPoints() f.anchor = nil end
         function f:CreateTexture()
             local t = Recorder()
             function t:SetTexture(tex) t.texture = tex end
@@ -414,8 +416,10 @@ do
     popup.buttons[1].scripts.PostClick(popup.buttons[1])
     Check("using an item closes the menu", popup.shown, false)
     cell.scripts.OnEnter(cell)
+    Check("open menu hangs under its cell", popup.anchor, cell)
     t.Fire("PLAYER_REGEN_DISABLED")
     Check("combat entry closes hover menu", popup.shown, false)
+    Check("closed menu lets go of its cell, so the cell stays movable in combat", rawget(popup, "anchor"), nil)
     t.state.combat = true
     cell.scripts.OnEnter(cell)
     Check("no menu in combat", popup.shown, false)

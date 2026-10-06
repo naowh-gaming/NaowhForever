@@ -3466,7 +3466,11 @@ end
 local function Deactivate()
     wipe(Reuse.waiting)
     ns.ProfBagChanges = ns.ProfBagChanges + 1
-    if win then win:Hide() end
+    if win and bookDocked and InCombatLockdown() then
+        win:SetAlpha(0)
+    elseif win then
+        win:Hide()
+    end
     if ProfessionsFrame then
         DockTabs(false)
         DockBook(false)
@@ -3533,6 +3537,7 @@ local function Activate(mode)
         Drag.Place()
     end
     pf:SetAlpha(0)
+    win:SetAlpha(1)
     local linked = mode == "linked"
     -- The right column: another player's order, or your shopping list while that is on.
     local wide = linked or (mode == "craft" and ns.ShoppingListWide and ns.ShoppingListWide())
@@ -3562,7 +3567,7 @@ local function Activate(mode)
     win.mid:SetShown(not book)
     win.rank:SetShown(not book)
     if book then win.rankBanner:Hide() end
-    win.book:SetShown(book)
+    if not (bookDocked and InCombatLockdown()) then win.book:SetShown(book) end
     DockBook(book)
     if book then
         RenderBook()
