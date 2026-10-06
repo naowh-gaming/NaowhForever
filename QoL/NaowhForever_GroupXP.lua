@@ -210,18 +210,7 @@ local function Prune()
     end
 end
 
-local rosterStale = true
-
-local function Member(guid)
-    if rosterStale then
-        rosterStale = false
-        wipe(inGroup)
-        for _, m in ipairs(Roster()) do inGroup[m.guid] = true end
-    end
-    return inGroup[guid] == true
-end
-
-local function OnMessage(msg)
+local function OnMessage(msg, channel, sender)
     if msg == "R" then
         SendSoon()
         return
@@ -229,7 +218,7 @@ local function OnMessage(msg)
     local guid, level, xp, max = msg:match("^2 (%S+) (%d+) (%d+) (%d+)$")
     if not guid or not guid:find(GUID_PATTERN) or guid == UnitGUID("player") then return end
     level, xp, max = tonumber(level), tonumber(xp), tonumber(max)
-    if level > MAX_LEVEL or xp > MAX_XP or max > MAX_XP or not Member(guid) then return end
+    if level > MAX_LEVEL or xp > MAX_XP or max > MAX_XP or not ns.SenderIs(sender, channel, guid) then return end
     local data = others[guid] or {}
     others[guid] = data
     data.level, data.xp, data.max = level, xp, max
@@ -249,12 +238,11 @@ end
 local events = CreateFrame("Frame")
 events:SetScript("OnEvent", function(_, event, ...)
     if event == "CHAT_MSG_ADDON" then
-        local prefix, msg, channel = ...
-        if Secret(prefix) or Secret(msg) or Secret(channel) then return end
-        if prefix == PREFIX and GROUP_CHANNELS[channel] then OnMessage(msg) end
+        local prefix, msg, channel, sender = ...
+        if Secret(prefix) or Secret(msg) or Secret(channel) or Secret(sender) then return end
+        if prefix == PREFIX and GROUP_CHANNELS[channel] then OnMessage(msg, channel, sender) end
         return
     elseif event == "GROUP_ROSTER_UPDATE" or event == "PLAYER_ENTERING_WORLD" then
-        rosterStale = true
         Prune()
         SendSoon(event == "PLAYER_ENTERING_WORLD")
     elseif event == "PLAYER_XP_UPDATE" or event == "PLAYER_LEVEL_UP" then

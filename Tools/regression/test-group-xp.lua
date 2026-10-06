@@ -12,9 +12,9 @@ local function boot(settings)
     local s = { now = 0, timers = {}, sent = {}, created = {}, combat = false, group = true,
         raid = false, settings = settings or {},
         units = {
-            player = { name = "You", guid = "Player-1-01", class = "PALADIN", level = 20, xp = 500, max = 1000 },
-            party1 = { name = "Tank", guid = "Player-1-02", class = "WARRIOR", level = 21 },
-            party2 = { name = "Mage", guid = "Player-2-03", class = "MAGE", level = 19 },
+            player = { name = "You", surname = "Lightbringer", guid = "Player-1-01", class = "PALADIN", level = 20, xp = 500, max = 1000 },
+            party1 = { name = "Tank", surname = "Ironhide", guid = "Player-1-02", class = "WARRIOR", level = 21 },
+            party2 = { name = "Mage", surname = "Frostwhisper", guid = "Player-2-03", class = "MAGE", level = 19 },
         } }
     local function frame(kind, name, parent)
         local f = { kind = kind, parent = parent, scripts = {}, events = {}, fonts = {}, shown = true }
@@ -70,6 +70,8 @@ local function boot(settings)
         UnitXP = function() return s.units.player.xp end,
         UnitXPMax = function() return s.units.player.max end,
         UnitName = function(u) return s.units[u] and s.units[u].name end,
+        UnitFullName = function(u) local m = s.units[u] if m then return m.name, m.surname end end,
+        GetNormalizedRealmName = function() return "Forever" end,
         UnitGUID = function(u) return s.units[u] and s.units[u].guid end,
         UnitClass = function(u) return "x", s.units[u] and s.units[u].class end,
         UnitIsUnit = function(a, b) return a == b end,
@@ -84,6 +86,7 @@ local function boot(settings)
         end,
     }
     setmetatable(env, { __index = _G })
+    local senders = assert(loadfile("Core/NaowhForever_Senders.lua")); setfenv(senders, env); senders()
     local f = assert(io.open("QoL/NaowhForever_GroupXP.lua", "rb"))
     local src = f:read("*a"); f:close()
     local chunk = assert(loadstring(src, "GroupXP")); setfenv(chunk, env); chunk()
@@ -282,6 +285,24 @@ do
         s.rows():find("Stranger: Lv 12  " .. NO_ADDON, 1, true) ~= nil)
     s.msg("2 Player-9-ABCDEF 12 50 100", "Stranger")
     check("once in the group they are heard", s.rows():find("Stranger: Lv 12  50.0%", 1, true) ~= nil)
+end
+
+do
+    local s = boot()
+    local before = s.rows()
+    s.msg("2 Player-2-03 60 0 0", "Tank Ironhide")
+    s.msg("2 Player-2-03 60 0 0", "Tank")
+    s.msg("2 Player-2-03 60 0 0", "Mage")
+    s.msg("2 Player-2-03 60 0 0", "Mage Frostwhisperer")
+    check("a member sending another member's GUID is dropped", s.rows() == before)
+    s.msg("2 Player-1-02 21 300 1200", "Outsider Someone")
+    check("a sender not in the group is dropped", s.rows() == before)
+    s.msg("2 Player-2-03 19 100 1000", "Mage-Frostwhisper")
+    check("their own GUID is taken, the name with a dash", s.rows():find("Mage: Lv 19  10.0%", 1, true) ~= nil)
+    s.msg("2 Player-1-02 21 600 1200", "Tank Ironhide-Forever")
+    check("and with your realm after it", s.rows():find("Tank: Lv 21  50.0%", 1, true) ~= nil)
+    s.msg("2 Player-1-02 21 900 1200", "Tank Ironhide-Elsewhere")
+    check("another realm's same name is not them", s.rows():find("Tank: Lv 21  50.0%", 1, true) ~= nil)
 end
 
 print(("PASS group XP: %d checks"):format(checks))

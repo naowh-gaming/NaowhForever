@@ -400,6 +400,12 @@ local function fixture(settings)
         -- The level asked about kept, for a test to read.
         GetQuestDifficultyColor = function(level) state.difficultyAsked = level; return { r = 1, g = 1, b = 1 } end,
         QuestDifficultyColors = { trivial = {} },
+        UnitFullName = function(unit)
+            if unit == "player" then return "Die Man" end
+            local member = state.party and state.party[tonumber(unit:match("^party(%d)$") or 0)]
+            return member and member.name
+        end,
+        GetNormalizedRealmName = function() return "Realm" end,
         UnitGUID = function(unit)
             if unit == "player" then return state.guid end
             local member = state.party and state.party[tonumber(unit:match("^party(%d)$") or 0)]
@@ -518,6 +524,9 @@ local function fixture(settings)
     }
     setmetatable(env, { __index = _G })
     state.G = env._G
+    local senders = assert(loadfile("Core/NaowhForever_Senders.lua"))
+    setfenv(senders, env)
+    senders()
     for _, path in ipairs(files) do
         local chunk = assert(loadfile(path))
         setfenv(chunk, env)
@@ -3386,7 +3395,7 @@ do
     check("and the asker is told to wait", Printed(mine):find("a moment ago", 1, true))
 
     -- A quest the game will not share.
-    hers.clock = hers.clock + 10
+    hers.clock = hers.clock + 30
     hers.unpushable = QUEST
     asker.Journal.Sharing.Ask(entry)
     Deliver(mine, askerFrame, "Die Man-Realm", hers, emmyFrame)
@@ -3462,6 +3471,8 @@ do
     Ask("1 A " .. EMMY .. " " .. ME .. " " .. ("9"):rep(200) .. ",6981")
     check("an ID too long to be a quest is skipped", lookups == 1 and #hers.sent == 1)
     hers.sent = {}
+    hers.clock = hers.clock + 30
+    hers.party[1].name = "Bad%s%dName"
     Ask("1 A " .. EMMY .. " " .. ME .. " 6981", "Bad%s%dName-Realm")
     check("a sender's name with format codes prints as written",
         (hers.printed[#hers.printed] or ""):find("Bad%s%dName asked you", 1, true) ~= nil)

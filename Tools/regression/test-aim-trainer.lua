@@ -176,8 +176,24 @@ local function fixture(opts)
     end
     env.IsInRaid = function() return s.group == "RAID" end
     env.LE_PARTY_CATEGORY_INSTANCE = 2
-    env.UnitFullName = function() return "Die", "Man" end
-    env.UnitGUID = function() return s.guid end
+    s.party, s.roster = {}, {}
+    env.UnitGUID = function(unit)
+        if unit == "player" then return s.guid end
+        local m = s.party[tonumber(unit:match("^party(%d+)$") or 0)]
+        return m and m[2]
+    end
+    env.UnitFullName = function(unit)
+        if unit == "player" then return "Die", "Man" end
+        local m = s.party[tonumber(unit:match("^party(%d+)$") or 0)]
+        if m then return m[1]:match("^([^%- ]+)[%- ]?(.*)$") end
+    end
+    env.GetNumSubgroupMembers = function() return #s.party end
+    env.GetNormalizedRealmName = function() return "Forever" end
+    env.GetNumGuildMembers = function() return #s.roster end
+    env.GetGuildRosterInfo = function(i)
+        local m = s.roster[i]
+        if m then return m[1], nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, m[2] end
+    end
     env.UnitClass = function() return "Mage", "MAGE" end
     env.issecretvalue = function(v) return v ~= nil and v == s.secret end
     env.time = function() return s.clock end
@@ -195,7 +211,8 @@ local function fixture(opts)
         t[k] = function(...) old(...); fn(...) end
     end
     setmetatable(env, { __index = _G })
-    for _, path in ipairs({ "QoL/NaowhForever_AimTrainer.lua", "QoL/NaowhForever_AimBoard.lua" }) do
+    for _, path in ipairs({ "Core/NaowhForever_Senders.lua", "QoL/NaowhForever_AimTrainer.lua",
+        "QoL/NaowhForever_AimBoard.lua" }) do
         local chunk = assert(loadfile(path))
         setfenv(chunk, env)
         chunk()
@@ -248,9 +265,22 @@ local function fixture(opts)
             if f.scripts.OnEvent and not f.scripts.OnKeyDown then return f end
         end
     end
+    function s.member(list, name, guid)
+        for _, m in ipairs(list) do
+            if m[1] == name then m[2] = guid return end
+        end
+        list[#list + 1] = { name, guid }
+    end
     function s.receive(message, channel, sender)
         local f = s.comms()
-        f.scripts.OnEvent(f, "CHAT_MSG_ADDON", "NaowhAim", (message:gsub("@", G(sender))), channel, sender)
+        local text = message:gsub("@", G(sender))
+        local claimed = text:match("^%d+ B (%S+)")
+        if claimed and not s.strict then
+            if channel == "GUILD" then s.member(s.roster, sender, claimed) end
+            if channel == "PARTY" or channel == "RAID" then s.member(s.party, sender, claimed) end
+        end
+        ns._SendersTest.GuildChanged()
+        f.scripts.OnEvent(f, "CHAT_MSG_ADDON", "NaowhAim", text, channel, sender)
     end
     function s.event(event)
         local f = s.comms()
@@ -769,6 +799,25 @@ do
     check("your own request, a bad GUID and the old request are not answered", #s.timers == waiting)
     s.receive(msg("gridshot", 240000, 100), "GUILD", "Top Gun")
     check("the ceiling itself is allowed", s.board("gridshot")["Top Gun"].score == 240000)
+end
+
+do
+    local s = fixture({ faction = "Alliance", settings = { aimTrainer = true } })
+    s.account.aimBest = { hexakill = 100 }
+    s.ns.Apply()
+    s.strict = true
+    s.roster = { { "Real-One", "Player-1-0000AAAA" }, { "Other-Guild", "Player-1-0000BBBB" } }
+    s.party = { { "Party-Pal", "Player-1-0000CCCC" }, { "Second-Pal", "Player-1-0000DDDD" } }
+    s.receive(msg("gridshot", 9000, 50, "MAGE", 20000, "Player-1-0000BBBB"), "GUILD", "Real-One")
+    check("a guildmate sending another's GUID is dropped", s.account.aimBoard == nil)
+    s.receive(msg("gridshot", 9000, 50, "MAGE", 20000, "Player-1-0000EEEE"), "GUILD", "Not-Here")
+    check("a sender not in the guild is dropped", s.account.aimBoard == nil)
+    s.receive(msg("gridshot", 9000, 50, "MAGE", 20000, "Player-1-0000DDDD"), "PARTY", "Party-Pal")
+    check("a group member sending another member's GUID is dropped", s.account.aimBoard == nil)
+    s.receive(msg("gridshot", 3000, 50, "MAGE", 20000, "Player-1-0000AAAA"), "GUILD", "Real-One-Forever")
+    check("their own is taken, with your realm after the name", s.board("gridshot")["Real One-Forever"].score == 3000)
+    s.receive(msg("gridshot", 4000, 50, "MAGE", 20000, "Player-1-0000CCCC"), "PARTY", "Party Pal")
+    check("and from the group, the name with a space", s.board("gridshot")["Party Pal"].score == 4000)
 end
 
 -- Caps: 200 entries per mode, the weakest dropped; a rate limit per sender.

@@ -324,6 +324,7 @@ local function Received(message, channel, sender)
         accuracy = tonumber(accuracy)
         if not accuracy or accuracy < 0 or accuracy > MAX_ACCURACY or accuracy ~= floor(accuracy) then return end
     end
+    if not ns.SenderIs(sender, channel, guid) then return end
     local who = sender:gsub("%-", " ", 1)
     if Keep(m, guid, who, score, accuracy, class, day, channel == "GUILD") then RefreshSoon() end
 end

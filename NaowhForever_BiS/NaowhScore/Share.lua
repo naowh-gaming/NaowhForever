@@ -125,21 +125,24 @@ local function Joined()
     end
 end
 
-local function Received(message, channel)
+local function Received(message, channel, sender)
     if message == "R" then return AnswerSoon(channel) end
     local guid, tenths, level = message:match("^S (Player%-%d+%-%x+) (%d+) ?(%d*)$")
     tenths, level = tonumber(tenths), tonumber(level)
     if not guid or guid == own or not tenths or tenths > 9999 then return end
+    if not ns.SenderIs(sender, channel, guid) then return end
     if level and level > MAX_LEVEL then level = nil end
     if Score.Remember then Score.Remember(guid, tenths / 10, true, true, level) end
 end
 
 local events = CreateFrame("Frame")
-events:SetScript("OnEvent", function(_, event, prefix, message, channel)
+events:SetScript("OnEvent", function(_, event, prefix, message, channel, sender)
     if event == "CHAT_MSG_ADDON" then
-        if issecretvalue(prefix) or issecretvalue(message) or issecretvalue(channel) then return end
+        if issecretvalue(prefix) or issecretvalue(message) or issecretvalue(channel) or issecretvalue(sender) then
+            return
+        end
         if prefix ~= PREFIX or not CHANNELS[channel] then return end
-        Received(message, channel)
+        Received(message, channel, sender)
     elseif event == "PLAYER_EQUIPMENT_CHANGED" then
         SendSoon()
     elseif event == "PLAYER_REGEN_ENABLED" then

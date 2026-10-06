@@ -17,6 +17,8 @@ local NOTHING = function() end
 local function Fixture()
     local state = { gear = {}, now = 100, combat = false, inspected = {}, cleared = 0, postCalls = {},
         frames = {}, timers = {}, sent = {}, members = 0, guild = false,
+        fullNames = { player = "Me", party1 = "One", party2 = "Two", party3 = "Three" },
+        guildRoster = { { "Guildie", "Player-7-00AB" }, { "Ninth", "Player-9-00AB" } },
         values = { enabled = true, naowhScore = false, naowhScoreTooltip = true, naowhScoreScan = true } }
     local listeners = {}
     local S = {
@@ -118,9 +120,16 @@ local function Fixture()
         IsInGuild = function() return state.guild end,
         GetNumSubgroupMembers = function() return state.members end,
         GetNumGroupMembers = function() return state.members + 1 end,
+        UnitFullName = function(unit) return state.fullNames[unit] end,
+        GetNormalizedRealmName = function() return "Forever" end,
+        GetNumGuildMembers = function() return #state.guildRoster end,
+        GetGuildRosterInfo = function(i)
+            local m = state.guildRoster[i]
+            if m then return m[1], nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, m[2] end
+        end,
     }, { __index = _G })
     state.UnitGUID, state.units, state.SECRET = env.UnitGUID, units, {}
-    Load({ "NaowhForever_BiS/NaowhScore/Data/Formula.lua", "NaowhForever_BiS/NaowhScore/Score.lua", "NaowhForever_BiS/NaowhScore/Inspect.lua", "NaowhForever_BiS/NaowhScore/Share.lua" },
+    Load({ "Core/NaowhForever_Senders.lua", "NaowhForever_BiS/NaowhScore/Data/Formula.lua", "NaowhForever_BiS/NaowhScore/Score.lua", "NaowhForever_BiS/NaowhScore/Inspect.lua", "NaowhForever_BiS/NaowhScore/Share.lua" },
         env)
     -- An event, to every frame listening for it (Share always; Inspect while on).
     function state.Fire(event, ...)
@@ -423,16 +432,28 @@ do
     state.Fire("CHAT_MSG_ADDON", "NaowhScore", "S Player-7-00AB 264", "WHISPER", "Stranger")
     state.Fire("CHAT_MSG_ADDON", "OtherAddon", "S Player-8-00AB 999", "GUILD", "Guildie")
     check("nonsense, whispers and other addons' messages are ignored", Score.Known("Player-8-00AB") == nil)
-    state.Fire("CHAT_MSG_ADDON", state.SECRET, "S Player-9-00AB 264", "GUILD", "Guildie")
-    state.Fire("CHAT_MSG_ADDON", "NaowhScore", "S Player-9-00AB 264", state.SECRET, "Guildie")
-    state.Fire("CHAT_MSG_ADDON", "NaowhScore", "S |TInterface\\Icons\\X:0|t 264", "GUILD", "Guildie")
-    state.Fire("CHAT_MSG_ADDON", "NaowhScore", "S %s%d 264", "GUILD", "Guildie")
-    state.Fire("CHAT_MSG_ADDON", "NaowhScore", "S Player-9-00AB " .. ("9"):rep(400), "GUILD", "Guildie")
-    state.Fire("CHAT_MSG_ADDON", "NaowhScore", "S Player-9-00AB 264 " .. ("|cffff0000x|r"):rep(300), "GUILD", "Guildie")
+    state.Fire("CHAT_MSG_ADDON", state.SECRET, "S Player-9-00AB 264", "GUILD", "Ninth")
+    state.Fire("CHAT_MSG_ADDON", "NaowhScore", "S Player-9-00AB 264", state.SECRET, "Ninth")
+    state.Fire("CHAT_MSG_ADDON", "NaowhScore", "S |TInterface\\Icons\\X:0|t 264", "GUILD", "Ninth")
+    state.Fire("CHAT_MSG_ADDON", "NaowhScore", "S %s%d 264", "GUILD", "Ninth")
+    state.Fire("CHAT_MSG_ADDON", "NaowhScore", "S Player-9-00AB " .. ("9"):rep(400), "GUILD", "Ninth")
+    state.Fire("CHAT_MSG_ADDON", "NaowhScore", "S Player-9-00AB 264 " .. ("|cffff0000x|r"):rep(300), "GUILD", "Ninth")
     check("crafted payloads keep nothing", Score.Known("Player-9-00AB") == nil)
-    state.Fire("CHAT_MSG_ADDON", "NaowhScore", "S Player-9-00AB 264 " .. ("9"):rep(400), "GUILD", "Guildie")
+    state.Fire("CHAT_MSG_ADDON", "NaowhScore", "S Player-9-00AB 264 " .. ("9"):rep(400), "GUILD", "Ninth")
     check("a level past any real one is dropped, the score kept", Score.Known("Player-9-00AB").score == 26.4
         and Score.Known("Player-9-00AB").level == nil)
+    state.Fire("CHAT_MSG_ADDON", "NaowhScore", "S Player-7-00AB 999", "GUILD", "Ninth")
+    check("a guildmate sending another's GUID is dropped", Score.Known("Player-7-00AB").score == 26.4)
+    state.Fire("CHAT_MSG_ADDON", "NaowhScore", "S Player-6-00AB 500", "GUILD", "Outsider")
+    check("a sender not in the guild is dropped", Score.Known("Player-6-00AB") == nil)
+    state.Fire("CHAT_MSG_ADDON", "NaowhScore", "S Player-7-00AB 300", "GUILD", "Guildie-Forever")
+    check("the guildmate's own, with your realm after the name, is taken", Score.Known("Player-7-00AB").score == 30)
+    state.members = 2
+    state.Fire("CHAT_MSG_ADDON", "NaowhScore", "S Player-1-29 400", "PARTY", "One")
+    check("a group member sending another member's GUID is dropped", Score.Known("Player-1-29") == nil)
+    state.Fire("CHAT_MSG_ADDON", "NaowhScore", "S Player-1-29 400", "PARTY", "Two")
+    check("their own is taken", Score.Known("Player-1-29").score == 40)
+    state.members = 0
     local onEvent = state.frames[2].onEvent
     Measure("a shared score received", 0.02, function()
         onEvent(state.frames[2], "CHAT_MSG_ADDON", "NaowhScore", "S Player-7-00AB 264", "GUILD", "Guildie")
