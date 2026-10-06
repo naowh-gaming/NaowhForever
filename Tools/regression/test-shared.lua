@@ -275,6 +275,40 @@ view.count = 50
 Measure(check)("a page of 50 rows redrawn", 1, function() view:Redraw() end)
 
 -------------------------------------------------------------------------------
+--  A declared settings page, drawn again after a change: no garbage.
+-------------------------------------------------------------------------------
+local function Control(parent)
+    local control = Frame(parent)
+    control._refreshValue, control._refreshLabel = NOTHING, NOTHING
+    return control
+end
+METHODS.GetFrameLevel = function() return 1 end
+ns.UI.BuildToggleControl = Control
+ns.UI.BuildSliderCore = function(parent) return Control(parent), Frame(parent) end
+ns.UI.SetSliderRange = NOTHING
+ns.UI.CHEVRON, ns.UI.CONTENT_PAD = "chevron", 20
+local values = { on = true, size = 12 }
+local store = {
+    Get = function(k) return values[k] end,
+    Raw = function(k) return values[k] end,
+    Default = function() return nil end,
+    Set = function(k, v) values[k] = v end,
+    OnChange = NOTHING,
+}
+local Settings = Shared.Settings
+Settings.Page("Test/Costs", store):Card({ id = "costs", name = "Costs", switch = "on", rows = {
+    Settings.Group("Look"),
+    { key = "shown", label = "Shown", toggle = true },
+    { key = "size", label = "Size", slider = { 8, 32, 1 }, unit = "px", needs = "shown" },
+    { key = "alpha", label = "Opacity", slider = { 0, 100, 5 }, unit = "%" },
+} })
+local settingsParent = Frame()
+Settings.Render(settingsParent, "Test/Costs", NOTHING)
+local settingsView = settingsParent.settingsView
+check("the settings page drew its card", settingsView.pools.setting.used == 3 and settingsView.pools.group.used == 1)
+Measure(check)("a settings page redrawn", 1, function() settingsView:Redraw() end)
+
+-------------------------------------------------------------------------------
 --  A tracker's window (Parts.TrackerPanel): built only when asked, its parts where the
 --  options ask for them, rows pooled, the body scrolling past its height, its place kept.
 -------------------------------------------------------------------------------
