@@ -227,8 +227,10 @@ local function Propagate(label, visited)
     end
 end
 
+local depthSeen = {}
+
 local function Depth(label)
-    local depth, seen = 0, {}
+    local depth, seen = 0, wipe(depthSeen)
     local info = AnchorOf(label)
     while info and not SCREEN[info.target] and depth < MAX_DEPTH do
         if seen[label] then return 0 end
@@ -241,14 +243,28 @@ local function Depth(label)
 end
 
 -- Every anchor, parents first so a child never reads its target's old spot.
+local reapplyEntries, reapplyList = {}, {}
+
+local function ByDepth(a, b) return a.depth < b.depth end
+
 local function ReapplyAll()
-    local list = {}
+    local n = 0
     for label in pairs(Anchors()) do
         local item = placement.byLabel[label]
-        if item and AnchorOf(label) then list[#list + 1] = { item = item, depth = Depth(label) } end
+        if item and AnchorOf(label) then
+            n = n + 1
+            local e = reapplyEntries[n]
+            if not e then
+                e = {}
+                reapplyEntries[n] = e
+            end
+            e.item, e.depth = item, Depth(label)
+        end
     end
-    table.sort(list, function(a, b) return a.depth < b.depth end)
-    for _, e in ipairs(list) do Apply(e.item) end
+    local list = wipe(reapplyList)
+    for i = 1, n do list[i] = reapplyEntries[i] end
+    table.sort(list, ByDepth)
+    for i = 1, n do Apply(list[i].item) end
 end
 UI.ReapplyAnchors = ReapplyAll
 
@@ -1579,8 +1595,15 @@ function UI.BindMover(handle, frame, label, onMoved, page, feature, ownAnchor)
     frame:HookScript("OnSizeChanged", function() Queue(label, "size") end)
     -- The mover can cover more than the frame (a reminder's sample), and grows with it.
     handle:HookScript("OnSizeChanged", function() Queue(label, "size") end)
+    item.movedFn = function()
+        item.movePending = nil
+        Moved(item)
+    end
     hooksecurefunc(frame, "SetPoint", function()
-        if not item.dragging then C_Timer.After(0, function() Moved(item) end) end
+        if not item.dragging and not item.movePending then
+            item.movePending = true
+            C_Timer.After(0, item.movedFn)
+        end
     end)
     -- A module's own resize grip sizes the frame from a corner of its choosing: the anchor
     -- leaves it be until the grip lets go.

@@ -883,6 +883,7 @@ end
 
 local kinds
 local Draw = {}
+local NO_EVENTS = {}
 
 function Draw:Redraw()
     local St = ns.Shared.Style
@@ -914,7 +915,7 @@ function Draw:Redraw()
     end
     self:Add("foot", count, ready)
     self:CloseCard(card, top)
-    self:Fit({})
+    self:Fit(NO_EVENTS)
 end
 
 local function Kinds()

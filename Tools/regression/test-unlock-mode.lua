@@ -526,4 +526,29 @@ watcher.scripts.OnEvent(watcher, "PLAYER_REGEN_ENABLED")
 Flush()
 Check(Near(Center(swing), 960), "and catches up after it")
 
+-- Cost: many SetPoints in a frame make one check, and a reapply with nothing to move no garbage.
+do
+    local Measure = dofile("Tools/regression/measure.lua")(function(label, ok) Check(ok, label) end)
+    local scheduled, queued = 0, nil
+    env.C_Timer = { After = function(_, fn) scheduled = scheduled + 1; queued = fn end }
+    local probe = NewFrame("Frame", UIParent)
+    probe:SetSize(40, 40)
+    probe:SetPoint("CENTER", UIParent, "CENTER", 0, 300)
+    probe.SetPoint = NOOP
+    UI.AttachMover(probe, "Probe", NOOP, "QoL/General")
+    local function MovedTwice()
+        probe:SetPoint("CENTER")
+        probe:SetPoint("CENTER")
+        local fn = queued
+        queued = nil
+        if fn then fn() end
+    end
+    MovedTwice()
+    scheduled = 0
+    MovedTwice()
+    Check(scheduled == 1, "two SetPoints in a frame make one check")
+    Measure("a module's frame moved twice in a frame", 0.05, MovedTwice)
+    Measure("the anchors re-applied with nothing to move", 0.1, UI.ReapplyAnchors)
+end
+
 print(("test-unlock-mode: %d checks passed"):format(checks))
