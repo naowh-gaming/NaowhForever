@@ -24,6 +24,7 @@ local METHODS = {
     RegisterEvent = function(f, event) f.events[event] = true end,
     UnregisterAllEvents = function(f) for event in pairs(f.events) do f.events[event] = nil end end,
     GetParent = function(f) return rawget(f, "parent") end,
+    IsForbidden = function() return false end,
     SetWidth = function(f, w) f.w = w end,
     SetHeight = function(f, h) f.h = h end,
     SetSize = function(f, w, h) f.w, f.h = w, h end,
@@ -208,6 +209,18 @@ check("drawn again shorter: rows reused, none made, the rest hidden", madeRows =
     and view.pools.line[11].shown == false)
 local row = view:Find("line", function(r, text) return r.label.text == text end, "line 7")
 check("a drawn row found by what it shows", row and row.top == view.pools.line[7].top)
+local forbidden = setmetatable({}, { __index = function(_, key)
+    if key == "IsForbidden" then return function() return true end end
+    error("touched a forbidden frame: " .. key)
+end })
+tooltip.GetOwner = function() return forbidden end
+tooltip.shown = true
+check("a redraw leaves a tooltip on a forbidden frame (a nameplate aura in combat) alone",
+    pcall(view.Redraw, view) and tooltip.shown == true)
+tooltip.GetOwner = function() return view.pools.line[1] end
+view:Redraw()
+check("and still closes its own row's tooltip", tooltip.shown == false)
+tooltip.GetOwner = function() return nil end
 view.waitOn = 3
 view:Redraw()
 check("a row waiting on an item's name: listened for", view.events.GET_ITEM_INFO_RECEIVED)
