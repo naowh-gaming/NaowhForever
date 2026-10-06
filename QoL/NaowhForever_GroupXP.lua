@@ -9,6 +9,8 @@ local T = ns.THEME
 
 local PREFIX = "NaowhGroupXP"
 local GROUP_CHANNELS = { PARTY = true, RAID = true, INSTANCE_CHAT = true }
+local GUID_PATTERN = "^Player%-%d+%-%x+$"
+local MAX_LEVEL, MAX_XP = 1000, 2 ^ 31
 local GRADIENT = "Interface\\AddOns\\NaowhForever\\Media\\NaowhGradient.tga"
 local ROW_H, NAME_W, GAP = 18, 90, 2
 
@@ -208,17 +210,29 @@ local function Prune()
     end
 end
 
+local rosterStale = true
+
+local function Member(guid)
+    if rosterStale then
+        rosterStale = false
+        wipe(inGroup)
+        for _, m in ipairs(Roster()) do inGroup[m.guid] = true end
+    end
+    return inGroup[guid] == true
+end
+
 local function OnMessage(msg)
-    if Secret(msg) then return end
     if msg == "R" then
         SendSoon()
         return
     end
     local guid, level, xp, max = msg:match("^2 (%S+) (%d+) (%d+) (%d+)$")
-    if not guid or guid == UnitGUID("player") then return end
+    if not guid or not guid:find(GUID_PATTERN) or guid == UnitGUID("player") then return end
+    level, xp, max = tonumber(level), tonumber(xp), tonumber(max)
+    if level > MAX_LEVEL or xp > MAX_XP or max > MAX_XP or not Member(guid) then return end
     local data = others[guid] or {}
     others[guid] = data
-    data.level, data.xp, data.max = tonumber(level), tonumber(xp), tonumber(max)
+    data.level, data.xp, data.max = level, xp, max
     Refresh()
 end
 
@@ -236,9 +250,11 @@ local events = CreateFrame("Frame")
 events:SetScript("OnEvent", function(_, event, ...)
     if event == "CHAT_MSG_ADDON" then
         local prefix, msg, channel = ...
+        if Secret(prefix) or Secret(msg) or Secret(channel) then return end
         if prefix == PREFIX and GROUP_CHANNELS[channel] then OnMessage(msg) end
         return
     elseif event == "GROUP_ROSTER_UPDATE" or event == "PLAYER_ENTERING_WORLD" then
+        rosterStale = true
         Prune()
         SendSoon(event == "PLAYER_ENTERING_WORLD")
     elseif event == "PLAYER_XP_UPDATE" or event == "PLAYER_LEVEL_UP" then

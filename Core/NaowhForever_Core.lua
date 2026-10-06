@@ -128,6 +128,12 @@ function ns.Color(token, text)
     return prefix .. text .. "|r"
 end
 
+function ns.PlainText(text, max)
+    if type(text) ~= "string" then return nil end
+    if max and #text > max then text = text:sub(1, max) end
+    return (text:gsub("%c", " "):gsub("||", "\1"):gsub("|", "||"):gsub("\1", "||"))
+end
+
 -- Player colors from Settings > COLORS, saved for this computer. They are written into the
 -- THEME tables above in place, once per load and before any window is built, so every
 -- file's `local T = ns.THEME` sees them; a new pick takes effect after a reload.

@@ -18,6 +18,7 @@ local SEND_DELAY = 1          -- seconds after a gear change: a set swap's burst
 local ANSWER_SPREAD = 30      -- an answer to a request waits up to this many tenths of a second
 local GUILD_ANSWER_GAP = 30   -- seconds: the guild is answered at most this often
 local CHANNELS = { PARTY = true, RAID = true, INSTANCE_CHAT = true, GUILD = true }
+local MAX_LEVEL = 1000
 
 local own                     -- your GUID
 local lastSent                -- the score last sent, in tenths
@@ -129,13 +130,15 @@ local function Received(message, channel)
     local guid, tenths, level = message:match("^S (Player%-%d+%-%x+) (%d+) ?(%d*)$")
     tenths, level = tonumber(tenths), tonumber(level)
     if not guid or guid == own or not tenths or tenths > 9999 then return end
+    if level and level > MAX_LEVEL then level = nil end
     if Score.Remember then Score.Remember(guid, tenths / 10, true, true, level) end
 end
 
 local events = CreateFrame("Frame")
 events:SetScript("OnEvent", function(_, event, prefix, message, channel)
     if event == "CHAT_MSG_ADDON" then
-        if prefix ~= PREFIX or not CHANNELS[channel] or issecretvalue(message) then return end
+        if issecretvalue(prefix) or issecretvalue(message) or issecretvalue(channel) then return end
+        if prefix ~= PREFIX or not CHANNELS[channel] then return end
         Received(message, channel)
     elseif event == "PLAYER_EQUIPMENT_CHANGED" then
         SendSoon()

@@ -3672,7 +3672,7 @@ end)
 -- Only a plain click opens the link: Shift or Ctrl puts it in chat and no window opens.
 hooksecurefunc("SetItemRef", function(link, text, button, chatFrame)
     if not On() or IsShiftKeyDown() or IsControlKeyDown() then return end
-    local guid = type(link) == "string" and link:match("^trade:([^:]+)")
+    local guid = type(link) == "string" and link:match("^trade:(Player%-%d+%-%x+):")
     if not guid or guid == UnitGUID("player") then return end
     viewingLink, linkClicked, linkGUID = true, GetTime(), guid
     casts:RegisterUnitEvent("UNIT_SPELLCAST_SUCCEEDED", "player")

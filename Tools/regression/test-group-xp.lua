@@ -255,4 +255,33 @@ do -- cost: roster changes and messages are heard with the bars off too, so they
         on.rows() == "You: Lv 20  50.0% | Tank: Lv 21  25.0% | Mage: Lv 19  " .. NO_ADDON)
 end
 
+do
+    local s = boot()
+    local before = s.rows()
+    local SECRET = { secret = true }
+    s.fire("CHAT_MSG_ADDON", SECRET, "2 Player-1-02 21 300 1200", "PARTY", "Tank Ironhide")
+    s.fire("CHAT_MSG_ADDON", "NaowhGroupXP", "2 Player-1-02 21 300 1200", SECRET, "Tank Ironhide")
+    check("a secret prefix or channel is skipped before it is compared", s.rows() == before)
+    s.msg("2 |TInterface\\AddOns\\NaowhForever\\Media\\Badges\\BadgeNaowhChat.tga:0|t 60 1 2", "Tank Ironhide")
+    s.msg("2 %s%d%n 60 1 2", "Tank Ironhide")
+    s.msg("2 Player-9-ABCDEF 60 1 2", "Stranger")
+    check("a GUID that is not a player's, or not in the group, keeps nothing", s.rows() == before)
+    s.msg("2 Player-1-02 " .. ("9"):rep(400) .. " 1 2", "Tank Ironhide")
+    s.msg("2 Player-1-02 21 " .. ("9"):rep(40) .. " 2", "Tank Ironhide")
+    check("numbers past any level or XP are dropped", s.rows() == before)
+    local long = "2 Player-1-02 21 300 1200 " .. ("|cffff0000x|r"):rep(300)
+    local started = os.clock()
+    for _ = 1, 100 do s.msg(long, "Tank Ironhide") end
+    check("a long message of colour codes is refused, and quickly", s.rows() == before
+        and os.clock() - started < 0.5)
+    s.msg("2 Player-1-02 21 300 1200", "Tank Ironhide")
+    check("the real message still shows", s.rows():find("Tank: Lv 21  25.0%", 1, true) ~= nil)
+    s.units.party3 = { name = "Stranger", guid = "Player-9-ABCDEF", class = "MAGE", level = 12 }
+    s.fire("GROUP_ROSTER_UPDATE")
+    check("numbers sent before joining were not kept for them",
+        s.rows():find("Stranger: Lv 12  " .. NO_ADDON, 1, true) ~= nil)
+    s.msg("2 Player-9-ABCDEF 12 50 100", "Stranger")
+    check("once in the group they are heard", s.rows():find("Stranger: Lv 12  50.0%", 1, true) ~= nil)
+end
+
 print(("PASS group XP: %d checks"):format(checks))

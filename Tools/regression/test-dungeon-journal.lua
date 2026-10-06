@@ -3437,6 +3437,36 @@ do
     check("off, asks are not listened for", next(emmyFrame.events) == nil)
 end
 
+do
+    local ME, EMMY = "Player-4613-006EB819", "Player-4613-00E33333"
+    local emmy, hers = fixture({ enabled = true })
+    emmy.Apply()
+    hers.guid = EMMY
+    hers.party = { { name = "Die Man", guid = ME, quests = {} } }
+    local emmyFrame = hers.made[3]
+    emmyFrame.scripts.OnEvent(emmyFrame, "GROUP_ROSTER_UPDATE")
+    local lookups = 0
+    setmetatable(hers.logged, { __index = function() lookups = lookups + 1 end })
+    local function Ask(text, sender)
+        emmyFrame.scripts.OnEvent(emmyFrame, "CHAT_MSG_ADDON", "NaowhJournal", text, "PARTY", sender or "Die Man-Realm")
+    end
+    Ask("1 A " .. EMMY .. " |TInterface\\AddOns\\NaowhForever\\Media\\Badges\\BadgeNaowhChat.tga:0|t 6981")
+    Ask("1 A " .. EMMY .. " Player-%s%d 6981")
+    check("an ask from something that is not a player's GUID is not answered", #hers.sent == 0 and lookups == 0)
+    local ids = {}
+    for i = 1, 120 do ids[i] = tostring(100 + i) end
+    Ask("1 A " .. EMMY .. " " .. ME .. " " .. table.concat(ids, ","))
+    check("only the first few IDs of a long ask are looked up", lookups == 8 and #hers.sent == 1)
+    lookups = 0
+    hers.sent = {}
+    Ask("1 A " .. EMMY .. " " .. ME .. " " .. ("9"):rep(200) .. ",6981")
+    check("an ID too long to be a quest is skipped", lookups == 1 and #hers.sent == 1)
+    hers.sent = {}
+    Ask("1 A " .. EMMY .. " " .. ME .. " 6981", "Bad%s%dName-Realm")
+    check("a sender's name with format codes prints as written",
+        (hers.printed[#hers.printed] or ""):find("Bad%s%dName asked you", 1, true) ~= nil)
+end
+
 -------------------------------------------------------------------------------
 --  The BiS List's Quests page: the quests that reward a pick you do not have yet, by zone,
 --  as the Journal's quests, so its rules and rows work on them as on a dungeon's.

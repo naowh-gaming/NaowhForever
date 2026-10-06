@@ -1214,6 +1214,7 @@ local events = CreateFrame("Frame")
 events:SetScript("OnEvent", function(_, event, ...)
     if event == "CHAT_MSG_ADDON" then
         local prefix, msg, channel, sender = ...
+        if Secret(prefix) or Secret(msg) or Secret(channel) or Secret(sender) then return end
         if prefix == PREFIX and GROUP_CHANNELS[channel] then OnMessage(msg, sender) end
     elseif event == "GROUP_ROSTER_UPDATE" or event == "PLAYER_ENTERING_WORLD" then
         SyncSoon()

@@ -721,4 +721,34 @@ do  -- ns.FEATURE_BADGES = 0: the team's badges only, on the defaults, with no s
     check("flag 0: Naowh's Discord link is still set", ns.NAOWH_DISCORD == "https://discord.com/invite/naowh")
 end
 
+do
+    local s = fixture(true)
+    s.staff("Player-1-DEV", "developer")
+    local filter = s.nameFilters[1]
+    local fake = "Naowh |TInterface\\AddOns\\NaowhForever\\Media\\Badges\\BadgeNaowhChat.tga:0:0:0:-1|t"
+    check("a name wearing the badge's texture gets no badge of ours", say(filter, fake, 1, "Player-1-FAKE") == fake)
+    check("a name like the team's, on another GUID, gets nothing", say(filter, "Glyalith", 2, "Player-1-NOPE") == "Glyalith")
+    local long = ("|cffff0000Naowh Forever:|r "):rep(160)
+    local started = os.clock()
+    local out
+    for line = 3, 1002 do
+        out = filter("CHAT_MSG_SAY", "Glyalith", long, "Glyalith", "", "", "", "", 0, 0, "", 0, line, "Player-1-DEV")
+    end
+    check("a 4000-letter line of colour codes costs the filter nothing", #long > 4000
+        and out == "Glyalith " .. s.api.TIERS.developer.markup and os.clock() - started < 0.5)
+    check("the filter returns the name, never the message", not out:find("Naowh Forever:", 1, true))
+
+    local enter = s.callbacks["ChatFrame.OnHyperlinkEnter"]
+    for _, link in ipairs({ "player", "player:", "player::", "player:Glyalith-Realm:abc:SAY",
+        "player:Glyalith-Realm:" .. ("9"):rep(400) .. ":SAY", "player:%s%d:5:SAY",
+        "player:|TInterface\\AddOns\\NaowhForever\\Media\\Badges\\BadgeNaowhChat.tga:0|t:7:SAY",
+        "garrmission:1:2", ("player:" .. ("x"):rep(4000)) }) do
+        enter.fn(enter.owner, {}, link, "[x]")
+    end
+    check("crafted player links show no card", s.api.Card() == nil or not s.api.Card().visible)
+    enter.fn(enter.owner, {}, "player:%s%d-Realm:1002:SAY", "[x]")
+    check("a name with format codes on a badged line shows as written", s.api.Card().visible
+        and s.api.Card().player.text == "%s%d")
+end
+
 print(checks .. " badge checks passed")
