@@ -92,6 +92,67 @@ def fetch_requires(quest_id):
     return {"quests": [int(i) for i in re.findall(r"\[quest=(\d+)", markup)], "text": markup}
 
 
+# Quests that start from an item a mob drops (Ursangous's Paw) have no quest giver on the map.
+# The zone page lists the items that start quests there ("starts-quest"); each item's page
+# names its quest ("This Item Begins a Quest") and the mobs that drop it ("dropped-by"); each
+# mob's page has where it spawns (g_mapperData). Cached in completo_items.json:
+# { "zones": { area: [itemIDs] }, "items": { item: { quest, drops } }, "npcs": { npc: spots } }.
+ITEMS = Path(__file__).resolve().parent / "completo_items.json"
+BEGINS = re.compile(r"/forever/quest=(\d+)[^\"<]*\"[^>]*>This Item Begins a Quest")
+# A mob that drops it this rarely is not where to go for it (a world drop).
+MIN_DROP = 0.02
+
+
+def fetch_zone_items(area):
+    page = wowhead.fetch(f"{wowhead.WOWHEAD}/zone={area}")
+    return [row["id"] for row in wowhead.listview(page, "starts-quest")]
+
+
+def fetch_item(item):
+    """{ "quest": the quest it begins, or None; "drops": [{ npc, name, chance, rare }] }."""
+    page = wowhead.fetch(f"{wowhead.WOWHEAD}/item={item}").replace("\\/", "/").replace('\\"', '"')
+    begins = BEGINS.search(page)
+    drops = []
+    for row in wowhead.listview(page, "dropped-by"):
+        outof = row.get("outof") or 0
+        drops.append({"npc": row["id"], "name": row["name"], "rare": row.get("classification", 0) > 0,
+                      "chance": (row.get("count") or 0) / outof if outof else 0})
+    return {"quest": int(begins.group(1)) if begins else None, "drops": drops}
+
+
+def fetch_npc(npc):
+    """{ uiMapID: [[x, y], ...] } where the mob spawns, from its page's map."""
+    page = wowhead.fetch(f"{wowhead.WOWHEAD}/npc={npc}")
+    mapper = re.search(r"g_mapperData\s*=\s*(\{.*?\});", page, re.S)
+    spots = {}
+    for floors in (json.loads(mapper.group(1)).values() if mapper else []):
+        for floor in floors:
+            if floor.get("uiMapId") and floor.get("coords"):
+                spots.setdefault(str(floor["uiMapId"]), []).extend(floor["coords"])
+    return spots
+
+
+def drop_spot(items, quest_id):
+    """Where to go for a quest an item begins: (uiMapID, x, y, mob, item), the spawn point
+    nearest the middle of where its likeliest dropper spawns on the map it spawns most, or None."""
+    for item, info in items["items"].items():
+        if not info or info.get("quest") != quest_id:
+            continue
+        drops = sorted((d for d in info["drops"] if d["chance"] >= MIN_DROP),
+                       key=lambda d: (-d["chance"], not d["rare"]))
+        for drop in drops:
+            spots = items["npcs"].get(str(drop["npc"])) or {}
+            maps = [(len(c), int(m), c) for m, c in spots.items() if int(m) in ZONE_MAP.values()]
+            if not maps:
+                continue
+            _, map_id, coords = max(maps)
+            cx = sum(c[0] for c in coords) / len(coords)
+            cy = sum(c[1] for c in coords) / len(coords)
+            x, y = min(coords, key=lambda c: (c[0] - cx) ** 2 + (c[1] - cy) ** 2)
+            return map_id, x, y, drop["name"], int(item)
+    return None
+
+
 # The maps Forever redrew, and Wowhead still gives classic positions on: each map's world
 # bounds (minX, minY, maxX, maxY, from the game's UiMapAssignment on wago.tools) in Classic
 # Era 1.15.9.70003 and in Forever 1.60.1.70205. The world did not move, only the maps, so a
@@ -250,7 +311,43 @@ def main():
                 print(f"  {n}/{len(todo)}")
             time.sleep(GAP)
 
-    write(zones, quests, requires)
+    items = load(ITEMS) or {}
+    for key in ("zones", "items", "npcs"):
+        items.setdefault(key, {})
+    if not offline:
+        for area in ZONE_MAP:
+            if str(area) not in items["zones"]:
+                try:
+                    items["zones"][str(area)] = fetch_zone_items(area)
+                except urllib.error.HTTPError as e:
+                    failed.append(f"zone items {area}: {e}")
+                    continue
+                save(ITEMS, items)
+                time.sleep(GAP)
+        todo = [i for ids in items["zones"].values() for i in ids if str(i) not in items["items"]]
+        print(f"{len(todo)} quest item pages to fetch")
+        for item in todo:
+            try:
+                items["items"][str(item)] = fetch_item(item)
+            except urllib.error.HTTPError as e:
+                failed.append(f"item {item}: {e}")
+                continue
+            save(ITEMS, items)
+            time.sleep(GAP)
+        npcs = {d["npc"] for info in items["items"].values() if info
+                for d in info["drops"] if d["chance"] >= MIN_DROP}
+        todo = [n for n in npcs if str(n) not in items["npcs"]]
+        print(f"{len(todo)} mob pages to fetch")
+        for npc in todo:
+            try:
+                items["npcs"][str(npc)] = fetch_npc(npc)
+            except urllib.error.HTTPError as e:
+                failed.append(f"npc {npc}: {e}")
+                continue
+            save(ITEMS, items)
+            time.sleep(GAP)
+
+    write(zones, quests, requires, items)
     for line in failed:
         print("FAILED", line, file=sys.stderr)
 
@@ -260,7 +357,7 @@ def main():
 PLACEHOLDER = re.compile(r"^\s*[<(]|unused|\bnyi\b", re.I)
 
 
-def write(zones, quests, requires):
+def write(zones, quests, requires, items):
     for z in zones.values():
         z["quests"] = [q for q in z["quests"] if not PLACEHOLDER.search(q["name"])]
     rows = {q["id"]: (int(area), q) for area, z in zones.items() for q in z["quests"]}
@@ -288,8 +385,9 @@ def write(zones, quests, requires):
         "}",
         "",
         "-- questID = { name, level, required level, side (1 Alliance, 2 Horde, 3 both),",
-        "-- race mask, class mask, start uiMapID, x, y (percent), quest giver }. Positions on the maps Forever",
-        "-- redrew are moved from Wowhead's classic ones onto Forever's maps (forever_spot).",
+        "-- race mask, class mask, start uiMapID, x, y (percent), quest giver, item }. A quest an",
+        "-- item begins has the mob that drops it as its giver, and the item. Positions on the maps",
+        "-- Forever redrew are moved from Wowhead's classic ones onto Forever's maps (forever_spot).",
         "D.Quests = {",
     ]
     for qid in sorted(rows):
@@ -301,6 +399,12 @@ def write(zones, quests, requires):
             x, y = forever_spot(m, *start["coord"])
             giver = lua_string(start["npc"]) if start.get("npc") else "nil"
             spot = f"{m}, {x:.1f}, {y:.1f}, {giver}"
+        else:
+            drop = drop_spot(items, qid) if items else None
+            if drop:
+                m, x, y, mob, item = drop
+                x, y = forever_spot(m, x, y)
+                spot = f"{m}, {x:.1f}, {y:.1f}, {lua_string(mob)}, {item}"
         lines.append(f"    [{qid}] = {{ {lua_string(q['name'])}, {q.get('level') or 0}, "
                      f"{q.get('reqlevel') or 0}, {q.get('side') or 3}, {q.get('reqrace') or 0}, "
                      f"{q.get('reqclass') or 0}, {spot} }},")

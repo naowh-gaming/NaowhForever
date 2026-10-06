@@ -1,5 +1,6 @@
 -------------------------------------------------------------------------------
---  NaowhForever_CompletoMap.lua -- quest givers on the world map: a yellow ! at each one with
+--  NaowhForever_CompletoMap.lua -- quest givers on the world map (and the mobs whose drop
+--  begins a quest, where they spawn): a yellow ! at each one with
 --  a quest you can pick up that still gives experience, and with Low Level Quests a grey !
 --  at those with only quests that no longer do. Hover for the quests, click for a waypoint.
 --  Built like Discovery's book pins.
@@ -70,6 +71,12 @@ function NaowhForeverQuestGiverPinMixin:OnMouseEnter()
     local first = self.quests[1]
     GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
     GameTooltip:SetText(Q.Giver(first) or "Quest giver", 1, 1, 1)
+    -- A mob whose drop begins a quest: the item, its name once the game has it, else the quest's.
+    local item = Q.Item(first)
+    if item then
+        local name = C_Item.GetItemNameByID(item) or Q.Name(first)
+        GameTooltip:AddLine(("Drops %s, which begins:"):format(name), 1, 0.82, 0)
+    end
     for _, id in ipairs(self.quests) do
         local c = Q.Trivial(id) and GREY_RGB or GetQuestDifficultyColor(Q.Level(id))
         GameTooltip:AddDoubleLine(Q.Name(id), ("Level %d"):format(Q.Level(id)), c.r, c.g, c.b, c.r, c.g, c.b)

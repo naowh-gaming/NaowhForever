@@ -24,7 +24,7 @@ ns.Completo = { Quests = Q }
 
 -- The client's race IDs to their bit in Wowhead's race masks (Forever's own two races too).
 local RACE_BITS = { [1] = 0, [2] = 1, [3] = 2, [4] = 3, [5] = 4, [6] = 5, [7] = 6, [8] = 7, [95] = 32, [96] = 33 }
-local NAME, LEVEL, REQ_LEVEL, SIDE, RACES, CLASSES, MAP, X, Y, GIVER = 1, 2, 3, 4, 5, 6, 7, 8, 9, 10
+local NAME, LEVEL, REQ_LEVEL, SIDE, RACES, CLASSES, MAP, X, Y, GIVER, ITEM = 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11
 local ALLIANCE, HORDE = 1, 2
 
 local function HasBit(mask, bit)
@@ -125,8 +125,11 @@ function Q.Zone(id) return zoneOf[id] end
 function Q.Chain(id) return chainOf[id] end
 function Q.Zones() return D.Zones end
 
--- Who gives it, where its start is known.
+-- Who gives it, where its start is known: a quest giver, or the mob that drops its item.
 function Q.Giver(id) return D.Quests[id][GIVER] end
+
+-- The item that begins it, for a quest a mob's drop starts (its giver is then that mob).
+function Q.Item(id) return D.Quests[id][ITEM] end
 
 function Q.Spot(id)
     local quest = D.Quests[id]
