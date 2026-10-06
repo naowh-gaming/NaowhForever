@@ -1,5 +1,5 @@
 -------------------------------------------------------------------------------
---  NaowhForever_UnlockMode.lua -- Layout Mode's movers. An element is placed CENTER on the
+--  NaowhForever_UnlockMode.lua -- Move Elements' movers. An element is placed CENTER on the
 --  screen centre and saved there. Clicking one selects it; its tag holds its X and Y and what
 --  can be done with it.
 -------------------------------------------------------------------------------
@@ -118,7 +118,7 @@ local function CenterAcross(item)
     if x and x ~= 0 then Nudge(item, -x * Pixel(), 0) end
 end
 
--- Out of Layout Mode and onto the element's settings: the options window draws over the
+-- Out of Move Elements and onto the element's settings: the options window draws over the
 -- movers, so the two cannot share the screen.
 local function OpenSettings(item)
     ns.HideRaidReminderAnchorConfig()
@@ -210,7 +210,7 @@ local function BuildTag()
         if tag.item then OpenSettings(tag.item) end
     end)
     tag.settings:SetPoint("LEFT", tag.center, "RIGHT", AXIS_GAP, 0)
-    ns.Tooltip(tag.settings, "Settings", "Opens its settings and leaves Layout Mode.")
+    ns.Tooltip(tag.settings, "Settings", "Opens its settings and leaves Move Elements.")
     return tag
 end
 
@@ -430,7 +430,7 @@ function UI.BindMover(handle, frame, label, onMoved, page, feature)
     Refresh(item)
 end
 
--- Layout Mode plate for an on-screen display. Hidden until the caller shows it. page and
+-- Move Elements plate for an on-screen display. Hidden until the caller shows it. page and
 -- feature: as UI.BindMover's.
 function UI.AttachMover(frame, label, onMoved, page, feature)
     local mover = CreateFrame("Frame", nil, frame)
@@ -452,7 +452,7 @@ function UI.AttachMover(frame, label, onMoved, page, feature)
     return mover
 end
 
---- The position to save for a window that drags itself outside Layout Mode: CENTER on the
+--- The position to save for a window that drags itself outside Move Elements: CENTER on the
 --- screen centre, where it is now. Nil before it has a size.
 function UI.CenterPosition(frame)
     local l, r, t, b, ratio = Bounds(frame)

@@ -1,4 +1,4 @@
--- Run with Lua 5.1 from the repository root: Layout Mode's movers, run against frame stubs
+-- Run with Lua 5.1 from the repository root: Move Elements' movers, run against frame stubs
 -- with real geometry. Drags, arrow keys, typed X and Y and Center save the element CENTER on
 -- the screen centre, and anchors and the snap switch from before are dropped without moving
 -- anything.
@@ -190,7 +190,7 @@ local ns = {
     L = function(text) return text end,
     Color = function(_, text) return text end,
     Print = function(msg) printed[#printed + 1] = msg end,
-    HideRaidReminderAnchorConfig = function() printed[#printed + 1] = "left Layout Mode" end,
+    HideRaidReminderAnchorConfig = function() printed[#printed + 1] = "left Move Elements" end,
     OpenOptionsWindow = function(page) printed[#printed + 1] = "opened " .. page end,
     Apply = NOOP,
 }
@@ -259,7 +259,7 @@ local keys
 for _, fr in ipairs(made) do
     if fr.scripts.OnKeyDown then keys = fr end
 end
-Check(keys and keys.keyboard and keys.events.PLAYER_REGEN_DISABLED, "Layout Mode takes the arrow keys and watches combat")
+Check(keys and keys.keyboard and keys.events.PLAYER_REGEN_DISABLED, "Move Elements takes the arrow keys and watches combat")
 
 -- Hovering lights the mover up and leaves its size alone.
 local dura, duraMover = Display("Durability", 40, 40, 500, 300)
@@ -335,15 +335,15 @@ Fire(keys, "OnKeyDown", "ESCAPE")
 Check(not tag:IsShown(), "Escape lets the selection go and the tag with it")
 
 -- The tag's Center and Settings: Center moves it across to the middle and saves it, Settings
--- leaves Layout Mode for the element's page.
+-- leaves Move Elements for the element's page.
 Click(swingMover, "LeftButton")
 Check(tag.center:IsShown() and tag.settings:IsShown(), "the tag has Center and Settings")
 Fire(tag.center, "OnClick")
 Check(Near(Center(swing), 960) and Near(Last(swingSaved).x, 0) and Near(Last(swingSaved).y, 25),
     "Center moves it across to the middle and keeps its height")
 Fire(tag.settings, "OnClick")
-Check(printed[#printed - 1] == "left Layout Mode" and printed[#printed] == "opened QoL/General",
-    "Settings leaves Layout Mode, then opens its page")
+Check(printed[#printed - 1] == "left Move Elements" and printed[#printed] == "opened QoL/General",
+    "Settings leaves Move Elements, then opens its page")
 local _, bareMover = Display("Loose", 60, 20, 300, 0)
 bareMover._placement.page = nil
 Click(bareMover, "LeftButton")
