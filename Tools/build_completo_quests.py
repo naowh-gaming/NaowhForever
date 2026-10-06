@@ -96,7 +96,8 @@ def fetch_requires(quest_id):
 # The zone page lists the items that start quests there ("starts-quest"); each item's page
 # names its quest ("This Item Begins a Quest") and the mobs that drop it ("dropped-by"); each
 # mob's page has where it spawns (g_mapperData). Cached in completo_items.json:
-# { "zones": { area: [itemIDs] }, "items": { item: { quest, drops } }, "npcs": { npc: spots } }.
+# { "zones": { area: { items } }, "items": { item: { quest, drops } }, "npcs": { npc: spots },
+# "repeatable": [questIDs] }.
 ITEMS = Path(__file__).resolve().parent / "completo_items.json"
 BEGINS = re.compile(r"/forever/quest=(\d+)[^\"<]*\"[^>]*>This Item Begins a Quest")
 # A mob that drops it this rarely is not where to go for it (a world drop).
@@ -104,11 +105,17 @@ MIN_DROP = 0.02
 
 
 def fetch_zone_items(area):
-    """{ "items": the zone's quest-starting items, "repeatable": its quests Wowhead flags as
-    repeatable (wflags 16: Give Gerard a Drink, the Darkmoon ticket turn-ins) }."""
+    """{ "items": the zone's quest-starting items }."""
     page = wowhead.fetch(f"{wowhead.WOWHEAD}/zone={area}")
-    return {"items": [row["id"] for row in wowhead.listview(page, "starts-quest")],
-            "repeatable": [q["id"] for q in wowhead.listview(page, "quests") if (q.get("wflags") or 0) & 16]}
+    return {"items": [row["id"] for row in wowhead.listview(page, "starts-quest")]}
+
+
+def fetch_repeatable():
+    """Every quest Wowhead calls repeatable, from its quest search's Repeatable: Yes filter
+    (one page: 318 quests, under a list's 1000). Its listview's wflags do not say it: bit 16
+    is set on The Ashenvale Hunt and the library books too."""
+    page = wowhead.fetch(f"{wowhead.WOWHEAD}/quests?filter=29;1;0")
+    return sorted(q["id"] for q in wowhead.listview(page, "quests"))
 
 
 def fetch_item(item):
@@ -317,6 +324,10 @@ def main():
     items = load(ITEMS) or {}
     for key in ("zones", "items", "npcs"):
         items.setdefault(key, {})
+    if not offline and "repeatable" not in items:
+        items["repeatable"] = fetch_repeatable()
+        save(ITEMS, items)
+        time.sleep(GAP)
     if not offline:
         for area in ZONE_MAP:
             if str(area) not in items["zones"]:
@@ -327,7 +338,7 @@ def main():
                     continue
                 save(ITEMS, items)
                 time.sleep(GAP)
-        todo = [i for z in items["zones"].values() for i in z["items"] if str(i) not in items["items"]]
+        todo = sorted({i for z in items["zones"].values() for i in z["items"] if str(i) not in items["items"]})
         print(f"{len(todo)} quest item pages to fetch")
         for item in todo:
             try:
@@ -411,7 +422,7 @@ def write(zones, quests, requires, items):
         lines.append(f"    [{qid}] = {{ {lua_string(q['name'])}, {q.get('level') or 0}, "
                      f"{q.get('reqlevel') or 0}, {q.get('side') or 3}, {q.get('reqrace') or 0}, "
                      f"{q.get('reqclass') or 0}, {spot} }},")
-    repeatable = sorted({q for z in (items or {}).get("zones", {}).values() for q in z["repeatable"]} & set(rows))
+    repeatable = sorted(set((items or {}).get("repeatable", [])) & set(rows))
     lines += [
         "}",
         "",
