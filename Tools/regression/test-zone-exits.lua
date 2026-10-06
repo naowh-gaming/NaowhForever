@@ -1,7 +1,8 @@
 -- Run with Lua 5.1 from the repository root: the town map's zone exit arrows. Forever has no map
 -- links of its own, so they come from data: every arrow is on its map, turned, and leads to
 -- another map; the main roads are there both ways; the town map draws them as clickable
--- links on the Clickable Zone Exits setting, turned to face out of the zone.
+-- links on the Clickable Zone Exits setting, turned to face out of the zone, with a waypoint to
+-- the road on right click.
 local function Read(path)
     local f = assert(io.open(path, "rb"))
     local s = f:read("*a"):gsub("\r\n", "\n"); f:close()
@@ -42,5 +43,7 @@ Check(map:find("ns.ZoneExits[mapID]", 1, true) and not map:find("GetMapLinksForM
     "the town map draws our own exits")
 Check(map:find('if S.Get("townZoneLinks") then', 1, true), "on the Clickable Zone Exits setting")
 Check(map:find("self.Icon:SetRotation(link.rotation or 0)", 1, true), "each arrow turned to face out")
+Check(map:find('ns.PlaceWaypoint("Road to " .. link.name, self:GetMap():GetMapID(), link.exitX, link.exitY)', 1, true)
+    and map:find("exitX = exit[1], exitY = exit[2]", 1, true), "right click: a waypoint to the road")
 
 print(("test-zone-exits: %d checks passed"):format(checks))

@@ -92,13 +92,21 @@ function NaowhForeverZoneLinkPinMixin:OnAcquired(link)
     self.Icon:SetRotation(link.rotation or 0)
     self:SetPosition(link.position:GetXY())
 end
+-- A zone exit's right click puts a waypoint on the road, for the way there.
 function NaowhForeverZoneLinkPinMixin:OnClick(button)
-    if button == "LeftButton" and self.link then self:GetMap():SetMapID(self.link.linkedUiMapID) end
+    local link = self.link
+    if button == "RightButton" and link.exitX then
+        ns.PlaceWaypoint("Road to " .. link.name, self:GetMap():GetMapID(), link.exitX, link.exitY)
+    elseif button == "LeftButton" then
+        self:GetMap():SetMapID(link.linkedUiMapID)
+    end
 end
 function NaowhForeverZoneLinkPinMixin:OnMouseEnter()
+    local r, g, b = SoftBlue(0.3, 0.71, 0.96)
     GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
     GameTooltip:SetText(self.link.name)
-    GameTooltip:AddLine("Click to open this zone", SoftBlue(0.3, 0.71, 0.96))
+    GameTooltip:AddLine("Click to open this zone", r, g, b)
+    if self.link.exitX then GameTooltip:AddLine("Right-click for a waypoint to this road", r, g, b) end
     GameTooltip:Show()
 end
 function NaowhForeverZoneLinkPinMixin:OnMouseLeave() GameTooltip:Hide() end
@@ -129,7 +137,7 @@ function provider:RefreshAllData()
         for _, exit in ipairs(ns.ZoneExits[mapID] or {}) do
             self:GetMap():AcquirePin(LINK_TEMPLATE, { name = C_Map.GetMapInfo(exit[4]).name,
                 atlasName = EXIT_ATLAS, position = CreateVector2D(exit[1] / 100, exit[2] / 100),
-                rotation = exit[3], linkedUiMapID = exit[4] })
+                rotation = exit[3], linkedUiMapID = exit[4], exitX = exit[1], exitY = exit[2] })
         end
     end
     local faction = UnitFactionGroup("player") == "Horde" and "H" or "A"
