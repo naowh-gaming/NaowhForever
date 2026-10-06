@@ -29,6 +29,8 @@ local STATUS_W = 120
 local STATUS_GAP = 10
 local ZONE_H = 44
 local ZONE_BAR_W = 180
+local SEARCH_W = 260
+local SEARCH_MAX = 150          -- quests a search lists at most
 local CHAIN = St.CHAIN
 local CHAIN_ICON = 14
 -- A chain's follow-up quests: indented STEP_INDENT, on a tree line down from under the chain
@@ -317,16 +319,20 @@ local function SetQuest(row, id, part, first, last, stripe)
     row.title:SetText(Q.Name(id))
     local tc = finished and T.muted or T.fg
     row.title:SetTextColor(tc.r, tc.g, tc.b)
-    -- Under it: on a chain's first quest, how far along the chain you are; on any quest, its
-    -- zone when that is not the one open.
+    -- Under it: on a chain's first quest, how far along the chain you are; on a chain's quest
+    -- found on its own (a search), its step in the chain; on a zone's page, its zone when
+    -- that is not the one open.
     local sub = ""
     if part == "head" then
         local at, steps = Q.ChainAt(Q.Chain(id))
         sub = at > steps and ("Quest chain of %d, all done"):format(steps)
             or ("Quest chain of %d, on step %d"):format(steps, at)
+    elseif not step and Q.Chain(id) then
+        local at, steps = Q.ChainStep(id)
+        sub = ("Step %d of %d in %s"):format(at, steps, Q.Chain(id).name)
     end
     local home = Q.Zone(id)
-    if home and home ~= zone then sub = sub .. (sub ~= "" and "  -  " or "") .. home.name end
+    if zone and home and home ~= zone then sub = sub .. (sub ~= "" and "  -  " or "") .. home.name end
     row.where:SetWidth(textW)
     row.where:SetText(sub)
     row.where:SetShown(sub ~= "")
@@ -434,10 +440,50 @@ local function DrawZone(self)
     end
 end
 
+-- A zone picked from the search: the search is cleared, which redraws, on that zone.
+local function OpenFound(picked)
+    zone = picked
+    window.search:SetText("")
+    window.search:ClearFocus()
+    scroll:SetVerticalScroll(0)
+    view:Redraw()
+end
+
+-- Every quest whose name or quest giver holds the text, under its zone with a link to it.
+local function DrawSearch(self, text)
+    local zones, n = Q.Search(text, SEARCH_MAX)
+    if n == 0 then
+        self:Note(("No quest or quest giver for your character holds \"%s\"."):format(text))
+        return
+    end
+    for _, entry in ipairs(zones) do
+        self:Add("section", entry.zone.name, #entry.ids, nil, nil, "Open", OpenFound, entry.zone)
+        for i, id in ipairs(entry.ids) do self:Add("quest", id, nil, nil, nil, i % 2 == 0) end
+        self:Space(St.SECTION_SPACE)
+    end
+    if n > SEARCH_MAX then
+        self:Note(("The first %d of %d; type more to narrow it down."):format(SEARCH_MAX, n))
+    end
+end
+
+local function SearchText()
+    return window.search and strtrim(window.search:GetText() or ""):lower() or ""
+end
+
 function Draw:Redraw()
     self:Clear()
     Q.Refresh()
-    if zone then DrawZone(self) else DrawAllZones(self) end
+    local text = SearchText()
+    if text ~= "" then
+        local open = zone
+        zone = nil   -- every zone at once: no row names its zone as not the one open
+        DrawSearch(self, text)
+        zone = open
+    elseif zone then
+        DrawZone(self)
+    else
+        DrawAllZones(self)
+    end
     self:Fit(EVENTS)
 end
 
@@ -470,6 +516,14 @@ local function Build()
     local left, top = CARD + INSET, HEADER + CARD + PAD + 4
     window.tabs = Parts.Tabs(window, TABS_W, TABS, PickTab)
     window.tabs:SetPoint("TOPLEFT", left, -top)
+    window.search = Parts.SearchBox(window, "Search quests or quest givers", function()
+        if window:IsShown() then
+            scroll:SetVerticalScroll(0)
+            view:Redraw()
+        end
+    end)
+    window.search:SetSize(SEARCH_W, St.SEARCH_H)
+    window.search:SetPoint("RIGHT", window, "TOPRIGHT", -(CARD + INSET), -(top + TAB_H / 2))
     top = top + TAB_H + TAB_GAP + 8
     scroll = ns.UI.SlimScroll(window)
     scroll:SetPoint("TOPLEFT", left, -top)

@@ -285,6 +285,64 @@ function Q.ZoneLists(zone)
     return zoneChains, zoneSingles
 end
 
+-- Where a quest sits in its chain: its step and the chain's length, or nil out of one.
+function Q.ChainStep(id)
+    local chain = chainOf[id]
+    if not chain then return end
+    for i, step in ipairs(chain.steps) do
+        for _, other in ipairs(step) do
+            if other == id then return i, #chain.steps end
+        end
+    end
+end
+
+-- Your quests whose name or quest giver holds the text (lower case, as typed), zone by zone in
+-- the zones' order, at most limit of them: { { zone, ids }, ... } and how many there were in
+-- all. Tables reused until the next call.
+local found, foundIds = {}, {}
+
+-- Lowest level first, a chain's quests together at its first quest's level in the chain's
+-- order: by level, then chain, then step, then name, so the order is the same however asked.
+local function FoundKey(id)
+    local chain = chainOf[id]
+    if not chain then return D.Quests[id][LEVEL], 0, 0 end
+    return chain.level, chain.id, (Q.ChainStep(id))
+end
+
+local function FoundOrder(a, b)
+    local la, ca, sa = FoundKey(a)
+    local lb, cb, sb = FoundKey(b)
+    if la ~= lb then return la < lb end
+    if ca ~= cb then return ca < cb end
+    if sa ~= sb then return sa < sb end
+    return D.Quests[a][NAME] < D.Quests[b][NAME]
+end
+
+function Q.Search(text, limit)
+    Prepare()
+    wipe(found)
+    local n = 0
+    for _, zone in ipairs(D.Zones) do
+        local ids = foundIds[zone] or {}
+        foundIds[zone] = wipe(ids)
+        for _, id in ipairs(zone.quests) do
+            if mine[id] then
+                local quest = D.Quests[id]
+                if quest[NAME]:lower():find(text, 1, true)
+                    or (quest[GIVER] and quest[GIVER]:lower():find(text, 1, true)) then
+                    n = n + 1
+                    if n <= limit then ids[#ids + 1] = id end
+                end
+            end
+        end
+        if #ids > 0 then
+            table.sort(ids, FoundOrder)
+            found[#found + 1] = { zone = zone, ids = ids }
+        end
+    end
+    return found, n
+end
+
 -- The zone you are in, if it has quests: walks up from the map you are on (a cave, a town).
 function Q.CurrentZone()
     local map = C_Map.GetBestMapForUnit("player")
