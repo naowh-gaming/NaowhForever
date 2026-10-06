@@ -424,7 +424,7 @@ env = {
     C_TradeSkillUI = {
         GetChildProfessionInfo = function() return childInfo end,
         GetBaseProfessionInfo = function() return childInfo end,
-        GetAllRecipeIDs = function() Count("render"); return recipeIDs end,
+        GetAllRecipeIDs = function() Count("GetAllRecipeIDs"); return recipeIDs end,
         GetRecipeInfo = function(id) Count("GetRecipeInfo"); return recipeInfo[id] end,
         GetCategoryInfo = function(id) return categoryInfo[id] end,
         GetRecipeSchematic = function(id) Count("GetRecipeSchematic"); return schematic[id] or EMPTY end,
@@ -460,6 +460,18 @@ Load({ paths[3], paths[4], paths[5], paths[6] }, env)
 -- Count the auction house panels' draws: the shopping list places itself on every draw.
 local place = ns.ShoppingListPlace
 ns.ShoppingListPlace = function() Count("shopping") return place() end
+-- The window's draws: the recipe pane starts each by drawing the shopping list column. Its
+-- re-reads of every recipe: each asks the recipe finder for the unlearned ones.
+local column = ns.ShoppingListRender
+ns.ShoppingListRender = function(info, last)
+    if not info then Count("render") end
+    return column(info, last)
+end
+local unlearned = ns.RecipeFinder.Unlearned
+ns.RecipeFinder.Unlearned = function(learned)
+    Count("reread")
+    return unlearned(learned)
+end
 
 -- Two favourite patterns to look up at the auction house, one of them an item that never
 -- loads; and a shopping list with that item on it too.
@@ -492,7 +504,7 @@ local function Scroll()
     list.scripts.OnMouseWheel(list, 1)
 end
 local function Redraw() ns.ProfWindowRefresh(); Step() end
-local function BagUpdate() Fire("BAG_UPDATE_DELAYED"); Step() end
+local function BagUpdate() Fire("BAG_UPDATE_DELAYED"); Advance(0.12) end
 local function UnrelatedLoad() Fire("ITEM_DATA_LOAD_RESULT", UNRELATED, true); Step() end
 for _ = 1, 5 do Redraw(); Scroll(); BagUpdate(); UnrelatedLoad() end
 Advance(1)
@@ -517,7 +529,7 @@ local function Break(on)
     broken = on
     loaded[BROKEN] = nil
     Redraw()
-    Advance(0.1)
+    Advance(0.3)
 end
 Break(true)
 local r2, s2, q2 = Snapshot()
@@ -537,14 +549,14 @@ local REAGENT = REAGENTS[14]    -- the chosen recipe's first reagent
 loaded[REAGENT] = nil
 Redraw()
 local r5 = calls.render
-Advance(0.1)
+Advance(0.3)
 check("a reagent's name loading redraws the window once", calls.render == r5 + 1)
 
 local LISTED = REAGENTS[3]      -- on the shopping list
 loaded[LISTED] = nil
 ns.ShoppingListRender(nil)
 local s5 = calls.shopping
-Advance(0.1)
+Advance(0.3)
 check("a listed material's name loading redraws the shopping list once", calls.shopping == s5 + 1)
 
 -------------------------------------------------------------------------------
@@ -564,11 +576,12 @@ local function Cost(fn)
 end
 
 local function Report(label, fn, maxMs, maxKb)
-    local info0, schem0 = calls.GetRecipeInfo, calls.GetRecipeSchematic
+    local info0, schem0, bag0 = calls.GetRecipeInfo, calls.GetRecipeSchematic, calls.GetContainerItemInfo
     local ms, kb = Cost(fn)
     local runs = RUNS + 3
-    print(("  %s: %.3f ms, %.2f KB a call; %.0f GetRecipeInfo, %.0f GetRecipeSchematic a call")
-        :format(label, ms, kb, (calls.GetRecipeInfo - info0) / runs, (calls.GetRecipeSchematic - schem0) / runs))
+    print(("  %s: %.3f ms, %.2f KB a call; %.0f GetRecipeInfo, %.0f GetRecipeSchematic, %.0f "
+        .. "GetContainerItemInfo a call"):format(label, ms, kb, (calls.GetRecipeInfo - info0) / runs,
+        (calls.GetRecipeSchematic - schem0) / runs, (calls.GetContainerItemInfo - bag0) / runs))
     check(label .. " takes under " .. maxMs .. " ms", ms < maxMs)
     check(label .. " makes under " .. maxKb .. " KB of garbage", kb < maxKb)
 end
@@ -588,6 +601,82 @@ Report("shopping list column with the recipe pane", function()
     ns.ShoppingListRender(nil)
     ns.ShoppingListRender(ns.ProfWindowAPI.SelectedInfo(), win.detail.reagents[1])
 end, 0.5, 0.05)
+
+Report("recipe list re-read", function() Fire("NEW_RECIPE_LEARNED"); Step() end, 4, 0.05)
+
+-------------------------------------------------------------------------------
+--  3b. Each trigger reads only what it can have changed. In game every recipe info, schematic
+--  and container slot read is a new table: the client's share of the garbage.
+-------------------------------------------------------------------------------
+local KEYS = { "GetRecipeInfo", "GetRecipeSchematic", "GetContainerItemInfo", "GetAllRecipeIDs",
+    "reread", "render" }
+local function Calls(label, fn)
+    local before = {}
+    for i, k in ipairs(KEYS) do before[i] = calls[k] end
+    fn()
+    local d = {}
+    for i, k in ipairs(KEYS) do d[k] = calls[k] - before[i] end
+    print(("  %s: %d GetRecipeInfo, %d GetRecipeSchematic, %d GetContainerItemInfo, %d GetAllRecipeIDs; "
+        .. "%d re-reads, %d draws"):format(label, d.GetRecipeInfo, d.GetRecipeSchematic,
+        d.GetContainerItemInfo, d.GetAllRecipeIDs, d.reread, d.render))
+    return d
+end
+
+local d = Calls("new recipe learned", function() Fire("NEW_RECIPE_LEARNED"); Step() end)
+check("learning a recipe reads the recipes again, once", d.reread == 1 and d.render == 1)
+
+d = Calls("bag update", function() Fire("BAG_UPDATE_DELAYED"); Advance(0.2) end)
+check("a bag update reads no recipe list", d.reread == 0 and d.GetAllRecipeIDs == 0)
+check("a bag update reads only the chosen recipe's info", d.GetRecipeInfo <= 3)
+check("a bag update scans the bags once", d.GetContainerItemInfo <= 80 and d.render == 1)
+
+d = Calls("price update burst", function()
+    for _ = 1, 5 do ns.ProfWindowRefresh() end
+    Step()
+end)
+check("new prices draw once and read no recipe list", d.render == 1 and d.reread == 0)
+check("new prices read only the chosen recipe's info", d.GetRecipeInfo <= 3)
+check("new prices do not scan the bags again", d.GetContainerItemInfo == 0)
+
+d = Calls("10 list updates, nothing changed", function()
+    for _ = 1, 10 do Fire("TRADE_SKILL_LIST_UPDATE") end
+    Advance(0.2)
+end)
+check("a burst of list updates with nothing changed draws once", d.render == 1)
+check("and only counts the recipes", d.reread == 0 and d.GetAllRecipeIDs <= 1)
+
+local extra = recipes[LEARNED_N + 1].spell
+recipeIDs[#recipeIDs + 1] = extra
+recipeInfo[extra] = { recipeID = extra, name = "Recipe new", icon = 1, categoryID = 100, learned = true,
+    relativeDifficulty = 0, numAvailable = 0 }
+d = Calls("list update with a new recipe", function() Fire("TRADE_SKILL_LIST_UPDATE"); Advance(0.2) end)
+check("a list update that adds a recipe reads the recipes again", d.reread == 1)
+recipeIDs[#recipeIDs] = nil
+recipeInfo[extra] = nil
+Fire("TRADE_SKILL_LIST_UPDATE")
+Advance(0.2)
+
+childInfo.skillLevel = 151
+d = Calls("list update after a skill-up", function() Fire("TRADE_SKILL_LIST_UPDATE"); Advance(0.2) end)
+check("a skill-up reads the recipes again, for their colours", d.reread == 1)
+childInfo.skillLevel = 150
+Fire("SKILL_LINES_CHANGED")
+Advance(0.2)
+
+-- Ten seconds of browsing: the auction house loads items for its lists, the client sends list
+-- updates, and a price scan finishing redraws in a burst every two seconds.
+d = Calls("10 s browsing the AH", function()
+    for t = 1, 20 do
+        for _ = 1, 20 do Fire("ITEM_DATA_LOAD_RESULT", UNRELATED, true) end
+        Fire("TRADE_SKILL_LIST_UPDATE")
+        Fire("TRADE_SKILL_LIST_UPDATE")
+        if t % 4 == 0 then for _ = 1, 3 do ns.ProfWindowRefresh() end end
+        Advance(0.5)
+    end
+end)
+check("browsing the auction house reads no recipe list", d.reread == 0)
+check("browsing draws at most once per burst", d.render <= 20)
+check("each of those draws reads at most the chosen recipe's info", d.GetRecipeInfo <= 3 * d.render)
 
 -------------------------------------------------------------------------------
 --  4. Repeating it all grows no retained memory
