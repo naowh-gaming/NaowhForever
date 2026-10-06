@@ -197,6 +197,10 @@ Case("a guildmate is matched through the guild roster, a friend through the frie
     local ns = Senders(world)
     assert(ns.SenderIs("Die-Dudu", "GUILD", "Player-1-00B1") and ns.SenderIs("Die-Dudu-Forever", "GUILD", "Player-1-00B1"))
     assert(not ns.SenderIs("Die-Dudu", "GUILD", "Player-1-00B2"), "another guildmate's GUID")
+    assert(ns.SenderIs("Die Dudu", "GUILD", "Player-1-00B1"), "a space where the roster has a dash")
+    world.guild[4] = { "Mugha Bee", "Player-1-00B4" }
+    ns._SendersTest.GuildChanged()
+    assert(ns.SenderIs("Mugha-Bee", "GUILD", "Player-1-00B4"), "a dash where the roster has a space")
     assert(not ns.SenderIs("Out-Sider", "GUILD", "Player-1-00B9"), "a sender outside the guild")
     assert(ns.SenderIs("Pen-Pal", "WHISPER", "Player-1-00C1"), "a friend's whisper")
     assert(not ns.SenderIs("Pen-Pal", "WHISPER", "Player-1-00B1"), "a friend claiming someone else")

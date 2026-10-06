@@ -87,8 +87,9 @@ local function GuildRoster()
     for i = 1, (GetNumGuildMembers and GetNumGuildMembers() or 0) do
         local name, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, guid = GetGuildRosterInfo(i)
         if Readable(name) and Readable(guid) then
-            guildGUID[name] = guid
-            guildGUID[Strip(name, realm)] = guid
+            local short = Strip(name, realm)
+            guildGUID[name], guildGUID[short] = guid, guid
+            guildGUID[(short:gsub(" ", "-", 1))], guildGUID[(short:gsub("%-", " ", 1))] = guid, guid
         end
     end
     return guildGUID
