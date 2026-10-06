@@ -150,9 +150,59 @@ function Q.ChainAt(chain)
     return 1, #steps
 end
 
+-------------------------------------------------------------------------------
+--  Quests a quest giver did not offer you when you spoke to them, though the data says you
+--  could take them: a prerequisite the data does not know (NaowhForever_CompletoGivers.lua
+--  records them). Kept per character until you level up or hand in a quest in its zone,
+--  either of which may be what it waited for: questID -> { your level, the zone's hand-ins }.
+-------------------------------------------------------------------------------
+local function CharStore(key)
+    local account = ns.AccountSettings()
+    account[key] = account[key] or {}
+    local char = (UnitName("player") or "?") .. "-" .. (GetRealmName() or "?")
+    account[key][char] = account[key][char] or {}
+    return account[key][char]
+end
+
+local function ZoneTurnIns(id)
+    local zone = zoneOf and zoneOf[id]
+    return zone and CharStore("completoTurnIns")[zone.map] or 0
+end
+
+function Q.NotOffered(id)
+    local store = CharStore("completoNotOffered")
+    local entry = store[id]
+    if not entry then return false end
+    if entry[1] == UnitLevel("player") and entry[2] == ZoneTurnIns(id) then return true end
+    store[id] = nil
+    return false
+end
+
+-- offered: whether the quest giver had it for you when you last spoke to them.
+function Q.SetOffered(id, offered)
+    CharStore("completoNotOffered")[id] = not offered and { UnitLevel("player"), ZoneTurnIns(id) } or nil
+end
+
+-- A quest handed in: the quests its zone's givers held back may be on offer now.
+function Q.CountTurnIn(id)
+    Prepare()
+    local zone = zoneOf[id]
+    if not zone then return end
+    local turnIns = CharStore("completoTurnIns")
+    turnIns[zone.map] = (turnIns[zone.map] or 0) + 1
+end
+
 -- Where a quest stands for you: "done", "log" (in your quest log), "low" (your level is under
--- what it needs), "later" (an earlier step of its chain is not done yet) or "open".
+-- what it needs), "later" (an earlier step of its chain is not done yet), "held" (its quest
+-- giver did not offer it to you) or "open".
 function Q.State(id)
+    local state = Q.Expected(id)
+    if state == "open" and Q.NotOffered(id) then return "held" end
+    return state
+end
+
+-- The state from the data alone, as if its quest giver had never been asked: never "held".
+function Q.Expected(id)
     if done[id] then return "done" end
     if Q.InLog(id) then return "log" end
     local chain = chainOf[id]
@@ -286,6 +336,19 @@ local function Index()
             table.insert(byMap[map], id)
         end
     end
+end
+
+-- Your quests a quest giver of that name gives on the map. Reused until the next call.
+local named = {}
+
+function Q.GiverQuests(name, mapID)
+    Prepare()
+    Index()
+    wipe(named)
+    for _, id in ipairs(byMap[mapID] or {}) do
+        if D.Quests[id][GIVER] == name then named[#named + 1] = id end
+    end
+    return named
 end
 
 -- The quest givers on a map with a quest you could pick up: { x, y, quests = { ids },

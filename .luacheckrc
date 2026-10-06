@@ -81,7 +81,7 @@ read_globals = {
     "GetMerchantItemID", "GetMerchantItemInfo", "GetMerchantItemLink",
     "GetMerchantItemMaxStack", "GetMerchantNumItems", "GetMoney", "GetMoneyString",
     "GetMouseFoci", "GetNetStats", "GetNormalizedRealmName", "GetNumActiveQuests",
-    "GetNumAvailableQuests", "GetNumClasses", "GetNumGroupMembers", "GetNumGuildMembers", "GetNumSavedInstances",
+    "GetNumAvailableQuests", "GetAvailableQuestInfo", "GetAvailableTitle", "GetNumClasses", "GetNumGroupMembers", "GetNumGuildMembers", "GetNumSavedInstances",
     "GetNumLootItems", "GetNumBindings", "GetNumMacros", "GetNumQuestChoices", "GetNumRoutes",
     "GetNumShapeshiftForms", "GetNumSubgroupMembers", "GetNumTrainerServices",
     "GetPartyAssignment", "GetPetActionInfo", "GetPhysicalScreenSize", "GetPlayerInfoByGUID",
