@@ -16,6 +16,7 @@ local function SoftBlue(r, g, b)
 end
 local LINK_TEMPLATE = "NaowhForeverZoneLinkPinTemplate"
 local TRAVEL_ATLAS = "vehicle-templeofkotmogu-cyanball"
+local EXIT_ATLAS = "house-reward-green-arrow-up"
 local CAPITALS = ns.TownCapitals
 
 -- Category -> the setting that shows it, its icon and the label in the tooltip.
@@ -89,29 +90,34 @@ function NaowhForeverZoneLinkPinMixin:OnAcquired(link)
     self.link = link
     self:SetSize(S.Get("townPinSize"), S.Get("townPinSize"))
     self.Icon:SetAtlas(link.atlasName)
+    self.Icon:SetRotation(link.rotation or 0)
     self:SetPosition(link.position:GetXY())
 end
--- A zeppelin tower's pin has a second destination, on right click.
+-- A zeppelin tower's pin has a second destination on right click, a zone exit a waypoint to
+-- the road.
 function NaowhForeverZoneLinkPinMixin:OnClick(button)
     local link = self.link
     if button == "RightButton" and link.rightUiMapID then
         self:GetMap():SetMapID(link.rightUiMapID)
+    elseif button == "RightButton" and link.exitX then
+        ns.PlaceWaypoint("Road to " .. link.name, self:GetMap():GetMapID(), link.exitX, link.exitY)
     elseif button == "LeftButton" then
         self:GetMap():SetMapID(link.linkedUiMapID)
     end
 end
 function NaowhForeverZoneLinkPinMixin:OnMouseEnter()
     local link = self.link
+    local r, g, b = SoftBlue(0.3, 0.71, 0.96)
     GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
     GameTooltip:SetText(link.name)
     if link.rightUiMapID then
         GameTooltip:AddLine(link.rightName, 1, 1, 1)
-        local r, g, b = SoftBlue(0.3, 0.71, 0.96)
         GameTooltip:AddLine("Left-click: " .. C_Map.GetMapInfo(link.linkedUiMapID).name, r, g, b)
         GameTooltip:AddLine("Right-click: " .. C_Map.GetMapInfo(link.rightUiMapID).name, r, g, b)
     elseif link.linkedUiMapID ~= self:GetMap():GetMapID() then
-        GameTooltip:AddLine("Click to open this zone", SoftBlue(0.3, 0.71, 0.96))
+        GameTooltip:AddLine("Click to open this zone", r, g, b)
     end
+    if link.exitX then GameTooltip:AddLine("Right-click for a waypoint to this road", r, g, b) end
     GameTooltip:Show()
 end
 function NaowhForeverZoneLinkPinMixin:OnMouseLeave() GameTooltip:Hide() end
@@ -137,9 +143,12 @@ function provider:RefreshAllData()
             self:GetMap():AcquirePin(TEMPLATE, { x * 100, y * 100, "spirit", grave.name, "Spirit Healer", nil, "AH" })
         end
     end
-    if S.Get("townZoneLinks") and C_Map.GetMapLinksForMap then
-        for _, link in ipairs(C_Map.GetMapLinksForMap(mapID) or {}) do
-            self:GetMap():AcquirePin(LINK_TEMPLATE, link)
+    -- Forever has no map links of its own (GetMapLinksForMap returns nothing).
+    if S.Get("townZoneLinks") then
+        for _, exit in ipairs(ns.ZoneExits[mapID] or {}) do
+            self:GetMap():AcquirePin(LINK_TEMPLATE, { name = C_Map.GetMapInfo(exit[4]).name,
+                atlasName = EXIT_ATLAS, position = CreateVector2D(exit[1] / 100, exit[2] / 100),
+                rotation = exit[3], linkedUiMapID = exit[4], exitX = exit[1], exitY = exit[2] })
         end
     end
     local faction = UnitFactionGroup("player") == "Horde" and "H" or "A"
