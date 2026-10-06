@@ -12,7 +12,8 @@
 --  Each names who it is for and who it is from, by GUID: everyone in the group receives it,
 --  the sender too, and an answer from a member no longer asked is not taken for the next.
 --  Listened for only while the Journal and Quest Share Requests (shareRequests) are on and you
---  are in a group; off, nothing is made or registered, and you neither ask nor answer.
+--  are in a group; off, nothing is made or registered, and you neither ask nor answer. Asks
+--  past ASK_LIMIT in ASK_WINDOW seconds are dropped unanswered, so a member cannot flood chat.
 -------------------------------------------------------------------------------
 local ns = _G.NaowhForever
 local J = ns.Journal
@@ -25,14 +26,16 @@ local PARTY = { "party1", "party2", "party3", "party4" }
 local WAIT = 5        -- seconds for an answer before the next member on it is asked
 local MAX_IDS = 8     -- quest IDs in one ask: a quest and its other versions
 local COOLDOWN = 3    -- seconds between two quests shared on request, against spam
-local MAX_ID_DIGITS = 9
+local ASK_LIMIT, ASK_WINDOW = 4, 10
 local GUID_PATTERN = "^Player%-%d+%-%x+$"
+local ID_PATTERN = "^%d%d?%d?%d?%d?%d?%d?$"
 
 local Sharing = {}
 J.Sharing = Sharing
 
 local frame, prefixed
 local lastShared = 0  -- GetTime() of the last quest shared on request
+local askWindow, asks = 0, 0
 
 -- The ask in flight, while active: the quest's name and IDs, the members on it, and which
 -- of them is asked now (at, guid). generation rejects the timer of an ask since answered.
@@ -152,13 +155,17 @@ end
 -- The IDs are as many as one addon message holds, at most.
 local function OnAsk(asker, ids, sender)
     if not asker:find(GUID_PATTERN) then return end
+    local now = GetTime()
+    if now - askWindow >= ASK_WINDOW then askWindow, asks = now, 0 end
+    if asks >= ASK_LIMIT then return end
+    asks = asks + 1
     local who = Short(sender)
     local found, index
     local tried = 0
-    for id in ids:gmatch("%d+") do
+    for id in ids:gmatch("[^,]+") do
         tried = tried + 1
         if tried > MAX_IDS then break end
-        if #id <= MAX_ID_DIGITS then
+        if id:find(ID_PATTERN) then
             index = C_QuestLog.GetLogIndexForQuestID(tonumber(id))
             if index then found = tonumber(id) break end
         end

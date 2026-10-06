@@ -1,7 +1,7 @@
 -------------------------------------------------------------------------------
 --  NaowhForever_GroupXP.lua -- the QoL group XP bars, fed by addon messages from every member
 --  running Naowh Forever; the setting only shows the bars. Messages: "2 guid level xp max" is
---  someone's numbers, "R" asks everyone for theirs.
+--  someone's numbers, "R" asks everyone for theirs. Numbers are kept only for a GUID in the group.
 -------------------------------------------------------------------------------
 local ns = _G.NaowhForever
 local S = ns.QoLSettings
@@ -202,7 +202,6 @@ end
 
 -- Someone who left the group keeps nothing behind.
 local function Prune()
-    if next(others) == nil then return end
     wipe(inGroup)
     for _, m in ipairs(Roster()) do inGroup[m.guid] = true end
     for guid in pairs(others) do
@@ -309,6 +308,7 @@ boot:SetScript("OnEvent", function()
         "PLAYER_XP_UPDATE", "PLAYER_LEVEL_UP", "UNIT_LEVEL", "PLAYER_REGEN_ENABLED" }) do
         events:RegisterEvent(event)
     end
+    Prune()
     Apply()
 end)
 

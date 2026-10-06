@@ -241,6 +241,7 @@ Load({
     "Shared/Parts.lua", "Shared/Window.lua", "Shared/View.lua", "Shared/Kinds.lua",
     "NaowhForever_Macros/NaowhForever_MacroText.lua", "NaowhForever_Macros/NaowhForever_Macros.lua", "NaowhForever_Macros/NaowhForever_MacroWindow.lua",
 }, env)
+ns.Shared.Decode = dofile("Tools/regression/load_decode.lua")(env, true)
 
 local function Window()
     for _, f in ipairs(frames) do

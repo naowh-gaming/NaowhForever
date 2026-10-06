@@ -181,7 +181,7 @@ local function Parse(text)
     local out, got = {}, {}
     for digits in body:gmatch("%d+") do
         local id = tonumber(digits)
-        if id and id > 0 and not got[id] then
+        if id and id > 0 and id < 2147483648 and not got[id] then
             got[id] = true
             out[#out + 1] = id
             if #out >= IMPORT_MAX then break end

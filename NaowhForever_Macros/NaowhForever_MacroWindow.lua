@@ -360,14 +360,12 @@ end
 
 -- Parsed as data, never run: names and bodies within the game's limits, no more than the game
 -- holds in all.
+local DECODE_LIMITS = { maxChars = 100000, maxBytes = 1048576, maxDepth = 8, maxValues = 20000 }
+
 local function Decode(text)
-    local LS, LD = Codec()
     local body = type(text) == "string" and text:match("^%s*" .. SHARE:gsub("!", "%%!") .. "(%S+)%s*$")
-    local packed = body and LD:DecodeForPrint(body)
-    local raw = packed and LD:DecompressDeflate(packed)
-    if not raw then return end
-    local ok, data = LS:Deserialize(raw)
-    if not (ok and type(data) == "table" and data.v == 1 and type(data.macros) == "table") then return end
+    local data = body and ns.Shared.Decode.String(body, DECODE_LIMITS)
+    if not (type(data) == "table" and data.v == 1 and type(data.macros) == "table") then return end
     local out = {}
     local maxAccount, maxCharacter = Limits()
     for i, m in ipairs(data.macros) do

@@ -52,6 +52,7 @@ local function Packs()
     local ns = { PlainText = PlainText,
         Color = function(_, text) return "|cff0091ed" .. (text and (text .. "|r") or "") end }
     local env = setmetatable({ _G = { NaowhForever = ns }, LibStub = LibStub }, { __index = _G })
+    ns.Shared = { Decode = dofile("Tools/regression/load_decode.lua")(env) }
     local f = assert(io.open("Core/NaowhForever_Packs.lua", "rb"))
     local source = f:read("*a"):gsub("\r\n", "\n"); f:close()
     local chunk = assert(loadstring(source, "Packs")); setfenv(chunk, env); chunk()
@@ -77,7 +78,7 @@ Case("a crafted pack's name, author, date and maker show as plain text", functio
         data = { callouts = { a = "Taunt" } } }))
     assert(payload, desc)
     assert(not Stray(desc), desc)
-    assert(desc:find("||TInterface", 1, true) and desc:find("(%s%d%n)", 1, true), desc)
+    assert(desc:find("TInterface", 1, true) and desc:find("(%s%d%n)", 1, true), desc)
     assert(not payload.author:find("\n", 1, true) and #payload.derivedFrom.author <= 200)
 end)
 
@@ -91,7 +92,8 @@ Case("a crafted pack's profile names show as plain text in its preview", functio
     local text = ns.DescribeProfilePack(PackString({ format = 1, name = "Pack", author = "Me",
         profiles = { [fake] = { callouts = { a = "Taunt" } } } }))
     assert(text and not Stray(text), text)
-    assert(payload.profiles[fake], "the profile itself keeps its key")
+    local key = next(payload.profiles)
+    assert(key and not key:find("|", 1, true), "the profile is saved under its cleaned name")
 end)
 
 Case("a plain pack reads as before", function()

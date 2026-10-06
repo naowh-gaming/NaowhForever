@@ -182,7 +182,7 @@ local ROWS = {
       [==[("  " .. ns.Color("accent", "%s") .. "%s"):format("Pack", " (Arms)")]==],
       [==[("  |cff0091ed%s|r%s"):format("Pack", " (Arms)")]==] },
     { [==[Core/NaowhForever_Packs.lua]==],
-      [==[(ns.Color("accent", "%s") .. "%s"):format(ns.PlainText(names[i]),]==],
+      [==[(ns.Color("accent", "%s") .. "%s"):format(names[i],]==],
       [==[(ns.Color("accent", "%s") .. "%s"):format("Pack", " -- Arms")]==],
       [==[("|cff0091ed%s|r%s"):format("Pack", " -- Arms")]==] },
     { [==[Core/NaowhForever_Packs.lua]==],

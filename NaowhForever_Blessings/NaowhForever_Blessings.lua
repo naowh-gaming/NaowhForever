@@ -531,6 +531,7 @@ end
 -- Per-player choices for members of the group, as GUID=code pairs. "P|1|" starts the list
 -- over, so an empty one clears what the others had.
 local PLAYER_BATCH = 200
+local MAX_PLAYER_CHOICES = 40
 local sentPlayers
 
 local function SendPlayers()
@@ -617,10 +618,14 @@ local function OnMessage(msg, sender)
     if part then
         local from = others[who]
         if not from then return end
-        if part == "1" then from.players = {} end
+        if part == "1" then from.players, from.choices = {}, 0 end
         for guid, code in list:gmatch("(Player%-[%w%-]+)=(%a)") do
             local entry = BY_CODE[code]
-            if entry and entry.blessing then from.players[guid] = entry.key end
+            local choices = from.choices or 0
+            if entry and entry.blessing and (from.players[guid] or choices < MAX_PLAYER_CHOICES) then
+                if not from.players[guid] then from.choices = choices + 1 end
+                from.players[guid] = entry.key
+            end
         end
         if ns.UI.RefreshPage then ns.UI:RefreshPage(true) end
         return
@@ -634,7 +639,9 @@ local function OnMessage(msg, sender)
     for code in known:gmatch(".") do
         if BY_CODE[code] then set[BY_CODE[code].key] = true end
     end
-    others[who] = { classes = classes, aura = aura, known = set, players = others[who] and others[who].players or {} }
+    local was = others[who]
+    others[who] = { classes = classes, aura = aura, known = set, players = was and was.players or {},
+        choices = was and was.choices or 0 }
     if ns.UI.RefreshPage then ns.UI:RefreshPage(true) end
 end
 
