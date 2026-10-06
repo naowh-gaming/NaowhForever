@@ -17,6 +17,7 @@ import json
 import re
 import sys
 import time
+import unicodedata
 import urllib.error
 from pathlib import Path
 
@@ -67,6 +68,8 @@ def fetch_quest(quest_id):
 
 
 def lua_string(s):
+    # ASCII only, as the addon files must be: an accented letter keeps its base letter.
+    s = unicodedata.normalize("NFKD", s).encode("ascii", "ignore").decode()
     return '"' + s.replace("\\", "\\\\").replace('"', '\\"') + '"'
 
 
@@ -156,19 +159,20 @@ def write(zones, quests):
         "}",
         "",
         "-- questID = { name, level, required level, side (1 Alliance, 2 Horde, 3 both),",
-        "-- race mask, class mask, start uiMapID, x, y (percent) }. Positions on maps Forever redrew are",
+        "-- race mask, class mask, start uiMapID, x, y (percent), quest giver }. Positions on maps Forever redrew are",
         "-- left out: Wowhead still gives their classic coordinates.",
         "D.Quests = {",
     ]
     for qid in sorted(rows):
         area, q = rows[qid]
         start = (quests.get(str(qid)) or {}).get("start")
-        spot = "nil, nil, nil"
+        spot = "nil, nil, nil, nil"
         if start and start.get("coord") and start["zone"] in ZONE_MAP:
             m = ZONE_MAP[start["zone"]]
             if m not in REDRAWN:
                 x, y = start["coord"]
-                spot = f"{m}, {x:.1f}, {y:.1f}"
+                giver = lua_string(start["npc"]) if start.get("npc") else "nil"
+                spot = f"{m}, {x:.1f}, {y:.1f}, {giver}"
         lines.append(f"    [{qid}] = {{ {lua_string(q['name'])}, {q.get('level') or 0}, "
                      f"{q.get('reqlevel') or 0}, {q.get('side') or 3}, {q.get('reqrace') or 0}, "
                      f"{q.get('reqclass') or 0}, {spot} }},")

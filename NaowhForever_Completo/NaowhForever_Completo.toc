@@ -11,3 +11,4 @@
 Data\NaowhForever_CompletoQuests.lua
 NaowhForever_Completo.lua
 NaowhForever_CompletoWindow.lua
+NaowhForever_CompletoMap.xml

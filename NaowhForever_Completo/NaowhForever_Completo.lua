@@ -13,6 +13,8 @@ local UI = ns.UI
 
 local S = UI.ModuleSettings("completo", {
     enabled = false, hideDone = false, windowAlpha = 1,
+    -- A ! on the map at each quest giver with a quest for you; mapGrey adds the low level ones.
+    mapPins = false, mapGrey = false, mapPinSize = 18,
 })
 ns.CompletoSettings = S
 
@@ -22,7 +24,7 @@ ns.Completo = { Quests = Q }
 
 -- The client's race IDs to their bit in Wowhead's race masks (Forever's own two races too).
 local RACE_BITS = { [1] = 0, [2] = 1, [3] = 2, [4] = 3, [5] = 4, [6] = 5, [7] = 6, [8] = 7, [95] = 32, [96] = 33 }
-local NAME, LEVEL, REQ_LEVEL, SIDE, RACES, CLASSES, MAP, X, Y = 1, 2, 3, 4, 5, 6, 7, 8, 9
+local NAME, LEVEL, REQ_LEVEL, SIDE, RACES, CLASSES, MAP, X, Y, GIVER = 1, 2, 3, 4, 5, 6, 7, 8, 9, 10
 local ALLIANCE, HORDE = 1, 2
 
 local function HasBit(mask, bit)
@@ -112,6 +114,9 @@ function Q.RequiredLevel(id) return D.Quests[id][REQ_LEVEL] end
 function Q.Zone(id) return zoneOf[id] end
 function Q.Chain(id) return chainOf[id] end
 function Q.Zones() return D.Zones end
+
+-- Who gives it, where its start is known.
+function Q.Giver(id) return D.Quests[id][GIVER] end
 
 function Q.Spot(id)
     local quest = D.Quests[id]
@@ -239,6 +244,76 @@ function Q.Waypoint(id)
 end
 
 -------------------------------------------------------------------------------
+--  Quests to pick up, for the map: at each quest giver, the quests you could take now
+-------------------------------------------------------------------------------
+-- Low level: grey in your quest log, worth no experience any more. The game's own colour
+-- for its level, else classic's rule (more than the green range under your level).
+function Q.Trivial(id)
+    local level = D.Quests[id][LEVEL]
+    if level <= 0 then return false end
+    if QuestDifficultyColors and QuestDifficultyColors.trivial then
+        return GetQuestDifficultyColor(level) == QuestDifficultyColors.trivial
+    end
+    local green = GetQuestGreenRange and GetQuestGreenRange() or 8
+    return level < UnitLevel("player") - green
+end
+
+-- Yours, not done, not in your log, your level high enough, its chain's earlier steps done.
+function Q.Available(id)
+    return mine[id] == true and Q.State(id) == "open"
+end
+
+local byMap         -- uiMapID -> your quests that start there
+local givers = {}   -- Q.Givers' answer, reused
+local spare = {}    -- its entries, reused
+
+local function Index()
+    if byMap then return end
+    byMap = {}
+    for id, quest in pairs(D.Quests) do
+        local map = quest[MAP]
+        if map and mine[id] then
+            byMap[map] = byMap[map] or {}
+            table.insert(byMap[map], id)
+        end
+    end
+end
+
+-- The quest givers on a map with a quest you could pick up: { x, y, quests = { ids },
+-- grey = true when every one is low level }. Low level ones only with grey. Tables reused
+-- until the next call; call Q.Refresh first.
+function Q.Givers(mapID, grey)
+    Prepare()
+    Index()
+    for i = #givers, 1, -1 do
+        local entry = givers[i]
+        wipe(entry.quests)
+        spare[#spare + 1] = entry
+        givers[i] = nil
+    end
+    local at = {}
+    for _, id in ipairs(byMap[mapID] or {}) do
+        if Q.Available(id) then
+            local trivial = Q.Trivial(id)
+            if grey or not trivial then
+                local quest = D.Quests[id]
+                local key = quest[X] .. ":" .. quest[Y]
+                local entry = at[key]
+                if not entry then
+                    entry = table.remove(spare) or { quests = {} }
+                    entry.x, entry.y, entry.grey = quest[X], quest[Y], true
+                    at[key] = entry
+                    givers[#givers + 1] = entry
+                end
+                table.insert(entry.quests, id)
+                if not trivial then entry.grey = false end
+            end
+        end
+    end
+    return givers
+end
+
+-------------------------------------------------------------------------------
 --  Settings
 -------------------------------------------------------------------------------
 local Settings = ns.Shared and ns.Shared.Settings
@@ -272,6 +347,27 @@ page:Card({
     rows = {
         { key = "hideDone", label = "Hide Done", toggle = true,
           help = "Leave out the quests and chains you have finished." },
+    },
+})
+
+local QUESTS_OFF = "Turn on Completo"
+
+local function On() return S.Get("enabled") == true end
+
+local function MapSummary(store)
+    return store.Get("mapGrey") and "Every quest you can pick up" or "Quests that still give experience"
+end
+
+page:Card({
+    id = "mapPins", name = "Map Pins", order = 20, switch = "mapPins",
+    help = "A yellow ! on the world map at every quest giver with a quest you can pick up that still gives "
+        .. "experience. Hover it for the quests; click it for a waypoint.",
+    summary = MapSummary,
+    rows = {
+        { key = "mapGrey", label = "Low Level Quests", toggle = true, needs = On, why = QUESTS_OFF,
+          help = "Also a grey ! for quests you can still pick up that no longer give experience." },
+        { key = "mapPinSize", label = "Pin Size", slider = { 12, 32, 1 }, needs = On, why = QUESTS_OFF,
+          help = "How big the pins are on the map." },
     },
 })
 

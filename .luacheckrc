@@ -22,6 +22,7 @@ globals = {
     "BINDING_HEADER_NAOWHFOREVER", "BINDING_NAME_NAOWHFOREVER_BAGSPACE_PICKUP",
     "BINDING_NAME_NAOWHFOREVER_BOSSLOOT", "BINDING_NAME_NAOWHFOREVER_JOURNAL", "BINDING_NAME_NAOWHFOREVER_BIS",
     "NaowhForeverTownPinMixin", "NaowhForeverZoneLinkPinMixin", "NaowhForeverUnexploredPinMixin", "NaowhForeverLibraryPinMixin", "NaowhForeverSleepingBagPinMixin",
+    "NaowhForeverQuestGiverPinMixin",
     "SlashCmdList", "hash_SlashCmdList", "StaticPopupDialogs",
     "STANDARD_TEXT_FONT", "UNIT_NAME_FONT", "DAMAGE_TEXT_FONT", "RXPGuides_Themes",
 }
@@ -84,7 +85,7 @@ read_globals = {
     "GetNumLootItems", "GetNumBindings", "GetNumMacros", "GetNumQuestChoices", "GetNumRoutes",
     "GetNumShapeshiftForms", "GetNumSubgroupMembers", "GetNumTrainerServices",
     "GetPartyAssignment", "GetPetActionInfo", "GetPhysicalScreenSize", "GetPlayerInfoByGUID",
-    "GetProfessionInfo", "GetProfessions", "GetQuestDifficultyColor", "GetQuestID", "GetQuestLink", "GetQuestLogChoiceInfo",
+    "GetProfessionInfo", "GetProfessions", "GetQuestDifficultyColor", "GetQuestGreenRange", "GetQuestID", "GetQuestLink", "GetQuestLogChoiceInfo",
     "GetQuestLogQuestText", "GetQuestLogRewardInfo", "GetQuestLogRewardMoney", "GetQuestLogRewardXP",
     "GetNumQuestLogChoices", "GetNumQuestLogRewards", "QuestUtils_IsQuestWatched",
     "GetQuestItemInfo", "GetQuestItemLink", "GetQuestLogChoiceInfo", "GetQuestLogItemLink",
