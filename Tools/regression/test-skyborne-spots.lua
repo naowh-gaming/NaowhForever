@@ -1,6 +1,7 @@
--- Run with Lua 5.1 from the repository root: Skyborne Spots. A long Skysight (Horde) or a
--- Read Ley Line that goes off (Alliance) saves the spot once, a find close to a known spot
--- is that spot, other races watch nothing, and the map pins the character's own kind only.
+-- Run with Lua 5.1 from the repository root: Skyborne Spots. The racial cast on a spot gives
+-- its buff, and the spot is saved once; a find close to a known spot is that spot, a buff
+-- unreadable in combat is looked at again after it, other races watch nothing, and the map
+-- pins the character's own kind only, the shipped ones and the found ones.
 local function Read(path)
     local f = assert(io.open(path, "rb"))
     local s = f:read("*a"):gsub("\r\n", "\n"); f:close()
@@ -9,6 +10,8 @@ end
 
 local checks = 0
 local function Check(ok, label) assert(ok, label); checks = checks + 1 end
+
+local LEY_CAST, LEY_BUFF, SKY_CAST, SKY_BUFF = 1259705, 1259691, 1259686, 1270893
 
 local settings = { enabled = true, mapSkyborne = true, mapSkyborneSize = 20 }
 local S = { Get = function(key) return settings[key] end, Set = function() end }
@@ -23,9 +26,9 @@ local ns = {
     Shared = { Settings = { Page = function() return { Card = function(_, c) card = c end } end } },
 }
 
-local race, faction = "Skyborne", "Horde"
-local where = { map = 2521, x = 0.434, y = 0.441 }
-local aura
+local race, faction, combat, now = "Skyborne", "Horde", false, 1000
+local where = { map = 2521, x = 0.20, y = 0.10 }
+local buffs = {}
 local function Vector(x, y) return { GetXY = function() return x, y end } end
 
 -- Frames in the order the file makes them: the watcher first, then the login frame.
@@ -41,7 +44,12 @@ local function NewFrame()
     return f
 end
 
-local provider
+-- Timers run when the test says so.
+local timers = {}
+local function RunTimers()
+    while #timers > 0 do table.remove(timers, 1)() end
+end
+
 local pins = {}
 local mapShown = {
     GetMapID = function() return 2521 end,
@@ -49,6 +57,7 @@ local mapShown = {
     AcquirePin = function(_, _, entry, x, y) pins[#pins + 1] = { entry = entry, x = x, y = y } end,
     RemoveAllPinsByTemplate = function() for i = #pins, 1, -1 do pins[i] = nil end end,
 }
+local provider
 
 local function Mixin(...)
     local t = {}
@@ -64,7 +73,9 @@ local env = setmetatable({
     MapCanvasDataProviderMixin = { GetMap = function() return mapShown end },
     CreateFrame = NewFrame,
     hooksecurefunc = function() end,
-    InCombatLockdown = function() return false end,
+    InCombatLockdown = function() return combat end,
+    GetTime = function() return now end,
+    C_Timer = { After = function(_, fn) timers[#timers + 1] = fn end },
     UnitRace = function() return "Windshaper Skyborne", race, 96 end,
     UnitFactionGroup = function() return faction end,
     C_Map = {
@@ -79,53 +90,88 @@ local env = setmetatable({
         GetMapPosFromWorldPos = function() return 1, nil end,
     },
     C_UnitAuras = {
-        GetPlayerAuraBySpellID = function(id) return id == 1259686 and aura or nil end,
-        GetAuraDataByIndex = function() return nil end,
+        GetPlayerAuraBySpellID = function(id)
+            if combat then error("secret in combat") end
+            return buffs[id]
+        end,
     },
-    C_Spell = { GetSpellName = function(id) return id == 4242 and "Read Ley Line" or "Something" end },
     WorldMapFrame = {
         IsShown = function() return true end,
         HookScript = function() end,
         AddDataProvider = function(_, p) provider = p end,
     },
 }, { __index = _G })
-local chunk = assert(loadstring(Read("QoL/NaowhForever_SkyborneSpots.lua")))
-setfenv(chunk, env)
-chunk()
+for _, file in ipairs({ "QoL/NaowhForever_SkyborneData.lua", "QoL/NaowhForever_SkyborneSpots.lua" }) do
+    local chunk = assert(loadstring(Read(file)))
+    setfenv(chunk, env)
+    chunk()
+end
 local watch, boot = frames[1], frames[2]
+
+-- The shipped list: every spot on a real map, in percent.
+local shipped = 0
+for kind, list in pairs(ns.SkyborneSpots) do
+    for _, spot in ipairs(list) do
+        Check(type(spot[1]) == "number" and spot[2] > 0 and spot[2] < 100 and spot[3] > 0 and spot[3] < 100,
+            "a shipped " .. kind .. " in percent")
+        shipped = shipped + 1
+    end
+end
+Check(#ns.SkyborneSpots.leyline == 36 and #ns.SkyborneSpots.convergence == 30, "36 ley lines, 30 convergences")
+Check(Read("QoL/NaowhForever_SkyborneData.lua"):find("Copyright (c) 2026 tr0tsky", 1, true), "with tr0tsky's notice")
 
 Check(Read("QoL/NaowhForever_QoL.lua"):find("mapSkyborne = false", 1, true), "Skyborne Spots starts off")
 Check(card and card.switch == "mapSkyborne", "the card switches the setting")
 
+local function CastAt(spellID, buffID, duration)
+    now = now + 100
+    watch.onEvent(watch, "UNIT_SPELLCAST_SUCCEEDED", "player", "guid", spellID)
+    if buffID then buffs[buffID] = { duration = duration, expirationTime = now + duration } end
+    RunTimers()
+end
+
 boot.onEvent(boot, "PLAYER_LOGIN")
-Check(watch.unitEvents.UNIT_AURA and not watch.unitEvents.UNIT_SPELLCAST_SUCCEEDED,
-    "a Horde Skyborne watches its buffs only")
+Check(watch.unitEvents.UNIT_SPELLCAST_SUCCEEDED, "a Skyborne watches its casts")
 
-aura = { duration = 30, expirationTime = 100 }
-watch.onEvent(watch, "UNIT_AURA", "player")
-Check(not account.skyborneSpots or #account.skyborneSpots.convergence == 0, "a short Skysight saves nothing")
+CastAt(SKY_CAST, nil)
+Check(not account.skyborneSpots or #account.skyborneSpots.convergence == 0, "Skysight away from a spot saves nothing")
 
-aura = { duration = 900, expirationTime = 200 }
-watch.onEvent(watch, "UNIT_AURA", "player")
+CastAt(SKY_CAST, SKY_BUFF, 900)
 local found = account.skyborneSpots.convergence
-Check(#found == 1 and found[1][1] == 2521 and found[1][2] == 43.4 and found[1][3] == 44.1,
-    "a long Skysight saves the spot, in percent")
+Check(#found == 1 and found[1][1] == 2521 and found[1][2] == 20 and found[1][3] == 10,
+    "Skysight that gives Elemental Blessing saves the spot, in percent")
 Check(printed[1] and printed[1]:find("Elemental Convergence saved", 1, true), "and says so")
 
-watch.onEvent(watch, "UNIT_AURA", "player")
-where.x = 0.45   -- 16 yards on
-aura = { duration = 900, expirationTime = 300 }
-watch.onEvent(watch, "UNIT_AURA", "player")
-Check(#found == 1, "the same buff, or a find a few yards away, is the same spot")
+where.x = 0.215   -- 15 yards on
+buffs = {}
+CastAt(SKY_CAST, SKY_BUFF, 900)
+Check(#found == 1, "a find a few yards away is the same spot")
 
-where.x = 0.6
-aura = { duration = 900, expirationTime = 400 }
-watch.onEvent(watch, "UNIT_AURA", "player")
-Check(#found == 2, "a find far off is a new spot")
+where.x, where.y = 0.4844, 0.2031   -- a shipped convergence
+buffs = {}
+CastAt(SKY_CAST, SKY_BUFF, 900)
+Check(#found == 1, "a shipped spot is not saved again")
+
+where.x, where.y = 0.9, 0.9
+buffs = {}
+CastAt(LEY_CAST, LEY_BUFF, 900)
+Check(#found == 1, "the other faction's racial does nothing")
+
+combat = true
+buffs = {}
+CastAt(SKY_CAST, SKY_BUFF, 900)
+Check(#found == 1 and watch.events.PLAYER_REGEN_ENABLED, "in combat the buff waits for combat to end")
+combat = false
+watch.onEvent(watch, "PLAYER_REGEN_ENABLED")
+Check(#found == 2 and found[2][2] == 90, "and is saved then")
 
 provider:RefreshAllData()
-Check(#pins == 2 and pins[1].entry.kind == "convergence" and pins[1].entry.found, "the map pins both")
-Check(math.abs(pins[1].x - 0.434) < 1e-9, "where they were found")
+local mine, theirs = 0, 0
+for _, pin in ipairs(pins) do
+    Check(pin.entry.kind == "convergence", "a Horde map shows convergences only")
+    if pin.entry.found then mine = mine + 1 else theirs = theirs + 1 end
+end
+Check(mine == 2 and theirs == 15, "the two found and Zephras Isle's 15 shipped")
 
 settings.mapSkyborne = false
 provider:RefreshAllData()
@@ -133,15 +179,13 @@ Check(#pins == 0, "no pins while off")
 settings.mapSkyborne = true
 
 faction = "Alliance"
+where.x, where.y = 0.1, 0.1
+buffs = {}
 boot.onEvent(boot, "PLAYER_LOGIN")
-Check(watch.unitEvents.UNIT_SPELLCAST_SUCCEEDED and not watch.unitEvents.UNIT_AURA,
-    "an Alliance Skyborne watches its casts only")
-watch.onEvent(watch, "UNIT_SPELLCAST_SUCCEEDED", "player", "guid", 99)
-Check(not account.skyborneSpots.leyline or #account.skyborneSpots.leyline == 0, "another spell saves nothing")
-watch.onEvent(watch, "UNIT_SPELLCAST_SUCCEEDED", "player", "guid", 4242)
-Check(#account.skyborneSpots.leyline == 1, "a Read Ley Line that goes off saves a ley line")
+CastAt(LEY_CAST, LEY_BUFF, 600)
+Check(#account.skyborneSpots.leyline == 1, "Read Ley Line that gives Energized saves a ley line")
 provider:RefreshAllData()
-Check(#pins == 1 and pins[1].entry.kind == "leyline", "an Alliance map shows ley lines, not convergences")
+Check(#pins == 14 and pins[1].entry.kind == "leyline", "an Alliance map shows ley lines, not convergences")
 
 race = "Human"
 boot.onEvent(boot, "PLAYER_LOGIN")
@@ -150,4 +194,4 @@ provider:RefreshAllData()
 Check(#pins == 0, "and sees no pins")
 Check(card.summary() == "Only for Skyborne characters", "the card says who it is for")
 
-print(("test-skyborne-spots: %d checks passed"):format(checks))
+print(("test-skyborne-spots: %d checks passed (%d shipped spots)"):format(checks, shipped))

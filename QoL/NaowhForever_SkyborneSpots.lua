@@ -1,9 +1,10 @@
 -------------------------------------------------------------------------------
---  NaowhForever_SkyborneSpots.lua -- Skyborne Spots: the ley lines (Read Ley Line, the
---  Alliance Skyborne's racial) and Elemental Convergences (Skysight lasts 15 minutes beside
---  one, the Horde Skyborne's) pinned on the world map. The game marks neither, and no site
---  lists them yet, so the spots come from two places: the list below, and the ones this
---  account finds itself: a Read Ley Line that goes off, or a Skysight that comes out long.
+--  NaowhForever_SkyborneSpots.lua -- Skyborne Spots: the ley lines (for Read Ley Line, the
+--  Alliance Skyborne's racial) and Elemental Convergences (for Skysight, the Horde
+--  Skyborne's) pinned on the world map. The game marks neither, so the spots come from two
+--  places: the list every player starts with (NaowhForever_SkyborneData.lua), and the ones
+--  this account finds: the racial cast on a spot gives its buff (Energized, Elemental
+--  Blessing), and where it was cast is saved.
 --  A Skyborne character sees its own faction's kind; other races see none.
 --  Hover a pin for what it is, click it for a waypoint, right-click one you found to forget it.
 --  Nothing is made or added to the map until it is switched on.
@@ -12,26 +13,18 @@ local ns = _G.NaowhForever
 local S = ns.QoLSettings
 
 local TEMPLATE = "NaowhForeverSkybornePinTemplate"
-local SKYSIGHT = 1259686            -- the Horde racial (seen in game, 1.60.1)
-local LEY_LINE_NAME = "Read Ley Line"   -- the Alliance racial; its spell ID is not known yet
-local LONG_SKYSIGHT = 300           -- seconds: 30 normally, 15 minutes beside a convergence
 local SAME_SPOT = 40                -- yards: a find this close to a known spot is that spot
+local MIN_BUFF = 60                 -- seconds: the spot's buff lasts minutes, not a moment
 local MAP_CONTINENT = 2             -- Enum.UIMapType: this or above is not a zone's map
 
+-- Per kind: the racial cast on it, and the buff it gives there (IDs from the 1.60.1 client).
 local KINDS = {
-    leyline = { name = "Ley Line", faction = "Alliance",
+    leyline = { name = "Ley Line", faction = "Alliance", racial = 1259705, buff = 1259691,
         help = "Stand on it and cast Read Ley Line.",
         icon = "Interface\\Icons\\Spell_Arcane_Arcane04" },
-    convergence = { name = "Elemental Convergence", faction = "Horde",
-        help = "Skysight lasts 15 minutes here.",
+    convergence = { name = "Elemental Convergence", faction = "Horde", racial = 1259686, buff = 1270893,
+        help = "Cast Skysight here for Elemental Blessing.",
         icon = "Interface\\Icons\\Spell_Nature_LightningShield" },
-}
-
--- The spots every player starts with, as { uiMapID, x, y } in percent. Filled from what
--- players find; the game has no list to read them from.
-ns.SkyborneSpots = {
-    leyline = {},
-    convergence = {},
 }
 
 local function On()
@@ -82,13 +75,8 @@ end
 -------------------------------------------------------------------------------
 local Redraw
 
--- The player stands at a spot of this kind: saves it unless one is known that close.
-local function FoundHere(kind)
-    local map = C_Map.GetBestMapForUnit("player")
-    local pos = map and C_Map.GetPlayerMapPosition(map, "player")
-    if not pos then return end
-    local x, y = pos:GetXY()
-    x, y = math.floor(x * 1000 + 0.5) / 10, math.floor(y * 1000 + 0.5) / 10
+-- A spot of this kind at map, x, y (percent): saved unless one is known that close.
+local function Save(kind, map, x, y)
     local continent, wx, wy = World(map, x, y)
     if not continent then return end
     for _, list in ipairs({ ns.SkyborneSpots[kind], Found(kind) }) do
@@ -103,50 +91,66 @@ local function FoundHere(kind)
     Redraw()
 end
 
--- A Skysight's expiry already looked at, so each cast is checked once.
-local seenExpiry
-
--- The Skysight buff, by its ID, else by name (the buff's ID may not be the cast's).
-local function SkysightAura()
-    local aura = C_UnitAuras.GetPlayerAuraBySpellID(SKYSIGHT)
-    if aura then return aura end
-    for i = 1, 40 do
-        aura = C_UnitAuras.GetAuraDataByIndex("player", i, "HELPFUL")
-        if not aura then return nil end
-        if aura.name == "Skysight" then return aura end
-    end
+-- The spot's buff, given at or after the cast; nil while the game has not applied it yet.
+-- Auras can be unreadable in combat, so this is called through pcall.
+local function HasBuff(cast)
+    local aura = C_UnitAuras.GetPlayerAuraBySpellID(KINDS[cast.kind].buff)
+    return aura and aura.duration >= MIN_BUFF and aura.expirationTime - aura.duration >= cast.time
 end
 
-local function LongSkysight()
-    local aura = SkysightAura()
-    if not aura or aura.expirationTime == seenExpiry then return end
-    seenExpiry = aura.expirationTime
-    if (aura.duration or 0) >= LONG_SKYSIGHT then FoundHere("convergence") end
-end
-
+-- A cast waiting for combat to end, its buff unreadable until then.
+local waiting
+local events   -- the map's frame, made once switched on
 local watch = CreateFrame("Frame")
-watch:SetScript("OnEvent", function(_, event, _, _, spellID)
-    if event == "UNIT_AURA" then
-        LongSkysight()
-    elseif C_Spell.GetSpellName(spellID) == LEY_LINE_NAME then
-        FoundHere("leyline")
+
+-- Looks for the buff a few times, as the game applies it a moment after the cast.
+local function Check(cast)
+    cast.tries = cast.tries + 1
+    local ok, has = pcall(HasBuff, cast)
+    if ok and has then
+        Save(cast.kind, cast.map, cast.x, cast.y)
+    elseif ok and cast.tries < 4 then
+        C_Timer.After(0.5, function() Check(cast) end)
+    elseif not ok or InCombatLockdown() then
+        waiting = cast
+        watch:RegisterEvent("PLAYER_REGEN_ENABLED")
     end
+end
+
+local function Cast(kind)
+    local map = C_Map.GetBestMapForUnit("player")
+    local pos = map and C_Map.GetPlayerMapPosition(map, "player")
+    if not pos then return end
+    local x, y = pos:GetXY()
+    local cast = { kind = kind, map = map, tries = 0, time = GetTime() - 1,
+        x = math.floor(x * 1000 + 0.5) / 10, y = math.floor(y * 1000 + 0.5) / 10 }
+    C_Timer.After(0.2, function() Check(cast) end)
+end
+
+watch:SetScript("OnEvent", function(_, event, _, _, spellID)
+    if event == "PLAYER_REGEN_ENABLED" then
+        watch:UnregisterEvent(event)
+        local cast = waiting
+        waiting = nil
+        if cast then
+            local ok, has = pcall(HasBuff, cast)
+            if ok and has then Save(cast.kind, cast.map, cast.x, cast.y) end
+        end
+        return
+    end
+    local kind = MyKind()
+    if kind and spellID == KINDS[kind].racial then Cast(kind) end
 end)
 
 local function Watch()
     watch:UnregisterAllEvents()
-    local kind = On() and MyKind()
-    if kind == "convergence" then
-        watch:RegisterUnitEvent("UNIT_AURA", "player")
-    elseif kind == "leyline" then
-        watch:RegisterUnitEvent("UNIT_SPELLCAST_SUCCEEDED", "player")
-    end
+    if On() and MyKind() then watch:RegisterUnitEvent("UNIT_SPELLCAST_SUCCEEDED", "player") end
 end
 
 -------------------------------------------------------------------------------
 --  Pins
 -------------------------------------------------------------------------------
-local provider, added, events
+local provider, added
 
 -- Where a spot sits on the map shown, 0-1, or nil when that map does not hold it.
 local function SpotOn(mapID, spot)
@@ -324,9 +328,9 @@ boot:SetScript("OnEvent", Apply)
 ns.Shared.Settings.Page("QoL/Interface", S):Card({
     id = "mapSkyborne", name = "Skyborne Spots", order = 46, switch = "mapSkyborne",
     help = "For Skyborne characters: ley lines (Alliance, for Read Ley Line) or Elemental "
-        .. "Convergences (Horde, Skysight lasts 15 minutes beside one) pinned on the world map. "
-        .. "The game does not mark them, so each one you find is saved: a Read Ley Line that "
-        .. "works, or a Skysight that comes out long. Other races see no pins.",
+        .. "Convergences (Horde, for Skysight) pinned on the world map. The game does not mark "
+        .. "them: the addon knows the ones players have found, and saves each new one you cast "
+        .. "your racial on. Other races see no pins.",
     summary = function()
         local kind = MyKind()
         if not kind then return "Only for Skyborne characters" end
