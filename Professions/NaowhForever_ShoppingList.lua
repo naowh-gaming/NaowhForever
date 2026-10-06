@@ -145,16 +145,20 @@ local function Cheapest(item, plan, depth, ignoreKeep)
         end
         plan.busy[item] = nil
         if total and (not buy or total / m.made < buy) then cost, make = total / m.made, true end
+        -- What one craft's parts cost, for Materials to weigh the whole crafts it takes.
+        if make and not ignoreKeep then plan.craft[item] = total end
     end
     if not ignoreKeep then plan.cost[item], plan.make[item] = cost or false, make end
     return cost, make
 end
 
 -- What to buy: every material on the list with its amount, by name; what is made first,
--- itemID -> how many; and the plan that chose, for the savings.
+-- itemID -> how many; and the plan that chose, with planned (made as the cheaper way, not
+-- just from parts bought) and saves (what that saves on buying, where both are priced).
 local function Materials()
     local api = ns.ProfWindowAPI
-    local plan = { cost = {}, make = {}, busy = {}, owned = api and api.Owned() or {} }
+    local plan = { cost = {}, make = {}, craft = {}, busy = {}, planned = {}, saves = {},
+        owned = api and api.Owned() or {} }
     local demand, made, makes = {}, {}, Makes()
     for _, craft in pairs(List()) do
         for item, per in pairs(craft.need) do
@@ -204,10 +208,15 @@ local function Materials()
             if qty > 0 then qty = qty - Supply(item, qty, pool, made, depth) end
             if qty > 0 then
                 local _, make = Cheapest(item, plan, 0)
+                local m, price, craft = makes[item], BuyPrice(item), plan.craft[item]
+                local crafts = m and math.ceil(qty / m.made)
+                -- Whole crafts against what is needed: 3 bars bought can cost less than 2
+                -- crafts of 2, though one bar made costs less than one bought.
+                if make and price and craft and crafts * craft >= qty * price then make = false end
                 if make and depth < MAX_DEPTH then
-                    local m = makes[item]
-                    local crafts = math.ceil(qty / m.made)
                     made[item] = (made[item] or 0) + crafts * m.made
+                    plan.planned[item] = true
+                    if price and craft then plan.saves[item] = (plan.saves[item] or 0) + qty * price - crafts * craft end
                     for part, per in pairs(m.need) do
                         if Listed(part) then nextDemand[part] = (nextDemand[part] or 0) + per * crafts end
                     end
@@ -235,22 +244,36 @@ local function Drop(item, qty)
     have[item] = (have[item] or 0) + (qty or 0)
 end
 
--- A recipe with a cooldown: its spell's own, or one running now. Transmutes share theirs, which
--- the spell may not report, so one seen running is remembered (`was`).
+-- The classic recipes on a cooldown (Wowhead Classic): the transmutes but Elemental Fire, which
+-- share one, and Mooncloth. A shared cooldown can read 0 on the spell itself.
+local COOLDOWN_RECIPES = {
+    [17187] = true,                                    -- Transmute: Arcanite, 2 days
+    [11479] = true, [11480] = true,                    -- Iron to Gold, Mithril to Truesilver
+    [17559] = true, [17560] = true, [17561] = true, [17562] = true,  -- the elemental transmutes,
+    [17563] = true, [17564] = true, [17565] = true, [17566] = true,  -- 1 day
+    [18560] = true,                                    -- Mooncloth, 4 days
+}
+
+-- A recipe with a cooldown: a known one, its spell's own, or one running now (a day cooldown
+-- counts too); one seen running is remembered (`was`).
 local function HasCooldown(recipeID, was)
-    if was then return true end
+    if was or COOLDOWN_RECIPES[recipeID] then return true end
     local base = GetSpellBaseCooldown and GetSpellBaseCooldown(recipeID)
     if base and base > 0 then return true end
-    local ok, left = pcall(C_TradeSkillUI.GetRecipeCooldown, recipeID)
-    return ok and left and left > 0 or false
+    local ok, left, isDay = pcall(C_TradeSkillUI.GetRecipeCooldown, recipeID)
+    return ok and ((left and left > 0) or isDay) and true or false
 end
 
 -- Records what this character's open profession makes, for Materials: only its own, never
--- another player's opened from a link, a guild's or an NPC's.
+-- another player's opened from a link, a guild's or an NPC's. Each recipe keeps its profession,
+-- so one no longer known, or of a profession dropped since, is forgotten.
 local function Learn()
     local api = ns.ProfWindowAPI
     if not (api and api.Own and C_TradeSkillUI.GetAllRecipeIDs) or not api.Own() then return end
     local makes = Makes()
+    local base = C_TradeSkillUI.GetBaseProfessionInfo and C_TradeSkillUI.GetBaseProfessionInfo()
+    local prof = base and base.professionID
+    local seen = {}
     for _, id in ipairs(C_TradeSkillUI.GetAllRecipeIDs() or {}) do
         local info = C_TradeSkillUI.GetRecipeInfo(id)
         if info and info.learned then
@@ -263,9 +286,22 @@ local function Learn()
                 if next(need) then
                     local old = makes[output]
                     makes[output] = { recipe = id, made = math.max(1, schematic.quantityMin or 1), need = need,
-                        cooldown = HasCooldown(id, old and old.recipe == id and old.cooldown) }
+                        cooldown = HasCooldown(id, old and old.recipe == id and old.cooldown), prof = prof }
+                    seen[output] = true
                 end
             end
+        end
+    end
+    if not prof then return end
+    -- The professions you have, by skill line; only trusted when the open one is among them.
+    local mine = {}
+    for _, index in pairs({ GetProfessions() }) do
+        local line = select(7, GetProfessionInfo(index))
+        if line then mine[line] = true end
+    end
+    for output, m in pairs(makes) do
+        if (m.prof == prof and not seen[output]) or (mine[prof] and m.prof and not mine[m.prof]) then
+            makes[output] = nil
         end
     end
 end
@@ -543,17 +579,17 @@ local function SideRender()
                 row.note:SetPoint("RIGHT", row.keep, "LEFT", -6, 0)
             end
             -- Made from parts already bought, though the plan buys it now: nothing to switch.
-            local planned = plan.make[e.item]
+            local planned = plan.planned[e.item]
             row.keep:SetShown(planned and true or false)
             row.note:SetPoint("RIGHT", planned and row.keep or row, planned and "LEFT" or "RIGHT", planned and -6 or 0, 0)
-            local buy, cost = BuyPrice(e.item), plan.cost[e.item]
+            local saves = plan.saves[e.item]
             row.item = e.item
             row.icon:SetTexture(C_Item.GetItemIconByID(e.item))
             row.name:SetText(("%dx %s"):format(e.qty, ItemName(e.item) or ("item " .. e.item)))
             if not planned then
                 row.note:SetText("parts bought")
             else
-                row.note:SetText(buy and cost and ("saves ~" .. Money((buy - cost) * e.qty)) or "no AH price")
+                row.note:SetText(saves and ("saves ~" .. Money(saves)) or "no AH price")
             end
             row:ClearAllPoints()
             row:SetPoint("TOPLEFT", 8, y)

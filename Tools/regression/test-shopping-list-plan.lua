@@ -22,18 +22,23 @@ local chunk = source:sub(first, last + 4)
 -- Items: ore smelts to bars, two ore a bar; a sword takes bars. Arcanite is a transmute.
 local ORE, BAR, SWORD, THORIUM, CRYSTAL, ARCANITE, FLUX = 1, 2, 3, 4, 5, 6, 7
 local account, prices, vendor, own = {}, {}, {}, true
-local recipes, cooldownBase, cooldownLeft = {}, {}, {}
+local recipes, cooldownBase, cooldownLeft, dayCooldown = {}, {}, {}, {}
+local ALCHEMY, MINING, TAILORING = 171, 186, 197
+local openProf, myLines = ALCHEMY, { ALCHEMY, MINING }
 local env = {
     UnitName = function() return "Grim" end,
     GetRealmName = function() return "Realm" end,
     wipe = function(t) for k in pairs(t) do t[k] = nil end return t end,
     ItemName = function(id) return "item" .. id end,
     GetSpellBaseCooldown = function(id) return cooldownBase[id] or 0, 0 end,
+    GetProfessions = function() local t = {} for i = 1, #myLines do t[i] = i end return unpack(t) end,
+    GetProfessionInfo = function(i) return "prof", nil, 1, 300, 0, 0, myLines[i] end,
     C_TradeSkillUI = {
         GetAllRecipeIDs = function() local ids = {} for id in pairs(recipes) do ids[#ids + 1] = id end return ids end,
         GetRecipeInfo = function(id) return { learned = true } end,
         GetRecipeSchematic = function(id) return { outputItemID = recipes[id].output, quantityMin = 1 } end,
-        GetRecipeCooldown = function(id) return cooldownLeft[id] or 0 end,
+        GetRecipeCooldown = function(id) return cooldownLeft[id] or 0, dayCooldown[id] or false end,
+        GetBaseProfessionInfo = function() return { professionID = openProf } end,
     },
     ns = {
         AccountSettings = function() return account end,
@@ -152,24 +157,59 @@ SL.Drop(THORIUM, 10); SL.Drop(CRYSTAL, 10)
 buy, made = Plan()
 check("cooldown recipe: not even from parts bought", Only(buy, ARCANITE, 10) and Empty(made))
 
+-- Whole crafts against what is needed (the reviewer's Bronze Bars): 50s a bar bought, 80s of
+-- parts for a craft of 2. 3 bars: 2 crafts are 160s, buying is 150s. 4 bars: 160s against 200s.
+Reset()
+prices[BAR], prices[ORE] = 5000, 2000
+Learned({ [BAR] = { recipe = 2659, made = 2, need = { [ORE] = 4 } } })
+Craft(10, { [BAR] = 3 })
+buy, made = Plan()
+check("3 bars: buying them is cheaper than 2 whole crafts", Only(buy, BAR, 3) and Empty(made))
+SL.List()[10] = nil; Craft(10, { [BAR] = 4 })
+local materials, made4, plan = SL.Materials()
+check("4 bars: 2 crafts made", Only(made4, BAR, 4) and materials[1].item == ORE and materials[1].qty == 8)
+check("and it saves 40s, not per bar", plan.saves[BAR] == 4000 and plan.planned[BAR])
+
 -- Learn: only your own profession, and what has a cooldown.
 Reset(); Learned({})
+for k in pairs(recipes) do recipes[k] = nil end
 recipes[100] = { output = BAR, need = { [ORE] = 2 } }
 recipes[17187] = { output = ARCANITE, need = { [THORIUM] = 1, [CRYSTAL] = 1 } }
-recipes[11479] = { output = CRYSTAL, need = { [ORE] = 1 } }
+recipes[99001] = { output = CRYSTAL, need = { [ORE] = 1 } }
+recipes[99002] = { output = FLUX, need = { [ORE] = 3 } }
+recipes[99003] = { output = SWORD, need = { [BAR] = 3 } }
 own = false
 SL.Learn()
 check("another player's profession is not recorded", Empty(SL.Makes()))
 own = true
-cooldownBase[17187] = 172800000
-cooldownLeft[11479] = 3600
+cooldownLeft[99001] = 3600
+dayCooldown[99002] = true
 SL.Learn()
 local makes = SL.Makes()
 check("your own profession is recorded", makes[BAR] and makes[BAR].need[ORE] == 2 and not makes[BAR].cooldown)
-check("a spell cooldown marks the recipe", makes[ARCANITE].cooldown)
+check("Transmute: Arcanite is a cooldown recipe, though its spell reads 0", makes[ARCANITE].cooldown)
 check("a cooldown running now marks the recipe", makes[CRYSTAL].cooldown)
-cooldownLeft[11479] = nil
+check("a day cooldown marks the recipe", makes[FLUX].cooldown)
+check("one without is not marked", not makes[SWORD].cooldown)
+cooldownLeft[99001] = nil
 SL.Learn()
 check("a cooldown seen once is remembered when it is ready again", SL.Makes()[CRYSTAL].cooldown)
+
+-- Recipes of a profession are forgotten once no longer known, or the profession is dropped.
+recipes[99003] = nil
+SL.Learn()
+check("a recipe no longer known is forgotten", SL.Makes()[SWORD] == nil and SL.Makes()[BAR] ~= nil)
+local tailoring = { recipe = 18560, made = 1, need = { [ORE] = 1 }, prof = TAILORING }
+SL.Makes()[ARCANITE + 100] = tailoring
+SL.Learn()
+check("a profession you no longer have is forgotten", SL.Makes()[ARCANITE + 100] == nil)
+SL.Makes()[ARCANITE + 100] = tailoring
+SL.Makes()[ARCANITE + 101] = { recipe = 1, made = 1, need = { [ORE] = 1 } }
+openProf = 999
+SL.Learn()
+check("not when the open profession's id is not among yours (ids that do not match)",
+    SL.Makes()[ARCANITE + 100] ~= nil)
+check("a recipe recorded before professions were kept stays", SL.Makes()[ARCANITE + 101] ~= nil)
+openProf = ALCHEMY
 
 print(("test-shopping-list-plan: %d checks passed"):format(checks))
