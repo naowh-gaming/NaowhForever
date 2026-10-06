@@ -142,6 +142,7 @@ local S = UI.ModuleSettings("qol", {
     equipReminder = false, equipOnInstance = true, equipOnReadyCheck = true, equipAutoHide = 10,
     equipIconSize = 40, equipEnchants = false, equipEnchantRules = {},
     autoEmote = false, autoEmoteCooldown = 2, autoEmoteList = "698: prepares a ritual of summoning",
+    chatZones = false, chatZonesLevel = true, chatZonesMaxAge = 15, chatZonesAsk = true, chatZonesShare = true,
 
     mouseRing = false, mouseShape = "ring.tga", mouseSize = 48,
     mouseColor = { r = 1, g = 0.66, b = 0 }, mouseClassColor = false,
