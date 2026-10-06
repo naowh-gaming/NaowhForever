@@ -218,7 +218,11 @@ local function UpdateRow(entry)
     fs:SetTextColor(muted.r, muted.g, muted.b)
     fs:ClearAllPoints()
     fs:SetPoint("LEFT", entry.ActivityName, "RIGHT", 8, 0)
-    fs:SetWidth(math.max(1, entry:GetWidth() - DATA_DISPLAY_SPACE - 18 - entry.ActivityName:GetStringWidth()))
+    -- Stop short of the role icons: their frame's left edge when laid out, else the template's width.
+    local stop, start = entry.DataDisplay and entry.DataDisplay:GetLeft(), entry.ActivityName:GetRight()
+    local width = (stop and start) and (stop - start - 16)
+        or (entry:GetWidth() - DATA_DISPLAY_SPACE - 26 - entry.ActivityName:GetStringWidth())
+    fs:SetWidth(math.max(1, width))
     fs:SetText(zone)
     fs:Show()
 end
