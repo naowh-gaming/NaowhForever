@@ -306,6 +306,33 @@ do
     check("Scan Your Group off: no roster listened to", not state.frames[1].events.GROUP_ROSTER_UPDATE)
 end
 
+do
+    local ns, state = Fixture()
+    local S = ns.QoLSettings
+    S.Set("naowhScoreScan", false)
+    S.Set("naowhScore", true)
+    state.RunTimers()
+    local OnUnit = state.postCalls[1]
+    local gear = Set(26, 4)
+    gear[1] = { 26, nil, "INVTYPE_HEAD" }
+    state.gear.party1 = gear
+    state.hovered = "party1"
+    OnUnit(state.tooltip)
+    state.Fire("INSPECT_READY", "Player-1-19")
+    local events = state.frames[1].events
+    check("an item still loading: item data listened for", events.GET_ITEM_INFO_RECEIVED == true)
+    gear[1] = { 26, 4, "INVTYPE_HEAD" }
+    for _ = 1, 50 do state.Fire("GET_ITEM_INFO_RECEIVED", 1234, true) end
+    check("a burst of item data scores once, a moment later", #state.timers == 1)
+    state.RunTimers()
+    check("then the score is whole and the line filled in", ns.NaowhScore.Known("Player-1-19").complete == true
+        and state.rights[#state.lines].text == "26.0" and not events.GET_ITEM_INFO_RECEIVED)
+    Measure("a burst of item data while one score waits", 0.05, function()
+        for _ = 1, 50 do state.frames[1].onEvent(state.frames[1], "GET_ITEM_INFO_RECEIVED", 1234, true) end
+        state.timers[1] = nil
+    end)
+end
+
 -------------------------------------------------------------------------------
 --  Players nearby: target, focus, mouseover and shown nameplates
 -------------------------------------------------------------------------------
