@@ -10,6 +10,3 @@ __pycache__/
 
 # Pages fetched by Tools/wowsrc.py, kept to save asking again.
 /Tools/wowsrc_pages/
-
-# Map tiles fetched by Tools/build_zone_exits.py.
-/Tools/map_art/

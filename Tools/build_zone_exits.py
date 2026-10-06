@@ -1,43 +1,44 @@
-"""Build the town map's zone exit arrows from the game's own map art (Tools/wago.py).
+"""Build the town map's zone exit arrows: where the roads cross from one zone into the next.
 
-Forever has no map link data (C_Map.GetMapLinksForMap returns nothing), so the exits are found
-on the map art: a zone's explorable areas (WorldMapOverlay and its tiles) cover the zone itself,
-and their edge is the zone's border on its map. Where a road crosses that border was read off
-the art by eye, and is written here by hand (EXITS), as a map percentage near the crossing.
+Forever has no map link data (C_Map.GetMapLinksForMap returns nothing), so the exits are made
+here. Where a road crosses a zone's border was read off the game's map art by eye, and is
+written by hand (EXITS), as a map percentage near the crossing. The rest comes from data:
 
-The build does the rest from game data: it snaps each crossing onto the border, faces the arrow
-out of the zone, places it a step inside, and finds the zone it leads to by stepping across the
-border in world yards (UiMapAssignment) into the neighbour whose area is there. A city gate is
-written with its city and the arrow's bearing (degrees, 0 north, anticlockwise), and is not
-snapped. Where three zones meet, an exit names its neighbour to settle which.
+- Which zone owns each spot in the world is Wowhead's zone grid for Forever (from its world
+  map's data, a cell about 33 yards across, the game's own areas), turned into uiMapIDs with
+  the game's UiMapAssignment (wago.tools), which also places each map's percentages in the
+  world.
+- Each pick is moved onto the nearest spot of its zone that touches another, the arrow faces
+  away from its zone and sits a step inside it, and the road leads to the zone it faces into.
+- The other side of each road gets its own arrow, unless that zone lists its roads to this one.
 
-The map tiles are fetched from wago.tools once and kept in Tools/map_art/ (not committed).
+A city gate is written with its city and the arrow's bearing (degrees, 0 north,
+anticlockwise), and placed as written: a city sits inside its zone on the grid. Where three
+zones meet, an exit names its neighbour to settle which.
 
 Writes QoL/NaowhForever_ZoneExits.lua.
 
 Usage: python Tools/build_zone_exits.py [--build 1.60.1.70205]
 """
 import argparse
+import collections
+import json
 import math
+import re
 import sys
-import urllib.request
-from pathlib import Path
-
-from PIL import Image, ImageDraw
 
 import wago
-from build_journal import ROOT, TOOLS, header, write
+from build_journal import ROOT, header, write
+from wowhead import WOWHEAD, fetch
 
 OUT = ROOT / "QoL" / "NaowhForever_ZoneExits.lua"
-ART = TOOLS / "map_art"
-W, H = 1002, 668        # a zone map's art in pixels
-TILE = 256
-COVERED = 100           # overlay alpha above which a pixel is the zone's own
-SNAP = 60               # pixels: how far a crossing may be from the border
-INSET = 10              # pixels: the arrow sits this far inside the border
-STEPS = (40, 80, 150, 250, 400)   # yards across the border to look for the neighbour
+W, H = 1002, 668        # a zone map's art in pixels: directions are measured on it
+YARDS_PER_CHUNK = 1600 / 3
+SEARCH = 15             # map percent: how far a pick may be from its zone's border
+STEP = 0.25             # map percent between the spots searched
+NEAR = 3                # map percent: the spots across the border that set the arrow's direction
+INSET = 1.5             # percent of the map's width: the arrow sits this far inside its zone
 SAME = 6                # map percent: two arrows to one zone closer than this are one exit
-CITIES = (1453, 1454, 1455, 1456, 1457, 1458)
 
 # uiMapID -> [ (x, y) | (x, y, neighbour) | (x, y, city, bearing) ], in map percent. A road needs
 # writing from one side only: the other side's arrow is found from it, unless that side lists
@@ -55,7 +56,7 @@ EXITS = {
     1422: [(17, 57, 1420), (77, 52, 1423), (44, 96)],                                     # Western Plaguelands
     1423: [(6, 61, 1422)],                                                               # Eastern Plaguelands
     1424: [(5, 45, 1421), (86, 49, 1417), (88, 31, 1425)],                                # Hillsbrad Foothills
-    1425: [(6, 61, 1424), (24, 28, 1422)],                                               # The Hinterlands
+    1425: [(6, 61, 1424), (24, 28)],                                               # The Hinterlands
     1426: [(86, 48, 1432), (53.5, 35, 1455, 0)],                                          # Dun Morogh
     1427: [(45, 93, 1428)],                                                              # Searing Gorge
     1428: [(78, 80, 1433)],                                                              # Burning Steppes
@@ -79,110 +80,100 @@ EXITS = {
     1447: [(7, 73, 1440)],                                                               # Azshara
     1448: [(67, 8, 1452)],                                                               # Felwood
     1449: [(22, 20, 1451)],                                                              # Un'Goro Crater
+    2548: [(15.5, 69, 1433), (27.5, 73.5, 1433)],                                        # Riverglades
+    2652: [(35, 5, 1443), (20, 23, 1443)],                                               # Shen'dralas
 }
 
 
-def tile(file_id):
-    path = ART / f"{file_id}.blp"
-    if not path.exists():
-        ART.mkdir(exist_ok=True)
-        req = urllib.request.Request(f"{wago.SITE}/api/casc/{file_id}?download",
-                                     headers={"User-Agent": wago.AGENT})
-        with urllib.request.urlopen(req, timeout=120) as r:
-            path.write_bytes(r.read())
-    return Image.open(path).convert("RGBA")
-
-
-def zone_mask(art_id, overlays, overlay_tiles):
-    """The zone's own pixels on its map: its explorable areas, with the holes between them
-    filled."""
-    cover = Image.new("RGBA", (W + TILE, H + TILE), (0, 0, 0, 0))
-    for overlay in overlays:
-        if overlay["UiMapArtID"] != art_id:
-            continue
-        for t in overlay_tiles.get(overlay["ID"], []):
-            cover.alpha_composite(tile(t["FileDataID"]), (int(overlay["OffsetX"]) + int(t["ColIndex"]) * TILE,
-                                                          int(overlay["OffsetY"]) + int(t["RowIndex"]) * TILE))
-    alpha = cover.getchannel("A").crop((0, 0, W, H)).point(lambda v: 255 if v > COVERED else 0)
-    padded = Image.new("L", (W + 2, H + 2), 0)
-    padded.paste(alpha, (1, 1))
-    ImageDraw.floodfill(padded, (0, 0), 128)
-    return padded.crop((1, 1, W + 1, H + 1)).point(lambda v: 0 if v == 128 else 255).load()
+def page_data(text):
+    """The page's WH.setPageData("key", value) calls, as {key: value}."""
+    found = {}
+    decoder = json.JSONDecoder()
+    for m in re.finditer(r'WH\.setPageData\("([^"]+)",', text):
+        found[m.group(1)] = decoder.raw_decode(text, m.end())[0]
+    return found
 
 
 class Maps:
     def __init__(self, build):
+        page = fetch(f"{WOWHEAD}/world-map")
+        url = re.search(r'https://nether\.wowhead\.com/forever/data/world-map\?[^"\']+', page).group(0)
+        data = page_data(fetch(url.replace("&amp;", "&")))
+        self.continents = {c["map"]: c for c in data["wow.worldMap.classicplus.config"]["continents"]}
+        self.grids = {g["map"]: (g, {row[0]: row[1:] for row in g["rows"]})
+                      for g in data["wow.worldMap.classicplus.zones"]}
         self.bounds = {}
+        self.area_maps = {}
         for row in wago.table("UiMapAssignment", build):
             if row["OrderIndex"] == "0":
-                self.bounds[int(row["UiMapID"])] = (int(row["MapID"]),) + tuple(
-                    float(row[f"Region_{i}"]) for i in (0, 1, 3, 4))
-        arts = {int(r["UiMapID"]): r["UiMapArtID"] for r in wago.table("UiMapXMapArt", build) if r["PhaseID"] == "0"}
-        overlays = wago.table("WorldMapOverlay", build)
-        overlay_tiles = {}
-        for t in wago.table("WorldMapOverlayTile", build):
-            if t["LayerIndex"] == "0":
-                overlay_tiles.setdefault(t["WorldMapOverlayID"], []).append(t)
-        with_overlays = {o["UiMapArtID"] for o in overlays if o["ID"] in overlay_tiles}
-        self.zones = sorted(m for m, a in arts.items() if a in with_overlays and m not in CITIES)
-        self.masks = {}
-        for map_id in self.zones:
-            self.masks[map_id] = zone_mask(arts[map_id], overlays, overlay_tiles)
+                map_id = int(row["UiMapID"])
+                self.bounds[map_id] = (int(row["MapID"]),) + tuple(float(row[f"Region_{i}"]) for i in (0, 1, 3, 4))
+                if int(row["AreaID"]) > 0:
+                    self.area_maps.setdefault(int(row["AreaID"]), map_id)
 
     def to_world(self, map_id, x, y):
         _, min_x, min_y, max_x, max_y = self.bounds[map_id]
-        return max_x - y * (max_x - min_x), max_y - x * (max_y - min_y)
+        return max_x - y / 100 * (max_x - min_x), max_y - x / 100 * (max_y - min_y)
 
     def to_map(self, map_id, wx, wy):
         _, min_x, min_y, max_x, max_y = self.bounds[map_id]
-        return (max_y - wy) / (max_y - min_y), (max_x - wx) / (max_x - min_x)
+        return (max_y - wy) / (max_y - min_y) * 100, (max_x - wx) / (max_x - min_x) * 100
 
-    def at(self, continent, wx, wy, leaving):
-        """The city, else the zone, whose own ground the world spot is on."""
-        for city in CITIES:
-            if city in self.bounds and self.bounds[city][0] == continent:
-                x, y = self.to_map(city, wx, wy)
-                if 0.05 < x < 0.95 and 0.05 < y < 0.95:
-                    return city
-        for map_id in self.zones:
-            if map_id == leaving or self.bounds[map_id][0] != continent:
-                continue
-            x, y = self.to_map(map_id, wx, wy)
-            if 0 <= x < 1 and 0 <= y < 1 and self.masks[map_id][int(x * W), int(y * H)]:
-                return map_id
+    def zone_at(self, map_id, x, y):
+        """The uiMapID that owns the spot at (x, y) percent of a map, or None."""
+        continent = self.bounds[map_id][0]
+        if continent not in self.grids:
+            return None
+        wx, wy = self.to_world(map_id, x, y)
+        c = self.continents[continent]
+        cx = c["canvasX"] + (32 - wy / YARDS_PER_CHUNK - c["originCol"]) * c["pxPerChunk"]
+        cy = c["canvasY"] + (32 - wx / YARDS_PER_CHUNK - c["originRow"]) * c["pxPerChunk"]
+        grid, rows = self.grids[continent]
+        runs = rows.get(int((cy - grid["y"]) // grid["cell"]))
+        col = int((cx - grid["x"]) // grid["cell"])
+        # A row is runs of cells: start, area, start, area, ..., end.
+        for i in range(0, len(runs or ()) - 1, 2):
+            if runs[i] <= col < runs[i + 2]:
+                return self.area_maps.get(runs[i + 1])
         return None
 
-    def exit(self, map_id, x, y):
-        """A crossing near (x, y) percent: (x, y, rotation, the zone across)."""
-        m = self.masks[map_id]
-        px, py = x * W / 100, y * H / 100
+    def exit(self, map_id, x, y, across=None):
+        """The crossing nearest (x, y) percent, into across if given: (x, y, rotation, the zone
+        across, the crossing's world spot), or None."""
+        n = int(SEARCH / STEP)
+        spots = {(i, j): self.zone_at(map_id, x + i * STEP, y + j * STEP)
+                 for i in range(-n, n + 1) for j in range(-n, n + 1)}
         best = None
-        for yy in range(int(max(py - SNAP, 1)), int(min(py + SNAP, H - 2))):
-            for xx in range(int(max(px - SNAP, 1)), int(min(px + SNAP, W - 2))):
-                if m[xx, yy] and not (m[xx, yy - 1] and m[xx, yy + 1] and m[xx - 1, yy] and m[xx + 1, yy]):
-                    d = (xx - px) ** 2 + (yy - py) ** 2
+        for (i, j), zone in spots.items():
+            if zone != map_id:
+                continue
+            for di, dj in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                other = spots.get((i + di, j + dj))
+                if other and other != map_id and across in (None, other):
+                    d = i * i + j * j
                     if best is None or d < best[0]:
-                        best = (d, xx, yy)
-        ex, ey = (best[1], best[2]) if best else (px, py)
+                        best = (d, i, j)
+        if best is None:
+            return None
+        _, bi, bj = best
         vx = vy = 0
-        for yy in range(int(max(ey - 20, 0)), int(min(ey + 21, H))):
-            for xx in range(int(max(ex - 20, 0)), int(min(ex + 21, W))):
-                if not m[xx, yy]:
-                    vx += xx - ex
-                    vy += yy - ey
-        n = math.hypot(vx, vy) or 1
-        vx, vy = vx / n, vy / n
-        continent, min_x, min_y, max_x, max_y = self.bounds[map_id]
-        wx, wy = self.to_world(map_id, ex / W, ey / H)
-        dwx, dwy = -vy / H * (max_x - min_x), -vx / W * (max_y - min_y)
-        length = math.hypot(dwx, dwy) or 1
-        across = None
-        for step in STEPS:
-            across = self.at(continent, wx + dwx / length * step, wy + dwy / length * step, map_id)
-            if across:
+        votes = collections.Counter()
+        for (i, j), zone in spots.items():
+            if zone and zone != map_id and (i - bi) ** 2 + (j - bj) ** 2 <= (NEAR / STEP) ** 2:
+                dx, dy = (i - bi) * W, (j - bj) * H
+                length = math.hypot(dx, dy)
+                vx += dx / length
+                vy += dy / length
+                votes[zone] += 1
+        length = math.hypot(vx, vy)
+        vx, vy = vx / length, vy / length
+        ex, ey = x + bi * STEP, y + bj * STEP
+        for inset in (INSET, INSET / 2, 0):
+            ax, ay = ex - vx * inset, ey - vy * inset * W / H
+            if self.zone_at(map_id, ax, ay) == map_id:
                 break
         # The arrow points up; SetRotation turns it anticlockwise.
-        return (ex - vx * INSET) / W * 100, (ey - vy * INSET) / H * 100, math.atan2(-vx, -vy), across, (wx, wy)
+        return ax, ay, math.atan2(-vx, -vy), across or votes.most_common(1)[0][0], self.to_world(map_id, ex, ey)
 
 
 def main():
@@ -194,8 +185,8 @@ def main():
 
     lines = header(
         "NaowhForever_ZoneExits.lua -- the roads out of each zone, as clickable arrows on the town",
-        f"map, from the game's map art for build {build}. Generated by Tools/build_zone_exits.py;",
-        "do not edit by hand.",
+        f"map: Wowhead Forever's zone grid on the game's maps for build {build}. Generated by",
+        "Tools/build_zone_exits.py; do not edit by hand.",
         "",
         "[uiMapID] = { { x, y, rotation, the uiMapID it leads to }, ... }. x and y are map",
         "percentages, rotation is in radians, anticlockwise from pointing up.",
@@ -203,6 +194,8 @@ def main():
     exits = {}   # uiMapID -> [ (x, y, rotation, across) ]
 
     def add(map_id, x, y, rotation, across):
+        if not (0 <= x <= 100 and 0 <= y <= 100):   # the crossing is off the edge of this map
+            return
         for other in exits.setdefault(map_id, []):
             if other[3] == across and math.hypot(other[0] - x, other[1] - y) < SAME:
                 return
@@ -214,18 +207,19 @@ def main():
             if len(pick) == 4:
                 add(map_id, pick[0], pick[1], math.radians(pick[3]), pick[2])
                 continue
-            x, y, rotation, found, spot = maps.exit(map_id, pick[0], pick[1])
-            across = pick[2] if len(pick) == 3 else found
-            if not across:
-                sys.exit(f"map {map_id}: nothing across the border at {pick[0]}, {pick[1]}")
+            found = maps.exit(map_id, pick[0], pick[1], pick[2] if len(pick) == 3 else None)
+            if not found:
+                sys.exit(f"map {map_id}: no border near {pick[0]}, {pick[1]}")
+            x, y, rotation, across, spot = found
             add(map_id, x, y, rotation, across)
             crossings.append((map_id, across, spot))
     picked = {(map_id, across) for map_id, exits_there in exits.items() for _, _, _, across in exits_there}
     for map_id, across, (wx, wy) in crossings:
-        if across in maps.masks and (across, map_id) not in picked:
-            x, y = maps.to_map(across, wx, wy)
-            bx, by, rotation, _, _ = maps.exit(across, x * 100, y * 100)
-            add(across, bx, by, rotation, map_id)
+        if across in maps.bounds and (across, map_id) not in picked:
+            found = maps.exit(across, *maps.to_map(across, wx, wy), map_id)
+            if not found:
+                sys.exit(f"map {across}: no border with {map_id} at the other end of its road")
+            add(across, *found[:3], map_id)
 
     lines.append("ns.ZoneExits = {")
     total = 0
