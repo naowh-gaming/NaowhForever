@@ -130,7 +130,7 @@ local function Fixture(settings)
         GetText = function(f) return rawget(f, "text") or "" end,
         SetTextColor = function(f, r, g, b) f.r, f.g, f.b = r, g, b end,
         GetStringWidth = function(f) return Width(rawget(f, "text") or "", rawget(f, "size") or 12) end,
-        SetFont = function(f, path, size, outline) f.font, f.size, f.outline = path, size, outline end,
+        SetFont = function(f, path, size, outline) f.font, f.path, f.size, f.outline, f.flags = path, path, size, outline, outline end,
         SetAlpha = function(f, a) f.alpha = a end,
         SetDesaturated = function(f, on) f.desaturated = on end,
         SetVertexColor = function(f, r, g, b, a) f.r, f.g, f.b, f.a = r, g, b, a end,
@@ -449,6 +449,30 @@ do
     check("Round tags: no tooltip data, no tags", icon.buffs.text == "")
 end
 
+-- Font and Outline: the Addon Font with no outline until set, on both looks.
+do
+    local s = Fixture()
+    s.auras[CAMP] = { duration = 3600, expirationTime = s.now + 2400, auraInstanceID = 1 }
+    s.auras[TENT], s.auras[KIT], s.auras[CHAIR] = Aura({ 5 }), Aura({ 56 }), Aura({ 2 })
+    s.fire("PLAYER_LOGIN")
+    local icon = s.named.NaowhForeverCampfire
+    check("Round: today's text, shadowed", icon.buffs.path == "font" and icon.buffs.flags == ""
+        and icon.buffs.size == 16 and icon.label.size == 16 and icon.buffs.shadow > 0)
+    s.S.Set("campFont", "Naowh")
+    s.S.Set("campOutline", "OUTLINE")
+    check("Round: Font and Outline on the bonuses and the label", icon.buffs.path == "lsm:Naowh"
+        and icon.buffs.flags == "OUTLINE" and icon.label.path == "lsm:Naowh" and icon.buffs.shadow == 0)
+    s.S.Set("campStyle", "simple")
+    local bar = s.bar()
+    check("Simple: the bar's words and bonuses take them too", bar.time.path == "lsm:Naowh"
+        and bar.time.flags == "OUTLINE" and bar.labels.labels[1].path == "lsm:Naowh"
+        and bar.labels.labels[3].flags == "OUTLINE")
+    s.S.Set("campFont", "")
+    s.S.Set("campOutline", "")
+    check("Simple: back to the Addon Font, unoutlined", bar.time.path == "font" and bar.time.flags == ""
+        and bar.labels.labels[1].path == "font" and bar.labels.labels[1].flags == "")
+end
+
 -- Simple, from the features' own auras: the amounts, the seat, the time and its colors.
 do
     local s = Fixture()
@@ -595,7 +619,7 @@ do
     check("Round again: the bar hidden, the round art back", bar.shown == false and icon.tex.shown == true
         and icon.label.text == "Refresh Camp")
     check("Round: Refresh Camp in the house text style, a shadow and no outline",
-        icon.label.flags == nil and icon.label.shadow == s.St.HUD_SHADOW_ALPHA)
+        (icon.label.flags or "") == "" and icon.label.shadow == s.St.HUD_SHADOW_ALPHA)
     s.ns.ShowRaidReminderAnchorConfig()
     local alert = s.named.NaowhForeverCampNearby
     local ab = alert and alert.bar

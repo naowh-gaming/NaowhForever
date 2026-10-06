@@ -173,7 +173,9 @@ end
 function Look.Layout(icon)
     local size = S.Get("campIconSize")
     icon:SetSize(size, size)
-    icon.buffs:SetFont(ns.UIFontPath(), S.Get("campBuffTextSize"), "")
+    local font, outline = S.Get("campFont"), S.Get("campOutline")
+    Parts.HudFont(icon.label, font, TEXT_SIZE, outline)
+    Parts.HudFont(icon.buffs, font, S.Get("campBuffTextSize"), outline)
     icon.buffs:ClearAllPoints()
     local side = S.Get("campBuffSide")
     icon.buffs:SetJustifyH(side == "right" and "LEFT" or side == "left" and "RIGHT" or "CENTER")
@@ -288,10 +290,13 @@ function Bar.Layout(f)
     f.campX = Bar.FireX(height)
     f.labelX = f.campX + f.campSize / 2 + BAR.CAMP_GAP
     f.textY = BAR.FONT_LIFT + BAR.LINE_H / 2
-    local font = ns.UIFontPath()
-    f.time:SetFont(font, size, "")
-    f.note:SetFont(font, size, "")
-    f.probe:SetFont(font, size, "")
+    -- The Camp Nearby alert draws the bar bare; BareFonts gives it the alert's own font.
+    local font, outline = ns.UIFontPath(), ""
+    if not f.bare then font, outline = ns.UI.FontPath(S.Get("campFont")), S.Get("campOutline") end
+    f.font, f.outline = font, outline
+    f.time:SetFont(font, size, outline)
+    f.note:SetFont(font, size, outline)
+    f.probe:SetFont(font, size, outline)
     if f.bare then BareFonts(f, size) end
     f.labels:SetTextSize(size)
     f.timeW, f.sitW = math.ceil(TextWidth(f, TIME_SAMPLE)), math.ceil(TextWidth(f, SIT_SAMPLE))
@@ -381,6 +386,12 @@ local function BarSize(f)
     f.host:SetSize(math.ceil(w), f.height)
 end
 
+-- Parts.LabelRow sets the Addon Font on the labels it makes, so the bar's font goes on after.
+local function LabelFont(f)
+    local labels = f.labels.labels
+    for i = 1, #labels do labels[i]:SetFont(f.font, f.size, f.outline) end
+end
+
 local function PlaceLabels(f)
     f.labels:ClearAllPoints()
     f.labels:SetPoint("LEFT", f.bar, "LEFT", f.labelX + f.lead, f.textY)
@@ -391,6 +402,7 @@ local function BarFit(f, labels, icons, n, slot)
     local room = f.width - f.labelX - f.lead - BAR.PAD
     if slot > 0 then room = room - slot - BAR.TIME_GAP end
     f.labels:SetLabels(labels, n, icons)
+    LabelFont(f)
     f.group = f.labels:Pack()
     f.more = 0
     local kept = n - 1
@@ -399,6 +411,7 @@ local function BarFit(f, labels, icons, n, slot)
         for i = 1, kept do list[i], marks[i] = labels[i], icons and icons[i] or false end
         list[kept + 1], marks[kept + 1] = MoreText(n - kept), false
         f.labels:SetLabels(list, kept + 1, marks)
+        LabelFont(f)
         f.group = f.labels:Pack()
         f.more = n - kept
         kept = kept - 1
@@ -1732,6 +1745,7 @@ campCard = page:Card({
           hidden = Simple },
         { key = "campBuffSide", label = "Buff Text Position", choice = SIDES, needs = Enabled, why = OFF,
           hidden = Simple },
+        Settings.Look("camp", { text = true, keys = { FontSize = false }, needs = Enabled, why = OFF }),
         Group("Sound"),
         { key = "campSound", label = "Play a Sound to Refresh", toggle = true, needs = Enabled, why = OFF,
           help = "Plays when it is time to refresh the camp." },
