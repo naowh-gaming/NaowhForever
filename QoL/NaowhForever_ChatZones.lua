@@ -122,6 +122,31 @@ local function ReadWho()
     end
 end
 
+-- A /who with one result comes back as a chat line, not a WHO_LIST_UPDATE, so read that too.
+-- The game's own format strings become patterns: %d the level, the last %s the zone.
+local whoPatterns
+
+local function WhoPattern(fmt)
+    if type(fmt) ~= "string" then return nil end
+    local out = fmt:gsub("([%^%$%(%)%.%[%]%*%+%-%?])", "%%%1")
+    out = out:gsub("%%d", "(%%d+)"):gsub("%%s", "(.-)")
+    return "^" .. out .. "$"
+end
+
+local function ReadWhoLine(msg)
+    if not msg or Secret(msg) or not msg:find("|Hplayer:", 1, true) then return end
+    whoPatterns = whoPatterns or { WhoPattern(WHO_LIST_GUILD_FORMAT), WhoPattern(WHO_LIST_FORMAT) }
+    for _, pattern in ipairs(whoPatterns) do
+        local caps = { msg:match(pattern) }
+        if #caps >= 6 then
+            Remember(caps[1], caps[#caps], caps[3])
+            local key = Key(caps[1])
+            if key then looking[key] = nil end
+            return
+        end
+    end
+end
+
 -------------------------------------------------------------------------------
 -- [Where?]: the game only runs a /who from a click or keypress, so a stranger's whisper gets a
 -- link to click. "addon:" links reach EventRegistry's SetItemRef inside the click itself.
@@ -363,6 +388,8 @@ events:SetScript("OnEvent", function(_, event, ...)
         ReadGroup()
     elseif event == "WHO_LIST_UPDATE" then
         ReadWho()
+    elseif event == "CHAT_MSG_SYSTEM" then
+        ReadWhoLine(...)
     elseif event == "CHAT_MSG_GUILD" or event == "CHAT_MSG_OFFICER" then
         -- A guildmate's zone may have changed since the last roster; the game throttles this.
         local key = Key(select(2, ...))
@@ -390,7 +417,7 @@ local function Apply()
     EventRegistry:RegisterCallback("SetItemRef", OnLinkClick, events)
     C_ChatInfo.RegisterAddonMessagePrefix(PREFIX)
     for _, event in ipairs({ "CHAT_MSG_ADDON", "GUILD_ROSTER_UPDATE", "FRIENDLIST_UPDATE",
-        "GROUP_ROSTER_UPDATE", "WHO_LIST_UPDATE", "CHAT_MSG_GUILD", "CHAT_MSG_OFFICER" }) do
+        "GROUP_ROSTER_UPDATE", "WHO_LIST_UPDATE", "CHAT_MSG_SYSTEM", "CHAT_MSG_GUILD", "CHAT_MSG_OFFICER" }) do
         events:RegisterEvent(event)
     end
     if C_LFGList and C_LFGList.GetSearchResultPlayerInfo then
