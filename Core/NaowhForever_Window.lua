@@ -8,8 +8,8 @@ local UI = ns.UI
 
 local SIDEBAR_W, CONTENT_W, WINDOW_W, WINDOW_H = 240, 1000, 1440, 790
 local TOP_H, PAGE_HEADER_H = 64, 128
-local HEADER_H, TAB_H, FOOTER_H, NAV_H = 76, 32, 46, 32
-local SEARCH_W, SEARCH_H = 240, 26
+local HEADER_H, TAB_H, NAV_H = 76, 32, 32
+local SEARCH_W = 120
 local SCROLL_BAR_GAP = 12 -- the page scrollbar sits this far right of the page, in its margin
 local LINK_ICONS = "Interface\\AddOns\\NaowhForever\\Media\\Links\\"
 local LINKS = {
@@ -35,16 +35,14 @@ local BRAND = { artW = 448, artH = 139, texW = 512, texH = 256, height = 56, ins
 --   collapse  features (W:Feature) start closed; row-widget pages only
 --   command   module also opens in its own window from /nf<command> and broker NaowhForever<short>
 --             with `open`, ns[open] toggles the module's own window instead
---   noscan    left out of the search scan: its builder makes frames, writes the profile or
---             reads the Encounter Journal, so it is found by name only
 --   addon     module shipped as its own addon, left out of the window while it is not loaded
 --   needs     module addons it cannot work without; turning one off turns this one off too
 local SYSTEM_PAGES = {
     { name = "Settings", build = "BuildSettingsPage", reuse = true,
       subtitle = "Options for the whole addon, saved for this computer." },
     { name = "Patch Notes", reuse = true, subtitle = "What changed in recent builds." },
-    { name = "Credits", build = "BuildCreditsPage", reuse = true, noscan = true, subtitle = "The people and projects behind Naowh Forever." },
-    { name = "Profiles", build = "BuildProfileSettings", reuse = true, noscan = true,
+    { name = "Credits", build = "BuildCreditsPage", reuse = true, subtitle = "The people and projects behind Naowh Forever." },
+    { name = "Profiles", build = "BuildProfileSettings", reuse = true,
       subtitle = "Switch, copy and share everything these pages save." },
 }
 
@@ -66,7 +64,7 @@ local MODULES = {
           { name = "System", reuse = true },
       } },
     -- The journal itself is a window of its own (open); only its settings live here.
-    { name = "Dungeon Journal", group = "ADVENTURE", navIcon = "map", settings = "JournalSettings",
+    { name = "Dungeon Journal", navIcon = "map", settings = "JournalSettings",
       addon = "NaowhForever_DungeonJournal", needs = { "NaowhForever_BiS" },
       open = "ToggleJournalWindow",
       command = "journal", alias = "dj", short = "Journal", icon = "Interface\\Icons\\INV_Misc_Book_09",
@@ -77,7 +75,7 @@ local MODULES = {
           { name = "Map", reuse = true },
       } },
     -- The list itself is a window of its own (open); only its settings live here.
-    { name = "BiS List", group = "ADVENTURE", navIcon = "trophy", settings = "QoLSettings", enabledKey = "bis",
+    { name = "BiS List", navIcon = "trophy", settings = "QoLSettings", enabledKey = "bis",
       addon = "NaowhForever_BiS", needs = { "NaowhForever_DungeonJournal" },
       open = "ToggleBisWindow",
       command = "bis", short = "BiS", icon = "Interface\\Icons\\INV_Sword_39",
@@ -86,7 +84,7 @@ local MODULES = {
           { name = "Settings", reuse = true },
       } },
     -- The planner itself is a window of its own (open); only its settings live here.
-    { name = "Training Planner", group = "ADVENTURE", navIcon = "notes", settings = "TrainingSettings",
+    { name = "Training Planner", navIcon = "notes", settings = "TrainingSettings",
       addon = "NaowhForever_Training", needs = { "NaowhForever_Professions" },
       open = "ToggleTrainingWindow",
       command = "training", short = "Training", icon = "Interface\\Icons\\INV_Misc_Book_11",
@@ -95,7 +93,7 @@ local MODULES = {
           { name = "Settings", reuse = true },
       } },
     -- The books are a window of their own (open); only their settings live here.
-    { name = "Discovery", group = "ADVENTURE", navIcon = "compass", settings = "DiscoverySettings",
+    { name = "Discovery", navIcon = "compass", settings = "DiscoverySettings",
       addon = "NaowhForever_Discovery",
       open = "ToggleDiscoveryWindow",
       command = "discovery", short = "Discovery", icon = "Interface\\Icons\\INV_Misc_Book_07",
@@ -105,7 +103,13 @@ local MODULES = {
           { name = "Sleeping Bag", reuse = true },
       } },
     -- The sets are a window of their own (open); only their settings live here.
-    { name = "Gear & Trinkets", group = "COMBAT", navIcon = "shield", settings = "QoLSettings", enabledKey = "gearSets",
+    { name = "Professions", navIcon = "hammer", settings = "ProfessionSettings",
+      addon = "NaowhForever_Professions",
+      subtitle = "Recipes, reagents and crafting in one window, with the recipes you have not learned yet.",
+      tabs = {
+          { name = "Settings", reuse = true },
+      } },
+    { name = "Gear & Trinkets", navIcon = "shield", settings = "QoLSettings", enabledKey = "gearSets",
       addon = "NaowhForever_GearSets",
       open = "ToggleGearSetsWindow",
       command = "gear", short = "Gear", icon = "Interface\\Icons\\INV_Chest_Plate04",
@@ -113,7 +117,7 @@ local MODULES = {
       tabs = {
           { name = "Settings", reuse = true },
       } },
-    { name = "Blessings", group = "COMBAT", navIcon = "spark", settings = "QoLSettings", enabledKey = "blessings",
+    { name = "Blessings", navIcon = "spark", settings = "QoLSettings", enabledKey = "blessings",
       addon = "NaowhForever_Blessings",
       open = "ToggleBlessingsWindow",
       command = "bless", short = "Bless", icon = "Interface\\Icons\\Spell_Holy_GreaterBlessingofKings",
@@ -121,29 +125,7 @@ local MODULES = {
       tabs = {
           { name = "Settings", reuse = true },
       } },
-    { name = "Professions", group = "ADVENTURE", navIcon = "hammer", settings = "ProfessionSettings",
-      addon = "NaowhForever_Professions",
-      subtitle = "Recipes, reagents and crafting in one window, with the recipes you have not learned yet.",
-      tabs = {
-          { name = "Settings", reuse = true },
-      } },
-    { name = "Macros", group = "UTILITIES", navIcon = "pen", settings = "MacroSettings",
-      addon = "NaowhForever_Macros",
-      open = "ToggleMacroWindow",
-      command = "macros", short = "Macros", icon = "Interface\\Icons\\INV_Misc_Note_01",
-      subtitle = "Naowh's Forge: your macros, checked and explained, and macros kept current for you.",
-      tabs = {
-          { name = "Settings", reuse = true },
-      } },
-    { name = "Action Bars", group = "UTILITIES", navIcon = "grid", settings = "ActionBarSettings",
-      addon = "NaowhForever_ActionBars",
-      open = "ToggleActionBarsWindow",
-      command = "bars", short = "Bars", icon = "Interface\\Icons\\INV_Misc_Gear_01",
-      subtitle = "Your action bars saved by name and put back whenever you want them.",
-      tabs = {
-          { name = "Settings", reuse = true },
-      } },
-    { name = "AuraBuffs", group = "COMBAT", navIcon = "aura", settings = "AuraBuffSettings",
+    { name = "AuraBuffs", navIcon = "aura", settings = "AuraBuffSettings",
       addon = "NaowhForever_AuraBuffs",
       open = "ToggleAuraBuffsWindow",
       command = "buffs", short = "Buffs", icon = "Interface\\Icons\\Spell_Holy_WordFortitude",
@@ -151,14 +133,14 @@ local MODULES = {
       tabs = {
           { name = "Settings", reuse = true },
       } },
-    { name = "Threat Meter", group = "COMBAT", navIcon = "bars", settings = "ThreatMeterSettings",
+    { name = "Threat Meter", navIcon = "bars", settings = "ThreatMeterSettings",
       addon = "NaowhForever_ThreatMeter",
       command = "threat", short = "Threat", icon = "Interface\\Icons\\Ability_Warrior_Sunder",
       subtitle = "Threat on your target for the whole group, and a warning before you pull.",
       tabs = {
           { name = "Settings", reuse = true },
       } },
-    { name = "Swing Timer", group = "COMBAT", navIcon = "infinity", settings = "SwingTimerSettings",
+    { name = "Swing Timer", navIcon = "infinity", settings = "SwingTimerSettings",
       addon = "NaowhForever_SwingTimer",
       subtitle = "Your swings from the game's own swing timer, with marks for timing around them.",
       tabs = {
@@ -172,10 +154,26 @@ local MODULES = {
               .. "reminders still carry their own text, set per reminder from the boss "
               .. "pages." },
       } },
-    { name = "Smart Reminders", group = "COMBAT", navIcon = "bell",
+    { name = "Smart Reminders", navIcon = "bell",
       open = "ToggleSmartRemindersWindow",
       command = "reminders", short = "Reminders", icon = "Interface\\Icons\\Ability_Warrior_ShieldWall",
       subtitle = "Calls out what to press when a boss ability is about to land.",
+      tabs = {
+          { name = "Settings", reuse = true },
+      } },
+    { name = "Macros", navIcon = "pen", settings = "MacroSettings",
+      addon = "NaowhForever_Macros",
+      open = "ToggleMacroWindow",
+      command = "macros", short = "Macros", icon = "Interface\\Icons\\INV_Misc_Note_01",
+      subtitle = "Naowh's Forge: your macros, checked and explained, and macros kept current for you.",
+      tabs = {
+          { name = "Settings", reuse = true },
+      } },
+    { name = "Action Bars", navIcon = "grid", settings = "ActionBarSettings",
+      addon = "NaowhForever_ActionBars",
+      open = "ToggleActionBarsWindow",
+      command = "bars", short = "Bars", icon = "Interface\\Icons\\INV_Misc_Gear_01",
+      subtitle = "Your action bars saved by name and put back whenever you want them.",
       tabs = {
           { name = "Settings", reuse = true },
       } },
@@ -196,9 +194,9 @@ for _, mod in ipairs(MODULES) do
 end
 
 local window, scrollFrame, scrollChild, tabLine, headerTitle, headerSub
-local contentHeader, contentFooter, breadcrumb, moduleSwitch, moduleLabel
+local contentHeader, searchBar, breadcrumb, moduleSwitch, moduleLabel
 local lastPages = {}
-local navButtons, tabStrips, navBlocks = {}, {}, {}
+local navButtons, tabStrips, navMods = {}, {}, {}
 local wrappers = {}          -- page key -> built wrapper frame
 -- The first page of a session; after that the window reopens where it was left.
 local currentPage = "QoL/Interface"
@@ -336,18 +334,16 @@ end
 
 local NAV_ROW, NAV_OFF_ALPHA = 32, 0.45
 
--- Within each group the modules that are on come first, then the ones you have off.
+-- The modules that are on come first, then the ones you have off.
 local function LayoutNav()
-    for _, block in ipairs(navBlocks) do
-        local y = block.top
-        for pass = 1, 2 do
-            for _, mod in ipairs(block.mods) do
-                if (not ModuleOn(mod)) == (pass == 2) then
-                    local btn = navButtons[mod.name]
-                    btn:SetPoint("TOPLEFT", 8, y)
-                    btn:SetPoint("TOPRIGHT", -8, y)
-                    y = y - NAV_ROW
-                end
+    local y = 0
+    for pass = 1, 2 do
+        for _, mod in ipairs(navMods) do
+            if (not ModuleOn(mod)) == (pass == 2) then
+                local btn = navButtons[mod.name]
+                btn:SetPoint("TOPLEFT", 8, y)
+                btn:SetPoint("TOPRIGHT", -8, y)
+                y = y - NAV_ROW
             end
         end
     end
@@ -383,12 +379,17 @@ local function LayoutContent()
     local left = SIDEBAR_W
     -- The tab row sits under the subtitle and pushes the page down by its own height.
     local headerH = PAGE_HEADER_H + (nested and TAB_H - 12 or 0)
+    -- The search bar sits under the window's header and pushes the page down while it is up.
+    local top = TOP_H + (searchBar:IsShown() and searchBar:GetHeight() or 0)
+    searchBar:ClearAllPoints()
+    searchBar:SetPoint("TOPLEFT", window, "TOPLEFT", left, -TOP_H)
+    searchBar:SetPoint("TOPRIGHT", window, "TOPRIGHT", 0, -TOP_H)
     headerTitle:SetText(mod and DisplayName(mod) or ns.L(page.title))
     breadcrumb:SetText(mod and (DisplayName(mod) .. " / " .. ns.L(page.name)) or "Naowh Forever")
     headerSub:SetText(mod and mod.subtitle or page.subtitle)
     contentHeader:ClearAllPoints()
-    contentHeader:SetPoint("TOPLEFT", window, "TOPLEFT", left, -TOP_H)
-    contentHeader:SetPoint("TOPRIGHT", window, "TOPRIGHT", 0, -TOP_H)
+    contentHeader:SetPoint("TOPLEFT", window, "TOPLEFT", left, -top)
+    contentHeader:SetPoint("TOPRIGHT", window, "TOPRIGHT", 0, -top)
     contentHeader:SetHeight(headerH)
     moduleSwitch:SetShown(mod ~= nil and not page.soon)
     moduleLabel:SetShown(mod ~= nil and not page.soon)
@@ -398,15 +399,12 @@ local function LayoutContent()
     end
     for name, strip in pairs(tabStrips) do strip:SetShown(nested and name == mod.name or false) end
     tabLine:ClearAllPoints()
-    tabLine:SetPoint("TOPLEFT", window, "TOPLEFT", left + 26, -(TOP_H + headerH))
-    tabLine:SetPoint("TOPRIGHT", window, "TOPRIGHT", -30, -(TOP_H + headerH))
+    tabLine:SetPoint("TOPLEFT", window, "TOPLEFT", left + 26, -(top + headerH))
+    tabLine:SetPoint("TOPRIGHT", window, "TOPRIGHT", -30, -(top + headerH))
     scrollFrame:ClearAllPoints()
-    scrollFrame:SetPoint("TOPLEFT", window, "TOPLEFT", left + 6, -(TOP_H + headerH + 8))
-    scrollFrame:SetPoint("BOTTOMRIGHT", window, "BOTTOMRIGHT", -30, FOOTER_H + 4)
+    scrollFrame:SetPoint("TOPLEFT", window, "TOPLEFT", left + 6, -(top + headerH + 8))
+    scrollFrame:SetPoint("BOTTOMRIGHT", window, "BOTTOMRIGHT", -30, 14)
     scrollChild:SetWidth(window:GetWidth() - left - 36)
-    contentFooter:ClearAllPoints()
-    contentFooter:SetPoint("BOTTOMLEFT", window, "BOTTOMLEFT", left, 0)
-    contentFooter:SetPoint("BOTTOMRIGHT")
 end
 
 -- Each window keeps its own wrappers, so a page open in the main window and in a module's
@@ -448,7 +446,7 @@ local function ShowPage(key)
     PaintNav()
 end
 
--- The pages the settings search looks through, the window's own and every module's tabs.
+-- The pages the search bar looks through, the window's own and every module's tabs.
 function UI.SearchPages()
     local pages = {}
     for _, page in ipairs(SYSTEM_PAGES) do pages[#pages + 1] = page end
@@ -460,72 +458,24 @@ function UI.SearchPages()
     return pages
 end
 
--- The row that got a search hit lights up in the accent for a moment. One frame, made the
--- first time it is needed and moved from row to row.
-local flash, flashGen = nil, 0
-local function Flash(row)
-    if not flash then
-        flash = CreateFrame("Frame", nil, row)
-        ns.Solid(flash, "OVERLAY", T.accent, 0.3):SetAllPoints()
-    end
-    flash:SetParent(row)
-    flash:ClearAllPoints()
-    flash:SetAllPoints(row)
-    flash:SetFrameLevel(row:GetFrameLevel() + 8)
-    flash:Show()
-    flashGen = flashGen + 1
-    local gen = flashGen
-    C_Timer.After(1.2, function() if gen == flashGen then flash:Hide() end end)
-end
+-- Opens the page (building it if this is the first visit) and, given a card, opens the card
+-- and brings its head, or its setting named `label`, a third of the way down the page. A
+-- card the search bar holds open (UI.searchOpen) is left to it.
+local SETTING_AT = 1 / 3
 
--- Opens the page (building it if this is the first visit) and the feature the row sits
--- under, scrolls to the row that shows `label` and flashes it. The row's place comes from
--- the real layout, so it is right whatever the page looks like now.
-function UI.GoToSetting(key, label, feature)
+function UI.GoToSetting(key, label, card)
     if not (window and PAGES[key]) then return end
-    local Settings = ns.Shared and ns.Shared.Settings
-    local declared = Settings and Settings.pages[key]
-    if declared then
-        Settings.Reveal(feature)
-    elseif feature then
-        UI.OpenFeature(feature)
-    end
+    local Settings = ns.Shared.Settings
+    if card and not (UI.searchOpen and UI.searchOpen[card]) then Settings.Reveal(card) end
     -- Drawn again, so the place measured below is the layout that stays.
     if wrappers[key] then wrappers[key]._dirty = true end
     ShowPage(key)
-    local wrapper = wrappers[key]
-    if declared and wrapper then
-        local row, top = Settings.FindRow(wrapper, label, feature)
-        if row then
-            scrollFrame:UpdateScrollChildRect()
-            scrollFrame:SetVerticalScroll(math.min(scrollFrame:GetVerticalScrollRange(), math.max(0, top - 60)))
-            Flash(row)
-        end
-        return
-    end
-    if not (wrapper and label) then return end
-    for _, row in ipairs({ wrapper:GetChildren() }) do
-        if row:IsShown() and row._searchF == feature and (row._searchL == label or row._searchR == label
-            or (row._searchLabels and row._searchLabels[label])) then
-            local _, _, _, _, y = row:GetPoint(1)
-            scrollFrame:UpdateScrollChildRect()
-            scrollFrame:SetVerticalScroll(math.min(scrollFrame:GetVerticalScrollRange(), math.max(0, -y - 60)))
-            Flash(row)
-            return
-        end
-    end
-end
-
--- The page on show, drawn again in place for the search's marks. Pages the search does not
--- scan have nothing to mark.
-function UI.RefreshSearchMarks()
-    local page = PAGES[currentPage]
-    if not (window and window:IsShown()) or page.noscan then return end
-    local scroll = scrollFrame:GetVerticalScroll()
-    if wrappers[currentPage] then wrappers[currentPage]._dirty = true end
-    ShowPage(currentPage)
+    if not (card and Settings.pages[key]) then return end
+    local _, top = Settings.FindRow(wrappers[key], label, card)
+    if not top then return end
     scrollFrame:UpdateScrollChildRect()
-    scrollFrame:SetVerticalScroll(scroll)
+    local y = top - scrollFrame:GetHeight() * SETTING_AT
+    scrollFrame:SetVerticalScroll(math.min(scrollFrame:GetVerticalScrollRange(), math.max(0, y)))
 end
 
 local function ShowModulePage(win, key)
@@ -1148,7 +1098,17 @@ local function CreateWindow()
     window:EnableMouse(true)
     ns.Shared.Parts.Backdrop(window):Paint(1)
     local border = ns.Border(window, ns.Shared.Style.BORDER_RGB)
-    window:SetScript("OnKeyDown", CloseOnEscape)
+    -- Ctrl+F opens the search bar, and Escape closes the bar before the window.
+    window:SetScript("OnKeyDown", function(self, key)
+        if InCombatLockdown() then return end
+        local open = key == "F" and IsControlKeyDown()
+        if not (open or (key == "ESCAPE" and searchBar:IsShown())) then return CloseOnEscape(self, key) end
+        self:SetPropagateKeyboardInput(false)
+        if open then UI.OpenSearch() else UI.CloseSearch() end
+        C_Timer.After(0, function()
+            if not InCombatLockdown() then self:SetPropagateKeyboardInput(true) end
+        end)
+    end)
 
     local top = CreateFrame("Frame", nil, window)
     top:SetPoint("TOPLEFT"); top:SetPoint("TOPRIGHT"); top:SetHeight(TOP_H)
@@ -1175,48 +1135,33 @@ local function CreateWindow()
     ns.AccentBorder(unlock)
     unlock:SetPoint("RIGHT", close, "LEFT", -18, 0)
     ns.Tooltip(unlock, "Move Elements", "Place and size each display. Exit Config returns to this window.")
-    local search = UI.AttachSearch(top, 0)
-    search:ClearAllPoints()
-    search:SetPoint("RIGHT", unlock, "LEFT", -18, 0)
-    search:SetSize(SEARCH_W, SEARCH_H)
+    local reload = ns.ReloadButton(top, "Reload UI", 110, 32)
+    reload:SetPoint("RIGHT", unlock, "LEFT", -18, 0)
+    local search = ns.Button(top, "Search  " .. ns.Color("muted", "Ctrl+F"), SEARCH_W, 32, function() UI.OpenSearch() end)
+    search:SetPoint("RIGHT", reload, "LEFT", -18, 0)
+    ns.Tooltip(search, "Search", "Step through every setting that matches what you type.")
 
     local sidebar = CreateFrame("Frame", nil, window)
     sidebar:SetPoint("TOPLEFT", 0, -TOP_H); sidebar:SetPoint("BOTTOMLEFT"); sidebar:SetWidth(SIDEBAR_W)
     local edge = ns.Solid(sidebar, "ARTWORK", T.line, 1)
     edge:SetPoint("TOPRIGHT"); edge:SetPoint("BOTTOMRIGHT"); ns.Hairline(edge, "v")
     local nav = NavigationScroll(sidebar, 16, FOOTER_H_SIDEBAR + 6 + NAV_STEP * #SYSTEM_NAV, SIDEBAR_W)
-    -- Modules list in MODULES order under their group; one with only unfinished tabs, or whose
-    -- addon is switched off, is left out.
-    local groups, grouped = {}, {}
+    -- Modules list in MODULES order; one with only unfinished tabs, or whose addon is switched
+    -- off, is left out.
     for _, mod in ipairs(MODULES) do
         local ready = false
         for _, tab in ipairs(mod.tabs) do ready = ready or not tab.soon end
-        if ready and Loaded(mod) then
-            local group = mod.group or ""
-            if not grouped[group] then
-                grouped[group] = {}
-                groups[#groups + 1] = group
-            end
-            table.insert(grouped[group], mod)
-        end
+        if ready and Loaded(mod) then navMods[#navMods + 1] = mod end
     end
     local ny = 0
-    for _, group in ipairs(groups) do
-        if group ~= "" then
-            local label = ns.Font(nav, 11, nil, T.muted)
-            label:SetPoint("TOPLEFT", 20, ny - 10); label:SetText(ns.L(group))
-            ny = ny - 28
-        end
-        navBlocks[#navBlocks + 1] = { top = ny, mods = grouped[group] }
-        for _, mod in ipairs(grouped[group]) do
-            local btn = NavigationButton(nav, DisplayName(mod), ny,
-                function() ShowPage(lastPages[mod.name] or mod.tabs[1].key) end, mod.navIcon)
-            -- Spaced to fit every module in the default 790-high window (test-navigation.lua).
-            btn:SetHeight(30)
-            NavExtras(btn, mod)
-            navButtons[mod.name] = btn
-            ny = ny - NAV_ROW
-        end
+    for _, mod in ipairs(navMods) do
+        local btn = NavigationButton(nav, DisplayName(mod), ny,
+            function() ShowPage(lastPages[mod.name] or mod.tabs[1].key) end, mod.navIcon)
+        -- Spaced to fit every module in the default 790-high window (test-navigation.lua).
+        btn:SetHeight(30)
+        NavExtras(btn, mod)
+        navButtons[mod.name] = btn
+        ny = ny - NAV_ROW
     end
     nav:SetHeight(-ny)
 
@@ -1274,13 +1219,7 @@ local function CreateWindow()
     end
     tabLine = ns.Solid(window, "ARTWORK", T.line, 1); ns.Hairline(tabLine, "h")
 
-    contentFooter = CreateFrame("Frame", nil, window)
-    contentFooter:SetHeight(FOOTER_H)
-    local footLine = ns.Solid(contentFooter, "ARTWORK", T.line, 1)
-    footLine:SetPoint("TOPLEFT"); footLine:SetPoint("TOPRIGHT"); ns.Hairline(footLine, "h")
-    ns.AccentBorder(ns.ReloadButton(contentFooter, "Reload UI", 120, 30)):SetPoint("LEFT", 26, 0)
-    ns.AccentBorder(ns.Button(contentFooter, "Close", 120, 30, function() window:Hide() end))
-        :SetPoint("RIGHT", -30, 0)
+    searchBar = UI.AttachSearchBar(window, function() LayoutContent() end)
     scrollFrame = UI.SlimScroll(window, nil, SCROLL_BAR_GAP)
     scrollChild = CreateFrame("Frame", nil, scrollFrame)
     scrollChild:SetSize(WINDOW_W - SIDEBAR_W - 36, 1)
