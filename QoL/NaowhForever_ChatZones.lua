@@ -26,6 +26,7 @@ local known = {}    -- name -> { zone, level, at }
 local asked = {}    -- name -> time we last asked them
 local answered = {} -- name -> time we last answered them
 local queue = {}    -- names waiting to be asked
+local looking = {}  -- name -> true while a [Where?] /who for them is out
 local sending, filtering = false, false
 
 local function On()
@@ -110,8 +111,33 @@ end
 local function ReadWho()
     for i = 1, C_FriendList.GetNumWhoResults() do
         local w = C_FriendList.GetWhoInfo(i)
-        if w then Remember(w.fullName, w.area, w.level) end
+        if w then
+            Remember(w.fullName, w.area, w.level)
+            local key = Key(w.fullName)
+            if key and looking[key] and w.area then
+                looking[key] = nil
+                ns.Print(("%s is in %s, level %s."):format(key, w.area, tostring(w.level)))
+            end
+        end
     end
+end
+
+-------------------------------------------------------------------------------
+-- [Where?]: the game only runs a /who from a click or keypress, so a stranger's whisper gets a
+-- link to click. "addon:" links reach EventRegistry's SetItemRef inside the click itself.
+-------------------------------------------------------------------------------
+local LINK = "addon:NaowhForever:where:"
+
+local function WhereLink(key)
+    return "|H" .. LINK .. key .. "|h" .. ns.Color("muted", "[Where?]") .. "|h"
+end
+
+local function OnLinkClick(_, link)
+    if type(link) ~= "string" or link:sub(1, #LINK) ~= LINK then return end
+    local key = link:sub(#LINK + 1)
+    if key == "" then return end
+    looking[key] = true
+    C_FriendList.SendWho(('n-"%s"'):format(key:match("^[^-]+")))
 end
 
 -------------------------------------------------------------------------------
@@ -161,13 +187,16 @@ end
 -------------------------------------------------------------------------------
 -- The chat filter: runs once per chat frame per message, so it only reads and queues.
 -------------------------------------------------------------------------------
-local function Filter(_, _, msg, author, ...)
+local function Filter(_, event, msg, author, ...)
     if Secret(msg) or Secret(author) then return false end
     local key = Key(author)
     if not key or key == UnitName("player") then return false end
     local entry = Fresh(key)
     if not entry then
         if S.Get("chatZonesAsk") then Ask(key) end
+        if event == "CHAT_MSG_WHISPER" and S.Get("chatZonesWhere") then
+            return false, msg .. " " .. WhereLink(key), author, ...
+        end
         return false
     end
     return false, Tag(entry, (select(10, ...))) .. msg, author, ...
@@ -352,10 +381,13 @@ local function Apply()
         for _, fs in pairs(rowText) do fs:Hide() end
         for entry in pairs(scaled) do ScaleRoles(entry, false) end
     end
+    EventRegistry:UnregisterCallback("SetItemRef", events)
     if not On() then
         wipe(known)
+        wipe(looking)
         return
     end
+    EventRegistry:RegisterCallback("SetItemRef", OnLinkClick, events)
     C_ChatInfo.RegisterAddonMessagePrefix(PREFIX)
     for _, event in ipairs({ "CHAT_MSG_ADDON", "GUILD_ROSTER_UPDATE", "FRIENDLIST_UPDATE",
         "GROUP_ROSTER_UPDATE", "WHO_LIST_UPDATE", "CHAT_MSG_GUILD", "CHAT_MSG_OFFICER" }) do
@@ -401,6 +433,9 @@ ns.Shared.Settings.Page("QoL/Interface", S):Card({
           help = "The tag in the speaker's class colour. Off, it is grey." },
         { key = "chatZonesMaxAge", label = "Forget After", slider = { 1, 60, 1 }, unit = " min",
           help = "A zone older than this is no longer shown, since the player has likely moved on." },
+        { key = "chatZonesWhere", label = "Where? on Whispers", toggle = true,
+          help = "A [Where?] link after a whisper from someone whose zone is not known. Clicking it "
+              .. "runs a /who for them and prints their zone; their next messages are tagged." },
         Group("Group Finder"),
         { key = "chatZonesFinder", label = "Zones in Group Finder", toggle = true,
           help = "The leader's zone on each Group Finder listing, and every member's zone when you "
