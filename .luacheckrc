@@ -41,6 +41,8 @@ read_globals = {
     "GetSpellCritChance", "GetSpellHitModifier", "UnitArmor", "UnitAttackPower", "UnitAttackSpeed", "UnitDamage",
     "UnitDefenseSkill", "UnitRangedAttackPower",
     "CheckInteractDistance", "ClearInspectPlayer", "InspectFrame", "NotifyInspect",
+    "INSPECTFRAME_SUBFRAMES", "InspectLevelText", "InspectModelFrame", "InspectPaperDollFrame",
+    "PANEL_INSET_BOTTOM_OFFSET", "PANEL_INSET_RIGHT_OFFSET",
     "ChatEdit_InsertLink", "ChatFrame1EditBox", "ChatFrameUtil", "CinematicFrame_CancelCinematic",
     "ClearCursor", "CloseQuest", "ColorPickerFrame", "CombatTextFont",
     "CombatTextFontOutline", "CompleteQuest", "ConfirmAcceptQuest",
