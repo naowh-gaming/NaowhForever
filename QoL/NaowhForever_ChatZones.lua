@@ -212,8 +212,8 @@ local function UpdateRow(entry)
     end
     local fs = ZoneString(rowText, entry, "GameFontDisableSmallLeft")
     -- Forever's rows differ from Classic Era's; match the activity line's font and centre on it.
-    local font = entry.ActivityName:GetFontObject()
-    if font then fs:SetFontObject(font) end
+    local path, size, flags = entry.ActivityName:GetFont()
+    if path then fs:SetFont(path, size, flags) end
     local muted = ns.THEME.muted
     fs:SetTextColor(muted.r, muted.g, muted.b)
     fs:ClearAllPoints()
