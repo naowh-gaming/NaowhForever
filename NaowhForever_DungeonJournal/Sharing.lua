@@ -25,6 +25,8 @@ local PARTY = { "party1", "party2", "party3", "party4" }
 local WAIT = 5        -- seconds for an answer before the next member on it is asked
 local MAX_IDS = 8     -- quest IDs in one ask: a quest and its other versions
 local COOLDOWN = 3    -- seconds between two quests shared on request, against spam
+local MAX_ID_DIGITS = 9
+local GUID_PATTERN = "^Player%-%d+%-%x+$"
 
 local Sharing = {}
 J.Sharing = Sharing
@@ -149,12 +151,17 @@ end
 -- An ask for you: shares the first of its quests in your log, and says so to both sides.
 -- The IDs are as many as one addon message holds, at most.
 local function OnAsk(asker, ids, sender)
-    if not asker:find("^Player%-") then return end
+    if not asker:find(GUID_PATTERN) then return end
     local who = Short(sender)
     local found, index
+    local tried = 0
     for id in ids:gmatch("%d+") do
-        index = C_QuestLog.GetLogIndexForQuestID(tonumber(id))
-        if index then found = tonumber(id) break end
+        tried = tried + 1
+        if tried > MAX_IDS then break end
+        if #id <= MAX_ID_DIGITS then
+            index = C_QuestLog.GetLogIndexForQuestID(tonumber(id))
+            if index then found = tonumber(id) break end
+        end
     end
     local code
     if not found then

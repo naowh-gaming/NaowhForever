@@ -423,6 +423,16 @@ do
     state.Fire("CHAT_MSG_ADDON", "NaowhScore", "S Player-7-00AB 264", "WHISPER", "Stranger")
     state.Fire("CHAT_MSG_ADDON", "OtherAddon", "S Player-8-00AB 999", "GUILD", "Guildie")
     check("nonsense, whispers and other addons' messages are ignored", Score.Known("Player-8-00AB") == nil)
+    state.Fire("CHAT_MSG_ADDON", state.SECRET, "S Player-9-00AB 264", "GUILD", "Guildie")
+    state.Fire("CHAT_MSG_ADDON", "NaowhScore", "S Player-9-00AB 264", state.SECRET, "Guildie")
+    state.Fire("CHAT_MSG_ADDON", "NaowhScore", "S |TInterface\\Icons\\X:0|t 264", "GUILD", "Guildie")
+    state.Fire("CHAT_MSG_ADDON", "NaowhScore", "S %s%d 264", "GUILD", "Guildie")
+    state.Fire("CHAT_MSG_ADDON", "NaowhScore", "S Player-9-00AB " .. ("9"):rep(400), "GUILD", "Guildie")
+    state.Fire("CHAT_MSG_ADDON", "NaowhScore", "S Player-9-00AB 264 " .. ("|cffff0000x|r"):rep(300), "GUILD", "Guildie")
+    check("crafted payloads keep nothing", Score.Known("Player-9-00AB") == nil)
+    state.Fire("CHAT_MSG_ADDON", "NaowhScore", "S Player-9-00AB 264 " .. ("9"):rep(400), "GUILD", "Guildie")
+    check("a level past any real one is dropped, the score kept", Score.Known("Player-9-00AB").score == 26.4
+        and Score.Known("Player-9-00AB").level == nil)
     local onEvent = state.frames[2].onEvent
     Measure("a shared score received", 0.02, function()
         onEvent(state.frames[2], "CHAT_MSG_ADDON", "NaowhScore", "S Player-7-00AB 264", "GUILD", "Guildie")
