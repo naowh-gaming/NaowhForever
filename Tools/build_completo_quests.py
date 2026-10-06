@@ -62,8 +62,14 @@ def fetch_zone(area):
     return {"name": zone_name(page), "quests": rows}
 
 
+# A Series row Wowhead fills with "<UNUSED>" (quests 810, 3515) is a step that no longer
+# exists: left out of the page before it is read.
+UNUSED = re.compile(r"<tr><th>\d+\.</th><td><div><b>&lt;UNUSED&gt;</b></div></td></tr>|"
+                    r"<tr><th>\d+\.</th><td><div><b><UNUSED></b></div></td></tr>")
+
+
 def fetch_quest(quest_id):
-    page = wowhead.fetch(f"{wowhead.WOWHEAD}/quest={quest_id}")
+    page = UNUSED.sub("", wowhead.fetch(f"{wowhead.WOWHEAD}/quest={quest_id}"))
     return {"chain": parse(quest_id, page), "start": parse_start(page)}
 
 
