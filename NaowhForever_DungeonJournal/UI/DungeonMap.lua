@@ -12,19 +12,19 @@
 --  - A window, from Map on a dungeon page's Bosses title: in front of the window that holds
 --    the page, beside it where the screen has room (else over its top right), as tall as it.
 --    The floor switch has a line under the map only with several floors (or Copy, placing).
---    Under the map, the bosses in kill order, each with its pin's own mark (hover one to
---    light its pin, a pin to light it; picked, both ringed alike), by wing under each wing's
---    name where the dungeon has several. Ten or fewer in a grid of equal boxes, up to five
---    across the full width: the mark, then the name, lined up in every box and cut to fit,
---    the tag of one with no number (RARE, QUEST...), a quest mark where a quest in your log
---    needs it and your BiS there. More, the marks alone, spread across or run on after each
---    wing's name. The run's count is in the title.
---    Under the strip, the page of the boss picked (a pin or a chip), compact, to read
---    at a glance (View's DrawBossPage): its name and level on one line, Naowh's tip, its loot
---    and its abilities side by side (what each ability does on two lines while the page has
---    the room, else one), its quests; it scrolls only when it must. The chevron in
---    its title folds that part away, for the map alone (kept for the account), and a pin
---    then opens its loot at the mouse. It closes with that window unless pinned (the pin in
+--    Beside the map on its right, as tall as it, the bosses in a list in kill order under
+--    BOSSES and their count, by wing under each wing's name where the dungeon has several:
+--    each row its pin's own mark, smaller, its name (lined up, cut to fit), the tag of one
+--    with no number (RARE, QUEST...), and at its right edge a quest mark where a quest in
+--    your log needs it and your BiS there. Hover a row to light its pin, a pin to light its
+--    row; picked, both are ringed alike and the row filled; it scrolls when longer than the
+--    map, to keep the picked row in sight. The run's count is in the title.
+--    Under the map and the list, the page of the boss picked (a pin or a row), compact, to
+--    read at a glance (View's DrawBossPage): its name and level on one line, Naowh's tip,
+--    its loot and its abilities side by side (what each ability does on two lines while the
+--    page has the room, else one), its quests; it scrolls only when it must. The chevron in
+--    its title folds the page away, for the map and the list alone (kept for the account),
+--    and a pin or a row then opens its loot at the mouse. It closes with that window unless pinned (the pin in
 --    its title, kept for the account too); the Naowh mark in its title, or its name, opens
 --    the Dungeon Journal on the dungeon's page again.
 --  - The world map: press M inside a dungeon and its map fills the map's picture, while the
@@ -74,31 +74,29 @@ local COPY_W = 52
 local PIN_BUTTON = 20            -- the window's pin, beside its close button
 local PIN_ICON = 14
 local MAP_SHOWN_H = MAP_H * WINDOW_SCALE
-local PAGE_W = MAP_W * WINDOW_SCALE
-local MARK_W = math.ceil(PIN * WINDOW_SCALE)
-local CHIP_H = 40
-local CHIP_PAD = 4
-local CHIP_PART_GAP = 4
-local CHIP_NAME_GAP = 6
-local CHIP_NAME_X = CHIP_PAD + MARK_W + CHIP_NAME_GAP
-local CHIP_STAR_GAP = 2
-local CHIP_MARK = 13
-local CHIP_FILL = 0.04
-local CHIP_GAP = St.CHIP_GAP
-local STRIP_COLUMNS, STRIP_ROWS = 5, 2
-local COMPACT_H = 36
-local COMPACT_GAP = 4
+local MAP_SHOWN_W = MAP_W * WINDOW_SCALE
+local LIST_W = 210
+local LIST_GAP = 10
+local LIST_BAR, LIST_BAR_GAP = 4, 4
+local PAGE_W = MAP_SHOWN_W + LIST_GAP + LIST_W
+local LIST_ROW_H = 28
+local LIST_SCALE = 0.52
+local LIST_BADGE_GROW = 1.2
+local ROW_PAD = 4
+local ROW_NAME_X = 36
+local ROW_TAG_GAP = 5
+local ROW_STAR_GAP = 2
+local ROW_MARK_GAP = 6
+local ROW_ICON = 13
 local WING_SIZE = 9
-local WING_LINE_H = 14
-local WING_GAP = 10
-local WING_LABEL_GAP = 6
+local WING_H = 20
+local WING_BOTTOM = 4
 local TAG_SHORT = { RARE = "R", OPTIONAL = "O", QUEST = "Q" }
 local LABEL_GAP = 4
 local LABEL_CLEAR = 8
 local LABEL_SIDES = { "RIGHT", "LEFT", "BELOW", "ABOVE" }
 local DOWN_KEY = 100
 local LOWER_GAP = St.BOSS_PAGE_GAP
-local STRIP_GAP = St.BOSS_PAGE_GAP
 local LOWER_MIN = 292
 local SCROLL_GAP = 16
 local UNDER_MAP_GAP = 6          -- the map to the floor switch's line
@@ -733,12 +731,12 @@ local function PinButtonClicked(button)
 end
 
 -------------------------------------------------------------------------------
---  Under the map: the bosses as a strip of chips, and the picked boss's page
+--  Beside the map: its bosses in a list; under both: the picked boss's page
 -------------------------------------------------------------------------------
-local strip, page, lootView, picked
-local chips = {}
-local wingLabels, wingTexts = {}, {}
+local list, listView, page, lootView, picked
 local quests = {}   -- boss -> what your quests need of it, filled each draw: { text, done }
+local wingTexts = {}
+local NO_EVENTS = {}
 
 local function Folded()
     return ns.AccountSettings().journalMapFolded == true
@@ -753,7 +751,7 @@ local function MapFoot()
 end
 
 local function PageRoom()
-    return window:GetHeight() - MapFoot() - LOWER_GAP - strip:GetHeight() - STRIP_GAP - PANEL_PAD
+    return window:GetHeight() - MapFoot() - LOWER_GAP - PANEL_PAD
 end
 
 -- What a quest in your log needs of the boss: an objective naming it (its head, its death).
@@ -768,27 +766,27 @@ local matchLower, matchQuest, matchText, matchDone
 
 local function MatchBoss(boss)
     if not (boss.npc and matchLower:find(boss.name:lower(), 1, true)) then return end
-    local list = quests[boss]
-    if not list then
+    local need = quests[boss]
+    if not need then
         listsUsed = listsUsed + 1
-        list = lists[listsUsed] or {}
-        lists[listsUsed] = list
-        wipe(list)
-        quests[boss] = list
+        need = lists[listsUsed] or {}
+        lists[listsUsed] = need
+        wipe(need)
+        quests[boss] = need
     end
     needsUsed = needsUsed + 1
-    local need = needs[needsUsed] or {}
-    needs[needsUsed] = need
-    need[1], need[2], need[3] = J.Quests.Name(matchQuest), matchText, matchDone
-    list[#list + 1] = need
+    local entry = needs[needsUsed] or {}
+    needs[needsUsed] = entry
+    entry[1], entry[2], entry[3] = J.Quests.Name(matchQuest), matchText, matchDone
+    need[#need + 1] = entry
 end
 
 local function FillQuests(dungeon)
     wipe(quests)
     listsUsed, needsUsed = 0, 0
-    local list = dungeon.quests and dungeon.quests.quests
-    if not list then return end
-    for _, quest in ipairs(list) do
+    local all = dungeon.quests and dungeon.quests.quests
+    if not all then return end
+    for _, quest in ipairs(all) do
         local id = J.Quests.LoggedID(quest)
         local objectives = id and C_QuestLog.GetQuestObjectives(id)
         if objectives then
@@ -809,47 +807,49 @@ local function PinOf(key)
     end
 end
 
-local function ChipOf(key)
-    for _, chip in ipairs(chips) do
-        if chip:IsShown() and chip.key == key then return chip end
+local function RowOf(key)
+    local pool = listView.pools.bossRow
+    for i = 1, pool.used do
+        if pool[i].key == key then return pool[i] end
     end
 end
 
-local function PaintChip(chip)
-    local on = chip.boss == picked
-    local boxed = not chip.compact
-    local lit = chip.lit == true and not on
+local function PaintRow(row)
+    local on = row.boss == picked
     local c = ns.ThemeTint("accent", PICKED_RGB)
-    chip.fill:SetColorTexture(c.r, c.g, c.b, St.TAB_FILL)
-    chip.line:SetColorTexture(c.r, c.g, c.b, 1)
-    chip.fill:SetShown(on and boxed)
-    chip.line:SetShown(on and boxed)
-    chip.hover:SetShown(lit and boxed)
-    chip.mark.glow:SetShown(lit and not boxed)
-    ShowPicked(chip.mark, on, boxed)
-    local color = chip.killed and not on and T.muted or T.fg
-    chip.name:SetTextColor(color.r, color.g, color.b)
+    row.fill:SetColorTexture(c.r, c.g, c.b, St.TAB_FILL)
+    row.fill:SetShown(on)
+    row.hover:SetShown(row.lit == true and not on)
+    ShowPicked(row.mark, on, true)
+    local color = row.killed and not on and T.muted or T.fg
+    row.name:SetTextColor(color.r, color.g, color.b)
 end
 
--- A chip hovered lights its pin; a pin hovered lights its chip.
+-- A row hovered lights its pin; a pin hovered lights its row.
 local function Light(key, on)
     local pin = PinOf(key)
     if pin then pin.glow:SetShown(on) end
-    local chip = ChipOf(key)
-    if chip then
-        chip.lit = on
-        PaintChip(chip)
+    local row = RowOf(key)
+    if row then
+        row.lit = on
+        PaintRow(row)
     end
+end
+
+local function ShowRow(row)
+    local top, shown = list:GetVerticalScroll(), list:GetHeight()
+    if row.top < top or row.top + LIST_ROW_H > top + shown then listView:ScrollToRow(list, row) end
 end
 
 local function Pick(boss)
     local again = boss == picked
     picked = boss
     windowView:Pick(boss and KeyOf(boss))
-    for _, chip in ipairs(chips) do
-        if chip:IsShown() then PaintChip(chip) end
-    end
-    window.hint:SetShown(boss == nil)
+    local pool = listView.pools.bossRow
+    for i = 1, pool.used do PaintRow(pool[i]) end
+    local row = boss and RowOf(KeyOf(boss))
+    if row then ShowRow(row) end
+    window.hint:SetShown(boss == nil and not Folded())
     if not boss then
         lootView:Hide()
         return
@@ -869,247 +869,152 @@ local function PageDrawn(height)
     lootView:Redraw()
 end
 
-local function ChipEnter(chip)
-    Light(chip.key, true)
-    local boss = chip.boss
-    GameTooltip:SetOwner(chip, "ANCHOR_TOP")
+local function RowEnter(row)
+    Light(row.key, true)
+    local boss = row.boss
+    GameTooltip:SetOwner(row, "ANCHOR_RIGHT")
     GameTooltip:SetText(boss.name, 1, 1, 1)
     local tag = J.BossTag(boss)
     if tag then GameTooltip:AddLine(TAG_WORDS[tag], T.muted.r, T.muted.g, T.muted.b) end
-    if chip.killed then GameTooltip:AddLine("Killed this run", St.HAVE_RGB.r, St.HAVE_RGB.g, St.HAVE_RGB.b) end
-    for _, need in ipairs(quests[boss] or {}) do
+    if row.killed then GameTooltip:AddLine("Killed this run", St.HAVE_RGB.r, St.HAVE_RGB.g, St.HAVE_RGB.b) end
+    for _, need in ipairs(quests[boss] or NO_EVENTS) do
         GameTooltip:AddLine(need[1], 1, 0.82, 0)
         GameTooltip:AddLine("  " .. need[2], need[3] and T.muted.r or 1, need[3] and T.muted.g or 1,
             need[3] and T.muted.b or 1, true)
     end
-    if chip.bis > 0 then
-        GameTooltip:AddLine(("%d of your BiS, %d of them yours"):format(chip.bis, chip.haveBis),
+    if row.bis > 0 then
+        GameTooltip:AddLine(("%d of your BiS, %d of them yours"):format(row.bis, row.haveBis),
             St.BIS_RGB.r, St.BIS_RGB.g, St.BIS_RGB.b)
     end
-    if not Spot(windowView.dungeon, chip.key) then
+    if not Spot(windowView.dungeon, row.key) then
         GameTooltip:AddLine("Not on the map yet.", T.muted.r, T.muted.g, T.muted.b)
     end
     GameTooltip:AddLine("Click for its loot.", T.accentSoft.r, T.accentSoft.g, T.accentSoft.b)
     GameTooltip:Show()
 end
 
-local function ChipLeave(chip)
-    Light(chip.key, false)
+local function RowLeave(row)
+    Light(row.key, false)
     GameTooltip:Hide()
 end
 
--- A click shows its page, and its floor on the map.
-local function ChipClicked(chip)
-    local spot = Spot(windowView.dungeon, chip.key)
+-- A click shows its page (folded, its loot at the mouse), and its floor on the map.
+local function RowClicked(row)
+    local spot = Spot(windowView.dungeon, row.key)
     if type(spot) == "table" and spot[1] ~= windowView.floor and windowView:FloorAt(spot[1]) then
         windowView.floor = spot[1]
         windowView:Draw()
     end
-    Pick(chip.boss)
+    windowView.onPick(row.boss)
 end
 
-local function Mark(chip, texture)
-    local icon = chip:CreateTexture(nil, "ARTWORK")
-    icon:SetSize(CHIP_MARK, CHIP_MARK)
+local function Mark(row, texture)
+    local icon = row:CreateTexture(nil, "ARTWORK")
+    icon:SetSize(ROW_ICON, ROW_ICON)
     icon:SetTexture(texture, nil, nil, "TRILINEAR")
     return icon
 end
 
-local function NewChip()
-    local chip = CreateFrame("Button", nil, strip)
-    chip.bg = ns.Solid(chip, "BACKGROUND", T.fg, CHIP_FILL)
-    chip.bg:SetAllPoints()
-    chip.hover = ns.Solid(chip, "BACKGROUND", T.fg, St.HOVER)
-    chip.hover:SetAllPoints()
-    chip.fill = ns.Solid(chip, "BORDER", T.accent, St.TAB_FILL)
-    chip.fill:SetAllPoints()
-    chip.line = ns.Solid(chip, "ARTWORK", T.accent, 1)
-    chip.line:SetPoint("BOTTOMLEFT")
-    chip.line:SetPoint("BOTTOMRIGHT")
-    chip.line:SetHeight(St.TAB_LINE)
-    chip.edge = ns.Border(chip, St.BORDER_RGB)
-    chip.mark = CreateFrame("Frame", nil, chip)
-    chip.mark:SetSize(PIN, PIN)
-    chip.mark:SetScale(WINDOW_SCALE)
-    BuildMark(chip.mark)
-    chip.name = ns.Font(chip, 12, nil, T.fg)
-    chip.name:SetJustifyH("LEFT")
-    chip.name:SetWordWrap(false)
-    chip.tag = ns.Font(chip, 9, nil, T.muted)
-    chip.tag:SetPoint("LEFT", chip.name, "RIGHT", CHIP_PART_GAP, 0)
-    chip.quest = Mark(chip, St.BANG)
-    chip.star = Mark(chip, St.STAR)
-    chip.star:SetVertexColor(St.BIS_RGB.r, St.BIS_RGB.g, St.BIS_RGB.b)
-    chip.bisText = ns.Font(chip, 11, nil, T.fg)
-    chip.bisText:SetPoint("LEFT", chip.star, "RIGHT", CHIP_STAR_GAP, 0)
-    chip:SetScript("OnEnter", ChipEnter)
-    chip:SetScript("OnLeave", ChipLeave)
-    chip:SetScript("OnClick", ChipClicked)
-    return chip
-end
+local listKinds = ns.Shared.View.NewKinds()
 
-local function MarksWidth(chip)
-    local w = 0
-    if chip.tagW > 0 then w = w + CHIP_PART_GAP + chip.tagW end
-    if chip.needed then w = w + CHIP_NAME_GAP + CHIP_MARK end
-    if chip.bis > 0 then w = w + CHIP_NAME_GAP + CHIP_MARK + CHIP_STAR_GAP + chip.bisW end
-    return w
-end
+listKinds.wing = {
+    New = function(view)
+        local row = CreateFrame("Frame", nil, view)
+        row.text = ns.Font(row, WING_SIZE, nil, T.muted)
+        row.text:SetPoint("BOTTOMLEFT", ROW_PAD, WING_BOTTOM)
+        row.text:SetJustifyH("LEFT")
+        row.text:SetWordWrap(false)
+        return row
+    end,
+    Set = function(row, wing)
+        local text = wingTexts[wing]
+        if not text then
+            text = wing.name and wing.name:upper() or ""
+            wingTexts[wing] = text
+        end
+        row.text:SetWidth(row:GetWidth() - ROW_PAD)
+        row.text:SetText(text)
+        return WING_H
+    end,
+}
 
-local function LayChip(chip, compact, width)
-    chip.compact = compact
-    chip:SetSize(width, compact and COMPACT_H or CHIP_H)
-    chip.bg:SetShown(not compact)
-    chip.edge._frame:SetShown(not compact)
-    chip.mark:ClearAllPoints()
-    if compact then
-        chip.mark:SetPoint("CENTER", chip, "CENTER", 0, 0)
-    else
-        chip.mark:SetPoint("LEFT", chip, "LEFT", CHIP_PAD / WINDOW_SCALE, 0)
-    end
-    chip.name:SetShown(not compact)
-    chip.tag:SetShown(not compact and chip.tagW > 0)
-    chip.quest:SetShown(not compact and chip.needed)
-    chip.star:SetShown(not compact and chip.bis > 0)
-    chip.bisText:SetShown(not compact and chip.bis > 0)
-    if compact then return end
-    chip.name:ClearAllPoints()
-    chip.name:SetPoint("LEFT", chip, "LEFT", CHIP_NAME_X, 0)
-    local room = width - CHIP_NAME_X - CHIP_PAD - MarksWidth(chip)
-    local nameW = math.max(1, math.min(chip.nameW, room))
-    chip.name:SetWidth(nameW)
-    local after = chip.tagW > 0 and chip.tag or chip.name
-    if chip.needed then
-        chip.quest:ClearAllPoints()
-        chip.quest:SetPoint("LEFT", after, "RIGHT", CHIP_NAME_GAP, 0)
-        after = chip.quest
-    end
-    if chip.bis > 0 then
-        chip.star:ClearAllPoints()
-        chip.star:SetPoint("LEFT", after, "RIGHT", CHIP_NAME_GAP, 0)
-    end
-end
+listKinds.bossRow = {
+    New = function(view)
+        local row = CreateFrame("Button", nil, view)
+        row.hover = ns.Solid(row, "BACKGROUND", T.fg, St.HOVER)
+        row.hover:SetAllPoints()
+        row.fill = ns.Solid(row, "BORDER", T.accent, St.TAB_FILL)
+        row.fill:SetAllPoints()
+        row.mark = CreateFrame("Frame", nil, row)
+        row.mark:SetSize(PIN, PIN)
+        row.mark:SetScale(LIST_SCALE)
+        row.mark:SetPoint("LEFT", row, "LEFT", ROW_PAD / LIST_SCALE, 0)
+        BuildMark(row.mark)
+        row.mark.badge:SetScale(LIST_BADGE_GROW)
+        row.name = ns.Font(row, 12, nil, T.fg)
+        row.name:SetPoint("LEFT", row, "LEFT", ROW_NAME_X, 0)
+        row.name:SetJustifyH("LEFT")
+        row.name:SetWordWrap(false)
+        row.tag = ns.Font(row, 9, nil, T.muted)
+        row.tag:SetPoint("LEFT", row.name, "RIGHT", ROW_TAG_GAP, 0)
+        row.bisText = ns.Font(row, 11, nil, T.fg)
+        row.bisText:SetPoint("RIGHT", row, "RIGHT", -ROW_PAD, 0)
+        row.star = Mark(row, St.STAR)
+        row.star:SetVertexColor(St.BIS_RGB.r, St.BIS_RGB.g, St.BIS_RGB.b)
+        row.star:SetPoint("RIGHT", row.bisText, "LEFT", -ROW_STAR_GAP, 0)
+        row.quest = Mark(row, St.BANG)
+        row:SetScript("OnEnter", RowEnter)
+        row:SetScript("OnLeave", RowLeave)
+        row:SetScript("OnClick", RowClicked)
+        return row
+    end,
+    Set = function(row, boss, number, key, killed)
+        row.boss, row.key, row.lit, row.killed = boss, key, false, killed
+        SetMark(row.mark, boss, number, 1 / LIST_SCALE, killed)
+        local tag = J.BossTag(boss)
+        row.tag:SetText(tag or "")
+        row.tag:SetShown(tag ~= nil)
+        local tagW = tag and ROW_TAG_GAP + math.ceil(row.tag:GetStringWidth()) or 0
+        row.bis, row.haveBis = J.Loot.BossBis(boss)
+        row.bisText:SetText(row.bis > 0 and row.bis or "")
+        row.bisText:SetShown(row.bis > 0)
+        row.star:SetShown(row.bis > 0)
+        local right = row.bis > 0 and ROW_PAD + math.ceil(row.bisText:GetStringWidth()) + ROW_STAR_GAP + ROW_ICON
+            or ROW_PAD - ROW_MARK_GAP
+        local needed = quests[boss] ~= nil
+        row.quest:SetShown(needed)
+        if needed then
+            row.quest:ClearAllPoints()
+            row.quest:SetPoint("RIGHT", row, "RIGHT", -(right + ROW_MARK_GAP), 0)
+            right = right + ROW_MARK_GAP + ROW_ICON
+        end
+        row.name:SetWidth(0)
+        row.name:SetText(boss.name)
+        local room = row:GetWidth() - ROW_NAME_X - tagW - right - ROW_MARK_GAP
+        row.name:SetWidth(math.max(1, math.min(math.ceil(row.name:GetStringWidth()) + 1, room)))
+        PaintRow(row)
+        return LIST_ROW_H
+    end,
+}
 
-local drawN, drawKilled, drawTotal, drawInside, drawWings, lastWing
+local drawKilled, drawTotal, drawInside, drawGrouped, lastWing
 
-local function StripChip(boss, number, key, wing)
-    drawN = drawN + 1
-    local chip = chips[drawN] or NewChip()
-    chips[drawN] = chip
-    chip.boss, chip.key, chip.lit, chip.wing = boss, key, false, wing
-    if wing ~= lastWing then
+local function ListRow(boss, number, key, wing)
+    if drawGrouped and wing ~= lastWing then
         lastWing = wing
-        if wing.name then drawWings = drawWings + 1 end
+        listView:Add("wing", wing)
     end
-    chip.killed = drawInside and J.Kills.ThisRun(boss) or false
-    chip.number = number
+    local killed = drawInside and J.Kills.ThisRun(boss) or false
     if number then
         drawTotal = drawTotal + 1
-        if chip.killed then drawKilled = drawKilled + 1 end
+        if killed then drawKilled = drawKilled + 1 end
     end
-    SetMark(chip.mark, boss, number, 1 / WINDOW_SCALE, chip.killed)
-    chip.name:SetWidth(0)
-    chip.name:SetText(boss.name)
-    chip.nameW = math.ceil(chip.name:GetStringWidth()) + 1
-    local tag = J.BossTag(boss)
-    chip.tag:SetText(tag or "")
-    chip.tagW = tag and math.ceil(chip.tag:GetStringWidth()) or 0
-    chip.needed = quests[boss] ~= nil
-    chip.bis, chip.haveBis = J.Loot.BossBis(boss)
-    chip.bisText:SetText(chip.bis > 0 and chip.bis or "")
-    chip.bisW = chip.bis > 0 and math.ceil(chip.bisText:GetStringWidth()) or 0
-    chip:Show()
+    listView.rows = listView.rows + 1
+    listView:Add("bossRow", boss, number, key, killed)
 end
 
-local labelsUsed = 0
-
-local function WingLabel(wing)
-    labelsUsed = labelsUsed + 1
-    local label = wingLabels[labelsUsed]
-    if not label then
-        label = ns.Font(strip, WING_SIZE, nil, T.muted)
-        label:SetJustifyH("LEFT")
-        label:SetWordWrap(false)
-        wingLabels[labelsUsed] = label
-    end
-    local text = wingTexts[wing]
-    if not text then
-        text = wing.name and wing.name:upper() or ""
-        wingTexts[wing] = text
-    end
-    label:SetText(text)
-    label:Show()
-    return label
-end
-
-local function Columns(n, most)
-    local columns = math.max(1, math.min(n, most))
-    local rows = math.ceil(n / columns)
-    return math.ceil(n / rows), rows
-end
-
-local function GridChips(first, last, most, compact, top)
-    local n = last - first + 1
-    local columns, rows = Columns(n, most)
-    local step = (PAGE_W + CHIP_GAP) / columns
-    local h = compact and COMPACT_H or CHIP_H
-    local gap = compact and 0 or CHIP_GAP
-    for i = first, last do
-        local chip = chips[i]
-        local column, row = (i - first) % columns, math.floor((i - first) / columns)
-        local left = math.floor(column * step + 0.5)
-        LayChip(chip, compact, math.floor((column + 1) * step + 0.5) - CHIP_GAP - left)
-        chip:ClearAllPoints()
-        chip:SetPoint("TOPLEFT", left, -(top + row * (h + gap)))
-    end
-    return top + rows * (h + gap) - gap
-end
-
-local function GroupEnd(first)
-    local last = first
-    while last < drawN and chips[last + 1].wing == chips[first].wing do last = last + 1 end
-    return last
-end
-
-local function FullStrip(grouped)
-    local y, first = 0, 1
-    while first <= drawN do
-        local last = grouped and GroupEnd(first) or drawN
-        if first > 1 then y = y + WING_GAP end
-        if grouped then
-            local label = WingLabel(chips[first].wing)
-            label:ClearAllPoints()
-            label:SetPoint("TOPLEFT", 0, -y)
-            y = y + WING_LINE_H
-        end
-        y = GridChips(first, last, STRIP_COLUMNS, false, y)
-        first = last + 1
-    end
-    return y
-end
-
-local function CompactFlow()
-    local x, row, first = 0, 0, 1
-    while first <= drawN do
-        local last = GroupEnd(first)
-        local label = WingLabel(chips[first].wing)
-        local labelW = math.ceil(label:GetStringWidth())
-        if x > 0 then x = x + WING_GAP end
-        if x > 0 and x + labelW + WING_LABEL_GAP + MARK_W > PAGE_W then x, row = 0, row + 1 end
-        label:ClearAllPoints()
-        label:SetPoint("LEFT", strip, "TOPLEFT", x, -(row * COMPACT_H + COMPACT_H / 2))
-        x = x + labelW + WING_LABEL_GAP
-        for i = first, last do
-            if x + MARK_W > PAGE_W then x, row = 0, row + 1 end
-            local chip = chips[i]
-            LayChip(chip, true, MARK_W)
-            chip:ClearAllPoints()
-            chip:SetPoint("TOPLEFT", x, -row * COMPACT_H)
-            x = x + MARK_W + COMPACT_GAP
-        end
-        first = last + 1
-    end
-    return (row + 1) * COMPACT_H
+local function CountRow()
+    listView.rows = listView.rows + 1
 end
 
 local downTexts = {}
@@ -1124,38 +1029,36 @@ local function DownText(killed, total)
     return text
 end
 
-local function DrawStrip()
+local function DrawList()
     local dungeon = windowView.dungeon
     FillQuests(dungeon)
-    drawN, drawKilled, drawTotal, drawInside = 0, 0, 0, windowView.inside
-    drawWings, lastWing, labelsUsed = 0, nil, 0
-    EachBoss(dungeon, StripChip)
-    for i = drawN + 1, #chips do chips[i]:Hide() end
-    local grouped = drawWings > 1
-    local height
-    if drawN <= STRIP_COLUMNS * STRIP_ROWS then
-        height = FullStrip(grouped)
-    elseif grouped then
-        height = CompactFlow()
-    else
-        height = GridChips(1, drawN, math.floor((PAGE_W + COMPACT_GAP) / (MARK_W + COMPACT_GAP)), true, 0)
+    local named = 0
+    for _, wing in ipairs(dungeon.wings) do
+        if wing.name then named = named + 1 end
     end
-    for i = labelsUsed + 1, #wingLabels do wingLabels[i]:Hide() end
-    for i = 1, drawN do PaintChip(chips[i]) end
-    strip:SetHeight(math.max(1, height))
+    drawKilled, drawTotal, drawInside = 0, 0, windowView.inside
+    drawGrouped, lastWing = named > 1, nil
+    listView:Clear()
+    listView.tightTitles = true
+    listView.rows = 0
+    EachBoss(dungeon, CountRow)
+    listView:Section("Bosses", listView.rows)
+    listView.rows = 0
+    EachBoss(dungeon, ListRow)
+    listView:Fit(NO_EVENTS)
     return drawInside and drawTotal > 0 and DownText(drawKilled, drawTotal) or ""
 end
 
--- The map, and under it, unless folded, the strip and the page: exactly as tall as the window
--- it was opened beside, so their edges line up; with none, LOWER_MIN under the map.
+-- The map and the list beside it, and under both, unless folded, the page: exactly as tall
+-- as the window it was opened beside, so their edges line up; with none, LOWER_MIN under the
+-- map.
 local function Size(owner)
     local folded = Folded()
     local foot = MapFoot()
-    strip:SetShown(not folded)
     page:SetShown(not folded)
     window.hint:SetShown(not folded and picked == nil)
     window.fold:SetRotation(folded and 0 or -math.pi / 2)
-    strip:SetPoint("TOPLEFT", PANEL_PAD, -(foot + LOWER_GAP))
+    page:SetPoint("TOPLEFT", PANEL_PAD, -(foot + LOWER_GAP))
     if folded then
         window:SetHeight(foot + PANEL_PAD)
     else
@@ -1165,11 +1068,15 @@ end
 
 local function WindowDrawn()
     Size(window.owner)
-    local down = not Folded() and DrawStrip() or ""
+    local down = DrawList()
     window.title:SetText(windowView.dungeon.name:upper() .. down
         .. (placing and ns.Color("muted", "   PLACING PINS") or ""))
     window.copy:SetShown(placing)
-    if picked and not Folded() then PageDrawn(lootView:GetHeight()) end
+    if picked then
+        local row = RowOf(KeyOf(picked))
+        if row then ShowRow(row) end
+        if not Folded() then PageDrawn(lootView:GetHeight()) end
+    end
 end
 
 -- Back to the Journal, on the dungeon's page: the Naowh mark in the title, or the name.
@@ -1195,9 +1102,9 @@ end
 local function FoldEnter(button)
     button.icon:SetVertexColor(T.fg.r, T.fg.g, T.fg.b)
     GameTooltip:SetOwner(button, "ANCHOR_BOTTOM")
-    GameTooltip:SetText(Folded() and "Show the bosses" or "Map only", 1, 1, 1)
-    GameTooltip:AddLine(Folded() and "The bosses in kill order and their loot, under the map."
-        or "Folds the bosses and their loot away: the map alone, to keep on screen.",
+    GameTooltip:SetText(Folded() and "Show the boss's page" or "Map and bosses only", 1, 1, 1)
+    GameTooltip:AddLine(Folded() and "The picked boss's loot and abilities, under the map."
+        or "Folds the boss's page away, to keep the map on screen.",
         T.muted.r, T.muted.g, T.muted.b, true)
     GameTooltip:Show()
 end
@@ -1212,6 +1119,12 @@ local function FoldClicked(button)
     WindowDrawn()
     if not Folded() then Pick(picked) end
     FoldEnter(button)
+end
+
+local ListMixin = {}
+
+function ListMixin:Redraw()
+    if windowView.dungeon then DrawList() end
 end
 
 local function Build()
@@ -1233,12 +1146,10 @@ local function Build()
     local canvas = windowView.canvas
     canvas:SetScale(WINDOW_SCALE)
     canvas:SetPoint("TOPLEFT", PANEL_PAD / WINDOW_SCALE, -PANEL_HEADER / WINDOW_SCALE)
-    -- The floor switch and Copy on a line under the map, while it has a use (FloorLine).
     local underMap = -(PANEL_HEADER + MAP_SHOWN_H + UNDER_MAP_GAP)
     windowView.down:SetPoint("TOPLEFT", PANEL_PAD, underMap)
     window.copy = ns.Button(window, "Copy", COPY_W, FLOOR_H - 2, function() Copy(windowView.dungeon) end)
-    window.copy:SetPoint("TOPRIGHT", -PANEL_PAD, underMap)
-    -- Folded, the page is away: a pin opens its loot at the mouse instead.
+    window.copy:SetPoint("TOPLEFT", PANEL_PAD + MAP_SHOWN_W - COPY_W, underMap)
     windowView.onPick = function(boss)
         if not Folded() then return Pick(boss) end
         lootFrom = windowView
@@ -1246,11 +1157,13 @@ local function Build()
         J.View.OpenBossLoot(boss, windowView.dungeon)
     end
     windowView.onPinHover = Light
-    -- Under them, the strip of bosses (placed by Size), and under it the picked boss's page.
-    strip = CreateFrame("Frame", nil, window)
-    strip:SetSize(PAGE_W, CHIP_H)
+    list = ns.UI.SlimScroll(window, LIST_BAR, LIST_BAR_GAP)
+    list:SetPoint("TOPLEFT", PANEL_PAD + MAP_SHOWN_W + LIST_GAP, -PANEL_HEADER)
+    list:SetSize(LIST_W - LIST_BAR - LIST_BAR_GAP, MAP_SHOWN_H)
+    listView = ns.Shared.View.New(list, listKinds, ListMixin)
+    listView:SetWidth(LIST_W - LIST_BAR - LIST_BAR_GAP)
+    list:SetScrollChild(listView)
     page = ns.UI.SlimScroll(window)
-    page:SetPoint("TOPLEFT", strip, "BOTTOMLEFT", 0, -STRIP_GAP)
     page:SetPoint("BOTTOMRIGHT", -PANEL_PAD, PANEL_PAD)
     lootView = J.View.New(page)
     lootView:SetWidth(PAGE_W)
@@ -1519,7 +1432,7 @@ function ns.DungeonMapCommand(cmd)
 end
 
 -- The Journal switched off: the maps go with it. Its Opacity: the window follows. Any other
--- setting (a filter, BiS): the strip and the page are drawn again, the page once for a burst.
+-- setting (a filter, BiS): the list and the page are drawn again, the page once for a burst.
 S.OnChange(function(key)
     if key == "enabled" and not S.Get("enabled") then
         if window then window:Hide() end
