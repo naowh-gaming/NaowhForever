@@ -64,6 +64,7 @@ local S = UI.ModuleSettings("qol", {
     xpTickerSplits = true, xpTickerHistoryCount = 10, xpTickerBackground = "card",
     xpTickerPlayed = true, xpTickerPace = false, xpTickerSplitPlayed = true,
     groupXP = false, groupXPShowSelf = true, groupXPWidth = 260,
+    playerHistory = false, playerHistoryChats = true, playerHistoryDays = 90, playerNotesTooltip = true,
     naowhScore = true, naowhScoreTooltip = true, naowhScoreScan = true, naowhScoreNearby = true,
     naowhScoreCompare = "both",
     characterPanel = true,
