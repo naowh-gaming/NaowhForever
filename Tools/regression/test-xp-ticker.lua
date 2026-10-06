@@ -543,16 +543,20 @@ do
     check("and the preview drops it", not p.ding.on and dingHit.shown == false)
     p.scripts.OnMouseUp(p, "RightButton")
     check("right-click opens a menu", menu and menu.owner == p)
-    local items = {}
+    local items, section = {}, nil
     local root = {
-        CreateTitle = NOTHING, CreateDivider = NOTHING,
+        CreateTitle = function(_, title) section = title end, CreateDivider = NOTHING,
         CreateCheckbox = function(_, label, _, set, data) items[label] = { set = set, data = data } end,
-        CreateRadio = function(_, label, picked, set, data) items[label] = { picked = picked, set = set, data = data } end,
+        -- Background and Outline both have a None; the outline one is filed as "Outline None".
+        CreateRadio = function(_, label, picked, set, data)
+            local key = section == "Outline" and items[label] and "Outline " .. label or label
+            items[key] = { picked = picked, set = set, data = data }
+        end,
         CreateButton = function(_, label, fn) items[label] = { fn = fn } end,
     }
     menu.gen(p, root)
     check("the menu has the backgrounds, the outlines and Reset", items.Card and items.Soft and items.None
-        and items.Shadow and items.Outline and items["Thick Outline"] and items["Reset XP per Hour"]
+        and items["Outline None"] and items.Shadow and items.Outline and items["Thick Outline"] and items["Reset XP per Hour"]
         and items["Show Ding Time"])
     check("the menu's Shadow picked", items.Shadow.picked(items.Shadow.data) and not items.Outline.picked(items.Outline.data))
     items.Outline.set(items.Outline.data)

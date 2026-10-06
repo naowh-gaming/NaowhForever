@@ -12,7 +12,7 @@ local Parts = ns.Shared.Parts
 local S = UI.ModuleSettings("topBar", {
     enabled = true,
     -- The clock font is EllesmereUI's, found through SharedMedia; without it the Addon Font.
-    iconSize = 22, clockSize = 27, clockFont = "Gotham Narrow Ultra", clockOutline = "", use24h = true,
+    iconSize = 22, clockSize = 27, clockFont = "Gotham Narrow Ultra", clockOutline = "NONE", use24h = true,
     font = "", outline = "OUTLINE",
     bgAlpha = 85, iconColor = { r = 1, g = 1, b = 1 },
     hideInCombat = false, mouseover = false, mouseoverAlpha = 0,
@@ -584,9 +584,11 @@ end
 
 function Look.ClockFont(clock)
     local size, outline = S.Get("clockSize"), S.Get("clockOutline")
-    if not clock:SetFont(UI.FontPath(S.Get("clockFont")), size, outline) then
-        clock:SetFont(ns.UIFontPath(), size, outline)
+    local flags = outline == "NONE" and "" or outline
+    if not clock:SetFont(UI.FontPath(S.Get("clockFont")), size, flags) then
+        clock:SetFont(ns.UIFontPath(), size, flags)
     end
+    Parts.HudText(clock, outline == "" and "card" or false)
     clock:SetTextColor(Tone("fg", 1))
 end
 
@@ -1413,10 +1415,6 @@ local function Summary(store)
         #layout.left + #layout.right, store.Get("mouseover") and ", fades until hovered" or "")
 end
 
--- The clock has never had a shadow, so its unoutlined choice is None, not the HUD's Shadow.
-local CLOCK_OUTLINES = { { [""] = "None", OUTLINE = "Outline", THICKOUTLINE = "Thick Outline" },
-    { "", "OUTLINE", "THICKOUTLINE" } }
-
 local ROWS = {
     Group("Clock"),
     { key = "use24h", label = "24-Hour Clock", toggle = true },
@@ -1439,7 +1437,7 @@ local ROWS = {
     { key = "sysSize", label = "FPS / MS Size", slider = { 6, 24, 1 }, needs = "showSystem" },
     { key = "clockFont", label = "Clock Font", font = true },
     { key = "clockSize", label = "Clock Size", slider = { 10, 36, 1 } },
-    { key = "clockOutline", label = "Clock Outline", choice = CLOCK_OUTLINES,
+    { key = "clockOutline", label = "Clock Outline", choice = Parts.HUD_OUTLINES,
       help = "A black outline round the clock." },
     Group("Background"),
     { key = "bgAlpha", label = "Bar Opacity", slider = { 0, 100, 5 }, unit = "%" },

@@ -21,7 +21,7 @@ local code = table.concat({
     Slice("function Look.ClockFont(clock)", "\nfunction Look.ClockText()"),
     Slice("function Look.Row(group, list, n)", "\nfunction Look.Fit("),
     Slice("function Look.SystemFont(text)", "\nlocal SYSTEM_TEXT"),
-    Slice("local CLOCK_OUTLINES", "\nns.Shared.Settings.Page("),
+    Slice("local ROWS = {", "\nns.Shared.Settings.Page("),
     "return { Look = Look, ROWS = ROWS }",
 }, "\n")
 
@@ -33,9 +33,10 @@ defaults.iconSize, defaults.sysSize, defaults.clockSize = 22, 13, 27
 local settings = {}
 local S = { Get = function(k) if settings[k] == nil then return defaults[k] end return settings[k] end }
 
-local OUTLINES = { { [""] = "Shadow", OUTLINE = "Outline", THICKOUTLINE = "Thick Outline" },
-    { "", "OUTLINE", "THICKOUTLINE" } }
+local OUTLINES = { { NONE = "None", [""] = "Shadow", OUTLINE = "Outline", THICKOUTLINE = "Thick Outline" },
+    { "NONE", "", "OUTLINE", "THICKOUTLINE" } }
 local Parts = { HUD_OUTLINES = OUTLINES }
+function Parts.HudText(fs, shadow) fs.shadow = shadow; return fs end
 function Parts.HudFont(fs, font, size, outline, background)
     fs:SetFont("path:" .. font, size, outline)
     fs.shadow = outline == "" and (background or "card") or false
@@ -84,7 +85,7 @@ settings.font, settings.outline = "Expressway", "THICKOUTLINE"
 Paint()
 check("Font and Outline reach the readout", sys.path == "path:Expressway" and sys.flags == "THICKOUTLINE")
 check("and the counts", friends.badge.path == "path:Expressway" and friends.badge.flags == "THICKOUTLINE")
-check("not the clock", clock.path == "path:Gotham Narrow Ultra" and clock.flags == "")
+check("not the clock", clock.path == "path:Gotham Narrow Ultra" and clock.flags == "" and clock.shadow == false)
 settings.outline = ""
 Paint()
 check("Shadow: the HUD shadow on the readout and counts", sys.flags == "" and sys.shadow == "card"
@@ -109,11 +110,10 @@ check("Font, Outline and the clock's under Text", groupOf.font == "Text" and gro
     and groupOf.clockFont == "Text" and groupOf.clockSize == "Text" and groupOf.clockOutline == "Text"
     and groupOf.sysSize == "Text")
 check("Outline is the shared choice", rows.outline.choice == OUTLINES)
-check("Clock Outline's first choice is None", rows.clockOutline.choice[1][""] == "None"
-    and rows.clockOutline.choice[2][1] == "")
+check("Clock Outline is the shared choice too", rows.clockOutline.choice == OUTLINES)
 check("Hide In Combat and the mouseover fade under Visibility", groupOf.hideInCombat == "Visibility"
     and groupOf.mouseover == "Visibility" and groupOf.mouseoverAlpha == "Visibility")
 check("the defaults are today's look", defaults.font == "" and defaults.outline == "OUTLINE"
-    and defaults.clockOutline == "")
+    and defaults.clockOutline == "NONE")
 
 print("PASS top bar look: " .. checks .. " checks")
