@@ -335,6 +335,7 @@ local function PaintTabs(bar, shown)
 end
 
 local NAV_ROW, NAV_OFF_ALPHA = 32, 0.45
+local NAV_GROUP_H = 25
 
 -- Within each group the modules that are on come first, then the ones you have off.
 local function LayoutNav()
@@ -1205,7 +1206,7 @@ local function CreateWindow()
         if group ~= "" then
             local label = ns.Font(nav, 11, nil, T.muted)
             label:SetPoint("TOPLEFT", 20, ny - 10); label:SetText(ns.L(group))
-            ny = ny - 28
+            ny = ny - NAV_GROUP_H
         end
         navBlocks[#navBlocks + 1] = { top = ny, mods = grouped[group] }
         for _, mod in ipairs(grouped[group]) do
