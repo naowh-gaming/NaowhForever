@@ -170,6 +170,7 @@ Case("bundled serializers round-trip real profile strings and reject malformed i
         EnsureProfile = function() writes = writes + 1; return {} end }
     local env = { _G = { NaowhForever = ns }, LibStub = LibStub }
     Eval(Read("_Packs"), env)
+    ns.Shared = { Decode = dofile("Tools/regression/load_decode.lua")(env) }
     local encoded, err = ns.ExportPack("Recovery test", "Tester")
     assert(encoded, err)
     local decoded, why = ns.DecodePack(encoded)

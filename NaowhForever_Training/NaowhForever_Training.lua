@@ -433,14 +433,12 @@ end
 
 -- Parsed as data, never run: the class must have a tree here, and its points pass
 -- Training.CheckBuild.
+local DECODE_LIMITS = { maxChars = 100000, maxBytes = 1048576, maxDepth = 8, maxValues = 20000 }
+
 local function DecodeBuild(text)
-    local LS, LD = Codec()
     local body = type(text) == "string" and text:match("^%s*" .. BUILD_PREFIX:gsub("!", "%%!") .. "(%S+)%s*$")
-    local packed = body and LD:DecodeForPrint(body)
-    local raw = packed and LD:DecompressDeflate(packed)
-    if not raw then return end
-    local ok, data = LS:Deserialize(raw)
-    if not (ok and type(data) == "table" and data.v == 1 and type(data.points) == "table") then return end
+    local data = body and ns.Shared.Decode.String(body, DECODE_LIMITS)
+    if not (type(data) == "table" and data.v == 1 and type(data.points) == "table") then return end
     local tree = ns.TrainingBuilds[data.class]
     if not tree then return end
     local points = {}

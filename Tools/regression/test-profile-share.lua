@@ -63,10 +63,12 @@ local function World()
         end,
         SwitchProfile = function(name) w.switched, w.active = name, name end,
         RefreshRuntime = function() w.refreshed = w.refreshed + 1 end,
+        ValidPackData = function(data) return type(data) == "table" end,
     }
     w.ns = ns
     local env = setmetatable({ _G = { NaowhForever = ns }, UnitName = function() return "Glyadin" end,
         date = os.date }, { __index = _G })
+    ns.Shared = { Decode = dofile("Tools/regression/load_decode.lua")(env) }
     local chunk = assert(loadfile("Core/NaowhForever_ProfileShare.lua"))
     setfenv(chunk, env)
     chunk()
