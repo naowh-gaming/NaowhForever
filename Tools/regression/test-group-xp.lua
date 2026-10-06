@@ -3,6 +3,10 @@ local checks = 0
 local function check(label, ok) assert(ok, label); checks = checks + 1 end
 
 local NO_ADDON = "|cff9ca3afno addon|r"
+-- Methods a stub frame lacks do nothing, from one shared function, so stubs add no garbage.
+local function Noop() end
+local NOOP_META = { __index = function() return Noop end }
+local DEFAULTS = { enabled = true, groupXP = true, groupXPShowSelf = true, groupXPWidth = 260 }
 
 local function boot(settings)
     local s = { now = 0, timers = {}, sent = {}, created = {}, combat = false, group = true,
@@ -14,7 +18,7 @@ local function boot(settings)
         } }
     local function frame(kind, name, parent)
         local f = { kind = kind, parent = parent, scripts = {}, events = {}, fonts = {}, shown = true }
-        setmetatable(f, { __index = function() return function() end end })
+        setmetatable(f, NOOP_META)
         function f:SetScript(k, fn) self.scripts[k] = fn end
         function f:RegisterEvent(k) self.events[k] = true end
         function f:UnregisterAllEvents() self.events = {} end
@@ -39,7 +43,7 @@ local function boot(settings)
     ns.QoLSettings = {
         Get = function(k)
             local v = s.settings[k]
-            if v == nil then v = ({ enabled = true, groupXP = true, groupXPShowSelf = true, groupXPWidth = 260 })[k] end
+            if v == nil then v = DEFAULTS[k] end
             return v
         end,
         Set = function(k, v) s.settings[k] = v end,
@@ -235,6 +239,20 @@ do -- Show Yourself off drops your row
     local s = boot({ groupXPShowSelf = false })
     s.fire("GROUP_ROSTER_UPDATE")
     check("no row for yourself", s.rows() == "Tank: Lv 21  " .. NO_ADDON .. " | Mage: Lv 19  " .. NO_ADDON)
+end
+
+do -- cost: roster changes and messages are heard with the bars off too, so they make no garbage
+    local Measure = dofile("Tools/regression/measure.lua")(check)
+    local s = boot({ groupXP = false })
+    s.msg("2 Player-1-02 21 300 1200", "Tank Ironhide")
+    Measure("a roster change with the bars off", 0.05, function() s.fire("GROUP_ROSTER_UPDATE") end)
+    Measure("a member's numbers with the bars off", 0.05,
+        function() s.msg("2 Player-1-02 21 300 1200", "Tank Ironhide") end)
+    local on = boot()
+    on.msg("2 Player-1-02 21 300 1200", "Tank Ironhide")
+    Measure("a roster change with the bars on", 0.1, function() on.fire("GROUP_ROSTER_UPDATE") end)
+    check("bars still right after the measured redraws",
+        on.rows() == "You: Lv 20  50.0% | Tank: Lv 21  25.0% | Mage: Lv 19  " .. NO_ADDON)
 end
 
 print(("PASS group XP: %d checks"):format(checks))

@@ -17,6 +17,7 @@ local frame, unlocked, sendQueued, sendAfterCombat, requestPending
 -- character's full name with surname, which no unit API returns, so members are matched by GUID.
 local others = {}
 local rows = {}
+local mine, units, roster, members, shown, entries, inGroup = {}, {}, {}, {}, {}, {}, {}
 
 local function On()
     return S.Get("enabled") and S.Get("groupXP")
@@ -34,7 +35,8 @@ local function Channel()
 end
 
 local function Own()
-    return { level = UnitLevel("player"), xp = UnitXP("player"), max = UnitXPMax("player") }
+    mine.level, mine.xp, mine.max = UnitLevel("player"), UnitXP("player"), UnitXPMax("player")
+    return mine
 end
 
 -- Addon messages are not sent in combat; the latest numbers go out once it ends.
@@ -71,7 +73,8 @@ end
 
 -- You first, then the group in its own order.
 local function Roster()
-    local units = { "player" }
+    wipe(units)
+    units[1] = "player"
     if IsInRaid() then
         for i = 1, GetNumGroupMembers() do
             local unit = "raid" .. i
@@ -81,15 +84,19 @@ local function Roster()
     else
         for i = 1, GetNumSubgroupMembers() do units[#units + 1] = "party" .. i end
     end
-    local list = {}
+    wipe(roster)
     for _, unit in ipairs(units) do
         local name, guid = UnitName(unit), UnitGUID(unit)
         local _, class = UnitClass(unit)
         if name and guid and not (Secret(name) or Secret(guid) or Secret(class)) then
-            list[#list + 1] = { unit = unit, name = name, class = class, guid = guid }
+            local n = #roster + 1
+            local m = members[n] or {}
+            members[n] = m
+            m.unit, m.name, m.class, m.guid = unit, name, class, guid
+            roster[n] = m
         end
     end
-    return list
+    return roster
 end
 
 local Look = {}
@@ -165,7 +172,8 @@ end
 
 local function Refresh()
     if not frame then return end
-    local list = {}
+    wipe(shown)
+    local list = shown
     if unlocked then
         Look.Sample(list, true)
     elseif On() and IsInGroup() then
@@ -173,8 +181,12 @@ local function Refresh()
             if m.unit ~= "player" or S.Get("groupXPShowSelf") then
                 local level = UnitLevel(m.unit)
                 if Secret(level) then level = nil end
-                list[#list + 1] = { name = m.name, class = m.class, level = level,
-                    data = m.unit == "player" and Own() or others[m.guid] }
+                local n = #list + 1
+                local e = entries[n] or {}
+                entries[n] = e
+                e.name, e.class, e.level = m.name, m.class, level
+                e.data = m.unit == "player" and Own() or others[m.guid]
+                list[n] = e
             end
         end
     end
@@ -188,7 +200,8 @@ end
 
 -- Someone who left the group keeps nothing behind.
 local function Prune()
-    local inGroup = {}
+    if next(others) == nil then return end
+    wipe(inGroup)
     for _, m in ipairs(Roster()) do inGroup[m.guid] = true end
     for guid in pairs(others) do
         if not inGroup[guid] then others[guid] = nil end
@@ -203,7 +216,9 @@ local function OnMessage(msg)
     end
     local guid, level, xp, max = msg:match("^2 (%S+) (%d+) (%d+) (%d+)$")
     if not guid or guid == UnitGUID("player") then return end
-    others[guid] = { level = tonumber(level), xp = tonumber(xp), max = tonumber(max) }
+    local data = others[guid] or {}
+    others[guid] = data
+    data.level, data.xp, data.max = tonumber(level), tonumber(xp), tonumber(max)
     Refresh()
 end
 
