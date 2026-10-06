@@ -50,18 +50,34 @@ local SCRIPT_COMMANDS = { ["/run"] = true, ["/script"] = true, ["/dump"] = true 
 -- Every slash command and emote the client knows, from its SLASH_ and EMOTE_CMD strings.
 -- Commands from addons that are not loaded are missing, so an unknown command is a warning.
 local knownCommands
+local ownCommands, addonCommands = {}, {}
 local function KnownCommands()
     if knownCommands then return knownCommands end
     knownCommands = {}
     for key, value in pairs(_G) do
         if type(key) == "string" and type(value) == "string"
             and (key:find("^SLASH_") or key:find("^EMOTE%d+_CMD%d+$")) and value:sub(1, 1) == "/" then
-            knownCommands[value:lower()] = true
+            local command = value:lower()
+            knownCommands[command] = true
+            if key:find("^SLASH_NAOWH") then
+                ownCommands[command] = true
+            elseif key:find("^SLASH_") and issecurevariable and not issecurevariable(key) then
+                addonCommands[command] = true
+            end
         end
     end
     return knownCommands
 end
 ns.MacroKnownCommands = KnownCommands
+
+function ns.MacroCommandKind(command)
+    command = command:lower()
+    if SCRIPT_COMMANDS[command] then return "script" end
+    local known = KnownCommands()
+    if ownCommands[command] then return "own" end
+    if addonCommands[command] then return "addon" end
+    if not known[command] and not command:find("^/%d+$") then return "unknown" end
+end
 
 -- Problems a player would hit when the macro runs: unknown commands, lines that are not
 -- commands, and unbalanced brackets. Script lines are Lua, so only their command is checked.
