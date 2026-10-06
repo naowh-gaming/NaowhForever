@@ -1,7 +1,8 @@
 -------------------------------------------------------------------------------
 --  NaowhForever_Core.lua -- theme, chrome primitives, DB and profile plumbing.
 --  Standalone addon: no EllesmereUI dependency.
---  ns.FEATURE_BADGES: 0 hides supporter badges and support mentions until they launch.
+--  ns.FEATURE_BADGES: 0 hides supporter badges, badge settings and support mentions until they
+--  launch; the team's badges still show, on their defaults.
 -------------------------------------------------------------------------------
 local ADDON_NAME = ...
 

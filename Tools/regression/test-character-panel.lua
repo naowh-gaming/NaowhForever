@@ -6,8 +6,8 @@
 -- the marks on the game's own panel as it looks; it stands down while
 -- EllesmereUI styles the panel; your supporter badge shows only when you have one, never a grey
 -- one or a pitch; off again, the game's art comes back; and neither a slot's update
--- nor a repaint of the stats makes garbage. All with ns.FEATURE_BADGES at 1; at 0, no badge
--- is built or hooked and the Supporter Badge row is gone from the settings card.
+-- nor a repaint of the stats makes garbage. All with ns.FEATURE_BADGES at 1; at 0, a team
+-- badge shows on its setting's default and the Supporter Badge row is gone from the card.
 local Load = dofile("Tools/regression/load_files.lua")
 local TocFiles = dofile("Tools/regression/toc_files.lua")
 local Measure = dofile("Tools/regression/measure.lua")
@@ -112,6 +112,7 @@ for _, text in ipairs({ title, levelText }) do
     text.SetFont = function(self, path, size) self.size = size; self.object = nil end
 end
 
+local QOL_DEFAULTS = { characterPanelBadge = true }
 local S = {
     Get = function(key) return state.values[key] end,
     Set = function(key, value)
@@ -119,6 +120,7 @@ local S = {
         for _, fn in ipairs(state.listeners) do fn(key, value) end
     end,
     OnChange = function(fn) state.listeners[#state.listeners + 1] = fn end,
+    Default = function(key) return QOL_DEFAULTS[key] end,
 }
 -- The QoL defaults this module adds, and the QoL switch on.
 -- Slot Marks is on by default; off here, to start from nothing (its own checks turn it on).
@@ -392,6 +394,14 @@ S.Set("characterPanelBadge", false)
 check("Supporter Badge off: no badge", support.shown == false)
 S.Set("characterPanelBadge", true)
 check("and back on", support.shown == true)
+ns.FEATURE_BADGES = 0
+S.Set("characterPanelBadge", false)
+check("flag 0: a team badge stays on its default, whatever was saved", support.shown == true)
+support.scripts.OnShow(support)
+check("flag 0: still the team's title and line", support.title.text == "Lead Developer"
+    and support.line.text == "Naowh Forever Team")
+ns.FEATURE_BADGES = 1
+S.Set("characterPanelBadge", true)
 state.badges = nil
 character.LeftPaneHost.hooks.OnShow(character.LeftPaneHost)
 check("once you have none, it goes as the panel opens", support.shown == false)
@@ -596,6 +606,7 @@ local function PanelCard(flag)
     local cards, listeners, hooked = {}, 0, 0
     local store = {
         Get = function(key) return key == "characterPanelBadge" or key == "characterPanelScore" end,
+        Default = function() return true end,
         OnChange = function() listeners = listeners + 1 end,
     }
     local flagNs = {
@@ -612,10 +623,10 @@ local function PanelCard(flag)
 end
 
 local offCard, offCP, offListeners, offHooked, offStore = PanelCard(0)
-check("flag 0: the badge hooks nothing and listens to nothing", offHooked == 0 and offListeners == 0
+check("flag 0: the team's badge still listens and hooks", offHooked == 1 and offListeners == 1
     and offCP.supportBadge == nil)
 check("flag 0: the BiS link keeps its place", offCP.BADGE_MID == CP.BADGE_MID)
-check("flag 0: no Supporter Badge row, the Naowh Score row first", #offCard.rows == 1
+check("flag 0: no badge row at all, the Naowh Score row first", #offCard.rows == 1
     and offCard.rows[1].key == "characterPanelScore")
 check("flag 0: the summary leaves the badge out", offCard.summary(offStore) == "With your Naowh Score")
 local onCard, _, onListeners, onHooked, onStore = PanelCard(1)

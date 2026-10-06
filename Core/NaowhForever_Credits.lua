@@ -2,7 +2,7 @@
 --  NaowhForever_Credits.lua -- the Credits page in the options window (/nf, Credits): the
 --  team on their badges, the people we thank, and the data and libraries Naowh Forever is
 --  built on, drawn on the shared row engine as cards in the house colours. While
---  ns.FEATURE_BADGES is 0 there are no badges: the team wear icons and the supporters' card goes.
+--  ns.FEATURE_BADGES is 0 the card marked badges = true is left out.
 -------------------------------------------------------------------------------
 local ns = _G.NaowhForever
 local T = ns.THEME
@@ -21,17 +21,13 @@ end
 local GOLD = { r = 0xe6 / 255, g = 0xcc / 255, b = 0x80 / 255 }
 
 local TEAM = {
-    { tier = "naowh", icon = "spark", color = GOLD, name = "Naowh", role = "Founder",
-      line = "The name on it, and the community it is made for." },
-    { tier = "developer", icon = "hammer", color = T.accent, name = "Glyalith", role = "Lead Developer",
-      line = "Builds and ships Naowh Forever." },
-    { tier = "developer", icon = "hammer", color = T.accent, name = "Dieman", role = "Lead Developer",
-      line = "Builds and ships Naowh Forever." },
+    { tier = "naowh", name = "Naowh", role = "Founder", line = "The name on it, and the community it is made for." },
+    { tier = "developer", name = "Glyalith", role = "Lead Developer", line = "Builds and ships Naowh Forever." },
+    { tier = "developer", name = "Dieman", role = "Lead Developer", line = "Builds and ships Naowh Forever." },
 }
 
 local THANKS = {
-    { tier = "moderator", icon = "shield", name = "Moderators", role = "Community",
-      line = "Every moderator keeping the Naowh community running." },
+    { tier = "moderator", name = "Moderators", role = "Community", line = "Every moderator keeping the Naowh community running." },
     { tier = "legendary", badges = true, name = "Legendary Supporters", role = "Supporters", line = "Everyone wearing the Legendary badge: you keep Naowh Forever going." },
     { icon = "checklist", color = T.accentSoft, name = "Beta Testers", role = "Community", line = "Every bug report and screenshot made it better." },
 }

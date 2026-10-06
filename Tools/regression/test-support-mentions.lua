@@ -1,7 +1,7 @@
 -- Run with Lua 5.1 from the repository root: while ns.FEATURE_BADGES is 0, no text a player can
--- see names Patreon, supporters, patrons or the Legendary Supporters. Every string in the files
--- the TOC loads is scanned; the few that carry those words must sit in a file whose gate is
--- checked here, by loading it with the flag at 0 (none shown) and at 1 (shown, as before).
+-- see names Patreon, supporters, patrons or the Legendary Supporters; the team's badges may show.
+-- Every string in the files the TOC loads is scanned; the few that carry those words must sit in
+-- a file whose gate is checked here, by loading it with the flag at 0 (none shown) and at 1.
 local TocFiles = dofile("Tools/regression/toc_files.lua")
 local Load = dofile("Tools/regression/load_files.lua")
 
@@ -122,24 +122,30 @@ end }
 function Stub() return setmetatable({}, STUB) end
 
 local COLOR = { r = 1, g = 1, b = 1 }
-local TIERS = {
-    naowh = { color = COLOR, large = "naowh" }, developer = { color = COLOR, large = "developer" },
-    moderator = { color = COLOR, large = "moderator" }, legendary = { color = COLOR, large = "legendary" },
-}
+local TEAM_GUID = "Player-1-TEAM"
 
+-- What a player can read with the flag at a value: the settings, patch notes and credits pages,
+-- then everything the badges show (every tier's lines, a hover card for each, the test toast)
+-- and what /nf badges prints, for a team member trying them.
 local function Shown(flag)
     texts = {}
     local cards, infos, registered = {}, {}, {}
-    local store = { Get = function() return true end, OnChange = NOTHING }
+    local store = { Get = function() return true end, Default = function() return true end, OnChange = NOTHING }
     local ns
     ns = {
         FEATURE_BADGES = flag, CODE_BUILD = "test", THEME = setmetatable({}, { __index = function() return COLOR end }),
         QoLSettings = store, Apply = NOTHING,
-        BADGE_TIERS = flag == 1 and TIERS or nil,
+        BADGE_STAFF = { [1] = { [TEAM_GUID] = "developer" } },
+        BADGE_PATRONS = { [1] = { ["Player-1-PATRON"] = { since = "2026-03" } } },
         CharacterPanel = { EllesmereSheet = function() return false end },
         Solid = function() return Stub() end, Border = function() return Stub() end,
         Font = function() return Stub() end, Color = function(_, text) return text end,
-        UI = { CONTENT_PAD = 10 },
+        FontInset = function() return 0 end,
+        Print = function(text) texts[#texts + 1] = text end,
+        AccountSettings = function() return {} end,
+        MakeModal = function() return Stub(), Stub() end,
+        UI = { CONTENT_PAD = 10, KeepFont = function() return Stub() end, Keep = function() return Stub() end,
+            KeepButton = function() return Stub() end },
         Shared = {
             Style = { WINDOW_CARD_FILL = 0.05, BORDER_RGB = COLOR, LOGO = "logo" },
             Settings = { Page = function()
@@ -164,11 +170,22 @@ local function Shown(flag)
             },
         },
     }
+    local uiParent = Stub()
+    uiParent.GetEffectiveScale = function() return 1 end
     local env = setmetatable({
         _G = { NaowhForever = ns },
+        UIParent = uiParent,
         CreateFrame = function() return Stub() end,
+        CreateColor = function() return COLOR end,
+        GetCursorPosition = function() return 0, 0 end,
+        GetCurrentRegion = function() return 1 end,
+        UnitGUID = function() return TEAM_GUID end,
+        UnitFullName = function() return "Team", "Member" end,
+        IsInRaid = function() return false end,
         hooksecurefunc = function(_, key) registered[#registered + 1] = key end,
         wipe = function(t) for k in pairs(t) do t[k] = nil end return t end,
+        strtrim = function(s) return (s:gsub("^%s+", ""):gsub("%s+$", "")) end,
+        date = os.date,
     }, { __index = _G })
     Load({ "Badges/NaowhForever_Badges.lua", "CharacterPanel/SettingsPage.lua", "Core/NaowhForever_Credits.lua",
         "Core/NaowhForever_PatchNotes.lua" }, env)
@@ -192,26 +209,41 @@ local function Shown(flag)
             texts[#texts + 1] = line.text
         end
     end
-    return texts, ns, registered
+    local pages = #texts
+
+    for key, tier in pairs(ns.BADGE_TIERS) do
+        for _, field in ipairs({ "title", "about", "label", "tooltipLine" }) do
+            if tier[field] then texts[#texts + 1] = tier[field] end
+        end
+        ns.ShowBadgeCard(key, "Someone")
+    end
+    texts[#texts + 1] = ns.BadgeSince({ tier = "legendary", since = "2026-03" })
+    for _, command in ipairs({ "", "preview", "toast", "preview none", "preview off", "id" }) do
+        ns.BadgesCommand(command)
+    end
+    return texts, ns, registered, pages
 end
 
-local off, offNs, offHooks = Shown(0)
-check("flag 0: the pages have words", #off > 100)
+local off, offNs, offHooks, offPages = Shown(0)
+check("flag 0: the pages have words", offPages > 100 and #off > offPages + 10)
 for _, text in ipairs(off) do
     local word = Mentions(text)
     check(("flag 0: %q shows %q"):format(text, tostring(word)), word == nil)
+    check(("flag 0: %q mentions support"):format(text), not text:lower():find("support", 1, true))
 end
-check("flag 0: no badge mention left on these pages", not table.concat(off, " "):lower():find("badge", 1, true))
-check("flag 0: the badges module registers nothing", #offHooks == 0 and offNs.BadgesCommand == nil)
+check("flag 0: no badge mention left on the pages",
+    not table.concat(off, " ", 1, offPages):lower():find("badge", 1, true))
+check("flag 0: no settings card for the badges", not table.concat(off, " ", 1, offPages):find("Badges", 1, true))
+check("flag 0: the team's badges are there, the patron tier is not", #offHooks > 0
+    and offNs.BADGE_TIERS.developer ~= nil and offNs.BADGE_TIERS.legendary == nil
+    and offNs.BadgeOf(TEAM_GUID) ~= nil and offNs.BadgeOf("Player-1-PATRON") == nil)
 
--- Patreon is only on the badges' own hover card, which is built when a badged name is hovered.
 local on, onNs = Shown(1)
 local joined = table.concat(on, "\n"):lower()
-for _, word in ipairs({ "supporter", "legendary supporters", "patron" }) do
+for _, word in ipairs(WORDS) do
     check("flag 1: the words are back (" .. word .. ")", joined:find(word, 1, true) ~= nil)
 end
-check("flag 1: the badges module is back", type(onNs.BadgesCommand) == "function"
-    and onNs.BADGE_TIERS.legendary.about:find("Patreon", 1, true) ~= nil)
+check("flag 1: the patron tier is back", onNs.BadgeOf("Player-1-PATRON") == onNs.BADGE_TIERS.legendary)
 check("flag 1: one more patch note line, and the Supporter Badges card", #on > #off)
 
 print(("test-support-mentions: %d checks passed"):format(checks))
