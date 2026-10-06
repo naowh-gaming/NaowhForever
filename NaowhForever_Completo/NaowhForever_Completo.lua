@@ -520,6 +520,15 @@ page:Card({
 })
 
 page:Card({
+    id = "keys", name = "Key Binding", order = 30,
+    help = "The key that opens the Completo window.",
+    rows = {
+        { label = "Open Completo", binding = "NAOWHFOREVER_COMPLETO",
+          help = "Press it to open or close Completo. Shift-L unless something else had it." },
+    },
+})
+
+page:Card({
     id = "window", name = "Window", order = 90,
     help = "Completo's own window, with every zone and its quests.",
     rows = {

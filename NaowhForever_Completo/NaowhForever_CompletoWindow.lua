@@ -574,3 +574,46 @@ end
 function ns.ToggleCompletoWindow()
     if window and window:IsShown() then window:Hide() else ns.OpenCompletoWindow() end
 end
+
+-- Its key (Key Bindings > Naowh Forever > Open Completo), over the core's switched-off stub.
+function NaowhForever_ToggleCompleto()
+    ns.ToggleCompletoWindow()
+end
+
+-------------------------------------------------------------------------------
+--  Shift-L by default. Bindings.xml's default only reaches a character whose bindings are
+--  reset, so once per character, while Completo is on, Shift-L is bound to it if nothing
+--  else has it and Completo has no key yet; else a line in chat says where to bind it. Never
+--  again after that, so a key you change or clear stays as you left it.
+-------------------------------------------------------------------------------
+local ACTION, DEFAULT_KEY = "NAOWHFOREVER_COMPLETO", "SHIFT-L"
+
+local function DefaultKey()
+    if not S.Get("enabled") or InCombatLockdown() then return end
+    local account = ns.AccountSettings()
+    account.completoKeySet = account.completoKeySet or {}
+    local char = (UnitName("player") or "?") .. "-" .. (GetRealmName() or "?")
+    if account.completoKeySet[char] then return end
+    account.completoKeySet[char] = true
+    if GetBindingKey(ACTION) then return end
+    local taken = GetBindingAction(DEFAULT_KEY)
+    if taken == "" then
+        SetBinding(DEFAULT_KEY, ACTION)
+        SaveBindings(GetCurrentBindingSet())
+        ns.Print("Shift-L now opens Completo. Change it in Completo's settings or Key Bindings.")
+    else
+        ns.Print(("Shift-L is already %s, so Completo has no key. Pick one in its settings."):format(
+            GetBindingName(taken)))
+    end
+end
+
+hooksecurefunc(S, "Set", function(key)
+    if key == "enabled" then DefaultKey() end
+end)
+
+local keyBoot = CreateFrame("Frame")
+keyBoot:RegisterEvent("PLAYER_LOGIN")
+keyBoot:SetScript("OnEvent", function(self)
+    self:UnregisterAllEvents()
+    DefaultKey()
+end)
