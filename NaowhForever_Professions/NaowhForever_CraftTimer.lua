@@ -241,7 +241,7 @@ end
 -- "Inventory is full", as counted here).
 -- A profession bag takes only items of its kind, the reagent bag only crafting reagents.
 -- The profession window caps Create All with it.
-local bagStacks, bagLists, bagRecords, NONE = {}, {}, {}, {}
+local bagStacks, bagLists, bagRecords, NONE, memo = {}, {}, {}, {}, {}
 local function SmallestFirst(a, b) return a.count < b.count end
 
 local function BagTakes(bag, family, isReagent)
@@ -250,7 +250,7 @@ local function BagTakes(bag, family, isReagent)
     return (bagType or 0) == 0 or bit.band(family, bagType) ~= 0
 end
 
-function ns.CraftBagRoom(output, made, reagents, limit)
+local function BagRoom(output, made, reagents, limit)
     if not output or not limit or limit < 1 then return end
     local stack = C_Item.GetItemMaxStackSizeByID and C_Item.GetItemMaxStackSizeByID(output)
         or select(8, C_Item.GetItemInfo(output))
@@ -314,6 +314,18 @@ function ns.CraftBagRoom(output, made, reagents, limit)
         end
     end
     return limit
+end
+
+function ns.CraftBagRoom(output, made, reagents, limit)
+    local changes = ns.ProfBagChanges
+    if changes and memo.changes == changes and memo.output == output and memo.made == made
+        and memo.reagents == reagents and memo.limit == limit then
+        return memo.room
+    end
+    local room = BagRoom(output, made, reagents, limit)
+    memo.changes, memo.output, memo.made, memo.reagents, memo.limit, memo.room =
+        changes, output, made, reagents, limit, room
+    return room
 end
 
 -- Nothing is hooked until Total Craft Timer is first switched on: crafting, and Blizzard's

@@ -388,7 +388,7 @@ local function ScanTrainer()
             end
         end
     end
-    if changed and ns.ProfWindowRefresh then ns.ProfWindowRefresh() end
+    if changed and ns.ProfWindowRefresh then ns.ProfWindowRefresh(true) end
 end
 
 local trainerQueued = false
@@ -450,7 +450,7 @@ end
 hooksecurefunc(S, "Set", function(key)
     if key == "enabled" or key == "recipeFinder" then
         Apply()
-        if ns.ProfWindowRefresh then ns.ProfWindowRefresh() end
+        if ns.ProfWindowRefresh then ns.ProfWindowRefresh(true) end
     end
 end)
 hooksecurefunc(ns, "Apply", Apply)

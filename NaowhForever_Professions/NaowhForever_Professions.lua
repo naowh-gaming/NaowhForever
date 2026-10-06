@@ -111,7 +111,12 @@ local Reuse = { prof = {}, cats = {}, byID = {}, learned = {}, pool = {}, shown 
     inGroup = {}, lines = {}, parts = {}, reagents = {}, waiting = {}, none = {}, status = {}, queued = false,
     quiet = { ITEM_DATA_LOAD_RESULT = true, BAG_UPDATE_DELAYED = true, PLAYERBANKSLOTS_CHANGED = true,
         AUCTION_HOUSE_SHOW = true, AUCTION_HOUSE_CLOSED = true, TRACKED_RECIPE_UPDATE = true,
-        GROUP_ROSTER_UPDATE = true } }
+        GROUP_ROSTER_UPDATE = true },
+    reread = { APPLY = true, ADDON_LOADED = true, TRADE_SKILL_SHOW = true, TRADE_SKILL_CLOSE = true,
+        TRADE_SKILL_DATA_SOURCE_CHANGED = true, TRADE_SKILL_NAME_UPDATE = true, NEW_RECIPE_LEARNED = true,
+        SKILL_LINES_CHANGED = true, TRADE_SKILL_FAVORITES_CHANGED = true },
+    stale = true, listChanged = false, count = 0, sig = {}, BURST = 0.1 }
+ns.ProfBagChanges = 0
 local selectedID, offset, query = nil, 0, ""
 -- An unlearned recipe (a RecipeData row) when one is chosen; it takes over the middle column.
 local selectedUnlearned
@@ -197,9 +202,14 @@ local function Collect()
     local byID, learned, used = Reuse.byID, Reuse.learned, 0
     wipe(byID)
     wipe(learned)
-    for _, id in ipairs(C_TradeSkillUI.GetAllRecipeIDs() or Reuse.none) do
+    local ids = C_TradeSkillUI.GetAllRecipeIDs() or Reuse.none
+    Reuse.count = #ids
+    for _, id in ipairs(ids) do
         local info = C_TradeSkillUI.GetRecipeInfo(id)
-        if info then learned[id] = info.learned and true or false end
+        if info then
+            learned[id] = info.learned and true or false
+            info.numAvailable = nil
+        end
         if info and info.learned then
             local catID = info.categoryID or 0
             local cat = byID[catID]
@@ -1673,7 +1683,18 @@ Render = function()
     win.rankText:SetText(("%s %d/%d"):format(name, prof.skill, prof.max))
     RenderRankBanner(prof)
 
-    Collect()
+    local sig = Reuse.sig
+    if Reuse.listChanged and not Reuse.stale
+        and #(C_TradeSkillUI.GetAllRecipeIDs() or Reuse.none) ~= Reuse.count then
+        Reuse.stale = true
+    end
+    Reuse.listChanged = false
+    if Reuse.stale or sig.id ~= prof.id or sig.skill ~= prof.skill or sig.max ~= prof.max
+        or sig.linked ~= linkedMode or sig.who ~= who then
+        Reuse.stale = false
+        sig.id, sig.skill, sig.max, sig.linked, sig.who = prof.id, prof.skill, prof.max, linkedMode, who
+        Collect()
+    end
     BuildEntries()
     RenderList()
     RenderDetail()
@@ -3426,6 +3447,7 @@ end
 -------------------------------------------------------------------------------
 local function Deactivate()
     wipe(Reuse.waiting)
+    ns.ProfBagChanges = ns.ProfBagChanges + 1
     if win then win:Hide() end
     if ProfessionsFrame then
         DockTabs(false)
@@ -3502,6 +3524,8 @@ local function Activate(mode)
     if not InCombatLockdown() then
         win:SetSize(math.max(width, pf:GetWidth()), math.max(MIN_H, pf:GetHeight()))
     end
+    if not win:IsShown() or linked ~= linkedMode or mode ~= Reuse.mode then Reuse.stale = true end
+    Reuse.mode = mode
     if not win:IsShown() or linked ~= linkedMode then
         selectedID, selectedUnlearned, offset = nil, nil, 0
         win:Show()
@@ -3564,7 +3588,18 @@ local function Queue()
     Reuse.queued = true
     C_Timer.After(0, Reuse.Flush)
 end
-ns.ProfWindowRefresh = Queue
+
+function Reuse.Soon()
+    if Reuse.queued then return end
+    Reuse.queued = true
+    C_Timer.After(Reuse.BURST, Reuse.Flush)
+end
+
+function Reuse.Refresh(reread)
+    if reread then Reuse.stale = true end
+    Queue()
+end
+ns.ProfWindowRefresh = Reuse.Refresh
 
 -- A link clicked while Blizzard's window was loaded but closed makes Forever cast every one of
 -- your own professions at once and land on the last, never the link's. A second click opens it,
@@ -3672,6 +3707,7 @@ end)
 
 local events = CreateFrame("Frame")
 events:SetScript("OnEvent", function(_, event, name, loaded)
+    if event == "BAG_UPDATE_DELAYED" then ns.ProfBagChanges = ns.ProfBagChanges + 1 end
     if event == "ITEM_DATA_LOAD_RESULT" then
         if not Reuse.waiting[name] then return end
         Reuse.waiting[name] = nil
@@ -3706,6 +3742,9 @@ events:SetScript("OnEvent", function(_, event, name, loaded)
             if book.FormatProfession then hooksecurefunc(book, "FormatProfession", Redock) end
         end
     end
+    if Reuse.reread[event] then Reuse.stale = true end
+    if event == "TRADE_SKILL_LIST_UPDATE" then Reuse.listChanged = true end
+    if Reuse.quiet[event] or event == "TRADE_SKILL_LIST_UPDATE" then return Reuse.Soon() end
     Queue()
 end)
 
