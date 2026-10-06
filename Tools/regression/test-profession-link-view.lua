@@ -11,7 +11,7 @@ local function Read(path)
     return s
 end
 
-local source = Read("Professions/NaowhForever_Professions.lua")
+local source = Read("NaowhForever_Professions/NaowhForever_Professions.lua")
 local first = assert(source:find("local casts = CreateFrame(\"Frame\")", 1, true))
 local hook = assert(source:find("hooksecurefunc(\"SetItemRef\"", first, true))
 local last = assert(source:find("\nend)\n", hook, true))
