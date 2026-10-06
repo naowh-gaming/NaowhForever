@@ -1837,7 +1837,7 @@ function ns.ShowRaidReminderAnchorConfig()
     UI.BeginMoverMode()
     reopenWindowOnExit = reopen
     local f = BuildConfigToolbar()
-    f._head:SetText(toolbarTitle and toolbarTitle() or "Layout Mode")
+    f._head:SetText(toolbarTitle and toolbarTitle() or "Move Elements")
     for i, c in ipairs(toolbarChecks) do
         f._checks[i]:SetChecked(c.get())
         f._checks[i]:SetEnabled(c.enabled())
