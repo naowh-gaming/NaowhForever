@@ -9,7 +9,7 @@ local UI = ns.UI
 local SIDEBAR_W, CONTENT_W, WINDOW_W, WINDOW_H = 240, 1000, 1440, 790
 local TOP_H, PAGE_HEADER_H = 64, 128
 local HEADER_H, TAB_H, FOOTER_H, NAV_H = 76, 32, 46, 32
-local SEARCH_W, SEARCH_H = 240, 26
+local FIND_W = 110
 local SCROLL_BAR_GAP = 12 -- the page scrollbar sits this far right of the page, in its margin
 local LINK_ICONS = "Interface\\AddOns\\NaowhForever\\Media\\Links\\"
 local LINKS = {
@@ -196,7 +196,7 @@ for _, mod in ipairs(MODULES) do
 end
 
 local window, scrollFrame, scrollChild, tabLine, headerTitle, headerSub
-local contentHeader, contentFooter, breadcrumb, moduleSwitch, moduleLabel
+local contentHeader, contentFooter, findStrip, breadcrumb, moduleSwitch, moduleLabel
 local lastPages = {}
 local navButtons, tabStrips, navBlocks = {}, {}, {}
 local wrappers = {}          -- page key -> built wrapper frame
@@ -402,11 +402,15 @@ local function LayoutContent()
     tabLine:SetPoint("TOPRIGHT", window, "TOPRIGHT", -30, -(TOP_H + headerH))
     scrollFrame:ClearAllPoints()
     scrollFrame:SetPoint("TOPLEFT", window, "TOPLEFT", left + 6, -(TOP_H + headerH + 8))
-    scrollFrame:SetPoint("BOTTOMRIGHT", window, "BOTTOMRIGHT", -30, FOOTER_H + 4)
+    local findH = findStrip:IsShown() and findStrip:GetHeight() or 0
+    scrollFrame:SetPoint("BOTTOMRIGHT", window, "BOTTOMRIGHT", -30, FOOTER_H + 4 + findH)
     scrollChild:SetWidth(window:GetWidth() - left - 36)
     contentFooter:ClearAllPoints()
     contentFooter:SetPoint("BOTTOMLEFT", window, "BOTTOMLEFT", left, 0)
     contentFooter:SetPoint("BOTTOMRIGHT")
+    findStrip:ClearAllPoints()
+    findStrip:SetPoint("BOTTOMLEFT", window, "BOTTOMLEFT", left, FOOTER_H)
+    findStrip:SetPoint("BOTTOMRIGHT", window, "BOTTOMRIGHT", 0, FOOTER_H)
 end
 
 -- Each window keeps its own wrappers, so a page open in the main window and in a module's
@@ -478,18 +482,25 @@ local function Flash(row)
     C_Timer.After(1.2, function() if gen == flashGen then flash:Hide() end end)
 end
 
--- Opens the page (building it if this is the first visit) and the feature the row sits
--- under, scrolls to the row that shows `label` and flashes it. The row's place comes from
--- the real layout, so it is right whatever the page looks like now.
-function UI.GoToSetting(key, label, feature)
-    if not (window and PAGES[key]) then return end
+-- Keeps the card or feature holding a setting open from now on.
+function UI.RevealFeature(key, feature)
     local Settings = ns.Shared and ns.Shared.Settings
-    local declared = Settings and Settings.pages[key]
-    if declared then
+    if Settings and Settings.pages[key] then
         Settings.Reveal(feature)
     elseif feature then
         UI.OpenFeature(feature)
     end
+end
+
+-- Opens the page (building it if this is the first visit) and the feature the row sits
+-- under, scrolls to the row that shows `label` and flashes it. The row's place comes from
+-- the real layout, so it is right whatever the page looks like now. A feature the find strip
+-- holds open (UI.searchOpen) stays open only while the strip is up.
+function UI.GoToSetting(key, label, feature)
+    if not (window and PAGES[key]) then return end
+    local Settings = ns.Shared and ns.Shared.Settings
+    local declared = Settings and Settings.pages[key]
+    if not (feature and UI.searchOpen and UI.searchOpen[feature]) then UI.RevealFeature(key, feature) end
     -- Drawn again, so the place measured below is the layout that stays.
     if wrappers[key] then wrappers[key]._dirty = true end
     ShowPage(key)
@@ -514,18 +525,6 @@ function UI.GoToSetting(key, label, feature)
             return
         end
     end
-end
-
--- The page on show, drawn again in place for the search's marks. Pages the search does not
--- scan have nothing to mark.
-function UI.RefreshSearchMarks()
-    local page = PAGES[currentPage]
-    if not (window and window:IsShown()) or page.noscan then return end
-    local scroll = scrollFrame:GetVerticalScroll()
-    if wrappers[currentPage] then wrappers[currentPage]._dirty = true end
-    ShowPage(currentPage)
-    scrollFrame:UpdateScrollChildRect()
-    scrollFrame:SetVerticalScroll(scroll)
 end
 
 local function ShowModulePage(win, key)
@@ -1148,7 +1147,17 @@ local function CreateWindow()
     window:EnableMouse(true)
     ns.Shared.Parts.Backdrop(window):Paint(1)
     local border = ns.Border(window, ns.Shared.Style.BORDER_RGB)
-    window:SetScript("OnKeyDown", CloseOnEscape)
+    -- Ctrl+F opens the find strip, and Escape closes the strip before the window.
+    window:SetScript("OnKeyDown", function(self, key)
+        if InCombatLockdown() then return end
+        local find = key == "F" and IsControlKeyDown()
+        if not (find or (key == "ESCAPE" and findStrip:IsShown())) then return CloseOnEscape(self, key) end
+        self:SetPropagateKeyboardInput(false)
+        if find then UI.OpenFind() else UI.CloseFind() end
+        C_Timer.After(0, function()
+            if not InCombatLockdown() then self:SetPropagateKeyboardInput(true) end
+        end)
+    end)
 
     local top = CreateFrame("Frame", nil, window)
     top:SetPoint("TOPLEFT"); top:SetPoint("TOPRIGHT"); top:SetHeight(TOP_H)
@@ -1175,10 +1184,9 @@ local function CreateWindow()
     ns.AccentBorder(unlock)
     unlock:SetPoint("RIGHT", close, "LEFT", -18, 0)
     ns.Tooltip(unlock, "Layout Mode", "Place and size each display. Exit Config returns to this window.")
-    local search = UI.AttachSearch(top, 0)
-    search:ClearAllPoints()
-    search:SetPoint("RIGHT", unlock, "LEFT", -18, 0)
-    search:SetSize(SEARCH_W, SEARCH_H)
+    local find = ns.Button(top, "Find  " .. ns.Color("muted", "Ctrl+F"), FIND_W, 32, function() UI.OpenFind() end)
+    find:SetPoint("RIGHT", unlock, "LEFT", -18, 0)
+    ns.Tooltip(find, "Find", "Step through every setting that matches what you type.")
 
     local sidebar = CreateFrame("Frame", nil, window)
     sidebar:SetPoint("TOPLEFT", 0, -TOP_H); sidebar:SetPoint("BOTTOMLEFT"); sidebar:SetWidth(SIDEBAR_W)
@@ -1281,6 +1289,7 @@ local function CreateWindow()
     ns.AccentBorder(ns.ReloadButton(contentFooter, "Reload UI", 120, 30)):SetPoint("LEFT", 26, 0)
     ns.AccentBorder(ns.Button(contentFooter, "Close", 120, 30, function() window:Hide() end))
         :SetPoint("RIGHT", -30, 0)
+    findStrip = UI.AttachFind(window, function() LayoutContent() end)
     scrollFrame = UI.SlimScroll(window, nil, SCROLL_BAR_GAP)
     scrollChild = CreateFrame("Frame", nil, scrollFrame)
     scrollChild:SetSize(WINDOW_W - SIDEBAR_W - 36, 1)

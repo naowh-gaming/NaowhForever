@@ -142,6 +142,7 @@ do
     local ranked = UI.Search.Match(index, "alerts")
     Check(ranked[1].label == "Alert Sound", "the setting in the ALERTS section comes first")
     Check(#UI.Search.Match(index, "e", 3) == 3, "the cap applies")
+    Check(#UI.Search.Match(index, "e") > 3, "without a cap every match is kept, for the strip to step through")
 end
 
 -- Translated names are searchable too.
@@ -187,7 +188,7 @@ do
         "DualRow tags its row")
     local window = Read("Core/NaowhForever_Window.lua")
     Check(window:find("row._searchL == label or row._searchR == label", 1, true), "the jump finds the row by label")
-    Check(window:find("UI.AttachSearch(top", 1, true), "the window attaches the search box")
+    Check(window:find("findStrip = UI.AttachFind(window", 1, true), "the window attaches the find strip")
 end
 
 
@@ -231,6 +232,6 @@ do
     local window = Read("Core/NaowhForever_Window.lua")
     Check(window:find("UI.OpenFeature(feature)", 1, true), "the jump opens the feature first")
     local widgets = Read("Core/NaowhForever_Widgets.lua")
-    Check(widgets:find("UI.searchOpen and UI.searchOpen[id]", 1, true), "a feature holding a match opens while typing")
+    Check(widgets:find("UI.searchOpen and UI.searchOpen[id]", 1, true), "the match on show holds its feature open")
 end
 print("PASS settings search: " .. cases .. " checks")

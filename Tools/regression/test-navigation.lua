@@ -413,6 +413,82 @@ Check(Text("Co-Tank Debuffs") and Text("Max Icons"), "the jump opens its card")
 UI.SearchPages = pages
 for _, page in ipairs(UI.SearchPages()) do Check(not page.soon, "unfinished pages are not search results") end
 
+-- The find strip: Ctrl+F opens it under the page, typing finds, Enter and Shift+Enter step
+-- through the matches, each landing on its page and row, and Escape closes it and clears the mark.
+do
+    local ctrl, shift = false, false
+    env.IsControlKeyDown = function() return ctrl end
+    env.IsShiftKeyDown = function() return shift end
+    ns.OpenOptionsWindow("QoL/Interface"); Flush()
+    Check(Button("Find  " .. ns.Color("muted", "Ctrl+F")) ~= nil, "the header has the Find button")
+    Check(not Text("FIND"), "the strip starts closed")
+    ctrl = true
+    root.scripts.OnKeyDown(root, "F"); Flush()
+    ctrl = false
+    Check(Text("FIND") ~= nil and root:IsShown(), "Ctrl+F opens the find strip")
+    local bar = Text("FIND").parent
+    Check(bar.points.BOTTOMLEFT and bar.points.BOTTOMLEFT[4] == 46, "docked above the footer")
+    local input
+    for _, child in ipairs(bar.children) do if child.scripts.OnEnterPressed then input = child end end
+    Check(input and input:HasFocus(), "the cursor is in its box")
+
+    local function Chips()
+        local out = {}
+        for _, child in ipairs(bar.children) do
+            if child.index and child:IsShown() then out[#out + 1] = child end
+        end
+        return out
+    end
+    local expected = UI.Search.Match(UI.Search.Build(), "max icons")
+    input:SetText("max icons"); Flush()
+    Check(Text("1 of " .. #expected) ~= nil, "the counter says which match is on show, of how many")
+    Check(#Chips() == #expected, "a chip for each match")
+    Check(Text("Quality of Life / Combat") ~= nil, "the first match's page opens")
+    Check(Setting("Max Icons") and Setting("Max Icons").found:IsShown(), "its row carries the find mark")
+    Check(UI.searchOpen and UI.searchOpen["QoL/Combat:coTank"], "its card is held open while the strip is up")
+
+    local all = UI.Search.Match(UI.Search.Build(), "colour")
+    input:SetText("colour"); Flush()
+    Check(#all > 2 and Text("1 of " .. #all), "typing again starts over")
+    input.scripts.OnEnterPressed(input); Flush()
+    Check(Text("2 of " .. #all) and UI.searchFocus.label == all[2].label, "Enter steps to the next match")
+    shift = true
+    input.scripts.OnEnterPressed(input); Flush()
+    input.scripts.OnEnterPressed(input); Flush()
+    shift = false
+    Check(Text(#all .. " of " .. #all) and UI.searchFocus.label == all[#all].label,
+        "Shift+Enter steps back, round to the last")
+    local lit
+    for _, c in ipairs(Chips()) do if c.index == #all then lit = c end end
+    Check(lit ~= nil, "the chips keep the current match in view")
+    local chip = Chips()[1]
+    chip.scripts.OnClick(chip); Flush()
+    Check(Text(chip.index .. " of " .. #all) and UI.searchFocus.label == all[chip.index].label,
+        "a chip jumps to its match")
+
+    input:SetText("zzzz"); Flush()
+    Check(Text("No match") and #Chips() == 0 and UI.searchFocus == nil, "nothing found, nothing marked")
+
+    input:SetText("max icons"); Flush()
+    root.scripts.OnKeyDown(root, "ESCAPE"); Flush()
+    Check(root:IsShown() and not bar.visible, "Escape closes the strip, not the window")
+    Check(UI.searchFocus == nil and UI.searchOpen == nil, "and clears the marks")
+    Check(Setting("Max Icons") and not Setting("Max Icons").found:IsShown(), "the row loses its mark")
+    Check(Text("Max Icons") ~= nil, "the card holding the last match stays open")
+    Check(input:GetText() == "" and Text("1 of 1") == nil, "and the strip starts empty next time")
+
+    root.scripts.OnKeyDown(root, "F"); Flush()
+    Check(not bar.visible, "F alone does nothing")
+    ctrl = true
+    root.scripts.OnKeyDown(root, "F"); Flush()
+    ctrl = false
+    input.scripts.OnEscapePressed(input); Flush()
+    Check(not bar.visible and root:IsShown(), "Escape in the box closes the strip too")
+    root.scripts.OnKeyDown(root, "ESCAPE"); Flush()
+    Check(not root:IsShown(), "with the strip closed, Escape closes the window")
+    ns.OpenOptionsWindow("QoL/Combat"); Flush()
+end
+
 -- A confirm: No, Escape and a newer confirm taking its place all count as no; Yes does not.
 do
     local yes, no = 0, 0

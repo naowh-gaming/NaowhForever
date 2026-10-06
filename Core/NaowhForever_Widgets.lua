@@ -798,28 +798,24 @@ function UI.ScanLabels(labels, tooltip)
     for _, text in ipairs(labels) do ScanLabel(text, tooltip) end
 end
 
--- While a search is typed (UI.searchWords), rows holding every word in their name or
--- tooltip get a soft band.
-local function Mark(frame, text, tooltip)
-    local on = false
-    local words = UI.searchWords
-    if words and type(text) == "string" and text ~= "" then
-        local name = text:lower()
-        on = true
-        for _, word in ipairs(words) do
-            if not name:find(word, 1, true) then on = false break end
-        end
-    end
+-- The setting the find strip is on (UI.searchFocus) gets an accent bar on its left edge.
+local FIND_MARK_W = 3
+
+local function Mark(frame, text, feature)
+    local focus = UI.searchFocus
+    local on = focus ~= nil and focus.label == text and focus.feature == feature
     if on and not frame._searchMark then
-        frame._searchMark = ns.Solid(frame, "BACKGROUND", T.accent, 0.18)
-        frame._searchMark:SetAllPoints()
+        frame._searchMark = ns.Solid(frame, "ARTWORK", T.accent, 1)
+        frame._searchMark:SetPoint("TOPLEFT")
+        frame._searchMark:SetPoint("BOTTOMLEFT")
+        frame._searchMark:SetWidth(FIND_MARK_W)
     end
     if frame._searchMark then frame._searchMark:SetShown(on) end
 end
 
 local function MarkRow(parent, row, leftCfg, rightCfg)
-    Mark(row._leftRegion, leftCfg.text, leftCfg.tooltip)
-    if rightCfg then Mark(row._rightRegion, rightCfg.text, rightCfg.tooltip) end
+    Mark(row._leftRegion, leftCfg.text, row._searchF)
+    if rightCfg then Mark(row._rightRegion, rightCfg.text, row._searchF) end
     return Collapsed(parent, row, ROW_H)
 end
 
@@ -1037,7 +1033,7 @@ function W:Button(parent, text, yOffset, onClick)
         row._btn = ns.Button(row, text, 200, 26, function() row._onClick() end)
         row._btn:SetPoint("LEFT", row, "LEFT", 20, 0)
     end
-    Mark(row, text)
+    Mark(row, text, row._searchF)
     return Collapsed(parent, row, ROW_H)
 end
 

@@ -1,5 +1,6 @@
 -------------------------------------------------------------------------------
---  NaowhForever_Search.lua -- find a setting anywhere in the options window and jump to it.
+--  NaowhForever_Search.lua -- the find strip: every setting matching what is typed, stepped
+--  through one at a time on its own page.
 --  The first keystroke runs the page builders in scan mode (UI.searchScan): each row says
 --  what it is called and builds nothing. `noscan` pages in Window.lua are found by module
 --  and tab name only. Rows that only exist under some settings are found only while they exist.
@@ -8,9 +9,6 @@ local ns = _G.NaowhForever
 local T = ns.THEME
 local UI = ns.UI
 
-local MAX_RESULTS, RESULT_H, PANEL_W = 12, 36, 400
-local box, panel, active
-local results = {}
 local failed = {}           -- pages whose builder errored in the last scan (for /dump)
 
 -- A parent that answers every call with 0. A builder that does more than call the row
@@ -102,139 +100,206 @@ local function Match(index, query, limit)
         return a.order < b.order
     end)
     local out = {}
-    for i = 1, math.min(#found, limit or MAX_RESULTS) do out[i] = found[i].entry end
+    for i = 1, math.min(#found, limit or #found) do out[i] = found[i].entry end
     return out
 end
 
 UI.Search = { Build = BuildIndex, Match = Match, Plain = Plain, failed = failed }
 
 -------------------------------------------------------------------------------
---  The box and its results
+--  The strip: docked under the page, above the footer. The input, a "3 of 12" counter and
+--  Previous / Next on its first line; under them a chip per match, the current one lit.
 -------------------------------------------------------------------------------
-local function HidePanel()
-    if panel then panel:Hide() end
-    results = {}
+local STRIP_H, STRIP_PAD = 72, 10
+local TOP_EDGE = 2          -- the accent line along the strip's top
+local TAG_SIZE = 11         -- the FIND tag before the input
+local INPUT_W, INPUT_H = 280, 26
+local STEP_W, CLOSE_W, BUTTON_GAP = 72, 26, 6
+local CHIP_H, CHIP_PAD, CHIP_GAP, CHIP_MAX_W = 22, 10, 6, 320
+local CHIP_TEXT = 11
+local CHIP_LIT = 0.16       -- the current chip's fill, in the accent
+
+local strip, input, counter, measure
+local chips = {}
+local matches, widths = {}, {}
+local current, first = 0, 1
+local active                -- the index is built on the first keystroke after the strip opens
+
+local function ChipText(entry)
+    if not entry.label then return entry.crumb end
+    return ns.Color("muted", entry.crumb .. " > ") .. entry.label
 end
 
--- The search's marks go first, so the jump measures the page as it will stay; pages marked
--- while typing are drawn again once it has landed.
-local function Jump(entry)
-    UI.searchWords, UI.searchOpen = nil, nil
-    if box then box:SetText(""); box:ClearFocus() end
-    UI.GoToSetting(entry.key, entry.label, entry.feature)
-    UI:RefreshPage(true)
-end
-
-local function NewPanel()
-    panel = CreateFrame("Frame", nil, box)
-    panel:SetFrameLevel(math.min(box:GetFrameLevel() + 100, 9999))
-    panel:SetPoint("TOPRIGHT", box, "BOTTOMRIGHT", 0, -2)
-    panel:SetWidth(PANEL_W)
-    panel:EnableMouse(true)
-    ns.Solid(panel, "BACKGROUND", T.panel, 0.98):SetAllPoints()
-    ns.Border(panel)
-    panel.rows = {}
-    for i = 1, MAX_RESULTS do
-        local row = CreateFrame("Button", nil, panel)
-        row:SetHeight(RESULT_H)
-        row:SetPoint("TOPLEFT", panel, "TOPLEFT", 1, -1 - (i - 1) * RESULT_H)
-        row:SetPoint("TOPRIGHT", panel, "TOPRIGHT", -1, -1 - (i - 1) * RESULT_H)
-        row.hover = ns.Solid(row, "BACKGROUND", T.grey, 0.5)
-        row.hover:SetAllPoints()
-        row.hover:Hide()
-        row.label = ns.Font(row, 13, nil)
-        row.label:SetPoint("TOPLEFT", 10, -5)
-        row.label:SetPoint("RIGHT", -10, 0)
-        row.label:SetJustifyH("LEFT")
-        row.label:SetWordWrap(false)
-        row.crumb = ns.Font(row, 10, nil, T.muted)
-        row.crumb:SetPoint("TOPLEFT", row.label, "BOTTOMLEFT", 0, -2)
-        row.crumb:SetPoint("RIGHT", -10, 0)
-        row.crumb:SetJustifyH("LEFT")
-        row.crumb:SetWordWrap(false)
-        row:SetScript("OnEnter", function(self) self.hover:Show() end)
-        row:SetScript("OnLeave", function(self) self.hover:Hide() end)
-        row:SetScript("OnClick", function(self) if self.entry then Jump(self.entry) end end)
-        panel.rows[i] = row
+local function ChipWidth(i)
+    if not widths[i] then
+        measure:SetText(ChipText(matches[i]))
+        widths[i] = math.min(measure:GetStringWidth() + CHIP_PAD * 2, CHIP_MAX_W)
     end
-    panel.none = ns.Font(panel, 12, nil, T.muted)
-    panel.none:SetPoint("TOPLEFT", 10, -10)
-    panel.none:SetText(ns.L("No setting matches."))
+    return widths[i]
 end
 
-local function ShowResults(found)
-    if not panel then NewPanel() end
-    results = found
-    for i, row in ipairs(panel.rows) do
-        local entry = found[i]
-        row.entry = entry
-        row:SetShown(entry ~= nil)
-        if entry then
-            row.label:SetText(entry.label or entry.crumb)
-            row.crumb:SetText(entry.label and entry.crumb or ns.L("Page"))
+local function PaintChip(chip, hover)
+    local lit = chip.index == current
+    local edge = (lit or hover) and T.accent or T.line
+    local fill = lit and T.accent or T.bg
+    chip.edge:SetColor(edge.r, edge.g, edge.b, 1)
+    chip.fill:SetColorTexture(fill.r, fill.g, fill.b, lit and CHIP_LIT or 1)
+end
+
+local Go
+
+local function NewChip()
+    local chip = CreateFrame("Button", nil, strip)
+    chip:SetHeight(CHIP_H)
+    chip.fill = ns.Solid(chip, "BACKGROUND", T.bg, 1)
+    chip.fill:SetAllPoints()
+    chip.edge = ns.Border(chip, T.line)
+    chip.text = ns.Font(chip, CHIP_TEXT, nil)
+    chip.text:SetPoint("LEFT", CHIP_PAD, 0)
+    chip.text:SetPoint("RIGHT", -CHIP_PAD, 0)
+    chip.text:SetJustifyH("LEFT")
+    chip.text:SetWordWrap(false)
+    chip:SetScript("OnClick", function(self) Go(self.index) end)
+    chip:SetScript("OnEnter", function(self) PaintChip(self, true) end)
+    chip:SetScript("OnLeave", function(self) PaintChip(self, false) end)
+    return chip
+end
+
+-- The chips from `first` on, as many as fit; `first` moves only as far as it must to keep
+-- the current chip in view.
+local function DrawChips()
+    local room = strip:GetWidth() - STRIP_PAD * 2
+    if current > 0 then
+        if current < first then first = current end
+        local span = -CHIP_GAP
+        for i = first, current do span = span + ChipWidth(i) + CHIP_GAP end
+        while first < current and span > room do
+            span = span - ChipWidth(first) - CHIP_GAP
+            first = first + 1
         end
     end
-    panel.none:SetShown(#found == 0)
-    panel:SetHeight(math.max(#found, 1) * RESULT_H + 2)
-    panel:Show()
+    local x, shown = STRIP_PAD, 0
+    for i = first, #matches do
+        local w = ChipWidth(i)
+        if x + w > STRIP_PAD + room and shown > 0 then break end
+        shown = shown + 1
+        local chip = chips[shown] or NewChip()
+        chips[shown] = chip
+        chip.index = i
+        chip.text:SetText(ChipText(matches[i]))
+        chip:SetWidth(w)
+        chip:ClearAllPoints()
+        chip:SetPoint("BOTTOMLEFT", strip, "BOTTOMLEFT", x, STRIP_PAD)
+        PaintChip(chip, false)
+        chip:Show()
+        x = x + w + CHIP_GAP
+    end
+    for i = shown + 1, #chips do chips[i]:Hide() end
+    if current > 0 then
+        counter:SetText(current .. " " .. ns.L("of") .. " " .. #matches)
+    else
+        counter:SetText(input:GetText() ~= "" and ns.L("No match") or "")
+    end
 end
 
--- A setting holding every word in its own name or tooltip: what gets marked, and whose
--- feature opens. A hit on the page or section name alone does neither.
-local function RowHit(entry, words)
-    if not entry.labelLower then return false end
-    for _, word in ipairs(words) do
-        if not entry.labelLower:find(word, 1, true) then return false end
-    end
-    return true
-end
-
-local function MarkPage(text)
-    local words
-    for word in text:lower():gmatch("%S+") do
-        words = words or {}
-        words[#words + 1] = word
-    end
-    if not (words or UI.searchWords) then return end
-    local open
-    for _, entry in ipairs(words and UI.searchIndex or {}) do
-        if entry.feature and RowHit(entry, words) then
-            open = open or {}
-            open[entry.feature] = true
-        end
-    end
+-- The match is held open and marked only while the strip is up; GoToSetting scrolls to it.
+function Go(i)
+    current = i
+    local entry = matches[i]
+    local open = entry.feature and { [entry.feature] = true }
     if open then UI.MarkFeatureParents(open) end
-    UI.searchWords, UI.searchOpen = words, open
-    -- Clearing redraws every page that was marked; typing only the one on show.
-    if words then UI.RefreshSearchMarks() else UI:RefreshPage(true) end
+    UI.searchOpen = open
+    UI.searchFocus = { label = entry.label, feature = entry.feature }
+    UI.GoToSetting(entry.key, entry.label, entry.feature)
+    DrawChips()
+end
+
+local function Step(by)
+    if #matches > 0 then Go((current - 1 + by) % #matches + 1) end
+end
+
+-- Every page a match was marked on is drawn again without it.
+local function Unmark()
+    if not (UI.searchFocus or UI.searchOpen) then return end
+    UI.searchFocus, UI.searchOpen = nil, nil
+    UI:RefreshPage(true)
 end
 
 local function OnText(text)
     text = Trim(text)
-    if text == "" then
-        active = false
-        HidePanel()
-        MarkPage("")
-        return
+    matches, widths, current, first = {}, {}, 0, 1
+    if text ~= "" then
+        -- Built once per opening of the strip, so it matches the settings as they are now.
+        if not active then
+            active = true
+            UI.searchIndex = BuildIndex()
+        end
+        matches = Match(UI.searchIndex, text)
     end
-    -- Rebuilt per search so it matches the settings as they are now.
-    if not active then
-        active = true
-        UI.searchIndex = BuildIndex()
+    if matches[1] then
+        Go(1)
+    else
+        Unmark()
+        DrawChips()
     end
-    ShowResults(Match(UI.searchIndex, text))
-    MarkPage(text)
 end
 
-function UI.AttachSearch(sidebar, top)
-    local Parts = ns.Shared and ns.Shared.Parts
-    box = (Parts and Parts.SearchBox or ns.NewSearchBox)(sidebar, "Search settings", OnText)
-    box:SetPoint("TOPLEFT", sidebar, "TOPLEFT", 14, -top)
-    box:SetPoint("TOPRIGHT", sidebar, "TOPRIGHT", -14, -top)
-    box:SetHeight(24)
-    box:SetScript("OnEnterPressed", function(self)
-        if results[1] then Jump(results[1]) else self:ClearFocus() end
+-- The card holding the last match stays open, so the setting is still there to change.
+function UI.CloseFind()
+    local entry = matches[current]
+    if entry then UI.RevealFeature(entry.key, entry.feature) end
+    strip:Hide()
+    input:ClearFocus()
+    input:SetText("")
+    active = false
+end
+
+function UI.OpenFind()
+    strip:Show()
+    input:SetFocus()
+    input:HighlightText()
+end
+
+local function StepButton(text, by)
+    return ns.Button(strip, text, STEP_W, INPUT_H, function() Step(by) end)
+end
+
+function UI.AttachFind(window, onLayout)
+    strip = CreateFrame("Frame", nil, window)
+    strip:SetHeight(STRIP_H)
+    strip:SetFrameLevel(window:GetFrameLevel() + 20)
+    strip:EnableMouse(true)
+    strip:Hide()
+    ns.Solid(strip, "BACKGROUND", T.panel, 1):SetAllPoints()
+    local edge = ns.Solid(strip, "ARTWORK", T.accent, 1)
+    edge:SetPoint("TOPLEFT")
+    edge:SetPoint("TOPRIGHT")
+    edge:SetHeight(TOP_EDGE)
+    input = ns.NewEditBox(strip)
+    input:SetSize(INPUT_W, INPUT_H)
+    input:SetScript("OnTextChanged", function(self) OnText(self:GetText()) end)
+    input:SetScript("OnEnterPressed", function() Step(IsShiftKeyDown() and -1 or 1) end)
+    input:SetScript("OnEscapePressed", UI.CloseFind)
+    local tag = ns.Font(strip, TAG_SIZE, nil, T.accent)
+    tag:SetPoint("TOPLEFT", STRIP_PAD, -STRIP_PAD)
+    tag:SetHeight(INPUT_H)
+    tag:SetText(ns.L("FIND"))
+    input:SetPoint("LEFT", tag, "RIGHT", STRIP_PAD, 0)
+    counter = ns.Font(strip, 12, nil, T.muted)
+    counter:SetPoint("LEFT", input, "RIGHT", STRIP_PAD, 0)
+    measure = ns.Font(strip, CHIP_TEXT, nil)
+    measure:Hide()
+    local close = ns.Button(strip, "X", CLOSE_W, INPUT_H, UI.CloseFind)
+    close:SetPoint("TOPRIGHT", -STRIP_PAD, -STRIP_PAD)
+    local nextButton = StepButton("Next", 1)
+    nextButton:SetPoint("RIGHT", close, "LEFT", -BUTTON_GAP * 2, 0)
+    StepButton("Previous", -1):SetPoint("RIGHT", nextButton, "LEFT", -BUTTON_GAP, 0)
+    strip:SetScript("OnShow", onLayout)
+    strip:SetScript("OnHide", function()
+        Unmark()
+        onLayout()
     end)
-    UI:RegisterOnHide(function() box:SetText(""); box:ClearFocus() end)
-    return box
+    strip:SetScript("OnSizeChanged", function() if strip:IsShown() then DrawChips() end end)
+    UI:RegisterOnHide(UI.CloseFind)
+    return strip
 end
