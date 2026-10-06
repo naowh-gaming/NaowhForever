@@ -23,7 +23,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import wowhead  # noqa: E402
-from build_quest_chains import ZONE_MAP, REDRAWN, parse, parse_start  # noqa: E402
+from build_quest_chains import ZONE_MAP, parse, parse_start  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / "NaowhForever_Completo" / "Data" / "NaowhForever_CompletoQuests.lua"
@@ -71,6 +71,29 @@ UNUSED = re.compile(r"<tr><th>\d+\.</th><td><div><b>&lt;UNUSED&gt;</b></div></td
 def fetch_quest(quest_id):
     page = UNUSED.sub("", wowhead.fetch(f"{wowhead.WOWHEAD}/quest={quest_id}"))
     return {"chain": parse(quest_id, page), "start": parse_start(page)}
+
+
+# The maps Forever redrew, and Wowhead still gives classic positions on: each map's world
+# bounds (minX, minY, maxX, maxY, from the game's UiMapAssignment on wago.tools) in Classic
+# Era 1.15.9.70003 and in Forever 1.60.1.70205. The world did not move, only the maps, so a
+# classic position goes to the world and back onto Forever's map.
+REDRAWN_BOUNDS = {
+    1453: ((-9175.205, 36.701, -8278.851, 1380.971), (-9154.170, -14.584, -7995.830, 1722.920)),
+    1412: ((-3697.917, -3089.583, -272.917, 2047.917), (-3835.416, -3675.0, 266.666, 2479.167)),
+    1433: ((-10022.916, -3741.667, -8575.0, -1570.833), (-10022.916, -3852.084, -8575.0, -1681.25)),
+    1423: ((1218.75, -6056.25, 3800.0, -2185.417), (825.0, -6558.334, 3691.667, -2256.25)),
+}
+
+
+def forever_spot(map_id, x, y):
+    """A Wowhead position (percent) on Forever's map: the same on maps Forever left alone."""
+    if map_id not in REDRAWN_BOUNDS:
+        return x, y
+    (cx0, cy0, cx1, cy1), (fx0, fy0, fx1, fy1) = REDRAWN_BOUNDS[map_id]
+    # A map's x runs along the world's Y axis from its max down, its y along X from its max down.
+    world_y = cy1 - x / 100 * (cy1 - cy0)
+    world_x = cx1 - y / 100 * (cx1 - cx0)
+    return (fy1 - world_y) / (fy1 - fy0) * 100, (fx1 - world_x) / (fx1 - fx0) * 100
 
 
 def lua_string(s):
@@ -165,8 +188,8 @@ def write(zones, quests):
         "}",
         "",
         "-- questID = { name, level, required level, side (1 Alliance, 2 Horde, 3 both),",
-        "-- race mask, class mask, start uiMapID, x, y (percent), quest giver }. Positions on maps Forever redrew are",
-        "-- left out: Wowhead still gives their classic coordinates.",
+        "-- race mask, class mask, start uiMapID, x, y (percent), quest giver }. Positions on the maps Forever",
+        "-- redrew are moved from Wowhead's classic ones onto Forever's maps (forever_spot).",
         "D.Quests = {",
     ]
     for qid in sorted(rows):
@@ -175,10 +198,9 @@ def write(zones, quests):
         spot = "nil, nil, nil, nil"
         if start and start.get("coord") and start["zone"] in ZONE_MAP:
             m = ZONE_MAP[start["zone"]]
-            if m not in REDRAWN:
-                x, y = start["coord"]
-                giver = lua_string(start["npc"]) if start.get("npc") else "nil"
-                spot = f"{m}, {x:.1f}, {y:.1f}, {giver}"
+            x, y = forever_spot(m, *start["coord"])
+            giver = lua_string(start["npc"]) if start.get("npc") else "nil"
+            spot = f"{m}, {x:.1f}, {y:.1f}, {giver}"
         lines.append(f"    [{qid}] = {{ {lua_string(q['name'])}, {q.get('level') or 0}, "
                      f"{q.get('reqlevel') or 0}, {q.get('side') or 3}, {q.get('reqrace') or 0}, "
                      f"{q.get('reqclass') or 0}, {spot} }},")
