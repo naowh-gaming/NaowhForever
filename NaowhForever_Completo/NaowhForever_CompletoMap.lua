@@ -103,7 +103,7 @@ function provider:RefreshAllData()
     if not On() then return end
     local map = self:GetMap()
     Q.Refresh()
-    for _, giver in ipairs(Q.Givers(map:GetMapID(), S.Get("mapGrey"))) do
+    for _, giver in ipairs(Q.Givers(map:GetMapID(), S.Get("mapGrey"), S.Get("mapChainsOnly"))) do
         map:AcquirePin(TEMPLATE, giver)
     end
 end
@@ -139,7 +139,8 @@ local function Apply()
 end
 
 hooksecurefunc(S, "Set", function(key)
-    if key == "enabled" or key == "mapPins" or key == "mapGrey" or key == "mapPinSize" then Apply() end
+    if key == "enabled" or key == "mapPins" or key == "mapGrey" or key == "mapChainsOnly"
+        or key == "mapPinSize" then Apply() end
 end)
 hooksecurefunc(ns, "Apply", Apply)
 

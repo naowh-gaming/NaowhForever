@@ -14,7 +14,7 @@ local UI = ns.UI
 local S = UI.ModuleSettings("completo", {
     enabled = false, hideDone = false, windowAlpha = 1,
     -- A ! on the map at each quest giver with a quest for you; mapGrey adds the low level ones.
-    mapPins = false, mapGrey = false, mapPinSize = 18,
+    mapPins = false, mapGrey = false, mapChainsOnly = false, mapPinSize = 18,
 })
 ns.CompletoSettings = S
 
@@ -410,9 +410,10 @@ function Q.GiverQuests(name, mapID)
 end
 
 -- The quest givers on a map with a quest you could pick up: { x, y, quests = { ids },
--- grey = true when every one is low level }. Low level ones only with grey. Tables reused
--- until the next call; call Q.Refresh first.
-function Q.Givers(mapID, grey)
+-- grey = true when every one is low level }. Low level ones only with grey; with chainsOnly,
+-- only quests in a chain (Q.Available already leaves only a chain's next step). Tables
+-- reused until the next call; call Q.Refresh first.
+function Q.Givers(mapID, grey, chainsOnly)
     Prepare()
     Index()
     for i = #givers, 1, -1 do
@@ -423,7 +424,7 @@ function Q.Givers(mapID, grey)
     end
     local at = {}
     for _, id in ipairs(byMap[mapID] or {}) do
-        if Q.Available(id) then
+        if Q.Available(id) and (chainOf[id] or not chainsOnly) then
             local trivial = Q.Trivial(id)
             if grey or not trivial then
                 local quest = D.Quests[id]
@@ -485,7 +486,9 @@ local QUESTS_OFF = "Turn on Completo"
 local function On() return S.Get("enabled") == true end
 
 local function MapSummary(store)
-    return store.Get("mapGrey") and "Every quest you can pick up" or "Quests that still give experience"
+    local what = store.Get("mapChainsOnly") and "Quest chains" or "Quests"
+    return store.Get("mapGrey") and what .. " you can pick up, low level ones too"
+        or what .. " that still give experience"
 end
 
 page:Card({
@@ -496,6 +499,8 @@ page:Card({
     rows = {
         { key = "mapGrey", label = "Low Level Quests", toggle = true, needs = On, why = QUESTS_OFF,
           help = "Also a grey ! for quests you can still pick up that no longer give experience." },
+        { key = "mapChainsOnly", label = "Chains Only", toggle = true, needs = On, why = QUESTS_OFF,
+          help = "Only quest chains: the first quest of each one, and the next step of those you are on." },
         { key = "mapPinSize", label = "Pin Size", slider = { 12, 32, 1 }, needs = On, why = QUESTS_OFF,
           help = "How big the pins are on the map." },
     },
