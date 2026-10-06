@@ -9,8 +9,10 @@
 --  EllesmereUI's Character Sheet off (its own switch, EllesmereUIDB.themedCharacterSheet, as its
 --  options set it), and turning Naowh's off turns it back on, if it was Naowh's that turned it
 --  off; either way after a reload, which EllesmereUI needs to swap its look. Should EllesmereUI's
---  come back on by other means, Naowh's stands down. CP.Rival is that rule for any of the game's
---  windows both style: the Naowh Inspect Panel (InspectPanel/) uses it for the inspect window.
+--  come back on by other means, Naowh's stands down. With both on, a player new to Naowh Forever
+--  (the welcome not seen yet) gets Naowh's from the next reload, told in chat; anyone else is
+--  asked once. CP.Rival is that rule for any of the game's windows both style: the Naowh Inspect
+--  Panel (InspectPanel/) uses it for the inspect window.
 -------------------------------------------------------------------------------
 local ns = _G.NaowhForever
 local S = ns.QoLSettings
@@ -28,7 +30,9 @@ CP.EDGE = 16
 local ASK_DELAY = 2
 local RELOAD_OFF = "EllesmereUI's %s is off, so Naowh's can take over. Reload now to switch?"
 local RELOAD_ON = "EllesmereUI's %s is back on. Reload now to switch?"
-local ASK = "EllesmereUI's %s is on. Naowh Forever has its own, in the BiS List's look. Use Naowh's instead?"
+local ASK = "EllesmereUI's %s is on. Naowh's is recommended, as it comes with more features. "
+    .. "Use Naowh's instead?"
+local TAKEN = "Naowh's %s takes over from EllesmereUI's after your next reload."
 
 local rivals = {}
 
@@ -86,6 +90,13 @@ function CP.Rival(r)
         ns.Confirm(ASK:format(r.name), UseOurs, KeepTheirs, "Use Naowh's", "Keep EllesmereUI's")
     end
 
+    function rival.TakeOver()
+        S.Set(asked, true)
+        _G.EllesmereUIDB[r.dbKey] = false
+        S.Set(tookOver, true)
+        ns.Print(TAKEN:format(r.name))
+    end
+
     rivals[#rivals + 1] = rival
     return rival
 end
@@ -98,11 +109,17 @@ local sheet = CP.Rival({ key = "characterPanel", winKey = "charsheet", dbKey = "
 CP.EllesmereSheet = sheet.Styled
 CP.On = sheet.On
 
--- One question a login at most, the character panel's first: a second confirm would close the first.
+-- A newcomer gets every window of ours, told in chat; anyone else one question a login at most,
+-- the character panel's first: a second confirm would close the first.
+local newcomer
+
 local function AskOnce()
     if InCombatLockdown() then return end
     for _, rival in ipairs(rivals) do
-        if rival.Due() then return rival.Ask() end
+        if rival.Due() then
+            if not newcomer then return rival.Ask() end
+            rival.TakeOver()
+        end
     end
 end
 
@@ -110,5 +127,11 @@ local asker = CreateFrame("Frame")
 asker:RegisterEvent("PLAYER_ENTERING_WORLD")
 asker:SetScript("OnEvent", function(self)
     self:UnregisterAllEvents()
+    newcomer = not ns.AccountSettings().welcomeSeen
     C_Timer.After(ASK_DELAY, AskOnce)
 end)
+
+function CP._AskForTest(isNew)
+    newcomer = isNew
+    AskOnce()
+end
