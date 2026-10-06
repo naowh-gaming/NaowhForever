@@ -3600,4 +3600,28 @@ do
     check("done, it listens to nothing", next(probe.events) == nil)
 end
 
+do
+    local ns, state = fixture({ enabled = true })
+    local J = ns.Journal
+    ns.Apply()
+    for id in pairs(J.Items) do state.names[id] = "Item " .. id end
+    local filters, hidden = J.Loot.ReadFilters({}), nil
+    for id in pairs(J.Items) do
+        if not J.Loot.Shown(id, filters) then hidden = id end
+    end
+    state.names[hidden] = "Zq Hidden"
+    ns.OpenJournalWindow(J.Get("Stratholme"))
+    state.searchBox:SetText("zq")
+    state.onSearch()
+    for i = #state.timers, 1, -1 do table.remove(state.timers, i)() end
+    local view
+    for _, frame in ipairs(state.made) do
+        if rawget(frame, "waitingFor") and frame:IsVisible() and frame.query == "zq" then view = frame end
+    end
+    check("a search draws on the window's page", view ~= nil)
+    check("a name that matches is still left out when the filters hide it", not view:Listed(hidden, "zq"))
+    check("a name that does not match is left out", not view:Listed(next(J.Items), "zq"))
+    Measure("a search over every dungeon and faction redrawn", 2, function() view:Redraw() end)
+end
+
 print(("test-dungeon-journal: %d checks passed"):format(checks))

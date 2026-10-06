@@ -24,6 +24,7 @@ local WAIT_FOR = 4         -- seconds a request is waited on before another may 
 local KEEP = 300           -- seconds an inspected score is kept
 local RETRY = 5            -- seconds before looking again at a player not known yet but out of range
 local MAX_KEPT = 300       -- players kept at most; the oldest goes first
+local LOAD_SETTLE = 0.2
 
 -- In Naowh's blue, without the logo: that stays with the badge line (Badges), which says who
 -- someone is, so the two never stack logos.
@@ -149,7 +150,10 @@ local function Ready(guid)
     return true
 end
 
+local loadQueued = false
+
 local function ItemsLoaded()
+    loadQueued = false
     local waiting = false
     for guid, entry in pairs(kept) do
         if entry.links and not entry.complete and not entry.shared then
@@ -160,6 +164,12 @@ local function ItemsLoaded()
         end
     end
     if not waiting then events:UnregisterEvent("GET_ITEM_INFO_RECEIVED") end
+end
+
+local function QueueItemsLoaded()
+    if loadQueued then return end
+    loadQueued = true
+    C_Timer.After(LOAD_SETTLE, ItemsLoaded)
 end
 
 -------------------------------------------------------------------------------
@@ -249,7 +259,7 @@ events:SetScript("OnEvent", function(_, event, arg)
     if event == "INSPECT_READY" then
         if Readable(arg) and Ready(arg) and ScanOn() then ScanSoon(INSPECT_GAP) end
     elseif event == "GET_ITEM_INFO_RECEIVED" then
-        ItemsLoaded()
+        QueueItemsLoaded()
     elseif event == "NAME_PLATE_UNIT_ADDED" then
         if Readable(arg) and UnitIsPlayer(arg) then
             plates[arg] = true
