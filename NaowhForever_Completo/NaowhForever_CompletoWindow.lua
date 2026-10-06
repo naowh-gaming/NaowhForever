@@ -370,11 +370,8 @@ local function EntryOrder(a, b)
     return na < nb
 end
 
+-- All Zones lists each continent's zones alphabetically.
 local function ZoneOrder(a, b)
-    local _, _, la = Q.ZoneProgress(a)
-    local _, _, lb = Q.ZoneProgress(b)
-    la, lb = la or 0, lb or 0
-    if la ~= lb then return la < lb end
     return a.name < b.name
 end
 
