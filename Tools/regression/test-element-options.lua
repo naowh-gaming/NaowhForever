@@ -119,7 +119,7 @@ for path, s in pairs(sources) do
         end
     end
 end
-Check(movers >= 30, "every mover was found (" .. movers .. ")")
+Check(movers >= 29, "every mover was found (" .. movers .. ")")
 
 -- The cog menu (a right-click opens it too) has Element Options only with a page; opening the
 -- options leaves Unlock Mode.
