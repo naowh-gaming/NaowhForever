@@ -1,0 +1,217 @@
+-- Run with Lua 5.1 from the repository root: while ns.FEATURE_BADGES is 0, no text a player can
+-- see names Patreon, supporters, patrons or the Legendary Supporters. Every string in the files
+-- the TOC loads is scanned; the few that carry those words must sit in a file whose gate is
+-- checked here, by loading it with the flag at 0 (none shown) and at 1 (shown, as before).
+local TocFiles = dofile("Tools/regression/toc_files.lua")
+local Load = dofile("Tools/regression/load_files.lua")
+
+local checks = 0
+local function check(label, value) assert(value, label); checks = checks + 1 end
+
+local WORDS = { "patreon", "supporter", "legendary supporters", "patron" }
+
+local function Mentions(text)
+    local lower = tostring(text):lower()
+    for _, word in ipairs(WORDS) do
+        if lower:find(word, 1, true) then return word end
+    end
+end
+
+-- Files with those words in their strings, each loaded below with the flag both ways.
+local GATED = {
+    ["Badges/NaowhForever_Badges.lua"] = true,
+    ["CharacterPanel/SettingsPage.lua"] = true,
+    ["Core/NaowhForever_Credits.lua"] = true,
+    ["Core/NaowhForever_PatchNotes.lua"] = true,
+}
+-- The same words meaning something else: the patrons of a dungeon's bar.
+local UNRELATED = {
+    ["DungeonJournal/Data/Tips.lua"] = "killing patrons turns the bar hostile",
+}
+
+-------------------------------------------------------------------------------
+--  Every string literal in a Lua file, comments skipped.
+-------------------------------------------------------------------------------
+local function Literals(src)
+    local out, i, n = {}, 1, #src
+    while true do
+        local at = src:find("[%-\"'%[]", i)
+        if not at then break end
+        local c = src:sub(at, at)
+        if c == "-" then
+            if src:sub(at, at + 1) == "--" then
+                local eq = src:match("^%[(=*)%[", at + 2)
+                local close = eq and ("]" .. eq .. "]")
+                local stop = close and src:find(close, at + 4 + #eq, true) or src:find("\n", at, true)
+                i = (stop or n) + (close and #close or 1)
+            else
+                i = at + 1
+            end
+        elseif c == "[" then
+            local eq = src:match("^%[(=*)%[", at)
+            if eq then
+                local close = "]" .. eq .. "]"
+                local first = at + 2 + #eq
+                local stop = src:find(close, first, true) or (n + 1)
+                out[#out + 1] = src:sub(first, stop - 1)
+                i = stop + #close
+            else
+                i = at + 1
+            end
+        else
+            local j, buf = at + 1, {}
+            while j <= n do
+                local d = src:sub(j, j)
+                if d == "\\" then
+                    buf[#buf + 1] = src:sub(j, j + 1)
+                    j = j + 2
+                elseif d == c then
+                    break
+                else
+                    buf[#buf + 1] = d
+                    j = j + 1
+                end
+            end
+            out[#out + 1] = table.concat(buf)
+            i = j + 1
+        end
+    end
+    return out
+end
+
+check("the scanner skips comments and finds strings", #Literals("-- 'no'\n--[[ \"no\" ]]\nx = 'a' .. \"b\" .. [[c]]") == 3)
+
+local scanned, hitFiles = 0, {}
+for _, path in ipairs(TocFiles("%.lua$")) do
+    local f = not path:find("^Libs/") and io.open(path, "rb")
+    if f then
+        local src = f:read("*a")
+        f:close()
+        scanned = scanned + 1
+        for _, literal in ipairs(Literals(src)) do
+            local word = Mentions(literal)
+            if word then
+                local unrelated = UNRELATED[path]
+                local ok = GATED[path] or (unrelated and literal:find(unrelated, 1, true) ~= nil)
+                check(("%s: %q in %q is not behind ns.FEATURE_BADGES"):format(path, word, literal), ok)
+                hitFiles[path] = true
+            end
+        end
+    end
+end
+check("the TOC's files were scanned", scanned > 100)
+for path in pairs(GATED) do
+    check(path .. " still has words to gate (else drop it from GATED)", hitFiles[path])
+end
+
+-------------------------------------------------------------------------------
+--  The gated files, loaded with the flag at 0 and at 1: what each puts on screen.
+-------------------------------------------------------------------------------
+local NOTHING = function() end
+local texts
+
+local Stub
+local STUB = { __index = function(_, key)
+    if key == "SetText" then return function(_, text) texts[#texts + 1] = tostring(text) end end
+    if key == "GetStringWidth" or key == "GetWidth" or key == "GetHeight" then
+        return function() return 100 end
+    end
+    if key:find("^Create") then return function() return Stub() end end
+    return NOTHING
+end }
+function Stub() return setmetatable({}, STUB) end
+
+local COLOR = { r = 1, g = 1, b = 1 }
+local TIERS = {
+    naowh = { color = COLOR, large = "naowh" }, developer = { color = COLOR, large = "developer" },
+    moderator = { color = COLOR, large = "moderator" }, legendary = { color = COLOR, large = "legendary" },
+}
+
+local function Shown(flag)
+    texts = {}
+    local cards, infos, registered = {}, {}, {}
+    local store = { Get = function() return true end, OnChange = NOTHING }
+    local ns
+    ns = {
+        FEATURE_BADGES = flag, CODE_BUILD = "test", THEME = setmetatable({}, { __index = function() return COLOR end }),
+        QoLSettings = store, Apply = NOTHING,
+        BADGE_TIERS = flag == 1 and TIERS or nil,
+        CharacterPanel = { EllesmereSheet = function() return false end },
+        Solid = function() return Stub() end, Border = function() return Stub() end,
+        Font = function() return Stub() end, Color = function(_, text) return text end,
+        UI = { CONTENT_PAD = 10 },
+        Shared = {
+            Style = { WINDOW_CARD_FILL = 0.05, BORDER_RGB = COLOR, LOGO = "logo" },
+            Settings = { Page = function()
+                return {
+                    Card = function(_, def) cards[#cards + 1] = def end,
+                    Info = function(_, def) infos[#infos + 1] = def end,
+                }
+            end },
+            View = {
+                NewKinds = function() return {} end,
+                New = function(_, kinds, draw)
+                    local view = { kinds = kinds }
+                    for key, fn in pairs(draw) do view[key] = fn end
+                    function view.Add(self, kind, data) kinds[kind].Set(kinds[kind].New(self), data) end
+                    function view.Section(_, title) texts[#texts + 1] = title end
+                    function view.Gather(self, person) self:DrawCard(person, nil, nil, nil, 0, 400) end
+                    function view.Acquire(self, kind) return kinds[kind].New(self) end
+                    function view.GetWidth() return 800 end
+                    function view.GetHeight() return 500 end
+                    return setmetatable(view, { __index = function() return NOTHING end })
+                end,
+            },
+        },
+    }
+    local env = setmetatable({
+        _G = { NaowhForever = ns },
+        CreateFrame = function() return Stub() end,
+        hooksecurefunc = function(_, key) registered[#registered + 1] = key end,
+        wipe = function(t) for k in pairs(t) do t[k] = nil end return t end,
+    }, { __index = _G })
+    Load({ "Badges/NaowhForever_Badges.lua", "CharacterPanel/SettingsPage.lua", "Core/NaowhForever_Credits.lua",
+        "Core/NaowhForever_PatchNotes.lua" }, env)
+    ns.BuildCreditsPage({ GetWidth = function() return 800 end }, 0)
+
+    for _, def in ipairs(cards) do
+        texts[#texts + 1] = def.name
+        texts[#texts + 1] = def.help
+        if def.summary then texts[#texts + 1] = def.summary(store) end
+        for _, row in ipairs(def.rows or {}) do
+            texts[#texts + 1] = row.label
+            texts[#texts + 1] = row.help
+        end
+    end
+    for _, def in ipairs(infos) do
+        texts[#texts + 1] = def.name
+        texts[#texts + 1] = def.summary
+        for _, line in ipairs(def.lines) do
+            texts[#texts + 1] = line.title
+            texts[#texts + 1] = line.where
+            texts[#texts + 1] = line.text
+        end
+    end
+    return texts, ns, registered
+end
+
+local off, offNs, offHooks = Shown(0)
+check("flag 0: the pages have words", #off > 100)
+for _, text in ipairs(off) do
+    local word = Mentions(text)
+    check(("flag 0: %q shows %q"):format(text, tostring(word)), word == nil)
+end
+check("flag 0: no badge mention left on these pages", not table.concat(off, " "):lower():find("badge", 1, true))
+check("flag 0: the badges module registers nothing", #offHooks == 0 and offNs.BadgesCommand == nil)
+
+-- Patreon is only on the badges' own hover card, which is built when a badged name is hovered.
+local on, onNs = Shown(1)
+local joined = table.concat(on, "\n"):lower()
+for _, word in ipairs({ "supporter", "legendary supporters", "patron" }) do
+    check("flag 1: the words are back (" .. word .. ")", joined:find(word, 1, true) ~= nil)
+end
+check("flag 1: the badges module is back", type(onNs.BadgesCommand) == "function"
+    and onNs.BADGE_TIERS.legendary.about:find("Patreon", 1, true) ~= nil)
+check("flag 1: one more patch note line, and the Supporter Badges card", #on > #off)
+
+print(("test-support-mentions: %d checks passed"):format(checks))
