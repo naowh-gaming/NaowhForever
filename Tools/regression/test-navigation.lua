@@ -503,9 +503,9 @@ do
     S.Set("coTankWidth", 222); Flush()
     Check(not Text("Reset Co-Tank Frame") and not Shown("1 setting changed from its default"),
         "part of a card shows no reset, which would reset what is left out")
-    local held = Head("Co-Tank Frame") or Shown("Co-Tank Frame").parent
-    Check(held.held and not held.chevron:IsShown(), "a card the search holds open has no chevron")
-    held.scripts.OnClick(held); Flush()
+    local heldHead = Head("Co-Tank Frame") or Shown("Co-Tank Frame").parent
+    Check(heldHead.held and not heldHead.chevron:IsShown(), "a card the search holds open has no chevron")
+    heldHead.scripts.OnClick(heldHead); Flush()
     Check(Shown("Max Icons") ~= nil, "and a click on its head does not fold it")
     S.Set("coTankWidth", S.Default("coTankWidth")); Flush()
 
