@@ -29,6 +29,7 @@ ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / "NaowhForever_Completo" / "Data" / "NaowhForever_CompletoQuests.lua"
 ZONES = Path(__file__).resolve().parent / "completo_zones.json"
 QUESTS = Path(__file__).resolve().parent / "completo_quests.json"
+REQUIRES = Path(__file__).resolve().parent / "completo_requires.json"
 # Wowhead answers 403 after ~125 pages at 1.5s apart; 5s ran clean.
 GAP = 4
 
@@ -73,6 +74,24 @@ def fetch_quest(quest_id):
     return {"chain": parse(quest_id, page), "start": parse_start(page)}
 
 
+# Wowhead Classic's quest pages have a "Requires" box, the quests to hand in before this one
+# is offered, which its Forever pages lack. Quest IDs are the same; Forever's own quests
+# (CLASSIC_MAX and up) are not on Classic.
+CLASSIC = "https://www.wowhead.com/classic"
+CLASSIC_MAX = 10000
+REQUIRES_BOX = re.compile(r"<th>Requires</th>.*?WH\.markup\.printHtml\(\"(.*?)\", \"infobox-contents", re.S)
+
+
+def fetch_requires(quest_id):
+    """{ "quests": [ids the Requires box names], "text": its markup }, or None without a box."""
+    page = wowhead.fetch(f"{CLASSIC}/quest={quest_id}")
+    box = REQUIRES_BOX.search(page)
+    if not box:
+        return None
+    markup = box.group(1)
+    return {"quests": [int(i) for i in re.findall(r"\[quest=(\d+)", markup)], "text": markup}
+
+
 # The maps Forever redrew, and Wowhead still gives classic positions on: each map's world
 # bounds (minX, minY, maxX, maxY, from the game's UiMapAssignment on wago.tools) in Classic
 # Era 1.15.9.70003 and in Forever 1.60.1.70205. The world did not move, only the maps, so a
@@ -102,28 +121,86 @@ def lua_string(s):
     return '"' + s.replace("\\", "\\\\").replace('"', '\\"') + '"'
 
 
-def chains_of(quests, known):
-    """Each chain once: Wowhead's Series, cut to the quests the data knows, largest first.
-    A Series that is wholly inside a bigger one is the same chain seen from a later step."""
-    seen = {}
+def prerequisites(quests, requires, known):
+    """questID -> the quests before it, any one of which opens it: the step before it in its
+    Forever Series (the faction or class versions of one step), and Wowhead Classic's
+    Requires box. Any one, not all: a Requires box also lists each class's version of a
+    quest, and one too many would hide a quest the game offers, where one too few only shows
+    it early (and its quest giver not offering it hides it in game)."""
+    before = {}
     for entry in quests.values():
         chain = entry and entry.get("chain")
         if not chain:
             continue
-        steps = [[i for i in step if i in known] for step in chain["chain"]]
-        steps = [s for s in steps if s]
-        if len(steps) < 2:
-            continue
-        key = frozenset(i for s in steps for i in s)
-        seen.setdefault(key, steps)
+        for prev, step in zip(chain["chain"], chain["chain"][1:]):
+            for i in step:
+                if i in known:
+                    before.setdefault(i, set()).update(prev)
+    for qid, box in requires.items():
+        if box and int(qid) in known:
+            before.setdefault(int(qid), set()).update(box["quests"])
+    for qid in before:
+        before[qid].discard(qid)
+    return {q: sorted(p) for q, p in before.items() if p}
+
+
+def chains_of(quests, before, known):
+    """The data's quests linked by their prerequisites, each group one chain, its quests in
+    steps: a quest one step after the furthest of those before it. A step with more than one
+    quest has parallel quests, or a Series step's versions (any=True: one of them is done)."""
+    edges = {}
+    for qid, prev in before.items():
+        for p in prev:
+            if p in known:
+                edges.setdefault(p, set()).add(qid)
+    # The groups: quests linked either way.
+    group = {}
+
+    def find(q):
+        while group.get(q, q) != q:
+            group[q] = group.get(group[q], group[q])
+            q = group[q]
+        return q
+    for p, nexts in edges.items():
+        for n in nexts:
+            a, b = find(p), find(n)
+            if a != b:
+                group[a] = b
+    members = {}
+    for q in set(edges) | {n for ns in edges.values() for n in ns}:
+        members.setdefault(find(q), set()).add(q)
+    # A Series step's versions, to tell them apart from parallel quests.
+    versions = []
+    for entry in quests.values():
+        chain = entry and entry.get("chain")
+        for step in (chain["chain"] if chain else []):
+            kept = frozenset(i for i in step if i in known)
+            if len(kept) > 1:
+                versions.append(kept)
     out = []
-    for key, steps in sorted(seen.items(), key=lambda kv: -len(kv[0])):
-        if any(key < other for other in seen if other is not key):
-            continue
-        if any(key & frozenset(i for s in o for i in s) for o in out):
-            # Overlaps a bigger chain already kept: the quests stay in that one.
-            continue
-        out.append(steps)
+    for quests_in in members.values():
+        # Each quest's step: one after the furthest of those before it in the group. A loop
+        # in the data (it has none so far) leaves its quests at the step they reached.
+        depth = {q: 0 for q in quests_in}
+        for _ in range(len(quests_in)):
+            moved = False
+            for q in quests_in:
+                for n in edges.get(q, ()):
+                    if n in depth and depth[n] < depth[q] + 1 <= len(quests_in):
+                        depth[n] = depth[q] + 1
+                        moved = True
+            if not moved:
+                break
+        steps = {}
+        for q, d in depth.items():
+            steps.setdefault(d, []).append(q)
+        ordered = []
+        for d in sorted(steps):
+            ids = sorted(steps[d], key=lambda q: (known[q][1].get("level") or 0, q))
+            any_of = len(ids) > 1 and any(frozenset(ids) <= v for v in versions)
+            ordered.append((ids, any_of))
+        out.append(ordered)
+    out.sort(key=lambda steps: steps[0][0][0])
     return out
 
 
@@ -158,7 +235,22 @@ def main():
                 print(f"  {n}/{len(todo)}")
             time.sleep(GAP)
 
-    write(zones, quests)
+    requires = load(REQUIRES)
+    todo = [i for i in wanted if i < CLASSIC_MAX and str(i) not in requires]
+    print(f"{len(todo)} Wowhead Classic pages to fetch for prerequisites")
+    if not offline:
+        for n, quest_id in enumerate(todo, 1):
+            try:
+                requires[str(quest_id)] = fetch_requires(quest_id)
+            except urllib.error.HTTPError as e:
+                failed.append(f"classic quest {quest_id}: {e}")
+                continue
+            save(REQUIRES, requires)
+            if n % 50 == 0:
+                print(f"  {n}/{len(todo)}")
+            time.sleep(GAP)
+
+    write(zones, quests, requires)
     for line in failed:
         print("FAILED", line, file=sys.stderr)
 
@@ -168,11 +260,12 @@ def main():
 PLACEHOLDER = re.compile(r"^\s*[<(]|unused|\bnyi\b", re.I)
 
 
-def write(zones, quests):
+def write(zones, quests, requires):
     for z in zones.values():
         z["quests"] = [q for q in z["quests"] if not PLACEHOLDER.search(q["name"])]
     rows = {q["id"]: (int(area), q) for area, z in zones.items() for q in z["quests"]}
-    chains = chains_of(quests, rows)
+    before = prerequisites(quests, requires, rows)
+    chains = chains_of(quests, before, rows)
     lines = [
         "-- Generated by Tools/build_completo_quests.py from Wowhead's Forever zone and quest",
         "-- pages. Do not edit by hand: change the tool and run it again.",
@@ -214,12 +307,24 @@ def write(zones, quests):
     lines += [
         "}",
         "",
-        "-- Each chain's steps in order; a step with more than one quest has faction or class",
-        "-- versions of it.",
+        "-- questID = the quests before it, any one of which opens it (prerequisites()).",
+        "D.Requires = {",
+    ]
+    for qid in sorted(before):
+        lines.append(f"    [{qid}] = {{ {', '.join(map(str, before[qid]))} }},")
+    lines += [
+        "}",
+        "",
+        "-- Each chain's steps in order. A step with more than one quest has parallel quests, all",
+        "-- of which are done to finish it, or with any = true the faction or class versions of",
+        "-- one quest.",
         "D.Chains = {",
     ]
     for steps in chains:
-        lines.append("    { " + ", ".join("{ " + ", ".join(map(str, s)) + " }" for s in steps) + " },")
+        parts = []
+        for ids, any_of in steps:
+            parts.append("{ " + ", ".join(map(str, ids)) + (", any = true" if any_of else "") + " }")
+        lines.append("    { " + ", ".join(parts) + " },")
     lines.append("}")
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_bytes(("\r\n".join(lines) + "\r\n").encode("ascii", "replace"))

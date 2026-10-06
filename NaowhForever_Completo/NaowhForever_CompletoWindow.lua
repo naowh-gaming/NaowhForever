@@ -181,7 +181,7 @@ end
 -------------------------------------------------------------------------------
 local STATE = {
     done = { "Done", "muted" }, log = { "In your log", "log" }, low = { "Needs level %d", "red" },
-    later = { "After an earlier step", "muted" }, open = { "Not done", "fg" },
+    later = { "Needs an earlier quest", "muted" }, open = { "Not done", "fg" },
     held = { "Not offered yet", "muted" },
 }
 

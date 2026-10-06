@@ -69,6 +69,7 @@ local function Prepare()
             for _, id in ipairs(step) do
                 if mine[id] then ids[#ids + 1] = id end
             end
+            ids.any = step.any
             if #ids > 0 then own[#own + 1] = ids end
         end
         if #own > 1 then
@@ -132,12 +133,13 @@ function Q.Spot(id)
     if quest[MAP] then return quest[MAP], quest[X], quest[Y] end
 end
 
--- A step is done when any of its versions is: you only ever do the one for you.
+-- A step is done when all its quests are, or with any (versions of one quest) when one is.
 function Q.StepDone(step)
     for _, id in ipairs(step) do
-        if done[id] then return true end
+        if done[id] and step.any then return true end
+        if not done[id] and not step.any then return false end
     end
-    return false
+    return not step.any
 end
 
 ---@return number at the step you are on (#steps + 1 once all are done)
@@ -201,22 +203,25 @@ function Q.State(id)
     return state
 end
 
+-- Whether the quests before it are done: any one of them (D.Requires). One for another
+-- faction, race or class does not count; one the data has no row for (a dungeon or class
+-- quest) does.
+function Q.Opened(id)
+    local before = D.Requires[id]
+    if not before then return true end
+    local counted = false
+    for _, other in ipairs(before) do
+        if done[other] then return true end
+        if mine[other] or not D.Quests[other] then counted = true end
+    end
+    return not counted
+end
+
 -- The state from the data alone, as if its quest giver had never been asked: never "held".
 function Q.Expected(id)
     if done[id] then return "done" end
     if Q.InLog(id) then return "log" end
-    local chain = chainOf[id]
-    if chain then
-        local at = Q.ChainAt(chain)
-        local steps = chain.steps
-        if at <= #steps then
-            local mineAt = false
-            for _, other in ipairs(steps[at]) do
-                if other == id then mineAt = true end
-            end
-            if not mineAt then return "later" end
-        end
-    end
+    if not Q.Opened(id) then return "later" end
     if UnitLevel("player") < Q.RequiredLevel(id) then return "low" end
     return "open"
 end
