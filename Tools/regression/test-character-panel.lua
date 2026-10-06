@@ -6,7 +6,8 @@
 -- the marks on the game's own panel as it looks; it stands down while
 -- EllesmereUI styles the panel; your supporter badge shows only when you have one, never a grey
 -- one or a pitch; off again, the game's art comes back; and neither a slot's update
--- nor a repaint of the stats makes garbage.
+-- nor a repaint of the stats makes garbage. All with ns.FEATURE_BADGES at 1; at 0, no badge
+-- is built or hooked and the Supporter Badge row is gone from the settings card.
 local Load = dofile("Tools/regression/load_files.lua")
 local TocFiles = dofile("Tools/regression/toc_files.lua")
 local Measure = dofile("Tools/regression/measure.lua")
@@ -150,6 +151,7 @@ local ns = {
     QoLSettings = S,
     Apply = NOTHING,
     IsBisItem = function(id) return RANK[id] end,
+    FEATURE_BADGES = 1,
     BADGE_TIERS = {
         legendary = { title = "Legendary Patron", about = "Supports Naowh.", large = "legendaryArt",
             chat = "legendaryChat", markup = "|TlegendaryChat:0|t",
@@ -585,5 +587,41 @@ env.EllesmereUIDB, env.EllesmereUI = nil, nil
 S.Set("characterPanel", true)
 S.Set("characterPanel", false)
 check("without EllesmereUI: nothing to swap, no reload asked", state.reloads == 2)
+
+-------------------------------------------------------------------------------
+--  ns.FEATURE_BADGES = 0: the badge file builds and hooks nothing, and the panel's card has
+--  no Supporter Badge row (and no gap for it), with the flag on it is the first row.
+-------------------------------------------------------------------------------
+local function PanelCard(flag)
+    local cards, listeners, hooked = {}, 0, 0
+    local store = {
+        Get = function(key) return key == "characterPanelBadge" or key == "characterPanelScore" end,
+        OnChange = function() listeners = listeners + 1 end,
+    }
+    local flagNs = {
+        FEATURE_BADGES = flag, THEME = ns.THEME, QoLSettings = store,
+        CharacterPanel = { EllesmereSheet = function() return false end },
+        Shared = { Settings = { Page = function()
+            return { Card = function(_, def) cards[def.id] = def end }
+        end } },
+    }
+    local flagEnv = setmetatable({ _G = { NaowhForever = flagNs },
+        hooksecurefunc = function() hooked = hooked + 1 end }, { __index = _G })
+    Load({ "CharacterPanel/Badge.lua", "CharacterPanel/SettingsPage.lua" }, flagEnv)
+    return cards.characterPanel, flagNs.CharacterPanel, listeners, hooked, store
+end
+
+local offCard, offCP, offListeners, offHooked, offStore = PanelCard(0)
+check("flag 0: the badge hooks nothing and listens to nothing", offHooked == 0 and offListeners == 0
+    and offCP.supportBadge == nil)
+check("flag 0: the BiS link keeps its place", offCP.BADGE_MID == CP.BADGE_MID)
+check("flag 0: no Supporter Badge row, the Naowh Score row first", #offCard.rows == 1
+    and offCard.rows[1].key == "characterPanelScore")
+check("flag 0: the summary leaves the badge out", offCard.summary(offStore) == "With your Naowh Score")
+local onCard, _, onListeners, onHooked, onStore = PanelCard(1)
+check("flag 1: the badge listens and hooks as before", onListeners == 1 and onHooked == 1)
+check("flag 1: the Supporter Badge row first, then Naowh Score", #onCard.rows == 2
+    and onCard.rows[1].label == "Supporter Badge" and onCard.rows[2].key == "characterPanelScore")
+check("flag 1: the summary names the badge", onCard.summary(onStore) == "With your badge and Naowh Score")
 
 print(("test-character-panel: %d checks passed"):format(checks))

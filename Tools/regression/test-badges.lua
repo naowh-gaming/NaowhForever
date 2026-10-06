@@ -1,5 +1,6 @@
 -- Run with Lua 5.1 from the repository root: supporter badges in chat, the hover card, the
--- player tooltip line and the group toast, against stubs of the chat and tooltip APIs they use.
+-- player tooltip line and the group toast, against stubs of the chat and tooltip APIs they use,
+-- with ns.FEATURE_BADGES at 1; at 0, the module registers, builds and answers nothing.
 local checks = 0
 local function check(label, value) assert(value, label); checks = checks + 1 end
 
@@ -8,10 +9,10 @@ local SECRET = setmetatable({}, { __tostring = function() return "secret" end })
 local DEFAULTS = { badgeChat = true, badgeCard = true, badgeTooltip = true,
     badgeBanner = false, badgeBannerSkipGuild = true }
 
-local function fixture(withChatUtil, settings)
+local function fixture(withChatUtil, settings, flag)
     local state = { nameFilters = {}, callbacks = {}, postCalls = {}, printed = {}, sounds = 0,
         group = {}, raid = false, combat = false, region = 3, me = "Player-1-SELF", account = {},
-        guild = {}, onLoaded = {} }
+        guild = {}, onLoaded = {}, frames = 0, hooks = 0, cards = {} }
     local values = {}
     for k, v in pairs(DEFAULTS) do values[k] = v end
     for k, v in pairs(settings or {}) do values[k] = v end
@@ -59,6 +60,10 @@ local function fixture(withChatUtil, settings)
         -- in EU (the default region here) their own name has no badge.
         BADGE_STAFF = { [1] = { ["Player-1-SELF"] = "developer" }, [3] = {} },
         BADGE_PATRONS = { [3] = {} },
+        FEATURE_BADGES = flag or 1,
+        Shared = { Settings = { Page = function(key)
+            return { Card = function(_, def) state.cards[key .. ":" .. def.id] = def end }
+        end } },
     }
     ns.UI = {
         KeepFont = function() return frame() end,
@@ -70,7 +75,7 @@ local function fixture(withChatUtil, settings)
     local env = {
         _G = { NaowhForever = ns },
         UIParent = frame(),
-        CreateFrame = function() return frame() end,
+        CreateFrame = function() state.frames = state.frames + 1; return frame() end,
         CreateColor = function() return {} end,
         GetCursorPosition = function() return 100, 100 end,
         GetCurrentRegion = function() return state.region end,
@@ -79,6 +84,7 @@ local function fixture(withChatUtil, settings)
             return i ~= nil and state.guild[state.group[i]] == true
         end,
         hooksecurefunc = function(t, key, fn)
+            state.hooks = state.hooks + 1
             local orig = t[key]
             t[key] = function(...) orig(...); fn(...) end
         end,
@@ -651,6 +657,32 @@ do  -- the guild and community member list
     print(("  guild list, 20 rows filled: %.5f ms, %.4f KB"):format(ms, kb))
     check("filling a screen of the guild list: under 0.05 ms", ms < 0.05)
     check("and no garbage", kb < 0.01)
+end
+
+do  -- the settings card, with the flag on
+    local s = fixture(true)
+    local card = s.cards["QoL/Character:supporterBadges"]
+    check("flag 1: the Supporter Badges card is on QoL > Character", card and card.name == "Supporter Badges"
+        and #card.rows == 5)
+    check("flag 1: /nf badges answers", type(s.ns.BadgesCommand) == "function" and s.ns.BADGE_TIERS ~= nil)
+end
+
+do  -- ns.FEATURE_BADGES = 0: inert, as if the module were not there
+    local s = fixture(true, nil, 0)
+    local ns = s.ns
+    check("flag 0: no chat name filter", #s.nameFilters == 0)
+    check("flag 0: no hover callbacks", next(s.callbacks) == nil)
+    check("flag 0: no tooltip post-call", #s.postCalls == 0)
+    check("flag 0: no frames", s.frames == 0)
+    check("flag 0: no hooks, so no events either", s.hooks == 0)
+    check("flag 0: no settings card", next(s.cards) == nil)
+    check("flag 0: no /nf badges, so it opens the window as an unknown word does", ns.BadgesCommand == nil)
+    check("flag 0: nothing for the other modules", ns.BadgeOf == nil and ns.BADGE_TIERS == nil
+        and ns.BadgeSince == nil and ns.ShowBadgeCode == nil and ns.ShowBadgeCard == nil
+        and ns.HideBadgeCard == nil and ns._BadgesTest == nil)
+    check("flag 0: Naowh's Discord link is still set", ns.NAOWH_DISCORD == "https://discord.com/invite/naowh")
+    ns.Apply()
+    check("flag 0: a login writes no badge code", s.account.badgeCharacters == nil and #s.printed == 0)
 end
 
 print(checks .. " badge checks passed")

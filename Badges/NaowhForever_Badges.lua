@@ -4,9 +4,12 @@
 --  a plate over their player tooltip, and a banner when one joins your group. Each part has its
 --  own setting in QoL > Character: badges, card and tooltip start on so everyone sees them,
 --  the banner starts off (Naowh's call). /nf badges preview puts one on your own name
---  (staff only).
+--  (staff only). While ns.FEATURE_BADGES (Core) is 0 it sets ns.NAOWH_DISCORD and stops there:
+--  no badges, card, plate, banner, settings card or /nf badges, and nothing registered.
 -------------------------------------------------------------------------------
 local ns = _G.NaowhForever
+ns.NAOWH_DISCORD = "https://discord.com/invite/naowh"
+if ns.FEATURE_BADGES ~= 1 then return end
 local T = ns.THEME
 local S = ns.QoLSettings
 
@@ -739,8 +742,7 @@ local function BadgeCode()
 end
 
 -- Naowh's Discord: where a badge is asked for (a support request), and more on the badges.
-local DISCORD = "https://discord.com/invite/naowh"
-ns.NAOWH_DISCORD = DISCORD
+local DISCORD = ns.NAOWH_DISCORD
 
 local function ShowCode(code, count)
     local UI = ns.UI
