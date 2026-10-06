@@ -283,11 +283,14 @@ end
 -- A secret-tainted message is silently dropped by the display, so a combat diagnostic can
 -- vanish as if the code never ran. tostring() on a secret returns a secret string that taints
 -- whatever it is joined to, so issecretvalue() must be asked before the value is coerced.
+local PRINT_LOGO_DROP = 1
+ns.PRINT_LOGO = ("|TInterface\\AddOns\\NaowhForever\\Media\\LogoAddon.tga:0:0:0:%d|t"):format(-PRINT_LOGO_DROP)
+
 function ns.Print(msg)
     if issecretvalue and issecretvalue(msg) then
         msg = ns.Color("accent", "(withheld: this line contained a secret value)")
     end
-    print(ns.Color("accent", "Naowh") .. " Forever: " .. tostring(msg))
+    print(ns.PRINT_LOGO .. " " .. ns.Color("accent", "Naowh") .. " Forever: " .. tostring(msg))
 end
 
 -- Libs/ is not in git; the packager adds it. An install from the repository's source zip has
