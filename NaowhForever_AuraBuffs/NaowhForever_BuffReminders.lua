@@ -189,7 +189,10 @@ end
 local popup
 -- The menu holds secure buttons, so it can only be hidden outside combat.
 local function HideMenu()
-    if popup and not InCombatLockdown() then popup:Hide() end
+    if popup and not InCombatLockdown() then
+        popup:Hide()
+        popup:ClearAllPoints()
+    end
 end
 -- IsMouseOver on the frame: the old MouseIsOver global is gone from the game.
 local function LeaveMenu()

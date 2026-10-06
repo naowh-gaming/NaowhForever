@@ -244,6 +244,16 @@ do -- Show Yourself off drops your row
     check("no row for yourself", s.rows() == "Tank: Lv 21  " .. NO_ADDON .. " | Mage: Lv 19  " .. NO_ADDON)
 end
 
+do -- only GUIDs in the group are kept: a stranger's numbers, or a flood of made-up GUIDs, leave nothing
+    local s = boot()
+    for i = 1, 500 do s.msg(("2 Player-9-%06X 60 1 2"):format(i), "Tank Ironhide") end
+    s.units.party3 = { name = "Late", surname = "Joiner", guid = "Player-9-000001", class = "MAGE", level = 10 }
+    s.fire("GROUP_ROSTER_UPDATE")
+    check("numbers for a GUID outside the group were not kept", s.rows():find("Late: Lv 10  " .. NO_ADDON, 1, true))
+    s.msg("2 Player-9-000001 12 50 100", "Late Joiner")
+    check("once they are in the group, theirs are", s.rows():find("Late: Lv 12  50.0%", 1, true))
+end
+
 do -- cost: roster changes and messages are heard with the bars off too, so they make no garbage
     local Measure = dofile("Tools/regression/measure.lua")(check)
     local s = boot({ groupXP = false })

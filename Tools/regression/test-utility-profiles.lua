@@ -35,6 +35,7 @@ local function Fixture()
     env._G = env
     local chunk = assert(loadfile(root .. "/Core/NaowhForever_Packs.lua"))
     setfenv(chunk, env); chunk()
+    ns.Shared = { Decode = dofile("Tools/regression/load_decode.lua")(env, true) }
     e.ns, e.env = ns, env
     return e
 end

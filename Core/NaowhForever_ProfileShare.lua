@@ -14,8 +14,12 @@ local PACK_PREFIX = "NSRPACK2:"
 local FORMAT = 1
 local MAX_DEPTH = 12
 local MAX_VALUES = 200000   -- values a string may hold; more is refused as too big
-local TEXT_MAX = 100
-local LIST_NAME_MAX = 40
+local LIMITS = { maxChars = 1000000, maxBytes = 4194304, maxDepth = 32, maxValues = 1000000 }
+local TEXT_MAX = 64
+local LOOK_TYPES = { themePreset = "string", themeColors = "table", uiFont = "string", windowScale = "number" }
+local GEAR_SLOT = { [1] = true, [2] = true, [3] = true, [5] = true, [6] = true, [7] = true, [8] = true, [9] = true,
+    [10] = true, [11] = true, [12] = true, [13] = true, [14] = true, [15] = true, [16] = true, [17] = true, [18] = true }
+local MAX_PICKS = 50
 
 -- The account's look: every profile shares it, so it travels as its own part.
 local LOOK = { "themePreset", "themeColors", "uiFont", "windowScale" }
@@ -46,6 +50,14 @@ local function Codec()
     local LS = LibStub and LibStub("LibSerialize", true)
     local LD = LibStub and LibStub("LibDeflate", true)
     if LS and LD then return LS, LD end
+end
+
+local function ValidReminders(data)
+    return type(data) == "table" and ns.ValidPackData ~= nil and ns.ValidPackData(data) == true
+end
+
+local function ValidClassMacros(list)
+    return ValidReminders({ utilityReminders = { classMacros = list } })
 end
 
 -- Plain data only (strings, numbers, booleans, tables keyed by strings or numbers), so
@@ -205,22 +217,24 @@ function ns.DecodeProfile(text)
     if text == "" then return nil end
     if text:sub(1, #PACK_PREFIX) == PACK_PREFIX then return nil, "pack" end
     if text:sub(1, #PREFIX) ~= PREFIX then return nil, "This is not a Naowh Forever profile string." end
-    local LS, LD = Codec()
-    if not LS then return nil, "The serializer libraries are missing from this build." end
-    local compressed = LD:DecodeForPrint(text:sub(#PREFIX + 1))
-    local raw = compressed and LD:DecompressDeflate(compressed)
-    if not raw then return nil, "The string is damaged: copy it again in full." end
-    local ok, payload = LS:Deserialize(raw)
-    if not ok or type(payload) ~= "table" or type(payload.parts) ~= "table" then
+    local payload, why = ns.Shared.Decode.String(text:sub(#PREFIX + 1), LIMITS)
+    if why == "missing" then return nil, "The serializer libraries are missing from this build." end
+    if why == "big" then return nil, "This string is too big." end
+    if type(payload) ~= "table" or type(payload.parts) ~= "table" then
         return nil, "The string is damaged: copy it again in full."
     end
     if payload.format ~= FORMAT then return nil, "This string is from a newer Naowh Forever: update first." end
-    payload.name = ns.PlainText(payload.name, TEXT_MAX)
-    payload.author = ns.PlainText(payload.author, TEXT_MAX)
-    payload.made = ns.PlainText(payload.made, TEXT_MAX)
     local budget = { n = 0 }
     payload.parts = Plain(Swap(payload.parts, ZERO, 0), 1, budget)
     if budget.over then return nil, "This string is too big." end
+    local Text, parts = ns.Shared.Decode.Text, payload.parts
+    payload.name, payload.author = Text(payload.name, TEXT_MAX), Text(payload.author, TEXT_MAX)
+    payload.made = Text(payload.made, TEXT_MAX)
+    if parts.smartReminders ~= nil and not ValidReminders(parts.smartReminders) then parts.smartReminders = nil end
+    local macros = parts.macros
+    if type(macros) == "table" and macros.classMacros ~= nil and not ValidClassMacros(macros.classMacros) then
+        macros.classMacros = nil
+    end
     return payload
 end
 
@@ -279,6 +293,30 @@ local function SameList(a, b)
     return true
 end
 
+local function ItemID(id)
+    return type(id) == "number" and id >= 1 and id < 2147483648 and id % 1 == 0
+end
+
+local function CleanBisList(list)
+    if type(list) ~= "table" or type(list.slots) ~= "table" then return nil end
+    local name = ns.Shared.Decode.Text(list.name, 40)
+    if not name or name == "" then return nil end
+    local out = { name = name, spec = ns.Shared.Decode.Text(list.spec, 40), slots = {}, extra = {} }
+    for slot, id in pairs(list.slots) do
+        if GEAR_SLOT[slot] and ItemID(id) then out.slots[slot] = id end
+    end
+    for slot, ids in pairs(type(list.extra) == "table" and list.extra or {}) do
+        if GEAR_SLOT[slot] and type(ids) == "table" then
+            local keep = {}
+            for _, id in ipairs(ids) do
+                if ItemID(id) and #keep < MAX_PICKS then keep[#keep + 1] = id end
+            end
+            out.extra[slot] = keep[1] and keep or nil
+        end
+    end
+    return out
+end
+
 -- Each list joins its class's lists under a free name; one already there as it is, is skipped.
 local function AddBisLists(incoming)
     local account = ns.AccountSettings()
@@ -292,13 +330,14 @@ local function AddBisLists(incoming)
                 account.bisLists[class] = store
             end
             store.nextID = tonumber(store.nextID) or #store.lists + 1
-            for _, list in ipairs(lists) do
+            for _, raw in ipairs(lists) do
+                local list = CleanBisList(raw)
                 local have = false
                 for _, mine in ipairs(store.lists) do
                     if type(list) == "table" and SameList(mine, list) then have = true end
                 end
                 if type(list) == "table" and type(list.name) == "string" and not have then
-                    local base = ns.PlainText(list.name, LIST_NAME_MAX)
+                    local base = list.name
                     local name, n = base, 1
                     local function Taken(try)
                         for _, mine in ipairs(store.lists) do
@@ -404,14 +443,14 @@ function ns.ImportProfile(payload, wanted, name)
             end
         end
     end
-    if wanted.smartReminders and type(parts.smartReminders) == "table" then
+    if wanted.smartReminders and ValidReminders(parts.smartReminders) then
         root.tankReminder = parts.smartReminders
         root.tankReminder.importedPack = nil
     end
     if wanted.macros and type(parts.macros) == "table" then
         local macros = parts.macros
         if type(macros.module) == "table" then root.macros = Checked(macros.module, ns.ModuleDefaults("macros") or {}) end
-        if type(macros.classMacros) == "table" then
+        if type(macros.classMacros) == "table" and ValidClassMacros(macros.classMacros) then
             local sr = root.tankReminder
             if type(sr.utilityReminders) ~= "table" then sr.utilityReminders = {} end
             sr.utilityReminders.classMacros = macros.classMacros
@@ -426,7 +465,7 @@ function ns.ImportProfile(payload, wanted, name)
     if wanted.look and type(parts.look) == "table" then
         local account = ns.AccountSettings()
         for _, key in ipairs(LOOK) do
-            if parts.look[key] ~= nil then account[key] = parts.look[key] end
+            if type(parts.look[key]) == LOOK_TYPES[key] then account[key] = parts.look[key] end
         end
     end
 

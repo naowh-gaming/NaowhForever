@@ -65,10 +65,12 @@ local function World()
         end,
         SwitchProfile = function(name) w.switched, w.active = name, name end,
         RefreshRuntime = function() w.refreshed = w.refreshed + 1 end,
+        ValidPackData = function(data) return type(data) == "table" end,
     }
     w.ns = ns
     local env = setmetatable({ _G = { NaowhForever = ns }, UnitName = function() return "Glyadin" end,
         date = os.date }, { __index = _G })
+    ns.Shared = { Decode = dofile("Tools/regression/load_decode.lua")(env) }
     local chunk = assert(loadfile("Core/NaowhForever_ProfileShare.lua"))
     setfenv(chunk, env)
     chunk()
@@ -279,7 +281,7 @@ Case("a crafted string's name, author, date and list names show as plain text", 
         parts = { bisLists = { PALADIN = { { name = BADGE .. "|n Best", slots = { [1] = 100 } } } } } })))
     local payload = assert(w.ns.DecodeProfile(text))
     assert(not Live(payload.name) and not Live(payload.author) and not Live(payload.made), payload.name)
-    assert(payload.name:find("||TInterface", 1, true) and payload.author:find("%s%d%n", 1, true))
+    assert(payload.name:find("TInterface", 1, true) and payload.author:find("%s%d%n", 1, true))
     assert(#payload.made <= 200, "a long field is cut")
     assert(("%s, shared by %s on %s."):format(payload.name, payload.author, payload.made), "format takes them as arguments")
     w.ns.ImportProfile(payload, { bisLists = true })

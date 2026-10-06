@@ -464,6 +464,29 @@ do
 end
 
 -------------------------------------------------------------------------------
+--  Claims for someone else: a score is kept only from the guild member its GUID names
+-------------------------------------------------------------------------------
+do
+    local ns, state = Fixture()
+    local Score = ns.NaowhScore
+    state.guildRoster[#state.guildRoster + 1] = { "Guildie2", "Player-7-00CD" }
+    state.Fire("CHAT_MSG_ADDON", "NaowhScore", "S Player-7-00AB 264 31", "GUILD", "Guildie")
+    state.Fire("CHAT_MSG_ADDON", "NaowhScore", "S Player-7-00AB 9999 60", "GUILD", "Mallory")
+    check("another sender cannot overwrite a shared score", Score.Known("Player-7-00AB").score == 26.4)
+    local kept = 0
+    for i = 1, 10 do
+        local guid = ("Player-8-%04X"):format(i)
+        state.Fire("CHAT_MSG_ADDON", "NaowhScore", "S " .. guid .. " 9999 60", "GUILD", "Mallory")
+        if Score.Known(guid) then kept = kept + 1 end
+    end
+    check("a sender outside the guild speaks for no GUID", kept == 0)
+    state.Fire("CHAT_MSG_ADDON", "NaowhScore", "S Player-7-00AB 270 31", "GUILD", "Guildie")
+    check("the owner still updates theirs", Score.Known("Player-7-00AB").score == 27)
+    state.Fire("CHAT_MSG_ADDON", "NaowhScore", "S Player-7-00CD 270 99999999999", "GUILD", "Guildie2")
+    check("a level past any real one is dropped", Score.Known("Player-7-00CD").level == nil)
+end
+
+-------------------------------------------------------------------------------
 --  The best there is, and grades: against the best in the game, or for a level
 -------------------------------------------------------------------------------
 do
