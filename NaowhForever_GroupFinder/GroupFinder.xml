@@ -1,0 +1,10 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/">
+    <!-- The Group Finder, in load order: its core, the card and messages, the whispers, Forever's
+         listings, the probe command, and its settings page. See README.md. -->
+    <Script file="GroupFinder.lua"/>
+    <Script file="Card.lua"/>
+    <Script file="Comms.lua"/>
+    <Script file="Listings.lua"/>
+    <Script file="Probe.lua"/>
+    <Script file="UI\SettingsPage.lua"/>
+</Ui>

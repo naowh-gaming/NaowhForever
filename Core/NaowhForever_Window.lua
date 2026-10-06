@@ -104,6 +104,12 @@ local MODULES = {
           { name = "Library Books", reuse = true },
           { name = "Sleeping Bag", reuse = true },
       } },
+    { name = "Group Finder", group = "ADVENTURE", navIcon = "search", settings = "GroupFinderSettings",
+      addon = "NaowhForever_GroupFinder", needs = { "NaowhForever_BiS" },
+      subtitle = "Naowh Forever cards and applications on top of Forever's own group finder.",
+      tabs = {
+          { name = "Settings", reuse = true },
+      } },
     -- The sets are a window of their own (open); only their settings live here.
     { name = "Gear & Trinkets", group = "COMBAT", navIcon = "shield", settings = "QoLSettings", enabledKey = "gearSets",
       addon = "NaowhForever_GearSets",
@@ -335,6 +341,7 @@ local function PaintTabs(bar, shown)
 end
 
 local NAV_ROW, NAV_OFF_ALPHA = 32, 0.45
+local NAV_GROUP_H = 25
 
 -- Within each group the modules that are on come first, then the ones you have off.
 local function LayoutNav()
@@ -1205,7 +1212,7 @@ local function CreateWindow()
         if group ~= "" then
             local label = ns.Font(nav, 11, nil, T.muted)
             label:SetPoint("TOPLEFT", 20, ny - 10); label:SetText(ns.L(group))
-            ny = ny - 28
+            ny = ny - NAV_GROUP_H
         end
         navBlocks[#navBlocks + 1] = { top = ny, mods = grouped[group] }
         for _, mod in ipairs(grouped[group]) do
@@ -1505,6 +1512,12 @@ SlashCmdList["NAOWHFOREVER"] = function(msg)
         ns.JournalItemProbe()
     elseif (cmd == "mappins" or cmd == "mapcheck") and ns.DungeonMapCommand then
         ns.DungeonMapCommand(cmd)
+    elseif cmd == "groupfinder" then
+        if ns.GroupFinderCommand then
+            ns.GroupFinderCommand(strtrim(msg):match("^%S+%s*(.-)$"))
+        else
+            ns.Print("Group Finder is switched off. Turn it on under Settings > Modules.")
+        end
     elseif cmd == "badges" and ns.BadgesCommand then
         ns.BadgesCommand(arg)
     elseif cmd == "scrap" and ns.ToggleScrapList then
