@@ -54,10 +54,19 @@ local function Fresh(key)
     if entry and GetTime() - entry.at <= S.Get("chatZonesMaxAge") * 60 then return entry end
 end
 
-local function Tag(entry)
-    local text = entry.zone
+-- The chat event carries the speaker's GUID, which gives their class even for a stranger.
+local function ClassColour(guid)
+    if not guid or guid == "" or Secret(guid) or not S.Get("chatZonesClassColour") then return nil end
+    local _, class = GetPlayerInfoByGUID(guid)
+    return class and C_ClassColor.GetClassColor(class)
+end
+
+local function Tag(entry, guid)
+    local text = "[" .. entry.zone
     if S.Get("chatZonesLevel") and entry.level then text = text .. " " .. entry.level end
-    return ns.Color("muted", "[" .. text .. "]") .. " "
+    text = text .. "]"
+    local colour = ClassColour(guid)
+    return (colour and colour:WrapTextInColorCode(text) or ns.Color("muted", text)) .. " "
 end
 
 -------------------------------------------------------------------------------
@@ -161,7 +170,7 @@ local function Filter(_, _, msg, author, ...)
         if S.Get("chatZonesAsk") then Ask(key) end
         return false
     end
-    return false, Tag(entry) .. msg, author, ...
+    return false, Tag(entry, (select(10, ...))) .. msg, author, ...
 end
 
 local events = CreateFrame("Frame")
@@ -236,6 +245,8 @@ ns.Shared.Settings.Page("QoL/Interface", S):Card({
     rows = {
         Group("Tags"),
         { key = "chatZonesLevel", label = "Show Level", toggle = true },
+        { key = "chatZonesClassColour", label = "Class Colour", toggle = true,
+          help = "The tag in the speaker's class colour. Off, it is grey." },
         { key = "chatZonesMaxAge", label = "Forget After", slider = { 1, 60, 1 }, unit = " min",
           help = "A zone older than this is no longer shown, since the player has likely moved on." },
         Group("Other Players"),
