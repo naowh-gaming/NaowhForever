@@ -2,7 +2,7 @@
 ## Title: |cff0091edNaowh|r Forever: Group Finder
 ## Notes: Naowh Forever cards and applications on top of Forever's own group finder.
 ## Author: NaowhUI
-## Version: 0.5.21-beta
+## Version: 0.5.22-beta
 ## Dependencies: NaowhForever, NaowhForever_BiS
 ## OptionalDeps: NaowhForever_DungeonJournal
 ## Group: NaowhUI
