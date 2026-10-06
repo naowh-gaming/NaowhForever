@@ -64,10 +64,10 @@ DungeonJournal/
                        shows on the world map
     Popup.lua          Boss Loot at Cursor (a key binding)
     QuestTracker.lua   a dungeon's quests in a small window, one line each
-    DungeonMap.lua     a dungeon's map: in its own window (under it, the bosses in kill order as
-                       a strip of chips, this run's progress, and the picked boss's page: loot
-                       and abilities side by side), and on the world map; /nf mappins to place
-                       pins, /nf mapcheck for the client's map art
+    DungeonMap.lua     a dungeon's map: in its own window (under it, the bosses in kill order
+                       with their pins' marks, by wing, this run's progress, and the picked
+                       boss's page: loot and abilities side by side), and on the world map;
+                       /nf mappins to place pins, /nf mapcheck for the client's map art
     SettingsPage.lua   its settings page (Dungeon Journal/Settings), declared as cards
 ```
 

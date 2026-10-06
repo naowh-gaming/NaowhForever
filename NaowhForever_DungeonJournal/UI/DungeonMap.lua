@@ -1,8 +1,10 @@
 -------------------------------------------------------------------------------
 --  UI/DungeonMap.lua -- a dungeon's map: the game's own map art of the dungeon (Data/Maps.lua),
 --  or, for one the game has no art for yet, a picture the addon ships (image), with its
---  maker's credit in the map's corner; its bosses as round portraits where they stand, each
---  with its place in the kill order, and the entrance (its label on a side clear of the pins
+--  maker's credit in the map's corner; its bosses where they stand, each as its mark: its
+--  round portrait (a chest's icon), with its place in the kill order on a small badge (a
+--  muted R, O or Q for a rare, optional or quest boss, in a muted ring; a tick, and the mark
+--  dimmed, once killed this run); and the entrance (its label on a side clear of the pins
 --  and the map's edge, or none when every side is taken). Hover a boss for its name, click it
 --  for its loot; a dungeon on several floors has a switch under the map. It shows in two
 --  places, each a view of its own:
@@ -10,11 +12,13 @@
 --  - A window, from Map on a dungeon page's Bosses title: in front of the window that holds
 --    the page, beside it where the screen has room (else over its top right), as tall as it.
 --    The floor switch has a line under the map only with several floors (or Copy, placing).
---    Under the map, the bosses in kill order as a grid of equal chips, up to five across and
---    the full width (hover one to light its pin, a pin to light its chip; past ten they show
---    only their number and portrait, spread across), each with a tick once killed this run
---    (and its pin dimmed, and the run's count in the title), a quest mark where a quest in
---    your log needs it, your BiS there, and the tag of one with no number (RARE, QUEST...).
+--    Under the map, the bosses in kill order, each with its pin's own mark (hover one to
+--    light its pin, a pin to light it; picked, both ringed alike), by wing under each wing's
+--    name where the dungeon has several. Ten or fewer in a grid of equal boxes, up to five
+--    across the full width: the mark, then the name, lined up in every box and cut to fit,
+--    the tag of one with no number (RARE, QUEST...), a quest mark where a quest in your log
+--    needs it and your BiS there. More, the marks alone, spread across or run on after each
+--    wing's name. The run's count is in the title.
 --    Under the strip, the page of the boss picked (a pin or a chip), compact, to read
 --    at a glance (View's DrawBossPage): its name and level on one line, Naowh's tip, its loot
 --    and its abilities side by side (what each ability does on two lines while the page has
@@ -56,6 +60,12 @@ local IMAGE_BOTTOM = 683 / 1024
 local WINDOW_SCALE = 0.7         -- the map in the window: about 700 by 470
 local PIN = 46                   -- a boss's portrait, in the map's own size
 local BADGE = 20                 -- its number
+local BADGE_IN = 6
+local BADGE_SIZE = 11
+local BADGE_TICK = 14
+local BADGE_ALPHA = 0.9
+local BIG_SIZE = 18
+local LIT_RING, LIT_ALPHA = 12, 0.9
 local ENTRANCE = 28
 local TRAY_STEP = PIN + 10       -- placing: the pins not placed yet, along the top
 local FLOOR_H = 22               -- the floor switch under the map
@@ -65,25 +75,30 @@ local PIN_BUTTON = 20            -- the window's pin, beside its close button
 local PIN_ICON = 14
 local MAP_SHOWN_H = MAP_H * WINDOW_SCALE
 local PAGE_W = MAP_W * WINDOW_SCALE
-local CHIP_H = 24
-local CHIP_FACE = 18
-local CHIP_PAD = 6
+local MARK_W = math.ceil(PIN * WINDOW_SCALE)
+local CHIP_H = 40
+local CHIP_PAD = 4
 local CHIP_PART_GAP = 4
 local CHIP_NAME_GAP = 6
+local CHIP_NAME_X = CHIP_PAD + MARK_W + CHIP_NAME_GAP
 local CHIP_STAR_GAP = 2
-local CHIP_NUMBER_W = 14
 local CHIP_MARK = 13
 local CHIP_FILL = 0.04
 local CHIP_GAP = St.CHIP_GAP
 local STRIP_COLUMNS, STRIP_ROWS = 5, 2
-local COMPACT_W = CHIP_PAD * 2 + CHIP_NUMBER_W + CHIP_PART_GAP + CHIP_FACE + 2
-local TAG_SHORT = { RARE = "R", OPTIONAL = "O", QUEST = "Q", CHEST = "C" }
+local COMPACT_H = 36
+local COMPACT_GAP = 4
+local WING_SIZE = 9
+local WING_LINE_H = 14
+local WING_GAP = 10
+local WING_LABEL_GAP = 6
+local TAG_SHORT = { RARE = "R", OPTIONAL = "O", QUEST = "Q" }
 local LABEL_GAP = 4
 local LABEL_CLEAR = 8
 local LABEL_SIDES = { "RIGHT", "LEFT", "BELOW", "ABOVE" }
 local DOWN_KEY = 100
-local LOWER_GAP = 10
-local STRIP_GAP = 8
+local LOWER_GAP = St.BOSS_PAGE_GAP
+local STRIP_GAP = St.BOSS_PAGE_GAP
 local LOWER_MIN = 292
 local SCROLL_GAP = 16
 local UNDER_MAP_GAP = 6          -- the map to the floor switch's line
@@ -130,7 +145,7 @@ local function KeyOf(boss)
 end
 
 -- Each boss of the dungeon, numbered in kill order as its page numbers them (a rare, an
--- optional or quest boss and a chest have none); fn(boss, number, key).
+-- optional or quest boss and a chest have none); fn(boss, number, key, wing).
 local function EachBoss(dungeon, fn)
     for _, wing in ipairs(dungeon.wings) do
         local number = 0
@@ -138,7 +153,7 @@ local function EachBoss(dungeon, fn)
             local key = KeyOf(boss)
             local ordered = J.Numbered(boss)
             if ordered then number = number + 1 end
-            if key then fn(boss, ordered and number or nil, key) end
+            if key then fn(boss, ordered and number or nil, key, wing) end
         end
     end
 end
@@ -240,65 +255,66 @@ local function Round(frame, texture)
     texture:AddMaskTexture(mask)
 end
 
--- The portrait in a 1px black ring, as the house's edges are (its width set for the view's
--- scale when drawn); its number on a small dark disc at its foot. A boss without a portrait
--- (or a chest) shows its number, larger.
+local function BuildMark(frame)
+    frame.halo = frame:CreateTexture(nil, "BACKGROUND", nil, -3)
+    frame.halo:SetPoint("CENTER")
+    frame.halo:SetSize(PIN + PICKED_GLOW, PIN + PICKED_GLOW)
+    frame.halo:SetColorTexture(1, 1, 1, 1)
+    frame.halo:SetBlendMode("ADD")
+    Round(frame, frame.halo)
+    frame.halo:Hide()
+    frame.pulse = frame.halo:CreateAnimationGroup()
+    frame.pulse:SetLooping("BOUNCE")
+    local fade = frame.pulse:CreateAnimation("Alpha")
+    fade:SetFromAlpha(GLOW_LOW)
+    fade:SetToAlpha(GLOW_HIGH)
+    fade:SetDuration(GLOW_PULSE)
+    fade:SetSmoothing("IN_OUT")
+    frame.gold = frame:CreateTexture(nil, "BACKGROUND", nil, -1)
+    frame.gold:SetPoint("CENTER")
+    frame.gold:SetSize(PIN + PICKED_RING, PIN + PICKED_RING)
+    frame.gold:SetColorTexture(1, 1, 1, 1)
+    Round(frame, frame.gold)
+    frame.gold:Hide()
+    frame.glow = frame:CreateTexture(nil, "BACKGROUND", nil, -2)
+    frame.glow:SetPoint("CENTER")
+    frame.glow:SetSize(PIN + LIT_RING, PIN + LIT_RING)
+    frame.glow:SetColorTexture(T.accent.r, T.accent.g, T.accent.b, LIT_ALPHA)
+    Round(frame, frame.glow)
+    frame.glow:Hide()
+    frame.ring = frame:CreateTexture(nil, "BACKGROUND")
+    frame.ring:SetPoint("CENTER")
+    Round(frame, frame.ring)
+    frame.plate = frame:CreateTexture(nil, "BORDER")
+    frame.plate:SetAllPoints()
+    frame.plate:SetColorTexture(T.bg.r, T.bg.g, T.bg.b, 1)
+    Round(frame, frame.plate)
+    frame.face = frame:CreateTexture(nil, "ARTWORK")
+    frame.face:SetAllPoints()
+    Round(frame, frame.face)
+    frame.big = ns.Font(frame, BIG_SIZE, nil, T.fg)
+    frame.big:SetPoint("CENTER")
+    frame.badge = CreateFrame("Frame", nil, frame)
+    frame.badge:SetSize(BADGE, BADGE)
+    frame.badge:SetPoint("CENTER", frame, "BOTTOMRIGHT", -BADGE_IN, BADGE_IN)
+    frame.badge.disc = frame.badge:CreateTexture(nil, "ARTWORK")
+    frame.badge.disc:SetAllPoints()
+    frame.badge.disc:SetColorTexture(0, 0, 0, BADGE_ALPHA)
+    Round(frame.badge, frame.badge.disc)
+    frame.badge.text = ns.Font(frame.badge, BADGE_SIZE, nil, T.fg)
+    frame.badge.text:SetPoint("CENTER")
+    frame.badge.tick = frame.badge:CreateTexture(nil, "OVERLAY")
+    frame.badge.tick:SetTexture(St.CHECK, nil, nil, "TRILINEAR")
+    frame.badge.tick:SetSize(BADGE_TICK, BADGE_TICK)
+    frame.badge.tick:SetPoint("CENTER")
+end
+
 function View:NewPin()
     local pin = CreateFrame("Button", nil, self.canvas)
     pin.view = self
     pin:SetSize(PIN, PIN)
     pin:RegisterForClicks("LeftButtonUp", "RightButtonUp")
-    -- Picked (its loot is showing): a ring round its portrait in a slow glow, gold or the
-    -- theme's Accent (PICKED_RGB).
-    pin.halo = pin:CreateTexture(nil, "BACKGROUND", nil, -3)
-    pin.halo:SetPoint("CENTER")
-    pin.halo:SetSize(PIN + PICKED_GLOW, PIN + PICKED_GLOW)
-    pin.halo:SetColorTexture(1, 1, 1, 1)   -- its colour is set as it shows (ShowPicked)
-    pin.halo:SetBlendMode("ADD")
-    Round(pin, pin.halo)
-    pin.halo:Hide()
-    pin.pulse = pin.halo:CreateAnimationGroup()
-    pin.pulse:SetLooping("BOUNCE")
-    local fade = pin.pulse:CreateAnimation("Alpha")
-    fade:SetFromAlpha(GLOW_LOW)
-    fade:SetToAlpha(GLOW_HIGH)
-    fade:SetDuration(GLOW_PULSE)
-    fade:SetSmoothing("IN_OUT")
-    pin.gold = pin:CreateTexture(nil, "BACKGROUND", nil, -1)
-    pin.gold:SetPoint("CENTER")
-    pin.gold:SetSize(PIN + PICKED_RING, PIN + PICKED_RING)
-    pin.gold:SetColorTexture(1, 1, 1, 1)
-    Round(pin, pin.gold)
-    pin.gold:Hide()
-    -- Lit while its chip under the map is hovered: the accent, round, just outside its ring.
-    pin.glow = pin:CreateTexture(nil, "BACKGROUND", nil, -2)
-    pin.glow:SetPoint("CENTER")
-    pin.glow:SetSize(PIN + 12, PIN + 12)
-    pin.glow:SetColorTexture(T.accent.r, T.accent.g, T.accent.b, 0.9)
-    Round(pin, pin.glow)
-    pin.glow:Hide()
-    pin.ring = pin:CreateTexture(nil, "BACKGROUND")
-    pin.ring:SetPoint("CENTER")
-    pin.ring:SetColorTexture(0, 0, 0, 1)
-    Round(pin, pin.ring)
-    pin.plate = pin:CreateTexture(nil, "BORDER")
-    pin.plate:SetAllPoints()
-    pin.plate:SetColorTexture(T.bg.r, T.bg.g, T.bg.b, 1)
-    Round(pin, pin.plate)
-    pin.face = pin:CreateTexture(nil, "ARTWORK")
-    pin.face:SetAllPoints()
-    Round(pin, pin.face)
-    pin.big = ns.Font(pin, 18, nil, T.fg)
-    pin.big:SetPoint("CENTER")
-    pin.badge = CreateFrame("Frame", nil, pin)
-    pin.badge:SetSize(BADGE, BADGE)
-    pin.badge:SetPoint("CENTER", pin, "BOTTOMRIGHT", -6, 6)
-    pin.badge.disc = pin.badge:CreateTexture(nil, "ARTWORK")
-    pin.badge.disc:SetAllPoints()
-    pin.badge.disc:SetColorTexture(0, 0, 0, 0.9)
-    Round(pin.badge, pin.badge.disc)
-    pin.badge.text = ns.Font(pin.badge, 11, nil, T.fg)
-    pin.badge.text:SetPoint("CENTER")
+    BuildMark(pin)
     pin:SetScript("OnEnter", PinEnter)
     pin:SetScript("OnLeave", PinLeave)
     pin:SetScript("OnClick", PinClicked)
@@ -306,30 +322,44 @@ function View:NewPin()
     return pin
 end
 
--- The boss's portrait from its creature display, where the client can draw one.
-local function SetFace(pin, boss, number, ring)
-    pin.ring:SetSize(PIN + ring * 2, PIN + ring * 2)
+local function SetMark(mark, boss, number, ring, killed)
+    mark.ring:SetSize(PIN + ring * 2, PIN + ring * 2)
+    local edge = number and St.BORDER_RGB or T.muted
+    mark.ring:SetColorTexture(edge.r, edge.g, edge.b, 1)
     local face = boss.model and SetPortraitTextureFromCreatureDisplayID
-    if face then SetPortraitTextureFromCreatureDisplayID(pin.face, boss.model) end
-    pin.face:SetShown(face ~= nil)
-    pin.big:SetShown(not face)
-    pin.big:SetText(boss.chest and "?" or number or "")
-    pin.badge:SetShown(face ~= nil and number ~= nil)
-    pin.badge.text:SetText(number or "")
+    if boss.chest then
+        mark.face:SetTexture(St.CHEST_ICON)
+    elseif face then
+        SetPortraitTextureFromCreatureDisplayID(mark.face, boss.model)
+    end
+    local drawn = boss.chest ~= nil or face ~= nil
+    mark.face:SetShown(drawn)
+    mark.face:SetDesaturated(killed == true)
+    mark.big:SetShown(not drawn)
+    local tag = J.BossTag(boss)
+    local glyph = not boss.chest and tag and TAG_SHORT[tag] or nil
+    mark.big:SetText(number or glyph or "")
+    mark.badge:SetShown(killed or drawn and (number or glyph) ~= nil)
+    mark.badge.tick:SetShown(killed == true)
+    mark.badge.text:SetShown(not killed)
+    mark.badge.text:SetText(number or glyph or "")
+    local color = number and T.fg or T.muted
+    mark.badge.text:SetTextColor(color.r, color.g, color.b)
+    mark:SetAlpha(killed and KILLED_ALPHA or 1)
 end
 
--- The gold ring and its glow on or off; the glow only pulses while it shows.
-local function ShowPicked(pin, on)
-    pin.gold:SetShown(on)
-    pin.halo:SetShown(on)
+local function ShowPicked(mark, on, ringOnly)
+    mark.gold:SetShown(on)
+    mark.halo:SetShown(on and not ringOnly)
     if on then
-        -- Read as it shows, so a theme changed since follows on the next pick.
         local c = ns.ThemeTint("accent", PICKED_RGB)
-        pin.gold:SetColorTexture(c.r, c.g, c.b, 1)
-        pin.halo:SetColorTexture(c.r, c.g, c.b, 1)
-        if not pin.pulse:IsPlaying() then pin.pulse:Play() end
+        mark.gold:SetColorTexture(c.r, c.g, c.b, 1)
+        mark.halo:SetColorTexture(c.r, c.g, c.b, 1)
+    end
+    if on and not ringOnly then
+        if not mark.pulse:IsPlaying() then mark.pulse:Play() end
     else
-        pin.pulse:Stop()
+        mark.pulse:Stop()
     end
 end
 
@@ -449,15 +479,14 @@ function View:DrawPin(boss, number, key)
     local pin = self.pins[self.used] or self:NewPin()
     self.pins[self.used] = pin
     pin.boss, pin.key = boss, key
-    SetFace(pin, boss, number, 1 / self.scale)
+    local killed = self.inside and J.Kills.ThisRun(boss) or false
+    SetMark(pin, boss, number, 1 / self.scale, killed)
     pin.glow:Hide()
     ShowPicked(pin, self.picked ~= nil and key == self.picked and not self:Placing())
     pin.atX = here and spot[2] * MAP_W or nil
     pin.atY = here and spot[3] * MAP_H or nil
     if here then
         self:At(pin, spot[2], spot[3])
-        -- Killed this run, in the dungeon you are in: dimmed.
-        pin:SetAlpha(self.inside and J.Kills.ThisRun(boss) and KILLED_ALPHA or 1)
     else
         -- Not placed yet: along the top, to drag from.
         self.tray = self.tray + 1
@@ -708,6 +737,7 @@ end
 -------------------------------------------------------------------------------
 local strip, page, lootView, picked
 local chips = {}
+local wingLabels, wingTexts = {}, {}
 local quests = {}   -- boss -> what your quests need of it, filled each draw: { text, done }
 
 local function Folded()
@@ -787,9 +817,16 @@ end
 
 local function PaintChip(chip)
     local on = chip.boss == picked
-    chip.fill:SetShown(on)
-    chip.line:SetShown(on)
-    chip.hover:SetShown(chip.lit == true and not on)
+    local boxed = not chip.compact
+    local lit = chip.lit == true and not on
+    local c = ns.ThemeTint("accent", PICKED_RGB)
+    chip.fill:SetColorTexture(c.r, c.g, c.b, St.TAB_FILL)
+    chip.line:SetColorTexture(c.r, c.g, c.b, 1)
+    chip.fill:SetShown(on and boxed)
+    chip.line:SetShown(on and boxed)
+    chip.hover:SetShown(lit and boxed)
+    chip.mark.glow:SetShown(lit and not boxed)
+    ShowPicked(chip.mark, on, boxed)
     local color = chip.killed and not on and T.muted or T.fg
     chip.name:SetTextColor(color.r, color.g, color.b)
 end
@@ -878,14 +915,10 @@ local function Mark(chip, texture)
     return icon
 end
 
--- In the house's chip look (a faint fill in a 1px black edge): its place in the kill order (a
--- tick once killed this run), its portrait in a ring (black, muted for a boss with no number),
--- its name cut to fit and its tag; a quest mark and your BiS there after them. Compact, its
--- number (or its tag's letter) and portrait, in the middle.
 local function NewChip()
     local chip = CreateFrame("Button", nil, strip)
-    chip:SetHeight(CHIP_H)
-    ns.Solid(chip, "BACKGROUND", T.fg, CHIP_FILL):SetAllPoints()
+    chip.bg = ns.Solid(chip, "BACKGROUND", T.fg, CHIP_FILL)
+    chip.bg:SetAllPoints()
     chip.hover = ns.Solid(chip, "BACKGROUND", T.fg, St.HOVER)
     chip.hover:SetAllPoints()
     chip.fill = ns.Solid(chip, "BORDER", T.accent, St.TAB_FILL)
@@ -894,39 +927,25 @@ local function NewChip()
     chip.line:SetPoint("BOTTOMLEFT")
     chip.line:SetPoint("BOTTOMRIGHT")
     chip.line:SetHeight(St.TAB_LINE)
-    ns.Border(chip, St.BORDER_RGB)
-    chip.number = ns.Font(chip, 11, nil, T.muted)
-    chip.number:SetWidth(CHIP_NUMBER_W)
-    chip.number:SetJustifyH("RIGHT")
-    chip.tick = Mark(chip, St.CHECK)
-    chip.tick:SetPoint("CENTER", chip.number, "CENTER", 0, 0)
-    chip.ring = chip:CreateTexture(nil, "ARTWORK", nil, 1)
-    chip.ring:SetSize(CHIP_FACE + 2, CHIP_FACE + 2)
-    chip.ring:SetColorTexture(0, 0, 0, 1)
-    Round(chip, chip.ring)
-    chip.face = chip:CreateTexture(nil, "ARTWORK", nil, 2)
-    chip.face:SetSize(CHIP_FACE, CHIP_FACE)
-    chip.face:SetPoint("CENTER", chip.ring, "CENTER", 0, 0)
-    Round(chip, chip.face)
+    chip.edge = ns.Border(chip, St.BORDER_RGB)
+    chip.mark = CreateFrame("Frame", nil, chip)
+    chip.mark:SetSize(PIN, PIN)
+    chip.mark:SetScale(WINDOW_SCALE)
+    BuildMark(chip.mark)
     chip.name = ns.Font(chip, 12, nil, T.fg)
     chip.name:SetJustifyH("LEFT")
     chip.name:SetWordWrap(false)
     chip.tag = ns.Font(chip, 9, nil, T.muted)
+    chip.tag:SetPoint("LEFT", chip.name, "RIGHT", CHIP_PART_GAP, 0)
     chip.quest = Mark(chip, St.BANG)
     chip.star = Mark(chip, St.STAR)
     chip.star:SetVertexColor(St.BIS_RGB.r, St.BIS_RGB.g, St.BIS_RGB.b)
     chip.bisText = ns.Font(chip, 11, nil, T.fg)
+    chip.bisText:SetPoint("LEFT", chip.star, "RIGHT", CHIP_STAR_GAP, 0)
     chip:SetScript("OnEnter", ChipEnter)
     chip:SetScript("OnLeave", ChipLeave)
     chip:SetScript("OnClick", ChipClicked)
     return chip
-end
-
-local function PlacePart(part, x, gap, width)
-    if x > CHIP_PAD then x = x + gap end
-    part:ClearAllPoints()
-    part:SetPoint("LEFT", part:GetParent(), "LEFT", x, 0)
-    return x + width
 end
 
 local function MarksWidth(chip)
@@ -938,76 +957,89 @@ local function MarksWidth(chip)
 end
 
 local function LayChip(chip, compact, width)
-    local named = not compact or not chip.hasFace
-    local short = compact and chip.short
-    local slot = chip.numbered or chip.killed or short and true
-    chip.number:SetText(short or chip.numberText)
-    chip.number:SetShown(slot and not chip.killed)
-    chip.tick:SetShown(chip.killed == true)
-    chip.ring:SetShown(chip.hasFace)
-    chip.face:SetShown(chip.hasFace)
-    chip.name:SetShown(named)
-    chip.tag:SetShown(named and chip.tagW > 0)
-    chip.quest:SetShown(named and chip.needed)
-    chip.star:SetShown(named and chip.bis > 0)
-    chip.bisText:SetShown(named and chip.bis > 0)
-    local x = CHIP_PAD
-    if not named then
-        local content = (slot and CHIP_NUMBER_W + CHIP_PART_GAP or 0) + CHIP_FACE + 2
-        x = math.max(CHIP_PAD, math.floor((width - content) / 2))
-        if slot then x = PlacePart(chip.number, x, 0, CHIP_NUMBER_W) + CHIP_PART_GAP end
-        chip.ring:ClearAllPoints()
-        chip.ring:SetPoint("LEFT", chip, "LEFT", x, 0)
-        return
+    chip.compact = compact
+    chip:SetSize(width, compact and COMPACT_H or CHIP_H)
+    chip.bg:SetShown(not compact)
+    chip.edge._frame:SetShown(not compact)
+    chip.mark:ClearAllPoints()
+    if compact then
+        chip.mark:SetPoint("CENTER", chip, "CENTER", 0, 0)
+    else
+        chip.mark:SetPoint("LEFT", chip, "LEFT", CHIP_PAD / WINDOW_SCALE, 0)
     end
-    if slot then x = PlacePart(chip.number, x, 0, CHIP_NUMBER_W) end
-    if chip.hasFace then x = PlacePart(chip.ring, x, CHIP_PART_GAP, CHIP_FACE + 2) end
-    local room = width - CHIP_PAD - (x > CHIP_PAD and x + CHIP_NAME_GAP or x) - MarksWidth(chip)
+    chip.name:SetShown(not compact)
+    chip.tag:SetShown(not compact and chip.tagW > 0)
+    chip.quest:SetShown(not compact and chip.needed)
+    chip.star:SetShown(not compact and chip.bis > 0)
+    chip.bisText:SetShown(not compact and chip.bis > 0)
+    if compact then return end
+    chip.name:ClearAllPoints()
+    chip.name:SetPoint("LEFT", chip, "LEFT", CHIP_NAME_X, 0)
+    local room = width - CHIP_NAME_X - CHIP_PAD - MarksWidth(chip)
     local nameW = math.max(1, math.min(chip.nameW, room))
     chip.name:SetWidth(nameW)
-    x = PlacePart(chip.name, x, CHIP_NAME_GAP, nameW)
-    if chip.tagW > 0 then x = PlacePart(chip.tag, x, CHIP_PART_GAP, chip.tagW) end
-    if chip.needed then x = PlacePart(chip.quest, x, CHIP_NAME_GAP, CHIP_MARK) end
+    local after = chip.tagW > 0 and chip.tag or chip.name
+    if chip.needed then
+        chip.quest:ClearAllPoints()
+        chip.quest:SetPoint("LEFT", after, "RIGHT", CHIP_NAME_GAP, 0)
+        after = chip.quest
+    end
     if chip.bis > 0 then
-        x = PlacePart(chip.star, x, CHIP_NAME_GAP, CHIP_MARK)
-        PlacePart(chip.bisText, x, CHIP_STAR_GAP, chip.bisW)
+        chip.star:ClearAllPoints()
+        chip.star:SetPoint("LEFT", after, "RIGHT", CHIP_NAME_GAP, 0)
     end
 end
 
--- One draw's count and settings, for StripChip (EachBoss's callback, made once).
-local drawN, drawKilled, drawTotal, drawInside
+local drawN, drawKilled, drawTotal, drawInside, drawWings, lastWing
 
-local function StripChip(boss, number, key)
+local function StripChip(boss, number, key, wing)
     drawN = drawN + 1
     local chip = chips[drawN] or NewChip()
     chips[drawN] = chip
-    chip.boss, chip.key, chip.lit = boss, key, false
+    chip.boss, chip.key, chip.lit, chip.wing = boss, key, false, wing
+    if wing ~= lastWing then
+        lastWing = wing
+        if wing.name then drawWings = drawWings + 1 end
+    end
     chip.killed = drawInside and J.Kills.ThisRun(boss) or false
-    chip.numbered = number ~= nil
+    chip.number = number
     if number then
         drawTotal = drawTotal + 1
         if chip.killed then drawKilled = drawKilled + 1 end
     end
-    chip.numberText = number or ""
-    local face = boss.model and SetPortraitTextureFromCreatureDisplayID
-    if face then SetPortraitTextureFromCreatureDisplayID(chip.face, boss.model) end
-    chip.hasFace = face ~= nil
-    chip.face:SetDesaturated(chip.killed)
+    SetMark(chip.mark, boss, number, 1 / WINDOW_SCALE, chip.killed)
     chip.name:SetWidth(0)
     chip.name:SetText(boss.name)
     chip.nameW = math.ceil(chip.name:GetStringWidth()) + 1
     local tag = J.BossTag(boss)
-    chip.short = tag and TAG_SHORT[tag]
     chip.tag:SetText(tag or "")
     chip.tagW = tag and math.ceil(chip.tag:GetStringWidth()) or 0
-    local ring = tag and T.muted or St.BORDER_RGB
-    chip.ring:SetColorTexture(ring.r, ring.g, ring.b, 1)
     chip.needed = quests[boss] ~= nil
     chip.bis, chip.haveBis = J.Loot.BossBis(boss)
     chip.bisText:SetText(chip.bis > 0 and chip.bis or "")
     chip.bisW = chip.bis > 0 and math.ceil(chip.bisText:GetStringWidth()) or 0
-    PaintChip(chip)
     chip:Show()
+end
+
+local labelsUsed = 0
+
+local function WingLabel(wing)
+    labelsUsed = labelsUsed + 1
+    local label = wingLabels[labelsUsed]
+    if not label then
+        label = ns.Font(strip, WING_SIZE, nil, T.muted)
+        label:SetJustifyH("LEFT")
+        label:SetWordWrap(false)
+        wingLabels[labelsUsed] = label
+    end
+    local text = wingTexts[wing]
+    if not text then
+        text = wing.name and wing.name:upper() or ""
+        wingTexts[wing] = text
+    end
+    label:SetText(text)
+    label:Show()
+    return label
 end
 
 local function Columns(n, most)
@@ -1016,21 +1048,68 @@ local function Columns(n, most)
     return math.ceil(n / rows), rows
 end
 
-local function Grid(compact)
-    local most = compact and math.floor((PAGE_W + CHIP_GAP) / (COMPACT_W + CHIP_GAP)) or STRIP_COLUMNS
-    local columns, rows = Columns(drawN, most)
+local function GridChips(first, last, most, compact, top)
+    local n = last - first + 1
+    local columns, rows = Columns(n, most)
     local step = (PAGE_W + CHIP_GAP) / columns
-    for i = 1, drawN do
+    local h = compact and COMPACT_H or CHIP_H
+    local gap = compact and 0 or CHIP_GAP
+    for i = first, last do
         local chip = chips[i]
-        local column, row = (i - 1) % columns, math.floor((i - 1) / columns)
+        local column, row = (i - first) % columns, math.floor((i - first) / columns)
         local left = math.floor(column * step + 0.5)
-        local width = math.floor((column + 1) * step + 0.5) - CHIP_GAP - left
-        chip:SetWidth(width)
+        LayChip(chip, compact, math.floor((column + 1) * step + 0.5) - CHIP_GAP - left)
         chip:ClearAllPoints()
-        chip:SetPoint("TOPLEFT", left, -row * (CHIP_H + CHIP_GAP))
-        LayChip(chip, compact, width)
+        chip:SetPoint("TOPLEFT", left, -(top + row * (h + gap)))
     end
-    return rows
+    return top + rows * (h + gap) - gap
+end
+
+local function GroupEnd(first)
+    local last = first
+    while last < drawN and chips[last + 1].wing == chips[first].wing do last = last + 1 end
+    return last
+end
+
+local function FullStrip(grouped)
+    local y, first = 0, 1
+    while first <= drawN do
+        local last = grouped and GroupEnd(first) or drawN
+        if first > 1 then y = y + WING_GAP end
+        if grouped then
+            local label = WingLabel(chips[first].wing)
+            label:ClearAllPoints()
+            label:SetPoint("TOPLEFT", 0, -y)
+            y = y + WING_LINE_H
+        end
+        y = GridChips(first, last, STRIP_COLUMNS, false, y)
+        first = last + 1
+    end
+    return y
+end
+
+local function CompactFlow()
+    local x, row, first = 0, 0, 1
+    while first <= drawN do
+        local last = GroupEnd(first)
+        local label = WingLabel(chips[first].wing)
+        local labelW = math.ceil(label:GetStringWidth())
+        if x > 0 then x = x + WING_GAP end
+        if x > 0 and x + labelW + WING_LABEL_GAP + MARK_W > PAGE_W then x, row = 0, row + 1 end
+        label:ClearAllPoints()
+        label:SetPoint("LEFT", strip, "TOPLEFT", x, -(row * COMPACT_H + COMPACT_H / 2))
+        x = x + labelW + WING_LABEL_GAP
+        for i = first, last do
+            if x + MARK_W > PAGE_W then x, row = 0, row + 1 end
+            local chip = chips[i]
+            LayChip(chip, true, MARK_W)
+            chip:ClearAllPoints()
+            chip:SetPoint("TOPLEFT", x, -row * COMPACT_H)
+            x = x + MARK_W + COMPACT_GAP
+        end
+        first = last + 1
+    end
+    return (row + 1) * COMPACT_H
 end
 
 local downTexts = {}
@@ -1049,10 +1128,21 @@ local function DrawStrip()
     local dungeon = windowView.dungeon
     FillQuests(dungeon)
     drawN, drawKilled, drawTotal, drawInside = 0, 0, 0, windowView.inside
+    drawWings, lastWing, labelsUsed = 0, nil, 0
     EachBoss(dungeon, StripChip)
     for i = drawN + 1, #chips do chips[i]:Hide() end
-    local rows = Grid(drawN > STRIP_COLUMNS * STRIP_ROWS)
-    strip:SetHeight(rows * CHIP_H + (rows - 1) * CHIP_GAP)
+    local grouped = drawWings > 1
+    local height
+    if drawN <= STRIP_COLUMNS * STRIP_ROWS then
+        height = FullStrip(grouped)
+    elseif grouped then
+        height = CompactFlow()
+    else
+        height = GridChips(1, drawN, math.floor((PAGE_W + COMPACT_GAP) / (MARK_W + COMPACT_GAP)), true, 0)
+    end
+    for i = labelsUsed + 1, #wingLabels do wingLabels[i]:Hide() end
+    for i = 1, drawN do PaintChip(chips[i]) end
+    strip:SetHeight(math.max(1, height))
     return drawInside and drawTotal > 0 and DownText(drawKilled, drawTotal) or ""
 end
 

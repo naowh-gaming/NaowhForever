@@ -76,6 +76,10 @@ local METHODS = {
     SetText = function(frame, text) frame.text = text end,
     GetText = function(frame) return rawget(frame, "text") or "" end,
     IsShown = function(frame) return rawget(frame, "shown") ~= false end,
+    SetTexture = function(frame, texture) frame.texture = texture end,
+    SetPoint = function(frame, _, a, b, c)
+        frame.pointX = type(a) == "number" and a or type(b) == "number" and b or c
+    end,
     IsVisible = function(frame) return rawget(frame, "shown") ~= false end,
     Show = function(frame) frame.shown = true end,
     Hide = function(frame) frame.shown = false end,
@@ -1553,10 +1557,13 @@ do
     check("a placed boss is on the map", onMap["Oggleflint"])
     state.spellText = { [J.Abilities[11519][1]] = "Hits the tank.\nThen the healer." }
     local St = J.Style
+    local portraits = rawget(_G, "SetPortraitTextureFromCreatureDisplayID")
+    _G.SetPortraitTextureFromCreatureDisplayID = function() end
+    J.DrawDungeonMap()
     local function Chips()
         local list = {}
         for _, made in ipairs(state.made) do
-            if rawget(made, "numberText") and rawget(made, "shown") ~= false then list[#list + 1] = made end
+            if rawget(made, "nameW") and rawget(made, "shown") ~= false then list[#list + 1] = made end
         end
         return list
     end
@@ -1588,12 +1595,19 @@ do
         if chip.boss ~= order[i] or rawget(chip.name, "text") ~= chip.boss.name then inOrder = false end
         if J.Numbered(chip.boss) then
             numbered = numbered + 1
-            if rawget(chip.number, "text") ~= numbered then inOrder = false end
+            if rawget(chip.mark.badge.text, "text") ~= numbered then inOrder = false end
         end
     end
-    check("in kill order, each with its number and name", inOrder)
+    check("in kill order, each with its number on its mark's badge and its name", inOrder)
+    local markX, nameX, aligned = shownChips[1].mark.pointX, shownChips[1].name.pointX, true
+    for _, chip in ipairs(shownChips) do
+        if chip.mark.pointX ~= markX or chip.name.pointX ~= nameX then aligned = false end
+    end
+    check("every portrait at the same x, every name at the same x after it", aligned
+        and nameX > markX * 0.7 + 46 * 0.7)
+    check("in a box", rawget(shownChips[1].bg, "shown") ~= false and rawget(shownChips[1].edge._frame, "shown") ~= false)
     local strip = shownChips[1]:GetParent()
-    local PAGE_W, CHIP_GAP = 1002 * 0.7, J.Style.CHIP_GAP
+    local PAGE_W, CHIP_GAP, FULL_H, COMPACT_H = 1002 * 0.7, J.Style.CHIP_GAP, 40, 36
     local function GridOf(list, columns)
         local sum, low, high = 0, math.huge, 0
         for i = 1, columns do
@@ -1602,11 +1616,18 @@ do
         end
         return high - low <= 1 and math.abs(sum + CHIP_GAP * (columns - 1) - PAGE_W) <= 1
     end
-    check("four bosses: one row", rawget(strip, "h") == 24)
+    check("four bosses: one row", rawget(strip, "h") == FULL_H)
     check("four equal chips across the whole width", GridOf(shownChips, 4))
     local pickRow = ChipFor("Bazzalan")
     pickRow.scripts.OnClick(pickRow)
     check("a chip picks its boss, accented", rawget(pickRow.fill, "shown") == true and rawget(pickRow.line, "shown") == true)
+    check("its mark ringed as a picked pin is", rawget(pickRow.mark.gold, "shown") == true)
+    local jergosh = ChipFor("Jergosh the Invoker")
+    jergosh.scripts.OnClick(jergosh)
+    check("and its pin with it", rawget(jergosh.mark.gold, "shown") == true
+        and rawget(PinFor("Jergosh the Invoker").gold, "shown") == true)
+    pickRow.scripts.OnClick(pickRow)
+    check("the ring alone in a box, no glow past it", rawget(pickRow.mark.halo, "shown") == false)
     check("and no other", rawget(ChipFor("Oggleflint").fill, "shown") == false)
     local oggle = ChipFor("Oggleflint")
     oggle.scripts.OnEnter(oggle)
@@ -1620,9 +1641,10 @@ do
     J.Kills.ThisRun = function(boss) return boss.name == "Oggleflint" end
     J.DrawDungeonMap()
     check("a boss killed this run is dimmed, with a tick", oggle.killed == true
-        and rawget(oggle.tick, "shown") == true and rawget(oggle.number, "shown") == false)
+        and rawget(oggle.mark.badge.tick, "shown") == true and rawget(oggle.mark.badge.text, "shown") == false)
+    check("its pin too", rawget(PinFor("Oggleflint").badge.tick, "shown") == true)
     check("the others are not", ChipFor("Jergosh the Invoker").killed == false
-        and rawget(ChipFor("Jergosh the Invoker").tick, "shown") == false)
+        and rawget(ChipFor("Jergosh the Invoker").mark.badge.tick, "shown") == false)
     local runTitle
     for _, font in ipairs(state.fonts) do
         local text = rawget(font, "text")
@@ -1740,10 +1762,12 @@ do
     J.OpenDungeonMap(excavation)
     local horror, guardian = ChipFor("Highland Horror"), ChipFor("Relic Guardian")
     check("Highland Horror is a quest boss", horror.boss.quest == true and not J.Numbered(horror.boss))
-    check("tagged QUEST, with no number", rawget(horror.tag, "text") == "QUEST" and rawget(horror.number, "shown") == false)
-    check("Relic Guardian is the third", rawget(guardian.number, "text") == 3)
+    check("tagged QUEST after its name", rawget(horror.tag, "text") == "QUEST" and rawget(horror.tag, "shown") ~= false)
+    check("and Q, muted, where a number goes", rawget(horror.mark.badge.text, "text") == "Q"
+        and rawget(horror.mark.badge, "shown") ~= false)
+    check("as on its pin", rawget(PinFor("Highland Horror").badge.text, "text") == "Q")
+    check("Relic Guardian is the third", rawget(guardian.mark.badge.text, "text") == 3)
     check("and so is its pin", rawget(PinFor("Relic Guardian").badge.text, "text") == 3)
-    check("Highland Horror's pin has no number", rawget(PinFor("Highland Horror").badge.text, "text") == "")
     check("the first not killed is picked", rawget(ChipFor("Saltspine").fill, "shown") == true)
     local saltTitle = TitleRow("Saltspine", true)
     check("Saltspine has no tip", J.Tips[260322] == nil and PageRow(pageView, function(made)
@@ -1777,8 +1801,6 @@ do
     quests = PageRow(pageView, function(made) return rawget(made, "chips") and rawget(made, "label") end)
     check("a quest boss with loot: the quest under the columns", quests ~= nil
         and quests.top > Section(pageView, "LOOT").top)
-    local portraits = rawget(_G, "SetPortraitTextureFromCreatureDisplayID")
-    _G.SetPortraitTextureFromCreatureDisplayID = function() end
     local wailing = J.Get("WailingCaverns")
     local wailingBosses = wailing.wings[1].bosses
     local trash = table.remove(wailingBosses)
@@ -1790,30 +1812,40 @@ do
     end
     J.OpenDungeonMap(wailing)
     local wc = Chips()
-    check("Wailing Caverns: nine chips, five and four", #wc == 9 and rawget(strip, "h") == 24 * 2 + CHIP_GAP)
+    check("Wailing Caverns: nine chips, five and four", #wc == 9 and rawget(strip, "h") == FULL_H * 2 + CHIP_GAP)
     check("five equal chips across", GridOf(wc, 5) and math.abs(wc[6].w - wc[1].w) <= 1)
     rawset(wc[1].name, "GetStringWidth", function() return 300 end)
     J.DrawDungeonMap()
     check("each with its name, a long one cut to fit", Named(wc) and wc[1].name.w < wc[1].w - 40)
     rawset(wc[1].name, "GetStringWidth", nil)
     local dragon = ChipFor("Deviate Faerie Dragon")
-    check("a rare: its tag after its name, no number", rawget(dragon.tag, "shown") ~= false
-        and rawget(dragon.tag, "text") == "RARE" and rawget(dragon.number, "shown") == false)
+    check("a rare: its tag after its name, R on its badge", rawget(dragon.tag, "shown") ~= false
+        and rawget(dragon.tag, "text") == "RARE" and rawget(dragon.mark.badge.text, "text") == "R")
     check("the numbered ones have no tag", rawget(ChipFor("Kresh").tag, "shown") == false)
+    check("one language: its mark at the same x as a numbered one's", dragon.mark.pointX == ChipFor("Kresh").mark.pointX
+        and dragon.name.pointX == ChipFor("Kresh").name.pointX)
     wailingBosses[#wailingBosses + 1] = { npc = 990001, name = "Tenth Boss" }
     J.DrawDungeonMap()
     wc = Chips()
-    check("ten bosses: still two rows, with names", #wc == 10 and rawget(strip, "h") == 24 * 2 + CHIP_GAP
+    check("ten bosses: still two rows, with names", #wc == 10 and rawget(strip, "h") == FULL_H * 2 + CHIP_GAP
         and Named(wc) and GridOf(wc, 5))
     wailingBosses[#wailingBosses + 1] = { npc = 990002, name = "Eleventh Boss" }
     J.DrawDungeonMap()
     wc = Chips()
-    check("eleven: compact, number and portrait", #wc == 11 and rawget(wc[1].name, "shown") == false
-        and rawget(wc[1].face, "shown") ~= false and rawget(wc[1].number, "shown") ~= false)
-    check("spread evenly across the whole width, on one row", rawget(strip, "h") == 24 and GridOf(wc, 11))
+    check("eleven: compact, the bare mark, no box", #wc == 11 and rawget(wc[1].name, "shown") == false
+        and rawget(wc[1].mark.face, "shown") ~= false and rawget(wc[1].mark.badge, "shown") ~= false
+        and rawget(wc[1].bg, "shown") == false and rawget(wc[1].edge._frame, "shown") == false)
+    check("spread evenly across the whole width, on one row", rawget(strip, "h") == COMPACT_H and GridOf(wc, 11))
+    wc[1].scripts.OnClick(wc[1])
+    check("the picked mark ringed and glowing, as its pin", rawget(wc[1].mark.gold, "shown") == true
+        and rawget(wc[1].mark.halo, "shown") == true and rawget(wc[1].fill, "shown") == false)
+    wc[2].scripts.OnEnter(wc[2])
+    check("hovered: lit as its pin is", rawget(wc[2].mark.glow, "shown") == true
+        and rawget(state.tooltip, "text") == wc[2].boss.name)
+    wc[2].scripts.OnLeave(wc[2])
     dragon = ChipFor("Deviate Faerie Dragon")
-    check("a compact rare shows its tag's letter where a number goes", rawget(dragon.number, "shown") ~= false
-        and rawget(dragon.number, "text") == "R" and rawget(dragon.tag, "shown") == false)
+    check("a compact rare keeps R on its badge", rawget(dragon.mark.badge, "shown") ~= false
+        and rawget(dragon.mark.badge.text, "text") == "R" and rawget(dragon.tag, "shown") == false)
     wailingBosses[#wailingBosses] = nil
     wailingBosses[#wailingBosses] = nil
     wailingBosses[#wailingBosses + 1] = trash
@@ -1821,13 +1853,42 @@ do
     J.OpenDungeonMap(brd)
     local brdChips = Chips()
     check("Blackrock Depths: a chip for each of its bosses", #brdChips == #KillOrder(brd))
-    check("in even rows across the whole width", rawget(strip, "h") > 24 * 2 + CHIP_GAP
-        and GridOf(brdChips, 10))
-    check("compact, their names in their tooltips", rawget(brdChips[1].name, "shown") == false
-        and rawget(brdChips[1].face, "shown") ~= false)
+    check("compact, bare marks, their names in their tooltips", rawget(brdChips[1].name, "shown") == false
+        and rawget(brdChips[1].bg, "shown") == false and rawget(brdChips[1].mark.face, "shown") ~= false)
+    check("at most three rows, wing labels in them", rawget(strip, "h") <= COMPACT_H * 3)
+    local function Label(text)
+        for _, font in ipairs(state.fonts) do
+            if rawget(font, "text") == text and rawget(font, "shown") ~= false and font:GetParent() == strip then
+                return font
+            end
+        end
+    end
+    local byWing, wingsRight = {}, true
+    for _, chip in ipairs(brdChips) do byWing[chip.wing.name] = (byWing[chip.wing.name] or 0) + 1 end
+    for _, wing in ipairs(brd.wings) do
+        local n = 0
+        for _, boss in ipairs(wing.bosses) do
+            if boss.npc or boss.chest then n = n + 1 end
+        end
+        if not Label(wing.name:upper()) or byWing[wing.name] ~= n then wingsRight = false end
+    end
+    check("each wing's label, and its own bosses after it", wingsRight)
+    local firstOfRing
+    for _, chip in ipairs(brdChips) do
+        if chip.wing.name == "Ring of Law" and not firstOfRing then firstOfRing = chip end
+    end
+    check("numbers start again in each wing, under its label", rawget(firstOfRing.mark.badge.text, "text") == 1)
+    local safe
+    for _, chip in ipairs(brdChips) do
+        if chip.boss.chest then safe = chip end
+    end
+    check("a chest's mark is a chest's icon", safe and rawget(safe.mark.face, "texture") == St.CHEST_ICON
+        and rawget(safe.mark.face, "shown") ~= false and rawget(safe.mark.big, "shown") == false)
+    check("as is its pin's", not PinFor(safe.boss.name)
+        or rawget(PinFor(safe.boss.name).face, "texture") == St.CHEST_ICON)
     J.OpenDungeonMap(ragefire)
-    check("a dungeon that fits keeps their names", Named(Chips()) and rawget(strip, "h") == 24)
-    _G.SetPortraitTextureFromCreatureDisplayID = portraits
+    check("a dungeon that fits keeps their names", Named(Chips()) and rawget(strip, "h") == FULL_H)
+    check("one wing: no label", not Label("DETENTION BLOCK"))
 
     local function Door()
         for _, made in ipairs(state.made) do
@@ -1858,6 +1919,7 @@ do
     check("but the entrance still shows", rawget(door, "shown") ~= false)
     state.account.journalMapPins = placedPins
     rawset(door.text, "GetStringWidth", nil)
+    _G.SetPortraitTextureFromCreatureDisplayID = portraits
     J.OpenDungeonMap(J.Get("Deadmines"))
     J.OpenDungeonMap(ragefire)
     local window = strip:GetParent()
