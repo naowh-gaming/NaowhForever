@@ -354,7 +354,7 @@ Case("the dialogs: export shows the string, import ticks parts and lands what is
 end)
 
 -- The Profiles page on stub frames and a small stand-in for the row engine.
-Case("the page: a row per profile, a chip per part, picks go to the share, a paste goes to the import", function()
+Case("the page: the profile in use, the others with Use, a switch per part, a paste box with Import", function()
     local w = World()
     w.db.account.trainingBuilds = nil
     w.db.profiles.Raid = { tankReminder = {} }
@@ -363,67 +363,79 @@ Case("the page: a row per profile, a chip per part, picks go to the share, a pas
         return setmetatable({ scripts = {} }, { __index = function(_, k)
             if k == "SetScript" then return function(self, s, fn) self.scripts[s] = fn end end
             if k == "SetText" then return function(self, t) self.text = t end end
-            if k == "GetText" then return function(self) return self.text end end
+            if k == "GetText" then return function(self) return self.text or "" end end
             if k == "SetShown" then return function(self, on) self.shown = on end end
+            if k == "SetAlpha" then return function(self, a) self.alpha = a end end
+            if k == "SetTextColor" then return function(self, _, _, _, a) self.a = a end end
+            if k == "EnableMouse" then return function(self, on) self.mouse = on end end
             if k == "GetWidth" or k == "GetStringWidth" then return function() return 700 end end
             if k == "GetParent" then return function(self) return self.parent end end
             if k == "CreateTexture" then return function() return Frame() end end
+            if k:match("^[%l_]") then return nil end
             return NOTHING
         end })
     end
     local ns, exported, imported, links, buttons = w.ns, nil, nil, {}, {}
     ns.THEME = setmetatable({}, { __index = function() return { r = 1, g = 1, b = 1 } end })
     ns.Solid, ns.Border, ns.Font = Frame, Frame, Frame
-    ns.Hairline, ns.Print = NOTHING, NOTHING
+    ns.Hairline, ns.Print, ns.Tooltip = NOTHING, NOTHING, NOTHING
+    ns.UIFontPath = function() return "font" end
     ns.AccentBorder = function(f) return f end
-    ns.Button = function(_, text, _, _, fn)
+    ns.SetButtonText = function(b, t) b.label.text = t end
+    ns.Button = function(parent, text, _, _, fn)
         local b = Frame()
-        b.click = fn
-        buttons[text] = b
+        b.parent, b.label, b.click = parent, Frame(), fn
+        b.label.text = text
+        buttons[text] = buttons[text] or {}
+        table.insert(buttons[text], b)
         return b
-    end
-    local paste
-    ns.MakeMultilineBox = function()
-        paste = Frame()
-        paste.parent = Frame()
-        return paste
     end
     ns.ListProfiles = function() return { "Default", "Raid" } end
     ns.KnownCharacters = function()
-        return { { char = "Alt-Realm", profile = "Raid" }, { char = "Glyadin-Realm", profile = "Default" } }
+        return { { char = "Alt-Realm", profile = "Raid" }, { char = "Glyadin-Realm", profile = "Default" },
+            { char = "Bo-Realm", profile = "Default" }, { char = "Cy-Realm", profile = "Default" },
+            { char = "Di-Realm", profile = "Default" }, { char = "Ed-Realm", profile = "Default" } }
     end
     ns.UI.CONTENT_PAD = 20
     ns.UI.RefreshPage = NOTHING
+    ns.UI.SlimScroll = function() return Frame() end
+    ns.UI.BuildToggleControl = function(parent, _, get, set)
+        local t = Frame()
+        t.parent, t._get, t._set = parent, get, set
+        t._refreshValue = function() t.on = get() end
+        return t
+    end
     local Engine = {}
     function Engine:Clear() self.cursor, self.left, self.width, self.drawn = 0, 0, 700, {} end
     function Engine:Space(h) self.cursor = self.cursor + h end
     Engine.Fit = NOTHING
     function Engine:GetHeight() return self.cursor end
     function Engine:GetWidth() return 700 end
-    function Engine:Add(kind, ...)
+    function Engine:GetFrameLevel() return 1 end
+    function Engine:Acquire(kind)
         local list = self.drawn[kind] or {}
         self.drawn[kind] = list
         local pool = self.pools[kind] or {}
         self.pools[kind] = pool
         local row = pool[#list + 1] or self.kinds[kind].New(self)
-        row.parent = self
+        row.parent, row.top, row.left, row.width = self, self.cursor, self.left, self.width
         pool[#list + 1], list[#list + 1] = row, row
+        return row
+    end
+    function Engine:Add(kind, ...)
+        local row = self:Acquire(kind)
         self.cursor = self.cursor + self.kinds[kind].Set(row, ...)
         return row
     end
-    -- The shared section title, as far as the page uses it: its words and its link.
-    local section = {
-        New = function() return Frame() end,
-        Set = function(row, title, n, _, _, linkText, onLink, linkArg)
-            row.title, row.count, row.linkText = title, n, linkText
-            row.onLink, row.linkArg = onLink, linkArg
-            return 28
-        end,
-    }
+    local card = { New = function()
+        local c = Frame()
+        c.SetHeight = function(self, h) self.height = h end
+        return c
+    end }
     ns.Shared = {
-        Style = { TICK = "tick", SECTION_SPACE = 8, BORDER_RGB = { r = 0, g = 0, b = 0 },
-            WARN_RGB = { r = 1, g = 0.5, b = 0 } },
-        Parts = { Smooth = NOTHING, SetLink = NOTHING, LinkColor = NOTHING,
+        Style = { CARD_FILL = 0.025, CARD_GAP = 10, BORDER_RGB = { r = 0, g = 0, b = 0 },
+            RED_RGB = { r = 1, g = 0.4, b = 0.4 }, WARN_RGB = { r = 1, g = 0.5, b = 0 } },
+        Parts = { SetLink = NOTHING, LinkColor = NOTHING, Tip = function() return true end,
             RowBands = function(row) row.stripe, row.hover = Frame(), Frame() end,
             Link = function(parent, fn)
                 local l = Frame()
@@ -431,7 +443,7 @@ Case("the page: a row per profile, a chip per part, picks go to the share, a pas
                 links[#links + 1] = l
                 return l
             end },
-        View = { NewKinds = function() return { section = section } end,
+        View = { NewKinds = function() return { card = card } end,
             New = function(_, kinds, mixin)
                 local view = setmetatable({ kinds = kinds, pools = {} }, { __index = function(_, k)
                     return mixin[k] or Engine[k] or NOTHING
@@ -454,58 +466,82 @@ Case("the page: a row per profile, a chip per part, picks go to the share, a pas
     parent.profilesView = false
     assert(ns.BuildProfileSettings(parent, -10) < -10)
     local view = parent.profilesView
-    local sections = view.drawn.section
-    assert(sections[1].title == "Your Profiles" and sections[1].count == 2 and sections[1].linkText == "New Profile")
+    local heads, cards = view.drawn.head, view.drawn.card
+    assert(#cards == 3 and #heads == 3, "three cards, each with a head")
+    assert(heads[1].name.text == "Profiles" and heads[1].summary.text == "2 profiles on this account")
+    assert(heads[1].button.shown == true and heads[1].button.label.text == "New Profile")
+    for _, c in ipairs(cards) do assert(c.height and c.height > 44, "each card as tall as what it holds") end
+    assert(cards[2].top > cards[1].top + cards[1].height, "the cards do not overlap")
 
-    local mine, raid = view.drawn.profile[1], view.drawn.profile[2]
-    assert(mine.profile == "Default" and mine.mark.shown == true and raid.mark.shown == false)
-    assert(mine.line.text == "In use on this character", mine.line.text)
-    assert(raid.line.text == "On Alt", raid.line.text)
-    local function Link(row, key)
-        for _, l in ipairs(row.links) do if l.key == key then return l end end
-    end
-    assert(Link(mine, "use").shown == false and Link(mine, "reset").shown == true, "in use: no Use, a Reset")
-    assert(Link(raid, "use").shown == true and Link(raid, "reset").shown == false, "another: Use, no Reset")
-    Link(raid, "use").click(Link(raid, "use"))
+    local mine = view.drawn.active[1]
+    assert(mine.profile == "Default" and mine.name.text == "Default")
+    assert(mine.line.text == "In use on this character and on Bo, Cy and 2 more", mine.line.text)
+    assert(mine.who.names and #mine.who.names == 4, "the whole list on hover")
+    assert(mine.delete.alone == false and mine.delete.alpha == 1)
+    assert(#view.drawn.profile == 1, "the profile in use is listed once")
+    local raid = view.drawn.profile[1]
+    assert(raid.profile == "Raid" and raid.line.text == "In use on Alt", raid.line.text)
+    assert(raid.who.names == nil, "nothing more to show")
+    raid.use.click()
     assert(w.switched == "Raid", tostring(w.switched))
     w.active = "Default"
 
-    local chips = view.drawn.chips[1].chips
-    assert(#chips == 7 and chips[1].key == "settings" and chips[1].tick.shown == true)
-    assert(chips[1].detail.text == "2 modules", tostring(chips[1].detail.text))
-    assert(chips[5].key == "builds" and chips[5].ready == false and chips[5].detail.text == "none")
-    assert(chips[1].tip:find("frames sit", 1, true))
+    local tiles = view.drawn.part
+    assert(#tiles == 7 and tiles[1].key == "settings" and tiles[1].switch.on == true)
+    assert(tiles[1].detail.text == "2 modules", tostring(tiles[1].detail.text))
+    assert(tiles[4].detail.text == "Reminders, priorities and callouts", tiles[4].detail.text)
+    assert(tiles[5].key == "builds" and tiles[5].ready == false and tiles[5].detail.text == "Nothing saved yet")
+    assert(tiles[5].switch.on == false and tiles[5].switch.mouse == false and tiles[5].name.a < 1)
+    assert(tiles[1].tip:find("frames sit", 1, true))
+    assert(tiles[1].left == 16 and tiles[2].left > tiles[1].left and tiles[2].top == tiles[1].top, "two columns")
+    assert(tiles[3].top > tiles[1].top and tiles[1].width == tiles[2].width, "rows of the same size")
     local send = view.drawn.send[1]
     assert(send.count.text == "6 of 6 parts of Default go in the string.", send.count.text)
-    assert(sections[2].title == "Share" and sections[2].linkText == "Pick None")
+    assert(heads[2].name.text == "Share" and heads[2].link.shown == true)
 
-    chips[3].scripts.OnClick(chips[3])   -- Macro Library
+    tiles[3].scripts.OnClick(tiles[3])   -- Macro Library
     send = view.drawn.send[1]
     assert(send.count.text == "5 of 6 parts of Default go in the string.", send.count.text)
-    assert(view.drawn.chips[1].chips[3].tick.shown == false)
-    chips[5].scripts.OnClick(chips[5])   -- builds: nothing to share, so nothing happens
+    assert(view.drawn.part[3].switch.on == false)
+    tiles[3].switch._set(true)
+    assert(view.drawn.send[1].count.text == "6 of 6 parts of Default go in the string.")
+    tiles[3].switch._set(false)
+    tiles[5].scripts.OnClick(tiles[5])   -- builds: nothing to share, so nothing happens
     assert(view.drawn.send[1].count.text == "5 of 6 parts of Default go in the string.")
-    buttons["Get Share String"].click()
+    buttons["Get Share String"][1].click()
     assert(exported.library == nil and exported.settings == true and exported.look == true)
 
-    sections = view.drawn.section
-    assert(sections[2].linkText == "Pick All")
-    sections[2].onLink(sections[2].linkArg)
+    local pick = view.drawn.head[2].link
+    pick.click(pick)
     assert(view.drawn.send[1].count.text == "6 of 6 parts of Default go in the string.")
-    sections = view.drawn.section
-    sections[2].onLink(sections[2].linkArg)
+    pick.click(pick)
     assert(view.drawn.send[1].count.text == "Pick a part to share.")
+    assert(view.drawn.send[1].send.mouse == false, "nothing to share, the button rests")
 
-    paste.text = "NFPROFILE1:abc"
-    paste.scripts.OnTextChanged(paste, false)
-    assert(imported == nil, "only what the player puts there")
-    paste.scripts.OnTextChanged(paste, true)
-    assert(imported == "NFPROFILE1:abc" and paste.text == "", "a paste goes on to the import")
+    local box = view.drawn.paste[1].box
+    assert(heads[3].name.text == "Import" and box.go.mouse == false and box.hint.shown == true)
+    box.text = "NFPROFILE1:abc"
+    box.scripts.OnTextChanged(box, true)
+    assert(imported == nil, "typing or pasting opens nothing")
+    assert(box.go.mouse == true and box.hint.shown == false)
+    box.go.click()
+    assert(imported == "NFPROFILE1:abc" and box.text == "" and box.go.mouse == false, "Import takes it on")
 
     w.db.profiles.Default.tankReminder.importedPack = { name = "Naowh's Pack" }
     ns.BuildProfileSettings(parent, -10)
-    chips = view.drawn.chips[1].chips
-    assert(chips[4].key == "smartReminders" and chips[4].detail.text == "from a pack", chips[4].detail.text)
+    tiles = view.drawn.part
+    assert(tiles[4].key == "smartReminders" and tiles[4].detail.text == "From a pack", tiles[4].detail.text)
+    assert(tiles[4].switch.mouse == false)
+
+    ns.ListProfiles = function() return { "Default" } end
+    ns.BuildProfileSettings(parent, -10)
+    mine = view.drawn.active[1]
+    assert(mine.delete.alone == true and mine.delete.alpha < 1, "the last profile stays")
+    assert(view.drawn.profile == nil and view.drawn.group == nil, "no other profiles, no list")
+    local deleted
+    ns.Confirm = function() deleted = true end
+    mine.delete.click()
+    assert(not deleted, "Delete on the last profile asks nothing")
 end)
 
 print(count .. " profile share regressions passed")
