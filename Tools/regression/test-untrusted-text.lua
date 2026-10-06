@@ -104,4 +104,125 @@ Case("a plain pack reads as before", function()
     assert(desc == "|cff0091edNaowh|r by Naowh (2026-10-06)|n1 callout lines", desc)
 end)
 
+Case("ns.Print starts every line with the Naowh logo, which chat from players cannot carry", function()
+    local f = assert(io.open("Core/NaowhForever_Core.lua", "rb"))
+    local source = f:read("*a"):gsub("\r\n", "\n"); f:close()
+    local said = {}
+    local frame = setmetatable({}, { __index = function() return function() end end })
+    local env = { CreateFrame = function() return frame end, print = function(text) said[#said + 1] = text end,
+        NaowhForeverDB = { account = {}, profiles = {}, charActive = {} } }
+    env._G = env
+    setmetatable(env, { __index = _G })
+    local chunk = assert(loadstring(source, "Core")); setfenv(chunk, env); chunk("NaowhForever")
+    env.NaowhForever.Print("%s hi")
+    local line = said[#said]
+    assert(line:find("|TInterface\\AddOns\\NaowhForever\\Media\\LogoAddon.tga:0:0:0:", 1, true) == 1, line)
+    assert(line:find("|t |cff0091edNaowh|r Forever: %s hi", 1, true), line)
+end)
+
+Case("no chat line with a Naowh prefix is printed outside ns.Print", function()
+    local TocFiles = dofile("Tools/regression/toc_files.lua")
+    local found = {}
+    for _, path in ipairs(TocFiles("%.lua$")) do
+        local f = io.open(path, "rb")
+        if f then
+            local n = 0
+            for line in f:read("*a"):gsub("\r\n", "\n"):gmatch("([^\n]*)\n") do
+                n = n + 1
+                local code = line:gsub("%-%-.*$", "")
+                local bare = code:find("[^%w_%.:]print%s*%(") or code:find("^print%s*%(")
+                    or code:find("AddMessage%s*%(")
+                if bare and code:find("Naowh", 1, true) and not code:find("ns.PRINT_LOGO", 1, true) then
+                    found[#found + 1] = path .. ":" .. n
+                end
+            end
+            f:close()
+        end
+    end
+    assert(#found == 0, "prints a Naowh line by hand: " .. table.concat(found, ", "))
+end)
+
+local function Senders(world)
+    local function Member(unit)
+        if unit == "player" then return world.me end
+        return world.party[tonumber(unit:match("^party(%d+)$") or unit:match("^raid(%d+)$") or 0)]
+    end
+    local ns = {}
+    local env = setmetatable({ _G = { NaowhForever = ns },
+        IsInRaid = function() return world.raid end,
+        GetNumGroupMembers = function() return #world.party end,
+        GetNumSubgroupMembers = function() return #world.party end,
+        UnitGUID = function(unit) local m = Member(unit) return m and m.guid end,
+        UnitFullName = function(unit) local m = Member(unit) if m then return m.first, m.second end end,
+        GetNormalizedRealmName = function() return "Forever" end,
+        GetNumGuildMembers = function() return #world.guild end,
+        GetGuildRosterInfo = function(i)
+            local m = world.guild[i]
+            if m then return m[1], nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, m[2] end
+        end,
+        C_FriendList = { GetFriendInfo = function(name) return world.friends[name] end },
+        CreateFrame = function() return { SetScript = function() end, RegisterEvent = function() end } end,
+        wipe = function(t) for k in pairs(t) do t[k] = nil end return t end,
+        issecretvalue = function(v) return v ~= nil and v == world.secret end,
+    }, { __index = _G })
+    local chunk = assert(loadfile("Core/NaowhForever_Senders.lua")); setfenv(chunk, env); chunk()
+    return ns
+end
+
+Case("a GUID is taken only from the group member it belongs to, in every name format", function()
+    local world = { me = { guid = "Player-1-0001", first = "Die", second = "Man" }, guild = {}, friends = {},
+        party = { { guid = "Player-1-00A1", first = "Emmy", second = "Stone" },
+            { guid = "Player-1-00A2", first = "Bob" }, { guid = "Player-1-00A3", first = "Bob", second = "Forever" } } }
+    local ns = Senders(world)
+    for _, name in ipairs({ "Emmy Stone", "Emmy-Stone", "Emmy Stone-Forever", "Emmy-Stone-Forever" }) do
+        assert(ns.SenderIs(name, "PARTY", "Player-1-00A1"), name)
+    end
+    assert(ns.SenderIs("Bob", "PARTY", "Player-1-00A2") and ns.SenderIs("Bob-Forever", "RAID", "Player-1-00A2"))
+    assert(ns.SenderIs("Bob", "INSTANCE_CHAT", "Player-1-00A3"), "a realm in the surname's place")
+    for _, name in ipairs({ "Bob", "Emmy", "Emmy Stones", "Emmy Stone-Elsewhere", "Emmy%Stone", "Stone Emmy" }) do
+        assert(not ns.SenderIs(name, "PARTY", "Player-1-00A1"), name)
+    end
+    assert(not ns.SenderIs("Emmy Stone", "PARTY", "Player-1-00FF"), "a GUID outside the group")
+    assert(not ns.SenderIs("Emmy Stone", "SAY", "Player-1-00A1"), "a channel addon messages do not use")
+    world.raid = true
+    assert(ns.SenderIs("Emmy Stone", "RAID", "Player-1-00A1"), "the raid's units in a raid")
+    world.secret = "Player-1-00A1"
+    assert(not ns.SenderIs("Emmy Stone", "RAID", "Player-1-00A1"), "a secret GUID matches nothing")
+end)
+
+Case("a guildmate is matched through the guild roster, a friend through the friends list", function()
+    local world = { me = { guid = "Player-1-0001", first = "Die", second = "Man" }, party = {},
+        guild = { { "Die-Dudu", "Player-1-00B1" }, { "Die-Pri", "Player-1-00B2" } },
+        friends = { ["Pen-Pal"] = { guid = "Player-1-00C1" } } }
+    local ns = Senders(world)
+    assert(ns.SenderIs("Die-Dudu", "GUILD", "Player-1-00B1") and ns.SenderIs("Die-Dudu-Forever", "GUILD", "Player-1-00B1"))
+    assert(not ns.SenderIs("Die-Dudu", "GUILD", "Player-1-00B2"), "another guildmate's GUID")
+    assert(not ns.SenderIs("Out-Sider", "GUILD", "Player-1-00B9"), "a sender outside the guild")
+    assert(ns.SenderIs("Pen-Pal", "WHISPER", "Player-1-00C1"), "a friend's whisper")
+    assert(not ns.SenderIs("Pen-Pal", "WHISPER", "Player-1-00B1"), "a friend claiming someone else")
+    assert(not ns.SenderIs("Stranger", "WHISPER", "Player-1-00D1"), "a whisper nobody can place")
+    world.guild[3] = { "New-Member", "Player-1-00B3" }
+    assert(not ns.SenderIs("New-Member", "GUILD", "Player-1-00B3"), "the roster is read once until it changes")
+    ns._SendersTest.GuildChanged()
+    assert(ns.SenderIs("New-Member", "GUILD", "Player-1-00B3"), "and again after GUILD_ROSTER_UPDATE")
+end)
+
+Case("matching a sender makes no garbage", function()
+    local world = { me = { guid = "Player-1-0001", first = "Die", second = "Man" }, friends = {},
+        party = { { guid = "Player-1-00A1", first = "Emmy", second = "Stone" } },
+        guild = { { "Die-Dudu", "Player-1-00B1" } } }
+    local ns = Senders(world)
+    ns.SenderIs("Die-Dudu", "GUILD", "Player-1-00B1")
+    collectgarbage("collect")
+    collectgarbage("stop")
+    local before = collectgarbage("count")
+    for _ = 1, 1000 do
+        ns.SenderIs("Emmy-Stone", "PARTY", "Player-1-00A1")
+        ns.SenderIs("Die-Dudu", "GUILD", "Player-1-00B1")
+    end
+    local grown = collectgarbage("count") - before
+    collectgarbage("restart")
+    assert(grown < 1, ("%.2f KB for 2000 matches"):format(grown))
+end)
+
 print(count .. " untrusted text regressions passed")
