@@ -8,7 +8,7 @@ local UI = ns.UI
 
 local SIDEBAR_W, CONTENT_W, WINDOW_W, WINDOW_H = 240, 1000, 1440, 790
 local TOP_H, PAGE_HEADER_H = 64, 128
-local HEADER_H, TAB_H, FOOTER_H, NAV_H = 76, 32, 46, 32
+local HEADER_H, TAB_H, NAV_H = 76, 32, 32
 local SEARCH_W = 120
 local SCROLL_BAR_GAP = 12 -- the page scrollbar sits this far right of the page, in its margin
 local LINK_ICONS = "Interface\\AddOns\\NaowhForever\\Media\\Links\\"
@@ -194,7 +194,7 @@ for _, mod in ipairs(MODULES) do
 end
 
 local window, scrollFrame, scrollChild, tabLine, headerTitle, headerSub
-local contentHeader, contentFooter, searchBar, breadcrumb, moduleSwitch, moduleLabel
+local contentHeader, searchBar, breadcrumb, moduleSwitch, moduleLabel
 local lastPages = {}
 local navButtons, tabStrips, navBlocks = {}, {}, {}
 local wrappers = {}          -- page key -> built wrapper frame
@@ -405,11 +405,8 @@ local function LayoutContent()
     tabLine:SetPoint("TOPRIGHT", window, "TOPRIGHT", -30, -(top + headerH))
     scrollFrame:ClearAllPoints()
     scrollFrame:SetPoint("TOPLEFT", window, "TOPLEFT", left + 6, -(top + headerH + 8))
-    scrollFrame:SetPoint("BOTTOMRIGHT", window, "BOTTOMRIGHT", -30, FOOTER_H + 4)
+    scrollFrame:SetPoint("BOTTOMRIGHT", window, "BOTTOMRIGHT", -30, 14)
     scrollChild:SetWidth(window:GetWidth() - left - 36)
-    contentFooter:ClearAllPoints()
-    contentFooter:SetPoint("BOTTOMLEFT", window, "BOTTOMLEFT", left, 0)
-    contentFooter:SetPoint("BOTTOMRIGHT")
 end
 
 -- Each window keeps its own wrappers, so a page open in the main window and in a module's
@@ -1140,8 +1137,10 @@ local function CreateWindow()
     ns.AccentBorder(unlock)
     unlock:SetPoint("RIGHT", close, "LEFT", -18, 0)
     ns.Tooltip(unlock, "Layout Mode", "Place and size each display. Exit Config returns to this window.")
+    local reload = ns.ReloadButton(top, "Reload UI", 110, 32)
+    reload:SetPoint("RIGHT", unlock, "LEFT", -18, 0)
     local search = ns.Button(top, "Search  " .. ns.Color("muted", "Ctrl+F"), SEARCH_W, 32, function() UI.OpenSearch() end)
-    search:SetPoint("RIGHT", unlock, "LEFT", -18, 0)
+    search:SetPoint("RIGHT", reload, "LEFT", -18, 0)
     ns.Tooltip(search, "Search", "Step through every setting that matches what you type.")
 
     local sidebar = CreateFrame("Frame", nil, window)
@@ -1238,13 +1237,6 @@ local function CreateWindow()
     end
     tabLine = ns.Solid(window, "ARTWORK", T.line, 1); ns.Hairline(tabLine, "h")
 
-    contentFooter = CreateFrame("Frame", nil, window)
-    contentFooter:SetHeight(FOOTER_H)
-    local footLine = ns.Solid(contentFooter, "ARTWORK", T.line, 1)
-    footLine:SetPoint("TOPLEFT"); footLine:SetPoint("TOPRIGHT"); ns.Hairline(footLine, "h")
-    ns.AccentBorder(ns.ReloadButton(contentFooter, "Reload UI", 120, 30)):SetPoint("LEFT", 26, 0)
-    ns.AccentBorder(ns.Button(contentFooter, "Close", 120, 30, function() window:Hide() end))
-        :SetPoint("RIGHT", -30, 0)
     searchBar = UI.AttachSearchBar(window, function() LayoutContent() end)
     scrollFrame = UI.SlimScroll(window, nil, SCROLL_BAR_GAP)
     scrollChild = CreateFrame("Frame", nil, scrollFrame)
