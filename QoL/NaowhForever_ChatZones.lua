@@ -173,11 +173,114 @@ local function Filter(_, _, msg, author, ...)
     return false, Tag(entry, (select(10, ...))) .. msg, author, ...
 end
 
+-------------------------------------------------------------------------------
+-- The Group Finder window: the leader's zone on each row, every member's zone in the tooltip.
+-- Blizzard_GroupFinder_VanillaStyle loads on demand, so its functions are hooked once it has.
+-------------------------------------------------------------------------------
+local DATA_DISPLAY_SPACE = 160 -- the group data on the right of a row (155 wide, 2 in)
+local rowText = setmetatable({}, { __mode = "k" }) -- search entry -> our zone FontString
+local tipText = setmetatable({}, { __mode = "k" }) -- tooltip member frame -> our zone FontString
+local hooked = false
+
+local function FinderOn()
+    return On() and S.Get("chatZonesFinder")
+end
+
+local function ZoneString(store, parent, font)
+    local fs = store[parent]
+    if not fs then
+        fs = parent:CreateFontString(nil, "ARTWORK", font)
+        fs:SetJustifyH("LEFT")
+        fs:SetWordWrap(false)
+        store[parent] = fs
+    end
+    return fs
+end
+
+local function LeaderZone(resultID)
+    local leader = C_LFGList.GetSearchResultLeaderInfo and C_LFGList.GetSearchResultLeaderInfo(resultID)
+    if leader and leader.areaName then return leader.areaName end
+    local first = C_LFGList.GetSearchResultPlayerInfo(resultID, 1)
+    return first and first.areaName
+end
+
+local function UpdateRow(entry)
+    local zone = FinderOn() and entry.resultID and entry:IsShown() and LeaderZone(entry.resultID)
+    if not zone or zone == "" or Secret(zone) then
+        if rowText[entry] then rowText[entry]:Hide() end
+        return
+    end
+    local fs = ZoneString(rowText, entry, "GameFontDisableSmallLeft")
+    fs:ClearAllPoints()
+    fs:SetPoint("BOTTOMLEFT", entry.ActivityName, "BOTTOMRIGHT", 8, 0)
+    fs:SetWidth(math.max(1, entry:GetWidth() - DATA_DISPLAY_SPACE - 18 - entry.ActivityName:GetStringWidth()))
+    fs:SetText(zone)
+    fs:Show()
+end
+
+-- The rightmost edge of a member line (level or role icons), so the zones line up in a column.
+local function LineRight(row)
+    local right = row.Level and row.Level:IsShown() and row.Level:GetRight() or 0
+    for _, icon in ipairs(row.Roles or {}) do
+        if icon:IsShown() and icon:GetRight() then right = math.max(right, icon:GetRight()) end
+    end
+    return right
+end
+
+local function UpdateTooltip(tip, resultID)
+    for _, fs in pairs(tipText) do fs:Hide() end
+    local info = FinderOn() and resultID and C_LFGList.GetSearchResultInfo(resultID)
+    if not info then return end
+    local zones = {}
+    for i = 1, info.numMembers or 0 do
+        local p = C_LFGList.GetSearchResultPlayerInfo(resultID, i)
+        if p and p.name and p.areaName and not Secret(p.areaName) then zones[p.name] = p.areaName end
+    end
+    local rows = {}
+    if tip.Leader and tip.Leader:IsShown() then rows[1] = tip.Leader end
+    if tip.memberPool then
+        for frame in tip.memberPool:EnumerateActive() do rows[#rows + 1] = frame end
+    end
+    local right = 0
+    for _, row in ipairs(rows) do right = math.max(right, LineRight(row)) end
+    if right == 0 then return end
+    local widest = 0
+    for _, row in ipairs(rows) do
+        local zone = row.Name and zones[row.Name:GetText()]
+        local left = row:GetLeft()
+        if zone and left then
+            local fs = ZoneString(tipText, row, "GameFontHighlightSmallLeft")
+            fs:ClearAllPoints()
+            fs:SetPoint("LEFT", row, "LEFT", right - left + 8, 0)
+            fs:SetText(zone)
+            fs:Show()
+            widest = math.max(widest, fs:GetStringWidth())
+        end
+    end
+    local tipLeft = tip:GetLeft()
+    if widest > 0 and tipLeft then
+        local need = right - tipLeft + 8 + widest + 11
+        if tip:GetWidth() < need then tip:SetWidth(need) end
+    end
+end
+
+local function HookFinder()
+    if hooked or not _G.LFGBrowseSearchEntry_Update then return end
+    hooked = true
+    hooksecurefunc("LFGBrowseSearchEntry_Update", UpdateRow)
+    if _G.LFGBrowseSearchEntryTooltip_UpdateAndShow then
+        hooksecurefunc("LFGBrowseSearchEntryTooltip_UpdateAndShow", UpdateTooltip)
+    end
+end
+
 local events = CreateFrame("Frame")
 events:SetScript("OnEvent", function(_, event, ...)
     if event == "CHAT_MSG_ADDON" then
         local prefix, msg, channel, sender = ...
         if prefix == PREFIX and channel == "WHISPER" then OnAddonMessage(msg, sender) end
+    elseif event == "ADDON_LOADED" then
+        HookFinder()
+        if hooked then events:UnregisterEvent("ADDON_LOADED") end
     elseif event == "LFG_LIST_SEARCH_RESULTS_RECEIVED" then
         ReadGroupFinderAll()
     elseif event == "LFG_LIST_SEARCH_RESULT_UPDATED" then
@@ -204,6 +307,9 @@ local function Apply()
         for _, event in ipairs(TAGGED) do RemoveFilter(event, Filter) end
         filtering = false
     end
+    if not FinderOn() then
+        for _, fs in pairs(rowText) do fs:Hide() end
+    end
     if not On() then
         wipe(known)
         return
@@ -219,13 +325,17 @@ local function Apply()
     end
     for _, event in ipairs(TAGGED) do AddFilter(event, Filter) end
     filtering = true
+    if FinderOn() then
+        HookFinder()
+        if not hooked then events:RegisterEvent("ADDON_LOADED") end
+    end
     if IsInGuild() then ReadGuild() end
     ReadFriends()
     ReadGroup()
 end
 
 hooksecurefunc(S, "Set", function(key)
-    if key == "enabled" or key == "chatZones" then Apply() end
+    if key == "enabled" or key == "chatZones" or key == "chatZonesFinder" then Apply() end
 end)
 hooksecurefunc(ns, "Apply", Apply)
 
@@ -249,6 +359,10 @@ ns.Shared.Settings.Page("QoL/Interface", S):Card({
           help = "The tag in the speaker's class colour. Off, it is grey." },
         { key = "chatZonesMaxAge", label = "Forget After", slider = { 1, 60, 1 }, unit = " min",
           help = "A zone older than this is no longer shown, since the player has likely moved on." },
+        Group("Group Finder"),
+        { key = "chatZonesFinder", label = "Zones in Group Finder", toggle = true,
+          help = "The leader's zone on each Group Finder listing, and every member's zone when you "
+              .. "hover it." },
         Group("Other Players"),
         { key = "chatZonesAsk", label = "Ask Other Players", toggle = true,
           help = "The first time someone speaks, ask their Naowh Forever for their zone with a hidden "
