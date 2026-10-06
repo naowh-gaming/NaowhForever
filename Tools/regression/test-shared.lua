@@ -56,6 +56,7 @@ end
 
 local WHITE = { r = 1, g = 1, b = 1 }
 local timers = {}
+local coinCalls = 0
 local tooltip = Frame()
 tooltip.GetOwner = function() return nil end
 
@@ -112,6 +113,10 @@ local env = setmetatable({
     InCombatLockdown = function() return false end,
     CreateColor = function(r, g, b, a) return { r = r, g = g, b = b, a = a } end,
     UIParent = Frame(),
+    C_CurrencyInfo = { GetCoinTextureString = function(copper)
+        coinCalls = coinCalls + 1
+        return "<" .. copper .. ">"
+    end },
 }, { __index = _G })
 env._G = env
 
@@ -148,6 +153,17 @@ local Parts = Shared.Parts
 local newItem = next(Shared.ForeverNew.items)
 check("an item new in Forever has the mark; one from the original game not", Parts.IsForever("items", newItem)
     and not Parts.IsForever("items", 19019))
+
+local partsSource = assert(io.open("Shared/Parts.lua", "rb")):read("*a")
+local COINS_KEPT = tonumber(partsSource:match("local COINS_KEPT = (%d+)"))
+check("a price in coins, asked for again, is made once", Parts.Coins(12345) == "<12345>"
+    and Parts.Coins(12345) == "<12345>" and coinCalls == 1)
+for copper = 1, COINS_KEPT * 3 do Parts.Coins(copper) end
+local calls = coinCalls
+Parts.Coins(COINS_KEPT * 3)
+check("the prices kept are bounded: the newest are still there", coinCalls == calls)
+Parts.Coins(1)
+check("and the oldest go", coinCalls == calls + 1)
 
 -------------------------------------------------------------------------------
 --  The row engine: a page of rows of its own kind, under a shared section title.
