@@ -17,6 +17,7 @@ end
 local LINK_TEMPLATE = "NaowhForeverZoneLinkPinTemplate"
 local TRAVEL_ATLAS = "vehicle-templeofkotmogu-cyanball"
 local EXIT_ATLAS = "house-reward-green-arrow-up"
+local EXIT_LENGTH = 1.8   -- a zone exit arrow's length, in pin sizes
 local CAPITALS = ns.TownCapitals
 
 -- Category -> the setting that shows it, its icon and the label in the tooltip.
@@ -88,19 +89,19 @@ end
 function NaowhForeverZoneLinkPinMixin:CheckMouseButtonPassthrough() end
 function NaowhForeverZoneLinkPinMixin:OnAcquired(link)
     self.link = link
-    self:SetSize(S.Get("townPinSize"), S.Get("townPinSize"))
+    local size = S.Get("townPinSize")
+    local length = link.atlasName == EXIT_ATLAS and size * EXIT_LENGTH or size
+    self:SetSize(length, length)
     self.Icon:SetAtlas(link.atlasName)
+    self.Icon:SetSize(size, length)
     self.Icon:SetRotation(link.rotation or 0)
     self:SetPosition(link.position:GetXY())
 end
--- A zeppelin tower's pin has a second destination on right click, a zone exit a waypoint to
--- the road.
+-- A zeppelin tower's pin has a second destination on right click.
 function NaowhForeverZoneLinkPinMixin:OnClick(button)
     local link = self.link
     if button == "RightButton" and link.rightUiMapID then
         self:GetMap():SetMapID(link.rightUiMapID)
-    elseif button == "RightButton" and link.exitX then
-        ns.PlaceWaypoint("Road to " .. link.name, self:GetMap():GetMapID(), link.exitX, link.exitY)
     elseif button == "LeftButton" then
         self:GetMap():SetMapID(link.linkedUiMapID)
     end
@@ -117,7 +118,6 @@ function NaowhForeverZoneLinkPinMixin:OnMouseEnter()
     elseif link.linkedUiMapID ~= self:GetMap():GetMapID() then
         GameTooltip:AddLine("Click to open this zone", r, g, b)
     end
-    if link.exitX then GameTooltip:AddLine("Right-click for a waypoint to this road", r, g, b) end
     GameTooltip:Show()
 end
 function NaowhForeverZoneLinkPinMixin:OnMouseLeave() GameTooltip:Hide() end
@@ -142,7 +142,7 @@ function provider:RefreshAllData()
         for _, exit in ipairs(ns.ZoneExits[mapID] or {}) do
             self:GetMap():AcquirePin(LINK_TEMPLATE, { name = C_Map.GetMapInfo(exit[4]).name,
                 atlasName = EXIT_ATLAS, position = CreateVector2D(exit[1] / 100, exit[2] / 100),
-                rotation = exit[3], linkedUiMapID = exit[4], exitX = exit[1], exitY = exit[2] })
+                rotation = exit[3], linkedUiMapID = exit[4] })
         end
     end
     local faction = UnitFactionGroup("player") == "Horde" and "H" or "A"
