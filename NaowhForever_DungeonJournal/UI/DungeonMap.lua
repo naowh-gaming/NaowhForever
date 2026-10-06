@@ -33,12 +33,17 @@
 --    Map on the panel beside it brings it back.
 --
 --  Where the bosses stand is placed by hand. /nf mappins turns placing on in the window:
---  every boss gets a pin to drag (those not placed yet wait along the top), the entrance too,
---  and Copy gives the dungeon's line for Data/Maps.lua. What you place is kept for the
---  account until then, and shown over the data. /nf mapcheck prints which map art and floors
---  the client has. The switch only offers the floors something stands on, once anything is
---  placed: the art has floors with nothing of the dungeon on them (Shadowfang Keep's fifth).
---  Placing, or before anything is placed, it offers them all.
+--  every boss gets a pin to drag (those not placed yet, or on another floor, wait along the
+--  top; a right-click takes one off its floor), the entrance too, and Copy gives the
+--  dungeon's line for Data/Maps.lua. What you place is kept for the account until then, and
+--  shown over the data. /nf mapcheck prints which map art and floors the client has. The
+--  switch only offers the floors something stands on, once anything is placed, in the order
+--  you walk them: the art has floors with nothing of the dungeon on them (Shadowfang Keep's
+--  fifth). Placing, or before anything is placed, it offers them all (a map's order, where
+--  it has one). A floor the art lacks is the addon's own picture.
+--
+--  The window follows the Journal it was opened beside: another dungeon's page there shows
+--  that dungeon's map (one with no map closes it).
 --
 --  Nothing is made until a map is first shown, and it listens to nothing: the window draws
 --  again on a pick, a kill, a setting, and its page on the item or spell data it waits on.
