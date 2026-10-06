@@ -641,7 +641,7 @@ local PROFILE_H = 46
 local SHOWN_CHARS = 2                -- names before "and N more"
 local TILE_H, TILE_PAD, TILE_GAP = 52, 12, 12   -- a part's tile, its padding, its switch to its name
 local TWO_COLUMNS_W = 620            -- narrower than this, the tiles go one per row
-local SEND_H, SEND_W = 58, 170
+local SEND_H = 58
 local FIELD_H = 112                  -- the paste box, about six lines
 local FIELD_TEXT = 12
 local FIELD_INSET_X, FIELD_INSET_Y = 8, 6
@@ -1043,7 +1043,7 @@ local function NewSend(view)
     Rule(row, "TOP")
     row.count = ns.Font(row, LINE_SIZE, nil, ns.THEME.muted)
     row.count:SetPoint("LEFT", INSET, 0)
-    row.send = ns.AccentBorder(ns.Button(row, "Get Share String", SEND_W, BUTTON_H, Send))
+    row.send = ns.AccentBorder(ns.Button(row, "Export", BUTTON_W, BUTTON_H, Send))
     row.send:SetPoint("RIGHT", -INSET, 0)
     row.count:SetPoint("RIGHT", row.send, "LEFT", -INSET, 0)
     row.count:SetJustifyH("LEFT")

@@ -508,7 +508,7 @@ Case("the page: the profile in use, the others with Use, a switch per part, a pa
     tiles[3].switch._set(false)
     tiles[5].scripts.OnClick(tiles[5])   -- builds: nothing to share, so nothing happens
     assert(view.drawn.send[1].count.text == "5 of 6 parts of Default go in the string.")
-    buttons["Get Share String"][1].click()
+    buttons["Export"][1].click()
     assert(exported.library == nil and exported.settings == true and exported.look == true)
 
     local pick = view.drawn.head[2].link
