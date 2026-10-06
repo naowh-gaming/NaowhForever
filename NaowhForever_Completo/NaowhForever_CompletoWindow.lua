@@ -370,9 +370,14 @@ local function EntryOrder(a, b)
     return na < nb
 end
 
--- All Zones lists each continent's zones alphabetically.
+-- All Zones lists each continent's zones alphabetically, a leading "The" left out: The
+-- Barrens among the B's.
+local function SortName(z)
+    return (z.name:gsub("^The ", ""))
+end
+
 local function ZoneOrder(a, b)
-    return a.name < b.name
+    return SortName(a) < SortName(b)
 end
 
 local function AllZones()
