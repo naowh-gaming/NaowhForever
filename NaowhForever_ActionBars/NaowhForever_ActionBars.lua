@@ -616,7 +616,12 @@ function ns.ActionBarsCommand(text)
         Import(name, true)
     else
         local key = Find(name)
-        if key then Delete(key) else ns.Print(("No bar set called %s for your class."):format(name)) end
+        if key then
+            ns.Confirm(("Delete the bar set %s? Cannot be undone."):format(key), function() Delete(key) end,
+                nil, "Delete")
+        else
+            ns.Print(("No bar set called %s for your class."):format(name))
+        end
     end
 end
 
