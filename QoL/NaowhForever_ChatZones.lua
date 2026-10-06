@@ -255,7 +255,12 @@ local function UpdateTooltip(tip, resultID)
     if right == 0 then return end
     local widest = 0
     for _, row in ipairs(rows) do
-        local zone = row.Name and zones[row.Name:GetText()]
+        -- The game sends only the leader's zone; other members show one if we know it elsewhere.
+        local name = row.Name and row.Name:GetText()
+        local key = Key(name)
+        local cached = key and Fresh(key)
+        local zone = name and zones[name] or cached and cached.zone
+        if key and not zone and S.Get("chatZonesAsk") and key ~= UnitName("player") then Ask(key) end
         local left = row:GetLeft()
         if zone and left then
             local fs = ZoneString(tipText, row, "GameFontHighlightSmallLeft")
