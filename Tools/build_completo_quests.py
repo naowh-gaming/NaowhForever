@@ -163,7 +163,14 @@ def main():
         print("FAILED", line, file=sys.stderr)
 
 
+# Quests the game has records for but never gives: "<UNUSED>", "(UNUSED) The Rusty Gadget",
+# "<NYI> <TXT> Course of Action" (not yet implemented). Left out everywhere.
+PLACEHOLDER = re.compile(r"^\s*[<(]|unused|\bnyi\b", re.I)
+
+
 def write(zones, quests):
+    for z in zones.values():
+        z["quests"] = [q for q in z["quests"] if not PLACEHOLDER.search(q["name"])]
     rows = {q["id"]: (int(area), q) for area, z in zones.items() for q in z["quests"]}
     chains = chains_of(quests, rows)
     lines = [
