@@ -110,7 +110,16 @@ end
 function Q.Mine(id) return mine[id] == true end
 function Q.Name(id) return D.Quests[id][NAME] end
 function Q.Level(id) return D.Quests[id][LEVEL] end
-function Q.RequiredLevel(id) return D.Quests[id][REQ_LEVEL] end
+
+-- Wowhead's required level is wrong for some quests (Mending Old Wounds: level 60, "requires
+-- level 15", and the game does not offer it at 15). None is taken as needing less than its
+-- own level less MAX_UNDER.
+local MAX_UNDER = 10
+
+function Q.RequiredLevel(id)
+    local quest = D.Quests[id]
+    return math.max(quest[REQ_LEVEL], quest[LEVEL] - MAX_UNDER)
+end
 function Q.Zone(id) return zoneOf[id] end
 function Q.Chain(id) return chainOf[id] end
 function Q.Zones() return D.Zones end
