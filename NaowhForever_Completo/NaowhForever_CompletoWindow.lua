@@ -31,6 +31,9 @@ local ZONE_H = 44
 local ZONE_BAR_W = 180
 local SEARCH_W = 260
 local SEARCH_MAX = 150          -- quests a search lists at most
+-- The smallest the window drags down to: the tabs and the search box side by side, and a
+-- handful of rows.
+local MIN_W, MIN_H = 620, 420
 local CHAIN = St.CHAIN
 local CHAIN_ICON = 14
 -- A chain's follow-up quests: indented STEP_INDENT, on a tree line down from under the chain
@@ -531,8 +534,17 @@ local function Build()
     scroll:SetPoint("TOPLEFT", left, -top)
     scroll:SetPoint("BOTTOMRIGHT", -(CARD + SCROLLBAR + 4), FOOTER + CARD + PAD)
     view = Shared.View.New(scroll, Kinds(), Draw)
-    view:SetWidth(WIDTH - left - CARD - SCROLLBAR - INSET)
     scroll:SetScrollChild(view)
+    -- Dragged bigger or smaller: the rows follow the new width, redrawn once it settles.
+    local function FitView()
+        local width = window:GetWidth() - left - CARD - SCROLLBAR - INSET
+        if view:GetWidth() == width then return end
+        view:SetWidth(width)
+        if window:IsShown() then view:QueueRedraw() end
+    end
+    view:SetWidth(WIDTH - left - CARD - SCROLLBAR - INSET)
+    Parts.Resizable(window, "completoWindowSize", MIN_W, MIN_H, FitView)
+    FitView()
 end
 
 local function Paint()
@@ -548,11 +560,13 @@ end
 S.OnChange(function(key)
     if not (window and window:IsShown()) then return end
     if key == "windowAlpha" then Paint() end
+    if key == "windowScale" then window:SetScale(ns.UIScale() * S.Get("windowScale")) end
     if key == "hideDone" then view:Redraw() end
 end)
 
 hooksecurefunc(ns, "Apply", function()
     if window and window:IsShown() then
+        window:SetScale(ns.UIScale() * S.Get("windowScale"))
         Paint()
         view:Redraw()
     end
@@ -564,7 +578,7 @@ function ns.OpenCompletoWindow(which)
     if which then tab = which end
     if not window then Build() end
     zone = Q.CurrentZone() or zone
-    window:SetScale(ns.UIScale())
+    window:SetScale(ns.UIScale() * S.Get("windowScale"))
     window:Show()
     Paint()
     scroll:SetVerticalScroll(0)

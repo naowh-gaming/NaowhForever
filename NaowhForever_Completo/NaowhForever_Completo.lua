@@ -12,7 +12,7 @@ local ns = _G.NaowhForever
 local UI = ns.UI
 
 local S = UI.ModuleSettings("completo", {
-    enabled = false, hideDone = false, windowAlpha = 1,
+    enabled = false, hideDone = false, windowAlpha = 1, windowScale = 1,
     -- A ! on the map at each quest giver with a quest for you; mapGrey adds the low level ones.
     mapPins = false, mapGrey = false, mapChainsOnly = false, mapPinSize = 18,
 })
@@ -530,8 +530,10 @@ page:Card({
 
 page:Card({
     id = "window", name = "Window", order = 90,
-    help = "Completo's own window, with every zone and its quests.",
+    help = "Completo's own window. Drag its bottom right corner to size it.",
     rows = {
+        { key = "windowScale", label = "Window Scale", slider = { 50, 150, 5 }, unit = "%", scale = 0.01,
+          help = "How big the window and everything in it is. Drag its corner to make it bigger instead." },
         { key = "windowAlpha", label = "Window Opacity", slider = { ns.Shared.Style.OPACITY_MIN, 100, 5 },
           unit = "%", scale = 0.01, help = "How solid the window is, in percent. Also on its title bar." },
     },
