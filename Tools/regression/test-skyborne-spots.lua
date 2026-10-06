@@ -74,6 +74,7 @@ local env = setmetatable({
     CreateFrame = NewFrame,
     hooksecurefunc = function() end,
     InCombatLockdown = function() return combat end,
+    C_Secrets = { ShouldAurasBeSecret = function() return combat end },
     GetTime = function() return now end,
     C_Timer = { After = function(_, fn) timers[#timers + 1] = fn end },
     UnitRace = function() return "Windshaper Skyborne", race, 96 end,

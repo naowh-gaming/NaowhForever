@@ -92,7 +92,11 @@ local function Save(kind, map, x, y)
 end
 
 -- The spot's buff, given at or after the cast; nil while the game has not applied it yet.
--- Auras can be unreadable in combat, so this is called through pcall.
+-- Auras are secret in combat; read only while Readable, and through pcall all the same.
+local function Readable()
+    return not (InCombatLockdown() or C_Secrets.ShouldAurasBeSecret())
+end
+
 local function HasBuff(cast)
     local aura = C_UnitAuras.GetPlayerAuraBySpellID(KINDS[cast.kind].buff)
     return aura and aura.duration >= MIN_BUFF and aura.expirationTime - aura.duration >= cast.time
@@ -106,7 +110,8 @@ local watch = CreateFrame("Frame")
 -- Looks for the buff a few times, as the game applies it a moment after the cast.
 local function Check(cast)
     cast.tries = cast.tries + 1
-    local ok, has = pcall(HasBuff, cast)
+    local ok, has = false, nil
+    if Readable() then ok, has = pcall(HasBuff, cast) end
     if ok and has then
         Save(cast.kind, cast.map, cast.x, cast.y)
     elseif ok and cast.tries < 4 then
@@ -132,7 +137,7 @@ watch:SetScript("OnEvent", function(_, event, _, _, spellID)
         watch:UnregisterEvent(event)
         local cast = waiting
         waiting = nil
-        if cast then
+        if cast and Readable() then
             local ok, has = pcall(HasBuff, cast)
             if ok and has then Save(cast.kind, cast.map, cast.x, cast.y) end
         end
