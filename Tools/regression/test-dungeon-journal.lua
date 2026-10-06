@@ -3676,6 +3676,11 @@ do
     pin.SetPosition = function(self, x, y) self.at = { x, y } end
     pin:OnAcquired(pins[1])
     check("a raid's pin shows the raid door", state.atlases.raid == true)
+    check("at its size at 100%", pin.w == 22)
+    S.Set("mapEntranceScale", 1.5)
+    check("Icon Size draws the pins again", #pins == 1)
+    pin:OnAcquired(pins[1])
+    check("at the size set", pin.w == 33 and pin.h == 33)
     pin:OnMouseEnter()
     pin:OnClick("LeftButton")
     local waypoint = state.waypoints[#state.waypoints]

@@ -75,6 +75,7 @@ local S = ns.UI.ModuleSettings("journal", {
     mapPanel = true,
     mapFactions = false,
     mapEntrances = false,
+    mapEntranceScale = 1,
     usableOnly = true,
     myRecipes = true,
     openUnreleased = false,

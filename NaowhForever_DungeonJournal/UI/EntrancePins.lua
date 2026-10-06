@@ -4,7 +4,7 @@
 --  on its zone's map and on every map that holds the spot (the continent, a neighbouring
 --  zone). Entrances on one spot (the Scarlet Monastery's wings, Blackrock Spire's halves)
 --  share a pin. Only the dungeons the window lists show (the faction switch). Hover a pin for
---  each one's levels; click it for a waypoint. Built like Discovery's book pins; nothing is
+--  each one's levels; click it for a waypoint. Icon Size scales them. Built like Discovery's book pins; nothing is
 --  made or added to the map until it is switched on.
 -------------------------------------------------------------------------------
 local ns = _G.NaowhForever
@@ -12,7 +12,7 @@ local J = ns.Journal
 local S = J.Settings
 
 local TEMPLATE = "NaowhForeverEntrancePinTemplate"
-local PIN_SIZE = 22
+local PIN_SIZE = 22   -- at 100%: Icon Size scales it
 local ICON = "dungeon"   -- the door the dungeon map draws on its own entrance
 local RAID_ICON = "raid"
 
@@ -69,7 +69,8 @@ local function MakePinMixin()
     -- group: { x, y, dungeons } the dungeons whose entrance is on this spot.
     function Pin:OnAcquired(group)
         self.group = group
-        self:SetSize(PIN_SIZE, PIN_SIZE)
+        local size = PIN_SIZE * (S.Get("mapEntranceScale") or 1)
+        self:SetSize(size, size)
         local raid = true
         for _, dungeon in ipairs(group.dungeons) do
             if not dungeon.raid then raid = false end
@@ -200,6 +201,9 @@ end
 
 -- The faction switch changes which dungeons the window lists, and so which pins show.
 S.OnChange(function(key)
-    if key == "enabled" or key == "mapEntrances" or key == "showAlliance" or key == "showHorde" then Apply() end
+    if key == "enabled" or key == "mapEntrances" or key == "mapEntranceScale" or key == "showAlliance"
+        or key == "showHorde" then
+        Apply()
+    end
 end)
 hooksecurefunc(ns, "Apply", Apply)
