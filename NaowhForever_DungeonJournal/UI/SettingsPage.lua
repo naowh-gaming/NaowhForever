@@ -56,6 +56,7 @@ end
 
 local function JournalOn() return S.Get("enabled") == true end
 local ENTRANCES_OFF = "Turn on Dungeon and Raid Entrances"
+local ENTRANCE_SIZE = { 50, 300, 10 }
 local function EntrancesOn() return JournalOn() and S.Get("mapEntrances") == true end
 local function BisOn() return Loot.BisOn() end
 
@@ -229,16 +230,19 @@ map:Card({
 map:Card({
     id = "mapentrances", name = "On the World Map", order = 15,
     help = "The dungeon and raid entrances on the world map.",
-    summary = function(store)
-        if not store.Get("mapEntrances") then return "Off" end
-        return ("Entrances shown, %d%%"):format(math.floor((store.Get("mapEntranceScale") or 1) * 100 + 0.5))
-    end,
+    summary = function(store) return store.Get("mapEntrances") and "Entrances shown" or "Off" end,
     rows = {
         { key = "mapEntrances", label = "Dungeon and Raid Entrances", toggle = true, needs = JournalOn, why = JOURNAL_OFF,
           help = "A door on each dungeon and raid entrance on the world map, for the sides the Journal lists. Hover it for the levels, click it for a waypoint." },
-        { key = "mapEntranceScale", label = "Icon Size", slider = { 50, 200, 10 }, unit = "%", scale = 0.01,
+        { key = "mapEntranceZone", label = "Size on a Zone Map", slider = ENTRANCE_SIZE, unit = "%", scale = 0.01,
           needs = EntrancesOn, why = ENTRANCES_OFF,
-          help = "How big the entrance icons are on the world map." },
+          help = "How big the entrance icons are on a zone's map. Half this while the map fills the screen." },
+        { key = "mapEntranceContinent", label = "Size on a Continent Map", slider = ENTRANCE_SIZE, unit = "%",
+          scale = 0.01, needs = EntrancesOn, why = ENTRANCES_OFF,
+          help = "How big the entrance icons are on Kalimdor's or the Eastern Kingdoms' map. Half this while the map fills the screen." },
+        { key = "mapEntranceWorld", label = "Size on the World Map", slider = ENTRANCE_SIZE, unit = "%", scale = 0.01,
+          needs = EntrancesOn, why = ENTRANCES_OFF,
+          help = "How big the entrance icons are on the map of the whole world. Half this while the map fills the screen." },
     },
 })
 

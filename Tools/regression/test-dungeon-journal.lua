@@ -3625,7 +3625,9 @@ end
 --  The entrances on the world map
 -------------------------------------------------------------------------------
 do
-    local ns, state, S = fixture({ enabled = true })
+    -- The sizes at their defaults (Journal.lua's), which the stub settings do not read.
+    local ns, state, S = fixture({ enabled = true, mapEntranceZone = 2, mapEntranceContinent = 1.5,
+        mapEntranceWorld = 1.2 })
     local J, map = ns.Journal, state.worldMap
     local pins, providers, shownMap = {}, {}, 1420   -- Tirisfal Glades
     map.AddDataProvider = function(_, provider) providers[#providers + 1] = provider end
@@ -3674,13 +3676,29 @@ do
     pin.Icon = state.worldMap:CreateTexture()
     for k, v in pairs(Pin) do pin[k] = v end
     pin.SetPosition = function(self, x, y) self.at = { x, y } end
+    pin.GetMap = function() return map end
     pin:OnAcquired(pins[1])
     check("a raid's pin shows the raid door", state.atlases.raid == true)
-    check("at its size at 100%", pin.w == 22)
-    S.Set("mapEntranceScale", 1.5)
-    check("Icon Size draws the pins again", #pins == 1)
-    pin:OnAcquired(pins[1])
-    check("at the size set", pin.w == 33 and pin.h == 33)
+    -- Its size: by the kind of map shown, halved full screen.
+    state.mapInfo = { [1445] = { mapType = 3 }, [1414] = { mapType = 2 }, [947] = { mapType = 1 } }
+    local function SizeOn(mapID)
+        shownMap = mapID
+        pin:OnAcquired(pins[1])
+        return pin.w
+    end
+    check("on a zone's map at 200%", SizeOn(1445) == 44 and pin.h == 44)
+    check("on a continent's at 150%", SizeOn(1414) == 33)
+    check("on the world's at 120%", math.abs(SizeOn(947) - 26.4) < 1e-9)
+    state.mapMaximised = true
+    check("full screen, half that", math.abs(SizeOn(947) - 13.2) < 1e-9)
+    state.mapMaximised = false
+    shownMap = 1445
+    local shown = { pin }
+    map.EnumeratePinsByTemplate = function() local i = 0; return function() i = i + 1; return shown[i] end end
+    local count = #pins
+    S.Set("mapEntranceZone", 1)
+    check("a size changed resizes the pins shown without drawing them again", pin.w == 22 and #pins == count)
+    state.mapInfo = nil
     pin:OnMouseEnter()
     pin:OnClick("LeftButton")
     local waypoint = state.waypoints[#state.waypoints]
