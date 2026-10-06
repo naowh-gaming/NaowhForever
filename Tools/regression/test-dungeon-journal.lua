@@ -1981,6 +1981,24 @@ do
     ns.DungeonMapCommand("mappins")
     J.OpenDungeonMap(ragefire)
     check("a second Map closes it", true)
+    -- A dungeon with two floors of the addon's own pictures: one images line keeps both.
+    local ubrs = J.Get("UpperBlackrockSpire")
+    J.OpenDungeonMap(ubrs)
+    ns.DungeonMapCommand("mappins")
+    for _, button in ipairs(state.buttons) do
+        if button.label == "Copy" then copy = button end
+    end
+    state.copied = nil
+    copy.onClick()
+    text = state.copied and state.copied.text or ""
+    local _, imageLines = text:gsub("images = ", "")
+    check("Copy gives one images line", imageLines == 1)
+    local pasted = assert(loadstring("return {\n" .. text .. "\n}"))().UpperBlackrockSpire
+    check("which keeps every floor's picture", pasted.images[8] == J.Maps.UpperBlackrockSpire.images[8]
+        and pasted.images[9] == J.Maps.UpperBlackrockSpire.images[9])
+    check("and the floors in the order you walk them", text:find("order = { 9, 8, 7 },", 1, true) ~= nil)
+    ns.DungeonMapCommand("mappins")
+    J.OpenDungeonMap(ubrs)
     -- The world map opening (M) puts the Journal's window away; closing it brings it back.
     ns.OpenJournalWindow(ragefire)
     local journalWindow
@@ -2071,10 +2089,15 @@ do
         check("a map is for a dungeon the Journal has: " .. key, dungeon ~= nil)
         check("its art and floors: " .. key, (type(map.art) == "string" or type(map.image) == "string")
             and map.floors >= 1)
-        -- The addon's own picture is in Media/Maps, one floor, for a dungeon the game has no art for.
+        -- The addon's own picture is in Media/Maps, for a dungeon the game has no art for.
         if map.image then
             check("its picture is the addon's: " .. key, map.image:find("^Interface\\AddOns\\NaowhForever\\Media\\Maps\\") ~= nil
-                and map.floors == 1 and map.art == nil)
+                and map.art == nil)
+        end
+        -- A floor the art lacks, as the addon's own picture.
+        for n, path in pairs(map.images or {}) do
+            check("its floor's picture is the addon's: " .. key .. " " .. n, type(map.art) == "string"
+                and n >= 1 and n <= map.floors and path:find("^Interface\\AddOns\\NaowhForever\\Media\\Maps\\") ~= nil)
         end
         -- Every pin is one of its bosses, on one of its floors, on the map.
         local bosses = {}
