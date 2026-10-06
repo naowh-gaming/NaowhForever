@@ -41,13 +41,19 @@ Settings.Page("Meter/Other", store):Card({ id = "misc", name = "Odds and Ends", 
     { key = "naowh", label = "Naowh's Tips", toggle = true },
 } })
 
-local meter = { name = "Meter" }
+Settings.Page("Solo/Settings", store):Card({ id = "solo", name = "Solo Card", rows = {
+    { key = "solo", label = "Solo Toggle", toggle = true },
+} })
+
+local meter, solo = { name = "Meter" }, { name = "Solo" }
 local pages = {
     { key = "Settings", name = "Settings", title = "Settings" },
     { key = "Meter/Bars", name = "Bars", module = meter },
     { key = "Meter/Other", name = "Other", module = meter },
+    { key = "Solo/Settings", name = "Settings", module = solo },
 }
 meter.tabs = { pages[2], pages[3] }
+solo.tabs = { pages[4] }
 function UI.SearchPages() return pages end
 
 local list = UI.Search.Collect()
@@ -116,6 +122,10 @@ do
     f = Build(list, "meter")
     Check(f.all["Meter/Bars"] and f.all["Meter/Other"] and f.count["Meter/Other"] == 0,
         "a page matched by name shows whole, though it counts nothing")
+    f = Build(list, "set")
+    Check(f.all.Settings and not f.count["Solo/Settings"],
+        "a lone tab's name (mostly Settings) does not match its module's page")
+    Check(Build(list, "solo").all["Solo/Settings"], "its module's name still does")
     f = Build(list, "zzz")
     Check(f and #f.order == 0 and next(f.count) == nil, "nothing found is a filter with no pages")
 end

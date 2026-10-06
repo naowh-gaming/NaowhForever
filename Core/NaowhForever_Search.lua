@@ -30,14 +30,15 @@ local function Place(page, cardName)
 end
 
 -- One list in window order: each page, then its cards, each card followed by its settings. A
--- setting knows its own words (name, help, group); a card its name and help; a page its own
--- and its module's names.
+-- setting knows its own words (name, help, group); a card its name and help; a page its
+-- module's name and, when the module has more than one, its tab's. A lone tab is mostly
+-- called Settings, which would match "set" on every module.
 local function Collect()
     local list = {}
     local Settings = ns.Shared and ns.Shared.Settings
     for _, page in ipairs(UI.SearchPages()) do
         local tag, trail = Place(page)
-        local pageWords = Words(tag .. " " .. ns.L(page.name))
+        local pageWords = Words(tag .. " " .. trail)
         list[#list + 1] = { page = page.key, tag = tag, trail = trail, words = pageWords }
         if Settings then
             Settings.Index(page.key, function(card, label, help, cardName, group)
@@ -52,8 +53,7 @@ local function Collect()
 end
 
 -- Every typed word has to start a word of the target's own.
-local function Find(list, query)
-    local typed = Typed(query)
+local function Matches(list, typed)
     local out = {}
     if #typed == 0 then return out end
     for _, target in ipairs(list) do
@@ -64,6 +64,10 @@ local function Find(list, query)
         if all then out[#out + 1] = target end
     end
     return out
+end
+
+local function Find(list, query)
+    return Matches(list, Typed(query))
 end
 
 -- The filter the window draws with, or nil for nothing typed:
@@ -77,7 +81,7 @@ local function Build(list, query)
     local typed = Typed(query)
     if #typed == 0 then return nil end
     local f = { typed = typed, count = {}, all = {}, cards = {}, order = {}, first = {} }
-    for _, t in ipairs(Find(list, query)) do
+    for _, t in ipairs(Matches(list, typed)) do
         local key = t.page
         if not f.count[key] then
             f.count[key] = 0
@@ -149,6 +153,11 @@ end
 function UI.FocusSearch()
     box:SetFocus()
     box:HighlightText()
+end
+
+-- Anything in the box, even text with no words to find.
+function UI.SearchTyped()
+    return box:GetText() ~= ""
 end
 
 function UI.ClearSearch()

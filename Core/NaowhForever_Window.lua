@@ -338,6 +338,7 @@ end
 
 local NAV_ROW, NAV_OFF_ALPHA = 32, 0.45
 local MISS_ALPHA = 0.3     -- a page, tab or module without a match for the sidebar's search
+local NO_TABS = {}
 
 -- A page that cannot be used stays dimmer than an inactive one, even while selected, and so
 -- does one the search (filter) found nothing on.
@@ -388,16 +389,6 @@ local function PaintNavButton(btn, hover)
     btn.count:SetText(found and found > 0 and found or "")
 end
 
--- How many matches the pages keyed in keys hold for the search, false for none.
-local function Found(filter, keys)
-    local n
-    for _, key in ipairs(keys) do
-        local c = filter.count[key]
-        if c then n = (n or 0) + c end
-    end
-    return n or false
-end
-
 local function PaintNav()
     local nav = ActiveNav()
     local filter = UI.filter
@@ -408,12 +399,13 @@ local function PaintNav()
         btn.marker:SetShown(active)
         btn.found = nil
         if filter then
-            local keys = { name }
-            if btn.mod then
-                keys = {}
-                for i, tab in ipairs(btn.mod.tabs) do keys[i] = tab.key end
+            -- How many matches its pages hold, false for none.
+            local n = filter.count[name]
+            for _, tab in ipairs(btn.mod and btn.mod.tabs or NO_TABS) do
+                local c = filter.count[tab.key]
+                if c then n = (n or 0) + c end
             end
-            btn.found = Found(filter, keys)
+            btn.found = n or false
         end
         PaintNavButton(btn, btn:IsMouseOver())
     end
@@ -515,11 +507,18 @@ local function ScrollToSetting(key, label, card)
     scrollFrame:SetVerticalScroll(math.min(scrollFrame:GetVerticalScrollRange(), math.max(0, y)))
 end
 
+-- lastFilter: the search before this edit. searchJump: a jump is clearing the search.
+local lastFilter, searchJump
+
 -- Opens the page (building it if this is the first visit) and, given a card, opens the card
 -- and brings it into view. A search in the sidebar is cleared first, so all of the page shows.
 function UI.GoToSetting(key, label, card)
     if not (window and PAGES[key]) then return end
-    if UI.filter then UI.ClearSearch() end
+    if UI.SearchTyped() then
+        searchJump = true
+        UI.ClearSearch()
+        searchJump = false
+    end
     if card then ns.Shared.Settings.Reveal(card) end
     -- Drawn again, so the place measured below is the layout that stays.
     if wrappers[key] then wrappers[key]._dirty = true end
@@ -581,16 +580,26 @@ local function RebuildPages()
     end
 end
 
--- Every edit of the sidebar's search. The page on show moves to the first one with a match
--- when it has none. Once the search is cleared, the cards it found on the page stay open and
--- the first comes into view, so the setting is still there to change.
-local lastFilter
+-- Only declared pages draw with the search; the rest are drawn the same with or without it.
+local function InvalidateFiltered()
+    local Settings = ns.Shared.Settings
+    for key, w in pairs(wrappers) do
+        if Settings.pages[key] then w._dirty = true end
+    end
+end
 
+-- Every edit of the sidebar's search. The page on show moves to the first one with a match
+-- when it has none. Once the player clears the search, the cards it found on the page stay
+-- open and the first comes into view, so the setting is still there to change.
 local function OnSearch()
     local filter, last = UI.filter, lastFilter
     lastFilter = filter
     if not (window and window:IsShown()) then
         pendingRefresh = true
+        return
+    end
+    if searchJump then
+        InvalidateFiltered()
         return
     end
     local key, found = currentPage, nil
@@ -606,7 +615,7 @@ local function OnSearch()
             if card and card.page.key == key then ns.Shared.Settings.Reveal(uid) end
         end
     end
-    InvalidatePages(wrappers)
+    InvalidateFiltered()
     ShowPage(key)
     if found then ScrollToSetting(key, nil, found) end
 end
@@ -1184,7 +1193,7 @@ local function CreateWindow()
     window:SetScript("OnKeyDown", function(self, key)
         if InCombatLockdown() then return end
         local open = key == "F" and IsControlKeyDown()
-        if not (open or (key == "ESCAPE" and UI.filter)) then return CloseOnEscape(self, key) end
+        if not (open or (key == "ESCAPE" and UI.SearchTyped())) then return CloseOnEscape(self, key) end
         self:SetPropagateKeyboardInput(false)
         if open then UI.FocusSearch() else UI.ClearSearch() end
         C_Timer.After(0, function()

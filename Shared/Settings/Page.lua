@@ -53,7 +53,8 @@ end
 
 -- The typed words of the sidebar's search, lit in a row's own text.
 local function Marked(row, text)
-    return ns.UI.Search.Mark(row:GetParent().filter, text)
+    local filter = row:GetParent().filter
+    return filter and ns.UI.Search.Mark(filter, text) or text
 end
 
 local function Rule(frame, alpha)
@@ -358,7 +359,7 @@ end
 
 local function HeadClicked(head)
     local card = head.card
-    if not Openable(card) then return end
+    if head.held or not Openable(card) then return end
     Settings.SetOpen(card, not Settings.IsOpen(card))
     head:GetParent():QueueSettingsRedraw()
 end
@@ -399,12 +400,13 @@ local function NewHead(view)
     return head
 end
 
-local function SetHead(head, card, isOpen)
-    head.card = card
+-- held: a search holds the card open, so its head does not fold it.
+local function SetHead(head, card, isOpen, held)
+    head.card, head.held = card, held
     head.name:SetText(Marked(head, card.name))
     head.nameHit.help = card.help
     head.chevron:SetRotation(isOpen and -math.pi / 2 or 0)
-    head.chevron:SetShown(Openable(card))
+    head.chevron:SetShown(Openable(card) and not held)
     head.rule:SetShown(isOpen)
     local anchor = head.name
     if card.switchGet then
@@ -532,19 +534,23 @@ Settings.kinds = kinds
 
 local Draw = {}
 
+-- A hidden row is set on the card's preview instead; it is still searched, counted and reset.
+local function Hidden(row)
+    local hidden = row.hidden
+    if type(hidden) == "function" then hidden = hidden() end
+    return hidden
+end
+
 -- only: the labels the search keeps (a group title stays while a setting under it does), or
 -- nil for every row.
 function Draw:Settings(card, only)
     local w = self:GetWidth()
     local columns = w >= TWO_COLUMNS_W and 2 or 1
     local half = math.floor(w / 2)
-    -- A hidden row is set on the card's preview instead; it is still searched, counted and reset.
     local rows = wipe(self.shownRows)
     for _, row in ipairs(Settings.Rows(card)) do
-        local hidden = row.hidden
-        if type(hidden) == "function" then hidden = hidden() end
         local group = row.kind == "group"
-        local keep = not hidden and (not only or group or only[row.label])
+        local keep = not Hidden(row) and (not only or group or only[row.label])
         if keep and only and group and rows[#rows] and rows[#rows].kind == "group" then
             rows[#rows] = row
         elseif keep then
@@ -591,17 +597,22 @@ function Draw:Card(card, found)
     frame.edge:SetColor(BORDER_RGB.r, BORDER_RGB.g, BORDER_RGB.b, 1)
     frame.note:Hide()
     local isOpen = (found ~= nil or Settings.IsOpen(card)) and Openable(card)
-    self:Add("cardHead", card, isOpen)
+    self:Add("cardHead", card, isOpen, found ~= nil)
     if isOpen and card.info then
         for _, line in ipairs(card.rows) do
             if line.group then self:Add("group", line.group) else self:Add("infoLine", line) end
         end
     elseif isOpen then
+        -- A match set on the preview (a hidden row) can only be changed there, so the card
+        -- shows whole. Part of a card shows no reset, which would reset what is left out too.
         local only = found ~= true and found or nil
+        for _, row in ipairs(only and Settings.Rows(card) or NO_EVENTS) do
+            if only[row.label] and Hidden(row) then only = nil break end
+        end
         if card.studio and self.kinds.studio and not only then self:Add("studio", card) end
         self:Settings(card, only)
         local changed = Settings.ChangedCount(card)
-        if changed > 0 then self:Add("cardFoot", card, changed) end
+        if changed > 0 and not only then self:Add("cardFoot", card, changed) end
     end
     frame:SetHeight(self.cursor - top)
     self:Space(CARD_GAP)

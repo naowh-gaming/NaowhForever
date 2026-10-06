@@ -500,6 +500,15 @@ do
         "a module without a match dims")
     Check(Button("Interface").text.alpha < 1 and Button("Combat").text.alpha == 1, "and so does a tab")
 
+    S.Set("coTankWidth", 222); Flush()
+    Check(not Text("Reset Co-Tank Frame") and not Shown("1 setting changed from its default"),
+        "part of a card shows no reset, which would reset what is left out")
+    local held = Head("Co-Tank Frame") or Shown("Co-Tank Frame").parent
+    Check(held.held and not held.chevron:IsShown(), "a card the search holds open has no chevron")
+    held.scripts.OnClick(held); Flush()
+    Check(Shown("Max Icons") ~= nil, "and a click on its head does not fold it")
+    S.Set("coTankWidth", S.Default("coTankWidth")); Flush()
+
     input:SetText("co-tank"); Flush()
     Check(Shown("Co-Tank Frame") and Shown("Width") and Shown("Max Icons"),
         "a card's name keeps all of the card")
@@ -517,6 +526,10 @@ do
     Check(Button("Quality of Life").count.text == "" and Alpha(Button("Threat Meter")) == threatAlpha
         and Button("Interface").text.alpha == 1, "the counts go and nothing is dimmed")
 
+    input:SetText("-"); Flush()
+    root.scripts.OnKeyDown(root, "ESCAPE"); Flush()
+    Check(root:IsShown() and input:GetText() == "", "Escape clears text with no words in it before closing")
+
     input:SetText("max icons"); Flush()
     input.scripts.OnEscapePressed(input); Flush()
     Check(input:GetText() == "" and UI.filter == nil and root:IsShown(), "Escape in the box clears it too")
@@ -531,6 +544,13 @@ do
     input:SetText("max icons"); Flush()
     UI.GoToSetting("QoL/Combat", "Out of Stealth Colour", "QoL/Combat:stealthReminder"); Flush()
     Check(UI.filter == nil and Setting("Out of Stealth Colour") ~= nil, "a jump to a setting clears the search first")
+    local Settings = ns.Shared.Settings
+    Settings.SetOpen(Settings.CardOf("QoL/Combat:stealthReminder"), false)
+    UI:RefreshPage(true); Flush()
+    input:SetText("colour"); Flush()
+    UI.GoToSetting("QoL/Interface", nil, "QoL/Interface:topBar"); Flush()
+    Click(Button("Combat")); Flush()
+    Check(not Text("Out of Stealth Colour"), "a jump away does not leave the search's cards open on the page it left")
 end
 
 -- A confirm: No, Escape and a newer confirm taking its place all count as no; Yes does not.
