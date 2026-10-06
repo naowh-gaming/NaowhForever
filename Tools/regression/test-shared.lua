@@ -465,7 +465,7 @@ check("text and card rows keyed by the prefix", Keys(look)
 check("every row takes needs and why", look[2].needs == Needs and look[6].why == "Off")
 check("the card background is the HUD backgrounds choice", look[6].choice == Parts.HUD_BACKGROUNDS)
 check("the outline row is the shared outline choice", look[4].choice == Parts.HUD_OUTLINES
-    and Parts.HUD_OUTLINES[2][1] == "" and Parts.HUD_OUTLINES[2][3] == "THICKOUTLINE")
+    and Parts.HUD_OUTLINES[2][1] == "NONE" and Parts.HUD_OUTLINES[2][2] == "" and Parts.HUD_OUTLINES[2][4] == "THICKOUTLINE")
 look = Settings.Look("", { text = true, size = { 6, 24, 1 }, bar = "Flat", background = "alpha",
     keys = { FontSize = "textSize", Outline = false } })
 check("no prefix: plain keys; an existing key kept; a row left out", Keys(look)
@@ -526,5 +526,7 @@ Parts.HudFont(fs, "", 12, "", "soft")
 check("or the shadow for its background", fs.shadowAlpha == St.HUD_SOFT_SHADOW_ALPHA)
 Parts.HudFont(fs, "", 12, "THICKOUTLINE", "none")
 check("a thick outline has no shadow either", fs.flags == "THICKOUTLINE" and fs.shadowAlpha == 0)
+Parts.HudFont(fs, "", 12, "NONE")
+check("None: no outline and no shadow", fs.flags == "" and fs.shadowAlpha == 0 and fs.shadowX == 0)
 
 print(("test-shared: %d checks passed"):format(checks))

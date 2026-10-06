@@ -68,13 +68,13 @@ function Parts.HudText(fs, shadow)
     return fs
 end
 
-Parts.HUD_OUTLINES = { { [""] = "Shadow", OUTLINE = "Outline", THICKOUTLINE = "Thick Outline" },
-    { "", "OUTLINE", "THICKOUTLINE" } }
+Parts.HUD_OUTLINES = { { NONE = "None", [""] = "Shadow", OUTLINE = "Outline", THICKOUTLINE = "Thick Outline" },
+    { "NONE", "", "OUTLINE", "THICKOUTLINE" } }
 
--- font is a SharedMedia name ("" for the Addon Font); outline one of HUD_OUTLINES. Unoutlined
--- text gets the HUD shadow for background (a Parts.HudBackdrop mode, or nil for the card's).
+-- font is a SharedMedia name ("" for the Addon Font); outline one of HUD_OUTLINES. Shadow ("")
+-- gets the HUD shadow for background (a Parts.HudBackdrop mode, or nil for the card's).
 function Parts.HudFont(fs, font, size, outline, background)
-    fs:SetFont(ns.UI.FontPath(font), size, outline)
+    fs:SetFont(ns.UI.FontPath(font), size, outline == "NONE" and "" or outline)
     return Parts.HudText(fs, outline == "" and (background or "card") or false)
 end
 

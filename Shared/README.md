@@ -153,8 +153,8 @@ Shared/
   defaults stay in the module's `UI.ModuleSettings`, at today's look (`outline = "OUTLINE"` for
   outlined text, `""` for the rest). To draw it, `Parts.HudFont(fs, font, size, outline,
   background)` sets the font (a SharedMedia name, `""` for the Addon Font), size and outline (one
-  of `Parts.HUD_OUTLINES`: `""` Shadow, `"OUTLINE"`, `"THICKOUTLINE"`) and gives unoutlined text the
-  HUD shadow for its `background` mode. A bar's texture is `ns.UI.TexturePath(name, own)`: the
+  of `Parts.HUD_OUTLINES`: `"NONE"` plain text, `""` Shadow, `"OUTLINE"`, `"THICKOUTLINE"`) and gives
+  Shadow the HUD shadow for its `background` mode. A bar's texture is `ns.UI.TexturePath(name, own)`: the
   SharedMedia statusbar, or `own` for `""` and anything missing. A row of its own uses the
   `texture` kind, `{ key = "texture", label = "Bar Texture", texture = "Flat" }`, which lists
   `ns.UI.TextureChoices`. The Swing Timer and Threat Meter use it.
