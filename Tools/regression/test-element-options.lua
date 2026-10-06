@@ -94,8 +94,7 @@ for path, s in pairs(sources) do
         if not a then break end
         i = b + 1
         if not s:sub(a - 9, a - 1):find("function") then
-            -- A trailing true (it keeps its own screen anchor) is not part of where its options are.
-            local call = Call(s, b):gsub(",%s*true%s*%)$", ")")
+            local call = Call(s, b)
             local page, feature = call:match(',%s*"([^"]+)"%s*,%s*"([^"]+)"%s*%)$')
             if not page then page = call:match(',%s*"([^"]+)"%s*%)$') end
             local where = path .. ": " .. call:sub(1, 60)
@@ -119,15 +118,12 @@ for path, s in pairs(sources) do
         end
     end
 end
-Check(movers >= 30, "every mover was found (" .. movers .. ")")
+Check(movers >= 29, "every mover was found (" .. movers .. ")")
 
--- The cog menu (a right-click opens it too) has Element Options only with a page; opening the
--- options leaves Unlock Mode.
+-- The selected element's tag has Settings only with a page; opening it leaves Move Elements.
 local unlock = Read("Core/NaowhForever_UnlockMode.lua")
-Check(unlock:find('if item.page then\n        Action(menu, "Element Options"', 1, true), "Element Options needs a page")
-Check(unlock:find('elseif button == "RightButton" then', 1, true) and unlock:find("UI.SelectMover(handle)\n            OpenCogMenu(item)", 1, true),
-    "a right-click opens the cog menu")
+Check(unlock:find("tag.settings:SetShown(item.page ~= nil)", 1, true), "Settings needs a page")
 Check(unlock:find("ns.HideRaidReminderAnchorConfig()\n    ns.OpenOptionsWindow(item.page)", 1, true),
-    "Element Options leaves Unlock Mode before opening the page")
+    "Settings leaves Move Elements before opening the page")
 
 print(("test-element-options: %d checks passed"):format(checks))

@@ -1003,12 +1003,12 @@ local function AnchorsOn() return ns.DB().enabled == true end
 -- With Smart Reminders off its anchors stay hidden; the toolbar still carries Exit Config.
 local toolbarChecks = {}
 for _, displayType in ipairs(CONFIG_ORDER) do
-    toolbarChecks[#toolbarChecks + 1] = { label = "Show " .. DISPLAY_TYPE_LABEL[displayType] .. " Anchor",
+    toolbarChecks[#toolbarChecks + 1] = { label = DISPLAY_TYPE_LABEL[displayType],
         get = function() return configShown[displayType] == true end,
         set = function(v) ns.SetRaidReminderAnchorConfigShown(displayType, v) end,
         enabled = AnchorsOn }
 end
-ns.AddUnlockModeChecks(function() return AnchorsOn() and "Reminder Anchors" or "Smart Reminders is off" end,
+ns.AddUnlockModeChecks(function() return AnchorsOn() and "Smart Reminders" or "Smart Reminders is off" end,
     toolbarChecks)
 hooksecurefunc(ns, "ShowRaidReminderAnchorConfig", RefreshAllConfigVisuals)
 hooksecurefunc(ns, "HideRaidReminderAnchorConfig", function()

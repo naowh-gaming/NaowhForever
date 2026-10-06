@@ -92,7 +92,7 @@ local S = UI.ModuleSettings("qol", {
     townMap = true, townClass = true, townProfession = true, townFlight = true, townInn = true,
     townBank = true, townStable = false, townRepair = true, townSupplies = true,
     townVendors = false, townMail = false, townPinSize = 16, townMinimap = false, townTravel = false,
-    mapUnexplored = false, mapUnexploredAlpha = 0.6,
+    mapUnexplored = false, mapUnexploredAlpha = 0.5,
     gearSets = true, gearBarVisible = true, trinketBar = false, trinketSize = 36, trinketSpacing = 4, gearBarSize = 32, gearMounted = "", gearResting = "",
     gearWindowAlpha = 1,
     bis = true, bisTooltip = true, bisBagMarks = true, bisLootAlert = true, bisWindowAlpha = 1,
@@ -141,8 +141,6 @@ local S = UI.ModuleSettings("qol", {
     petMissingText = "Pet Missing", petPassiveText = "Pet Passive", petLowHealthText = "Pet Low HP",
     equipReminder = false, equipOnInstance = true, equipOnReadyCheck = true, equipAutoHide = 10,
     equipIconSize = 40, equipEnchants = false, equipEnchantRules = {},
-    emoteDetection = false, emotePattern = "prepares,places", emoteColor = { r = 1, g = 1, b = 1 },
-    emoteFont = "", emoteFontSize = 16, emoteSound = true, emoteSoundKey = "none",
     autoEmote = false, autoEmoteCooldown = 2, autoEmoteList = "698: prepares a ritual of summoning",
 
     mouseRing = false, mouseShape = "ring.tga", mouseSize = 48,
