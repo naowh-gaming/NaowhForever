@@ -131,9 +131,13 @@ end })
 env.UIParent = New("Frame"); env.UIParent:SetSize(1920, 1080)
 env.C_Timer = { After = function(_, f) timers[#timers + 1] = f end,
     NewTicker = function() return { Cancel = function() end } end }
-local missingAddOns = {}
+-- missingAddOns: not loaded this session. disabled: switched off for the next reload.
+local missingAddOns, disabled = {}, {}
 env.C_AddOns = { GetAddOnMetadata = function() return "test" end,
-    IsAddOnLoaded = function(name) return not missingAddOns[name] end }
+    IsAddOnLoaded = function(name) return not missingAddOns[name] end,
+    GetAddOnEnableState = function(name) return (missingAddOns[name] or disabled[name]) and 0 or 2 end,
+    DisableAddOn = function(name) disabled[name] = true end,
+    EnableAddOn = function(name) disabled[name] = nil end }
 env.SlashCmdList = {}
 env.InCombatLockdown = function() return false end
 env.LibStub = function() return nil end
@@ -405,9 +409,7 @@ for _, page in ipairs(UI.SearchPages()) do Check(not page.soon, "unfinished page
 
 -- A module shipped as its own addon: switching it off disables the addon, with every module
 -- linked to it, once the player confirms.
-local disabled, confirmText, confirmYes, reloadText = {}, nil, nil, nil
-env.C_AddOns.DisableAddOn = function(name) disabled[name] = true end
-env.C_AddOns.GetAddOnEnableState = function(name) return missingAddOns[name] and 0 or 2 end
+local confirmText, confirmYes, reloadText
 ns.Confirm = function(text, yes) confirmText, confirmYes = text, yes end
 ns.ConfirmReload = function(text) reloadText = text end
 Click(Button("Dungeon Journal")); Flush()
@@ -421,7 +423,11 @@ confirmYes()
 Check(disabled.NaowhForever_DungeonJournal and disabled.NaowhForever_BiS, "confirming disables both addons")
 Check(reloadText and reloadText:find("reload", 1, true), "then offers the reload")
 Check(ns.JournalSettings.Get("enabled") == true, "the module's own switch is kept for when it comes back")
-disabled, confirmText = {}, nil
+Check(switch._get() == false, "the switch reads off while the disable waits for its reload")
+switch.scripts.OnClick(); Flush()
+Check(not disabled.NaowhForever_DungeonJournal and not disabled.NaowhForever_BiS and switch._get() == true,
+    "switching it back on before the reload cancels the disable, for both")
+confirmText = nil
 Click(Button("Professions")); Flush()
 switch.scripts.OnClick(); Flush()
 switch.scripts.OnClick(); Flush()

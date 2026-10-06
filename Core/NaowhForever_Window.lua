@@ -302,14 +302,19 @@ end
 
 -- A module's on/off switch. Smart Reminders keeps its own master switch; the newer modules
 -- store `enabled` (or their `enabledKey`) in their settings table. Switching off a module
--- shipped as its own addon disables the addon, so it is gone after a reload.
+-- shipped as its own addon disables the addon, so it is gone after a reload; until then it
+-- reads as off, and switching it back on cancels that.
 local function ModuleOn(mod)
+    if mod.addon and C_AddOns.GetAddOnEnableState(mod.addon) == 0 then return false end
     if mod.settings then return ns[mod.settings].Get(mod.enabledKey or "enabled") end
     return ns.DB().enabled == true
 end
 
 local function SetModuleOn(mod, on)
     if mod.addon and not on then return SwitchModuleAddon(mod, false) end
+    if mod.addon then
+        for _, m in ipairs(Linked(mod, true)) do C_AddOns.EnableAddOn(m.addon) end
+    end
     if mod.settings then ns[mod.settings].Set(mod.enabledKey or "enabled", on) else ns.SetEnabled(on) end
     UI:RefreshPage(true)
 end
@@ -1464,6 +1469,22 @@ function _G.NaowhForever_OnCompartmentClick()
     ns.ToggleOptionsWindow()
 end
 
+-- Key Bindings > AddOns (Bindings.xml), named here so the list reads the same whichever modules
+-- are on. A module's key calls a function its addon defines over the stub below when it loads.
+BINDING_HEADER_NAOWHFOREVER = "Naowh Forever"
+BINDING_NAME_NAOWHFOREVER_JOURNAL = "Open Dungeon Journal"
+BINDING_NAME_NAOWHFOREVER_BOSSLOOT = "Boss Loot at Cursor"
+BINDING_NAME_NAOWHFOREVER_BIS = "Open BiS List"
+_G["BINDING_NAME_CLICK NaowhForeverBlessNext:LeftButton"] = "Next Blessing"
+_G["BINDING_NAME_CLICK NaowhForeverBlessNextGreater:LeftButton"] = "Next Greater Blessing"
+
+local function SwitchedOff(name)
+    return function() ns.Print(("%s is switched off. Turn it on under Settings > Modules."):format(name)) end
+end
+NaowhForever_ToggleJournal = SwitchedOff("Dungeon Journal")
+NaowhForever_BossLoot = SwitchedOff("Dungeon Journal")
+NaowhForever_ToggleBis = SwitchedOff("BiS List")
+
 SLASH_NAOWHFOREVER1 = "/smartreminders"
 SLASH_NAOWHFOREVER2 = "/naowh"
 SLASH_NAOWHFOREVER3 = "/nao"
@@ -1533,6 +1554,7 @@ local function TipLine(tooltip, text)
 end
 launcherEvents:SetScript("OnEvent", function(self)
     self:UnregisterEvent("PLAYER_LOGIN")
+    ns.SaveModuleDefaults()
     local account = ns.AccountSettings()
     if type(account.minimap) ~= "table" then
         account.minimap = { minimapPos = 220 }
