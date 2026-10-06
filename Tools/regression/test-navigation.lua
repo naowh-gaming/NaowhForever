@@ -204,7 +204,8 @@ for _, path in ipairs({ "TopBar/NaowhForever_TopBar.lua", "QoL/NaowhForever_Deat
 local UI = ns.UI
 ns.BuildQoLInterfacePage = function(parent, y) return y end
 for _, name in ipairs({ "JournalSettings", "DiscoverySettings", "ProfessionSettings", "MacroSettings", "AuraBuffSettings",
-    "ThreatMeterSettings", "SwingTimerSettings", "TopBarSettings", "ActionBarSettings", "TrainingSettings" }) do
+    "ThreatMeterSettings", "SwingTimerSettings", "TopBarSettings", "ActionBarSettings", "TrainingSettings",
+    "GroupFinderSettings" }) do
     ns[name] = UI.ModuleSettings(name, { enabled = false })
 end
 ns.DB = function() return settings end
@@ -236,7 +237,7 @@ Check(not Text("Custom Reminders"), "unfinished module is absent from navigation
 Check(Button("Quality of Life").switch == nil, "navigation does not toggle modules")
 for _, name in ipairs({ "Quality of Life", "Dungeon Journal", "Discovery", "BiS List", "Professions",
     "Gear & Trinkets", "Blessings", "AuraBuffs", "Threat Meter", "Swing Timer", "Smart Reminders",
-    "Macros", "Action Bars" }) do
+    "Macros", "Action Bars", "Group Finder" }) do
     Check(Button(name).icon ~= nil, name .. " is listed with its glyph")
 end
 Check(Head("Top Bar").card.uid == "QoL/Interface:topBar", "Top Bar is a card on QoL Interface, not its own module")
@@ -440,11 +441,12 @@ Click(Button("Dungeon Journal")); Flush()
 switch.scripts.OnClick(); Flush()
 Check(ns.JournalSettings.Get("enabled") == true and confirmText == nil, "switching an addon module on needs no reload")
 switch.scripts.OnClick(); Flush()
-Check(confirmText and confirmText:find("BiS List", 1, true) and confirmText:find("both", 1, true),
-    "switching the journal off says BiS List goes with it")
+Check(confirmText and confirmText:find("BiS List", 1, true) and confirmText:find("Group Finder", 1, true)
+    and confirmText:find("all of them", 1, true), "switching the journal off says BiS List, and the Group Finder that needs it, go with it")
 Check(next(disabled) == nil, "nothing is disabled before the player confirms")
 confirmYes()
-Check(disabled.NaowhForever_DungeonJournal and disabled.NaowhForever_BiS, "confirming disables both addons")
+Check(disabled.NaowhForever_DungeonJournal and disabled.NaowhForever_BiS and disabled.NaowhForever_GroupFinder,
+    "confirming disables all three addons")
 Check(reloadText and reloadText:find("reload", 1, true), "then offers the reload")
 Check(ns.JournalSettings.Get("enabled") == true, "the module's own switch is kept for when it comes back")
 Check(switch._get() == false, "the switch reads off while the disable waits for its reload")

@@ -104,6 +104,12 @@ local MODULES = {
           { name = "Library Books", reuse = true },
           { name = "Sleeping Bag", reuse = true },
       } },
+    { name = "Group Finder", group = "ADVENTURE", navIcon = "search", settings = "GroupFinderSettings",
+      addon = "NaowhForever_GroupFinder", needs = { "NaowhForever_BiS" },
+      subtitle = "Naowh Forever cards and applications on top of Forever's own group finder.",
+      tabs = {
+          { name = "Settings", reuse = true },
+      } },
     -- The sets are a window of their own (open); only their settings live here.
     { name = "Gear & Trinkets", group = "COMBAT", navIcon = "shield", settings = "QoLSettings", enabledKey = "gearSets",
       addon = "NaowhForever_GearSets",
@@ -1506,6 +1512,12 @@ SlashCmdList["NAOWHFOREVER"] = function(msg)
         ns.JournalItemProbe()
     elseif (cmd == "mappins" or cmd == "mapcheck") and ns.DungeonMapCommand then
         ns.DungeonMapCommand(cmd)
+    elseif cmd == "groupfinder" then
+        if ns.GroupFinderCommand then
+            ns.GroupFinderCommand(strtrim(msg):match("^%S+%s*(.-)$"))
+        else
+            ns.Print("Group Finder is switched off. Turn it on under Settings > Modules.")
+        end
     elseif cmd == "badges" and ns.BadgesCommand then
         ns.BadgesCommand(arg)
     elseif cmd == "scrap" and ns.ToggleScrapList then
