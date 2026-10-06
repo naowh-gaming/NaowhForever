@@ -1,7 +1,7 @@
 -------------------------------------------------------------------------------
---  Kinds.lua -- the rows every page has (ns.Shared.Kinds): a section title, a note, a card,
---  and an item in a list you keep (its icon, name, a line under it, a value and an X). See
---  View.lua for what a kind is.
+--  Kinds.lua -- the rows every page has (ns.Shared.Kinds): a section title (shorter on a
+--  view with tightTitles set), a note, a card, and an item in a list you keep (its icon,
+--  name, a line under it, a value and an X). See View.lua for what a kind is.
 -------------------------------------------------------------------------------
 local ns = _G.NaowhForever
 local T = ns.THEME
@@ -12,7 +12,7 @@ local GetItemInfo = C_Item.GetItemInfo
 local GetItemIconByID = C_Item.GetItemIconByID
 
 local St = Shared.Style
-local SECTION_H, INDENT, NOTE_PAD = St.SECTION_H, St.INDENT, St.NOTE_PAD
+local SECTION_H, SECTION_TIGHT_H, INDENT, NOTE_PAD = St.SECTION_H, St.SECTION_TIGHT_H, St.INDENT, St.NOTE_PAD
 local CARD_FILL, CARD_HEADER_H, BORDER_RGB = St.CARD_FILL, St.CARD_HEADER_H, St.BORDER_RGB
 local ICON, ITEM_H, GAP, HOVER = St.ICON, St.ITEM_H, St.GAP, St.HOVER
 local ITEM_TEXT_GAP = 8   -- the icon to its name
@@ -92,7 +92,7 @@ Kinds.section = {
             Parts.LinkColor(link, link.disabled and T.muted or T.accentSoft)
             link.underline:Hide()
         end
-        return SECTION_H
+        return row:GetParent().tightTitles and SECTION_TIGHT_H or SECTION_H
     end,
 }
 
@@ -197,8 +197,9 @@ Kinds.item = {
         row.itemID, row.onRemove, row.onTag = itemID, onRemove, onTag
         row.hover:Hide()
         row.icon:SetTexture(GetItemIconByID(itemID))
-        local name = GetItemInfo(itemID)
-        if not name then view.waitingFor[itemID] = true end
+        local refused = Items.Refused(itemID)
+        local name = not refused and GetItemInfo(itemID) or nil
+        if not (name or refused) then view.waitingFor[itemID] = true end
         local color = Items.QualityColor(itemID) or T.fg
         row.name:SetTextColor(color.r, color.g, color.b)
         row.name:SetText(name or Items.Name(itemID))
@@ -217,6 +218,6 @@ Kinds.item = {
         end
         row.name:SetPoint("RIGHT", right, "LEFT", -GAP, 0)
         row.meta:SetPoint("RIGHT", right, "LEFT", -GAP, 0)
-        return ITEM_H, name == nil
+        return ITEM_H, name == nil and not refused
     end,
 }

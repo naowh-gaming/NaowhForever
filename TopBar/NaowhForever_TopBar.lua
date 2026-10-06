@@ -1089,7 +1089,9 @@ end
 
 local function DragKey(edit, key)
     if InCombatLockdown() then return end
-    if key == "ESCAPE" then
+    -- A drag that ends in combat cannot turn the keyboard off; with no drag, Escape still
+    -- reaches the options window.
+    if key == "ESCAPE" and edit.preview.drag then
         edit:SetPropagateKeyboardInput(false)
         EndDrag(edit.preview, false)
     else
@@ -1218,6 +1220,8 @@ local function NewEditLayer(preview)
     edit:SetAllPoints()
     edit:SetFrameLevel(preview:GetFrameLevel() + EDIT_LEVEL)
     edit:SetScript("OnKeyDown", DragKey)
+    -- Setting an OnKeyDown script turns keyboard input on; it stays off until a drag starts.
+    edit:EnableKeyboard(false)
     edit.release = function()
         if not preview.drag and not InCombatLockdown() then edit:EnableKeyboard(false) end
     end

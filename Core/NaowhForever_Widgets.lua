@@ -1234,237 +1234,6 @@ function W:Note(parent, text, yOffset)
     return Collapsed(parent, fs, h)
 end
 
--- Shared placement controls for ordinary display plates and reminder anchor handles.
--- All geometry belongs to this addon; the guide is positioned numerically on UIParent,
--- never anchored to a protected display such as the Top Bar.
-local placement = { active = false }
-
-local function PlacementPoint(item)
-    local point, relative, relPoint, x, y = item.frame:GetPoint(1)
-    if not point then return end
-    if relative and relative ~= UIParent then
-        local cx, cy = item.frame:GetCenter()
-        local px, py = UIParent:GetCenter()
-        if not cx or not px then return end
-        local scale = item.frame:GetEffectiveScale() / UIParent:GetEffectiveScale()
-        point, relPoint, x, y = "CENTER", "CENTER", cx - px / scale, cy - py / scale
-    end
-    return point, relPoint, x, y
-end
-
-local function SavePlacement(item, point, relPoint, x, y)
-    if not point then point, relPoint, x, y = PlacementPoint(item) end
-    if not point then return end
-    item.frame:ClearAllPoints()
-    item.frame:SetPoint(point, UIParent, relPoint, x, y)
-    item.save({ point = point, relPoint = relPoint, x = x, y = y })
-end
-
-local function StopPlacementDrag(item)
-    if not item or not item.dragging then return end
-    if InCombatLockdown() and item.frame:IsProtected() then placement.pendingDrag = item; return end
-    item.dragging = false
-    item.handle:SetScript("OnUpdate", nil)
-    item.frame:StopMovingOrSizing()
-    SavePlacement(item)
-end
-
-function UI.ClearMoverSelection()
-    StopPlacementDrag(placement.selected)
-    placement.selected = nil
-    if not placement.keys then return end
-    placement.outline:Hide()
-    placement.vertical:Hide()
-    placement.horizontal:Hide()
-    if not InCombatLockdown() then placement.keys:SetPropagateKeyboardInput(true) end
-end
-
-function UI.RefreshMoverSelection()
-    local item = placement.selected
-    if not item or InCombatLockdown() then return end
-    if not item.handle:IsVisible() then UI.ClearMoverSelection(); return end
-    local frame = item.frame
-    if not frame:GetPoint(1) then return end
-    local scale = item.handle:GetEffectiveScale() / UIParent:GetEffectiveScale()
-    local left, bottom = item.handle:GetLeft(), item.handle:GetBottom()
-    if left and bottom then
-        local width, height = item.handle:GetWidth() * scale + 4, item.handle:GetHeight() * scale + 4
-        left, bottom = left * scale - 2, bottom * scale - 2
-        placement.outline:ClearAllPoints()
-        placement.outline:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", left, bottom)
-        placement.outline:SetSize(width, height)
-        placement.outline:Show()
-    end
-    local cx, cy = frame:GetCenter()
-    if cx and cy then
-        local ratio = frame:GetEffectiveScale() / UIParent:GetEffectiveScale()
-        placement.vertical:ClearAllPoints()
-        placement.vertical:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", cx * ratio, 0)
-        placement.vertical:SetSize(1, UIParent:GetHeight())
-        placement.horizontal:ClearAllPoints()
-        placement.horizontal:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", 0, cy * ratio)
-        placement.horizontal:SetSize(UIParent:GetWidth(), 1)
-        placement.vertical:Show()
-        placement.horizontal:Show()
-    end
-end
-
-local function PlacementKey(self, key)
-    if InCombatLockdown() then return end
-    self:SetPropagateKeyboardInput(true)
-    local item = placement.selected
-    if not placement.active or not item or item.dragging or GetCurrentKeyBoardFocus() then return end
-    if key == "ESCAPE" then UI.ClearMoverSelection(); self:SetPropagateKeyboardInput(false); return end
-    local dx = key == "LEFT" and -1 or key == "RIGHT" and 1 or 0
-    local dy = key == "DOWN" and -1 or key == "UP" and 1 or 0
-    if dx == 0 and dy == 0 then return end
-    if not item.handle:IsVisible() then UI.ClearMoverSelection(); return end
-    local step = IsShiftKeyDown() and 10 or 1
-    -- Normalize the uncommon non-screen anchor through the same path used by dragging.
-    local point, relPoint, x, y = PlacementPoint(item)
-    if not point then return end
-    -- Save the requested offsets directly; layout readback can round fractional points.
-    SavePlacement(item, point, relPoint, x + dx * step, y + dy * step)
-    UI.RefreshMoverSelection()
-    self:SetPropagateKeyboardInput(false)
-end
-
-function UI.BeginMoverMode()
-    placement.active = true
-    if not placement.keys then
-        local keys = CreateFrame("Frame", nil, UIParent)
-        placement.keys = keys
-        keys:SetFrameStrata("FULLSCREEN_DIALOG")
-        keys:SetFrameLevel(500)
-        keys:SetAllPoints()
-        keys:SetScript("OnKeyDown", PlacementKey)
-        keys:SetScript("OnKeyUp", function(self)
-            if not InCombatLockdown() then self:SetPropagateKeyboardInput(true) end
-        end)
-        placement.outline = CreateFrame("Frame", nil, UIParent)
-        placement.outline:SetFrameStrata("FULLSCREEN_DIALOG")
-        placement.outline:SetFrameLevel(499)
-        ns.Solid(placement.outline, "BACKGROUND", { r = 1, g = 1, b = 1 }, 0.10):SetAllPoints()
-        ns.Border(placement.outline, { r = 1, g = 1, b = 1 })
-        local guides = CreateFrame("Frame", nil, UIParent)
-        guides:SetFrameStrata("BACKGROUND")
-        guides:SetFrameLevel(2)
-        placement.vertical = ns.Solid(guides, "OVERLAY", T.accentSoft, 0.9)
-        placement.horizontal = ns.Solid(guides, "OVERLAY", T.accentSoft, 0.9)
-        -- Keep selection geometry aligned when owners resize or reposition their previews.
-        local refreshElapsed = 0
-        keys:SetScript("OnUpdate", function(_, elapsed)
-            refreshElapsed = refreshElapsed + elapsed
-            if refreshElapsed < 0.05 then return end
-            refreshElapsed = 0
-            if placement.active and placement.selected then UI.RefreshMoverSelection() end
-        end)
-        keys:SetScript("OnEvent", function(_, event)
-            if event == "PLAYER_REGEN_DISABLED" then
-                UI.ClearMoverSelection()
-                keys:Hide()
-            else
-                StopPlacementDrag(placement.pendingDrag)
-                placement.pendingDrag = nil
-                if placement.active then UI.BeginMoverMode() else keys:UnregisterAllEvents() end
-            end
-        end)
-    end
-    if not InCombatLockdown() then
-        placement.keys:EnableKeyboard(true)
-        placement.keys:SetPropagateKeyboardInput(true)
-    end
-    UI.ClearMoverSelection()
-    placement.keys:RegisterEvent("PLAYER_REGEN_DISABLED")
-    placement.keys:RegisterEvent("PLAYER_REGEN_ENABLED")
-    placement.keys:SetShown(not InCombatLockdown())
-end
-
-function UI.EndMoverMode()
-    placement.active = false
-    UI.ClearMoverSelection()
-    if placement.keys then
-        placement.keys:Hide()
-        if not InCombatLockdown() then placement.keys:EnableKeyboard(false) end
-        if not placement.pendingDrag then placement.keys:UnregisterAllEvents() end
-    end
-end
-
-function UI.SelectMover(handle)
-    if not placement.active or InCombatLockdown() or not handle:IsVisible() then return end
-    local item = handle._placement
-    if not item then return end
-    if placement.selected ~= item then UI.ClearMoverSelection() end
-    placement.selected = item
-    UI.RefreshMoverSelection()
-end
-
-function UI.StartMoverDrag(handle)
-    if not placement.active or InCombatLockdown() or not handle:IsVisible() then return end
-    local item = handle._placement
-    UI.SelectMover(handle)
-    item.dragging = true
-    item.frame:StartMoving()
-    handle:SetScript("OnUpdate", function()
-        if not InCombatLockdown() then UI.RefreshMoverSelection() end
-    end)
-end
-
-function UI.StopMoverDrag(handle)
-    StopPlacementDrag(handle._placement)
-    UI.RefreshMoverSelection()
-end
-
--- Out of Unlock Mode and onto the element's options: the options window draws over the
--- movers, so the two cannot share the screen.
-local function OpenElementOptions(item)
-    ns.HideRaidReminderAnchorConfig()
-    ns.OpenOptionsWindow(item.page)
-    if item.feature then UI.GoToSetting(item.page, nil, item.feature) end
-end
-
--- page: the options page that sets the element up ("QoL/General"); feature: the section on
--- it to open, if it has one.
-function UI.BindMover(handle, frame, label, onMoved, page, feature)
-    local item = { handle = handle, frame = frame, label = label, save = onMoved, page = page, feature = feature }
-    handle._placement = item
-    handle:EnableMouse(true)
-    handle:RegisterForDrag("LeftButton")
-    handle:SetScript("OnMouseDown", function(_, button)
-        if button == "LeftButton" then
-            UI.SelectMover(handle)
-        elseif button == "RightButton" and page and not InCombatLockdown() then
-            MenuUtil.CreateContextMenu(handle, function(_, root)
-                root:CreateTitle(label)
-                root:CreateButton("Element Options", function() OpenElementOptions(item) end)
-            end)
-        end
-    end)
-    handle:SetScript("OnDragStart", function() UI.StartMoverDrag(handle) end)
-    handle:SetScript("OnDragStop", function() UI.StopMoverDrag(handle) end)
-    handle:HookScript("OnHide", function()
-        StopPlacementDrag(item)
-        if placement.selected == item then UI.ClearMoverSelection() end
-    end)
-end
-
--- Unlock Mode plate for an on-screen display. Hidden until the caller shows it. page and
--- feature: where its options are (UI.BindMover).
-function UI.AttachMover(frame, label, onMoved, page, feature)
-    local mover = CreateFrame("Frame", nil, frame)
-    mover:SetAllPoints()
-    mover:SetFrameLevel(frame:GetFrameLevel() + 20)
-    ns.Solid(mover, "BACKGROUND", T.accent, 0.35):SetAllPoints()
-    ns.Border(mover, T.accent)
-    local text = ns.Font(mover, 12, "OUTLINE")
-    text:SetPoint("CENTER")
-    text:SetText(label)
-    mover.text = text
-    UI.BindMover(mover, frame, label, onMoved, page, feature)
-    mover:Hide()
-    return mover
-end
-
 -- Font dropdown data: "" follows the Addon Font, then every SharedMedia font. A saved font
 -- that has since gone missing stays listed so the dropdown does not show a blank.
 -------------------------------------------------------------------------------
@@ -1474,7 +1243,62 @@ end
 -- one with its arrow buttons: a track and a thumb sized to how much of the content shows,
 -- dragged, clicked or moved with the mouse wheel. It hides while everything fits. The bar
 -- sits to the right of the frame, width + gap inside whatever the frame is anchored in.
-local SCROLL_STEP = 40
+local SCROLL_STEP = 60
+local GLIDE_RATE = 14   -- how fast a wheel glide closes on its target; higher is snappier
+local GLIDE_DONE = 0.5  -- a glide this close to its target lands on it
+
+-- Rounds toward the target on the screen's pixel grid, so text never rests between pixels.
+local function OnPixel(scroll, value, target)
+    local px = ns.OnePixel(scroll)
+    local snapped = target > value and math.ceil(value / px) * px or math.floor(value / px) * px
+    if target > value then return math.min(snapped, target) end
+    return math.max(snapped, target)
+end
+
+local function StopGlide(scroll)
+    scroll._gliding = nil
+    scroll:SetScript("OnUpdate", nil)
+end
+
+local function Glide(self, elapsed)
+    local at = self:GetVerticalScroll()
+    -- Moved by something else (a page change, a drag on the bar): that move wins.
+    if math.abs(at - self._glideAt) > GLIDE_DONE then return StopGlide(self) end
+    local target = math.max(0, math.min(self:GetVerticalScrollRange(), self._glideTo))
+    local nextAt
+    if math.abs(target - at) <= GLIDE_DONE then
+        nextAt = target
+        StopGlide(self)
+    else
+        nextAt = OnPixel(self, at + (target - at) * (1 - math.exp(-GLIDE_RATE * elapsed)), target)
+    end
+    self._glideAt = nextAt
+    self:SetVerticalScroll(nextAt)
+end
+
+-- The mouse wheel eases the frame toward where it was sent instead of jumping there. Each
+-- notch is `step` further on from where the glide is headed, so quick notches add up.
+-- The OnUpdate runs only while a glide is moving.
+function UI.SmoothWheel(scroll, step)
+    step = step or SCROLL_STEP
+    scroll:EnableMouseWheel(true)
+    scroll:SetScript("OnMouseWheel", function(self, delta)
+        local range = self:GetVerticalScrollRange()
+        if range <= 0 then return end
+        -- A glide something else has since moved is over, even before its next tick notices.
+        local at = self:GetVerticalScroll()
+        local continuing = self._gliding and math.abs(at - self._glideAt) <= GLIDE_DONE
+        local from = continuing and self._glideTo or at
+        local px = ns.OnePixel(self)
+        local target = math.max(0, math.min(range, from - delta * step))
+        self._glideTo = math.min(range, math.floor(target / px + 0.5) * px)
+        self._glideAt = at
+        if not self._gliding then
+            self._gliding = true
+            self:SetScript("OnUpdate", Glide)
+        end
+    end)
+end
 
 function UI.SlimScroll(parent, width, gap)
     width, gap = width or 6, gap or 6
@@ -1508,10 +1332,9 @@ function UI.SlimScroll(parent, width, gap)
     scroll:SetScript("OnVerticalScroll", function(_, offset)
         if math.abs(bar:GetValue() - offset) > 0.5 then bar:SetValue(offset) end
     end)
-    scroll:EnableMouseWheel(true)
-    scroll:SetScript("OnMouseWheel", function(_, delta)
-        bar:SetValue(bar:GetValue() - delta * SCROLL_STEP)
-    end)
+    UI.SmoothWheel(scroll)
+    bar:EnableMouseWheel(true)
+    bar:SetScript("OnMouseWheel", function(_, delta) scroll:GetScript("OnMouseWheel")(scroll, delta) end)
     scroll.bar = bar
     return scroll
 end
@@ -1568,9 +1391,10 @@ local function CopyPlain(v)
 end
 
 -- What a profile string carries of a module: each setting it has a default for, as that type
--- (not the lists it keeps, which default to empty), and its Unlock Mode positions.
+-- (not the lists it keeps, which default to empty), and its Unlock Mode positions and anchors.
 local function Shareable(defaults, k, v)
     if type(k) ~= "string" then return false end
+    if k == "anchors" then return type(v) == "table" and Plain(v, 0) end
     local d = defaults[k]
     if d == nil then return k:find("Pos$") ~= nil and type(v) == "table" and Plain(v, 0) end
     if type(v) ~= type(d) then return false end
@@ -1578,9 +1402,36 @@ local function Shareable(defaults, k, v)
     return true
 end
 
+-- Every module's defaults are kept in the account at login, so a module switched off (its addon
+-- not loaded, so it registered none) still has its settings checked, exported and imported.
+local function SavedDefaults()
+    local account = ns.AccountSettings()
+    if type(account.moduleDefaults) ~= "table" then account.moduleDefaults = {} end
+    return account.moduleDefaults
+end
+
+local function AllDefaults()
+    local all = {}
+    for key, defaults in pairs(SavedDefaults()) do all[key] = defaults end
+    for key, defaults in pairs(moduleDefaults) do all[key] = defaults end
+    return all
+end
+
+-- At login, once every module that is on has loaded (Window.lua).
+function ns.SaveModuleDefaults()
+    local saved = SavedDefaults()
+    for key, defaults in pairs(moduleDefaults) do
+        local copy = {}
+        for k, v in pairs(defaults) do
+            if type(k) == "string" and Plain(v, 1) then copy[k] = CopyPlain(v) end
+        end
+        saved[key] = copy
+    end
+end
+
 function ns.ExportModuleSettings(root)
     local out
-    for key, defaults in pairs(moduleDefaults) do
+    for key, defaults in pairs(AllDefaults()) do
         local t = root[key]
         if type(t) == "table" then
             for k, v in pairs(t) do
@@ -1595,10 +1446,15 @@ function ns.ExportModuleSettings(root)
     return out
 end
 
+-- A module's defaults by its settings key; nil for a key no module has registered.
+function ns.ModuleDefaults(key)
+    return moduleDefaults[key] or SavedDefaults()[key]
+end
+
 function ns.ImportModuleSettings(root, modules)
     if type(root) ~= "table" or type(modules) ~= "table" then return end
     for key, values in pairs(modules) do
-        local defaults = moduleDefaults[key]
+        local defaults = ns.ModuleDefaults(key)
         if defaults and type(values) == "table" then
             if type(root[key]) ~= "table" then root[key] = {} end
             for k, v in pairs(values) do
@@ -1673,6 +1529,8 @@ function UI.ModuleSettings(key, defaults)
     end
     return S
 end
+
+ns.UnlockModeSettings = UI.ModuleSettings("unlockMode", { anchors = {}, snap = true })
 
 -------------------------------------------------------------------------------
 --  Sounds

@@ -239,7 +239,7 @@ env._G = env
 Load({
     "Shared/Shared.lua", "Shared/Data/Forever.lua", "Shared/Style.lua", "Shared/Items.lua", "Shared/Places.lua",
     "Shared/Parts.lua", "Shared/Window.lua", "Shared/View.lua", "Shared/Kinds.lua",
-    "Macros/NaowhForever_MacroText.lua", "Macros/NaowhForever_Macros.lua", "Macros/NaowhForever_MacroWindow.lua",
+    "NaowhForever_Macros/NaowhForever_MacroText.lua", "NaowhForever_Macros/NaowhForever_Macros.lua", "NaowhForever_Macros/NaowhForever_MacroWindow.lua",
 }, env)
 
 local function Window()
@@ -343,6 +343,10 @@ local narrow = window.code.h
 window.editor.scroll.scripts.OnSizeChanged(window.editor.scroll, 600)
 check("the editor draws again once the page has its width", page.w == 600 and window.code.h < narrow)
 measure.GetStringHeight = nil
+
+-- One cursor, the game's own: the editor draws no caret of its own and runs nothing every frame.
+check("one cursor: no caret of our own, nothing every frame", window.code.scripts.OnEditFocusGained == nil
+    and window.code.scripts.OnUpdate == nil and window.code.scripts.OnCursorChanged ~= nil)
 
 -- The inspector's panes.
 for _, key in ipairs({ "conditions", "commands", "icons", "explain" }) do window.inspector.Show(key) end

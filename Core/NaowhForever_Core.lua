@@ -1,6 +1,8 @@
 -------------------------------------------------------------------------------
 --  NaowhForever_Core.lua -- theme, chrome primitives, DB and profile plumbing.
 --  Standalone addon: no EllesmereUI dependency.
+--  ns.FEATURE_BADGES: 0 hides supporter badges, badge settings and support mentions until they
+--  launch; the team's badges still show, on their defaults.
 -------------------------------------------------------------------------------
 local ADDON_NAME = ...
 
@@ -23,7 +25,9 @@ end
 -- Bumped by hand on every code change sent to a tester and printed beside the TOC version,
 -- which only moves on release. A report naming a stamp the reporter was not sent comes from
 -- a client that was not reloaded after the files changed.
-ns.CODE_BUILD = "0.5.20-beta"
+ns.CODE_BUILD = "0.5.21-beta"
+
+ns.FEATURE_BADGES = 0
 
 -- Naowh's own scheme: dark grey with his blue (#0091ed) as the single accent.
 ns.THEME = {
@@ -894,12 +898,15 @@ function ns.Confirm(text, onYes, onNo, yesText, noText)
     head:SetWidth(310)
     head:SetText(text)
     local w = (yesText or noText) and CONFIRM_WIDE or CONFIRM_W
-    UI.KeepButton(panel, "yes", yesText or "Yes", w, 26, function() dimmer:Hide(); onYes() end)
-        :SetPoint("BOTTOM", panel, "BOTTOM", -(w / 2 + 4), 14)
-    UI.KeepButton(panel, "no", noText or "No", w, 26, function()
+    UI.KeepButton(panel, "yes", yesText or "Yes", w, 26, function()
+        dimmer.onClose = nil
         dimmer:Hide()
-        if onNo then onNo() end
-    end):SetPoint("BOTTOM", panel, "BOTTOM", w / 2 + 4, 14)
+        onYes()
+    end):SetPoint("BOTTOM", panel, "BOTTOM", -(w / 2 + 4), 14)
+    UI.KeepButton(panel, "no", noText or "No", w, 26, function() dimmer:Hide() end)
+        :SetPoint("BOTTOM", panel, "BOTTOM", w / 2 + 4, 14)
+    -- No, Escape and a newer confirm taking this one's place all count as no.
+    dimmer.onClose = onNo
     dimmer:Show()
 end
 

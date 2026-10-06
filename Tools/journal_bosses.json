@@ -1,8 +1,8 @@
 {
   "_about": [
     "The Dungeon Journal's bosses, kept by hand; Tools/build_journal.py turns this into one Lua",
-    "file per dungeon in DungeonJournal/Data/Dungeons. Dungeons in level order, named as the",
-    "client and DungeonJournal/Data/Quests.lua name them. Each wing lists its bosses in kill order,",
+    "file per dungeon in NaowhForever_DungeonJournal/Data/Dungeons. Dungeons in level order, named as the",
+    "client and NaowhForever_DungeonJournal/Data/Quests.lua name them. Each wing lists its bosses in kill order,",
     "named as Wowhead Forever names the NPC; npcs pins an ID where the name is ambiguous. A",
     "boss listed under rare is optional and may not spawn. zone is the Wowhead zone, guide a",
     "Wowhead guide with a Loot tab per boss for dungeons whose bosses have no drop data yet.",
@@ -81,10 +81,10 @@
         "rare": ["Bruegal Ironknuckle"] } ] },
     { "key": "ExcavationSite", "name": "Excavation Site: Wetlands", "new": true, "zone": 16732,
       "npcs": { "Saltspine": 260322, "Shadetooth": 260325, "Highland Horror": 260808, "Relic Guardian": 260326 },
-      "entranceZone": 11, "entrance": { "map": 1437, "x": 48.1, "y": 56.5, "source": "Forever guide sites" },
+      "entranceZone": 11, "entrance": { "map": 1437, "x": 53.4, "y": 65.3, "source": "Wowhead Forever guide: the meeting stone, where the road up to the portal starts" },
       "add": { "Relic Guardian": [273028, 273029], "Saltspine": [273022], "Shadetooth": [273027] },
       "wings": [
-      { "bosses": ["Saltspine", "Shadetooth", "Highland Horror", "Relic Guardian"] } ] },
+      { "bosses": ["Saltspine", "Shadetooth", "Highland Horror", "Relic Guardian"], "quest": ["Highland Horror"] } ] },
     { "key": "Gnomeregan", "name": "Gnomeregan", "wowsrc": "gnomeregan", "zone": 721,
       "entranceZone": 1, "entrance": { "map": 1426, "x": 24.0, "y": 40.0, "source": "Warcraft Tavern classic guide, front entrance; portal (17.5, 39.1) further in" },
       "wings": [

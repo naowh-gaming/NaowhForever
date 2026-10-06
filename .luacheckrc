@@ -13,14 +13,14 @@ max_line_length = false
 -- key bindings, map pin mixins, popups, the Global Font setting's font paths, and the table
 -- RestedXP imports its themes from.
 globals = {
-    "NaowhForever", "NaowhForeverDB", "NaowhUI_SmartRemindersDB",
+    "NaowhForever", "NaowhForever_API", "NaowhForeverDB", "NaowhUI_SmartRemindersDB",
     "NaowhForever_OnCompartmentClick", "NaowhForever_BagSpacePickUp", "NaowhForever_BossLoot", "NaowhForever_ToggleJournal", "NaowhForever_ToggleBis",
     "SLASH_NAOWHFOREVER1", "SLASH_NAOWHFOREVER2", "SLASH_NAOWHFOREVER3",
     "SLASH_NAOWHFOREVER4", "SLASH_NAOWHFOREVER5",
     "SLASH_NAOWHFOREVERCOPY1", "SLASH_NAOWHFOREVERCOPY2", "SLASH_NAOWHUITANK1", "SLASH_NAOWHFOREVERAIM1",
     "BINDING_HEADER_NAOWHFOREVER", "BINDING_NAME_NAOWHFOREVER_BAGSPACE_PICKUP",
     "BINDING_NAME_NAOWHFOREVER_BOSSLOOT", "BINDING_NAME_NAOWHFOREVER_JOURNAL", "BINDING_NAME_NAOWHFOREVER_BIS",
-    "NaowhForeverTownPinMixin", "NaowhForeverZoneLinkPinMixin", "NaowhForeverLibraryPinMixin", "NaowhForeverSleepingBagPinMixin",
+    "NaowhForeverTownPinMixin", "NaowhForeverZoneLinkPinMixin", "NaowhForeverUnexploredPinMixin", "NaowhForeverLibraryPinMixin", "NaowhForeverSleepingBagPinMixin",
     "SlashCmdList", "hash_SlashCmdList", "StaticPopupDialogs",
     "STANDARD_TEXT_FONT", "UNIT_NAME_FONT", "DAMAGE_TEXT_FONT", "RXPGuides_Themes",
 }
@@ -36,9 +36,9 @@ read_globals = {
     "GameMenuFrame", "GAMEMENU_OPTIONS",
     "CharacterFrame", "CharacterFrameTitleText", "CharacterLevelText", "CharacterLevelTextBackground",
     "CharacterModelScene", "CharacterStatsPaneScrollBox", "CharacterFrameRightPaneHostStoneBg", "ScrollUtil",
-    "CR_HIT_MELEE", "GetBlockChance", "GetCombatRatingBonus", "GetCritChance", "GetDodgeChance",
+    "CR_HIT_MELEE", "CR_HIT_SPELL", "GetBlockChance", "GetCombatRatingBonus", "GetCritChance", "GetDodgeChance",
     "GetHitModifier", "GetManaRegen", "GetMeleeHaste", "GetSpellBonusDamage", "GetSpellBonusHealing",
-    "GetSpellCritChance", "UnitArmor", "UnitAttackPower", "UnitAttackSpeed", "UnitDamage",
+    "GetSpellCritChance", "GetSpellHitModifier", "UnitArmor", "UnitAttackPower", "UnitAttackSpeed", "UnitDamage",
     "UnitDefenseSkill", "UnitRangedAttackPower",
     "CheckInteractDistance", "ClearInspectPlayer", "InspectFrame", "NotifyInspect",
     "ChatEdit_InsertLink", "ChatFrame1EditBox", "ChatFrameUtil", "CinematicFrame_CancelCinematic",
@@ -64,7 +64,7 @@ read_globals = {
     "EventRegistry", "EventToastManagerFrame", "EventUtil", "ScrollBoxListMixin",
     "FACTION_STANDING_INCREASED", "ChatFontNormal", "GameFontHighlight", "GameFontNormal", "GameTooltip",
     "GameTooltipTextLeft1", "GameTooltip_Hide", "GetActionInfo", "GetActiveTitle",
-    "GetActionTexture", "GetAddOnMemoryUsage", "GetBinding", "GetBindingAction", "GetBindingKey", "GetBindingName",
+    "GetActionTexture", "GetAddOnMemoryUsage", "GetBinding", "GetBindingAction", "GetBindingKey", "GetBindingName", "GetBuildInfo",
     "GetBindingText", "GetBindLocation", "GetChannelList", "GetClassInfo", "GetCurrentBindingSet",
     "GetCurrentArenaSeason", "GetCurrentKeyBoardFocus", "GetCurrentRegion", "GetText", "UnitSex",
     "GetCursorInfo", "GetCursorPosition", "GetCVar",
@@ -102,6 +102,8 @@ read_globals = {
     "LOCALIZED_CLASS_NAMES_MALE", "LoggingCombat", "LootFrame", "LootSlot",
     "LOOT_ITEM_PUSHED_SELF", "LOOT_ITEM_PUSHED_SELF_MULTIPLE", "LOOT_ITEM_SELF",
     "LOOT_ITEM_SELF_MULTIPLE", "MainMenuBarVehicleLeaveButton", "MapCanvasDataProviderMixin", "MapCanvasPinMixin",
+    "GetMinimapShape", "GetPlayerFacing", "Minimap",
+    "C_MapExplorationInfo", "CreateTexturePool",
     "MAX_PARTY_MEMBERS", "MAX_RAID_MEMBERS", "Menu", "MenuUtil", "MenuVariants",
     "MerchantFrame", "Mixin", "MovieFrame", "MuteSoundFile", "NumTaxiNodes",
     "NUM_BAG_SLOTS", "NUM_CHAT_WINDOWS", "NUM_PET_ACTION_SLOTS",
@@ -147,8 +149,8 @@ files["Tools/regression/"] = {
 -- an entry once its warning is fixed; don't add new ones to get a check passing.
 files["Core/NaowhForever_Core.lua"] = { ignore = { "432/key" } }
 files["DungeonQuests/NaowhForever_DungeonQuests.lua"] = { ignore = { "421/id" } }
-files["Professions/NaowhForever_Professions.lua"] = { ignore = { "431/rows", "421/bar", "431/W" } }
-files["Professions/NaowhForever_RecipeFinder.lua"] = { ignore = { "431/list" } }
+files["NaowhForever_Professions/NaowhForever_Professions.lua"] = { ignore = { "431/rows", "421/bar", "431/W" } }
+files["NaowhForever_Professions/NaowhForever_RecipeFinder.lua"] = { ignore = { "431/list" } }
 files["QoL/NaowhForever_QoL.lua"] = { ignore = { "211/DRUID_FORM_VALUES", "211/DRUID_FORM_ORDER" } }
 files["SmartReminders/NaowhForever_Bosses.lua"] = { ignore = { "311/y", "431/set" } }
 files["Tools/regression/test-buff-reminders.lua"] = { ignore = { "432/self" } }
