@@ -20,7 +20,7 @@ globals = {
     "SLASH_NAOWHFOREVERCOPY1", "SLASH_NAOWHFOREVERCOPY2", "SLASH_NAOWHUITANK1", "SLASH_NAOWHFOREVERAIM1",
     "BINDING_HEADER_NAOWHFOREVER", "BINDING_NAME_NAOWHFOREVER_BAGSPACE_PICKUP",
     "BINDING_NAME_NAOWHFOREVER_BOSSLOOT", "BINDING_NAME_NAOWHFOREVER_JOURNAL", "BINDING_NAME_NAOWHFOREVER_BIS",
-    "NaowhForeverTownPinMixin", "NaowhForeverZoneLinkPinMixin", "NaowhForeverLibraryPinMixin", "NaowhForeverSleepingBagPinMixin",
+    "NaowhForeverTownPinMixin", "NaowhForeverZoneLinkPinMixin", "NaowhForeverUnexploredPinMixin", "NaowhForeverLibraryPinMixin", "NaowhForeverSleepingBagPinMixin",
     "SlashCmdList", "hash_SlashCmdList", "StaticPopupDialogs",
     "STANDARD_TEXT_FONT", "UNIT_NAME_FONT", "DAMAGE_TEXT_FONT", "RXPGuides_Themes",
 }
@@ -102,6 +102,8 @@ read_globals = {
     "LOCALIZED_CLASS_NAMES_MALE", "LoggingCombat", "LootFrame", "LootSlot",
     "LOOT_ITEM_PUSHED_SELF", "LOOT_ITEM_PUSHED_SELF_MULTIPLE", "LOOT_ITEM_SELF",
     "LOOT_ITEM_SELF_MULTIPLE", "MainMenuBarVehicleLeaveButton", "MapCanvasDataProviderMixin", "MapCanvasPinMixin",
+    "GetMinimapShape", "GetPlayerFacing", "Minimap",
+    "C_MapExplorationInfo", "CreateTexturePool",
     "MAX_PARTY_MEMBERS", "MAX_RAID_MEMBERS", "Menu", "MenuUtil", "MenuVariants",
     "MerchantFrame", "Mixin", "MovieFrame", "MuteSoundFile", "NumTaxiNodes",
     "NUM_BAG_SLOTS", "NUM_CHAT_WINDOWS", "NUM_PET_ACTION_SLOTS",
@@ -147,8 +149,8 @@ files["Tools/regression/"] = {
 -- an entry once its warning is fixed; don't add new ones to get a check passing.
 files["Core/NaowhForever_Core.lua"] = { ignore = { "432/key" } }
 files["DungeonQuests/NaowhForever_DungeonQuests.lua"] = { ignore = { "421/id" } }
-files["Professions/NaowhForever_Professions.lua"] = { ignore = { "431/rows", "421/bar", "431/W" } }
-files["Professions/NaowhForever_RecipeFinder.lua"] = { ignore = { "431/list" } }
+files["NaowhForever_Professions/NaowhForever_Professions.lua"] = { ignore = { "431/rows", "421/bar", "431/W" } }
+files["NaowhForever_Professions/NaowhForever_RecipeFinder.lua"] = { ignore = { "431/list" } }
 files["QoL/NaowhForever_QoL.lua"] = { ignore = { "211/DRUID_FORM_VALUES", "211/DRUID_FORM_ORDER" } }
 files["SmartReminders/NaowhForever_Bosses.lua"] = { ignore = { "311/y", "431/set" } }
 files["Tools/regression/test-buff-reminders.lua"] = { ignore = { "432/self" } }
