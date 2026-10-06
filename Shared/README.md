@@ -18,7 +18,7 @@ Shared/
                waiting on item data, the items the server would not send
   Bags.lua     the item buttons in your bags, the game's and EllesmereUI's, for the marks
                painted on them (Bag Marks, Scrap Marker)
-  Roster.lua   our lines on a member's tooltip in the Guild & Communities list (Badges, Naowh Score)
+  Roster.lua   our part of a player's tooltip in the Guild & Communities and Friends lists (Badges, Naowh Score)
   Places.lua   zones by name, and showing one on the world map
   Played.lua   the character's /played time, asked for once with the chat print muted (XP Bar, XP per Hour)
   Parts.lua    components: rank stars, item icon and its check, an item's slot marks (item level, star, Forever's mark), links, icon buttons, the

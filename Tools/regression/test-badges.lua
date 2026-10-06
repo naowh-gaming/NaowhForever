@@ -299,18 +299,18 @@ do  -- chat, card, tooltip
     check("and when the next player has no badge", not plate:IsShown())
 
     local row, owned = {}, true
-    env.GameTooltip.IsOwned = function(_, frame) return owned and frame == row end
-    check("the guild list's tooltip is asked for once", #s.roster == 1)
-    s.roster[1](env.GameTooltip, "Player-1-LEG", { guid = "Player-1-LEG" }, row)
-    check("a badged member in the guild list: the same plate", plate:IsShown() and #made == 1
+    s.ns.Shared.Roster.Showing = function(r) return owned and r == row end
+    check("the guild and friends lists' tooltips are asked for once", #s.roster == 1)
+    s.roster[1](env.GameTooltip, "Player-1-LEG", { guid = "Player-1-LEG" }, row, env.GameTooltip)
+    check("a badged player in the guild or friends list: the same plate", plate:IsShown() and #made == 1
         and plate.title.text:find("Legendary Patron", 1, true))
     plate.scripts.OnUpdate(plate)
     check("it stays while the tooltip is that member's", plate:IsShown())
     owned = false
     plate.scripts.OnUpdate(plate)
-    check("and goes when the tooltip leaves the row", not plate:IsShown())
+    check("and goes when the list's tooltip leaves the row", not plate:IsShown())
     owned = true
-    s.roster[1](env.GameTooltip, "Player-1-NOBADGE", { guid = "Player-1-NOBADGE" }, row)
+    s.roster[1](env.GameTooltip, "Player-1-NOBADGE", { guid = "Player-1-NOBADGE" }, row, env.GameTooltip)
     check("a member with no badge: no plate", not plate:IsShown())
     env.GameTooltip, env.CreateFrame = nil, create
 

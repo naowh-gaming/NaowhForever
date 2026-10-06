@@ -351,7 +351,7 @@ end
 -- was reported failing on secret values as tainted by Naowh Forever.
 local function PlateUpdate()
     if plateRow then
-        if not (GameTooltip:IsShown() and GameTooltip:IsOwned(plateRow)) then plate:Hide() end
+        if not ns.Shared.Roster.Showing(plateRow) then plate:Hide() end
         return
     end
     local data = GameTooltip:IsShown() and GameTooltip:GetPrimaryTooltipData()
@@ -412,11 +412,11 @@ local function AddTooltipLine(tooltip, data)
     end
 end
 
-local function AddRosterPlate(tooltip, guid, _, row)
+local function AddRosterPlate(_, guid, _, row, anchor)
     if not Setting("badgeTooltip") then return end
     local entry = EntryOf(guid)
     local tier = TierOf(entry)
-    if tier then ShowPlate(tooltip, guid, entry, tier, row) end
+    if tier then ShowPlate(anchor, guid, entry, tier, row) end
 end
 
 -------------------------------------------------------------------------------
