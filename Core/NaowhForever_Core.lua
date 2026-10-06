@@ -884,6 +884,7 @@ end
 
 -- Confirm for a reload: Reload UI runs the game's own /reload (see Reload UI above).
 local CONFIRM_W, CONFIRM_WIDE = 96, 150
+local CONFIRM_H, CONFIRM_ROOM = 110, 74
 
 function ns.ConfirmReload(text)
     local UI = ns.UI
@@ -901,11 +902,12 @@ end
 
 function ns.Confirm(text, onYes, onNo, yesText, noText)
     local UI = ns.UI
-    local dimmer, panel = ns.MakeModal(340, 110, "confirm")
+    local dimmer, panel = ns.MakeModal(340, CONFIRM_H, "confirm")
     local head = UI.KeepFont(panel, "head", 13, nil)
     head:SetPoint("TOP", 0, -18)
     head:SetWidth(310)
     head:SetText(text)
+    panel:SetHeight(math.max(CONFIRM_H, head:GetStringHeight() + CONFIRM_ROOM))
     local w = (yesText or noText) and CONFIRM_WIDE or CONFIRM_W
     UI.KeepButton(panel, "yes", yesText or "Yes", w, 26, function()
         dimmer.onClose = nil
