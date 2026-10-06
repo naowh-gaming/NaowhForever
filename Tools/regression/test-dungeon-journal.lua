@@ -3417,6 +3417,20 @@ do
     mine.timers[1]()
     check("and the first timer, run late, does nothing", Printed(mine):find("Emmy shared", 1, true))
 
+    -- A flood of asks: a few are answered, the rest dropped; what is not a quest ID is skipped.
+    hers.clock = hers.clock + 60
+    local printedBefore, sentBefore = #hers.printed, #hers.sent
+    for _ = 1, 20 do
+        emmyFrame.scripts.OnEvent(emmyFrame, "CHAT_MSG_ADDON", "NaowhJournal",
+            "1 A " .. EMMY .. " " .. ME .. " 99999999999999999999,1e5,|cff", "PARTY", "Die Man-Realm")
+    end
+    check("twenty asks in a moment: four answered, the rest dropped",
+        #hers.sent - sentBefore == 4 and #hers.printed - printedBefore == 4 and #hers.pushed == 2)
+    emmyFrame.scripts.OnEvent(emmyFrame, "CHAT_MSG_ADDON", "NaowhJournal",
+        "1 A " .. EMMY .. " Player-1-" .. string.rep("A", 200) .. " 6981", "PARTY", "Die Man-Realm")
+    check("an asker that is not a GUID is not answered", #hers.sent - sentBefore == 4)
+    hers.sent = {}
+
     -- In an encounter the game passes no addon messages.
     mine.locked = true
     asker.Journal.Sharing.Ask(entry)

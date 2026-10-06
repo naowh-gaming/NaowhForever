@@ -8,7 +8,8 @@
 --  burst sends once, SEND_DELAY after it), on joining a group, and in answer to a request; a
 --  request ("R") goes to your group when you join it and to your guild once a session, and
 --  each answer waits a moment at random so a raid's or a guild's do not all come at once.
---  Nothing goes out in combat: it waits for combat's end.
+--  Nothing goes out in combat: it waits for combat's end. A GUID heard from one sender is not
+--  taken from another this session, and a sender speaks for a few GUIDs at most.
 -------------------------------------------------------------------------------
 local ns = _G.NaowhForever
 local Score = ns.NaowhScore
@@ -18,6 +19,8 @@ local SEND_DELAY = 1          -- seconds after a gear change: a set swap's burst
 local ANSWER_SPREAD = 30      -- an answer to a request waits up to this many tenths of a second
 local GUILD_ANSWER_GAP = 30   -- seconds: the guild is answered at most this often
 local CHANNELS = { PARTY = true, RAID = true, INSTANCE_CHAT = true, GUILD = true }
+local MAX_BOUND = 1000
+local GUIDS_PER_SENDER = 3
 
 local own                     -- your GUID
 local lastSent                -- the score last sent, in tenths
@@ -27,6 +30,7 @@ local lastGuildAnswer = -GUILD_ANSWER_GAP
 local held = false            -- something to send once combat ends
 local sendQueued = false
 local answerQueued = {}       -- channel -> an answer is waiting to go
+local guidsOf, senderOf, bound = {}, {}, 0
 
 local function GroupChannel()
     if IsInGroup(LE_PARTY_CATEGORY_INSTANCE) then return "INSTANCE_CHAT" end
@@ -124,19 +128,34 @@ local function Joined()
     end
 end
 
-local function Received(message, channel)
+local function Claim(sender, guid)
+    local owner = senderOf[guid]
+    if owner then return owner == sender end
+    local claimed = guidsOf[sender] or 0
+    if claimed >= GUIDS_PER_SENDER then return false end
+    if bound >= MAX_BOUND then
+        wipe(guidsOf)
+        wipe(senderOf)
+        bound = 0
+    end
+    guidsOf[sender], senderOf[guid], bound = claimed + 1, sender, bound + 1
+    return true
+end
+
+local function Received(message, channel, sender)
     if message == "R" then return AnswerSoon(channel) end
     local guid, tenths, level = message:match("^S (Player%-%d+%-%x+) (%d+) ?(%d*)$")
     tenths, level = tonumber(tenths), tonumber(level)
-    if not guid or guid == own or not tenths or tenths > 9999 then return end
+    if not guid or guid == own or not tenths or tenths > 9999 or (level and level > 999) then return end
+    if type(sender) ~= "string" or issecretvalue(sender) or not Claim(sender, guid) then return end
     if Score.Remember then Score.Remember(guid, tenths / 10, true, true, level) end
 end
 
 local events = CreateFrame("Frame")
-events:SetScript("OnEvent", function(_, event, prefix, message, channel)
+events:SetScript("OnEvent", function(_, event, prefix, message, channel, sender)
     if event == "CHAT_MSG_ADDON" then
         if prefix ~= PREFIX or not CHANNELS[channel] or issecretvalue(message) then return end
-        Received(message, channel)
+        Received(message, channel, sender)
     elseif event == "PLAYER_EQUIPMENT_CHANGED" then
         SendSoon()
     elseif event == "PLAYER_REGEN_ENABLED" then

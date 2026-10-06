@@ -6,7 +6,9 @@
 --  view and the results card's rank. Messages on "NaowhAim": "2 B guid mode score accuracy class
 --  day" is a best ("-" for no accuracy), "2 R guid" asks for everyone's. Sent after login, on
 --  joining a group, on a new best and in answer to a request, never in combat; what arrives is
---  checked, rate limited and capped.
+--  checked, rate limited and capped. A GUID heard from one sender is not taken from another, a
+--  sender speaks for a few GUIDs at most, and an entry saved under one name is not replaced
+--  from another.
 -------------------------------------------------------------------------------
 local ns = _G.NaowhForever
 local S = ns.QoLSettings
@@ -27,6 +29,7 @@ local NO_ACCURACY = "-"
 local MAX_LENGTH, MAX_GUID_LENGTH, MAX_NAME_LENGTH, MAX_CLASS_LENGTH, MAX_ACCURACY = 112, 40, 40, 12, 100
 local MAX_ENTRIES = 200
 local RATE_WINDOW, RATE_COUNT, MAX_SENDERS = 60, 12, 400
+local GUIDS_PER_SENDER = 3
 local SETTLE_DELAY, ROSTER_DELAY, REFRESH_DELAY = 10, 2, 1
 local ANSWER_SPREAD, ANSWER_TENTHS = 30, 10
 local ANSWER_GAP = { GUILD = 30, PARTY = 10, RAID = 10, INSTANCE_CHAT = 10 }
@@ -59,6 +62,7 @@ local events, view, listening, held, inGroup, guildAsked, refreshQueued, Paint
 local gen, settleGen, rosterGen = 0, nil, nil
 local myGUID, myName, myClass, request
 local rate, stamp, rateSenders, rateStart, window = {}, {}, 0, nil, 0
+local guidsOf, senderOf, bound = {}, {}, 0
 local answerQueued, lastAnswer, answerers = {}, {}, {}
 local sorted, ranks = {}, {}
 local me = { you = true, guild = true }
@@ -157,6 +161,7 @@ end
 local function Keep(m, guid, who, score, accuracy, class, day, guild)
     local list = List(m, true)
     local entry = list[guid]
+    if type(entry) == "table" and entry.name ~= nil and entry.name ~= who then return false end
     if type(entry) ~= "table" then
         if entry == nil then
             local count, weakest, low, lowDay = Weakest(list)
@@ -193,6 +198,20 @@ local function Allowed(who)
     local n = rate[who]
     if n >= RATE_COUNT then return false end
     rate[who] = n + 1
+    return true
+end
+
+local function Claim(sender, guid)
+    local owner = senderOf[guid]
+    if owner then return owner == sender end
+    local claimed = guidsOf[sender] or 0
+    if claimed >= GUIDS_PER_SENDER then return false end
+    if bound >= MAX_SENDERS then
+        wipe(guidsOf)
+        wipe(senderOf)
+        bound = 0
+    end
+    guidsOf[sender], senderOf[guid], bound = claimed + 1, sender, bound + 1
     return true
 end
 
@@ -324,6 +343,7 @@ local function Received(message, channel, sender)
         accuracy = tonumber(accuracy)
         if not accuracy or accuracy < 0 or accuracy > MAX_ACCURACY or accuracy ~= floor(accuracy) then return end
     end
+    if not Claim(sender, guid) then return end
     local who = sender:gsub("%-", " ", 1)
     if Keep(m, guid, who, score, accuracy, class, day, channel == "GUILD") then RefreshSoon() end
 end

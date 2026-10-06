@@ -717,6 +717,31 @@ do
     check("your own row is your full name", rows[2].mark.shown)
 end
 
+-- Claims for someone else: an entry stays with the name it was saved under, and a sender speaks
+-- for a few GUIDs at most.
+do
+    local s = fixture({ faction = "Alliance", settings = { aimTrainer = true } })
+    s.account.aimBest = { hexakill = 100 }
+    s.ns.Apply()
+    s.receive(msg("gridshot", 3000, 50, "MAGE", 20000, "Player-1-0000AAAA"), "GUILD", "Real-Player")
+    s.receive(msg("gridshot", 240000, 100, "MAGE", 20000, "Player-1-0000AAAA"), "GUILD", "Fake-Player")
+    check("another sender cannot take a player's entry", s.board("gridshot")["Real Player"].score == 3000
+        and s.board("gridshot")["Fake Player"] == nil)
+    for i = 1, 6 do
+        s.receive(msg("gridshot", 1000 + i, 50, "MAGE", 20000, ("Player-1-0000B%03X"):format(i)), "GUILD", "Spray-Er")
+    end
+    local sprayed = 0
+    for _, e in pairs(s.account.aimBoard.gridshot) do if e.name == "Spray Er" then sprayed = sprayed + 1 end end
+    check("one sender fills three entries at most", sprayed == 3)
+    local later = fixture({ faction = "Alliance", settings = { aimTrainer = true } })
+    later.account.aimBest = { hexakill = 100 }
+    later.account.aimBoard = { gridshot = { ["Player-1-0000AAAA"] = { score = 3000, acc = 50, class = "MAGE",
+        day = 20000, name = "Real Player" } } }
+    later.ns.Apply()
+    later.receive(msg("gridshot", 240000, 100, "MAGE", 20000, "Player-1-0000AAAA"), "GUILD", "Fake-Player")
+    check("nor in a later session, from what was saved", later.board("gridshot")["Real Player"].score == 3000)
+end
+
 -- What arrives is checked: length, version, GUID, mode, score ceiling, accuracy, class, day, channel, sender.
 do
     local s = fixture({ faction = "Alliance", settings = { aimTrainer = true } })
