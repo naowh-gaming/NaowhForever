@@ -367,7 +367,7 @@ Check(Near(swing:GetLeft(), mL + 4), "a drag near another element's edge stays w
 
 -- Anchor on the tag: lit while it waits for a target, the next element clicked becomes the
 -- target, and from then on the element follows it, keeping its gap.
-local boss, bossMover, bossSaved = Display("Boss Bar", 100, 20, 0, 300)
+local boss, bossMover = Display("Boss Bar", 100, 20, 0, 300)
 local add, addMover, addSaved = Display("Add Bar", 60, 20, 20, 270)
 Flush()
 Click(addMover, "LeftButton")
