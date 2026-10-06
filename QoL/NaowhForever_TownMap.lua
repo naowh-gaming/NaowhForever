@@ -255,13 +255,10 @@ end
 local function MiniRefresh()
     wipe(miniSpots)
     miniMap = MiniOn() and C_Map.GetBestMapForUnit("player")
+    -- On this setting alone: the world map's Mailboxes toggle starts off.
     if miniMap and MiniFit(miniMap) then
-        if S.Get("townMail") then
-            for _, mailbox in ipairs(ns.TownMailboxes[miniMap] or {}) do miniSpots[#miniSpots + 1] = mailbox end
-        end
-        if S.Get("townSpiritHealers") then
-            for _, healer in ipairs(ns.TownSpiritHealers[miniMap] or {}) do miniSpots[#miniSpots + 1] = healer end
-        end
+        for _, mailbox in ipairs(ns.TownMailboxes[miniMap] or {}) do miniSpots[#miniSpots + 1] = mailbox end
+        for _, healer in ipairs(ns.TownSpiritHealers[miniMap] or {}) do miniSpots[#miniSpots + 1] = healer end
         miniWidth, miniHeight = C_Map.GetMapWorldSize(miniMap)
     end
     for i = #miniSpots + 1, #miniPins do miniPins[i]:Hide() end
@@ -398,7 +395,7 @@ ns.Shared.Settings.Page("QoL/Interface", S):Card({
         { key = "townCapitalsOnly", label = "Town Pins Only in Capitals", toggle = true,
           help = "Keeps vendors and trainers off questing maps." },
         { key = "townMinimap", label = "Mailboxes & Spirit Healers on Minimap", toggle = true,
-          help = "Pins the ones near you on the minimap too." },
+          help = "Pins the mailboxes and spirit healers near you on the minimap." },
         Group("Show"),
         { key = "townSpiritHealers", label = "Spirit Healers", toggle = true,
           help = "Every graveyard's spirit healer, in towns and out in the world." },
