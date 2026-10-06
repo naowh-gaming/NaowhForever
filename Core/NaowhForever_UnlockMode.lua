@@ -1673,3 +1673,192 @@ function UI.CenterPosition(frame)
 end
 
 WatchAnchors()
+
+-------------------------------------------------------------------------------
+--  Entering and leaving Unlock Mode: the toolbar, the grid and the movers. Every module
+--  hooks ns.ShowRaidReminderAnchorConfig and ns.HideRaidReminderAnchorConfig to show and
+--  hide its own frames.
+-------------------------------------------------------------------------------
+-- Alignment grid matching EllesmereUI's unlock mode, measured outward from screen centre.
+-- Alphas sit above EUI's 0.30/0.50, which read faint against the game world.
+local GRID_SPACING = 32
+local GRID_LINE_ALPHA = 0.45
+local GRID_CENTER_ALPHA = 0.70
+local gridOverlay
+
+local function BuildGridOverlay()
+    if gridOverlay then return gridOverlay end
+    gridOverlay = CreateFrame("Frame", nil, UIParent)
+    gridOverlay:SetFrameStrata("BACKGROUND")
+    gridOverlay:SetFrameLevel(1)
+    gridOverlay:SetAllPoints(UIParent)
+    gridOverlay._lines = {}
+    gridOverlay:Hide()
+
+    function gridOverlay:Rebuild()
+        for i = 1, #self._lines do self._lines[i]:Hide() end
+        local w, h = UIParent:GetWidth(), UIParent:GetHeight()
+        local c = T.accent
+        -- One physical pixel: fractional widths blur across two pixels.
+        local mult = Mult()
+        local spacing = GRID_SPACING * mult
+        local function Snap(v) return math.floor(v / mult + 0.5) * mult end
+        local centerX, centerY = Snap(w / 2), Snap(h / 2)
+        local idx = 0
+
+        local function Line(isVert, pos, alpha)
+            idx = idx + 1
+            local tex = self._lines[idx]
+            if not tex then
+                tex = self:CreateTexture(nil, "BACKGROUND", nil, -7)
+                if tex.SetSnapToPixelGrid then
+                    tex:SetSnapToPixelGrid(false)
+                    tex:SetTexelSnappingBias(0)
+                end
+                self._lines[idx] = tex
+            end
+            tex:SetColorTexture(c.r, c.g, c.b, alpha)
+            tex:ClearAllPoints()
+            if isVert then
+                tex:SetSize(mult, h)
+                tex:SetPoint("TOPLEFT", UIParent, "TOPLEFT", pos, 0)
+            else
+                tex:SetSize(w, mult)
+                tex:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 0, -pos)
+            end
+            tex:Show()
+        end
+
+        local x = centerX - spacing
+        while x > 0 do Line(true, Snap(x), GRID_LINE_ALPHA); x = x - spacing end
+        x = centerX + spacing
+        while x < w do Line(true, Snap(x), GRID_LINE_ALPHA); x = x + spacing end
+
+        local y = centerY - spacing
+        while y > 0 do Line(false, Snap(y), GRID_LINE_ALPHA); y = y - spacing end
+        y = centerY + spacing
+        while y < h do Line(false, Snap(y), GRID_LINE_ALPHA); y = y + spacing end
+
+        Line(true, centerX, GRID_CENTER_ALPHA)
+        Line(false, centerY, GRID_CENTER_ALPHA)
+    end
+
+    return gridOverlay
+end
+
+function ns.SetAnchorGridShown(shown)
+    if not shown then
+        if gridOverlay then gridOverlay:Hide() end
+        return
+    end
+    local g = BuildGridOverlay()
+    g:Rebuild()
+    g:Show()
+end
+
+local configActive, reopenWindowOnExit = false, false
+local configToolbar
+-- Checkboxes a module adds above Exit Config, each { label, get, set, enabled }, and the
+-- toolbar's title while they are there (Smart Reminders' anchors).
+local toolbarChecks, toolbarTitle = {}, nil
+
+function ns.AddUnlockModeChecks(title, checks)
+    toolbarTitle = title
+    for _, c in ipairs(checks) do toolbarChecks[#toolbarChecks + 1] = c end
+end
+
+-- Exit Config takes the slot after the last checkbox. Column width fits the longest
+-- label, "Show Defensive Anchor".
+local CONFIG_COL_W, CONFIG_ROW_H = 162, 24
+
+local function BuildConfigToolbar()
+    if configToolbar then return configToolbar end
+    local f = CreateFrame("Frame", "NaowhForeverRaidReminderAnchorConfig", UIParent)
+    f:SetSize(14 + CONFIG_COL_W * 2 + 14, 116)
+    f:SetPoint("TOP", UIParent, "TOP", 0, -140)
+    f:SetFrameStrata("FULLSCREEN_DIALOG")
+    f:SetFrameLevel(510)
+    f:SetToplevel(true)
+    f:SetClampedToScreen(true)
+    ns.AllowOffscreen(f)
+    ns.Solid(f, "BACKGROUND", BLACK, 1):SetAllPoints()
+    ns.Border(f)
+    f:SetMovable(true)
+    f:EnableMouse(true)
+    f:RegisterForDrag("LeftButton")
+    f:SetScript("OnDragStart", function(self) self:StartMoving() end)
+    f:SetScript("OnDragStop", function(self) self:StopMovingOrSizing() end)
+
+    local head = ns.Font(f, 12, "OUTLINE", T.accent)
+    head:SetPoint("TOP", f, "TOP", 0, -10)
+    f._head = head
+
+    local checks = {}
+    for i, c in ipairs(toolbarChecks) do
+        local col = (i - 1) % 2
+        local row = math.floor((i - 1) / 2)
+        local chk = CreateFrame("CheckButton", nil, f, "UICheckButtonTemplate")
+        chk:SetSize(20, 20)
+        chk:SetPoint("TOPLEFT", f, "TOPLEFT", 14 + col * CONFIG_COL_W, -32 - row * CONFIG_ROW_H)
+        local lbl = ns.Font(f, 11, nil, T.fg)
+        lbl:SetPoint("LEFT", chk, "RIGHT", 2, 1)
+        lbl:SetText(c.label)
+        chk:SetScript("OnClick", function(self) c.set(self:GetChecked() and true or false) end)
+        checks[i] = chk
+    end
+
+    local exitCol = #toolbarChecks % 2
+    local exitRow = math.floor(#toolbarChecks / 2)
+    ns.Button(f, "Exit Config", CONFIG_COL_W - 14, 22, function() ns.HideRaidReminderAnchorConfig() end)
+        :SetPoint("TOPLEFT", f, "TOPLEFT", 14 + exitCol * CONFIG_COL_W, -31 - exitRow * CONFIG_ROW_H)
+    local snapCol = 1 - exitCol
+    local snapRow = exitCol == 0 and exitRow or exitRow + 1
+    local snap = CreateFrame("CheckButton", nil, f, "UICheckButtonTemplate")
+    snap:SetSize(20, 20)
+    snap:SetPoint("TOPLEFT", f, "TOPLEFT", 14 + snapCol * CONFIG_COL_W, -32 - snapRow * CONFIG_ROW_H)
+    local snapLbl = ns.Font(f, 11, nil, T.fg)
+    snapLbl:SetPoint("LEFT", snap, "RIGHT", 2, 1)
+    snapLbl:SetText("Snap Elements")
+    snap:SetScript("OnClick", function(self) ns.UnlockModeSettings.Set("snap", self:GetChecked() and true or false) end)
+    ns.Tooltip(snap, "Snap Elements", "A dragged element lines its edges and centre up with the nearest one.")
+    f._snap = snap
+    f:SetHeight(44 + (snapRow + 1) * CONFIG_ROW_H)
+
+    f._checks = checks
+    configToolbar = f
+    return f
+end
+
+function ns.ShowRaidReminderAnchorConfig()
+    -- Stash before arming: hiding the window runs HideRaidReminderAnchorConfig via
+    -- OnHide, which disarmed the mode in the same click when armed first.
+    local reopen = ns.StashOptionsWindow and ns.StashOptionsWindow() or false
+    configActive = true
+    UI.BeginMoverMode()
+    reopenWindowOnExit = reopen
+    local f = BuildConfigToolbar()
+    f._head:SetText(toolbarTitle and toolbarTitle() or "Unlock Mode")
+    for i, c in ipairs(toolbarChecks) do
+        f._checks[i]:SetChecked(c.get())
+        f._checks[i]:SetEnabled(c.enabled())
+    end
+    f._snap:SetChecked(ns.UnlockModeSettings.Get("snap") ~= false)
+    f:Show()
+    ns.SetAnchorGridShown(true)
+end
+
+-- windowClosing: called from the options window's own OnHide, which must not reopen it.
+function ns.HideRaidReminderAnchorConfig(windowClosing)
+    configActive = false
+    UI.EndMoverMode()
+    ns.SetAnchorGridShown(false)
+    if configToolbar then configToolbar:Hide() end
+    if reopenWindowOnExit then
+        reopenWindowOnExit = false
+        if not windowClosing and ns.OpenOptionsWindow then ns.OpenOptionsWindow() end
+    end
+end
+
+function ns.IsRaidReminderAnchorConfigActive()
+    return configActive
+end

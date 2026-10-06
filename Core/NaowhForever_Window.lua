@@ -173,6 +173,7 @@ local MODULES = {
               .. "pages." },
       } },
     { name = "Smart Reminders", group = "COMBAT", navIcon = "bell",
+      addon = "NaowhForever_SmartReminders",
       open = "ToggleSmartRemindersWindow",
       command = "reminders", short = "Reminders", icon = "Interface\\Icons\\Ability_Warrior_ShieldWall",
       subtitle = "Calls out what to press when a boss ability is about to land.",
@@ -1303,6 +1304,7 @@ local function CreateWindow()
     window:SetScript("OnHide", function()
         if UI.HideWidgetTooltip then UI.HideWidgetTooltip() end
         for i = 1, #onHideCallbacks do onHideCallbacks[i]() end
+        ns.HideRaidReminderAnchorConfig(true)
     end)
     FitMainWindow()
     window:Hide()
