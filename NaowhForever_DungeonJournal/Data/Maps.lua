@@ -102,6 +102,7 @@ ns.Journal.Maps = {
             [4275] = { 6, 0.626, 0.192 },   -- Archmage Arugal
             [3872] = { 7, 0.428, 0.825 },   -- Deathsworn Captain
             [3864] = { 1, 0.336, 0.579 },   -- Fel Steed
+            [4627] = { 7, 0.52, 0.6 },   -- Arugal's Voidwalker
         },
     },
     BlackfathomDeeps = { art = "BlackFathomDeeps", floors = 3,
@@ -268,6 +269,8 @@ ns.Journal.Maps = {
             [9019] = { 2, 0.932, 0.143 },   -- Emperor Dagran Thaurissan
             [8923] = { 2, 0.489, 0.351 },   -- Panzor the Invincible
             [8929] = { 2, 0.932, 0.081 },   -- Princess Moira Bronzebeard
+            [9041] = { 2, 0.557, 0.663 },   -- Warder Stilgiss
+            [9042] = { 2, 0.649, 0.663 },   -- Verek
             [-161495] = { 2, 0.603, 0.663 },   -- Secret Safe
             [-169243] = { 2, 0.544, 0.248 },   -- Chest of The Seven
         },
@@ -293,6 +296,7 @@ ns.Journal.Maps = {
             [14323] = { 1, 0.269, 0.568 },   -- Guard Slip'kik
             [14325] = { 1, 0.317, 0.502 },   -- Captain Kromcrush
             [11501] = { 1, 0.32, 0.265 },   -- King Gordok
+            [14324] = { 1, 0.366, 0.265 },   -- Cho'Rush the Observer
         },
     },
     -- The art's seventh floor is Upper Blackrock Spire's.
@@ -359,7 +363,7 @@ ns.Journal.Maps = {
             [10997] = { 1, 0.033, 0.5 },   -- Cannon Master Willey
             [10811] = { 1, 0.276, 0.748 },   -- Archivist Galford
             [10813] = { 1, 0.205, 0.821 },   -- Balnazzar
-            [10812] = { 1, 0.304, 0.41 },   -- Grand Crusader Dathrohan
+            [10812] = { 1, 0.159, 0.821 },   -- Grand Crusader Dathrohan
             [10435] = { 2, 0.572, 0.155 },   -- Magistrate Barthilas
             [10436] = { 2, 0.751, 0.463 },   -- Baroness Anastari
             [10437] = { 2, 0.569, 0.463 },   -- Nerub'enkan
