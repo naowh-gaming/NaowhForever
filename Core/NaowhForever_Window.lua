@@ -9,7 +9,8 @@ local UI = ns.UI
 local SIDEBAR_W, CONTENT_W, WINDOW_W, WINDOW_H = 240, 1000, 1440, 790
 local TOP_H, PAGE_HEADER_H = 64, 128
 local HEADER_H, TAB_H, NAV_H = 76, 32, 32
-local SEARCH_W = 120
+-- The sidebar's search box, kept tight so every module still fits the default window.
+local SEARCH = { h = 26, top = 10, side = 14, gap = 4 }
 local SCROLL_BAR_GAP = 12 -- the page scrollbar sits this far right of the page, in its margin
 local LINK_ICONS = "Interface\\AddOns\\NaowhForever\\Media\\Links\\"
 local LINKS = {
@@ -20,6 +21,7 @@ local LINKS = {
 local SYSTEM_NAV = { { "Settings", "settings" }, { "Profiles", "person" }, { "Patch Notes", "notes" }, { "Credits", "heart" } }
 local NAV_STEP, LINK_SIZE, LINK_GAP = 30, 16, 10
 local NAV_DOT, NAV_OPEN, NAV_OPEN_ICON = 6, 22, 14
+local NAV_COUNT_SIZE = 12  -- a row's match count while the sidebar's search is up
 local MEDIA = "Interface\\AddOns\\NaowhForever\\Media\\"
 local FOOTER_H_SIDEBAR = 28
 local LOGO = "Interface\\AddOns\\NaowhForever\\Media\\LogoAddon.tga"
@@ -195,7 +197,7 @@ for _, mod in ipairs(MODULES) do
 end
 
 local window, scrollFrame, scrollChild, tabLine, headerTitle, headerSub
-local contentHeader, searchBar, breadcrumb, moduleSwitch, moduleLabel
+local contentHeader, searchBox, breadcrumb, moduleSwitch, moduleLabel
 local lastPages = {}
 local navButtons, tabStrips, navBlocks = {}, {}, {}
 local wrappers = {}          -- page key -> built wrapper frame
@@ -210,7 +212,8 @@ function UI:RegisterOnHide(fn) onHideCallbacks[#onHideCallbacks + 1] = fn end
 function UI:ClearContentHeader() end
 
 -- The builders return their raw running y (negative), and the wrapper takes math.abs of it.
-local function BuildPageInto(page, parent)
+-- filter: the sidebar search's, for a declared page in the main window.
+local function BuildPageInto(page, parent, filter)
     if page.soon then
         local head, body = parent.soonHead, parent.soonBody
         if not head then
@@ -234,7 +237,7 @@ local function BuildPageInto(page, parent)
             parent:SetHeight(height + 30)
             local child = parent:GetParent()
             if child and parent:IsShown() then child:SetHeight(parent:GetHeight()) end
-        end)
+        end, filter)
     end
     local fn = ns[page.build]
     if not fn then return -6 end
@@ -328,15 +331,24 @@ local function ActiveNav()
     return page.module and page.module.name or page.key
 end
 
--- A page that cannot be used stays dimmer than an inactive one, even while selected.
-local function PaintTabs(bar, shown)
+local NAV_ROW, NAV_OFF_ALPHA = 32, 0.45
+local MISS_ALPHA = 0.3     -- a page, tab or module without a match for the sidebar's search
+
+-- A page that cannot be used stays dimmer than an inactive one, even while selected, and so
+-- does one the search (filter) found nothing on.
+local function PaintTabs(bar, shown, filter)
     ns.Shared.Parts.PaintTabs(bar, shown)
     for _, button in ipairs(bar.buttons) do
-        if PAGES[button.key] and PAGES[button.key].soon then button.text:SetAlpha(0.45) end
+        local page = PAGES[button.key]
+        local alpha = 1
+        if page and page.soon then
+            alpha = NAV_OFF_ALPHA
+        elseif filter and not filter.count[button.key] then
+            alpha = MISS_ALPHA
+        end
+        button.text:SetAlpha(alpha)
     end
 end
-
-local NAV_ROW, NAV_OFF_ALPHA = 32, 0.45
 
 -- Within each group the modules that are on come first, then the ones you have off.
 local function LayoutNav()
@@ -355,27 +367,52 @@ local function LayoutNav()
     end
 end
 
+-- While the sidebar's search is up, a row shows how many matches its pages hold (btn.found)
+-- in place of its open icon and off dot, and dims when they hold none.
 local function PaintNavButton(btn, hover)
     local active = btn.fill:IsShown()
+    local found = UI.filter and btn.found
     local off = btn.mod ~= nil and not ModuleOn(btn.mod)
     local c = (active or hover) and T.fg or T.muted
     local a = (off and not active and not hover) and NAV_OFF_ALPHA or 1
+    if found == false and not active and not hover then a = MISS_ALPHA end
     btn.label:SetTextColor(c.r, c.g, c.b, a)
     if btn.icon then btn.icon:SetVertexColor(c.r, c.g, c.b, a) end
-    if btn.open then btn.open:SetShown(active or hover) end
-    if btn.dot then btn.dot:SetShown(off and not (btn.open and btn.open:IsShown())) end
+    if btn.open then btn.open:SetShown((active or hover) and not UI.filter) end
+    if btn.dot then btn.dot:SetShown(off and not UI.filter and not (btn.open and btn.open:IsShown())) end
+    btn.count:SetText(found and found > 0 and found or "")
+end
+
+-- How many matches the pages keyed in keys hold for the search, false for none.
+local function Found(filter, keys)
+    local n
+    for _, key in ipairs(keys) do
+        local c = filter.count[key]
+        if c then n = (n or 0) + c end
+    end
+    return n or false
 end
 
 local function PaintNav()
     local nav = ActiveNav()
+    local filter = UI.filter
     LayoutNav()
     for name, btn in pairs(navButtons) do
         local active = name == nav
         btn.fill:SetShown(active)
         btn.marker:SetShown(active)
+        btn.found = nil
+        if filter then
+            local keys = { name }
+            if btn.mod then
+                keys = {}
+                for i, tab in ipairs(btn.mod.tabs) do keys[i] = tab.key end
+            end
+            btn.found = Found(filter, keys)
+        end
         PaintNavButton(btn, btn:IsMouseOver())
     end
-    for _, bar in pairs(tabStrips) do PaintTabs(bar, currentPage) end
+    for _, bar in pairs(tabStrips) do PaintTabs(bar, currentPage, filter) end
 end
 
 local function LayoutContent()
@@ -385,11 +422,7 @@ local function LayoutContent()
     local left = SIDEBAR_W
     -- The tab row sits under the subtitle and pushes the page down by its own height.
     local headerH = PAGE_HEADER_H + (nested and TAB_H - 12 or 0)
-    -- The search bar sits under the window's header and pushes the page down while it is up.
-    local top = TOP_H + (searchBar:IsShown() and searchBar:GetHeight() or 0)
-    searchBar:ClearAllPoints()
-    searchBar:SetPoint("TOPLEFT", window, "TOPLEFT", left, -TOP_H)
-    searchBar:SetPoint("TOPRIGHT", window, "TOPRIGHT", 0, -TOP_H)
+    local top = TOP_H
     headerTitle:SetText(mod and DisplayName(mod) or ns.L(page.title))
     breadcrumb:SetText(mod and (DisplayName(mod) .. " / " .. ns.L(page.name)) or "Naowh Forever")
     headerSub:SetText(mod and mod.subtitle or page.subtitle)
@@ -414,8 +447,8 @@ local function LayoutContent()
 end
 
 -- Each window keeps its own wrappers, so a page open in the main window and in a module's
--- own window at once is two separate builds.
-local function ShowWrapper(pageWrappers, child, key)
+-- own window at once is two separate builds. filter: the sidebar search's, main window only.
+local function ShowWrapper(pageWrappers, child, key, filter)
     for name, w in pairs(pageWrappers) do
         w:SetShown(name == key)
     end
@@ -435,7 +468,7 @@ local function ShowWrapper(pageWrappers, child, key)
         wrapper._pageKey, wrapper._collapsible, wrapper._nsuiCollapsed = key, PAGES[key].collapse, nil
         wrapper._nsuiFeatureId = nil
         if PAGES[key].reuse then UI.BeginReusableRows(wrapper) end
-        local usedY = BuildPageInto(PAGES[key], wrapper)
+        local usedY = BuildPageInto(PAGES[key], wrapper, filter)
         wrapper:SetHeight(math.abs(usedY) + 30)
     end
     child:SetHeight(wrapper:GetHeight())
@@ -447,12 +480,12 @@ local function ShowPage(key)
     currentPage = key
     if PAGES[key].module then lastPages[PAGES[key].module.name] = key end
     LayoutContent()
-    ShowWrapper(wrappers, scrollChild, key)
+    ShowWrapper(wrappers, scrollChild, key, UI.filter)
     scrollFrame:SetVerticalScroll(0)
     PaintNav()
 end
 
--- The pages the search bar looks through, the window's own and every module's tabs.
+-- The pages the search looks through, the window's own and every module's tabs.
 function UI.SearchPages()
     local pages = {}
     for _, page in ipairs(SYSTEM_PAGES) do pages[#pages + 1] = page end
@@ -464,18 +497,11 @@ function UI.SearchPages()
     return pages
 end
 
--- Opens the page (building it if this is the first visit) and, given a card, opens the card
--- and brings its head, or its setting named `label`, a third of the way down the page. A
--- card the search bar holds open (UI.searchOpen) is left to it.
+-- Brings a card's head, or its setting named `label`, a third of the way down the page.
 local SETTING_AT = 1 / 3
 
-function UI.GoToSetting(key, label, card)
-    if not (window and PAGES[key]) then return end
+local function ScrollToSetting(key, label, card)
     local Settings = ns.Shared.Settings
-    if card and not (UI.searchOpen and UI.searchOpen[card]) then Settings.Reveal(card) end
-    -- Drawn again, so the place measured below is the layout that stays.
-    if wrappers[key] then wrappers[key]._dirty = true end
-    ShowPage(key)
     if not (card and Settings.pages[key]) then return end
     local _, top = Settings.FindRow(wrappers[key], label, card)
     if not top then return end
@@ -483,6 +509,19 @@ function UI.GoToSetting(key, label, card)
     local y = top - scrollFrame:GetHeight() * SETTING_AT
     scrollFrame:SetVerticalScroll(math.min(scrollFrame:GetVerticalScrollRange(), math.max(0, y)))
 end
+
+-- Opens the page (building it if this is the first visit) and, given a card, opens the card
+-- and brings it into view. A search in the sidebar is cleared first, so all of the page shows.
+function UI.GoToSetting(key, label, card)
+    if not (window and PAGES[key]) then return end
+    if UI.filter then UI.ClearSearch() end
+    if card then ns.Shared.Settings.Reveal(card) end
+    -- Drawn again, so the place measured below is the layout that stays.
+    if wrappers[key] then wrappers[key]._dirty = true end
+    ShowPage(key)
+    ScrollToSetting(key, label, card)
+end
+
 
 local function ShowModulePage(win, key)
     win.page = key
@@ -535,6 +574,36 @@ local function RebuildPages()
             win.pendingRefresh = true
         end
     end
+end
+
+-- Every edit of the sidebar's search. The page on show moves to the first one with a match
+-- when it has none. Once the search is cleared, the cards it found on the page stay open and
+-- the first comes into view, so the setting is still there to change.
+local lastFilter
+
+local function OnSearch()
+    local filter, last = UI.filter, lastFilter
+    lastFilter = filter
+    if not (window and window:IsShown()) then
+        pendingRefresh = true
+        return
+    end
+    local key, found = currentPage, nil
+    if filter and not filter.count[key] then
+        for _, k in ipairs(filter.order) do
+            if PAGES[k].module then key = k break end
+        end
+        if not filter.count[key] and filter.order[1] then key = filter.order[1] end
+    elseif not filter and last and last.first[key] and not last.all[key] then
+        found = last.first[key]
+        for uid in pairs(last.cards) do
+            local card = ns.Shared.Settings.CardOf(uid)
+            if card and card.page.key == key then ns.Shared.Settings.Reveal(uid) end
+        end
+    end
+    InvalidatePages(wrappers)
+    ShowPage(key)
+    if found then ScrollToSetting(key, nil, found) end
 end
 
 local function AnyWindowShown()
@@ -1033,6 +1102,8 @@ local function NavigationButton(parent, label, y, onClick, icon)
     btn.label:SetJustifyH("LEFT")
     btn.label:SetWordWrap(false)
     btn.label:SetText(label)
+    btn.count = ns.Font(btn, NAV_COUNT_SIZE, nil, T.accent)
+    btn.count:SetPoint("RIGHT", -14, 0)
     if icon then
         btn.icon = btn:CreateTexture(nil, "ARTWORK")
         btn.icon:SetTexture("Interface\\AddOns\\NaowhForever\\Media\\Navigation\\" .. icon .. ".tga")
@@ -1104,13 +1175,13 @@ local function CreateWindow()
     window:EnableMouse(true)
     ns.Shared.Parts.Backdrop(window):Paint(1)
     local border = ns.Border(window, ns.Shared.Style.BORDER_RGB)
-    -- Ctrl+F opens the search bar, and Escape closes the bar before the window.
+    -- Ctrl+F goes to the search box, and Escape clears a search before it closes the window.
     window:SetScript("OnKeyDown", function(self, key)
         if InCombatLockdown() then return end
         local open = key == "F" and IsControlKeyDown()
-        if not (open or (key == "ESCAPE" and searchBar:IsShown())) then return CloseOnEscape(self, key) end
+        if not (open or (key == "ESCAPE" and UI.filter)) then return CloseOnEscape(self, key) end
         self:SetPropagateKeyboardInput(false)
-        if open then UI.OpenSearch() else UI.CloseSearch() end
+        if open then UI.FocusSearch() else UI.ClearSearch() end
         C_Timer.After(0, function()
             if not InCombatLockdown() then self:SetPropagateKeyboardInput(true) end
         end)
@@ -1143,15 +1214,17 @@ local function CreateWindow()
     ns.Tooltip(unlock, "Move Elements", "Place and size each display. Exit Config returns to this window.")
     local reload = ns.ReloadButton(top, "Reload UI", 110, 32)
     reload:SetPoint("RIGHT", unlock, "LEFT", -18, 0)
-    local search = ns.Button(top, "Search  " .. ns.Color("muted", "Ctrl+F"), SEARCH_W, 32, function() UI.OpenSearch() end)
-    search:SetPoint("RIGHT", reload, "LEFT", -18, 0)
-    ns.Tooltip(search, "Search", "Step through every setting that matches what you type.")
 
     local sidebar = CreateFrame("Frame", nil, window)
     sidebar:SetPoint("TOPLEFT", 0, -TOP_H); sidebar:SetPoint("BOTTOMLEFT"); sidebar:SetWidth(SIDEBAR_W)
     local edge = ns.Solid(sidebar, "ARTWORK", T.line, 1)
     edge:SetPoint("TOPRIGHT"); edge:SetPoint("BOTTOMRIGHT"); ns.Hairline(edge, "v")
-    local nav = NavigationScroll(sidebar, 16, FOOTER_H_SIDEBAR + 6 + NAV_STEP * #SYSTEM_NAV, SIDEBAR_W)
+    searchBox = UI.AttachSearchBox(sidebar, OnSearch)
+    searchBox:SetPoint("TOPLEFT", SEARCH.side, -SEARCH.top)
+    searchBox:SetPoint("TOPRIGHT", -SEARCH.side, -SEARCH.top)
+    searchBox:SetHeight(SEARCH.h)
+    local nav = NavigationScroll(sidebar, SEARCH.top + SEARCH.h + SEARCH.gap, FOOTER_H_SIDEBAR + 6 + NAV_STEP * #SYSTEM_NAV,
+        SIDEBAR_W)
     -- Modules list in MODULES order under their group; one with only unfinished tabs, or whose
     -- addon is switched off, is left out.
     local groups, grouped = {}, {}
@@ -1241,7 +1314,6 @@ local function CreateWindow()
     end
     tabLine = ns.Solid(window, "ARTWORK", T.line, 1); ns.Hairline(tabLine, "h")
 
-    searchBar = UI.AttachSearchBar(window, function() LayoutContent() end)
     scrollFrame = UI.SlimScroll(window, nil, SCROLL_BAR_GAP)
     scrollChild = CreateFrame("Frame", nil, scrollFrame)
     scrollChild:SetSize(WINDOW_W - SIDEBAR_W - 36, 1)
