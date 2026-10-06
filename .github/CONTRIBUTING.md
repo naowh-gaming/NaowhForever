@@ -70,7 +70,8 @@ comment, sent back for changes, or merged and fixed up by me.
 - **Match the surrounding code.** Before building an options row, slider or popup, find
   the nearest existing example in the same module and copy its shape.
 - Each module has its own folder with `NaowhForever_<Name>.lua` files. Add new files to
-  `NaowhForever.toc` next to the rest of that module's files.
+  the TOC that loads that module (`NaowhForever.toc` for the core, or the module addon's
+  own `NaowhForever_<Module>.toc`) next to the rest of its files.
 - A module with many files loads them through its own XML file, which the TOC lists once,
   and names its files plainly inside its folder. The Dungeon Journal is the example:
   `NaowhForever_DungeonJournal/DungeonJournal.xml`, with its layout in `NaowhForever_DungeonJournal/README.md`. Add a

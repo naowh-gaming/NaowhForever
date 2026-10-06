@@ -701,10 +701,10 @@ function ns.BuildSettingsPage(parent, y)
                         if other.addon == addon then needs[i] = other end
                     end
                 end
-                tip = tip .. "|n|nNeeds " .. NameList(needs) .. ", which switches with it."
+                tip = tip .. "|n|nSwitches with " .. NameList(needs) .. "."
             end
             rows[#rows + 1] = { type = "toggle", text = mod.name,
-                tooltip = tip .. "|n|nTakes a reload. Applies to every character.",
+                tooltip = tip,
                 getValue = function() return C_AddOns.GetAddOnEnableState(mod.addon) > 0 end,
                 setValue = function(v) SwitchModuleAddon(mod, v) end }
         end
