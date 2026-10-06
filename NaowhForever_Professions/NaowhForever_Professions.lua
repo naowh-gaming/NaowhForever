@@ -1580,6 +1580,8 @@ RenderDetail = function()
     if not linkedMode and okCd and cooldown and cooldown > 0 then
         lines[#lines + 1] = "|cffff4d4dCooldown: " .. SecondsToTime(cooldown) .. "|r"
     end
+    Reuse.drawnRecipe, Reuse.drawnUnmet = info.recipeID, unmet
+    Reuse.drawnCooldown = okCd and cooldown and cooldown > 0 and math.floor(cooldown) or 0
     -- More crafts than the bags have room for: Create All stops at what fits.
     local can = Craftable(info)
     local room = not linkedMode and ns.CraftBagRoom and ns.CraftBagRoom(output, made, Reagents(info.recipeID), can)
@@ -2404,9 +2406,25 @@ end
 -- only while the window is open; the event fires often, so only the recipe pane redraws, at
 -- most twice a second.
 local usable, usablePending = CreateFrame("Frame"), false
+function Reuse.UsableChanged()
+    if linkedMode or selectedUnlearned then return true end
+    local info = SelectedInfo()
+    if not info or info.recipeID ~= Reuse.drawnRecipe then return true end
+    local unmet = false
+    local okReq, reqs = pcall(C_TradeSkillUI.GetRecipeRequirements, info.recipeID)
+    if okReq and reqs then
+        for i = 1, #reqs do
+            if reqs[i].met == false then unmet = true end
+        end
+    end
+    local okCd, cooldown = pcall(C_TradeSkillUI.GetRecipeCooldown, info.recipeID)
+    local cd = okCd and cooldown and cooldown > 0 and math.floor(cooldown) or 0
+    return unmet ~= Reuse.drawnUnmet or cd ~= Reuse.drawnCooldown
+end
+
 function Reuse.Usable()
     usablePending = false
-    if win:IsShown() and win.detail:IsShown() then RenderDetail() end
+    if win:IsShown() and win.detail:IsShown() and Reuse.UsableChanged() then RenderDetail() end
 end
 usable:SetScript("OnEvent", function()
     if usablePending then return end

@@ -17,6 +17,8 @@ end
 
 local function Noop() end
 local EMPTY = {}
+local UNMET = { { name = "Anvil", met = false } }
+local requirements = EMPTY
 
 -- A runaway loop fails the test instead of hanging it.
 local DEADLINE = os.clock() + 60
@@ -430,8 +432,8 @@ env = {
         IsTradeSkillLinked = function() return false end,
         IsTradeSkillGuild = function() return false end,
         IsNPCCrafting = function() return false end,
-        GetRecipeDescription = function() return "A recipe." end,
-        GetRecipeRequirements = function() return EMPTY end,
+        GetRecipeDescription = function() Count("detail"); return "A recipe." end,
+        GetRecipeRequirements = function() return requirements end,
         GetRecipeCooldown = function() return 0 end,
         IsRecipeTracked = function() return false end,
         SetRecipeTracked = Noop,
@@ -607,6 +609,19 @@ check("repeated redraws and item loads grow no retained memory", grown < 2)
 -------------------------------------------------------------------------------
 --  5. Closed, it stays quiet
 -------------------------------------------------------------------------------
+-- The recipe pane listens to SPELL_UPDATE_USABLE while open, which fires often: it redraws only
+-- when what that event can change (a requirement met or not, the recipe's cooldown) changed.
+check("a recipe is shown in the pane", win.detail:IsShown())
+local d0 = calls.detail
+for _ = 1, 20 do Fire("SPELL_UPDATE_USABLE"); Advance(0.6) end
+check("usable events with nothing changed redraw no recipe pane", calls.detail == d0)
+requirements = UNMET
+Fire("SPELL_UPDATE_USABLE"); Advance(0.6)
+check("a requirement turning unmet redraws the pane once", calls.detail == d0 + 1)
+requirements = EMPTY
+Fire("SPELL_UPDATE_USABLE"); Advance(0.6)
+check("and met again, once more", calls.detail == d0 + 2)
+
 professionsFrame:Hide()
 win:Hide()
 Step()
