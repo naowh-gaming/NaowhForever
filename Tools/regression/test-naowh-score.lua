@@ -29,9 +29,12 @@ local function Fixture()
         end,
         OnChange = function(fn) listeners[#listeners + 1] = fn end,
     }
-    state.roster = {}
+    state.roster, state.account, state.clock = {}, {}, 2000000000
     local ns = { QoLSettings = S, Apply = NOTHING, Shared = { Style = { LOGO_SMALL = "logo" },
-        Roster = { AddTooltip = function(fn) state.roster[#state.roster + 1] = fn end } },
+        Roster = { AddTooltip = function(fn) state.roster[#state.roster + 1] = fn end },
+        Ago = function(when) return (state.clock - when) .. "s ago" end },
+        AccountSettings = function() return state.account end,
+        Color = function(_, text) return "<" .. text .. ">" end,
         THEME = setmetatable({}, { __index = function() return { r = 1, g = 1, b = 1 } end }) }
     local function Item(link)
         local unit, slot = link:match("^item:(%w+):(%d+)$")
@@ -95,7 +98,8 @@ local function Fixture()
         CreateFrame = Frame,
         GameTooltip = tooltip,
         TooltipDataProcessor = { AddTooltipPostCall = function(_, fn) state.postCalls[#state.postCalls + 1] = fn end },
-        Enum = { TooltipDataType = { Unit = 2 } },
+        Enum = { TooltipDataType = { Unit = 2 }, ClubMemberPresence = { Online = 1, Offline = 3 } },
+        time = function() return state.clock end,
         hooksecurefunc = function(t, key, fn)
             local original = t[key]
             t[key] = function(...) original(...); fn(...) end
@@ -256,9 +260,9 @@ do
     check("then it is asked again", #state.inspected == 2)
     check("the guild list's tooltip is asked for with it", #state.roster == 1)
     local OnRoster = state.roster[1]
-    local function Roster(member)
+    local function Roster(member, presence)
         for k in pairs(state.lines) do state.lines[k] = nil end
-        local added = OnRoster(state.tooltip, member, { guid = member, level = 60 })
+        local added = OnRoster(state.tooltip, member, { guid = member, level = 60, presence = presence or 1 })
         return added, state.rights[#state.lines] and state.rights[#state.lines].text
     end
     ns.NaowhScore.Remember("Player-1-GUILD", 27.4, true, true, 60)
@@ -268,9 +272,29 @@ do
     check("yours: from what you wear", select(2, Roster("Player-1-1")) == "20.0")
     added = Roster("Player-1-UNKNOWN")
     check("a guildmate not known: nothing, and no inspect", not added and #state.lines == 0 and #state.inspected == 2)
+    local DAY = 86400
+    local savedList = { old = { score = 5, at = state.clock - 31 * DAY }, broken = "x" }
+    for i = 1, 500 do savedList["Player-8-" .. i] = { score = 10, level = 20, at = state.clock - i } end
+    state.account.naowhScoreGuild = savedList
+    ns.NaowhScore.Remember("Player-7-00AB", 31.2, true, true, 40)
+    check("a guildmate's score is saved for the guild list", savedList["Player-7-00AB"]
+        and savedList["Player-7-00AB"].score == 31.2 and savedList["Player-7-00AB"].level == 40)
+    check("older than 30 days or damaged: dropped", savedList.old == nil and savedList.broken == nil)
+    check("500 at most: the oldest goes", savedList["Player-8-500"] == nil and savedList["Player-8-499"] ~= nil)
+    check("someone outside the guild: not saved", savedList["Player-1-GUILD"] == nil)
+    ns.NaowhScore.Remember("Player-9-00AB", 12, false, false, 30)
+    check("a score still loading: not saved", savedList["Player-9-00AB"] == nil)
+    state.clock = state.clock + 2 * DAY
+    added, text = Roster("Player-7-00AB", 3)
+    check("offline: the saved score, and how long ago", added and text == "31.2 <(" .. 2 * DAY .. "s ago)>")
+    check("online: the live one, no age", select(2, Roster("Player-7-00AB", 1)) == "31.2")
+    check("offline with nothing saved: no line", not Roster("Player-1-GUILD", 3))
     S.Set("naowhScore", false)
     check("off: no line", Hover("party1") == nil)
     check("off: none in the guild list either", not Roster("Player-1-GUILD"))
+    check("off: none for an offline member", not Roster("Player-7-00AB", 3))
+    ns.NaowhScore.Remember("Player-9-00AB", 14, true, true, 30)
+    check("off: nothing saved", savedList["Player-9-00AB"] == nil)
 end
 
 -- Reported on Forever: a unit's GUID can come back secret by the time its gear arrives, and the

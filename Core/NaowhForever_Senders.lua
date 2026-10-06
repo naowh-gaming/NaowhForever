@@ -3,6 +3,8 @@
 --  sender is the player with that GUID, found in your group, your guild or your friends list.
 --  Used by every module that keeps what a message says about its sender (Naowh Score, the Aim
 --  Trainer's board, Group XP, Journal quest sharing); anything it cannot match is dropped.
+--  And ns.InGuild(guid): whether that player is in your guild (Naowh Score keeps guildmates'
+--  scores for the guild list's offline members).
 -------------------------------------------------------------------------------
 local ns = _G.NaowhForever
 
@@ -12,7 +14,7 @@ local PARTY_UNITS, RAID_UNITS = { "player" }, {}
 for i = 1, 4 do PARTY_UNITS[i + 1] = "party" .. i end
 for i = 1, 40 do RAID_UNITS[i] = "raid" .. i end
 
-local guildGUID = {}
+local guildGUID, guildMember = {}, {}
 local guildStale = true
 local guildEvents
 
@@ -83,12 +85,13 @@ local function GuildRoster()
     if not guildStale then return guildGUID end
     guildStale = false
     wipe(guildGUID)
+    wipe(guildMember)
     local realm = OwnRealm()
     for i = 1, (GetNumGuildMembers and GetNumGuildMembers() or 0) do
         local name, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, guid = GetGuildRosterInfo(i)
         if Readable(name) and Readable(guid) then
             local short = Strip(name, realm)
-            guildGUID[name], guildGUID[short] = guid, guid
+            guildGUID[name], guildGUID[short], guildMember[guid] = guid, guid, true
             guildGUID[(short:gsub(" ", "-", 1))], guildGUID[(short:gsub("%-", " ", 1))] = guid, guid
         end
     end
@@ -105,6 +108,12 @@ local function Friend(sender, guid)
     local info = C_FriendList and C_FriendList.GetFriendInfo and C_FriendList.GetFriendInfo(sender)
     local g = type(info) == "table" and info.guid
     return Readable(g) and g == guid
+end
+
+function ns.InGuild(guid)
+    if not Readable(guid) then return false end
+    GuildRoster()
+    return guildMember[guid] == true
 end
 
 function ns.SenderIs(sender, channel, guid)

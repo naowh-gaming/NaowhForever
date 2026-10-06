@@ -24,6 +24,8 @@ local WAIT_FOR = 4         -- seconds a request is waited on before another may 
 local KEEP = 300           -- seconds an inspected score is kept
 local RETRY = 5            -- seconds before looking again at a player not known yet but out of range
 local MAX_KEPT = 300       -- players kept at most; the oldest goes first
+local SAVED_MAX = 500      -- guildmates' scores saved for the guild list at most; the oldest goes first
+local SAVED_DAYS = 30      -- a saved score older than this is dropped
 local LOAD_SETTLE = 0.2
 
 -- In Naowh's blue, without the logo: that stays with the badge line (Badges), which says who
@@ -76,6 +78,46 @@ local function Entry(guid)
     return entry
 end
 
+-- Guildmates' last scores, saved account-wide for the guild list's offline members.
+local saved, savedCount
+
+local function Saved()
+    if saved then return saved end
+    local account = ns.AccountSettings()
+    if type(account.naowhScoreGuild) ~= "table" then account.naowhScoreGuild = {} end
+    saved, savedCount = account.naowhScoreGuild, 0
+    local oldest = time() - SAVED_DAYS * 86400
+    for guid, entry in pairs(saved) do
+        if type(entry) ~= "table" or type(entry.score) ~= "number" or type(entry.at) ~= "number"
+            or entry.at < oldest then
+            saved[guid] = nil
+        else
+            savedCount = savedCount + 1
+        end
+    end
+    return saved
+end
+
+local function Save(guid, score, level)
+    if not Feature() or not ns.InGuild(guid) then return end
+    local list = Saved()
+    local entry = list[guid]
+    if not entry then
+        if savedCount >= SAVED_MAX then
+            local oldestGUID, oldestAt
+            for key, old in pairs(list) do
+                if not oldestAt or old.at < oldestAt then oldestGUID, oldestAt = key, old.at end
+            end
+            list[oldestGUID] = nil
+            savedCount = savedCount - 1
+        end
+        entry = {}
+        list[guid] = entry
+        savedCount = savedCount + 1
+    end
+    entry.score, entry.level, entry.at = score, level, time()
+end
+
 -- The tooltip's line, filled in now that the score is known, while the tooltip still shows them.
 local function Refresh(guid, entry)
     if guid ~= shownGUID or not shownLine or not GameTooltip:IsShown() then return end
@@ -96,6 +138,7 @@ function Score.Remember(guid, score, complete, shared, level)
     if entry.shared and not shared then return entry end
     entry.score, entry.complete, entry.shared, entry.at = score, complete, shared == true, GetTime()
     entry.level = level or entry.level
+    if complete then Save(guid, score, entry.level) end
     Refresh(guid, entry)
     return entry
 end
@@ -159,6 +202,7 @@ local function ItemsLoaded()
         if entry.links and not entry.complete and not entry.shared then
             local score, complete = Score.Links(entry.links)
             entry.score, entry.complete = score, complete
+            if complete then Save(guid, score, entry.level) end
             Refresh(guid, entry)
             if not complete then waiting = true end
         end
@@ -307,15 +351,20 @@ end
 
 local function OnRoster(tooltip, guid, info)
     if not TooltipOn() then return end
-    local score
+    local score, level, when
     if guid == UnitGUID("player") then
         score = Score.Unit("player")
+    elseif info.presence == Enum.ClubMemberPresence.Offline then
+        local entry = Saved()[guid]
+        if entry then score, level, when = entry.score, entry.level, entry.at end
     else
         local entry = Score.Known(guid)
         score = entry and entry.score
     end
     if not score then return end
-    tooltip:AddDoubleLine(LABEL, Score.Tooltip(score, info.level), T.accent.r, T.accent.g, T.accent.b, 1, 1, 1)
+    local text = Score.Tooltip(score, level or info.level)
+    if when then text = text .. " " .. ns.Color("muted", "(" .. ns.Shared.Ago(when) .. ")") end
+    tooltip:AddDoubleLine(LABEL, text, T.accent.r, T.accent.g, T.accent.b, 1, 1, 1)
     return true
 end
 
