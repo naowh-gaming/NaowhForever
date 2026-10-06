@@ -286,17 +286,19 @@ end
 -- Text stays sharp at any size; the game's coin icons blur when drawn large.
 local COIN_COLORS = { g = "ffd100", s = "c7ccd3", c = "e0904f" }
 
+local function Coin(text, n, unit)
+    local coin = n .. "|cff" .. COIN_COLORS[unit] .. unit .. "|r"
+    return text and text .. " " .. coin or coin
+end
+
 function Training.Coins(copper)
     copper = math.floor(copper + 0.5)
-    local parts = {}
-    local function Add(n, unit)
-        parts[#parts + 1] = n .. "|cff" .. COIN_COLORS[unit] .. unit .. "|r"
-    end
     local g, s, c = math.floor(copper / 10000), math.floor(copper % 10000 / 100), copper % 100
-    if g > 0 then Add(g, "g") end
-    if s > 0 then Add(s, "s") end
-    if c > 0 or #parts == 0 then Add(c, "c") end
-    return table.concat(parts, " ")
+    local text
+    if g > 0 then text = Coin(nil, g, "g") end
+    if s > 0 then text = Coin(text, s, "s") end
+    if c > 0 or not text then text = Coin(text, c, "c") end
+    return text
 end
 
 -------------------------------------------------------------------------------
