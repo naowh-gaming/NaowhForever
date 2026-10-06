@@ -113,10 +113,9 @@ function Toast.Paint(f, item, rank, event)
     local slot = B.Lists.SlotOf(id)
     f:SetScale(S.Get("bisToastScale"))
     f.bg:SetAlpha(S.Get("bisToastAlpha"))
-    local font, size, outline = ns.UI.FontPath(S.Get("bisToastFont")), S.Get("bisToastFontSize"),
-        S.Get("bisToastOutline")
-    f.name:SetFont(font, size, outline)
-    f.detail:SetFont(font, size - DETAIL_SMALLER, outline)
+    local font, size, outline = S.Get("bisToastFont"), S.Get("bisToastFontSize"), S.Get("bisToastOutline")
+    Parts.HudFont(f.name, font, size, outline)
+    Parts.HudFont(f.detail, font, size - DETAIL_SMALLER, outline)
     local border = BorderColor(id, rank) or BLACK
     f.edge:SetColor(border.r, border.g, border.b, S.Get("bisToastBorder") == "none" and 0 or 1)
     local glow = S.Get("bisToastGlow") and Parts.RankColor(rank)

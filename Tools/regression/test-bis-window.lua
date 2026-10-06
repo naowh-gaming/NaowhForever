@@ -84,7 +84,7 @@ local function Fixture()
         bisDropSound = "game:raidwarning", bisYoursSound = "game:epicloot", bisToastScale = 1, bisToastTime = 6,
         bisToastAlpha = 0.95, bisToastGlow = true, bisToastStar = "icon", bisToastBorder = "rank",
         bisToastEvent = true, bisToastRank = true, bisToastSlot = true, bisToastSource = false, bisToastGain = true,
-        bisToastFont = "", bisToastFontSize = 13, bisToastOutline = "" }
+        bisToastFont = "", bisToastFontSize = 13, bisToastOutline = "NONE" }
     local listeners = {}
     local S = {
         Get = function(key) return values[key] end,
@@ -741,7 +741,7 @@ check("Font, Font Size and Outline change both lines", toast.name.font == "lsm:N
     and toast.detail.flags == "OUTLINE")
 S.Set("bisToastFont", "")
 S.Set("bisToastFontSize", 13)
-S.Set("bisToastOutline", "")
+S.Set("bisToastOutline", "NONE")
 S.Set("bisToastGain", true)
 
 -- The preview on Drop Alert's card: the alert as it will look, in the moment picked.

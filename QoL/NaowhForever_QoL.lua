@@ -34,7 +34,7 @@ local S = UI.ModuleSettings("qol", {
     questAccept = false, questTurnIn = false, questGossip = false, questRewardPicks = true,
     questSkipModifier = "ALT",
     groupButtons = false, groupButtonsLayout = "stacked", groupButtonsWidth = 90, groupButtonsHeight = 24,
-    groupButtonsFont = "", groupButtonsFontSize = 12, groupButtonsOutline = "", groupButtonsBackground = "card",
+    groupButtonsFont = "", groupButtonsFontSize = 12, groupButtonsOutline = "NONE", groupButtonsBackground = "card",
     questShare = false,
     combatTimer = false, combatTimerInstanceOnly = false, combatTimerChat = true,
     combatTimerSticky = false, combatTimerHidePrefix = false, combatTimerBackground = "none",
@@ -106,7 +106,7 @@ local S = UI.ModuleSettings("qol", {
     bisDropSound = "game:raidwarning", bisYoursSound = "game:epicloot",
     bisToastScale = 1, bisToastTime = 6, bisToastAlpha = 0.95, bisToastGlow = true, bisToastStar = "icon",
     bisToastBorder = "rank", bisToastEvent = true, bisToastRank = true, bisToastSlot = true,
-    bisToastSource = false, bisToastGain = true, bisToastFont = "", bisToastFontSize = 13, bisToastOutline = "",
+    bisToastSource = false, bisToastGain = true, bisToastFont = "", bisToastFontSize = 13, bisToastOutline = "NONE",
     blessings = true, blessSpacing = 6, blessGroupSpacing = 6, blessTimerSize = 14, blessShowLabels = true, blessBarSize = 30, blessTimers = true, blessShowAura = true,
     blessShowFury = false, blessWindowAlpha = 1, blessFont = "", blessOutline = "OUTLINE", blessThemeColors = false,
 

@@ -26,7 +26,7 @@ local function Frame(kind, parent, template)
 end
 
 local settings = { enabled = true, groupButtonsWidth = 90, groupButtonsHeight = 24, groupButtonsFont = "",
-    groupButtonsFontSize = 12, groupButtonsOutline = "", groupButtonsBackground = "card" }
+    groupButtonsFontSize = 12, groupButtonsOutline = "NONE", groupButtonsBackground = "card" }
 local setHooks = {}
 local S = { Get = function(k) return settings[k] end }
 local ns = {
@@ -34,7 +34,9 @@ local ns = {
     THEME = setmetatable({}, { __index = function() return { r = 1, g = 1, b = 1 } end }),
     UI = { AttachMover = function(parent) return Frame("Mover", parent) end,
         FontPath = function(name) return name == "" and "font" or "lsm:" .. name end },
-    Shared = { Parts = { HudBackdrop = function(_, opts)
+    Shared = { Parts = { HudFont = function(fs, font, size, outline)
+        fs:SetFont(font == "" and "font" or "lsm:" .. font, size, outline == "NONE" and "" or outline)
+    end, HudBackdrop = function(_, opts)
         local backdrop = { opts = opts, border = { SetColor = NOTHING } }
         function backdrop:SetMode(mode) self.mode = mode end
         return backdrop

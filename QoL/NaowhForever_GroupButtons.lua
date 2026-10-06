@@ -79,12 +79,12 @@ local function Apply()
     end
     if not bar then Build() end
     local w, h = S.Get("groupButtonsWidth"), S.Get("groupButtonsHeight")
-    local font, size, outline = UI.FontPath(S.Get("groupButtonsFont")), S.Get("groupButtonsFontSize"),
-        S.Get("groupButtonsOutline")
+    local font, size, outline = S.Get("groupButtonsFont"), S.Get("groupButtonsFontSize"), S.Get("groupButtonsOutline")
+    local background = S.Get("groupButtonsBackground")
     for _, button in ipairs({ bar.invite, bar.disband }) do
         button:SetSize(w, h)
-        button.backdrop:SetMode(S.Get("groupButtonsBackground"))
-        button.label:SetFont(font, size, outline)
+        button.backdrop:SetMode(background)
+        Parts.HudFont(button.label, font, size, outline, background)
     end
     local stacked = S.Get("groupButtonsLayout") ~= "row"
     if stacked then
