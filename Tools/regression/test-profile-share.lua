@@ -7,6 +7,8 @@ dofile("Libs/LibStub/LibStub.lua")
 dofile("Libs/LibDeflate/LibDeflate.lua")
 dofile("Libs/LibSerialize/LibSerialize.lua")
 
+local PlainText = dofile("Tools/regression/plain_text.lua")()
+
 local count = 0
 local function Case(name, fn) fn(); count = count + 1; print("PASS " .. name) end
 
@@ -43,7 +45,7 @@ local function World()
     w.active = "Default"
     w.buildsChanged = 0
     local ns = {
-        UI = {}, CODE_BUILD = "test",
+        UI = {}, CODE_BUILD = "test", PlainText = PlainText,
         MacroText = { LIMIT = 255 },
         TrainingBuilds = { [2] = { talents = {} } },
         -- Points that cannot be taken start with 0 here; the real rules are Training's own test.
@@ -261,6 +263,31 @@ Case("pack strings go to the pack import; damaged or newer ones are refused", fu
     _, err = w.ns.DecodeProfile(newer)
     assert(err and err:find("newer", 1, true), tostring(err))
     assert(w.ns.DecodeProfile("") == nil)
+end)
+
+local function Live(text)
+    return (text:gsub("||", "")):find("|", 1, true) ~= nil or text:find("[\r\n]") ~= nil
+end
+
+Case("a crafted string's name, author, date and list names show as plain text", function()
+    local w = World()
+    local LS, LD = LibStub("LibSerialize"), LibStub("LibDeflate")
+    local BADGE = "|TInterface\\AddOns\\NaowhForever\\Media\\Badges\\BadgeNaowhChat.tga:16|t"
+    local text = "NFPROFILE1:" .. LD:EncodeForPrint(LD:CompressDeflate(LS:Serialize({
+        format = 1, name = BADGE .. " |cffe6cc80Naowh's Official|r\nVerified by the team",
+        author = "%s%d%n |Hplayer:Naowh|h[Naowh]|h", made = ("|cffff0000x|r"):rep(400),
+        parts = { bisLists = { PALADIN = { { name = BADGE .. "|n Best", slots = { [1] = 100 } } } } } })))
+    local payload = assert(w.ns.DecodeProfile(text))
+    assert(not Live(payload.name) and not Live(payload.author) and not Live(payload.made), payload.name)
+    assert(payload.name:find("||TInterface", 1, true) and payload.author:find("%s%d%n", 1, true))
+    assert(#payload.made <= 200, "a long field is cut")
+    assert(("%s, shared by %s on %s."):format(payload.name, payload.author, payload.made), "format takes them as arguments")
+    w.ns.ImportProfile(payload, { bisLists = true })
+    local lists = w.db.account.bisLists.PALADIN.lists
+    assert(not Live(lists[#lists].name), lists[#lists].name)
+    local fresh = World()
+    local clean = fresh.ns.DecodeProfile((fresh.ns.ExportProfile()))
+    assert(clean.name == "Default" and clean.author == "Glyadin", "plain names are left as they are")
 end)
 
 -- The dialogs on stub frames: every method a no-op unless kept here.

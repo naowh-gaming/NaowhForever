@@ -14,6 +14,8 @@ local PACK_PREFIX = "NSRPACK2:"
 local FORMAT = 1
 local MAX_DEPTH = 12
 local MAX_VALUES = 200000   -- values a string may hold; more is refused as too big
+local TEXT_MAX = 100
+local LIST_NAME_MAX = 40
 
 -- The account's look: every profile shares it, so it travels as its own part.
 local LOOK = { "themePreset", "themeColors", "uiFont", "windowScale" }
@@ -213,6 +215,9 @@ function ns.DecodeProfile(text)
         return nil, "The string is damaged: copy it again in full."
     end
     if payload.format ~= FORMAT then return nil, "This string is from a newer Naowh Forever: update first." end
+    payload.name = ns.PlainText(payload.name, TEXT_MAX)
+    payload.author = ns.PlainText(payload.author, TEXT_MAX)
+    payload.made = ns.PlainText(payload.made, TEXT_MAX)
     local budget = { n = 0 }
     payload.parts = Plain(Swap(payload.parts, ZERO, 0), 1, budget)
     if budget.over then return nil, "This string is too big." end
@@ -293,7 +298,8 @@ local function AddBisLists(incoming)
                     if type(list) == "table" and SameList(mine, list) then have = true end
                 end
                 if type(list) == "table" and type(list.name) == "string" and not have then
-                    local name, n = list.name, 1
+                    local base = ns.PlainText(list.name, LIST_NAME_MAX)
+                    local name, n = base, 1
                     local function Taken(try)
                         for _, mine in ipairs(store.lists) do
                             if type(mine.name) == "string" and mine.name:lower() == try:lower() then return true end
@@ -301,7 +307,7 @@ local function AddBisLists(incoming)
                     end
                     while Taken(name) do
                         n = n + 1
-                        name = ("%s %d"):format(list.name, n)
+                        name = ("%s %d"):format(base, n)
                     end
                     list.name, list.id = name, store.nextID
                     store.nextID = store.nextID + 1

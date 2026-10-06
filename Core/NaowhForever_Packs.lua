@@ -14,6 +14,7 @@ local PREFIX = "NSRPACK2:"
 local PACK_FORMAT = 1
 local LICENSE_MARKER = ":LIC1:"
 local MAX_PACK_CHARS = 1000000
+local TEXT_MAX = 100
 
 -- Sections a pack may carry, in display order. value: what every entry of a flat section
 -- must be. perEntry: merged reminder by reminder rather than a boss at a time.
@@ -402,7 +403,7 @@ function ns.DescribeProfilePack(str, opts)
     for i = 1, #profiles do
         local p = profiles[i]
         local specText = #p.specs > 0 and (" -- " .. table.concat(p.specs, ", ")) or ""
-        lines[#lines + 1] = ("  " .. ns.Color("accent", "%s") .. "%s"):format(p.name, specText)
+        lines[#lines + 1] = ("  " .. ns.Color("accent", "%s") .. "%s"):format(ns.PlainText(p.name), specText)
     end
     lines[#lines + 1] = "Your own existing profiles are not changed."
     if wantSettings then
@@ -511,6 +512,10 @@ function API:ImportProfile(str, profileName)
     return true, landed
 end
 
+local function CleanText(t, key)
+    if type(t) == "table" and type(t[key]) == "string" then t[key] = ns.PlainText(t[key], TEXT_MAX) end
+end
+
 -- Decode and validate; returns the payload plus a human description, or nil
 -- and a reason. Applies nothing.
 function ns.DecodePack(str)
@@ -546,6 +551,11 @@ function ns.DecodePack(str)
     end
     -- Never trusted off the wire: set here and nowhere else.
     payload.licensed = nil
+    CleanText(payload, "name")
+    CleanText(payload, "author")
+    CleanText(payload, "made")
+    CleanText(payload.derivedFrom, "name")
+    CleanText(payload.derivedFrom, "author")
     if license then
         local licOk, licErr = ns.CheckPackLicense(license)
         if not licOk then return nil, licErr end
@@ -580,7 +590,7 @@ function ns.DecodePack(str)
             for j = 1, #specs do
                 specText = specText and (specText .. ", " .. specs[j].name) or specs[j].name
             end
-            parts[#parts + 1] = (ns.Color("accent", "%s") .. "%s"):format(names[i],
+            parts[#parts + 1] = (ns.Color("accent", "%s") .. "%s"):format(ns.PlainText(names[i]),
                 specText and (" -- " .. specText) or "")
         end
     else
@@ -1480,7 +1490,7 @@ function ns.ShowPackImport(text)
                 if name ~= "Default" then names[#names + 1] = name end
             end
             table.sort(names, function(a, b) return a:lower() < b:lower() end)
-            for i = 1, #names do specs[i] = { key = names[i], name = names[i] } end
+            for i = 1, #names do specs[i] = { key = names[i], name = ns.PlainText(names[i]) } end
         elseif payload then
             specs = SortSpecs(ns.PackSpecs(payload))
         end
