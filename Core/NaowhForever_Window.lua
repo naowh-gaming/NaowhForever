@@ -9,8 +9,13 @@ local UI = ns.UI
 local SIDEBAR_W, CONTENT_W, WINDOW_W, WINDOW_H = 240, 1000, 1440, 790
 local TOP_H, PAGE_HEADER_H = 64, 128
 local HEADER_H, TAB_H, NAV_H = 76, 32, 32
--- The sidebar's search box, kept tight so every module still fits the default window.
-local SEARCH = { h = 26, top = 10, side = 14, gap = 4 }
+-- A sidebar row sits NAV_INSET in from the sidebar's left and from the list's right, which
+-- leaves NAV_GUTTER for its scrollbar; its glyph and label start at NAV_ICON_X and NAV_LABEL_X.
+local NAV_INSET, NAV_GUTTER, NAV_ICON_X, NAV_ICON_SIZE, NAV_LABEL_X = 8, 12, 14, 20, 42
+-- The sidebar's search box, edge to edge with the rows and its magnifier and text on their
+-- glyph and label columns; kept short so every module still fits the default window.
+local SEARCH = { h = 26, top = 10, gap = 4, left = NAV_INSET, right = NAV_INSET + NAV_GUTTER,
+    columns = { icon = NAV_ICON_X + NAV_ICON_SIZE / 2, text = NAV_LABEL_X } }
 local SCROLL_BAR_GAP = 12 -- the page scrollbar sits this far right of the page, in its margin
 local LINK_ICONS = "Interface\\AddOns\\NaowhForever\\Media\\Links\\"
 local LINKS = {
@@ -358,8 +363,8 @@ local function LayoutNav()
             for _, mod in ipairs(block.mods) do
                 if (not ModuleOn(mod)) == (pass == 2) then
                     local btn = navButtons[mod.name]
-                    btn:SetPoint("TOPLEFT", 8, y)
-                    btn:SetPoint("TOPRIGHT", -8, y)
+                    btn:SetPoint("TOPLEFT", NAV_INSET, y)
+                    btn:SetPoint("TOPRIGHT", -NAV_INSET, y)
                     y = y - NAV_ROW
                 end
             end
@@ -1037,9 +1042,9 @@ end
 local function NavigationScroll(parent, top, bottom, width)
     local scroll = CreateFrame("ScrollFrame", nil, parent)
     scroll:SetPoint("TOPLEFT", 0, -top)
-    scroll:SetPoint("BOTTOMRIGHT", -12, bottom)
+    scroll:SetPoint("BOTTOMRIGHT", -NAV_GUTTER, bottom)
     local child = CreateFrame("Frame", nil, scroll)
-    child:SetSize(width - 12, 1)
+    child:SetSize(width - NAV_GUTTER, 1)
     scroll:SetScrollChild(child)
     local bar = CreateFrame("Slider", nil, scroll)
     scroll.ScrollBar = bar
@@ -1087,8 +1092,8 @@ end
 
 local function NavigationButton(parent, label, y, onClick, icon)
     local btn = CreateFrame("Button", nil, parent)
-    btn:SetPoint("TOPLEFT", 8, y)
-    btn:SetPoint("TOPRIGHT", -8, y)
+    btn:SetPoint("TOPLEFT", NAV_INSET, y)
+    btn:SetPoint("TOPRIGHT", -NAV_INSET, y)
     btn:SetHeight(38)
     btn.fill = ns.Solid(btn, "BACKGROUND", T.accent, 0.16)
     btn.fill:SetAllPoints()
@@ -1097,7 +1102,7 @@ local function NavigationButton(parent, label, y, onClick, icon)
     btn.marker:SetPoint("TOPLEFT"); btn.marker:SetPoint("BOTTOMLEFT"); btn.marker:SetWidth(3)
     btn.marker:Hide()
     btn.label = ns.Font(btn, 14, nil, T.muted)
-    btn.label:SetPoint("LEFT", icon and 42 or 18, 0)
+    btn.label:SetPoint("LEFT", icon and NAV_LABEL_X or 18, 0)
     btn.label:SetPoint("RIGHT", -10, 0)
     btn.label:SetJustifyH("LEFT")
     btn.label:SetWordWrap(false)
@@ -1107,8 +1112,8 @@ local function NavigationButton(parent, label, y, onClick, icon)
     if icon then
         btn.icon = btn:CreateTexture(nil, "ARTWORK")
         btn.icon:SetTexture("Interface\\AddOns\\NaowhForever\\Media\\Navigation\\" .. icon .. ".tga")
-        btn.icon:SetSize(20, 20)
-        btn.icon:SetPoint("LEFT", 14, 0)
+        btn.icon:SetSize(NAV_ICON_SIZE, NAV_ICON_SIZE)
+        btn.icon:SetPoint("LEFT", NAV_ICON_X, 0)
         btn.icon:SetVertexColor(T.muted.r, T.muted.g, T.muted.b, 1)
     end
     btn:SetScript("OnClick", onClick)
@@ -1219,9 +1224,9 @@ local function CreateWindow()
     sidebar:SetPoint("TOPLEFT", 0, -TOP_H); sidebar:SetPoint("BOTTOMLEFT"); sidebar:SetWidth(SIDEBAR_W)
     local edge = ns.Solid(sidebar, "ARTWORK", T.line, 1)
     edge:SetPoint("TOPRIGHT"); edge:SetPoint("BOTTOMRIGHT"); ns.Hairline(edge, "v")
-    searchBox = UI.AttachSearchBox(sidebar, OnSearch)
-    searchBox:SetPoint("TOPLEFT", SEARCH.side, -SEARCH.top)
-    searchBox:SetPoint("TOPRIGHT", -SEARCH.side, -SEARCH.top)
+    searchBox = UI.AttachSearchBox(sidebar, OnSearch, SEARCH.columns)
+    searchBox:SetPoint("TOPLEFT", SEARCH.left, -SEARCH.top)
+    searchBox:SetPoint("TOPRIGHT", -SEARCH.right, -SEARCH.top)
     searchBox:SetHeight(SEARCH.h)
     local nav = NavigationScroll(sidebar, SEARCH.top + SEARCH.h + SEARCH.gap, FOOTER_H_SIDEBAR + 6 + NAV_STEP * #SYSTEM_NAV,
         SIDEBAR_W)

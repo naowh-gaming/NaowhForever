@@ -156,10 +156,10 @@ function UI.ClearSearch()
     box:ClearFocus()
 end
 
--- onChange runs on every edit, with UI.filter already set for it.
-function UI.AttachSearchBox(parent, onChange)
+-- onChange runs on every edit, with UI.filter already set for it. columns: Parts.SearchBox's.
+function UI.AttachSearchBox(parent, onChange, columns)
     onFilter = onChange
-    box = ns.Shared.Parts.SearchBox(parent, "Search settings", OnText)
+    box = ns.Shared.Parts.SearchBox(parent, "Search settings", OnText, columns)
     UI:RegisterOnHide(UI.ClearSearch)
     return box
 end

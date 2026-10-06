@@ -472,6 +472,15 @@ do
     local sidebar = moduleScroll.parent
     Check(input.parent == sidebar, "the search box sits in the sidebar")
     Check(input.points.TOPLEFT[4] > moduleScroll.points.TOPLEFT[4], "above the module list")
+    local row = Button("Quality of Life")
+    Check(input.points.TOPLEFT[3] == row.points.TOPLEFT[3]
+        and input.points.TOPRIGHT[3] == moduleScroll.points.BOTTOMRIGHT[3] + row.points.TOPRIGHT[3],
+        "edge to edge with the module rows under it")
+    local glass
+    for _, f in ipairs(input.children) do if f.texture and f.points.LEFT then glass = f end end
+    Check(glass and math.abs(glass.points.LEFT[3] + glass:GetWidth() / 2 - (row.icon.points.LEFT[3] + row.icon:GetWidth() / 2)) <= 0.5
+        and Text("Search settings").points.LEFT[3] == row.label.points.LEFT[3],
+        "its magnifier and text on the rows' glyph and label columns")
     ctrl = true
     root.scripts.OnKeyDown(root, "F"); Flush()
     ctrl = false
