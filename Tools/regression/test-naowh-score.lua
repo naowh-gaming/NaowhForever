@@ -29,7 +29,9 @@ local function Fixture()
         end,
         OnChange = function(fn) listeners[#listeners + 1] = fn end,
     }
-    local ns = { QoLSettings = S, Apply = NOTHING, Shared = { Style = { LOGO_SMALL = "logo" } },
+    state.roster = {}
+    local ns = { QoLSettings = S, Apply = NOTHING, Shared = { Style = { LOGO_SMALL = "logo" },
+        Roster = { AddTooltip = function(fn) state.roster[#state.roster + 1] = fn end } },
         THEME = setmetatable({}, { __index = function() return { r = 1, g = 1, b = 1 } end }) }
     local function Item(link)
         local unit, slot = link:match("^item:(%w+):(%d+)$")
@@ -252,8 +254,23 @@ do
     env.InspectFrame = nil
     Hover("party1")
     check("then it is asked again", #state.inspected == 2)
+    check("the guild list's tooltip is asked for with it", #state.roster == 1)
+    local OnRoster = state.roster[1]
+    local function Roster(member)
+        for k in pairs(state.lines) do state.lines[k] = nil end
+        local added = OnRoster(state.tooltip, member, { guid = member, level = 60 })
+        return added, state.rights[#state.lines] and state.rights[#state.lines].text
+    end
+    ns.NaowhScore.Remember("Player-1-GUILD", 27.4, true, true, 60)
+    local added, text = Roster("Player-1-GUILD")
+    check("a guildmate whose score is known: the line, never an inspect", added and text == "27.4"
+        and #state.inspected == 2)
+    check("yours: from what you wear", select(2, Roster("Player-1-1")) == "20.0")
+    added = Roster("Player-1-UNKNOWN")
+    check("a guildmate not known: nothing, and no inspect", not added and #state.lines == 0 and #state.inspected == 2)
     S.Set("naowhScore", false)
     check("off: no line", Hover("party1") == nil)
+    check("off: none in the guild list either", not Roster("Player-1-GUILD"))
 end
 
 -- Reported on Forever: a unit's GUID can come back secret by the time its gear arrives, and the

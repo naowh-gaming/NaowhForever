@@ -305,6 +305,20 @@ local function OnUnit(tooltip)
     shownGUID, shownLine = guid, tooltip:NumLines()
 end
 
+local function OnRoster(tooltip, guid, info)
+    if not TooltipOn() then return end
+    local score
+    if guid == UnitGUID("player") then
+        score = Score.Unit("player")
+    else
+        local entry = Score.Known(guid)
+        score = entry and entry.score
+    end
+    if not score then return end
+    tooltip:AddDoubleLine(LABEL, Score.Tooltip(score, info.level), T.accent.r, T.accent.g, T.accent.b, 1, 1, 1)
+    return true
+end
+
 local hooked = false
 
 -- The tooltip hook goes in a frame after Apply, once every module's Apply has run: tooltip
@@ -312,6 +326,7 @@ local hooked = false
 -- comes first, and the score under it, as one Naowh block.
 local function Hook()
     TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Unit, OnUnit)
+    ns.Shared.Roster.AddTooltip(OnRoster)
 end
 local SCAN_EVENTS = { "GROUP_ROSTER_UPDATE", "PLAYER_REGEN_ENABLED", "UNIT_INVENTORY_CHANGED" }
 local NEARBY_EVENTS = { "NAME_PLATE_UNIT_ADDED", "NAME_PLATE_UNIT_REMOVED", "PLAYER_TARGET_CHANGED",

@@ -8,6 +8,7 @@
     <Script file="Style.lua"/>
     <Script file="Items.lua"/>
     <Script file="Bags.lua"/>
+    <Script file="Roster.lua"/>
     <Script file="Places.lua"/>
     <Script file="Played.lua"/>
     <Script file="Parts.lua"/>
