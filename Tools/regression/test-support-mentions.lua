@@ -81,8 +81,32 @@ end
 
 check("the scanner skips comments and finds strings", #Literals("-- 'no'\n--[[ \"no\" ]]\nx = 'a' .. \"b\" .. [[c]]") == 3)
 
+-- A module may sit in its own addon folder: NaowhForever_BiS/CharacterPanel/... for CharacterPanel/...,
+-- NaowhForever_DungeonJournal/... for DungeonJournal/...
+local TOC_LUA = TocFiles("%.lua$")
+local function EndsWith(path, suffix)
+    return path == suffix or path == "NaowhForever_" .. suffix or path:match("^NaowhForever_%w+/(.+)$") == suffix
+end
+local function Gated(path)
+    for suffix in pairs(GATED) do
+        if EndsWith(path, suffix) then return suffix end
+    end
+end
+local function Unrelated(path, literal)
+    for suffix, text in pairs(UNRELATED) do
+        if EndsWith(path, suffix) and literal:find(text, 1, true) then return true end
+    end
+    return false
+end
+local function Located(suffix)
+    for _, path in ipairs(TOC_LUA) do
+        if Gated(path) == suffix then return path end
+    end
+    return suffix
+end
+
 local scanned, hitFiles = 0, {}
-for _, path in ipairs(TocFiles("%.lua$")) do
+for _, path in ipairs(TOC_LUA) do
     local f = not path:find("^Libs/") and io.open(path, "rb")
     if f then
         local src = f:read("*a")
@@ -91,10 +115,9 @@ for _, path in ipairs(TocFiles("%.lua$")) do
         for _, literal in ipairs(Literals(src)) do
             local word = Mentions(literal)
             if word then
-                local unrelated = UNRELATED[path]
-                local ok = GATED[path] or (unrelated and literal:find(unrelated, 1, true) ~= nil)
+                local ok = Gated(path) or Unrelated(path, literal)
                 check(("%s: %q in %q is not behind ns.FEATURE_BADGES"):format(path, word, literal), ok)
-                hitFiles[path] = true
+                hitFiles[Gated(path) or path] = true
             end
         end
     end
@@ -187,8 +210,8 @@ local function Shown(flag)
         strtrim = function(s) return (s:gsub("^%s+", ""):gsub("%s+$", "")) end,
         date = os.date,
     }, { __index = _G })
-    Load({ "Badges/NaowhForever_Badges.lua", "CharacterPanel/SettingsPage.lua", "Core/NaowhForever_Credits.lua",
-        "Core/NaowhForever_PatchNotes.lua" }, env)
+    Load({ Located("Badges/NaowhForever_Badges.lua"), Located("CharacterPanel/SettingsPage.lua"),
+        Located("Core/NaowhForever_Credits.lua"), Located("Core/NaowhForever_PatchNotes.lua") }, env)
     ns.BuildCreditsPage({ GetWidth = function() return 800 end }, 0)
 
     for _, def in ipairs(cards) do

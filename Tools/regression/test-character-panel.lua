@@ -618,7 +618,13 @@ local function PanelCard(flag)
     }
     local flagEnv = setmetatable({ _G = { NaowhForever = flagNs },
         hooksecurefunc = function() hooked = hooked + 1 end }, { __index = _G })
-    Load({ "CharacterPanel/Badge.lua", "CharacterPanel/SettingsPage.lua" }, flagEnv)
+    local paths = {}
+    for _, path in ipairs(files) do
+        if path:find("CharacterPanel/Badge.lua", 1, true) or path:find("CharacterPanel/SettingsPage.lua", 1, true) then
+            paths[#paths + 1] = path
+        end
+    end
+    Load(paths, flagEnv)
     return cards.characterPanel, flagNs.CharacterPanel, listeners, hooked, store
 end
 
