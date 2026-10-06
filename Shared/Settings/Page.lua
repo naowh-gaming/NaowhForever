@@ -28,7 +28,7 @@ local BINDING_W = 170
 local DIM = 0.35
 local TOGGLE_GAP = 10
 local CHEVRON_SIZE = 12
-local FIND_MARK_W = 3     -- the accent bar left of the setting the find strip is on
+local FIND_MARK_W = 3     -- the accent bar left of the setting the search bar is on
 local NO_EVENTS = {}
 
 local function HelpEnter(hit)
@@ -54,7 +54,7 @@ end
 
 local function Found(label, cardUid)
     local focus = ns.UI.searchFocus
-    return focus ~= nil and focus.label == label and focus.feature == cardUid
+    return focus ~= nil and focus.label == label and focus.card == cardUid
 end
 
 local function FindMark(frame, layer)

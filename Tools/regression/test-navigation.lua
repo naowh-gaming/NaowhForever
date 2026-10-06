@@ -340,13 +340,12 @@ Check(preview.alpha == 0 and preview.sys.alpha == 1, "in combat it hides with Hi
 barStore.Set("hideInCombat", false); barStore.Set("mouseover", false); Flush()
 Click(Head("Top Bar")); Flush()
 local found = 0
-UI.searchIndex = UI.Search.Build()
-for _, entry in ipairs(UI.searchIndex) do
-    if entry.key == "QoL/Interface" and entry.label == "Faded Opacity" and entry.feature == "QoL/Interface:topBar" then
+for _, target in ipairs(UI.Search.Collect()) do
+    if target.page == "QoL/Interface" and target.label == "Faded Opacity" and target.card == "QoL/Interface:topBar" then
         found = found + 1
     end
 end
-Check(found == 1, "the search's index comes from the declarations, each setting once")
+Check(found == 1, "the search lists the declared settings, each once")
 local strip = Button("Interface").parent
 local tabs = 0
 for _, child in ipairs(strip.children) do
@@ -402,32 +401,36 @@ local pages = UI.SearchPages
 UI.SearchPages = function()
     for _, page in ipairs(pages()) do if page.key == "QoL/Combat" then return { page } end end
 end
-local hit = UI.Search.Match(UI.Search.Build(), "Out of Stealth Colour")[1]
-Check(hit and hit.feature == "QoL/Combat:stealthReminder" and hit.crumb:find("Stealth Reminder", 1, true),
-    "a setting is found in its card, the card in its breadcrumb")
-local debuffHit = UI.Search.Match(UI.Search.Build(), "Co-Tank Debuffs")[1]
-Check(debuffHit and debuffHit.feature == "QoL/Combat:coTank", "a setting's card is the one it opens")
-local iconHit = UI.Search.Match(UI.Search.Build(), "Max Icons")[1]
-UI.GoToSetting("QoL/Combat", "Max Icons", iconHit.feature); Flush()
+local hit = UI.Search.Find(UI.Search.Collect(), "Out of Stealth Colour")[1]
+Check(hit and hit.card == "QoL/Combat:stealthReminder" and hit.trail:find("Stealth Reminder", 1, true),
+    "a setting is found in its card, the card named in its trail")
+local debuffHit = UI.Search.Find(UI.Search.Collect(), "Co-Tank Debuffs")[1]
+Check(debuffHit and debuffHit.card == "QoL/Combat:coTank", "a setting's card is the one it opens")
+local iconHit = UI.Search.Find(UI.Search.Collect(), "Max Icons")[1]
+UI.GoToSetting("QoL/Combat", "Max Icons", iconHit.card); Flush()
 Check(Text("Co-Tank Debuffs") and Text("Max Icons"), "the jump opens its card")
 UI.SearchPages = pages
 for _, page in ipairs(UI.SearchPages()) do Check(not page.soon, "unfinished pages are not search results") end
 
--- The find strip: Ctrl+F opens it under the page, typing finds, Enter and Shift+Enter step
+-- The search bar: Ctrl+F opens it under the header, typing finds, Enter and Shift+Enter step
 -- through the matches, each landing on its page and row, and Escape closes it and clears the mark.
 do
     local ctrl, shift = false, false
     env.IsControlKeyDown = function() return ctrl end
     env.IsShiftKeyDown = function() return shift end
     ns.OpenOptionsWindow("QoL/Interface"); Flush()
-    Check(Button("Find  " .. ns.Color("muted", "Ctrl+F")) ~= nil, "the header has the Find button")
-    Check(not Text("FIND"), "the strip starts closed")
+    Check(Button("Search  " .. ns.Color("muted", "Ctrl+F")) ~= nil, "the header has the Search button")
+    Check(not Text("SEARCH"), "the bar starts closed")
+    local pageHeader = Text("Quality of Life / Interface").parent
+    local pageTop = pageHeader.points.TOPLEFT[4]
     ctrl = true
     root.scripts.OnKeyDown(root, "F"); Flush()
     ctrl = false
-    Check(Text("FIND") ~= nil and root:IsShown(), "Ctrl+F opens the find strip")
-    local bar = Text("FIND").parent
-    Check(bar.points.BOTTOMLEFT and bar.points.BOTTOMLEFT[4] == 46, "docked above the footer")
+    Check(Text("SEARCH") ~= nil and root:IsShown(), "Ctrl+F opens the search bar")
+    local bar = Text("SEARCH").parent
+    Check(bar.points.TOPLEFT and bar.points.TOPLEFT[4] == -64, "it sits right under the window's header")
+    Check(pageHeader.points.TOPLEFT[4] == pageTop - bar:GetHeight(), "and pushes the page down")
+    Check(Text("Setting, card or page") ~= nil, "its box says what it finds")
     local input
     for _, child in ipairs(bar.children) do if child.scripts.OnEnterPressed then input = child end end
     Check(input and input:HasFocus(), "the cursor is in its box")
@@ -439,15 +442,17 @@ do
         end
         return out
     end
-    local expected = UI.Search.Match(UI.Search.Build(), "max icons")
+    local expected = UI.Search.Find(UI.Search.Collect(), "max icons")
     input:SetText("max icons"); Flush()
     Check(Text("1 of " .. #expected) ~= nil, "the counter says which match is on show, of how many")
     Check(#Chips() == #expected, "a chip for each match")
     Check(Text("Quality of Life / Combat") ~= nil, "the first match's page opens")
-    Check(Setting("Max Icons") and Setting("Max Icons").found:IsShown(), "its row carries the find mark")
-    Check(UI.searchOpen and UI.searchOpen["QoL/Combat:coTank"], "its card is held open while the strip is up")
+    Check(Setting("Max Icons") and Setting("Max Icons").found:IsShown(), "its row carries the search's mark")
+    Check(UI.searchOpen and UI.searchOpen["QoL/Combat:coTank"], "its card is held open while the bar is up")
+    local chipText = Chips()[1].tag.text .. Chips()[1].text.text
+    Check(Chips()[1].tag.text == "QOL" and not chipText:find(">", 1, true), "a chip starts with its module's tag, no >")
 
-    local all = UI.Search.Match(UI.Search.Build(), "colour")
+    local all = UI.Search.Find(UI.Search.Collect(), "colour")
     input:SetText("colour"); Flush()
     Check(#all > 2 and Text("1 of " .. #all), "typing again starts over")
     input.scripts.OnEnterPressed(input); Flush()
@@ -471,11 +476,12 @@ do
 
     input:SetText("max icons"); Flush()
     root.scripts.OnKeyDown(root, "ESCAPE"); Flush()
-    Check(root:IsShown() and not bar.visible, "Escape closes the strip, not the window")
+    Check(root:IsShown() and not bar.visible, "Escape closes the bar, not the window")
     Check(UI.searchFocus == nil and UI.searchOpen == nil, "and clears the marks")
     Check(Setting("Max Icons") and not Setting("Max Icons").found:IsShown(), "the row loses its mark")
     Check(Text("Max Icons") ~= nil, "the card holding the last match stays open")
-    Check(input:GetText() == "" and Text("1 of 1") == nil, "and the strip starts empty next time")
+    Check(input:GetText() == "" and Text("1 of 1") == nil, "and the bar starts empty next time")
+    Check(pageHeader.points.TOPLEFT[4] == pageTop, "the page moves back up")
 
     root.scripts.OnKeyDown(root, "F"); Flush()
     Check(not bar.visible, "F alone does nothing")
@@ -483,9 +489,9 @@ do
     root.scripts.OnKeyDown(root, "F"); Flush()
     ctrl = false
     input.scripts.OnEscapePressed(input); Flush()
-    Check(not bar.visible and root:IsShown(), "Escape in the box closes the strip too")
+    Check(not bar.visible and root:IsShown(), "Escape in the box closes the bar too")
     root.scripts.OnKeyDown(root, "ESCAPE"); Flush()
-    Check(not root:IsShown(), "with the strip closed, Escape closes the window")
+    Check(not root:IsShown(), "with the bar closed, Escape closes the window")
     ns.OpenOptionsWindow("QoL/Combat"); Flush()
 end
 
