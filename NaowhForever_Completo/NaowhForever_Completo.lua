@@ -131,6 +131,9 @@ function Q.Giver(id) return D.Quests[id][GIVER] end
 -- The item that begins it, for a quest a mob's drop starts (its giver is then that mob).
 function Q.Item(id) return D.Quests[id][ITEM] end
 
+-- One you can do again and again: the game never marks it done.
+function Q.Repeatable(id) return D.Repeatable ~= nil and D.Repeatable[id] == true end
+
 function Q.Spot(id)
     local quest = D.Quests[id]
     if quest[MAP] then return quest[MAP], quest[X], quest[Y] end
@@ -236,7 +239,8 @@ end
 function Q.ZoneProgress(zone)
     local n, total, low, high = 0, 0, nil, nil
     for _, id in ipairs(zone.quests) do
-        if mine[id] then
+        -- A repeatable quest is never done for good, so it is left out of the count.
+        if mine[id] and not Q.Repeatable(id) then
             total = total + 1
             if done[id] then n = n + 1 end
             local level = D.Quests[id][LEVEL]
@@ -418,7 +422,7 @@ function Q.GiverQuests(name, mapID)
 end
 
 -- The quest givers on a map with a quest you could pick up: { x, y, quests = { ids },
--- grey = true when every one is low level }. Low level ones only with grey; with chainsOnly,
+-- grey = true when every one is low level, repeatable = true when every one is }. Low level ones only with grey; with chainsOnly,
 -- only quests in a chain (Q.Available already leaves only a chain's next step). Tables
 -- reused until the next call; call Q.Refresh first.
 function Q.Givers(mapID, grey, chainsOnly)
@@ -440,12 +444,13 @@ function Q.Givers(mapID, grey, chainsOnly)
                 local entry = at[key]
                 if not entry then
                     entry = table.remove(spare) or { quests = {} }
-                    entry.x, entry.y, entry.grey = quest[X], quest[Y], true
+                    entry.x, entry.y, entry.grey, entry.repeatable = quest[X], quest[Y], true, true
                     at[key] = entry
                     givers[#givers + 1] = entry
                 end
                 table.insert(entry.quests, id)
                 if not trivial then entry.grey = false end
+                if not Q.Repeatable(id) then entry.repeatable = false end
             end
         end
     end

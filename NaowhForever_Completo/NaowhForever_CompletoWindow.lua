@@ -40,6 +40,7 @@ local STEP_INDENT = 26
 local TREE_X, TREE_UP, TREE_GAP, TREE_ALPHA, ELBOW = St.INDENT + 7, 6, 4, 0.5, 8
 local STRIPE, HOVER = 0.025, 0.04
 local LOG_RGB = { r = 1, g = 0.82, b = 0 }
+local REPEAT_RGB = { r = 0.35, g = 0.7, b = 1 }
 local EVENTS = { "QUEST_TURNED_IN", "QUEST_ACCEPTED", "QUEST_REMOVED", "PLAYER_LEVEL_UP" }
 
 local CONTINENTS = { [0] = "Eastern Kingdoms", [1] = "Kalimdor" }
@@ -189,6 +190,7 @@ local function StateText(id, state)
     local entry = STATE[state]
     local text = entry[1]
     if state == "low" then text = text:format(Q.RequiredLevel(id)) end
+    if state == "open" and Q.Repeatable(id) then return "Repeatable", REPEAT_RGB end
     local color = entry[2] == "log" and LOG_RGB or entry[2] == "red" and St.RED_RGB or T[entry[2]]
     return text, color
 end

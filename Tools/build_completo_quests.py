@@ -104,8 +104,11 @@ MIN_DROP = 0.02
 
 
 def fetch_zone_items(area):
+    """{ "items": the zone's quest-starting items, "repeatable": its quests Wowhead flags as
+    repeatable (wflags 16: Give Gerard a Drink, the Darkmoon ticket turn-ins) }."""
     page = wowhead.fetch(f"{wowhead.WOWHEAD}/zone={area}")
-    return [row["id"] for row in wowhead.listview(page, "starts-quest")]
+    return {"items": [row["id"] for row in wowhead.listview(page, "starts-quest")],
+            "repeatable": [q["id"] for q in wowhead.listview(page, "quests") if (q.get("wflags") or 0) & 16]}
 
 
 def fetch_item(item):
@@ -324,7 +327,7 @@ def main():
                     continue
                 save(ITEMS, items)
                 time.sleep(GAP)
-        todo = [i for ids in items["zones"].values() for i in ids if str(i) not in items["items"]]
+        todo = [i for z in items["zones"].values() for i in z["items"] if str(i) not in items["items"]]
         print(f"{len(todo)} quest item pages to fetch")
         for item in todo:
             try:
@@ -408,6 +411,15 @@ def write(zones, quests, requires, items):
         lines.append(f"    [{qid}] = {{ {lua_string(q['name'])}, {q.get('level') or 0}, "
                      f"{q.get('reqlevel') or 0}, {q.get('side') or 3}, {q.get('reqrace') or 0}, "
                      f"{q.get('reqclass') or 0}, {spot} }},")
+    repeatable = sorted({q for z in (items or {}).get("zones", {}).values() for q in z["repeatable"]} & set(rows))
+    lines += [
+        "}",
+        "",
+        "-- Quests you can do again and again (Wowhead's repeatable flag): questID = true.",
+        "D.Repeatable = {",
+    ]
+    for qid in repeatable:
+        lines.append(f"    [{qid}] = true,")
     lines += [
         "}",
         "",

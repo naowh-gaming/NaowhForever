@@ -1,8 +1,9 @@
 -------------------------------------------------------------------------------
 --  NaowhForever_CompletoMap.lua -- quest givers on the world map (and the mobs whose drop
---  begins a quest, where they spawn): a yellow ! at each one with
---  a quest you can pick up that still gives experience, and with Low Level Quests a grey !
---  at those with only quests that no longer do. Hover for the quests, click for a waypoint.
+--  begins a quest, where they spawn): a yellow ! at each one with a quest you can pick up
+--  that still gives experience, a blue one where all of them are repeatable, and with Low
+--  Level Quests a grey ! at those with only quests that no longer give experience. Hover for
+--  the quests, click for a waypoint.
 --  Built like Discovery's book pins.
 --
 --  Off until Map Pins is switched on: then a data provider on the world map, and quest events
@@ -16,7 +17,9 @@ local TEMPLATE = "NaowhForeverQuestGiverPinTemplate"
 -- The game's own quest marks; the gossip window's ! where the atlas is missing.
 local BANG_ATLAS, GREY_ATLAS = "QuestNormal", "TrivialQuests"
 local BANG_FILE = "Interface\\GossipFrame\\AvailableQuestIcon"
+local REPEAT_ATLAS = "QuestDaily"
 local GREY_RGB = { r = 0.62, g = 0.62, b = 0.62 }
+local REPEAT_RGB = { r = 0.35, g = 0.7, b = 1 }
 -- The light blue of the hint lines, or the theme's lighter Accent once the theme changed it.
 local function SoftBlue(r, g, b)
     local c = ns.ThemeTint("accentSoft", nil)
@@ -44,18 +47,22 @@ end
 function NaowhForeverQuestGiverPinMixin:CheckMouseButtonPassthrough() end
 
 -- A yellow !, or a grey one: the game's grey mark where it has one, else the yellow greyed.
-local function SetMark(icon, grey)
+-- A blue ! for a giver with only repeatable quests: the game's own where it has one, else the
+-- yellow tinted blue.
+local function SetMark(icon, grey, repeatable)
     icon:SetVertexColor(1, 1, 1)
-    if grey and icon:SetAtlas(GREY_ATLAS) then
-        icon:SetDesaturated(false)
-        return
-    end
+    icon:SetDesaturated(false)
+    if grey and icon:SetAtlas(GREY_ATLAS) then return end
+    if not grey and repeatable and icon:SetAtlas(REPEAT_ATLAS) then return end
     if not icon:SetAtlas(BANG_ATLAS) then icon:SetTexture(BANG_FILE) end
-    icon:SetDesaturated(grey)
-    if grey then icon:SetVertexColor(GREY_RGB.r, GREY_RGB.g, GREY_RGB.b) end
+    if grey or repeatable then
+        local c = grey and GREY_RGB or REPEAT_RGB
+        icon:SetDesaturated(true)
+        icon:SetVertexColor(c.r, c.g, c.b)
+    end
 end
 
--- giver: { x, y, quests, grey } from Q.Givers. Copied: Q.Givers reuses its tables.
+-- giver: { x, y, quests, grey, repeatable } from Q.Givers. Copied: Q.Givers reuses its tables.
 function NaowhForeverQuestGiverPinMixin:OnAcquired(giver)
     self.quests = self.quests or {}
     wipe(self.quests)
@@ -63,7 +70,7 @@ function NaowhForeverQuestGiverPinMixin:OnAcquired(giver)
     self.grey = giver.grey
     local size = S.Get("mapPinSize")
     self:SetSize(size, size)
-    SetMark(self.Icon, giver.grey)
+    SetMark(self.Icon, giver.grey, giver.repeatable)
     self:SetPosition(giver.x / 100, giver.y / 100)
 end
 
@@ -79,7 +86,9 @@ function NaowhForeverQuestGiverPinMixin:OnMouseEnter()
     end
     for _, id in ipairs(self.quests) do
         local c = Q.Trivial(id) and GREY_RGB or GetQuestDifficultyColor(Q.Level(id))
-        GameTooltip:AddDoubleLine(Q.Name(id), ("Level %d"):format(Q.Level(id)), c.r, c.g, c.b, c.r, c.g, c.b)
+        local level = ("Level %d"):format(Q.Level(id))
+        if Q.Repeatable(id) then level = "Repeatable, " .. level end
+        GameTooltip:AddDoubleLine(Q.Name(id), level, c.r, c.g, c.b, c.r, c.g, c.b)
     end
     GameTooltip:AddLine("Click for a waypoint.", SoftBlue(0.3, 0.71, 0.96))
     GameTooltip:Show()
