@@ -584,7 +584,8 @@ local function Go()
     ns.ConfirmReload(("Imported as %s and switched to it.%s Reload so every module picks it up?"):format(name, extra))
 end
 
-function ns.ShowProfileImport()
+-- text: what was pasted on the Profiles page, to carry on with here.
+function ns.ShowProfileImport(text)
     if not import then
         local dimmer, panel = ns.MakeModal(IMPORT_W, IMPORT_H, "profileImport")
         local title = ns.Font(panel, 14, "OUTLINE")
@@ -614,7 +615,7 @@ function ns.ShowProfileImport()
             nameBox = nameBox, go = go, rows = {}, wanted = {} }
         box:SetScript("OnTextChanged", function(_, user) if user then PaintImport() end end)
     end
-    import.box:SetText("")
+    import.box:SetText(text or "")
     wipe(import.wanted)
     PaintImport()
     import.dimmer:Show()
@@ -622,14 +623,18 @@ function ns.ShowProfileImport()
 end
 
 -------------------------------------------------------------------------------
---  The Profiles page: Import and New Profile, the profile in use, and Export part by part
+--  The Profiles page: your profiles as a list, the parts to share as chips, and a paste box
 -------------------------------------------------------------------------------
-local GAP, INNER, STRIP, ICON = 12, 16, 2, 24
-local ACTION_H, BAR_H, HEAD_H, COLUMNS_H, PART_H, FOOT_H = 64, 72, 54, 26, 44, 54
-local INCLUDE_X = 150      -- the Include column's centre, in from the export's right edge
-local CONTROL_H = 24
+local PROFILE_H, MARK_W, MARK_INSET, TEXT_X = 40, 2, 6, 12   -- a profile's row; the accent bar on the one in use
+local LINK_GAP = 14           -- between a row's links
+local SHOWN_CHARS = 3         -- characters named under a profile before "+N"
+local CHIP_H, CHIP_GAP, CHIP_PAD, CHIP_TICK, CHIP_SPACE = 26, 6, 10, 10, 6
+local SEND_H, SEND_W = 44, 150
+local FIELD_H, FIELD_BAR = 44, 22   -- the paste box, and room right of it for its scroll bar
+local HINT_X, HINT_Y = 6, -6
+local SECTION_GAP = 14
 
--- Ticks on the export, by part key: false when unticked, so every part starts in.
+-- Picks on the share, by part key: false when left out, so every part starts in.
 local wanted = {}
 
 local function Ticked(key)
@@ -655,8 +660,7 @@ local function NewProfile()
     end)
 end
 
-local function CopyActive()
-    local from = ns.ActiveProfileName()
+local function CopyNamed(from)
     ns.PromptText("Copy " .. from, "", 40, function(text)
         local name = strtrim(text)
         local function Make(overwrite)
@@ -670,262 +674,309 @@ local function CopyActive()
     end)
 end
 
-local function ResetActive()
-    local name = ns.ActiveProfileName()
+-- Only the profile in use: ResetProfileNamed clears just Smart Reminders on any other.
+local function ResetActive(name)
     ns.Confirm(("Reset %s to default settings? Cannot be undone."):format(name),
         function() Done(ns.ResetProfileNamed(name)) end, nil, "Reset")
 end
 
-local function DeleteActive()
-    local name = ns.ActiveProfileName()
+local function DeleteNamed(name)
     ns.Confirm(("Delete %s? Characters using it move to the account's default profile."):format(name),
         function() Done(ns.DeleteProfile(name)) end, nil, "Delete")
 end
 
-local function Card(frame)
-    local St = ns.Shared.Style
-    ns.Solid(frame, "BACKGROUND", ns.THEME.fg, St.WINDOW_CARD_FILL):SetAllPoints()
-    frame.edge = ns.Border(frame, St.BORDER_RGB)
-    local strip = ns.Solid(frame, "ARTWORK", ns.THEME.accent, 1)
-    strip:SetPoint("TOPLEFT")
-    strip:SetPoint("TOPRIGHT")
-    strip:SetHeight(STRIP)
-end
+-- A profile row's links, right to left as listed last to first.
+local ROW_LINKS = {
+    { key = "use", text = "Use", action = function(name) Done(ns.SwitchProfile(name)) end },
+    { key = "copy", text = "Copy", action = CopyNamed },
+    { key = "reset", text = "Reset", action = ResetActive },
+    { key = "delete", text = "Delete", action = DeleteNamed },
+}
 
-local function ActionEnter(card)
-    local c = ns.THEME.accent
-    card.edge:SetColor(c.r, c.g, c.b, 1)
-end
-
-local function ActionLeave(card)
-    card.edge:SetColor(0, 0, 0, 1)
-end
-
-local function NewAction(view)
-    local T = ns.THEME
-    local card = CreateFrame("Button", nil, view)
-    Card(card)
-    card.icon = card:CreateTexture(nil, "ARTWORK")
-    card.icon:SetSize(ICON, ICON)
-    card.icon:SetPoint("LEFT", INNER + 4, 0)
-    card.icon:SetVertexColor(T.accent.r, T.accent.g, T.accent.b, 1)
-    card.title = ns.Font(card, 14, nil, T.fg)
-    card.title:SetPoint("BOTTOMLEFT", card.icon, "RIGHT", INNER, 1)
-    card.line = ns.Font(card, 11, nil, T.muted)
-    card.line:SetPoint("TOPLEFT", card.icon, "RIGHT", INNER, -3)
-    card:SetScript("OnEnter", ActionEnter)
-    card:SetScript("OnLeave", ActionLeave)
-    card:SetScript("OnClick", function(self) self.onClick() end)
-    return card
-end
-
-local function SetAction(card, icon, title, line, onClick)
-    ns.Shared.Parts.Smooth(card.icon, icon)
-    card.title:SetText(title)
-    card.line:SetText(line)
-    card.onClick = onClick
-    return ACTION_H
-end
-
-local BAR_LABELS = { "Active Profile", "Copy Profile", "Reset or Delete" }
-
-local function NewBar(view)
-    local T = ns.THEME
-    local bar = CreateFrame("Frame", nil, view)
-    Card(bar)
-    bar.labels = {}
-    for i, text in ipairs(BAR_LABELS) do
-        bar.labels[i] = ns.Font(bar, 11, nil, i == 1 and T.accentSoft or T.muted)
-        bar.labels[i]:SetText(text)
+-- Who else is on each profile, by name without the realm.
+local function Characters()
+    local me = UnitName("player") .. "-" .. GetRealmName()
+    local by = {}
+    for _, known in ipairs(ns.KnownCharacters()) do
+        if known.char ~= me then
+            local list = by[known.profile] or {}
+            by[known.profile] = list
+            list[#list + 1] = known.char:match("^[^-]+")
+        end
     end
-    bar.pick = UI.BuildDropdownControl(bar, 200, nil, {}, {}, function() return ns.ActiveProfileName() end,
-        function(name) Done(ns.SwitchProfile(name)) end)
-    bar.copy = ns.Button(bar, "Create New (Copy)", 160, CONTROL_H, CopyActive)
-    bar.reset = ns.Button(bar, "Reset", 80, CONTROL_H, ResetActive)
-    bar.delete = ns.Button(bar, "Delete", 80, CONTROL_H, DeleteActive)
-    return bar
+    return by
 end
 
-local function SetBar(bar)
-    local column = (bar:GetWidth() - INNER * 2) / 3
-    for i, label in ipairs(bar.labels) do
-        label:ClearAllPoints()
-        label:SetPoint("TOPLEFT", INNER + (i - 1) * column, -(INNER + STRIP))
+local function WhoUses(names, active)
+    local shown = {}
+    for i = 1, math.min(#names, SHOWN_CHARS) do shown[i] = names[i] end
+    local list = table.concat(shown, ", ")
+    if #names > SHOWN_CHARS then list = ("%s +%d"):format(list, #names - SHOWN_CHARS) end
+    if active then
+        return list == "" and "In use on this character" or "In use here, and on " .. list
     end
-    local values, order = {}, ns.ListProfiles()
-    for _, name in ipairs(order) do values[name] = name end
-    bar.pick._values, bar.pick._order = values, order
-    bar.pick._refreshLabel()
-    bar.pick:SetWidth(column - INNER)
-    bar.pick:ClearAllPoints()
-    bar.pick:SetPoint("TOPLEFT", bar.labels[1], "BOTTOMLEFT", 0, -8)
-    bar.copy:SetWidth(column - INNER)
-    bar.copy:ClearAllPoints()
-    bar.copy:SetPoint("TOPLEFT", bar.labels[2], "BOTTOMLEFT", 0, -8)
-    bar.reset:ClearAllPoints()
-    bar.reset:SetPoint("TOPLEFT", bar.labels[3], "BOTTOMLEFT", 0, -8)
-    bar.delete:ClearAllPoints()
-    bar.delete:SetPoint("LEFT", bar.reset, "RIGHT", 8, 0)
-    return BAR_H
+    return list == "" and "Not in use" or "On " .. list
 end
 
-local function TickAll(view, on)
-    for _, part in ipairs(PARTS) do wanted[part.key] = on end
+local function RowEnter(row)
+    row.hover:Show()
+end
+
+local function RowLeave(row)
+    if not row:IsMouseOver() then row.hover:Hide() end
+end
+
+local function RowLinkClicked(link)
+    if link.disabled then return end
+    link.action(link:GetParent().profile)
+end
+
+local function RowLinkLeft(link)
+    RowLeave(link:GetParent())
+end
+
+local function NewProfileRow(view)
+    local T = ns.THEME
+    local Parts = ns.Shared.Parts
+    local row = CreateFrame("Frame", nil, view)
+    Parts.RowBands(row, 0)
+    row.mark = ns.Solid(row, "ARTWORK", T.accent, 1)
+    row.mark:SetPoint("TOPLEFT", 0, -MARK_INSET)
+    row.mark:SetPoint("BOTTOMLEFT", 0, MARK_INSET)
+    row.mark:SetWidth(MARK_W)
+    row.title = ns.Font(row, 13, nil, T.fg)
+    row.title:SetPoint("BOTTOMLEFT", row, "LEFT", TEXT_X, 1)
+    row.title:SetJustifyH("LEFT")
+    row.title:SetWordWrap(false)
+    row.line = ns.Font(row, 11, nil, T.muted)
+    row.line:SetPoint("TOPLEFT", row, "LEFT", TEXT_X, -3)
+    row.line:SetJustifyH("LEFT")
+    row.line:SetWordWrap(false)
+    row.links = {}
+    for i, def in ipairs(ROW_LINKS) do
+        local link = Parts.Link(row, RowLinkClicked)
+        Parts.SetLink(link, def.text)
+        link.key, link.action = def.key, def.action
+        link:HookScript("OnLeave", RowLinkLeft)
+        row.links[i] = link
+    end
+    row:EnableMouse(true)
+    row:SetScript("OnEnter", RowEnter)
+    row:SetScript("OnLeave", RowLeave)
+    return row
+end
+
+local function SetProfileRow(row, name, active, line, alone, striped)
+    local T = ns.THEME
+    row.profile = name
+    row.mark:SetShown(active)
+    row.stripe:SetShown(striped)
+    row.hover:Hide()
+    local c = active and T.accent or T.fg
+    row.title:SetTextColor(c.r, c.g, c.b, 1)
+    row.title:SetText(name)
+    row.line:SetText(line)
+    local x = 0
+    for i = #row.links, 1, -1 do
+        local link = row.links[i]
+        local show = not (link.key == "use" and active) and not (link.key == "reset" and not active)
+        link:SetShown(show)
+        if show then
+            local off = link.key == "delete" and alone
+            link.disabled, link.tip = off, off and "The last profile cannot be deleted." or nil
+            ns.Shared.Parts.LinkColor(link, off and T.muted or T.accentSoft)
+            link:ClearAllPoints()
+            link:SetPoint("RIGHT", -x, 0)
+            x = x + link:GetWidth() + LINK_GAP
+        end
+    end
+    row.title:SetPoint("RIGHT", -x, 0)
+    row.line:SetPoint("RIGHT", -x, 0)
+    return PROFILE_H
+end
+
+local function PickAll(view)
+    local all = true
+    for _, part in ipairs(PARTS) do
+        if view.status[part.key] == "ready" and not Ticked(part.key) then all = false end
+    end
+    for _, part in ipairs(PARTS) do wanted[part.key] = not all end
     view:Redraw()
 end
 
-local function NewHead(view)
+local function ChipClicked(chip)
+    if not chip.ready then return end
+    wanted[chip.key] = not Ticked(chip.key)
+    chip:GetParent():GetParent():Redraw()
+end
+
+local function ChipEnter(chip)
     local T = ns.THEME
-    local Parts = ns.Shared.Parts
-    local head = CreateFrame("Frame", nil, view)
-    head.title = ns.Font(head, 14, nil, T.fg)
-    head.title:SetPoint("TOPLEFT", 0, -INNER)
-    head.title:SetText("Export Profile")
-    head.line = ns.Font(head, 11, nil, T.muted)
-    head.line:SetPoint("TOPLEFT", head.title, "BOTTOMLEFT", 0, -6)
-    head.line:SetText("Choose what goes in the string. Tick everything to share the whole profile.")
-    head.none = Parts.Link(head, function() TickAll(view, false) end)
-    Parts.SetLink(head.none, "Deselect All")
-    head.none:SetPoint("BOTTOMRIGHT", 0, 6)
-    head.all = Parts.Link(head, function() TickAll(view, true) end)
-    Parts.SetLink(head.all, "Select All")
-    head.all:SetPoint("RIGHT", head.none, "LEFT", -12, 0)
-    return head
+    if chip.ready then chip.edge:SetColor(T.accent.r, T.accent.g, T.accent.b, 1) end
+    if not ns.Shared.Parts.Tip(chip, "ANCHOR_TOP") then return end
+    GameTooltip:SetText(chip.label:GetText(), 1, 1, 1)
+    GameTooltip:AddLine(chip.tip, T.muted.r, T.muted.g, T.muted.b, true)
+    GameTooltip:Show()
 end
 
-local function SetHead()
-    return HEAD_H
+local function ChipLeave(chip)
+    local c = chip.rest
+    chip.edge:SetColor(c.r, c.g, c.b, 1)
+    GameTooltip:Hide()
 end
 
-local function Rule(row, point)
-    local line = ns.Solid(row, "ARTWORK", ns.THEME.line, 1)
-    line:SetPoint(point .. "LEFT")
-    line:SetPoint(point .. "RIGHT")
-    ns.Hairline(line, "h")
-end
-
-local function NewColumns(view)
+local function Chip(row, i)
+    local chip = row.chips[i]
+    if chip then return chip end
     local T = ns.THEME
+    chip = CreateFrame("Button", nil, row)
+    chip:SetHeight(CHIP_H)
+    ns.Solid(chip, "BACKGROUND", T.panel, 1):SetAllPoints()
+    chip.edge = ns.Border(chip, ns.Shared.Style.BORDER_RGB)
+    chip.tick = chip:CreateTexture(nil, "ARTWORK")
+    chip.tick:SetSize(CHIP_TICK, CHIP_TICK)
+    chip.tick:SetPoint("LEFT", CHIP_PAD, 0)
+    chip.tick:SetVertexColor(T.accent.r, T.accent.g, T.accent.b, 1)
+    ns.Shared.Parts.Smooth(chip.tick, ns.Shared.Style.TICK)
+    chip.label = ns.Font(chip, 12, nil, T.fg)
+    chip.label:SetPoint("LEFT", chip.tick, "RIGHT", CHIP_SPACE, 0)
+    chip.detail = ns.Font(chip, 11, nil, T.muted)
+    chip.detail:SetPoint("LEFT", chip.label, "RIGHT", CHIP_SPACE, 0)
+    chip:SetScript("OnClick", ChipClicked)
+    chip:SetScript("OnEnter", ChipEnter)
+    chip:SetScript("OnLeave", ChipLeave)
+    row.chips[i] = chip
+    return chip
+end
+
+local function NewChips(view)
     local row = CreateFrame("Frame", nil, view)
-    local part = ns.Font(row, 11, nil, T.muted)
-    part:SetPoint("LEFT")
-    part:SetText("Part")
-    local include = ns.Font(row, 11, nil, T.muted)
-    include:SetPoint("CENTER", row, "RIGHT", -INCLUDE_X, 0)
-    include:SetText("Include")
-    local status = ns.Font(row, 11, nil, T.muted)
-    status:SetPoint("RIGHT")
-    status:SetText("Status")
-    Rule(row, "TOP")
-    Rule(row, "BOTTOM")
+    row.chips = {}
     return row
 end
 
-local function SetColumns()
-    return COLUMNS_H
+-- A chip per part: ticked and edged in the accent while it goes in, muted while left out,
+-- greyed with why when the profile has none of it.
+local function SetChips(row, status, details)
+    local T, St = ns.THEME, ns.Shared.Style
+    local width = row:GetWidth()
+    local x, y = 0, 0
+    for i, part in ipairs(PARTS) do
+        local chip = Chip(row, i)
+        local state = status[part.key]
+        local on = state == "ready" and Ticked(part.key)
+        chip.key, chip.ready = part.key, state == "ready"
+        chip.rest = on and T.accent or St.BORDER_RGB
+        chip.edge:SetColor(chip.rest.r, chip.rest.g, chip.rest.b, 1)
+        chip.tick:SetShown(on)
+        local c = on and T.fg or T.muted
+        chip.label:SetTextColor(c.r, c.g, c.b, 1)
+        chip.label:SetText(part.label)
+        local detail = state == "pack" and "from a pack" or state == "empty" and "none" or details[part.key]
+        c = state == "pack" and St.WARN_RGB or T.muted
+        chip.detail:SetTextColor(c.r, c.g, c.b, 1)
+        chip.detail:SetText(detail or "")
+        chip.tip = state == "pack" and "Came with a pack, so it stays with the pack's author." or part.share
+        local w = CHIP_PAD + CHIP_TICK + CHIP_SPACE + math.ceil(chip.label:GetStringWidth()) + CHIP_PAD
+        if detail then w = w + CHIP_SPACE + math.ceil(chip.detail:GetStringWidth()) end
+        if x > 0 and x + w > width then
+            x, y = 0, y + CHIP_H + CHIP_GAP
+        end
+        chip:SetWidth(w)
+        chip:ClearAllPoints()
+        chip:SetPoint("TOPLEFT", x, -y)
+        chip:Show()
+        x = x + w + CHIP_GAP
+    end
+    return y + CHIP_H + CHIP_GAP
 end
 
--- What a part's Status says, and in which colour.
-local STATUS = {
-    ready = { "Ready", "HAVE_RGB" },
-    empty = { "Nothing yet", "muted" },
-    pack = { "From a pack", "WARN_RGB" },
-}
-
-local function NewPart(view)
-    local T = ns.THEME
+local function NewSend(view)
     local row = CreateFrame("Frame", nil, view)
-    row.name = ns.Font(row, 13, nil, T.fg)
-    row.name:SetPoint("BOTTOMLEFT", row, "LEFT", 0, 1)
-    row.line = ns.Font(row, 11, nil, T.muted)
-    row.line:SetPoint("TOPLEFT", row, "LEFT", 0, -3)
-    row.toggle = UI.BuildToggleControl(row, nil, function() return Ticked(row.key) end, function(on)
-        wanted[row.key] = on
-        view:Redraw()
-    end, 32, 16)
-    row.toggle:SetPoint("CENTER", row, "RIGHT", -INCLUDE_X, 0)
-    row.status = ns.Font(row, 11, nil, T.fg)
-    row.status:SetPoint("RIGHT")
-    return row
-end
-
-local function SetPart(row, part, status)
-    row.key = part.key
-    row.name:SetText(part.label)
-    row.line:SetText(part.share)
-    row.toggle._refreshValue()
-    local say = STATUS[status]
-    local c = ns.Shared.Style[say[2]] or ns.THEME[say[2]]
-    row.status:SetText(say[1])
-    row.status:SetTextColor(c.r, c.g, c.b, 1)
-    return PART_H
-end
-
-local function NewFoot(view)
-    local row = CreateFrame("Frame", nil, view)
-    Rule(row, "TOP")
-    row.count = ns.Font(row, 11, nil, ns.THEME.muted)
+    row.count = ns.Font(row, 12, nil, ns.THEME.muted)
     row.count:SetPoint("LEFT")
-    row.export = ns.AccentBorder(ns.Button(row, "Export Profile", 160, 26, function()
+    row.send = ns.AccentBorder(ns.Button(row, "Get Share String", SEND_W, CHIP_H, function()
         local ticks = {}
         for _, part in ipairs(PARTS) do ticks[part.key] = Ticked(part.key) or nil end
         ns.ShowProfileExport(ticks)
     end))
-    row.export:SetPoint("RIGHT")
+    row.send:SetPoint("RIGHT")
     return row
 end
 
-local function SetFoot(row, count, ready)
-    row.count:SetText(count > 0 and ("Export will include %d of %d parts."):format(count, ready)
-        or "Tick a part to export.")
-    return FOOT_H
+local function SetSend(row, count, ready)
+    row.count:SetText(count > 0 and ("%d of %d parts of %s go in the string."):format(count, ready,
+        ns.ActiveProfileName() or "?") or "Pick a part to share.")
+    return SEND_H
+end
+
+-- Anything pasted or typed here carries on in the import, which previews it first.
+local function Pasted(box, user)
+    local text = box:GetText()
+    box.hint:SetShown(text == "")
+    if not user or not text:find("%S") then return end
+    box:SetText("")
+    box:ClearFocus()
+    ns.ShowProfileImport(text)
+end
+
+local function NewPaste(view)
+    local row = CreateFrame("Frame", nil, view)
+    local box = ns.MakeMultilineBox(row, 0, FIELD_H)
+    local field = box:GetParent()
+    field:ClearAllPoints()
+    field:SetPoint("TOPLEFT")
+    field:SetPoint("TOPRIGHT", -FIELD_BAR, 0)
+    box.hint = ns.Font(field, 12, nil, ns.THEME.muted)
+    box.hint:SetPoint("TOPLEFT", HINT_X, HINT_Y)
+    box.hint:SetText("Paste a profile, macro, talent build or BiS list string here.")
+    box:SetScript("OnTextChanged", Pasted)
+    return row
+end
+
+local function SetPaste()
+    return FIELD_H + CHIP_GAP
 end
 
 local kinds
 local Draw = {}
 
 function Draw:Redraw()
-    local St = ns.Shared.Style
     self:Clear()
-    local width = self:GetWidth()
-    local half = (width - GAP) / 2
-    self.width = half
-    self:Add("action", St.IMPORT, "Import Profile",
-        "Paste a profile, macros, a talent build or a BiS list.", ns.ShowProfileImport)
-    self.cursor, self.left = 0, half + GAP
-    self:Add("action", St.PLUS, "New Profile", "Start a profile at default settings.", NewProfile)
-    self.left, self.width = 0, width
-    self:Space(GAP)
-    self:Add("bar")
-    self:Space(GAP)
+    local order, by = ns.ListProfiles(), Characters()
+    local active = ns.ActiveProfileName()
+    self:Add("section", "Your Profiles", #order, nil, nil, "New Profile", NewProfile)
+    for i, name in ipairs(order) do
+        self:Add("profile", name, name == active, WhoUses(by[name] or {}, name == active), #order == 1, i % 2 == 0)
+    end
+    self:Space(SECTION_GAP)
 
-    local top = self.cursor
-    local card = self:OpenCard(0, width)
-    self:Add("head")
-    self:Add("columns")
     local count, ready = 0, 0
     for _, part in ipairs(PARTS) do
-        local status = self.status[part.key]
-        self:Add("part", part, status)
-        if status == "ready" then
+        if self.status[part.key] == "ready" then
             ready = ready + 1
             if Ticked(part.key) then count = count + 1 end
         end
     end
-    self:Add("foot", count, ready)
-    self:CloseCard(card, top)
+    self:Add("section", "Share", nil, nil, nil, count < ready and "Pick All" or "Pick None", PickAll, self)
+    self:Space(ns.Shared.Style.SECTION_SPACE)
+    self:Add("chips", self.status, self.details)
+    self:Add("send", count, ready)
+    self:Space(SECTION_GAP)
+
+    self:Add("section", "Import")
+    self:Space(ns.Shared.Style.SECTION_SPACE)
+    self:Add("paste")
     self:Fit({})
 end
 
 local function Kinds()
     if kinds then return kinds end
     kinds = ns.Shared.View.NewKinds()
-    kinds.action = { New = NewAction, Set = SetAction }
-    kinds.bar = { New = NewBar, Set = SetBar }
-    kinds.head = { New = NewHead, Set = SetHead }
-    kinds.columns = { New = NewColumns, Set = SetColumns }
-    kinds.part = { New = NewPart, Set = SetPart }
-    kinds.foot = { New = NewFoot, Set = SetFoot }
+    kinds.profile = { New = NewProfileRow, Set = SetProfileRow }
+    kinds.chips = { New = NewChips, Set = SetChips }
+    kinds.send = { New = NewSend, Set = SetSend }
+    kinds.paste = { New = NewPaste, Set = SetPaste }
     return kinds
 end
 
@@ -938,11 +989,12 @@ function ns.BuildProfileSettings(parent, y)
     local all = Collect()
     local sr = ns.SettingsRoot().tankReminder
     local packed = type(sr) == "table" and type(sr.importedPack) == "table"
-    view.status = {}
+    view.status, view.details = {}, {}
     for _, part in ipairs(PARTS) do
         view.status[part.key] = all[part.key] and "ready"
             or packed and part.key == "smartReminders" and "pack" or "empty"
     end
+    for _, part in ipairs(ns.ProfileStringParts({ parts = all })) do view.details[part.key] = part.detail end
     view:ClearAllPoints()
     view:SetPoint("TOPLEFT", parent, "TOPLEFT", UI.CONTENT_PAD, y - UI.CONTENT_PAD / 2)
     view:SetWidth(math.max(1, parent:GetWidth() - UI.CONTENT_PAD * 2))

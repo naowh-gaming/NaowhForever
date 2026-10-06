@@ -354,20 +354,24 @@ Case("the dialogs: export shows the string, import ticks parts and lands what is
 end)
 
 -- The Profiles page on stub frames and a small stand-in for the row engine.
-Case("the page: a row per part with its status, ticks count and go to the export", function()
+Case("the page: a row per profile, a chip per part, picks go to the share, a paste goes to the import", function()
     local w = World()
     w.db.account.trainingBuilds = nil
+    w.db.profiles.Raid = { tankReminder = {} }
     local NOTHING = function() end
     local function Frame()
         return setmetatable({ scripts = {} }, { __index = function(_, k)
             if k == "SetScript" then return function(self, s, fn) self.scripts[s] = fn end end
             if k == "SetText" then return function(self, t) self.text = t end end
-            if k == "GetWidth" then return function() return 700 end end
+            if k == "GetText" then return function(self) return self.text end end
+            if k == "SetShown" then return function(self, on) self.shown = on end end
+            if k == "GetWidth" or k == "GetStringWidth" then return function() return 700 end end
+            if k == "GetParent" then return function(self) return self.parent end end
             if k == "CreateTexture" then return function() return Frame() end end
             return NOTHING
         end })
     end
-    local ns, exported, links, buttons, toggles = w.ns, nil, {}, {}, {}
+    local ns, exported, imported, links, buttons = w.ns, nil, nil, {}, {}
     ns.THEME = setmetatable({}, { __index = function() return { r = 1, g = 1, b = 1 } end })
     ns.Solid, ns.Border, ns.Font = Frame, Frame, Frame
     ns.Hairline, ns.Print = NOTHING, NOTHING
@@ -378,25 +382,22 @@ Case("the page: a row per part with its status, ticks count and go to the export
         buttons[text] = b
         return b
     end
-    ns.ListProfiles = function() return { "Default" } end
+    local paste
+    ns.MakeMultilineBox = function()
+        paste = Frame()
+        paste.parent = Frame()
+        return paste
+    end
+    ns.ListProfiles = function() return { "Default", "Raid" } end
+    ns.KnownCharacters = function()
+        return { { char = "Alt-Realm", profile = "Raid" }, { char = "Glyadin-Realm", profile = "Default" } }
+    end
     ns.UI.CONTENT_PAD = 20
     ns.UI.RefreshPage = NOTHING
-    ns.UI.BuildDropdownControl = function()
-        local d = Frame()
-        d._refreshLabel = NOTHING
-        return d
-    end
-    ns.UI.BuildToggleControl = function(_, _, get, set)
-        local t = Frame()
-        t._get, t._set, t._refreshValue = get, set, NOTHING
-        toggles[#toggles + 1] = t
-        return t
-    end
     local Engine = {}
     function Engine:Clear() self.cursor, self.left, self.width, self.drawn = 0, 0, 700, {} end
     function Engine:Space(h) self.cursor = self.cursor + h end
-    function Engine:OpenCard() return Frame() end
-    Engine.CloseCard, Engine.Fit = NOTHING, NOTHING
+    Engine.Fit = NOTHING
     function Engine:GetHeight() return self.cursor end
     function Engine:GetWidth() return 700 end
     function Engine:Add(kind, ...)
@@ -405,20 +406,32 @@ Case("the page: a row per part with its status, ticks count and go to the export
         local pool = self.pools[kind] or {}
         self.pools[kind] = pool
         local row = pool[#list + 1] or self.kinds[kind].New(self)
+        row.parent = self
         pool[#list + 1], list[#list + 1] = row, row
         self.cursor = self.cursor + self.kinds[kind].Set(row, ...)
         return row
     end
+    -- The shared section title, as far as the page uses it: its words and its link.
+    local section = {
+        New = function() return Frame() end,
+        Set = function(row, title, n, _, _, linkText, onLink, linkArg)
+            row.title, row.count, row.linkText = title, n, linkText
+            row.onLink, row.linkArg = onLink, linkArg
+            return 28
+        end,
+    }
     ns.Shared = {
-        Style = { IMPORT = "import", PLUS = "plus", HAVE_RGB = { r = 0, g = 1, b = 0 }, WARN_RGB = { r = 1, g = 0.5, b = 0 } },
-        Parts = { Smooth = NOTHING, SetLink = NOTHING,
-            Link = function(_, fn)
+        Style = { TICK = "tick", SECTION_SPACE = 8, BORDER_RGB = { r = 0, g = 0, b = 0 },
+            WARN_RGB = { r = 1, g = 0.5, b = 0 } },
+        Parts = { Smooth = NOTHING, SetLink = NOTHING, LinkColor = NOTHING,
+            RowBands = function(row) row.stripe, row.hover = Frame(), Frame() end,
+            Link = function(parent, fn)
                 local l = Frame()
-                l.click = fn
+                l.parent, l.click = parent, fn
                 links[#links + 1] = l
                 return l
             end },
-        View = { NewKinds = function() return {} end,
+        View = { NewKinds = function() return { section = section } end,
             New = function(_, kinds, mixin)
                 local view = setmetatable({ kinds = kinds, pools = {} }, { __index = function(_, k)
                     return mixin[k] or Engine[k] or NOTHING
@@ -427,32 +440,72 @@ Case("the page: a row per part with its status, ticks count and go to the export
             end },
     }
     local env = getfenv(ns.ExportProfile)
-    env.CreateFrame = function() return Frame() end
+    env.CreateFrame = function(_, _, parent)
+        local f = Frame()
+        f.parent = parent
+        return f
+    end
+    env.GetRealmName = function() return "Realm" end
     env.ns = ns
     function ns.ShowProfileExport(ticks) exported = ticks end
+    function ns.ShowProfileImport(text) imported = text end
 
     local parent = Frame()
     parent.profilesView = false
     assert(ns.BuildProfileSettings(parent, -10) < -10)
     local view = parent.profilesView
-    local rows, foot = view.drawn.part, view.drawn.foot[1]
-    assert(#rows == 7 and #view.drawn.action == 2 and #view.drawn.bar == 1, #rows)
-    assert(rows[5].key == "builds" and rows[5].status.text == "Nothing yet", tostring(rows[5].status.text))
-    assert(rows[1].status.text == "Ready" and rows[1].line.text:find("frames sit", 1, true))
-    assert(foot.count.text == "Export will include 6 of 6 parts.", foot.count.text)
-    toggles[3]._set(false)   -- Macro Library
-    foot = view.drawn.foot[1]
-    assert(foot.count.text == "Export will include 5 of 6 parts.", foot.count.text)
-    buttons["Export Profile"].click()
+    local sections = view.drawn.section
+    assert(sections[1].title == "Your Profiles" and sections[1].count == 2 and sections[1].linkText == "New Profile")
+
+    local mine, raid = view.drawn.profile[1], view.drawn.profile[2]
+    assert(mine.profile == "Default" and mine.mark.shown == true and raid.mark.shown == false)
+    assert(mine.line.text == "In use on this character", mine.line.text)
+    assert(raid.line.text == "On Alt", raid.line.text)
+    local function Link(row, key)
+        for _, l in ipairs(row.links) do if l.key == key then return l end end
+    end
+    assert(Link(mine, "use").shown == false and Link(mine, "reset").shown == true, "in use: no Use, a Reset")
+    assert(Link(raid, "use").shown == true and Link(raid, "reset").shown == false, "another: Use, no Reset")
+    Link(raid, "use").click(Link(raid, "use"))
+    assert(w.switched == "Raid", tostring(w.switched))
+    w.active = "Default"
+
+    local chips = view.drawn.chips[1].chips
+    assert(#chips == 7 and chips[1].key == "settings" and chips[1].tick.shown == true)
+    assert(chips[1].detail.text == "2 modules", tostring(chips[1].detail.text))
+    assert(chips[5].key == "builds" and chips[5].ready == false and chips[5].detail.text == "none")
+    assert(chips[1].tip:find("frames sit", 1, true))
+    local send = view.drawn.send[1]
+    assert(send.count.text == "6 of 6 parts of Default go in the string.", send.count.text)
+    assert(sections[2].title == "Share" and sections[2].linkText == "Pick None")
+
+    chips[3].scripts.OnClick(chips[3])   -- Macro Library
+    send = view.drawn.send[1]
+    assert(send.count.text == "5 of 6 parts of Default go in the string.", send.count.text)
+    assert(view.drawn.chips[1].chips[3].tick.shown == false)
+    chips[5].scripts.OnClick(chips[5])   -- builds: nothing to share, so nothing happens
+    assert(view.drawn.send[1].count.text == "5 of 6 parts of Default go in the string.")
+    buttons["Get Share String"].click()
     assert(exported.library == nil and exported.settings == true and exported.look == true)
-    links[1].click()   -- Deselect All
-    assert(view.drawn.foot[1].count.text == "Tick a part to export.")
-    links[2].click()   -- Select All
-    assert(view.drawn.foot[1].count.text == "Export will include 6 of 6 parts.")
+
+    sections = view.drawn.section
+    assert(sections[2].linkText == "Pick All")
+    sections[2].onLink(sections[2].linkArg)
+    assert(view.drawn.send[1].count.text == "6 of 6 parts of Default go in the string.")
+    sections = view.drawn.section
+    sections[2].onLink(sections[2].linkArg)
+    assert(view.drawn.send[1].count.text == "Pick a part to share.")
+
+    paste.text = "NFPROFILE1:abc"
+    paste.scripts.OnTextChanged(paste, false)
+    assert(imported == nil, "only what the player puts there")
+    paste.scripts.OnTextChanged(paste, true)
+    assert(imported == "NFPROFILE1:abc" and paste.text == "", "a paste goes on to the import")
 
     w.db.profiles.Default.tankReminder.importedPack = { name = "Naowh's Pack" }
     ns.BuildProfileSettings(parent, -10)
-    assert(view.drawn.part[4].status.text == "From a pack", view.drawn.part[4].status.text)
+    chips = view.drawn.chips[1].chips
+    assert(chips[4].key == "smartReminders" and chips[4].detail.text == "from a pack", chips[4].detail.text)
 end)
 
 print(count .. " profile share regressions passed")
