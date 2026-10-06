@@ -178,7 +178,9 @@ end
 -- Blizzard_GroupFinder_VanillaStyle loads on demand, so its functions are hooked once it has.
 -------------------------------------------------------------------------------
 local DATA_DISPLAY_SPACE = 160 -- the group data on the right of a row (155 wide, 2 in)
+local ROLE_SCALE = 0.75 -- the row's role icons, shrunk to make room for the zone
 local rowText = setmetatable({}, { __mode = "k" }) -- search entry -> our zone FontString
+local scaled = setmetatable({}, { __mode = "k" })  -- search entries whose role icons we shrank
 local tipText = setmetatable({}, { __mode = "k" }) -- tooltip member frame -> our zone FontString
 local hooked = false
 
@@ -204,7 +206,15 @@ local function LeaderZone(resultID)
     return first and first.areaName
 end
 
+local function ScaleRoles(entry, on)
+    local display = entry.DataDisplay
+    if not display or (not on and not scaled[entry]) then return end
+    display:SetScale(on and ROLE_SCALE or 1)
+    scaled[entry] = on or nil
+end
+
 local function UpdateRow(entry)
+    ScaleRoles(entry, FinderOn())
     local zone = FinderOn() and entry.resultID and entry:IsShown() and LeaderZone(entry.resultID)
     if not zone or zone == "" or Secret(zone) then
         if rowText[entry] then rowText[entry]:Hide() end
@@ -219,7 +229,10 @@ local function UpdateRow(entry)
     fs:ClearAllPoints()
     fs:SetPoint("LEFT", entry.ActivityName, "RIGHT", 8, 0)
     -- Stop short of the role icons: their frame's left edge when laid out, else the template's width.
-    local stop, start = entry.DataDisplay and entry.DataDisplay:GetLeft(), entry.ActivityName:GetRight()
+    -- GetLeft is in the scaled frame's own units, so scale it back to the row's.
+    local display = entry.DataDisplay
+    local stop = display and display:GetLeft() and display:GetLeft() * display:GetScale()
+    local start = entry.ActivityName:GetRight()
     local width = (stop and start) and (stop - start - 16)
         or (entry:GetWidth() - DATA_DISPLAY_SPACE - 26 - entry.ActivityName:GetStringWidth())
     fs:SetWidth(math.max(1, width))
@@ -323,6 +336,7 @@ local function Apply()
     end
     if not FinderOn() then
         for _, fs in pairs(rowText) do fs:Hide() end
+        for entry in pairs(scaled) do ScaleRoles(entry, false) end
     end
     if not On() then
         wipe(known)
