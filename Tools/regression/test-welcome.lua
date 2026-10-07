@@ -35,7 +35,12 @@ function Frame:HookScript(name, fn) self.hooks[name] = fn end
 function Frame:RegisterEvent(e) self.events[e] = true end
 function Frame:UnregisterEvent(e) self.events[e] = nil end
 function Frame:UnregisterAllEvents() self.events = {} end
-function Frame:CreateTexture() return setmetatable({ SetTexture = function(tx, path) tx.path = path end }, Frame) end
+local textures = {}
+function Frame:CreateTexture()
+    local tx = setmetatable({ SetTexture = function(tx, path) tx.path = path end }, Frame)
+    textures[#textures + 1] = tx
+    return tx
+end
 function Frame:IsShown() return self.shown end
 function Frame:SetText(text) self.text = text end
 function Frame:GetStringHeight() return 14 end
@@ -348,6 +353,11 @@ do
     local win = s.window
     check("a row per preset, named, with its line", win.presets and #win.presets == 2
         and win.presets[1].label == "Minimalist" and win.presets[2].label == "Recommended")
+    local paths = {}
+    for _, tx in ipairs(textures) do if tx.path then paths[#paths + 1] = tx.path end end
+    local all = table.concat(paths, " ")
+    check("each preset's picture, as a .png the game can load (it adds no extension to a PNG)",
+        all:find("Welcome\\minimalist.png", 1, true) ~= nil and all:find("Welcome\\recommended.png", 1, true) ~= nil)
     s.ns.PresetChanges = function(key) return "changes of " .. key end
     check("each button's tooltip lists what that preset changes", win.presets[2].tipTitle == "Recommended"
         and win.presets[2].tipBody() == "changes of recommended")
