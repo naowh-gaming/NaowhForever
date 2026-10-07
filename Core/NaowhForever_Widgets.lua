@@ -1267,6 +1267,33 @@ function UI.FontPath(name)
     return path or ns.UIFontPath()
 end
 
+-- Bar texture dropdown data: "" is the element's own texture, named by label, then every
+-- SharedMedia statusbar. A saved texture that has since gone missing stays listed.
+function UI.TextureChoices(selected, label)
+    local values, order = { [""] = label }, { "" }
+    local LSM = LibStub and LibStub("LibSharedMedia-3.0", true)
+    if LSM then
+        for _, name in ipairs(LSM:List("statusbar")) do
+            if name ~= label then
+                values[name] = name
+                order[#order + 1] = name
+            end
+        end
+    end
+    if type(selected) == "string" and selected ~= "" and not values[selected] then
+        values[selected] = selected .. " (unavailable)"
+        order[#order + 1] = selected
+    end
+    return values, order
+end
+
+-- A SharedMedia statusbar by name, or fallback (the element's own texture) for "" and anything missing.
+function UI.TexturePath(name, fallback)
+    local LSM = LibStub and LibStub("LibSharedMedia-3.0", true)
+    local path = LSM and name and name ~= "" and LSM:Fetch("statusbar", name, true)
+    return path or fallback
+end
+
 -- Settings for the Naowh Forever modules: one table per module inside the active profile,
 -- read through defaults so a key an older profile never wrote picks up the current default.
 -- The row makers return W:DualRow configs; `on` names the master toggle a row depends on, or
@@ -1296,7 +1323,7 @@ local function CopyPlain(v)
 end
 
 -- What a profile string carries of a module: each setting it has a default for, as that type
--- (not the lists it keeps, which default to empty), and its Move Elements positions and anchors.
+-- (not the lists it keeps, which default to empty), and its HUD Editor positions and anchors.
 local function Shareable(defaults, k, v)
     if type(k) ~= "string" then return false end
     if k == "anchoredTo" then return type(v) == "table" and Plain(v, 0) end
@@ -1370,7 +1397,7 @@ function ns.ImportModuleSettings(root, modules)
 end
 
 function UI.ModuleSettings(key, defaults)
-    local S = {}
+    local S = { key = key }
     local listeners = {}
     local known = moduleDefaults[key]
     if known then
@@ -1435,7 +1462,8 @@ function UI.ModuleSettings(key, defaults)
     return S
 end
 
-ns.UnlockModeSettings = UI.ModuleSettings("unlockMode", { anchoredTo = {} })
+ns.UnlockModeSettings = UI.ModuleSettings("unlockMode", { guides = true, hidden = {}, locked = {},
+    elementsPanel = true, anchoredTo = { ["Loot Feed"] = { target = "Alerts", side = "RIGHT", x = -300, y = 206 } } })
 
 -------------------------------------------------------------------------------
 --  Sounds

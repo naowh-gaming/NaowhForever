@@ -14,6 +14,8 @@ local PREFIX = "NSRPACK2:"
 local PACK_FORMAT = 1
 local LICENSE_MARKER = ":LIC1:"
 local MAX_PACK_CHARS = 1000000
+local LIMITS = { maxChars = MAX_PACK_CHARS, maxBytes = 4194304, maxDepth = 40, maxValues = 1000000 }
+local TEXT_MAX = 64
 
 -- Sections a pack may carry, in display order. value: what every entry of a flat section
 -- must be. perEntry: merged reminder by reminder rather than a boss at a time.
@@ -241,6 +243,8 @@ local function Codec()
     return Ser, LD
 end
 
+ns.ValidPackData = ValidData
+
 -- Deep copy, so a pack never aliases live settings tables.
 local function Copy(v)
     if type(v) ~= "table" then return v end
@@ -402,7 +406,7 @@ function ns.DescribeProfilePack(str, opts)
     for i = 1, #profiles do
         local p = profiles[i]
         local specText = #p.specs > 0 and (" -- " .. table.concat(p.specs, ", ")) or ""
-        lines[#lines + 1] = ("  " .. ns.Color("accent", "%s") .. "%s"):format(p.name, specText)
+        lines[#lines + 1] = ("  " .. ns.Color("accent", "%s") .. "%s"):format(ns.PlainText(p.name), specText)
     end
     lines[#lines + 1] = "Your own existing profiles are not changed."
     if wantSettings then
@@ -487,14 +491,27 @@ end
 
 -- Public entry point for the NaowhUI installer, so it never calls into ns:
 --   NaowhForever_API:ImportProfile(str, "Naowh")
--- A single-profile pack lands as profileName and becomes the account profile for every
--- character. A whole-file pack keeps its own names and binds them to specs instead.
+-- A Profiles page export (NFPROFILE1:) or a single-profile pack lands as profileName, replacing
+-- it on a rerun, and becomes the account profile for every character. A whole-file pack keeps
+-- its own names and binds them to specs instead.
 local API = {}
 _G.NaowhForever_API = API
 
+-- Settings that act for the player stay off, as the Import dialog leaves them by default.
+local PROFILE_PARTS = { settings = true, macros = true, library = true, smartReminders = true,
+    builds = true, bisLists = true, look = true }
+
 function API:ImportProfile(str, profileName)
     local specKey, specWas = CurrentSpecEntry()
-    local ok, landed = ns.InstallProfilePack(str, { profileName = profileName })
+    local ok, landed
+    local payload, why = ns.DecodeProfile(str)
+    if payload then
+        ok, landed = true, (ns.ImportProfile(payload, PROFILE_PARTS, profileName, true))
+    elseif why == "pack" then
+        ok, landed = ns.InstallProfilePack(str, { profileName = profileName })
+    else
+        ok, landed = false, why or "Nothing to read."
+    end
     -- The installer ignores the return values, so failures are reported here.
     if not ok then
         ns.Print("Naowh Forever import failed: " .. tostring(landed))
@@ -514,8 +531,7 @@ end
 -- Decode and validate; returns the payload plus a human description, or nil
 -- and a reason. Applies nothing.
 function ns.DecodePack(str)
-    local Ser, LD = Codec()
-    if not Ser then return nil, "The serializer libraries are missing from this build." end
+    if not Codec() then return nil, "The serializer libraries are missing from this build." end
     if type(str) ~= "string" then return nil, "Nothing to read." end
     str = str:gsub("%s+", "")
     if str == "" then return nil, "Nothing to read." end
@@ -533,12 +549,8 @@ function ns.DecodePack(str)
     if str:sub(1, #PREFIX) ~= PREFIX then
         return nil, "Not a Reminder Pack string (missing the " .. PREFIX .. " prefix)."
     end
-    local decoded = LD:DecodeForPrint(str:sub(#PREFIX + 1))
-    if not decoded then return nil, "The string is damaged (encoding)." end
-    local decompressed = LD:DecompressDeflate(decoded)
-    if not decompressed then return nil, "The string is damaged (compression)." end
-    local ok, payload = pcall(Ser.Deserialize, decompressed)
-    if not ok or type(payload) ~= "table" then
+    local payload = ns.Shared.Decode.String(str:sub(#PREFIX + 1), LIMITS)
+    if type(payload) ~= "table" then
         return nil, "The string is damaged (contents)."
     end
     if payload.format ~= PACK_FORMAT then
@@ -551,8 +563,26 @@ function ns.DecodePack(str)
         if not licOk then return nil, licErr end
         payload.licensed = true
     end
+    local Text = ns.Shared.Decode.Text
+    payload.name, payload.author = Text(payload.name, TEXT_MAX), Text(payload.author, TEXT_MAX)
+    payload.made = Text(payload.made, TEXT_MAX)
+    if type(payload.derivedFrom) == "table" then
+        payload.derivedFrom = { name = Text(payload.derivedFrom.name, TEXT_MAX),
+            author = Text(payload.derivedFrom.author, TEXT_MAX) }
+    else
+        payload.derivedFrom = nil
+    end
     local multi = type(payload.profiles) == "table" and next(payload.profiles) ~= nil
     if not multi and type(payload.data) ~= "table" then return nil, "The pack is empty." end
+    if multi then
+        local clean = {}
+        for name, data in pairs(payload.profiles) do
+            local fixed = Text(name, TEXT_MAX)
+            if not fixed or fixed == "" or clean[fixed] then return nil, "The string is damaged (profile name)." end
+            clean[fixed] = data
+        end
+        payload.profiles = clean
+    end
     for name, data in pairs(multi and payload.profiles or { payload.data }) do
         if multi and (type(name) ~= "string" or name == "") then
             return nil, "The string is damaged (profile name)."
@@ -912,69 +942,6 @@ function ns.MakeMultilineBox(panel, topOffset, height)
     return box
 end
 
--- A pack string has no spaces for word-wrap, so breaks are inserted, measured against the
--- real font (a guessed character count ran past the edge). DecodePack strips whitespace.
--- The gauge is parked off-screen, not hidden: a hidden FontString's GetStringWidth() is 0.
-local wrapGauge
-local function MeasureWidth(str)
-    if not wrapGauge then
-        local host = CreateFrame("Frame", nil, UIParent)
-        host:SetSize(1, 1)
-        host:SetPoint("TOPLEFT", UIParent, "TOPLEFT", -5000, 5000)
-        wrapGauge = host:CreateFontString(nil, "ARTWORK")
-        wrapGauge:SetFontObject("GameFontHighlightSmall")
-        wrapGauge:SetPoint("TOPLEFT")
-        host:Show()
-    end
-    wrapGauge:SetText(str)
-    return wrapGauge:GetStringWidth()
-end
-
--- How many characters of str, starting at "from", fit within maxWidth.
-local function FitCount(str, from, maxWidth)
-    local n = #str
-    local lo, hi = 0, 1
-    while from + hi - 1 <= n and MeasureWidth(str:sub(from, from + hi - 1)) <= maxWidth do
-        lo = hi
-        hi = hi * 2
-    end
-    hi = math.min(hi, n - from + 1)
-    while lo < hi do
-        local mid = lo + math.ceil((hi - lo) / 2)
-        if MeasureWidth(str:sub(from, from + mid - 1)) <= maxWidth then
-            lo = mid
-        else
-            hi = mid - 1
-        end
-    end
-    -- At least one, or a too-narrow target loops forever.
-    return math.max(lo, 1)
-end
-
--- For when the width is unreadable or the gauge measures a non-empty string as zero.
-local function FallbackWrap(str)
-    local lines = {}
-    for i = 1, #str, 50 do lines[#lines + 1] = str:sub(i, i + 49) end
-    return table.concat(lines, "\n")
-end
-
-local function WrapForDisplay(str, maxWidth)
-    if #str == 0 then return str end
-    if not maxWidth or maxWidth <= 0 then return FallbackWrap(str) end
-    local full = MeasureWidth(str)
-    if full == 0 then return FallbackWrap(str) end
-    if full <= maxWidth then return str end
-    local lines, i, n = {}, 1, #str
-    while i <= n do
-        local count = FitCount(str, i, maxWidth)
-        lines[#lines + 1] = str:sub(i, i + count - 1)
-        i = i + count
-    end
-    return table.concat(lines, "\n")
-end
--- The Profiles page's export shows its string the same way.
-ns.WrapForDisplay = WrapForDisplay
-
 local function MakeToggleRow(parent, w, h, frameLevel, get, set, toggleW, toggleH)
     local row = CreateFrame("Frame", nil, parent)
     row:SetSize(w, h)
@@ -1085,9 +1052,7 @@ function ns.ShowPackExport()
     local function Regenerate()
         local str, err = ns.ExportPack(nameBox:GetText(), UnitName and UnitName("player"))
         if str then
-            -- Not box:GetWidth(): that comes from OnSizeChanged, a frame late on first open.
-            local maxWidth = box:GetParent():GetWidth()
-            box:SetText(WrapForDisplay(str, maxWidth))
+            box:SetText(str)
             local names
             local specs = ns.PackSpecs({ data = { presets = ns.DB().presets,
                 activePreset = ns.DB().activePreset, bossLists = ns.DB().bossLists,

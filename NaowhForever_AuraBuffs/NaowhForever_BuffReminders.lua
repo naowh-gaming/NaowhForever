@@ -10,20 +10,27 @@
 local ns = _G.NaowhForever
 local S = ns.AuraBuffSettings
 local D = ns.BuffReminderData
+local Parts = ns.Shared.Parts
 
 local GAP = 4
 local ELIXIR_ICON = 13454   -- Greater Arcane Elixir, for "no elixir at all"
 local KEYS = {
     consumableEntries = true, enabled = true, food = true, elixirs = true, flasks = true, consumablesWhere = true,
     consumablesMinutes = true, onlyIfCarried = true, hideResting = true, scrolls = true,
-    scrollsSkipActive = true, raidBuffs = true, raidBuffsOwn = true, iconSize = true,
+    scrollsSkipActive = true, raidBuffs = true, raidBuffsOwn = true, raidBuffPicks = true, iconSize = true,
+    buffsFont = true, buffsFontSize = true, buffsOutline = true,
 }
 
 local frame, unlocked
 local cells = {}
 local pending
-local wakeGen = 0  -- invalidates an older "buff drops under the warning time" timer
+local wakeTimer, wakeDue
 local wakeAt
+
+local GROUP_UNIT = { player = true }
+for i = 1, MAX_PARTY_MEMBERS or 4 do GROUP_UNIT["party" .. i] = true end
+for i = 1, MAX_RAID_MEMBERS or 40 do GROUP_UNIT["raid" .. i] = true end
+local buffPool, members, memberCount, classes = {}, {}, 0, {}
 
 local function On()
     return S.Get("enabled") and (#(S.Get("consumableEntries") or {}) > 0 or S.Get("raidBuffs"))
@@ -35,7 +42,8 @@ end
 
 -- The unit's helpful auras by spell ID; nil when the client hands them over secret.
 local function Buffs(unit)
-    local buffs = {}
+    local buffs = buffPool[unit]
+    if buffs then wipe(buffs) else buffs = {}; buffPool[unit] = buffs end
     for i = 1, 40 do
         local aura = C_UnitAuras.GetAuraDataByIndex(unit, i, "HELPFUL")
         if not aura then break end
@@ -111,43 +119,55 @@ local function Consumables(list, buffs)
     end
 end
 
+-- Paladin blessings start off: the Blessings module covers them.
+local function Picked(family)
+    local on = S.Get("raidBuffPicks")[family.key]
+    if on == nil then return family.class ~= "PALADIN" end
+    return on
+end
+
 local function Knows(spells)
     for _, id in ipairs(spells) do
         if C_SpellBook.IsSpellKnown(id) then return true end
     end
 end
 
-local function GroupUnits()
-    local units = {}
-    local n = GetNumGroupMembers()
-    if IsInRaid() then
-        for i = 1, n do units[#units + 1] = "raid" .. i end
-    else
-        units[1] = "player"
-        for i = 1, n - 1 do units[#units + 1] = "party" .. i end
+local RAID_UNITS, PARTY_UNITS = {}, {}
+for i = 1, MAX_RAID_MEMBERS or 40 do RAID_UNITS[i] = "raid" .. i end
+for i = 1, MAX_PARTY_MEMBERS or 4 do PARTY_UNITS[i] = "party" .. i end
+
+local function AddMember(unit, playerBuffs)
+    local _, class = UnitClass(unit)
+    if not class or Secret(class) then return end
+    classes[class] = true
+    if UnitIsConnected(unit) and not UnitIsDeadOrGhost(unit) and UnitIsVisible(unit) then
+        local buffs = UnitIsUnit(unit, "player") and playerBuffs or Buffs(unit)
+        if buffs then
+            memberCount = memberCount + 1
+            local member = members[memberCount]
+            if not member then member = {}; members[memberCount] = member end
+            member.class, member.buffs = class, buffs
+        end
     end
-    return units
 end
 
 -- Each class buff someone in the group could cast, with how many in range are missing it.
 local function RaidBuffs(list, playerBuffs)
-    local members, classes = {}, {}
-    for _, unit in ipairs(GroupUnits()) do
-        local _, class = UnitClass(unit)
-        if class and not Secret(class) then
-            classes[class] = true
-            if UnitIsConnected(unit) and not UnitIsDeadOrGhost(unit) and UnitIsVisible(unit) then
-                local buffs = UnitIsUnit(unit, "player") and playerBuffs or Buffs(unit)
-                if buffs then members[#members + 1] = { class = class, buffs = buffs } end
-            end
-        end
+    memberCount = 0
+    wipe(classes)
+    local n = GetNumGroupMembers()
+    if IsInRaid() then
+        for i = 1, n do AddMember(RAID_UNITS[i] or "raid" .. i, playerBuffs) end
+    else
+        AddMember("player", playerBuffs)
+        for i = 1, n - 1 do AddMember(PARTY_UNITS[i] or "party" .. i, playerBuffs) end
     end
     local own = S.Get("raidBuffsOwn")
     for _, family in ipairs(D.RAID) do
-        local castable = Knows(family.spells)
-        if castable or not (own or family.talent) and classes[family.class] then
+        if Picked(family) and (Knows(family.spells) or not (own or family.talent) and classes[family.class]) then
             local missing = 0
-            for _, member in ipairs(members) do
+            for m = 1, memberCount do
+                local member = members[m]
                 if not (family.skip and family.skip[member.class])
                     and not Find(member.buffs, family.spells) then
                     missing = missing + 1
@@ -155,10 +175,11 @@ local function RaidBuffs(list, playerBuffs)
             end
             if missing > 0 then
                 list[#list + 1] = { icon = C_Spell.GetSpellTexture(family.spells[1]),
-                    count = #members > 1 and missing }
+                    count = memberCount > 1 and missing }
             end
         end
     end
+    for m = 1, memberCount do members[m].buffs = nil end
 end
 
 -- The reminders to show now, in order; nil while auras cannot be read.
@@ -176,7 +197,10 @@ end
 local popup
 -- The menu holds secure buttons, so it can only be hidden outside combat.
 local function HideMenu()
-    if popup and not InCombatLockdown() then popup:Hide() end
+    if popup and not InCombatLockdown() then
+        popup:Hide()
+        popup:ClearAllPoints()
+    end
 end
 -- IsMouseOver on the frame: the old MouseIsOver global is gone from the game.
 local function LeaveMenu()
@@ -254,6 +278,7 @@ function Look.Place(cell, parent, i, size, icon, count)
     cell:ClearAllPoints()
     cell:SetPoint("LEFT", parent, "LEFT", (i - 1) * (size + GAP), 0)
     cell.icon:SetTexture(icon)
+    Parts.HudFont(cell.count, S.Get("buffsFont"), S.Get("buffsFontSize"), S.Get("buffsOutline"))
     cell.count:SetText(count or "")
 end
 
@@ -304,7 +329,27 @@ local PREVIEW = {
     { item = D.SCROLLS[4].items[4], count = 2 }, { spell = D.RAID[1].spells[1], count = 3 },
 }
 
-local function Refresh()
+local Refresh
+
+local function StopWake()
+    if wakeTimer then wakeTimer:Cancel() end
+    wakeTimer, wakeDue = nil, nil
+end
+
+local function OnWake()
+    wakeTimer, wakeDue = nil, nil
+    Refresh()
+end
+
+local function ArmWake(seconds)
+    local due = GetTime() + seconds
+    if wakeTimer and math.abs(due - wakeDue) < 0.01 then return end
+    StopWake()
+    wakeDue = due
+    wakeTimer = C_Timer.NewTimer(seconds + 0.1, OnWake)
+end
+
+function Refresh()
     pending = nil
     if not frame then return end
     if unlocked then
@@ -323,13 +368,7 @@ local function Refresh()
     local list = Collect()
     if not list then return end
     Show(list)
-    wakeGen = wakeGen + 1
-    if wakeAt then
-        local gen = wakeGen
-        C_Timer.After(wakeAt + 0.1, function()
-            if gen == wakeGen then Refresh() end
-        end)
-    end
+    if wakeAt then ArmWake(wakeAt) else StopWake() end
 end
 
 -- Group auras change in bursts, so a refresh waits a moment and covers the lot.
@@ -342,8 +381,7 @@ end
 local events = CreateFrame("Frame")
 events:SetScript("OnEvent", function(_, event, unit)
     -- The unit arrives secret while auras are restricted; PLAYER_REGEN_ENABLED catches up.
-    if event == "UNIT_AURA" and (Secret(unit)
-        or not (unit == "player" or unit:find("^party%d") or unit:find("^raid%d"))) then
+    if event == "UNIT_AURA" and (InCombatLockdown() or Secret(unit) or not GROUP_UNIT[unit]) then
         return
     end
     if event == "PLAYER_REGEN_DISABLED" then HideMenu(); return end
@@ -371,7 +409,7 @@ end
 local function Apply()
     HideMenu()
     events:UnregisterAllEvents()
-    wakeGen = wakeGen + 1
+    StopWake()
     if not (On() or unlocked) then
         if frame then frame:Hide() end
         return
@@ -468,9 +506,16 @@ local function Fit(shot)
     row:SetPoint("CENTER", shot, "CENTER", 0, NOTE_Y / scale)
 end
 
+local function RaidSample()
+    if not S.Get("raidBuffs") then return nil end
+    for _, family in ipairs(D.RAID) do
+        if Picked(family) then return family.spells[1] end
+    end
+end
+
 local function PaintPreview(shot, state)
     local size = S.Get("iconSize")
-    local consumables, raid = ConsumablesShown(state), S.Get("raidBuffs")
+    local consumables, raid = ConsumablesShown(state), RaidSample()
     local n = 0
     for i, p in ipairs(PREVIEW) do
         local cell = shot.cells[i]
@@ -478,7 +523,7 @@ local function PaintPreview(shot, state)
         if shown then
             n = n + 1
             Look.Place(cell, shot.row, n, size, p.item and C_Item.GetItemIconByID(p.item)
-                or C_Spell.GetSpellTexture(p.spell), p.count)
+                or C_Spell.GetSpellTexture(i == RAID_SAMPLE and raid or p.spell), p.count)
         end
         cell:SetShown(shown and true or false)
     end
@@ -500,33 +545,48 @@ local function Summary(store)
     return text
 end
 
+local rows = {
+    Group("Consumables"),
+    { key = "consumablesWhere", label = "Show In", choice = WHERE, needs = Enabled, why = OFF },
+    { key = "consumablesMinutes", label = "Warn With Minutes Left", slider = { 0, 10, 1 }, unit = " min",
+      needs = Enabled, why = OFF, help = "A buff with less time than this left counts as missing." },
+    { key = "onlyIfCarried", label = "Only If I Carry One", toggle = true, needs = Enabled, why = OFF,
+      help = "Off: a reminder for each kind you watch, even with none in your bags." },
+    { key = "hideResting", label = "Hide While Resting", toggle = true, needs = Enabled, why = OFF,
+      help = "No consumable reminders in cities and inns." },
+    { label = "Consumables to Watch", buttonText = "Edit List", needs = Enabled, why = OFF,
+      button = EditList,
+      help = "Opens the AuraBuffs window, where you add each item by its item ID and buff spell ID." },
+    Group("Raid Buffs"),
+    { key = "raidBuffs", label = "Raid Buff Reminders", toggle = true, needs = Enabled, why = OFF,
+      help = "Missing class buffs in your group, out of combat, with how many are missing them. A camp "
+          .. "buff standing in for one, the Incense Candle for Arcane Intellect for example, is not seen, "
+          .. "so it still counts as missing." },
+    { key = "raidBuffsOwn", label = "Only Buffs I Can Cast", toggle = true, needs = RaidBuffsOn,
+      why = "Needs Raid Buff Reminders", help = "Off: every buff a class in your group can cast." },
+}
+for _, family in ipairs(D.RAID) do
+    rows[#rows + 1] = { key = "raidBuffPicks", field = family.key, label = family.name, toggle = true,
+        needs = RaidBuffsOn, why = "Needs Raid Buff Reminders",
+        help = family.class == "PALADIN" and "Off by default: the Blessings module covers them." or nil,
+        get = function() return Picked(family) end,
+        set = function(on)
+            local picks = {}
+            for k, v in pairs(S.Get("raidBuffPicks")) do picks[k] = v end
+            picks[family.key] = on
+            S.Set("raidBuffPicks", picks)
+        end }
+end
+rows[#rows + 1] = Group("Size")
+rows[#rows + 1] = { key = "iconSize", label = "Icon Size", slider = { 20, 64, 1 }, needs = Enabled, why = OFF }
+rows[#rows + 1] = Settings.Look("buffs", { text = true, size = { 8, 24, 1 }, needs = Enabled, why = OFF })
+
 Settings.Page("AuraBuffs/Settings", S):Card({
     id = "buffs", name = "Buffs & Consumables", order = 10,
     help = "A row of icons for missing food, flask, elixir and scroll buffs, and for class buffs missing "
         .. "in your group. Out of combat only: the game keeps your buffs from addons in combat, so the "
-        .. "icons keep what they showed. Hover one to pick a carried item to use. Move them with Move Elements.",
+        .. "icons keep what they showed. Hover one to pick a carried item to use. Move them in the HUD Editor.",
     summary = Summary,
     studio = { height = STAGE_H, states = STATES, new = NewPreview, paint = PaintPreview },
-    rows = {
-        Group("Consumables"),
-        { key = "consumablesWhere", label = "Show In", choice = WHERE, needs = Enabled, why = OFF },
-        { key = "consumablesMinutes", label = "Warn With Minutes Left", slider = { 0, 10, 1 }, unit = " min",
-          needs = Enabled, why = OFF, help = "A buff with less time than this left counts as missing." },
-        { key = "onlyIfCarried", label = "Only If I Carry One", toggle = true, needs = Enabled, why = OFF,
-          help = "Off: a reminder for each kind you watch, even with none in your bags." },
-        { key = "hideResting", label = "Hide While Resting", toggle = true, needs = Enabled, why = OFF,
-          help = "No consumable reminders in cities and inns." },
-        { label = "Consumables to Watch", buttonText = "Edit List", needs = Enabled, why = OFF,
-          button = EditList,
-          help = "Opens the AuraBuffs window, where you add each item by its item ID and buff spell ID." },
-        Group("Raid Buffs"),
-        { key = "raidBuffs", label = "Raid Buff Reminders", toggle = true, needs = Enabled, why = OFF,
-          help = "Missing class buffs in your group, out of combat, with how many are missing them. A camp "
-              .. "buff standing in for one, the Incense Candle for Arcane Intellect for example, is not seen, "
-              .. "so it still counts as missing." },
-        { key = "raidBuffsOwn", label = "Only Buffs I Can Cast", toggle = true, needs = RaidBuffsOn,
-          why = "Needs Raid Buff Reminders", help = "Off: every buff a class in your group can cast." },
-        Group("Icons"),
-        { key = "iconSize", label = "Icon Size", slider = { 20, 64, 1 }, needs = Enabled, why = OFF },
-    },
+    rows = rows,
 })

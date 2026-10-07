@@ -7,21 +7,23 @@
 local ns = _G.NaowhForever
 local UI = ns.UI
 local T = ns.THEME
+local Parts = ns.Shared.Parts
 
 local S = UI.ModuleSettings("threatMeter", {
-    enabled = false,
-    width = 280, height = 240, barHeight = 24, maxBars = 40,
+    enabled = true,
+    width = 301, height = 206, barHeight = 22, maxBars = 40,
     source = "target", focusEnabled = false, visibility = "threat",
-    locked = true, barSpacing = 3, fontSize = 12, font = "",
+    locked = false, barSpacing = 3, fontSize = 11, font = "", outline = "OUTLINE",
     showIcons = true, showRanks = true, highlightPlayer = true,
-    backgroundAlpha = 0.94, barAlpha = 0.72, texture = "smooth", percentMode = "pull",
-    growUp = false, showHeader = true, ignorePets = false, statusPos = "bottom",
+    backgroundAlpha = 0.94, backgroundColor = false, barAlpha = 0.72, texture = "", percentMode = "pull",
+    growUp = false, showHeader = true, ignorePets = false, statusPos = "top",
     showValue = true, showPercent = true,
     playerColorOn = false, playerColor = { r = 0.8, g = 0.1, b = 0.1 },
     tankColorOn = false, tankColor = { r = 0.1, g = 0.6, b = 0.1 },
     pullBar = true, pullColor = { r = 0.0, g = 0.55, b = 0.0 },
     themeColors = false,
     warnSound = false, warnSoundKey = "none", warnAt = 80, warnSkipTank = true,
+    threatPos = { point = "BOTTOM", relPoint = "BOTTOM", x = 393, y = 0 },
 })
 ns.ThreatMeterSettings = S
 
@@ -29,6 +31,7 @@ local UPDATE_DELAY = 0.2
 local FOLLOW_INTERVAL = 0.5
 local TEXT_PAD = 8
 local INSET, FOOTER = 8, 24
+local MIN_WIDTH, MIN_HEIGHT = 160, 50
 local Update, RequestUpdate, RenderSample, Render
 local renderedTitle, renderedPlayer
 local offset, currentMob, warnedMob, preview = 0, nil, nil, false
@@ -37,6 +40,7 @@ local threatEventsOn = false
 local events
 
 local FALLBACK_COLOR = { r = 0.6, g = 0.6, b = 0.6 }
+local GRADIENT_TEX = "Interface\\AddOns\\NaowhForever\\Media\\NaowhGradient.tga"
 -- The window's own blue-tinted dark scheme; ns.ThemeTint swaps in the player's theme colors.
 local WINDOW_BG = { r = 0.025, g = 0.04, b = 0.055 }
 local WINDOW_EDGE = { r = 0.10, g = 0.19, b = 0.24 }
@@ -45,11 +49,16 @@ local ROW_BG = { r = 0.065, g = 0.085, b = 0.105 }
 
 local Look = {}
 
+-- Unset follows the theme's background.
+local function BackgroundColor()
+    return S.Get("backgroundColor") or ns.ThemeTint("bg", WINDOW_BG)
+end
+
 function Look.New(frame)
     frame.rows = {}
     frame.background = ns.Solid(frame, "BACKGROUND", ns.ThemeTint("bg", WINDOW_BG), 1)
     frame.background:SetAllPoints()
-    ns.Border(frame, ns.ThemeTint("line", WINDOW_EDGE))
+    frame.border = ns.Border(frame, ns.ThemeTint("line", WINDOW_EDGE))
     frame.header = CreateFrame("Frame", nil, frame)
     frame.header:SetPoint("TOPLEFT")
     ns.Solid(frame.header, "BACKGROUND", ns.ThemeTint("panel", HEADER_BG), 1):SetAllPoints()
@@ -65,8 +74,10 @@ function Look.New(frame)
     frame.footer:SetHeight(FOOTER)
     frame.footer.state = ns.Font(frame.footer, 10, "OUTLINE", T.muted)
     frame.footer.state:SetPoint("LEFT"); frame.footer.state:SetJustifyH("LEFT")
+    frame.footer.state:SetWordWrap(false)
     frame.footer.range = ns.Font(frame.footer, 10, "OUTLINE", T.muted)
     frame.footer.range:SetPoint("RIGHT", -12, 0)
+    frame.footer.state:SetPoint("RIGHT", frame.footer.range, "LEFT", -4, 0)
     frame.empty = ns.Font(frame, 12, "OUTLINE", T.muted)
     frame.empty:SetPoint("CENTER", 0, -10); frame.empty:SetText("Waiting for threat")
 end
@@ -124,11 +135,6 @@ local function HeaderHeight()
     return S.Get("showHeader") and 48 or 0
 end
 
-local function FontPath()
-    local key = S.Get("font")
-    return UI.FontPath(key)
-end
-
 local function ResizeMetrics()
     local start = frame.resizeStart
     if not start then return S.Get("barHeight"), S.Get("barSpacing"), S.Get("fontSize") end
@@ -162,8 +168,8 @@ function Look.Row(f, i)
 end
 
 function Look.Layout(f, total, first, bh, gap, fontSize)
-    local w, top = math.max(240, S.Get("width")), HeaderHeight()
-    local minHeight = math.max(120, top + FOOTER + 2 * INSET + bh)
+    local w, top = math.max(MIN_WIDTH, S.Get("width")), HeaderHeight()
+    local minHeight = math.max(MIN_HEIGHT, top + FOOTER + 2 * INSET + bh)
     local h = math.max(minHeight, S.Get("height"))
     if not f.sizing then f:SetSize(w, h) else w, h = f:GetWidth(), f:GetHeight() end
     local iconSize = math.min(32, bh - 6)
@@ -180,53 +186,75 @@ function Look.Layout(f, total, first, bh, gap, fontSize)
     local growUp = S.Get("growUp")
     local statusTop = S.Get("statusPos") == "top"
     local above, below = top + (statusTop and FOOTER or 0), statusTop and 0 or FOOTER
+    local texture, font, outline = S.Get("texture"), S.Get("font"), S.Get("outline")
+    local showRanks, showIcons = S.Get("showRanks"), S.Get("showIcons")
+    local showPercent, showValue = S.Get("showPercent"), S.Get("showValue")
+    local last = f.laid
+    if not last then last = { gen = 0 }; f.laid = last end
+    if f.sizing or last.w ~= w or last.h ~= h or last.bh ~= bh or last.gap ~= gap or last.fontSize ~= fontSize
+        or last.iconSize ~= iconSize or last.growUp ~= growUp or last.above ~= above or last.below ~= below
+        or last.texture ~= texture or last.font ~= font or last.outline ~= outline or last.showRanks ~= showRanks
+        or last.showIcons ~= showIcons or last.showPercent ~= showPercent or last.showValue ~= showValue then
+        last.w, last.h, last.bh, last.gap, last.fontSize, last.iconSize = w, h, bh, gap, fontSize, iconSize
+        last.growUp, last.above, last.below, last.texture, last.font = growUp, above, below, texture, font
+        last.outline = outline
+        last.showRanks, last.showIcons, last.showPercent, last.showValue = showRanks, showIcons, showPercent, showValue
+        last.gen = last.gen + 1
+        f.header:SetSize(w, math.max(top, 1))
+        f.header:SetShown(top > 0)
+        f.footer:ClearAllPoints()
+        if statusTop then
+            f.footer:SetPoint("TOPLEFT", 8, -top); f.footer:SetPoint("TOPRIGHT", -8, -top)
+        else
+            f.footer:SetPoint("BOTTOMLEFT", 8, 0); f.footer:SetPoint("BOTTOMRIGHT", -8, 0)
+        end
+    end
     local rows = f.rows
     for i = 1, shown do
         local row = rows[i] or Look.Row(f, i)
-        row:ClearAllPoints()
-        if growUp then row:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", INSET, below + INSET + (i - 1) * (bh + gap))
-        else row:SetPoint("TOPLEFT", f, "TOPLEFT", INSET, -above - INSET - (i - 1) * (bh + gap)) end
-        row:SetSize(w - 2 * INSET, bh)
-        row:SetStatusBarTexture(S.Get("texture") == "flat" and "Interface\\Buttons\\WHITE8X8"
-            or "Interface\\AddOns\\NaowhForever\\Media\\NaowhGradient.tga")
-        local left = TEXT_PAD
-        row.rank:ClearAllPoints(); row.rank:SetPoint("LEFT", left, 0); row.rank:SetWidth(16)
-        row.rank:SetShown(S.Get("showRanks"))
-        if S.Get("showRanks") then left = left + 18 end
-        row.icon:ClearAllPoints(); row.icon:SetPoint("LEFT", left, 0); row.icon:SetSize(iconSize, iconSize)
-        row.icon:SetShown(S.Get("showIcons"))
-        left = left + iconWidth
-        local percentWidth = S.Get("showPercent") and 45 * fontSize / 12 or 0
-        local valueWidth = S.Get("showValue") and 54 * fontSize / 12 or 0
-        row.percent:ClearAllPoints(); row.percent:SetPoint("RIGHT", -TEXT_PAD, 0); row.percent:SetWidth(math.max(1, percentWidth))
-        row.value:ClearAllPoints(); row.value:SetPoint("RIGHT", -TEXT_PAD - percentWidth, 0); row.value:SetWidth(math.max(1, valueWidth))
-        row.name:ClearAllPoints(); row.name:SetPoint("LEFT", left, 0)
-        row.name:SetPoint("RIGHT", -TEXT_PAD - percentWidth - valueWidth - 5, 0)
-        local font = FontPath()
-        row.name:SetFont(font, fontSize, "OUTLINE")
-        row.value:SetFont(font, fontSize, "OUTLINE")
-        row.percent:SetFont(font, fontSize, "OUTLINE")
+        if row.laid ~= last.gen then
+            row.laid = last.gen
+            row:ClearAllPoints()
+            if growUp then row:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", INSET, below + INSET + (i - 1) * (bh + gap))
+            else row:SetPoint("TOPLEFT", f, "TOPLEFT", INSET, -above - INSET - (i - 1) * (bh + gap)) end
+            row:SetSize(w - 2 * INSET, bh)
+            row:SetStatusBarTexture(UI.TexturePath(texture, GRADIENT_TEX))
+            local left = TEXT_PAD
+            row.rank:ClearAllPoints(); row.rank:SetPoint("LEFT", left, 0); row.rank:SetWidth(16)
+            row.rank:SetShown(showRanks)
+            if showRanks then left = left + 18 end
+            row.icon:ClearAllPoints(); row.icon:SetPoint("LEFT", left, 0); row.icon:SetSize(iconSize, iconSize)
+            row.icon:SetShown(showIcons)
+            left = left + iconWidth
+            local percentWidth = showPercent and 45 * fontSize / 12 or 0
+            local valueWidth = showValue and 54 * fontSize / 12 or 0
+            row.percent:ClearAllPoints(); row.percent:SetPoint("RIGHT", -TEXT_PAD, 0); row.percent:SetWidth(math.max(1, percentWidth))
+            row.value:ClearAllPoints(); row.value:SetPoint("RIGHT", -TEXT_PAD - percentWidth, 0); row.value:SetWidth(math.max(1, valueWidth))
+            row.name:ClearAllPoints(); row.name:SetPoint("LEFT", left, 0)
+            row.name:SetPoint("RIGHT", -TEXT_PAD - percentWidth - valueWidth - 5, 0)
+            Parts.HudFont(row.name, font, fontSize, outline)
+            Parts.HudFont(row.value, font, fontSize, outline)
+            Parts.HudFont(row.percent, font, fontSize, outline)
+        end
         row:Show()
     end
     for i = shown + 1, #rows do rows[i]:Hide() end
-    f.header:SetSize(w, math.max(top, 1))
-    f.header:SetShown(top > 0)
-    f.footer:ClearAllPoints()
-    if statusTop then
-        f.footer:SetPoint("TOPLEFT", 8, -top); f.footer:SetPoint("TOPRIGHT", -8, -top)
-    else
-        f.footer:SetPoint("BOTTOMLEFT", 8, 0); f.footer:SetPoint("BOTTOMRIGHT", -8, 0)
-    end
-    f.background:SetAlpha(S.Get("backgroundAlpha"))
+    local bg, bgAlpha = BackgroundColor(), S.Get("backgroundAlpha")
+    f.background:SetColorTexture(bg.r, bg.g, bg.b, 1)
+    f.background:SetAlpha(bgAlpha)
+    f.border._frame:SetAlpha(bgAlpha)
     f.empty:SetShown(shown == 0)
-    f.footer.range:SetText(total > 0 and ((first + 1) .. "-" .. (first + shown) .. " / " .. total) or "")
+    if last.total ~= total or last.first ~= first or last.shown ~= shown then
+        last.total, last.first, last.shown = total, first, shown
+        f.footer.range:SetText(total > 0 and ((first + 1) .. "-" .. (first + shown) .. " / " .. total) or "")
+    end
     return shown, first
 end
 
 local function Layout()
     local bh, gap, fontSize = S.Get("barHeight"), S.Get("barSpacing"), S.Get("fontSize")
     if frame.sizing then bh, gap, fontSize = ResizeMetrics() end
-    frame:SetResizeBounds(240, math.max(120, HeaderHeight() + FOOTER + 2 * INSET + bh), 520, 700)
+    frame:SetResizeBounds(MIN_WIDTH, math.max(MIN_HEIGHT, HeaderHeight() + FOOTER + 2 * INSET + bh), 520, 700)
     local shown
     shown, offset = Look.Layout(frame, math.min(#list, S.Get("maxBars")), offset, bh, gap, fontSize)
     frame.source.label:SetText(TrackedUnit() == "focus" and "Focus" or "Target")
@@ -258,7 +286,7 @@ end
 local function Build()
     frame = CreateFrame("Frame", "NaowhForeverThreatMeter", UIParent)
     frame:SetMovable(true); frame:SetClampedToScreen(true); frame:SetResizable(true)
-    frame:SetResizeBounds(240, 120, 520, 700)
+    frame:SetResizeBounds(MIN_WIDTH, MIN_HEIGHT, 520, 700)
     Look.New(frame)
     frame.source = ns.Button(frame.header, "Target", 58, 18, function()
         S.Set("source", TrackedUnit() == "focus" and "target" or "focus")
@@ -332,6 +360,18 @@ local function Clear()
     for i = #list, 1, -1 do list[i] = nil end
 end
 
+local RAID, RAID_PETS, PARTY, PARTY_PETS = {}, {}, {}, {}
+local OWNER, GROUP_UNIT = { player = "player", pet = "player" }, { player = true, pet = true }
+for i = 1, MAX_RAID_MEMBERS do RAID[i], RAID_PETS[i] = "raid" .. i, "raidpet" .. i end
+for i = 1, MAX_PARTY_MEMBERS do PARTY[i], PARTY_PETS[i] = "party" .. i, "partypet" .. i end
+for _, pair in ipairs({ { RAID, RAID_PETS }, { PARTY, PARTY_PETS } }) do
+    for i, unit in ipairs(pair[1]) do
+        local pet = pair[2][i]
+        OWNER[unit], OWNER[pet] = unit, unit
+        GROUP_UNIT[unit], GROUP_UNIT[pet] = true, true
+    end
+end
+
 local function Add(unit, mob)
     if not UnitExists(unit) then return end
     local tanking, _, scaled, rawPct, raw = UnitDetailedThreatSituation(unit, mob)
@@ -342,15 +382,11 @@ local function Add(unit, mob)
     e.isPlayer, e.pull = Readable(own) and own, nil
     e.rawPct = Readable(rawPct) and rawPct or nil
     e.order, e.class = count, nil
-    local owner = unit == "pet" and "player" or unit:gsub("pet", "")
+    local owner = OWNER[unit]
     e.isPet = owner ~= unit
     local _, class = UnitClass(owner)
     if Readable(class) then e.class = class end
 end
-
-local RAID, RAID_PETS, PARTY, PARTY_PETS = {}, {}, {}, {}
-for i = 1, MAX_RAID_MEMBERS do RAID[i], RAID_PETS[i] = "raid" .. i, "raidpet" .. i end
-for i = 1, MAX_PARTY_MEMBERS do PARTY[i], PARTY_PETS[i] = "party" .. i, "partypet" .. i end
 
 local function Collect(mob)
     Clear()
@@ -419,6 +455,13 @@ function Look.State(me)
     return "NO PLAYER THREAT"
 end
 
+local classIcons = {}
+local function ClassIcon(class)
+    local path = classIcons[class]
+    if not path then path = "Interface\\Icons\\ClassIcon_" .. class; classIcons[class] = path end
+    return path
+end
+
 function Look.Paint(f, shownList, first, shown, title, state)
     local top = shownList[1] and shownList[1].raw or 0
     f.header.text:SetText(title)
@@ -428,6 +471,8 @@ function Look.Paint(f, shownList, first, shown, title, state)
         e.rank = rank
     end
     local rowBg = ns.ThemeTint("panel", ROW_BG)
+    local showValue, showPercent = S.Get("showValue"), S.Get("showPercent")
+    local tankPercent = S.Get("percentMode") == "tank"
     for i = 1, shown do
         local e, row = shownList[first + i], f.rows[i]
         local c = RowColor(e)
@@ -445,12 +490,20 @@ function Look.Paint(f, shownList, first, shown, title, state)
             else row.bg:SetColorTexture(0.04, 0.19, 0.25, 1) end
         end
         row.icon:SetTexture(e.pull and "Interface\\Icons\\Ability_Warrior_Challange"
-            or e.class and ("Interface\\Icons\\ClassIcon_" .. e.class) or "Interface\\Icons\\Ability_Hunter_BeastCall")
+            or e.class and ClassIcon(e.class) or "Interface\\Icons\\Ability_Hunter_BeastCall")
         row.icon:SetDesaturated(e.isPet == true)
-        row.value:SetText(S.Get("showValue") and ShortThreat(e.raw) or "")
+        local value = showValue and e.raw or false
+        if row.shownValue ~= value then
+            row.shownValue = value
+            row.value:SetText(value and ShortThreat(value) or "")
+        end
         local percent = e.scaled
-        if S.Get("percentMode") == "tank" then percent = e.rawPct end
-        row.percent:SetText(S.Get("showPercent") and percent and ("%.0f%%"):format(percent) or "")
+        if tankPercent then percent = e.rawPct end
+        percent = showPercent and percent or false
+        if row.shownPercent ~= percent then
+            row.shownPercent = percent
+            row.percent:SetText(percent and ("%.0f%%"):format(percent) or "")
+        end
         local danger = not e.pull and not e.tanking and e.scaled >= S.Get("warnAt")
         row.percent:SetTextColor(1, danger and 0.35 or 1, danger and 0.25 or 1)
     end
@@ -571,9 +624,7 @@ events:SetScript("OnEvent", function(_, event, unit)
         local same = UnitIsUnit(unit, currentMob)
         if Readable(same) and not same then return end
     elseif event == "UNIT_THREAT_SITUATION_UPDATE" or event == "UNIT_PET" then
-        if not Readable(unit) then return end
-        if unit ~= "player" and unit ~= "pet" and not unit:match("^party%d+$")
-            and not unit:match("^raid%d+$") and not unit:match("^partypet%d+$") and not unit:match("^raidpet%d+$") then return end
+        if not Readable(unit) or not GROUP_UNIT[unit] then return end
     end
     RequestUpdate()
 end)
@@ -596,8 +647,18 @@ local function MigrateVisibility()
     end
 end
 
+-- Bar Texture became the SharedMedia list: Naowh Gradient is the meter's own texture, Flat is Solid.
+local OLD_TEXTURES = { smooth = "", flat = "Solid" }
+
+local function MigrateTexture()
+    local db = S.DB()
+    local name = OLD_TEXTURES[db.texture]
+    if name then db.texture = name ~= "" and name or nil end
+end
+
 local function Apply()
     MigrateVisibility()
+    MigrateTexture()
     events:UnregisterAllEvents()
     threatEventsOn = false
     updateGeneration = updateGeneration + 1; pendingUpdate = false
@@ -670,7 +731,7 @@ local EDIT_LEVEL, TOP_LEVEL = 10, 12
 local HOVER_ALPHA = 0.12
 local GRIP_SIZE, GRIP_INSET = 16, 2
 local HEADER_STUB = 8
-local WIDTH_RANGE, HEIGHT_RANGE = { 240, 520, 1 }, { 120, 700, 1 }
+local WIDTH_RANGE, HEIGHT_RANGE = { MIN_WIDTH, 520, 1 }, { MIN_HEIGHT, 700, 1 }
 local ROW_H_RANGE, SPACING_RANGE, TEXT_RANGE = { 12, 72, 1 }, { 0, 16, 1 }, { 8, 24, 1 }
 local SAMPLES = {
     solo = { title = "Defias Pillager",
@@ -697,7 +758,6 @@ local SHOW = { VISIBILITY, { "always", "threat", "combat", "group" } }
 local SOURCE = { { target = "Target", focus = "Focus" }, { "target", "focus" } }
 local PERCENT = { { pull = "Pull Aggro", tank = "Tank Threat" }, { "pull", "tank" } }
 local STATUS = { { bottom = "Bottom", top = "Top" }, { "bottom", "top" } }
-local TEXTURE = { { smooth = "Naowh Gradient", flat = "Flat" }, { "smooth", "flat" } }
 local ROW_TOGGLES = {
     { "showValue", "Show Threat" },
     { "showPercent", "Show Percent" },
@@ -711,7 +771,7 @@ local TIPS = {
     { "status", "Click the status line", "Status Line" },
     { "rows", "Wheel on the rows", "Row Height" },
     { "rows", "Shift + wheel", "Row Spacing" },
-    { "rows", "Ctrl + wheel", "Text Size" },
+    { "rows", "Ctrl + wheel", "Font Size" },
     { "rows", "Right-click a row", "What Rows Show" },
 }
 
@@ -1028,7 +1088,7 @@ end
 local function Detail()
     local shown = "Shown " .. (VISIBILITY[S.Get("visibility")] or VISIBILITY.threat):lower()
     if S.Get("warnSound") then return ("%s, warns at %d%% of pulling aggro."):format(shown, S.Get("warnAt")) end
-    return shown .. ". Unlock its window to drag and resize it, or place it with Move Elements."
+    return shown .. ". Unlock its window to drag and resize it, or place it in the HUD Editor."
 end
 
 local function MeterSummary(store)
@@ -1051,7 +1111,7 @@ page:Card({
     id = "meter", name = "Meter", order = 10,
     help = "Threat on your target or focus for everyone in your group, one bar each. A friendly target "
         .. "shows the enemy it is fighting. Scroll the meter for more entries; unlock its window to drag "
-        .. "and resize it, or place it with Move Elements.",
+        .. "and resize it, or place it in the HUD Editor.",
     summary = MeterSummary,
     studio = { height = STAGE_H, states = STATES, new = NewPreview, paint = PaintPreview },
     rows = {
@@ -1071,7 +1131,7 @@ page:Card({
         { key = "width", label = "Width", slider = WIDTH_RANGE, needs = Enabled, why = OFF },
         { key = "height", label = "Window Height", slider = HEIGHT_RANGE, needs = Enabled, why = OFF },
         { key = "locked", label = "Lock Window", toggle = true, needs = Enabled, why = OFF,
-          help = "Off: drag the title bar or resize with the corner grip, outside combat. Move Elements "
+          help = "Off: drag the title bar or resize with the corner grip, outside combat. The HUD Editor "
               .. "works either way." },
         { key = "showHeader", label = "Show Target Name", toggle = true, needs = Enabled, why = OFF,
           help = "A title bar naming the mob the threat is on." },
@@ -1081,7 +1141,13 @@ page:Card({
         { key = "growUp", label = "Grow Upward", toggle = true, needs = Enabled, why = OFF,
           help = "New bars stack above the first instead of below." },
         { key = "backgroundAlpha", label = "Background Opacity", slider = { 0, 100, 5 }, unit = "%",
-          scale = 0.01, needs = Enabled, why = OFF },
+          scale = 0.01, needs = Enabled, why = OFF, help = "The window's border fades with it." },
+        { key = "backgroundColor", label = "Background Colour", colour = true, needs = Enabled, why = OFF,
+          get = function()
+              local c = BackgroundColor()
+              return c.r, c.g, c.b, 1
+          end,
+          set = Picked("backgroundColor"), help = "Follows your theme until you pick one." },
         Group("Rows"),
         { key = "barHeight", label = "Row Height", slider = ROW_H_RANGE, needs = Enabled, why = OFF },
         { key = "barSpacing", label = "Row Spacing", slider = SPACING_RANGE, needs = Enabled, why = OFF },
@@ -1092,12 +1158,9 @@ page:Card({
           help = "Pets use their owner's class icon, desaturated." },
         { key = "showRanks", label = "Rank Numbers", toggle = true, needs = Enabled, why = OFF },
         { key = "highlightPlayer", label = "Highlight Your Row", toggle = true, needs = Enabled, why = OFF },
-        { key = "texture", label = "Bar Texture", choice = TEXTURE, needs = Enabled, why = OFF },
+        Settings.Look("", { text = true, size = TEXT_RANGE, bar = "Naowh Gradient", needs = Enabled, why = OFF }),
         { key = "barAlpha", label = "Bar Opacity", slider = { 10, 100, 5 }, unit = "%", scale = 0.01,
           needs = Enabled, why = OFF },
-        Group("Text"),
-        { key = "font", label = "Font", font = true, needs = Enabled, why = OFF },
-        { key = "fontSize", label = "Text Size", slider = TEXT_RANGE, needs = Enabled, why = OFF },
         Group("Colours"),
         { key = "playerColorOn", label = "Colour Your Bar", toggle = true, needs = Enabled, why = OFF,
           help = "Your own bar in one colour instead of your class colour." },
