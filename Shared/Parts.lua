@@ -24,9 +24,9 @@ local FOREVER_MIN, FOREVER_SHARE = 7, 0.32
 -- its foot, so the numbers read on any icon's art.
 local MARK_SIZE, MARK_IN = 13, 2
 local SHADE_SHARE, SHADE_ALPHA = 0.5, 0.8
--- The star 2px over the line's middle (a negative drop raises it), level with the item level's
--- outlined digits across the icon; 1px still left it low beside a two-digit level (7 Oct 2026).
-local MARK_STAR_DROP = -2
+-- The star 1px over the line's middle (a negative drop raises it), level with the item level's
+-- outlined digits across the icon; 2px left it high beside a two-digit level (7 Oct 2026).
+local MARK_STAR_DROP = -1
 Parts.MARK_IN = MARK_IN
 local MARK_UP = 14   -- the upgrade arrow, square, in the top-right corner
 local BADGE_SIZE, BADGE_ART, BADGE_ALPHA, BADGE_IN = 14, 12, 0.75, 1
