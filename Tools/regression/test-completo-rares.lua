@@ -146,6 +146,7 @@ local function Fixture(settings, units)
     env.CreateFrame = function(kind, name, ...)
         local f = create(kind, name, ...)
         if name == "NaowhForeverRareAlert" then ns.alert = f end
+        if name == "NaowhForeverRareMapPanel" then ns.mapPanel = f end
         return f
     end
     ns.UI = { SoundPathFor = function() return nil end, _PlayLSMSound = function() end }
@@ -231,6 +232,7 @@ local function Fixture(settings, units)
     env.GameTooltip = { SetOwner = function(_, owner) env.tip, env.tipOwner = {}, owner end, SetText = none, Show = function() env.tipHidden = false end,
         Hide = function() env.tipHidden = true end,
         AddLine = function(_, text, r, g, b) env.tip[#env.tip + 1] = { text, nil, r, g, b } end,
+        SetItemByID = function(_, id) env.tipItem = id end,
         AddDoubleLine = function(_, left, right, r, g, b) env.tip[#env.tip + 1] = { left, right, r, g, b } end }
     env.ITEM_QUALITY_COLORS = { [2] = { r = 0.1, g = 1, b = 0 }, [3] = { r = 0, g = 0.44, b = 0.87 } }
     env.C_Item = { GetItemIconByID = function(id) return 1000 + id end }
@@ -511,7 +513,14 @@ do
     star:OnMouseLeave()
     Check(#PinsOf(10647, "dot") == 3 and howler.Icon.alpha < 0.5 and #env.waypoints == 1,
         "clicking a star focuses its rare: its way stays and the others stay faded after the pointer leaves")
-    Check(env.tipOwner == star and Line("Talon of Vultros"), "and its tooltip, loot and all, stays up beside its star")
+    local panel = ns.mapPanel
+    Check(panel and panel:IsShown() and panel.npc == 10647, "and a panel stays up beside its star")
+    Check(panel.rows[1].item[1] == 4454 and panel.rows[3].item[1] == 285330 and panel.rows[3]:IsShown(),
+        "with a row for each of its drops")
+    Check(panel.rows[3].name.text:find("Signet of the Zhevra <inf>", 1, true), "Forever's sign on the new one")
+    panel.rows[1].OnEnter(panel.rows[1])
+    Check(env.tipItem == 4454, "hovering a drop shows the item's own tooltip")
+    panel.rows[1].OnLeave(panel.rows[1])
     howler:OnMouseEnter()
     Check(#PinsOf(10647, "dot") == 0 and #PinsOf(10644, "spot") == 1, "hovering another rare shows that one meanwhile")
     howler:OnMouseLeave()
@@ -523,7 +532,7 @@ do
     star:OnMouseLeave()
     howler = PinsOf(10644)[1]
     Check(#PinsOf(10647, "dot") == 0 and howler.Icon.alpha == 1, "clicking it again lets go")
-    Check(env.tipHidden, "its tooltip goes with it")
+    Check(not ns.mapPanel:IsShown(), "its panel goes with it")
     R.SetKilled(10644, true)
     Check(#PinsOf(10644) == 0 and #env.worldMap.pins == 1, "a killed rare's star goes")
     ns.CompletoSettings.Set("rarePinsKilled", true)

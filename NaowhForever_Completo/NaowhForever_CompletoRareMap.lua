@@ -4,15 +4,16 @@
 --  at most, or the middle of the way it patrols); with Show Killed Rares a grey one for those
 --  you have. Hover a star for the rare: its other spawn spots show as smaller stars and its
 --  way, if it patrols, as a trail of small ones, until you move off it; every other rare's
---  star fades meanwhile. Click a star to keep it so (focus it), its tooltip and loot too,
---  after you move off; click it again, or another star, to let go. Right-click a star for a
---  waypoint. Built like the quest giver pins
+--  star fades meanwhile. Click a star to keep it so (focus it) after you move off, with a
+--  panel beside it: the rare and its drops, each drop's item tooltip on hover. Click it again,
+--  or another star, to let go. Right-click a star for a waypoint. Built like the quest giver pins
 --  (NaowhForever_CompletoMap.lua).
 --
 --  Off until Rare Pins is switched on: then a data provider on the world map, redrawn when a
 --  rare is killed or ticked off while the map is open.
 -------------------------------------------------------------------------------
 local ns = _G.NaowhForever
+local T = ns.THEME
 local S = ns.CompletoSettings
 local R = ns.Completo.Rares
 
@@ -146,29 +147,185 @@ local function ShowTip(pin)
     end
     R.AddLoot(GameTooltip, npc)
     GameTooltip:AddLine(" ")
-    GameTooltip:AddLine(focused == npc and "Click to let go of it." or "Click to focus it.",
-        SoftBlue(0.3, 0.71, 0.96))
+    GameTooltip:AddLine("Click to keep it shown, with its drops.", SoftBlue(0.3, 0.71, 0.96))
     GameTooltip:AddLine("Right-click for a waypoint.", SoftBlue(0.3, 0.71, 0.96))
     GameTooltip:Show()
 end
 
+-------------------------------------------------------------------------------
+--  The focused rare's panel: beside its star, what the tooltip says, its drops as rows you can
+--  hover (the item's own tooltip) or right-click (its Wowhead link). Made on first use.
+-------------------------------------------------------------------------------
+local PANEL_W, PAD, DROP_H, DROP_ICON = 270, 10, 20, 16
+local MUTED = { r = 0.62, g = 0.62, b = 0.62 }
+local panel
+
+local function QualityColor(quality)
+    return ITEM_QUALITY_COLORS and ITEM_QUALITY_COLORS[quality] or T.fg
+end
+
+local function DropEnter(row)
+    row.hover:Show()
+    GameTooltip:SetOwner(row, "ANCHOR_RIGHT")
+    GameTooltip:SetItemByID(row.item[1])
+    if R.NewInForever(row.item) then GameTooltip:AddLine(ns.Shared.Parts.ForeverLine()) end
+    if R.Dropped(panel.npc, row.item[1]) then
+        GameTooltip:AddLine("This rare dropped it for you.", 0.25, 0.82, 0.25)
+    end
+    GameTooltip:AddLine("Right-click: Wowhead link", SoftBlue(0.3, 0.71, 0.96))
+    GameTooltip:Show()
+end
+
+local function DropLeave(row)
+    row.hover:Hide()
+    GameTooltip:Hide()
+end
+
+local function DropClick(row, button)
+    if button == "RightButton" then ns.Shared.Parts.CopyWowhead("item", row.item[1], row.item[4]) end
+end
+
+local function NewDropRow()
+    local row = CreateFrame("Button", nil, panel)
+    row:SetSize(PANEL_W - PAD * 2, DROP_H)
+    row:RegisterForClicks("RightButtonUp")
+    row.hover = ns.Solid(row, "BACKGROUND", T.fg, 0.06)
+    row.hover:SetAllPoints()
+    row.hover:Hide()
+    row.icon = row:CreateTexture(nil, "ARTWORK")
+    row.icon:SetSize(DROP_ICON, DROP_ICON)
+    row.icon:SetPoint("LEFT", 2, 0)
+    row.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+    row.chance = ns.Font(row, 11, nil, MUTED)
+    row.chance:SetPoint("RIGHT", -2, 0)
+    row.chance:SetJustifyH("RIGHT")
+    row.name = ns.Font(row, 12, nil, T.fg)
+    row.name:SetPoint("LEFT", row.icon, "RIGHT", 6, 0)
+    row.name:SetPoint("RIGHT", row.chance, "LEFT", -6, 0)
+    row.name:SetJustifyH("LEFT")
+    row.name:SetWordWrap(false)
+    row:SetScript("OnEnter", DropEnter)
+    row:SetScript("OnLeave", DropLeave)
+    row:SetScript("OnClick", DropClick)
+    return row
+end
+
+local function BuildPanel()
+    panel = CreateFrame("Frame", "NaowhForeverRareMapPanel", WorldMapFrame)
+    panel:SetFrameStrata("DIALOG")
+    panel:SetClampedToScreen(true)
+    panel:EnableMouse(true)
+    panel:SetWidth(PANEL_W)
+    ns.Solid(panel, "BACKGROUND", T.panel, 0.95):SetAllPoints()
+    ns.Border(panel, { r = 0, g = 0, b = 0 })
+    panel.lines = {}
+    panel.rows = {}
+    panel:Hide()
+end
+
+-- The next text line, at y below the panel's top; returns the y under it.
+local function Line(i, y, text, color, size)
+    local fs = panel.lines[i]
+    if not fs then
+        fs = ns.Font(panel, size or 12, nil, T.fg)
+        fs:SetJustifyH("LEFT")
+        fs:SetWidth(PANEL_W - PAD * 2)
+        panel.lines[i] = fs
+    end
+    fs:SetFont(fs:GetFont(), size or 12, "")
+    fs:ClearAllPoints()
+    fs:SetPoint("TOPLEFT", PAD, -y)
+    fs:SetText(text)
+    fs:SetTextColor(color.r, color.g, color.b)
+    fs:Show()
+    return y + math.ceil(fs:GetStringHeight()) + 3
+end
+
+local function ShowPanel(pin)
+    if not panel then BuildPanel() end
+    local npc = pin.npc
+    panel.npc = npc
+    for _, fs in ipairs(panel.lines) do fs:Hide() end
+    for _, row in ipairs(panel.rows) do row:Hide() end
+    local y, n = PAD, 0
+    local function Add(text, color, size)
+        n = n + 1
+        y = Line(n, y, text, color, size)
+    end
+    Add(R.Name(npc), { r = 1, g = 1, b = 1 }, 14)
+    local low, high = R.Levels(npc)
+    local level = low <= 0 and "??" or low == high and tostring(low) or ("%d-%d"):format(low, high)
+    Add(("%s, level %s"):format(R.Elite(npc) and "Rare elite" or "Rare", level), { r = 1, g = 0.82, b = 0 })
+    local record = R.Record(npc)
+    Add(record and (record.n > 1 and ("Killed %d times"):format(record.n) or "Killed") or "Not killed yet",
+        record and MUTED or { r = 1, g = 1, b = 1 })
+    if R.Trail(npc) then Add("Patrols: the small stars are its way", MUTED) end
+    local others = R.SpotCount(npc) - 1
+    if others > 0 then Add(("Spawns at %d more spots, shown smaller"):format(others), MUTED) end
+    local loot = R.Loot(npc)
+    if loot then
+        y = y + 6
+        Add("Drops", { r = 1, g = 0.82, b = 0 })
+        for i, item in ipairs(loot) do
+            local row = panel.rows[i] or NewDropRow()
+            panel.rows[i] = row
+            row.item = item
+            row:ClearAllPoints()
+            row:SetPoint("TOPLEFT", PAD, -y)
+            row.icon:SetTexture(C_Item.GetItemIconByID(item[1]) or 134400)
+            local name = item[4]
+            if R.NewInForever(item) then name = name .. ns.Shared.Parts.ForeverInline(12) end
+            if R.Dropped(npc, item[1]) then name = name .. "  |cff3fd13f(you got it)|r" end
+            row.name:SetText(name)
+            local c = QualityColor(item[2])
+            row.name:SetTextColor(c.r, c.g, c.b)
+            local chance = item[3]
+            row.chance:SetText(chance >= 1 and ("%d%%"):format(math.floor(chance + 0.5)) or ("%.1f%%"):format(chance))
+            row:Show()
+            y = y + DROP_H
+        end
+        if loot.more then Add(("And %d more"):format(loot.more), MUTED) end
+    else
+        y = y + 6
+        Add("No special drops", MUTED)
+    end
+    y = y + 6
+    local r, g, bl = SoftBlue(0.3, 0.71, 0.96)
+    local hint = { r = r, g = g, b = bl }
+    Add("Click the star to let go of it.", hint, 11)
+    Add("Right-click it for a waypoint.", hint, 11)
+    panel:SetHeight(y + PAD - 3)
+    panel:ClearAllPoints()
+    panel:SetPoint("TOPLEFT", pin, "TOPRIGHT", 8, 0)
+    panel:Show()
+end
+
+local function HidePanel()
+    if panel then
+        panel:Hide()
+        panel.npc = nil
+    end
+end
+
 function NaowhForeverRarePinMixin:OnMouseEnter()
-    ShowTip(self)
+    -- The focused rare's star has its panel up already.
+    if self.npc ~= focused then ShowTip(self) end
     ShowMore(self.npc)
     Highlight(self.npc)
 end
 
--- Back to the focused rare, if one is, its tooltip kept up beside its star; else every rare as
--- drawn, and no tooltip.
+-- Back to the focused rare, if one is, its panel up beside its star; else every rare as
+-- drawn, and no panel.
 local function Rest()
     ShowMore(focused)
     Highlight(focused)
     local map = provider and provider:GetMap()
     if focused and map then
         for pin in map:EnumeratePinsByTemplate(TEMPLATE) do
-            if pin.npc == focused and not pin.kind then return ShowTip(pin) end
+            if pin.npc == focused and not pin.kind then return ShowPanel(pin) end
         end
     end
+    HidePanel()
 end
 
 function NaowhForeverRarePinMixin:OnMouseLeave()
@@ -182,8 +339,10 @@ function NaowhForeverRarePinMixin:OnClick(button)
         ns.PlaceWaypoint(R.Name(self.npc), R.Map(self.npc), self.spotX, self.spotY)
     elseif button == "LeftButton" then
         focused = focused ~= self.npc and self.npc or nil
-        -- Still under the pointer: as hovered, its tooltip saying what a click does now.
-        self:OnMouseEnter()
+        GameTooltip:Hide()
+        Rest()
+        -- Let go of while still under the pointer: as hovered again.
+        if not focused then self:OnMouseEnter() end
     end
 end
 
@@ -194,6 +353,7 @@ provider = CreateFromMixins(MapCanvasDataProviderMixin)
 
 function provider:RemoveAllData()
     wipe(shown)
+    HidePanel()
     self:GetMap():RemoveAllPinsByTemplate(TEMPLATE)
 end
 
@@ -263,8 +423,8 @@ local function Enabled() return S.Get("enabled") == true end
 Settings.Page("Completo/Rares", S):Card({
     id = "rarePins", name = "Map Pins", order = 30, switch = "rarePins",
     help = "A star on the world map for every rare you have not killed, where it is most likely to be. "
-        .. "Hover one for its other spawn spots and, if it patrols, its way; click it to keep them shown, "
-        .. "right-click it for a waypoint.",
+        .. "Hover one for its other spawn spots and, if it patrols, its way; click it to keep them shown "
+        .. "with a panel of its drops, right-click it for a waypoint.",
     summary = function(store)
         return store.Get("rarePinsKilled") and "Every rare, the ones you killed in grey"
             or "The rares you have not killed"
