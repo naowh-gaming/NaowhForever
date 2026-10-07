@@ -536,8 +536,7 @@ end
 
 local function DrawAllZones(self)
     local n, total = Source().Progress()
-    local about = tab == "rares" and "%d%% of every rare your character can kill"
-        or "%d%% of every zone quest for your character"
+    local about = tab == "rares" and "%d%% killed" or "%d%% done"
     self:Add("hero", "All zones", n, total, about:format(Percent(n, total)))
     self:Space(8)
     wipe(byContinent)
