@@ -1,4 +1,4 @@
-## Interface: 120000, 120001, 120005, 120007, 120100, 16001
+## Interface: 16001
 ## Title: |cff0091edNaowh|r Forever: Completo
 ## Notes: Everything there is to do, and how much of it you have done: every quest of every zone, and where you are in each chain.
 ## Author: NaowhUI
