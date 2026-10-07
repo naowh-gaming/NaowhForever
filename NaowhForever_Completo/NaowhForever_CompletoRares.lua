@@ -189,24 +189,25 @@ function R.Search(text, limit)
     return found, n
 end
 
--- Where it spawns nearest to you when you are on its map, else where it spawns most.
+-- Where it spawns nearest to you when you are on its map (a spawn spot, or a dot along the
+-- way it patrols), else where it spawns most.
 function R.Spot(npc)
     local rare = D.Rares[npc]
     local spots = rare[SPOTS]
     if #spots == 0 then return end
-    local best = 1
     local pos = C_Map.GetPlayerMapPosition and C_Map.GetBestMapForUnit("player") == rare[MAP]
         and C_Map.GetPlayerMapPosition(rare[MAP], "player")
-    if pos then
-        local px, py = pos:GetXY()
-        local bestD
-        for i = 1, #spots, 2 do
-            local dx, dy = spots[i] / 100 - px, spots[i + 1] / 100 - py
+    if not pos then return rare[MAP], spots[1], spots[2] end
+    local px, py = pos:GetXY()
+    local bx, by, bestD = spots[1], spots[2], nil
+    for _, points in ipairs({ spots, rare[TRAIL] or spots }) do
+        for i = 1, #points, 2 do
+            local dx, dy = points[i] / 100 - px, points[i + 1] / 100 - py
             local d = dx * dx + dy * dy
-            if not bestD or d < bestD then best, bestD = i, d end
+            if not bestD or d < bestD then bx, by, bestD = points[i], points[i + 1], d end
         end
     end
-    return rare[MAP], spots[best], spots[best + 1]
+    return rare[MAP], bx, by
 end
 
 -- Its spawn spots, { x, y, x, y, ... } in percent on R.Map(npc). Not to be changed.

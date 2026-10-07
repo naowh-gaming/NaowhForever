@@ -5,9 +5,11 @@
 --
 --  A rare is seen when its nameplate comes up, when you mouse over it or target it, and
 --  where the game marks it on the minimap (a vignette, if Forever gives rares one). The
---  alert sits in the Alerts group (move it with Unlock Mode), pulses, plays a sound and
---  flashes the game's taskbar icon; it goes after a while, on a click, or once the rare is
---  killed. Each rare alerts once in a while, not every time its nameplate comes back.
+--  alert is a card with the rare's portrait, its name, level and whether you killed it; it
+--  sits in the Alerts group (move it with Unlock Mode), pulses, plays a sound and flashes the
+--  game's taskbar icon. Click it for a waypoint to the rare; it goes after a while, on a
+--  right-click, or once the rare is killed. Each rare alerts once in a while, not every time
+--  its nameplate comes back.
 --
 --  The skull goes on a rare you can see as a unit (nameplate, mouseover or target, not a
 --  minimap mark), once per creature, and only where it has no mark yet and you may mark: on
@@ -21,7 +23,6 @@ local S = ns.CompletoSettings
 local R = ns.Completo.Rares
 
 local SKULL = 8
-local SKULL_ICON = "|TInterface\\TargetingFrame\\UI-RaidTargetingIcon_8:0|t"
 local SHOW_FOR = 20       -- seconds the alert stays up
 local AGAIN_AFTER = 300   -- seconds before the same rare alerts again
 local PULSES = 6
@@ -35,50 +36,6 @@ local function Secret(v) return issecretvalue ~= nil and issecretvalue(v) end
 -------------------------------------------------------------------------------
 --  The alert
 -------------------------------------------------------------------------------
-local alert, flash, hideTimer
-local shownNpc   -- the rare the alert is about, by npcID; nil for one not in the data
-
-local function HideAlert()
-    if not alert then return end
-    if hideTimer then hideTimer:Cancel() end
-    hideTimer = nil
-    flash:Stop()
-    alert:Hide()
-    shownNpc = nil
-end
-
-local function BuildAlert()
-    alert = CreateFrame("Frame", "NaowhForeverRareAlert", UIParent)
-    alert:SetMovable(true)
-    alert:SetClampedToScreen(true)
-    alert.title = ns.Font(alert, 22, "OUTLINE", T.accent)
-    alert.title:SetPoint("TOP", 0, -4)
-    alert.title:SetText("Rare Spotted")
-    alert.text = ns.Font(alert, 16, "OUTLINE")
-    alert.text:SetPoint("TOP", alert.title, "BOTTOM", 0, -4)
-    alert.text:SetJustifyH("CENTER")
-    alert.note = ns.Font(alert, 12, "OUTLINE", T.muted)
-    alert.note:SetPoint("TOP", alert.text, "BOTTOM", 0, -3)
-    alert.note:SetJustifyH("CENTER")
-    -- A click puts it away.
-    alert:EnableMouse(true)
-    alert:SetScript("OnMouseUp", HideAlert)
-
-    flash = alert:CreateAnimationGroup()
-    flash:SetLooping("BOUNCE")
-    flash:SetScript("OnLoop", function(self)
-        self.loops = self.loops + 1
-        if self.loops >= PULSES then self:Stop() end
-    end)
-    local pulse = flash:CreateAnimation("Alpha")
-    pulse:SetFromAlpha(1)
-    pulse:SetToAlpha(0.35)
-    pulse:SetDuration(0.6)
-
-    alert:Hide()
-    ns.AlertStack(alert, 6)
-end
-
 -- The game's own alert sounds, offered before the addon's sound files: key, how it plays,
 -- what, label. "name": a SOUNDKIT name (left out where the client lacks it); "kit": a sound
 -- kit's ID SOUNDKIT has no name for (the battleground flag sounds); "file": a sound file's ID,
@@ -127,36 +84,150 @@ local function PlaySoundKey(key)
     PlayGame(Find(DEFAULT_SOUND))
 end
 
+local alert, flash, hideTimer
+local shownNpc   -- the rare the alert is about, by npcID; nil for one not in the data
+
+local CARD_W, CARD_H, PORTRAIT, PAD = 300, 78, 58, 10
+local BLACK = { r = 0, g = 0, b = 0 }
+local STAR_ATLAS = "VignetteKill"
+
+local function HideAlert()
+    if not alert then return end
+    if hideTimer then hideTimer:Cancel() end
+    hideTimer = nil
+    flash:Stop()
+    alert:Hide()
+    shownNpc = nil
+end
+
+-- Left-click: a waypoint to the rare (where the minimap saw it, else its spawn spot or way
+-- nearest you); right-click puts the card away.
+local function CardClicked(card, button)
+    if button == "RightButton" then return HideAlert() end
+    local spot = card.spot
+    if spot.map then ns.PlaceWaypoint(card.name:GetText(), spot.map, spot.x, spot.y) end
+end
+
+-- The face of the rare: its model zoomed in to the head, as a unit frame's portrait.
+local function Zoom(model)
+    model:SetPortraitZoom(1)
+end
+
+local function BuildAlert()
+    alert = CreateFrame("Button", "NaowhForeverRareAlert", UIParent)
+    alert:SetSize(CARD_W, CARD_H)
+    alert:SetMovable(true)
+    alert:SetClampedToScreen(true)
+    alert:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+    alert:SetScript("OnClick", CardClicked)
+    ns.Solid(alert, "BACKGROUND", T.panel, 0.94):SetAllPoints()
+    ns.Border(alert, BLACK)
+    alert.spot = {}
+
+    local frame = CreateFrame("Frame", nil, alert)
+    frame:SetSize(PORTRAIT, PORTRAIT)
+    frame:SetPoint("LEFT", PAD, 0)
+    ns.Solid(frame, "BACKGROUND", BLACK, 1):SetAllPoints()
+    ns.Border(frame, T.accent)
+    alert.model = CreateFrame("PlayerModel", nil, frame)
+    alert.model:SetPoint("TOPLEFT", 1, -1)
+    alert.model:SetPoint("BOTTOMRIGHT", -1, 1)
+    alert.model:SetScript("OnModelLoaded", Zoom)
+    -- The rare star where there is no model to show.
+    alert.star = frame:CreateTexture(nil, "ARTWORK")
+    alert.star:SetPoint("CENTER")
+    alert.star:SetSize(PORTRAIT * 0.6, PORTRAIT * 0.6)
+    alert.star:SetAtlas(STAR_ATLAS)
+
+    local left = PAD + PORTRAIT + 10
+    alert.kicker = ns.Font(alert, 10, nil, T.accent)
+    alert.kicker:SetPoint("TOPLEFT", left, -PAD)
+    alert.kicker:SetText("RARE SPOTTED")
+    alert.skull = alert:CreateTexture(nil, "ARTWORK")
+    alert.skull:SetTexture("Interface\\TargetingFrame\\UI-RaidTargetingIcon_8")
+    alert.skull:SetSize(14, 14)
+    alert.skull:SetPoint("LEFT", alert.kicker, "RIGHT", 6, 0)
+    alert.name = ns.Font(alert, 15, nil, T.fg)
+    alert.name:SetPoint("TOPLEFT", alert.kicker, "BOTTOMLEFT", 0, -3)
+    alert.name:SetPoint("RIGHT", -PAD, 0)
+    alert.name:SetJustifyH("LEFT")
+    alert.name:SetWordWrap(false)
+    alert.about = ns.Font(alert, 11, nil, T.muted)
+    alert.about:SetPoint("TOPLEFT", alert.name, "BOTTOMLEFT", 0, -3)
+    alert.about:SetPoint("RIGHT", -PAD, 0)
+    alert.about:SetJustifyH("LEFT")
+    alert.hint = ns.Font(alert, 10, nil, T.accentSoft)
+    alert.hint:SetPoint("BOTTOMLEFT", left, PAD - 2)
+
+    flash = alert:CreateAnimationGroup()
+    flash:SetLooping("BOUNCE")
+    flash:SetScript("OnLoop", function(self)
+        self.loops = self.loops + 1
+        if self.loops >= PULSES then self:Stop() end
+    end)
+    local pulse = flash:CreateAnimation("Alpha")
+    pulse:SetFromAlpha(1)
+    pulse:SetToAlpha(0.35)
+    pulse:SetDuration(0.6)
+
+    alert:Hide()
+    ns.AlertStack(alert, 6)
+end
+
 local function PlayAlertSound()
     if S.Get("rareSound") then PlaySoundKey(S.Get("rareSoundKey")) end
 end
 
--- name: the rare's; level: its level, or nil; npc: its npcID when in the data; marked: a
--- skull went on it; quiet: no sound or flash (Unlock Mode's preview).
-local function ShowAlert(name, level, npc, marked, quiet)
-    if not alert then BuildAlert() end
-    shownNpc = npc
-    local line = name
-    if level and level > 0 then line = ("%s  (%d)"):format(name, level) end
-    if marked then line = SKULL_ICON .. " " .. line end
-    alert.text:SetText(line)
-    local note = ""
-    if npc and R.Known(npc) then
-        local record = R.Record(npc)
-        if not record then
-            note = "Not killed yet"
-        elseif record.n > 1 then
-            note = ("Killed %d times"):format(record.n)
-        else
-            note = "Killed before"
-        end
+-- The portrait: the unit's own model while it is in sight, else the creature's; the rare
+-- star for a rare with neither.
+local function SetPortrait(unit, npc)
+    local model = alert.model
+    model:ClearModel()
+    local shown = false
+    if unit and UnitExists(unit) then
+        model:SetUnit(unit)
+        shown = true
+    elseif npc then
+        model:SetCreature(npc)
+        shown = true
     end
-    alert.note:SetText(note)
-    alert.note:SetShown(note ~= "")
-    local h = alert.title:GetStringHeight() + alert.text:GetStringHeight() + 12
-    if note ~= "" then h = h + alert.note:GetStringHeight() + 3 end
-    alert:SetSize(math.max(alert.title:GetStringWidth(), alert.text:GetStringWidth(),
-        alert.note:GetStringWidth()) + 16, h)
+    model:SetShown(shown)
+    if shown then Zoom(model) end
+    alert.star:SetShown(not shown)
+end
+
+local function KillNote(npc)
+    if not (npc and R.Known(npc)) then return nil end
+    local record = R.Record(npc)
+    if not record then return "not killed yet" end
+    if record.n > 1 then return ("killed %d times"):format(record.n) end
+    return "killed before"
+end
+
+-- seen: { name, level (or nil), npc (its npcID, or nil), unit (its unit token while in sight),
+-- elite, marked (a skull went on it), map, x, y (where the minimap saw it, percent) }.
+-- quiet: no sound, flash or timer (Unlock Mode's preview).
+local function ShowAlert(seen, quiet)
+    if not alert then BuildAlert() end
+    local npc = seen.npc
+    shownNpc = npc
+    SetPortrait(seen.unit, npc)
+    alert.name:SetText(seen.name)
+    alert.skull:SetShown(seen.marked == true)
+    local elite = seen.elite
+    if elite == nil and npc and R.Known(npc) then elite = R.Elite(npc) end
+    local parts = {}
+    if seen.level and seen.level > 0 then parts[#parts + 1] = ("Level %d"):format(seen.level) end
+    parts[#parts + 1] = elite and "rare elite" or "rare"
+    local note = KillNote(npc)
+    if note then parts[#parts + 1] = note end
+    local about = table.concat(parts, ", ")
+    alert.about:SetText(about:sub(1, 1):upper() .. about:sub(2))
+    -- Where the waypoint goes: where the minimap saw it, else its nearest known spot.
+    local spot = alert.spot
+    spot.map, spot.x, spot.y = seen.map, seen.x, seen.y
+    if not spot.map and npc and R.Known(npc) then spot.map, spot.x, spot.y = R.Spot(npc) end
+    alert.hint:SetText(spot.map and "Click: waypoint    Right-click: close" or "Right-click: close")
     alert:Show()
     flash.loops = 0
     flash:Play()
@@ -196,12 +267,13 @@ local function Mark(unit, guid)
 end
 
 -- Alerts once in AGAIN_AFTER seconds per rare; one you killed only with Killed Rares Too.
-local function Alert(key, name, level, npc, skull)
+local function Alert(key, seen)
     local now = GetTime()
     if alerted[key] and now - alerted[key] < AGAIN_AFTER then return end
+    local npc = seen.npc
     if npc and R.Known(npc) and R.Killed(npc) and not S.Get("rareAlertKilled") then return end
     alerted[key] = now
-    ShowAlert(name, level, npc, skull)
+    ShowAlert(seen)
 end
 
 local RARE = { rare = true, rareelite = true }
@@ -218,7 +290,7 @@ local function Check(unit)
     if Secret(name) then return end
     if Secret(level) then level = nil end
     local skull = Mark(unit, guid)
-    Alert(npc, name, level, npc, skull)
+    Alert(npc, { name = name, level = level, npc = npc, unit = unit, elite = kind == "rareelite", marked = skull })
 end
 
 -- A minimap mark: a rare in the data, or one the game draws as a creature to kill.
@@ -230,14 +302,20 @@ local function CheckVignette(id)
     if not npc or not (R.Known(npc) or atlas:find("Kill")) then return end
     local level
     if R.Known(npc) then level = R.Levels(npc) end
-    Alert(npc, info.name or (R.Known(npc) and R.Name(npc)) or "Rare", level, npc, false)
+    -- Where the minimap sees it, on the map you are on.
+    local map = C_Map.GetBestMapForUnit("player")
+    local pos = map and C_VignetteInfo.GetVignettePosition and C_VignetteInfo.GetVignettePosition(id, map)
+    local x, y
+    if pos and not Secret(pos) then x, y = pos:GetXY() end
+    Alert(npc, { name = info.name or (R.Known(npc) and R.Name(npc)) or "Rare", level = level, npc = npc,
+        map = x and map, x = x and x * 100, y = y and y * 100 })
 end
 
 -- The alert as a rare would bring it, sound and all: about your target when you can attack it,
 -- with a skull on it as Mark With a Skull would put; else about a made-up rare. Leaves the
 -- once-in-a-while memory alone, so a real rare still alerts.
 local function TestAlert()
-    local name, level, npc, skull = "Mist Howler", 22, nil, false
+    local name, level, npc, skull, unit = "Mist Howler", 22, 10644, false, nil
     local guid = UnitGUID("target")
     local hostile = UnitExists("target") and UnitCanAttack("player", "target")
     if guid and not Secret(guid) and not Secret(hostile) and hostile then
@@ -246,6 +324,7 @@ local function TestAlert()
             name = targetName
             level = not Secret(targetLevel) and targetLevel or nil
             npc = R.NpcOf(guid)
+            unit = "target"
             if S.Get("rareMark") and MayMark() then
                 local index = GetRaidTargetIndex("target")
                 if not Secret(index) and index ~= SKULL then
@@ -255,7 +334,7 @@ local function TestAlert()
             end
         end
     end
-    ShowAlert(name, level, npc, skull)
+    ShowAlert({ name = name, level = level, npc = npc, unit = unit, marked = skull })
 end
 
 local events = CreateFrame("Frame")
@@ -290,7 +369,7 @@ hooksecurefunc(S, "Set", function(key)
 end)
 hooksecurefunc(ns, "Apply", Apply)
 hooksecurefunc(ns, "ShowRaidReminderAnchorConfig", function()
-    if On() then ShowAlert("Mist Howler", 22, nil, true, true) end
+    if On() then ShowAlert({ name = "Mist Howler", level = 22, npc = 10644, marked = true }, true) end
 end)
 hooksecurefunc(ns, "HideRaidReminderAnchorConfig", HideAlert)
 

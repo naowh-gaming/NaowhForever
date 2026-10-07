@@ -19,17 +19,21 @@ end
 local function Region()
     local r = { shown = true, text = "" }
     function r:SetText(t) self.text = t or "" end
+    function r:GetText() return self.text end
     function r:GetStringWidth() return #self.text * 7 end
     function r:GetStringHeight() return 14 end
     function r:SetShown(on) self.shown = on and true or false end
     function r:Show() self.shown = true end
     function r:Hide() self.shown = false end
     function r:IsShown() return self.shown end
-    for _, k in ipairs({ "SetPoint", "SetJustifyH", "SetSize", "SetMovable", "SetClampedToScreen",
-        "EnableMouse", "SetScript", "ClearAllPoints" }) do
-        r[k] = r[k] or function() end
-    end
-    return r
+    function r:CreateTexture() return Region() end
+    -- A portrait model: what it was last set to show.
+    function r:ClearModel() self.unit, self.creature = nil, nil end
+    function r:SetUnit(unit) self.unit = unit end
+    function r:SetCreature(npc) self.creature = npc end
+    function r:SetScript(k, fn) self[k] = fn end
+    -- Every other drawing call does nothing.
+    return setmetatable(r, { __index = function() return function() end end })
 end
 
 local function Fixture(settings, units)
@@ -47,6 +51,7 @@ local function Fixture(settings, units)
     env.CreateFrame = function()
         local f = Region()
         f.events, f.unitEvents = {}, {}
+        function f:RegisterForClicks() end
         function f:RegisterEvent(e) self.events[e] = true end
         function f:RegisterUnitEvent(e, unit) self.events[e] = true; self.unitEvents[e] = unit end
         function f:UnregisterEvent(e) self.events[e] = nil end
@@ -111,10 +116,14 @@ local function Fixture(settings, units)
     env.C_Timer = { NewTimer = function() return { Cancel = function() end } end }
     env.C_Map = { GetBestMapForUnit = function() return 1440 end, GetMapInfo = function() end }
     local account = {}
-    local ns = { THEME = { accent = {}, muted = {} }, Apply = function() end,
+    local ns = { THEME = { accent = {}, muted = {}, fg = {}, panel = {}, accentSoft = {} }, Apply = function() end,
         ShowRaidReminderAnchorConfig = function() end, HideRaidReminderAnchorConfig = function() end }
     ns.AccountSettings = function() return account end
     ns.Font = function() return Region() end
+    ns.Solid = function() return Region() end
+    ns.Border = function() end
+    env.waypoints = {}
+    ns.PlaceWaypoint = function(name, map, x, y) env.waypoints[#env.waypoints + 1] = { name, map, x, y } end
     ns.AlertStack = function(frame) ns.alert = frame end
     ns.UI = { SoundPathFor = function() return nil end, _PlayLSMSound = function() end }
     ns.SoundChoices = function()
@@ -255,8 +264,17 @@ do
     units.nameplate1 = { guid = Guid(10644), name = "Mist Howler", kind = "rare", level = 22 }
     env.Fire("NAME_PLATE_UNIT_ADDED", "nameplate1")
     Check(ns.alert and ns.alert:IsShown(), "a rare's nameplate brings the alert")
-    Check(ns.alert.text.text:find("Mist Howler", 1, true), "the alert names it")
-    Check(ns.alert.note.text == "Not killed yet", "and says it is not killed yet")
+    Check(ns.alert.name.text:find("Mist Howler", 1, true), "the alert names it")
+    Check(ns.alert.about.text == "Level 22, rare, not killed yet", "its level, kind, and that it is not killed yet")
+    Check(ns.alert.model.unit == "nameplate1", "the portrait is its own model")
+    Check(ns.alert.skull.shown, "the card shows the skull went on it")
+    ns.alert.OnClick(ns.alert, "LeftButton")
+    local wp = env.waypoints[1]
+    Check(wp and wp[1] == "Mist Howler" and wp[2] == 1440 and wp[3] == 50 and wp[4] == 40,
+        "a click sets a waypoint to its spot")
+    ns.alert.OnClick(ns.alert, "RightButton")
+    Check(not ns.alert:IsShown(), "a right-click puts it away")
+    ns.alert:Show()
     Check(#env.marks == 1 and env.marks[1][2] == 8, "a skull goes on it")
     Check(env.sounds == 1, "a sound plays")
 
@@ -278,7 +296,7 @@ do
     Check(#env.marks == 2, "but it still gets a skull")
     settings.rareAlertKilled = true
     env.Fire("NAME_PLATE_UNIT_ADDED", "nameplate2")
-    Check(ns.alert:IsShown() and ns.alert.note.text == "Killed before", "with Killed Rares Too it does")
+    Check(ns.alert:IsShown() and ns.alert.about.text:find("killed before", 1, true), "with Killed Rares Too it does")
 
     ns.alert:Hide()
     units.nameplate3 = { guid = Guid(5555), name = "Not A Rare", kind = "normal" }
@@ -292,7 +310,9 @@ do
     units.group = "raid"
     units.target = { guid = Guid(8888), name = "Raid Rare", kind = "rareelite", level = 40 }
     env.Fire("PLAYER_TARGET_CHANGED")
-    Check(ns.alert:IsShown() and ns.alert.note.text == "", "a rare not in the data alerts too, without a kill note")
+    Check(ns.alert:IsShown() and ns.alert.about.text == "Level 40, rare elite",
+        "a rare not in the data alerts too, without a kill note")
+    Check(ns.alert.hint.text == "Right-click: close", "with no spot to send a waypoint to")
     Check(#env.marks == 2, "in a raid without lead or assist, no skull")
 
     ns.CompletoSettings.Set("rareAlert", false)
@@ -337,16 +357,16 @@ do
     Check(env.sounds == 1 and settings.rareSoundKey == "game:raidwarning", "picking a sound plays it")
     env.sounds = 0
     test()
-    Check(ns.alert:IsShown() and ns.alert.text.text:find("Mist Howler", 1, true), "with nothing targeted, a made-up rare")
+    Check(ns.alert:IsShown() and ns.alert.name.text:find("Mist Howler", 1, true), "with nothing targeted, a made-up rare")
     Check(env.sounds == 1 and #env.marks == 0, "with its sound, and no skull on anything")
     units.target = { guid = Guid(5555), name = "Kobold Miner", level = 7 }
     test()
-    Check(ns.alert.text.text:find("Kobold Miner", 1, true) and #env.marks == 1 and env.marks[1][1] == "target",
+    Check(ns.alert.name.text:find("Kobold Miner", 1, true) and #env.marks == 1 and env.marks[1][1] == "target",
         "with a hostile target, about it, with a skull on it")
     units.target.friend = true
     units.target.mark = nil
     test()
-    Check(#env.marks == 1 and ns.alert.text.text:find("Mist Howler", 1, true), "a friendly target is not marked")
+    Check(#env.marks == 1 and ns.alert.name.text:find("Mist Howler", 1, true), "a friendly target is not marked")
 end
 
 -- Map Pins
