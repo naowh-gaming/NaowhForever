@@ -79,14 +79,38 @@ local function BuildAlert()
     ns.AlertStack(alert, 6)
 end
 
-local function PlayAlertSound()
-    if not S.Get("rareSound") then return end
-    local path = ns.UI.SoundPathFor(S.Get("rareSoundKey"))
-    if path then
-        ns.UI._PlayLSMSound(path)
-    else
-        PlaySound(SOUNDKIT.RAID_WARNING, "Master")
+-- The game's own alert sounds, offered before the addon's sound files: key, SOUNDKIT name,
+-- label. One the client has no SOUNDKIT entry for is left out.
+local GAME_SOUNDS = {
+    { "game:raidwarning", "RAID_WARNING", "Raid Warning" },
+    { "game:bossemote", "RAID_BOSS_EMOTE_WARNING", "Boss Emote" },
+    { "game:bosswhisper", "UI_RAID_BOSS_WHISPER_WARNING", "Boss Whisper" },
+    { "game:readycheck", "READY_CHECK", "Ready Check" },
+    { "game:pvpqueue", "PVP_THROUGH_QUEUE", "Battleground Ready" },
+    { "game:alarm", "ALARM_CLOCK_WARNING_3", "Alarm Clock" },
+    { "game:epicloot", "UI_EPICLOOT_TOAST", "Epic Loot" },
+    { "game:legendary", "UI_LEGENDARY_LOOT_TOAST", "Legendary Loot" },
+}
+local DEFAULT_SOUND = "game:raidwarning"
+
+local function GameKit(key)
+    for _, sound in ipairs(GAME_SOUNDS) do
+        if sound[1] == key then return SOUNDKIT and SOUNDKIT[sound[2]] end
     end
+end
+
+-- key: a game sound's, an addon sound file's, or "none" (an older setting) for the default.
+local function PlaySoundKey(key)
+    local kit = GameKit(key)
+    if kit then return PlaySound(kit, "Master") end
+    local path = ns.UI.SoundPathFor(key)
+    if path then return ns.UI._PlayLSMSound(path) end
+    kit = GameKit(DEFAULT_SOUND)
+    if kit then PlaySound(kit, "Master") end
+end
+
+local function PlayAlertSound()
+    if S.Get("rareSound") then PlaySoundKey(S.Get("rareSoundKey")) end
 end
 
 -- name: the rare's; level: its level, or nil; npc: its npcID when in the data; marked: a
@@ -270,6 +294,24 @@ local OFF = "Turn on Completo"
 local function Enabled() return S.Get("enabled") == true end
 local function SoundOn() return Enabled() and S.Get("rareSound") == true end
 
+-- The game's sounds, then the addon's.
+local function Sounds()
+    local values, order = {}, {}
+    for _, sound in ipairs(GAME_SOUNDS) do
+        if SOUNDKIT and SOUNDKIT[sound[2]] then
+            values[sound[1]] = sound[3] .. " (game)"
+            order[#order + 1] = sound[1]
+        end
+    end
+    local _, names, keys = nil, nil, nil
+    if ns.SoundChoices then _, names, keys = ns.SoundChoices() end
+    for _, key in ipairs(keys or {}) do
+        values[key] = names[key]
+        order[#order + 1] = key
+    end
+    return values, order
+end
+
 local function Summary(store)
     local parts = {}
     if store.Get("rareMark") then parts[#parts + 1] = "a skull on it" end
@@ -291,8 +333,16 @@ Settings.Page("Completo/Rares", S):Card({
           help = "Also warns about rares you have killed before." },
         { key = "rareSound", label = "Play a Sound", toggle = true, needs = Enabled, why = OFF,
           help = "Plays when the warning comes up, and flashes the game's icon on your taskbar." },
-        { key = "rareSoundKey", label = "Sound", sound = true, needs = SoundOn, why = "Needs Play a Sound",
-          help = "Left at None, the game's raid warning sound." },
+        { key = "rareSoundKey", label = "Sound", choice = Sounds, needs = SoundOn, why = "Needs Play a Sound",
+          help = "The game's own alert sounds first, then the addon's. Each plays as you pick it.",
+          get = function()
+              local key = S.Get("rareSoundKey")
+              return (key == nil or key == "none") and DEFAULT_SOUND or key
+          end,
+          set = function(key)
+              S.Set("rareSoundKey", key)
+              PlaySoundKey(key)
+          end },
         { label = "Test Alert", buttonText = "Test", button = TestAlert, needs = Enabled, why = OFF,
           help = "Shows the warning with its sound. With something you can attack targeted, it is about "
               .. "that, with a skull on it." },

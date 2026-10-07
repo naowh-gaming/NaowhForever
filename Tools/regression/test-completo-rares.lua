@@ -292,6 +292,18 @@ do
         if row.button then test = row.button end
     end
     Check(test ~= nil, "Rare Alerts has a Test button")
+    local soundRow
+    for _, row in ipairs(ns.cards.rareAlert.rows) do
+        if row.key == "rareSoundKey" then soundRow = row end
+    end
+    local values, order = soundRow.choice()
+    Check(order[1] == "game:raidwarning" and values["game:raidwarning"] == "Raid Warning (game)",
+        "the sound list starts with the game's own")
+    Check(values["game:bossemote"] == nil, "a game sound the client lacks is left out")
+    Check(soundRow.get() == "game:raidwarning", "Raid Warning by default")
+    soundRow.set("game:raidwarning")
+    Check(env.sounds == 1 and settings.rareSoundKey == "game:raidwarning", "picking a sound plays it")
+    env.sounds = 0
     test()
     Check(ns.alert:IsShown() and ns.alert.text.text:find("Mist Howler", 1, true), "with nothing targeted, a made-up rare")
     Check(env.sounds == 1 and #env.marks == 0, "with its sound, and no skull on anything")
