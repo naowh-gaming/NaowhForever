@@ -19,16 +19,15 @@ local TITLE_H, LINE_H, SECTION_GAP = 22, 18, 6
 local NOTE_LINES, NOTE_MAX = 3, 200
 local LINK_GAP = 10
 local WAITING = "..."
-local TREES = "%d / %d / %d"
+local TREES = "%d/%d/%d"
 local POINTS = "%d points"
-local LEAD = "%s, %s"
 local NAOWH_BUILD = "Naowh's %s build"
 local NO_TALENTS = "No talents yet"
 local NOT_SHOWN = "Not shown"
-local BARE = "%d unenchanted, %d empty"
-local ITEM_LEVEL = "Item level %d"
-local UPGRADE, UPGRADES, NO_UPGRADES = "1 upgrade for you", "%d upgrades for you", "No upgrades for you"
+local ITEM_LEVEL, UNENCHANTED, EMPTY_SLOTS, FOR_YOU = "Item level", "Unenchanted", "Empty slots", "Upgrades for you"
+local ONE_ITEM, ITEMS, NONE_TEXT = "1 item", "%d items", "None"
 local NO_GUILD = "No guild"
+local GEAR_ROWS = { "level", "check", "empty", "ups" }
 local FRIEND, GUILDMATE = "Friend", "Guildmate"
 local GROUPED_ONCE, GROUPED = "Grouped once", "Grouped %d times"
 local NO_LINK = "Not a friend or guildmate"
@@ -65,8 +64,9 @@ local function Line(y)
     left:SetWordWrap(false)
     local right = ns.Font(body, LINE_SIZE, nil, T.muted)
     right:SetPoint("TOPRIGHT", 0, -y)
+    right:SetPoint("LEFT", left, "RIGHT", LINK_GAP, 0)
     right:SetJustifyH("RIGHT")
-    left:SetPoint("RIGHT", right, "LEFT", -LINK_GAP, 0)
+    right:SetWordWrap(false)
     return { left = left, right = right }, y + LINE_H
 end
 
@@ -133,6 +133,7 @@ end
 local function PaintTalents(guid)
     local points, build = rows.points, rows.build
     build.left:SetText("")
+    build.right:SetText("")
     if talents.guid ~= guid then
         points.left:SetText(WAITING)
         points.right:SetText("")
@@ -146,32 +147,41 @@ local function PaintTalents(guid)
     local spent = talents.spent
     if talents.total == 0 then
         points.left:SetText(NO_TALENTS)
-    elseif talents.count == 3 then
-        points.left:SetText(TREES:format(spent[1], spent[2], spent[3]))
-    else
-        points.left:SetText(POINTS:format(talents.total))
+        points.right:SetText("")
+        return
     end
-    points.right:SetText(talents.tree and LEAD:format(talents.tree, talents.role) or "")
-    if talents.build then build.left:SetText(NAOWH_BUILD:format(talents.build)) end
+    points.left:SetText(talents.tree or "")
+    if talents.count == 3 then
+        points.right:SetText(TREES:format(spent[1], spent[2], spent[3]))
+    else
+        points.right:SetText(POINTS:format(talents.total))
+    end
+    build.left:SetText(talents.build and NAOWH_BUILD:format(talents.build) or "")
+    build.right:SetText(talents.role or "")
+end
+
+local function Value(row, text, color)
+    row.right:SetText(text)
+    Color(row.right, color or T.fg)
 end
 
 local function PaintGear(guid)
     local gear = IP.Gear(guid)
-    local check, ups = rows.check, rows.ups
+    local level, bare, empty, ups = rows.level, rows.check, rows.empty, rows.ups
     if not gear then
-        check.left:SetText(WAITING)
-        check.right:SetText("")
-        ups.left:SetText("")
+        Value(level, WAITING)
+        Value(bare, "")
+        Value(empty, "")
+        Value(ups, "")
         return
     end
-    check.left:SetText(BARE:format(gear.bareCount, gear.empty))
-    check.right:SetText(gear.level and ITEM_LEVEL:format(gear.level) or "")
+    Value(level, gear.level and tostring(gear.level) or WAITING)
+    if gear.bareCount > 0 then Value(bare, tostring(gear.bareCount), St.WARN_RGB) else Value(bare, NONE_TEXT, T.muted) end
+    if gear.empty > 0 then Value(empty, tostring(gear.empty)) else Value(empty, NONE_TEXT, T.muted) end
     if gear.ups > 0 then
-        ups.left:SetText(gear.ups == 1 and UPGRADE or UPGRADES:format(gear.ups))
-        Color(ups.left, St.HAVE_RGB)
+        Value(ups, gear.ups == 1 and ONE_ITEM or ITEMS:format(gear.ups), St.HAVE_RGB)
     else
-        ups.left:SetText(NO_UPGRADES)
-        Color(ups.left, T.muted)
+        Value(ups, NONE_TEXT, T.muted)
     end
 end
 
@@ -303,9 +313,16 @@ local function Build()
     rows.points, y = Line(y)
     rows.build, y = Line(y)
     Color(rows.build.left, T.accentSoft)
-    y = Section(y + SECTION_GAP, "GEAR")
+    y = Section(y + SECTION_GAP, "THEIR GEAR")
+    rows.level, y = Line(y)
     rows.check, y = Line(y)
+    rows.empty, y = Line(y)
     rows.ups, y = Line(y)
+    for _, key in ipairs(GEAR_ROWS) do Color(rows[key].left, T.muted) end
+    rows.level.left:SetText(ITEM_LEVEL)
+    rows.check.left:SetText(UNENCHANTED)
+    rows.empty.left:SetText(EMPTY_SLOTS)
+    rows.ups.left:SetText(FOR_YOU)
     y = Section(y + SECTION_GAP, "GUILD")
     rows.guild, y = Line(y)
     rows.link, y = Line(y)

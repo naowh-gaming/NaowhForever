@@ -405,6 +405,22 @@ for _, f in ipairs(created) do
 end
 check("INSPECT_READY listened to while on", events ~= nil)
 
+-- Reported in game: the window's code loads with its unit still false, and a slot update came
+-- before the game set who is inspected.
+do
+    local realGUID = env.UnitGUID
+    env.UnitGUID = function(unit)
+        assert(type(unit) == "string", "UnitGUID wants a unit string")
+        return realGUID(unit)
+    end
+    frame.unit, frame.shown = false, true
+    check("no unit yet (false): no one inspected", IP.Current() == nil)
+    hooks.InspectPaperDollItemSlotButton_Update(slots[1])
+    check("and a slot update before it paints nothing, without an error", true)
+    frame.shown = false
+    env.UnitGUID = realGUID
+end
+
 -------------------------------------------------------------------------------
 --  The window shows A: each part painted for A.
 -------------------------------------------------------------------------------
@@ -456,10 +472,11 @@ local function Shows(text) return Font(text) ~= nil end
 
 check("the Player tab shown, no switch without Player History", IP.bodies.player.shown ~= false
     and IP.bodies.history.shown == false and IP.switch.visible == false)
-check("their talents: points per tree, their lead tree and its role", Shows("5 / 20 / 0") and Shows("Fury, Damage"))
+check("their talents: points per tree, their lead tree and its role", Shows("5/20/0") and Shows("Fury") and Shows("Damage"))
 check("named when their points follow one of Naowh's builds", Shows("Naowh's Fury build"))
 check("the gear check: unenchanted and empty slots, item level, upgrades for you",
-    Shows("1 unenchanted, 11 empty") and Shows("Item level 23") and Shows("1 upgrade for you"))
+    Shows("Item level") and Shows("23") and Shows("Unenchanted") and Shows("Empty slots") and Shows("11")
+    and Shows("Upgrades for you") and Shows("1 item"))
 check("their guild and rank, and how you know them", Shows("Naowh") and Shows("Officer") and Shows("Friend"))
 check("no note section without Player History", Font("NOTE").parent.shown == false)
 
@@ -544,10 +561,10 @@ CURRENCY[2].currencyInfos[1].spent = 1
 SCORE.target = 5
 A.items[5] = nil
 events.scripts.OnEvent(events, "UNIT_INVENTORY_CHANGED", "target")
-check("INSPECT_READY for another GUID: their talents, gear check and score not read again", Shows("5 / 20 / 0")
-    and Shows("1 unenchanted, 11 empty") and card.value.text == "|cff1eff0041.2|r")
+check("INSPECT_READY for another GUID: their talents, gear check and score not read again", Shows("5/20/0")
+    and Shows("11") and card.value.text == "|cff1eff0041.2|r")
 events.scripts.OnEvent(events, "INSPECT_READY", GUID_A)
-check("theirs again: read again", Shows("5 / 1 / 0") and Shows("0 unenchanted, 12 empty")
+check("theirs again: read again", Shows("5/1/0") and Shows("12")
     and card.value.text == "|cff1eff005|r")
 CURRENCY[2].currencyInfos[1].spent = 20
 SCORE.target = 41.2
@@ -705,7 +722,7 @@ IP.Refresh()
 check("no valid inspect talent data: \"Not shown\"", Shows("Not shown"))
 state.talentsReady = nil
 IP.Refresh()
-check("no Naowh build matched without the Training Planner's data: just the points", Shows("5 / 20 / 0"))
+check("no Naowh build matched without the Training Planner's data: just the points", Shows("5/20/0"))
 
 -------------------------------------------------------------------------------
 --  Answering: Share Your BiS.
