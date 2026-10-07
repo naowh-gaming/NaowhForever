@@ -7,8 +7,8 @@
 --  where the game marks it on the minimap (a vignette, if Forever gives rares one). The
 --  alert is a card with the rare's portrait, its name, level and whether you killed it, on a
 --  spot of its own (drag it there); its border glows and pulses, it plays a sound and flashes
---  the game's taskbar icon. Click it for a waypoint to the rare; it goes after a while, on a
---  right-click, or once the rare is killed. Each rare alerts once in a while, not every time
+--  the game's taskbar icon. Its pin (top right) sets a waypoint to the rare; it goes after a
+--  while, on a right-click, or once the rare is killed. Each rare alerts once in a while, not every time
 --  its nameplate comes back.
 --
 --  The skull goes on a rare you can see as a unit (nameplate, mouseover or target, not a
@@ -28,6 +28,7 @@ local AGAIN_AFTER = 300   -- seconds before the same rare alerts again
 -- The glow around the card: GLOW wide, from GLOW_ALPHA at the card's edge to nothing, in the
 -- theme's accent; it breathes between PULSE_LOW and full every PULSE seconds while shown.
 local GLOW, GLOW_ALPHA = 12, 0.55
+local GLOW_CORNER = "Interface\\AddOns\\NaowhForever_Completo\\Media\\GlowCorner"
 local PULSE, PULSE_LOW = 0.9, 0.25
 
 local function On()
@@ -131,16 +132,31 @@ local function DragStop(card)
     Place()
 end
 
--- Left-click: a waypoint to the rare (where the minimap saw it, else its spawn spot or way
--- nearest you); right-click puts the card away. The end of a drag is no click.
+-- Right-click puts the card away; the end of a drag is no click.
 local function CardClicked(card, button)
     if card.dragged then
         card.dragged = false
         return
     end
-    if button == "RightButton" then return HideAlert() end
-    local spot = card.spot
-    if spot.map then ns.PlaceWaypoint(card.name:GetText(), spot.map, spot.x, spot.y) end
+    if button == "RightButton" then HideAlert() end
+end
+
+-- The pin: a waypoint to the rare, where the minimap saw it, else its spawn spot or way
+-- nearest you.
+local function PinClicked()
+    local spot = alert.spot
+    if spot.map then ns.PlaceWaypoint(alert.name:GetText(), spot.map, spot.x, spot.y) end
+end
+
+local function CardEnter(card)
+    GameTooltip:SetOwner(card, "ANCHOR_TOP")
+    GameTooltip:SetText(card.name:GetText() or "Rare", 1, 1, 1)
+    GameTooltip:AddLine("Drag to move it. Right-click to close it.", 0.62, 0.62, 0.62)
+    GameTooltip:Show()
+end
+
+local function CardLeave()
+    GameTooltip:Hide()
 end
 
 -- The face of the rare: its model zoomed in to the head, as a unit frame's portrait.
@@ -158,6 +174,8 @@ local function BuildAlert()
     alert:RegisterForDrag("LeftButton")
     alert:SetScript("OnDragStart", DragStart)
     alert:SetScript("OnDragStop", DragStop)
+    alert:SetScript("OnEnter", CardEnter)
+    alert:SetScript("OnLeave", CardLeave)
     ns.Solid(alert, "BACKGROUND", T.panel, 0.94):SetAllPoints()
     ns.Border(alert, BLACK)
     alert.spot = {}
@@ -177,25 +195,30 @@ local function BuildAlert()
     alert.star:SetSize(PORTRAIT * 0.6, PORTRAIT * 0.6)
     alert.star:SetAtlas(STAR_ATLAS)
 
-    local left = PAD + PORTRAIT + 10
+    local Parts, St = ns.Shared.Parts, ns.Shared.Style
+    alert.pin = Parts.IconButton(alert, PinClicked, St.PIN, 0, "Waypoint")
+    alert.pin.hint = "To the rare: where it was seen, else its nearest spot."
+    alert.pin:SetPoint("TOPRIGHT", -PAD + 2, -PAD + 2)
+
+    -- The text, its three lines in the middle of the card beside the portrait, clear of the pin.
+    local left, right = PAD + PORTRAIT + 10, -(PAD + 24)
     alert.kicker = ns.Font(alert, 10, nil, T.accent)
-    alert.kicker:SetPoint("TOPLEFT", left, -PAD)
+    alert.kicker:SetPoint("TOPLEFT", left, -14)
     alert.kicker:SetText("RARE SPOTTED")
     alert.skull = alert:CreateTexture(nil, "ARTWORK")
     alert.skull:SetTexture("Interface\\TargetingFrame\\UI-RaidTargetingIcon_8")
     alert.skull:SetSize(14, 14)
     alert.skull:SetPoint("LEFT", alert.kicker, "RIGHT", 6, 0)
     alert.name = ns.Font(alert, 15, nil, T.fg)
-    alert.name:SetPoint("TOPLEFT", alert.kicker, "BOTTOMLEFT", 0, -3)
-    alert.name:SetPoint("RIGHT", -PAD, 0)
+    alert.name:SetPoint("TOPLEFT", alert.kicker, "BOTTOMLEFT", 0, -4)
+    alert.name:SetPoint("RIGHT", right, 0)
     alert.name:SetJustifyH("LEFT")
     alert.name:SetWordWrap(false)
     alert.about = ns.Font(alert, 11, nil, T.muted)
-    alert.about:SetPoint("TOPLEFT", alert.name, "BOTTOMLEFT", 0, -3)
+    alert.about:SetPoint("TOPLEFT", alert.name, "BOTTOMLEFT", 0, -4)
     alert.about:SetPoint("RIGHT", -PAD, 0)
     alert.about:SetJustifyH("LEFT")
-    alert.hint = ns.Font(alert, 10, nil, T.accentSoft)
-    alert.hint:SetPoint("BOTTOMLEFT", left, PAD - 2)
+    alert.about:SetWordWrap(false)
 
     -- The glowing border: soft edges fading out from the card, and a thin line on its edge,
     -- one frame under the card whose alpha breathes.
@@ -205,9 +228,8 @@ local function BuildAlert()
     glow:SetFrameLevel(math.max(alert:GetFrameLevel() - 1, 0))
     local c = T.accent
     local edge, clear = CreateColor(c.r, c.g, c.b, GLOW_ALPHA), CreateColor(c.r, c.g, c.b, 0)
-    -- An edge from the card out to the glow's edge, edge colour at the card and clear outside;
-    -- left and right also take the corners.
-    -- x1, y1: its top left from the glow's; x2, y2: its bottom right from the glow's.
+    -- The sides: from the card's edge out, edge colour at the card and clear outside, as long
+    -- as the card. x1, y1: a side's top left from the glow's; x2, y2: its bottom right.
     local function Side(x1, y1, x2, y2, orientation, from, to)
         local t = glow:CreateTexture(nil, "BACKGROUND")
         t:SetColorTexture(1, 1, 1, 1)
@@ -215,13 +237,24 @@ local function BuildAlert()
         t:SetPoint("BOTTOMRIGHT", x2, y2)
         t:SetGradient(orientation, from, to)
     end
-    -- Top: over the card's width, from its top edge up.
-    Side(GLOW, 0, -GLOW, GLOW + CARD_H, "VERTICAL", edge, clear)
-    -- Bottom: from its bottom edge down.
-    Side(GLOW, -(GLOW + CARD_H), -GLOW, 0, "VERTICAL", clear, edge)
-    -- Left and right: the full height, from its sides out.
-    Side(0, 0, -(GLOW + CARD_W), 0, "HORIZONTAL", clear, edge)
-    Side(GLOW + CARD_W, 0, 0, 0, "HORIZONTAL", edge, clear)
+    Side(GLOW, 0, -GLOW, GLOW + CARD_H, "VERTICAL", edge, clear)                   -- top
+    Side(GLOW, -(GLOW + CARD_H), -GLOW, 0, "VERTICAL", clear, edge)                -- bottom
+    Side(0, -GLOW, -(GLOW + CARD_W), GLOW, "HORIZONTAL", clear, edge)              -- left
+    Side(GLOW + CARD_W, -GLOW, 0, GLOW, "HORIZONTAL", edge, clear)                 -- right
+    -- The corners: Media/GlowCorner.tga fades out round its bottom right (the card's corner),
+    -- turned for each corner by its texture coordinates.
+    local CORNERS = {
+        { "TOPLEFT", 0, 1, 0, 1 }, { "TOPRIGHT", 1, 0, 0, 1 },
+        { "BOTTOMLEFT", 0, 1, 1, 0 }, { "BOTTOMRIGHT", 1, 0, 1, 0 },
+    }
+    for _, corner in ipairs(CORNERS) do
+        local t = glow:CreateTexture(nil, "BACKGROUND")
+        t:SetTexture(GLOW_CORNER)
+        t:SetSize(GLOW, GLOW)
+        t:SetPoint(corner[1])
+        t:SetTexCoord(corner[2], corner[3], corner[4], corner[5])
+        t:SetVertexColor(c.r, c.g, c.b, GLOW_ALPHA)
+    end
     local line = CreateFrame("Frame", nil, glow)
     line:SetPoint("TOPLEFT", alert, "TOPLEFT")
     line:SetPoint("BOTTOMRIGHT", alert, "BOTTOMRIGHT")
@@ -295,8 +328,7 @@ local function ShowAlert(seen, quiet)
     local spot = alert.spot
     spot.map, spot.x, spot.y = seen.map, seen.x, seen.y
     if not spot.map and npc and R.Known(npc) then spot.map, spot.x, spot.y = R.Spot(npc) end
-    alert.hint:SetText(spot.map and "Click: waypoint    Right-click: close    Drag: move"
-        or "Right-click: close    Drag: move")
+    alert.pin:SetShown(spot.map ~= nil)
     alert:Show()
     flash:Play()
     if hideTimer then hideTimer:Cancel() end

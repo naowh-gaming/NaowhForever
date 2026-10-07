@@ -133,6 +133,7 @@ local function Fixture(settings, units)
     ns.Font = function() return Region() end
     ns.Solid = function() return Region() end
     ns.Border = function() end
+
     env.waypoints = {}
     ns.PlaceWaypoint = function(name, map, x, y) env.waypoints[#env.waypoints + 1] = { name, map, x, y } end
     env.UIParent = Region()
@@ -154,7 +155,13 @@ local function Fixture(settings, units)
     -- The settings pages' cards, by id, to reach their rows.
     ns.cards = {}
     local page = { Window = function() end, Card = function(_, spec) ns.cards[spec.id] = spec end }
-    ns.Shared = { Settings = { Page = function() return page end } }
+    ns.Shared = { Settings = { Page = function() return page end }, Style = { PIN = "pin" },
+        -- The pin button: its click.
+        Parts = { IconButton = function(_, onClick)
+            local button = Region()
+            button.OnClick = onClick
+            return button
+        end } }
     -- Ashenvale: Mist Howler; Darkslayer Mordenthal, friendly to the Horde; Ursol'lok.
     ns.CompletoRareData = {
         Zones = { { map = 1440, name = "Ashenvale", continent = 1, rares = { 10644, 3736, 12037, 10647 } } },
@@ -288,10 +295,13 @@ do
     Check(ns.alert.model.unit == "nameplate1", "the portrait is its own model")
     Check(ns.alert.skull.shown, "the card shows the skull went on it")
     Check(ns.alert.glow.pulse.playing, "its glowing border pulses")
+    Check(ns.alert.pin.shown, "its pin shows: it has a spot to go to")
     ns.alert.OnClick(ns.alert, "LeftButton")
+    Check(#env.waypoints == 0, "a click on the card sets no waypoint")
+    ns.alert.pin.OnClick()
     local wp = env.waypoints[1]
     Check(wp and wp[1] == "Mist Howler" and wp[2] == 1440 and wp[3] == 50 and wp[4] == 40,
-        "a click sets a waypoint to its spot")
+        "its pin sets a waypoint to its spot")
     ns.alert.OnDragStart(ns.alert)
     ns.alert.OnDragStop(ns.alert)
     Check(type(settings.rareAlertPos) == "table" and settings.rareAlertPos.x == 10 and settings.rareAlertPos.y == 120,
@@ -300,8 +310,8 @@ do
     Check(ns.alert.scale == 2 and ns.alert.at[1] == 5 and ns.alert.at[2] == 60,
         "Card Size scales it about the same spot")
     ns.CompletoSettings.Set("rareAlertScale", 1)
-    ns.alert.OnClick(ns.alert, "LeftButton")
-    Check(#env.waypoints == 1, "letting go after a drag sets no waypoint")
+    ns.alert.OnClick(ns.alert, "RightButton")
+    Check(ns.alert:IsShown(), "letting go after a drag does not close it")
     ns.alert.OnClick(ns.alert, "RightButton")
     Check(not ns.alert:IsShown(), "a right-click puts it away")
     Check(not ns.alert.glow.pulse.playing, "and the glow stops")
@@ -343,7 +353,7 @@ do
     env.Fire("PLAYER_TARGET_CHANGED")
     Check(ns.alert:IsShown() and ns.alert.about.text == "Level 40, rare elite",
         "a rare not in the data alerts too, without a kill note")
-    Check(ns.alert.hint.text == "Right-click: close    Drag: move", "with no spot to send a waypoint to")
+    Check(not ns.alert.pin.shown, "no pin with no spot to send a waypoint to")
     Check(#env.marks == 2, "in a raid without lead or assist, no skull")
 
     ns.CompletoSettings.Set("rareAlert", false)
