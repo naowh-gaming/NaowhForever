@@ -5,9 +5,9 @@
 --
 --  A rare is seen when its nameplate comes up, when you mouse over it or target it, and
 --  where the game marks it on the minimap (a vignette, if Forever gives rares one). The
---  alert is a card with the rare's portrait, its name, level and whether you killed it; it
---  sits in the Alerts group (move it with Unlock Mode), pulses, plays a sound and flashes the
---  game's taskbar icon. Click it for a waypoint to the rare; it goes after a while, on a
+--  alert is a card with the rare's portrait, its name, level and whether you killed it, on a
+--  spot of its own (drag it there); it pulses, plays a sound and flashes the game's taskbar
+--  icon. Click it for a waypoint to the rare; it goes after a while, on a
 --  right-click, or once the rare is killed. Each rare alerts once in a while, not every time
 --  its nameplate comes back.
 --
@@ -100,9 +100,34 @@ local function HideAlert()
     shownNpc = nil
 end
 
+-- Where the card sits: where you last dragged it, else above the middle of the screen.
+local DEFAULT_POS = { point = "CENTER", relPoint = "CENTER", x = 0, y = 260 }
+
+local function Place()
+    local pos = S.Get("rareAlertPos") or DEFAULT_POS
+    alert:ClearAllPoints()
+    alert:SetPoint(pos.point, UIParent, pos.relPoint, pos.x, pos.y)
+end
+
+local function DragStart(card)
+    card.dragged = true
+    card:StartMoving()
+end
+
+local function DragStop(card)
+    card:StopMovingOrSizing()
+    local point, _, relPoint, x, y = card:GetPoint(1)
+    S.Set("rareAlertPos", { point = point, relPoint = relPoint, x = math.floor(x + 0.5), y = math.floor(y + 0.5) })
+    Place()
+end
+
 -- Left-click: a waypoint to the rare (where the minimap saw it, else its spawn spot or way
--- nearest you); right-click puts the card away.
+-- nearest you); right-click puts the card away. The end of a drag is no click.
 local function CardClicked(card, button)
+    if card.dragged then
+        card.dragged = false
+        return
+    end
     if button == "RightButton" then return HideAlert() end
     local spot = card.spot
     if spot.map then ns.PlaceWaypoint(card.name:GetText(), spot.map, spot.x, spot.y) end
@@ -120,6 +145,9 @@ local function BuildAlert()
     alert:SetClampedToScreen(true)
     alert:RegisterForClicks("LeftButtonUp", "RightButtonUp")
     alert:SetScript("OnClick", CardClicked)
+    alert:RegisterForDrag("LeftButton")
+    alert:SetScript("OnDragStart", DragStart)
+    alert:SetScript("OnDragStop", DragStop)
     ns.Solid(alert, "BACKGROUND", T.panel, 0.94):SetAllPoints()
     ns.Border(alert, BLACK)
     alert.spot = {}
@@ -171,7 +199,7 @@ local function BuildAlert()
     pulse:SetDuration(0.6)
 
     alert:Hide()
-    ns.AlertStack(alert, 6)
+    Place()
 end
 
 local function PlayAlertSound()
@@ -227,7 +255,8 @@ local function ShowAlert(seen, quiet)
     local spot = alert.spot
     spot.map, spot.x, spot.y = seen.map, seen.x, seen.y
     if not spot.map and npc and R.Known(npc) then spot.map, spot.x, spot.y = R.Spot(npc) end
-    alert.hint:SetText(spot.map and "Click: waypoint    Right-click: close" or "Right-click: close")
+    alert.hint:SetText(spot.map and "Click: waypoint    Right-click: close    Drag: move"
+        or "Right-click: close    Drag: move")
     alert:Show()
     flash.loops = 0
     flash:Play()
@@ -450,6 +479,12 @@ Settings.Page("Completo/Rares", S):Card({
           end },
         { label = "Test Alert", buttonText = "Test", button = TestAlert, needs = Enabled, why = OFF,
           help = "Shows the warning with its sound. With something you can attack targeted, it is about "
-              .. "that, with a skull on it." },
+              .. "that, with a skull on it. Drag the card to where you want it." },
+        { label = "Card Position", buttonText = "Reset", needs = Enabled, why = OFF,
+          button = function()
+              S.Set("rareAlertPos", nil)
+              if alert then Place() end
+          end,
+          help = "Puts the card back above the middle of the screen." },
     },
 })

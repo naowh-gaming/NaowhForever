@@ -27,13 +27,16 @@ local function Region()
     function r:Hide() self.shown = false end
     function r:IsShown() return self.shown end
     function r:CreateTexture() return Region() end
+    function r:GetPoint() return "CENTER", nil, "CENTER", 10.4, 119.6 end
     -- A portrait model: what it was last set to show.
     function r:ClearModel() self.unit, self.creature = nil, nil end
     function r:SetUnit(unit) self.unit = unit end
     function r:SetCreature(npc) self.creature = npc end
     function r:SetScript(k, fn) self[k] = fn end
-    -- Every other drawing call does nothing.
-    return setmetatable(r, { __index = function() return function() end end })
+    -- Every other drawing call (a method: a capital first letter) does nothing.
+    return setmetatable(r, { __index = function(_, key)
+        if key:find("^%u") then return function() end end
+    end })
 end
 
 local function Fixture(settings, units)
@@ -124,7 +127,13 @@ local function Fixture(settings, units)
     ns.Border = function() end
     env.waypoints = {}
     ns.PlaceWaypoint = function(name, map, x, y) env.waypoints[#env.waypoints + 1] = { name, map, x, y } end
-    ns.AlertStack = function(frame) ns.alert = frame end
+    -- The card, by its frame name.
+    local create = env.CreateFrame
+    env.CreateFrame = function(kind, name, ...)
+        local f = create(kind, name, ...)
+        if name == "NaowhForeverRareAlert" then ns.alert = f end
+        return f
+    end
     ns.UI = { SoundPathFor = function() return nil end, _PlayLSMSound = function() end }
     ns.SoundChoices = function()
         return {}, { ["voice:move-out"] = "Move out", ["lsm:BugSack: Fatality"] = "BugSack: Fatality",
@@ -272,6 +281,11 @@ do
     local wp = env.waypoints[1]
     Check(wp and wp[1] == "Mist Howler" and wp[2] == 1440 and wp[3] == 50 and wp[4] == 40,
         "a click sets a waypoint to its spot")
+    ns.alert.OnDragStart(ns.alert)
+    ns.alert.OnDragStop(ns.alert)
+    Check(type(settings.rareAlertPos) == "table" and settings.rareAlertPos.y == 120, "a drag keeps the card's spot")
+    ns.alert.OnClick(ns.alert, "LeftButton")
+    Check(#env.waypoints == 1, "letting go after a drag sets no waypoint")
     ns.alert.OnClick(ns.alert, "RightButton")
     Check(not ns.alert:IsShown(), "a right-click puts it away")
     ns.alert:Show()
@@ -312,7 +326,7 @@ do
     env.Fire("PLAYER_TARGET_CHANGED")
     Check(ns.alert:IsShown() and ns.alert.about.text == "Level 40, rare elite",
         "a rare not in the data alerts too, without a kill note")
-    Check(ns.alert.hint.text == "Right-click: close", "with no spot to send a waypoint to")
+    Check(ns.alert.hint.text == "Right-click: close    Drag: move", "with no spot to send a waypoint to")
     Check(#env.marks == 2, "in a raid without lead or assist, no skull")
 
     ns.CompletoSettings.Set("rareAlert", false)
@@ -326,9 +340,13 @@ do
     local ns, env = Fixture(settings, units)
     local test
     for _, row in ipairs(ns.cards.rareAlert.rows) do
-        if row.button then test = row.button end
+        if row.label == "Test Alert" then test = row.button end
+        if row.label == "Card Position" then ns.resetCard = row.button end
     end
     Check(test ~= nil, "Rare Alerts has a Test button")
+    settings.rareAlertPos = { point = "TOP", relPoint = "TOP", x = 1, y = 2 }
+    ns.resetCard()
+    Check(settings.rareAlertPos == nil, "Reset puts the card back where it starts")
     local soundRow
     for _, row in ipairs(ns.cards.rareAlert.rows) do
         if row.key == "rareSoundKey" then soundRow = row end
