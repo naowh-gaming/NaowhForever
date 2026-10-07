@@ -23,12 +23,15 @@ local S = UI.ModuleSettings("professions", {
     craftOrders = false, orderTip = 10,
     -- Crafting several at once shows the batch's time on the flight timer's bar.
     craftTimer = false,
+    craftTimerFont = "", craftTimerFontSize = 14, craftTimerOutline = "OUTLINE", craftTimerTexture = "",
+    craftTimerBgAlpha = 0.9,
     -- Materials for crafts added from the recipe pane, bought together at the auction house.
     shoppingList = false,
     -- Favourites not learned yet: offered at their trainer, their patterns listed at the AH.
     trainFavorites = false, searchFavoritesAH = false,
     -- Gathering: all off until switched on.
     gatherReminder = false, gatherInInstances = false, gatherIconSize = 40, gatherFish = false,
+    gatherFont = "", gatherFontSize = 13, gatherOutline = "OUTLINE",
     -- Buying and Selling: all off until switched on.
     ahSearch = false, ahShiftClick = false, craftProfit = false, craftProfitList = false,
     buyMaterials = false, buyVendor = false,

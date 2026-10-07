@@ -18,17 +18,20 @@ local S = UI.ModuleSettings("auraBuffs", {
     onlyIfCarried = true, hideResting = true,
     scrolls = true, scrollsSkipActive = true,
     raidBuffs = false, raidBuffsOwn = true,
-    iconSize = 36,
+    raidBuffPicks = { intellect = true, stamina = true, spirit = true, wild = true, blessing = false },
+    iconSize = 36, buffsFont = "", buffsFontSize = 14, buffsOutline = "OUTLINE",
 
     campfire = true, campTimer = true, campBuffs = true,
     campSound = true, campSoundKey = "none", campIconSize = 64, campNearbyAlert = true,
     campShowUnder = false, campShowUnderMinutes = 10, campNearbyMinutes = 2, campStyle = "round",
     campAlertScale = 1.4, campAlertFade = true,
+    campAlertFont = "", campAlertOutline = "", campAlertBackground = "none",
     campSimpleWidth = 360, campSimpleHeight = 26, campSimpleTextSize = 12, campBonusIcons = false,
-    campHiddenBonuses = {},
+    campHiddenBonuses = {}, campFont = "", campOutline = "", campBarOutline = "NONE",
 
     lowHealth = true, lowHealthBelow = 35, lowHealthItem = "auto",
     lowHealthIconSize = 48, lowHealthGlow = true,
+    lowHealthFont = "", lowHealthFontSize = 16, lowHealthOutline = "OUTLINE",
     lowHealthSound = true, lowHealthSoundKey = "none",
     campBuffMode = false, windowAlpha = 1,
 })

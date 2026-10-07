@@ -380,6 +380,7 @@ local NAOWH_FONT = "Interface\\AddOns\\NaowhForever\\Media\\Fonts\\Naowh.ttf"
 local LSM = LibStub and LibStub("LibSharedMedia-3.0", true)
 if LSM then
     LSM:Register("font", "Naowh", NAOWH_FONT, LSM.LOCALE_BIT_ruRU + LSM.LOCALE_BIT_western)
+    LSM:Register("statusbar", "Naowh Gradient", "Interface\\AddOns\\NaowhForever\\Media\\NaowhGradient.tga")
 end
 
 -- The three fonts on the Settings page, saved for this computer. Addon Font is this addon's
@@ -589,6 +590,7 @@ function ns.Button(parent, text, w, h, onClick)
     local border = ns.Border(btn, BLACK)
     -- The border and the colour it rests at, so a caller can restyle a button (AccentButton).
     btn._border, btn._rest = border, BLACK
+    btn._bg = bg
     local lbl = ns.Font(btn, 12, nil)
     lbl:SetPoint("CENTER")
     lbl:SetText(ns.L(text))
