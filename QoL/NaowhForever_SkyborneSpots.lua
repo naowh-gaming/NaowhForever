@@ -144,7 +144,7 @@ watch:SetScript("OnEvent", function(_, event, _, _, spellID)
         return
     end
     local kind = MyKind()
-    if kind and spellID == KINDS[kind].racial then Cast(kind) end
+    if kind and not (issecretvalue and issecretvalue(spellID)) and spellID == KINDS[kind].racial then Cast(kind) end
 end)
 
 local function Watch()
