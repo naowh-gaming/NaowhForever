@@ -309,7 +309,6 @@ local ACTING = {
     { module = "qol", key = "sellJunk", label = "Auto Sell Junk" },
     { module = "qol", key = "restockBuy", label = "Buy at Vendors" },
     { module = "qol", key = "lootConfirm", label = "Skip Loot Confirmations" },
-    { module = "qol", key = "enchantReplace", label = "Auto-Replace Enchants" },
     { module = "qol", key = "scrapMarker", label = "Scrap Marker, which sells what it marks", when = SellsScrap },
     { module = "journal", key = "acceptShared", label = "Accept Shared Dungeon Quests" },
 }
