@@ -18,6 +18,8 @@ local S = UI.ModuleSettings("completo", {
     -- Rares: a warning when one is near, with a skull on it (NaowhForever_CompletoRareAlert.lua).
     rareHideKilled = false, rareAlert = false, rareMark = true, rareAlertKilled = false,
     rareSound = true, rareSoundKey = "none",
+    -- A star on the world map where each rare spawns (NaowhForever_CompletoRareMap.lua).
+    rarePins = false, rarePinsKilled = false, rarePinSize = 18,
 })
 ns.CompletoSettings = S
 

@@ -131,10 +131,44 @@ local function Fixture(settings, units)
             [12037] = { "Ursol'lok", 31, 31, 0, -1, -1, 1440, {} },
         },
     }
+    ns.ThemeTint = function() return nil end
+    env.CreateFromMixins = function(...)
+        local out = {}
+        for i = 1, select("#", ...) do
+            for k, v in pairs((select(i, ...))) do out[k] = v end
+        end
+        return out
+    end
+    env.MapCanvasPinMixin, env.MapCanvasDataProviderMixin = {}, {}
+    -- The world map, open on Ashenvale: pins made from the template's mixin, kept by template.
+    local map = { pins = {} }
+    function map:GetMapID() return 1440 end
+    function map:RemoveAllPinsByTemplate() self.pins = {} end
+    function map:AcquirePin(_, data)
+        local pin = env.CreateFromMixins(env.NaowhForeverRarePinMixin)
+        local icon = { atlas = nil, desaturated = false }
+        function icon.SetAtlas(t, atlas) t.atlas = atlas; return true end
+        function icon.SetTexture() end
+        function icon.SetDesaturated(t, on) t.desaturated = on end
+        function icon.SetAlpha() end
+        pin.Icon = icon
+        pin.SetSize = function() end
+        pin.SetPosition = function(p, x, y) p.at = { x, y } end
+        pin:OnAcquired(data)
+        self.pins[#self.pins + 1] = pin
+        return pin
+    end
+    env.WorldMapFrame = { IsShown = function() return true end }
+    function env.WorldMapFrame:AddDataProvider(provider)
+        provider.GetMap = function() return map end
+        env.provider = provider
+    end
+    env.worldMap = map
     env.NaowhForever = ns
     env._G = env
     Load({ "NaowhForever_Completo/NaowhForever_CompletoRares.lua",
-        "NaowhForever_Completo/NaowhForever_CompletoRareAlert.lua" }, env)
+        "NaowhForever_Completo/NaowhForever_CompletoRareAlert.lua",
+        "NaowhForever_Completo/NaowhForever_CompletoRareMap.lua" }, env)
     env.Fire("PLAYER_LOGIN")
     return ns, env, account
 end
@@ -269,6 +303,27 @@ do
     units.target.mark = nil
     test()
     Check(#env.marks == 1 and ns.alert.text.text:find("Mist Howler", 1, true), "a friendly target is not marked")
+end
+
+-- Map Pins
+do
+    local units = {}
+    local settings = { enabled = true, rarePins = false, rarePinsKilled = false, rarePinSize = 18 }
+    local ns, env = Fixture(settings, units)
+    local R = ns.Completo.Rares
+    Check(env.provider == nil, "no map provider while Map Pins is off")
+    Check(ns.cards.rarePins and ns.cards.rarePins.switch == "rarePins", "Rares has a Map Pins card")
+    ns.CompletoSettings.Set("rarePins", true)
+    local pins = env.worldMap.pins
+    Check(#pins == 2, "a star at each of Mist Howler's two spots; none for the Horde-friendly rare or one with no spot")
+    Check(pins[1].npc == 10644 and pins[1].Icon.atlas == "VignetteKill", "the game's rare star")
+    Check(pins[1].at[1] == 0.5 and pins[1].at[2] == 0.4, "at its spot")
+    R.SetKilled(10644, true)
+    Check(#env.worldMap.pins == 0, "a killed rare's stars go")
+    ns.CompletoSettings.Set("rarePinsKilled", true)
+    Check(#env.worldMap.pins == 2 and env.worldMap.pins[1].Icon.desaturated, "with Killed Rares, grey stars")
+    ns.CompletoSettings.Set("rarePins", false)
+    Check(#env.worldMap.pins == 0, "switched off: the stars go")
 end
 
 print(("test-completo-rares: %d checks passed"):format(checks))

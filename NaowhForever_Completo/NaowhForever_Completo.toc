@@ -17,3 +17,4 @@ NaowhForever_CompletoRares.lua
 NaowhForever_CompletoRareAlert.lua
 NaowhForever_CompletoWindow.lua
 NaowhForever_CompletoMap.xml
+NaowhForever_CompletoRareMap.xml

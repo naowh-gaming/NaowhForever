@@ -209,6 +209,26 @@ function R.Spot(npc)
     return rare[MAP], spots[best], spots[best + 1]
 end
 
+-- Its spawn spots, { x, y, x, y, ... } in percent on R.Map(npc). Not to be changed.
+function R.Spots(npc) return D.Rares[npc][SPOTS] end
+
+-- Your rares that spawn on the map. Built once; not to be changed.
+local byMap
+
+function R.OnMap(mapID)
+    Prepare()
+    if not byMap then
+        byMap = {}
+        for npc, rare in pairs(D.Rares) do
+            if mine[npc] and #rare[SPOTS] > 0 then
+                byMap[rare[MAP]] = byMap[rare[MAP]] or {}
+                table.insert(byMap[rare[MAP]], npc)
+            end
+        end
+    end
+    return byMap[mapID] or {}
+end
+
 function R.Waypoint(npc)
     local map, x, y = R.Spot(npc)
     if map then ns.PlaceWaypoint(R.Name(npc), map, x, y) end
