@@ -211,6 +211,10 @@ Case("the shipped starter carries no Smart Reminders", function()
     local starter = env.NaowhForever.STARTER
     assert(type(starter.profile) == "table" and type(starter.account) == "table")
     assert(starter.profile.tankReminder == nil and starter.profile.customReminders == nil)
+    local q = starter.profile.qol or {}
+    assert(q.characterPanelAsked == nil and q.characterPanelTookOver == nil
+        and q.inspectPanelAsked == nil and q.inspectPanelTookOver == nil,
+        "a new install answers EllesmereUI's questions itself, as on a first run")
 end)
 
 -- The installer's public entry point, run against the real Core slice. InstallProfilePack and

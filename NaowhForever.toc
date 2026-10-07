@@ -92,6 +92,7 @@ QoL\NaowhForever_SummonEmote.lua
 QoL\NaowhForever_GcdTracker.lua
 QoL\NaowhForever_FocusCastBar.lua
 QoL\NaowhForever_Performance.lua
+QoL\NaowhForever_Defaults.lua
 QoL\NaowhForever_LootFeed.lua
 QoL\NaowhForever_AuctionPrices.lua
 QoL\NaowhForever_XPTicker.lua

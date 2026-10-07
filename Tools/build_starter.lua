@@ -1,9 +1,13 @@
 -- Writes Core/NaowhForever_Starter.lua, the setup a new install starts from, out of a profile
 -- string from Export Profile (NFPROFILE1:), saved to a file. Takes every module's settings and
--- positions, the Macros settings and the look; Smart Reminders is left out. Run from the repo
--- root with the libraries in Libs/:
+-- positions, the Macros settings and the look; Smart Reminders and what the exporter answered
+-- about EllesmereUI's windows (ns.PROFILE_OWN) are left out, so a new install asks as on a
+-- first run. A .lua file returning a profile table (one profiles entry of NaowhForever.lua, the
+-- SavedVariables) works too, with its author's name after it. Run from the repo root with the
+-- libraries in Libs/:
 --   lua5.1 Tools/build_starter.lua profile.txt
-local source = assert(arg[1], "usage: lua5.1 Tools/build_starter.lua <file with the profile string>")
+--   lua5.1 Tools/build_starter.lua profile.lua Naowh
+local source = assert(arg[1], "usage: lua5.1 Tools/build_starter.lua <profile string file, or profile .lua> [author]")
 local OUT = "Core/NaowhForever_Starter.lua"
 -- Smart Reminders' own settings, and the Custom Reminders that run on its triggers.
 local LEFT_OUT = { tankReminder = true, customReminders = true }
@@ -19,10 +23,20 @@ local chunk = assert(loadfile("Core/NaowhForever_ProfileShare.lua"))
 setfenv(chunk, env)
 chunk()
 
-local f = assert(io.open(source, "rb"))
-local payload, why = ns.DecodeProfile(f:read("*a"))
-f:close()
-assert(payload, "not a profile string: " .. tostring(why))
+local payload
+if source:match("%.lua$") then
+    local settings = assert(dofile(source), "the file returns no profile table")
+    local macros = settings.macros
+    settings.macros = nil
+    payload = { name = "Default", author = arg[2] or "?", made = os.date("%Y-%m-%d"),
+        parts = { settings = settings, macros = { module = macros } } }
+else
+    local f = assert(io.open(source, "rb"))
+    local why
+    payload, why = ns.DecodeProfile(f:read("*a"))
+    f:close()
+    assert(payload, "not a profile string: " .. tostring(why))
+end
 local parts = payload.parts
 
 -- Taken into the account by the import's own checks, which this does not repeat.
@@ -34,6 +48,11 @@ assert(not (parts.macros and parts.macros.classMacros), "the string carries clas
 local profile, account = {}, {}
 for key, values in pairs(parts.settings or {}) do
     if not LEFT_OUT[key] then profile[key] = values end
+end
+for key, own in pairs(ns.PROFILE_OWN) do
+    for i = 1, #own do
+        if profile[key] then profile[key][own[i]] = nil end
+    end
 end
 if parts.macros and parts.macros.module then profile.macros = parts.macros.module end
 for key, value in pairs(parts.look or {}) do account[key] = value end
