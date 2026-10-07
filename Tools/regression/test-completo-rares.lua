@@ -27,7 +27,13 @@ local function Region()
     function r:Hide() self.shown = false end
     function r:IsShown() return self.shown end
     function r:CreateTexture() return Region() end
-    function r:GetPoint() return "CENTER", nil, "CENTER", 10.4, 119.6 end
+    -- Where it is: its middle, in its own units (scale), and the screen's (UIParent's).
+    r.scale = 1
+    function r:SetScale(s) self.scale = s end
+    function r:GetScale() return self.scale end
+    function r:GetEffectiveScale() return self.scale end
+    function r:GetCenter() return 410.4 / self.scale, 619.6 / self.scale end
+    function r:SetPoint(_, _, _, x, y) self.at = { x, y } end
     -- A portrait model: what it was last set to show.
     function r:ClearModel() self.unit, self.creature = nil, nil end
     function r:SetUnit(unit) self.unit = unit end
@@ -127,6 +133,8 @@ local function Fixture(settings, units)
     ns.Border = function() end
     env.waypoints = {}
     ns.PlaceWaypoint = function(name, map, x, y) env.waypoints[#env.waypoints + 1] = { name, map, x, y } end
+    env.UIParent = Region()
+    env.UIParent.GetCenter = function() return 400, 500 end
     -- The card, by its frame name.
     local create = env.CreateFrame
     env.CreateFrame = function(kind, name, ...)
@@ -283,7 +291,12 @@ do
         "a click sets a waypoint to its spot")
     ns.alert.OnDragStart(ns.alert)
     ns.alert.OnDragStop(ns.alert)
-    Check(type(settings.rareAlertPos) == "table" and settings.rareAlertPos.y == 120, "a drag keeps the card's spot")
+    Check(type(settings.rareAlertPos) == "table" and settings.rareAlertPos.x == 10 and settings.rareAlertPos.y == 120,
+        "a drag keeps the card's spot, from the screen's middle")
+    ns.CompletoSettings.Set("rareAlertScale", 2)
+    Check(ns.alert.scale == 2 and ns.alert.at[1] == 5 and ns.alert.at[2] == 60,
+        "Card Size scales it about the same spot")
+    ns.CompletoSettings.Set("rareAlertScale", 1)
     ns.alert.OnClick(ns.alert, "LeftButton")
     Check(#env.waypoints == 1, "letting go after a drag sets no waypoint")
     ns.alert.OnClick(ns.alert, "RightButton")

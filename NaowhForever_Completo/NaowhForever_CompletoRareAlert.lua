@@ -100,13 +100,17 @@ local function HideAlert()
     shownNpc = nil
 end
 
--- Where the card sits: where you last dragged it, else above the middle of the screen.
+-- Where the card sits: where you last dragged it, else above the middle of the screen. Kept
+-- as its middle's offset from the screen's, in the screen's units, so it stays put when its
+-- size changes.
 local DEFAULT_POS = { point = "CENTER", relPoint = "CENTER", x = 0, y = 260 }
 
 local function Place()
     local pos = S.Get("rareAlertPos") or DEFAULT_POS
+    local scale = S.Get("rareAlertScale") or 1
+    alert:SetScale(scale)
     alert:ClearAllPoints()
-    alert:SetPoint(pos.point, UIParent, pos.relPoint, pos.x, pos.y)
+    alert:SetPoint("CENTER", UIParent, "CENTER", pos.x / scale, pos.y / scale)
 end
 
 local function DragStart(card)
@@ -116,8 +120,11 @@ end
 
 local function DragStop(card)
     card:StopMovingOrSizing()
-    local point, _, relPoint, x, y = card:GetPoint(1)
-    S.Set("rareAlertPos", { point = point, relPoint = relPoint, x = math.floor(x + 0.5), y = math.floor(y + 0.5) })
+    local cx, cy = card:GetCenter()
+    local ux, uy = UIParent:GetCenter()
+    local ratio = card:GetEffectiveScale() / UIParent:GetEffectiveScale()
+    S.Set("rareAlertPos", { point = "CENTER", relPoint = "CENTER",
+        x = math.floor(cx * ratio - ux + 0.5), y = math.floor(cy * ratio - uy + 0.5) })
     Place()
 end
 
@@ -395,6 +402,7 @@ end
 
 hooksecurefunc(S, "Set", function(key)
     if key == "enabled" or key == "rareAlert" then Apply() end
+    if key == "rareAlertScale" and alert then Place() end
 end)
 hooksecurefunc(ns, "Apply", Apply)
 hooksecurefunc(ns, "ShowRaidReminderAnchorConfig", function()
@@ -463,6 +471,8 @@ Settings.Page("Completo/Rares", S):Card({
         { key = "rareMark", label = "Mark With a Skull", toggle = true, needs = Enabled, why = OFF,
           help = "Puts a skull on the rare, if it has no mark yet. In a raid only as its leader or an "
               .. "assistant." },
+        { key = "rareAlertScale", label = "Card Size", slider = { 50, 200, 5 }, unit = "%", scale = 0.01,
+          needs = Enabled, why = OFF, help = "How big the card is. Test Alert shows it while you set it." },
         { key = "rareAlertKilled", label = "Killed Rares Too", toggle = true, needs = Enabled, why = OFF,
           help = "Also warns about rares you have killed before." },
         { key = "rareSound", label = "Play a Sound", toggle = true, needs = Enabled, why = OFF,
