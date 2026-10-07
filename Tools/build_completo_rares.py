@@ -31,6 +31,14 @@ RARE, RARE_ELITE = 4, 2
 # Spawn points closer than this (map percent) are one spot; a rare keeps at most MAX_SPOTS.
 NEAR = 3
 MAX_SPOTS = 12
+# A patrol: Wowhead records a walking rare at every point of its way, so its points link up
+# (each within LINK of the next) into a group at least PATROL_POINTS strong and PATROL_SPAN
+# across. Its way is drawn as a trail of dots TRAIL_GAP apart, at most MAX_TRAIL per rare.
+LINK = 2.5
+PATROL_POINTS = 10
+PATROL_SPAN = 6
+TRAIL_GAP = 2
+MAX_TRAIL = 80
 KEEP = ("id", "name", "minlevel", "maxlevel", "classification", "react", "type")
 # Rares only an event brings, not there to hunt: the Scourge Invasion's (Lumbering Horror,
 # Spirit of the Damned, Bone Witch), listed in each zone it reaches.
@@ -51,20 +59,55 @@ def fetch_zone(area):
     return {"name": zone_name(page), "rares": rares}
 
 
-def spots_on(spots, map_id):
-    """The rare's spawn points on the map, those within NEAR of one kept left out, at most
-    MAX_SPOTS of them: the ones with the most points around them first."""
-    coords = spots.get(str(map_id)) or []
-    if not coords:
-        return []
+def groups(coords):
+    """The points linked up: each group's points within LINK of another of its points."""
+    left, out = list(coords), []
+    while left:
+        stack, group = [left.pop()], []
+        while stack:
+            p = stack.pop()
+            group.append(p)
+            near = [q for q in left if math.dist(p, q) <= LINK]
+            for q in near:
+                left.remove(q)
+            stack += near
+        out.append(group)
+    return out
 
+
+def patrol(group):
+    return len(group) >= PATROL_POINTS and max(math.dist(a, b) for a in group for b in group) >= PATROL_SPAN
+
+
+def spread(coords, gap, most):
+    """The points, those within gap of one kept left out, at most `most`: the ones with the
+    most points around them first."""
     def crowd(c):
-        return sum(1 for o in coords if math.dist(c, o) < NEAR)
+        return sum(1 for o in coords if math.dist(c, o) < gap)
     kept = []
     for c in sorted(coords, key=lambda c: (-crowd(c), c[0], c[1])):
-        if all(math.dist(c, k) >= NEAR for k in kept):
+        if all(math.dist(c, k) >= gap for k in kept):
             kept.append(c)
-    return kept[:MAX_SPOTS]
+    return kept[:most]
+
+
+def spots_on(spots, map_id):
+    """Where the rare is on the map: (stars, trail). A star at each spot it spawns, and on
+    each way it patrols the point nearest the way's middle; the trail, dots along those ways."""
+    coords = [tuple(c) for c in spots.get(str(map_id)) or []]
+    if not coords:
+        return [], []
+    stars, trail, still = [], [], []
+    for group in sorted(groups(coords), key=len, reverse=True):
+        if patrol(group):
+            cx = sum(p[0] for p in group) / len(group)
+            cy = sum(p[1] for p in group) / len(group)
+            stars.append(min(group, key=lambda p: (p[0] - cx) ** 2 + (p[1] - cy) ** 2))
+            trail += spread(group, TRAIL_GAP, MAX_TRAIL)
+        else:
+            still += group
+    stars += [s for s in spread(still, NEAR, MAX_SPOTS) if all(math.dist(s, k) >= NEAR for k in stars)]
+    return stars[:MAX_SPOTS], trail[:MAX_TRAIL]
 
 
 def continents():
@@ -144,7 +187,7 @@ def write(cache):
     rares = {}
     by_zone = {}
     for npc, (map_id, _, r) in home.items():
-        rares[npc] = (map_id, r, spots_on(cache["npcs"].get(str(npc)) or {}, map_id))
+        rares[npc] = (map_id, r) + spots_on(cache["npcs"].get(str(npc)) or {}, map_id)
         by_zone.setdefault(map_id, []).append(r)
     for area, z in sorted(cache["zones"].items(), key=lambda kv: kv[1]["name"] or ""):
         map_id = ZONE_MAP[int(area)]
@@ -158,24 +201,28 @@ def write(cache):
         "",
         "-- npcID = { name, lowest level, highest level (0 when not known, -1 for \"??\"), elite (1",
         "-- for a rare elite), how it meets the Alliance and the Horde (-1 hostile, 0 neutral,",
-        "-- 1 friendly), uiMapID, { x, y, ... } where it spawns (percent, on Forever's map) }.",
+        "-- 1 friendly), uiMapID, { x, y, ... } where it spawns (percent, on Forever's map), and",
+        "-- for one that patrols { x, y, ... } dots along the way it walks }.",
         "D.Rares = {",
     ]
     for npc in sorted(rares):
-        map_id, r, spots = rares[npc]
+        map_id, r, spots, trail = rares[npc]
         react = r.get("react") or [None, None]
         a = react[0] if react[0] is not None else -1
         h = react[1] if len(react) > 1 and react[1] is not None else -1
-        flat = []
-        for x, y in spots:
-            fx, fy = forever_spot(map_id, x, y)
-            flat += [f"{fx:.1f}", f"{fy:.1f}"]
+        def flat(points):
+            out = []
+            for x, y in points:
+                fx, fy = forever_spot(map_id, x, y)
+                out += [f"{fx:.1f}", f"{fy:.1f}"]
+            return "{ " + ", ".join(out) + " }"
+        way = f", {flat(trail)}" if trail else ""
         low = r.get("minlevel") or 0
         high = r.get("maxlevel") or low
         low, high = (-1 if v == SKULL_LEVEL else v for v in (low, high))
         lines.append(f"    [{npc}] = {{ {lua_string(r['name'])}, {low}, {high}, "
                      f"{1 if r.get('classification') == RARE_ELITE else 0}, {a}, {h}, {map_id}, "
-                     f"{{ {', '.join(flat)} }} }},")
+                     f"{flat(spots)}{way} }},")
     lines.append("}")
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_bytes(("\r\n".join(lines) + "\r\n").encode("ascii", "replace"))

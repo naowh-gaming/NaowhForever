@@ -124,11 +124,13 @@ local function Fixture(settings, units)
     ns.Shared = { Settings = { Page = function() return page end } }
     -- Ashenvale: Mist Howler; Darkslayer Mordenthal, friendly to the Horde; Ursol'lok.
     ns.CompletoRareData = {
-        Zones = { { map = 1440, name = "Ashenvale", continent = 1, rares = { 10644, 3736, 12037 } } },
+        Zones = { { map = 1440, name = "Ashenvale", continent = 1, rares = { 10644, 3736, 12037, 10647 } } },
         Rares = {
             [3736] = { "Darkslayer Mordenthal", 23, 23, 0, -1, 1, 1440, { 60.0, 70.0 } },
             [10644] = { "Mist Howler", 22, 22, 0, -1, -1, 1440, { 50.0, 40.0, 52.0, 44.0 } },
             [12037] = { "Ursol'lok", 31, 31, 0, -1, -1, 1440, {} },
+            -- Patrols: a star on its way, three dots along it.
+            [10647] = { "Prince Raze", 32, 32, 0, -1, -1, 1440, { 70.0, 20.0 }, { 68.0, 20.0, 70.0, 22.0, 72.0, 24.0 } },
         },
     }
     ns.ThemeTint = function() return nil end
@@ -139,26 +141,36 @@ local function Fixture(settings, units)
         end
         return out
     end
-    env.MapCanvasPinMixin, env.MapCanvasDataProviderMixin = {}, {}
+    env.MapCanvasPinMixin = { UseFrameLevelType = function(pin, _, index) pin.levelIndex = index end }
+    env.MapCanvasDataProviderMixin = {}
     -- The world map, open on Ashenvale: pins made from the template's mixin, kept by template.
     local map = { pins = {} }
     function map:GetMapID() return 1440 end
     function map:RemoveAllPinsByTemplate() self.pins = {} end
+    function map:EnumeratePinsByTemplate()
+        local i = 0
+        return function()
+            i = i + 1
+            return self.pins[i]
+        end
+    end
     function map:AcquirePin(_, data)
         local pin = env.CreateFromMixins(env.NaowhForeverRarePinMixin)
         local icon = { atlas = nil, desaturated = false }
         function icon.SetAtlas(t, atlas) t.atlas = atlas; return true end
         function icon.SetTexture() end
         function icon.SetDesaturated(t, on) t.desaturated = on end
-        function icon.SetAlpha() end
+        function icon.SetAlpha(t, a) t.alpha = a end
         pin.Icon = icon
-        pin.SetSize = function() end
+        pin.SetSize = function(p, w) p.size = w end
         pin.SetPosition = function(p, x, y) p.at = { x, y } end
         pin:OnAcquired(data)
         self.pins[#self.pins + 1] = pin
         return pin
     end
     env.WorldMapFrame = { IsShown = function() return true end }
+    local none = function() end
+    env.GameTooltip = { SetOwner = none, SetText = none, AddLine = none, Show = none, Hide = none }
     function env.WorldMapFrame:AddDataProvider(provider)
         provider.GetMap = function() return map end
         env.provider = provider
@@ -185,7 +197,7 @@ do
     Check(R.NpcOf("Player-1-0001") == nil, "a player is no creature")
     Check(not R.Mine(3736) and R.Mine(10644), "a rare friendly to the Horde is not a Horde rare")
     local n, total, low, high = R.ZoneProgress(zone)
-    Check(n == 0 and total == 2 and low == 22 and high == 31, "the zone counts its two rares for the Horde")
+    Check(n == 0 and total == 3 and low == 22 and high == 32, "the zone counts its three rares for the Horde")
 
     units.target = { guid = Guid(10644), name = "Mist Howler" }
     env.Fire("PLAYER_TARGET_CHANGED")
@@ -327,13 +339,30 @@ do
     Check(ns.cards.rarePins and ns.cards.rarePins.switch == "rarePins", "Rares has a Map Pins card")
     ns.CompletoSettings.Set("rarePins", true)
     local pins = env.worldMap.pins
-    Check(#pins == 2, "a star at each of Mist Howler's two spots; none for the Horde-friendly rare or one with no spot")
-    Check(pins[1].npc == 10644 and pins[1].Icon.atlas == "VignetteKill", "the game's rare star")
-    Check(pins[1].at[1] == 0.5 and pins[1].at[2] == 0.4, "at its spot")
+    Check(#pins == 6, "Mist Howler's two stars, Prince Raze's star and three dots; none for the Horde-friendly "
+        .. "rare or one with no spot")
+    local function PinsOf(npc, dot)
+        local out = {}
+        for _, pin in ipairs(env.worldMap.pins) do
+            if pin.npc == npc and (dot == nil or (pin.dot == true) == dot) then out[#out + 1] = pin end
+        end
+        return out
+    end
+    Check(pins[1].dot and pins[1].npc == 10647, "the trails come first")
+    local howler = PinsOf(10644)[1]
+    Check(howler.Icon.atlas == "VignetteKill" and howler.at[1] == 0.5 and howler.at[2] == 0.4, "the game's rare star, at its spot")
+    local dot, star = PinsOf(10647, true)[1], PinsOf(10647, false)[1]
+    Check(dot.size < star.size and dot.Icon.alpha < 1 and dot.levelIndex < star.levelIndex,
+        "a trail's dots are smaller, fainter and under the stars")
+    dot:OnMouseEnter()
+    Check(star.size > 18 and dot.Icon.alpha == 1 and howler.Icon.alpha < 0.5,
+        "hovering a dot lights its rare's star and trail and fades the others")
+    dot:OnMouseLeave()
+    Check(star.size == 18 and howler.Icon.alpha == 1 and dot.Icon.alpha < 1, "and leaving puts them back")
     R.SetKilled(10644, true)
-    Check(#env.worldMap.pins == 0, "a killed rare's stars go")
+    Check(#PinsOf(10644) == 0 and #env.worldMap.pins == 4, "a killed rare's stars go")
     ns.CompletoSettings.Set("rarePinsKilled", true)
-    Check(#env.worldMap.pins == 2 and env.worldMap.pins[1].Icon.desaturated, "with Killed Rares, grey stars")
+    Check(#PinsOf(10644) == 2 and PinsOf(10644)[1].Icon.desaturated, "with Killed Rares, grey stars")
     ns.CompletoSettings.Set("rarePins", false)
     Check(#env.worldMap.pins == 0, "switched off: the stars go")
 end

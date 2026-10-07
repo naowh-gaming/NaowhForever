@@ -15,7 +15,7 @@ local D = ns.CompletoRareData
 local R = {}
 ns.Completo.Rares = R
 
-local NAME, LOW, HIGH, ELITE, REACT_A, REACT_H, MAP, SPOTS = 1, 2, 3, 4, 5, 6, 7, 8
+local NAME, LOW, HIGH, ELITE, REACT_A, REACT_H, MAP, SPOTS, TRAIL = 1, 2, 3, 4, 5, 6, 7, 8, 9
 local FRIENDLY = 1
 
 local function Secret(v) return issecretvalue ~= nil and issecretvalue(v) end
@@ -211,6 +211,10 @@ end
 
 -- Its spawn spots, { x, y, x, y, ... } in percent on R.Map(npc). Not to be changed.
 function R.Spots(npc) return D.Rares[npc][SPOTS] end
+
+-- For a rare that walks about: dots along its way, { x, y, ... } as R.Spots; nil for one that
+-- stays where it spawns.
+function R.Trail(npc) return D.Rares[npc][TRAIL] end
 
 -- Your rares that spawn on the map. Built once; not to be changed.
 local byMap

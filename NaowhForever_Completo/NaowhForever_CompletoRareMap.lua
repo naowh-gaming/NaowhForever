@@ -1,7 +1,9 @@
 -------------------------------------------------------------------------------
 --  NaowhForever_CompletoRareMap.lua -- rares on the world map: the game's rare star at each
 --  spot a rare you have not killed spawns, and with Killed Rares a grey one for those you
---  have. Hover for the rare, click for a waypoint. Built like the quest giver pins
+--  have. A rare that patrols has a star on its way and a trail of small stars along it.
+--  Hover a star or a dot for the rare: its other stars and its trail stand out, every other
+--  rare's fade. Click for a waypoint. Built like the quest giver pins
 --  (NaowhForever_CompletoMap.lua).
 --
 --  Off until Rare Pins is switched on: then a data provider on the world map, redrawn when a
@@ -16,6 +18,9 @@ local TEMPLATE = "NaowhForeverRarePinTemplate"
 local STAR_ATLAS = "VignetteKill"
 local SKULL_FILE = "Interface\\TargetingFrame\\UI-RaidTargetingIcon_8"
 local KILLED_ALPHA = 0.7
+local DOT_SCALE, DOT_ALPHA = 0.45, 0.6     -- a trail's dot against a star
+local LIT_SCALE = 1.3                      -- the hovered rare's stars
+local FADED_ALPHA = 0.2                    -- every other rare's, while one is hovered
 
 local function On()
     return S.Get("enabled") and S.Get("rarePins")
@@ -42,17 +47,39 @@ end
 -- pass through.
 function NaowhForeverRarePinMixin:CheckMouseButtonPassthrough() end
 
--- spot: { npc, x, y } (percent).
+-- How it looks: as drawn, or while a rare is hovered (lit: this pin's rare; else faded).
+local function Look(pin, lit, faded)
+    local size = S.Get("rarePinSize") * (pin.dot and DOT_SCALE or 1)
+    if lit and not pin.dot then size = size * LIT_SCALE end
+    pin:SetSize(size, size)
+    local alpha = pin.dot and DOT_ALPHA or 1
+    if pin.killed then alpha = alpha * KILLED_ALPHA end
+    if lit then alpha = 1 elseif faded then alpha = FADED_ALPHA end
+    pin.Icon:SetAlpha(alpha)
+end
+
+-- spot: { npc, x, y (percent), dot = true for a trail's dot }.
 function NaowhForeverRarePinMixin:OnAcquired(spot)
-    self.npc, self.spotX, self.spotY = spot.npc, spot.x, spot.y
-    local size = S.Get("rarePinSize")
-    self:SetSize(size, size)
+    self.npc, self.spotX, self.spotY, self.dot = spot.npc, spot.x, spot.y, spot.dot
+    self.killed = R.Killed(spot.npc)
+    -- A star a level above the dots, so a trail never covers one.
+    self:UseFrameLevelType("PIN_FRAME_LEVEL_AREA_POI", spot.dot and 0 or 1)
     local icon = self.Icon
     if not icon:SetAtlas(STAR_ATLAS) then icon:SetTexture(SKULL_FILE) end
-    local killed = R.Killed(spot.npc)
-    icon:SetDesaturated(killed)
-    icon:SetAlpha(killed and KILLED_ALPHA or 1)
+    icon:SetDesaturated(self.killed)
+    Look(self)
     self:SetPosition(spot.x / 100, spot.y / 100)
+end
+
+local provider
+
+-- npc: the rare hovered, its pins lit and the rest faded; nil puts every pin back.
+local function Highlight(npc)
+    local map = provider and provider:GetMap()
+    if not map then return end
+    for pin in map:EnumeratePinsByTemplate(TEMPLATE) do
+        Look(pin, npc ~= nil and pin.npc == npc, npc ~= nil and pin.npc ~= npc)
+    end
 end
 
 function NaowhForeverRarePinMixin:OnMouseEnter()
@@ -68,15 +95,19 @@ function NaowhForeverRarePinMixin:OnMouseEnter()
     else
         GameTooltip:AddLine("Not killed yet", 1, 1, 1)
     end
-    if R.SpotCount(npc) > 1 then
+    if R.Trail(npc) then
+        GameTooltip:AddLine("Patrols: the small stars are its way", 0.62, 0.62, 0.62)
+    elseif R.SpotCount(npc) > 1 then
         GameTooltip:AddLine(("One of %d spots it spawns at"):format(R.SpotCount(npc)), 0.62, 0.62, 0.62)
     end
     GameTooltip:AddLine("Click for a waypoint.", SoftBlue(0.3, 0.71, 0.96))
     GameTooltip:Show()
+    Highlight(npc)
 end
 
 function NaowhForeverRarePinMixin:OnMouseLeave()
     GameTooltip:Hide()
+    Highlight(nil)
 end
 
 function NaowhForeverRarePinMixin:OnClick(button)
@@ -87,8 +118,15 @@ end
 -------------------------------------------------------------------------------
 --  The map's data provider
 -------------------------------------------------------------------------------
-local provider = CreateFromMixins(MapCanvasDataProviderMixin)
+provider = CreateFromMixins(MapCanvasDataProviderMixin)
 local spot = {}   -- handed to each pin; OnAcquired copies what it needs
+
+local function Place(map, npc, points, dot)
+    for i = 1, points and #points or 0, 2 do
+        spot.npc, spot.x, spot.y, spot.dot = npc, points[i], points[i + 1], dot
+        map:AcquirePin(TEMPLATE, spot)
+    end
+end
 
 function provider:RemoveAllData()
     self:GetMap():RemoveAllPinsByTemplate(TEMPLATE)
@@ -99,12 +137,12 @@ function provider:RefreshAllData()
     if not On() then return end
     local map = self:GetMap()
     local killedToo = S.Get("rarePinsKilled")
-    for _, npc in ipairs(R.OnMap(map:GetMapID())) do
-        if killedToo or not R.Killed(npc) then
-            local spots = R.Spots(npc)
-            for i = 1, #spots, 2 do
-                spot.npc, spot.x, spot.y = npc, spots[i], spots[i + 1]
-                map:AcquirePin(TEMPLATE, spot)
+    -- Every trail first, then the stars.
+    local rares = R.OnMap(map:GetMapID())
+    for pass = 1, 2 do
+        for _, npc in ipairs(rares) do
+            if killedToo or not R.Killed(npc) then
+                if pass == 1 then Place(map, npc, R.Trail(npc), true) else Place(map, npc, R.Spots(npc), false) end
             end
         end
     end
@@ -155,8 +193,8 @@ local function Enabled() return S.Get("enabled") == true end
 
 Settings.Page("Completo/Rares", S):Card({
     id = "rarePins", name = "Map Pins", order = 30, switch = "rarePins",
-    help = "A star on the world map at every spot a rare you have not killed spawns. Hover it for the "
-        .. "rare; click it for a waypoint.",
+    help = "A star on the world map at every spot a rare you have not killed spawns, and small stars along "
+        .. "the way of one that patrols. Hover one to pick its rare out; click it for a waypoint.",
     summary = function(store)
         return store.Get("rarePinsKilled") and "Every rare, the ones you killed in grey"
             or "The rares you have not killed"

@@ -410,7 +410,9 @@ local function RareEnter(row)
         GameTooltip:AddDoubleLine("Status", "Ticked off by hand", m.r, m.g, m.b, 1, 1, 1)
     end
     local spots = R.SpotCount(npc)
-    if spots > 1 then
+    if R.Trail(npc) then
+        GameTooltip:AddDoubleLine("Moves", "Patrols, its way on the map", m.r, m.g, m.b, 1, 1, 1)
+    elseif spots > 1 then
         GameTooltip:AddDoubleLine("Spawns at", ("%d spots"):format(spots), m.r, m.g, m.b, 1, 1, 1)
     end
     GameTooltip:AddLine(" ")
