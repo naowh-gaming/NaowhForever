@@ -474,9 +474,9 @@ check("the Player tab shown, no switch without Player History", IP.bodies.player
     and IP.bodies.history.shown == false and IP.switch.visible == false)
 check("their talents: points per tree, their lead tree and its role", Shows("5/20/0") and Shows("Fury") and Shows("Damage"))
 check("named when their points follow one of Naowh's builds", Shows("Naowh's Fury build"))
-check("the gear check: unenchanted and empty slots, item level, upgrades for you",
+check("their gear: item level, unenchanted and empty slots",
     Shows("Item level") and Shows("23") and Shows("Unenchanted") and Shows("Empty slots") and Shows("11")
-    and Shows("Upgrades for you") and Shows("1 item"))
+    and not Shows("Upgrades for you"))
 check("their guild and rank, and how you know them", Shows("Naowh") and Shows("Officer") and Shows("Friend"))
 check("no note section without Player History", Font("NOTE").parent.shown == false)
 
@@ -716,7 +716,7 @@ env.C_Traits, env.GetGuildInfo, env.C_FriendList, ns.TrainingBuilds = nil, nil, 
 env.C_PaperDollInfo.GetInspectItemLevel, ns.PlayerHistory = nil, nil
 IP.Refresh()
 check("no talent API: \"Not shown\"; no guild API: no guild; no link known", Shows("Not shown")
-    and Shows("No guild") and Shows("Not a friend or guildmate"))
+    and Shows("No guild") and not Shows("Not a friend or guildmate"))
 check("no Player History: no switch, no note section", IP.switch.visible == false and Font("NOTE").parent.shown == false)
 env.C_Traits, env.GetGuildInfo, env.C_FriendList = saved.C_Traits, saved.GetGuildInfo, saved.C_FriendList
 ns.TrainingBuilds, env.C_PaperDollInfo.GetInspectItemLevel = saved.builds, saved.level

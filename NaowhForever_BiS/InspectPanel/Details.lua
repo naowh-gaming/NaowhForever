@@ -24,13 +24,12 @@ local POINTS = "%d points"
 local NAOWH_BUILD = "Naowh's %s build"
 local NO_TALENTS = "No talents yet"
 local NOT_SHOWN = "Not shown"
-local ITEM_LEVEL, UNENCHANTED, EMPTY_SLOTS, FOR_YOU = "Item level", "Unenchanted", "Empty slots", "Upgrades for you"
-local ONE_ITEM, ITEMS, NONE_TEXT = "1 item", "%d items", "None"
+local ITEM_LEVEL, UNENCHANTED, EMPTY_SLOTS = "Item level", "Unenchanted", "Empty slots"
+local NONE_TEXT = "None"
 local NO_GUILD = "No guild"
-local GEAR_ROWS = { "level", "check", "empty", "ups" }
+local GEAR_ROWS = { "level", "check", "empty" }
 local FRIEND, GUILDMATE = "Friend", "Guildmate"
 local GROUPED_ONCE, GROUPED = "Grouped once", "Grouped %d times"
-local NO_LINK = "Not a friend or guildmate"
 local NO_NOTE = "No note on them"
 local NOTE_TITLE = "Your note on %s"
 local ROLE = {
@@ -167,22 +166,16 @@ end
 
 local function PaintGear(guid)
     local gear = IP.Gear(guid)
-    local level, bare, empty, ups = rows.level, rows.check, rows.empty, rows.ups
+    local level, bare, empty = rows.level, rows.check, rows.empty
     if not gear then
         Value(level, WAITING)
         Value(bare, "")
         Value(empty, "")
-        Value(ups, "")
         return
     end
     Value(level, gear.level and tostring(gear.level) or WAITING)
     if gear.bareCount > 0 then Value(bare, tostring(gear.bareCount), St.WARN_RGB) else Value(bare, NONE_TEXT, T.muted) end
     if gear.empty > 0 then Value(empty, tostring(gear.empty)) else Value(empty, NONE_TEXT, T.muted) end
-    if gear.ups > 0 then
-        Value(ups, gear.ups == 1 and ONE_ITEM or ITEMS:format(gear.ups), St.HAVE_RGB)
-    else
-        Value(ups, NONE_TEXT, T.muted)
-    end
 end
 
 local function PaintGuild(unit, guid)
@@ -192,14 +185,15 @@ local function PaintGuild(unit, guid)
     if not (IP.Readable(name) and name ~= "") and C_PaperDollInfo.GetInspectGuildInfo and IP.Ready(guid) then
         name, rankName = select(3, C_PaperDollInfo.GetInspectGuildInfo(unit)), nil
     end
+    guild.right:SetText("")
     if IP.Readable(name) and name ~= "" then
         guild.left:SetText(name)
         Color(guild.left, T.fg)
-        guild.right:SetText(IP.Readable(rankName) and rankName or "")
+        rank.left:SetText(IP.Readable(rankName) and rankName or "")
     else
         guild.left:SetText(NO_GUILD)
         Color(guild.left, T.muted)
-        guild.right:SetText("")
+        rank.left:SetText("")
     end
     wipe(links)
     if C_FriendList and C_FriendList.IsFriend and C_FriendList.IsFriend(guid) then links[#links + 1] = FRIEND end
@@ -208,7 +202,7 @@ local function PaintGuild(unit, guid)
     local rec = H and H.On and H.On() and H.Of and H.Of(guid)
     local groups = type(rec) == "table" and tonumber(rec.groups) or 0
     if groups > 0 then links[#links + 1] = groups == 1 and GROUPED_ONCE or GROUPED:format(groups) end
-    rank.left:SetText(#links > 0 and table.concat(links, ", ") or NO_LINK)
+    rank.right:SetText(#links > 0 and table.concat(links, ", ") or "")
 end
 
 local function TagOf(key)
@@ -317,16 +311,15 @@ local function Build()
     rows.level, y = Line(y)
     rows.check, y = Line(y)
     rows.empty, y = Line(y)
-    rows.ups, y = Line(y)
     for _, key in ipairs(GEAR_ROWS) do Color(rows[key].left, T.muted) end
     rows.level.left:SetText(ITEM_LEVEL)
     rows.check.left:SetText(UNENCHANTED)
     rows.empty.left:SetText(EMPTY_SLOTS)
-    rows.ups.left:SetText(FOR_YOU)
     y = Section(y + SECTION_GAP, "GUILD")
     rows.guild, y = Line(y)
     rows.link, y = Line(y)
     Color(rows.link.left, T.muted)
+    Color(rows.link.right, St.HAVE_RGB)
     local note = CreateFrame("Frame", nil, body)
     note:SetPoint("TOPLEFT", 0, -(y + SECTION_GAP))
     note:SetPoint("BOTTOMRIGHT")
