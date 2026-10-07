@@ -79,8 +79,9 @@ local function BuildAlert()
     ns.AlertStack(alert, 6)
 end
 
--- The game's own alert sounds, offered before the addon's sound files: key, SOUNDKIT name,
--- label. One the client has no SOUNDKIT entry for is left out.
+-- The game's own alert sounds, offered before the addon's sound files: key, SOUNDKIT name
+-- (or the sound kit's ID, for the battleground ones SOUNDKIT has no name for), label. One the
+-- client has no SOUNDKIT entry for is left out.
 local GAME_SOUNDS = {
     { "game:raidwarning", "RAID_WARNING", "Raid Warning" },
     { "game:legendary", "UI_LEGENDARY_LOOT_TOAST", "Legendary Loot" },
@@ -89,12 +90,22 @@ local GAME_SOUNDS = {
     { "game:prestige", "UI_PVP_HONOR_PRESTIGE_RANK_UP", "Honor Prestige" },
     { "game:forgetrait", "UI_72_ARTIFACT_FORGE_FINAL_TRAIT_UNLOCKED", "Artifact Trait" },
     { "game:forgetier", "UI_72_ARTIFACT_FORGE_ACTIVATE_FINAL_TIER", "Artifact Tier" },
+    { "game:flagalliance", 8174, "Flag Taken, Alliance" },
+    { "game:flaghorde", 8212, "Flag Taken, Horde" },
+    { "game:pvpwarnalliance", 8332, "Battleground Warning, Alliance" },
+    { "game:pvpwarnhorde", 8333, "Battleground Warning, Horde" },
 }
+
+-- The sound kit ID of a GAME_SOUNDS entry, nil where the client has none by that name.
+local function Kit(sound)
+    if type(sound[2]) == "number" then return sound[2] end
+    return SOUNDKIT and SOUNDKIT[sound[2]]
+end
 local DEFAULT_SOUND = "game:raidwarning"
 
 local function GameKit(key)
     for _, sound in ipairs(GAME_SOUNDS) do
-        if sound[1] == key then return SOUNDKIT and SOUNDKIT[sound[2]] end
+        if sound[1] == key then return Kit(sound) end
     end
 end
 
@@ -297,7 +308,7 @@ local function SoundOn() return Enabled() and S.Get("rareSound") == true end
 local function Sounds()
     local values, order = {}, {}
     for _, sound in ipairs(GAME_SOUNDS) do
-        if SOUNDKIT and SOUNDKIT[sound[2]] then
+        if Kit(sound) then
             values[sound[1]] = sound[3] .. " (game)"
             order[#order + 1] = sound[1]
         end
