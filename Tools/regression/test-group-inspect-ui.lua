@@ -659,13 +659,13 @@ check("versions compared part by part", UI.Older("0.5.22-beta", "0.5.24-beta") a
     and not UI.Older(nil, "0.5.24") and UI.Older("0.5", "0.5.1") and not UI.Older("0.6.0", "0.5.24"))
 do
     local saved = ns.CODE_BUILD
-    ns.CODE_BUILD = "0.5.24-beta"
+    rawset(ns, "CODE_BUILD", "0.5.24-beta")
     local pill = UI.NFPill(Frame(), {})
     UI.PaintNFPill(pill, { hasNF = true, nfVersion = "0.5.22-beta" })
     check("an older version: the warning color", pill.color == ns.Shared.Style.WARN_RGB)
     UI.PaintNFPill(pill, { hasNF = true, nfVersion = "0.5.24-beta" })
     check("the same or newer: the accent", pill.color == ns.THEME.accent)
-    ns.CODE_BUILD = saved
+    rawset(ns, "CODE_BUILD", saved)
 end
 
 -------------------------------------------------------------------------------
