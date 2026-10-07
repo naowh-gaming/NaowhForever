@@ -303,7 +303,7 @@ local function Layout()
     Look.Fit(bar, addButton, #sets, size, gap)
 end
 
--- Show: Always, In Combat or Out of Combat; Move Elements shows it either way.
+-- Show: Always, In Combat or Out of Combat; the HUD Editor shows it either way.
 local function BarShown()
     local show = S.Get("gearBarShow")
     return S.Get("gearBarVisible") == true
