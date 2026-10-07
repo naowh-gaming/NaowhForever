@@ -204,7 +204,7 @@ local S = UI.ModuleSettings("qol", {
     aimSoundKey = "game:click", aimShare = true,
     waypoints = false, waypointShape = "hex", waypointScale = 1, waypointCard = true,
     waypointTime = true, waypointBeam = true, waypointFadeNear = 40, waypointEdge = true,
-    waypointNav = true, waypointClear = true, waypointSound = "none", waypointHideGame = true,
+    waypointNav = true, waypointSound = "none", waypointHideGame = true,
 })
 ns.QoLSettings = S
 

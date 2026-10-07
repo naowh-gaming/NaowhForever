@@ -34,7 +34,7 @@ local RUN_SPEED = 7                          -- yards a second on foot, while st
 local NAV_W, NAV_H, NAV_PAD, NAV_ICON, NAV_ARROW = 320, 40, 10, 20, 14
 local NAV_NAME, NAV_SUB, NAV_DIST = 14, 11, 16
 local NAV_Y = -70                            -- the navigator under the screen's top, until moved
-local ARRIVED_HOLD = 4                       -- seconds the arrival shows before the waypoint clears
+local ARRIVED_HOLD = 4                       -- seconds the arrival shows
 
 local function On()
     return S.Get("enabled") and S.Get("waypoints")
@@ -138,8 +138,10 @@ function Look.PaintPin(pin, o)
         card:SetPoint("BOTTOM", pin, "TOP", 0, CARD_GAP)
     elseif math.abs(cos) >= math.abs(sin) then
         if cos > 0 then card:SetPoint("RIGHT", pin, "LEFT", -CARD_GAP, 0) else card:SetPoint("LEFT", pin, "RIGHT", CARD_GAP, 0) end
-    else
+    elseif sin > 0 then
         card:SetPoint("TOP", pin, "BOTTOM", 0, -CARD_GAP)
+    else
+        card:SetPoint("BOTTOM", pin, "TOP", 0, CARD_GAP)
     end
 end
 
@@ -193,7 +195,8 @@ end
 --  Following the game's navigation frame
 -------------------------------------------------------------------------------
 local pin, nav, cue, driver, navFrame, unlocked, gameHidden, warned
-local arrivedAt, arrivals = nil, 0
+local arrived, arrivals = false, 0
+local lastX, lastY   -- where the pin last stood, in UIParent units, for an arrival
 local shown = {}
 local painted   -- what the texts and look were last drawn for; the place and arrows move every frame
 local NavSample = { name = "Mage Trainer", sub = "Thunder Bluff", yards = 312, mode = "world", angle = math.pi / 2 }
@@ -271,7 +274,7 @@ local function Update()
     local dx, dy = nx - cx, ny - cy
     local angle = math.atan2(dy, dx)
     local clamped = C_Navigation.WasClampedToScreen()
-    local mode = arrivedAt and "arrived" or clamped and "edge" or "world"
+    local mode = clamped and "edge" or "world"
     local behind = mode == "edge" and math.abs(angle + math.pi / 2) < BEHIND
 
     local scale = S.Get("waypointScale")
@@ -292,11 +295,15 @@ local function Update()
         pin:ClearAllPoints()
         pin:SetPoint("CENTER", UIParent, "CENTER", dx * t / scale, dy * t / scale)
         pin.onNav = false
-        side = math.abs(dx) >= math.abs(dy) and (dx > 0 and "right" or "left") or "top"
-    elseif not pin.onNav then
-        pin:ClearAllPoints()
-        pin:SetPoint("CENTER", navFrame, "CENTER")
-        pin.onNav = true
+        side = math.abs(dx) >= math.abs(dy) and (dx > 0 and "right" or "left") or (dy > 0 and "top" or "bottom")
+        lastX, lastY = cx + dx * t, cy + dy * t
+    else
+        if not pin.onNav then
+            pin:ClearAllPoints()
+            pin:SetPoint("CENTER", navFrame, "CENTER")
+            pin.onNav = true
+        end
+        lastX, lastY = nx, ny
     end
     pin:SetShown(not behind and (mode ~= "edge" or S.Get("waypointEdge")))
     cue:SetShown(behind and S.Get("waypointEdge"))
@@ -326,9 +333,9 @@ end
 -- With no waypoint, Layout Mode still shows the navigator, on a sample, to place it by.
 local function Detach()
     navFrame = nil
-    arrivedAt = nil
     if not driver then return end
     driver:SetScript("OnUpdate", nil)
+    if arrived then return end
     pin:Hide()
     cue:Hide()
     if unlocked and On() then
@@ -341,43 +348,64 @@ local function Detach()
 end
 
 local function Attach()
+    -- A new waypoint ends an arrival still showing.
+    if arrived then
+        arrived = false
+        arrivals = arrivals + 1
+    end
     navFrame = C_Navigation.GetFrame()
     if not navFrame then Detach() return end
     if not driver then Build() end
     PlaceNav()
     Retitle()
     pin.onNav = false
+    lastX, lastY = nil, nil
     nav:SetShown(S.Get("waypointNav") or unlocked)
     driver:SetScript("OnUpdate", Update)
     Update()
 end
 
--- The arrival shows for ARRIVED_HOLD; a waypoint you set is then cleared, with Clear on Arrival.
+-- The arrival holds where the pin last stood for ARRIVED_HOLD. The game clears a waypoint you
+-- set as you reach it, its navigation frame going too, before or after this event.
 local function Arrived()
-    arrivedAt = GetTime()
+    if not (driver and lastX) then return end
+    arrived = true
     arrivals = arrivals + 1
     local this = arrivals
+    driver:SetScript("OnUpdate", nil)
+    local scale = S.Get("waypointScale")
+    pin:SetScale(scale)
+    pin:SetAlpha(1)
+    pin:ClearAllPoints()
+    pin:SetPoint("CENTER", UIParent, "BOTTOMLEFT", lastX / scale, lastY / scale)
+    pin.onNav = false
+    shown.mode = "arrived"
+    Look.PaintPin(pin, shown)
+    pin:Show()
+    cue:Hide()
+    if S.Get("waypointNav") then
+        Look.PaintNav(nav, shown)
+        nav:Show()
+    end
     ns.UI._PlayLSMSound(ns.UI.SoundPathFor(S.Get("waypointSound")))
     C_Timer.After(ARRIVED_HOLD, function()
-        if this ~= arrivals or not arrivedAt then return end
-        arrivedAt = nil
-        if S.Get("waypointClear")
-            and C_SuperTrack.GetHighestPrioritySuperTrackingType() == Enum.SuperTrackingType.UserWaypoint then
-            C_Map.ClearUserWaypoint()
-        end
+        if this ~= arrivals then return end
+        arrived = false
+        if navFrame then Attach() else Detach() end
     end)
 end
 
 local events = CreateFrame("Frame")
-events:SetScript("OnEvent", function(_, event)
+events:SetScript("OnEvent", function(_, event, isWaypoint)
     if event == "NAVIGATION_FRAME_CREATED" then
         Attach()
     elseif event == "NAVIGATION_FRAME_DESTROYED" then
         Detach()
     elseif event == "NAVIGATION_DESTINATION_REACHED" then
-        if navFrame then Arrived() end
-    elseif navFrame then
-        arrivedAt = nil
+        -- isWaypoint: a stop on the way there (a zone's exit), not the spot itself.
+        if not isWaypoint then Arrived() end
+    -- Nothing tracked: the game cleared it on arrival, and the name stays for the arrival.
+    elseif navFrame and not arrived and C_SuperTrack.GetHighestPrioritySuperTrackingType() then
         Retitle()
     end
 end)
@@ -395,6 +423,8 @@ local function Apply()
     FadeGameMarker()
     if not On() then
         events:UnregisterAllEvents()
+        arrived = false
+        arrivals = arrivals + 1
         Detach()
         return
     end
@@ -494,8 +524,6 @@ Settings.Page("QoL/Travel", S):Card({
           help = "Keeps the pin at the edge of the screen, pointing the way, when the spot is off it." },
         { key = "waypointNav", label = "Navigator Bar", toggle = true,
           help = "A bar with the name, a turn arrow and the distance, while a waypoint is set." },
-        { key = "waypointClear", label = "Clear on Arrival", toggle = true,
-          help = "Removes a waypoint you set once you reach it." },
         { key = "waypointSound", label = "Arrival Sound", sound = true },
         { key = "waypointHideGame", label = "Hide the Game's Marker", toggle = true,
           help = "Hides the game's own marker so only the pin shows." },

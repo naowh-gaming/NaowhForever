@@ -1,8 +1,9 @@
 -- Run with Lua 5.1 from the repository root: the Waypoint Pin against stubs of the game's
 -- navigation. Off by default and idle while off; on, it follows the navigation frame with the
 -- name ns.PlaceWaypoint gave the spot, moves to the screen's edge or the behind-you cue while
--- the spot is off screen, shows the arrival and clears a waypoint you set, and fades the game's
--- own marker only while it is on. These do not emulate rendering or the 3D projection.
+-- the spot is off screen, shows the arrival where the pin stood even once the game has cleared
+-- the waypoint, ignores stops on the way, and fades the game's own marker only while it is on.
+-- These do not emulate rendering or the 3D projection.
 local checks = 0
 local function Check(ok, label) assert(ok, label); checks = checks + 1 end
 
@@ -45,7 +46,7 @@ function UIParent:GetCenter() return W / 2, H / 2 end
 local settings = {}
 local defaults = { enabled = true, waypoints = false, waypointShape = "hex", waypointScale = 1, waypointCard = true,
     waypointTime = true, waypointBeam = true, waypointFadeNear = 40, waypointEdge = true, waypointNav = true,
-    waypointClear = true, waypointSound = "none", waypointHideGame = true }
+    waypointSound = "none", waypointHideGame = true }
 local S = {}
 function S.Get(k) if settings[k] ~= nil then return settings[k] end return defaults[k] end
 function S.Set(k, v) settings[k] = v end
@@ -192,6 +193,13 @@ S.Set("waypointScale", 1.5)
 driver.scripts.OnUpdate(driver, 0)
 Check(math.abs(pin.point[4] * pin.scale - (W / 2 - 70)) < 0.01, "a bigger pin still sits on the edge")
 S.Set("waypointScale", nil)
+-- Off the bottom edge, but not behind: the card goes above the pin, on screen.
+nav.x, nav.y = 960 + 1000 * math.cos(math.rad(-50)), 540 + 1000 * math.sin(math.rad(-50))
+driver.scripts.OnUpdate(driver, 0)
+Check(pin:IsShown() and pin.card.point[1] == "BOTTOM" and pin.card.point[3] == "TOP", "on the bottom edge the card is above it")
+nav.x, nav.y = 1200, 1600
+driver.scripts.OnUpdate(driver, 0)
+Check(pin.card.point[1] == "TOP" and pin.card.point[3] == "BOTTOM", "on the top edge, below it")
 -- Behind the camera (straight down): the behind-you cue instead.
 nav.x, nav.y = 960, -900
 driver.scripts.OnUpdate(driver, 0)
@@ -205,33 +213,65 @@ nav.clamped, nav.x, nav.y = false, 1100, 700
 driver.scripts.OnUpdate(driver, 0)
 Check(pin:IsShown() and pin.point[2] == navFrame, "back on screen, back on the navigation frame")
 
--- Arrival: shown, then a waypoint you set is cleared; a newer arrival keeps the older timer
--- from acting.
+-- A stop on the way there (a zone's exit) is not the arrival.
 S.Set("waypointSound", "naowh")
+local timersBefore = #timers
 events.scripts.OnEvent(events, "NAVIGATION_DESTINATION_REACHED", true)
 driver.scripts.OnUpdate(driver, 0)
-Check(pin.card.dist.text == "Arrived" and pin.check.shown and navBar.dist.text == "Arrived", "it shows the arrival")
-Check(played[#played] == "sound:naowh", "with the arrival sound")
-local first = timers[#timers]
-events.scripts.OnEvent(events, "NAVIGATION_DESTINATION_REACHED", true)
-first.fn()
-Check(cleared == 0, "an older arrival's timer does nothing")
-timers[#timers].fn()
-Check(cleared == 1 and userWaypoint == nil, "the waypoint you set is cleared")
-events.scripts.OnEvent(events, "NAVIGATION_FRAME_DESTROYED")
-Check(not pin:IsShown() and not navBar:IsShown() and driver.scripts.OnUpdate == nil, "gone with the frame, and idle")
+Check(pin.card.dist.text ~= "Arrived" and #timers == timersBefore and #played == 0, "a stop on the way is not an arrival")
 
--- A quest: named from the quest log; Clear on Arrival leaves it to the game.
+-- Reaching a waypoint you set: the game clears its tracking and the frame goes before the
+-- event reaches us. The arrival still shows, named, where the pin stood, then goes.
+tracking = nil
+events.scripts.OnEvent(events, "SUPER_TRACKING_CHANGED")
+nav.frame = nil
+events.scripts.OnEvent(events, "NAVIGATION_FRAME_DESTROYED")
+events.scripts.OnEvent(events, "NAVIGATION_DESTINATION_REACHED", false)
+Check(pin:IsShown() and pin.card.dist.text == "Arrived" and pin.check.shown and pin.card.name.text == "Mage Trainer",
+    "the arrival shows, still named, after the game cleared it")
+Check(pin.point[2] == UIParent and pin.point[3] == "BOTTOMLEFT" and pin.point[4] == 1100 and pin.point[5] == 700,
+    "where the pin stood")
+Check(navBar:IsShown() and navBar.dist.text == "Arrived" and played[#played] == "sound:naowh", "on the bar too, with the sound")
+timers[#timers].fn()
+Check(not pin:IsShown() and not navBar:IsShown() and driver.scripts.OnUpdate == nil, "then it goes, and it is idle")
+-- The other order: the arrival first, then the game clears it. The arrival stays up.
+tracking = 1
+nav.frame = navFrame
+events.scripts.OnEvent(events, "NAVIGATION_FRAME_CREATED")
+events.scripts.OnEvent(events, "NAVIGATION_DESTINATION_REACHED", false)
+tracking = nil
+events.scripts.OnEvent(events, "SUPER_TRACKING_CHANGED")
+nav.frame = nil
+events.scripts.OnEvent(events, "NAVIGATION_FRAME_DESTROYED")
+Check(pin:IsShown() and pin.card.dist.text == "Arrived" and navBar:IsShown(), "cleared after the arrival, it stays up")
+timers[#timers].fn()
+Check(not pin:IsShown() and not navBar:IsShown(), "until its time is up")
+
+-- A quest the game keeps tracking: the arrival shows, then the pin follows it again. An older
+-- arrival's timer does nothing.
 tracking = 0
+nav.frame = navFrame
 events.scripts.OnEvent(events, "NAVIGATION_FRAME_CREATED")
 Check(pin.card.name.text == "The Barrens Oases", "a quest is named from the quest log")
 events.scripts.OnEvent(events, "NAVIGATION_DESTINATION_REACHED", false)
+local first = timers[#timers]
+events.scripts.OnEvent(events, "NAVIGATION_DESTINATION_REACHED", false)
+first.fn()
+Check(pin.card.dist.text == "Arrived" and driver.scripts.OnUpdate == nil, "an older arrival's timer does nothing")
 timers[#timers].fn()
-Check(cleared == 1, "a quest is not cleared")
+Check(pin:IsShown() and pin.point[2] == navFrame and driver.scripts.OnUpdate ~= nil, "then it follows the quest again")
+
+-- A new waypoint during an arrival ends it.
+events.scripts.OnEvent(events, "NAVIGATION_DESTINATION_REACHED", false)
+first = timers[#timers]
+events.scripts.OnEvent(events, "NAVIGATION_FRAME_CREATED")
+Check(driver.scripts.OnUpdate ~= nil and pin.card.dist.text ~= "Arrived", "a new waypoint ends the arrival")
+first.fn()
+Check(driver.scripts.OnUpdate ~= nil, "and its timer does nothing")
 
 -- The navigator's clear button clears the waypoint and the game's tracking.
 navBar.clear.click()
-Check(cleared == 2 and superCleared == 1, "the navigator clears the waypoint")
+Check(cleared == 1 and superCleared == 1, "the navigator clears the waypoint")
 
 -- Off again: idle, and the game's marker back.
 S.Set("waypoints", false)
