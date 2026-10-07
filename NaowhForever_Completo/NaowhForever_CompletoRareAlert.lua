@@ -191,6 +191,31 @@ local function CheckVignette(id)
     Alert(npc, info.name or (R.Known(npc) and R.Name(npc)) or "Rare", level, npc, false)
 end
 
+-- The alert as a rare would bring it, sound and all: about your target when you can attack it,
+-- with a skull on it as Mark With a Skull would put; else about a made-up rare. Leaves the
+-- once-in-a-while memory alone, so a real rare still alerts.
+local function TestAlert()
+    local name, level, npc, skull = "Mist Howler", 22, nil, false
+    local guid = UnitGUID("target")
+    local hostile = UnitExists("target") and UnitCanAttack("player", "target")
+    if guid and not Secret(guid) and not Secret(hostile) and hostile then
+        local targetName, targetLevel = UnitName("target"), UnitLevel("target")
+        if not Secret(targetName) then
+            name = targetName
+            level = not Secret(targetLevel) and targetLevel or nil
+            npc = R.NpcOf(guid)
+            if S.Get("rareMark") and MayMark() then
+                local index = GetRaidTargetIndex("target")
+                if not Secret(index) and index ~= SKULL then
+                    SetRaidTarget("target", SKULL)
+                    skull = true
+                end
+            end
+        end
+    end
+    ShowAlert(name, level, npc, skull)
+end
+
 local events = CreateFrame("Frame")
 events:SetScript("OnEvent", function(_, event, unit, onMinimap)
     if event == "NAME_PLATE_UNIT_ADDED" then
@@ -268,5 +293,8 @@ Settings.Page("Completo/Rares", S):Card({
           help = "Plays when the warning comes up, and flashes the game's icon on your taskbar." },
         { key = "rareSoundKey", label = "Sound", sound = true, needs = SoundOn, why = "Needs Play a Sound",
           help = "Left at None, the game's raid warning sound." },
+        { label = "Test Alert", buttonText = "Test", button = TestAlert, needs = Enabled, why = OFF,
+          help = "Shows the warning with its sound. With something you can attack targeted, it is about "
+              .. "that, with a skull on it." },
     },
 })

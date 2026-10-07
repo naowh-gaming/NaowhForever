@@ -118,6 +118,10 @@ local function Fixture(settings, units)
     ns.UI = { SoundPathFor = function() return nil end, _PlayLSMSound = function() end }
     ns.CompletoSettings = { Get = function(k) return settings[k] end, Set = function(k, v) settings[k] = v end }
     ns.Completo = {}
+    -- The settings pages' cards, by id, to reach their rows.
+    ns.cards = {}
+    local page = { Window = function() end, Card = function(_, spec) ns.cards[spec.id] = spec end }
+    ns.Shared = { Settings = { Page = function() return page end } }
     -- Ashenvale: Mist Howler; Darkslayer Mordenthal, friendly to the Horde; Ursol'lok.
     ns.CompletoRareData = {
         Zones = { { map = 1440, name = "Ashenvale", continent = 1, rares = { 10644, 3736, 12037 } } },
@@ -242,6 +246,29 @@ do
 
     ns.CompletoSettings.Set("rareAlert", false)
     Check(not env.Listening("NAME_PLATE_UNIT_ADDED") and not ns.alert:IsShown(), "switched off: unregistered, alert gone")
+end
+
+-- Test Alert
+do
+    local units = {}
+    local settings = { enabled = true, rareAlert = false, rareMark = true, rareSound = true }
+    local ns, env = Fixture(settings, units)
+    local test
+    for _, row in ipairs(ns.cards.rareAlert.rows) do
+        if row.button then test = row.button end
+    end
+    Check(test ~= nil, "Rare Alerts has a Test button")
+    test()
+    Check(ns.alert:IsShown() and ns.alert.text.text:find("Mist Howler", 1, true), "with nothing targeted, a made-up rare")
+    Check(env.sounds == 1 and #env.marks == 0, "with its sound, and no skull on anything")
+    units.target = { guid = Guid(5555), name = "Kobold Miner", level = 7 }
+    test()
+    Check(ns.alert.text.text:find("Kobold Miner", 1, true) and #env.marks == 1 and env.marks[1][1] == "target",
+        "with a hostile target, about it, with a skull on it")
+    units.target.friend = true
+    units.target.mark = nil
+    test()
+    Check(#env.marks == 1 and ns.alert.text.text:find("Mist Howler", 1, true), "a friendly target is not marked")
 end
 
 print(("test-completo-rares: %d checks passed"):format(checks))
