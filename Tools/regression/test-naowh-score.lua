@@ -2,8 +2,9 @@
 -- gear (a full epic set of a level scores that level; quality, slots, a two-hander, empty
 -- slots, an item not loaded yet); player tooltips (off until turned on, one inspect at a time,
 -- kept by GUID, filled in when the gear comes, never in combat or while the game's Inspect
--- window holds the inspect); your group scanned in the background; your score shared with
--- your group and guild, always, and theirs kept; and what the hot paths cost.
+-- window, or the talents opened from it, holds the inspect); your group scanned in the
+-- background; your score shared with your group and guild, always, and theirs kept; and what
+-- the hot paths cost.
 local Load = dofile("Tools/regression/load_files.lua")
 
 local checks = 0
@@ -620,6 +621,74 @@ do
     local ok = pcall(Score.Remember, "Player-2-301", 301, true, false, 60)
     check("a 301st player is kept without an error", ok and Score.Known("Player-2-301") ~= nil)
     check("the oldest went to make room", Score.Known("Player-2-1") == nil and Score.Known("Player-2-2") ~= nil)
+end
+
+-------------------------------------------------------------------------------
+--  Your own inspect goes first: a request of ours is dropped for it and never clears it, and
+--  none is made while your window loads or the talents opened from it still show
+-------------------------------------------------------------------------------
+do
+    local ns, state, env = Fixture()
+    local S = ns.QoLSettings
+    S.Set("naowhScoreScan", false)
+    local hookTable = env.hooksecurefunc
+    env.hooksecurefunc = function(t, key, fn)
+        if type(t) ~= "string" then return hookTable(t, key, fn) end
+        local original = env[t]
+        env[t] = function(...) original(...); key(...) end
+    end
+    local window = { shown = false }
+    function window.IsShown(self) return self.shown end
+    env.InspectFrame = window
+    env.InspectUnit = function(unit) window.unit = unit end
+    S.Set("naowhScore", true)
+    state.RunTimers()
+    local OnUnit = state.postCalls[1]
+    local function Hover(unit)
+        state.hovered = unit
+        for k in pairs(state.lines) do state.lines[k] = nil end
+        OnUnit(state.tooltip)
+    end
+    state.gear.party1, state.gear.party2, state.gear.party3 = Set(26, 4), Set(28, 4), Set(30, 4)
+    Hover("party1")
+    check("a hover asks for their gear", state.inspected[1] == "party1")
+    env.InspectUnit("party2")
+    state.Fire("INSPECT_READY", "Player-1-19")
+    check("you inspect someone: ours is dropped, and its answer never clears yours",
+        state.cleared == 0 and ns.NaowhScore.Known("Player-1-19") == nil)
+    state.now = state.now + 3
+    Hover("party3")
+    check("none asked while your window loads", #state.inspected == 1)
+    state.now = state.now + 10
+    window.unit = nil
+    local talents = { open = true }
+    function talents.IsInspecting(self) return self.open end
+    env.PlayerSpellsFrame = talents
+    Hover("party3")
+    check("nor while their talents, opened from your inspect, still show", #state.inspected == 1)
+    talents.open = false
+    Hover("party3")
+    check("their talents closed: asked", state.inspected[2] == "party3")
+    talents.open = true
+    state.Fire("INSPECT_READY", "Player-1-39")
+    check("and its answer, come while their talents show, never clears them", state.cleared == 0
+        and ns.NaowhScore.Known("Player-1-39") ~= nil)
+end
+
+-- The gear comes while the tooltip is forbidden: it is left alone.
+do
+    local ns, state = Fixture()
+    ns.QoLSettings.Set("naowhScoreScan", false)
+    ns.QoLSettings.Set("naowhScore", true)
+    state.RunTimers()
+    state.gear.party1 = Set(26, 4)
+    state.hovered = "party1"
+    state.postCalls[1](state.tooltip)
+    state.tooltip.IsForbidden = function() return true end
+    state.tooltip.GetPrimaryTooltipData = function() error("a forbidden tooltip read") end
+    local ok = pcall(state.Fire, "INSPECT_READY", "Player-1-19")
+    check("the gear comes while the tooltip is forbidden: kept, the tooltip left alone", ok
+        and ns.NaowhScore.Known("Player-1-19") ~= nil and state.rights[#state.lines].text == "...")
 end
 
 print(("test-naowh-score: %d checks passed"):format(checks))

@@ -6,13 +6,14 @@
 --  A player running Naowh Forever sends theirs as it changes (Share.lua); that one is kept for
 --  the session and always wins. Anyone else is inspected: one request at a time, INSPECT_GAP
 --  apart, only in inspect range and out of combat, and never while the game's Inspect window
---  (or another request) holds the one inspect the game keeps; that score is kept KEEP seconds,
---  and dropped when they change gear. In the background, your group (Scan Your Group) and the
---  players around you (Scan Players Nearby: your target, focus and mouseover, and every player
---  whose nameplate shows) are read a step at a time, on their own events; while one not known
---  yet is out of inspect range the walk looks again RETRY later, and stops once none is left.
---  A tooltip shows "..." until the gear comes, and fills in when it does. On by default (QoL >
---  Naowh Score); turned off, its events go quiet and its hook does nothing.
+--  (or the talents opened from it, or another request) holds the one inspect the game keeps;
+--  that score is kept KEEP seconds, and dropped when they change gear. In the background, your
+--  group (Scan Your Group) and the players around you (Scan Players Nearby: your target, focus
+--  and mouseover, and every player whose nameplate shows) are read a step at a time, on their
+--  own events; while one not known yet is out of inspect range the walk looks again RETRY
+--  later, and stops once none is left. A tooltip shows "..." until the gear comes, and fills in
+--  when it does. On by default (QoL > Naowh Score); turned off, its events go quiet and its hook
+--  does nothing.
 -------------------------------------------------------------------------------
 local ns = _G.NaowhForever
 local Score = ns.NaowhScore
@@ -121,7 +122,7 @@ end
 
 -- The tooltip's line, filled in now that the score is known, while the tooltip still shows them.
 local function Refresh(guid, entry)
-    if guid ~= shownGUID or not shownLine or not GameTooltip:IsShown() then return end
+    if guid ~= shownGUID or not shownLine or GameTooltip:IsForbidden() or not GameTooltip:IsShown() then return end
     local data = GameTooltip:GetPrimaryTooltipData()
     local showing = data and data.guid
     if not Readable(showing) or showing ~= guid then return end
@@ -159,6 +160,8 @@ local userAt = -USER_WAIT
 
 -- Your own inspect: the game's window open, or asked for and waiting for its gear.
 local function UserInspecting()
+    local talents = PlayerSpellsFrame
+    if talents and talents.IsInspecting and talents:IsInspecting() then return true end
     local frame = InspectFrame
     if not frame then return false end
     return frame:IsShown() or (frame.unit ~= nil and GetTime() - userAt < USER_WAIT)
