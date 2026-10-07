@@ -73,6 +73,7 @@ local env = setmetatable({
     MapCanvasDataProviderMixin = { GetMap = function() return mapShown end },
     CreateFrame = NewFrame,
     hooksecurefunc = function() end,
+    GameTooltip = { Hide = function() end },
     InCombatLockdown = function() return combat end,
     C_Secrets = { ShouldAurasBeSecret = function() return combat end },
     GetTime = function() return now end,
@@ -187,6 +188,15 @@ CastAt(LEY_CAST, LEY_BUFF, 600)
 Check(#account.skyborneSpots.leyline == 1, "Read Ley Line that gives Energized saves a ley line")
 provider:RefreshAllData()
 Check(#pins == 14 and pins[1].entry.kind == "leyline", "an Alliance map shows ley lines, not convergences")
+
+Check(Read("QoL/NaowhForever_SkyborneSpots.xml"):find('registerForClicks="LeftButtonUp, RightButtonUp"', 1, true),
+    "a pin takes right-clicks")
+local foundPin
+for _, pin in ipairs(pins) do
+    if pin.entry.found then foundPin = pin end
+end
+env.NaowhForeverSkybornePinMixin.OnClick(foundPin, "RightButton")
+Check(#account.skyborneSpots.leyline == 0 and #pins == 13, "a right-click forgets a found spot")
 
 race = "Human"
 boot.onEvent(boot, "PLAYER_LOGIN")
