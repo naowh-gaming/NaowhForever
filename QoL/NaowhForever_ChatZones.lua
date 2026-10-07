@@ -12,10 +12,16 @@ local S = ns.QoLSettings
 
 local PREFIX = "NFZone"
 local ASK_EVERY = 600     -- seconds before the same player is asked again
+local ANSWER_WAIT = 30    -- seconds an answer to our question is kept after asking
 local ANSWER_EVERY = 60   -- seconds before the same player gets another answer
+local ANSWERS_MAX, ANSWERS_WINDOW = 10, 10 -- answers we send in all, per window
+local ASKERS_MAX = 40
 local SEND_EVERY = 1      -- seconds between two addon whispers we send
 local MAX_QUEUE = 20
+local MAX_ZONE = 48
 local SEP = "\t"
+local ASK_PATTERN = "^Q\t(Player%-%d+%-%x+)$"
+local ANSWER_PATTERN = "^A\t(Player%-%d+%-%x+)\t(%d%d?%d?)\t(.+)$"
 
 local TAGGED = { "CHAT_MSG_CHANNEL", "CHAT_MSG_GUILD", "CHAT_MSG_OFFICER", "CHAT_MSG_WHISPER" }
 
@@ -23,9 +29,10 @@ local AddFilter = (ChatFrameUtil and ChatFrameUtil.AddMessageEventFilter) or Cha
 local RemoveFilter = (ChatFrameUtil and ChatFrameUtil.RemoveMessageEventFilter) or ChatFrame_RemoveMessageEventFilter
 
 local known = {}    -- name -> { zone, level, at }
-local asked = {}    -- name -> time we last asked them
-local answered = {} -- name -> time we last answered them
-local queue = {}    -- names waiting to be asked
+local asked = {}    -- GUID -> { key, at, open }: the name we whispered, when, and no answer yet
+local answered, answeredCount = {}, 0 -- sender -> time we last answered them
+local windowAt, sentCount = -ANSWERS_WINDOW, 0
+local queue = {}    -- GUIDs waiting to be asked
 local looking = {}  -- name -> true while a [Where?] /who for them is out
 local sending, filtering = false, false
 
@@ -99,6 +106,14 @@ local function ReadFriends()
         local f = C_FriendList.GetFriendInfoByIndex(i)
         if f and f.connected then Remember(f.name, f.area, f.level) end
     end
+    -- Forever has no character friends list, only Battle.net friends.
+    for i = 1, (BNGetNumFriends() or 0) do
+        local account = C_BattleNet.GetFriendAccountInfo(i)
+        local game = account and account.gameAccountInfo
+        if game and game.isOnline and game.clientProgram == BNET_CLIENT_WOW and game.wowProjectID == WOW_PROJECT_ID then
+            Remember(game.characterName, game.areaName, game.characterLevel)
+        end
+    end
 end
 
 local function ReadGroup()
@@ -168,16 +183,12 @@ end
 -------------------------------------------------------------------------------
 -- Asking other players who run the addon
 -------------------------------------------------------------------------------
-local function Own()
-    if not S.Get("chatZonesShare") then return "" end
-    return SEP .. UnitLevel("player") .. SEP .. (GetRealZoneText() or "")
-end
-
 local function SendNext()
-    local key = table.remove(queue, 1)
-    if key and On() then
-        asked[key] = GetTime()
-        C_ChatInfo.SendAddonMessage(PREFIX, "Q" .. Own(), "WHISPER", key)
+    local guid = table.remove(queue, 1)
+    local entry = guid and asked[guid]
+    if entry and On() then
+        entry.at, entry.open = GetTime(), true
+        C_ChatInfo.SendAddonMessage(PREFIX, "Q" .. SEP .. guid, "WHISPER", entry.key)
     end
     if #queue > 0 then
         C_Timer.After(SEND_EVERY, SendNext)
@@ -186,27 +197,53 @@ local function SendNext()
     end
 end
 
-local function Ask(key)
+local function Ask(key, guid)
     if Fresh(key) or #queue >= MAX_QUEUE then return end
-    if asked[key] and GetTime() - asked[key] < ASK_EVERY then return end
-    asked[key] = GetTime()
-    queue[#queue + 1] = key
+    if asked[guid] and GetTime() - asked[guid].at < ASK_EVERY then return end
+    asked[guid] = { key = key, at = GetTime() }
+    queue[#queue + 1] = guid
     if not sending then
         sending = true
         C_Timer.After(0, SendNext)
     end
 end
 
-local function OnAddonMessage(msg, sender)
-    local key = Key(sender)
-    if not key or Secret(msg) then return end
-    local kind, level, zone = strsplit(SEP, msg)
-    if level and zone then Remember(key, zone, level) end
-    if kind == "Q" and S.Get("chatZonesShare") then
-        if answered[key] and GetTime() - answered[key] < ANSWER_EVERY then return end
-        answered[key] = GetTime()
-        C_ChatInfo.SendAddonMessage(PREFIX, "A" .. Own(), "WHISPER", key)
+local function MayAnswer(sender, now)
+    if now - windowAt >= ANSWERS_WINDOW then windowAt, sentCount = now, 0 end
+    if sentCount >= ANSWERS_MAX then return false end
+    local last = answered[sender]
+    if last and now - last < ANSWER_EVERY then return false end
+    if not last then
+        if answeredCount >= ASKERS_MAX then
+            wipe(answered)
+            answeredCount = 0
+        end
+        answeredCount = answeredCount + 1
     end
+    answered[sender] = now
+    sentCount = sentCount + 1
+    return true
+end
+
+-- Ask "Q <their GUID>", answer "A <own GUID> <level> <zone>". An answer is kept only for a
+-- question still open, from the player whose chat line carried that GUID.
+local function OnAddonMessage(msg, sender)
+    if Secret(msg) or Secret(sender) or type(msg) ~= "string" or type(sender) ~= "string" then return end
+    local to = msg:match(ASK_PATTERN)
+    if to then
+        if to ~= UnitGUID("player") or not S.Get("chatZonesShare") then return end
+        if C_ChatInfo.InChatMessagingLockdown() or not MayAnswer(sender, GetTime()) then return end
+        local answer = table.concat({ "A", to, UnitLevel("player"), GetRealZoneText() or "" }, SEP)
+        C_ChatInfo.SendAddonMessage(PREFIX, answer, "WHISPER", sender)
+        return
+    end
+    local guid, level, zone = msg:match(ANSWER_PATTERN)
+    local entry = guid and asked[guid]
+    if not (entry and entry.open) or GetTime() - entry.at > ANSWER_WAIT then return end
+    -- Forever's addon message sender is "Name Surname" where the chat author is only "Name".
+    if sender ~= entry.key and sender:sub(1, #entry.key + 1) ~= entry.key .. " " then return end
+    entry.open = nil
+    Remember(entry.key, ns.PlainText(zone, MAX_ZONE), level)
 end
 
 -------------------------------------------------------------------------------
@@ -216,15 +253,16 @@ local function Filter(_, event, msg, author, ...)
     if Secret(msg) or Secret(author) then return false end
     local key = Key(author)
     if not key or key == UnitName("player") then return false end
+    local guid = select(10, ...)
     local entry = Fresh(key)
     if not entry then
-        if S.Get("chatZonesAsk") then Ask(key) end
+        if S.Get("chatZonesAsk") and guid and guid ~= "" and not Secret(guid) then Ask(key, guid) end
         if event == "CHAT_MSG_WHISPER" and S.Get("chatZonesWhere") then
             return false, msg .. " " .. WhereLink(key), author, ...
         end
         return false
     end
-    return false, Tag(entry, (select(10, ...))) .. msg, author, ...
+    return false, Tag(entry, guid) .. msg, author, ...
 end
 
 -------------------------------------------------------------------------------
@@ -268,18 +306,28 @@ local function ScaleRoles(entry, on)
 end
 
 -- The screen x of the leftmost thing shown in a frame: its block is wider than the icons in it.
-local function LeftmostShown(frame, best)
-    for _, region in ipairs({ frame:GetRegions() }) do
-        local left = region:IsVisible() and region:GetLeft()
-        if left then
-            left = left * region:GetEffectiveScale()
-            if not best or left < best then best = left end
+local LeftmostShown
+
+local function LeftmostOf(best, ...)
+    for i = 1, select("#", ...) do
+        local region = select(i, ...)
+        if region:IsVisible() then
+            if region.GetChildren then
+                best = LeftmostShown(region, best)
+            else
+                local left = region:GetLeft()
+                if left then
+                    left = left * region:GetEffectiveScale()
+                    if not best or left < best then best = left end
+                end
+            end
         end
     end
-    for _, child in ipairs({ frame:GetChildren() }) do
-        if child:IsVisible() then best = LeftmostShown(child, best) end
-    end
     return best
+end
+
+function LeftmostShown(frame, best)
+    return LeftmostOf(LeftmostOf(best, frame:GetRegions()), frame:GetChildren())
 end
 
 local function UpdateRow(entry)
@@ -341,7 +389,6 @@ local function UpdateTooltip(tip, resultID)
         local key = Key(name)
         local cached = key and Fresh(key)
         local zone = name and zones[name] or cached and cached.zone
-        if key and not zone and S.Get("chatZonesAsk") and key ~= UnitName("player") then Ask(key) end
         local left = row:GetLeft()
         if zone and left then
             local fs = ZoneString(tipText, row, "GameFontHighlightSmallLeft")
@@ -382,7 +429,7 @@ events:SetScript("OnEvent", function(_, event, ...)
         ReadGroupFinder(...)
     elseif event == "GUILD_ROSTER_UPDATE" then
         ReadGuild()
-    elseif event == "FRIENDLIST_UPDATE" then
+    elseif event == "FRIENDLIST_UPDATE" or event == "BN_FRIEND_INFO_CHANGED" then
         ReadFriends()
     elseif event == "GROUP_ROSTER_UPDATE" then
         ReadGroup()
@@ -416,7 +463,7 @@ local function Apply()
     end
     EventRegistry:RegisterCallback("SetItemRef", OnLinkClick, events)
     C_ChatInfo.RegisterAddonMessagePrefix(PREFIX)
-    for _, event in ipairs({ "CHAT_MSG_ADDON", "GUILD_ROSTER_UPDATE", "FRIENDLIST_UPDATE",
+    for _, event in ipairs({ "CHAT_MSG_ADDON", "GUILD_ROSTER_UPDATE", "FRIENDLIST_UPDATE", "BN_FRIEND_INFO_CHANGED",
         "GROUP_ROSTER_UPDATE", "WHO_LIST_UPDATE", "CHAT_MSG_SYSTEM", "CHAT_MSG_GUILD", "CHAT_MSG_OFFICER" }) do
         events:RegisterEvent(event)
     end
