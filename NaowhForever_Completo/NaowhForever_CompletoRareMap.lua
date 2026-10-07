@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
 --  NaowhForever_CompletoRareMap.lua -- rares on the world map: the game's rare star at each
---  spot a rare you have not killed spawns, and with Killed Rares a grey one for those you
+--  spot a rare you have not killed spawns, and with Show Killed Rares a grey one for those you
 --  have. A rare that patrols has a star on its way and a trail of small stars along it.
 --  Hover a star or a dot for the rare: its other stars and its trail stand out, every other
 --  rare's fade. Click for a waypoint. Built like the quest giver pins
@@ -200,8 +200,8 @@ Settings.Page("Completo/Rares", S):Card({
             or "The rares you have not killed"
     end,
     rows = {
-        { key = "rarePinsKilled", label = "Killed Rares", toggle = true, needs = Enabled, why = OFF,
-          help = "Also a grey star for the rares you have killed." },
+        { key = "rarePinsKilled", label = "Show Killed Rares", toggle = true, needs = Enabled, why = OFF,
+          help = "Also a grey star on the map for the rares you have killed." },
         { key = "rarePinSize", label = "Pin Size", slider = { 12, 32, 1 }, needs = Enabled, why = OFF,
           help = "How big the stars are on the map." },
     },

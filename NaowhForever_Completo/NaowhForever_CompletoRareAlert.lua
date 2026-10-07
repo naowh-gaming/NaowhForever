@@ -366,7 +366,7 @@ local function Mark(unit, guid)
     return true
 end
 
--- Alerts once in AGAIN_AFTER seconds per rare; one you killed only with Killed Rares Too.
+-- Alerts once in AGAIN_AFTER seconds per rare; one you killed only with Alert for Killed Rares.
 local function Alert(key, seen)
     local now = GetTime()
     if alerted[key] and now - alerted[key] < AGAIN_AFTER then return end
@@ -529,15 +529,14 @@ end
 Settings.Page("Completo/Rares", S):Card({
     id = "rareAlert", name = "Rare Alerts", order = 20, switch = "rareAlert",
     help = "A warning when a rare is near you: when its nameplate comes up, you mouse over it or target "
-        .. "it. It sits with the other alerts; move them with Unlock Mode. Click it to put it away.",
+        .. "it. A card with its portrait: drag it where you want it, right-click it to close it, and its "
+        .. "pin sets a waypoint to the rare.",
     summary = Summary,
     rows = {
         { key = "rareMark", label = "Mark With a Skull", toggle = true, needs = Enabled, why = OFF,
           help = "Puts a skull on the rare, if it has no mark yet. In a raid only as its leader or an "
               .. "assistant." },
-        { key = "rareAlertScale", label = "Card Size", slider = { 50, 200, 5 }, unit = "%", scale = 0.01,
-          needs = Enabled, why = OFF, help = "How big the card is. Test Alert shows it while you set it." },
-        { key = "rareAlertKilled", label = "Killed Rares Too", toggle = true, needs = Enabled, why = OFF,
+        { key = "rareAlertKilled", label = "Alert for Killed Rares", toggle = true, needs = Enabled, why = OFF,
           help = "Also warns about rares you have killed before." },
         { key = "rareSound", label = "Play a Sound", toggle = true, needs = Enabled, why = OFF,
           help = "Plays when the warning comes up, and flashes the game's icon on your taskbar." },
@@ -551,14 +550,16 @@ Settings.Page("Completo/Rares", S):Card({
               S.Set("rareSoundKey", key)
               PlaySoundKey(key)
           end },
-        { label = "Test Alert", buttonText = "Test", button = TestAlert, needs = Enabled, why = OFF,
-          help = "Shows the warning with its sound. With something you can attack targeted, it is about "
-              .. "that, with a skull on it. Drag the card to where you want it." },
+        { key = "rareAlertScale", label = "Card Size", slider = { 50, 200, 5 }, unit = "%", scale = 0.01,
+          needs = Enabled, why = OFF, help = "How big the card is. Test Alert shows it while you set it." },
         { label = "Card Position", buttonText = "Reset", needs = Enabled, why = OFF,
           button = function()
               S.Set("rareAlertPos", nil)
               if alert then Place() end
           end,
           help = "Puts the card back above the middle of the screen." },
+        { label = "Test Alert", buttonText = "Test", button = TestAlert, needs = Enabled, why = OFF,
+          help = "Shows the warning with its sound. With something you can attack targeted, it is about "
+              .. "that, with a skull on it. Drag the card to where you want it." },
     },
 })

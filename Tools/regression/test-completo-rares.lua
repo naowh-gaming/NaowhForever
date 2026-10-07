@@ -2,7 +2,7 @@
 -- is not yours; a zone counts the ones you killed; a targeted rare dying counts once when it was
 -- yours and not when someone else tapped it; a looted corpse counts; Shift-click ticks one off.
 -- Rare Alerts: a rare's nameplate brings the alert and a skull, once per rare in a while; not
--- for a dead or friendly one, nor one you killed unless Killed Rares Too; no skull where it has
+-- for a dead or friendly one, nor one you killed unless Alert for Killed Rares; no skull where it has
 -- a mark or in a raid without lead or assist; nothing is registered while it is off.
 
 local Load = dofile("Tools/regression/load_files.lua")
@@ -337,7 +337,7 @@ do
     Check(#env.marks == 2, "but it still gets a skull")
     settings.rareAlertKilled = true
     env.Fire("NAME_PLATE_UNIT_ADDED", "nameplate2")
-    Check(ns.alert:IsShown() and ns.alert.about.text:find("killed before", 1, true), "with Killed Rares Too it does")
+    Check(ns.alert:IsShown() and ns.alert.about.text:find("killed before", 1, true), "with Alert for Killed Rares it does")
 
     ns.alert:Hide()
     units.nameplate3 = { guid = Guid(5555), name = "Not A Rare", kind = "normal" }
@@ -447,7 +447,7 @@ do
     R.SetKilled(10644, true)
     Check(#PinsOf(10644) == 0 and #env.worldMap.pins == 4, "a killed rare's stars go")
     ns.CompletoSettings.Set("rarePinsKilled", true)
-    Check(#PinsOf(10644) == 2 and PinsOf(10644)[1].Icon.desaturated, "with Killed Rares, grey stars")
+    Check(#PinsOf(10644) == 2 and PinsOf(10644)[1].Icon.desaturated, "with Show Killed Rares, grey stars")
     ns.CompletoSettings.Set("rarePins", false)
     Check(#env.worldMap.pins == 0, "switched off: the stars go")
 end

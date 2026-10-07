@@ -359,7 +359,7 @@ page:Card({
     help = "What a zone's page in the Completo window lists. Kills count from when Completo is on: "
         .. "Shift-click a rare there to tick off one you killed before.",
     rows = {
-        { key = "rareHideKilled", label = "Hide Killed", toggle = true,
-          help = "Leave out the rares you have killed." },
+        { key = "rareHideKilled", label = "Hide Killed Rares", toggle = true,
+          help = "Leaves the rares you have killed out of a zone's list in the Completo window." },
     },
 })
