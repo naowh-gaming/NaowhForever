@@ -22,8 +22,10 @@ local function Learn(unit)
     local zone = Q.CurrentZone()
     if not zone then return end
     Q.Refresh()
+    -- Givers leave grey quests out of their list unless low level quests are tracked.
+    local trivial = not C_Minimap.IsFilteredOut(Enum.MinimapTrackingFilter.TrivialQuests)
     for _, id in ipairs(Q.GiverQuests(UnitName(unit), zone.map)) do
-        if Q.Expected(id) == "open" then
+        if Q.Expected(id) == "open" and (trivial or not Q.Trivial(id)) then
             Q.SetOffered(id, offered[id] == true)
         end
     end
