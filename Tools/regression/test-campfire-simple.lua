@@ -464,11 +464,17 @@ do
         and icon.buffs.flags == "OUTLINE" and icon.label.path == "lsm:Naowh" and icon.buffs.shadow == 0)
     s.S.Set("campStyle", "simple")
     local bar = s.bar()
-    check("Simple: the bar's words and bonuses take them too", bar.time.path == "lsm:Naowh"
+    check("Simple: the Font but its own Outline, plain by default", bar.time.path == "lsm:Naowh"
+        and bar.time.flags == "" and bar.time.shadow == 0 and bar.labels.labels[1].path == "lsm:Naowh")
+    s.S.Set("campBarOutline", "OUTLINE")
+    check("Simple: the bar's words and bonuses take its Outline", bar.time.path == "lsm:Naowh"
         and bar.time.flags == "OUTLINE" and bar.labels.labels[1].path == "lsm:Naowh"
         and bar.labels.labels[3].flags == "OUTLINE")
     s.S.Set("campFont", "")
     s.S.Set("campOutline", "")
+    s.S.Set("campBarOutline", "")
+    check("Simple: Shadow shadows the bar", bar.time.shadow > 0 and bar.labels.labels[1].shadow > 0)
+    s.S.Set("campBarOutline", "NONE")
     check("Simple: back to the Addon Font, unoutlined", bar.time.path == "font" and bar.time.flags == ""
         and bar.labels.labels[1].path == "font" and bar.labels.labels[1].flags == "")
 end
@@ -524,7 +530,7 @@ do
         and bar.camp.tex.texture ~= nil)
     check("the art's empty margin is cropped to its fire, square", c and c[1] > 0 and c[2] < 1 and c[3] > 0
         and c[4] < 1 and math.abs((c[2] - c[1]) - (c[4] - c[3])) < 1e-3)
-    check("panel text: no HUD shadow on the bar's words", bar.time.shadow == nil and bar.note.shadow == nil)
+    check("panel text: no HUD shadow on the bar's words", (bar.time.shadow or 0) == 0 and (bar.note.shadow or 0) == 0)
     local track
     for _, f in ipairs(s.frames) do if f.parent == bar.line and f.color == s.T.line then track = f end end
     check("the time line runs on a full-width track in the line color", track ~= nil)

@@ -291,12 +291,17 @@ function Bar.Layout(f)
     f.labelX = f.campX + f.campSize / 2 + BAR.CAMP_GAP
     f.textY = BAR.FONT_LIFT + BAR.LINE_H / 2
     -- The Camp Nearby alert draws the bar bare; BareFonts gives it the alert's own font.
-    local font, outline = ns.UIFontPath(), ""
-    if not f.bare then font, outline = ns.UI.FontPath(S.Get("campFont")), S.Get("campOutline") end
-    f.font, f.outline = font, outline
-    f.time:SetFont(font, size, outline)
-    f.note:SetFont(font, size, outline)
-    f.probe:SetFont(font, size, outline)
+    local font, outline, shadow = ns.UIFontPath(), "", nil
+    if not f.bare then
+        local o = S.Get("campBarOutline")
+        font, outline = ns.UI.FontPath(S.Get("campFont")), o == "NONE" and "" or o
+        shadow = o == "" and "card" or false
+    end
+    f.font, f.outline, f.shadow = font, outline, shadow
+    for _, fs in ipairs({ f.time, f.note, f.probe }) do
+        fs:SetFont(font, size, outline)
+        if shadow ~= nil then Parts.HudText(fs, shadow) end
+    end
     if f.bare then BareFonts(f, size) end
     f.labels:SetTextSize(size)
     f.timeW, f.sitW = math.ceil(TextWidth(f, TIME_SAMPLE)), math.ceil(TextWidth(f, SIT_SAMPLE))
@@ -389,7 +394,10 @@ end
 -- Parts.LabelRow sets the Addon Font on the labels it makes, so the bar's font goes on after.
 local function LabelFont(f)
     local labels = f.labels.labels
-    for i = 1, #labels do labels[i]:SetFont(f.font, f.size, f.outline) end
+    for i = 1, #labels do
+        labels[i]:SetFont(f.font, f.size, f.outline)
+        if f.shadow ~= nil then Parts.HudText(labels[i], f.shadow) end
+    end
 end
 
 local function PlaceLabels(f)
@@ -1384,7 +1392,7 @@ local BUFF_MODES = { { off = "Off", always = "Always", hover = "On Mouseover" },
 local SIDES = { { below = "Below", above = "Above", left = "Left", right = "Right" },
     { "below", "above", "left", "right" } }
 local BAR_KEYS = { campSimpleWidth = true, campSimpleHeight = true, campSimpleTextSize = true,
-    campBonusIcons = true, campHiddenBonuses = true }
+    campBarOutline = true, campBonusIcons = true, campHiddenBonuses = true }
 
 local function NearbyState() return Simple() and S.Get("campShowMissing") and true or false end
 
@@ -1745,7 +1753,11 @@ campCard = page:Card({
           hidden = Simple },
         { key = "campBuffSide", label = "Buff Text Position", choice = SIDES, needs = Enabled, why = OFF,
           hidden = Simple },
-        Settings.Look("camp", { text = true, keys = { FontSize = false }, needs = Enabled, why = OFF }),
+        Settings.Look("camp", { text = true, keys = { FontSize = false, Outline = false }, needs = Enabled, why = OFF }),
+        { key = "campOutline", label = "Outline", choice = Parts.HUD_OUTLINES, needs = Enabled, why = OFF,
+          hidden = Simple },
+        { key = "campBarOutline", label = "Bar Outline", choice = Parts.HUD_OUTLINES, needs = Enabled, why = OFF,
+          hidden = RoundStyle },
         Group("Sound"),
         { key = "campSound", label = "Play a Sound to Refresh", toggle = true, needs = Enabled, why = OFF,
           help = "Plays when it is time to refresh the camp." },
