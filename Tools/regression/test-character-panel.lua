@@ -626,6 +626,22 @@ check("anyone else: asked, EllesmereUI's left as it is", asked == 1 and db.theme
 S.Set("characterPanelAsked", true)
 CP._AskForTest(false)
 check("once", asked == 1)
+local q = state.values
+q.characterPanel, q.characterPanelAsked, q.characterPanelTookOver = true, true, true
+db.themedCharacterSheet = true
+CP._AskForTest(false)
+check("a took-over EllesmereUI never saw (a profile's copy): forgotten, asked as on a first run",
+    asked == 2 and q.characterPanelTookOver == false and db.themedCharacterSheet == true)
+q.characterPanelAsked, q.characterPanelTookOver = true, true
+db.themedCharacterSheet = true
+reloads = state.reloads
+S.Set("characterPanel", false)
+check("and turning ours off then leaves EllesmereUI's as it was, no reload asked",
+    db.themedCharacterSheet == true and state.reloads == reloads)
+q.characterPanelAsked, q.characterPanelTookOver = true, true
+db.themedCharacterSheet = false
+CP._AskForTest(false)
+check("one EllesmereUI's own switch bears out: kept, not asked", asked == 2 and q.characterPanelTookOver == true)
 env.EllesmereUIDB, env.EllesmereUI = nil, nil
 reloads = state.reloads
 S.Set("characterPanel", true)
