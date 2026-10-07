@@ -15,6 +15,9 @@ local S = UI.ModuleSettings("completo", {
     enabled = false, hideDone = false, windowAlpha = 1, windowScale = 1,
     -- A ! on the map at each quest giver with a quest for you; mapGrey adds the low level ones.
     mapPins = false, mapGrey = false, mapChainsOnly = false, mapPinSize = 18,
+    -- Rares: a warning when one is near, with a skull on it (NaowhForever_CompletoRareAlert.lua).
+    rareHideKilled = false, rareAlert = false, rareMark = true, rareAlertKilled = false,
+    rareSound = true, rareSoundKey = "none",
 })
 ns.CompletoSettings = S
 

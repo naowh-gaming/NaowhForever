@@ -4,12 +4,14 @@
 --  in: how many of its quests you have done, then its quests by level. A quest chain shows
 --  as its first quest with the chain icon in front and how far along you are, its follow-up
 --  quests indented under it. All Zones lists every zone by continent with its progress;
---  click one to open it.
+--  click one to open it. The Rares tab is built the same way: a zone's rares by level,
+--  which of them you have killed, a waypoint to where each spawns.
 -------------------------------------------------------------------------------
 local ns = _G.NaowhForever
 local T = ns.THEME
 local S = ns.CompletoSettings
 local Q = ns.Completo.Quests
+local R = ns.Completo.Rares
 local Shared = ns.Shared
 local Parts, St = Shared.Parts, Shared.Style
 
@@ -18,7 +20,7 @@ local HEADER, FOOTER, PAD = St.WINDOW_HEADER, St.WINDOW_FOOTER, St.WINDOW_PAD
 local INSET, SCROLLBAR, TAB_H, TAB_GAP = St.CONTENT_INSET, St.SCROLLBAR, St.TAB_H, St.TAB_GAP
 local PAGE = "Completo/Quests"
 local CARD = 6
-local TABS_W = 130
+local TABS_W = 260
 local HERO_H = 84
 local BAR_H = 4
 local ROW_TOP, ROW_BOTTOM, LINE_GAP = 6, 8, 3
@@ -45,17 +47,22 @@ local STRIPE, HOVER = 0.025, 0.04
 local LOG_RGB = { r = 1, g = 0.82, b = 0 }
 local REPEAT_RGB = { r = 0.35, g = 0.7, b = 1 }
 local EVENTS = { "QUEST_TURNED_IN", "QUEST_ACCEPTED", "QUEST_REMOVED", "PLAYER_LEVEL_UP" }
+-- Rares change only by a kill counted, which redraws the window itself (R.OnChange).
+local NO_EVENTS = {}
 
 local CONTINENTS = { [0] = "Eastern Kingdoms", [1] = "Kalimdor" }
 local ELSEWHERE = "Elsewhere"
 
 local TABS = {
     { key = "quests", label = "Quests", tip = "Every quest of every zone, and where you are in each chain." },
+    { key = "rares", label = "Rares", tip = "Every rare of every zone, and which of them you have killed." },
 }
+local SEARCH_HINT = { quests = "Search quests or quest givers", rares = "Search rares" }
 
 local window, scroll, view, kinds
 local tab = "quests"
-local zone              -- the zone open, or nil for All Zones
+local zone              -- the Quests tab's zone open, or nil for All Zones
+local rareZone          -- the Rares tab's
 
 local function Opacity()
     return math.floor((S.Get("windowAlpha") or 1) * 100 + 0.5)
@@ -120,8 +127,14 @@ end
 -------------------------------------------------------------------------------
 --  A zone on All Zones: its name and levels, its count and bar; click to open it
 -------------------------------------------------------------------------------
+-- The tab's own zone progress: a Quests zone's quests done, a Rares zone's rares killed.
+local function Progress(z)
+    if tab == "rares" then return R.ZoneProgress(z) end
+    return Q.ZoneProgress(z)
+end
+
 local function OpenZone(picked)
-    zone = picked
+    if tab == "rares" then rareZone = picked else zone = picked end
     scroll:SetVerticalScroll(0)
     view:Redraw()
 end
@@ -129,10 +142,13 @@ end
 local function ZoneEnter(row)
     row.hover:Show()
     if not Parts.Tip(row, "ANCHOR_RIGHT") then return end
-    local n, total = Q.ZoneProgress(row.zone)
+    local n, total = Progress(row.zone)
     GameTooltip:SetText(row.zone.name, 1, 1, 1)
-    GameTooltip:AddLine(("%d of %d quests done"):format(n, total), T.muted.r, T.muted.g, T.muted.b)
-    GameTooltip:AddLine("Click to see its quests.", T.accentSoft.r, T.accentSoft.g, T.accentSoft.b)
+    local rares = tab == "rares"
+    GameTooltip:AddLine((rares and "%d of %d rares killed" or "%d of %d quests done"):format(n, total),
+        T.muted.r, T.muted.g, T.muted.b)
+    GameTooltip:AddLine(rares and "Click to see its rares." or "Click to see its quests.",
+        T.accentSoft.r, T.accentSoft.g, T.accentSoft.b)
     GameTooltip:Show()
 end
 
@@ -167,7 +183,7 @@ local function SetZone(row, z, stripe)
     row.zone = z
     row.stripe:SetShown(stripe)
     row.hover:Hide()
-    local n, total, low, high = Q.ZoneProgress(z)
+    local n, total, low, high = Progress(z)
     row.title:SetText(z.name)
     row.levels:SetText(Levels(low, high))
     local finished = total > 0 and n == total
@@ -351,6 +367,131 @@ local function SetQuest(row, id, part, first, last, stripe)
 end
 
 -------------------------------------------------------------------------------
+--  A rare: its level (a tick once killed), its name, whether you have killed it; a waypoint
+--  to where it spawns, Shift-click to tick it off by hand, right-click for its Wowhead link.
+-------------------------------------------------------------------------------
+-- "??" for a boss level or one not known.
+local function RareLevels(npc)
+    local low, high = R.Levels(npc)
+    if low <= 0 then return "??" end
+    if low == high then return tostring(low) end
+    return ("%d-%d"):format(low, high)
+end
+
+-- The level's colour against yours; a "??" one as red as it gets.
+local function RareColor(npc)
+    local low = R.Levels(npc)
+    if low <= 0 then return St.RED_RGB end
+    return GetQuestDifficultyColor(low)
+end
+
+local function RareStatus(npc)
+    local record = R.Record(npc)
+    if not record then return "Not killed", T.fg end
+    if record.n > 1 then return ("Killed %d times"):format(record.n), St.HAVE_RGB end
+    return "Killed", St.HAVE_RGB
+end
+
+local function RarePinClicked(button)
+    R.Waypoint(button:GetParent().rare)
+end
+
+local function RareEnter(row)
+    row.hover:Show()
+    if not Parts.Tip(row, "ANCHOR_RIGHT") then return end
+    local npc, m = row.rare, T.muted
+    GameTooltip:SetText(R.Name(npc), 1, 1, 1)
+    GameTooltip:AddDoubleLine("Level", RareLevels(npc), m.r, m.g, m.b, 1, 1, 1)
+    GameTooltip:AddDoubleLine("Kind", R.Elite(npc) and "Rare elite" or "Rare", m.r, m.g, m.b, 1, 1, 1)
+    local record = R.Record(npc)
+    if record and record.n > 0 then
+        GameTooltip:AddDoubleLine("Last killed", date("%d %b %Y", record.at), m.r, m.g, m.b, 1, 1, 1)
+    elseif record then
+        GameTooltip:AddDoubleLine("Status", "Ticked off by hand", m.r, m.g, m.b, 1, 1, 1)
+    end
+    local spots = R.SpotCount(npc)
+    if spots > 1 then
+        GameTooltip:AddDoubleLine("Spawns at", ("%d spots"):format(spots), m.r, m.g, m.b, 1, 1, 1)
+    end
+    GameTooltip:AddLine(" ")
+    GameTooltip:AddLine((spots > 0 and "Pin: waypoint, the nearest spot    " or "")
+        .. (record and "Shift-click: not killed" or "Shift-click: killed"),
+        T.accentSoft.r, T.accentSoft.g, T.accentSoft.b)
+    GameTooltip:AddLine("Right-click: Wowhead link", T.accentSoft.r, T.accentSoft.g, T.accentSoft.b)
+    GameTooltip:Show()
+end
+
+local function RareMouseUp(row, button)
+    if button == "RightButton" then
+        Parts.CopyWowhead("npc", row.rare, R.Name(row.rare))
+    elseif button == "LeftButton" and IsShiftKeyDown() then
+        R.SetKilled(row.rare, not R.Killed(row.rare))
+    end
+end
+
+local function NewRare(parent)
+    local row = NewRowBase(parent)
+    row.pin = Parts.IconButton(row, RarePinClicked, St.PIN, 0, "Waypoint")
+    row.pin.hint = "To where it spawns nearest you."
+    row.pin:SetPoint("RIGHT", -PIN_RIGHT, 0)
+    row.tick = row:CreateTexture(nil, "ARTWORK")
+    row.tick:SetTexture(St.TICK, nil, nil, "TRILINEAR")
+    row.tick:SetSize(TICK, TICK)
+    row.tick:SetVertexColor(St.HAVE_RGB.r, St.HAVE_RGB.g, St.HAVE_RGB.b)
+    row.tick:SetPoint("TOPLEFT", St.INDENT, -(ROW_TOP + 1))
+    row.level = ns.Font(row, 12)
+    row.level:SetWidth(LEVEL_W + 12)
+    row.level:SetJustifyH("LEFT")
+    row.level:SetPoint("TOPLEFT", St.INDENT, -(ROW_TOP + 1))
+    row.title = ns.Font(row, 13, nil, T.fg)
+    row.title:SetJustifyH("LEFT")
+    row.title:SetWordWrap(false)
+    row.title:SetPoint("TOPLEFT", St.INDENT + LEVEL_W + 16, -ROW_TOP)
+    row.where = ns.Font(row, 11, nil, T.muted)
+    row.where:SetPoint("TOPLEFT", row.title, "BOTTOMLEFT", 0, -LINE_GAP)
+    row.where:SetJustifyH("LEFT")
+    row.where:SetWordWrap(false)
+    row.status = ns.Font(row, 11, nil, T.fg)
+    row.status:SetPoint("RIGHT", row.pin, "LEFT", -STATUS_GAP, 0)
+    row.status:SetJustifyH("RIGHT")
+    row:SetScript("OnEnter", RareEnter)
+    row:SetScript("OnLeave", RowLeave)
+    row:SetScript("OnMouseUp", RareMouseUp)
+    return row
+end
+
+-- withZone: under its name, the zone it is in (a search, every zone at once).
+local function SetRare(row, npc, withZone, stripe)
+    row.rare = npc
+    row.stripe:SetShown(stripe)
+    row.hover:Hide()
+    local killed = R.Killed(npc)
+    row.tick:SetShown(killed)
+    row.level:SetShown(not killed)
+    row.level:SetText(RareLevels(npc))
+    local c = RareColor(npc)
+    row.level:SetTextColor(c.r, c.g, c.b)
+    row.pin:SetShown(R.SpotCount(npc) > 0)
+    local text, color = RareStatus(npc)
+    row.status:SetText(text)
+    row.status:SetTextColor(color.r, color.g, color.b)
+    local textW = row:GetWidth() - St.INDENT - LEVEL_W - 16 - PIN_RIGHT - STATUS_W - STATUS_GAP
+    row.title:SetWidth(textW)
+    row.title:SetText(R.Name(npc))
+    local tc = killed and T.muted or T.fg
+    row.title:SetTextColor(tc.r, tc.g, tc.b)
+    local sub = R.Elite(npc) and "Rare elite" or ""
+    local home = withZone and R.Zone(npc)
+    if home then sub = sub .. (sub ~= "" and "  -  " or "") .. home.name end
+    row.where:SetWidth(textW)
+    row.where:SetText(sub)
+    row.where:SetShown(sub ~= "")
+    local h = ROW_TOP + math.ceil(row.title:GetStringHeight()) + ROW_BOTTOM
+    if sub ~= "" then h = h + LINE_GAP + math.ceil(row.where:GetStringHeight()) end
+    return h
+end
+
+-------------------------------------------------------------------------------
 --  The pages
 -------------------------------------------------------------------------------
 local Draw = {}
@@ -381,18 +522,25 @@ local function ZoneOrder(a, b)
 end
 
 local function AllZones()
-    zone = nil
+    if tab == "rares" then rareZone = nil else zone = nil end
     scroll:SetVerticalScroll(0)
     view:Redraw()
 end
 
+-- The Quests tab's or the Rares tab's, whichever is open.
+local function Source()
+    return tab == "rares" and R or Q
+end
+
 local function DrawAllZones(self)
-    local n, total = Q.Progress()
-    self:Add("hero", "All zones", n, total, ("%d%% of every zone quest for your character"):format(Percent(n, total)))
+    local n, total = Source().Progress()
+    local about = tab == "rares" and "%d%% of every rare your character can kill"
+        or "%d%% of every zone quest for your character"
+    self:Add("hero", "All zones", n, total, about:format(Percent(n, total)))
     self:Space(8)
     wipe(byContinent)
-    for _, z in ipairs(Q.Zones()) do
-        local _, zt = Q.ZoneProgress(z)
+    for _, z in ipairs(Source().Zones()) do
+        local _, zt = Progress(z)
         if zt > 0 then
             local name = CONTINENTS[z.continent] or ELSEWHERE
             byContinent[name] = byContinent[name] or {}
@@ -447,9 +595,28 @@ local function DrawZone(self)
     end
 end
 
+-- A zone's rares, lowest level first.
+local function DrawRareZone(self)
+    local hideKilled = S.Get("rareHideKilled")
+    self:SectionLink(rareZone.name, "All Zones", AllZones)
+    self:Space(8)
+    local n, total, low, high = R.ZoneProgress(rareZone)
+    self:Add("hero", rareZone.name, n, total, Levels(low, high))
+    self:Space(8)
+    wipe(entries)
+    for _, npc in ipairs(R.ZoneList(rareZone)) do
+        if not (hideKilled and R.Killed(npc)) then entries[#entries + 1] = npc end
+    end
+    if #entries > 0 then self:Section("Rares", #entries) end
+    for i, npc in ipairs(entries) do self:Add("rare", npc, false, i % 2 == 0) end
+    if #entries == 0 then
+        self:Note(total > 0 and "Every rare here is killed." or "No rares here for your character.")
+    end
+end
+
 -- A zone picked from the search: the search is cleared, which redraws, on that zone.
 local function OpenFound(picked)
-    zone = picked
+    if tab == "rares" then rareZone = picked else zone = picked end
     window.search:SetText("")
     window.search:ClearFocus()
     scroll:SetVerticalScroll(0)
@@ -473,12 +640,42 @@ local function DrawSearch(self, text)
     end
 end
 
+-- Every rare whose name holds the text, under its zone with a link to it.
+local function DrawRareSearch(self, text)
+    local zones, n = R.Search(text, SEARCH_MAX)
+    if n == 0 then
+        self:Note(("No rare for your character holds \"%s\"."):format(text))
+        return
+    end
+    for _, entry in ipairs(zones) do
+        self:Add("section", entry.zone.name, #entry.ids, nil, nil, "Open", OpenFound, entry.zone)
+        for i, npc in ipairs(entry.ids) do self:Add("rare", npc, false, i % 2 == 0) end
+        self:Space(St.SECTION_SPACE)
+    end
+    if n > SEARCH_MAX then
+        self:Note(("The first %d of %d; type more to narrow it down."):format(SEARCH_MAX, n))
+    end
+end
+
 local function SearchText()
     return window.search and strtrim(window.search:GetText() or ""):lower() or ""
 end
 
+local function DrawRares(self)
+    local text = SearchText()
+    if text ~= "" then
+        DrawRareSearch(self, text)
+    elseif rareZone then
+        DrawRareZone(self)
+    else
+        DrawAllZones(self)
+    end
+    self:Fit(NO_EVENTS)
+end
+
 function Draw:Redraw()
     self:Clear()
+    if tab == "rares" then return DrawRares(self) end
     Q.Refresh()
     local text = SearchText()
     if text ~= "" then
@@ -500,12 +697,15 @@ local function Kinds()
     kinds.hero = { New = NewHero, Set = SetHero }
     kinds.zone = { New = NewZone, Set = SetZone }
     kinds.quest = { New = NewQuest, Set = SetQuest }
+    kinds.rare = { New = NewRare, Set = SetRare }
     return kinds
 end
 
+local Paint
+
 local function PickTab(key)
     tab = key
-    Parts.PaintTabs(window.tabs, tab)
+    Paint()
     scroll:SetVerticalScroll(0)
     view:Redraw()
 end
@@ -523,7 +723,7 @@ local function Build()
     local left, top = CARD + INSET, HEADER + CARD + PAD + 4
     window.tabs = Parts.Tabs(window, TABS_W, TABS, PickTab)
     window.tabs:SetPoint("TOPLEFT", left, -top)
-    window.search = Parts.SearchBox(window, "Search quests or quest givers", function()
+    window.search = Parts.SearchBox(window, SEARCH_HINT.quests, function()
         if window:IsShown() then
             scroll:SetVerticalScroll(0)
             view:Redraw()
@@ -549,13 +749,20 @@ local function Build()
     FitView()
 end
 
-local function Paint()
+function Paint()
     window.backdrop:Paint(Opacity() / 100)
     window.opacity._refreshValue()
-    Q.Refresh()
-    local n, total = Q.Progress()
-    window.note.text:SetText(("%d of %d zone quests done"):format(n, total))
+    local n, total
+    if tab == "rares" then
+        n, total = R.Progress()
+        window.note.text:SetText(("%d of %d rares killed"):format(n, total))
+    else
+        Q.Refresh()
+        n, total = Q.Progress()
+        window.note.text:SetText(("%d of %d zone quests done"):format(n, total))
+    end
     window.note:SetWidth(math.max(1, math.ceil(window.note.text:GetStringWidth())))
+    window.search.hint:SetText(SEARCH_HINT[tab])
     Parts.PaintTabs(window.tabs, tab)
 end
 
@@ -563,7 +770,14 @@ S.OnChange(function(key)
     if not (window and window:IsShown()) then return end
     if key == "windowAlpha" then Paint() end
     if key == "windowScale" then window:SetScale(ns.UIScale() * S.Get("windowScale")) end
-    if key == "hideDone" then view:Redraw() end
+    if key == "hideDone" or key == "rareHideKilled" then view:Redraw() end
+end)
+
+-- A rare killed or ticked off: its row, the zone's count and the footer follow.
+R.OnChange(function()
+    if not (window and window:IsShown()) or tab ~= "rares" then return end
+    Paint()
+    view:QueueRedraw()
 end)
 
 hooksecurefunc(ns, "Apply", function()
@@ -574,12 +788,13 @@ hooksecurefunc(ns, "Apply", function()
     end
 end)
 
--- which: "quests" to open on that tab; else the one it was on. Opens on the zone you are in
--- when it has quests, else where it was.
+-- which: "quests" or "rares" to open on that tab; else the one it was on. Opens on the zone
+-- you are in when it has quests (or rares), else where it was.
 function ns.OpenCompletoWindow(which)
     if which then tab = which end
     if not window then Build() end
     zone = Q.CurrentZone() or zone
+    rareZone = R.CurrentZone() or rareZone
     window:SetScale(ns.UIScale() * S.Get("windowScale"))
     window:Show()
     Paint()
