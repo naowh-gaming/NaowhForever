@@ -48,6 +48,9 @@ end
 -- pass through.
 function NaowhForeverRarePinMixin:CheckMouseButtonPassthrough() end
 
+-- Not smaller on the small map than on the full-screen one.
+NaowhForeverRarePinMixin.ApplyCurrentScale = ns.Completo.ScalePin
+
 -- How it looks: as drawn, or while a rare is hovered (lit: this pin's rare; else faded).
 local function Look(pin, lit, faded)
     local size = S.Get("rarePinSize") * (pin.dot and DOT_SCALE or 1)
@@ -70,6 +73,7 @@ function NaowhForeverRarePinMixin:OnAcquired(spot)
     icon:SetDesaturated(self.killed)
     Look(self)
     self:SetPosition(spot.x / 100, spot.y / 100)
+    if self.ApplyCurrentScale then self:ApplyCurrentScale() end
 end
 
 local provider

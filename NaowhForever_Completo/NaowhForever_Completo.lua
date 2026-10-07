@@ -27,6 +27,24 @@ local D = ns.CompletoQuestData
 local Q = {}
 ns.Completo = { Quests = Q }
 
+-- The world map draws its canvas scaled to fit: in the small map's window it is scaled down,
+-- and pins sized in map units shrink with it. A pin's ApplyCurrentScale (the map calls it as
+-- it scales) set to this keeps it at least MIN_PIN_SCALE times its size on screen, as on the
+-- small map; on the full-screen map, scaled up, it is left as it is, and it grows as you zoom.
+local MIN_PIN_SCALE = 1.5
+
+function ns.Completo.ScalePin(pin)
+    local map = pin:GetMap()
+    local canvas = map and map.GetCanvasScale and map:GetCanvasScale()
+    if not canvas or canvas <= 0 then return end
+    local scale = math.max(1, MIN_PIN_SCALE / canvas)
+    if map.GetGlobalPinScale and not (pin.IsIgnoringGlobalPinScale and pin:IsIgnoringGlobalPinScale()) then
+        scale = scale * map:GetGlobalPinScale()
+    end
+    pin:SetScale(scale)
+    pin:ApplyCurrentPosition()
+end
+
 -- The client's race IDs to their bit in Wowhead's race masks (Forever's own two races too).
 local RACE_BITS = { [1] = 0, [2] = 1, [3] = 2, [4] = 3, [5] = 4, [6] = 5, [7] = 6, [8] = 7, [95] = 32, [96] = 33 }
 local NAME, LEVEL, REQ_LEVEL, SIDE, RACES, CLASSES, MAP, X, Y, GIVER, ITEM = 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11
