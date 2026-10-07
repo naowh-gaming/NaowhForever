@@ -176101,6 +176101,701 @@
    ]
   }
  },
+ "setpieces": {
+  "21326": {
+   "classs": 4,
+   "droppers": [],
+   "name": "Defender of the Timbermaw",
+   "quality": 4
+  },
+  "268873": {
+   "classs": 4,
+   "droppers": [],
+   "name": "Defender of the Barkskin",
+   "quality": 4
+  },
+  "271207": {
+   "classs": 4,
+   "droppers": [
+    {
+     "chance": 38.2,
+     "npc": 250631
+    }
+   ],
+   "name": "Rotmender's Leggings",
+   "quality": 3
+  },
+  "271214": {
+   "classs": 4,
+   "droppers": [
+    {
+     "chance": 32.6,
+     "npc": 250657
+    }
+   ],
+   "name": "Rotmender's Treads",
+   "quality": 3
+  },
+  "273044": {
+   "classs": 4,
+   "droppers": [],
+   "name": "Arcanowisp Robes",
+   "quality": 3
+  },
+  "280450": {
+   "classs": 4,
+   "droppers": [],
+   "name": "Manaflare Robes",
+   "quality": 4
+  },
+  "280451": {
+   "classs": 4,
+   "droppers": [],
+   "name": "Manaflare Gloves",
+   "quality": 4
+  },
+  "280452": {
+   "classs": 4,
+   "droppers": [],
+   "name": "Manaflare Boots",
+   "quality": 4
+  },
+  "280453": {
+   "classs": 4,
+   "droppers": [],
+   "name": "Manaflare Pants",
+   "quality": 4
+  },
+  "280454": {
+   "classs": 4,
+   "droppers": [],
+   "name": "Manaflare Mantle",
+   "quality": 4
+  },
+  "280455": {
+   "classs": 4,
+   "droppers": [],
+   "name": "Manaflare Crown",
+   "quality": 4
+  },
+  "280872": {
+   "classs": 4,
+   "droppers": [],
+   "name": "Grimstitch Pants",
+   "quality": 4
+  },
+  "280875": {
+   "classs": 4,
+   "droppers": [],
+   "name": "Grimstitch Gloves",
+   "quality": 4
+  },
+  "280876": {
+   "classs": 4,
+   "droppers": [],
+   "name": "Grimstitch Spaulders",
+   "quality": 4
+  },
+  "280877": {
+   "classs": 4,
+   "droppers": [],
+   "name": "Grimstitch Mask",
+   "quality": 4
+  },
+  "280878": {
+   "classs": 4,
+   "droppers": [],
+   "name": "Grimstitch Boots",
+   "quality": 4
+  },
+  "280879": {
+   "classs": 4,
+   "droppers": [],
+   "name": "Grimstitch Chestpiece",
+   "quality": 4
+  },
+  "280882": {
+   "classs": 4,
+   "droppers": [],
+   "name": "Demonheart Spaulders",
+   "quality": 4
+  },
+  "280883": {
+   "classs": 4,
+   "droppers": [],
+   "name": "Demonheart Robes",
+   "quality": 4
+  },
+  "280886": {
+   "classs": 4,
+   "droppers": [],
+   "name": "Demonheart Leggings",
+   "quality": 4
+  },
+  "280887": {
+   "classs": 4,
+   "droppers": [],
+   "name": "Demonheart Skullcap",
+   "quality": 4
+  },
+  "280888": {
+   "classs": 4,
+   "droppers": [],
+   "name": "Demonheart Gloves",
+   "quality": 4
+  },
+  "280889": {
+   "classs": 4,
+   "droppers": [],
+   "name": "Demonheart Boots",
+   "quality": 4
+  },
+  "280893": {
+   "classs": 4,
+   "droppers": [],
+   "name": "Wildstalker's Gauntlets",
+   "quality": 4
+  },
+  "280894": {
+   "classs": 4,
+   "droppers": [],
+   "name": "Wildstalker's Greaves",
+   "quality": 4
+  },
+  "280895": {
+   "classs": 4,
+   "droppers": [],
+   "name": "Wildstalker's Legguards",
+   "quality": 4
+  },
+  "280896": {
+   "classs": 4,
+   "droppers": [],
+   "name": "Wildstalker's Breastplate",
+   "quality": 4
+  },
+  "280897": {
+   "classs": 4,
+   "droppers": [],
+   "name": "Wildstalker's Spaulders",
+   "quality": 4
+  },
+  "280898": {
+   "classs": 4,
+   "droppers": [],
+   "name": "Wildstalker's Helm",
+   "quality": 4
+  },
+  "280899": {
+   "classs": 4,
+   "droppers": [],
+   "name": "Gauntlets of Glory",
+   "quality": 4
+  },
+  "280900": {
+   "classs": 4,
+   "droppers": [],
+   "name": "Greaves of Glory",
+   "quality": 4
+  },
+  "280901": {
+   "classs": 4,
+   "droppers": [],
+   "name": "Legplates of Glory",
+   "quality": 4
+  },
+  "280902": {
+   "classs": 4,
+   "droppers": [],
+   "name": "Breastplate of Glory",
+   "quality": 4
+  },
+  "280903": {
+   "classs": 4,
+   "droppers": [],
+   "name": "Shoulders of Glory",
+   "quality": 4
+  },
+  "280904": {
+   "classs": 4,
+   "droppers": [],
+   "name": "Helm of Glory",
+   "quality": 4
+  },
+  "280905": {
+   "classs": 4,
+   "droppers": [],
+   "name": "Handguards of Glory",
+   "quality": 4
+  },
+  "280906": {
+   "classs": 4,
+   "droppers": [],
+   "name": "Sabatons of Glory",
+   "quality": 4
+  },
+  "280907": {
+   "classs": 4,
+   "droppers": [],
+   "name": "Legguards of Glory",
+   "quality": 4
+  },
+  "280908": {
+   "classs": 4,
+   "droppers": [],
+   "name": "Chestguard of Glory",
+   "quality": 4
+  },
+  "280909": {
+   "classs": 4,
+   "droppers": [],
+   "name": "Pauldrons of Glory",
+   "quality": 4
+  },
+  "280910": {
+   "classs": 4,
+   "droppers": [],
+   "name": "Greathelm of Glory",
+   "quality": 4
+  },
+  "280912": {
+   "classs": 4,
+   "droppers": [],
+   "name": "Robes of Conviction",
+   "quality": 4
+  },
+  "280913": {
+   "classs": 4,
+   "droppers": [],
+   "name": "Handguards of Conviction",
+   "quality": 4
+  },
+  "280914": {
+   "classs": 4,
+   "droppers": [],
+   "name": "Boots of Conviction",
+   "quality": 4
+  },
+  "280915": {
+   "classs": 4,
+   "droppers": [],
+   "name": "Leggings of Conviction",
+   "quality": 4
+  },
+  "280917": {
+   "classs": 4,
+   "droppers": [],
+   "name": "Pauldrons of Conviction",
+   "quality": 4
+  },
+  "280918": {
+   "classs": 4,
+   "droppers": [],
+   "name": "Halo of Conviction",
+   "quality": 4
+  },
+  "280919": {
+   "classs": 4,
+   "droppers": [],
+   "name": "Garb of Conviction",
+   "quality": 4
+  },
+  "280920": {
+   "classs": 4,
+   "droppers": [],
+   "name": "Gloves of Conviction",
+   "quality": 4
+  },
+  "280921": {
+   "classs": 4,
+   "droppers": [],
+   "name": "Treads of Conviction",
+   "quality": 4
+  },
+  "280922": {
+   "classs": 4,
+   "droppers": [],
+   "name": "Pants of Conviction",
+   "quality": 4
+  },
+  "280923": {
+   "classs": 4,
+   "droppers": [],
+   "name": "Mantle of Conviction",
+   "quality": 4
+  },
+  "280924": {
+   "classs": 4,
+   "droppers": [],
+   "name": "Crown of Conviction",
+   "quality": 4
+  },
+  "280925": {
+   "classs": 4,
+   "droppers": [],
+   "name": "Justice Gauntlets",
+   "quality": 4
+  },
+  "280926": {
+   "classs": 4,
+   "droppers": [],
+   "name": "Justice Greaves",
+   "quality": 4
+  },
+  "280927": {
+   "classs": 4,
+   "droppers": [],
+   "name": "Justice Leggings",
+   "quality": 4
+  },
+  "280928": {
+   "classs": 4,
+   "droppers": [],
+   "name": "Justice Breastplate",
+   "quality": 4
+  },
+  "280929": {
+   "classs": 4,
+   "droppers": [],
+   "name": "Justice Spaulders",
+   "quality": 4
+  },
+  "280930": {
+   "classs": 4,
+   "droppers": [],
+   "name": "Justice Crown",
+   "quality": 4
+  },
+  "280931": {
+   "classs": 4,
+   "droppers": [],
+   "name": "Justice Gloves",
+   "quality": 4
+  },
+  "280932": {
+   "classs": 4,
+   "droppers": [],
+   "name": "Justice Treads",
+   "quality": 4
+  },
+  "280933": {
+   "classs": 4,
+   "droppers": [],
+   "name": "Justice Legplates",
+   "quality": 4
+  },
+  "280934": {
+   "classs": 4,
+   "droppers": [],
+   "name": "Justice Tunic",
+   "quality": 4
+  },
+  "280935": {
+   "classs": 4,
+   "droppers": [],
+   "name": "Justice Epaulets",
+   "quality": 4
+  },
+  "280936": {
+   "classs": 4,
+   "droppers": [],
+   "name": "Justice Headpiece",
+   "quality": 4
+  },
+  "280937": {
+   "classs": 4,
+   "droppers": [],
+   "name": "Justice Greathelm",
+   "quality": 4
+  },
+  "280938": {
+   "classs": 4,
+   "droppers": [],
+   "name": "Justice Handguards",
+   "quality": 4
+  },
+  "280939": {
+   "classs": 4,
+   "droppers": [],
+   "name": "Justice Sabatons",
+   "quality": 4
+  },
+  "280940": {
+   "classs": 4,
+   "droppers": [],
+   "name": "Justice Legguards",
+   "quality": 4
+  },
+  "280941": {
+   "classs": 4,
+   "droppers": [],
+   "name": "Justice Chestguard",
+   "quality": 4
+  },
+  "280942": {
+   "classs": 4,
+   "droppers": [],
+   "name": "Justice Pauldrons",
+   "quality": 4
+  },
+  "280944": {
+   "classs": 4,
+   "droppers": [],
+   "name": "Spiritcaller Epaulets",
+   "quality": 4
+  },
+  "280945": {
+   "classs": 4,
+   "droppers": [],
+   "name": "Spiritcaller Greaves",
+   "quality": 4
+  },
+  "280947": {
+   "classs": 4,
+   "droppers": [],
+   "name": "Spiritcaller Pants",
+   "quality": 4
+  },
+  "280949": {
+   "classs": 4,
+   "droppers": [],
+   "name": "Spiritcaller Gauntlets",
+   "quality": 4
+  },
+  "280950": {
+   "classs": 4,
+   "droppers": [],
+   "name": "Spiritcaller Breastplate",
+   "quality": 4
+  },
+  "280951": {
+   "classs": 4,
+   "droppers": [],
+   "name": "Spiritcaller Helmet",
+   "quality": 4
+  },
+  "280952": {
+   "classs": 4,
+   "droppers": [],
+   "name": "Spiritcaller Grips",
+   "quality": 4
+  },
+  "280953": {
+   "classs": 4,
+   "droppers": [],
+   "name": "Spiritcaller Treads",
+   "quality": 4
+  },
+  "280954": {
+   "classs": 4,
+   "droppers": [],
+   "name": "Spiritcaller Leggings",
+   "quality": 4
+  },
+  "280955": {
+   "classs": 4,
+   "droppers": [],
+   "name": "Spiritcaller Armor",
+   "quality": 4
+  },
+  "280956": {
+   "classs": 4,
+   "droppers": [],
+   "name": "Spiritcaller Spaulders",
+   "quality": 4
+  },
+  "280957": {
+   "classs": 4,
+   "droppers": [],
+   "name": "Spiritcaller Crown",
+   "quality": 4
+  },
+  "280958": {
+   "classs": 4,
+   "droppers": [],
+   "name": "Spiritcaller Gloves",
+   "quality": 4
+  },
+  "280959": {
+   "classs": 4,
+   "droppers": [],
+   "name": "Spiritcaller Boots",
+   "quality": 4
+  },
+  "280960": {
+   "classs": 4,
+   "droppers": [],
+   "name": "Spiritcaller Kilt",
+   "quality": 4
+  },
+  "280961": {
+   "classs": 4,
+   "droppers": [],
+   "name": "Spiritcaller Embrace",
+   "quality": 4
+  },
+  "280962": {
+   "classs": 4,
+   "droppers": [],
+   "name": "Spiritcaller Mantle",
+   "quality": 4
+  },
+  "280963": {
+   "classs": 4,
+   "droppers": [],
+   "name": "Spiritcaller Headdress",
+   "quality": 4
+  },
+  "280965": {
+   "classs": 4,
+   "droppers": [],
+   "name": "Grovekeeper Handguards",
+   "quality": 4
+  },
+  "280967": {
+   "classs": 4,
+   "droppers": [],
+   "name": "Grovekeeper Boots",
+   "quality": 4
+  },
+  "280971": {
+   "classs": 4,
+   "droppers": [],
+   "name": "Grovekeeper Legguards",
+   "quality": 4
+  },
+  "280974": {
+   "classs": 4,
+   "droppers": [],
+   "name": "Grovekeeper Chestguard",
+   "quality": 4
+  },
+  "280976": {
+   "classs": 4,
+   "droppers": [],
+   "name": "Grovekeeper Pauldrons",
+   "quality": 4
+  },
+  "280977": {
+   "classs": 4,
+   "droppers": [],
+   "name": "Grovekeeper Cover",
+   "quality": 4
+  },
+  "284100": {
+   "classs": 4,
+   "droppers": [],
+   "name": "Horseman's Unyielding Shroud",
+   "quality": 3
+  },
+  "284101": {
+   "classs": 2,
+   "droppers": [],
+   "name": "Blade of Senseless Slaughter",
+   "quality": 3
+  },
+  "284102": {
+   "classs": 4,
+   "droppers": [],
+   "name": "Signet of the Soulless Rider",
+   "quality": 3
+  },
+  "284715": {
+   "classs": 4,
+   "droppers": [
+    {
+     "chance": 0.6,
+     "npc": 646
+    }
+   ],
+   "name": "First Mate Band",
+   "quality": 3
+  },
+  "284716": {
+   "classs": 4,
+   "droppers": [],
+   "name": "Band of the Better Half",
+   "quality": 4
+  },
+  "285329": {
+   "classs": 4,
+   "droppers": [
+    {
+     "chance": 3.2,
+     "npc": 5842
+    }
+   ],
+   "name": "Raptor Hide Cloak",
+   "quality": 3
+  },
+  "285330": {
+   "classs": 4,
+   "droppers": [
+    {
+     "chance": 4.3,
+     "npc": 5831
+    }
+   ],
+   "name": "Signet of the Zhevra",
+   "quality": 3
+  },
+  "285331": {
+   "classs": 4,
+   "droppers": [
+    {
+     "chance": 1.2,
+     "npc": 5828
+    }
+   ],
+   "name": "Mark of the Pack Leader",
+   "quality": 3
+  },
+  "286978": {
+   "classs": 4,
+   "droppers": [
+    {
+     "chance": 2.7,
+     "npc": 250689
+    },
+    {
+     "chance": 2.8,
+     "npc": 255109
+    }
+   ],
+   "name": "Rotmender's Garb",
+   "quality": 3
+  },
+  "286979": {
+   "classs": 4,
+   "droppers": [
+    {
+     "chance": 2.9,
+     "npc": 250629
+    }
+   ],
+   "name": "Rotmender's Gloves",
+   "quality": 3
+  },
+  "286980": {
+   "classs": 4,
+   "droppers": [
+    {
+     "chance": 7.8,
+     "npc": 250620
+    },
+    {
+     "chance": 2.4,
+     "npc": 250650
+    },
+    {
+     "chance": 7.1,
+     "npc": 250651
+    }
+   ],
+   "name": "Rotmender's Sash",
+   "quality": 3
+  }
+ },
  "zones": {
   "1": {
    "name": "Dun Morogh",

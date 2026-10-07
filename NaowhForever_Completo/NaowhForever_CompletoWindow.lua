@@ -524,6 +524,7 @@ local function DropEnter(row)
     GameTooltip:SetOwner(row, "ANCHOR_RIGHT")
     GameTooltip:SetItemByID(row.item[1])
     GameTooltip:AddLine(" ")
+    if R.NewInForever(row.item) then GameTooltip:AddLine(Parts.ForeverLine()) end
     if row.tick:IsShown() then GameTooltip:AddLine("This rare dropped it for you.", 0.25, 0.82, 0.25) end
     GameTooltip:AddLine("Right-click: Wowhead link", T.accentSoft.r, T.accentSoft.g, T.accentSoft.b)
     GameTooltip:Show()
@@ -577,7 +578,7 @@ local function SetDrop(row, item, npc, stripe)
     row.name:SetPoint("LEFT", row.icon, "RIGHT", 6, 0)
     row.icon:SetTexture(C_Item.GetItemIconByID(item[1]) or 134400)
     local c = ITEM_QUALITY_COLORS and ITEM_QUALITY_COLORS[item[2]] or T.fg
-    row.name:SetText(item[4])
+    row.name:SetText(R.NewInForever(item) and item[4] .. Parts.ForeverInline(12, Parts.CARD_DROP) or item[4])
     row.name:SetTextColor(c.r, c.g, c.b)
     row.name:SetWidth(row:GetWidth() - (St.INDENT + LEVEL_W + 16 + DROP_ICON + 6) - STATUS_W - PIN_RIGHT)
     local chance = item[3]

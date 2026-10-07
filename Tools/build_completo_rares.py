@@ -6,16 +6,24 @@ the rare ones have classification 4 (rare) or 2 (rare elite). Each rare's page
 build_completo_quests.py finds the mobs whose drop begins a quest.
 
 The same creature page's "drops" listview gives its loot; only the special drops are kept:
-rare and epic items, and recipes, its own (Wowhead's specificDrop) first.
+rare and epic items, recipes, and what is new in Forever (Tools/forever_new.json, marked with
+Forever's sign in the addon), its own (Wowhead's specificDrop) first.
+
+A creature page lags behind its items' pages: the new rare item sets (the Barrens' Blessing of
+Kalimdor) are on the items' "dropped-by" lists before their rares' pages list them. So each
+piece of Forever's new item sets (all but the PvP ones) is read too, and added to the drops of
+the rares that drop it.
 
 Answers are cached in completo_rares.json ({ "zones": { area: [rows] }, "npcs": { id: spots },
-"drops": { id: [drops] } }), so a run that dies on Wowhead's rate limit resumes where it stopped. --offline writes from the
+"drops": { id: [drops] }, "setpieces": { item: { name, quality, classs, droppers } } }), so a
+run that dies on Wowhead's rate limit resumes where it stopped. --offline writes from the
 cache only.
 
 Usage: python Tools/build_completo_rares.py [--offline]
 """
 import json
 import math
+import re
 import sys
 import time
 import urllib.error
@@ -55,6 +63,45 @@ SKULL_LEVEL = 9999
 LOOT_QUALITY = 3
 RECIPE = 9
 MAX_LOOT = 8
+# New in Forever: its own of any quality (quest items too), a world drop from green up (not the
+# new food and water).
+NEW_ITEMS = Path(__file__).resolve().parent / "forever_new.json"
+NEW_WORLD_QUALITY = 2
+# Forever's own item sets start at this ID; the PvP ones are left out by name.
+NEW_SETS_FROM = 2000
+PVP_SET = re.compile(r"^(Champion|Warlord|Field Marshal|Lieutenant Commander)'s ")
+
+
+def new_items():
+    data = load(NEW_ITEMS)
+    return set(data.get("items", []))
+
+
+def new_set_pieces():
+    """The pieces of Forever's new item sets, PvP sets left out."""
+    page = wowhead.fetch(f"{wowhead.WOWHEAD}/item-sets")
+    start = page.index("=", page.index("var itemSets")) + 1
+    sets, _ = json.JSONDecoder().raw_decode(page[start:].lstrip())
+    return sorted({piece for s in sets if s["id"] >= NEW_SETS_FROM and not PVP_SET.match(s.get("name") or "")
+                   for piece in s.get("pieces") or []})
+
+
+def fetch_piece(item):
+    """{ name, quality, classs, droppers: [{ npc, chance }] } from the item's page."""
+    page = wowhead.fetch(f"{wowhead.WOWHEAD}/item={item}")
+    info = {"name": "", "quality": 0, "classs": None, "droppers": []}
+    for m in re.finditer(r"WH\.Gatherer\.addData\(3, \d+, (\{.*?\})\);", page):
+        entry = json.loads(m.group(1)).get(str(item))
+        if entry:
+            info["name"], info["quality"] = entry.get("name_enus") or "", entry.get("quality") or 0
+    classs = re.search(r'"classs":(\d+)', page)
+    info["classs"] = int(classs.group(1)) if classs else None
+    if "id: 'dropped-by'" in page:
+        for row in wowhead.listview(page, "dropped-by"):
+            outof = row.get("outof") or 0
+            chance = 100 * (row.get("count") or 0) / outof if outof else 0
+            info["droppers"].append({"npc": row["id"], "chance": round(chance, 1)})
+    return info
 
 
 def fetch_drops(npc):
@@ -72,12 +119,32 @@ def fetch_drops(npc):
     return out
 
 
-def loot_of(drops):
-    """(shown, more): its special drops (LOOT_QUALITY or better, or recipes), its own first, then
-    by quality and chance, at most MAX_LOOT; and how many more there are."""
-    special = [d for d in drops if d["quality"] >= LOOT_QUALITY or d["classs"] == RECIPE]
-    special.sort(key=lambda d: (not d["specific"], -d["quality"], -d["chance"], d["name"]))
-    return special[:MAX_LOOT], max(0, len(special) - MAX_LOOT)
+def special(d, new):
+    if d["id"] in new:
+        return d["specific"] or d["quality"] >= NEW_WORLD_QUALITY
+    return d["quality"] >= LOOT_QUALITY or d["classs"] == RECIPE
+
+
+def loot_of(drops, new):
+    """(shown, more): its special drops (LOOT_QUALITY or better, recipes, or new in Forever), its
+    own first, then by quality and chance, at most MAX_LOOT; and how many more there are."""
+    picked = [d for d in drops if special(d, new)]
+    picked.sort(key=lambda d: (not d["specific"], -d["quality"], -d["chance"], d["name"]))
+    return picked[:MAX_LOOT], max(0, len(picked) - MAX_LOOT)
+
+
+def with_set_pieces(drops, npc, pieces):
+    """The rare's drops and the set pieces it drops that its page does not list yet."""
+    have = {d["id"] for d in drops}
+    out = list(drops)
+    for item, info in pieces.items():
+        if int(item) in have or not info:
+            continue
+        for dropper in info["droppers"]:
+            if dropper["npc"] == npc:
+                out.append({"id": int(item), "name": info["name"], "quality": info["quality"],
+                            "chance": dropper["chance"], "specific": True, "classs": info["classs"]})
+    return out
 
 
 def fetch_zone(area):
@@ -166,6 +233,7 @@ def main():
     cache.setdefault("zones", {})
     cache.setdefault("npcs", {})
     cache.setdefault("drops", {})
+    cache.setdefault("setpieces", {})
     failed = []
     if not offline:
         for area in ZONE_MAP:
@@ -201,6 +269,18 @@ def main():
                 cache["drops"][str(npc)] = fetch_drops(npc)
             except urllib.error.HTTPError as e:
                 failed.append(f"drops {npc}: {e}")
+                continue
+            save(CACHE, cache)
+            if n % 25 == 0:
+                print(f"  {n}/{len(todo)}")
+            time.sleep(GAP)
+        todo = [i for i in new_set_pieces() if str(i) not in cache["setpieces"]]
+        print(f"{len(todo)} set piece pages to fetch")
+        for n, item in enumerate(todo, 1):
+            try:
+                cache["setpieces"][str(item)] = fetch_piece(item)
+            except urllib.error.HTTPError as e:
+                failed.append(f"set piece {item}: {e}")
                 continue
             save(CACHE, cache)
             if n % 25 == 0:
@@ -279,19 +359,22 @@ def write(cache):
     lines += [
         "}",
         "",
-        "-- npcID = its special drops (rare and epic items, recipes), its own first, then the best and",
-        "-- likeliest, each { itemID, quality, chance (percent), name }; more = how many more there",
-        "-- are. A rare with none has no entry.",
+        "-- npcID = its special drops (rare and epic items, recipes, what is new in Forever), its own",
+        "-- first, then the best and likeliest, each { itemID, quality, chance (percent), name, 1 when",
+        "-- new in Forever }; more = how many more there are. A rare with none has no entry.",
         "D.Loot = {",
     ]
+    new = new_items()
     for npc in sorted(rares):
         drops = cache.get("drops", {}).get(str(npc))
         if drops is None:
             continue
-        shown, more = loot_of(drops)
+        drops = with_set_pieces(drops, npc, cache.get("setpieces", {}))
+        shown, more = loot_of(drops, new)
         if not shown:
             continue
-        items = ", ".join(f"{{ {d['id']}, {d['quality']}, {d['chance']:g}, {lua_string(d['name'])} }}" for d in shown)
+        items = ", ".join(f"{{ {d['id']}, {d['quality']}, {d['chance']:g}, {lua_string(d['name'])}"
+                          f"{', 1' if d['id'] in new else ''} }}" for d in shown)
         parts = [items] + ([f"more = {more}"] if more else [])
         lines.append(f"    [{npc}] = {{ {', '.join(parts)} }},")
     lines.append("}")

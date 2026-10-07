@@ -241,12 +241,15 @@ function R.Spots(npc) return D.Rares[npc][SPOTS] end
 -- stays where it spawns.
 function R.Trail(npc) return D.Rares[npc][TRAIL] end
 
--- Its special drops (D.Loot): rare and epic items and recipes, its own first, each { itemID,
--- quality, chance (percent), name }, and .more, how many more there are; nil for a rare with
--- none.
+-- Its special drops (D.Loot): rare and epic items, recipes and what is new in Forever, its own
+-- first, each { itemID, quality, chance (percent), name, 1 when new in Forever }, and .more,
+-- how many more there are; nil for a rare with none.
 function R.Loot(npc) return D.Loot and D.Loot[npc] end
 
-local ID, QUALITY, CHANCE, ITEM_NAME = 1, 2, 3, 4
+local ID, QUALITY, CHANCE, ITEM_NAME, NEW = 1, 2, 3, 4, 5
+
+-- Whether a drop (R.Loot's entry) is new in WoW Forever: marked with Forever's sign.
+function R.NewInForever(item) return item[NEW] == 1 end
 
 local function QualityColor(quality)
     local c = ITEM_QUALITY_COLORS and ITEM_QUALITY_COLORS[quality]
@@ -255,7 +258,8 @@ local function QualityColor(quality)
 end
 
 -- Its special drops as tooltip lines, under a blank line: each item with its icon in its
--- quality's colour and its chance, then how many more. Nothing for a rare with none.
+-- quality's colour, Forever's sign on one new in Forever, and its chance, then how many more.
+-- Nothing for a rare with none.
 function R.AddLoot(tooltip, npc)
     local loot = R.Loot(npc)
     if not loot then return end
@@ -267,6 +271,7 @@ function R.AddLoot(tooltip, npc)
         local r, g, b = QualityColor(item[QUALITY])
         local chance = item[CHANCE] >= 1 and ("%d%%"):format(math.floor(item[CHANCE] + 0.5))
             or ("%.1f%%"):format(item[CHANCE])
+        if item[NEW] == 1 then name = name .. ns.Shared.Parts.ForeverInline(12) end
         if R.Dropped(npc, item[ID]) then name = name .. "  |cff3fd13f(you got it)|r" end
         tooltip:AddDoubleLine(name, chance, r, g, b, 0.62, 0.62, 0.62)
     end

@@ -159,8 +159,9 @@ local function Fixture(settings, units)
     ns.cards = {}
     local page = { Window = function() end, Card = function(_, spec) ns.cards[spec.id] = spec end }
     ns.Shared = { Settings = { Page = function() return page end }, Style = { PIN = "pin" },
+        -- Forever's sign, as text.
         -- The pin button: its click.
-        Parts = { IconButton = function(_, onClick)
+        Parts = { ForeverInline = function() return " <inf>" end, IconButton = function(_, onClick)
             local button = Region()
             button.OnClick = onClick
             return button
@@ -177,7 +178,8 @@ local function Fixture(settings, units)
         },
         -- Prince Raze: a blue of his own, a recipe, and more; Mist Howler: nothing special.
         Loot = {
-            [10647] = { { 4454, 3, 22.2, "Talon of Vultros" }, { 5971, 2, 0.4, "Pattern: Feathered Cape" }, more = 3 },
+            [10647] = { { 4454, 3, 22.2, "Talon of Vultros" }, { 5971, 2, 0.4, "Pattern: Feathered Cape" },
+                { 285330, 3, 4.3, "Signet of the Zhevra", 1 }, more = 3 },
         },
     }
     ns.ThemeTint = function() return nil end
@@ -495,6 +497,8 @@ do
         and talon[5] == 0.87, "its tooltip lists its loot: icon, name in its quality's colour, chance")
     Check(Line("Pattern: Feathered Cape")[2] == "0.4%", "a rare chance keeps its decimal")
     Check(Line("And 3 more"), "and says how many more")
+    Check(Line("Signet of the Zhevra <inf>") and not Line("Talon of Vultros <inf>"),
+        "Forever's sign on a drop new in Forever, none on the others")
     star:OnMouseLeave()
     howler:OnMouseEnter()
     Check(not Line("Drops"), "a rare with nothing special has no Drops section")
