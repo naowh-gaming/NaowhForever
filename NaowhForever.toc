@@ -1,8 +1,8 @@
-## Interface: 120000, 120001, 120005, 120007, 120100, 16001
+## Interface: 16001
 ## Title: |cff0091edNaowh|r Forever
 ## Notes: Naowh's Forever companion: QoL, the Top Bar and the window every module shares.
 ## Author: Naowh
-## Version: 0.5.23-beta
+## Version: 1.0.5
 ## OptionalDeps: NaowhUI_Media, BigWigs, DBM-Core
 ## SavedVariables: NaowhForeverDB, NaowhUI_SmartRemindersDB
 ## Group: NaowhForever
@@ -19,6 +19,10 @@ Locales\ruRU.lua [AllowLoadTextLocale ruRU]
 # Core first: theme, chrome primitives, the DB and profiles -- everything later files
 # hang off.
 Core\NaowhForever_Core.lua
+Core\NaowhForever_Presets.lua
+
+# ns.SenderIs: whether an addon message's sender is the player its GUID names. Needs the Core.
+Core\NaowhForever_Senders.lua
 
 # ns.PlaceWaypoint: a waypoint (or TomTom's) for any module. Needs the Core.
 Core\NaowhForever_Waypoint.lua
@@ -67,7 +71,6 @@ QoL\NaowhForever_DeathRelease.lua
 QoL\NaowhForever_StealthReminder.lua
 QoL\NaowhForever_CoTank.lua
 QoL\NaowhForever_DeleteConfirm.lua
-QoL\NaowhForever_EnchantReplace.lua
 QoL\NaowhForever_Durability.lua
 QoL\NaowhForever_TalentPoints.lua
 QoL\NaowhForever_CombatAlert.lua
@@ -81,7 +84,6 @@ QoL\NaowhForever_GlobalCopy.lua
 QoL\NaowhForever_SlashCommands.lua
 QoL\NaowhForever_HideClutter.lua
 QoL\NaowhForever_Crosshair.lua
-QoL\NaowhForever_FPS.lua
 QoL\NaowhForever_MouseRing.lua
 QoL\NaowhForever_PetTracker.lua
 QoL\NaowhForever_EquipmentReminder.lua
@@ -90,12 +92,15 @@ QoL\NaowhForever_ChatZones.lua
 QoL\NaowhForever_GcdTracker.lua
 QoL\NaowhForever_FocusCastBar.lua
 QoL\NaowhForever_Performance.lua
+QoL\NaowhForever_Defaults.lua
 QoL\NaowhForever_LootFeed.lua
 QoL\NaowhForever_AuctionPrices.lua
 QoL\NaowhForever_XPTicker.lua
 QoL\NaowhForever_XPBar.lua
 QoL\NaowhForever_GroupXP.lua
+QoL\NaowhForever_PlayerHistory.lua
 QoL\NaowhForever_Restock.lua
+QoL\NaowhForever_FoodBar.lua
 QoL\NaowhForever_BagSpace.lua
 QoL\NaowhForever_ScrapMarker.lua
 QoL\NaowhForever_ScrapList.lua
@@ -113,6 +118,7 @@ QoL\NaowhForever_Trainer.lua
 TopBar\NaowhForever_TopBar.lua
 QoL\NaowhForever_FlightData.lua
 QoL\NaowhForever_Flight.lua
+QoL\NaowhForever_Waypoints.lua
 QoL\NaowhForever_QuizData.lua
 QoL\NaowhForever_Quiz.lua
 QoL\NaowhForever_AimTrainer.lua

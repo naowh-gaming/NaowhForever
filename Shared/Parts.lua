@@ -25,7 +25,7 @@ local FOREVER_MIN, FOREVER_SHARE = 7, 0.32
 local MARK_SIZE, MARK_IN = 13, 2
 local SHADE_SHARE, SHADE_ALPHA = 0.5, 0.8
 -- The star 1px over the line's middle (a negative drop raises it), level with the item level's
--- outlined digits across the icon; a tooltip's 1px drop left it low (seen in game, 3 Oct 2026).
+-- outlined digits across the icon; 2px left it high beside a two-digit level (7 Oct 2026).
 local MARK_STAR_DROP = -1
 Parts.MARK_IN = MARK_IN
 local MARK_UP = 14   -- the upgrade arrow, square, in the top-right corner
@@ -66,6 +66,16 @@ function Parts.HudText(fs, shadow)
         fs:SetShadowColor(HUD_SHADOW.r, HUD_SHADOW.g, HUD_SHADOW.b, s.a)
     end
     return fs
+end
+
+Parts.HUD_OUTLINES = { { NONE = "None", [""] = "Shadow", OUTLINE = "Outline", THICKOUTLINE = "Thick Outline" },
+    { "NONE", "", "OUTLINE", "THICKOUTLINE" } }
+
+-- font is a SharedMedia name ("" for the Addon Font); outline one of HUD_OUTLINES. Shadow ("")
+-- gets the HUD shadow for background (a Parts.HudBackdrop mode, or nil for the card's).
+function Parts.HudFont(fs, font, size, outline, background)
+    fs:SetFont(ns.UI.FontPath(font), size, outline == "NONE" and "" or outline)
+    return Parts.HudText(fs, outline == "" and (background or "card") or false)
 end
 
 Parts.HUD_BACKGROUNDS = { { card = "Card", soft = "Soft", none = "None" }, { "card", "soft", "none" } }
@@ -315,7 +325,8 @@ function Parts.Fraction(part, whole)
     return text
 end
 
-local coins = {}
+local coins, coinsKept = {}, 0
+local COINS_KEPT = 500
 local GOLD, SILVER = 10000, 100   -- copper in a gold coin, in a silver one
 
 -- The amount with the game's coin icons ("1g 50s 25c"), made once each. With compact, only its
@@ -328,8 +339,13 @@ function Parts.Coins(copper, compact)
     end
     local text = coins[copper]
     if not text then
+        if coinsKept >= COINS_KEPT then
+            wipe(coins)
+            coinsKept = 0
+        end
         text = C_CurrencyInfo.GetCoinTextureString(copper)
         coins[copper] = text
+        coinsKept = coinsKept + 1
     end
     return text
 end
@@ -446,6 +462,33 @@ function Parts.ItemBadge(set, corner, atlas, color)
     if color then badge.art:SetVertexColor(color.r, color.g, color.b) end
     badge:Hide()
     return badge
+end
+
+local PILL_PAD, PILL_FILL = 4, St.TAB_FILL
+
+function Parts.Pill(parent, size, color)
+    local pill = CreateFrame("Frame", nil, parent)
+    pill.fill = ns.Solid(pill, "BACKGROUND", color, PILL_FILL)
+    pill.fill:SetAllPoints()
+    pill.edge = ns.Border(pill, color)
+    pill.text = ns.Font(pill, size, nil, color)
+    pill.text:SetPoint("CENTER")
+    pill:SetHeight(size + PILL_PAD)
+    return pill
+end
+
+function Parts.ColorPill(pill, color)
+    if pill.color == color then return end
+    pill.color = color
+    pill.fill:SetColorTexture(color.r, color.g, color.b, PILL_FILL)
+    pill.edge:SetColor(color.r, color.g, color.b)
+    pill.text:SetTextColor(color.r, color.g, color.b)
+end
+
+function Parts.SetPill(pill, text)
+    pill.text:SetText(text)
+    pill:SetWidth(math.ceil(pill.text:GetStringWidth()) + 2 * PILL_PAD)
+    return pill:GetWidth()
 end
 
 -- The tooltip's owner set, for a hover card; nothing while a menu is open, so moving the mouse

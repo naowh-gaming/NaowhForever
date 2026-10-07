@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
 --  NaowhForever_Badges.lua -- supporter badges: the Naowh Forever N next to the name of
---  Naowh, a Developer, a Moderator or a Legendary Patron in chat, a card when you hover it,
+--  Naowh, a Developer, a Moderator, EllesmereUI's creator or a Legendary Patron in chat, a card when you hover it,
 --  a plate over their player tooltip, and a banner when one joins your group. Each part has its
 --  own setting in QoL > Character: badges, card and tooltip start on so everyone sees them,
 --  the banner starts off (Naowh's call). /nf badges preview puts one on your own name
@@ -51,6 +51,15 @@ local TIERS = {
         chat = MEDIA .. "BadgeModeratorChat.tga",
         large = MEDIA .. "BadgeModeratorLarge.tga",
         sound = "UI_PVP_HONOR_PRESTIGE_RANK_UP",
+    },
+    ellesmere = {
+        title = "EllesmereUI Creator",
+        about = "Makes EllesmereUI.",
+        label = "Ellesmere, creator of EllesmereUI",
+        color = { r = 0x0e / 255, g = 0xd2 / 255, b = 0x9b / 255 },
+        chat = MEDIA .. "BadgeEllesmereChat.tga",
+        large = MEDIA .. "BadgeEllesmereLarge.tga",
+        sound = "UI_72_ARTIFACT_FORGE_ACTIVATE_FINAL_TIER",
     },
     legendary = {
         title = "Legendary Patron",
@@ -340,7 +349,7 @@ end
 --  title alone (the badge says it is Naowh Forever's), never cut off.
 -------------------------------------------------------------------------------
 local PLATE_H, PLATE_ICON, PLATE_GAP, PLATE_PAD = 26, 18, 2, 6
-local plate
+local plate, plateRow
 
 local function HidePlate()
     if plate then plate:Hide() end
@@ -350,6 +359,10 @@ end
 -- middle of the game's own tooltip building, and with our hook on it the game's unit colouring
 -- was reported failing on secret values as tainted by Naowh Forever.
 local function PlateUpdate()
+    if plateRow then
+        if not ns.Shared.Roster.Showing(plateRow) then plate:Hide() end
+        return
+    end
     local data = GameTooltip:IsShown() and GameTooltip:GetPrimaryTooltipData()
     local guid = data and data.guid
     if not guid or Secret(guid) or guid ~= plate.guid then plate:Hide() end
@@ -377,9 +390,9 @@ local function BuildPlate()
     plate:SetScript("OnUpdate", PlateUpdate)
 end
 
-local function ShowPlate(tooltip, guid, entry, tier)
+local function ShowPlate(tooltip, guid, entry, tier, row)
     if not plate then BuildPlate() end
-    plate.guid = guid
+    plate.guid, plateRow = guid, row
     Paint(plate, tier)
     local c = tier.color
     local title = TitleOf(entry, tier)
@@ -406,6 +419,13 @@ local function AddTooltipLine(tooltip, data)
     else
         tooltip:AddLine(tier.tooltipLine)
     end
+end
+
+local function AddRosterPlate(_, guid, _, row, anchor)
+    if not Setting("badgeTooltip") then return end
+    local entry = EntryOf(guid)
+    local tier = TierOf(entry)
+    if tier then ShowPlate(anchor, guid, entry, tier, row) end
 end
 
 -------------------------------------------------------------------------------
@@ -689,6 +709,7 @@ local function Apply()
     if Setting("badgeTooltip") and not tooltipHooked then
         tooltipHooked = true
         TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Unit, AddTooltipLine)
+        ns.Shared.Roster.AddTooltip(AddRosterPlate)
     end
 
     local banner = Setting("badgeBanner") == true
@@ -815,7 +836,7 @@ function ns.BadgesCommand(arg)
         QueueToast(previewEntry or PreviewEntry(PREVIEW_TIER), FullName("player"), IsInRaid())
     else
         ns.Print("/nf badges id | preview [" .. (PATRONS and "legendary|" or "")
-            .. "moderator|developer|naowh|none] | preview off | toast")
+            .. "moderator|developer|ellesmere|naowh|none] | preview off | toast")
     end
 end
 
