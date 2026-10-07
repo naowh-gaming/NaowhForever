@@ -370,24 +370,27 @@ local function MayMark()
     return UnitIsGroupLeader("player") or UnitIsGroupAssistant("player")
 end
 
--- Mark Rare's mark on it, once per creature, where it has no mark yet: the mark's index, or nil.
+-- Mark Rare's mark on it, once per creature, where it has no mark yet and no one else tapped
+-- it: the mark's index, or nil.
 local function Mark(unit, guid)
     local marker = Marker()
     if not marker or marked[guid] or not MayMark() then return nil end
-    local index = GetRaidTargetIndex(unit)
-    if Secret(index) or index then return nil end
+    local index, denied = GetRaidTargetIndex(unit), UnitIsTapDenied(unit)
+    if Secret(index) or index or Secret(denied) or denied then return nil end
     marked[guid] = true
     SetRaidTarget(unit, marker)
     return marker
 end
 
 -- Alerts once in AGAIN_AFTER seconds per rare; one you killed only with Alert for Killed Rares.
+local function Due(key, npc)
+    if alerted[key] and GetTime() - alerted[key] < AGAIN_AFTER then return false end
+    return not (npc and R.Known(npc) and R.Killed(npc) and not S.Get("rareAlertKilled"))
+end
+
 local function Alert(key, seen)
-    local now = GetTime()
-    if alerted[key] and now - alerted[key] < AGAIN_AFTER then return end
-    local npc = seen.npc
-    if npc and R.Known(npc) and R.Killed(npc) and not S.Get("rareAlertKilled") then return end
-    alerted[key] = now
+    if not Due(key, seen.npc) then return end
+    alerted[key] = GetTime()
     ShowAlert(seen)
 end
 
@@ -404,6 +407,7 @@ local function Check(unit)
     local name, level = UnitName(unit), UnitLevel(unit)
     if Secret(name) then return end
     if Secret(level) then level = nil end
+    if not Due(npc, npc) then return end
     local skull = Mark(unit, guid)
     Alert(npc, { name = name, level = level, npc = npc, unit = unit, elite = kind == "rareelite", marked = skull })
 end

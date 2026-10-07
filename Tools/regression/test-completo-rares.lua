@@ -3,7 +3,8 @@
 -- yours and not when someone else tapped it; a looted corpse counts; Shift-click ticks one off.
 -- Rare Alerts: a rare's nameplate brings the alert and its mark (a skull, or another picked), once per rare in a while; not
 -- for a dead or friendly one, nor one you killed unless Alert for Killed Rares; no skull where it has
--- a mark or in a raid without lead or assist; nothing is registered while it is off.
+-- a mark, on one someone else tapped or in a raid without lead or assist; Unlock Mode's preview shows
+-- the picked mark; nothing is registered while it is off.
 
 local Load = dofile("Tools/regression/load_files.lua")
 
@@ -364,10 +365,11 @@ do
     env.Advance(301)
     env.Fire("NAME_PLATE_UNIT_ADDED", "nameplate2")
     Check(not ns.alert:IsShown(), "a rare you killed does not alert")
-    Check(#env.marks == 2, "but it still gets a skull")
+    Check(#env.marks == 1, "nor gets a skull")
     settings.rareAlertKilled = true
     env.Fire("NAME_PLATE_UNIT_ADDED", "nameplate2")
     Check(ns.alert:IsShown() and ns.alert.about.text:find("killed before", 1, true), "with Alert for Killed Rares it does")
+    Check(#env.marks == 2, "and the skull goes on it")
 
     ns.alert:Hide()
     units.nameplate3 = { guid = Guid(5555), name = "Not A Rare", kind = "normal" }
@@ -391,6 +393,10 @@ do
     env.Fire("NAME_PLATE_UNIT_ADDED", "nameplate6")
     Check(#env.marks == 3 and env.marks[3][2] == 5, "Mark Rare: the moon when it is picked")
     Check(ns.alert.skull.texture == "Interface\\TargetingFrame\\UI-RaidTargetingIcon_5", "the card shows the moon")
+    units.nameplate8 = { guid = Guid(9997), name = "Tapped Rare", kind = "rare", denied = true }
+    env.Fire("NAME_PLATE_UNIT_ADDED", "nameplate8")
+    Check(ns.alert.name.text:find("Tapped Rare", 1, true) and #env.marks == 3,
+        "a rare someone else tapped alerts, but gets no mark")
     ns.alert:Hide()
     ns.ShowRaidReminderAnchorConfig()
     Check(ns.alert:IsShown() and ns.alert.skull.shown and ns.alert.skull.texture == "Interface\\TargetingFrame\\UI-RaidTargetingIcon_5",
