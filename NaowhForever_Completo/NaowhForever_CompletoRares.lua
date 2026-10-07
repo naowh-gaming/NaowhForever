@@ -217,6 +217,41 @@ function R.Spots(npc) return D.Rares[npc][SPOTS] end
 -- stays where it spawns.
 function R.Trail(npc) return D.Rares[npc][TRAIL] end
 
+-- What it drops (D.Loot): its own loot worth naming, likeliest first, each { itemID, quality,
+-- chance (percent), name }, and .world, how many random world drops it also gives; nil when
+-- nothing is known.
+function R.Loot(npc) return D.Loot and D.Loot[npc] end
+
+local ID, QUALITY, CHANCE, ITEM_NAME = 1, 2, 3, 4
+
+local function QualityColor(quality)
+    local c = ITEM_QUALITY_COLORS and ITEM_QUALITY_COLORS[quality]
+    if c then return c.r, c.g, c.b end
+    return 1, 1, 1
+end
+
+-- Its loot as tooltip lines, under a blank line: each item with its icon in its quality's
+-- colour and its chance, then the world drops as one line. Nothing for a rare with none known.
+function R.AddLoot(tooltip, npc)
+    local loot = R.Loot(npc)
+    if not loot then return end
+    tooltip:AddLine(" ")
+    tooltip:AddLine("Drops", 1, 0.82, 0)
+    for _, item in ipairs(loot) do
+        local icon = C_Item.GetItemIconByID and C_Item.GetItemIconByID(item[ID])
+        local name = icon and ("|T%s:14:14|t %s"):format(icon, item[ITEM_NAME]) or item[ITEM_NAME]
+        local r, g, b = QualityColor(item[QUALITY])
+        local chance = item[CHANCE] >= 1 and ("%d%%"):format(math.floor(item[CHANCE] + 0.5))
+            or ("%.1f%%"):format(item[CHANCE])
+        tooltip:AddDoubleLine(name, chance, r, g, b, 0.62, 0.62, 0.62)
+    end
+    if loot.world then
+        local r, g, b = QualityColor(2)
+        tooltip:AddLine(("%s%d random world drops of its level"):format(#loot > 0 and "And " or "",
+            loot.world), r, g, b)
+    end
+end
+
 -- Your rares that spawn on the map. Built once; not to be changed.
 local byMap
 

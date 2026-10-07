@@ -5,8 +5,11 @@ the rare ones have classification 4 (rare) or 2 (rare elite). Each rare's page
 (/forever/npc=<id>) then gives where it spawns (g_mapperData), the same way
 build_completo_quests.py finds the mobs whose drop begins a quest.
 
-Answers are cached in completo_rares.json ({ "zones": { area: [rows] }, "npcs": { id: spots } }),
-so a run that dies on Wowhead's rate limit resumes where it stopped. --offline writes from the
+The same creature page's "drops" listview gives its loot: what it drops itself (Wowhead's
+specificDrop) worth showing, and how many random world drops (green or better) it also gives.
+
+Answers are cached in completo_rares.json ({ "zones": { area: [rows] }, "npcs": { id: spots },
+"drops": { id: [drops] } }), so a run that dies on Wowhead's rate limit resumes where it stopped. --offline writes from the
 cache only.
 
 Usage: python Tools/build_completo_rares.py [--offline]
@@ -45,6 +48,37 @@ KEEP = ("id", "name", "minlevel", "maxlevel", "classification", "react", "type")
 EVENT_ONLY = {14697, 16379, 16380}
 # Wowhead's level for a creature shown as "??" (a boss level).
 SKULL_LEVEL = 9999
+
+
+# Loot worth naming: the rare's own drops of this quality or better, or quest items (class 12);
+# at most MAX_LOOT, likeliest first.
+LOOT_QUALITY = 2
+QUEST_ITEM = 12
+MAX_LOOT = 8
+
+
+def fetch_drops(npc):
+    """[{ id, name, quality, chance (percent), specific, classs }] from the rare's page."""
+    page = wowhead.fetch(f"{wowhead.WOWHEAD}/npc={npc}")
+    out = []
+    for row in wowhead.listview(page, "drops"):
+        mode = (row.get("modes") or {}).get("0") or {}
+        chance = row.get("percentOverride")
+        if chance is None:
+            chance = 100 * mode["count"] / mode["outof"] if mode.get("outof") and mode.get("count", -1) > 0 else 0
+        out.append({"id": row["id"], "name": row.get("name") or "", "quality": row.get("quality") or 0,
+                    "chance": round(chance, 1), "specific": bool(row.get("specificDrop")),
+                    "classs": row.get("classs")})
+    return out
+
+
+def loot_of(drops):
+    """(own, world): the rare's own drops worth naming, likeliest first, and how many random
+    world drops of LOOT_QUALITY or better it gives besides."""
+    own = [d for d in drops if d["specific"] and (d["quality"] >= LOOT_QUALITY or d["classs"] == QUEST_ITEM)]
+    own.sort(key=lambda d: (-d["chance"], -d["quality"], d["name"]))
+    world = sum(1 for d in drops if not d["specific"] and d["quality"] >= LOOT_QUALITY)
+    return own[:MAX_LOOT], world
 
 
 def fetch_zone(area):
@@ -132,6 +166,7 @@ def main():
     cache = load(CACHE) or {}
     cache.setdefault("zones", {})
     cache.setdefault("npcs", {})
+    cache.setdefault("drops", {})
     failed = []
     if not offline:
         for area in ZONE_MAP:
@@ -154,6 +189,19 @@ def main():
                 cache["npcs"][str(npc)] = fetch_npc(npc)
             except urllib.error.HTTPError as e:
                 failed.append(f"npc {npc}: {e}")
+                continue
+            save(CACHE, cache)
+            if n % 25 == 0:
+                print(f"  {n}/{len(todo)}")
+            time.sleep(GAP)
+        todo = sorted({r["id"] for z in cache["zones"].values() for r in z["rares"]
+                       if str(r["id"]) not in cache["drops"]})
+        print(f"{len(todo)} rare pages to fetch for loot")
+        for n, npc in enumerate(todo, 1):
+            try:
+                cache["drops"][str(npc)] = fetch_drops(npc)
+            except urllib.error.HTTPError as e:
+                failed.append(f"drops {npc}: {e}")
                 continue
             save(CACHE, cache)
             if n % 25 == 0:
@@ -229,6 +277,24 @@ def write(cache):
         lines.append(f"    [{npc}] = {{ {lua_string(r['name'])}, {low}, {high}, "
                      f"{1 if r.get('classification') == RARE_ELITE else 0}, {a}, {h}, {map_id}, "
                      f"{flat(spots)}{way} }},")
+    lines += [
+        "}",
+        "",
+        "-- npcID = what it drops: its own loot worth naming, likeliest first, each { itemID, quality,",
+        "-- chance (percent), name }; world = how many random world drops (green or better) it also",
+        "-- gives. A rare whose loot is not known has none.",
+        "D.Loot = {",
+    ]
+    for npc in sorted(rares):
+        drops = cache.get("drops", {}).get(str(npc))
+        if drops is None:
+            continue
+        own, world = loot_of(drops)
+        if not own and not world:
+            continue
+        items = ", ".join(f"{{ {d['id']}, {d['quality']}, {d['chance']:g}, {lua_string(d['name'])} }}" for d in own)
+        parts = ([items] if items else []) + ([f"world = {world}"] if world else [])
+        lines.append(f"    [{npc}] = {{ {', '.join(parts)} }},")
     lines.append("}")
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_bytes(("\r\n".join(lines) + "\r\n").encode("ascii", "replace"))

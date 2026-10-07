@@ -173,6 +173,11 @@ local function Fixture(settings, units)
             -- Patrols: a star on its way, three dots along it.
             [10647] = { "Prince Raze", 32, 32, 0, -1, -1, 1440, { 70.0, 20.0 }, { 68.0, 20.0, 70.0, 22.0, 72.0, 24.0 } },
         },
+        -- Prince Raze: two of his own, and random world drops; Mist Howler: world drops only.
+        Loot = {
+            [10647] = { { 4454, 3, 22.2, "Talon of Vultros" }, { 5971, 2, 0.4, "Feathered Cape" }, world = 3 },
+            [10644] = { world = 17 },
+        },
     }
     ns.ThemeTint = function() return nil end
     env.CreateFromMixins = function(...)
@@ -218,7 +223,13 @@ local function Fixture(settings, units)
     env.WorldMapFrame = { IsShown = function() return true end }
     local none = function() end
     env.IsShiftKeyDown = function() return env.shift == true end
-    env.GameTooltip = { SetOwner = none, SetText = none, AddLine = none, Show = none, Hide = none }
+    -- The tooltip's lines, as shown last.
+    env.tip = {}
+    env.GameTooltip = { SetOwner = function() env.tip = {} end, SetText = none, Show = none, Hide = none,
+        AddLine = function(_, text, r, g, b) env.tip[#env.tip + 1] = { text, nil, r, g, b } end,
+        AddDoubleLine = function(_, left, right, r, g, b) env.tip[#env.tip + 1] = { left, right, r, g, b } end }
+    env.ITEM_QUALITY_COLORS = { [2] = { r = 0.1, g = 1, b = 0 }, [3] = { r = 0, g = 0.44, b = 0.87 } }
+    env.C_Item = { GetItemIconByID = function(id) return 1000 + id end }
     function env.WorldMapFrame:AddDataProvider(provider)
         provider.GetMap = function() return map end
         env.provider = provider
@@ -468,7 +479,21 @@ do
     Check(dot.size < star.size and dot.levelIndex < star.levelIndex and not dot.mouse,
         "a trail's dots are smaller, under the star and take no mouse")
     Check(star.size > 18 and howler.Icon.alpha < 0.5, "the hovered rare's star is lit, the others faded")
+    local function Line(find)
+        for _, line in ipairs(env.tip) do
+            if tostring(line[1]):find(find, 1, true) then return line end
+        end
+    end
+    local talon = Line("Talon of Vultros")
+    Check(Line("Drops") and talon and talon[1] == "|T5454:14:14|t Talon of Vultros" and talon[2] == "22%"
+        and talon[5] == 0.87, "its tooltip lists its loot: icon, name in its quality's colour, chance")
+    Check(Line("Feathered Cape")[2] == "0.4%", "a rare chance keeps its decimal")
+    Check(Line("And 3 random world drops of its level"), "and counts its random world drops")
     star:OnMouseLeave()
+    howler:OnMouseEnter()
+    Check(Line("17 random world drops of its level")[1] == "17 random world drops of its level",
+        "a rare with only world drops says so")
+    howler:OnMouseLeave()
     Check(#env.worldMap.pins == 2 and #PinsOf(10647, "dot") == 0, "moving off the star takes its way away")
     Check(star.size == 18 and howler.Icon.alpha == 1, "and puts the others back")
     star:OnClick("RightButton")

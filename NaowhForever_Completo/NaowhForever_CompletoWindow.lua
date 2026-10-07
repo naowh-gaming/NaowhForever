@@ -415,6 +415,7 @@ local function RareEnter(row)
     elseif spots > 1 then
         GameTooltip:AddDoubleLine("Spawns at", ("%d spots"):format(spots), m.r, m.g, m.b, 1, 1, 1)
     end
+    R.AddLoot(GameTooltip, npc)
     GameTooltip:AddLine(" ")
     GameTooltip:AddLine((spots > 0 and "Pin: waypoint, the nearest spot    " or "")
         .. (record and "Shift-click: not killed" or "Shift-click: killed"),

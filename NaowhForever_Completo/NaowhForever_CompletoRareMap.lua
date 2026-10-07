@@ -141,6 +141,8 @@ function NaowhForeverRarePinMixin:OnMouseEnter()
     if others > 0 then
         GameTooltip:AddLine(("Spawns at %d more spots, shown smaller"):format(others), 0.62, 0.62, 0.62)
     end
+    R.AddLoot(GameTooltip, npc)
+    GameTooltip:AddLine(" ")
     GameTooltip:AddLine(focused == npc and "Click to let go of it." or "Click to focus it.",
         SoftBlue(0.3, 0.71, 0.96))
     GameTooltip:AddLine("Right-click for a waypoint.", SoftBlue(0.3, 0.71, 0.96))
