@@ -664,6 +664,10 @@ childInfo.skillLevel = 150
 Fire("SKILL_LINES_CHANGED")
 Advance(0.2)
 
+-- The Shopping List records the open profession's recipes once, when its list first settles.
+Fire("TRADE_SKILL_LIST_UPDATE")
+Advance(0.6)
+
 -- Ten seconds of browsing: the auction house loads items for its lists, the client sends list
 -- updates, and a price scan finishing redraws in a burst every two seconds.
 d = Calls("10 s browsing the AH", function()

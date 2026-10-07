@@ -1164,15 +1164,23 @@ local function Flush()
 end
 
 local events = CreateFrame("Frame")
-local learnAt = 0
+local learnAt, learned = 0, nil
 events:SetScript("OnEvent", function(_, event, a, b)
     if event == "TRADE_SKILL_SHOW" or event == "TRADE_SKILL_LIST_UPDATE" then
+        if event == "TRADE_SKILL_SHOW" then learned = nil end
         -- Once the list settles: it updates in bursts as a profession opens.
         learnAt = GetTime()
         local at = learnAt
         return C_Timer.After(0.5, function()
             if learnAt == at and On() then
-                Learn()
+                -- Every craft fires an update too: learn again only when the recipes changed.
+                local base = C_TradeSkillUI.GetBaseProfessionInfo and C_TradeSkillUI.GetBaseProfessionInfo()
+                local ids = C_TradeSkillUI.GetAllRecipeIDs and C_TradeSkillUI.GetAllRecipeIDs()
+                local key = (base and base.professionID or 0) .. ":" .. (ids and #ids or 0)
+                if key ~= learned then
+                    learned = key
+                    Learn()
+                end
                 if Render then Render() end
             end
         end)
