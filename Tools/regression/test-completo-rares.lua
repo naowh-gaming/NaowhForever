@@ -27,6 +27,7 @@ local function Region()
     function r:Hide() self.shown = false end
     function r:IsShown() return self.shown end
     function r:CreateTexture() return Region() end
+    function r:GetFrameLevel() return 5 end
     -- Where it is: its middle, in its own units (scale), and the screen's (UIParent's).
     r.scale = 1
     function r:SetScale(s) self.scale = s end
@@ -52,6 +53,7 @@ local function Fixture(settings, units)
             return t
         end }
     env.strsplit = Strsplit
+    env.CreateColor = function(r, g, b, a) return { r = r, g = g, b = b, a = a } end
     local now = 1000
     env.time = function() return now end
     env.GetTime = function() return now end
@@ -72,7 +74,7 @@ local function Fixture(settings, units)
             g.Play = function(group) group.playing = true end
             g.Stop = function(group) group.playing = false end
             g.CreateAnimation = function()
-                return { SetFromAlpha = none, SetToAlpha = none, SetDuration = none }
+                return { SetFromAlpha = none, SetToAlpha = none, SetDuration = none, SetSmoothing = none }
             end
             return g
         end
@@ -285,6 +287,7 @@ do
     Check(ns.alert.about.text == "Level 22, rare, not killed yet", "its level, kind, and that it is not killed yet")
     Check(ns.alert.model.unit == "nameplate1", "the portrait is its own model")
     Check(ns.alert.skull.shown, "the card shows the skull went on it")
+    Check(ns.alert.glow.pulse.playing, "its glowing border pulses")
     ns.alert.OnClick(ns.alert, "LeftButton")
     local wp = env.waypoints[1]
     Check(wp and wp[1] == "Mist Howler" and wp[2] == 1440 and wp[3] == 50 and wp[4] == 40,
@@ -301,6 +304,7 @@ do
     Check(#env.waypoints == 1, "letting go after a drag sets no waypoint")
     ns.alert.OnClick(ns.alert, "RightButton")
     Check(not ns.alert:IsShown(), "a right-click puts it away")
+    Check(not ns.alert.glow.pulse.playing, "and the glow stops")
     ns.alert:Show()
     Check(#env.marks == 1 and env.marks[1][2] == 8, "a skull goes on it")
     Check(env.sounds == 1, "a sound plays")

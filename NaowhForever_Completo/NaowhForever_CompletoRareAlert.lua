@@ -6,8 +6,8 @@
 --  A rare is seen when its nameplate comes up, when you mouse over it or target it, and
 --  where the game marks it on the minimap (a vignette, if Forever gives rares one). The
 --  alert is a card with the rare's portrait, its name, level and whether you killed it, on a
---  spot of its own (drag it there); it pulses, plays a sound and flashes the game's taskbar
---  icon. Click it for a waypoint to the rare; it goes after a while, on a
+--  spot of its own (drag it there); its border glows and pulses, it plays a sound and flashes
+--  the game's taskbar icon. Click it for a waypoint to the rare; it goes after a while, on a
 --  right-click, or once the rare is killed. Each rare alerts once in a while, not every time
 --  its nameplate comes back.
 --
@@ -25,7 +25,10 @@ local R = ns.Completo.Rares
 local SKULL = 8
 local SHOW_FOR = 20       -- seconds the alert stays up
 local AGAIN_AFTER = 300   -- seconds before the same rare alerts again
-local PULSES = 6
+-- The glow around the card: GLOW wide, from GLOW_ALPHA at the card's edge to nothing, in the
+-- theme's accent; it breathes between PULSE_LOW and full every PULSE seconds while shown.
+local GLOW, GLOW_ALPHA = 12, 0.55
+local PULSE, PULSE_LOW = 0.9, 0.25
 
 local function On()
     return S.Get("enabled") and S.Get("rareAlert")
@@ -194,16 +197,46 @@ local function BuildAlert()
     alert.hint = ns.Font(alert, 10, nil, T.accentSoft)
     alert.hint:SetPoint("BOTTOMLEFT", left, PAD - 2)
 
-    flash = alert:CreateAnimationGroup()
+    -- The glowing border: soft edges fading out from the card, and a thin line on its edge,
+    -- one frame under the card whose alpha breathes.
+    local glow = CreateFrame("Frame", nil, alert)
+    glow:SetPoint("TOPLEFT", -GLOW, GLOW)
+    glow:SetPoint("BOTTOMRIGHT", GLOW, -GLOW)
+    glow:SetFrameLevel(math.max(alert:GetFrameLevel() - 1, 0))
+    local c = T.accent
+    local edge, clear = CreateColor(c.r, c.g, c.b, GLOW_ALPHA), CreateColor(c.r, c.g, c.b, 0)
+    -- An edge from the card out to the glow's edge, edge colour at the card and clear outside;
+    -- left and right also take the corners.
+    -- x1, y1: its top left from the glow's; x2, y2: its bottom right from the glow's.
+    local function Side(x1, y1, x2, y2, orientation, from, to)
+        local t = glow:CreateTexture(nil, "BACKGROUND")
+        t:SetColorTexture(1, 1, 1, 1)
+        t:SetPoint("TOPLEFT", x1, y1)
+        t:SetPoint("BOTTOMRIGHT", x2, y2)
+        t:SetGradient(orientation, from, to)
+    end
+    -- Top: over the card's width, from its top edge up.
+    Side(GLOW, 0, -GLOW, GLOW + CARD_H, "VERTICAL", edge, clear)
+    -- Bottom: from its bottom edge down.
+    Side(GLOW, -(GLOW + CARD_H), -GLOW, 0, "VERTICAL", clear, edge)
+    -- Left and right: the full height, from its sides out.
+    Side(0, 0, -(GLOW + CARD_W), 0, "HORIZONTAL", clear, edge)
+    Side(GLOW + CARD_W, 0, 0, 0, "HORIZONTAL", edge, clear)
+    local line = CreateFrame("Frame", nil, glow)
+    line:SetPoint("TOPLEFT", alert, "TOPLEFT")
+    line:SetPoint("BOTTOMRIGHT", alert, "BOTTOMRIGHT")
+    line:SetFrameLevel(alert:GetFrameLevel() + 3)
+    ns.Border(line, c)
+    alert.glow = glow
+
+    flash = glow:CreateAnimationGroup()
     flash:SetLooping("BOUNCE")
-    flash:SetScript("OnLoop", function(self)
-        self.loops = self.loops + 1
-        if self.loops >= PULSES then self:Stop() end
-    end)
     local pulse = flash:CreateAnimation("Alpha")
     pulse:SetFromAlpha(1)
-    pulse:SetToAlpha(0.35)
-    pulse:SetDuration(0.6)
+    pulse:SetToAlpha(PULSE_LOW)
+    pulse:SetDuration(PULSE)
+    pulse:SetSmoothing("IN_OUT")
+    glow.pulse = flash
 
     alert:Hide()
     Place()
@@ -241,7 +274,7 @@ end
 
 -- seen: { name, level (or nil), npc (its npcID, or nil), unit (its unit token while in sight),
 -- elite, marked (a skull went on it), map, x, y (where the minimap saw it, percent) }.
--- quiet: no sound, flash or timer (Unlock Mode's preview).
+-- quiet: no sound, taskbar flash or timer (Unlock Mode's preview).
 local function ShowAlert(seen, quiet)
     if not alert then BuildAlert() end
     local npc = seen.npc
@@ -265,7 +298,6 @@ local function ShowAlert(seen, quiet)
     alert.hint:SetText(spot.map and "Click: waypoint    Right-click: close    Drag: move"
         or "Right-click: close    Drag: move")
     alert:Show()
-    flash.loops = 0
     flash:Play()
     if hideTimer then hideTimer:Cancel() end
     hideTimer = nil
