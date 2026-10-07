@@ -11,7 +11,7 @@ local S = ns.QoLSettings
 local P = ns.PRESETS
 local Settings = ns.Shared.Settings
 
-local ASK = "Apply %s to every setting and position? Smart Reminders and your BiS lists stay. Cannot be undone."
+local ASK = "Apply %s to every setting and position? Your BiS lists and notes stay. Cannot be undone."
 local DONE = "Every setting now follows %s. Reload now to finish?"
 local CUSTOM = "Custom"
 local ON, OFF, SAME = "%s turns on: %s", "%s turns off: %s", "%s is what you have now."
