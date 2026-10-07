@@ -15,8 +15,8 @@ local S = UI.ModuleSettings("completo", {
     enabled = false, hideDone = false, windowAlpha = 1, windowScale = 1,
     -- A ! on the map at each quest giver with a quest for you; mapGrey adds the low level ones.
     mapPins = false, mapGrey = false, mapChainsOnly = false, mapPinSize = 18,
-    -- Rares: a warning when one is near, with a skull on it (NaowhForever_CompletoRareAlert.lua).
-    rareHideKilled = false, rareAlert = false, rareMark = true, rareAlertKilled = false,
+    -- Rares: a warning when one is near, with a raid mark on it (NaowhForever_CompletoRareAlert.lua).
+    rareHideKilled = false, rareAlert = false, rareMarker = "skull", rareAlertKilled = false,
     rareSound = true, rareSoundKey = "file:gruntlinghorn", rareAlertPos = nil, rareAlertScale = 1,
     -- A star on the world map where each rare spawns (NaowhForever_CompletoRareMap.lua).
     rarePins = false, rarePinsKilled = false, rarePinSize = 18,

@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
 --  NaowhForever_CompletoRareAlert.lua -- Rare Alerts: a warning when a rare is near you, as
---  RareScanner gives, and a skull on it. Any creature the game calls rare or rare elite
+--  RareScanner gives, and a raid mark on it (a skull unless you pick another). Any creature the game calls rare or rare elite
 --  counts, in the data or not.
 --
 --  A rare is seen when its nameplate comes up, when you mouse over it or target it, and
@@ -11,7 +11,7 @@
 --  while, on a right-click, or once the rare is killed. Each rare alerts once in a while, not every time
 --  its nameplate comes back.
 --
---  The skull goes on a rare you can see as a unit (nameplate, mouseover or target, not a
+--  The mark goes on a rare you can see as a unit (nameplate, mouseover or target, not a
 --  minimap mark), once per creature, and only where it has no mark yet and you may mark: on
 --  your own, in a party, or as a raid's leader or assistant.
 --
@@ -22,7 +22,21 @@ local T = ns.THEME
 local S = ns.CompletoSettings
 local R = ns.Completo.Rares
 
-local SKULL = 8
+-- The raid marks Mark Rare offers: key, the game's index, name. "none" puts none on.
+local MARKS = {
+    { "star", 1, "Star" }, { "circle", 2, "Circle" }, { "diamond", 3, "Diamond" },
+    { "triangle", 4, "Triangle" }, { "moon", 5, "Moon" }, { "square", 6, "Square" },
+    { "cross", 7, "Cross" }, { "skull", 8, "Skull" },
+}
+local MARK_ICON = "Interface\\TargetingFrame\\UI-RaidTargetingIcon_%d"
+
+-- The raid mark's index Mark Rare picked, nil for none.
+local function Marker()
+    local key = S.Get("rareMarker")
+    for _, mark in ipairs(MARKS) do
+        if mark[1] == key then return mark[2] end
+    end
+end
 local SHOW_FOR = 20       -- seconds the alert stays up
 local AGAIN_AFTER = 300   -- seconds before the same rare alerts again
 -- The glow around the card: GLOW wide, from GLOW_ALPHA at the card's edge to nothing, in the
@@ -206,7 +220,6 @@ local function BuildAlert()
     alert.kicker:SetPoint("TOPLEFT", left, -14)
     alert.kicker:SetText("RARE SPOTTED")
     alert.skull = alert:CreateTexture(nil, "ARTWORK")
-    alert.skull:SetTexture("Interface\\TargetingFrame\\UI-RaidTargetingIcon_8")
     alert.skull:SetSize(14, 14)
     alert.skull:SetPoint("LEFT", alert.kicker, "RIGHT", 6, 0)
     alert.name = ns.Font(alert, 15, nil, T.fg)
@@ -306,7 +319,7 @@ local function KillNote(npc)
 end
 
 -- seen: { name, level (or nil), npc (its npcID, or nil), unit (its unit token while in sight),
--- elite, marked (a skull went on it), map, x, y (where the minimap saw it, percent) }.
+-- elite, marked (the raid mark's index that went on it), map, x, y (where the minimap saw it, percent) }.
 -- quiet: no sound, taskbar flash or timer (Unlock Mode's preview).
 local function ShowAlert(seen, quiet)
     if not alert then BuildAlert() end
@@ -314,7 +327,8 @@ local function ShowAlert(seen, quiet)
     shownNpc = npc
     SetPortrait(seen.unit, npc)
     alert.name:SetText(seen.name)
-    alert.skull:SetShown(seen.marked == true)
+    if seen.marked then alert.skull:SetTexture(MARK_ICON:format(seen.marked)) end
+    alert.skull:SetShown(seen.marked ~= nil)
     local elite = seen.elite
     if elite == nil and npc and R.Known(npc) then elite = R.Elite(npc) end
     local parts = {}
@@ -348,7 +362,7 @@ end)
 --  Seeing a rare
 -------------------------------------------------------------------------------
 local alerted = {}   -- npcID or name -> GetTime() of its latest alert
-local marked = {}    -- GUID -> true once a skull went on it
+local marked = {}    -- GUID -> true once a mark went on it
 
 local function MayMark()
     if not IsInGroup() then return true end
@@ -356,14 +370,15 @@ local function MayMark()
     return UnitIsGroupLeader("player") or UnitIsGroupAssistant("player")
 end
 
--- A skull on it, once per creature, where it has no mark yet.
+-- Mark Rare's mark on it, once per creature, where it has no mark yet: the mark's index, or nil.
 local function Mark(unit, guid)
-    if not S.Get("rareMark") or marked[guid] or not MayMark() then return false end
+    local marker = Marker()
+    if not marker or marked[guid] or not MayMark() then return nil end
     local index = GetRaidTargetIndex(unit)
-    if Secret(index) or index then return false end
+    if Secret(index) or index then return nil end
     marked[guid] = true
-    SetRaidTarget(unit, SKULL)
-    return true
+    SetRaidTarget(unit, marker)
+    return marker
 end
 
 -- Alerts once in AGAIN_AFTER seconds per rare; one you killed only with Alert for Killed Rares.
@@ -412,10 +427,10 @@ local function CheckVignette(id)
 end
 
 -- The alert as a rare would bring it, sound and all: about your target when you can attack it,
--- with a skull on it as Mark With a Skull would put; else about a made-up rare. Leaves the
+-- with Mark Rare's mark on it; else about a made-up rare. Leaves the
 -- once-in-a-while memory alone, so a real rare still alerts.
 local function TestAlert()
-    local name, level, npc, skull, unit = "Mist Howler", 22, 10644, false, nil
+    local name, level, npc, skull, unit = "Mist Howler", 22, 10644, nil, nil
     local guid = UnitGUID("target")
     local hostile = UnitExists("target") and UnitCanAttack("player", "target")
     if guid and not Secret(guid) and not Secret(hostile) and hostile then
@@ -425,11 +440,12 @@ local function TestAlert()
             level = not Secret(targetLevel) and targetLevel or nil
             npc = R.NpcOf(guid)
             unit = "target"
-            if S.Get("rareMark") and MayMark() then
+            local marker = Marker()
+            if marker and MayMark() then
                 local index = GetRaidTargetIndex("target")
-                if not Secret(index) and index ~= SKULL then
-                    SetRaidTarget("target", SKULL)
-                    skull = true
+                if not Secret(index) and index ~= marker then
+                    SetRaidTarget("target", marker)
+                    skull = marker
                 end
             end
         end
@@ -518,9 +534,21 @@ local function Sounds()
     return values, order
 end
 
+-- Mark Rare's list: None, then each mark with its icon.
+local function MarkChoices()
+    local values, order = { none = "None" }, { "none" }
+    for _, mark in ipairs(MARKS) do
+        values[mark[1]] = ("|T%s:14|t %s"):format(MARK_ICON:format(mark[2]), mark[3])
+        order[#order + 1] = mark[1]
+    end
+    return values, order
+end
+
 local function Summary(store)
     local parts = {}
-    if store.Get("rareMark") then parts[#parts + 1] = "a skull on it" end
+    for _, mark in ipairs(MARKS) do
+        if mark[1] == store.Get("rareMarker") then parts[#parts + 1] = "a " .. mark[3]:lower() .. " on it" end
+    end
     if store.Get("rareSound") then parts[#parts + 1] = "a sound" end
     if #parts == 0 then return "A warning when a rare is near" end
     return "A warning when a rare is near, " .. table.concat(parts, " and ")
@@ -533,9 +561,9 @@ Settings.Page("Completo/Rares", S):Card({
         .. "pin sets a waypoint to the rare.",
     summary = Summary,
     rows = {
-        { key = "rareMark", label = "Mark With a Skull", toggle = true, needs = Enabled, why = OFF,
-          help = "Puts a skull on the rare, if it has no mark yet. In a raid only as its leader or an "
-              .. "assistant." },
+        { key = "rareMarker", label = "Mark Rare", choice = MarkChoices, needs = Enabled, why = OFF,
+          help = "The raid mark put on the rare, if it has no mark yet, or None. In a raid only as its "
+              .. "leader or an assistant." },
         { key = "rareAlertKilled", label = "Alert for Killed Rares", toggle = true, needs = Enabled, why = OFF,
           help = "Also warns about rares you have killed before." },
         { key = "rareSound", label = "Play a Sound", toggle = true, needs = Enabled, why = OFF,
@@ -560,6 +588,6 @@ Settings.Page("Completo/Rares", S):Card({
           help = "Puts the card back above the middle of the screen." },
         { label = "Test Alert", buttonText = "Test", button = TestAlert, needs = Enabled, why = OFF,
           help = "Shows the warning with its sound. With something you can attack targeted, it is about "
-              .. "that, with a skull on it. Drag the card to where you want it." },
+              .. "that, with Mark Rare's mark on it. Drag the card to where you want it." },
     },
 })

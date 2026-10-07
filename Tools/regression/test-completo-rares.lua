@@ -1,7 +1,7 @@
 -- Run with Lua 5.1 from the repository root: Completo's Rares. A rare friendly to your faction
 -- is not yours; a zone counts the ones you killed; a targeted rare dying counts once when it was
 -- yours and not when someone else tapped it; a looted corpse counts; Shift-click ticks one off.
--- Rare Alerts: a rare's nameplate brings the alert and a skull, once per rare in a while; not
+-- Rare Alerts: a rare's nameplate brings the alert and its mark (a skull, or another picked), once per rare in a while; not
 -- for a dead or friendly one, nor one you killed unless Alert for Killed Rares; no skull where it has
 -- a mark or in a raid without lead or assist; nothing is registered while it is off.
 
@@ -27,6 +27,7 @@ local function Region()
     function r:Hide() self.shown = false end
     function r:IsShown() return self.shown end
     function r:CreateTexture() return Region() end
+    function r:SetTexture(t) self.texture = t end
     function r:GetFrameLevel() return 5 end
     -- Where it is: its middle, in its own units (scale), and the screen's (UIParent's).
     r.scale = 1
@@ -279,7 +280,7 @@ end
 -- Rare Alerts
 do
     local units = {}
-    local settings = { enabled = true, rareAlert = false, rareMark = true, rareSound = true,
+    local settings = { enabled = true, rareAlert = false, rareMarker = "skull", rareSound = true,
         rareAlertKilled = false }
     local ns, env = Fixture(settings, units)
     local R = ns.Completo.Rares
@@ -294,6 +295,7 @@ do
     Check(ns.alert.about.text == "Level 22, rare, not killed yet", "its level, kind, and that it is not killed yet")
     Check(ns.alert.model.unit == "nameplate1", "the portrait is its own model")
     Check(ns.alert.skull.shown, "the card shows the skull went on it")
+    Check(ns.alert.skull.texture == "Interface\\TargetingFrame\\UI-RaidTargetingIcon_8", "with the skull's icon")
     Check(ns.alert.glow.pulse.playing, "its glowing border pulses")
     Check(ns.alert.pin.shown, "its pin shows: it has a spot to go to")
     ns.alert.OnClick(ns.alert, "LeftButton")
@@ -355,6 +357,16 @@ do
         "a rare not in the data alerts too, without a kill note")
     Check(not ns.alert.pin.shown, "no pin with no spot to send a waypoint to")
     Check(#env.marks == 2, "in a raid without lead or assist, no skull")
+    units.group = nil
+    settings.rareMarker = "moon"
+    units.nameplate6 = { guid = Guid(9999), name = "Moon Rare", kind = "rare" }
+    env.Fire("NAME_PLATE_UNIT_ADDED", "nameplate6")
+    Check(#env.marks == 3 and env.marks[3][2] == 5, "Mark Rare: the moon when it is picked")
+    Check(ns.alert.skull.texture == "Interface\\TargetingFrame\\UI-RaidTargetingIcon_5", "the card shows the moon")
+    settings.rareMarker = "none"
+    units.nameplate7 = { guid = Guid(9998), name = "Unmarked Rare", kind = "rare" }
+    env.Fire("NAME_PLATE_UNIT_ADDED", "nameplate7")
+    Check(#env.marks == 3 and not ns.alert.skull.shown, "None: no mark, and none on the card")
 
     ns.CompletoSettings.Set("rareAlert", false)
     Check(not env.Listening("NAME_PLATE_UNIT_ADDED") and not ns.alert:IsShown(), "switched off: unregistered, alert gone")
@@ -363,7 +375,7 @@ end
 -- Test Alert
 do
     local units = {}
-    local settings = { enabled = true, rareAlert = false, rareMark = true, rareSound = true }
+    local settings = { enabled = true, rareAlert = false, rareMarker = "skull", rareSound = true }
     local ns, env = Fixture(settings, units)
     local test
     for _, row in ipairs(ns.cards.rareAlert.rows) do
