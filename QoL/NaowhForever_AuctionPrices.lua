@@ -39,6 +39,7 @@ local function Age(seconds)
     if seconds < 86400 then return math.floor(seconds / 3600) .. "h" end
     return math.floor(seconds / 86400) .. "d"
 end
+ns.AuctionAge = Age
 
 local priced, pricedAt
 

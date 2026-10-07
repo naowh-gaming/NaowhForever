@@ -339,14 +339,6 @@ local function Learn()
     end
 end
 
--- "2h ago": how long since the last scan.
-local function Ago(t)
-    local seconds = time() - t
-    if seconds < 3600 then return math.max(1, math.floor(seconds / 60)) .. "m ago" end
-    if seconds < 86400 then return math.floor(seconds / 3600) .. "h ago" end
-    return math.floor(seconds / 86400) .. "d ago"
-end
-
 -- "About 1g 20s at your last scan, 2h ago"; materials without a price are counted out.
 local function Estimate(materials, unpriced)
     local est, missing = 0, 0
@@ -355,7 +347,8 @@ local function Estimate(materials, unpriced)
         if price then est = est + price * m.qty else missing = missing + 1 end
     end
     local at = ns.AuctionScanTime and ns.AuctionScanTime()
-    return ("About %s at your last scan%s%s"):format(Money(est), at and (", " .. Ago(at)) or " (none yet)",
+    return ("About %s at your last scan%s%s"):format(Money(est),
+        at and (", " .. ns.AuctionAge(time() - at) .. " ago") or " (none yet)",
         missing > 0 and (", %d %s"):format(missing, unpriced) or "")
 end
 

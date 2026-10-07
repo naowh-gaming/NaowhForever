@@ -337,6 +337,7 @@ ns = {
     Color = function(_, text) return text end,
     AuctionPrice = function(id) return 1000 + (id % 97) * 37 end,
     AuctionScanTime = function() return 5000 end,
+    AuctionAge = function() return "1h" end,
     AuctionScanSummary = function() return "Last scan" end,
 }
 
