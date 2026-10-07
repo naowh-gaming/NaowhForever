@@ -4,7 +4,8 @@
 --  at most, or the middle of the way it patrols); with Show Killed Rares a grey one for those
 --  you have. Hover a star for the rare: its other spawn spots show as smaller stars and its
 --  way, if it patrols, as a trail of small ones, until you move off it; every other rare's
---  star fades meanwhile. Click a star for a waypoint. Built like the quest giver pins
+--  star fades meanwhile. Click a star to keep it so (focus it) after you move off; click it
+--  again to let go. Right-click a star for a waypoint. Built like the quest giver pins
 --  (NaowhForever_CompletoMap.lua).
 --
 --  Off until Rare Pins is switched on: then a data provider on the world map, redrawn when a
@@ -43,6 +44,8 @@ NaowhForeverRarePinMixin = CreateFromMixins(MapCanvasPinMixin)
 
 function NaowhForeverRarePinMixin:OnLoad()
     self:UseFrameLevelType("PIN_FRAME_LEVEL_AREA_POI")
+    -- Right-click is the star's (a waypoint), not the map's.
+    self:RegisterForClicks("LeftButtonUp", "RightButtonUp")
 end
 
 -- The map calls this on every acquired pin, and its SetPassThroughButtons is protected: from
@@ -83,6 +86,7 @@ function NaowhForeverRarePinMixin:OnAcquired(spot)
 end
 
 local provider
+local focused       -- the rare clicked: shown as when hovered, until clicked again
 local shown = {}    -- the pins a hovered star shows, until the pointer leaves it
 local spot = {}     -- handed to each pin; OnAcquired copies what it needs
 
@@ -137,21 +141,34 @@ function NaowhForeverRarePinMixin:OnMouseEnter()
     if others > 0 then
         GameTooltip:AddLine(("Spawns at %d more spots, shown smaller"):format(others), 0.62, 0.62, 0.62)
     end
-    GameTooltip:AddLine("Click for a waypoint.", SoftBlue(0.3, 0.71, 0.96))
+    GameTooltip:AddLine(focused == npc and "Click to let go of it." or "Click to focus it.",
+        SoftBlue(0.3, 0.71, 0.96))
+    GameTooltip:AddLine("Right-click for a waypoint.", SoftBlue(0.3, 0.71, 0.96))
     GameTooltip:Show()
     ShowMore(npc)
     Highlight(npc)
 end
 
-function NaowhForeverRarePinMixin:OnMouseLeave()
-    GameTooltip:Hide()
-    ShowMore(nil)
-    Highlight(nil)
+-- Back to the focused rare, if one is, else every rare as drawn.
+local function Rest()
+    ShowMore(focused)
+    Highlight(focused)
 end
 
+function NaowhForeverRarePinMixin:OnMouseLeave()
+    GameTooltip:Hide()
+    Rest()
+end
+
+-- Click: focus the rare, or let go of the one focused; right-click: a waypoint to this star.
 function NaowhForeverRarePinMixin:OnClick(button)
-    if button ~= "LeftButton" then return end
-    ns.PlaceWaypoint(R.Name(self.npc), R.Map(self.npc), self.spotX, self.spotY)
+    if button == "RightButton" then
+        ns.PlaceWaypoint(R.Name(self.npc), R.Map(self.npc), self.spotX, self.spotY)
+    elseif button == "LeftButton" then
+        focused = focused ~= self.npc and self.npc or nil
+        -- Still under the pointer: as hovered, its tooltip saying what a click does now.
+        self:OnMouseEnter()
+    end
 end
 
 -------------------------------------------------------------------------------
@@ -170,13 +187,18 @@ function provider:RefreshAllData()
     if not On() then return end
     local map = self:GetMap()
     local killedToo = S.Get("rarePinsKilled")
+    local still = false
     for _, npc in ipairs(R.OnMap(map:GetMapID())) do
         if killedToo or not R.Killed(npc) then
             local spots = R.Spots(npc)
             spot.npc, spot.x, spot.y, spot.kind = npc, spots[1], spots[2], nil
             map:AcquirePin(TEMPLATE, spot)
+            if npc == focused then still = true end
         end
     end
+    -- The focused rare stays so while it is on the map shown; another map lets go of it.
+    if not still then focused = nil end
+    Rest()
 end
 
 -------------------------------------------------------------------------------
@@ -225,7 +247,8 @@ local function Enabled() return S.Get("enabled") == true end
 Settings.Page("Completo/Rares", S):Card({
     id = "rarePins", name = "Map Pins", order = 30, switch = "rarePins",
     help = "A star on the world map for every rare you have not killed, where it is most likely to be. "
-        .. "Hover one for its other spawn spots and, if it patrols, its way; click it for a waypoint.",
+        .. "Hover one for its other spawn spots and, if it patrols, its way; click it to keep them shown, "
+        .. "right-click it for a waypoint.",
     summary = function(store)
         return store.Get("rarePinsKilled") and "Every rare, the ones you killed in grey"
             or "The rares you have not killed"
