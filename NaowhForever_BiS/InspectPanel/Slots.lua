@@ -91,6 +91,7 @@ local function ReadGear(unit, guid)
     end
     local level = C_PaperDollInfo.GetInspectItemLevel and C_PaperDollInfo.GetInspectItemLevel(unit)
     gear.level = level and level > 0 and math.floor(level + 0.5) or nil
+    if not IP.HasGear(unit, guid) then gear.guid = nil end
 end
 
 local function Refreshed(unit, guid)

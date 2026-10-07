@@ -35,7 +35,7 @@ end
 
 local function TheirScore(unit, guid)
     local Score = ns.NaowhScore
-    if IP.Ready(guid) then
+    if IP.Ready(guid) and IP.HasGear(unit, guid) then
         local score, complete = Score.Unit(unit)
         if complete then
             last.guid, last.score, last.level = guid, score, LevelOf(unit)

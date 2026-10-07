@@ -54,7 +54,7 @@ IP.Readable = Readable
 function IP.Current()
     local frame = InspectFrame
     local unit = frame and frame:IsShown() and frame.unit
-    if not Readable(unit) then return nil end
+    if type(unit) ~= "string" or issecretvalue(unit) then return nil end
     local guid = UnitGUID(unit)
     if not Readable(guid) then return nil end
     return unit, guid
@@ -86,6 +86,24 @@ local function Settled()
     settleQueued, waiting = false, false
     events:UnregisterEvent("GET_ITEM_INFO_RECEIVED")
     Refresh()
+end
+
+local reasked
+
+-- Gear the game says they wear but sends none of (an inspect cleared under the window): asked
+-- for again once per player shown, so the window fills in rather than showing them bare.
+function IP.HasGear(unit, guid)
+    for _, entry in ipairs(ns.Shared.Items.GEAR_SLOTS) do
+        local id = GetInventoryItemID(unit, entry[1])
+        if id and id ~= 0 then return true end
+    end
+    local level = C_PaperDollInfo.GetInspectItemLevel and C_PaperDollInfo.GetInspectItemLevel(unit)
+    if not (level and level > 0) then return true end
+    if guid and reasked ~= guid and CanInspect(unit) then
+        reasked = guid
+        NotifyInspect(unit)
+    end
+    return false
 end
 
 function IP.Wait()
@@ -121,6 +139,7 @@ local function Hidden()
     events:UnregisterEvent("GET_ITEM_INFO_RECEIVED")
     waiting = false
     IP.unit, IP.guid = nil, nil
+    reasked = nil
 end
 
 local function PlaceInset()
