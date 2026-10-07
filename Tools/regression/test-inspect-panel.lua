@@ -191,7 +191,7 @@ local ns = {
     ConfirmReload = function() state.reloads = (state.reloads or 0) + 1 end,
     Confirm = NOTHING,
     PromptText = function(title, text, max, onAccept)
-        prompts[#prompts + 1] = { title = title, text = text, accept = onAccept }
+        prompts[#prompts + 1] = { title = title, text = text, max = max, accept = onAccept }
     end,
 }
 ns.BiS = {
@@ -623,6 +623,7 @@ local history = { on = true, rec = REC }
 local TAGS = { { key = "tank", label = "Great Tank", color = "accent" },
     { key = "avoid", label = "Avoid", color = { r = 1, g = 0, b = 0 } } }
 ns.PlayerHistory = {
+    NOTE_MAX = 120,
     On = function() return history.on end,
     Of = function(guid) return guid == GUID_A and history.rec or nil end,
     Note = function(guid) return notes[guid] end,
@@ -666,6 +667,7 @@ Link("Note").scripts.OnClick(Link("Note"))
 local prompt = prompts[#prompts]
 check("the Note link: a prompt with your note so far", prompt and prompt.title == "Your note on Bob Smith"
     and prompt.text == "Solid |Tbad:0|t tank")
+check("the note box takes only as much as Player History keeps", prompt.max == 120)
 prompt.accept("Great healer too")
 check("saved for their GUID, the tag kept", notes.last.guid == GUID_A and notes.last.text == "Great healer too"
     and notes.last.tag == "tank" and notes.last.name == "Bob Smith" and Shows("Great healer too"))

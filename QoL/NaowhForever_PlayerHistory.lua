@@ -28,6 +28,7 @@ local NOTE_LABEL = "Note"
 
 local PlayerHistory = {}
 ns.PlayerHistory = PlayerHistory
+PlayerHistory.NOTE_MAX = MAX_NOTE
 
 PlayerHistory.TAGS = {
     { key = "tank", label = "Great Tank", color = Style.HAVE_RGB },

@@ -249,7 +249,8 @@ local function EditNote()
     local H = ns.PlayerHistory
     if not (guid and H and H.SetNote) then return end
     local note = H.Note(guid)
-    ns.PromptText(NOTE_TITLE:format(name or ""), type(note) == "table" and note.text or "", NOTE_MAX, function(text)
+    local max = tonumber(H.NOTE_MAX) or NOTE_MAX
+    ns.PromptText(NOTE_TITLE:format(name or ""), type(note) == "table" and note.text or "", max, function(text)
         local _, now = IP.Current()
         if now ~= guid then return end
         local current = H.Note(guid)
