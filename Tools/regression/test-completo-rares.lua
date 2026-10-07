@@ -188,6 +188,11 @@ local function Fixture(settings, units)
     local map = { pins = {} }
     function map:GetMapID() return 1440 end
     function map:RemoveAllPinsByTemplate() self.pins = {} end
+    function map:RemovePin(pin)
+        for i = #self.pins, 1, -1 do
+            if self.pins[i] == pin then table.remove(self.pins, i) end
+        end
+    end
     function map:EnumeratePinsByTemplate()
         local i = 0
         return function()
@@ -204,6 +209,7 @@ local function Fixture(settings, units)
         function icon.SetAlpha(t, a) t.alpha = a end
         pin.Icon = icon
         pin.SetSize = function(p, w) p.size = w end
+        pin.EnableMouse = function(p, on) p.mouse = on end
         pin.SetPosition = function(p, x, y) p.at = { x, y } end
         pin:OnAcquired(data)
         self.pins[#self.pins + 1] = pin
@@ -448,32 +454,22 @@ do
     end
     local howler = PinsOf(10644)[1]
     Check(howler.Icon.atlas == "VignetteKill" and howler.at[1] == 0.5 and howler.at[2] == 0.4, "the game's rare star, at its spot")
-    PinsOf(10647, false)[1]:OnClick("LeftButton")
-    Check(#env.worldMap.pins == 6 and #PinsOf(10647, true) == 3 and #env.waypoints == 0,
-        "clicking a patrolling rare's star shows its way's three dots, no waypoint")
-    Check(env.worldMap.pins[1].dot and env.worldMap.pins[1].npc == 10647, "the trail comes first")
-    howler = PinsOf(10644)[1]
-    local dot, star = PinsOf(10647, true)[1], PinsOf(10647, false)[1]
-    Check(star.size > 18 and dot.Icon.alpha == 1, "the star stays picked out under the pointer, its way lit")
-    star:OnMouseLeave()
-    Check(dot.size < star.size and dot.Icon.alpha < 1 and dot.levelIndex < star.levelIndex,
-        "a trail's dots are smaller, fainter and under the stars")
-    dot:OnClick("LeftButton")
-    Check(#env.waypoints == 1 and env.waypoints[1][3] == 68, "clicking a dot sets a waypoint there")
-    env.shift = true
-    star:OnClick("LeftButton")
-    Check(#env.waypoints == 2 and env.waypoints[2][3] == 70 and #PinsOf(10647, true) == 3,
-        "Shift-clicking the star sets a waypoint, the way stays")
-    env.shift = false
-    dot:OnMouseEnter()
+    local star = PinsOf(10647, false)[1]
+    star:OnMouseEnter()
+    Check(#env.worldMap.pins == 6 and #PinsOf(10647, true) == 3, "hovering a patrolling rare's star shows its way's three dots")
+    local dot = PinsOf(10647, true)[1]
+    Check(dot.size < star.size and dot.levelIndex < star.levelIndex and not dot.mouse,
+        "a trail's dots are smaller, under the stars and take no mouse")
     Check(star.size > 18 and dot.Icon.alpha == 1 and howler.Icon.alpha < 0.5,
-        "hovering a dot lights its rare's star and trail and fades the others")
-    dot:OnMouseLeave()
-    Check(star.size == 18 and howler.Icon.alpha == 1 and dot.Icon.alpha < 1, "and leaving puts them back")
+        "the hovered rare's star and way are lit, the others faded")
+    star:OnMouseLeave()
+    Check(#env.worldMap.pins == 3 and #PinsOf(10647, true) == 0, "moving off the star takes its way away")
+    Check(star.size == 18 and howler.Icon.alpha == 1, "and puts the others back")
+    star:OnClick("LeftButton")
+    Check(#env.waypoints == 1 and env.waypoints[1][3] == 70, "clicking a star sets a waypoint there")
     R.SetKilled(10644, true)
-    Check(#PinsOf(10644) == 0 and #env.worldMap.pins == 4, "a killed rare's stars go")
-    PinsOf(10647, false)[1]:OnClick("LeftButton")
-    Check(#PinsOf(10647, true) == 0 and #env.worldMap.pins == 1, "clicking the star again hides its way")
+    Check(#PinsOf(10644) == 0 and #env.worldMap.pins == 1, "a killed rare's stars go")
+
     ns.CompletoSettings.Set("rarePinsKilled", true)
     Check(#PinsOf(10644) == 2 and PinsOf(10644)[1].Icon.desaturated, "with Show Killed Rares, grey stars")
     ns.CompletoSettings.Set("rarePins", false)

@@ -1,10 +1,9 @@
 -------------------------------------------------------------------------------
 --  NaowhForever_CompletoRareMap.lua -- rares on the world map: the game's rare star at each
 --  spot a rare you have not killed spawns, and with Show Killed Rares a grey one for those you
---  have. A rare that patrols has a star on its way; click it for a trail of small stars along
---  its way, and again to hide it. Hover a star or a dot for the rare: its other stars and its
---  trail stand out, every other rare's fade. Click a dot, or any other rare's star, for a
---  waypoint; Shift-click a patrolling rare's star for one. Built like the quest giver pins
+--  have. A rare that patrols has a star on its way. Hover a star for the rare: its other
+--  stars stand out, every other rare's fade, and for one that patrols a trail of small stars
+--  shows along its way until you move off it. Click a star for a waypoint. Built like the quest giver pins
 --  (NaowhForever_CompletoMap.lua).
 --
 --  Off until Rare Pins is switched on: then a data provider on the world map, redrawn when a
@@ -68,6 +67,8 @@ function NaowhForeverRarePinMixin:OnAcquired(spot)
     self.killed = R.Killed(spot.npc)
     -- A star a level above the dots, so a trail never covers one.
     self:UseFrameLevelType("PIN_FRAME_LEVEL_AREA_POI", spot.dot and 0 or 1)
+    -- A dot takes no mouse: the pointer stays on the star it belongs to.
+    self:EnableMouse(not spot.dot)
     local icon = self.Icon
     if not icon:SetAtlas(STAR_ATLAS) then icon:SetTexture(SKULL_FILE) end
     icon:SetDesaturated(self.killed)
@@ -77,7 +78,27 @@ function NaowhForeverRarePinMixin:OnAcquired(spot)
 end
 
 local provider
-local opened = {}   -- npcID -> true: the patrolling rares whose way is shown
+local trail = {}    -- the dots of the way shown, while its star is hovered
+local spot = {}     -- handed to each pin; OnAcquired copies what it needs
+
+local function Place(map, npc, points, dot, into)
+    for i = 1, points and #points or 0, 2 do
+        spot.npc, spot.x, spot.y, spot.dot = npc, points[i], points[i + 1], dot
+        local pin = map:AcquirePin(TEMPLATE, spot)
+        if into then into[#into + 1] = pin end
+    end
+end
+
+-- A patrolling rare's way, shown while its star is hovered; nil takes the one shown away.
+local function ShowTrail(npc)
+    local map = provider and provider:GetMap()
+    if not map then return end
+    for i = #trail, 1, -1 do
+        map:RemovePin(trail[i])
+        trail[i] = nil
+    end
+    if npc then Place(map, npc, R.Trail(npc), true, trail) end
+end
 
 -- npc: the rare hovered, its pins lit and the rest faded; nil puts every pin back.
 local function Highlight(npc)
@@ -101,61 +122,35 @@ function NaowhForeverRarePinMixin:OnMouseEnter()
     else
         GameTooltip:AddLine("Not killed yet", 1, 1, 1)
     end
-    local patrols = R.Trail(npc) ~= nil
-    if patrols then
-        GameTooltip:AddLine("Patrols", 0.62, 0.62, 0.62)
+    if R.Trail(npc) then
+        GameTooltip:AddLine("Patrols: the small stars are its way", 0.62, 0.62, 0.62)
     elseif R.SpotCount(npc) > 1 then
         GameTooltip:AddLine(("One of %d spots it spawns at"):format(R.SpotCount(npc)), 0.62, 0.62, 0.62)
     end
-    if patrols and not self.dot then
-        GameTooltip:AddLine(opened[npc] and "Click to hide its way." or "Click to show its way.",
-            SoftBlue(0.3, 0.71, 0.96))
-        GameTooltip:AddLine("Shift-click for a waypoint.", SoftBlue(0.3, 0.71, 0.96))
-    else
-        GameTooltip:AddLine("Click for a waypoint.", SoftBlue(0.3, 0.71, 0.96))
-    end
+    GameTooltip:AddLine("Click for a waypoint.", SoftBlue(0.3, 0.71, 0.96))
     GameTooltip:Show()
+    if R.Trail(npc) then ShowTrail(npc) end
     Highlight(npc)
 end
 
 function NaowhForeverRarePinMixin:OnMouseLeave()
     GameTooltip:Hide()
+    ShowTrail(nil)
     Highlight(nil)
 end
 
--- A patrolling rare's star shows or hides its way; a dot, a Shift-click or any other rare's
--- star sets a waypoint.
 function NaowhForeverRarePinMixin:OnClick(button)
     if button ~= "LeftButton" then return end
-    local npc = self.npc
-    if R.Trail(npc) and not self.dot and not IsShiftKeyDown() then
-        opened[npc] = not opened[npc] or nil
-        provider:RefreshAllData()
-        -- Drawn again under the pointer: the rare stays picked out, its tooltip says what is next.
-        for pin in provider:GetMap():EnumeratePinsByTemplate(TEMPLATE) do
-            if pin.npc == npc and not pin.dot and pin.spotX == self.spotX and pin.spotY == self.spotY then
-                pin:OnMouseEnter()
-            end
-        end
-        return
-    end
-    ns.PlaceWaypoint(R.Name(npc), R.Map(npc), self.spotX, self.spotY)
+    ns.PlaceWaypoint(R.Name(self.npc), R.Map(self.npc), self.spotX, self.spotY)
 end
 
 -------------------------------------------------------------------------------
 --  The map's data provider
 -------------------------------------------------------------------------------
 provider = CreateFromMixins(MapCanvasDataProviderMixin)
-local spot = {}   -- handed to each pin; OnAcquired copies what it needs
-
-local function Place(map, npc, points, dot)
-    for i = 1, points and #points or 0, 2 do
-        spot.npc, spot.x, spot.y, spot.dot = npc, points[i], points[i + 1], dot
-        map:AcquirePin(TEMPLATE, spot)
-    end
-end
 
 function provider:RemoveAllData()
+    wipe(trail)
     self:GetMap():RemoveAllPinsByTemplate(TEMPLATE)
 end
 
@@ -164,18 +159,8 @@ function provider:RefreshAllData()
     if not On() then return end
     local map = self:GetMap()
     local killedToo = S.Get("rarePinsKilled")
-    -- The trails asked for first, then the stars.
-    local rares = R.OnMap(map:GetMapID())
-    for pass = 1, 2 do
-        for _, npc in ipairs(rares) do
-            if killedToo or not R.Killed(npc) then
-                if pass == 2 then
-                    Place(map, npc, R.Spots(npc), false)
-                elseif opened[npc] then
-                    Place(map, npc, R.Trail(npc), true)
-                end
-            end
-        end
+    for _, npc in ipairs(R.OnMap(map:GetMapID())) do
+        if killedToo or not R.Killed(npc) then Place(map, npc, R.Spots(npc), false) end
     end
 end
 
@@ -224,9 +209,8 @@ local function Enabled() return S.Get("enabled") == true end
 
 Settings.Page("Completo/Rares", S):Card({
     id = "rarePins", name = "Map Pins", order = 30, switch = "rarePins",
-    help = "A star on the world map at every spot a rare you have not killed spawns. Click the star of one "
-        .. "that patrols for small stars along its way. Hover one to pick its rare out; click it for a "
-        .. "waypoint (Shift-click on a patrolling rare's star).",
+    help = "A star on the world map at every spot a rare you have not killed spawns. Hover one to pick its "
+        .. "rare out, with small stars along its way for one that patrols; click it for a waypoint.",
     summary = function(store)
         return store.Get("rarePinsKilled") and "Every rare, the ones you killed in grey"
             or "The rares you have not killed"
