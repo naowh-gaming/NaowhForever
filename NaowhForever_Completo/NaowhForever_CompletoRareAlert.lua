@@ -83,13 +83,12 @@ end
 -- label. One the client has no SOUNDKIT entry for is left out.
 local GAME_SOUNDS = {
     { "game:raidwarning", "RAID_WARNING", "Raid Warning" },
-    { "game:bossemote", "RAID_BOSS_EMOTE_WARNING", "Boss Emote" },
-    { "game:bosswhisper", "UI_RAID_BOSS_WHISPER_WARNING", "Boss Whisper" },
-    { "game:readycheck", "READY_CHECK", "Ready Check" },
-    { "game:pvpqueue", "PVP_THROUGH_QUEUE", "Battleground Ready" },
-    { "game:alarm", "ALARM_CLOCK_WARNING_3", "Alarm Clock" },
-    { "game:epicloot", "UI_EPICLOOT_TOAST", "Epic Loot" },
     { "game:legendary", "UI_LEGENDARY_LOOT_TOAST", "Legendary Loot" },
+    { "game:warforged", "UI_WARFORGED_ITEM_LOOT_TOAST", "Warforged Loot" },
+    { "game:azerite", "UI_AZERITE_EMPOWERED_ITEM_LOOT_TOAST", "Azerite Loot" },
+    { "game:prestige", "UI_PVP_HONOR_PRESTIGE_RANK_UP", "Honor Prestige" },
+    { "game:forgetrait", "UI_72_ARTIFACT_FORGE_FINAL_TRAIT_UNLOCKED", "Artifact Trait" },
+    { "game:forgetier", "UI_72_ARTIFACT_FORGE_ACTIVATE_FINAL_TIER", "Artifact Tier" },
 }
 local DEFAULT_SOUND = "game:raidwarning"
 

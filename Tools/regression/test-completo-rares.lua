@@ -299,7 +299,7 @@ do
     local values, order = soundRow.choice()
     Check(order[1] == "game:raidwarning" and values["game:raidwarning"] == "Raid Warning (game)",
         "the sound list starts with the game's own")
-    Check(values["game:bossemote"] == nil, "a game sound the client lacks is left out")
+    Check(values["game:legendary"] == nil, "a game sound the client lacks is left out")
     Check(soundRow.get() == "game:raidwarning", "Raid Warning by default")
     soundRow.set("game:raidwarning")
     Check(env.sounds == 1 and settings.rareSoundKey == "game:raidwarning", "picking a sound plays it")
