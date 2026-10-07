@@ -116,6 +116,10 @@ local function Fixture(settings, units)
     ns.Font = function() return Region() end
     ns.AlertStack = function(frame) ns.alert = frame end
     ns.UI = { SoundPathFor = function() return nil end, _PlayLSMSound = function() end }
+    ns.SoundChoices = function()
+        return {}, { ["voice:move-out"] = "Move out", ["lsm:BugSack: Fatality"] = "BugSack: Fatality",
+            ["lsm:Bell"] = "Bell" }, { "voice:move-out", "lsm:BugSack: Fatality", "lsm:Bell" }
+    end
     ns.CompletoSettings = { Get = function(k) return settings[k] end, Set = function(k, v) settings[k] = v end }
     ns.Completo = {}
     -- The settings pages' cards, by id, to reach their rows.
@@ -312,6 +316,8 @@ do
     Check(order[1] == "game:raidwarning" and values["game:raidwarning"] == "Raid Warning (game)",
         "the sound list starts with the game's own")
     Check(values["game:legendary"] == nil, "a game sound the client lacks is left out")
+    Check(values["voice:move-out"] == nil and values["lsm:BugSack: Fatality"] == nil and values["lsm:Bell"] == "Bell"
+        and order[#order] == "lsm:Bell", "no spoken lines or BugSack's sound; the addon's other sounds stay")
     Check(soundRow.get() == "game:raidwarning", "Raid Warning by default")
     soundRow.set("game:raidwarning")
     Check(env.sounds == 1 and settings.rareSoundKey == "game:raidwarning", "picking a sound plays it")

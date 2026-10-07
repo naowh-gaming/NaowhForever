@@ -304,6 +304,12 @@ local OFF = "Turn on Completo"
 local function Enabled() return S.Get("enabled") == true end
 local function SoundOn() return Enabled() and S.Get("rareSound") == true end
 
+-- Not for a rare: the addon's spoken lines ("Dispel me", "Move out") and BugSack's error sound.
+local function Unfit(key, name)
+    return key:find("^voice:") ~= nil or tostring(name or ""):find("BugSack", 1, true) ~= nil
+        or key:find("BugSack", 1, true) ~= nil
+end
+
 -- The game's sounds, then the addon's.
 local function Sounds()
     local values, order = {}, {}
@@ -316,8 +322,10 @@ local function Sounds()
     local _, names, keys = nil, nil, nil
     if ns.SoundChoices then _, names, keys = ns.SoundChoices() end
     for _, key in ipairs(keys or {}) do
-        values[key] = names[key]
-        order[#order + 1] = key
+        if not Unfit(key, names[key]) then
+            values[key] = names[key]
+            order[#order + 1] = key
+        end
     end
     return values, order
 end
