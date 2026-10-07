@@ -3,7 +3,7 @@
 local root = arg[1] or "."
 local function Read(suffix)
     local name = suffix == "" and "_SmartReminders" or suffix
-    local dir = (name == "_Core" or name == "_Widgets") and "/Core" or "/SmartReminders"
+    local dir = (name == "_Core" or name == "_Widgets") and "/Core" or "/NaowhForever_SmartReminders"
     local f = assert(io.open(root .. dir .. "/NaowhForever" .. name .. ".lua", "rb"))
     local s = f:read("*a"):gsub("\r\n", "\n"); f:close(); return s
 end
@@ -52,7 +52,9 @@ function methods:GetEffectiveScale() return 1 end
 env._G = env
 setmetatable(env, { __index = _G })
 local function Eval(s) local f = assert(loadstring(s)); setfenv(f, env); return f() end
-Eval(Read("_Core")); Eval(Read("_Widgets"))
+Eval(Read("_Core"))
+env.NaowhForever.STARTER = { profile = {}, account = {} }
+Eval(Read("_Widgets"))
 local ns = env.NaowhForever
 ns.TTSVoiceChoices = function() return { [""] = "Default" }, { "" } end
 ns.WindowScalePercent = function() return 100 end

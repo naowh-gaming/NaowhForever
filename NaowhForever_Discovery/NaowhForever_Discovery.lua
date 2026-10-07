@@ -115,32 +115,45 @@ end
 
 local function State(book)
     if Library.Done(book) then return "done" end
-    if Library.Carried(book) then return "carried" end
+    if C_Item.GetItemCount(book.item, true) > 0 then return "carried" end
     return "find"
 end
 
-local function Spots(mapID, state)
-    local out = {}
-    if not mapID then return out end
-    for _, book in ipairs(ns.LibraryBooks) do
-        if Library.ForMe(book) and State(book) == state then
-            for _, spot in ipairs(book.spots) do
-                if spot[1] == mapID then out[#out + 1] = { book, spot } end
+local function Spots(mapID, state, out)
+    out = out or {}
+    local n = 0
+    if mapID then
+        for _, book in ipairs(ns.LibraryBooks) do
+            if Library.ForMe(book) and State(book) == state then
+                for _, spot in ipairs(book.spots) do
+                    if spot[1] == mapID then
+                        n = n + 1
+                        local pair = out[n] or {}
+                        pair[1], pair[2] = book, spot
+                        out[n] = pair
+                    end
+                end
             end
         end
     end
+    for i = n + 1, #out do out[i] = nil end
     return out
 end
 
-function Library.OnMap(mapID) return Spots(mapID, "find") end
-function Library.DoneOnMap(mapID) return Spots(mapID, "done") end
+function Library.OnMap(mapID, out) return Spots(mapID, "find", out) end
+function Library.DoneOnMap(mapID, out) return Spots(mapID, "done", out) end
 
-function Library.Waypoint(title, map, x, y, note)
-    if ns.PlaceWaypoint(title, map, x, y, note) and S.Get("openMap") then ns.Shared.Places.ShowMap(map) end
+function Library.ToFind(book)
+    return Library.ForMe(book) and State(book) == "find"
+end
+
+function Library.Waypoint(title, map, x, y, note, icon)
+    if ns.PlaceWaypoint(title, map, x, y, note, icon) and S.Get("openMap") then ns.Shared.Places.ShowMap(map) end
 end
 
 function Library.WaypointBook(book, spot)
-    Library.Waypoint(book.name, spot[1], spot[2], spot[3], spot[4] and (" (" .. spot[4] .. ")"))
+    Library.Waypoint(book.name, spot[1], spot[2], spot[3], spot[4] and (" (" .. spot[4] .. ")"),
+        C_Item.GetItemIconByID(book.item))
 end
 
 function Library.WaypointNpc(npc)
@@ -272,7 +285,7 @@ page:Card({
     id = "tracker", name = "Tracker", order = 10, switch = "tracker",
     help = "Pops up when you enter a zone with books you still need, with a waypoint for each and your "
         .. "progress toward the next reward, and stays while you are in that zone. The X closes it until "
-        .. "you enter another. Move it in Unlock Mode.",
+        .. "you enter another. Move it in the HUD Editor.",
     summary = TrackerSummary,
     rows = {
         { key = "trackerAlways", label = "Always Show", toggle = true, needs = On, why = DISCOVERY_OFF,

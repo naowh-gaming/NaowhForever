@@ -12,24 +12,30 @@ local UI = ns.UI
 
 local S = UI.ModuleSettings("auraBuffs", {
     enabled = true, consumableEntries = {},
-    campBuffTextSize = 16, campBuffSide = "below", campShowMissing = true,
+    campBuffTextSize = 16, campBuffSide = "right", campShowMissing = true,
     food = true, elixirs = true, flasks = true,
     consumablesWhere = "instance", consumablesMinutes = 2,
     onlyIfCarried = true, hideResting = true,
-    scrolls = true, scrollsSkipActive = true,
+    scrolls = true, scrollsSkipActive = false,
     raidBuffs = false, raidBuffsOwn = true,
-    iconSize = 36,
+    raidBuffPicks = { intellect = true, stamina = true, spirit = true, wild = true, blessing = false },
+    iconSize = 36, buffsFont = "", buffsFontSize = 14, buffsOutline = "OUTLINE",
+    buffsPos = { point = "TOP", relPoint = "TOP", x = 0, y = -232 },
 
     campfire = true, campTimer = true, campBuffs = true,
-    campSound = true, campSoundKey = "none", campIconSize = 64, campNearbyAlert = true,
-    campShowUnder = false, campShowUnderMinutes = 10, campNearbyMinutes = 2, campStyle = "round",
+    campSound = true, campSoundKey = "none", campIconSize = 110, campNearbyAlert = true,
+    campShowUnder = true, campShowUnderMinutes = 2, campNearbyMinutes = 2, campStyle = "round",
     campAlertScale = 1.4, campAlertFade = true,
+    campAlertFont = "", campAlertOutline = "", campAlertBackground = "none",
     campSimpleWidth = 360, campSimpleHeight = 26, campSimpleTextSize = 12, campBonusIcons = false,
-    campHiddenBonuses = {},
+    campHiddenBonuses = {}, campFont = "", campOutline = "", campBarOutline = "NONE",
+    campPos = { point = "CENTER", relPoint = "BOTTOMRIGHT", x = -223, y = 61 },
 
     lowHealth = true, lowHealthBelow = 35, lowHealthItem = "auto",
     lowHealthIconSize = 48, lowHealthGlow = true,
+    lowHealthFont = "", lowHealthFontSize = 16, lowHealthOutline = "OUTLINE",
     lowHealthSound = true, lowHealthSoundKey = "none",
+    lowHealthPos = { point = "BOTTOM", relPoint = "BOTTOM", x = 0, y = 249 },
     campBuffMode = false, windowAlpha = 1,
 })
 -- Authored definitions travel with shared packs; presentation settings stay in this module.
@@ -131,6 +137,11 @@ function ns.BuildPoisonDispelPage(parent, y)
         .. "combat. Add each debuff by its aura spell ID. Sound only, no on-screen glow. "
         .. "Dwarves can pick the Stoneform voice, which only speaks while Stoneform is "
         .. "ready.", y); y = y - h
+    -- The debuff sounds run in Smart Reminders.
+    if not ns.BuildDebuffsPage then
+        _, h = W:Note(parent, "Turn on Smart Reminders under Settings > Modules to add debuff sounds.", y)
+        return y - h
+    end
     return ns.BuildDebuffsPage(parent, y)
 end
 

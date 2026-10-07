@@ -10,8 +10,7 @@ local ns = _G.NaowhForever
 local S = ns.QoLSettings
 local T = ns.THEME
 
-local bar, buttons, addButton, unlocked
-local BUTTON_GAP = 4
+local bar, buttons, addButton, unlocked, inCombat
 local EMPTY_ICON = 134400
 local TRINKET_SLOTS = { 13, 14 }
 
@@ -23,6 +22,8 @@ local function On()
     return S.Get("gearSets")
 end
 
+local function ByName(a, b) return a.name < b.name end
+
 local function Sets()
     local sets = {}
     for _, id in ipairs(C_EquipmentSet.GetEquipmentSetIDs()) do
@@ -32,7 +33,7 @@ local function Sets()
                 items = numItems, lost = numLost }
         end
     end
-    table.sort(sets, function(a, b) return a.name < b.name end)
+    table.sort(sets, ByName)
     return sets
 end
 
@@ -261,21 +262,21 @@ local function NewButton()
     return btn
 end
 
-function Look.SetButton(btn, set, i, size)
+function Look.SetButton(btn, set, i, size, gap)
     btn:SetSize(size, size)
     btn:ClearAllPoints()
-    btn:SetPoint("LEFT", (i - 1) * (size + BUTTON_GAP), 0)
+    btn:SetPoint("LEFT", (i - 1) * (size + gap), 0)
     btn.icon:SetTexture(set.icon)
     btn.icon:SetDesaturated(set.lost > 0)
     if set.equipped then btn.border:SetColor(T.accent.r, T.accent.g, T.accent.b, 1) else btn.border:SetColor(0, 0, 0, 1) end
     btn:Show()
 end
 
-function Look.Fit(frame, add, count, size)
+function Look.Fit(frame, add, count, size, gap)
     add:SetSize(size, size)
     add:ClearAllPoints()
-    add:SetPoint("LEFT", count * (size + BUTTON_GAP), 0)
-    frame:SetSize((count + 1) * (size + BUTTON_GAP), size)
+    add:SetPoint("LEFT", count * (size + gap), 0)
+    frame:SetSize((count + 1) * (size + gap), size)
 end
 
 function Look.Trinkets(frame, slots, size, gap)
@@ -290,16 +291,23 @@ end
 
 local function Layout()
     if not bar then return end
-    local size = S.Get("gearBarSize")
+    local size, gap = S.Get("gearBarSize"), S.Get("gearBarSpacing")
     local sets = Sets()
     for i, set in ipairs(sets) do
         local btn = buttons[i] or NewButton()
         buttons[i] = btn
         btn.set = set
-        Look.SetButton(btn, set, i, size)
+        Look.SetButton(btn, set, i, size, gap)
     end
     for i = #sets + 1, #buttons do buttons[i]:Hide() end
-    Look.Fit(bar, addButton, #sets, size)
+    Look.Fit(bar, addButton, #sets, size, gap)
+end
+
+-- Show: Always, In Combat or Out of Combat; the HUD Editor shows it either way.
+local function BarShown()
+    local show = S.Get("gearBarShow")
+    return S.Get("gearBarVisible") == true
+        and (unlocked == true or show == "always" or (show == "combat") == (inCombat == true))
 end
 
 local function BuildBar()
@@ -351,17 +359,24 @@ end
 -------------------------------------------------------------------------------
 -- A set swap fires PLAYER_EQUIPMENT_CHANGED once per slot; one redraw covers the burst.
 local layoutQueued
+local function LayoutNow()
+    layoutQueued = false
+    Layout()
+end
+
 local function LayoutSoon()
     if layoutQueued then return end
     layoutQueued = true
-    C_Timer.After(0, function()
-        layoutQueued = false
-        Layout()
-    end)
+    C_Timer.After(0, LayoutNow)
 end
 
 local events = CreateFrame("Frame")
 events:SetScript("OnEvent", function(_, event)
+    if event == "PLAYER_REGEN_DISABLED" or event == "PLAYER_REGEN_ENABLED" then
+        inCombat = event == "PLAYER_REGEN_DISABLED"
+        bar:SetShown(BarShown())
+    end
+    if event == "PLAYER_REGEN_DISABLED" then return end
     if event == "PLAYER_REGEN_ENABLED" then
         if pending then Equip(pending) end
         AutoSwap()
@@ -386,8 +401,10 @@ local function Apply()
                          "PLAYER_ENTERING_WORLD" }) do
         events:RegisterEvent(e)
     end
+    if S.Get("gearBarShow") ~= "always" then events:RegisterEvent("PLAYER_REGEN_DISABLED") end
     Layout()
-    bar:SetShown(S.Get("gearBarVisible") == true)
+    inCombat = InCombatLockdown()
+    bar:SetShown(BarShown())
     bar.mover:SetShown(unlocked == true)
     AutoSwap()
 end
@@ -402,7 +419,9 @@ hooksecurefunc(ns, "ShowRaidReminderAnchorConfig", function()
 end)
 hooksecurefunc(ns, "HideRaidReminderAnchorConfig", function()
     unlocked = false
-    if bar then bar.mover:Hide() end
+    if not bar then return end
+    bar.mover:Hide()
+    if On() then bar:SetShown(BarShown()) end
 end)
 
 local boot = CreateFrame("Frame")
@@ -415,6 +434,8 @@ boot:SetScript("OnEvent", Apply)
 -------------------------------------------------------------------------------
 do
     local trinkets, picker, moving
+    local watcher = CreateFrame("Frame")
+    local WATCHED = { "PLAYER_REGEN_ENABLED", "PLAYER_REGEN_DISABLED", "PLAYER_EQUIPMENT_CHANGED" }
     local function ClosePicker()
         if picker then picker:Hide() end
     end
@@ -488,9 +509,15 @@ do
         picker:Show()
     end
     local function ApplyTrinkets()
-        if InCombatLockdown() then return end
+        if InCombatLockdown() then
+            watcher:RegisterEvent("PLAYER_REGEN_ENABLED")
+            return
+        end
         ClosePicker()
         local on = S.Get("gearSets") and S.Get("trinketBar")
+        for _, event in ipairs(WATCHED) do
+            if on then watcher:RegisterEvent(event) else watcher:UnregisterEvent(event) end
+        end
         if not on then
             if trinkets then trinkets:Hide() end
             return
@@ -537,12 +564,13 @@ do
         trinkets.mover:SetShown(moving == true)
         trinkets:Show()
     end
-    local watcher = CreateFrame("Frame")
-    for _, event in ipairs({ "PLAYER_LOGIN", "PLAYER_REGEN_ENABLED", "PLAYER_REGEN_DISABLED", "PLAYER_EQUIPMENT_CHANGED" }) do
-        watcher:RegisterEvent(event)
-    end
-    watcher:SetScript("OnEvent", function(_, event)
-        if event == "PLAYER_REGEN_DISABLED" then ClosePicker() else ApplyTrinkets() end
+    watcher:RegisterEvent("PLAYER_LOGIN")
+    watcher:SetScript("OnEvent", function(_, event, slot)
+        if event == "PLAYER_REGEN_DISABLED" then
+            ClosePicker()
+        elseif event ~= "PLAYER_EQUIPMENT_CHANGED" or slot == TRINKET_SLOTS[1] or slot == TRINKET_SLOTS[2] then
+            ApplyTrinkets()
+        end
     end)
     hooksecurefunc(S, "Set", function(key)
         if key == "gearSets" or key:find("^trinket") and key ~= "trinketPos" then ApplyTrinkets() end
@@ -559,6 +587,8 @@ local Settings = ns.Shared and ns.Shared.Settings
 if not Settings then return end
 
 local GEAR_OFF = "Turn on Gear & Trinkets"
+local SHOW = { { always = "Always", combat = "In Combat", nocombat = "Out of Combat" },
+    { "always", "combat", "nocombat" } }
 local PREVIEW_NOTE_GAP = 10
 local NO_SETS = "No gear sets yet: + saves what you wear as one."
 local PREVIEW_STATE = { { key = "bar", label = "Bar" } }
@@ -594,15 +624,15 @@ local function NewBarPreview(stage)
 end
 
 local function PaintBarPreview(preview)
-    local size = S.Get("gearBarSize")
+    local size, gap = S.Get("gearBarSize"), S.Get("gearBarSpacing")
     local sets = Sets()
     for i, set in ipairs(sets) do
         local btn = preview.buttons[i] or PreviewButton(preview.row)
         preview.buttons[i] = btn
-        Look.SetButton(btn, set, i, size)
+        Look.SetButton(btn, set, i, size, gap)
     end
     for i = #sets + 1, #preview.buttons do preview.buttons[i]:Hide() end
-    Look.Fit(preview.row, preview.add, #sets, size)
+    Look.Fit(preview.row, preview.add, #sets, size, gap)
     preview.note:SetShown(#sets == 0)
 end
 
@@ -672,12 +702,18 @@ page:Card({
     id = "gearBar", name = "Gear Set Bar", order = 10, switch = "gearBarVisible",
     help = "A button per set: click to equip, Shift-click to save what you wear into it, Ctrl-click to rename "
         .. "it, right-click to change its icon, and + to save a new one. The set you wear is outlined. Move it "
-        .. "in Unlock Mode.",
+        .. "in the HUD Editor.",
     summary = SizeSummary("gearBarSize"),
     studio = { height = 100, states = PREVIEW_STATE, new = NewBarPreview, paint = PaintBarPreview },
     rows = {
+        Settings.Group("Size"),
         { key = "gearBarSize", label = "Button Size", slider = { 20, 48, 1 }, unit = " px", needs = GearOn,
           why = GEAR_OFF, help = "How big each set's button is." },
+        { key = "gearBarSpacing", label = "Spacing", slider = { 0, 30, 1 }, unit = " px", needs = GearOn,
+          why = GEAR_OFF, help = "The gap between two buttons." },
+        Settings.Group("Visibility"),
+        { key = "gearBarShow", label = "Show", choice = SHOW, needs = GearOn, why = GEAR_OFF,
+          help = "Always, only in combat, or only out of combat." },
     },
 })
 
@@ -696,7 +732,7 @@ page:Card({
 page:Card({
     id = "trinketBar", name = "Trinket Bar", order = 30, switch = "trinketBar",
     help = "Your two trinket slots, movable: left-click to use one, right-click to equip a trinket from your "
-        .. "bags outside combat. Move it in Unlock Mode.",
+        .. "bags outside combat. Move it in the HUD Editor.",
     summary = SizeSummary("trinketSize"),
     studio = { height = 110, states = PREVIEW_STATE, new = NewTrinketPreview, paint = PaintTrinketPreview },
     rows = {

@@ -16,6 +16,7 @@
 local ns = _G.NaowhForever
 local S = ns.ProfessionSettings
 local T = ns.THEME
+local Parts = ns.Shared.Parts
 
 -- The Flight Timer's measures and art (QoL/NaowhForever_Flight.lua), so the two look alike.
 local GRADIENT = "Interface\\AddOns\\NaowhForever\\Media\\NaowhGradient.tga"
@@ -23,6 +24,8 @@ local GRADIENT = "Interface\\AddOns\\NaowhForever\\Media\\NaowhGradient.tga"
 local WIDTH, TRACK_H, PIN, NAME_SIZE, ICON = 420, 20, 18, 14, 30
 -- Between the track and the time left of it, and the icon right of it.
 local SIDE_GAP = 10
+-- The time left, this much bigger than the labels' Font Size.
+local TIME_LARGER = 4
 local HEIGHT = PIN + 2 * (NAME_SIZE + 8)
 -- A first guess at the pause between one craft ending and the next starting, until one is
 -- measured.
@@ -78,10 +81,9 @@ function Look.New(parent, name)
     track:SetPoint("LEFT")
     track:SetPoint("RIGHT")
     track:SetHeight(TRACK_H)
-    track:SetStatusBarTexture(GRADIENT)
-    track:SetStatusBarColor(T.accent.r, T.accent.g, T.accent.b)
     track:SetMinMaxValues(0, 1)
-    ns.Solid(track, "BACKGROUND", T.bg, 0.9):SetAllPoints()
+    frame.bg = ns.Solid(track, "BACKGROUND", T.bg)
+    frame.bg:SetAllPoints()
     ns.Border(track, { r = 0, g = 0, b = 0 })
     frame.track = track
 
@@ -113,6 +115,15 @@ function Look.New(parent, name)
     return frame
 end
 
+function Look.Style(frame)
+    local font, size, outline = S.Get("craftTimerFont"), S.Get("craftTimerFontSize"), S.Get("craftTimerOutline")
+    for _, label in ipairs(frame.labels) do Parts.HudFont(label, font, size, outline) end
+    Parts.HudFont(frame.time, font, size + TIME_LARGER, outline)
+    frame.track:SetStatusBarTexture(ns.UI.TexturePath(S.Get("craftTimerTexture"), GRADIENT))
+    frame.track:SetStatusBarColor(T.accent.r, T.accent.g, T.accent.b)
+    frame.bg:SetColorTexture(T.bg.r, T.bg.g, T.bg.b, S.Get("craftTimerBgAlpha"))
+end
+
 -- The recipe over the left end, how many of the batch are done over the right.
 function Look.Fill(frame, icon, name, done, count)
     frame.icon:SetTexture(icon)
@@ -122,11 +133,16 @@ end
 
 function Look.Progress(frame, share, left)
     frame.track:SetValue(math.min(share, 1))
-    frame.time:SetText(Clock(left))
+    local seconds = math.max(0, math.floor(left + 0.5))
+    if seconds ~= frame.seconds then
+        frame.seconds = seconds
+        frame.time:SetText(Clock(left))
+    end
 end
 
 local function Build()
     bar = Look.New(UIParent, "NaowhForeverCraftTimer")
+    Look.Style(bar)
     bar:SetFrameStrata("MEDIUM")
     bar:SetScript("OnUpdate", function(self)
         if not job then return self:Hide() end
@@ -237,13 +253,16 @@ end
 -- "Inventory is full", as counted here).
 -- A profession bag takes only items of its kind, the reagent bag only crafting reagents.
 -- The profession window caps Create All with it.
+local bagStacks, bagLists, bagRecords, NONE, memo = {}, {}, {}, {}, {}
+local function SmallestFirst(a, b) return a.count < b.count end
+
 local function BagTakes(bag, family, isReagent)
     if Enum.BagIndex and bag == Enum.BagIndex.ReagentBag then return isReagent end
     local _, bagType = C_Container.GetContainerNumFreeSlots(bag)
     return (bagType or 0) == 0 or bit.band(family, bagType) ~= 0
 end
 
-function ns.CraftBagRoom(output, made, reagents, limit)
+local function BagRoom(output, made, reagents, limit)
     if not output or not limit or limit < 1 then return end
     local stack = C_Item.GetItemMaxStackSizeByID and C_Item.GetItemMaxStackSizeByID(output)
         or select(8, C_Item.GetItemInfo(output))
@@ -254,9 +273,15 @@ function ns.CraftBagRoom(output, made, reagents, limit)
 
     -- What the bags hold: free slots and room on the item's stacks where it can go, and every
     -- stack of each reagent, marked by whether its slot could take the item once empty.
-    local free, room = 0, 0
-    local stacks = {}   -- reagent itemID -> { { count, takes } }
-    for _, r in ipairs(reagents or {}) do stacks[r.itemID] = {} end
+    local free, room, used = 0, 0, 0
+    local stacks = bagStacks   -- reagent itemID -> { { count, takes } }
+    wipe(stacks)
+    for i, r in ipairs(reagents or NONE) do
+        local list = bagLists[i] or {}
+        bagLists[i] = list
+        wipe(list)
+        stacks[r.itemID] = list
+    end
     for bag = 0, (NUM_TOTAL_EQUIPPED_BAG_SLOTS or NUM_BAG_SLOTS or 4) do
         local takes = BagTakes(bag, family, isReagent)
         for slot = 1, C_Container.GetContainerNumSlots(bag) or 0 do
@@ -267,13 +292,15 @@ function ns.CraftBagRoom(output, made, reagents, limit)
                 if takes then room = room + math.max(0, stack - (info.stackCount or 0)) end
             elseif stacks[info.itemID] then
                 local list = stacks[info.itemID]
-                list[#list + 1] = { count = info.stackCount or 1, takes = takes }
+                used = used + 1
+                local rec = bagRecords[used] or {}
+                bagRecords[used] = rec
+                rec.count, rec.takes = info.stackCount or 1, takes
+                list[#list + 1] = rec
             end
         end
     end
-    for _, list in pairs(stacks) do
-        table.sort(list, function(a, b) return a.count < b.count end)
-    end
+    for _, list in pairs(stacks) do table.sort(list, SmallestFirst) end
 
     for n = 1, limit do
         -- The item: onto stacks with room first, the rest into new slots.
@@ -286,7 +313,7 @@ function ns.CraftBagRoom(output, made, reagents, limit)
             room = room + slots * stack - made
         end
         -- The reagents, smallest stacks first; each one emptied frees its slot.
-        for _, r in ipairs(reagents or {}) do
+        for _, r in ipairs(reagents or NONE) do
             local need, list = r.need, stacks[r.itemID]
             for _, s in ipairs(list) do
                 if need <= 0 then break end
@@ -299,6 +326,18 @@ function ns.CraftBagRoom(output, made, reagents, limit)
         end
     end
     return limit
+end
+
+function ns.CraftBagRoom(output, made, reagents, limit)
+    local changes = ns.ProfBagChanges
+    if changes and memo.changes == changes and memo.output == output and memo.made == made
+        and memo.reagents == reagents and memo.limit == limit then
+        return memo.room
+    end
+    local room = BagRoom(output, made, reagents, limit)
+    memo.changes, memo.output, memo.made, memo.reagents, memo.limit, memo.room =
+        changes, output, made, reagents, limit, room
+    return room
 end
 
 -- Nothing is hooked until Total Craft Timer is first switched on: crafting, and Blizzard's
@@ -314,7 +353,11 @@ local function Apply()
 end
 
 hooksecurefunc(S, "Set", function(key)
-    if key == "enabled" or key == "craftTimer" then Apply() end
+    if key == "enabled" or key == "craftTimer" then
+        Apply()
+    elseif bar and key:find("^craftTimer") then
+        Look.Style(bar)
+    end
 end)
 hooksecurefunc(ns, "Apply", Apply)
 
@@ -339,6 +382,7 @@ local function NewPreview(stage)
 end
 
 local function PaintPreview(preview)
+    Look.Style(preview)
     Look.Fill(preview, SAMPLE_ICON, SAMPLE_NAME, SAMPLE_DONE, SAMPLE_COUNT)
     Look.Progress(preview, SAMPLE_SHARE, SAMPLE_LEFT)
 end
@@ -348,6 +392,9 @@ Settings.Page("Professions/Settings", S):Card({
     help = "Crafting several at once (Create All, or Create with a count) shows one bar for the whole batch, "
         .. "drawn like the Flight Timer: the recipe, how many are done and the time left on all of them, in place "
         .. "of the cast bar that fills for every craft. It sits where the Flight Timer is, as nobody crafts in "
-        .. "flight: move it in Unlock Mode as the Flight Timer.",
+        .. "flight: move it in the HUD Editor as the Flight Timer.",
     studio = { height = 100, states = PREVIEW_STATES, new = NewPreview, paint = PaintPreview },
+    rows = {
+        Settings.Look("craftTimer", { text = true, size = { 8, 24, 1 }, bar = "Naowh Gradient", background = "alpha" }),
+    },
 })
