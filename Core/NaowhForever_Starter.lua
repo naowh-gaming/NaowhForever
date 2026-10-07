@@ -154,6 +154,7 @@ ns.STARTER = {
             questShare = false,
             questTurnIn = false,
             quizCamp = false,
+            restock = false,
             restockAmmo = false,
             restockAmmoTarget = 200,
             restockBagsBelow = 10,
