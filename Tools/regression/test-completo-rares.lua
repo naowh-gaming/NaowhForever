@@ -121,6 +121,8 @@ local function Fixture(settings, units)
     env.loot = {}
     env.GetNumLootItems = function() return #env.loot end
     env.GetLootSourceInfo = function(slot) return env.loot[slot], 1 end
+    env.lootLinks = {}
+    env.GetLootSlotLink = function(slot) return env.lootLinks[slot] end
     env.sounds = 0
     env.PlaySound = function() env.sounds = env.sounds + 1 end
     env.PlaySoundFile = function(file) env.soundFile = file; env.sounds = env.sounds + 1 end
@@ -276,8 +278,12 @@ do
     Check(R.Record(10644).n == 1, "a rare someone else tapped does not count")
 
     env.loot = { Guid(12037) }
+    env.lootLinks = { "|cff0070dd|Hitem:4454::::::::30:::::|h[Talon of Vultros]|h|r" }
     env.Fire("LOOT_READY")
     Check(R.Killed(12037), "a looted rare counts")
+    Check(R.Dropped(12037, 4454) and not R.Dropped(12037, 5971) and not R.Dropped(10644, 4454),
+        "the item its loot window had is kept as that rare's drop")
+    env.lootLinks = {}
     Check(select(1, R.ZoneProgress(zone)) == 2, "the zone counts both kills")
 
     local heard = 0

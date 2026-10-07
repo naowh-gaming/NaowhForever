@@ -6,7 +6,8 @@
 --  The game keeps no record of the rares you killed, so Completo counts them itself, per
 --  character, from then on: a rare you had targeted dying while it was yours (not tapped by
 --  someone else), or a corpse you loot. One killed before can be ticked off by hand in the
---  window (Shift-click). Off while Completo is: no events until it is on.
+--  window (Shift-click). What a rare's corpse had for you in its loot window is kept too, so
+--  its drops can be ticked. Off while Completo is: no events until it is on.
 -------------------------------------------------------------------------------
 local ns = _G.NaowhForever
 local S = ns.CompletoSettings
@@ -96,6 +97,29 @@ end
 -- Ticked off or back by hand: one killed before Completo counted, or counted by mistake.
 function R.SetKilled(npc, killed)
     Kills()[npc] = killed and (Kills()[npc] or { n = 0, at = time() }) or nil
+    Changed(npc)
+end
+
+-- The items each rare dropped for this character: npcID -> { itemID -> time() it first did }.
+local function Drops()
+    local account = ns.AccountSettings()
+    account.completoRareDrops = account.completoRareDrops or {}
+    local char = (UnitName("player") or "?") .. "-" .. (GetRealmName() or "?")
+    account.completoRareDrops[char] = account.completoRareDrops[char] or {}
+    return account.completoRareDrops[char]
+end
+
+-- Whether the rare ever dropped the item for you.
+function R.Dropped(npc, itemID)
+    local items = Drops()[npc]
+    return items ~= nil and items[itemID] ~= nil
+end
+
+local function AddDrop(npc, itemID)
+    local drops = Drops()
+    drops[npc] = drops[npc] or {}
+    if drops[npc][itemID] then return end
+    drops[npc][itemID] = time()
     Changed(npc)
 end
 
@@ -243,6 +267,7 @@ function R.AddLoot(tooltip, npc)
         local r, g, b = QualityColor(item[QUALITY])
         local chance = item[CHANCE] >= 1 and ("%d%%"):format(math.floor(item[CHANCE] + 0.5))
             or ("%.1f%%"):format(item[CHANCE])
+        if R.Dropped(npc, item[ID]) then name = name .. "  |cff3fd13f(you got it)|r" end
         tooltip:AddDoubleLine(name, chance, r, g, b, 0.62, 0.62, 0.62)
     end
     if loot.more then
@@ -325,11 +350,18 @@ local function Retarget()
     events:RegisterUnitEvent("UNIT_HEALTH", "target")
 end
 
+-- Each slot: the rare (or rares) it came from counts as killed, and keeps the item as dropped.
 local function Looted()
     for slot = 1, GetNumLootItems() do
+        local link = GetLootSlotLink(slot)
+        local itemID = type(link) == "string" and Readable(link) and tonumber(link:match("item:(%d+)"))
         local sources = { GetLootSourceInfo(slot) }
         for i = 1, #sources, 2 do
-            if Readable(sources[i]) then Count(sources[i]) end
+            if Readable(sources[i]) then
+                Count(sources[i])
+                local npc = R.NpcOf(sources[i])
+                if itemID and npc and D.Rares[npc] then AddDrop(npc, itemID) end
+            end
         end
     end
 end

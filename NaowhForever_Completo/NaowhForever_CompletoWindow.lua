@@ -5,7 +5,8 @@
 --  as its first quest with the chain icon in front and how far along you are, its follow-up
 --  quests indented under it. All Zones lists every zone by continent with its progress;
 --  click one to open it. The Rares tab is built the same way: a zone's rares by level,
---  which of them you have killed, a waypoint to where each spawns.
+--  which of them you have killed, a waypoint to where each spawns; click a rare to open it
+--  on its special drops.
 -------------------------------------------------------------------------------
 local ns = _G.NaowhForever
 local T = ns.THEME
@@ -31,6 +32,8 @@ local STATUS_W = 120
 local STATUS_GAP = 10
 local ZONE_H = 44
 local ZONE_BAR_W = 180
+local ARROW, ARROW_GAP = 10, 6
+local ACTION_W = St.ACTION or 18
 local SEARCH_W = 260
 local SEARCH_MAX = 150          -- quests a search lists at most
 -- The smallest the window drags down to: the tabs and the search box side by side, and a
@@ -60,6 +63,7 @@ local TABS = {
 local SEARCH_HINT = { quests = "Search quests or quest givers", rares = "Search rares" }
 
 local window, scroll, view, kinds
+local opened = {}       -- npcID -> true: the rares opened on their drops
 local tab = "quests"
 local zone              -- the Quests tab's zone open, or nil for All Zones
 local rareZone          -- the Rares tab's
@@ -417,8 +421,10 @@ local function RareEnter(row)
     end
     R.AddLoot(GameTooltip, npc)
     GameTooltip:AddLine(" ")
-    GameTooltip:AddLine((spots > 0 and "Pin: waypoint, the nearest spot    " or "")
-        .. (record and "Shift-click: not killed" or "Shift-click: killed"),
+    GameTooltip:AddLine((opened[npc] and "Click: close its drops" or "Click: its drops")
+        .. (spots > 0 and "    Pin: waypoint, the nearest spot" or ""),
+        T.accentSoft.r, T.accentSoft.g, T.accentSoft.b)
+    GameTooltip:AddLine(record and "Shift-click: not killed" or "Shift-click: killed",
         T.accentSoft.r, T.accentSoft.g, T.accentSoft.b)
     GameTooltip:AddLine("Right-click: Wowhead link", T.accentSoft.r, T.accentSoft.g, T.accentSoft.b)
     GameTooltip:Show()
@@ -429,6 +435,9 @@ local function RareMouseUp(row, button)
         Parts.CopyWowhead("npc", row.rare, R.Name(row.rare))
     elseif button == "LeftButton" and IsShiftKeyDown() then
         R.SetKilled(row.rare, not R.Killed(row.rare))
+    elseif button == "LeftButton" then
+        opened[row.rare] = not opened[row.rare] or nil
+        view:Redraw()
     end
 end
 
@@ -454,8 +463,14 @@ local function NewRare(parent)
     row.where:SetPoint("TOPLEFT", row.title, "BOTTOMLEFT", 0, -LINE_GAP)
     row.where:SetJustifyH("LEFT")
     row.where:SetWordWrap(false)
+    -- Its drops open under it: a chevron, turned down while they are.
+    row.arrow = row:CreateTexture(nil, "ARTWORK")
+    row.arrow:SetTexture(St.ARROW, nil, nil, "TRILINEAR")
+    row.arrow:SetSize(ARROW, ARROW)
+    row.arrow:SetPoint("RIGHT", row.pin, "LEFT", -ARROW_GAP, 0)
+    row.arrow:SetVertexColor(T.muted.r, T.muted.g, T.muted.b)
     row.status = ns.Font(row, 11, nil, T.fg)
-    row.status:SetPoint("RIGHT", row.pin, "LEFT", -STATUS_GAP, 0)
+    row.status:SetPoint("RIGHT", row.arrow, "LEFT", -ARROW_GAP, 0)
     row.status:SetJustifyH("RIGHT")
     row:SetScript("OnEnter", RareEnter)
     row:SetScript("OnLeave", RowLeave)
@@ -475,6 +490,7 @@ local function SetRare(row, npc, withZone, stripe)
     local c = RareColor(npc)
     row.level:SetTextColor(c.r, c.g, c.b)
     row.pin:SetShown(R.SpotCount(npc) > 0)
+    row.arrow:SetRotation(opened[npc] and -math.pi / 2 or 0)
     local text, color = RareStatus(npc)
     row.status:SetText(text)
     row.status:SetTextColor(color.r, color.g, color.b)
@@ -492,6 +508,81 @@ local function SetRare(row, npc, withZone, stripe)
     local h = ROW_TOP + math.ceil(row.title:GetStringHeight()) + ROW_BOTTOM
     if sub ~= "" then h = h + LINE_GAP + math.ceil(row.where:GetStringHeight()) end
     return h
+end
+
+-------------------------------------------------------------------------------
+--  A rare's drop, under it while it is open: its icon, its name in its quality's colour, its
+--  chance, and a tick once that rare dropped it for you; hover for the item, right-click for
+--  its Wowhead link. With item nil, a line saying
+--  it has none worth naming.
+-------------------------------------------------------------------------------
+local DROP_H, DROP_ICON = 22, 16
+
+local function DropEnter(row)
+    row.hover:Show()
+    if not row.item then return end
+    GameTooltip:SetOwner(row, "ANCHOR_RIGHT")
+    GameTooltip:SetItemByID(row.item[1])
+    GameTooltip:AddLine(" ")
+    if row.tick:IsShown() then GameTooltip:AddLine("This rare dropped it for you.", 0.25, 0.82, 0.25) end
+    GameTooltip:AddLine("Right-click: Wowhead link", T.accentSoft.r, T.accentSoft.g, T.accentSoft.b)
+    GameTooltip:Show()
+end
+
+local function DropMouseUp(row, button)
+    if button == "RightButton" and row.item then Parts.CopyWowhead("item", row.item[1], row.item[4]) end
+end
+
+local function NewDrop(parent)
+    local row = NewRowBase(parent)
+    row.divider:Hide()
+    row.icon = row:CreateTexture(nil, "ARTWORK")
+    row.icon:SetSize(DROP_ICON, DROP_ICON)
+    row.icon:SetPoint("LEFT", St.INDENT + LEVEL_W + 16, 0)
+    row.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+    row.name = ns.Font(row, 12, nil, T.fg)
+    row.name:SetPoint("LEFT", row.icon, "RIGHT", 6, 0)
+    row.name:SetJustifyH("LEFT")
+    row.name:SetWordWrap(false)
+    row.chance = ns.Font(row, 11, nil, T.muted)
+    row.chance:SetPoint("RIGHT", -(PIN_RIGHT + ACTION_W + ARROW_GAP * 2 + ARROW), 0)
+    row.chance:SetJustifyH("RIGHT")
+    row.tick = row:CreateTexture(nil, "ARTWORK")
+    row.tick:SetTexture(St.TICK, nil, nil, "TRILINEAR")
+    row.tick:SetSize(TICK, TICK)
+    row.tick:SetVertexColor(St.HAVE_RGB.r, St.HAVE_RGB.g, St.HAVE_RGB.b)
+    row.tick:SetPoint("RIGHT", row.chance, "LEFT", -6, 0)
+    row:SetScript("OnEnter", DropEnter)
+    row:SetScript("OnLeave", RowLeave)
+    row:SetScript("OnMouseUp", DropMouseUp)
+    return row
+end
+
+-- item: { itemID, quality, chance, name } and npc, the rare it is a drop of.
+local function SetDrop(row, item, npc, stripe)
+    row.item = item
+    row.tick:SetShown(item ~= nil and R.Dropped(npc, item[1]))
+    row.stripe:SetShown(stripe)
+    row.hover:Hide()
+    row.icon:SetShown(item ~= nil)
+    if not item then
+        row.name:ClearAllPoints()
+        row.name:SetPoint("LEFT", St.INDENT + LEVEL_W + 16, 0)
+        row.name:SetText("No special drops: no rare or epic items, nor recipes")
+        row.name:SetTextColor(T.muted.r, T.muted.g, T.muted.b)
+        row.chance:SetText("")
+        return DROP_H
+    end
+    row.name:ClearAllPoints()
+    row.name:SetPoint("LEFT", row.icon, "RIGHT", 6, 0)
+    row.icon:SetTexture(C_Item.GetItemIconByID(item[1]) or 134400)
+    local c = ITEM_QUALITY_COLORS and ITEM_QUALITY_COLORS[item[2]] or T.fg
+    row.name:SetText(item[4])
+    row.name:SetTextColor(c.r, c.g, c.b)
+    row.name:SetWidth(row:GetWidth() - (St.INDENT + LEVEL_W + 16 + DROP_ICON + 6) - STATUS_W - PIN_RIGHT)
+    local chance = item[3]
+    row.chance:SetText(chance >= 1 and ("%d%%"):format(math.floor(chance + 0.5)) or ("%.1f%%"):format(chance))
+    return DROP_H
 end
 
 -------------------------------------------------------------------------------
@@ -597,6 +688,15 @@ local function DrawZone(self)
     end
 end
 
+-- A rare, then its special drops under it while it is open, on its stripe.
+local function AddRare(self, npc, withZone, stripe)
+    self:Add("rare", npc, withZone, stripe)
+    if not opened[npc] then return end
+    local loot = R.Loot(npc)
+    if not loot then return self:Add("drop", nil, npc, stripe) end
+    for _, item in ipairs(loot) do self:Add("drop", item, npc, stripe) end
+end
+
 -- A zone's rares, lowest level first.
 local function DrawRareZone(self)
     local hideKilled = S.Get("rareHideKilled")
@@ -610,7 +710,7 @@ local function DrawRareZone(self)
         if not (hideKilled and R.Killed(npc)) then entries[#entries + 1] = npc end
     end
     if #entries > 0 then self:Section("Rares", #entries) end
-    for i, npc in ipairs(entries) do self:Add("rare", npc, false, i % 2 == 0) end
+    for i, npc in ipairs(entries) do AddRare(self, npc, false, i % 2 == 0) end
     if #entries == 0 then
         self:Note(total > 0 and "Every rare here is killed." or "No rares here for your character.")
     end
@@ -651,7 +751,7 @@ local function DrawRareSearch(self, text)
     end
     for _, entry in ipairs(zones) do
         self:Add("section", entry.zone.name, #entry.ids, nil, nil, "Open", OpenFound, entry.zone)
-        for i, npc in ipairs(entry.ids) do self:Add("rare", npc, false, i % 2 == 0) end
+        for i, npc in ipairs(entry.ids) do AddRare(self, npc, false, i % 2 == 0) end
         self:Space(St.SECTION_SPACE)
     end
     if n > SEARCH_MAX then
@@ -700,6 +800,7 @@ local function Kinds()
     kinds.zone = { New = NewZone, Set = SetZone }
     kinds.quest = { New = NewQuest, Set = SetQuest }
     kinds.rare = { New = NewRare, Set = SetRare }
+    kinds.drop = { New = NewDrop, Set = SetDrop }
     return kinds
 end
 
