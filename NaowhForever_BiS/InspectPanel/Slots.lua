@@ -48,7 +48,10 @@ end
 local function PaintAll()
     for _, over in pairs(overs) do Paint(over) end
 end
-IP.PaintSlots = PaintAll
+
+function IP.PaintSlots()
+    if IP.On() then PaintAll() end
+end
 
 local function SlotUpdated(button)
     local over = overs[button]

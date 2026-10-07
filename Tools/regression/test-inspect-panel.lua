@@ -703,6 +703,9 @@ Measure(check)("an answer read", 1, function()
     pending.guid, pending.unit, pending.at = GUID_A, "target", state.now
     Message(ANSWER, "Bob-Smith")
 end)
+Measure(check)("another addon's whisper passed over", 0.05, function()
+    Test.OnMessage(nil, "CHAT_MSG_ADDON", "OtherAddon", "1 Q x y", "WHISPER", "Eve-Evil")
+end)
 
 -------------------------------------------------------------------------------
 --  Missing APIs: nothing breaks, what cannot be known says so.
@@ -788,6 +791,17 @@ env.EllesmereUI = { GetBlizzWindowStyle = function() return "off" end }
 S.Set("inspectPanel", true)
 check("its sheet off: Naowh's on again", IP.On() and frame.w == 338 + 233 and head.normal.alpha == 0
     and h.shown == true)
+
+-- Turned off with an ask still out: their answer paints nothing over the game's slots.
+Target(A)
+frame.shown, frame.unit = true, "target"
+state.now = state.now + 11
+frame.hooks.OnShow(frame)
+check("an ask out as it is turned off", pending.guid == GUID_A)
+S.Set("inspectPanel", false)
+Message("1 A " .. GUID_A .. " 1:101:1", "Bob-Smith")
+check("off: their answer still comes, and paints none of ours over the game's slots", h.shown == false
+    and pending.guid == nil)
 
 -------------------------------------------------------------------------------
 --  Off: the game's art, width and fonts back; ours hidden.
