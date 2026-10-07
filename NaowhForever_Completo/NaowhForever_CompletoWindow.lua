@@ -916,9 +916,9 @@ function NaowhForever_ToggleCompleto()
 end
 
 -------------------------------------------------------------------------------
---  Shift-L by default. Bindings.xml's default only reaches a character whose bindings are
---  reset, so once per character, while Completo is on, Shift-L is bound to it if nothing
---  else has it and Completo has no key yet; else a line in chat says where to bind it. Never
+--  Shift-L by default. Bindings.xml has no default key, so it never binds while Completo is
+--  off. Once per character, while Completo is on, Shift-L is bound to it if nothing else
+--  has it and Completo has no key yet; else a line in chat says where to bind it. Never
 --  again after that, so a key you change or clear stays as you left it.
 -------------------------------------------------------------------------------
 local ACTION, DEFAULT_KEY = "NAOWHFOREVER_COMPLETO", "SHIFT-L"

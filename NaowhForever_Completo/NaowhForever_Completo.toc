@@ -1,10 +1,10 @@
 ## Interface: 16001
 ## Title: |cff0091edNaowh|r Forever: Completo
 ## Notes: Everything there is to do, and how much of it you have done: every quest of every zone, and where you are in each chain.
-## Author: NaowhUI
-## Version: 0.5.22-beta
+## Author: Naowh
+## Version: 1.0.5
 ## Dependencies: NaowhForever
-## Group: NaowhUI
+## Group: NaowhForever
 ## IconTexture: Interface\AddOns\NaowhForever\Media\LogoAddon.tga
 
 # The quest and rare data (Tools/build_completo_quests.py, build_completo_rares.py) load
