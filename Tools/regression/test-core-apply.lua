@@ -12,9 +12,13 @@ end
 local f = assert(io.open("Core/NaowhForever_Core.lua", "rb"))
 local source = f:read("*a"):gsub("\r\n", "\n")
 f:close()
-local first = assert(source:find("local reapplyPending", 1, true))
-local last = source:find("\n%-%-%-%-%-%-%-%-", first) or #source + 1
-local chunk = assert(loadstring(source:sub(first, last)))
+local function Slice(a, b)
+    local first = assert(source:find(a, 1, true), a)
+    local last = b and source:find(b, first + #a, true) or #source + 1
+    return source:sub(first, last - 1)
+end
+local chunk = assert(loadstring(Slice("local function ApplyNow()", "\n-- The spoken voice")
+    .. "\n" .. Slice("local reapplyPending")))
 
 local frames, timers, applied = {}, {}, 0
 local ns = {}

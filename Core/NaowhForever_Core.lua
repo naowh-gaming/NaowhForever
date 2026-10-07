@@ -1127,6 +1127,22 @@ specWatch:RegisterEvent("PLAYER_ENTERING_WORLD")
 specWatch:RegisterUnitEvent("PLAYER_SPECIALIZATION_CHANGED", "player")
 specWatch:SetScript("OnEvent", function() ns.ApplySpecProfile((ns.CurrentSpec())) end)
 
+local function ApplyNow() ns.Apply() end
+
+local reapplyEvents = CreateFrame("Frame")
+reapplyEvents:RegisterEvent("PLAYER_LOGIN")
+reapplyEvents:RegisterEvent("PLAYER_ENTERING_WORLD")
+reapplyEvents:RegisterEvent("PLAYER_SPECIALIZATION_CHANGED")
+reapplyEvents:RegisterEvent("SPELLS_CHANGED")
+reapplyEvents:RegisterEvent("TRAIT_CONFIG_UPDATED")
+reapplyEvents:SetScript("OnEvent", function(_, event)
+    if event == "PLAYER_LOGIN" then
+        C_Timer.After(1, ApplyNow)
+    else
+        ns.QueueReapply()
+    end
+end)
+
 -- The spoken voice, picked on the Smart Reminders page and used by every module that speaks.
 -- "Game Default" stores no id and follows Blizzard's Text to Speech panel; an uninstalled
 -- stored voice falls back rather than going silent. Cached because GetTtsVoices builds a
@@ -1417,19 +1433,3 @@ function ns.QueueReapply()
         if ns.RefreshDefensivePreview then ns.RefreshDefensivePreview() end
     end)
 end
-
-local function ApplyNow() ns.Apply() end
-
-local reapplyEvents = CreateFrame("Frame")
-reapplyEvents:RegisterEvent("PLAYER_LOGIN")
-reapplyEvents:RegisterEvent("PLAYER_ENTERING_WORLD")
-reapplyEvents:RegisterEvent("PLAYER_SPECIALIZATION_CHANGED")
-reapplyEvents:RegisterEvent("SPELLS_CHANGED")
-reapplyEvents:RegisterEvent("TRAIT_CONFIG_UPDATED")
-reapplyEvents:SetScript("OnEvent", function(_, event)
-    if event == "PLAYER_LOGIN" then
-        C_Timer.After(1, ApplyNow)
-    else
-        ns.QueueReapply()
-    end
-end)
