@@ -1398,8 +1398,9 @@ end
 -- Coalesced: one click can request several reapplies.
 local reapplyPending
 
--- Re-applies the active profile. Empty here: Smart Reminders and every module that needs it
--- hook it.
+-- Re-applies the active profile. Empty here: every module that needs it hooks it. Core calls
+-- it a second after login and queues it again on a new world, spec, spells or talents, so the
+-- modules paint without Smart Reminders, which used to call it and no longer ships.
 function ns.Apply() end
 
 function ns.QueueReapply()
@@ -1416,3 +1417,19 @@ function ns.QueueReapply()
         if ns.RefreshDefensivePreview then ns.RefreshDefensivePreview() end
     end)
 end
+
+local function ApplyNow() ns.Apply() end
+
+local reapplyEvents = CreateFrame("Frame")
+reapplyEvents:RegisterEvent("PLAYER_LOGIN")
+reapplyEvents:RegisterEvent("PLAYER_ENTERING_WORLD")
+reapplyEvents:RegisterEvent("PLAYER_SPECIALIZATION_CHANGED")
+reapplyEvents:RegisterEvent("SPELLS_CHANGED")
+reapplyEvents:RegisterEvent("TRAIT_CONFIG_UPDATED")
+reapplyEvents:SetScript("OnEvent", function(_, event)
+    if event == "PLAYER_LOGIN" then
+        C_Timer.After(1, ApplyNow)
+    else
+        ns.QueueReapply()
+    end
+end)
