@@ -421,6 +421,7 @@ local function Step(recipeID, by)
     local craft = recipeID and List()[recipeID]
     if not craft then return end
     craft.count = math.max(1, math.min(999, craft.count + by))
+    Trim()
     if Render then Render() end
 end
 
