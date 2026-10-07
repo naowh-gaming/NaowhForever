@@ -2,6 +2,391 @@
 
 ## Unreleased
 
+## 1.0.5
+
+### Fixed
+- Naowh Score: no more error when your target's target changes gear.
+- Character Panel: no more error opening it while your stats are hidden; Defense shows as hidden.
+- CurseForge: updates show up in the CurseForge app again.
+
+## 1.0.4
+
+### Added
+- Credits: Ellesmere, creator of EllesmereUI, is thanked with his own badge.
+- Flight Timer: Flight Time on Map shows the flight time to each destination when you hover it on
+  the flight master's map (QoL > Travel > Flight Timer).
+
+### Changed
+- Credits: a shorter line for Santiago Reyes's maps.
+
+### Fixed
+- CurseForge lists Naowh Forever under WoW Forever only, not Retail.
+
+## 1.0.3
+
+### Fixed
+- Welcome window: on some screens its buttons no longer cover the Recommended setup.
+
+## 1.0.2
+
+### Changed
+- Top Bar: Training Planner and Discovery have their own icons, in the bar's style.
+- Minimalist setup starts with the Threat Meter off.
+- QoL > System > Defaults: hovering a setup also lists the modules it turns on or off.
+
+### Fixed
+- Welcome window: it comes back after a reload when another addon's setup reloads before you pick a
+  setup.
+
+## 1.0.1
+
+### Added
+- Two setups by Naowh, Minimalist (almost everything off) and Recommended (the modules he uses on):
+  pick one in the welcome window, or switch any time from the Setup dropdown in QoL > System >
+  Defaults, whose tooltip lists what it turns on and off. Your BiS lists and notes stay.
+
+### Changed
+- A fresh install starts with the team's settings and HUD layout: Swing Timer, Threat Meter,
+  Training Planner, Dungeon Journal, Smart Macros and the quest, loot and repair helpers start on,
+  and every element starts in its place.
+- Town Map Pins is now Map Pins, and Waypoint Pin sits under it on QoL > Interface.
+- Export Profile and Reminder Pack exports copy as one unbroken line, so they paste cleanly into
+  other tools.
+- Smart Reminders is taken out for now while it is reworked for Forever.
+- A new install starts with Naowh's setup: his module settings and positions.
+- The durability warning starts off; turn it on under Quality of Life, Loot & Items.
+- On a new install the XP bar starts 20px lower.
+- The Top Bar's clock is off by default; turn it on with Show Clock in the Top Bar settings.
+- The Top Bar starts with the Dungeon Journal and Discovery on the left and the BiS List and
+  Training Planner on the right.
+- New installs start from Minimalist, with almost everything off to turn on as you like.
+- Item levels in your bags show in the item's quality color, so they no longer look like stack
+  counts.
+
+### Fixed
+- Waypoint Pin: no more Lua errors when the game hides your movement speed; the walking time keeps
+  using your last known speed.
+- Waypoint Pin: the pin stands above the spot with its ring on the ground, instead of its line
+  sinking into the ground.
+- The sidebar keeps Combat above Utilities when Gear & Trinkets or Blessings is switched off.
+- Clearing a waypoint with the navigator's X closes the navigator.
+- With the clock hidden, the Top Bar's buttons sit in one row with no gap where the clock was.
+- Imported profiles no longer bring someone else's answers about EllesmereUI's character and inspect
+  windows, and turning Naowh's panel off no longer turns EllesmereUI's sheet back on when you had it
+  off.
+- Applying an enchant or armor kit over an existing enchant is no longer blocked; Auto-Replace
+  Enchants is removed, as only you can confirm that popup.
+- Your Naowh Score on the character panel no longer covers your gear sets or titles, so their rows
+  can be clicked again.
+- Shift-clicking the game's waypoint pin on the world map to share it in chat works again after
+  placing a waypoint from Naowh Forever; a waypoint set while the map is open is placed when you
+  close it.
+
+## 0.5.25-beta
+
+### Added
+- Hovering a guildmate in the Guild & Communities list, or a friend in the Friends list, shows their
+  Naowh Forever badge and Naowh Score, and for offline guildmates the last score seen with how long
+  ago
+- An Item Level in Bags toggle under the BiS List's Bag Marks, to hide item levels in your bags
+- Swing Timer: a Font and an Outline setting for the bar text, under Text on its Bars card.
+- Threat Meter: an Outline setting for the row text.
+- QoL > Combat Alert, Combat Timer, Stealth Reminder and Pet Tracker: an Outline option and a
+  Background (Card, Soft or None).
+- Talent Points, Durability and Restock Reminder: Font Size, Outline and Background; Talent Points
+  and Durability can also use the theme's colour.
+- AuraBuffs > Camp Nearby: Font, Outline and Background.
+- Focus Cast Bar: Outline, Bar Texture and Apply Theme to Bar Colours settings.
+- Co-Tank Frame: Outline and Bar Texture settings.
+- GCD Tracker: a Bar Texture setting for the activity bar.
+- Group XP: Font, Font Size, Outline, Bar Texture and Background Opacity settings.
+- XP Bar: Font, Font Size, Outline, Bar Texture and Background Opacity settings.
+- Flight Timer: Font, Outline, Bar Texture and Background Opacity settings.
+- Total Craft Timer: Font, Font Size, Outline, Bar Texture and Background Opacity settings, on its
+  card under Professions.
+- Bag Space: Font, Font Size and Outline, with the header and prices scaling to the size (QoL > Loot
+  & Items > Bag Space).
+- Loot Feed: an Outline choice, and a None style for lines without a background (QoL > Loot & Items
+  > Loot Feed).
+- Top Bar: Font and Outline for the FPS / MS readout and the button counts, and a Clock Outline (QoL
+  > Interface > Top Bar).
+- Buff Reminders, Low Health and the Tracking reminder: Font, Font Size and Outline for their text.
+- Campfire: Font and Outline for both the Round and Simple looks.
+- Blessing Bar: Font and Outline for its timers and labels, and Apply Theme to Status Colours.
+- Group Buttons: Button Width, Button Height, Font, Font Size, Outline and Background.
+- BiS List > Drop Alert: Font, Font Size and Outline for the on-screen alert.
+- Gear Set Bar: Spacing, and Show Always, In Combat or Out of Combat.
+- Smart Reminders: an Outline setting for the reminder displays and for the defensive alert, under
+  Text on their cards.
+- Smart Reminders: Bar Texture and Bar Background Opacity for the Bar display, and Circle Background
+  Opacity for the Circle display.
+- Smart Reminders: Apply Theme to Text for the reminder displays and Apply Theme to the Callout for
+  the defensive alert, which use your theme's text colour in place of white.
+- Threat Meter: Background Colour under Window, next to Background Opacity.
+- Food & Drink Bar: key bindings for the food and drink buttons, on its card and under Key Bindings
+  > Naowh Forever.
+- AuraBuffs > Settings > Buffs & Consumables: a switch per raid buff, to choose which ones remind
+  you.
+- HUD Editor: a dragged element lines up with the others and the screen centre on guides, which show
+  the gap to each element in pixels. Hold Alt to drag freely, or turn Guides off on the toolbar.
+- HUD Editor: an anchored element's tag picks the side it sits off (Top, Left, Right or Bottom) and
+  its gap in pixels, and the anchor is drawn on screen.
+- HUD Editor: an Elements panel lists every element by module, with a search. Click one to select
+  it, hide one to get it out of the way while you edit, or lock one in place.
+- HUD Editor: Undo (Ctrl + Z), Redo (Ctrl + Y) and Revert on the toolbar put back changes you made.
+- HUD Editor: Shift-click to select several elements, then drag or nudge them together, line them
+  up, space them evenly or by a gap you type, or lock them all.
+- HUD Editor: Layouts save where everything is under a name, to load again later with one click.
+  Undo takes a load back, and locked elements stay put.
+- HUD Editor: dragging lines an element up on even gaps with the others (between two, past a pair,
+  or mirrored about the screen centre) and shows the equal gaps.
+- HUD Editor: an anchored element's target shows a tab on each side; click one to anchor to that
+  side.
+- Naowh Inspect Panel: the inspect window in the BiS List's look, with their Naowh Score next to
+  yours, talents, a gear check (unenchanted and empty slots, item level, upgrades for you), guild,
+  your note and tag, and your history with them (QoL > Character > Inspect Panel).
+- Inspected players' slots show item level, Forever's mark, an upgrade arrow for you and a dot on
+  unenchanted gear; their BiS stars show when they run Naowh Forever.
+- Share Your BiS (on by default) lets players who inspect you with Naowh Forever see your BiS stars.
+- Player History (QoL > Questing & Group, off by default) remembers the players you group and chat
+  with: sessions, dungeon and raid runs, and your last whispers and group chat, stored only on your
+  computer.
+- Write a note and a tag (Great Tank, Great Healer, Great DPS, Friendly, Avoid) on a player, shown
+  on their tooltip.
+- Waypoint Pin (QoL > Travel, off by default): marks the spot you are heading to with its name,
+  distance and walking time, points the way from the screen's edge when it is off screen, and shows
+  a navigator bar you can move in Layout Mode.
+- Training Planner: the trainer waypoint takes you to your class trainer, then your professions'
+  trainers in the same town, one after the other.
+- Waypoint Pin: on a route, the navigator shows which stop you are on and the arrival names the next
+  one.
+- Group Inspect (Combat > Group Inspect, off by default): everyone in your party or raid with their
+  Naowh Score, item level, gear, talents and stats in one window. Open it with /nf group, the Top
+  Bar, the minimap button, a key binding or a party/raid member's right-click menu.
+- Group Inspect marks Naowh Forever users, and turns the mark orange when their version is older
+  than yours.
+
+### Changed
+- Lighter in combat and at idle: Buff Reminders, Threat Meter, Blessings, Swing Timer, GCD Tracker,
+  Focus Cast Bar and the Top Bar do less work
+- Naowh Forever's chat lines start with its logo, so they can't be faked
+- Importing a profile lists the settings that act for you (auto emotes, auto sell, auto quests) and
+  leaves them off unless you tick Also Import
+- Importing a scrap list names its items and warns about valuable ones; importing macros warns about
+  other addons' commands
+- `/nf bars delete` asks before removing a bar set
+- Options window: Search is a box at the top of the sidebar. What you type filters the window to the
+  matching settings, and modules and tabs show how many matches they hold.
+- New players with EllesmereUI get Naowh's character panel by default; others are asked once, with
+  Naowh's recommended
+- Threat Meter: Bar Texture lists every SharedMedia bar texture. Naowh Gradient and Flat stay as you
+  set them.
+- Swing Timer: its Bar Texture list includes Naowh Gradient.
+- Combat Timer's Show Background is now a Background choice; existing "on" keeps its black panel as
+  Card.
+- Move Elements: the Alerts group's Settings button opens the Durability card.
+- Focus Cast Bar, Co-Tank Frame and GCD Tracker: settings regrouped into Size, Text, Bar and
+  Colours, like the other HUD elements.
+- XP per Hour: Outlined Text is now an Outline choice with Shadow, Outline and Thick Outline; your
+  current pick is kept.
+- Bag Space, Loot Feed, XP per Hour and Top Bar settings are grouped the same way: Size, Text,
+  Background and Visibility.
+- Move Elements > Settings on the Library Books and Sleeping Bag trackers opens their own settings
+  card.
+- Smart Reminders: the Bar display always draws the Naowh Gradient by default, also without
+  NaowhUI_Media installed.
+- Smart Reminders: the font is also on the Reminder Displays card, and changing it updates the
+  displays straight away.
+- RestedXP: the Naowh Forever theme is now called Naowh instead of NaowhUI.
+- Move Elements is now called HUD Editor.
+- HUD Editor: elements have a black edge, so they are easier to line up.
+- HUD Editor: Smart Reminders' displays are no longer in it for now, and the Customize Anchors
+  button is gone.
+- Threat Meter: the window can be made narrower (160) and shorter (50).
+- Food & Drink Bar: moved from Macros to Quality of Life, Loot & Items, and works without the Macros
+  module. Your settings come along.
+- Food & Drink Bar: warriors and rogues get the food button only.
+- Raid buff reminders leave out Paladin Blessings by default, since the Blessings module covers
+  them. Switch them back on under Raid Buffs.
+- Waypoint Pin: the card and navigator show what a spot is (an entrance, a quest giver, a trainer's
+  title) and its icon from the module that placed it: your class for the trainer, the item for BiS,
+  the book for Discovery. With the pin on, waypoints use the game's own even when TomTom is loaded.
+- The Discord link at the bottom left of the settings window opens the Naowh Forever Discord.
+
+### Fixed
+- Professions no longer climbs in memory while you browse the Auction House, and redraws about 3x
+  faster
+- "AddOn blocked" when closing the profession window, disbanding or changing Buff Reminders in
+  combat
+- an error when a page redrew while you hovered a nameplate aura in combat
+- Pasted profiles, packs and lists can't freeze or crash the game, and names in them show as plain
+  text
+- Shared Naowh Scores, the Aim Trainer board and Group XP only accept a player's own data
+- Unexplored areas on the world map show their roads, towns and labels again, darkened, and the
+  slider now sets how dark they are
+- The Naowh Score card on the character panel no longer covers the Equipment Manager or Titles list
+- Quick Attach on the Send Mail tab now attaches every stack of the type you pick (it stopped after
+  two), and its menu counts stacks.
+- Threat Meter: the window border no longer shows when Background Opacity is 0%.
+- World map: right-clicking a zeppelin tower opens its second destination (QoL > Town Map Pins >
+  Boats & Zeppelins).
+
+## 0.5.24-beta
+
+### Added
+- Move Elements: Anchor on the selected element's tag. Click it, then click another element, and it
+  follows that element from then on. Unanchor lets go.
+
+### Changed
+- Options window: the sidebar's Adventure, Combat and Utilities groups are back.
+
+## 0.5.23-beta
+
+### Added
+- Move Elements: the selected element shows its X and Y on a small tag just outside it. Type a
+  number and press Enter to move it there.
+- World map: a zone exit arrow on the new road between Stonetalon Mountains and Skywatcher Plateau,
+  above Thunder Bluff.
+
+### Changed
+- Unlock Mode is now called Move Elements.
+- Move Elements has its own look: dark movers with a blue strip, a quieter grid, and a toolbar in
+  the Naowh window style.
+- Move Elements: elements can no longer be anchored to each other or to a screen edge. Anchored
+  elements stay where they are.
+- Profiles: a new layout in cards. The profile in use sits on top with Reset, Copy and Delete
+  buttons and your other profiles under it with Use, the parts to share are a grid of switches
+  showing what each holds, and Import is a paste box with an Import button.
+- World map: zone exit arrows are longer and easier to see, and right-click no longer places a
+  waypoint (QoL > Town Map Pins).
+- World map: Unexplored Areas are darkened instead of greyed out, at 50% opacity by default (QoL >
+  Interface).
+- Quality of Life: six options have new names. Type DELETE For You (was Auto-Fill Delete
+  Confirmation), Hide Red Error Text, Turn Off Tutorials, Hide Screen Captured Text, Accept Quests
+  and Hand In Quests. Your settings are kept.
+- Options window: the search box is now Search (Ctrl+F), a bar under the header that steps through
+  every matching setting.
+- Options window: the Reload UI / Close bar at the bottom is gone. Reload UI is in the header, close
+  with the X or Escape. The sidebar is one list without the Adventure, Combat and Utilities titles.
+- Move Elements: the tag under the selected element also has Center and Settings. Snapping, the cog
+  menu and the hover animation are gone. Shift + arrow keys move 10 pixels.
+- Move Elements: Restock, Pet Tracker, Durability, Talent Points and Camp Nearby move together as
+  one Alerts group, and alerts showing at the same time stack upward instead of overlapping.
+- QoL > Combat: Emote Detection is gone, and Auto Emotes is now Summon Emote, an /emote of your own
+  when you start casting a summon.
+- AddOns list: Naowh Forever is its own entry, with its modules under it, instead of sitting under
+  NaowhUI.
+- Smart Reminders is now its own addon that you switch on and off under Settings > Modules, like the
+  other modules. Restart the game once after updating (a /reload is not enough) so it finds the new
+  addon.
+
+### Fixed
+- Scrollbars in the settings window and the module windows follow the cursor when dragged, instead
+  of jumping and moving the wrong way.
+- Minimap: mailboxes show with Mailboxes & Spirit Healers on Minimap on, even when the world map's
+  Mailboxes toggle is off.
+
+## 0.5.22-beta
+
+### Added
+- Profiles: profile strings now carry your Forge macro Library and your saved talent builds, added
+  next to yours on import.
+- Unlock Mode: anchor an element to another one. Hover it, click Anchor under its name, click the
+  element it goes beside and pick a side; it follows that element from then on. Click Anchored to
+  let it go.
+- Unlock Mode: Relative to Screen in an element's cog menu holds it to a screen edge, or two for a
+  corner, so one profile fits every resolution.
+- Unlock Mode: an element's cog menu types an anchored element's Offset X and Y, picks its Snap
+  Target and centres it on the screen; dragged elements snap to the nearest one (Snap Elements in
+  the toolbar turns it off).
+- Dungeon Journal: the Excavation Site: Wetlands map shows where its bosses are.
+- Dungeon Journal: Excavation Site: Wetlands lists its quests, and Highland Horror is on its map
+  with the quest that needs him.
+- Dungeon Journal: Shift-click a boss's ability to link it in chat.
+- World map: Unexplored Areas shows the parts of a zone you haven't explored yet, greyed out (QoL >
+  Interface).
+- World map: boats and zeppelins, each with where it goes; click one to open that zone (QoL > Town
+  Map Pins > Boats & Zeppelins).
+- Minimap: mailboxes and spirit healers near you show on the minimap too (QoL > Town Map Pins).
+- Flight Games: new Off choice under QoL > Travel hides the Flight Timer's Games button; "Nothing"
+  is now called "Button only".
+- XP Bar: pick the Incomplete Quests and Border colours under Colours.
+- Dungeon map: bosses are placed on the maps of 16 more dungeons, Blackrock Depths to Uldaman.
+- Dungeon map: City of Dalaran has a map of the Underbelly and the city, from Santiago Reyes's Atlas
+  de Azeroth: Forever.
+- Dungeon map: Upper Blackrock Spire has its Hall of Binding and Rookery and its Dragonspire Hall,
+  the levels the game has no map of yet.
+- Dungeon Journal: City of Dalaran lists all its bosses in kill order, its eight quests and tips for
+  five of its bosses.
+
+### Changed
+- Profiles: the page is redone as cards, with Import and New Profile on top and Export on the page,
+  part by part, so you can share only what you want.
+- Profiles: Reset and Delete now act on the profile in use.
+- Profiles: Import Profile also takes Forge macro, talent build and BiS list strings and hands each
+  one to its own import.
+- Training Planner: the test leveling builds are gone; the Builds tab lists the builds you save or
+  import.
+- The Level-Up Toast and the Aim Trainer are no longer in Unlock Mode: drag them where they are, and
+  they stay there.
+- Dungeon Journal: the trash has its own section under the bosses, in two columns.
+- Dungeon Journal: the Excavation Site: Wetlands map is the updated one, with the entrance where it
+  is now.
+- The Naowh Forever logo in the options window sits tight in its corner, a little bigger, with the
+  wordmark lined up to the emblem.
+- Each module is now its own addon. Switching a module off disables it for every character after a
+  reload, and it leaves the sidebar until you turn it back on under Settings > Modules.
+- Dungeon Journal and BiS List switch on and off together, and Training Planner goes off with
+  Professions.
+- The mouse wheel now scrolls smoothly in the settings window, its sidebar and the module windows
+  (Dungeon Journal, BiS List and the rest); the settings scrollbar is slim and hides when the page
+  fits.
+- The Dungeon Journal's dungeon map shows its bosses as a grid of portraits under the map and the
+  picked boss's loot and abilities side by side, with Naowh's tip and its quests, so it fits without
+  scrolling; quest bosses like Highland Horror are tagged QUEST and no longer numbered.
+- The dungeon map's bosses are a list beside the map, with the same portraits as its pins and
+  grouped by wing, and the boss page gets the full width under both.
+- XP Bar: its border is black, like the rest of the UI.
+- Dungeon map: with a map open from the Journal, picking another dungeon shows that dungeon's map.
+
+### Fixed
+- Profiles: Export Profile no longer does nothing when your profile has a setting at 0.
+- Training Planner: the Train Now panel no longer shows at the hunter pet trainer, where Learn All
+  gave a Lua error and taught the pet nothing.
+- Dungeon Journal: every dungeon lists its full loot again, with items not in Forever yet tagged
+  "Not in Forever yet", dungeons not open yet say so at the top, and Excavation Site, Hall of Thanes
+  and Ruins of Lordaeron show drop chances.
+- Dungeon Journal: clicking a boss on a dungeon map's second floor, on the world map, no longer
+  jumps back to the first floor.
+- Raid Reminders: the anchor config toolbar no longer gets covered by other unlock-mode elements
+  (e.g. the Level Up toast) after login or /reload, so Exit Config is always reachable.
+- Dungeon Journal: the Excavation Site waypoint leads to the meeting stone, where the road up to the
+  entrance starts.
+- Dungeon Journal: General Drakkisath lists General Drakkisath's Command, which starts in Lower
+  Blackrock Spire.
+- Escape closes the settings window again while the Top Bar preview is on screen.
+- World map: Clickable Zone Exits shows green arrows on the roads out of each zone; click one to
+  open the next zone, right-click for a waypoint to the road (QoL > Town Map Pins).
+- World map: Spirit Healers pins show every graveyard's spirit healer (QoL > Town Map Pins).
+- BiS List: clicking an item's name or icon selects it, not just the empty part of the row.
+- Settings: Escape closes the window after a Top Bar preview drag that ended in combat.
+- Minimap pins: they no longer keep updating after being switched off and back on while standing
+  still, and cost less while you move.
+- Pressing Escape on a confirmation now cancels it, so a Settings > Modules switch goes back to how
+  it was.
+- XP Bar: turning on Incomplete Quests no longer changes the colour of your rested XP.
+- Professions: pressing K after viewing another player's profession link opens your own professions
+  again, not theirs.
+- Spelling and grammar across the addon: Dungeon Journal quest giver places (Darnassus,
+  Stranglethorn Vale, Steamwheedle Port and more) and boss tips, "1 second" and "1 spell" instead of
+  "1 seconds" and "1 spells", "an Ability Reminder", and Show Text Callout. A debuff sound's tooltip
+  now says "stack increased" instead of a raw game value, and asking for crafts in an instance says
+  instance chat, not party chat.
+- Dungeon map: Shadowfang Keep's floors are numbered in the order you reach them, and Lower and
+  Upper Blackrock Spire each show only their own floors.
+
+## 0.5.21-beta
+
 ### Added
 - Profiles: Export Profile and Import Profile share your whole setup as one string: every
   module's settings and positions, your macros, Smart Reminders, your BiS lists and the look
@@ -9,11 +394,35 @@
   lands it as a new profile; your own profiles and BiS lists are never overwritten. They replace
   the Smart Reminders-only Share and Import buttons, and a Smart Reminders pack string pasted
   into Import still opens in the pack import.
+- XP per Hour shows your total played time on the character, and each past level shows your played
+  time when you reached it (Show Played at Ding).
+- Compare Characters (off by default) on XP per Hour marks whether you're ahead of or behind your
+  other characters at the same point, colors past levels green or red against them, and lists them
+  in the tooltip.
 
 ### Changed
 - Profiles: Match My Spec and Merge a Profile In are gone. Forever gives each class one spec, so
   picking a profile already is what Match My Spec did, and Merge was for Smart Reminders packs,
   which come back with that module.
+- Naowh Score grades against Both by default: the best in the game and, in gold, the best for your
+  level, now also on the character panel's score bar.
+- XP per Hour and the XP Bar share one muted /played request.
+- XP per Hour's tooltip only lists your characters (with Compare Characters on); the card already
+  shows the rest.
+- Character panel: the Naowh Score bar shows your level's goal as a gold tick only; hover it for the
+  number.
+- Stat Weights: every spec now has its own default weights for level 60, built for Forever's
+  talents. Weights you changed yourself are kept.
+
+### Fixed
+- Bag Space: items marked as scrap no longer jump to the front; it shows the cheapest first, as
+  before.
+- Naowh's Forge: the macro editor shows one cursor, not two.
+- Stat Weights now read hit, crit, haste, dodge and block on gear as the percent they give, and
+  casters now value the hit and crit on their gear.
+- Dungeon Journal: bosses no longer list Classic items that are not in Forever yet, which showed as
+  "Item 10800" with a tooltip stuck on Retrieving item information; their cards say the loot arrives
+  when Forever opens the dungeon.
 
 ## 0.5.20-beta
 

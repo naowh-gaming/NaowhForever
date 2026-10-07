@@ -185,7 +185,7 @@ local ns = {
     ShowCopyBox = function(_, text) account.lastCopy = text end,
     StashOptionsWindow = NOTHING, OpenOptionsWindow = NOTHING, Apply = NOTHING,
     DB = function() return { utilityReminders = { classMacros = packMacros } } end,
-    HEALTHSTONES = { 5509 }, HEALING_POTIONS = { 13446 },
+    HEALTHSTONES = { 5509 }, HEALING_POTIONS = { 13446 }, BestFoodAndDrink = NOTHING,
 }
 local lastPrompt
 local vault = {}
@@ -235,12 +235,16 @@ local env = setmetatable({
 }, { __index = _G })
 for k, v in pairs(macroAPI) do env[k] = v end
 env._G = env
+env.wipe = function(t) for k in pairs(t) do t[k] = nil end return t end
+env.SLASH_NAOWHFOREVER5, env.SLASH_DBM1, env.SLASH_CAST1 = "/nf", "/dbm", "/cast"
+env.issecurevariable = function(key) return key ~= "SLASH_DBM1" end
 
 Load({
     "Shared/Shared.lua", "Shared/Data/Forever.lua", "Shared/Style.lua", "Shared/Items.lua", "Shared/Places.lua",
     "Shared/Parts.lua", "Shared/Window.lua", "Shared/View.lua", "Shared/Kinds.lua",
-    "Macros/NaowhForever_MacroText.lua", "Macros/NaowhForever_Macros.lua", "Macros/NaowhForever_MacroWindow.lua",
+    "NaowhForever_Macros/NaowhForever_MacroText.lua", "NaowhForever_Macros/NaowhForever_Macros.lua", "NaowhForever_Macros/NaowhForever_MacroWindow.lua",
 }, env)
+ns.Shared.Decode = dofile("Tools/regression/load_decode.lua")(env, true)
 
 local function Window()
     for _, f in ipairs(frames) do
@@ -344,6 +348,10 @@ window.editor.scroll.scripts.OnSizeChanged(window.editor.scroll, 600)
 check("the editor draws again once the page has its width", page.w == 600 and window.code.h < narrow)
 measure.GetStringHeight = nil
 
+-- One cursor, the game's own: the editor draws no caret of its own and runs nothing every frame.
+check("one cursor: no caret of our own, nothing every frame", window.code.scripts.OnEditFocusGained == nil
+    and window.code.scripts.OnUpdate == nil and window.code.scripts.OnCursorChanged ~= nil)
+
 -- The inspector's panes.
 for _, key in ipairs({ "conditions", "commands", "icons", "explain" }) do window.inspector.Show(key) end
 
@@ -357,7 +365,7 @@ local health
 for _, c in ipairs(cards) do if c.key == "health" then health = c end end
 check("the health card says what it will use", health.uses[1].text.text == "Item 5509")
 Click(health.toggle)
-check("its switch turns the macro on", settings.health == true)
+check("its switch turns the macro off, on by default", settings.health == false)
 
 window.switch.onPick("lib")
 check("the Library starts empty, with nothing but the class name", not window.lib.lead:IsShown()
@@ -439,6 +447,23 @@ for _, body in ipairs({ "/RUN print(1)", "/dump GetTime()" }) do
     lastPrompt("!NFM1!S")
     check("a script is called out: " .. body, account.lastConfirm:find("runs a script", 1, true))
 end
+vault[1] = { v = 1, macros = { { name = "A", body = "/nf bars delete Raid\n/DBM pull 10" },
+    { name = "B", body = "#showtooltip\n/foo bar\n/nf" }, { name = "C", body = "/cast Polymorph" } } }
+Click(importButton)
+lastPrompt("!NFM1!S")
+check("addon and unknown commands are called out, by name", account.lastConfirm:find(" Some use Naowh Forever's own"
+    .. " commands (/nf), use other addons' commands (/dbm) and use commands the game does not know (/foo): read them"
+    .. " in the editor before you use them.", 1, true))
+vault[1] = { v = 1, macros = { { name = "A", body = "/run x()\n/nf scrap" } } }
+Click(importButton)
+lastPrompt("!NFM1!S")
+check("a script and our own command in one macro", account.lastConfirm:find(" One runs a script and uses Naowh"
+    .. " Forever's own commands (/nf): read it in the editor before you use it.", 1, true))
+vault[1] = { v = 1, macros = { { name = "A", body = "/cast Polymorph\n/1 hello" } } }
+Click(importButton)
+lastPrompt("!NFM1!S")
+check("the game's own commands need no warning", account.lastConfirm:find("macros?", 1, true)
+    and not account.lastConfirm:find("read", 1, true))
 
 window.switch.onPick("mine")
 window.code:SetText(string.rep("/cast A\n", 12))

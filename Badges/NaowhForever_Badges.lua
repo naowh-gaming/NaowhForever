@@ -1,14 +1,22 @@
 -------------------------------------------------------------------------------
 --  NaowhForever_Badges.lua -- supporter badges: the Naowh Forever N next to the name of
---  Naowh, a Developer, a Moderator or a Legendary Patron in chat, a card when you hover it,
+--  Naowh, a Developer, a Moderator, EllesmereUI's creator or a Legendary Patron in chat, a card when you hover it,
 --  a plate over their player tooltip, and a banner when one joins your group. Each part has its
 --  own setting in QoL > Character: badges, card and tooltip start on so everyone sees them,
 --  the banner starts off (Naowh's call). /nf badges preview puts one on your own name
---  (staff only).
+--  (staff only). While ns.FEATURE_BADGES (Core) is 0 only the team's badges show, on the
+--  settings' defaults whatever a profile saved: no patron tier or list, no settings card, and
+--  no words about support.
 -------------------------------------------------------------------------------
 local ns = _G.NaowhForever
 local T = ns.THEME
 local S = ns.QoLSettings
+local PATRONS = ns.FEATURE_BADGES == 1
+
+local function Setting(key)
+    if PATRONS then return S.Get(key) end
+    return S.Default(key)
+end
 
 local MEDIA = "Interface\\AddOns\\NaowhForever\\Media\\Badges\\"
 local CACHE_SIZE = 200    -- chat lines remembered for the hover card
@@ -44,6 +52,15 @@ local TIERS = {
         large = MEDIA .. "BadgeModeratorLarge.tga",
         sound = "UI_PVP_HONOR_PRESTIGE_RANK_UP",
     },
+    ellesmere = {
+        title = "EllesmereUI Creator",
+        about = "Makes EllesmereUI.",
+        label = "Ellesmere, creator of EllesmereUI",
+        color = { r = 0x0e / 255, g = 0xd2 / 255, b = 0x9b / 255 },
+        chat = MEDIA .. "BadgeEllesmereChat.tga",
+        large = MEDIA .. "BadgeEllesmereLarge.tga",
+        sound = "UI_72_ARTIFACT_FORGE_ACTIVATE_FINAL_TIER",
+    },
     legendary = {
         title = "Legendary Patron",
         about = "Supports Naowh at the Legendary tier on Patreon.",
@@ -54,6 +71,7 @@ local TIERS = {
         showsSince = true,  -- "Supporter since" is a patron's line, not a developer's
     },
 }
+if not PATRONS then TIERS.legendary = nil end
 -- The chat badge is as tall as the chat's text, so a line is no taller for it, and goes
 -- this much lower: the Naowh and game fonts leave room above their capitals, so letters sit
 -- under the middle of the line an icon is centred on.
@@ -82,7 +100,7 @@ local roster = {}
 local function BuildRoster()
     wipe(roster)
     local region = GetCurrentRegion and GetCurrentRegion()
-    local patrons = region and ns.BADGE_PATRONS and ns.BADGE_PATRONS[region]
+    local patrons = PATRONS and region and ns.BADGE_PATRONS and ns.BADGE_PATRONS[region]
     if patrons then
         for guid, entry in pairs(patrons) do
             entry.tier = "legendary"
@@ -331,7 +349,7 @@ end
 --  title alone (the badge says it is Naowh Forever's), never cut off.
 -------------------------------------------------------------------------------
 local PLATE_H, PLATE_ICON, PLATE_GAP, PLATE_PAD = 26, 18, 2, 6
-local plate
+local plate, plateRow
 
 local function HidePlate()
     if plate then plate:Hide() end
@@ -341,6 +359,10 @@ end
 -- middle of the game's own tooltip building, and with our hook on it the game's unit colouring
 -- was reported failing on secret values as tainted by Naowh Forever.
 local function PlateUpdate()
+    if plateRow then
+        if not ns.Shared.Roster.Showing(plateRow) then plate:Hide() end
+        return
+    end
     local data = GameTooltip:IsShown() and GameTooltip:GetPrimaryTooltipData()
     local guid = data and data.guid
     if not guid or Secret(guid) or guid ~= plate.guid then plate:Hide() end
@@ -368,9 +390,9 @@ local function BuildPlate()
     plate:SetScript("OnUpdate", PlateUpdate)
 end
 
-local function ShowPlate(tooltip, guid, entry, tier)
+local function ShowPlate(tooltip, guid, entry, tier, row)
     if not plate then BuildPlate() end
-    plate.guid = guid
+    plate.guid, plateRow = guid, row
     Paint(plate, tier)
     local c = tier.color
     local title = TitleOf(entry, tier)
@@ -385,7 +407,7 @@ local function ShowPlate(tooltip, guid, entry, tier)
 end
 
 local function AddTooltipLine(tooltip, data)
-    if not S.Get("badgeTooltip") then return end
+    if not Setting("badgeTooltip") then return end
     local entry = EntryOf(data and data.guid)
     local tier = TierOf(entry)
     if not tier then
@@ -397,6 +419,13 @@ local function AddTooltipLine(tooltip, data)
     else
         tooltip:AddLine(tier.tooltipLine)
     end
+end
+
+local function AddRosterPlate(_, guid, _, row, anchor)
+    if not Setting("badgeTooltip") then return end
+    local entry = EntryOf(guid)
+    local tier = TierOf(entry)
+    if tier then ShowPlate(anchor, guid, entry, tier, row) end
 end
 
 -------------------------------------------------------------------------------
@@ -466,7 +495,7 @@ function ShowNextToast()
     end
     Paint(toast, tier)
     local c = tier.color
-    toast.text:SetText((name or "A supporter") .. " joined your " .. (raid and "raid" or "party"))
+    toast.text:SetText((name or (PATRONS and "A supporter" or "A team member")) .. " joined your " .. (raid and "raid" or "party"))
     toast.title:SetText(TitleOf(entry, tier))
     toast.title:SetTextColor(c.r, c.g, c.b, 1)
     toast:Show()
@@ -543,7 +572,7 @@ local function ScanGroup(quiet)
             local entry = roster[guid]
             if TierOf(entry) then
                 announced[guid] = true
-                if not quiet and not (S.Get("badgeBannerSkipGuild") and InMyGuild(unit)) then
+                if not quiet and not (Setting("badgeBannerSkipGuild") and InMyGuild(unit)) then
                     QueueToast(entry, FullName(unit), raid)
                 end
             end
@@ -650,7 +679,7 @@ local chatOn, cardOn, tooltipHooked
 
 local function Apply()
     local chatAPI = (ChatFrameUtil and ChatFrameUtil.AddSenderNameFilter) ~= nil
-    local chat = chatAPI and S.Get("badgeChat") == true
+    local chat = chatAPI and Setting("badgeChat") == true
     if chat ~= (chatOn or false) then
         chatOn = chat
         if chat then
@@ -662,7 +691,7 @@ local function Apply()
     SyncList(chat)
 
     -- The card needs the chat badges: it finds its player through the line they wrote.
-    local cardWanted = chat and S.Get("badgeCard") == true
+    local cardWanted = chat and Setting("badgeCard") == true
     if cardWanted ~= (cardOn or false) then
         cardOn = cardWanted
         if cardWanted then
@@ -677,12 +706,13 @@ local function Apply()
 
     -- A tooltip post-call can't be removed, so it's added the first time the line is wanted
     -- and checks the setting itself.
-    if S.Get("badgeTooltip") and not tooltipHooked then
+    if Setting("badgeTooltip") and not tooltipHooked then
         tooltipHooked = true
         TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Unit, AddTooltipLine)
+        ns.Shared.Roster.AddTooltip(AddRosterPlate)
     end
 
-    local banner = S.Get("badgeBanner") == true
+    local banner = Setting("badgeBanner") == true
     if banner ~= (bannerOn or false) then
         bannerOn = banner
         if banner then
@@ -752,7 +782,8 @@ local function ShowCode(code, count)
     hint:SetPoint("TOP", head, "BOTTOM", 0, -6)
     hint:SetWidth(400)   -- two lines at most: the code box sits under it
     hint:SetText(count .. (count == 1 and " character" or " characters")
-        .. ". Ctrl+C to copy it, then send it in a support request on Discord to be added.")
+        .. (PATRONS and ". Ctrl+C to copy it, then send it in a support request on Discord to be added."
+            or ". Ctrl+C to copy it, then send it to the team on Discord to be added."))
     local box = UI.Keep(panel, "box", ns.NewEditBox)
     box:SetPoint("TOP", hint, "BOTTOM", 0, -12)
     box:SetSize(400, 28)
@@ -766,7 +797,7 @@ local function ShowCode(code, count)
     -- Discord's link to copy beside Close (the game opens no browser): the code first, then it.
     UI.KeepButton(panel, "discord", "Discord", 96, 26, function()
         dimmer:Hide()
-        ns.ShowCopyLine("Naowh's Discord", DISCORD, TIERS.legendary.large)
+        ns.ShowCopyLine("Naowh's Discord", DISCORD, (TIERS.legendary or TIERS.naowh).large)
     end):SetPoint("BOTTOM", panel, "BOTTOM", -52, 14)
     UI.KeepButton(panel, "close", "Close", 96, 26, function() dimmer:Hide() end)
         :SetPoint("BOTTOM", panel, "BOTTOM", 52, 14)
@@ -775,9 +806,11 @@ local function ShowCode(code, count)
     box:HighlightText()
 end
 
+local PREVIEW_TIER = PATRONS and "legendary" or "developer"
+
 function ns.BadgesCommand(arg)
     local word = strtrim(arg or ""):lower()
-    local previewTier = word == "preview" and "legendary" or word:match("^preview (%a+)$")
+    local previewTier = word == "preview" and PREVIEW_TIER or word:match("^preview (%a+)$")
     local staffOnly = previewTier or word == "toast"
     if staffOnly and not IsStaff(UnitGUID("player")) then
         ns.Print("Badge previews are for the Naowh Forever team.")
@@ -800,9 +833,10 @@ function ns.BadgesCommand(arg)
         previewGUID, previewEntry = nil, nil
         ns.Print("Preview off.")
     elseif word == "toast" then
-        QueueToast(previewEntry or PreviewEntry("legendary"), FullName("player"), IsInRaid())
+        QueueToast(previewEntry or PreviewEntry(PREVIEW_TIER), FullName("player"), IsInRaid())
     else
-        ns.Print("/nf badges id | preview [legendary|moderator|developer|naowh|none] | preview off | toast")
+        ns.Print("/nf badges id | preview [" .. (PATRONS and "legendary|" or "")
+            .. "moderator|developer|ellesmere|naowh|none] | preview off | toast")
     end
 end
 
@@ -840,7 +874,7 @@ ns._BadgesTest = { DecorateName = DecorateName, ListBadges = listBadges, OnLinkE
     Card = function() return card end, Toast = function() return toast end,
     QueueSize = function() return queueTail - queueHead + 1 end, GroupEvents = groupEvents }
 
-local Settings = ns.Shared and ns.Shared.Settings
+local Settings = PATRONS and ns.Shared and ns.Shared.Settings
 if not Settings then return end
 
 local BADGE_KEYS = { "badgeChat", "badgeCard", "badgeTooltip", "badgeBanner", "badgeBannerSkipGuild" }

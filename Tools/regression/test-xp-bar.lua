@@ -1,7 +1,9 @@
 -- Run with Lua 5.1 from the repository root: the XP Bar's settings. A colour swatch that is
 -- only opened, or cancelled, leaves the colour unset so it keeps following the theme; a text
--- shows in one spot at a time, the level's three forms counting as one; and the texts are
--- measured again only when one of them changed.
+-- shows in one spot at a time, the level's three forms counting as one; the texts are
+-- measured again only when one of them changed; and its Played text comes from Shared.Played.
+-- Its look: the defaults draw today's flat bar and outlined texts, and Font, Font Size, Outline,
+-- Bar Texture and Background Opacity each apply.
 local checks = 0
 local function check(label, value) assert(value, label); checks = checks + 1 end
 
@@ -98,6 +100,149 @@ do
     list[2].text = "2510 / 23200"
     check("one text changed", TextsChanged(list))
     check("and is remembered", not TextsChanged(list))
+end
+
+-- Played time, from the shared helper: nothing made or asked for at load, one muted /played for
+-- whoever wants it first, the chat given it back, the clock running on through a ding, and the
+-- bar's Played text drawn from it the same way as before.
+do
+    local now, requests, made, timers, level = 1000, 0, 0, {}, 20
+    local function Events(f) return f.events end
+    local META = { __index = {
+        RegisterEvent = function(f, e) f.events[e] = true end,
+        UnregisterEvent = function(f, e) f.events[e] = nil end,
+        UnregisterAllEvents = function(f) for e in pairs(f.events) do f.events[e] = nil end end,
+        IsEventRegistered = function(f, e) return f.events[e] == true end,
+        SetScript = function(f, _, fn) f.onEvent = fn end,
+    } }
+    local function Frame() return setmetatable({ events = {} }, META) end
+    local chat1, chat2 = Frame(), Frame()
+    chat1.events.TIME_PLAYED_MSG = true
+    local frame
+    local env = {
+        NaowhForever = { Shared = {} },
+        GetTime = function() return now end,
+        UnitLevel = function() return level end,
+        CreateFrame = function() made = made + 1; frame = Frame(); return frame end,
+        C_Timer = { After = function(_, fn) timers[#timers + 1] = fn end },
+        RequestTimePlayed = function() requests = requests + 1 end,
+        NUM_CHAT_WINDOWS = 2, ChatFrame1 = chat1, ChatFrame2 = chat2,
+        wipe = function(t) for k in pairs(t) do t[k] = nil end return t end,
+    }
+    env._G = env
+    Load(Read("Shared/Played.lua"), env)
+    local Played = env.NaowhForever.Shared.Played
+    check("nothing made or asked for at load", made == 0 and requests == 0 and #timers == 0)
+    check("nothing known yet", Played.Total() == nil and Played.Level() == nil)
+    Played.Drop("xpBar")
+    check("dropping what was never wanted is fine", made == 0)
+
+    local answers, dings = 0, 0
+    local hooked = { Answered = Played.Answered, LeveledUp = Played.LeveledUp }
+    Played.Answered = function(...) hooked.Answered(...); answers = answers + 1 end
+    Played.LeveledUp = function(...) hooked.LeveledUp(...); dings = dings + 1 end
+
+    Played.Want("xpBar")
+    check("the first want listens and asks once", made == 1 and Events(frame).TIME_PLAYED_MSG
+        and Events(frame).PLAYER_LEVEL_UP and requests == 1)
+    check("with the chat print muted", chat1.events.TIME_PLAYED_MSG == nil and chat2.events.TIME_PLAYED_MSG == nil)
+    Played.Want("xpTicker")
+    check("a second want does not ask again", made == 1 and requests == 1)
+
+    now = now + 2
+    frame.onEvent(frame, "TIME_PLAYED_MSG", 368520, 12540)
+    check("the answer is heard", answers == 1 and Played.Total() == 368520 and Played.Level() == 12540)
+    for _, fn in ipairs(timers) do fn() end
+    check("the chat frames get the event back", chat1.events.TIME_PLAYED_MSG == true
+        and chat2.events.TIME_PLAYED_MSG == nil)
+    now = now + 30
+    check("the clock runs on", Played.Total() == 368550 and Played.Level() == 12570)
+    level = 21
+    frame.onEvent(frame, "PLAYER_LEVEL_UP", 21)
+    check("a ding: the total keeps running, this level starts again", dings == 1
+        and Played.Total() == 368550 and Played.Level() == 0)
+    now = now + 10
+    check("and counts up", Played.Total() == 368560 and Played.Level() == 10)
+
+    local source = Read("QoL/NaowhForever_XPBar.lua")
+    local chunk = assert(source:match("(local function Duration%(seconds%).-\nend)\n"))
+        .. "\n" .. assert(source:match("(local function SlotText%(which, maxed, max%).-\nend)\n"))
+    local SlotText = Load(chunk .. "\nreturn SlotText", { Played = Played, sessionStart = 0,
+        time = function() return 0 end, ns = { Color = function() return "" end } })
+    check("the bar's Played text, from the helper", SlotText("played", false, 1)
+        == "Played:|r 4d 6h 22m|r - This Level:|r 0m|r")
+
+    Played.Drop("xpBar")
+    check("still listening while someone wants it", Events(frame).TIME_PLAYED_MSG)
+    Played.Drop("xpTicker")
+    check("nobody wants it: nothing listening", next(Events(frame)) == nil)
+    Played.Want("xpBar")
+    check("wanted again at the level it knows: no new /played", requests == 1 and Events(frame).TIME_PLAYED_MSG)
+    Played.Drop("xpBar")
+    level = 22
+    Played.Want("xpBar")
+    check("a ding missed while nobody listened asks again", requests == 2)
+    check("the bar asks only while its Played text shows", source:find(
+        'if ShowsText("played") then Played.Want("xpBar") else Played.Drop("xpBar") end', 1, true))
+end
+
+-- The bar's texture and background: flat and 85% by default, then the picked ones.
+do
+    local source = Read("QoL/NaowhForever_XPBar.lua")
+    local chunk = assert(source:match("(local FILL_FROM = .-\nlocal function PaintBar%(b%).-\nend)\n"))
+    local S = Settings({ xpBarTexture = "", xpBarBgAlpha = 0.85 })
+    local function Tex()
+        local t = {}
+        function t.SetTexture(self, path) self.texture = path end
+        function t.SetVertexColor(self, r, g, b, a) self.color = { r, g, b, a } end
+        function t.SetColorTexture(self, r, g, b, a) self.color = { r, g, b, a } end
+        function t.SetGradient() end
+        function t.SetColor() end
+        return t
+    end
+    local b = { fill = Tex(), done = Tex(), open = Tex(), rested = Tex(), bg = Tex(), edge = Tex() }
+    local env = { S = S, T = { accent = { r = 0, g = 0.5, b = 1 }, bg = { r = 0.1, g = 0.1, b = 0.1 } },
+        CreateColor = function(r, g, bl, a) return { r = r, g = g, b = bl, a = a } end,
+        ns = { ThemeTint = function(_, c) return c end,
+            UI = { TexturePath = function(name, own) if name == "" then return own end return "lsm:" .. name end } } }
+    local PaintBar = Load(chunk .. "\nreturn PaintBar", env)
+    PaintBar(b)
+    local FLAT = "Interface\\Buttons\\WHITE8X8"
+    check("default: every segment flat", b.fill.texture == FLAT and b.done.texture == FLAT and b.open.texture == FLAT
+        and b.rested.texture == FLAT)
+    check("default: quest XP in full, incomplete faded", b.done.color[4] == 1 and b.open.color[4] == 0.4)
+    check("default: the background at 85%", b.bg.color[4] == 0.85 and b.bg.color[1] == 0.1)
+    S.Set("xpBarTexture", "Smooth")
+    S.Set("xpBarBgAlpha", 0.5)
+    PaintBar(b)
+    check("Bar Texture applies to the fill and every segment", b.fill.texture == "lsm:Smooth"
+        and b.done.texture == "lsm:Smooth" and b.rested.texture == "lsm:Smooth")
+    check("Background Opacity applies", b.bg.color[4] == 0.5)
+end
+
+-- The texts' font: the Addon Font outlined at 13 by default, then the picked font, size and outline.
+do
+    local source = Read("QoL/NaowhForever_XPBar.lua")
+    local chunk = assert(source:match("(local TEXT_GAP = .-\nlocal function FitSlots%(slots, w, placeMid%).-\nend)\n"))
+    local S = Settings({ xpBarFont = "", xpBarFontSize = 13, xpBarOutline = "OUTLINE" })
+    local set = 0
+    local Parts = { HudFont = function(fs, font, size, outline) fs.font = font .. " " .. size .. " " .. outline; set = set + 1 end }
+    local FitSlots = Load(chunk .. "\nreturn FitSlots", { S = S, Parts = Parts, BESIDE = { 4, 5 },
+        TOP_LEFT = 1, TOP = 2, TOP_RIGHT = 3, BOTTOM_LEFT = 6, BOTTOM = 7, BOTTOM_RIGHT = 8 })
+    local slots = {}
+    for i = 1, 8 do
+        slots[i] = { GetText = function() return "" end, SetWidth = function() end, GetStringWidth = function() return 0 end }
+    end
+    FitSlots(slots, 500, function() end)
+    check("default: the Addon Font, outlined, at 13", slots[1].font == " 13 OUTLINE" and slots[4].font == " 13 OUTLINE")
+    set = 0
+    FitSlots(slots, 500, function() end)
+    check("an unchanged font is not set again", set == 0)
+    S.Set("xpBarFont", "Arial")
+    S.Set("xpBarOutline", "")
+    S.Set("xpBarFontSize", 16)
+    FitSlots(slots, 500, function() end)
+    check("Font, Outline and Font Size apply around the bar", slots[2].font == "Arial 16 " and slots[5].font == "Arial 16 ")
 end
 
 print(("test-xp-bar: %d checks passed"):format(checks))

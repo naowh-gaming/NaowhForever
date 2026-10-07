@@ -53,8 +53,8 @@ end
 local function Join(list) return table.concat(list, ",") end
 local function Sides(layout) return Join(layout.left) .. " | " .. Join(layout.right) end
 
-check("the default is today's default bar: friends and guild left, Journal and BiS right",
-    Sides(defaultLayout) == "friends,guild | ldb:NaowhForeverJournal,ldb:NaowhForeverBiS")
+check("the default bar: Journal and Discovery left, BiS and Training right", Sides(defaultLayout)
+    == "ldb:NaowhForeverJournal,ldb:NaowhForeverDiscovery | ldb:NaowhForeverBiS,ldb:NaowhForeverTraining")
 
 -- A fresh profile keeps the default and only marks itself migrated.
 local db = {}
@@ -101,6 +101,19 @@ check("drawn in saved order, missing and iconless brokers skipped", Join(drawn) 
     .. "right:hearth:M\\icon-hearth.png:true:nil:4,right:ldb:NaowhForeverBiS:M\\icon-bis.png:true:NaowhForeverBiS:4")
 check("skipped brokers stay in the layout", db.layout.left[1] == "ldb:Missing" and db.layout.right[1] == "ldb:NoIcon")
 
+-- Every Naowh Forever launcher in the default layout has its own glyph, and the file is there.
+local glyphs = assert(loadstring("local MEDIA = ...\n" .. GLYPH .. "\nreturn GLYPH"))("Media/TopBar/")
+local missing = {}
+for _, side in ipairs({ "left", "right" }) do
+    for _, key in ipairs(defaultLayout[side]) do
+        local name = key:match("^ldb:(NaowhForever.*)$")
+        local path = name and glyphs[name]
+        local file = path and io.open(path, "rb")
+        if file then file:close() elseif name then missing[#missing + 1] = name end
+    end
+end
+check("the default launchers all have a glyph file: " .. table.concat(missing, ", "), #missing == 0)
+
 -- Editing: every change saves a fresh layout through the store.
 local saved = db.layout
 local S
@@ -138,5 +151,29 @@ check("Faded and In Combat show only while their setting is on",
     source:find('needs = "mouseover" }', 1, true) and source:find('needs = "hideInCombat" }', 1, true))
 check("the preview's hint", source:find('"Drag to move, x to remove, + to add."', 1, true) ~= nil)
 check("the drag's OnUpdate is removed when it ends", source:find('edit:SetScript("OnUpdate", nil)', 1, true) ~= nil)
+
+-- The edit layer sits over the options window: its keyboard is off until a drag starts, and
+-- Escape passes through to close the window unless it cancels a drag.
+local layer = Slice("local function NewEditLayer(preview)", "\n    preview.edit = edit")
+local keyScript = assert(layer:find('edit:SetScript("OnKeyDown", DragKey)', 1, true))
+check("the edit layer's keyboard is turned off once its key script is set",
+    (layer:find("\n    edit:EnableKeyboard(false)", keyScript, true) or 0) > keyScript)
+
+local ended
+local keyChunk = assert(loadstring(Slice("local function DragKey(edit, key)", "\nlocal function PreviewHidden")
+    .. "\nreturn DragKey"))
+setfenv(keyChunk, { InCombatLockdown = function() return false end,
+    EndDrag = function(preview, commit) ended = { preview, commit } end })
+local DragKey = keyChunk()
+local edit = { preview = {} }
+function edit:SetPropagateKeyboardInput(v) self.propagate = v end
+DragKey(edit, "ESCAPE")
+check("Escape with no drag passes through to the window", edit.propagate == true and ended == nil)
+edit.preview.drag = {}
+DragKey(edit, "ESCAPE")
+check("Escape during a drag is kept and cancels it",
+    edit.propagate == false and ended and ended[1] == edit.preview and ended[2] == false)
+DragKey(edit, "A")
+check("other keys pass through during a drag", edit.propagate == true)
 
 print("PASS top bar layout: " .. checks .. " checks")

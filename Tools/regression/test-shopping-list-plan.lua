@@ -11,7 +11,7 @@ local function Read(path)
     return s
 end
 
-local source = Read("Professions/NaowhForever_ShoppingList.lua")
+local source = Read("NaowhForever_Professions/NaowhForever_ShoppingList.lua")
 local first = assert(source:find("local MAX_DEPTH = ", 1, true))
 local learn = assert(source:find("local function Learn()", first, true))
 local last = assert(source:find("\nend\n", learn, true))
