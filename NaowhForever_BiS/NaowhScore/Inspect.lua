@@ -201,12 +201,16 @@ local function Ready(guid)
     wipe(links)
     for slot in pairs(Score.SLOTS) do links[slot] = GetInventoryItemLink(unit, slot) end
     local entry = Entry(guid)
-    entry.links = entry.links or {}
-    wipe(entry.links)
-    for slot, link in pairs(links) do entry.links[slot] = link end
-    local score, complete = Score.Links(entry.links)
-    Score.Remember(guid, score, complete, false, UnitLevel(unit))
+    local score, complete = Score.Links(links)
     -- An item's data still loading: worked out again when it comes.
+    if not complete then
+        entry.links = entry.links or {}
+        wipe(entry.links)
+        for slot, link in pairs(links) do entry.links[slot] = link end
+    else
+        entry.links = nil
+    end
+    Score.Remember(guid, score, complete, false, UnitLevel(unit))
     if not complete then events:RegisterEvent("GET_ITEM_INFO_RECEIVED") end
     -- Let the inspect go, unless it is yours now.
     if not UserInspecting() then ClearInspectPlayer() end
@@ -222,7 +226,10 @@ local function ItemsLoaded()
         if entry.links and not entry.complete and not entry.shared then
             local score, complete = Score.Links(entry.links)
             entry.score, entry.complete = score, complete
-            if complete then Save(guid, score, entry.level) end
+            if complete then
+                entry.links = nil
+                Save(guid, score, entry.level)
+            end
             Refresh(guid, entry)
             if not complete then waiting = true end
         end
@@ -243,13 +250,15 @@ end
 local scanQueued = false
 local Scan
 
+local function ScanDue()
+    scanQueued = false
+    Scan()
+end
+
 local function ScanSoon(delay)
     if scanQueued then return end
     scanQueued = true
-    C_Timer.After(delay, function()
-        scanQueued = false
-        Scan()
-    end)
+    C_Timer.After(delay, ScanDue)
 end
 
 -- The unit names walked, made once: the walk makes no strings of its own.

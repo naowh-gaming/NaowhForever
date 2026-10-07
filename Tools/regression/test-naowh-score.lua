@@ -4,7 +4,7 @@
 -- kept by GUID, filled in when the gear comes, never in combat or while the game's Inspect
 -- window, or the talents opened from it, holds the inspect); your group scanned in the
 -- background; your score shared with your group and guild, always, and theirs kept; and what
--- the hot paths cost.
+-- the hot paths cost and keep.
 local Load = dofile("Tools/regression/load_files.lua")
 
 local checks = 0
@@ -689,6 +689,56 @@ do
     local ok = pcall(state.Fire, "INSPECT_READY", "Player-1-19")
     check("the gear comes while the tooltip is forbidden: kept, the tooltip left alone", ok
         and ns.NaowhScore.Known("Player-1-19") ~= nil and state.rights[#state.lines].text == "...")
+end
+
+-------------------------------------------------------------------------------
+--  What it keeps and costs: an inspected player's score, not their item links; a nameplate
+--  shown makes no garbage
+-------------------------------------------------------------------------------
+do
+    local ns, state = Fixture()
+    ns.QoLSettings.Set("naowhScoreScan", false)
+    ns.QoLSettings.Set("naowhScore", true)
+    state.RunTimers()
+    local OnUnit = state.postCalls[1]
+    local PLAYERS = 50
+    local function Inspected(unit)
+        state.now = state.now + 3
+        state.hovered = unit
+        for k in pairs(state.lines) do state.lines[k] = nil end
+        OnUnit(state.tooltip)
+        state.Fire("INSPECT_READY", state.UnitGUID(unit))
+        return ns.NaowhScore.Known(state.UnitGUID(unit)) ~= nil
+    end
+    local gear = Set(26, 4)
+    local units = {}
+    for i = 0, PLAYERS do
+        units[i] = "nameplate" .. i
+        state.gear[units[i]] = gear
+    end
+    Inspected(units[0])
+    collectgarbage("collect")
+    local before = collectgarbage("count")
+    local all = true
+    for i = 1, PLAYERS do all = Inspected(units[i]) and all end
+    collectgarbage("collect")
+    local kb = (collectgarbage("count") - before) / PLAYERS
+    print(("  an inspected player kept: %.2f KB"):format(kb))
+    check("each scored", all)
+    check("an inspected player keeps their score, not their item links (under 1 KB each)", kb < 1)
+end
+
+do
+    local ns, state = Fixture()
+    state.values.naowhScoreScan, state.values.naowhScoreNearby = false, true
+    ns.QoLSettings.Set("naowhScore", true)
+    state.RunTimers()
+    state.gear.nameplate1 = Set(20, 3)
+    ns.NaowhScore.Remember("Player-1-19", 20, true, true, 60)
+    Measure("a nameplate shown, the walk run with everyone known", 0.05, function()
+        state.Fire("NAME_PLATE_UNIT_ADDED", "nameplate1")
+        state.RunTimers()
+    end)
 end
 
 print(("test-naowh-score: %d checks passed"):format(checks))
