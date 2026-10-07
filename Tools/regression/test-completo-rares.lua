@@ -106,6 +106,7 @@ local function Fixture(settings, units)
     env.GetLootSourceInfo = function(slot) return env.loot[slot], 1 end
     env.sounds = 0
     env.PlaySound = function() env.sounds = env.sounds + 1 end
+    env.PlaySoundFile = function(file) env.soundFile = file end
     env.SOUNDKIT = { RAID_WARNING = 8959 }
     env.C_Timer = { NewTimer = function() return { Cancel = function() end } end }
     env.C_Map = { GetBestMapForUnit = function() return 1440 end, GetMapInfo = function() end }
@@ -316,6 +317,14 @@ do
     Check(order[1] == "game:raidwarning" and values["game:raidwarning"] == "Raid Warning (game)",
         "the sound list starts with the game's own")
     Check(values["game:legendary"] == nil, "a game sound the client lacks is left out")
+    Check(values["file:gruntlinghorn"] == "Gruntling Horn (game)" and order[2] == "file:gruntlinghorn",
+        "the horns and drums are offered by file, the Gruntling Horn first after Raid Warning")
+    soundRow.set("file:gruntlinghorn")
+    Check(env.soundFile == 598196 and env.sounds == 0, "a sound file plays by its ID")
+    soundRow.set("game:flaghorde")
+    Check(env.sounds == 1, "a sound no longer offered falls back to Raid Warning")
+    env.sounds = 0
+    settings.rareSoundKey = nil
     Check(values["voice:move-out"] == nil and values["lsm:BugSack: Fatality"] == nil and values["lsm:Bell"] == "Bell"
         and order[#order] == "lsm:Bell", "no spoken lines or BugSack's sound; the addon's other sounds stay")
     Check(soundRow.get() == "game:raidwarning", "Raid Warning by default")

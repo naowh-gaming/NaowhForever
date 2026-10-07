@@ -79,44 +79,54 @@ local function BuildAlert()
     ns.AlertStack(alert, 6)
 end
 
--- The game's own alert sounds, offered before the addon's sound files: key, SOUNDKIT name
--- (or the sound kit's ID, for the battleground ones SOUNDKIT has no name for), label. One the
--- client has no SOUNDKIT entry for is left out.
+-- The game's own alert sounds, offered before the addon's sound files: key, SOUNDKIT name,
+-- label; or key, the sound file's ID, label, for the horns, drums and battleground warnings
+-- rare scanners use (SilverDragon's file IDs; RareScanner's default is the Gruntling Horn, the
+-- old _NPCScan's the War Drums). A SOUNDKIT name the client lacks is left out.
 local GAME_SOUNDS = {
     { "game:raidwarning", "RAID_WARNING", "Raid Warning" },
     { "game:legendary", "UI_LEGENDARY_LOOT_TOAST", "Legendary Loot" },
-    { "game:warforged", "UI_WARFORGED_ITEM_LOOT_TOAST", "Warforged Loot" },
-    { "game:azerite", "UI_AZERITE_EMPOWERED_ITEM_LOOT_TOAST", "Azerite Loot" },
-    { "game:prestige", "UI_PVP_HONOR_PRESTIGE_RANK_UP", "Honor Prestige" },
-    { "game:forgetrait", "UI_72_ARTIFACT_FORGE_FINAL_TRAIT_UNLOCKED", "Artifact Trait" },
-    { "game:forgetier", "UI_72_ARTIFACT_FORGE_ACTIVATE_FINAL_TIER", "Artifact Tier" },
-    { "game:flagalliance", 8174, "Flag Taken, Alliance" },
-    { "game:flaghorde", 8212, "Flag Taken, Horde" },
-    { "game:pvpwarnalliance", 8332, "Battleground Warning, Alliance" },
-    { "game:pvpwarnhorde", 8333, "Battleground Warning, Horde" },
+    { "file:gruntlinghorn", 598196, "Gruntling Horn" },
+    { "file:squirehorn", 598079, "Squire Horn" },
+    { "file:dwarfhorn", 566064, "Dwarf Horn" },
+    { "file:scourgehorn", 567386, "Scourge Horn" },
+    { "file:wardrums", 567275, "War Drums" },
+    { "file:pvphorde", 569112, "PvP Warning, Horde" },
+    { "file:pvpalliance", 568320, "PvP Warning, Alliance" },
+    { "file:thunder", 566202, "Thunder Crack" },
 }
 
--- The sound kit ID of a GAME_SOUNDS entry, nil where the client has none by that name.
-local function Kit(sound)
-    if type(sound[2]) == "number" then return sound[2] end
-    return SOUNDKIT and SOUNDKIT[sound[2]]
-end
-local DEFAULT_SOUND = "game:raidwarning"
-
-local function GameKit(key)
+local function Find(key)
     for _, sound in ipairs(GAME_SOUNDS) do
-        if sound[1] == key then return Kit(sound) end
+        if sound[1] == key then return sound end
     end
 end
 
--- key: a game sound's, an addon sound file's, or "none" (an older setting) for the default.
+-- Whether the client has it: a sound file always; a SOUNDKIT name only where it is known.
+local function Has(sound)
+    return type(sound[2]) == "number" or (SOUNDKIT ~= nil and SOUNDKIT[sound[2]] ~= nil)
+end
+
+-- Plays a GAME_SOUNDS entry; false when the client has no such sound.
+local function PlayGame(sound)
+    if not sound or not Has(sound) then return false end
+    if type(sound[2]) == "number" then
+        PlaySoundFile(sound[2], "Master")
+    else
+        PlaySound(SOUNDKIT[sound[2]], "Master")
+    end
+    return true
+end
+
+local DEFAULT_SOUND = "game:raidwarning"
+
+-- key: a game sound's, an addon sound file's, or one no longer offered ("none", an older
+-- pick) for the default.
 local function PlaySoundKey(key)
-    local kit = GameKit(key)
-    if kit then return PlaySound(kit, "Master") end
+    if PlayGame(Find(key)) then return end
     local path = ns.UI.SoundPathFor(key)
     if path then return ns.UI._PlayLSMSound(path) end
-    kit = GameKit(DEFAULT_SOUND)
-    if kit then PlaySound(kit, "Master") end
+    PlayGame(Find(DEFAULT_SOUND))
 end
 
 local function PlayAlertSound()
@@ -314,7 +324,7 @@ end
 local function Sounds()
     local values, order = {}, {}
     for _, sound in ipairs(GAME_SOUNDS) do
-        if Kit(sound) then
+        if Has(sound) then
             values[sound[1]] = sound[3] .. " (game)"
             order[#order + 1] = sound[1]
         end
