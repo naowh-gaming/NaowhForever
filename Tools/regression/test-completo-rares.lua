@@ -443,35 +443,40 @@ do
     Check(ns.cards.rarePins and ns.cards.rarePins.switch == "rarePins", "Rares has a Map Pins card")
     ns.CompletoSettings.Set("rarePins", true)
     local pins = env.worldMap.pins
-    Check(#pins == 3, "Mist Howler's two stars and Prince Raze's star; none for the Horde-friendly rare or one "
-        .. "with no spot, and no trail until asked for")
-    local function PinsOf(npc, dot)
+    Check(#pins == 2, "one star each for Mist Howler and Prince Raze; none for the Horde-friendly rare or one "
+        .. "with no spot")
+    local function PinsOf(npc, kind)
         local out = {}
         for _, pin in ipairs(env.worldMap.pins) do
-            if pin.npc == npc and (dot == nil or (pin.dot == true) == dot) then out[#out + 1] = pin end
+            if pin.npc == npc and (kind == nil or pin.kind == (kind or nil)) then out[#out + 1] = pin end
         end
         return out
     end
     local howler = PinsOf(10644)[1]
-    Check(howler.Icon.atlas == "VignetteKill" and howler.at[1] == 0.5 and howler.at[2] == 0.4, "the game's rare star, at its spot")
+    Check(howler.Icon.atlas == "VignetteKill" and howler.at[1] == 0.5 and howler.at[2] == 0.4,
+        "the game's rare star, at its first spot (where it was seen most)")
+    howler:OnMouseEnter()
+    local other = PinsOf(10644, "spot")[1]
+    Check(#PinsOf(10644, "spot") == 1 and other.at[1] == 0.52 and other.size < howler.size and not other.mouse,
+        "hovering it shows its other spot, smaller, taking no mouse")
+    howler:OnMouseLeave()
+    Check(#PinsOf(10644) == 1, "moving off takes the other spot away")
     local star = PinsOf(10647, false)[1]
     star:OnMouseEnter()
-    Check(#env.worldMap.pins == 6 and #PinsOf(10647, true) == 3, "hovering a patrolling rare's star shows its way's three dots")
-    local dot = PinsOf(10647, true)[1]
+    Check(#env.worldMap.pins == 5 and #PinsOf(10647, "dot") == 3, "hovering a patrolling rare's star shows its way's three dots")
+    local dot = PinsOf(10647, "dot")[1]
     Check(dot.size < star.size and dot.levelIndex < star.levelIndex and not dot.mouse,
-        "a trail's dots are smaller, under the stars and take no mouse")
-    Check(star.size > 18 and dot.Icon.alpha == 1 and howler.Icon.alpha < 0.5,
-        "the hovered rare's star and way are lit, the others faded")
+        "a trail's dots are smaller, under the star and take no mouse")
+    Check(star.size > 18 and howler.Icon.alpha < 0.5, "the hovered rare's star is lit, the others faded")
     star:OnMouseLeave()
-    Check(#env.worldMap.pins == 3 and #PinsOf(10647, true) == 0, "moving off the star takes its way away")
+    Check(#env.worldMap.pins == 2 and #PinsOf(10647, "dot") == 0, "moving off the star takes its way away")
     Check(star.size == 18 and howler.Icon.alpha == 1, "and puts the others back")
     star:OnClick("LeftButton")
     Check(#env.waypoints == 1 and env.waypoints[1][3] == 70, "clicking a star sets a waypoint there")
     R.SetKilled(10644, true)
-    Check(#PinsOf(10644) == 0 and #env.worldMap.pins == 1, "a killed rare's stars go")
-
+    Check(#PinsOf(10644) == 0 and #env.worldMap.pins == 1, "a killed rare's star goes")
     ns.CompletoSettings.Set("rarePinsKilled", true)
-    Check(#PinsOf(10644) == 2 and PinsOf(10644)[1].Icon.desaturated, "with Show Killed Rares, grey stars")
+    Check(#PinsOf(10644) == 1 and PinsOf(10644)[1].Icon.desaturated, "with Show Killed Rares, a grey star")
     ns.CompletoSettings.Set("rarePins", false)
     Check(#env.worldMap.pins == 0, "switched off: the stars go")
 end

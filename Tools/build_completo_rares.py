@@ -93,21 +93,27 @@ def spread(coords, gap, most):
 
 def spots_on(spots, map_id):
     """Where the rare is on the map: (stars, trail). A star at each spot it spawns, and on
-    each way it patrols the point nearest the way's middle; the trail, dots along those ways."""
+    each way it patrols the point nearest the way's middle, the one Wowhead saw it at most
+    first (a way counts all its points, a spot those within NEAR of it): the map's one star
+    for the rare. The trail, dots along those ways."""
     coords = [tuple(c) for c in spots.get(str(map_id)) or []]
     if not coords:
         return [], []
-    stars, trail, still = [], [], []
+    weighed, trail, still = [], [], []
     for group in sorted(groups(coords), key=len, reverse=True):
         if patrol(group):
             cx = sum(p[0] for p in group) / len(group)
             cy = sum(p[1] for p in group) / len(group)
-            stars.append(min(group, key=lambda p: (p[0] - cx) ** 2 + (p[1] - cy) ** 2))
+            weighed.append((len(group), min(group, key=lambda p: (p[0] - cx) ** 2 + (p[1] - cy) ** 2)))
             trail += spread(group, TRAIL_GAP, MAX_TRAIL)
         else:
             still += group
-    stars += [s for s in spread(still, NEAR, MAX_SPOTS) if all(math.dist(s, k) >= NEAR for k in stars)]
-    return stars[:MAX_SPOTS], trail[:MAX_TRAIL]
+    ways = [s for _, s in weighed]
+    for s in spread(still, NEAR, MAX_SPOTS):
+        if all(math.dist(s, k) >= NEAR for k in ways):
+            weighed.append((sum(1 for o in still if math.dist(s, o) < NEAR), s))
+    weighed.sort(key=lambda w: (-w[0], w[1]))
+    return [s for _, s in weighed][:MAX_SPOTS], trail[:MAX_TRAIL]
 
 
 def continents():
