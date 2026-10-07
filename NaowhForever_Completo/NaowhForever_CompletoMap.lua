@@ -46,9 +46,6 @@ end
 -- pass through.
 function NaowhForeverQuestGiverPinMixin:CheckMouseButtonPassthrough() end
 
--- Not smaller on the small map than on the full-screen one.
-NaowhForeverQuestGiverPinMixin.ApplyCurrentScale = ns.Completo.ScalePin
-
 -- A yellow !, or a grey one: the game's grey mark where it has one, else the yellow greyed.
 -- A blue ! for a giver with only repeatable quests: the game's own where it has one, else the
 -- yellow tinted blue.
@@ -75,7 +72,6 @@ function NaowhForeverQuestGiverPinMixin:OnAcquired(giver)
     self:SetSize(size, size)
     SetMark(self.Icon, giver.grey, giver.repeatable)
     self:SetPosition(giver.x / 100, giver.y / 100)
-    if self.ApplyCurrentScale then self:ApplyCurrentScale() end
 end
 
 function NaowhForeverQuestGiverPinMixin:OnMouseEnter()
