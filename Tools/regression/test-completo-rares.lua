@@ -391,10 +391,17 @@ do
     env.Fire("NAME_PLATE_UNIT_ADDED", "nameplate6")
     Check(#env.marks == 3 and env.marks[3][2] == 5, "Mark Rare: the moon when it is picked")
     Check(ns.alert.skull.texture == "Interface\\TargetingFrame\\UI-RaidTargetingIcon_5", "the card shows the moon")
+    ns.alert:Hide()
+    ns.ShowRaidReminderAnchorConfig()
+    Check(ns.alert:IsShown() and ns.alert.skull.shown and ns.alert.skull.texture == "Interface\\TargetingFrame\\UI-RaidTargetingIcon_5",
+        "Unlock Mode previews the card with Mark Rare's mark")
     settings.rareMarker = "none"
     units.nameplate7 = { guid = Guid(9998), name = "Unmarked Rare", kind = "rare" }
     env.Fire("NAME_PLATE_UNIT_ADDED", "nameplate7")
     Check(#env.marks == 3 and not ns.alert.skull.shown, "None: no mark, and none on the card")
+    ns.alert:Hide()
+    ns.ShowRaidReminderAnchorConfig()
+    Check(ns.alert:IsShown() and not ns.alert.skull.shown, "and none on Unlock Mode's preview")
 
     ns.CompletoSettings.Set("rareAlert", false)
     Check(not env.Listening("NAME_PLATE_UNIT_ADDED") and not ns.alert:IsShown(), "switched off: unregistered, alert gone")

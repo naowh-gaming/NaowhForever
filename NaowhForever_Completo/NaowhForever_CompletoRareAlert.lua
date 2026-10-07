@@ -486,7 +486,7 @@ hooksecurefunc(S, "Set", function(key)
 end)
 hooksecurefunc(ns, "Apply", Apply)
 hooksecurefunc(ns, "ShowRaidReminderAnchorConfig", function()
-    if On() then ShowAlert({ name = "Mist Howler", level = 22, npc = 10644, marked = true }, true) end
+    if On() then ShowAlert({ name = "Mist Howler", level = 22, npc = 10644, marked = Marker() }, true) end
 end)
 hooksecurefunc(ns, "HideRaidReminderAnchorConfig", HideAlert)
 
