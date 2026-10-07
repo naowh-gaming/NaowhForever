@@ -5,8 +5,8 @@ the rare ones have classification 4 (rare) or 2 (rare elite). Each rare's page
 (/forever/npc=<id>) then gives where it spawns (g_mapperData), the same way
 build_completo_quests.py finds the mobs whose drop begins a quest.
 
-The same creature page's "drops" listview gives its loot: what it drops itself (Wowhead's
-specificDrop) worth showing, and how many random world drops (green or better) it also gives.
+The same creature page's "drops" listview gives its loot; only the special drops are kept:
+rare and epic items, and recipes, its own (Wowhead's specificDrop) first.
 
 Answers are cached in completo_rares.json ({ "zones": { area: [rows] }, "npcs": { id: spots },
 "drops": { id: [drops] } }), so a run that dies on Wowhead's rate limit resumes where it stopped. --offline writes from the
@@ -50,10 +50,10 @@ EVENT_ONLY = {14697, 16379, 16380}
 SKULL_LEVEL = 9999
 
 
-# Loot worth naming: the rare's own drops of this quality or better, or quest items (class 12);
-# at most MAX_LOOT, likeliest first.
-LOOT_QUALITY = 2
-QUEST_ITEM = 12
+# Loot worth naming: rare (blue) or epic items, and recipes (class 9), whether its own drop or a
+# random world drop; at most MAX_LOOT, its own first, then the best and likeliest.
+LOOT_QUALITY = 3
+RECIPE = 9
 MAX_LOOT = 8
 
 
@@ -73,12 +73,11 @@ def fetch_drops(npc):
 
 
 def loot_of(drops):
-    """(own, world): the rare's own drops worth naming, likeliest first, and how many random
-    world drops of LOOT_QUALITY or better it gives besides."""
-    own = [d for d in drops if d["specific"] and (d["quality"] >= LOOT_QUALITY or d["classs"] == QUEST_ITEM)]
-    own.sort(key=lambda d: (-d["chance"], -d["quality"], d["name"]))
-    world = sum(1 for d in drops if not d["specific"] and d["quality"] >= LOOT_QUALITY)
-    return own[:MAX_LOOT], world
+    """(shown, more): its special drops (LOOT_QUALITY or better, or recipes), its own first, then
+    by quality and chance, at most MAX_LOOT; and how many more there are."""
+    special = [d for d in drops if d["quality"] >= LOOT_QUALITY or d["classs"] == RECIPE]
+    special.sort(key=lambda d: (not d["specific"], -d["quality"], -d["chance"], d["name"]))
+    return special[:MAX_LOOT], max(0, len(special) - MAX_LOOT)
 
 
 def fetch_zone(area):
@@ -280,20 +279,20 @@ def write(cache):
     lines += [
         "}",
         "",
-        "-- npcID = what it drops: its own loot worth naming, likeliest first, each { itemID, quality,",
-        "-- chance (percent), name }; world = how many random world drops (green or better) it also",
-        "-- gives. A rare whose loot is not known has none.",
+        "-- npcID = its special drops (rare and epic items, recipes), its own first, then the best and",
+        "-- likeliest, each { itemID, quality, chance (percent), name }; more = how many more there",
+        "-- are. A rare with none has no entry.",
         "D.Loot = {",
     ]
     for npc in sorted(rares):
         drops = cache.get("drops", {}).get(str(npc))
         if drops is None:
             continue
-        own, world = loot_of(drops)
-        if not own and not world:
+        shown, more = loot_of(drops)
+        if not shown:
             continue
-        items = ", ".join(f"{{ {d['id']}, {d['quality']}, {d['chance']:g}, {lua_string(d['name'])} }}" for d in own)
-        parts = ([items] if items else []) + ([f"world = {world}"] if world else [])
+        items = ", ".join(f"{{ {d['id']}, {d['quality']}, {d['chance']:g}, {lua_string(d['name'])} }}" for d in shown)
+        parts = [items] + ([f"more = {more}"] if more else [])
         lines.append(f"    [{npc}] = {{ {', '.join(parts)} }},")
     lines.append("}")
     OUT.parent.mkdir(parents=True, exist_ok=True)

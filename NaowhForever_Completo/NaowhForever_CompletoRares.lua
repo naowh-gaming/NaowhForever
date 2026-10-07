@@ -217,9 +217,9 @@ function R.Spots(npc) return D.Rares[npc][SPOTS] end
 -- stays where it spawns.
 function R.Trail(npc) return D.Rares[npc][TRAIL] end
 
--- What it drops (D.Loot): its own loot worth naming, likeliest first, each { itemID, quality,
--- chance (percent), name }, and .world, how many random world drops it also gives; nil when
--- nothing is known.
+-- Its special drops (D.Loot): rare and epic items and recipes, its own first, each { itemID,
+-- quality, chance (percent), name }, and .more, how many more there are; nil for a rare with
+-- none.
 function R.Loot(npc) return D.Loot and D.Loot[npc] end
 
 local ID, QUALITY, CHANCE, ITEM_NAME = 1, 2, 3, 4
@@ -230,8 +230,8 @@ local function QualityColor(quality)
     return 1, 1, 1
 end
 
--- Its loot as tooltip lines, under a blank line: each item with its icon in its quality's
--- colour and its chance, then the world drops as one line. Nothing for a rare with none known.
+-- Its special drops as tooltip lines, under a blank line: each item with its icon in its
+-- quality's colour and its chance, then how many more. Nothing for a rare with none.
 function R.AddLoot(tooltip, npc)
     local loot = R.Loot(npc)
     if not loot then return end
@@ -245,10 +245,8 @@ function R.AddLoot(tooltip, npc)
             or ("%.1f%%"):format(item[CHANCE])
         tooltip:AddDoubleLine(name, chance, r, g, b, 0.62, 0.62, 0.62)
     end
-    if loot.world then
-        local r, g, b = QualityColor(2)
-        tooltip:AddLine(("%s%d random world drops of its level"):format(#loot > 0 and "And " or "",
-            loot.world), r, g, b)
+    if loot.more then
+        tooltip:AddLine(("And %d more"):format(loot.more), 0.62, 0.62, 0.62)
     end
 end
 

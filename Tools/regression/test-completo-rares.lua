@@ -173,10 +173,9 @@ local function Fixture(settings, units)
             -- Patrols: a star on its way, three dots along it.
             [10647] = { "Prince Raze", 32, 32, 0, -1, -1, 1440, { 70.0, 20.0 }, { 68.0, 20.0, 70.0, 22.0, 72.0, 24.0 } },
         },
-        -- Prince Raze: two of his own, and random world drops; Mist Howler: world drops only.
+        -- Prince Raze: a blue of his own, a recipe, and more; Mist Howler: nothing special.
         Loot = {
-            [10647] = { { 4454, 3, 22.2, "Talon of Vultros" }, { 5971, 2, 0.4, "Feathered Cape" }, world = 3 },
-            [10644] = { world = 17 },
+            [10647] = { { 4454, 3, 22.2, "Talon of Vultros" }, { 5971, 2, 0.4, "Pattern: Feathered Cape" }, more = 3 },
         },
     }
     ns.ThemeTint = function() return nil end
@@ -487,12 +486,11 @@ do
     local talon = Line("Talon of Vultros")
     Check(Line("Drops") and talon and talon[1] == "|T5454:14:14|t Talon of Vultros" and talon[2] == "22%"
         and talon[5] == 0.87, "its tooltip lists its loot: icon, name in its quality's colour, chance")
-    Check(Line("Feathered Cape")[2] == "0.4%", "a rare chance keeps its decimal")
-    Check(Line("And 3 random world drops of its level"), "and counts its random world drops")
+    Check(Line("Pattern: Feathered Cape")[2] == "0.4%", "a rare chance keeps its decimal")
+    Check(Line("And 3 more"), "and says how many more")
     star:OnMouseLeave()
     howler:OnMouseEnter()
-    Check(Line("17 random world drops of its level")[1] == "17 random world drops of its level",
-        "a rare with only world drops says so")
+    Check(not Line("Drops"), "a rare with nothing special has no Drops section")
     howler:OnMouseLeave()
     Check(#env.worldMap.pins == 2 and #PinsOf(10647, "dot") == 0, "moving off the star takes its way away")
     Check(star.size == 18 and howler.Icon.alpha == 1, "and puts the others back")
