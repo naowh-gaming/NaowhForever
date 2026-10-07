@@ -166,8 +166,8 @@ end
 
 -- Materials runs a few times a render: it fills these again each time, and what it returns
 -- holds only until the next call.
-local plan = { cost = {}, make = {}, craft = {}, busy = {}, planned = {}, saves = {} }
-local demand, nextDemand, made, buy, pool = {}, {}, {}, {}, {}
+local shopPlan = { cost = {}, make = {}, craft = {}, busy = {}, planned = {}, saves = {} }
+local demand, nextDemand, toMake, buy, had = {}, {}, {}, {}, {}
 local trials = {}
 for depth = 0, MAX_DEPTH do trials[depth] = { left = {}, made = {} } end
 local materialList, materialPool = {}, {}
@@ -179,7 +179,7 @@ end
 -- Parts on the list: not the ones you have, nor vendor ones, as Add to List leaves those off.
 local function Listed(part)
     local api = ns.ProfWindowAPI
-    return not plan.owned[part] and not (api and api.IsVendorItem(part))
+    return not shopPlan.owned[part] and not (api and api.IsVendorItem(part))
 end
 
 -- What was bought counts at every level, whatever the plan is now: ore bought to smelt still
@@ -188,7 +188,7 @@ end
 local function Supply(item, want, from, into, depth)
     local got = math.min(want, from[item] or 0)
     if got > 0 then from[item] = from[item] - got end
-    local m = plan.makes[item]
+    local m = shopPlan.makes[item]
     if not m or m.cooldown or depth >= MAX_DEPTH then return got end
     -- Only bought parts make it here; one with none on the list is never made from them.
     local listed = false
@@ -219,34 +219,35 @@ end
 -- just from parts bought) and saves (what that saves on buying, where both are priced).
 local function Materials()
     local api = ns.ProfWindowAPI
-    wipe(plan.cost); wipe(plan.make); wipe(plan.craft); wipe(plan.busy); wipe(plan.planned); wipe(plan.saves)
-    plan.owned = api and api.Owned() or {}
-    plan.makes = Makes()
-    local makes = plan.makes
-    wipe(demand); wipe(made); wipe(buy); wipe(pool)
+    wipe(shopPlan.cost); wipe(shopPlan.make); wipe(shopPlan.craft)
+    wipe(shopPlan.busy); wipe(shopPlan.planned); wipe(shopPlan.saves)
+    shopPlan.owned = api and api.Owned() or {}
+    shopPlan.makes = Makes()
+    local makes = shopPlan.makes
+    wipe(demand); wipe(toMake); wipe(buy); wipe(had)
     for _, craft in pairs(List()) do
         for item, per in pairs(craft.need) do
             demand[item] = (demand[item] or 0) + per * craft.count - (craft.got and craft.got[item] or 0)
         end
     end
-    for item, qty in pairs(Have()) do pool[item] = qty end
+    for item, qty in pairs(Have()) do had[item] = qty end
     -- What is left: made where cheaper, the crafts it takes going to made and their parts to
     -- what is needed, a level a pass; bought otherwise.
     for depth = 0, MAX_DEPTH do
         wipe(nextDemand)
         for item, qty in pairs(demand) do
-            if qty > 0 then qty = qty - Supply(item, qty, pool, made, depth) end
+            if qty > 0 then qty = qty - Supply(item, qty, had, toMake, depth) end
             if qty > 0 then
-                local _, make = Cheapest(item, plan, 0)
-                local m, price, craft = makes[item], BuyPrice(item), plan.craft[item]
+                local _, make = Cheapest(item, shopPlan, 0)
+                local m, price, craft = makes[item], BuyPrice(item), shopPlan.craft[item]
                 local crafts = m and math.ceil(qty / m.made)
                 -- Whole crafts against what is needed: 3 bars bought can cost less than 2
                 -- crafts of 2, though one bar made costs less than one bought.
                 if make and price and craft and crafts * craft >= qty * price then make = false end
                 if make and depth < MAX_DEPTH then
-                    made[item] = (made[item] or 0) + crafts * m.made
-                    plan.planned[item] = true
-                    if price and craft then plan.saves[item] = (plan.saves[item] or 0) + qty * price - crafts * craft end
+                    toMake[item] = (toMake[item] or 0) + crafts * m.made
+                    shopPlan.planned[item] = true
+                    if price and craft then shopPlan.saves[item] = (shopPlan.saves[item] or 0) + qty * price - crafts * craft end
                     for part, per in pairs(m.need) do
                         if Listed(part) then nextDemand[part] = (nextDemand[part] or 0) + per * crafts end
                     end
@@ -268,7 +269,7 @@ local function Materials()
     end
     for i = n + 1, #materialList do materialList[i] = nil end
     table.sort(materialList, ByName)
-    return materialList, made, plan
+    return materialList, toMake, shopPlan
 end
 
 -- A material taken off the list (X at the auction house): as if you had it.
