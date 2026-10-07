@@ -79,21 +79,19 @@ local function BuildAlert()
     ns.AlertStack(alert, 6)
 end
 
--- The game's own alert sounds, offered before the addon's sound files: key, SOUNDKIT name,
--- label; or key, the sound file's ID, label, for the horns, drums and battleground warnings
--- rare scanners use (SilverDragon's file IDs; RareScanner's default is the Gruntling Horn, the
--- old _NPCScan's the War Drums). A SOUNDKIT name the client lacks is left out.
+-- The game's own alert sounds, offered before the addon's sound files: key, how it plays,
+-- what, label. "name": a SOUNDKIT name (left out where the client lacks it); "kit": a sound
+-- kit's ID SOUNDKIT has no name for (the battleground flag sounds); "file": a sound file's ID,
+-- as rare scanners use them (SilverDragon's IDs; the Gruntling Horn is RareScanner's default,
+-- the War Drums the old _NPCScan's).
 local GAME_SOUNDS = {
-    { "game:raidwarning", "RAID_WARNING", "Raid Warning" },
-    { "game:legendary", "UI_LEGENDARY_LOOT_TOAST", "Legendary Loot" },
-    { "file:gruntlinghorn", 598196, "Gruntling Horn" },
-    { "file:squirehorn", 598079, "Squire Horn" },
-    { "file:dwarfhorn", 566064, "Dwarf Horn" },
-    { "file:scourgehorn", 567386, "Scourge Horn" },
-    { "file:wardrums", 567275, "War Drums" },
-    { "file:pvphorde", 569112, "PvP Warning, Horde" },
-    { "file:pvpalliance", 568320, "PvP Warning, Alliance" },
-    { "file:thunder", 566202, "Thunder Crack" },
+    { "file:gruntlinghorn", "file", 598196, "Gruntling Horn" },
+    { "game:raidwarning", "name", "RAID_WARNING", "Raid Warning" },
+    { "game:legendary", "name", "UI_LEGENDARY_LOOT_TOAST", "Legendary Loot" },
+    { "file:squirehorn", "file", 598079, "Squire Horn" },
+    { "file:wardrums", "file", 567275, "War Drums" },
+    { "game:flagalliance", "kit", 8174, "Flag Taken, Alliance" },
+    { "game:flaghorde", "kit", 8212, "Flag Taken, Horde" },
 }
 
 local function Find(key)
@@ -102,23 +100,23 @@ local function Find(key)
     end
 end
 
--- Whether the client has it: a sound file always; a SOUNDKIT name only where it is known.
+-- Whether the client has it: a kit or file ID always; a SOUNDKIT name only where it is known.
 local function Has(sound)
-    return type(sound[2]) == "number" or (SOUNDKIT ~= nil and SOUNDKIT[sound[2]] ~= nil)
+    return sound[2] ~= "name" or (SOUNDKIT ~= nil and SOUNDKIT[sound[3]] ~= nil)
 end
 
 -- Plays a GAME_SOUNDS entry; false when the client has no such sound.
 local function PlayGame(sound)
     if not sound or not Has(sound) then return false end
-    if type(sound[2]) == "number" then
-        PlaySoundFile(sound[2], "Master")
+    if sound[2] == "file" then
+        PlaySoundFile(sound[3], "Master")
     else
-        PlaySound(SOUNDKIT[sound[2]], "Master")
+        PlaySound(sound[2] == "kit" and sound[3] or SOUNDKIT[sound[3]], "Master")
     end
     return true
 end
 
-local DEFAULT_SOUND = "game:raidwarning"
+local DEFAULT_SOUND = "file:gruntlinghorn"
 
 -- key: a game sound's, an addon sound file's, or one no longer offered ("none", an older
 -- pick) for the default.
@@ -325,7 +323,7 @@ local function Sounds()
     local values, order = {}, {}
     for _, sound in ipairs(GAME_SOUNDS) do
         if Has(sound) then
-            values[sound[1]] = sound[3] .. " (game)"
+            values[sound[1]] = sound[4] .. " (game)"
             order[#order + 1] = sound[1]
         end
     end

@@ -106,7 +106,7 @@ local function Fixture(settings, units)
     env.GetLootSourceInfo = function(slot) return env.loot[slot], 1 end
     env.sounds = 0
     env.PlaySound = function() env.sounds = env.sounds + 1 end
-    env.PlaySoundFile = function(file) env.soundFile = file end
+    env.PlaySoundFile = function(file) env.soundFile = file; env.sounds = env.sounds + 1 end
     env.SOUNDKIT = { RAID_WARNING = 8959 }
     env.C_Timer = { NewTimer = function() return { Cancel = function() end } end }
     env.C_Map = { GetBestMapForUnit = function() return 1440 end, GetMapInfo = function() end }
@@ -314,20 +314,25 @@ do
         if row.key == "rareSoundKey" then soundRow = row end
     end
     local values, order = soundRow.choice()
-    Check(order[1] == "game:raidwarning" and values["game:raidwarning"] == "Raid Warning (game)",
-        "the sound list starts with the game's own")
-    Check(values["game:legendary"] == nil, "a game sound the client lacks is left out")
-    Check(values["file:gruntlinghorn"] == "Gruntling Horn (game)" and order[2] == "file:gruntlinghorn",
-        "the horns and drums are offered by file, the Gruntling Horn first after Raid Warning")
+    Check(order[1] == "file:gruntlinghorn" and values["file:gruntlinghorn"] == "Gruntling Horn (game)"
+        and order[2] == "game:raidwarning", "the Gruntling Horn first, then the game's other sounds")
+    Check(values["game:legendary"] == nil, "a SOUNDKIT name the client lacks is left out")
+    Check(values["game:flaghorde"] == "Flag Taken, Horde (game)", "the flag sounds are offered by their kit ID")
+    Check(values["file:thunder"] == nil and values["file:scourgehorn"] == nil and values["file:pvphorde"] == nil,
+        "no Thunder Crack, Scourge Horn or PvP warnings")
+    Check(soundRow.get() == "file:gruntlinghorn", "the Gruntling Horn by default")
     soundRow.set("file:gruntlinghorn")
-    Check(env.soundFile == 598196 and env.sounds == 0, "a sound file plays by its ID")
+    Check(env.soundFile == 598196 and env.sounds == 1, "a sound file plays by its ID")
+    env.soundFile = nil
     soundRow.set("game:flaghorde")
-    Check(env.sounds == 1, "a sound no longer offered falls back to Raid Warning")
+    Check(env.sounds == 2 and env.soundFile == nil, "a flag sound plays by its kit ID")
+    env.soundFile = nil
+    soundRow.set("file:pvphorde")
+    Check(env.soundFile == 598196, "a sound no longer offered falls back to the Gruntling Horn")
     env.sounds = 0
     settings.rareSoundKey = nil
     Check(values["voice:move-out"] == nil and values["lsm:BugSack: Fatality"] == nil and values["lsm:Bell"] == "Bell"
         and order[#order] == "lsm:Bell", "no spoken lines or BugSack's sound; the addon's other sounds stay")
-    Check(soundRow.get() == "game:raidwarning", "Raid Warning by default")
     soundRow.set("game:raidwarning")
     Check(env.sounds == 1 and settings.rareSoundKey == "game:raidwarning", "picking a sound plays it")
     env.sounds = 0

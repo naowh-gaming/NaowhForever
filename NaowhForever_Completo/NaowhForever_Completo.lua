@@ -17,7 +17,7 @@ local S = UI.ModuleSettings("completo", {
     mapPins = false, mapGrey = false, mapChainsOnly = false, mapPinSize = 18,
     -- Rares: a warning when one is near, with a skull on it (NaowhForever_CompletoRareAlert.lua).
     rareHideKilled = false, rareAlert = false, rareMark = true, rareAlertKilled = false,
-    rareSound = true, rareSoundKey = "game:raidwarning",
+    rareSound = true, rareSoundKey = "file:gruntlinghorn",
     -- A star on the world map where each rare spawns (NaowhForever_CompletoRareMap.lua).
     rarePins = false, rarePinsKilled = false, rarePinSize = 18,
 })
