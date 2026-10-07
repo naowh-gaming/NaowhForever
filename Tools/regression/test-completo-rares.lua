@@ -226,7 +226,8 @@ local function Fixture(settings, units)
     env.IsShiftKeyDown = function() return env.shift == true end
     -- The tooltip's lines, as shown last.
     env.tip = {}
-    env.GameTooltip = { SetOwner = function() env.tip = {} end, SetText = none, Show = none, Hide = none,
+    env.GameTooltip = { SetOwner = function(_, owner) env.tip, env.tipOwner = {}, owner end, SetText = none, Show = function() env.tipHidden = false end,
+        Hide = function() env.tipHidden = true end,
         AddLine = function(_, text, r, g, b) env.tip[#env.tip + 1] = { text, nil, r, g, b } end,
         AddDoubleLine = function(_, left, right, r, g, b) env.tip[#env.tip + 1] = { left, right, r, g, b } end }
     env.ITEM_QUALITY_COLORS = { [2] = { r = 0.1, g = 1, b = 0 }, [3] = { r = 0, g = 0.44, b = 0.87 } }
@@ -506,6 +507,7 @@ do
     star:OnMouseLeave()
     Check(#PinsOf(10647, "dot") == 3 and howler.Icon.alpha < 0.5 and #env.waypoints == 1,
         "clicking a star focuses its rare: its way stays and the others stay faded after the pointer leaves")
+    Check(env.tipOwner == star and Line("Talon of Vultros"), "and its tooltip, loot and all, stays up beside its star")
     howler:OnMouseEnter()
     Check(#PinsOf(10647, "dot") == 0 and #PinsOf(10644, "spot") == 1, "hovering another rare shows that one meanwhile")
     howler:OnMouseLeave()
@@ -517,6 +519,7 @@ do
     star:OnMouseLeave()
     howler = PinsOf(10644)[1]
     Check(#PinsOf(10647, "dot") == 0 and howler.Icon.alpha == 1, "clicking it again lets go")
+    Check(env.tipHidden, "its tooltip goes with it")
     R.SetKilled(10644, true)
     Check(#PinsOf(10644) == 0 and #env.worldMap.pins == 1, "a killed rare's star goes")
     ns.CompletoSettings.Set("rarePinsKilled", true)

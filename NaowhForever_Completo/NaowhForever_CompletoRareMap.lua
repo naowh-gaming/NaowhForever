@@ -4,8 +4,9 @@
 --  at most, or the middle of the way it patrols); with Show Killed Rares a grey one for those
 --  you have. Hover a star for the rare: its other spawn spots show as smaller stars and its
 --  way, if it patrols, as a trail of small ones, until you move off it; every other rare's
---  star fades meanwhile. Click a star to keep it so (focus it) after you move off; click it
---  again to let go. Right-click a star for a waypoint. Built like the quest giver pins
+--  star fades meanwhile. Click a star to keep it so (focus it), its tooltip and loot too,
+--  after you move off; click it again, or another star, to let go. Right-click a star for a
+--  waypoint. Built like the quest giver pins
 --  (NaowhForever_CompletoMap.lua).
 --
 --  Off until Rare Pins is switched on: then a data provider on the world map, redrawn when a
@@ -121,9 +122,11 @@ local function Highlight(npc)
     end
 end
 
-function NaowhForeverRarePinMixin:OnMouseEnter()
-    local npc = self.npc
-    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+-- The rare's tooltip, beside its star: what it is, whether you killed it, where else it is,
+-- its loot.
+local function ShowTip(pin)
+    local npc = pin.npc
+    GameTooltip:SetOwner(pin, "ANCHOR_RIGHT")
     GameTooltip:SetText(R.Name(npc), 1, 1, 1)
     local low, high = R.Levels(npc)
     local level = low <= 0 and "??" or low == high and tostring(low) or ("%d-%d"):format(low, high)
@@ -147,14 +150,25 @@ function NaowhForeverRarePinMixin:OnMouseEnter()
         SoftBlue(0.3, 0.71, 0.96))
     GameTooltip:AddLine("Right-click for a waypoint.", SoftBlue(0.3, 0.71, 0.96))
     GameTooltip:Show()
-    ShowMore(npc)
-    Highlight(npc)
 end
 
--- Back to the focused rare, if one is, else every rare as drawn.
+function NaowhForeverRarePinMixin:OnMouseEnter()
+    ShowTip(self)
+    ShowMore(self.npc)
+    Highlight(self.npc)
+end
+
+-- Back to the focused rare, if one is, its tooltip kept up beside its star; else every rare as
+-- drawn, and no tooltip.
 local function Rest()
     ShowMore(focused)
     Highlight(focused)
+    local map = provider and provider:GetMap()
+    if focused and map then
+        for pin in map:EnumeratePinsByTemplate(TEMPLATE) do
+            if pin.npc == focused and not pin.kind then return ShowTip(pin) end
+        end
+    end
 end
 
 function NaowhForeverRarePinMixin:OnMouseLeave()
