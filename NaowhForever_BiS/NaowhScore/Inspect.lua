@@ -23,6 +23,7 @@ local INSPECT_GAP = 2      -- seconds between two requests: the server drops one
 local WAIT_FOR = 4         -- seconds a request is waited on before another may go
 local KEEP = 300           -- seconds an inspected score is kept
 local RETRY = 5            -- seconds before looking again at a player not known yet but out of range
+local USER_WAIT = 8        -- seconds your own inspect keeps ours waiting while its window loads
 local MAX_KEPT = 300       -- players kept at most; the oldest goes first
 local SAVED_MAX = 500      -- guildmates' scores saved for the guild list at most; the oldest goes first
 local SAVED_DAYS = 30      -- a saved score older than this is dropped
@@ -154,9 +155,25 @@ end
 -------------------------------------------------------------------------------
 local events = CreateFrame("Frame")
 
--- The game's Inspect window, or a request of ours, holds the inspect the game keeps.
+local userAt = -USER_WAIT
+
+-- Your own inspect: the game's window open, or asked for and waiting for its gear.
+local function UserInspecting()
+    local frame = InspectFrame
+    if not frame then return false end
+    return frame:IsShown() or (frame.unit ~= nil and GetTime() - userAt < USER_WAIT)
+end
+
+-- Your inspect wins: ours is dropped, so its answer can't clear yours, and waits its turn after.
+local function UserInspected()
+    userAt = GetTime()
+    lastAsked = userAt
+    pending = nil
+end
+
+-- Your inspect, or a request of ours, holds the inspect the game keeps.
 local function Busy()
-    return (InspectFrame and InspectFrame:IsShown()) or (pending and GetTime() - pending.at < WAIT_FOR)
+    return UserInspecting() or (pending and GetTime() - pending.at < WAIT_FOR)
 end
 
 local function CanAsk(unit)
@@ -188,8 +205,8 @@ local function Ready(guid)
     Score.Remember(guid, score, complete, false, UnitLevel(unit))
     -- An item's data still loading: worked out again when it comes.
     if not complete then events:RegisterEvent("GET_ITEM_INFO_RECEIVED") end
-    -- Let the inspect go, unless the game's own window is using it.
-    if not (InspectFrame and InspectFrame:IsShown()) then ClearInspectPlayer() end
+    -- Let the inspect go, unless it is yours now.
+    if not UserInspecting() then ClearInspectPlayer() end
     return true
 end
 
@@ -374,6 +391,7 @@ local hooked = false
 -- post-calls run in the order they were added, so the badge line (Badges, added in its Apply)
 -- comes first, and the score under it, as one Naowh block.
 local function Hook()
+    if InspectUnit then hooksecurefunc("InspectUnit", UserInspected) end
     TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Unit, OnUnit)
     ns.Shared.Roster.AddTooltip(OnRoster)
 end
