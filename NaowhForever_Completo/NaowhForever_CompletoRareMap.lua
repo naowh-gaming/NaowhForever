@@ -229,8 +229,11 @@ local function PanelWaypoint()
     if pin then ns.PlaceWaypoint(R.Name(pin.npc), R.Map(pin.npc), pin.spotX, pin.spotY) end
 end
 
+-- The panel would sit over the window (DIALOG over HIGH): it goes, with the focus.
 local function OpenInCompleto()
-    ns.OpenCompletoWindow("rares", panel.npc)
+    local npc = panel.npc
+    LetGo()
+    ns.OpenCompletoWindow("rares", npc)
 end
 
 local function BuildPanel()
