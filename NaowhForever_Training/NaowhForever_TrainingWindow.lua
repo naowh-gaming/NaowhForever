@@ -912,6 +912,11 @@ local function BuildActions(classID, build, ownClass, y)
             editing = true
             Render()
         end }
+        actions[#actions + 1] = { "Rename", SHARE_W, function()
+            ns.PromptText("Rename the build", build.name, 40, function(name)
+                Training.RenameBuild(classID, build, name)
+            end)
+        end }
     else
         actions[#actions + 1] = { "Copy", SHARE_W, function()
             buildIndex, editing = Training.NewBuild(classID, build.name .. " Copy", build), true

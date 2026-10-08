@@ -553,6 +553,12 @@ function Training.NewBuild(classID, name, from)
     return #(ns.TrainingBuilds[classID]) + #saved
 end
 
+function Training.RenameBuild(classID, build, name)
+    if not build or not build.saved then return end
+    build.name = BuildName(name, build.name)
+    Changed()
+end
+
 -- Editing a saved build: each returns why not, or nil once done.
 function Training.AddPoint(tree, build, node)
     local points = build.points
