@@ -46,6 +46,7 @@ local function Region()
     function r:ClearModel() self.unit, self.creature = nil, nil end
     function r:SetUnit(unit) self.unit = unit end
     function r:SetCreature(npc) self.creature = npc end
+    function r:GetModelFileID() return self.creature or self.unit end
     function r:SetScript(k, fn) self[k] = fn end
     -- Every other drawing call (a method: a capital first letter) does nothing.
     return setmetatable(r, { __index = function(_, key)
@@ -159,6 +160,7 @@ local function Fixture(settings, units)
         local t = Region()
         function t:SetHeight(h) self.height = h end
         function t:SetWidth(w) self.width = w end
+        function t:SetColorTexture(red) self.red = red end
         if parent then
             parent.sides = parent.sides or {}
             parent.sides[#parent.sides + 1] = t
@@ -193,7 +195,8 @@ local function Fixture(settings, units)
         return {}, { ["voice:move-out"] = "Move out", ["lsm:BugSack: Fatality"] = "BugSack: Fatality",
             ["lsm:Bell"] = "Bell" }, { "voice:move-out", "lsm:BugSack: Fatality", "lsm:Bell" }
     end
-    ns.CompletoSettings = { Get = function(k) return settings[k] end, Set = function(k, v) settings[k] = v end }
+    ns.CompletoSettings = { Get = function(k) return settings[k] end, Set = function(k, v) settings[k] = v end,
+        DB = function() return settings end }
     ns.Completo = {}
     -- The settings pages' cards, by id, to reach their rows.
     ns.cards = {}
@@ -440,6 +443,15 @@ do
         "a spot saved at 200% is the same spot on the screen")
     ns.CompletoSettings.Set("rareAlertScale", 1)
     Check(holder.at[1] == 10 and holder.at[2] == 120, "and back at 100% it is where it was")
+    settings.rareAlertPosition = { point = "CENTER", relPoint = "CENTER", x = -30, y = 40 }
+    ns.Apply()
+    Check(holder.at[1] == -30 and holder.at[2] == 40, "a profile switch puts it at that profile's spot")
+    settings.rareAlertPosition = { point = "CENTER", relPoint = "CENTER", x = 10, y = 120 }
+    ns.Apply()
+    ns.THEME.accent = { r = 0.5 }
+    ns.CompletoSettings.Set("rareAlertGlow", true)
+    Check(ns.alert.glow.sides[1].red == 0.5 and ns.alert.glow.sides[4].red == 0.5, "the glow takes the accent as it is now")
+    ns.THEME.accent = {}
     ns.alert.OnClick(ns.alert, "RightButton")
     Check(not ns.alert:IsShown(), "a right-click puts it away")
     Check(not ns.alert.fade.playing, "and its fade stops")
@@ -456,6 +468,14 @@ do
     Check(ns.alert:IsShown() and #env.marks == 1, "a while later it alerts again, the mark left alone")
     Check(holder.at[2] == 120, "where the HUD Editor put it")
     Check(env.Listening("UNIT_FLAGS"), "while it is up, its rare's tap state is watched")
+    units.nameplate9 = { guid = Guid(10644, "0009"), name = "Mist Howler", kind = "rare", level = 22, denied = true }
+    env.Fire("UNIT_FLAGS", "nameplate9")
+    env.Fire("NAME_PLATE_UNIT_ADDED", "nameplate9")
+    Check(not ns.alert.detail.text:find("Tapped", 1, true), "another of the same rare, tapped, leaves the card alone")
+    units.nameplate1.denied, units.nameplate1.dead = true, true
+    env.Fire("UNIT_FLAGS", "nameplate1")
+    Check(not ns.alert.detail.text:find("Tapped", 1, true), "and so does its own corpse")
+    units.nameplate1.dead = nil
     units.nameplate1.denied = true
     env.Fire("UNIT_FLAGS", "nameplate1")
     Check(ns.alert.detail.text:find("[warn]Tapped by someone else", 1, true),
@@ -529,6 +549,23 @@ do
     Check(not env.Listening("NAME_PLATE_UNIT_ADDED") and not ns.alert:IsShown(), "switched off: unregistered, alert gone")
 end
 
+-- The card's old spot, from before the HUD Editor placed it
+do
+    local settings = { enabled = true, rareAlert = true, rareAlertPos = { point = "CENTER", relPoint = "CENTER",
+        x = 40, y = 300 } }
+    local _, env = Fixture(settings, {})
+    Check(settings.rareAlertPos == nil and settings.rareAlertPosition.x == 40 and settings.rareAlertPosition.y == 300
+        and settings.rareAlertPosition.point == "CENTER", "an old card spot carries over, and the old key goes")
+    settings.rareAlertPosition.x = 5
+    settings.rareAlertPos = nil
+    env.NaowhForever.Apply()
+    Check(settings.rareAlertPosition.x == 5, "once")
+    settings = { enabled = true, rareAlert = true, rareAlertPos = { x = 1, y = 2 },
+        rareAlertPosition = { point = "CENTER", relPoint = "CENTER", x = 7, y = 8 } }
+    Fixture(settings, {})
+    Check(settings.rareAlertPos == nil and settings.rareAlertPosition.x == 7, "a spot set in the HUD Editor wins")
+end
+
 -- Mark Rare leaves the group's marks alone
 do
     local units = {}
@@ -562,10 +599,20 @@ do
     env.Fire("VIGNETTE_MINIMAP_UPDATED", "v2", true)
     Check(ns.alert.name.text == "Prince Raze", "a hostile rare on the minimap alerts")
     Check(not ns.alert.detail.text:find("Tapped", 1, true), "with no tap state to show from the minimap")
+    units.nameplate7 = { guid = Guid(10647, "0003"), name = "Prince Raze", kind = "rare", level = 32, denied = true,
+        dead = true }
+    env.Fire("NAME_PLATE_UNIT_ADDED", "nameplate7")
+    Check(not ns.alert.detail.text:find("Tapped", 1, true), "a corpse of the rare does not count as seeing it")
     units.nameplate6 = { guid = Guid(10647, "0002"), name = "Prince Raze", kind = "rare", level = 32, denied = true }
     env.Fire("NAME_PLATE_UNIT_ADDED", "nameplate6")
     Check(ns.alert.detail.text:find("[warn]Tapped by someone else", 1, true) and #env.marks == 1,
         "its nameplate coming up tapped shows on the card, without a second alert or a mark")
+    units.nameplate6.denied = nil
+    env.Fire("UNIT_FLAGS", "nameplate6")
+    Check(not ns.alert.detail.text:find("Tapped", 1, true), "and back when it is free again")
+    units.nameplate8 = { guid = Guid(10647, "0004"), name = "Prince Raze", kind = "rare", level = 32, denied = true }
+    env.Fire("UNIT_FLAGS", "nameplate8")
+    Check(not ns.alert.detail.text:find("Tapped", 1, true), "from then on it follows that creature only")
 end
 
 -- A kill is counted once per creature, a reload in between too
@@ -619,6 +666,16 @@ do
     studio.paint(preview, "killed")
     Check(preview.card.detail.text:find("[have]Killed before", 1, true), "Killed Before")
     Check(preview.card.model.creature == "kept", "the preview's model is not loaded again on a redraw")
+    preview.card.model.creature = nil
+    studio.paint(preview, "killed")
+    Check(preview.card.model.creature == 10644, "a model that went missing is set again")
+    preview.card.model.creature = "kept"
+    preview.OnShow(preview)
+    Check(preview.card.model.creature == 10644, "and the preview shown again sets it again")
+    settings.rareAlertScale = 2
+    studio.paint(preview, "new")
+    Check(preview.card.scale * (54 + 6) <= 110 - 8 + 0.001, "at 200% the card and its glow fit the stage's height")
+    settings.rareAlertScale = 1
     studio.paint(preview, "tapped")
     Check(preview.card.detail.text:find("[warn]Tapped by someone else", 1, true), "Tapped")
     Check(ns.alert == nil, "the preview is a card of its own, not the alert")

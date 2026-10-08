@@ -108,6 +108,7 @@ local TAPPED = "Tapped by someone else"
 
 local alert, holder
 local shownNpc   -- the rare the alert is about, by npcID; nil for one not in the data
+local shownGuid  -- the creature itself; a minimap alert takes the first live one seen
 local events = CreateFrame("Frame")
 
 -- The face of the rare: its model zoomed in to the head, as a unit frame's portrait.
@@ -148,6 +149,7 @@ local function NewCard(parent, name)
     right:SetPoint("TOPRIGHT", 0, -GLOW)
     right:SetPoint("BOTTOMRIGHT", 0, GLOW)
     right:SetWidth(GLOW)
+    f.glow.sides = { top, bottom, left, right }
     f.backdrop = Parts.HudBackdrop(f)
     f.spot = {}
 
@@ -227,7 +229,12 @@ local function Paint(f, seen)
     local font, size, outline = S.Get("rareAlertFont"), S.Get("rareAlertFontSize"), S.Get("rareAlertOutline")
     Parts.HudFont(f.name, font, size, outline, mode)
     Parts.HudFont(f.detail, font, size - DETAIL_SMALLER, outline, mode)
-    f.glow:SetShown(S.Get("rareAlertGlow") == true)
+    local glow = S.Get("rareAlertGlow") == true
+    f.glow:SetShown(glow)
+    if glow then
+        local c = T.accent
+        for _, side in ipairs(f.glow.sides) do side:SetColorTexture(c.r, c.g, c.b, GLOW_ALPHA) end
+    end
     local marked = seen.marked
     if marked then f.mark:SetTexture(MARK_ICON:format(marked)) end
     f.mark:SetShown(marked ~= nil)
@@ -247,7 +254,7 @@ local function HideAlert()
     if not alert then return end
     alert.fade:Stop()
     alert:Hide()
-    shownNpc = nil
+    shownNpc, shownGuid = nil, nil
     events:UnregisterEvent("UNIT_FLAGS")
 end
 
@@ -318,13 +325,13 @@ local function PlayAlertSound()
     if S.Get("rareSound") then PlaySoundKey(S.Get("rareSoundKey")) end
 end
 
--- seen: { name, level (or nil), npc (its npcID, or nil), unit (its unit token while in sight),
--- elite, tapped, marked (the raid mark's index that went on it), map, x, y (where the minimap saw
+-- seen: { name, level (or nil), npc (its npcID, or nil), guid and unit (the creature and its unit
+-- token while in sight), elite, tapped, marked (the raid mark's index that went on it), map, x, y (where the minimap saw
 -- it, percent) }. quiet: no fade, sound or taskbar flash (Unlock Mode's preview).
 local function ShowAlert(seen, quiet)
     if not alert then BuildAlert() end
     local npc = seen.npc
-    shownNpc = npc
+    shownNpc, shownGuid = npc, seen.guid
     if npc and R.Known(npc) then
         if seen.elite == nil then seen.elite = R.Elite(npc) end
         seen.record = R.Record(npc) or false
@@ -332,6 +339,7 @@ local function ShowAlert(seen, quiet)
     alert.seen = seen
     SetPortrait(alert, seen.unit, npc)
     Paint(alert, seen)
+    Place()
     alert.fade:Stop()
     alert:Show()
     events:RegisterEvent("UNIT_FLAGS")
@@ -405,7 +413,7 @@ local function Alert(key, seen)
     ShowAlert(seen)
 end
 
--- A unit seen while the card is up about its rare: someone tapping it after the card came up,
+-- The alerted creature seen while the card is up: someone tapping it after the card came up,
 -- or the rare seen at last after a minimap mark, shows on the card.
 local function Retap(unit)
     local denied = UnitIsTapDenied(unit)
@@ -428,17 +436,21 @@ local function Check(unit)
     if Secret(guid) or not guid then return end
     local npc = R.NpcOf(guid)
     if not npc then return end
-    if npc == shownNpc then Retap(unit) end
     local dead, hostile = UnitIsDead(unit), UnitCanAttack("player", unit)
-    if Secret(dead) or Secret(hostile) or dead or not hostile then return end
+    if Secret(dead) or dead then return end
+    if npc == shownNpc then
+        shownGuid = shownGuid or guid
+        if guid == shownGuid then Retap(unit) end
+    end
+    if Secret(hostile) or not hostile then return end
     local name, level = UnitName(unit), UnitLevel(unit)
     if Secret(name) then return end
     if Secret(level) then level = nil end
     if not Due(npc, npc) then return end
     local denied = UnitIsTapDenied(unit)
     local skull = Mark(unit, guid, denied)
-    Alert(npc, { name = name, level = level, npc = npc, unit = unit, elite = kind == "rareelite", marked = skull,
-        tapped = not Secret(denied) and denied or nil })
+    Alert(npc, { name = name, level = level, npc = npc, guid = guid, unit = unit, elite = kind == "rareelite",
+        marked = skull, tapped = not Secret(denied) and denied or nil })
 end
 
 -- A minimap mark: a rare in the data, or one the game draws as a creature to kill.
@@ -464,7 +476,7 @@ end
 -- with Mark Rare's mark on it; else about a made-up rare. Leaves the
 -- once-in-a-while memory alone, so a real rare still alerts.
 local function TestAlert()
-    local name, level, npc, skull, unit = "Mist Howler", 22, 10644, nil, nil
+    local name, level, npc, skull, unit, creature = "Mist Howler", 22, 10644, nil, nil, nil
     local guid = UnitGUID("target")
     local hostile = UnitExists("target") and UnitCanAttack("player", "target")
     if guid and not Secret(guid) and not Secret(hostile) and hostile then
@@ -473,7 +485,7 @@ local function TestAlert()
             name = targetName
             level = not Secret(targetLevel) and targetLevel or nil
             npc = R.NpcOf(guid)
-            unit = "target"
+            unit, creature = "target", guid
             local marker = Marker()
             if marker and MayMark() then
                 local index = GetRaidTargetIndex("target")
@@ -484,14 +496,16 @@ local function TestAlert()
             end
         end
     end
-    ShowAlert({ name = name, level = level, npc = npc, unit = unit, marked = skull })
+    ShowAlert({ name = name, level = level, npc = npc, guid = creature, unit = unit, marked = skull })
 end
 
 events:SetScript("OnEvent", function(_, event, unit, onMinimap)
     if event == "UNIT_FLAGS" then
-        if not shownNpc then return end
+        if not shownGuid then return end
         local guid = UnitGUID(unit)
-        if not Secret(guid) and R.NpcOf(guid) == shownNpc then Retap(unit) end
+        if Secret(guid) or guid ~= shownGuid then return end
+        local dead = UnitIsDead(unit)
+        if not Secret(dead) and not dead then Retap(unit) end
     elseif event == "NAME_PLATE_UNIT_ADDED" then
         Check(unit)
     elseif event == "PLAYER_TARGET_CHANGED" then
@@ -503,7 +517,22 @@ events:SetScript("OnEvent", function(_, event, unit, onMinimap)
     end
 end)
 
+-- rareAlertPos was the card's own spot before the HUD Editor placed it: the same CENTER offset
+-- in the screen's units, so it carries over as it is.
+local function Migrate()
+    local db = S.DB()
+    local old = db.rareAlertPos
+    if old == nil then return end
+    if type(old) == "table" and db.rareAlertPosition == nil then
+        db.rareAlertPosition = { point = "CENTER", relPoint = "CENTER", x = old.x, y = old.y }
+    end
+    db.rareAlertPos = nil
+end
+
 local function Apply()
+    Migrate()
+    -- A profile switch or import can bring another spot or size.
+    if holder then Place() end
     events:UnregisterAllEvents()
     if not On() then
         HideAlert()
@@ -605,6 +634,7 @@ end
 -- moment picked.
 local STAGE_H = 110
 local CARD_ROOM = 32          -- the least room left beside the card when the stage is narrow
+local CARD_ROOM_V = 8         -- and above and below it, its glow ring counted in
 local FALLBACK_STAGE_W = 600  -- the stage before layout has run
 local STATES = {
     { key = "new", label = "Not Killed", tip = "A rare you have not killed yet." },
@@ -613,6 +643,13 @@ local STATES = {
 }
 local SAMPLE_RECORD = { n = 1 }
 
+local PREVIEW_NPC = 10644
+
+-- A model set while the stage had no size, or dropped while the settings were shut, comes back.
+local function PreviewShown(preview)
+    SetPortrait(preview.card, nil, PREVIEW_NPC)
+end
+
 local function NewPreview(stage)
     local preview = CreateFrame("Frame", nil, stage)
     preview:SetAllPoints()
@@ -620,25 +657,25 @@ local function NewPreview(stage)
     preview.card:EnableMouse(false)
     preview.card.pin:EnableMouse(false)
     preview.seen = {}
+    preview:SetScript("OnShow", PreviewShown)
+    PreviewShown(preview)
     return preview
 end
 
 local function PaintPreview(preview, state)
     local seen = preview.seen
-    seen.name, seen.level, seen.npc, seen.marked = "Mist Howler", 22, 10644, Marker()
-    seen.elite = R.Known(10644) and R.Elite(10644)
+    seen.name, seen.level, seen.npc, seen.marked = "Mist Howler", 22, PREVIEW_NPC, Marker()
+    seen.elite = R.Known(PREVIEW_NPC) and R.Elite(PREVIEW_NPC)
     seen.record = state == "killed" and SAMPLE_RECORD or false
     seen.tapped = state == "tapped" or nil
     seen.map, seen.x, seen.y = 1440, 50, 40
     local card = preview.card
-    if not preview.portrait then
-        SetPortrait(card, nil, seen.npc)
-        preview.portrait = true
-    end
+    if not card.model:GetModelFileID() then PreviewShown(preview) end
     Paint(card, seen)
-    local w = preview:GetWidth()
+    local w, h = preview:GetWidth(), preview:GetHeight()
     if not w or w <= 0 then w = FALLBACK_STAGE_W end
-    card:SetScale(math.min(S.Get("rareAlertScale"), (w - CARD_ROOM) / W))
+    if not h or h <= 0 then h = STAGE_H end
+    card:SetScale(math.min(S.Get("rareAlertScale"), (w - CARD_ROOM) / W, (h - CARD_ROOM_V) / (H + GLOW * 2)))
     card:ClearAllPoints()
     card:SetPoint("CENTER", preview, "CENTER", 0, 0)
 end
