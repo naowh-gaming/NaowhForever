@@ -64,6 +64,7 @@ local SEARCH_HINT = { quests = "Search quests or quest givers", rares = "Search 
 
 local window, scroll, view, kinds
 local opened = {}       -- npcID -> true: the rares opened on their drops
+local kept              -- the rare opened from the map: listed even with Hide Killed Rares
 local tab = "quests"
 local zone              -- the Quests tab's zone open, or nil for All Zones
 local rareZone          -- the Rares tab's
@@ -708,7 +709,7 @@ local function DrawRareZone(self)
     self:Space(8)
     wipe(entries)
     for _, npc in ipairs(R.ZoneList(rareZone)) do
-        if not (hideKilled and R.Killed(npc)) then entries[#entries + 1] = npc end
+        if not (hideKilled and R.Killed(npc)) or npc == kept then entries[#entries + 1] = npc end
     end
     if #entries > 0 then self:Section("Rares", #entries) end
     for i, npc in ipairs(entries) do AddRare(self, npc, false, i % 2 == 0) end
@@ -892,6 +893,8 @@ hooksecurefunc(ns, "Apply", function()
     end
 end)
 
+local function IsRare(row, npc) return row.rare == npc end
+
 -- which: "quests" or "rares" to open on that tab; else the one it was on. Opens on the zone
 -- you are in when it has quests (or rares), else where it was; npc: a rare to open on, in its
 -- zone with its drops open.
@@ -900,6 +903,7 @@ function ns.OpenCompletoWindow(which, npc)
     if not window then Build() end
     zone = Q.CurrentZone() or zone
     rareZone = R.CurrentZone() or rareZone
+    kept = npc
     if npc then
         rareZone = R.Zone(npc) or rareZone
         opened[npc] = true
@@ -910,6 +914,8 @@ function ns.OpenCompletoWindow(which, npc)
     Paint()
     scroll:SetVerticalScroll(0)
     view:Redraw()
+    local row = npc and view:Find("rare", IsRare, npc)
+    if row then view:ScrollToRow(scroll, row) end
 end
 
 function ns.ToggleCompletoWindow()
