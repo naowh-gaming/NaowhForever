@@ -150,7 +150,8 @@ local function Fixture(settings, units)
     local account = {}
     env.IsInInstance = function() return units.instance == true end
     env.InCombatLockdown = function() return units.combat == true end
-    local ns = { THEME = { accent = {}, muted = {}, fg = {}, panel = {}, accentSoft = {}, bg = {} }, Apply = function() end,
+    local ns = { THEME = { accent = {}, muted = { r = 0.66 }, fg = {}, panel = {}, accentSoft = {}, bg = {} },
+        Apply = function() end,
         ShowRaidReminderAnchorConfig = function() end, HideRaidReminderAnchorConfig = function() end }
     ns.AccountSettings = function() return account end
     ns.Font = function() return Region() end
@@ -168,7 +169,6 @@ local function Fixture(settings, units)
     env.CreateFrame = function(kind, name, ...)
         local f = create(kind, name, ...)
         if name == "NaowhForeverRareAlert" then ns.alert = f end
-        if name == "NaowhForeverRareMapPanel" then ns.mapPanel = f end
         return f
     end
     -- The HUD Editor's plates, by label.
@@ -203,7 +203,8 @@ local function Fixture(settings, units)
             account[key]["Player-1-0001"] = account[key]["Player-1-0001"] or {}
             return account[key]["Player-1-0001"]
         end,
-        Style = { PIN = "pin", TICK = "tick", HAVE_RGB = { tag = "have" }, WARN_RGB = { tag = "warn" } },
+        Style = { PIN = "pin", TICK = "tick", HAVE_RGB = { tag = "have", r = 0.3 }, WARN_RGB = { tag = "warn" },
+            PANEL_W = 380, PANEL_PAD = 10, PANEL_HEADER = 30 },
         Parts = {
             -- Forever's sign, as text.
             ForeverInline = function() return " <inf>" end,
@@ -228,8 +229,15 @@ local function Fixture(settings, units)
                 panel.title = Region()
                 panel.title:SetText(title)
                 panel.close = Region()
+                ns.mapPanel = panel
                 return panel
             end } }
+    ns.Button = function(_, text, _, _, onClick)
+        local button = Region()
+        button.label, button._onClick = text, onClick
+        return button
+    end
+    ns.OpenCompletoWindow = function(which, npc) env.opened = { which, npc } end
     -- Ashenvale: Mist Howler; Darkslayer Mordenthal, friendly to the Horde; Ursol'lok.
     ns.CompletoRareData = {
         Zones = { { map = 1440, name = "Ashenvale", continent = 1, rares = { 10644, 3736, 12037, 10647 } } },
@@ -667,23 +675,42 @@ do
     star:OnMouseLeave()
     howler:OnMouseEnter()
     Check(not Line("Drops"), "a rare with nothing special has no Drops section")
+    local last = env.tip[#env.tip]
+    Check(last[1] == "Click for a waypoint, right-click to keep its route shown." and Line(" ") ~= nil,
+        "its tooltip ends with one hint line")
+    Check(Line("Spawns at 1 more spots")[3] == 0.66,
+        "its notes in the muted colour")
     howler:OnMouseLeave()
     Check(#env.worldMap.pins == 2 and #PinsOf(10647, "dot") == 0, "moving off the star takes its way away")
     Check(star.size == 18 and howler.Icon.alpha == 1, "and puts the others back")
-    star:OnClick("RightButton")
-    Check(#env.waypoints == 1 and env.waypoints[1][3] == 70, "right-clicking a star sets a waypoint there")
     star:OnClick("LeftButton")
+    Check(#env.waypoints == 1 and env.waypoints[1][3] == 70, "clicking a star sets a waypoint there")
+    Check(ns.mapPanel == nil and #PinsOf(10647, "dot") == 0, "and focuses nothing")
+    star:OnClick("RightButton")
     star:OnMouseLeave()
     Check(#PinsOf(10647, "dot") == 3 and howler.Icon.alpha < 0.5 and #env.waypoints == 1,
-        "clicking a star focuses its rare: its way stays and the others stay faded after the pointer leaves")
+        "right-clicking a star focuses its rare: its way stays and the others stay faded after the pointer leaves")
     local panel = ns.mapPanel
     Check(panel and panel:IsShown() and panel.npc == 10647, "and a panel stays up beside its star")
+    Check(panel.title.text == "Prince Raze", "the house panel, titled with the rare's name")
     Check(panel.rows[1].item[1] == 4454 and panel.rows[3].item[1] == 285330 and panel.rows[3]:IsShown(),
         "with a row for each of its drops")
     Check(panel.rows[3].name.text:find("Signet of the Zhevra <inf>", 1, true), "Forever's sign on the new one")
+    Check(panel.rows[1].icon.texture.texture == 5454, "each drop's icon")
+    Check(not panel.rows[1].tick.shown, "no tick on a drop it has not dropped for you")
     panel.rows[1].OnEnter(panel.rows[1])
     Check(env.tipItem == 4454, "hovering a drop shows the item's own tooltip")
     panel.rows[1].OnLeave(panel.rows[1])
+    Check(panel.waypoint.label == "Set a Waypoint" and panel.open.label == "Open in Completo", "and its two buttons")
+    panel.waypoint._onClick()
+    Check(#env.waypoints == 2 and env.waypoints[2][1] == "Prince Raze" and env.waypoints[2][3] == 70,
+        "Set a Waypoint: to its star")
+    panel.open._onClick()
+    Check(env.opened[1] == "rares" and env.opened[2] == 10647, "Open in Completo: its row in the Rares tab")
+    panel.close._onClick()
+    Check(not panel:IsShown() and #PinsOf(10647, "dot") == 0 and howler.Icon.alpha == 1, "its close button lets go")
+    star:OnClick("RightButton")
+    star:OnMouseLeave()
     howler:OnMouseEnter()
     Check(#PinsOf(10647, "dot") == 0 and #PinsOf(10644, "spot") == 1, "hovering another rare shows that one meanwhile")
     howler:OnMouseLeave()
@@ -691,10 +718,10 @@ do
     env.provider:RefreshAllData()
     Check(#PinsOf(10647, "dot") == 3, "a redraw keeps the focus")
     star = PinsOf(10647, false)[1]
-    star:OnClick("LeftButton")
+    star:OnClick("RightButton")
     star:OnMouseLeave()
     howler = PinsOf(10644)[1]
-    Check(#PinsOf(10647, "dot") == 0 and howler.Icon.alpha == 1, "clicking it again lets go")
+    Check(#PinsOf(10647, "dot") == 0 and howler.Icon.alpha == 1, "right-clicking it again lets go")
     Check(not ns.mapPanel:IsShown(), "its panel goes with it")
     R.SetKilled(10644, true)
     Check(#PinsOf(10644) == 0 and #env.worldMap.pins == 1, "a killed rare's star goes")
