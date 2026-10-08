@@ -155,7 +155,16 @@ local function Fixture(settings, units)
         ShowRaidReminderAnchorConfig = function() end, HideRaidReminderAnchorConfig = function() end }
     ns.AccountSettings = function() return account end
     ns.Font = function() return Region() end
-    ns.Solid = function() return Region() end
+    ns.Solid = function(parent)
+        local t = Region()
+        function t:SetHeight(h) self.height = h end
+        function t:SetWidth(w) self.width = w end
+        if parent then
+            parent.sides = parent.sides or {}
+            parent.sides[#parent.sides + 1] = t
+        end
+        return t
+    end
     ns.Border = function() end
     -- A colour escape, as the colour's tag.
     ns.Color = function(c, text) return ("[%s]%s"):format(c.tag or "?", text) end
@@ -397,10 +406,13 @@ do
     Check(ns.alert.model.unit == "nameplate1", "the portrait is its own model")
     Check(ns.alert.mark.shown, "the card shows the skull went on it")
     Check(ns.alert.mark.texture == "Interface\\TargetingFrame\\UI-RaidTargetingIcon_8", "with the skull's icon")
-    Check(ns.alert.strata == "HIGH", "it shows over the rest of the HUD")
+    local holder = ns.alert:GetParent()
+    Check(holder.strata == "HIGH", "it shows over the rest of the HUD")
     Check(ns.alert.fade.playing and ns.alert.fadeOut.delay == 20, "it fades in, and out after Stays For")
     Check(not ns.alert.glow.shown and ns.alert.backdrop.mode == "card" and ns.alert.name.size == 13
         and ns.alert.detail.size == 11, "no glow by default, on a card, in the Font Size and two under it")
+    Check(#ns.alert.glow.sides == 4 and ns.alert.glow.sides[1].height == 3 and ns.alert.glow.sides[3].width == 3,
+        "its glow is a 3px ring of four sides, nothing behind the card")
     Check(ns.alert.pin.shown, "its pin shows: it has a spot to go to")
     ns.alert.OnClick(ns.alert, "LeftButton")
     Check(#env.waypoints == 0 and ns.alert:IsShown(), "a click on the card sets no waypoint and leaves it up")
@@ -409,16 +421,25 @@ do
     Check(wp and wp[1] == "Mist Howler" and wp[2] == 1440 and wp[3] == 50 and wp[4] == 40,
         "its pin sets a waypoint to its spot")
     local mover = ns.movers["Rare Alert"]
-    Check(mover and mover.frame == ns.alert and mover.page == "Completo/Rares"
-        and mover.feature == "Completo/Rares:rareAlert", "it moves in the HUD Editor, with its settings card")
+    Check(mover and mover.frame == holder and mover.frame ~= ns.alert and mover.page == "Completo/Rares"
+        and mover.feature == "Completo/Rares:rareAlert",
+        "it moves in the HUD Editor by a holder that stays shown, with its settings card")
+    Check(holder.at[1] == 0 and holder.at[2] == 260, "above the middle of the screen at first")
     mover.onMoved({ point = "CENTER", relPoint = "CENTER", x = 10, y = 120 })
     Check(settings.rareAlertPosition.x == 10 and settings.rareAlertPosition.y == 120, "the HUD Editor keeps its spot")
+    ns.alert.model.unit = "kept"
     ns.CompletoSettings.Set("rareAlertScale", 2)
+    Check(holder.scale == 2 and holder.at[1] == 5 and holder.at[2] == 60, "Size scales it about the same spot")
     ns.CompletoSettings.Set("rareAlertGlow", true)
     ns.CompletoSettings.Set("rareAlertBackground", "soft")
-    Check(ns.alert.scale == 2 and ns.alert.glow.shown and ns.alert.backdrop.mode == "soft",
-        "Size, Glow and Background change the card while it is up")
+    Check(ns.alert.glow.shown and ns.alert.backdrop.mode == "soft",
+        "Glow and Background change the card while it is up")
+    Check(ns.alert.model.unit == "kept", "a settings change leaves the portrait alone")
+    mover.onMoved({ point = "CENTER", relPoint = "CENTER", x = 5, y = 60 })
+    Check(settings.rareAlertPosition.x == 10 and settings.rareAlertPosition.y == 120,
+        "a spot saved at 200% is the same spot on the screen")
     ns.CompletoSettings.Set("rareAlertScale", 1)
+    Check(holder.at[1] == 10 and holder.at[2] == 120, "and back at 100% it is where it was")
     ns.alert.OnClick(ns.alert, "RightButton")
     Check(not ns.alert:IsShown(), "a right-click puts it away")
     Check(not ns.alert.fade.playing, "and its fade stops")
@@ -433,9 +454,16 @@ do
     units.nameplate1.mark = 2
     env.Fire("NAME_PLATE_UNIT_ADDED", "nameplate1")
     Check(ns.alert:IsShown() and #env.marks == 1, "a while later it alerts again, the mark left alone")
-    Check(ns.alert.at[2] == 120, "where the HUD Editor put it")
+    Check(holder.at[2] == 120, "where the HUD Editor put it")
+    Check(env.Listening("UNIT_FLAGS"), "while it is up, its rare's tap state is watched")
+    units.nameplate1.denied = true
+    env.Fire("UNIT_FLAGS", "nameplate1")
+    Check(ns.alert.detail.text:find("[warn]Tapped by someone else", 1, true),
+        "someone tapping it after the card came up shows on the card")
+    units.nameplate1.denied = nil
     ns.alert.fade.OnFinished(ns.alert.fade)
     Check(not ns.alert:IsShown(), "faded out, it is gone")
+    Check(not env.Listening("UNIT_FLAGS"), "and its tap state is no longer watched")
     env.Advance(301)
     env.Fire("NAME_PLATE_UNIT_ADDED", "nameplate1")
 
@@ -485,6 +513,8 @@ do
     Check(ns.alert:IsShown() and ns.alert.mark.shown and ns.alert.mark.texture == "Interface\\TargetingFrame\\UI-RaidTargetingIcon_5",
         "Unlock Mode previews the card with Mark Rare's mark")
     Check(mover.shown and not ns.alert.fade.playing, "with its HUD Editor plate, and it does not fade")
+    ns.alert.OnClick(ns.alert, "RightButton")
+    Check(mover.shown, "the plate stays when the card is put away")
     ns.HideRaidReminderAnchorConfig()
     Check(not mover.shown and not ns.alert:IsShown(), "leaving Unlock Mode takes both away")
     settings.rareMarker = "none"
@@ -531,6 +561,11 @@ do
     env.Advance(301)
     env.Fire("VIGNETTE_MINIMAP_UPDATED", "v2", true)
     Check(ns.alert.name.text == "Prince Raze", "a hostile rare on the minimap alerts")
+    Check(not ns.alert.detail.text:find("Tapped", 1, true), "with no tap state to show from the minimap")
+    units.nameplate6 = { guid = Guid(10647, "0002"), name = "Prince Raze", kind = "rare", level = 32, denied = true }
+    env.Fire("NAME_PLATE_UNIT_ADDED", "nameplate6")
+    Check(ns.alert.detail.text:find("[warn]Tapped by someone else", 1, true) and #env.marks == 1,
+        "its nameplate coming up tapped shows on the card, without a second alert or a mark")
 end
 
 -- A kill is counted once per creature, a reload in between too
@@ -580,8 +615,10 @@ do
     Check(preview.card.name.text == "Mist Howler" and preview.card.detail.text == "Level 22" .. DOT .. "Rare" .. DOT
         .. "Not killed yet", "Not Killed: a rare you have not killed")
     Check(preview.card.mark.shown and preview.card.model.creature == 10644, "with Mark Rare's mark and its portrait")
+    preview.card.model.creature = "kept"
     studio.paint(preview, "killed")
     Check(preview.card.detail.text:find("[have]Killed before", 1, true), "Killed Before")
+    Check(preview.card.model.creature == "kept", "the preview's model is not loaded again on a redraw")
     studio.paint(preview, "tapped")
     Check(preview.card.detail.text:find("[warn]Tapped by someone else", 1, true), "Tapped")
     Check(ns.alert == nil, "the preview is a card of its own, not the alert")
