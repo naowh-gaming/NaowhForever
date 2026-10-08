@@ -551,7 +551,7 @@ end
 -- For the shopping list (NaowhForever_ShoppingList.lua), which adds its row to the recipe
 -- pane: the chosen recipe, its reagents, and which of them Buy on AH would buy.
 ns.ProfWindowAPI = { SelectedInfo = SelectedInfo, Reagents = Reagents, Owned = Owned,
-    IsVendorItem = IsVendorItem, Linked = function() return linkedMode end }
+    IsVendorItem = IsVendorItem, Linked = function() return linkedMode end, Own = Own }
 
 -- What one craft costs in bought reagents and fetches on the auction house after its cut,
 -- filled into `v` (its block's own table). `sale` is nil when the item had no listing at the
@@ -3469,7 +3469,7 @@ end
 local function Deactivate()
     wipe(Reuse.waiting)
     ns.ProfBagChanges = ns.ProfBagChanges + 1
-    if win and bookDocked and InCombatLockdown() then
+    if win and InCombatLockdown() and win:IsProtected() then
         win:SetAlpha(0)
     elseif win then
         win:Hide()
