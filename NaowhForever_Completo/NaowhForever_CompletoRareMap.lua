@@ -274,6 +274,19 @@ local function Add(text, color)
 end
 
 -- Drawn once per focus: a pointer moving between stars leaves it as it is.
+-- Beside the star on the side with room, as Parts.ShowBeside places a side panel: clamped to
+-- the screen, it would otherwise slide back over the star and its route.
+local function PlacePanel(pin)
+    panel:ClearAllPoints()
+    local right = (pin:GetRight() or 0) * pin:GetEffectiveScale()
+    local room = UIParent:GetRight() * UIParent:GetEffectiveScale() - right
+    if room >= (PANEL_W + 8) * panel:GetEffectiveScale() then
+        panel:SetPoint("TOPLEFT", pin, "TOPRIGHT", 8, 0)
+    else
+        panel:SetPoint("TOPRIGHT", pin, "TOPLEFT", -8, 0)
+    end
+end
+
 local function ShowPanel(pin)
     if not panel then BuildPanel() end
     local npc = pin.npc
@@ -319,16 +332,7 @@ local function ShowPanel(pin)
         Add("No special drops", T.muted)
     end
     panel:SetHeight(lineY + PAD + BUTTON_H + PAD)
-    -- Beside the star on the side with room, as Parts.ShowBeside places a side panel: clamped
-    -- to the screen, it would otherwise slide back over the star and its route.
-    panel:ClearAllPoints()
-    local right = (pin:GetRight() or 0) * pin:GetEffectiveScale()
-    local room = UIParent:GetRight() * UIParent:GetEffectiveScale() - right
-    if room >= (PANEL_W + 8) * panel:GetEffectiveScale() then
-        panel:SetPoint("TOPLEFT", pin, "TOPRIGHT", 8, 0)
-    else
-        panel:SetPoint("TOPRIGHT", pin, "TOPLEFT", -8, 0)
-    end
+    PlacePanel(pin)
     panel:Show()
 end
 
@@ -382,6 +386,14 @@ end
 --  The map's data provider
 -------------------------------------------------------------------------------
 provider = CreateFromMixins(MapCanvasDataProviderMixin)
+
+-- The map panned, zoomed or resized: the star may have moved to the other side.
+local function Reside()
+    if panel and panel:IsShown() and panel.pin then PlacePanel(panel.pin) end
+end
+provider.OnCanvasScaleChanged = Reside
+provider.OnCanvasPanChanged = Reside
+provider.OnCanvasSizeChanged = Reside
 
 function provider:RemoveAllData()
     wipe(shown)
