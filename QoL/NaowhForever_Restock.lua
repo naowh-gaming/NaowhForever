@@ -399,7 +399,7 @@ local FIXED = {
       help = "At a vendor who sells them, tops your class reagents and ammo up to what you carry, "
           .. "and prints what it spent. Off by default: it spends gold for you." },
     { key = "restockAmmo", label = "Ammo", toggle = true, help = "The arrows or shot in your ammo slot." },
-    { key = "restockAmmoTarget", label = "Ammo to Carry", slider = { 200, 4000, 100 }, needs = "restockAmmo" },
+    { key = "restockAmmoTarget", label = "Ammo to Carry", slider = { 50, 4000, 50 }, needs = "restockAmmo" },
     Group("Food & Drink"),
     { key = "restockFood", label = "Food & Drink", toggle = true,
       help = "Counts food and drink separately across all stacks. Warriors and rogues do not need drink." },
