@@ -46,7 +46,7 @@ end
 -------------------------------------------------------------------------------
 --  The panel: a drawer against the map window's left side, the map's height (the Dungeon
 --  Journal takes the right side). Where that side has no room, the right; on the maximized
---  map, which fills the screen, in the black bar left of its picture.
+--  map, which fills the screen, in the black bar left of its picture, or else under the button.
 -------------------------------------------------------------------------------
 -- The options window's look: a header strip in the panel colour, small accent group titles and
 -- ruled rows with the switch on the right, on the window's backdrop with a black border.
@@ -135,8 +135,9 @@ local function PlacePanel()
     local map = WorldMapFrame
     panel:ClearAllPoints()
     if map.IsMaximized and map:IsMaximized() then
-        -- The full screen map letterboxes its picture: the drawer goes in the black bar on the
-        -- left, as wide as the bar allows. A bar too narrow for it leaves it in the corner.
+        -- The full screen map letterboxes its picture on a wide screen: the drawer goes in the
+        -- black bar on the left, as wide as the bar allows. With no bar wide enough it hangs
+        -- under the Map Pins button in the top right, which stays free to close it.
         local canvas = map:GetCanvasContainer()
         local bar = (canvas:GetLeft() or 0) - (map:GetLeft() or 0) - BAR_MARGIN * 2
         if bar >= BAR_MIN_W then
@@ -144,7 +145,7 @@ local function PlacePanel()
             panel:SetPoint("TOPRIGHT", canvas, "TOPLEFT", -BAR_MARGIN, 0)
         else
             panel:SetWidth(PanelWidth())
-            panel:SetPoint("TOPLEFT", canvas, "TOPLEFT", 8, -8)
+            panel:SetPoint("TOPRIGHT", button, "BOTTOMRIGHT", 0, -4)
         end
         panel:SetHeight(Layout(ROW_H))
     else

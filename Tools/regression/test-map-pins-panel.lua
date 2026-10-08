@@ -120,6 +120,7 @@ Check(panel.point[1] == "TOPRIGHT" and panel.point[2] == canvas and panel.point[
     and panel.width == 234, "the maximized map: in the black bar left of the picture, as wide as it")
 canvasLeft = 250
 map.Maximize()
-Check(panel.point[1] == "TOPLEFT" and panel.point[2] == canvas, "a bar too narrow: inside the corner")
+Check(panel.point[1] == "TOPRIGHT" and panel.point[2] == button and panel.point[3] == "BOTTOMRIGHT",
+    "no bar wide enough: under the button in the top right")
 
 print(("test-map-pins-panel: %d checks passed"):format(checks))
