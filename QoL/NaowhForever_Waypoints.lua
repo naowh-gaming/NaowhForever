@@ -36,6 +36,7 @@ local NAV_W, NAV_H, NAV_PAD, NAV_ICON, NAV_ARROW = 320, 40, 10, 20, 14
 local NAV_NAME, NAV_SUB, NAV_DIST = 14, 11, 16
 local NAV_Y = -70                            -- the navigator under the screen's top, until moved
 local ARRIVED_HOLD = ns.WAYPOINT_HOLD        -- seconds the arrival shows
+local REACHED = 5                            -- yards: a target the game keeps tracking stops showing
 
 local function On()
     return S.Get("enabled") and S.Get("waypoints")
@@ -337,9 +338,10 @@ local function Update()
         side = math.abs(dx) >= math.abs(dy) and (dx > 0 and "right" or "left") or (dy > 0 and "top" or "bottom")
         lastX, lastY = cx + dx * t, cy + dy * t
     else
-        -- The navigation point is the spot on the ground: the ring at the line's foot goes there and
-        -- the pin stands above it.
-        local lift = S.Get("waypointBeam") and PIN / 2 + BEAM_H or 0
+        -- A map pin's navigation point is the spot on the ground: the ring at the line's foot goes
+        -- there and the pin stands above it. Anything else (a quest giver) has its point over the
+        -- target's head, where the pin goes as it is.
+        local lift = shown.beam and PIN / 2 + BEAM_H or 0
         if not pin.onNav then
             pin:ClearAllPoints()
             pin:SetPoint("CENTER", navFrame, "CENTER", 0, lift)
@@ -347,7 +349,8 @@ local function Update()
         end
         lastX, lastY = nx, ny + lift * scale
     end
-    pin:SetShown(not behind and (mode ~= "edge" or S.Get("waypointEdge")))
+    -- The game only clears a map pin on arrival; a quest stays tracked at the quest giver.
+    pin:SetShown(not behind and (mode ~= "edge" or S.Get("waypointEdge")) and (shown.ground or yards > REACHED))
     cue:SetShown(behind and S.Get("waypointEdge"))
 
     local speed = GetUnitSpeed("player")
@@ -376,7 +379,9 @@ local function Retitle()
     shown.onRoute = placed and route ~= nil
     if shown.onRoute then shown.sub = ("%s%s%d of %d"):format(route, St.PLACE_DOT, at, n) end
     shown.shape = S.Get("waypointShape")
-    shown.card, shown.beam = S.Get("waypointCard"), S.Get("waypointBeam")
+    shown.ground = C_SuperTrack.GetHighestPrioritySuperTrackingType() == Enum.SuperTrackingType.UserWaypoint
+    shown.card, shown.beam = S.Get("waypointCard"), S.Get("waypointBeam") and shown.ground
+    pin.onNav = false
 end
 
 -- With no waypoint, Layout Mode still shows the navigator, on a sample, to place it by.

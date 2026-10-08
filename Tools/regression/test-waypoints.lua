@@ -324,6 +324,16 @@ first.fn()
 Check(pin.card.dist.text == "Arrived" and driver.scripts.OnUpdate == nil, "an older arrival's timer does nothing")
 timers[#timers].fn()
 Check(pin:IsShown() and pin.point[2] == navFrame and driver.scripts.OnUpdate ~= nil, "then it follows the quest again")
+-- A quest's navigation point is over the target (a quest giver's head), not on the ground.
+Check(pin.point[5] == 0 and not pin.beam.shown and not pin.ground.shown, "a quest's pin sits on its point, no line down")
+-- The game keeps tracking a quest at the quest giver, so the pin goes up close, the navigator stays.
+local far = nav.distance
+nav.distance = 4
+driver.scripts.OnUpdate()
+Check(not pin:IsShown() and navBar:IsShown(), "next to the quest giver the pin goes")
+nav.distance = far
+driver.scripts.OnUpdate()
+Check(pin:IsShown(), "walking away brings it back")
 
 -- A new waypoint during an arrival ends it.
 events.scripts.OnEvent(events, "NAVIGATION_DESTINATION_REACHED", false)
