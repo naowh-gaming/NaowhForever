@@ -1,7 +1,7 @@
 -------------------------------------------------------------------------------
 --  NaowhForever_MapPinsPanel.lua -- the Map Pins button in the world map's top right corner.
---  It opens a panel with the town map's switches: which kinds of pin show, Shops & Trainers
---  Only in Capitals and the minimap pins. The options window keeps only the card's switch and
+--  It opens a panel with the town map's switches: which kinds of pin show, Vendors & Trainers
+--  Only in Cities and the minimap pins. The options window keeps only the card's switch and
 --  Pin Size; the rest is chosen with the map open.
 --
 --  The keys stay in the QoL table, so saved settings carry over. Free while the map pins are
@@ -15,11 +15,12 @@ local S = ns.QoLSettings
 -- The panel's rows in order.
 local ROWS = {
     { header = "OPTIONS" },
-    { key = "townCapitalsOnly", text = "Shops & Trainers Only in Capitals",
+    { key = "townCapitalsOnly", text = "Vendors & Trainers Only in Cities",
       tip = "Keeps vendors, trainers and the bank off questing maps. Flight masters, innkeepers, "
           .. "stable masters, spirit healers and mailboxes show everywhere." },
-    { key = "townMinimap", text = "Mailboxes & Spirit Healers on Minimap",
-      tip = "Pins the mailboxes and spirit healers near you on the minimap." },
+    { key = "townMinimap", text = "Mailboxes on Minimap", tip = "Pins the mailboxes near you on the minimap." },
+    { key = "townMinimapSpirit", text = "Spirit Healers on Minimap",
+      tip = "Pins the spirit healers near you on the minimap." },
     { header = "SHOW" },
     { key = "townFlight", text = "Flight Masters" },
     { key = "townInn", text = "Innkeepers" },
@@ -53,7 +54,14 @@ local St = ns.Shared.Style
 local PAD, HEAD_H, GROUP_H, ROW_H = 14, 40, 28, 28
 local LABEL_SIZE, NAME_SIZE, SMALL_SIZE = 13, 14, 11
 local RULE_ALPHA = 0.6
-local PANEL_W = 270
+local PANEL_W = 330   -- the quest log's width, where the map has none to read
+
+-- As wide as the quest log beside the map, so the two drawers match.
+local function PanelWidth()
+    local log = WorldMapFrame.QuestLog or _G.QuestMapFrame
+    local w = log and log:GetWidth() or 0
+    return w > 0 and w or PANEL_W
+end
 local GAP = -1   -- the drawer's border on the map's, so the two read as one window
 local BAR_MARGIN, BAR_MIN_W = 8, 200   -- the full screen map's black bar
 
@@ -118,16 +126,17 @@ local function PlacePanel()
         local canvas = map:GetCanvasContainer()
         local bar = (canvas:GetLeft() or 0) - (map:GetLeft() or 0) - BAR_MARGIN * 2
         if bar >= BAR_MIN_W then
-            panel:SetWidth(math.min(PANEL_W, bar))
+            panel:SetWidth(math.min(PanelWidth(), bar))
             panel:SetPoint("TOPRIGHT", canvas, "TOPLEFT", -BAR_MARGIN, 0)
         else
-            panel:SetWidth(PANEL_W)
+            panel:SetWidth(PanelWidth())
             panel:SetPoint("TOPLEFT", canvas, "TOPLEFT", 8, -8)
         end
         panel:SetHeight(panel.contentH)
     else
-        panel:SetWidth(PANEL_W)
-        if (map:GetLeft() or 0) >= PANEL_W + GAP then
+        local w = PanelWidth()
+        panel:SetWidth(w)
+        if (map:GetLeft() or 0) >= w + GAP then
             panel:SetPoint("TOPRIGHT", map, "TOPLEFT", -GAP, 0)
         else
             panel:SetPoint("TOPLEFT", map, "TOPRIGHT", GAP, 0)
@@ -140,7 +149,7 @@ end
 local function BuildPanel()
     -- The map's child, so it opens, closes and scales with the map.
     panel = CreateFrame("Frame", nil, WorldMapFrame)
-    panel:SetWidth(PANEL_W)
+    panel:SetWidth(PanelWidth())
     panel:SetFrameLevel(WorldMapFrame:GetFrameLevel() + 20)
     panel:EnableMouse(true)
     panel:Hide()

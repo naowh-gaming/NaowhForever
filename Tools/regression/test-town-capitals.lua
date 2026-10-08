@@ -1,4 +1,4 @@
--- Run with Lua 5.1 from the repository root: the town map's Shops & Trainers Only in Capitals.
+-- Run with Lua 5.1 from the repository root: the town map's Vendors & Trainers Only in Cities.
 -- With it on, a questing map keeps its flight masters, innkeepers and stable masters but not its
 -- vendors and trainers; a capital keeps everything; with it off every map keeps everything.
 local function Read(path)

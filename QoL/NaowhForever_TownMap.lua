@@ -38,8 +38,8 @@ local CATEGORIES = {
     vendor     = { "townVendors", "Interface\\Icons\\INV_Misc_Bag_07", "Vendor" },
     mail       = { "townMail", "Interface\\Icons\\INV_Letter_15", "Send and collect mail" },
 }
--- What a traveller looks for in any town: shown on every map, even with Shops & Trainers
--- Only in Capitals on (that switch is for the shops and trainers).
+-- What a traveller looks for in any town: shown on every map, even with Vendors &
+-- Trainers Only in Cities on (that switch is for the vendors and trainers).
 local EVERYWHERE = { flight = true, inn = true, stable = true }
 
 local function On()
@@ -195,8 +195,10 @@ local miniCont, miniOX, miniOY, miniUX, miniUY, miniVX, miniVY, miniDet
 local mini = CreateFrame("Frame")
 local moving, elapsed = false, 0
 
+-- townMinimap is the mailboxes (it held both once, so existing profiles keep their mailboxes),
+-- townMinimapSpirit the spirit healers.
 local function MiniOn()
-    return On() and S.Get("townMinimap")
+    return On() and (S.Get("townMinimap") or S.Get("townMinimapSpirit"))
 end
 
 local function MiniFit(map)
@@ -259,8 +261,12 @@ local function MiniRefresh()
     miniMap = MiniOn() and C_Map.GetBestMapForUnit("player")
     -- On this setting alone: the world map's Mailboxes toggle starts off.
     if miniMap and MiniFit(miniMap) then
-        for _, mailbox in ipairs(ns.TownMailboxes[miniMap] or {}) do miniSpots[#miniSpots + 1] = mailbox end
-        for _, healer in ipairs(ns.TownSpiritHealers[miniMap] or {}) do miniSpots[#miniSpots + 1] = healer end
+        if S.Get("townMinimap") then
+            for _, mailbox in ipairs(ns.TownMailboxes[miniMap] or {}) do miniSpots[#miniSpots + 1] = mailbox end
+        end
+        if S.Get("townMinimapSpirit") then
+            for _, healer in ipairs(ns.TownSpiritHealers[miniMap] or {}) do miniSpots[#miniSpots + 1] = healer end
+        end
         miniWidth, miniHeight = C_Map.GetMapWorldSize(miniMap)
     end
     for i = #miniSpots + 1, #miniPins do miniPins[i]:Hide() end
@@ -383,7 +389,7 @@ local function TownSummary(store)
         if store.Get(TOWN_SHOW[i]) then shown = shown + 1 end
     end
     return ("%d of %d shown%s"):format(shown, #TOWN_SHOW,
-        store.Get("townCapitalsOnly") and ", shops and trainers in capitals only" or "")
+        store.Get("townCapitalsOnly") and ", vendors and trainers in cities only" or "")
 end
 
 -- Which pins show is chosen on the map itself (NaowhForever_MapPinsPanel.lua), so the card

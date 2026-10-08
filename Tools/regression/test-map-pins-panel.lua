@@ -12,7 +12,7 @@ local function Check(ok, label) assert(ok, label); checks = checks + 1 end
 
 local panelSrc = Read("QoL/NaowhForever_MapPinsPanel.lua")
 local townSrc = Read("QoL/NaowhForever_TownMap.lua")
-for _, key in ipairs({ "townCapitalsOnly", "townMinimap", "townSpiritHealers", "townZoneLinks", "townTravel",
+for _, key in ipairs({ "townCapitalsOnly", "townMinimap", "townMinimapSpirit", "townSpiritHealers", "townZoneLinks", "townTravel",
     "townClass", "townProfession", "townFlight", "townInn", "townBank", "townRepair", "townSupplies",
     "townStable", "townVendors", "townMail" }) do
     Check(panelSrc:find('key = "' .. key .. '"', 1, true), "on the panel: " .. key)
