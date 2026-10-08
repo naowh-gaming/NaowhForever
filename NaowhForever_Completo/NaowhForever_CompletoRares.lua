@@ -60,15 +60,16 @@ function R.Mine(npc)
 end
 
 -------------------------------------------------------------------------------
---  Your kills, per character: npcID -> { n = kills counted, at = the latest, as time() gives
---  it }; n is 0 for one ticked off by hand.
+--  Your kills, per character by its GUID (Shared.CharacterData): npcID -> { n = kills
+--  counted, at = the latest, as time() gives it, guid = the creature counted last }; n is 0
+--  for one ticked off by hand. Looked up once, when the game knows who you are.
 -------------------------------------------------------------------------------
+local NONE = {}
+local kills, drops
+
 local function Kills()
-    local account = ns.AccountSettings()
-    account.completoRareKills = account.completoRareKills or {}
-    local char = (UnitName("player") or "?") .. "-" .. (GetRealmName() or "?")
-    account.completoRareKills[char] = account.completoRareKills[char] or {}
-    return account.completoRareKills[char]
+    kills = kills or ns.Shared.CharacterData("completoRareKills", true)
+    return kills or NONE
 end
 
 local listeners = {}
@@ -85,28 +86,30 @@ function R.Killed(npc) return Kills()[npc] ~= nil end
 ---@return table? record { n, at }, nil while not killed
 function R.Record(npc) return Kills()[npc] end
 
-function R.AddKill(npc)
-    local kills = Kills()
-    local record = kills[npc] or { n = 0 }
+-- guid: the creature, so its corpse looted again after a reload is not a second kill.
+function R.AddKill(npc, guid)
+    local all = Kills()
+    if all == NONE then return end
+    local record = all[npc] or { n = 0 }
     record.n = record.n + 1
     record.at = time()
-    kills[npc] = record
+    record.guid = guid
+    all[npc] = record
     Changed(npc)
 end
 
 -- Ticked off or back by hand: one killed before Completo counted, or counted by mistake.
 function R.SetKilled(npc, killed)
-    Kills()[npc] = killed and (Kills()[npc] or { n = 0, at = time() }) or nil
+    local all = Kills()
+    if all == NONE then return end
+    all[npc] = killed and (all[npc] or { n = 0, at = time() }) or nil
     Changed(npc)
 end
 
 -- The items each rare dropped for this character: npcID -> { itemID -> time() it first did }.
 local function Drops()
-    local account = ns.AccountSettings()
-    account.completoRareDrops = account.completoRareDrops or {}
-    local char = (UnitName("player") or "?") .. "-" .. (GetRealmName() or "?")
-    account.completoRareDrops[char] = account.completoRareDrops[char] or {}
-    return account.completoRareDrops[char]
+    drops = drops or ns.Shared.CharacterData("completoRareDrops", true)
+    return drops or NONE
 end
 
 -- Whether the rare ever dropped the item for you.
@@ -116,10 +119,11 @@ function R.Dropped(npc, itemID)
 end
 
 local function AddDrop(npc, itemID)
-    local drops = Drops()
-    drops[npc] = drops[npc] or {}
-    if drops[npc][itemID] then return end
-    drops[npc][itemID] = time()
+    local all = Drops()
+    if all == NONE then return end
+    all[npc] = all[npc] or {}
+    if all[npc][itemID] then return end
+    all[npc][itemID] = time()
     Changed(npc)
 end
 
@@ -132,11 +136,12 @@ end
 ---@return number? highest level
 function R.ZoneProgress(zone)
     Prepare()
+    local all = Kills()
     local n, total, low, high = 0, 0, nil, nil
     for _, npc in ipairs(zone.rares) do
         if mine[npc] then
             total = total + 1
-            if R.Killed(npc) then n = n + 1 end
+            if all[npc] then n = n + 1 end
             local lo, hi = R.Levels(npc)
             if lo > 0 then
                 low = math.min(low or lo, lo)
@@ -193,24 +198,39 @@ function R.Zone(npc) return ZoneFor(D.Rares[npc][MAP]) end
 
 -- Your rares whose name holds the text (lower case, as typed), zone by zone, at most limit:
 -- { { zone, ids }, ... } and how many there were in all. Tables reused until the next call.
-local found, foundIds = {}, {}
+local found, foundIn, lowered = {}, {}, {}
 
 function R.Search(text, limit)
     Prepare()
     wipe(found)
     local n = 0
     for _, zone in ipairs(D.Zones) do
-        local ids = foundIds[zone] or {}
-        foundIds[zone] = wipe(ids)
+        local entry = foundIn[zone] or { zone = zone, ids = {} }
+        foundIn[zone] = entry
+        local ids = wipe(entry.ids)
         for _, npc in ipairs(zone.rares) do
-            if mine[npc] and D.Rares[npc][NAME]:lower():find(text, 1, true) then
+            local name = lowered[npc]
+            if not name then
+                name = D.Rares[npc][NAME]:lower()
+                lowered[npc] = name
+            end
+            if mine[npc] and name:find(text, 1, true) then
                 n = n + 1
                 if n <= limit then ids[#ids + 1] = npc end
             end
         end
-        if #ids > 0 then found[#found + 1] = { zone = zone, ids = ids } end
+        if #ids > 0 then found[#found + 1] = entry end
     end
     return found, n
+end
+
+local function Nearest(points, px, py, bx, by, bestD)
+    for i = 1, #points, 2 do
+        local dx, dy = points[i] / 100 - px, points[i + 1] / 100 - py
+        local d = dx * dx + dy * dy
+        if not bestD or d < bestD then bx, by, bestD = points[i], points[i + 1], d end
+    end
+    return bx, by, bestD
 end
 
 -- Where it spawns nearest to you when you are on its map (a spawn spot, or a dot along the
@@ -223,14 +243,8 @@ function R.Spot(npc)
         and C_Map.GetPlayerMapPosition(rare[MAP], "player")
     if not pos then return rare[MAP], spots[1], spots[2] end
     local px, py = pos:GetXY()
-    local bx, by, bestD = spots[1], spots[2], nil
-    for _, points in ipairs({ spots, rare[TRAIL] or spots }) do
-        for i = 1, #points, 2 do
-            local dx, dy = points[i] / 100 - px, points[i + 1] / 100 - py
-            local d = dx * dx + dy * dy
-            if not bestD or d < bestD then bx, by, bestD = points[i], points[i + 1], d end
-        end
-    end
+    local bx, by, bestD = Nearest(spots, px, py, spots[1], spots[2], nil)
+    if rare[TRAIL] then bx, by = Nearest(rare[TRAIL], px, py, bx, by, bestD) end
     return rare[MAP], bx, by
 end
 
@@ -294,7 +308,7 @@ function R.OnMap(mapID)
             end
         end
     end
-    return byMap[mapID] or {}
+    return byMap[mapID] or NONE
 end
 
 function R.Waypoint(npc)
@@ -313,7 +327,9 @@ local function Count(guid)
     local npc = R.NpcOf(guid)
     if not npc or not D.Rares[npc] or counted[guid] then return end
     counted[guid] = true
-    R.AddKill(npc)
+    local record = Kills()[npc]
+    if record and record.guid == guid then return end
+    R.AddKill(npc, guid)
 end
 
 local events = CreateFrame("Frame")

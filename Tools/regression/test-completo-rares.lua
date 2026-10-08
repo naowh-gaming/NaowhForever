@@ -130,7 +130,11 @@ local function Fixture(settings, units)
     env.SOUNDKIT = { RAID_WARNING = 8959 }
     env.C_Timer = { NewTimer = function() return { Cancel = function() end } end }
     env.C_Map = { GetBestMapForUnit = function() return 1440 end, GetMapInfo = function() end }
+    env.vignettes = {}
+    env.C_VignetteInfo = { GetVignetteInfo = function(id) return env.vignettes[id] end }
     local account = {}
+    env.IsInInstance = function() return units.instance == true end
+    env.InCombatLockdown = function() return units.combat == true end
     local ns = { THEME = { accent = {}, muted = {}, fg = {}, panel = {}, accentSoft = {} }, Apply = function() end,
         ShowRaidReminderAnchorConfig = function() end, HideRaidReminderAnchorConfig = function() end }
     ns.AccountSettings = function() return account end
@@ -161,6 +165,12 @@ local function Fixture(settings, units)
     ns.cards = {}
     local page = { Window = function() end, Card = function(_, spec) ns.cards[spec.id] = spec end }
     ns.Shared = { Settings = { Page = function() return page end }, Style = { PIN = "pin" },
+        -- Per character, by the player's GUID.
+        CharacterData = function(key)
+            account[key] = account[key] or {}
+            account[key]["Player-1-0001"] = account[key]["Player-1-0001"] or {}
+            return account[key]["Player-1-0001"]
+        end,
         -- Forever's sign, as text.
         -- The pin button: its click.
         Parts = { ForeverInline = function() return " <inf>" end, IconButton = function(_, onClick)
@@ -275,7 +285,7 @@ do
     env.loot = { Guid(10644) }
     env.Fire("LOOT_READY")
     Check(R.Record(10644).n == 1, "looting the same corpse does not count it again")
-    Check(account.completoRareKills["Grim-Realm"][10644] ~= nil, "kills are kept per character")
+    Check(account.completoRareKills["Player-1-0001"][10644] ~= nil, "kills are kept per character, by its GUID")
 
     units.target = { guid = Guid(10644, "0002"), name = "Mist Howler" }
     env.Fire("PLAYER_TARGET_CHANGED")
@@ -411,6 +421,54 @@ do
 
     ns.CompletoSettings.Set("rareAlert", false)
     Check(not env.Listening("NAME_PLATE_UNIT_ADDED") and not ns.alert:IsShown(), "switched off: unregistered, alert gone")
+end
+
+-- Mark Rare leaves the group's marks alone
+do
+    local units = {}
+    local settings = { enabled = true, rareAlert = true, rareMarker = "skull", rareSound = false }
+    local ns, env = Fixture(settings, units)
+    units.group, units.instance = "party", true
+    units.nameplate1 = { guid = Guid(10644), name = "Mist Howler", kind = "rare", level = 22 }
+    env.Fire("NAME_PLATE_UNIT_ADDED", "nameplate1")
+    Check(ns.alert:IsShown() and #env.marks == 0, "in a party's dungeon: the alert, but no mark")
+    units.instance, units.combat = nil, true
+    units.nameplate2 = { guid = Guid(10647), name = "Prince Raze", kind = "rare", level = 32 }
+    env.Fire("NAME_PLATE_UNIT_ADDED", "nameplate2")
+    Check(#env.marks == 0, "in a party's fight: no mark")
+    units.group, units.combat = nil, nil
+    units.party1target = { guid = Guid(5555), name = "Kobold", mark = 8 }
+    units.nameplate3 = { guid = Guid(9999), name = "Moon Rare", kind = "rare" }
+    env.Fire("NAME_PLATE_UNIT_ADDED", "nameplate3")
+    Check(#env.marks == 0, "a skull already on something else is not moved onto the rare")
+    units.party1target = nil
+    units.nameplate4 = { guid = Guid(9998), name = "Other Rare", kind = "rare" }
+    env.Fire("NAME_PLATE_UNIT_ADDED", "nameplate4")
+    Check(#env.marks == 1 and env.marks[1][1] == "nameplate4", "solo, with the skull free: it goes on")
+    units.nameplate5 = { guid = Guid(12037), name = "Ursol'lok", kind = "normal" }
+    env.Fire("NAME_PLATE_UNIT_ADDED", "nameplate5")
+    Check(ns.alert.name.text ~= "Ursol'lok", "a creature the game does not call rare brings no alert")
+    env.vignettes.v1 = { objectGUID = Guid(3736), name = "Darkslayer Mordenthal", atlasName = "VignetteKill" }
+    env.Fire("VIGNETTE_MINIMAP_UPDATED", "v1", true)
+    Check(ns.alert.name.text ~= "Darkslayer Mordenthal", "no minimap alert for a rare friendly to you")
+    env.vignettes.v2 = { objectGUID = Guid(10647, "0002"), name = "Prince Raze", atlasName = "VignetteKill" }
+    env.Advance(301)
+    env.Fire("VIGNETTE_MINIMAP_UPDATED", "v2", true)
+    Check(ns.alert.name.text == "Prince Raze", "a hostile rare on the minimap alerts")
+end
+
+-- A kill is counted once per creature, a reload in between too
+do
+    local units = {}
+    local ns, env, account = Fixture({ enabled = true }, units)
+    local R = ns.Completo.Rares
+    account.completoRareKills = { ["Player-1-0001"] = { [10644] = { n = 1, at = 900, guid = Guid(10644, "0007") } } }
+    env.loot = { Guid(10644, "0007") }
+    env.Fire("LOOT_READY")
+    Check(R.Record(10644).n == 1, "a corpse counted before a reload does not count again")
+    env.loot = { Guid(10644, "0008") }
+    env.Fire("LOOT_READY")
+    Check(R.Record(10644).n == 2, "another one of it does")
 end
 
 -- Test Alert

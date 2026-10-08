@@ -158,7 +158,11 @@ end
 -------------------------------------------------------------------------------
 local PANEL_W, PAD, DROP_H, DROP_ICON = 270, 10, 20, 16
 local MUTED = { r = 0.62, g = 0.62, b = 0.62 }
+local WHITE = { r = 1, g = 1, b = 1 }
+local GOLD = { r = 1, g = 0.82, b = 0 }
+local HINT = { r = 0.3, g = 0.71, b = 0.96 }
 local panel
+local lineN, lineY   -- ShowPanel's place: lines written, the y under them
 
 local function QualityColor(quality)
     return ITEM_QUALITY_COLORS and ITEM_QUALITY_COLORS[quality] or T.fg
@@ -241,37 +245,40 @@ local function Line(i, y, text, color, size)
     return y + math.ceil(fs:GetStringHeight()) + 3
 end
 
+local function Add(text, color, size)
+    lineN = lineN + 1
+    lineY = Line(lineN, lineY, text, color, size)
+end
+
+-- Drawn once per focus: a pointer moving between stars leaves it as it is.
 local function ShowPanel(pin)
     if not panel then BuildPanel() end
     local npc = pin.npc
-    panel.npc = npc
+    if panel:IsShown() and panel.npc == npc and panel.pin == pin then return end
+    panel.npc, panel.pin = npc, pin
     for _, fs in ipairs(panel.lines) do fs:Hide() end
     for _, row in ipairs(panel.rows) do row:Hide() end
-    local y, n = PAD, 0
-    local function Add(text, color, size)
-        n = n + 1
-        y = Line(n, y, text, color, size)
-    end
-    Add(R.Name(npc), { r = 1, g = 1, b = 1 }, 14)
+    lineN, lineY = 0, PAD
+    Add(R.Name(npc), WHITE, 14)
     local low, high = R.Levels(npc)
     local level = low <= 0 and "??" or low == high and tostring(low) or ("%d-%d"):format(low, high)
-    Add(("%s, level %s"):format(R.Elite(npc) and "Rare elite" or "Rare", level), { r = 1, g = 0.82, b = 0 })
+    Add(("%s, level %s"):format(R.Elite(npc) and "Rare elite" or "Rare", level), GOLD)
     local record = R.Record(npc)
     Add(record and (record.n > 1 and ("Killed %d times"):format(record.n) or "Killed") or "Not killed yet",
-        record and MUTED or { r = 1, g = 1, b = 1 })
+        record and MUTED or WHITE)
     if R.Trail(npc) then Add("Patrols: the small stars are its way", MUTED) end
     local others = R.SpotCount(npc) - 1
     if others > 0 then Add(("Spawns at %d more spots, shown smaller"):format(others), MUTED) end
     local loot = R.Loot(npc)
     if loot then
-        y = y + 6
-        Add("Drops", { r = 1, g = 0.82, b = 0 })
+        lineY = lineY + 6
+        Add("Drops", GOLD)
         for i, item in ipairs(loot) do
             local row = panel.rows[i] or NewDropRow()
             panel.rows[i] = row
             row.item = item
             row:ClearAllPoints()
-            row:SetPoint("TOPLEFT", PAD, -y)
+            row:SetPoint("TOPLEFT", PAD, -lineY)
             row.icon:SetTexture(C_Item.GetItemIconByID(item[1]) or 134400)
             local name = item[4]
             if R.NewInForever(item) then name = name .. ns.Shared.Parts.ForeverInline(12) end
@@ -282,19 +289,18 @@ local function ShowPanel(pin)
             local chance = item[3]
             row.chance:SetText(chance >= 1 and ("%d%%"):format(math.floor(chance + 0.5)) or ("%.1f%%"):format(chance))
             row:Show()
-            y = y + DROP_H
+            lineY = lineY + DROP_H
         end
         if loot.more then Add(("And %d more"):format(loot.more), MUTED) end
     else
-        y = y + 6
+        lineY = lineY + 6
         Add("No special drops", MUTED)
     end
-    y = y + 6
-    local r, g, bl = SoftBlue(0.3, 0.71, 0.96)
-    local hint = { r = r, g = g, b = bl }
-    Add("Click the star to let go of it.", hint, 11)
-    Add("Right-click it for a waypoint.", hint, 11)
-    panel:SetHeight(y + PAD - 3)
+    lineY = lineY + 6
+    HINT.r, HINT.g, HINT.b = SoftBlue(0.3, 0.71, 0.96)
+    Add("Click the star to let go of it.", HINT, 11)
+    Add("Right-click it for a waypoint.", HINT, 11)
+    panel:SetHeight(lineY + PAD - 3)
     panel:ClearAllPoints()
     panel:SetPoint("TOPLEFT", pin, "TOPRIGHT", 8, 0)
     panel:Show()
@@ -303,7 +309,7 @@ end
 local function HidePanel()
     if panel then
         panel:Hide()
-        panel.npc = nil
+        panel.npc, panel.pin = nil, nil
     end
 end
 

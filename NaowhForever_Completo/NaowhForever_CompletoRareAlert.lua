@@ -97,8 +97,7 @@ local DEFAULT_SOUND = "file:gruntlinghorn"
 -- pick) for the default.
 local function PlaySoundKey(key)
     if PlayGame(Find(key)) then return end
-    local path = ns.UI.SoundPathFor(key)
-    if path then return ns.UI._PlayLSMSound(path) end
+    if ns.UI.SoundPathFor(key) then return ns.UI.PlaySoundKey(key) end
     PlayGame(Find(DEFAULT_SOUND))
 end
 
@@ -364,10 +363,31 @@ end)
 local alerted = {}   -- npcID or name -> GetTime() of its latest alert
 local marked = {}    -- GUID -> true once a mark went on it
 
+-- Never in a group's instance or fight, where the marks are the tank's to give; in a raid
+-- only as its leader or an assistant.
 local function MayMark()
     if not IsInGroup() then return true end
+    if IsInInstance() or InCombatLockdown() then return false end
     if not IsInRaid() then return true end
     return UnitIsGroupLeader("player") or UnitIsGroupAssistant("player")
+end
+
+-- Setting a mark moves it off whatever has it: whether the mark is already on another unit
+-- you or your group can see (your target or focus, or a group member's target).
+local SEEN_UNITS = { "target", "focus", "mouseover" }
+for i = 1, 4 do SEEN_UNITS[#SEEN_UNITS + 1] = "party" .. i .. "target" end
+for i = 1, 40 do SEEN_UNITS[#SEEN_UNITS + 1] = "raid" .. i .. "target" end
+
+local function MarkInUse(marker, guid)
+    for _, unit in ipairs(SEEN_UNITS) do
+        local index = GetRaidTargetIndex(unit)
+        if Secret(index) then return true end
+        if index == marker then
+            local other = UnitGUID(unit)
+            if Secret(other) or other ~= guid then return true end
+        end
+    end
+    return false
 end
 
 -- Mark Rare's mark on it, once per creature, where it has no mark yet and no one else tapped
@@ -377,6 +397,7 @@ local function Mark(unit, guid)
     if not marker or marked[guid] or not MayMark() then return nil end
     local index, denied = GetRaidTargetIndex(unit), UnitIsTapDenied(unit)
     if Secret(index) or index or Secret(denied) or denied then return nil end
+    if MarkInUse(marker, guid) then return nil end
     marked[guid] = true
     SetRaidTarget(unit, marker)
     return marker
@@ -396,12 +417,16 @@ end
 
 local RARE = { rare = true, rareelite = true }
 
+-- Every nameplate and mouseover comes here: the classification first, before anything that
+-- makes a string.
 local function Check(unit)
     if not UnitExists(unit) then return end
-    local guid, kind = UnitGUID(unit), UnitClassification(unit)
-    if Secret(guid) or Secret(kind) or not guid then return end
+    local kind = UnitClassification(unit)
+    if Secret(kind) or not RARE[kind] then return end
+    local guid = UnitGUID(unit)
+    if Secret(guid) or not guid then return end
     local npc = R.NpcOf(guid)
-    if not npc or not (RARE[kind] or R.Known(npc)) then return end
+    if not npc then return end
     local dead, hostile = UnitIsDead(unit), UnitCanAttack("player", unit)
     if Secret(dead) or Secret(hostile) or dead or not hostile then return end
     local name, level = UnitName(unit), UnitLevel(unit)
@@ -419,6 +444,7 @@ local function CheckVignette(id)
     local npc = R.NpcOf(info.objectGUID)
     local atlas = type(info.atlasName) == "string" and not Secret(info.atlasName) and info.atlasName or ""
     if not npc or not (R.Known(npc) or atlas:find("Kill")) then return end
+    if R.Known(npc) and not R.Mine(npc) then return end
     local level
     if R.Known(npc) then level = R.Levels(npc) end
     -- Where the minimap sees it, on the map you are on.

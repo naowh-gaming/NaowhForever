@@ -327,8 +327,9 @@ def write(cache):
         ids = [r["id"] for r in sorted(by_zone.get(map_id, []),
                                          key=lambda r: (r.get("minlevel") or 0, r["name"]))]
         if ids:
-            lines.append(f"    {{ map = {map_id}, name = {lua_string(z['name'])}, "
-                         f"continent = {conts.get(map_id, -1)}, rares = {{ {', '.join(map(str, ids))} }} }},")
+            lines.append(f"    {{ map = {int(map_id)}, name = {lua_string(z['name'])}, "
+                         f"continent = {int(conts.get(map_id, -1))}, "
+                         f"rares = {{ {', '.join(str(int(i)) for i in ids)} }} }},")
     lines += [
         "}",
         "",
@@ -341,8 +342,8 @@ def write(cache):
     for npc in sorted(rares):
         map_id, r, spots, trail = rares[npc]
         react = r.get("react") or [None, None]
-        a = react[0] if react[0] is not None else -1
-        h = react[1] if len(react) > 1 and react[1] is not None else -1
+        a = int(react[0]) if react[0] is not None else -1
+        h = int(react[1]) if len(react) > 1 and react[1] is not None else -1
         def flat(points):
             out = []
             for x, y in points:
@@ -350,11 +351,11 @@ def write(cache):
                 out += [f"{fx:.1f}", f"{fy:.1f}"]
             return "{ " + ", ".join(out) + " }"
         way = f", {flat(trail)}" if trail else ""
-        low = r.get("minlevel") or 0
-        high = r.get("maxlevel") or low
+        low = int(r.get("minlevel") or 0)
+        high = int(r.get("maxlevel") or low)
         low, high = (-1 if v == SKULL_LEVEL else v for v in (low, high))
-        lines.append(f"    [{npc}] = {{ {lua_string(r['name'])}, {low}, {high}, "
-                     f"{1 if r.get('classification') == RARE_ELITE else 0}, {a}, {h}, {map_id}, "
+        lines.append(f"    [{int(npc)}] = {{ {lua_string(r['name'])}, {low}, {high}, "
+                     f"{1 if r.get('classification') == RARE_ELITE else 0}, {a}, {h}, {int(map_id)}, "
                      f"{flat(spots)}{way} }},")
     lines += [
         "}",
@@ -373,10 +374,11 @@ def write(cache):
         shown, more = loot_of(drops, new)
         if not shown:
             continue
-        items = ", ".join(f"{{ {d['id']}, {d['quality']}, {d['chance']:g}, {lua_string(d['name'])}"
+        items = ", ".join(f"{{ {int(d['id'])}, {int(d['quality'])}, {float(d['chance']):g}, "
+                          f"{lua_string(d['name'])}"
                           f"{', 1' if d['id'] in new else ''} }}" for d in shown)
-        parts = [items] + ([f"more = {more}"] if more else [])
-        lines.append(f"    [{npc}] = {{ {', '.join(parts)} }},")
+        parts = [items] + ([f"more = {int(more)}"] if more else [])
+        lines.append(f"    [{int(npc)}] = {{ {', '.join(parts)} }},")
     lines.append("}")
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_bytes(("\r\n".join(lines) + "\r\n").encode("ascii", "replace"))
