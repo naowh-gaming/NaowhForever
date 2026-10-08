@@ -306,11 +306,11 @@ local function BuildAlert()
     alert:SetScript("OnEnter", CardEnter)
     alert:SetScript("OnLeave", CardLeave)
     alert.fade = alert:CreateAnimationGroup()
-    local fadeIn = alert.fade:CreateAnimation("Alpha")
-    fadeIn:SetFromAlpha(0)
-    fadeIn:SetToAlpha(1)
-    fadeIn:SetDuration(FADE)
-    fadeIn:SetOrder(1)
+    alert.fadeIn = alert.fade:CreateAnimation("Alpha")
+    alert.fadeIn:SetFromAlpha(0)
+    alert.fadeIn:SetToAlpha(1)
+    alert.fadeIn:SetDuration(FADE)
+    alert.fadeIn:SetOrder(1)
     alert.fadeOut = alert.fade:CreateAnimation("Alpha")
     alert.fadeOut:SetFromAlpha(1)
     alert.fadeOut:SetToAlpha(0)
@@ -327,11 +327,14 @@ end
 
 -- seen: { name, level (or nil), npc (its npcID, or nil), guid and unit (the creature and its unit
 -- token while in sight), elite, tapped, marked (the raid mark's index that went on it), map, x, y (where the minimap saw
--- it, percent) }. quiet: no fade, sound or taskbar flash (Unlock Mode's preview).
+-- it, percent) }. quiet: Unlock Mode's preview, with no fade, sound or taskbar flash. Only a
+-- real alert with Rare Alerts on follows its rare (its tap state, its kill).
 local function ShowAlert(seen, quiet)
     if not alert then BuildAlert() end
     local npc = seen.npc
-    shownNpc, shownGuid = npc, seen.guid
+    local track = not quiet and On()
+    shownNpc, shownGuid = track and npc or nil, track and seen.guid or nil
+    alert.preview = quiet == true
     if npc and R.Known(npc) then
         if seen.elite == nil then seen.elite = R.Elite(npc) end
         seen.record = R.Record(npc) or false
@@ -342,8 +345,9 @@ local function ShowAlert(seen, quiet)
     Place()
     alert.fade:Stop()
     alert:Show()
-    events:RegisterEvent("UNIT_FLAGS")
+    if track then events:RegisterEvent("UNIT_FLAGS") else events:UnregisterEvent("UNIT_FLAGS") end
     if quiet then return end
+    alert.fadeIn:SetFromAlpha(0)
     alert.fadeOut:SetStartDelay(S.Get("rareAlertTime"))
     alert.fade:Play()
     PlayAlertSound()
@@ -437,12 +441,11 @@ local function Check(unit)
     local npc = R.NpcOf(guid)
     if not npc then return end
     local dead, hostile = UnitIsDead(unit), UnitCanAttack("player", unit)
-    if Secret(dead) or dead then return end
+    if Secret(dead) or Secret(hostile) or dead or not hostile then return end
     if npc == shownNpc then
         shownGuid = shownGuid or guid
         if guid == shownGuid then Retap(unit) end
     end
-    if Secret(hostile) or not hostile then return end
     local name, level = UnitName(unit), UnitLevel(unit)
     if Secret(name) then return end
     if Secret(level) then level = nil end
@@ -550,6 +553,12 @@ end
 hooksecurefunc(S, "Set", function(key)
     if key == "enabled" or key == "rareAlert" then Apply() end
     if key == "rareAlertScale" and holder then Place() end
+    if key == "rareAlertTime" and alert and alert.fade:IsPlaying() then
+        alert.fade:Stop()
+        alert.fadeIn:SetFromAlpha(1)
+        alert.fadeOut:SetStartDelay(S.Get("rareAlertTime"))
+        alert.fade:Play()
+    end
     if alert and alert:IsShown() and key:find("^rareAlert") and key ~= "rareAlertPosition" then
         Paint(alert, alert.seen)
     end
@@ -557,13 +566,15 @@ end)
 hooksecurefunc(ns, "Apply", Apply)
 hooksecurefunc(ns, "ShowRaidReminderAnchorConfig", function()
     if not On() then return end
-    ShowAlert({ name = "Mist Howler", level = 22, npc = 10644, marked = Marker() }, true)
+    if not (alert and alert:IsShown()) then
+        ShowAlert({ name = "Mist Howler", level = 22, npc = 10644, marked = Marker() }, true)
+    end
     holder.mover:Show()
 end)
 hooksecurefunc(ns, "HideRaidReminderAnchorConfig", function()
     if not alert then return end
     holder.mover:Hide()
-    HideAlert()
+    if alert.preview then HideAlert() end
 end)
 
 local boot = CreateFrame("Frame")
@@ -710,6 +721,12 @@ Settings.Page("Completo/Rares", S):Card({
           help = "Seconds before it fades." },
         { key = "rareAlertScale", label = "Size", slider = { 50, 200, 5 }, unit = "%", scale = 0.01,
           needs = Enabled, why = OFF, help = "How big the card is." },
+        { label = "Reset Position", buttonText = "Reset", needs = Enabled, why = OFF,
+          button = function()
+              S.Set("rareAlertPosition", nil)
+              if holder then Place() end
+          end,
+          help = "Puts the card back above the middle of the screen, where it starts." },
         { label = "Test Alert", buttonText = "Test", button = TestAlert, needs = Enabled, why = OFF,
           help = "Shows the warning on screen with its sound. With something you can attack targeted, it is "
               .. "about that, with Mark Rare's mark on it." },

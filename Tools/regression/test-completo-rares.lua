@@ -90,8 +90,10 @@ local function Fixture(settings, units)
             g.SetScript = function(group, k, fn) group[k] = fn end
             g.Play = function(group) group.playing = true end
             g.Stop = function(group) group.playing = false end
+            g.IsPlaying = function(group) return group.playing end
             g.CreateAnimation = function()
-                return { SetFromAlpha = none, SetToAlpha = none, SetDuration = none, SetSmoothing = none,
+                return { SetFromAlpha = function(a, v) a.from = v end, SetToAlpha = none, SetDuration = none,
+                    SetSmoothing = none,
                     SetOrder = none, SetStartDelay = function(a, d) a.delay = d end }
             end
             return g
@@ -485,6 +487,10 @@ do
     Check(ns.alert.detail.text:find("[warn]Tapped by someone else", 1, true),
         "someone tapping it after the card came up shows on the card")
     units.nameplate1.denied = nil
+    ns.CompletoSettings.Set("rareAlertTime", 30)
+    Check(ns.alert.fade.playing and ns.alert.fadeOut.delay == 30 and ns.alert.fadeIn.from == 1,
+        "Stays For changed while it is up counts again from now, without fading in again")
+    ns.CompletoSettings.Set("rareAlertTime", 20)
     ns.alert.fade.OnFinished(ns.alert.fade)
     Check(not ns.alert:IsShown(), "faded out, it is gone")
     Check(not env.Listening("UNIT_FLAGS"), "and its tap state is no longer watched")
@@ -532,11 +538,21 @@ do
     Check(ns.alert.name.text:find("Tapped Rare", 1, true) and #env.marks == 3,
         "a rare someone else tapped alerts, but gets no mark")
     Check(ns.alert.detail.text:find("[warn]Tapped by someone else", 1, true), "and says it is tapped")
-    ns.alert:Hide()
+    ns.ShowRaidReminderAnchorConfig()
+    Check(ns.alert:IsShown() and ns.alert.name.text:find("Tapped Rare", 1, true) and mover.shown
+        and env.Listening("UNIT_FLAGS"), "Unlock Mode with a real alert up places that one, still followed")
+    ns.HideRaidReminderAnchorConfig()
+    Check(ns.alert:IsShown() and not mover.shown, "and leaving Unlock Mode leaves it up")
+    ns.alert.OnClick(ns.alert, "RightButton")
     ns.ShowRaidReminderAnchorConfig()
     Check(ns.alert:IsShown() and ns.alert.mark.shown and ns.alert.mark.texture == "Interface\\TargetingFrame\\UI-RaidTargetingIcon_5",
         "Unlock Mode previews the card with Mark Rare's mark")
     Check(mover.shown and not ns.alert.fade.playing, "with its HUD Editor plate, and it does not fade")
+    Check(not env.Listening("UNIT_FLAGS"), "the preview follows no rare")
+    units.nameplate10 = { guid = Guid(10644, "0010"), name = "Mist Howler", kind = "rare", level = 22, denied = true }
+    env.Fire("UNIT_FLAGS", "nameplate10")
+    env.Fire("NAME_PLATE_UNIT_ADDED", "nameplate10")
+    Check(not ns.alert.detail.text:find("Tapped", 1, true), "so a real Mist Howler does not take it over")
     ns.alert.OnClick(ns.alert, "RightButton")
     Check(mover.shown, "the plate stays when the card is put away")
     ns.HideRaidReminderAnchorConfig()
@@ -603,6 +619,10 @@ do
     env.Fire("VIGNETTE_MINIMAP_UPDATED", "v2", true)
     Check(ns.alert.name.text == "Prince Raze", "a hostile rare on the minimap alerts")
     Check(not ns.alert.detail.text:find("Tapped", 1, true), "with no tap state to show from the minimap")
+    units.nameplate11 = { guid = Guid(10647, "0011"), name = "Prince Raze", kind = "rare", level = 32, denied = true,
+        friend = true }
+    env.Fire("NAME_PLATE_UNIT_ADDED", "nameplate11")
+    Check(not ns.alert.detail.text:find("Tapped", 1, true), "a copy of the rare you cannot attack is not taken for it")
     units.nameplate7 = { guid = Guid(10647, "0003"), name = "Prince Raze", kind = "rare", level = 32, denied = true,
         dead = true }
     env.Fire("NAME_PLATE_UNIT_ADDED", "nameplate7")
@@ -638,12 +658,13 @@ do
     local units = {}
     local settings = { enabled = true, rareAlert = false, rareMarker = "skull", rareSound = true }
     local ns, env = Fixture(settings, units)
-    local test
+    local test, reset
     local keys = {}
     local function Collect(rows)
         for _, row in ipairs(rows) do
             if row[1] then Collect(row) end
             if row.label == "Test Alert" then test = row.button end
+            if row.label == "Reset Position" then reset = row.button end
             if row.key then keys[row.key] = row end
         end
     end
@@ -654,6 +675,7 @@ do
     Check(keys.rareAlertFont and keys.rareAlertFontSize and keys.rareAlertOutline and keys.rareAlertBackground
         and keys.rareAlertGlow, "the house look rows, and Glow")
     Check(not keys.rareAlertPos and not keys.rareAlertPosition, "no position row: the HUD Editor places it")
+    Check(reset ~= nil, "a Reset Position button")
 
     -- The settings preview: the card in each moment.
     local studio = ns.cards.rareAlert.studio
@@ -712,6 +734,14 @@ do
     env.sounds = 0
     test()
     Check(ns.alert:IsShown() and ns.alert.name.text:find("Mist Howler", 1, true), "with nothing targeted, a made-up rare")
+    Check(not env.Listening("UNIT_FLAGS"), "with Rare Alerts off, the test card follows no rare")
+    local holder = ns.alert:GetParent()
+    settings.rareAlertPosition = { point = "CENTER", relPoint = "CENTER", x = 80, y = -40 }
+    ns.Apply()
+    Check(holder.at[1] == 80, "placed where the HUD Editor put it")
+    reset()
+    Check(settings.rareAlertPosition == nil and holder.at[1] == 0 and holder.at[2] == 260,
+        "Reset Position puts it back above the middle of the screen")
     Check(env.sounds == 1 and #env.marks == 0, "with its sound, and no skull on anything")
     units.target = { guid = Guid(5555), name = "Kobold Miner", level = 7 }
     test()
@@ -792,6 +822,12 @@ do
     Check(panel and panel:IsShown() and panel.npc == 10647, "and a panel stays up beside its star")
     Check(panel.title.text == "Prince Raze", "the house panel, titled with the rare's name")
     Check(panel.point == "TOPRIGHT", "on the star's left: a star on the right has no room for it on its right")
+    star.at[1] = 0.3
+    env.provider:OnCanvasPanChanged()
+    Check(panel.point == "TOPLEFT", "the map panned, the star now with room on its right: the panel moves there")
+    star.at[1] = 0.7
+    env.provider:OnCanvasScaleChanged()
+    Check(panel.point == "TOPRIGHT", "and back on a zoom")
     Check(panel.rows[1].item[1] == 4454 and panel.rows[3].item[1] == 285330 and panel.rows[3]:IsShown(),
         "with a row for each of its drops")
     Check(panel.rows[3].name.text:find("Signet of the Zhevra <inf>", 1, true), "Forever's sign on the new one")
