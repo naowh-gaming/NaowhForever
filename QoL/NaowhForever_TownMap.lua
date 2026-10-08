@@ -374,7 +374,6 @@ function ns.TownAudit()
         .. "NPC's window while standing next to them" or "off", count))
 end
 
-local Group = ns.Shared.Settings.Group
 local TOWN_SHOW = { "townSpiritHealers", "townZoneLinks", "townTravel", "townClass", "townProfession", "townFlight",
     "townInn", "townBank", "townRepair", "townSupplies", "townStable", "townVendors", "townMail" }
 
@@ -387,36 +386,15 @@ local function TownSummary(store)
         store.Get("townCapitalsOnly") and ", shops and trainers in capitals only" or "")
 end
 
+-- Which pins show is chosen on the map itself (NaowhForever_MapPinsPanel.lua), so the card
+-- holds only the switch and the size.
 ns.Shared.Settings.Page("QoL/Interface", S):Card({
     id = "townMap", name = "Map Pins", order = 40, switch = "townMap",
     help = "Trainers, vendors, innkeepers, flight masters and more pinned on the world map for "
-        .. "your faction, with their name and title on hover. No more asking a guard.",
+        .. "your faction, with their name and title on hover. Choose which pins show with the "
+        .. "Map Pins button in the world map's bottom right corner.",
     summary = TownSummary,
     rows = {
         { key = "townPinSize", label = "Pin Size", slider = { 10, 28, 1 } },
-        { key = "townCapitalsOnly", label = "Shops & Trainers Only in Capitals", toggle = true,
-          help = "Keeps vendors, trainers and the bank off questing maps. Flight masters, "
-              .. "innkeepers, stable masters, spirit healers and mailboxes show everywhere." },
-        { key = "townMinimap", label = "Mailboxes & Spirit Healers on Minimap", toggle = true,
-          help = "Pins the mailboxes and spirit healers near you on the minimap." },
-        Group("Show"),
-        { key = "townSpiritHealers", label = "Spirit Healers", toggle = true,
-          help = "Every graveyard's spirit healer, in towns and out in the world." },
-        { key = "townZoneLinks", label = "Clickable Zone Exits", toggle = true,
-          help = "Click an exit to open the adjoining zone map." },
-        { key = "townTravel", label = "Boats & Zeppelins", toggle = true,
-          help = "Every dock and zeppelin tower; click one to open where it goes." },
-        { key = "townClass", label = "Class Trainers", toggle = true, help = "Your class's trainers only." },
-        { key = "townProfession", label = "Profession Trainers", toggle = true },
-        { key = "townFlight", label = "Flight Masters", toggle = true },
-        { key = "townInn", label = "Innkeepers", toggle = true },
-        { key = "townBank", label = "Bank & Auction House", toggle = true },
-        { key = "townRepair", label = "Repairs", toggle = true },
-        { key = "townSupplies", label = "Reagents, Ammo & Food", toggle = true },
-        { key = "townStable", label = "Stable Masters", toggle = true },
-        { key = "townVendors", label = "Other Vendors", toggle = true,
-          help = "Trade goods and every other merchant." },
-        { key = "townMail", label = "Mailboxes", toggle = true,
-          help = "Every mailbox, in towns and out in the world." },
     },
 })
