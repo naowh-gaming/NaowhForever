@@ -3,8 +3,10 @@
 -- yours and not when someone else tapped it; a looted corpse counts; Shift-click ticks one off.
 -- Rare Alerts: a rare's nameplate brings the alert and its mark (a skull, or another picked), once per rare in a while; not
 -- for a dead or friendly one, nor one you killed unless Alert for Killed Rares; no skull where it has
--- a mark, on one someone else tapped or in a raid without lead or assist; Unlock Mode's preview shows
--- the picked mark; nothing is registered while it is off.
+-- a mark, on one someone else tapped or in a raid without lead or assist; it fades after Stays For and
+-- moves in the HUD Editor; Unlock Mode's preview shows the picked mark; the settings preview draws each
+-- moment; nothing is registered while it is off.
+-- Map Pins: click a star for a waypoint, right-click it to keep its way and its drops' panel shown.
 
 local Load = dofile("Tools/regression/load_files.lua")
 
@@ -30,6 +32,9 @@ local function Region()
     function r:CreateTexture() return Region() end
     function r:SetTexture(t) self.texture = t end
     function r:GetFrameLevel() return 5 end
+    function r:GetParent() return self.parent end
+    function r:SetFrameStrata(s) self.strata = s end
+    function r:SetVertexColor(red) self.vertex = red end
     -- Where it is: its middle, in its own units (scale), and the screen's (UIParent's).
     r.scale = 1
     function r:SetScale(s) self.scale = s end
@@ -48,7 +53,14 @@ local function Region()
     end })
 end
 
+-- The alert's look as Completo's defaults have it, where a test leaves it out.
+local LOOK = { rareAlertTime = 20, rareAlertScale = 1, rareAlertFont = "", rareAlertFontSize = 13,
+    rareAlertOutline = "", rareAlertBackground = "card", rareAlertGlow = false }
+
 local function Fixture(settings, units)
+    for k, v in pairs(LOOK) do
+        if settings[k] == nil then settings[k] = v end
+    end
     local env = { pairs = pairs, ipairs = ipairs, type = type, math = math, table = table, select = select,
         tostring = tostring, tonumber = tonumber, string = string, wipe = function(t)
             for k in pairs(t) do t[k] = nil end
@@ -61,8 +73,9 @@ local function Fixture(settings, units)
     env.GetTime = function() return now end
     env.Advance = function(s) now = now + s end
     local frames = {}
-    env.CreateFrame = function()
+    env.CreateFrame = function(_, _, parent)
         local f = Region()
+        f.parent = parent
         f.events, f.unitEvents = {}, {}
         function f:RegisterForClicks() end
         function f:RegisterEvent(e) self.events[e] = true end
@@ -72,11 +85,13 @@ local function Fixture(settings, units)
         function f:SetScript(k, fn) self[k] = fn end
         f.CreateAnimationGroup = function()
             local none = function() end
-            local g = { playing = false, SetLooping = none, SetScript = none }
+            local g = { playing = false, SetLooping = none }
+            g.SetScript = function(group, k, fn) group[k] = fn end
             g.Play = function(group) group.playing = true end
             g.Stop = function(group) group.playing = false end
             g.CreateAnimation = function()
-                return { SetFromAlpha = none, SetToAlpha = none, SetDuration = none, SetSmoothing = none }
+                return { SetFromAlpha = none, SetToAlpha = none, SetDuration = none, SetSmoothing = none,
+                    SetOrder = none, SetStartDelay = function(a, d) a.delay = d end }
             end
             return g
         end
@@ -135,12 +150,14 @@ local function Fixture(settings, units)
     local account = {}
     env.IsInInstance = function() return units.instance == true end
     env.InCombatLockdown = function() return units.combat == true end
-    local ns = { THEME = { accent = {}, muted = {}, fg = {}, panel = {}, accentSoft = {} }, Apply = function() end,
+    local ns = { THEME = { accent = {}, muted = {}, fg = {}, panel = {}, accentSoft = {}, bg = {} }, Apply = function() end,
         ShowRaidReminderAnchorConfig = function() end, HideRaidReminderAnchorConfig = function() end }
     ns.AccountSettings = function() return account end
     ns.Font = function() return Region() end
     ns.Solid = function() return Region() end
     ns.Border = function() end
+    -- A colour escape, as the colour's tag.
+    ns.Color = function(c, text) return ("[%s]%s"):format(c.tag or "?", text) end
 
     env.waypoints = {}
     ns.PlaceWaypoint = function(name, map, x, y) env.waypoints[#env.waypoints + 1] = { name, map, x, y } end
@@ -154,7 +171,15 @@ local function Fixture(settings, units)
         if name == "NaowhForeverRareMapPanel" then ns.mapPanel = f end
         return f
     end
-    ns.UI = { SoundPathFor = function() return nil end, _PlayLSMSound = function() end }
+    -- The HUD Editor's plates, by label.
+    ns.movers = {}
+    ns.UI = { SoundPathFor = function() return nil end, _PlayLSMSound = function() end,
+        AttachMover = function(frame, label, onMoved, page, feature)
+            local mover = Region()
+            mover.shown, mover.frame, mover.onMoved, mover.page, mover.feature = false, frame, onMoved, page, feature
+            ns.movers[label] = mover
+            return mover
+        end }
     ns.SoundChoices = function()
         return {}, { ["voice:move-out"] = "Move out", ["lsm:BugSack: Fatality"] = "BugSack: Fatality",
             ["lsm:Bell"] = "Bell" }, { "voice:move-out", "lsm:BugSack: Fatality", "lsm:Bell" }
@@ -164,20 +189,47 @@ local function Fixture(settings, units)
     -- The settings pages' cards, by id, to reach their rows.
     ns.cards = {}
     local page = { Window = function() end, Card = function(_, spec) ns.cards[spec.id] = spec end }
-    ns.Shared = { Settings = { Page = function() return page end }, Style = { PIN = "pin" },
+    local Settings = { Page = function() return page end, Group = function(title) return { group = title } end }
+    -- Settings.Look's rows, as the keys it would name.
+    function Settings.Look(prefix, opts)
+        local rows = { { key = prefix .. "Font" }, { key = prefix .. "FontSize" }, { key = prefix .. "Outline" } }
+        if opts.background == "card" then rows[#rows + 1] = { key = prefix .. "Background" } end
+        return rows
+    end
+    ns.Shared = { Settings = Settings,
         -- Per character, by the player's GUID.
         CharacterData = function(key)
             account[key] = account[key] or {}
             account[key]["Player-1-0001"] = account[key]["Player-1-0001"] or {}
             return account[key]["Player-1-0001"]
         end,
-        -- Forever's sign, as text.
-        -- The pin button: its click.
-        Parts = { ForeverInline = function() return " <inf>" end, IconButton = function(_, onClick)
-            local button = Region()
-            button.OnClick = onClick
-            return button
-        end } }
+        Style = { PIN = "pin", TICK = "tick", HAVE_RGB = { tag = "have" }, WARN_RGB = { tag = "warn" } },
+        Parts = {
+            -- Forever's sign, as text.
+            ForeverInline = function() return " <inf>" end,
+            -- The pin button: its click.
+            IconButton = function(parent, onClick)
+                local button = Region()
+                button.parent, button.OnClick = parent, onClick
+                return button
+            end,
+            HudBackdrop = function()
+                return { SetMode = function(b, mode) b.mode = mode or "card"; return b.mode end }
+            end,
+            HudFont = function(fs, font, size, outline) fs.font, fs.size, fs.outline = font, size, outline end,
+            ItemIcon = function()
+                local icon = Region()
+                icon.texture = Region()
+                return icon
+            end,
+            -- The house panel: its title and close button.
+            Panel = function(title)
+                local panel = env.CreateFrame("Frame", "Panel")
+                panel.title = Region()
+                panel.title:SetText(title)
+                panel.close = Region()
+                return panel
+            end } }
     -- Ashenvale: Mist Howler; Darkslayer Mordenthal, friendly to the Horde; Ursol'lok.
     ns.CompletoRareData = {
         Zones = { { map = 1440, name = "Ashenvale", continent = 1, rares = { 10644, 3736, 12037, 10647 } } },
@@ -331,31 +383,37 @@ do
     env.Fire("NAME_PLATE_UNIT_ADDED", "nameplate1")
     Check(ns.alert and ns.alert:IsShown(), "a rare's nameplate brings the alert")
     Check(ns.alert.name.text:find("Mist Howler", 1, true), "the alert names it")
-    Check(ns.alert.about.text == "Level 22, rare, not killed yet", "its level, kind, and that it is not killed yet")
+    local DOT = "  \194\183  "
+    Check(ns.alert.detail.text == "Level 22" .. DOT .. "Rare" .. DOT .. "Not killed yet",
+        "its level, kind, and that it is not killed yet")
     Check(ns.alert.model.unit == "nameplate1", "the portrait is its own model")
-    Check(ns.alert.skull.shown, "the card shows the skull went on it")
-    Check(ns.alert.skull.texture == "Interface\\TargetingFrame\\UI-RaidTargetingIcon_8", "with the skull's icon")
-    Check(ns.alert.glow.pulse.playing, "its glowing border pulses")
+    Check(ns.alert.mark.shown, "the card shows the skull went on it")
+    Check(ns.alert.mark.texture == "Interface\\TargetingFrame\\UI-RaidTargetingIcon_8", "with the skull's icon")
+    Check(ns.alert.strata == "HIGH", "it shows over the rest of the HUD")
+    Check(ns.alert.fade.playing and ns.alert.fadeOut.delay == 20, "it fades in, and out after Stays For")
+    Check(not ns.alert.glow.shown and ns.alert.backdrop.mode == "card" and ns.alert.name.size == 13
+        and ns.alert.detail.size == 11, "no glow by default, on a card, in the Font Size and two under it")
     Check(ns.alert.pin.shown, "its pin shows: it has a spot to go to")
     ns.alert.OnClick(ns.alert, "LeftButton")
-    Check(#env.waypoints == 0, "a click on the card sets no waypoint")
-    ns.alert.pin.OnClick()
+    Check(#env.waypoints == 0 and ns.alert:IsShown(), "a click on the card sets no waypoint and leaves it up")
+    ns.alert.pin.OnClick(ns.alert.pin)
     local wp = env.waypoints[1]
     Check(wp and wp[1] == "Mist Howler" and wp[2] == 1440 and wp[3] == 50 and wp[4] == 40,
         "its pin sets a waypoint to its spot")
-    ns.alert.OnDragStart(ns.alert)
-    ns.alert.OnDragStop(ns.alert)
-    Check(type(settings.rareAlertPos) == "table" and settings.rareAlertPos.x == 10 and settings.rareAlertPos.y == 120,
-        "a drag keeps the card's spot, from the screen's middle")
+    local mover = ns.movers["Rare Alert"]
+    Check(mover and mover.frame == ns.alert and mover.page == "Completo/Rares"
+        and mover.feature == "Completo/Rares:rareAlert", "it moves in the HUD Editor, with its settings card")
+    mover.onMoved({ point = "CENTER", relPoint = "CENTER", x = 10, y = 120 })
+    Check(settings.rareAlertPosition.x == 10 and settings.rareAlertPosition.y == 120, "the HUD Editor keeps its spot")
     ns.CompletoSettings.Set("rareAlertScale", 2)
-    Check(ns.alert.scale == 2 and ns.alert.at[1] == 5 and ns.alert.at[2] == 60,
-        "Card Size scales it about the same spot")
+    ns.CompletoSettings.Set("rareAlertGlow", true)
+    ns.CompletoSettings.Set("rareAlertBackground", "soft")
+    Check(ns.alert.scale == 2 and ns.alert.glow.shown and ns.alert.backdrop.mode == "soft",
+        "Size, Glow and Background change the card while it is up")
     ns.CompletoSettings.Set("rareAlertScale", 1)
     ns.alert.OnClick(ns.alert, "RightButton")
-    Check(ns.alert:IsShown(), "letting go after a drag does not close it")
-    ns.alert.OnClick(ns.alert, "RightButton")
     Check(not ns.alert:IsShown(), "a right-click puts it away")
-    Check(not ns.alert.glow.pulse.playing, "and the glow stops")
+    Check(not ns.alert.fade.playing, "and its fade stops")
     ns.alert:Show()
     Check(#env.marks == 1 and env.marks[1][2] == 8, "a skull goes on it")
     Check(env.sounds == 1, "a sound plays")
@@ -367,6 +425,11 @@ do
     units.nameplate1.mark = 2
     env.Fire("NAME_PLATE_UNIT_ADDED", "nameplate1")
     Check(ns.alert:IsShown() and #env.marks == 1, "a while later it alerts again, the mark left alone")
+    Check(ns.alert.at[2] == 120, "where the HUD Editor put it")
+    ns.alert.fade.OnFinished(ns.alert.fade)
+    Check(not ns.alert:IsShown(), "faded out, it is gone")
+    env.Advance(301)
+    env.Fire("NAME_PLATE_UNIT_ADDED", "nameplate1")
 
     R.SetKilled(10644, true)
     Check(not ns.alert:IsShown(), "the alert goes once its rare is killed")
@@ -378,7 +441,8 @@ do
     Check(#env.marks == 1, "nor gets a skull")
     settings.rareAlertKilled = true
     env.Fire("NAME_PLATE_UNIT_ADDED", "nameplate2")
-    Check(ns.alert:IsShown() and ns.alert.about.text:find("killed before", 1, true), "with Alert for Killed Rares it does")
+    Check(ns.alert:IsShown() and ns.alert.detail.text:find("[have]Killed before", 1, true),
+        "with Alert for Killed Rares it does, saying so in the have colour")
     Check(#env.marks == 2, "and the skull goes on it")
 
     ns.alert:Hide()
@@ -393,7 +457,7 @@ do
     units.group = "raid"
     units.target = { guid = Guid(8888), name = "Raid Rare", kind = "rareelite", level = 40 }
     env.Fire("PLAYER_TARGET_CHANGED")
-    Check(ns.alert:IsShown() and ns.alert.about.text == "Level 40, rare elite",
+    Check(ns.alert:IsShown() and ns.alert.detail.text == "Level 40" .. DOT .. "Rare elite",
         "a rare not in the data alerts too, without a kill note")
     Check(not ns.alert.pin.shown, "no pin with no spot to send a waypoint to")
     Check(#env.marks == 2, "in a raid without lead or assist, no skull")
@@ -402,22 +466,26 @@ do
     units.nameplate6 = { guid = Guid(9999), name = "Moon Rare", kind = "rare" }
     env.Fire("NAME_PLATE_UNIT_ADDED", "nameplate6")
     Check(#env.marks == 3 and env.marks[3][2] == 5, "Mark Rare: the moon when it is picked")
-    Check(ns.alert.skull.texture == "Interface\\TargetingFrame\\UI-RaidTargetingIcon_5", "the card shows the moon")
+    Check(ns.alert.mark.texture == "Interface\\TargetingFrame\\UI-RaidTargetingIcon_5", "the card shows the moon")
     units.nameplate8 = { guid = Guid(9997), name = "Tapped Rare", kind = "rare", denied = true }
     env.Fire("NAME_PLATE_UNIT_ADDED", "nameplate8")
     Check(ns.alert.name.text:find("Tapped Rare", 1, true) and #env.marks == 3,
         "a rare someone else tapped alerts, but gets no mark")
+    Check(ns.alert.detail.text:find("[warn]Tapped by someone else", 1, true), "and says it is tapped")
     ns.alert:Hide()
     ns.ShowRaidReminderAnchorConfig()
-    Check(ns.alert:IsShown() and ns.alert.skull.shown and ns.alert.skull.texture == "Interface\\TargetingFrame\\UI-RaidTargetingIcon_5",
+    Check(ns.alert:IsShown() and ns.alert.mark.shown and ns.alert.mark.texture == "Interface\\TargetingFrame\\UI-RaidTargetingIcon_5",
         "Unlock Mode previews the card with Mark Rare's mark")
+    Check(mover.shown and not ns.alert.fade.playing, "with its HUD Editor plate, and it does not fade")
+    ns.HideRaidReminderAnchorConfig()
+    Check(not mover.shown and not ns.alert:IsShown(), "leaving Unlock Mode takes both away")
     settings.rareMarker = "none"
     units.nameplate7 = { guid = Guid(9998), name = "Unmarked Rare", kind = "rare" }
     env.Fire("NAME_PLATE_UNIT_ADDED", "nameplate7")
-    Check(#env.marks == 3 and not ns.alert.skull.shown, "None: no mark, and none on the card")
+    Check(#env.marks == 3 and not ns.alert.mark.shown, "None: no mark, and none on the card")
     ns.alert:Hide()
     ns.ShowRaidReminderAnchorConfig()
-    Check(ns.alert:IsShown() and not ns.alert.skull.shown, "and none on Unlock Mode's preview")
+    Check(ns.alert:IsShown() and not ns.alert.mark.shown, "and none on Unlock Mode's preview")
 
     ns.CompletoSettings.Set("rareAlert", false)
     Check(not env.Listening("NAME_PLATE_UNIT_ADDED") and not ns.alert:IsShown(), "switched off: unregistered, alert gone")
@@ -477,14 +545,38 @@ do
     local settings = { enabled = true, rareAlert = false, rareMarker = "skull", rareSound = true }
     local ns, env = Fixture(settings, units)
     local test
-    for _, row in ipairs(ns.cards.rareAlert.rows) do
-        if row.label == "Test Alert" then test = row.button end
-        if row.label == "Card Position" then ns.resetCard = row.button end
+    local keys = {}
+    local function Collect(rows)
+        for _, row in ipairs(rows) do
+            if row[1] then Collect(row) end
+            if row.label == "Test Alert" then test = row.button end
+            if row.key then keys[row.key] = row end
+        end
     end
+    Collect(ns.cards.rareAlert.rows)
     Check(test ~= nil, "Rare Alerts has a Test button")
-    settings.rareAlertPos = { point = "TOP", relPoint = "TOP", x = 1, y = 2 }
-    ns.resetCard()
-    Check(settings.rareAlertPos == nil, "Reset puts the card back where it starts")
+    Check(keys.rareAlertTime and keys.rareAlertTime.label == "Stays For" and keys.rareAlertScale.label == "Size",
+        "Stays For and Size")
+    Check(keys.rareAlertFont and keys.rareAlertFontSize and keys.rareAlertOutline and keys.rareAlertBackground
+        and keys.rareAlertGlow, "the house look rows, and Glow")
+    Check(not keys.rareAlertPos and not keys.rareAlertPosition, "no position row: the HUD Editor places it")
+
+    -- The settings preview: the card in each moment.
+    local studio = ns.cards.rareAlert.studio
+    local labels = {}
+    for _, state in ipairs(studio.states) do labels[#labels + 1] = state.label end
+    Check(table.concat(labels, ",") == "Not Killed,Killed Before,Tapped", "the preview's three moments")
+    local preview = studio.new(env.UIParent)
+    local DOT = "  \194\183  "
+    studio.paint(preview, "new")
+    Check(preview.card.name.text == "Mist Howler" and preview.card.detail.text == "Level 22" .. DOT .. "Rare" .. DOT
+        .. "Not killed yet", "Not Killed: a rare you have not killed")
+    Check(preview.card.mark.shown and preview.card.model.creature == 10644, "with Mark Rare's mark and its portrait")
+    studio.paint(preview, "killed")
+    Check(preview.card.detail.text:find("[have]Killed before", 1, true), "Killed Before")
+    studio.paint(preview, "tapped")
+    Check(preview.card.detail.text:find("[warn]Tapped by someone else", 1, true), "Tapped")
+    Check(ns.alert == nil, "the preview is a card of its own, not the alert")
     local soundRow
     for _, row in ipairs(ns.cards.rareAlert.rows) do
         if row.key == "rareSoundKey" then soundRow = row end
