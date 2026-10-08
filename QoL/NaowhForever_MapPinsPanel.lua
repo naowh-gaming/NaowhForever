@@ -45,10 +45,17 @@ end
 -------------------------------------------------------------------------------
 --  The panel: a drawer against the map window's left side, the map's height (the Dungeon
 --  Journal takes the right side). Where that side has no room, the right; on the maximized
---  map, which fills the screen, inside its top left corner.
+--  map, which fills the screen, in the black bar left of its picture.
 -------------------------------------------------------------------------------
-local PAD, ROW_H, HEADER_H, GAP = 12, 24, 26, 4
+-- The options window's look: a header strip in the panel colour, small accent group titles and
+-- ruled rows with the switch on the right, on the window's backdrop with a black border.
+local St = ns.Shared.Style
+local PAD, HEAD_H, GROUP_H, ROW_H = 14, 40, 28, 28
+local LABEL_SIZE, NAME_SIZE, SMALL_SIZE = 13, 14, 11
+local RULE_ALPHA = 0.6
 local PANEL_W = 270
+local GAP = -1   -- the drawer's border on the map's, so the two read as one window
+local BAR_MARGIN, BAR_MIN_W = 8, 200   -- the full screen map's black bar
 
 local button, panel
 local controls = {}
@@ -57,24 +64,45 @@ local function RefreshRows()
     for _, control in ipairs(controls) do control._refreshValue() end
 end
 
-local function MakeRow(parent, row, y)
+local function Rule(frame, alpha)
+    local rule = ns.Solid(frame, "ARTWORK", T.line, alpha or RULE_ALPHA)
+    rule:SetPoint("BOTTOMLEFT")
+    rule:SetPoint("BOTTOMRIGHT")
+    ns.Hairline(rule, "h")
+end
+
+local function Strip(parent, y, h)
     local frame = CreateFrame("Frame", nil, parent)
-    frame:SetHeight(ROW_H)
-    frame:SetPoint("TOPLEFT", parent, "TOPLEFT", PAD, y)
-    frame:SetPoint("RIGHT", parent, "RIGHT", -PAD, 0)
+    frame:SetHeight(h)
+    frame:SetPoint("TOPLEFT", parent, "TOPLEFT", 1, y)
+    frame:SetPoint("TOPRIGHT", parent, "TOPRIGHT", -1, y)
+    return frame
+end
+
+local function MakeGroup(parent, title, y)
+    local frame = Strip(parent, y, GROUP_H)
+    local text = ns.Font(frame, SMALL_SIZE, nil, T.accentSoft)
+    text:SetPoint("BOTTOMLEFT", PAD, 7)
+    text:SetText(title)
+    Rule(frame)
+end
+
+local function MakeRow(parent, row, y)
+    local frame = Strip(parent, y, ROW_H)
     frame:EnableMouse(true)
-    local control = UI.BuildToggleControl(frame, nil,
+    Rule(frame)
+    local control = UI.BuildToggleControl(frame, frame:GetFrameLevel() + 2,
         function() return S.Get(row.key) end,
         function(v)
             S.Set(row.key, v)
             if UI.RefreshPage then UI:RefreshPage(true) end
-        end, 28, 14)
-    control:SetPoint("LEFT", 0, 0)
-    local label = ns.Font(frame, 12, nil)
+        end)
+    control:SetPoint("RIGHT", frame, "RIGHT", -PAD, 0)
+    local label = ns.Font(frame, LABEL_SIZE, nil, T.fg)
     label:SetJustifyH("LEFT")
     label:SetWordWrap(false)
-    label:SetPoint("LEFT", control, "RIGHT", 8, 0)
-    label:SetPoint("RIGHT", frame, "RIGHT", 0, 0)
+    label:SetPoint("LEFT", PAD, 0)
+    label:SetPoint("RIGHT", control, "LEFT", -8, 0)
     label:SetText(row.text)
     if row.tip then ns.Tooltip(frame, row.text, row.tip) end
     controls[#controls + 1] = control
@@ -85,10 +113,20 @@ local function PlacePanel()
     local map = WorldMapFrame
     panel:ClearAllPoints()
     if map.IsMaximized and map:IsMaximized() then
+        -- The full screen map letterboxes its picture: the drawer goes in the black bar on the
+        -- left, as wide as the bar allows. A bar too narrow for it leaves it in the corner.
         local canvas = map:GetCanvasContainer()
-        panel:SetPoint("TOPLEFT", canvas, "TOPLEFT", 8, -8)
+        local bar = (canvas:GetLeft() or 0) - (map:GetLeft() or 0) - BAR_MARGIN * 2
+        if bar >= BAR_MIN_W then
+            panel:SetWidth(math.min(PANEL_W, bar))
+            panel:SetPoint("TOPRIGHT", canvas, "TOPLEFT", -BAR_MARGIN, 0)
+        else
+            panel:SetWidth(PANEL_W)
+            panel:SetPoint("TOPLEFT", canvas, "TOPLEFT", 8, -8)
+        end
         panel:SetHeight(panel.contentH)
     else
+        panel:SetWidth(PANEL_W)
         if (map:GetLeft() or 0) >= PANEL_W + GAP then
             panel:SetPoint("TOPRIGHT", map, "TOPLEFT", -GAP, 0)
         else
@@ -106,28 +144,29 @@ local function BuildPanel()
     panel:SetFrameLevel(WorldMapFrame:GetFrameLevel() + 20)
     panel:EnableMouse(true)
     panel:Hide()
-    ns.Solid(panel, "BACKGROUND", T.bg, 0.95):SetAllPoints()
-    ns.Border(panel, T.line)
+    ns.Solid(panel, "BACKGROUND", T.bg, St.BACKDROP_ALPHA):SetAllPoints()
+    ns.Border(panel, St.BORDER_RGB)
 
-    local title = ns.Font(panel, 14, nil)
-    title:SetPoint("TOPLEFT", PAD, -PAD)
+    local head = Strip(panel, -1, HEAD_H)
+    ns.Solid(head, "BACKGROUND", T.panel, 1):SetAllPoints()
+    Rule(head, 1)
+    local title = ns.Font(head, NAME_SIZE, nil, T.fg)
+    title:SetPoint("LEFT", PAD, 0)
     title:SetText("Map Pins")
-    local close = ns.Button(panel, "X", 18, 18, function() panel:Hide() end)
-    close:SetPoint("TOPRIGHT", -6, -6)
+    local close = ns.Button(head, "x", 22, 22, function() panel:Hide() end)
+    close:SetPoint("RIGHT", -9, 0)
 
-    local y = -PAD - 24
+    local y = -1 - HEAD_H
     for _, row in ipairs(ROWS) do
         if row.header then
-            local h = ns.Font(panel, 11, nil, T.accent)
-            h:SetPoint("TOPLEFT", PAD, y - 8)
-            h:SetText(row.header)
-            y = y - HEADER_H
+            MakeGroup(panel, row.header, y)
+            y = y - GROUP_H
         else
             MakeRow(panel, row, y)
             y = y - ROW_H
         end
     end
-    panel.contentH = -y + PAD
+    panel.contentH = -y + 1
     panel:SetScript("OnShow", RefreshRows)
     -- The map's size buttons move it between windowed and the whole screen.
     if WorldMapFrame.Maximize then hooksecurefunc(WorldMapFrame, "Maximize", PlacePanel) end

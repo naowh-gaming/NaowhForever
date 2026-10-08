@@ -24,10 +24,11 @@ Check(Read("QoL/NaowhForever_TownMap.xml"):find('<Script file="NaowhForever_MapP
 
 local settings = { enabled = true, townMap = false }
 local S = { Get = function(key) return settings[key] end, Set = function(key, v) settings[key] = v end }
-local ns = { QoLSettings = S, Apply = function() end, THEME = { bg = {}, line = {}, accent = {} }, UI = {} }
+local ns = { QoLSettings = S, Apply = function() end, THEME = { bg = {}, line = {}, accent = {}, accentSoft = {}, panel = {}, fg = {} }, UI = {} }
 local made, boot, button, panel = 0, nil, nil, nil
 local mapLeft, maximized = 500, false
-local canvas = {}
+local canvasLeft = 350
+local canvas = { GetLeft = function() return canvasLeft end }
 -- One of the map's own buttons in its top right corner, x from the corner.
 local function MapButton(x)
     return { IsShown = function() return true end, GetNumPoints = function() return 1 end,
@@ -43,9 +44,10 @@ local function NewFrame()
     function f:ClearAllPoints() end
     function f:SetSize() end
     function f:SetPoint(...) self.point = { ... } end
-    function f:SetWidth() end
+    function f:SetWidth(w) self.width = w end
     function f:SetHeight(h) self.height = h end
     function f:SetFrameLevel() end
+    function f:GetFrameLevel() return 1 end
     function f:EnableMouse() end
     function f:IsShown() return self.shown end
     function f:SetShown(on) self.shown = on end
@@ -53,7 +55,9 @@ local function NewFrame()
     function f:Hide() self.shown = false end
     return f
 end
-ns.Solid = function() return { SetAllPoints = function() end } end
+ns.Solid = function() return { SetAllPoints = function() end, SetPoint = function() end } end
+ns.Hairline = function() end
+ns.Shared = { Style = { BACKDROP_ALPHA = 0.97, BORDER_RGB = {} } }
 ns.Border = function() return { SetColor = function() end } end
 ns.Tooltip = function() end
 local function Text() return { SetPoint = function() end, SetText = function() end, SetJustifyH = function() end,
@@ -76,7 +80,7 @@ local env = setmetatable({
     end,
     WorldMapFrame = { GetCanvasContainer = function() return canvas end, HookScript = function() end,
         GetFrameLevel = function() return 1 end, GetLeft = function() return mapLeft end,
-        GetHeight = function() return 500 end, IsMaximized = function() return maximized end,
+        GetHeight = function() return 700 end, IsMaximized = function() return maximized end,
         Maximize = function() end, Minimize = function() end,
         overlayFrames = { MapButton(-4), MapButton(-36), { IsShown = function() return true end,
             GetNumPoints = function() return 1 end, GetPoint = function() return "BOTTOMLEFT", canvas, "BOTTOMLEFT", 0 end } } },
@@ -99,7 +103,7 @@ button.scripts.OnClick()
 Check(panel and panel.shown, "the button opens the drawer")
 Check(panel.point[1] == "TOPRIGHT" and panel.point[2] == map and panel.point[3] == "TOPLEFT",
     "against the map window's left side")
-Check(panel.height == 500, "the map's height")
+Check(panel.height == 700, "the map's height")
 button.scripts.OnClick()
 Check(not panel.shown, "and closes it")
 mapLeft = 100
@@ -107,6 +111,10 @@ button.scripts.OnClick()
 Check(panel.point[2] == map and panel.point[3] == "TOPRIGHT", "no room on the left: the right side")
 maximized = true
 map.Maximize()
-Check(panel.point[1] == "TOPLEFT" and panel.point[2] == canvas, "the maximized map: inside its corner")
+Check(panel.point[1] == "TOPRIGHT" and panel.point[2] == canvas and panel.point[3] == "TOPLEFT"
+    and panel.width == 234, "the maximized map: in the black bar left of the picture, as wide as it")
+canvasLeft = 250
+map.Maximize()
+Check(panel.point[1] == "TOPLEFT" and panel.point[2] == canvas, "a bar too narrow: inside the corner")
 
 print(("test-map-pins-panel: %d checks passed"):format(checks))
