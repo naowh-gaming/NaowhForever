@@ -14,14 +14,15 @@ max_line_length = false
 -- RestedXP imports its themes from.
 globals = {
     "NaowhForever", "NaowhForever_API", "NaowhForeverDB", "NaowhUI_SmartRemindersDB",
-    "NaowhForever_OnCompartmentClick", "NaowhForever_BagSpacePickUp", "NaowhForever_BossLoot", "NaowhForever_ToggleJournal", "NaowhForever_ToggleBis",
+    "NaowhForever_OnCompartmentClick", "NaowhForever_BagSpacePickUp", "NaowhForever_BossLoot", "NaowhForever_ToggleJournal", "NaowhForever_ToggleBis", "NaowhForever_ToggleCompleto",
     "NaowhForever_ToggleGroupInspect", "BINDING_NAME_NAOWHFOREVER_GROUPINSPECT",
     "SLASH_NAOWHFOREVER1", "SLASH_NAOWHFOREVER2", "SLASH_NAOWHFOREVER3",
     "SLASH_NAOWHFOREVER4", "SLASH_NAOWHFOREVER5",
     "SLASH_NAOWHFOREVERCOPY1", "SLASH_NAOWHFOREVERCOPY2", "SLASH_NAOWHUITANK1", "SLASH_NAOWHFOREVERAIM1",
     "BINDING_HEADER_NAOWHFOREVER", "BINDING_NAME_NAOWHFOREVER_BAGSPACE_PICKUP",
-    "BINDING_NAME_NAOWHFOREVER_BOSSLOOT", "BINDING_NAME_NAOWHFOREVER_JOURNAL", "BINDING_NAME_NAOWHFOREVER_BIS",
-    "NaowhForeverTownPinMixin", "NaowhForeverZoneLinkPinMixin", "NaowhForeverUnexploredPinMixin", "NaowhForeverLibraryPinMixin", "NaowhForeverSleepingBagPinMixin",
+    "BINDING_NAME_NAOWHFOREVER_BOSSLOOT", "BINDING_NAME_NAOWHFOREVER_JOURNAL", "BINDING_NAME_NAOWHFOREVER_BIS", "BINDING_NAME_NAOWHFOREVER_COMPLETO",
+    "NaowhForeverTownPinMixin", "NaowhForeverZoneLinkPinMixin", "NaowhForeverUnexploredPinMixin", "NaowhForeverSkybornePinMixin", "NaowhForeverLibraryPinMixin", "NaowhForeverSleepingBagPinMixin", "NaowhForeverEntrancePinMixin",
+    "NaowhForeverQuestGiverPinMixin",
     "SlashCmdList", "hash_SlashCmdList", "StaticPopupDialogs",
     "STANDARD_TEXT_FONT", "UNIT_NAME_FONT", "DAMAGE_TEXT_FONT", "RXPGuides_Themes",
 }
@@ -44,7 +45,7 @@ read_globals = {
     "CheckInteractDistance", "ClearInspectPlayer", "InspectFrame", "NotifyInspect",
     "INSPECTFRAME_SUBFRAMES", "InspectLevelText", "InspectModelFrame", "InspectPaperDollFrame",
     "PANEL_INSET_BOTTOM_OFFSET", "PANEL_INSET_RIGHT_OFFSET",
-    "ChatEdit_InsertLink", "ChatFrame1EditBox", "ChatFrameUtil", "CinematicFrame_CancelCinematic",
+    "ChatEdit_InsertLink", "ChatFrame1EditBox", "ChatFrameUtil", "ChatFrame_AddMessageEventFilter", "ChatFrame_RemoveMessageEventFilter", "CinematicFrame_CancelCinematic",
     "ClearCursor", "CloseQuest", "ColorPickerFrame", "CombatTextFont",
     "CombatTextFontOutline", "CompleteQuest", "ConfirmAcceptQuest",
     "Constants", "COPPER_AMOUNT", "CopyTable", "CreateAndInitFromMixin", "CreateAtlasMarkup", "CreateColor",
@@ -54,7 +55,7 @@ read_globals = {
     "C_CurrencyInfo", "C_CurveUtil", "C_CVar", "C_DeathInfo", "C_DurationUtil",
     "C_EncounterEvents", "C_EncounterJournal", "C_EncounterTimeline", "C_EquipmentSet",
     "C_ActionBar", "C_FriendList", "C_GamepadUI", "C_GossipInfo", "C_GuildInfo", "C_InstanceEncounter",
-    "C_Item", "C_KeyBindings", "C_LootHistory", "C_MajorFactions", "C_Map", "C_Navigation", "C_MountJournal", "C_Transmog", "C_MerchantFrame", "C_NamePlate", "C_PaperDollInfo",
+    "C_Item", "C_KeyBindings", "C_LFGList", "C_LootHistory", "C_MajorFactions", "C_Map", "C_Navigation", "C_MountJournal", "C_Transmog", "C_MerchantFrame", "C_NamePlate", "C_PaperDollInfo",
     "C_PartyInfo", "C_QuestLog", "C_Reputation", "C_SeasonInfo",
     "C_RestrictedActions", "C_Secrets", "C_SpecializationInfo", "C_Spell", "C_SpellBook",
     "C_StringUtil", "C_SuperTrack", "SuperTrackedFrame", "C_SwingTimer", "C_TaxiMap", "C_Texture", "C_Timer",
@@ -80,15 +81,15 @@ read_globals = {
     "GetMerchantItemID", "GetMerchantItemInfo", "GetMerchantItemLink",
     "GetMerchantItemMaxStack", "GetMerchantNumItems", "GetMoney", "GetMoneyString",
     "GetMouseFoci", "GetNetStats", "GetNormalizedRealmName", "GetNumActiveQuests",
-    "GetNumAvailableQuests", "GetNumClasses", "GetNumGroupMembers", "GetNumGuildMembers", "GetNumSavedInstances",
+    "GetNumAvailableQuests", "GetAvailableQuestInfo", "GetAvailableTitle", "GetNumClasses", "GetNumGroupMembers", "GetNumGuildMembers", "GetNumSavedInstances",
     "GetNumLootItems", "GetNumBindings", "GetNumMacros", "GetNumQuestChoices", "GetNumRoutes",
     "GetNumShapeshiftForms", "GetNumSubgroupMembers", "GetNumTrainerServices",
     "GetPartyAssignment", "GetPetActionInfo", "GetPhysicalScreenSize", "GetPlayerInfoByGUID",
-    "GetProfessionInfo", "GetProfessions", "GetQuestDifficultyColor", "GetQuestID", "GetQuestLink", "GetQuestLogChoiceInfo",
+    "GetProfessionInfo", "GetProfessions", "GetQuestDifficultyColor", "GetQuestGreenRange", "GetQuestID", "GetQuestLink", "GetQuestLogChoiceInfo",
     "GetQuestLogQuestText", "GetQuestLogRewardInfo", "GetQuestLogRewardMoney", "GetQuestLogRewardXP",
     "GetNumQuestLogChoices", "GetNumQuestLogRewards", "QuestUtils_IsQuestWatched",
     "GetQuestItemInfo", "GetQuestItemLink", "GetQuestLogChoiceInfo", "GetQuestLogItemLink",
-    "GetQuestLogRewardXP", "GetQuestReward", "GetRaidRosterInfo", "GetRealmName", "GetSavedInstanceInfo",
+    "GetQuestLogRewardXP", "GetQuestReward", "GetRaidRosterInfo", "GetRealmName", "GetRealZoneText", "WHO_LIST_FORMAT", "WHO_LIST_GUILD_FORMAT", "GetSavedInstanceInfo",
     "GetRepairAllCost", "GetShapeshiftForm", "GetShapeshiftFormID",
     "GetSpecializationInfoByID", "GetSpellBaseCooldown", "GetSubZoneText", "GetTaxiMapID",
     "GetTime", "GetTitleText", "GetTrainerServiceCost", "GetTrainerServiceIcon", "GetTrainerServiceInfo",
@@ -104,7 +105,7 @@ read_globals = {
     "ItemRefTooltipTextLeft1", "ITEM_QUALITY_COLORS", "LE_PARTY_CATEGORY_INSTANCE", "LibStub",
     "LOCALIZED_CLASS_NAMES_MALE", "LoggingCombat", "LootFrame", "LootSlot",
     "LOOT_ITEM_PUSHED_SELF", "LOOT_ITEM_PUSHED_SELF_MULTIPLE", "LOOT_ITEM_SELF",
-    "LOOT_ITEM_SELF_MULTIPLE", "MainMenuBarVehicleLeaveButton", "MapCanvasDataProviderMixin", "MapCanvasPinMixin",
+    "LOOT_ITEM_SELF_MULTIPLE", "MainMenuBarVehicleLeaveButton", "MapCanvasDataProviderMixin", "MapCanvasPinMixin", "FlightMap_FlightPointPinMixin",
     "GetMinimapShape", "GetPlayerFacing", "Minimap",
     "C_MapExplorationInfo", "CreateTexturePool",
     "MAX_PARTY_MEMBERS", "MAX_RAID_MEMBERS", "Menu", "MenuUtil", "MenuVariants",
@@ -122,7 +123,7 @@ read_globals = {
     "SHARE_QUEST", "ShoppingTooltip1", "ShoppingTooltip2", "SILVER_AMOUNT", "SOUNDKIT",
     "StaticPopup_FindVisible", "StaticPopup_Hide", "StaticPopup_Show", "StatusTrackingBarInfo",
     "StatusTrackingBarManager", "strlower", "strsplit", "strsub", "strtrim", "strupper",
-    "SubZoneTextFrame", "TaxiGetNodeSlot", "TaxiNodeGetType", "TaxiNodeName", "TaxiRequestEarlyLanding",
+    "SubZoneTextFrame", "TaxiGetNodeSlot", "TaxiNodeGetType", "TaxiNodeName", "TaxiNodeOnButtonEnter", "TaxiRequestEarlyLanding",
     "tContains", "TextToSpeech_GetSelectedVoice", "time", "ToggleCalendar", "TomTom",
     "TooltipDataProcessor", "TRADE_SKILLS", "TSM_API", "UIErrorsFrame", "UiMapPoint",
     "UIParent", "UNKNOWNOBJECT", "UnitAffectingCombat", "UnitAttackSpeed", "UnitCanAttack",
@@ -147,6 +148,7 @@ read_globals = {
 files["Tools/regression/"] = {
     globals = { "strmatch" },
 }
+files["Tools/build_presets.lua"] = { globals = { "strmatch" } }
 
 -- Baseline: warnings that were already in the code when this config was added, silenced
 -- only where they are (file, warning code, name) so any new warning still fails. Remove

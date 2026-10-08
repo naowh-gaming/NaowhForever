@@ -109,6 +109,15 @@ local MODULES = {
           { name = "Library Books", reuse = true },
           { name = "Sleeping Bag", reuse = true },
       } },
+    -- The collections are a window of their own (open); only their settings live here.
+    { name = "Completo", group = "ADVENTURE", navIcon = "checklist", settings = "CompletoSettings",
+      addon = "NaowhForever_Completo",
+      open = "ToggleCompletoWindow",
+      command = "completo", short = "Completo", icon = "Interface\\Icons\\INV_Misc_Book_08",
+      subtitle = "Everything there is to do, and how much of it you have done.",
+      tabs = {
+          { name = "Quests", reuse = true },
+      } },
     -- The sets are a window of their own (open); only their settings live here.
     { name = "Gear & Trinkets", group = "COMBAT", navIcon = "shield", settings = "QoLSettings", enabledKey = "gearSets",
       addon = "NaowhForever_GearSets",
@@ -185,15 +194,11 @@ local MODULES = {
               .. "reminders still carry their own text, set per reminder from the boss "
               .. "pages." },
       } },
-    { name = "Smart Reminders", group = "COMBAT", navIcon = "bell",
-      addon = "NaowhForever_SmartReminders",
-      open = "ToggleSmartRemindersWindow",
-      command = "reminders", short = "Reminders", icon = "Interface\\Icons\\Ability_Warrior_ShieldWall",
-      subtitle = "Calls out what to press when a boss ability is about to land.",
-      tabs = {
-          { name = "Settings", reuse = true },
-      } },
 }
+
+-- Smart Reminders is no longer shipped. A zip extracted over 0.5.25 or older leaves its folder
+-- behind, and with no entry above it could not be switched off here.
+C_AddOns.DisableAddOn("NaowhForever_SmartReminders")
 
 -- Page key -> page. Module tabs are keyed "Module/Tab", since two modules may share a tab
 -- name; the window's own pages are their own key.
@@ -327,6 +332,17 @@ local function ModuleOn(mod)
     if mod.addon and C_AddOns.GetAddOnEnableState(mod.addon) == 0 then return false end
     if mod.settings then return ns[mod.settings].Get(mod.enabledKey or "enabled") end
     return ns.DB().enabled == true
+end
+
+function ns.ModuleSwitches()
+    local list = {}
+    for _, mod in ipairs(MODULES) do
+        local store = mod.addon and mod.settings and ns[mod.settings]
+        if store then
+            list[#list + 1] = { name = DisplayName(mod), store = store, key = mod.enabledKey or "enabled" }
+        end
+    end
+    return list
 end
 
 local function SetModuleOn(mod, on)
@@ -1247,8 +1263,8 @@ local function CreateWindow()
     searchBox:SetHeight(SEARCH.h)
     local nav = NavigationScroll(sidebar, SEARCH.top + SEARCH.h + SEARCH.gap, FOOTER_H_SIDEBAR + 6 + NAV_STEP * #SYSTEM_NAV,
         SIDEBAR_W)
-    -- Modules list in MODULES order under their group; one with only unfinished tabs, or whose
-    -- addon is switched off, is left out.
+    -- Modules list in MODULES order under their group, and the groups in a fixed order; one with
+    -- only unfinished tabs, or whose addon is switched off, is left out.
     local groups, grouped = {}, {}
     for _, mod in ipairs(MODULES) do
         local ready = false
@@ -1262,6 +1278,8 @@ local function CreateWindow()
             table.insert(grouped[group], mod)
         end
     end
+    local order = { [""] = 0, ADVENTURE = 1, COMBAT = 2, UTILITIES = 3 }
+    table.sort(groups, function(a, b) return order[a] < order[b] end)
     local ny = 0
     for _, group in ipairs(groups) do
         if group ~= "" then
@@ -1520,6 +1538,7 @@ BINDING_NAME_NAOWHFOREVER_JOURNAL = "Open Dungeon Journal"
 BINDING_NAME_NAOWHFOREVER_BOSSLOOT = "Boss Loot at Cursor"
 BINDING_NAME_NAOWHFOREVER_BIS = "Open BiS List"
 BINDING_NAME_NAOWHFOREVER_GROUPINSPECT = "Open Group Inspect"
+BINDING_NAME_NAOWHFOREVER_COMPLETO = "Open Completo"
 _G["BINDING_NAME_CLICK NaowhForeverBlessNext:LeftButton"] = "Next Blessing"
 _G["BINDING_NAME_CLICK NaowhForeverBlessNextGreater:LeftButton"] = "Next Greater Blessing"
 
@@ -1530,6 +1549,7 @@ NaowhForever_ToggleJournal = SwitchedOff("Dungeon Journal")
 NaowhForever_BossLoot = SwitchedOff("Dungeon Journal")
 NaowhForever_ToggleBis = SwitchedOff("BiS List")
 NaowhForever_ToggleGroupInspect = SwitchedOff("Group Inspect")
+NaowhForever_ToggleCompleto = SwitchedOff("Completo")
 
 SLASH_NAOWHFOREVER1 = "/smartreminders"
 SLASH_NAOWHFOREVER2 = "/naowh"
