@@ -331,9 +331,28 @@ local far = nav.distance
 nav.distance = 4
 driver.scripts.OnUpdate()
 Check(not pin:IsShown() and navBar:IsShown(), "next to the quest giver the pin goes")
+nav.distance = 6
+driver.scripts.OnUpdate()
+Check(not pin:IsShown(), "a step back does not bring it back, so it does not flicker")
+nav.clamped, nav.x, nav.y = true, 960, -900
+driver.scripts.OnUpdate()
+Check(not cue:IsShown(), "with your back to the quest giver, no behind-you cue either")
+nav.clamped, nav.x, nav.y = false, 1100, 700
 nav.distance = far
 driver.scripts.OnUpdate()
 Check(pin:IsShown(), "walking away brings it back")
+
+-- A corpse is on the ground: lifted with its line, and it does not go up close.
+tracking = 2
+events.scripts.OnEvent(events, "SUPER_TRACKING_CHANGED")
+driver.scripts.OnUpdate()
+Check(pin.point[5] == 36 / 2 + 80 and pin.beam.shown, "a corpse's pin stands over its spot")
+nav.distance = 4
+driver.scripts.OnUpdate()
+Check(pin:IsShown(), "and stays up close")
+nav.distance = far
+tracking = 0
+events.scripts.OnEvent(events, "SUPER_TRACKING_CHANGED")
 
 -- A new waypoint during an arrival ends it.
 events.scripts.OnEvent(events, "NAVIGATION_DESTINATION_REACHED", false)
