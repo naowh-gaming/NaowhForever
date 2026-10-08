@@ -51,7 +51,7 @@ end
 -- The options window's look: a header strip in the panel colour, small accent group titles and
 -- ruled rows with the switch on the right, on the window's backdrop with a black border.
 local St = ns.Shared.Style
-local PAD, HEAD_H, GROUP_H, ROW_H = 14, 40, 28, 28
+local PAD, HEAD_H, ROW_H, ROW_MIN_H = 14, 40, 28, 20   -- a group title takes a row's height
 local LABEL_SIZE, NAME_SIZE, SMALL_SIZE = 13, 14, 11
 local RULE_ALPHA = 0.6
 local PANEL_W = 330   -- the quest log's width, where the map has none to read
@@ -66,7 +66,7 @@ local GAP = -1   -- the drawer's border on the map's, so the two read as one win
 local BAR_MARGIN, BAR_MIN_W = 8, 200   -- the full screen map's black bar
 
 local button, panel
-local controls = {}
+local controls, strips = {}, {}
 
 local function RefreshRows()
     for _, control in ipairs(controls) do control._refreshValue() end
@@ -87,8 +87,21 @@ local function Strip(parent, y, h)
     return frame
 end
 
+-- The rows under the header, each rowH high. Returns the drawer's height.
+local function Layout(rowH)
+    local y = -1 - HEAD_H
+    for _, frame in ipairs(strips) do
+        frame:SetHeight(rowH)
+        frame:SetPoint("TOPLEFT", panel, "TOPLEFT", 1, y)
+        frame:SetPoint("TOPRIGHT", panel, "TOPRIGHT", -1, y)
+        y = y - rowH
+    end
+    return -y + 1
+end
+
 local function MakeGroup(parent, title, y)
-    local frame = Strip(parent, y, GROUP_H)
+    local frame = Strip(parent, y, ROW_H)
+    strips[#strips + 1] = frame
     local text = ns.Font(frame, SMALL_SIZE, nil, T.accentSoft)
     text:SetPoint("BOTTOMLEFT", PAD, 7)
     text:SetText(title)
@@ -97,6 +110,7 @@ end
 
 local function MakeRow(parent, row, y)
     local frame = Strip(parent, y, ROW_H)
+    strips[#strips + 1] = frame
     frame:EnableMouse(true)
     Rule(frame)
     local control = UI.BuildToggleControl(frame, frame:GetFrameLevel() + 2,
@@ -132,7 +146,7 @@ local function PlacePanel()
             panel:SetWidth(PanelWidth())
             panel:SetPoint("TOPLEFT", canvas, "TOPLEFT", 8, -8)
         end
-        panel:SetHeight(panel.contentH)
+        panel:SetHeight(Layout(ROW_H))
     else
         local w = PanelWidth()
         panel:SetWidth(w)
@@ -141,8 +155,10 @@ local function PlacePanel()
         else
             panel:SetPoint("TOPLEFT", map, "TOPRIGHT", GAP, 0)
         end
-        -- The map's height, or the rows' where the map is shorter.
-        panel:SetHeight(math.max(panel.contentH, map:GetHeight()))
+        -- The map's height: the rows shrink to fit a small map, down to ROW_MIN_H.
+        local fit = math.floor((map:GetHeight() - HEAD_H - 2) / #strips)
+        local h = Layout(math.max(ROW_MIN_H, math.min(ROW_H, fit)))
+        panel:SetHeight(math.max(h, map:GetHeight()))
     end
 end
 
@@ -165,17 +181,9 @@ local function BuildPanel()
     local close = ns.Button(head, "x", 22, 22, function() panel:Hide() end)
     close:SetPoint("RIGHT", -9, 0)
 
-    local y = -1 - HEAD_H
     for _, row in ipairs(ROWS) do
-        if row.header then
-            MakeGroup(panel, row.header, y)
-            y = y - GROUP_H
-        else
-            MakeRow(panel, row, y)
-            y = y - ROW_H
-        end
+        if row.header then MakeGroup(panel, row.header, 0) else MakeRow(panel, row, 0) end
     end
-    panel.contentH = -y + 1
     panel:SetScript("OnShow", RefreshRows)
     -- The map's size buttons move it between windowed and the whole screen.
     if WorldMapFrame.Maximize then hooksecurefunc(WorldMapFrame, "Maximize", PlacePanel) end

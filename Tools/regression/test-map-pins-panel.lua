@@ -26,7 +26,7 @@ local settings = { enabled = true, townMap = false }
 local S = { Get = function(key) return settings[key] end, Set = function(key, v) settings[key] = v end }
 local ns = { QoLSettings = S, Apply = function() end, THEME = { bg = {}, line = {}, accent = {}, accentSoft = {}, panel = {}, fg = {} }, UI = {} }
 local made, boot, button, panel = 0, nil, nil, nil
-local mapLeft, maximized = 500, false
+local mapLeft, maximized, mapHeight = 500, false, 700
 local canvasLeft = 350
 local canvas = { GetLeft = function() return canvasLeft end }
 -- One of the map's own buttons in its top right corner, x from the corner.
@@ -80,7 +80,7 @@ local env = setmetatable({
     end,
     WorldMapFrame = { GetCanvasContainer = function() return canvas end, HookScript = function() end,
         GetFrameLevel = function() return 1 end, GetLeft = function() return mapLeft end,
-        GetHeight = function() return 700 end, IsMaximized = function() return maximized end,
+        GetHeight = function() return mapHeight end, IsMaximized = function() return maximized end,
         Maximize = function() end, Minimize = function() end,
         overlayFrames = { MapButton(-4), MapButton(-36), { IsShown = function() return true end,
             GetNumPoints = function() return 1 end, GetPoint = function() return "BOTTOMLEFT", canvas, "BOTTOMLEFT", 0 end } } },
@@ -106,6 +106,11 @@ Check(panel.point[1] == "TOPRIGHT" and panel.point[2] == map and panel.point[3] 
 Check(panel.height == 700, "the map's height")
 button.scripts.OnClick()
 Check(not panel.shown, "and closes it")
+mapHeight = 450
+button.scripts.OnClick()
+Check(panel.height == 450, "a small map: the rows shrink so the drawer keeps the map's height")
+button.scripts.OnClick()
+mapHeight = 700
 mapLeft = 100
 button.scripts.OnClick()
 Check(panel.point[2] == map and panel.point[3] == "TOPRIGHT", "no room on the left: the right side")
