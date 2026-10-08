@@ -823,8 +823,11 @@ do
     star:OnMouseEnter()
     Check(env.tip[#env.tip][1] == "Click for a waypoint, right-click to let go.", "hovered, the focused star has its tooltip")
     star:OnClick("RightButton")
+    Check(#PinsOf(10647, "dot") == 0 and howler.Icon.alpha == 1 and star.size == 18,
+        "right-clicked again, every star is back at once, while the pointer is still on it")
+    Check(env.tip[#env.tip][1] == "Click for a waypoint, right-click to keep its spots shown.", "its tooltip stays")
     star:OnMouseLeave()
-    Check(#PinsOf(10647, "dot") == 0 and howler.Icon.alpha == 1, "right-clicked again, it lets go")
+    Check(#PinsOf(10647, "dot") == 0 and howler.Icon.alpha == 1, "and moving off changes nothing")
     star:OnClick("RightButton")
     star:OnMouseLeave()
     howler:OnMouseEnter()

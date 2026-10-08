@@ -178,8 +178,15 @@ function NaowhForeverRarePinMixin:OnClick(button)
         ns.PlaceWaypoint(R.Name(self.npc), R.Map(self.npc), self.spotX, self.spotY)
     elseif button == "RightButton" then
         focused = focused ~= self.npc and self.npc or nil
-        -- Still under the pointer: as hovered, its tooltip saying what a right-click does now.
-        self:OnMouseEnter()
+        if focused then
+            -- Still under the pointer: as hovered, its tooltip saying what a right-click does now.
+            self:OnMouseEnter()
+        else
+            -- Let go of: every star back at once, not only once the pointer moves off; the
+            -- tooltip stays while it is still over the star.
+            Rest()
+            ShowTip(self)
+        end
     end
 end
 
