@@ -525,7 +525,9 @@ local function DropEnter(row)
     GameTooltip:SetItemByID(row.item[1])
     GameTooltip:AddLine(" ")
     if R.NewInForever(row.item) then GameTooltip:AddLine(Parts.ForeverLine()) end
-    if row.tick:IsShown() then GameTooltip:AddLine("This rare dropped it for you.", 0.25, 0.82, 0.25) end
+    if row.tick:IsShown() then
+        GameTooltip:AddLine("This rare dropped it for you.", St.HAVE_RGB.r, St.HAVE_RGB.g, St.HAVE_RGB.b)
+    end
     GameTooltip:AddLine("Right-click: Wowhead link", T.accentSoft.r, T.accentSoft.g, T.accentSoft.b)
     GameTooltip:Show()
 end
@@ -537,10 +539,8 @@ end
 local function NewDrop(parent)
     local row = NewRowBase(parent)
     row.divider:Hide()
-    row.icon = row:CreateTexture(nil, "ARTWORK")
-    row.icon:SetSize(DROP_ICON, DROP_ICON)
+    row.icon = Parts.ItemIcon(row, DROP_ICON)
     row.icon:SetPoint("LEFT", St.INDENT + LEVEL_W + 16, 0)
-    row.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
     row.name = ns.Font(row, 12, nil, T.fg)
     row.name:SetPoint("LEFT", row.icon, "RIGHT", 6, 0)
     row.name:SetJustifyH("LEFT")
@@ -576,7 +576,7 @@ local function SetDrop(row, item, npc, stripe)
     end
     row.name:ClearAllPoints()
     row.name:SetPoint("LEFT", row.icon, "RIGHT", 6, 0)
-    row.icon:SetTexture(C_Item.GetItemIconByID(item[1]) or 134400)
+    row.icon.texture:SetTexture(C_Item.GetItemIconByID(item[1]) or 134400)
     local c = ITEM_QUALITY_COLORS and ITEM_QUALITY_COLORS[item[2]] or T.fg
     row.name:SetText(R.NewInForever(item) and item[4] .. Parts.ForeverInline(12, Parts.CARD_DROP) or item[4])
     row.name:SetTextColor(c.r, c.g, c.b)
@@ -893,12 +893,18 @@ hooksecurefunc(ns, "Apply", function()
 end)
 
 -- which: "quests" or "rares" to open on that tab; else the one it was on. Opens on the zone
--- you are in when it has quests (or rares), else where it was.
-function ns.OpenCompletoWindow(which)
+-- you are in when it has quests (or rares), else where it was; npc: a rare to open on, in its
+-- zone with its drops open.
+function ns.OpenCompletoWindow(which, npc)
     if which then tab = which end
     if not window then Build() end
     zone = Q.CurrentZone() or zone
     rareZone = R.CurrentZone() or rareZone
+    if npc then
+        rareZone = R.Zone(npc) or rareZone
+        opened[npc] = true
+        window.search:SetText("")
+    end
     window:SetScale(ns.UIScale() * S.Get("windowScale"))
     window:Show()
     Paint()
