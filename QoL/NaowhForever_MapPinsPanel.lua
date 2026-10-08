@@ -12,7 +12,7 @@ local UI = ns.UI
 local T = ns.THEME
 local S = ns.QoLSettings
 
--- The panel's rows in order. `half` rows pair up two to a line.
+-- The panel's rows in order.
 local ROWS = {
     { header = "OPTIONS" },
     { key = "townCapitalsOnly", text = "Shops & Trainers Only in Capitals",
@@ -21,21 +21,21 @@ local ROWS = {
     { key = "townMinimap", text = "Mailboxes & Spirit Healers on Minimap",
       tip = "Pins the mailboxes and spirit healers near you on the minimap." },
     { header = "SHOW" },
-    { key = "townFlight", text = "Flight Masters", half = true },
-    { key = "townInn", text = "Innkeepers", half = true },
-    { key = "townMail", text = "Mailboxes", half = true, tip = "Every mailbox, in towns and out in the world." },
-    { key = "townSpiritHealers", text = "Spirit Healers", half = true,
+    { key = "townFlight", text = "Flight Masters" },
+    { key = "townInn", text = "Innkeepers" },
+    { key = "townMail", text = "Mailboxes", tip = "Every mailbox, in towns and out in the world." },
+    { key = "townSpiritHealers", text = "Spirit Healers",
       tip = "Every graveyard's spirit healer, in towns and out in the world." },
-    { key = "townZoneLinks", text = "Zone Exits", half = true, tip = "Click an exit to open the adjoining zone map." },
-    { key = "townTravel", text = "Boats & Zeppelins", half = true,
+    { key = "townZoneLinks", text = "Zone Exits", tip = "Click an exit to open the adjoining zone map." },
+    { key = "townTravel", text = "Boats & Zeppelins",
       tip = "Every dock and zeppelin tower; click one to open where it goes." },
-    { key = "townClass", text = "Class Trainers", half = true, tip = "Your class's trainers only." },
-    { key = "townProfession", text = "Profession Trainers", half = true },
-    { key = "townBank", text = "Bank & Auction House", half = true },
-    { key = "townRepair", text = "Repairs", half = true },
-    { key = "townSupplies", text = "Reagents, Ammo & Food", half = true },
-    { key = "townStable", text = "Stable Masters", half = true },
-    { key = "townVendors", text = "Other Vendors", half = true, tip = "Trade goods and every other merchant." },
+    { key = "townClass", text = "Class Trainers", tip = "Your class's trainers only." },
+    { key = "townProfession", text = "Profession Trainers" },
+    { key = "townBank", text = "Bank & Auction House" },
+    { key = "townRepair", text = "Repairs" },
+    { key = "townSupplies", text = "Reagents, Ammo & Food" },
+    { key = "townStable", text = "Stable Masters" },
+    { key = "townVendors", text = "Other Vendors", tip = "Trade goods and every other merchant." },
 }
 
 local function On()
@@ -43,10 +43,12 @@ local function On()
 end
 
 -------------------------------------------------------------------------------
---  The panel
+--  The panel: a drawer against the map window's left side, the map's height (the Dungeon
+--  Journal takes the right side). Where that side has no room, the right; on the maximized
+--  map, which fills the screen, inside its top left corner.
 -------------------------------------------------------------------------------
-local PAD, ROW_H, HEADER_H, COL_W = 10, 22, 22, 170
-local PANEL_W = PAD * 2 + COL_W * 2
+local PAD, ROW_H, HEADER_H, GAP = 12, 24, 26, 4
+local PANEL_W = 270
 
 local button, panel
 local controls = {}
@@ -55,10 +57,11 @@ local function RefreshRows()
     for _, control in ipairs(controls) do control._refreshValue() end
 end
 
-local function MakeRow(parent, row, x, y, w)
+local function MakeRow(parent, row, y)
     local frame = CreateFrame("Frame", nil, parent)
-    frame:SetSize(w, ROW_H)
-    frame:SetPoint("TOPLEFT", parent, "TOPLEFT", x, y)
+    frame:SetHeight(ROW_H)
+    frame:SetPoint("TOPLEFT", parent, "TOPLEFT", PAD, y)
+    frame:SetPoint("RIGHT", parent, "RIGHT", -PAD, 0)
     frame:EnableMouse(true)
     local control = UI.BuildToggleControl(frame, nil,
         function() return S.Get(row.key) end,
@@ -70,17 +73,37 @@ local function MakeRow(parent, row, x, y, w)
     local label = ns.Font(frame, 12, nil)
     label:SetJustifyH("LEFT")
     label:SetWordWrap(false)
-    label:SetPoint("LEFT", control, "RIGHT", 6, 0)
-    label:SetPoint("RIGHT", frame, "RIGHT", -2, 0)
+    label:SetPoint("LEFT", control, "RIGHT", 8, 0)
+    label:SetPoint("RIGHT", frame, "RIGHT", 0, 0)
     label:SetText(row.text)
     if row.tip then ns.Tooltip(frame, row.text, row.tip) end
     controls[#controls + 1] = control
 end
 
+local function PlacePanel()
+    if not panel then return end
+    local map = WorldMapFrame
+    panel:ClearAllPoints()
+    if map.IsMaximized and map:IsMaximized() then
+        local canvas = map:GetCanvasContainer()
+        panel:SetPoint("TOPLEFT", canvas, "TOPLEFT", 8, -8)
+        panel:SetHeight(panel.contentH)
+    else
+        if (map:GetLeft() or 0) >= PANEL_W + GAP then
+            panel:SetPoint("TOPRIGHT", map, "TOPLEFT", -GAP, 0)
+        else
+            panel:SetPoint("TOPLEFT", map, "TOPRIGHT", GAP, 0)
+        end
+        -- The map's height, or the rows' where the map is shorter.
+        panel:SetHeight(math.max(panel.contentH, map:GetHeight()))
+    end
+end
+
 local function BuildPanel()
-    panel = CreateFrame("Frame", nil, button)
-    panel:SetFrameStrata("DIALOG")
-    panel:SetPoint("TOPRIGHT", button, "BOTTOMRIGHT", 0, -4)
+    -- The map's child, so it opens, closes and scales with the map.
+    panel = CreateFrame("Frame", nil, WorldMapFrame)
+    panel:SetWidth(PANEL_W)
+    panel:SetFrameLevel(WorldMapFrame:GetFrameLevel() + 20)
     panel:EnableMouse(true)
     panel:Hide()
     ns.Solid(panel, "BACKGROUND", T.bg, 0.95):SetAllPoints()
@@ -90,29 +113,25 @@ local function BuildPanel()
     title:SetPoint("TOPLEFT", PAD, -PAD)
     title:SetText("Map Pins")
     local close = ns.Button(panel, "X", 18, 18, function() panel:Hide() end)
-    close:SetPoint("TOPRIGHT", -5, -5)
+    close:SetPoint("TOPRIGHT", -6, -6)
 
-    local y, col = -PAD - 22, 0
+    local y = -PAD - 24
     for _, row in ipairs(ROWS) do
         if row.header then
-            if col == 1 then y, col = y - ROW_H, 0 end
             local h = ns.Font(panel, 11, nil, T.accent)
-            h:SetPoint("TOPLEFT", PAD, y - 6)
+            h:SetPoint("TOPLEFT", PAD, y - 8)
             h:SetText(row.header)
             y = y - HEADER_H
-        elseif row.half then
-            MakeRow(panel, row, PAD + col * COL_W, y, COL_W - 4)
-            if col == 1 then y = y - ROW_H end
-            col = 1 - col
         else
-            if col == 1 then y, col = y - ROW_H, 0 end
-            MakeRow(panel, row, PAD, y, COL_W * 2 - 4)
+            MakeRow(panel, row, y)
             y = y - ROW_H
         end
     end
-    if col == 1 then y = y - ROW_H end
-    panel:SetSize(PANEL_W, -y + PAD)
+    panel.contentH = -y + PAD
     panel:SetScript("OnShow", RefreshRows)
+    -- The map's size buttons move it between windowed and the whole screen.
+    if WorldMapFrame.Maximize then hooksecurefunc(WorldMapFrame, "Maximize", PlacePanel) end
+    if WorldMapFrame.Minimize then hooksecurefunc(WorldMapFrame, "Minimize", PlacePanel) end
 end
 
 -------------------------------------------------------------------------------
@@ -154,6 +173,7 @@ local function BuildButton()
     icon:SetPoint("BOTTOMRIGHT", -4, 4)
     button:SetScript("OnClick", function()
         if not panel then BuildPanel() end
+        PlacePanel()
         panel:SetShown(not panel:IsShown())
     end)
     button:SetScript("OnEnter", function()
@@ -164,7 +184,10 @@ local function BuildButton()
     end)
     ns.Tooltip(button, "Map Pins", "Click to choose which pins show on the map.")
     Place()
-    WorldMapFrame:HookScript("OnShow", Place)
+    WorldMapFrame:HookScript("OnShow", function()
+        Place()
+        PlacePanel()
+    end)
 end
 
 local function Apply()
