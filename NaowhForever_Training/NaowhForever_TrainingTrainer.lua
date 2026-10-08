@@ -163,6 +163,7 @@ end
 -------------------------------------------------------------------------------
 local panel
 local unpicked = {}        -- name|level -> true for the offers unticked at this visit
+local picked = {}          -- planner-skipped offers ticked for this visit
 local learned = 0          -- spells learned from the panel at this visit
 
 local function Key(offer)
@@ -190,10 +191,15 @@ local function Offers()
 end
 
 -- The ticked offers you can pay for: in the trainer's order, each while the gold lasts.
+local function IsOff(offer)
+    local key = Key(offer)
+    return not picked[key] and (unpicked[key] or offer.spell and Training.IsIgnored(offer.spell))
+end
+
 local function Affordable(offers)
     local out, budget = {}, GetMoney()
     for _, offer in ipairs(offers) do
-        if not unpicked[Key(offer)] and offer.cost <= budget then
+        if not IsOff(offer) and offer.cost <= budget then
             out[#out + 1] = offer
             budget = budget - offer.cost
         end
@@ -230,7 +236,7 @@ local function LearnAll()
 end
 
 local function CheckPaint(row)
-    local on = not unpicked[Key(row.offer)]
+    local on = not IsOff(row.offer)
     row.tick:SetShown(on)
     row.box:SetColor(on and T.accent.r or T.line.r, on and T.accent.g or T.line.g, on and T.accent.b or T.line.b, 1)
     row:SetAlpha(on and 1 or 0.55)
@@ -263,12 +269,21 @@ local function NewOffer(i)
     row.rank:SetPoint("BOTTOMLEFT", row.icon, "BOTTOMRIGHT", 8, 0)
     row:SetScript("OnClick", function(self)
         local key = Key(self.offer)
-        unpicked[key] = not unpicked[key] or nil
+        if IsOff(self.offer) then
+            unpicked[key] = nil
+            picked[key] = true
+        else
+            picked[key] = nil
+            unpicked[key] = true
+        end
         RenderPanel()
     end)
     row:SetScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
         GameTooltip:SetTrainerService(self.offer.index)
+        if self.offer.spell and Training.IsIgnored(self.offer.spell) and not picked[Key(self.offer)] then
+            GameTooltip:AddLine("Skipped in the Training Planner", T.muted.r, T.muted.g, T.muted.b, true)
+        end
         GameTooltip:AddLine(" ")
         GameTooltip:AddLine("Click to leave it out of Learn All.", T.muted.r, T.muted.g, T.muted.b, true)
         GameTooltip:Show()
@@ -353,17 +368,17 @@ RenderPanel = function()
     end
     for i = shown + 1, #panel.rows do panel.rows[i]:Hide() end
 
-    local picked, pickedCost = 0, 0
+    local pickedCount, pickedCost = 0, 0
     for _, offer in ipairs(offers) do
-        if not unpicked[Key(offer)] then
-            picked = picked + 1
+        if not IsOff(offer) then
+            pickedCount = pickedCount + 1
             pickedCost = pickedCost + offer.cost
         end
     end
     local buy = Affordable(offers)
     local buyCost = 0
     for _, offer in ipairs(buy) do buyCost = buyCost + offer.cost end
-    panel.count:SetText(#offers > 0 and (picked .. " of " .. #offers .. " picked") or "")
+    panel.count:SetText(#offers > 0 and (pickedCount .. " of " .. #offers .. " picked") or "")
     panel.total:SetText("Picked  " .. Training.Coins(pickedCost))
     local gold = GetMoney()
     panel.note:SetText(gold >= pickedCost and ("Leaves " .. Training.Coins(gold - pickedCost))
@@ -427,6 +442,7 @@ events:SetScript("OnEvent", function(_, event, arg1)
         if arg1 == "Blizzard_TrainerUI" then HookTrainerFrame() end
     elseif event == "TRAINER_SHOW" then
         wipe(unpicked)
+        wipe(picked)
         learned = 0
         if panel then panel.dismissed = nil end
         HookTrainerFrame()
@@ -455,6 +471,9 @@ S.OnChange(function(key)
     if key == "enabled" or key == "levelUpToast" or key == "trainerPanel" then Apply() end
 end)
 hooksecurefunc(ns, "Apply", Apply)
+Training.OnChange(function()
+    if panel and panel:IsShown() then QueuePanel() end
+end)
 
 local boot = CreateFrame("Frame")
 boot:RegisterEvent("PLAYER_LOGIN")

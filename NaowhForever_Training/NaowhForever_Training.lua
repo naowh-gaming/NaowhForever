@@ -54,6 +54,10 @@ local function Ignored()
     return all[key]
 end
 
+function Training.IsIgnored(spell)
+    return Ignored()[spell] == true
+end
+
 local function ClassSpells()
     local _, _, classID = UnitClass("player")
     return ns.TrainingData[classID] or {}
