@@ -319,8 +319,16 @@ local function ShowPanel(pin)
         Add("No special drops", T.muted)
     end
     panel:SetHeight(lineY + PAD + BUTTON_H + PAD)
+    -- Beside the star on the side with room, as Parts.ShowBeside places a side panel: clamped
+    -- to the screen, it would otherwise slide back over the star and its route.
     panel:ClearAllPoints()
-    panel:SetPoint("TOPLEFT", pin, "TOPRIGHT", 8, 0)
+    local right = (pin:GetRight() or 0) * pin:GetEffectiveScale()
+    local room = UIParent:GetRight() * UIParent:GetEffectiveScale() - right
+    if room >= (PANEL_W + 8) * panel:GetEffectiveScale() then
+        panel:SetPoint("TOPLEFT", pin, "TOPRIGHT", 8, 0)
+    else
+        panel:SetPoint("TOPRIGHT", pin, "TOPLEFT", -8, 0)
+    end
     panel:Show()
 end
 

@@ -41,7 +41,7 @@ local function Region()
     function r:GetScale() return self.scale end
     function r:GetEffectiveScale() return self.scale end
     function r:GetCenter() return 410.4 / self.scale, 619.6 / self.scale end
-    function r:SetPoint(_, _, _, x, y) self.at = { x, y } end
+    function r:SetPoint(point, _, _, x, y) self.point, self.at = point, { x, y } end
     -- A portrait model: what it was last set to show.
     function r:ClearModel() self.unit, self.creature = nil, nil end
     function r:SetUnit(unit) self.unit = unit end
@@ -175,6 +175,7 @@ local function Fixture(settings, units)
     ns.PlaceWaypoint = function(name, map, x, y) env.waypoints[#env.waypoints + 1] = { name, map, x, y } end
     env.UIParent = Region()
     env.UIParent.GetCenter = function() return 400, 500 end
+    env.UIParent.GetRight = function() return 1000 end
     -- The card, by its frame name.
     local create = env.CreateFrame
     env.CreateFrame = function(kind, name, ...)
@@ -303,6 +304,9 @@ local function Fixture(settings, units)
         pin.SetSize = function(p, w) p.size = w end
         pin.EnableMouse = function(p, on) p.mouse = on end
         pin.SetPosition = function(p, x, y) p.at = { x, y } end
+        -- On a 1000-wide screen, the map filling it.
+        pin.GetRight = function(p) return p.at[1] * 1000 end
+        pin.GetEffectiveScale = function() return 1 end
         pin:OnAcquired(data)
         self.pins[#self.pins + 1] = pin
         return pin
@@ -787,6 +791,7 @@ do
     local panel = ns.mapPanel
     Check(panel and panel:IsShown() and panel.npc == 10647, "and a panel stays up beside its star")
     Check(panel.title.text == "Prince Raze", "the house panel, titled with the rare's name")
+    Check(panel.point == "TOPRIGHT", "on the star's left: a star on the right has no room for it on its right")
     Check(panel.rows[1].item[1] == 4454 and panel.rows[3].item[1] == 285330 and panel.rows[3]:IsShown(),
         "with a row for each of its drops")
     Check(panel.rows[3].name.text:find("Signet of the Zhevra <inf>", 1, true), "Forever's sign on the new one")
@@ -821,6 +826,11 @@ do
     howler = PinsOf(10644)[1]
     Check(#PinsOf(10647, "dot") == 0 and howler.Icon.alpha == 1, "right-clicking it again lets go")
     Check(not ns.mapPanel:IsShown(), "its panel goes with it")
+    howler:OnClick("RightButton")
+    howler:OnMouseLeave()
+    Check(ns.mapPanel:IsShown() and ns.mapPanel.point == "TOPLEFT", "a star with room on its right has it there")
+    howler:OnClick("RightButton")
+    howler:OnMouseLeave()
     R.SetKilled(10644, true)
     Check(#PinsOf(10644) == 0 and #env.worldMap.pins == 1, "a killed rare's star goes")
     ns.CompletoSettings.Set("rarePinsKilled", true)
