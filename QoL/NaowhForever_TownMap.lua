@@ -38,6 +38,9 @@ local CATEGORIES = {
     vendor     = { "townVendors", "Interface\\Icons\\INV_Misc_Bag_07", "Vendor" },
     mail       = { "townMail", "Interface\\Icons\\INV_Letter_15", "Send and collect mail" },
 }
+-- What a traveller looks for in any town: shown on every map, even with Shops & Trainers
+-- Only in Capitals on (that switch is for the shops and trainers).
+local EVERYWHERE = { flight = true, inn = true, stable = true }
 
 local function On()
     return S.Get("enabled") and S.Get("townMap")
@@ -136,7 +139,7 @@ function provider:RefreshAllData()
     self:RemoveAllData()
     if not On() then return end
     local mapID = self:GetMap():GetMapID()
-    local list = (not S.Get("townCapitalsOnly") or CAPITALS[mapID]) and ns.TownNPCs[mapID] or {}
+    local shops = not S.Get("townCapitalsOnly") or CAPITALS[mapID]
     -- Forever has no map links of its own (GetMapLinksForMap returns nothing).
     if S.Get("townZoneLinks") then
         for _, exit in ipairs(ns.ZoneExits[mapID] or {}) do
@@ -156,15 +159,14 @@ function provider:RefreshAllData()
             end
         end
     end
-    for _, npc in ipairs(list or {}) do
+    for _, npc in ipairs(ns.TownNPCs[mapID] or {}) do
         local cat = CATEGORIES[npc[3]]
-        if npc[7]:find(faction, 1, true) and S.Get(cat[1])
+        if (shops or EVERYWHERE[npc[3]]) and npc[7]:find(faction, 1, true) and S.Get(cat[1])
             and (npc[3] ~= "class" or npc[6] == class) then
             self:GetMap():AcquirePin(TEMPLATE, npc)
         end
     end
-    -- Not held to the capitals: that keeps vendors and trainers off questing maps, and a
-    -- mailbox out in the world is what you look for there.
+    -- Not held to the capitals either: a mailbox out in the world is what you look for there.
     if S.Get("townMail") then
         for _, mailbox in ipairs(ns.TownMailboxes[mapID] or {}) do
             self:GetMap():AcquirePin(TEMPLATE, mailbox)
@@ -382,7 +384,7 @@ local function TownSummary(store)
         if store.Get(TOWN_SHOW[i]) then shown = shown + 1 end
     end
     return ("%d of %d shown%s"):format(shown, #TOWN_SHOW,
-        store.Get("townCapitalsOnly") and ", town pins in capitals only" or "")
+        store.Get("townCapitalsOnly") and ", shops and trainers in capitals only" or "")
 end
 
 ns.Shared.Settings.Page("QoL/Interface", S):Card({
@@ -392,8 +394,9 @@ ns.Shared.Settings.Page("QoL/Interface", S):Card({
     summary = TownSummary,
     rows = {
         { key = "townPinSize", label = "Pin Size", slider = { 10, 28, 1 } },
-        { key = "townCapitalsOnly", label = "Town Pins Only in Capitals", toggle = true,
-          help = "Keeps vendors and trainers off questing maps." },
+        { key = "townCapitalsOnly", label = "Shops & Trainers Only in Capitals", toggle = true,
+          help = "Keeps vendors, trainers and the bank off questing maps. Flight masters, "
+              .. "innkeepers, stable masters, spirit healers and mailboxes show everywhere." },
         { key = "townMinimap", label = "Mailboxes & Spirit Healers on Minimap", toggle = true,
           help = "Pins the mailboxes and spirit healers near you on the minimap." },
         Group("Show"),
