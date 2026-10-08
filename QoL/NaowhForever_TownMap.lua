@@ -392,7 +392,7 @@ ns.Shared.Settings.Page("QoL/Interface", S):Card({
     id = "townMap", name = "Map Pins", order = 40, switch = "townMap",
     help = "Trainers, vendors, innkeepers, flight masters and more pinned on the world map for "
         .. "your faction, with their name and title on hover. Choose which pins show with the "
-        .. "Map Pins button in the world map's bottom right corner.",
+        .. "Map Pins button in the world map's top right corner.",
     summary = TownSummary,
     rows = {
         { key = "townPinSize", label = "Pin Size", slider = { 10, 28, 1 } },

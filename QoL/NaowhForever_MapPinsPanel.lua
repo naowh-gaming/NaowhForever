@@ -1,8 +1,8 @@
 -------------------------------------------------------------------------------
---  NaowhForever_MapPinsPanel.lua -- the Map Pins button on the world map, beside the quest
---  log toggle in the bottom right. It opens a panel with the town map's switches: which kinds
---  of pin show, Shops & Trainers Only in Capitals and the minimap pins. The options window
---  keeps only the card's switch and Pin Size; the rest is chosen with the map open.
+--  NaowhForever_MapPinsPanel.lua -- the Map Pins button in the world map's top right corner.
+--  It opens a panel with the town map's switches: which kinds of pin show, Shops & Trainers
+--  Only in Capitals and the minimap pins. The options window keeps only the card's switch and
+--  Pin Size; the rest is chosen with the map open.
 --
 --  The keys stay in the QoL table, so saved settings carry over. Free while the map pins are
 --  off: the button and the panel are made the first time they are on.
@@ -80,7 +80,7 @@ end
 local function BuildPanel()
     panel = CreateFrame("Frame", nil, button)
     panel:SetFrameStrata("DIALOG")
-    panel:SetPoint("BOTTOMRIGHT", button, "TOPRIGHT", 0, 4)
+    panel:SetPoint("TOPRIGHT", button, "BOTTOMRIGHT", 0, -4)
     panel:EnableMouse(true)
     panel:Hide()
     ns.Solid(panel, "BACKGROUND", T.bg, 0.95):SetAllPoints()
@@ -118,18 +118,28 @@ end
 -------------------------------------------------------------------------------
 --  The map button
 -------------------------------------------------------------------------------
--- Beside the quest log toggle in the map's bottom right, at its size, so the two read as a
--- pair. A map without that toggle gets the same corner.
+-- In the map's top right corner, left of the buttons the map keeps there (tracking options and
+-- the like) and at their size, so they read as one row. Those are found by where they sit, not
+-- by name, so a map with more, fewer or none of them still gets a free spot.
 local function Place()
-    local toggle = WorldMapFrame.SidePanelToggle
+    local canvas = WorldMapFrame:GetCanvasContainer()
+    local edge, edgeX
+    for _, frame in ipairs(WorldMapFrame.overlayFrames or {}) do
+        if frame:IsShown() and frame:GetNumPoints() > 0 then
+            local point, relative, _, x = frame:GetPoint(1)
+            if point == "TOPRIGHT" and relative == canvas and (not edgeX or x < edgeX) then
+                edge, edgeX = frame, x
+            end
+        end
+    end
     button:ClearAllPoints()
-    if toggle then
-        local w, h = toggle:GetSize()
+    if edge then
+        local w, h = edge:GetSize()
         button:SetSize(w > 0 and w or 32, h > 0 and h or 32)
-        button:SetPoint("BOTTOMRIGHT", toggle, "BOTTOMLEFT", -2, 0)
+        button:SetPoint("TOPRIGHT", edge, "TOPLEFT", -2, 0)
     else
         button:SetSize(32, 32)
-        button:SetPoint("BOTTOMRIGHT", WorldMapFrame:GetCanvasContainer(), "BOTTOMRIGHT", -2, 2)
+        button:SetPoint("TOPRIGHT", canvas, "TOPRIGHT", -4, -2)
     end
 end
 
@@ -154,6 +164,7 @@ local function BuildButton()
     end)
     ns.Tooltip(button, "Map Pins", "Click to choose which pins show on the map.")
     Place()
+    WorldMapFrame:HookScript("OnShow", Place)
 end
 
 local function Apply()
