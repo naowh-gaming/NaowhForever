@@ -2,7 +2,8 @@
 --  NaowhForever_CursorCooldown.lua -- Cooldown at Cursor: press a spell or item that is still on
 --  cooldown and a small card pops up by your mouse for a moment: its icon, its name and the time
 --  left. The time is a duration object the game counts down itself (swipe and text), so it works
---  in combat, where Forever keeps cooldown numbers secret.
+--  in combat, where Forever keeps cooldown numbers secret. The global cooldown alone brings no
+--  card: the game raises the same error for it, and its isOnGCD flag stays readable in combat.
 -------------------------------------------------------------------------------
 local ns = _G.NaowhForever
 local S = ns.QoLSettings
@@ -29,9 +30,10 @@ for _, name in ipairs({ "ERR_SPELL_COOLDOWN", "ERR_ABILITY_COOLDOWN", "ERR_ITEM_
 end
 
 local issecretvalue = issecretvalue
-local card, binding, hooked
+local card, binding, hooked, active
 local pressedSlot, pressedAt, erroredAt = nil, 0, 0
 local hideAt = 0
+local lastX, lastY
 
 local function On()
     return S.Get("enabled") and S.Get("cursorCooldown")
@@ -61,7 +63,8 @@ local function ActionName(slot)
         local spell = GetMacroSpell(id)
         if Readable(spell) then return C_Spell.GetSpellName(spell) end
     end
-    return GetActionText(slot)
+    local text = GetActionText(slot)
+    if Readable(text) then return text end
 end
 
 local function Stop()
@@ -71,10 +74,13 @@ local function Stop()
 end
 
 local function FollowCursor(self)
-    local scale = UIParent:GetEffectiveScale()
     local x, y = GetCursorPosition()
-    self:ClearAllPoints()
-    self:SetPoint("LEFT", UIParent, "BOTTOMLEFT", x / scale + CURSOR_OFFSET, y / scale)
+    if x ~= lastX or y ~= lastY then
+        lastX, lastY = x, y
+        local scale = UIParent:GetEffectiveScale()
+        self:ClearAllPoints()
+        self:SetPoint("LEFT", UIParent, "BOTTOMLEFT", x / scale + CURSOR_OFFSET, y / scale)
+    end
     local left = hideAt - GetTime()
     if left <= 0 then
         Stop()
@@ -136,9 +142,12 @@ local function Fit()
 end
 
 local function Show(slot)
+    local cooldown = C_ActionBar.GetActionCooldown(slot)
+    if not (cooldown and cooldown.isActive) or cooldown.isOnGCD then return end
     local texture = GetActionTexture(slot)
     if not texture then return end
     local duration = C_ActionBar.GetActionCooldownDuration(slot, true)
+    if not duration then return end
     card.icon:SetTexture(texture)
     card.name:SetText(ActionName(slot) or "")
     card.swipe:SetCooldownFromDurationObject(duration)
@@ -149,6 +158,7 @@ local function Show(slot)
     card:SetAlpha(1)
     card:Show()
     card.pop:Restart()
+    lastX, lastY = nil, nil
     FollowCursor(card)
     card:SetScript("OnUpdate", FollowCursor)
 end
@@ -162,7 +172,7 @@ local function Match()
 end
 
 local function OnUseAction(slot)
-    if not On() or type(slot) ~= "number" then return end
+    if not active or type(slot) ~= "number" then return end
     pressedSlot, pressedAt = slot, GetTime()
     Match()
 end
@@ -175,7 +185,8 @@ events:SetScript("OnEvent", function(_, _, _, message)
 end)
 
 local function Apply()
-    if not On() then
+    active = On() == true
+    if not active then
         events:UnregisterAllEvents()
         pressedSlot = nil
         if card then Stop() end
