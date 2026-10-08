@@ -10,8 +10,8 @@
 --      are not that order, or it has floors of another dungeon (the switch offers only these,
 --      stepping and numbering them so; pins keep the art's number),
 --      or image = the addon's own picture (Media/Maps), for a dungeon the game has no art
---      for yet: a 1024 square TGA with the map in its top 1024 by 683, a floor after the
---      first its own picture with the floor's number after the name (Dalaran2). Its pins
+--      for yet (or only redrawn, as Wailing Caverns): a 1024 square TGA with the map in its
+--      top 1024 by 683, a floor after the first its own picture with the floor's number after the name (Dalaran2). Its pins
 --      are placed on that picture, so when the game's art comes they are placed again.
 --      images = { [floor] = picture }, with art: floors the art lacks, as the addon's pictures.
 --      floor = the one floor it is on, where dungeons share the art (Scarlet Monastery's wings),
@@ -46,7 +46,9 @@ ns.Journal.Maps = {
             [261319] = { 1, 0.51, 0.17 },   -- Durgen Dirgehammer
         },
     },
-    WailingCaverns = { art = "WailingCaverns", floors = 1,
+    -- The client's art is the Cataclysm redraw; this is the old map (Wowpedia's
+    -- WorldMap-WailingCaverns-old.jpg), drawn the same, so the pins stand as placed.
+    WailingCaverns = { image = "Interface\\AddOns\\NaowhForever\\Media\\Maps\\WailingCaverns", floors = 1,
         entrance = { 1, 0.465, 0.59 },
         pins = {
             [3654] = { 1, 0.345, 0.13 },   -- Mutanus the Devourer
