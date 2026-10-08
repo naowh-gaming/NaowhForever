@@ -385,7 +385,7 @@ Case("seal colors are off by default and listen to nothing", function()
     assert(not e.UNIT_SPELLCAST_SUCCEEDED and not e.UNIT_AURA)
 end)
 
-Case("a seal cast colors the melee bars, any rank, and a Judgement takes it away", function()
+Case("a seal cast colors the melee bars, any rank, and a Judgement leaves it up", function()
     local _, log = Session({ enabled = true, sealColors = true }, { class = "PALADIN", names = SEAL_NAMES })
     local e = log.events.events
     assert(e.UNIT_SPELLCAST_SUCCEEDED and e.UNIT_AURA)
@@ -393,7 +393,7 @@ Case("a seal cast colors the melee bars, any rank, and a Judgement takes it away
     log.Fire("UNIT_SPELLCAST_SUCCEEDED", "player", "guid", 20915)
     assert(BarColor(log) == "0.75 0.35 0.95", "Seal of Command, rank 2: " .. BarColor(log))
     log.Fire("UNIT_SPELLCAST_SUCCEEDED", "player", "guid", 20271)
-    assert(BarColor(log) == "0.40 0.85 0.94", "Judgement used it up: " .. BarColor(log))
+    assert(BarColor(log) == "0.75 0.35 0.95", "Judgement kept it: " .. BarColor(log))
 end)
 
 Case("a restricted spell ID changes nothing", function()
@@ -430,7 +430,7 @@ Case("a seal that runs out in combat takes its color with it", function()
     assert(BarColor(log) == "0.40 0.85 0.94", "gone at 30s: " .. BarColor(log))
 end)
 
-Case("recasting a seal starts its count again, and a Judgement stops it", function()
+Case("recasting a seal starts its count again, and a new seal replaces it", function()
     local _, log = Session({ enabled = true, sealColors = true }, { class = "PALADIN", names = SEAL_NAMES })
     log.Fire("PLAYER_REGEN_DISABLED")
     local cast = log.now
