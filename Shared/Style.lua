@@ -46,7 +46,7 @@ Shared.Style = {
         left = { 0, 0.09375, 0, 0.6875 }, middle = { 0.09375, 0.53125, 0, 0.6875 },
         right = { 0.53125, 0.625, 0, 0.6875 }, glow = { 0, 0.625, 0, 0.6875 },
     },
-    CLASSIC_DISABLED_GREY = 0.5,
+    CLASSIC_DISABLED_ALPHA = 0.5,
     CLASSIC_BEVEL_RGB = { r = 0x6b / 255, g = 0x62 / 255, b = 0x52 / 255 },
     CLASSIC_FILL_RGB = { { r = 0xc7 / 255, g = 0x9a / 255, b = 0x3a / 255 }, { r = 0x6e / 255, g = 0x50 / 255, b = 0x19 / 255 } },
     CLASSIC_KNOB_EDGE = 2,

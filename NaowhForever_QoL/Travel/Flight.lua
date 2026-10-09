@@ -335,6 +335,7 @@ function Look.Style(f)
         b._border._frame:SetAlpha(alpha)
         if b._art then
             for _, piece in ipairs(b._art) do piece:SetAlpha(alpha) end
+            b:GetHighlightTexture():SetAlpha(alpha)
         end
     end
     local bare = alpha < SHADOW_BELOW

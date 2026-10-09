@@ -593,9 +593,23 @@ local function ArtPiece(btn, coords)
     return piece
 end
 
--- The Classic+ skin's button is the game's own panel button: its art in three pieces, pressed and
--- disabled art, its highlight glow, and gold text that turns white under the mouse. The edge only
--- shows for a picked button, in the colour its caller gives it.
+-- A button narrower than both caps would leave the middle no room.
+local function FitCaps(btn, width)
+    local cap = math.min(ns.Shared.Style.CLASSIC_BUTTON_CAP, width / 2)
+    btn._art[1]:SetWidth(cap)
+    btn._art[3]:SetWidth(cap)
+end
+
+-- Callers colour the label themselves (a picked choice, a quiz answer), so hover lends it white and
+-- gives back whatever it was.
+local function Unlight(btn)
+    local c = btn._litFrom
+    if not c then return end
+    btn._litFrom = nil
+    btn.label:SetTextColor(c[1], c[2], c[3], c[4])
+end
+
+-- The edge only shows for a picked button, in the colour its caller gives it.
 local function ClassicButton(btn, bg, border, lbl)
     local T, St = ns.THEME, ns.Shared.Style
     local art, coords = St.CLASSIC_BUTTON_ART, St.CLASSIC_BUTTON_COORDS
@@ -607,10 +621,12 @@ local function ClassicButton(btn, bg, border, lbl)
     end
     border._frame:Hide()
     local left, middle, right = ArtPiece(btn, coords.left), ArtPiece(btn, coords.middle), ArtPiece(btn, coords.right)
-    left:SetPoint("TOPLEFT"); left:SetPoint("BOTTOMLEFT"); left:SetWidth(St.CLASSIC_BUTTON_CAP)
-    right:SetPoint("TOPRIGHT"); right:SetPoint("BOTTOMRIGHT"); right:SetWidth(St.CLASSIC_BUTTON_CAP)
+    left:SetPoint("TOPLEFT"); left:SetPoint("BOTTOMLEFT")
+    right:SetPoint("TOPRIGHT"); right:SetPoint("BOTTOMRIGHT")
     middle:SetPoint("TOPLEFT", left, "TOPRIGHT"); middle:SetPoint("BOTTOMRIGHT", right, "BOTTOMLEFT")
     btn._art = { left, middle, right }
+    FitCaps(btn, btn:GetWidth())
+    btn:HookScript("OnSizeChanged", FitCaps)
     SetArt(btn, art.up)
     btn:SetHighlightTexture(art.highlight, "ADD")
     local glow = coords.glow
@@ -618,22 +634,30 @@ local function ClassicButton(btn, bg, border, lbl)
     lbl:SetTextColor(T.accent.r, T.accent.g, T.accent.b, 1)
     lbl:SetShadowColor(BLACK.r, BLACK.g, BLACK.b, 1)
     lbl:SetShadowOffset(BUTTON_SHADOW, -BUTTON_SHADOW)
-    btn:SetScript("OnEnter", function() lbl:SetTextColor(1, 1, 1, 1) end)
-    btn:SetScript("OnLeave", function() lbl:SetTextColor(T.accent.r, T.accent.g, T.accent.b, 1) end)
+    btn:SetScript("OnEnter", function(self)
+        if not self:IsEnabled() or self._litFrom then return end
+        self._litFrom = { lbl:GetTextColor() }
+        lbl:SetTextColor(1, 1, 1, 1)
+    end)
+    btn:SetScript("OnLeave", Unlight)
     btn:SetScript("OnMouseDown", function(self)
         if self:IsEnabled() then SetArt(self, art.down) end
     end)
     btn:SetScript("OnMouseUp", function(self)
         if self:IsEnabled() then SetArt(self, art.up) end
     end)
+    -- Hidden mid-press, the release never reaches it.
+    btn:HookScript("OnHide", function(self)
+        if self:IsEnabled() then SetArt(self, art.up) end
+    end)
     btn:SetScript("OnDisable", function(self)
+        Unlight(self)
         SetArt(self, art.disabled)
-        local grey = St.CLASSIC_DISABLED_GREY
-        lbl:SetTextColor(grey, grey, grey, 1)
+        lbl:SetAlpha(St.CLASSIC_DISABLED_ALPHA)
     end)
     btn:SetScript("OnEnable", function(self)
         SetArt(self, art.up)
-        lbl:SetTextColor(T.accent.r, T.accent.g, T.accent.b, 1)
+        lbl:SetAlpha(1)
     end)
 end
 
@@ -667,7 +691,7 @@ function ns.Button(parent, text, w, h, onClick)
     return btn
 end
 
--- The game's own buttons (Classic+) have no main-action edge, so they keep theirs off.
+-- The game marks no button as the main one.
 function ns.AccentBorder(frame)
     if not (frame and frame._border) or frame._art then return frame end
     local accent = ns.THEME.accent

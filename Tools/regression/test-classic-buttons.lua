@@ -15,6 +15,7 @@ local frames
 local function New(kind)
     local o = { kind = kind, points = {}, scripts = {}, events = {} }
     return setmetatable(o, { __index = function(_, k)
+        if not k:match("^%u") then return nil end
         return function(self, ...)
             local args = { ... }
             if k == "SetScript" then self.scripts[args[1]] = args[2]
@@ -27,6 +28,14 @@ local function New(kind)
             elseif k == "GetObjectType" then return self.kind
             elseif k == "IsMouseOver" then return self.mouseOver
             elseif k == "IsEnabled" then return not rawget(self, "disabled")
+            elseif k == "HookScript" then
+                self.hooks = rawget(self, "hooks") or {}
+                self.hooks[args[1]] = args[2]
+            elseif k == "GetTextColor" then return unpack(self.color)
+            elseif k == "SetAlpha" then self.alpha = args[1]
+            elseif k == "SetSize" then self.w = args[1]
+            elseif k == "GetWidth" then return self.w
+            elseif k == "SetWidth" then self.w = args[1]
             elseif k == "SetTexture" then self.texture = args[1]
             elseif k == "SetTexCoord" then self.coords = args
             elseif k == "SetHighlightTexture" then
@@ -67,7 +76,6 @@ local function Load(account)
     return env.NaowhForever
 end
 
-
 -- The default skin: the flat button, no press handling.
 local ns = Load({})
 local btn = ns.Button(New("Frame"), "Close", 80, 24)
@@ -100,12 +108,33 @@ btn.scripts.OnLeave(btn)
 check("mouse gone: gold again", btn.label.color[1] == accent.r)
 btn.disabled = true
 btn.scripts.OnDisable(btn)
-check("disabled: the game's grey art and grey text", Art(art.disabled) and btn.label.color[1] == St.CLASSIC_DISABLED_GREY)
+check("disabled: the game's grey art, the text dimmed", Art(art.disabled) and btn.label.alpha == St.CLASSIC_DISABLED_ALPHA)
 btn.scripts.OnMouseDown(btn)
 check("a disabled button does not press", Art(art.disabled))
+btn.scripts.OnEnter(btn)
+check("nor light up under the mouse", btn.label.color[1] == accent.r)
 btn.disabled = false
 btn.scripts.OnEnable(btn)
-check("enabled again", Art(art.up) and btn.label.color[1] == accent.r)
+check("enabled again", Art(art.up) and btn.label.alpha == 1)
+
+-- A colour the caller gave the text (a picked choice, a quiz answer) comes back after a hover.
+btn.label:SetTextColor(0.5, 0.25, 0, 1)
+btn.scripts.OnEnter(btn)
+btn.scripts.OnLeave(btn)
+check("a caller's text colour survives a hover", btn.label.color[1] == 0.5 and btn.label.color[2] == 0.25)
+
+-- Hidden mid-press, it comes back up.
+btn.scripts.OnMouseDown(btn)
+btn.hooks.OnHide(btn)
+check("hidden while pressed, it comes back up", Art(art.up))
+
+-- A button narrower than both caps gives each half its width.
+local narrow = ns.Button(New("Frame"), "X", 18, 18)
+check("narrow: the caps share the width", narrow._art[1].w == 9 and narrow._art[3].w == 9)
+local wide = ns.Button(New("Frame"), "Reload UI", 110, 32)
+check("wide: the caps at their size", wide._art[1].w == St.CLASSIC_BUTTON_CAP)
+wide.hooks.OnSizeChanged(wide, 20)
+check("resized narrow, the caps follow", wide._art[1].w == 10)
 
 -- A main action is the game's button like any other, with no edge.
 ns.AccentBorder(btn)
