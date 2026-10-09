@@ -90,7 +90,9 @@ local function ClassRow(class)
 end
 
 local function ClassRows()
-    local rows = { Group("Blessings by Class") }
+    local header = Group("Blessings by Class")
+    header.hidden = NotPaladin
+    local rows = { header }
     for _, class in ipairs(B.CLASSES) do rows[#rows + 1] = ClassRow(class) end
     return rows
 end

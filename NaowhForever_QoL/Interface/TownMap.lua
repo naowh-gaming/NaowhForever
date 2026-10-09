@@ -416,7 +416,7 @@ local function CardRows()
     local rows = { { key = "townPinSize", label = "Pin Size", slider = PIN_RANGE } }
     for _, row in ipairs(PIN_ROWS) do
         if row.header then
-            rows[#rows + 1] = ns.Shared.Settings.Group(row.header)
+            rows[#rows + 1] = ns.Shared.Settings.Group(row.header:sub(1, 1) .. row.header:sub(2):lower())
         else
             rows[#rows + 1] = { key = row.key, label = row.text, toggle = true, help = row.tip }
         end

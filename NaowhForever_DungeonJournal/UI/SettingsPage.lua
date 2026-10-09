@@ -163,6 +163,7 @@ local function OpenJournal()
 end
 
 local function OpenTracker()
+    J.TurnOn()
     J.QuestTracker.Show(ForYou() or J.Dungeons()[1])
 end
 

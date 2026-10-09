@@ -43,7 +43,7 @@ do
     for _, row in ipairs(pinRows) do
         if row.key then Check(labels[row.key] == row.text, "the card has the panel's toggle: " .. row.key) end
     end
-    Check(groups[1] == "OPTIONS" and groups[2] == "SHOW", "grouped as the drawer groups them")
+    Check(groups[1] == "Options" and groups[2] == "Show", "grouped as the drawer groups them")
     Check(card.rows[1].key == "townPinSize", "Pin Size first")
     Check(cardNs.TownPinRows ~= nil, "the list is shared with the panel")
     local Search = dofile("Tools/regression/settings_search.lua")({ ["QoL/Interface"] = { card } })

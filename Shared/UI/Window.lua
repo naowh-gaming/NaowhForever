@@ -346,9 +346,7 @@ function Parts.Resizable(window, sizeKey, minW, minH, onSized, onReleased)
     return grip
 end
 
-function Parts.Logo(window, page, middle, texture, size)
-    return Logo(window, page, middle, texture, size)
-end
+Parts.Logo = Logo
 
 function Parts.TitleBar(window, title, subtitle, page)
     local middle = -HEADER / 2

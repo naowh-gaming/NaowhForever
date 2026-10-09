@@ -524,8 +524,7 @@ local Settings = ns.Shared and ns.Shared.Settings
 if not Settings then return end
 
 local function ResetPosition()
-    local pos = S.Default("trainerPos")
-    S.Set("trainerPos", { point = pos.point, relPoint = pos.relPoint, x = pos.x, y = pos.y })
+    S.Set("trainerPos", nil)
     if popup then Place() end
 end
 

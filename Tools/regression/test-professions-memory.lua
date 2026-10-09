@@ -729,9 +729,10 @@ local r4 = calls.render
 for _ = 1, 50 do UnrelatedLoad(); BagUpdate() end
 check("with the window closed, item loads and bag updates draw nothing", calls.render == r4)
 
+check("the recipe window's logo opens the Professions settings", logoPage == "Professions/Settings")
+
 if #failures > 0 then
     for _, label in ipairs(failures) do print("  FAIL " .. label) end
     error(("test-professions-memory: %d of %d checks failed"):format(#failures, checks))
 end
-check("the recipe window's logo opens the Professions settings", logoPage == "Professions/Settings")
 print(("test-professions-memory: %d checks passed"):format(checks))

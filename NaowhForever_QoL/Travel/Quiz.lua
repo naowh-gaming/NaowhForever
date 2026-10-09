@@ -238,8 +238,7 @@ local function Apply()
 end
 
 local function ResetPosition()
-    local pos = S.Default("quizPos")
-    S.Set("quizPos", { point = pos.point, relPoint = pos.relPoint, x = pos.x, y = pos.y })
+    S.Set("quizPos", nil)
     if quiz then Place() end
 end
 

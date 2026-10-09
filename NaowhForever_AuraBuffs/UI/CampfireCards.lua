@@ -405,7 +405,7 @@ campCard = page:Card({
           hidden = RoundStyle },
         { key = "campBonusIcons", label = "Bonus Icons", toggle = true, needs = Enabled, why = OFF,
           hidden = RoundStyle, help = "Each camp feature's own icon before its bonus." },
-        { key = "campHiddenBonuses", label = "Hidden Bonuses", buttonText = "Show All", button = ShowAllBonuses,
+        { label = "Hidden Bonuses", buttonText = "Show All", button = ShowAllBonuses,
           needs = Enabled, why = OFF, hidden = RoundStyle,
           help = "Shows every bonus again; click one on the preview to hide it." },
         BonusRows(),

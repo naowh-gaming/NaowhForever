@@ -143,7 +143,7 @@ page:Card({
     search = TEXT_BUILDS_SEARCH,
     summary = BuildsSummary,
     rows = {
-        { label = "Builds", buttonText = "Open Builds", button = OpenBuilds, needs = Training.On, why = TEXT_OFF,
+        { label = "Builds", buttonText = "Open Builds", button = OpenBuilds,
           help = "Opens the planner on its Builds tab." },
         { label = "Followed Build", buttonText = "Stop", button = StopFollowing, hidden = NotFollowing,
           help = "Stops spending your talent points on the build you follow." },
