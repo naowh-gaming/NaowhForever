@@ -365,7 +365,7 @@ end
 
 local function BonusRow(feature)
     return { key = "campHiddenBonuses", field = feature.id, toggle = true, needs = Enabled, why = OFF,
-        hidden = RoundStyle, help = TEXT_BONUS_HELP:format(feature.stat),
+        hidden = RoundStyle, help = TEXT_BONUS_HELP:format(feature.stat), search = feature.aliases and table.concat(feature.aliases, " "),
         label = feature.name and feature.short .. St.PLACE_DOT .. feature.name or feature.short,
         get = function() return BonusShown(feature) end,
         set = function(on) if on ~= BonusShown(feature) then ToggleBonus(feature) end end }

@@ -411,5 +411,6 @@ local Search = dofile("Tools/regression/settings_search.lua")({ ["Blessings/Sett
 local kings = Search("kings")
 check("the options search finds Kings on the Blessing Bar card, a row per class",
     #kings >= #B.CLASSES and kings[1].label == "Warrior" and kings[1].card == "Blessings/Settings:bar")
+check("and finds them by \"greater\"", #Search("greater") >= #B.CLASSES)
 
 print(("test-blessing-preview: %d checks passed"):format(checks))

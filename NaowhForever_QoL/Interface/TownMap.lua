@@ -78,6 +78,7 @@ local TEXT_AUDIT_ON = "on: open an NPC's window while standing next to them"
 local TEXT_AUDIT_OFF = "off"
 local TEXT_SUMMARY = "%d of %d shown%s"
 local TEXT_CAPITALS = ", vendors and trainers in cities only"
+local TEXT_PINS_SEARCH = "vendor vendors trainer trainers mailbox graveyard npc npcs"
 
 local miniPins, miniSpots = {}, {}
 local miniMap, miniWidth, miniHeight
@@ -448,6 +449,7 @@ ns.TownPinRows = PIN_ROWS
 ns.Shared.Settings.Page("QoL/Interface", S):Card({
     id = "townMap", name = "Map Pins", order = 40, switch = "townMap",
     help = "Service NPCs for your faction on the world map; also set from its Map Pins button.",
+    search = TEXT_PINS_SEARCH,
     summary = TownSummary,
     rows = CardRows(),
 })

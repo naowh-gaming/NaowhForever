@@ -46,9 +46,12 @@ do
     Check(groups[1] == "OPTIONS" and groups[2] == "SHOW", "grouped as the drawer groups them")
     Check(card.rows[1].key == "townPinSize", "Pin Size first")
     Check(cardNs.TownPinRows ~= nil, "the list is shared with the panel")
-    local hit = dofile("Tools/regression/settings_search.lua")({ ["QoL/Interface"] = { card } })("flight master")[1]
+    local Search = dofile("Tools/regression/settings_search.lua")({ ["QoL/Interface"] = { card } })
+    local hit = Search("flight master")[1]
     Check(hit and hit.label == "Flight Masters" and hit.card == "QoL/Interface:townMap",
         "the options search finds a pin by name")
+    hit = Search("graveyard")[1]
+    Check(hit and hit.card == "QoL/Interface:townMap", "and the card by its search words")
 end
 Check(Read("NaowhForever_QoL/Interface/TownMap.xml"):find('<Script file="MapPinsPanel.lua"/>', 1, true),
     "the panel loads")

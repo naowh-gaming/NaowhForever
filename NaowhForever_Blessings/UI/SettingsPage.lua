@@ -61,6 +61,7 @@ local THEMED_GROUP = "Accent: missing the class blessing. Lighter: running out. 
 local NONE = "none"
 local TEXT_NONE = "None"
 local TEXT_CLASS_HELP = "Which blessing you give this class: Might, Wisdom, Kings, Salvation or Light."
+local TEXT_CLASS_SEARCH = "blessing blessings greater"
 
 local function On() return S.Get("blessings") == true end
 local function OpenWindow() ns.OpenBlessingsWindow() end
@@ -81,7 +82,7 @@ local function BlessingChoices(class)
 end
 
 local function ClassRow(class)
-    return { label = B.ClassName(class), help = TEXT_CLASS_HELP, needs = On, why = BLESSINGS_OFF,
+    return { label = B.ClassName(class), help = TEXT_CLASS_HELP, search = TEXT_CLASS_SEARCH, needs = On, why = BLESSINGS_OFF,
         hidden = NotPaladin,
         choice = function() return BlessingChoices(class) end,
         get = function() return B.Store().classes[class] or NONE end,

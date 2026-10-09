@@ -11,6 +11,7 @@ local OPACITY_RANGE, PERCENT_SCALE = Style.OPACITY_RANGE, Style.PERCENT_SCALE
 local ORDER_ON_THE_WAY, ORDER_WINDOW, ORDER_BUILDS = 10, 20, 30
 local BUILDS_TAB = "builds"
 local TEXT_OFF = "Turn on the Training Planner"
+local TEXT_BUILDS_SEARCH = "talents talent points follow import export share auto spend"
 local TEXT_OPEN = "Open Training Planner"
 local TEXT_TRAIN_NOW = "%d %s to train now, %s"
 local TEXT_SPELL, TEXT_SPELLS = "spell", "spells"
@@ -139,6 +140,7 @@ page:Card({
 page:Card({
     id = "builds", name = "Talent Builds", order = ORDER_BUILDS,
     help = "Save, make, share and follow talent builds in the planner's Builds tab.",
+    search = TEXT_BUILDS_SEARCH,
     summary = BuildsSummary,
     rows = {
         { label = "Builds", buttonText = "Open Builds", button = OpenBuilds, needs = Training.On, why = TEXT_OFF,
