@@ -53,6 +53,7 @@
     <Include file="Interface\Unexplored.xml"/>
     <Script file="Interface\SkyborneData.lua"/>
     <Include file="Interface\SkyborneSpots.xml"/>
+    <Script file="Interface\ZoneLevels.lua"/>
     <Script file="Questing\Trainer.lua"/>
     <Script file="Travel\FlightData.lua"/>
     <Script file="Travel\Flight.lua"/>
