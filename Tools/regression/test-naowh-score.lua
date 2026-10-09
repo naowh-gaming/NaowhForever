@@ -596,6 +596,14 @@ do
     state.Fire("PLAYER_EQUIPMENT_CHANGED", 1)
     state.RunTimers()
     check("the Naowh Score off: nothing more goes", #state.sent == 4)
+    S.Set("naowhScore", true)
+    S.Set("enabled", false)
+    state.RunTimers()
+    state.Fire("CHAT_MSG_ADDON", "NaowhScore", "R", "PARTY", "Someone")
+    state.gear.player = Set(26, 4)
+    state.Fire("PLAYER_EQUIPMENT_CHANGED", 1)
+    state.RunTimers()
+    check("the QoL module off: nothing goes either", #state.sent == 4)
 end
 
 -------------------------------------------------------------------------------

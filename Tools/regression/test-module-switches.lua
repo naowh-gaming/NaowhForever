@@ -75,11 +75,11 @@ row = ModuleRow(inspect)
 qol.groupInspect = false
 check("its addon off: reads off", row.getValue() == false)
 row.setValue(true)
-check("its addon not loaded: turned on through the reload prompt, its setting on for after it",
-    #confirms == 1 and qol.groupInspect == true and not enabled.NaowhForever_GroupInspect)
+check("its addon not loaded: turned on through the reload prompt, nothing changed until confirmed",
+    #confirms == 1 and qol.groupInspect == false and not enabled.NaowhForever_GroupInspect)
 confirms[1].yes()
-check("confirmed: its addon enabled and a reload offered",
-    enabled.NaowhForever_GroupInspect == true and #reloads == 1)
+check("confirmed: its addon enabled, its setting on for after the reload, and a reload offered",
+    enabled.NaowhForever_GroupInspect == true and qol.groupInspect == true and #reloads == 1)
 
 local training = Module("Training Planner")
 enabled.NaowhForever_Training = true

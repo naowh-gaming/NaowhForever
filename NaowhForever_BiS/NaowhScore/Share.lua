@@ -38,7 +38,7 @@ local function GroupChannel()
 end
 
 local function Sharing()
-    return S.Get("naowhScore") == true and S.Get("naowhScoreShare") == true
+    return S.Get("enabled") == true and S.Get("naowhScore") == true and S.Get("naowhScoreShare") == true
 end
 
 local function Tenths()
@@ -99,7 +99,7 @@ local function Answer(channel)
 end
 
 local function AnswerSoon(channel)
-    if answerQueued[channel] then return end
+    if answerQueued[channel] or not Sharing() then return end
     if channel == GUILD then
         if GetTime() - lastGuildAnswer < GUILD_ANSWER_GAP then return end
         lastGuildAnswer = GetTime()
@@ -169,7 +169,7 @@ local function OnEvent(_, event, prefix, message, channel, sender)
 end
 
 local function OnSetting(key)
-    if key ~= "naowhScore" and key ~= "naowhScoreShare" then return end
+    if key ~= "enabled" and key ~= "naowhScore" and key ~= "naowhScoreShare" then return end
     lastSent = nil
     if own then SendSoon() end
 end

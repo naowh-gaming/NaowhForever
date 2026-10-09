@@ -112,7 +112,7 @@ end
 
 local function Refresh()
     local zone = L.PlayerZone()
-    if zone ~= dismissedZone then dismissedZone = nil end
+    if zone and zone ~= dismissedZone then dismissedZone = nil end
     local show = On() and not dismissedZone and Bag.Level() and Bag.Current() ~= nil
     if not show then
         if panel then panel:Hide() end
