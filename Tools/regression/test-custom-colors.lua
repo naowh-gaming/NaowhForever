@@ -337,23 +337,25 @@ do
     Check(ns.classicSkin == false, "no skin saved: the default")
 end
 do
-    local fonts = { ["Friz Quadrata TT"] = "friz", Naowh = "naowh", Morpheus = "morpheus", Expressway = "expressway" }
+    local fonts = { ["Friz Quadrata TT"] = "friz", ["Arial Narrow"] = "arial", Naowh = "naowh", Morpheus = "morpheus",
+        Expressway = "expressway" }
     local lsm = { LOCALE_BIT_ruRU = 1, LOCALE_BIT_western = 2 }
     function lsm:Register() end
     function lsm:Fetch(_, name) return fonts[name] end
     local function Stub() return lsm end
     local ns, handler = Load({ skin = "classic" }, Stub)
     Fire(handler, "ADDON_LOADED", "NaowhForever")
-    Check(ns.AddonFontPath() == "friz" and ns.TitleFontPath() == "morpheus", "Classic+: Friz Quadrata, Morpheus titles")
+    Check(ns.AddonFontPath() == "arial" and ns.HeadingFontPath() == "friz" and ns.TitleFontPath() == "morpheus",
+        "Classic+: Arial Narrow text, Friz Quadrata headings, Morpheus title plates")
     ns.AccountSettings().uiFont = "Expressway"
-    Check(ns.AddonFontPath() == "expressway", "a picked Addon Font still wins")
+    Check(ns.AddonFontPath() == "expressway" and ns.HeadingFontPath() == "expressway", "a picked Addon Font is used for both")
     ns, handler = Load({}, Stub)
     Fire(handler, "ADDON_LOADED", "NaowhForever")
-    Check(ns.AddonFontPath() == "naowh", "the default skin keeps Naowh")
+    Check(ns.AddonFontPath() == "naowh" and ns.HeadingFontPath() == "naowh", "the default skin keeps Naowh for both")
     fonts.Morpheus = nil
     ns, handler = Load({ skin = "classic" }, Stub)
     Fire(handler, "ADDON_LOADED", "NaowhForever")
-    Check(ns.TitleFontPath() == "friz", "no Morpheus for this language: titles in the addon font")
+    Check(ns.TitleFontPath() == "friz", "no Morpheus for this language: title plates in the heading font")
 end
 
 print("PASS custom colors: " .. cases .. " checks")
