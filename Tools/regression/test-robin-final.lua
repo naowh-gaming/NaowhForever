@@ -198,7 +198,8 @@ do
     s.load('NaowhForever_AuraBuffs/NaowhForever_AuraBuffs.lua')
     local parse = s.ns.ParseConsumableEntry
     check('explicit item and buff IDs parse', parse('food', '123, 456, 789').auras[2] == 789)
-    check('item alone rejected', not parse('food', '123'))
+    local alone = parse('food', '123')
+    check('item alone parses without buff IDs', alone.itemID == 123 and alone.auras == nil)
     check('invalid category rejected', not parse('other', '123 456'))
     check('invalid IDs rejected', not parse('food', '123, x') and not parse('food', '0, 1'))
     s.S.Set('campShowUnder', false)

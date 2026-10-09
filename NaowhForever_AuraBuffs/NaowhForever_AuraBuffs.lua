@@ -63,7 +63,8 @@ local CATEGORY_NAMES = { food = "Food", flask = "Flask", scroll = "Scroll",
     battle = "Battle Elixir", guardian = "Guardian Elixir" }
 local CATEGORY_ORDER = { "food", "flask", "scroll", "battle", "guardian" }
 
--- Entries are profile data, never executable code. Require explicit item and aura IDs.
+-- Entries are profile data, never executable code. Buff IDs are only needed when the buff is
+-- not the item's own: food counts any Well Fed, other items their use spell.
 function ns.ParseConsumableEntry(category, text)
     if not CATEGORY_NAMES[category] or type(text) ~= "string" then return end
     local ids = {}
@@ -73,18 +74,18 @@ function ns.ParseConsumableEntry(category, text)
         if id < 1 or id > 2147483647 then return end
         ids[#ids + 1] = id
     end
-    if #ids < 2 then return end
-    local entry = { category = category, itemID = table.remove(ids, 1), auras = ids }
-    return entry
+    if #ids == 0 then return end
+    local itemID = table.remove(ids, 1)
+    return { category = category, itemID = itemID, auras = ids[1] and ids or nil }
 end
 
 local function EditEntry(category, index)
     local entries = S.Get("consumableEntries") or {}
     local existing = index and entries[index]
-    local initial = existing and (existing.itemID .. ", " .. table.concat(existing.auras, ", ")) or ""
-    ns.PromptText("Item ID, then buff spell ID(s), separated by commas", initial, 240, function(text)
+    local initial = existing and existing.itemID .. (existing.auras and ", " .. table.concat(existing.auras, ", ") or "") or ""
+    ns.PromptText("Item ID, then buff spell ID(s) if not the item's own", initial, 240, function(text)
         local entry = ns.ParseConsumableEntry(category, text)
-        if not entry then ns.Print("Enter an item ID followed by at least one buff spell ID.") return end
+        if not entry then ns.Print("Enter an item ID, then any buff spell IDs, separated by commas.") return end
         local copy = {}
         for i, value in ipairs(S.Get("consumableEntries") or {}) do copy[i] = value end
         copy[index or #copy + 1] = entry
@@ -96,7 +97,8 @@ end
 function ns.BuildAuraBuffConsumables(parent, y)
     local W = UI.Widgets
     local _, h
-    _, h = W:Note(parent, "Add an item ID and its buff spell ID(s), or import a profile with reminders. "
+    _, h = W:Note(parent, "Add an item ID, or import a profile with reminders. Food counts any Well Fed "
+        .. "buff and other items their own buff; add buff spell IDs only for an item that gives another. "
         .. "Nothing is added automatically. Hover a reminder to choose a configured item from your bags. "
         .. "Reminders pause in combat; item menus work outside combat. When and where they show is on "
         .. "AuraBuffs > Settings.", y); y = y - h
@@ -105,14 +107,16 @@ function ns.BuildAuraBuffConsumables(parent, y)
         _, h = W:DualRow(parent, y,
             { type = "button", text = "Add " .. CATEGORY_NAMES[category], buttonText = "Add",
                 onClick = function() EditEntry(category) end },
-            { type = "label", text = "Item ID + buff spell IDs" }); y = y - h
+            { type = "label", text = "Item ID, buff spell IDs optional" }); y = y - h
         for index, entry in ipairs(S.Get("consumableEntries") or {}) do
             if entry.category == category then
                 local name = C_Item.GetItemNameByID(entry.itemID) or ("Item " .. entry.itemID)
+                local buffs = entry.auras and "Buffs: " .. table.concat(entry.auras, ", ")
+                    or category == "food" and "Buff: any Well Fed" or "Buff: the item's own"
                 _, h = W:DualRow(parent, y,
                     { type = "button", text = name, buttonText = "Edit",
                         onClick = function() EditEntry(category, index) end },
-                    { type = "button", text = "Buffs: " .. table.concat(entry.auras, ", "), buttonText = "Remove",
+                    { type = "button", text = buffs, buttonText = "Remove",
                         onClick = function()
                             local copy = {}
                             for i, value in ipairs(S.Get("consumableEntries") or {}) do
