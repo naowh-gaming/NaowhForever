@@ -1,4 +1,4 @@
--- MapSize.lua: the QoL map size: the windowed world map drawn bigger or smaller, by a corner grip or a slider.
+-- MapSize.lua: the QoL map window: the windowed world map scaled by a corner grip or a slider, and moved by its title bar.
 local ns = _G.NaowhForever
 
 local S = ns.QoLSettings
@@ -13,17 +13,23 @@ local GRIP_INSET = 3
 local GRIP_UP = "Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Up"
 local GRIP_HIGHLIGHT = "Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Highlight"
 local GRIP_DOWN = "Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Down"
+local TITLE_HEIGHT = 22
+local TITLE_BUTTONS = 80
+local KEEP_ON_SCREEN = 60
 
-local TEXT_TITLE = "Map Size"
+local TEXT_TITLE = "Map Window"
 local TEXT_TIP = "Drag to make the map bigger or smaller.\nRight-click: back to 100%."
-local TEXT_HELP = "Makes the windowed world map bigger or smaller: drag the grip in its bottom right "
-    .. "corner, or set it here. The full screen map keeps its size."
+local TEXT_HELP = "Makes the windowed world map bigger or smaller and lets you move it: drag the grip in "
+    .. "its bottom right corner or set the size here, and drag its title bar to move it (right-click "
+    .. "the title bar puts it back). The full screen map keeps its size and place."
 local TEXT_SCALE = "Map Scale"
 
-local grip
+local grip, handle
 local pending
 local hooked
 local startDist, startPct
+local moveX, moveY, cursorX, cursorY
+local home
 local events = CreateFrame("Frame")
 
 local function On()
@@ -32,6 +38,23 @@ end
 
 local function Wanted()
     return On() and (S.Get("mapSizePercent") or PERCENT) / PERCENT or 1
+end
+
+local function Saved()
+    local pos = On() and S.Get("mapSizePos")
+    if type(pos) == "table" and pos.x and pos.y then return pos end
+    return nil
+end
+
+local function Full()
+    local map = WorldMapFrame
+    return map.IsMaximized and map:IsMaximized()
+end
+
+local function PlaceAt(x, y, scale)
+    local map = WorldMapFrame
+    map:ClearAllPoints()
+    map:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", x / scale, y / scale)
 end
 
 local function SetMapScale(scale)
@@ -49,14 +72,18 @@ end
 local function Apply()
     local map = WorldMapFrame
     if not map then return end
-    local full = map.IsMaximized and map:IsMaximized()
     if InCombatLockdown() then
         pending = true
         events:RegisterEvent("PLAYER_REGEN_ENABLED")
         return
     end
-    SetMapScale(full and 1 or Wanted())
+    local full = Full()
+    local scale = full and 1 or Wanted()
+    SetMapScale(scale)
+    local pos = not full and Saved()
+    if pos then PlaceAt(pos.x, pos.y, scale) end
     if grip then grip:SetShown(On() and not full) end
+    if handle then handle:SetShown(On() and not full) end
 end
 
 local function OnEvent(self)
@@ -109,6 +136,71 @@ local function OnGripClick()
     S.Set("mapSizePercent", PERCENT)
 end
 
+local function Cursor()
+    local x, y = GetCursorPosition()
+    local s = UIParent:GetEffectiveScale()
+    return x / s, y / s
+end
+
+local function Clamp(x, y)
+    local map = WorldMapFrame
+    local scale = map:GetScale()
+    local w = map:GetWidth() * scale
+    local screenW, screenH = UIParent:GetWidth(), UIParent:GetHeight()
+    x = math.max(KEEP_ON_SCREEN - w, math.min(screenW - KEEP_ON_SCREEN, x))
+    y = math.max(KEEP_ON_SCREEN, math.min(screenH, y))
+    return x, y
+end
+
+local function Move()
+    if not moveX or InCombatLockdown() then return end
+    local x, y = Cursor()
+    local nx, ny = Clamp(moveX + x - cursorX, moveY + y - cursorY)
+    PlaceAt(nx, ny, WorldMapFrame:GetScale())
+end
+
+local function GoHome()
+    local map = WorldMapFrame
+    if not home or InCombatLockdown() then return end
+    local scale = map:GetScale()
+    map:ClearAllPoints()
+    map:SetPoint(home[1], home[2], home[3], home[4] * home[6] / scale, home[5] * home[6] / scale)
+end
+
+local function OnHandleDown(_, button)
+    if button ~= "LeftButton" or InCombatLockdown() then return end
+    local map = WorldMapFrame
+    if not Saved() and map:GetNumPoints() == 1 then
+        local point, relative, relPoint, x, y = map:GetPoint(1)
+        home = { point, relative, relPoint, x or 0, y or 0, map:GetScale() }
+    end
+    local scale = map:GetScale()
+    local left, top = map:GetLeft(), map:GetTop()
+    if not (left and top) then return end
+    moveX, moveY = left * scale, top * scale
+    cursorX, cursorY = Cursor()
+    handle:SetScript("OnUpdate", Move)
+end
+
+local function OnHandleUp(_, button)
+    if button == "RightButton" then
+        if InCombatLockdown() then return end
+        S.Set("mapSizePos", false)
+        GoHome()
+        return
+    end
+    if not moveX then return end
+    handle:SetScript("OnUpdate", nil)
+    moveX = nil
+    local map = WorldMapFrame
+    local scale = map:GetScale()
+    S.Set("mapSizePos", { x = map:GetLeft() * scale, y = map:GetTop() * scale })
+end
+
+local function OnHandleHide()
+    if moveX then OnHandleUp(handle, "LeftButton") end
+end
+
 local function BuildGrip()
     grip = CreateFrame("Button", nil, WorldMapFrame)
     grip:SetSize(GRIP_SIZE, GRIP_SIZE)
@@ -125,15 +217,36 @@ local function BuildGrip()
     ns.Tooltip(grip, TEXT_TITLE, TEXT_TIP)
 end
 
+local function BuildHandle()
+    local map = WorldMapFrame
+    handle = CreateFrame("Frame", nil, map)
+    handle:SetPoint("TOPLEFT")
+    handle:SetPoint("TOPRIGHT", -TITLE_BUTTONS, 0)
+    handle:SetHeight(TITLE_HEIGHT)
+    handle:SetFrameLevel(map:GetFrameLevel() + TITLE_BUTTONS)
+    handle:EnableMouse(true)
+    handle:SetScript("OnMouseDown", OnHandleDown)
+    handle:SetScript("OnMouseUp", OnHandleUp)
+    handle:SetScript("OnHide", OnHandleHide)
+end
+
+local function OnPanelsPlaced()
+    if WorldMapFrame:IsShown() and Saved() then Apply() end
+end
+
 local function Setup()
     local map = WorldMapFrame
     if not map then return end
-    if On() and not grip then BuildGrip() end
+    if On() and not grip then
+        BuildGrip()
+        BuildHandle()
+    end
     if not hooked then
         hooked = true
         if map.Maximize then hooksecurefunc(map, "Maximize", Apply) end
         if map.Minimize then hooksecurefunc(map, "Minimize", Apply) end
         map:HookScript("OnShow", Apply)
+        if UpdateUIPanelPositions then hooksecurefunc("UpdateUIPanelPositions", OnPanelsPlaced) end
     end
     Apply()
 end
@@ -146,7 +259,7 @@ end
 events:SetScript("OnEvent", OnEvent)
 
 hooksecurefunc(S, "Set", function(key)
-    if key == "enabled" or key == "mapSize" or key == "mapSizePercent" then Setup() end
+    if key == "enabled" or key == "mapSize" or key == "mapSizePercent" or key == "mapSizePos" then Setup() end
 end)
 hooksecurefunc(ns, "Apply", Setup)
 

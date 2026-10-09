@@ -30,9 +30,9 @@ local FRAME_ALLOWED = {
     ["NaowhForever_QoL/Interface/HideClutter.lua"] = { why = "the same switch as /uierrorsoff; screenshot text",
         calls = { ["UIErrorsFrame:UnregisterEvent"] = 1, ["UIErrorsFrame:RegisterEvent"] = 1,
             ["ActionStatus:UnregisterEvent"] = 2, ["ActionStatus:RegisterEvent"] = 2 } },
-    ["NaowhForever_QoL/Interface/MapSize.lua"] = { why = "windowed world map scaled about its corner, out of combat only",
-        calls = { ["WorldMapFrame:SetScale"] = 1, ["WorldMapFrame:ClearAllPoints"] = 1,
-            ["WorldMapFrame:SetPoint"] = 1 } },
+    ["NaowhForever_QoL/Interface/MapSize.lua"] = { why = "windowed world map scaled and moved, out of combat only",
+        calls = { ["WorldMapFrame:SetScale"] = 1, ["WorldMapFrame:ClearAllPoints"] = 3,
+            ["WorldMapFrame:SetPoint"] = 3 } },
     ["NaowhForever_QoL/Loot/LootFeed.lua"] = { why = "loot window shrunk and restored, never hidden",
         calls = { ["LootFrame:SetScale"] = 2 } },
     ["NaowhForever_Professions/UI/Takeover.lua"] = {

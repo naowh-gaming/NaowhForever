@@ -24,7 +24,7 @@ NaowhForever_QoL/
     TownMap.xml         TownMap.lua, the town pin templates, then MapPinsPanel.lua
     TownMap.lua         Map Pins on the world map and minimap, /naowh townaudit (ns.TownAudit)
     MapPinsPanel.lua    the Map Pins button on the world map and its drawer of which pins show
-    MapSize.lua         Map Size: the windowed world map scaled by a corner grip or a slider
+    MapSize.lua         Map Window: the windowed world map scaled by a corner grip or a slider, moved by its title bar
     MapOverlays.lua     each zone map's explorable areas (ns.MapOverlays), generated
     Unexplored.xml      the unexplored pin template, then Unexplored.lua
     Unexplored.lua      Unexplored Areas on the world map
@@ -554,10 +554,12 @@ NaowhForever_QoL/
 - `MIN_PIN_SCALE` is 1.5, as in Completo: the world map scales its canvas to fit, so in the small map's window pins sized in map units shrank with it. `ScalePin` keeps them at least 1.5 times their size on screen there, leaves them as they are on the full screen map, and they grow as you zoom.
 - `MapOverlays.lua`, `TownMailboxes.lua`, `TownSpiritHealers.lua`, `TownTravel.lua` and `ZoneExits.lua` are generated (`Tools/build/map_overlays.py`, `mailboxes.py`, `spirit_healers.py`, `travel.py`, `zone_exits.py`): change the builder and run it, never the file.
 
-### Map Size
+### Map Window
 - Only the map frame's scale changes, so its pins, the Map Pins drawer and the quest log scale with it. An anchor's offsets are in the frame's own scale, so they are corrected to keep its top left corner where it was on screen.
 - The grip is the options window's own (`UI-ChatIM-SizeGrabber`). Dragged away from the map's top left corner the map grows, towards it it shrinks, by how far the cursor is from that corner in screen pixels, so the distance does not change as the map's own scale does. It snaps to `STEP_PCT` between `MIN_PCT` and `MAX_PCT`; right click puts it back to 100%. A drag the map's hiding cuts short keeps the size it got to.
 - The full screen map is drawn at the game's size: its Maximize sets the scale back to 1 and hides the grip, Minimize puts ours back.
+- The title bar moves the map: an invisible handle over it, short of `TITLE_BUTTONS` on the right so the map's own buttons still work. It places the map by hand while the cursor moves, never with StartMoving, so the game does not save it as a user-placed frame. The spot (`mapSizePos`, the top left corner in UIParent units) is kept at least `KEEP_ON_SCREEN` on screen.
+- The game puts its panels back in place when one opens or closes (`UpdateUIPanelPositions`), so after it does, a saved spot is put back. Right-click on the title bar forgets the spot and puts the map back where the game had it.
 - Out of combat only: the map sits in the game's panel layout, which is not ours to touch in a fight. A change asked for in combat waits for `PLAYER_REGEN_ENABLED`.
 
 ### Restock
