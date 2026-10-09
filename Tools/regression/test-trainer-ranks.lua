@@ -73,6 +73,8 @@ Case("QoL declares the Trainer Popup card on its Questing page, so it shows with
     assert(source:find('local SETTINGS_PAGE = "QoL/Questing & Group"', 1, true))
     local card = Slice("Settings.Page(SETTINGS_PAGE, S):Card({", "\n})")
     assert(card:find('id = "trainer"', 1, true) and card:find('switch = "trainerPopup"', 1, true))
+    assert(card:find('label = "Popup Position", buttonText = "Reset", button = ResetPosition', 1, true)
+        and source:find('S.Set("trainerPos", { point = pos.point', 1, true))
     assert(card:find("button = ns.TrainerRankCheck,", 1, true) and card:find("button = ns.TrainerForgetKept,", 1, true))
 end)
 print(count .. " trainer rank regressions passed")

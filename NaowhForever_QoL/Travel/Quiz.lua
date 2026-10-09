@@ -237,6 +237,12 @@ local function Apply()
     end
 end
 
+local function ResetPosition()
+    local pos = S.Default("quizPos")
+    S.Set("quizPos", { point = pos.point, relPoint = pos.relPoint, x = pos.x, y = pos.y })
+    if quiz then Place() end
+end
+
 local function Summary(store)
     local flight, camp = store.Get("flightGame") == "quiz", store.Get("quizCamp")
     if flight and camp then return TEXT_BOTH end
@@ -265,5 +271,7 @@ ns.Shared.Settings.Page("QoL/Travel", S):Card({
           help = "The quiz opens when you sit down at a campfire and closes when you stand up." },
         { label = "Open the Quiz", buttonText = "Open", button = ns.ToggleQuiz,
           help = "Opens the quiz now, or closes it." },
+        { label = "Quiz Position", buttonText = "Reset", button = ResetPosition,
+          help = "Puts the quiz back where it first opened." },
     },
 })

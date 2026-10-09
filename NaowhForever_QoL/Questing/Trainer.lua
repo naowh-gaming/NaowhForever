@@ -523,6 +523,12 @@ boot:SetScript("OnEvent", Apply)
 local Settings = ns.Shared and ns.Shared.Settings
 if not Settings then return end
 
+local function ResetPosition()
+    local pos = S.Default("trainerPos")
+    S.Set("trainerPos", { point = pos.point, relPoint = pos.relPoint, x = pos.x, y = pos.y })
+    if popup then Place() end
+end
+
 local function TrainerSummary(store)
     local glow, ranks = store.Get("trainerGlow"), store.Get("trainerRanks")
     if glow and ranks then return TEXT_GLOW_RANKS end
@@ -550,5 +556,7 @@ Settings.Page(SETTINGS_PAGE, S):Card({
         { label = "Forget Kept Spells", buttonText = "Forget Kept", always = true,
           button = ns.TrainerForgetKept,
           help = "Forgets the spells you chose to keep at lower ranks, so the popup offers to swap them again." },
+        { label = "Popup Position", buttonText = "Reset", button = ResetPosition, always = true,
+          help = "Puts the popup back where it first showed." },
     },
 })
