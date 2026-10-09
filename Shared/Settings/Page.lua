@@ -119,6 +119,7 @@ function Controls.text(row)
     box:SetTextInsets(6, 6, 0, 0)
     ns.Solid(box, "BACKGROUND", T.bg, 1):SetAllPoints()
     box.border = ns.Border(box, BORDER_RGB)
+    if ns.classicSkin then ns.Sunken(box) end
     box:SetScript("OnEnterPressed", TextCommit)
     box:SetScript("OnEditFocusLost", TextCommit)
     box:SetScript("OnEscapePressed", TextReset)

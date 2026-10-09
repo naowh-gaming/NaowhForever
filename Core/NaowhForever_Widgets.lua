@@ -86,6 +86,33 @@ local TRACK_TEX = "Interface\\AddOns\\NaowhForever\\Media\\toggle_track.tga"
 local KNOB_TEX = "Interface\\AddOns\\NaowhForever\\Media\\toggle_knob.tga"
 local SPEAKER_TEX = "Interface\\AddOns\\NaowhForever\\Media\\speaker.tga"   -- a sound dropdown's play button
 
+-- The Classic+ skin's switch: a check box at the switch's right end, sunken into the panel,
+-- with the game's own gold tick. Same returns as the switch.
+local function ClassicCheck(t, size)
+    local St = ns.Shared.Style
+    local box = CreateFrame("Frame", nil, t)
+    box:SetSize(size, size)
+    box:SetPoint("RIGHT")
+    ns.Solid(box, "BACKGROUND", T.bg, 1):SetAllPoints()
+    local border = ns.Border(box, BLACK)
+    ns.Sunken(box)
+    local tick = box:CreateTexture(nil, "OVERLAY")
+    tick:SetTexture(St.CLASSIC_CHECK)
+    tick:SetSize(size * St.CLASSIC_CHECK_SCALE, size * St.CLASSIC_CHECK_SCALE)
+    tick:SetPoint("CENTER")
+    local function Paint(state) tick:SetShown(state and true or false) end
+    t:SetScript("OnEnter", function() border:SetColor(T.accent.r, T.accent.g, T.accent.b, 1) end)
+    t:SetScript("OnLeave", function() border:SetColor(0, 0, 0, 1) end)
+    local function Snap() Paint(t._get()) end
+    t:SetScript("OnClick", function()
+        t._set(not (t._get() and true or false))
+        Snap()
+    end)
+    Snap()
+    t._refreshValue = Snap
+    return t, Paint, Snap
+end
+
 -- w/h/knobSize are optional overrides for a smaller switch; knob and inset scale off the
 -- height (70% and 15%).
 function UI.BuildToggleControl(parent, frameLevel, get, set, w, h, knobSize)
@@ -95,6 +122,9 @@ function UI.BuildToggleControl(parent, frameLevel, get, set, w, h, knobSize)
     local t = CreateFrame("Button", nil, parent)
     t:SetSize(W, H)
     if frameLevel then t:SetFrameLevel(frameLevel) end
+    -- Read through fields so a kept control can be pointed at new callbacks (UI.KeepToggle).
+    t._get, t._set = get, set
+    if ns.classicSkin then return ClassicCheck(t, H) end
 
     -- Pixel snapping throws away the art's antialiasing (the real cause of the jagged
     -- switch); Blizzard's NineSlice makes the same two calls.
@@ -113,8 +143,6 @@ function UI.BuildToggleControl(parent, frameLevel, get, set, w, h, knobSize)
     knob:SetSize(KNOB, KNOB)
     Smooth(knob)
 
-    -- Read through fields so a kept control can be pointed at new callbacks (UI.KeepToggle).
-    t._get, t._set = get, set
     local on = false
     local function PaintTrack(c, a)
         track:SetVertexColor(c.r, c.g, c.b, a)
@@ -171,6 +199,11 @@ function UI.BuildDropdownControl(parent, ddW, fLevel, values, order, get, set)
     if arrow.SetRotation then arrow:SetRotation(-math.pi / 2) end
     arrow:SetVertexColor(T.muted.r, T.muted.g, T.muted.b, 1)
     arrow:SetPoint("RIGHT", -7, 0)
+    if ns.classicSkin then
+        bg:SetColorTexture(T.bg.r, T.bg.g, T.bg.b, 1)
+        arrow:SetVertexColor(T.accent.r, T.accent.g, T.accent.b, 1)
+        ns.Sunken(btn)
+    end
     -- Read through fields so a kept control can be pointed at new data (UI.KeepDropdown).
     btn._values, btn._order, btn._get, btn._set = values, order, get, set
     local function Keys()
@@ -284,6 +317,26 @@ function UI.BuildSliderCore(parent, trackW, trackH, thumbSz, inputW, inputH, inp
     local boxBorder = ns.Border(valBox, BLACK)
     valBox:SetScript("OnEnter", function() boxBorder:SetColor(T.accent.r, T.accent.g, T.accent.b, 1) end)
     valBox:SetScript("OnLeave", function() boxBorder:SetColor(0, 0, 0, 1) end)
+    -- Classic+: a dark groove cut into the panel, filled bronze to gold, with a gold gem to drag.
+    if ns.classicSkin then
+        local St = ns.Shared.Style
+        rail:SetColorTexture(T.bg.r, T.bg.g, T.bg.b, 1)
+        local groove = CreateFrame("Frame", nil, track)
+        groove:SetAllPoints(rail)
+        ns.Border(groove, BLACK)
+        ns.Sunken(groove)
+        local top, bottom = St.CLASSIC_FILL_RGB[1], St.CLASSIC_FILL_RGB[2]
+        fill:SetColorTexture(1, 1, 1, 1)
+        fill:SetGradient("VERTICAL", CreateColor(bottom.r, bottom.g, bottom.b, 1), CreateColor(top.r, top.g, top.b, 1))
+        thumb:SetTexture(St.GEM, nil, nil, "TRILINEAR")
+        thumb:SetVertexColor(St.CLASSIC_GOLD_RGB.r, St.CLASSIC_GOLD_RGB.g, St.CLASSIC_GOLD_RGB.b, 1)
+        local edge = track:CreateTexture(nil, "ARTWORK", nil, -1)
+        edge:SetTexture(St.GEM, nil, nil, "TRILINEAR")
+        edge:SetVertexColor(0, 0, 0, 1)
+        edge:SetSize(thumbSz + 2 * St.CLASSIC_KNOB_EDGE, thumbSz + 2 * St.CLASSIC_KNOB_EDGE)
+        edge:SetPoint("CENTER", thumb)
+        ns.Sunken(valBox)
+    end
 
     local function Paint()
         local lo, hi = track._minV, track._maxV

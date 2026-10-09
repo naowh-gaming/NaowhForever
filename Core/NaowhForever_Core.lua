@@ -577,6 +577,21 @@ function ns.Border(frame, color, alpha)
     }
 end
 
+-- The Classic+ skin's field (an input, dropdown or check box) cut into the panel: a lit edge
+-- one pixel outside its black one, along the bottom and right.
+function ns.Sunken(frame)
+    local c = ns.Shared.Style.CLASSIC_BEVEL_RGB
+    local edge = CreateFrame("Frame", nil, frame)
+    ns.PixelInset(edge, -1, frame)
+    local bottom = edge:CreateTexture(nil, "OVERLAY")
+    bottom:SetColorTexture(c.r, c.g, c.b, 1)
+    bottom:SetPoint("BOTTOMLEFT"); bottom:SetPoint("BOTTOMRIGHT"); ns.Hairline(bottom, "h")
+    local right = edge:CreateTexture(nil, "OVERLAY")
+    right:SetColorTexture(c.r, c.g, c.b, 1)
+    right:SetPoint("TOPRIGHT"); right:SetPoint("BOTTOMRIGHT"); ns.Hairline(right, "v")
+    return edge
+end
+
 function ns.Solid(parent, layer, color, alpha)
     local c = color or ns.THEME.panel
     local t = parent:CreateTexture(nil, layer or "BACKGROUND")
@@ -838,6 +853,7 @@ function ns.NewEditBox(parent)
         box._border:SetColor(a.r, a.g, a.b, 1)
     end)
     box:HookScript("OnLeave", function() box._border:SetColor(0, 0, 0, 1) end)
+    if ns.classicSkin then ns.Sunken(box) end
     return box
 end
 

@@ -63,6 +63,14 @@ Shared.Style = {
     },
     CLASSIC_RIM_LIT_RGB = { r = 0xff / 255, g = 0xe2 / 255, b = 0x8a / 255 },   -- the rim under the mouse
     CLASSIC_BUTTON_SHINE = 0.1,
+    -- Classic+ fields are cut into the panel (ns.Sunken): a lit edge along their bottom and right.
+    CLASSIC_BEVEL_RGB = { r = 0x6b / 255, g = 0x62 / 255, b = 0x52 / 255 },
+    -- A Classic+ slider's filled part, { top, bottom }, and its gem knob's black edge, each side.
+    CLASSIC_FILL_RGB = { { r = 0xc7 / 255, g = 0x9a / 255, b = 0x3a / 255 }, { r = 0x6e / 255, g = 0x50 / 255, b = 0x19 / 255 } },
+    CLASSIC_KNOB_EDGE = 2,
+    -- The game's own tick in a Classic+ check box, a little larger than the box, as the game draws it.
+    CLASSIC_CHECK = "Interface\\Buttons\\UI-CheckBox-Check",
+    CLASSIC_CHECK_SCALE = 1.3,
     -- An item level above yours; bags with no room left.
     RED_CODE = "|cfff87171",
     RED_RGB = { r = 0.97, g = 0.44, b = 0.44 },
