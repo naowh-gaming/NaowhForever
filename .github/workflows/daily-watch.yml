@@ -154,14 +154,14 @@ jobs:
             CHANGELOG="${CHANGELOG:+$CHANGELOG$nl}Changed: Naowh Score: refitted to the latest Forever items."
           fi
           $PR add watch "${TITLE#chore(data): }" "$RUNNER_TEMP/watch.md" "$CHANGELOG" \
-            Tools/wago.py NaowhForever_DungeonJournal/Data NaowhForever_BiS/NaowhScore/Data
+            Tools/wago.py NaowhForever_DungeonJournal/Data NaowhForever_BiS/NaowhScore/Data Shared/Data
 
       - name: Compare wowsrc.com's loot pages with ours
         id: loot
         if: ${{ !cancelled() }}
         continue-on-error: true
         run: |
-          git reset -q --hard HEAD && git clean -fdq -- Tools DungeonJournal BiS NaowhScore
+          git reset -q --hard HEAD && git clean -fdq -- Tools NaowhForever_DungeonJournal NaowhForever_BiS Shared
           python Tools/wowsrc.py --check --report "$RUNNER_TEMP/loot.md" --github-output "$GITHUB_OUTPUT"
           if grep -q "^changes=true" "$GITHUB_OUTPUT"; then
             # The pages the check read (Tools/wowsrc_pages), their names to item IDs, the Journal.
@@ -185,14 +185,14 @@ jobs:
         run: |
           $PR add loot "boss loot" "$RUNNER_TEMP/loot.md" \
             "Changed: Dungeon Journal: boss loot updated from the latest Forever loot lists." \
-            Tools/wowsrc_loot.json Tools/item_names.json Tools/journal_cache.json NaowhForever_DungeonJournal/Data
+            Tools/wowsrc_loot.json Tools/item_names.json Tools/journal_cache.json NaowhForever_DungeonJournal/Data Shared/Data
 
       - name: Compare wowsrc.com's BiS lists with ours
         id: bis
         if: ${{ !cancelled() }}
         continue-on-error: true
         run: |
-          git reset -q --hard HEAD && git clean -fdq -- Tools DungeonJournal BiS NaowhScore
+          git reset -q --hard HEAD && git clean -fdq -- Tools NaowhForever_DungeonJournal NaowhForever_BiS Shared
           python Tools/build_bis_data.py --check --report "$RUNNER_TEMP/bis.md" --github-output "$GITHUB_OUTPUT"
           if grep -q "^changes=true" "$GITHUB_OUTPUT"; then
             python Tools/build_bis_data.py --offline 2> "$RUNNER_TEMP/bis-build.txt"
@@ -238,7 +238,7 @@ jobs:
       # A check that failed half way: its files as the last good check left them.
       - name: Leave out what a failed check left
         if: ${{ !cancelled() }}
-        run: git reset -q --hard HEAD && git clean -fdq -- Tools DungeonJournal BiS NaowhScore
+        run: git reset -q --hard HEAD && git clean -fdq -- Tools NaowhForever_DungeonJournal NaowhForever_BiS Shared
 
       - name: Open the pull request
         if: ${{ !cancelled() && env.OPEN_PR == 'true' }}

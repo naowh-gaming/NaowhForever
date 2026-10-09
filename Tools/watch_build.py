@@ -57,9 +57,11 @@ import wago
 from wowhead import EQUIPPABLE
 
 ROOT = Path(__file__).resolve().parent.parent
-DUNGEONS = ROOT / "DungeonJournal" / "Data" / "Dungeons"
-# The items the Journal already knows: its boss loot's facts, and its faction rewards'.
-JOURNAL_ITEMS = (ROOT / "DungeonJournal" / "Data" / "Items.lua", ROOT / "DungeonJournal" / "Data" / "FactionItems.lua")
+DUNGEONS = ROOT / "NaowhForever_DungeonJournal" / "Data" / "Dungeons"
+# The items the Journal already knows: the shared facts of its boss loot and faction rewards,
+# and the loot not in Forever yet.
+JOURNAL_ITEMS = (ROOT / "Shared" / "Data" / "ItemFacts.lua", ROOT / "Shared" / "Data" / "FactionItems.lua",
+                 ROOT / "NaowhForever_DungeonJournal" / "Data" / "Items.lua")
 WAGO_PY = Path(__file__).resolve().parent / "wago.py"
 INSTANCE_TYPES = {"1": "dungeon", "2": "raid"}   # the Map table's InstanceType
 WOWHEAD = "https://www.wowhead.com/forever"      # linked to, for the reader; never fetched
