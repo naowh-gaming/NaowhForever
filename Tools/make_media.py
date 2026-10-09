@@ -589,6 +589,38 @@ def infinity(x, y, width, height):
     return (255, 255, 255, int(round(255 * inner)))
 
 
+def infinity_track(width, height, scale=2):
+    W, H = width * scale, height * scale
+    alpha = [0.0] * (W * H)
+
+    def point(t):
+        k = 1 + math.sin(t) ** 2
+        return (W * (0.5 + 0.44 * math.cos(t) / k), H * (0.5 - 0.84 * math.sin(t) * math.cos(t) / k))
+
+    radius = 0.8 * scale
+    steps = 1800
+    for i in range(steps):
+        cx, cy = point(i * 2 * math.pi / steps)
+        for py in range(int(cy - radius - 2), int(cy + radius + 2) + 1):
+            for px in range(int(cx - radius - 2), int(cx + radius + 2) + 1):
+                if 0 <= px < W and 0 <= py < H:
+                    d = math.hypot(px + 0.5 - cx, py + 0.5 - cy)
+                    alpha[py * W + px] = max(alpha[py * W + px], max(0.0, min(1.0, radius - d + 0.5)))
+
+    def pixel(x, y, w, h):
+        px = min(W - 1, max(0, int(x * scale)))
+        py = min(H - 1, max(0, int(y * scale)))
+        return (255, 255, 255, 255 * alpha[py * W + px])
+    return pixel
+
+
+def glow_dot(x, y, size):
+    d = math.hypot(x - size / 2.0, y - size / 2.0) / (size / 2.0)
+    core = smooth(size * 0.11, d * size / 2.0)
+    halo = 0.55 * math.exp(-4.5 * d * d)
+    return (255, 255, 255, int(round(255 * min(1.0, max(core, halo)))))
+
+
 
 def elbow(x, y, width, height):
     # The rounded corner of a tree line, 1px wide: down the left edge, then a quarter circle
@@ -701,6 +733,8 @@ write_tga(os.path.join(OUT, "wand.tga"), 64, wand)
 write_tga(os.path.join(OUT, "scales.tga"), 64, scales)
 write_wide_tga(os.path.join(OUT, "infinity.tga"), 32, 16, infinity)
 write_wide_tga(os.path.join(OUT, "infinity_outlined.tga"), 32, 16, infinity_outlined)
+write_wide_tga(os.path.join(OUT, "Welcome", "infinity_track.tga"), 256, 128, infinity_track(256, 128), samples=2)
+write_tga(os.path.join(OUT, "Welcome", "glow_dot.tga"), 64, glow_dot)
 write_wide_tga(os.path.join(OUT, "elbow.tga"), 8, 8, elbow)
 write_tga(os.path.join(OUT, "speaker.tga"), 64, speaker)
 write_tga(os.path.join(OUT, "play.tga"), 64, play)
@@ -722,3 +756,170 @@ write_tga(os.path.join(OUT, "waypoint_hex.tga"), 128, waypoint_shape(6, False))
 write_tga(os.path.join(OUT, "waypoint_hex_ring.tga"), 128, waypoint_shape(6, True))
 write_tga(os.path.join(OUT, "waypoint_diamond.tga"), 128, waypoint_shape(4, False))
 write_tga(os.path.join(OUT, "waypoint_diamond_ring.tga"), 128, waypoint_shape(4, True))
+
+
+LINE_W = 0.075
+
+
+def bezier(p0, p1, p2, n=24):
+    return [((1 - t) ** 2 * p0[0] + 2 * (1 - t) * t * p1[0] + t ** 2 * p2[0],
+             (1 - t) ** 2 * p0[1] + 2 * (1 - t) * t * p1[1] + t ** 2 * p2[1])
+            for t in (i / n for i in range(n + 1))]
+
+
+def arc(cx, cy, r, a0, a1, n=40):
+    return [(cx + r * math.cos(math.radians(a0 + (a1 - a0) * i / n)),
+             cy + r * math.sin(math.radians(a0 + (a1 - a0) * i / n))) for i in range(n + 1)]
+
+
+def path(points, closed=False, alpha=1.0):
+    pts = []
+    for q in (points + [points[0]] if closed else points):
+        if not pts or math.hypot(q[0] - pts[-1][0], q[1] - pts[-1][1]) > 1e-9:
+            pts.append(q)
+
+    def dist(u, v):
+        return min(seg_dist(u, v, *pts[i], *pts[i + 1]) for i in range(len(pts) - 1))
+    return ("line", dist, alpha)
+
+
+def ring(cx, cy, r, alpha=1.0):
+    return ("line", lambda u, v: abs(math.hypot(u - cx, v - cy) - r), alpha)
+
+
+def box(cx, cy, hw, hh, r, alpha=1.0):
+    return ("line", lambda u, v: abs(rounded_rect_dist(u, v, cx, cy, hw, hh, r)), alpha)
+
+
+def dot(cx, cy, r, alpha=1.0):
+    return ("fill", lambda u, v: math.hypot(u - cx, v - cy) - r, alpha)
+
+
+def solid_box(cx, cy, hw, hh, r, alpha=1.0):
+    return ("fill", lambda u, v: rounded_rect_dist(u, v, cx, cy, hw, hh, r), alpha)
+
+
+def solid(points, alpha=1.0):
+    return ("fill", lambda u, v: polygon_dist(u, v, points), alpha)
+
+
+def line_icon(*parts, width=None):
+    w = width or LINE_W
+
+    def pixel(x, y, size):
+        u, v = x / size, y / size
+        a = 0.0
+        for kind, dist, alpha in parts:
+            d = dist(u, v) * size
+            cover = smooth(w * size / 2, d) if kind == "line" else smooth(0, d)
+            a = max(a, cover * alpha)
+        return (255, 255, 255, int(round(255 * a)))
+    return pixel
+
+
+def bars(lit):
+    parts = []
+    for i, (x, h) in enumerate(((0.26, 0.26), (0.5, 0.44), (0.74, 0.62))):
+        parts.append(solid_box(x, 0.84 - h / 2, 0.075, h / 2, 0.04, 1.0 if i < lit else 0.28))
+    return line_icon(*parts)
+
+
+def person(cx, top, s):
+    return [ring(cx, top + 0.11 * s, 0.11 * s), path(arc(cx, top + 0.56 * s, 0.22 * s, 200, 340))]
+
+
+def arrow_head(tip, toward, size=0.13, spread=32):
+    ang = math.atan2(toward[1] - tip[1], toward[0] - tip[0])
+    left = (tip[0] + size * math.cos(ang + math.radians(spread)), tip[1] + size * math.sin(ang + math.radians(spread)))
+    right = (tip[0] + size * math.cos(ang - math.radians(spread)), tip[1] + size * math.sin(ang - math.radians(spread)))
+    return path([left, tip, right])
+
+
+SHIELD = ([(0.2, 0.26), (0.5, 0.15), (0.8, 0.26), (0.8, 0.5)] + bezier((0.8, 0.5), (0.78, 0.76), (0.5, 0.87))[1:]
+          + bezier((0.5, 0.87), (0.22, 0.76), (0.2, 0.5))[1:])
+CROSS = [(0.4, 0.18), (0.6, 0.18), (0.6, 0.4), (0.82, 0.4), (0.82, 0.6), (0.6, 0.6), (0.6, 0.82), (0.4, 0.82),
+         (0.4, 0.6), (0.18, 0.6), (0.18, 0.4), (0.4, 0.4)]
+LEAF_L = bezier((0.5, 0.58), (0.24, 0.62), (0.2, 0.38)) + bezier((0.2, 0.38), (0.44, 0.34), (0.5, 0.58))[1:]
+LEAF_R = bezier((0.5, 0.48), (0.76, 0.46), (0.8, 0.24)) + bezier((0.8, 0.24), (0.56, 0.24), (0.5, 0.48))[1:]
+MAP = [(0.16, 0.26), (0.38, 0.19), (0.62, 0.27), (0.84, 0.2), (0.84, 0.74), (0.62, 0.81), (0.38, 0.73), (0.16, 0.8)]
+PIN = arc(0.5, 0.4, 0.22, 145, 395) + [(0.5, 0.86)]
+UNDO = arc(0.5, 0.54, 0.27, 200, 470)
+STAR4 = []
+for i in range(8):
+    r = 0.36 if i % 2 == 0 else 0.1
+    a = math.radians(-90 + i * 45)
+    STAR4.append((0.46 + r * math.cos(a), 0.54 + r * math.sin(a)))
+SMALL4 = []
+for i in range(8):
+    r = 0.13 if i % 2 == 0 else 0.04
+    a = math.radians(-90 + i * 45)
+    SMALL4.append((0.78 + r * math.cos(a), 0.22 + r * math.sin(a)))
+
+
+def sword(flip=False, guard=0.1):
+    def at(u, v):
+        return (1 - u if flip else u, v)
+    return [path([at(0.3, 0.7), at(0.8, 0.2)]), path([at(0.22, 0.62), at(0.38, 0.78)]),
+            path([at(0.3, 0.7), at(0.19, 0.81)])]
+
+
+SETUP_ICONS = {
+    "purist": line_icon(path([(0.3, 0.24), (0.7, 0.24), (0.86, 0.43), (0.5, 0.85), (0.14, 0.43)], True),
+                        path([(0.14, 0.43), (0.86, 0.43)]), path([(0.42, 0.24), (0.36, 0.43), (0.5, 0.85)]),
+                        path([(0.58, 0.24), (0.64, 0.43), (0.5, 0.85)])),
+    "essentials": bars(1),
+    "helpful": bars(2),
+    "everything": bars(3),
+    "questing": line_icon(ring(0.5, 0.5, 0.36), path([(0.5, 0.3), (0.5, 0.56)]), dot(0.5, 0.7, 0.055)),
+    "dungeons": line_icon(path([(0.24, 0.84), (0.24, 0.44)] + arc(0.5, 0.44, 0.26, 180, 360) + [(0.76, 0.84)]),
+                          path([(0.14, 0.84), (0.86, 0.84)]),
+                          path([(0.41, 0.84), (0.41, 0.64)] + arc(0.5, 0.64, 0.09, 180, 360) + [(0.59, 0.84)])),
+    "pvp": line_icon(*(sword() + sword(True))),
+    "professions": line_icon(path([(0.47, 0.18), (0.82, 0.53), (0.72, 0.63), (0.37, 0.28)], True),
+                             path([(0.53, 0.46), (0.2, 0.79)])),
+    "collecting": line_icon(ring(0.5, 0.5, 0.36), path([(0.5, 0.24), (0.58, 0.5), (0.5, 0.76), (0.42, 0.5)], True),
+                            solid([(0.5, 0.24), (0.58, 0.5), (0.42, 0.5)])),
+    "tank": line_icon(path(SHIELD, True), path([(0.5, 0.3), (0.5, 0.72)], alpha=0.0)),
+    "healer": line_icon(path(CROSS, True)),
+    "melee": line_icon(*sword()),
+    "ranged": line_icon(ring(0.46, 0.54, 0.3), ring(0.46, 0.54, 0.14), dot(0.46, 0.54, 0.045),
+                        path([(0.46, 0.54), (0.84, 0.16)]), path([(0.84, 0.16), (0.84, 0.3)]),
+                        path([(0.84, 0.16), (0.7, 0.16)])),
+    "clean": line_icon(box(0.5, 0.5, 0.36, 0.3, 0.07), path([(0.14, 0.34), (0.86, 0.34)])),
+    "few": line_icon(box(0.5, 0.5, 0.36, 0.3, 0.07), path([(0.14, 0.34), (0.86, 0.34)]),
+                     solid_box(0.32, 0.56, 0.08, 0.07, 0.025)),
+    "all": line_icon(box(0.5, 0.5, 0.36, 0.3, 0.07), path([(0.14, 0.34), (0.86, 0.34)]),
+                     solid_box(0.3, 0.52, 0.065, 0.06, 0.02), solid_box(0.5, 0.52, 0.065, 0.06, 0.02),
+                     solid_box(0.7, 0.52, 0.065, 0.06, 0.02), path([(0.26, 0.68), (0.74, 0.68)])),
+    "solo": line_icon(*person(0.5, 0.2, 1.25)),
+    "sometimes": line_icon(*(person(0.35, 0.26, 1.0) + person(0.65, 0.26, 1.0))),
+    "always": line_icon(*(person(0.2, 0.32, 0.82) + person(0.5, 0.24, 0.92) + person(0.8, 0.32, 0.82))),
+    "guide": line_icon(path([(0.5, 0.3), (0.18, 0.24), (0.18, 0.76), (0.5, 0.82)]),
+                       path([(0.5, 0.3), (0.82, 0.24), (0.82, 0.76), (0.5, 0.82)]), path([(0.5, 0.3), (0.5, 0.82)])),
+    "threat": line_icon(path(arc(0.5, 0.64, 0.33, 180, 360)), path([(0.5, 0.64), (0.7, 0.42)]), dot(0.5, 0.64, 0.06),
+                        path([(0.17, 0.64), (0.25, 0.64)]), path([(0.83, 0.64), (0.75, 0.64)]),
+                        path([(0.5, 0.31), (0.5, 0.39)])),
+    "none": line_icon(ring(0.5, 0.5, 0.34), path([(0.26, 0.74), (0.74, 0.26)])),
+    "new": line_icon(path([(0.5, 0.86), (0.5, 0.46)]), path(LEAF_L, True), path(LEAF_R, True),
+                     path([(0.3, 0.86), (0.7, 0.86)])),
+    "played": line_icon(path(MAP, True), path([(0.38, 0.19), (0.38, 0.73)]), path([(0.62, 0.27), (0.62, 0.81)])),
+    "expert": line_icon(path([(0.18, 0.74), (0.18, 0.34), (0.35, 0.53), (0.5, 0.25), (0.65, 0.53), (0.82, 0.34),
+                              (0.82, 0.74)], True), dot(0.5, 0.6, 0.05)),
+    "questions": line_icon(box(0.5, 0.44, 0.34, 0.25, 0.1), path([(0.34, 0.69), (0.28, 0.84), (0.48, 0.69)]),
+                           dot(0.36, 0.44, 0.045), dot(0.5, 0.44, 0.045), dot(0.64, 0.44, 0.045)),
+    "review": line_icon(path([(0.16, 0.34), (0.23, 0.41), (0.35, 0.27)]), path([(0.45, 0.34), (0.84, 0.34)]),
+                        path([(0.16, 0.66), (0.23, 0.73), (0.35, 0.59)]), path([(0.45, 0.66), (0.84, 0.66)])),
+    "undo": line_icon(path(UNDO), arrow_head(UNDO[0], UNDO[4])),
+    "travel": line_icon(path(PIN, True), ring(0.5, 0.4, 0.08)),
+    "interface": line_icon(box(0.5, 0.5, 0.36, 0.3, 0.07), path([(0.14, 0.34), (0.86, 0.34)]),
+                           path([(0.36, 0.34), (0.36, 0.8)])),
+    "changes": line_icon(solid(STAR4), solid(SMALL4)),
+    "qol": line_icon(ring(0.5, 0.5, 0.35), path([(0.5, 0.29), (0.5, 0.5), (0.66, 0.6)]), dot(0.5, 0.5, 0.045)),
+    "next": line_icon(path([(0.18, 0.5), (0.8, 0.5)]), arrow_head((0.8, 0.5), (0.18, 0.5), 0.3, 42), width=0.13),
+    "back": line_icon(path([(0.82, 0.5), (0.2, 0.5)]), arrow_head((0.2, 0.5), (0.82, 0.5), 0.3, 42), width=0.13),
+}
+
+SETUP_OUT = os.path.join(OUT, "Setup")
+os.makedirs(SETUP_OUT, exist_ok=True)
+for name, pixel in SETUP_ICONS.items():
+    write_tga(os.path.join(SETUP_OUT, name + ".tga"), 64, pixel)

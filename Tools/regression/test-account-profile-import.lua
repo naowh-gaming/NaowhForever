@@ -19,6 +19,11 @@ local function Fixture(char)
         activeRoot = nil,
         CharKey = function() return e.char end,
         UnitName = function() return e.char:match("^[^-]+") end, UNKNOWNOBJECT = "Unknown" }
+    function env.CopyTable(t)
+        local out = {}
+        for k, v in pairs(t) do out[k] = type(v) == "table" and env.CopyTable(v) or v end
+        return out
+    end
     setmetatable(env, { __index = _G })
     local code = Slice(coreSrc, "local function DB()", "function ns.SettingsRoot()")
         .. Slice(coreSrc, "function ns.SettingsRoot()", "function ns.AccountSettings()")
@@ -194,7 +199,10 @@ Case("a new install starts from the starter setup in Default", function()
     e.ns.STARTER = starter
     assert(e.ns.SettingsRoot().qol.fastLoot == true)
     local sv = e.db()
-    assert(sv.profiles.Default == starter.profile and sv.account.windowScale == 1.1)
+    assert(sv.account.windowScale == 1.1)
+    assert(sv.profiles.Default ~= starter.profile and sv.account ~= starter.account)
+    e.ns.SettingsRoot().qol.fastLoot = false
+    assert(starter.profile.qol.fastLoot == true)
     assert(sv.charActive["Main-Ravencrest"] == "Default")
 end)
 

@@ -82,10 +82,17 @@ local function Setup(account)
         end,
         AccentBorder = function(b) b.accent = true; return b end,
         Border = function(f) f.bordered = true end,
+        Solid = function() return NewFrame(s.made) end,
+        Hairline = function() end,
         Tooltip = function(f, title, body) f.tipTitle, f.tipBody = title, body end,
         ShowCopyLine = function(title, text, icon) s.copied = { title = title, text = text, icon = icon } end,
         OpenOptionsWindow = function() s.options = s.options + 1 end,
         OpenFromOptions = function(open) s.fromOptions = (s.fromOptions or 0) + 1; open() end,
+        MarkSeen = function() s.marked = (s.marked or 0) + 1 end,
+        ImportCandidate = function() return s.candidate, s.candidate and "Raid" end,
+        SwitchProfile = function(name) s.switched = name; return true end,
+        Confirm = function(text, onYes, _, yes, no) s.confirm = { text = text, yes = onYes, yesText = yes, noText = no } end,
+        Print = function(text) s.printed = text end,
         NAOWH_DISCORD = DISCORD,
         QoLSettings = {},
         Shared = {
@@ -117,6 +124,7 @@ local function Setup(account)
         NaowhForever = ns,
         CreateFrame = function() return NewFrame(s.made) end,
         InCombatLockdown = function() return s.combat end,
+        UnitName = function() return "Die Dudu" end,
         C_Timer = { NewTimer = function(delay, fn)
             local t = { delay = delay, fn = fn }
             t.Cancel = function(self) self.cancelled = true end
@@ -372,6 +380,7 @@ do
         minimalist = { name = "Minimalist", about = "Almost everything off." },
         recommended = { name = "Recommended", about = "Naowh's setup." } }
     s.ns.UsePreset = function(key, ask) used[#used + 1] = { key = key, ask = ask } end
+    s.account.freshInstall = true
     s.ns.ShowWelcome()
     local win = s.window
     check("a row per preset, named, with its line", win.presets and #win.presets == 2
@@ -389,13 +398,25 @@ do
     win.presets[2].click()
     check("a new account's pick applies at once, the window closed and seen", #used == 1
         and used[1].key == "recommended" and used[1].ask == false and not Shown(s) and s.account.welcomeSeen == true)
+    check("seen, it is no longer a new install", s.account.freshInstall == nil)
     s.ns.ShowWelcome()
     win.presets[1].click()
     check("picked again later, it asks first", #used == 2 and used[2].key == "minimalist" and used[2].ask == true)
+    local old = Setup()
+    local oldUsed = {}
+    old.ns.PRESETS = s.ns.PRESETS
+    old.ns.UsePreset = function(key, ask) oldUsed[#oldUsed + 1] = { key = key, ask = ask } end
+    old.ns.ShowWelcome()
+    old.window.presets[2].click()
+    check("an account from before the welcome window: its pick asks first", #oldUsed == 1
+        and oldUsed[1].key == "recommended" and oldUsed[1].ask == true)
+    old.window.presets[1].click()
+    check("and keeping Minimalist asks too, nothing assumed", #oldUsed == 2 and oldUsed[2].ask == true)
     local fresh = Setup()
     local none = {}
     fresh.ns.PRESETS = s.ns.PRESETS
     fresh.ns.UsePreset = function(key) none[#none + 1] = key end
+    fresh.account.freshInstall = true
     fresh.ns.ShowWelcome()
     fresh.window.presets[1].click()
     check("a new account keeping what it has (Minimalist): nothing to apply", #none == 0 and not Shown(fresh))
@@ -404,6 +425,59 @@ do
     one.ns.UsePreset = s.ns.UsePreset
     one.ns.ShowWelcome()
     check("one preset only: no question", one.window.presets == nil)
+    check("without Tailor my setup loaded: no third row", win.tailor == nil)
+end
+
+do
+    local s = Setup()
+    local opened
+    s.ns.PRESETS = { newInstall = "minimalist", order = { "minimalist", "recommended" },
+        minimalist = { name = "Minimalist", about = "Almost everything off." },
+        recommended = { name = "Recommended", about = "Naowh's setup." } }
+    s.ns.UsePreset = function() end
+    s.ns.ShowSetup = function(fromWelcome) opened = fromWelcome end
+    s.ns.ShowWelcome()
+    local win = s.window
+    check("a Tailor my setup row under the presets", win.tailor and win.tailor.label == "Tailor my setup"
+        and table.concat(s.texts, " "):find("Answer a few quick questions", 1, true) ~= nil)
+    win.tailor.click()
+    check("it closes the welcome, seen, and opens the questions from it", opened == true and not Shown(s)
+        and s.account.welcomeSeen == true)
+end
+
+-------------------------------------------------------------------------------
+--  A character's first login, the welcome seen: another character's settings offered
+-------------------------------------------------------------------------------
+do
+    local s = Setup({ welcomeSeen = true })
+    Event(s, "PLAYER_ENTERING_WORLD", true, false)
+    check("each login notes when the character was last played", s.marked == 1)
+    check("no other character's settings to offer: nothing waits", #s.timers == 0 and s.confirm == nil)
+end
+do
+    local s = Setup({ welcomeSeen = true })
+    s.candidate = "Die Man-Forever"
+    Event(s, "PLAYER_ENTERING_WORLD", true, false)
+    check("a new character with another's settings around: a few seconds in", #s.timers == 1 and s.confirm == nil)
+    s.combat = true
+    RunTimer(s)
+    check("not in combat", s.confirm == nil and s.login.events.PLAYER_REGEN_ENABLED)
+    s.combat = false
+    Event(s, "PLAYER_REGEN_ENABLED")
+    check("it says whose settings it found and asks", s.confirm and s.windows == 0
+        and s.confirm.text == "Welcome, Die Dudu! We found settings from Die Man. Use them on this character too?"
+        and s.confirm.yesText == "Use Them" and s.confirm.noText == "Not Now")
+    check("asked once, then it stops listening", next(s.login.events) == nil)
+    s.confirm.yes()
+    check("yes: this character uses that profile, and it says so", s.switched == "Raid"
+        and s.printed == "Die Dudu now uses the same settings as Die Man.")
+end
+do
+    local s = Setup()
+    s.candidate = "Die Man-Forever"
+    Event(s, "PLAYER_ENTERING_WORLD", true, false)
+    RunTimer(s)
+    check("the welcome not seen yet: the welcome shows, not the offer", Shown(s) and s.confirm == nil)
 end
 
 print(("test-welcome: %d checks passed"):format(checks))

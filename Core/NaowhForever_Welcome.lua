@@ -3,9 +3,13 @@
 --  of Naowh's setups to start from (ns.PRESETS: Minimalist or Recommended), and our Discord.
 --  Shown once per account, a few seconds into the first login (or the reload another addon's
 --  setup asks for before it is seen) and out of combat; /nf welcome and QoL > System open it
---  again. Nothing is made until it shows. A preset picked on a new
---  account applies at once; picked again later, it asks first, as on the Defaults card. Its
+--  again. Nothing is made until it shows. A preset picked on a new install (freshInstall,
+--  marked when the settings are made) applies at once; otherwise, an account from before this
+--  window included, it asks first, as on the Defaults card. Under
+--  them, Tailor my setup asks a few questions instead (NaowhForever_SetupWindow.lua). Its
 --  height follows its contents once the game has laid the text out, whatever the resolution.
+--  Once it is seen, a character's first login, while another character is on a different profile,
+--  offers that one's settings instead (ns.ImportCandidate).
 -------------------------------------------------------------------------------
 local ns = _G.NaowhForever
 local T = ns.THEME
@@ -22,6 +26,7 @@ local BUTTON_H = 26
 local BUTTON_GAP = 8
 local DISCORD_W, SETTINGS_W, CLOSE_W = 120, 120, 90
 local PRESET_W, PRESET_GAP, PICK_GAP, PRESET_SPACE = 130, 6, 14, 14
+local OR_GAP = 12
 local PICTURE_SHARE = 0.25
 local PICTURES = "Interface\\AddOns\\NaowhForever\\Media\\Welcome\\"
 local OPAQUE = 1
@@ -32,6 +37,12 @@ local TITLE = "Welcome to Naowh Forever"
 local SUBTITLE = "Good to have you here."
 local DISCORD_TITLE = "Naowh's Discord"
 local PICK = "How do you want to start?"
+local OR = "or"
+local TAILOR = "Tailor my setup"
+local TAILOR_ABOUT = "Answer a few quick questions and we pick what to turn on."
+local IMPORT = "Welcome, %s! We found settings from %s. Use them on this character too?"
+local IMPORT_YES, IMPORT_NO = "Use Them", "Not Now"
+local IMPORT_DONE = "%s now uses the same settings as %s."
 
 local window, timer, armed
 local login = CreateFrame("Frame")
@@ -45,7 +56,8 @@ local function Lines()
 end
 
 local function Seen()
-    ns.AccountSettings().welcomeSeen = true
+    local account = ns.AccountSettings()
+    account.welcomeSeen, account.freshInstall = true, nil
 end
 
 local function Hidden(self)
@@ -67,10 +79,16 @@ local function Close()
 end
 
 local function Pick(key)
-    local fresh = not ns.AccountSettings().welcomeSeen
+    local account = ns.AccountSettings()
+    local fresh = not account.welcomeSeen and account.freshInstall == true
     window:Hide()
     if fresh and key == ns.PRESETS.newInstall then return end
     ns.UsePreset(key, not fresh)
+end
+
+local function Tailor()
+    window:Hide()
+    ns.ShowSetup(true)
 end
 
 local function Fit(content)
@@ -136,6 +154,29 @@ local function Build()
             window.presets[i] = button
             above = button
         end
+        if ns.ShowSetup then
+            local rule = ns.Solid(window, "ARTWORK", T.line, 1)
+            rule:SetPoint("TOPLEFT", above, "BOTTOMLEFT", 0, -OR_GAP)
+            rule:SetPoint("RIGHT", window, "RIGHT", -INSET, 0)
+            ns.Hairline(rule, "h")
+            local word = ns.Font(window, BODY_SIZE, nil, T.muted)
+            word:SetPoint("CENTER", rule, "CENTER")
+            word:SetText(OR)
+            local behind = ns.Solid(window, "OVERLAY", T.bg, 1)
+            behind:SetPoint("TOPLEFT", word, "TOPLEFT", -6, 0)
+            behind:SetPoint("BOTTOMRIGHT", word, "BOTTOMRIGHT", 6, 0)
+            behind:SetDrawLayer("ARTWORK", 1)
+            local button = ns.AccentBorder(ns.Button(window, TAILOR, PRESET_W, BUTTON_H, Tailor))
+            button:SetPoint("TOPLEFT", above, "BOTTOMLEFT", 0, -OR_GAP * 2)
+            local about = ns.Font(window, BODY_SIZE, nil, T.muted)
+            about:SetPoint("LEFT", button, "RIGHT", BUTTON_GAP, 0)
+            about:SetPoint("RIGHT", window, "RIGHT", -INSET, 0)
+            about:SetJustifyH("LEFT")
+            about:SetText(TAILOR_ABOUT)
+            height = height + OR_GAP * 2 + BUTTON_H
+            window.tailor = button
+            above = button
+        end
     end
     window.content = CreateFrame("Frame", nil, window)
     window.content:SetPoint("TOPLEFT")
@@ -166,19 +207,37 @@ function ns.ShowWelcome()
     ns.OpenFromOptions(Show)
 end
 
+local function Wanted()
+    return not ns.AccountSettings().welcomeSeen or ns.ImportCandidate() ~= nil
+end
+
+local function OfferImport()
+    local char, profile = ns.ImportCandidate()
+    if not char then return end
+    local me, them = UnitName("player"), char:match("^[^-]+")
+    ns.Confirm(IMPORT:format(me, them), function()
+        if ns.SwitchProfile(profile) then ns.Print(IMPORT_DONE:format(me, them)) end
+    end, nil, IMPORT_YES, IMPORT_NO)
+end
+
 local function Due()
     timer = nil
-    if ns.AccountSettings().welcomeSeen then return Stop() end
+    if not Wanted() then return Stop() end
     if InCombatLockdown() then
         login:RegisterEvent("PLAYER_REGEN_ENABLED")
         return
+    end
+    if ns.AccountSettings().welcomeSeen then
+        Stop()
+        return OfferImport()
     end
     ns.ShowWelcome()
 end
 
 login:SetScript("OnEvent", function(self, event, isInitialLogin, isReloadingUi)
     if event == "PLAYER_ENTERING_WORLD" then
-        if not (armed or isInitialLogin or isReloadingUi) or ns.AccountSettings().welcomeSeen then
+        if isInitialLogin or isReloadingUi then ns.MarkSeen() end
+        if not (armed or isInitialLogin or isReloadingUi) or not Wanted() then
             return Stop()
         end
         armed = true

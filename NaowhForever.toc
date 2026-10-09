@@ -137,3 +137,5 @@ Core\NaowhForever_Credits.lua
 # The welcome window, once per account at the first login. Loads after the Badges, whose
 # Discord link it shares.
 Core\NaowhForever_Welcome.lua
+Core\NaowhForever_Setup.lua
+Core\NaowhForever_SetupWindow.lua

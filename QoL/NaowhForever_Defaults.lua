@@ -4,24 +4,39 @@
 --  reload (ns.UsePreset, also the welcome window's choice); hovering it lists what each one
 --  turns on and off against your settings now (ns.PresetChanges), read from the modules' and
 --  the feature cards' own switches. Smart Reminders, what you answered about EllesmereUI's windows and the
---  account's data stay.
+--  account's data stay, and so does what you made in the profile (KEEP: saved quest rewards,
+--  lists, enchant rules, HUD layouts). Tailor Setup asks a few questions instead (ns.ShowSetup), and Before
+--  Tailoring puts back what it changed (ns.Setup.Restore).
 -------------------------------------------------------------------------------
 local ns = _G.NaowhForever
 local S = ns.QoLSettings
 local P = ns.PRESETS
 local Settings = ns.Shared.Settings
 
-local ASK = "Apply %s to every setting and position? Your BiS lists and notes stay. Cannot be undone."
+local ASK = "Apply %s to every setting and position? Your lists, notes and saved picks stay. Cannot be undone."
 local DONE = "Every setting now follows %s. Reload now to finish?"
 local CUSTOM = "Custom"
 local ON, OFF, SAME = "%s turns on: %s", "%s turns off: %s", "%s is what you have now."
 local RIVALS = { "characterPanel", "inspectPanel" }
+local KEEP = {
+    qol = { "questRewards", "bagSpaceIgnore", "slashList", "equipEnchantRules" },
+    auraBuffs = { "campHiddenBonuses" },
+    unlockMode = { "layouts" },
+}
+local RESTORE_ASK = "Put every setting back to how it was before tailoring?"
+local RESTORED = "Your settings are back. Reload now to finish?"
 
 function ns.ApplyPreset(key)
     local root = ns.SettingsRoot()
     local qol = type(root.qol) == "table" and root.qol or {}
-    local own, was = {}, {}
+    local own, was, kept = {}, {}, {}
     for _, k in ipairs(ns.PROFILE_OWN.qol) do own[k] = qol[k] end
+    for db, keys in pairs(KEEP) do
+        local values = type(root[db]) == "table" and root[db]
+        for _, k in ipairs(keys) do
+            if values and values[k] ~= nil then kept[db] = kept[db] or {}; kept[db][k] = values[k] end
+        end
+    end
     for _, k in ipairs(RIVALS) do was[k] = S.Get(k) end
     for k in pairs(root) do
         if k ~= "tankReminder" then root[k] = nil end
@@ -29,6 +44,10 @@ function ns.ApplyPreset(key)
     for k, values in pairs(P[key].profile) do root[k] = CopyTable(values) end
     if type(root.qol) ~= "table" then root.qol = {} end
     for k, value in pairs(own) do root.qol[k] = value end
+    for db, values in pairs(kept) do
+        if type(root[db]) ~= "table" then root[db] = {} end
+        for k, value in pairs(values) do root[db][k] = value end
+    end
     root.qol.preset = key
     for _, k in ipairs(RIVALS) do
         if S.Get(k) ~= was[k] then S.Set(k, S.Get(k)) end
@@ -92,12 +111,22 @@ local function Tip()
     return table.concat(lines, "\n\n")
 end
 
+local function Restore()
+    ns.Confirm(RESTORE_ASK, function()
+        if ns.Setup.Restore() then ns.ConfirmReload(RESTORED) end
+    end, nil, "Restore")
+end
+
+local function NoBackup()
+    return not (ns.Setup and ns.Setup.CanRestore())
+end
+
 local NAMES = { custom = CUSTOM }
 for _, key in ipairs(P.order) do NAMES[key] = P[key].name end
 
 Settings.Page("QoL/System", S):Card({
     id = "defaults", name = "Defaults", order = 90,
-    help = "Puts every setting and position to one of Naowh's setups.",
+    help = "Puts your settings to one of Naowh's setups, or tailors them to how you play.",
     summary = function() return NAMES[S.Get("preset") or "custom"] or CUSTOM end,
     rows = {
         { label = "Setup", choice = { NAMES, P.order }, always = true,
@@ -105,5 +134,9 @@ Settings.Page("QoL/System", S):Card({
           set = function(key) if P[key] then ns.UsePreset(key) end end,
           tip = Tip,
           help = "Minimalist has almost everything off; Recommended is Naowh's setup with the modules he uses on." },
+        { label = "Tailor Setup", buttonText = "Start", button = function() ns.ShowSetup() end,
+          help = "Asks a few questions and suggests what to turn on and off." },
+        { label = "Before Tailoring", buttonText = "Restore", button = Restore, hidden = NoBackup,
+          help = "Puts your settings back to how they were before tailoring." },
     },
 })

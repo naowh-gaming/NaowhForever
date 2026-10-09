@@ -23,6 +23,10 @@ local LINKS = {
     { "Website", "website", function() return "https://naowh.gg" end },
     { "GitHub", "github", function() return "https://github.com/nwh-gaming-ab/NaowhForever" end },
 }
+ns.LINKS, ns.LINK_ICONS = LINKS, LINK_ICONS
+function ns.VersionText()
+    return "v" .. (ns.CODE_BUILD or C_AddOns.GetAddOnMetadata(ns.MODULE_KEY, "Version") or "unknown")
+end
 local SYSTEM_NAV = { { "Settings", "settings" }, { "Profiles", "person" }, { "Patch Notes", "notes" }, { "Credits", "heart" } }
 local NAV_STEP, LINK_SIZE, LINK_GAP = 30, 16, 10
 local NAV_DOT, NAV_OPEN, NAV_OPEN_ICON = 6, 22, 14
@@ -339,7 +343,10 @@ end
 -- reads as off, and switching it back on cancels that.
 local function ModuleOn(mod)
     if mod.addon and C_AddOns.GetAddOnEnableState(mod.addon) == 0 then return false end
-    if mod.settings then return ns[mod.settings].Get(mod.enabledKey or "enabled") end
+    if mod.settings then
+        local store = ns[mod.settings]
+        return store ~= nil and store.Get(mod.enabledKey or "enabled")
+    end
     return ns.DB().enabled == true
 end
 
@@ -354,12 +361,36 @@ function ns.ModuleSwitches()
     return list
 end
 
+function ns.ModuleAddons()
+    local list = {}
+    for _, mod in ipairs(MODULES) do
+        if mod.addon then
+            list[#list + 1] = { name = DisplayName(mod), addon = mod.addon, store = mod.settings and ns[mod.settings],
+                key = mod.enabledKey or "enabled", on = ModuleOn(mod) }
+        end
+    end
+    return list
+end
+
+function ns.LinkedAddons(addon, on)
+    for _, mod in ipairs(MODULES) do
+        if mod.addon == addon then
+            local names = {}
+            for i, m in ipairs(Linked(mod, on)) do names[i] = m.addon end
+            return names
+        end
+    end
+    return { addon }
+end
+
 local function SetModuleOn(mod, on)
     if mod.addon and not on then return SwitchModuleAddon(mod, false) end
+    local store = mod.settings and ns[mod.settings]
+    if mod.settings and not store then return SwitchModuleAddon(mod, true) end
     if mod.addon then
         for _, m in ipairs(Linked(mod, true)) do C_AddOns.EnableAddOn(m.addon) end
     end
-    if mod.settings then ns[mod.settings].Set(mod.enabledKey or "enabled", on) else ns.SetEnabled(on) end
+    if store then store.Set(mod.enabledKey or "enabled", on) else ns.SetEnabled(on) end
     UI:RefreshPage(true)
 end
 
@@ -1323,7 +1354,7 @@ local function CreateWindow()
     end
     local version = ns.Font(sidebar, 10, nil, T.muted)
     version:SetPoint("BOTTOMLEFT", 20, 10)
-    version:SetText("v" .. (ns.CODE_BUILD or C_AddOns.GetAddOnMetadata(ns.MODULE_KEY, "Version") or "unknown"))
+    version:SetText(ns.VersionText())
     local Parts = ns.Shared.Parts
     local right = -14
     for i = #LINKS, 1, -1 do
@@ -1601,6 +1632,8 @@ SlashCmdList["NAOWHFOREVER"] = function(msg)
         ns.ToggleScrapList()
     elseif cmd == "welcome" and ns.ShowWelcome then
         ns.ShowWelcome()
+    elseif cmd == "setup" and ns.ShowSetup then
+        ns.ShowSetup()
     else
         ns.ToggleOptionsWindow()
     end

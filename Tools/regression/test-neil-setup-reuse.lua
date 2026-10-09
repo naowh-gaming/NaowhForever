@@ -44,7 +44,12 @@ function methods:GetText() return self.text end
 function methods:CreateFontString() return Object(self) end
 function methods:CreateTexture() return Object(self) end
 
-local env = { STANDARD_TEXT_FONT = "font", LibStub = false,
+local function CopyTable(t)
+    local out = {}
+    for k, v in pairs(t) do out[k] = type(v) == "table" and CopyTable(v) or v end
+    return out
+end
+local env = { STANDARD_TEXT_FONT = "font", LibStub = false, CopyTable = CopyTable,
     CreateFrame = function(_, _, parent) return Object(parent) end,
     PixelUtil = { GetPixelToUIUnitFactor = function() return 1 end } }
 function methods:GetObjectType() return "Frame" end

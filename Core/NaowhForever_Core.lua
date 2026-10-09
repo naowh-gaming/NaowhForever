@@ -930,7 +930,7 @@ end
 -- SettingsRoot hands back the active profile's root, and ns.DB layers its defaults onto
 -- root.tankReminder from there. A switch hands ns.DB a different table identity, which is
 -- what re-runs its weak-keyed defaults fill.
-local activeRoot, provisional
+local activeRoot, provisional, newCharacter
 
 local function CharKey()
     return UnitName("player") .. "-" .. GetRealmName()
@@ -943,7 +943,11 @@ local function DB()
         -- NaowhSmartReminders.lua SavedVariables file is copied over as NaowhForever.lua.
         -- A new install starts from Naowh's Minimalist preset (NaowhForever_Presets.lua).
         sv = type(_G.NaowhUI_SmartRemindersDB) == "table" and _G.NaowhUI_SmartRemindersDB
-            or { dbVersion = 1, profiles = { Default = ns.STARTER.profile }, account = ns.STARTER.account }
+        if not sv then
+            sv = { dbVersion = 1, profiles = { Default = CopyTable(ns.STARTER.profile) },
+                account = CopyTable(ns.STARTER.account) }
+            sv.account.freshInstall = true
+        end
         _G.NaowhForeverDB = sv
         _G.NaowhUI_SmartRemindersDB = nil
     end
@@ -965,6 +969,7 @@ function ns.SettingsRoot()
     end
     local name = sv.charActive[CharKey()]
     if type(name) ~= "string" or type(sv.profiles[name]) ~= "table" then
+        if name == nil and next(sv.charActive) ~= nil then newCharacter = true end
         -- No assignment, or a deleted profile: the account default, which a newly made
         -- profile claims, so a first login afterwards joins the rest.
         name = type(name) == "string" and name or sv.defaultProfile or "Default"
@@ -1224,6 +1229,34 @@ function ns.KnownCharacters()
     end
     table.sort(out, function(a, b) return a.char:lower() < b.char:lower() end)
     return out
+end
+
+function ns.MarkSeen()
+    if UnitName("player") == UNKNOWNOBJECT then return end
+    local sv = DB()
+    if type(sv.charSeen) ~= "table" then sv.charSeen = {} end
+    sv.charSeen[CharKey()] = time()
+end
+
+function ns.ImportCandidate()
+    if not newCharacter then return nil end
+    local sv = DB()
+    local me = CharKey()
+    local mine = sv.charActive[me]
+    local seen = type(sv.charSeen) == "table" and sv.charSeen or {}
+    local uses = {}
+    for _, profile in pairs(sv.charActive) do uses[profile] = (uses[profile] or 0) + 1 end
+    local best, bestProfile, bestSeen, bestUses
+    for char, profile in pairs(sv.charActive) do
+        if char ~= me and profile ~= mine and type(sv.profiles[profile]) == "table" then
+            local when, count = seen[char] or 0, uses[profile]
+            if not best or when > bestSeen or (when == bestSeen and (count > bestUses
+                or (count == bestUses and char < best))) then
+                best, bestProfile, bestSeen, bestUses = char, profile, when, count
+            end
+        end
+    end
+    return best, bestProfile
 end
 
 function ns.ListProfiles()
