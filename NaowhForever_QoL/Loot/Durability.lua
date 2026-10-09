@@ -83,7 +83,7 @@ local function Build()
     frame.text = ns.Font(frame, FONT_SIZE, "OUTLINE")
     frame.text:SetPoint("CENTER")
     frame.backdrop = Parts.HudBackdrop(frame, { mode = "none" })
-    ns.AlertStack(frame, STACK_ORDER, "QoL/Loot & Items", "durability")
+    ns.AlertStack(frame, STACK_ORDER)
 end
 
 local function Restyle()

@@ -2,8 +2,7 @@
 -- group's bottom in their order, whichever are shown; a scaled member is measured and offset in
 -- the group's units; the one mover covers the stack and shows in Unlock Mode only while a member
 -- is up; the group starts at the first old alert spot a player had (Camp Nearby's only while
--- AuraBuffs is loaded), saves it, and keeps its own spot from then on. The mover's Settings button
--- opens the card of the lowest alert showing.
+-- AuraBuffs is loaded), saves it, and keeps its own spot from then on.
 
 local Load = dofile("Tools/regression/load_files.lua")
 
@@ -50,7 +49,6 @@ local function Fixture(qol, aura)
         local mover = Frame()
         mover.shown = false
         mover.label, mover.onMoved, mover.page, mover.parent = label, onMoved, page, frame
-        mover._placement = { page = page }
         return mover
     end }
     env.NaowhForever = ns
@@ -81,24 +79,19 @@ do
     local qol = {}
     local ns = Fixture(qol, nil)
     local camp, talent, pet = Member(200, 26), Member(300, 32), Member(220, 36)
-    ns.AlertStack(pet, 5, "QoL/Combat", "petTracker")
-    ns.AlertStack(camp, 1, "AuraBuffs/Settings", "campNearby")
-    ns.AlertStack(talent, 2, "QoL/Questing & Group", "talentPoints")
+    ns.AlertStack(pet, 5)
+    ns.AlertStack(camp, 1)
+    ns.AlertStack(talent, 2)
     Check(qol.alertsPos.point == "CENTER" and qol.alertsPos.y == 150,
         "no old spot and no AuraBuffs: the group starts at its default and saves it")
-    local placement
     talent:Show()
     pet:Show()
-    placement = rawget(talent.point[2], "mover")._placement
-    Check(placement.page == "QoL/Questing & Group" and placement.feature == "QoL/Questing & Group:talentPoints",
-        "Settings opens the card of the lowest alert showing")
     Check(talent.point[4] == 0 and talent.point[5] == 0, "the lowest shown member sits on the group's bottom")
     Check(pet.point[5] == 32 + 6, "the next one stacks above it with the gap")
     camp:SetScale(1.5)
     camp:Show()
     Check(camp.point[5] == 0 and math.abs(talent.point[5] - 26 * 1.5 - 6) < 1e-9,
         "a scaled member goes to the bottom, measured in the group's units")
-    Check(placement.feature == "AuraBuffs/Settings:campNearby", "and follows when another shows under it")
     local group = pet.point[2]
     local mover = rawget(group, "mover")
     Check(mover.label == "Alerts" and mover.page ~= nil, "one mover, named Alerts, with an options page")
@@ -108,7 +101,6 @@ do
     Check(mover.h == 26 * 1.5 + 6 + 32 + 6 + 36 and mover.w == 300, "the mover covers the whole stack")
     camp:Hide(); talent:Hide(); pet:Hide()
     Check(mover.shown == false, "no member up: no mover")
-    Check(placement.feature == "QoL/Loot & Items:durability", "none showing: Durability's card")
     ns.HideUnlockMode()
     mover.onMoved({ point = "CENTER", relPoint = "CENTER", x = 10, y = 20 })
     Check(qol.alertsPos.x == 10 and qol.alertsPos.y == 20, "moving the group saves its spot")
@@ -118,7 +110,7 @@ do
     local qol = { durabilityPos = { point = "CENTER", relPoint = "CENTER", x = 1, y = 2 } }
     local campPos = { point = "CENTER", relPoint = "BOTTOMLEFT", x = 500, y = 300 }
     local ns, env = Fixture(qol, { campAlertPos = campPos })
-    ns.AlertStack(Member(300, 32), 3, "QoL/Loot & Items", "durability")
+    ns.AlertStack(Member(300, 32), 3)
     Check(qol.alertsPos == campPos, "Camp Nearby's old spot comes first while AuraBuffs is loaded")
     local group = env.named.NaowhForeverAlerts
     Check(group.point[1] == "CENTER" and group.point[3] == "BOTTOMLEFT" and group.point[4] == 500,
@@ -129,7 +121,7 @@ do
     local qol = { durabilityPos = { point = "CENTER", relPoint = "CENTER", x = 1, y = 2 },
         restockPos = { point = "CENTER", relPoint = "CENTER", x = 3, y = 4 } }
     local ns = Fixture(qol, nil)
-    ns.AlertStack(Member(300, 32), 3, "QoL/Loot & Items", "durability")
+    ns.AlertStack(Member(300, 32), 3)
     Check(qol.alertsPos == qol.durabilityPos, "without AuraBuffs: the first old spot of the core alerts")
     qol.alertsPos = { point = "CENTER", relPoint = "CENTER", x = 7, y = 8 }
     ns.Apply()

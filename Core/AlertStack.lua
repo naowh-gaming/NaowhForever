@@ -39,7 +39,7 @@ local function Place()
 end
 
 local function Layout()
-    local y, width, first = 0, SLOT_W, nil
+    local y, width, any = 0, SLOT_W, false
     for _, frame in ipairs(members) do
         if frame:IsShown() then
             local ratio = frame:GetEffectiveScale() / group:GetEffectiveScale()
@@ -47,14 +47,11 @@ local function Layout()
             frame:SetPoint("BOTTOM", group, "BOTTOM", 0, y / ratio)
             y = y + frame:GetHeight() * ratio + GAP
             width = math.max(width, frame:GetWidth() * ratio)
-            first = first or frame
+            any = true
         end
     end
-    local item = group.mover._placement
-    item.page = first and first.alertPage or SETTINGS_PAGE
-    item.feature = first and first.alertCard or SETTINGS_CARD
     group.mover:SetSize(width, math.max(y - GAP, SLOT_H))
-    group.mover:SetShown(unlocked == true and first ~= nil)
+    group.mover:SetShown(unlocked == true and any)
 end
 
 local function SavePosition(pos)
@@ -77,9 +74,9 @@ local function SetUnlocked(on)
     if group then Layout() end
 end
 
-function ns.AlertStack(frame, order, page, card)
+function ns.AlertStack(frame, order)
     if not group then Build() end
-    frame.alertOrder, frame.alertPage, frame.alertCard = order, page, page .. ":" .. card
+    frame.alertOrder = order
     members[#members + 1] = frame
     table.sort(members, ByOrder)
     frame:HookScript("OnShow", Layout)

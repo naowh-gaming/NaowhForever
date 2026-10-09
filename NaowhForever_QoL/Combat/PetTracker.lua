@@ -43,7 +43,7 @@ local function Build()
     frame.text = ns.Font(frame, FONT_SIZE, "OUTLINE")
     frame.backdrop = Parts.HudBackdrop(frame, { mode = "none" })
     frame:Hide()
-    ns.AlertStack(frame, STACK_ORDER, "QoL/Combat", "petTracker")
+    ns.AlertStack(frame, STACK_ORDER)
 end
 
 local function Restyle()

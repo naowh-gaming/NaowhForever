@@ -240,7 +240,7 @@ local function BuildAlert()
     pulse:SetDuration(FLASH_TIME)
 
     alert:Hide()
-    ns.AlertStack(alert, STACK_ORDER, "QoL/Loot & Items", "restock")
+    ns.AlertStack(alert, STACK_ORDER)
 end
 
 local function HideAlert()
