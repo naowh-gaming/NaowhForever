@@ -77,10 +77,9 @@ local function Fixture(opts)
     end
 
     local defaults = {
-        enabled = true, food = true, elixirs = true, flasks = true,
+        enabled = true,
         consumablesWhere = "instance", consumablesMinutes = 2,
         onlyIfCarried = true, hideResting = true,
-        scrolls = true, scrollsSkipActive = true,
         raidBuffs = false, raidBuffsOwn = true, iconSize = 36,
         buffsFont = "", buffsFontSize = 14, buffsOutline = "OUTLINE",
         raidBuffPicks = { intellect = true, stamina = true, spirit = true, wild = true, blessing = false },
