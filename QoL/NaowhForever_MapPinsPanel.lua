@@ -16,8 +16,7 @@ local S = ns.QoLSettings
 local ROWS = {
     { header = "OPTIONS" },
     { key = "townCapitalsOnly", text = "Vendors & Trainers Only in Cities",
-      tip = "Keeps vendors, trainers and the bank off questing maps. Flight masters, innkeepers, "
-          .. "stable masters, spirit healers and mailboxes show everywhere." },
+      tip = "Keeps vendors, trainers and the bank off questing maps." },
     { key = "townMinimap", text = "Mailboxes on Minimap", tip = "Pins the mailboxes near you on the minimap." },
     { key = "townMinimapSpirit", text = "Spirit Healers on Minimap",
       tip = "Pins the spirit healers near you on the minimap." },
@@ -167,7 +166,7 @@ local function BuildPanel()
     -- The map's child, so it opens, closes and scales with the map.
     panel = CreateFrame("Frame", nil, WorldMapFrame)
     panel:SetWidth(PanelWidth())
-    panel:SetFrameLevel(WorldMapFrame:GetFrameLevel() + 20)
+    panel:SetFrameLevel(WorldMapFrame:GetFrameLevel() + 100)   -- over the map's pins, as the Journal's drawer
     panel:EnableMouse(true)
     panel:Hide()
     ns.Solid(panel, "BACKGROUND", T.bg, St.BACKDROP_ALPHA):SetAllPoints()
@@ -223,7 +222,7 @@ local function BuildButton()
     button = CreateFrame("Button", nil, WorldMapFrame:GetCanvasContainer())
     button:SetFrameStrata("DIALOG")
     ns.Solid(button, "BACKGROUND", T.bg, 0.9):SetAllPoints()
-    local border = ns.Border(button, { r = 0, g = 0, b = 0 })
+    local border = ns.Border(button, St.BORDER_RGB)
     local icon = button:CreateTexture(nil, "ARTWORK")
     icon:SetTexture("Interface\\AddOns\\NaowhForever\\Media\\LogoSmall.tga")
     icon:SetPoint("TOPLEFT", 4, -4)
@@ -237,7 +236,7 @@ local function BuildButton()
         border:SetColor(T.accent.r, T.accent.g, T.accent.b, 1)
     end)
     button:SetScript("OnLeave", function()
-        border:SetColor(0, 0, 0, 1)
+        border:SetColor(St.BORDER_RGB.r, St.BORDER_RGB.g, St.BORDER_RGB.b, 1)
     end)
     ns.Tooltip(button, "Map Pins", "Click to choose which pins show on the map.")
     Place()
@@ -254,6 +253,7 @@ local function Apply()
         if panel and panel:IsShown() then RefreshRows() end
     elseif button then
         button:Hide()
+        if panel then panel:Hide() end
     end
 end
 
