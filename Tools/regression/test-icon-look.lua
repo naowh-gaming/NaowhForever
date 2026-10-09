@@ -32,6 +32,7 @@ local function Load(path, settings)
     local fonts = {}
     local ns = {
         AuraBuffSettings = S, ProfessionSettings = S, THEME = { accentSoft = {}, muted = {} },
+        HEALTHSTONES = { 5509 }, HEALING_POTIONS = { 13446 },
         Apply = NOTHING, ShowRaidReminderAnchorConfig = NOTHING, HideRaidReminderAnchorConfig = NOTHING,
         Border = NOTHING,
         Font = function()

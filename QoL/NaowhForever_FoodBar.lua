@@ -1,7 +1,9 @@
 -------------------------------------------------------------------------------
 --  NaowhForever_FoodBar.lua -- the Food & Drink Bar: one button for the best food and one for
 --  the best drink in your bags, food only for classes without mana. Also ns.BestFoodAndDrink,
---  which the Macros module's NF Food uses.
+--  which the Macros module's NF Food uses, and ns.HEALTHSTONES and ns.HEALING_POTIONS (classic
+--  item IDs, best first, each healthstone's two talented versions after it), which NF Health and
+--  Aura Buffs' low health reminder use: here in the core, so either works with the other off.
 -------------------------------------------------------------------------------
 local ns = _G.NaowhForever
 local UI = ns.UI
@@ -13,6 +15,10 @@ local CONJURED = {
     [1113] = true, [5349] = true,
 }
 local FOOD_SPELL, DRINK_SPELL = 433, 430
+
+ns.HEALTHSTONES = { 9421, 19012, 19013, 5510, 19010, 19011, 5509, 19008, 19009, 5511, 19006, 19007, 5512, 19004,
+    19005 }
+ns.HEALING_POTIONS = { 13446, 3928, 1710, 929, 858, 118 }
 local EMPTY = { { icon = 133971, text = "No food in your bags" },
     { icon = 132794, text = "No drink in your bags" } }
 local GAP = 4
