@@ -600,6 +600,20 @@ local function FitCaps(btn, width)
     btn._art[3]:SetWidth(cap)
 end
 
+-- The game's panel button art on frame, in three pieces; the onboarding's Classic+ preview uses it too.
+function ns.GameButtonArt(frame)
+    local St = ns.Shared.Style
+    local coords = St.CLASSIC_BUTTON_COORDS
+    local left, middle, right = ArtPiece(frame, coords.left), ArtPiece(frame, coords.middle), ArtPiece(frame, coords.right)
+    left:SetPoint("TOPLEFT"); left:SetPoint("BOTTOMLEFT")
+    right:SetPoint("TOPRIGHT"); right:SetPoint("BOTTOMRIGHT")
+    middle:SetPoint("TOPLEFT", left, "TOPRIGHT"); middle:SetPoint("BOTTOMRIGHT", right, "BOTTOMLEFT")
+    frame._art = { left, middle, right }
+    FitCaps(frame, frame:GetWidth())
+    frame:HookScript("OnSizeChanged", FitCaps)
+    SetArt(frame, St.CLASSIC_BUTTON_ART.up)
+end
+
 -- Callers colour the label themselves (a picked choice, a quiz answer), so hover lends it white and
 -- gives back whatever it was.
 local function Unlight(btn)
@@ -620,14 +634,7 @@ local function ClassicButton(btn, bg, border, lbl)
         self._frame:SetShown(r ~= BLACK.r or g ~= BLACK.g or b ~= BLACK.b)
     end
     border._frame:Hide()
-    local left, middle, right = ArtPiece(btn, coords.left), ArtPiece(btn, coords.middle), ArtPiece(btn, coords.right)
-    left:SetPoint("TOPLEFT"); left:SetPoint("BOTTOMLEFT")
-    right:SetPoint("TOPRIGHT"); right:SetPoint("BOTTOMRIGHT")
-    middle:SetPoint("TOPLEFT", left, "TOPRIGHT"); middle:SetPoint("BOTTOMRIGHT", right, "BOTTOMLEFT")
-    btn._art = { left, middle, right }
-    FitCaps(btn, btn:GetWidth())
-    btn:HookScript("OnSizeChanged", FitCaps)
-    SetArt(btn, art.up)
+    ns.GameButtonArt(btn)
     btn:SetHighlightTexture(art.highlight, "ADD")
     local glow = coords.glow
     btn:GetHighlightTexture():SetTexCoord(glow[1], glow[2], glow[3], glow[4])
