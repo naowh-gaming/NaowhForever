@@ -5,7 +5,7 @@ local S = ns.QoLSettings
 local Parts, St = ns.Shared.Parts, ns.Shared.Style
 
 local CALL_PET, SUMMON_IMP = 883, 688
-local LONE_WOLF = 409979 -- https://www.wowhead.com/forever/spell=409979
+local LONE_WOLF = 415370
 local ICON = 132161
 local WIDTH, ICON_GAP = 220, 8
 local DISMOUNT_DELAY = 5
@@ -85,9 +85,7 @@ local function BuildCurve()
 end
 
 local function ShouldHavePet()
-    if class == "HUNTER" then
-        return C_SpellBook.IsSpellKnown(CALL_PET) and not C_SpellBook.IsSpellKnown(LONE_WOLF)
-    end
+    if class == "HUNTER" then return C_SpellBook.IsSpellKnown(CALL_PET) end
     if class == "WARLOCK" then return C_SpellBook.IsSpellKnown(SUMMON_IMP) and not sacrificed end
     return false
 end
@@ -118,7 +116,10 @@ local function Warning()
     if S.Get("petCombatOnly") and not UnitAffectingCombat("player") then return end
     if S.Get("petInstanceOnly") and not IsInInstance() then return end
     if not ShouldHavePet() then return end
-    if not UnitExists("pet") then return "petMissingText" end
+    if not UnitExists("pet") then
+        if class == "HUNTER" and C_SpellBook.IsSpellKnown(LONE_WOLF) then return end
+        return "petMissingText"
+    end
     if S.Get("petPassive") and IsPassive() then return "petPassiveText" end
     if S.Get("petLowHealth") and not UnitIsDeadOrGhost("pet") then return "petLowHealthText", true end
 end
