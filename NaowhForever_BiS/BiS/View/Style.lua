@@ -2,6 +2,7 @@
 local ns = _G.NaowhForever
 
 ns.BiS.Style = setmetatable({
+    STAR_GAP = 4,
     WINDOW_W = 1160,
     WINDOW_H = 800,
     SIDE_W = 380,
@@ -41,7 +42,6 @@ ns.BiS.Style = setmetatable({
     NAME_SIZE = 13,
     COUNT_SIZE = 20,
 
-    TIP_TITLE_RGB = { r = 1, g = 1, b = 1 },
     GOLD_RGB = { r = 1, g = 0.82, b = 0 },
     GAIN_BIG_RGB = { r = 0x1e / 255, g = 1, b = 0 },
     GAIN_RGB = { r = 0.47, g = 0.86, b = 0.45 },

@@ -14,10 +14,10 @@ local NOTE_X, NOTE_BOTTOM = 10, 12
 local ROW_H, TOP = 26, 36
 local ROW_X = 10
 local ROW_SHRINK = 2
-local ICON_SHRINK = 4
+local ICON_SHRINK = Style.ROW_ICON_SHRINK
 local BUTTON_W, BUTTON_H = 64, 20
-local NOTE_GAP = 8
-local NAME_GAP = 6
+local NOTE_GAP = Style.NOTE_GAP
+local NAME_GAP = Style.ICON_NAME_GAP
 local FOOTER_H, BARE_FOOTER = 36, 14
 
 local Popup = {}

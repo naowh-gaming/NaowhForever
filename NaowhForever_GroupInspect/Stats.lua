@@ -4,6 +4,7 @@ local ns = _G.NaowhForever
 local IsItemDataCachedByID, GetItemInfoInstant = C_Item.IsItemDataCachedByID, C_Item.GetItemInfoInstant
 
 local GI = ns.GroupInspect
+local C = GI.C
 local SW = ns.StatWeights
 local GEAR_SLOTS = ns.Shared.Items.GEAR_SLOTS
 
@@ -23,8 +24,7 @@ local PRIMARY_KEY = {
     ITEM_MOD_INTELLECT_SHORT = "INT", ITEM_MOD_SPIRIT_SHORT = "SPI", RESISTANCE0_NAME = "ARMOR",
 }
 
-local TENTHS = 10
-local ROUND = 0.5
+local TENTHS, ROUND = C.TENTHS, C.ROUND
 
 local sums = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
 local primary = { STR = 0, AGI = 0, STA = 0, INT = 0, SPI = 0, ARMOR = 0 }

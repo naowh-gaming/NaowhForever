@@ -5,7 +5,7 @@ local S = ns.QoLSettings
 local T = ns.THEME
 local Parts, St = ns.Shared.Parts, ns.Shared.Style
 
-local WHITE = "Interface\\Buttons\\WHITE8X8"
+local WHITE = St.WHITE
 local CIRCLE = St.ROUND
 local MOUNT_ICONS = { Alliance = "Interface\\Icons\\Ability_Mount_Gryphon_01",
     Horde = "Interface\\Icons\\Ability_Mount_Wyvern_01" }
@@ -15,6 +15,7 @@ local BORDER_RGB = St.BORDER_RGB
 local WIDTH, PAD, ROW_GAP, CARD_ALPHA = 380, 10, 6, St.HUD_CARD_ALPHA
 local HEAD_H, ROUTE_SIZE, TIME_SIZE, TIME_ROOM = 22, 14, 20, 70
 local TRACK_H, ZONE_H, MOUNT, STOP, STOP_HOLE = 6, 22, 20, 10, 6
+local HOLE_LAYER = 2
 local LABEL_SIZE, LABEL_H, LABEL_GAP, LABEL_SPACE = 11, 12, 3, 8
 local FOOT_SIZE, NEXT_ROOM, BTN_W, BTN_H, BTN_GAP = 12, 90, 48, 22, 6
 local CHEVRON_SIZE, TEXT_GAP, TEXT_DROP = 10, 5, 1
@@ -30,20 +31,21 @@ local FLIGHT_SPEED = 30.4
 local ADVENTURE_LEGACY_TREE, FREQUENT_FLIER_NODE = 1188, 110300
 local FREQUENT_FLIER_SPEED = 1.2
 local ROUTE_KEY = 10000
-local SECONDS_PER_MINUTE = 60
+local SECONDS_PER_MINUTE = ns.QoLConstants.SECONDS_PER_MINUTE
 local ROUND = ns.QoLConstants.ROUND
 local MIN_LEARNED = 10
 local BOARD_WAIT = 10
 local POLL_EVERY = 0.5
 local DEFAULT_TOP = -140
-local EDGE_OUT = -1
+local EDGE_OUT = ns.QoLConstants.EDGE_OUT
 local MOUNT_ABOVE = 2
 local LAND_USED_ALPHA = 0.4
 local SAMPLE_KNOWN = 150
 local PERCENT = ns.QoLConstants.PERCENT
+local SCALE_RANGE, PERCENT_SCALE = { 50, 200, 5 }, St.PERCENT_SCALE
 local KEY_JOIN = "|"
 local TIP_GOLD = { r = 1, g = 0.82, b = 0 }
-local WHITE_RGB = { r = 1, g = 1, b = 1 }
+local WHITE_RGB = ns.QoLConstants.WHITE_RGB
 local CLOCK = "%d:%02d"
 local TEXT_FLIGHT_TIME = "Flight Time"
 local TEXT_IN_FLIGHT = "In flight"
@@ -186,7 +188,7 @@ local function NewStop(f)
     m.ring = Disc(f.marks, "ARTWORK", 1, STOP, T.fg)
     m.edge = Disc(f.marks, "ARTWORK", 0, STOP, BORDER_RGB)
     ns.PixelInset(m.edge, EDGE_OUT, m.ring)
-    m.hole = Disc(f.marks, "ARTWORK", 2, STOP_HOLE, T.bg)
+    m.hole = Disc(f.marks, "ARTWORK", HOLE_LAYER, STOP_HOLE, T.bg)
     m.hole:SetPoint("CENTER", m.ring)
     m.label = ns.Font(f, LABEL_SIZE)
     m.label:SetWordWrap(false)
@@ -763,11 +765,11 @@ end
 
 hooksecurefunc(S, "Set", OnSettingChanged)
 hooksecurefunc(ns, "Apply", Apply)
-hooksecurefunc(ns, "ShowRaidReminderAnchorConfig", function()
+hooksecurefunc(ns, "ShowUnlockMode", function()
     unlocked = S.Get("enabled") == true
     Apply()
 end)
-hooksecurefunc(ns, "HideRaidReminderAnchorConfig", function()
+hooksecurefunc(ns, "HideUnlockMode", function()
     unlocked = false
     if bar then
         bar.mover:Hide()
@@ -782,7 +784,7 @@ boot:SetScript("OnEvent", Apply)
 local Settings = ns.Shared and ns.Shared.Settings
 if not Settings then return end
 
-local STAGE_H, STAGE_MARGIN = 150, 16
+local STAGE_H, STAGE_MARGIN = 150, St.STAGE_MARGIN
 local PREVIEW_ELAPSED = 66
 local PREVIEW = { from = "Darkshire", to = "Stormwind", known = 150,
     points = { { name = "Darkshire", at = 0 }, { name = "Lakeshire", at = 95 }, { name = "Stormwind", at = 150 } } }
@@ -835,7 +837,7 @@ Settings.Page("QoL/Travel", S):Card({
         { key = "flightTimerMapTime", label = "Flight Time on Map", toggle = true,
           help = "The flight time to each destination when you hover it on the flight master's map." },
         Settings.Group("Size"),
-        { key = "flightTimerScale", label = "Scale", slider = { 50, 200, 5 }, unit = "%", scale = 0.01 },
+        { key = "flightTimerScale", label = "Scale", slider = SCALE_RANGE, unit = "%", scale = PERCENT_SCALE },
         Settings.Look("flightTimer", { text = true, bar = "Flat", background = "alpha",
             keys = { FontSize = false, BgAlpha = "flightTimerAlpha" } }),
     },

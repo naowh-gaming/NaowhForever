@@ -12,7 +12,7 @@ local ASKERS_MAX = 40
 local SEND_EVERY = 1
 local MAX_QUEUE = 20
 local MAX_ZONE = 48
-local SECONDS_PER_MINUTE = 60
+local SECONDS_PER_MINUTE = ns.QoLConstants.SECONDS_PER_MINUTE
 local GUID_ARG = 10
 local WHO_CAPTURES = 6
 local ZONE_GAP = 8
@@ -21,6 +21,7 @@ local ROW_EDGE = 26
 local TIP_GAP, TIP_PAD = 8, 11
 local DATA_DISPLAY_SPACE = 160
 local ROLE_SCALE = 0.75
+local MAX_AGE_RANGE = { 1, 60, 1 }
 local ASK, ANSWER = "Q", "A"
 local LINK = "addon:NaowhForever:where:"
 local TEXT_WHERE = "[Where?]"
@@ -507,7 +508,7 @@ ns.Shared.Settings.Page("QoL/Interface", S):Card({
         { key = "chatZonesLevel", label = "Show Level", toggle = true },
         { key = "chatZonesClassColour", label = "Class Colour", toggle = true,
           help = "The tag in the speaker's class colour. Off, it is grey." },
-        { key = "chatZonesMaxAge", label = "Forget After", slider = { 1, 60, 1 }, unit = " min",
+        { key = "chatZonesMaxAge", label = "Forget After", slider = MAX_AGE_RANGE, unit = " min",
           help = "A zone older than this is no longer shown, since the player has likely moved on." },
         { key = "chatZonesWhere", label = "Where? on Whispers", toggle = true,
           help = "A [Where?] link after a whisper from someone whose zone is not known. Clicking it "

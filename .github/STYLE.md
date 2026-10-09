@@ -69,13 +69,13 @@ edits it**: a file is added to its area's XML.
 | `Core\Integrations\RestedXP\RestedXP.xml` | the Naowh themes in RestedXP Guides; needs the core's theme palettes |
 | `Core\Options.xml` | the widget kit (`ns.UI`), Unlock Mode, the options window, the Game Menu button, the settings search |
 | `Shared\Shared.xml` | what every module shares (see `Shared/README.md`) |
-| `Core\Packs.xml` | Reminder Packs, their signature check, the profile strings |
+| `Core\Profiles.xml` | the profile strings, their dialogs and the Profiles page |
 | `Core\Settings.xml` | the QoL settings store (`Settings.lua`), Naowh's setups applied to it, the Alerts group |
 | `Core\Badges\Badges.xml` | the staff and patron lists, then the badges that read them |
 | `Core\Pages.xml` | Patch Notes, Credits, the onboarding, after the Badges |
 
 - An area that loads at two points has one XML per point, named for what it holds (Core's
-  `Packs.xml` and `Settings.xml`). A new file goes in the XML of the point it needs.
+  `Profiles.xml` and `Settings.xml`). A new file goes in the XML of the point it needs.
 - **QoL** (`NaowhForever_QoL/`) is a module addon of one file per feature, in folders by its
   settings tab: its rules, its drawing, then its settings card at the end. A feature's data is
   `<Feature>Data.lua` before it; an XML template sits beside its Lua and is included in its place.
@@ -87,7 +87,9 @@ edits it**: a file is added to its area's XML.
 - **Art lives with its owner.** `Core/Media` holds what everyone uses: the icon set
   `Tools/media/make_media.py` draws, the fonts, links, navigation glyphs and voice clips. Art
   only one area uses sits in that area's `Media/` (`Core/Badges/Media`, `Core/Onboarding/Media`,
-  `NaowhForever_TopBar/Media`), so a module's art travels with its folder.
+  `Core/Integrations/RestedXP/Media`, `NaowhForever_AuraBuffs/Media`, `NaowhForever_DungeonJournal/Media`,
+  `NaowhForever_QoL/Media`, `NaowhForever_TopBar/Media`), so a module's art travels with its folder,
+  and its README's Layout lists it.
 
 ## 2. File anatomy
 

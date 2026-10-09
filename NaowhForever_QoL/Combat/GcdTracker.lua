@@ -10,7 +10,7 @@ local BORDER_ALPHA = 0.8
 local FAILED_TINT = { r = 1, g = 0.3, b = 0.3 }
 local FAILED_BORDER = { r = 0.8, g = 0.1, b = 0.1, a = 0.9 }
 local PLAIN_BORDER = { r = 0, g = 0, b = 0, a = 0.8 }
-local FLAT = "Interface\\Buttons\\WHITE8X8"
+local FLAT = ns.Shared.Style.WHITE
 
 local GCD_SPELLS = {
     WARRIOR = 6673, PALADIN = 635, HUNTER = 1978, ROGUE = 1752, PRIEST = 585,
@@ -29,11 +29,14 @@ local SEGMENT_ALPHA = 0.6
 local SPEED_PER_ICON = 1.5
 local MIN_FADE = 0.05
 local ICON_CROP = ns.QoLConstants.ICON_CROP
-local EDGE_OUT = -1
+local EDGE_OUT = ns.QoLConstants.EDGE_OUT
 local FALLBACK_ICON = 136243
 local FRAME_W, FRAME_H = 200, 40
 local DEFAULT_Y = -100
 local PERCENT = ns.QoLConstants.PERCENT
+local DURATION_RANGE, FADE_FROM_RANGE, ICON_RANGE = { 2, 15, 1 }, { 0, 95, 5 }, { 16, 64, 1 }
+local SPACING_RANGE, TIMELINE_RANGE = { 0, 20, 1 }, { 1, 12, 1 }
+local PERCENT_SCALE = ns.Shared.Style.PERCENT_SCALE
 local MOVER_LABEL = "GCD Tracker"
 local SETTINGS_PAGE, SETTINGS_CARD = "QoL/Combat", "QoL/Combat:gcdTracker"
 local TEXT_DOWNTIME = "Downtime: %.1fs (%.1f%% of the fight)"
@@ -438,11 +441,11 @@ end
 
 hooksecurefunc(S, "Set", OnSettingChanged)
 hooksecurefunc(ns, "Apply", Apply)
-hooksecurefunc(ns, "ShowRaidReminderAnchorConfig", function()
+hooksecurefunc(ns, "ShowUnlockMode", function()
     unlocked = S.Get("enabled") == true
     Apply()
 end)
-hooksecurefunc(ns, "HideRaidReminderAnchorConfig", function()
+hooksecurefunc(ns, "HideUnlockMode", function()
     unlocked = false
     if frame then Apply() end
 end)
@@ -475,8 +478,8 @@ ns.Shared.Settings.Page("QoL/Combat", S):Card({
         { key = "gcdPvP", label = "Show in Battlegrounds", toggle = true },
         Group("Icons"),
         { key = "gcdDirection", label = "Direction", choice = DIRECTION },
-        { key = "gcdDuration", label = "Time Shown", slider = { 2, 15, 1 }, unit = "s" },
-        { key = "gcdFadeStart", label = "Fade From", slider = { 0, 95, 5 }, unit = "%", scale = 0.01,
+        { key = "gcdDuration", label = "Time Shown", slider = DURATION_RANGE, unit = "s" },
+        { key = "gcdFadeStart", label = "Fade From", slider = FADE_FROM_RANGE, unit = "%", scale = PERCENT_SCALE,
           help = "How far along an icon starts to fade, from 0% (at once) to 95% (at the very end)." },
         { key = "gcdStack", label = "Stack Overlapping Casts", toggle = true,
           help = "Casts within 0.3s of each other sit side by side instead of on top of each other." },
@@ -487,9 +490,9 @@ ns.Shared.Settings.Page("QoL/Combat", S):Card({
           help = "After each fight longer than 15 seconds, how long you spent neither casting nor on "
               .. "the global cooldown, in chat." },
         Group("Size"),
-        { key = "gcdIconSize", label = "Icon Size", slider = { 16, 64, 1 } },
-        { key = "gcdSpacing", label = "Spacing", slider = { 0, 20, 1 } },
-        { key = "gcdTimelineHeight", label = "Activity Bar Height", slider = { 1, 12, 1 } },
+        { key = "gcdIconSize", label = "Icon Size", slider = ICON_RANGE },
+        { key = "gcdSpacing", label = "Spacing", slider = SPACING_RANGE },
+        { key = "gcdTimelineHeight", label = "Activity Bar Height", slider = TIMELINE_RANGE },
         ns.Shared.Settings.Look("gcd", { bar = "Flat" }),
         Group("Colours"),
         { key = "gcdTimelineColor", label = "Activity Bar Colour", colour = true },

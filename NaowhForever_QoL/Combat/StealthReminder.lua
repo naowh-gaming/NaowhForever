@@ -9,6 +9,7 @@ local WIDTH = 300
 local FONT_SIZE = 22
 local HEIGHT_ROOM = 12
 local STEALTH_Y, FORM_Y = 150, 110
+local TEXT_RANGE = { 10, 60, 1 }
 local PAGE = "QoL/Combat"
 local CARD = "QoL/Combat:stealthReminder"
 
@@ -201,11 +202,11 @@ hooksecurefunc(S, "Set", function(key)
     end
 end)
 hooksecurefunc(ns, "Apply", Apply)
-hooksecurefunc(ns, "ShowRaidReminderAnchorConfig", function()
+hooksecurefunc(ns, "ShowUnlockMode", function()
     unlocked = S.Get("enabled") == true
     Apply()
 end)
-hooksecurefunc(ns, "HideRaidReminderAnchorConfig", function()
+hooksecurefunc(ns, "HideUnlockMode", function()
     unlocked = false
     Apply()
 end)
@@ -241,7 +242,7 @@ ns.Shared.Settings.Page(PAGE, S):Card({
           help = "What it says while you are out of stealth." },
         { key = "stealthText", label = "Stealthed Text", text = true, needs = "stealthShowStealthed",
           help = "What it says while you are in stealth." },
-        ns.Shared.Settings.Look("stealth", { text = true, size = { 10, 60, 1 }, background = "card" }),
+        ns.Shared.Settings.Look("stealth", { text = true, size = TEXT_RANGE, background = "card" }),
         Group("Colours"),
         { key = "warningClassColor", label = "Out of Stealth in Class Colour", toggle = true },
         { key = "warningColor", label = "Out of Stealth Colour", colour = true, needs = WarningOwnColour,

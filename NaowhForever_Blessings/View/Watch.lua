@@ -8,7 +8,7 @@ local IDS = B.IDS
 
 local AURA_ADDON = "Blizzard_AuraContainer"
 local LEVEL_ABOVE = 2
-local ICON_CROP = 0.08
+local ICON_CROP = B.Look.ICON_CROP
 local TEXT_Y = 1
 
 local watchUnavailable

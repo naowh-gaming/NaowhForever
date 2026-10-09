@@ -14,17 +14,20 @@ local Group = Settings.Group
 local BLESSINGS_OFF = "Turn on Blessings"
 local LABELS_OFF = "Turn on Blessings and Class Labels"
 local LABEL_STYLES = { values = { name = "Name", icon = "Class Icon" }, order = { "name", "icon" } }
-local STAGE_H, STAGE_MARGIN, LABEL_ROOM, LABEL_SIDE = 160, 16, 14, 46
-local NOTE_Y, NOTE_SIZE, NOTE_LINE = 10, 11, 15
+local STAGE_H, STAGE_MARGIN, LABEL_ROOM, LABEL_SIDE = 160, St.STAGE_MARGIN, 14, 46
+local NOTE_Y, NOTE_SIZE, NOTE_LINE = St.STAGE_NOTE_Y, St.STAGE_NOTE_SIZE, 15
 local TEXT_ROOM = NOTE_Y + NOTE_LINE * 2
 local REMOVE_SIZE, REMOVE_ICON, REMOVE_INSET = 12, 8, 3
 local PLUS_ICON, PLUS_BG_ALPHA = 12, 0.6
 local GRIP_MIN, GRIP_LINE = 6, 2
 local EDIT_LEVEL = 10
-local BLACK = { r = 0, g = 0, b = 0 }
-local ROUND = 0.5
+local BLACK = St.BORDER_RGB
+local ROUND = B.ROUND
 local ICON_DROP, ICON_SIDE = 2, 3
 local SIZE_SLIDER, SPACING_SLIDER, GROUP_SLIDER = { 20, 70, 1 }, { 0, 30, 1 }, { 0, 40, 1 }
+local FONT_SLIDER = St.HUD_TEXT_RANGE
+local OPACITY_SLIDER, TO_FRACTION = St.OPACITY_RANGE, St.PERCENT_SCALE
+local ORDER_BAR, ORDER_WINDOW = 10, 20
 local AURA_LABEL, FURY_LABEL, GROUP_LABEL = "Aura Button", "Righteous Fury Button", "Aura / Class Gap"
 local HINT = "Right-click a class for its blessing. Wheel: size, Shift-wheel: spacing. x hides a button."
 local HINT_OFF = "Turn on Blessings to edit the bar here."
@@ -405,7 +408,7 @@ page:Window({
 })
 
 page:Card({
-    id = "bar", name = "Blessing Bar", order = 10,
+    id = "bar", name = "Blessing Bar", order = ORDER_BAR,
     help = "For paladins, a button per class in your group. Left-click blesses the next member of that class "
         .. "who needs it, missing first, skipping anyone dead or out of range. Right-click a class to choose "
         .. "its blessing or open its player list. Move it in the HUD Editor. The preview edits it: right-click a "
@@ -435,7 +438,7 @@ page:Card({
         { key = "blessLayout", label = "Direction", choice = LAYOUT, needs = On, why = BLESSINGS_OFF,
           help = "Horizontal: a row, left to right. Vertical: a column, top to bottom, with the class labels "
               .. "beside the buttons." },
-        Settings.Look("bless", { text = true, size = { 8, 24, 1 }, keys = { FontSize = "blessTimerSize" }, needs = On,
+        Settings.Look("bless", { text = true, size = FONT_SLIDER, keys = { FontSize = "blessTimerSize" }, needs = On,
             why = BLESSINGS_OFF }),
         Group("Colours"),
         { key = "blessThemeColors", label = "Apply Theme to Status Colours", toggle = true, needs = On,
@@ -451,10 +454,10 @@ page:Card({
 })
 
 page:Card({
-    id = "window", name = "Window", order = 20,
+    id = "window", name = "Window", order = ORDER_WINDOW,
     help = "Blessings' own window, with every paladin's blessing for each class, Auto-Assign and the preset.",
     rows = {
-        { key = "blessWindowAlpha", label = "Window Opacity", slider = { ns.Shared.Style.OPACITY_MIN, 100, 5 },
-          unit = "%", scale = 0.01, help = "How solid the window is, in percent. Also on its title bar." },
+        { key = "blessWindowAlpha", label = "Window Opacity", slider = OPACITY_SLIDER,
+          unit = "%", scale = TO_FRACTION, help = "How solid the window is, in percent. Also on its title bar." },
     },
 })

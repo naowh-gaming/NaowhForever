@@ -66,12 +66,13 @@ local function Fixture(opts)
     local mover
     local ns = {
         QoLSettings = Q,
+        Shared = { Style = dofile("Tools/regression/shared_style.lua") },
         SettingsRoot = function() return { macros = settings, qol = qol } end,
         Print = function(msg) printed[#printed + 1] = msg end,
         AccountSettings = function() return account end,
         Apply = function() end,
-        ShowRaidReminderAnchorConfig = function() end,
-        HideRaidReminderAnchorConfig = function() end,
+        ShowUnlockMode = function() end,
+        HideUnlockMode = function() end,
         Font = function() return Frame() end,
         Border = function() end,
         PixelInset = function() end,

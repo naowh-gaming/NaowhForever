@@ -7,6 +7,8 @@ ns.TopBar.C = {
     SEG_PAD = 6,
     BADGE_SIZE = 10,
     PERCENT = 100,
+    ROUND = 0.5,
+    SYS_DROP = 2,
     LDB_PREFIX = "ldb:",
     SIDES = { "left", "right" },
 }

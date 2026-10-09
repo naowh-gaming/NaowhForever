@@ -47,7 +47,7 @@ local THEME = { fg = { r = 1, g = 1, b = 1 }, muted = { r = 0.6, g = 0.6, b = 0.
 local ns = {
     QoLConstants = dofile("Tools/regression/qol_constants.lua"),
     QoLSettings = S, THEME = THEME,
-    Apply = function() end, ShowRaidReminderAnchorConfig = function() end, HideRaidReminderAnchorConfig = function() end,
+    Apply = function() end, ShowUnlockMode = function() end, HideUnlockMode = function() end,
     Border = function(parent)
         local border = New("Border", parent)
         border._frame = New("Frame", parent)
@@ -59,6 +59,7 @@ local ns = {
     OnePixel = function() return 1 end,
     UI = { FontPath = function() return "font" end, AttachMover = function(f) return New("Mover", f) end },
     Shared = {
+        Style = dofile("Tools/regression/shared_style.lua"),
         Parts = { HUD_OUTLINES = { {}, {} }, HudFont = function(fs) return fs end },
         Settings = {
             Group = function(name) return { group = name } end,

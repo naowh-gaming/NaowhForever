@@ -47,7 +47,8 @@ local function FontString()
 end
 
 local UI = {}
-local ns = { Solid = function() return { SetAllPoints = function() end } end, Border = function() end,
+local ns = { MEDIA = dofile("Tools/regression/core_media.lua"),
+    Solid = function() return { SetAllPoints = function() end } end, Border = function() end,
     Font = function() return FontString() end }
 local cursor = { 500, 300 }
 local env = setmetatable({

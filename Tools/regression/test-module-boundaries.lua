@@ -22,8 +22,6 @@ local ALLOWED = {
       reason = "the item menu offers it only when Loot.BisOn: the BiS List loaded and on" },
     { addon = "NaowhForever_DungeonJournal", field = "RemoveBisItem", file = "NaowhForever_DungeonJournal/View/ItemMenu.lua",
       reason = "the item menu offers it only when Loot.BisOn: the BiS List loaded and on" },
-    { addon = "NaowhForever", field = "SetEnabled", file = "Core/Options/Modules.lua",
-      reason = "dead branch: every MODULES entry has settings, so SetModuleOn never reaches ns.SetEnabled" },
     { addon = "NaowhForever", field = "MacroText", file = "Core/Profiles/ProfileShare.lua",
       reason = "AddLibrary runs only behind wanted.library and ns.MacroText" },
     { addon = "NaowhForever", field = "TrainingBuilds", file = "Core/Profiles/ProfileShare.lua",

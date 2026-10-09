@@ -33,6 +33,7 @@ local function Boot(settings, account, now)
     local ns = {
         THEME = { accent = { r = 0, g = 0.57, b = 0.93 }, fg = { r = 0.94, g = 0.95, b = 0.95 } },
         Apply = Noop,
+        QoLConstants = dofile("Tools/regression/qol_constants.lua"),
         AccountSettings = function() return s.account end,
         Confirm = function(text, yes) s.confirmed = text; yes() end,
     }

@@ -23,7 +23,7 @@ local LABEL_GAP = 8
 local SECTION_H = 18
 local OFF_ALPHA = 0.4
 local HISTORY_W, ELEMENTS_W = 64, 84
-local TOOLBAR_NAME = "NaowhForeverRaidReminderAnchorConfig"
+local TOOLBAR_NAME = "NaowhForeverUnlockToolbar"
 local TEXT_TITLE = "HUD Editor"
 local TEXT_EXIT = "Exit Config"
 local TEXT_UNDO, TEXT_UNDO_HELP = "Undo", "Puts back the last change. Ctrl + Z."
@@ -112,7 +112,7 @@ local function ToolbarHead(f)
     local title = ns.Font(f, TITLE_SIZE)
     title:SetPoint("LEFT", logo, "RIGHT", LABEL_GAP, 0)
     title:SetText(TEXT_TITLE)
-    local exit = ns.AccentBorder(ns.Button(f, TEXT_EXIT, EXIT_W, EXIT_H, function() ns.HideRaidReminderAnchorConfig() end))
+    local exit = ns.AccentBorder(ns.Button(f, TEXT_EXIT, EXIT_W, EXIT_H, function() ns.HideUnlockMode() end))
     exit:SetPoint("RIGHT", f, "TOPRIGHT", -BAR_PAD, -BAR_HEAD / 2)
     BarRule(f, BAR_HEAD)
 end
@@ -186,7 +186,7 @@ local function PaintSwitches(f)
     end
 end
 
-function ns.ShowRaidReminderAnchorConfig()
+function ns.ShowUnlockMode()
     local reopen = ns.StashOptionsWindow and ns.StashOptionsWindow() or false
     configActive = true
     UI.BeginMoverMode()
@@ -202,7 +202,7 @@ function ns.ShowRaidReminderAnchorConfig()
     ns.SetAnchorGridShown(true)
 end
 
-function ns.HideRaidReminderAnchorConfig(windowClosing)
+function ns.HideUnlockMode(windowClosing)
     configActive = false
     UI.EndMoverMode()
     ns.SetAnchorGridShown(false)
@@ -214,7 +214,7 @@ function ns.HideRaidReminderAnchorConfig(windowClosing)
     end
 end
 
-function ns.IsRaidReminderAnchorConfigActive()
+function ns.IsUnlockModeActive()
     return configActive
 end
 

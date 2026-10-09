@@ -11,11 +11,11 @@ local Popup = P.Popup
 local Text = P.Text
 local Style = P.Style
 
-local MAX_ROWS = 8
+local MAX_ROWS = Style.SIDE_PANEL_ROWS
 local LOOKUP_TIMEOUT = 3
-local QUEUE_DELAY = 0.2
+local QUEUE_DELAY = C.QUEUE_DELAY
 local PURCHASE_SETTLE = 1
-local PANEL_GAP = 8
+local PANEL_GAP = Style.SIDE_PANEL_GAP
 local CONFIRM_H = 78
 local CONFIRM_GAP = 6
 local LINE_DROP, LINE_GAP = 10, 4

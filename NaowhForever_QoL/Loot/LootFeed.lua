@@ -26,15 +26,17 @@ local GLOW_ALPHA, GLOW_W = 0.7, 12
 local BAGS_SIZE, COIN_SIZE, VALUE_SIZE, NAME_SIZE, GPH_SIZE = 11, 12, 12, 13, 13
 local BAGS_INSET = 2
 local NAME_GAP, NAME_VALUE_GAP = 10, 8
-local MIN_BAGS_SIZE = 8
+local MIN_BAGS_SIZE, BAGS_SHRINK = 8, 2
+local ROUND = ns.QoLConstants.ROUND
 local COPPER_PER_SILVER, COPPER_PER_GOLD = 100, 10000
 local SEPARATE_FROM = 1000
-local HOUR = 3600
+local HOUR = ns.QoLConstants.SECONDS_PER_HOUR
 local MIN_HOURS = 1 / 60
 local APPEAR_TIME, FADE_TIME = 0.15, 0.4
 local LOOT_STEP, LOOT_GRACE = 0.05, 1
 local SHRUNK = 0.001
 local DEFAULT_X, DEFAULT_Y = -469, -141
+local DISPLAY_TIME_RANGE = { 0.5, 10, 0.5 }
 local TSM_SOURCE = "dbminbuyout"
 local EVENTS = { "CHAT_MSG_LOOT", "CHAT_MSG_MONEY", "CHAT_MSG_COMBAT_XP_GAIN",
     "CHAT_MSG_COMBAT_FACTION_CHANGE", "QUEST_TURNED_IN", "BAG_UPDATE_DELAYED" }
@@ -164,7 +166,7 @@ function Look.StyleRow(row)
         Parts.HudFont(pair.amount, font, size - 1, outline, shadow)
         pair.icon:SetSize(size - 1, size - 1)
     end
-    Parts.HudFont(row.bags, font, math.max(MIN_BAGS_SIZE, size - 2), outline, shadow)
+    Parts.HudFont(row.bags, font, math.max(MIN_BAGS_SIZE, size - BAGS_SHRINK), outline, shadow)
 end
 
 local function CoinPair(pair, amount, anchor)
@@ -568,7 +570,7 @@ hooksecurefunc(S, "Set", function(key)
     end
 end)
 hooksecurefunc(ns, "Apply", Apply)
-hooksecurefunc(ns, "ShowRaidReminderAnchorConfig", function()
+hooksecurefunc(ns, "ShowUnlockMode", function()
     unlocked = true
     if On() then
         Apply()
@@ -576,7 +578,7 @@ hooksecurefunc(ns, "ShowRaidReminderAnchorConfig", function()
         Push(PANTS_ICON, SAMPLE_PANTS_NAME, nil, SAMPLE_PANTS_BAGS, nil, SAMPLE_PANTS)
     end
 end)
-hooksecurefunc(ns, "HideRaidReminderAnchorConfig", function()
+hooksecurefunc(ns, "HideUnlockMode", function()
     unlocked = false
     if feed then feed.mover:Hide() end
 end)
@@ -595,13 +597,13 @@ local GROWTH = { { up = "Up", down = "Down" }, { "up", "down" } }
 local FADING = { 1, 0.6, 0.25 }
 local ITEM_ROWS = 2
 local STAGE_H, STAGE_MARGIN, TEXT_ROOM = 220, 14, 58
-local NOTE_Y, NOTE_SIZE, NOTE_GAP = 8, 11, 4
+local NOTE_Y, NOTE_SIZE, NOTE_GAP = 8, ns.Shared.Style.STAGE_NOTE_SIZE, 4
 local EDIT_LEVEL, TOP_LEVEL = 10, 12
 local EDGE_HIT, EDGE_LINE = 6, 2
 local VALUE_PAD, VALUE_ROOM = 6, 48
 local HOVER_ALPHA = 0.12
 local WIDTH_RANGE, HEIGHT_RANGE, SPACING_RANGE = { 200, 600, 5 }, { 20, 64, 1 }, { -1, 20, 1 }
-local SIZE_RANGE, COUNT_RANGE = { 8, 24, 1 }, { 3, 12, 1 }
+local SIZE_RANGE, COUNT_RANGE = ns.Shared.Style.HUD_TEXT_RANGE, { 3, 12, 1 }
 local HINT = "Drag the right edge for width, a line's bottom for height. Wheel: text size (Shift: spacing, "
     .. "Ctrl: lines). Right-click a line for what it shows."
 local OFF_HINT = "Turn on the Loot Feed to edit it here."
@@ -639,7 +641,7 @@ local RADIOS = { Choices("Style", "lootFeedStyle", STYLE), Choices("Outline", "l
 
 local function Snap(v, range)
     local low, high, step = range[1], range[2], range[3]
-    v = low + math.floor((v - low) / step + 0.5) * step
+    v = low + math.floor((v - low) / step + ROUND) * step
     return math.max(low, math.min(high, v))
 end
 
@@ -1025,7 +1027,7 @@ ns.Shared.Settings.Page("QoL/Loot & Items", S):Card({
               .. "own line." },
         { key = "lootFeedQuality", label = "Lowest Quality Shown", choice = QUALITY },
         { key = "lootFeedCount", label = "Lines Shown", slider = COUNT_RANGE },
-        { key = "lootFeedFade", label = "Display Time", slider = { 0.5, 10, 0.5 }, unit = "s",
+        { key = "lootFeedFade", label = "Display Time", slider = DISPLAY_TIME_RANGE, unit = "s",
           help = "How long each line stays before it fades." },
         { key = "lootFeedGrowth", label = "Growth Direction", choice = GROWTH,
           help = "The newest line stays at the anchor; older lines stack in this direction." },

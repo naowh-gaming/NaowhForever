@@ -10,14 +10,15 @@ local Rows = Training.Rows
 local V = Training.View
 local Header, Row, Cards, Take, Paint = Rows.Header, Rows.Row, Rows.Cards, Rows.Take, Rows.Paint
 
-local LEVEL, SPELL = 1, 2
+local LEVEL, SPELL = C.ENTRY_LEVEL, C.ENTRY_SPELL
 local MAX_LEVEL = C.MAX_LEVEL
-local DOT_MIN, DOT_MAX = 10, 20
+local DOT_MIN, DOT_MAX = 10, Style.DOT_MAX
+local DOT_EVEN, ROUND = 2, C.ROUND
 local DOT_EDGE = 2
-local YOU_GAP = 6
+local YOU_GAP = Style.YOU_GAP
 local RING_GROW = 10
 local RING_ALPHA = 0.25
-local BAR_W = 440
+local BAR_W = Style.BAR_W
 local MAX_LATER = 12
 local STATES = { "now", "rank", "soon", "later", "talent", "ignored" }
 local TEXT_LEVEL = "Level "
@@ -105,7 +106,7 @@ end
 local function DrawDot(plan, level, group, most)
     local d = Take("dot", NewDot)
     local cost = Training.Total(group)
-    local size = 2 * math.floor((DOT_MIN + (DOT_MAX - DOT_MIN) * math.sqrt(cost / most)) / 2 + 0.5)
+    local size = DOT_EVEN * math.floor((DOT_MIN + (DOT_MAX - DOT_MIN) * math.sqrt(cost / most)) / DOT_EVEN + ROUND)
     local learned = 0
     for _, entry in ipairs(group) do
         if plan.known[entry[SPELL]] then learned = learned + 1 end

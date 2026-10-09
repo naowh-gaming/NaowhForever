@@ -30,10 +30,10 @@ local function Load(path, settings)
         for _, fn in ipairs(hooks) do fn(k) end
     end
     local fonts = {}
-    local ns = {
+    local ns = { MEDIA = dofile("Tools/regression/core_media.lua"),
         AuraBuffSettings = S, ProfessionSettings = S, THEME = { accentSoft = {}, muted = {} },
         HEALTHSTONES = { 5509 }, HEALING_POTIONS = { 13446 },
-        Apply = NOTHING, ShowRaidReminderAnchorConfig = NOTHING, HideRaidReminderAnchorConfig = NOTHING,
+        Apply = NOTHING, ShowUnlockMode = NOTHING, HideUnlockMode = NOTHING,
         Border = NOTHING,
         Font = function()
             local fs = New()
@@ -88,7 +88,7 @@ do
         lowHealthIconSize = 48, lowHealthGlow = false, lowHealthSound = false,
         lowHealthFont = "", lowHealthFontSize = 16, lowHealthOutline = "OUTLINE" }
     local S, fonts = Load({ "Core/Features.lua", "NaowhForever_AuraBuffs/AuraBuffs.lua",
-        "NaowhForever_AuraBuffs/LowHealth.lua", "NaowhForever_AuraBuffs/View/Style.lua",
+        "NaowhForever_AuraBuffs/Constants.lua", "NaowhForever_AuraBuffs/LowHealth.lua", "NaowhForever_AuraBuffs/View/Style.lua",
         "NaowhForever_AuraBuffs/View/LowHealthLook.lua", "NaowhForever_AuraBuffs/UI/LowHealth.lua",
         "NaowhForever_AuraBuffs/UI/LowHealthCard.lua" }, settings)
     local label, count = Find(fonts, "LOW HEALTH"), fonts[1]

@@ -25,6 +25,4 @@ Discovery.Style = setmetatable({
     COUNT_GAP = 4,
     SECTION_GAP = 8,
     BAR_ALPHA = 0.85,
-    ICON_CROP_LOW = 0.08,
-    ICON_CROP_HIGH = 0.92,
 }, { __index = ns.Shared.Style })

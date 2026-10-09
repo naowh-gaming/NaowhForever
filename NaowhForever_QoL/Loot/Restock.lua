@@ -42,7 +42,7 @@ local TARGETS = {
 local AMMO_SLOT = 0
 local FOOD_CLASS, FOOD_SUBCLASS = 0, 5
 local DRINK_ITEM = 159
-local PLAIN_BAG = 0
+local PLAIN_BAG = ns.QoLConstants.PLAIN_BAG
 local MAX_LEVEL = 60
 local NO_DRINK = { WARRIOR = true, ROGUE = true }
 local TITLE_GROW = 6
@@ -53,6 +53,9 @@ local FLASH_LOOPS, FLASH_ALPHA, FLASH_TIME = 6, 0.35, 0.6
 local STACK_ORDER = 4
 local SETTLE_DELAY = 0.5
 local CARRY_MAX = 200
+local AMMO_RANGE, FOOD_BELOW_RANGE, FOOD_LEVEL_RANGE = { 200, 4000, 100 }, { 1, 40, 1 }, { 0, MAX_LEVEL, 1 }
+local BAGS_BELOW_RANGE, CARRY_RANGE = { 1, 20, 1 }, { 0, CARRY_MAX, 1 }
+local TEXT_RANGE = { 10, 32, 1 }
 local ITEM_PATTERN = "item:(%d+)"
 local CHECKS = { { "restockReagents", "reagents" }, { "restockAmmo", "ammo" }, { "restockFood", "food & drink" },
     { "restockVendor", "junk & bags" } }
@@ -411,8 +414,8 @@ hooksecurefunc(S, "Set", function(key)
     end
 end)
 hooksecurefunc(ns, "Apply", Apply)
-hooksecurefunc(ns, "ShowRaidReminderAnchorConfig", ShowSample)
-hooksecurefunc(ns, "HideRaidReminderAnchorConfig", HideAlert)
+hooksecurefunc(ns, "ShowUnlockMode", ShowSample)
+hooksecurefunc(ns, "HideUnlockMode", HideAlert)
 
 local boot = CreateFrame("Frame")
 boot:RegisterEvent("PLAYER_LOGIN")
@@ -439,28 +442,28 @@ local FIXED = {
       help = "At a vendor who sells them, tops your class reagents and ammo up to what you carry, "
           .. "and prints what it spent. Off by default: it spends gold for you." },
     { key = "restockAmmo", label = "Ammo", toggle = true, help = "The arrows or shot in your ammo slot." },
-    { key = "restockAmmoTarget", label = "Ammo to Carry", slider = { 200, 4000, 100 }, needs = "restockAmmo" },
+    { key = "restockAmmoTarget", label = "Ammo to Carry", slider = AMMO_RANGE, needs = "restockAmmo" },
     Group("Food & Drink"),
     { key = "restockFood", label = "Food & Drink", toggle = true,
       help = "Counts food and drink separately across all stacks. Warriors and rogues do not need drink." },
-    { key = "restockFoodBelow", label = "Food & Drink Below", slider = { 1, 40, 1 }, needs = "restockFood" },
-    { key = "restockFoodMinLevel", label = "Food Minimum Required Level", slider = { 0, 60, 1 }, needs = "restockFood",
+    { key = "restockFoodBelow", label = "Food & Drink Below", slider = FOOD_BELOW_RANGE, needs = "restockFood" },
+    { key = "restockFoodMinLevel", label = "Food Minimum Required Level", slider = FOOD_LEVEL_RANGE, needs = "restockFood",
       help = "Only count food and drink whose required level is within this range." },
-    { key = "restockFoodMaxLevel", label = "Food Maximum Required Level", slider = { 0, 60, 1 }, needs = "restockFood",
+    { key = "restockFoodMaxLevel", label = "Food Maximum Required Level", slider = FOOD_LEVEL_RANGE, needs = "restockFood",
       help = "The same required-level filter applies to every stack, not each item separately." },
     Group("Bags"),
     { key = "restockVendor", label = "Junk & Full Bags", toggle = true,
       help = "Reminds you to vendor junk, and when your bags are nearly full." },
-    { key = "restockBagsBelow", label = "Free Slots Below", slider = { 1, 20, 1 }, needs = "restockVendor" },
+    { key = "restockBagsBelow", label = "Free Slots Below", slider = BAGS_BELOW_RANGE, needs = "restockVendor" },
 }
 local CARRY_GROUP = Group("Reagents to Carry")
-local LOOK = ns.Shared.Settings.Look("restock", { text = true, size = { 10, 32, 1 }, background = "card" })
+local LOOK = ns.Shared.Settings.Look("restock", { text = true, size = TEXT_RANGE, background = "card" })
 
 local function ReagentRow(item)
     local row = reagentRows[item]
     if not row then
         local key = "restockTarget" .. item
-        row = { key = key, slider = { 0, CARRY_MAX, 1 }, help = CARRY_HELP, needs = "restockReagents",
+        row = { key = key, slider = CARRY_RANGE, help = CARRY_HELP, needs = "restockReagents",
             get = function() return Target(item) end,
             set = function(v) S.Set(key, v) end }
         reagentRows[item] = row

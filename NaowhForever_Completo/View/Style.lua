@@ -10,6 +10,8 @@ local Style = setmetatable({
     GREY_RGB = { r = 0.62, g = 0.62, b = 0.62 },
     HINT_RGB = { r = 0.3, g = 0.71, b = 0.96 },
     BLACK_RGB = { r = 0, g = 0, b = 0 },
+    STAR_ATLAS = "VignetteKill",
+    ROW_ICON_DROP = 1,
     TITLE_SIZE = 13,
     KICKER_SIZE = 10,
     COUNT_SIZE = 22,

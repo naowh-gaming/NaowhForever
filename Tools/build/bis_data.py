@@ -50,7 +50,7 @@ SOURCES = paths.DATA / "bis_sources.json"
 WOWHEAD = "https://www.wowhead.com/forever"
 SEP = " \u00b7 "
 
-WOWSRC_AGENT = "NaowhForever-tools (+https://github.com/nwh-gaming-ab/NaowhForever)"   # as wowsrc.py's
+WOWSRC_AGENT = "NaowhForever-tools (+https://github.com/naowh-gaming/NaowhForever)"   # as wowsrc.py's
 
 CLASSES = ["druid", "hunter", "mage", "paladin", "priest", "rogue", "shaman", "warlock", "warrior"]
 

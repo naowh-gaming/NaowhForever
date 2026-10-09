@@ -70,7 +70,7 @@ local account = {}
 local refreshed = 0
 local ns = {
     QoLSettings = S, THEME = THEME,
-    Apply = function() end, ShowRaidReminderAnchorConfig = function() end, HideRaidReminderAnchorConfig = function() end,
+    Apply = function() end, ShowUnlockMode = function() end, HideUnlockMode = function() end,
     AccountSettings = function() return account end,
     OpenBlessingsWindow = function() end,
     PixelInset = function() end, Border = function(f) f.bordered = true end, UIFontPath = function() return "font" end,
@@ -80,7 +80,8 @@ local ns = {
     Tooltip = function(frame, title, body) frame.tipTitle, frame.tipBody = title, body end,
     UI = { RefreshPage = function() refreshed = refreshed + 1 end },
     Shared = {
-        Style = { PLUS = "plus", CROSS = "cross", OPACITY_MIN = 20 },
+        Style = setmetatable({ PLUS = "plus", CROSS = "cross", OPACITY_MIN = 20 },
+            { __index = dofile("Tools/regression/shared_style.lua") }),
         Parts = { HudFont = function(fs, font, size, outline) fs.font, fs.size, fs.outline = font, size, outline end },
         Settings = {
             Group = function(name) return { group = name } end,

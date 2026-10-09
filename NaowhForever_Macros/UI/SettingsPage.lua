@@ -7,7 +7,8 @@ local Smart = M.Smart
 local Settings = ns.Shared.Settings
 local Group = Settings.Group
 
-local OPACITY_MAX, OPACITY_STEP, PERCENT_SCALE = 100, 5, 0.01
+local OPACITY_RANGE, PERCENT_SCALE = ns.Shared.Style.OPACITY_RANGE, ns.Shared.Style.PERCENT_SCALE
+local ORDER_KEPT, ORDER_HEALTH, ORDER_FOCUS, ORDER_WINDOW = 5, 20, 30, 40
 local MACROS_OFF = "Turn on Macros"
 local TEXT_KEPT = "%d of %d kept current"
 local TEXT_ANNOUNCES_MARKS = "Announces and marks your focus"
@@ -51,7 +52,7 @@ page:Window({
 })
 
 page:Card({
-    id = "kept", name = "Kept Current", order = 5,
+    id = "kept", name = "Kept Current", order = ORDER_KEPT,
     help = "The macros the addon writes and keeps up to date for you, out of combat. Switch one on here, "
         .. "or take it to your bars from Smart Macros in Naowh's Forge.",
     summary = KeptSummary,
@@ -76,7 +77,7 @@ page:Card({
 })
 
 page:Card({
-    id = "health", name = "Health Macro", order = 20,
+    id = "health", name = "Health Macro", order = ORDER_HEALTH,
     help = "NF Health uses the best healthstone or healing potion in your bags. Switch it on in Kept Current.",
     summary = HealthSummary,
     rows = {
@@ -87,7 +88,7 @@ page:Card({
 })
 
 page:Card({
-    id = "focus", name = "Focus Macro", order = 30,
+    id = "focus", name = "Focus Macro", order = ORDER_FOCUS,
     help = "NF Focus focuses your mouseover, or your target. Switch it on in Kept Current.",
     summary = FocusSummary,
     rows = {
@@ -103,10 +104,10 @@ page:Card({
 })
 
 page:Card({
-    id = "window", name = "Window", order = 40,
+    id = "window", name = "Window", order = ORDER_WINDOW,
     help = "Naowh's Forge, Macros' own window: your macros, the ones kept current, and Naowh's library.",
     rows = {
-        { key = "windowAlpha", label = "Window Opacity", slider = { ns.Shared.Style.OPACITY_MIN, OPACITY_MAX, OPACITY_STEP },
+        { key = "windowAlpha", label = "Window Opacity", slider = OPACITY_RANGE,
           unit = "%", scale = PERCENT_SCALE, help = "How solid the window is, in percent. Also on its title bar." },
     },
 })

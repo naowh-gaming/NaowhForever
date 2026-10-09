@@ -9,7 +9,9 @@ local Look = A.LowHealthLook
 local Settings = ns.Shared and ns.Shared.Settings
 if not Settings then return end
 
-local STAGE_H, NOTE_Y, NOTE_SIZE, STAGE_MARGIN, LABEL_ROOM = 150, 10, 11, 16, 24
+local STAGE_H, NOTE_Y, NOTE_SIZE, STAGE_MARGIN, LABEL_ROOM = 150, A.Style.STAGE_NOTE_Y, A.Style.STAGE_NOTE_SIZE, A.Style.STAGE_MARGIN, 24
+local BELOW_RANGE, ICON_RANGE, TEXT_RANGE = { 10, 90, 1 }, { 24, 96, 1 }, { 10, 28, 1 }
+local ORDER_LOW_HEALTH = 40
 local GLOW_RGB = A.Style.LOW_RGB
 local GLOW_OUT = 2
 local SAMPLE_POTIONS = 3
@@ -66,13 +68,13 @@ local function Summary(store)
 end
 
 Settings.Page(A.PAGE, S):Card({
-    id = "lowHealth", name = "Low Health", order = 40, switch = "lowHealth",
+    id = "lowHealth", name = "Low Health", order = ORDER_LOW_HEALTH, switch = "lowHealth",
     help = "Shows a healing item's icon the moment your health drops below the threshold, in combat too: "
         .. "the game shows and hides it itself. Move it in the HUD Editor.",
     summary = Summary,
     studio = { height = STAGE_H, states = STATES, new = NewPreview, paint = PaintPreview },
     rows = {
-        { key = "lowHealthBelow", label = "Show Below", slider = { 10, 90, 1 }, unit = "%", needs = Enabled,
+        { key = "lowHealthBelow", label = "Show Below", slider = BELOW_RANGE, unit = "%", needs = Enabled,
           why = OFF },
         { key = "lowHealthItem", label = "Item", choice = ITEMS, needs = Enabled, why = OFF,
           help = "Best in Bags: your best healthstone, else your best healing potion." },
@@ -83,7 +85,7 @@ Settings.Page(A.PAGE, S):Card({
               .. "health from addons mid-fight, it only plays out of combat." },
         { key = "lowHealthSoundKey", label = "Sound", sound = true, needs = SoundOn, why = "Needs Play a Sound" },
         Settings.Group("Size"),
-        { key = "lowHealthIconSize", label = "Icon Size", slider = { 24, 96, 1 }, needs = Enabled, why = OFF },
-        Settings.Look("lowHealth", { text = true, size = { 10, 28, 1 }, needs = Enabled, why = OFF }),
+        { key = "lowHealthIconSize", label = "Icon Size", slider = ICON_RANGE, needs = Enabled, why = OFF },
+        Settings.Look("lowHealth", { text = true, size = TEXT_RANGE, needs = Enabled, why = OFF }),
     },
 })

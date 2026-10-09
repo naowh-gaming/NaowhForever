@@ -50,8 +50,8 @@ local function boot(settings, units)
             parent.fonts[#parent.fonts + 1] = fs
             return fs
         end,
-        Apply = function() end, ShowRaidReminderAnchorConfig = function() end,
-        HideRaidReminderAnchorConfig = function() end,
+        Apply = function() end, ShowUnlockMode = function() end,
+        HideUnlockMode = function() end,
         UI = { AttachMover = function() return frame("Mover") end },
         Shared = { Style = St, Parts = {
             HudFont = function(fs, font, size, outline) fs.font = font .. " " .. size .. " " .. outline end,

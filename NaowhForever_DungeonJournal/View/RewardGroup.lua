@@ -6,14 +6,14 @@ local J = ns.Journal
 local Kinds, Parts = J.View.Kinds, J.View.Parts
 local St = J.Style
 local RULE_ALPHA, TINY_SIZE = St.RULE_ALPHA, St.TINY_SIZE
-local ICON_CROP_LOW, ICON_CROP_HIGH = St.ICON_CROP_LOW, St.ICON_CROP_HIGH
+local ICON_CROP_LOW, ICON_CROP_HIGH = St.ICON_CROP, St.ICON_CROP_HIGH
 
 local KIND_ICONS = { "Interface\\Icons\\INV_Chest_Chain_05", "Interface\\Icons\\INV_Scroll_03",
     "Interface\\Icons\\INV_Misc_Bag_08" }
 local GROUP_H, GROUP_ICON, GROUP_ARROW = 22, 14, 10
 local ARROW_LEFT, ARROW_GAP = -2, 2
 local ICON_GAP, LINE_GAP = 6, 8
-local OPEN_TURN = -math.pi / 2
+local OPEN_TURN = St.OPEN_TURN
 
 local TEXT_COUNT = "   "
 

@@ -34,7 +34,7 @@ local ns = {
     THEME = setmetatable({}, { __index = function() return { r = 1, g = 1, b = 1 } end }),
     UI = { AttachMover = function(parent) return Frame("Mover", parent) end,
         FontPath = function(name) return name == "" and "font" or "lsm:" .. name end },
-    Shared = { Parts = { HudFont = function(fs, font, size, outline)
+    Shared = { Style = dofile("Tools/regression/shared_style.lua"), Parts = { HudFont = function(fs, font, size, outline)
         fs:SetFont(font == "" and "font" or "lsm:" .. font, size, outline == "NONE" and "" or outline)
     end, HudBackdrop = function(_, opts)
         local backdrop = { opts = opts, border = { SetColor = NOTHING } }
@@ -46,7 +46,7 @@ local ns = {
     Font = function(parent) return Frame("FontString", parent) end,
     Print = function(m) printed[#printed + 1] = m end,
     DisbandGroup = function() disbanded = disbanded + 1 end,
-    Apply = NOTHING, ShowRaidReminderAnchorConfig = NOTHING, HideRaidReminderAnchorConfig = NOTHING,
+    Apply = NOTHING, ShowUnlockMode = NOTHING, HideUnlockMode = NOTHING,
 }
 local env = setmetatable({
     NaowhForever = ns,

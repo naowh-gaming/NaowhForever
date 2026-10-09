@@ -14,10 +14,10 @@ local MAX_PLAYERS, MAX_SESSIONS, MAX_CHATS = 1000, 10, 10
 local MIN_SESSION = 60
 local RESUME = 300
 local MAX_TEXT, MAX_NOTE, MAX_NAME, MAX_GUID, MAX_CLASS = 200, 120, 64, 64, 20
-local DAY = 86400
+local DAY = ns.QoLConstants.SECONDS_PER_DAY
 local DAYS_MIN, DAYS_MAX, DAYS_DEFAULT = 7, 365, 90
 local UTF8_TAIL_MIN, UTF8_TAIL_MAX = 128, 191
-local PARTY_SIZE, RAID_SIZE = 4, 40
+local PARTY_SIZE, RAID_SIZE = ns.QoLConstants.PARTY_SIZE, ns.QoLConstants.RAID_SIZE
 local SETTINGS = { enabled = true, playerHistory = true, playerHistoryChats = true, playerNotesTooltip = true }
 local TAGS = {
     { key = "tank", label = "Great Tank", color = Style.HAVE_RGB },

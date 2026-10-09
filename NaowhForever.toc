@@ -3,8 +3,8 @@
 ## Notes: Naowh's Forever companion: the window every module shares.
 ## Author: Naowh
 ## Version: 1.0.6
-## OptionalDeps: NaowhUI_Media, BigWigs, DBM-Core
-## SavedVariables: NaowhForeverDB, NaowhUI_SmartRemindersDB
+## OptionalDeps: NaowhUI_Media
+## SavedVariables: NaowhForeverDB
 ## Group: NaowhForever
 ## IconTexture: Interface\AddOns\NaowhForever\Core\Media\LogoAddon.tga
 ## AddonCompartmentFunc: NaowhForever_OnCompartmentClick
@@ -21,7 +21,7 @@ Core\Core.xml
 Core\Integrations\RestedXP\RestedXP.xml
 Core\Options.xml
 Shared\Shared.xml
-Core\Packs.xml
+Core\Profiles.xml
 Core\Settings.xml
 Core\Badges\Badges.xml
 Core\Pages.xml

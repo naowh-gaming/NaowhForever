@@ -491,6 +491,7 @@ do
     ns.Font = function(parent) return Frame(parent) end
     ns.Solid = function(parent) return Frame(parent) end
     ns.Border = function() return { SetColor = NOTHING } end
+    ns.NewEditBox = function(parent) return Frame(parent) end
     ns.THEME = setmetatable({}, { __index = function() return { r = 1, g = 1, b = 1 } end })
     ns.UIScale = function() return 1 end
     ns.L = function(text) return text end

@@ -7,8 +7,10 @@ local S = ns.QoLSettings
 local Settings = ns.Shared and ns.Shared.Settings
 if not Settings then return end
 
-local COMPARE = { { max = "Best in the Game", level = "Best for Their Level", both = "Both" },
-    { "max", "level", "both" } }
+local C = Score.COMPARE
+local COMPARE = { { [C.MAX] = "Best in the Game", [C.LEVEL] = "Best for Their Level", [C.BOTH] = "Both" },
+    { C.MAX, C.LEVEL, C.BOTH } }
+local ORDER_SCORE = 30
 local TEXT_YOURS_NOW = "Yours now: "
 
 local function Summary()
@@ -16,7 +18,7 @@ local function Summary()
 end
 
 Settings.Page("BiS List/Character", S):Card({
-    id = "naowhScore", name = "Naowh Score", order = 30, switch = "naowhScore", store = S,
+    id = "naowhScore", name = "Naowh Score", order = ORDER_SCORE, switch = "naowhScore", store = S,
     help = "One number for a character's gear, on the item level scale: 26.4 means gear worth a set of level "
         .. "26 epics. Yours is shared with your group and guild as it changes. Your own is always on the BiS "
         .. "List's paperdoll.",

@@ -16,7 +16,7 @@ local CAPPED = 0.35
 local CAPPED_NUMBER = CAPPED + 0.25
 local VALUE_DROP = 2
 local CAP_LINE_H = 18
-local ROUND_HALF = 0.5
+local ROUND_HALF = J.C.ROUND_HALF
 
 local TEXT_TOP_RANK = "The highest rank this season"
 local TEXT_NEXT = "Next  "

@@ -1,9 +1,12 @@
 -- Tailor my setup against thousands of random players: random answers, characters, switches,
 -- module addons enabled, loaded or not, presets and review corrections, on the real setup engine
 -- and the options window's real module code (Core/Options/Window.lua). Every plan is checked
--- for its rules, applied, reloaded, planned again and restored. From the repo root:
+-- for its rules, applied, reloaded, planned again and restored. Half the runs set up one character
+-- (an alt's own setup): every enable, disable and state call names its GUID, other characters'
+-- addons never change; the other half never names a character. From the repo root:
 -- lua5.1 Tools/regression/test-setup-fuzz.lua [seed] [runs]
 local SEED, RUNS = tonumber(arg[1]) or 20261008, tonumber(arg[2]) or 3000
+local GUID = "Player-4613-006EB819"
 local checks, run, where = 0, 0, ""
 local function check(label, ok)
     if not ok then error(("run %d (seed %d)%s: %s"):format(run, SEED, where, label), 2) end
@@ -35,7 +38,7 @@ local function Slice(source, a, b)
     return source:sub(first, assert(source:find(b, first + #a, true), b) - 1)
 end
 local MODULE_LIST = Slice(window, "local MODULES = {", "\n}\n") .. "\n}\n"
-local MODULE_NAMES = assert(window:match("\n(local RETIRED_ADDON = .-\n)\nlocal SYSTEM_PAGES"), "Modules named values")
+local MODULE_NAMES = assert(window:match("\n(local QOL = .-\n)\nlocal SYSTEM_PAGES"), "Modules named values")
 local MODULE_CODE = MODULE_NAMES .. MODULE_LIST
     .. Slice(window, "local function DisplayName(mod)", "local function SetModuleOn(mod, on)")
 
@@ -197,23 +200,54 @@ local function World()
         end
     end
     world.Session()
+    world.character = Chance(0.5)
+    world.others = {}
+    for addon, on in pairs(world.enabled) do
+        world.others[addon] = on
+        if world.character then world.others[addon] = Chance(0.7) end
+    end
     local C_AddOns = {
-        GetAddOnEnableState = function(a) return world.enabled[a] and 2 or 0 end,
-        EnableAddOn = function(a) world.enabled[a] = true end,
-        DisableAddOn = function(a) world.enabled[a] = false end,
+        GetAddOnEnableState = function(a, who)
+            if who then return world.enabled[a] and 2 or 0 end
+            if world.enabled[a] and world.others[a] then return 2 end
+            return (world.enabled[a] or world.others[a]) and 1 or 0
+        end,
+        EnableAddOn = function(a, who)
+            world.enabled[a] = true
+            if not who then world.others[a] = true end
+        end,
+        DisableAddOn = function(a, who)
+            world.enabled[a] = false
+            if not who then world.others[a] = false end
+        end,
         IsAddOnLoaded = function(a) return world.found[a] == true or world.loaded[a] == true end,
     }
     local env = setmetatable({ ns = ns, C_AddOns = C_AddOns, unpack = unpack }, { __index = _G })
     local chunk = assert(loadstring(MODULE_CODE))
     setfenv(chunk, env)
     chunk()
-    local sEnv = setmetatable({ ns = ns, CopyTable = CopyTable, C_AddOns = C_AddOns,
-        UnitClass = function() return world.class, world.class end }, { __index = _G })
+    local function Watched(name)
+        return function(a, ...)
+            local count, who = select("#", ...), ...
+            if world.character then
+                check(name .. " names this character", count == 1 and who == GUID)
+            else
+                check(name .. " is for every character", count == 0)
+            end
+            return C_AddOns[name](a, ...)
+        end
+    end
+    local watched = { GetAddOnEnableState = Watched("GetAddOnEnableState"), EnableAddOn = Watched("EnableAddOn"),
+        DisableAddOn = Watched("DisableAddOn"), IsAddOnLoaded = C_AddOns.IsAddOnLoaded }
+    local sEnv = setmetatable({ ns = ns, CopyTable = CopyTable, C_AddOns = watched,
+        UnitClass = function() return world.class, world.class end,
+        UnitGUID = function(unit) return unit == "player" and GUID or nil end }, { __index = _G })
     sEnv._G = { NaowhForever = ns }
     local setup = assert(loadfile("Core/Onboarding/Setup.lua"))
     setfenv(setup, sEnv)
     setup()
     world.Setup = ns.Setup
+    world.Setup.ForCharacter(world.character)
     world.Reload = function()
         for _, mod in ipairs(MODULES) do
             if mod.addon then world.loaded[mod.addon] = world.enabled[mod.addon] end
@@ -338,12 +372,13 @@ for _, mod in ipairs(MODULES) do
     end
 end
 
-local flips, reloads = 0, 0
+local flips, reloads, characterRuns = 0, 0, 0
 for i = 1, RUNS do
     run = i
     local world = World()
     local answers = Answers()
     where = " amount=" .. tostring(answers.amount) .. " class=" .. world.class
+        .. (world.character and " for this character" or "")
     local entries = world.Setup.Plan(answers, world.Setup.Context())
     CheckPlan(world, answers, entries)
     local flipped = Chance(0.4)
@@ -358,7 +393,7 @@ for i = 1, RUNS do
             check("a flip keeps what it needs, or takes what needs it: " .. tostring(why), ok)
         end
     end
-    local before = { root = CopyTable(world.root), enabled = CopyTable(world.enabled) }
+    local before = { root = CopyTable(world.root), enabled = CopyTable(world.enabled), others = CopyTable(world.others) }
     local needsReload = world.Setup.NeedsReload(entries)
     local reload = world.Setup.Apply(entries)
     if reload then reloads = reloads + 1 end
@@ -376,6 +411,16 @@ for i = 1, RUNS do
     end
     check("the button said whether it reloads: " .. table.concat(moved, ", "), reload == needsReload)
     check("applied: your setup is marked as your own", world.root.qol.preset == "custom")
+    for _, e in ipairs(entries) do
+        local pick = Setup.ITEMS[e.id].pick
+        if pick then
+            check(e.id .. ": picked on, the pick is left for its panel, as a plain QoL key", (world.root.qol[pick] == true) == e.on)
+        end
+    end
+    if world.character then
+        characterRuns = characterRuns + 1
+        check("for this character: every other character's addons as they were", Same(world.others, before.others))
+    end
     world.Reload()
     CheckApplied(world, entries)
     local again = world.Setup.Plan(answers, world.Setup.Context())
@@ -390,7 +435,8 @@ for i = 1, RUNS do
     world.Setup.Restore()
     check("undone: every switch as it was", Same(world.root, before.root))
     check("undone: every module addon as it was", Same(world.enabled, before.enabled))
+    check("undone: other characters' addons as they were", Same(world.others, before.others))
 end
 
-print(("test-setup-fuzz: %d runs (seed %d), %d review flips, %d reloads, %d checks passed"):format(RUNS, SEED,
-    flips, reloads, checks))
+print(("test-setup-fuzz: %d runs (seed %d, %d for one character), %d review flips, %d reloads, %d checks passed")
+    :format(RUNS, SEED, characterRuns, flips, reloads, checks))

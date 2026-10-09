@@ -1,8 +1,7 @@
 # AuraBuffs
 
-Buff and consumable reminders, the Campfire, Low Health, and the debuff sounds the AuraBuffs
-window hands to the debuff alert editor. Its settings page is AuraBuffs/Settings; the lists
-(consumables to watch, debuffs that play a sound) are in the AuraBuffs window (`/nfbuffs`, its
+Buff and consumable reminders, the Campfire and Low Health. Its settings page is
+AuraBuffs/Settings; the consumables to watch are listed in the AuraBuffs window (`/nfbuffs`, its
 minimap and Top Bar button). Its on/off switches and their defaults come from
 `ns.FEATURES.auraBuffs`.
 
@@ -28,6 +27,7 @@ NaowhForever_AuraBuffs/
                                consumable entries kept in the profile, ns.ParseConsumableEntry,
                                the consumables list string (ns.ConsumableListString,
                                ns.ParseConsumableList), ns.CampBuffMode
+  Constants.lua                the numbers several of its files share (A.C)
   Data/
     BuffReminders.lua          the spells and items behind the buff reminders (ns.BuffReminderData)
     Campfire.lua               the camp auras and each camp feature's bonus, by spell ID (A.CampData)
@@ -51,8 +51,9 @@ NaowhForever_AuraBuffs/
     BuffMenu.lua               the carried items a buff reminder offers, as secure buttons
     BuffReminders.lua          the buff reminder row on screen
     BuffsCard.lua              the Buffs & Consumables card
-    WindowPages.lua            the window's pages: consumables (with list import and export), debuff sounds
+    WindowPages.lua            the window's page: consumables, with list import and export
     Window.lua                 the AuraBuffs window
+  Media/CampfireHD.tga         the campfire icon's art (View/CampIcon.lua)
   README.md                    this file
 ```
 
@@ -66,8 +67,9 @@ NaowhForever_AuraBuffs/
   `PLAYER_REGEN_DISABLED` is handled, so that event is checked too.
 - A `UNIT_AURA` unit arrives secret while auras are restricted; `PLAYER_REGEN_ENABLED` catches up.
 - Consumable entries are profile data, never code: an item ID, then buff spell IDs only when the
-  buff is not the item's own, checked as plain numbers. They travel with shared packs
-  (`utilityReminders.consumables` in the profile); presentation settings stay in the module's store.
+  buff is not the item's own, checked as plain numbers. They travel in a profile string's
+  Consumables part (`utilityReminders.consumables` in the profile); presentation settings stay in
+  the module's store.
 - An entry with no buff IDs: food counts any Well Fed (every cooked food's buff is named Well Fed,
   whatever it raises, so it is matched by the name of `D.WELL_FED[1]`), other items their use spell
   (`C_Item.GetItemSpell`), which needs the item cached. An uncached item is asked for once, and only
@@ -75,8 +77,8 @@ NaowhForever_AuraBuffs/
   and ask again forever.
 - The consumables list string is one line, since the paste box is one line:
   `NFCONSUMABLES1:food=13931,2680;battle=13454/17539`. Import also takes a profile string and keeps
-  only its consumables; it adds what is not listed yet, up to `MAX_ENTRIES` (500, the same limit a
-  pack import enforces).
+  only its consumables, through the same checks as the profile import; it adds what is not listed
+  yet, up to `MAX_ENTRIES` (500, the same limit the profile import enforces).
 - Group auras change in bursts, so a buff refresh waits `QUEUE_DELAY` and covers the lot. Nothing
   fires as a buff runs down, so the earliest one to cross the warning time is timed.
 - `ELIXIR_ICON` (13454, Greater Arcane Elixir) stands for "no elixir at all" in the preview.
@@ -90,9 +92,6 @@ NaowhForever_AuraBuffs/
   seen. A camp buff standing in for a class buff is not seen, so it still counts as missing.
 - The buff menu holds secure buttons, so it can only be hidden outside combat. It uses
   `IsMouseOver` on the frame: the old `MouseIsOver` global is gone from the game.
-- The debuff sounds use the debuff alert editor (Smart Reminders), which registers them with
-  `C_UnitAuras.AddAuraSound`; the game plays them itself mid-combat whatever the addon can read.
-  Sound only: nothing can be drawn off an aura the addon cannot see.
 - Camp Benefits (1229741, probed 2026-09-19), Campfire Nearby (1283391, the area aura in range of
   a campfire, 2026-09-24) and Welcoming Campfire (1229739 and the crafting 1289723, the 60 second
   aura while sitting, before Camp Benefits lands, 2026-09-25) were probed on the client.

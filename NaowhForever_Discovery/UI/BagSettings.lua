@@ -5,13 +5,15 @@ local Discovery = ns.Discovery
 local S = Discovery.Settings
 local Library = Discovery.Library
 local Bag = Discovery.Bag
-local Style = Discovery.Style
 local Settings = ns.Shared.Settings
 
-local SCALE = { 50, 150, 5 }
-local PIN_SIZE = { 12, 32, 1 }
-local PERCENT_STEP = 5
-local PERCENT_SCALE = 0.01
+local St = ns.Shared.Style
+
+local SCALE = St.SCALE_RANGE
+local PIN_SIZE = St.PIN_SIZE_RANGE
+local OPACITY_RANGE = St.OPACITY_RANGE
+local PERCENT_SCALE = St.PERCENT_SCALE
+local ORDER_TRACKER, ORDER_MAP_PINS = 10, 20
 local TEXT_OFF = "Turn on Discovery"
 local TEXT_HAVE_BAG = "You have the Cozy Sleeping Bag"
 local TEXT_STEP_OF = "Step %d of %d"
@@ -55,19 +57,19 @@ bags:Window({
 })
 
 bags:Card({
-    id = "bagtracker", name = "Tracker", order = 10, switch = "bagTracker",
+    id = "bagtracker", name = "Tracker", order = ORDER_TRACKER, switch = "bagTracker",
     help = "Shows each Sleeping Bag step, with how to reach the next one and a waypoint.",
     summary = BagSummary,
     rows = {
         { key = "bagTrackerScale", label = "Scale", slider = SCALE, unit = "%", scale = PERCENT_SCALE, needs = On,
           why = TEXT_OFF, help = "How big the tracker is." },
-        { key = "bagTrackerAlpha", label = "Opacity", slider = { Style.OPACITY_MIN, 100, PERCENT_STEP }, unit = "%",
+        { key = "bagTrackerAlpha", label = "Opacity", slider = OPACITY_RANGE, unit = "%",
           scale = PERCENT_SCALE, needs = On, why = TEXT_OFF, help = "How solid the tracker is, in percent." },
     },
 })
 
 bags:Card({
-    id = "bagmappins", name = "Map Pins", order = 20, switch = "bagMapPins",
+    id = "bagmappins", name = "Map Pins", order = ORDER_MAP_PINS, switch = "bagMapPins",
     help = "Shows the Sleeping Bag steps still to do on your map; click one for a waypoint.",
     rows = {
         { key = "bagMapPinSize", label = "Pin Size", slider = PIN_SIZE, needs = On, why = TEXT_OFF,

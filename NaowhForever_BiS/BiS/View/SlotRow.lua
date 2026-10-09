@@ -18,13 +18,13 @@ local INSET, GAP, NAME_GAP = St.STATUS_W, St.COLUMN_GAP, St.NAME_GAP
 local PLACE_DOT, TITLE_RGB, TIP_X = St.PLACE_DOT, St.TIP_TITLE_RGB, St.CURSOR_TIP_X
 local SLOT_NAME_PAD = 8
 local ARROW_SIZE, ARROW_GAP = 10, 4
-local OPEN_TURN = -math.pi / 2
+local OPEN_TURN = St.OPEN_TURN
 local TEXT_HINT = "Click: change picks" .. PLACE_DOT .. "Right-click: Wowhead link"
 local TEXT_PICK_IT = "Click to pick its BiS."
 local TEXT_ADD_BACKUP = "Add a backup pick"
 local TEXT_PICK_BIS = "Pick its BiS"
 local TEXT_PICKS = "picks"
-local WOWHEAD_KIND = "item"
+local WOWHEAD_KIND = B.C.WOWHEAD_KIND
 
 local Picks = B.View.Memo("%d %s")
 

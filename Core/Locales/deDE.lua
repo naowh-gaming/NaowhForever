@@ -2,8 +2,6 @@
 local L = _G.NaowhForeverLocale
 if not L then return end
 
-L["Smart Reminders"] = "Smarte Erinnerungen"
-L["Custom Notes"] = "Eigene Notizen"
 L["Profiles"] = "Profile"
 L["Setup"] = "Einrichtung"
 L["Cooldown Presets"] = "Abklingzeit-Vorlagen"

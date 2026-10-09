@@ -20,16 +20,17 @@ local ARROW, ARROW_GAP = 12, 6
 local SCROLL_W, SCROLL_GAP = 6, 6
 local PILL_SIZE = 11
 local POSITION_KEY = "setupWindow"
-local BLACK = { r = 0, g = 0, b = 0 }
+local BLACK = St.BORDER_RGB
 local GOLD = St.TIP_RGB
 local RED = St.RED_RGB
 local CHANGES = "changes"
-local CHECK_ART = "Interface\\AddOns\\NaowhForever\\Core\\Media\\check.tga"
+local CHECK_ART = ns.MEDIA .. "check.tga"
 local TRACK = "Interface\\AddOns\\NaowhForever\\Core\\Onboarding\\Media\\infinity_track.tga"
 local GLOW = "Interface\\AddOns\\NaowhForever\\Core\\Onboarding\\Media\\glow_dot.tga"
 local HEAD_RGB = { r = 0.85, g = 0.95, b = 1 }
 local GLYPHS = "Interface\\AddOns\\NaowhForever\\Core\\Onboarding\\Media\\Setup\\"
 local NEXT_ART, BACK_ART = GLYPHS .. "next.tga", GLYPHS .. "back.tga"
+local FILTER = "TRILINEAR"
 local CHANGES_ICON = "changes"
 local PANEL_ALPHA, SIDE_ALPHA, DIM_ALPHA = 0.9, 0.6, 0.5
 local WELCOME_LAYOUT = { taglineTop = 30, taglineSpacing = 4, signGap = 6, siteGap = 4, siteTextGrow = 1,
@@ -58,6 +59,7 @@ local TEXT_ON, TEXT_OFF = "on", "off"
 
 local TITLE = "Naowh Forever: Onboarding"
 local WELCOME_SUB = "Welcome"
+local WELCOME_FOR = "Just for %s"
 local WELCOME = "Welcome, and thank you for joining us"
 local TAGLINE_1, TAGLINE_2A, TAGLINE_2B = "One addon", "to rule", "them all."
 local SITE_LINE = "New here? Every feature is shown on our website:"
@@ -91,7 +93,7 @@ local IN_COMBAT = "Apply after your fight."
 local DONE_RELOAD = "Your setup is ready. Reload now to finish?"
 local DONE = "Your setup is ready."
 
-local window, answers, detected, entries, step, section
+local window, answers, detected, entries, step, section, forCharacter
 local Paint
 
 local function Question()
@@ -162,7 +164,7 @@ local function Text(parent, size, color, width, justify)
 end
 
 local function SetGlyph(tex, name)
-    tex:SetTexture(GLYPHS .. name .. ".tga", nil, nil, "TRILINEAR")
+    tex:SetTexture(GLYPHS .. name .. ".tga", nil, nil, FILTER)
 end
 
 local function Tint(tex, c)
@@ -251,7 +253,7 @@ end
 local function Arrow(button, art, after)
     local icon = button:CreateTexture(nil, "ARTWORK")
     icon:SetSize(ARROW, ARROW)
-    icon:SetTexture(art, nil, nil, "TRILINEAR")
+    icon:SetTexture(art, nil, nil, FILTER)
     Tint(icon, T.fg)
     local shift = (ARROW + ARROW_GAP) / 2
     button.label:ClearAllPoints()
@@ -280,7 +282,7 @@ local function Hidden(self)
     window.events:UnregisterAllEvents()
     if self:IsShown() then return end
     local account = ns.AccountSettings()
-    account.welcomeSeen, account.freshInstall = true, nil
+    account.onboardingSeen, account.welcomeSeen = true, true
 end
 
 local function ShowSite()
@@ -312,14 +314,14 @@ local function Sign(page)
     local sign = CreateFrame("Frame", nil, page)
     sign:SetSize(SIGN_SHAPE.w, SIGN_SHAPE.h)
     local track = sign:CreateTexture(nil, "ARTWORK")
-    track:SetTexture(TRACK, nil, nil, "TRILINEAR")
+    track:SetTexture(TRACK, nil, nil, FILTER)
     track:SetAllPoints()
     track:SetVertexColor(T.accent.r, T.accent.g, T.accent.b)
     track:SetAlpha(SIGN_SHAPE.trackAlpha)
     sign.dots = {}
     for i = 1, SIGN_SHAPE.trail + 1 do
         local dot = sign:CreateTexture(nil, "OVERLAY")
-        dot:SetTexture(GLOW, nil, nil, "TRILINEAR")
+        dot:SetTexture(GLOW, nil, nil, FILTER)
         dot:SetBlendMode("ADD")
         if i == 1 then
             dot:SetSize(SIGN_SHAPE.headDot, SIGN_SHAPE.headDot)
@@ -856,11 +858,11 @@ function Paint()
     window.review:SetShown(reviewing)
     window.foot:SetShown(not welcome)
     PaintSegments()
-    window.next.arrow:SetTexture(reviewing and CHECK_ART or NEXT_ART, nil, nil, "TRILINEAR")
+    window.next.arrow:SetTexture(reviewing and CHECK_ART or NEXT_ART, nil, nil, FILTER)
     window.again:SetShown(reviewing)
     window.skip:SetShown(not welcome and not reviewing)
     if welcome then
-        window.subtitle:SetText(WELCOME_SUB)
+        window.subtitle:SetText(forCharacter and WELCOME_FOR:format(forCharacter) or WELCOME_SUB)
     elseif reviewing then
         window.subtitle:SetText(REVIEW_SUB)
         PaintReview()
@@ -983,8 +985,10 @@ local function Build()
     window:HookScript("OnHide", Hidden)
 end
 
-function ns.ShowSetup()
+function ns.ShowSetup(thisCharacter)
     ns.StashOptionsWindow()
+    Setup.ForCharacter(thisCharacter)
+    forCharacter = thisCharacter and UnitName("player") or nil
     if not window then Build() end
     window.painted = nil
     answers, detected = Fresh()

@@ -1,7 +1,7 @@
 -- Regression: Core itself calls ns.Apply() a second after login, and queues it again on a new
 -- world, spec, spells or talents. Every module that hooks ns.Apply (the character and inspect
--- panels, the bag marks and more) paints its first time from it; Smart Reminders used to make
--- that call and no longer ships, which left them unpainted after a reload.
+-- panels, the bag marks and more) paints its first time from it; a module used to make that
+-- call and no longer ships, which left them unpainted after a reload.
 -- Run from the repo root: lua5.1 Tools/regression/test-core-apply.lua
 local passed = 0
 local function check(name, ok)
@@ -47,7 +47,7 @@ check("Core listens for login, a new world, spec, spells and talents", events an
 events:onEvent("PLAYER_LOGIN")
 check("login: one Apply a second later", #timers == 1 and timers[1].delay == 1)
 timers[1].fn()
-check("which reaches the modules' hooks, Smart Reminders or not", applied == 1)
+check("which reaches the modules' hooks", applied == 1)
 events:onEvent("SPELLS_CHANGED")
 events:onEvent("TRAIT_CONFIG_UPDATED")
 check("a burst of spell and talent events: one reapply queued", #timers == 2 and timers[2].delay == 0)

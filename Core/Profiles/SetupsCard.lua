@@ -47,6 +47,6 @@ Settings.Page(ns.SETUPS_PAGE, S):Card({
         { label = "Tailor Setup", buttonText = "Start", button = function() ns.ShowSetup() end,
           help = "Asks a few questions and suggests what to turn on and off." },
         { label = "Before Tailoring", buttonText = "Restore", button = Restore, hidden = NoBackup,
-          help = "Puts your settings back to how they were before tailoring." },
+          help = "Restores your settings to how they were before tailoring." },
     },
 })

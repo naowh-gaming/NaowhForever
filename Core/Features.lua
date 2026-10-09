@@ -2,6 +2,7 @@
 local ns = _G.NaowhForever
 
 ns.FEATURE_BADGES = 0
+ns.BADGES_LIVE = 1
 
 local function Missing(_, key)
     error("NaowhForever: no feature switch named " .. tostring(key), 2)
@@ -100,9 +101,6 @@ ns.FEATURES = {
         showClock = false,
         showSystem = false,
     },
-    customReminders = {
-        enabled = false,
-    },
     journal = {
         enabled = true,
         mapPanel = true,
@@ -196,7 +194,6 @@ ns.FEATURES = {
     },
     account = {
         gameMenuButton = true,
-        healerRemindersEnabled = true,
         rxpThemes = false,
     },
 }

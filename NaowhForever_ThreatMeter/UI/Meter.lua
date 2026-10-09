@@ -12,12 +12,12 @@ local FOLLOW_INTERVAL = 0.5
 local PREVIEW_SECONDS = 10
 local INSET, FOOTER = C.INSET, C.FOOTER
 local MIN_WIDTH, MIN_HEIGHT, MAX_WIDTH, MAX_HEIGHT = C.MIN_WIDTH, C.MIN_HEIGHT, C.MAX_WIDTH, C.MAX_HEIGHT
-local MIN_BAR, MAX_BAR, MAX_SPACING, MIN_FONT, MAX_FONT = 12, 72, 16, 8, 24
+local MIN_BAR, MAX_BAR, MAX_SPACING, MIN_FONT, MAX_FONT = C.MIN_BAR, C.MAX_BAR, C.MAX_SPACING, C.MIN_FONT, C.MAX_FONT
 local SOURCE_W, SMALL_W, BUTTON_H = 58, 22, 18
 local SOURCE_X, SOURCE_Y, LOCK_X, SETTINGS_X, BUTTON_Y = -8, -5, -34, -8, 5
 local GRIP_SIZE, GRIP_INSET, GRIP_LEVEL, GRIP_LOCKED_ALPHA = 20, 2, 20, 0.4
 local HOME_X, HOME_Y = 400, -100
-local ROUND = 0.5
+local ROUND = C.ROUND
 local GRIP_UP, GRIP_HIGHLIGHT, GRIP_DOWN = C.GRIP_UP, C.GRIP_HIGHLIGHT, C.GRIP_DOWN
 local CARD = C.PAGE .. ":meter"
 local THREAT_EVENTS = { "UNIT_THREAT_LIST_UPDATE", "UNIT_THREAT_SITUATION_UPDATE" }
@@ -351,8 +351,8 @@ end
 events:SetScript("OnEvent", OnEvent)
 hooksecurefunc(S, "Set", OnSet)
 hooksecurefunc(ns, "Apply", Apply)
-hooksecurefunc(ns, "ShowRaidReminderAnchorConfig", OnUnlock)
-hooksecurefunc(ns, "HideRaidReminderAnchorConfig", OnLock)
+hooksecurefunc(ns, "ShowUnlockMode", OnUnlock)
+hooksecurefunc(ns, "HideUnlockMode", OnLock)
 
 local boot = CreateFrame("Frame")
 boot:RegisterEvent("PLAYER_LOGIN")

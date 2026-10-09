@@ -8,7 +8,7 @@ local Parts = View.Parts
 
 local CARD_PAD = J.Style.CARD_PAD
 
-local SECONDS_PER_MINUTE = 60
+local SECONDS_PER_MINUTE = J.C.SECONDS_PER_MINUTE
 local EDGE_INSET = 1
 local FIGHT_LENGTH = "%d:%02d"
 

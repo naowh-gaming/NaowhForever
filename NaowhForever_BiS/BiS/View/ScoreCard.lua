@@ -29,6 +29,7 @@ local TRACK_GREY = 0.16
 local SCALE_ROOM = 1.25
 local SHOWN_GAIN = 0.05
 local TENTHS = 10
+local ROUND = B.C.ROUND
 local MIN_CUT = 2
 local UNORDERED = 1000
 local EDGE_OUT = -1
@@ -52,7 +53,7 @@ local TIP_NOW, TIP_WITH_BIS = "Now", "With your BiS"
 local TIP_GOAL = "Level %d goal"
 local TIP_BEST_LEVEL, TIP_BEST_GAME = "Best for your level", "Best in the game"
 local TIP_ABOUT = "Filled to what you wear, dimmer on to your BiS. A level's goal is a full set of blues for it."
-local LEVEL_COMPARE, BOTH_COMPARE = "level", "both"
+local LEVEL_COMPARE, BOTH_COMPARE = ns.NaowhScore.COMPARE.LEVEL, ns.NaowhScore.COMPARE.BOTH
 
 local CORE = {}
 for i, key in ipairs(STAT_ORDER) do CORE[key] = i end
@@ -106,7 +107,7 @@ local function Shown(stats)
 end
 
 local function ScoreText(format, score)
-    local tenths = math.floor(score * TENTHS + 0.5)
+    local tenths = math.floor(score * TENTHS + ROUND)
     local byFormat = scoreTexts[format]
     if not byFormat then
         byFormat = {}
@@ -139,7 +140,7 @@ local function Stretch(texture, x, x2)
 end
 
 local function BarX(score, top, width)
-    return math.floor(math.min(1, score / top) * width + 0.5)
+    return math.floor(math.min(1, score / top) * width + ROUND)
 end
 
 local function PaintEmpty(card)

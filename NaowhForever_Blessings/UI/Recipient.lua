@@ -5,7 +5,7 @@ local B = ns.Blessings
 local HIGHLIGHT = B.Look.HIGHLIGHT
 
 local TEMPLATE = "NaowhForeverBlessButtonTemplate"
-local NOBODY = "-"
+local NOBODY = B.NOBODY
 
 function B.Recipient(parent, name)
     local header = CreateFrame("Frame", name, parent, "SecureGroupHeaderTemplate")

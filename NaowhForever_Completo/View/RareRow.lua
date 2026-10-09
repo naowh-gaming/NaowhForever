@@ -9,7 +9,7 @@ local R = Completo.Rares
 local V = Completo.View
 
 local LEVEL_EXTRA = 12
-local ICON_DROP = 1
+local ICON_DROP = Style.ROW_ICON_DROP
 local DATE_FORMAT = "%d %b %Y"
 local TEXT_WAYPOINT = "Waypoint"
 local TEXT_PIN_HINT = "To where it spawns nearest you."

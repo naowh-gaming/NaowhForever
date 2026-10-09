@@ -211,13 +211,13 @@ rows[3].waypoint(rows[3])
 Check(waypoints[1] == "Pocket Litter", "a pin's waypoint is its step's")
 
 inLog[79008] = true
-addon.ShowRaidReminderAnchorConfig()
+addon.ShowUnlockMode()
 rows = panel.entries
 Check(rows[1].done == true and rows[1].sub == nil and rows[1].color == GREY and rows[2].color == nil,
     "a step done: ticked, muted, nothing under it; the next one in full")
 local first = rows[1]
 local Measure = dofile("Tools/regression/measure.lua")(function(label, ok) Check(ok, label) end)
-Measure("the tracker redrawn", 1, function() addon.ShowRaidReminderAnchorConfig() end)
+Measure("the tracker redrawn", 1, function() addon.ShowUnlockMode() end)
 Check(panel.entries[1] == first, "its rows' entries kept and refilled")
 
 panel.opts.onClose()

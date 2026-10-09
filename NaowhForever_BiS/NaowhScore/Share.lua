@@ -9,6 +9,7 @@ local ANSWER_SPREAD = 30
 local GUILD_ANSWER_GAP = 30
 local TENTHS = 10
 local MAX_TENTHS = 9999
+local ROUND = 0.5
 local MAX_LEVEL = 1000
 local REQUEST = "R"
 local SCORE_FORMAT = "S %s %d %d"
@@ -38,7 +39,7 @@ end
 local function Tenths()
     local score, complete = Score.Unit("player")
     if not complete then return nil end
-    return math.floor(score * TENTHS + 0.5)
+    return math.floor(score * TENTHS + ROUND)
 end
 
 local function Message(tenths)

@@ -33,7 +33,7 @@ local DENSE_H, DENSE_ICON, DENSE_CHANCE_TOP, DENSE_BAR_BOTTOM = St.DENSE_H, St.D
     St.DENSE_BAR_BOTTOM
 local TEXT_SIZE, SMALL_SIZE, TIP_X = St.TEXT_SIZE, St.SMALL_SIZE, St.CURSOR_TIP_X
 
-local WEAPON, ARMOR, RECIPE = 2, 4, 9
+local WEAPON, ARMOR, RECIPE = 2, J.C.ITEM_ARMOR, J.C.ITEM_RECIPE
 local ARMOR_TYPES = { [1] = true, [2] = true, [3] = true, [4] = true }
 local COMMON = 1
 local NAME_TOP, CHANCE_TOP, BAR_BOTTOM = 1, 8, 11
@@ -42,7 +42,7 @@ local BAR_H = 4
 local DEEP = 0.6
 local MIN_FILL = 0.1
 local EVERY_KILL = 100
-local ROUND_HALF = 0.5
+local ROUND_HALF = J.C.ROUND_HALF
 local PRICE_COLUMN = "price"
 
 local TEXT_EVERY_KILL = "every kill"

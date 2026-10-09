@@ -14,7 +14,7 @@ local Widgets = P.Widgets
 local SetColor = Widgets.SetColor
 local EnableButton = Widgets.EnableButton
 
-local EDGE = 10
+local EDGE = Style.PANEL_EDGE
 local VALUE_BOTTOM = 44
 local ADD_W = 120
 local LABEL_GAP = 8
@@ -32,7 +32,7 @@ local REMOVE_RIGHT = 2
 local TIP_W, TIP_H = 76, 20
 local TIP_GAP = 4
 local TIP_LETTERS = 16
-local NAME_GAP = 6
+local NAME_GAP = Style.ICON_NAME_GAP
 local NAME_DROP = 1
 local SUB_DROP = 3
 local EMPTY_X, EMPTY_DROP = 14, 50

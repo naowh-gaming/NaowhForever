@@ -7,13 +7,12 @@ local O = ns.Options
 local SYSTEM_PAGES, MODULES, PAGES = O.SYSTEM_PAGES, O.MODULES, O.PAGES
 local DisplayName, Loaded, ModuleOn, SetModuleOn = O.DisplayName, O.Loaded, O.ModuleOn, O.SetModuleOn
 
-local MEDIA = "Interface\\AddOns\\NaowhForever\\Core\\Media\\"
+local MEDIA = ns.MEDIA
 local LINK_ICONS = MEDIA .. "Links\\"
 local NAV_ICONS = MEDIA .. "Navigation\\"
 local BRAND_LOGO = MEDIA .. "BrandLogo.tga"
 local NAV_DOT_TEXTURE = MEDIA .. "circle_mask.tga"
 local NAV_OPEN_TEXTURE = NAV_ICONS .. "window.tga"
-local GRIP_TEXTURE = "Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-"
 local SIDEBAR_W, CONTENT_W, WINDOW_W, WINDOW_H = 240, 1000, 1440, 822
 local MIN_WINDOW_H = 620
 local TOP_H, PAGE_HEADER_H = 64, 128
@@ -41,8 +40,7 @@ local PAGE_TOP, PAGE_ROOM = 6, 30
 local SETTING_AT = 1 / 3
 local SCREEN_MARGIN, MIN_FIT = 32, 0.25
 local DEFAULT_SCALE = 100
-local GRIP_SIZE, GRIP_INSET, GRIP_RAISE = 16, 3, 20
-local NAV_BAR = { w = 10, inset = 1, ends = 2, track = 2, thumbW = 6, thumbH = 40, thumbAlpha = 0.85 }
+local NAV_BAR = { w = 10, inset = 1 }
 local SOON = { titleSize = 16, textSize = 12, top = 60, gap = 12, inset = 60, height = 180 }
 local HEAD = { crumbSize = 12, crumbY = 24, titleSize = 24, titleY = 51, titleRoom = 300, subSize = 12, subY = 94,
     switchW = 52, switchH = 26, switchY = 54, labelGap = 14, labelSize = 14, tabDrop = 14 }
@@ -52,16 +50,16 @@ local SIDE = { groupSize = 11, groupX = 20, groupY = 10, groupStep = 28, utility
 local TOP = { gap = 18, close = 28, hudW = 140, reloadW = 110, buttonH = 32 }
 local MW = { titleSize = 20, titleX = 30, titleY = 18, subSize = 12, subX = 1, subGap = 6, close = 26,
     closeInset = 12, switchGap = 14, tabX = 30, tabDrop = 2, tabRoom = 60, scrollX = 10, scrollY = 5,
-    scrollRight = 30, scrollBottom = 22, childRoom = 40, h = 560, minH = 360 }
+    scrollRight = 30, scrollBottom = 22, childRoom = 40, h = 560, minH = 360, switchRaise = 2 }
 local OPTIONS_NAME = "NaowhForeverOptions"
 local FIRST_PAGE = "QoL/Interface"
 local SETTINGS_PAGE = "Settings"
 local LINKS = {
     { "Discord", "discord", function() return "https://discord.gg/V2eSJMBynn" end },
     { "Website", "website", function() return "https://naowh.gg" end },
-    { "GitHub", "github", function() return "https://github.com/nwh-gaming-ab/NaowhForever" end },
+    { "GitHub", "github", function() return "https://github.com/naowh-gaming/NaowhForever" end },
 }
-local SYSTEM_NAV = { { "Settings", "settings" }, { "Profiles", "person" }, { "Patch Notes", "notes" }, { "Credits", "heart" } }
+local SYSTEM_NAV = { { "Settings", "settings" }, { UI.PROFILES_PAGE, "person" }, { "Patch Notes", "notes" }, { "Credits", "heart" } }
 local TEXT_VERSION, TEXT_UNKNOWN = "v", "unknown"
 local TEXT_COMING_SOON = "Coming soon"
 local TEXT_ENABLE = "Enable"
@@ -450,7 +448,7 @@ function ns.SetWindowScale(pct)
 end
 
 local function EnterUnlockMode()
-    if ns.ShowRaidReminderAnchorConfig then ns.ShowRaidReminderAnchorConfig() end
+    if ns.ShowUnlockMode then ns.ShowUnlockMode() end
 end
 
 local function DragRegion(frame, target)
@@ -461,43 +459,18 @@ local function DragRegion(frame, target)
     ns.AllowOffscreen(target)
 end
 
-local function SaveSize(frame, key)
-    local account = ns.AccountSettings()
-    account.windowSizes = account.windowSizes or {}
-    account.windowSizes[key] = { frame:GetWidth(), frame:GetHeight() }
-end
-
-local function Grip(frame)
-    local grip = CreateFrame("Button", nil, frame)
-    grip:SetSize(GRIP_SIZE, GRIP_SIZE)
-    grip:SetPoint("BOTTOMRIGHT", -GRIP_INSET, GRIP_INSET)
-    grip:SetFrameLevel(frame:GetFrameLevel() + GRIP_RAISE)
-    grip:SetNormalTexture(GRIP_TEXTURE .. "Up")
-    grip:SetHighlightTexture(GRIP_TEXTURE .. "Highlight")
-    grip:SetPushedTexture(GRIP_TEXTURE .. "Down")
-    return grip
-end
-
 local function Resizable(frame, key, child, inset, minW, minH)
     local function Fit()
         child:SetWidth(frame:GetWidth() - (type(inset) == "function" and inset() or inset))
     end
-    local sizes = ns.AccountSettings().windowSizes
-    local saved = sizes and sizes[key]
-    if saved then frame:SetSize(math.max(saved[1], minW), math.max(saved[2], minH)) end
-    Fit()
-    frame:SetResizable(true)
-    frame:SetResizeBounds(minW, minH)
-    local grip = Grip(frame)
-    grip:SetScript("OnMouseDown", function() frame:StartSizing("BOTTOMRIGHT") end)
-    grip:SetScript("OnMouseUp", function()
-        frame:StopMovingOrSizing()
-        SaveSize(frame, key)
+    local function Released()
         local width = child:GetWidth()
         Fit()
         if frame == window then FitMainWindow() end
         if child:GetWidth() ~= width then UI:RefreshPage(true) end
-    end)
+    end
+    ns.Shared.Parts.Resizable(frame, key, minW, minH, nil, Released)
+    Fit()
 end
 
 local function CloseOnEscape(self, key)
@@ -523,50 +496,32 @@ local function TabStrip(parent, mod, onPick, maxW)
     return bar
 end
 
-local function NavScrollBar(scroll)
-    local bar = CreateFrame("Slider", nil, scroll)
-    scroll.ScrollBar = bar
-    bar:SetPoint("TOPLEFT", scroll, "TOPRIGHT", NAV_BAR.inset, -NAV_BAR.ends)
-    bar:SetPoint("BOTTOMLEFT", scroll, "BOTTOMRIGHT", NAV_BAR.inset, NAV_BAR.ends)
-    bar:SetWidth(NAV_BAR.w)
-    bar:SetOrientation("VERTICAL")
-    bar:SetMinMaxValues(0, 0)
-    bar:SetValue(0)
-    local track = ns.Solid(bar, "BACKGROUND", T.line, 1)
-    track:SetPoint("TOP"); track:SetPoint("BOTTOM"); track:SetWidth(NAV_BAR.track)
-    local thumb = ns.Solid(bar, "ARTWORK", T.muted, NAV_BAR.thumbAlpha)
-    thumb:SetSize(NAV_BAR.thumbW, NAV_BAR.thumbH)
-    bar:SetThumbTexture(thumb)
-    bar:SetScript("OnValueChanged", function(_, value)
-        if value ~= scroll:GetVerticalScroll() then scroll:SetVerticalScroll(value) end
-    end)
-    bar:Hide()
-    return bar
+local function ClampNav(scroll)
+    local range = scroll:GetVerticalScrollRange()
+    scroll:SetVerticalScroll(math.max(0, math.min(scroll:GetVerticalScroll(), range)))
+end
+
+local function RefreshNavRange(scroll)
+    scroll:GetScript("OnScrollRangeChanged")(scroll)
+    ClampNav(scroll)
+end
+
+local function RefitNav(scroll)
+    scroll:UpdateScrollChildRect()
+    RefreshNavRange(scroll)
 end
 
 local function NavigationScroll(parent, top, bottom, width)
-    local scroll = CreateFrame("ScrollFrame", nil, parent)
+    local scroll = UI.SlimScroll(parent, NAV_BAR.w, NAV_BAR.inset)
     scroll:SetPoint("TOPLEFT", 0, -top)
     scroll:SetPoint("BOTTOMRIGHT", -NAV_GUTTER, bottom)
     local child = CreateFrame("Frame", nil, scroll)
     child:SetSize(width - NAV_GUTTER, 1)
     scroll:SetScrollChild(child)
-    local bar = NavScrollBar(scroll)
-    scroll:SetScript("OnVerticalScroll", function(_, value) bar:SetValue(value) end)
-    local function UpdateRange()
-        local range = scroll:GetVerticalScrollRange()
-        bar:SetMinMaxValues(0, range)
-        bar:SetShown(range > 0)
-        scroll:SetVerticalScroll(math.max(0, math.min(scroll:GetVerticalScroll(), range)))
-        bar:SetValue(scroll:GetVerticalScroll())
-    end
-    scroll:SetScript("OnScrollRangeChanged", UpdateRange)
-    scroll:SetScript("OnShow", UpdateRange)
+    scroll:HookScript("OnScrollRangeChanged", ClampNav)
+    scroll:SetScript("OnShow", RefreshNavRange)
+    scroll:SetScript("OnSizeChanged", RefitNav)
     UI.SmoothWheel(scroll, NAV_H)
-    scroll:SetScript("OnSizeChanged", function(self)
-        self:UpdateScrollChildRect()
-        UpdateRange()
-    end)
     return child
 end
 
@@ -887,7 +842,7 @@ end
 local function OnWindowHide()
     if UI.HideWidgetTooltip then UI.HideWidgetTooltip() end
     for i = 1, #onHideCallbacks do onHideCallbacks[i]() end
-    ns.HideRaidReminderAnchorConfig(true)
+    ns.HideUnlockMode(true)
 end
 
 local function CreateWindow()
@@ -985,7 +940,7 @@ local function ModuleHeader(win, mod)
     sub:SetText(mod.subtitle)
     local close = ns.Button(header, TEXT_CLOSE, MW.close, MW.close, function() win:Hide() end)
     close:SetPoint("TOPRIGHT", header, "TOPRIGHT", -MW.closeInset, -MW.closeInset)
-    local switch = UI.BuildToggleControl(header, header:GetFrameLevel() + 2,
+    local switch = UI.BuildToggleControl(header, header:GetFrameLevel() + MW.switchRaise,
         function() return ModuleOn(mod) end,
         function(v) SetModuleOn(mod, v) end)
     switch:SetPoint("RIGHT", close, "LEFT", -MW.switchGap, 0)

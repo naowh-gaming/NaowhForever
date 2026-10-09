@@ -84,10 +84,10 @@ local function Session(settings, opts)
     }
     local ns = { UI = UI, THEME = { bg = { r = 0, g = 0, b = 0 }, fg = { r = 1, g = 1, b = 1 } } }
     function ns.Apply() end
-    function ns.ShowRaidReminderAnchorConfig() end
-    log.unlock = function() ns.ShowRaidReminderAnchorConfig() end
-    function ns.HideRaidReminderAnchorConfig() end
-    log.lock = function() ns.HideRaidReminderAnchorConfig() end
+    function ns.ShowUnlockMode() end
+    log.unlock = function() ns.ShowUnlockMode() end
+    function ns.HideUnlockMode() end
+    log.lock = function() ns.HideUnlockMode() end
     ns.Solid = function() return Widget("Texture", log) end
     ns.Border = function() return {} end
     ns.PixelInset = function(region) return region end

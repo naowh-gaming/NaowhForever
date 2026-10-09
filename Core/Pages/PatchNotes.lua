@@ -32,7 +32,7 @@ local NOTES = {
         "RestedXP Guides: add the Naowh themes to RestedXP and give its window and arrow "
             .. "Naowh's look.",
         "QoL has a Character tab for the Character Panel, Slot Marks"
-            .. (ns.FEATURE_BADGES == 1 and ", Naowh Score and badges. " or " and Naowh Score. ")
+            .. (ns.FEATURE_BADGES == ns.BADGES_LIVE and ", Naowh Score and badges. " or " and Naowh Score. ")
             .. "The Character Panel and Bag Marks are now on by default.",
         "Windows and trackers can be dragged up to 90% off the screen, and the profession "
             .. "window stays where you put it.",
@@ -201,7 +201,7 @@ end
 local function Lines(entry)
     local lines = {}
     for _, text in ipairs(entry.lines) do
-        if type(text) == "table" then text = ns.FEATURE_BADGES == 1 and text[1] or nil end
+        if type(text) == "table" then text = ns.FEATURE_BADGES == ns.BADGES_LIVE and text[1] or nil end
         if text then lines[#lines + 1] = Line(text) end
     end
     return lines

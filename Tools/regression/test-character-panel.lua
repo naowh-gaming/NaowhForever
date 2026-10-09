@@ -191,7 +191,7 @@ local ns = {
     QoLSettings = S,
     Apply = NOTHING,
     IsBisItem = function(id) return RANK[id] end,
-    FEATURE_BADGES = 1,
+    FEATURE_BADGES = 1, BADGES_LIVE = 1,
     BADGE_TIERS = {
         legendary = { title = "Legendary Patron", about = "Supports Naowh.", large = "legendaryArt",
             chat = "legendaryChat", markup = "|TlegendaryChat:0|t",
@@ -220,6 +220,7 @@ local ns = {
         Best = function() return 58.8 end,
         Grade = function(score) return score / 58.8 end,
         RAMP = { { 0, 0.6, 0.6, 0.6 }, { 1, 1, 0.5, 0 } },
+        COMPARE = { LEVEL = "level", BOTH = "both", MAX = "max" },
         Text = tostring,
     },
     ConfirmReload = function() state.reloads = (state.reloads or 0) + 1 end,
@@ -328,6 +329,7 @@ env._G = env
 env.wipe = function(t) for k in pairs(t) do t[k] = nil end return t end
 
 local files = TocFiles("^Shared/.*%.lua$")
+files[#files + 1] = "NaowhForever_BiS/BiS/Constants.lua"
 for _, path in ipairs(TocFiles("^NaowhForever_BiS/CharacterPanel/.*%.lua$")) do files[#files + 1] = path end
 check("the TOC loads the module's files", files[#files] == "NaowhForever_BiS/CharacterPanel/UI/SettingsPage.lua")
 Load(files, env)
@@ -662,6 +664,7 @@ check("EllesmereUI's turned off by you: ours on and off leaves it off, no reload
 -- With both on at login: a newcomer gets ours from the next reload, told in chat; anyone else is
 -- asked, once.
 local asked, printed = 0, {}
+---@diagnostic disable-next-line: duplicate-set-field
 env.InCombatLockdown = function() return false end
 ns.Confirm = function() asked = asked + 1 end
 ns.Print = function(text) printed[#printed + 1] = text end
@@ -702,6 +705,59 @@ q.characterPanelAsked, q.characterPanelTookOver = true, true
 db.themedCharacterSheet = false
 CP._AskForTest(false)
 check("one EllesmereUI's own switch bears out: kept, not asked", asked == 2 and q.characterPanelTookOver == true)
+-- The onboarding's pick of our panel (a plain QoL key the core leaves) is the answer: at the next
+-- login ours takes over as for a newcomer, told in chat, with no question, even over an earlier
+-- answer; the pick is read once, and goes whatever EllesmereUI is or is not there.
+local function Picked(themed)
+    q.characterPanel, q.characterPanelAsked, q.characterPanelTookOver = true, true, false
+    q.characterPanelPicked = true
+    db.themedCharacterSheet = themed
+end
+Picked(true)
+local told = #printed
+reloads = state.reloads
+CP._AskForTest(false)
+check("picked in the onboarding: ours takes over, told in chat, nothing asked, no reload popup",
+    db.themedCharacterSheet == false and asked == 2 and #printed == told + 1 and state.reloads == reloads
+    and q.characterPanelTookOver == true and q.characterPanelAsked == true and q.characterPanelPicked == nil)
+CP._AskForTest(false)
+check("and the pick is read once", #printed == told + 1 and asked == 2)
+Picked(false)
+CP._AskForTest(false)
+check("picked with EllesmereUI's sheet already off: nothing to take, the pick gone",
+    db.themedCharacterSheet == false and #printed == told + 1 and asked == 2 and q.characterPanelPicked == nil)
+Picked(true)
+q.characterPanel = false
+CP._AskForTest(false)
+check("picked, then ours turned off: EllesmereUI's left on, the pick gone",
+    db.themedCharacterSheet == true and #printed == told + 1 and asked == 2 and q.characterPanelPicked == nil)
+Picked(true)
+---@diagnostic disable-next-line: duplicate-set-field
+env.InCombatLockdown = function() return true end
+CP._AskForTest(false)
+---@diagnostic disable-next-line: duplicate-set-field
+env.InCombatLockdown = function() return false end
+check("in combat the pick waits", q.characterPanelPicked == true and db.themedCharacterSheet == true)
+local ellesmere = env.EllesmereUI
+env.EllesmereUIDB = nil
+CP._AskForTest(false)
+check("picked without EllesmereUI's saved settings: no error, nothing taken, the pick gone",
+    q.characterPanelPicked == nil and #printed == told + 1 and asked == 2)
+env.EllesmereUIDB = db
+Picked(true)
+env.EllesmereUI = {}
+CP._AskForTest(false)
+check("picked with an EllesmereUI that has no GetBlizzWindowStyle: no error, nothing taken, the pick gone",
+    q.characterPanelPicked == nil and db.themedCharacterSheet == true and #printed == told + 1)
+Picked(true)
+env.EllesmereUI, env.EllesmereUIDB = nil, nil
+CP._AskForTest(false)
+check("picked without EllesmereUI at all: no error, the pick gone", q.characterPanelPicked == nil and #printed == told + 1)
+env.EllesmereUI, env.EllesmereUIDB = ellesmere, db
+Picked(true)
+CP._AskForTest(true)
+check("a newcomer who picked it: the same take-over, once", db.themedCharacterSheet == false
+    and #printed == told + 2 and asked == 2 and q.characterPanelPicked == nil)
 env.EllesmereUIDB, env.EllesmereUI = nil, nil
 reloads = state.reloads
 S.Set("characterPanel", true)
@@ -720,9 +776,9 @@ local function PanelCard(flag)
         OnChange = function() listeners = listeners + 1 end,
     }
     local flagNs = {
-        FEATURE_BADGES = flag, THEME = ns.THEME, QoLSettings = store,
+        FEATURE_BADGES = flag, BADGES_LIVE = 1, THEME = ns.THEME, QoLSettings = store,
         CharacterPanel = { EllesmereSheet = function() return false end },
-        Shared = { Settings = { Page = function()
+        Shared = { Style = dofile("Tools/regression/shared_style.lua"), Settings = { Page = function()
             return { Card = function(_, def) cards[def.id] = def end }
         end } },
     }
@@ -730,7 +786,8 @@ local function PanelCard(flag)
         hooksecurefunc = function() hooked = hooked + 1 end }, { __index = _G })
     local paths = {}
     for _, path in ipairs(files) do
-        if path:find("CharacterPanel/Badge.lua", 1, true) or path:find("CharacterPanel/UI/SettingsPage.lua", 1, true) then
+        if path:find("CharacterPanel/Constants.lua", 1, true) or path:find("CharacterPanel/Badge.lua", 1, true)
+            or path:find("CharacterPanel/YourBadge.lua", 1, true) or path:find("CharacterPanel/UI/SettingsPage.lua", 1, true) then
             paths[#paths + 1] = path
         end
     end

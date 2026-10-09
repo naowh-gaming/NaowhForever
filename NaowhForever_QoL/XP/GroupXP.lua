@@ -7,9 +7,9 @@ local Parts = ns.Shared.Parts
 
 local PREFIX = "NaowhGroupXP"
 local GROUP_CHANNELS = { PARTY = true, RAID = true, INSTANCE_CHAT = true }
-local GUID_PATTERN = "^Player%-%d+%-%x+$"
+local GUID_PATTERN = ns.QoLConstants.GUID_PATTERN
 local MAX_LEVEL, MAX_XP = 1000, 2 ^ 31
-local GRADIENT = "Interface\\AddOns\\NaowhForever\\Core\\Media\\NaowhGradient.tga"
+local GRADIENT = ns.MEDIA .. "NaowhGradient.tga"
 local ROW_H, NAME_W, GAP, BASE_SIZE = 18, 90, 2, 12
 local ROW_PAD = ROW_H - BASE_SIZE
 local TEXT_SMALLER = 1
@@ -17,8 +17,8 @@ local NAME_ROOM = 4
 local SEND_DELAY = 2
 local PERCENT = ns.QoLConstants.PERCENT
 local DEFAULT_X, DEFAULT_Y = 40, 120
-local BLACK = { r = 0, g = 0, b = 0 }
-local WHITE = { r = 1, g = 1, b = 1 }
+local BLACK = ns.Shared.Style.BORDER_RGB
+local WHITE = ns.QoLConstants.WHITE_RGB
 local ASK = "R"
 local MESSAGE = "2 %s %d %d %d"
 local MESSAGE_PATTERN = "^2 (%S+) (%d+) (%d+) (%d+)$"
@@ -31,7 +31,11 @@ local MOVER_LABEL = "Group XP"
 local SETTINGS_PAGE, SETTINGS_CARD = "QoL/XP", "QoL/XP:groupXP"
 local SUMMARY = "%d wide%s"
 local SUMMARY_SELF = ", with you"
-local STAGE_H, NOTE_Y, NOTE_SIZE, STAGE_MARGIN = 130, 10, 11, 16
+local STAGE_H = 130
+local NOTE_Y, NOTE_SIZE = ns.Shared.Style.STAGE_NOTE_Y, ns.Shared.Style.STAGE_NOTE_SIZE
+local STAGE_MARGIN = ns.Shared.Style.STAGE_MARGIN
+local WIDTH_RANGE = { 160, 500, 10 }
+local TEXT_RANGE = { 8, 20, 1 }
 local EVENTS = { "CHAT_MSG_ADDON", "GROUP_ROSTER_UPDATE", "PLAYER_ENTERING_WORLD",
     "PLAYER_XP_UPDATE", "PLAYER_LEVEL_UP", "UNIT_LEVEL", "PLAYER_REGEN_ENABLED" }
 
@@ -328,11 +332,11 @@ end
 
 hooksecurefunc(S, "Set", OnSettingChanged)
 hooksecurefunc(ns, "Apply", Apply)
-hooksecurefunc(ns, "ShowRaidReminderAnchorConfig", function()
+hooksecurefunc(ns, "ShowUnlockMode", function()
     unlocked = On() == true
     Apply()
 end)
-hooksecurefunc(ns, "HideRaidReminderAnchorConfig", function()
+hooksecurefunc(ns, "HideUnlockMode", function()
     unlocked = false
     if frame then
         frame.mover:Hide()
@@ -392,7 +396,7 @@ Settings.Page("QoL/XP", S):Card({
         { key = "groupXPShowSelf", label = "Show Yourself", toggle = true,
           help = "Your own bar among the group's." },
         Settings.Group("Size"),
-        { key = "groupXPWidth", label = "Width", slider = { 160, 500, 10 } },
-        Settings.Look("groupXP", { text = true, size = { 8, 20, 1 }, bar = "Naowh Gradient", background = "alpha" }),
+        { key = "groupXPWidth", label = "Width", slider = WIDTH_RANGE },
+        Settings.Look("groupXP", { text = true, size = TEXT_RANGE, bar = "Naowh Gradient", background = "alpha" }),
     },
 })

@@ -34,10 +34,10 @@ local CELL_GAP = 3
 local MARK_HIT_PAD = 4
 local NAME_LIFT, NAME_PAD = 2, 4
 local ROLE_ICON = 14
-local STRIPE_EVERY = 2
+local STRIPE_EVERY = J.C.STRIPE_EVERY
 local TAKE_STRIDE = 2
 local FROM_FIRST_NAME = 3
-local HEX_BASE, BYTE = 16, 255
+local HEX_BASE, BYTE = J.C.HEX_BASE, J.C.BYTE
 local HEX_CODE = "^|c%x%x(%x%x)(%x%x)(%x%x)"
 
 local STATUS = {

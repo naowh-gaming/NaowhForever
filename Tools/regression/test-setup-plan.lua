@@ -319,13 +319,30 @@ local function Game()
         if addon == "NaowhForever_BiS" and not on then return { addon, "NaowhForever_DungeonJournal" } end
         return { addon }
     end
+    g.others, g.calls = CopyTable(g.enabled), {}
+    local function Note(name, a, ...)
+        g.calls[#g.calls + 1] = { name = name, addon = a, args = select("#", ...), who = (...) }
+    end
+    local function Switch(on)
+        return function(a, ...)
+            Note(on and "EnableAddOn" or "DisableAddOn", a, ...)
+            g.enabled[a] = on
+            if select("#", ...) == 0 then g.others[a] = on end
+        end
+    end
     local C_AddOns = {
-        EnableAddOn = function(a) g.enabled[a] = true end,
-        DisableAddOn = function(a) g.enabled[a] = false end,
-        GetAddOnEnableState = function(a) return g.enabled[a] and 2 or 0 end,
+        EnableAddOn = Switch(true),
+        DisableAddOn = Switch(false),
+        GetAddOnEnableState = function(a, ...)
+            Note("GetAddOnEnableState", a, ...)
+            if select("#", ...) > 0 then return g.enabled[a] and 2 or 0 end
+            if g.enabled[a] and g.others[a] then return 2 end
+            return (g.enabled[a] or g.others[a]) and 1 or 0
+        end,
         IsAddOnLoaded = function(a) return a == "Omen" or g.loaded[a] == true end,
     }
-    g.Setup = Load({ ns = ns, C_AddOns = C_AddOns, UnitClass = function() return "Paladin", "PALADIN" end })
+    g.Setup = Load({ ns = ns, C_AddOns = C_AddOns, UnitClass = function() return "Paladin", "PALADIN" end,
+        UnitGUID = function(unit) return unit == "player" and "Player-4613-006EB819" or nil end })
     return g
 end
 
@@ -442,6 +459,89 @@ do
         and root.pvp.enabled == false and root.qol.preset == "minimalist" and root.qol.questRewards[1] == 2)
     check("restore puts the module addons back", g.enabled.NaowhForever_Professions == false)
     check("and is used up", g.account.setupBefore == nil and not g.Setup.CanRestore())
+end
+
+local GUID = "Player-4613-006EB819"
+local MODULE_IDS = { "pvp", "professions", "training", "bis", "journal", "completo" }
+
+local function ReadAll(g)
+    local ctx = g.Setup.Context()
+    for _, id in ipairs(MODULE_IDS) do
+        ctx.read(id)
+        ctx.enabled(id)
+    end
+    return ctx
+end
+
+local function Exercise(g)
+    ReadAll(g)
+    g.Setup.Apply({ { id = "training", now = false, on = true }, { id = "bis", now = true, on = false } })
+    g.Setup.Restore()
+end
+
+local function EveryCall(g, test)
+    if #g.calls == 0 then return false end
+    for _, c in ipairs(g.calls) do
+        if not test(c) then return false end
+    end
+    return true
+end
+
+local function ForEveryone(c) return c.args == 0 end
+local function ForMe(c) return c.args == 1 and c.who == GUID end
+
+do
+    local g = Game()
+    Exercise(g)
+    check("for every character: no enable, disable or state call names a character", EveryCall(g, ForEveryone))
+    g.calls = {}
+    g.Setup.ForCharacter(true)
+    g.Setup.ForCharacter(false)
+    Exercise(g)
+    check("this character's mode turned off again: back to every character", EveryCall(g, ForEveryone))
+end
+
+do
+    local g = Game()
+    g.Setup.ForCharacter(true)
+    g.others.NaowhForever_Training = true
+    g.enabled.NaowhForever_PvP, g.others.NaowhForever_PvP = false, true
+    local ctx = ReadAll(g)
+    check("this character: a module enabled only for others reads off", ctx.read("training") == false
+        and ctx.read("pvp") == false and ctx.enabled("pvp") == false)
+    check("and one enabled for it reads by its switch", ctx.read("bis") == true and ctx.enabled("bis") == true)
+    local others = CopyTable(g.others)
+    local reload = g.Setup.Apply({ { id = "training", now = false, on = true }, { id = "bis", now = true, on = false } })
+    check("this character: its modules switch for it", reload and g.enabled.NaowhForever_Training
+        and g.enabled.NaowhForever_Professions and g.enabled.NaowhForever_BiS == false
+        and g.enabled.NaowhForever_DungeonJournal == false)
+    local same = true
+    for addon, on in pairs(others) do
+        if g.others[addon] ~= on then same = false end
+    end
+    check("and every other character keeps its own", same)
+    check("the backup knows whose it was", g.account.setupBefore.character == GUID
+        and g.account.setupBefore.addons.NaowhForever_Training == false)
+    check("restore puts back this character's addons", g.Setup.Restore() and g.enabled.NaowhForever_Training == false
+        and g.enabled.NaowhForever_Professions == false and g.enabled.NaowhForever_BiS == true
+        and g.enabled.NaowhForever_DungeonJournal == true)
+    check("every enable, disable and state call named this character", EveryCall(g, ForMe))
+    check("one of each was made", (function()
+        local seen = {}
+        for _, c in ipairs(g.calls) do seen[c.name] = true end
+        return seen.EnableAddOn and seen.DisableAddOn and seen.GetAddOnEnableState
+    end)())
+end
+
+do
+    local g = Game()
+    g.Setup.ForCharacter(true)
+    g.Setup.Apply({ { id = "training", now = false, on = true } })
+    g.calls = {}
+    g.Setup.ForCharacter(false)
+    g.Setup.Restore()
+    check("a backup made for this character restores for it, whatever the mode now", EveryCall(g, ForMe)
+        and g.enabled.NaowhForever_Training == false)
 end
 
 print("PASS setup plan: " .. checks .. " checks")

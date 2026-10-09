@@ -6,11 +6,11 @@ local S = ns.QoLSettings
 local function Tag() return ns.Color("accent", "Naowh") end
 local MAIL_ATTACHMENTS = 16
 local MAX_TOOLTIP_ROWS = 8
-local SECONDS_PER_DAY = 86400
+local SECONDS_PER_DAY = ns.QoLConstants.SECONDS_PER_DAY
 local MAIL_SCAN_DELAY = 1
 local REALM_JOIN = "-"
 local GREY_CODE = "|cff808080"
-local WHITE = { r = 1, g = 1, b = 1 }
+local WHITE = ns.QoLConstants.WHITE_RGB
 local PLACE_RGB = { r = 0.8, g = 0.8, b = 0.8 }
 local LIST_JOIN, INDENT = ", ", "  "
 local TEXT_BAGS, TEXT_BANK, TEXT_MAIL = " bags", " bank", " mail"

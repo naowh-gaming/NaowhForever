@@ -5,7 +5,7 @@ local S = ns.QoLSettings
 local T = ns.THEME
 local Parts, St = ns.Shared.Parts, ns.Shared.Style
 
-local MEDIA = "Interface\\AddOns\\NaowhForever\\Core\\Media\\"
+local MEDIA = ns.MEDIA
 local SHAPES = {
     hex = { fill = MEDIA .. "waypoint_hex", ring = MEDIA .. "waypoint_hex_ring" },
     diamond = { fill = MEDIA .. "waypoint_diamond", ring = MEDIA .. "waypoint_diamond_ring" },
@@ -14,11 +14,12 @@ local SHAPES = {
 local CHEVRON, CHECK, CROSS = MEDIA .. "chevron", MEDIA .. "check", MEDIA .. "cross"
 
 local PIN, MARK, ARROW = 36, 12, 18
+local MARK_LAYER = 2
 local FILL_ALPHA = 0.2
 local CARD_W, CARD_PAD, CARD_GAP, STRIP = 180, 8, 8, 2
 local NAME_SIZE, NOTE_SIZE, DIST_SIZE, TIME_SIZE, LINE_GAP, TIME_GAP = 14, 11, 18, 11, 3, 8
 local CARD_H = 2 * CARD_PAD + STRIP + NAME_SIZE + LINE_GAP + DIST_SIZE
-local CARD_ICON, ICON_GAP, ICON_CROP = NAME_SIZE + LINE_GAP + DIST_SIZE, 8, 0.08
+local CARD_ICON, ICON_GAP, ICON_CROP = NAME_SIZE + LINE_GAP + DIST_SIZE, 8, St.ICON_CROP
 local BEAM_W, BEAM_H, BEAM_ALPHA = 2, 80, 0.55
 local GROUND_W, GROUND_H = 44, 12
 local EDGE_INSET = 70
@@ -35,12 +36,14 @@ local ARRIVED_HOLD = ns.WAYPOINT_HOLD
 local REACHED, LEAVE = 5, 7
 local CHECK_SHARE = 0.6
 local ROUND = ns.QoLConstants.ROUND
-local MINUTE = 60
+local MINUTE = ns.QoLConstants.SECONDS_PER_MINUTE
 local PERCENT = ns.QoLConstants.PERCENT
 local SAME_SPOT = 0.05
 local DOWN = -math.pi / 2
 local NO_TIME = -1
 local STAGE_H = 190
+local SCALE_RANGE, FADE_NEAR_RANGE = St.SCALE_RANGE, { 0, 100, 5 }
+local PERCENT_SCALE = St.PERCENT_SCALE
 local GAME_PARTS = { "Icon", "Arrow", "DistanceText", "IconBorder" }
 local SHAPE_CHOICES = { { hex = "Hex", diamond = "Diamond", dot = "Dot" }, { "hex", "diamond", "dot" } }
 local SAMPLE = { name = "Mage Trainer", yards = 312, seconds = 45 }
@@ -110,14 +113,14 @@ function Look.NewPin(parent)
     pin.fill:SetAllPoints()
     pin.ring = pin:CreateTexture(nil, "ARTWORK", nil, 1)
     pin.ring:SetAllPoints()
-    pin.mark = Trilinear(pin:CreateTexture(nil, "ARTWORK", nil, 2), St.ROUND)
+    pin.mark = Trilinear(pin:CreateTexture(nil, "ARTWORK", nil, MARK_LAYER), St.ROUND)
     pin.mark:SetSize(MARK, MARK)
     pin.mark:SetPoint("CENTER")
-    pin.check = Trilinear(pin:CreateTexture(nil, "ARTWORK", nil, 2), CHECK)
+    pin.check = Trilinear(pin:CreateTexture(nil, "ARTWORK", nil, MARK_LAYER), CHECK)
     pin.check:SetSize(PIN * CHECK_SHARE, PIN * CHECK_SHARE)
     pin.check:SetPoint("CENTER")
     pin.check:SetVertexColor(T.bg.r, T.bg.g, T.bg.b)
-    pin.arrow = Trilinear(pin:CreateTexture(nil, "ARTWORK", nil, 2), CHEVRON)
+    pin.arrow = Trilinear(pin:CreateTexture(nil, "ARTWORK", nil, MARK_LAYER), CHEVRON)
     pin.arrow:SetSize(ARROW, ARROW)
     pin.arrow:SetPoint("CENTER")
     pin.beam = ns.Solid(pin, "BACKGROUND", T.accent, BEAM_ALPHA)
@@ -568,12 +571,12 @@ hooksecurefunc(S, "Set", function(key)
     end
 end)
 hooksecurefunc(ns, "Apply", Apply)
-hooksecurefunc(ns, "ShowRaidReminderAnchorConfig", function()
+hooksecurefunc(ns, "ShowUnlockMode", function()
     unlocked = On() == true
     if unlocked and not driver then Build() end
     Apply()
 end)
-hooksecurefunc(ns, "HideRaidReminderAnchorConfig", function()
+hooksecurefunc(ns, "HideUnlockMode", function()
     unlocked = false
     if nav then
         nav.mover:Hide()
@@ -624,14 +627,14 @@ Settings.Page("QoL/Interface", S):Card({
     studio = { height = STAGE_H, states = STATES, new = NewPreview, paint = PaintPreview },
     rows = {
         { key = "waypointShape", label = "Pin Shape", choice = SHAPE_CHOICES },
-        { key = "waypointScale", label = "Pin Size", slider = { 50, 150, 5 }, unit = "%", scale = 0.01 },
+        { key = "waypointScale", label = "Pin Size", slider = SCALE_RANGE, unit = "%", scale = PERCENT_SCALE },
         { key = "waypointCard", label = "Name and Distance", toggle = true,
           help = "A card over the pin with what it is and how far." },
         { key = "waypointTime", label = "Walking Time", toggle = true, needs = "waypointCard",
           help = "How long it takes to get there at your speed." },
         { key = "waypointBeam", label = "Line to the Ground", toggle = true,
           help = "A line from the pin down to a map pin's or corpse's spot." },
-        { key = "waypointFadeNear", label = "Fade Up Close", slider = { 0, 100, 5 }, unit = "yd",
+        { key = "waypointFadeNear", label = "Fade Up Close", slider = FADE_NEAR_RANGE, unit = "yd",
           help = "Fades the pin as you get this close, so it does not cover what you came for." },
         { key = "waypointEdge", label = "Edge Arrow Off Screen", toggle = true,
           help = "Keeps the pin at the edge of the screen, pointing the way, when the spot is off it." },

@@ -11,7 +11,8 @@ local TICK = 1
 local FONT_SIZE = 32
 local WIDTH_PER_SIZE, ROOM = 7, 16
 local DEFAULT_Y = -200
-local SECONDS_PER_MINUTE, SECONDS_PER_HOUR = 60, 3600
+local SECONDS_PER_MINUTE, SECONDS_PER_HOUR = ns.QoLConstants.SECONDS_PER_MINUTE, ns.QoLConstants.SECONDS_PER_HOUR
+local TEXT_RANGE = { 10, 72, 1 }
 local MOVER_LABEL = "Combat Timer"
 local SETTINGS_PAGE, SETTINGS_CARD = "QoL/Combat", "QoL/Combat:combatTimer"
 local CLOCK = "%d:%02d"
@@ -166,11 +167,11 @@ end
 
 hooksecurefunc(S, "Set", OnSettingChanged)
 hooksecurefunc(ns, "Apply", Apply)
-hooksecurefunc(ns, "ShowRaidReminderAnchorConfig", function()
+hooksecurefunc(ns, "ShowUnlockMode", function()
     unlocked = S.Get("enabled") == true
     Apply()
 end)
-hooksecurefunc(ns, "HideRaidReminderAnchorConfig", function()
+hooksecurefunc(ns, "HideUnlockMode", function()
     unlocked = false
     Apply()
 end)
@@ -202,7 +203,7 @@ Settings.Page("QoL/Combat", S):Card({
           help = "How long the fight lasted, in chat when it ends." },
         { key = "combatTimerSticky", label = "Keep After the Fight", toggle = true,
           help = "The last fight's time stays on screen until the next one starts." },
-        Settings.Look("combatTimer", { text = true, size = { 10, 72, 1 } }),
+        Settings.Look("combatTimer", { text = true, size = TEXT_RANGE }),
         { key = "combatTimerHidePrefix", label = "Hide the COMBAT Label", toggle = true },
         Settings.Look("combatTimer", { background = "card" }),
         Group("Colours"),

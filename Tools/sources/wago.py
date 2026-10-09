@@ -28,7 +28,7 @@ BUILD = "1.60.1.70205"   # the Forever client build the Journal's data is read f
 CARRY_FROM = "1.60.1.70124"
 SITE = "https://wago.tools"
 # Who is asking, so wago can tell these requests apart and reach us.
-AGENT = "NaowhForever-tools (+https://github.com/nwh-gaming-ab/NaowhForever)"
+AGENT = "NaowhForever-tools (+https://github.com/naowh-gaming/NaowhForever)"
 FOREVER_MINOR = 60   # Forever's versions are 1.60 and up
 # How much of the items earlier builds got by hotfix a build must have, with its own hotfixes,
 # for wago.tools to count as having recorded them (hotfix_coverage). Below it, they are still

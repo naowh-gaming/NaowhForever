@@ -4,7 +4,7 @@ local ns = _G.NaowhForever
 local S = ns.QoLSettings
 
 local SEND_SLOTS = 12
-local DAY = 86400
+local DAY = ns.QoLConstants.SECONDS_PER_DAY
 local EXPIRY_DAYS = 3
 local EXPIRY_WARN = EXPIRY_DAYS * DAY
 local WARN_DELAY = 5

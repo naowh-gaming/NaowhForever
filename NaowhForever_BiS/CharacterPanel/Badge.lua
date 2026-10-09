@@ -1,50 +1,22 @@
--- Badge.lua: your supporter badge on the character panel (CP.BadgePlate).
+-- Badge.lua: the supporter badge plate: the badge's art, its title and line, and its hover card (CP.BadgePlate).
 local ns = _G.NaowhForever
 
 local T = ns.THEME
-local S = ns.QoLSettings
 local CP = ns.CharacterPanel
+local C = CP.C
 
-local INSET = 10
-local SLOT_GAP = 3
-local EMBLEM = 44
+local EMBLEM = C.EMBLEM
 local PLATE_TEXT_W = 150
 local GLOW, GLOW_ALPHA = 1.25, 0.3
-local FILTER = "TRILINEAR"
 local SHADOW_X, SHADOW_Y, SHADOW_ALPHA = 2, -2, 0.7
-local TEXT_SHADOW_ALPHA, TEXT_SHADOW_X = 0.8, 1
-local SHADOW_RGB = { r = 0, g = 0, b = 0 }
+local SHADOW_RGB = C.BLACK_RGB
 local TITLE_SIZE, LINE_SIZE = 15, 11
 local TEXT_GAP = 8
 local TITLE_LIFT, LINE_DROP = 1, 2
 local TIP_GAP = 4
-local PLATE_LIFT = 60
-local BADGES_LIVE = 1
 local TEXT_FOREVER = "Naowh Forever"
 local TEXT_TEAM = "Naowh Forever Team"
 local TEXT_TIER = "Naowh Forever "
-
-local mine, installed
-
-local function BadgeOn()
-    local wanted = S.Get("characterPanelBadge")
-    if ns.FEATURE_BADGES ~= BADGES_LIVE then wanted = S.Default("characterPanelBadge") end
-    if not (CP.On() and wanted == true) then return false end
-    return ns.BadgeOf(UnitGUID("player")) ~= nil
-end
-
-local function Center()
-    local slot = CharacterHeadSlot
-    local paneTop, slotTop = CharacterFrame.LeftPaneHost:GetTop(), slot and slot:GetTop()
-    if not (paneTop and slotTop) then return end
-    mine:ClearAllPoints()
-    mine:SetPoint("BOTTOM", slot, "TOP", 0, math.max(0, (paneTop - slotTop - EMBLEM) / 2))
-end
-
-local function Paint()
-    CP.PaintBadgePlate(mine, UnitGUID("player"))
-    Center()
-end
 
 local function Enter(self)
     if not ns.Shared.Parts.Tip(self, "ANCHOR_NONE") then return end
@@ -64,8 +36,8 @@ local function Enter(self)
 end
 
 local function TextShadow(text)
-    text:SetShadowColor(SHADOW_RGB.r, SHADOW_RGB.g, SHADOW_RGB.b, TEXT_SHADOW_ALPHA)
-    text:SetShadowOffset(TEXT_SHADOW_X, -TEXT_SHADOW_X)
+    text:SetShadowColor(SHADOW_RGB.r, SHADOW_RGB.g, SHADOW_RGB.b, C.SHADOW_ALPHA)
+    text:SetShadowOffset(C.SHADOW_X, -C.SHADOW_X)
 end
 
 local function Art(frame)
@@ -82,37 +54,8 @@ local function Art(frame)
     frame.shadow:SetVertexColor(SHADOW_RGB.r, SHADOW_RGB.g, SHADOW_RGB.b, SHADOW_ALPHA)
 end
 
-local function Build()
-    local left = CharacterFrame.LeftPaneHost
-    mine = CP.BadgePlate(PaperDollFrame or left, true)
-    if CharacterHeadSlot then
-        mine:SetPoint("BOTTOM", CharacterHeadSlot, "TOP", 0, SLOT_GAP)
-    else
-        mine:SetPoint("TOPLEFT", INSET, -INSET)
-    end
-    mine:SetFrameLevel(left:GetFrameLevel() + PLATE_LIFT)
-    mine:SetScript("OnShow", Paint)
-    CP.supportBadge = mine
-end
-
-local function Apply()
-    local on = BadgeOn()
-    if on and not installed and CharacterFrame then
-        installed = true
-        Build()
-        CharacterFrame.LeftPaneHost:HookScript("OnShow", Apply)
-    end
-    if not installed then return end
-    mine:SetShown(on)
-    if on and mine:IsVisible() then Paint() end
-end
-
-local function OnSetting(key)
-    if key == "enabled" or key:find("^characterPanel") then Apply() end
-end
-
-CP.BADGE_MID = INSET + EMBLEM / 2
-CP.BADGE_INSET = INSET
+CP.BADGE_MID = C.BADGE_INSET + EMBLEM / 2
+CP.BADGE_INSET = C.BADGE_INSET
 
 function CP.PaintBadgePlate(frame, guid)
     frame.guid = guid
@@ -122,9 +65,9 @@ function CP.PaintBadgePlate(frame, guid)
         return false
     end
     local c = tier.color
-    frame.emblem:SetTexture(tier.large, nil, nil, FILTER)
-    frame.shadow:SetTexture(tier.large, nil, nil, FILTER)
-    frame.glow:SetTexture(tier.large, nil, nil, FILTER)
+    frame.emblem:SetTexture(tier.large, nil, nil, C.FILTER)
+    frame.shadow:SetTexture(tier.large, nil, nil, C.FILTER)
+    frame.glow:SetTexture(tier.large, nil, nil, C.FILTER)
     frame.glow:SetVertexColor(c.r, c.g, c.b, GLOW_ALPHA)
     frame.title:SetText(type(entry) == "table" and entry.title or tier.title)
     frame.line:SetText(ns.BadgeSince(entry) or (tier == ns.BADGE_TIERS.legendary and TEXT_FOREVER or TEXT_TEAM))
@@ -155,6 +98,3 @@ function CP.BadgePlate(parent, compact)
     frame:SetScript("OnLeave", GameTooltip_Hide)
     return frame
 end
-
-S.OnChange(OnSetting)
-hooksecurefunc(ns, "Apply", Apply)

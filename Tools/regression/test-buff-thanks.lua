@@ -12,8 +12,10 @@ local S = { Get = function(key) return settings[key] end }
 function S.Set(key, value) settings[key] = value end
 local ns = {
     QoLSettings = S,
+    QoLConstants = dofile("Tools/regression/qol_constants.lua"),
     Apply = function() end,
-    Shared = { Settings = { Page = function() return { Card = function() end } end,
+    Shared = { Style = dofile("Tools/regression/shared_style.lua"),
+        Settings = { Page = function() return { Card = function() end } end,
         Group = function(title) return { group = title } end } },
 }
 

@@ -17,7 +17,7 @@ local SEG_GAP = 3
 local HERE_TINT = 0.25
 local SEG_LABEL_PAD = 6
 local HIT_LIFT = 4
-local ROUND_HALF = 0.5
+local ROUND_HALF = J.C.ROUND_HALF
 
 local TEXT_UNLOCKS = "%d %s for you %s here"
 local TEXT_REWARD, TEXT_REWARDS = "reward", "rewards"

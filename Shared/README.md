@@ -39,7 +39,8 @@ Shared/
                    (Parts.Pill, Parts.SetPill: Group Inspect's "NF"), the worn bar, the Wowhead copy card
   UI/Marks.lua     an item's marks: rank stars and lines, the upgrade line, Forever's mark, the item icon,
                    its slot marks (item level, star, Forever's mark, upgrade arrow) and an atlas badge on
-                   its top corner (Parts.ItemBadge: Bag Space's clock and quest "!")
+                   its top corner (Parts.ItemBadge: Bag Space's clock and quest "!"), and a class icon's
+                   crop (Parts.ClassCrop)
   UI/Text.lua      text made once and kept: counts ("3/10"), money with its coins (Parts.Coins; compact,
                    its largest coin only), plain where-lines, numbers lined up to the pixel (Parts.Cells),
                    and a row of labels packed or spread evenly (Parts.LabelRow)
@@ -116,7 +117,8 @@ Each file uses only the ones above it in `Shared.xml`. Every part sits on `ns.Sh
   on release), and a hover mark: `wash` (a faint fill) or `edge` (an accent line down its middle).
   Nothing runs per frame except while dragging. The Campfire's Simple bar preview uses it.
 - **A window:** `Parts.Window`, `Parts.TitleBar`, `Parts.Opacity`, `Parts.BarButton`,
-  `Parts.FooterBrand`, `Parts.Resizable` (a corner grip; the size is kept). See
+  `Parts.FooterBrand`, `Parts.Resizable(window, sizeKey, minW, minH, onSized, onReleased)` (a corner
+  grip; the size is kept; `onSized` and `onReleased`, run as the grip is let go, are optional). See
   `NaowhForever_BiS/BiS/UI/Window.lua` for a short one.
 - **A tracker:** `Parts.TrackerPanel(title, opts)` builds a tracker's window once, on first
   use: the window look, the title (click and drag), a scrolling body, a cog, its place kept.
@@ -274,6 +276,18 @@ What a comment in the code used to say, in short. The house rules behind it are 
   doubles small text.
 - `TRACKER_BAR_RGB` is behind a tracker's bar until the player changes the theme's panel color.
 - `TEXT_SIZE` (12) and `SMALL_SIZE` (11) are the house text sizes: body text, and muted notes.
+- `OPEN_TURN` is the quarter turn of a chevron on an open section or card head. It is written
+  with `PI`, not `math.pi`: the offline tests load `Style.lua` without the math library.
+- The slider ranges every module shares live here: `OPACITY_RANGE` (a window's opacity, from
+  `OPACITY_MIN`), `ALPHA_RANGE` (a HUD part's opacity, down to 0), `SCALE_RANGE`,
+  `PIN_SIZE_RANGE` (a map pin) and `HUD_TEXT_RANGE` (a HUD part's text size in `Settings.Look`).
+  `PERCENT_SCALE` turns a percent slider into the 0 to 1 the setting saves.
+- `STAGE_MARGIN`, `STAGE_NOTE_Y` and `STAGE_NOTE_SIZE` place a settings card's live preview and
+  the muted note under it.
+- `ICON_CROP` (and `ICON_CROP_HIGH`) trims the game's border off an icon. `CLASS_CROP` trims a
+  class icon cut from `CLASS_ICONS` (`Parts.ClassCrop`). `TIP_TITLE_RGB` is a tooltip's first line.
+- `Style.lua` writes the core's media path out rather than reading `ns.MEDIA`: the offline
+  tests load it without `Core/Core.lua`.
 
 ### Items and gear
 

@@ -40,6 +40,7 @@ local function Load(path, ns, globals)
     ns.UI = { AttachMover = function() return Widget("Mover") end,
         TexturePath = function(name, own) if name == "" then return own end return "lsm:" .. name end }
     ns.Shared = {
+        Style = dofile("Tools/regression/shared_style.lua"),
         Parts = { HudFont = function(fs, font, size, outline) fs.font = font .. " " .. size .. " " .. outline end },
         Settings = { Group = function() return {} end, Look = function() return {} end,
             Page = function() return { Card = function(_, card) cards[#cards + 1] = card end, Window = Noop } end },
@@ -48,8 +49,9 @@ local function Load(path, ns, globals)
     ns.Font = function(parent) return Widget("FontString", parent) end
     ns.Solid = function(parent) return Widget("Texture", parent) end
     ns.Border, ns.PixelInset = Noop, Noop
-    ns.Apply, ns.ShowRaidReminderAnchorConfig, ns.HideRaidReminderAnchorConfig = Noop, Noop, Noop
+    ns.Apply, ns.ShowUnlockMode, ns.HideUnlockMode = Noop, Noop, Noop
     ns.QoLConstants = dofile("Tools/regression/qol_constants.lua")
+    ns.MEDIA = dofile("Tools/regression/core_media.lua")
     local env = { _G = { NaowhForever = ns }, UIParent = Widget("Frame"),
         CreateFrame = function(kind, _, parent)
             local w = Widget(kind, parent)

@@ -7,9 +7,10 @@ local SW = ns.StatWeights
 local St = ns.Shared.Style
 local Parts = ns.Shared.Parts
 
-local TITLE_SIZE, LINE_SIZE = 11, 12
+local TITLE_SIZE, LINE_SIZE = IP.SECTION_TITLE_SIZE, IP.SECTION_LINE_SIZE
 local TREE_COUNT = 3
-local TITLE_H, LINE_H, SECTION_GAP = 22, 18, 6
+local GUILD_INFO_NAME = 3
+local TITLE_H, LINE_H, SECTION_GAP = IP.SECTION_TITLE_H, 18, IP.SECTION_GAP
 local NOTE_LINES, NOTE_MAX = 3, 200
 local LINK_GAP = 10
 local WAITING = "..."
@@ -189,7 +190,7 @@ local function PaintGuild(unit, guid)
     local name, rankName
     if GetGuildInfo then name, rankName = GetGuildInfo(unit) end
     if not (IP.Readable(name) and name ~= "") and C_PaperDollInfo.GetInspectGuildInfo and IP.Ready(guid) then
-        name, rankName = select(3, C_PaperDollInfo.GetInspectGuildInfo(unit)), nil
+        name, rankName = select(GUILD_INFO_NAME, C_PaperDollInfo.GetInspectGuildInfo(unit)), nil
     end
     guild.right:SetText("")
     if IP.Readable(name) and name ~= "" then

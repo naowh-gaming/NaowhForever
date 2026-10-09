@@ -6,7 +6,7 @@ local C = P.C
 local Text = P.Text
 
 local MAX_DEPTH = 4
-local SKILL_LINE_INDEX = 7
+local SKILL_LINE_INDEX = C.SKILL_LINE_INDEX
 local NO_ITEM = 0
 local TEXT_UNKNOWN = "?"
 local TEXT_ITEM = "item "

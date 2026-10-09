@@ -10,6 +10,8 @@ local RECIPE_KEYS = { "recipeFinder", "rankAlert", "bagReagents", "bankReagents"
 local GATHER_LIFT = 8
 local GATHER_STAGE_H = 130
 local CRAFT_STAGE_H = 100
+local TIP_RANGE, ICON_RANGE, TEXT_RANGE = { 0, 50, 1 }, { 24, 80, 1 }, ns.Shared.Style.HUD_TEXT_RANGE
+local ORDER_RECIPES, ORDER_ORDERS, ORDER_CRAFT_TIMER, ORDER_BUYING, ORDER_GATHER = 10, 20, 30, 40, 50
 local SAMPLE_ICON = "Interface\\Icons\\INV_Ingot_02"
 local SAMPLE_NAME, SAMPLE_DONE, SAMPLE_COUNT = "Smelt Copper", 4, 10
 local SAMPLE_SHARE, SAMPLE_LEFT = 0.4, 15
@@ -114,7 +116,7 @@ page:Window({
 })
 
 page:Card({
-    id = "recipeWindow", name = "Recipe Window", order = 10,
+    id = "recipeWindow", name = "Recipe Window", order = ORDER_RECIPES,
     help = "What Naowh's profession window adds to each recipe: the ones you have not learned yet, your next "
         .. "rank, and how many of each reagent you have.",
     summary = RecipeSummary,
@@ -141,7 +143,7 @@ page:Card({
 })
 
 page:Card({
-    id = "craftOrders", name = "Craft Orders", order = 20, switch = "craftOrders",
+    id = "craftOrders", name = "Craft Orders", order = ORDER_ORDERS, switch = "craftOrders",
     help = "Opens another player's profession link in this window, to order crafts from them. Choose a recipe, "
         .. "set how many crafts, tick the materials you bring (or type how many), and Add to Order. The order "
         .. "on the right has a suggested tip per craft that you can change; Ask sends the crafter one message "
@@ -149,7 +151,7 @@ page:Card({
         .. "else as a whisper. Prices and the tip need an auction house scan.",
     summary = OrdersSummary,
     rows = {
-        { key = "orderTip", label = "Suggested Tip", slider = { 0, 50, 1 }, unit = "%", needs = On,
+        { key = "orderTip", label = "Suggested Tip", slider = TIP_RANGE, unit = "%", needs = On,
           why = TEXT_OFF,
           help = "The share of what the items sell for that the suggested tip adds on top of paying back the "
               .. "crafter's own materials. At least 1s unless set to 0." },
@@ -157,7 +159,7 @@ page:Card({
 })
 
 page:Card({
-    id = "buying", name = "Buying and Selling", order = 40,
+    id = "buying", name = "Buying and Selling", order = ORDER_BUYING,
     help = "Prices, profit and buying the reagents of the chosen recipe, at the auction house or a vendor.",
     summary = BuyingSummary,
     rows = {
@@ -214,7 +216,7 @@ page:Card({
 })
 
 page:Card({
-    id = "gather", name = "Tracking Reminder", order = 50, switch = "gatherReminder",
+    id = "gather", name = "Tracking Reminder", order = ORDER_GATHER, switch = "gatherReminder",
     help = "Shows an icon on screen while you know Find Herbs, Find Minerals or Find Fish but are tracking none "
         .. "of them. Click it to start tracking: left-click for the first, right-click for the second, "
         .. "middle-click for the third. Hover it to see which is which. Hidden in combat. Move it in the HUD Editor.",
@@ -227,20 +229,20 @@ page:Card({
           help = "Counts Find Fish as a tracking to remind you of, once you have learned it. Turn off if you only "
               .. "track fish now and then." },
         Group("Size"),
-        { key = "gatherIconSize", label = "Icon Size", slider = { 24, 80, 1 }, needs = On, why = TEXT_OFF,
+        { key = "gatherIconSize", label = "Icon Size", slider = ICON_RANGE, needs = On, why = TEXT_OFF,
           help = "How big the reminder icon is." },
-        Settings.Look("gather", { text = true, size = { 8, 24, 1 }, needs = On, why = TEXT_OFF }),
+        Settings.Look("gather", { text = true, size = TEXT_RANGE, needs = On, why = TEXT_OFF }),
     },
 })
 
 page:Card({
-    id = "craftTimer", name = "Total Craft Timer", order = 30, switch = "craftTimer",
+    id = "craftTimer", name = "Total Craft Timer", order = ORDER_CRAFT_TIMER, switch = "craftTimer",
     help = "Crafting several at once (Create All, or Create with a count) shows one bar for the whole batch, "
         .. "drawn like the Flight Timer: the recipe, how many are done and the time left on all of them, in place "
         .. "of the cast bar that fills for every craft. It sits where the Flight Timer is, as nobody crafts in "
         .. "flight: move it in the HUD Editor as the Flight Timer.",
     studio = { height = CRAFT_STAGE_H, states = CRAFT_STATES, new = NewCraftPreview, paint = PaintCraftPreview },
     rows = {
-        Settings.Look("craftTimer", { text = true, size = { 8, 24, 1 }, bar = "Naowh Gradient", background = "alpha" }),
+        Settings.Look("craftTimer", { text = true, size = TEXT_RANGE, bar = "Naowh Gradient", background = "alpha" }),
     },
 })

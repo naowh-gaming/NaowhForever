@@ -7,7 +7,10 @@ local TEMPLATE = "NaowhForeverUnexploredPinTemplate"
 local TILE = 256
 local SMALLEST_FILE = 16
 local AREA_FIELDS = 4
-local PERCENT, ROUND = 100, 0.5
+local PERCENT, ROUND = ns.QoLConstants.PERCENT, ns.QoLConstants.ROUND
+local MAP_CENTRE = 0.5
+local DARK_RANGE = { 10, 90, 5 }
+local PERCENT_SCALE = ns.Shared.Style.PERCENT_SCALE
 local EMPTY = {}
 local TEXT_DARK = "%d%% dark"
 
@@ -91,7 +94,7 @@ events:SetScript("OnEvent", OnExplored)
 function provider:OnAdded(map)
     MapCanvasDataProviderMixin.OnAdded(self, map)
     self.pin = map:AcquirePin(TEMPLATE)
-    self.pin:SetPosition(0.5, 0.5)
+    self.pin:SetPosition(MAP_CENTRE, MAP_CENTRE)
 end
 
 function provider:OnShow()
@@ -148,6 +151,6 @@ ns.Shared.Settings.Page("QoL/Interface", S):Card({
     help = "Shows the parts of the world map you have not explored yet, darkened.",
     summary = Summary,
     rows = {
-        { key = "mapUnexploredDark", label = "Darkness", slider = { 10, 90, 5 }, unit = "%", scale = 0.01 },
+        { key = "mapUnexploredDark", label = "Darkness", slider = DARK_RANGE, unit = "%", scale = PERCENT_SCALE },
     },
 })

@@ -49,8 +49,8 @@ local function fixture(kind)
     end
     local S = { Get = function(k) return state.settings[k] end,
         Set = function(k, v) state.settings[k] = v end, OnChange = function() end }
-    local ns = { QoLSettings = S, Apply = function() end, Print = function() end,
-        ShowRaidReminderAnchorConfig = function() end, HideRaidReminderAnchorConfig = function() end,
+    local ns = { MEDIA = dofile("Tools/regression/core_media.lua"), QoLSettings = S, Apply = function() end, Print = function() end,
+        ShowUnlockMode = function() end, HideUnlockMode = function() end,
         THEME = { bg = {}, accent = { r = 0, g = 1, b = 1 }, accentSoft = {} },
         UIFontPath = function() return 'font' end,
         Border = function() return frame() end, Solid = function() return frame() end,
@@ -201,6 +201,7 @@ end
 do
     local s = fixture('camp')
     s.load('Core/Features.lua'); s.load('NaowhForever_AuraBuffs/AuraBuffs.lua')
+    s.load('NaowhForever_AuraBuffs/Constants.lua')
     local parse = s.ns.ParseConsumableEntry
     check('explicit item and buff IDs parse', parse('food', '123, 456, 789').auras[2] == 789)
     local alone = parse('food', '123')
@@ -213,8 +214,7 @@ do
     check('list string reads back', #back == 3 and back[3].auras[1] == 17539 and back[1].auras == nil)
     check('damaged list rejected', not s.ns.ParseConsumableList('NFCONSUMABLES1:food=13931,x')
         and not s.ns.ParseConsumableList('NFCONSUMABLES1:food13931'))
-    s.ns.DecodeProfile = function() return { parts = { smartReminders = { utilityReminders = {
-        consumables = { { category = 'flask', itemID = 13510 } } } } } } end
+    s.ns.DecodeProfile = function() return { parts = { consumables = { { category = 'flask', itemID = 13510 } } } } end
     check('profile string gives its consumables', s.ns.ParseConsumableList('NFPROFILE1:x')[1].itemID == 13510)
     ---@diagnostic disable-next-line: duplicate-set-field
     s.ns.DecodeProfile = function() return nil end
@@ -250,9 +250,10 @@ do
     local active = {}
     s.ns.DB = function() return active end
     s.load('Core/Features.lua'); s.load('NaowhForever_AuraBuffs/AuraBuffs.lua')
+    s.load('NaowhForever_AuraBuffs/Constants.lua')
     local entry = { category = "food", itemID = 123, auras = { 456 } }
     s.S.Set("consumableEntries", { entry })
-    check('editor writes pack-backed definitions', active.utilityReminders.consumables[1] == entry)
+    check('editor writes profile-backed definitions', active.utilityReminders.consumables[1] == entry)
     active = {}
     check('profile change clears previous definitions', #s.S.Get("consumableEntries") == 0)
     local m = fixture('profile')
@@ -260,7 +261,7 @@ do
     m.load('Core/Features.lua')
     m.load('NaowhForever_Macros/Macros.lua')
     m.S.Set("classMacros", { PALADIN = { { name = "Test", body = "/say test" } } })
-    check('class macros use pack-backed data', active.utilityReminders.classMacros.PALADIN[1].name == "Test")
+    check('class macros use profile-backed data', active.utilityReminders.classMacros.PALADIN[1].name == "Test")
     active = {}
     check('class macros follow active profile', next(m.S.Get("classMacros")) == nil)
 end

@@ -154,7 +154,8 @@ end
 -- theme changes it, in the bar and its settings swatch alike.
 do
     local source = Read("NaowhForever_QoL/XP/XPBar.lua")
-    local EDGE = Const(source, "EDGE")
+    Check(source:find("\nlocal EDGE = ns.Shared.Style.BORDER_RGB\n", 1, true), "xp bar border is the house edge")
+    local EDGE = dofile("Tools/regression/shared_style.lua").BORDER_RGB
     Check(IsRGB(EDGE, 0, 0, 0), "xp bar border literal is black")
     local body = assert(source:match('\nlocal function BorderDefault%(%)\n(.-)\nend\n'))
     Check(source:find('S.Get("xpBarBorderColor") or BorderDefault()', 1, true), "the bar paints the default border")

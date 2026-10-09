@@ -11,7 +11,7 @@ local FACTION_W, FACTION_ICON, FACTION_OFF = St.FACTION_W, St.FACTION_ICON, St.F
 
 local SIDE_FILL = 0.15
 local FILL_SUBLEVEL = 1
-local HEX_BASE, BYTE = 16, 255
+local HEX_BASE, BYTE = J.C.HEX_BASE, J.C.BYTE
 local RED_AT, GREEN_AT, BLUE_AT = 5, 7, 9
 local SIDES = { { faction = "Alliance", key = "showAlliance" }, { faction = "Horde", key = "showHorde" } }
 

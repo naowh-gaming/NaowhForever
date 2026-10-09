@@ -6,7 +6,8 @@ local S = A.Settings
 local Sets = ns.ActionBarSets
 local Settings = ns.Shared.Settings
 
-local OPACITY_MAX, OPACITY_STEP, PERCENT_SCALE = 100, 5, 0.01
+local OPACITY_RANGE, PERCENT_SCALE = ns.Shared.Style.OPACITY_RANGE, ns.Shared.Style.PERCENT_SCALE
+local ORDER_IMPORTING, ORDER_WINDOW = 10, 20
 local BARS_OFF = "Turn on Action Bars"
 local TEXT_HIGHEST, TEXT_SAVED = "Highest ranks", "Saved ranks"
 local TEXT_MACROS, TEXT_KEYBINDS = "macros", "keybinds"
@@ -33,7 +34,7 @@ page:Window({
 })
 
 page:Card({
-    id = "importing", name = "Importing", order = 10,
+    id = "importing", name = "Importing", order = ORDER_IMPORTING,
     help = "What a saved set brings back when you import it. Sets are saved and imported from the Action "
         .. "Bars window, out of combat.",
     summary = ImportingSummary,
@@ -56,10 +57,10 @@ page:Card({
 })
 
 page:Card({
-    id = "window", name = "Window", order = 20,
+    id = "window", name = "Window", order = ORDER_WINDOW,
     help = "Action Bars' own window, with your class's saved sets.",
     rows = {
-        { key = "windowAlpha", label = "Window Opacity", slider = { ns.Shared.Style.OPACITY_MIN, OPACITY_MAX, OPACITY_STEP },
+        { key = "windowAlpha", label = "Window Opacity", slider = OPACITY_RANGE,
           unit = "%", scale = PERCENT_SCALE, help = "How solid the window is, in percent. Also on its title bar." },
     },
 })

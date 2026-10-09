@@ -9,7 +9,7 @@ local Style = Completo.Style
 local TEMPLATE = "NaowhForeverQuestGiverPinTemplate"
 local BANG_ATLAS, GREY_ATLAS, REPEAT_ATLAS = "QuestNormal", "TrivialQuests", "QuestDaily"
 local BANG_FILE = "Interface\\GossipFrame\\AvailableQuestIcon"
-local PERCENT = 100
+local PERCENT = Completo.C.PERCENT
 local FULL_SCREEN_SHARE = 0.5
 local EVENTS = { "QUEST_ACCEPTED", "QUEST_TURNED_IN", "QUEST_REMOVED", "PLAYER_LEVEL_UP" }
 local OWN_KEYS = { enabled = true, mapPins = true, mapGrey = true, mapChainsOnly = true, mapPinSize = true }

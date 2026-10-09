@@ -10,12 +10,12 @@ local Popup = P.Popup
 local Text = P.Text
 local Style = P.Style
 
-local MAX_ROWS = 8
+local MAX_ROWS = Style.SIDE_PANEL_ROWS
 local LEARN_ALL_W, LEARN_ALL_H = 140, 22
 local LEARN_ALL_RIGHT, LEARN_ALL_BOTTOM = 10, 8
-local PANEL_GAP = 8
+local PANEL_GAP = Style.SIDE_PANEL_GAP
 local PANEL_LIFT = 120
-local QUEUE_DELAY = 0.2
+local QUEUE_DELAY = P.C.QUEUE_DELAY
 local OPEN_TRIES = { 0.2, 0.6, 1.5 }
 local TRAINER_ADDON = "Blizzard_TrainerUI"
 local EVENTS = { "TRAINER_SHOW", "TRAINER_UPDATE", "TRAINER_CLOSED", "PLAYER_MONEY", "ADDON_LOADED" }

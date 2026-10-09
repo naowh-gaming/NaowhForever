@@ -2,16 +2,10 @@
 local L = _G.NaowhForeverLocale or {}
 _G.NaowhForeverLocale = L
 
-L["Smart Reminders"] = true
-L["Custom Notes"] = true
-L["Custom Reminders"] = true
 L["Threat Meter"] = true
 L["Meter"] = true
 L["Profiles"] = true
 L["Setup"] = true
-L["Cooldown Presets"] = true
-L["Dungeon Bosses"] = true
-L["Raid Bosses"] = true
 L["Trash"] = true
 L["Debuffs"] = true
 L["Coming soon"] = true

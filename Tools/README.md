@@ -86,9 +86,6 @@ purpose.
 | `forever_new.py` | Builds `Shared/Data/Forever.lua`: the items, quests and NPCs Wowhead marks as new in Forever, the ones our data mentions. Cached in `data/forever_new.json` (`--refresh` asks again). | The addon's Forever mark. |
 | `pvp_auras.py` | Builds `NaowhForever_PvP/Data/Spells.lua`: PvP Auras' crowd control and debuff spell IDs, from the game's spell tables (wago.tools). | Forever's classic spells carry no aura flags to filter by. |
 | `presets.lua` | Writes `Core/Profiles/Presets.lua`, the setups a player can start from, one preset at a time: `lua5.1 Tools/build/presets.lua minimalist Tools/data/preset_minimalist.lua Naowh` (and `recommended`). | Naowh's two setups, kept in `data/` and rebuilt from there. |
-| `extract_fingerprints.py` | Pulls tank-hit timings and names out of boss mod files. | To know which casts are tank hits. |
-| `extract_curated_abilities.py` | Pulls the phase-grouped ability lists out of boss mod files. | Same, for the ability lists. |
-| `audit_abilities.py` | Cross-checks our damage sheet against those names. | Finds rows that won't match, to check by hand. |
 
 ## sources/
 
@@ -113,7 +110,7 @@ purpose.
 
 | Tool | What it does |
 | --- | --- |
-| `make_media.py` | Draws our icons into `Core/Media/*.tga`. Change an icon in its function, then run it. |
+| `make_media.py` | Draws our icons into `Core/Media/*.tga`, and the RestedXP themes' art into `Core/Integrations/RestedXP/Media/`. Change an icon in its function, then run it. |
 | `make_navigation.py` | Draws the navigation glyphs into `Core/Media/Navigation/`. |
 | `generate-voice-clips.ps1` | Rebuilds the English voice clips in `Core/Media/Voice/` on Windows. |
 
@@ -124,17 +121,17 @@ purpose.
 | `release/release.py` | Release helper for `.github/workflows/release.yml`: version bump, notes, changelog (from the merged PRs' descriptions). |
 | `release/watch_build.py` | Compares a new Forever build with ours: faction rewards, kill-count encounters, new dungeons, new dungeon floor maps, new gear the Journal doesn't list yet. `--update` moves us to it. Runs daily in CI (`.github/workflows/daily-watch.yml`), so a new build never sneaks past us. |
 | `release/sync_badges.py` | Writes `Core/Badges/Patrons.lua` from naowh.gg's list of Legendary patrons, daily in `.github/workflows/badges.yml`. |
-| `regression/` | Offline Lua tests against stubs. `bash Tools/regression/run-all.sh` runs them all (set `LUA=` to your lua.exe). `load_files.lua` loads a module's real files into a test, `measure.lua` times a draw and fails on garbage, `toc_files.lua` lists what the TOC loads. |
+| `regression/` | Offline Lua tests against stubs. `bash Tools/regression/run-all.sh` runs them all (set `LUA=` to your lua.exe). `load_files.lua` loads a module's real files into a test, `measure.lua` times a draw and fails on garbage, `toc_files.lua` lists what the TOCs load. |
 | `tests/` | Python tests for the tools: `python -m unittest discover -s Tools/tests`. |
 | `hooks/check-pr.sh` | PR rules: a changelog line in the PR description for addon changes, TOC version untouched. |
-| `hooks/check_toc.py`, `hooks/toc_files.py` | Every file the TOC loads exists, with the right letter case. |
-| `hooks/check-package.sh` | The built zip has one `NaowhForever/` folder, everything it loads, and no tooling. |
+| `hooks/check_toc.py`, `hooks/toc_files.py` | Every file the TOCs load (the core's and each module addon's, following their XML files) exists, with the right letter case. |
+| `hooks/check-package.sh` | The built zip has `NaowhForever/` and each module addon's folder (`.pkgmeta`'s `move-folders`) at the top, everything they load, and no tooling. |
 | `hooks/daily-pull-request.sh` | The daily watch's one pull request: `add` commits what a check changed, `open` squashes them into one commit (a title saying what is in it, a short list) and opens the PR or brings the open one up to date, with the checks' changelog lines under `## Changelog` in its description (labelled `no changelog` when there are none), or an issue with a link where workflows may not open PRs. |
 
 ## What CI runs
 
-- **Every PR** (`checks.yml`): luacheck and pre-commit, the Lua regression tests, the Python
-  tests, PR rules, and a package check.
+- **Every PR** (`checks.yml`, and `pr-title.yml` for the PR rules and title): luacheck and
+  pre-commit, the Lua regression tests, the Python tests, PR rules, the title, and a package check.
 - **Daily** (`daily-watch.yml`), three checks, one after another on one branch, each on what
   the one before changed. Whatever they change goes in **one** pull request, as one commit (we
   squash merge): its title says what is in it (`chore(data): WoW Forever build 1.60.1.70205,

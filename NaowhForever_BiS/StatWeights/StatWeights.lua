@@ -110,7 +110,7 @@ local function Changed(key)
     for i = 1, #listeners do listeners[i](key) end
 end
 
-local SW = {}
+local SW = { MAX_WORTH = 1000, PERCENT = 100 }
 ns.StatWeights = SW
 
 local S = UI.ModuleSettings("statWeights", { enabled = F.enabled })

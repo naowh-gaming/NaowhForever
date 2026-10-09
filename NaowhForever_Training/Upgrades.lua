@@ -3,9 +3,9 @@ local ns = _G.NaowhForever
 
 local Training = ns.Training
 
-local SPELL = 2
+local SPELL = Training.C.ENTRY_SPELL
 local MAX_WORDS = 2
-local PERCENT = 100
+local PERCENT, ROUND = Training.C.PERCENT, Training.C.ROUND
 local STOP = { ["and"] = true, ["over"] = true, ["for"] = true, ["to"] = true, ["of"] = true,
     ["by"] = true, ["the"] = true, ["a"] = true, ["an"] = true, ["per"] = true, ["every"] = true,
     ["at"] = true, ["in"] = true, ["with"] = true, ["your"] = true, ["target"] = true,
@@ -69,7 +69,7 @@ function Training.Compare(old, new)
         local was, now = a[i], b[i]
         local before, after = (was.low + was.high) / 2, (now.low + now.high) / 2
         if after > before and before > 0 and not NOT_POWER[now.unit] then
-            return { pct = math.floor((after / before - 1) * PERCENT + 0.5), from = Range(was), to = Range(now),
+            return { pct = math.floor((after / before - 1) * PERCENT + ROUND), from = Range(was), to = Range(now),
                 what = now.what }
         end
     end

@@ -28,7 +28,7 @@ local function Load(withFrames)
     local S = { Get = function(k) return settings[k] end }
     function S.Set(k, v) settings[k] = v end
     local ns = { PvPSettings = S, Apply = function() end,
-        ShowRaidReminderAnchorConfig = function() end, HideRaidReminderAnchorConfig = function() end,
+        ShowUnlockMode = function() end, HideUnlockMode = function() end,
         PlaceTopCentreWidgets = function() s.placed = s.placed + 1 end,
         UI = { AttachMover = function(holder, label, save, page, feature)
             local m = Frame("mover")
@@ -92,9 +92,9 @@ do -- on, nothing dragged: holders over the game's frames, which do not move
     check("unmoved: the game's frames are untouched",
         Is(s.scores.points[1], { "TOP", UIParent, "TOP", 0, -15 }) and s.timer.all == UIParent)
     check("the movers show only in the HUD Editor", not scores.shown and not timer.shown)
-    s.ns.ShowRaidReminderAnchorConfig()
+    s.ns.ShowUnlockMode()
     check("in the HUD Editor: both movers show", scores.shown and timer.shown)
-    s.ns.HideRaidReminderAnchorConfig()
+    s.ns.HideUnlockMode()
     check("out of it: hidden again", not scores.shown and not timer.shown)
 
     -- Dragged: the holder takes the saved spot and the game's frame hangs from it.

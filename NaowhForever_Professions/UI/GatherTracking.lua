@@ -16,7 +16,7 @@ local TRACKINGS = {
     { spell = FIND_FISH, label = "Fish", key = "gatherFish" },
 }
 local CLICKS = { { "1", "Left-click" }, { "2", "Right-click" }, { "3", "Middle-click" } }
-local CROP_LOW, CROP_HIGH = 0.08, 0.92
+local CROP_LOW, CROP_HIGH = Style.ICON_CROP, Style.ICON_CROP_HIGH
 local LABEL_SIZE, LABEL_GAP = 13, 4
 local HIGHLIGHT_ALPHA = 0.15
 local HOME_X, HOME_Y = 260, 120
@@ -203,8 +203,8 @@ end
 events:SetScript("OnEvent", OnEvent)
 hooksecurefunc(S, "Set", OnSettingChanged)
 hooksecurefunc(ns, "Apply", Apply)
-hooksecurefunc(ns, "ShowRaidReminderAnchorConfig", OnUnlock)
-hooksecurefunc(ns, "HideRaidReminderAnchorConfig", OnLock)
+hooksecurefunc(ns, "ShowUnlockMode", OnUnlock)
+hooksecurefunc(ns, "HideUnlockMode", OnLock)
 
 local boot = CreateFrame("Frame")
 boot:RegisterEvent("PLAYER_LOGIN")

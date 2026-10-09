@@ -35,18 +35,19 @@ local function boot(settings)
         function f:SetValue(v) self.value = v end
         return f
     end
-    local ns = { QoLConstants = dofile("Tools/regression/qol_constants.lua"), THEME = { bg = {}, accent = { r = 0, g = 0.5, b = 1 } },
+    local ns = { MEDIA = dofile("Tools/regression/core_media.lua"), QoLConstants = dofile("Tools/regression/qol_constants.lua"), THEME = { bg = {}, accent = { r = 0, g = 0.5, b = 1 } },
         Font = function(parent)
             local fs = frame("FontString", nil, parent)
             parent.fonts[#parent.fonts + 1] = fs
             return fs
         end,
         Solid = function() return frame("Texture") end, Border = function() return frame("Border") end,
-        Apply = function() end, ShowRaidReminderAnchorConfig = function() end,
-        HideRaidReminderAnchorConfig = function() end,
+        Apply = function() end, ShowUnlockMode = function() end,
+        HideUnlockMode = function() end,
         UI = { AttachMover = function() return frame("Mover") end,
             TexturePath = function(name, own) if name == "" then return own end return "lsm:" .. name end },
-        Shared = { Parts = { HudFont = function(fs, font, size, outline) fs.font = font .. " " .. size .. " " .. outline end } } }
+        Shared = { Style = dofile("Tools/regression/shared_style.lua"),
+            Parts = { HudFont = function(fs, font, size, outline) fs.font = font .. " " .. size .. " " .. outline end } } }
     ns.QoLSettings = {
         Get = function(k)
             local v = s.settings[k]

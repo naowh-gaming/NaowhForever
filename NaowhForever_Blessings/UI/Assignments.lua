@@ -8,11 +8,11 @@ local CELL, GAP, NAME_WIDTH = 32, 6, 170
 local ROW_GAP, NAME_PAD, NAME_Y, NOTE_Y = 10, 10, 9, 10
 local NAME_SIZE, NOTE_SIZE = 13, 12
 local DIM_ALPHA = 0.35
-local ICON_CROP = 0.08
+local ICON_CROP = B.Look.ICON_CROP
 local EMPTY = 134400
-local ICON_BORDER = { r = 0, g = 0, b = 0 }
-local CLASS_ICON_PATH = "Interface\\Icons\\ClassIcon_"
-local AURA_COLUMN = "AURA"
+local ICON_BORDER = B.Look.ICON_BORDER
+local CLASS_ICON_PATH = B.Look.CLASS_ICON_PATH
+local AURA_COLUMN = B.AURA_COLUMN
 local AURA_ICON = "devotion"
 
 local TEXT_INTRO = "Every paladin in your group running Naowh Forever, and the blessing "

@@ -34,9 +34,11 @@ local function Load(container)
     local env = setmetatable({ NaowhForever = ns, UIParent = UIParent, UIWidgetTopCenterContainerFrame = container },
         { __index = _G })
     env._G = env
-    local chunk = assert(loadfile("NaowhForever_TopBar/UI/Widgets.lua"))
-    setfenv(chunk, env)
-    chunk()
+    for _, path in ipairs({ "NaowhForever_TopBar/Constants.lua", "NaowhForever_TopBar/UI/Widgets.lua" }) do
+        local chunk = assert(loadfile(path))
+        setfenv(chunk, env)
+        chunk()
+    end
     return function() ns.TopBar.Widgets.Place(bar) end
 end
 local Place = Load(widgets)

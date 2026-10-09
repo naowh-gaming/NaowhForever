@@ -89,5 +89,5 @@ end
 hooksecurefunc(ns, "Apply", function()
     if group then Place() end
 end)
-hooksecurefunc(ns, "ShowRaidReminderAnchorConfig", function() SetUnlocked(true) end)
-hooksecurefunc(ns, "HideRaidReminderAnchorConfig", function() SetUnlocked(false) end)
+hooksecurefunc(ns, "ShowUnlockMode", function() SetUnlocked(true) end)
+hooksecurefunc(ns, "HideUnlockMode", function() SetUnlocked(false) end)

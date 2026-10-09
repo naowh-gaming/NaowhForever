@@ -17,7 +17,7 @@ end
 -- The plain values at the top of the XP Bar's file (numbers, texts, its spots), which the
 -- functions loaded below on their own read. The QoL constants it names come from NaowhForever_QoL/Constants.lua.
 local function Consts(source)
-    local block = assert(source:match("\n(local MINUTE, HOUR, DAY.-)\n\n"))
+    local block = assert(source:match("\n(local MINUTE, HOUR = .-)\n\n"))
     return "local QOL_CONSTANTS = dofile(\"Tools/regression/qol_constants.lua\")\n"
         .. (block:gsub("ns%.QoLConstants%.", "QOL_CONSTANTS.")) .. "\n"
 end
@@ -212,7 +212,7 @@ do
     local b = { fill = Tex(), done = Tex(), open = Tex(), rested = Tex(), bg = Tex(), edge = Tex() }
     local env = { S = S, T = { accent = { r = 0, g = 0.5, b = 1 }, bg = { r = 0.1, g = 0.1, b = 0.1 } },
         CreateColor = function(r, g, bl, a) return { r = r, g = g, b = bl, a = a } end,
-        ns = { ThemeTint = function(_, c) return c end,
+        ns = { ThemeTint = function(_, c) return c end, Shared = { Style = dofile("Tools/regression/shared_style.lua") },
             UI = { TexturePath = function(name, own) if name == "" then return own end return "lsm:" .. name end } } }
     local PaintBar = Load(chunk .. "\nreturn PaintBar", env)
     PaintBar(b)

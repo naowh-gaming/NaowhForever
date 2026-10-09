@@ -1,6 +1,8 @@
 -- Style.lua: the house look every module shares (ns.Shared.Style): colors, icons and sizes.
 local Shared = _G.NaowhForever.Shared
 
+local PI = 3.141592653589793
+local OPACITY_MIN, PERCENT_MAX, PERCENT_STEP = 40, 100, 5
 local MEDIA = "Interface\\AddOns\\NaowhForever\\Core\\Media\\"
 
 Shared.Style = {
@@ -81,6 +83,7 @@ Shared.Style = {
     TIME_LOW_RGB = { r = 0.98, g = 0.8, b = 0.08 },
     TIME_OUT_RGB = { r = 0.97, g = 0.27, b = 0.27 },
     PICKED_RGB = { r = 1, g = 0.82, b = 0 },
+    TIP_TITLE_RGB = { r = 1, g = 1, b = 1 },
     GUIDE_RGB = { r = 0xf2 / 255, g = 0xa3 / 255, b = 0x3a / 255 },
 
     ARROW = MEDIA .. "chevron",
@@ -132,6 +135,10 @@ Shared.Style = {
     SOFT_SHADE = MEDIA .. "soft_shade",
     CHECK = "Interface\\RaidFrame\\ReadyCheck-Ready",
     WHITE = "Interface\\Buttons\\WHITE8X8",
+    CLASS_ICONS = "Interface\\Glues\\CharacterCreate\\UI-CharacterCreate-Classes",
+    CLASS_CROP = 0.02,
+    ICON_CROP = 0.08,
+    ICON_CROP_HIGH = 0.92,
     PLACE_DOT = " \194\183 ",
 
     TEXT_SIZE = 12,
@@ -178,7 +185,18 @@ Shared.Style = {
     SLIDER_H = 4,
     KNOB = 12,
     KNOB_GLOW = 22,
-    OPACITY_MIN = 40,
+    OPACITY_MIN = OPACITY_MIN,
+    OPACITY_MAX = PERCENT_MAX,
+    OPACITY_STEP = PERCENT_STEP,
+    OPACITY_RANGE = { OPACITY_MIN, PERCENT_MAX, PERCENT_STEP },
+    ALPHA_RANGE = { 0, PERCENT_MAX, PERCENT_STEP },
+    PERCENT_SCALE = 0.01,
+    SCALE_RANGE = { 50, 150, PERCENT_STEP },
+    PIN_SIZE_RANGE = { 12, 32, 1 },
+    HUD_TEXT_RANGE = { 8, 24, 1 },
+    STAGE_MARGIN = 16,
+    STAGE_NOTE_Y = 10,
+    STAGE_NOTE_SIZE = 11,
     PANEL_W = 380,
     PANEL_PAD = 10,
     PANEL_HEADER = 30,
@@ -202,4 +220,5 @@ Shared.Style = {
     ROW_HOVER = 0.04,
     ROW_DIVIDER = 0.6,
     ROW_TICK = 16,
+    OPEN_TURN = -PI / 2,
 }

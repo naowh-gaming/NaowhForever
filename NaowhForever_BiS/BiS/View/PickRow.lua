@@ -22,7 +22,7 @@ local ACTIONS_W = -(St.ACTION + ACTION_GAP) * ACTIONS
 local UP, DOWN = -1, 1
 local MARK_GAP = "  "
 local TEXT_REMOVE, TEXT_DOWN, TEXT_UP = "Remove", "Move down", "Move up"
-local WOWHEAD_KIND = "item"
+local WOWHEAD_KIND = B.C.WOWHEAD_KIND
 local HINT = { list = "Right-click: Wowhead link" .. PLACE_DOT .. "Shift-click: link",
     own = "Right-click: Wowhead link" .. PLACE_DOT .. "Shift-click: link",
     add = "Click: add it" .. PLACE_DOT .. "Right-click: Wowhead link" }

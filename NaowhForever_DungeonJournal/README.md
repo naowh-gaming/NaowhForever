@@ -101,6 +101,7 @@ NaowhForever_DungeonJournal/
     MapOverlay.lua     the dungeon's map over the world map's picture, inside the dungeon
     MapTools.lua       /nf mappins (place the pins, Copy for Data/Maps.lua) and /nf mapcheck
     SettingsPage.lua   its settings pages (Journal, Quest Tracker, Map), declared as cards
+  Media/Maps/          the addon's own pictures of floors the game has no map art for (Data/Maps.lua)
   README.md            this file
 ```
 

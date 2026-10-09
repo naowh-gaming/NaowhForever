@@ -15,9 +15,13 @@ local WIDTH_PER_SIZE, WIDTH_STEP = 6, 8
 local LINE_H, TREND_SHARE, TREND_MIN, TREND_GAP = 2, 0.5, 8, 4
 local TREND_WINDOW, TREND_MIN_SHARE, DING_SOON = 180, 0.05, 600
 local PACE_SHARE, PACE_GAP, PACE_MAX, DROP_SHARE = 0.75, 2, 8, 0.1
-local MINUTE, HOUR, DAY, HOUR_TENTH = 60, 3600, 86400, 360
-local THOUSAND, MILLION = 1000, 1000000
+local MINUTE, HOUR = ns.QoLConstants.SECONDS_PER_MINUTE, ns.QoLConstants.SECONDS_PER_HOUR
+local DAY, HOUR_TENTH = ns.QoLConstants.SECONDS_PER_DAY, 360
+local THOUSAND, MILLION = ns.QoLConstants.THOUSAND, ns.QoLConstants.MILLION
 local SHARE_TO_PERCENT, ROUND, ROW_KEY = 100, 0.5, 16
+local KEY_TIME, KEY_CURRENT, KEY_PLAYED = 2, 4, 8
+local TICK_FAST, TICK_SLOW = 1, 5
+local HISTORY_RANGE = { 1, HISTORY_MAX, 1 }
 local DEFAULT_POS = { x = -811, y = 3 }
 local FORMAT = { MILLIONS = "%.1fm", THOUSANDS = "%.1fk", HOURS = "%.1fh", MINUTES = "m",
     CLOCK_DAYS = "%dd %dh %dm", CLOCK_HOURS = "%d:%02d:%02d", CLOCK_MINUTES = "%d:%02d" }
@@ -349,7 +353,8 @@ local function PlaceFooter(f, showDing, showTime, y)
 end
 
 local function Arrange(f, showDing, showTime, showCurrent, count, showPlayed)
-    local key = (showDing and 1 or 0) + (showTime and 2 or 0) + (showCurrent and 4 or 0) + (showPlayed and 8 or 0)
+    local key = (showDing and 1 or 0) + (showTime and KEY_TIME or 0) + (showCurrent and KEY_CURRENT or 0)
+        + (showPlayed and KEY_PLAYED or 0)
         + count * ROW_KEY
     if f.arranged == key then return false end
     f.arranged, f.fitW = key, nil
@@ -453,7 +458,7 @@ function Look.Pace(f, delta)
     end
     if dir == 0 then return changed end
     local gap = math.abs(delta)
-    local key = gap >= HOUR and -math.floor(gap / HOUR_TENTH + 0.5) or math.max(math.floor(gap / MINUTE), 1)
+    local key = gap >= HOUR and -math.floor(gap / HOUR_TENTH + ROUND) or math.max(math.floor(gap / MINUTE), 1)
     if f.paceKey ~= key then
         f.paceKey = key
         f.paceText:SetText(Duration(gap))
@@ -463,7 +468,7 @@ function Look.Pace(f, delta)
 end
 
 function Look.Played(row, total)
-    local sec = total and math.max(0, math.floor(total + 0.5)) or false
+    local sec = total and math.max(0, math.floor(total + ROUND)) or false
     local key = sec and ClockKey(sec)
     if row.sec == key then return false end
     row.sec = key
@@ -510,7 +515,7 @@ local function ShowCurrent(row, run)
         row.label:SetText(LEVEL:format(run.level))
         changed = true
     end
-    local sec, partial = math.max(0, math.floor(run.time + 0.5)), run.partial == true
+    local sec, partial = math.max(0, math.floor(run.time + ROUND)), run.partial == true
     if row.sec ~= sec or row.partial ~= partial then
         row.sec, row.partial = sec, partial
         row.value:SetText(partial and Clock(sec) .. PARTIAL or Clock(sec))
@@ -535,7 +540,7 @@ function Look.Paint(f, rate, ding, elapsed, isPaused, keys, levels, trend, xp, r
         Tone(f.ding.value, ding < DING_SOON and T.accentSoft or T.fg)
     end
     if showTime then
-        local sec = math.max(0, math.floor(elapsed + 0.5))
+        local sec = math.max(0, math.floor(elapsed + ROUND))
         if f.time.sec ~= sec then
             f.time.sec = sec
             f.time.value:SetText(Clock(sec))
@@ -926,7 +931,7 @@ local function Apply()
     Progress()
     WantPlayed()
     Pace.dirty = true
-    local rate = (S.Get("xpTickerSplits") or S.Get("xpTickerPlayed")) and 1 or 5
+    local rate = (S.Get("xpTickerSplits") or S.Get("xpTickerPlayed")) and TICK_FAST or TICK_SLOW
     if AtMaxLevel() and not unlocked then rate = nil end
     if clock and clockRate ~= rate then clock:Cancel(); clock = nil end
     if rate and not clock then clock, clockRate = C_Timer.NewTicker(rate, Update), rate end
@@ -940,11 +945,11 @@ end)
 hooksecurefunc(ns, "Apply", Apply)
 hooksecurefunc(Played, "Answered", PlayedAnswered)
 hooksecurefunc(Played, "LeveledUp", PlayedLeveledUp)
-hooksecurefunc(ns, "ShowRaidReminderAnchorConfig", function()
+hooksecurefunc(ns, "ShowUnlockMode", function()
     unlocked = S.Get("enabled") == true
     Apply()
 end)
-hooksecurefunc(ns, "HideRaidReminderAnchorConfig", function()
+hooksecurefunc(ns, "HideUnlockMode", function()
     unlocked = false
     if ticker then
         ticker.mover:Hide()
@@ -957,14 +962,14 @@ boot:RegisterEvent("PLAYER_LOGIN")
 boot:SetScript("OnEvent", Apply)
 
 local Group = ns.Shared.Settings.Group
-local STAGE_H, STAGE_MARGIN, TEXT_ROOM = 210, 16, 44
-local NOTE_Y, NOTE_SIZE, NOTE_GAP = 8, 11, 4
+local STAGE_H, STAGE_MARGIN, TEXT_ROOM = 210, St.STAGE_MARGIN, 44
+local NOTE_Y, NOTE_SIZE, NOTE_GAP = 8, St.STAGE_NOTE_SIZE, 4
 local HOVER_ALPHA, HIT_PAD = 0.12, 1
 local SIZE_RANGE = { 8, 32, 1 }
 local SAMPLE_RATE, SAMPLE_DING, SAMPLE_TIME = 48200, 8 * 60, 72 * 60 + 40
 local SAMPLE_PROGRESS, SAMPLE_RESTED, SAMPLE_RESTING_RESTED = 0.62, 0.15, 0.3
 local SAMPLE_PAUSED_TIME, SAMPLE_RESTING_RATE, SAMPLE_RESTING_DING = 41 * 60 + 5, 31600, 35 * 60
-local SAMPLE_LEVEL, SAMPLE_START_TIME, SECONDS_PER_HOUR = 23, 3 * 60 + 12, 3600
+local SAMPLE_LEVEL, SAMPLE_START_TIME = 23, 3 * MINUTE + 12
 local SAMPLE_RUN = { level = SAMPLE_LEVEL, time = 14 * 60 + 2, partial = false }
 local SAMPLE_START_RUN = { level = SAMPLE_LEVEL, time = 9 * 60 + 47, partial = true }
 local SAMPLE_PLAYED = DAY + 4 * HOUR + 12 * MINUTE + 33
@@ -1162,11 +1167,11 @@ local function PaintPreview(preview, state)
     f.tones, f.reached = pace and SAMPLE_PACE.tones, SAMPLE_PACE.reached
     if state == "paused" then
         Look.Paint(f, SAMPLE_RATE, SAMPLE_DING, SAMPLE_PAUSED_TIME, true, keys, SAMPLE_LEVELS, 1,
-            SAMPLE_RATE * SAMPLE_PAUSED_TIME / SECONDS_PER_HOUR, SAMPLE_RUN, SAMPLE_PLAYED, pace)
+            SAMPLE_RATE * SAMPLE_PAUSED_TIME / HOUR, SAMPLE_RUN, SAMPLE_PLAYED, pace)
         Look.Progress(f, SAMPLE_PROGRESS, SAMPLE_RESTED, SAMPLE_LEVEL)
     elseif state == "resting" then
         Look.Paint(f, SAMPLE_RESTING_RATE, SAMPLE_RESTING_DING, SAMPLE_TIME, false, keys, SAMPLE_LEVELS, -1,
-            SAMPLE_RESTING_RATE * SAMPLE_TIME / SECONDS_PER_HOUR, SAMPLE_RUN, SAMPLE_PLAYED, pace)
+            SAMPLE_RESTING_RATE * SAMPLE_TIME / HOUR, SAMPLE_RUN, SAMPLE_PLAYED, pace)
         Look.Progress(f, SAMPLE_PROGRESS, SAMPLE_RESTING_RESTED, SAMPLE_LEVEL)
     elseif state == "starting" then
         Look.Paint(f, 0, nil, SAMPLE_START_TIME, false, keys, SAMPLE_LEVELS, 0, 0, SAMPLE_START_RUN,
@@ -1174,7 +1179,7 @@ local function PaintPreview(preview, state)
         Look.Progress(f, SAMPLE_PROGRESS, SAMPLE_RESTED, SAMPLE_LEVEL)
     else
         Look.Paint(f, SAMPLE_RATE, SAMPLE_DING, SAMPLE_TIME, false, keys, SAMPLE_LEVELS, 1,
-            SAMPLE_RATE * SAMPLE_TIME / SECONDS_PER_HOUR, SAMPLE_RUN, SAMPLE_PLAYED, pace)
+            SAMPLE_RATE * SAMPLE_TIME / HOUR, SAMPLE_RUN, SAMPLE_PLAYED, pace)
         Look.Progress(f, SAMPLE_PROGRESS, SAMPLE_RESTED, SAMPLE_LEVEL)
     end
     FitPreview(preview)
@@ -1221,7 +1226,7 @@ ns.Shared.Settings.Page("QoL/XP", S):Card({
         Group("Level History"),
         { key = "xpTickerSplits", label = "Level History", toggle = true,
           help = "The level you are on as it runs, then completed levels, newest first." },
-        { key = "xpTickerHistoryCount", label = "Levels Shown", slider = { 1, HISTORY_MAX, 1 }, needs = "xpTickerSplits",
+        { key = "xpTickerHistoryCount", label = "Levels Shown", slider = HISTORY_RANGE, needs = "xpTickerSplits",
           help = "The most recent completed levels." },
         { key = "xpTickerSplitPlayed", label = "Show Played at Ding", toggle = true, needs = "xpTickerSplits",
           help = "Your played time when you reached each level, beside how long it took." },

@@ -12,7 +12,7 @@ off (Settings > Modules) and every QoL feature is gone, with the Top Bar, which 
 NaowhForever_QoL/
   NaowhForever_QoL.toc             its metadata, and one file line: QoL.xml
   QoL.xml                          every file, in load order
-  Constants.lua                    the numbers several QoL features share (ns.QoLConstants)
+  Constants.lua                    the numbers, colors and patterns several QoL features share (ns.QoLConstants)
   Interface/
     GlobalCopy.lua      /copy, and tooltip IDs with their copy shortcut (the card is Shared/UI/CopyCard.lua)
     HideClutter.lua     UI Clutter
@@ -86,6 +86,10 @@ NaowhForever_QoL/
     CombatLogger.lua    Auto Combat Logging (ns.CombatLogCheck, ns.CombatLogging)
     SlashCommands.lua   Custom Slash Commands and their editor (ns.SlashCommandList, ns.RefreshSlashCommands)
     Performance.lua     QoL > System > Performance: recommended game settings and their backups
+  Media/
+    crosshair_ring.tga  the Crosshair's ring
+    MouseRing/          the Mouse Ring's rings, glows and trail
+  README.md           this file
 ```
 
 
@@ -101,13 +105,27 @@ NaowhForever_QoL/
 - The Trainer Popup card is declared here, on the Training Planner's page, so it goes when QoL is
   off. The Bag Space and Food & Drink key binding names live in `Core/Commands.lua`, so the key
   bindings read right with QoL off, where the Bag Space key says so.
-- QoL loads after the core now, not between Packs and the Badges: nothing in the core reads a QoL
-  field at load.
+- QoL loads after the core now, not between the profile strings and the Badges: nothing in the core
+  reads a QoL field at load.
 - `Constants.lua` holds the numbers several features share: `PERCENT` (100), `ROUND` (0.5, added
   before `math.floor` to round to the nearest), the icon crops that cut the game's own border off
   an icon (`ICON_CROP` 0.08 to 0.92, or `ICON_CROP_TIGHT` 0.07 to 0.93 for a thinner cut), and
   `HINT_RGB`, the light blue of the map pins' hint lines, which a theme's lighter Accent replaces.
   It loads right after the QoL store, before every feature.
+- `Constants.lua` also holds what more than one feature means the same way: the time units
+  (`SECONDS_PER_MINUTE`, `SECONDS_PER_HOUR`, `SECONDS_PER_DAY`), `THOUSAND` and `MILLION` for
+  short numbers, `PERMILLE` and `TENTHS` for a percent with one decimal, `PARTY_SIZE` (4 others)
+  and `RAID_SIZE` (40), `PLAIN_BAG` (bag type 0, a bag of no profession), `SELL_PRICE` (11, the
+  vendor price's place in `GetItemInfo`'s returns), `GUID_PATTERN` (a player's GUID), `EDGE_OUT`
+  (-1, a pixel inset that puts an edge just outside its frame), `WHITE_RGB`, and the cursor
+  cards' preview fit and offset (`CURSOR_PREVIEW_FIT`, `CURSOR_PREVIEW_Y`).
+- A settings row's slider range is a named table at the top of its file (`WIDTH_RANGE`,
+  `TEXT_RANGE` for a Look's text size, ...). The ranges two features share with the same meaning
+  are in `Constants.lua`: `VOLUME_RANGE` and `SPEECH_RATE_RANGE` for Text to Speech (Combat Alert,
+  Focus Cast Bar), `OPACITY_RANGE`, `DOT_RANGE` and `SOUND_REPEAT_RANGE` (Crosshair, Mouse Ring).
+  Ranges every module shares (`HUD_TEXT_RANGE`, `ALPHA_RANGE`, `SCALE_RANGE`, `PIN_SIZE_RANGE`),
+  the percent scale, the preview stage's note and margin, the icon crop, the black edge
+  (`BORDER_RGB`) and the flat texture (`WHITE`) come from `Shared/Style.lua`.
 - Combat Cursor Clip saves your own `ClipCursor` value in the account settings while it holds it
   at 1, so after a crash or a killed client mid-fight the next login puts it back, instead of
   taking the held 1 for your setting.
@@ -435,7 +453,8 @@ NaowhForever_QoL/
   quest needs): no bags are read and no click acts. Hovering a sample shows its tooltip lines.
 - Bag Space's Ignore List window is its own file, loaded right after Bag Space, which keeps both
   under Lua 5.1's limit of 200 locals in one chunk. It reads the list and asks for a rescan
-  through `ns.BagSpace`.
+  through `ns.BagSpace`. Its search box is `ns.NewSearchBox` and its list scrolls in
+  `UI.SlimScroll`, like the options window.
 
 ### Trainer
 - The new-ability glow is LibCustomGlow's on the action buttons, never Blizzard's own new-ability highlight: that marks table is read from secure code, and a write from an addon taints it.

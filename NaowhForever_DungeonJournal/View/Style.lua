@@ -4,8 +4,8 @@ local ns = _G.NaowhForever
 local J = ns.Journal
 local Shared = ns.Shared
 
-local MEDIA = "Interface\\AddOns\\NaowhForever\\Core\\Media\\"
-local BYTE = 255
+local MEDIA = ns.MEDIA
+local BYTE = J.C.BYTE
 local TINTED_MARK = "|T%s:0:0:0:0:64:64:0:64:0:64:%d:%d:%d|t"
 
 local function Tinted(texture, color)
@@ -40,8 +40,6 @@ local St = setmetatable({
     BANG = "Interface/GossipFrame/AvailableQuestIcon",
     QUESTION = "Interface/GossipFrame/ActiveQuestIcon",
     QUESTION_ICON = 134400,
-    ICON_CROP_LOW = 0.08,
-    ICON_CROP_HIGH = 0.92,
     KILL_DATE = "%a %d %b %Y, %H:%M",
 
     TINY_SIZE = 10,

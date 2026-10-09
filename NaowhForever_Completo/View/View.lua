@@ -8,7 +8,7 @@ local Parts = Shared.Parts
 local Style = Completo.Style
 
 local HALF_TURN = math.pi / 2
-local PERCENT = 100
+local PERCENT = Completo.C.PERCENT
 local TEXT_LEVEL = "Level %d"
 local TEXT_LEVELS = "Levels %d-%d"
 local TEXT_SEPARATOR = "  -  "

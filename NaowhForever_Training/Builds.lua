@@ -10,7 +10,7 @@ local Changed = Training.Changed
 local BUILD_PREFIX = "!NFB1!"
 local MAX_POINTS = C.MAX_POINTS
 local ROW_POINTS = 5
-local NODE_SPELL, NODE_RANKS, NODE_ROW, NODE_COLUMN, NODE_NEEDS = 1, 2, 3, 4, 6
+local NODE_SPELL, NODE_RANKS, NODE_ROW, NODE_COLUMN, NODE_NEEDS = C.NODE_SPELL, C.NODE_RANKS, C.NODE_ROW, C.NODE_COLUMN, 6
 local DECODE_LIMITS = { maxChars = 100000, maxBytes = 1048576, maxDepth = 8, maxValues = 20000 }
 local BUILD_VERSION = 1
 local NAOWH_KEY = "naowh"

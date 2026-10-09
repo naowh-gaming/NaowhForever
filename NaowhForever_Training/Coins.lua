@@ -5,6 +5,7 @@ local Training = ns.Training
 local C = Training.C
 
 local GOLD, SILVER = C.COPPER_PER_GOLD, C.COPPER_PER_SILVER
+local ROUND = C.ROUND
 local COIN_COLORS = { g = "ffd100", s = "c7ccd3", c = "e0904f" }
 
 local function Coin(text, n, unit)
@@ -13,7 +14,7 @@ local function Coin(text, n, unit)
 end
 
 function Training.Coins(copper)
-    copper = math.floor(copper + 0.5)
+    copper = math.floor(copper + ROUND)
     local g, s, c = math.floor(copper / GOLD), math.floor(copper % GOLD / SILVER), copper % SILVER
     local text
     if g > 0 then text = Coin(nil, g, "g") end

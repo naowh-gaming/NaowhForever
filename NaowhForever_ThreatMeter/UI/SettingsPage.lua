@@ -11,8 +11,8 @@ if not Settings then return end
 local Group, Snap = Settings.Group, Settings.Snap
 
 local OFF = "Turn on the Threat Meter"
-local STAGE_H, STAGE_MARGIN = 300, 16
-local NOTE_ROOM, NOTE_BOTTOM, NOTE_SIZE = 28, 8, 11
+local STAGE_H, STAGE_MARGIN = 300, ns.Shared.Style.STAGE_MARGIN
+local NOTE_ROOM, NOTE_BOTTOM, NOTE_SIZE = 28, 8, ns.Shared.Style.STAGE_NOTE_SIZE
 local HINT = "Drag the corner to resize. Wheel: row height (Shift: spacing, Ctrl: text). Right-click a row "
     .. "for what it shows. Click the name or status line to change them."
 local OFF_HINT = "Turn on the Threat Meter to edit it here."
@@ -21,7 +21,12 @@ local HOVER_ALPHA = 0.12
 local GRIP_SIZE, GRIP_INSET = 16, 2
 local HEADER_STUB = 8
 local WIDTH_RANGE, HEIGHT_RANGE = { C.MIN_WIDTH, C.MAX_WIDTH, 1 }, { C.MIN_HEIGHT, C.MAX_HEIGHT, 1 }
-local ROW_H_RANGE, SPACING_RANGE, TEXT_RANGE = { 12, 72, 1 }, { 0, 16, 1 }, { 8, 24, 1 }
+local ROW_H_RANGE, SPACING_RANGE = { C.MIN_BAR, C.MAX_BAR, 1 }, { 0, C.MAX_SPACING, 1 }
+local TEXT_RANGE = { C.MIN_FONT, C.MAX_FONT, 1 }
+local ENTRIES_RANGE, WARN_RANGE = { 1, 80, 1 }, { 50, C.PERCENT, 1 }
+local PERCENT_STEP, TO_FRACTION = ns.Shared.Style.OPACITY_STEP, ns.Shared.Style.PERCENT_SCALE
+local BACKGROUND_RANGE, BAR_ALPHA_RANGE = ns.Shared.Style.ALPHA_RANGE, { 10, C.PERCENT, PERCENT_STEP }
+local ORDER_METER, ORDER_WARNING = 10, 20
 local STATES = {
     { key = "solo", label = "Solo", tip = "On your own, holding the mob." },
     { key = "tanking", label = "Tanking", tip = "Your group on a boss you are tanking." },
@@ -347,7 +352,7 @@ page:Window({
 })
 
 page:Card({
-    id = "meter", name = "Meter", order = 10,
+    id = "meter", name = "Meter", order = ORDER_METER,
     help = "Threat on your target or focus for everyone in your group, one bar each. A friendly target "
         .. "shows the enemy it is fighting. Scroll the meter for more entries; unlock its window to drag "
         .. "and resize it, or place it in the HUD Editor.",
@@ -365,7 +370,7 @@ page:Card({
           help = "Aggro Line: 100% takes aggro. Tank Threat: 100% equals the current tank's threat." },
         { key = "ignorePets", label = "Ignore Pets", toggle = true, needs = Enabled, why = OFF,
           help = "Leave hunter and warlock pets off the meter." },
-        { key = "maxBars", label = "Maximum Entries", slider = { 1, 80, 1 }, needs = Enabled, why = OFF },
+        { key = "maxBars", label = "Maximum Entries", slider = ENTRIES_RANGE, needs = Enabled, why = OFF },
         Group("Window"),
         { key = "width", label = "Width", slider = WIDTH_RANGE, needs = Enabled, why = OFF },
         { key = "height", label = "Window Height", slider = HEIGHT_RANGE, needs = Enabled, why = OFF },
@@ -379,8 +384,8 @@ page:Card({
               .. "the title bar and the bars." },
         { key = "growUp", label = "Grow Upward", toggle = true, needs = Enabled, why = OFF,
           help = "New bars stack above the first instead of below." },
-        { key = "backgroundAlpha", label = "Background Opacity", slider = { 0, 100, 5 }, unit = "%",
-          scale = 0.01, needs = Enabled, why = OFF, help = "The window's border fades with it." },
+        { key = "backgroundAlpha", label = "Background Opacity", slider = BACKGROUND_RANGE, unit = "%",
+          scale = TO_FRACTION, needs = Enabled, why = OFF, help = "The window's border fades with it." },
         { key = "backgroundColor", label = "Background Colour", colour = true, needs = Enabled, why = OFF,
           get = function()
               local c = Look.BackgroundColor()
@@ -398,7 +403,7 @@ page:Card({
         { key = "showRanks", label = "Rank Numbers", toggle = true, needs = Enabled, why = OFF },
         { key = "highlightPlayer", label = "Highlight Your Row", toggle = true, needs = Enabled, why = OFF },
         Settings.Look("", { text = true, size = TEXT_RANGE, bar = "Naowh Gradient", needs = Enabled, why = OFF }),
-        { key = "barAlpha", label = "Bar Opacity", slider = { 10, 100, 5 }, unit = "%", scale = 0.01,
+        { key = "barAlpha", label = "Bar Opacity", slider = BAR_ALPHA_RANGE, unit = "%", scale = TO_FRACTION,
           needs = Enabled, why = OFF },
         Group("Colours"),
         { key = "playerColorOn", label = "Colour Your Bar", toggle = true, needs = Enabled, why = OFF,
@@ -425,11 +430,11 @@ page:Card({
 })
 
 page:Card({
-    id = "warning", name = "Warning Sound", order = 20, switch = "warnSound",
+    id = "warning", name = "Warning Sound", order = ORDER_WARNING, switch = "warnSound",
     help = "Plays once when your threat climbs past the threshold, and again only after it drops back below.",
     summary = WarningSummary,
     rows = {
-        { key = "warnAt", label = "Warn At", slider = { 50, 100, 1 }, unit = "%", needs = Enabled, why = OFF },
+        { key = "warnAt", label = "Warn At", slider = WARN_RANGE, unit = "%", needs = Enabled, why = OFF },
         { key = "warnSoundKey", label = "Sound", sound = true, needs = Enabled, why = OFF },
         { key = "warnSkipTank", label = "Not While Tanking", toggle = true, needs = Enabled, why = OFF,
           help = "No warning in a tank role, Bear Form or Defensive Stance." },

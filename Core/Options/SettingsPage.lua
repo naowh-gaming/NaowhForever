@@ -143,8 +143,7 @@ local function WindowSection(W, parent, y)
           tooltip = "Size of this options window and the editors it opens, as a percentage. "
           .. "This window never grows past your screen, so above that size a higher setting "
           .. "only enlarges the editors.|n|nSaved for this computer instead of in the profile, so switching "
-          .. "profile leaves it alone and an exported pack never carries it to someone on a "
-          .. "different monitor.",
+          .. "profile leaves it alone.",
           getValue = function() return tonumber(ns.AccountSettings().windowScale) or DEFAULT_SCALE end,
           setValue = function(v) ns.SetWindowScale(v) end }
     )

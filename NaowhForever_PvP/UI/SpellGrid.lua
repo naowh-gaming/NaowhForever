@@ -9,8 +9,9 @@ local St = P.Style
 local Settings = ns.Shared.Settings
 
 local BORDER, ICON_CROP, BLACK = St.BORDER, St.ICON_CROP, St.BLACK
-local TILE, TILE_GAP, GRID_ROW, GRID_LABEL_W, GRID_MARGIN, GRID_NOTE = 30, 4, 36, 120, 14, 22
-local LABEL_SIZE, NOTE_SIZE, NOTE_Y = 12, 11, 8
+local GRID_MARGIN, NOTE_SIZE = St.STAGE_MARGIN, St.STAGE_NOTE_SIZE
+local TILE, TILE_GAP, GRID_ROW, GRID_LABEL_W, GRID_NOTE = 30, 4, 36, 120, 22
+local LABEL_SIZE, NOTE_Y = 12, 8
 local LIT_ALPHA, IDLE_ALPHA, OFF_ALPHA = 1, 0.6, 0.3
 local STATES = { { key = "spells", label = "Spells" } }
 

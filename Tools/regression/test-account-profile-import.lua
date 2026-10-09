@@ -1,13 +1,10 @@
--- Importing a curator's single-profile pack has to be able to move every character on the
--- account, not just the one that ran the import. Covers the Core half (SetAccountProfile
--- plus the fallback a character with no assignment takes) and the dialog half (that the
--- Import button reaches it, with the name the import actually landed under).
+-- Importing a profile through the installer's entry point has to be able to move every character
+-- on the account, not just the one that ran the import. Covers the Core half (SetAccountProfile
+-- plus the fallback a character with no assignment takes) and NaowhForever_API:ImportProfile
+-- (Core/Profiles/ProfileShare.lua), including an old Reminder Pack string, which it refuses.
 local core = assert(io.open(arg[1] or "Core/Core.lua", "rb"))
 local coreSrc = core:read("*a"):gsub("\r\n", "\n"); core:close()
-local packs = assert(io.open(arg[2] or "Core/Profiles/Packs.lua", "rb"))
-local packSrc = packs:read("*a"):gsub("\r\n", "\n"); packs:close()
-local dialogs = assert(io.open(arg[3] or "Core/Profiles/PackDialogs.lua", "rb"))
-local dialogSrc = dialogs:read("*a"):gsub("\r\n", "\n"); dialogs:close()
+local SHARE = arg[2] or "Core/Profiles/ProfileShare.lua"
 
 local function Slice(source, a, b)
     local first = assert(source:find(a, 1, true))
@@ -88,7 +85,7 @@ Case("a character never logged in lands on it through the account default", func
     assert(sv.charActive["NeverSeen-Ravencrest"] == "Naowh")
 end)
 
-Case("a profile the pack did not land is refused rather than invented", function()
+Case("a profile the import did not land is refused rather than invented", function()
     local e = Fixture()
     e.ns.SettingsRoot()
     local sv = e.db()
@@ -107,29 +104,6 @@ Case("switching one character afterwards leaves the rest on the account profile"
     e.ns.SetAccountProfile("Naowh")
     sv.charActive["Alt1-Ravencrest"] = "Mine"
     assert(sv.charActive["Main-Ravencrest"] == "Naowh" and sv.defaultProfile == "Naowh")
-end)
-
--- The dialog half (Core/Profiles/PackDialogs.lua). Rather than rebuild its frames these
--- assert on the source: that the account call exists on the single-profile branch, runs after
--- the import, and is handed the landed name.
-Case("the import dialog reaches SetAccountProfile with the landed name", function()
-    local branch = Slice(dialogSrc, "local function FinishSingle(imp)", "local function Finish(imp)")
-    assert(branch:find("ns.SetAccountProfile(newName)", 1, true),
-        "the single-profile import must point the account at the name it landed under")
-    assert(branch:find("if imp.accountWanted and ns.SetAccountProfile then", 1, true),
-        "it must be gated on the toggle")
-    assert(branch:find("ImportPackAsProfile", 1, true)
-        < branch:find("SetAccountProfile", 1, true),
-        "SetAccountProfile refuses a profile that does not exist yet, so the import runs first")
-end)
-
-Case("the toggle is offered for single-profile packs only", function()
-    local build = Slice(dialogSrc, "local function PlaceAccountRow(imp, multi)", "local function ImportNameBox(imp)")
-    assert(build:find("accountWanted", 1, true) and build:find("KnownCharacters", 1, true))
-    assert(build:find("    if multi then\n        if imp.accountBtn then imp.accountBtn:Hide() end\n        return", 1, true),
-        "it must hide again for a whole-file pack")
-    -- The Save as row anchors under it, or the two draw over each other.
-    assert(dialogSrc:find("local anchorTo = ShownOr(imp.accountBtn) or", 1, true))
 end)
 
 -- The bug this feature shipped with: the account choice was written correctly and then
@@ -215,9 +189,9 @@ Case("an account that already has settings never takes the starter", function()
     assert(e.ns.SettingsRoot().qol.fastLoot == false and e.db().account == nil)
 end)
 
-Case("the shipped presets carry no Smart Reminders, and a new install starts from Minimalist", function()
+Case("the shipped presets carry no reminders, and a new install starts from Minimalist", function()
     local env = { NaowhForever = {} }; env._G = env
-    local chunk = assert(loadfile(arg[3] or "Core/Profiles/Presets.lua")); setfenv(chunk, env); chunk()
+    local chunk = assert(loadfile("Core/Profiles/Presets.lua")); setfenv(chunk, env); chunk()
     local presets = env.NaowhForever.PRESETS
     assert(presets.newInstall == "minimalist" and env.NaowhForever.STARTER == presets.minimalist)
     assert(#presets.order >= 1 and presets.order[1] == "minimalist")
@@ -233,25 +207,32 @@ Case("the shipped presets carry no Smart Reminders, and a new install starts fro
     end
 end)
 
--- The installer's public entry point, run against the real Core slice. InstallProfilePack and
--- ImportProfile are stubbed to do what the real ones do to profile state: land the profile and
--- switch to it, which maps the current spec. DecodeProfile tells the two strings apart.
-local function WithApi(e, install, importProfile)
+-- The installer's public entry point, the real ProfileShare.lua on the real Core slice.
+-- ImportProfile is stubbed to do what the real one does to profile state: land the profile and
+-- switch to it, which maps the current spec. A profile string skips the real decoder, which has
+-- its own tests; anything else goes through it.
+local function WithApi(e, importProfile)
     e.env._G = e.env
+    e.env.NaowhForever = e.ns
     e.printed = {}
     e.ns.Print = function(msg) e.printed[#e.printed + 1] = msg end
-    e.ns.InstallProfilePack = install
-    e.ns.ImportProfile = importProfile
+    local chunk = assert(loadfile(SHARE)); setfenv(chunk, e.env); chunk()
+    local decode = e.ns.DecodeProfile
     e.ns.DecodeProfile = function(str)
-        if str:sub(1, 9) == "NSRPACK2:" then return nil, "pack" end
         if str:sub(1, 11) == "NFPROFILE1:" then return { parts = {} } end
-        return nil, "This is not a Naowh Forever profile string."
+        return decode(str)
     end
-    local code = assert(packSrc:match("\n(local PREFIX = .-\n)\nlocal function ByLower"), "Packs constants")
-        .. Slice(packSrc, "local function CurrentSpecEntry()", "local function LandPack(")
-        .. Slice(packSrc, "local API = {}", "local function SplitLicense(")
-    local chunk = assert(loadstring(code)); setfenv(chunk, e.env); chunk()
+    e.ns.ImportProfile = importProfile or function() error("nothing may be imported") end
     return e.env.NaowhForever_API
+end
+
+local function Lands(e, sv)
+    return function(_, wanted, name, overwrite)
+        e.args = { wanted = wanted, name = name, overwrite = overwrite }
+        sv.profiles[name] = {}
+        e.ns.SwitchProfile(name)
+        return name, {}
+    end
 end
 
 Case("ImportProfile lands the named profile on every character and keeps the spec choice", function()
@@ -262,72 +243,48 @@ Case("ImportProfile lands the named profile on every character and keeps the spe
     sv.specProfile = { ["250"] = "Mine" }
     sv.charActive["Alt-Draenor"] = "Mine"
     e.ns.CurrentSpec = function() return 250 end
-    local passed
-    local API = WithApi(e, function(_, opts)
-        passed = opts
-        sv.profiles[opts.profileName] = {}
-        e.ns.SwitchProfile(opts.profileName)
-        return true, opts.profileName
-    end)
-    local ok, landed = API:ImportProfile("NSRPACK2:x", "Naowh")
-    assert(ok == true and landed == "Naowh" and passed.profileName == "Naowh")
+    local API = WithApi(e, Lands(e, sv))
+    local ok, landed = API:ImportProfile("NFPROFILE1:x", "Naowh")
+    assert(ok == true and landed == "Naowh" and e.args.name == "Naowh" and e.args.overwrite == true)
     assert(sv.defaultProfile == "Naowh" and sv.charActive["Alt-Draenor"] == "Naowh")
     assert(sv.specProfile["250"] == "Mine", "the spec map is put back the way the player had it")
 end)
 
-Case("a failed ImportProfile says so and leaves the account alone", function()
+Case("a Profiles page string replaces the named profile with every part but the acting settings", function()
+    local e = Fixture("Main-Ravencrest")
+    e.ns.SettingsRoot()
+    local sv = e.db()
+    local API = WithApi(e, Lands(e, sv))
+    assert(API:ImportProfile("NFPROFILE1:x", "Naowh") == true)
+    local wanted = e.args.wanted
+    for _, part in ipairs({ "settings", "macros", "library", "consumables", "builds", "bisLists", "look" }) do
+        assert(wanted[part] == true, part)
+    end
+    assert(not wanted.acting and not wanted.reminders)
+end)
+
+Case("an old Reminder Pack string is refused, says why, and leaves the account alone", function()
     local e = Fixture("Main-Ravencrest")
     e.ns.SettingsRoot()
     local sv = e.db()
     sv.charActive["Alt-Draenor"] = "Mine"
-    local API = WithApi(e, function() return false, "The string is damaged (encoding)." end)
-    local ok, why = API:ImportProfile("NSRPACK2:x", "Naowh")
-    assert(ok == false and why == "The string is damaged (encoding).")
-    assert(e.printed[1] and e.printed[1]:find("damaged", 1, true))
-    assert(sv.defaultProfile == nil and sv.charActive["Alt-Draenor"] == "Mine")
-end)
-
-Case("a whole-file pack keeps its own profiles instead of becoming the account profile", function()
-    local e = Fixture("Main-Ravencrest")
-    e.ns.SettingsRoot()
-    local sv = e.db()
-    local API = WithApi(e, function() return true, 3 end)
-    assert(API:ImportProfile("NSRPACK2:x", "Naowh") == true)
-    assert(sv.defaultProfile == nil)
-end)
-
-Case("a Profiles page string replaces the named profile and becomes the account profile", function()
-    local e = Fixture("Main-Ravencrest")
-    e.ns.SettingsRoot()
-    local sv = e.db()
-    sv.profiles.Mine = {}
-    sv.specProfile = { ["250"] = "Mine" }
-    sv.charActive["Alt-Draenor"] = "Mine"
-    e.ns.CurrentSpec = function() return 250 end
-    local args
-    local API = WithApi(e, function() error("a profile string is not a pack") end,
-        function(payload, wanted, name, overwrite)
-            args = { wanted = wanted, name = name, overwrite = overwrite }
-            sv.profiles[name] = {}
-            e.ns.SwitchProfile(name)
-            return name, {}
-        end)
-    local ok, landed = API:ImportProfile("NFPROFILE1:x", "Naowh")
-    assert(ok == true and landed == "Naowh")
-    assert(args.name == "Naowh" and args.overwrite == true)
-    assert(args.wanted.settings and args.wanted.look and args.wanted.smartReminders and not args.wanted.acting)
-    assert(sv.defaultProfile == "Naowh" and sv.charActive["Alt-Draenor"] == "Naowh")
-    assert(sv.specProfile["250"] == "Mine")
+    local API = WithApi(e)
+    local ok, why = API:ImportProfile("  NSRPACK2:abcdef\n", "Naowh")
+    assert(ok == false and why == "Reminder Packs are no longer supported.", tostring(why))
+    assert(e.printed[1] == "Naowh Forever import failed: Reminder Packs are no longer supported.", e.printed[1])
+    assert(sv.defaultProfile == nil and sv.charActive["Alt-Draenor"] == "Mine" and sv.profiles.Naowh == nil)
 end)
 
 Case("a string that is neither says why and imports nothing", function()
     local e = Fixture("Main-Ravencrest")
     e.ns.SettingsRoot()
     local sv = e.db()
-    local API = WithApi(e, function() error("not a pack") end, function() error("not a profile") end)
+    local API = WithApi(e)
     local ok, why = API:ImportProfile("garbage", "Naowh")
     assert(ok == false and why == "This is not a Naowh Forever profile string.")
     assert(e.printed[1] and e.printed[1]:find("not a Naowh Forever", 1, true))
+    ok, why = API:ImportProfile("", "Naowh")
+    assert(ok == false and why == "Nothing to read." and #e.printed == 2)
     assert(sv.defaultProfile == nil)
 end)
 

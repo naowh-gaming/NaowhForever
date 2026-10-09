@@ -11,8 +11,8 @@ local Parts, St = ns.Shared.Parts, ns.Shared.Style
 local BORDER_RGB = St.BORDER_RGB
 
 local ROUND = St.ROUND
-local MODE_ICON = "Interface\\AddOns\\NaowhForever\\Core\\Media\\Navigation\\grid.tga"
-local BOARD_ICON = "Interface\\AddOns\\NaowhForever\\Core\\Media\\Navigation\\trophy.tga"
+local MODE_ICON = ns.MEDIA .. "Navigation\\grid.tga"
+local BOARD_ICON = ns.MEDIA .. "Navigation\\trophy.tga"
 local PAGE = "QoL/Travel"
 local FACE_PATH = "Interface\\Icons\\Achievement_Character_"
 
@@ -55,6 +55,7 @@ local PANEL_ALPHA, CARD_ALPHA = 0.96, 0.97
 local LABEL_SIZE, VALUE_SIZE, LABEL_GAP = 10, 16, 2
 local HINT_SIZE, SUB_SIZE, LINE_GAP, HINT_Y = 20, 12, 6, 16
 local RIM = 2
+local FACE_LAYER = 2
 local ICON_CROP = ns.QoLConstants.ICON_CROP
 local RING_SCALE, RING_ALPHA = 1.35, 0.55
 local PULSE_FROM, PULSE_TIME = 0.75, 0.9
@@ -70,7 +71,7 @@ local DEFAULT_Y = -60
 local HALF = 0.5
 local PERCENT = ns.QoLConstants.PERCENT
 local MS_PER_SECOND = 1000
-local TENTHS = 10
+local TENTHS = ns.QoLConstants.TENTHS
 local TEXT = {
     NO_VALUE = "--",
     IN_COMBAT = "The Aim Trainer can't open in combat.",
@@ -212,7 +213,7 @@ function Look.Target(area, live)
     t.body = Disc(t, "ARTWORK", 1, T.accent)
     t.body:SetPoint("TOPLEFT", RIM, -RIM)
     t.body:SetPoint("BOTTOMRIGHT", -RIM, RIM)
-    t.face = Parts.Smooth(t:CreateTexture(nil, "ARTWORK", nil, 2))
+    t.face = Parts.Smooth(t:CreateTexture(nil, "ARTWORK", nil, FACE_LAYER))
     t.face:SetAllPoints(t.body)
     t.face:SetTexCoord(ICON_CROP, 1 - ICON_CROP, ICON_CROP, 1 - ICON_CROP)
     t.mask = t:CreateMaskTexture()

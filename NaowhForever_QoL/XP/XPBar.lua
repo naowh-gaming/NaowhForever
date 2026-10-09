@@ -6,8 +6,9 @@ local T = ns.THEME
 local Played = ns.Shared.Played
 local Parts = ns.Shared.Parts
 
-local MINUTE, HOUR, DAY, HOURS_PER_DAY, MINUTES_PER_HOUR = 60, 3600, 86400, 24, 60
-local THOUSAND, MILLION = 1000, 1000000
+local MINUTE, HOUR = ns.QoLConstants.SECONDS_PER_MINUTE, ns.QoLConstants.SECONDS_PER_HOUR
+local DAY, HOURS_PER_DAY, MINUTES_PER_HOUR = ns.QoLConstants.SECONDS_PER_DAY, 24, 60
+local THOUSAND, MILLION = ns.QoLConstants.THOUSAND, ns.QoLConstants.MILLION
 local PERCENT = ns.QoLConstants.PERCENT
 local MIN_RATE_TIME = 60
 local MIN_WIDTH = 400
@@ -108,10 +109,13 @@ local QUEST     = { r = 0xf2 / 255, g = 0xa9 / 255, b = 0x00 / 255 }
 local RESTED    = { r = 0x1e / 255, g = 0x40 / 255, b = 0xaf / 255 }
 local QUEST_HEX, RESTED_HEX = "|cfff2a900", "|cff6b8cff"
 local OPEN_ALPHA = 0.4
-local FLAT = "Interface\\Buttons\\WHITE8X8"
-local EDGE = { r = 0, g = 0, b = 0 }
+local FLAT = ns.Shared.Style.WHITE
+local EDGE = ns.Shared.Style.BORDER_RGB
 local FILL_DARK = 0.55
 local RESTED_DARK = 0.7
+local HEIGHT_RANGE, WIDTH_RANGE = { 14, 48, 1 }, { MIN_WIDTH, 1200, 10 }
+local THIRDS = 3
+local PREVIEW_BAR_LEVEL, PREVIEW_ZONE_LEVEL = 2, 3
 
 local COLOR_KEYS = { "xpBarFillColor", "xpBarQuestColor", "xpBarOpenColor", "xpBarRestedColor", "xpBarBgColor",
     "xpBarBorderColor" }
@@ -451,7 +455,7 @@ local function FitRow(w, left, mid, right, placeMid, midIndex)
             left:SetWidth(math.max(1, centre - nm / 2 - TEXT_GAP))
             right:SetWidth(math.max(1, w - centre - nm / 2 - TEXT_GAP))
         else
-            local third = math.max(1, w / 3 - TEXT_GAP)
+            local third = math.max(1, w / THIRDS - TEXT_GAP)
             left:SetWidth(third)
             mid:SetWidth(third)
             right:SetWidth(third)
@@ -906,12 +910,12 @@ local function NewPreview(stage)
     preview.note:SetText(TEXT.PREVIEW_NOTE)
     local b = CreateFrame("Frame", nil, preview)
     preview.bar = b
-    b:SetFrameLevel(preview:GetFrameLevel() + 2)
+    b:SetFrameLevel(preview:GetFrameLevel() + PREVIEW_BAR_LEVEL)
     Look.New(b)
     preview.inside, preview.slots = {}, {}
     for i, spot in ipairs(INSIDE) do
         local zone = NewZone(b, b.inside[i], spot, INSIDE, BAR_TEXTS)
-        zone:SetFrameLevel(b:GetFrameLevel() + 3)
+        zone:SetFrameLevel(b:GetFrameLevel() + PREVIEW_ZONE_LEVEL)
         preview.inside[i] = zone
     end
     for i, slot in ipairs(SLOTS) do
@@ -1014,8 +1018,8 @@ end
 
 local ROWS = {
     Group("Size"),
-    { key = "xpBarWidth", label = "Width", slider = { ns.XPBarMinWidth, 1200, 10 } },
-    { key = "xpBarHeight", label = "Height", slider = { 14, 48, 1 } },
+    { key = "xpBarWidth", label = "Width", slider = WIDTH_RANGE },
+    { key = "xpBarHeight", label = "Height", slider = HEIGHT_RANGE },
     { label = "Reset Size & Texts", buttonText = "Reset", button = ns.ResetXPBarLayout,
       help = "Width, height and the text in each spot back to their defaults. Where the bar sits, its "
           .. "colours and its switches stay as they are." },
@@ -1066,11 +1070,11 @@ end)
 hooksecurefunc(ns, "Apply", Apply)
 hooksecurefunc(Played, "Answered", PlayedChanged)
 hooksecurefunc(Played, "LeveledUp", PlayedChanged)
-hooksecurefunc(ns, "ShowRaidReminderAnchorConfig", function()
+hooksecurefunc(ns, "ShowUnlockMode", function()
     unlocked = On() == true
     Apply()
 end)
-hooksecurefunc(ns, "HideRaidReminderAnchorConfig", function()
+hooksecurefunc(ns, "HideUnlockMode", function()
     unlocked = false
     if bar then
         bar.mover:Hide()

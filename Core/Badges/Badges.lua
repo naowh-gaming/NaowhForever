@@ -2,16 +2,18 @@
 local ns = _G.NaowhForever
 local T = ns.THEME
 local S = ns.QoLSettings
-local PATRONS = ns.FEATURE_BADGES == 1
+local PATRONS = ns.FEATURE_BADGES == ns.BADGES_LIVE
 local RENUMBERED = { [110] = 90 }
 
 local MEDIA = "Interface\\AddOns\\NaowhForever\\Core\\Badges\\Media\\"
 local CACHE_SIZE = 200
 local TOAST_HOLD = 4
+local STEP_IN, STEP_HOLD, STEP_OUT = 1, 2, 3
 local BYTE = 255
 local PARTY_OTHERS, RAID_SIZE = 4, 40
 local CHROME = { bgAlpha = 0.97, barInset = 1, barH = 2, glowGrow = 1.3, edgeAlpha = 0.9 }
-local SHINE = { bands = 2, w = 12, h = 90, alpha = 0.45, travel = 110, duration = 0.9, delay = 0.3, rest = 2.4 }
+local SHINE = { bands = 2, w = 12, h = 90, alpha = 0.45, travel = 110, duration = 0.9, delay = 0.3, rest = 2.4,
+    sublevel = 2 }
 local CARD = { name = "NaowhForeverBadgeCard", w = 360, icon = 80, glowX = 2, pulseFrom = 0.2, pulseTo = 0.75,
     pulseTime = 1.1, shrink = 0.94, grow = 1.06, brandSize = 10, titleSize = 19, playerSize = 13, aboutSize = 11,
     sinceSize = 10, titleGap = 4, aboutGap = 6, aboutW = 238, siteSize = 10, siteX = 10, siteY = 8, sinceAlpha = 0.85,
@@ -218,7 +220,7 @@ local function AddShine(frame)
     frame.mask:SetAllPoints(frame.icon)
     frame.shines = {}
     for i = 1, SHINE.bands do
-        local band = frame:CreateTexture(nil, "OVERLAY", nil, 2)
+        local band = frame:CreateTexture(nil, "OVERLAY", nil, SHINE.sublevel)
         band:SetSize(SHINE.w, SHINE.h)
         band:SetColorTexture(1, 1, 1, 1)
         band:SetBlendMode("ADD")
@@ -433,22 +435,22 @@ local function ToastLife(frame)
     inFade:SetFromAlpha(0)
     inFade:SetToAlpha(1)
     inFade:SetDuration(TOAST.fadeIn)
-    inFade:SetOrder(1)
+    inFade:SetOrder(STEP_IN)
     local inGrow = life:CreateAnimation("Scale")
     inGrow:SetScaleFrom(TOAST.growFrom, TOAST.growFrom)
     inGrow:SetScaleTo(1, 1)
     inGrow:SetDuration(TOAST.fadeIn)
-    inGrow:SetOrder(1)
+    inGrow:SetOrder(STEP_IN)
     local hold = life:CreateAnimation("Alpha")
     hold:SetFromAlpha(1)
     hold:SetToAlpha(1)
     hold:SetDuration(TOAST_HOLD)
-    hold:SetOrder(2)
+    hold:SetOrder(STEP_HOLD)
     local outFade = life:CreateAnimation("Alpha")
     outFade:SetFromAlpha(1)
     outFade:SetToAlpha(0)
     outFade:SetDuration(TOAST.fadeOut)
-    outFade:SetOrder(3)
+    outFade:SetOrder(STEP_OUT)
     return life
 end
 

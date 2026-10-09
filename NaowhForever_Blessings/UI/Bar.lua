@@ -16,7 +16,7 @@ local HOME_Y = 230
 local RESCAN_DELAY = 1
 local LANDING_WINDOW = 1
 local TICK = 3
-local NOBODY = "-"
+local NOBODY = B.NOBODY
 local CARD = B.PAGE .. ":bar"
 local CELL_NAME = "NaowhForeverBless"
 local TEXT_MOVER = "Blessings"
@@ -417,8 +417,8 @@ B.FuryName = FuryName
 events:SetScript("OnEvent", OnEvent)
 hooksecurefunc(S, "Set", OnSet)
 hooksecurefunc(ns, "Apply", Apply)
-hooksecurefunc(ns, "ShowRaidReminderAnchorConfig", OnUnlock)
-hooksecurefunc(ns, "HideRaidReminderAnchorConfig", OnLock)
+hooksecurefunc(ns, "ShowUnlockMode", OnUnlock)
+hooksecurefunc(ns, "HideUnlockMode", OnLock)
 
 local boot = CreateFrame("Frame")
 boot:RegisterEvent("PLAYER_LOGIN")

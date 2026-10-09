@@ -15,8 +15,8 @@ local BASE_SIZE, ROW_PAD, PAD, ICON_GAP, COLUMN_GAP = 12, 4, 6, 4, 8
 local ICON_CROP = ns.QoLConstants.ICON_CROP_TIGHT
 local ICON_DROP = 1
 local LOW, OUT = 0.6, 0.3
-local RAID_SIZE, PARTY_SIZE = 40, 4
-local PERMILLE, ROUND, TENTHS = 1000, 0.5, 10
+local RAID_SIZE, PARTY_SIZE = ns.QoLConstants.RAID_SIZE, ns.QoLConstants.PARTY_SIZE
+local PERMILLE, ROUND, TENTHS = ns.QoLConstants.PERMILLE, ns.QoLConstants.ROUND, ns.QoLConstants.TENTHS
 local PERCENT = ns.QoLConstants.PERCENT
 local PCT_FORMAT = "%.1f%%"
 local DEAD, OFFLINE, UNKNOWN = "Dead", "Offline", "--"
@@ -30,7 +30,10 @@ local SETTINGS_PAGE, SETTINGS_CARD = "QoL/Combat", "QoL/Combat:healerMana"
 local TEXT_IN_GROUP = "Shown while you are in a group."
 local TEXT_IN_INSTANCES = "Shown in dungeons and raids."
 local SUMMARY = "%s, %d wide"
-local STAGE_H, NOTE_Y, NOTE_SIZE, STAGE_MARGIN = 150, 10, 11, 16
+local STAGE_H = 150
+local NOTE_Y, NOTE_SIZE, STAGE_MARGIN = St.STAGE_NOTE_Y, St.STAGE_NOTE_SIZE, St.STAGE_MARGIN
+local WIDTH_RANGE = { 100, 300, 5 }
+local TEXT_RANGE = { 8, 20, 1 }
 
 local frame, unlocked, pending, rosterPending, drinkName, shareCurve
 local look = 0
@@ -430,11 +433,11 @@ end
 
 hooksecurefunc(S, "Set", OnSettingChanged)
 hooksecurefunc(ns, "Apply", function() Apply() end)
-hooksecurefunc(ns, "ShowRaidReminderAnchorConfig", function()
+hooksecurefunc(ns, "ShowUnlockMode", function()
     unlocked = On() == true
     Apply()
 end)
-hooksecurefunc(ns, "HideRaidReminderAnchorConfig", function()
+hooksecurefunc(ns, "HideUnlockMode", function()
     unlocked = false
     if frame then
         frame.mover:Hide()
@@ -496,7 +499,7 @@ Settings.Page("QoL/Combat", S):Card({
         { key = "healerManaDrinking", label = "Mark Drinking", toggle = true,
           help = "A cup beside a healer who is drinking." },
         Settings.Group("Size"),
-        { key = "healerManaWidth", label = "Width", slider = { 100, 300, 5 } },
-        Settings.Look("healerMana", { text = true, size = { 8, 20, 1 }, background = "card" }),
+        { key = "healerManaWidth", label = "Width", slider = WIDTH_RANGE },
+        Settings.Look("healerMana", { text = true, size = TEXT_RANGE, background = "card" }),
     },
 })

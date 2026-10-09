@@ -2,14 +2,16 @@
 local ns = _G.NaowhForever
 
 local PREFIX = "NFPROFILE1:"
-local PACK_PREFIX = "NSRPACK2:"
+local OLD_PACK_PREFIX = "NSRPACK2:"
 local FORMAT = 1
 local MAX_DEPTH = 12
 local MAX_VALUES = 200000
 local LIMITS = { maxChars = 1000000, maxBytes = 4194304, maxDepth = 32, maxValues = 1000000 }
 local TEXT_MAX = 64
 local LIST_TEXT_MAX = 40
-local MACRO_NAME_MAX = 16
+local MACRO_NAME_MAX, MACRO_BODY_MAX, MACRO_NOTE_MAX = 16, 255, 200
+local MAX_CONSUMABLES, MAX_AURAS, MAX_CLASS_MACROS = 500, 100, 100
+local MAX_ID = 2147483647
 local ITEM_ID_LIMIT = 2147483648
 local SAYS_MAX = 80
 local MAX_PICKS = 50
@@ -18,6 +20,8 @@ local DEFAULT_PROFILE = "Default"
 local IMPORTED_PROFILE = "Imported Profile"
 local IMPORTED_BUILD, IMPORTED_SPEC = "Imported Build", "Imported"
 local SR_KEY, MACROS_KEY = "tankReminder", "macros"
+local OLD_CONSUMABLES_KEYS = { "smartReminders", "reminders" }
+local CONSUMABLE_CATEGORIES = { food = true, flask = true, scroll = true, battle = true, guardian = true }
 local LOOK = { "themePreset", "themeColors", "uiFont", "windowScale", "skin" }
 local LOOK_TYPES = { themePreset = "string", themeColors = "table", uiFont = "string", windowScale = "number",
     skin = "string" }
@@ -31,29 +35,34 @@ local PARTS = {
       share = "Your class macros and the Macros settings." },
     { key = "library", label = "Macro Library", help = "Added next to your Library, never over it",
       share = "The macros you saved to the Forge's Library." },
-    { key = "smartReminders", label = "Smart Reminders", help = "Reminders, priorities and callouts",
-      share = "Reminders, priorities and callouts." },
+    { key = "consumables", label = "Consumables", help = "The consumables your reminders watch",
+      share = "The consumables your reminders watch." },
     { key = "builds", label = "Talent Builds", help = "Added next to your saved builds",
       share = "The talent builds you saved in the Training Planner." },
     { key = "bisLists", label = "BiS Lists", help = "Added next to your own lists, never over them",
       share = "Your BiS lists, for every class." },
-    { key = "look", label = "Look", help = "Skin, theme colours, font and window scale, for every profile",
-      share = "Skin, theme colours, font and window scale." },
+    { key = "look", label = "Look", help = "Skin, theme colors, font and window scale, for every profile",
+      share = "Skin, theme colors, font and window scale." },
 }
+local API_PARTS = { settings = true, macros = true, library = true, consumables = true, builds = true,
+    bisLists = true, look = true }
 local LIST_NOUN = { bisLists = "lists", library = "macros", builds = "builds" }
-local TEXT_PACKED = "Smart Reminders and class macros came from %s, so they are left out."
-local TEXT_PACK_LIBRARY = "Library macros copied from a pack are left out."
 local TEXT_NO_LIBRARIES = "The serializer libraries are missing from this build."
 local TEXT_TOO_BIG_PROFILE = "This profile is too big to share."
 local TEXT_TICK_PART = "Tick a part to share."
 local TEXT_NOTHING_TO_EXPORT = "There is nothing to export yet."
 local TEXT_NOT_PROFILE = "This is not a Naowh Forever profile string."
+local TEXT_NO_PACKS = "Reminder Packs are no longer supported."
 local TEXT_TOO_BIG = "This string is too big."
 local TEXT_DAMAGED = "The string is damaged: copy it again in full."
 local TEXT_NEWER = "This string is from a newer Naowh Forever: update first."
 local TEXT_MODULES = "%d modules"
 local TEXT_CLASS_MACROS = "%d class macros"
 local TEXT_SAYS = '%s, which says "%s"'
+local TEXT_NOTHING_TO_READ = "Nothing to read."
+local TEXT_IMPORT_FAILED = "Naowh Forever import failed: "
+local TEXT_SPEC_SWITCH_OFF = "Per-spec profile switching is off while every character shares '%s'; your spec "
+    .. "choices are kept if you switch it back on."
 
 local Profiles = {}
 ns.Profiles = Profiles
@@ -73,12 +82,79 @@ local function Codec()
     if LS and LD then return LS, LD end
 end
 
-local function ValidReminders(data)
-    return type(data) == "table" and ns.ValidPackData ~= nil and ns.ValidPackData(data) == true
+local function PositiveID(id)
+    return type(id) == "number" and id >= 1 and id <= MAX_ID and id == math.floor(id)
 end
 
-local function ValidClassMacros(list)
-    return ValidReminders({ utilityReminders = { classMacros = list } })
+local function ArrayOf(list, max, Valid)
+    if type(list) ~= "table" then return false end
+    local count = 0
+    for index, value in pairs(list) do
+        count = count + 1
+        if count > max or not PositiveID(index) or not Valid(value) then return false end
+    end
+    for i = 1, count do
+        if list[i] == nil then return false end
+    end
+    return true
+end
+
+local function ValidAuras(auras)
+    if auras == nil then return true end
+    return type(auras) == "table" and auras[1] ~= nil and ArrayOf(auras, MAX_AURAS, PositiveID)
+end
+
+local function ValidConsumable(entry)
+    return type(entry) == "table" and CONSUMABLE_CATEGORIES[entry.category] == true
+        and PositiveID(entry.itemID) and ValidAuras(entry.auras)
+end
+
+local function ValidConsumables(list)
+    return ArrayOf(list, MAX_CONSUMABLES, ValidConsumable)
+end
+
+local function Sized(text, min, max)
+    return type(text) == "string" and #text >= min and #text <= max
+end
+
+local function ValidMacro(entry)
+    return type(entry) == "table" and Sized(entry.name, 1, MACRO_NAME_MAX) and Sized(entry.body, 1, MACRO_BODY_MAX)
+        and (entry.icon == nil or PositiveID(entry.icon))
+        and (entry.note == nil or Sized(entry.note, 0, MACRO_NOTE_MAX))
+end
+
+local function ValidClassMacros(classMacros)
+    if type(classMacros) ~= "table" then return false end
+    for class, entries in pairs(classMacros) do
+        if type(class) ~= "string" or not class:match("^%u+$")
+            or not ArrayOf(entries, MAX_CLASS_MACROS, ValidMacro) then return false end
+    end
+    return true
+end
+
+local function CleanConsumables(list)
+    local out = {}
+    for i, entry in ipairs(list) do
+        local auras
+        if entry.auras then
+            auras = {}
+            for j, id in ipairs(entry.auras) do auras[j] = id end
+        end
+        out[i] = { category = entry.category, itemID = entry.itemID, auras = auras }
+    end
+    return out
+end
+
+local function CleanClassMacros(classMacros)
+    local out = {}
+    for class, entries in pairs(classMacros) do
+        local list = {}
+        for i, m in ipairs(entries) do
+            list[i] = { name = m.name, body = m.body, icon = m.icon, note = m.note }
+        end
+        out[class] = list
+    end
+    return out
 end
 
 local function Plain(v, depth, budget)
@@ -115,6 +191,11 @@ local function Checked(values, defaults)
     return out
 end
 
+local function Utility(sr)
+    local utility = type(sr) == "table" and sr.utilityReminders
+    return type(utility) == "table" and utility or nil
+end
+
 local function CollectSettings(root, budget)
     local settings = {}
     for key, values in pairs(root) do
@@ -125,21 +206,19 @@ local function CollectSettings(root, budget)
     return next(settings) and settings or nil
 end
 
-local function CollectMacros(root, sr, packed, budget)
+local function CollectMacros(root, utility, budget)
     local macros = {}
     if type(root.macros) == "table" then macros.module = Plain(root.macros, 1, budget) end
-    local utility = type(sr) == "table" and sr.utilityReminders
-    if not packed and type(utility) == "table" and type(utility.classMacros) == "table" then
+    if utility and type(utility.classMacros) == "table" then
         macros.classMacros = Plain(utility.classMacros, 1, budget)
     end
     return next(macros) and macros or nil
 end
 
-local function CollectReminders(sr, packed, budget)
-    if type(sr) ~= "table" or packed then return nil end
-    local copy = Plain(sr, 1, budget)
-    if copy and type(copy.utilityReminders) == "table" then copy.utilityReminders.classMacros = nil end
-    return copy
+local function CollectConsumables(utility, budget)
+    local list = utility and utility.consumables
+    if type(list) ~= "table" or not next(list) then return nil end
+    return Plain(list, 1, budget)
 end
 
 local function CollectBisLists(account, budget)
@@ -154,16 +233,14 @@ local function CollectBisLists(account, budget)
 end
 
 local function CollectLibrary(account, budget)
-    if type(account.libraryMacros) ~= "table" then return nil, false end
-    local library, copies = {}, false
+    if type(account.libraryMacros) ~= "table" then return nil end
+    local library = {}
     for class, list in pairs(account.libraryMacros) do
         local own = {}
-        for _, m in ipairs(list) do
-            if m.pack then copies = true else own[#own + 1] = Plain(m, 1, budget) end
-        end
+        for i, m in ipairs(list) do own[i] = Plain(m, 1, budget) end
         if #own > 0 then library[class] = own end
     end
-    return next(library) and library or nil, copies
+    return next(library) and library or nil
 end
 
 local function CollectBuilds(account, budget)
@@ -190,26 +267,22 @@ end
 local function Collect()
     local root, account = ns.SettingsRoot(), ns.AccountSettings()
     local budget = { n = 0 }
-    local parts, note = {}, nil
+    local utility = Utility(root.tankReminder)
+    local parts = {}
     parts.settings = CollectSettings(root, budget)
-    local sr = root.tankReminder
-    local packed = type(sr) == "table" and type(sr.importedPack) == "table"
-    if packed then note = TEXT_PACKED:format(tostring(sr.importedPack.name)) end
-    parts.macros = CollectMacros(root, sr, packed, budget)
-    parts.smartReminders = CollectReminders(sr, packed, budget)
+    parts.macros = CollectMacros(root, utility, budget)
+    parts.consumables = CollectConsumables(utility, budget)
     parts.bisLists = CollectBisLists(account, budget)
-    local copies
-    parts.library, copies = CollectLibrary(account, budget)
-    if copies then note = (note and note .. "\n" or "") .. TEXT_PACK_LIBRARY end
+    parts.library = CollectLibrary(account, budget)
     parts.builds = CollectBuilds(account, budget)
     parts.look = CollectLook(account, budget)
-    return parts, note, budget.over
+    return parts, budget.over
 end
 
 function ns.ExportProfile(wanted)
     local LS, LD = Codec()
     if not LS then return nil, TEXT_NO_LIBRARIES end
-    local all, note, over = Collect()
+    local all, over = Collect()
     if over then return nil, TEXT_TOO_BIG_PROFILE end
     local parts = {}
     for key, data in pairs(all) do
@@ -222,24 +295,33 @@ function ns.ExportProfile(wanted)
         format = FORMAT, name = ns.ActiveProfileName(), author = UnitName("player"),
         made = date("%Y-%m-%d"), build = ns.CODE_BUILD, parts = parts,
     }
-    return PREFIX .. LD:EncodeForPrint(LD:CompressDeflate(LS:Serialize(Swap(payload, 0, ZERO)))), note
+    return PREFIX .. LD:EncodeForPrint(LD:CompressDeflate(LS:Serialize(Swap(payload, 0, ZERO))))
+end
+
+local function OldConsumables(parts)
+    for _, key in ipairs(OLD_CONSUMABLES_KEYS) do
+        local utility = Utility(parts[key])
+        parts[key] = nil
+        if parts.consumables == nil and utility then parts.consumables = utility.consumables end
+    end
 end
 
 local function CleanParts(payload)
     local Text, parts = ns.Shared.Decode.Text, payload.parts
     payload.name, payload.author = Text(payload.name, TEXT_MAX), Text(payload.author, TEXT_MAX)
     payload.made = Text(payload.made, TEXT_MAX)
-    if parts.smartReminders ~= nil and not ValidReminders(parts.smartReminders) then parts.smartReminders = nil end
+    OldConsumables(parts)
+    parts.consumables = ValidConsumables(parts.consumables) and CleanConsumables(parts.consumables) or nil
     local macros = parts.macros
-    if type(macros) == "table" and macros.classMacros ~= nil and not ValidClassMacros(macros.classMacros) then
-        macros.classMacros = nil
+    if type(macros) == "table" and macros.classMacros ~= nil then
+        macros.classMacros = ValidClassMacros(macros.classMacros) and CleanClassMacros(macros.classMacros) or nil
     end
 end
 
 function ns.DecodeProfile(text)
     text = (text or ""):gsub("%s", "")
     if text == "" then return nil end
-    if text:sub(1, #PACK_PREFIX) == PACK_PREFIX then return nil, "pack" end
+    if text:sub(1, #OLD_PACK_PREFIX) == OLD_PACK_PREFIX then return nil, TEXT_NO_PACKS end
     if text:sub(1, #PREFIX) ~= PREFIX then return nil, TEXT_NOT_PROFILE end
     local payload, why = ns.Shared.Decode.String(text:sub(#PREFIX + 1), LIMITS)
     if why == "missing" then return nil, TEXT_NO_LIBRARIES end
@@ -533,12 +615,17 @@ local function ImportSettings(root, settings, wanted)
     end
 end
 
+local function OwnUtility(root)
+    if type(root.tankReminder) ~= "table" then root.tankReminder = {} end
+    local sr = root.tankReminder
+    if type(sr.utilityReminders) ~= "table" then sr.utilityReminders = {} end
+    return sr.utilityReminders
+end
+
 local function ImportMacros(root, macros)
     if type(macros.module) == "table" then root.macros = Checked(macros.module, ns.ModuleDefaults("macros") or {}) end
-    if type(macros.classMacros) == "table" and ValidClassMacros(macros.classMacros) then
-        local sr = root.tankReminder
-        if type(sr.utilityReminders) ~= "table" then sr.utilityReminders = {} end
-        sr.utilityReminders.classMacros = macros.classMacros
+    if ValidClassMacros(macros.classMacros) then
+        OwnUtility(root).classMacros = CleanClassMacros(macros.classMacros)
     end
 end
 
@@ -566,9 +653,8 @@ function ns.ImportProfile(payload, wanted, name, overwrite)
     local root
     name, root = ImportTarget(payload, name, overwrite)
     if wanted.settings and type(parts.settings) == "table" then ImportSettings(root, parts.settings, wanted) end
-    if wanted.smartReminders and ValidReminders(parts.smartReminders) then
-        root.tankReminder = parts.smartReminders
-        root.tankReminder.importedPack = nil
+    if wanted.consumables and ValidConsumables(parts.consumables) then
+        OwnUtility(root).consumables = CleanConsumables(parts.consumables)
     end
     if wanted.macros and type(parts.macros) == "table" then ImportMacros(root, parts.macros) end
     local added = { bisLists = 0, library = 0, builds = 0 }
@@ -582,7 +668,30 @@ function ns.ImportProfile(payload, wanted, name, overwrite)
     return name, added
 end
 
+local function CurrentSpecEntry()
+    local spec = ns.CurrentSpec and ns.CurrentSpec()
+    if not spec or spec <= 0 then return nil end
+    return tostring(spec), ns.SpecProfileMap()[tostring(spec)]
+end
+
+local API = {}
+_G.NaowhForever_API = API
+
+function API:ImportProfile(str, profileName)
+    local specKey, specWas = CurrentSpecEntry()
+    local payload, why = ns.DecodeProfile(str)
+    if not payload then
+        why = why or TEXT_NOTHING_TO_READ
+        ns.Print(TEXT_IMPORT_FAILED .. tostring(why))
+        return false, why
+    end
+    local landed = ns.ImportProfile(payload, API_PARTS, profileName, true)
+    local set, autoOff = ns.SetAccountProfile(landed)
+    if set and specKey then ns.SpecProfileMap()[specKey] = specWas end
+    if set and autoOff then ns.Print(TEXT_SPEC_SWITCH_OFF:format(landed)) end
+    return true, landed
+end
+
 Profiles.PARTS = PARTS
-Profiles.PACK_PREFIX = PACK_PREFIX
 Profiles.Collect = Collect
 Profiles.FreeName = FreeProfileName

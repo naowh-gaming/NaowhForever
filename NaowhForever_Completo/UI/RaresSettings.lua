@@ -26,8 +26,9 @@ local STATES = {
 local ALERT_TIME = { 5, 60, 1 }
 local ALERT_SCALE = { 50, 200, 5 }
 local FONT_SIZE = { 10, 20, 1 }
-local PIN_SIZE = { 12, 32, 1 }
-local PERCENT_SCALE = 0.01
+local PIN_SIZE = ns.Shared.Style.PIN_SIZE_RANGE
+local PERCENT_SCALE = ns.Shared.Style.PERCENT_SCALE
+local ORDER_RARES, ORDER_ALERT, ORDER_PINS = 10, 20, 30
 local TEXT_OFF = "Turn on Completo"
 local TEXT_SOUND_OFF = "Needs Play a Sound"
 local TEXT_PROGRESS = "%d of %d rares killed"
@@ -135,7 +136,7 @@ page:Window({
 })
 
 page:Card({
-    id = "rares", name = "Rares", order = 10,
+    id = "rares", name = "Rares", order = ORDER_RARES,
     help = "What a zone's page in the Completo window lists. Kills count from when Completo is on: "
         .. "Shift-click a rare there to tick off one you killed before.",
     rows = {
@@ -145,7 +146,7 @@ page:Card({
 })
 
 page:Card({
-    id = "rareAlert", name = "Rare Alerts", order = 20, switch = "rareAlert",
+    id = "rareAlert", name = "Rare Alerts", order = ORDER_ALERT, switch = "rareAlert",
     help = "A warning when a rare is near you: when its nameplate comes up, you mouse over it or target "
         .. "it. A card with its portrait: right-click it to close it, and its pin sets a waypoint to the "
         .. "rare. Move it in the HUD Editor.",
@@ -181,7 +182,7 @@ page:Card({
 })
 
 page:Card({
-    id = "rarePins", name = "Map Pins", order = 30, switch = "rarePins",
+    id = "rarePins", name = "Map Pins", order = ORDER_PINS, switch = "rarePins",
     help = "A star on the world map for every rare you have not killed, where it is most likely to be. "
         .. "Hover one for the rare and its drops, its other spawn spots and, if it patrols, its way; "
         .. "click it for a waypoint, right-click it to keep its spots and way shown.",

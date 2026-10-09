@@ -148,7 +148,7 @@ end)
 -- What a rank adds, from two ranks' descriptions as the client writes them.
 local upgrades = { NaowhForever = { Training = {} } }
 upgrades._G = upgrades
-Load({ DIR .. "/Upgrades.lua" }, setmetatable(upgrades, { __index = _G }))
+Load({ DIR .. "/Constants.lua", DIR .. "/Upgrades.lua" }, setmetatable(upgrades, { __index = _G }))
 local compare = upgrades.NaowhForever.Training.Compare
 local function Upgrade(old, new)
     local up = compare(old, new)

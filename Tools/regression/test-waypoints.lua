@@ -71,6 +71,7 @@ for _, key in ipairs({ "Icon", "Arrow", "DistanceText", "IconBorder" }) do gameM
 local function Theme() return { r = 0, g = 0.57, b = 0.93 } end
 local routeInfo   -- { title, at, n, next } while a route is followed
 local ns = {
+    MEDIA = dofile("Tools/regression/core_media.lua"),
     QoLConstants = dofile("Tools/regression/qol_constants.lua"),
     QoLSettings = S,
     WAYPOINT_HOLD = 4,
@@ -83,14 +84,15 @@ local ns = {
         userWaypoint = nil
         cleared, superCleared = cleared + 1, superCleared + 1
     end,
-    Apply = NOOP, ShowRaidReminderAnchorConfig = NOOP, HideRaidReminderAnchorConfig = NOOP,
+    Apply = NOOP, ShowUnlockMode = NOOP, HideUnlockMode = NOOP,
     UI = {
         AttachMover = function(frame) return NewFrame("Mover", frame) end,
         _PlayLSMSound = function(path) if path then played[#played + 1] = path end end,
         SoundPathFor = function(key) if key ~= "none" then return "sound:" .. key end end,
     },
     Shared = {
-        Style = { ROUND = "round", PLACE_DOT = " . " },
+        Style = setmetatable({ ROUND = "round", PLACE_DOT = " . " },
+            { __index = dofile("Tools/regression/shared_style.lua") }),
         Parts = {
             HudBackdrop = NOOP,
             HudText = function(fs) return fs end,

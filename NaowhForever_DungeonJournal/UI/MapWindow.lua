@@ -36,7 +36,7 @@ local SCROLL_GAP = 16
 local UNDER_MAP_GAP = 6
 local BESIDE_GAP = 4
 local OVER_INSET = 40
-local OPEN_TURN = -math.pi / 2
+local OPEN_TURN = St.OPEN_TURN
 local MOVE_BUTTON = "LeftButton"
 
 local TEXT_COPY = "Copy"

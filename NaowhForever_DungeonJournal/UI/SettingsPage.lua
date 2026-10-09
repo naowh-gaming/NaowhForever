@@ -7,13 +7,11 @@ local Loot = J.Loot
 local Quests = J.Quests
 local Settings = ns.Shared and ns.Shared.Settings
 
-local OPACITY_MIN = J.Style.OPACITY_MIN
-local PERCENT_MAX, PERCENT_STEP = 100, 5
-local SCALE_MIN, SCALE_MAX = 50, 150
+local OPACITY_RANGE, SCALE_RANGE = J.Style.OPACITY_RANGE, J.Style.SCALE_RANGE
 local ICON_MIN, ICON_MAX, ICON_STEP = 50, 200, 10
-local TO_FRACTION = 0.01
-local PERCENT = 100
-local ROUND_HALF = 0.5
+local TO_FRACTION = J.Style.PERCENT_SCALE
+local PERCENT = J.C.PERCENT
+local ROUND_HALF = J.C.ROUND_HALF
 local ORDER_FIRST, ORDER_SECOND, ORDER_THIRD, ORDER_FOURTH, ORDER_LAST = 10, 15, 20, 30, 90
 
 local TEXT_JOURNAL_OFF = "Turn on the Dungeon Journal"
@@ -169,7 +167,7 @@ local function OnSettingChanged(key)
 end
 
 local function OpacityRow(key, help)
-    return { key = key, label = "Window Opacity", slider = { OPACITY_MIN, PERCENT_MAX, PERCENT_STEP }, unit = "%",
+    return { key = key, label = "Window Opacity", slider = OPACITY_RANGE, unit = "%",
         scale = TO_FRACTION, help = help }
 end
 
@@ -227,7 +225,7 @@ local function DeclareTracker()
         summary = OpacitySummary("trackerAlpha"),
         rows = {
             OpacityRow("trackerAlpha", "How solid the Dungeon Quest Tracker is."),
-            { key = "trackerScale", label = "Window Scale", slider = { SCALE_MIN, SCALE_MAX, PERCENT_STEP }, unit = "%",
+            { key = "trackerScale", label = "Window Scale", slider = SCALE_RANGE, unit = "%",
               scale = TO_FRACTION, help = "How big the Dungeon Quest Tracker is." },
         },
     })

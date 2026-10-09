@@ -9,9 +9,9 @@ local D = ns.CompletoRareData
 
 local NAME, LOW, HIGH, ELITE, REACT_A, REACT_H, MAP, SPOTS, TRAIL = 1, 2, 3, 4, 5, 6, 7, 8, 9
 local FRIENDLY = 1
-local PERCENT = 100
+local PERCENT = C.PERCENT
 local TOOLTIP_ICON = 14
-local ROUND_HALF = 0.5
+local ROUND_HALF = C.ROUND_HALF
 local GOLD_RGB = { r = 1, g = 0.82, b = 0 }
 local WHITE = { r = 1, g = 1, b = 1 }
 local KILLS_STORE, DROPS_STORE = "completoRareKills", "completoRareDrops"

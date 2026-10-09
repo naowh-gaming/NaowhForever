@@ -77,8 +77,7 @@ end
 
 local function ProfileConsumables(text, entries)
     local payload = ns.DecodeProfile(text)
-    local sr = payload and payload.parts.smartReminders
-    local list = sr and type(sr.utilityReminders) == "table" and sr.utilityReminders.consumables
+    local list = payload and payload.parts.consumables
     if type(list) ~= "table" then return entries end
     for _, entry in ipairs(list) do entries[#entries + 1] = entry end
     return entries

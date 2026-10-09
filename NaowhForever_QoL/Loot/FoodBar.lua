@@ -6,7 +6,7 @@ local S = ns.QoLSettings
 
 local ICON_INSET = 1
 local COUNT_SIZE, COUNT_INSET = 12, 2
-local BLACK = { r = 0, g = 0, b = 0 }
+local BLACK = ns.Shared.Style.BORDER_RGB
 local DEFAULT_Y = -210
 local BAR_BUTTONS = 2
 local MOVER_LABEL = "Food & Drink"
@@ -17,6 +17,8 @@ local SUMMARY = "%d px buttons"
 local EMPTY = { { icon = 133971, text = "No food in your bags" },
     { icon = 132794, text = "No drink in your bags" } }
 local GAP = 4
+local STAGE_H = 100
+local ICON_RANGE = { 20, 70, 1 }
 local BUTTON_NAMES = { "NaowhForeverFoodBarFood", "NaowhForeverFoodBarDrink" }
 local MOVED = { "foodBar", "foodBarSize", "foodBarPos" }
 
@@ -163,8 +165,8 @@ events:SetScript("OnEvent", OnEvent)
 events:RegisterEvent("PLAYER_ENTERING_WORLD")
 hooksecurefunc(S, "Set", OnSettingChanged)
 hooksecurefunc(ns, "Apply", Apply)
-hooksecurefunc(ns, "ShowRaidReminderAnchorConfig", function() moving = true; Apply() end)
-hooksecurefunc(ns, "HideRaidReminderAnchorConfig", function() moving = false; Apply() end)
+hooksecurefunc(ns, "ShowUnlockMode", function() moving = true; Apply() end)
+hooksecurefunc(ns, "HideUnlockMode", function() moving = false; Apply() end)
 
 local Settings = ns.Shared and ns.Shared.Settings
 if not Settings then return end
@@ -204,9 +206,9 @@ Settings.Page("QoL/Loot & Items", S):Card({
     help = "Buttons for the best food and drink in your bags, conjured first; food only if you have "
         .. "no mana. Move it in the HUD Editor.",
     summary = Summary,
-    studio = { height = 100, states = STATES, new = NewPreview, paint = PaintPreview },
+    studio = { height = STAGE_H, states = STATES, new = NewPreview, paint = PaintPreview },
     rows = {
-        { key = "foodBarSize", label = "Icon Size", slider = { 20, 70, 1 },
+        { key = "foodBarSize", label = "Icon Size", slider = ICON_RANGE,
           help = "How big each button is." },
         Group("Key Bindings"),
         { label = "Use Best Food", binding = "CLICK NaowhForeverFoodBarFood:LeftButton",

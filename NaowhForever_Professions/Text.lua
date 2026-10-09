@@ -5,6 +5,7 @@ local P = ns.Professions
 local C = P.C
 
 local GOLD, SILVER = C.COPPER_PER_GOLD, C.COPPER_PER_SILVER
+local ROUND = C.ROUND
 local RGB_MAX = 255
 local HEX = "|cff%02x%02x%02x"
 local ALIGNED_GOLD, ALIGNED_SILVER, ALIGNED_COPPER = "%s%dg %02ds %02dc", "%s%ds %02dc", "%s%dc"
@@ -17,7 +18,7 @@ function Text.Hex(c)
 end
 
 function Text.Money(copper, plus)
-    local left = math.floor(math.abs(copper) + 0.5)
+    local left = math.floor(math.abs(copper) + ROUND)
     local g, s, c = math.floor(left / GOLD), math.floor(left % GOLD / SILVER), left % SILVER
     local sign = copper < 0 and "-" or plus and "+" or ""
     if g > 0 then return ALIGNED_GOLD:format(sign, g, s, c) end
@@ -26,7 +27,7 @@ function Text.Money(copper, plus)
 end
 
 function Text.Short(copper)
-    copper = math.floor((copper or 0) + 0.5)
+    copper = math.floor((copper or 0) + ROUND)
     local g, s, c = math.floor(copper / GOLD), math.floor(copper % GOLD / SILVER), copper % SILVER
     if g > 0 then
         if s > 0 then

@@ -7,7 +7,7 @@ local KINDS = { available = true, unavailable = true, used = true, header = true
 local ICON_MIN_ID = 1000
 local SECONDS_PER_DAY = 86400
 local BOUGHT_KEEP = 30 * SECONDS_PER_DAY
-local SKILL_LINE_INDEX = 7
+local SKILL_LINE_INDEX = P.C.SKILL_LINE_INDEX
 local TEXT_UNKNOWN = "?"
 
 local NONE = {}

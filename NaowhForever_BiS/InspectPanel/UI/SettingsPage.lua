@@ -7,7 +7,8 @@ local S = ns.QoLSettings
 local Settings = ns.Shared and ns.Shared.Settings
 if not Settings then return end
 
-local BADGES_LIVE = 1
+local BADGES_LIVE = ns.BADGES_LIVE
+local ORDER_INSPECT = 15
 local TEXT_THEIRS_IN_USE = "EllesmereUI's inspect window is in use: switch this off and on for this one"
 local TEXT_TAKES_OVER = "Takes over from EllesmereUI's inspect window, after a reload"
 local TEXT_BADGE_AND_SCORE = "With their badge and Naowh Score"
@@ -39,7 +40,7 @@ if ns.FEATURE_BADGES == BADGES_LIVE then
 end
 
 Settings.Page("BiS List/Character", S):Card({
-    id = "inspectPanel", name = "Inspect Panel", order = 15, switch = "inspectPanel", store = S,
+    id = "inspectPanel", name = "Inspect Panel", order = ORDER_INSPECT, switch = "inspectPanel", store = S,
     help = "The inspect window in the BiS List's look, with their score, gear check, talents and history.",
     summary = Summary,
     rows = rows,

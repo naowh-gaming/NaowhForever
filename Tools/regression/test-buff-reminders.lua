@@ -10,7 +10,7 @@ local function Read(path)
 end
 local MODULE = {}
 for i, path in ipairs({ "Core/Features.lua", "NaowhForever_AuraBuffs/AuraBuffs.lua",
-    "NaowhForever_AuraBuffs/Data/BuffReminders.lua", "NaowhForever_AuraBuffs/BuffReminders.lua",
+    "NaowhForever_AuraBuffs/Constants.lua", "NaowhForever_AuraBuffs/Data/BuffReminders.lua", "NaowhForever_AuraBuffs/BuffReminders.lua",
     "NaowhForever_AuraBuffs/View/Style.lua", "NaowhForever_AuraBuffs/View/BuffCell.lua",
     "NaowhForever_AuraBuffs/UI/BuffMenu.lua", "NaowhForever_AuraBuffs/UI/BuffReminders.lua" }) do
     MODULE[i] = Read(path)
@@ -94,11 +94,11 @@ local function Fixture(opts)
     function S.Raw(k) return settings[k] end
     function S.Default(k) return defaults[k] end
 
-    local ns = {
+    local ns = { MEDIA = dofile("Tools/regression/core_media.lua"),
         AuraBuffSettings = S,
         Apply = function() end,
-        ShowRaidReminderAnchorConfig = function() end,
-        HideRaidReminderAnchorConfig = function() end,
+        ShowUnlockMode = function() end,
+        HideUnlockMode = function() end,
         Border = function() end, THEME = { bg = {} },
         Solid = function() return Recorder() end,
         Font = function()
@@ -107,7 +107,7 @@ local function Fixture(opts)
             return fs
         end,
         UI = { AttachMover = function() return NewFrame() end, ModuleSettings = function() return S end },
-        Shared = { Parts = { HUD_OUTLINES = { { NONE = "None", [""] = "Shadow", OUTLINE = "Outline" }, { "NONE", "", "OUTLINE" } },
+        Shared = { Style = dofile("Tools/regression/shared_style.lua"), Parts = { HUD_OUTLINES = { { NONE = "None", [""] = "Shadow", OUTLINE = "Outline" }, { "NONE", "", "OUTLINE" } },
             HudFont = function(fs, font, size, outline) fs.font, fs.size, fs.outline = font, size, outline end } },
     }
 

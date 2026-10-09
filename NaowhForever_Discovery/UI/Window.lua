@@ -13,7 +13,7 @@ local Parts = Shared.Parts
 
 local WIDTH, HEIGHT = 760, 720
 local CARD = 6
-local PERCENT = 100
+local PERCENT = C.PERCENT
 local ROUND_HALF = 0.5
 local TABS_W = 260
 local TABS_TOP_GAP = 4

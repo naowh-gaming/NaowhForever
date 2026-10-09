@@ -10,6 +10,7 @@ local WIDTH, ROOM = 300, 10
 local FONT_SIZE = 22
 local STACK_ORDER = 2
 local SAMPLE_POINTS = 2
+local TEXT_RANGE = { 10, 48, 1 }
 
 local TEXT_ONE = "1 Unspent Talent Point"
 local TEXT_MANY = "%d Unspent Talent Points"
@@ -90,11 +91,11 @@ hooksecurefunc(S, "Set", function(key)
     if key == "enabled" or key:find("^talentPoints") then Apply() end
 end)
 hooksecurefunc(ns, "Apply", Apply)
-hooksecurefunc(ns, "ShowRaidReminderAnchorConfig", function()
+hooksecurefunc(ns, "ShowUnlockMode", function()
     unlocked = S.Get("enabled") == true
     Apply()
 end)
-hooksecurefunc(ns, "HideRaidReminderAnchorConfig", function()
+hooksecurefunc(ns, "HideUnlockMode", function()
     unlocked = false
     Apply()
 end)
@@ -110,7 +111,7 @@ Settings.Page("QoL/Questing & Group", S):Card({
     help = "Text on screen while you have talent points to spend. Hidden in combat. Move it in the "
         .. "HUD Editor.",
     rows = {
-        Settings.Look("talentPoints", { text = true, size = { 10, 48, 1 }, background = "card" }),
+        Settings.Look("talentPoints", { text = true, size = TEXT_RANGE, background = "card" }),
         Settings.Group("Colours"),
         { key = "talentPointsTheme", label = "Apply Theme to Text Colour", toggle = true,
           help = "The text in the theme's accent colour instead of gold." },

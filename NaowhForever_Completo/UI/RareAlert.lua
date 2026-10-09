@@ -13,7 +13,7 @@ local Card = Completo.AlertCard
 local AGAIN_AFTER = 300
 local FADE = 0.3
 local DEFAULT_Y = 260
-local PERCENT = 100
+local PERCENT = C.PERCENT
 local STRATA = "HIGH"
 local HOLDER_NAME, CARD_NAME = "NaowhForeverRareAlertHolder", "NaowhForeverRareAlert"
 local MOVER_LABEL, MOVER_PAGE, MOVER_FEATURE = "Rare Alert", "Completo/Rares", "Completo/Rares:rareAlert"
@@ -343,8 +343,8 @@ events:SetScript("OnEvent", OnEvent)
 R.OnChange(OnRareChanged)
 hooksecurefunc(S, "Set", OnSet)
 hooksecurefunc(ns, "Apply", Apply)
-hooksecurefunc(ns, "ShowRaidReminderAnchorConfig", ShowMover)
-hooksecurefunc(ns, "HideRaidReminderAnchorConfig", HideMover)
+hooksecurefunc(ns, "ShowUnlockMode", ShowMover)
+hooksecurefunc(ns, "HideUnlockMode", HideMover)
 
 local boot = CreateFrame("Frame")
 boot:RegisterEvent("PLAYER_LOGIN")

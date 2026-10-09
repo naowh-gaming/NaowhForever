@@ -14,7 +14,7 @@ local WELCOMING_CAMPFIRE, WELCOMING_CAMPFIRE_CRAFT = D.WELCOMING_CAMPFIRE, D.WEL
 local TIME_STEPS = St.CAMP_TIME_STEPS
 local REFRESH_NOW = TIME_STEPS[2][1]
 local SIT_PREFIX = St.CAMP_SIT_PREFIX
-local SECONDS = 60
+local SECONDS = A.C.SECONDS
 local TIMER_PAD = 0.1
 local UNLOCK_DURATION, UNLOCK_LEFT = 3600, 2400
 local DEFAULT_X, DEFAULT_Y = -260, 120
@@ -553,8 +553,8 @@ Camp.Refresh = Refresh
 events:SetScript("OnEvent", Refresh)
 hooksecurefunc(S, "Set", OnSet)
 hooksecurefunc(ns, "Apply", Apply)
-hooksecurefunc(ns, "ShowRaidReminderAnchorConfig", OnUnlock)
-hooksecurefunc(ns, "HideRaidReminderAnchorConfig", OnLock)
+hooksecurefunc(ns, "ShowUnlockMode", OnUnlock)
+hooksecurefunc(ns, "HideUnlockMode", OnLock)
 
 local boot = CreateFrame("Frame")
 boot:RegisterEvent("PLAYER_LOGIN")

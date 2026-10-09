@@ -42,14 +42,14 @@ repos:
         language: system
         types: [lua]
 
-      # Locales and Verify.lua are rewritten by the release packager and stay LF.
+      # Locales are rewritten by the release packager and stay LF.
       - id: addon-crlf
         name: addon files use CRLF
         language: pygrep
         entry: '(?<!\r)\n'
         args: [--multiline]
         files: \.(lua|toc|xml)$
-        exclude: ^(Tools|Core/Locales)/|^Core/Profiles/Verify\.lua$
+        exclude: ^(Tools|Core/Locales)/
 
       # Translations and the generated BiS source names are the exceptions.
       - id: addon-ascii

@@ -50,7 +50,9 @@ local ROUND = ns.QoLConstants.ROUND
 local COLOR_MAX = 255
 local FULL_SLACK = 0.1
 local DEFAULT_Y = 180
-local PLAIN_BAG = 0
+local PLAIN_BAG = ns.QoLConstants.PLAIN_BAG
+local COUNT_RANGE, FREE_BELOW_RANGE, ICON_RANGE = { 1, 8, 1 }, { 0, 30, 1 }, { 24, 56, 1 }
+local TEXT_RANGE = St.HUD_TEXT_RANGE
 local MOVER_LABEL = "Bag Space"
 local SETTINGS_PAGE, SETTINGS_CARD = "QoL/Loot & Items", "QoL/Loot & Items:bagSpace"
 local ITEM_CLASS = { CONSUMABLE = 0, REAGENT = 5, PROJECTILE = 6, QUIVER = 11, QUEST = 12, KEY = 13 }
@@ -878,11 +880,11 @@ end
 
 hooksecurefunc(S, "Set", OnSettingChanged)
 hooksecurefunc(ns, "Apply", Apply)
-hooksecurefunc(ns, "ShowRaidReminderAnchorConfig", function()
+hooksecurefunc(ns, "ShowUnlockMode", function()
     unlocked = On() == true
     Apply()
 end)
-hooksecurefunc(ns, "HideRaidReminderAnchorConfig", function()
+hooksecurefunc(ns, "HideUnlockMode", function()
     unlocked = false
     Apply()
 end)
@@ -994,7 +996,7 @@ Settings.Page("QoL/Loot & Items", S):Card({
     studio = { height = STAGE_H, states = STATES, new = NewPreview, paint = PaintPreview },
     rows = {
         Group("Offered"),
-        { key = "bagSpaceCount", label = "Items Shown", slider = { 1, 8, 1 } },
+        { key = "bagSpaceCount", label = "Items Shown", slider = COUNT_RANGE },
         { key = "bagSpaceMaxQuality", label = "Highest Quality Offered", choice = QUALITY,
           help = "Items above this quality are never offered." },
         { key = "bagSpaceJunkFirst", label = "Grey Items First", toggle = true,
@@ -1011,7 +1013,7 @@ Settings.Page("QoL/Loot & Items", S):Card({
           help = "Items Bag Space never offers. Search for one, drag one in, or middle-click an icon "
               .. "on the row." },
         Group("Showing"),
-        { key = "bagSpaceFreeBelow", label = "Only With Free Slots Below", slider = { 0, 30, 1 },
+        { key = "bagSpaceFreeBelow", label = "Only With Free Slots Below", slider = FREE_BELOW_RANGE,
           help = "Shows the row only once your bags are this full. 0 shows it all the time." },
         { key = "bagSpaceOnFull", label = "Show When Bags Are Full", toggle = true,
           help = "An \"Inventory is full\" error brings the row up for 20 seconds, even with more free "
@@ -1034,9 +1036,9 @@ Settings.Page("QoL/Loot & Items", S):Card({
           help = "The Ctrl-click line, and Click to sell while a vendor is open." },
         { key = "bagSpaceTipIgnore", label = "Tooltip: Ignore Hint", toggle = true, help = "The Middle-click line." },
         Group("Size"),
-        { key = "bagSpaceSize", label = "Icon Size", slider = { 24, 56, 1 } },
+        { key = "bagSpaceSize", label = "Icon Size", slider = ICON_RANGE },
         { key = "bagSpaceGrow", label = "Direction", choice = DIRECTION },
-        Settings.Look("bagSpace", { text = true, size = { 8, 24, 1 }, background = "card" }),
+        Settings.Look("bagSpace", { text = true, size = TEXT_RANGE, background = "card" }),
         Group("Visibility"),
         { key = "bagSpaceHideCombat", label = "Hide in Combat", toggle = true },
     },

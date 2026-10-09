@@ -1,4 +1,4 @@
--- Window.lua: the AuraBuffs window (/nfbuffs): the consumables the reminders watch, and the debuff sounds.
+-- Window.lua: the AuraBuffs window (/nfbuffs): the consumables the reminders watch.
 local ns = _G.NaowhForever
 
 local A = ns.AuraBuffs
@@ -15,17 +15,16 @@ local TABS_DROP = 8
 local TOP_DROP = 4
 local SCROLL_GAP = 4
 local TOP_Y = -6
-local PERCENT, ROUND = 100, 0.5
+local PERCENT, ROUND = A.C.PERCENT, A.C.ROUND
 local WINDOW_KEY = "auraBuffsWindow"
 
 local TEXT_TITLE = "AuraBuffs"
-local TEXT_TITLE_TIP = "The consumables your reminders watch, and the debuffs that play a sound."
+local TEXT_TITLE_TIP = "The consumables your reminders watch."
 
 local TABS = {
     { key = "consumables", label = "Consumables", tip = "The items the Buffs & Consumables reminders watch." },
-    { key = "debuffs", label = "Debuff Sounds", tip = "Poisons, diseases and curses that play a sound when they land on you." },
 }
-local BUILD = { consumables = "BuildAuraBuffConsumables", debuffs = "BuildPoisonDispelPage" }
+local BUILD = { consumables = "BuildAuraBuffConsumables" }
 
 local window, scroll
 local contents = {}

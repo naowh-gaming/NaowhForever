@@ -6,8 +6,9 @@ local S = Training.Settings
 local Style = Training.Style
 local Settings = ns.Shared.Settings
 
-local PERCENT = 100
-local OPACITY_MAX, OPACITY_STEP = 100, 5
+local PERCENT, ROUND = Training.C.PERCENT, Training.C.ROUND
+local OPACITY_RANGE, PERCENT_SCALE = Style.OPACITY_RANGE, Style.PERCENT_SCALE
+local ORDER_ON_THE_WAY, ORDER_WINDOW = 10, 20
 local TEXT_OFF = "Turn on the Training Planner"
 local TEXT_OPEN = "Open Training Planner"
 local TEXT_TRAIN_NOW = "%d %s to train now, %s"
@@ -61,7 +62,7 @@ local function OnTheWaySummary(store)
 end
 
 local function WindowSummary(store)
-    return TEXT_WINDOW:format(math.floor((store.Get("windowAlpha") or 1) * PERCENT + 0.5),
+    return TEXT_WINDOW:format(math.floor((store.Get("windowAlpha") or 1) * PERCENT + ROUND),
         store.Get("miniShown") and TEXT_MINI_SHOWN or "")
 end
 
@@ -75,7 +76,7 @@ page:Window({
 })
 
 page:Card({
-    id = "onTheWay", name = "On the Way", order = 10,
+    id = "onTheWay", name = "On the Way", order = ORDER_ON_THE_WAY,
     help = "The Training Planner's help while you level: a toast when you level up with spells to train, "
         .. "and a panel beside your class trainer.",
     summary = OnTheWaySummary,
@@ -93,7 +94,7 @@ page:Card({
 })
 
 page:Card({
-    id = "window", name = "Window", order = 20,
+    id = "window", name = "Window", order = ORDER_WINDOW,
     help = "The planner's own window, and a mini bar to leave up while you level.",
     summary = WindowSummary,
     rows = {
@@ -101,7 +102,7 @@ page:Card({
           why = TEXT_OFF,
           help = "A small bar with your next trainer visit and your gold, to leave up while you level. Move it "
               .. "by dragging." },
-        { key = "windowAlpha", label = "Window Opacity", slider = { Style.OPACITY_MIN, OPACITY_MAX, OPACITY_STEP },
-          unit = "%", scale = 1 / PERCENT, help = "How solid the planner's window is, in percent. Also on its title bar." },
+        { key = "windowAlpha", label = "Window Opacity", slider = OPACITY_RANGE,
+          unit = "%", scale = PERCENT_SCALE, help = "How solid the planner's window is, in percent. Also on its title bar." },
     },
 })

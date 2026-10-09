@@ -21,7 +21,7 @@ local CHROME_ALPHA = 0.7
 local RULE_DROP = 3
 local RULE_H = 1
 
-local MEDIA = "Interface\\AddOns\\NaowhForever\\Core\\Media\\"
+local MEDIA = ns.MEDIA
 local RXP_ART = "Interface\\AddOns\\NaowhForever\\Core\\Integrations\\RestedXP\\Media\\"
 local FRAME = RXP_ART .. "rxp_frame.tga"
 local ARROW_IMAGES = {

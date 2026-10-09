@@ -174,6 +174,7 @@ local function Boot(account, settings, who)
     core("NaowhForever")
     local ns = env.NaowhForever
     ns.ApplyThemeColors()
+    ns.QoLConstants = dofile("Tools/regression/qol_constants.lua")
     Load({ "Shared/Shared.lua", "Shared/Style.lua", "Shared/UI/Parts.lua", "Shared/UI/Marks.lua", "Shared/UI/Text.lua", "Shared/UI/Hud.lua", "Shared/UI/Timer.lua", "Shared/UI/Share.lua", "Shared/UI/Panels.lua", "Shared/UI/Window.lua", "Shared/UI/Tabs.lua", "Shared/UI/SettingsCard.lua", "Shared/Game/Played.lua" }, env)
 
     local defaults = { enabled = true, xpTicker = true, xpTickerLevel = true, xpTickerElapsed = true,
@@ -189,7 +190,7 @@ local function Boot(account, settings, who)
     ns.UI = { FontPath = function(name) return name ~= "" and "font:" .. name or "naowh" end,
         AttachMover = function(parent) return Frame(parent) end }
     ns.Apply, ns.ResetXPBarSession = NOTHING, NOTHING
-    ns.ShowRaidReminderAnchorConfig, ns.HideRaidReminderAnchorConfig = NOTHING, NOTHING
+    ns.ShowUnlockMode, ns.HideUnlockMode = NOTHING, NOTHING
     Load({ "Shared/Settings/Settings.lua" }, env)
     local first = #created + 1
     Load({ "NaowhForever_QoL/XP/XPTicker.lua" }, env)

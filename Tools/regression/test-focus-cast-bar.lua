@@ -96,12 +96,12 @@ local ns = {
     QoLSettings = S, THEME = { muted = {}, accent = ACCENT, bg = THEME_BG },
     UI = { FontPath = function() return "font" end, AttachMover = function() return Widget("Mover") end,
         TexturePath = function(name, own) if name == "" then return own end return "lsm:" .. name end },
-    Shared = { Settings = { Group = function() return {} end, Look = function() return {} end,
+    Shared = { Style = dofile("Tools/regression/shared_style.lua"), Settings = { Group = function() return {} end, Look = function() return {} end,
         Page = function() return { Card = Noop } end },
         Parts = { HudFont = function(fs, font, size, outline) fs.font = { font, size, outline } end } },
     Font = function(parent) return Widget("FontString", parent) end,
     Border = Noop,
-    Apply = Noop, ShowRaidReminderAnchorConfig = Noop, HideRaidReminderAnchorConfig = Noop,
+    Apply = Noop, ShowUnlockMode = Noop, HideUnlockMode = Noop,
 }
 local env = setmetatable({
     _G = { NaowhForever = ns },

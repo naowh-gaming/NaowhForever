@@ -157,7 +157,7 @@ local function Shown(flag)
     local store = { Get = function() return true end, Default = function() return true end, OnChange = NOTHING }
     local ns
     ns = {
-        FEATURE_BADGES = flag, CODE_BUILD = "test", THEME = setmetatable({}, { __index = function() return COLOR end }),
+        FEATURE_BADGES = flag, BADGES_LIVE = 1, MEDIA = dofile("Tools/regression/core_media.lua"), CODE_BUILD = "test", THEME = setmetatable({}, { __index = function() return COLOR end }),
         QoLSettings = store, Apply = NOTHING,
         BADGE_STAFF = { [1] = { [TEAM_GUID] = "developer" } },
         BADGE_PATRONS = { [1] = { ["Player-1-PATRON"] = { since = "2026-03" } } },

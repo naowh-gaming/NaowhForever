@@ -6,12 +6,12 @@ local S = J.Settings
 local Team = J.Team
 
 local KEEP = 10
-local MINUTE, HOUR = 60, 3600
+local MINUTE, HOUR = J.C.SECONDS_PER_MINUTE, 3600
 local RUN_GRACE = 15 * MINUTE
 local RUN_MAX = 4 * HOUR
 local DROP_WINDOW = 15 * MINUTE
 local MILLISECONDS = 1000
-local ROUND = 0.5
+local ROUND = J.C.ROUND_HALF
 local KILLED = 1
 local INSTANCE_ID = 8
 local KILLS_KEY, RUN_KEY = "journalKills", "journalRun"

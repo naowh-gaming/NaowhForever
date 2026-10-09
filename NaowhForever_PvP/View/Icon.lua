@@ -118,6 +118,5 @@ function Icon.New(frame)
 end
 
 function Icon.SetClass(texture, coords)
-    local crop = St.CLASS_CROP
-    texture:SetTexCoord(coords[1] + crop, coords[2] - crop, coords[3] + crop, coords[4] - crop)
+    ns.Shared.Parts.ClassCrop(texture, coords)
 end

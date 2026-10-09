@@ -1,11 +1,13 @@
--- FirstLogin.lua: opens the onboarding on an account's first login, and offers an alt its main's settings.
+-- FirstLogin.lua: opens the onboarding on an account's first login, and asks a new character whether it shares its main's settings.
 local ns = _G.NaowhForever
 
 local SHOW_DELAY = 5
+local FIRST_COPY = 2
 
-local IMPORT = "Welcome, %s! We found settings from %s. Use them on this character too?"
-local IMPORT_YES, IMPORT_NO = "Use Them", "Not Now"
-local IMPORT_DONE = "%s now uses the same settings as %s."
+local ASK = "Welcome, %s! Use the same settings as %s, or set this character up on its own?"
+local ASK_SAME, ASK_OWN = "Same as %s", "Set Up %s"
+local SAME_DONE = "%s now uses the same settings as %s."
+local COPY_NAME = "%s %d"
 
 local timer, armed
 local login = CreateFrame("Frame")
@@ -17,16 +19,34 @@ local function Stop()
 end
 
 local function Wanted()
-    return not ns.AccountSettings().welcomeSeen or ns.ImportCandidate() ~= nil
+    return not ns.AccountSettings().onboardingSeen or ns.ImportCandidate() ~= nil
 end
 
-local function OfferImport()
+local function UseMain(me, main, profile)
+    if profile == ns.ActiveProfileName() then return end
+    if ns.SwitchProfile(profile) then ns.Print(SAME_DONE:format(me, main)) end
+end
+
+local function FreeName(me)
+    local name, n = me, FIRST_COPY
+    while ns.ProfileExists(name) do
+        name, n = COPY_NAME:format(me, n), n + 1
+    end
+    return name
+end
+
+local function SetUpOwn(me)
+    local name = FreeName(me)
+    if not ns.CopyProfile(ns.ActiveProfileName(), name) then return end
+    if ns.SwitchProfile(name) then ns.ShowSetup(true) end
+end
+
+local function AskMain()
     local char, profile = ns.ImportCandidate()
     if not char then return end
-    local me, them = UnitName("player"), char:match("^[^-]+")
-    ns.Confirm(IMPORT:format(me, them), function()
-        if ns.SwitchProfile(profile) then ns.Print(IMPORT_DONE:format(me, them)) end
-    end, nil, IMPORT_YES, IMPORT_NO)
+    local me, main = UnitName("player"), char:match("^[^-]+")
+    ns.Confirm(ASK:format(me, main), function() UseMain(me, main, profile) end, nil,
+        ASK_SAME:format(main), ASK_OWN:format(me), function() SetUpOwn(me) end)
 end
 
 local function Due()
@@ -37,7 +57,7 @@ local function Due()
         return
     end
     Stop()
-    if ns.AccountSettings().welcomeSeen then return OfferImport() end
+    if ns.AccountSettings().onboardingSeen then return AskMain() end
     ns.ShowSetup()
 end
 

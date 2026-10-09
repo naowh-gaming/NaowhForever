@@ -20,7 +20,7 @@ local function Slice(a, b)
 end
 
 local code = table.concat({
-    "local bar, S, On, Look = ...",
+    "local bar, S, On, Look, C = ...",
     assert(source:match("\n(local SYS_DROP, [^\n]*)"), "the readout's sizes"),
     assert(source:match("\n(local ROUND = [^\n]*)"), "ROUND"),
     assert(source:match("\n(local HOME_LATENCY = [^\n]*)"), "HOME_LATENCY"),
@@ -38,7 +38,7 @@ local function LoadLook(S)
         setfenv(chunk, env)
         chunk()
     end
-    return ns.TopBar.Look
+    return ns.TopBar.Look, ns.TopBar.C
 end
 
 local fps, ms, writes = 144, 38, 0
@@ -59,8 +59,8 @@ setfenv(chunk, setmetatable({
     GetFramerate = function() return fps end,
     GetNetStats = function() return 0, 0, ms, 90 end,
 }, { __index = _G }))
-local Look = LoadLook(S)
-local api = chunk({ sys = sys }, S, function() return true end, Look)
+local Look, C = LoadLook(S)
+local api = chunk({ sys = sys }, S, function() return true end, Look, C)
 api.FpsRGB, api.MsRGB = Look.FpsRGB, Look.MsRGB
 
 api.UpdateSystem()

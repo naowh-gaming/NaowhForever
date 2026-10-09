@@ -5,10 +5,11 @@ local UI = ns.UI
 local T = ns.THEME
 local BagSpace = ns.BagSpace
 
-local LIST = { W = 440, H = 500, ROW = 30, HOVER_ALPHA = 0.12, ICON = 24, INSET = 2, ICON_CROP = 0.08,
+local LIST = { W = 440, H = 500, ROW = 30, HOVER_ALPHA = 0.12, ICON = 24, INSET = 2,
+    ICON_CROP = ns.QoLConstants.ICON_CROP,
     REMOVE = 22, WHEN_RIGHT = 32, COUNT_GAP = 12, TEXT_GAP = 8, SMALL = 11, TEXT = 12, HEAD = 14,
     NOTE_Y = 6, CONTENT_ROOM = 62, HEAD_Y = 16, SIDE = 20, SCROLL_TOP = 80, SCROLL_RIGHT = 40,
-    SCROLL_BOTTOM = 100, SEARCH_Y = 44, SEARCH_H = 24, HINT_X = 8, DROP_H = 34, DROP_Y = 54,
+    SCROLL_BOTTOM = 100, SEARCH_Y = 44, SEARCH_H = 24, DROP_H = 34, DROP_Y = 54,
     BUTTON_W = 100, BUTTON_H = 26, BUTTON_X = 56, BUTTON_Y = 16, DATE = "%d %b" }
 local TEXT = {
     LIST_HEAD = "Bag Space: Ignored Items (%d)",
@@ -166,24 +167,12 @@ function FillList()
     content:SetHeight(-y)
 end
 
-local function SearchChanged(self)
-    self.hint:SetShown(self:GetText() == "")
+local function SearchChanged()
     if listPanel then FillList() end
 end
 
-local function ClearFocus(self)
-    self:ClearFocus()
-end
-
 local function NewSearchBox(parent)
-    local box = ns.NewEditBox(parent)
-    box.hint = ns.Font(box, LIST.TEXT, nil, T.muted)
-    box.hint:SetPoint("LEFT", box, "LEFT", LIST.HINT_X, 0)
-    box.hint:SetText(TEXT.SEARCH)
-    box:SetScript("OnTextChanged", SearchChanged)
-    box:SetScript("OnEscapePressed", ClearFocus)
-    box:SetScript("OnEnterPressed", ClearFocus)
-    return box
+    return ns.NewSearchBox(parent, TEXT.SEARCH, SearchChanged)
 end
 
 local function DropEnter(self)
@@ -210,7 +199,7 @@ local function NewDropZone(parent)
 end
 
 local function NewListScroll(p)
-    local sf = CreateFrame("ScrollFrame", nil, p, "UIPanelScrollFrameTemplate")
+    local sf = UI.SlimScroll(p)
     sf.content = CreateFrame("Frame", nil, sf)
     sf.content:SetSize(LIST.W - LIST.CONTENT_ROOM, 1)
     sf:SetScrollChild(sf.content)

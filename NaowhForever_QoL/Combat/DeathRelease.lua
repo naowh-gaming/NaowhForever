@@ -7,6 +7,7 @@ local T = ns.THEME
 local FILL_ALPHA = 0.4
 local MIN_FILL_WIDTH = 1
 local LEVEL_ABOVE = 5
+local HOLD_RANGE = { 0.5, 3, 0.1 }
 local DEATH = "DEATH"
 local TIP_TITLE = "Release Spirit"
 local TIP_TEXT = "Hold for %.1f seconds to release. Naowh Forever's Death Release Protection "
@@ -104,7 +105,7 @@ ns.Shared.Settings.Page("QoL/Combat", S):Card({
         .. "click never sends you on a corpse run while a battle res is coming.",
     summary = Summary,
     rows = {
-        { key = "deathReleaseHold", label = "Hold Time", slider = { 0.5, 3, 0.1 }, unit = "s",
+        { key = "deathReleaseHold", label = "Hold Time", slider = HOLD_RANGE, unit = "s",
           help = "How long Release Spirit has to be held down." },
     },
 })

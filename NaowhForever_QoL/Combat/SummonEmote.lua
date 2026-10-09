@@ -4,6 +4,7 @@ local ns = _G.NaowhForever
 local S = ns.QoLSettings
 
 local LIST_PATTERN = "(%d+)%s*:%s*([^;]+)"
+local COOLDOWN_RANGE = { 0, 30, 1 }
 
 local spells = {}
 local lastEmote, pending = 0, nil
@@ -89,7 +90,7 @@ ns.Shared.Settings.Page("QoL/Combat", S):Card({
     id = "summonEmote", name = "Summon Emote", order = 110, switch = "autoEmote",
     help = "Sends an /emote of your own in a dungeon or raid when you start casting a summon.",
     rows = {
-        { key = "autoEmoteCooldown", label = "Cooldown", slider = { 0, 30, 1 }, unit = "s",
+        { key = "autoEmoteCooldown", label = "Cooldown", slider = COOLDOWN_RANGE, unit = "s",
           help = "The shortest time between two summon emotes." },
         { key = "autoEmoteList", label = "Summon Spells", text = true, wide = true,
           help = "Spell ID and emote, separated by semicolons, such as 698: prepares a ritual of summoning." },

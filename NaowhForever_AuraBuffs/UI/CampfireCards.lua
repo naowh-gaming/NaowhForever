@@ -18,10 +18,13 @@ local TIME_STEPS = St.CAMP_TIME_STEPS
 local SIT_PREFIX = St.CAMP_SIT_PREFIX
 local FEATURES, SAMPLE_BONUSES = D.FEATURES, D.SAMPLE_BONUSES
 local Simple = Camp.Simple
-local STAGE_H, ALERT_H, NOTE_Y, NOTE_SIZE, NOTE_GAP_Y, STAGE_MARGIN, HINT_ROOM = 230, 120, 10, 11, 4, 16, 30
+local STAGE_H, ALERT_H, NOTE_Y, NOTE_SIZE, NOTE_GAP_Y, STAGE_MARGIN, HINT_ROOM = 230, 120, St.STAGE_NOTE_Y, St.STAGE_NOTE_SIZE, 4, St.STAGE_MARGIN, 30
 local CAMP_HOUR, SIT_TIME, BUFF_GAP = 3600, 60, 12
 local EDGE_HIT, HIDDEN_ALPHA, DRAG_FACTOR = 8, 0.35, 2
 local WIDTH_RANGE, TEXT_RANGE, HEIGHT_RANGE = { 200, 480, 5 }, { BAR.TEXT_MIN, 16, 1 }, { 20, 36, 1 }
+local MINUTES_RANGE, ICON_RANGE, BUFF_TEXT_RANGE = { 1, 59, 1 }, { 24, 110, 1 }, { 8, 28, 1 }
+local TO_FRACTION = St.PERCENT_SCALE
+local ORDER_CAMPFIRE, ORDER_NEARBY = 20, 30
 local SAMPLE_BUFFS = "+Rested\n+Crit"
 local SIMPLE_HINT = "Drag the right edge for width. Wheel: text size (Shift: height). Click a bonus or the time "
     .. "to show or hide it. Right-click for more."
@@ -31,7 +34,7 @@ local STYLES = { { round = "Round", simple = "Simple" }, { "round", "simple" } }
 local BUFF_MODES = { { off = "Off", always = "Always", hover = "On Mouseover" }, { "off", "always", "hover" } }
 local SIDES = { { below = "Below", above = "Above", left = "Left", right = "Right" },
     { "below", "above", "left", "right" } }
-local PERCENT, SECONDS = 100, 60
+local PERCENT, SECONDS = A.C.PERCENT, A.C.SECONDS
 local ALERT_KEYS = { campAlertScale = true, campAlertFade = true }
 
 local OFF = "Turn on AuraBuffs"
@@ -362,7 +365,7 @@ end
 local page = Settings.Page("AuraBuffs/Settings", S)
 
 campCard = page:Card({
-    id = "campfire", name = "Campfire", order = 20, switch = "campfire",
+    id = "campfire", name = "Campfire", order = ORDER_CAMPFIRE, switch = "campfire",
     help = "Your camp's bonuses and time left on screen, and a reminder when Camp Benefits runs out.",
     summary = CampSummary,
     studio = { height = StageHeight, states = STATES, new = NewPreview, paint = PaintPreview },
@@ -376,7 +379,7 @@ campCard = page:Card({
           help = "Stays on screen, greyed out, while you have no Camp Benefits." },
         { key = "campShowUnder", label = "Show Only When Low", toggle = true, needs = Enabled, why = OFF,
           help = "Hides it until the camp drops under Show Under." },
-        { key = "campShowUnderMinutes", label = "Show Under", slider = { 1, 59, 1 }, unit = " min",
+        { key = "campShowUnderMinutes", label = "Show Under", slider = MINUTES_RANGE, unit = " min",
           needs = Needs("campShowUnder"), why = "Needs Show Only When Low" },
         Only(Group("Simple Bar"), RoundStyle),
         { key = "campSimpleWidth", label = "Bar Width", slider = WIDTH_RANGE, needs = Enabled, why = OFF,
@@ -391,12 +394,12 @@ campCard = page:Card({
           needs = Enabled, why = OFF, hidden = RoundStyle,
           help = "Shows every bonus again; click one on the preview to hide it." },
         Only(Group("Round Icon"), Simple),
-        { key = "campIconSize", label = "Icon Size", slider = { 24, 110, 1 }, needs = Enabled, why = OFF,
+        { key = "campIconSize", label = "Icon Size", slider = ICON_RANGE, needs = Enabled, why = OFF,
           hidden = Simple },
         { key = "campBuffMode", label = "Show Active Camp Buffs", choice = BUFF_MODES, get = ns.CampBuffMode,
           set = PickBuffMode, needs = Enabled, why = OFF, hidden = Simple,
           help = "Your camp's bonuses by the icon, always or while you hover it." },
-        { key = "campBuffTextSize", label = "Buff Text Size", slider = { 8, 28, 1 }, needs = Enabled, why = OFF,
+        { key = "campBuffTextSize", label = "Buff Text Size", slider = BUFF_TEXT_RANGE, needs = Enabled, why = OFF,
           hidden = Simple },
         { key = "campBuffSide", label = "Buff Text Position", choice = SIDES, needs = Enabled, why = OFF,
           hidden = Simple },
@@ -414,19 +417,19 @@ campCard = page:Card({
 })
 
 alertCard = page:Card({
-    id = "campNearby", name = "Camp Nearby", order = 30, switch = "campNearbyAlert",
+    id = "campNearby", name = "Camp Nearby", order = ORDER_NEARBY, switch = "campNearbyAlert",
     help = "Camp Nearby on screen when a campfire is in range and your camp needs a refresh.",
     summary = AlertSummary,
     studio = { height = ALERT_H, states = ALERT_STATES, new = NewAlert, paint = PaintAlert },
     rows = {
-        { key = "campNearbyMinutes", label = "Alert Under", slider = { 1, 59, 1 }, unit = " min",
+        { key = "campNearbyMinutes", label = "Alert Under", slider = MINUTES_RANGE, unit = " min",
           needs = CampOn, why = NEEDS_CAMP,
           help = "How little Camp Benefits time counts as needing a refresh." },
         { key = "campAlertFade", label = "Fade", toggle = true,
           needs = CampOn, why = NEEDS_CAMP,
           help = "Fades the alert in and out, breathing softly while it shows." },
         Group("Size"),
-        { key = "campAlertScale", label = "Alert Size", slider = ALERT_SCALE, unit = "%", scale = 0.01,
+        { key = "campAlertScale", label = "Alert Size", slider = ALERT_SCALE, unit = "%", scale = TO_FRACTION,
           needs = CampOn, why = NEEDS_CAMP },
         Settings.Look("campAlert", { text = true, background = "card", keys = { FontSize = false },
             needs = CampOn, why = NEEDS_CAMP }),

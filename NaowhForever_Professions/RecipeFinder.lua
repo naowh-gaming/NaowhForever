@@ -9,7 +9,7 @@ local C = P.C
 local Hex = P.Text.Hex
 
 local NEAREST = 3
-local PERCENT = 100
+local PERCENT = C.PERCENT
 local TRAINER_SCAN_DELAY = 0.2
 local NO_MAP = 0
 local HORDE, ALLIANCE, ANY = "H", "A", "-"

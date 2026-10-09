@@ -14,7 +14,7 @@ local STEP_INDENT = 26
 local TREE_X = Style.INDENT + 7
 local TREE_UP, TREE_GAP, TREE_ALPHA, ELBOW = 6, 4, 0.5, 8
 local TITLE_GAP = 4
-local ICON_DROP = 1
+local ICON_DROP = Style.ROW_ICON_DROP
 local STATE = {
     done = { "Done", "muted" }, log = { "In your log", "log" }, low = { "Needs level %d", "red" },
     later = { "Needs an earlier quest", "muted" }, open = { "Not done", "fg" },

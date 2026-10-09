@@ -9,25 +9,20 @@ local St = UI.Style
 local Parts = ns.Shared.Parts
 
 local HEADER, PAD, FOOTER, INSET = St.WINDOW_HEADER, St.WINDOW_PAD, St.WINDOW_FOOTER, St.CONTENT_INSET
-local SCROLLBAR, TAB_H, BAR_GAP = St.SCROLLBAR, St.TAB_H, St.BAR_GAP
+local SCROLLBAR, TAB_H, BAR_GAP, SCROLL_GAP = St.SCROLLBAR, St.TAB_H, St.BAR_GAP, St.SCROLL_GAP
 local CARD = 6
-local SCROLL_GAP = 4
 local REFRESH_GAP = BAR_GAP * 2
-local SOLO_GAP, SOLO_LIFT = 8, 30
-local SOLO_TITLE_GROW, SUMMARY_SHRINK = 1, 2
-local PERCENT, ROUND = 100, 0.5
+local SUMMARY_SHRINK = 2
+local PERCENT, ROUND = GI.C.PERCENT, GI.C.ROUND
 local WINDOW_KEY = "groupInspectWindow"
 
-local MODE_WORDS = { party = "Party of %d", raid = "Raid of %d" }
+local MODE_WORDS = UI.MODE_WORDS
 local NF_COUNT = "%d of %d run Naowh Forever"
 local TEXT_TITLE = "Group Inspect"
 local TEXT_TITLE_TIP = "Your group's Naowh Score, gear, talents and stats."
 local TEXT_REFRESH = "Inspect everyone again"
 local TEXT_REFRESH_TIP = "Reads every member's gear and talents again."
 local TEXT_REFRESH_LABEL = "Refresh"
-local SOLO_TITLE = "You are not in a group"
-local SOLO_LINE = "Join a party or raid to see everyone's Naowh Score, gear, talents and stats."
-local SOLO_LINK = "See a preview on its settings page"
 local TURNED_ON = "Group Inspect turned on. Turn it off on its settings page."
 local QOL_OFF = "Group Inspect needs the QoL module on."
 
@@ -115,28 +110,8 @@ local function Hidden()
     GI.Close()
 end
 
-local function OpenPage()
-    ns.OpenOptionsWindow(UI.PAGE)
-end
-
 local function RefreshAll()
     GI.RefreshAll()
-end
-
-local function Solo(parent)
-    local solo = CreateFrame("Frame", nil, parent)
-    solo:SetPoint("TOPLEFT", INSET, -UI.CONTENT_TOP)
-    solo:SetSize(UI.CONTENT_W, UI.CONTENT_H)
-    local title = ns.Font(solo, St.CARD_NAME_SIZE + SOLO_TITLE_GROW, nil, T.fg)
-    title:SetPoint("CENTER", 0, SOLO_LIFT)
-    title:SetText(SOLO_TITLE)
-    local line = ns.Font(solo, St.LINE_SIZE, nil, T.muted)
-    line:SetPoint("TOP", title, "BOTTOM", 0, -SOLO_GAP)
-    line:SetText(SOLO_LINE)
-    local link = Parts.Link(solo, OpenPage, true)
-    Parts.SetLink(link, SOLO_LINK)
-    link:SetPoint("TOP", line, "BOTTOM", 0, -SOLO_GAP)
-    return solo
 end
 
 local function Build()
@@ -169,7 +144,7 @@ local function Build()
     list.header:SetPoint("TOPLEFT", INSET, -UI.CONTENT_TOP)
     scroll:SetScrollChild(list.view)
 
-    window.solo = Solo(window)
+    window.solo = UI.SoloNote(window)
     window.board, window.list = board, list
     window:HookScript("OnShow", Shown)
     window:HookScript("OnHide", Hidden)

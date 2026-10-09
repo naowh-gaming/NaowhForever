@@ -3,14 +3,15 @@ local ns = _G.NaowhForever
 
 local T = ns.THEME
 local GI = ns.GroupInspect
+local C = GI.C
 local UI = GI.UI
 local St = UI.Style
 local Parts = ns.Shared.Parts
 
 local KEPT = 600
-local TENTHS, ROUND = 10, 0.5
+local TENTHS, ROUND = C.TENTHS, C.ROUND
 local SCORE_LEVELS = 256
-local TREE_COUNT, TREE_BASE = 3, 64
+local TREE_COUNT, TREE_BASE = C.TREE_COUNT, 64
 local ENCHANT_BASE = 64
 local BYTE = 255
 local STATE_WORDS = { queued = "Queued", inspecting = "Inspecting...", out_of_range = "Out of range",

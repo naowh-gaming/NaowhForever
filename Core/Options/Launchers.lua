@@ -4,7 +4,7 @@ local O = ns.Options
 
 local MODULES, Loaded, OpenModule, MinimapButtonOn = O.MODULES, O.Loaded, O.OpenModule, O.MinimapButtonOn
 
-local LOGO = "Interface\\AddOns\\NaowhForever\\Core\\Media\\LogoAddon.tga"
+local LOGO = ns.MEDIA .. "LogoAddon.tga"
 local LAUNCHER_NAME = "NaowhForever"
 local LAUNCHER_LABEL = "Naowh Forever"
 local MINIMAP_POS = 220

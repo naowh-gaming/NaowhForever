@@ -34,11 +34,9 @@ NaowhForever_ToggleGroupInspect = SwitchedOff("Group Inspect")
 NaowhForever_ToggleCompleto = SwitchedOff("Completo")
 NaowhForever_BagSpacePickUp = SwitchedOff("Quality of Life")
 
-SLASH_NAOWHFOREVER1 = "/smartreminders"
-SLASH_NAOWHFOREVER2 = "/naowh"
-SLASH_NAOWHFOREVER3 = "/nao"
-SLASH_NAOWHFOREVER4 = "/nsr"
-SLASH_NAOWHFOREVER5 = "/nf"
+SLASH_NAOWHFOREVER1 = "/naowh"
+SLASH_NAOWHFOREVER2 = "/nao"
+SLASH_NAOWHFOREVER3 = "/nf"
 SlashCmdList["NAOWHFOREVER"] = function(msg)
     local cmd, arg = strtrim(msg or ""):lower():match("^(%S*)%s*(.-)$")
     if cmd == "quiz" and ns.ToggleQuiz then

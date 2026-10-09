@@ -20,8 +20,8 @@ local BisSlotsFor = ns.Shared.Items.SlotsFor
 local IsBisItem = ns.IsBisItem
 local FACT = J.FACT
 
-local RECIPE = 9
-local ARMOR, COSMETIC = 4, 5
+local RECIPE = J.C.ITEM_RECIPE
+local ARMOR, COSMETIC = J.C.ITEM_ARMOR, 5
 local SKILL_LINE = 7
 local BIS_PICK = 1
 local NOT_WORN = "INVTYPE_NON_EQUIP_IGNORE"

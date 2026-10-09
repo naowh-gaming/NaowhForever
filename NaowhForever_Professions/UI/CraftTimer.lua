@@ -9,6 +9,7 @@ local Style = P.Style
 local Widgets = P.Widgets
 local Parts = ns.Shared.Parts
 
+local ROUND = 0.5
 local WIDTH, TRACK_H, PIN, NAME_SIZE, ICON = 420, 20, 18, 14, 30
 local SIDE_GAP = 10
 local TIME_LARGER = 4
@@ -44,7 +45,7 @@ local function On()
 end
 
 local function Clock(seconds)
-    seconds = math.max(0, math.floor(seconds + 0.5))
+    seconds = math.max(0, math.floor(seconds + ROUND))
     return TEXT_CLOCK:format(math.floor(seconds / SECONDS_PER_MINUTE), seconds % SECONDS_PER_MINUTE)
 end
 
@@ -118,7 +119,7 @@ end
 
 function Look.Progress(frame, share, left)
     frame.track:SetValue(math.min(share, 1))
-    local seconds = math.max(0, math.floor(left + 0.5))
+    local seconds = math.max(0, math.floor(left + ROUND))
     if seconds ~= frame.seconds then
         frame.seconds = seconds
         frame.time:SetText(Clock(left))

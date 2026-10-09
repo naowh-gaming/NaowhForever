@@ -8,7 +8,7 @@ local Price = Training.Price
 local Changed = Training.Changed
 
 local SOON = Training.SOON
-local LEVEL, SPELL = 1, 2
+local LEVEL, SPELL = Training.C.ENTRY_LEVEL, Training.C.ENTRY_SPELL
 
 local function ForMyRace(entry, race)
     if not entry.races then return true end

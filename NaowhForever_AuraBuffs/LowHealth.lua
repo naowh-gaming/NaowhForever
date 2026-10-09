@@ -4,7 +4,7 @@ local ns = _G.NaowhForever
 local A = ns.AuraBuffs
 local S = A.Settings
 
-local PERCENT = 100
+local PERCENT = A.C.PERCENT
 local STEP_EDGE = 0.001
 
 local Low = {}

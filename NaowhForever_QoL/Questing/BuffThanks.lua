@@ -34,11 +34,12 @@ local OTHERS = {
 }
 
 local SENT_MAX, SENT_WINDOW = 3, 60
-local SECONDS_PER_MINUTE = 60
+local SECONDS_PER_MINUTE = ns.QoLConstants.SECONDS_PER_MINUTE
 
 local OPTIONS_WINDOW = "NaowhForeverOptions"
 local EDITOR_INSET = 6
-local EDGE = { r = 0, g = 0, b = 0 }
+local COOLDOWN_RANGE = { 1, 60, 1 }
+local EDGE = ns.Shared.Style.BORDER_RGB
 local STRANGER = "stranger"
 local EMOTE_KEY = "?"
 local WHISPER_KEY, EMOTE_LINES_KEY = "buffThanksText", "buffThanksEmoteText"
@@ -237,7 +238,7 @@ local rows = {
     { key = "buffThanksText", label = "Whisper Lines", buttonText = "Edit",
       button = function() EditLines("buffThanksText", "Whisper Lines") end,
       help = "One whisper per line, picked at random; {buff} and {name} are filled in." },
-    { key = "buffThanksCooldown", label = "Once Per Player Every", slider = { 1, 60, 1 }, unit = "m",
+    { key = "buffThanksCooldown", label = "Once Per Player Every", slider = COOLDOWN_RANGE, unit = "m",
       help = "The shortest time between two thanks to the same player." },
     { key = "buffThanksGroup", label = "Thank Group Members", toggle = true,
       help = "Also thanks players in your party or raid." },

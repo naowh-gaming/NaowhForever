@@ -6,7 +6,7 @@ local S = A.Settings
 local D = ns.BuffReminderData
 
 local MAX_AURAS = 40
-local SECONDS = 60
+local SECONDS = A.C.SECONDS
 local PARTY_UNITS = MAX_PARTY_MEMBERS or 4
 local RAID_UNITS_MAX = MAX_RAID_MEMBERS or 40
 local CATEGORY_ORDER = A.CATEGORY_ORDER

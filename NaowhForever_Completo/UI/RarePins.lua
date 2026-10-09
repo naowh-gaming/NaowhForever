@@ -8,7 +8,7 @@ local Style = Completo.Style
 local R = Completo.Rares
 
 local TEMPLATE = "NaowhForeverRarePinTemplate"
-local STAR_ATLAS = "VignetteKill"
+local STAR_ATLAS = Style.STAR_ATLAS
 local SKULL_FILE = "Interface\\TargetingFrame\\UI-RaidTargetingIcon_8"
 local FRAME_LEVEL = "PIN_FRAME_LEVEL_AREA_POI"
 local KILLED_ALPHA = 0.7
@@ -16,7 +16,7 @@ local KINDS = { spot = { 0.7, 0.9 }, dot = { 0.45, 0.8 } }
 local SIZE, ALPHA = 1, 2
 local LIT_SCALE = 1.3
 local FADED_ALPHA = 0.2
-local PERCENT = 100
+local PERCENT = Completo.C.PERCENT
 local STAR_LEVEL, MORE_LEVEL = 1, 0
 local OWN_KEYS = { enabled = true, rarePins = true, rarePinsKilled = true, rarePinSize = true }
 local TEXT_RARE = "Rare"

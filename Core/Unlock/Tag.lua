@@ -39,7 +39,7 @@ local function CenterAcross(item)
 end
 
 local function OpenSettings(item)
-    ns.HideRaidReminderAnchorConfig()
+    ns.HideUnlockMode()
     ns.OpenOptionsWindow(item.page)
     if item.feature then ns.UI.GoToSetting(item.page, nil, item.feature) end
 end

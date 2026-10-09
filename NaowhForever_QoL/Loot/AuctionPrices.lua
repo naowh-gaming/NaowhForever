@@ -7,13 +7,14 @@ local SCAN_COOLDOWN = 900
 local CHUNK = 1000
 local TIMEOUT = 60
 local AGE_TICK = 60
-local SECONDS_PER_MINUTE, SECONDS_PER_HOUR, SECONDS_PER_DAY = 60, 3600, 86400
+local SECONDS_PER_MINUTE, SECONDS_PER_HOUR = ns.QoLConstants.SECONDS_PER_MINUTE, ns.QoLConstants.SECONDS_PER_HOUR
+local SECONDS_PER_DAY = ns.QoLConstants.SECONDS_PER_DAY
 local PERCENT = ns.QoLConstants.PERCENT
 local BUTTON_W, BUTTON_H = 120, 24
 local BUTTON_GAP, BUTTON_DROP = 8, 4
 local AGE_SIZE = 11
 local COIN_SIZE = 12
-local WHITE = { r = 1, g = 1, b = 1 }
+local WHITE = ns.QoLConstants.WHITE_RGB
 local REALM_JOIN = "-"
 local function Tag() return ns.Color("accent", "Naowh AH") end
 local TEXT_SCAN = "Scan Prices"

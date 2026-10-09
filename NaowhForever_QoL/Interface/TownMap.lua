@@ -10,13 +10,14 @@ local EXIT_ATLAS = "house-reward-green-arrow-up"
 local EXIT_LENGTH = 1.8
 local CAPITALS = ns.TownCapitals
 local PERCENT = ns.QoLConstants.PERCENT
-local PERMILLE, TENTHS, ROUND = 1000, 10, 0.5
+local PERMILLE, TENTHS, ROUND = ns.QoLConstants.PERMILLE, ns.QoLConstants.TENTHS, ns.QoLConstants.ROUND
 local ICON_CROP_LOW, ICON_CROP_HIGH = ns.QoLConstants.ICON_CROP, ns.QoLConstants.ICON_CROP_HIGH
 local CLASS_ICON = "Interface\\Icons\\ClassIcon_"
 local HINT = ns.QoLConstants.HINT_RGB
 local EMPTY = {}
 local MINI_SIZE = 12
 local MINI_INTERVAL = 0.05
+local PIN_RANGE = { 10, 28, 1 }
 local MINI_EVENTS = { "ZONE_CHANGED_NEW_AREA", "ZONE_CHANGED", "ZONE_CHANGED_INDOORS", "PLAYER_ENTERING_WORLD" }
 local MOVE_EVENTS = { "PLAYER_STARTED_MOVING", "PLAYER_STOPPED_MOVING", "MINIMAP_UPDATE_ZOOM" }
 local AUDIT_EVENTS = { "GOSSIP_SHOW", "MERCHANT_SHOW", "TRAINER_SHOW", "TAXIMAP_OPENED",
@@ -411,6 +412,6 @@ ns.Shared.Settings.Page("QoL/Interface", S):Card({
     help = "Service NPCs for your faction on the world map; pick which with its Map Pins button.",
     summary = TownSummary,
     rows = {
-        { key = "townPinSize", label = "Pin Size", slider = { 10, 28, 1 } },
+        { key = "townPinSize", label = "Pin Size", slider = PIN_RANGE },
     },
 })

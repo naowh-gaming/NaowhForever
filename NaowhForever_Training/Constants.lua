@@ -12,4 +12,12 @@ Training.C = {
     BUILD_NAME_MAX = 40,
     COPPER_PER_GOLD = 10000,
     COPPER_PER_SILVER = 100,
+    ENTRY_LEVEL = 1,
+    ENTRY_SPELL = 2,
+    NODE_SPELL = 1,
+    NODE_RANKS = 2,
+    NODE_ROW = 3,
+    NODE_COLUMN = 4,
+    PERCENT = 100,
+    ROUND = 0.5,
 }

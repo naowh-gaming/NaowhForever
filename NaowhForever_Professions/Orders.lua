@@ -15,11 +15,12 @@ local Text = P.Text
 local MAX = 9
 local MIN_TIP = 100
 local DEFAULT_TIP = 10
-local PERCENT = 100
+local PERCENT = C.PERCENT
 local MESSAGE_GAP = 0.4
 local MAX_MESSAGE = 255
 local ROUND_SILVER_UNDER, ROUND_TEN_SILVER_UNDER = 10000, 100000
 local ROUND_TEN_SILVER = 1000
+local ROUND = C.ROUND
 local INVITE_LINES = {
     "Hi! Inviting you to my group for some crafts from your profession.",
     "Hey, sending you an invite. I'd like to order a few crafts from you.",
@@ -113,7 +114,7 @@ end
 local function Round(copper)
     local step = copper < ROUND_SILVER_UNDER and C.COPPER_PER_SILVER
         or copper < ROUND_TEN_SILVER_UNDER and ROUND_TEN_SILVER or C.COPPER_PER_GOLD
-    return math.floor(copper / step + 0.5) * step
+    return math.floor(copper / step + ROUND) * step
 end
 
 local function Value(d)
@@ -157,7 +158,7 @@ local function Parse(text)
     text = (text or ""):lower():gsub("%s", "")
     if text == "" then return end
     local gold = tonumber(text)
-    if gold then return math.max(0, math.floor(gold * C.COPPER_PER_GOLD + 0.5)) end
+    if gold then return math.max(0, math.floor(gold * C.COPPER_PER_GOLD + ROUND)) end
     local total, bad = 0, false
     local rest = text:gsub("([%d%.]+)([gsc])", function(n, coin)
         n = tonumber(n)
@@ -166,7 +167,7 @@ local function Parse(text)
         return ""
     end)
     if bad or rest ~= "" then return end
-    return math.floor(total + 0.5)
+    return math.floor(total + ROUND)
 end
 
 local function Materials(v, pieces)

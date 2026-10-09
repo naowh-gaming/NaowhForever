@@ -7,5 +7,5 @@ ns.SwingTimer.C = {
     BAR_SWITCH = { MH = "showMH", OH = "showOH", R = "showR", TGT = "targetSwing" },
     SPEED_RETURN = { MH = 1, OH = 2, R = 3, TGT = 1 },
     AUTO_SHOT_CAST = 0.5,
-    FLAT_TEX = "Interface\\Buttons\\WHITE8X8",
+    FLAT_TEX = ns.Shared.Style.WHITE,
 }

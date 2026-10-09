@@ -15,8 +15,9 @@ local GetDetailedItemLevelInfo = C_Item.GetDetailedItemLevelInfo
 local MAIN, OFF = 16, 17
 local BARE_TIP = "No enchant"
 local SLOT_BUTTON = "Inspect%sSlot"
-local NO_ITEM = 0
-local FOREVER_KIND = "items"
+local NO_ITEM = IP.NO_ITEM
+local ROUND = 0.5
+local FOREVER_KIND = B.C.FOREVER_KIND
 
 local overs = {}
 local installed = false
@@ -88,7 +89,7 @@ local function ReadGear(unit, guid)
         end
     end
     local level = C_PaperDollInfo.GetInspectItemLevel and C_PaperDollInfo.GetInspectItemLevel(unit)
-    gear.level = level and level > 0 and math.floor(level + 0.5) or nil
+    gear.level = level and level > 0 and math.floor(level + ROUND) or nil
     if not IP.HasGear(unit, guid) then gear.guid = nil end
 end
 

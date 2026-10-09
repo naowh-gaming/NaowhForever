@@ -15,6 +15,8 @@ local STACK_ORDER = 5
 local ICON_GROW, HEIGHT_ROOM = 12, 16
 local PERCENT = ns.QoLConstants.PERCENT
 local STEP_EDGE = 0.001
+local LOW_HEALTH_RANGE = { 5, 90, 1 }
+local TEXT_RANGE = { 12, 48, 1 }
 local EVENTS = { "UNIT_PET", "PET_BAR_UPDATE", "PLAYER_MOUNT_DISPLAY_CHANGED", "PLAYER_DEAD", "PLAYER_ALIVE",
     "PLAYER_UNGHOST", "SPELLS_CHANGED", "PLAYER_REGEN_DISABLED", "PLAYER_REGEN_ENABLED", "PLAYER_ENTERING_WORLD",
     "PLAYER_CONTROL_LOST", "PLAYER_CONTROL_GAINED" }
@@ -198,11 +200,11 @@ hooksecurefunc(S, "Set", function(key)
     if key == "enabled" or key:find("^pet") then Apply() end
 end)
 hooksecurefunc(ns, "Apply", Apply)
-hooksecurefunc(ns, "ShowRaidReminderAnchorConfig", function()
+hooksecurefunc(ns, "ShowUnlockMode", function()
     unlocked = S.Get("enabled") == true
     Apply()
 end)
-hooksecurefunc(ns, "HideRaidReminderAnchorConfig", function()
+hooksecurefunc(ns, "HideUnlockMode", function()
     unlocked = false
     if frame then Apply() end
 end)
@@ -233,7 +235,7 @@ ns.Shared.Settings.Page("QoL/Combat", S):Card({
           help = "Also warns while your pet is set to passive." },
         { key = "petLowHealth", label = "Warn on Low Pet Health", toggle = true,
           help = "Also warns while your pet's health is under the threshold, in combat too." },
-        { key = "petLowHealthBelow", label = "Low Health Below", slider = { 5, 90, 1 }, unit = "%",
+        { key = "petLowHealthBelow", label = "Low Health Below", slider = LOW_HEALTH_RANGE, unit = "%",
           needs = "petLowHealth" },
         Group("When"),
         { key = "petCombatOnly", label = "Only In Combat", toggle = true },
@@ -247,7 +249,7 @@ ns.Shared.Settings.Page("QoL/Combat", S):Card({
         { key = "petLowHealthText", label = "Low Health Text", text = true, needs = "petLowHealth",
           help = "Text while your pet is low on health." },
         { key = "petShowIcon", label = "Show Icon", toggle = true },
-        ns.Shared.Settings.Look("pet", { text = true, size = { 12, 48, 1 }, background = "card" }),
+        ns.Shared.Settings.Look("pet", { text = true, size = TEXT_RANGE, background = "card" }),
         Group("Colours"),
         { key = "petClassColor", label = "Class Colour", toggle = true },
         { key = "petColor", label = "Colour", colour = true, needs = OwnColour, why = "Class colour is on" },

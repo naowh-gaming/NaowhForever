@@ -246,9 +246,6 @@ Check(Text("Quality of Life / Interface") ~= nil and Head("Top Bar") ~= nil, "op
 Check(Text("ADVENTURE") and Text("COMBAT") and Text("UTILITIES"), "grouped navigation")
 Check(not Text("Close") and Button("Reload UI") ~= nil, "no footer: Reload UI sits in the header, closing is the X")
 Check(not Text("Custom Reminders"), "unfinished module is absent from navigation")
-Check(not Text("Smart Reminders"), "Smart Reminders is not shipped, so it is not listed")
-Check(disabled.NaowhForever_SmartReminders, "a Smart Reminders folder left from an old zip is switched off")
-disabled.NaowhForever_SmartReminders = nil
 Check(Button("Quality of Life").switch == nil, "navigation does not toggle modules")
 for _, name in ipairs({ "Quality of Life", "Dungeon Journal", "Discovery", "BiS List", "Professions",
     "Gear & Trinkets", "Blessings", "Completo", "AuraBuffs", "Threat Meter", "Swing Timer",
@@ -268,13 +265,13 @@ local originalHeight = mainWindow:GetHeight()
 mainWindow:SetHeight(822)
 moduleScroll.scripts.OnSizeChanged(moduleScroll)
 Check(moduleScroll:GetVerticalScrollRange() == 0, "all modules fit in the default 822-high window")
-Check(not moduleScroll.ScrollBar:IsShown(), "navigation scrollbar hides when everything fits")
+Check(not moduleScroll.bar:IsShown(), "navigation scrollbar hides when everything fits")
 local lastModule = Button("Action Bars")
 Check(-lastModule.points.TOPLEFT[4] + lastModule:GetHeight() <= moduleScroll:GetHeight(),
     "Action Bars fits fully above the fixed footer")
 mainWindow:SetHeight(620)
 moduleScroll.scripts.OnSizeChanged(moduleScroll)
-Check(moduleScroll.ScrollBar:IsShown(), "short windows display a navigation scrollbar")
+Check(moduleScroll.bar:IsShown(), "short windows display a navigation scrollbar")
 moduleScroll.scripts.OnMouseWheel(moduleScroll, -100)
 Check(moduleScroll:GetVerticalScroll() == 0 and moduleScroll.scripts.OnUpdate, "the wheel glides instead of jumping")
 for _ = 1, 100 do
@@ -283,12 +280,12 @@ for _ = 1, 100 do
 end
 Check(not moduleScroll.scripts.OnUpdate, "the glide stops once it lands")
 Check(moduleScroll:GetVerticalScroll() == moduleScroll:GetVerticalScrollRange(), "wheel reaches the last module")
-Check(moduleScroll.ScrollBar:GetValue() == moduleScroll:GetVerticalScroll(), "scrollbar follows wheel scrolling")
-moduleScroll.ScrollBar.scripts.OnValueChanged(moduleScroll.ScrollBar, 20)
+Check(moduleScroll.bar:GetValue() == moduleScroll:GetVerticalScroll(), "scrollbar follows wheel scrolling")
+moduleScroll.bar.scripts.OnValueChanged(moduleScroll.bar, 20)
 Check(moduleScroll:GetVerticalScroll() == 20, "dragging the scrollbar moves navigation")
 mainWindow:SetHeight(originalHeight)
 moduleScroll.scripts.OnSizeChanged(moduleScroll)
-Check(moduleScroll:GetVerticalScroll() == 0 and not moduleScroll.ScrollBar:IsShown(),
+Check(moduleScroll:GetVerticalScroll() == 0 and not moduleScroll.bar:IsShown(),
     "growing the window clears the scroll offset and hides the scrollbar")
 
 -- The page scrollbar drags itself: the thumb follows the cursor from where it was grabbed.
@@ -576,6 +573,35 @@ do
     UI.GoToSetting("QoL/Interface", nil, "QoL/Interface:topBar"); Flush()
     Click(Button("Combat")); Flush()
     Check(not Text("Out of Stealth Colour"), "a jump away does not leave the search's cards open on the page it left")
+
+    -- A page its own builder draws can carry a declared settings page, as Profiles carries the
+    -- Setups card: typing what only that card has lands on the page, counts it there, and the
+    -- page draws the card with the typed words lit; cleared, the page is whole again.
+    input:SetText(""); Flush()
+    Settings.Page("Profiles/Setups", S):Card({ id = "setups", name = "Setups", help = "Naowh's setups for you.",
+        rows = { { label = "Tailor Setup", buttonText = "Start", button = function() end,
+            help = "Asks a few questions." } } })
+    UI.SearchCarries("Profiles", "Profiles/Setups")
+    local drawnWith = {}
+    ns.BuildProfileSettings = function(parent, y)
+        local filter = UI.Search.Narrowed("Profiles")
+        drawnWith[#drawnWith + 1] = filter or false
+        return y - Settings.Render(parent, "Profiles/Setups", function() end, filter)
+    end
+    ns.OpenOptionsWindow("QoL/Combat"); Flush()
+    input:SetText("tailor setup"); Flush()
+    Check(Shown("Tailor Setup") and Shown("Setups") and not Shown("Stealth Reminder"),
+        "a setting only the carried card has moves the window to the Profiles page, at that card")
+    Check(Button("Profiles").count.text == "1" and Button("Quality of Life").count.text == "",
+        "the Profiles page counts it")
+    Check(Shown("Tailor Setup").text:find(ns.Color("accent", "Tailor"), 1, true) and drawnWith[#drawnWith] ~= false,
+        "drawn with the search, its words lit")
+    input:SetText("questions"); Flush()
+    Check(drawnWith[#drawnWith] == UI.filter, "the page draws again as the words change")
+    root.scripts.OnKeyDown(root, "ESCAPE"); Flush()
+    Check(UI.filter == nil and drawnWith[#drawnWith] == false and Shown("Tailor Setup") ~= nil,
+        "cleared, the page is drawn whole again")
+    ns.BuildProfileSettings = nil
 end
 
 -- A confirm: No, Escape and a newer confirm taking its place all count as no; Yes does not.
@@ -594,6 +620,30 @@ do
     Check(no == 3, "a confirm taking another's place cancels that one")
     Click(Button("No")); Flush()
     Check(no == 4 and yes == 1, "and the new one still answers once")
+end
+
+-- A confirm with two answers (an alt's first login): the second button runs its own answer only
+-- from its own click; Escape and a newer confirm run neither.
+do
+    local same, own, closed = 0, 0, 0
+    local function Ask()
+        ns.Confirm("Which?", function() same = same + 1 end, function() closed = closed + 1 end, "Same", "Own",
+            function() own = own + 1 end)
+    end
+    Ask(); Click(Button("Own")); Flush()
+    Check(own == 1 and same == 0 and closed == 0, "the second answer runs from its button, and is not a close")
+    Ask(); Click(Button("Same")); Flush()
+    Check(same == 1 and own == 1 and closed == 0, "the first answer still runs from its button")
+    Ask()
+    local dimmer = Text("Which?").parent.parent
+    dimmer.scripts.OnKeyDown(dimmer, "ESCAPE"); Flush()
+    Check(own == 1 and same == 1 and closed == 1 and not dimmer:IsShown(), "Escape runs neither answer")
+    Ask(); Ask()
+    Check(own == 1 and same == 1 and closed == 2, "nor does a confirm taking its place")
+    Click(Button("Own")); Flush()
+    ns.Confirm("Plain?", function() end)
+    Click(Button("No")); Flush()
+    Check(own == 2 and closed == 2, "and a plain confirm after it keeps its own No")
 end
 
 -- A module shipped as its own addon: switching it off disables the addon, with every module
@@ -632,16 +682,11 @@ ns.OpenOptionsWindow("Professions/Settings"); Flush()
 Check(Text("MODULES") ~= nil, "a link to a module that is off lands on Settings, where it is turned back on")
 missingAddOns.NaowhForever_Professions = nil
 
--- Smart Reminders is a module addon too. While it is off, the core still owns Unlock Mode.
-missingAddOns.NaowhForever_SmartReminders = true
-for _, page in ipairs(UI.SearchPages()) do
-    Check(not (page.module and page.module.name == "Smart Reminders"), "Smart Reminders off is not searched")
-end
-ns.ShowRaidReminderAnchorConfig(); Flush()
-Check(Text("HUD Editor") and Text("Exit Config") and not Text("Snap Elements"), "HUD Editor opens without Smart Reminders")
+-- The core owns Unlock Mode.
+ns.ShowUnlockMode(); Flush()
+Check(Text("HUD Editor") and Text("Exit Config") and not Text("Snap Elements"), "the core opens the HUD Editor")
 Click(Button("Exit Config")); Flush()
-Check(not Text("Exit Config") and not ns.IsRaidReminderAnchorConfigActive(), "and Exit Config closes it")
-missingAddOns.NaowhForever_SmartReminders = nil
+Check(not Text("Exit Config") and not ns.IsUnlockModeActive(), "and Exit Config closes it")
 
 ns.OpenOptionsWindow("Settings"); Flush()
 local groupInspectRows = 0

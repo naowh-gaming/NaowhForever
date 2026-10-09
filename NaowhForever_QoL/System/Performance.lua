@@ -6,6 +6,7 @@ local Group = ns.Shared.Settings.Group
 local SAME_WITHIN = 0.001
 local SPELL_QUEUE = "SpellQueueWindow"
 local SPELL_QUEUE_MAX = 400
+local SPELL_QUEUE_RANGE = { 0, SPELL_QUEUE_MAX, 1 }
 
 local TEXT_COMBAT = "Game settings can only be changed out of combat."
 local TEXT_RELOAD = "Some settings only take effect after a reload. Reload UI now?"
@@ -200,7 +201,7 @@ local HEAD = {
     { label = "Restore All", buttonText = "Restore All", button = ConfirmRestoreAll,
       help = "Puts back every setting this page has changed, to the value you had before." },
     Group("Spell Queue"),
-    { label = "Spell Queue Window", slider = { 0, 400, 1 }, unit = "ms", get = SpellQueueGet, set = SpellQueueSet,
+    { label = "Spell Queue Window", slider = SPELL_QUEUE_RANGE, unit = "ms", get = SpellQueueGet, set = SpellQueueSet,
       help = "How early you can press your next spell before the current one finishes, in milliseconds. "
           .. "100 to 400 suits most: lower is more responsive, higher is more forgiving of latency. Melee "
           .. "around your ping + 100, ranged around your ping + 150." },

@@ -13,6 +13,8 @@ local FONT_SIZE = 22
 local PREVIEW_PCT = 20
 local STACK_ORDER = 3
 local PERCENT = ns.QoLConstants.PERCENT
+local WARN_RANGE = { 5, 100, 1 }
+local TEXT_RANGE = { 10, 48, 1 }
 local TEXT_LOW = "Low Durability: %d%%"
 local SUMMARY = "Warns below %d%%"
 
@@ -114,11 +116,11 @@ end
 
 hooksecurefunc(S, "Set", OnSettingChanged)
 hooksecurefunc(ns, "Apply", Apply)
-hooksecurefunc(ns, "ShowRaidReminderAnchorConfig", function()
+hooksecurefunc(ns, "ShowUnlockMode", function()
     unlocked = S.Get("enabled") == true
     Apply()
 end)
-hooksecurefunc(ns, "HideRaidReminderAnchorConfig", function()
+hooksecurefunc(ns, "HideUnlockMode", function()
     unlocked = false
     Apply()
 end)
@@ -139,8 +141,8 @@ Settings.Page("QoL/Loot & Items", S):Card({
         .. "combat. Move it in the HUD Editor.",
     summary = DurabilitySummary,
     rows = {
-        { key = "durabilityBelow", label = "Warn Below", slider = { 5, 100, 1 }, unit = "%" },
-        Settings.Look("durability", { text = true, size = { 10, 48, 1 }, background = "card" }),
+        { key = "durabilityBelow", label = "Warn Below", slider = WARN_RANGE, unit = "%" },
+        Settings.Look("durability", { text = true, size = TEXT_RANGE, background = "card" }),
         Settings.Group("Colours"),
         { key = "durabilityTheme", label = "Apply Theme to Text Colour", toggle = true,
           help = "Shades from the theme's accent colour to red instead of from pink." },

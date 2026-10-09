@@ -6,4 +6,8 @@ ns.BiS.C = {
     OFF_HAND = 17,
     RANGED = 18,
     NAME_MAX = 40,
+    PERCENT = 100,
+    ROUND = 0.5,
+    FOREVER_KIND = "items",
+    WOWHEAD_KIND = "item",
 }

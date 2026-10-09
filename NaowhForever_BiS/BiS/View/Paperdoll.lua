@@ -30,7 +30,7 @@ local COSMETIC = { [4] = "Shirt", [19] = "Tabard" }
 local HAND = { [16] = "MAINHANDSLOT", [17] = "SECONDARYHANDSLOT" }
 local LOOKS = { { key = "bis", label = "Your BiS" }, { key = "now", label = "Now" } }
 local HIGHLIGHT = "Interface\\Buttons\\ButtonHilight-Square"
-local FOREVER_KIND = "items"
+local FOREVER_KIND = C.FOREVER_KIND
 local TEXT_NO_STATS = "No stats: wear what you like."
 local TEXT_PICK_BIS = "Click to pick your BiS."
 local TEXT_YOUR_PICKS = "Your %s picks"

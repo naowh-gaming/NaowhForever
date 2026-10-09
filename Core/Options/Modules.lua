@@ -2,9 +2,7 @@
 local ns = _G.NaowhForever
 local UI = ns.UI
 
-local F = ns.FEATURES
-
-local RETIRED_ADDON = "NaowhForever_SmartReminders"
+local PROFILES_PAGE = "Profiles"
 local QOL = "QoL"
 local TEXT_QOL = "Quality of Life"
 local TEXT_AND = " and "
@@ -22,11 +20,9 @@ local SYSTEM_PAGES = {
       subtitle = "Options for the whole addon, saved for this computer." },
     { name = "Patch Notes", reuse = true, subtitle = "What changed in recent builds." },
     { name = "Credits", build = "BuildCreditsPage", reuse = true, subtitle = "The people and projects behind Naowh Forever." },
-    { name = "Profiles", build = "BuildProfileSettings", reuse = true,
+    { name = PROFILES_PAGE, build = "BuildProfileSettings", reuse = true,
       subtitle = "Switch, copy and share everything these pages save." },
 }
-
-ns.CustomReminderSettings = UI.ModuleSettings("customReminders", { enabled = F.customReminders.enabled })
 
 local MODULES = {
     { name = "QoL", navIcon = "checklist", settings = "QoLSettings", addon = "NaowhForever_QoL",
@@ -129,7 +125,7 @@ local MODULES = {
       addon = "NaowhForever_AuraBuffs",
       open = "ToggleAuraBuffsWindow",
       command = "buffs", short = "Buffs", icon = "Interface\\Icons\\Spell_Holy_WordFortitude",
-      subtitle = "Buff, consumable and campfire reminders, low health and debuff sounds.",
+      subtitle = "Buff, consumable and campfire reminders, and a low health warning.",
       tabs = {
           { name = "Settings", reuse = true },
       } },
@@ -165,22 +161,13 @@ local MODULES = {
       tabs = {
           { name = "Settings", reuse = true },
       } },
-    { name = "Custom Reminders", settings = "CustomReminderSettings",
-      subtitle = "Your own reminders, driven by the same triggers Smart Reminders uses.",
-      tabs = {
-          { name = "Custom Notes", soon = "Your own note lines, driven by the same triggers "
-              .. "the reminders use. Not finished yet.\n\nNothing is missing in the meantime: "
-              .. "reminders still carry their own text, set per reminder from the boss "
-              .. "pages." },
-      } },
 }
 
 local Options = {}
 ns.Options = Options
+UI.PROFILES_PAGE = PROFILES_PAGE
 
 local PAGES = {}
-
-C_AddOns.DisableAddOn(RETIRED_ADDON)
 
 local function DisplayName(mod)
     return ns.L(mod.name == QOL and TEXT_QOL or mod.name)
@@ -253,7 +240,7 @@ local function ModuleOn(mod)
         local store = ns[mod.settings]
         return store ~= nil and store.Get(mod.enabledKey or "enabled")
     end
-    return ns.DB().enabled == true
+    return true
 end
 
 function ns.ModuleSwitches()
@@ -296,7 +283,7 @@ local function SetModuleOn(mod, on)
     if mod.addon then
         for _, m in ipairs(Linked(mod, true)) do C_AddOns.EnableAddOn(m.addon) end
     end
-    if store then store.Set(mod.enabledKey or "enabled", on) else ns.SetEnabled(on) end
+    if store then store.Set(mod.enabledKey or "enabled", on) end
     UI:RefreshPage(true)
 end
 

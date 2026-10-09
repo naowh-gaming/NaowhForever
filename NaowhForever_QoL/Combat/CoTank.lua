@@ -5,12 +5,12 @@ local S = ns.QoLSettings
 local T = ns.THEME
 local Parts = ns.Shared.Parts
 
-local BAR = "Interface\\Buttons\\WHITE8X8"
+local BAR = ns.Shared.Style.WHITE
 local RIGHTEOUS_FURY = 25780
 local PALADIN = select(2, UnitClass("player")) == "PALADIN"
 local TANK_FORMS = { [5] = true, [8] = true, [18] = true }
 local HIDDEN_DEBUFFS = { [6788] = true, [11196] = true, [15007] = true, [25771] = true }
-local BLACK = { r = 0, g = 0, b = 0 }
+local BLACK = ns.Shared.Style.BORDER_RGB
 local ICON_CROP = ns.QoLConstants.ICON_CROP_TIGHT
 local RING_THICKNESS = 2
 local RING_STRIPS = 4
@@ -22,8 +22,13 @@ local LINE_SLACK = 0.4
 local DEFAULT_X = 200
 local PREVIEW_MAX, PREVIEW_VALUE = 100, 75
 local PREVIEW_NAME = "TankName"
-local SECONDS_PER_MINUTE, SECONDS_PER_HOUR = 60, 3600
+local SECONDS_PER_MINUTE, SECONDS_PER_HOUR = ns.QoLConstants.SECONDS_PER_MINUTE, ns.QoLConstants.SECONDS_PER_HOUR
 local SHOW_MINUTES_FROM, SHOW_HOURS_FROM = 90, 5400
+local NAME_LENGTH_RANGE, OFFSET_RANGE, DEBUFF_CAP_RANGE = { 0, 20, 1 }, { -2000, 2000, 1 }, { 1, 8, 1 }
+local DEBUFF_SIZE_RANGE, DEBUFF_OFFSET_RANGE = { 10, 48, 1 }, { -200, 200, 1 }
+local DEBUFF_SPACING_RANGE, DEBUFF_TEXT_RANGE, WIDTH_RANGE = { 0, 12, 1 }, { 6, 20, 1 }, { 50, 400, 5 }
+local HEIGHT_RANGE = { 10, 80, 1 }
+local TEXT_RANGE = ns.Shared.Style.HUD_TEXT_RANGE
 local MOVER_LABEL = "Co-Tank"
 local SETTINGS_PAGE, SETTINGS_CARD = "QoL/Combat", "QoL/Combat:coTank"
 local SUMMARY = "%d by %d%s"
@@ -468,11 +473,11 @@ end
 
 hooksecurefunc(S, "Set", OnSettingChanged)
 hooksecurefunc(ns, "Apply", function() Refresh() end)
-hooksecurefunc(ns, "ShowRaidReminderAnchorConfig", function()
+hooksecurefunc(ns, "ShowUnlockMode", function()
     unlocked = S.Get("enabled") == true
     Refresh()
 end)
-hooksecurefunc(ns, "HideRaidReminderAnchorConfig", function()
+hooksecurefunc(ns, "HideUnlockMode", function()
     unlocked = false
     Refresh()
 end)
@@ -509,38 +514,38 @@ ns.Shared.Settings.Page("QoL/Combat", S):Card({
     rows = {
         Group("Name"),
         { key = "coTankName", label = "Show Name", toggle = true },
-        { key = "coTankNameLength", label = "Name Length", slider = { 0, 20, 1 }, needs = "coTankName",
+        { key = "coTankNameLength", label = "Name Length", slider = NAME_LENGTH_RANGE, needs = "coTankName",
           help = "Cuts the name to this many letters. 0 shows it whole." },
         Group("Position"),
         { key = "coTankAnchor", label = "Anchor to a Frame", text = true, wide = true,
           help = "Frame to anchor to, such as PlayerFrame. UIParent puts it back on the screen, and so "
               .. "does dragging it in the HUD Editor." },
-        { key = "coTankX", label = "X Offset", slider = { -2000, 2000, 1 }, help = FROM_ANCHOR },
-        { key = "coTankY", label = "Y Offset", slider = { -2000, 2000, 1 }, help = FROM_ANCHOR },
+        { key = "coTankX", label = "X Offset", slider = OFFSET_RANGE, help = FROM_ANCHOR },
+        { key = "coTankY", label = "Y Offset", slider = OFFSET_RANGE, help = FROM_ANCHOR },
         Group("Debuffs"),
         { key = "coTankDebuffs", label = "Co-Tank Debuffs", toggle = true,
           help = "Shows the other tank's debuffs beside their health bar, in combat too: tank-buster "
               .. "stacks, boss debuffs and anything you can dispel." },
         { key = "coTankDebuffFilter", label = "Filter", choice = FILTER, needs = "coTankDebuffs" },
-        { key = "coTankDebuffCap", label = "Max Icons", slider = { 1, 8, 1 }, needs = "coTankDebuffs" },
-        { key = "coTankDebuffSize", label = "Icon Size", slider = { 10, 48, 1 }, needs = "coTankDebuffs" },
+        { key = "coTankDebuffCap", label = "Max Icons", slider = DEBUFF_CAP_RANGE, needs = "coTankDebuffs" },
+        { key = "coTankDebuffSize", label = "Icon Size", slider = DEBUFF_SIZE_RANGE, needs = "coTankDebuffs" },
         { key = "coTankDebuffPosition", label = "Position", choice = POSITION, needs = "coTankDebuffs" },
         { key = "coTankDebuffGrow", label = "Grow", choice = GROW, needs = "coTankDebuffs" },
-        { key = "coTankDebuffX", label = "Offset X", slider = { -200, 200, 1 }, needs = "coTankDebuffs" },
-        { key = "coTankDebuffY", label = "Offset Y", slider = { -200, 200, 1 }, needs = "coTankDebuffs" },
-        { key = "coTankDebuffSpacing", label = "Spacing", slider = { 0, 12, 1 }, needs = "coTankDebuffs" },
+        { key = "coTankDebuffX", label = "Offset X", slider = DEBUFF_OFFSET_RANGE, needs = "coTankDebuffs" },
+        { key = "coTankDebuffY", label = "Offset Y", slider = DEBUFF_OFFSET_RANGE, needs = "coTankDebuffs" },
+        { key = "coTankDebuffSpacing", label = "Spacing", slider = DEBUFF_SPACING_RANGE, needs = "coTankDebuffs" },
         { key = "coTankDebuffTooltips", label = "Show Tooltips", toggle = true, needs = "coTankDebuffs",
           help = "Off by default: the bar under the icons is click-to-target." },
         { key = "coTankDebuffDuration", label = "Show Time Left", toggle = true, needs = "coTankDebuffs" },
-        { key = "coTankDebuffDurationSize", label = "Time Left Size", slider = { 6, 20, 1 },
+        { key = "coTankDebuffDurationSize", label = "Time Left Size", slider = DEBUFF_TEXT_RANGE,
           needs = { "coTankDebuffs", "coTankDebuffDuration" } },
         { key = "coTankDebuffStacks", label = "Show Stacks", toggle = true, needs = "coTankDebuffs" },
-        { key = "coTankDebuffStackSize", label = "Stacks Size", slider = { 6, 20, 1 },
+        { key = "coTankDebuffStackSize", label = "Stacks Size", slider = DEBUFF_TEXT_RANGE,
           needs = { "coTankDebuffs", "coTankDebuffStacks" } },
         Group("Size"),
-        { key = "coTankWidth", label = "Width", slider = { 50, 400, 5 } },
-        { key = "coTankHeight", label = "Height", slider = { 10, 80, 1 } },
-        ns.Shared.Settings.Look("coTank", { text = true, size = { 8, 24, 1 }, bar = "Flat", background = "alpha" }),
+        { key = "coTankWidth", label = "Width", slider = WIDTH_RANGE },
+        { key = "coTankHeight", label = "Height", slider = HEIGHT_RANGE },
+        ns.Shared.Settings.Look("coTank", { text = true, size = TEXT_RANGE, bar = "Flat", background = "alpha" }),
         Group("Colours"),
         { key = "coTankClassColor", label = "Class Colour Health", toggle = true },
         { key = "coTankColor", label = "Health Colour", colour = true, needs = OwnHealthColour,

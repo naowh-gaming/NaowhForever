@@ -81,6 +81,7 @@ local function Load()
     for k in pairs(frames) do frames[k] = nil end
     local ns = {
         QoLSettings = { Get = function(key) return settings[key] end, Set = function() end },
+        QoLConstants = dofile("Tools/regression/qol_constants.lua"),
         Color = function(_, text) return text end,
         Print = function(msg) printed[#printed + 1] = msg end,
         Button = function(_, text, _, _, onClick)

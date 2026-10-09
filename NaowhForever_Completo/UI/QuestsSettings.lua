@@ -7,7 +7,8 @@ local Q = Completo.Quests
 local Settings = ns.Shared.Settings
 
 local PAGE = "Completo/Quests"
-local PIN_SIZE = { 12, 32, 1 }
+local PIN_SIZE = ns.Shared.Style.PIN_SIZE_RANGE
+local ORDER_QUESTS, ORDER_MAP_PINS = 10, 20
 local TEXT_OFF = "Turn on Completo"
 local TEXT_PROGRESS = "%d of %d zone quests done"
 local TEXT_ZONE = "%s: %d of %d."
@@ -50,7 +51,7 @@ page:Window({
 })
 
 page:Card({
-    id = "quests", name = "Quests", order = 10,
+    id = "quests", name = "Quests", order = ORDER_QUESTS,
     help = "What a zone's page in the Completo window lists.",
     rows = {
         { key = "hideDone", label = "Hide Done", toggle = true,
@@ -59,7 +60,7 @@ page:Card({
 })
 
 page:Card({
-    id = "mapPins", name = "Map Pins", order = 20, switch = "mapPins",
+    id = "mapPins", name = "Map Pins", order = ORDER_MAP_PINS, switch = "mapPins",
     help = "A yellow ! on the world map at every quest giver with a quest you can pick up that still gives "
         .. "experience. Hover it for the quests; click it for a waypoint.",
     summary = MapSummary,

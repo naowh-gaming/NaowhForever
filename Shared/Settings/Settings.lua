@@ -3,9 +3,9 @@ local ns = _G.NaowhForever
 local Shared = ns.Shared
 
 local KINDS = { "toggle", "slider", "choice", "colour", "font", "texture", "sound", "text", "button", "binding" }
-local TEXT_SIZE = { 6, 32, 1 }
-local BG_ALPHA = { 0, 100, 5 }
-local BG_ALPHA_SCALE = 0.01
+local FONT_SIZE_RANGE = { 6, 32, 1 }
+local BG_ALPHA_RANGE = Shared.Style.ALPHA_RANGE
+local BG_ALPHA_SCALE = Shared.Style.PERCENT_SCALE
 local DEFAULT_ORDER = 100
 local SAME_WITHIN = 0.002
 local NO_KEYS = {}
@@ -59,7 +59,7 @@ local function AddLookText(look)
     local opts = look.opts
     if not opts.text then return end
     AddLook(look, TEXT_TEXT, "Font", { label = TEXT_FONT, font = true })
-    AddLook(look, TEXT_TEXT, "FontSize", { label = TEXT_FONT_SIZE, slider = opts.size or TEXT_SIZE })
+    AddLook(look, TEXT_TEXT, "FontSize", { label = TEXT_FONT_SIZE, slider = opts.size or FONT_SIZE_RANGE })
     AddLook(look, TEXT_TEXT, "Outline", { label = TEXT_OUTLINE, choice = Shared.Parts.HUD_OUTLINES,
         help = TEXT_OUTLINE_HELP })
 end
@@ -71,7 +71,7 @@ local function AddLookBackground(look)
             choice = Shared.Parts.HUD_BACKGROUNDS, help = TEXT_BACKGROUND_HELP })
     elseif opts.background == "alpha" then
         AddLook(look, opts.bar and TEXT_BAR or TEXT_BACKGROUND, "BgAlpha", { label = TEXT_BG_ALPHA,
-            slider = BG_ALPHA, unit = TEXT_PERCENT, scale = BG_ALPHA_SCALE })
+            slider = BG_ALPHA_RANGE, unit = TEXT_PERCENT, scale = BG_ALPHA_SCALE })
     end
 end
 

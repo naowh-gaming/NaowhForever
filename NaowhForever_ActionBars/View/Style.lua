@@ -9,6 +9,9 @@ ns.ActionBars.Style = setmetatable({
     CHARACTER_RGB = { r = 0.23, g = 0.19, b = 0.31 },
     GOOD_RGB = Shared.Style.HAVE_RGB,
 
+    STACK_GAP = 3,
+    FILL_W = 10,
+
     WIDTH = 980,
     HEIGHT = 640,
     CARD = 6,
@@ -17,7 +20,6 @@ ns.ActionBars.Style = setmetatable({
     ROW_PAD = 10,
     ROW_GAP = 8,
     ROW_FILL = 0.35,
-    ICON_CROP = 0.08,
     OUT_ALPHA = 0.22,
     CHIP_H = 13,
     LINE_GAP = 4,

@@ -10,6 +10,7 @@ local SLIDER_MIN, SLIDER_MAX, SLIDER_STEP = 0, 1, 1
 local CHOICE_W, TEXT_W, BUTTON_W, BUTTON_H = 170, 200, 110, 24
 local BINDING_W = 170
 local TEXT_GROW, TEXT_INSET = 2, 6
+local TEXT_BOX = { inset = TEXT_INSET, border = SS.BORDER_RGB, hover = false }
 local DIM = 0.35
 local NO_SOUND = "none"
 local CHOICE_KINDS = { choice = true, font = true, texture = true, sound = true }
@@ -75,15 +76,10 @@ function Makers.colour(row)
 end
 
 function Makers.text(row)
-    local box = CreateFrame("EditBox", nil, row)
+    local box = ns.NewEditBox(row, TEXT_BOX)
     box:SetSize(TEXT_W, BOX_H + TEXT_GROW)
-    box:SetAutoFocus(false)
     box:SetFont(ns.UIFontPath(), SS.TEXT_SIZE, "")
     box:SetTextColor(T.fg.r, T.fg.g, T.fg.b, 1)
-    box:SetTextInsets(TEXT_INSET, TEXT_INSET, 0, 0)
-    ns.Solid(box, "BACKGROUND", T.bg, 1):SetAllPoints()
-    box.border = ns.Border(box, SS.BORDER_RGB)
-    if ns.classicSkin then ns.Sunken(box) end
     box:SetScript("OnEnterPressed", TextCommit)
     box:SetScript("OnEditFocusLost", TextCommit)
     box:SetScript("OnEscapePressed", TextReset)

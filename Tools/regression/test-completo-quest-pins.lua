@@ -13,7 +13,7 @@ local function Check(ok, label) assert(ok, label); checks = checks + 1 end
 local settings = { enabled = true, mapPins = true, mapPinSize = 20 }
 local S = { Get = function(key) return settings[key] end, Set = function() end }
 local ns = { CompletoSettings = S, Apply = function() end, ThemeTint = function() end,
-    Completo = { Settings = S, Style = {},
+    Completo = { Settings = S, Style = {}, C = { PERCENT = 100 },
         Quests = { Refresh = function() end, Givers = function() return {} end } } }
 
 local maximized, onSize = false, nil

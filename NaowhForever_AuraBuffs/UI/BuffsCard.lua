@@ -11,7 +11,9 @@ local Settings = ns.Shared and ns.Shared.Settings
 if not Settings then return end
 local Group = Settings.Group
 
-local STAGE_H, NOTE_Y, NOTE_SIZE, STAGE_MARGIN = 120, 10, 11, 16
+local STAGE_H, NOTE_Y, NOTE_SIZE, STAGE_MARGIN = 120, A.Style.STAGE_NOTE_Y, A.Style.STAGE_NOTE_SIZE, A.Style.STAGE_MARGIN
+local MINUTES_RANGE, ICON_RANGE, TEXT_RANGE = { 0, 10, 1 }, { 20, 64, 1 }, ns.Shared.Style.HUD_TEXT_RANGE
+local ORDER_BUFFS = 10
 local PREVIEW = A.BuffPreview
 local RAID_SAMPLE = #PREVIEW
 local WHERE = { { always = "Everywhere", instance = "Dungeons & Raids", raid = "Raids Only" },
@@ -127,7 +129,7 @@ end
 local rows = {
     Group("Consumables"),
     { key = "consumablesWhere", label = "Show In", choice = WHERE, needs = Enabled, why = OFF },
-    { key = "consumablesMinutes", label = "Warn With Minutes Left", slider = { 0, 10, 1 }, unit = " min",
+    { key = "consumablesMinutes", label = "Warn With Minutes Left", slider = MINUTES_RANGE, unit = " min",
       needs = Enabled, why = OFF, help = "A buff with less time than this left counts as missing." },
     { key = "onlyIfCarried", label = "Only If I Carry One", toggle = true, needs = Enabled, why = OFF,
       help = "Off: a reminder for each kind you watch, even with none in your bags." },
@@ -146,11 +148,11 @@ local rows = {
 }
 for _, family in ipairs(D.RAID) do rows[#rows + 1] = PickRow(family) end
 rows[#rows + 1] = Group("Size")
-rows[#rows + 1] = { key = "iconSize", label = "Icon Size", slider = { 20, 64, 1 }, needs = Enabled, why = OFF }
-rows[#rows + 1] = Settings.Look("buffs", { text = true, size = { 8, 24, 1 }, needs = Enabled, why = OFF })
+rows[#rows + 1] = { key = "iconSize", label = "Icon Size", slider = ICON_RANGE, needs = Enabled, why = OFF }
+rows[#rows + 1] = Settings.Look("buffs", { text = true, size = TEXT_RANGE, needs = Enabled, why = OFF })
 
 Settings.Page(A.PAGE, S):Card({
-    id = "buffs", name = "Buffs & Consumables", order = 10,
+    id = "buffs", name = "Buffs & Consumables", order = ORDER_BUFFS,
     help = "A row of icons for missing food, flask, elixir and scroll buffs, and for class buffs missing "
         .. "in your group. Out of combat only: the game keeps your buffs from addons in combat, so the "
         .. "icons keep what they showed. Hover one to pick a carried item to use. Move them in the HUD Editor.",

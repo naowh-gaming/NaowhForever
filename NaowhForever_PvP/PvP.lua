@@ -31,6 +31,10 @@ function P.Enabled()
     return S.Get("enabled") == true
 end
 
+function P.Readable(value)
+    return value ~= nil and not (issecretvalue and issecretvalue(value))
+end
+
 function P.Needs(key)
     return function() return S.Get("enabled") == true and S.Get(key) == true end
 end

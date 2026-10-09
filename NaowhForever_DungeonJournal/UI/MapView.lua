@@ -40,11 +40,11 @@ local PICKED_GLOW = 24
 local GLOW_LOW, GLOW_HIGH, GLOW_PULSE = 0.15, 0.55, 0.9
 local HALO_LEVEL, GLOW_LEVEL, GOLD_LEVEL = -3, -2, -1
 local PLACE_ROUND = 1000
-local ROUND_HALF = 0.5
+local ROUND_HALF = C.ROUND_HALF
 local ENTRANCE_KEY = "entrance"
 local TAG_SHORT = { RARE = "R", OPTIONAL = "O", QUEST = "Q" }
 local TAG_WORDS = { RARE = "Rare", OPTIONAL = "Optional", QUEST = "Quest boss", CHEST = "Chest" }
-local MASK = "Interface\\AddOns\\NaowhForever\\Core\\Media\\circle_mask.tga"
+local MASK = ns.MEDIA .. "circle_mask.tga"
 local MASK_WRAP = "CLAMPTOBLACKADDITIVE"
 
 local TEXT_ENTRANCE = "Entrance"

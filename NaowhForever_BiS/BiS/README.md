@@ -67,7 +67,7 @@ BiS/
 
 Other modules call in through `ns`: `ns.IsBisItem` (the Journal, Bag Space, the loot feed),
 `ns.AddBisItem`, `ns.PromoteBisItem`, `ns.RemoveBisItem` (the Journal's item menu),
-`ns.ImportBisList` (profile packs), `ns.OpenBisWindow`.
+`ns.ImportBisList` (the profile import), `ns.OpenBisWindow`.
 
 ## I want to change...
 

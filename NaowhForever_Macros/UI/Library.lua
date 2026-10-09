@@ -15,10 +15,10 @@ local PAD, ROW_ICON, ICON_EDGES, BUTTON_H = St.PAD, St.ROW_ICON, St.ICON_EDGES, 
 local BLACK, CARD_GAP, GOLD_CODE = St.BORDER_RGB, St.CARD_GAP, St.GOLD_CODE
 local TAG_SIZE, SMALL_SIZE, NOTE_SIZE, CARD_TITLE_SIZE = St.TAG_SIZE, St.SMALL_SIZE, St.NOTE_SIZE, St.CARD_TITLE_SIZE
 local CLASS_ROW_H, CLASS_NAME_SIZE = 34, 15
-local CARD_H, CARD_COLS, CARD_PAD = 168, 2, 12
-local TEXT_GAP, TAG_TOP, NOTE_GAP = 10, 16, 8
+local CARD_H, CARD_COLS, CARD_PAD = 168, 2, St.MACRO_CARD_PAD
+local TEXT_GAP, TAG_TOP, NOTE_GAP = St.ICON_TEXT_GAP, 16, 8
 local CODE_BOTTOM, CODE_INSET_X, CODE_INSET_Y = 44, 8, 6
-local BUTTON_BOTTOM, BUTTON_GAP = 10, 6
+local BUTTON_BOTTOM, BUTTON_GAP = 10, St.BUTTON_GAP
 local ADD_W, OPEN_W, REMOVE_W = 64, 110, 70
 local DISABLED_ALPHA = 0.4
 
@@ -133,7 +133,7 @@ local function NewLibCard(parent)
         local entry = c.entry
         F.Open({ name = entry.name, body = entry.body, icon = c.shownIcon, account = false,
             source = entry.own and "library" or "pack" })
-        F.window.SetTab("mine")
+        F.SetTab("mine")
     end
     c.remove = ns.Button(c, "Remove", REMOVE_W, BUTTON_H)
     c.remove:SetPoint("BOTTOMLEFT", CARD_PAD, BUTTON_BOTTOM)

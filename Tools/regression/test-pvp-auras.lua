@@ -184,7 +184,7 @@ local function Fixture(qol, pvp)
 
     local ns = { QoLConstants = dofile("Tools/regression/qol_constants.lua"), QoLSettings = Store(qol), THEME = { panel = {}, fg = {}, accentSoft = { r = 0, g = 0, b = 1 },
         accent = { r = 0, g = 0.5, b = 1 }, muted = {} }, Apply = none,
-        ShowRaidReminderAnchorConfig = none, HideRaidReminderAnchorConfig = none }
+        ShowUnlockMode = none, HideUnlockMode = none }
     ns.UIFontPath = function() return "font" end
     env.opened = {}
     ns.OpenFromOptions = function(open) env.opened[#env.opened + 1] = "from options"; open() end
@@ -202,7 +202,8 @@ local function Fixture(qol, pvp)
         end }
     env.cards = {}
     local page = { Card = function(_, spec) env.cards[spec.id] = spec end }
-    ns.Shared = { Settings = { Page = function() return page end, Group = function(title) return { group = title } end,
+    ns.Shared = { Style = dofile("Tools/regression/shared_style.lua"), Parts = { ClassCrop = function() end },
+        Settings = { Page = function() return page end, Group = function(title) return { group = title } end,
         EditZone = function(parent, opts)
             local zone = Frame("Zone")
             zone.parent, zone.click, zone.enter, zone.leave = parent, opts.click, opts.enter, opts.leave

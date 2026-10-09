@@ -18,7 +18,7 @@ local FALLBACK_COLOR = { r = 0.6, g = 0.6, b = 0.6 }
 local OWN_DARKEN = 0.27
 local DANGER_G, DANGER_B = 0.35, 0.25
 local YOUR_SHADE = 0.75
-local GRADIENT_TEX = "Interface\\AddOns\\NaowhForever\\Core\\Media\\NaowhGradient.tga"
+local GRADIENT_TEX = ns.MEDIA .. "NaowhGradient.tga"
 local ICON_PATH = "Interface\\Icons\\ClassIcon_"
 local LINE_ICON = "Interface\\Icons\\Ability_Warrior_Challange"
 local PET_ICON = "Interface\\Icons\\Ability_Hunter_BeastCall"
@@ -30,11 +30,11 @@ local KICKER_SIZE, TITLE_SIZE, FOOT_SIZE, EMPTY_SIZE, ROW_TEXT = 9, 13, 10, 12, 
 local KICKER_X, KICKER_Y, TITLE_Y, TITLE_RIGHT = 10, -7, 7, -82
 local RANGE_RIGHT, STATE_GAP, EMPTY_Y = -12, -4, -10
 local EDGE_W, RANK_SIZE, RANK_W, RANK_ROOM = 2, 10, 16, 18
-local ICON_CROP, ICON_MAX, ICON_PAD, ICON_GAP = 0.08, 32, 6, 6
+local ICON_CROP, ICON_MAX, ICON_PAD, ICON_GAP = ns.Shared.Style.ICON_CROP, 32, 6, 6
 local PERCENT_W, VALUE_W, NAME_GAP, NAME_MIN = 45, 54, 5, 48
-local MIN_FONT = 8
+local MIN_FONT = C.MIN_FONT
 local SHORT_M, SHORT_K = 1000000, 1000
-local ROUND = 0.5
+local ROUND = C.ROUND
 
 local TEXT_KICKER = "THREAT"
 local TEXT_EMPTY = "Waiting for threat"

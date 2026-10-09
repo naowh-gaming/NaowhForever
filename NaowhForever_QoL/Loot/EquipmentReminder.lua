@@ -24,9 +24,10 @@ local MIN_WIDTH, SIDE_ROOM = 200, 20
 local ROOM_WITH_STATUS, ROOM_PLAIN = 66, 44
 local DEFAULT_Y = 100
 local INSTANCE_DELAY, READY_CHECK_DELAY = 1, 0.2
-local BLACK = { r = 0, g = 0, b = 0 }
+local HIDE_AFTER_RANGE, ICON_RANGE = { 0, 60, 1 }, { 24, 64, 1 }
+local BLACK = ns.Shared.Style.BORDER_RGB
 local ISSUE_RGB = { r = 1, g = 0.4, b = 0.4 }
-local WHITE_RGB = { r = 1, g = 1, b = 1 }
+local WHITE_RGB = ns.QoLConstants.WHITE_RGB
 local PROBLEM_RGB = { r = 1, g = 0.5, b = 0.3 }
 local LABEL_RGB = { r = 0.6, g = 0.6, b = 0.6 }
 local HAVE_RGB = { r = 1, g = 0.5, b = 0.5 }
@@ -318,9 +319,9 @@ ns.Shared.Settings.Page("QoL/Loot & Items", S):Card({
               .. "you captured with Capture Current Enchants. Hover it for the details." },
         { key = "equipOnInstance", label = "Show Entering Dungeons & Raids", toggle = true },
         { key = "equipOnReadyCheck", label = "Show on Ready Check", toggle = true },
-        { key = "equipAutoHide", label = "Hide After", slider = { 0, 60, 1 }, unit = "s",
+        { key = "equipAutoHide", label = "Hide After", slider = HIDE_AFTER_RANGE, unit = "s",
           help = "0 keeps it up until you close it." },
-        { key = "equipIconSize", label = "Icon Size", slider = { 24, 64, 1 } },
+        { key = "equipIconSize", label = "Icon Size", slider = ICON_RANGE },
         { label = "Capture Current Enchants", button = CaptureClicked, buttonText = "Capture", always = true,
           help = "Saves the enchants on your gear now as the ones the Enchant Check expects." },
         { label = "Show Equipment Check", button = ShowClicked, buttonText = "Show", always = true,

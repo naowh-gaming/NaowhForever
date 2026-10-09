@@ -6,7 +6,13 @@ local S = ns.QoLSettings
 local CP = ns.CharacterPanel
 local Parts = ns.Shared.Parts
 
-local IP = {}
+local IP = {
+    NO_ITEM = 0,
+    SECTION_TITLE_SIZE = 11,
+    SECTION_LINE_SIZE = 12,
+    SECTION_TITLE_H = 22,
+    SECTION_GAP = 6,
+}
 ns.InspectPanel = IP
 
 local PANE_W, EDGE = CP.PANE_W, CP.EDGE
@@ -15,7 +21,7 @@ local SWITCH_H, SWITCH_GAP = 26, 6
 local PANE_LEVEL = 20
 local LEVEL_SIZE = CP.C.TEXT_SIZE
 local HOVER_ALPHA = 0.5
-local NO_ITEM = 0
+local NO_ITEM = IP.NO_ITEM
 local MODEL_BORDER = "InspectModelFrameBorder"
 local INSPECT_ADDON = "Blizzard_InspectUI"
 local LOAD_SETTLE = 0.2

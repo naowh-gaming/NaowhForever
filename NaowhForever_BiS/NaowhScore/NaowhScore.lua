@@ -19,9 +19,10 @@ local NO_REQUIRED = 0
 local FACT_ITEM_LEVEL, FACT_REQUIRED, FACT_QUALITY = 3, 4, 5
 local PERCENT = 100
 local COLOR_MAX = 255
+local ROUND = 0.5
 local OF_LEVEL_KEY = 101
 local UNGRADED = 1
-local LEVEL_COMPARE, BOTH_COMPARE, MAX_COMPARE = "level", "both", "max"
+local COMPARE = { LEVEL = "level", BOTH = "both", MAX = "max" }
 local TWO_HAND = "INVTYPE_2HWEAPON"
 local ID_KEY = "id"
 local GOLD = "|cffffd100"
@@ -83,7 +84,8 @@ local function Collect(level, best, second)
         local itemLevel, required, quality = facts[FACT_ITEM_LEVEL], facts[FACT_REQUIRED], facts[FACT_QUALITY]
         if required == NO_REQUIRED then required = itemLevel - LEVEL_GAP end
         if level == MAX or required <= level then
-            local category = CATEGORY[select(4, GetItemInfoInstant(id)) or ""]
+            local _, _, _, equipLoc = GetItemInfoInstant(id)
+            local category = CATEGORY[equipLoc or ""]
             if category then Offer(best, second, category, Epic(itemLevel, quality), id) end
         end
     end
@@ -106,11 +108,11 @@ local function Best(level)
 end
 
 local function Percentage(share)
-    return math.floor(math.max(0, math.min(1, share)) * PERCENT + 0.5)
+    return math.floor(math.max(0, math.min(1, share)) * PERCENT + ROUND)
 end
 
 local function Mix(low, high, t, k)
-    return math.floor((low[k] + (high[k] - low[k]) * t) * COLOR_MAX + 0.5)
+    return math.floor((low[k] + (high[k] - low[k]) * t) * COLOR_MAX + ROUND)
 end
 
 local function Stops(s)
@@ -143,6 +145,7 @@ end
 
 Score.GRADES = GRADES
 Score.RAMP = RAMP
+Score.COMPARE = COMPARE
 
 function Score.Of(read)
     local sum, complete, twoHand = 0, true, false
@@ -167,8 +170,8 @@ end
 function Score.Link(link)
     if not link then return nil end
     local level = GetDetailedItemLevelInfo(link)
-    local quality = select(3, GetItemInfo(link))
-    local equip = select(4, GetItemInfoInstant(link))
+    local _, _, quality = GetItemInfo(link)
+    local _, _, _, equip = GetItemInfoInstant(link)
     return level or 0, level and quality, equip == TWO_HAND
 end
 
@@ -217,7 +220,7 @@ end
 
 function Score.Grade(score, level, against)
     against = against or ns.QoLSettings.Get("naowhScoreCompare")
-    local best = Score.Best(against == LEVEL_COMPARE and level or nil)
+    local best = Score.Best(against == COMPARE.LEVEL and level or nil)
     if not best or best <= 0 then return nil, UNGRADED end
     local share = math.min(1, score / best)
     local quality = 0
@@ -234,9 +237,9 @@ end
 
 function Score.Tooltip(score, level)
     local compare = ns.QoLSettings.Get("naowhScoreCompare")
-    local against = compare == BOTH_COMPARE and MAX_COMPARE or nil
+    local against = compare == COMPARE.BOTH and COMPARE.MAX or nil
     local text = Score.Colored(score, level, against)
-    if compare == BOTH_COMPARE and level then
+    if compare == COMPARE.BOTH and level then
         local best, top = Score.Best(level), Score.Best()
         if best and top and best < top then return text .. GAP .. OfLevel(math.min(1, score / best), level) end
     end

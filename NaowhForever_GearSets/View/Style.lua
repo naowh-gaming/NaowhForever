@@ -2,7 +2,6 @@
 local ns = _G.NaowhForever
 
 ns.GearSets.Style = setmetatable({
-    ICON_CROP = 0.08,
     ICON_INSET = 1,
     EMPTY_ICON = 134400,
     BLACK = { r = 0, g = 0, b = 0 },

@@ -8,6 +8,7 @@ local Settings = ns.Shared and ns.Shared.Settings
 if not Settings then return end
 
 local AUTO = "auto"
+local ORDER_STAT_WEIGHTS = 40
 local TEXT_AUTOMATIC = "Automatic"
 local TEXT_AUTOMATIC_FOR = "Automatic (%s)"
 local TEXT_ON_TOOLTIPS = ", upgrades on tooltips"
@@ -33,7 +34,7 @@ local function Summary(store)
 end
 
 Settings.Page("BiS List/Settings"):Card({
-    id = "statWeights", name = "Stat Weights", order = 40, store = S,
+    id = "statWeights", name = "Stat Weights", order = ORDER_STAT_WEIGHTS, store = S,
     help = "What each stat is worth to your spec: the BiS List's upgrade percents and enchants come from "
         .. "them. Change the weights in the Stat Weights window, from the scales on the BiS List's title bar.",
     summary = Summary,

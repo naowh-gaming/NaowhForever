@@ -1,5 +1,6 @@
--- A character's first login and the other character whose settings it is offered: Core's
--- SettingsRoot noting a new character, MarkSeen and ImportCandidate, on a stub saved table.
+-- A character's first login and the main it is asked about: Core's SettingsRoot noting a new
+-- character, MarkSeen and ImportCandidate (the other character played most recently, on any
+-- profile), on a stub saved table.
 -- From the repo root: lua5.1 Tools/regression/test-import-candidate.lua
 local checks = 0
 local function check(label, ok) assert(ok, label); checks = checks + 1 end
@@ -13,7 +14,7 @@ local function Slice(a, b)
 end
 
 local code = assert(src:match("\n(local MODULE_KEY = .-\n)\nlocal ns = {}\n"), "Core constants")
-    .. Slice("local function CharKey()", "local DEFAULTS = {")
+    .. Slice("local function CharKey()", "function ns.DB()")
     .. Slice("function ns.MarkSeen()", "function ns.ListProfiles()")
 
 local function Login(sv, name, clock)
@@ -57,7 +58,32 @@ end
 do
     local sv = { profiles = { Default = {} }, charActive = { ["Die Man-Forever"] = "Default" } }
     local ns = Login(sv, "Die Dudu")
-    check("every other character on the same profile: nothing to offer", ns.ImportCandidate() == nil)
+    local char, profile = ns.ImportCandidate()
+    check("the main on the same profile is still the main: asked, with its profile", char == "Die Man-Forever"
+        and profile == "Default" and sv.charActive["Die Dudu-Forever"] == "Default")
+end
+
+do
+    local sv = { profiles = { Default = {}, Raid = {} }, defaultProfile = "Default",
+        charActive = { ["Ann-Forever"] = "Default", ["Bob-Forever"] = "Raid" },
+        charSeen = { ["Ann-Forever"] = 500, ["Bob-Forever"] = 100 } }
+    local ns = Login(sv, "Die Dudu")
+    local char, profile = ns.ImportCandidate()
+    check("the character played most recently, even on this character's profile", char == "Ann-Forever"
+        and profile == "Default")
+    sv.charSeen["Bob-Forever"] = 900
+    check("and it follows who was played last", (ns.ImportCandidate()) == "Bob-Forever")
+end
+
+do
+    local sv = { profiles = { Default = {}, Raid = {} }, defaultProfile = "Default",
+        charActive = { ["Ann-Forever"] = "Raid", ["Bob-Forever"] = "Default" } }
+    local ns = Login(sv, "Die Dudu")
+    local char, profile = ns.ImportCandidate()
+    check("this character landing on a profile does not count for it: a tie, by name", char == "Ann-Forever"
+        and profile == "Raid")
+    sv.charActive["Cid-Forever"] = "Default"
+    check("two others on one profile: their profile wins", (ns.ImportCandidate()) == "Bob-Forever")
 end
 
 do

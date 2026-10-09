@@ -18,7 +18,8 @@ local FOREVER_WIDE = 2
 local FOREVER_KEY = 100
 local FOREVER_LINE_SIZE = 12
 local UPGRADE_ICON = "|A:%s:0:0:0:%d|a"
-local ICON_CROP_IN, ICON_CROP_OUT = 0.08, 0.92
+local ICON_CROP_IN, ICON_CROP_OUT = St.ICON_CROP, St.ICON_CROP_HIGH
+local CLASS_CROP = St.CLASS_CROP
 local ICON_OVER_LEVEL = 3
 local ICON_EDGE = 1
 local FOREVER_MIN, FOREVER_SHARE = 7, 0.32
@@ -155,6 +156,10 @@ function Parts.ItemIcon(parent, size)
     over:SetFrameLevel(frame:GetFrameLevel() + ICON_OVER_LEVEL)
     frame.forever = IconForever(over, size)
     return frame
+end
+
+function Parts.ClassCrop(texture, coords)
+    texture:SetTexCoord(coords[1] + CLASS_CROP, coords[2] - CLASS_CROP, coords[3] + CLASS_CROP, coords[4] - CLASS_CROP)
 end
 
 function Parts.MarkForever(icon, itemID)

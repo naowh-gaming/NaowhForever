@@ -15,4 +15,8 @@ ns.Professions.C = {
     NPC_X = 5,
     NPC_Y = 6,
     NPC_PRICE = 7,
+    ROUND = 0.5,
+    PERCENT = 100,
+    SKILL_LINE_INDEX = 7,
+    QUEUE_DELAY = 0.2,
 }

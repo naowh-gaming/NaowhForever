@@ -3,6 +3,9 @@ local ns = _G.NaowhForever
 local UI = ns.UI
 
 local TEXT_SEARCH_HINT = "Search settings"
+local NONE = {}
+
+local carries = {}
 
 local function Words(text)
     return " " .. text:lower():gsub("[^%w]+", " ") .. " "
@@ -22,6 +25,15 @@ local function Place(page, cardName)
     return ns.L(mod and mod.name or page.title or page.name), table.concat(parts, " / ")
 end
 
+local function IndexInto(list, page, Settings, settingsKey)
+    Settings.Index(settingsKey, function(card, label, help, cardName, group)
+        local t, where = Place(page, cardName)
+        list[#list + 1] = { page = page.key, card = card, label = label, tag = t, trail = where,
+            isCard = cardName == nil,
+            words = Words(table.concat({ label, help or "", group or "", cardName or "" }, " ")) }
+    end)
+end
+
 local function Collect()
     local list = {}
     local Settings = ns.Shared and ns.Shared.Settings
@@ -30,12 +42,8 @@ local function Collect()
         local pageWords = Words(tag .. " " .. trail)
         list[#list + 1] = { page = page.key, tag = tag, trail = trail, words = pageWords }
         if Settings then
-            Settings.Index(page.key, function(card, label, help, cardName, group)
-                local t, where = Place(page, cardName)
-                list[#list + 1] = { page = page.key, card = card, label = label, tag = t, trail = where,
-                    isCard = cardName == nil,
-                    words = Words(table.concat({ label, help or "", group or "", cardName or "" }, " ")) }
-            end)
+            IndexInto(list, page, Settings, page.key)
+            for _, settingsKey in ipairs(carries[page.key] or NONE) do IndexInto(list, page, Settings, settingsKey) end
         end
     end
     return list
@@ -127,11 +135,34 @@ local function Mark(filter, text)
     return Paint(text, lit)
 end
 
-UI.Search = { Collect = Collect, Find = Find, Build = Build, Mark = Mark }
+local function Narrowing(filter, pageKey)
+    if filter and not filter.all[pageKey] and (filter.count[pageKey] or 0) > 0 then return filter end
+    return nil
+end
+
+local function Narrowed(pageKey)
+    return Narrowing(UI.filter, pageKey)
+end
+
+local function CarriedChanged(before, after)
+    for pageKey in pairs(carries) do
+        if Narrowing(before, pageKey) or Narrowing(after, pageKey) then return true end
+    end
+    return false
+end
+
+UI.Search = { Collect = Collect, Find = Find, Build = Build, Mark = Mark, Narrowed = Narrowed }
+
+function UI.SearchCarries(pageKey, settingsKey)
+    local keys = carries[pageKey] or {}
+    keys[#keys + 1] = settingsKey
+    carries[pageKey] = keys
+end
 
 local box, list, onFilter
 
 local function OnText(text)
+    local before = UI.filter
     if text:find("%S") then
         list = list or Collect()
         UI.filter = Build(list, text)
@@ -139,6 +170,7 @@ local function OnText(text)
         list, UI.filter = nil, nil
     end
     onFilter()
+    if CarriedChanged(before, UI.filter) then UI:RefreshPage(true) end
 end
 
 function UI.FocusSearch()

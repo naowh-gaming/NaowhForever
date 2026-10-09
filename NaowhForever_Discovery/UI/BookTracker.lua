@@ -417,8 +417,8 @@ end
 
 hooksecurefunc(S, "Set", OnSet)
 hooksecurefunc(ns, "Apply", Apply)
-hooksecurefunc(ns, "ShowRaidReminderAnchorConfig", ShowMover)
-hooksecurefunc(ns, "HideRaidReminderAnchorConfig", HideMover)
+hooksecurefunc(ns, "ShowUnlockMode", ShowMover)
+hooksecurefunc(ns, "HideUnlockMode", HideMover)
 
 local boot = CreateFrame("Frame")
 boot:RegisterEvent("PLAYER_LOGIN")

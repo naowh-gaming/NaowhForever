@@ -12,4 +12,6 @@ ns.Completo.C = {
     SAMPLE_RARE_NPC = 10644,
     FALLBACK_ICON = 134400,
     FOREVER_SIGN_SIZE = 12,
+    PERCENT = 100,
+    ROUND_HALF = 0.5,
 }

@@ -108,7 +108,7 @@ local S = {
 }
 
 -------------------------------------------------------------------------------
---  The records, as the contract shapes them, made once and reused as GroupInspect.lua's are
+--  The records, as the contract shapes them, made once and reused as Records.lua's are
 -------------------------------------------------------------------------------
 local CLASSES = { "WARRIOR", "PALADIN", "HUNTER", "ROGUE", "PRIEST", "SHAMAN", "MAGE", "WARLOCK", "DRUID" }
 local ROLES = { "TANK", "HEALER", "DAMAGER", "DAMAGER", "DAMAGER" }
@@ -194,7 +194,7 @@ tooltip.IsForbidden = function(self) return self.forbidden == true end
 local MANAGER = { IsAnyMenuOpen = function() return false end }
 local menus = { modified = {} }
 local ns
-ns = {
+ns = { MEDIA = dofile("Tools/regression/core_media.lua"),
     THEME = setmetatable({}, { __index = function() return WHITE end }),
     QoLSettings = S,
     GroupInspect = GI,
@@ -222,7 +222,7 @@ ns = {
     AccountSettings = function() return {} end,
     Print = function(text) printed[#printed + 1] = text end,
     PlainText = function(text) return type(text) == "string" and text or nil end,
-    FEATURE_BADGES = 1,
+    FEATURE_BADGES = 1, BADGES_LIVE = 1,
     BadgeOf = function(guid)
         if guid == "Player-0002" then return ns.DEVELOPER end
     end,
@@ -323,9 +323,11 @@ env._G = env
 --  Loading: off, nothing made, nothing listened to
 -------------------------------------------------------------------------------
 local mine = TocFiles("^NaowhForever_GroupInspect/.*%.lua$")
-local ORDER = { "/GroupInspect%.lua$", "/Data/Preview%.lua$", "/Stats%.lua$", "/Share%.lua$", "/View/Style%.lua$",
-    "/View/Texts%.lua$", "/View/Parts%.lua$", "/View/Party%.lua$", "/View/Raid%.lua$", "/UI/Window%.lua$",
-    "/UI/Menu%.lua$", "/UI/SettingsPage%.lua$" }
+local ORDER = { "/GroupInspect%.lua$", "/Constants%.lua$", "/Data/Preview%.lua$", "/Records%.lua$", "/Inspect%.lua$",
+    "/PreviewGroup%.lua$", "/Stats%.lua$", "/OwnStats%.lua$", "/Message%.lua$", "/Share%.lua$", "/View/Style%.lua$",
+    "/View/Texts%.lua$", "/View/Parts%.lua$", "/View/Pill%.lua$", "/View/Gear%.lua$", "/View/Card%.lua$",
+    "/View/CardPaint%.lua$", "/View/Party%.lua$", "/View/RaidOrder%.lua$", "/View/RaidBar%.lua$", "/View/Row%.lua$",
+    "/View/Raid%.lua$", "/View/Solo%.lua$", "/UI/Window%.lua$", "/UI/Menu%.lua$", "/UI/SettingsPage%.lua$" }
 check("GroupInspect.xml loads its files in the contract's order", #mine == #ORDER and (function()
     for i, pattern in ipairs(ORDER) do
         if not mine[i]:find(pattern) then return false end
@@ -337,7 +339,7 @@ local before = made
 Load(files, env)
 local shared = made
 for i = 1, #mine do
-    if mine[i]:find("/View/") or mine[i]:find("/UI/") then Load({ mine[i] }, env) end
+    if mine[i]:find("/Constants%.lua$") or mine[i]:find("/View/") or mine[i]:find("/UI/") then Load({ mine[i] }, env) end
 end
 local UI = GI.UI
 check("off: nothing made at load, nothing listened to, no timer", made == shared and #GI.fns == 0 and #timers == 0
@@ -408,7 +410,7 @@ do
         ["LibDBIcon-1.0"] = { Register = NOTHING },
     }
     local account = {}
-    local launchEnv = setmetatable({ ns = { AccountSettings = function() return account end, L = function(t) return t end,
+    local launchEnv = setmetatable({ ns = { MEDIA = dofile("Tools/regression/core_media.lua"), AccountSettings = function() return account end, L = function(t) return t end,
             SaveModuleDefaults = NOTHING, ThemeTint = function(_, literal) return literal end, ToggleOptionsWindow = NOTHING },
         CreateFrame = function() return frame end, LibStub = function(name) return libs[name] end,
         MODULES = MODULES, MinimapButtonOn = function() return false end,

@@ -26,7 +26,8 @@ local function ReadBis(slot)
     end
     local _, _, quality, level = GetItemInfo(id)
     level = level or B.Rankings.ItemLevel(id)
-    return level or 0, level and quality, select(4, GetItemInfoInstant(id)) == TWO_HAND
+    local _, _, _, equipLoc = GetItemInfoInstant(id)
+    return level or 0, level and quality, equipLoc == TWO_HAND
 end
 
 local function AddSlot(stats, slot, id)

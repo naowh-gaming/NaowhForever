@@ -7,7 +7,7 @@ local ClassSpells = Training.ClassSpells
 local Prices = Training.Prices
 local Changed = Training.Changed
 
-local LEVEL, SPELL = 1, 2
+local LEVEL, SPELL = Training.C.ENTRY_LEVEL, Training.C.ENTRY_SPELL
 local FOLLOW_EVENTS = { "TRAIT_TREE_CURRENCY_INFO_UPDATED", "PLAYER_REGEN_ENABLED" }
 
 local scanQueued = false

@@ -2,7 +2,7 @@
 local ns = _G.NaowhForever
 local T = ns.THEME
 
-local MEDIA = "Interface\\AddOns\\NaowhForever\\Core\\Media\\"
+local MEDIA = ns.MEDIA
 local CHEVRON = MEDIA .. "chevron.tga"
 local COGS_ICON = MEDIA .. "cog.tga"
 local TRACK_TEX = MEDIA .. "toggle_track.tga"
@@ -1610,7 +1610,6 @@ local soundProvider
 local function SoundRegistered(_, mediatype)
     if mediatype == "sound" then
         soundPaths = nil
-        if ns and ns.Integrations then ns.Integrations.Refresh() end
     end
 end
 

@@ -10,7 +10,7 @@ local Style = Training.Style
 local Rows = Training.Rows
 
 local FRAME_NAME = "NaowhForeverTrainingToast"
-local SPELL = 2
+local SPELL = Training.C.ENTRY_SPELL
 local TOAST_W, TOAST_PAD = 440, 18
 local TOAST_ICON, TOAST_ICONS = 30, 10
 local ICON_GAP = 6

@@ -19,9 +19,12 @@ local function AskOnce()
     for _, rival in ipairs(rivals) do rival.Repair() end
     if InCombatLockdown() then return end
     for _, rival in ipairs(rivals) do
-        if rival.Due() then
-            if not newcomer then return rival.Ask() end
+        if not rival.Due() then
+            rival.Forget()
+        elseif newcomer or rival.Picked() then
             rival.TakeOver()
+        else
+            return rival.Ask()
         end
     end
 end
@@ -37,7 +40,7 @@ ns.CharacterPanel = CP
 
 function CP.Rival(r)
     local rival = {}
-    local tookOver, asked = r.key .. "TookOver", r.key .. "Asked"
+    local tookOver, asked, picked = r.key .. "TookOver", r.key .. "Asked", r.key .. "Picked"
 
     function rival.Styled()
         local E = _G.EllesmereUI
@@ -85,8 +88,17 @@ function CP.Rival(r)
         S.Set(asked, false)
     end
 
+    function rival.Picked()
+        return S.Get(picked) == true
+    end
+
+    function rival.Forget()
+        if S.Get(picked) ~= nil then S.Set(picked, nil) end
+    end
+
     function rival.Due()
-        if S.Get(asked) or not (S.Get("enabled") and S.Get(r.key) and rival.Styled()) then return false end
+        if S.Get(asked) and not rival.Picked() then return false end
+        if not (S.Get("enabled") and S.Get(r.key) and rival.Styled()) then return false end
         return type(_G.EllesmereUIDB) == "table"
     end
 
@@ -95,6 +107,7 @@ function CP.Rival(r)
     end
 
     function rival.TakeOver()
+        rival.Forget()
         S.Set(asked, true)
         _G.EllesmereUIDB[r.dbKey] = false
         S.Set(tookOver, true)

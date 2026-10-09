@@ -9,6 +9,8 @@ local WIDTH = 300
 local FONT_SIZE, ROOM = 32, 16
 local FADE_TIME, HOLD_TIME = 0.4, 1.7
 local DEFAULT_Y = 200
+local VOLUME_RANGE, SPEECH_RATE_RANGE = ns.QoLConstants.VOLUME_RANGE, ns.QoLConstants.SPEECH_RATE_RANGE
+local TEXT_RANGE = { 10, 72, 1 }
 local ENTER, LEAVE = "combatEnter", "combatLeave"
 local MOVER_LABEL = "Combat Alert"
 local SETTINGS_PAGE, SETTINGS_CARD = "QoL/Combat", "QoL/Combat:combatAlert"
@@ -143,11 +145,11 @@ end
 
 hooksecurefunc(S, "Set", OnSettingChanged)
 hooksecurefunc(ns, "Apply", Apply)
-hooksecurefunc(ns, "ShowRaidReminderAnchorConfig", function()
+hooksecurefunc(ns, "ShowUnlockMode", function()
     unlocked = S.Get("enabled") == true
     Apply()
 end)
-hooksecurefunc(ns, "HideRaidReminderAnchorConfig", function()
+hooksecurefunc(ns, "HideUnlockMode", function()
     unlocked = false
     Apply()
 end)
@@ -184,9 +186,9 @@ local function Side(prefix, name, verb)
           why = name .. " Audio is not Sound" },
         { key = prefix .. "Voice", label = name .. " Voice", choice = Voices, help = VOICE_HELP, needs = Speaks,
           why = SPEAKS_WHY },
-        { key = prefix .. "Volume", label = name .. " Volume", slider = { 0, 100, 1 }, needs = Speaks,
+        { key = prefix .. "Volume", label = name .. " Volume", slider = VOLUME_RANGE, needs = Speaks,
           why = SPEAKS_WHY },
-        { key = prefix .. "Rate", label = name .. " Speech Rate", slider = { -10, 10, 1 }, needs = Speaks,
+        { key = prefix .. "Rate", label = name .. " Speech Rate", slider = SPEECH_RATE_RANGE, needs = Speaks,
           why = SPEAKS_WHY },
         { key = prefix .. "Speech", label = name .. " Speech", text = true, needs = Speaks, why = SPEAKS_WHY,
           help = "Read aloud as you " .. verb .. " combat." },
@@ -196,7 +198,7 @@ end
 
 Side(ENTER, "Entering", "enter")
 Side(LEAVE, "Leaving", "leave")
-rows[#rows + 1] = ns.Shared.Settings.Look("combatAlert", { text = true, size = { 10, 72, 1 }, background = "card" })
+rows[#rows + 1] = ns.Shared.Settings.Look("combatAlert", { text = true, size = TEXT_RANGE, background = "card" })
 
 local function Summary(store)
     return SUMMARY:format(store.Get("combatEnterText"), store.Get("combatLeaveText"))

@@ -33,13 +33,14 @@ local function Frame()
     function f:AddDoubleLine(...) self.lines[#self.lines+1]={...} end
     frames[#frames+1]=f;return f
 end
-local ns={THEME={accent={r=0,g=.7,b=1},muted={r=.5,g=.6,b=.7},bg={}},UI={},Print=noop,Apply=noop,
+local ns={Shared={Style=dofile('Tools/regression/shared_style.lua')},THEME={accent={r=0,g=.7,b=1},muted={r=.5,g=.6,b=.7},bg={}},UI={},Print=noop,Apply=noop,
  QoLConstants=dofile('Tools/regression/qol_constants.lua')}
 ns.QoLSettings={Get=function(k) return settings[k] end,Set=function(k,v) settings[k]=v end}
 ns.MakeModal=function() lastDimmer,lastPanel=Frame(),Frame();return lastDimmer,lastPanel end
-ns.Solid=function() return Frame() end;ns.Border=noop
+ns.Solid=function() return Frame() end;ns.Border=noop;ns.NewEditBox=function() return Frame() end
 ns.UI.Keep=function(parent,key,fn) local f=fn(parent);parent.cache[key]=f;return f end
 ns.UI.KeepFont=function(parent,key) local f=Frame();parent.cache[key]=f;return f end
+ns.UI.SlimScroll=function() return Frame() end
 ns.UI.KeepButton=function(parent,key,text,w,h,fn) local f=Frame();f.label=Frame();f.label:SetText(text);f.click=fn;parent.cache[key]=f;return f end
 local tooltip=Frame();local title=Frame();title:SetText('Test name')
 local env={_G={NaowhForever=ns},GameTooltip=tooltip,ItemRefTooltip=Frame(),ShoppingTooltip1=Frame(),ShoppingTooltip2=Frame(),GameTooltipTextLeft1=title,

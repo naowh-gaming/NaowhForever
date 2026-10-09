@@ -7,7 +7,7 @@ local CARD_W = 500
 local ACCENT_H = 2
 local PAD = 18
 local ICON_SIZE, ICON_Y = 40, -20
-local ICON_CROP = 0.08
+local ICON_CROP = ns.Shared.Style.ICON_CROP
 local DEFAULT_ICON = "Interface\\Icons\\INV_Misc_Book_09"
 local TEXT_X = 70
 local KICKER_SIZE, KICKER_Y = 10, -20
@@ -47,10 +47,8 @@ local function NewIcon(p)
 end
 
 local function NewBox(p)
-    local edit = CreateFrame("EditBox", nil, p)
-    edit:SetAutoFocus(false); edit:SetMultiLine(false)
-    edit:SetTextInsets(BOX_INSET, BOX_INSET, 0, 0); edit:SetFontObject("GameFontHighlight")
-    ns.Solid(edit, "BACKGROUND", T.bg, 1):SetAllPoints(); ns.Border(edit)
+    local edit = ns.NewEditBox(p, { inset = BOX_INSET, border = T.line, hover = false, sunken = false })
+    edit:SetMultiLine(false)
     return edit
 end
 

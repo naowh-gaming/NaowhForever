@@ -116,7 +116,8 @@ Each layer uses only the ones above it, or reads a later one's table at call tim
   full draw, so scrolling and the filter do not price every recipe again. Reagents unchecked in the
   pane are ones you have, left out of every recipe's cost.
 - Merchants teach the vendor reagents: trade goods sold for gold without a stock limit are kept
-  account-wide, with their price when Crafting Profit is on. That listener runs whatever the switch.
+  account-wide, with their price when Crafting Profit is on. Merchant events are registered only
+  while the module and one of Crafts with Vendor Buys, Crafting Profit or Buy at Vendor are on.
 - Buying only runs from a click: each auction house step is a button, and Confirm is the only one
   that spends gold. A search waits 5s for an answer, a purchase 15s (it settles slower); a purchase
   answering after its timeout still went through. A live price 25% over the last scan is warned
@@ -183,5 +184,6 @@ Each layer uses only the ones above it, or reads a later one's table at call tim
   stubs and times and weighs what runs while the window is open.
 - The window's slices: `test-profession-combat-close.lua`, `test-profession-window-drag.lua`
   (Takeover.lua), `test-profession-link-view.lua` (LinkView.lua), `test-profession-shift-click.lua`
-  (AuctionHouse.lua), `test-shopping-list-plan.lua` (ShoppingPlan.lua), and the looks in
-  `test-icon-look.lua` and `test-qol-bars-look.lua`.
+  (AuctionHouse.lua), `test-profession-merchant-events.lua` (Vendors.lua),
+  `test-shopping-list-plan.lua` (ShoppingPlan.lua), and the looks in `test-icon-look.lua` and
+  `test-qol-bars-look.lua`.

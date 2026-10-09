@@ -47,10 +47,10 @@ local frames = {}
 local ns = {
     QoLConstants = dofile("Tools/regression/qol_constants.lua"),
     QoLSettings = S, ThemeTint = function(_, c) return c end, PixelInset = Noop,
-    Apply = Noop, ShowRaidReminderAnchorConfig = Noop, HideRaidReminderAnchorConfig = Noop,
+    Apply = Noop, ShowUnlockMode = Noop, HideUnlockMode = Noop,
     UI = { AttachMover = function() return Widget("Mover") end,
         TexturePath = function(name, own) if name == "" then return own end return "lsm:" .. name end },
-    Shared = { Settings = { Group = function() return {} end, Look = function() return {} end,
+    Shared = { Style = dofile("Tools/regression/shared_style.lua"), Settings = { Group = function() return {} end, Look = function() return {} end,
         Page = function() return { Card = Noop } end } },
 }
 local env = setmetatable({

@@ -9,7 +9,7 @@ local PART_PATTERN = "^(%w+)=([%d.]+)$"
 local SIM_STRING = '^%s*%(%s*%a+%s*:%s*v1%s*:%s*"([^"]*)"%s*:%s*(.-)%s*%)%s*$'
 local SIM_PART = "^%s*(%w+)%s*=%s*(%S-)%s*$"
 local WEIGHT = "%s=%g"
-local MAX_WORTH = 1000
+local MAX_WORTH = SW.MAX_WORTH
 local MAX_NAME = 40
 local CLASS_KEY, RANGED_DPS = "class", "rangeddps"
 local HUNTER = "HUNTER"

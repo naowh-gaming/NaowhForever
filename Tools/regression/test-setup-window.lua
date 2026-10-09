@@ -69,7 +69,7 @@ end
 
 local T = { fg = { r = 1, g = 1, b = 1 }, muted = { r = 0.5, g = 0.5, b = 0.5 }, accent = { r = 0, g = 0.5, b = 1 },
     accentSoft = { r = 0.3, g = 0.7, b = 1 }, line = { r = 0.2, g = 0.2, b = 0.2 }, bg = {}, panel = {} }
-local s = { combat = false, applied = nil, reloadAsked = nil, printed = nil, account = { freshInstall = true } }
+local s = { combat = false, applied = nil, reloadAsked = nil, printed = nil, account = {} }
 local buttons, toggles, fonts = {}, {}, {}
 
 local plan = {
@@ -130,12 +130,17 @@ function Setup.Apply(entries)
     s.applied = entries
     return Setup.NeedsReload(entries)
 end
+function Setup.ForCharacter(on)
+    s.modeSet = (s.modeSet or 0) + 1
+    s.forCharacter = on
+end
 
 local Parts = {}
-local ns = {
+local ns = { MEDIA = dofile("Tools/regression/core_media.lua"),
     THEME = T, Setup = Setup, UI = {},
     Shared = { Style = { CONTENT_INSET = 22, WINDOW_PAD = 12, WINDOW_HEADER = 52, RED_RGB = { r = 1, g = 0, b = 0 },
-        TIP_RGB = { r = 1, g = 0.8, b = 0.5 }, LOOK_CODE = "|cff66d9ef", LOGO = "logo" }, Parts = Parts },
+        TIP_RGB = { r = 1, g = 0.8, b = 0.5 }, LOOK_CODE = "|cff66d9ef", LOGO = "logo", BORDER_RGB = { r = 0, g = 0, b = 0 } },
+        Parts = Parts },
     Font = function(parent)
         local f = Frame()
         f.parent = parent
@@ -228,7 +233,8 @@ local env = setmetatable({ _G = { NaowhForever = ns }, CreateFrame = function(_,
         local f = Frame()
         f.parent = parent
         return f
-    end, InCombatLockdown = function() return s.combat end }, { __index = _G })
+    end, InCombatLockdown = function() return s.combat end, UnitName = function() return "Die Dudu" end },
+    { __index = _G })
 local chunk = assert(loadfile("Core/Onboarding/SetupWindow.lua"))
 setfenv(chunk, env)
 chunk()
@@ -315,14 +321,24 @@ Tip("Discord").Click()
 check("our socials at the bottom left, each showing its address", Tip("GitHub") ~= nil
     and s.copied.text == "https://discord.gg/x")
 window.scripts.OnHide(window)
-check("the whole UI hidden with it is not a close: not seen yet", s.account.welcomeSeen == nil
-    and s.account.freshInstall == true)
+check("the whole UI hidden with it is not a close: not seen yet", s.account.onboardingSeen == nil
+    and s.account.welcomeSeen == nil)
 Link("or keep my setup as it is").Click()
 check("keep my setup as it is: the window closes", not window.shown)
-check("closed: the onboarding is seen, so it never opens by itself again", s.account.welcomeSeen == true
-    and s.account.freshInstall == nil)
+check("closed: the onboarding is seen, so it never opens by itself again", s.account.onboardingSeen == true
+    and s.account.welcomeSeen == true)
+check("opened as usual: for every character, welcomed as before", s.modeSet == 1 and s.forCharacter == nil
+    and window.subtitle.text == "Welcome")
+
+ns.ShowSetup(true)
+check("opened for this character: the setup is told, and the welcome says whose it is", s.modeSet == 2
+    and s.forCharacter == true and window.shown and window.subtitle.text == "Just for Die Dudu")
+Link("or keep my setup as it is").Click()
+check("closed from there: still seen", not window.shown and s.account.onboardingSeen == true)
 
 ns.ShowSetup()
+check("opened as usual again: back to every character", s.modeSet == 3 and s.forCharacter == nil
+    and window.subtitle.text == "Welcome")
 Find("Let's start").Click()
 check("past the welcome the animation stops", sign.scripts.OnUpdate == nil)
 local essentials, helpful = Tile("Just the essentials"), Tile("A helpful amount")

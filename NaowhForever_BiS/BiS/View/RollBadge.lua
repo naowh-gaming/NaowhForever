@@ -10,7 +10,7 @@ local St = B.Style
 
 local BADGE_H, BADGE_STAR, BADGE_PAD = 20, 14, 6
 local BADGE_X, BADGE_Y = 4, 2
-local STAR_GAP = 4
+local STAR_GAP = St.STAR_GAP
 local BADGE_LIFT = 10
 local STARRED = 2
 local ROLL_FRAMES = 4

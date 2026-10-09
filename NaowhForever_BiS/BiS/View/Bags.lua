@@ -17,7 +17,7 @@ local OVERLAY = "NaowhForever"
 local PLAIN_QUALITY = 1
 local PLAIN_LEVEL_RGB = { r = 1, g = 0.82, b = 0 }
 local BIND_GAP = 1
-local FOREVER_KIND = "items"
+local FOREVER_KIND = B.C.FOREVER_KIND
 local SETTINGS = { enabled = true, bis = true, bisBagMarks = true, bisBagLevels = true }
 
 local sets = {}

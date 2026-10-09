@@ -2,9 +2,11 @@
 local ns = _G.NaowhForever
 local UI = ns.UI
 local Profiles = ns.Profiles
+local SS = ns.Shared.Settings.Style
 
+local PROFILES_PAGE = UI.PROFILES_PAGE
 local SETUPS_PAGE = "Profiles/Setups"
-local HEAD_H, HEAD_SIZE = 44, 14
+local HEAD_H, HEAD_SIZE = SS.HEAD_H, 14
 local INSET = 16
 local GAP = 8
 local SUMMARY_GAP = 4
@@ -17,12 +19,12 @@ local ACTION_W = 84
 local BUTTON_W, BUTTON_H = 120, 26
 local SMALL_H = 22
 local NEW_W = 110
-local GROUP_H = 30
+local GROUP_H = SS.GROUP_H
 local PROFILE_H = 46
 local SHOWN_CHARS = 2
 local TILE_H, TILE_PAD, TILE_GAP = 52, 12, 12
 local TILE_NAME_RISE, TILE_DETAIL_DROP = 1, 3
-local TWO_COLUMNS_W = 620
+local TWO_COLUMNS_W = SS.TWO_COLUMNS_W
 local SEND_H = 58
 local FIELD_H = 112
 local FIELD_TEXT = 12
@@ -50,8 +52,6 @@ local TEXT_LAST_PROFILE = "The last profile cannot be deleted."
 local TEXT_COPY, TEXT_USE = "Copy", "Use"
 local TEXT_COPY_HELP = "Copy this profile into a new one and switch to it."
 local TEXT_RESET_HELP = "Put every setting in this profile back to its default."
-local TEXT_FROM_PACK = "From a pack"
-local TEXT_FROM_PACK_HELP = "Came with a pack, so it stays with the pack's author."
 local TEXT_NOTHING_SAVED = "Nothing saved yet"
 local TEXT_EXPORT = "Export"
 local TEXT_PARTS_GO = "%d of %d parts of %s go in the string."
@@ -65,7 +65,7 @@ local TEXT_OTHER_PROFILES = "OTHER PROFILES"
 local TEXT_SHARE = "Share"
 local TEXT_SHARE_SUMMARY = "Pick what goes in the string you give someone."
 local TEXT_PICK_ALL, TEXT_PICK_NONE = "Pick All", "Pick None"
-local TEXT_IMPORT_SUMMARY = "Profiles, Forge macros, talent builds, BiS lists and Smart Reminders packs."
+local TEXT_IMPORT_SUMMARY = "Profiles, Forge macros, talent builds and BiS lists."
 local UNKNOWN = "?"
 
 local wanted = {}
@@ -415,19 +415,13 @@ local function NewTile(view)
 end
 
 local function SetTile(tile, part, state, detail)
-    local T, St = ns.THEME, ns.Shared.Style
+    local T = ns.THEME
     tile.key, tile.ready = part.key, state == "ready"
     tile.name:SetText(part.label)
     Paint(tile.name, T.fg, tile.ready and 1 or DIM)
-    if state == "pack" then
-        tile.detail:SetText(TEXT_FROM_PACK)
-        Paint(tile.detail, St.WARN_RGB)
-        tile.tip = TEXT_FROM_PACK_HELP
-    else
-        tile.detail:SetText(state == "empty" and TEXT_NOTHING_SAVED or detail or (part.share:gsub("%.$", "")))
-        Paint(tile.detail, T.muted, tile.ready and 1 or DIM)
-        tile.tip = part.share
-    end
+    tile.detail:SetText(state == "empty" and TEXT_NOTHING_SAVED or detail or (part.share:gsub("%.$", "")))
+    Paint(tile.detail, T.muted, tile.ready and 1 or DIM)
+    tile.tip = part.share
     tile.switch._refreshValue()
     SetUsable(tile.switch, tile.ready)
     return TILE_H
@@ -623,17 +617,15 @@ end
 
 local function PartStatus(view)
     local all = Profiles.Collect()
-    local sr = ns.SettingsRoot().tankReminder
-    local packed = type(sr) == "table" and type(sr.importedPack) == "table"
     view.status, view.details = {}, {}
     for _, part in ipairs(Profiles.PARTS) do
-        view.status[part.key] = all[part.key] and "ready"
-            or packed and part.key == "smartReminders" and "pack" or "empty"
+        view.status[part.key] = all[part.key] and "ready" or "empty"
     end
     for _, part in ipairs(ns.ProfileStringParts({ parts = all })) do view.details[part.key] = part.detail end
 end
 
 ns.SETUPS_PAGE = SETUPS_PAGE
+if UI.SearchCarries then UI.SearchCarries(PROFILES_PAGE, SETUPS_PAGE) end
 
 local function SetupsResized(host, height)
     if host.building then
@@ -645,7 +637,11 @@ local function SetupsResized(host, height)
     UI:RefreshPage(true)
 end
 
-local function Setups(parent, y)
+local function SearchNarrowed()
+    return UI.Search and UI.Search.Narrowed(PROFILES_PAGE)
+end
+
+local function Setups(parent, y, filter)
     local Settings = ns.Shared.Settings
     if not (Settings and Settings.pages[SETUPS_PAGE]) then return y end
     local host = parent.setupsHost
@@ -658,15 +654,20 @@ local function Setups(parent, y)
     host:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, y)
     host:SetWidth(parent:GetWidth())
     host.building = true
-    local height = Settings.Render(host, SETUPS_PAGE, host.onResize)
+    local height = Settings.Render(host, SETUPS_PAGE, host.onResize, filter)
     host.building = false
     host:SetHeight(height)
     return y - height
 end
 
 function ns.BuildProfileSettings(parent, y)
-    y = Setups(parent, y)
+    local narrowed = SearchNarrowed()
+    y = Setups(parent, y, narrowed)
     local view = parent.profilesView
+    if narrowed then
+        if view then view:Hide() end
+        return y
+    end
     if not view then
         view = ns.Shared.View.New(parent, Kinds(), Draw)
         parent.profilesView = view

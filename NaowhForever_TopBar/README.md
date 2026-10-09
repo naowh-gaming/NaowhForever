@@ -11,9 +11,10 @@ NaowhForever_QoL, where its card is: switching QoL off takes the Top Bar with it
 
 ```
 NaowhForever_TopBar/
-  TopBar.xml            every file, in load order (the core TOC lists only this file)
+  NaowhForever_TopBar.toc  its metadata, and one file line: TopBar.xml
+  TopBar.xml            every file, in load order
   TopBar.lua            its settings and the module table (ns.TopBar)
-  Constants.lua         the gaps, sizes, Hearthstone and broker prefix several files share (TB.C)
+  Constants.lua         the gaps, sizes, rounding, Hearthstone and broker prefix several files share (TB.C)
   Layout.lua            the saved layout, its migration from the old button keys, editing it (TB.Layout)
   Info.lua              friends and guild online, the Hearthstone's cooldown, saved instances (TB.Info)
   View/
@@ -26,6 +27,7 @@ NaowhForever_TopBar/
     Bar.lua             the bar on screen: built on first use, kept current, its events
     Preview.lua         the card's live preview, which edits the layout (TB.Preview)
     SettingsPage.lua    its card on the QoL Interface page, declared once
+  Media/                its button icons (icon-*.png) and the resting glyph (resting.blp)
   README.md             this file
 ```
 
@@ -48,6 +50,10 @@ Each layer uses only the ones above it. The bar hands its buttons the function t
 - Show On Mouseover fades the bar instead of hiding it, as it holds secure buttons. Every enter
   and leave on the bar or its buttons fades it again, since a leave into a gap fires nothing else.
 - The bar takes mouse motion only, so the gaps between its buttons still click through.
+- `SYS_DROP` (2) is how far the FPS / MS readout sits under the bar, on screen and in the preview
+  alike, so it lives in `Constants.lua` with `ROUND` (0.5, added before `math.floor`).
+- Each slider range on the card is a named table at the top of `UI/SettingsPage.lua`; Bar Opacity
+  and Faded Opacity share `ALPHA_RANGE`, the house 0 to 100 opacity range from `Shared/Style.lua`.
 - The FPS / MS readout is a sibling on `UIParent`, not a child of the bar, so Hide In Combat leaves
   it up: it sits under the bar while the bar shows, and where the bar was once it is hidden.
 - Hide In Combat uses a state driver: hiding a frame that holds secure buttons is protected in

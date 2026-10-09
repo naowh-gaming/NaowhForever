@@ -3,7 +3,7 @@ local ns = _G.NaowhForever
 local T = ns.THEME
 
 local GOLD = { r = 0xe6 / 255, g = 0xcc / 255, b = 0x80 / 255 }
-local MEDIA = "Interface\\AddOns\\NaowhForever\\Core\\Media\\"
+local MEDIA = ns.MEDIA
 local ICONS = MEDIA .. "Navigation\\"
 local HERO_H, LOGO_SIZE, CARD_H, EMBLEM, ICON = 96, 64, 92, 52, 30
 local PAD, GLOW, GLOW_ALPHA, STRIP = 16, 1.3, 0.35, 2
@@ -227,7 +227,7 @@ function Draw:Redraw()
         self:Section(section.title)
         self:Space(TITLE_GAP)
         for _, person in ipairs(section.people) do
-            if ns.FEATURE_BADGES == 1 or not person.badges then self:Gather(person) end
+            if ns.FEATURE_BADGES == ns.BADGES_LIVE or not person.badges then self:Gather(person) end
         end
         self:DrawGrid()
         if section.chips then self:Add("chips", section.chips) end

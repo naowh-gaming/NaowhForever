@@ -14,6 +14,10 @@ local St = setmetatable({
     PARTY_GAP = 10,
     PARTY_MAX = 5,
     PARTY_PAD = 10,
+    PARTY_NAME_GAP = 8,
+    PARTY_ICON_GAP = 6,
+    PARTY_STAT_ROWS = 5,
+    PARTY_VALUE_ROOM = 40,
     BAND_H = 3,
     CLASS_ICON = 32,
     ROW_CLASS_ICON = 20,
@@ -42,9 +46,14 @@ local St = setmetatable({
     EMPTY_ALPHA = 0.45,
     AWAY_ALPHA = 0.55,
     ROW_H = 32,
+    RAID_NAME_X = 40,
+    RAID_SCORE_RIGHT = 290,
+    RAID_ILVL_RIGHT = 340,
+    RAID_VIEW_X = 364,
+    RAID_TREE_W = 140,
+    RAID_STATE_RIGHT = 32,
     COLUMNS_H = 20,
-    CLASS_ICONS = "Interface\\Glues\\CharacterCreate\\UI-CharacterCreate-Classes",
-    CLASS_CROP = 0.02,
+    SCROLL_GAP = 4,
     ROLE_ATLAS = { TANK = "UI-LFG-RoleIcon-Tank-Micro-GroupFinder", HEALER = "UI-LFG-RoleIcon-Healer-Micro-GroupFinder",
         DAMAGER = "UI-LFG-RoleIcon-DPS-Micro-GroupFinder" },
 }, { __index = ns.Shared.Style })
@@ -52,10 +61,13 @@ UI.Style = St
 
 local HEADER, PAD, FOOTER, INSET = St.WINDOW_HEADER, St.WINDOW_PAD, St.WINDOW_FOOTER, St.CONTENT_INSET
 local SCROLLBAR, TAB_H = St.SCROLLBAR, St.TAB_H
-local SCROLL_GAP, TOOLBAR_DROP = 4, 4
+local SCROLL_GAP, TOOLBAR_DROP = St.SCROLL_GAP, 4
 
 UI.PAGE = "Group Inspect/Settings"
 UI.WAITING = "..."
+UI.NOT_READ = "Not inspected yet"
+UI.REFRESH_TIP = "Inspect them again"
+UI.MODE_WORDS = { party = "Party of %d", raid = "Raid of %d" }
 UI.CONTENT_W = St.WINDOW_W - 2 * INSET
 UI.LIST_W = UI.CONTENT_W - SCROLLBAR - SCROLL_GAP
 UI.TOOLBAR_TOP = HEADER + PAD + TOOLBAR_DROP

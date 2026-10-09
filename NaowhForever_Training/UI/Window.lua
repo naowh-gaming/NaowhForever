@@ -26,12 +26,12 @@ local TOP = HEADER + TOOL_GAP + Style.TAB_H + TOOL_GAP
 local GAP = 6
 local HERO_H = 140
 local LABEL_Y = 18
-local BAR_W, BAR_H = 440, 6
+local BAR_W, BAR_H = Style.BAR_W, 6
 local ROAD_H = 108
 local TRACK_Y = 64
 local TRACK_H = 2
-local DOT_MAX = 20
-local YOU_GAP = 6
+local DOT_MAX = Style.DOT_MAX
+local YOU_GAP = Style.YOU_GAP
 local ROAD_TICKS = { 1, 10, 20, 30, 40, 50, 60 }
 local ROAD_TOP = TOP + HERO_H + GAP
 local BODY_TOP = ROAD_TOP + ROAD_H + GAP
@@ -42,7 +42,7 @@ local LEARNED_W, BACK_W = 110, 100
 local TOOL_SPACE = 8
 local MINI_GAP = 6
 local LOAD_SETTLE = 0.1
-local PERCENT = 100
+local PERCENT, ROUND = Training.C.PERCENT, Training.C.ROUND
 local LINK_GAP = 12
 local COST_GAP, COUNT_GAP, COUNT_LIFT = 10, 14, 4
 local BAR_GAP, NOTE_GAP = 14, 10
@@ -223,7 +223,7 @@ local function SetTab(key)
 end
 
 local function OpacityGet()
-    return math.floor((S.Get("windowAlpha") or 1) * PERCENT + 0.5)
+    return math.floor((S.Get("windowAlpha") or 1) * PERCENT + ROUND)
 end
 
 local function OpacitySet(value)

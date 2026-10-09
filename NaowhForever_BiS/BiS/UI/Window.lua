@@ -12,7 +12,7 @@ local WIDTH, HEIGHT, HEADER, PAD, FOOTER = St.WINDOW_W, St.WINDOW_H, St.WINDOW_H
 local SIDE_W, DOLL_W, SCROLLBAR, CONTENT_INSET = St.SIDE_W, St.DOLL_W, St.SCROLLBAR, St.CONTENT_INSET
 local TAB_H, TAB_GAP, LIST_BUTTON_H = St.TAB_H, St.TAB_GAP, St.LIST_BUTTON_H
 local BAR_GAP, BORDER_RGB = St.BAR_GAP, St.BORDER_RGB
-local PERCENT = 100
+local PERCENT, ROUND = B.C.PERCENT, B.C.ROUND
 local SIDE_INNER = SIDE_W - 8
 local CONTENT_LEFT = SIDE_W + PAD + 14
 local CARD_IN = 6
@@ -53,7 +53,7 @@ local awayFor
 local mapWatched
 
 local function Opacity()
-    return math.floor((S.Get("bisWindowAlpha") or 1) * PERCENT + 0.5)
+    return math.floor((S.Get("bisWindowAlpha") or 1) * PERCENT + ROUND)
 end
 
 local function SetOpacity(value)

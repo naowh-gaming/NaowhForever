@@ -9,6 +9,8 @@ local RECOMMENDED, MINIMALIST, CUSTOM = "recommended", "minimalist", "custom"
 local BUNDLE_QUESTIONS = { "focus", "role" }
 local UNKNOWN_ORDER = 99
 
+local character
+
 Setup.QUESTIONS = {
     { id = "amount", title = "How much do you want Naowh Forever to do?", one = true, default = "helpful",
       hint = "You can change everything afterwards.",
@@ -141,8 +143,9 @@ Setup.ITEMS = {
     mapUnexplored = { name = "Unexplored Areas", store = "QoLSettings", needs = "qol", key = "mapUnexplored" },
     waypoints = { name = "Waypoint Pin", store = "QoLSettings", needs = "qol", key = "waypoints" },
     naowhScore = { name = "Naowh Score", store = "QoLSettings", key = "naowhScore" },
-    characterPanel = { name = "Character Panel", store = "QoLSettings", key = "characterPanel" },
-    inspectPanel = { name = "Inspect Panel", store = "QoLSettings", key = "inspectPanel" },
+    characterPanel = { name = "Character Panel", store = "QoLSettings", key = "characterPanel",
+        pick = "characterPanelPicked" },
+    inspectPanel = { name = "Inspect Panel", store = "QoLSettings", key = "inspectPanel", pick = "inspectPanelPicked" },
     equipReminder = { name = "Equipment Reminder", store = "QoLSettings", needs = "qol", key = "equipReminder", screen = true },
     deathRelease = { name = "Death Release Protection", store = "QoLSettings", needs = "qol", key = "deathRelease" },
     restock = { name = "Restock Reminder", store = "QoLSettings", needs = "qol", key = "restock", screen = true },
@@ -515,12 +518,27 @@ local function Links()
     return links
 end
 
+local function EnableState(addon, who)
+    if who then return C_AddOns.GetAddOnEnableState(addon, who) end
+    return C_AddOns.GetAddOnEnableState(addon)
+end
+
+local function SetAddOn(addon, on, who)
+    local set = on and C_AddOns.EnableAddOn or C_AddOns.DisableAddOn
+    if who then return set(addon, who) end
+    set(addon)
+end
+
+local function ModuleOn(item)
+    local mod = Module(item)
+    if not mod then return nil end
+    if character and EnableState(item.addon, character) == 0 then return false end
+    return mod.on == true
+end
+
 local function Read(id)
     local item = Setup.ITEMS[id]
-    if item.addon then
-        local mod = Module(item)
-        return mod and mod.on == true
-    end
+    if item.addon then return ModuleOn(item) end
     local store = Store(item)
     if not store then return nil end
     if item.off then return store.Get(item.key) ~= item.off end
@@ -555,12 +573,16 @@ end
 
 local function Enabled(id)
     local item = Setup.ITEMS[id]
-    return item.addon ~= nil and C_AddOns.GetAddOnEnableState(item.addon) > 0
+    return item.addon ~= nil and EnableState(item.addon, character) > 0
 end
 
 local function Loaded(id)
     local item = Setup.ITEMS[id]
     return item.addon ~= nil and C_AddOns.IsAddOnLoaded(item.addon)
+end
+
+function Setup.ForCharacter(on)
+    character = on and UnitGUID("player") or nil
 end
 
 function Setup.Context()
@@ -581,13 +603,13 @@ end
 
 local function AddonsNow()
     local states = {}
-    for _, mod in ipairs(ns.ModuleAddons()) do states[mod.addon] = C_AddOns.GetAddOnEnableState(mod.addon) > 0 end
+    for _, mod in ipairs(ns.ModuleAddons()) do states[mod.addon] = EnableState(mod.addon, character) > 0 end
     return states
 end
 
 function Setup.Backup()
     ns.AccountSettings().setupBefore = { profile = ns.ActiveProfileName(), root = CopyTable(ns.SettingsRoot()),
-        addons = AddonsNow() }
+        addons = AddonsNow(), character = character }
 end
 
 function Setup.CanRestore()
@@ -601,9 +623,7 @@ function Setup.Restore()
     local root = ns.SettingsRoot()
     for k in pairs(root) do root[k] = nil end
     for k, v in pairs(saved.root) do root[k] = type(v) == "table" and CopyTable(v) or v end
-    for addon, on in pairs(saved.addons) do
-        if on then C_AddOns.EnableAddOn(addon) else C_AddOns.DisableAddOn(addon) end
-    end
+    for addon, on in pairs(saved.addons) do SetAddOn(addon, on, saved.character) end
     ns.AccountSettings().setupBefore = nil
     return true
 end
@@ -611,7 +631,7 @@ end
 local function EnableModule(item, mod)
     local reload = false
     for _, addon in ipairs(ns.LinkedAddons(item.addon, true)) do
-        if C_AddOns.GetAddOnEnableState(addon) == 0 then C_AddOns.EnableAddOn(addon) end
+        if EnableState(addon, character) == 0 then SetAddOn(addon, true, character) end
         if not C_AddOns.IsAddOnLoaded(addon) then reload = true end
     end
     if mod and mod.store then
@@ -627,7 +647,7 @@ end
 local function ApplyModule(item, change)
     local mod = Module(item)
     if change.on then return EnableModule(item, mod) end
-    for _, addon in ipairs(ns.LinkedAddons(item.addon, false)) do C_AddOns.DisableAddOn(addon) end
+    for _, addon in ipairs(ns.LinkedAddons(item.addon, false)) do SetAddOn(addon, false, character) end
     return change.now
 end
 
@@ -661,8 +681,9 @@ function Setup.Apply(entries)
     Setup.Backup()
     local reload = false
     for _, change in ipairs(entries) do
+        local item = Setup.ITEMS[change.id]
+        if item.pick and change.on then Store(item).Set(item.pick, true) end
         if Setup.Differs(change) then
-            local item = Setup.ITEMS[change.id]
             if not item.addon then
                 ApplySetting(item, change)
             elseif ApplyModule(item, change) then

@@ -23,9 +23,15 @@ local EVENTS = { "PLAYER_REGEN_DISABLED", "PLAYER_REGEN_ENABLED",
     "PLAYER_MOUNT_DISPLAY_CHANGED", "PLAYER_TARGET_CHANGED", "UPDATE_SHAPESHIFT_FORM",
     "SPELLS_CHANGED", "DISPLAY_SIZE_CHANGED", "UI_SCALE_CHANGED" }
 
-local PREVIEW_FIT = 120
-local PREVIEW_Y = 10
-local NOTE_Y, NOTE_SIZE = 10, 11
+local PREVIEW_FIT = ns.QoLConstants.CURSOR_PREVIEW_FIT
+local STAGE_H = 170
+local PREVIEW_Y = ns.QoLConstants.CURSOR_PREVIEW_Y
+local NOTE_Y, NOTE_SIZE = ns.Shared.Style.STAGE_NOTE_Y, ns.Shared.Style.STAGE_NOTE_SIZE
+local DOT_RANGE, OPACITY_RANGE = ns.QoLConstants.DOT_RANGE, ns.QoLConstants.OPACITY_RANGE
+local SOUND_REPEAT_RANGE = ns.QoLConstants.SOUND_REPEAT_RANGE
+local PERCENT_SCALE = ns.Shared.Style.PERCENT_SCALE
+local ARM_RANGE, THICKNESS_RANGE, GAP_RANGE = { 4, 100, 1 }, { 1, 20, 1 }, { 0, 50, 1 }
+local CIRCLE_RANGE, OUTLINE_RANGE, OFFSET_RANGE = { 10, 200, 1 }, { 1, 5, 1 }, { -500, 500, 1 }
 local STATES = {
     { key = "inRange", label = "In Range", tip = "No target, or your target in melee range: the crosshair in its own colours." },
     { key = "outOfRange", label = "Out of Range", tip = "Your target out of melee range.", needs = "crossMelee" },
@@ -323,7 +329,7 @@ ns.Shared.Settings.Page("QoL/Cursor", S):Card({
     id = "crosshair", name = "Crosshair", order = 10, switch = "crosshair",
     help = "A crosshair at the middle of your screen.",
     summary = Summary,
-    studio = { height = 170, states = STATES, new = NewPreview, paint = PaintPreview },
+    studio = { height = STAGE_H, states = STATES, new = NewPreview, paint = PaintPreview },
     rows = {
         Group("When"),
         { key = "crossCombatOnly", label = "Only In Combat", toggle = true },
@@ -333,26 +339,26 @@ ns.Shared.Settings.Page("QoL/Cursor", S):Card({
         { key = "crossRight", label = "Right Arm", toggle = true },
         { key = "crossBottom", label = "Bottom Arm", toggle = true },
         { key = "crossLeft", label = "Left Arm", toggle = true },
-        { key = "crossSize", label = "Arm Length", slider = { 4, 100, 1 } },
-        { key = "crossThickness", label = "Thickness", slider = { 1, 20, 1 } },
-        { key = "crossGap", label = "Gap", slider = { 0, 50, 1 }, wide = true,
+        { key = "crossSize", label = "Arm Length", slider = ARM_RANGE },
+        { key = "crossThickness", label = "Thickness", slider = THICKNESS_RANGE },
+        { key = "crossGap", label = "Gap", slider = GAP_RANGE, wide = true,
           help = "Space between the middle and each arm." },
         { key = "crossDot", label = "Centre Dot", toggle = true },
-        { key = "crossDotSize", label = "Dot Size", slider = { 1, 20, 1 }, needs = "crossDot" },
+        { key = "crossDotSize", label = "Dot Size", slider = DOT_RANGE, needs = "crossDot" },
         { key = "crossCircle", label = "Circle", toggle = true },
-        { key = "crossCircleSize", label = "Circle Size", slider = { 10, 200, 1 }, needs = "crossCircle" },
+        { key = "crossCircleSize", label = "Circle Size", slider = CIRCLE_RANGE, needs = "crossCircle" },
         Group("Colour"),
         { key = "crossClassColor", label = "Class Colour", toggle = true },
         { key = "crossColor", label = "Colour", colour = true, needs = OwnColour, why = "Class colour is on" },
         { key = "crossCircleColor", label = "Circle Colour", colour = true, needs = "crossCircle" },
-        { key = "crossOpacity", label = "Opacity", slider = { 10, 100, 5 }, unit = "%", scale = 0.01 },
+        { key = "crossOpacity", label = "Opacity", slider = OPACITY_RANGE, unit = "%", scale = PERCENT_SCALE },
         Group("Outline"),
         { key = "crossOutline", label = "Outline", toggle = true },
-        { key = "crossOutlineWeight", label = "Outline Width", slider = { 1, 5, 1 }, needs = "crossOutline" },
+        { key = "crossOutlineWeight", label = "Outline Width", slider = OUTLINE_RANGE, needs = "crossOutline" },
         { key = "crossOutlineColor", label = "Outline Colour", colour = true, needs = "crossOutline" },
         Group("Position"),
-        { key = "crossX", label = "X Offset", slider = { -500, 500, 1 } },
-        { key = "crossY", label = "Y Offset", slider = { -500, 500, 1 } },
+        { key = "crossX", label = "X Offset", slider = OFFSET_RANGE },
+        { key = "crossY", label = "Y Offset", slider = OFFSET_RANGE },
         Group("Out of Melee Range"),
         { key = "crossMelee", label = "Recolour Out of Melee Range", toggle = true,
           help = "Changes colour while your target is out of melee range. Warriors, rogues, hunters "
@@ -366,7 +372,7 @@ ns.Shared.Settings.Page("QoL/Cursor", S):Card({
         { key = "crossMeleeSound", label = "Play a Sound", toggle = true, needs = "crossMelee",
           help = "Plays as your target leaves melee range." },
         { key = "crossMeleeSoundKey", label = "Sound", sound = true, needs = { "crossMelee", "crossMeleeSound" } },
-        { key = "crossMeleeSoundInterval", label = "Repeat Every (s)", slider = { 0, 10, 1 },
+        { key = "crossMeleeSoundInterval", label = "Repeat Every (s)", slider = SOUND_REPEAT_RANGE,
           needs = { "crossMelee", "crossMeleeSound" },
           help = "Plays the sound again this often while out of range. 0 plays it once." },
         { key = "crossMeleeSpell", label = "Melee Spell ID", text = true, wide = true, always = true,

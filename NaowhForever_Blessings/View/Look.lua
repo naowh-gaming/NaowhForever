@@ -11,7 +11,7 @@ local YELLOW = { r = 1, g = 0.85, b = 0.3 }
 local BLUE = { r = 0.35, g = 0.6, b = 1 }
 local ICON_BORDER = { r = 0, g = 0, b = 0 }
 local DEEP_SHADE = 0.6
-local ICON_CROP = 0.08
+local ICON_CROP = ns.Shared.Style.ICON_CROP
 local MARK_SIZE, LABEL_SIZE, LABEL_MIN, TIMER_SIZE = 14, 10, 7, 10
 local SHORT_LETTERS = 3
 local LABEL_DROP, LABEL_SIDE, TIMER_Y = 2, 3, 1
@@ -20,14 +20,15 @@ local CLASS_ICON_MIN, CLASS_ICON_MAX = 12, 24
 local CLASS_ICON_SHARE = 2 / 3
 local HIGHLIGHT = "Interface\\Buttons\\ButtonHilight-Square"
 local SECONDS = 60
-local ROUND = 0.5
+local ROUND = B.ROUND
 local MINUTES = "m"
 local MARK = "!"
 
 local tints = { [RED] = RED, [YELLOW] = YELLOW, [BLUE] = BLUE }
 local deepAccent
 
-local Look = { RED = RED, YELLOW = YELLOW, BLUE = BLUE, HIGHLIGHT = HIGHLIGHT }
+local Look = { RED = RED, YELLOW = YELLOW, BLUE = BLUE, HIGHLIGHT = HIGHLIGHT, ICON_BORDER = ICON_BORDER,
+    ICON_CROP = ICON_CROP, CLASS_ICON_PATH = CLASS_ICON_PATH }
 B.Look = Look
 
 local function Shorten(text, n)

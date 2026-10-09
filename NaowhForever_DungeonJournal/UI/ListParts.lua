@@ -17,7 +17,7 @@ local ARROW_X, ARROW_Y = 3, 5
 local LABEL_X, LABEL_Y = 16, 4
 local PLAIN_LABEL_X = 3
 local COUNT_GAP = 8
-local OPEN_TURN = -math.pi / 2
+local OPEN_TURN = St.OPEN_TURN
 
 local ListParts = {}
 J.ListParts = ListParts
@@ -29,7 +29,7 @@ ListParts.NEW_LEFT = SELECTED_BAR + MARK_GAP
 ListParts.NAME_LEFT = ListParts.NEW_LEFT + FOREVER_H * 2 + MARK_GAP
 ListParts.ICON_DROP = 1
 ListParts.GROUP_GAP = 4
-ListParts.STRIPE_EVERY = 2
+ListParts.STRIPE_EVERY = J.C.STRIPE_EVERY
 
 local ROW_W = ListParts.ROW_W
 

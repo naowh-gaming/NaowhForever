@@ -5,7 +5,7 @@ local B = ns.Blessings
 local BLESSINGS, AURAS = B.BLESSINGS, B.AURAS
 local Store, Learned, SpellName, ClassName = B.Store, B.Learned, B.SpellName, B.ClassName
 
-local AURA_COLUMN = "AURA"
+local AURA_COLUMN = B.AURA_COLUMN
 local TEXT_AURA, TEXT_DEFAULT, TEXT_NONE = "Aura", "Default", "None"
 local TEXT_PLAYERS, TEXT_ASSIGNMENTS = "Players", "Assignments"
 

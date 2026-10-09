@@ -2,20 +2,32 @@
 local ns = _G.NaowhForever
 
 local CP = ns.CharacterPanel
+local St = ns.Shared.Style
 
 CP.PANE_W = 233
 CP.EDGE = 16
 
 CP.C = {
-    TITLE_RGB = { r = 1, g = 1, b = 1 },
+    TITLE_RGB = St.TIP_TITLE_RGB,
     GOLD_RGB = { r = 1, g = 0.82, b = 0 },
-    BLACK_RGB = { r = 0, g = 0, b = 0 },
-    SHADOW_ALPHA = 0.8,
-    SHADOW_X = 1,
+    BLACK_RGB = St.BORDER_RGB,
+    TAB_RGB = { r = 0.16, g = 0.16, b = 0.17 },
+    SHADOW_ALPHA = St.HUD_SHADOW_ALPHA,
+    SHADOW_X = St.HUD_SHADOW_X,
+    HOVER_ALPHA = 0.5,
     TRACK_GREY = 0.16,
-    CROP_IN = 0.08,
-    CROP_OUT = 0.92,
+    CROP_IN = St.ICON_CROP,
+    CROP_OUT = St.ICON_CROP_HIGH,
+    RING_OUT = -1,
+    HALF = 0.5,
+    FILTER = "TRILINEAR",
+    TEXTURE = "Texture",
     SECTION_SIZE = 11,
     TEXT_SIZE = 12,
     SMALL_SIZE = 10,
+    EMBLEM = 44,
+    BADGE_INSET = 10,
+    STAT_ROWS = 16,
 }
+
+CP.TAB_RGB = CP.C.TAB_RGB

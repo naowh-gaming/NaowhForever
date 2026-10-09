@@ -19,6 +19,7 @@ local SetColor = Widgets.SetColor
 local entries = Entries.list
 
 local ROW_H = Style.ROW_H
+local ROUND = P.C.ROUND
 local SCROLL_W = 6
 local SCROLL_INSET = 2
 local SCROLL_STEP = 2
@@ -26,7 +27,7 @@ local THUMB_H, THUMB_MIN = 40, 20
 local THUMB_ALPHA = 0.8
 local ROW_INSET = 2
 local ROW_RIGHT_ROOM = SCROLL_W + 6
-local ICON_SHRINK = 4
+local ICON_SHRINK = Style.ROW_ICON_SHRINK
 local TEXT_GAP = 6
 local STAR_GAP = 4
 local STAR_SIZE = 12
@@ -89,7 +90,7 @@ end
 
 local function OnScrollValue(self, value)
     if self.syncing then return end
-    W.offset = math.floor(value + 0.5)
+    W.offset = math.floor(value + ROUND)
     List.Render()
 end
 

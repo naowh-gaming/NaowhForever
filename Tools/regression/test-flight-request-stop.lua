@@ -51,10 +51,11 @@ local function fixture(settings, extra)
         end,
         AccentBorder = function(f) return f end, PixelInset = function() end,
         Tooltip = function() end, AccountSettings = function() return {} end, FLIGHT_ROUTES = {},
-        Apply = function() end, ShowRaidReminderAnchorConfig = function() end, HideRaidReminderAnchorConfig = function() end,
+        Apply = function() end, ShowUnlockMode = function() end, HideUnlockMode = function() end,
         UI = { AttachMover = function() return frame() end, FontPath = function(name) return 'font:' .. name end,
             TexturePath = function(name, own) if name == '' then return own end return 'lsm:' .. name end },
-        Shared = { Style = { ROUND = 'round', BORDER_RGB = { r = 0, g = 0, b = 0 }, PLACE_DOT = ' . ' },
+        Shared = { Style = setmetatable({ ROUND = 'round', BORDER_RGB = { r = 0, g = 0, b = 0 }, PLACE_DOT = ' . ' },
+                { __index = dofile('Tools/regression/shared_style.lua') }),
             Parts = { Arrow = function() return frame() end, HudText = function(fs, shadow) fs.shadow = shadow end } },
         QuizOffer = function(reason) s.offers[#s.offers + 1] = 'quiz:' .. reason end,
         AimOffer = function(reason) s.offers[#s.offers + 1] = 'aim:' .. reason end,
@@ -141,9 +142,9 @@ do
 end
 do
     local s = fixture({ flightEarlyLanding = true })
-    s.ns.ShowRaidReminderAnchorConfig()
+    s.ns.ShowUnlockMode()
     check('the Unlock Mode sample flight does not fade', s.leave.alpha == 1 and s.leave.mouseCalls == 0)
-    s.ns.HideRaidReminderAnchorConfig()
+    s.ns.HideUnlockMode()
     check('leaving Unlock Mode touches nothing', s.leave.mouseCalls == 0)
 end
 -- Landing early on a timed route: the flight now ends at the first stop still ahead.
@@ -174,7 +175,7 @@ do
 end
 do
     local s = fixture({ flightEarlyLanding = true })
-    s.ns.ShowRaidReminderAnchorConfig()
+    s.ns.ShowUnlockMode()
     local key, name = s.text('Next'), s.text('Refuge Pointe')
     check('the sample flight names its next stop', key and key.shown and name and name.shown)
     check('with the time to it', s.text('0:50') and s.text('2:30'))

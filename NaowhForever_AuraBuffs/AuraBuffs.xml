@@ -1,6 +1,7 @@
 <Ui xmlns="http://www.blizzard.com/wow/ui/">
     <!-- AuraBuffs.xml: the AuraBuffs module's files, in load order. -->
     <Script file="AuraBuffs.lua"/>
+    <Script file="Constants.lua"/>
     <Script file="Data\BuffReminders.lua"/>
     <Script file="Data\Campfire.lua"/>
     <Script file="BuffReminders.lua"/>

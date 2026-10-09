@@ -13,7 +13,9 @@ local Group = Settings.Group
 
 local TEXT_HEROIC_STRIKE = "Heroic Strike"
 local OFF = "Turn on the Swing Timer"
-local STAGE_H, NOTE_Y, NOTE_SIZE, STAGE_MARGIN = 120, 10, 11, 16
+local STAGE_H = 120
+local NOTE_Y, NOTE_SIZE = ns.Shared.Style.STAGE_NOTE_Y, ns.Shared.Style.STAGE_NOTE_SIZE
+local STAGE_MARGIN = ns.Shared.Style.STAGE_MARGIN
 local SAMPLE_LATENCY = 0.06
 local SAMPLES = {
     melee = { MH = { 0.55, "1.2" }, OH = { 0.3, "1.3" } },
@@ -29,6 +31,11 @@ local SAMPLES = {
     castBad = { MH = { 0.6, "1.0" }, cast = 1.3 },
 }
 local SAMPLE_SWING = 2.6
+local WIDTH_RANGE, HEIGHT_RANGE, SPACING_RANGE = { 80, 600, 1 }, { 4, 40, 1 }, { 0, 20, 1 }
+local TEXT_RANGE, WINDOW_RANGE = { 6, 24, 1 }, { 0.1, 2, 0.05 }
+local OPACITY_RANGE, TO_FRACTION = ns.Shared.Style.ALPHA_RANGE, ns.Shared.Style.PERCENT_SCALE
+local ORDER_BARS, ORDER_QUEUED, ORDER_SEALS, ORDER_TARGET = 10, 20, 30, 40
+local ORDER_WINDOW, ORDER_AUTO_SHOT, ORDER_CAST_CLIP = 50, 60, 70
 
 local function Enabled() return On() and true or false end
 local function ClassIs(token) return select(2, UnitClass("player")) == token end
@@ -220,7 +227,7 @@ page:Window({
 })
 
 page:Card({
-    id = "bars", name = "Bars", order = 10,
+    id = "bars", name = "Bars", order = ORDER_BARS,
     help = "One bar per weapon, timed by the game's own swing event, so parry haste, swing resets and "
         .. "haste are always right. Move them in the HUD Editor.",
     summary = BarsSummary,
@@ -236,10 +243,10 @@ page:Card({
         { key = "hideWhenIdle", label = "Hide When Idle", toggle = true, needs = WhenIdle,
           why = "Only with Show In Combat", help = "Hide the bars while no swing is running." },
         Group("Size"),
-        { key = "width", label = "Width", slider = { 80, 600, 1 }, needs = Enabled, why = OFF },
-        { key = "rowHeight", label = "Bar Height", slider = { 4, 40, 1 }, needs = Enabled, why = OFF },
-        { key = "spacing", label = "Bar Spacing", slider = { 0, 20, 1 }, needs = Enabled, why = OFF },
-        Settings.Look("", { text = true, size = { 6, 24, 1 }, bar = "Flat", background = "alpha",
+        { key = "width", label = "Width", slider = WIDTH_RANGE, needs = Enabled, why = OFF },
+        { key = "rowHeight", label = "Bar Height", slider = HEIGHT_RANGE, needs = Enabled, why = OFF },
+        { key = "spacing", label = "Bar Spacing", slider = SPACING_RANGE, needs = Enabled, why = OFF },
+        Settings.Look("", { text = true, size = TEXT_RANGE, bar = "Flat", background = "alpha",
             keys = { FontSize = "textSize" }, needs = Enabled, why = OFF }),
         Group("Shown"),
         { key = "depleteFill", label = "Deplete Fill", toggle = true, needs = Enabled, why = OFF,
@@ -253,8 +260,8 @@ page:Card({
         Group("Range"),
         { key = "rangeCheck", label = "Range Check", toggle = true, needs = Enabled, why = OFF,
           help = "Dim a bar and turn its text red while your target is out of that weapon's range." },
-        { key = "outOfRangeAlpha", label = "Out of Range Opacity", slider = { 0, 100, 5 }, unit = "%",
-          scale = 0.01, needs = Needs("rangeCheck"), why = "Needs Range Check" },
+        { key = "outOfRangeAlpha", label = "Out of Range Opacity", slider = OPACITY_RANGE, unit = "%",
+          scale = TO_FRACTION, needs = Needs("rangeCheck"), why = "Needs Range Check" },
         Group("Colours"),
         { key = "classColored", label = "Class Colours", toggle = true, needs = Enabled, why = OFF,
           help = "Colour the weapon bars in your class colour." },
@@ -271,7 +278,7 @@ page:Card({
 })
 
 page:Card({
-    id = "queued", name = "Queued Attacks", order = 20, switch = "queueHighlight",
+    id = "queued", name = "Queued Attacks", order = ORDER_QUEUED, switch = "queueHighlight",
     help = "While Heroic Strike, Cleave, Maul or Raptor Strike is queued, the melee bars take its colour "
         .. "and name.",
     studio = ST.SUPPORTED and Studio(QUEUE_STATES) or nil,
@@ -283,7 +290,7 @@ page:Card({
 })
 
 page:Card({
-    id = "seals", name = "Seal Colours", order = 30, switch = "sealColors",
+    id = "seals", name = "Seal Colours", order = ORDER_SEALS, switch = "sealColors",
     help = "Paladins only. The melee bars take the colour of the seal you have up. In combat that is the "
         .. "last seal you cast until it runs out, as the game keeps your buffs "
         .. "from addons there; out of combat it is read from your buffs.",
@@ -308,7 +315,7 @@ page:Card({
 })
 
 page:Card({
-    id = "target", name = "Target Swing Timer", order = 40, switch = "targetSwing",
+    id = "target", name = "Target Swing Timer", order = ORDER_TARGET, switch = "targetSwing",
     help = "A bar for your target's swings, restarted by each physical hit you take while it is targeting "
         .. "you, and shortened when it parries. It is an estimate: the game does not say who hit you or "
         .. "with what, so other attackers, physical specials and bleed ticks restart it too.",
@@ -319,12 +326,12 @@ page:Card({
 })
 
 page:Card({
-    id = "swingWindow", name = "Swing End Window", order = 50, switch = "swingWindow",
+    id = "swingWindow", name = "Swing End Window", order = ORDER_WINDOW, switch = "swingWindow",
     help = "Shade the last part of each melee swing: when to twist a seal, finish a weave or queue an "
         .. "attack before the hit.",
     studio = ST.SUPPORTED and Studio(WINDOW_STATES) or nil,
     rows = {
-        { key = "swingWindowTime", label = "Window Length", slider = { 0.1, 2, 0.05 }, unit = "s",
+        { key = "swingWindowTime", label = "Window Length", slider = WINDOW_RANGE, unit = "s",
           needs = Enabled, why = OFF },
         { key = "swingWindowColor", label = "Window Colour", colour = "alpha", needs = Enabled, why = OFF },
         { key = "windowLatency", label = "Add Latency", toggle = true, always = true, needs = Enabled, why = OFF,
@@ -334,7 +341,7 @@ page:Card({
 })
 
 page:Card({
-    id = "autoShot", name = "Auto Shot Window", order = 60, switch = "autoShotWindow",
+    id = "autoShot", name = "Auto Shot Window", order = ORDER_AUTO_SHOT, switch = "autoShotWindow",
     help = "Hunters only. Shade Auto Shot's cast at the end of the Ranged bar. It turns red while you move, "
         .. "since moving holds the shot.",
     studio = ST.SUPPORTED and Studio(AUTO_SHOT_STATES) or nil,
@@ -347,7 +354,7 @@ page:Card({
 })
 
 page:Card({
-    id = "castClip", name = "Cast Clip Marker", order = 70, switch = "castClip",
+    id = "castClip", name = "Cast Clip Marker", order = ORDER_CAST_CLIP, switch = "castClip",
     help = "While you cast, mark where the cast ends on the Main Hand bar. It turns red when the cast will "
         .. "still be going as the swing comes due.",
     studio = ST.SUPPORTED and Studio(CAST_STATES) or nil,

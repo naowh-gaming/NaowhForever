@@ -1,4 +1,4 @@
--- WindowPages.lua: the AuraBuffs window's two pages: the consumables to watch, and the debuff sounds.
+-- WindowPages.lua: the AuraBuffs window's page: the consumables to watch.
 local ns = _G.NaowhForever
 
 local UI = ns.UI
@@ -27,11 +27,6 @@ local TEXT_NOTHING_TO_EXPORT = "There are no consumables to export yet."
 local TEXT_BUFFS = "Buffs: "
 local TEXT_WELL_FED = "Buff: any Well Fed"
 local TEXT_OWN_BUFF = "Buff: the item's own"
-local TEXT_DEBUFFS = "A sound when a poison, disease or curse lands on you, even in "
-    .. "combat. Add each debuff by its aura spell ID. Sound only, no on-screen glow. "
-    .. "Dwarves can pick the Stoneform voice, which only speaks while Stoneform is "
-    .. "ready."
-local TEXT_NO_SOUNDS = "Turn on Smart Reminders under Settings > Modules to add debuff sounds."
 
 local function Entries()
     return S.Get("consumableEntries") or {}
@@ -140,15 +135,4 @@ function ns.BuildAuraBuffConsumables(parent, y)
     y = y - h
     for _, category in ipairs(CATEGORY_ORDER) do y = Category(parent, y, category) end
     return y
-end
-
-function ns.BuildPoisonDispelPage(parent, y)
-    local W = UI.Widgets
-    local _, h = W:Note(parent, TEXT_DEBUFFS, y)
-    y = y - h
-    if not ns.BuildDebuffsPage then
-        _, h = W:Note(parent, TEXT_NO_SOUNDS, y)
-        return y - h
-    end
-    return ns.BuildDebuffsPage(parent, y)
 end

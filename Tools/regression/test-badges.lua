@@ -61,7 +61,7 @@ local function fixture(withChatUtil, settings, flag)
         -- in EU (the default region here) their own name has no badge.
         BADGE_STAFF = { [1] = { ["Player-1-SELF"] = "developer" }, [3] = {} },
         BADGE_PATRONS = { [3] = {} },
-        FEATURE_BADGES = flag or 1,
+        FEATURE_BADGES = flag or 1, BADGES_LIVE = 1,
         Shared = { Roster = { AddTooltip = function(fn) state.roster[#state.roster + 1] = fn end },
             Settings = { Page = function(key)
             return { Card = function(_, def) state.cards[key .. ":" .. def.id] = def end }

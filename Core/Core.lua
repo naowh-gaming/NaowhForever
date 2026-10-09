@@ -14,6 +14,7 @@ local ACCENT_SOFT_STEP, GREY_STEP = 0.33, 0.03
 local CUSTOM = "custom"
 local WARNING = { r = 1, g = 0.35, b = 0.35 }
 local BLACK = { r = 0, g = 0, b = 0 }
+local NO_OPTS, BORDER_EDGES = {}, 4
 local LIBRARIES = { "CallbackHandler-1.0", "LibDataBroker-1.1", "LibDBIcon-1.0", "LibSharedMedia-3.0",
     "LibCustomGlow-1.0", "LibGetFrame-1.0", "LibDeflate", "LibSerialize" }
 local RELOAD_GLOW_ALPHA = 0.08
@@ -40,7 +41,6 @@ local CONFIRM_W, CONFIRM_WIDE = 96, 150
 local CONFIRM_H, CONFIRM_ROOM = 110, 74
 local CONFIRM_PANEL_W, CONFIRM_TEXT_W, CONFIRM_TEXT_SIZE, CONFIRM_TEXT_Y, CONFIRM_BUTTON_GAP = 340, 310, 13, 18, 4
 local DEFAULT_PROFILE = "Default"
-local DEFAULT_PRESET = "Default"
 local DB_VERSION = 1
 local SCALE_DEFAULT, SCALE_MIN, SCALE_MAX, PERCENT = 100, 50, 200, 100
 local LOGIN_APPLY_DELAY = 1
@@ -55,6 +55,7 @@ local TEXT_GAME_DEFAULT = "Game Default"
 local ns = {}
 _G.NaowhForever = ns
 ns.MODULE_KEY = MODULE_KEY
+ns.MEDIA = MEDIA
 
 local locale = _G.NaowhForeverLocale or {}
 function ns.L(key, ...)
@@ -529,7 +530,7 @@ function ns.Border(frame, color, alpha)
     bf:SetAllPoints()
     bf:SetFrameLevel(math.min(frame:GetFrameLevel() + 1, MAX_FRAME_LEVEL))
     local edges = {}
-    for i = 1, 4 do
+    for i = 1, BORDER_EDGES do
         local t = bf:CreateTexture(nil, "OVERLAY")
         t:SetColorTexture(c.r, c.g, c.b, a)
         edges[i] = t
@@ -541,7 +542,7 @@ function ns.Border(frame, color, alpha)
     return {
         _frame = bf,
         SetColor = function(_, r, g, b, a2)
-            for i = 1, 4 do edges[i]:SetColorTexture(r, g, b, a2 or 1) end
+            for i = 1, BORDER_EDGES do edges[i]:SetColorTexture(r, g, b, a2 or 1) end
         end,
     }
 end
@@ -654,15 +655,6 @@ end
 function ns.SetButtonText(btn, text)
     if not (btn and btn.label) then return end
     btn.label:SetText(ns.L(text))
-end
-
-function ns.SpecName(specID)
-    local id = tonumber(specID)
-    if not id then return tostring(specID) end
-    local ok, _, name, _, _, _, _, className = pcall(GetSpecializationInfoByID, id)
-    if not (ok and name) then return "Spec " .. id end
-    if className and className ~= "" then return name .. " " .. className end
-    return name
 end
 
 local function ComposeTooltip(frame)
@@ -781,20 +773,25 @@ function ns.MakeModal(width, height, key)
     return dimmer, panel
 end
 
-function ns.NewEditBox(parent)
+function ns.NewEditBox(parent, opts)
+    opts = opts or NO_OPTS
     local box = CreateFrame("EditBox", nil, parent)
     box:SetAutoFocus(false)
     box:SetFontObject("GameFontHighlight")
-    box:SetTextInsets(EDIT_INSET, EDIT_INSET, 0, 0)
+    local inset = opts.inset or EDIT_INSET
+    box:SetTextInsets(inset, inset, 0, 0)
     ns.Solid(box, "BACKGROUND", ns.THEME.bg, 1):SetAllPoints()
-    box._border = ns.Border(box, BLACK)
+    local edge = opts.border or BLACK
+    box._border = ns.Border(box, edge)
     box.border = box._border
-    box:HookScript("OnEnter", function()
-        local a = ns.THEME.accent
-        box._border:SetColor(a.r, a.g, a.b, 1)
-    end)
-    box:HookScript("OnLeave", function() box._border:SetColor(BLACK.r, BLACK.g, BLACK.b, 1) end)
-    if ns.classicSkin then ns.Sunken(box) end
+    if opts.hover ~= false then
+        box:HookScript("OnEnter", function()
+            local a = ns.THEME.accent
+            box._border:SetColor(a.r, a.g, a.b, 1)
+        end)
+        box:HookScript("OnLeave", function() box._border:SetColor(edge.r, edge.g, edge.b, 1) end)
+    end
+    if ns.classicSkin and opts.sunken ~= false then ns.Sunken(box) end
     return box
 end
 
@@ -873,7 +870,7 @@ end
 
 local function NewCopyScroll(p)
     local T = ns.THEME
-    local sf = CreateFrame("ScrollFrame", nil, p, "UIPanelScrollFrameTemplate")
+    local sf = ns.UI.SlimScroll(p)
     ns.Solid(sf, "BACKGROUND", T.bg, 1):SetAllPoints()
     local eb = CreateFrame("EditBox", nil, sf)
     eb:SetMultiLine(true)
@@ -930,7 +927,7 @@ function ns.ConfirmReload(text)
     dimmer:Show()
 end
 
-function ns.Confirm(text, onYes, onNo, yesText, noText)
+function ns.Confirm(text, onYes, onNo, yesText, noText, onNoButton)
     local UI = ns.UI
     local dimmer, panel = ns.MakeModal(CONFIRM_PANEL_W, CONFIRM_H, "confirm")
     local head = ConfirmHead(UI, panel, text)
@@ -942,7 +939,11 @@ function ns.Confirm(text, onYes, onNo, yesText, noText)
         dimmer:Hide()
         onYes()
     end, -shift)
-    DialogButton(UI, panel, "no", noText or "No", w, function() dimmer:Hide() end, shift)
+    DialogButton(UI, panel, "no", noText or "No", w, function()
+        if onNoButton then dimmer.onClose = nil end
+        dimmer:Hide()
+        if onNoButton then onNoButton() end
+    end, shift)
     dimmer.onClose = onNo
     dimmer:Show()
 end
@@ -954,18 +955,15 @@ local function CharKey()
 end
 
 local function NewInstall()
-    local sv = { dbVersion = DB_VERSION, profiles = { [DEFAULT_PROFILE] = CopyTable(ns.STARTER.profile) },
+    return { dbVersion = DB_VERSION, profiles = { [DEFAULT_PROFILE] = CopyTable(ns.STARTER.profile) },
         account = CopyTable(ns.STARTER.account) }
-    sv.account.freshInstall = true
-    return sv
 end
 
 local function DB()
     local sv = _G.NaowhForeverDB
     if type(sv) ~= "table" then
-        sv = type(_G.NaowhUI_SmartRemindersDB) == "table" and _G.NaowhUI_SmartRemindersDB or NewInstall()
+        sv = NewInstall()
         _G.NaowhForeverDB = sv
-        _G.NaowhUI_SmartRemindersDB = nil
     end
     if type(sv.profiles) ~= "table" then sv.profiles = {} end
     if type(sv.charActive) ~= "table" then sv.charActive = {} end
@@ -1001,106 +999,16 @@ function ns.SettingsRoot()
     return activeRoot
 end
 
-local DEFAULTS = {
-    enabled   = false,
-    showIcon  = false,
-    showText  = false,
-    showBar   = false,
-    soundOn   = false,
-    soundKey  = "none",
-    fallbackOn = false,
-    coveredSkip = false,
-    coveredCastWindow = 6,
-    leadTime   = 3,
-    lingerSec  = 3,
-    cdmGlow    = false,
-    voiceOn   = false,
-    voiceNone = "Call for external",
-    externalChat = false,
-    voiceVol  = 100,
-    iconSize  = 64,
-    textSize   = 21,
-    textSide   = "BOTTOM",
-}
-
-local prepared = setmetatable({}, { __mode = "k" })
-
-local function MigrateLists(t)
-    if not (type(t.lists) == "table" and next(t.lists) ~= nil and type(t.presets) ~= "table") then return end
-    t.presets = {}
-    t.activePreset = t.activePreset or {}
-    for specKey, list in pairs(t.lists) do
-        t.presets[specKey] = { p1 = { name = DEFAULT_PRESET, list = list } }
-        t.activePreset[specKey] = "p1"
-    end
-    t.lists = nil
-end
-
-local function MigrateCallouts(t)
-    if type(t.callouts) ~= "table" then return end
-    for id, text in pairs(t.callouts) do
-        local bare = type(text) == "string" and text:match("^[Uu]se%s+(.+)$")
-        if bare then t.callouts[id] = bare end
-    end
-end
-
-local function DropPresetChains(t)
-    if type(t.presets) ~= "table" then return end
-    for _, specPresets in pairs(t.presets) do
-        if type(specPresets) == "table" then
-            for _, p in pairs(specPresets) do
-                if type(p) == "table" then p.chain = nil end
-            end
-        end
-    end
-end
-
 function ns.DB()
     local root = ns.SettingsRoot()
     if type(root.tankReminder) ~= "table" then root.tankReminder = {} end
-    local t = root.tankReminder
-    if prepared[t] then return t end
-    prepared[t] = true
-    MigrateLists(t)
-    t.textPos = nil
-    if type(t.bwCatalogue) == "table" then t.bwCatalogue["0"] = nil end
-    MigrateCallouts(t)
-    DropPresetChains(t)
-    for k, v in pairs(DEFAULTS) do if t[k] == nil then t[k] = v end end
-    return t
-end
-
-function ns.SettingKeys()
-    local out = {}
-    for k in pairs(DEFAULTS) do out[#out + 1] = k end
-    table.sort(out)
-    return out
-end
-
-function ns.SettingDefault(key)
-    return DEFAULTS[key]
+    return root.tankReminder
 end
 
 function ns.AccountSettings()
     local sv = DB()
     if type(sv.account) ~= "table" then sv.account = {} end
     return sv.account
-end
-
-function ns.HealerRemindersEnabled()
-    local on = ns.AccountSettings().healerRemindersEnabled
-    if on == nil then return ns.FEATURES.account.healerRemindersEnabled end
-    return on ~= false
-end
-
-function ns.IsReminderEnabled(reminder, preview)
-    return reminder ~= nil and (preview or reminder.enabled ~= false)
-        and (reminder.healerReminder ~= true or ns.HealerRemindersEnabled())
-end
-
-function ns.SetHealerRemindersEnabled(enabled)
-    ns.AccountSettings().healerRemindersEnabled = enabled and true or false
-    if ns.ApplyReminderFilter then ns.ApplyReminderFilter() end
 end
 
 function ns.UIScale()
@@ -1236,9 +1144,11 @@ function ns.MarkSeen()
     sv.charSeen[CharKey()] = time()
 end
 
-local function ProfileUses(sv)
+local function ProfileUses(sv, me)
     local uses = {}
-    for _, profile in pairs(sv.charActive) do uses[profile] = (uses[profile] or 0) + 1 end
+    for char, profile in pairs(sv.charActive) do
+        if char ~= me then uses[profile] = (uses[profile] or 0) + 1 end
+    end
     return uses
 end
 
@@ -1252,12 +1162,11 @@ function ns.ImportCandidate()
     if not newCharacter then return nil end
     local sv = DB()
     local me = CharKey()
-    local mine = sv.charActive[me]
     local seen = type(sv.charSeen) == "table" and sv.charSeen or {}
-    local uses = ProfileUses(sv)
+    local uses = ProfileUses(sv, me)
     local best, bestProfile, bestSeen, bestUses
     for char, profile in pairs(sv.charActive) do
-        if char ~= me and profile ~= mine and type(sv.profiles[profile]) == "table" then
+        if char ~= me and type(sv.profiles[profile]) == "table" then
             local when, count = seen[char] or 0, uses[profile]
             if Better(char, when, count, best, bestSeen, bestUses) then
                 best, bestProfile, bestSeen, bestUses = char, profile, when, count
@@ -1399,7 +1308,7 @@ function ns.ResetProfileNamed(name)
     local sv = DB()
     if type(sv.profiles[name]) ~= "table" then return false, ERR_NO_PROFILE end
     if name == sv.charActive[CharKey()] then
-        if ns.Reset then ns.Reset() else ns.SettingsRoot().tankReminder = nil end
+        ns.SettingsRoot().tankReminder = nil
         return true
     end
     sv.profiles[name].tankReminder = nil
@@ -1445,12 +1354,9 @@ function ns.Apply() end
 local function RunReapply()
     reapplyPending = false
     ns.Apply()
-    if ns.RefreshDefensivePreview then ns.RefreshDefensivePreview() end
 end
 
 function ns.QueueReapply()
-    if ns.PruneCustomReminderTimers then ns.PruneCustomReminderTimers() end
-    if ns.PrunePendingBWFires then ns.PrunePendingBWFires() end
     if reapplyPending then return end
     reapplyPending = true
     C_Timer.After(0, RunReapply)

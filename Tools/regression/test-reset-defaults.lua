@@ -1,6 +1,6 @@
 -- Regression: the Profiles page's Setups card is a Setup dropdown of the presets (ns.PRESETS). Picking one
--- asks, then puts the profile in use to it: every module's settings and positions, keeping Smart
--- Reminders and what this player answered about EllesmereUI's windows, telling the character and
+-- asks, then puts the profile in use to it: every module's settings and positions, keeping the
+-- reminders' store and what this player answered about EllesmereUI's windows, telling the character and
 -- inspect panels so they swap back, remembering which it is, and offering the reload. Hovering
 -- it lists what each other preset turns on and off, read from the modules' and the feature
 -- cards' switches.
@@ -127,7 +127,7 @@ check("the rest of the HUD Editor's state follows the preset", root.unlockMode.h
 check("every module to the preset", root.qol.fastLoot == nil and root.topBar.use24h == true
     and root.topBar.extra == nil and root.auraBuffs.iconSize == 48 and root.oldModule == nil)
 check("positions too", root.qol.lootFeedPos.point == "CENTER" and root.qol.lootFeedPos.y == -124)
-check("Smart Reminders kept", root.tankReminder.leadTime == 9)
+check("the reminders' store kept", root.tankReminder.leadTime == 9)
 check("what you answered about EllesmereUI's windows kept", root.qol.characterPanelAsked == true
     and root.qol.characterPanelTookOver == true)
 check("the character panel told it changed, the inspect panel not", #sets == 1 and sets[1] == "characterPanel=false")

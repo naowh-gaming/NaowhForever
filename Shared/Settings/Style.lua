@@ -6,4 +6,7 @@ Shared.Settings.Style = setmetatable({
     CONTROL_GAP = 8,
     CONTROL_LEVEL = 2,
     RULE_ALPHA = 0.6,
+    HEAD_H = 44,
+    GROUP_H = 30,
+    TWO_COLUMNS_W = 620,
 }, { __index = Shared.Style })

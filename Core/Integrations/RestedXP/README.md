@@ -11,6 +11,7 @@ through `RestedXP.xml`, after `Core/Core.xml`.
 Core/Integrations/RestedXP/
   RestedXP.xml                what loads
   Themes.lua     the themes, the settings behind the RESTEDXP card, and the hooks
+  Media/         the themes' arrow, frame and grip art (rxp_*.tga), drawn by Tools/media/make_media.py
 ```
 
 ## Why

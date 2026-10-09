@@ -10,6 +10,9 @@ local Group = ns.Shared.Settings.Group
 
 local ResetLayout = Layout.Reset
 local STUDIO_H = 120
+local ICON_RANGE, TOOLTIP_RANGE = { 12, 32, 1 }, { 80, 160, 5 }
+local SYSTEM_TEXT_RANGE, CLOCK_TEXT_RANGE = { 6, 24, 1 }, { 10, 36, 1 }
+local ALPHA_RANGE = ns.Shared.Style.ALPHA_RANGE
 
 local TEXT_NO_CLOCK, TEXT_24H, TEXT_12H = "No clock", "24-hour clock", "12-hour clock"
 local TEXT_SUMMARY = "%s, %d buttons%s"
@@ -43,20 +46,20 @@ local ROWS = {
     { key = "systemTooltip", label = "Tooltip", toggle = true, needs = "showSystem",
       help = "Latency and addon memory when you hover the readout." },
     Group("Size"),
-    { key = "iconSize", label = "Icon Size", slider = { 12, 32, 1 } },
-    { key = "tooltipScale", label = "Tooltip Size", slider = { 80, 160, 5 }, unit = "%",
+    { key = "iconSize", label = "Icon Size", slider = ICON_RANGE },
+    { key = "tooltipScale", label = "Tooltip Size", slider = TOOLTIP_RANGE, unit = "%",
       help = "Size of the friends, guild, Hearthstone, clock and FPS tooltips." },
     Group("Text"),
     { key = "font", label = "Font", font = true, help = "The FPS / MS readout and the online counts on the buttons." },
     { key = "outline", label = "Outline", choice = Parts.HUD_OUTLINES,
       help = "A black outline round the FPS / MS readout and the counts, in place of the soft shadow." },
-    { key = "sysSize", label = "FPS / MS Size", slider = { 6, 24, 1 }, needs = "showSystem" },
+    { key = "sysSize", label = "FPS / MS Size", slider = SYSTEM_TEXT_RANGE, needs = "showSystem" },
     { key = "clockFont", label = "Clock Font", font = true, needs = "showClock" },
-    { key = "clockSize", label = "Clock Size", slider = { 10, 36, 1 }, needs = "showClock" },
+    { key = "clockSize", label = "Clock Size", slider = CLOCK_TEXT_RANGE, needs = "showClock" },
     { key = "clockOutline", label = "Clock Outline", choice = Parts.HUD_OUTLINES, needs = "showClock",
       help = "A black outline round the clock." },
     Group("Background"),
-    { key = "bgAlpha", label = "Bar Opacity", slider = { 0, 100, 5 }, unit = "%" },
+    { key = "bgAlpha", label = "Bar Opacity", slider = ALPHA_RANGE, unit = "%" },
     Group("Colours"),
     { key = "iconColor", label = "Icon Colour", colour = true,
       help = "The tint on every button's icon: Naowh's own and any addon's." },
@@ -65,7 +68,7 @@ local ROWS = {
     { key = "mouseover", label = "Show On Mouseover", toggle = true,
       help = "The bar and the FPS / MS readout fade to Faded Opacity until you hover them. Their "
           .. "buttons still click while faded." },
-    { key = "mouseoverAlpha", label = "Faded Opacity", slider = { 0, 100, 5 }, unit = "%", needs = "mouseover",
+    { key = "mouseoverAlpha", label = "Faded Opacity", slider = ALPHA_RANGE, unit = "%", needs = "mouseover",
       help = "How visible the bar and the FPS / MS readout stay while the mouse is away. At 0 they "
           .. "are invisible." },
 }

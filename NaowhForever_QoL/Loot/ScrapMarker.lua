@@ -22,9 +22,10 @@ local BATCH = 6
 local STEP_DELAY = 0.25
 local WEAPON, ARMOR, QUEST_CLASS, KEY_CLASS = 2, 4, 12, 13
 local MARKED, RULED = 1, 2
-local SELL_PRICE = 11
+local SELL_PRICE = ns.QoLConstants.SELL_PRICE
 local COMMON = 1
 local ROUND = ns.QoLConstants.ROUND
+local LEVELS_RANGE = { 5, 30, 1 }
 local EMPTY = {}
 local LAST_BAG = NUM_TOTAL_EQUIPPED_BAG_SLOTS or NUM_BAG_SLOTS
 
@@ -633,7 +634,7 @@ Shared.Settings.Page("QoL/Loot & Items", S):Card({
           help = "Armour and weapons your class can never use count as scrap." },
         { key = "scrapRuleOld", label = "Old Common Gear", toggle = true,
           help = "Grey and white gear far below your level counts as scrap." },
-        { key = "scrapRuleLevels", label = "Levels Below You", slider = { 5, 30, 1 }, needs = "scrapRuleOld",
+        { key = "scrapRuleLevels", label = "Levels Below You", slider = LEVELS_RANGE, needs = "scrapRuleOld",
           help = "How far below your level gear has to be for Old Common Gear." },
     },
 })

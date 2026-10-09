@@ -10,7 +10,7 @@ local Text = P.Text
 local Style = P.Style
 
 local LABEL_W, VALUE_W, GAP = 58, 96, 8
-local NOTE_GAP = 8
+local NOTE_GAP = Style.NOTE_GAP
 local TEXT_NONE = "-|r"
 local TEXT_BUY, TEXT_SELL, TEXT_PROFIT = "Buy for:", "Sell for:", "Profit:"
 local TEXT_UNPRICED = "+ %d unpriced"

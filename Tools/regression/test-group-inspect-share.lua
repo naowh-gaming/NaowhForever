@@ -178,7 +178,8 @@ local function Client(me, others, opts)
     Load({ "Core/Senders.lua", "Core/Features.lua",
         "NaowhForever_BiS/StatWeights/Data/Defaults.lua",
         "NaowhForever_BiS/StatWeights/StatWeights.lua", "NaowhForever_BiS/StatWeights/Worth.lua",
-        "NaowhForever_GroupInspect/Stats.lua",
+        "NaowhForever_GroupInspect/Constants.lua", "NaowhForever_GroupInspect/Stats.lua",
+        "NaowhForever_GroupInspect/OwnStats.lua", "NaowhForever_GroupInspect/Message.lua",
         "NaowhForever_GroupInspect/Share.lua" }, env)
     state.T = GI._ShareTest
     GI.Roster()

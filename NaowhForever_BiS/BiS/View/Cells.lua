@@ -16,12 +16,13 @@ local GAIN_BIG, GAIN_SMALL = 10, 2
 local GAIN_BIG_RGB, GAIN_RGB, GAIN_SMALL_RGB = St.GAIN_BIG_RGB, St.GAIN_RGB, St.GAIN_SMALL_RGB
 local SOURCE_H = 16
 local NO_LEVEL = 1
+local ROUND = B.C.ROUND
 local TEXT_UNKNOWN = "World drop"
 local TEXT_QUEST = "Quest"
 local TEXT_LEVEL = "Level "
 local TEXT_ITEM = "Item "
 local OWN_QUEST = { Alliance = "Quest (Alliance)", Horde = "Quest (Horde)" }
-local FOREVER_KIND = "items"
+local FOREVER_KIND = B.C.FOREVER_KIND
 
 local gainWords = {}
 local metas = { [true] = {}, [false] = {} }
@@ -114,11 +115,11 @@ function Cells.PaintGain(cell, gain, most)
         cell:Hide()
         return
     end
-    cell.text:SetText(GainWords(math.max(1, math.floor(gain + 0.5))))
+    cell.text:SetText(GainWords(math.max(1, math.floor(gain + ROUND))))
     local color = GainColor(gain)
     cell.text:SetTextColor(color.r, color.g, color.b)
     local share = most and most > 0 and math.sqrt(math.min(1, gain / most)) or 1
-    cell.bar:SetWidth(math.max(GAIN_BAR_MIN, math.floor(GAIN_W * share + 0.5)))
+    cell.bar:SetWidth(math.max(GAIN_BAR_MIN, math.floor(GAIN_W * share + ROUND)))
     cell.bar:SetColorTexture(color.r, color.g, color.b, 1)
     cell:Show()
 end

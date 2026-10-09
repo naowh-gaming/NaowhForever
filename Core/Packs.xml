@@ -1,9 +1,0 @@
-<Ui xmlns="http://www.blizzard.com/wow/ui/">
-    <!-- Packs.xml: Reminder Packs, their signature check, their dialogs, the profile strings and the Profiles page. -->
-    <Script file="Profiles\Verify.lua"/>
-    <Script file="Profiles\Packs.lua"/>
-    <Script file="Profiles\PackDialogs.lua"/>
-    <Script file="Profiles\ProfileShare.lua"/>
-    <Script file="Profiles\ProfileDialogs.lua"/>
-    <Script file="Options\ProfilesPage.lua"/>
-</Ui>

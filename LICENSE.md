@@ -1,6 +1,6 @@
 ## NaowhForever
 
-**Source**: [https://github.com/nwh-gaming-ab/NaowhForever](https://github.com/nwh-gaming-ab/NaowhForever)
+**Source**: [https://github.com/naowh-gaming/NaowhForever](https://github.com/naowh-gaming/NaowhForever)
 
 ```
 Copyright © 2026 The contents of this addon, excluding externals listed below, are

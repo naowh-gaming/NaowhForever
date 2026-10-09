@@ -50,7 +50,7 @@ local function Session(settings)
     local ns = {
         QoLConstants = dofile("Tools/regression/qol_constants.lua"),
         QoLSettings = S, UI = {}, THEME = {},
-        Shared = { Settings = { Group = function() return {} end, Page = function() return page end } },
+        Shared = { Style = dofile("Tools/regression/shared_style.lua"), Settings = { Group = function() return {} end, Page = function() return page end } },
         GCDSpell = function() return 61304 end,
         MeleeRangeSpell = function() return nil end,
         Apply = function() end,

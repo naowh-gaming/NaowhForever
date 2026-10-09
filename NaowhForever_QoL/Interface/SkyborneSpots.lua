@@ -8,7 +8,7 @@ local SAME_SPOT = 40
 local MIN_BUFF = 60
 local MAP_CONTINENT = 2
 local PERCENT = ns.QoLConstants.PERCENT
-local PERMILLE, TENTHS = 1000, 10
+local PERMILLE, TENTHS = ns.QoLConstants.PERMILLE, ns.QoLConstants.TENTHS
 local ROUND = ns.QoLConstants.ROUND
 local FIRST_LOOK, RETRY_DELAY, MAX_TRIES = 0.2, 0.5, 4
 local CAST_SLACK = 1
@@ -18,6 +18,7 @@ local MAXIMIZED_SHRINK = 2
 local MASK = "Interface\\CharacterFrame\\TempPortraitAlphaMask"
 local HELP_RGB = { r = 0.61, g = 0.64, b = 0.69 }
 local HINT_RGB = ns.QoLConstants.HINT_RGB
+local PIN_RANGE = ns.Shared.Style.PIN_SIZE_RANGE
 local SKYBORNE = "Skyborne"
 
 local KINDS = {
@@ -352,7 +353,7 @@ ns.Shared.Settings.Page("QoL/Interface", S):Card({
         .. "your racial on. Other races see no pins.",
     summary = Summary,
     rows = {
-        { key = "mapSkyborneSize", label = "Pin Size", slider = { 12, 32, 1 } },
+        { key = "mapSkyborneSize", label = "Pin Size", slider = PIN_RANGE },
         { label = "Forget Found Spots", buttonText = "Forget All", button = ForgetAll, needs = AnyFound,
           why = "No spots found yet",
           help = "Forgets every spot this account found. The addon's own list stays." },

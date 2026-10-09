@@ -17,7 +17,7 @@ local BUILTIN, BUILTIN_ORDER = Layout.BUILTIN, Layout.BUILTIN_ORDER
 local WHITE, LABEL_GREY, BLACK = St.WHITE, St.LABEL_GREY, St.BORDER_RGB
 local SAMPLE_FRIENDS, SAMPLE_GUILD, SAMPLE_FPS, SAMPLE_MS = 12, 31, 144, 38
 local PREVIEW_TOP = 26
-local NOTE_BOTTOM, NOTE_SIZE = 10, 11
+local NOTE_BOTTOM, NOTE_SIZE = St.STAGE_NOTE_Y, St.STAGE_NOTE_SIZE
 local HOVER_ALPHA = 0.18
 local DRAGGED_ALPHA = 0.3
 local GHOST_ALPHA = 0.85
@@ -29,7 +29,7 @@ local PLUS_ICON = 12
 local PLUS_BG_ALPHA = 0.6
 local DROP_SLOP = 12
 local EDIT_LEVEL = 10
-local SYS_DROP = 2
+local SYS_DROP = C.SYS_DROP
 
 local HINT = "Drag to move, x to remove, + to add."
 local TIP_HINT = "Drag to move. Click x to remove."

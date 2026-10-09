@@ -18,7 +18,7 @@ local EnableButton = Widgets.EnableButton
 
 local ICON = 44
 local STAR_GAP = 10
-local NAME_GAP = 6
+local NAME_GAP = Style.ICON_NAME_GAP
 local SEARCH_W, SEARCH_H = 84, 22
 local SEARCH_DROP = 36
 local DESC_GAP = 12
@@ -27,7 +27,7 @@ local DESC_SPACING = 2
 local REAGENTS_GAP = 14
 local TRACK_TEXT_GAP = 6
 local PROFIT_BOTTOM = 44
-local EDGE = 10
+local EDGE = Style.PANEL_EDGE
 local CREATE_W, CREATE_ALL_W = 90, 120
 local USABLE_DELAY = 0.5
 local TEXT_REQUIRES = "Requires: "

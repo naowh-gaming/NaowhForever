@@ -21,6 +21,7 @@ local env = setmetatable({
     UI = {},
     CreateFrame = Frame,
     ns = {
+        MEDIA = dofile("Tools/regression/core_media.lua"),
         Button = function() local b = Frame(); b.label = Frame(); return b end,
         Tooltip = function(_, title, text) tooltips[#tooltips + 1] = { title, text } end,
         Print = function(msg) printed[#printed + 1] = msg end,

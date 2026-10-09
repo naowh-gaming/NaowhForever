@@ -8,7 +8,7 @@ local CP = ns.CharacterPanel
 
 local YOU = "You "
 local PLATE_LEVEL = 10
-local BADGES_LIVE = 1
+local BADGES_LIVE = ns.BADGES_LIVE
 local TITLE_RGB = CP.C.TITLE_RGB
 local TIP_TITLE = "Naowh Score"
 local TIP_THEM, TIP_YOU = "Them", "You"

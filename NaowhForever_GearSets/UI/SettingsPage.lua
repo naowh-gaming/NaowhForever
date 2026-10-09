@@ -12,7 +12,10 @@ if not Settings then return end
 local PREVIEW_NOTE_GAP = 10
 local ADD_TEXT_SIZE, NOTE_SIZE = 14, 12
 local BAR_STAGE_H, TRINKET_STAGE_H = 100, 110
-local PERCENT, ROUND = 100, 0.5
+local PERCENT, ROUND = C.PERCENT, C.ROUND
+local BAR_SIZE_RANGE, TRINKET_SIZE_RANGE, SPACING_RANGE = { 20, 48, 1 }, { 20, 70, 1 }, { 0, 30, 1 }
+local OPACITY_RANGE, TO_FRACTION = ns.Shared.Style.OPACITY_RANGE, ns.Shared.Style.PERCENT_SCALE
+local ORDER_GEAR_BAR, ORDER_SWAPS, ORDER_TRINKETS, ORDER_WINDOW = 10, 20, 30, 40
 local SHOW = { { always = "Always", combat = "In Combat", nocombat = "Out of Combat" },
     { "always", "combat", "nocombat" } }
 local PREVIEW_STATE = { { key = "bar", label = "Bar" } }
@@ -133,7 +136,7 @@ page:Window({
 })
 
 page:Card({
-    id = "gearBar", name = "Gear Set Bar", order = 10, switch = "gearBarVisible",
+    id = "gearBar", name = "Gear Set Bar", order = ORDER_GEAR_BAR, switch = "gearBarVisible",
     help = "A button per set: click to equip, Shift-click to save what you wear into it, Ctrl-click to rename "
         .. "it, right-click to change its icon, and + to save a new one. The set you wear is outlined. Move it "
         .. "in the HUD Editor.",
@@ -141,9 +144,9 @@ page:Card({
     studio = { height = BAR_STAGE_H, states = PREVIEW_STATE, new = NewBarPreview, paint = PaintBarPreview },
     rows = {
         Settings.Group("Size"),
-        { key = "gearBarSize", label = "Button Size", slider = { 20, 48, 1 }, unit = " px", needs = GearOn,
+        { key = "gearBarSize", label = "Button Size", slider = BAR_SIZE_RANGE, unit = " px", needs = GearOn,
           why = GEAR_OFF, help = "How big each set's button is." },
-        { key = "gearBarSpacing", label = "Spacing", slider = { 0, 30, 1 }, unit = " px", needs = GearOn,
+        { key = "gearBarSpacing", label = "Spacing", slider = SPACING_RANGE, unit = " px", needs = GearOn,
           why = GEAR_OFF, help = "The gap between two buttons." },
         Settings.Group("Visibility"),
         { key = "gearBarShow", label = "Show", choice = SHOW, needs = GearOn, why = GEAR_OFF,
@@ -152,7 +155,7 @@ page:Card({
 })
 
 page:Card({
-    id = "autoSwap", name = "Automatic Swaps", order = 20,
+    id = "autoSwap", name = "Automatic Swaps", order = ORDER_SWAPS,
     help = "A set that goes on by itself while you ride or rest, and the set you had on goes back afterwards.",
     summary = SwapSummary,
     rows = {
@@ -164,25 +167,25 @@ page:Card({
 })
 
 page:Card({
-    id = "trinketBar", name = "Trinket Bar", order = 30, switch = "trinketBar",
+    id = "trinketBar", name = "Trinket Bar", order = ORDER_TRINKETS, switch = "trinketBar",
     help = "Your two trinket slots, movable: left-click to use one, right-click to equip a trinket from your "
         .. "bags outside combat. Move it in the HUD Editor.",
     summary = SizeSummary("trinketSize"),
     studio = { height = TRINKET_STAGE_H, states = PREVIEW_STATE, new = NewTrinketPreview, paint = PaintTrinketPreview },
     rows = {
-        { key = "trinketSize", label = "Icon Size", slider = { 20, 70, 1 }, unit = " px", needs = GearOn,
+        { key = "trinketSize", label = "Icon Size", slider = TRINKET_SIZE_RANGE, unit = " px", needs = GearOn,
           why = GEAR_OFF, help = "How big each trinket is." },
-        { key = "trinketSpacing", label = "Spacing", slider = { 0, 30, 1 }, unit = " px", needs = GearOn,
+        { key = "trinketSpacing", label = "Spacing", slider = SPACING_RANGE, unit = " px", needs = GearOn,
           why = GEAR_OFF, help = "The gap between the two." },
     },
 })
 
 page:Card({
-    id = "window", name = "Window", order = 40,
+    id = "window", name = "Window", order = ORDER_WINDOW,
     help = "The Gear Sets window, with every set and what you can do with it.",
     summary = WindowSummary,
     rows = {
-        { key = "gearWindowAlpha", label = "Window Opacity", slider = { ns.Shared.Style.OPACITY_MIN, 100, 5 },
-          unit = "%", scale = 0.01, help = "How solid the Gear Sets window is, in percent. Also on its title bar." },
+        { key = "gearWindowAlpha", label = "Window Opacity", slider = OPACITY_RANGE,
+          unit = "%", scale = TO_FRACTION, help = "How solid the Gear Sets window is, in percent. Also on its title bar." },
     },
 })

@@ -2,6 +2,7 @@
 local ns = _G.NaowhForever
 
 local CP = ns.CharacterPanel
+local C = CP.C
 
 local MP5_TICK = 5
 local SWINGS = 2
@@ -15,7 +16,7 @@ local SCHOOLS = { holy = 2, fire = 3, nature = 4, frost = 5, shadow = 6, arcane 
 local PRIMARY = { "str", "agi", "sta", "int", "spi" }
 
 local function Percent(value) return PERCENT_FORMAT:format(value or 0) end
-local function Whole(value) return WHOLE_FORMAT:format(math.floor((value or 0) + 0.5)) end
+local function Whole(value) return WHOLE_FORMAT:format(math.floor((value or 0) + C.HALF)) end
 
 local function Stat(index)
     return select(2, UnitStat("player", index))

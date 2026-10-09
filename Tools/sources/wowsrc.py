@@ -45,7 +45,7 @@ import paths  # noqa: E402
 PAGES = paths.DATA / "wowsrc_pages"
 OUT = paths.DATA / "wowsrc_loot.json"
 SITE = "https://wowsrc.com"
-AGENT = "NaowhForever-tools (+https://github.com/nwh-gaming-ab/NaowhForever)"
+AGENT = "NaowhForever-tools (+https://github.com/naowh-gaming/NaowhForever)"
 PAUSE = 2.0   # seconds between two pages fetched, not between pages read from disk
 
 last = 0.0

@@ -11,8 +11,10 @@ local CLASS_INDEX = 12
 local TEXT_TOO_DEAR = "Buy at Vendor: that costs %s, more than you have."
 local TEXT_BOUGHT = "Bought %s for %s."
 local TEXT_PART = "%dx %s"
+local MERCHANT_EVENTS = { "MERCHANT_SHOW", "MERCHANT_UPDATE", "MERCHANT_CLOSED" }
+local MERCHANT_KEYS = { enabled = true, vendorMaterials = true, craftProfit = true, buyVendor = true }
 
-local merchant = CreateFrame("Frame")
+local merchant
 
 local function LearnedVendorItems()
     local account = ns.AccountSettings()
@@ -141,7 +143,26 @@ P.Vendors = {
 
 ns.ProfWindowAPI.IsVendorItem = IsVendorItem
 
-merchant:RegisterEvent("MERCHANT_SHOW")
-merchant:RegisterEvent("MERCHANT_UPDATE")
-merchant:RegisterEvent("MERCHANT_CLOSED")
-merchant:SetScript("OnEvent", OnMerchantEvent)
+local function MerchantWanted()
+    return P.On() and (S.Get("vendorMaterials") or S.Get("craftProfit") or S.Get("buyVendor"))
+end
+
+local function Apply()
+    if not MerchantWanted() then
+        if merchant then merchant:UnregisterAllEvents() end
+        return
+    end
+    if not merchant then
+        merchant = CreateFrame("Frame")
+        merchant:SetScript("OnEvent", OnMerchantEvent)
+    end
+    for _, event in ipairs(MERCHANT_EVENTS) do merchant:RegisterEvent(event) end
+end
+
+local function OnSettingChanged(key)
+    if MERCHANT_KEYS[key] then Apply() end
+end
+
+S.OnChange(OnSettingChanged)
+hooksecurefunc(ns, "Apply", Apply)
+Apply()

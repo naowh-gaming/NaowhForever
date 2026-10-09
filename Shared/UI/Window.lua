@@ -22,7 +22,7 @@ local GRIP_TEXTURE = "Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-"
 local BAR_ICON_PAD, BAR_ICON_IN = 4, 2
 local BAR_LABEL_GAP, BAR_LABEL_ROOM = 4, 8
 local OPACITY_BOX_W, OPACITY_BOX_H, OPACITY_ALPHA = 24, 18, 1
-local OPACITY_MAX, OPACITY_STEP = 100, 5
+local OPACITY_MAX, OPACITY_STEP = St.OPACITY_MAX, St.OPACITY_STEP
 local OPACITY_DEEP = 0.6
 local OPACITY_GLOW_ALPHA = 0.25
 local PERCENT_GAP, BOX_GAP, SLIDER_GAP, ICON_GAP = 14, 1, 10, 6
@@ -311,7 +311,7 @@ function Parts.TitlePlate(frame, text)
     return plate
 end
 
-function Parts.Resizable(window, sizeKey, minW, minH, onSized)
+function Parts.Resizable(window, sizeKey, minW, minH, onSized, onReleased)
     local sizes = ns.AccountSettings().windowSizes
     local saved = sizes and sizes[sizeKey]
     if saved then window:SetSize(math.max(saved[1], minW), math.max(saved[2], minH)) end
@@ -329,6 +329,7 @@ function Parts.Resizable(window, sizeKey, minW, minH, onSized)
     grip:SetScript("OnMouseUp", function()
         window:StopMovingOrSizing()
         KeepSize(window, sizeKey)
+        if onReleased then onReleased() end
     end)
     return grip
 end

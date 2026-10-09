@@ -5,7 +5,7 @@ local TB = ns.TopBar
 
 local WIDGETS_Y, WIDGETS_GAP, WIDGETS_ROOM = -15, 4, 60
 local CENTRE = 2
-local ROUND = 0.5
+local ROUND = TB.C.ROUND
 
 local widgetsAt
 

@@ -38,4 +38,3 @@ manual-changelog:
 ignore:
   - Tools
   - RELEASE_NOTES.md
-  - NaowhForever_SmartReminders

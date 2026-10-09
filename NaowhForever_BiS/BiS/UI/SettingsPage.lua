@@ -10,13 +10,14 @@ local Settings = ns.Shared and ns.Shared.Settings
 if not Settings then return end
 
 local PLACE_DOT = St.PLACE_DOT
-local PERCENT = 100
+local PERCENT, ROUND = B.C.PERCENT, B.C.ROUND
+local ORDER_MARKS, ORDER_DROP_ALERT, ORDER_LISTS, ORDER_WINDOW = 10, 20, 30, 80
 local SCALE_RANGE = { 60, 160, 5 }
 local TIME_RANGE = { 2, 15, 1 }
-local ALPHA_RANGE = { 0, 100, 5 }
+local ALPHA_RANGE = St.ALPHA_RANGE
 local FONT_RANGE = { 10, 20, 1 }
-local OPACITY_RANGE = { St.OPACITY_MIN, 100, 5 }
-local TO_FRACTION = 0.01
+local OPACITY_RANGE = St.OPACITY_RANGE
+local TO_FRACTION = St.PERCENT_SCALE
 local BIS_OFF = "Turn on the BiS List"
 local NEEDS_LOOKS = { "bis", "bisToast" }
 local TEXT_HEADLINE = "Your list: %s%s"
@@ -69,7 +70,10 @@ local function SoundRow(key, label, help)
         end }
 end
 
-local function ListGet() return select(3, ns.BisListChoices()) end
+local function ListGet()
+    local _, _, id = ns.BisListChoices()
+    return id
+end
 
 local function SpecChoices()
     local values, order = {}, {}
@@ -104,7 +108,7 @@ local function ListsSummary()
 end
 
 local function WindowSummary(store)
-    return TEXT_OPACITY:format(math.floor((store.Get("bisWindowAlpha") or 1) * PERCENT + 0.5))
+    return TEXT_OPACITY:format(math.floor((store.Get("bisWindowAlpha") or 1) * PERCENT + ROUND))
 end
 
 local function RefreshPage()
@@ -121,7 +125,7 @@ page:Window({
 })
 
 page:Card({
-    id = "marks", name = "BiS List", order = 10,
+    id = "marks", name = "BiS List", order = ORDER_MARKS,
     help = "Your list's marks on items out in the game.",
     summary = MarksSummary,
     rows = {
@@ -136,7 +140,7 @@ page:Card({
 })
 
 page:Card({
-    id = "dropAlert", name = "Drop Alert", order = 20, switch = "bisLootAlert",
+    id = "dropAlert", name = "Drop Alert", order = ORDER_DROP_ALERT, switch = "bisLootAlert",
     help = "When an item on your list is up for a roll or in the loot window, and again when it is yours. "
         .. "Move the on-screen alert in the HUD Editor.",
     summary = AlertSummary,
@@ -184,7 +188,7 @@ page:Card({
 })
 
 page:Card({
-    id = "lists", name = "Lists", order = 30,
+    id = "lists", name = "Lists", order = ORDER_LISTS,
     help = "Lists are shared by every character of your class; each character keeps using the one picked "
         .. "here. New, Rename, Import, Export and Delete are in the BiS List's window.",
     summary = ListsSummary,
@@ -199,7 +203,7 @@ page:Card({
 })
 
 page:Card({
-    id = "window", name = "Window", order = 80,
+    id = "window", name = "Window", order = ORDER_WINDOW,
     help = "The BiS List's own window, and its Stat Weights window.",
     summary = WindowSummary,
     rows = {

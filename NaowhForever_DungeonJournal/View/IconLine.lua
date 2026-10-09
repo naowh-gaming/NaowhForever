@@ -7,7 +7,7 @@ local Kinds, Parts = J.View.Kinds, J.View.Parts
 local Tip = Parts.Tip
 local St = J.Style
 local BORDER_RGB, TEXT_SIZE, SMALL_SIZE, TIP_X = St.BORDER_RGB, St.TEXT_SIZE, St.SMALL_SIZE, St.CURSOR_TIP_X
-local CROP_LOW, CROP_HIGH = St.ICON_CROP_LOW, St.ICON_CROP_HIGH
+local CROP_LOW, CROP_HIGH = St.ICON_CROP, St.ICON_CROP_HIGH
 
 local LINE_H, LINE_ICON = 26, 20
 local TEXT_GAP, RIGHT_GAP = 8, 12

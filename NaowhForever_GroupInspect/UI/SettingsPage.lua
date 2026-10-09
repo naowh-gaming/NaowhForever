@@ -10,13 +10,14 @@ if not Settings then return end
 local St = UI.Style
 local PREVIEW_H, MARGIN = 320, 12
 local MIN_SCALE = 0.1
-local PERCENT, ROUND = 100, 0.5
+local PERCENT, ROUND = GI.C.PERCENT, GI.C.ROUND
+local OPACITY_RANGE, PERCENT_SCALE = St.OPACITY_RANGE, St.PERCENT_SCALE
 local STATES = {
     { key = "party", label = "Party", tip = "A party of five, a card each." },
     { key = "raid", label = "Raid", tip = "A raid, a row each." },
 }
 local NOT_GROUPED = "Not in a group"
-local PARTY, RAID = "Party of %d", "Raid of %d"
+local PARTY, RAID = UI.MODE_WORDS.party, UI.MODE_WORDS.raid
 local RUNS_ONE, RUNS = "1 runs Naowh Forever", "%d run Naowh Forever"
 local GROUPED_DETAIL = "Everyone's Naowh Score, gear, talents and stats, side by side."
 local SOLO_DETAIL = "Join a party or raid to use it; the preview below shows how it looks."
@@ -156,7 +157,7 @@ page:Card({
     help = "Group Inspect's own window.",
     summary = WindowSummary,
     rows = {
-        { key = "groupInspectAlpha", label = "Window Opacity", slider = { St.OPACITY_MIN, 100, 5 }, unit = "%",
-          scale = 0.01, help = "How solid the window is, in percent. Also on its title bar." },
+        { key = "groupInspectAlpha", label = "Window Opacity", slider = OPACITY_RANGE, unit = "%",
+          scale = PERCENT_SCALE, help = "How solid the window is, in percent. Also on its title bar." },
     },
 })

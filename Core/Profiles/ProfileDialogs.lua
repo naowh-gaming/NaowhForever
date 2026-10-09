@@ -6,6 +6,7 @@ local Profiles = ns.Profiles
 local EXPORT_W, EXPORT_H, BOX_H = 560, 360, 180
 local IMPORT_W, IMPORT_H, PASTE_H = 600, 520, 110
 local PAD, ROW_H, BUTTON_W, BUTTON_H = 14, 24, 120, 26
+local BOX_RIGHT = 34
 local TITLE_SIZE, TEXT_SIZE, SMALL_SIZE = 14, 12, 11
 local WHAT_Y, BOX_Y, STATUS_GAP = 40, 62, 12
 local PASTE_Y, PREVIEW_GAP, PREVIEW_TOP_GAP, PREVIEW_MIN_ROOM = 40, 16, 14, 44
@@ -14,9 +15,6 @@ local NAME_ROW_GAP, NAME_W, NAME_H, NAME_MAX, NAME_GAP = 10, 220, 22, 40, 12
 local BUTTON_GAP = 4
 local UNKNOWN = "?"
 local HANDOFFS = {
-    { prefix = Profiles.PACK_PREFIX, button = "Open Pack Import",
-      what = "This is a Smart Reminders pack. The pack import takes it in, with its specs and licence.",
-      go = function(text) ns.ShowPackImport(text) end },
     { prefix = "!NFM1!", button = "Add Macros", module = "Macros", needs = "ImportMacroString",
       what = "These are Forge macros. They are added as character macros on this character.",
       go = function(text) ns.ImportMacroString(text) end },
@@ -31,7 +29,7 @@ local ACTING_LINE = "It also turns on settings that act for you: %s; they stay o
 local ACTING_HELP = "Turns those settings on in the new profile"
 local TEXT_EXPORT_TITLE, TEXT_IMPORT_TITLE = "Export Profile", "Import"
 local TEXT_PROFILE = "Profile: %s. %s."
-local TEXT_EXPORTED = "%d characters. Click the text, then Ctrl+A and Ctrl+C.%s"
+local TEXT_EXPORTED = "%d characters. Click the text, then Ctrl+A and Ctrl+C."
 local TEXT_CLOSE, TEXT_IMPORT, TEXT_CANCEL = "Close", "Import", "Cancel"
 local TEXT_TURN_ON = "Turn on %s under Settings > Modules to add this."
 local TEXT_PASTE = "Paste a profile, macro, talent build or BiS list string above."
@@ -50,6 +48,27 @@ local export, import
 local function ClearFocus(self) self:ClearFocus() end
 local function HighlightText(self) self:HighlightText() end
 
+local function MultilineBox(panel, topOffset, height)
+    local scroll = UI.SlimScroll(panel)
+    scroll:SetPoint("TOPLEFT", panel, "TOPLEFT", PAD, topOffset)
+    scroll:SetPoint("TOPRIGHT", panel, "TOPRIGHT", -BOX_RIGHT, topOffset)
+    scroll:SetHeight(height)
+    ns.Solid(scroll, "BACKGROUND", ns.THEME.bg, 1):SetAllPoints()
+    ns.Border(scroll)
+    local box = CreateFrame("EditBox", nil, scroll)
+    box:SetMultiLine(true)
+    box:SetAutoFocus(false)
+    box:SetFontObject("GameFontHighlightSmall")
+    box:SetWidth(1)
+    box:SetHeight(height)
+    box:SetScript("OnEscapePressed", ClearFocus)
+    scroll:SetScrollChild(box)
+    scroll:SetScript("OnSizeChanged", function(_, w) box:SetWidth(w) end)
+    scroll:EnableMouse(true)
+    scroll:SetScript("OnMouseDown", function() box:SetFocus() end)
+    return box
+end
+
 local function Title(panel, text)
     local title = ns.Font(panel, TITLE_SIZE, "OUTLINE")
     title:SetPoint("TOP", 0, -PAD)
@@ -63,7 +82,7 @@ local function BuildExport()
     what:SetPoint("TOPLEFT", PAD, -WHAT_Y)
     what:SetPoint("RIGHT", -PAD, 0)
     what:SetJustifyH("LEFT")
-    local box = ns.MakeMultilineBox(panel, -BOX_Y, BOX_H)
+    local box = MultilineBox(panel, -BOX_Y, BOX_H)
     box:SetScript("OnEditFocusGained", HighlightText)
     box:SetScript("OnTextChanged", function(self, user) if user then self:SetText(export.text or "") end end)
     local status = UI.KeepFont(panel, "status", SMALL_SIZE, nil, ns.THEME.fg)
@@ -86,15 +105,15 @@ end
 function ns.ShowProfileExport(wanted)
     if not export then export = BuildExport() end
     export.what:SetText(TEXT_PROFILE:format(ns.ActiveProfileName() or UNKNOWN, PartLabels(wanted)))
-    local text, note = ns.ExportProfile(wanted)
+    local text, why = ns.ExportProfile(wanted)
     if text then
         export.text = text
         export.box:SetText(export.text)
-        export.status:SetText(TEXT_EXPORTED:format(#text, note and ("\n" .. note) or ""))
+        export.status:SetText(TEXT_EXPORTED:format(#text))
     else
         export.text = ""
         export.box:SetText("")
-        export.status:SetText(note or "")
+        export.status:SetText(why or "")
     end
     export.dimmer:Show()
 end
@@ -234,7 +253,7 @@ end
 local function BuildImport()
     local dimmer, panel = ns.MakeModal(IMPORT_W, IMPORT_H, "profileImport")
     Title(panel, TEXT_IMPORT_TITLE)
-    local box = ns.MakeMultilineBox(panel, -PASTE_Y, PASTE_H)
+    local box = MultilineBox(panel, -PASTE_Y, PASTE_H)
     local preview = UI.KeepFont(panel, "preview", TEXT_SIZE, nil, ns.THEME.fg)
     preview:SetPoint("TOPLEFT", PAD, -(PASTE_Y + PASTE_H + PREVIEW_TOP_GAP))
     preview:SetPoint("RIGHT", -PAD, 0)

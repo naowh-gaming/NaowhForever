@@ -4,15 +4,17 @@ local ns = _G.NaowhForever
 local Discovery = ns.Discovery
 local S = Discovery.Settings
 local Library = Discovery.Library
-local Style = Discovery.Style
 local Settings = ns.Shared.Settings
 
+local St = ns.Shared.Style
+
 local PAGE = "Discovery/Library Books"
-local SCALE = { 50, 150, 5 }
-local PIN_SIZE = { 12, 32, 1 }
+local SCALE = St.SCALE_RANGE
+local PIN_SIZE = St.PIN_SIZE_RANGE
 local RANGE = { 10, 100, 5 }
-local PERCENT_STEP = 5
-local PERCENT_SCALE = 0.01
+local OPACITY_RANGE = St.OPACITY_RANGE
+local PERCENT_SCALE = St.PERCENT_SCALE
+local ORDER_TRACKER, ORDER_MAP_PINS, ORDER_NEARBY, ORDER_WAYPOINTS, ORDER_WINDOW = 10, 20, 30, 35, 90
 local TEXT_OFF = "Turn on Discovery"
 local TEXT_HANDED_IN = "%d of %d books handed in"
 local TEXT_ALL_EARNED = "Every reward earned. %s thanks you."
@@ -68,7 +70,7 @@ page:Window({
 })
 
 page:Card({
-    id = "tracker", name = "Tracker", order = 10, switch = "tracker",
+    id = "tracker", name = "Tracker", order = ORDER_TRACKER, switch = "tracker",
     help = "Pops up when you enter a zone with books you still need, with a waypoint for each and your "
         .. "progress toward the next reward, and stays while you are in that zone. The X closes it until "
         .. "you enter another. Move it in the HUD Editor.",
@@ -79,13 +81,13 @@ page:Card({
               .. "to find. Entering one selects it. The X on the tracker switches this off." },
         { key = "trackerScale", label = "Scale", slider = SCALE, unit = "%", scale = PERCENT_SCALE, needs = On,
           why = TEXT_OFF, help = "How big the tracker is." },
-        { key = "trackerAlpha", label = "Opacity", slider = { Style.OPACITY_MIN, 100, PERCENT_STEP }, unit = "%",
+        { key = "trackerAlpha", label = "Opacity", slider = OPACITY_RANGE, unit = "%",
           scale = PERCENT_SCALE, needs = On, why = TEXT_OFF, help = "How solid the tracker is, in percent." },
     },
 })
 
 page:Card({
-    id = "mapPins", name = "Map Pins", order = 20, switch = "mapPins",
+    id = "mapPins", name = "Map Pins", order = ORDER_MAP_PINS, switch = "mapPins",
     help = "Pins every book you still need on its zone's map, and your librarian while you carry books. "
         .. "Hover a pin for the exact spot; click it for a waypoint.",
     summary = MapSummary,
@@ -98,7 +100,7 @@ page:Card({
 })
 
 page:Card({
-    id = "nearby", name = "Nearby Alert", order = 30, switch = "nearbySound",
+    id = "nearby", name = "Nearby Alert", order = ORDER_NEARBY, switch = "nearbySound",
     help = "Plays the map ping and names the book in chat when you come within range of one you still need. "
         .. "Once per book, until you walk away and come back.",
     summary = NearbySummary,
@@ -113,7 +115,7 @@ page:Card({
 })
 
 page:Card({
-    id = "waypoints", name = "Waypoints", order = 35,
+    id = "waypoints", name = "Waypoints", order = ORDER_WAYPOINTS,
     help = "What a waypoint from the Discovery window or the tracker does.",
     summary = WaypointSummary,
     rows = {
@@ -123,10 +125,10 @@ page:Card({
 })
 
 page:Card({
-    id = "window", name = "Window", order = 90,
+    id = "window", name = "Window", order = ORDER_WINDOW,
     help = "Discovery's own window, with every book and where to find it.",
     rows = {
-        { key = "windowAlpha", label = "Window Opacity", slider = { Style.OPACITY_MIN, 100, PERCENT_STEP },
+        { key = "windowAlpha", label = "Window Opacity", slider = OPACITY_RANGE,
           unit = "%", scale = PERCENT_SCALE, help = "How solid the window is, in percent. Also on its title bar." },
     },
 })

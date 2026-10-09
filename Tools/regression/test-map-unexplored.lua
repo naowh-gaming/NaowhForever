@@ -35,7 +35,8 @@ local settings = { enabled = true, mapUnexplored = false, mapUnexploredDark = 0.
 local S = { Get = function(key) return settings[key] end, Set = function() end }
 local card
 ns.QoLSettings = S
-ns.Shared = { Settings = { Page = function() return { Card = function(_, c) card = c end } end } }
+ns.QoLConstants = dofile("Tools/regression/qol_constants.lua")
+ns.Shared = { Style = dofile("Tools/regression/shared_style.lua"), Settings = { Page = function() return { Card = function(_, c) card = c end } end } }
 ns.Apply = function() end
 ns.MapOverlays = { [1] = { { 300, 100, 10, 20, 11, 12 }, { 64, 64, 500, 400, 13 } } }
 

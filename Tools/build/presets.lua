@@ -3,9 +3,9 @@
 -- one preset at a time, out of a profile string from Export Profile (NFPROFILE1:) saved to a
 -- file, or a .lua file returning a profile table (one profiles entry of NaowhForever.lua, the
 -- SavedVariables) with its author's name after it; the other presets are kept as they are.
--- Takes every module's settings and positions, the Macros settings and the look; Smart
--- Reminders and what the exporter answered about EllesmereUI's windows (ns.PROFILE_OWN) are
--- left out, so a player asks as on a first run. Naowh's two are kept beside it, edited there
+-- Takes every module's settings and positions, the Macros settings and the look; the
+-- reminders' store and what the exporter answered about EllesmereUI's windows (ns.PROFILE_OWN)
+-- are left out, so a player asks as on a first run. Naowh's two are kept beside it, edited there
 -- and rebuilt from the repo root with Libs/:
 --   lua5.1 Tools/build/presets.lua minimalist Tools/data/preset_minimalist.lua Naowh
 --   lua5.1 Tools/build/presets.lua recommended Tools/data/preset_recommended.lua Naowh
@@ -17,14 +17,14 @@ local NEW_INSTALL = "minimalist"
 local OUT = "Core/Profiles/Presets.lua"
 local usage = "usage: lua5.1 Tools/build/presets.lua <" .. "minimalist|recommended> <profile string file, or profile .lua> [author]"
 local which, source = assert(INFO[arg[1] or ""] and arg[1], usage), assert(arg[2], usage)
--- Smart Reminders' own settings, and the Custom Reminders that run on its triggers.
+-- The reminders' store, and the retired Custom Reminders settings older strings still carry.
 local LEFT_OUT = { tankReminder = true, customReminders = true }
 
 strmatch = string.match
 dofile("Libs/LibStub/LibStub.lua")
 dofile("Libs/LibDeflate/LibDeflate.lua")
 dofile("Libs/LibSerialize/LibSerialize.lua")
-local ns = { UI = {}, PlainText = function(s) return s end, ValidPackData = function(d) return type(d) == "table" end }
+local ns = { UI = {}, PlainText = function(s) return s end }
 local env = setmetatable({ _G = { NaowhForever = ns }, date = os.date }, { __index = _G })
 ns.Shared = { Decode = dofile("Tools/regression/load_decode.lua")(env) }
 local chunk = assert(loadfile("Core/Profiles/ProfileShare.lua"))

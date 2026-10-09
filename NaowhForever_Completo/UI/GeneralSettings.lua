@@ -9,9 +9,10 @@ local Settings = ns.Shared.Settings
 local Style = Completo.Style
 
 local PAGE = "Completo/General"
-local WINDOW_SCALE = { 50, 150, 5 }
-local PERCENT_STEP = 5
-local PERCENT_SCALE = 0.01
+local WINDOW_SCALE = Style.SCALE_RANGE
+local OPACITY_RANGE = Style.OPACITY_RANGE
+local PERCENT_SCALE = Style.PERCENT_SCALE
+local ORDER_KEYS, ORDER_WINDOW = 30, 90
 local TEXT_PROGRESS = "%d of %d quests done, %d of %d rares killed"
 local TEXT_ABOUT = "Everything there is to do, and how much of it you have done."
 
@@ -40,7 +41,7 @@ page:Window({
 })
 
 page:Card({
-    id = "keys", name = "Key Binding", order = 30,
+    id = "keys", name = "Key Binding", order = ORDER_KEYS,
     help = "The key that opens the Completo window.",
     rows = {
         { label = "Open Completo", binding = "NAOWHFOREVER_COMPLETO",
@@ -49,12 +50,12 @@ page:Card({
 })
 
 page:Card({
-    id = "window", name = "Window", order = 90,
+    id = "window", name = "Window", order = ORDER_WINDOW,
     help = "Completo's own window. Drag its bottom right corner to size it.",
     rows = {
         { key = "windowScale", label = "Window Scale", slider = WINDOW_SCALE, unit = "%", scale = PERCENT_SCALE,
           help = "How big the window and everything in it is. Drag its corner to make it bigger instead." },
-        { key = "windowAlpha", label = "Window Opacity", slider = { Style.OPACITY_MIN, 100, PERCENT_STEP },
+        { key = "windowAlpha", label = "Window Opacity", slider = OPACITY_RANGE,
           unit = "%", scale = PERCENT_SCALE, help = "How solid the window is, in percent. Also on its title bar." },
     },
 })

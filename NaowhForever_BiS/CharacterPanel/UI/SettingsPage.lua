@@ -7,7 +7,7 @@ local S = ns.QoLSettings
 local Settings = ns.Shared and ns.Shared.Settings
 if not Settings then return end
 
-local BADGES_LIVE = 1
+local BADGES_LIVE = ns.BADGES_LIVE
 local MARK_KEYS = { "characterPanelLevels", "characterPanelMarks", "characterPanelEnchants" }
 local MARKS_OFF = "Turn on Slot Marks or the Naowh Character Panel"
 local TEXT_THEIRS_IN_USE = "EllesmereUI's panel is in use: switch this off and on for this one"

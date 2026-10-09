@@ -1,6 +1,6 @@
 -- Run with Lua 5.1 from the repository root: text from other players and shared strings is shown
--- as plain text. ns.PlainText (Core) on crafted names, and a crafted Reminder Pack's preview
--- (Core/Profiles/Packs.lua, through the real LibSerialize and LibDeflate).
+-- as plain text. ns.PlainText (Core) on crafted names, and a crafted old Reminder Pack string
+-- (Core/Profiles/ProfileShare.lua, through the real LibSerialize and LibDeflate).
 strmatch = string.match
 dofile("Libs/LibStub/LibStub.lua")
 dofile("Libs/LibDeflate/LibDeflate.lua")
@@ -48,14 +48,11 @@ Case("4000 letters of colour codes clean quickly", function()
     assert(not Live(out) and os.clock() - started < 1, "slow: " .. (os.clock() - started))
 end)
 
-local function Packs()
-    local ns = { PlainText = PlainText,
-        Color = function(_, text) return "|cff0091ed" .. (text and (text .. "|r") or "") end }
+local function Profiles()
+    local ns = { PlainText = PlainText }
     local env = setmetatable({ _G = { NaowhForever = ns }, LibStub = LibStub }, { __index = _G })
     ns.Shared = { Decode = dofile("Tools/regression/load_decode.lua")(env) }
-    local f = assert(io.open("Core/Profiles/Packs.lua", "rb"))
-    local source = f:read("*a"):gsub("\r\n", "\n"); f:close()
-    local chunk = assert(loadstring(source, "Packs")); setfenv(chunk, env); chunk()
+    local chunk = assert(loadfile("Core/Profiles/ProfileShare.lua")); setfenv(chunk, env); chunk()
     return ns
 end
 
@@ -64,44 +61,19 @@ local function PackString(payload)
     return "NSRPACK2:" .. LD:EncodeForPrint(LD:CompressDeflate(LS:Serialize(payload)))
 end
 
-local function Stray(desc)
-    local rest = desc:gsub("||", ""):gsub("|cff0091ed", ""):gsub("|cffF0A830", ""):gsub("|r", ""):gsub("|n", " ")
-    return rest:find("|", 1, true) ~= nil or rest:find("%c") ~= nil
-end
-
-Case("a crafted pack's name, author, date and maker show as plain text", function()
-    local ns = Packs()
-    local payload, desc = ns.DecodePack(PackString({ format = 1,
-        name = BADGE .. " |cffe6cc80Official Naowh Pack|r",
-        author = "Naowh " .. BADGE .. "\nVerified by the Naowh Forever team",
-        made = "%s%d%n", derivedFrom = { name = "|Hitem:1|h[x]|h", author = ("|cffff0000x|r"):rep(400) },
-        data = { callouts = { a = "Taunt" } } }))
-    assert(payload, desc)
-    assert(not Stray(desc), desc)
-    assert(desc:find("TInterface", 1, true) and desc:find("(%s%d%n)", 1, true), desc)
-    assert(not payload.author:find("\n", 1, true) and #payload.derivedFrom.author <= 200)
-end)
-
-Case("a crafted pack's profile names show as plain text in its preview", function()
-    local ns = Packs()
+Case("a crafted old pack's name, author and profile names are never shown", function()
+    local ns = Profiles()
     local fake = "|cffff0000Naowh|r " .. BADGE
-    local payload, desc = ns.DecodePack(PackString({ format = 1, name = "Pack", author = "Me",
-        profiles = { [fake] = { callouts = { a = "Taunt" } } } }))
-    assert(payload, desc)
-    assert(not Stray(desc), desc)
-    local text = ns.DescribeProfilePack(PackString({ format = 1, name = "Pack", author = "Me",
-        profiles = { [fake] = { callouts = { a = "Taunt" } } } }))
-    assert(text and not Stray(text), text)
-    local key = next(payload.profiles)
-    assert(key and not key:find("|", 1, true), "the profile is saved under its cleaned name")
-end)
-
-Case("a plain pack reads as before", function()
-    local ns = Packs()
-    local payload, desc = ns.DecodePack(PackString({ format = 1, name = "Naowh", author = "Naowh",
-        made = "2026-10-06", data = { callouts = { a = "Taunt" } } }))
-    assert(payload.name == "Naowh" and payload.author == "Naowh" and payload.made == "2026-10-06")
-    assert(desc == "|cff0091edNaowh|r by Naowh (2026-10-06)|n1 callout lines", desc)
+    for _, payload in ipairs({
+        { format = 1, name = BADGE .. " |cffe6cc80Official Naowh Pack|r",
+          author = "Naowh " .. BADGE .. "\nVerified by the Naowh Forever team", made = "%s%d%n",
+          data = { callouts = { a = "Taunt" } } },
+        { format = 1, name = "Pack", author = "Me", profiles = { [fake] = { callouts = { a = "Taunt" } } } },
+    }) do
+        local decoded, why = ns.DecodeProfile(PackString(payload))
+        assert(decoded == nil and why == "Reminder Packs are no longer supported.", tostring(why))
+        assert(not Live(why), why)
+    end
 end)
 
 Case("ns.Print starts every line with the Naowh logo, which chat from players cannot carry", function()

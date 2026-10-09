@@ -12,20 +12,21 @@ local W, H = St.TOAST_W, 54
 local ICON, PAD, STAR = 38, 8, 16
 local DETAIL_SMALLER = 2
 local STAR_LIFT = 5
-local STAR_GAP = 4
+local STAR_GAP = St.STAR_GAP
 local STAR_IN = 2
 local NAME_DROP = 2
 local DETAIL_Y = 2
 local GLOW_OUT = 3
 local GLOW_LAYER = -2
 local GLOW_ALPHA = 0.35
+local ROUND = B.C.ROUND
 local STACK_GAP = 6
 local MAX_SHOWN = 3
 local FADE = 0.3
 local HOLDER_TOP = 160
 local BLACK = St.BORDER_RGB
 local DOT = "  \194\183  "
-local GLOW_TEXTURE = "Interface\\Buttons\\WHITE8X8"
+local GLOW_TEXTURE = St.WHITE
 local HOLDER_NAME = "NaowhForeverBiSDropAlert"
 local MOVER_LABEL = "BiS Drop Alert"
 local PAGE, CARD = "BiS List/Settings", "BiS List/Settings:dropAlert"
@@ -63,7 +64,7 @@ local function Detail(id, rank, event, slot)
     if S.Get("bisToastSlot") and slot then parts[#parts + 1] = ns.L(Items.SLOT_NAME[slot]) end
     if S.Get("bisToastSource") then AddSource(id) end
     local gain = S.Get("bisToastGain") and Gain(id, slot)
-    if gain then parts[#parts + 1] = St.UPGRADE_CODE .. "+" .. math.floor(gain + 0.5) .. "%|r" end
+    if gain then parts[#parts + 1] = St.UPGRADE_CODE .. "+" .. math.floor(gain + ROUND) .. "%|r" end
     return table.concat(parts, DOT)
 end
 
@@ -257,5 +258,5 @@ function Toast.Show(item, rank, event)
     f.fade:Play()
 end
 
-hooksecurefunc(ns, "ShowRaidReminderAnchorConfig", function() Unlock(true) end)
-hooksecurefunc(ns, "HideRaidReminderAnchorConfig", function() Unlock(false) end)
+hooksecurefunc(ns, "ShowUnlockMode", function() Unlock(true) end)
+hooksecurefunc(ns, "HideUnlockMode", function() Unlock(false) end)

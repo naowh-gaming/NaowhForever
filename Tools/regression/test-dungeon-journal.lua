@@ -182,6 +182,7 @@ local function fixture(settings, noBis)
     function S.OnChange(fn) listeners[#listeners + 1] = fn end
 
     local ns = {
+        MEDIA = dofile("Tools/regression/core_media.lua"),
         THEME = setmetatable({}, { __index = function() return WHITE end }),
         UI = { ModuleSettings = function(_, defaults) state.defaults = defaults; return S end,
             SlimScroll = function(parent)

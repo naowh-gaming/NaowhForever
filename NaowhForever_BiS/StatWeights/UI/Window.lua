@@ -22,13 +22,15 @@ local FIRST_BUTTON_GAP = 18
 local OFF_ALPHA = 0.35
 local HOVER_ALPHA = 0.04
 local TITLE_SIZE, LABEL_SIZE, SMALL_SIZE = 13, 12, 11
-local MAX_WORTH = 1000
+local MAX_WORTH = SW.MAX_WORTH
 local SAMPLE_GAIN = 9
-local PERCENT = 100
+local PERCENT = SW.PERCENT
+local ROUND = 0.5
 local ANY_LENGTH = 0
 local NO_TAB_W = 1
 local FILTER = "TRILINEAR"
 local BOX_FONT = "GameFontHighlightSmall"
+
 local PAGE = "BiS List/Settings"
 local DOT = "  \194\183  "
 local WEIGHT = "%g"
@@ -58,12 +60,12 @@ local BIG = { hit = true, shit = true, crit = true, haste = true, scrit = true, 
     threat = true, dps = true, dmg = true }
 local GROUP_TITLES = { "PER POINT", "PER 1% OR WEAPON DPS" }
 local UPGRADE_RGB = { r = 0.12, g = 1, b = 0 }
-local TITLE_RGB = { r = 1, g = 1, b = 1 }
+local TITLE_RGB = ns.Shared.Style.TIP_TITLE_RGB
 
 local byStat = {}
 for _, stat in ipairs(SW.STATS) do byStat[stat[1]] = stat end
 
-local window, editing
+local window, editing, boxLook
 local adding = {}
 local focus
 local queued = false
@@ -105,14 +107,12 @@ local function ResetStat(button)
 end
 
 local function ValueBox(row)
-    local box = CreateFrame("EditBox", nil, row)
+    boxLook = boxLook or { inset = 0, border = T.line, hover = false, sunken = false }
+    local box = ns.NewEditBox(row, boxLook)
     box:SetSize(VALUE_W, ROW_H - BOX_PAD)
     box:SetPoint("RIGHT", -(RESET_SIZE + RESET_GAP), 0)
-    box:SetAutoFocus(false)
     box:SetFontObject(BOX_FONT)
     box:SetJustifyH("CENTER")
-    ns.Solid(box, "BACKGROUND", T.bg, 1):SetAllPoints()
-    ns.Border(box)
     box:SetScript("OnEnterPressed", BoxEnter)
     box:SetScript("OnEscapePressed", BoxEscape)
     box:SetScript("OnEditFocusLost", Apply)
@@ -361,7 +361,7 @@ local function PaintUpgrade(row, id, i, width, most)
     ns.Shared.Parts.MarkForever(row.icon, id)
     row.name:SetText(Items.QualityHex(id) .. Items.Name(id) .. "|r")
     row.slot:SetText(ns.L(Items.SLOT_NAME[slotOf[id]] or ""))
-    row.gain:SetText("+" .. math.floor(gainOf[id] + 0.5) .. "%")
+    row.gain:SetText("+" .. math.floor(gainOf[id] + ROUND) .. "%")
     row.bar:SetWidth(math.max(1, GAIN_BAR_W * gainOf[id] / most))
     row:Show()
 end
@@ -398,7 +398,7 @@ local function SpecTabs()
 end
 
 local function Opacity()
-    return math.floor((ns.QoLSettings.Get("bisWindowAlpha") or 1) * PERCENT + 0.5)
+    return math.floor((ns.QoLSettings.Get("bisWindowAlpha") or 1) * PERCENT + ROUND)
 end
 
 local function SetOpacity(value)

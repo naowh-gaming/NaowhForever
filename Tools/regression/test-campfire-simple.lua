@@ -19,7 +19,7 @@
 local Load = dofile("Tools/regression/load_files.lua")
 -- The AuraBuffs files the Campfire reminder and its cards are made of, in AuraBuffs.xml's order.
 local CAMP_FILES = { "Core/Features.lua", "NaowhForever_AuraBuffs/AuraBuffs.lua",
-    "NaowhForever_AuraBuffs/Data/Campfire.lua", "NaowhForever_AuraBuffs/CampReader.lua",
+    "NaowhForever_AuraBuffs/Constants.lua", "NaowhForever_AuraBuffs/Data/Campfire.lua", "NaowhForever_AuraBuffs/CampReader.lua",
     "NaowhForever_AuraBuffs/View/Style.lua", "NaowhForever_AuraBuffs/View/CampIcon.lua",
     "NaowhForever_AuraBuffs/View/CampBar.lua", "NaowhForever_AuraBuffs/View/CampAlert.lua",
     "NaowhForever_AuraBuffs/UI/SettingsPage.lua", "NaowhForever_AuraBuffs/UI/Campfire.lua",
@@ -228,7 +228,7 @@ local function Fixture(settings)
     end
     local S = { Get = function(k) return values[k] end, Set = function(k, v) values[k] = v end,
         Raw = function(k) return values[k] end, Default = function(k) return defaults[k] end }
-    local ns = {
+    local ns = { MEDIA = dofile("Tools/regression/core_media.lua"),
         THEME = T,
         Color = function(token, text) return "{" .. token .. ":" .. tostring(text) .. "}" end,
         Font = function(parent, size, flags, color)
@@ -248,7 +248,7 @@ local function Fixture(settings)
         Button = function(parent) return Frame(parent) end,
         UIFontPath = function() return "font" end,
         AccountSettings = function() return {} end,
-        Apply = NOTHING, ShowRaidReminderAnchorConfig = NOTHING, HideRaidReminderAnchorConfig = NOTHING,
+        Apply = NOTHING, ShowUnlockMode = NOTHING, HideUnlockMode = NOTHING,
         AlertStack = function(frame, order) state.stacked = { frame = frame, order = order } end,
         UI = {
             Keep = function(parent, key, make)
@@ -640,7 +640,7 @@ do
         and icon.label.text == "Refresh Camp")
     check("Round: Refresh Camp in the house text style, a shadow and no outline",
         (icon.label.flags or "") == "" and icon.label.shadow == s.St.HUD_SHADOW_ALPHA)
-    s.ns.ShowRaidReminderAnchorConfig()
+    s.ns.ShowUnlockMode()
     local alert = s.named.NaowhForeverCampNearby
     local ab = alert and alert.bar
     check("Camp Nearby is the bar's own component: same builder, the words without the sit hint, same sizes", ab
@@ -653,7 +653,7 @@ do
         alert.w == math.ceil(ab.labelX + W(ab.note.text) + 10) and alert.w < bar.width and alert.h == 26
         and s.stacked.frame == alert and s.stacked.order == 1 and rawget(alert, "mover") == nil)
     check("Unlock Mode: the alert takes no clicks, its mover does", alert.click.mouse == false)
-    s.ns.HideRaidReminderAnchorConfig()
+    s.ns.HideUnlockMode()
     check("leaving Unlock Mode fades it out, then hides it, its animations stopped", alert.shown == false
         and not alert.breathe.playing and not alert.fadeIn.playing and alert.fadeOut.plays > 0)
     local fadeIns = alert.fadeIn.plays
@@ -1185,9 +1185,9 @@ do
     s.auras[NEARBY] = nil
     s.fire("UNIT_AURA")
     check("Simple: out of range, the alert goes", alert.shown == false)
-    s.ns.ShowRaidReminderAnchorConfig()
+    s.ns.ShowUnlockMode()
     check("Simple: Unlock Mode shows the alert to move", alert.shown == true)
-    s.ns.HideRaidReminderAnchorConfig()
+    s.ns.HideUnlockMode()
 end
 
 do

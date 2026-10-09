@@ -17,6 +17,8 @@ Core/Badges/
                                    (Tools/release/sync_badges.py); never edited by hand
   Badges.lua          the tiers, the chat badge and its card, the tooltip plate, the list
                                    badge, the group banner, /nf badges, and ns.BadgeOf for other modules
+  Media/                           each tier's badge art, a chat size and a large one (Badge<Tier>Chat.tga,
+                                   Badge<Tier>Large.tga)
 ```
 
 ## Staff list

@@ -8,6 +8,7 @@ local Fits, Wearing = Items.Fits, Items.Wearing
 
 local OFF_HAND = C.OFF_HAND
 local FACT_CLASS, FACT_ITEM_LEVEL, FACT_REQUIRED, FACT_QUALITY = 1, 3, 4, 5
+local INFO_MIN_LEVEL = 5
 local WEAPON, ARMOR = 2, 4
 local MIN_QUALITY = 2
 local NEAR_LEVELS = 10
@@ -212,7 +213,7 @@ end
 
 function R.ReqLevel(itemID)
     local item = Facts(itemID)
-    return item and item[FACT_REQUIRED] or select(5, C_Item.GetItemInfo(itemID))
+    return item and item[FACT_REQUIRED] or select(INFO_MIN_LEVEL, C_Item.GetItemInfo(itemID))
 end
 
 function R.ItemLevel(itemID)

@@ -7,10 +7,12 @@ local S = ns.QoLSettings
 local Parts = ns.Shared.Parts
 
 local GAP, FILL_ALPHA = 4, 0.9
-local BLACK = { r = 0, g = 0, b = 0 }
+local BLACK = ns.Shared.Style.BORDER_RGB
 local LABEL_SIZE = 12
 local DEFAULT_Y = -160
 local BUTTONS_PER_BAR = 2
+local WIDTH_RANGE, HEIGHT_RANGE = { 60, 200, 1 }, { 16, 48, 1 }
+local TEXT_RANGE = ns.Shared.Style.HUD_TEXT_RANGE
 local MOVER_LABEL = "Group Buttons"
 local SETTINGS_PAGE = "QoL/Questing & Group"
 local SETTINGS_CARD = "QoL/Questing & Group:groupButtons"
@@ -152,8 +154,8 @@ end
 events:SetScript("OnEvent", OnCombatEnded)
 hooksecurefunc(S, "Set", OnSettingChanged)
 hooksecurefunc(ns, "Apply", Apply)
-hooksecurefunc(ns, "ShowRaidReminderAnchorConfig", function() moving = true; Apply() end)
-hooksecurefunc(ns, "HideRaidReminderAnchorConfig", function() moving = false; Apply() end)
+hooksecurefunc(ns, "ShowUnlockMode", function() moving = true; Apply() end)
+hooksecurefunc(ns, "HideUnlockMode", function() moving = false; Apply() end)
 
 local boot = CreateFrame("Frame")
 boot:RegisterEvent("PLAYER_LOGIN")
@@ -193,8 +195,8 @@ Settings.Page("QoL/Questing & Group", S):Card({
         { label = "Invite Player", button = Invite, buttonText = "Invite", always = true,
           help = "Type a name and invite them. Handy when you play with the same people." },
         Settings.Group("Size"),
-        { key = "groupButtonsWidth", label = "Button Width", slider = { 60, 200, 1 } },
-        { key = "groupButtonsHeight", label = "Button Height", slider = { 16, 48, 1 } },
-        Settings.Look("groupButtons", { text = true, size = { 8, 24, 1 }, background = "card" }),
+        { key = "groupButtonsWidth", label = "Button Width", slider = WIDTH_RANGE },
+        { key = "groupButtonsHeight", label = "Button Height", slider = HEIGHT_RANGE },
+        Settings.Look("groupButtons", { text = true, size = TEXT_RANGE, background = "card" }),
     },
 })

@@ -6,7 +6,7 @@ local T = ns.THEME
 local Training = ns.Training
 local Style = Training.Style
 
-local LEVEL, SPELL = 1, 2
+local LEVEL, SPELL = Training.C.ENTRY_LEVEL, Training.C.ENTRY_SPELL
 local SHADOW_X, SHADOW_Y = 1, -1
 local ICON_EDGE = 1
 local COLS = 3
@@ -25,7 +25,7 @@ local LATER_ICON, LATER_ICONS = 20, 5
 local LATER_ICON_GAP = 4
 local LATER_LEVEL_X, LATER_LEVEL_W = 10, 70
 local LATER_NAMES_GAP, LATER_PRICE_GAP = 8, 12
-local FONT_SMALL, FONT, FONT_ROW, FONT_CARD = 11, 12, 13, 14
+local FONT_SMALL, FONT, FONT_ROW, FONT_CARD = Style.FONT_SMALL, Style.FONT, Style.FONT_ROW, 14
 local COUNT_GAP = "   "
 local TEXT_SKIP, TEXT_RESTORE = "Skip", "Restore"
 local TEXT_LEARNED = "Learned"
@@ -88,7 +88,7 @@ function Rows.Text(parent, size, flags, color)
 end
 
 function Rows.Crop(texture)
-    texture:SetTexCoord(Style.CROP_LOW, Style.CROP_HIGH, Style.CROP_LOW, Style.CROP_HIGH)
+    texture:SetTexCoord(Style.ICON_CROP, Style.ICON_CROP_HIGH, Style.ICON_CROP, Style.ICON_CROP_HIGH)
     return texture
 end
 

@@ -12,6 +12,7 @@ local Style = P.Style
 local Widgets = P.Widgets
 local EnableButton = Widgets.EnableButton
 
+local ROUND = C.ROUND
 local BOX_W, BOX_H = 320, 170
 local BOX_LIFT = 20
 local BOX_LEVEL = 60
@@ -24,7 +25,7 @@ local LINE_GAP, LINE2_GAP = 10, 4
 local BUTTON_EDGE = 10
 local BUTTON_GAP = 6
 local CANCEL_W, PRIMARY_W = 80, 110
-local PERCENT = 100
+local PERCENT = C.PERCENT
 local EVENTS = { "COMMODITY_SEARCH_RESULTS_UPDATED", "ITEM_SEARCH_RESULTS_UPDATED", "COMMODITY_PRICE_UPDATED",
     "COMMODITY_PRICE_UNAVAILABLE", "COMMODITY_PURCHASE_SUCCEEDED", "COMMODITY_PURCHASE_FAILED",
     "AUCTION_HOUSE_CLOSED" }
@@ -111,7 +112,7 @@ end
 local function PriceWarning(each, total, scanEach)
     if GetMoney() < total then return Text.Hex(Style.RED_RGB) .. TEXT_NO_GOLD, true end
     if scanEach and each > scanEach * C.OVERPRICED then
-        return TEXT_CAREFUL:format(Text.Hex(Style.RED_RGB), math.floor((each / scanEach - 1) * PERCENT + 0.5),
+        return TEXT_CAREFUL:format(Text.Hex(Style.RED_RGB), math.floor((each / scanEach - 1) * PERCENT + ROUND),
             Text.Money(scanEach))
     end
     if scanEach then return Text.Hex(T.muted) .. TEXT_LAST_SCAN:format(Text.Money(scanEach)) .. "|r" end

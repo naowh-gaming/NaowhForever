@@ -19,7 +19,8 @@ local PI, TWO_PI = math.pi, math.pi * 2
 local floor, max, min = math.floor, math.max, math.min
 local RED = { r = 1, g = 0, b = 0 }
 local WHITE = "Interface\\Buttons\\WHITE8x8"
-local SPARKLES, SPARKLE_LOW, SPARKLE_HIGH, PERCENT = 40, 30, 90, 100
+local SPARKLES, SPARKLE_LOW, SPARKLE_HIGH = 40, 30, 90
+local PERCENT = ns.QoLConstants.PERCENT
 local SWEEP_LEVEL = 5
 local ROUND = ns.QoLConstants.ROUND
 local TRAIL_TICK = 0.025
@@ -27,6 +28,12 @@ local TRAIL_MIN_GAP, TRAIL_GAP_SHARE = 2, 0.1
 local TRAIL_MIN_TIME = 0.1
 local MS = 1000
 local STAGE_H = 170
+local OPACITY_RANGE, DOT_RANGE = ns.QoLConstants.OPACITY_RANGE, ns.QoLConstants.DOT_RANGE
+local SOUND_REPEAT_RANGE = ns.QoLConstants.SOUND_REPEAT_RANGE
+local SIZE_RANGE, FADE_DELAY_RANGE = { 16, 128, 1 }, { 0.5, 10, 0.5 }
+local IDLE_OPACITY_RANGE, PERCENT_SCALE = ns.Shared.Style.ALPHA_RANGE, ns.Shared.Style.PERCENT_SCALE
+local BORDER_RANGE, SWEEP_DELAY_RANGE, TRAIL_SIZE_RANGE = { 1, 10, 1 }, { 0, 0.5, 0.01 }, { 4, 64, 1 }
+local TRAIL_LENGTH_RANGE, TRAIL_TIME_RANGE, BRIGHTNESS_RANGE = { 5, 60, 1 }, { 0.1, 5, 0.1 }, { 10, 100, 5 }
 local EVENTS = { "PLAYER_ENTERING_WORLD", "PLAYER_REGEN_DISABLED", "PLAYER_REGEN_ENABLED",
     "SPELL_UPDATE_COOLDOWN", "SPELLS_CHANGED", "PLAYER_TARGET_CHANGED", "UPDATE_SHAPESHIFT_FORM" }
 local PLAYER_EVENTS = { "PLAYER_FLAGS_CHANGED", "UNIT_SPELLCAST_SENT", "UNIT_SPELLCAST_START", "UNIT_SPELLCAST_STOP",
@@ -608,9 +615,9 @@ end
 local TRAIL = { { glow = "Glow", circle = "Circle", ring = "Ring", star = "Star", sparkle = "Sparkle" },
     { "glow", "circle", "ring", "star", "sparkle" } }
 
-local PREVIEW_FIT = 120
-local PREVIEW_Y = 10
-local NOTE_Y, NOTE_SIZE = 10, 11
+local PREVIEW_FIT = ns.QoLConstants.CURSOR_PREVIEW_FIT
+local PREVIEW_Y = ns.QoLConstants.CURSOR_PREVIEW_Y
+local NOTE_Y, NOTE_SIZE = ns.Shared.Style.STAGE_NOTE_Y, ns.Shared.Style.STAGE_NOTE_SIZE
 local TRAIL_DOTS = 5
 local TRAIL_STEP = 8
 local TRAIL_SPREAD = 0.5
@@ -726,14 +733,14 @@ ns.Shared.Settings.Page("QoL/Cursor", S):Card({
     rows = {
         Group("Ring"),
         { key = "mouseShape", label = "Shape", choice = SHAPE },
-        { key = "mouseSize", label = "Size", slider = { 16, 128, 1 } },
+        { key = "mouseSize", label = "Size", slider = SIZE_RANGE },
         { key = "mouseClassColor", label = "Class Colour Ring", toggle = true },
         { key = "mouseColor", label = "Ring Colour", colour = true, needs = OwnRingColour,
           why = "Class colour is on" },
-        { key = "mouseOpacityCombat", label = "Opacity In Combat", slider = { 10, 100, 5 }, unit = "%",
-          scale = 0.01, help = "Also used inside dungeons and raids." },
-        { key = "mouseOpacityOOC", label = "Opacity Out of Combat", slider = { 10, 100, 5 }, unit = "%",
-          scale = 0.01 },
+        { key = "mouseOpacityCombat", label = "Opacity In Combat", slider = OPACITY_RANGE, unit = "%",
+          scale = PERCENT_SCALE, help = "Also used inside dungeons and raids." },
+        { key = "mouseOpacityOOC", label = "Opacity Out of Combat", slider = OPACITY_RANGE, unit = "%",
+          scale = PERCENT_SCALE },
         Group("When"),
         { key = "mouseShowOOC", label = "Show Out of Combat", toggle = true },
         { key = "mouseHideOnClick", label = "Hide While Right-Click Held", toggle = true,
@@ -742,18 +749,18 @@ ns.Shared.Settings.Page("QoL/Cursor", S):Card({
           help = "Hidden while you are away, outside instances." },
         { key = "mouseFadeIdle", label = "Fade When Idle", toggle = true,
           help = "Fades out while the cursor stays still." },
-        { key = "mouseFadeDelay", label = "Fade After (s)", slider = { 0.5, 10, 0.5 }, needs = "mouseFadeIdle" },
-        { key = "mouseFadeOpacity", label = "Idle Opacity", slider = { 0, 100, 5 }, unit = "%", scale = 0.01,
+        { key = "mouseFadeDelay", label = "Fade After (s)", slider = FADE_DELAY_RANGE, needs = "mouseFadeIdle" },
+        { key = "mouseFadeOpacity", label = "Idle Opacity", slider = IDLE_OPACITY_RANGE, unit = "%", scale = PERCENT_SCALE,
           needs = "mouseFadeIdle" },
         Group("Border"),
         { key = "mouseBorder", label = "Border", toggle = true },
-        { key = "mouseBorderWeight", label = "Border Width", slider = { 1, 10, 1 }, needs = "mouseBorder" },
+        { key = "mouseBorderWeight", label = "Border Width", slider = BORDER_RANGE, needs = "mouseBorder" },
         { key = "mouseBorderClassColor", label = "Class Colour Border", toggle = true, needs = "mouseBorder" },
         { key = "mouseBorderColor", label = "Border Colour", colour = true,
           needs = OwnColour("mouseBorder", "mouseBorderClassColor"), why = "Needs Border, class colour off" },
         Group("Centre Dot"),
         { key = "mouseDot", label = "Centre Dot", toggle = true },
-        { key = "mouseDotSize", label = "Dot Size", slider = { 1, 20, 1 }, needs = "mouseDot" },
+        { key = "mouseDotSize", label = "Dot Size", slider = DOT_RANGE, needs = "mouseDot" },
         { key = "mouseDotClassColor", label = "Class Colour Dot", toggle = true, needs = "mouseDot" },
         { key = "mouseDotColor", label = "Dot Colour", colour = true,
           needs = OwnColour("mouseDot", "mouseDotClassColor"), why = "Needs Centre Dot, class colour off" },
@@ -762,9 +769,9 @@ ns.Shared.Settings.Page("QoL/Cursor", S):Card({
           help = "Your global cooldown swept around the ring, and a ready ring once it is over." },
         { key = "mouseHideBackground", label = "Hide Ring Under the Sweep", toggle = true, needs = "mouseGCD",
           help = "Only the sweep and the ready ring show." },
-        { key = "mouseGCDAlpha", label = "Sweep Opacity", slider = { 10, 100, 5 }, unit = "%", scale = 0.01,
+        { key = "mouseGCDAlpha", label = "Sweep Opacity", slider = OPACITY_RANGE, unit = "%", scale = PERCENT_SCALE,
           needs = "mouseGCD" },
-        { key = "mouseSwipeDelay", label = "Sweep Delay (s)", slider = { 0, 0.5, 0.01 }, needs = "mouseGCD",
+        { key = "mouseSwipeDelay", label = "Sweep Delay (s)", slider = SWEEP_DELAY_RANGE, needs = "mouseGCD",
           help = "Waits this long before a sweep starts, so one that is over at once does not flicker." },
         { key = "mouseGCDClassColor", label = "Class Colour Sweep", toggle = true, needs = "mouseGCD" },
         { key = "mouseGCDColor", label = "Sweep Colour", colour = true,
@@ -785,11 +792,11 @@ ns.Shared.Settings.Page("QoL/Cursor", S):Card({
           needs = OwnColour("mouseTrail", "mouseTrailClassColor"), why = "Needs Trail, class colour off" },
         { key = "mouseTrailSparkle", label = "Sparkle", toggle = true, needs = "mouseTrail",
           help = "Each point of the trail in a colour of its own." },
-        { key = "mouseTrailSize", label = "Trail Size", slider = { 4, 64, 1 }, needs = "mouseTrail" },
-        { key = "mouseTrailLength", label = "Trail Length", slider = { 5, 60, 1 }, needs = "mouseTrail" },
-        { key = "mouseTrailDuration", label = "Trail Duration (s)", slider = { 0.1, 5, 0.1 }, needs = "mouseTrail" },
-        { key = "mouseTrailBrightness", label = "Trail Brightness", slider = { 10, 100, 5 }, unit = "%",
-          scale = 0.01, needs = "mouseTrail" },
+        { key = "mouseTrailSize", label = "Trail Size", slider = TRAIL_SIZE_RANGE, needs = "mouseTrail" },
+        { key = "mouseTrailLength", label = "Trail Length", slider = TRAIL_LENGTH_RANGE, needs = "mouseTrail" },
+        { key = "mouseTrailDuration", label = "Trail Duration (s)", slider = TRAIL_TIME_RANGE, needs = "mouseTrail" },
+        { key = "mouseTrailBrightness", label = "Trail Brightness", slider = BRIGHTNESS_RANGE, unit = "%",
+          scale = PERCENT_SCALE, needs = "mouseTrail" },
         Group("Out of Melee Range"),
         { key = "mouseMelee", label = "Recolour Out of Melee Range", toggle = true,
           help = "Turns the ring red while your target is out of melee range. Uses the same ability "
@@ -800,7 +807,7 @@ ns.Shared.Settings.Page("QoL/Cursor", S):Card({
         { key = "mouseMeleeSound", label = "Play a Sound", toggle = true, needs = "mouseMelee",
           help = "Plays as your target leaves melee range." },
         { key = "mouseMeleeSoundKey", label = "Sound", sound = true, needs = { "mouseMelee", "mouseMeleeSound" } },
-        { key = "mouseMeleeSoundInterval", label = "Repeat Every (s)", slider = { 0, 10, 1 },
+        { key = "mouseMeleeSoundInterval", label = "Repeat Every (s)", slider = SOUND_REPEAT_RANGE,
           needs = { "mouseMelee", "mouseMeleeSound" },
           help = "Plays the sound again this often while out of range. 0 plays it once." },
     },

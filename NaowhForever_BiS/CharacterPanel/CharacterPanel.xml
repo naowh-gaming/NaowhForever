@@ -2,10 +2,20 @@
     <!-- CharacterPanel.xml: the Naowh Character Panel's files, in load order. -->
     <Script file="CharacterPanel.lua"/>
     <Script file="Constants.lua"/>
+    <Script file="Data\Slots.lua"/>
+    <Script file="Data\Stats.lua"/>
+    <Script file="Totals.lua"/>
+    <Script file="Worth.lua"/>
+    <Script file="Restyler.lua"/>
+    <Script file="Frame.lua"/>
     <Script file="Slots.lua"/>
     <Script file="Score.lua"/>
     <Script file="Badge.lua"/>
-    <Script file="Totals.lua"/>
+    <Script file="StatRows.lua"/>
+    <Script file="StatsLook.lua"/>
+    <Script file="YourSlots.lua"/>
+    <Script file="YourScore.lua"/>
+    <Script file="YourBadge.lua"/>
     <Script file="SpecStats.lua"/>
     <Script file="Chrome.lua"/>
     <Script file="UI\SettingsPage.lua"/>

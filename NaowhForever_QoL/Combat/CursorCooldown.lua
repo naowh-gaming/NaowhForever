@@ -21,6 +21,7 @@ local BLACK = { r = 0, g = 0, b = 0 }
 local TEXT_NUDGE = 1
 local TIME_UNITS = 2
 local ROUND = ns.QoLConstants.ROUND
+local SIZE_RANGE, TIME_RANGE = { 24, 72, 1 }, { 0.5, 4, 0.25 }
 local SUMMARY = "%d px, %.2gs"
 
 local COOLDOWN_ERRORS = {}
@@ -240,7 +241,7 @@ Settings.Page("QoL/Combat", S):Card({
     help = "Press something still on cooldown and its icon, name and time left show by your mouse.",
     summary = Summary,
     rows = {
-        { key = "cursorCooldownSize", label = "Icon Size", slider = { 24, 72, 1 } },
-        { key = "cursorCooldownTime", label = "Shown For", slider = { 0.5, 4, 0.25 }, unit = "s" },
+        { key = "cursorCooldownSize", label = "Icon Size", slider = SIZE_RANGE },
+        { key = "cursorCooldownTime", label = "Shown For", slider = TIME_RANGE, unit = "s" },
     },
 })

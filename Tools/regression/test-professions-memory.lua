@@ -294,8 +294,8 @@ local defaults = {}
 local db = {}
 local account = {}
 local ns
-ns = {
-    Shared = { Parts = {}, Settings = {
+ns = { MEDIA = dofile("Tools/regression/core_media.lua"),
+    Shared = { Style = dofile("Tools/regression/shared_style.lua"), Parts = {}, Settings = {
         Group = function() return {} end, Look = function() return {} end,
         Page = function() return { Window = Noop, Card = Noop } end } },
     THEME = { accent = { r = 0, g = 0.57, b = 0.93 }, muted = { r = 0.6, g = 0.6, b = 0.6 },
@@ -313,7 +313,12 @@ ns = {
                 if v == nil then return defaults[k] end
                 return v
             end
-            function S.Set(k, v) settings[k] = v end
+            local listeners = {}
+            function S.Set(k, v)
+                settings[k] = v
+                for i = 1, #listeners do listeners[i](k, v) end
+            end
+            function S.OnChange(fn) listeners[#listeners + 1] = fn end
             return S
         end,
     },

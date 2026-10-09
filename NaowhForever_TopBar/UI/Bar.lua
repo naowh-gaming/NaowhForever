@@ -17,10 +17,10 @@ local PERCENT, WHITE = C.PERCENT, St.WHITE
 local CLOCK_START_SIZE, CLOCK_BTN_W = 20, 80
 local REST_X, REST_Y, REST_MIN, REST_SCALE = 5, 2, 12, 0.55
 local REST_FRAMES, REST_COLS, REST_V, REST_FRAME_TIME = 8, 16, 0.5, 0.25
-local SYS_DROP, SYS_H_PAD, SYS_MIN_W, SYS_TEXT_PAD = 2, 3, 40, 10
+local SYS_DROP, SYS_H_PAD, SYS_MIN_W, SYS_TEXT_PAD = C.SYS_DROP, 3, 40, 10
 local SYS_TIP_EVERY = 1
 local TICK, BADGE_TICKS, ROSTER_EVERY = 1, 10, 15
-local ROUND = 0.5
+local ROUND = C.ROUND
 local HOME_LATENCY = 3
 local COMBAT_DRIVER = "[combat] hide; show"
 
@@ -379,8 +379,8 @@ ns.PlaceTopCentreWidgets = PlaceWidgets
 pending:SetScript("OnEvent", OnPending)
 hooksecurefunc(S, "Set", SettingChanged)
 hooksecurefunc(ns, "Apply", Apply)
-hooksecurefunc(ns, "ShowRaidReminderAnchorConfig", Unlocked)
-hooksecurefunc(ns, "HideRaidReminderAnchorConfig", Locked)
+hooksecurefunc(ns, "ShowUnlockMode", Unlocked)
+hooksecurefunc(ns, "HideUnlockMode", Locked)
 
 events:RegisterEvent("PLAYER_LOGIN")
 events:RegisterEvent("PLAYER_ENTERING_WORLD")

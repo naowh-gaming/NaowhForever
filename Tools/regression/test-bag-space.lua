@@ -114,8 +114,8 @@ local function Fixture(opts)
         QoLSettings = S,
         Print = function(msg) printed[#printed + 1] = msg end,
         Apply = function() end,
-        ShowRaidReminderAnchorConfig = function() end,
-        HideRaidReminderAnchorConfig = function() end,
+        ShowUnlockMode = function() end,
+        HideUnlockMode = function() end,
         IsBisItem = function(id) return opts.bis and opts.bis[id] end,
         AuctionPrice = function(id) return opts.ah and opts.ah[id] end,
         ScrapMarker = opts.scrap,
@@ -446,7 +446,7 @@ do
     local bags = { [0] = Bag(16, { { 1, 3 }, { 2, 11 } }) }
     local t = Fixture({ bags = bags })
     local free = t.FreeText()
-    t.ns.ShowRaidReminderAnchorConfig()
+    t.ns.ShowUnlockMode()
     local icons = {}
     for _, b in ipairs(t.buttons) do
         if b.shown and b.icon then icons[#icons + 1] = b.icon.texture end

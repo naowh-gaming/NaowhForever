@@ -5,6 +5,7 @@
 --   ns.QoLConstants = dofile("Tools/regression/qol_constants.lua")
 local ns = {}
 local chunk = assert(loadfile("NaowhForever_QoL/Constants.lua"))
+ns.Shared = { Style = dofile("Tools/regression/shared_style.lua") }
 setfenv(chunk, { _G = { NaowhForever = ns } })
 chunk()
 return ns.QoLConstants

@@ -12,7 +12,7 @@ local BORDER_RGB = St.BORDER_RGB
 
 local PREFIX, VERSION = "NaowhAim", "2"
 local VERSION_PATTERN = "^(%d+) "
-local GUID_PATTERN = "^Player%-%d+%-%x+$"
+local GUID_PATTERN = ns.QoLConstants.GUID_PATTERN
 local REQUEST_PATTERN = "^%d+ R (Player%-%d+%-%x+)$"
 local BEST_PATTERN = "^%d+ B (Player%-%d+%-%x+) (%l+) (%d+) ([%d%-]+) (%u+) (%d+)$"
 local NO_ACCURACY = "-"

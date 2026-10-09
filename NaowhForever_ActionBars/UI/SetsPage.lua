@@ -6,6 +6,7 @@ local A = ns.ActionBars
 
 local SAVE_W, BUTTON_H, ROW_BUTTON_W, ROW_PAD, ROW_GAP = 170, 26, 80, 8, 8
 local HINT_GAP, LINE_GAP = 12, 3
+local SAVE_ROW_GAP = ROW_PAD * 3
 local STRIPE_ALPHA = 0.025
 local NAME_SIZE, SMALL_SIZE = 13, 11
 local NEW_NAME_MAX = 40
@@ -94,7 +95,7 @@ function ns.BuildActionBarsPage(parent, y)
     hint:ClearAllPoints()
     hint:SetPoint("LEFT", save, "RIGHT", HINT_GAP, 0)
     hint:SetText(TEXT_HINT:format(UnitClass("player")))
-    y = y - BUTTON_H - ROW_PAD * 3
+    y = y - BUTTON_H - SAVE_ROW_GAP
     local names = A.SortedNames()
     _, h = W:SectionHeader(parent, TEXT_HEADER, y); y = y - h
     if #names == 0 then

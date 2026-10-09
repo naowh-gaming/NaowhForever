@@ -21,7 +21,7 @@ local SMALL_SIZE, NOTE_SIZE, TEXT_SIZE = St.SMALL_SIZE, St.NOTE_SIZE, St.TEXT_SI
 local CARD_INSET, GAP, TOOL_GAP = 6, 6, 10
 local TOP = HEADER + TOOL_GAP + St.TAB_H + TOOL_GAP
 local SWITCH_W, SEARCH_W, CLASS_W = 330, 240, 200
-local SCROLLBAR_ROOM, SCROLL_BOTTOM, LIST_TOP = 12, 4, 4
+local SCROLLBAR_ROOM, SCROLL_BOTTOM, LIST_TOP = St.SCROLLBAR_ROOM, 4, 4
 local METER_W, METER_H, METER_GAP, METER_SPACE, METER_LABEL_GAP = 54, 3, 12, 14, 6
 local EXPORT_GAP = 6
 local SMART_TOP, SIDE_TOP, SIDE_GAP, SIDE_SPACING = 10, 12, 10, 3
@@ -318,6 +318,7 @@ local function SettingChanged(key)
 end
 
 F.Render = Render
+F.SetTab = SetTab
 M.Redraw = Render
 
 function ns.OpenMacroWindow(view)

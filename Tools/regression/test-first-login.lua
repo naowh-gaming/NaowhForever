@@ -2,8 +2,9 @@
 -- (Core/Onboarding/FirstLogin.lua) on stub frames. Checks that it makes one frame at load; opens
 -- the onboarding a few seconds after the first login, or after a reload while it is still unseen,
 -- never during a loading screen, and waits for combat to end; once seen it never opens by itself
--- again; a new character with another's settings around is asked once; /nf welcome and /nf setup
--- open the onboarding.
+-- again; a new character is asked once whether it uses its main's settings or is set up on its
+-- own (its own profile, only it switched, the onboarding for it alone), Escape changing nothing;
+-- /nf welcome and /nf setup open the onboarding.
 local checks = 0
 local function check(label, value) assert(value, label); checks = checks + 1 end
 
@@ -27,15 +28,43 @@ function Frame:RegisterEvent(e) self.events[e] = true end
 function Frame:UnregisterEvent(e) self.events[e] = nil end
 function Frame:UnregisterAllEvents() self.events = {} end
 
+local ME = "Die Dudu"
+
 local function Setup(account)
-    local s = { account = account or {}, made = {}, timers = {}, combat = false, onboarding = 0 }
+    local s = { account = account or {}, made = {}, timers = {}, combat = false, onboarding = 0, opened = {},
+        profiles = { Default = {}, Raid = {} }, mainProfile = "Raid",
+        charActive = { [ME] = "Default", ["Die Man"] = "Raid", ["Die Pri"] = "Default" } }
     local ns = {
         AccountSettings = function() return s.account end,
-        ShowSetup = function() s.onboarding = s.onboarding + 1 end,
+        ShowSetup = function(thisCharacter)
+            s.onboarding = s.onboarding + 1
+            s.opened[s.onboarding] = thisCharacter or false
+        end,
         MarkSeen = function() s.marked = (s.marked or 0) + 1 end,
-        ImportCandidate = function() return s.candidate, s.candidate and "Raid" end,
-        SwitchProfile = function(name) s.switched = name; return true end,
-        Confirm = function(text, onYes, _, yes, no) s.confirm = { text = text, yes = onYes, yesText = yes, noText = no } end,
+        ImportCandidate = function() return s.candidate, s.candidate and s.mainProfile end,
+        ActiveProfileName = function() return s.charActive[ME] end,
+        ProfileExists = function(name) return s.profiles[name] ~= nil end,
+        SwitchProfile = function(name)
+            if not s.profiles[name] then return false end
+            s.switched, s.charActive[ME] = name, name
+            return true
+        end,
+        CopyProfile = function(src, name)
+            if s.failCopy or s.profiles[name] or not s.profiles[src] then return false end
+            s.profiles[name] = { copyOf = src }
+            return true
+        end,
+        CreateProfile = function() s.created = true; return true end,
+        SetAccountProfile = function() s.created = true; return true end,
+        Confirm = function(text, onYes, onNo, yes, no, onNoButton)
+            s.confirm = { text = text, yesText = yes, noText = no, onNo = onNo }
+            s.confirm.yes = function() onYes() end
+            s.confirm.no = function()
+                if onNoButton then return onNoButton() end
+                if onNo then onNo() end
+            end
+            s.confirm.escape = function() if onNo then onNo() end end
+        end,
         Print = function(text) s.printed = text end,
     }
     local env = setmetatable({
@@ -103,7 +132,7 @@ do
     check("a reload before it was seen (another addon's setup reloading over it): it opens again", s.onboarding == 1)
 end
 do
-    local s = Setup({ welcomeSeen = true })
+    local s = Setup({ onboardingSeen = true, welcomeSeen = true })
     Event(s, "PLAYER_ENTERING_WORLD", true, false)
     check("seen: the next login starts no timer and stops listening", #s.timers == 0
         and next(s.login.events) == nil and s.onboarding == 0)
@@ -112,6 +141,13 @@ do
     local s = Setup()
     Event(s, "PLAYER_ENTERING_WORLD", false, false)
     check("a world entry that is neither login nor reload does not start it", #s.timers == 0)
+end
+
+do
+    local s = Setup({ welcomeSeen = true })
+    Event(s, "PLAYER_ENTERING_WORLD", true, false)
+    RunTimer(s)
+    check("an account that saw the old welcome window still gets the onboarding, once", s.onboarding == 1)
 end
 
 -------------------------------------------------------------------------------
@@ -153,45 +189,110 @@ do
 end
 
 -------------------------------------------------------------------------------
---  A character's first login, the onboarding seen: another character's settings offered
+--  A character's first login, the onboarding seen: same settings as the main, or its own
 -------------------------------------------------------------------------------
+local function Snapshot(s)
+    local out = {}
+    for char, profile in pairs(s.charActive) do out[#out + 1] = char .. "=" .. profile end
+    for name in pairs(s.profiles) do out[#out + 1] = "profile:" .. name end
+    table.sort(out)
+    return table.concat(out, ",")
+end
+
+local function Asked(s)
+    Event(s, "PLAYER_ENTERING_WORLD", true, false)
+    RunTimer(s)
+    return s.confirm
+end
+
 do
-    local s = Setup({ welcomeSeen = true })
+    local s = Setup({ onboardingSeen = true, welcomeSeen = true })
     Event(s, "PLAYER_ENTERING_WORLD", true, false)
     check("each login notes when the character was last played", s.marked == 1)
-    check("no other character's settings to offer: nothing waits", #s.timers == 0 and s.confirm == nil)
+    check("no other character, or not a new one: nothing waits", #s.timers == 0 and s.confirm == nil
+        and next(s.login.events) == nil)
+    RunTimer(s)
+    check("and nothing is asked", s.confirm == nil and s.onboarding == 0)
 end
 do
-    local s = Setup({ welcomeSeen = true })
+    local s = Setup({ onboardingSeen = true, welcomeSeen = true })
     s.candidate = "Die Man-Forever"
     Event(s, "PLAYER_ENTERING_WORLD", true, false)
-    check("a new character with another's settings around: a few seconds in", #s.timers == 1 and s.confirm == nil)
+    check("a new character with another around: a few seconds in", #s.timers == 1 and s.confirm == nil)
     s.combat = true
     RunTimer(s)
     check("not in combat", s.confirm == nil and s.login.events.PLAYER_REGEN_ENABLED)
     s.combat = false
     Event(s, "PLAYER_REGEN_ENABLED")
-    check("it says whose settings it found and asks", s.confirm and s.onboarding == 0
-        and s.confirm.text == "Welcome, Die Dudu! We found settings from Die Man. Use them on this character too?"
-        and s.confirm.yesText == "Use Them" and s.confirm.noText == "Not Now")
+    check("it welcomes the character by name and asks about its main", s.confirm and s.onboarding == 0
+        and s.confirm.text == "Welcome, Die Dudu! Use the same settings as Die Man, or set this character up on its own?"
+        and s.confirm.yesText == "Same as Die Man" and s.confirm.noText == "Set Up Die Dudu")
     check("asked once, then it stops listening", next(s.login.events) == nil)
     s.confirm.yes()
-    check("yes: this character uses that profile, and it says so", s.switched == "Raid"
-        and s.printed == "Die Dudu now uses the same settings as Die Man.")
+    check("same, the main on its own profile: this character switches to it, and it says so", s.switched == "Raid"
+        and s.charActive[ME] == "Raid" and s.printed == "Die Dudu now uses the same settings as Die Man.")
+    check("and only this character moved", s.charActive["Die Man"] == "Raid" and s.charActive["Die Pri"] == "Default"
+        and not s.created and s.onboarding == 0)
+end
+do
+    local s = Setup({ onboardingSeen = true, welcomeSeen = true })
+    s.candidate, s.mainProfile = "Die Pri-Forever", "Default"
+    local before = Snapshot(s)
+    Asked(s).yes()
+    check("same, the main already on this character's profile: nothing changes", s.switched == nil
+        and s.printed == nil and Snapshot(s) == before and s.onboarding == 0)
+end
+do
+    local s = Setup({ onboardingSeen = true, welcomeSeen = true })
+    s.candidate = "Die Man-Forever"
+    Asked(s).no()
+    check("set up: a copy of this character's profile, named after it", s.profiles[ME]
+        and s.profiles[ME].copyOf == "Default")
+    check("only this character switches to it", s.charActive[ME] == ME and s.charActive["Die Man"] == "Raid"
+        and s.charActive["Die Pri"] == "Default" and not s.created)
+    check("then the onboarding opens for this character", s.onboarding == 1 and s.opened[1] == true)
+    check("and nothing is printed as a switch to the main", s.printed == nil)
+end
+do
+    local s = Setup({ onboardingSeen = true, welcomeSeen = true })
+    s.candidate = "Die Man-Forever"
+    s.profiles[ME], s.profiles[ME .. " 2"] = {}, {}
+    Asked(s).no()
+    check("its name taken: the next free number", s.profiles[ME .. " 3"] and s.profiles[ME .. " 3"].copyOf == "Default"
+        and s.charActive[ME] == ME .. " 3" and next(s.profiles[ME]) == nil and next(s.profiles[ME .. " 2"]) == nil)
+end
+do
+    local s = Setup({ onboardingSeen = true, welcomeSeen = true })
+    s.candidate, s.failCopy = "Die Man-Forever", true
+    local before = Snapshot(s)
+    Asked(s).no()
+    check("a copy that fails: no switch and no onboarding", Snapshot(s) == before and s.switched == nil
+        and s.onboarding == 0)
+end
+do
+    local s = Setup({ onboardingSeen = true, welcomeSeen = true })
+    s.candidate = "Die Man-Forever"
+    local before = Snapshot(s)
+    local confirm = Asked(s)
+    check("closing it runs neither answer", confirm.onNo == nil)
+    confirm.escape()
+    check("Escape or closing it changes nothing", Snapshot(s) == before and s.switched == nil and s.printed == nil
+        and s.onboarding == 0)
 end
 do
     local s = Setup()
     s.candidate = "Die Man-Forever"
     Event(s, "PLAYER_ENTERING_WORLD", true, false)
     RunTimer(s)
-    check("the onboarding not seen yet: it opens, not the offer", s.onboarding == 1 and s.confirm == nil)
+    check("the onboarding not seen yet: it opens for every character, not the question", s.onboarding == 1
+        and s.opened[1] == false and s.confirm == nil)
 end
 
 -------------------------------------------------------------------------------
 --  /nf welcome and /nf setup
 -------------------------------------------------------------------------------
 do
-    local s = Setup({ welcomeSeen = true })
+    local s = Setup({ onboardingSeen = true, welcomeSeen = true })
     local source = Read("Core/Commands.lua")
     local body = assert(source:match('SlashCmdList%["NAOWHFOREVER"%] = function%(msg%)\n(.-)\nend\n'),
         "the /nf handler")
@@ -203,6 +304,7 @@ do
     s.ns.ToggleOptionsWindow = function() s.toggled = true end
     handler("setup")
     check("/nf setup opens the onboarding, seen or not", s.onboarding == 1 and not s.toggled)
+    check("for every character, as before", s.opened[1] == false)
     handler(" Welcome ")
     check("/nf welcome too, as it did before the onboarding", s.onboarding == 2 and not s.toggled)
 end

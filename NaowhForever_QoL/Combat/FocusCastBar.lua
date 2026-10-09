@@ -6,7 +6,7 @@ local UI = ns.UI
 local T = ns.THEME
 local Parts = ns.Shared.Parts
 
-local BAR = "Interface\\Buttons\\WHITE8X8"
+local BAR = ns.Shared.Style.WHITE
 local THROTTLE = 0.033
 local INTERRUPTS = {
     WARRIOR = { 6552, 72 },
@@ -19,7 +19,7 @@ local INTERRUPTS = {
 local INTERRUPTED = "Interrupted"
 local SAMPLE_SPELL, SAMPLE_NAME, SAMPLE_ICON = 116, "Frostbolt", 135846
 local SAMPLE_TOTAL, SAMPLE_LEFT, SAMPLE_KICK, SAMPLE_STOPPED = 2.5, 1.4, 2, 0.6
-local BLACK = { r = 0, g = 0, b = 0 }
+local BLACK = ns.Shared.Style.BORDER_RGB
 local ICON_CROP = ns.QoLConstants.ICON_CROP_TIGHT
 local TICK_W, TICK_ALPHA = 2, 0.9
 local SHIELD_W, SHIELD_H, SHIELD_RISE = 29, 33, 4
@@ -38,7 +38,13 @@ local NOTE_HIDE_COOLDOWN = "Hide While Interrupt Is on Cooldown is on: the bar s
 local NOTE_HIDE_NONINT = "Hide Uninterruptible Casts is on: the bar stays hidden."
 local SUMMARY = "%d by %d%s"
 local SUMMARY_SOUND, SUMMARY_SPEAKS = ", plays a sound", ", speaks"
-local STAGE_H, NOTE_Y, NOTE_SIZE, STAGE_MARGIN = 150, 10, 11, 16
+local STAGE_H = 150
+local NOTE_Y, NOTE_SIZE = ns.Shared.Style.STAGE_NOTE_Y, ns.Shared.Style.STAGE_NOTE_SIZE
+local STAGE_MARGIN = ns.Shared.Style.STAGE_MARGIN
+local VOLUME_RANGE, SPEECH_RATE_RANGE = ns.QoLConstants.VOLUME_RANGE, ns.QoLConstants.SPEECH_RATE_RANGE
+local NAME_LENGTH_RANGE, FADE_RANGE, WIDTH_RANGE = { 0, 40, 1 }, { 0, 3, 0.05 }, { 100, 600, 5 }
+local HEIGHT_RANGE = { 10, 60, 1 }
+local TEXT_RANGE = ns.Shared.Style.HUD_TEXT_RANGE
 local UNIT_EVENTS = { "UNIT_SPELLCAST_START", "UNIT_SPELLCAST_CHANNEL_START", "UNIT_SPELLCAST_STOP",
     "UNIT_SPELLCAST_CHANNEL_STOP", "UNIT_SPELLCAST_FAILED", "UNIT_SPELLCAST_INTERRUPTED",
     "UNIT_SPELLCAST_INTERRUPTIBLE", "UNIT_SPELLCAST_NOT_INTERRUPTIBLE", "UNIT_SPELLCAST_DELAYED",
@@ -581,11 +587,11 @@ end
 
 hooksecurefunc(S, "Set", OnSettingChanged)
 hooksecurefunc(ns, "Apply", Apply)
-hooksecurefunc(ns, "ShowRaidReminderAnchorConfig", function()
+hooksecurefunc(ns, "ShowUnlockMode", function()
     unlocked = S.Get("enabled") == true
     Apply()
 end)
-hooksecurefunc(ns, "HideRaidReminderAnchorConfig", function()
+hooksecurefunc(ns, "HideUnlockMode", function()
     unlocked = false
     if frame then Apply() end
 end)
@@ -669,7 +675,7 @@ ns.Shared.Settings.Page("QoL/Combat", S):Card({
         { key = "focusIcon", label = "Show Icon", toggle = true },
         { key = "focusIconSide", label = "Icon Side", choice = SIDE, needs = "focusIcon" },
         { key = "focusSpellName", label = "Show Spell Name", toggle = true },
-        { key = "focusNameLength", label = "Name Length", slider = { 0, 40, 1 }, needs = "focusSpellName",
+        { key = "focusNameLength", label = "Name Length", slider = NAME_LENGTH_RANGE, needs = "focusSpellName",
           help = "Cuts the name to about this many letters. 0 shows it whole." },
         { key = "focusTarget", label = "Show Cast Target", toggle = true,
           help = "Who the cast is aimed at, in their class colour." },
@@ -685,22 +691,22 @@ ns.Shared.Settings.Page("QoL/Combat", S):Card({
         { key = "focusHideFriendly", label = "Hide Friendly Casts", toggle = true },
         { key = "focusHideNonInt", label = "Hide Uninterruptible Casts", toggle = true },
         { key = "focusHideOnCooldown", label = "Hide While Interrupt Is on Cooldown", toggle = true },
-        { key = "focusFadeTime", label = "Interrupted Fade", slider = { 0, 3, 0.05 }, unit = "s",
+        { key = "focusFadeTime", label = "Interrupted Fade", slider = FADE_RANGE, unit = "s",
           help = "How long an interrupted cast stays up. 0 hides it at once." },
         Group("Sound"),
         { key = "focusAudio", label = "Cast Start Audio", choice = AUDIO, help = AUDIO_HELP },
         { key = "focusSound", label = "Sound", sound = true, needs = PlaysSound, why = "Cast Start Audio is not Sound" },
         { key = "focusVoice", label = "Voice", choice = Voices, help = VOICE_HELP, needs = Speaks,
           why = "Needs Text to Speech" },
-        { key = "focusVolume", label = "Volume", slider = { 0, 100, 1 }, needs = Speaks, why = "Needs Text to Speech" },
-        { key = "focusRate", label = "Speech Rate", slider = { -10, 10, 1 }, needs = Speaks,
+        { key = "focusVolume", label = "Volume", slider = VOLUME_RANGE, needs = Speaks, why = "Needs Text to Speech" },
+        { key = "focusRate", label = "Speech Rate", slider = SPEECH_RATE_RANGE, needs = Speaks,
           why = "Needs Text to Speech" },
         { key = "focusSpeech", label = "Speech Text", text = true, needs = Speaks, why = "Needs Text to Speech",
           help = "Spoken as a cast starts." },
         Group("Size"),
-        { key = "focusWidth", label = "Width", slider = { 100, 600, 5 } },
-        { key = "focusHeight", label = "Height", slider = { 10, 60, 1 } },
-        ns.Shared.Settings.Look("focus", { text = true, size = { 8, 24, 1 }, bar = "Flat", background = "alpha" }),
+        { key = "focusWidth", label = "Width", slider = WIDTH_RANGE },
+        { key = "focusHeight", label = "Height", slider = HEIGHT_RANGE },
+        ns.Shared.Settings.Look("focus", { text = true, size = TEXT_RANGE, bar = "Flat", background = "alpha" }),
         { key = "focusBgColor", label = "Background Colour", colour = true, needs = OwnBgColour,
           why = "Apply Theme to Bar Colours is on" },
         Group("Colours"),

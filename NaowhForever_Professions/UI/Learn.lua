@@ -14,7 +14,7 @@ local SetColor = Widgets.SetColor
 
 local ICON = 44
 local STAR_GAP = 10
-local NAME_GAP, NAME_DROP = 6, 2
+local NAME_GAP, NAME_DROP = Style.ICON_NAME_GAP, 2
 local NAME_TOP = 16
 local RIGHT_EDGE = 12
 local REQ_GAP, REQ_DROP = 10, 24
