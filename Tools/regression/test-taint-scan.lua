@@ -30,7 +30,7 @@ local FRAME_ALLOWED = {
     ["NaowhForever_QoL/Interface/HideClutter.lua"] = { why = "the same switch as /uierrorsoff; screenshot text",
         calls = { ["UIErrorsFrame:UnregisterEvent"] = 1, ["UIErrorsFrame:RegisterEvent"] = 1,
             ["ActionStatus:UnregisterEvent"] = 2, ["ActionStatus:RegisterEvent"] = 2 } },
-    ["NaowhForever_QoL/Interface/MapSize.lua"] = { why = "windowed world map scaled and moved, out of combat only",
+    ["NaowhForever_QoL/Interface/MapSize.lua"] = { why = "windowed world map (no secure frames) scaled and moved, put back where the game had it",
         calls = { ["WorldMapFrame:SetScale"] = 1, ["WorldMapFrame:ClearAllPoints"] = 3,
             ["WorldMapFrame:SetPoint"] = 3 } },
     ["NaowhForever_QoL/Loot/LootFeed.lua"] = { why = "loot window shrunk and restored, never hidden",

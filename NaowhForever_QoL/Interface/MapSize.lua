@@ -25,12 +25,10 @@ local TEXT_HELP = "Makes the windowed world map bigger or smaller and lets you m
 local TEXT_SCALE = "Map Scale"
 
 local grip, handle
-local pending
 local hooked
 local startDist, startPct
 local moveX, moveY, cursorX, cursorY
 local home
-local events = CreateFrame("Frame")
 
 local function On()
     return S.Get("enabled") and S.Get("mapSize")
@@ -60,7 +58,7 @@ end
 local function SetMapScale(scale)
     local map = WorldMapFrame
     local old = map:GetScale()
-    if InCombatLockdown() or math.abs(old - scale) < SAME_SCALE then return end
+    if math.abs(old - scale) < SAME_SCALE then return end
     local point, relative, relPoint, x, y = map:GetPoint(1)
     map:SetScale(scale)
     if point == "TOPLEFT" and map:GetNumPoints() == 1 then
@@ -69,29 +67,28 @@ local function SetMapScale(scale)
     end
 end
 
+local function GoHome()
+    local map = WorldMapFrame
+    if not home then return end
+    local scale = map:GetScale()
+    map:ClearAllPoints()
+    map:SetPoint(home[1], home[2], home[3], home[4] * home[6] / scale, home[5] * home[6] / scale)
+end
+
 local function Apply()
     local map = WorldMapFrame
     if not map then return end
-    if InCombatLockdown() then
-        pending = true
-        events:RegisterEvent("PLAYER_REGEN_ENABLED")
-        return
-    end
     local full = Full()
     local scale = full and 1 or Wanted()
     SetMapScale(scale)
     local pos = not full and Saved()
-    if pos then PlaceAt(pos.x, pos.y, scale) end
+    if pos then
+        PlaceAt(pos.x, pos.y, scale)
+    elseif not full then
+        GoHome()
+    end
     if grip then grip:SetShown(On() and not full) end
     if handle then handle:SetShown(On() and not full) end
-end
-
-local function OnEvent(self)
-    self:UnregisterEvent("PLAYER_REGEN_ENABLED")
-    if pending then
-        pending = nil
-        Apply()
-    end
 end
 
 local function CursorDistance(map)
@@ -115,7 +112,7 @@ local function Drag()
 end
 
 local function OnGripDown(_, button)
-    if button ~= "LeftButton" or InCombatLockdown() then return end
+    if button ~= "LeftButton" then return end
     startDist, startPct = CursorDistance(WorldMapFrame), S.Get("mapSizePercent") or PERCENT
     grip:SetScript("OnUpdate", Drag)
 end
@@ -132,7 +129,6 @@ local function OnGripHide()
 end
 
 local function OnGripClick()
-    if InCombatLockdown() then return end
     S.Set("mapSizePercent", PERCENT)
 end
 
@@ -153,27 +149,15 @@ local function Clamp(x, y)
 end
 
 local function Move()
-    if not moveX or InCombatLockdown() then return end
+    if not moveX then return end
     local x, y = Cursor()
     local nx, ny = Clamp(moveX + x - cursorX, moveY + y - cursorY)
     PlaceAt(nx, ny, WorldMapFrame:GetScale())
 end
 
-local function GoHome()
-    local map = WorldMapFrame
-    if not home or InCombatLockdown() then return end
-    local scale = map:GetScale()
-    map:ClearAllPoints()
-    map:SetPoint(home[1], home[2], home[3], home[4] * home[6] / scale, home[5] * home[6] / scale)
-end
-
 local function OnHandleDown(_, button)
-    if button ~= "LeftButton" or InCombatLockdown() then return end
+    if button ~= "LeftButton" then return end
     local map = WorldMapFrame
-    if not Saved() and map:GetNumPoints() == 1 then
-        local point, relative, relPoint, x, y = map:GetPoint(1)
-        home = { point, relative, relPoint, x or 0, y or 0, map:GetScale() }
-    end
     local scale = map:GetScale()
     local left, top = map:GetLeft(), map:GetTop()
     if not (left and top) then return end
@@ -184,7 +168,6 @@ end
 
 local function OnHandleUp(_, button)
     if button == "RightButton" then
-        if InCombatLockdown() then return end
         S.Set("mapSizePos", false)
         GoHome()
         return
@@ -230,8 +213,14 @@ local function BuildHandle()
     handle:SetScript("OnHide", OnHandleHide)
 end
 
-local function OnPanelsPlaced()
-    if WorldMapFrame:IsShown() and Saved() then Apply() end
+-- Opening the map places it before showing it, and a hidden map is left where it was.
+local function OnPanelsPlaced(frame)
+    local map = WorldMapFrame
+    if not Full() and (map:IsShown() or frame == map) and map:GetNumPoints() == 1 then
+        local point, relative, relPoint, x, y = map:GetPoint(1)
+        home = { point, relative, relPoint, x or 0, y or 0, map:GetScale() }
+    end
+    if map:IsShown() and Saved() then Apply() end
 end
 
 local function Setup()
@@ -255,8 +244,6 @@ local function OnLogin(self)
     self:UnregisterAllEvents()
     Setup()
 end
-
-events:SetScript("OnEvent", OnEvent)
 
 hooksecurefunc(S, "Set", function(key)
     if key == "enabled" or key == "mapSize" or key == "mapSizePercent" or key == "mapSizePos" then Setup() end
