@@ -52,7 +52,7 @@ local REVIEW_LAYOUT = { nameGap = 12, nameRise = 8, yoursSize = 10, yoursGap = 6
     stripe = 3, toggleW = 32, toggleH = 16, rowPad = 12, groupH = 30, groupGap = 8, groupIcon = 16, statH = 54,
     statGap = 6, statSize = 20 }
 local FOOT_LAYOUT = { noteGap = 12, skipLift = 4 }
-local CHOICE = { step = -1, signTop = 60, columns = 2, sameArt = ns.MEDIA .. "chain.tga",
+local CHOICE = { step = -1, columns = 2, sameArt = ns.MEDIA .. "chain.tga",
     ownArt = ns.MEDIA .. "wand.tga" }
 local TEXT_BACK, TEXT_START_OVER, TEXT_NEXT = "Back", "Start Over", "Next"
 local TEXT_ALL_OFF, TEXT_ALL_ON = "All Off", "All On"
@@ -371,14 +371,18 @@ local function Corners(page)
     page.version:SetText(ns.VersionText())
 end
 
-local function BuildWelcome()
-    local page = Page()
+local function Tagline(page)
     page.tagline = Text(page, WELCOME_LAYOUT.taglineSize, T.fg, WIDTH - INSET * 2, "CENTER")
     page.tagline:SetPoint("TOP", 0, -WELCOME_LAYOUT.taglineTop)
     page.tagline:SetText(TAGLINE_1 .. "\n" .. ns.Color(T.accent) .. TAGLINE_2A .. "|r " .. St.LOOK_CODE .. TAGLINE_2B .. "|r")
     page.tagline:SetSpacing(WELCOME_LAYOUT.taglineSpacing)
     page.sign = Sign(page)
     page.sign:SetPoint("TOP", page.tagline, "BOTTOM", 0, -WELCOME_LAYOUT.signGap)
+end
+
+local function BuildWelcome()
+    local page = Page()
+    Tagline(page)
     page.head = Text(page, HEAD_SIZE, T.fg, WIDTH - INSET * 2, "CENTER")
     page.head:SetPoint("TOP", page.sign, "BOTTOM", 0, -WELCOME_LAYOUT.signGap)
     page.head:SetText(WELCOME)
@@ -524,8 +528,7 @@ end
 
 local function BuildChoice()
     local page = Page()
-    page.sign = Sign(page)
-    page.sign:SetPoint("TOP", 0, -CHOICE.signTop)
+    Tagline(page)
     page.head = Text(page, HEAD_SIZE, T.fg, WIDTH - INSET * 2, "CENTER")
     page.head:SetPoint("TOP", page.sign, "BOTTOM", 0, -WELCOME_LAYOUT.signGap)
     page.text = Text(page, BODY_SIZE, T.muted, WELCOME_LAYOUT.thanksW, "CENTER")

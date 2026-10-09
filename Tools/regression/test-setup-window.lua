@@ -500,6 +500,9 @@ local choiceSign = window.choice.sign
 check("the welcome's infinity sign above the welcome, animating while the page shows", choiceSign ~= sign
     and choiceSign.dots and #choiceSign.dots == #sign.dots and choiceSign.scripts.OnUpdate ~= nil
     and head.point[2] == choiceSign and choiceSign.point[1] == "TOP")
+local choiceTag = window.choice.tagline
+check("the welcome's tagline on top, the sign under it", choiceTag and choiceTag.text:find("One addon", 1, true)
+    and choiceTag.text:find("them all.", 1, true) and choiceSign.point[2] == choiceTag)
 local signHead = choiceSign.dots[1].point[4]
 choiceSign.scripts.OnUpdate(choiceSign, 0.5)
 check("its glowing head travels along the loop too", choiceSign.dots[1].point[4] ~= signHead)
