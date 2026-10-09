@@ -420,17 +420,24 @@ function ns.FontInset(size)
 end
 
 --- The Addon Font as a file path, looked up each time; UIFontPath keeps its first answer.
---- Unpicked, it is Naowh, or the game's Friz Quadrata on the Classic+ skin.
+--- Unpicked, it is Naowh, or the game's Arial Narrow on the Classic+ skin.
 ---@return string
 function ns.AddonFontPath()
-    local default = ns.classicSkin and "Friz Quadrata TT" or "Naowh"
+    local default = ns.classicSkin and "Arial Narrow" or "Naowh"
     return FontPath(ns.AccountSettings().uiFont or default) or STANDARD_TEXT_FONT
 end
 
--- Window titles on the Classic+ skin: the game's Morpheus, which SharedMedia only registers
--- for the clients whose language it covers.
+-- Headings (buttons, tabs, titles, card and section names): the game's Friz Quadrata on the
+-- Classic+ skin, else the Addon Font, as is a picked Addon Font on either skin.
+function ns.HeadingFontPath()
+    if not ns.classicSkin or ns.AccountSettings().uiFont then return ns.UIFontPath() end
+    return FontPath("Friz Quadrata TT") or ns.UIFontPath()
+end
+
+-- A window's title plate on the Classic+ skin: the game's Morpheus, which SharedMedia only
+-- registers for the clients whose language it covers.
 function ns.TitleFontPath()
-    return LSM and LSM:Fetch("font", "Morpheus", true) or ns.UIFontPath()
+    return LSM and LSM:Fetch("font", "Morpheus", true) or ns.HeadingFontPath()
 end
 
 function ns.UIFontPath()
@@ -478,10 +485,17 @@ gameFontEvents:SetScript("OnEvent", function(self, event, name)
     end
 end)
 
-function ns.Font(parent, size, flags, color)
+-- heading: a button's, tab's, title's or name's text, in the heading font (ns.HeadingFontPath).
+function ns.Font(parent, size, flags, color, heading)
     local c = color or ns.THEME.fg
     local fs = parent:CreateFontString(nil, "OVERLAY")
-    fs:SetFont(ns.UIFontPath(), size, flags or "")
+    if heading and ns.classicSkin then
+        local St = ns.Shared.Style
+        size = size + St.CLASSIC_HEADING_STEP
+        fs:SetShadowColor(0, 0, 0, 1)
+        fs:SetShadowOffset(St.CLASSIC_HEADING_SHADOW, -St.CLASSIC_HEADING_SHADOW)
+    end
+    fs:SetFont(heading and ns.HeadingFontPath() or ns.UIFontPath(), size, flags or "")
     fs:SetTextColor(c.r, c.g, c.b, 1)
     return fs
 end
@@ -577,6 +591,21 @@ function ns.Border(frame, color, alpha)
     }
 end
 
+-- The Classic+ skin's field (an input, dropdown or check box) cut into the panel: a lit edge
+-- one pixel outside its black one, along the bottom and right.
+function ns.Sunken(frame)
+    local c = ns.Shared.Style.CLASSIC_BEVEL_RGB
+    local edge = CreateFrame("Frame", nil, frame)
+    ns.PixelInset(edge, -1, frame)
+    local bottom = edge:CreateTexture(nil, "OVERLAY")
+    bottom:SetColorTexture(c.r, c.g, c.b, 1)
+    bottom:SetPoint("BOTTOMLEFT"); bottom:SetPoint("BOTTOMRIGHT"); ns.Hairline(bottom, "h")
+    local right = edge:CreateTexture(nil, "OVERLAY")
+    right:SetColorTexture(c.r, c.g, c.b, 1)
+    right:SetPoint("TOPRIGHT"); right:SetPoint("BOTTOMRIGHT"); ns.Hairline(right, "v")
+    return edge
+end
+
 function ns.Solid(parent, layer, color, alpha)
     local c = color or ns.THEME.panel
     local t = parent:CreateTexture(nil, layer or "BACKGROUND")
@@ -651,7 +680,7 @@ function ns.Button(parent, text, w, h, onClick)
     -- The border and the colour it rests at, so a caller can restyle a button (AccentButton).
     btn._border, btn._rest = border, BLACK
     btn._bg = bg
-    local lbl = ns.Font(btn, 12, nil)
+    local lbl = ns.Font(btn, 12, nil, nil, true)
     lbl:SetPoint("CENTER")
     lbl:SetText(ns.L(text))
     btn.label = lbl
@@ -838,6 +867,7 @@ function ns.NewEditBox(parent)
         box._border:SetColor(a.r, a.g, a.b, 1)
     end)
     box:HookScript("OnLeave", function() box._border:SetColor(0, 0, 0, 1) end)
+    if ns.classicSkin then ns.Sunken(box) end
     return box
 end
 
