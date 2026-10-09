@@ -622,30 +622,6 @@ do
     Check(no == 4 and yes == 1, "and the new one still answers once")
 end
 
--- A confirm with two answers (an alt's first login): the second button runs its own answer only
--- from its own click; Escape and a newer confirm run neither.
-do
-    local same, own, closed = 0, 0, 0
-    local function Ask()
-        ns.Confirm("Which?", function() same = same + 1 end, function() closed = closed + 1 end, "Same", "Own",
-            function() own = own + 1 end)
-    end
-    Ask(); Click(Button("Own")); Flush()
-    Check(own == 1 and same == 0 and closed == 0, "the second answer runs from its button, and is not a close")
-    Ask(); Click(Button("Same")); Flush()
-    Check(same == 1 and own == 1 and closed == 0, "the first answer still runs from its button")
-    Ask()
-    local dimmer = Text("Which?").parent.parent
-    dimmer.scripts.OnKeyDown(dimmer, "ESCAPE"); Flush()
-    Check(own == 1 and same == 1 and closed == 1 and not dimmer:IsShown(), "Escape runs neither answer")
-    Ask(); Ask()
-    Check(own == 1 and same == 1 and closed == 2, "nor does a confirm taking its place")
-    Click(Button("Own")); Flush()
-    ns.Confirm("Plain?", function() end)
-    Click(Button("No")); Flush()
-    Check(own == 2 and closed == 2, "and a plain confirm after it keeps its own No")
-end
-
 -- A module shipped as its own addon: switching it off disables the addon, with every module
 -- linked to it, once the player confirms.
 local confirmText, confirmYes, reloadText

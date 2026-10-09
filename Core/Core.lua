@@ -42,6 +42,7 @@ local CONFIRM_H, CONFIRM_ROOM = 110, 74
 local CONFIRM_PANEL_W, CONFIRM_TEXT_W, CONFIRM_TEXT_SIZE, CONFIRM_TEXT_Y, CONFIRM_BUTTON_GAP = 340, 310, 13, 18, 4
 local DEFAULT_PROFILE = "Default"
 local DB_VERSION = 1
+local GUID_PATTERN, HEX = "^Player%-(%d+)%-(%x+)$", 16
 local SCALE_DEFAULT, SCALE_MIN, SCALE_MAX, PERCENT = 100, 50, 200, 100
 local LOGIN_APPLY_DELAY = 1
 local ERR_NO_PROFILE = "no such profile"
@@ -927,7 +928,7 @@ function ns.ConfirmReload(text)
     dimmer:Show()
 end
 
-function ns.Confirm(text, onYes, onNo, yesText, noText, onNoButton)
+function ns.Confirm(text, onYes, onNo, yesText, noText)
     local UI = ns.UI
     local dimmer, panel = ns.MakeModal(CONFIRM_PANEL_W, CONFIRM_H, "confirm")
     local head = ConfirmHead(UI, panel, text)
@@ -939,16 +940,12 @@ function ns.Confirm(text, onYes, onNo, yesText, noText, onNoButton)
         dimmer:Hide()
         onYes()
     end, -shift)
-    DialogButton(UI, panel, "no", noText or "No", w, function()
-        if onNoButton then dimmer.onClose = nil end
-        dimmer:Hide()
-        if onNoButton then onNoButton() end
-    end, shift)
+    DialogButton(UI, panel, "no", noText or "No", w, function() dimmer:Hide() end, shift)
     dimmer.onClose = onNo
     dimmer:Show()
 end
 
-local activeRoot, provisional, newCharacter
+local activeRoot, provisional
 
 local function CharKey()
     return UnitName("player") .. "-" .. GetRealmName()
@@ -980,7 +977,10 @@ end
 local function AssignedProfile(sv)
     local name = sv.charActive[CharKey()]
     if type(name) == "string" and type(sv.profiles[name]) == "table" then return name end
-    if name == nil and next(sv.charActive) ~= nil then newCharacter = true end
+    if name == nil and next(sv.charActive) ~= nil then
+        if type(sv.charAsk) ~= "table" then sv.charAsk = {} end
+        sv.charAsk[CharKey()] = true
+    end
     name = type(name) == "string" and name or sv.defaultProfile or DEFAULT_PROFILE
     if type(sv.profiles[name]) ~= "table" and type(sv.defaultProfile) == "string" then
         name = sv.defaultProfile
@@ -1142,6 +1142,18 @@ function ns.MarkSeen()
     local sv = DB()
     if type(sv.charSeen) ~= "table" then sv.charSeen = {} end
     sv.charSeen[CharKey()] = time()
+    local guid = UnitGUID("player")
+    if type(guid) ~= "string" then return end
+    if type(sv.charGuid) ~= "table" then sv.charGuid = {} end
+    sv.charGuid[CharKey()] = guid
+end
+
+function ns.MarkAsked()
+    if UnitName("player") == UNKNOWNOBJECT then return end
+    local sv = DB()
+    if type(sv.charAsk) ~= "table" then return end
+    sv.charAsk[CharKey()] = nil
+    if next(sv.charAsk) == nil then sv.charAsk = nil end
 end
 
 local function ProfileUses(sv, me)
@@ -1158,15 +1170,44 @@ local function Better(char, when, count, best, bestSeen, bestUses)
     return count > bestUses or (count == bestUses and char < best)
 end
 
+local function GuidOrder(guid)
+    if type(guid) ~= "string" then return nil end
+    local server, counter = guid:match(GUID_PATTERN)
+    counter = counter and tonumber(counter, HEX)
+    if not counter then return nil end
+    return server, counter
+end
+
+local function Offerable(sv, char, me, profile)
+    return char ~= me and char:sub(1, #UNKNOWNOBJECT + 1) ~= UNKNOWNOBJECT .. "-"
+        and type(sv.profiles[profile]) == "table"
+end
+
+local function FirstMade(sv, me)
+    local server = GuidOrder(UnitGUID("player"))
+    if not server or type(sv.charGuid) ~= "table" then return nil end
+    local best, bestProfile, bestCounter
+    for char, profile in pairs(sv.charActive) do
+        local theirs, counter = GuidOrder(sv.charGuid[char])
+        if theirs == server and Offerable(sv, char, me, profile)
+            and (not best or counter < bestCounter or (counter == bestCounter and char < best)) then
+            best, bestProfile, bestCounter = char, profile, counter
+        end
+    end
+    return best, bestProfile
+end
+
 function ns.ImportCandidate()
-    if not newCharacter then return nil end
     local sv = DB()
     local me = CharKey()
+    if type(sv.charAsk) ~= "table" or not sv.charAsk[me] then return nil end
+    local first, firstProfile = FirstMade(sv, me)
+    if first then return first, firstProfile end
     local seen = type(sv.charSeen) == "table" and sv.charSeen or {}
     local uses = ProfileUses(sv, me)
     local best, bestProfile, bestSeen, bestUses
     for char, profile in pairs(sv.charActive) do
-        if char ~= me and type(sv.profiles[profile]) == "table" then
+        if Offerable(sv, char, me, profile) then
             local when, count = seen[char] or 0, uses[profile]
             if Better(char, when, count, best, bestSeen, bestUses) then
                 best, bestProfile, bestSeen, bestUses = char, profile, when, count

@@ -1,8 +1,10 @@
--- Setup.lua: Tailor my setup's questions and rules, its Apply and Restore.
+-- Setup.lua: Tailor my setup's questions and rules, its Apply and Restore, and a new character's profile.
 local ns = _G.NaowhForever
 local Setup = {}
 ns.Setup = Setup
 
+local FIRST_COPY = 2
+local COPY_NAME = "%s %d"
 local PICK_ANY = "Pick as many as you like."
 local PURIST, ESSENTIALS, EVERYTHING = "purist", "essentials", "everything"
 local RECOMMENDED, MINIMALIST, CUSTOM = "recommended", "minimalist", "custom"
@@ -694,4 +696,23 @@ function Setup.Apply(entries)
     ns.SettingsRoot().setupYours = Yours(entries)
     ns.QoLSettings.Set("preset", CUSTOM)
     return reload
+end
+
+local function FreeName(name)
+    local free, n = name, FIRST_COPY
+    while ns.ProfileExists(free) do
+        free, n = COPY_NAME:format(name, n), n + 1
+    end
+    return free
+end
+
+function Setup.ShareProfile(profile)
+    if profile == ns.ActiveProfileName() then return false end
+    return ns.SwitchProfile(profile) == true
+end
+
+function Setup.OwnProfile(name)
+    local own = FreeName(name)
+    if not ns.CopyProfile(ns.ActiveProfileName(), own) then return false end
+    return ns.SwitchProfile(own) == true
 end

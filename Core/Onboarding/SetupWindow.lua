@@ -1,4 +1,4 @@
--- SetupWindow.lua: Tailor my setup's window, from its welcome to Apply.
+-- SetupWindow.lua: Tailor my setup's window, from its welcome or a new character's choice to Apply.
 local ns = _G.NaowhForever
 local T = ns.THEME
 local Parts = ns.Shared.Parts
@@ -52,6 +52,8 @@ local REVIEW_LAYOUT = { nameGap = 12, nameRise = 8, yoursSize = 10, yoursGap = 6
     stripe = 3, toggleW = 32, toggleH = 16, rowPad = 12, groupH = 30, groupGap = 8, groupIcon = 16, statH = 54,
     statGap = 6, statSize = 20 }
 local FOOT_LAYOUT = { noteGap = 12, skipLift = 4 }
+local CHOICE = { step = -1, signTop = 60, columns = 2, sameArt = ns.MEDIA .. "chain.tga",
+    ownArt = ns.MEDIA .. "wand.tga" }
 local TEXT_BACK, TEXT_START_OVER, TEXT_NEXT = "Back", "Start Over", "Next"
 local TEXT_ALL_OFF, TEXT_ALL_ON = "All Off", "All On"
 local TEXT_APPLY, TEXT_APPLY_RELOAD, TEXT_SEE_SETUP = "Apply", "Apply and Reload", "See My Setup"
@@ -92,8 +94,16 @@ local YOURS = "You set this; we'd suggest %s."
 local IN_COMBAT = "Apply after your fight."
 local DONE_RELOAD = "Your setup is ready. Reload now to finish?"
 local DONE = "Your setup is ready."
+local TEXT_CHOICE = {
+    head = "Welcome, %s!",
+    text = "You've played Naowh Forever on %s. Share %s's settings, or give %s its own?",
+    sameName = "Same as %s", sameBlurb = "%s uses %s's settings; a change on one shows on both.",
+    ownName = "Set Up %s", ownBlurb = "A few quick questions for %s only, its own modules included.",
+    sameDone = "%s now uses the same settings as %s.",
+}
 
 local window, answers, detected, entries, step, section, forCharacter
+local newCharacter = {}
 local Paint
 
 local function Question()
@@ -283,6 +293,7 @@ local function Hidden(self)
     if self:IsShown() then return end
     local account = ns.AccountSettings()
     account.onboardingSeen, account.welcomeSeen = true, true
+    ns.MarkAsked()
 end
 
 local function ShowSite()
@@ -343,6 +354,23 @@ local function Sign(page)
     return sign
 end
 
+local function Corners(page)
+    local middle = WELCOME_LAYOUT.footLine + WELCOME_LAYOUT.footLineH / 2
+    local x = EDGE + WELCOME_LAYOUT.cornerGap
+    for _, link in ipairs(ns.LINKS) do
+        local name, url = link[1], link[3]
+        local button = Parts.IconButton(page, function() ns.ShowCopyLine(name, url()) end,
+            ns.LINK_ICONS .. link[2] .. ".tga", nil, name)
+        button:SetSize(WELCOME_LAYOUT.linkSize, WELCOME_LAYOUT.linkSize)
+        button.icon:SetSize(WELCOME_LAYOUT.linkSize, WELCOME_LAYOUT.linkSize)
+        button:SetPoint("LEFT", window, "BOTTOMLEFT", x, middle)
+        x = x + WELCOME_LAYOUT.linkSize + WELCOME_LAYOUT.linkGap
+    end
+    page.version = ns.Font(page, SMALL_SIZE, nil, T.muted)
+    page.version:SetPoint("RIGHT", window, "BOTTOMRIGHT", -EDGE - WELCOME_LAYOUT.cornerGap, middle)
+    page.version:SetText(ns.VersionText())
+end
+
 local function BuildWelcome()
     local page = Page()
     page.tagline = Text(page, WELCOME_LAYOUT.taglineSize, T.fg, WIDTH - INSET * 2, "CENTER")
@@ -364,20 +392,7 @@ local function BuildWelcome()
     Parts.SetLink(siteLink, SITE_LINK)
     siteLink:SetPoint("LEFT", siteText, "RIGHT", WELCOME_LAYOUT.siteGap, 0)
     page.site:SetWidth(math.ceil(siteText:GetStringWidth()) + WELCOME_LAYOUT.siteGap + siteLink:GetWidth())
-    local middle = WELCOME_LAYOUT.footLine + WELCOME_LAYOUT.footLineH / 2
-    local x = EDGE + WELCOME_LAYOUT.cornerGap
-    for _, link in ipairs(ns.LINKS) do
-        local name, url = link[1], link[3]
-        local button = Parts.IconButton(page, function() ns.ShowCopyLine(name, url()) end,
-            ns.LINK_ICONS .. link[2] .. ".tga", nil, name)
-        button:SetSize(WELCOME_LAYOUT.linkSize, WELCOME_LAYOUT.linkSize)
-        button.icon:SetSize(WELCOME_LAYOUT.linkSize, WELCOME_LAYOUT.linkSize)
-        button:SetPoint("LEFT", window, "BOTTOMLEFT", x, middle)
-        x = x + WELCOME_LAYOUT.linkSize + WELCOME_LAYOUT.linkGap
-    end
-    page.version = ns.Font(page, SMALL_SIZE, nil, T.muted)
-    page.version:SetPoint("RIGHT", window, "BOTTOMRIGHT", -EDGE - WELCOME_LAYOUT.cornerGap, middle)
-    page.version:SetText(ns.VersionText())
+    Corners(page)
     page.text = Text(page, BODY_SIZE, T.muted, WELCOME_LAYOUT.thanksW, "CENTER")
     page.text:SetPoint("TOP", page.head, "BOTTOM", 0, -WELCOME_LAYOUT.thanksGap)
     page.text:SetText(THANKS)
@@ -465,6 +480,73 @@ local function LayoutTile(tile, width)
     tile.blurb:SetWidth(width - TILE_LAYOUT.textRoom)
 end
 
+local function TileWidth(columns)
+    return math.min(TILE_MAX_W, (WIDTH - INSET * 2 - (columns - 1) * TILE_GAP) / columns)
+end
+
+local function PaintTile(tile, on)
+    tile.on = on
+    local text = on and T.accent or T.fg
+    tile.name:SetTextColor(text.r, text.g, text.b)
+    Tint(tile.icon.tex, text)
+    local plate = on and T.accent or BLACK
+    tile.icon.edge:SetColor(plate.r, plate.g, plate.b, 1)
+    tile.check:SetShown(on)
+    SetLit(tile, on, tile.hovered)
+end
+
+local function UseMain()
+    local who = newCharacter
+    if Setup.ShareProfile(who.profile) then ns.Print(TEXT_CHOICE.sameDone:format(who.me, who.main)) end
+    window:Hide()
+end
+
+local function SetUpOwn()
+    if not Setup.OwnProfile(newCharacter.me) then return end
+    ns.MarkAsked()
+    Setup.ForCharacter(true)
+    forCharacter = newCharacter.me
+    step = 1
+    Paint()
+end
+
+local function ChoiceTile(page, i, art, onPick)
+    local tile = Tile(page, i)
+    local width = TileWidth(CHOICE.columns)
+    local rowW = CHOICE.columns * width + (CHOICE.columns - 1) * TILE_GAP
+    LayoutTile(tile, width)
+    tile:SetPoint("TOPLEFT", page.text, "BOTTOM", -rowW / 2 + (i - 1) * (width + TILE_GAP), -WELCOME_LAYOUT.promiseTop)
+    tile.icon.tex:SetTexture(art, nil, nil, FILTER)
+    tile.onPick = onPick
+    PaintTile(tile, false)
+    return tile
+end
+
+local function BuildChoice()
+    local page = Page()
+    page.sign = Sign(page)
+    page.sign:SetPoint("TOP", 0, -CHOICE.signTop)
+    page.head = Text(page, HEAD_SIZE, T.fg, WIDTH - INSET * 2, "CENTER")
+    page.head:SetPoint("TOP", page.sign, "BOTTOM", 0, -WELCOME_LAYOUT.signGap)
+    page.text = Text(page, BODY_SIZE, T.muted, WELCOME_LAYOUT.thanksW, "CENTER")
+    page.text:SetPoint("TOP", page.head, "BOTTOM", 0, -WELCOME_LAYOUT.thanksGap)
+    page.tiles = {}
+    page.same = ChoiceTile(page, 1, CHOICE.sameArt, UseMain)
+    page.own = ChoiceTile(page, 2, CHOICE.ownArt, SetUpOwn)
+    Corners(page)
+    return page
+end
+
+local function PaintChoice()
+    local page, me, main = window.choice, newCharacter.me, newCharacter.main
+    page.head:SetText(TEXT_CHOICE.head:format(me))
+    page.text:SetText(TEXT_CHOICE.text:format(main, main, me))
+    page.same.name:SetText(TEXT_CHOICE.sameName:format(main))
+    page.same.blurb:SetText(TEXT_CHOICE.sameBlurb:format(me, main))
+    page.own.name:SetText(TEXT_CHOICE.ownName:format(me))
+    page.own.blurb:SetText(TEXT_CHOICE.ownBlurb:format(me))
+end
+
 local function BuildQuestion()
     local page = Page()
     page.title = Text(page, QUESTION_SIZE, T.fg, WIDTH - INSET * 2, "CENTER")
@@ -485,7 +567,7 @@ local function PaintQuestion(q)
     page.hint:SetText(q.hint or "")
     local count = #q.answers
     local columns = Columns(count)
-    local width = math.min(TILE_MAX_W, (WIDTH - INSET * 2 - (columns - 1) * TILE_GAP) / columns)
+    local width = TileWidth(columns)
     local rows = math.ceil(count / columns)
     local tilesH = rows * TILE_H + (rows - 1) * TILE_GAP
     local headH = page.title:GetStringHeight() + TILE_LAYOUT.hintGap + page.hint:GetStringHeight() + HINT_GAP
@@ -507,14 +589,7 @@ local function PaintQuestion(q)
         tile:ClearAllPoints()
         tile:SetPoint("TOPLEFT", page, "TOPLEFT", (WIDTH - rowW) / 2 + col * (width + TILE_GAP),
             -(top + headH + row * (TILE_H + TILE_GAP)))
-        tile.on = Selected(q, key)
-        local text = tile.on and T.accent or T.fg
-        tile.name:SetTextColor(text.r, text.g, text.b)
-        Tint(tile.icon.tex, text)
-        local plate = tile.on and T.accent or BLACK
-        tile.icon.edge:SetColor(plate.r, plate.g, plate.b, 1)
-        tile.check:SetShown(tile.on)
-        SetLit(tile, tile.on, tile.hovered)
+        PaintTile(tile, Selected(q, key))
         tile.onPick = function() Choose(q, answer) end
         tile:Show()
     end
@@ -848,20 +923,26 @@ end
 
 function Paint()
     local count = #Setup.QUESTIONS
-    local welcome, reviewing = step == 0, step > count
+    local choosing, welcome, reviewing = step == CHOICE.step, step == 0, step > count
+    local asking = not (choosing or welcome or reviewing)
     if step ~= window.painted then
         window.painted = step
-        FadeIn(welcome and window.welcome or reviewing and window.review or window.question)
+        FadeIn(choosing and window.choice or welcome and window.welcome or reviewing and window.review
+            or window.question)
     end
+    window.choice:SetShown(choosing)
     window.welcome:SetShown(welcome)
-    window.question:SetShown(not welcome and not reviewing)
+    window.question:SetShown(asking)
     window.review:SetShown(reviewing)
-    window.foot:SetShown(not welcome)
+    window.foot:SetShown(asking or reviewing)
     PaintSegments()
     window.next.arrow:SetTexture(reviewing and CHECK_ART or NEXT_ART, nil, nil, FILTER)
     window.again:SetShown(reviewing)
-    window.skip:SetShown(not welcome and not reviewing)
-    if welcome then
+    window.skip:SetShown(asking)
+    if choosing then
+        window.subtitle:SetText(WELCOME_SUB)
+        PaintChoice()
+    elseif welcome then
         window.subtitle:SetText(forCharacter and WELCOME_FOR:format(forCharacter) or WELCOME_SUB)
     elseif reviewing then
         window.subtitle:SetText(REVIEW_SUB)
@@ -972,6 +1053,7 @@ local function Build()
         seg:SetPoint("RIGHT", window, "TOPRIGHT", -right, -HEADER / 2)
         window.segments[i] = seg
     end
+    window.choice = BuildChoice()
     window.welcome = BuildWelcome()
     window.question = BuildQuestion()
     window.review = BuildReview()
@@ -985,14 +1067,23 @@ local function Build()
     window:HookScript("OnHide", Hidden)
 end
 
-function ns.ShowSetup(thisCharacter)
+local function Open(thisCharacter, first)
     ns.StashOptionsWindow()
     Setup.ForCharacter(thisCharacter)
     forCharacter = thisCharacter and UnitName("player") or nil
     if not window then Build() end
     window.painted = nil
     answers, detected = Fresh()
-    step = 0
+    step = first
     Paint()
     window:Show()
+end
+
+function ns.ShowSetup(thisCharacter)
+    Open(thisCharacter, 0)
+end
+
+function ns.ShowNewCharacter(me, main, profile)
+    newCharacter.me, newCharacter.main, newCharacter.profile = me, main, profile
+    Open(nil, CHOICE.step)
 end

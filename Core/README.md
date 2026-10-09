@@ -61,9 +61,9 @@ Core/
   Pages.xml                         the pages that load after the Badges
   Pages/PatchNotes.lua Patch Notes, each build's notes as a card
   Pages/Credits.lua    Credits
-  Onboarding/Setup.lua Tailor my setup: questions, rules, Apply and Restore
-  Onboarding/SetupWindow.lua the onboarding window: its welcome, the questions and the review
-  Onboarding/FirstLogin.lua the onboarding on an account's first login, and a new character's question: its main's settings or its own
+  Onboarding/Setup.lua Tailor my setup: questions, rules, Apply and Restore, a new character's profile
+  Onboarding/SetupWindow.lua the onboarding window: its welcome, a new character's page, the questions and the review
+  Onboarding/FirstLogin.lua when the onboarding opens: an account's first login, a new character's page until it is answered
   Profiles/SetupsCard.lua the Profiles page's Setups card: Naowh's setups, Tailor Setup, Before Tailoring
   Onboarding/Media/    the onboarding's art: a picture per answer (Setup/), the glow dot and the infinity track
 
@@ -164,9 +164,6 @@ Reload UI
   as combat starts.
 
 Modals and windows
-- `ns.Confirm`'s optional sixth argument runs only from the second button's click. Without it, the
-  second button and Escape both run `onNo`, so a question whose second answer changes something passes
-  it there.
 - One modal shell per key, reused on every open: frames are never freed, so new frames per open
   leaked every earlier copy. Opening a key that is up closes it first.
 - Modal levels come from a private counter, not `Raise()` (unbounded across UIParent), and wind
@@ -299,12 +296,31 @@ Onboarding
 - Closing it also sets `welcomeSeen`, which the Character Panel reads to tell a player new to the
   addon from anyone else; players who saw the old welcome window already have it, so they are not
   treated as new.
-- A character new to the account is asked once, after the onboarding has been seen, whether it uses
-  the same settings as its main or is set up on its own. The main is the other character played most
-  recently, then the one whose profile most other characters use, then by name. A new character starts
-  on the account's profile, usually the main's, so the main no longer has to be on a different profile.
-- Set Up copies the character's current profile into one named after it (" 2", " 3" when taken) and
-  switches only this character to it. `ns.CreateProfile` is not used: it switches every character.
+- A character new to the account gets its own page in the onboarding window, after the onboarding has
+  been seen: two tiles, Same as its main or Set Up on its own, with the welcome's bottom row and no
+  Back or Next. A new character starts on the account's profile, usually the main's, so the main no
+  longer has to be on a different profile.
+- The main is the first character made on this character's server. Every login saves the character's
+  GUID (`charGuid`); a player GUID is `Player-<server>-<counter>`, and the counter is handed out per
+  realm and grows with each character made, so the lowest counter on the same server is the oldest.
+  Nothing else records creation order (`charSeen` is the last login, /played is not kept per
+  character). With no other GUID known on the server, it falls back to the character played most
+  recently, then the one whose profile most other characters use, then by name. A provisional
+  `Unknown-` key (written before the game knew the name) is never offered. Deleted characters stay in
+  the saved lists: addons cannot see the account's character list.
+- The page waits for an answer across reloads and relogs: a new character is saved in the account's
+  `charAsk` (by name-realm, as `charActive` and `charSeen`). `ns.MarkAsked` clears it when the page is
+  answered, when the window is closed (X or Escape), or when the full onboarding is closed on that
+  character; hiding the whole UI is not a close. A character first seen before the account saw the
+  onboarding gets the onboarding instead, and closing it answers the page too.
+- Same as switches only when the main's profile is not already this character's, and says so; either
+  way the window closes. Set Up copies the character's current profile into one named after it
+  (" 2", " 3" when taken), switches only this character to it and goes on to the first question in
+  the same window, for this character alone. `ns.CreateProfile` is not used: it switches every
+  character. A copy that fails changes nothing and the page stays.
+- The page is laid out as the welcome: its animated infinity sign near the top (spinning only while
+  the page shows), then the head and muted body at the welcome's sizes and gaps, then the question
+  page's own tiles (`Tile`, `LayoutTile`, `PaintTile`) with Core/Media's chain and wand as their icons.
 - For one character, the onboarding turns module addons on and off with `UnitGUID("player")` passed to
   `C_AddOns.EnableAddOn`, `DisableAddOn` and `GetAddOnEnableState`, as Blizzard's AddOn List does; with
   no character they mean every character. The backup keeps the GUID, so Restore puts back that

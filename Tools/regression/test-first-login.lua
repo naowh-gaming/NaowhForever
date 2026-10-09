@@ -2,9 +2,10 @@
 -- (Core/Onboarding/FirstLogin.lua) on stub frames. Checks that it makes one frame at load; opens
 -- the onboarding a few seconds after the first login, or after a reload while it is still unseen,
 -- never during a loading screen, and waits for combat to end; once seen it never opens by itself
--- again; a new character is asked once whether it uses its main's settings or is set up on its
--- own (its own profile, only it switched, the onboarding for it alone), Escape changing nothing;
--- /nf welcome and /nf setup open the onboarding.
+-- again; a new character gets its page in the onboarding window (its name, its main and the main's
+-- profile), out of combat, again after a reload or relog until it is answered, changing nothing
+-- itself; /nf welcome and /nf setup open the onboarding. What the page's answers do is in
+-- test-setup-window.lua.
 local checks = 0
 local function check(label, value) assert(value, label); checks = checks + 1 end
 
@@ -41,7 +42,10 @@ local function Setup(account)
             s.opened[s.onboarding] = thisCharacter or false
         end,
         MarkSeen = function() s.marked = (s.marked or 0) + 1 end,
-        ImportCandidate = function() return s.candidate, s.candidate and s.mainProfile end,
+        ImportCandidate = function()
+            if s.answered or not s.candidate then return nil end
+            return s.candidate, s.mainProfile
+        end,
         ActiveProfileName = function() return s.charActive[ME] end,
         ProfileExists = function(name) return s.profiles[name] ~= nil end,
         SwitchProfile = function(name)
@@ -56,14 +60,9 @@ local function Setup(account)
         end,
         CreateProfile = function() s.created = true; return true end,
         SetAccountProfile = function() s.created = true; return true end,
-        Confirm = function(text, onYes, onNo, yes, no, onNoButton)
-            s.confirm = { text = text, yesText = yes, noText = no, onNo = onNo }
-            s.confirm.yes = function() onYes() end
-            s.confirm.no = function()
-                if onNoButton then return onNoButton() end
-                if onNo then onNo() end
-            end
-            s.confirm.escape = function() if onNo then onNo() end end
+        ShowNewCharacter = function(me, main, profile)
+            s.asked = { me = me, main = main, profile = profile }
+            s.askedCount = (s.askedCount or 0) + 1
         end,
         Print = function(text) s.printed = text end,
     }
@@ -189,7 +188,7 @@ do
 end
 
 -------------------------------------------------------------------------------
---  A character's first login, the onboarding seen: same settings as the main, or its own
+--  A character's first login, the onboarding seen: its page, until it is answered
 -------------------------------------------------------------------------------
 local function Snapshot(s)
     local out = {}
@@ -199,93 +198,78 @@ local function Snapshot(s)
     return table.concat(out, ",")
 end
 
-local function Asked(s)
-    Event(s, "PLAYER_ENTERING_WORLD", true, false)
+local function Asked(s, isInitialLogin, isReloadingUi)
+    if isInitialLogin == nil then isInitialLogin = true end
+    Event(s, "PLAYER_ENTERING_WORLD", isInitialLogin, isReloadingUi or false)
     RunTimer(s)
-    return s.confirm
+    return s.asked
 end
 
 do
     local s = Setup({ onboardingSeen = true, welcomeSeen = true })
     Event(s, "PLAYER_ENTERING_WORLD", true, false)
     check("each login notes when the character was last played", s.marked == 1)
-    check("no other character, or not a new one: nothing waits", #s.timers == 0 and s.confirm == nil
+    check("no other character, or not a new one: nothing waits", #s.timers == 0 and s.asked == nil
         and next(s.login.events) == nil)
     RunTimer(s)
-    check("and nothing is asked", s.confirm == nil and s.onboarding == 0)
+    check("and nothing is asked", s.asked == nil and s.onboarding == 0)
 end
 do
     local s = Setup({ onboardingSeen = true, welcomeSeen = true })
     s.candidate = "Die Man-Forever"
+    local before = Snapshot(s)
     Event(s, "PLAYER_ENTERING_WORLD", true, false)
-    check("a new character with another around: a few seconds in", #s.timers == 1 and s.confirm == nil)
+    check("a new character with another around: a few seconds in", #s.timers == 1 and s.asked == nil)
     s.combat = true
     RunTimer(s)
-    check("not in combat", s.confirm == nil and s.login.events.PLAYER_REGEN_ENABLED)
+    check("not in combat", s.asked == nil and s.login.events.PLAYER_REGEN_ENABLED)
     s.combat = false
     Event(s, "PLAYER_REGEN_ENABLED")
-    check("it welcomes the character by name and asks about its main", s.confirm and s.onboarding == 0
-        and s.confirm.text == "Welcome, Die Dudu! Use the same settings as Die Man, or set this character up on its own?"
-        and s.confirm.yesText == "Same as Die Man" and s.confirm.noText == "Set Up Die Dudu")
-    check("asked once, then it stops listening", next(s.login.events) == nil)
-    s.confirm.yes()
-    check("same, the main on its own profile: this character switches to it, and it says so", s.switched == "Raid"
-        and s.charActive[ME] == "Raid" and s.printed == "Die Dudu now uses the same settings as Die Man.")
-    check("and only this character moved", s.charActive["Die Man"] == "Raid" and s.charActive["Die Pri"] == "Default"
-        and not s.created and s.onboarding == 0)
+    check("its page opens: the character by name, its main and the main's profile", s.asked
+        and s.asked.me == "Die Dudu" and s.asked.main == "Die Man" and s.asked.profile == "Raid" and s.onboarding == 0)
+    check("asked once, then it stops listening", s.askedCount == 1 and next(s.login.events) == nil)
+    check("opening it changes nothing yet", Snapshot(s) == before and s.switched == nil and s.printed == nil
+        and not s.created)
 end
 do
     local s = Setup({ onboardingSeen = true, welcomeSeen = true })
     s.candidate, s.mainProfile = "Die Pri-Forever", "Default"
-    local before = Snapshot(s)
-    Asked(s).yes()
-    check("same, the main already on this character's profile: nothing changes", s.switched == nil
-        and s.printed == nil and Snapshot(s) == before and s.onboarding == 0)
+    check("the main on this character's profile is still asked about, with its profile",
+        Asked(s) and s.asked.main == "Die Pri" and s.asked.profile == "Default")
 end
 do
-    local s = Setup({ onboardingSeen = true, welcomeSeen = true })
+    local account = { onboardingSeen = true, welcomeSeen = true }
+    local s = Setup(account)
     s.candidate = "Die Man-Forever"
-    Asked(s).no()
-    check("set up: a copy of this character's profile, named after it", s.profiles[ME]
-        and s.profiles[ME].copyOf == "Default")
-    check("only this character switches to it", s.charActive[ME] == ME and s.charActive["Die Man"] == "Raid"
-        and s.charActive["Die Pri"] == "Default" and not s.created)
-    check("then the onboarding opens for this character", s.onboarding == 1 and s.opened[1] == true)
-    check("and nothing is printed as a switch to the main", s.printed == nil)
+    Asked(s)
+    Event(s, "PLAYER_LEAVING_WORLD")
+    Asked(s, false, true)
+    check("a reload with no answer: asked again", s.askedCount == 2 and s.asked.main == "Die Man")
+    local relog = Setup(account)
+    relog.candidate = "Die Man-Forever"
+    check("a relog with no answer: asked again", Asked(relog) and relog.askedCount == 1)
+    s.answered = true
+    Event(s, "PLAYER_LEAVING_WORLD")
+    Asked(s, false, true)
+    check("answered (either tile, X or Escape): a reload does not ask again", s.askedCount == 2
+        and next(s.login.events) == nil)
+    relog = Setup(account)
+    relog.candidate, relog.answered = "Die Man-Forever", true
+    check("nor does a relog", Asked(relog) == nil and #relog.timers == 0)
 end
 do
-    local s = Setup({ onboardingSeen = true, welcomeSeen = true })
-    s.candidate = "Die Man-Forever"
-    s.profiles[ME], s.profiles[ME .. " 2"] = {}, {}
-    Asked(s).no()
-    check("its name taken: the next free number", s.profiles[ME .. " 3"] and s.profiles[ME .. " 3"].copyOf == "Default"
-        and s.charActive[ME] == ME .. " 3" and next(s.profiles[ME]) == nil and next(s.profiles[ME .. " 2"]) == nil)
-end
-do
-    local s = Setup({ onboardingSeen = true, welcomeSeen = true })
-    s.candidate, s.failCopy = "Die Man-Forever", true
-    local before = Snapshot(s)
-    Asked(s).no()
-    check("a copy that fails: no switch and no onboarding", Snapshot(s) == before and s.switched == nil
-        and s.onboarding == 0)
-end
-do
-    local s = Setup({ onboardingSeen = true, welcomeSeen = true })
-    s.candidate = "Die Man-Forever"
-    local before = Snapshot(s)
-    local confirm = Asked(s)
-    check("closing it runs neither answer", confirm.onNo == nil)
-    confirm.escape()
-    check("Escape or closing it changes nothing", Snapshot(s) == before and s.switched == nil and s.printed == nil
-        and s.onboarding == 0)
-end
-do
-    local s = Setup()
+    local account = {}
+    local s = Setup(account)
     s.candidate = "Die Man-Forever"
     Event(s, "PLAYER_ENTERING_WORLD", true, false)
     RunTimer(s)
-    check("the onboarding not seen yet: it opens for every character, not the question", s.onboarding == 1
-        and s.opened[1] == false and s.confirm == nil)
+    check("the onboarding not seen yet: it opens for every character, not the page", s.onboarding == 1
+        and s.opened[1] == false and s.asked == nil)
+    account.onboardingSeen, account.welcomeSeen = true, true
+    local relog = Setup(account)
+    relog.candidate, relog.answered = "Die Man-Forever", true
+    check("closed on that character, it counts as the answer: not asked after", Asked(relog) == nil
+        and relog.onboarding == 0)
 end
 
 -------------------------------------------------------------------------------
