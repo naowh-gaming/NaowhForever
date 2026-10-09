@@ -64,6 +64,7 @@ local function Fixture(opts)
     local ns = {
         QoLSettings = Q,
         SettingsRoot = function() return { macros = settings, qol = qol } end,
+        Shared = { Items = { HEALTHSTONES = { 9421, 5509 }, HEALING_POTIONS = { 13446, 929 } } },
         Print = function(msg) printed[#printed + 1] = msg end,
         AccountSettings = function() return account end,
         Apply = function() end,

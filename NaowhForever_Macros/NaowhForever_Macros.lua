@@ -143,15 +143,6 @@ ns.MacroEntryIcon = EntryIcon
 --  Runtime
 -------------------------------------------------------------------------------
 -- Classic-era item IDs, best first.
--- Classic-era item IDs, best first. The talented healthstones are the second of each pair.
-local HEALTHSTONES = {
-    9421, 19012, 19013,     -- Major
-    5510, 19010, 19011,     -- Greater
-    5509, 19008, 19009,     -- Healthstone
-    5511, 19006, 19007,     -- Lesser
-    5512, 19004, 19005,     -- Minor
-}
-local HEALING_POTIONS = { 13446, 3928, 1710, 929, 858, 118 }
 local MANA_POTIONS = { 13444, 13443, 6149, 3827, 3385, 2455 }
 local BANDAGES = { 14530, 14529, 8545, 8544, 6451, 6450, 3531, 3530, 2581, 1251 }
 
@@ -191,7 +182,8 @@ end
 -- The macro body for each key, or nil to leave an existing macro as it is (nothing carried).
 local BODIES = {
     health = function()
-        local stone, potion = FirstCarried(HEALTHSTONES), FirstCarried(HEALING_POTIONS)
+        local Items = ns.Shared.Items
+        local stone, potion = FirstCarried(Items.HEALTHSTONES), FirstCarried(Items.HEALING_POTIONS)
         if S.Get("healthOrder") == "potion" then return UseLines(ItemLine(potion or stone)) end
         return UseLines(ItemLine(stone or potion))
     end,
