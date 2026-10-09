@@ -7,6 +7,7 @@ local S = ns.QoLSettings
 local Parts, St = ns.Shared.Parts, ns.Shared.Style
 
 local CALL_PET, SUMMON_IMP = 883, 688
+local LONE_WOLF = 409979 -- https://www.wowhead.com/forever/spell=409979
 local ICON = 132161
 local WIDTH, ICON_GAP = 220, 8
 local DISMOUNT_DELAY = 5
@@ -74,7 +75,9 @@ local function BuildCurve()
 end
 
 local function ShouldHavePet()
-    if class == "HUNTER" then return C_SpellBook.IsSpellKnown(CALL_PET) end
+    if class == "HUNTER" then
+        return C_SpellBook.IsSpellKnown(CALL_PET) and not C_SpellBook.IsSpellKnown(LONE_WOLF)
+    end
     if class == "WARLOCK" then return C_SpellBook.IsSpellKnown(SUMMON_IMP) and not sacrificed end
     return false
 end
