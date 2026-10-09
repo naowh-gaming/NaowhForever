@@ -39,6 +39,7 @@ local TEXT_LEARN_ALL = "Learn All"
 local TEXT_BARS = "Put the New Ranks on My Bars"
 local TEXT_LEVEL = "Level "
 local TEXT_LEAVE_OUT = "Click to leave it out of Learn All."
+local TEXT_SKIPPED = "Skipped in the Training Planner"
 local TEXT_PICKED = "%d of %d picked"
 local TEXT_PICKED_COST = "Picked  "
 local TEXT_LEAVES = "Leaves "
@@ -50,6 +51,7 @@ local TEXT_NOTHING = "Nothing to train here for now."
 
 local panel
 local unpicked = {}
+local picked = {}
 local learned = 0
 local panelQueued = false
 local hookedTrainer
@@ -81,10 +83,19 @@ local function Offers()
     return out
 end
 
+local function Skipped(offer)
+    return offer.spell and Training.Ignored()[offer.spell]
+end
+
+local function IsOff(offer)
+    local key = Key(offer)
+    return not picked[key] and (unpicked[key] or Skipped(offer))
+end
+
 local function Affordable(offers)
     local out, budget = {}, GetMoney()
     for _, offer in ipairs(offers) do
-        if not unpicked[Key(offer)] and offer.cost <= budget then
+        if not IsOff(offer) and offer.cost <= budget then
             out[#out + 1] = offer
             budget = budget - offer.cost
         end
@@ -119,7 +130,7 @@ local function LearnAll()
 end
 
 local function CheckPaint(row)
-    local on = not unpicked[Key(row.offer)]
+    local on = not IsOff(row.offer)
     row.tick:SetShown(on)
     local c = on and T.accent or T.line
     row.box:SetColor(c.r, c.g, c.b, 1)
@@ -128,13 +139,22 @@ end
 
 local function OnOfferClick(self)
     local key = Key(self.offer)
-    unpicked[key] = not unpicked[key] or nil
+    if IsOff(self.offer) then
+        unpicked[key] = nil
+        picked[key] = true
+    else
+        picked[key] = nil
+        unpicked[key] = true
+    end
     Render()
 end
 
 local function OnOfferEnter(self)
     GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
     GameTooltip:SetTrainerService(self.offer.index)
+    if Skipped(self.offer) and not picked[Key(self.offer)] then
+        GameTooltip:AddLine(TEXT_SKIPPED, T.muted.r, T.muted.g, T.muted.b, true)
+    end
     GameTooltip:AddLine(" ")
     GameTooltip:AddLine(TEXT_LEAVE_OUT, T.muted.r, T.muted.g, T.muted.b, true)
     GameTooltip:Show()
@@ -252,17 +272,17 @@ local function FillRows(offers)
 end
 
 local function FillTotals(offers)
-    local picked, pickedCost = 0, 0
+    local pickedCount, pickedCost = 0, 0
     for _, offer in ipairs(offers) do
-        if not unpicked[Key(offer)] then
-            picked = picked + 1
+        if not IsOff(offer) then
+            pickedCount = pickedCount + 1
             pickedCost = pickedCost + offer.cost
         end
     end
     local buy = Affordable(offers)
     local buyCost = 0
     for _, offer in ipairs(buy) do buyCost = buyCost + offer.cost end
-    panel.count:SetText(#offers > 0 and TEXT_PICKED:format(picked, #offers) or "")
+    panel.count:SetText(#offers > 0 and TEXT_PICKED:format(pickedCount, #offers) or "")
     panel.total:SetText(TEXT_PICKED_COST .. Training.Coins(pickedCost))
     local gold = GetMoney()
     panel.note:SetText(gold >= pickedCost and (TEXT_LEAVES .. Training.Coins(gold - pickedCost))
@@ -343,6 +363,7 @@ local function OnEvent(_, event, arg1)
         if arg1 == TRAINER_ADDON then HookTrainerFrame() end
     elseif event == "TRAINER_SHOW" then
         wipe(unpicked)
+        wipe(picked)
         learned = 0
         if panel then panel.dismissed = nil end
         HookTrainerFrame()
@@ -366,6 +387,10 @@ local function OnSettingChanged(key)
     if key == "enabled" or key == "trainerPanel" then Apply() end
 end
 
+local function OnPlanChanged()
+    if panel and panel:IsShown() then Queue() end
+end
+
 local function OnLogin(self)
     self:UnregisterAllEvents()
     Apply()
@@ -373,6 +398,7 @@ end
 
 events:SetScript("OnEvent", OnEvent)
 S.OnChange(OnSettingChanged)
+Training.OnChange(OnPlanChanged)
 hooksecurefunc(ns, "Apply", Apply)
 
 local boot = CreateFrame("Frame")
