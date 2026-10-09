@@ -135,13 +135,13 @@ local function BackClicked(link)
     link:GetParent():Hide()
 end
 
-local function Logo(window, page, middle)
+local function Logo(window, page, middle, texture, size)
     local logo = CreateFrame("Button", nil, window)
-    logo:SetSize(LOGO_SIZE, LOGO_SIZE)
+    logo:SetSize(size or LOGO_SIZE, size or LOGO_SIZE)
     logo:SetPoint("LEFT", window, "TOPLEFT", PAD, middle)
     logo.icon = logo:CreateTexture(nil, "ARTWORK")
     logo.icon:SetAllPoints()
-    logo.icon:SetTexture(LOGO, nil, nil, "TRILINEAR")
+    logo.icon:SetTexture(texture or LOGO, nil, nil, "TRILINEAR")
     logo.icon:SetAlpha(LOGO_REST)
     logo.page = page
     logo:SetScript("OnClick", OpenPage)
@@ -344,6 +344,10 @@ function Parts.Resizable(window, sizeKey, minW, minH, onSized, onReleased)
         if onReleased then onReleased() end
     end)
     return grip
+end
+
+function Parts.Logo(window, page, middle, texture, size)
+    return Logo(window, page, middle, texture, size)
 end
 
 function Parts.TitleBar(window, title, subtitle, page)

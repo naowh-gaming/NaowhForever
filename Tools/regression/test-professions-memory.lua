@@ -293,9 +293,9 @@ local settings = { enabled = true, recipeFinder = true, vendorMaterials = true, 
 local defaults = {}
 local db = {}
 local account = {}
-local ns
+local ns, logoPage
 ns = { MEDIA = dofile("Tools/regression/core_media.lua"),
-    Shared = { Style = dofile("Tools/regression/shared_style.lua"), Parts = {}, Settings = {
+    Shared = { Style = dofile("Tools/regression/shared_style.lua"), Parts = { Logo = function(parent, page) logoPage = page; return Widget(parent) end }, Settings = {
         Group = function() return {} end, Look = function() return {} end,
         Page = function() return { Window = Noop, Card = Noop } end } },
     THEME = { accent = { r = 0, g = 0.57, b = 0.93 }, muted = { r = 0.6, g = 0.6, b = 0.6 },
@@ -733,4 +733,5 @@ if #failures > 0 then
     for _, label in ipairs(failures) do print("  FAIL " .. label) end
     error(("test-professions-memory: %d of %d checks failed"):format(#failures, checks))
 end
+check("the recipe window's logo opens the Professions settings", logoPage == "Professions/Settings")
 print(("test-professions-memory: %d checks passed"):format(checks))
