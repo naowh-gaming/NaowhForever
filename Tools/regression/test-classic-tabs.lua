@@ -75,20 +75,6 @@ local function Load(account)
     return env.NaowhForever
 end
 
-local function Find(list, test)
-    for _, x in ipairs(list) do if test(x) then return x end end
-end
--- ns.Sunken's edge: a frame holding two lit lines.
-local function SunkenOn(frame, St)
-    return Find(frame.children, function(c)
-        local lit = 0
-        for _, t in ipairs(c.children) do
-            if t.kind == "Texture" and t.color and t.color[1] == St.CLASSIC_BEVEL_RGB.r then lit = lit + 1 end
-        end
-        return lit == 2
-    end) ~= nil
-end
-
 local function Tabs(ns)
     local bar = ns.Shared.Parts.Tabs(New("Frame"), 300, { { key = "a", label = "A" }, { key = "b", label = "B" } },
         function() end)
