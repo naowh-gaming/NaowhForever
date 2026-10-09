@@ -892,7 +892,7 @@ function ns.BuildSettingsPage(parent, y)
         -- What the selection looks like, before a reload.
         { type = "palette", text = "", colors = function() return ns.ThemePalette(ns.ThemePresetKey()) end }
     ); y = y - h
-    if CustomSelected() then
+    if CustomSelected() and not ClassicSkin() then
         -- An action, not a setting: it always reads "Choose a theme...", and picking one
         -- asks before it replaces the swatches below with that theme's colors.
         local starts, startOrder = { [""] = "Choose a theme...", default = "Naowh (default)" }, { "", "default" }

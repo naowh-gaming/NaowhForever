@@ -1316,7 +1316,7 @@ function UI.FontChoices(selected)
     return values, order
 end
 
--- A SharedMedia font by name, or the Addon Font for "" and anything missing.
+-- A SharedMedia font by name, or the heading font for "" and anything missing (the Addon Font off Classic+).
 function UI.FontPath(name)
     local LSM = LibStub and LibStub("LibSharedMedia-3.0", true)
     local path = LSM and name and name ~= "" and LSM:Fetch("font", name, true)

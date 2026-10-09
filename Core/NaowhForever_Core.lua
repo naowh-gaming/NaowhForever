@@ -649,6 +649,7 @@ local function ClassicButton(btn, bg, border, lbl)
     ns.PixelInset(inside, 1, btn)
     local gold, lit = St.CLASSIC_GOLD_RGB, St.CLASSIC_RIM_LIT_RGB
     local rim = ns.Border(inside, gold)
+    btn._rim, btn._shine = rim, shine
     lbl:SetTextColor(T.accent.r, T.accent.g, T.accent.b, 1)
     lbl:SetShadowColor(0, 0, 0, 1)
     lbl:SetShadowOffset(1, -1)
