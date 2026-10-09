@@ -403,5 +403,13 @@ check("None clears it", B.Store().classes.WARRIOR == nil and warriorRow.get() ==
 check("shown to paladins", not warriorRow.hidden())
 class = "WARRIOR"
 check("and hidden from everyone else", warriorRow.hidden())
+for i = #cards.bar.rows, 1, -1 do
+    local row = cards.bar.rows[i]
+    if row[1] and row[1].look then table.remove(cards.bar.rows, i) end
+end
+local Search = dofile("Tools/regression/settings_search.lua")({ ["Blessings/Settings"] = { cards.bar } })
+local kings = Search("kings")
+check("the options search finds Kings on the Blessing Bar card, a row per class",
+    #kings >= #B.CLASSES and kings[1].label == "Warrior" and kings[1].card == "Blessings/Settings:bar")
 
 print(("test-blessing-preview: %d checks passed"):format(checks))
