@@ -117,6 +117,7 @@ local function Fixture(saved)
                 local mover = Frame(frame)
                 mover.shown = false
                 state.movers[label] = { frame = frame, page = page, feature = feature }
+                mover._placement = state.movers[label]
                 return mover
             end,
             ModuleSettings = function(_, given)
@@ -332,9 +333,12 @@ end
 do
     local s = Shown()
     local mover = s.movers.Alerts
-    check("Alerts group: HUD Editor > Settings opens Durability", mover.page == "QoL/Loot & Items"
-        and mover.feature == "QoL/Loot & Items:durability"
-        and s.ns.Shared.Settings.pages["QoL/Loot & Items"].cards.durability ~= nil)
+    check("Alerts group: HUD Editor > Settings opens the lowest alert showing, Talent Points",
+        mover.page == "QoL/Questing & Group" and mover.feature == "QoL/Questing & Group:talentPoints"
+        and s.ns.Shared.Settings.pages["QoL/Questing & Group"].cards.talentPoints ~= nil)
+    check("every alert in the group names a card that is there", s.ns.Shared.Settings.pages["QoL/Loot & Items"]
+        .cards.durability and s.ns.Shared.Settings.pages["QoL/Loot & Items"].cards.restock
+        and s.ns.Shared.Settings.pages["QoL/Combat"].cards.petTracker)
 end
 
 print(checks .. " text alert look checks passed")

@@ -346,7 +346,7 @@ local function BuildAlert()
     alert.click:SetScript("OnEnter", AlertTip)
     alert.click:SetScript("OnLeave", HideTip)
     alert:Hide()
-    ns.AlertStack(alert, ALERT_ORDER)
+    ns.AlertStack(alert, ALERT_ORDER, A.PAGE, "campNearby")
 end
 
 local function LayoutAlert()
