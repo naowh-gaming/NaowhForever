@@ -26,7 +26,7 @@ local cells = {}
 local pending
 local wakeTimer, wakeDue
 local wakeAt
-local itemBuffs, loading = {}, {}
+local itemBuffs, requested = {}, {}
 local wellFedName
 
 local GROUP_UNIT = { player = true }
@@ -69,14 +69,15 @@ local function WellFed(buffs)
     end
 end
 
--- An elixir, flask or scroll's buff is its use spell, which needs the item cached.
+-- An elixir, flask or scroll's buff is its use spell, which needs the item cached. Asked for
+-- once: an ID with no use spell would otherwise load, refresh and ask again forever.
 local function ItemBuff(itemID)
     if not itemBuffs[itemID] then
         local _, spell = C_Item.GetItemSpell(itemID)
         if spell then
             itemBuffs[itemID] = spell
-        else
-            loading[itemID] = true
+        elseif not requested[itemID] then
+            requested[itemID] = true
             C_Item.RequestLoadItemDataByID(itemID)
         end
     end
@@ -415,10 +416,7 @@ events:SetScript("OnEvent", function(_, event, unit)
         return
     end
     if event == "PLAYER_REGEN_DISABLED" then HideMenu(); return end
-    if event == "ITEM_DATA_LOAD_RESULT" then
-        if not loading[unit] then return end
-        loading[unit] = nil
-    end
+    if event == "ITEM_DATA_LOAD_RESULT" and not requested[unit] then return end
     Queue()
 end)
 

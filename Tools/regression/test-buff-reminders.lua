@@ -333,6 +333,20 @@ do
     Check("Well Fed, flask and loaded elixir up", t.Shown(), "")
 end
 
+-- An item with no use spell is asked for once, so its load result cannot refresh forever.
+do
+    local t = Fixture({ instance = "raid", bags = { 6948 }, settings = { consumableEntries = {
+        { category = "flask", itemID = 6948 } } } })
+    t.Login()
+    t.state.requested[6948] = nil
+    t.Fire("ITEM_DATA_LOAD_RESULT", 6948)
+    t.Advance(0.5)
+    Check("no use spell: not asked again after it loads", t.state.requested[6948], nil)
+    t.Fire("ITEM_DATA_LOAD_RESULT", 6948)
+    t.Advance(0.5)
+    Check("no use spell: a second load result asks nothing more", t.state.requested[6948], nil)
+end
+
 -- Warn With Minutes Left: a buff under the time shows with its timer; one over it is
 -- woken up when it crosses.
 do
