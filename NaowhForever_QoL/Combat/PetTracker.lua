@@ -5,7 +5,7 @@ local S = ns.QoLSettings
 local Parts, St = ns.Shared.Parts, ns.Shared.Style
 
 local CALL_PET, SUMMON_IMP = 883, 688
-local LONE_WOLF = 415370
+local LONE_WOLF = 415370 -- https://www.wowhead.com/forever/spell=415370
 local ICON = 132161
 local WIDTH, ICON_GAP = 220, 8
 local DISMOUNT_DELAY = 5
