@@ -215,7 +215,8 @@ do
     t.Fire("BAG_UPDATE_DELAYED")
     Check("no writes before PLAYER_ENTERING_WORLD", #t.macros, 0)
     t.Fire("PLAYER_ENTERING_WORLD")
-    Check("health, healthstone first", t.Body("NF Health"), "#showtooltip\n/use item:5509")
+    Check("health, healthstone then potion", t.Body("NF Health"),
+        "#showtooltip\n/castsequence reset=combat item:5509, item:929")
     Check("trinket 1", t.Body("NF Trinket 1"), "#showtooltip 13\n/use 13")
     Check("mana not made while off", t.Body("NF Mana"), nil)
 end
@@ -224,7 +225,8 @@ end
 do
     local t = Fixture({ settings = { health = true, healthOrder = "potion" }, bags = { 929, 5509 } })
     t.Fire("PLAYER_ENTERING_WORLD")
-    Check("health, potion first", t.Body("NF Health"), "#showtooltip\n/use item:929")
+    Check("health, potion then healthstone", t.Body("NF Health"),
+        "#showtooltip\n/castsequence reset=combat item:929, item:5509")
     t.Bags({ 5509 })
     t.Fire("BAG_UPDATE_DELAYED")
     Check("potion first falls back to a stone", t.Body("NF Health"), "#showtooltip\n/use item:5509")

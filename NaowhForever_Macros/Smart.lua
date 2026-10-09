@@ -63,9 +63,12 @@ end
 
 local BODIES = {
     health = function()
-        local stone, potion = FirstCarried(ns.HEALTHSTONES), FirstCarried(ns.HEALING_POTIONS)
-        if S.Get("healthOrder") == "potion" then return UseLines(ItemLine(potion or stone)) end
-        return UseLines(ItemLine(stone or potion))
+        local first, second = FirstCarried(ns.HEALTHSTONES), FirstCarried(ns.HEALING_POTIONS)
+        if S.Get("healthOrder") == "potion" then first, second = second, first end
+        if first and second then
+            return "#showtooltip\n/castsequence reset=combat item:" .. first .. ", item:" .. second
+        end
+        return UseLines(ItemLine(first or second))
     end,
     mana = function() return UseLines(ItemLine(FirstCarried(Items.MANA_POTIONS))) end,
     food = function()
