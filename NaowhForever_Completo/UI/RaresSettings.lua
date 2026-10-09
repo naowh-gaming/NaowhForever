@@ -183,8 +183,8 @@ page:Card({
 page:Card({
     id = "rarePins", name = "Map Pins", order = 30, switch = "rarePins",
     help = "A star on the world map for every rare you have not killed, where it is most likely to be. "
-        .. "Hover one for its other spawn spots and, if it patrols, its way; click it for a waypoint, "
-        .. "right-click it to keep them shown with a panel of its drops.",
+        .. "Hover one for the rare and its drops, its other spawn spots and, if it patrols, its way; "
+        .. "click it for a waypoint, right-click it to keep its spots and way shown.",
     summary = PinsSummary,
     rows = {
         { key = "rarePinsKilled", label = "Show Killed Rares", toggle = true, needs = Enabled, why = TEXT_OFF,

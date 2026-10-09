@@ -1,11 +1,12 @@
 # Completo
 
-Everything there is to do, and how much of it you have done. Its Quests tab has every quest of
-every zone for your character, how many you have done per zone, and for each quest chain the step
+Everything there is to do, and how much of it you have done. Its Overview tab, where it opens
+first, shows how far along you are in Quests and Rares, everywhere and in the zone you are in.
+Its Quests tab has every quest of every zone for your character, how many you have done per zone, and for each quest chain the step
 you are on; its Rares tab every rare of every zone and which of them this character has killed.
 Map Pins put a ! on the world map at each quest giver with a quest for you, and a star where each
 rare spawns; Rare Alerts warn you when a rare is near. Off by default, every feature too: players
-turn it on in Completo's settings pages (Completo/Quests and Completo/Rares).
+turn it on in Completo's settings pages (Completo/General, Completo/Quests and Completo/Rares).
 
 ## Layout
 
@@ -32,17 +33,18 @@ NaowhForever_Completo/
     Style.lua                 Completo's own look, on top of Shared/Style.lua
     View.lua                  the window's row kinds and what its rows share (Completo.View)
     Hero.lua                  the card on top of a page: done of total, count and bar
-    ZoneRow.lua               a zone on All Zones
+    ZoneRow.lua               a zone on All Zones, and the progress row it shares (View.ProgressRow)
+    PartRow.lua               Quests or Rares on the Overview, everywhere or in your zone
     QuestRow.lua              a quest, and a chain's tree line
     RareRow.lua               a rare
     DropRow.lua               a rare's drop, under it while open
     AlertCard.lua             the Rare Alert's card, live or in its preview (Completo.AlertCard)
   UI/
     RareAlert.lua             the alert on screen: seeing a rare, the card, its place (Completo.RareAlert)
-    Window.lua                the window (/nfcompleto, its key binding) and its two tabs
+    Window.lua                the window (/nfcompleto, its key binding) and its three tabs
     QuestPins.lua, .xml       the quest giver pins on the world map, and their template
-    RarePanel.lua             the focused rare's panel beside its star (Completo.RarePanel)
     RarePins.lua, .xml        the rare stars on the world map, and their template
+    GeneralSettings.lua       the Completo/General settings page: the key binding and the window
     QuestsSettings.lua        the Completo/Quests settings page, declared as cards
     RaresSettings.lua         the Completo/Rares settings page, with the alert's live preview
 ```
@@ -108,6 +110,9 @@ quest and creature pages. Do not edit them by hand: change the tool and run it a
 - `MIN_PIN_SCALE` is 1.5: the world map scales its canvas to fit, and in the small map's window
   pins sized in map units shrink with it. `ScalePin` keeps a rare star at least 1.5 times its size
   on screen there; on the full-screen map it is left as it is, and grows as you zoom.
+- Pin Size is halved for quest pins on the full screen map (`FULL_SCREEN_SHARE`), where they
+  otherwise stand out far too big, as the Skyborne and entrance pins do. The map going full
+  screen or back only changes their sizes, so it is safe in combat too.
 - Quest pins redraw on a quest taken, handed in or dropped, and on a level up (which turns some
   grey and lets others be picked up). A giver whose quests are all repeatable gets the game's blue
   mark; where an atlas is missing, the gossip window's ! is tinted instead.
@@ -145,12 +150,13 @@ quest and creature pages. Do not edit them by hand: change the tool and run it a
   stage had no size, or dropped while the settings were shut, would be missing.
 - The preview fits the card on its stage: at least 32 to spare across and 8 down, its glow
   counted, and a 600 wide stage before layout has run.
-- A rare's star is where it is most likely to be. Hovering it shows its other spawn spots and its
-  way, smaller and taking no mouse (a level under the star, so nothing covers it), and fades the
-  others. Right-click keeps that so, with a panel beside the star on the side with room, as a side
-  panel is placed; clamped to the screen it would otherwise slide back over the star. The panel
-  follows when the map pans, zooms or resizes.
-- The panel sits over the window (DIALOG over HIGH), so Open in Completo lets the focus go first.
+- A rare's star is where it is most likely to be. Hovering it shows its tooltip (what it is,
+  whether you killed it, its drops), its other spawn spots and its way, smaller and taking no
+  mouse (a level under the star, so nothing covers it), and fades the others. Right-click keeps
+  that so (focus) after the pointer moves off, with no panel; right-click it again, or another
+  star, to let go. Let go of, every star is back at once, not only once the pointer moves off,
+  and its tooltip stays while the pointer is still on it. Another map lets go of it.
+- The Overview listens for quest events like the Quests tab, and redraws on a rare killed.
 - The Rares tab listens to no events: a rare changes only by a kill counted, which redraws it.
 - A search names every zone, so its rows do not name their zone; a rare opened from the map stays
   listed even with Hide Killed Rares.
@@ -163,5 +169,7 @@ quest and creature pages. Do not edit them by hand: change the tool and run it a
 
 - `luacheck NaowhForever_Completo` from the repo root.
 - `lua Tools/regression/test-completo-rares.lua`: the rare rules, counting kills, Rare Alerts,
-  their settings and preview, and the rare map pins and panel.
+  their settings and preview, and the rare map pins and their focus.
+- `lua Tools/regression/test-completo-quest-pins.lua`: the quest pins are Pin Size on the small
+  map, half that on the full screen map, and resize when the map changes between the two.
 - In game: `/reload` after changing a file. A new file needs a restart.

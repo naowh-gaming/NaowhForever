@@ -8,7 +8,7 @@ local St = Shared.Style
 local PANEL_W, PANEL_PAD, PANEL_INSET = St.PANEL_W, St.PANEL_PAD, St.PANEL_INSET
 local PANEL_HEADER, PANEL_BUTTONS, BORDER_RGB = St.PANEL_HEADER, St.PANEL_BUTTONS, St.BORDER_RGB
 local CARD_FILL, CARD_EDGE = St.WINDOW_CARD_FILL, St.WINDOW_CARD_EDGE
-local GRADIENT_SUBLEVEL, CARD_SUBLEVEL = -8, -6
+local GRADIENT_SUBLEVEL, PATTERN_SUBLEVEL, CARD_SUBLEVEL = -8, -7, -6
 local PANEL_ALPHA = 0.96
 local SCROLL_GAP = 20
 local SIDE_MIN_H = 320
@@ -51,6 +51,11 @@ function Backdrop:Paint(alpha)
     self.bottom:SetRGBA((top.r + bg.r) / 2, (top.g + bg.g) / 2, (top.b + bg.b) / 2, alpha)
     self.top:SetRGBA(top.r, top.g, top.b, alpha)
     self.gradient:SetGradient("VERTICAL", self.bottom, self.top)
+    local pattern = self.pattern
+    if pattern then
+        local shade = St.CLASSIC_PATTERN_SHADE
+        pattern:SetVertexColor(shade, shade, shade, St.CLASSIC_PATTERN_ALPHA * alpha)
+    end
     local flat = self.flat
     for i = 1, #flat do
         local texture = flat[i]
@@ -109,6 +114,14 @@ function Parts.Backdrop(frame)
     backdrop.gradient:SetAllPoints()
     backdrop.gradient:SetColorTexture(1, 1, 1, 1)
     backdrop.bottom, backdrop.top = CreateColor(0, 0, 0, 1), CreateColor(0, 0, 0, 1)
+    if ns.classicSkin then
+        local pattern = frame:CreateTexture(nil, "BACKGROUND", nil, PATTERN_SUBLEVEL)
+        pattern:SetAllPoints()
+        pattern:SetTexture(St.CLASSIC_PATTERN, "REPEAT", "REPEAT")
+        pattern:SetHorizTile(true)
+        pattern:SetVertTile(true)
+        backdrop.pattern = pattern
+    end
     return backdrop
 end
 

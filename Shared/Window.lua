@@ -1,4 +1,4 @@
--- Window.lua: a window in the house look (ns.Shared.Parts): the frame, its size grip, the title bar with its logo, icons and opacity slider, and the footer.
+-- Window.lua: a window in the house look (ns.Shared.Parts): the frame, its size grip, the title bar with its logo, icons and opacity slider, the footer, and the Classic+ trim and title plate.
 local ns = _G.NaowhForever
 local T = ns.THEME
 local Parts = ns.Shared.Parts
@@ -33,6 +33,8 @@ local FOOTER_LEFT = 6
 local FOOTER_RIGHT = 4
 local FOOTER_RISE = 3
 local BRAND_GAP = 5
+local TRIM_GEM_LEVEL, PLATE_LEVEL = 3, 10
+local PLATE_SHADOW_Y = -1
 local TEXT_BACK = "Back"
 local TEXT_ADDON = "Naowh Forever"
 local TEXT_OPEN_OPTIONS = "Click to open its options."
@@ -88,6 +90,31 @@ local function KeepSize(window, sizeKey)
     local account = ns.AccountSettings()
     account.windowSizes = account.windowSizes or {}
     account.windowSizes[sizeKey] = { window:GetWidth(), window:GetHeight() }
+end
+
+local function Rings(frame, body)
+    local colors = { St.CLASSIC_GOLD_RGB }
+    for _ = 1, body do colors[#colors + 1] = St.CLASSIC_BRONZE_RGB end
+    colors[#colors + 1] = BORDER_RGB
+    for i, color in ipairs(colors) do
+        local ring = CreateFrame("Frame", nil, frame)
+        ns.PixelInset(ring, -i, frame)
+        ns.Border(ring, color)
+    end
+    return #colors
+end
+
+local function Gem(parent, size, x, y, relativeTo, point)
+    local edge = parent:CreateTexture(nil, "ARTWORK")
+    edge:SetTexture(St.GEM, nil, nil, "TRILINEAR")
+    edge:SetVertexColor(BORDER_RGB.r, BORDER_RGB.g, BORDER_RGB.b, 1)
+    edge:SetSize(size + 2 * St.CLASSIC_GEM_EDGE, size + 2 * St.CLASSIC_GEM_EDGE)
+    edge:SetPoint("CENTER", relativeTo, point, x, y)
+    local gem = parent:CreateTexture(nil, "OVERLAY")
+    gem:SetTexture(St.GEM, nil, nil, "TRILINEAR")
+    gem:SetVertexColor(St.CLASSIC_GOLD_RGB.r, St.CLASSIC_GOLD_RGB.g, St.CLASSIC_GOLD_RGB.b, 1)
+    gem:SetSize(size, size)
+    gem:SetPoint("CENTER", edge)
 end
 
 local function LogoEnter(logo)
@@ -237,11 +264,51 @@ function Parts.Window(width, height, positionKey)
     Place(window, positionKey)
     window.backdrop = Parts.Backdrop(window)
     ns.Border(window, BORDER_RGB)
+    if ns.classicSkin then Parts.ClassicTrim(window) end
     window:SetScript("OnKeyDown", ns.UI.CloseOnEscape)
     window:SetScript("OnShow", OnShow)
     window:SetScript("OnHide", OnHide)
     HeaderRule(window)
     return window
+end
+
+function Parts.ClassicTrim(frame)
+    local reach = Rings(frame, St.CLASSIC_TRIM_BODY)
+    local gems = CreateFrame("Frame", nil, frame)
+    gems:SetAllPoints()
+    gems:SetFrameLevel(frame:GetFrameLevel() + TRIM_GEM_LEVEL)
+    local d = reach / 2
+    Gem(gems, St.CLASSIC_GEM, -d, d, frame, "TOPLEFT")
+    Gem(gems, St.CLASSIC_GEM, d, d, frame, "TOPRIGHT")
+    Gem(gems, St.CLASSIC_GEM, -d, -d, frame, "BOTTOMLEFT")
+    Gem(gems, St.CLASSIC_GEM, d, -d, frame, "BOTTOMRIGHT")
+end
+
+function Parts.ClassicBox(frame)
+    local inside = CreateFrame("Frame", nil, frame)
+    ns.PixelInset(inside, 1, frame)
+    return ns.Border(inside, St.CLASSIC_BRONZE_RGB)
+end
+
+function Parts.TitlePlate(frame, text)
+    local plate = CreateFrame("Frame", nil, frame)
+    plate:SetHeight(St.CLASSIC_PLATE_H)
+    plate:SetPoint("CENTER", frame, "TOP")
+    plate:SetFrameLevel(frame:GetFrameLevel() + PLATE_LEVEL)
+    ns.Solid(plate, "BACKGROUND", T.panel, 1):SetAllPoints()
+    ns.Border(plate, BORDER_RGB)
+    Rings(plate, St.CLASSIC_PLATE_BODY)
+    local title = plate:CreateFontString(nil, "OVERLAY")
+    title:SetFont(ns.TitleFontPath(), St.CLASSIC_PLATE_SIZE, "")
+    title:SetTextColor(St.CLASSIC_TITLE_RGB.r, St.CLASSIC_TITLE_RGB.g, St.CLASSIC_TITLE_RGB.b, 1)
+    title:SetShadowColor(BORDER_RGB.r, BORDER_RGB.g, BORDER_RGB.b, 1)
+    title:SetShadowOffset(0, PLATE_SHADOW_Y)
+    title:SetPoint("CENTER")
+    title:SetText(ns.L(text):upper())
+    Gem(plate, St.CLASSIC_PLATE_GEM, -St.CLASSIC_PLATE_GEM_GAP, 0, title, "LEFT")
+    Gem(plate, St.CLASSIC_PLATE_GEM, St.CLASSIC_PLATE_GEM_GAP, 0, title, "RIGHT")
+    plate:SetWidth(title:GetStringWidth() + 2 * St.CLASSIC_PLATE_PAD)
+    return plate
 end
 
 function Parts.Resizable(window, sizeKey, minW, minH, onSized)
@@ -269,7 +336,7 @@ end
 function Parts.TitleBar(window, title, subtitle, page)
     local middle = -HEADER / 2
     window.logo = Logo(window, page, middle)
-    window.title = ns.Font(window, TITLE_SIZE, nil, T.fg)
+    window.title = ns.Font(window, TITLE_SIZE, nil, ns.classicSkin and T.accent or T.fg, true)
     window.title:SetPoint("TOPLEFT", window.logo, "TOPRIGHT", TITLE_GAP, TITLE_RISE)
     window.title:SetText(title)
     window.subtitle = ns.Font(window, SMALL_SIZE, nil, T.muted)

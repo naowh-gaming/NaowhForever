@@ -9,8 +9,8 @@ local CARD_H, CARD_PAD, CARD_ICON = 76, 16, 52
 local CARD_BUTTON_W, CARD_BUTTON_H, CARD_LINE_GAP = 190, 30, 6
 local HEADLINE_SIZE, DETAIL_SIZE = 15, St.TEXT_SIZE
 
-local function Line(card, size, color)
-    local line = ns.Font(card, size, nil, color)
+local function Line(card, size, color, heading)
+    local line = ns.Font(card, size, nil, color, heading)
     line:SetJustifyH("LEFT")
     line:SetWordWrap(false)
     return line
@@ -33,7 +33,8 @@ function Parts.SettingsCardFrame(parent)
     card.icon:SetTexture(St.LOGO, nil, nil, "TRILINEAR")
     card.open = OpenButton(card)
     card.open:SetPoint("RIGHT", -CARD_PAD, 0)
-    card.headline = Line(card, HEADLINE_SIZE, T.fg)
+    card.headline = Line(card, HEADLINE_SIZE, ns.classicSkin and T.accent or T.fg, true)
+    if ns.classicSkin then Parts.ClassicBox(card) end
     card.detail = Line(card, DETAIL_SIZE, T.muted)
     return card
 end

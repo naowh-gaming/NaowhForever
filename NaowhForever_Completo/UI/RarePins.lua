@@ -1,4 +1,4 @@
--- RarePins.lua: a star on the world map for each rare you have not killed; hover or focus one for its way.
+-- RarePins.lua: a star on the world map for each rare you have not killed; hover or focus one for its spots and way.
 local ns = _G.NaowhForever
 
 local T = ns.THEME
@@ -6,7 +6,6 @@ local Completo = ns.Completo
 local S = Completo.Settings
 local Style = Completo.Style
 local R = Completo.Rares
-local Panel = Completo.RarePanel
 
 local TEMPLATE = "NaowhForeverRarePinTemplate"
 local STAR_ATLAS = "VignetteKill"
@@ -26,7 +25,8 @@ local TEXT_KIND_LEVEL = "%s, level %s"
 local TEXT_NOT_KILLED = "Not killed yet"
 local TEXT_PATROLS = "Patrols: the small stars are its way"
 local TEXT_SPAWNS = "Spawns at %d more spots, shown smaller"
-local TEXT_HINT = "Click for a waypoint, right-click to keep its route shown."
+local TEXT_HINT = "Click for a waypoint, right-click to keep its spots shown."
+local TEXT_HINT_FOCUSED = "Click for a waypoint, right-click to let go."
 
 local provider = CreateFromMixins(MapCanvasDataProviderMixin)
 local added
@@ -103,31 +103,14 @@ local function ShowTip(pin)
     if others > 0 then GameTooltip:AddLine(TEXT_SPAWNS:format(others), m.r, m.g, m.b) end
     R.AddLoot(GameTooltip, npc)
     GameTooltip:AddLine(" ")
-    GameTooltip:AddLine(TEXT_HINT, Style.Hint())
+    GameTooltip:AddLine(npc == focused and TEXT_HINT_FOCUSED or TEXT_HINT, Style.Hint())
     GameTooltip:Show()
-end
-
-local function FocusedPin(map)
-    for pin in map:EnumeratePinsByTemplate(TEMPLATE) do
-        if pin.npc == focused and not pin.kind then return pin end
-    end
 end
 
 local function Rest()
     ShowMore(focused)
     Highlight(focused)
-    local map = Map()
-    local pin = focused and map and FocusedPin(map)
-    if pin then return Panel.Show(pin) end
-    Panel.Hide()
 end
-
-local function LetGo()
-    focused = nil
-    Rest()
-end
-
-Panel.onLetGo = LetGo
 
 function NaowhForeverRarePinMixin:OnLoad()
     self:UseFrameLevelType(FRAME_LEVEL)
@@ -149,7 +132,7 @@ function NaowhForeverRarePinMixin:OnAcquired(data)
 end
 
 function NaowhForeverRarePinMixin:OnMouseEnter()
-    if self.npc ~= focused then ShowTip(self) end
+    ShowTip(self)
     ShowMore(self.npc)
     Highlight(self.npc)
 end
@@ -164,19 +147,14 @@ function NaowhForeverRarePinMixin:OnClick(button)
         ns.PlaceWaypoint(R.Name(self.npc), R.Map(self.npc), self.spotX, self.spotY)
     elseif button == "RightButton" then
         focused = focused ~= self.npc and self.npc or nil
-        GameTooltip:Hide()
+        if focused then return self:OnMouseEnter() end
         Rest()
-        if not focused then self:OnMouseEnter() end
+        ShowTip(self)
     end
 end
 
-provider.OnCanvasScaleChanged = Panel.Reside
-provider.OnCanvasPanChanged = Panel.Reside
-provider.OnCanvasSizeChanged = Panel.Reside
-
 function provider:RemoveAllData()
     wipe(shown)
-    Panel.Hide()
     self:GetMap():RemoveAllPinsByTemplate(TEMPLATE)
 end
 

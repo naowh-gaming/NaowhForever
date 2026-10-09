@@ -41,6 +41,7 @@ local CATEGORIES = {
     vendor     = { "townVendors", "Interface\\Icons\\INV_Misc_Bag_07", "Vendor" },
     mail       = { "townMail", "Interface\\Icons\\INV_Letter_15", "Send and collect mail" },
 }
+local EVERYWHERE = { flight = true, inn = true, stable = true }
 
 local TEXT_LEFT = "Left-click: "
 local TEXT_RIGHT = "Right-click: "
@@ -51,7 +52,7 @@ local TEXT_AUDIT = "Town audit %s. %d NPCs recorded so far."
 local TEXT_AUDIT_ON = "on: open an NPC's window while standing next to them"
 local TEXT_AUDIT_OFF = "off"
 local TEXT_SUMMARY = "%d of %d shown%s"
-local TEXT_CAPITALS = ", town pins in capitals only"
+local TEXT_CAPITALS = ", vendors and trainers in cities only"
 
 local miniPins, miniSpots = {}, {}
 local miniMap, miniWidth, miniHeight
@@ -180,11 +181,11 @@ local function AddDocks(map, mapID, faction)
     end
 end
 
-local function AddNPCs(map, list, faction, class)
+local function AddNPCs(map, list, faction, class, shops)
     for _, npc in ipairs(list or EMPTY) do
-        local cat = CATEGORIES[npc[3]]
-        if npc[7]:find(faction, 1, true) and S.Get(cat[1])
-            and (npc[3] ~= "class" or npc[6] == class) then
+        local kind = npc[3]
+        if (shops or EVERYWHERE[kind]) and npc[7]:find(faction, 1, true) and S.Get(CATEGORIES[kind][1])
+            and (kind ~= "class" or npc[6] == class) then
             map:AcquirePin(TEMPLATE, npc)
         end
     end
@@ -201,12 +202,12 @@ function provider:RefreshAllData()
     if not On() then return end
     local map = self:GetMap()
     local mapID = map:GetMapID()
-    local list = (not S.Get("townCapitalsOnly") or CAPITALS[mapID]) and ns.TownNPCs[mapID] or EMPTY
+    local shops = not S.Get("townCapitalsOnly") or CAPITALS[mapID]
     if S.Get("townZoneLinks") then AddExits(map, mapID) end
     local faction = UnitFactionGroup("player") == "Horde" and "H" or "A"
     local _, class = UnitClass("player")
     if S.Get("townTravel") then AddDocks(map, mapID, faction) end
-    AddNPCs(map, list, faction, class)
+    AddNPCs(map, ns.TownNPCs[mapID], faction, class, shops)
     if S.Get("townMail") then
         AddAll(map, ns.TownMailboxes[mapID])
     end
@@ -216,7 +217,7 @@ function provider:RefreshAllData()
 end
 
 local function MiniOn()
-    return On() and S.Get("townMinimap")
+    return On() and (S.Get("townMinimap") or S.Get("townMinimapSpirit"))
 end
 
 local function MiniFit(map)
@@ -303,8 +304,8 @@ local function MiniRefresh()
     wipe(miniSpots)
     miniMap = MiniOn() and C_Map.GetBestMapForUnit("player")
     if miniMap and MiniFit(miniMap) then
-        AddSpots(ns.TownMailboxes[miniMap])
-        AddSpots(ns.TownSpiritHealers[miniMap])
+        if S.Get("townMinimap") then AddSpots(ns.TownMailboxes[miniMap]) end
+        if S.Get("townMinimapSpirit") then AddSpots(ns.TownSpiritHealers[miniMap]) end
         miniWidth, miniHeight = C_Map.GetMapWorldSize(miniMap)
     end
     for i = #miniSpots + 1, #miniPins do miniPins[i]:Hide() end
@@ -405,37 +406,11 @@ local boot = CreateFrame("Frame")
 boot:RegisterEvent("PLAYER_LOGIN")
 boot:SetScript("OnEvent", Apply)
 
-local Group = ns.Shared.Settings.Group
-
 ns.Shared.Settings.Page("QoL/Interface", S):Card({
     id = "townMap", name = "Map Pins", order = 40, switch = "townMap",
-    help = "Trainers, vendors, innkeepers, flight masters and more pinned on the world map for "
-        .. "your faction, with their name and title on hover. No more asking a guard.",
+    help = "Service NPCs for your faction on the world map; pick which with its Map Pins button.",
     summary = TownSummary,
     rows = {
         { key = "townPinSize", label = "Pin Size", slider = { 10, 28, 1 } },
-        { key = "townCapitalsOnly", label = "Town Pins Only in Capitals", toggle = true,
-          help = "Keeps vendors and trainers off questing maps." },
-        { key = "townMinimap", label = "Mailboxes & Spirit Healers on Minimap", toggle = true,
-          help = "Pins the mailboxes and spirit healers near you on the minimap." },
-        Group("Show"),
-        { key = "townSpiritHealers", label = "Spirit Healers", toggle = true,
-          help = "Every graveyard's spirit healer, in towns and out in the world." },
-        { key = "townZoneLinks", label = "Clickable Zone Exits", toggle = true,
-          help = "Click an exit to open the adjoining zone map." },
-        { key = "townTravel", label = "Boats & Zeppelins", toggle = true,
-          help = "Every dock and zeppelin tower; click one to open where it goes." },
-        { key = "townClass", label = "Class Trainers", toggle = true, help = "Your class's trainers only." },
-        { key = "townProfession", label = "Profession Trainers", toggle = true },
-        { key = "townFlight", label = "Flight Masters", toggle = true },
-        { key = "townInn", label = "Innkeepers", toggle = true },
-        { key = "townBank", label = "Bank & Auction House", toggle = true },
-        { key = "townRepair", label = "Repairs", toggle = true },
-        { key = "townSupplies", label = "Reagents, Ammo & Food", toggle = true },
-        { key = "townStable", label = "Stable Masters", toggle = true },
-        { key = "townVendors", label = "Other Vendors", toggle = true,
-          help = "Trade goods and every other merchant." },
-        { key = "townMail", label = "Mailboxes", toggle = true,
-          help = "Every mailbox, in towns and out in the world." },
     },
 })

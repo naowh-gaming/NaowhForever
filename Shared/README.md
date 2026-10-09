@@ -48,7 +48,9 @@ Shared/
   Panels.lua       a window's backdrop and its cards (Parts.Backdrop), the panel a view sits in, and the
                    side panel that opens beside a window
   Window.lua       a window: the frame, its size grip, the title bar with its logo, icons and opacity
-                   slider, the link back to the window it was opened from, and the footer
+                   slider, the link back to the window it was opened from, and the footer; on the
+                   Classic+ skin its trim (Parts.ClassicTrim), title plate (Parts.TitlePlate) and a
+                   box's bronze line (Parts.ClassicBox)
   Tabs.lua         a switch of parts side by side (Parts.Tabs), and a search box (Parts.SearchBox)
   SettingsCard.lua a module's card at the top of its settings page: the logo, a line or two, and the
                    button that opens its window
@@ -87,7 +89,12 @@ Each file uses only the ones above it in `Shared.xml`. Every part sits on `ns.Sh
   row with `field` (and its own `get`/`set`) is one entry of a table setting `key`, with its own dot
   and reset (AuraBuffs' raid buff switches). A row or
   group with `hidden` is left off the page: `true` for one set on the preview instead, or a
-  function, so rows for one choice only (the Campfire's Round and Simple rows) show with it. The page
+  function, so rows for one choice only (the Campfire's Round and Simple rows) show with it. A
+  row's `cog = { title, tip }` puts a cog left of its control, opening a small panel of the rows
+  declared `under` that row's label: hidden rows, still searched, counted and reset with the
+  card, and a search hit on one opens the cog. `icons = { { texture, tip, open, enabled }, ... }`
+  adds other icons beside it. A card's `watch = { store, ... }` draws it again when another
+  module's settings change too. The page
   in the options window, its search entries, the dot on what you changed and each card's reset
   all come from that one declaration. Settings pages hold settings only: a module's lists and
   editors live in its own window, opened from the page's `page:Window{ ... }` card (first on
@@ -390,6 +397,36 @@ What a comment in the code used to say, in short. The house rules behind it are 
   hides and shows the rows, and hiding the slider ended its drag after one step.
 - A preview is drawn by the module's own drawing code on plain frames, never on its real
   (secure) frames. An edit zone runs nothing per frame except while it is dragged.
+- A row's icons (its cog first) are made once per declared row, so drawing them makes no tables.
+  A cog whose settings were changed is tinted as a row's dot is.
+- A cog opens one shared panel, drawn with the page's own row kinds, so its rows' dots, controls
+  and help are the same. A redraw of the page puts it back under the cog. The page's rows hide for
+  a moment on every redraw, so the panel closes only once the page itself is gone, a frame later.
+- A settings view changed while hidden is marked stale and drawn again as it shows, so it never
+  shows an old value (an options window that stepped aside for a picker, a page another changed).
+
+### The Classic+ skin
+
+- The skin is read once per load (`ns.classicSkin`), with the theme's colors, so every part asks it
+  as it is made; a change takes a reload.
+- A window's frame steps out from its own black edge: a gold line, `CLASSIC_TRIM_BODY` pixels of
+  bronze and a black rim, with a gem on each corner. The options window's name sits on a plate
+  over its top edge, in the game's title face.
+- A window's background is the game's own rock tiled over the backdrop, darkened
+  (`CLASSIC_PATTERN_SHADE`) and partly see-through (`CLASSIC_PATTERN_ALPHA`), so text on it stays
+  readable.
+- Cards and settings heads get a bronze line inside their black edge, the way the game draws its
+  option groups (`Parts.ClassicBox`).
+- The picked tab is lit bronze under a gold line along its top; the others read in gold.
+- The help card is drawn as the game draws its tooltips: dark blue inside a grey-blue line.
+- The picked sidebar row is the game's blue list glow, fading to the right
+  (`CLASSIC_PICK_ALPHA` to `CLASSIC_PICK_FADE`), with a lit line along its top.
+- A button's colors are each state's `{ top, bottom }`; pressed turns them over. A slider is
+  filled `{ top, bottom }` too, with a gem to drag on a black edge (`CLASSIC_KNOB_EDGE`).
+- The game's tick in a check box is drawn a little larger than the box (`CLASSIC_CHECK_SCALE`), as
+  the game draws it.
+- Headings stand out as the game's titles do: a size up (`CLASSIC_HEADING_STEP`), on a black drop
+  shadow.
 
 ## Checking
 

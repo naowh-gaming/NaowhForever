@@ -127,6 +127,7 @@ local function OnEvent(_, event, unit)
         Menu.Hide()
         return
     end
+    if event == "ITEM_DATA_LOAD_RESULT" and not R.Requested(unit) then return end
     Queue()
 end
 
@@ -163,6 +164,7 @@ local function Listen()
     events:RegisterEvent("PLAYER_UPDATE_RESTING")
     events:RegisterEvent("BAG_UPDATE_DELAYED")
     events:RegisterEvent("PLAYER_REGEN_DISABLED")
+    events:RegisterEvent("ITEM_DATA_LOAD_RESULT")
 end
 
 local function Apply()

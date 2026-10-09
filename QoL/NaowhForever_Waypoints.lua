@@ -32,6 +32,7 @@ local NAV_NAME, NAV_SUB, NAV_DIST = 14, 11, 16
 local NAV_Y = -70
 local NAV_NAME_LIFT, NAV_SUB_GAP, CUE_TEXT_GAP = 2, 1, 2
 local ARRIVED_HOLD = ns.WAYPOINT_HOLD
+local REACHED, LEAVE = 5, 7
 local CHECK_SHARE = 0.6
 local ROUND = ns.QoLConstants.ROUND
 local MINUTE = 60
@@ -252,6 +253,7 @@ end
 
 local pin, nav, cue, driver, navFrame, unlocked, gameHidden, warned
 local arrived, arrivals = false, 0
+local reached
 local lastX, lastY
 local shown = {}
 local dirty = true
@@ -283,8 +285,7 @@ local function UserTarget()
     return TEXT_MAP_PIN, where
 end
 
-local function Target()
-    local kind = C_SuperTrack.GetHighestPrioritySuperTrackingType()
+local function Target(kind)
     local types = Enum.SuperTrackingType
     if kind == types.UserWaypoint then
         return UserTarget()
@@ -358,13 +359,21 @@ local function PlaceAtEdge(cx, cy, dx, dy, scale)
 end
 
 local function PlaceOnSpot(nx, ny, scale)
-    local lift = S.Get("waypointBeam") and PIN / 2 + BEAM_H or 0
+    local lift = shown.beam and PIN / 2 + BEAM_H or 0
     if not pin.onNav then
         pin:ClearAllPoints()
         pin:SetPoint("CENTER", navFrame, "CENTER", 0, lift)
         pin.onNav = true
     end
     lastX, lastY = nx, ny + lift * scale
+end
+
+local function CheckReached(yards)
+    if shown.ground or yards > LEAVE then
+        reached = false
+    elseif yards <= REACHED then
+        reached = true
+    end
 end
 
 local function WalkSeconds(yards)
@@ -416,21 +425,25 @@ local function Update()
     else
         PlaceOnSpot(nx, ny, scale)
     end
-    pin:SetShown(not behind and (mode ~= "edge" or S.Get("waypointEdge")))
-    cue:SetShown(behind and S.Get("waypointEdge"))
+    CheckReached(yards)
+    pin:SetShown(not (behind or reached) and (mode ~= "edge" or S.Get("waypointEdge")))
+    cue:SetShown(behind and not reached and S.Get("waypointEdge"))
     Paint(mode, side, yards, WalkSeconds(yards), angle)
 end
 
 local function Retitle()
     dirty = true
     local where, placed
-    shown.name, where, shown.note, shown.icon, placed = Target()
+    local kind, types = C_SuperTrack.GetHighestPrioritySuperTrackingType(), Enum.SuperTrackingType
+    shown.name, where, shown.note, shown.icon, placed = Target(kind)
     shown.sub = shown.note and where and (shown.note .. St.PLACE_DOT .. where) or shown.note or where
     local route, at, n = ns.WaypointRoute()
     shown.onRoute = placed and route ~= nil
     if shown.onRoute then shown.sub = TEXT_STOP:format(route, St.PLACE_DOT, at, n) end
     shown.shape = S.Get("waypointShape")
-    shown.card, shown.beam = S.Get("waypointCard"), S.Get("waypointBeam")
+    shown.ground = kind == types.UserWaypoint or kind == types.Corpse
+    shown.card, shown.beam = S.Get("waypointCard"), S.Get("waypointBeam") and shown.ground
+    pin.onNav, reached = false, false
 end
 
 local function Detach()
@@ -459,7 +472,6 @@ local function Attach()
     if not driver then Build() end
     PlaceNav()
     Retitle()
-    pin.onNav = false
     lastX, lastY = nil, nil
     nav:SetShown(S.Get("waypointNav") or unlocked)
     driver:SetScript("OnUpdate", Update)
@@ -618,7 +630,7 @@ Settings.Page("QoL/Interface", S):Card({
         { key = "waypointTime", label = "Walking Time", toggle = true, needs = "waypointCard",
           help = "How long it takes to get there at your speed." },
         { key = "waypointBeam", label = "Line to the Ground", toggle = true,
-          help = "A line from the pin down to the spot itself." },
+          help = "A line from the pin down to a map pin's or corpse's spot." },
         { key = "waypointFadeNear", label = "Fade Up Close", slider = { 0, 100, 5 }, unit = "yd",
           help = "Fades the pin as you get this close, so it does not cover what you came for." },
         { key = "waypointEdge", label = "Edge Arrow Off Screen", toggle = true,

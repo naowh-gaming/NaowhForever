@@ -46,7 +46,7 @@ local frame, unlockActive, unlocked, inCombat, pendingApply, timeFormat
 local rows, byType = {}, {}
 local live = 0
 local queueColorKey, queued = {}, false
-local sealByName, seal, judgementName = {}, false, nil
+local sealByName, seal = {}, false
 local sealTimer, sealSeconds = nil, SEAL_SECONDS
 local isHunter, moving, latency, castEnd = false, false, 0, nil
 local swingSpeeds = {}
@@ -308,12 +308,9 @@ local function SealCast(spellID)
     if not Plain(spellID) then return end
     local name = C_Spell.GetSpellName(spellID)
     if not Plain(name) or not name then return end
-    if sealByName[name] then
-        SetSeal(sealByName[name])
-        RunOutIn(sealSeconds)
-    elseif name == judgementName then
-        SetSeal(false)
-    end
+    if not sealByName[name] then return end
+    SetSeal(sealByName[name])
+    RunOutIn(sealSeconds)
 end
 
 local function PaintQueue()
@@ -405,8 +402,6 @@ local function LearnSpells(classFile)
         local name = C_Spell.GetSpellName(s.id)
         if Plain(name) and name then sealByName[name] = s end
     end
-    local name = C_Spell.GetSpellName(SPELLS.JUDGEMENT)
-    judgementName = Plain(name) and name or nil
 end
 
 local function SavePosition(pos)

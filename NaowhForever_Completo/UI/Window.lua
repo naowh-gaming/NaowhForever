@@ -1,4 +1,4 @@
--- Window.lua: Completo's own window (/nfcompleto, its key binding): the Quests and Rares tabs, by zone.
+-- Window.lua: Completo's own window (/nfcompleto, its key binding): the Overview, and the Quests and Rares tabs by zone.
 local ns = _G.NaowhForever
 
 local Completo = ns.Completo
@@ -15,13 +15,15 @@ local MIN_W, MIN_H = 620, 420
 local CARD = 6
 local PERCENT = 100
 local ROUND_HALF = 0.5
-local TABS_W = 260
+local TAB_MARGIN = 28
 local SEARCH_W = 260
+local SEARCH_MIN_W = 140
+local SEARCH_GAP = 12
 local SEARCH_MAX = 150
 local TABS_TOP_GAP = 4
 local SCROLL_TOP_GAP = 8
 local SCROLL_GAP = 4
-local PAGE = "Completo/Quests"
+local PAGE = "Completo/General"
 local ALL_ZONES = "All Zones"
 local CONTINENTS = { [0] = "Eastern Kingdoms", [1] = "Kalimdor" }
 local ELSEWHERE = "Elsewhere"
@@ -29,6 +31,7 @@ local CONTINENT_ORDER = { CONTINENTS[0], CONTINENTS[1], ELSEWHERE }
 local EVENTS = { "QUEST_TURNED_IN", "QUEST_ACCEPTED", "QUEST_REMOVED", "PLAYER_LEVEL_UP" }
 local NO_EVENTS = {}
 local TABS = {
+    { key = "overview", label = "Overview", tip = "How far along you are in Quests and Rares." },
     { key = "quests", label = "Quests", tip = "Every quest of every zone, and where you are in each chain." },
     { key = "rares", label = "Rares", tip = "Every rare of every zone, and which of them you have killed." },
 }
@@ -50,11 +53,14 @@ local TEXT_NO_RARE_FOUND = "No rare for your character holds \"%s\"."
 local TEXT_FIRST_OF = "The first %d of %d; type more to narrow it down."
 local TEXT_RARES_PROGRESS = "%d of %d rares killed"
 local TEXT_QUESTS_PROGRESS = "%d of %d zone quests done"
+local TEXT_EVERYWHERE = "Everywhere"
+local TEXT_QUESTS_LINE = "Zone quests done"
+local TEXT_RARES_LINE = "Rares killed"
 
 local window, scroll, view
 local opened = {}
 local kept
-local tab = "quests"
+local tab = "overview"
 local zone
 local rareZone
 local byContinent = {}
@@ -72,6 +78,10 @@ end
 
 local function OnRares()
     return tab == "rares"
+end
+
+local function OnOverview()
+    return tab == "overview"
 end
 
 local function Source()
@@ -267,8 +277,33 @@ local function DrawQuests(self)
     self:Fit(EVENTS)
 end
 
+local function DrawOverview(self)
+    Q.Refresh()
+    self:Section(TEXT_EVERYWHERE, 2)
+    local n, total = Q.Progress()
+    self:Add("part", "quests", nil, TEXT_QUESTS, TEXT_QUESTS_LINE, n, total, false)
+    n, total = R.Progress()
+    self:Add("part", "rares", nil, TEXT_RARES, TEXT_RARES_LINE, n, total, true)
+    local questZone, rareZoneHere = Q.CurrentZone(), R.CurrentZone()
+    local here = questZone or rareZoneHere
+    if here then
+        self:Space(Style.SECTION_SPACE)
+        self:Section(here.name, (questZone and 1 or 0) + (rareZoneHere and 1 or 0))
+    end
+    if questZone then
+        local zn, zt, low, high = Q.ZoneProgress(questZone)
+        self:Add("part", "quests", questZone, TEXT_QUESTS, V.Levels(low, high), zn, zt, false)
+    end
+    if rareZoneHere then
+        local zn, zt, low, high = R.ZoneProgress(rareZoneHere)
+        self:Add("part", "rares", rareZoneHere, TEXT_RARES, V.Levels(low, high), zn, zt, true)
+    end
+    self:Fit(EVENTS)
+end
+
 function Draw:Redraw()
     self:Clear()
+    if OnOverview() then return DrawOverview(self) end
     if OnRares() then return DrawRares(self) end
     DrawQuests(self)
 end
@@ -302,14 +337,17 @@ end
 local function Paint()
     window.backdrop:Paint(Opacity() / PERCENT)
     window.opacity._refreshValue()
-    if OnRares() then
+    if OnOverview() then
+        window.note.text:SetText("")
+    elseif OnRares() then
         window.note.text:SetText(TEXT_RARES_PROGRESS:format(R.Progress()))
     else
         Q.Refresh()
         window.note.text:SetText(TEXT_QUESTS_PROGRESS:format(Q.Progress()))
     end
     window.note:SetWidth(math.max(1, math.ceil(window.note.text:GetStringWidth())))
-    window.search.hint:SetText(SEARCH_HINT[tab])
+    window.search:SetShown(not OnOverview())
+    if SEARCH_HINT[tab] then window.search.hint:SetText(SEARCH_HINT[tab]) end
     Parts.PaintTabs(window.tabs, tab)
 end
 
@@ -317,6 +355,11 @@ local function PickTab(key)
     tab = key
     Paint()
     Redraw()
+end
+
+function Draw:OpenPart(key, picked)
+    if key == "rares" then rareZone = picked else zone = picked end
+    PickTab(key)
 end
 
 local function Searched()
@@ -327,7 +370,13 @@ local function ContentWidth(width)
     return width - CARD - Style.CONTENT_INSET - CARD - Style.SCROLLBAR - Style.CONTENT_INSET
 end
 
+local function FitSearch()
+    local room = window:GetWidth() - 2 * (CARD + Style.CONTENT_INSET) - window.tabs:GetWidth() - SEARCH_GAP
+    window.search:SetWidth(math.max(SEARCH_MIN_W, math.min(SEARCH_W, room)))
+end
+
 local function FitView()
+    FitSearch()
     local width = ContentWidth(window:GetWidth())
     if view:GetWidth() == width then return end
     view:SetWidth(width)
@@ -335,7 +384,8 @@ local function FitView()
 end
 
 local function BuildTop(left, top)
-    window.tabs = Parts.Tabs(window, TABS_W, TABS, PickTab)
+    window.tabs = Parts.Tabs(window, 1, TABS, PickTab)
+    Parts.FitTabs(window.tabs, TABS, TAB_MARGIN)
     window.tabs:SetPoint("TOPLEFT", left, -top)
     window.search = Parts.SearchBox(window, SEARCH_HINT.quests, Searched)
     window.search:SetSize(SEARCH_W, Style.SEARCH_H)
@@ -380,7 +430,7 @@ local function OnSettingChanged(key)
 end
 
 local function OnRareChanged()
-    if not IsShown() or not OnRares() then return end
+    if not IsShown() or not (OnRares() or OnOverview()) then return end
     Paint()
     view:QueueRedraw()
 end

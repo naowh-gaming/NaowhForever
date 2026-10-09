@@ -67,8 +67,9 @@ QoL/
   NaowhForever_TownSpiritHealers.lua  spirit healers by map (ns.TownSpiritHealers), generated
   NaowhForever_TownTravel.lua      boats and zeppelins by map (ns.TownTravel), generated
   NaowhForever_ZoneExits.lua       each zone's exits (ns.ZoneExits), generated
-  NaowhForever_TownMap.xml         the town pin templates, then NaowhForever_TownMap.lua
+  NaowhForever_TownMap.xml         NaowhForever_TownMap.lua, the town pin templates, then NaowhForever_MapPinsPanel.lua
   NaowhForever_TownMap.lua         Map Pins on the world map and minimap, /naowh townaudit (ns.TownAudit)
+  NaowhForever_MapPinsPanel.lua    the Map Pins button on the world map and its drawer of which pins show
   NaowhForever_MapOverlays.lua     each zone map's explorable areas (ns.MapOverlays), generated
   NaowhForever_Unexplored.xml      the unexplored pin template, then NaowhForever_Unexplored.lua
   NaowhForever_Unexplored.lua      Unexplored Areas on the world map
@@ -506,7 +507,13 @@ QoL/
 - The hint lines' light blue (`HINT`) goes through `SoftBlue`: the shade it always was, or the theme's lighter Accent once a theme changes the Accent.
 - The map calls `CheckMouseButtonPassthrough` on every acquired pin, and its SetPassThroughButtons is protected: from our refresh it is blocked in combat. Town pins take no clicks, so clicks reach the map anyway; zone exits and docks are separate clickable pins, so the vendor and trainer pins stay click-through. A zeppelin tower's pin has a second destination on right click.
 - Forever has no map links of its own (`GetMapLinksForMap` returns nothing), so the exits come from `NaowhForever_ZoneExits.lua`. `EXIT_LENGTH` is an exit arrow's length, in pin sizes.
-- Mailboxes and spirit healers are not held to the capitals: Town Pins Only in Capitals keeps vendors and trainers off questing maps, and a mailbox out in the world is what you look for there.
+- Vendors & Trainers Only in Cities (`townCapitalsOnly`) keeps vendors, trainers and the bank off questing maps. Flight masters, innkeepers and stable masters (`EVERYWHERE`) are what a traveller looks for in any town, so they show on every map with it on; so do mailboxes and spirit healers, which are what you look for out in the world.
+- `townMinimap` is the minimap's mailboxes and `townMinimapSpirit` its spirit healers: `townMinimap` once held both, so existing profiles keep their mailboxes.
+- Which pins show is chosen on the map itself, from the Map Pins button (`NaowhForever_MapPinsPanel.lua`), so the options card holds only the switch and Pin Size. The keys stay in the QoL store, so saved settings carry over. The button and its drawer are made the first time the map pins are on.
+- The Map Pins button sits in the map's top right corner, left of the buttons the map keeps there and at their size, so they read as one row. Those are found by where they sit, not by name, so a map with more, fewer or none of them still gets a free spot.
+- The drawer is the options window's look: a header strip in the panel color, small accent group titles and ruled rows with the switch on the right. It is the map's child, so it opens, closes and scales with the map, `PANEL_LEVEL` over the map's pins as the Dungeon Journal's drawer.
+- The drawer sits against the map window's left side (the Dungeon Journal takes the right), `GAP` -1 putting its border on the map's so the two read as one window; with no room there, the right. It is the map's height, as wide as the quest log beside the map (`PANEL_W` where there is none), and its rows shrink to fit a small map, down to `ROW_MIN_H`.
+- The maximized map letterboxes its picture on a wide screen, so there the drawer goes in the black bar left of the picture, as wide as the bar allows; with no bar `BAR_MIN_W` wide it hangs under the Map Pins button, which stays free to close it. The map's Maximize and Minimize place it again.
 - On the minimap, the game says when you start and stop moving but not where you are, so the pins are placed every `MINI_INTERVAL` (0.05 s) while you move, or always with a rotating minimap, for turning. The zone's map is kept in world coordinates (its continent, top left corner and the steps for one whole map across and down): `UnitPosition` makes no table each tick, `GetPlayerMapPosition` does.
 - `NaowhForever_MapOverlays.lua`, `NaowhForever_TownMailboxes.lua`, `NaowhForever_TownSpiritHealers.lua`, `NaowhForever_TownTravel.lua` and `NaowhForever_ZoneExits.lua` are generated (`Tools/build_map_overlays.py`, `build_mailboxes.py`, `build_spirit_healers.py`, `build_travel.py`, `build_zone_exits.py`): change the builder and run it, never the file.
 
@@ -523,7 +530,8 @@ QoL/
 
 ### Waypoint Pin
 - It follows the game's navigation frame (`C_Navigation`), so quests, your corpse and map pins get it as well as `ns.PlaceWaypoint`'s spots, which it names. A user waypoint counts as ours when it lies within `SAME_SPOT` (map percent) of `ns.placedWaypoint`.
-- The navigation point is the spot on the ground: the ring at the line's foot goes there and the pin stands above it.
+- A map pin's or corpse's navigation point is the spot on the ground: the ring at the line's foot goes there and the pin stands above it. A quest giver's is over their head, where the pin goes as it is, with no line down.
+- The game clears a map pin on arrival, but a quest stays tracked at the quest giver, so the pin goes within `REACHED` (5 yards) of a quest's target and comes back past `LEAVE` (7), so a step back does not make it flicker. The navigator stays.
 - Your speed reads secret at times, as in restricted content, so the last readable one is kept; standing still, the walking time uses `RUN_SPEED` (7 yards a second).
 - The card and navigator are repainted only when the mode, side, whole yards or whole seconds change; the place and arrows move every frame, and nothing is built per frame.
 - `BEHIND` is the angle either side of straight down that counts as behind you. `FAR` is the distance at which the pin is smallest (`FAR_SCALE`), and `FADE_FLOOR` its alpha at your feet with Fade Up Close on.

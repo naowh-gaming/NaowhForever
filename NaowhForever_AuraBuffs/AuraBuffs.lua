@@ -34,7 +34,8 @@ local S = ns.UI.ModuleSettings("auraBuffs", {
 
 local ENTRIES = "consumableEntries"
 local MIN_ID, MAX_ID = 1, 2147483647
-local MIN_IDS = 2
+local LIST_PREFIX = "NFCONSUMABLES1:"
+local MAX_ENTRIES = 500
 local CATEGORY_NAMES = { food = "Food", flask = "Flask", scroll = "Scroll",
     battle = "Battle Elixir", guardian = "Guardian Elixir" }
 local CATEGORY_ORDER = { "food", "flask", "scroll", "battle", "guardian" }
@@ -61,11 +62,34 @@ end
 
 ns.AuraBuffSettings = S
 
+local function ParseListString(text, entries)
+    for group in text:sub(#LIST_PREFIX + 1):gmatch("[^;]+") do
+        local category, ids = group:match("^(%a+)=(.+)$")
+        if not category then return end
+        for item in ids:gmatch("[^,]+") do
+            local entry = ns.ParseConsumableEntry(category, (item:gsub("/", ",")))
+            if not entry then return end
+            entries[#entries + 1] = entry
+        end
+    end
+    return entries
+end
+
+local function ProfileConsumables(text, entries)
+    local payload = ns.DecodeProfile(text)
+    local sr = payload and payload.parts.smartReminders
+    local list = sr and type(sr.utilityReminders) == "table" and sr.utilityReminders.consumables
+    if type(list) ~= "table" then return entries end
+    for _, entry in ipairs(list) do entries[#entries + 1] = entry end
+    return entries
+end
+
 local A = {
     Settings = S,
     PAGE = "AuraBuffs/Settings",
     CATEGORY_NAMES = CATEGORY_NAMES,
     CATEGORY_ORDER = CATEGORY_ORDER,
+    MAX_ENTRIES = MAX_ENTRIES,
 }
 ns.AuraBuffs = A
 
@@ -86,9 +110,36 @@ function ns.ParseConsumableEntry(category, text)
         if id < MIN_ID or id > MAX_ID then return end
         ids[#ids + 1] = id
     end
-    if #ids < MIN_IDS then return end
-    local entry = { category = category, itemID = table.remove(ids, 1), auras = ids }
-    return entry
+    if #ids == 0 then return end
+    local itemID = table.remove(ids, 1)
+    return { category = category, itemID = itemID, auras = ids[1] and ids or nil }
+end
+
+function ns.ConsumableListString(entries)
+    local byCategory = {}
+    for _, entry in ipairs(entries) do
+        local ids = byCategory[entry.category] or {}
+        byCategory[entry.category] = ids
+        ids[#ids + 1] = entry.auras and entry.itemID .. "/" .. table.concat(entry.auras, "/") or tostring(entry.itemID)
+    end
+    local groups = {}
+    for _, category in ipairs(CATEGORY_ORDER) do
+        if byCategory[category] then
+            groups[#groups + 1] = category .. "=" .. table.concat(byCategory[category], ",")
+        end
+    end
+    return LIST_PREFIX .. table.concat(groups, ";")
+end
+
+function ns.ParseConsumableList(text)
+    text = text:gsub("%s", "")
+    local entries
+    if text:sub(1, #LIST_PREFIX) == LIST_PREFIX then
+        entries = ParseListString(text, {})
+    else
+        entries = ProfileConsumables(text, {})
+    end
+    if entries and #entries > 0 then return entries end
 end
 
 function ns.CampBuffMode()

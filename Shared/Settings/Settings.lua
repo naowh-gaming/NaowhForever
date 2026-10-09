@@ -126,12 +126,22 @@ local function BindScale(row)
     row.set = function(v) set(v * scale) end
 end
 
+local function Icons(row)
+    if not row.cog or row.cogIcon then return end
+    local cog = { tip = row.cog.tip, cogFor = row }
+    local icons = { cog }
+    for _, icon in ipairs(row.icons or NO_KEYS) do icons[#icons + 1] = icon end
+    row.cogIcon, row.icons = cog, icons
+end
+
 local function Normalise(row, card)
     row.card = card
     if row.group then
         row.kind = "group"
         return row
     end
+    if row.under ~= nil then row.hidden = true end
+    Icons(row)
     row.kind = KindOf(row) or row.kind
     assert(row.kind, ERROR_NO_KIND .. card.uid .. ": " .. tostring(row.label))
     row.store = row.store or card.store
@@ -329,6 +339,19 @@ end
 
 function Settings.Reset(card)
     for _, row in ipairs(card.rows) do Settings.ResetRow(row) end
+end
+
+function Settings.UnderOf(card, label)
+    for _, row in ipairs(card.rows) do
+        if row.label == label and row.under ~= nil then return row.under end
+    end
+end
+
+function Settings.CogChanged(card, label)
+    for _, row in ipairs(card.rows) do
+        if row.under == label and Settings.Changed(row) then return true end
+    end
+    return false
 end
 
 function Settings.Off(row)

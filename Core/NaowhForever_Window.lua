@@ -174,7 +174,7 @@ local function PaintNavButton(btn, hover)
     local active = btn.fill:IsShown()
     local found = UI.filter and btn.found
     local off = btn.mod ~= nil and not ModuleOn(btn.mod)
-    local c = (active or hover) and T.fg or T.muted
+    local c = (active or hover) and T.fg or (ns.classicSkin and T.accent or T.muted)
     local a = (off and not active and not hover) and NAV_OFF_ALPHA or 1
     if found == false and not active and not hover then a = MISS_ALPHA end
     btn.label:SetTextColor(c.r, c.g, c.b, a)
@@ -598,7 +598,19 @@ local function NavigationButton(parent, label, y, onClick, icon)
     btn.marker = ns.Solid(btn, "ARTWORK", T.accent, 1)
     btn.marker:SetPoint("TOPLEFT"); btn.marker:SetPoint("BOTTOMLEFT"); btn.marker:SetWidth(NAV_MARKER_W)
     btn.marker:Hide()
-    btn.label = ns.Font(btn, NAV_TEXT_SIZE, nil, T.muted)
+    if ns.classicSkin then
+        local St = ns.Shared.Style
+        local c = St.CLASSIC_PICK_RGB
+        btn.fill:SetColorTexture(1, 1, 1, 1)
+        btn.fill:SetGradient("HORIZONTAL", CreateColor(c.r, c.g, c.b, St.CLASSIC_PICK_ALPHA),
+            CreateColor(c.r, c.g, c.b, St.CLASSIC_PICK_FADE))
+        local line = St.CLASSIC_PICK_LINE_RGB
+        btn.marker:SetColorTexture(line.r, line.g, line.b, St.CLASSIC_PICK_LINE_ALPHA)
+        btn.marker:ClearAllPoints()
+        btn.marker:SetPoint("TOPLEFT"); btn.marker:SetPoint("TOPRIGHT")
+        ns.Hairline(btn.marker, "h")
+    end
+    btn.label = ns.Font(btn, NAV_TEXT_SIZE, nil, T.muted, true)
     btn.label:SetPoint("LEFT", icon and NAV_LABEL_X or NAV_TEXT_X, 0)
     btn.label:SetPoint("RIGHT", -NAV_TEXT_RIGHT, 0)
     btn.label:SetJustifyH("LEFT")
@@ -685,6 +697,10 @@ local function WindowFrame()
     ns.Shared.Parts.Backdrop(window):Paint(1)
     ns.Shared.Parts.Shadow(window)
     local border = ns.Border(window, ns.Shared.Style.BORDER_RGB)
+    if ns.classicSkin then
+        ns.Shared.Parts.ClassicTrim(window)
+        ns.Shared.Parts.TitlePlate(window, TEXT_BRAND)
+    end
     window:SetScript("OnKeyDown", OnWindowKeyDown)
     return border
 end
@@ -751,7 +767,7 @@ local function ModuleNav(nav)
     local ny = 0
     for _, group in ipairs(groups) do
         if group ~= "" then
-            local label = ns.Font(nav, SIDE.groupSize, nil, T.muted)
+            local label = ns.Font(nav, SIDE.groupSize, nil, T.muted, true)
             label:SetPoint("TOPLEFT", SIDE.groupX, ny - SIDE.groupY); label:SetText(ns.L(group))
             ny = ny - SIDE.groupStep
         end
@@ -831,7 +847,7 @@ local function ContentHeader()
     contentHeader:SetHeight(PAGE_HEADER_H)
     breadcrumb = ns.Font(contentHeader, HEAD.crumbSize, nil, T.muted)
     breadcrumb:SetPoint("TOPLEFT", CONTENT_X, -HEAD.crumbY)
-    headerTitle = ns.Font(contentHeader, HEAD.titleSize, nil)
+    headerTitle = ns.Font(contentHeader, HEAD.titleSize, nil, ns.classicSkin and T.accent or nil, true)
     headerTitle:SetPoint("TOPLEFT", CONTENT_X, -HEAD.titleY)
     headerTitle:SetPoint("TOPRIGHT", contentHeader, "TOPRIGHT", -HEAD.titleRoom, -HEAD.titleY)
     headerTitle:SetJustifyH("LEFT"); headerTitle:SetWordWrap(false)
@@ -840,7 +856,7 @@ local function ContentHeader()
     headerSub:SetPoint("TOPRIGHT", -CONTENT_RIGHT, -HEAD.subY); headerSub:SetJustifyH("LEFT"); headerSub:SetWordWrap(false)
     moduleSwitch = UI.BuildToggleControl(contentHeader, nil, CurrentModuleOn, SetCurrentModuleOn, HEAD.switchW, HEAD.switchH)
     moduleSwitch:SetPoint("TOPRIGHT", -CONTENT_RIGHT, -HEAD.switchY)
-    moduleLabel = ns.Font(contentHeader, HEAD.labelSize, nil)
+    moduleLabel = ns.Font(contentHeader, HEAD.labelSize, nil, nil, true)
     moduleLabel:SetPoint("RIGHT", moduleSwitch, "LEFT", -HEAD.labelGap, 0)
     ns.Tooltip(moduleSwitch, TEXT_MODULE, TEXT_MODULE_HELP)
     for _, mod in ipairs(MODULES) do
@@ -946,6 +962,7 @@ local function ModuleWindowFrame()
     win:EnableMouse(true)
     ns.Shared.Parts.Backdrop(win):Paint(1)
     ns.Border(win, ns.Shared.Style.BORDER_RGB)
+    if ns.classicSkin then ns.Shared.Parts.ClassicTrim(win) end
     win:SetScript("OnKeyDown", CloseOnEscape)
     return win
 end
@@ -960,7 +977,7 @@ local function ModuleHeader(win, mod)
     header:SetPoint("TOPRIGHT")
     header:SetHeight(HEADER_H)
     DragRegion(header, win)
-    local title = ns.Font(header, MW.titleSize, nil)
+    local title = ns.Font(header, MW.titleSize, nil, ns.classicSkin and T.accent or nil, true)
     title:SetPoint("TOPLEFT", header, "TOPLEFT", MW.titleX, -MW.titleY)
     title:SetText(ns.L(mod.name))
     local sub = ns.Font(header, MW.subSize, nil, T.muted)

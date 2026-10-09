@@ -285,7 +285,7 @@ page:Card({
 page:Card({
     id = "seals", name = "Seal Colours", order = 30, switch = "sealColors",
     help = "Paladins only. The melee bars take the colour of the seal you have up. In combat that is the "
-        .. "last seal you cast until a Judgement uses it up or it runs out, as the game keeps your buffs "
+        .. "last seal you cast until it runs out, as the game keeps your buffs "
         .. "from addons there; out of combat it is read from your buffs.",
     rows = {
         { key = "sealRighteousColor", label = "Seal of Righteousness", colour = true, needs = PaladinOn,

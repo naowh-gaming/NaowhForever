@@ -299,6 +299,9 @@ the game's own tables, and what they can't settle is listed in the pull request 
   (Scarlet Monastery's wings). `entrance = { floor, x, y }` and `pins = { [NPC ID] = { floor,
   x, y } }` (a chest by minus its object ID), x and y from 0 to 1 across and down. Floor counts
   are as `/nf mapcheck` found them in the client, build 1.60.1.70170.
+- Wailing Caverns has the addon's own picture although the client has art for it: the client's
+  art is the Cataclysm redraw, and the picture is the old map (Wowpedia's
+  WorldMap-WailingCaverns-old.jpg), drawn the same, with its pins placed on it in game.
 - Ruins of Lordaeron and City of Dalaran are Santiago Reyes's recreations (Atlas de Azeroth:
   Forever, 2026), credited on the map, until the game has art of its own; Dalaran's are the
   Underbelly, where you come in, and the city above. Upper Blackrock Spire's art has only the

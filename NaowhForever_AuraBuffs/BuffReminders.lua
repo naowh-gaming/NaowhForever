@@ -23,6 +23,8 @@ for i = 1, RAID_UNITS_MAX do
 end
 
 local buffPool, members, memberCount, classes = {}, {}, 0, {}
+local itemBuffs, requested = {}, {}
+local wellFedName
 local wakeAt
 
 local function Secret(v)
@@ -45,6 +47,26 @@ local function Find(buffs, ids)
     for _, id in ipairs(ids) do
         if buffs[id] then return buffs[id] end
     end
+end
+
+local function WellFed(buffs)
+    wellFedName = wellFedName or C_Spell.GetSpellName(D.WELL_FED[1])
+    for _, aura in pairs(buffs) do
+        if aura.name == wellFedName then return aura end
+    end
+end
+
+local function ItemBuff(itemID)
+    if not itemBuffs[itemID] then
+        local _, spell = C_Item.GetItemSpell(itemID)
+        if spell then
+            itemBuffs[itemID] = spell
+        elseif not requested[itemID] then
+            requested[itemID] = true
+            C_Item.RequestLoadItemDataByID(itemID)
+        end
+    end
+    return itemBuffs[itemID]
 end
 
 local function FirstCarried(items)
@@ -71,8 +93,8 @@ local function Wake(seconds)
     if not wakeAt or seconds < wakeAt then wakeAt = seconds end
 end
 
-local function Consumable(list, buffs, auras, item, icon)
-    local aura = Find(buffs, auras)
+local function Consumable(list, buffs, group, item, icon)
+    local aura = Find(buffs, group.auras) or group.wellFed and WellFed(buffs)
     local left = aura and Left(aura)
     local warn = S.Get("consumablesMinutes") * SECONDS
     if aura and not (left and left <= warn) then
@@ -86,11 +108,17 @@ end
 local function Groups()
     local groups = {}
     for _, entry in ipairs(S.Get("consumableEntries") or {}) do
-        if type(entry) == "table" and type(entry.itemID) == "number" and type(entry.auras) == "table" then
+        if type(entry) == "table" and type(entry.itemID) == "number" then
             local group = groups[entry.category]
             if not group then group = { items = {}, auras = {} }; groups[entry.category] = group end
             group.items[#group.items + 1] = entry.itemID
-            for _, id in ipairs(entry.auras) do group.auras[#group.auras + 1] = id end
+            if type(entry.auras) == "table" then
+                for _, id in ipairs(entry.auras) do group.auras[#group.auras + 1] = id end
+            elseif entry.category == "food" then
+                group.wellFed = true
+            else
+                group.auras[#group.auras + 1] = ItemBuff(entry.itemID)
+            end
         end
     end
     return groups
@@ -102,7 +130,7 @@ local function Consumables(list, buffs)
         local group = groups[category]
         if group then
             local before = #list
-            Consumable(list, buffs, group.auras, FirstCarried(group.items),
+            Consumable(list, buffs, group, FirstCarried(group.items),
                 C_Item.GetItemIconByID(group.items[1]))
             if #list > before then list[#list].items = group.items end
         end
@@ -182,6 +210,10 @@ Reminders.Secret = Secret
 
 function Reminders.On()
     return S.Get("enabled") and (#(S.Get("consumableEntries") or {}) > 0 or S.Get("raidBuffs"))
+end
+
+function Reminders.Requested(itemID)
+    return requested[itemID] == true
 end
 
 function Reminders.WakeAt()

@@ -18,6 +18,5 @@ ns.SwingTimer.SPELLS = {
         { id = 1311649, key = "sealFuryColor", label = "Seal of Fury" },
         { id = 407798, key = "sealMartyrdomColor", label = "Seal of Martyrdom" },
     },
-    JUDGEMENT = 20271,
     HEROIC_STRIKE = 78,
 }

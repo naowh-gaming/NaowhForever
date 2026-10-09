@@ -21,6 +21,8 @@ local SUMMARY_GAP = TOGGLE_GAP + 2
 local CHEVRON_SIZE = 12
 local GROUP_RISE = 7
 local OPEN_TURN = -math.pi / 2
+local ICON_SIZE, ICON_LEVEL = 22, 5
+local ICON_REST, ICON_LIT, ICON_OFF = 0.4, 0.8, 0.12
 local INFO_TOP, INFO_GAP, INFO_BOTTOM = 10, 4, 10
 local TIP_TITLE = 1
 local TEXT_CHANGED = "Changed"
@@ -31,6 +33,8 @@ local TEXT_ONE_CHANGED = "1 setting changed from its default"
 local TEXT_MANY_CHANGED = " settings changed from their defaults"
 local TEXT_RESET = "Reset "
 local TEXT_OFF = "Off"
+
+local NO_ICONS = {}
 
 local groupLabels = {}
 local changedText = {}
@@ -123,6 +127,65 @@ local function Split(row)
     return split
 end
 
+local function IconEnter(icon)
+    icon:SetAlpha(ICON_LIT)
+    local tip = icon.spec and icon.spec.tip
+    if tip then ns.UI.ShowWidgetTooltip(icon, tip) end
+end
+
+local function IconLeave(icon)
+    icon:SetAlpha(ICON_REST)
+    ns.UI.HideWidgetTooltip()
+end
+
+local function IconClicked(icon)
+    local spec = icon.spec
+    if not spec then return end
+    if spec.cogFor then
+        Settings.ToggleCog(icon, icon:GetParent().setting)
+    elseif spec.open then
+        spec.open(icon)
+    end
+end
+
+local function NewIcon(row)
+    local icon = CreateFrame("Button", nil, row)
+    icon:SetSize(ICON_SIZE, ICON_SIZE)
+    icon:SetFrameLevel(row:GetFrameLevel() + ICON_LEVEL)
+    icon.tex = icon:CreateTexture(nil, "OVERLAY")
+    icon.tex:SetAllPoints()
+    icon:SetScript("OnEnter", IconEnter)
+    icon:SetScript("OnLeave", IconLeave)
+    icon:SetScript("OnClick", IconClicked)
+    return icon
+end
+
+local function SetIcons(row, setting, left, off)
+    local icons = setting.icons or NO_ICONS
+    for i = 1, #icons do
+        local spec = icons[i]
+        local icon = row.icons[i]
+        if not icon then
+            icon = NewIcon(row)
+            row.icons[i] = icon
+        end
+        local on = not off and (spec.enabled == nil or spec.enabled())
+        icon.spec = spec
+        icon.tex:SetTexture(spec.texture or ns.UI.COGS_ICON)
+        local tint = spec.cogFor and Settings.CogChanged(setting.card, setting.label) and T.accentSoft or T.fg
+        icon.tex:SetVertexColor(tint.r, tint.g, tint.b, 1)
+        icon:ClearAllPoints()
+        icon:SetPoint("RIGHT", left, "LEFT", -CONTROL_GAP, 0)
+        icon:EnableMouse(on)
+        icon:SetAlpha(on and ICON_REST or ICON_OFF)
+        icon:Show()
+        if spec.cogFor then Settings.CogAnchored(icon, setting) end
+        left = icon
+    end
+    for i = #icons + 1, #row.icons do row.icons[i]:Hide() end
+    return left
+end
+
 local function NewSetting(view)
     local row = CreateFrame("Frame", nil, view)
     row:SetHeight(ROW_H)
@@ -141,6 +204,7 @@ local function NewSetting(view)
     row.why:SetWordWrap(false)
     row.hit = HelpHit(row, row.label)
     row.dot:SetFrameLevel(row.hit:GetFrameLevel() + 1)
+    row.icons = {}
     return row
 end
 
@@ -174,7 +238,7 @@ local function SetSetting(row, setting, split)
     row.split:SetShown(split)
     local off, why = Settings.Off(setting)
     Control.Dim(row, control, off)
-    PlaceLabel(row, control, off and why or nil)
+    PlaceLabel(row, SetIcons(row, setting, control, off), off and why or nil)
     return ROW_H
 end
 
@@ -216,7 +280,11 @@ local function NewHead(view)
     head.chevron:SetSize(CHEVRON_SIZE, CHEVRON_SIZE)
     head.chevron:SetPoint("LEFT", PAD, 0)
     head.chevron:SetVertexColor(T.muted.r, T.muted.g, T.muted.b, 1)
-    head.name = ns.Font(head, NAME_SIZE, nil, T.fg)
+    head.name = ns.Font(head, NAME_SIZE, nil, ns.classicSkin and T.accent or T.fg, true)
+    if ns.classicSkin then
+        ns.Border(head, SS.BORDER_RGB)
+        Parts.ClassicBox(head)
+    end
     head.name:SetPoint("LEFT", head.chevron, "RIGHT", CONTROL_GAP, 0)
     head.nameHit = HelpHit(head, head.name)
     head.switch = HeadSwitch(head)

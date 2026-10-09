@@ -99,6 +99,9 @@ Theme
 - The lighter accent and the selection fill follow the accent and the line. A pick equal to the
   shipped color is not a change: Custom starts as a copy, and the color picker hands back what it
   opened with.
+- The Classic+ skin (Settings > Skin) has its own colors, `ns.CLASSIC_PLUS`, in force whatever the
+  Theme setting says. It is read with the colors, once per load, so a change to it waits for a
+  reload too.
 - A secret-tainted message is dropped silently by the chat display, and `tostring` on a secret
   returns a secret string, so `ns.Print` asks `issecretvalue` before coercing anything.
 
@@ -108,6 +111,10 @@ Fonts and pixels
   and its Asia variant covers CJK clients.
 - The Naowh font starts a straight-sided capital 75/1000 of its size in (`STEM_INSET`), so lines of
   different sizes set at one x look ragged; `ns.FontInset` moves each line left by its inset.
+- Unpicked, the Addon Font is Naowh, or the game's Arial Narrow on Classic+. Headings (`ns.Font`'s
+  `heading`: buttons, tabs, titles, card and section names) are the game's Friz Quadrata on
+  Classic+ unless an Addon Font is picked. A window's title plate is Morpheus, which SharedMedia
+  only registers for the clients whose language it covers, else the heading font.
 - Game Font and Combat Text Font touch only font objects and the three path globals, never a frame:
   taint-free, but with no undo, so a change takes a reload. The path globals are read when the
   world loads, so they are set on ADDON_LOADED and again at login; combat text inherits
@@ -187,6 +194,13 @@ Widgets
   mods do after login); a missing optional provider is not a cached miss.
 - Every module's defaults are saved to the account at login, so a module whose addon is off still
   has its settings checked, exported and imported.
+- On Classic+ a field (an input, dropdown, check box or slider groove) is cut into the panel
+  (`ns.Sunken`): a lit edge one pixel outside its black one, along the bottom and right. A switch
+  is a check box with the game's own tick. A button is red in a gold rim, brighter under the mouse
+  and turned over while pressed; its outer edge still marks a picked button, and its `_rim` and
+  `_shine` are kept so the Flight Timer can fade them with the rest.
+- `UI.KeyField` takes a binding command, or functions for its action and label, for one field
+  pointed at another binding each time its panel opens; its `_refreshValue` shows the new one.
 
 HUD Editor
 - An element is placed CENTER on the screen centre in whole pixels. An anchor keeps, along the
@@ -217,6 +231,8 @@ Packs and profile strings
 - Forever's Lua raises on 1 / 0, which LibSerialize does to every 0 it writes (to spot -0), so a
   profile string sends 0 as a marker and puts it back on import.
 - What one player answered about EllesmereUI's windows (`ns.PROFILE_OWN`) is never shared.
+- The skin travels in a profile string's Look part, with the theme, font and window scale. A
+  pack's consumable needs only its item ID; its buff IDs may be left out.
 - A multiline edit box is as tall as its text, so an empty one is given a height or it takes no
   clicks; a bare EditBox has no click-to-focus. The import dialog is cached, so a Replace ticked for
   one pack is cleared for the next.
@@ -252,3 +268,7 @@ Welcome and setup
 - The welcome window shows once per account, a few seconds into the first login and out of combat;
   nothing is made until then. On a new install a preset applies at once; on an older account it
   asks first. Its height follows its text once the game has laid it out.
+
+Credits
+- Every Credits card keeps an emblem-wide slot for its art, a badge emblem or a smaller icon, so
+  names and lines start at one x (`TEXT_LEFT`) on every card.

@@ -83,6 +83,7 @@ function Makers.text(row)
     box:SetTextInsets(TEXT_INSET, TEXT_INSET, 0, 0)
     ns.Solid(box, "BACKGROUND", T.bg, 1):SetAllPoints()
     box.border = ns.Border(box, SS.BORDER_RGB)
+    if ns.classicSkin then ns.Sunken(box) end
     box:SetScript("OnEnterPressed", TextCommit)
     box:SetScript("OnEditFocusLost", TextCommit)
     box:SetScript("OnEscapePressed", TextReset)

@@ -26,7 +26,8 @@ NaowhForever_AuraBuffs/
   AuraBuffs.xml                every file, in load order
   AuraBuffs.lua                the settings (ns.AuraBuffSettings), the module table (ns.AuraBuffs, A),
                                consumable entries kept in the profile, ns.ParseConsumableEntry,
-                               ns.CampBuffMode
+                               the consumables list string (ns.ConsumableListString,
+                               ns.ParseConsumableList), ns.CampBuffMode
   Data/
     BuffReminders.lua          the spells and items behind the buff reminders (ns.BuffReminderData)
     Campfire.lua               the camp auras and each camp feature's bonus, by spell ID (A.CampData)
@@ -50,7 +51,7 @@ NaowhForever_AuraBuffs/
     BuffMenu.lua               the carried items a buff reminder offers, as secure buttons
     BuffReminders.lua          the buff reminder row on screen
     BuffsCard.lua              the Buffs & Consumables card
-    WindowPages.lua            the window's pages: consumables, debuff sounds
+    WindowPages.lua            the window's pages: consumables (with list import and export), debuff sounds
     Window.lua                 the AuraBuffs window
   README.md                    this file
 ```
@@ -64,9 +65,18 @@ NaowhForever_AuraBuffs/
   ends, or they would read every buff as missing. `InCombatLockdown()` is still false while
   `PLAYER_REGEN_DISABLED` is handled, so that event is checked too.
 - A `UNIT_AURA` unit arrives secret while auras are restricted; `PLAYER_REGEN_ENABLED` catches up.
-- Consumable entries are profile data, never code: an item ID and at least one buff spell ID,
-  checked as plain numbers. They travel with shared packs (`utilityReminders.consumables` in the
-  profile); presentation settings stay in the module's store.
+- Consumable entries are profile data, never code: an item ID, then buff spell IDs only when the
+  buff is not the item's own, checked as plain numbers. They travel with shared packs
+  (`utilityReminders.consumables` in the profile); presentation settings stay in the module's store.
+- An entry with no buff IDs: food counts any Well Fed (every cooked food's buff is named Well Fed,
+  whatever it raises, so it is matched by the name of `D.WELL_FED[1]`), other items their use spell
+  (`C_Item.GetItemSpell`), which needs the item cached. An uncached item is asked for once, and only
+  its own `ITEM_DATA_LOAD_RESULT` refreshes: an ID with no use spell would otherwise load, refresh
+  and ask again forever.
+- The consumables list string is one line, since the paste box is one line:
+  `NFCONSUMABLES1:food=13931,2680;battle=13454/17539`. Import also takes a profile string and keeps
+  only its consumables; it adds what is not listed yet, up to `MAX_ENTRIES` (500, the same limit a
+  pack import enforces).
 - Group auras change in bursts, so a buff refresh waits `QUEUE_DELAY` and covers the lot. Nothing
   fires as a buff runs down, so the earliest one to cross the warning time is timed.
 - `ELIXIR_ICON` (13454, Greater Arcane Elixir) stands for "no elixir at all" in the preview.
@@ -124,6 +134,9 @@ NaowhForever_AuraBuffs/
 - Right-click (or Ctrl-click) hides Camp Nearby until you leave the campfire's range. Only right
   clicks are taken (`SetPassThroughButtons`, set out of combat), and it takes the mouse only while
   Ctrl is down, so left clicks and camera drags still reach the world.
+- Low Health offers healthstones then potions, best first, from the core's lists
+  (`ns.HEALTHSTONES`, `ns.HEALING_POTIONS`, in `QoL/NaowhForever_FoodBar.lua`), which the Macros
+  module's NF Health reads too, so either works with the other off.
 - Low Health never compares the health: a step curve turns the health percent into 1 below the
   threshold and 0 above it, and the engine applies that as the frame's alpha itself, so it works in
   combat even where health is secret to addons. The curve is flat on both sides of the threshold,

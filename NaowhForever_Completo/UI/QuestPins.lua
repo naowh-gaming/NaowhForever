@@ -10,6 +10,7 @@ local TEMPLATE = "NaowhForeverQuestGiverPinTemplate"
 local BANG_ATLAS, GREY_ATLAS, REPEAT_ATLAS = "QuestNormal", "TrivialQuests", "QuestDaily"
 local BANG_FILE = "Interface\\GossipFrame\\AvailableQuestIcon"
 local PERCENT = 100
+local FULL_SCREEN_SHARE = 0.5
 local EVENTS = { "QUEST_ACCEPTED", "QUEST_TURNED_IN", "QUEST_REMOVED", "PLAYER_LEVEL_UP" }
 local OWN_KEYS = { enabled = true, mapPins = true, mapGrey = true, mapChainsOnly = true, mapPinSize = true }
 local TEXT_GIVER = "Quest giver"
@@ -25,6 +26,12 @@ NaowhForeverQuestGiverPinMixin = CreateFromMixins(MapCanvasPinMixin)
 
 local function On()
     return S.Get("enabled") and S.Get("mapPins")
+end
+
+local function PinSize(map)
+    local size = S.Get("mapPinSize")
+    if map:IsMaximized() then size = size * FULL_SCREEN_SHARE end
+    return size
 end
 
 local function SetMark(icon, grey, repeatable)
@@ -50,6 +57,12 @@ local function Redraw()
     if added and WorldMapFrame:IsShown() then provider:RefreshAllData() end
 end
 
+local function Resize()
+    if not (added and WorldMapFrame:IsShown()) then return end
+    local size = PinSize(WorldMapFrame)
+    for pin in WorldMapFrame:EnumeratePinsByTemplate(TEMPLATE) do pin:SetSize(size, size) end
+end
+
 function NaowhForeverQuestGiverPinMixin:OnLoad()
     self:UseFrameLevelType("PIN_FRAME_LEVEL_AREA_POI")
 end
@@ -61,7 +74,7 @@ function NaowhForeverQuestGiverPinMixin:OnAcquired(giver)
     wipe(self.quests)
     for i, id in ipairs(giver.quests) do self.quests[i] = id end
     self.grey = giver.grey
-    local size = S.Get("mapPinSize")
+    local size = PinSize(self:GetMap())
     self:SetSize(size, size)
     SetMark(self.Icon, giver.grey, giver.repeatable)
     self:SetPosition(giver.x / PERCENT, giver.y / PERCENT)
@@ -111,6 +124,7 @@ local function Apply()
     if On() then
         if not added then
             WorldMapFrame:AddDataProvider(provider)
+            WorldMapFrame:HookScript("OnSizeChanged", Resize)
             added = true
         end
         if not events then

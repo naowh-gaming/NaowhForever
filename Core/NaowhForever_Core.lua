@@ -21,6 +21,10 @@ local STEM_INSET = 0.075
 local MAX_FRAME_LEVEL = 9999
 local OFFSCREEN = 0.9
 local BUTTON_TEXT_SIZE, BUTTON_REST_ALPHA = 12, 0.9
+local BUTTON_SHINE_SUBLEVEL, BUTTON_SHADOW = 1, 1
+local SKIN_CLASSIC = "classic"
+local FONT_NAOWH, FONT_CLASSIC = "Naowh", "Arial Narrow"
+local FONT_HEADING, FONT_TITLE = "Friz Quadrata TT", "Morpheus"
 local MODAL_LEVEL_BASE, MODAL_LEVEL_STEP, MODAL_LEVEL_CAP, MODAL_PANEL_RAISE = 10, 10, 150, 5
 local EDIT_INSET = 6
 local SEARCH_HINT_SIZE, SEARCH_CLEAR_SIZE, SEARCH_CLEAR_TEXT = 12, 18, 13
@@ -142,6 +146,15 @@ ns.THEME_PRESETS = {
         accent = { r = 0xd6 / 255, g = 0x8e / 255, b = 0x35 / 255 } },
 }
 
+ns.CLASSIC_PLUS = {
+    bg     = { r = 0x0b / 255, g = 0x0a / 255, b = 0x08 / 255 },
+    panel  = { r = 0x17 / 255, g = 0x11 / 255, b = 0x0b / 255 },
+    line   = { r = 0x5e / 255, g = 0x4a / 255, b = 0x1c / 255 },
+    fg     = { r = 0xec / 255, g = 0xe3 / 255, b = 0xcc / 255 },
+    muted  = { r = 0xa8 / 255, g = 0x9a / 255, b = 0x7c / 255 },
+    accent = { r = 0xff / 255, g = 0xd1 / 255, b = 0x00 / 255 },
+}
+
 local colorPrefix = {}
 
 local function Byte(v)
@@ -181,6 +194,7 @@ local function Pick(source, key)
 end
 
 local function ThemeSource()
+    if ns.classicSkin then return ns.CLASSIC_PLUS end
     local account = ns.AccountSettings()
     local preset = account.themePreset
     if preset == CUSTOM then return account.themeColors end
@@ -209,6 +223,7 @@ local function ShippedColor(key)
 end
 
 function ns.ApplyThemeColors()
+    ns.classicSkin = ns.AccountSettings().skin == SKIN_CLASSIC
     local source = ThemeSource()
     if not source then return end
     for _, key in ipairs(ns.THEME_EDITABLE) do
@@ -382,7 +397,17 @@ function ns.FontInset(size)
 end
 
 function ns.AddonFontPath()
-    return FontPath(ns.AccountSettings().uiFont or "Naowh") or STANDARD_TEXT_FONT
+    local default = ns.classicSkin and FONT_CLASSIC or FONT_NAOWH
+    return FontPath(ns.AccountSettings().uiFont or default) or STANDARD_TEXT_FONT
+end
+
+function ns.HeadingFontPath()
+    if not ns.classicSkin or ns.AccountSettings().uiFont then return ns.UIFontPath() end
+    return FontPath(FONT_HEADING) or ns.UIFontPath()
+end
+
+function ns.TitleFontPath()
+    return LSM and LSM:Fetch("font", FONT_TITLE, true) or ns.HeadingFontPath()
 end
 
 function ns.UIFontPath()
@@ -433,10 +458,16 @@ gameFontEvents:RegisterEvent("ADDON_LOADED")
 gameFontEvents:RegisterEvent("PLAYER_LOGIN")
 gameFontEvents:SetScript("OnEvent", OnGameFontEvent)
 
-function ns.Font(parent, size, flags, color)
+function ns.Font(parent, size, flags, color, heading)
     local c = color or ns.THEME.fg
     local fs = parent:CreateFontString(nil, "OVERLAY")
-    fs:SetFont(ns.UIFontPath(), size, flags or "")
+    if heading and ns.classicSkin then
+        local St = ns.Shared.Style
+        size = size + St.CLASSIC_HEADING_STEP
+        fs:SetShadowColor(0, 0, 0, 1)
+        fs:SetShadowOffset(St.CLASSIC_HEADING_SHADOW, -St.CLASSIC_HEADING_SHADOW)
+    end
+    fs:SetFont(heading and ns.HeadingFontPath() or ns.UIFontPath(), size, flags or "")
     fs:SetTextColor(c.r, c.g, c.b, 1)
     return fs
 end
@@ -515,6 +546,19 @@ function ns.Border(frame, color, alpha)
     }
 end
 
+function ns.Sunken(frame)
+    local c = ns.Shared.Style.CLASSIC_BEVEL_RGB
+    local edge = CreateFrame("Frame", nil, frame)
+    ns.PixelInset(edge, -1, frame)
+    local bottom = edge:CreateTexture(nil, "OVERLAY")
+    bottom:SetColorTexture(c.r, c.g, c.b, 1)
+    bottom:SetPoint("BOTTOMLEFT"); bottom:SetPoint("BOTTOMRIGHT"); ns.Hairline(bottom, "h")
+    local right = edge:CreateTexture(nil, "OVERLAY")
+    right:SetColorTexture(c.r, c.g, c.b, 1)
+    right:SetPoint("TOPRIGHT"); right:SetPoint("BOTTOMRIGHT"); ns.Hairline(right, "v")
+    return edge
+end
+
 function ns.Solid(parent, layer, color, alpha)
     local c = color or ns.THEME.panel
     local t = parent:CreateTexture(nil, layer or "BACKGROUND")
@@ -531,6 +575,44 @@ function ns.AllowOffscreen(frame)
     frame:HookScript("OnSizeChanged", ClampOffscreen)
 end
 
+local function Gloss(tex, state)
+    local top, bottom = state[1], state[2]
+    tex:SetGradient("VERTICAL", CreateColor(bottom.r, bottom.g, bottom.b, 1), CreateColor(top.r, top.g, top.b, 1))
+end
+
+local function ClassicButton(btn, bg, border, lbl)
+    local T, St = ns.THEME, ns.Shared.Style
+    local states = St.CLASSIC_BUTTON_RGB
+    bg:SetColorTexture(1, 1, 1, 1)
+    Gloss(bg, states.rest)
+    local shine = btn:CreateTexture(nil, "BACKGROUND", nil, BUTTON_SHINE_SUBLEVEL)
+    shine:SetPoint("TOPLEFT")
+    shine:SetPoint("BOTTOMRIGHT", btn, "RIGHT")
+    shine:SetColorTexture(1, 1, 1, St.CLASSIC_BUTTON_SHINE)
+    local inside = CreateFrame("Frame", nil, btn)
+    ns.PixelInset(inside, 1, btn)
+    local gold, lit = St.CLASSIC_GOLD_RGB, St.CLASSIC_RIM_LIT_RGB
+    local rim = ns.Border(inside, gold)
+    btn._rim, btn._shine = rim, shine
+    lbl:SetTextColor(T.accent.r, T.accent.g, T.accent.b, 1)
+    lbl:SetShadowColor(BLACK.r, BLACK.g, BLACK.b, 1)
+    lbl:SetShadowOffset(BUTTON_SHADOW, -BUTTON_SHADOW)
+    btn:SetScript("OnEnter", function()
+        Gloss(bg, states.hover)
+        rim:SetColor(lit.r, lit.g, lit.b, 1)
+        border:SetColor(T.accent.r, T.accent.g, T.accent.b, 1)
+    end)
+    btn:SetScript("OnLeave", function()
+        Gloss(bg, states.rest)
+        rim:SetColor(gold.r, gold.g, gold.b, 1)
+        border:SetColor(btn._rest.r, btn._rest.g, btn._rest.b, 1)
+    end)
+    btn:SetScript("OnMouseDown", function() Gloss(bg, states.down) end)
+    btn:SetScript("OnMouseUp", function(self)
+        Gloss(bg, self:IsMouseOver() and states.hover or states.rest)
+    end)
+end
+
 function ns.Button(parent, text, w, h, onClick)
     local T = ns.THEME
     local btn = CreateFrame("Button", nil, parent)
@@ -540,12 +622,16 @@ function ns.Button(parent, text, w, h, onClick)
     local border = ns.Border(btn, BLACK)
     btn._border, btn._rest = border, BLACK
     btn._bg = bg
-    local lbl = ns.Font(btn, BUTTON_TEXT_SIZE, nil)
+    local lbl = ns.Font(btn, BUTTON_TEXT_SIZE, nil, nil, true)
     lbl:SetPoint("CENTER")
     lbl:SetText(ns.L(text))
     btn.label = lbl
     btn._onClick = onClick
     btn:SetScript("OnClick", function() if btn._onClick then btn._onClick() end end)
+    if ns.classicSkin then
+        ClassicButton(btn, bg, border, lbl)
+        return btn
+    end
     btn:SetScript("OnEnter", function()
         bg:SetColorTexture(T.panel.r, T.panel.g, T.panel.b, 1)
         border:SetColor(T.accent.r, T.accent.g, T.accent.b, 1)
@@ -708,6 +794,7 @@ function ns.NewEditBox(parent)
         box._border:SetColor(a.r, a.g, a.b, 1)
     end)
     box:HookScript("OnLeave", function() box._border:SetColor(BLACK.r, BLACK.g, BLACK.b, 1) end)
+    if ns.classicSkin then ns.Sunken(box) end
     return box
 end
 

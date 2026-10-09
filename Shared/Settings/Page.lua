@@ -1,10 +1,12 @@
--- Page.lua: draws a declared settings page on the row engine, one card per feature, for the options window (Settings.Render).
+-- Page.lua: draws a declared settings page on the row engine, one card per feature, for the options window (Settings.Render), and the panel a row's cog opens.
 local ns = _G.NaowhForever
 local Shared = ns.Shared
-local Settings, View = Shared.Settings, Shared.View
+local Settings, View, Parts = Shared.Settings, Shared.View, Shared.Parts
 local SS = Settings.Style
 
-local BORDER_RGB, CARD_GAP = SS.BORDER_RGB, SS.CARD_GAP
+local BORDER_RGB, CARD_GAP, CONTROL_GAP = SS.BORDER_RGB, SS.CARD_GAP, SS.CONTROL_GAP
+local PANEL_HEADER, PANEL_PAD = SS.PANEL_HEADER, SS.PANEL_PAD
+local COG_W = 380
 local TWO_COLUMNS_W = 620
 local DRAG_WAIT = 0.05
 local NO_EVENTS = {}
@@ -13,6 +15,8 @@ local TEXT_NO_MATCH = "Nothing on this page matches the search."
 local Draw = {}
 local watched = {}
 local findLabel, findCard
+local cog
+local CogDraw = {}
 
 local function Hidden(row)
     local hidden = row.hidden
@@ -52,11 +56,15 @@ local function AddPair(view, row, second, w)
 end
 
 local function OnlyOf(card, found)
-    local only = found ~= true and found or nil
+    local only, cogOwner = found ~= true and found or nil, nil
     for _, row in ipairs(only and Settings.Rows(card) or NO_EVENTS) do
-        if only[row.label] and Hidden(row) then return nil end
+        if only[row.label] and row.under ~= nil then
+            only[row.under], cogOwner = true, row.under
+        elseif only[row.label] and Hidden(row) then
+            return nil, cogOwner
+        end
     end
-    return only
+    return only, cogOwner
 end
 
 local function OpenCardFrame(view)
@@ -75,8 +83,11 @@ local function FlushSettings(view)
     end
     view.settingsQueued = false
     if view:IsVisible() then
+        view.stale = nil
         view:Redraw()
         if view.onResize then view.onResize(view:GetHeight()) end
+    else
+        view.stale = true
     end
 end
 
@@ -87,7 +98,7 @@ local function Watch(store, view)
         watched[store] = views
         store.OnChange(function()
             for v in pairs(views) do
-                if v:IsVisible() then v:QueueSettingsRedraw() end
+                if v:IsVisible() then v:QueueSettingsRedraw() else v.stale = true end
             end
         end)
     end
@@ -97,17 +108,70 @@ end
 local function WatchPage(view, page)
     for _, item in ipairs(page and page.items or NO_EVENTS) do
         if item.store then Watch(item.store, view) end
+        for _, store in ipairs(item.watch or NO_EVENTS) do Watch(store, view) end
         for _, row in ipairs(item.rows or NO_EVENTS) do
             if row.store and row.store ~= item.store then Watch(row.store, view) end
         end
     end
 end
 
+local function ShownAgain(view)
+    if not view.stale then return end
+    view.stale = nil
+    view:QueueSettingsRedraw()
+end
+
+local function PageGone(view)
+    if not (cog and cog:IsShown() and cog.page == view) then return end
+    C_Timer.After(0, view.goneFn)
+end
+
 local function NewView(parent)
     local view = View.New(parent, Settings.kinds, Draw)
     view.settingsRedrawFn = function() FlushSettings(view) end
+    view.goneFn = function()
+        if cog and cog.page == view and not view:IsVisible() then cog:Hide() end
+    end
     view.shownRows = {}
+    view:HookScript("OnShow", ShownAgain)
+    view:HookScript("OnHide", PageGone)
     return view
+end
+
+local function CogShows(card, label)
+    return cog and cog:IsShown() and cog.card == card and cog.label == label
+end
+
+local function FitCog(height)
+    cog:SetHeight(PANEL_HEADER + height + PANEL_PAD)
+end
+
+local function CogPanel()
+    if cog then return cog end
+    for k, v in pairs(Draw) do if CogDraw[k] == nil then CogDraw[k] = v end end
+    cog = Parts.Panel("")
+    cog:SetFrameStrata("DIALOG")
+    cog:SetToplevel(true)
+    cog:SetWidth(COG_W)
+    cog.view = View.New(cog, Settings.kinds, CogDraw)
+    cog.view.settingsRedrawFn = function() FlushSettings(cog.view) end
+    cog.view.shownRows = {}
+    cog.view.onResize = FitCog
+    cog.view:SetPoint("TOPLEFT", PANEL_PAD, -PANEL_HEADER)
+    cog.view:SetWidth(COG_W - PANEL_PAD * 2)
+    cog:Hide()
+    return cog
+end
+
+local function OpenCog(icon, setting)
+    CogPanel()
+    cog.card, cog.label, cog.page = setting.card, setting.label, icon:GetParent():GetParent()
+    cog.title:SetText((setting.cog and setting.cog.title) or setting.label)
+    Watch(setting.card.store, cog.view)
+    cog:Show()
+    Settings.CogAnchored(icon, setting)
+    cog.view:Redraw()
+    FitCog(cog.view:GetHeight())
 end
 
 local function IsSetting(row)
@@ -146,9 +210,10 @@ function Draw:CardBody(card, found)
         end
         return
     end
-    local only = OnlyOf(card, found)
+    local only, cogOwner = OnlyOf(card, found)
     if card.studio and self.kinds.studio and not only then self:Add("studio", card) end
     self:Settings(card, only)
+    if cogOwner then self:OpenCogOn(card, cogOwner) end
     local changed = Settings.ChangedCount(card)
     if changed > 0 and not only then self:Add("cardFoot", card, changed) end
 end
@@ -188,6 +253,35 @@ function Draw:Redraw()
     self:Fit(NO_EVENTS)
 end
 
+function Draw:OpenCogOn(card, label)
+    for i = 1, self.pools.setting.used do
+        local row = self.pools.setting[i]
+        local setting = row.setting
+        if setting and setting.card == card and setting.label == label then
+            for _, icon in ipairs(row.icons) do
+                if icon:IsShown() and icon.spec and icon.spec.cogFor then
+                    if not CogShows(card, label) then OpenCog(icon, setting) end
+                    return
+                end
+            end
+        end
+    end
+end
+
+function CogDraw:Redraw()
+    self:Clear()
+    local w = self:GetWidth()
+    if cog.card then
+        for _, row in ipairs(Settings.Rows(cog.card)) do
+            if row.under == cog.label then
+                self.left, self.width = 0, w
+                self:Add("setting", row, false)
+            end
+        end
+    end
+    self:Fit(NO_EVENTS)
+end
+
 function Draw:QueueSettingsRedraw()
     if self.settingsQueued then return end
     self.settingsQueued = true
@@ -213,6 +307,12 @@ end
 function Settings.FindRow(parent, label, cardUid)
     local view = parent.settingsView
     if not view then return nil end
+    local card = cardUid and label and Settings.CardOf(cardUid)
+    local owner = card and Settings.UnderOf(card, label)
+    if owner then
+        label = owner
+        view:OpenCogOn(card, owner)
+    end
     findLabel, findCard = label, cardUid
     local row = (label and view:Find("setting", IsSetting)) or view:Find("cardHead", IsHead)
     findLabel, findCard = nil, nil
@@ -223,4 +323,23 @@ end
 function Settings.Reveal(cardUid)
     local card = cardUid and Settings.CardOf(cardUid)
     if card then Settings.SetOpen(card, true) end
+end
+
+function Settings.CogPanel()
+    return cog
+end
+
+function Settings.CogAnchored(icon, setting)
+    if not CogShows(setting.card, setting.label) then return end
+    cog.icon = icon
+    cog:ClearAllPoints()
+    cog:SetPoint("TOP", icon, "BOTTOM", 0, -CONTROL_GAP)
+end
+
+function Settings.ToggleCog(icon, setting)
+    if CogShows(setting.card, setting.label) then
+        cog:Hide()
+        return
+    end
+    OpenCog(icon, setting)
 end

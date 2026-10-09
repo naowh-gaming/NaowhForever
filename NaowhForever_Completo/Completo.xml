@@ -17,6 +17,7 @@
     <Script file="View\View.lua"/>
     <Script file="View\Hero.lua"/>
     <Script file="View\ZoneRow.lua"/>
+    <Script file="View\PartRow.lua"/>
     <Script file="View\QuestRow.lua"/>
     <Script file="View\RareRow.lua"/>
     <Script file="View\DropRow.lua"/>
@@ -24,8 +25,8 @@
     <Script file="UI\RareAlert.lua"/>
     <Script file="UI\Window.lua"/>
     <Include file="UI\QuestPins.xml"/>
-    <Script file="UI\RarePanel.lua"/>
     <Include file="UI\RarePins.xml"/>
+    <Script file="UI\GeneralSettings.lua"/>
     <Script file="UI\QuestsSettings.lua"/>
     <Script file="UI\RaresSettings.lua"/>
 </Ui>

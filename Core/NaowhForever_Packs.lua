@@ -32,6 +32,7 @@ local ENTRY_TABLES = { "trigger", "display", "target", "list", "together" }
 local TARGET_FLAGS = { "roles", "classes", "specs", "names", "subgroups" }
 local SPEC_FIELDS = { "presets", "activePreset", "abilityBindings" }
 local CONSUMABLE_CATEGORIES = { food = true, flask = true, scroll = true, battle = true, guardian = true }
+local NO_AURAS = {}
 local COLOR_FIELDS = { r = "number", g = "number", b = "number", a = "number" }
 local TRIGGER_FIELDS = { type = "string", spellID = "number", delay = "number|string",
     stage = "number", leadTime = "number", timeleft = "number", counter = "string|number",
@@ -195,8 +196,9 @@ local function ValidConsumables(consumables)
         count = count + 1
         if not PositiveID(index) or index > #consumables or count > MAX_CONSUMABLES
             or type(entry) ~= "table" or not CONSUMABLE_CATEGORIES[entry.category]
-            or not PositiveID(entry.itemID) or type(entry.auras) ~= "table" or #entry.auras == 0 then return false end
-        for i, id in pairs(entry.auras) do
+            or not PositiveID(entry.itemID)
+            or entry.auras ~= nil and (type(entry.auras) ~= "table" or #entry.auras == 0) then return false end
+        for i, id in pairs(entry.auras or NO_AURAS) do
             if not PositiveID(i) or i > #entry.auras or not PositiveID(id) then return false end
         end
     end

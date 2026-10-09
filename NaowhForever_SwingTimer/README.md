@@ -68,8 +68,9 @@ NaowhForever_SwingTimer/
   gives one its own (Cleave). `ACTIONBAR_UPDATE_STATE` fires constantly in combat, so it is listened
   to only while there is a queued attack to watch for.
 - Paladin seals are listed by their first rank: every rank shares the seal's name, which is what is
-  matched. Seal of Fury is Forever's own. Judgement uses the seal up. A seal lasts 30 seconds, 34 with
-  the Seal Duration Increase item effect; a seal buff that can be read replaces this with its real
+  matched. Seal of Fury is Forever's own. Forever's Judgement does not consume the seal, so a
+  Judgement leaves the seal's colour and count as they are. A seal lasts 30 seconds, 34 with the
+  Seal Duration Increase item effect; a seal buff that can be read replaces this with its real
   length. Nothing in combat says a seal has run out, so it is counted from the cast, or from its buff
   when that could be read. In combat the game keeps the player's auras from addons, so there the seal
   is the last one cast; out of combat, and off a boss pull, the auras say which is up.

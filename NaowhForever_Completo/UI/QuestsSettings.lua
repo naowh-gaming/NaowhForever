@@ -5,13 +5,9 @@ local Completo = ns.Completo
 local S = Completo.Settings
 local Q = Completo.Quests
 local Settings = ns.Shared.Settings
-local Style = Completo.Style
 
 local PAGE = "Completo/Quests"
 local PIN_SIZE = { 12, 32, 1 }
-local WINDOW_SCALE = { 50, 150, 5 }
-local PERCENT_STEP = 5
-local PERCENT_SCALE = 0.01
 local TEXT_OFF = "Turn on Completo"
 local TEXT_PROGRESS = "%d of %d zone quests done"
 local TEXT_ZONE = "%s: %d of %d."
@@ -74,25 +70,5 @@ page:Card({
           help = "Only quest chains: the first quest of each one, and the next step of those you are on." },
         { key = "mapPinSize", label = "Pin Size", slider = PIN_SIZE, needs = On, why = TEXT_OFF,
           help = "How big the pins are on the map." },
-    },
-})
-
-page:Card({
-    id = "keys", name = "Key Binding", order = 30,
-    help = "The key that opens the Completo window.",
-    rows = {
-        { label = "Open Completo", binding = "NAOWHFOREVER_COMPLETO",
-          help = "Press it to open or close Completo. Shift-L unless something else had it." },
-    },
-})
-
-page:Card({
-    id = "window", name = "Window", order = 90,
-    help = "Completo's own window. Drag its bottom right corner to size it.",
-    rows = {
-        { key = "windowScale", label = "Window Scale", slider = WINDOW_SCALE, unit = "%", scale = PERCENT_SCALE,
-          help = "How big the window and everything in it is. Drag its corner to make it bigger instead." },
-        { key = "windowAlpha", label = "Window Opacity", slider = { Style.OPACITY_MIN, 100, PERCENT_STEP },
-          unit = "%", scale = PERCENT_SCALE, help = "How solid the window is, in percent. Also on its title bar." },
     },
 })

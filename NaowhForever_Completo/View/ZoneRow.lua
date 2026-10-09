@@ -32,7 +32,7 @@ local function ZoneMouseUp(row, button)
     if button == "LeftButton" then row:GetParent():OpenZone(row.zone) end
 end
 
-local function NewZone(parent)
+function V.ProgressRow(parent, onEnter, onMouseUp)
     local row = V.NewRow(parent)
     row.title = ns.Font(row, Style.TITLE_SIZE, nil, T.fg)
     row.title:SetPoint("TOPLEFT", Style.INDENT, -Style.ROW_TOP)
@@ -44,23 +44,31 @@ local function NewZone(parent)
     row.bar = Parts.ProgressLine(row, Style.BAR_H)
     row.bar:SetPoint("TOPRIGHT", row.count, "BOTTOMRIGHT", 0, -BAR_GAP)
     row.bar:SetWidth(ZONE_BAR_W)
-    row:SetScript("OnEnter", ZoneEnter)
+    row:SetScript("OnEnter", onEnter)
     row:SetScript("OnLeave", V.RowLeave)
-    row:SetScript("OnMouseUp", ZoneMouseUp)
+    row:SetScript("OnMouseUp", onMouseUp)
     return row
 end
 
-local function SetZone(row, zone, stripe)
-    row.zone = zone
+function V.SetProgress(row, title, line, n, total, stripe)
     V.Reset(row, stripe)
-    local n, total, low, high = row:GetParent():Progress(zone)
-    row.title:SetText(zone.name)
-    row.levels:SetText(V.Levels(low, high))
+    row.title:SetText(title)
+    row.levels:SetText(line)
     local finished = total > 0 and n == total
     row.count:SetText(TEXT_COUNT:format(n, total, V.Percent(n, total)))
     V.Paint(row.count, finished and Style.HAVE_RGB or T.fg)
     row.bar:SetProgress(V.Share(n, total))
     return ZONE_H
+end
+
+local function NewZone(parent)
+    return V.ProgressRow(parent, ZoneEnter, ZoneMouseUp)
+end
+
+local function SetZone(row, zone, stripe)
+    row.zone = zone
+    local n, total, low, high = row:GetParent():Progress(zone)
+    return V.SetProgress(row, zone.name, V.Levels(low, high), n, total, stripe)
 end
 
 V.Kinds.zone = { New = NewZone, Set = SetZone }
