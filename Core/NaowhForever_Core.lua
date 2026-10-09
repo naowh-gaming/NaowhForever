@@ -489,6 +489,12 @@ end)
 function ns.Font(parent, size, flags, color, heading)
     local c = color or ns.THEME.fg
     local fs = parent:CreateFontString(nil, "OVERLAY")
+    if heading and ns.classicSkin then
+        local St = ns.Shared.Style
+        size = size + St.CLASSIC_HEADING_STEP
+        fs:SetShadowColor(0, 0, 0, 1)
+        fs:SetShadowOffset(St.CLASSIC_HEADING_SHADOW, -St.CLASSIC_HEADING_SHADOW)
+    end
     fs:SetFont(heading and ns.HeadingFontPath() or ns.UIFontPath(), size, flags or "")
     fs:SetTextColor(c.r, c.g, c.b, 1)
     return fs
