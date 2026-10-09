@@ -623,6 +623,17 @@ settings.anchors = { ["Threat Meter"] = { target = "SCREEN_LEFT", side = "RIGHT"
 ns.Apply()
 Check(settings.anchors == nil, "and a switched-to profile's are dropped too")
 
+-- The Loot Feed anchor every install shipped with, off the right of the Alerts stack, made it
+-- bob with each alert; it goes the same way, and an anchor of the player's own stays.
+settings.anchoredTo = {
+    ["Loot Feed"] = { target = "Alerts", side = "RIGHT", x = -300, y = 206 },
+    ["Add Bar"] = { target = "Boss Bar", side = "BOTTOM", x = 0, y = -5 },
+}
+ns.Apply()
+Check(settings.anchoredTo["Loot Feed"] == nil and settings.anchoredTo["Add Bar"] ~= nil,
+    "the shipped Loot Feed anchor is dropped, the player's own kept")
+settings.anchoredTo = nil
+
 -- The Elements panel: every element on screen by module, found by name; a row's eye keeps the
 -- element out of the way while editing and its padlock holds it in place.
 local timer, timerMover, timerSaved = Display("Combat Timer", 120, 32, 300, 100)

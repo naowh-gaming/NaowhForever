@@ -242,6 +242,10 @@ HUD Editor
   target that grows pushes the element out. Anchors are reapplied parents first, after entering the
   world, every profile switch and combat (a protected element waits for combat to end).
 - Size and position changes are queued and handled once a frame.
+- The Loot Feed used to ship anchored off the right of the Alerts stack, captured by accident from
+  Naowh's profile. Off a side, an anchor follows the stack's centre, which rises and falls with
+  every alert and sits higher with the HUD Editor's previews up, so the feed drifted onto other
+  frames after it was placed. Login and every profile switch drop that anchor.
 - Before each change by hand the editor keeps every element's spot and anchor (50 steps); a run of
   arrow nudges to one selection is one step. Loading a layout is a change like any other.
 - A module's resize grip sizes from its own corner, so the anchor leaves the frame alone until

@@ -13,6 +13,7 @@ local C = H.C
 local LOCK_BADGE, LOCK_INSET = 12, 4
 local MOVER_RAISE = 20
 local MOVER_TEXT_SIZE = 12
+local LOOT_FEED, ALERTS = "Loot Feed", "Alerts"
 
 local function PaintMarks(item)
     local hidden, h = IsHidden(item), item.handle
@@ -141,6 +142,8 @@ end
 local function OnApplied()
     local db = ns.UnlockModeSettings.DB()
     db.anchors, db.snap = nil, nil
+    local feed = type(db.anchoredTo) == "table" and db.anchoredTo[LOOT_FEED]
+    if type(feed) == "table" and feed.target == ALERTS and feed.side == "RIGHT" then db.anchoredTo[LOOT_FEED] = nil end
     C_Timer.After(0, ReapplyAll)
 end
 
