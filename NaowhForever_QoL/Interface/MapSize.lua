@@ -25,7 +25,7 @@ local TEXT_HELP = "Makes the windowed world map bigger or smaller and lets you m
 local TEXT_SCALE = "Map Scale"
 
 local grip, handle
-local hooked
+local hooked, applied
 local startDist, startPct
 local moveX, moveY, cursorX, cursorY
 local home
@@ -75,9 +75,20 @@ local function GoHome()
     map:SetPoint(home[1], home[2], home[3], home[4] * home[6] / scale, home[5] * home[6] / scale)
 end
 
+local function NoteHome()
+    local map = WorldMapFrame
+    if Full() or map:GetNumPoints() ~= 1 then return end
+    local point, relative, relPoint, x, y = map:GetPoint(1)
+    home = { point, relative, relPoint, x or 0, y or 0, map:GetScale() }
+end
+
 local function Apply()
     local map = WorldMapFrame
     if not map then return end
+    local on = On()
+    if not (on or applied) then return end
+    if on and not applied and map:IsShown() then NoteHome() end
+    applied = on
     local full = Full()
     local scale = full and 1 or Wanted()
     SetMapScale(scale)
@@ -215,11 +226,9 @@ end
 
 -- Opening the map places it before showing it, and a hidden map is left where it was.
 local function OnPanelsPlaced(frame)
+    if not On() then return end
     local map = WorldMapFrame
-    if not Full() and (map:IsShown() or frame == map) and map:GetNumPoints() == 1 then
-        local point, relative, relPoint, x, y = map:GetPoint(1)
-        home = { point, relative, relPoint, x or 0, y or 0, map:GetScale() }
-    end
+    if map:IsShown() or frame == map then NoteHome() end
     if map:IsShown() and Saved() then Apply() end
 end
 
