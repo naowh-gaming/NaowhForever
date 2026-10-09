@@ -1010,6 +1010,7 @@ end
 Settings.Page("QoL/Travel", S):Card({
     id = "aimTrainer", name = "Aim Trainer", order = 30, switch = "aimTrainer",
     help = "A shooting game for flights: click the other faction's races as fast as you can.",
+    search = "/nfaim nfaim",
     summary = Summary,
     studio = { height = STAGE_H, states = STATES, new = NewPreview, paint = PaintPreview },
     rows = {
