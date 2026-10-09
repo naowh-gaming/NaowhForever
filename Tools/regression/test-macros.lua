@@ -111,6 +111,7 @@ local function Fixture(opts)
         IsInRaid = function() return group == "raid" end,
         IsInGroup = function() return group ~= nil end,
         UnitClass = function() return "Class", opts.class or "MAGE" end,
+        wipe = function(t) for k in pairs(t) do t[k] = nil end return t end,
         C_Container = {
             GetContainerNumSlots = function() return #bags end,
             GetContainerItemID = function(_, slot) return bags[slot] end,
@@ -236,10 +237,24 @@ end
 do
     local t = Fixture({ settings = { health = true, healthOrder = "potion" }, bags = { 17348, 11951, 247241, 858 } })
     t.Fire("PLAYER_ENTERING_WORLD")
-    Check("health, Discolored over a lower potion", t.Body("NF Health"), "#showtooltip\n/use item:247241")
+    Check("health, Discolored over a lower potion", t.Body("NF Health"),
+        "#showtooltip\n/castsequence reset=combat item:247241, item:858")
     t = Fixture({ settings = { health = true, healthOrder = "potion" }, bags = { 17348, 11951 } })
     t.Fire("PLAYER_ENTERING_WORLD")
     Check("health, no draught or tuber", t.Body("NF Health"), nil)
+end
+
+-- One step per potion carried, so running out of one kind mid-fight moves on to the next.
+do
+    local bags = { 13446, 3928, 3928, 3928, 3928, 3928, 5509 }
+    local t = Fixture({ settings = { health = true }, bags = bags })
+    t.Fire("PLAYER_ENTERING_WORLD")
+    Check("health, stone then four potion steps", t.Body("NF Health"),
+        "#showtooltip\n/castsequence reset=combat item:5509, item:13446, item:3928, item:3928, item:3928")
+    t = Fixture({ settings = { health = true, healthOrder = "potion" }, bags = bags })
+    t.Fire("PLAYER_ENTERING_WORLD")
+    Check("health, potion first puts the stone second", t.Body("NF Health"),
+        "#showtooltip\n/castsequence reset=combat item:13446, item:5509, item:3928, item:3928, item:3928")
 end
 
 -- Food and drink: conjured wins over a higher level, the best level wins otherwise.
