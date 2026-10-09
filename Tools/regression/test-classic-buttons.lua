@@ -1,6 +1,7 @@
--- Run with Lua 5.1 from the repository root: ns.Button on the Classic+ skin. Red, lit from the
--- top, in a gold rim with gold text; brighter under the mouse, turned over while pressed, and its
--- outer edge still the picked marker. On the default skin it is as it was.
+-- Run with Lua 5.1 from the repository root: ns.Button on the Classic+ skin is the game's own panel
+-- button: its art in three pieces, pressed and disabled art, its highlight glow, and gold text that
+-- turns white under the mouse. Its edge shows only when a caller marks it picked. On the default
+-- skin it is as it was.
 local checks = 0
 local function check(label, value) assert(value, label); checks = checks + 1 end
 
@@ -25,6 +26,16 @@ local function New(kind)
             elseif k == "GetEffectiveScale" then return 1
             elseif k == "GetObjectType" then return self.kind
             elseif k == "IsMouseOver" then return self.mouseOver
+            elseif k == "IsEnabled" then return not rawget(self, "disabled")
+            elseif k == "SetTexture" then self.texture = args[1]
+            elseif k == "SetTexCoord" then self.coords = args
+            elseif k == "SetHighlightTexture" then
+                self.highlight = New("Texture")
+                self.highlight.texture, self.highlight.mode = args[1], args[2]
+            elseif k == "GetHighlightTexture" then return self.highlight
+            elseif k == "Hide" then self.hidden = true
+            elseif k == "Show" then self.hidden = false
+            elseif k == "SetShown" then self.hidden = not args[1]
             elseif k == "CreateTexture" then return New("Texture")
             elseif k == "CreateFontString" then return New("FontString")
             end
@@ -56,8 +67,6 @@ local function Load(account)
     return env.NaowhForever
 end
 
-local function Is(color, rgb) return color.r == rgb.r and color.g == rgb.g and color.b == rgb.b end
-local function Fill(bg, state) return Is(bg.gradient[2], state[1]) and Is(bg.gradient[1], state[2]) end
 
 -- The default skin: the flat button, no press handling.
 local ns = Load({})
@@ -68,27 +77,40 @@ check("default: the text in the theme's text colour", btn.label.color[1] == ns.T
 -- Classic+.
 ns = Load({ skin = "classic" })
 local St = ns.Shared.Style
-local states = St.CLASSIC_BUTTON_RGB
+local art = St.CLASSIC_BUTTON_ART
 btn = ns.Button(New("Frame"), "Close", 80, 24)
-local bg = btn._bg
-check("red, lit from the top", Fill(bg, states.rest))
-check("gold text", btn.label.color[1] == ns.THEME.accent.r and btn.label.color[2] == ns.THEME.accent.g)
+local function Art(file)
+    for _, piece in ipairs(btn._art) do if piece.texture ~= file then return false end end
+    return #btn._art == 3
+end
+check("the game's panel button, in three pieces", Art(art.up) and btn._bg.hidden)
+check("cropped as the game's template crops them", btn._art[1].coords[2] == St.CLASSIC_BUTTON_COORDS.left[2]
+    and btn._art[3].coords[1] == St.CLASSIC_BUTTON_COORDS.right[1])
+check("the game's highlight glow", btn.highlight.texture == art.highlight and btn.highlight.mode == "ADD")
+local accent = ns.THEME.accent
+check("gold text", btn.label.color[1] == accent.r and btn.label.color[2] == accent.g)
+check("no edge round it", btn._border._frame.hidden)
 btn.scripts.OnEnter(btn)
-check("under the mouse: brighter", Fill(bg, states.hover))
+check("under the mouse: white text", btn.label.color[1] == 1 and btn.label.color[3] == 1)
 btn.scripts.OnMouseDown(btn)
-check("pressed: turned over", Fill(bg, states.down))
-btn.mouseOver = true
+check("pressed: the game's pressed art", Art(art.down))
 btn.scripts.OnMouseUp(btn)
-check("let go over it: bright again", Fill(bg, states.hover))
-btn.mouseOver = false
-btn.scripts.OnMouseDown(btn)
-btn.scripts.OnMouseUp(btn)
-check("let go off it: at rest", Fill(bg, states.rest))
+check("let go: back up", Art(art.up))
 btn.scripts.OnLeave(btn)
-check("mouse gone: at rest", Fill(bg, states.rest))
+check("mouse gone: gold again", btn.label.color[1] == accent.r)
+btn.disabled = true
+btn.scripts.OnDisable(btn)
+check("disabled: the game's grey art and grey text", Art(art.disabled) and btn.label.color[1] == St.CLASSIC_DISABLED_GREY)
+btn.scripts.OnMouseDown(btn)
+check("a disabled button does not press", Art(art.disabled))
+btn.disabled = false
+btn.scripts.OnEnable(btn)
+check("enabled again", Art(art.up) and btn.label.color[1] == accent.r)
 
--- The outer edge keeps marking a picked button, as callers set it.
+-- The edge still marks a picked button, as callers set it, and goes again when they clear it.
 ns.AccentBorder(btn)
-check("a main action keeps its accent edge", btn._rest == ns.THEME.accent)
+check("a main action keeps its accent edge", btn._rest == accent and not btn._border._frame.hidden)
+btn._border:SetColor(0, 0, 0, 1)
+check("cleared to black, the edge goes", btn._border._frame.hidden)
 
 print("classic buttons: " .. checks .. " checks passed")

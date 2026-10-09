@@ -22,7 +22,7 @@ local STEM_INSET = 0.075
 local MAX_FRAME_LEVEL = 9999
 local OFFSCREEN = 0.9
 local BUTTON_TEXT_SIZE, BUTTON_REST_ALPHA = 12, 0.9
-local BUTTON_SHINE_SUBLEVEL, BUTTON_SHADOW = 1, 1
+local BUTTON_SHADOW = 1
 local SKIN_CLASSIC = "classic"
 local FONT_NAOWH, FONT_CLASSIC = "Naowh", "Arial Narrow"
 local FONT_HEADING = "Friz Quadrata TT"
@@ -583,41 +583,57 @@ function ns.AllowOffscreen(frame)
     frame:HookScript("OnSizeChanged", ClampOffscreen)
 end
 
-local function Gloss(tex, state)
-    local top, bottom = state[1], state[2]
-    tex:SetGradient("VERTICAL", CreateColor(bottom.r, bottom.g, bottom.b, 1), CreateColor(top.r, top.g, top.b, 1))
+local function SetArt(btn, file)
+    for _, piece in ipairs(btn._art) do piece:SetTexture(file) end
 end
 
+local function ArtPiece(btn, coords)
+    local piece = btn:CreateTexture(nil, "BACKGROUND")
+    piece:SetTexCoord(coords[1], coords[2], coords[3], coords[4])
+    return piece
+end
+
+-- The Classic+ skin's button is the game's own panel button: its art in three pieces, pressed and
+-- disabled art, its highlight glow, and gold text that turns white under the mouse. The edge only
+-- shows for a picked button, in the colour its caller gives it.
 local function ClassicButton(btn, bg, border, lbl)
     local T, St = ns.THEME, ns.Shared.Style
-    local states = St.CLASSIC_BUTTON_RGB
-    bg:SetColorTexture(1, 1, 1, 1)
-    Gloss(bg, states.rest)
-    local shine = btn:CreateTexture(nil, "BACKGROUND", nil, BUTTON_SHINE_SUBLEVEL)
-    shine:SetPoint("TOPLEFT")
-    shine:SetPoint("BOTTOMRIGHT", btn, "RIGHT")
-    shine:SetColorTexture(1, 1, 1, St.CLASSIC_BUTTON_SHINE)
-    local inside = CreateFrame("Frame", nil, btn)
-    ns.PixelInset(inside, 1, btn)
-    local gold, lit = St.CLASSIC_GOLD_RGB, St.CLASSIC_RIM_LIT_RGB
-    local rim = ns.Border(inside, gold)
-    btn._rim, btn._shine = rim, shine
+    local art, coords = St.CLASSIC_BUTTON_ART, St.CLASSIC_BUTTON_COORDS
+    bg:Hide()
+    local setColor = border.SetColor
+    border.SetColor = function(self, r, g, b, a)
+        setColor(self, r, g, b, a)
+        self._frame:SetShown(r ~= BLACK.r or g ~= BLACK.g or b ~= BLACK.b)
+    end
+    border._frame:Hide()
+    local left, middle, right = ArtPiece(btn, coords.left), ArtPiece(btn, coords.middle), ArtPiece(btn, coords.right)
+    left:SetPoint("TOPLEFT"); left:SetPoint("BOTTOMLEFT"); left:SetWidth(St.CLASSIC_BUTTON_CAP)
+    right:SetPoint("TOPRIGHT"); right:SetPoint("BOTTOMRIGHT"); right:SetWidth(St.CLASSIC_BUTTON_CAP)
+    middle:SetPoint("TOPLEFT", left, "TOPRIGHT"); middle:SetPoint("BOTTOMRIGHT", right, "BOTTOMLEFT")
+    btn._art = { left, middle, right }
+    SetArt(btn, art.up)
+    btn:SetHighlightTexture(art.highlight, "ADD")
+    local glow = coords.glow
+    btn:GetHighlightTexture():SetTexCoord(glow[1], glow[2], glow[3], glow[4])
     lbl:SetTextColor(T.accent.r, T.accent.g, T.accent.b, 1)
     lbl:SetShadowColor(BLACK.r, BLACK.g, BLACK.b, 1)
     lbl:SetShadowOffset(BUTTON_SHADOW, -BUTTON_SHADOW)
-    btn:SetScript("OnEnter", function()
-        Gloss(bg, states.hover)
-        rim:SetColor(lit.r, lit.g, lit.b, 1)
-        border:SetColor(T.accent.r, T.accent.g, T.accent.b, 1)
+    btn:SetScript("OnEnter", function() lbl:SetTextColor(1, 1, 1, 1) end)
+    btn:SetScript("OnLeave", function() lbl:SetTextColor(T.accent.r, T.accent.g, T.accent.b, 1) end)
+    btn:SetScript("OnMouseDown", function(self)
+        if self:IsEnabled() then SetArt(self, art.down) end
     end)
-    btn:SetScript("OnLeave", function()
-        Gloss(bg, states.rest)
-        rim:SetColor(gold.r, gold.g, gold.b, 1)
-        border:SetColor(btn._rest.r, btn._rest.g, btn._rest.b, 1)
-    end)
-    btn:SetScript("OnMouseDown", function() Gloss(bg, states.down) end)
     btn:SetScript("OnMouseUp", function(self)
-        Gloss(bg, self:IsMouseOver() and states.hover or states.rest)
+        if self:IsEnabled() then SetArt(self, art.up) end
+    end)
+    btn:SetScript("OnDisable", function(self)
+        SetArt(self, art.disabled)
+        local grey = St.CLASSIC_DISABLED_GREY
+        lbl:SetTextColor(grey, grey, grey, 1)
+    end)
+    btn:SetScript("OnEnable", function(self)
+        SetArt(self, art.up)
+        lbl:SetTextColor(T.accent.r, T.accent.g, T.accent.b, 1)
     end)
 end
 

@@ -333,9 +333,8 @@ function Look.Style(f)
     for _, b in ipairs({ f.land, f.games }) do
         b._bg:SetAlpha(alpha)
         b._border._frame:SetAlpha(alpha)
-        if b._rim then
-            b._rim._frame:SetAlpha(alpha)
-            b._shine:SetAlpha(alpha)
+        if b._art then
+            for _, piece in ipairs(b._art) do piece:SetAlpha(alpha) end
         end
     end
     local bare = alpha < SHADOW_BELOW
