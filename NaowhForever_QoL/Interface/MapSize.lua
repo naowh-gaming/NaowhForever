@@ -1,0 +1,163 @@
+-- MapSize.lua: the QoL map size: the windowed world map drawn bigger or smaller, by a corner grip or a slider.
+local ns = _G.NaowhForever
+
+local S = ns.QoLSettings
+
+local PERCENT = ns.QoLConstants.PERCENT
+local ROUND = ns.QoLConstants.ROUND
+local MIN_PCT, MAX_PCT, STEP_PCT = 50, 150, 5
+local SCALE_RANGE = { MIN_PCT, MAX_PCT, STEP_PCT }
+local SAME_SCALE = 0.001
+local GRIP_SIZE = 16
+local GRIP_INSET = 3
+local GRIP_UP = "Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Up"
+local GRIP_HIGHLIGHT = "Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Highlight"
+local GRIP_DOWN = "Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Down"
+
+local TEXT_TITLE = "Map Size"
+local TEXT_TIP = "Drag to make the map bigger or smaller.\nRight-click: back to 100%."
+local TEXT_HELP = "Makes the windowed world map bigger or smaller: drag the grip in its bottom right "
+    .. "corner, or set it here. The full screen map keeps its size."
+local TEXT_SCALE = "Map Scale"
+
+local grip
+local pending
+local hooked
+local startDist, startPct
+local events = CreateFrame("Frame")
+
+local function On()
+    return S.Get("enabled") and S.Get("mapSize")
+end
+
+local function Wanted()
+    return On() and (S.Get("mapSizePercent") or PERCENT) / PERCENT or 1
+end
+
+local function SetMapScale(scale)
+    local map = WorldMapFrame
+    local old = map:GetScale()
+    if InCombatLockdown() or math.abs(old - scale) < SAME_SCALE then return end
+    local point, relative, relPoint, x, y = map:GetPoint(1)
+    map:SetScale(scale)
+    if point == "TOPLEFT" and map:GetNumPoints() == 1 then
+        map:ClearAllPoints()
+        map:SetPoint(point, relative, relPoint, (x or 0) * old / scale, (y or 0) * old / scale)
+    end
+end
+
+local function Apply()
+    local map = WorldMapFrame
+    if not map then return end
+    local full = map.IsMaximized and map:IsMaximized()
+    if InCombatLockdown() then
+        pending = true
+        events:RegisterEvent("PLAYER_REGEN_ENABLED")
+        return
+    end
+    SetMapScale(full and 1 or Wanted())
+    if grip then grip:SetShown(On() and not full) end
+end
+
+local function OnEvent(self)
+    self:UnregisterEvent("PLAYER_REGEN_ENABLED")
+    if pending then
+        pending = nil
+        Apply()
+    end
+end
+
+local function CursorDistance(map)
+    local x, y = GetCursorPosition()
+    local s = map:GetEffectiveScale()
+    local left, top = map:GetLeft(), map:GetTop()
+    if not (left and top) then return nil end
+    local dx, dy = x - left * s, top * s - y
+    return math.sqrt(dx * dx + dy * dy)
+end
+
+local function Snap(pct)
+    pct = math.floor(pct / STEP_PCT + ROUND) * STEP_PCT
+    return math.max(MIN_PCT, math.min(MAX_PCT, pct))
+end
+
+local function Drag()
+    local dist = CursorDistance(WorldMapFrame)
+    if not dist or not startDist or startDist <= 0 then return end
+    SetMapScale(Snap(startPct * dist / startDist) / PERCENT)
+end
+
+local function OnGripDown(_, button)
+    if button ~= "LeftButton" or InCombatLockdown() then return end
+    startDist, startPct = CursorDistance(WorldMapFrame), S.Get("mapSizePercent") or PERCENT
+    grip:SetScript("OnUpdate", Drag)
+end
+
+local function OnGripUp(_, button)
+    if button ~= "LeftButton" or not startDist then return end
+    grip:SetScript("OnUpdate", nil)
+    startDist = nil
+    S.Set("mapSizePercent", Snap(WorldMapFrame:GetScale() * PERCENT))
+end
+
+local function OnGripHide()
+    if startDist then OnGripUp(grip, "LeftButton") end
+end
+
+local function OnGripClick()
+    if InCombatLockdown() then return end
+    S.Set("mapSizePercent", PERCENT)
+end
+
+local function BuildGrip()
+    grip = CreateFrame("Button", nil, WorldMapFrame)
+    grip:SetSize(GRIP_SIZE, GRIP_SIZE)
+    grip:SetPoint("BOTTOMRIGHT", -GRIP_INSET, GRIP_INSET)
+    grip:SetFrameStrata("DIALOG")
+    grip:SetNormalTexture(GRIP_UP)
+    grip:SetHighlightTexture(GRIP_HIGHLIGHT)
+    grip:SetPushedTexture(GRIP_DOWN)
+    grip:RegisterForClicks("RightButtonUp")
+    grip:SetScript("OnClick", OnGripClick)
+    grip:SetScript("OnMouseDown", OnGripDown)
+    grip:SetScript("OnMouseUp", OnGripUp)
+    grip:SetScript("OnHide", OnGripHide)
+    ns.Tooltip(grip, TEXT_TITLE, TEXT_TIP)
+end
+
+local function Setup()
+    local map = WorldMapFrame
+    if not map then return end
+    if On() and not grip then BuildGrip() end
+    if not hooked then
+        hooked = true
+        if map.Maximize then hooksecurefunc(map, "Maximize", Apply) end
+        if map.Minimize then hooksecurefunc(map, "Minimize", Apply) end
+        map:HookScript("OnShow", Apply)
+    end
+    Apply()
+end
+
+local function OnLogin(self)
+    self:UnregisterAllEvents()
+    Setup()
+end
+
+events:SetScript("OnEvent", OnEvent)
+
+hooksecurefunc(S, "Set", function(key)
+    if key == "enabled" or key == "mapSize" or key == "mapSizePercent" then Setup() end
+end)
+hooksecurefunc(ns, "Apply", Setup)
+
+local boot = CreateFrame("Frame")
+boot:RegisterEvent("PLAYER_LOGIN")
+boot:SetScript("OnEvent", OnLogin)
+
+ns.Shared.Settings.Page("QoL/Interface", S):Card({
+    id = "mapSize", name = TEXT_TITLE, order = 41, switch = "mapSize",
+    help = TEXT_HELP,
+    rows = {
+        { key = "mapSizePercent", label = TEXT_SCALE, slider = SCALE_RANGE, unit = "%" },
+    },
+})
