@@ -5,7 +5,8 @@ local S = ns.QoLSettings
 local Parts, St = ns.Shared.Parts, ns.Shared.Style
 
 local CALL_PET, SUMMON_IMP = 883, 688
-local LONE_WOLF = 415370 -- https://www.wowhead.com/forever/spell=415370
+-- 415370 is the talent node spell; 409979 teaches it and is the one seen known in the Forever client.
+local LONE_WOLF, LONE_WOLF_TAUGHT = 415370, 409979 -- https://www.wowhead.com/forever/spell=415370
 local ICON = 132161
 local WIDTH, ICON_GAP = 220, 8
 local DISMOUNT_DELAY = 5
@@ -117,7 +118,9 @@ local function Warning()
     if S.Get("petInstanceOnly") and not IsInInstance() then return end
     if not ShouldHavePet() then return end
     if not UnitExists("pet") then
-        if class == "HUNTER" and C_SpellBook.IsSpellKnown(LONE_WOLF) then return end
+        if class == "HUNTER" and (C_SpellBook.IsSpellKnown(LONE_WOLF) or C_SpellBook.IsSpellKnown(LONE_WOLF_TAUGHT)) then
+            return
+        end
         return "petMissingText"
     end
     if S.Get("petPassive") and IsPassive() then return "petPassiveText" end
