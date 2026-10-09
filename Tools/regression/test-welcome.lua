@@ -1,4 +1,4 @@
--- Run with Lua 5.1 from the repository root: the welcome window (Core/NaowhForever_Welcome.lua)
+-- Run with Lua 5.1 from the repository root: the welcome window (Core/Welcome.lua)
 -- against stubs of the shared window parts. Checks that nothing is made at load; it shows a few
 -- seconds after the first login, or after a reload while it is still unseen (another addon's
 -- setup reloading over it), never during a loading screen, and waits
@@ -15,7 +15,7 @@ local function Read(path)
 end
 
 local DISCORD = "https://discord.com/invite/naowh"
-local WELCOME = "Core/NaowhForever_Welcome.lua"
+local WELCOME = "Core/Welcome.lua"
 
 -------------------------------------------------------------------------------
 --  Stubs: a frame keeps its scripts, hooks, events, text and shown state; any other method the
@@ -320,7 +320,7 @@ end
 -------------------------------------------------------------------------------
 do
     local s = Setup({ welcomeSeen = true })
-    local source = Read("Core/NaowhForever_Commands.lua")
+    local source = Read("Core/Commands.lua")
     local body = assert(source:match('SlashCmdList%["NAOWHFOREVER"%] = function%(msg%)\n(.-)\nend\n'),
         "the /nf handler")
     local env = setmetatable({ ns = s.ns, strtrim = function(t) return (t:gsub("^%s+", ""):gsub("%s+$", "")) end },

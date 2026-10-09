@@ -1,9 +1,9 @@
--- Loads NaowhForever_Alts.lua against stubbed bags and tooltips and checks the Alt Item Counts
+-- Loads Alts.lua against stubbed bags and tooltips and checks the Alt Item Counts
 -- lines (who holds the item and where, most first, nothing when it is only in the bags you
 -- look at), the bag count kept for this character, and what a tooltip refresh and a bag scan
 -- cost: an item tooltip in the bags is redrawn several times a second while hovered.
 -- Run from the repo root: lua Tools/regression/test-alts.lua
-local f = assert(io.open(arg[1] or "QoL/NaowhForever_Alts.lua", "rb"))
+local f = assert(io.open(arg[1] or "QoL/Alts.lua", "rb"))
 local source = f:read("*a"); f:close()
 
 local checks = 0

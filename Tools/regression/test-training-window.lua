@@ -204,7 +204,7 @@ Load({
     "Shared/Shared.lua", "Shared/Data/Forever.lua", "Shared/Style.lua", "Shared/Items.lua", "Shared/Gear.lua", "Shared/Places.lua",
     "Shared/Parts.lua", "Shared/Marks.lua", "Shared/Text.lua", "Shared/Hud.lua", "Shared/Timer.lua", "Shared/Share.lua", "Shared/Panels.lua", "Shared/Window.lua", "Shared/Tabs.lua", "Shared/SettingsCard.lua", "Shared/View.lua", "Shared/Kinds.lua",
     "Shared/Settings/Settings.lua",
-    "Core/NaowhForever_Features.lua",
+    "Core/Features.lua",
 }, env)
 -- The planner's own files, as Training.xml lists them.
 local xml = assert(io.open("NaowhForever_Training/Training.xml", "rb")):read("*a"):gsub("<!%-%-.-%-%->", "")

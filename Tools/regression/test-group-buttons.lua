@@ -58,7 +58,7 @@ local env = setmetatable({
     end,
 }, { __index = _G })
 env._G = env
-local chunk = assert(loadfile("QoL/NaowhForever_GroupButtons.lua"))
+local chunk = assert(loadfile("QoL/GroupButtons.lua"))
 setfenv(chunk, env)
 chunk()
 local events, boot = frames[1], frames[2]

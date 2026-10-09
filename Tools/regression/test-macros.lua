@@ -6,9 +6,9 @@ local function Read(path)
     local text = f:read("*a"); f:close()
     return text
 end
-local foodSource = Read("QoL/NaowhForever_FoodBar.lua")
+local foodSource = Read("QoL/FoodBar.lua")
 local MACRO_FILES = { "Macros.lua", "Constants.lua", "Data/Items.lua", "Commands.lua", "Smart.lua", "Profile.lua" }
-local sources = { Read("Core/NaowhForever_Features.lua"), foodSource }
+local sources = { Read("Core/Features.lua"), foodSource }
 for _, file in ipairs(MACRO_FILES) do sources[#sources + 1] = Read("NaowhForever_Macros/" .. file) end
 
 local FOOD, DRINK = "Food", "Drink"

@@ -43,7 +43,7 @@ end
 
 -- A colour swatch: opening the picker reports the colour it opens with, and so does cancel.
 do
-    local source = Read("QoL/NaowhForever_XPBar.lua")
+    local source = Read("QoL/XPBar.lua")
     local chunk = "local SAME_COLOUR = 1 / 255\n"
         .. assert(source:match("(local function SetColour%(.-\nend\n\nlocal function ColourRow%(.-\nend)\n"))
     local S = Settings({})
@@ -68,7 +68,7 @@ end
 
 -- One spot per text.
 do
-    local source = Read("QoL/NaowhForever_XPBar.lua")
+    local source = Read("QoL/XPBar.lua")
     local chunk = Consts(source)
         .. assert(source:match("(local function TextOf%(which%).-\nlocal function OneEach%(spots%).-\nend)\n"))
     local spots = { { key = "a" }, { key = "b" }, { key = "c" } }
@@ -99,7 +99,7 @@ end
 
 -- The texts are measured again only when one of them changed.
 do
-    local source = Read("QoL/NaowhForever_XPBar.lua")
+    local source = Read("QoL/XPBar.lua")
     local chunk = assert(source:match("(local function TextsChanged%(list%).-\nend)\n"))
     local TextsChanged = Load(chunk .. "\nreturn TextsChanged", {})
     local function FS(text) return { text = text, GetText = function(self) return self.text end } end
@@ -173,7 +173,7 @@ do
     now = now + 10
     check("and counts up", Played.Total() == 368560 and Played.Level() == 10)
 
-    local source = Read("QoL/NaowhForever_XPBar.lua")
+    local source = Read("QoL/XPBar.lua")
     local chunk = Consts(source) .. assert(source:match("(local function Duration%(seconds%).-\nend)\n"))
         .. "\n" .. assert(source:match("(local function SlotText%(which, maxed, max%).-\nend)\n"))
     local SlotText = Load(chunk .. "\nreturn SlotText", { Played = Played, sessionStart = 0,
@@ -197,7 +197,7 @@ end
 
 -- The bar's texture and background: flat and 85% by default, then the picked ones.
 do
-    local source = Read("QoL/NaowhForever_XPBar.lua")
+    local source = Read("QoL/XPBar.lua")
     local chunk = assert(source:match("(local FILL_FROM = .-\nlocal function PaintBar%(b%).-\nend)\n"))
     local S = Settings({ xpBarTexture = "", xpBarBgAlpha = 0.85 })
     local function Tex()
@@ -231,7 +231,7 @@ end
 
 -- The texts' font: the Addon Font outlined at 13 by default, then the picked font, size and outline.
 do
-    local source = Read("QoL/NaowhForever_XPBar.lua")
+    local source = Read("QoL/XPBar.lua")
     local chunk = Consts(source)
         .. assert(source:match("(local function Natural%(fs%).-\nlocal function FitSlots%(slots, w, placeMid%).-\nend)\n"))
     local S = Settings({ xpBarFont = "", xpBarFontSize = 13, xpBarOutline = "OUTLINE" })

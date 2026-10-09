@@ -87,7 +87,7 @@ do
     local settings = { enabled = true, lowHealth = true, lowHealthBelow = 35, lowHealthItem = "auto",
         lowHealthIconSize = 48, lowHealthGlow = false, lowHealthSound = false,
         lowHealthFont = "", lowHealthFontSize = 16, lowHealthOutline = "OUTLINE" }
-    local S, fonts = Load({ "Core/NaowhForever_Features.lua", "NaowhForever_AuraBuffs/AuraBuffs.lua",
+    local S, fonts = Load({ "Core/Features.lua", "NaowhForever_AuraBuffs/AuraBuffs.lua",
         "NaowhForever_AuraBuffs/LowHealth.lua", "NaowhForever_AuraBuffs/View/Style.lua",
         "NaowhForever_AuraBuffs/View/LowHealthLook.lua", "NaowhForever_AuraBuffs/UI/LowHealth.lua",
         "NaowhForever_AuraBuffs/UI/LowHealthCard.lua" }, settings)
@@ -106,7 +106,7 @@ end
 do
     local settings = { enabled = true, gatherReminder = true, gatherInInstances = false, gatherIconSize = 40,
         gatherFish = false, gatherFont = "", gatherFontSize = 13, gatherOutline = "OUTLINE" }
-    local S, fonts = Load({ "Core/NaowhForever_Features.lua", "NaowhForever_Professions/Professions.lua",
+    local S, fonts = Load({ "Core/Features.lua", "NaowhForever_Professions/Professions.lua",
         "NaowhForever_Professions/View/Style.lua", "NaowhForever_Professions/UI/GatherTracking.lua" }, settings)
     local label = Find(fonts, "Track ")
     check("Tracking: the line as today", label and label.font == "" and label.size == 13

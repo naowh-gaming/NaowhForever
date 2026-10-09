@@ -1,7 +1,7 @@
 -- The key binding field: UI.KeyField cut out of Widgets.lua and run against a binding table that
 -- behaves like the game's. A field takes a binding command, or a function for one pointed at
 -- another binding each time its panel opens.
-local f = assert(io.open("Core/NaowhForever_Widgets.lua", "rb"))
+local f = assert(io.open("Core/Widgets.lua", "rb"))
 local source = f:read("*a"):gsub("\r\n", "\n"); f:close()
 local body = assert(source:match("\n(local function KeyCombo%(.-\nfunction UI%.KeyField%(.-\nend)\n"), "KeyField")
 local modifiers = assert(source:match("\n(local MEDIA = .-)\nlocal UI = {}\n"), "the file's constants")

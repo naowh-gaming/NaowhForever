@@ -1,6 +1,6 @@
 -- Run with Lua 5.1 from the repository root: text from other players and shared strings is shown
 -- as plain text. ns.PlainText (Core) on crafted names, and a crafted Reminder Pack's preview
--- (Core/NaowhForever_Packs.lua, through the real LibSerialize and LibDeflate).
+-- (Core/Packs.lua, through the real LibSerialize and LibDeflate).
 strmatch = string.match
 dofile("Libs/LibStub/LibStub.lua")
 dofile("Libs/LibDeflate/LibDeflate.lua")
@@ -53,7 +53,7 @@ local function Packs()
         Color = function(_, text) return "|cff0091ed" .. (text and (text .. "|r") or "") end }
     local env = setmetatable({ _G = { NaowhForever = ns }, LibStub = LibStub }, { __index = _G })
     ns.Shared = { Decode = dofile("Tools/regression/load_decode.lua")(env) }
-    local f = assert(io.open("Core/NaowhForever_Packs.lua", "rb"))
+    local f = assert(io.open("Core/Packs.lua", "rb"))
     local source = f:read("*a"):gsub("\r\n", "\n"); f:close()
     local chunk = assert(loadstring(source, "Packs")); setfenv(chunk, env); chunk()
     return ns
@@ -105,7 +105,7 @@ Case("a plain pack reads as before", function()
 end)
 
 Case("ns.Print starts every line with the Naowh logo, which chat from players cannot carry", function()
-    local f = assert(io.open("Core/NaowhForever_Core.lua", "rb"))
+    local f = assert(io.open("Core/Core.lua", "rb"))
     local source = f:read("*a"):gsub("\r\n", "\n"); f:close()
     local said = {}
     local frame = setmetatable({}, { __index = function() return function() end end })
@@ -165,7 +165,7 @@ local function Senders(world)
         wipe = function(t) for k in pairs(t) do t[k] = nil end return t end,
         issecretvalue = function(v) return v ~= nil and v == world.secret end,
     }, { __index = _G })
-    local chunk = assert(loadfile("Core/NaowhForever_Senders.lua")); setfenv(chunk, env); chunk()
+    local chunk = assert(loadfile("Core/Senders.lua")); setfenv(chunk, env); chunk()
     return ns
 end
 

@@ -4,7 +4,7 @@
 local checks = 0
 local function check(label, ok) assert(ok, label); checks = checks + 1 end
 
-local f = assert(io.open(arg[1] or "Core/NaowhForever_Core.lua", "rb"))
+local f = assert(io.open(arg[1] or "Core/Core.lua", "rb"))
 local src = f:read("*a"):gsub("\r\n", "\n"); f:close()
 
 local function Slice(a, b)

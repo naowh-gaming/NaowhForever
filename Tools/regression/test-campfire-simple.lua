@@ -18,7 +18,7 @@
 
 local Load = dofile("Tools/regression/load_files.lua")
 -- The AuraBuffs files the Campfire reminder and its cards are made of, in AuraBuffs.xml's order.
-local CAMP_FILES = { "Core/NaowhForever_Features.lua", "NaowhForever_AuraBuffs/AuraBuffs.lua",
+local CAMP_FILES = { "Core/Features.lua", "NaowhForever_AuraBuffs/AuraBuffs.lua",
     "NaowhForever_AuraBuffs/Data/Campfire.lua", "NaowhForever_AuraBuffs/CampReader.lua",
     "NaowhForever_AuraBuffs/View/Style.lua", "NaowhForever_AuraBuffs/View/CampIcon.lua",
     "NaowhForever_AuraBuffs/View/CampBar.lua", "NaowhForever_AuraBuffs/View/CampAlert.lua",

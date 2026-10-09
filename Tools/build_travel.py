@@ -10,7 +10,7 @@ Which path is which route, and the zones of its docks, are written here by hand 
 build checks each dock is on the continent and inside the zone it is listed under. Forever's own
 docks (Southshore, Zephras Isle) are left out until their routes are known.
 
-Writes QoL/NaowhForever_TownTravel.lua.
+Writes QoL/TownTravel.lua.
 
 Usage: python Tools/build_travel.py [--build 1.60.1.70205]
 """
@@ -20,7 +20,7 @@ import sys
 import wago
 from build_journal import ROOT, header, write
 
-OUT = ROOT / "QoL" / "NaowhForever_TownTravel.lua"
+OUT = ROOT / "QoL" / "TownTravel.lua"
 EASTERN_KINGDOMS, KALIMDOR = 0, 1
 SAME = 2.5   # map percent: docks closer than this share one pin
 # (taxi path, kind, factions, its first dock, its second): a dock is (place, continent, uiMapID).

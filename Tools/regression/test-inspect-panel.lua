@@ -342,7 +342,7 @@ local function Window()
 end
 
 local files = TocFiles("^Shared/.*%.lua$")
-files[#files + 1] = "Core/NaowhForever_Senders.lua"
+files[#files + 1] = "Core/Senders.lua"
 files[#files + 1] = "NaowhForever_BiS/BiS/Enchants.lua"
 for _, path in ipairs(TocFiles("^NaowhForever_BiS/CharacterPanel/.*%.lua$")) do files[#files + 1] = path end
 local panelFiles = TocFiles("^NaowhForever_BiS/InspectPanel/.*%.lua$")

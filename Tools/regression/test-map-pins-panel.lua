@@ -10,8 +10,8 @@ end
 local checks = 0
 local function Check(ok, label) assert(ok, label); checks = checks + 1 end
 
-local panelSrc = Read("QoL/NaowhForever_MapPinsPanel.lua")
-local townSrc = Read("QoL/NaowhForever_TownMap.lua")
+local panelSrc = Read("QoL/MapPinsPanel.lua")
+local townSrc = Read("QoL/TownMap.lua")
 for _, key in ipairs({ "townCapitalsOnly", "townMinimap", "townMinimapSpirit", "townSpiritHealers", "townZoneLinks", "townTravel",
     "townClass", "townProfession", "townFlight", "townInn", "townBank", "townRepair", "townSupplies",
     "townStable", "townVendors", "townMail" }) do
@@ -19,7 +19,7 @@ for _, key in ipairs({ "townCapitalsOnly", "townMinimap", "townMinimapSpirit", "
     Check(not townSrc:find('key = "' .. key .. '"', 1, true), "not on the options card: " .. key)
 end
 Check(townSrc:find('key = "townPinSize"', 1, true), "the card keeps Pin Size")
-Check(Read("QoL/NaowhForever_TownMap.xml"):find('<Script file="NaowhForever_MapPinsPanel.lua"/>', 1, true),
+Check(Read("QoL/TownMap.xml"):find('<Script file="MapPinsPanel.lua"/>', 1, true),
     "the panel loads")
 
 local settings = { enabled = true, townMap = false }
@@ -85,7 +85,7 @@ local env = setmetatable({
         overlayFrames = { MapButton(-4), MapButton(-36), { IsShown = function() return true end,
             GetNumPoints = function() return 1 end, GetPoint = function() return "BOTTOMLEFT", canvas, "BOTTOMLEFT", 0 end } } },
 }, { __index = _G })
-local chunk = assert(loadstring(Read("QoL/NaowhForever_MapPinsPanel.lua")))
+local chunk = assert(loadstring(Read("QoL/MapPinsPanel.lua")))
 setfenv(chunk, env)
 chunk()
 boot.scripts.OnEvent(boot)

@@ -299,10 +299,10 @@ env.GameTooltip.GetOwner = function() return nil end
 
 local files = TocFiles("^Shared/.*%.lua$")
 check("the Shared bag helper loads with Shared", #TocFiles("^Shared/Bags%.lua$") == 1)
-check("the TOC loads the Scrap Marker and its list", #TocFiles("^QoL/NaowhForever_ScrapMarker%.lua$") == 1
-    and #TocFiles("^QoL/NaowhForever_ScrapList%.lua$") == 1)
-files[#files + 1] = "QoL/NaowhForever_ScrapMarker.lua"
-files[#files + 1] = "QoL/NaowhForever_ScrapList.lua"
+check("the TOC loads the Scrap Marker and its list", #TocFiles("^QoL/ScrapMarker%.lua$") == 1
+    and #TocFiles("^QoL/ScrapList%.lua$") == 1)
+files[#files + 1] = "QoL/ScrapMarker.lua"
+files[#files + 1] = "QoL/ScrapList.lua"
 local before = made
 Load(files, env)
 check("nothing made at load", made == before and #loose == 0)

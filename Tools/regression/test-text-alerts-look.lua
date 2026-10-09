@@ -161,11 +161,11 @@ local function Fixture(saved)
     }, { __index = _G })
     env._G = env
     local files = TocFiles("^Shared/.*%.lua$")
-    for _, path in ipairs({ "Core/NaowhForever_Features.lua", "QoL/NaowhForever_QoL.lua", "QoL/NaowhForever_AlertStack.lua",
-        "QoL/NaowhForever_CombatAlert.lua", "QoL/NaowhForever_CombatTimer.lua",
-        "QoL/NaowhForever_StealthReminder.lua", "QoL/NaowhForever_TalentPoints.lua",
-        "QoL/NaowhForever_Durability.lua", "QoL/NaowhForever_Restock.lua",
-        "QoL/NaowhForever_PetTracker.lua" }) do
+    for _, path in ipairs({ "Core/Features.lua", "QoL/QoL.lua", "QoL/AlertStack.lua",
+        "QoL/CombatAlert.lua", "QoL/CombatTimer.lua",
+        "QoL/StealthReminder.lua", "QoL/TalentPoints.lua",
+        "QoL/Durability.lua", "QoL/Restock.lua",
+        "QoL/PetTracker.lua" }) do
         files[#files + 1] = path
     end
     Load(files, env)

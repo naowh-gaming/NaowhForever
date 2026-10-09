@@ -153,26 +153,26 @@ env.STANDARD_TEXT_FONT = "Fonts\\FRIZQT__.TTF"
 local function Load(path)
     local f = assert(loadfile(path)); setfenv(f, env); f("NaowhForever")
 end
-Load("Core/NaowhForever_Core.lua")
-Load("Core/NaowhForever_Features.lua")
+Load("Core/Core.lua")
+Load("Core/Features.lua")
 local ns = env.NaowhForever
 local account, settings = {}, {}
 ns.AccountSettings = function() return account end
 ns.SettingsRoot = function() return settings end
 ns.RegisterReapply = function() end
 ns.QueueReapply = function() end
-Load("Core/NaowhForever_Widgets.lua")
-for _, path in ipairs(dofile("Tools/regression/toc_files.lua")("^Core/NaowhForever_Unlock.-%.lua$")) do Load(path) end
+Load("Core/Widgets.lua")
+for _, path in ipairs(dofile("Tools/regression/toc_files.lua")("^Core/Unlock.-%.lua$")) do Load(path) end
 -- The options window is several files now: its modules, the window, its Settings page, commands and launchers.
 local function LoadWindow()
     for _, name in ipairs({ "Modules", "Window", "SettingsPage", "Commands", "Launchers" }) do
-        Load("Core/NaowhForever_" .. name .. ".lua")
+        Load("Core/" .. name .. ".lua")
     end
 end
 LoadWindow()
-Load("Core/NaowhForever_Search.lua")
+Load("Core/Search.lua")
 for _, path in ipairs(dofile("Tools/regression/toc_files.lua")("^Shared/.*%.lua$")) do Load(path) end
-Load("QoL/NaowhForever_QoL.lua")
+Load("QoL/QoL.lua")
 Load("QoL/Constants.lua")
 env.GameTooltip = New("Frame")
 env.GameTooltip.GetOwner = function() return nil end
@@ -210,8 +210,8 @@ env.hooksecurefunc = function(target, key, fn)
     end
 end
 for _, path in ipairs(dofile("Tools/regression/toc_files.lua")("^TopBar/.*%.lua$")) do Load(path) end
-for _, path in ipairs({ "QoL/NaowhForever_DeathRelease.lua",
-    "QoL/NaowhForever_StealthReminder.lua", "QoL/NaowhForever_CoTank.lua" }) do Load(path) end
+for _, path in ipairs({ "QoL/DeathRelease.lua",
+    "QoL/StealthReminder.lua", "QoL/CoTank.lua" }) do Load(path) end
 local UI = ns.UI
 ns.BuildQoLInterfacePage = function(parent, y) return y end
 for _, name in ipairs({ "JournalSettings", "DiscoverySettings", "ProfessionSettings", "MacroSettings", "AuraBuffSettings",

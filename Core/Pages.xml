@@ -1,8 +1,8 @@
 <Ui xmlns="http://www.blizzard.com/wow/ui/">
     <!-- Pages.xml: Patch Notes, Credits, the welcome window and setup, after the Badges. -->
-    <Script file="NaowhForever_PatchNotes.lua"/>
-    <Script file="NaowhForever_Credits.lua"/>
-    <Script file="NaowhForever_Welcome.lua"/>
-    <Script file="NaowhForever_Setup.lua"/>
-    <Script file="NaowhForever_SetupWindow.lua"/>
+    <Script file="PatchNotes.lua"/>
+    <Script file="Credits.lua"/>
+    <Script file="Welcome.lua"/>
+    <Script file="Setup.lua"/>
+    <Script file="SetupWindow.lua"/>
 </Ui>

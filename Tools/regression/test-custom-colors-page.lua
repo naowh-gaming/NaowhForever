@@ -7,10 +7,10 @@ local function Read(path)
     local s = f:read("*a"):gsub("\r\n", "\n"); f:close()
     return s
 end
-local coreSource = Read("Core/NaowhForever_Core.lua")
-local featuresSource = Read("Core/NaowhForever_Features.lua")
-local rxpSource = Read("RXPThemes/NaowhForever_RXPThemes.lua")
-local source = Read("Core/NaowhForever_SettingsPage.lua")
+local coreSource = Read("Core/Core.lua")
+local featuresSource = Read("Core/Features.lua")
+local rxpSource = Read("RXPThemes/RXPThemes.lua")
+local source = Read("Core/SettingsPage.lua")
 local constants = assert(source:match("\n(local DEFAULT_SCALE = .-\n)\nlocal colorsPending = false\n"), "named values")
 local empty = assert(source:match("\n(local function Empty%(%).-end\n)"), "Empty")
 local first = assert(source:find("local function ThemeChoices()", 1, true))
@@ -251,7 +251,7 @@ end
 
 -- The chips themselves: the control is cut out of Widgets.lua and run with stub frames.
 do
-    local widgets = Read("Core/NaowhForever_Widgets.lua")
+    local widgets = Read("Core/Widgets.lua")
     local widgetConstants = assert(widgets:match("\n(local MEDIA = .-\n)\nlocal UI = {}\n"), "Widgets constants")
     local atEnd = assert(widgets:match("\n(local function AtRowEnd%(.-\nend\n)"), "AtRowEnd")
     local from = assert(widgets:find("local function PaletteChip(", 1, true))

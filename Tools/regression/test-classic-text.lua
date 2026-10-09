@@ -81,8 +81,8 @@ local function Load(account)
         UIParent = New("Frame"),
     }, { __index = _G })
     env._G = env
-    for _, path in ipairs({ "Core/NaowhForever_Core.lua", "Shared/Shared.lua", "Shared/Style.lua",
-        "Core/NaowhForever_Widgets.lua", "Shared/Parts.lua", "Shared/Marks.lua", "Shared/Text.lua", "Shared/Hud.lua",
+    for _, path in ipairs({ "Core/Core.lua", "Shared/Shared.lua", "Shared/Style.lua",
+        "Core/Widgets.lua", "Shared/Parts.lua", "Shared/Marks.lua", "Shared/Text.lua", "Shared/Hud.lua",
         "Shared/Timer.lua", "Shared/Share.lua", "Shared/Panels.lua", "Shared/Window.lua", "Shared/Tabs.lua",
         "Shared/SettingsCard.lua" }) do
         local chunk = assert(loadstring(Read(path), path))

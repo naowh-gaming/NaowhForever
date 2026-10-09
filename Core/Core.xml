@@ -1,8 +1,8 @@
 <Ui xmlns="http://www.blizzard.com/wow/ui/">
     <!-- Core.xml: the namespace, the feature switches, presets, message senders and waypoints. -->
-    <Script file="NaowhForever_Core.lua"/>
-    <Script file="NaowhForever_Features.lua"/>
-    <Script file="NaowhForever_Presets.lua"/>
-    <Script file="NaowhForever_Senders.lua"/>
-    <Script file="NaowhForever_Waypoint.lua"/>
+    <Script file="Core.lua"/>
+    <Script file="Features.lua"/>
+    <Script file="Presets.lua"/>
+    <Script file="Senders.lua"/>
+    <Script file="Waypoint.lua"/>
 </Ui>

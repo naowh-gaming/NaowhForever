@@ -272,7 +272,7 @@ local env = setmetatable({
 }, { __index = _G })
 env._G = env
 -- The HUD Editor is several files (Core/Options.xml lists them in load order).
-for _, path in ipairs(dofile("Tools/regression/toc_files.lua")("^Core/NaowhForever_Unlock.-%.lua$")) do
+for _, path in ipairs(dofile("Tools/regression/toc_files.lua")("^Core/Unlock.-%.lua$")) do
     local f = assert(io.open(path, "rb"))
     local source = f:read("*a"):gsub("\r\n", "\n"); f:close()
     local chunk = assert(loadstring(source, path))

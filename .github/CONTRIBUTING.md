@@ -77,10 +77,10 @@ comment, sent back for changes, or merged and fixed up by me.
   `NaowhForever_DungeonJournal/README.md`. The core areas (Core, QoL, TopBar, Badges,
   RXPThemes) load through their own XML files too. Add a new file to its area's XML, never
   to `NaowhForever.toc`. The checks read the XML too, so its files are linted and compiled.
-- A feature's on/off switch and its default live in `Core/NaowhForever_Features.lua`
+- A feature's on/off switch and its default live in `Core/Features.lua`
   (`ns.FEATURES`), and the module's settings read it from there.
 - Settings go through `UI.ModuleSettings`, option widgets through the `ns.UI` kit in
-  `Core/NaowhForever_Widgets.lua`, confirmations through `ns.Confirm` / `ns.PromptText`,
+  `Core/Widgets.lua`, confirmations through `ns.Confirm` / `ns.PromptText`,
   and movable frames through `UI.AttachMover` so they show up in Unlock Mode.
 - One comment per file: its first line, `-- <File>.lua: <what it is>.` Anything a reader
   needs that the code cannot say goes in the module's `README.md`, under Why.
@@ -88,7 +88,7 @@ comment, sent back for changes, or merged and fixed up by me.
 ### Shared components
 
 - Build every piece of UI from the shared components: `Shared/` (listed in
-  `Shared/README.md`) and the `ns.UI` widgets in `Core/NaowhForever_Widgets.lua`. Windows,
+  `Shared/README.md`) and the `ns.UI` widgets in `Core/Widgets.lua`. Windows,
   title bars, buttons, tabs, links, borders, fonts, colours, settings cards, confirmations
   and tooltips all have one.
 - Never hand-roll a part that already exists, and never copy one into your module to change

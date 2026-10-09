@@ -71,8 +71,8 @@ local function World()
     local env = setmetatable({ _G = { NaowhForever = ns }, UnitName = function() return "Glyadin" end,
         date = os.date }, { __index = _G })
     ns.Shared = { Decode = dofile("Tools/regression/load_decode.lua")(env) }
-    for _, path in ipairs({ "Core/NaowhForever_ProfileShare.lua", "Core/NaowhForever_ProfileDialogs.lua",
-        "Core/NaowhForever_ProfilesPage.lua" }) do
+    for _, path in ipairs({ "Core/ProfileShare.lua", "Core/ProfileDialogs.lua",
+        "Core/ProfilesPage.lua" }) do
         local chunk = assert(loadfile(path))
         setfenv(chunk, env)
         chunk()

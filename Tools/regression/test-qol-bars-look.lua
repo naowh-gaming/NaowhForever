@@ -74,7 +74,7 @@ do -- Co-Tank
     local S = Store({ enabled = true, coTank = true, coTankWidth = 180, coTankHeight = 30, coTankBgAlpha = 0.6,
         coTankFont = "", coTankFontSize = 12, coTankOutline = "OUTLINE", coTankTexture = "", coTankDebuffs = false,
         coTankAnchor = "UIParent" })
-    local frames = Load("QoL/NaowhForever_CoTank.lua", { QoLSettings = S }, {
+    local frames = Load("QoL/CoTank.lua", { QoLSettings = S }, {
         UnitClass = function() return "Warrior", "WARRIOR" end,
         InCombatLockdown = function() return false end,
         UnitGroupRolesAssigned = Noop, GetShapeshiftFormID = Noop, IsInRaid = Noop,

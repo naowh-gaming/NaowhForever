@@ -1,10 +1,10 @@
--- Loads NaowhForever_FocusCastBar.lua against stubbed frames and cast APIs and checks the bar's
+-- Loads FocusCastBar.lua against stubbed frames and cast APIs and checks the bar's
 -- colour while a focus cast runs (interrupt ready, on cooldown, uninterruptible), and what one
 -- throttled update of a running cast costs: it must not build colour objects every tick. Also its
 -- look: the defaults draw today's flat, outlined bar, and font, outline, bar texture, background
 -- opacity and Apply Theme each apply on change.
 -- Run from the repo root: lua Tools/regression/test-focus-cast-bar.lua
-local f = assert(io.open(arg[1] or "QoL/NaowhForever_FocusCastBar.lua", "rb"))
+local f = assert(io.open(arg[1] or "QoL/FocusCastBar.lua", "rb"))
 local source = f:read("*a"); f:close()
 
 local checks = 0

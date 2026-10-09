@@ -2,11 +2,11 @@
 -- account, not just the one that ran the import. Covers the Core half (SetAccountProfile
 -- plus the fallback a character with no assignment takes) and the dialog half (that the
 -- Import button reaches it, with the name the import actually landed under).
-local core = assert(io.open(arg[1] or "Core/NaowhForever_Core.lua", "rb"))
+local core = assert(io.open(arg[1] or "Core/Core.lua", "rb"))
 local coreSrc = core:read("*a"):gsub("\r\n", "\n"); core:close()
-local packs = assert(io.open(arg[2] or "Core/NaowhForever_Packs.lua", "rb"))
+local packs = assert(io.open(arg[2] or "Core/Packs.lua", "rb"))
 local packSrc = packs:read("*a"):gsub("\r\n", "\n"); packs:close()
-local dialogs = assert(io.open(arg[3] or "Core/NaowhForever_PackDialogs.lua", "rb"))
+local dialogs = assert(io.open(arg[3] or "Core/PackDialogs.lua", "rb"))
 local dialogSrc = dialogs:read("*a"):gsub("\r\n", "\n"); dialogs:close()
 
 local function Slice(source, a, b)
@@ -109,7 +109,7 @@ Case("switching one character afterwards leaves the rest on the account profile"
     assert(sv.charActive["Main-Ravencrest"] == "Naowh" and sv.defaultProfile == "Naowh")
 end)
 
--- The dialog half (Core/NaowhForever_PackDialogs.lua). Rather than rebuild its frames these
+-- The dialog half (Core/PackDialogs.lua). Rather than rebuild its frames these
 -- assert on the source: that the account call exists on the single-profile branch, runs after
 -- the import, and is handed the landed name.
 Case("the import dialog reaches SetAccountProfile with the landed name", function()
@@ -217,7 +217,7 @@ end)
 
 Case("the shipped presets carry no Smart Reminders, and a new install starts from Minimalist", function()
     local env = { NaowhForever = {} }; env._G = env
-    local chunk = assert(loadfile(arg[3] or "Core/NaowhForever_Presets.lua")); setfenv(chunk, env); chunk()
+    local chunk = assert(loadfile(arg[3] or "Core/Presets.lua")); setfenv(chunk, env); chunk()
     local presets = env.NaowhForever.PRESETS
     assert(presets.newInstall == "minimalist" and env.NaowhForever.STARTER == presets.minimalist)
     assert(#presets.order >= 1 and presets.order[1] == "minimalist")

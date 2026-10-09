@@ -391,7 +391,7 @@ def grip(x, y, size):
 def nav_arrow(wide, glow):
     # The waypoint arrow, point up: a kite in four facets with a dark edge and a thin line inside, grey over
     # white so a vertex color tints it. wide: base 14% wider. glow: a soft halo, with the kite drawn
-    # smaller to leave it room (GLOW_FILL in RXPThemes/NaowhForever_RXPThemes.lua). Units are a 97-tall kite.
+    # smaller to leave it room (GLOW_FILL in RXPThemes/RXPThemes.lua). Units are a 97-tall kite.
     half = 49.0 if wide else 43.0              # wing tips from the middle
     shrink = 0.76 if glow else 1.0             # how much of the image the kite fills
     glow_reach, glow_peak = 22.0, 0.9          # halo reach, and its strength at the edge

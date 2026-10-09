@@ -34,7 +34,7 @@ end
 -- The options window's pages, "Module/Tab", and the function each is built by.
 local pages = {}
 do
-    local window = Read("Core/NaowhForever_Modules.lua")
+    local window = Read("Core/Modules.lua")
     local list = window:match("local MODULES = (%b{})")
     Check(list, "MODULES found")
     local module
@@ -186,7 +186,7 @@ end
 Check(movers >= 29, "every mover was found (" .. movers .. ")")
 
 -- The selected element's tag has Settings only with a page; opening it leaves the HUD Editor.
-local unlock = Read("Core/NaowhForever_UnlockTag.lua")
+local unlock = Read("Core/UnlockTag.lua")
 Check(unlock:find("tag.settings:SetShown(item.page ~= nil)", 1, true), "Settings needs a page")
 Check(unlock:find("ns.HideRaidReminderAnchorConfig()\n    ns.OpenOptionsWindow(item.page)", 1, true),
     "Settings leaves the HUD Editor before opening the page")

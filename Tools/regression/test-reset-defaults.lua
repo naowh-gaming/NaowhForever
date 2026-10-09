@@ -78,7 +78,7 @@ local ns = {
     end } },
 }
 local env = setmetatable({ _G = { NaowhForever = ns }, CopyTable = Copy }, { __index = _G })
-local chunk = assert(loadfile("QoL/NaowhForever_Defaults.lua"))
+local chunk = assert(loadfile("QoL/Defaults.lua"))
 setfenv(chunk, env)
 chunk()
 

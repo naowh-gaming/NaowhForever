@@ -1,6 +1,6 @@
 -- The shared color swatch: UI.BuildColorSwatchControl cut out of Widgets.lua and run against a
 -- color picker that behaves like Blizzard's (swatchFunc fires as it opens, cancelFunc on Escape).
-local f = assert(io.open("Core/NaowhForever_Widgets.lua", "rb"))
+local f = assert(io.open("Core/Widgets.lua", "rb"))
 local source = f:read("*a"):gsub("\r\n", "\n"); f:close()
 local constants = assert(source:match("\n(local MEDIA = .-\n)\nlocal UI = {}\n"), "Widgets constants")
 local body = constants .. assert(source:match("\n(local function Near%(a, b%).-\nfunction UI%.BuildColorSwatchControl%(.-\nend)\n"),

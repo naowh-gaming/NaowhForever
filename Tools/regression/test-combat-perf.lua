@@ -169,7 +169,7 @@ do
         UnitGroupRolesAssigned = function() return "DAMAGER" end, GetShapeshiftFormID = function() return nil end,
         C_Timer = { After = function() end, NewTicker = function() return { Cancel = function() end } end },
     })
-    for _, file in ipairs({ "Core/NaowhForever_Features.lua", "NaowhForever_ThreatMeter/ThreatMeter.lua",
+    for _, file in ipairs({ "Core/Features.lua", "NaowhForever_ThreatMeter/ThreatMeter.lua",
         "NaowhForever_ThreatMeter/Constants.lua", "NaowhForever_ThreatMeter/Data/Samples.lua",
         "NaowhForever_ThreatMeter/Threat.lua", "NaowhForever_ThreatMeter/View/Meter.lua",
         "NaowhForever_ThreatMeter/UI/Meter.lua", "NaowhForever_ThreatMeter/UI/SettingsPage.lua" }) do
@@ -272,7 +272,7 @@ do
         C_Timer = { After = function(_, fn) lastAfter = fn end, NewTimer = function() return timer end },
     })
     ns.UI.ModuleSettings = function() return ns.AuraBuffSettings end
-    for _, file in ipairs({ "Core/NaowhForever_Features.lua", "NaowhForever_AuraBuffs/AuraBuffs.lua",
+    for _, file in ipairs({ "Core/Features.lua", "NaowhForever_AuraBuffs/AuraBuffs.lua",
         "NaowhForever_AuraBuffs/Data/BuffReminders.lua", "NaowhForever_AuraBuffs/BuffReminders.lua",
         "NaowhForever_AuraBuffs/View/Style.lua", "NaowhForever_AuraBuffs/View/BuffCell.lua",
         "NaowhForever_AuraBuffs/UI/BuffMenu.lua", "NaowhForever_AuraBuffs/UI/BuffReminders.lua" }) do

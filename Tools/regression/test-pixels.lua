@@ -1,7 +1,7 @@
--- ns.Hairline and ns.PixelInset (Core/NaowhForever_Core.lua): lines and insets in whole screen
+-- ns.Hairline and ns.PixelInset (Core/Core.lua): lines and insets in whole screen
 -- pixels, refitted when their frame shows again. The renderer's snapping is not emulated;
 -- these check the sizes and offsets handed to it.
-local f = assert(io.open(arg[1] or "Core/NaowhForever_Core.lua", "rb"))
+local f = assert(io.open(arg[1] or "Core/Core.lua", "rb"))
 local source = f:read("*a"):gsub("\r\n", "\n"); f:close()
 local first = assert(source:find("local fitters", 1, true))
 local last = assert(source:find("function ns.Border(frame, color, alpha)", first, true))

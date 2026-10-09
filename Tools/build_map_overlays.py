@@ -7,7 +7,7 @@ on layer 0 for Forever's maps). The game only gives addons the areas you have ex
 (C_MapExplorationInfo.GetExploredMapTextures), so the rest are read from here and drawn
 greyed out. An overlay with no tiles has nothing to draw and is left out.
 
-Writes QoL/NaowhForever_MapOverlays.lua. Run it again when wago.BUILD moves on to a new build.
+Writes QoL/MapOverlays.lua. Run it again when wago.BUILD moves on to a new build.
 
 Usage: python Tools/build_map_overlays.py [--build 1.60.1.70205]
 """
@@ -18,7 +18,7 @@ import sys
 import wago
 from build_journal import ROOT, header, write
 
-OUT = ROOT / "QoL" / "NaowhForever_MapOverlays.lua"
+OUT = ROOT / "QoL" / "MapOverlays.lua"
 TILE = 256   # the art layers' tile size: every overlay's tile count matches it
 COLUMNS = {
     "UiMapXMapArt": ("UiMapID", "UiMapArtID", "PhaseID"),

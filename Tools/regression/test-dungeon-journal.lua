@@ -546,11 +546,11 @@ local function fixture(settings, noBis)
     state.G = env._G
     state.worldMap = env.WorldMapFrame
     state.env = env
-    local senders = assert(loadfile("Core/NaowhForever_Senders.lua"))
+    local senders = assert(loadfile("Core/Senders.lua"))
     setfenv(senders, env)
     senders()
     -- The feature switches the Journal's settings read their defaults from.
-    local features = assert(loadfile("Core/NaowhForever_Features.lua"))
+    local features = assert(loadfile("Core/Features.lua"))
     setfenv(features, env)
     features()
     local classCanUse, slotsFor = ns.ClassCanUse, ns.BisSlotsFor

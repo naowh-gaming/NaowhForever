@@ -113,7 +113,7 @@ local function fixture(settings, withSettings)
     end
     setmetatable(env,{__index=_G})
     local files=TocFiles('^NaowhForever_ThreatMeter/.*%.lua$')
-    table.insert(files,1,'Core/NaowhForever_Features.lua')
+    table.insert(files,1,'Core/Features.lua')
     for _,path in ipairs(files) do local chunk=assert(loadfile(path));setfenv(chunk,env);chunk() end
     s.ns=ns
     function s.fire(event,unit)

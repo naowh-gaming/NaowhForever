@@ -1,5 +1,5 @@
--- Offline checks for the QoL Aim Trainer (QoL/NaowhForever_AimTrainer.lua) and its leaderboard
--- (QoL/NaowhForever_AimBoard.lua) against stubs that do not allocate: nothing built or listened to
+-- Offline checks for the QoL Aim Trainer (QoL/AimTrainer.lua) and its leaderboard
+-- (QoL/AimBoard.lua) against stubs that do not allocate: nothing built or listened to
 -- while off, scoring, hits and misses (a miss costs 50, never below 0, and pops "-50"), Reflex
 -- expiry, the round's end and best records, the enemy faction's faces and the plain-disc fallback,
 -- combat and landing closing it, no OnUpdate while idle, no garbage per click, miss or frame; sharing
@@ -211,8 +211,8 @@ local function fixture(opts)
         t[k] = function(...) old(...); fn(...) end
     end
     setmetatable(env, { __index = _G })
-    for _, path in ipairs({ "Core/NaowhForever_Senders.lua", "QoL/NaowhForever_AimTrainer.lua",
-        "QoL/NaowhForever_AimBoard.lua" }) do
+    for _, path in ipairs({ "Core/Senders.lua", "QoL/AimTrainer.lua",
+        "QoL/AimBoard.lua" }) do
         local chunk = assert(loadfile(path))
         setfenv(chunk, env)
         chunk()
@@ -1075,11 +1075,11 @@ do
 end
 
 do
-    local f = assert(io.open("QoL/NaowhForever_QoL.lua", "rb"))
+    local f = assert(io.open("QoL/QoL.lua", "rb"))
     local qol = f:read("*a")
     f:close()
     check("Hexakill is the default mode", qol:find('aimMode = "hexakill"', 1, true) ~= nil)
-    local features = assert(io.open("Core/NaowhForever_Features.lua", "rb"))
+    local features = assert(io.open("Core/Features.lua", "rb"))
     local switches = features:read("*a")
     features:close()
     check("the Aim Trainer is on by default", qol:find("aimTrainer = F.aimTrainer,", 1, true) ~= nil

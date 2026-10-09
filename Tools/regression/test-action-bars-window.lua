@@ -254,7 +254,7 @@ env._G.NaowhForever = ns
 
 Load({ "Shared/Shared.lua", "Shared/Style.lua", "Shared/Parts.lua", "Shared/Marks.lua", "Shared/Text.lua", "Shared/Hud.lua", "Shared/Timer.lua", "Shared/Share.lua", "Shared/Panels.lua", "Shared/Window.lua", "Shared/Tabs.lua", "Shared/SettingsCard.lua",
     }, env)
-local MODULE = { "Core/NaowhForever_Features.lua" }
+local MODULE = { "Core/Features.lua" }
 for _, path in ipairs(dofile("Tools/regression/toc_files.lua")("^NaowhForever_ActionBars/.*%.lua$")) do
     if not path:find("SettingsPage%.lua$") then MODULE[#MODULE + 1] = path end
 end

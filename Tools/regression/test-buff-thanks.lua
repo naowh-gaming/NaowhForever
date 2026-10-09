@@ -68,7 +68,7 @@ local env = setmetatable({
     math = { random = function(n) return n end },
 }, { __index = _G })
 env._G = env
-local chunk = assert(loadfile("QoL/NaowhForever_BuffThanks.lua"))
+local chunk = assert(loadfile("QoL/BuffThanks.lua"))
 setfenv(chunk, env)
 chunk()
 

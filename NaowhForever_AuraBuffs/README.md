@@ -135,7 +135,7 @@ NaowhForever_AuraBuffs/
   clicks are taken (`SetPassThroughButtons`, set out of combat), and it takes the mouse only while
   Ctrl is down, so left clicks and camera drags still reach the world.
 - Low Health offers healthstones then potions, best first, from the core's lists
-  (`ns.HEALTHSTONES`, `ns.HEALING_POTIONS`, in `QoL/NaowhForever_FoodBar.lua`), which the Macros
+  (`ns.HEALTHSTONES`, `ns.HEALING_POTIONS`, in `QoL/FoodBar.lua`), which the Macros
   module's NF Health reads too, so either works with the other off.
 - Low Health never compares the health: a step curve turns the health percent into 1 below the
   threshold and 0 above it, and the engine applies that as the frame's alpha itself, so it works in

@@ -454,7 +454,7 @@ setmetatable(env, { __index = _G })
 -------------------------------------------------------------------------------
 -- Every file Professions.xml lists, in its order, after the feature switches they read.
 local xml = assert(io.open(DIR .. "/Professions.xml", "rb")):read("*a"):gsub("<!%-%-.-%-%->", "")
-local paths = { "Core/NaowhForever_Features.lua" }
+local paths = { "Core/Features.lua" }
 for file in xml:gmatch("<Script%s+file=\"([^\"]+)\"") do paths[#paths + 1] = DIR .. "/" .. file:gsub("\\", "/") end
 Load(paths, env)
 local recipes = api.Build(ns.RecipeData)

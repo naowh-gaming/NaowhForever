@@ -141,7 +141,7 @@ local function fixture(withChatUtil, settings, flag)
         }
     end
     setmetatable(env, { __index = _G })
-    local chunk = assert(loadfile("Badges/NaowhForever_Badges.lua")); setfenv(chunk, env); chunk()
+    local chunk = assert(loadfile("Badges/Badges.lua")); setfenv(chunk, env); chunk()
     ns.Apply()  -- what login does
     state.names = names
     state.env = env
@@ -570,7 +570,7 @@ end
 
 do  -- the real staff and patron files load and make sense
     local ns = {}
-    for _, path in ipairs({ "Badges/NaowhForever_BadgesStaff.lua", "Badges/NaowhForever_BadgesPatrons.lua" }) do
+    for _, path in ipairs({ "Badges/BadgesStaff.lua", "Badges/BadgesPatrons.lua" }) do
         local chunk = assert(loadfile(path))
         setfenv(chunk, setmetatable({ _G = { NaowhForever = ns } }, { __index = _G }))
         chunk()

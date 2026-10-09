@@ -10,7 +10,7 @@ through `RXPThemes.xml`, after `Core/Core.xml`.
 ```
 RXPThemes/
   RXPThemes.xml               what loads
-  NaowhForever_RXPThemes.lua  the themes, the settings behind the RESTEDXP card, and the hooks
+  RXPThemes.lua  the themes, the settings behind the RESTEDXP card, and the hooks
 ```
 
 ## Why

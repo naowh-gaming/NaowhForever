@@ -175,7 +175,7 @@ local function Client(me, others, opts)
         UnitArmor = function() return mine[10], Number(mine[10]) end,
     }, { __index = _G })
     state.SECRET = {}
-    Load({ "Core/NaowhForever_Senders.lua", "Core/NaowhForever_Features.lua",
+    Load({ "Core/Senders.lua", "Core/Features.lua",
         "NaowhForever_BiS/StatWeights/Data/Defaults.lua",
         "NaowhForever_BiS/StatWeights/StatWeights.lua", "NaowhForever_BiS/StatWeights/Worth.lua",
         "NaowhForever_GroupInspect/Stats.lua",

@@ -16,6 +16,6 @@ Why. The TOC lists only `BiS.xml`, which loads them in this order:
 - The order is layering: the Naowh Score and Stat Weights are read by the BiS List's paperdoll,
   upgrades and enchants; the Character Panel shows the BiS List's stars, upgrades and enchant dots;
   the Inspect Panel reuses the Character Panel's parts.
-- A module's on/off default is read from `ns.FEATURES` (`Core/NaowhForever_Features.lua`): Stat Weights'
+- A module's on/off default is read from `ns.FEATURES` (`Core/Features.lua`): Stat Weights'
   store is `statWeights`; the others' switches live in the QoL store (`bis`, `bisLootAlert`,
   `naowhScore`, `characterPanel`, `characterPanelSlotMarks`, `inspectPanel`).

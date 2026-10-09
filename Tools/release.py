@@ -10,7 +10,7 @@
 prepare: each pull request merged since the newest tag adds the lines under "## Changelog" in
 its description to "## Unreleased" (one that edited CHANGELOG.md itself is skipped), then
 "## Unreleased" in CHANGELOG.md becomes "## <version>", the in-game notes' "Unreleased"
-entry (Core/NaowhForever_PatchNotes.lua) takes the version as its title, and every TOC's
+entry (Core/PatchNotes.lua) takes the version as its title, and every TOC's
 "## Version" (the module addons' too) and ns.CODE_BUILD are set to it; prints the version. The version is the newest tag bumped
 (patch: 0.5.16-beta -> 0.5.17-beta, minor: -> 0.6.0-beta, major: -> 1.0.0-beta), with
 "-beta" added (--beta), dropped (--no-beta) or kept as the tag has it; --version overrides
@@ -37,9 +37,9 @@ import textwrap
 from pathlib import Path
 
 TOC = "NaowhForever.toc"
-CORE = "Core/NaowhForever_Core.lua"
+CORE = "Core/Core.lua"
 CHANGELOG = "CHANGELOG.md"
-PATCH_NOTES = "Core/NaowhForever_PatchNotes.lua"
+PATCH_NOTES = "Core/PatchNotes.lua"
 
 VERSION = re.compile(r"(\d+)\.(\d+)\.(\d+)(-[0-9A-Za-z.]+)?")
 TYPES = "feat|fix|perf|refactor|docs|test|ci|build|chore|revert"

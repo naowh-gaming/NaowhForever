@@ -16,7 +16,7 @@ A city gate is written with its city and the arrow's bearing (degrees, 0 north,
 anticlockwise), and placed as written: a city sits inside its zone on the grid. Where three
 zones meet, an exit names its neighbour to settle which.
 
-Writes QoL/NaowhForever_ZoneExits.lua.
+Writes QoL/ZoneExits.lua.
 
 Usage: python Tools/build_zone_exits.py [--build 1.60.1.70205]
 """
@@ -31,7 +31,7 @@ import wago
 from build_journal import ROOT, header, write
 from wowhead import WOWHEAD, fetch
 
-OUT = ROOT / "QoL" / "NaowhForever_ZoneExits.lua"
+OUT = ROOT / "QoL" / "ZoneExits.lua"
 W, H = 1002, 668        # a zone map's art in pixels: directions are measured on it
 YARDS_PER_CHUNK = 1600 / 3
 SEARCH = 15             # map percent: how far a pick may be from its zone's border

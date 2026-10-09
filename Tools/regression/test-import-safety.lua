@@ -109,7 +109,7 @@ local function World()
         CreateFrame = function() return { SetScript = function() end } end }, { __index = _G })
     env._G = env
     ns.Shared = { Decode = LoadDecode(env) }
-    for _, path in ipairs({ "Core/NaowhForever_Packs.lua", "Core/NaowhForever_ProfileShare.lua" }) do
+    for _, path in ipairs({ "Core/Packs.lua", "Core/ProfileShare.lua" }) do
         local chunk = assert(loadfile(path))
         setfenv(chunk, env)
         chunk()

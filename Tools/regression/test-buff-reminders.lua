@@ -9,7 +9,7 @@ local function Read(path)
     return source
 end
 local MODULE = {}
-for i, path in ipairs({ "Core/NaowhForever_Features.lua", "NaowhForever_AuraBuffs/AuraBuffs.lua",
+for i, path in ipairs({ "Core/Features.lua", "NaowhForever_AuraBuffs/AuraBuffs.lua",
     "NaowhForever_AuraBuffs/Data/BuffReminders.lua", "NaowhForever_AuraBuffs/BuffReminders.lua",
     "NaowhForever_AuraBuffs/View/Style.lua", "NaowhForever_AuraBuffs/View/BuffCell.lua",
     "NaowhForever_AuraBuffs/UI/BuffMenu.lua", "NaowhForever_AuraBuffs/UI/BuffReminders.lua" }) do

@@ -419,7 +419,7 @@ check("and a tracker's width", plain.w == Shared.Style.TRACKER_W)
 --  The look standard: Settings.Look's rows, a card holding them, the texture and outline
 --  choices, and Parts.HudFont.
 -------------------------------------------------------------------------------
-local widgets = assert(io.open("Core/NaowhForever_Widgets.lua", "rb")):read("*a"):gsub("\r\n", "\n")
+local widgets = assert(io.open("Core/Widgets.lua", "rb")):read("*a"):gsub("\r\n", "\n")
 -- The media helpers, from the LibSharedMedia lookup (when Widgets has one) to TexturePath, with
 -- the file's text constants before them, since the helpers read those.
 local helpers = assert(widgets:match("\n(local function SharedMedia%(%).-\nfunction UI%.TexturePath%(name, fallback%).-\nend)\n")
@@ -455,7 +455,7 @@ check("a saved texture that has gone stays listed", textures.Gone == "Gone (unav
 check("texture path: a SharedMedia name", UI.TexturePath("Solid", "own") == "solid")
 check("texture path: the element's own for empty or missing", UI.TexturePath("", "own") == "own"
     and UI.TexturePath("Gone", "own") == "own" and UI.TexturePath(nil, "own") == "own")
-local core = assert(io.open("Core/NaowhForever_Core.lua", "rb")):read("*a")
+local core = assert(io.open("Core/Core.lua", "rb")):read("*a")
 check("the Naowh Gradient is a SharedMedia statusbar",
     core:find('LSM:Register("statusbar", "Naowh Gradient", NAOWH_GRADIENT)', 1, true)
     and core:find('local MEDIA = "Interface\\\\AddOns\\\\NaowhForever\\\\Media\\\\"', 1, true)

@@ -228,7 +228,7 @@ local env = setmetatable({ _G = { NaowhForever = ns }, CreateFrame = function(_,
         f.parent = parent
         return f
     end, InCombatLockdown = function() return s.combat end }, { __index = _G })
-local chunk = assert(loadfile("Core/NaowhForever_SetupWindow.lua"))
+local chunk = assert(loadfile("Core/SetupWindow.lua"))
 setfenv(chunk, env)
 chunk()
 

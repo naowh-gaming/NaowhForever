@@ -93,8 +93,8 @@ local function boot(settings)
         end,
     }
     setmetatable(env, { __index = _G })
-    local senders = assert(loadfile("Core/NaowhForever_Senders.lua")); setfenv(senders, env); senders()
-    local f = assert(io.open("QoL/NaowhForever_GroupXP.lua", "rb"))
+    local senders = assert(loadfile("Core/Senders.lua")); setfenv(senders, env); senders()
+    local f = assert(io.open("QoL/GroupXP.lua", "rb"))
     local src = f:read("*a"); f:close()
     local chunk = assert(loadstring(src, "GroupXP")); setfenv(chunk, env); chunk()
     local events, bootFrame = s.created[1], s.created[2]

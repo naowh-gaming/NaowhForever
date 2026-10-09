@@ -9,7 +9,7 @@ local function check(name, ok)
     passed = passed + 1
 end
 
-local f = assert(io.open("Core/NaowhForever_Core.lua", "rb"))
+local f = assert(io.open("Core/Core.lua", "rb"))
 local source = f:read("*a"):gsub("\r\n", "\n")
 f:close()
 local function Slice(a, b)

@@ -50,7 +50,7 @@ local env = {
 }
 env._G = env
 setmetatable(env, { __index = _G })
-local core = assert(loadstring(Read("Core/NaowhForever_Core.lua"), "Core"))
+local core = assert(loadstring(Read("Core/Core.lua"), "Core"))
 setfenv(core, env)
 core("NaowhForever")
 local ns = env.NaowhForever

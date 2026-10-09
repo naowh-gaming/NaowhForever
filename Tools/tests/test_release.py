@@ -14,7 +14,7 @@ import release  # noqa: E402
 CHANGELOG = ("# Changelog\r\n\r\n## Unreleased\r\n\r\n### Fixed\r\n- A fix.\r\n\r\n"
              "## 0.5.16-beta\r\n\r\n- Old.\r\n")
 TOC = ("## Interface: 16001\r\n## Title: Naowh Forever\r\n## Version: 0.5.16-beta\r\n"
-       "Core\\NaowhForever_Core.lua\r\n")
+       "Core\\Core.lua\r\n")
 CORE = 'local ns = {}\r\nns.CODE_BUILD = "0.5.16-beta"\r\nreturn ns\r\n'
 FILES = (release.CHANGELOG, release.TOC, release.CORE)
 

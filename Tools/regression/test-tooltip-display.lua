@@ -62,12 +62,12 @@ setmetatable(env,{__index=function(_,key)
 end})
 setmetatable(env._G,{__index=env})
 -- The copy box is the Core's (ns.ShowCopyBox): load that function alone from it.
-local core=assert(io.open('Core/NaowhForever_Core.lua','rb')):read('*a'):gsub('\r\n','\n')
+local core=assert(io.open('Core/Core.lua','rb')):read('*a'):gsub('\r\n','\n')
 local constants=assert(core:match('\n(local MODULE_KEY = .-\n)\nlocal ns = {}\n'),'Core constants')
 local first=assert(core:find('local function NewCopyScroll',1,true))
 local last=assert(core:find('local function ConfirmHead',first,true))
 local copy=assert(loadstring(constants..core:sub(first,last-1)));setfenv(copy,setmetatable({ns=ns},{__index=env}));copy()
-local chunk=assert(loadfile('QoL/NaowhForever_GlobalCopy.lua'));setfenv(chunk,env);chunk()
+local chunk=assert(loadfile('QoL/GlobalCopy.lua'));setfenv(chunk,env);chunk()
 for name,tip in pairs({GameTooltip=tooltip,ItemRefTooltip=env.ItemRefTooltip,ShoppingTooltip1=env.ShoppingTooltip1,
  ShoppingTooltip2=env.ShoppingTooltip2}) do tip.name=name end
 local function clear()

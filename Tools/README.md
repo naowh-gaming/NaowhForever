@@ -61,7 +61,7 @@ it again. Be gentle with the sites: the scripts wait between requests on purpose
 
 | Tool | What it does | Why |
 | --- | --- | --- |
-| `build_map_overlays.py` | Builds `QoL/NaowhForever_MapOverlays.lua`: every explorable area of each zone map and its tiles, from the game's tables (wago.tools). Run it again when `wago.BUILD` moves on. | The game only tells addons the areas you have explored; Unexplored Areas draws the rest. |
+| `build_map_overlays.py` | Builds `QoL/MapOverlays.lua`: every explorable area of each zone map and its tiles, from the game's tables (wago.tools). Run it again when `wago.BUILD` moves on. | The game only tells addons the areas you have explored; Unexplored Areas draws the rest. |
 
 ## Media
 

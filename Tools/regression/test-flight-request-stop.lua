@@ -76,7 +76,7 @@ local function fixture(settings, extra)
     end
     for k, v in pairs(extra or {}) do env[k] = v end
     setmetatable(env, { __index = _G })
-    local chunk = assert(loadfile('QoL/NaowhForever_Flight.lua')); setfenv(chunk, env); chunk()
+    local chunk = assert(loadfile('QoL/Flight.lua')); setfenv(chunk, env); chunk()
     function s.fire(event)
         local all = {}; for i, f in ipairs(s.frames) do all[i] = f end
         for _, f in ipairs(all) do if f.events[event] then f.scripts.OnEvent(f, event) end end
@@ -261,7 +261,7 @@ do
         f:close()
         return text
     end
-    local qol, quiz = read('QoL/NaowhForever_QoL.lua'), read('QoL/NaowhForever_Quiz.lua')
+    local qol, quiz = read('QoL/QoL.lua'), read('QoL/Quiz.lua')
     check('Flight Games defaults to the Aim Trainer', qol:find('flightGame = "aim"', 1, true) ~= nil)
     check('the old flight toggles are gone', not qol:find('quizFlight', 1, true) and not qol:find('aimAutoFlight', 1, true)
         and not quiz:find('quizFlight', 1, true))

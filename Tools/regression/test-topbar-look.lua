@@ -148,7 +148,7 @@ local features = { }
 do
     local env = setmetatable({ NaowhForever = features }, { __index = _G })
     env._G = env
-    local fileChunk = assert(loadfile("Core/NaowhForever_Features.lua"))
+    local fileChunk = assert(loadfile("Core/Features.lua"))
     setfenv(fileChunk, env)
     fileChunk()
 end

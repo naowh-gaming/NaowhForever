@@ -1,7 +1,7 @@
 -- The module's files in SwingTimer.xml's order, after the feature switches; a first argument names
 -- one older single-file copy to run instead.
 local FILES = arg[1] and { arg[1] } or dofile("Tools/regression/toc_files.lua")("^NaowhForever_SwingTimer/.*%.lua$")
-if not arg[1] then table.insert(FILES, 1, "Core/NaowhForever_Features.lua") end
+if not arg[1] then table.insert(FILES, 1, "Core/Features.lua") end
 local sources = {}
 for i, path in ipairs(FILES) do
     local f = assert(io.open(path, "rb"))

@@ -1,4 +1,4 @@
-local file = assert(io.open("QoL/NaowhForever_PetTracker.lua", "rb"))
+local file = assert(io.open("QoL/PetTracker.lua", "rb"))
 local source = file:read("*a"):gsub("\r\n", "\n"); file:close()
 local first = assert(source:find("local function CancelDismount()", 1, true))
 local last = assert(source:find('events:SetScript("OnEvent", OnEvent)', first, true))

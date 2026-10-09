@@ -36,7 +36,7 @@ NaowhForever_<Name>/
 - **Every module loads through its XML**, even a one-file one, so adding a file never touches
   a TOC. Add the file to `<Name>.xml` where its layer is.
 - **Files are named plainly inside their folder**: `Loot.lua`, not `NaowhForever_JournalLoot.lua`.
-  An older prefixed name may be renamed, together with every test, tool and doc that names it.
+  Only an addon folder and its TOC carry the NaowhForever_ prefix: the game names the addon by them.
 - **README.md "Why"** holds what a comment used to: Forever API quirks, taint and secret-value
   reasons, why a number is what it is, load-order needs. Short plain sentences, one per point:
 
@@ -64,12 +64,12 @@ edits it**: a file is added to its area's XML.
 | Load point | What it loads |
 | --- | --- |
 | `Locales\*.lua` | the locale tables, before the namespace; listed in the TOC because `AllowLoadTextLocale` is a TOC option |
-| `Core\Core.xml` | the namespace and DB (`NaowhForever_Core.lua`), the feature switches, presets, message senders, waypoints |
+| `Core\Core.xml` | the namespace and DB (`Core.lua`), the feature switches, presets, message senders, waypoints |
 | `RXPThemes\RXPThemes.xml` | the Naowh themes in RestedXP Guides; needs the core's theme palettes |
 | `Core\Options.xml` | the widget kit (`ns.UI`), Unlock Mode, the options window, the Game Menu button, the settings search |
 | `Shared\Shared.xml` | what every module shares (see `Shared/README.md`) |
 | `Core\Packs.xml` | Reminder Packs, their signature check, the profile strings |
-| `QoL\QoL.xml` | the QoL store (`NaowhForever_QoL.lua`) and the QoL features up to the Trainer |
+| `QoL\QoL.xml` | the QoL store (`QoL.lua`) and the QoL features up to the Trainer |
 | `TopBar\TopBar.xml` | the Top Bar |
 | `QoL\Travel.xml` | the Flight Timer, its games and the waypoint pin |
 | `Badges\Badges.xml` | the staff and patron lists, then the badges that read them |
@@ -221,7 +221,7 @@ icon:SetPoint("LEFT", text, "RIGHT", ICON_GAP, -PIN_DROP)
 ## 6. Feature switches
 
 Every on/off switch of a feature, and its default, lives in one file:
-`Core/NaowhForever_Features.lua`, as `ns.FEATURES`, grouped by the settings store it is saved
+`Core/Features.lua`, as `ns.FEATURES`, grouped by the settings store it is saved
 in (`qol`, `journal`, `completo`, `discovery`, `pvp`, ...). It loads right after the core,
 before every store. A module reads its switch defaults from it:
 
@@ -264,9 +264,9 @@ almost fits, add an optional input that leaves every caller as it was. If none f
 | Settings | `UI.ModuleSettings` for the store, `ns.Shared.Settings.Page(page, S):Card{ ... }` for the page, `Settings.Look` for a HUD element's text and bar rows, `Settings.EditZone` and Studio for a live preview |
 | Small parts | `Parts.Pill`, `Parts.SetPill`, `Parts.Link`, `Parts.SetLink`, `Parts.IconButton` (`Shared/Parts.lua`), `Parts.ItemIcon` (`Shared/Marks.lua`), `Parts.Coins`, `Parts.LabelRow` (`Shared/Text.lua`), `Parts.Panel`, `Parts.SidePanel`, `Parts.Backdrop` (`Shared/Panels.lua`); every part's file is in `Shared/README.md` |
 | HUD | `Parts.HudBackdrop`, `Parts.HudText`, `Parts.HudFont`, `Parts.ProgressLine` (`Shared/Hud.lua`), `Parts.TimerLine` (`Shared/Timer.lua`) |
-| Widgets (`Core/NaowhForever_Widgets.lua`) | `UI.BuildToggleControl`, `UI.BuildSliderCore`, `UI.BuildDropdownControl`, `UI.BuildColorSwatchControl`, `UI.KeyField`, `UI.SlimScroll`, `UI.Keep*` |
-| Core chrome (`Core/NaowhForever_Core.lua`) | `ns.Button`, `ns.Font`, `ns.Border`, `ns.AccentBorder`, `ns.Tooltip`, `ns.NewEditBox`, `ns.NewSearchBox`, `ns.Confirm`, `ns.PromptText`, `ns.MakeModal` |
-| Moving it | `UI.AttachMover` (`Core/NaowhForever_UnlockMovers.lua`), so it shows in Unlock Mode |
+| Widgets (`Core/Widgets.lua`) | `UI.BuildToggleControl`, `UI.BuildSliderCore`, `UI.BuildDropdownControl`, `UI.BuildColorSwatchControl`, `UI.KeyField`, `UI.SlimScroll`, `UI.Keep*` |
+| Core chrome (`Core/Core.lua`) | `ns.Button`, `ns.Font`, `ns.Border`, `ns.AccentBorder`, `ns.Tooltip`, `ns.NewEditBox`, `ns.NewSearchBox`, `ns.Confirm`, `ns.PromptText`, `ns.MakeModal` |
+| Moving it | `UI.AttachMover` (`Core/UnlockMovers.lua`), so it shows in Unlock Mode |
 | The look | `ns.THEME` (`T.bg`, `T.panel`, `T.line`, `T.fg`, `T.muted`, `T.accent`), `ns.Shared.Style`, and a module's `Style` made with `setmetatable({ ... }, { __index = ns.Shared.Style })` |
 
 ## 8. Checking

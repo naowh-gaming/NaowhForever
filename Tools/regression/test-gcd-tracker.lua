@@ -1,9 +1,9 @@
--- Loads NaowhForever_GcdTracker.lua against stubbed frames and spell APIs and checks that the
+-- Loads GcdTracker.lua against stubbed frames and spell APIs and checks that the
 -- tracker draws a cast and its busy bar, then stops updating once nothing is left on it, wakes
 -- again on the next cast, and what a frame costs while there is nothing to draw. Its busy bar
 -- is flat by default and takes the Bar Texture picked.
 -- Run from the repo root: lua Tools/regression/test-gcd-tracker.lua
-local f = assert(io.open(arg[1] or "QoL/NaowhForever_GcdTracker.lua", "rb"))
+local f = assert(io.open(arg[1] or "QoL/GcdTracker.lua", "rb"))
 local source = f:read("*a"); f:close()
 
 local checks = 0

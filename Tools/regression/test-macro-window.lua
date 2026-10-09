@@ -245,7 +245,7 @@ for _, path in ipairs(dofile("Tools/regression/toc_files.lua")("^NaowhForever_Ma
     if not path:find("SettingsPage%.lua$") then MACRO_FILES[#MACRO_FILES + 1] = path end
 end
 -- Shared as Shared.xml lists it, all but its settings pages and the item data the window never reads.
-local SHARED_FILES = { "Core/NaowhForever_Features.lua" }
+local SHARED_FILES = { "Core/Features.lua" }
 for _, path in ipairs(dofile("Tools/regression/toc_files.lua")("^Shared/.*%.lua$")) do
     if not (path:find("^Shared/Settings/") or path:find("^Shared/Data/ItemFacts") or path:find("^Shared/Data/FactionItems")) then
         SHARED_FILES[#SHARED_FILES + 1] = path

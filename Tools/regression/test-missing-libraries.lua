@@ -4,7 +4,7 @@
 local checks = 0
 local function check(label, value) assert(value, label); checks = checks + 1 end
 
-local f = assert(io.open("Core/NaowhForever_Core.lua", "rb"))
+local f = assert(io.open("Core/Core.lua", "rb"))
 local source = f:read("*a"):gsub("\r\n", "\n")
 f:close()
 local constants = assert(source:match("\n(local MODULE_KEY = .-\n)\nlocal ns = {}\n"), "Core constants")

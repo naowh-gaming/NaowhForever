@@ -52,7 +52,7 @@ local function Fixture(o)
         GetTrainerServiceCost = function(i) return o.services[i][3], false end,
     }
     env._G = env
-    Load({ "Core/NaowhForever_Features.lua", DIR .. "/Training.lua", DIR .. "/Constants.lua", DIR .. "/Plan.lua",
+    Load({ "Core/Features.lua", DIR .. "/Training.lua", DIR .. "/Constants.lua", DIR .. "/Plan.lua",
         DIR .. "/Builds.lua", DIR .. "/Trainer.lua" }, setmetatable(env, { __index = _G }))
     local Training = ns.Training
     local plan = Training.Plan

@@ -131,7 +131,7 @@ calls are on `ns`.
 | A faction, its zone or the dungeons it is earned in | `Tools/journal_factions.json`, then `python Tools/build_factions.py` |
 | What a standing means, prices in short, the PvP rank | `Reputation.lua` |
 | The game build the faction data is read from | `BUILD` in `Tools/wago.py`; the daily build watcher (`.github/workflows/daily-watch.yml`) opens a pull request when a newer one is out (or, where the organization does not let workflows open one, an issue with a one-click link to it). Items a new build lacks because wago.tools has not recorded its hotfixes yet are carried over from the build before (`CARRY_FROM`), and the pull request lists them |
-| A setting or its default | `DungeonJournal.lua` (`UI.ModuleSettings("journal", ...)`; an on/off switch's default is in `Core/NaowhForever_Features.lua`, `ns.FEATURES.journal`) and its card in `UI/SettingsPage.lua` |
+| A setting or its default | `DungeonJournal.lua` (`UI.ModuleSettings("journal", ...)`; an on/off switch's default is in `Core/Features.lua`, `ns.FEATURES.journal`) and its card in `UI/SettingsPage.lua` |
 
 `Data/Dungeons/*.lua`, `Data/Factions/*.lua`, `Data/Items.lua`, Shared's `Data/ItemFacts.lua` and
 `Data/FactionItems.lua`, `Data/Build.lua`, `Data/QuestChains.lua`, `Data/BiSQuests.lua`,
@@ -495,7 +495,7 @@ the game's own tables, and what they can't settle is listed in the pull request 
 
 - `luacheck NaowhForever_DungeonJournal` from the repo root.
 - `lua Tools/regression/test-dungeon-journal.lua` from the repo root: loads every file
-  `DungeonJournal.xml` lists, in order, against stubs (with `Core/NaowhForever_Features.lua`
+  `DungeonJournal.xml` lists, in order, against stubs (with `Core/Features.lua`
   first), and checks the data, the loot and reputation rules, what counting costs, the window's
   tabs, and that nothing is made or hooked while it is off. It also times what runs often (a
   page's BiS count, the list's repaint, the map and its list of bosses drawn, a boss picked on

@@ -1,8 +1,8 @@
 # Quality of Life
 
 The QoL features: one file per feature, each with its rules, its drawing and its settings card
-at the end. They share one settings store, `ns.QoLSettings` (`NaowhForever_QoL.lua`), whose
-on/off switches come from `ns.FEATURES.qol` (`Core/NaowhForever_Features.lua`). QoL loads at two
+at the end. They share one settings store, `ns.QoLSettings` (`QoL.lua`), whose
+on/off switches come from `ns.FEATURES.qol` (`Core/Features.lua`). QoL loads at two
 points of the core TOC: `QoL.xml` (everything up to the Trainer) and `Travel.xml` (the Flight
 Timer, its games and the waypoint pin, after the Top Bar).
 
@@ -12,74 +12,74 @@ Timer, its games and the waypoint pin, after the Top Bar).
 QoL/
   QoL.xml                          what loads at the QoL point, in order
   Travel.xml                       what loads after the Top Bar, in order
-  NaowhForever_QoL.lua             the QoL settings store (ns.QoLSettings) and ns.DisbandGroup
+  QoL.lua             the QoL settings store (ns.QoLSettings) and ns.DisbandGroup
   Constants.lua                    the numbers several QoL features share (ns.QoLConstants)
-  NaowhForever_AlertStack.lua      the Alerts group: alerts stacked under one Unlock Mode mover (ns.AlertStack)
-  NaowhForever_DeathRelease.lua    Death Release Protection
-  NaowhForever_CoTank.lua          the Co-Tank Frame and its debuffs
-  NaowhForever_HealerMana.lua      Healer Mana
-  NaowhForever_DeleteConfirm.lua   Type DELETE For You, and the Looting card
-  NaowhForever_Durability.lua      the low durability warning
-  NaowhForever_BuffThanks.lua      Buff Thank You Message and its line editor
-  NaowhForever_CombatAlert.lua     Combat Alert
-  NaowhForever_GroupButtons.lua    On-Screen Buttons (Invite, Disband)
-  NaowhForever_LootConfirm.lua     the retired loot confirmation skip, inert
-  NaowhForever_CursorClip.lua      Combat Cursor Clip
-  NaowhForever_CombatTimer.lua     Combat Timer
-  NaowhForever_CursorCooldown.lua  Cooldown at Cursor
-  NaowhForever_CombatLogger.lua    Auto Combat Logging (ns.CombatLogCheck, ns.CombatLogging)
-  NaowhForever_GlobalCopy.lua      /copy, tooltip IDs and the copy cards (ns.ShowCopyCard, ns.ShowCopyLine)
-  NaowhForever_HideClutter.lua     UI Clutter
-  NaowhForever_Crosshair.lua       the Crosshair (ns.MeleeRangeSpell)
-  NaowhForever_EquipmentReminder.lua  Equipment Reminder (ns.ShowEquipmentReminder, ns.CaptureEnchants)
-  NaowhForever_ChatZones.lua       Chat Zones
-  NaowhForever_GcdTracker.lua      GCD Tracker (ns.GCDSpell)
-  NaowhForever_FocusCastBar.lua    the Focus Cast Bar
-  NaowhForever_Defaults.lua        QoL > System > Defaults: Naowh's setups (ns.ApplyPreset, ns.UsePreset, ns.PresetChanges)
-  NaowhForever_AuctionPrices.lua   Auction Prices (ns.AuctionPrice, ns.AuctionAge, ns.AuctionScanSummary)
-  NaowhForever_GroupXP.lua         Group XP
-  NaowhForever_FoodBar.lua         the Food & Drink Bar, ns.BestFoodAndDrink, ns.HEALTHSTONES, ns.HEALING_POTIONS
-  NaowhForever_BagSpace.lua        Bag Space (ns.BagSpaceRescan; ns.BagSpace for its ignore list)
-  NaowhForever_BagSpaceIgnore.lua  Bag Space's Ignore List window (ns.ShowBagSpaceIgnoreList)
-  NaowhForever_Alts.lua            your characters per realm and faction (ns.AltRealm, ns.AltList, ns.OpenForgetAltMenu)
-  NaowhForever_FlightData.lua      each flight route's flown length (ns.FLIGHT_ROUTES), generated
-  NaowhForever_Flight.lua          the Flight Timer, Flight Games and flight times on the flight map
-  NaowhForever_AimTrainer.lua      the Aim Trainer (/nfaim, ns.AimRules, ns.AimPlay, ns.AimOffer)
-  NaowhForever_AimBoard.lua        the Aim Trainer's leaderboard (ns.AimBoard)
-  NaowhForever_StealthReminder.lua the stealth, stance, aura and form reminders
-  NaowhForever_TalentPoints.lua    the unspent talent points reminder
-  NaowhForever_QuestAutomation.lua accept, hand in and share quests, saved reward picks
-  NaowhForever_SlashCommands.lua   Custom Slash Commands and their editor (ns.SlashCommandList, ns.RefreshSlashCommands)
-  NaowhForever_MouseRing.lua       the Mouse Ring
-  NaowhForever_PetTracker.lua      the Pet Tracker
-  NaowhForever_SummonEmote.lua     the Summon Emote
-  NaowhForever_Performance.lua     QoL > System > Performance: recommended game settings and their backups
-  NaowhForever_LootFeed.lua        the Loot Feed, gold per hour and quick loot (ns.ResetLootFeedSession)
-  NaowhForever_XPTicker.lua        XP per Hour (ns.ResetXPTicker)
-  NaowhForever_XPBar.lua           the XP Bar (ns.XPBarColor, ns.ResetXPBarSession, ns.ResetXPBarLayout)
-  NaowhForever_PlayerHistory.lua   Player History (ns.PlayerHistory), read by the Naowh Inspect panel
-  NaowhForever_Restock.lua         the Restock Reminder, Auto Repair and Auto Sell Junk
-  NaowhForever_ScrapMarker.lua     the Scrap Marker (ns.ScrapMarker), read by Bag Space and the Scrap List
-  NaowhForever_ScrapList.lua       the Scrap List window (ns.OpenScrapList, /nf scrap)
-  NaowhForever_Mail.lua            Alts and Attach buttons at the mailbox, the expiring mail warning
-  NaowhForever_TownData.lua        town service NPCs by map (ns.TownNPCs, ns.TownCapitals), by hand
-  NaowhForever_TownMailboxes.lua   mailboxes by map (ns.TownMailboxes), generated
-  NaowhForever_TownSpiritHealers.lua  spirit healers by map (ns.TownSpiritHealers), generated
-  NaowhForever_TownTravel.lua      boats and zeppelins by map (ns.TownTravel), generated
-  NaowhForever_ZoneExits.lua       each zone's exits (ns.ZoneExits), generated
-  NaowhForever_TownMap.xml         NaowhForever_TownMap.lua, the town pin templates, then NaowhForever_MapPinsPanel.lua
-  NaowhForever_TownMap.lua         Map Pins on the world map and minimap, /naowh townaudit (ns.TownAudit)
-  NaowhForever_MapPinsPanel.lua    the Map Pins button on the world map and its drawer of which pins show
-  NaowhForever_MapOverlays.lua     each zone map's explorable areas (ns.MapOverlays), generated
-  NaowhForever_Unexplored.xml      the unexplored pin template, then NaowhForever_Unexplored.lua
-  NaowhForever_Unexplored.lua      Unexplored Areas on the world map
-  NaowhForever_SkyborneData.lua    the Skyborne spots every player starts with (ns.SkyborneSpots), MIT notice inside
-  NaowhForever_SkyborneSpots.xml   the Skyborne pin template, then NaowhForever_SkyborneSpots.lua
-  NaowhForever_SkyborneSpots.lua   Skyborne Spots on the world map
-  NaowhForever_Trainer.lua         the trainer popup and rank swaps (ns.TrainerRankCheck, ns.TrainerForgetKept)
-  NaowhForever_Waypoints.lua       the Waypoint Pin (ns.WaypointPinOn), in Travel.xml
-  NaowhForever_QuizData.lua        the quiz questions (ns.QUIZ_QUESTIONS), in Travel.xml
-  NaowhForever_Quiz.lua            the Quiz (ns.ToggleQuiz, ns.QuizOffer, ns.QuizDismiss), in Travel.xml
+  AlertStack.lua      the Alerts group: alerts stacked under one Unlock Mode mover (ns.AlertStack)
+  DeathRelease.lua    Death Release Protection
+  CoTank.lua          the Co-Tank Frame and its debuffs
+  HealerMana.lua      Healer Mana
+  DeleteConfirm.lua   Type DELETE For You, and the Looting card
+  Durability.lua      the low durability warning
+  BuffThanks.lua      Buff Thank You Message and its line editor
+  CombatAlert.lua     Combat Alert
+  GroupButtons.lua    On-Screen Buttons (Invite, Disband)
+  LootConfirm.lua     the retired loot confirmation skip, inert
+  CursorClip.lua      Combat Cursor Clip
+  CombatTimer.lua     Combat Timer
+  CursorCooldown.lua  Cooldown at Cursor
+  CombatLogger.lua    Auto Combat Logging (ns.CombatLogCheck, ns.CombatLogging)
+  GlobalCopy.lua      /copy, tooltip IDs and the copy cards (ns.ShowCopyCard, ns.ShowCopyLine)
+  HideClutter.lua     UI Clutter
+  Crosshair.lua       the Crosshair (ns.MeleeRangeSpell)
+  EquipmentReminder.lua  Equipment Reminder (ns.ShowEquipmentReminder, ns.CaptureEnchants)
+  ChatZones.lua       Chat Zones
+  GcdTracker.lua      GCD Tracker (ns.GCDSpell)
+  FocusCastBar.lua    the Focus Cast Bar
+  Defaults.lua        QoL > System > Defaults: Naowh's setups (ns.ApplyPreset, ns.UsePreset, ns.PresetChanges)
+  AuctionPrices.lua   Auction Prices (ns.AuctionPrice, ns.AuctionAge, ns.AuctionScanSummary)
+  GroupXP.lua         Group XP
+  FoodBar.lua         the Food & Drink Bar, ns.BestFoodAndDrink, ns.HEALTHSTONES, ns.HEALING_POTIONS
+  BagSpace.lua        Bag Space (ns.BagSpaceRescan; ns.BagSpace for its ignore list)
+  BagSpaceIgnore.lua  Bag Space's Ignore List window (ns.ShowBagSpaceIgnoreList)
+  Alts.lua            your characters per realm and faction (ns.AltRealm, ns.AltList, ns.OpenForgetAltMenu)
+  FlightData.lua      each flight route's flown length (ns.FLIGHT_ROUTES), generated
+  Flight.lua          the Flight Timer, Flight Games and flight times on the flight map
+  AimTrainer.lua      the Aim Trainer (/nfaim, ns.AimRules, ns.AimPlay, ns.AimOffer)
+  AimBoard.lua        the Aim Trainer's leaderboard (ns.AimBoard)
+  StealthReminder.lua the stealth, stance, aura and form reminders
+  TalentPoints.lua    the unspent talent points reminder
+  QuestAutomation.lua accept, hand in and share quests, saved reward picks
+  SlashCommands.lua   Custom Slash Commands and their editor (ns.SlashCommandList, ns.RefreshSlashCommands)
+  MouseRing.lua       the Mouse Ring
+  PetTracker.lua      the Pet Tracker
+  SummonEmote.lua     the Summon Emote
+  Performance.lua     QoL > System > Performance: recommended game settings and their backups
+  LootFeed.lua        the Loot Feed, gold per hour and quick loot (ns.ResetLootFeedSession)
+  XPTicker.lua        XP per Hour (ns.ResetXPTicker)
+  XPBar.lua           the XP Bar (ns.XPBarColor, ns.ResetXPBarSession, ns.ResetXPBarLayout)
+  PlayerHistory.lua   Player History (ns.PlayerHistory), read by the Naowh Inspect panel
+  Restock.lua         the Restock Reminder, Auto Repair and Auto Sell Junk
+  ScrapMarker.lua     the Scrap Marker (ns.ScrapMarker), read by Bag Space and the Scrap List
+  ScrapList.lua       the Scrap List window (ns.OpenScrapList, /nf scrap)
+  Mail.lua            Alts and Attach buttons at the mailbox, the expiring mail warning
+  TownData.lua        town service NPCs by map (ns.TownNPCs, ns.TownCapitals), by hand
+  TownMailboxes.lua   mailboxes by map (ns.TownMailboxes), generated
+  TownSpiritHealers.lua  spirit healers by map (ns.TownSpiritHealers), generated
+  TownTravel.lua      boats and zeppelins by map (ns.TownTravel), generated
+  ZoneExits.lua       each zone's exits (ns.ZoneExits), generated
+  TownMap.xml         TownMap.lua, the town pin templates, then MapPinsPanel.lua
+  TownMap.lua         Map Pins on the world map and minimap, /naowh townaudit (ns.TownAudit)
+  MapPinsPanel.lua    the Map Pins button on the world map and its drawer of which pins show
+  MapOverlays.lua     each zone map's explorable areas (ns.MapOverlays), generated
+  Unexplored.xml      the unexplored pin template, then Unexplored.lua
+  Unexplored.lua      Unexplored Areas on the world map
+  SkyborneData.lua    the Skyborne spots every player starts with (ns.SkyborneSpots), MIT notice inside
+  SkyborneSpots.xml   the Skyborne pin template, then SkyborneSpots.lua
+  SkyborneSpots.lua   Skyborne Spots on the world map
+  Trainer.lua         the trainer popup and rank swaps (ns.TrainerRankCheck, ns.TrainerForgetKept)
+  Waypoints.lua       the Waypoint Pin (ns.WaypointPinOn), in Travel.xml
+  QuizData.lua        the quiz questions (ns.QUIZ_QUESTIONS), in Travel.xml
+  Quiz.lua            the Quiz (ns.ToggleQuiz, ns.QuizOffer, ns.QuizDismiss), in Travel.xml
 ```
 
 
@@ -469,7 +469,7 @@ QoL/
 - `CAMPFIRE_SEATED` (1229739) is Forever's "Welcoming Campfire" aura, present only while seated at a campfire (probed 2026-09-24). "Campfire Nearby" (1283391) is an area aura from simply walking past one, so it is not used.
 - Auras cannot be read in combat, so the camp check pauses there rather than reading a missing aura as having walked away.
 - A dismiss with no reason is the close button; one with a reason closes only what that reason opened, so landing never shuts a quiz opened by hand.
-- In `NaowhForever_QuizData.lua` the first answer is the right one; the quiz shuffles them before showing.
+- In `QuizData.lua` the first answer is the right one; the quiz shuffles them before showing.
 
 ### Mail
 - Quick Attach puts in one stack at a time, from a scan made at the click: each is checked in its bag slot and on the cursor before it goes in, and the next goes only once the last has landed (MAIL_SEND_INFO_UPDATE).
@@ -484,7 +484,7 @@ QoL/
 - `MAX_ITEM_ID` caps an imported ID at the largest 32-bit signed number, so a pasted list cannot ask for an impossible item.
 
 ### Skyborne Spots
-- The game marks neither ley lines nor Elemental Convergences, so the spots come from two places: the list every player starts with (`NaowhForever_SkyborneData.lua`, from tr0tsky's Skyborne Ley Line & Convergence Marker, under its MIT licence, whose notice stays in that file) and the ones this account finds. Casting the racial on a spot gives its buff, and where it was cast is saved.
+- The game marks neither ley lines nor Elemental Convergences, so the spots come from two places: the list every player starts with (`SkyborneData.lua`, from tr0tsky's Skyborne Ley Line & Convergence Marker, under its MIT licence, whose notice stays in that file) and the ones this account finds. Casting the racial on a spot gives its buff, and where it was cast is saved.
 - `SAME_SPOT` is 40 yards: a find this close to a known spot is that spot. `MIN_BUFF` is 60 s: the spot's buff lasts minutes, not a moment.
 - The game applies the buff a moment after the cast, so it is looked for `FIRST_LOOK` after and then up to `MAX_TRIES` times, `RETRY_DELAY` apart. `CAST_SLACK` lets a buff that started just before the cast's own time count.
 - Auras are secret in combat: the buff is read only while readable, and through pcall all the same. A cast in combat waits for combat to end.
@@ -501,21 +501,21 @@ QoL/
 - Only the windows this client has are offered: `FRAMES` names each one's load-on-demand addon where it is not loaded up front.
 
 ### Town Map
-- The service NPCs (`NaowhForever_TownData.lua`) come from Classic Era data: `[uiMapID] = { { x, y, category, name, title, class token (class trainers), factions ("A", "H" or "AH"), optional NPC ID } }`, x and y in map percent. NPCs Forever added sit last in each map's list. Forever redrew Stormwind, Mulgore, Redridge and the Eastern Plaguelands, so Classic positions there went through world coordinates.
+- The service NPCs (`TownData.lua`) come from Classic Era data: `[uiMapID] = { { x, y, category, name, title, class token (class trainers), factions ("A", "H" or "AH"), optional NPC ID } }`, x and y in map percent. NPCs Forever added sit last in each map's list. Forever redrew Stormwind, Mulgore, Redridge and the Eastern Plaguelands, so Classic positions there went through world coordinates.
 - `ns.TownCapitals` lists the capitals' maps: the game reports them as zones, so this is the only way to tell.
 - `/naowh townaudit` checks that data against Forever by standing at each NPC: opening their window records where you are next to where the data puts them, in the account store (`townAudit[mapID][name]`).
 - The hint lines' light blue (`HINT`) goes through `SoftBlue`: the shade it always was, or the theme's lighter Accent once a theme changes the Accent.
 - The map calls `CheckMouseButtonPassthrough` on every acquired pin, and its SetPassThroughButtons is protected: from our refresh it is blocked in combat. Town pins take no clicks, so clicks reach the map anyway; zone exits and docks are separate clickable pins, so the vendor and trainer pins stay click-through. A zeppelin tower's pin has a second destination on right click.
-- Forever has no map links of its own (`GetMapLinksForMap` returns nothing), so the exits come from `NaowhForever_ZoneExits.lua`. `EXIT_LENGTH` is an exit arrow's length, in pin sizes.
+- Forever has no map links of its own (`GetMapLinksForMap` returns nothing), so the exits come from `ZoneExits.lua`. `EXIT_LENGTH` is an exit arrow's length, in pin sizes.
 - Vendors & Trainers Only in Cities (`townCapitalsOnly`) keeps vendors, trainers and the bank off questing maps. Flight masters, innkeepers and stable masters (`EVERYWHERE`) are what a traveller looks for in any town, so they show on every map with it on; so do mailboxes and spirit healers, which are what you look for out in the world.
 - `townMinimap` is the minimap's mailboxes and `townMinimapSpirit` its spirit healers: `townMinimap` once held both, so existing profiles keep their mailboxes.
-- Which pins show is chosen on the map itself, from the Map Pins button (`NaowhForever_MapPinsPanel.lua`), so the options card holds only the switch and Pin Size. The keys stay in the QoL store, so saved settings carry over. The button and its drawer are made the first time the map pins are on.
+- Which pins show is chosen on the map itself, from the Map Pins button (`MapPinsPanel.lua`), so the options card holds only the switch and Pin Size. The keys stay in the QoL store, so saved settings carry over. The button and its drawer are made the first time the map pins are on.
 - The Map Pins button sits in the map's top right corner, left of the buttons the map keeps there and at their size, so they read as one row. Those are found by where they sit, not by name, so a map with more, fewer or none of them still gets a free spot.
 - The drawer is the options window's look: a header strip in the panel color, small accent group titles and ruled rows with the switch on the right. It is the map's child, so it opens, closes and scales with the map, `PANEL_LEVEL` over the map's pins as the Dungeon Journal's drawer.
 - The drawer sits against the map window's left side (the Dungeon Journal takes the right), `GAP` -1 putting its border on the map's so the two read as one window; with no room there, the right. It is the map's height, as wide as the quest log beside the map (`PANEL_W` where there is none), and its rows shrink to fit a small map, down to `ROW_MIN_H`.
 - The maximized map letterboxes its picture on a wide screen, so there the drawer goes in the black bar left of the picture, as wide as the bar allows; with no bar `BAR_MIN_W` wide it hangs under the Map Pins button, which stays free to close it. The map's Maximize and Minimize place it again.
 - On the minimap, the game says when you start and stop moving but not where you are, so the pins are placed every `MINI_INTERVAL` (0.05 s) while you move, or always with a rotating minimap, for turning. The zone's map is kept in world coordinates (its continent, top left corner and the steps for one whole map across and down): `UnitPosition` makes no table each tick, `GetPlayerMapPosition` does.
-- `NaowhForever_MapOverlays.lua`, `NaowhForever_TownMailboxes.lua`, `NaowhForever_TownSpiritHealers.lua`, `NaowhForever_TownTravel.lua` and `NaowhForever_ZoneExits.lua` are generated (`Tools/build_map_overlays.py`, `build_mailboxes.py`, `build_spirit_healers.py`, `build_travel.py`, `build_zone_exits.py`): change the builder and run it, never the file.
+- `MapOverlays.lua`, `TownMailboxes.lua`, `TownSpiritHealers.lua`, `TownTravel.lua` and `ZoneExits.lua` are generated (`Tools/build_map_overlays.py`, `build_mailboxes.py`, `build_spirit_healers.py`, `build_travel.py`, `build_zone_exits.py`): change the builder and run it, never the file.
 
 ### Restock
 - `FAMILIES` are the class spells that use a vendor reagent on Forever, from its SpellReagents data (build 1.60.1.69913). Each family lists its ranks from lowest; the highest rank you know sets the reagent, so a rank 2 Prayer of Fortitude asks for Sacred Candles, not Holy Candles.
@@ -587,7 +587,7 @@ QoL/
 - The texts are picked on the preview, so their rows are not drawn on the page; they are still declared for the search, the changed count and the card's Reset. A preview spot answers HandlesGlobalMouseEvent so the menu manager does not close its menu before OnMouseDown toggles it.
 
 ### Unexplored Areas
-- The overlays (`NaowhForever_MapOverlays.lua`, generated by `Tools/build_map_overlays.py` from the game's tables) are `[uiMapID] = { { width, height, offsetX, offsetY, fileDataID, ... } }`: an area's size and place on the map art in its pixels, then its `TILE` (256 px) tiles row by row (`AREA_FIELDS` before them).
+- The overlays (`MapOverlays.lua`, generated by `Tools/build_map_overlays.py` from the game's tables) are `[uiMapID] = { { width, height, offsetX, offsetY, fileDataID, ... } }`: an area's size and place on the map art in its pixels, then its `TILE` (256 px) tiles row by row (`AREA_FIELDS` before them).
 - A tile's drawn size and its texture file's size differ along one side: the last tile of a row or column holds what is left, in a file rounded up to a power of two (from `SMALLEST_FILE`).
 - The pin is one for the whole map, holding every unexplored area's tiles. Its `CheckMouseButtonPassthrough` is left empty: the map calls it on every acquired pin, its SetPassThroughButtons is protected in combat, and this pin takes no clicks.
 
@@ -598,7 +598,7 @@ QoL/
 - The file sits close to Lua 5.1's 200-local cap for one chunk, so new constants are grouped into tables (`FORMAT`, `DEFAULT_POS`); the XP Bar folds its texts into `TEXT` for the same reason.
 
 
-### QoL defaults (NaowhForever_QoL.lua)
+### QoL defaults (QoL.lua)
 - Every on/off switch default in the QoL store is read from `ns.FEATURES.qol`; the values are unchanged.
 - The supporter badges are on by default so everyone sees them, except the group banner, which Naowh asked to start off.
 - The Character Panel's slot marks are on by default, an exception to off by default: they are marks on the game's own panel, with no restyle.

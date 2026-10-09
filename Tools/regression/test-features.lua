@@ -1,4 +1,4 @@
--- Run with Lua 5.1 from the repository root: the feature switches (Core/NaowhForever_Features.lua).
+-- Run with Lua 5.1 from the repository root: the feature switches (Core/Features.lua).
 -- Every switch is a boolean in a store some module declares with UI.ModuleSettings, and that
 -- store's defaults name it: either as the same literal (true or false) or by reading it back
 -- from ns.FEATURES under the same key. An unknown store or switch is an error, not nil, so a
@@ -14,7 +14,7 @@ end
 
 local ns = {}
 _G.NaowhForever = ns
-assert(loadstring(Read("Core/NaowhForever_Features.lua"), "Features"))()
+assert(loadstring(Read("Core/Features.lua"), "Features"))()
 
 check("the badges build flag is 0 or 1", ns.FEATURE_BADGES == 0 or ns.FEATURE_BADGES == 1)
 check("an unknown store is an error", not pcall(function() return ns.FEATURES.noSuchStore end))
@@ -25,7 +25,7 @@ local coreFiles = TocFiles("%.lua$", "NaowhForever.toc")
 check("the core TOC loads the features file right after the core",
     coreFiles[1] ~= nil and (function()
         for i, path in ipairs(coreFiles) do
-            if path == "Core/NaowhForever_Features.lua" then return coreFiles[i - 1] == "Core/NaowhForever_Core.lua" end
+            if path == "Core/Features.lua" then return coreFiles[i - 1] == "Core/Core.lua" end
         end
         return false
     end)())

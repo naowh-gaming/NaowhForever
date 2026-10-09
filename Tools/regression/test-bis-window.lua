@@ -284,7 +284,7 @@ local function Fixture()
             return { IsAnyMenuOpen = function() return state.menuOpen == true end, OpenMenu = NOTHING }
         end },
     }, { __index = _G })
-    local files = { "Core/NaowhForever_Features.lua" }
+    local files = { "Core/Features.lua" }
     for _, path in ipairs(TocFiles("^Shared/.*%.lua$")) do
         if not path:find("^Shared/Data/%a*Items?%a*%.lua$") then files[#files + 1] = path end
     end

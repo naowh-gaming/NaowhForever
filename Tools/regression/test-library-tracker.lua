@@ -106,7 +106,7 @@ local function Load(path)
     chunk()
 end
 
-Load("Core/NaowhForever_Features.lua")
+Load("Core/Features.lua")
 Load("NaowhForever_Discovery/Discovery.lua")
 Load("NaowhForever_Discovery/Constants.lua")
 Load("NaowhForever_Discovery/Data/Books.lua")
