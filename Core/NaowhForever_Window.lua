@@ -412,7 +412,7 @@ local function PaintNavButton(btn, hover)
     local active = btn.fill:IsShown()
     local found = UI.filter and btn.found
     local off = btn.mod ~= nil and not ModuleOn(btn.mod)
-    local c = (active or hover) and T.fg or T.muted
+    local c = (active or hover) and T.fg or (ns.classicSkin and T.accent or T.muted)
     local a = (off and not active and not hover) and NAV_OFF_ALPHA or 1
     if found == false and not active and not hover then a = MISS_ALPHA end
     btn.label:SetTextColor(c.r, c.g, c.b, a)
@@ -1159,7 +1159,20 @@ local function NavigationButton(parent, label, y, onClick, icon)
     btn.marker = ns.Solid(btn, "ARTWORK", T.accent, 1)
     btn.marker:SetPoint("TOPLEFT"); btn.marker:SetPoint("BOTTOMLEFT"); btn.marker:SetWidth(3)
     btn.marker:Hide()
-    btn.label = ns.Font(btn, 14, nil, T.muted)
+    -- Classic+: the game's blue list glow, fading to the right, with a lit line along its top.
+    if ns.classicSkin then
+        local St = ns.Shared.Style
+        local c = St.CLASSIC_PICK_RGB
+        btn.fill:SetColorTexture(1, 1, 1, 1)
+        btn.fill:SetGradient("HORIZONTAL", CreateColor(c.r, c.g, c.b, St.CLASSIC_PICK_ALPHA),
+            CreateColor(c.r, c.g, c.b, St.CLASSIC_PICK_FADE))
+        local line = St.CLASSIC_PICK_LINE_RGB
+        btn.marker:SetColorTexture(line.r, line.g, line.b, St.CLASSIC_PICK_LINE_ALPHA)
+        btn.marker:ClearAllPoints()
+        btn.marker:SetPoint("TOPLEFT"); btn.marker:SetPoint("TOPRIGHT")
+        ns.Hairline(btn.marker, "h")
+    end
+    btn.label = ns.Font(btn, 14, nil, T.muted, true)
     btn.label:SetPoint("LEFT", icon and NAV_LABEL_X or 18, 0)
     btn.label:SetPoint("RIGHT", -10, 0)
     btn.label:SetJustifyH("LEFT")
@@ -1313,7 +1326,7 @@ local function CreateWindow()
     local ny = 0
     for _, group in ipairs(groups) do
         if group ~= "" then
-            local label = ns.Font(nav, 11, nil, T.muted)
+            local label = ns.Font(nav, 11, nil, T.muted, true)
             label:SetPoint("TOPLEFT", 20, ny - 10); label:SetText(ns.L(group))
             ny = ny - 28
         end
@@ -1360,7 +1373,7 @@ local function CreateWindow()
     contentHeader:SetHeight(PAGE_HEADER_H)
     breadcrumb = ns.Font(contentHeader, 12, nil, T.muted)
     breadcrumb:SetPoint("TOPLEFT", 26, -24)
-    headerTitle = ns.Font(contentHeader, 24, nil)
+    headerTitle = ns.Font(contentHeader, 24, nil, ns.classicSkin and T.accent or nil, true)
     headerTitle:SetPoint("TOPLEFT", 26, -51)
     headerTitle:SetPoint("TOPRIGHT", contentHeader, "TOPRIGHT", -300, -51)
     headerTitle:SetJustifyH("LEFT"); headerTitle:SetWordWrap(false)
@@ -1371,7 +1384,7 @@ local function CreateWindow()
         function() local mod = PAGES[currentPage].module; return mod and ModuleOn(mod) end,
         function(v) local mod = PAGES[currentPage].module; if mod then SetModuleOn(mod, v) end end, 52, 26)
     moduleSwitch:SetPoint("TOPRIGHT", -30, -54)
-    moduleLabel = ns.Font(contentHeader, 14, nil)
+    moduleLabel = ns.Font(contentHeader, 14, nil, nil, true)
     moduleLabel:SetPoint("RIGHT", moduleSwitch, "LEFT", -14, 0)
     ns.Tooltip(moduleSwitch, "Module", "Turn this module on or off. Your settings are kept.")
     for _, mod in ipairs(MODULES) do
@@ -1485,7 +1498,7 @@ local function CreateModuleWindow(mod)
     header:SetPoint("TOPRIGHT")
     header:SetHeight(HEADER_H)
     DragRegion(header, win)
-    local title = ns.Font(header, 20, nil)
+    local title = ns.Font(header, 20, nil, ns.classicSkin and T.accent or nil, true)
     title:SetPoint("TOPLEFT", header, "TOPLEFT", 30, -18)
     title:SetText(ns.L(mod.name))
     local sub = ns.Font(header, 12, nil, T.muted)

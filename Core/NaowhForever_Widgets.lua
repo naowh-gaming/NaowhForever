@@ -32,8 +32,19 @@ local function Card()
     card = CreateFrame("Frame", nil, UIParent)
     card:SetFrameStrata("TOOLTIP")
     card:SetClampedToScreen(true)
-    ns.Solid(card, "BACKGROUND", T.panel, 0.98):SetAllPoints()
-    ns.Border(card, BLACK)
+    -- Classic+: the game's tooltip, dark blue inside a grey-blue line.
+    if ns.classicSkin then
+        local St = ns.Shared.Style
+        local c = St.CLASSIC_TIP_RGB
+        ns.Solid(card, "BACKGROUND", c, St.CLASSIC_TIP_ALPHA):SetAllPoints()
+        ns.Border(card, BLACK)
+        local inside = CreateFrame("Frame", nil, card)
+        ns.PixelInset(inside, 1, card)
+        ns.Border(inside, St.CLASSIC_TIP_EDGE_RGB)
+    else
+        ns.Solid(card, "BACKGROUND", T.panel, 0.98):SetAllPoints()
+        ns.Border(card, BLACK)
+    end
     card.text = ns.Font(card, TIP_SIZE, nil)
     card.text:SetPoint("TOPLEFT", TIP_PAD, -TIP_PAD)
     card.text:SetSpacing(TIP_SPACING)
@@ -850,13 +861,27 @@ function W:SectionHeader(parent, text, yOffset)
     f:SetPoint("TOPRIGHT", parent, "TOPRIGHT", -UI.CONTENT_PAD, yOffset)
     if f._headerBuilt then return f, HEADER_H end
     f._headerBuilt = true
-    local lbl = ns.Font(f, 14, nil, T.fg)
+    local lbl = ns.Font(f, 14, nil, T.fg, true)
     lbl:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 0, 8)
     lbl:SetText(text)
     local sep = ns.Solid(f, "ARTWORK", T.line, 1)
     sep:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 0, 0)
     sep:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", 0, 0)
     ns.Hairline(sep, "h")
+    -- Classic+: a gold gem before the name, in gold, over a gold rule that fades out.
+    if ns.classicSkin then
+        local St = ns.Shared.Style
+        local gold = St.CLASSIC_GOLD_RGB
+        local gem = f:CreateTexture(nil, "ARTWORK")
+        gem:SetTexture(St.GEM, nil, nil, "TRILINEAR")
+        gem:SetVertexColor(gold.r, gold.g, gold.b, 1)
+        gem:SetSize(St.CLASSIC_SECTION_GEM, St.CLASSIC_SECTION_GEM)
+        lbl:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", St.CLASSIC_SECTION_GEM + St.CLASSIC_SECTION_GEM_GAP, 8)
+        gem:SetPoint("RIGHT", lbl, "LEFT", -St.CLASSIC_SECTION_GEM_GAP, 0)
+        lbl:SetTextColor(T.accent.r, T.accent.g, T.accent.b, 1)
+        sep:SetColorTexture(1, 1, 1, 1)
+        sep:SetGradient("HORIZONTAL", CreateColor(gold.r, gold.g, gold.b, 1), CreateColor(gold.r, gold.g, gold.b, 0))
+    end
     return f, HEADER_H
 end
 
@@ -1295,7 +1320,7 @@ end
 function UI.FontPath(name)
     local LSM = LibStub and LibStub("LibSharedMedia-3.0", true)
     local path = LSM and name and name ~= "" and LSM:Fetch("font", name, true)
-    return path or ns.UIFontPath()
+    return path or ns.HeadingFontPath()
 end
 
 -- Bar texture dropdown data: "" is the element's own texture, named by label, then every

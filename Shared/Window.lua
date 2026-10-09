@@ -153,6 +153,14 @@ function Parts.ClassicTrim(frame)
     Gem(gems, St.CLASSIC_GEM, d, -d, frame, "BOTTOMRIGHT")
 end
 
+-- A Classic+ box: a bronze line just inside the frame's black edge, the way the game's own
+-- option groups are drawn.
+function Parts.ClassicBox(frame)
+    local inside = CreateFrame("Frame", nil, frame)
+    ns.PixelInset(inside, 1, frame)
+    return ns.Border(inside, St.CLASSIC_BRONZE_RGB)
+end
+
 -- The window's name on a plate over the middle of its top edge, in the game's title face.
 function Parts.TitlePlate(frame, text)
     local plate = CreateFrame("Frame", nil, frame)
@@ -242,7 +250,7 @@ function Parts.TitleBar(window, title, subtitle, page)
     logo:SetScript("OnEnter", LogoEnter)
     logo:SetScript("OnLeave", LogoLeave)
     window.logo = logo
-    window.title = ns.Font(window, 20, nil, T.fg)
+    window.title = ns.Font(window, 20, nil, ns.classicSkin and T.accent or T.fg, true)
     window.title:SetPoint("TOPLEFT", logo, "TOPRIGHT", 10, 1)
     window.title:SetText(title)
     window.subtitle = ns.Font(window, 11, nil, T.muted)
@@ -381,7 +389,7 @@ function Parts.PaintTabs(bar, shown)
     bar.shown = shown
     for _, button in ipairs(bar.buttons) do
         local on = button.key == shown
-        local color = on and T.fg or T.muted
+        local color = on and T.fg or (ns.classicSkin and T.accent or T.muted)
         button.text:SetTextColor(color.r, color.g, color.b)
         button.fill:SetShown(on)
         button.line:SetShown(on)
@@ -406,7 +414,7 @@ end
 
 local function NewTab(bar)
     local button = CreateFrame("Button", nil, bar)
-    button.text = ns.Font(button, TAB_SIZE, nil, T.muted)
+    button.text = ns.Font(button, TAB_SIZE, nil, T.muted, true)
     button.text:SetPoint("CENTER", 0, 0)
     button.fill = button:CreateTexture(nil, "BACKGROUND", nil, 1)
     button.fill:SetAllPoints()
@@ -415,6 +423,16 @@ local function NewTab(bar)
     button.line:SetPoint("BOTTOMLEFT")
     button.line:SetPoint("BOTTOMRIGHT")
     button.line:SetHeight(TAB_LINE)
+    -- Classic+: the picked tab lit bronze from the top, its gold line along the top edge.
+    if ns.classicSkin then
+        local top, bottom = St.CLASSIC_TAB_RGB[1], St.CLASSIC_TAB_RGB[2]
+        button.fill:SetColorTexture(1, 1, 1, 1)
+        button.fill:SetGradient("VERTICAL", CreateColor(bottom.r, bottom.g, bottom.b, 1), CreateColor(top.r, top.g, top.b, 1))
+        button.line:SetColorTexture(St.CLASSIC_GOLD_RGB.r, St.CLASSIC_GOLD_RGB.g, St.CLASSIC_GOLD_RGB.b, 1)
+        button.line:ClearAllPoints()
+        button.line:SetPoint("TOPLEFT")
+        button.line:SetPoint("TOPRIGHT")
+    end
     button:SetScript("OnClick", TabClicked)
     button:SetScript("OnEnter", TabEnter)
     button:SetScript("OnLeave", TabLeave)
@@ -583,7 +601,8 @@ function Parts.SettingsCardFrame(parent)
         ns.OpenFromOptions(card.onOpen)
     end))
     card.open:SetPoint("RIGHT", -CARD_PAD, 0)
-    card.headline = ns.Font(card, HEADLINE_SIZE, nil, T.fg)
+    card.headline = ns.Font(card, HEADLINE_SIZE, nil, ns.classicSkin and T.accent or T.fg, true)
+    if ns.classicSkin then Parts.ClassicBox(card) end
     card.detail = ns.Font(card, DETAIL_SIZE, nil, T.muted)
     for _, line in ipairs({ card.headline, card.detail }) do
         line:SetJustifyH("LEFT")
