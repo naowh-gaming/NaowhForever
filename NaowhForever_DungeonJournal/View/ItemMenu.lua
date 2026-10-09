@@ -23,7 +23,7 @@ function J.View.ItemMenu(owner, itemID, onChange)
         if Loot.BisGear(itemID) and not J.IsNotYet(itemID) then
             if not Loot.BisOn() then
                 root:CreateButton("Turn on BiS List", function()
-                    ns.QoLSettings.Set("bis", true)
+                    ns.TurnOnModule("NaowhForever_BiS")
                     if onChange then onChange() end
                 end)
             else

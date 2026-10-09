@@ -97,6 +97,15 @@ function Engine:Note(text)
     return self:Add("note", text)
 end
 
+local function TurnOn(addon)
+    ns.TurnOnModule(addon)
+end
+
+function Engine:NeedsModule(title, text, addon, linkText)
+    self:SectionLink(title, linkText, TurnOn, addon)
+    return self:Note(text)
+end
+
 -------------------------------------------------------------------------------
 --  Cards and their grid
 -------------------------------------------------------------------------------

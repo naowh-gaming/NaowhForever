@@ -59,6 +59,7 @@ local function Fixture(class, level, sources, journal)
     local ns = { BiSData = { sources = sources or {}, specs = {} }, QoLSettings = {},
         Journal = journal ~= false and { Items = FACTS, Dungeons = function() return list end } or nil }
     Load(RULES, Env(ns, class, level))
+    ns.Shared.ItemFacts = FACTS
     local R = ns.BiS.Rankings
     return { Usable = R.Usable, DungeonDrops = R.DungeonDrops, R = R, ns = ns }
 end
@@ -159,13 +160,16 @@ Case("an item not in Forever yet drops nowhere: no source, never offered", funct
     local m = Fixture("MAGE", 20, { [2] = "Boss 2" .. SEP .. "Old Name" })
     m.ns.Journal.NotYet = { [1] = FACTS[1], [2] = FACTS[2] }
     m.ns.Journal.Items = { [3] = FACTS[3] }
+    m.ns.Shared.ItemFacts = m.ns.Journal.Items
     assert(m.ns.BiSSource(2) == "Boss 2" .. SEP .. "Old Name" and m.R.DropDungeon(1) == nil)
     assert(List(m.DungeonDrops(1, {}, true)) == "")
 end)
 
-Case("levels are the Journal's facts", function()
+Case("levels are the shared facts, with or without the Journal", function()
     local m = Fixture("MAGE", 20)
     assert(m.R.ReqLevel(3) == 40 and m.R.ItemLevel(3) == 45 and m.R.ItemLevel(100) == nil)
+    m = Fixture("MAGE", 20, nil, false)
+    assert(m.R.ReqLevel(3) == 40 and m.R.ItemLevel(3) == 45)
 end)
 
 Case("before the Journal loads, nothing drops and wowsrc's wording stands", function()
@@ -193,12 +197,13 @@ for _, id in ipairs({ 5821, 263435, 263436, 270039, 270046, 272996, 276727, 2772
 
 Case("every ranked item has a source, from the Journal's dungeons or wowsrc", function()
     local dungeons = {}
-    local ns = { QoLSettings = {}, Journal = {
+    local ns = { QoLSettings = {}, Shared = {}, Journal = {
         AddDungeon = function(_, dungeon) dungeons[#dungeons + 1] = dungeon end,
         Dungeons = function() return dungeons end,
     } }
     local env = Env(ns, "MAGE", 60)
-    local files = { "NaowhForever_BiS/BiS/Data/BiS.lua", "NaowhForever_DungeonJournal/Data/Items.lua" }
+    local files = { "NaowhForever_BiS/BiS/Data/BiS.lua", "Shared/Data/ItemFacts.lua", "Shared/Data/FactionItems.lua",
+        "NaowhForever_DungeonJournal/Data/Items.lua" }
     for _, path in ipairs(TocFiles("^NaowhForever_DungeonJournal/Data/Dungeons/.*%.lua$")) do files[#files + 1] = path end
     Load(files, env)
     Load(RULES, env)

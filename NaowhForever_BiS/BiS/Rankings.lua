@@ -66,45 +66,8 @@ function R.Candidates(slot, spec)
     return ids
 end
 
--------------------------------------------------------------------------------
---  What a class can use, as in classic: an item's facts are { class, subclass, item level,
---  required level } (the Dungeon Journal's Data/Items.lua's)
--------------------------------------------------------------------------------
--- Mail and plate are learned at 40.
-local ARMOR = { MAGE = 1, PRIEST = 1, WARLOCK = 1, ROGUE = 2, DRUID = 2, HUNTER = 3, SHAMAN = 3,
-    WARRIOR = 4, PALADIN = 4 }
-local ARMOR_BEFORE_40 = { HUNTER = 2, SHAMAN = 2, WARRIOR = 3, PALADIN = 3 }
-local SHIELD = { WARRIOR = true, PALADIN = true, SHAMAN = true }
-local RELIC = { [7] = "PALADIN", [8] = "DRUID", [9] = "SHAMAN" }
 local DUAL_WIELD = { WARRIOR = true, ROGUE = true, HUNTER = true }
--- Enum.ItemWeaponSubclass values each class can learn.
-local WEAPONS = {
-    DRUID = { 4, 5, 10, 13, 15 },
-    HUNTER = { 0, 1, 2, 3, 6, 7, 8, 10, 13, 15, 16, 18 },
-    MAGE = { 7, 10, 15, 19 },
-    PALADIN = { 0, 1, 4, 5, 6, 7, 8 },
-    PRIEST = { 4, 10, 15, 19 },
-    ROGUE = { 2, 3, 4, 7, 13, 15, 16, 18 },
-    SHAMAN = { 0, 1, 4, 5, 10, 13, 15 },
-    WARLOCK = { 7, 10, 15, 19 },
-    WARRIOR = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 10, 13, 15, 16, 18 },
-}
-for class, subs in pairs(WEAPONS) do
-    local set = {}
-    for _, sub in ipairs(subs) do set[sub] = true end
-    WEAPONS[class] = set
-end
-
-function R.Usable(class, item)
-    local itemClass, sub, req = item[1], item[2], item[4]
-    if itemClass == 2 then return WEAPONS[class][sub] == true end
-    if sub == 0 then return true end
-    if sub == 6 then return SHIELD[class] == true end
-    if RELIC[sub] then return RELIC[sub] == class end
-    return sub == (req < 40 and ARMOR_BEFORE_40[class] or ARMOR[class])
-end
-ns.ClassCanUse = R.Usable
-ns.BisSlotsFor = Items.SlotsFor
+R.Usable = Items.ClassCanUse
 
 -------------------------------------------------------------------------------
 --  What drops in a dungeon, and where: the Dungeon Journal's, so the BiS List and the
@@ -144,11 +107,10 @@ local function Drops()
     return drops
 end
 
--- What the Journal knows of an item before the client loads it: { class, subclass, item
+-- What the data knows of a dungeon item before the client loads it: { class, subclass, item
 -- level, required level, quality }.
 local function Facts(itemID)
-    local J = ns.Journal
-    return J and J.Items and J.Items[itemID]
+    return ns.Shared.ItemFacts[itemID]
 end
 
 local function ByLevel(a, b)

@@ -11,8 +11,10 @@ Listed items
 say so on their tooltip, and call out when they drop. Lists are shared by every character of a
 class, and can be shared as a string.
 
-What drops in a dungeon, and where, is the [Dungeon Journal](../DungeonJournal/README.md)'s: the picker's dungeon
-drops and an item's boss and dungeon come from its data, so the two always agree.
+What drops in a dungeon, and where, is the [Dungeon Journal](../../NaowhForever_DungeonJournal/README.md)'s: the
+picker's dungeon drops and an item's boss and dungeon come from its data, so the two always agree. Without it the
+list still works, from wowsrc's sources; the picker's dungeon drops, the Quests page and Run Next's levels and
+quests say to turn it on instead.
 
 Laid out like the [Dungeon Journal](../DungeonJournal/README.md), on [`Shared/`](../Shared/README.md).
 
@@ -22,7 +24,7 @@ Laid out like the [Dungeon Journal](../DungeonJournal/README.md), on [`Shared/`]
 BiS/
   BiS.xml            what loads, in order (the TOC includes only this file)
   BiS.lua            settings, a list's shape, change listeners (ns.BiS)
-  Rankings.lua       rankings, class rules, dungeon drops, sources, Run Next (B.Rankings)
+  Rankings.lua       rankings, dungeon drops, sources, Run Next (B.Rankings)
   Lists.lua          your lists, their old formats, and the ns calls that change them (B.Lists)
   Gains.lua          what your BiS gets you: Naowh Score and stats over what you wear
   Upgrades.lua       how much stronger each BiS makes you, in percent, by your spec's weights (B.Upgrades)
@@ -56,7 +58,7 @@ BiS/
 ```
 
 Other modules call in through `ns`: `ns.IsBisItem` (the Journal, Bag Space, the loot feed),
-`ns.ClassCanUse` and `ns.BisSlotsFor` (the Journal), `ns.AddBisItem`, `ns.PromoteBisItem`,
+`ns.AddBisItem`, `ns.PromoteBisItem`,
 `ns.RemoveBisItem` (the Journal's item menu), `ns.ImportBisList` (profile packs),
 `ns.OpenBisWindow`.
 

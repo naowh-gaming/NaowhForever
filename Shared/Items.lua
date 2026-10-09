@@ -1,7 +1,9 @@
 -------------------------------------------------------------------------------
 --  Items.lua -- item and gear helpers every module can use (ns.Shared.Items): an item's ID
 --  from whatever names it, its name and quality colour, what you keep, the slots it goes in,
---  a call once its data has loaded, and the items the server would not send this session.
+--  whether a class can use it (as in classic, mail and plate learned at 40; ns.ClassCanUse, read
+--  by the BiS List and the Dungeon Journal alike), a call once its data has loaded, and the items
+--  the server would not send this session.
 --  Functions only, no frames.
 -------------------------------------------------------------------------------
 local ns = _G.NaowhForever
@@ -185,6 +187,38 @@ function Items.WeaponOf(itemID)
     local _, _, _, equipLoc, _, classID, subclass = GetItemInfoInstant(itemID)
     return classID == 2 and Items.WeaponName(subclass, equipLoc) or nil
 end
+
+local ARMOR = { MAGE = 1, PRIEST = 1, WARLOCK = 1, ROGUE = 2, DRUID = 2, HUNTER = 3, SHAMAN = 3,
+    WARRIOR = 4, PALADIN = 4 }
+local ARMOR_BEFORE_40 = { HUNTER = 2, SHAMAN = 2, WARRIOR = 3, PALADIN = 3 }
+local SHIELD = { WARRIOR = true, PALADIN = true, SHAMAN = true }
+local RELIC = { [7] = "PALADIN", [8] = "DRUID", [9] = "SHAMAN" }
+local WEAPONS = {
+    DRUID = { 4, 5, 10, 13, 15 },
+    HUNTER = { 0, 1, 2, 3, 6, 7, 8, 10, 13, 15, 16, 18 },
+    MAGE = { 7, 10, 15, 19 },
+    PALADIN = { 0, 1, 4, 5, 6, 7, 8 },
+    PRIEST = { 4, 10, 15, 19 },
+    ROGUE = { 2, 3, 4, 7, 13, 15, 16, 18 },
+    SHAMAN = { 0, 1, 4, 5, 10, 13, 15 },
+    WARLOCK = { 7, 10, 15, 19 },
+    WARRIOR = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 10, 13, 15, 16, 18 },
+}
+for class, subs in pairs(WEAPONS) do
+    local set = {}
+    for _, sub in ipairs(subs) do set[sub] = true end
+    WEAPONS[class] = set
+end
+
+function Items.ClassCanUse(class, item)
+    local itemClass, sub, req = item[1], item[2], item[4]
+    if itemClass == 2 then return WEAPONS[class][sub] == true end
+    if sub == 0 then return true end
+    if sub == 6 then return SHIELD[class] == true end
+    if RELIC[sub] then return RELIC[sub] == class end
+    return sub == (req < 40 and ARMOR_BEFORE_40[class] or ARMOR[class])
+end
+ns.ClassCanUse = Items.ClassCanUse
 
 -------------------------------------------------------------------------------
 --  Waiting on item data

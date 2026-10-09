@@ -131,10 +131,14 @@ class InGame(unittest.TestCase):
         lines = build_journal.items_file({3191: drop(3191, 1, 1)},
                                          {7718: build_journal.not_yet_facts(7718)})
         text = "\n".join(lines)
-        self.assertIn("[3191] = { 2, 1, 26, 21, 3 },", text)
+        self.assertNotIn("[3191]", text, "an item in Forever is the shared list's")
+        self.assertIn("ns.Journal.Items = ns.Shared.ItemFacts", text)
         self.assertIn('[7718] = { 4, 3, 42, 37, 3, 135032, "Herod\\226\\128\\153s Shoulder" },', text)
-        self.assertLess(text.index("[3191]"), text.index("ns.Journal.NotYet"))
         text.encode("ascii")
+        shared = "\n".join(build_journal.item_facts_file({3191: drop(3191, 1, 1)}))
+        self.assertIn("ns.Shared.ItemFacts = {", shared)
+        self.assertIn("[3191] = { 2, 1, 26, 21, 3 },", shared)
+        shared.encode("ascii")
 
     def test_a_boss_lists_its_loot_with_no_count_left_out(self):
         boss = {"npc": 3975, "name": "Herod", "rare": False, "encounters": [448],

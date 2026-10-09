@@ -135,7 +135,7 @@ local NO_PROFESSIONS = {}
 -- Where you stand, as C_Map.GetPlayerMapPosition answers.
 local STANDING_AT = { GetXY = function() return 0.42, 0.61 end }
 
-local function fixture(settings)
+local function fixture(settings, noBis)
     local state = {
         level = 20, instance = nil, combat = false, bisList = true,
         hooks = {}, frames = 0, printed = {}, waypoints = {}, mapOpened = nil, requested = {},
@@ -260,7 +260,8 @@ local function fixture(settings)
             state.waypoints[#state.waypoints + 1] = { title = title, map = map, x = x, y = y, note = note }
             return true
         end,
-        IsBisItem = function(id) return state.bis[id] end,
+        IsBisItem = not noBis and function(id) return state.bis[id] end or nil,
+        TurnOnModule = function(addon) state.turnedOn = addon end,
         -- Every item goes in slot 1 or 2, like a ring.
         BisSlotsFor = function(id) return not (state.recipes and state.recipes[id]) and RING_SLOTS or nil end,
         -- Cloth only, so a mage can use cloth and anything without an armor type.
@@ -548,7 +549,11 @@ local function fixture(settings)
     local senders = assert(loadfile("Core/NaowhForever_Senders.lua"))
     setfenv(senders, env)
     senders()
+    local classCanUse, slotsFor = ns.ClassCanUse, ns.BisSlotsFor
     for _, path in ipairs(files) do
+        if path:find("^NaowhForever_DungeonJournal/") and ns.Shared.Items.ClassCanUse ~= classCanUse then
+            ns.Shared.Items.ClassCanUse, ns.Shared.Items.SlotsFor = classCanUse, slotsFor
+        end
         local chunk = assert(loadfile(path))
         setfenv(chunk, env)
         chunk()
@@ -3797,6 +3802,38 @@ do
     check("a name that matches is still left out when the filters hide it", not view:Listed(hidden, "zq"))
     check("a name that does not match is left out", not view:Listed(next(J.Items), "zq"))
     Measure("a search over every dungeon and faction redrawn", 2, function() view:Redraw() end)
+end
+
+do
+    local ns, state = fixture({ enabled = true, missingBisOnly = true }, true)
+    local J = ns.Journal
+    ns.Apply()
+    check("without the BiS List loaded the Journal loads, its class rules the core's",
+        J.Loot.Usable ~= nil and not J.Loot.BisOn() and J.Loot.Rank(next(J.Items)) == nil)
+    check("and Missing BiS Only lists nothing away", not J.Loot.ReadFilters({}).missingBis)
+    ns.OpenJournalWindow(J.Get("Shadowfang Keep"))
+    local link
+    for _, frame in ipairs(state.made) do
+        if rawget(frame, "linkArg") == "NaowhForever_BiS" and rawget(frame, "onLink") then link = frame end
+    end
+    check("a dungeon's page offers to turn the BiS List on", link ~= nil)
+    link.onLink(link.linkArg)
+    check("and its link does", state.turnedOn == "NaowhForever_BiS")
+    state.turnedOn = nil
+    local itemRow
+    for _, frame in ipairs(state.made) do
+        if rawget(frame, "itemID") and frame.scripts.OnClick and J.Loot.BisGear(frame.itemID) and not itemRow then
+            itemRow = frame
+        end
+    end
+    itemRow.scripts.OnClick(itemRow, "RightButton")
+    local turnOn
+    for _, e in ipairs(state.menu or {}) do
+        if e.text == "Turn on BiS List" then turnOn = e end
+        check("no BiS List entries without it", e.text ~= "Add to BiS List" and e.text ~= "Remove from BiS List")
+    end
+    turnOn.click()
+    check("an item's menu turns the BiS List on", state.turnedOn == "NaowhForever_BiS")
 end
 
 print(("test-dungeon-journal: %d checks passed"):format(checks))

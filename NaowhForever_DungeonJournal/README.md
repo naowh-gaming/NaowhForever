@@ -6,7 +6,8 @@ Naowh for each boss. Each classic dungeon has a map: the game's own art with eve
 it stands, in a window of its own or filling the world map inside the dungeon. Its Reputation tab has each faction's
 rewards by standing, with their prices; its PvP tab your rank this season, what each rank
 gives, and the battleground factions. Off by default: players turn it on in the Dungeon
-Journal settings page.
+Journal settings page. It works without the BiS List: your BiS is marked only while that is on,
+and the Journal offers to turn it on where it would show.
 
 This module is the addon's reference for how a module is laid out and written. Its folder
 holds everything that is only its own, and it loads through its own `DungeonJournal.xml`.
@@ -33,8 +34,7 @@ DungeonJournal/
   Data/                data, no logic
     Dungeons/*.lua     one per dungeon, generated
     Factions/*.lua     one per faction with rewards, generated
-    Items.lua          item facts for before the client has loaded an item, generated
-    FactionItems.lua   the same for the factions' rewards, generated
+    Items.lua          the loot not in Forever yet, generated (the rest is Shared's ItemFacts)
     Build.lua          the game build the data is read from and its date, generated
     Quests.lua         every dungeon quest, from Wowhead's Forever guide, with hand additions
     QuestChains.lua    each quest's chain, prerequisites and required level, generated
@@ -102,7 +102,8 @@ calls are on `ns`.
 | The game build the faction data is read from | `BUILD` in `Tools/wago.py`; the daily build watcher (`.github/workflows/daily-watch.yml`) opens a pull request when a newer one is out (or, where the organization does not let workflows open one, an issue with a one-click link to it). Items a new build lacks because wago.tools has not recorded its hotfixes yet are carried over from the build before (`CARRY_FROM`), and the pull request lists them |
 | A setting or its default | `Journal.lua` (`UI.ModuleSettings("journal", ...)`) and its card in `UI/SettingsPage.lua` |
 
-`Data/Dungeons/*.lua`, `Data/Factions/*.lua`, `Data/Items.lua`, `Data/FactionItems.lua`, `Data/Build.lua` and
+`Data/Dungeons/*.lua`, `Data/Factions/*.lua`, `Data/Items.lua`, Shared's `Data/ItemFacts.lua` and
+`Data/FactionItems.lua`, `Data/Build.lua` and
 `Data/QuestChains.lua` and `Data/BiSQuests.lua` are generated: change their source and rebuild rather than editing
 them, or the next build undoes the edit.
 

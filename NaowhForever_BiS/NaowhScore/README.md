@@ -46,7 +46,7 @@ python Tools/fit_naowh_score.py --write   # and rewrite Formula.lua when it shou
 
 A score takes an item quality's colour by its share of the best there is (`Score.Best`): grey
 under 25%, white, green from 45%, blue from 65%, purple from 80%, orange from 95%. The best is
-worked out from the gear the addon knows (the Dungeon Journal's loot and faction rewards):
+worked out from the gear the addon knows (Shared's ItemFacts: dungeon loot and faction rewards):
 each slot's best item, two different rings and trinkets, a two-hander or a main and off hand.
 Grade Against (QoL > Naowh Score) picks the best in the game (anyone levelling is grey or
 white) or the best the player's level can wear (who is well geared for where they are). New

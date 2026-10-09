@@ -76,7 +76,7 @@ local MODULES = {
       } },
     -- The journal itself is a window of its own (open); only its settings live here.
     { name = "Dungeon Journal", group = "ADVENTURE", navIcon = "map", settings = "JournalSettings",
-      addon = "NaowhForever_DungeonJournal", needs = { "NaowhForever_BiS" },
+      addon = "NaowhForever_DungeonJournal",
       open = "ToggleJournalWindow",
       command = "journal", alias = "dj", short = "Journal", icon = "Interface\\Icons\\INV_Misc_Book_09",
       subtitle = "Every dungeon and raid: what drops, your quests, and more.",
@@ -87,7 +87,7 @@ local MODULES = {
       } },
     -- The list itself is a window of its own (open); only its settings live here.
     { name = "BiS List", group = "ADVENTURE", navIcon = "trophy", settings = "QoLSettings", enabledKey = "bis",
-      addon = "NaowhForever_BiS", needs = { "NaowhForever_DungeonJournal" },
+      addon = "NaowhForever_BiS",
       open = "ToggleBisWindow",
       command = "bis", short = "BiS", icon = "Interface\\Icons\\INV_Sword_39",
       subtitle = "Your best-in-slot list, marked on tooltips and called out when it drops.",
@@ -392,6 +392,12 @@ local function SetModuleOn(mod, on)
     end
     if store then store.Set(mod.enabledKey or "enabled", on) else ns.SetEnabled(on) end
     UI:RefreshPage(true)
+end
+
+function ns.TurnOnModule(addon)
+    for _, mod in ipairs(MODULES) do
+        if mod.addon == addon then return SetModuleOn(mod, true) end
+    end
 end
 
 -- The sidebar entry a page lights: its module, or the page itself.

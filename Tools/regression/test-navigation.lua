@@ -587,17 +587,17 @@ Click(Button("Dungeon Journal")); Flush()
 switch.scripts.OnClick(); Flush()
 Check(ns.JournalSettings.Get("enabled") == true and confirmText == nil, "switching an addon module on needs no reload")
 switch.scripts.OnClick(); Flush()
-Check(confirmText and confirmText:find("BiS List", 1, true) and confirmText:find("Group Inspect", 1, true)
-    and confirmText:find("all of them", 1, true), "switching the journal off says BiS List, and Group Inspect with it, go too")
+Check(confirmText and confirmText:find("Dungeon Journal", 1, true) and not confirmText:find("BiS List", 1, true),
+    "switching the journal off asks for the journal alone: the BiS List works without it")
 Check(next(disabled) == nil, "nothing is disabled before the player confirms")
 confirmYes()
-Check(disabled.NaowhForever_DungeonJournal and disabled.NaowhForever_BiS, "confirming disables both addons")
+Check(disabled.NaowhForever_DungeonJournal and not disabled.NaowhForever_BiS, "confirming disables the journal alone")
 Check(reloadText and reloadText:find("reload", 1, true), "then offers the reload")
 Check(ns.JournalSettings.Get("enabled") == true, "the module's own switch is kept for when it comes back")
 Check(switch._get() == false, "the switch reads off while the disable waits for its reload")
 switch.scripts.OnClick(); Flush()
-Check(not disabled.NaowhForever_DungeonJournal and not disabled.NaowhForever_BiS and switch._get() == true,
-    "switching it back on before the reload cancels the disable, for both")
+Check(not disabled.NaowhForever_DungeonJournal and switch._get() == true,
+    "switching it back on before the reload cancels the disable")
 confirmText = nil
 Click(Button("Professions")); Flush()
 switch.scripts.OnClick(); Flush()

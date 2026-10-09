@@ -137,10 +137,8 @@ local function Offer(best, second, category, worth, id)
 end
 
 local function Best(level)
-    local items = ns.Journal and ns.Journal.Items
-    if not items then return nil end
     local best, second = {}, {}
-    for id, facts in pairs(items) do
+    for id, facts in pairs(ns.Shared.ItemFacts) do
         local itemLevel, required, quality = facts[3], facts[4], facts[5]
         if required == 0 then required = itemLevel - LEVEL_GAP end
         if level == MAX or required <= level then
@@ -158,7 +156,7 @@ local function Best(level)
     local one = math.max(best.one or 0, best.main or 0)
     local off = math.max(best.off or 0, second.one or 0)
     sum = sum + math.max((W[MAIN] + W[OFF]) * (best.two or 0), W[MAIN] * one + W[OFF] * off)
-    return sum / TOTAL
+    return sum > 0 and sum / TOTAL or nil
 end
 
 --- The best score there is: at any level, or for one (what it can wear).

@@ -98,8 +98,7 @@ local PAGES = {
 local questsLabels = {}   -- "Quests (5)", made once each
 
 local function PaintPages(list)
-    if not window.pages:IsShown() then return end
-    local count = Q.Count(list)
+    local count = Q.Available() and Q.Count(list) or 0
     local label = questsLabels[count]
     if not label then
         label = count > 0 and "Quests (" .. count .. ")" or "Quests"
@@ -111,16 +110,23 @@ local function PaintPages(list)
 end
 
 local function DrawPage()
-    if page == "quests" then questsView:Redraw() else view:DrawList() end
+    if page ~= "quests" then
+        view:DrawList()
+    elseif questsView then
+        questsView:Redraw()
+    else
+        view:DrawQuestsOff()
+    end
 end
 
 local function ShowPage(key)
     page = key
-    if key == "quests" and not questsView then
+    if key == "quests" and not questsView and Q.Available() then
         questsView = B.View.QuestsPage(scroll)
         questsView:SetWidth(view:GetWidth())
     end
     local shown = key == "quests" and questsView or view
+    view.page = (key == "quests" and not questsView) and "questsOff" or "list"
     local hidden = shown == view and questsView or view
     if hidden then hidden:Hide() end
     shown:Show()
@@ -218,8 +224,7 @@ local function Build()
     local top = HEADER + PAD + 4
     window.pages = Parts.Tabs(window, PAGES_W, PAGES, ShowPage)
     window.pages:SetPoint("TOPLEFT", left, -top)
-    window.pages:SetShown(Q.Available())
-    if Q.Available() then top = top + TAB_H + TAB_GAP + 8 end
+    top = top + TAB_H + TAB_GAP + 8
     scrollLeft, scrollTop = left, top
     scroll = ns.UI.SlimScroll(window)
     scroll:SetPoint("TOPLEFT", left, -(top + B.View.SUMMARY_H))

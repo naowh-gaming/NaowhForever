@@ -443,7 +443,8 @@ end
 -- Without the BiS List, a word on what it adds; with it but empty, a link to it, to pick them.
 function ViewMixin:DrawBisNote()
     if not self.filters.bisOn then
-        self:Note("Turn on the BiS List module to see your BiS marked here.")
+        self:NeedsModule("Your BiS", "Turn on the BiS List to see your BiS marked here.", "NaowhForever_BiS",
+            "Turn On BiS List")
     elseif ns.BisListIsEmpty() then
         self:SectionLink("Your BiS list is empty", "Open BiS List", OpenBisList)
     end

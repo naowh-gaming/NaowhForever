@@ -29,7 +29,7 @@ FULL = 900
 KINDS = {
     "items": {"page": "items", "filter": 151, "top": 400000, "files": [
         "NaowhForever_DungeonJournal/Data/Items.lua", "NaowhForever_DungeonJournal/Data/Dungeons/*.lua",
-        "NaowhForever_DungeonJournal/Data/FactionItems.lua", "NaowhForever_DungeonJournal/Data/Factions/*.lua",
+        "Shared/Data/ItemFacts.lua", "Shared/Data/FactionItems.lua", "NaowhForever_DungeonJournal/Data/Factions/*.lua",
         "NaowhForever_DungeonJournal/Data/BiSQuests.lua", "NaowhForever_DungeonJournal/Data/Quests.lua", "NaowhForever_BiS/BiS/Data/*.lua"]},
     "quests": {"page": "quests", "filter": 30, "top": 200000, "files": [
         "NaowhForever_DungeonJournal/Data/Quests.lua", "NaowhForever_DungeonJournal/Data/QuestChains.lua",

@@ -2,9 +2,9 @@
 --  Loot.lua -- what the Dungeon Journal's loot means for you (ns.Journal.Loot): whether your
 --  class can use an item, where it sits on your BiS list, whether it beats what you wear,
 --  whether you have its look, and how much of that a boss or a whole dungeon holds. Rules
---  only, no frames. The class rules and your BiS list are the BiS List module's (loaded
---  before this). What is listed follows filters the caller reads once (ReadFilters), not
---  the settings per item.
+--  only, no frames. The class rules and the slots are the core's; your BiS list is the BiS
+--  List module's, when it is loaded (before this) and on. What is listed follows filters the
+--  caller reads once (ReadFilters), not the settings per item.
 -------------------------------------------------------------------------------
 local ns = _G.NaowhForever
 local J = ns.Journal
@@ -21,8 +21,8 @@ local GetInventoryItemID = GetInventoryItemID
 local GetInventoryItemLink = GetInventoryItemLink
 local GetDetailedItemLevelInfo = C_Item.GetDetailedItemLevelInfo
 local IsBisItem = ns.IsBisItem
-local ClassCanUse = ns.ClassCanUse
-local BisSlotsFor = ns.BisSlotsFor
+local ClassCanUse = ns.Shared.Items.ClassCanUse
+local BisSlotsFor = ns.Shared.Items.SlotsFor
 local Collection = C_TransmogCollection
 
 local _, playerClass = UnitClass("player")
@@ -56,7 +56,7 @@ J.Loot = Loot
 -- The BiS List module is on: without it there are no ranks or missing BiS, and upgrades go
 -- by item level alone.
 function Loot.BisOn()
-    return ns.QoLSettings.Get("bis") == true
+    return IsBisItem ~= nil and ns.QoLSettings.Get("bis") == true
 end
 
 -- Fills out with what is listed now, from the settings, and returns it. The caller owns out
@@ -93,7 +93,7 @@ end
 
 ---@return number? rank its pick number on your BiS list (1 is BiS); nil with the BiS List off
 function Loot.Rank(itemID)
-    if J.IsNotYet(itemID) then return nil end
+    if not IsBisItem or J.IsNotYet(itemID) then return nil end
     return IsBisItem(itemID)
 end
 local Rank = Loot.Rank

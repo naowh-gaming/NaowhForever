@@ -138,7 +138,12 @@ function ViewMixin:DrawList()
     local places = (self.filter == "all" or self.filter == "get") and R.RunNext(self.list, self.gains)
     if places and places[1] then
         self.mostPlaceGain = places[1].gain   -- the first makes you strongest
-        self:Section("Run next")
+        if ns.Journal then
+            self:Section("Run next")
+        else
+            self:NeedsModule("Run next", "Turn on the Dungeon Journal for each dungeon's levels and quests here.",
+                "NaowhForever_DungeonJournal", "Turn On Dungeon Journal")
+        end
         for i = 1, #places do self:Add("place", places[i]) end
         self:Space(SECTION_SPACE)
     end
@@ -215,6 +220,11 @@ function ViewMixin:DrawPicker(slot)
     if #ranked == 0 then self:Note("Nothing ranked for this slot.") end
     self:Space(SECTION_SPACE)
 
+    if not ns.Journal then
+        self:NeedsModule("Dungeon drops", "Turn on the Dungeon Journal to see what drops in dungeons for this slot.",
+            "NaowhForever_DungeonJournal", "Turn On Dungeon Journal")
+        return self:Fit(EVENTS)
+    end
     local all = self.allDrops
     local drops = R.DungeonDrops(slot, ranked, not all)
     self:SectionLink(all and "Dungeon drops" or "Dungeon drops near your level", all and "Near My Level" or "Show All",
@@ -227,9 +237,23 @@ function ViewMixin:DrawPicker(slot)
     self:Fit(EVENTS)
 end
 
+function ViewMixin:DrawQuestsOff()
+    self.page = "questsOff"
+    self:Begin()
+    self:NeedsModule("Quests for your BiS", "Turn on the Dungeon Journal to see the quests that reward your picks, "
+        .. "with their chains and waypoints.", "NaowhForever_DungeonJournal", "Turn On Dungeon Journal")
+    self:Fit(EVENTS)
+end
+
 function ViewMixin:Redraw()
     if not self:IsVisible() then return end
-    if self.page == "picker" then self:DrawPicker(self.slot) else self:DrawList() end
+    if self.page == "picker" then
+        self:DrawPicker(self.slot)
+    elseif self.page == "questsOff" then
+        self:DrawQuestsOff()
+    else
+        self:DrawList()
+    end
 end
 
 function View.New(parent)

@@ -156,7 +156,7 @@ J.OPTION_GROUPS = {
     } },
 }
 -- Why a needsBis option is greyed out.
-J.NEEDS_BIS = "Needs the BiS List module: turn it on in its page."
+J.NEEDS_BIS = "Needs the BiS List module, which is off."
 
 -- What the Journal knows about an item before the client has loaded it: Data/Items.lua
 -- fills J.Items with { class, subclass, item level, required level, quality } per item ID,
