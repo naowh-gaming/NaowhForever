@@ -83,6 +83,10 @@ Shared.Style = {
     -- A section header's gem before its name, on Classic+.
     CLASSIC_SECTION_GEM = 7,
     CLASSIC_SECTION_GEM_GAP = 8,
+    -- The help card on Classic+, as the game draws its tooltips: dark blue inside a grey-blue line.
+    CLASSIC_TIP_RGB = { r = 0x02 / 255, g = 0x02 / 255, b = 0x12 / 255 },
+    CLASSIC_TIP_ALPHA = 0.94,
+    CLASSIC_TIP_EDGE_RGB = { r = 0x9a / 255, g = 0x9a / 255, b = 0xb0 / 255 },
     -- An item level above yours; bags with no room left.
     RED_CODE = "|cfff87171",
     RED_RGB = { r = 0.97, g = 0.44, b = 0.44 },

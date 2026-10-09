@@ -389,7 +389,7 @@ local function NewHead(view)
     head.chevron:SetSize(CHEVRON_SIZE, CHEVRON_SIZE)
     head.chevron:SetPoint("LEFT", PAD, 0)
     head.chevron:SetVertexColor(T.muted.r, T.muted.g, T.muted.b, 1)
-    head.name = ns.Font(head, NAME_SIZE, nil, ns.classicSkin and T.accent or T.fg)
+    head.name = ns.Font(head, NAME_SIZE, nil, ns.classicSkin and T.accent or T.fg, true)
     if ns.classicSkin then
         ns.Border(head, BORDER_RGB)
         ns.Shared.Parts.ClassicBox(head)

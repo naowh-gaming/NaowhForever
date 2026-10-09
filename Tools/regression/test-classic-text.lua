@@ -1,0 +1,132 @@
+-- Run with Lua 5.1 from the repository root: text on the Classic+ skin. Body text in the game's
+-- Arial Narrow, headings (buttons, tabs, titles, names) in its Friz Quadrata, HUD text on its
+-- default font in Friz too, and the help card drawn like the game's tooltip. A picked Addon Font
+-- is used for all of it, and the default skin is untouched.
+local checks = 0
+local function check(label, value) assert(value, label); checks = checks + 1 end
+
+local function Read(path)
+    local f = assert(io.open(path, "rb"))
+    local s = f:read("*a"); f:close()
+    return s
+end
+
+local frames
+local function New(kind, parent)
+    local o = { kind = kind, parent = parent, points = {}, scripts = {}, events = {}, children = {},
+        shown = true, w = 0, h = 0 }
+    if parent and rawget(parent, "children") then table.insert(parent.children, o) end
+    return setmetatable(o, { __index = function(_, k)
+        if not k:match("^%u") then return nil end
+        return function(self, ...)
+            local args = { ... }
+            if k == "SetScript" then self.scripts[args[1]] = args[2]
+            elseif k == "SetPoint" then self.points[#self.points + 1] = args
+            elseif k == "ClearAllPoints" then self.points = {}
+            elseif k == "RegisterEvent" then self.events[args[1]] = true
+            elseif k == "SetGradient" then self.gradient = { args[2], args[3] }
+            elseif k == "SetColorTexture" or k == "SetTextColor" or k == "SetVertexColor" then self.color = args
+            elseif k == "SetTexture" then self.texture = args[1]
+            elseif k == "SetFont" then self.font = args[1]
+            elseif k == "SetFrameStrata" then self.strata = args[1]
+            elseif k == "SetShown" then self.shown = args[1] and true or false
+            elseif k == "Show" then self.shown = true
+            elseif k == "Hide" then self.shown = false
+            elseif k == "IsShown" then return self.shown
+            elseif k == "SetSize" then self.w, self.h = args[1], args[2]
+            elseif k == "SetHeight" then self.h = args[1]
+            elseif k == "SetWidth" then self.w = args[1]
+            elseif k == "GetHeight" then return self.h
+            elseif k == "GetWidth" then return self.w
+            elseif k == "GetText" then return self.text or ""
+            elseif k == "SetText" then self.text = args[1]
+            elseif k == "GetFrameLevel" then return 1
+            elseif k == "GetStringWidth" then return 20
+            elseif k == "GetStringHeight" then return 12
+            elseif k == "GetEffectiveScale" then return 1
+            elseif k == "GetObjectType" then return self.kind
+            elseif k == "CreateTexture" then return New("Texture", self)
+            elseif k == "CreateFontString" then return New("FontString", self)
+            end
+        end
+    end })
+end
+
+local function Load(account)
+    frames = {}
+    local env = setmetatable({
+        NaowhForeverDB = { account = account, profiles = {}, charActive = {} },
+        CreateFrame = function(kind, _, parent)
+            local f = New(kind, parent)
+            frames[#frames + 1] = f
+            return f
+        end,
+        CreateColor = function(r, g, b, a) return { r = r, g = g, b = b, a = a } end,
+        PixelUtil = { GetPixelToUIUnitFactor = function() return 1 end },
+        LibStub = function()
+            local lsm = { LOCALE_BIT_ruRU = 1, LOCALE_BIT_western = 2 }
+            function lsm:Register() end
+            function lsm:Fetch(_, name)
+                return ({ ["Friz Quadrata TT"] = "friz", ["Arial Narrow"] = "arial", Naowh = "naowh",
+                    Morpheus = "morpheus", Expressway = "expressway" })[name]
+            end
+            return lsm
+        end,
+        UIParent = New("Frame"),
+    }, { __index = _G })
+    env._G = env
+    for _, path in ipairs({ "Core/NaowhForever_Core.lua", "Shared/Shared.lua", "Shared/Style.lua",
+        "Core/NaowhForever_Widgets.lua", "Shared/Parts.lua", "Shared/Window.lua" }) do
+        local chunk = assert(loadstring(Read(path), path))
+        setfenv(chunk, env)
+        chunk("NaowhForever", env.NaowhForever)
+    end
+    for _, f in ipairs(frames) do
+        if f.events.ADDON_LOADED and f.scripts.OnEvent then f.scripts.OnEvent(f, "ADDON_LOADED", "NaowhForever") end
+    end
+    return env.NaowhForever
+end
+
+local function Find(list, test)
+    for _, x in ipairs(list) do if test(x) then return x end end
+end
+-- ns.Sunken's edge: a frame holding two lit lines.
+local function SunkenOn(frame, St)
+    return Find(frame.children, function(c)
+        local lit = 0
+        for _, t in ipairs(c.children) do
+            if t.kind == "Texture" and t.color and t.color[1] == St.CLASSIC_BEVEL_RGB.r then lit = lit + 1 end
+        end
+        return lit == 2
+    end) ~= nil
+end
+
+local function Card(ns)
+    ns.UI.ShowWidgetTooltip(New("Frame"), "Help")
+    for _, f in ipairs(frames) do
+        if f.strata == "TOOLTIP" then return f end
+    end
+end
+
+-- Default skin.
+local ns = Load({})
+check("default: headings and text in Naowh", ns.Font(New("Frame"), 12, nil, nil, true).font == "naowh"
+    and ns.Font(New("Frame"), 12).font == "naowh" and ns.UI.FontPath("") == "naowh")
+check("default: the help card on the panel colour", Card(ns).children[1].color[1] == ns.THEME.panel.r)
+
+-- Classic+.
+ns = Load({ skin = "classic" })
+local St = ns.Shared.Style
+check("headings in Friz Quadrata", ns.Font(New("Frame"), 12, nil, nil, true).font == "friz")
+check("text in Arial Narrow", ns.Font(New("Frame"), 12).font == "arial")
+check("HUD text on its default font in Friz", ns.UI.FontPath("") == "friz" and ns.UI.FontPath("Expressway") == "expressway")
+local card = Card(ns)
+check("the help card dark blue, like the game's tooltip", card.children[1].color[1] == St.CLASSIC_TIP_RGB.r
+    and card.children[1].color[4] == St.CLASSIC_TIP_ALPHA)
+
+-- A picked Addon Font is used for headings and text alike.
+ns = Load({ skin = "classic", uiFont = "Expressway" })
+check("a picked Addon Font for both", ns.Font(New("Frame"), 12, nil, nil, true).font == "expressway"
+    and ns.Font(New("Frame"), 12).font == "expressway")
+
+print("classic text: " .. checks .. " checks passed")
