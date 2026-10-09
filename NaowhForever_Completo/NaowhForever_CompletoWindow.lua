@@ -607,7 +607,7 @@ end
 
 local function PartMouseUp(row, button)
     if button ~= "LeftButton" then return end
-    if row.tab == "rares" then rareZone = row.zone elseif row.zone then zone = row.zone end
+    if row.tab == "rares" then rareZone = row.zone else zone = row.zone end
     PickTab(row.tab)
 end
 
