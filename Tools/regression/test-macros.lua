@@ -246,15 +246,16 @@ end
 
 -- One step per potion carried, so running out of one kind mid-fight moves on to the next.
 do
-    local bags = { 13446, 3928, 3928, 3928, 3928, 3928, 5509 }
+    local bags = { 13446, 3928, 3928, 3928, 3928, 3928, 3928, 3928, 3928, 3928, 5509 }
+    local superiors = string.rep(", item:3928", 7)
     local t = Fixture({ settings = { health = true }, bags = bags })
     t.Fire("PLAYER_ENTERING_WORLD")
-    Check("health, stone then four potion steps", t.Body("NF Health"),
-        "#showtooltip\n/castsequence reset=combat item:5509, item:13446, item:3928, item:3928, item:3928")
+    Check("health, stone then eight potion steps", t.Body("NF Health"),
+        "#showtooltip\n/castsequence reset=combat item:5509, item:13446" .. superiors)
     t = Fixture({ settings = { health = true, healthOrder = "potion" }, bags = bags })
     t.Fire("PLAYER_ENTERING_WORLD")
     Check("health, potion first puts the stone second", t.Body("NF Health"),
-        "#showtooltip\n/castsequence reset=combat item:13446, item:5509, item:3928, item:3928, item:3928")
+        "#showtooltip\n/castsequence reset=combat item:13446, item:5509" .. superiors)
 end
 
 -- Food and drink: conjured wins over a higher level, the best level wins otherwise.

@@ -31,7 +31,7 @@ local MACROS = {
 }
 
 local BAG_MACROS = { health = true, mana = true, food = true, bandage = true }
-local POTION_STEPS = 4
+local POTION_STEPS = 8
 
 local ready, pending
 local warnedFull = {}
