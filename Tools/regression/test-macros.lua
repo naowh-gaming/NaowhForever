@@ -230,13 +230,6 @@ do
     Check("potion first falls back to a stone", t.Body("NF Health"), "#showtooltip\n/use item:5509")
 end
 
--- A second potion type is the next line, so running out in combat still drinks one.
-do
-    local t = Fixture({ settings = { health = true, healthOrder = "potion" }, bags = { 929, 1710, 5509 } })
-    t.Fire("PLAYER_ENTERING_WORLD")
-    Check("health, backup potion", t.Body("NF Health"), "#showtooltip\n/use item:1710\n/use item:929")
-end
-
 -- Food and drink: conjured wins over a higher level, the best level wins otherwise.
 do
     local t = Fixture({ settings = { food = true }, bags = { 1179, 8766, 8079, 4599, 8932 } })

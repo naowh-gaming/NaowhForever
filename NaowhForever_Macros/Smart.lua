@@ -37,9 +37,9 @@ local warnedFull = {}
 local toDelete = {}
 local events = CreateFrame("Frame")
 
-local function FirstCarried(list, skip)
+local function FirstCarried(list)
     for _, id in ipairs(list) do
-        if id ~= skip and C_Item.GetItemCount(id) > 0 then return id end
+        if C_Item.GetItemCount(id) > 0 then return id end
     end
 end
 
@@ -63,11 +63,9 @@ end
 
 local BODIES = {
     health = function()
-        local first, second = ns.HEALTHSTONES, ns.HEALING_POTIONS
-        if S.Get("healthOrder") == "potion" then first, second = second, first end
-        local list = FirstCarried(first) and first or second
-        local best = FirstCarried(list)
-        return UseLines(ItemLine(best), ItemLine(FirstCarried(list, best)))
+        local stone, potion = FirstCarried(ns.HEALTHSTONES), FirstCarried(ns.HEALING_POTIONS)
+        if S.Get("healthOrder") == "potion" then return UseLines(ItemLine(potion or stone)) end
+        return UseLines(ItemLine(stone or potion))
     end,
     mana = function() return UseLines(ItemLine(FirstCarried(Items.MANA_POTIONS))) end,
     food = function()
