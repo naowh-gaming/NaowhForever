@@ -22,6 +22,13 @@ done
 shipped=$(git diff --name-only "$range" |
     grep -Ev '^(Tools/|\.github/|Libs/|\.[^/]*$|[^/]*\.md$|LICENSE)' || true)
 
+# The ns.CODE_BUILD assignment as written at a revision: comparing the values, not the diff,
+# lets a moved or renamed file keep the same line without failing.
+code_build() {
+    git grep -h -E '^[[:space:]]*ns\.CODE_BUILD[[:space:]]*=' "$1" -- '*.lua' 2>/dev/null |
+        tr -d '\r' | sed -E 's/^[[:space:]]+//' | sort -u
+}
+
 unreleased() {
     git show "$1:CHANGELOG.md" 2>/dev/null | tr -d '\r' |
         awk '/^## / { f = ($0 == "## Unreleased"); next } f'
@@ -48,7 +55,7 @@ if [ "${RELEASE:-false}" != "true" ]; then
         echo "A TOC's '## Version' changed. Only a release changes it."
         problems=$((problems + 1))
     fi
-    if git diff -U0 "$range" -- '*.lua' | grep -qE '^[-+][[:space:]]*ns\.CODE_BUILD[[:space:]]*='; then
+    if [ "$(code_build "$(git merge-base "$base" "$head")")" != "$(code_build "$head")" ]; then
         echo "ns.CODE_BUILD changed. Only a release changes it."
         problems=$((problems + 1))
     fi
