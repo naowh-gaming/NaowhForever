@@ -54,6 +54,15 @@ Shared.Style = {
     CLASSIC_TITLE_RGB = { r = 0xf4 / 255, g = 0xcf / 255, b = 0x63 / 255 },
     CLASSIC_PLATE_GEM = 7,
     CLASSIC_PLATE_GEM_GAP = 12,
+    -- A Classic+ button (ns.Button): red, lit from the top, inside a gold rim, with a faint
+    -- shine on its top half. Each state is its fill's { top, bottom }; pressed turns it over.
+    CLASSIC_BUTTON_RGB = {
+        rest  = { { r = 0xb4 / 255, g = 0x2a / 255, b = 0x1d / 255 }, { r = 0x5a / 255, g = 0x0b / 255, b = 0x06 / 255 } },
+        hover = { { r = 0xd2 / 255, g = 0x3a / 255, b = 0x2a / 255 }, { r = 0x82 / 255, g = 0x14 / 255, b = 0x0b / 255 } },
+        down  = { { r = 0x4e / 255, g = 0x09 / 255, b = 0x06 / 255 }, { r = 0x8a / 255, g = 0x16 / 255, b = 0x0d / 255 } },
+    },
+    CLASSIC_RIM_LIT_RGB = { r = 0xff / 255, g = 0xe2 / 255, b = 0x8a / 255 },   -- the rim under the mouse
+    CLASSIC_BUTTON_SHINE = 0.1,
     -- An item level above yours; bags with no room left.
     RED_CODE = "|cfff87171",
     RED_RGB = { r = 0.97, g = 0.44, b = 0.44 },

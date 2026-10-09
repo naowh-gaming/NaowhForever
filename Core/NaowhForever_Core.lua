@@ -600,6 +600,45 @@ end
 -- NaowhUI's 1px black border on buttons and input boxes, lit blue on hover.
 local BLACK = { r = 0, g = 0, b = 0 }
 
+local function Gloss(tex, state)
+    local top, bottom = state[1], state[2]
+    tex:SetGradient("VERTICAL", CreateColor(bottom.r, bottom.g, bottom.b, 1), CreateColor(top.r, top.g, top.b, 1))
+end
+
+-- The Classic+ skin's button: red with a gold rim and gold text, brighter under the mouse and
+-- turned over while pressed. The outer edge still marks a picked button, as on the default skin.
+local function ClassicButton(btn, bg, border, lbl)
+    local T, St = ns.THEME, ns.Shared.Style
+    local states = St.CLASSIC_BUTTON_RGB
+    bg:SetColorTexture(1, 1, 1, 1)
+    Gloss(bg, states.rest)
+    local shine = btn:CreateTexture(nil, "BACKGROUND", nil, 1)
+    shine:SetPoint("TOPLEFT")
+    shine:SetPoint("BOTTOMRIGHT", btn, "RIGHT")
+    shine:SetColorTexture(1, 1, 1, St.CLASSIC_BUTTON_SHINE)
+    local inside = CreateFrame("Frame", nil, btn)
+    ns.PixelInset(inside, 1, btn)
+    local gold, lit = St.CLASSIC_GOLD_RGB, St.CLASSIC_RIM_LIT_RGB
+    local rim = ns.Border(inside, gold)
+    lbl:SetTextColor(T.accent.r, T.accent.g, T.accent.b, 1)
+    lbl:SetShadowColor(0, 0, 0, 1)
+    lbl:SetShadowOffset(1, -1)
+    btn:SetScript("OnEnter", function()
+        Gloss(bg, states.hover)
+        rim:SetColor(lit.r, lit.g, lit.b, 1)
+        border:SetColor(T.accent.r, T.accent.g, T.accent.b, 1)
+    end)
+    btn:SetScript("OnLeave", function()
+        Gloss(bg, states.rest)
+        rim:SetColor(gold.r, gold.g, gold.b, 1)
+        border:SetColor(btn._rest.r, btn._rest.g, btn._rest.b, 1)
+    end)
+    btn:SetScript("OnMouseDown", function() Gloss(bg, states.down) end)
+    btn:SetScript("OnMouseUp", function(self)
+        Gloss(bg, self:IsMouseOver() and states.hover or states.rest)
+    end)
+end
+
 -- btn.label is exposed so a reused button can be re-labelled on each open, and btn._onClick
 -- so it can be pointed at a new action.
 function ns.Button(parent, text, w, h, onClick)
@@ -618,6 +657,10 @@ function ns.Button(parent, text, w, h, onClick)
     btn.label = lbl
     btn._onClick = onClick
     btn:SetScript("OnClick", function() if btn._onClick then btn._onClick() end end)
+    if ns.classicSkin then
+        ClassicButton(btn, bg, border, lbl)
+        return btn
+    end
     btn:SetScript("OnEnter", function()
         bg:SetColorTexture(T.panel.r, T.panel.g, T.panel.b, 1)
         border:SetColor(T.accent.r, T.accent.g, T.accent.b, 1)
