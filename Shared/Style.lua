@@ -38,6 +38,22 @@ Shared.Style = {
     -- A window's soft drop shadow (Parts.Shadow): SHADOW_ALPHA black at its edge, clear SHADOW_SIZE out.
     SHADOW_ALPHA = 0.4,
     SHADOW_SIZE = 48,
+    -- The Classic+ skin's frame (Parts.ClassicTrim): outside a window's own black edge, a gold
+    -- line, CLASSIC_TRIM_BODY pixels of bronze and a black rim, and a gem on each corner.
+    CLASSIC_GOLD_RGB = { r = 0xd4 / 255, g = 0xaf / 255, b = 0x37 / 255 },
+    CLASSIC_BRONZE_RGB = { r = 0x5e / 255, g = 0x4a / 255, b = 0x1c / 255 },
+    CLASSIC_TRIM_BODY = 3,
+    CLASSIC_GEM = 12,
+    CLASSIC_GEM_EDGE = 2,       -- the gem's black edge, each side
+    -- A Classic+ window's title plate (Parts.TitlePlate) over its top edge: its height, bronze,
+    -- the room either side of the title, the title's size and colour, and the gems beside it.
+    CLASSIC_PLATE_H = 30,
+    CLASSIC_PLATE_BODY = 2,
+    CLASSIC_PLATE_PAD = 34,
+    CLASSIC_PLATE_SIZE = 16,
+    CLASSIC_TITLE_RGB = { r = 0xf4 / 255, g = 0xcf / 255, b = 0x63 / 255 },
+    CLASSIC_PLATE_GEM = 7,
+    CLASSIC_PLATE_GEM_GAP = 12,
     -- An item level above yours; bags with no room left.
     RED_CODE = "|cfff87171",
     RED_RGB = { r = 0.97, g = 0.44, b = 0.44 },
@@ -89,6 +105,7 @@ Shared.Style = {
     CLOCK_ATLAS = "auctionhouse-icon-clock",
     QUEST_ATLAS = "smallquestbang",
     PIN = MEDIA .. "pin",                   -- waypoints and places
+    GEM = MEDIA .. "waypoint_diamond",      -- the Classic+ skin's corner and title gems
     CHAIN = MEDIA .. "chain",               -- a quest's chain
     INFO = MEDIA .. "info",                 -- Naowh's tip
     LOGO = MEDIA .. "LogoAddon",            -- the Naowh logo, left of a window's title

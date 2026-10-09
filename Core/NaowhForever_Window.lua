@@ -855,6 +855,21 @@ function ns.BuildSettingsPage(parent, y)
         colorsPending = true
         UI:RefreshPage(true)
     end
+    local function ClassicSkin() return ns.AccountSettings().skin == "classic" end
+    _, h = W:DualRow(parent, y,
+        { type = "dropdown", text = "Skin", values = { [""] = "Naowh (default)", classic = "Classic+" },
+          order = { "", "classic" },
+          tooltip = "Classic+ dresses the addon's windows like the game's own, in gold and bronze. "
+          .. "It has its own colors and uses the game's fonts unless you pick an Addon Font. Saved "
+          .. "for this computer.|n|nTakes effect after a /reload.",
+          getValue = function() return ns.AccountSettings().skin or "" end,
+          setValue = function(v)
+              ns.AccountSettings().skin = v ~= "" and v or nil
+              colorsPending = true
+              UI:RefreshPage(true)
+          end },
+        { type = "label", text = "" }
+    ); y = y - h
     local themes, themeOrder = { [""] = "Naowh (default)" }, { "" }
     for _, key in ipairs(ns.THEME_PRESET_ORDER) do
         themes[key] = ns.THEME_PRESETS[key].name
@@ -868,6 +883,7 @@ function ns.BuildSettingsPage(parent, y)
           .. "option for your own colors. If text gets hard to read, pick Naowh (default). "
           .. "Saved for this computer.|n|nTakes effect after a /reload.",
           getValue = ns.ThemePresetKey,
+          disabled = ClassicSkin,
           setValue = function(v)
               ns.SetThemePreset(v)
               colorsPending = true
@@ -1223,6 +1239,10 @@ local function CreateWindow()
     ns.Shared.Parts.Backdrop(window):Paint(1)
     ns.Shared.Parts.Shadow(window)
     local border = ns.Border(window, ns.Shared.Style.BORDER_RGB)
+    if ns.classicSkin then
+        ns.Shared.Parts.ClassicTrim(window)
+        ns.Shared.Parts.TitlePlate(window, "Naowh Forever")
+    end
     -- Ctrl+F goes to the search box, and Escape clears a search before it closes the window.
     window:SetScript("OnKeyDown", function(self, key)
         if InCombatLockdown() then return end
@@ -1457,6 +1477,7 @@ local function CreateModuleWindow(mod)
     win:EnableMouse(true)
     ns.Shared.Parts.Backdrop(win):Paint(1)
     ns.Border(win, ns.Shared.Style.BORDER_RGB)
+    if ns.classicSkin then ns.Shared.Parts.ClassicTrim(win) end
     win:SetScript("OnKeyDown", CloseOnEscape)
 
     local header = CreateFrame("Frame", nil, win)

@@ -99,6 +99,7 @@ function Parts.Window(width, height, positionKey)
     end
     window.backdrop = Parts.Backdrop(window)
     ns.Border(window, BORDER_RGB)
+    if ns.classicSkin then Parts.ClassicTrim(window) end
     window:SetScript("OnKeyDown", ns.UI.CloseOnEscape)
     window:SetScript("OnShow", OnShow)
     window:SetScript("OnHide", OnHide)
@@ -107,6 +108,71 @@ function Parts.Window(width, height, positionKey)
     rule:SetPoint("TOPRIGHT", 0, -HEADER)
     ns.Hairline(rule, "h")
     return window
+end
+
+-------------------------------------------------------------------------------
+--  The Classic+ skin
+-------------------------------------------------------------------------------
+-- One-pixel rings stepping out from the frame's own black edge: gold, `body` of bronze, then a
+-- black rim. Returns how far out they reach.
+local function Rings(frame, body)
+    local colors = { St.CLASSIC_GOLD_RGB }
+    for _ = 1, body do colors[#colors + 1] = St.CLASSIC_BRONZE_RGB end
+    colors[#colors + 1] = BORDER_RGB
+    for i, color in ipairs(colors) do
+        local ring = CreateFrame("Frame", nil, frame)
+        ns.PixelInset(ring, -i, frame)
+        ns.Border(ring, color)
+    end
+    return #colors
+end
+
+local function Gem(parent, size, x, y, relativeTo, point)
+    local edge = parent:CreateTexture(nil, "ARTWORK")
+    edge:SetTexture(St.GEM, nil, nil, "TRILINEAR")
+    edge:SetVertexColor(BORDER_RGB.r, BORDER_RGB.g, BORDER_RGB.b, 1)
+    edge:SetSize(size + 2 * St.CLASSIC_GEM_EDGE, size + 2 * St.CLASSIC_GEM_EDGE)
+    edge:SetPoint("CENTER", relativeTo, point, x, y)
+    local gem = parent:CreateTexture(nil, "OVERLAY")
+    gem:SetTexture(St.GEM, nil, nil, "TRILINEAR")
+    gem:SetVertexColor(St.CLASSIC_GOLD_RGB.r, St.CLASSIC_GOLD_RGB.g, St.CLASSIC_GOLD_RGB.b, 1)
+    gem:SetSize(size, size)
+    gem:SetPoint("CENTER", edge)
+end
+
+-- A window's frame on the Classic+ skin: the trim round its edge and a gem on each corner.
+function Parts.ClassicTrim(frame)
+    local reach = Rings(frame, St.CLASSIC_TRIM_BODY)
+    local gems = CreateFrame("Frame", nil, frame)
+    gems:SetAllPoints()
+    gems:SetFrameLevel(frame:GetFrameLevel() + 3)
+    local d = reach / 2
+    Gem(gems, St.CLASSIC_GEM, -d, d, frame, "TOPLEFT")
+    Gem(gems, St.CLASSIC_GEM, d, d, frame, "TOPRIGHT")
+    Gem(gems, St.CLASSIC_GEM, -d, -d, frame, "BOTTOMLEFT")
+    Gem(gems, St.CLASSIC_GEM, d, -d, frame, "BOTTOMRIGHT")
+end
+
+-- The window's name on a plate over the middle of its top edge, in the game's title face.
+function Parts.TitlePlate(frame, text)
+    local plate = CreateFrame("Frame", nil, frame)
+    plate:SetHeight(St.CLASSIC_PLATE_H)
+    plate:SetPoint("CENTER", frame, "TOP")
+    plate:SetFrameLevel(frame:GetFrameLevel() + 10)
+    ns.Solid(plate, "BACKGROUND", T.panel, 1):SetAllPoints()
+    ns.Border(plate, BORDER_RGB)
+    Rings(plate, St.CLASSIC_PLATE_BODY)
+    local title = plate:CreateFontString(nil, "OVERLAY")
+    title:SetFont(ns.TitleFontPath(), St.CLASSIC_PLATE_SIZE, "")
+    title:SetTextColor(St.CLASSIC_TITLE_RGB.r, St.CLASSIC_TITLE_RGB.g, St.CLASSIC_TITLE_RGB.b, 1)
+    title:SetShadowColor(BORDER_RGB.r, BORDER_RGB.g, BORDER_RGB.b, 1)
+    title:SetShadowOffset(0, -1)
+    title:SetPoint("CENTER")
+    title:SetText(ns.L(text):upper())
+    Gem(plate, St.CLASSIC_PLATE_GEM, -St.CLASSIC_PLATE_GEM_GAP, 0, title, "LEFT")
+    Gem(plate, St.CLASSIC_PLATE_GEM, St.CLASSIC_PLATE_GEM_GAP, 0, title, "RIGHT")
+    plate:SetWidth(title:GetStringWidth() + 2 * St.CLASSIC_PLATE_PAD)
+    return plate
 end
 
 -- A grip in the bottom-right corner to size the window by dragging, between its minimum and

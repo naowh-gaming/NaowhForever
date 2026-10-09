@@ -113,6 +113,16 @@ ns.THEME_PRESETS = {
         accent = { r = 0xd6 / 255, g = 0x8e / 255, b = 0x35 / 255 } },
 }
 
+-- The Classic+ skin's colors (Settings > Skin): in force whatever the Theme setting says.
+ns.CLASSIC_PLUS = {
+    bg     = { r = 0x0b / 255, g = 0x0a / 255, b = 0x08 / 255 },
+    panel  = { r = 0x17 / 255, g = 0x11 / 255, b = 0x0b / 255 },
+    line   = { r = 0x5e / 255, g = 0x4a / 255, b = 0x1c / 255 },
+    fg     = { r = 0xec / 255, g = 0xe3 / 255, b = 0xcc / 255 },
+    muted  = { r = 0xa8 / 255, g = 0x9a / 255, b = 0x7c / 255 },
+    accent = { r = 0xff / 255, g = 0xd1 / 255, b = 0x00 / 255 },
+}
+
 -- A |cffRRGGBB escape from a THEME key (or an {r,g,b} table). With text it wraps it and
 -- closes with |r; without, it returns the bare prefix for strings built in pieces.
 local colorPrefix = {}
@@ -155,6 +165,7 @@ end
 -- The colors in force: a preset's table, or the player's own picks for Custom. Anything else,
 -- an unknown preset name included, is the default theme and applies nothing.
 local function ThemeSource()
+    if ns.classicSkin then return ns.CLASSIC_PLUS end
     local account = ns.AccountSettings()
     local preset = account.themePreset
     if preset == "custom" then return account.themeColors end
@@ -181,7 +192,9 @@ local function Shipped(key, r, g, b)
     return math.abs(r - t.r) <= near and math.abs(g - t.g) <= near and math.abs(b - t.b) <= near
 end
 
+-- The skin is read with the colors, once per load, so a change to it waits for a reload too.
 function ns.ApplyThemeColors()
+    ns.classicSkin = ns.AccountSettings().skin == "classic"
     local source = ThemeSource()
     if not source then return end
     for _, key in ipairs(ns.THEME_EDITABLE) do
@@ -407,9 +420,17 @@ function ns.FontInset(size)
 end
 
 --- The Addon Font as a file path, looked up each time; UIFontPath keeps its first answer.
+--- Unpicked, it is Naowh, or the game's Friz Quadrata on the Classic+ skin.
 ---@return string
 function ns.AddonFontPath()
-    return FontPath(ns.AccountSettings().uiFont or "Naowh") or STANDARD_TEXT_FONT
+    local default = ns.classicSkin and "Friz Quadrata TT" or "Naowh"
+    return FontPath(ns.AccountSettings().uiFont or default) or STANDARD_TEXT_FONT
+end
+
+-- Window titles on the Classic+ skin: the game's Morpheus, which SharedMedia only registers
+-- for the clients whose language it covers.
+function ns.TitleFontPath()
+    return LSM and LSM:Fetch("font", "Morpheus", true) or ns.UIFontPath()
 end
 
 function ns.UIFontPath()
