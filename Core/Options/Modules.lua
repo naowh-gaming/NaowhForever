@@ -285,7 +285,10 @@ end
 local function SetModuleOn(mod, on)
     if mod.addon and not on then return SwitchModuleAddon(mod, false) end
     local store = mod.settings and ns[mod.settings]
-    if mod.settings and not store then return SwitchModuleAddon(mod, true) end
+    if mod.settings and not store or not Loaded(mod) then
+        if store then store.Set(mod.enabledKey or "enabled", true) end
+        return SwitchModuleAddon(mod, true)
+    end
     if mod.addon then
         for _, m in ipairs(Linked(mod, true)) do C_AddOns.EnableAddOn(m.addon) end
     end
