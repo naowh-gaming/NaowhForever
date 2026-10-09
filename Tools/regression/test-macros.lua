@@ -230,6 +230,16 @@ do
     Check("potion first falls back to a stone", t.Body("NF Health"), "#showtooltip\n/use item:5509")
 end
 
+-- Forever's Discolored potions count; battleground draughts and Whipper Root Tuber do not.
+do
+    local t = Fixture({ settings = { health = true, healthOrder = "potion" }, bags = { 17348, 11951, 247241, 858 } })
+    t.Fire("PLAYER_ENTERING_WORLD")
+    Check("health, Discolored over a lower potion", t.Body("NF Health"), "#showtooltip\n/use item:247241")
+    t = Fixture({ settings = { health = true, healthOrder = "potion" }, bags = { 17348, 11951 } })
+    t.Fire("PLAYER_ENTERING_WORLD")
+    Check("health, no draught or tuber", t.Body("NF Health"), nil)
+end
+
 -- Food and drink: conjured wins over a higher level, the best level wins otherwise.
 do
     local t = Fixture({ settings = { food = true }, bags = { 1179, 8766, 8079, 4599, 8932 } })
