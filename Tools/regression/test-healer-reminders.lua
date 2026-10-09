@@ -1,7 +1,7 @@
 local root = arg[1] or "."
 local function Read(suffix)
     local name = suffix == "" and "_SmartReminders" or suffix
-    local dir = (name == "_Core" or name == "_Widgets") and "/Core" or "/NaowhForever_SmartReminders"
+    local dir = (name == "_Core" or name == "_Widgets" or name == "_Features") and "/Core" or "/NaowhForever_SmartReminders"
     local f = assert(io.open(root .. dir .. "/NaowhForever" .. name .. ".lua", "rb"))
     local s = f:read("*a"):gsub("\r\n", "\n"); f:close(); return s
 end
@@ -14,11 +14,19 @@ local function Eval(code, env)
     local f = assert(loadstring(code)); setfenv(f, env); return f()
 end
 local core, main, raid = Read("_Core"), Read(""), Read("_RaidReminders")
+-- Core's named values, then its DB and account settings up to the window scale.
+local accountCode = assert(core:match("\n(local MODULE_KEY = .-\n)\nlocal ns = {}\n"), "Core constants")
+    .. Slice(core, "local activeRoot", "function ns.UIScale()")
+-- The real feature switches, loaded into a stub namespace as the game loads them after Core.
+local function WithFeatures(ns)
+    Eval(Read("_Features"), { _G = { NaowhForever = ns } })
+    return ns
+end
 local saved = { profiles = { One = {}, Two = {} }, charActive = {}, account = {} }
-local ns = {}
+local ns = WithFeatures({})
 local env = { ns = ns, _G = { NaowhForeverDB = saved },
     UnitName = function() return "Tester" end, GetRealmName = function() return "Realm" end }
-Eval(Slice(core, "local activeRoot", "-- Stored as a percent"), env)
+Eval(accountCode, env)
 local healer, ordinary = { healerReminder = true }, {}
 assert(ns.HealerRemindersEnabled())
 assert(ns.IsReminderEnabled(healer) and ns.IsReminderEnabled(ordinary))
@@ -31,8 +39,8 @@ saved.charActive["Tester-Realm"] = "Two"
 saved.profiles.Two.healerRemindersEnabled = true
 ns.SettingsRoot()
 assert(not ns.HealerRemindersEnabled())
-local reload = { ns = {}, _G = env._G, UnitName = env.UnitName, GetRealmName = env.GetRealmName }
-Eval(Slice(core, "local activeRoot", "-- Stored as a percent"), reload)
+local reload = { ns = WithFeatures({}), _G = env._G, UnitName = env.UnitName, GetRealmName = env.GetRealmName }
+Eval(accountCode, reload)
 assert(not reload.ns.HealerRemindersEnabled())
 
 -- Block the entire display dispatch, before any sound, TTS, or defensive work.

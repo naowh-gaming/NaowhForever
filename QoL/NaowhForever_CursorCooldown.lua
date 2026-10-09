@@ -1,18 +1,13 @@
--------------------------------------------------------------------------------
---  NaowhForever_CursorCooldown.lua -- Cooldown at Cursor: press a spell or item that is still on
---  cooldown and a small card pops up by your mouse for a moment: its icon, its name and the time
---  left. The time is a duration object the game counts down itself (swipe and text), so it works
---  in combat, where Forever keeps cooldown numbers secret. The global cooldown alone brings no
---  card: the game raises the same error for it, and its isOnGCD flag stays readable in combat.
--------------------------------------------------------------------------------
+-- NaowhForever_CursorCooldown.lua: Cooldown at Cursor, a card by the mouse when you press something still on cooldown.
 local ns = _G.NaowhForever
+
 local S = ns.QoLSettings
 local T = ns.THEME
 
 local PAD = 4
 local GAP = 7
 local BORDER = 1
-local ICON_CROP = 0.08
+local ICON_CROP = ns.QoLConstants.ICON_CROP
 local SWIPE_ALPHA = 0.5
 local CARD_ALPHA = 0.94
 local NAME_SIZE, TIME_SIZE = 0.42, 0.5
@@ -23,6 +18,10 @@ local MATCH_WINDOW = 0.3
 local POP_TIME, POP_FROM = 0.12, 0.85
 local FADE_TIME = 0.25
 local BLACK = { r = 0, g = 0, b = 0 }
+local TEXT_NUDGE = 1
+local TIME_UNITS = 2
+local ROUND = ns.QoLConstants.ROUND
+local SUMMARY = "%d px, %.2gs"
 
 local COOLDOWN_ERRORS = {}
 for _, name in ipairs({ "ERR_SPELL_COOLDOWN", "ERR_ABILITY_COOLDOWN", "ERR_ITEM_COOLDOWN" }) do
@@ -50,7 +49,7 @@ local function TimeFormatter()
     formatter:SetMinInterval(Enum.SecondsFormatterInterval.Seconds)
     formatter:SetRounding(Enum.SecondsFormatterRounding.Truncate)
     formatter:SetCanRoundUpLastUnit(true)
-    formatter:SetDesiredUnitCount(2)
+    formatter:SetDesiredUnitCount(TIME_UNITS)
     return formatter
 end
 
@@ -89,12 +88,7 @@ local function FollowCursor(self)
     end
 end
 
-local function Build()
-    card = CreateFrame("Frame", "NaowhForeverCursorCooldown", UIParent)
-    card:SetFrameStrata("TOOLTIP")
-    card:EnableMouse(false)
-    ns.Solid(card, "BACKGROUND", T.panel, CARD_ALPHA):SetAllPoints()
-    ns.Border(card, BLACK)
+local function BuildIcon()
     card.iconFrame = CreateFrame("Frame", nil, card)
     card.iconFrame:SetPoint("LEFT", PAD, 0)
     ns.Solid(card.iconFrame, "BACKGROUND", BLACK, 1):SetAllPoints()
@@ -107,32 +101,53 @@ local function Build()
     card.swipe:SetDrawEdge(false)
     card.swipe:SetHideCountdownNumbers(true)
     card.swipe:SetSwipeColor(BLACK.r, BLACK.g, BLACK.b, SWIPE_ALPHA)
+end
+
+local function BuildText()
     card.name = ns.Font(card, MIN_NAME, nil, T.fg)
-    card.name:SetPoint("BOTTOMLEFT", card.iconFrame, "RIGHT", GAP, 1)
+    card.name:SetPoint("BOTTOMLEFT", card.iconFrame, "RIGHT", GAP, TEXT_NUDGE)
     card.name:SetJustifyH("LEFT")
     card.name:SetWordWrap(false)
     card.time = ns.Font(card, MIN_TIME, nil, T.accentSoft)
-    card.time:SetPoint("TOPLEFT", card.iconFrame, "RIGHT", GAP, -1)
+    card.time:SetPoint("TOPLEFT", card.iconFrame, "RIGHT", GAP, -TEXT_NUDGE)
     card.time:SetJustifyH("LEFT")
+end
+
+local function BuildPop()
     card.pop = card:CreateAnimationGroup()
     local grow = card.pop:CreateAnimation("Scale")
     grow:SetScaleFrom(POP_FROM, POP_FROM)
     grow:SetScaleTo(1, 1)
     grow:SetDuration(POP_TIME)
     grow:SetSmoothing("OUT")
+end
+
+local function BuildBinding()
     binding = C_DurationUtil.CreateDurationTextBinding()
     binding:SetToDefaults()
     binding:SetFormatter(TimeFormatter())
     binding:SetFontString(card.time)
     binding:SetEnabled(false)
+end
+
+local function Build()
+    card = CreateFrame("Frame", "NaowhForeverCursorCooldown", UIParent)
+    card:SetFrameStrata("TOOLTIP")
+    card:EnableMouse(false)
+    ns.Solid(card, "BACKGROUND", T.panel, CARD_ALPHA):SetAllPoints()
+    ns.Border(card, BLACK)
+    BuildIcon()
+    BuildText()
+    BuildPop()
+    BuildBinding()
     card:Hide()
 end
 
 local function Style()
     local size = S.Get("cursorCooldownSize")
     card.iconFrame:SetSize(size, size)
-    card.name:SetFont(ns.UIFontPath(), math.max(MIN_NAME, math.floor(size * NAME_SIZE + 0.5)), "")
-    card.time:SetFont(ns.UIFontPath(), math.max(MIN_TIME, math.floor(size * TIME_SIZE + 0.5)), "")
+    card.name:SetFont(ns.UIFontPath(), math.max(MIN_NAME, math.floor(size * NAME_SIZE + ROUND)), "")
+    card.time:SetFont(ns.UIFontPath(), math.max(MIN_TIME, math.floor(size * TIME_SIZE + ROUND)), "")
     card:SetHeight(size + PAD * 2)
 end
 
@@ -177,12 +192,14 @@ local function OnUseAction(slot)
     Match()
 end
 
-local events = CreateFrame("Frame")
-events:SetScript("OnEvent", function(_, _, _, message)
+local function OnErrorMessage(_, _, _, message)
     if not COOLDOWN_ERRORS[message] then return end
     erroredAt = GetTime()
     Match()
-end)
+end
+
+local events = CreateFrame("Frame")
+events:SetScript("OnEvent", OnErrorMessage)
 
 local function Apply()
     active = On() == true
@@ -201,9 +218,11 @@ local function Apply()
     events:RegisterEvent("UI_ERROR_MESSAGE")
 end
 
-hooksecurefunc(S, "Set", function(key)
+local function OnSettingChanged(key)
     if key == "enabled" or key:find("^cursorCooldown") then Apply() end
-end)
+end
+
+hooksecurefunc(S, "Set", OnSettingChanged)
 hooksecurefunc(ns, "Apply", Apply)
 
 local boot = CreateFrame("Frame")
@@ -213,7 +232,7 @@ boot:SetScript("OnEvent", Apply)
 local Settings = ns.Shared.Settings
 
 local function Summary(store)
-    return ("%d px, %.2gs"):format(store.Get("cursorCooldownSize"), store.Get("cursorCooldownTime"))
+    return SUMMARY:format(store.Get("cursorCooldownSize"), store.Get("cursorCooldownTime"))
 end
 
 Settings.Page("QoL/Combat", S):Card({

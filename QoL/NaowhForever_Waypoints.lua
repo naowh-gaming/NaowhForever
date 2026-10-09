@@ -1,11 +1,6 @@
--------------------------------------------------------------------------------
---  NaowhForever_Waypoints.lua -- Waypoint Pin: the spot the game is guiding you to, marked in
---  the world with its name, distance and walking time, an arrow at the screen's edge while it
---  is off screen, a navigator bar, and a moment on arrival. It follows the game's navigation
---  frame (C_Navigation), so quests, your corpse and map pins get it as well as
---  ns.PlaceWaypoint's spots, which it names.
--------------------------------------------------------------------------------
+-- NaowhForever_Waypoints.lua: the Waypoint Pin: the game's waypoint in the world, at the edge and in a navigator.
 local ns = _G.NaowhForever
+
 local S = ns.QoLSettings
 local T = ns.THEME
 local Parts, St = ns.Shared.Parts, ns.Shared.Style
@@ -18,24 +13,57 @@ local SHAPES = {
 }
 local CHEVRON, CHECK, CROSS = MEDIA .. "chevron", MEDIA .. "check", MEDIA .. "cross"
 
-local PIN, MARK, ARROW = 36, 12, 18          -- the pin, the mark in its middle, the edge arrow in it
-local FILL_ALPHA = 0.2                       -- the pin's tint inside its outline
+local PIN, MARK, ARROW = 36, 12, 18
+local FILL_ALPHA = 0.2
 local CARD_W, CARD_PAD, CARD_GAP, STRIP = 180, 8, 8, 2
 local NAME_SIZE, NOTE_SIZE, DIST_SIZE, TIME_SIZE, LINE_GAP, TIME_GAP = 14, 11, 18, 11, 3, 8
 local CARD_H = 2 * CARD_PAD + STRIP + NAME_SIZE + LINE_GAP + DIST_SIZE
-local CARD_ICON, ICON_GAP, ICON_CROP = NAME_SIZE + LINE_GAP + DIST_SIZE, 8, 0.08   -- a module's icon, beside the name
+local CARD_ICON, ICON_GAP, ICON_CROP = NAME_SIZE + LINE_GAP + DIST_SIZE, 8, 0.08
 local BEAM_W, BEAM_H, BEAM_ALPHA = 2, 80, 0.55
 local GROUND_W, GROUND_H = 44, 12
-local EDGE_INSET = 70                        -- the edge arrow from the screen's edge
-local BEHIND = math.rad(30)                  -- either side of straight down that counts as behind you
-local BEHIND_Y, BEHIND_SIZE = 60, 13         -- the cue above the screen's bottom, its text
-local FAR, FAR_SCALE = 400, 0.65             -- yards at which the pin is smallest, and how small
-local FADE_FLOOR = 0.25                      -- the pin's alpha at your feet with Fade Up Close on
-local RUN_SPEED = 7                          -- yards a second on foot, while standing still
+local EDGE_INSET = 70
+local BEHIND = math.rad(30)
+local BEHIND_Y, BEHIND_SIZE = 60, 13
+local FAR, FAR_SCALE = 400, 0.65
+local FADE_FLOOR = 0.25
+local RUN_SPEED = 7
 local NAV_W, NAV_H, NAV_PAD, NAV_ICON, NAV_ARROW = 320, 40, 10, 20, 14
 local NAV_NAME, NAV_SUB, NAV_DIST = 14, 11, 16
-local NAV_Y = -70                            -- the navigator under the screen's top, until moved
-local ARRIVED_HOLD = ns.WAYPOINT_HOLD        -- seconds the arrival shows
+local NAV_Y = -70
+local NAV_NAME_LIFT, NAV_SUB_GAP, CUE_TEXT_GAP = 2, 1, 2
+local ARRIVED_HOLD = ns.WAYPOINT_HOLD
+local CHECK_SHARE = 0.6
+local ROUND = ns.QoLConstants.ROUND
+local MINUTE = 60
+local PERCENT = ns.QoLConstants.PERCENT
+local SAME_SPOT = 0.05
+local DOWN = -math.pi / 2
+local NO_TIME = -1
+local STAGE_H = 190
+local GAME_PARTS = { "Icon", "Arrow", "DistanceText", "IconBorder" }
+local SHAPE_CHOICES = { { hex = "Hex", diamond = "Diamond", dot = "Dot" }, { "hex", "diamond", "dot" } }
+local SAMPLE = { name = "Mage Trainer", yards = 312, seconds = 45 }
+local STATES = {
+    { key = "world", label = "On Screen", tip = "The spot ahead of you, 312 yards away." },
+    { key = "edge", label = "Off Screen", tip = "The spot off to your right." },
+    { key = "arrived", label = "Arrived", tip = "You reached it." },
+}
+
+local TEXT_YARDS = " yd"
+local TEXT_WALK = "about %d:%02d"
+local TEXT_ARRIVED = "Arrived"
+local TEXT_CLEAR = "Clear the waypoint"
+local TEXT_MAP_PIN = "Map Pin"
+local TEXT_QUEST = "Quest"
+local TEXT_CORPSE = "Your Corpse"
+local TEXT_WAYPOINT = "Waypoint"
+local TEXT_NAVIGATOR = "Waypoint Navigator"
+local TEXT_BEHIND = "Behind you"
+local TEXT_STOP = "%s%s%d of %d"
+local TEXT_NEXT = "Next: "
+local TEXT_DONE = " done"
+local TEXT_NO_NAVIGATION = "Waypoint Pin needs the game's navigation, which this client does not have."
+local TEXT_PIN = " pin"
 
 local function On()
     return S.Get("enabled") and S.Get("waypoints")
@@ -43,12 +71,17 @@ end
 ns.WaypointPinOn = On
 
 local function Yards(yards)
-    return BreakUpLargeNumbers(math.floor(yards + 0.5)) .. " yd"
+    return BreakUpLargeNumbers(math.floor(yards + ROUND)) .. TEXT_YARDS
 end
 
 local function Walk(seconds)
-    seconds = math.floor(seconds + 0.5)
-    return ("about %d:%02d"):format(math.floor(seconds / 60), seconds % 60)
+    seconds = math.floor(seconds + ROUND)
+    return TEXT_WALK:format(math.floor(seconds / MINUTE), seconds % MINUTE)
+end
+
+local function Whole(n)
+    if n >= 0 then return math.floor(n) end
+    return math.ceil(n)
 end
 
 local function Trilinear(texture, path)
@@ -56,9 +89,6 @@ local function Trilinear(texture, path)
     return texture
 end
 
--------------------------------------------------------------------------------
---  Look: the pin with its card, and the navigator. The settings preview draws the same.
--------------------------------------------------------------------------------
 local Look = {}
 
 local function Card(parent, width)
@@ -83,7 +113,7 @@ function Look.NewPin(parent)
     pin.mark:SetSize(MARK, MARK)
     pin.mark:SetPoint("CENTER")
     pin.check = Trilinear(pin:CreateTexture(nil, "ARTWORK", nil, 2), CHECK)
-    pin.check:SetSize(PIN * 0.6, PIN * 0.6)
+    pin.check:SetSize(PIN * CHECK_SHARE, PIN * CHECK_SHARE)
     pin.check:SetPoint("CENTER")
     pin.check:SetVertexColor(T.bg.r, T.bg.g, T.bg.b)
     pin.arrow = Trilinear(pin:CreateTexture(nil, "ARTWORK", nil, 2), CHEVRON)
@@ -116,9 +146,6 @@ function Look.NewPin(parent)
     return pin
 end
 
--- o: shape, name, note and icon (each optional), yards, seconds (nil hides the walking time),
--- mode ("world", "edge" or "arrived"), angle (edge: radians from the screen's centre, 0 to the
--- right), card, beam.
 function Look.PaintPin(pin, o)
     local a = T.accent
     local shape = SHAPES[o.shape] or SHAPES.hex
@@ -152,11 +179,14 @@ function Look.PaintPin(pin, o)
     card.dist:ClearAllPoints()
     card.dist:SetPoint("TOPLEFT", o.note and card.note or card.name, "BOTTOMLEFT", 0, -LINE_GAP)
     card:SetHeight(CARD_H + (o.note and NOTE_SIZE + LINE_GAP or 0))
-    card.dist:SetText(arrived and "Arrived" or Yards(o.yards))
+    card.dist:SetText(arrived and TEXT_ARRIVED or Yards(o.yards))
     card.time:SetText(o.seconds and not arrived and Walk(o.seconds) or "")
-    -- Over the pin in the world; toward the screen's middle at an edge, so it stays on screen.
+    Look.PlaceCard(pin, card, edge, o.angle or 0)
+end
+
+function Look.PlaceCard(pin, card, edge, angle)
     card:ClearAllPoints()
-    local cos, sin = math.cos(o.angle or 0), math.sin(o.angle or 0)
+    local cos, sin = math.cos(angle), math.sin(angle)
     if not edge then
         card:SetPoint("BOTTOM", pin, "TOP", 0, CARD_GAP)
     elseif math.abs(cos) >= math.abs(sin) then
@@ -184,7 +214,7 @@ function Look.NewNav(parent, onClear)
     nav.icon = nav:CreateTexture(nil, "ARTWORK")
     nav.icon:SetAllPoints(nav.fill)
     nav.icon:SetTexCoord(ICON_CROP, 1 - ICON_CROP, ICON_CROP, 1 - ICON_CROP)
-    nav.clear = Parts.IconButton(nav, onClear, CROSS, 0, "Clear the waypoint")
+    nav.clear = Parts.IconButton(nav, onClear, CROSS, 0, TEXT_CLEAR)
     nav.clear:SetPoint("RIGHT", -NAV_PAD / 2, 0)
     nav.dist = Parts.HudText(ns.Font(nav, NAV_DIST, nil, T.accent))
     nav.dist:SetPoint("RIGHT", nav.clear, "LEFT", -NAV_PAD / 2, 0)
@@ -192,20 +222,18 @@ function Look.NewNav(parent, onClear)
     nav.arrow:SetSize(NAV_ARROW, NAV_ARROW)
     nav.arrow:SetPoint("RIGHT", nav.dist, "LEFT", -NAV_PAD / 2, 0)
     nav.name = Parts.HudText(ns.Font(nav, NAV_NAME))
-    nav.name:SetPoint("TOPLEFT", nav.fill, "TOPRIGHT", NAV_PAD, 2)
+    nav.name:SetPoint("TOPLEFT", nav.fill, "TOPRIGHT", NAV_PAD, NAV_NAME_LIFT)
     nav.name:SetPoint("RIGHT", nav.arrow, "LEFT", -NAV_PAD / 2, 0)
     nav.name:SetJustifyH("LEFT")
     nav.name:SetWordWrap(false)
     nav.sub = Parts.HudText(ns.Font(nav, NAV_SUB, nil, T.muted))
-    nav.sub:SetPoint("TOPLEFT", nav.name, "BOTTOMLEFT", 0, -1)
+    nav.sub:SetPoint("TOPLEFT", nav.name, "BOTTOMLEFT", 0, -NAV_SUB_GAP)
     nav.sub:SetPoint("RIGHT", nav.name, "RIGHT")
     nav.sub:SetJustifyH("LEFT")
     nav.sub:SetWordWrap(false)
     return nav
 end
 
--- o: shape, name, sub, icon (optional, in place of the shape), yards, mode, angle (radians from
--- the screen's centre, 0 to the right).
 function Look.PaintNav(nav, o)
     local a = T.accent
     local shape = SHAPES[o.shape] or SHAPES.hex
@@ -219,21 +247,19 @@ function Look.PaintNav(nav, o)
     nav.sub:SetText(o.sub or "")
     nav.arrow:SetShown(o.mode ~= "arrived" and o.angle ~= nil)
     nav.arrow:SetRotation(o.angle or 0)
-    nav.dist:SetText(o.mode == "arrived" and "Arrived" or Yards(o.yards))
+    nav.dist:SetText(o.mode == "arrived" and TEXT_ARRIVED or Yards(o.yards))
 end
 
--------------------------------------------------------------------------------
---  Following the game's navigation frame
--------------------------------------------------------------------------------
 local pin, nav, cue, driver, navFrame, unlocked, gameHidden, warned
 local arrived, arrivals = false, 0
-local lastX, lastY   -- where the pin last stood, in UIParent units, for an arrival
+local lastX, lastY
 local shown = {}
-local painted   -- what the texts and look were last drawn for; the place and arrows move every frame
-local knownSpeed = 0   -- your last readable speed: it reads secret at times, as in restricted content
+local dirty = true
+local paintedMode, paintedSide, paintedYards, paintedSeconds
+local knownSpeed = 0
 local NavSample = { name = "Mage Trainer", sub = "Thunder Bluff", yards = 312, mode = "world", angle = math.pi / 2 }
+local events = CreateFrame("Frame")
 
--- A placed spot's note as a line of its own: " (entrance)" is "Entrance".
 local function NoteText(note)
     if not note then return nil end
     local text = note:match("^%s*%((.-)%)%s*$") or note:match("^%s*(.-)%s*$")
@@ -241,40 +267,47 @@ local function NoteText(note)
     return text:sub(1, 1):upper() .. text:sub(2)
 end
 
--- What the game is guiding you to: its name, its zone, and the note and icon a spot
--- ns.PlaceWaypoint set was given.
+local function IsPlaced(placed, point)
+    return placed and point and placed.map == point.uiMapID
+        and math.abs(placed.x - point.position.x * PERCENT) < SAME_SPOT
+        and math.abs(placed.y - point.position.y * PERCENT) < SAME_SPOT
+end
+
+local function UserTarget()
+    local point, placed = C_Map.GetUserWaypoint(), ns.placedWaypoint
+    local info = point and C_Map.GetMapInfo(point.uiMapID)
+    local where = info and info.name
+    if IsPlaced(placed, point) then
+        return placed.title, where, NoteText(placed.note), placed.icon, true
+    end
+    return TEXT_MAP_PIN, where
+end
+
 local function Target()
     local kind = C_SuperTrack.GetHighestPrioritySuperTrackingType()
     local types = Enum.SuperTrackingType
     if kind == types.UserWaypoint then
-        local point, placed = C_Map.GetUserWaypoint(), ns.placedWaypoint
-        local info = point and C_Map.GetMapInfo(point.uiMapID)
-        local where = info and info.name
-        if placed and point and placed.map == point.uiMapID
-            and math.abs(placed.x - point.position.x * 100) < 0.05
-            and math.abs(placed.y - point.position.y * 100) < 0.05 then
-            return placed.title, where, NoteText(placed.note), placed.icon, true
-        end
-        return "Map Pin", where
+        return UserTarget()
     elseif kind == types.Quest then
-        return C_QuestLog.GetTitleForQuestID(C_SuperTrack.GetSuperTrackedQuestID()) or "Quest"
+        return C_QuestLog.GetTitleForQuestID(C_SuperTrack.GetSuperTrackedQuestID()) or TEXT_QUEST
     elseif kind == types.Corpse then
-        return "Your Corpse"
+        return TEXT_CORPSE
     end
-    return "Waypoint"
+    return TEXT_WAYPOINT
+end
+
+local function SaveNavPos(pos)
+    S.Set("waypointNavPos", { point = pos.point, relPoint = pos.relPoint, x = pos.x, y = pos.y })
 end
 
 local function Build()
     pin = Look.NewPin(UIParent)
     pin:SetFrameStrata("LOW")
     pin:Hide()
-    -- Clearing the waypoint also ends a route it is on.
     nav = Look.NewNav(UIParent, ns.ClearWaypoint)
     nav:SetFrameStrata("MEDIUM")
     nav:SetClampedToScreen(true)
-    nav.mover = ns.UI.AttachMover(nav, "Waypoint Navigator", function(pos)
-        S.Set("waypointNavPos", { point = pos.point, relPoint = pos.relPoint, x = pos.x, y = pos.y })
-    end, "QoL/Interface", "QoL/Interface:waypoints")
+    nav.mover = ns.UI.AttachMover(nav, TEXT_NAVIGATOR, SaveNavPos, "QoL/Interface", "QoL/Interface:waypoints")
     nav:Hide()
     cue = CreateFrame("Frame", nil, UIParent)
     cue:SetSize(NAV_W, BEHIND_Y)
@@ -282,11 +315,11 @@ local function Build()
     cue.arrow = Trilinear(cue:CreateTexture(nil, "ARTWORK"), CHEVRON)
     cue.arrow:SetSize(ARROW, ARROW)
     cue.arrow:SetPoint("TOP")
-    cue.arrow:SetRotation(-math.pi / 2)
+    cue.arrow:SetRotation(DOWN)
     cue.arrow:SetVertexColor(T.accent.r, T.accent.g, T.accent.b)
     cue.text = Parts.HudText(ns.Font(cue, BEHIND_SIZE))
-    cue.text:SetPoint("TOP", cue.arrow, "BOTTOM", 0, -2)
-    cue.text:SetText("Behind you")
+    cue.text:SetPoint("TOP", cue.arrow, "BOTTOM", 0, -CUE_TEXT_GAP)
+    cue.text:SetText(TEXT_BEHIND)
     cue:Hide()
     driver = CreateFrame("Frame")
 end
@@ -301,6 +334,68 @@ local function PlaceNav()
     end
 end
 
+local function SizePin(mode, yards)
+    local scale = S.Get("waypointScale")
+    local near = S.Get("waypointFadeNear")
+    local alpha = 1
+    if mode == "world" then
+        scale = scale * (1 - (1 - FAR_SCALE) * math.min(yards / FAR, 1))
+        if near > 0 and yards < near then alpha = FADE_FLOOR + (1 - FADE_FLOOR) * yards / near end
+    end
+    pin:SetScale(scale)
+    pin:SetAlpha(alpha)
+    return scale
+end
+
+local function PlaceAtEdge(cx, cy, dx, dy, scale)
+    local hw, hh = UIParent:GetWidth() / 2 - EDGE_INSET, UIParent:GetHeight() / 2 - EDGE_INSET
+    local t = math.min(hw / math.max(math.abs(dx), 1), hh / math.max(math.abs(dy), 1))
+    pin:ClearAllPoints()
+    pin:SetPoint("CENTER", UIParent, "CENTER", dx * t / scale, dy * t / scale)
+    pin.onNav = false
+    lastX, lastY = cx + dx * t, cy + dy * t
+    return math.abs(dx) >= math.abs(dy) and (dx > 0 and "right" or "left") or (dy > 0 and "top" or "bottom")
+end
+
+local function PlaceOnSpot(nx, ny, scale)
+    local lift = S.Get("waypointBeam") and PIN / 2 + BEAM_H or 0
+    if not pin.onNav then
+        pin:ClearAllPoints()
+        pin:SetPoint("CENTER", navFrame, "CENTER", 0, lift)
+        pin.onNav = true
+    end
+    lastX, lastY = nx, ny + lift * scale
+end
+
+local function WalkSeconds(yards)
+    local speed = GetUnitSpeed("player")
+    if not (issecretvalue and issecretvalue(speed)) then knownSpeed = speed end
+    return S.Get("waypointTime") and yards / (knownSpeed > 0 and knownSpeed or RUN_SPEED) or nil
+end
+
+local function Changed(mode, side, yards, seconds)
+    local wholeYards, wholeSeconds = Whole(yards + ROUND), Whole((seconds or NO_TIME) + ROUND)
+    if not dirty and mode == paintedMode and side == paintedSide and wholeYards == paintedYards
+        and wholeSeconds == paintedSeconds then
+        return false
+    end
+    dirty = false
+    paintedMode, paintedSide, paintedYards, paintedSeconds = mode, side, wholeYards, wholeSeconds
+    return true
+end
+
+local function Paint(mode, side, yards, seconds, angle)
+    shown.angle = angle
+    if Changed(mode, side or "", yards, seconds) then
+        shown.yards, shown.seconds, shown.mode = yards, seconds, mode
+        Look.PaintPin(pin, shown)
+        if nav:IsShown() then Look.PaintNav(nav, shown) end
+    else
+        pin.arrow:SetRotation(angle)
+        nav.arrow:SetRotation(angle)
+    end
+end
+
 local function Update()
     if not C_Navigation.HasValidScreenPosition() then
         pin:Hide()
@@ -312,74 +407,32 @@ local function Update()
     local nx, ny = navFrame:GetCenter()
     local dx, dy = nx - cx, ny - cy
     local angle = math.atan2(dy, dx)
-    local clamped = C_Navigation.WasClampedToScreen()
-    local mode = clamped and "edge" or "world"
-    local behind = mode == "edge" and math.abs(angle + math.pi / 2) < BEHIND
-
-    local scale = S.Get("waypointScale")
-    local near = S.Get("waypointFadeNear")
-    local alpha = 1
-    if mode == "world" then
-        scale = scale * (1 - (1 - FAR_SCALE) * math.min(yards / FAR, 1))
-        if near > 0 and yards < near then alpha = FADE_FLOOR + (1 - FADE_FLOOR) * yards / near end
-    end
-    pin:SetScale(scale)
-    pin:SetAlpha(alpha)
-
-    -- Offsets are in the pin's own scaled units.
+    local mode = C_Navigation.WasClampedToScreen() and "edge" or "world"
+    local behind = mode == "edge" and math.abs(angle - DOWN) < BEHIND
+    local scale = SizePin(mode, yards)
     local side
     if mode == "edge" then
-        local hw, hh = UIParent:GetWidth() / 2 - EDGE_INSET, UIParent:GetHeight() / 2 - EDGE_INSET
-        local t = math.min(hw / math.max(math.abs(dx), 1), hh / math.max(math.abs(dy), 1))
-        pin:ClearAllPoints()
-        pin:SetPoint("CENTER", UIParent, "CENTER", dx * t / scale, dy * t / scale)
-        pin.onNav = false
-        side = math.abs(dx) >= math.abs(dy) and (dx > 0 and "right" or "left") or (dy > 0 and "top" or "bottom")
-        lastX, lastY = cx + dx * t, cy + dy * t
+        side = PlaceAtEdge(cx, cy, dx, dy, scale)
     else
-        -- The navigation point is the spot on the ground: the ring at the line's foot goes there and
-        -- the pin stands above it.
-        local lift = S.Get("waypointBeam") and PIN / 2 + BEAM_H or 0
-        if not pin.onNav then
-            pin:ClearAllPoints()
-            pin:SetPoint("CENTER", navFrame, "CENTER", 0, lift)
-            pin.onNav = true
-        end
-        lastX, lastY = nx, ny + lift * scale
+        PlaceOnSpot(nx, ny, scale)
     end
     pin:SetShown(not behind and (mode ~= "edge" or S.Get("waypointEdge")))
     cue:SetShown(behind and S.Get("waypointEdge"))
-
-    local speed = GetUnitSpeed("player")
-    if not (issecretvalue and issecretvalue(speed)) then knownSpeed = speed end
-    local seconds = S.Get("waypointTime") and yards / (knownSpeed > 0 and knownSpeed or RUN_SPEED) or nil
-    shown.angle = angle
-    local key = ("%s %s %d %d"):format(mode, side or "", yards + 0.5, (seconds or -1) + 0.5)
-    if key ~= painted then
-        painted = key
-        shown.yards, shown.seconds, shown.mode = yards, seconds, mode
-        Look.PaintPin(pin, shown)
-        if nav:IsShown() then Look.PaintNav(nav, shown) end
-    else
-        pin.arrow:SetRotation(angle)
-        nav.arrow:SetRotation(angle)
-    end
+    Paint(mode, side, yards, WalkSeconds(yards), angle)
 end
 
 local function Retitle()
-    painted = nil
+    dirty = true
     local where, placed
     shown.name, where, shown.note, shown.icon, placed = Target()
     shown.sub = shown.note and where and (shown.note .. St.PLACE_DOT .. where) or shown.note or where
-    -- A stop on a route: the route and how far along it, in the navigator.
     local route, at, n = ns.WaypointRoute()
     shown.onRoute = placed and route ~= nil
-    if shown.onRoute then shown.sub = ("%s%s%d of %d"):format(route, St.PLACE_DOT, at, n) end
+    if shown.onRoute then shown.sub = TEXT_STOP:format(route, St.PLACE_DOT, at, n) end
     shown.shape = S.Get("waypointShape")
     shown.card, shown.beam = S.Get("waypointCard"), S.Get("waypointBeam")
 end
 
--- With no waypoint, Layout Mode still shows the navigator, on a sample, to place it by.
 local function Detach()
     navFrame = nil
     if not driver then return end
@@ -397,7 +450,6 @@ local function Detach()
 end
 
 local function Attach()
-    -- A new waypoint ends an arrival still showing.
     if arrived then
         arrived = false
         arrivals = arrivals + 1
@@ -414,8 +466,12 @@ local function Attach()
     Update()
 end
 
--- The arrival holds where the pin last stood for ARRIVED_HOLD. The game clears a waypoint you
--- set as you reach it, its navigation frame going too, before or after this event.
+local function OnArrivalOver(this)
+    if this ~= arrivals then return end
+    arrived = false
+    if navFrame then Attach() else Detach() end
+end
+
 local function Arrived()
     if not (driver and lastX) then return end
     arrived = true
@@ -431,7 +487,7 @@ local function Arrived()
     shown.mode = "arrived"
     if shown.onRoute then
         local route, _, _, nextTitle = ns.WaypointRoute()
-        shown.note = nextTitle and ("Next: " .. nextTitle) or (route .. " done")
+        shown.note = nextTitle and (TEXT_NEXT .. nextTitle) or (route .. TEXT_DONE)
         shown.sub = shown.note
     end
     Look.PaintPin(pin, shown)
@@ -442,36 +498,25 @@ local function Arrived()
         nav:Show()
     end
     ns.UI._PlayLSMSound(ns.UI.SoundPathFor(S.Get("waypointSound")))
-    C_Timer.After(ARRIVED_HOLD, function()
-        if this ~= arrivals then return end
-        arrived = false
-        if navFrame then Attach() else Detach() end
-    end)
+    C_Timer.After(ARRIVED_HOLD, function() OnArrivalOver(this) end)
 end
 
-local events = CreateFrame("Frame")
-events:SetScript("OnEvent", function(_, event, isWaypoint)
+local function OnEvent(_, event, isWaypoint)
     if event == "NAVIGATION_FRAME_CREATED" then
         Attach()
     elseif event == "NAVIGATION_FRAME_DESTROYED" then
         Detach()
     elseif event == "NAVIGATION_DESTINATION_REACHED" then
-        -- isWaypoint: a stop on the way there (a zone's exit), not the spot itself.
         if not isWaypoint then Arrived() end
-    -- Nothing tracked: cleared, or reached. A clear can leave the navigation frame up with no
-    -- NAVIGATION_FRAME_DESTROYED, which left the navigator showing; the name stays for an arrival.
     elseif not C_SuperTrack.GetHighestPrioritySuperTrackingType() then
         if navFrame then Detach() end
-    -- Tracking again on a frame that stayed: it is not created again.
     elseif not navFrame then
         if C_Navigation.GetFrame() then Attach() end
     elseif not arrived then
         Retitle()
     end
-end)
+end
 
--- The game's own marker keeps setting its frame's alpha, so its parts are faded instead.
-local GAME_PARTS = { "Icon", "Arrow", "DistanceText", "IconBorder" }
 local function FadeGameMarker()
     local hide = (On() and S.Get("waypointHideGame")) == true
     if hide == gameHidden or not SuperTrackedFrame then return end
@@ -489,7 +534,7 @@ local function Apply()
         return
     end
     if not C_Navigation then
-        if not warned then ns.Print("Waypoint Pin needs the game's navigation, which this client does not have.") end
+        if not warned then ns.Print(TEXT_NO_NAVIGATION) end
         warned = true
         return
     end
@@ -502,6 +547,8 @@ local function Apply()
     if C_Navigation.GetFrame() then Attach() else Detach() end
     if unlocked then nav.mover:Show() end
 end
+
+events:SetScript("OnEvent", OnEvent)
 
 hooksecurefunc(S, "Set", function(key)
     if key == "enabled" or (type(key) == "string" and key:find("^waypoint") and key ~= "waypointNavPos") then
@@ -529,14 +576,6 @@ boot:SetScript("OnEvent", Apply)
 local Settings = ns.Shared and ns.Shared.Settings
 if not Settings then return end
 
-local STAGE_H = 190
-local SAMPLE = { name = "Mage Trainer", yards = 312, seconds = 45 }
-local STATES = {
-    { key = "world", label = "On Screen", tip = "The spot ahead of you, 312 yards away." },
-    { key = "edge", label = "Off Screen", tip = "The spot off to your right." },
-    { key = "arrived", label = "Arrived", tip = "You reached it." },
-}
-
 local function NewPreview(stage)
     local preview = CreateFrame("Frame", nil, stage)
     preview:SetAllPoints()
@@ -562,12 +601,14 @@ local function PaintPreview(preview, state)
     Look.PaintPin(sample, o)
 end
 
-local SHAPE_CHOICES = { { hex = "Hex", diamond = "Diamond", dot = "Dot" }, { "hex", "diamond", "dot" } }
+local function Summary(store)
+    return SHAPE_CHOICES[1][store.Get("waypointShape")] .. TEXT_PIN
+end
 
 Settings.Page("QoL/Interface", S):Card({
     id = "waypoints", name = "Waypoint Pin", order = 42, switch = "waypoints",
     help = "Marks the spot you are heading to in the world, with its distance.",
-    summary = function(store) return SHAPE_CHOICES[1][store.Get("waypointShape")] .. " pin" end,
+    summary = Summary,
     studio = { height = STAGE_H, states = STATES, new = NewPreview, paint = PaintPreview },
     rows = {
         { key = "waypointShape", label = "Pin Shape", choice = SHAPE_CHOICES },

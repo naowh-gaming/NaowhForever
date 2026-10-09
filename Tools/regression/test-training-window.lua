@@ -201,12 +201,18 @@ local env = setmetatable({
 env._G = env
 
 Load({
-    "Shared/Shared.lua", "Shared/Data/Forever.lua", "Shared/Style.lua", "Shared/Items.lua", "Shared/Places.lua",
-    "Shared/Parts.lua", "Shared/Window.lua", "Shared/View.lua", "Shared/Kinds.lua",
+    "Shared/Shared.lua", "Shared/Data/Forever.lua", "Shared/Style.lua", "Shared/Items.lua", "Shared/Gear.lua", "Shared/Places.lua",
+    "Shared/Parts.lua", "Shared/Marks.lua", "Shared/Text.lua", "Shared/Hud.lua", "Shared/Timer.lua", "Shared/Share.lua", "Shared/Panels.lua", "Shared/Window.lua", "Shared/Tabs.lua", "Shared/SettingsCard.lua", "Shared/View.lua", "Shared/Kinds.lua",
     "Shared/Settings/Settings.lua",
-    "NaowhForever_Training/NaowhForever_TrainingData.lua", "NaowhForever_Training/NaowhForever_TrainingBuilds.lua",
-    "NaowhForever_Training/NaowhForever_Training.lua", "NaowhForever_Training/NaowhForever_TrainingWindow.lua",
+    "Core/NaowhForever_Features.lua",
 }, env)
+-- The planner's own files, as Training.xml lists them.
+local xml = assert(io.open("NaowhForever_Training/Training.xml", "rb")):read("*a"):gsub("<!%-%-.-%-%->", "")
+local planner = {}
+for file in xml:gmatch("<Script%s+file=\"([^\"]+)\"") do
+    planner[#planner + 1] = "NaowhForever_Training/" .. file:gsub("\\", "/")
+end
+Load(planner, env)
 
 -------------------------------------------------------------------------------
 --  Opening it, and every part of it

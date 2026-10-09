@@ -108,7 +108,7 @@ local S = {
 }
 
 -------------------------------------------------------------------------------
---  The records, as the contract shapes them, made once and reused as Data.lua's are
+--  The records, as the contract shapes them, made once and reused as GroupInspect.lua's are
 -------------------------------------------------------------------------------
 local CLASSES = { "WARRIOR", "PALADIN", "HUNTER", "ROGUE", "PRIEST", "SHAMAN", "MAGE", "WARLOCK", "DRUID" }
 local ROLES = { "TANK", "HEALER", "DAMAGER", "DAMAGER", "DAMAGER" }
@@ -323,14 +323,22 @@ env._G = env
 --  Loading: off, nothing made, nothing listened to
 -------------------------------------------------------------------------------
 local mine = TocFiles("^NaowhForever_GroupInspect/.*%.lua$")
-check("GroupInspect.xml loads its six files in the contract's order", #mine == 6
-    and mine[1]:find("Data%.lua$") and mine[2]:find("Share%.lua$") and mine[3]:find("Window%.lua$")
-    and mine[4]:find("Party%.lua$") and mine[5]:find("Raid%.lua$") and mine[6]:find("SettingsPage%.lua$"))
+local ORDER = { "/GroupInspect%.lua$", "/Data/Preview%.lua$", "/Stats%.lua$", "/Share%.lua$", "/View/Style%.lua$",
+    "/View/Texts%.lua$", "/View/Parts%.lua$", "/View/Party%.lua$", "/View/Raid%.lua$", "/UI/Window%.lua$",
+    "/UI/Menu%.lua$", "/UI/SettingsPage%.lua$" }
+check("GroupInspect.xml loads its files in the contract's order", #mine == #ORDER and (function()
+    for i, pattern in ipairs(ORDER) do
+        if not mine[i]:find(pattern) then return false end
+    end
+    return true
+end)())
 local files = TocFiles("^Shared/.*%.lua$")
 local before = made
 Load(files, env)
 local shared = made
-for i = 3, 6 do Load({ mine[i] }, env) end
+for i = 1, #mine do
+    if mine[i]:find("/View/") or mine[i]:find("/UI/") then Load({ mine[i] }, env) end
+end
 local UI = GI.UI
 check("off: nothing made at load, nothing listened to, no timer", made == shared and #GI.fns == 0 and #timers == 0
     and before <= shared)
@@ -344,10 +352,12 @@ local function Source(path)
     return text
 end
 local qol = Source("QoL/NaowhForever_QoL.lua")
-check("its defaults: off, sharing on, by score, the gear view", qol:find("groupInspect = false", 1, true)
-    and qol:find("groupInspectShare = true", 1, true) and qol:find('groupInspectSort = "score"', 1, true)
+local switches = Source("Core/NaowhForever_Features.lua")
+check("its defaults: off, sharing on, by score, the gear view", qol:find("groupInspect = F.groupInspect,", 1, true)
+    and switches:find("groupInspect = false,", 1, true) and switches:find("groupInspectShare = true,", 1, true)
+    and qol:find("groupInspectShare = F.groupInspectShare,", 1, true) and qol:find('groupInspectSort = "score"', 1, true)
     and qol:find('groupInspectView = "gear"', 1, true) and qol:find("groupInspectAlpha = 1", 1, true))
-check("/nf group and its key binding", Source("Core/NaowhForever_Window.lua"):find('cmd == "group"', 1, true)
+check("/nf group and its key binding", Source("Core/NaowhForever_Commands.lua"):find('cmd == "group"', 1, true)
     and Source("Bindings.xml"):find("NaowhForever_ToggleGroupInspect()", 1, true))
 
 local Settings = ns.Shared.Settings
@@ -368,7 +378,7 @@ check("the key binding and the window's opacity", pageCards.binding.rows[1].bind
 check("the banner says you are not in a group", banner.headline() == "Not in a group" and banner.detail():find("preview"))
 check("nothing hooks the unit menus while off", #menus.modified == 0)
 
-local core = Source("Core/NaowhForever_Window.lua")
+local core = Source("Core/NaowhForever_Modules.lua")
 local list = assert(core:match("local MODULES = (%b{})"))
 local MODULES = assert(loadstring("return " .. list))()
 local module
@@ -390,7 +400,7 @@ check("its window from /nfgroup, the Top Bar and its minimap button", module.com
     and module.short == "Group" and module.open == "ToggleGroupInspect" and module.icon ~= nil
     and module.navIcon == "group" and module.tabs[1].name == "Settings")
 do
-    local chunk = assert(core:match("(local launcherEvents = CreateFrame.*)"))
+    local chunk = assert(Source("Core/NaowhForever_Launchers.lua"):match("(local LOGO = .*)"))
     local objects, opened, event = {}, nil, nil
     local frame = { SetScript = function(_, _, fn) event = fn end, RegisterEvent = NOTHING, UnregisterEvent = NOTHING }
     local libs = {

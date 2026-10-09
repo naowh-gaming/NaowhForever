@@ -1,16 +1,26 @@
--------------------------------------------------------------------------------
---  NaowhForever_CombatTimer.lua -- the QoL combat timer: how long the current fight has
---  run, optionally kept on screen after it ends, and reported to chat when it does.
--------------------------------------------------------------------------------
+-- NaowhForever_CombatTimer.lua: Combat Timer, how long the current fight has run, on screen and in chat.
 local ns = _G.NaowhForever
+
 local S = ns.QoLSettings
 local UI = ns.UI
 local Parts = ns.Shared.Parts
 
--- Card is the panel the old Show Background toggle drew, black or the theme's Background; on and
--- off are saved as Card and None.
 local CARD_COLOR, CARD_ALPHA = { r = 0, g = 0, b = 0 }, 0.8
 local OLD_BACKGROUNDS = { [true] = "card", [false] = "none" }
+local TICK = 1
+local FONT_SIZE = 32
+local WIDTH_PER_SIZE, ROOM = 7, 16
+local DEFAULT_Y = -200
+local SECONDS_PER_MINUTE, SECONDS_PER_HOUR = 60, 3600
+local MOVER_LABEL = "Combat Timer"
+local SETTINGS_PAGE, SETTINGS_CARD = "QoL/Combat", "QoL/Combat:combatTimer"
+local CLOCK = "%d:%02d"
+local PREFIX = "COMBAT: "
+local REPORT = "You were in combat for: |cffffa300%s|r"
+local HOURS, MINUTES = "%d:%02d:%02d hours", "%d:%02d minutes"
+local SECONDS, PLURAL = "%d second%s", "s"
+local WHERE_INSTANCES, WHERE_EVERYWHERE = "In instances", "Everywhere"
+local SUMMARY_CHAT, SUMMARY_STICKY = ", reported to chat", ", kept after the fight"
 
 local frame, clock, unlocked
 local started, last = nil, 0
@@ -26,12 +36,11 @@ local function InstanceOk()
 end
 
 local function Format(seconds)
-    local text = ("%d:%02d"):format(math.floor(seconds / 60), math.floor(seconds % 60))
+    local text = CLOCK:format(math.floor(seconds / SECONDS_PER_MINUTE), math.floor(seconds % SECONDS_PER_MINUTE))
     if S.Get("combatTimerHidePrefix") then return text end
-    return "COMBAT: " .. text
+    return PREFIX .. text
 end
 
--- Shown while fighting, while unlocked, and after a fight when Sticky keeps the last one up.
 local function Update()
     local elapsed
     if started then
@@ -47,34 +56,52 @@ local function Update()
     frame:Show()
 end
 
+local function Duration(seconds)
+    local h = math.floor(seconds / SECONDS_PER_HOUR)
+    local m = math.floor(seconds % SECONDS_PER_HOUR / SECONDS_PER_MINUTE)
+    local s = math.floor(seconds % SECONDS_PER_MINUTE)
+    if h > 0 then return HOURS:format(h, m, s) end
+    if m > 0 then return MINUTES:format(m, s) end
+    return SECONDS:format(s, s == 1 and "" or PLURAL)
+end
+
 local function Report(duration)
-    local h, m, s = math.floor(duration / 3600), math.floor(duration % 3600 / 60),
-        math.floor(duration % 60)
-    local text
-    if h > 0 then
-        text = ("%d:%02d:%02d hours"):format(h, m, s)
-    elseif m > 0 then
-        text = ("%d:%02d minutes"):format(m, s)
-    else
-        text = ("%d second%s"):format(s, s == 1 and "" or "s")
+    ns.Print(REPORT:format(Duration(duration)))
+end
+
+local function StopClock()
+    if clock then clock:Cancel(); clock = nil end
+end
+
+local function OnCombatStart()
+    if not InstanceOk() then return false end
+    started = GetTime()
+    if not clock then clock = C_Timer.NewTicker(TICK, Update) end
+    return true
+end
+
+local function OnCombatEnd()
+    last = GetTime() - started
+    started = nil
+    StopClock()
+    if S.Get("combatTimerChat") then Report(last) end
+end
+
+local function OnEvent(_, event)
+    if event == "PLAYER_REGEN_DISABLED" then
+        if not OnCombatStart() then return end
+    elseif event == "PLAYER_REGEN_ENABLED" and started then
+        OnCombatEnd()
     end
-    ns.Print("You were in combat for: |cffffa300" .. text .. "|r")
+    Update()
 end
 
 local events = CreateFrame("Frame")
-events:SetScript("OnEvent", function(_, event)
-    if event == "PLAYER_REGEN_DISABLED" then
-        if not InstanceOk() then return end
-        started = GetTime()
-        if not clock then clock = C_Timer.NewTicker(1, Update) end
-    elseif event == "PLAYER_REGEN_ENABLED" and started then
-        last = GetTime() - started
-        started = nil
-        if clock then clock:Cancel(); clock = nil end
-        if S.Get("combatTimerChat") then Report(last) end
-    end
-    Update()
-end)
+events:SetScript("OnEvent", OnEvent)
+
+local function SavePosition(pos)
+    S.Set("combatTimerPos", pos)
+end
 
 local function Build()
     frame = CreateFrame("Frame", "NaowhForeverCombatTimer", UIParent)
@@ -82,9 +109,9 @@ local function Build()
     frame:SetClampedToScreen(true)
     frame.backdrop = Parts.HudBackdrop(frame, { color = ns.ThemeTint("bg", CARD_COLOR), alpha = CARD_ALPHA,
         mode = "none" })
-    frame.text = ns.Font(frame, 32, "OUTLINE")
+    frame.text = ns.Font(frame, FONT_SIZE, "OUTLINE")
     frame.text:SetPoint("CENTER")
-    frame.mover = UI.AttachMover(frame, "Combat Timer", function(pos) S.Set("combatTimerPos", pos) end, "QoL/Combat", "QoL/Combat:combatTimer")
+    frame.mover = UI.AttachMover(frame, MOVER_LABEL, SavePosition, SETTINGS_PAGE, SETTINGS_CARD)
     frame:Hide()
 end
 
@@ -94,7 +121,7 @@ local function Place()
     if pos then
         frame:SetPoint(pos.point, UIParent, pos.relPoint, pos.x, pos.y)
     else
-        frame:SetPoint("CENTER", UIParent, "CENTER", 0, -200)
+        frame:SetPoint("CENTER", UIParent, "CENTER", 0, DEFAULT_Y)
     end
 end
 
@@ -104,23 +131,27 @@ local function MigrateBackground()
     if mode then db.combatTimerBackground = mode end
 end
 
-local function Apply()
-    MigrateBackground()
-    events:UnregisterAllEvents()
-    if not On() then
-        started = nil
-        if clock then clock:Cancel(); clock = nil end
-        if frame then frame:Hide() end
-        return
-    end
-    if not frame then Build() end
+local function Restyle()
     local size = S.Get("combatTimerFontSize")
     local mode = frame.backdrop:SetMode(S.Get("combatTimerBackground"))
     Parts.HudFont(frame.text, S.Get("combatTimerFont"), size, S.Get("combatTimerOutline"), mode)
     local c = S.Get("combatTimerClassColor") and RAID_CLASS_COLORS[select(2, UnitClass("player"))]
         or S.Get("combatTimerColor")
     frame.text:SetTextColor(c.r, c.g, c.b, 1)
-    frame:SetSize(size * 7, size + 16)
+    frame:SetSize(size * WIDTH_PER_SIZE, size + ROOM)
+end
+
+local function Apply()
+    MigrateBackground()
+    events:UnregisterAllEvents()
+    if not On() then
+        started = nil
+        StopClock()
+        if frame then frame:Hide() end
+        return
+    end
+    if not frame then Build() end
+    Restyle()
     Place()
     frame.mover:SetShown(unlocked == true)
     events:RegisterEvent("PLAYER_REGEN_DISABLED")
@@ -129,9 +160,11 @@ local function Apply()
     Update()
 end
 
-hooksecurefunc(S, "Set", function(key)
+local function OnSettingChanged(key)
     if key == "enabled" or (key:find("^combatTimer") and key ~= "combatTimerPos") then Apply() end
-end)
+end
+
+hooksecurefunc(S, "Set", OnSettingChanged)
 hooksecurefunc(ns, "Apply", Apply)
 hooksecurefunc(ns, "ShowRaidReminderAnchorConfig", function()
     unlocked = S.Get("enabled") == true
@@ -152,9 +185,9 @@ local Group = Settings.Group
 local function OwnColour() return not S.Get("combatTimerClassColor") end
 
 local function Summary(store)
-    local parts = store.Get("combatTimerInstanceOnly") and "In instances" or "Everywhere"
-    if store.Get("combatTimerChat") then parts = parts .. ", reported to chat" end
-    if store.Get("combatTimerSticky") then parts = parts .. ", kept after the fight" end
+    local parts = store.Get("combatTimerInstanceOnly") and WHERE_INSTANCES or WHERE_EVERYWHERE
+    if store.Get("combatTimerChat") then parts = parts .. SUMMARY_CHAT end
+    if store.Get("combatTimerSticky") then parts = parts .. SUMMARY_STICKY end
     return parts
 end
 

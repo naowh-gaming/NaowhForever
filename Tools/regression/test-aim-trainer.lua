@@ -95,7 +95,7 @@ local function fixture(opts)
     function S.Set(k, v) s.settings[k] = v end
     local account = {}
     local card
-    local ns = { QoLSettings = S, THEME = { accent = { r = 0, g = 0.5, b = 1 }, accentSoft = { r = 0.3, g = 0.7, b = 1 },
+    local ns = { QoLConstants = dofile("Tools/regression/qol_constants.lua"), QoLSettings = S, THEME = { accent = { r = 0, g = 0.5, b = 1 }, accentSoft = { r = 0.3, g = 0.7, b = 1 },
         bg = { r = 0, g = 0, b = 0 }, panel = { r = 0.1, g = 0.1, b = 0.1 }, fg = { r = 1, g = 1, b = 1 },
         muted = { r = 0.6, g = 0.6, b = 0.6 } } }
     ns.UI = { AttachMover = function(f) local m = new("Frame", f); m.shown = false; return m end,
@@ -1079,7 +1079,11 @@ do
     local qol = f:read("*a")
     f:close()
     check("Hexakill is the default mode", qol:find('aimMode = "hexakill"', 1, true) ~= nil)
-    check("the Aim Trainer is on by default", qol:find("aimTrainer = true,", 1, true) ~= nil)
+    local features = assert(io.open("Core/NaowhForever_Features.lua", "rb"))
+    local switches = features:read("*a")
+    features:close()
+    check("the Aim Trainer is on by default", qol:find("aimTrainer = F.aimTrainer,", 1, true) ~= nil
+        and switches:find("aimTrainer = true,", 1, true) ~= nil)
     check("no flight toggle of its own", qol:find("aimAutoFlight", 1, true) == nil)
 end
 

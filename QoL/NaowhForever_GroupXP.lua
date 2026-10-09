@@ -1,9 +1,6 @@
--------------------------------------------------------------------------------
---  NaowhForever_GroupXP.lua -- the QoL group XP bars, fed by addon messages from every member
---  running Naowh Forever; the setting only shows the bars. Messages: "2 guid level xp max" is
---  someone's numbers, "R" asks everyone for theirs. Numbers are kept only for a GUID in the group.
--------------------------------------------------------------------------------
+-- NaowhForever_GroupXP.lua: Group XP, a bar per group member fed by the addon messages of everyone running it.
 local ns = _G.NaowhForever
+
 local S = ns.QoLSettings
 local T = ns.THEME
 local Parts = ns.Shared.Parts
@@ -13,14 +10,32 @@ local GROUP_CHANNELS = { PARTY = true, RAID = true, INSTANCE_CHAT = true }
 local GUID_PATTERN = "^Player%-%d+%-%x+$"
 local MAX_LEVEL, MAX_XP = 1000, 2 ^ 31
 local GRADIENT = "Interface\\AddOns\\NaowhForever\\Media\\NaowhGradient.tga"
--- At the default Font Size; a bigger font makes the rows taller and the names wider.
 local ROW_H, NAME_W, GAP, BASE_SIZE = 18, 90, 2, 12
 local ROW_PAD = ROW_H - BASE_SIZE
-local TEXT_SMALLER = 1 -- the bar's text, under the name's size
+local TEXT_SMALLER = 1
+local NAME_ROOM = 4
+local SEND_DELAY = 2
+local PERCENT = ns.QoLConstants.PERCENT
+local DEFAULT_X, DEFAULT_Y = 40, 120
+local BLACK = { r = 0, g = 0, b = 0 }
+local WHITE = { r = 1, g = 1, b = 1 }
+local ASK = "R"
+local MESSAGE = "2 %s %d %d %d"
+local MESSAGE_PATTERN = "^2 (%S+) (%d+) (%d+) (%d+)$"
+local TEXT_LEVEL, TEXT_NO_LEVEL = "Lv ", "Lv ?"
+local TEXT_NO_ADDON = "  |cff9ca3afno addon|r"
+local TEXT_MAX = "  Max"
+local TEXT_PROGRESS = "Lv %d  %.1f%%"
+local TEXT_IN_GROUP = "Shown while you are in a group."
+local MOVER_LABEL = "Group XP"
+local SETTINGS_PAGE, SETTINGS_CARD = "QoL/XP", "QoL/XP:groupXP"
+local SUMMARY = "%d wide%s"
+local SUMMARY_SELF = ", with you"
+local STAGE_H, NOTE_Y, NOTE_SIZE, STAGE_MARGIN = 130, 10, 11, 16
+local EVENTS = { "CHAT_MSG_ADDON", "GROUP_ROSTER_UPDATE", "PLAYER_ENTERING_WORLD",
+    "PLAYER_XP_UPDATE", "PLAYER_LEVEL_UP", "UNIT_LEVEL", "PLAYER_REGEN_ENABLED" }
 
 local frame, unlocked, sendQueued, sendAfterCombat, requestPending
--- GUID -> { level, xp, max }, from their messages. Forever's addon message sender is the
--- character's full name with surname, which no unit API returns, so members are matched by GUID.
 local others = {}
 local rows = {}
 local mine, units, roster, members, shown, entries, inGroup = {}, {}, {}, {}, {}, {}, {}
@@ -29,7 +44,6 @@ local function On()
     return S.Get("enabled") and S.Get("groupXP")
 end
 
--- Unit identity can come back secret in restricted content; those members are skipped.
 local function Secret(v)
     return issecretvalue and issecretvalue(v)
 end
@@ -45,7 +59,6 @@ local function Own()
     return mine
 end
 
--- Addon messages are not sent in combat; the latest numbers go out once it ends.
 local function Send()
     local channel = Channel()
     if not channel then
@@ -58,27 +71,26 @@ local function Send()
     end
     if requestPending then
         requestPending = false
-        C_ChatInfo.SendAddonMessage(PREFIX, "R", channel)
+        C_ChatInfo.SendAddonMessage(PREFIX, ASK, channel)
     end
     local own = Own()
-    C_ChatInfo.SendAddonMessage(PREFIX, ("2 %s %d %d %d"):format(UnitGUID("player"), own.level, own.xp, own.max),
+    C_ChatInfo.SendAddonMessage(PREFIX, MESSAGE:format(UnitGUID("player"), own.level, own.xp, own.max),
         channel)
 end
 
--- XP arrives with every kill, so sends are held to one every two seconds. request also asks
--- the group for their numbers.
+local function SendQueued()
+    sendQueued = false
+    Send()
+end
+
 local function SendSoon(request)
     if request then requestPending = true end
     if sendQueued then return end
     sendQueued = true
-    C_Timer.After(2, function()
-        sendQueued = false
-        Send()
-    end)
+    C_Timer.After(SEND_DELAY, SendQueued)
 end
 
--- You first, then the group in its own order.
-local function Roster()
+local function Units()
     wipe(units)
     units[1] = "player"
     if IsInRaid() then
@@ -90,6 +102,11 @@ local function Roster()
     else
         for i = 1, GetNumSubgroupMembers() do units[#units + 1] = "party" .. i end
     end
+    return units
+end
+
+local function Roster()
+    Units()
     wipe(roster)
     for _, unit in ipairs(units) do
         local name, guid = UnitName(unit), UnitGUID(unit)
@@ -118,7 +135,7 @@ function Look.NewRow(parent)
     row.bar:SetMinMaxValues(0, 1)
     row.bg = ns.Solid(row.bar, "BACKGROUND", T.bg)
     row.bg:SetAllPoints()
-    ns.Border(row.bar, { r = 0, g = 0, b = 0 })
+    ns.Border(row.bar, BLACK)
     row.text = ns.Font(row.bar, BASE_SIZE - TEXT_SMALLER, "OUTLINE")
     row.text:SetPoint("CENTER")
     return row
@@ -129,7 +146,7 @@ function Look.Style(row, size)
     local nameW = NAME_W * size / BASE_SIZE
     row:SetHeight(math.max(ROW_H, size + ROW_PAD))
     Parts.HudFont(row.name, font, size, outline)
-    row.name:SetWidth(nameW - 4)
+    row.name:SetWidth(nameW - NAME_ROOM)
     Parts.HudFont(row.text, font, size - TEXT_SMALLER, outline)
     row.bar:SetPoint("TOPLEFT", nameW, 0)
     row.bar:SetStatusBarTexture(ns.UI.TexturePath(S.Get("groupXPTexture"), GRADIENT))
@@ -137,22 +154,21 @@ function Look.Style(row, size)
     row.bg:SetColorTexture(T.bg.r, T.bg.g, T.bg.b, S.Get("groupXPBgAlpha"))
 end
 
--- data is nil for a member without the addon, who shows their level only.
 function Look.Paint(row, name, class, level, data)
-    local color = class and RAID_CLASS_COLORS[class]
+    local color = class and RAID_CLASS_COLORS[class] or WHITE
     row.name:SetText(name)
-    if color then row.name:SetTextColor(color.r, color.g, color.b) else row.name:SetTextColor(1, 1, 1) end
-    local lv = level and level > 0 and ("Lv " .. level) or "Lv ?"
+    row.name:SetTextColor(color.r, color.g, color.b)
+    local lv = level and level > 0 and (TEXT_LEVEL .. level) or TEXT_NO_LEVEL
     if not data then
         row.bar:SetValue(0)
-        row.text:SetText(lv .. "  |cff9ca3afno addon|r")
+        row.text:SetText(lv .. TEXT_NO_ADDON)
     elseif data.level >= GetMaxLevelForPlayerExpansion() or data.max <= 0 then
         row.bar:SetValue(1)
-        row.text:SetText("Lv " .. data.level .. "  Max")
+        row.text:SetText(TEXT_LEVEL .. data.level .. TEXT_MAX)
     else
         local pct = data.xp / data.max
         row.bar:SetValue(pct)
-        row.text:SetText(("Lv %d  %.1f%%"):format(data.level, pct * 100))
+        row.text:SetText(TEXT_PROGRESS:format(data.level, pct * PERCENT))
     end
     row:Show()
 end
@@ -188,6 +204,17 @@ function Look.Sample(list, withSelf)
     return list
 end
 
+local function AddEntry(list, m)
+    local level = UnitLevel(m.unit)
+    if Secret(level) then level = nil end
+    local n = #list + 1
+    local e = entries[n] or {}
+    entries[n] = e
+    e.name, e.class, e.level = m.name, m.class, level
+    e.data = m.unit == "player" and Own() or others[m.guid]
+    list[n] = e
+end
+
 local function Refresh()
     if not frame then return end
     wipe(shown)
@@ -196,16 +223,7 @@ local function Refresh()
         Look.Sample(list, true)
     elseif On() and IsInGroup() then
         for _, m in ipairs(Roster()) do
-            if m.unit ~= "player" or S.Get("groupXPShowSelf") then
-                local level = UnitLevel(m.unit)
-                if Secret(level) then level = nil end
-                local n = #list + 1
-                local e = entries[n] or {}
-                entries[n] = e
-                e.name, e.class, e.level = m.name, m.class, level
-                e.data = m.unit == "player" and Own() or others[m.guid]
-                list[n] = e
-            end
+            if m.unit ~= "player" or S.Get("groupXPShowSelf") then AddEntry(list, m) end
         end
     end
     if #list == 0 then
@@ -216,7 +234,6 @@ local function Refresh()
     frame:Show()
 end
 
--- Someone who left the group keeps nothing behind.
 local function Prune()
     wipe(inGroup)
     for _, m in ipairs(Roster()) do inGroup[m.guid] = true end
@@ -226,11 +243,11 @@ local function Prune()
 end
 
 local function OnMessage(msg, channel, sender)
-    if msg == "R" then
+    if msg == ASK then
         SendSoon()
         return
     end
-    local guid, level, xp, max = msg:match("^2 (%S+) (%d+) (%d+) (%d+)$")
+    local guid, level, xp, max = msg:match(MESSAGE_PATTERN)
     if not guid or not guid:find(GUID_PATTERN) or guid == UnitGUID("player") then return end
     level, xp, max = tonumber(level), tonumber(xp), tonumber(max)
     if level > MAX_LEVEL or xp > MAX_XP or max > MAX_XP or not ns.SenderIs(sender, channel, guid) then return end
@@ -246,16 +263,18 @@ local function Place()
     if pos then
         frame:SetPoint(pos.point, UIParent, pos.relPoint, pos.x, pos.y)
     else
-        frame:SetPoint("LEFT", UIParent, "LEFT", 40, 120)
+        frame:SetPoint("LEFT", UIParent, "LEFT", DEFAULT_X, DEFAULT_Y)
     end
 end
 
-local events = CreateFrame("Frame")
-events:SetScript("OnEvent", function(_, event, ...)
+local function OnAddonMessage(prefix, msg, channel, sender)
+    if Secret(prefix) or Secret(msg) or Secret(channel) or Secret(sender) then return end
+    if prefix == PREFIX and GROUP_CHANNELS[channel] then OnMessage(msg, channel, sender) end
+end
+
+local function OnEvent(_, event, ...)
     if event == "CHAT_MSG_ADDON" then
-        local prefix, msg, channel, sender = ...
-        if Secret(prefix) or Secret(msg) or Secret(channel) or Secret(sender) then return end
-        if prefix == PREFIX and GROUP_CHANNELS[channel] then OnMessage(msg, channel, sender) end
+        OnAddonMessage(...)
         return
     elseif event == "GROUP_ROSTER_UPDATE" or event == "PLAYER_ENTERING_WORLD" then
         Prune()
@@ -269,28 +288,45 @@ events:SetScript("OnEvent", function(_, event, ...)
         return
     end
     Refresh()
-end)
+end
+
+local events = CreateFrame("Frame")
+events:SetScript("OnEvent", OnEvent)
+
+local function SavePosition(pos)
+    S.Set("groupXPPos", pos)
+end
+
+local function Build()
+    frame = CreateFrame("Frame", "NaowhForeverGroupXP", UIParent)
+    frame:SetMovable(true)
+    frame:SetClampedToScreen(true)
+    frame.mover = ns.UI.AttachMover(frame, MOVER_LABEL, SavePosition, SETTINGS_PAGE, SETTINGS_CARD)
+end
 
 local function Apply()
     if not On() then
         if frame then frame:Hide() end
         return
     end
-    if not frame then
-        frame = CreateFrame("Frame", "NaowhForeverGroupXP", UIParent)
-        frame:SetMovable(true)
-        frame:SetClampedToScreen(true)
-        frame.mover = ns.UI.AttachMover(frame, "Group XP", function(pos) S.Set("groupXPPos", pos) end,
-            "QoL/XP", "QoL/XP:groupXP")
-    end
+    if not frame then Build() end
     Place()
     frame.mover:SetShown(unlocked == true)
     Refresh()
 end
 
-hooksecurefunc(S, "Set", function(key)
+local function OnSettingChanged(key)
     if key == "enabled" or (key:find("^groupXP") and key ~= "groupXPPos") then Apply() end
-end)
+end
+
+local function OnLogin()
+    C_ChatInfo.RegisterAddonMessagePrefix(PREFIX)
+    for _, event in ipairs(EVENTS) do events:RegisterEvent(event) end
+    Prune()
+    Apply()
+end
+
+hooksecurefunc(S, "Set", OnSettingChanged)
 hooksecurefunc(ns, "Apply", Apply)
 hooksecurefunc(ns, "ShowRaidReminderAnchorConfig", function()
     unlocked = On() == true
@@ -306,20 +342,11 @@ end)
 
 local boot = CreateFrame("Frame")
 boot:RegisterEvent("PLAYER_LOGIN")
-boot:SetScript("OnEvent", function()
-    C_ChatInfo.RegisterAddonMessagePrefix(PREFIX)
-    for _, event in ipairs({ "CHAT_MSG_ADDON", "GROUP_ROSTER_UPDATE", "PLAYER_ENTERING_WORLD",
-        "PLAYER_XP_UPDATE", "PLAYER_LEVEL_UP", "UNIT_LEVEL", "PLAYER_REGEN_ENABLED" }) do
-        events:RegisterEvent(event)
-    end
-    Prune()
-    Apply()
-end)
+boot:SetScript("OnEvent", OnLogin)
 
 local Settings = ns.Shared and ns.Shared.Settings
 if not Settings then return end
 
-local STAGE_H, NOTE_Y, NOTE_SIZE, STAGE_MARGIN = 130, 10, 11, 16
 local STATES = {
     { key = "group", label = "In a Group", tip = "Your group's bars, with sample members." },
 }
@@ -331,7 +358,7 @@ local function NewPreview(stage)
     preview.rows, preview.list = {}, {}
     preview.note = ns.Font(preview, NOTE_SIZE, nil, T.muted)
     preview.note:SetPoint("BOTTOM", 0, NOTE_Y)
-    preview.note:SetText("Shown while you are in a group.")
+    preview.note:SetText(TEXT_IN_GROUP)
     return preview
 end
 
@@ -351,7 +378,7 @@ local function PaintPreview(preview)
 end
 
 local function Summary(store)
-    return ("%d wide%s"):format(store.Get("groupXPWidth"), store.Get("groupXPShowSelf") and ", with you" or "")
+    return SUMMARY:format(store.Get("groupXPWidth"), store.Get("groupXPShowSelf") and SUMMARY_SELF or "")
 end
 
 Settings.Page("QoL/XP", S):Card({

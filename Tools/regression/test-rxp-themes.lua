@@ -6,6 +6,7 @@ local function Read(path)
     return s
 end
 local coreSource = Read("Core/NaowhForever_Core.lua")
+local featuresSource = Read("Core/NaowhForever_Features.lua")
 local moduleSource = Read("RXPThemes/NaowhForever_RXPThemes.lua")
 
 local cases = 0
@@ -76,6 +77,9 @@ local function Load(account, installed, existing, fonts)
     local core = assert(loadstring(coreSource, "Core"))
     setfenv(core, env)
     core("NaowhForever")
+    local features = assert(loadstring(featuresSource, "Features"))
+    setfenv(features, env)
+    features()
     local coreFrames = #frames
     local module = assert(loadstring(moduleSource, "RXPThemes"))
     setfenv(module, env)

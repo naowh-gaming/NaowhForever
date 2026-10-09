@@ -320,7 +320,7 @@ end
 -------------------------------------------------------------------------------
 do
     local s = Setup({ welcomeSeen = true })
-    local source = Read("Core/NaowhForever_Window.lua")
+    local source = Read("Core/NaowhForever_Commands.lua")
     local body = assert(source:match('SlashCmdList%["NAOWHFOREVER"%] = function%(msg%)\n(.-)\nend\n'),
         "the /nf handler")
     local env = setmetatable({ ns = s.ns, strtrim = function(t) return (t:gsub("^%s+", ""):gsub("%s+$", "")) end },

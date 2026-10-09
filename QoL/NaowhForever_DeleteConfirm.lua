@@ -1,17 +1,14 @@
--------------------------------------------------------------------------------
---  NaowhForever_DeleteConfirm.lua -- the QoL delete confirmation auto-fill: types DELETE for
---  you and names the item in the dialog as a link.
--------------------------------------------------------------------------------
+-- NaowhForever_DeleteConfirm.lua: Type DELETE For You, the delete confirmation filled in and the item named as a link.
 local ns = _G.NaowhForever
+
 local S = ns.QoLSettings
 
 local DIALOGS = { DELETE_ITEM = true, DELETE_QUEST_ITEM = true, DELETE_GOOD_ITEM = true,
     DELETE_GOOD_QUEST_ITEM = true }
+local LINK_GAP = "\n\n"
 
 local hooked = {}
 
--- DELETE_GOOD_ITEM's second paragraph is the "type DELETE" instruction, which no longer
--- applies once the box is filled in.
 local function StripInstruction(text)
     local cut = DELETE_GOOD_ITEM:find("\n")
     if not cut then return text end
@@ -32,34 +29,39 @@ local function LinkLeave(self)
     if DIALOGS[self.which] then GameTooltip:Hide() end
 end
 
-hooksecurefunc("StaticPopup_Show", function(which)
+local function HookLinks(dialog)
+    if hooked[dialog] then return end
+    hooked[dialog] = true
+    dialog:HookScript("OnHyperlinkEnter", LinkEnter)
+    dialog:HookScript("OnHyperlinkLeave", LinkLeave)
+end
+
+local function FillBox(dialog, which)
+    local editBox = _G[dialog:GetName() .. "EditBox"]
+    if not editBox:IsShown() then return end
+    editBox:SetText(DELETE_ITEM_CONFIRM_STRING)
+    local check = StaticPopupDialogs[which].EditBoxOnTextChanged
+    if check then check(editBox, dialog.data) end
+end
+
+local function NameItem(dialog)
+    local kind, _, link = GetCursorInfo()
+    if kind ~= "item" or not link then return end
+    local text = _G[dialog:GetName() .. "Text"]
+    text:SetText(StripInstruction(text:GetText() or "") .. LINK_GAP .. link)
+    dialog:Resize()
+end
+
+local function OnPopupShow(which)
     if not (DIALOGS[which] and S.Get("enabled") and S.Get("deleteConfirm")) then return end
     local dialog = StaticPopup_FindVisible(which)
     if not dialog then return end
-    if not hooked[dialog] then
-        hooked[dialog] = true
-        dialog:HookScript("OnHyperlinkEnter", LinkEnter)
-        dialog:HookScript("OnHyperlinkLeave", LinkLeave)
-    end
+    HookLinks(dialog)
+    FillBox(dialog, which)
+    NameItem(dialog)
+end
 
-    local name = dialog:GetName()
-    local editBox = _G[name .. "EditBox"]
-    if editBox:IsShown() then
-        editBox:SetText(DELETE_ITEM_CONFIRM_STRING)
-        -- Filling the box from code left Yes greyed on Forever; the dialog's own check, run
-        -- here, enables it when the text matches.
-        local check = StaticPopupDialogs[which].EditBoxOnTextChanged
-        if check then check(editBox, dialog.data) end
-    end
-
-    local kind, _, link = GetCursorInfo()
-    local text = _G[name .. "Text"]
-    if kind == "item" and link then
-        text:SetText(StripInstruction(text:GetText() or "") .. "\n\n" .. link)
-        -- The dialog only sizes itself to its text on show, and the box sits under the text.
-        dialog:Resize()
-    end
-end)
+hooksecurefunc("StaticPopup_Show", OnPopupShow)
 
 ns.Shared.Settings.Page("QoL/Loot & Items", S):Card({
     id = "looting", name = "Looting", order = 10,

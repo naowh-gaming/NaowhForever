@@ -17,7 +17,8 @@ local function Slice(a, b)
     local last = b and source:find(b, first + #a, true) or #source + 1
     return source:sub(first, last - 1)
 end
-local chunk = assert(loadstring(Slice("local function ApplyNow()", "\n-- The spoken voice")
+local constants = assert(source:match("\n(local MODULE_KEY = .-\n)\nlocal ns = {}\n"), "Core constants")
+local chunk = assert(loadstring(constants .. Slice("local function ApplyNow()", "\ndo\n")
     .. "\n" .. Slice("local reapplyPending")))
 
 local frames, timers, applied = {}, {}, 0

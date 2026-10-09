@@ -1,17 +1,6 @@
--------------------------------------------------------------------------------
---  NaowhForever_XPTicker.lua -- the QoL XP per hour ticker: a small card with the rate, played
---  time, time to level, session time and recent level times, and its settings card with a live
---  preview. Played time comes from Shared.Played. Level times are kept per character by GUID, with
---  the played time each level was reached at (shown beside each past level), which Compare
---  Characters reads for every character on the account to mark your pace and color past levels
---  against the fastest. A character's first login after the GUID change takes over the old entry
---  under its first name and realm, once, if no one else has and its level fits. Its Background is
---  the card, a soft fade or none (Parts.HudBackdrop); the old on/off setting is read as Card for
---  on and Soft for off, and saved that way on the next Apply, as is the old Outlined Text toggle
---  as Outline or Shadow. The pace arrow sits a share of the text size lower (DROP_SHARE), level
---  with the letters: the Naowh font leaves room above capitals.
--------------------------------------------------------------------------------
+-- NaowhForever_XPTicker.lua: the QoL XP per hour ticker and its settings card.
 local ns = _G.NaowhForever
+
 local S = ns.QoLSettings
 local T = ns.THEME
 local Parts, St = ns.Shared.Parts, ns.Shared.Style
@@ -27,6 +16,11 @@ local LINE_H, TREND_SHARE, TREND_MIN, TREND_GAP = 2, 0.5, 8, 4
 local TREND_WINDOW, TREND_MIN_SHARE, DING_SOON = 180, 0.05, 600
 local PACE_SHARE, PACE_GAP, PACE_MAX, DROP_SHARE = 0.75, 2, 8, 0.1
 local MINUTE, HOUR, DAY, HOUR_TENTH = 60, 3600, 86400, 360
+local THOUSAND, MILLION = 1000, 1000000
+local SHARE_TO_PERCENT, ROUND, ROW_KEY = 100, 0.5, 16
+local DEFAULT_POS = { x = -811, y = 3 }
+local FORMAT = { MILLIONS = "%.1fm", THOUSANDS = "%.1fk", HOURS = "%.1fh", MINUTES = "m",
+    CLOCK_DAYS = "%dd %dh %dm", CLOCK_HOURS = "%d:%02d:%02d", CLOCK_MINUTES = "%d:%02d" }
 local UNIT, PAUSED, EMPTY, NONE = "xp/hr", "paused", "no XP yet", "--"
 local DING, LEVEL, PERCENT, DOT, PARTIAL = "Ding", "Level %d", "%d%%", St.PLACE_DOT, "+"
 local PLAYED = "Played"
@@ -81,27 +75,27 @@ local function Hidden()
 end
 
 local function Short(n)
-    if n >= 1000000 then return ("%.1fm"):format(n / 1000000) end
-    if n >= 1000 then return ("%.1fk"):format(n / 1000) end
+    if n >= MILLION then return FORMAT.MILLIONS:format(n / MILLION) end
+    if n >= THOUSAND then return FORMAT.THOUSANDS:format(n / THOUSAND) end
     return tostring(math.floor(n))
 end
 
 local function Duration(seconds)
-    if seconds >= HOUR then return ("%.1fh"):format(seconds / HOUR) end
-    return math.max(math.floor(seconds / MINUTE), 1) .. "m"
+    if seconds >= HOUR then return FORMAT.HOURS:format(seconds / HOUR) end
+    return math.max(math.floor(seconds / MINUTE), 1) .. FORMAT.MINUTES
 end
 
 local function Clock(seconds)
-    seconds = math.max(0, math.floor(seconds + 0.5))
+    seconds = math.max(0, math.floor(seconds + ROUND))
     if seconds >= DAY then
-        return ("%dd %dh %dm"):format(math.floor(seconds / DAY), math.floor(seconds / HOUR) % 24,
-            math.floor(seconds / MINUTE) % 60)
+        return FORMAT.CLOCK_DAYS:format(math.floor(seconds / DAY), math.floor(seconds / HOUR) % (DAY / HOUR),
+            math.floor(seconds / MINUTE) % (HOUR / MINUTE))
     end
     if seconds >= HOUR then
-        return ("%d:%02d:%02d"):format(math.floor(seconds / HOUR), math.floor(seconds / MINUTE) % 60,
-            seconds % 60)
+        return FORMAT.CLOCK_HOURS:format(math.floor(seconds / HOUR), math.floor(seconds / MINUTE) % (HOUR / MINUTE),
+            seconds % MINUTE)
     end
-    return ("%d:%02d"):format(math.floor(seconds / MINUTE), seconds % 60)
+    return FORMAT.CLOCK_MINUTES:format(math.floor(seconds / MINUTE), seconds % MINUTE)
 end
 
 local function ClockKey(seconds)
@@ -113,7 +107,7 @@ local Pace = { rows = {}, order = {}, tones = {}, dirty = true }
 local percents = {}
 
 local function Percent(share)
-    local n = math.max(0, math.floor(share * 100 + PERCENT_ROUNDING))
+    local n = math.max(0, math.floor(share * SHARE_TO_PERCENT + PERCENT_ROUNDING))
     local text = percents[n]
     if not text then
         text = PERCENT:format(n)
@@ -299,7 +293,7 @@ function Look.Fonts(f)
     f.paceText:SetFont(font, small, flags)
     f.paceSize = math.max(TREND_MIN, math.floor(small * PACE_SHARE))
     f.paceIcon:SetSize(f.paceSize, f.paceSize)
-    local drop = math.floor(small * DROP_SHARE + 0.5)
+    local drop = math.floor(small * DROP_SHARE + ROUND)
     f.paceIcon:ClearAllPoints()
     f.paceIcon:SetPoint("LEFT", f.played.label, "RIGHT", LABEL_GAP, -drop)
     f.paceText:ClearAllPoints()
@@ -356,7 +350,7 @@ end
 
 local function Arrange(f, showDing, showTime, showCurrent, count, showPlayed)
     local key = (showDing and 1 or 0) + (showTime and 2 or 0) + (showCurrent and 4 or 0) + (showPlayed and 8 or 0)
-        + count * 16
+        + count * ROW_KEY
     if f.arranged == key then return false end
     f.arranged, f.fitW = key, nil
     local rateH = f.rate:GetStringHeight()
@@ -571,7 +565,7 @@ function Look.Paint(f, rate, ding, elapsed, isPaused, keys, levels, trend, xp, r
         end
         Tone(row.value, tones and tones[level] or T.fg)
         local at = showAt and reached and reached[level + 1]
-        at = type(at) == "number" and math.floor(at + 0.5) or false
+        at = type(at) == "number" and math.floor(at + ROUND) or false
         if showAt and row.at ~= at then
             row.at = at
             row.played:SetText(at and Clock(at) or NONE)
@@ -782,10 +776,10 @@ local function Update()
     end
     local now = GetTime()
     local elapsed = now - sessionStart - pausedTotal - (paused and now - pausedAt or 0)
-    local rate = sessionXP / (math.max(elapsed, 60) / 3600)
+    local rate = sessionXP / (math.max(elapsed, MINUTE) / HOUR)
     local ding
     if rate > 0 then
-        ding = (UnitXPMax("player") - UnitXP("player")) / rate * 3600
+        ding = (UnitXPMax("player") - UnitXP("player")) / rate * HOUR
     end
     if not paused and now - trendAt >= TREND_WINDOW then
         local diff = rate - trendBase
@@ -894,7 +888,7 @@ local function Place()
     if pos then
         ticker:SetPoint(pos.point, UIParent, pos.relPoint, pos.x, pos.y)
     else
-        ticker:SetPoint("LEFT", UIParent, "CENTER", -811, 3)
+        ticker:SetPoint("LEFT", UIParent, "CENTER", DEFAULT_POS.x, DEFAULT_POS.y)
     end
 end
 

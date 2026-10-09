@@ -1,12 +1,6 @@
--------------------------------------------------------------------------------
---  NaowhForever_ScrapMarker.lua -- the QoL Scrap Marker (QoL > Loot & Items): Alt-click an
---  item in your bags, the game's or EllesmereUI's, to mark it as scrap by item ID, for the
---  account or this character, or let a rule pick gear you can't wear or have outlevelled.
---  Scrap sells a few at a time at the next vendor, or after you say yes on a panel beside
---  it; your BiS and gear sets are never scrap. A scrap icon on its bag slot and a tooltip line
---  show it. ns.ScrapMarker is what the Scrap List window and Bag Space read.
--------------------------------------------------------------------------------
+-- NaowhForever_ScrapMarker.lua: the QoL Scrap Marker (ns.ScrapMarker): scrap marks and rules, sold at the next vendor.
 local ns = _G.NaowhForever
+
 local S = ns.QoLSettings
 local T = ns.THEME
 local Shared = ns.Shared
@@ -19,9 +13,6 @@ local GetContainerNumSlots = C_Container.GetContainerNumSlots
 local GetItemInfo = C_Item.GetItemInfo
 local GetItemInfoInstant = C_Item.GetItemInfoInstant
 
-local Scrap = {}
-ns.ScrapMarker = Scrap
-
 local OVERLAY = "NaowhForeverScrap"
 local MARK_SHARE, MARK_MIN = 0.5, 14
 local MARK_IN = Parts.MARK_IN
@@ -31,7 +22,11 @@ local BATCH = 6
 local STEP_DELAY = 0.25
 local WEAPON, ARMOR, QUEST_CLASS, KEY_CLASS = 2, 4, 12, 13
 local MARKED, RULED = 1, 2
+local SELL_PRICE = 11
+local COMMON = 1
+local ROUND = ns.QoLConstants.ROUND
 local EMPTY = {}
+local LAST_BAG = NUM_TOTAL_EQUIPPED_BAG_SLOTS or NUM_BAG_SLOTS
 
 local FOR_ALL = {
     [WEAPON] = { [14] = true, [20] = true },
@@ -73,6 +68,20 @@ local NOT_SCRAP = {
     bis = " is on your BiS list, so it can't be scrap.",
     set = " is in a gear set, so it can't be scrap.",
 }
+local VENDOR = { { sell = "Sell", ask = "Ask First", none = "Nothing" }, { "sell", "ask", "none" } }
+local SCOPE = { { account = "Account", char = "This Character" }, { "account", "char" } }
+
+local TEXT_ITEM = "item "
+local TEXT_MARKED = " marked as scrap."
+local TEXT_UNMARKED = " is no longer scrap."
+local TEXT_SOLD = "Sold %d scrap item%s for %s."
+local TEXT_KEPT = " Kept %d protected."
+local TEXT_KEPT_ALL = "Kept %d protected scrap item%s from the vendor."
+local TEXT_COUNT = "x"
+local TEXT_SELL, TEXT_NOT_NOW = "Sell", "Not Now"
+local TEXT_ASK = "Sell your scrap for %s?"
+local TEXT_SUMMARY = "%d item%s marked"
+local TEXT_IN_BAGS = " in your bags"
 
 local marks, hooked, bagOf, slotOf = {}, {}, {}, {}
 local installed, registered, events = false, false, nil
@@ -83,11 +92,25 @@ local showMark = true
 local setItems, setsDirty, watchingSets = {}, true, false
 local guid, class
 local listeners = {}
+local askIDs, askCount, askValue = {}, {}, {}
+local countTexts = {}
+local AskPanel, Toggle, Step
+
+local Scrap = {}
+ns.ScrapMarker = Scrap
 
 local function On()
     return S.Get("enabled") and S.Get("scrapMarker") == true
 end
 Scrap.On = On
+
+local function Plural(n)
+    return n == 1 and "" or "s"
+end
+
+local function SellPrice(id)
+    return select(SELL_PRICE, GetItemInfo(id))
+end
 
 local function Me()
     guid = guid or UnitGUID("player")
@@ -154,7 +177,7 @@ local function RuleMatch(id)
     local name, _, quality, itemLevel, minLevel, _, _, _, _, _, price = GetItemInfo(id)
     if not name or not price or price == 0 or Protection(id) then return nil end
     if wear and not CanWear(classID, sub) then return RULE_WEAR end
-    if old and quality and quality <= 1 then
+    if old and quality and quality <= COMMON then
         local needs = (minLevel and minLevel > 0) and minLevel or itemLevel or 0
         if UnitLevel("player") - needs > S.Get("scrapRuleLevels") then return RULE_OLD end
     end
@@ -189,8 +212,7 @@ local function Refusal(id, bag, slot)
     if classID == QUEST_CLASS then return NOT_SCRAP.quest end
     if classID == KEY_CLASS then return NOT_SCRAP.key end
     local info = bag and GetContainerItemInfo(bag, slot)
-    local _, _, _, _, _, _, _, _, _, _, price = GetItemInfo(id)
-    if (info and info.hasNoValue) or price == 0 then return NOT_SCRAP.value end
+    if (info and info.hasNoValue) or SellPrice(id) == 0 then return NOT_SCRAP.value end
     local guard = Protection(id)
     if guard then return NOT_SCRAP[guard] end
 end
@@ -199,7 +221,7 @@ Scrap.Refusal = Refusal
 local function NewMark(button, over)
     local size = math.max(MARK_MIN, math.floor(button:GetHeight() * MARK_SHARE))
     local mark = CreateFrame("Frame", nil, over)
-    mark:SetSize(size, math.floor(size * St.SCRAP_RATIO + 0.5))
+    mark:SetSize(size, math.floor(size * St.SCRAP_RATIO + ROUND))
     mark:SetPoint("TOPRIGHT", -MARK_IN, -MARK_IN)
     mark:SetFrameLevel(over:GetFrameLevel() + MARK_LEVEL)
     local icon = Parts.Smooth(mark:CreateTexture(nil, "OVERLAY"))
@@ -220,8 +242,6 @@ local function Paint(button, over, id)
     mark:SetAlpha(state == RULED and RULE_ALPHA or 1)
     mark:Show()
 end
-
-local Toggle
 
 local function OnClick(button, mouse)
     if mouse ~= "LeftButton" or not IsAltKeyDown() or IsControlKeyDown() or IsShiftKeyDown() then return end
@@ -280,7 +300,7 @@ end
 function Scrap.Mark(id, link, bag, slot)
     local why = Refusal(id, bag, slot)
     if why then
-        ns.Print((link or ("item " .. id)) .. why)
+        ns.Print((link or (TEXT_ITEM .. id)) .. why)
         return false
     end
     local keep = ns.AccountSettings().scrapKeep
@@ -290,7 +310,7 @@ function Scrap.Mark(id, link, bag, slot)
     else
         Writable("scrapItems")[id] = true
     end
-    if link then ns.Print(link .. " marked as scrap.") end
+    if link then ns.Print(link .. TEXT_MARKED) end
     Changed()
     return true
 end
@@ -299,7 +319,7 @@ function Scrap.Unscrap(id, link)
     Writable("scrapItems")[id] = nil
     if Me() then WritableChar()[id] = nil end
     if RuleMatch(id) then Writable("scrapKeep")[id] = true end
-    if link then ns.Print(link .. " is no longer scrap.") end
+    if link then ns.Print(link .. TEXT_UNMARKED) end
     Changed()
 end
 
@@ -330,11 +350,9 @@ function Scrap.Clear()
 end
 
 function Toggle(id, bag, slot)
-    local link = GetContainerItemLink(bag, slot) or ("item " .. id)
+    local link = GetContainerItemLink(bag, slot) or (TEXT_ITEM .. id)
     if State(id) then Scrap.Unscrap(id, link) else Scrap.Mark(id, link, bag, slot) end
 end
-
-local LAST_BAG = NUM_TOTAL_EQUIPPED_BAG_SLOTS or NUM_BAG_SLOTS
 
 local function Sellable(info)
     local id = info and info.itemID
@@ -348,15 +366,12 @@ function Scrap.BagValue()
             local info = GetContainerItemInfo(bag, slot)
             local id = Sellable(info)
             if id and not Protection(id) then
-                local _, _, _, _, _, _, _, _, _, _, price = GetItemInfo(id)
-                total = total + (price or 0) * (info.stackCount or 1)
+                total = total + (SellPrice(id) or 0) * (info.stackCount or 1)
             end
         end
     end
     return total
 end
-
-local AskPanel
 
 local function AtMerchant()
     return atMerchant and MerchantFrame ~= nil and MerchantFrame:IsShown() and not InCombatLockdown()
@@ -368,50 +383,21 @@ end
 
 local function Finish()
     if sold > 0 then
-        local line = ("Sold %d scrap item%s for %s."):format(sold, sold == 1 and "" or "s", Parts.Coins(earned))
-        if spared > 0 then line = line .. (" Kept %d protected."):format(spared) end
+        local line = TEXT_SOLD:format(sold, Plural(sold), Parts.Coins(earned))
+        if spared > 0 then line = line .. TEXT_KEPT:format(spared) end
         ns.Print(line)
     elseif spared > 0 then
-        ns.Print(("Kept %d protected scrap item%s from the vendor."):format(spared, spared == 1 and "" or "s"))
+        ns.Print(TEXT_KEPT_ALL:format(spared, Plural(spared)))
     end
     selling, sold, earned, spared = false, 0, 0, 0
     generation = generation + 1
 end
-
-local Step
 
 local function Schedule()
     scheduledFor = generation
     if pending then return end
     pending = true
     C_Timer.After(STEP_DELAY, Step)
-end
-
-function Step()
-    pending = false
-    if scheduledFor ~= generation or not selling then return end
-    local sales = 0
-    while nextBag <= LAST_BAG do
-        local slots = GetContainerNumSlots(nextBag)
-        while nextSlot <= slots do
-            local bag, slot = nextBag, nextSlot
-            nextSlot = slot + 1
-            local info = GetContainerItemInfo(bag, slot)
-            local id = Sellable(info)
-            if id and Protection(id) then
-                spared = spared + 1
-            elseif id then
-                if not CanSell() or GetContainerItemID(bag, slot) ~= id then return Finish() end
-                local _, _, _, _, _, _, _, _, _, _, price = GetItemInfo(id)
-                C_Container.UseContainerItem(bag, slot)
-                sold, sales = sold + 1, sales + 1
-                earned = earned + (price or 0) * (info.stackCount or 1)
-                if sales >= BATCH then return Schedule() end
-            end
-        end
-        nextBag, nextSlot = nextBag + 1, 1
-    end
-    Finish()
 end
 
 local function Sell()
@@ -424,13 +410,47 @@ local function Sell()
     Step()
 end
 
-local askIDs, askCount, askValue = {}, {}, {}
-local countTexts = {}
+local function SellSlot(bag, slot)
+    local info = GetContainerItemInfo(bag, slot)
+    local id = Sellable(info)
+    if not id then return false end
+    if Protection(id) then
+        spared = spared + 1
+        return false
+    end
+    if not CanSell() or GetContainerItemID(bag, slot) ~= id then return nil end
+    local price = SellPrice(id)
+    C_Container.UseContainerItem(bag, slot)
+    sold = sold + 1
+    earned = earned + (price or 0) * (info.stackCount or 1)
+    return true
+end
+
+function Step()
+    pending = false
+    if scheduledFor ~= generation or not selling then return end
+    local sales = 0
+    while nextBag <= LAST_BAG do
+        local slots = GetContainerNumSlots(nextBag)
+        while nextSlot <= slots do
+            local bag, slot = nextBag, nextSlot
+            nextSlot = slot + 1
+            local sale = SellSlot(bag, slot)
+            if sale == nil then return Finish() end
+            if sale then
+                sales = sales + 1
+                if sales >= BATCH then return Schedule() end
+            end
+        end
+        nextBag, nextSlot = nextBag + 1, 1
+    end
+    Finish()
+end
 
 local function CountText(n)
     local text = countTexts[n]
     if not text then
-        text = "x" .. n
+        text = TEXT_COUNT .. n
         countTexts[n] = text
     end
     return text
@@ -446,8 +466,7 @@ local function CollectSale()
             local info = GetContainerItemInfo(bag, slot)
             local id = Sellable(info)
             if id and not Protection(id) then
-                local _, _, _, _, _, _, _, _, _, _, price = GetItemInfo(id)
-                local count, value = info.stackCount or 1, (price or 0) * (info.stackCount or 1)
+                local count, value = info.stackCount or 1, (SellPrice(id) or 0) * (info.stackCount or 1)
                 if not askCount[id] then
                     askIDs[#askIDs + 1] = id
                     askCount[id], askValue[id] = 0, 0
@@ -479,13 +498,17 @@ local function One()
     return 1
 end
 
+local function HideAsk()
+    AskPanel:Hide()
+end
+
 local function ShowAsk()
     local total = CollectSale()
     if #askIDs == 0 then return end
     if not AskPanel then
-        AskPanel = Parts.SidePanel({ { "Sell", Sell }, { "Not Now", function() AskPanel:Hide() end } }, NewAskView, One)
+        AskPanel = Parts.SidePanel({ { TEXT_SELL, Sell }, { TEXT_NOT_NOW, HideAsk } }, NewAskView, One)
     end
-    AskPanel.title:SetText(("Sell your scrap for %s?"):format(Parts.Coins(total)))
+    AskPanel.title:SetText(TEXT_ASK:format(Parts.Coins(total)))
     Parts.ShowBeside(AskPanel, MerchantFrame)
     AskPanel.view:Redraw()
 end
@@ -579,8 +602,6 @@ end)
 hooksecurefunc(ns, "Apply", Apply)
 
 local Group = Shared.Settings.Group
-local VENDOR = { { sell = "Sell", ask = "Ask First", none = "Nothing" }, { "sell", "ask", "none" } }
-local SCOPE = { { account = "Account", char = "This Character" }, { "account", "char" } }
 
 local function Summary()
     local n = 0
@@ -588,9 +609,9 @@ local function Summary()
     for id in pairs(CharMarks()) do
         if not AccountMarks()[id] then n = n + 1 end
     end
-    local text = ("%d item%s marked"):format(n, n == 1 and "" or "s")
+    local text = TEXT_SUMMARY:format(n, Plural(n))
     local value = Scrap.BagValue()
-    if value > 0 then text = text .. ", " .. Parts.Coins(value) .. " in your bags" end
+    if value > 0 then text = text .. ", " .. Parts.Coins(value) .. TEXT_IN_BAGS end
     return text
 end
 

@@ -31,8 +31,8 @@ local function Fixture(bars, known, kept)
         Kept = function() return kept or {} end,
     }
     setmetatable(env, { __index = _G })
-    local code = "local " .. Slice("function RankOf(", "\n---") .. "local "
-        .. Slice("function CheckSlot(", "\n-- The spell names in a list")
+    local code = "local " .. Slice("function RankOf(", "\nlocal function AddBest(") .. "local "
+        .. Slice("function CheckSlot(", "\nlocal function Summary(")
         .. "\nreturn Upgrades"
     local chunk = assert(loadstring(code)); setfenv(chunk, env)
     return chunk()

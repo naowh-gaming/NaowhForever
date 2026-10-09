@@ -1,6 +1,13 @@
--- Top Bar Show On Mouseover: UpdateHover cut out of TopBar.lua and run against stub frames.
-local f = assert(io.open("TopBar/NaowhForever_TopBar.lua", "rb"))
-local source = f:read("*a"):gsub("\r\n", "\n"); f:close()
+-- Top Bar Show On Mouseover: UpdateHover cut out of TopBar/UI/Bar.lua and run against stub frames.
+-- The Top Bar's files as TopBar.xml lists them, read as one source.
+local parts = {}
+for _, path in ipairs(dofile("Tools/regression/toc_files.lua")("^TopBar/.*%.lua$")) do
+    local f = assert(io.open(path, "rb"))
+    parts[#parts + 1] = f:read("*a"):gsub("\r\n", "\n")
+    f:close()
+end
+local source = table.concat(parts, "\n")
+local PERCENT = assert(tonumber(source:match("\n    PERCENT = (%d+),")), "PERCENT")
 local checks = 0
 local function check(label, ok) assert(ok, label); checks = checks + 1 end
 
@@ -17,8 +24,8 @@ local function Frame(over) return { over = over, alpha = 1,
 local function Run(settings, barOver, sysOver, unlocked)
     local bar, sys = Frame(barOver), Frame(sysOver)
     bar.sys = sys
-    local chunk = assert(loadstring("local bar, unlocked, S = ...\n" .. body))
-    chunk(bar, unlocked, { Get = function(k) return settings[k] end })
+    local chunk = assert(loadstring("local bar, unlocked, S, PERCENT = ...\n" .. body))
+    chunk(bar, unlocked, { Get = function(k) return settings[k] end }, PERCENT)
     return bar.alpha, sys.alpha
 end
 

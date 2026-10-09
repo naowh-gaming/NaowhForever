@@ -20,8 +20,8 @@ end
 -- Files with those words in their strings, each loaded below with the flag both ways.
 local GATED = {
     ["Badges/NaowhForever_Badges.lua"] = true,
-    ["CharacterPanel/SettingsPage.lua"] = true,
-    ["InspectPanel/SettingsPage.lua"] = true,
+    ["CharacterPanel/UI/SettingsPage.lua"] = true,
+    ["InspectPanel/UI/SettingsPage.lua"] = true,
     ["Core/NaowhForever_Credits.lua"] = true,
     ["Core/NaowhForever_PatchNotes.lua"] = true,
 }
@@ -137,7 +137,7 @@ local texts
 local Stub
 local STUB = { __index = function(_, key)
     if key == "SetText" then return function(_, text) texts[#texts + 1] = tostring(text) end end
-    if key == "GetStringWidth" or key == "GetWidth" or key == "GetHeight" then
+    if key == "GetStringWidth" or key == "GetStringHeight" or key == "GetWidth" or key == "GetHeight" then
         return function() return 100 end
     end
     if key:find("^Create") then return function() return Stub() end end
@@ -212,8 +212,8 @@ local function Shown(flag)
         strtrim = function(s) return (s:gsub("^%s+", ""):gsub("%s+$", "")) end,
         date = os.date,
     }, { __index = _G })
-    Load({ Located("Badges/NaowhForever_Badges.lua"), Located("CharacterPanel/SettingsPage.lua"),
-        Located("InspectPanel/SettingsPage.lua"),
+    Load({ Located("Badges/NaowhForever_Badges.lua"), Located("CharacterPanel/UI/SettingsPage.lua"),
+        Located("InspectPanel/UI/SettingsPage.lua"),
         Located("Core/NaowhForever_Credits.lua"), Located("Core/NaowhForever_PatchNotes.lua") }, env)
     ns.BuildCreditsPage({ GetWidth = function() return 800 end }, 0)
 

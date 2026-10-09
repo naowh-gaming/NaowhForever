@@ -6,6 +6,8 @@ local core = assert(io.open(arg[1] or "Core/NaowhForever_Core.lua", "rb"))
 local coreSrc = core:read("*a"):gsub("\r\n", "\n"); core:close()
 local packs = assert(io.open(arg[2] or "Core/NaowhForever_Packs.lua", "rb"))
 local packSrc = packs:read("*a"):gsub("\r\n", "\n"); packs:close()
+local dialogs = assert(io.open(arg[3] or "Core/NaowhForever_PackDialogs.lua", "rb"))
+local dialogSrc = dialogs:read("*a"):gsub("\r\n", "\n"); dialogs:close()
 
 local function Slice(source, a, b)
     local first = assert(source:find(a, 1, true))
@@ -25,7 +27,8 @@ local function Fixture(char)
         return out
     end
     setmetatable(env, { __index = _G })
-    local code = Slice(coreSrc, "local function DB()", "function ns.SettingsRoot()")
+    local code = assert(coreSrc:match("\n(local MODULE_KEY = .-\n)\nlocal ns = {}\n"), "Core constants")
+        .. Slice(coreSrc, "local function NewInstall()", "function ns.SettingsRoot()")
         .. Slice(coreSrc, "function ns.SettingsRoot()", "function ns.AccountSettings()")
         .. Slice(coreSrc, "function ns.ActiveProfileName()", "function ns.ListProfiles()")
         .. Slice(coreSrc, "function ns.SpecProfileMap()", "function ns.AutoSpecProfile(")
@@ -106,15 +109,14 @@ Case("switching one character afterwards leaves the rest on the account profile"
     assert(sv.charActive["Main-Ravencrest"] == "Naowh" and sv.defaultProfile == "Naowh")
 end)
 
--- The dialog half. The Import handler is inside a 400-line closure, so rather than rebuild
--- its frames these assert on the source: that the account call exists on the single-profile
--- branch, runs after the import, and is handed the landed name.
+-- The dialog half (Core/NaowhForever_PackDialogs.lua). Rather than rebuild its frames these
+-- assert on the source: that the account call exists on the single-profile branch, runs after
+-- the import, and is handed the landed name.
 Case("the import dialog reaches SetAccountProfile with the landed name", function()
-    local branch = Slice(packSrc, "local ok, newName = ns.ImportPackAsProfile(",
-        "    applyBtn = ns.Button(panel, \"Import\"")
+    local branch = Slice(dialogSrc, "local function FinishSingle(imp)", "local function Finish(imp)")
     assert(branch:find("ns.SetAccountProfile(newName)", 1, true),
         "the single-profile import must point the account at the name it landed under")
-    assert(branch:find("if accountWanted and ns.SetAccountProfile then", 1, true),
+    assert(branch:find("if imp.accountWanted and ns.SetAccountProfile then", 1, true),
         "it must be gated on the toggle")
     assert(branch:find("ImportPackAsProfile", 1, true)
         < branch:find("SetAccountProfile", 1, true),
@@ -122,12 +124,12 @@ Case("the import dialog reaches SetAccountProfile with the landed name", functio
 end)
 
 Case("the toggle is offered for single-profile packs only", function()
-    local build = Slice(packSrc, "        if not multi then\n            if not accountBtn then",
-        "        if not multi then\n            if not nameBox then")
+    local build = Slice(dialogSrc, "local function PlaceAccountRow(imp, multi)", "local function ImportNameBox(imp)")
     assert(build:find("accountWanted", 1, true) and build:find("KnownCharacters", 1, true))
-    assert(packSrc:find("elseif accountBtn then", 1, true), "it must hide again for a whole-file pack")
+    assert(build:find("    if multi then\n        if imp.accountBtn then imp.accountBtn:Hide() end\n        return", 1, true),
+        "it must hide again for a whole-file pack")
     -- The Save as row anchors under it, or the two draw over each other.
-    assert(packSrc:find("local anchorTo = (accountBtn and accountBtn:IsShown() and accountBtn)", 1, true))
+    assert(dialogSrc:find("local anchorTo = ShownOr(imp.accountBtn) or", 1, true))
 end)
 
 -- The bug this feature shipped with: the account choice was written correctly and then
@@ -245,8 +247,9 @@ local function WithApi(e, install, importProfile)
         if str:sub(1, 11) == "NFPROFILE1:" then return { parts = {} } end
         return nil, "This is not a Naowh Forever profile string."
     end
-    local code = Slice(packSrc, "local function CurrentSpecEntry()", "-- opts, all optional:")
-        .. Slice(packSrc, "local API = {}", "-- Decode and validate;")
+    local code = assert(packSrc:match("\n(local PREFIX = .-\n)\nlocal function ByLower"), "Packs constants")
+        .. Slice(packSrc, "local function CurrentSpecEntry()", "local function LandPack(")
+        .. Slice(packSrc, "local API = {}", "local function SplitLicense(")
     local chunk = assert(loadstring(code)); setfenv(chunk, e.env); chunk()
     return e.env.NaowhForever_API
 end

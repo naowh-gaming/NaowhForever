@@ -45,6 +45,7 @@ local S = { Get = function(k) return values[k] end, Set = function(k, v) values[
 local now, gcdUntil = 1000, 0
 local frames = {}
 local ns = {
+    QoLConstants = dofile("Tools/regression/qol_constants.lua"),
     QoLSettings = S, ThemeTint = function(_, c) return c end, PixelInset = Noop,
     Apply = Noop, ShowRaidReminderAnchorConfig = Noop, HideRaidReminderAnchorConfig = Noop,
     UI = { AttachMover = function() return Widget("Mover") end,

@@ -110,8 +110,8 @@ local function Fixture(class)
             GetItemCount = function() return 0 end,
         },
     }, { __index = _G })
-    local files = { "Shared/Shared.lua", "Shared/Data/Forever.lua", "Shared/Style.lua", "Shared/Items.lua",
-        "Shared/Parts.lua" }
+    local files = { "Core/NaowhForever_Features.lua", "Shared/Shared.lua", "Shared/Data/Forever.lua", "Shared/Style.lua", "Shared/Items.lua", "Shared/Gear.lua",
+        "Shared/Parts.lua", "Shared/Marks.lua", "Shared/Text.lua", "Shared/Hud.lua", "Shared/Timer.lua", "Shared/Share.lua", "Shared/Panels.lua" }
     for _, path in ipairs(TocFiles("^NaowhForever_BiS/StatWeights/.*%.lua$")) do files[#files + 1] = path end
     Load(files, env)
     ns.Shared.Decode = dofile("Tools/regression/load_decode.lua")(env)

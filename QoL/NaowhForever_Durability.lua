@@ -1,16 +1,20 @@
--------------------------------------------------------------------------------
---  NaowhForever_Durability.lua -- the QoL low durability warning, shading from pink to red as
---  your gear wears down.
--------------------------------------------------------------------------------
+-- NaowhForever_Durability.lua: the low durability warning, shading from pink to red as your gear wears down.
 local ns = _G.NaowhForever
+
 local S = ns.QoLSettings
 local T = ns.THEME
 local Parts, St = ns.Shared.Parts, ns.Shared.Style
 
 local PINK = { r = 1, g = 0.41, b = 0.71 }
 local RED = { r = 1, g = 0, b = 0 }
-local FLOOR_PCT = 15    -- fully red at or below this
-local WIDTH, ROOM = 300, 10   -- the frame's width, and its height over the font size
+local FLOOR_PCT = 15
+local WIDTH, ROOM = 300, 10
+local FONT_SIZE = 22
+local PREVIEW_PCT = 20
+local STACK_ORDER = 3
+local PERCENT = ns.QoLConstants.PERCENT
+local TEXT_LOW = "Low Durability: %d%%"
+local SUMMARY = "Warns below %d%%"
 
 local frame, unlocked, inCombat
 
@@ -23,20 +27,23 @@ local function Lowest()
     for slot = INVSLOT_FIRST_EQUIPPED, INVSLOT_LAST_EQUIPPED do
         local cur, max = GetInventoryItemDurability(slot)
         if cur and max and max > 0 then
-            local pct = cur / max * 100
+            local pct = cur / max * PERCENT
             if not lowest or pct < lowest then lowest = pct end
         end
     end
     return lowest
 end
 
-local function Show(pct, threshold)
+local function Shade(pct, threshold)
     local t = math.max(0, math.min(1, (pct - FLOOR_PCT) / math.max(1, threshold - FLOOR_PCT)))
     local top = S.Get("durabilityTheme") and T.accent or PINK
     frame.text:SetTextColor(RED.r + t * (top.r - RED.r), RED.g + t * (top.g - RED.g),
         RED.b + t * (top.b - RED.b), 1)
-    frame.text:SetText(("Low Durability: %d%%"):format(pct))
-    -- Fitted to the text only with a background, so elements anchored to it keep their spot.
+end
+
+local function Show(pct, threshold)
+    Shade(pct, threshold)
+    frame.text:SetText(TEXT_LOW:format(pct))
     frame:SetWidth(frame.mode == "none" and WIDTH or frame.text:GetStringWidth() + 2 * St.CARD_PAD)
     frame:Show()
 end
@@ -44,7 +51,7 @@ end
 local function Update()
     local threshold = S.Get("durabilityBelow")
     if unlocked then
-        Show(20, threshold)
+        Show(PREVIEW_PCT, threshold)
         return
     end
     local lowest = not inCombat and Lowest()
@@ -55,15 +62,34 @@ local function Update()
     end
 end
 
-local events = CreateFrame("Frame")
-events:SetScript("OnEvent", function(_, event)
+local function OnEvent(_, event)
     if event == "PLAYER_REGEN_DISABLED" then
         inCombat = true
     elseif event == "PLAYER_REGEN_ENABLED" then
         inCombat = false
     end
     Update()
-end)
+end
+
+local events = CreateFrame("Frame")
+events:SetScript("OnEvent", OnEvent)
+
+local function Build()
+    frame = CreateFrame("Frame", "NaowhForeverDurability", UIParent)
+    frame:SetMovable(true)
+    frame:SetClampedToScreen(true)
+    frame.text = ns.Font(frame, FONT_SIZE, "OUTLINE")
+    frame.text:SetPoint("CENTER")
+    frame.backdrop = Parts.HudBackdrop(frame, { mode = "none" })
+    ns.AlertStack(frame, STACK_ORDER)
+end
+
+local function Restyle()
+    local size = S.Get("durabilityFontSize")
+    frame.mode = frame.backdrop:SetMode(S.Get("durabilityBackground"))
+    Parts.HudFont(frame.text, S.Get("durabilityFont"), size, S.Get("durabilityOutline"), frame.mode)
+    frame:SetSize(WIDTH, size + ROOM)
+end
 
 local function Apply()
     events:UnregisterAllEvents()
@@ -71,19 +97,8 @@ local function Apply()
         if frame then frame:Hide() end
         return
     end
-    if not frame then
-        frame = CreateFrame("Frame", "NaowhForeverDurability", UIParent)
-        frame:SetMovable(true)
-        frame:SetClampedToScreen(true)
-        frame.text = ns.Font(frame, 22, "OUTLINE")
-        frame.text:SetPoint("CENTER")
-        frame.backdrop = Parts.HudBackdrop(frame, { mode = "none" })
-        ns.AlertStack(frame, 3)
-    end
-    local size = S.Get("durabilityFontSize")
-    frame.mode = frame.backdrop:SetMode(S.Get("durabilityBackground"))
-    Parts.HudFont(frame.text, S.Get("durabilityFont"), size, S.Get("durabilityOutline"), frame.mode)
-    frame:SetSize(WIDTH, size + ROOM)
+    if not frame then Build() end
+    Restyle()
     inCombat = UnitAffectingCombat("player")
     events:RegisterEvent("UPDATE_INVENTORY_DURABILITY")
     events:RegisterEvent("PLAYER_EQUIPMENT_CHANGED")
@@ -93,9 +108,11 @@ local function Apply()
     Update()
 end
 
-hooksecurefunc(S, "Set", function(key)
+local function OnSettingChanged(key)
     if key == "enabled" or key:find("^durability") then Apply() end
-end)
+end
+
+hooksecurefunc(S, "Set", OnSettingChanged)
 hooksecurefunc(ns, "Apply", Apply)
 hooksecurefunc(ns, "ShowRaidReminderAnchorConfig", function()
     unlocked = S.Get("enabled") == true
@@ -111,7 +128,7 @@ boot:RegisterEvent("PLAYER_LOGIN")
 boot:SetScript("OnEvent", Apply)
 
 local function DurabilitySummary(store)
-    return ("Warns below %d%%"):format(store.Get("durabilityBelow"))
+    return SUMMARY:format(store.Get("durabilityBelow"))
 end
 
 local Settings = ns.Shared.Settings

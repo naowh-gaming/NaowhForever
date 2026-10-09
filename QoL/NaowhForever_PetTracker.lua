@@ -1,8 +1,6 @@
--------------------------------------------------------------------------------
---  NaowhForever_PetTracker.lua -- the QoL pet tracker: a warning while a pet is missing, passive
---  or low. Health is secret in combat, so a step curve turns it into the warning's alpha.
--------------------------------------------------------------------------------
+-- NaowhForever_PetTracker.lua: the QoL pet tracker, a warning while a pet is missing, passive or low on health.
 local ns = _G.NaowhForever
+
 local S = ns.QoLSettings
 local Parts, St = ns.Shared.Parts, ns.Shared.Style
 
@@ -10,11 +8,24 @@ local CALL_PET, SUMMON_IMP = 883, 688
 local ICON = 132161
 local WIDTH, ICON_GAP = 220, 8
 local DISMOUNT_DELAY = 5
--- Demonic Sacrifice leaves one of these on the warlock in place of the demon.
 local SACRIFICE_BUFFS = { 18789, 18790, 18791, 18792 }
+local ICON_CROP_LOW, ICON_CROP_HIGH = ns.QoLConstants.ICON_CROP_TIGHT, ns.QoLConstants.ICON_CROP_TIGHT_HIGH
+local FONT_SIZE = 20
+local STACK_ORDER = 5
+local ICON_GROW, HEIGHT_ROOM = 12, 16
+local PERCENT = ns.QoLConstants.PERCENT
+local STEP_EDGE = 0.001
+local EVENTS = { "UNIT_PET", "PET_BAR_UPDATE", "PLAYER_MOUNT_DISPLAY_CHANGED", "PLAYER_DEAD", "PLAYER_ALIVE",
+    "PLAYER_UNGHOST", "SPELLS_CHANGED", "PLAYER_REGEN_DISABLED", "PLAYER_REGEN_ENABLED", "PLAYER_ENTERING_WORLD",
+    "PLAYER_CONTROL_LOST", "PLAYER_CONTROL_GAINED" }
+
+local TEXT_MISSING = "Missing"
+local TEXT_PASSIVE = ", passive"
+local TEXT_BELOW = ", below %d%%"
 
 local frame, curve, unlocked, class
 local mounted, dismountTimer, sacrificed
+local events = CreateFrame("Frame")
 
 local function On()
     return S.Get("enabled") and S.Get("petTracker")
@@ -26,16 +37,14 @@ local function Build()
     frame:SetClampedToScreen(true)
     frame.icon = frame:CreateTexture(nil, "ARTWORK")
     frame.icon:SetTexture(ICON)
-    frame.icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
-    frame.text = ns.Font(frame, 20, "OUTLINE")
+    frame.icon:SetTexCoord(ICON_CROP_LOW, ICON_CROP_HIGH, ICON_CROP_LOW, ICON_CROP_HIGH)
+    frame.text = ns.Font(frame, FONT_SIZE, "OUTLINE")
     frame.backdrop = Parts.HudBackdrop(frame, { mode = "none" })
     frame:Hide()
-    -- On top: its low health warning stays shown at alpha 0 (the health is secret in combat,
-    -- so it cannot be hidden), and on top that leaves no gap between the others.
-    ns.AlertStack(frame, 5)
+    ns.AlertStack(frame, STACK_ORDER)
 end
 
-local function Style()
+local function Restyle()
     local size = S.Get("petFontSize")
     frame.mode = frame.backdrop:SetMode(S.Get("petBackground"))
     Parts.HudFont(frame.text, S.Get("petFont"), size, S.Get("petOutline"), frame.mode)
@@ -43,7 +52,7 @@ local function Style()
     frame.text:SetTextColor(c.r, c.g, c.b, 1)
     frame.text:ClearAllPoints()
     if S.Get("petShowIcon") then
-        frame.icon:SetSize(size + 12, size + 12)
+        frame.icon:SetSize(size + ICON_GROW, size + ICON_GROW)
         frame.icon:SetPoint("LEFT", frame, "LEFT", frame.mode == "none" and 0 or St.CARD_PAD, 0)
         frame.icon:Show()
         frame.text:SetPoint("LEFT", frame.icon, "RIGHT", ICON_GAP, 0)
@@ -51,10 +60,9 @@ local function Style()
         frame.icon:Hide()
         frame.text:SetPoint("CENTER")
     end
-    frame:SetSize(WIDTH, size + 16)
+    frame:SetSize(WIDTH, size + HEIGHT_ROOM)
 end
 
--- Fitted to the warning only with a background, so elements anchored to it keep their spot.
 local function Fit()
     if frame.mode == "none" then return end
     local w = frame.text:GetStringWidth() + 2 * St.CARD_PAD
@@ -63,12 +71,12 @@ local function Fit()
 end
 
 local function BuildCurve()
-    local below = S.Get("petLowHealthBelow") / 100
+    local below = S.Get("petLowHealthBelow") / PERCENT
     curve = curve or C_CurveUtil.CreateCurve()
     curve:SetType(Enum.LuaCurveType.Step)
     curve:ClearPoints()
     curve:AddPoint(0, 1)
-    curve:AddPoint(below - 0.001, 1)
+    curve:AddPoint(below - STEP_EDGE, 1)
     curve:AddPoint(below, 0)
     curve:AddPoint(1, 0)
 end
@@ -79,8 +87,6 @@ local function ShouldHavePet()
     return false
 end
 
--- Out of combat only: in combat the client hides the player's own auras from addons, so the
--- last answer from before the fight stands.
 local function CheckSacrifice()
     if class ~= "WARLOCK" or C_Secrets.ShouldAurasBeSecret() then return end
     sacrificed = false
@@ -135,53 +141,58 @@ local function Update()
     frame:Show()
 end
 
-local events = CreateFrame("Frame")
-events:SetScript("OnEvent", function(_, event, unit)
+local function CancelDismount()
+    if dismountTimer then dismountTimer:Cancel(); dismountTimer = nil end
+end
+
+local function OnDismounted()
+    dismountTimer = nil
+    Update()
+end
+
+local function OnMountChanged()
+    local was = mounted
+    mounted = IsMounted()
+    CancelDismount()
+    if was and not mounted then
+        dismountTimer = C_Timer.NewTimer(DISMOUNT_DELAY, OnDismounted)
+    end
+end
+
+local function OnEvent(_, event, unit)
     if event == "PLAYER_MOUNT_DISPLAY_CHANGED" then
-        local was = mounted
-        mounted = IsMounted()
-        if dismountTimer then dismountTimer:Cancel(); dismountTimer = nil end
-        -- A pet can take a few seconds to come back after dismounting.
-        if was and not mounted then
-            dismountTimer = C_Timer.NewTimer(DISMOUNT_DELAY, function()
-                dismountTimer = nil
-                Update()
-            end)
-        end
+        OnMountChanged()
     elseif event == "UNIT_AURA" or event == "PLAYER_REGEN_ENABLED" then
         CheckSacrifice()
     elseif event == "UNIT_HEALTH" and unit ~= "pet" then
         return
     end
     Update()
-end)
+end
 
 local function Apply()
     events:UnregisterAllEvents()
     if not (On() or unlocked) then
-        if dismountTimer then dismountTimer:Cancel(); dismountTimer = nil end
+        CancelDismount()
         if frame then frame:Hide() end
         return
     end
     if not frame then Build() end
     class = select(2, UnitClass("player"))
-    Style()
+    Restyle()
     BuildCurve()
     if On() then
         mounted = IsMounted()
         CheckSacrifice()
-        for _, event in ipairs({ "UNIT_PET", "PET_BAR_UPDATE", "PLAYER_MOUNT_DISPLAY_CHANGED",
-            "PLAYER_DEAD", "PLAYER_ALIVE", "PLAYER_UNGHOST", "SPELLS_CHANGED",
-            "PLAYER_REGEN_DISABLED", "PLAYER_REGEN_ENABLED", "PLAYER_ENTERING_WORLD",
-            "PLAYER_CONTROL_LOST", "PLAYER_CONTROL_GAINED" }) do
-            events:RegisterEvent(event)
-        end
+        for _, event in ipairs(EVENTS) do events:RegisterEvent(event) end
         events:RegisterUnitEvent("UNIT_HEALTH", "pet")
         events:RegisterUnitEvent("UNIT_MAXHEALTH", "pet")
         if class == "WARLOCK" then events:RegisterUnitEvent("UNIT_AURA", "player") end
     end
     Update()
 end
+
+events:SetScript("OnEvent", OnEvent)
 
 hooksecurefunc(S, "Set", function(key)
     if key == "enabled" or key:find("^pet") then Apply() end
@@ -205,9 +216,9 @@ local Group = ns.Shared.Settings.Group
 local function OwnColour() return not S.Get("petClassColor") end
 
 local function Summary(store)
-    local parts = "Missing"
-    if store.Get("petPassive") then parts = parts .. ", passive" end
-    if store.Get("petLowHealth") then parts = parts .. (", below %d%%"):format(store.Get("petLowHealthBelow")) end
+    local parts = TEXT_MISSING
+    if store.Get("petPassive") then parts = parts .. TEXT_PASSIVE end
+    if store.Get("petLowHealth") then parts = parts .. TEXT_BELOW:format(store.Get("petLowHealthBelow")) end
     return parts
 end
 

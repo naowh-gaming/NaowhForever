@@ -7,5 +7,4 @@
 ## Group: NaowhForever
 ## IconTexture: Interface\AddOns\NaowhForever\Media\LogoAddon.tga
 
-NaowhForever_GearSets.lua
-NaowhForever_GearSetsWindow.lua
+GearSets.xml

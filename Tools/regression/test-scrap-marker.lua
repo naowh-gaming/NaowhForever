@@ -167,6 +167,7 @@ end
 local searchBox
 
 local ns = {
+    QoLConstants = dofile("Tools/regression/qol_constants.lua"),
     THEME = setmetatable({}, { __index = function() return WHITE end }),
     Color = function(_, text) return text and tostring(text) or "" end,
     Font = function(parent) return Frame(parent) end,

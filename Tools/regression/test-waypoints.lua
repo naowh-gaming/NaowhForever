@@ -71,6 +71,7 @@ for _, key in ipairs({ "Icon", "Arrow", "DistanceText", "IconBorder" }) do gameM
 local function Theme() return { r = 0, g = 0.57, b = 0.93 } end
 local routeInfo   -- { title, at, n, next } while a route is followed
 local ns = {
+    QoLConstants = dofile("Tools/regression/qol_constants.lua"),
     QoLSettings = S,
     WAYPOINT_HOLD = 4,
     WaypointRoute = function() if routeInfo then return unpack(routeInfo) end end,

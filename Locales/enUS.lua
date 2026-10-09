@@ -1,4 +1,4 @@
--- English is both the source catalog and the fallback for every locale.
+-- enUS.lua: the English catalog, and the fallback for every locale.
 local L = _G.NaowhForeverLocale or {}
 _G.NaowhForeverLocale = L
 

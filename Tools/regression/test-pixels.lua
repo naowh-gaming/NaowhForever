@@ -4,7 +4,7 @@
 local f = assert(io.open(arg[1] or "Core/NaowhForever_Core.lua", "rb"))
 local source = f:read("*a"):gsub("\r\n", "\n"); f:close()
 local first = assert(source:find("local fitters", 1, true))
-local last = assert(source:find("-- Four 1px edges", first, true))
+local last = assert(source:find("function ns.Border(frame, color, alpha)", first, true))
 
 local factor = 768 / 1440          -- a 1440p screen
 local function Frame(scale, parent)

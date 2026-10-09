@@ -14,6 +14,14 @@ local function Read(path)
     return s
 end
 
+-- The plain values at the top of the XP Bar's file (numbers, texts, its spots), which the
+-- functions loaded below on their own read. The QoL constants it names come from QoL/Constants.lua.
+local function Consts(source)
+    local block = assert(source:match("\n(local MINUTE, HOUR, DAY.-)\n\n"))
+    return "local QOL_CONSTANTS = dofile(\"Tools/regression/qol_constants.lua\")\n"
+        .. (block:gsub("ns%.QoLConstants%.", "QOL_CONSTANTS.")) .. "\n"
+end
+
 -- Runs source with env as its globals and hands back what it returns.
 local function Load(source, env)
     local fn = assert(loadstring(source))
@@ -61,7 +69,8 @@ end
 -- One spot per text.
 do
     local source = Read("QoL/NaowhForever_XPBar.lua")
-    local chunk = assert(source:match("(local SAME_TEXT = .-\nlocal function OneEach%(spots%).-\nend)\n"))
+    local chunk = Consts(source)
+        .. assert(source:match("(local function TextOf%(which%).-\nlocal function OneEach%(spots%).-\nend)\n"))
     local spots = { { key = "a" }, { key = "b" }, { key = "c" } }
 
     local S = Settings({ a = "played", b = "xphour", c = "none" })
@@ -165,7 +174,7 @@ do
     check("and counts up", Played.Total() == 368560 and Played.Level() == 10)
 
     local source = Read("QoL/NaowhForever_XPBar.lua")
-    local chunk = assert(source:match("(local function Duration%(seconds%).-\nend)\n"))
+    local chunk = Consts(source) .. assert(source:match("(local function Duration%(seconds%).-\nend)\n"))
         .. "\n" .. assert(source:match("(local function SlotText%(which, maxed, max%).-\nend)\n"))
     local SlotText = Load(chunk .. "\nreturn SlotText", { Played = Played, sessionStart = 0,
         time = function() return 0 end, ns = { Color = function() return "" end } })
@@ -223,7 +232,8 @@ end
 -- The texts' font: the Addon Font outlined at 13 by default, then the picked font, size and outline.
 do
     local source = Read("QoL/NaowhForever_XPBar.lua")
-    local chunk = assert(source:match("(local TEXT_GAP = .-\nlocal function FitSlots%(slots, w, placeMid%).-\nend)\n"))
+    local chunk = Consts(source)
+        .. assert(source:match("(local function Natural%(fs%).-\nlocal function FitSlots%(slots, w, placeMid%).-\nend)\n"))
     local S = Settings({ xpBarFont = "", xpBarFontSize = 13, xpBarOutline = "OUTLINE" })
     local set = 0
     local Parts = { HudFont = function(fs, font, size, outline) fs.font = font .. " " .. size .. " " .. outline; set = set + 1 end }

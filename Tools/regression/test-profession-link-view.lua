@@ -11,12 +11,15 @@ local function Read(path)
     return s
 end
 
-local source = Read("NaowhForever_Professions/NaowhForever_Professions.lua")
-local first = assert(source:find("local casts = CreateFrame(\"Frame\")", 1, true))
-local hook = assert(source:find("hooksecurefunc(\"SetItemRef\"", first, true))
-local last = assert(source:find("\nend)\n", hook, true))
-local chunk = "local viewingLink, linkClicked, linkGUID\nlocal RETRY_AFTER = 0.5\nlocal retrying\n"
-    .. source:sub(first, last + 5)
+local source = Read("NaowhForever_Professions/LinkView.lua")
+-- Its numbers and state (viewingLink, the casts frame...), then everything from Settled() to the
+-- SetItemRef hook; On and Queue come from the stubs below.
+local top = assert(source:find("local SMELTING", 1, true))
+local helpers = assert(source:find("local function On()", top, true))
+local first = assert(source:find("local function Settled()", helpers, true))
+local hook = assert(source:find("hooksecurefunc(\"SetItemRef\", OnItemRef)\n", first, true))
+local last = hook + #"hooksecurefunc(\"SetItemRef\", OnItemRef)\n" - 1
+local chunk = source:sub(top, helpers - 1) .. source:sub(first, last)
     .. "return { Viewing = function() return viewingLink end, EndLinkView = EndLinkView }"
 
 local now, timers, shown, modifier, refHook = 100, {}, false, false, nil
@@ -48,6 +51,7 @@ local env = {
     IsControlKeyDown = function() return false end,
     UnitGUID = function() return "Player-1-5E1F" end,
     On = function() return true end,
+    P = {},
     Queue = function() end,
     ProfessionsFrame = { IsShown = function() return shown end },
     C_TradeSkillUI = { IsTradeSkillLinked = function() return shown end },

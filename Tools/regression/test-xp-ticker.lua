@@ -174,7 +174,7 @@ local function Boot(account, settings, who)
     core("NaowhForever")
     local ns = env.NaowhForever
     ns.ApplyThemeColors()
-    Load({ "Shared/Shared.lua", "Shared/Style.lua", "Shared/Parts.lua", "Shared/Window.lua", "Shared/Played.lua" }, env)
+    Load({ "Shared/Shared.lua", "Shared/Style.lua", "Shared/Parts.lua", "Shared/Marks.lua", "Shared/Text.lua", "Shared/Hud.lua", "Shared/Timer.lua", "Shared/Share.lua", "Shared/Panels.lua", "Shared/Window.lua", "Shared/Tabs.lua", "Shared/SettingsCard.lua", "Shared/Played.lua" }, env)
 
     local defaults = { enabled = true, xpTicker = true, xpTickerLevel = true, xpTickerElapsed = true,
         xpTickerHideResting = false, xpTickerFont = "", xpTickerFontSize = 24, xpTickerOutline = "",

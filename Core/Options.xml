@@ -1,0 +1,22 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/">
+    <!-- Options.xml: the widget kit, the HUD Editor (Unlock Mode), the options window and its pages, commands and launchers, the Game Menu button and the settings search. -->
+    <Script file="NaowhForever_Widgets.lua"/>
+    <Script file="NaowhForever_UnlockMode.lua"/>
+    <Script file="NaowhForever_UnlockGuides.lua"/>
+    <Script file="NaowhForever_UnlockHistory.lua"/>
+    <Script file="NaowhForever_UnlockSelection.lua"/>
+    <Script file="NaowhForever_UnlockTag.lua"/>
+    <Script file="NaowhForever_UnlockGroup.lua"/>
+    <Script file="NaowhForever_UnlockMovers.lua"/>
+    <Script file="NaowhForever_UnlockGrid.lua"/>
+    <Script file="NaowhForever_UnlockPanel.lua"/>
+    <Script file="NaowhForever_UnlockLayouts.lua"/>
+    <Script file="NaowhForever_UnlockToolbar.lua"/>
+    <Script file="NaowhForever_Modules.lua"/>
+    <Script file="NaowhForever_Window.lua"/>
+    <Script file="NaowhForever_SettingsPage.lua"/>
+    <Script file="NaowhForever_Commands.lua"/>
+    <Script file="NaowhForever_Launchers.lua"/>
+    <Script file="NaowhForever_GameMenu.lua"/>
+    <Script file="NaowhForever_Search.lua"/>
+</Ui>

@@ -1,15 +1,17 @@
--------------------------------------------------------------------------------
---  NaowhForever_StealthReminder.lua -- the QoL stealth, stance, aura and form reminders. Forever
---  does not expose your spec, so a druid or priest picks their form on the options page.
--------------------------------------------------------------------------------
+-- NaowhForever_StealthReminder.lua: the QoL stealth, stance, aura and form reminders.
 local ns = _G.NaowhForever
+
 local S = ns.QoLSettings
 local UI = ns.UI
 local Parts, St = ns.Shared.Parts, ns.Shared.Style
 
 local WIDTH = 300
+local FONT_SIZE = 22
+local HEIGHT_ROOM = 12
+local STEALTH_Y, FORM_Y = 150, 110
+local PAGE = "QoL/Combat"
+local CARD = "QoL/Combat:stealthReminder"
 
--- GetShapeshiftFormID values, the same ones the threat meter reads.
 local CAT, TRAVEL, AQUATIC, BEAR, DIRE_BEAR, FLIGHT, SHADOWFORM, SWIFT_FLIGHT, MOONKIN =
     1, 3, 4, 5, 8, 27, 28, 29, 31
 local DRUID_FORMS = {
@@ -20,12 +22,22 @@ local DRUID_FORMS = {
 local TRAVEL_FORMS = { [TRAVEL] = true, [AQUATIC] = true, [FLIGHT] = true, [SWIFT_FLIGHT] = true }
 local FORM_TEXT = { WARRIOR = "CHECK STANCE", PALADIN = "CHECK AURA", DRUID = "CHECK FORM",
     PRIEST = "SHADOWFORM" }
+local EVENTS = { "UPDATE_STEALTH", "UPDATE_SHAPESHIFT_FORM", "UPDATE_SHAPESHIFT_FORMS", "PLAYER_REGEN_DISABLED",
+    "PLAYER_REGEN_ENABLED", "PLAYER_MOUNT_DISPLAY_CHANGED", "PLAYER_UPDATE_RESTING", "GROUP_ROSTER_UPDATE",
+    "PLAYER_DEAD", "PLAYER_ALIVE", "PLAYER_UNGHOST", "PLAYER_CONTROL_LOST", "PLAYER_CONTROL_GAINED",
+    "PLAYER_ENTERING_WORLD" }
+local DRUID_STEALTH = { { cat = "In Cat Form", always = "In Any Form" }, { "cat", "always" } }
+
+local TEXT_FORM = "CHECK STANCE"
+local TEXT_STEALTH_MOVER = "Stealth Reminder"
+local TEXT_FORM_MOVER = "Form Reminder"
 
 local stealthFrame, formFrame, unlocked, inCombat, class
 local alarm, alarmTicker
+local events = CreateFrame("Frame")
 
 local function On(key)
-    if key == "formReminder" then return false end -- Retained for later review.
+    if key == "formReminder" then return false end
     return S.Get("enabled") and S.Get(key)
 end
 
@@ -38,21 +50,20 @@ local function Build(label, posKey, defaultY)
     local frame = CreateFrame("Frame", nil, UIParent)
     frame:SetMovable(true)
     frame:SetClampedToScreen(true)
-    frame.text = ns.Font(frame, 22, "OUTLINE")
+    frame.text = ns.Font(frame, FONT_SIZE, "OUTLINE")
     frame.text:SetPoint("CENTER")
     frame.backdrop = Parts.HudBackdrop(frame, { mode = "none" })
     frame.posKey, frame.defaultY = posKey, defaultY
-    frame.mover = UI.AttachMover(frame, label, function(pos) S.Set(posKey, pos) end, "QoL/Combat", "QoL/Combat:stealthReminder")
+    frame.mover = UI.AttachMover(frame, label, function(pos) S.Set(posKey, pos) end, PAGE, CARD)
     frame:Hide()
     return frame
 end
 
--- prefix is "stealth" or "form".
-local function Style(frame, prefix)
+local function Restyle(frame, prefix)
     local size = S.Get(prefix .. "FontSize")
     frame.mode = frame.backdrop:SetMode(S.Get(prefix .. "Background"))
     Parts.HudFont(frame.text, S.Get(prefix .. "Font"), size, S.Get(prefix .. "Outline"), frame.mode)
-    frame:SetSize(WIDTH, size + 12)
+    frame:SetSize(WIDTH, size + HEIGHT_ROOM)
     frame.mover:SetShown(unlocked == true)
     local pos = S.Get(frame.posKey)
     frame:ClearAllPoints()
@@ -66,7 +77,6 @@ end
 local function Paint(frame, text, c)
     frame.text:SetText(text)
     frame.text:SetTextColor(c.r, c.g, c.b, 1)
-    -- Fitted to the text only with a background, so elements anchored to it keep their spot.
     frame:SetWidth(frame.mode == "none" and WIDTH or frame.text:GetStringWidth() + 2 * St.CARD_PAD)
     frame:Show()
 end
@@ -77,7 +87,6 @@ local function Suppressed()
     return S.Get("reminderHideResting") and IsResting()
 end
 
--- "stealthed", "missing", or nil when neither applies. Hidden in combat either way.
 local function StealthState()
     if inCombat then return nil end
     local form = GetShapeshiftFormID()
@@ -109,7 +118,6 @@ local function PlayAlarm()
     UI._PlayLSMSound(UI.SoundPathFor(S.Get("formSoundKey")))
 end
 
--- Plays as the warning appears, then again every Repeat Every seconds while it stays up.
 local function SetAlarm(on)
     on = on and true or false
     if on == alarm then return end
@@ -124,39 +132,44 @@ local function SetAlarm(on)
     if every > 0 then alarmTicker = C_Timer.NewTicker(every, PlayAlarm) end
 end
 
-local function Update()
-    local suppressed = Suppressed()
-    if stealthFrame then
-        local state = On("stealthReminder") and (unlocked and "missing" or not suppressed and StealthState())
-        if state == "stealthed" and not S.Get("stealthShowStealthed") then state = nil end
-        if state == "stealthed" then
-            Paint(stealthFrame, S.Get("stealthText"), Color("stealthColor", "stealthClassColor"))
-        elseif state == "missing" then
-            Paint(stealthFrame, S.Get("warningText"), Color("warningColor", "warningClassColor"))
-        else
-            stealthFrame:Hide()
-        end
+local function UpdateStealth(suppressed)
+    local state = On("stealthReminder") and (unlocked and "missing" or not suppressed and StealthState())
+    if state == "stealthed" and not S.Get("stealthShowStealthed") then state = nil end
+    if state == "stealthed" then
+        Paint(stealthFrame, S.Get("stealthText"), Color("stealthColor", "stealthClassColor"))
+    elseif state == "missing" then
+        Paint(stealthFrame, S.Get("warningText"), Color("warningColor", "warningClassColor"))
+    else
+        stealthFrame:Hide()
     end
+end
+
+local function UpdateForm(suppressed)
     local warn = formFrame and On("formReminder") and (unlocked or not suppressed and FormMissing())
     if warn then
         local text = S.Get("formText")
-        Paint(formFrame, text ~= "" and text or FORM_TEXT[class] or "CHECK STANCE",
-            Color("formColor", "formClassColor"))
+        Paint(formFrame, text ~= "" and text or FORM_TEXT[class] or TEXT_FORM, Color("formColor", "formClassColor"))
     elseif formFrame then
         formFrame:Hide()
     end
+    return warn
+end
+
+local function Update()
+    local suppressed = Suppressed()
+    if stealthFrame then UpdateStealth(suppressed) end
+    local warn = UpdateForm(suppressed)
     SetAlarm(warn and not unlocked and S.Get("formSound"))
 end
 
-local events = CreateFrame("Frame")
-events:SetScript("OnEvent", function(_, event)
+local function OnEvent(_, event)
     if event == "PLAYER_REGEN_DISABLED" then
         inCombat = true
     elseif event == "PLAYER_REGEN_ENABLED" then
         inCombat = false
     end
     Update()
-end)
+end
 
 local function Apply()
     events:UnregisterAllEvents()
@@ -164,25 +177,21 @@ local function Apply()
     class = select(2, UnitClass("player"))
     local stealthOn, formOn = On("stealthReminder"), On("formReminder")
     if stealthOn and not stealthFrame then
-        stealthFrame = Build("Stealth Reminder", "stealthPos", 150)
+        stealthFrame = Build(TEXT_STEALTH_MOVER, "stealthPos", STEALTH_Y)
     end
     if formOn and not formFrame then
-        formFrame = Build("Form Reminder", "formPos", 110)
+        formFrame = Build(TEXT_FORM_MOVER, "formPos", FORM_Y)
     end
-    if stealthFrame then Style(stealthFrame, "stealth") end
-    if formFrame then Style(formFrame, "form") end
+    if stealthFrame then Restyle(stealthFrame, "stealth") end
+    if formFrame then Restyle(formFrame, "form") end
     if stealthOn or formOn then
         inCombat = UnitAffectingCombat("player")
-        for _, event in ipairs({ "UPDATE_STEALTH", "UPDATE_SHAPESHIFT_FORM", "UPDATE_SHAPESHIFT_FORMS",
-            "PLAYER_REGEN_DISABLED", "PLAYER_REGEN_ENABLED", "PLAYER_MOUNT_DISPLAY_CHANGED",
-            "PLAYER_UPDATE_RESTING", "GROUP_ROSTER_UPDATE", "PLAYER_DEAD", "PLAYER_ALIVE",
-            "PLAYER_UNGHOST", "PLAYER_CONTROL_LOST", "PLAYER_CONTROL_GAINED",
-            "PLAYER_ENTERING_WORLD" }) do
-            events:RegisterEvent(event)
-        end
+        for _, event in ipairs(EVENTS) do events:RegisterEvent(event) end
     end
     Update()
 end
+
+events:SetScript("OnEvent", OnEvent)
 
 hooksecurefunc(S, "Set", function(key)
     if key == "stealthPos" or key == "formPos" then return end
@@ -206,13 +215,12 @@ boot:RegisterEvent("PLAYER_LOGIN")
 boot:SetScript("OnEvent", Apply)
 
 local Group = ns.Shared.Settings.Group
-local DRUID_STEALTH = { { cat = "In Cat Form", always = "In Any Form" }, { "cat", "always" } }
 
 local function StealthedOn() return S.Get("stealthShowStealthed") end
 local function WarningOwnColour() return not S.Get("warningClassColor") end
 local function StealthedOwnColour() return S.Get("stealthShowStealthed") and not S.Get("stealthClassColor") end
 
-ns.Shared.Settings.Page("QoL/Combat", S):Card({
+ns.Shared.Settings.Page(PAGE, S):Card({
     id = "stealthReminder", name = "Stealth Reminder", order = 30, switch = "stealthReminder",
     help = "Out-of-combat stealth status for rogues and druids: a reminder while you are not in "
         .. "stealth. Move it in the HUD Editor.",

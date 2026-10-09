@@ -271,11 +271,14 @@ local env = setmetatable({
     end,
 }, { __index = _G })
 env._G = env
-local f = assert(io.open("Core/NaowhForever_UnlockMode.lua", "rb"))
-local source = f:read("*a"):gsub("\r\n", "\n"); f:close()
-local chunk = assert(loadstring(source, "Core/NaowhForever_UnlockMode.lua"))
-setfenv(chunk, env)
-chunk()
+-- The HUD Editor is several files (Core/Options.xml lists them in load order).
+for _, path in ipairs(dofile("Tools/regression/toc_files.lua")("^Core/NaowhForever_Unlock.-%.lua$")) do
+    local f = assert(io.open(path, "rb"))
+    local source = f:read("*a"):gsub("\r\n", "\n"); f:close()
+    local chunk = assert(loadstring(source, path))
+    setfenv(chunk, env)
+    chunk()
+end
 
 local function Display(label, w, h, x, y, ownAnchor)
     local frame = NewFrame("Frame", UIParent)

@@ -1,24 +1,35 @@
 <Ui xmlns="http://www.blizzard.com/wow/ui/">
-    <!-- What the modules share, in load order: the namespace, the house style, item and gear
-         helpers, /played time, the components of a page and of a window, then the engine that draws a page
-         in rows and its common rows. Each file uses only the ones above it. See README.md. -->
+    <!-- Shared.xml: what every module shares, in load order. -->
     <Script file="Shared.lua"/>
-    <Script file="Decode.lua"/>
+    <Script file="Style.lua"/>
     <Script file="Data\Forever.lua"/>
     <Script file="Data\ItemFacts.lua"/>
     <Script file="Data\FactionItems.lua"/>
-    <Script file="Style.lua"/>
+    <Script file="Decode.lua"/>
     <Script file="Items.lua"/>
+    <Script file="Gear.lua"/>
     <Script file="Bags.lua"/>
     <Script file="Roster.lua"/>
     <Script file="Places.lua"/>
     <Script file="Played.lua"/>
     <Script file="Parts.lua"/>
+    <Script file="Marks.lua"/>
+    <Script file="Text.lua"/>
+    <Script file="Hud.lua"/>
+    <Script file="Timer.lua"/>
+    <Script file="Share.lua"/>
+    <Script file="Panels.lua"/>
     <Script file="Window.lua"/>
+    <Script file="Tabs.lua"/>
+    <Script file="SettingsCard.lua"/>
     <Script file="Tracker.lua"/>
     <Script file="View.lua"/>
     <Script file="Kinds.lua"/>
     <Script file="Settings\Settings.lua"/>
+    <Script file="Settings\Style.lua"/>
+    <Script file="Settings\Controls.lua"/>
+    <Script file="Settings\Rows.lua"/>
     <Script file="Settings\Page.lua"/>
     <Script file="Settings\Studio.lua"/>
+    <Script file="Settings\EditZone.lua"/>
 </Ui>

@@ -1,12 +1,15 @@
--- Loads QoL's Food & Drink Bar and NaowhForever_Macros.lua against stubbed macro, bag and item
--- APIs and checks what they write. Run from the repo root: lua Tools/regression/test-macros.lua
+-- Loads QoL's Food & Drink Bar and the Macros module's rules (Macros.lua through Profile.lua)
+-- against stubbed macro, bag and item APIs and checks what they write. Run from the repo root:
+-- lua Tools/regression/test-macros.lua
 local function Read(path)
     local f = assert(io.open(path, "rb"))
     local text = f:read("*a"); f:close()
     return text
 end
 local foodSource = Read("QoL/NaowhForever_FoodBar.lua")
-local source = Read(arg[1] or "NaowhForever_Macros/NaowhForever_Macros.lua")
+local MACRO_FILES = { "Macros.lua", "Constants.lua", "Data/Items.lua", "Commands.lua", "Smart.lua", "Profile.lua" }
+local sources = { Read("Core/NaowhForever_Features.lua"), foodSource }
+for _, file in ipairs(MACRO_FILES) do sources[#sources + 1] = Read("NaowhForever_Macros/" .. file) end
 
 local FOOD, DRINK = "Food", "Drink"
 -- itemID -> { spell, required level }
@@ -154,7 +157,7 @@ local function Fixture(opts)
     env._G = { NaowhForever = ns, SLASH_SAY1 = "/say", SLASH_CAST1 = "/cast", SLASH_SCRIPT1 = "/run",
         SLASH_TARGET_MARKER1 = "/tm", EMOTE1_CMD1 = "/wave" }
     setmetatable(env, { __index = _G })
-    for _, text in ipairs({ foodSource, source }) do
+    for _, text in ipairs(sources) do
         local chunk
         if setfenv then
             chunk = assert(loadstring(text)); setfenv(chunk, env)

@@ -1,12 +1,25 @@
-local f = assert(io.open(arg[1] or "NaowhForever_SwingTimer/NaowhForever_SwingTimer.lua", "rb"))
-local source = f:read("*a"):gsub("\r\n", "\n"); f:close()
+-- The module's files in SwingTimer.xml's order, after the feature switches; a first argument names
+-- one older single-file copy to run instead.
+local FILES = arg[1] and { arg[1] } or dofile("Tools/regression/toc_files.lua")("^NaowhForever_SwingTimer/.*%.lua$")
+if not arg[1] then table.insert(FILES, 1, "Core/NaowhForever_Features.lua") end
+local sources = {}
+for i, path in ipairs(FILES) do
+    local f = assert(io.open(path, "rb"))
+    sources[i] = f:read("*a"):gsub("\r\n", "\n"); f:close()
+end
 
 local function Compile(env)
-    if setfenv then
-        local chunk = assert(loadstring(source)); setfenv(chunk, env)
-        return chunk
+    local chunks = {}
+    for i, source in ipairs(sources) do
+        if setfenv then
+            chunks[i] = assert(loadstring(source)); setfenv(chunks[i], env)
+        else
+            chunks[i] = assert(load(source, "=SwingTimer", "t", env))
+        end
     end
-    return assert(load(source, "=SwingTimer", "t", env))
+    return function()
+        for _, chunk in ipairs(chunks) do chunk() end
+    end
 end
 
 -- The real house colours, which some bar defaults come from.

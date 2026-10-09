@@ -1,8 +1,6 @@
--------------------------------------------------------------------------------
---  NaowhForever_EquipmentReminder.lua -- the QoL equipment reminder: your trinkets, weapons and
---  enchants in a window on entering an instance or on a ready check.
--------------------------------------------------------------------------------
+-- NaowhForever_EquipmentReminder.lua: Equipment Reminder, your trinkets, weapons and enchants in a window before the pull.
 local ns = _G.NaowhForever
+
 local S = ns.QoLSettings
 local T = ns.THEME
 
@@ -16,6 +14,35 @@ local ENCHANT_SLOTS = {
     [16] = "Main Hand", [17] = "Off Hand", [18] = "Ranged",
 }
 local SPACING = 6
+local ICON_CROP = ns.QoLConstants.ICON_CROP
+local BG_ALPHA = 0.95
+local TITLE_SIZE, TITLE_Y = 13, -8
+local CLOSE_SIZE, CLOSE_INSET = 18, 4
+local STATUS_W, STATUS_H, STATUS_Y, STATUS_SIZE = 200, 18, 6, 12
+local ICONS_Y = -30
+local MIN_WIDTH, SIDE_ROOM = 200, 20
+local ROOM_WITH_STATUS, ROOM_PLAIN = 66, 44
+local DEFAULT_Y = 100
+local INSTANCE_DELAY, READY_CHECK_DELAY = 1, 0.2
+local BLACK = { r = 0, g = 0, b = 0 }
+local ISSUE_RGB = { r = 1, g = 0.4, b = 0.4 }
+local WHITE_RGB = { r = 1, g = 1, b = 1 }
+local PROBLEM_RGB = { r = 1, g = 0.5, b = 0.3 }
+local LABEL_RGB = { r = 0.6, g = 0.6, b = 0.6 }
+local HAVE_RGB = { r = 1, g = 0.5, b = 0.5 }
+local EXPECTED_RGB = { r = 0.5, g = 0.8, b = 0.5 }
+local ENCHANTED = "Enchanted: (.+)"
+local TITLE = "Equipment Check"
+local CLOSE = "X"
+local SLOT_FALLBACK = "Slot "
+local EMPTY = " - Empty"
+local TEXT_ISSUES = "Enchant Issues"
+local TEXT_WRONG, TEXT_MISSING = "Wrong Enchant", "Missing"
+local TEXT_HAVE, TEXT_EXPECTED = "  Have:", "  Expected:"
+local TEXT_OK = "|cff4dd17aEnchants OK|r"
+local TEXT_COUNT = "|cffff6666%d Enchant Issue%s|r"
+local TEXT_CAPTURED = "Captured %d enchant%s from your gear. The enchant check expects these from now on."
+local PLURAL = "s"
 
 local frame, hideTimer
 local buttons = {}
@@ -24,18 +51,20 @@ local function On()
     return S.Get("enabled") and S.Get("equipReminder")
 end
 
+local function Plain(text)
+    return (text:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""):gsub("|A.-|a", ""))
+end
+
 local function EnchantName(slot)
     local data = C_TooltipInfo.GetInventoryItem("player", slot)
     for _, line in ipairs(data and data.lines or {}) do
         if line.type == Enum.TooltipDataLineType.ItemEnchantmentPermanent then
             local text = line.leftText
-            text = text:match("Enchanted: (.+)") or text
-            return (text:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""):gsub("|A.-|a", ""))
+            return Plain(text:match(ENCHANTED) or text)
         end
     end
 end
 
--- The enchants on your gear now become the ones expected from then on.
 function ns.CaptureEnchants()
     local rules, count = {}, 0
     for slot in pairs(ENCHANT_SLOTS) do
@@ -49,19 +78,33 @@ function ns.CaptureEnchants()
     return count
 end
 
+local function BySlot(a, b)
+    return a.slot < b.slot
+end
+
 local function EnchantIssues()
     local issues = {}
     for slot, expected in pairs(S.Get("equipEnchantRules")) do
         if GetInventoryItemID("player", slot) then
             local have = EnchantName(slot)
             if have ~= expected then
-                issues[#issues + 1] = { slot = ENCHANT_SLOTS[slot] or ("Slot " .. slot), have = have,
+                issues[#issues + 1] = { slot = ENCHANT_SLOTS[slot] or (SLOT_FALLBACK .. slot), have = have,
                     expected = expected }
             end
         end
     end
-    table.sort(issues, function(a, b) return a.slot < b.slot end)
+    table.sort(issues, BySlot)
     return issues
+end
+
+local function SlotEnter(self)
+    GameTooltip:SetOwner(self, "ANCHOR_BOTTOMRIGHT")
+    if GetInventoryItemID("player", self.slot.id) then
+        GameTooltip:SetInventoryItem("player", self.slot.id)
+    else
+        GameTooltip:SetText(self.slot.name .. EMPTY)
+    end
+    GameTooltip:Show()
 end
 
 local function SlotButton(slot)
@@ -69,19 +112,61 @@ local function SlotButton(slot)
     b.slot = slot
     b.icon = b:CreateTexture(nil, "ARTWORK")
     b.icon:SetAllPoints()
-    b.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+    b.icon:SetTexCoord(ICON_CROP, 1 - ICON_CROP, ICON_CROP, 1 - ICON_CROP)
     b.border = ns.Border(b)
-    b:SetScript("OnEnter", function(self)
-        GameTooltip:SetOwner(self, "ANCHOR_BOTTOMRIGHT")
-        if GetInventoryItemID("player", self.slot.id) then
-            GameTooltip:SetInventoryItem("player", self.slot.id)
-        else
-            GameTooltip:SetText(self.slot.name .. " - Empty")
-        end
-        GameTooltip:Show()
-    end)
+    b:SetScript("OnEnter", SlotEnter)
     b:SetScript("OnLeave", GameTooltip_Hide)
     return b
+end
+
+local function AddIssue(issue)
+    GameTooltip:AddDoubleLine(issue.slot .. ":", issue.have and TEXT_WRONG or TEXT_MISSING,
+        WHITE_RGB.r, WHITE_RGB.g, WHITE_RGB.b, PROBLEM_RGB.r, PROBLEM_RGB.g, PROBLEM_RGB.b)
+    if issue.have then
+        GameTooltip:AddDoubleLine(TEXT_HAVE, issue.have, LABEL_RGB.r, LABEL_RGB.g, LABEL_RGB.b,
+            HAVE_RGB.r, HAVE_RGB.g, HAVE_RGB.b)
+    end
+    GameTooltip:AddDoubleLine(TEXT_EXPECTED, issue.expected, LABEL_RGB.r, LABEL_RGB.g, LABEL_RGB.b,
+        EXPECTED_RGB.r, EXPECTED_RGB.g, EXPECTED_RGB.b)
+end
+
+local function StatusEnter(self)
+    if not self.issues or #self.issues == 0 then return end
+    GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
+    GameTooltip:AddLine(TEXT_ISSUES, ISSUE_RGB.r, ISSUE_RGB.g, ISSUE_RGB.b)
+    for _, issue in ipairs(self.issues) do AddIssue(issue) end
+    GameTooltip:Show()
+end
+
+local function SavePosition(self)
+    self:StopMovingOrSizing()
+    local point, _, relPoint, x, y = self:GetPoint()
+    S.Set("equipPos", { point = point, relPoint = relPoint, x = x, y = y })
+end
+
+local function CancelHide()
+    if hideTimer then hideTimer:Cancel(); hideTimer = nil end
+end
+
+local function Close()
+    frame:Hide()
+    CancelHide()
+end
+
+local function AutoHide()
+    hideTimer = nil
+    frame:Hide()
+end
+
+local function BuildStatus()
+    frame.status = CreateFrame("Frame", nil, frame)
+    frame.status:SetSize(STATUS_W, STATUS_H)
+    frame.status:SetPoint("BOTTOM", 0, STATUS_Y)
+    frame.status:EnableMouse(true)
+    frame.status.text = ns.Font(frame.status, STATUS_SIZE)
+    frame.status.text:SetPoint("CENTER")
+    frame.status:SetScript("OnEnter", StatusEnter)
+    frame.status:SetScript("OnLeave", GameTooltip_Hide)
 end
 
 local function Build()
@@ -93,78 +178,52 @@ local function Build()
     frame:EnableMouse(true)
     frame:RegisterForDrag("LeftButton")
     frame:SetScript("OnDragStart", frame.StartMoving)
-    frame:SetScript("OnDragStop", function(self)
-        self:StopMovingOrSizing()
-        local point, _, relPoint, x, y = self:GetPoint()
-        S.Set("equipPos", { point = point, relPoint = relPoint, x = x, y = y })
-    end)
-    ns.Solid(frame, "BACKGROUND", T.bg, 0.95):SetAllPoints()
+    frame:SetScript("OnDragStop", SavePosition)
+    ns.Solid(frame, "BACKGROUND", T.bg, BG_ALPHA):SetAllPoints()
     ns.Border(frame, T.accent)
-
-    local title = ns.Font(frame, 13, nil, T.accent)
-    title:SetPoint("TOP", 0, -8)
-    title:SetText("Equipment Check")
-
-    local close = ns.Button(frame, "X", 18, 18, function()
-        frame:Hide()
-        if hideTimer then hideTimer:Cancel(); hideTimer = nil end
-    end)
-    close:SetPoint("TOPRIGHT", -4, -4)
-
+    local title = ns.Font(frame, TITLE_SIZE, nil, T.accent)
+    title:SetPoint("TOP", 0, TITLE_Y)
+    title:SetText(TITLE)
+    local close = ns.Button(frame, CLOSE, CLOSE_SIZE, CLOSE_SIZE, Close)
+    close:SetPoint("TOPRIGHT", -CLOSE_INSET, -CLOSE_INSET)
     for i, slot in ipairs(SHOWN_SLOTS) do buttons[i] = SlotButton(slot) end
-
-    frame.status = CreateFrame("Frame", nil, frame)
-    frame.status:SetSize(200, 18)
-    frame.status:SetPoint("BOTTOM", 0, 6)
-    frame.status:EnableMouse(true)
-    frame.status.text = ns.Font(frame.status, 12)
-    frame.status.text:SetPoint("CENTER")
-    frame.status:SetScript("OnEnter", function(self)
-        if not self.issues or #self.issues == 0 then return end
-        GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
-        GameTooltip:AddLine("Enchant Issues", 1, 0.4, 0.4)
-        for _, issue in ipairs(self.issues) do
-            GameTooltip:AddDoubleLine(issue.slot .. ":", issue.have and "Wrong Enchant" or "Missing",
-                1, 1, 1, 1, 0.5, 0.3)
-            if issue.have then GameTooltip:AddDoubleLine("  Have:", issue.have, 0.6, 0.6, 0.6, 1, 0.5, 0.5) end
-            GameTooltip:AddDoubleLine("  Expected:", issue.expected, 0.6, 0.6, 0.6, 0.5, 0.8, 0.5)
-        end
-        GameTooltip:Show()
-    end)
-    frame.status:SetScript("OnLeave", GameTooltip_Hide)
+    BuildStatus()
     frame:Hide()
+end
+
+local function PaintSlot(b, i, size, width)
+    b:SetSize(size, size)
+    b:ClearAllPoints()
+    b:SetPoint("TOPLEFT", frame, "TOP", -width / 2 + (i - 1) * (size + SPACING), ICONS_Y)
+    local texture = GetInventoryItemTexture("player", b.slot.id)
+    b.icon:SetTexture(texture)
+    local quality = texture and GetInventoryItemQuality("player", b.slot.id)
+    if quality then
+        local r, g, bl = C_Item.GetItemQualityColor(quality)
+        b.border:SetColor(r, g, bl)
+    else
+        b.border:SetColor(BLACK.r, BLACK.g, BLACK.b)
+    end
+end
+
+local function PaintStatus()
+    local issues = EnchantIssues()
+    frame.status.issues = issues
+    if #issues == 0 then
+        frame.status.text:SetText(TEXT_OK)
+    else
+        frame.status.text:SetText(TEXT_COUNT:format(#issues, #issues > 1 and PLURAL or ""))
+    end
 end
 
 local function Refresh()
     local size = S.Get("equipIconSize")
     local width = #SHOWN_SLOTS * size + (#SHOWN_SLOTS - 1) * SPACING
-    for i, b in ipairs(buttons) do
-        b:SetSize(size, size)
-        b:ClearAllPoints()
-        b:SetPoint("TOPLEFT", frame, "TOP", -width / 2 + (i - 1) * (size + SPACING), -30)
-        local texture = GetInventoryItemTexture("player", b.slot.id)
-        b.icon:SetTexture(texture)
-        local quality = texture and GetInventoryItemQuality("player", b.slot.id)
-        if quality then
-            local r, g, bl = C_Item.GetItemQualityColor(quality)
-            b.border:SetColor(r, g, bl)
-        else
-            b.border:SetColor(0, 0, 0)
-        end
-    end
-
+    for i, b in ipairs(buttons) do PaintSlot(b, i, size, width) end
     local enchants = S.Get("equipEnchants")
     frame.status:SetShown(enchants)
-    if enchants then
-        local issues = EnchantIssues()
-        frame.status.issues = issues
-        if #issues == 0 then
-            frame.status.text:SetText("|cff4dd17aEnchants OK|r")
-        else
-            frame.status.text:SetText(("|cffff6666%d Enchant Issue%s|r"):format(#issues, #issues > 1 and "s" or ""))
-        end
-    end
-    frame:SetSize(math.max(200, width + 20), size + (enchants and 66 or 44))
+    if enchants then PaintStatus() end
+    frame:SetSize(math.max(MIN_WIDTH, width + SIDE_ROOM), size + (enchants and ROOM_WITH_STATUS or ROOM_PLAIN))
 end
 
 local function Place()
@@ -173,7 +232,7 @@ local function Place()
     if pos then
         frame:SetPoint(pos.point, UIParent, pos.relPoint, pos.x, pos.y)
     else
-        frame:SetPoint("CENTER", UIParent, "CENTER", 0, 100)
+        frame:SetPoint("CENTER", UIParent, "CENTER", 0, DEFAULT_Y)
     end
 end
 
@@ -183,33 +242,38 @@ function ns.ShowEquipmentReminder()
     Place()
     Refresh()
     frame:Show()
-    if hideTimer then hideTimer:Cancel(); hideTimer = nil end
+    CancelHide()
     local delay = S.Get("equipAutoHide")
-    if delay > 0 then
-        hideTimer = C_Timer.NewTimer(delay, function()
-            hideTimer = nil
-            frame:Hide()
-        end)
-    end
+    if delay > 0 then hideTimer = C_Timer.NewTimer(delay, AutoHide) end
+end
+
+local function ShowIfStillOn()
+    if On() and not InCombatLockdown() then ns.ShowEquipmentReminder() end
 end
 
 local function ShowSoon(delay)
-    C_Timer.After(delay, function()
-        if On() and not InCombatLockdown() then ns.ShowEquipmentReminder() end
-    end)
+    C_Timer.After(delay, ShowIfStillOn)
 end
 
-local events = CreateFrame("Frame")
-events:SetScript("OnEvent", function(_, event, arg)
+local function OnEnteringWorld()
+    local inInstance, kind = IsInInstance()
+    if inInstance and (kind == "party" or kind == "raid") and S.Get("equipOnInstance") then
+        ShowSoon(INSTANCE_DELAY)
+    end
+end
+
+local function OnEvent(_, event, arg)
     if event == "PLAYER_ENTERING_WORLD" then
-        local inInstance, kind = IsInInstance()
-        if inInstance and (kind == "party" or kind == "raid") and S.Get("equipOnInstance") then ShowSoon(1) end
+        OnEnteringWorld()
     elseif event == "READY_CHECK" then
-        if S.Get("equipOnReadyCheck") then ShowSoon(0.2) end
+        if S.Get("equipOnReadyCheck") then ShowSoon(READY_CHECK_DELAY) end
     elseif event == "UNIT_INVENTORY_CHANGED" and arg == "player" and frame and frame:IsShown() then
         Refresh()
     end
-end)
+end
+
+local events = CreateFrame("Frame")
+events:SetScript("OnEvent", OnEvent)
 
 local function Apply()
     events:UnregisterAllEvents()
@@ -223,9 +287,11 @@ local function Apply()
     if frame and frame:IsShown() then Refresh() end
 end
 
-hooksecurefunc(S, "Set", function(key)
+local function OnSettingChanged(key)
     if key == "enabled" or (key:find("^equip") and key ~= "equipPos") then Apply() end
-end)
+end
+
+hooksecurefunc(S, "Set", OnSettingChanged)
 hooksecurefunc(ns, "Apply", Apply)
 
 local boot = CreateFrame("Frame")
@@ -234,8 +300,7 @@ boot:SetScript("OnEvent", Apply)
 
 local function CaptureClicked()
     local count = ns.CaptureEnchants()
-    ns.Print(("Captured %d enchant%s from your gear. The enchant check expects these from now on.")
-        :format(count, count == 1 and "" or "s"))
+    ns.Print(TEXT_CAPTURED:format(count, count == 1 and "" or PLURAL))
 end
 
 local function ShowClicked()

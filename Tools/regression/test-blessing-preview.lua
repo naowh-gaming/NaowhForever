@@ -143,8 +143,9 @@ local function Load(path)
     setfenv(fn, env)
     fn("NaowhForever", ns)
 end
-Load("NaowhForever_Blessings/NaowhForever_Blessings.lua")
-Load("NaowhForever_Blessings/NaowhForever_BlessingsPage.lua")
+for _, path in ipairs(dofile("Tools/regression/toc_files.lua")("^NaowhForever_Blessings/.*%.lua$")) do
+    if not path:find("/UI/Window%.lua$") then Load(path) end
+end
 local B = ns.Blessings
 local studio = assert(cards.bar and cards.bar.studio, "the Blessing Bar card has a preview")
 

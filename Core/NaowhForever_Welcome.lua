@@ -1,16 +1,4 @@
--------------------------------------------------------------------------------
---  NaowhForever_Welcome.lua -- the welcome window: what Naowh Forever is, how to start, which
---  of Naowh's setups to start from (ns.PRESETS: Minimalist or Recommended), and our Discord.
---  Shown once per account, a few seconds into the first login (or the reload another addon's
---  setup asks for before it is seen) and out of combat; /nf welcome and QoL > System open it
---  again. Nothing is made until it shows. A preset picked on a new install (freshInstall,
---  marked when the settings are made) applies at once; otherwise, an account from before this
---  window included, it asks first, as on the Defaults card. Under
---  them, Tailor my setup asks a few questions instead (NaowhForever_SetupWindow.lua). Its
---  height follows its contents once the game has laid the text out, whatever the resolution.
---  Once it is seen, a character's first login, while another character is on a different profile,
---  offers that one's settings instead (ns.ImportCandidate).
--------------------------------------------------------------------------------
+-- NaowhForever_Welcome.lua: the welcome window, shown once per account.
 local ns = _G.NaowhForever
 local T = ns.THEME
 local Parts = ns.Shared.Parts
@@ -26,9 +14,12 @@ local BUTTON_H = 26
 local BUTTON_GAP = 8
 local DISCORD_W, SETTINGS_W, CLOSE_W = 120, 120, 90
 local PRESET_W, PRESET_GAP, PICK_GAP, PRESET_SPACE = 130, 6, 14, 14
-local OR_GAP = 12
+local OR_GAP, OR_PAD = 12, 6
+local ROUND = 0.5
+local BLACK = { r = 0, g = 0, b = 0 }
 local PICTURE_SHARE = 0.25
 local PICTURES = "Interface\\AddOns\\NaowhForever\\Media\\Welcome\\"
+local PICTURE_EXT = ".png"
 local OPAQUE = 1
 local SHOW_DELAY = 5
 local POSITION_KEY = "welcomeWindow"
@@ -43,6 +34,7 @@ local TAILOR_ABOUT = "Answer a few quick questions and we pick what to turn on."
 local IMPORT = "Welcome, %s! We found settings from %s. Use them on this character too?"
 local IMPORT_YES, IMPORT_NO = "Use Them", "Not Now"
 local IMPORT_DONE = "%s now uses the same settings as %s."
+local TEXT_JOIN_DISCORD, TEXT_OPEN_SETTINGS, TEXT_CLOSE = "Join Discord", "Open Settings", "Close"
 
 local window, timer, armed
 local login = CreateFrame("Frame")
@@ -101,12 +93,8 @@ local function Presets()
     return P
 end
 
-local function Build()
-    window = Parts.Window(WIDTH, HEADER, POSITION_KEY)
-    window.backdrop:Paint(OPAQUE)
-    Parts.TitleBar(window, TITLE, SUBTITLE)
-    window:HookScript("OnHide", Hidden)
-    local height, above = HEADER + INSET, nil
+local function AddLines(height)
+    local above
     window.lines = {}
     for i, text in ipairs(Lines()) do
         local line = ns.Font(window, BODY_SIZE, nil, T.fg)
@@ -123,71 +111,96 @@ local function Build()
         window.lines[i] = line
         above = line
     end
-    local P = Presets()
-    if P then
-        local head = ns.Font(window, BODY_SIZE, nil, T.accent)
-        head:SetPoint("TOPLEFT", above, "BOTTOMLEFT", 0, -PICK_GAP)
-        head:SetText(PICK)
-        height = height + PICK_GAP + math.ceil(head:GetStringHeight())
-        above = head
-        window.presets = {}
-        local width = WIDTH - INSET * 2
-        local tall = math.floor(width * PICTURE_SHARE + 0.5)
-        for i, key in ipairs(P.order) do
-            local gap = i == 1 and LINE_GAP or PRESET_SPACE
-            local holder = CreateFrame("Frame", nil, window)
-            holder:SetSize(width, tall)
-            holder:SetPoint("TOPLEFT", above, "BOTTOMLEFT", 0, -gap)
-            local picture = holder:CreateTexture(nil, "ARTWORK")
-            picture:SetAllPoints()
-            picture:SetTexture(PICTURES .. key .. ".png")
-            ns.Border(holder, { r = 0, g = 0, b = 0 })
-            local button = ns.Button(window, P[key].name, PRESET_W, BUTTON_H, function() Pick(key) end)
-            ns.Tooltip(button, P[key].name, function() return ns.PresetChanges and ns.PresetChanges(key) end)
-            button:SetPoint("TOPLEFT", holder, "BOTTOMLEFT", 0, -PRESET_GAP)
-            local about = ns.Font(window, BODY_SIZE, nil, T.muted)
-            about:SetPoint("LEFT", button, "RIGHT", BUTTON_GAP, 0)
-            about:SetPoint("RIGHT", window, "RIGHT", -INSET, 0)
-            about:SetJustifyH("LEFT")
-            about:SetText(P[key].about)
-            height = height + gap + tall + PRESET_GAP + BUTTON_H
-            window.presets[i] = button
-            above = button
-        end
-        if ns.ShowSetup then
-            local rule = ns.Solid(window, "ARTWORK", T.line, 1)
-            rule:SetPoint("TOPLEFT", above, "BOTTOMLEFT", 0, -OR_GAP)
-            rule:SetPoint("RIGHT", window, "RIGHT", -INSET, 0)
-            ns.Hairline(rule, "h")
-            local word = ns.Font(window, BODY_SIZE, nil, T.muted)
-            word:SetPoint("CENTER", rule, "CENTER")
-            word:SetText(OR)
-            local behind = ns.Solid(window, "OVERLAY", T.bg, 1)
-            behind:SetPoint("TOPLEFT", word, "TOPLEFT", -6, 0)
-            behind:SetPoint("BOTTOMRIGHT", word, "BOTTOMRIGHT", 6, 0)
-            behind:SetDrawLayer("ARTWORK", 1)
-            local button = ns.AccentBorder(ns.Button(window, TAILOR, PRESET_W, BUTTON_H, Tailor))
-            button:SetPoint("TOPLEFT", above, "BOTTOMLEFT", 0, -OR_GAP * 2)
-            local about = ns.Font(window, BODY_SIZE, nil, T.muted)
-            about:SetPoint("LEFT", button, "RIGHT", BUTTON_GAP, 0)
-            about:SetPoint("RIGHT", window, "RIGHT", -INSET, 0)
-            about:SetJustifyH("LEFT")
-            about:SetText(TAILOR_ABOUT)
-            height = height + OR_GAP * 2 + BUTTON_H
-            window.tailor = button
-            above = button
-        end
+    return height, above
+end
+
+local function AddAbout(button, text)
+    local about = ns.Font(window, BODY_SIZE, nil, T.muted)
+    about:SetPoint("LEFT", button, "RIGHT", BUTTON_GAP, 0)
+    about:SetPoint("RIGHT", window, "RIGHT", -INSET, 0)
+    about:SetJustifyH("LEFT")
+    about:SetText(text)
+    return about
+end
+
+local function AddPreset(P, key, above, gap, width, tall)
+    local holder = CreateFrame("Frame", nil, window)
+    holder:SetSize(width, tall)
+    holder:SetPoint("TOPLEFT", above, "BOTTOMLEFT", 0, -gap)
+    local picture = holder:CreateTexture(nil, "ARTWORK")
+    picture:SetAllPoints()
+    picture:SetTexture(PICTURES .. key .. PICTURE_EXT)
+    ns.Border(holder, BLACK)
+    local button = ns.Button(window, P[key].name, PRESET_W, BUTTON_H, function() Pick(key) end)
+    ns.Tooltip(button, P[key].name, function() return ns.PresetChanges and ns.PresetChanges(key) end)
+    button:SetPoint("TOPLEFT", holder, "BOTTOMLEFT", 0, -PRESET_GAP)
+    AddAbout(button, P[key].about)
+    return button
+end
+
+local function AddTailor(above)
+    local rule = ns.Solid(window, "ARTWORK", T.line, 1)
+    rule:SetPoint("TOPLEFT", above, "BOTTOMLEFT", 0, -OR_GAP)
+    rule:SetPoint("RIGHT", window, "RIGHT", -INSET, 0)
+    ns.Hairline(rule, "h")
+    local word = ns.Font(window, BODY_SIZE, nil, T.muted)
+    word:SetPoint("CENTER", rule, "CENTER")
+    word:SetText(OR)
+    local behind = ns.Solid(window, "OVERLAY", T.bg, 1)
+    behind:SetPoint("TOPLEFT", word, "TOPLEFT", -OR_PAD, 0)
+    behind:SetPoint("BOTTOMRIGHT", word, "BOTTOMRIGHT", OR_PAD, 0)
+    behind:SetDrawLayer("ARTWORK", 1)
+    local button = ns.AccentBorder(ns.Button(window, TAILOR, PRESET_W, BUTTON_H, Tailor))
+    button:SetPoint("TOPLEFT", above, "BOTTOMLEFT", 0, -OR_GAP * 2)
+    AddAbout(button, TAILOR_ABOUT)
+    window.tailor = button
+    return button
+end
+
+local function AddPresets(P, height, above)
+    local head = ns.Font(window, BODY_SIZE, nil, T.accent)
+    head:SetPoint("TOPLEFT", above, "BOTTOMLEFT", 0, -PICK_GAP)
+    head:SetText(PICK)
+    height = height + PICK_GAP + math.ceil(head:GetStringHeight())
+    above = head
+    window.presets = {}
+    local width = WIDTH - INSET * 2
+    local tall = math.floor(width * PICTURE_SHARE + ROUND)
+    for i, key in ipairs(P.order) do
+        local gap = i == 1 and LINE_GAP or PRESET_SPACE
+        above = AddPreset(P, key, above, gap, width, tall)
+        height = height + gap + tall + PRESET_GAP + BUTTON_H
+        window.presets[i] = above
     end
+    if ns.ShowSetup then
+        above = AddTailor(above)
+        height = height + OR_GAP * 2 + BUTTON_H
+    end
+    return height, above
+end
+
+local function AddFooter(above)
     window.content = CreateFrame("Frame", nil, window)
     window.content:SetPoint("TOPLEFT")
     window.content:SetPoint("BOTTOMRIGHT", above, "BOTTOMRIGHT")
     window.content:SetScript("OnSizeChanged", Fit)
-    window.discord = ns.AccentBorder(ns.Button(window, "Join Discord", DISCORD_W, BUTTON_H, JoinDiscord))
+    window.discord = ns.AccentBorder(ns.Button(window, TEXT_JOIN_DISCORD, DISCORD_W, BUTTON_H, JoinDiscord))
     window.discord:SetPoint("BOTTOMLEFT", EDGE, EDGE)
-    window.settings = ns.Button(window, "Open Settings", SETTINGS_W, BUTTON_H, OpenSettings)
+    window.settings = ns.Button(window, TEXT_OPEN_SETTINGS, SETTINGS_W, BUTTON_H, OpenSettings)
     window.settings:SetPoint("LEFT", window.discord, "RIGHT", BUTTON_GAP, 0)
-    window.close = ns.Button(window, "Close", CLOSE_W, BUTTON_H, Close)
+    window.close = ns.Button(window, TEXT_CLOSE, CLOSE_W, BUTTON_H, Close)
     window.close:SetPoint("BOTTOMRIGHT", -EDGE, EDGE)
+end
+
+local function Build()
+    window = Parts.Window(WIDTH, HEADER, POSITION_KEY)
+    window.backdrop:Paint(OPAQUE)
+    Parts.TitleBar(window, TITLE, SUBTITLE)
+    window:HookScript("OnHide", Hidden)
+    local height, above = AddLines(HEADER + INSET)
+    local P = Presets()
+    if P then height, above = AddPresets(P, height, above) end
+    AddFooter(above)
     window:SetHeight(height + INSET + BUTTON_H + EDGE)
 end
 
@@ -234,24 +247,34 @@ local function Due()
     ns.ShowWelcome()
 end
 
-login:SetScript("OnEvent", function(self, event, isInitialLogin, isReloadingUi)
+local function OnEnteringWorld(self, isInitialLogin, isReloadingUi)
+    if isInitialLogin or isReloadingUi then ns.MarkSeen() end
+    if not (armed or isInitialLogin or isReloadingUi) or not Wanted() then
+        return Stop()
+    end
+    armed = true
+    if timer then timer:Cancel() end
+    timer = C_Timer.NewTimer(SHOW_DELAY, Due)
+    self:RegisterEvent("PLAYER_LEAVING_WORLD")
+end
+
+local function OnLeavingWorld(self)
+    if timer then timer:Cancel() end
+    timer = nil
+    self:UnregisterEvent("PLAYER_REGEN_ENABLED")
+end
+
+local function OnLoginEvent(self, event, isInitialLogin, isReloadingUi)
     if event == "PLAYER_ENTERING_WORLD" then
-        if isInitialLogin or isReloadingUi then ns.MarkSeen() end
-        if not (armed or isInitialLogin or isReloadingUi) or not Wanted() then
-            return Stop()
-        end
-        armed = true
-        if timer then timer:Cancel() end
-        timer = C_Timer.NewTimer(SHOW_DELAY, Due)
-        self:RegisterEvent("PLAYER_LEAVING_WORLD")
+        OnEnteringWorld(self, isInitialLogin, isReloadingUi)
     elseif event == "PLAYER_LEAVING_WORLD" then
-        if timer then timer:Cancel() end
-        timer = nil
-        self:UnregisterEvent("PLAYER_REGEN_ENABLED")
+        OnLeavingWorld(self)
     elseif event == "PLAYER_REGEN_ENABLED" then
         Due()
     end
-end)
+end
+
+login:SetScript("OnEvent", OnLoginEvent)
 login:RegisterEvent("PLAYER_ENTERING_WORLD")
 
 local Settings = ns.Shared.Settings

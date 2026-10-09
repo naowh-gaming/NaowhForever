@@ -33,7 +33,8 @@ local function Frame()
     function f:AddDoubleLine(...) self.lines[#self.lines+1]={...} end
     frames[#frames+1]=f;return f
 end
-local ns={THEME={accent={r=0,g=.7,b=1},muted={r=.5,g=.6,b=.7},bg={}},UI={},Print=noop,Apply=noop}
+local ns={THEME={accent={r=0,g=.7,b=1},muted={r=.5,g=.6,b=.7},bg={}},UI={},Print=noop,Apply=noop,
+ QoLConstants=dofile('Tools/regression/qol_constants.lua')}
 ns.QoLSettings={Get=function(k) return settings[k] end,Set=function(k,v) settings[k]=v end}
 ns.MakeModal=function() lastDimmer,lastPanel=Frame(),Frame();return lastDimmer,lastPanel end
 ns.Solid=function() return Frame() end;ns.Border=noop
@@ -61,10 +62,11 @@ setmetatable(env,{__index=function(_,key)
 end})
 setmetatable(env._G,{__index=env})
 -- The copy box is the Core's (ns.ShowCopyBox): load that function alone from it.
-local core=assert(io.open('Core/NaowhForever_Core.lua','rb')):read('*a')
-local first=assert(core:find('function ns.ShowCopyBox',1,true))
-local last=assert(core:find('-- Confirm for a reload',first,true))
-local copy=assert(loadstring(core:sub(first,last-1)));setfenv(copy,setmetatable({ns=ns},{__index=env}));copy()
+local core=assert(io.open('Core/NaowhForever_Core.lua','rb')):read('*a'):gsub('\r\n','\n')
+local constants=assert(core:match('\n(local MODULE_KEY = .-\n)\nlocal ns = {}\n'),'Core constants')
+local first=assert(core:find('local function NewCopyScroll',1,true))
+local last=assert(core:find('local function ConfirmHead',first,true))
+local copy=assert(loadstring(constants..core:sub(first,last-1)));setfenv(copy,setmetatable({ns=ns},{__index=env}));copy()
 local chunk=assert(loadfile('QoL/NaowhForever_GlobalCopy.lua'));setfenv(chunk,env);chunk()
 for name,tip in pairs({GameTooltip=tooltip,ItemRefTooltip=env.ItemRefTooltip,ShoppingTooltip1=env.ShoppingTooltip1,
  ShoppingTooltip2=env.ShoppingTooltip2}) do tip.name=name end

@@ -69,17 +69,21 @@ comment, sent back for changes, or merged and fixed up by me.
   Keep your editor on CRLF, and never `sed -i` from Git Bash, which strips them.
 - **Match the surrounding code.** Before building an options row, slider or popup, find
   the nearest existing example in the same module and copy its shape.
-- Each module has its own folder with `NaowhForever_<Name>.lua` files. Add new files to
-  the TOC that loads that module (`NaowhForever.toc` for the core, or the module addon's
-  own `NaowhForever_<Module>.toc`) next to the rest of its files.
-- A module with many files loads them through its own XML file, which the TOC lists once,
-  and names its files plainly inside its folder. The Dungeon Journal is the example:
-  `NaowhForever_DungeonJournal/DungeonJournal.xml`, with its layout in `NaowhForever_DungeonJournal/README.md`. Add a
-  new file to that XML. The checks read the XML too, so its files are linted and compiled.
+- **Follow the house style in [STYLE.md](STYLE.md):** where files go, the order inside a
+  file, naming, constants, the feature switches and the shared components.
+- Each module has its own folder and loads its files through its own XML file, which its
+  TOC lists once, and names its files plainly inside its folder. The Dungeon Journal is the
+  example: `NaowhForever_DungeonJournal/DungeonJournal.xml`, with its layout in
+  `NaowhForever_DungeonJournal/README.md`. The core areas (Core, QoL, TopBar, Badges,
+  RXPThemes) load through their own XML files too. Add a new file to its area's XML, never
+  to `NaowhForever.toc`. The checks read the XML too, so its files are linted and compiled.
+- A feature's on/off switch and its default live in `Core/NaowhForever_Features.lua`
+  (`ns.FEATURES`), and the module's settings read it from there.
 - Settings go through `UI.ModuleSettings`, option widgets through the `ns.UI` kit in
   `Core/NaowhForever_Widgets.lua`, confirmations through `ns.Confirm` / `ns.PromptText`,
   and movable frames through `UI.AttachMover` so they show up in Unlock Mode.
-- Keep comments short and only where the code cannot speak for itself.
+- One comment per file: its first line, `-- <File>.lua: <what it is>.` Anything a reader
+  needs that the code cannot say goes in the module's `README.md`, under Why.
 
 ### Shared components
 
@@ -97,8 +101,8 @@ comment, sent back for changes, or merged and fixed up by me.
 
 ### Style
 
-- Every colour, size and gap is a named value, with a comment when the name alone does not
-  say what it is for: in the module's style file when more than one file uses it (the
+- Every colour, size and gap is a named value, with its reason in the README's Why when the
+  name alone does not say what it is for: in the module's style file when more than one file uses it (the
   Dungeon Journal's `View/Style.lua`), else at the top of the file that does. No bare
   numbers in drawing code.
 - Edges are 1px black: buttons and input boxes have it by default, and a window's own
@@ -107,7 +111,7 @@ comment, sent back for changes, or merged and fixed up by me.
 - Text goes through `ns.Font`, in the Naowh font. That font leaves room above its
   capitals, so its letters sit under the middle of their font string: an icon beside text
   is moved down to the letters by a named offset with its reason (the Dungeon Journal's
-  `PIN_DROP`, the Discovery tracker's `NUDGE`), never an unnamed number. Measure it in game
+  `PIN_DROP`, the chat badge's `BADGE_DROP`), never an unnamed number. Measure it in game
   rather than guessing.
 
 ### Help text

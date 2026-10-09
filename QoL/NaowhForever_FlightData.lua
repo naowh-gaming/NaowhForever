@@ -1,5 +1,4 @@
--- Flown length of each Forever flight route in yards, keyed fromNodeID * 10000 + toNodeID.
--- Generated from the TaxiPath data of WoW Forever build 1.60.1.69913.
+-- NaowhForever_FlightData.lua: each Forever flight route's flown length in yards, keyed fromNode * 10000 + toNode.
 local ns = _G.NaowhForever
 ns.FLIGHT_ROUTES = {
     [20004] = 2347,

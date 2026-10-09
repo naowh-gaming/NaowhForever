@@ -1,7 +1,7 @@
+-- deDE.lua: the German strings.
 local L = _G.NaowhForeverLocale
 if not L then return end
 
--- Copy this file for a new locale, then replace only the values on the right.
 L["Smart Reminders"] = "Smarte Erinnerungen"
 L["Custom Notes"] = "Eigene Notizen"
 L["Profiles"] = "Profile"

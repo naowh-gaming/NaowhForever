@@ -29,13 +29,15 @@ local function Same(a, b)
     return true
 end
 
-local window = Read("Core/NaowhForever_Window.lua")
+local window = Read("Core/NaowhForever_Modules.lua")
 local function Slice(source, a, b)
     local first = assert(source:find(a, 1, true), a)
     return source:sub(first, assert(source:find(b, first + #a, true), b) - 1)
 end
 local MODULE_LIST = Slice(window, "local MODULES = {", "\n}\n") .. "\n}\n"
-local MODULE_CODE = MODULE_LIST .. Slice(window, "local function DisplayName(mod)", "local function SetModuleOn(mod, on)")
+local MODULE_NAMES = assert(window:match("\n(local RETIRED_ADDON = .-\n)\nlocal SYSTEM_PAGES"), "Modules named values")
+local MODULE_CODE = MODULE_NAMES .. MODULE_LIST
+    .. Slice(window, "local function DisplayName(mod)", "local function SetModuleOn(mod, on)")
 
 local MODULES = assert(loadstring(MODULE_LIST .. "\nreturn MODULES"))()
 local OWNED = {}

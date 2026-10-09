@@ -17,6 +17,7 @@ local settings = { enabled = true, mapSkyborne = true, mapSkyborneSize = 20 }
 local S = { Get = function(key) return settings[key] end, Set = function() end }
 local account, printed, card = {}, {}, nil
 local ns = {
+    QoLConstants = dofile("Tools/regression/qol_constants.lua"),
     QoLSettings = S,
     Apply = function() end,
     AccountSettings = function() return account end,
@@ -122,7 +123,8 @@ end
 Check(#ns.SkyborneSpots.leyline == 36 and #ns.SkyborneSpots.convergence == 30, "36 ley lines, 30 convergences")
 Check(Read("QoL/NaowhForever_SkyborneData.lua"):find("Copyright (c) 2026 tr0tsky", 1, true), "with tr0tsky's notice")
 
-Check(Read("QoL/NaowhForever_QoL.lua"):find("mapSkyborne = false", 1, true), "Skyborne Spots starts off")
+Check(Read("QoL/NaowhForever_QoL.lua"):find("mapSkyborne = F.mapSkyborne,", 1, true)
+    and Read("Core/NaowhForever_Features.lua"):find("mapSkyborne = false,", 1, true), "Skyborne Spots starts off")
 Check(card and card.switch == "mapSkyborne", "the card switches the setting")
 
 local function CastAt(spellID, buffID, duration)

@@ -1,14 +1,6 @@
--------------------------------------------------------------------------------
---  NaowhForever_TownData.lua -- town service NPC positions by world map, from Classic Era data;
---  NPCs Forever added sit last in each map's list. Forever redrew Stormwind, Mulgore, Redridge
---  and the Eastern Plaguelands, so Classic positions there go through world coordinates.
---
---  [uiMapID] = { { x, y, category, name, title, class token (class trainers),
---  factions ("A", "H" or "AH"), optional NPC ID }, ... }. x and y are map percentages.
--------------------------------------------------------------------------------
+-- NaowhForever_TownData.lua: town service NPCs by world map: { x, y, category, name, title, class, factions, npcID }.
 local ns = _G.NaowhForever
 
--- The capital cities' maps. The game reports them as zones, so this is the only way to tell.
 ns.TownCapitals = { [1453] = true, [1454] = true, [1455] = true, [1456] = true, [1457] = true, [1458] = true,
     [2482] = true, [2521] = true }
 
@@ -1518,7 +1510,6 @@ ns.TownNPCs = {
     [2482] = {
         { 70.8, 50.8, "ammo", "Lenedil Moonwing", "General Goods", nil, "AH" },
     },
-    -- Zephras Isle: September 2026 town audit; service titles/IDs matched to Forever data.
     [2521] = {
         { 44.9, 44.3, "profession", "Aedi Thriceforged", "Blacksmith", nil, "AH", 251913 },
         { 43.7, 24.3, "class", "Akeri Duskblade", "Rogue Trainer", "ROGUE", "AH", 251389 },

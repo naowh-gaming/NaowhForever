@@ -1,7 +1,7 @@
 -- The spec grid both pack dialogs draw: what order the rows come out in, what each one
 -- says and what colour it wears. Import and Merge share one copy of this, so anything
 -- here is a claim about both windows.
-local f = assert(io.open(arg[1] or "Core/NaowhForever_Packs.lua", "rb"))
+local f = assert(io.open(arg[1] or "Core/NaowhForever_PackDialogs.lua", "rb"))
 local source = f:read("*a"):gsub("\r\n", "\n"); f:close()
 local function Slice(a, b)
     local first = assert(source:find(a, 1, true), a)
@@ -45,7 +45,8 @@ local function Fixture()
     }
     setmetatable(env, { __index = _G })
     local chunk = assert(loadstring("local ns = ...\n"
-        .. Slice("local ROLE_LABEL =", "local packExport, packImport")
+        .. assert(source:match("\n(local PAD = .-\n)\nlocal classLookup\n"), "PackDialogs constants")
+        .. Slice("local function SpecInfo(", "function ns.MakeMultilineBox(")
         .. "\nreturn SortSpecs, PaintSpecLabel"))
     setfenv(chunk, env)
     return chunk({ THEME = { fg = THEME_FG } })

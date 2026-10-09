@@ -1,0 +1,9 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/">
+    <!-- Packs.xml: Reminder Packs, their signature check, their dialogs, the profile strings and the Profiles page. -->
+    <Script file="NaowhForever_Verify.lua"/>
+    <Script file="NaowhForever_Packs.lua"/>
+    <Script file="NaowhForever_PackDialogs.lua"/>
+    <Script file="NaowhForever_ProfileShare.lua"/>
+    <Script file="NaowhForever_ProfileDialogs.lua"/>
+    <Script file="NaowhForever_ProfilesPage.lua"/>
+</Ui>

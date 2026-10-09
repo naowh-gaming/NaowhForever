@@ -347,8 +347,8 @@ files[#files + 1] = "NaowhForever_BiS/BiS/Enchants.lua"
 for _, path in ipairs(TocFiles("^NaowhForever_BiS/CharacterPanel/.*%.lua$")) do files[#files + 1] = path end
 local panelFiles = TocFiles("^NaowhForever_BiS/InspectPanel/.*%.lua$")
 check("the TOC loads the inspect panel's files, its settings last",
-    panelFiles[#panelFiles] == "NaowhForever_BiS/InspectPanel/SettingsPage.lua"
-    and panelFiles[1] == "NaowhForever_BiS/InspectPanel/Panel.lua")
+    panelFiles[#panelFiles] == "NaowhForever_BiS/InspectPanel/UI/SettingsPage.lua"
+    and panelFiles[1] == "NaowhForever_BiS/InspectPanel/InspectPanel.lua")
 for _, path in ipairs(panelFiles) do files[#files + 1] = path end
 Load(files, env)
 local IP = ns.InspectPanel
@@ -851,7 +851,7 @@ local function Card(flag)
             return { Card = function(_, def) cards[def.id] = def end }
         end } },
     }
-    Load({ "NaowhForever_BiS/InspectPanel/SettingsPage.lua" }, setmetatable({ _G = { NaowhForever = flagNs } },
+    Load({ "NaowhForever_BiS/InspectPanel/UI/SettingsPage.lua" }, setmetatable({ _G = { NaowhForever = flagNs } },
         { __index = _G }))
     return cards.inspectPanel, store
 end

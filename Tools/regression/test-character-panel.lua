@@ -57,6 +57,7 @@ local METHODS = {
     GetText = function(f) return rawget(f, "text") end,
     GetWidth = function(f) return rawget(f, "w") or 300 end,
     GetHeight = function(f) return rawget(f, "h") or 37 end,
+    GetBottom = function(f) return rawget(f, "bottom") end,
     SetPoint = function(f, point, relative) f.points = f.points or {}; f.points[point] = relative end,
     ClearAllPoints = function(f) f.points = {} end,
     GetEffectiveScale = function() return 1 end,
@@ -112,7 +113,9 @@ statsList.SetPoint = function(self, point, relative, _, _, y)
     if point == "TOPLEFT" then self.drop = -(y or 0) end
     if point == "BOTTOMRIGHT" then self.lift = y or 0 end
 end
+local stoneArt = Frame(character)
 local paperDoll = Frame(character)
+paperDoll.TopBackgroundStripHost = false
 local gearSets, titles = Frame(paperDoll), Frame(paperDoll)
 gearSets.shown, titles.shown = false, false
 
@@ -285,7 +288,8 @@ local env = setmetatable({
     CharacterFrameTitleText = title,
     CharacterLevelText = levelText,
     CharacterStatsPaneScrollBox = statsList,
-    CharacterFrameRightPaneHostStoneBg = "stoneArt",
+    CharacterFrameRightPaneHostStoneBg = stoneArt,
+    PaperDollFrame = paperDoll,
     UnitArmor = function()
         if state.statsSecret then return { value = 250 }, { value = 250 } end
         return 250, 250
@@ -325,7 +329,7 @@ env.wipe = function(t) for k in pairs(t) do t[k] = nil end return t end
 
 local files = TocFiles("^Shared/.*%.lua$")
 for _, path in ipairs(TocFiles("^NaowhForever_BiS/CharacterPanel/.*%.lua$")) do files[#files + 1] = path end
-check("the TOC loads the module's files", files[#files] == "NaowhForever_BiS/CharacterPanel/SettingsPage.lua")
+check("the TOC loads the module's files", files[#files] == "NaowhForever_BiS/CharacterPanel/UI/SettingsPage.lua")
 Load(files, env)
 local CP = ns.CharacterPanel
 ns.Shared.ForeverNew.items[101] = true   -- the head's item is new in Forever
@@ -437,12 +441,14 @@ check("no badge: nothing in the corner, nothing made", CP.supportBadge == nil)
 state.badges = { ["Player-1-ME"] = { tier = "developer", title = "Lead Developer" } }
 S.Set("characterPanelBadge", true)
 local support = CP.supportBadge
-check("your supporter badge in the left pane's corner", support and support.parent == character.LeftPaneHost
-    and support.shown ~= false)
+check("your supporter badge on the Character tab only, not Reputation or the others",
+    support and support.parent == paperDoll and support.shown ~= false)
 support.scripts.OnShow(support)
 check("yours: in its colour, with your own title", support.title.text == "Lead Developer"
     and support.line.text == "Naowh Forever Team" and support.emblem.desaturated ~= true)
 check("a click on it opens nothing", support.scripts.OnClick == nil and opened == 0)
+check("on the panel, the emblem alone: its title and line wait for the hover card", support.compact == true
+    and support.title.shown == false and support.line.shown == false)
 S.Set("characterPanelBadge", false)
 check("Supporter Badge off: no badge", support.shown == false)
 S.Set("characterPanelBadge", true)
@@ -467,7 +473,7 @@ state.badges = nil
 character.LeftPaneHost.hooks.OnShow(character.LeftPaneHost)
 
 -- No preview setting, grey badge or pitch is left in the panel's files.
-for _, path in ipairs({ "NaowhForever_BiS/CharacterPanel/Badge.lua", "NaowhForever_BiS/CharacterPanel/SettingsPage.lua", "QoL/NaowhForever_QoL.lua" }) do
+for _, path in ipairs({ "NaowhForever_BiS/CharacterPanel/Badge.lua", "NaowhForever_BiS/CharacterPanel/UI/SettingsPage.lua", "QoL/NaowhForever_QoL.lua" }) do
     local f = assert(io.open(path, "rb"))
     local source = f:read("*a")
     f:close()
@@ -495,7 +501,7 @@ check("the restyle's fade of the right pane's frames leaves ours be", switch.alp
 -- The score is off here: the list starts where the game had it, and ends over the switch at
 -- the pane's bottom (26 + 2 * 6).
 check("the switch at the pane's bottom, the game's list ending over it", switch.points.BOTTOM == character.RightPaneHost
-    and statsList.points.TOPLEFT == "stoneArt" and statsList.drop == 0 and statsList.lift == 38)
+    and statsList.points.TOPLEFT == stoneArt and statsList.drop == 0 and statsList.lift == 38)
 local rows = spec.rows
 check("the stats in order: primary, then the ratings, then Stamina and Armor, each with your total",
     rows[1].name.text == "Agility" and rows[1].total.text == "80"
@@ -574,6 +580,12 @@ statsList.hooks.OnShow(statsList)
 -- With the score: the list down by what it needs beyond the room the game leaves
 -- (10 under your level, the card 46 + 6 + 4 + 10 + 2, less 20).
 check("score on: the game's list down under your score", statsList.drop == 58)
+local card = CP.badge
+card.bottom, stoneArt.bottom = 300, 340
+statsList.hooks.OnShow(statsList)
+check("laid out: the list starts its gap under where the card really ends, whatever the game's art",
+    statsList.drop == 50)
+card.bottom, stoneArt.bottom = nil, nil
 
 -- A slot's update makes no garbage.
 Measure(check)("every slot updated", 1, function()
@@ -717,7 +729,7 @@ local function PanelCard(flag)
         hooksecurefunc = function() hooked = hooked + 1 end }, { __index = _G })
     local paths = {}
     for _, path in ipairs(files) do
-        if path:find("CharacterPanel/Badge.lua", 1, true) or path:find("CharacterPanel/SettingsPage.lua", 1, true) then
+        if path:find("CharacterPanel/Badge.lua", 1, true) or path:find("CharacterPanel/UI/SettingsPage.lua", 1, true) then
             paths[#paths + 1] = path
         end
     end

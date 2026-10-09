@@ -2,7 +2,9 @@
 -- color picker that behaves like Blizzard's (swatchFunc fires as it opens, cancelFunc on Escape).
 local f = assert(io.open("Core/NaowhForever_Widgets.lua", "rb"))
 local source = f:read("*a"):gsub("\r\n", "\n"); f:close()
-local body = assert(source:match("\n(function UI%.BuildColorSwatchControl%(.-\nend)\n"), "BuildColorSwatchControl")
+local constants = assert(source:match("\n(local MEDIA = .-\n)\nlocal UI = {}\n"), "Widgets constants")
+local body = constants .. assert(source:match("\n(local function Near%(a, b%).-\nfunction UI%.BuildColorSwatchControl%(.-\nend)\n"),
+    "BuildColorSwatchControl")
 local checks = 0
 local function check(label, ok) assert(ok, label); checks = checks + 1 end
 

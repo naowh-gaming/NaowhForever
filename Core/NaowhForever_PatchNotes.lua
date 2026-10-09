@@ -1,10 +1,12 @@
--------------------------------------------------------------------------------
---  NaowhForever_PatchNotes.lua -- the Patch Notes page in the options window: each build's
---  notes as a card, newest first and open. The client cannot read CHANGELOG.md, so the
---  notes players see in game live here. A line in a table ({ badges = true, "..." }) is about
---  supporter badges and shows only while ns.FEATURE_BADGES is 1.
--------------------------------------------------------------------------------
+-- NaowhForever_PatchNotes.lua: the Patch Notes page, each build's notes as a card, newest first.
 local ns = _G.NaowhForever
+
+local TITLE_MAX = 60
+local UNRELEASED = "Unreleased"
+local TEXT_CHANGES = "%d changes"
+local TEXT_IN_TESTING = "In testing, "
+local TEXT_LATEST = "Latest, "
+local TEXT_NEXT_RELEASE = "Next Release"
 
 local NOTES = {
     { title = "0.5.20-beta", lines = {
@@ -191,26 +193,34 @@ local page = ns.Shared.Settings.Page("Patch Notes")
 
 local function Line(text)
     local head, rest = text:match("^([^:]+):%s+(.+)$")
-    if not head or #head > 60 then return { text = text } end
+    if not head or #head > TITLE_MAX then return { text = text } end
     local title, where = head:match("^(.-)%s*%((.+)%)$")
     return { title = title or head, where = where, text = rest }
 end
 
-local latest
-for i, entry in ipairs(NOTES) do
+local function Lines(entry)
     local lines = {}
     for _, text in ipairs(entry.lines) do
         if type(text) == "table" then text = ns.FEATURE_BADGES == 1 and text[1] or nil end
         if text then lines[#lines + 1] = Line(text) end
     end
-    local coming = entry.title == "Unreleased"
-    local summary = #lines .. " changes"
+    return lines
+end
+
+local latest
+
+local function AddNotes(i, entry)
+    local lines = Lines(entry)
+    local coming = entry.title == UNRELEASED
+    local summary = TEXT_CHANGES:format(#lines)
     if coming then
-        summary = "In testing, " .. summary
+        summary = TEXT_IN_TESTING .. summary
     elseif not latest then
         latest = entry
-        summary = "Latest, " .. summary
+        summary = TEXT_LATEST .. summary
     end
-    page:Info({ id = entry.title, name = coming and "Next Release" or entry.title, open = i == 1, lines = lines,
+    page:Info({ id = entry.title, name = coming and TEXT_NEXT_RELEASE or entry.title, open = i == 1, lines = lines,
         summary = summary })
 end
+
+for i, entry in ipairs(NOTES) do AddNotes(i, entry) end

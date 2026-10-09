@@ -7,6 +7,4 @@
 ## Group: NaowhForever
 ## IconTexture: Interface\AddOns\NaowhForever\Media\LogoAddon.tga
 
-NaowhForever_MacroText.lua
-NaowhForever_Macros.lua
-NaowhForever_MacroWindow.lua
+Macros.xml

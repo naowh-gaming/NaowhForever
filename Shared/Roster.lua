@@ -1,20 +1,10 @@
--------------------------------------------------------------------------------
---  Roster.lua -- Naowh Forever's part of a player's tooltip in the Guild & Communities list and
---  the Friends list (ns.Shared.Roster), for Badges (the badge plate) and Naowh Score (the score
---  line). Nothing is hooked until a module first asks: then each list row gets a HookScript
---  after the game's own tooltip, and every Roster.AddTooltip(fn) runs in the order modules
---  asked, as fn(tooltip, guid, info, row, anchor), returning true when it added a line. The
---  guild list's tooltip is GameTooltip, so lines go on it; the Friends list's has fixed lines,
---  so they go on a tooltip of ours under it. anchor is the tooltip the player sees, for the
---  plate; Roster.Showing(row) says whether it is still that row's.
--------------------------------------------------------------------------------
+-- Roster.lua: Naowh Forever's part of a player's tooltip in the Guild & Communities and Friends lists (ns.Shared.Roster).
 local ns = _G.NaowhForever
-
-local Roster = {}
-ns.Shared.Roster = Roster
 
 local TIP_NAME = "NaowhForeverFriendTooltip"
 local TIP_GAP = 2
+local COMMUNITIES_ADDON = "Blizzard_Communities"
+local FRIENDS_ADDON = "Blizzard_FriendsFrame"
 
 local adders = {}
 local hookedRows = setmetatable({}, { __mode = "k" })
@@ -42,21 +32,33 @@ local function GuildEnter(row)
     if Run(tooltip, guid, info, row, tooltip) then tooltip:Show() end
 end
 
+local function WowFriend(index, presence)
+    local info = C_FriendList.GetFriendInfoByIndex(index)
+    if not info then return false end
+    friend.guid, friend.level = info.guid, info.level
+    friend.presence = info.connected and presence.Online or presence.Offline
+    return true
+end
+
+local function BattleNetFriend(index, presence)
+    local account = C_BattleNet.GetFriendAccountInfo(index)
+    local game = account and account.gameAccountInfo
+    if not game or game.wowProjectID ~= WOW_PROJECT_ID then return false end
+    friend.guid, friend.level = game.playerGuid, game.characterLevel
+    friend.presence = game.isOnline and presence.Online or presence.Offline
+    return true
+end
+
 local function FriendGUID(row)
     wipe(friend)
     local presence = Enum.ClubMemberPresence
+    local found
     if row.buttonType == FRIENDS_BUTTON_TYPE_WOW then
-        local info = C_FriendList.GetFriendInfoByIndex(row.id)
-        if not info then return end
-        friend.guid, friend.level = info.guid, info.level
-        friend.presence = info.connected and presence.Online or presence.Offline
+        found = WowFriend(row.id, presence)
     elseif row.buttonType == FRIENDS_BUTTON_TYPE_BNET then
-        local account = C_BattleNet.GetFriendAccountInfo(row.id)
-        local game = account and account.gameAccountInfo
-        if not game or game.wowProjectID ~= WOW_PROJECT_ID then return end
-        friend.guid, friend.level = game.playerGuid, game.characterLevel
-        friend.presence = game.isOnline and presence.Online or presence.Offline
+        found = BattleNetFriend(row.id, presence)
     end
+    if found == false then return end
     return Readable(friend.guid) and friend.guid or nil
 end
 
@@ -126,6 +128,9 @@ local function HookFriends()
     hooksecurefunc("FriendsFrame_UpdateFriendButton", FriendUpdated)
 end
 
+local Roster = {}
+ns.Shared.Roster = Roster
+
 function Roster.Showing(row)
     if FriendShowing(row) then return true end
     return GameTooltip:IsShown() and GameTooltip:IsOwned(row)
@@ -137,11 +142,11 @@ function Roster.AddTooltip(fn)
     if CommunitiesFrame then
         HookGuild()
     else
-        EventUtil.ContinueOnAddOnLoaded("Blizzard_Communities", HookGuild)
+        EventUtil.ContinueOnAddOnLoaded(COMMUNITIES_ADDON, HookGuild)
     end
     if FriendsFrame_UpdateFriendButton then
         HookFriends()
     else
-        EventUtil.ContinueOnAddOnLoaded("Blizzard_FriendsFrame", HookFriends)
+        EventUtil.ContinueOnAddOnLoaded(FRIENDS_ADDON, HookFriends)
     end
 end

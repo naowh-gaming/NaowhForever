@@ -7,9 +7,4 @@
 ## Group: NaowhForever
 ## IconTexture: Interface\AddOns\NaowhForever\Media\LogoAddon.tga
 
-NaowhForever_AuraBuffs.lua
-NaowhForever_Campfire.lua
-NaowhForever_LowHealth.lua
-NaowhForever_BuffReminderData.lua
-NaowhForever_BuffReminders.lua
-NaowhForever_AuraBuffsWindow.lua
+AuraBuffs.xml

@@ -7,5 +7,4 @@
 ## Group: NaowhForever
 ## IconTexture: Interface\AddOns\NaowhForever\Media\LogoAddon.tga
 
-NaowhForever_ActionBars.lua
-NaowhForever_ActionBarsWindow.lua
+ActionBars.xml

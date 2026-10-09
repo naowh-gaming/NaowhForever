@@ -1,80 +1,67 @@
--------------------------------------------------------------------------------
---  NaowhForever_Waypoint.lua -- ns.PlaceWaypoint: a waypoint on the map for any module
---  (the Dungeon Journal's quests and entrances, Discovery's books, Professions' trainers).
---  With TomTom loaded, its waypoint and arrow instead of the game's. ns.WaypointText and
---  ns.WaypointLink: the same spot as a line and a map pin link for chat. ns.ClearWaypoint
---  clears the game's. The game redraws the world map's own waypoint pin inside every change to
---  its waypoint, so while that map is open a change waits for it to close: made from addon code
---  it would taint the pin, and the game would block its Share (CopyToClipboard).
--------------------------------------------------------------------------------
+-- NaowhForever_Waypoint.lua: a waypoint on the map for any module (ns.PlaceWaypoint), TomTom's when loaded.
 local ns = _G.NaowhForever
 
--- Only the last TomTom waypoint this set is kept, so clicking pin after pin does not pile
--- up arrows.
+local PERCENT = 100
+local ARRIVED_WITHIN = 0.05
+local ROUTE_MIN_STOPS = 2
+local STOP_FIELDS = 6
+local TOMTOM_FROM = "Naowh Forever"
+local TEXT_SPOT = "%s%s: %s %.1f, %.1f"
+local TEXT_TOMTOM = "TomTom waypoint for "
+local TEXT_PLACED = "Waypoint for "
+local TEXT_ROUTE_STOP = "%s, stop %d of %d: %s%s"
+local TEXT_NO_WAYPOINTS = "That map does not take waypoints."
+local TEXT_LATER = " (placed when you close the map)"
+
+ns.WAYPOINT_HOLD = 4
+
 local tomtomWaypoint
+local route
+local arrivals = 0
+local watch = CreateFrame("Frame")
+local CLEAR = {}
+local pending, held
 
 local function MapOpen()
     return WorldMapFrame ~= nil and WorldMapFrame:IsVisible()
 end
 
---- Whether a waypoint can go on the map: TomTom's wherever it is loaded, else where the game
---- takes one.
----@param map number uiMapID
----@return boolean
+local function MapPoint(map, x, y)
+    return UiMapPoint.CreateFromCoordinates(map, x / PERCENT, y / PERCENT)
+end
+
 function ns.CanPlaceWaypoint(map)
     return (TomTom and TomTom.AddWaypoint) ~= nil or C_Map.CanSetUserWaypointOnMap(map)
 end
 
---- The spot as a line: "Smart Drinks (quest giver): Durotar 62.5, 37.6".
----@param title string what the pin is for
----@param map number uiMapID
----@param x number percent
----@param y number percent
----@param note? string what it points at, after the title
----@return string
 function ns.WaypointText(title, map, x, y, note)
     local info = C_Map.GetMapInfo(map)
-    return ("%s%s: %s %.1f, %.1f"):format(title, note or "", info and info.name or "", x, y)
+    return TEXT_SPOT:format(title, note or "", info and info.name or "", x, y)
 end
 
 local function PlaceTomTom(title, map, x, y, note)
     if tomtomWaypoint then pcall(TomTom.RemoveWaypoint, TomTom, tomtomWaypoint) end
-    local ok, uid = pcall(TomTom.AddWaypoint, TomTom, map, x / 100, y / 100, {
-        title = title .. (note or ""), from = "Naowh Forever", persistent = false, crazy = true,
+    local ok, uid = pcall(TomTom.AddWaypoint, TomTom, map, x / PERCENT, y / PERCENT, {
+        title = title .. (note or ""), from = TOMTOM_FROM, persistent = false, crazy = true,
         silent = true,
     })
     if not ok then return false end
     tomtomWaypoint = uid
-    ns.Print("TomTom waypoint for " .. ns.WaypointText(title, map, x, y, note))
+    ns.Print(TEXT_TOMTOM .. ns.WaypointText(title, map, x, y, note))
     return true
 end
 
---- A map pin link for chat at the spot, as the game's own Share Pin makes: clicked, it puts
---- the pin on the reader's map. The game only makes one for your own pin, so yours is set
---- there for the moment it takes and put back as it was.
----@param map number uiMapID
----@param x number percent
----@param y number percent
----@return string? link nil where the map takes no pin, or while the world map is open
 function ns.WaypointLink(map, x, y)
     if MapOpen() or not C_Map.CanSetUserWaypointOnMap(map) then return nil end
     local previous = C_Map.GetUserWaypoint()
-    C_Map.SetUserWaypoint(UiMapPoint.CreateFromCoordinates(map, x / 100, y / 100))
+    C_Map.SetUserWaypoint(MapPoint(map, x, y))
     local link = C_Map.GetUserWaypointHyperlink()
     if previous then C_Map.SetUserWaypoint(previous) else C_Map.ClearUserWaypoint() end
     return link
 end
 
---- Seconds a reached waypoint shows before a route moves on; the Waypoint Pin's arrival holds
---- as long.
-ns.WAYPOINT_HOLD = 4
-
-local route   -- { title, stops = { { title, map, x, y, note, icon }, ... }, at }
-local arrivals = 0
-local watch = CreateFrame("Frame")
-
 local function SetNow(title, map, x, y, note, icon)
-    C_Map.SetUserWaypoint(UiMapPoint.CreateFromCoordinates(map, x / 100, y / 100))
+    C_Map.SetUserWaypoint(MapPoint(map, x, y))
     if C_SuperTrack then C_SuperTrack.SetSuperTrackedUserWaypoint(true) end
     ns.placedWaypoint = { title = title, note = note, icon = icon, map = map, x = x, y = y }
 end
@@ -84,26 +71,24 @@ local function ClearNow()
     if C_SuperTrack then C_SuperTrack.ClearAllSuperTracked() end
 end
 
-local CLEAR = {}
-local LATER = " (placed when you close the map)"
-local pending, held
-
 local function Flush()
     local change = pending
     if not change then return end
     pending = nil
     held:UnregisterAllEvents()
-    if change == CLEAR then ClearNow() else SetNow(unpack(change, 1, 6)) end
+    if change == CLEAR then ClearNow() else SetNow(unpack(change, 1, STOP_FIELDS)) end
+end
+
+local function DropPending()
+    pending = nil
+    held:UnregisterAllEvents()
 end
 
 local function Hold(change)
     pending = change
     if not held then
         held = CreateFrame("Frame")
-        held:SetScript("OnEvent", function()
-            pending = nil
-            held:UnregisterAllEvents()
-        end)
+        held:SetScript("OnEvent", DropPending)
         WorldMapFrame:HookScript("OnHide", Flush)
     end
     held:RegisterEvent("USER_WAYPOINT_UPDATED")
@@ -127,74 +112,63 @@ local function EndRoute()
     watch:UnregisterAllEvents()
 end
 
---- A waypoint on the map, and the arrow on it where the game has one. With the Waypoint Pin on,
---- always the game's, which the pin follows, rather than TomTom's. Ends a route.
----@param title string what the pin is for, as the chat line names it
----@param map number uiMapID
----@param x number percent, as the data files write it
----@param y number percent
----@param note? string what the pin points at, after the title (" (entrance)")
----@param icon? number|string a texture for the Waypoint Pin's card and navigator
----@return boolean placed false where the map takes no waypoints
 function ns.PlaceWaypoint(title, map, x, y, note, icon)
     EndRoute()
     local pin = ns.WaypointPinOn and ns.WaypointPinOn()
     if not pin and TomTom and TomTom.AddWaypoint and PlaceTomTom(title, map, x, y, note) then return true end
     if not C_Map.CanSetUserWaypointOnMap(map) then
-        ns.Print("That map does not take waypoints.")
+        ns.Print(TEXT_NO_WAYPOINTS)
         return false
     end
     local later = SetGameWaypoint(title, map, x, y, note, icon)
-    ns.Print("Waypoint for " .. ns.WaypointText(title, map, x, y, note) .. (later and LATER or ""))
+    ns.Print(TEXT_PLACED .. ns.WaypointText(title, map, x, y, note) .. (later and TEXT_LATER or ""))
     return true
 end
 
--------------------------------------------------------------------------------
---  Routes: stops in order, the next one placed WAYPOINT_HOLD after the game says the last
---  was reached. Always the game's waypoint, since TomTom's never reports arriving. Placing any
---  other waypoint, or clearing it, ends the route.
--------------------------------------------------------------------------------
+local function Near(position, spot)
+    return math.abs(position * PERCENT - spot) < ARRIVED_WITHIN
+end
+
 local function OnStop(point)
     local stop = route.stops[route.at]
-    return point ~= nil and point.uiMapID == stop[2] and math.abs(point.position.x * 100 - stop[3]) < 0.05
-        and math.abs(point.position.y * 100 - stop[4]) < 0.05
+    return point ~= nil and point.uiMapID == stop[2] and Near(point.position.x, stop[3])
+        and Near(point.position.y, stop[4])
 end
 
 local function PlaceStop()
     local stop = route.stops[route.at]
     if not C_Map.CanSetUserWaypointOnMap(stop[2]) then
-        ns.Print("That map does not take waypoints.")
+        ns.Print(TEXT_NO_WAYPOINTS)
         EndRoute()
         return false
     end
     local later = SetGameWaypoint(stop[1], stop[2], stop[3], stop[4], stop[5], stop[6])
-    ns.Print(("%s, stop %d of %d: %s%s"):format(route.title, route.at, #route.stops,
-        ns.WaypointText(stop[1], stop[2], stop[3], stop[4], stop[5]), later and LATER or ""))
+    ns.Print(TEXT_ROUTE_STOP:format(route.title, route.at, #route.stops,
+        ns.WaypointText(stop[1], stop[2], stop[3], stop[4], stop[5]), later and TEXT_LATER or ""))
     return true
 end
 
-watch:SetScript("OnEvent", function(_, event, isWaypoint)
+local function NextStopAfterHold(this)
+    if this ~= arrivals or not route then return end
+    if route.at == #route.stops then EndRoute() return end
+    route.at = route.at + 1
+    PlaceStop()
+end
+
+local function OnRouteEvent(_, event, isWaypoint)
     if event == "USER_WAYPOINT_UPDATED" then
         if not OnStop(C_Map.GetUserWaypoint()) then EndRoute() end
-    -- isWaypoint: a stop the game routes you through on the way, not the spot itself.
     elseif not isWaypoint and OnStop(C_Map.GetUserWaypoint()) then
         arrivals = arrivals + 1
         local this = arrivals
-        C_Timer.After(ns.WAYPOINT_HOLD, function()
-            if this ~= arrivals or not route then return end
-            if route.at == #route.stops then EndRoute() return end
-            route.at = route.at + 1
-            PlaceStop()
-        end)
+        C_Timer.After(ns.WAYPOINT_HOLD, function() NextStopAfterHold(this) end)
     end
-end)
+end
 
---- A route through the stops in order, the first placed now. One stop is a plain waypoint.
----@param title string what the route is ("Training run")
----@param stops table[] { title, map, x, y, note?, icon? } each, as ns.PlaceWaypoint takes them
----@return boolean placed
+watch:SetScript("OnEvent", OnRouteEvent)
+
 function ns.PlaceWaypointRoute(title, stops)
-    if #stops < 2 then
+    if #stops < ROUTE_MIN_STOPS then
         local stop = stops[1]
         return stop ~= nil and ns.PlaceWaypoint(stop[1], stop[2], stop[3], stop[4], stop[5], stop[6])
     end
@@ -205,8 +179,6 @@ function ns.PlaceWaypointRoute(title, stops)
     return PlaceStop()
 end
 
---- The route being followed: its title, the stop it is on, how many there are, and the next
---- stop's title (nil on the last). Nothing without a route.
 function ns.WaypointRoute()
     if not route then return end
     local nextStop = route.stops[route.at + 1]

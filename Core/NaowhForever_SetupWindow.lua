@@ -1,8 +1,4 @@
--------------------------------------------------------------------------------
---  NaowhForever_SetupWindow.lua -- Tailor my setup's window: a welcome, the questions as icon
---  tiles, then the setup by section to correct and apply. Opened from the welcome window,
---  QoL > System > Defaults and /nf setup.
--------------------------------------------------------------------------------
+-- NaowhForever_SetupWindow.lua: Tailor my setup's window, from its welcome to Apply.
 local ns = _G.NaowhForever
 local T = ns.THEME
 local Parts = ns.Shared.Parts
@@ -14,24 +10,16 @@ local WIDTH, HEIGHT = 780, 580
 local INSET, EDGE, HEADER = St.CONTENT_INSET, St.WINDOW_PAD, St.WINDOW_HEADER
 local BUTTON_H, NAV_W, APPLY_W, START_W, START_H = 26, 110, 150, 170, 32
 local FOOT_H = BUTTON_H + EDGE * 2
-local SEG_W, SEG_H, SEG_GAP, SEG_RIGHT = 26, 4, 4, 44
 local TILE_GAP, TILE_H, TILE_MAX_W, HINT_GAP = 12, 156, 230, 22
 local ICON, GLYPH, CHECK = 60, 34, 16
 local LIT, HOVER = 0.12, 0.06
 local QUESTION_SIZE, HEAD_SIZE, BODY_SIZE, SMALL_SIZE = 19, 15, 13, 11
-local SIDE_W, SIDE_H, SIDE_ICON, SIDE_PAD, SIDE_COUNT_W = 220, 30, 18, 10, 36
 local PANE_PAD, ALL_W, LIST_TOP = 16, 70, 50
-local ROW_H, ROW_GAP, STRIPE, TOGGLE_W, TOGGLE_H, ROW_PAD = 48, 4, 3, 32, 16, 12
-local STAT_H, STAT_GAP, STAT_SIZE, EMPTY_ICON = 54, 6, 20, 40
+local EMPTY_ICON = 40
 local ARROW, ARROW_GAP = 12, 6
-local LINK_SIZE, LINK_GAP, FOOT_LINE, FOOT_LINE_H = 16, 10, 16, 18
 local SCROLL_W, SCROLL_GAP = 6, 6
 local PILL_SIZE = 11
-local PROMISE_W, PROMISE_H, PROMISE_GAP = 210, 58, 12
-local TAGLINE_SIZE = 30
 local POSITION_KEY = "setupWindow"
-local FADE_IN, GLOW_OUT, GLOW_ALPHA, POP_IN, POP_FROM = 0.18, 0.45, 0.5, 0.18, 0.4
-local GROUP_H, GROUP_GAP, GROUP_ICON = 30, 8, 16
 local BLACK = { r = 0, g = 0, b = 0 }
 local GOLD = St.TIP_RGB
 local RED = St.RED_RGB
@@ -39,10 +27,34 @@ local CHANGES = "changes"
 local CHECK_ART = "Interface\\AddOns\\NaowhForever\\Media\\check.tga"
 local TRACK = "Interface\\AddOns\\NaowhForever\\Media\\Welcome\\infinity_track.tga"
 local GLOW = "Interface\\AddOns\\NaowhForever\\Media\\Welcome\\glow_dot.tga"
-local INFINITY_W, INFINITY_H, TRACK_ALPHA = 168, 84, 0.35
-local TRAIL, TRAIL_STEP, LAP, DOT, HEAD_DOT = 70, 0.022, 4.2, 9, 22
 local HEAD_RGB = { r = 0.85, g = 0.95, b = 1 }
 local GLYPHS = "Interface\\AddOns\\NaowhForever\\Media\\Setup\\"
+local NEXT_ART, BACK_ART = GLYPHS .. "next.tga", GLYPHS .. "back.tga"
+local CHANGES_ICON = "changes"
+local PANEL_ALPHA, SIDE_ALPHA, DIM_ALPHA = 0.9, 0.6, 0.5
+local WELCOME_LAYOUT = { taglineTop = 30, taglineSpacing = 4, signGap = 6, siteGap = 4, siteTextGrow = 1,
+    thanksW = 540, thanksGap = 10, cornerGap = 4, promiseTop = 24, promisePlate = 34, promiseGlyph = 22,
+    promiseX = 12, promiseTextRoom = 60, promiseTextGap = 10, promiseSubGap = 3, startGap = 28, keepGap = 10,
+    promiseW = 210, promiseH = 58, promiseGap = 12, linkSize = 16, linkGap = 10, footLine = 16, footLineH = 18,
+    taglineSize = 30 }
+local SIGN_SHAPE = { fullTurn = 2 * math.pi, reachX = 0.44, reachY = 0.84, shrink = 0.45, curve = 1.6, alpha = 0.9,
+    w = 168, h = 84, trackAlpha = 0.35, trail = 70, trailStep = 0.022, lap = 4.2, dot = 9, headDot = 22 }
+local ANIM = { fadeIn = 0.18, glowOut = 0.45, glowAlpha = 0.5, popIn = 0.18, popFrom = 0.4 }
+local SEG = { w = 26, h = 4, gap = 4, right = 44 }
+local TILE_LAYOUT = { checkInset = 6, markInset = 4, iconTop = 20, nameGap = 14, textRoom = 20, blurbGap = 5,
+    hintGap = 6, maxOneRow = 4, wideColumns = 3 }
+local SIDE_LAYOUT = { rowGap = 2, barW = 2, iconX = 8, textGap = 8, nameRoom = 24, right = 8, dot = 5, dotGap = 6,
+    w = 220, h = 30, icon = 18, pad = 10, countW = 36 }
+local REVIEW_LAYOUT = { nameGap = 12, nameRise = 8, yoursSize = 10, yoursGap = 6, whyGap = 4, whyRoom = 100,
+    statTop = 9, statLabelGap = 3, headRoom = 16, subGap = 4, allH = 22, allGap = 6, emptyDrop = 60,
+    emptyRoom = 60, emptyTextGap = 12, groupIconX = 2, groupIconY = 7, groupTextGap = 8, rowH = 48, rowGap = 4,
+    stripe = 3, toggleW = 32, toggleH = 16, rowPad = 12, groupH = 30, groupGap = 8, groupIcon = 16, statH = 54,
+    statGap = 6, statSize = 20 }
+local FOOT_LAYOUT = { noteGap = 12, skipLift = 4 }
+local TEXT_BACK, TEXT_START_OVER, TEXT_NEXT = "Back", "Start Over", "Next"
+local TEXT_ALL_OFF, TEXT_ALL_ON = "All Off", "All On"
+local TEXT_APPLY, TEXT_APPLY_RELOAD, TEXT_SEE_SETUP = "Apply", "Apply and Reload", "See My Setup"
+local TEXT_ON, TEXT_OFF = "on", "off"
 
 local TITLE = "Naowh Forever: Onboarding"
 local WELCOME_SUB = "Welcome"
@@ -177,7 +189,7 @@ end
 
 local function Panel(parent)
     local frame = CreateFrame("Frame", nil, parent)
-    ns.Solid(frame, "BACKGROUND", T.panel, 0.9):SetAllPoints()
+    ns.Solid(frame, "BACKGROUND", T.panel, PANEL_ALPHA):SetAllPoints()
     frame.edge = ns.Border(frame, BLACK)
     return frame
 end
@@ -195,7 +207,7 @@ local function FadeIn(frame)
         local alpha = group:CreateAnimation("Alpha")
         alpha:SetFromAlpha(0)
         alpha:SetToAlpha(1)
-        alpha:SetDuration(FADE_IN)
+        alpha:SetDuration(ANIM.fadeIn)
         alpha:SetSmoothing("OUT")
         frame.fadeIn = group
     end
@@ -212,9 +224,9 @@ local function Glow(frame)
         tex:SetAlpha(0)
         local group = tex:CreateAnimationGroup()
         local alpha = group:CreateAnimation("Alpha")
-        alpha:SetFromAlpha(GLOW_ALPHA)
+        alpha:SetFromAlpha(ANIM.glowAlpha)
         alpha:SetToAlpha(0)
-        alpha:SetDuration(GLOW_OUT)
+        alpha:SetDuration(ANIM.glowOut)
         alpha:SetSmoothing("OUT")
         frame.glow = group
     end
@@ -226,9 +238,9 @@ local function Pop(frame)
     if not frame.pop then
         local group = frame:CreateAnimationGroup()
         local scale = group:CreateAnimation("Scale")
-        scale:SetScaleFrom(POP_FROM, POP_FROM)
+        scale:SetScaleFrom(ANIM.popFrom, ANIM.popFrom)
         scale:SetScaleTo(1, 1)
-        scale:SetDuration(POP_IN)
+        scale:SetDuration(ANIM.popIn)
         scale:SetSmoothing("OUT")
         frame.pop = group
     end
@@ -264,10 +276,6 @@ local function KeepAsItIs()
     window:Hide()
 end
 
-local function Hex(c)
-    return ("|cff%02x%02x%02x"):format(c.r * 255 + 0.5, c.g * 255 + 0.5, c.b * 255 + 0.5)
-end
-
 local function ShowSite()
     ns.ShowCopyLine(SITE_TITLE, SITE_URL, St.LOGO)
 end
@@ -275,13 +283,13 @@ end
 local function SignPoint(angle)
     local s, c = math.sin(angle), math.cos(angle)
     local k = 1 + s * s
-    return INFINITY_W * 0.44 * c / k, INFINITY_H * 0.84 * s * c / k
+    return SIGN_SHAPE.w * SIGN_SHAPE.reachX * c / k, SIGN_SHAPE.h * SIGN_SHAPE.reachY * s * c / k
 end
 
 local function Spin(sign, elapsed)
-    sign.angle = (sign.angle + elapsed * 2 * math.pi / LAP) % (2 * math.pi)
+    sign.angle = (sign.angle + elapsed * SIGN_SHAPE.fullTurn / SIGN_SHAPE.lap) % SIGN_SHAPE.fullTurn
     for i, dot in ipairs(sign.dots) do
-        dot:SetPoint("CENTER", sign, "CENTER", SignPoint(sign.angle - (i - 1) * TRAIL_STEP))
+        dot:SetPoint("CENTER", sign, "CENTER", SignPoint(sign.angle - (i - 1) * SIGN_SHAPE.trailStep))
     end
 end
 
@@ -295,27 +303,27 @@ end
 
 local function Sign(page)
     local sign = CreateFrame("Frame", nil, page)
-    sign:SetSize(INFINITY_W, INFINITY_H)
+    sign:SetSize(SIGN_SHAPE.w, SIGN_SHAPE.h)
     local track = sign:CreateTexture(nil, "ARTWORK")
     track:SetTexture(TRACK, nil, nil, "TRILINEAR")
     track:SetAllPoints()
     track:SetVertexColor(T.accent.r, T.accent.g, T.accent.b)
-    track:SetAlpha(TRACK_ALPHA)
+    track:SetAlpha(SIGN_SHAPE.trackAlpha)
     sign.dots = {}
-    for i = 1, TRAIL + 1 do
+    for i = 1, SIGN_SHAPE.trail + 1 do
         local dot = sign:CreateTexture(nil, "OVERLAY")
         dot:SetTexture(GLOW, nil, nil, "TRILINEAR")
         dot:SetBlendMode("ADD")
         if i == 1 then
-            dot:SetSize(HEAD_DOT, HEAD_DOT)
+            dot:SetSize(SIGN_SHAPE.headDot, SIGN_SHAPE.headDot)
             dot:SetVertexColor(HEAD_RGB.r, HEAD_RGB.g, HEAD_RGB.b)
         else
-            local fade = (i - 2) / TRAIL
-            local size = DOT * (1 - 0.45 * fade)
+            local fade = (i - 2) / SIGN_SHAPE.trail
+            local size = SIGN_SHAPE.dot * (1 - SIGN_SHAPE.shrink * fade)
             dot:SetSize(size, size)
             dot:SetVertexColor(T.accent.r + (HEAD_RGB.r - T.accent.r) * (1 - fade),
                 T.accent.g + (HEAD_RGB.g - T.accent.g) * (1 - fade), T.accent.b + (HEAD_RGB.b - T.accent.b) * (1 - fade))
-            dot:SetAlpha((1 - fade) ^ 1.6 * 0.9)
+            dot:SetAlpha((1 - fade) ^ SIGN_SHAPE.curve * SIGN_SHAPE.alpha)
         end
         sign.dots[i] = dot
     end
@@ -328,66 +336,66 @@ end
 
 local function BuildWelcome()
     local page = Page()
-    page.tagline = Text(page, TAGLINE_SIZE, T.fg, WIDTH - INSET * 2, "CENTER")
-    page.tagline:SetPoint("TOP", 0, -30)
-    page.tagline:SetText(TAGLINE_1 .. "\n" .. Hex(T.accent) .. TAGLINE_2A .. "|r " .. St.LOOK_CODE .. TAGLINE_2B .. "|r")
-    page.tagline:SetSpacing(4)
+    page.tagline = Text(page, WELCOME_LAYOUT.taglineSize, T.fg, WIDTH - INSET * 2, "CENTER")
+    page.tagline:SetPoint("TOP", 0, -WELCOME_LAYOUT.taglineTop)
+    page.tagline:SetText(TAGLINE_1 .. "\n" .. ns.Color(T.accent) .. TAGLINE_2A .. "|r " .. St.LOOK_CODE .. TAGLINE_2B .. "|r")
+    page.tagline:SetSpacing(WELCOME_LAYOUT.taglineSpacing)
     page.sign = Sign(page)
-    page.sign:SetPoint("TOP", page.tagline, "BOTTOM", 0, -6)
+    page.sign:SetPoint("TOP", page.tagline, "BOTTOM", 0, -WELCOME_LAYOUT.signGap)
     page.head = Text(page, HEAD_SIZE, T.fg, WIDTH - INSET * 2, "CENTER")
-    page.head:SetPoint("TOP", page.sign, "BOTTOM", 0, -6)
+    page.head:SetPoint("TOP", page.sign, "BOTTOM", 0, -WELCOME_LAYOUT.signGap)
     page.head:SetText(WELCOME)
     page.site = CreateFrame("Frame", nil, page)
-    page.site:SetPoint("BOTTOM", window, "BOTTOM", 0, FOOT_LINE)
-    page.site:SetHeight(FOOT_LINE_H)
-    local siteText = ns.Font(page.site, SMALL_SIZE + 1, nil, T.muted)
+    page.site:SetPoint("BOTTOM", window, "BOTTOM", 0, WELCOME_LAYOUT.footLine)
+    page.site:SetHeight(WELCOME_LAYOUT.footLineH)
+    local siteText = ns.Font(page.site, SMALL_SIZE + WELCOME_LAYOUT.siteTextGrow, nil, T.muted)
     siteText:SetPoint("LEFT")
     siteText:SetText(SITE_LINE)
     local siteLink = Parts.Link(page.site, ShowSite)
     Parts.SetLink(siteLink, SITE_LINK)
-    siteLink:SetPoint("LEFT", siteText, "RIGHT", 4, 0)
-    page.site:SetWidth(math.ceil(siteText:GetStringWidth()) + 4 + siteLink:GetWidth())
-    local middle = FOOT_LINE + FOOT_LINE_H / 2
-    local x = EDGE + 4
+    siteLink:SetPoint("LEFT", siteText, "RIGHT", WELCOME_LAYOUT.siteGap, 0)
+    page.site:SetWidth(math.ceil(siteText:GetStringWidth()) + WELCOME_LAYOUT.siteGap + siteLink:GetWidth())
+    local middle = WELCOME_LAYOUT.footLine + WELCOME_LAYOUT.footLineH / 2
+    local x = EDGE + WELCOME_LAYOUT.cornerGap
     for _, link in ipairs(ns.LINKS) do
         local name, url = link[1], link[3]
         local button = Parts.IconButton(page, function() ns.ShowCopyLine(name, url()) end,
             ns.LINK_ICONS .. link[2] .. ".tga", nil, name)
-        button:SetSize(LINK_SIZE, LINK_SIZE)
-        button.icon:SetSize(LINK_SIZE, LINK_SIZE)
+        button:SetSize(WELCOME_LAYOUT.linkSize, WELCOME_LAYOUT.linkSize)
+        button.icon:SetSize(WELCOME_LAYOUT.linkSize, WELCOME_LAYOUT.linkSize)
         button:SetPoint("LEFT", window, "BOTTOMLEFT", x, middle)
-        x = x + LINK_SIZE + LINK_GAP
+        x = x + WELCOME_LAYOUT.linkSize + WELCOME_LAYOUT.linkGap
     end
     page.version = ns.Font(page, SMALL_SIZE, nil, T.muted)
-    page.version:SetPoint("RIGHT", window, "BOTTOMRIGHT", -EDGE - 4, middle)
+    page.version:SetPoint("RIGHT", window, "BOTTOMRIGHT", -EDGE - WELCOME_LAYOUT.cornerGap, middle)
     page.version:SetText(ns.VersionText())
-    page.text = Text(page, BODY_SIZE, T.muted, 540, "CENTER")
-    page.text:SetPoint("TOP", page.head, "BOTTOM", 0, -10)
+    page.text = Text(page, BODY_SIZE, T.muted, WELCOME_LAYOUT.thanksW, "CENTER")
+    page.text:SetPoint("TOP", page.head, "BOTTOM", 0, -WELCOME_LAYOUT.thanksGap)
     page.text:SetText(THANKS)
-    local rowW = #PROMISES * PROMISE_W + (#PROMISES - 1) * PROMISE_GAP
+    local rowW = #PROMISES * WELCOME_LAYOUT.promiseW + (#PROMISES - 1) * WELCOME_LAYOUT.promiseGap
     for i, p in ipairs(PROMISES) do
         local tile = Panel(page)
-        tile:SetSize(PROMISE_W, PROMISE_H)
-        tile:SetPoint("TOPLEFT", page.text, "BOTTOM", -rowW / 2 + (i - 1) * (PROMISE_W + PROMISE_GAP), -24)
-        local icon = Glyph(tile, 34, 22, p[3])
+        tile:SetSize(WELCOME_LAYOUT.promiseW, WELCOME_LAYOUT.promiseH)
+        tile:SetPoint("TOPLEFT", page.text, "BOTTOM", -rowW / 2 + (i - 1) * (WELCOME_LAYOUT.promiseW + WELCOME_LAYOUT.promiseGap), -WELCOME_LAYOUT.promiseTop)
+        local icon = Glyph(tile, WELCOME_LAYOUT.promisePlate, WELCOME_LAYOUT.promiseGlyph, p[3])
         Tint(icon.tex, T.accent)
-        icon:SetPoint("LEFT", 12, 0)
-        local name = Text(tile, BODY_SIZE, T.fg, PROMISE_W - 60)
-        name:SetPoint("TOPLEFT", icon, "TOPRIGHT", 10, 0)
+        icon:SetPoint("LEFT", WELCOME_LAYOUT.promiseX, 0)
+        local name = Text(tile, BODY_SIZE, T.fg, WELCOME_LAYOUT.promiseW - WELCOME_LAYOUT.promiseTextRoom)
+        name:SetPoint("TOPLEFT", icon, "TOPRIGHT", WELCOME_LAYOUT.promiseTextGap, 0)
         name:SetText(p[1])
-        local sub = Text(tile, SMALL_SIZE, T.muted, PROMISE_W - 60)
-        sub:SetPoint("TOPLEFT", name, "BOTTOMLEFT", 0, -3)
+        local sub = Text(tile, SMALL_SIZE, T.muted, WELCOME_LAYOUT.promiseW - WELCOME_LAYOUT.promiseTextRoom)
+        sub:SetPoint("TOPLEFT", name, "BOTTOMLEFT", 0, -WELCOME_LAYOUT.promiseSubGap)
         sub:SetText(p[2])
         page.last = tile
     end
     page.start = Arrow(ns.AccentBorder(ns.Button(page, START, START_W, START_H, function()
         step = 1
         Paint()
-    end)), GLYPHS .. "next.tga", true)
-    page.start:SetPoint("TOP", page.text, "BOTTOM", 0, -24 - PROMISE_H - 28)
+    end)), NEXT_ART, true)
+    page.start:SetPoint("TOP", page.text, "BOTTOM", 0, -WELCOME_LAYOUT.promiseTop - WELCOME_LAYOUT.promiseH - WELCOME_LAYOUT.startGap)
     page.keep = Parts.Link(page, KeepAsItIs)
     Parts.SetLink(page.keep, KEEP)
-    page.keep:SetPoint("TOP", page.start, "BOTTOM", 0, -10)
+    page.keep:SetPoint("TOP", page.start, "BOTTOM", 0, -WELCOME_LAYOUT.keepGap)
     return page
 end
 
@@ -412,7 +420,7 @@ local function Tile(page, i)
     local tile = page.tiles[i]
     if tile then return tile end
     tile = CreateFrame("Button", nil, page)
-    ns.Solid(tile, "BACKGROUND", T.panel, 0.9):SetAllPoints()
+    ns.Solid(tile, "BACKGROUND", T.panel, PANEL_ALPHA):SetAllPoints()
     tile.lit = ns.Solid(tile, "BORDER", T.accent, LIT)
     tile.lit:SetAllPoints()
     tile.edge = ns.Border(tile, BLACK)
@@ -423,12 +431,12 @@ local function Tile(page, i)
     tile.blurb:SetJustifyH("CENTER")
     tile.check = CreateFrame("Frame", nil, tile)
     tile.check:SetSize(CHECK, CHECK)
-    tile.check:SetPoint("TOPRIGHT", -6, -6)
+    tile.check:SetPoint("TOPRIGHT", -TILE_LAYOUT.checkInset, -TILE_LAYOUT.checkInset)
     ns.Solid(tile.check, "BACKGROUND", T.accent, 1):SetAllPoints()
     local mark = tile.check:CreateTexture(nil, "ARTWORK")
     mark:SetTexture(CHECK_ART)
     mark:SetPoint("CENTER")
-    mark:SetSize(CHECK - 4, CHECK - 4)
+    mark:SetSize(CHECK - TILE_LAYOUT.markInset, CHECK - TILE_LAYOUT.markInset)
     tile:SetScript("OnEnter", TileEnter)
     tile:SetScript("OnLeave", TileLeave)
     tile:SetScript("OnClick", TileClick)
@@ -439,27 +447,27 @@ end
 local function LayoutTile(tile, width)
     tile:SetSize(width, TILE_H)
     tile.icon:ClearAllPoints()
-    tile.icon:SetPoint("TOP", 0, -20)
+    tile.icon:SetPoint("TOP", 0, -TILE_LAYOUT.iconTop)
     tile.name:ClearAllPoints()
-    tile.name:SetPoint("TOP", tile.icon, "BOTTOM", 0, -14)
-    tile.name:SetWidth(width - 20)
+    tile.name:SetPoint("TOP", tile.icon, "BOTTOM", 0, -TILE_LAYOUT.nameGap)
+    tile.name:SetWidth(width - TILE_LAYOUT.textRoom)
     tile.blurb:ClearAllPoints()
-    tile.blurb:SetPoint("TOP", tile.name, "BOTTOM", 0, -5)
-    tile.blurb:SetWidth(width - 20)
+    tile.blurb:SetPoint("TOP", tile.name, "BOTTOM", 0, -TILE_LAYOUT.blurbGap)
+    tile.blurb:SetWidth(width - TILE_LAYOUT.textRoom)
 end
 
 local function BuildQuestion()
     local page = Page()
     page.title = Text(page, QUESTION_SIZE, T.fg, WIDTH - INSET * 2, "CENTER")
     page.hint = Text(page, BODY_SIZE, T.muted, WIDTH - INSET * 2, "CENTER")
-    page.hint:SetPoint("TOP", page.title, "BOTTOM", 0, -6)
+    page.hint:SetPoint("TOP", page.title, "BOTTOM", 0, -TILE_LAYOUT.hintGap)
     page.tiles = {}
     return page
 end
 
 local function Columns(count)
-    if count <= 4 then return count end
-    return 3
+    if count <= TILE_LAYOUT.maxOneRow then return count end
+    return TILE_LAYOUT.wideColumns
 end
 
 local function PaintQuestion(q)
@@ -471,7 +479,7 @@ local function PaintQuestion(q)
     local width = math.min(TILE_MAX_W, (WIDTH - INSET * 2 - (columns - 1) * TILE_GAP) / columns)
     local rows = math.ceil(count / columns)
     local tilesH = rows * TILE_H + (rows - 1) * TILE_GAP
-    local headH = page.title:GetStringHeight() + 6 + page.hint:GetStringHeight() + HINT_GAP
+    local headH = page.title:GetStringHeight() + TILE_LAYOUT.hintGap + page.hint:GetStringHeight() + HINT_GAP
     local pageH = HEIGHT - HEADER - FOOT_H
     local top = math.max(INSET, math.floor((pageH - headH - tilesH) / 2))
     page.title:ClearAllPoints()
@@ -536,29 +544,29 @@ local function SideItem(page, i)
     local item = page.side.items[i]
     if item then return item end
     item = CreateFrame("Button", nil, page.side)
-    item:SetSize(SIDE_W - SIDE_PAD * 2, SIDE_H)
-    item:SetPoint("TOPLEFT", SIDE_PAD, -SIDE_PAD - (i - 1) * (SIDE_H + 2))
+    item:SetSize(SIDE_LAYOUT.w - SIDE_LAYOUT.pad * 2, SIDE_LAYOUT.h)
+    item:SetPoint("TOPLEFT", SIDE_LAYOUT.pad, -SIDE_LAYOUT.pad - (i - 1) * (SIDE_LAYOUT.h + SIDE_LAYOUT.rowGap))
     item.lit = ns.Solid(item, "BACKGROUND", T.accent, LIT)
     item.lit:SetAllPoints()
     item.bar = ns.Solid(item, "ARTWORK", T.accent, 1)
     item.bar:SetPoint("TOPLEFT")
     item.bar:SetPoint("BOTTOMLEFT")
-    item.bar:SetWidth(2)
+    item.bar:SetWidth(SIDE_LAYOUT.barW)
     item.icon = item:CreateTexture(nil, "ARTWORK")
-    item.icon:SetSize(SIDE_ICON, SIDE_ICON)
-    item.icon:SetPoint("LEFT", 8, 0)
+    item.icon:SetSize(SIDE_LAYOUT.icon, SIDE_LAYOUT.icon)
+    item.icon:SetPoint("LEFT", SIDE_LAYOUT.iconX, 0)
     item.name = ns.Font(item, BODY_SIZE, nil, T.fg)
-    item.name:SetPoint("LEFT", item.icon, "RIGHT", 8, 0)
+    item.name:SetPoint("LEFT", item.icon, "RIGHT", SIDE_LAYOUT.textGap, 0)
     item.name:SetJustifyH("LEFT")
     item.name:SetWordWrap(false)
-    item.name:SetWidth(SIDE_W - SIDE_PAD * 2 - SIDE_ICON - SIDE_COUNT_W - 24)
+    item.name:SetWidth(SIDE_LAYOUT.w - SIDE_LAYOUT.pad * 2 - SIDE_LAYOUT.icon - SIDE_LAYOUT.countW - SIDE_LAYOUT.nameRoom)
     item.count = ns.Font(item, SMALL_SIZE, nil, T.muted)
-    item.count:SetPoint("RIGHT", -8, 0)
+    item.count:SetPoint("RIGHT", -SIDE_LAYOUT.right, 0)
     item.dot = ns.Solid(item, "ARTWORK", T.accent, 1)
-    item.dot:SetSize(5, 5)
-    item.dot:SetPoint("RIGHT", item.count, "LEFT", -6, 0)
+    item.dot:SetSize(SIDE_LAYOUT.dot, SIDE_LAYOUT.dot)
+    item.dot:SetPoint("RIGHT", item.count, "LEFT", -SIDE_LAYOUT.dotGap, 0)
     item.pill = Parts.Pill(item, PILL_SIZE, T.accent)
-    item.pill:SetPoint("RIGHT", -8, 0)
+    item.pill:SetPoint("RIGHT", -SIDE_LAYOUT.right, 0)
     item:SetScript("OnEnter", SideEnter)
     item:SetScript("OnLeave", SideLeave)
     item:SetScript("OnClick", SideClick)
@@ -589,8 +597,8 @@ local function Row(page, i)
     local row = page.rows[i]
     if row then return row end
     row = CreateFrame("Button", nil, page.list)
-    row:SetHeight(ROW_H)
-    ns.Solid(row, "BACKGROUND", T.panel, 0.9):SetAllPoints()
+    row:SetHeight(REVIEW_LAYOUT.rowH)
+    ns.Solid(row, "BACKGROUND", T.panel, PANEL_ALPHA):SetAllPoints()
     row.lit = ns.Solid(row, "BORDER", T.accent, LIT)
     row.lit:SetAllPoints()
     row.edge = ns.Border(row, BLACK)
@@ -598,21 +606,21 @@ local function Row(page, i)
     row.stripe = ns.Solid(row, "ARTWORK", T.accent, 1)
     row.stripe:SetPoint("TOPLEFT")
     row.stripe:SetPoint("BOTTOMLEFT")
-    row.stripe:SetWidth(STRIPE)
+    row.stripe:SetWidth(REVIEW_LAYOUT.stripe)
     row.toggle = UI.BuildToggleControl(row, nil, function() return row.entry ~= nil and row.entry.on end,
-        function(on) SetRow(row, on) end, TOGGLE_W, TOGGLE_H)
-    row.toggle:SetPoint("LEFT", ROW_PAD + STRIPE, 0)
+        function(on) SetRow(row, on) end, REVIEW_LAYOUT.toggleW, REVIEW_LAYOUT.toggleH)
+    row.toggle:SetPoint("LEFT", REVIEW_LAYOUT.rowPad + REVIEW_LAYOUT.stripe, 0)
     row.name = ns.Font(row, BODY_SIZE, nil, T.fg)
-    row.name:SetPoint("TOPLEFT", row.toggle, "TOPRIGHT", 12, 8)
-    row.yours = Parts.Pill(row, 10, GOLD)
-    row.yours:SetPoint("LEFT", row.name, "RIGHT", 6, 0)
+    row.name:SetPoint("TOPLEFT", row.toggle, "TOPRIGHT", REVIEW_LAYOUT.nameGap, REVIEW_LAYOUT.nameRise)
+    row.yours = Parts.Pill(row, REVIEW_LAYOUT.yoursSize, GOLD)
+    row.yours:SetPoint("LEFT", row.name, "RIGHT", REVIEW_LAYOUT.yoursGap, 0)
     Parts.SetPill(row.yours, YOURS_TAG)
     row.why = ns.Font(row, SMALL_SIZE, nil, T.muted)
     row.why:SetJustifyH("LEFT")
-    row.why:SetPoint("TOPLEFT", row.name, "BOTTOMLEFT", 0, -4)
-    row.why:SetPoint("RIGHT", row, "RIGHT", -100, 0)
+    row.why:SetPoint("TOPLEFT", row.name, "BOTTOMLEFT", 0, -REVIEW_LAYOUT.whyGap)
+    row.why:SetPoint("RIGHT", row, "RIGHT", -REVIEW_LAYOUT.whyRoom, 0)
     row.status = Parts.Pill(row, PILL_SIZE, T.muted)
-    row.status:SetPoint("RIGHT", -ROW_PAD, 0)
+    row.status:SetPoint("RIGHT", -REVIEW_LAYOUT.rowPad, 0)
     row:SetScript("OnEnter", RowEnter)
     row:SetScript("OnLeave", RowLeave)
     row:SetScript("OnClick", RowClick)
@@ -622,13 +630,13 @@ end
 
 local function Stat(page, i, color)
     local stat = Panel(page.side)
-    local width = (SIDE_W - SIDE_PAD * 2 - STAT_GAP * (#STATS - 1)) / #STATS
-    stat:SetSize(width, STAT_H)
-    stat:SetPoint("BOTTOMLEFT", SIDE_PAD + (i - 1) * (width + STAT_GAP), SIDE_PAD)
-    stat.value = ns.Font(stat, STAT_SIZE, nil, color)
-    stat.value:SetPoint("TOP", 0, -9)
+    local width = (SIDE_LAYOUT.w - SIDE_LAYOUT.pad * 2 - REVIEW_LAYOUT.statGap * (#STATS - 1)) / #STATS
+    stat:SetSize(width, REVIEW_LAYOUT.statH)
+    stat:SetPoint("BOTTOMLEFT", SIDE_LAYOUT.pad + (i - 1) * (width + REVIEW_LAYOUT.statGap), SIDE_LAYOUT.pad)
+    stat.value = ns.Font(stat, REVIEW_LAYOUT.statSize, nil, color)
+    stat.value:SetPoint("TOP", 0, -REVIEW_LAYOUT.statTop)
     stat.label = ns.Font(stat, SMALL_SIZE, nil, T.muted)
-    stat.label:SetPoint("TOP", stat.value, "BOTTOM", 0, -3)
+    stat.label:SetPoint("TOP", stat.value, "BOTTOM", 0, -REVIEW_LAYOUT.statLabelGap)
     stat.label:SetText(STATS[i])
     return stat
 end
@@ -638,8 +646,8 @@ local function BuildReview()
     page.side = CreateFrame("Frame", nil, page)
     page.side:SetPoint("TOPLEFT")
     page.side:SetPoint("BOTTOMLEFT")
-    page.side:SetWidth(SIDE_W)
-    ns.Solid(page.side, "BACKGROUND", T.bg, 0.6):SetAllPoints()
+    page.side:SetWidth(SIDE_LAYOUT.w)
+    ns.Solid(page.side, "BACKGROUND", T.bg, SIDE_ALPHA):SetAllPoints()
     local edge = ns.Solid(page.side, "ARTWORK", T.line, 1)
     edge:SetPoint("TOPRIGHT")
     edge:SetPoint("BOTTOMRIGHT")
@@ -649,16 +657,16 @@ local function BuildReview()
     page.pane = CreateFrame("Frame", nil, page)
     page.pane:SetPoint("TOPLEFT", page.side, "TOPRIGHT", PANE_PAD, -PANE_PAD)
     page.pane:SetPoint("BOTTOMRIGHT", -PANE_PAD, PANE_PAD)
-    local paneW = WIDTH - SIDE_W - PANE_PAD * 2
+    local paneW = WIDTH - SIDE_LAYOUT.w - PANE_PAD * 2
     local listW = paneW - SCROLL_W - SCROLL_GAP * 2
-    page.head = Text(page.pane, HEAD_SIZE, T.fg, paneW - ALL_W * 2 - 16)
+    page.head = Text(page.pane, HEAD_SIZE, T.fg, paneW - ALL_W * 2 - REVIEW_LAYOUT.headRoom)
     page.head:SetPoint("TOPLEFT")
-    page.sub = Text(page.pane, SMALL_SIZE, T.muted, paneW - ALL_W * 2 - 16)
-    page.sub:SetPoint("TOPLEFT", page.head, "BOTTOMLEFT", 0, -4)
-    page.allOff = ns.Button(page.pane, "All Off", ALL_W, 22, function() SetAll(false) end)
+    page.sub = Text(page.pane, SMALL_SIZE, T.muted, paneW - ALL_W * 2 - REVIEW_LAYOUT.headRoom)
+    page.sub:SetPoint("TOPLEFT", page.head, "BOTTOMLEFT", 0, -REVIEW_LAYOUT.subGap)
+    page.allOff = ns.Button(page.pane, TEXT_ALL_OFF, ALL_W, REVIEW_LAYOUT.allH, function() SetAll(false) end)
     page.allOff:SetPoint("TOPRIGHT")
-    page.allOn = ns.Button(page.pane, "All On", ALL_W, 22, function() SetAll(true) end)
-    page.allOn:SetPoint("RIGHT", page.allOff, "LEFT", -6, 0)
+    page.allOn = ns.Button(page.pane, TEXT_ALL_ON, ALL_W, REVIEW_LAYOUT.allH, function() SetAll(true) end)
+    page.allOn:SetPoint("RIGHT", page.allOff, "LEFT", -REVIEW_LAYOUT.allGap, 0)
     page.scroll = UI.SlimScroll(page.pane, SCROLL_W, SCROLL_GAP)
     page.scroll:SetPoint("TOPLEFT", 0, -LIST_TOP)
     page.scroll:SetPoint("BOTTOMRIGHT", -(SCROLL_W + SCROLL_GAP * 2), 0)
@@ -667,18 +675,18 @@ local function BuildReview()
     page.scroll:SetScrollChild(page.list)
     page.emptyIcon = page.pane:CreateTexture(nil, "ARTWORK")
     page.emptyIcon:SetSize(EMPTY_ICON, EMPTY_ICON)
-    page.emptyIcon:SetPoint("TOP", 0, -LIST_TOP - 60)
-    SetGlyph(page.emptyIcon, "changes")
+    page.emptyIcon:SetPoint("TOP", 0, -LIST_TOP - REVIEW_LAYOUT.emptyDrop)
+    SetGlyph(page.emptyIcon, CHANGES_ICON)
     Tint(page.emptyIcon, T.muted)
-    page.empty = Text(page.pane, BODY_SIZE, T.muted, listW - 60, "CENTER")
-    page.empty:SetPoint("TOP", page.emptyIcon, "BOTTOM", 0, -12)
+    page.empty = Text(page.pane, BODY_SIZE, T.muted, listW - REVIEW_LAYOUT.emptyRoom, "CENTER")
+    page.empty:SetPoint("TOP", page.emptyIcon, "BOTTOM", 0, -REVIEW_LAYOUT.emptyTextGap)
     page.empty:SetText(NO_CHANGES)
     page.rows, page.groups = {}, {}
     return page
 end
 
 local function Sections()
-    local list, byTheme = { { key = CHANGES, name = CHANGES_NAME, on = 0, total = 0, icon = "changes" } }, {}
+    local list, byTheme = { { key = CHANGES, name = CHANGES_NAME, on = 0, total = 0, icon = CHANGES_ICON } }, {}
     for _, e in ipairs(entries) do
         local s = byTheme[e.theme]
         if not s then
@@ -727,12 +735,12 @@ local function GroupHead(page, i)
     local head = page.groups[i]
     if head then return head end
     head = CreateFrame("Frame", nil, page.list)
-    head:SetHeight(GROUP_H)
+    head:SetHeight(REVIEW_LAYOUT.groupH)
     head.icon = head:CreateTexture(nil, "ARTWORK")
-    head.icon:SetSize(GROUP_ICON, GROUP_ICON)
-    head.icon:SetPoint("BOTTOMLEFT", 2, 7)
+    head.icon:SetSize(REVIEW_LAYOUT.groupIcon, REVIEW_LAYOUT.groupIcon)
+    head.icon:SetPoint("BOTTOMLEFT", REVIEW_LAYOUT.groupIconX, REVIEW_LAYOUT.groupIconY)
     head.name = ns.Font(head, BODY_SIZE, nil, T.fg)
-    head.name:SetPoint("LEFT", head.icon, "RIGHT", 8, 0)
+    head.name:SetPoint("LEFT", head.icon, "RIGHT", REVIEW_LAYOUT.groupTextGap, 0)
     head.rule = Rule(head)
     head.rule:SetPoint("BOTTOMLEFT")
     head.rule:SetPoint("BOTTOMRIGHT")
@@ -743,7 +751,7 @@ end
 local function PaintRow(row, e)
     row.name:SetText(e.name)
     row.yours:SetShown(e.mine)
-    row.why:SetText(e.mine and YOURS:format(e.suggest and "on" or "off") or e.why)
+    row.why:SetText(e.mine and YOURS:format(e.suggest and TEXT_ON or TEXT_OFF) or e.why)
     local tag, color = Status(e)
     local stripe = color or e.mine and GOLD
     row.stripe:SetShown(stripe ~= nil)
@@ -760,16 +768,16 @@ local function PaintRows(page)
         if (section == CHANGES and IsChange(e)) or e.theme == section then
             if section == CHANGES and e.theme ~= last then
                 heads = heads + 1
-                if heads > 1 then y = y + GROUP_GAP end
+                if heads > 1 then y = y + REVIEW_LAYOUT.groupGap end
                 local head = GroupHead(page, heads)
                 head:ClearAllPoints()
                 head:SetPoint("TOPLEFT", 0, -y)
                 head:SetWidth(width)
                 head.name:SetText(e.theme or "")
-                SetGlyph(head.icon, Setup.THEME_ICONS[e.theme] or "changes")
+                SetGlyph(head.icon, Setup.THEME_ICONS[e.theme] or CHANGES_ICON)
                 Tint(head.icon, T.accent)
                 head:Show()
-                y = y + GROUP_H + ROW_GAP
+                y = y + REVIEW_LAYOUT.groupH + REVIEW_LAYOUT.rowGap
                 last = e.theme
             end
             count = count + 1
@@ -780,7 +788,7 @@ local function PaintRows(page)
             row:SetWidth(width)
             PaintRow(row, e)
             row:Show()
-            y = y + ROW_H + ROW_GAP
+            y = y + REVIEW_LAYOUT.rowH + REVIEW_LAYOUT.rowGap
         end
     end
     for i = count + 1, #page.rows do page.rows[i]:Hide() end
@@ -841,7 +849,7 @@ function Paint()
     window.review:SetShown(reviewing)
     window.foot:SetShown(not welcome)
     PaintSegments()
-    window.next.arrow:SetTexture(reviewing and CHECK_ART or GLYPHS .. "next.tga", nil, nil, "TRILINEAR")
+    window.next.arrow:SetTexture(reviewing and CHECK_ART or NEXT_ART, nil, nil, "TRILINEAR")
     window.again:SetShown(reviewing)
     window.skip:SetShown(not welcome and not reviewing)
     if welcome then
@@ -850,16 +858,16 @@ function Paint()
         window.subtitle:SetText(REVIEW_SUB)
         PaintReview()
         local combat = InCombatLockdown()
-        ns.SetButtonText(window.next, Setup.NeedsReload(entries) and "Apply and Reload" or "Apply")
-        window.next:SetAlpha(combat and 0.5 or 1)
+        ns.SetButtonText(window.next, Setup.NeedsReload(entries) and TEXT_APPLY_RELOAD or TEXT_APPLY)
+        window.next:SetAlpha(combat and DIM_ALPHA or 1)
         window.note:SetText(combat and IN_COMBAT or "")
     else
         local q = Question()
         window.subtitle:SetText(QUESTION_OF:format(step, count))
         PaintQuestion(q)
-        ns.SetButtonText(window.next, (step == count or Setup.Skips(answers)) and "See My Setup" or "Next")
+        ns.SetButtonText(window.next, (step == count or Setup.Skips(answers)) and TEXT_SEE_SETUP or TEXT_NEXT)
         local ready = Ready(q)
-        window.next:SetAlpha(ready and 1 or 0.5)
+        window.next:SetAlpha(ready and 1 or DIM_ALPHA)
         window.note:SetText(q.one and "" or ready and PICKED:format(PickedCount(q)) or PICK_ONE)
     end
 end
@@ -927,17 +935,17 @@ local function BuildFoot()
     local rule = Rule(foot)
     rule:SetPoint("TOPLEFT")
     rule:SetPoint("TOPRIGHT")
-    window.back = Arrow(ns.Button(foot, "Back", NAV_W, BUTTON_H, Back), GLYPHS .. "back.tga")
+    window.back = Arrow(ns.Button(foot, TEXT_BACK, NAV_W, BUTTON_H, Back), BACK_ART)
     window.back:SetPoint("BOTTOMLEFT", EDGE, EDGE)
     window.skip = Parts.Link(foot, Skip)
     Parts.SetLink(window.skip, SKIP)
-    window.skip:SetPoint("BOTTOM", 0, EDGE + 4)
-    window.again = ns.Button(foot, "Start Over", NAV_W, BUTTON_H, StartOver)
+    window.skip:SetPoint("BOTTOM", 0, EDGE + FOOT_LAYOUT.skipLift)
+    window.again = ns.Button(foot, TEXT_START_OVER, NAV_W, BUTTON_H, StartOver)
     window.again:SetPoint("BOTTOM", 0, EDGE)
-    window.next = Arrow(ns.AccentBorder(ns.Button(foot, "Next", APPLY_W, BUTTON_H, Next)), GLYPHS .. "next.tga", true)
+    window.next = Arrow(ns.AccentBorder(ns.Button(foot, TEXT_NEXT, APPLY_W, BUTTON_H, Next)), NEXT_ART, true)
     window.next:SetPoint("BOTTOMRIGHT", -EDGE, EDGE)
     window.note = ns.Font(foot, SMALL_SIZE, nil, T.muted)
-    window.note:SetPoint("RIGHT", window.next, "LEFT", -12, 0)
+    window.note:SetPoint("RIGHT", window.next, "LEFT", -FOOT_LAYOUT.noteGap, 0)
     window.foot = foot
 end
 
@@ -950,8 +958,8 @@ local function Build()
     window.segments = {}
     for i = #Setup.QUESTIONS, 1, -1 do
         local seg = window:CreateTexture(nil, "ARTWORK")
-        seg:SetSize(SEG_W, SEG_H)
-        local right = SEG_RIGHT + (#Setup.QUESTIONS - i) * (SEG_W + SEG_GAP)
+        seg:SetSize(SEG.w, SEG.h)
+        local right = SEG.right + (#Setup.QUESTIONS - i) * (SEG.w + SEG.gap)
         seg:SetPoint("RIGHT", window, "TOPRIGHT", -right, -HEADER / 2)
         window.segments[i] = seg
     end

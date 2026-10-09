@@ -1,26 +1,28 @@
--------------------------------------------------------------------------------
---  NaowhForever_AlertStack.lua -- the one Alerts group: Camp Nearby, Talent Points, Durability,
---  Restock and Pet Tracker stack upward from its spot, whichever are on screen at the time, and
---  move together under one Unlock Mode mover. The group frame is the bottom slot; the mover
---  covers the whole stack, so anchors measure what the player sees.
--------------------------------------------------------------------------------
+-- NaowhForever_AlertStack.lua: the Alerts group, the alerts stacked upward under one Unlock Mode mover.
 local ns = _G.NaowhForever
+
 local S = ns.QoLSettings
 
 local GAP = 6
 local SLOT_W, SLOT_H = 300, 32
 local DEFAULT_Y = 150
--- Before the group each alert had a spot of its own. The first one a player had moved, from
--- the bottom of the stack up, becomes the group's.
 local OLD_POSITIONS = { "campAlertPos", "talentPointsPos", "durabilityPos", "restockPos", "petTrackerPos" }
+local CAMP_POSITION = "campAlertPos"
+local MOVER_LABEL = "Alerts"
+local SETTINGS_PAGE = "QoL/Loot & Items"
+local SETTINGS_CARD = "QoL/Loot & Items:durability"
 
 local members = {}
 local group, unlocked
 
+local function ByOrder(a, b)
+    return a.alertOrder < b.alertOrder
+end
+
 local function OldPosition()
     for _, key in ipairs(OLD_POSITIONS) do
         local settings = S
-        if key == "campAlertPos" then settings = ns.AuraBuffSettings end
+        if key == CAMP_POSITION then settings = ns.AuraBuffSettings end
         local pos = settings and settings.Get(key)
         if type(pos) == "table" then return pos end
     end
@@ -49,8 +51,11 @@ local function Layout()
         end
     end
     group.mover:SetSize(width, math.max(y - GAP, SLOT_H))
-    -- Members belong to different modules, so the plate follows whichever previews are up.
     group.mover:SetShown(unlocked == true and any)
+end
+
+local function SavePosition(pos)
+    S.Set("alertsPos", pos)
 end
 
 local function Build()
@@ -58,19 +63,22 @@ local function Build()
     group:SetSize(SLOT_W, SLOT_H)
     group:SetMovable(true)
     group:SetClampedToScreen(true)
-    group.mover = ns.UI.AttachMover(group, "Alerts", function(pos) S.Set("alertsPos", pos) end, "QoL/Loot & Items",
-        "QoL/Loot & Items:durability")
+    group.mover = ns.UI.AttachMover(group, MOVER_LABEL, SavePosition, SETTINGS_PAGE, SETTINGS_CARD)
     group.mover:ClearAllPoints()
     group.mover:SetPoint("BOTTOM", group, "BOTTOM")
     Place()
 end
 
--- Order 1 is the bottom of the stack.
+local function SetUnlocked(on)
+    unlocked = on
+    if group then Layout() end
+end
+
 function ns.AlertStack(frame, order)
     if not group then Build() end
     frame.alertOrder = order
     members[#members + 1] = frame
-    table.sort(members, function(a, b) return a.alertOrder < b.alertOrder end)
+    table.sort(members, ByOrder)
     frame:HookScript("OnShow", Layout)
     frame:HookScript("OnHide", Layout)
     frame:HookScript("OnSizeChanged", Layout)
@@ -81,11 +89,5 @@ end
 hooksecurefunc(ns, "Apply", function()
     if group then Place() end
 end)
-hooksecurefunc(ns, "ShowRaidReminderAnchorConfig", function()
-    unlocked = true
-    if group then Layout() end
-end)
-hooksecurefunc(ns, "HideRaidReminderAnchorConfig", function()
-    unlocked = false
-    if group then Layout() end
-end)
+hooksecurefunc(ns, "ShowRaidReminderAnchorConfig", function() SetUnlocked(true) end)
+hooksecurefunc(ns, "HideRaidReminderAnchorConfig", function() SetUnlocked(false) end)

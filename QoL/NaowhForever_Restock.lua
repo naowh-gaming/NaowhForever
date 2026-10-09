@@ -1,38 +1,33 @@
--------------------------------------------------------------------------------
---  NaowhForever_Restock.lua -- the QoL restock module: a reminder in rested areas when low on
---  reagents, ammo or food, and buying, selling junk and repairing at a vendor.
--------------------------------------------------------------------------------
+-- NaowhForever_Restock.lua: the QoL restock reminder, and buying, selling junk and repairing at a vendor.
 local ns = _G.NaowhForever
+
 local S = ns.QoLSettings
 local T = ns.THEME
 local Parts = ns.Shared.Parts
+local Group = ns.Shared.Settings.Group
 
--- Class spells that use a vendor reagent on Forever, from its SpellReagents data
--- (build 1.60.1.69913). Each family lists its ranks from lowest; the highest rank you know
--- sets the reagent, so a rank 2 Prayer of Fortitude asks for Sacred Candles, not Holy.
 local FAMILIES = {
-    { class = "DRUID", { 20484, 17034 }, { 20739, 17035 }, { 20742, 17036 }, { 20747, 17037 },
-      { 20748, 17038 } },                                         -- Rebirth
-    { class = "DRUID", { 21849, 17021 }, { 21850, 17026 } },      -- Gift of the Wild
-    { class = "MAGE", { 23028, 17020 } },                         -- Arcane Brilliance
-    { class = "MAGE", { 3561, 17031 }, { 3562, 17031 }, { 3563, 17031 }, { 3565, 17031 },
-      { 3566, 17031 }, { 3567, 17031 }, { 1297659, 17031 } },     -- Teleports
-    { class = "MAGE", { 10059, 17032 }, { 11416, 17032 }, { 11417, 17032 }, { 11418, 17032 },
-      { 11419, 17032 }, { 11420, 17032 } },                       -- Portals
-    { class = "PALADIN", { 19752, 17033 } },                      -- Divine Intervention
-    { class = "PALADIN", { 25782, 21177 }, { 25916, 21177 }, { 25890, 21177 }, { 25894, 21177 },
-      { 25918, 21177 }, { 25895, 21177 }, { 25898, 21177 } },     -- Greater Blessings
-    { class = "PRIEST", { 21562, 17028 }, { 21564, 17029 } },     -- Prayer of Fortitude
-    { class = "PRIEST", { 27681, 17029 } },                       -- Prayer of Spirit
-    { class = "PRIEST", { 27683, 17029 } },                       -- Prayer of Shadow Protection
-    { class = "SHAMAN", { 20608, 17030 }, { 21169, 17030 }, { 27740, 17030 } }, -- Reincarnation
-    { class = "WARLOCK", { 18540, 16583 } },                      -- Ritual of Doom
-    { class = "WARLOCK", { 1122, 5565 }, { 24670, 5565 } },       -- Inferno
-    { class = "ROGUE", { 1856, 5140 }, { 1857, 5140 }, { 27617, 5140 }, { 457437, 5140 },
-      { 1285372, 5140 } },                                        -- Vanish
+    { class = "DRUID", name = "Rebirth", { 20484, 17034 }, { 20739, 17035 }, { 20742, 17036 }, { 20747, 17037 },
+      { 20748, 17038 } },
+    { class = "DRUID", name = "Gift of the Wild", { 21849, 17021 }, { 21850, 17026 } },
+    { class = "MAGE", name = "Arcane Brilliance", { 23028, 17020 } },
+    { class = "MAGE", name = "Teleports", { 3561, 17031 }, { 3562, 17031 }, { 3563, 17031 }, { 3565, 17031 },
+      { 3566, 17031 }, { 3567, 17031 }, { 1297659, 17031 } },
+    { class = "MAGE", name = "Portals", { 10059, 17032 }, { 11416, 17032 }, { 11417, 17032 }, { 11418, 17032 },
+      { 11419, 17032 }, { 11420, 17032 } },
+    { class = "PALADIN", name = "Divine Intervention", { 19752, 17033 } },
+    { class = "PALADIN", name = "Greater Blessings", { 25782, 21177 }, { 25916, 21177 }, { 25890, 21177 },
+      { 25894, 21177 }, { 25918, 21177 }, { 25895, 21177 }, { 25898, 21177 } },
+    { class = "PRIEST", name = "Prayer of Fortitude", { 21562, 17028 }, { 21564, 17029 } },
+    { class = "PRIEST", name = "Prayer of Spirit", { 27681, 17029 } },
+    { class = "PRIEST", name = "Prayer of Shadow Protection", { 27683, 17029 } },
+    { class = "SHAMAN", name = "Reincarnation", { 20608, 17030 }, { 21169, 17030 }, { 27740, 17030 } },
+    { class = "WARLOCK", name = "Ritual of Doom", { 18540, 16583 } },
+    { class = "WARLOCK", name = "Inferno", { 1122, 5565 }, { 24670, 5565 } },
+    { class = "ROGUE", name = "Vanish", { 1856, 5140 }, { 1857, 5140 }, { 27617, 5140 }, { 457437, 5140 },
+      { 1285372, 5140 } },
 }
 
--- How many of each reagent to carry, unless the player sets their own.
 local TARGETS = {
     [17034] = 5, [17035] = 5, [17036] = 5, [17037] = 5, [17038] = 5,
     [17021] = 20, [17026] = 20,
@@ -45,73 +40,115 @@ local TARGETS = {
 }
 
 local AMMO_SLOT = 0
-local FOOD_CLASS, FOOD_SUBCLASS = 0, 5   -- Consumable: Food & Drink
-local TITLE_GROW = 6   -- the title's font size over the list's
+local FOOD_CLASS, FOOD_SUBCLASS = 0, 5
+local DRINK_ITEM = 159
+local PLAIN_BAG = 0
+local MAX_LEVEL = 60
+local NO_DRINK = { WARRIOR = true, ROGUE = true }
+local TITLE_GROW = 6
+local TITLE_SIZE, TEXT_SIZE = 22, 16
+local TITLE_TOP, TEXT_GAP = 4, 4
+local PAD_W, PAD_H = 16, 12
+local FLASH_LOOPS, FLASH_ALPHA, FLASH_TIME = 6, 0.35, 0.6
+local STACK_ORDER = 4
+local SETTLE_DELAY = 0.5
+local CARRY_MAX = 200
+local ITEM_PATTERN = "item:(%d+)"
+local CHECKS = { { "restockReagents", "reagents" }, { "restockAmmo", "ammo" }, { "restockFood", "food & drink" },
+    { "restockVendor", "junk & bags" } }
+local SAMPLE = { "Arcane Powder  3 / 20", "Rough Arrow  150 / 1000", "Junk to sell  6" }
+
+local TEXT_ITEM = "item "
+local TEXT_TITLE = "Restock"
+local TEXT_SHORT = "%s  %d / %d"
+local TEXT_FOOD = "Food  %d left"
+local TEXT_DRINK = "Drink  %d left"
+local TEXT_JUNK = "Junk to sell  %d"
+local TEXT_BAGS = "Bags nearly full  %d free"
+local TEXT_NO_GOLD = "Not enough gold to repair ("
+local TEXT_REPAIRED = "Repaired for "
+local TEXT_RESTOCKED = "Restocked "
+local TEXT_FOR = " for "
+local TEXT_BOUGHT = "x "
+local CARRY_HELP = "How many to carry. 0 stops reminding you about it."
+local TEXT_NOTHING = "Nothing to check"
+local TEXT_BUYS = "; buys at vendors"
 
 local alert, flash
 local wasResting
 local pendingItems = {}
+local restockRows, reagentRows, seenReagents = {}, {}, {}
+local events = CreateFrame("Frame")
 
 local function On()
     return S.Get("enabled") and S.Get("restock")
 end
 
 local function ItemName(itemID)
-    return C_Item.GetItemNameByID(itemID) or ("item " .. itemID)
+    return C_Item.GetItemNameByID(itemID) or (TEXT_ITEM .. itemID)
 end
 
 local function Target(itemID)
     return S.Get("restockTarget" .. itemID) or TARGETS[itemID]
 end
 
--- itemID -> quantity wanted: the reagents for the spells you know, plus your equipped ammo.
+local function KnownReagent(family)
+    local item
+    for _, rank in ipairs(family) do
+        if C_SpellBook.IsSpellKnown(rank[1]) then item = rank[2] end
+    end
+    return item
+end
+
 local function Wanted()
     local want = {}
     if S.Get("restockReagents") then
         for _, family in ipairs(FAMILIES) do
-            local item
-            for _, rank in ipairs(family) do
-                if C_SpellBook.IsSpellKnown(rank[1]) then item = rank[2] end
-            end
+            local item = KnownReagent(family)
             if item and Target(item) > 0 then want[item] = Target(item) end
         end
     end
-    -- Forever reports an empty ammo slot as item 0, not nil.
     local ammo = S.Get("restockAmmo") and GetInventoryItemID("player", AMMO_SLOT)
     if ammo and ammo > 0 then want[ammo] = S.Get("restockAmmoTarget") end
     return want
 end
 
--- Food and drink carried, junk to sell and free bag slots, in one pass over the bags.
+local function FoodLevel(itemID)
+    local _, _, _, _, level = C_Item.GetItemInfo(itemID)
+    if level then return level end
+    if not pendingItems[itemID] then
+        pendingItems[itemID] = true
+        C_Item.RequestLoadItemDataByID(itemID)
+    end
+end
+
+local function InLevelRange(level)
+    return level >= (S.Get("restockFoodMinLevel") or 0) and level <= (S.Get("restockFoodMaxLevel") or MAX_LEVEL)
+end
+
+local function IsFood(itemID)
+    local _, _, _, _, _, classID, subclassID = C_Item.GetItemInfoInstant(itemID)
+    return classID == FOOD_CLASS and subclassID == FOOD_SUBCLASS
+end
+
 local function ScanBags()
     local food, drink, junk, free = 0, 0, 0, 0
-    local drinkSpell = C_Item.GetItemSpell(159) -- Refreshing Spring Water; localized Drink spell name.
+    local drinkSpell = C_Item.GetItemSpell(DRINK_ITEM)
     for bag = 0, NUM_BAG_SLOTS do
-        -- Quivers, ammo pouches and soul bags do not count as room.
         local slots, bagType = C_Container.GetContainerNumFreeSlots(bag)
-        if bagType == 0 then free = free + slots end
+        if bagType == PLAIN_BAG then free = free + slots end
         for slot = 1, C_Container.GetContainerNumSlots(bag) do
             local info = C_Container.GetContainerItemInfo(bag, slot)
             if info then
                 if info.quality == Enum.ItemQuality.Poor and not info.hasNoValue then
                     junk = junk + 1
                 end
-                local _, _, _, _, _, classID, subclassID = C_Item.GetItemInfoInstant(info.itemID)
-                if classID == FOOD_CLASS and subclassID == FOOD_SUBCLASS then
-                    local _, _, _, _, level = C_Item.GetItemInfo(info.itemID)
-                    if not level then
-                        if not pendingItems[info.itemID] then
-                            pendingItems[info.itemID] = true
-                            C_Item.RequestLoadItemDataByID(info.itemID)
-                        end
-                    elseif level >= (S.Get("restockFoodMinLevel") or 0)
-                        and level <= (S.Get("restockFoodMaxLevel") or 60) then
-                        local spell = C_Item.GetItemSpell(info.itemID)
-                        if drinkSpell and spell == drinkSpell then
-                            drink = drink + info.stackCount
-                        else
-                            food = food + info.stackCount
-                        end
+                local level = IsFood(info.itemID) and FoodLevel(info.itemID)
+                if level and InLevelRange(level) then
+                    if drinkSpell and C_Item.GetItemSpell(info.itemID) == drinkSpell then
+                        drink = drink + info.stackCount
+                    else
+                        food = food + info.stackCount
                     end
                 end
             end
@@ -120,7 +157,6 @@ local function ScanBags()
     return food, junk, free, drink
 end
 
--- A target slider for each reagent your class uses, for the options page.
 function ns.RestockReagentSliders()
     local class = select(2, UnitClass("player"))
     local sliders, seen = {}, {}
@@ -130,8 +166,8 @@ function ns.RestockReagentSliders()
                 local item = rank[2]
                 if not seen[item] then
                     seen[item] = true
-                    local slider = S.Slider("restockTarget" .. item, ItemName(item), 0, 200, 1,
-                        "How many to carry. 0 stops reminding you about it.", "restockReagents")
+                    local slider = S.Slider("restockTarget" .. item, ItemName(item), 0, CARRY_MAX, 1,
+                        CARRY_HELP, "restockReagents")
                     slider.getValue = function() return Target(item) end
                     sliders[#sliders + 1] = slider
                 end
@@ -141,62 +177,67 @@ function ns.RestockReagentSliders()
     return sliders
 end
 
-local function Lines()
-    local lines = {}
+local function ReagentLines(lines)
     for itemID, target in pairs(Wanted()) do
         local have = C_Item.GetItemCount(itemID)
         if have < target then
-            lines[#lines + 1] = ("%s  %d / %d"):format(ItemName(itemID), have, target)
+            lines[#lines + 1] = TEXT_SHORT:format(ItemName(itemID), have, target)
         end
     end
     table.sort(lines)
+end
+
+local function BagLines(lines)
     local food, junk, free, drink = ScanBags()
-    if S.Get("restockFood") and food < S.Get("restockFoodBelow") then
-        lines[#lines + 1] = ("Food  %d left"):format(food)
+    local below = S.Get("restockFoodBelow")
+    if S.Get("restockFood") and food < below then
+        lines[#lines + 1] = TEXT_FOOD:format(food)
     end
     local class = select(2, UnitClass("player"))
-    if S.Get("restockFood") and class ~= "WARRIOR" and class ~= "ROGUE"
-        and drink < S.Get("restockFoodBelow") then
-        lines[#lines + 1] = ("Drink  %d left"):format(drink)
+    if S.Get("restockFood") and not NO_DRINK[class] and drink < below then
+        lines[#lines + 1] = TEXT_DRINK:format(drink)
     end
-    if S.Get("restockVendor") then
-        if junk > 0 then lines[#lines + 1] = ("Junk to sell  %d"):format(junk) end
-        if free < S.Get("restockBagsBelow") then
-            lines[#lines + 1] = ("Bags nearly full  %d free"):format(free)
-        end
+    if not S.Get("restockVendor") then return end
+    if junk > 0 then lines[#lines + 1] = TEXT_JUNK:format(junk) end
+    if free < S.Get("restockBagsBelow") then
+        lines[#lines + 1] = TEXT_BAGS:format(free)
     end
+end
+
+local function Lines()
+    local lines = {}
+    ReagentLines(lines)
+    BagLines(lines)
     return lines
 end
 
--------------------------------------------------------------------------------
---  The reminder
--------------------------------------------------------------------------------
+local function OnFlashLoop(self)
+    self.loops = self.loops + 1
+    if self.loops >= FLASH_LOOPS then self:Stop() end
+end
+
 local function BuildAlert()
     alert = CreateFrame("Frame", "NaowhForeverRestock", UIParent)
     alert:SetMovable(true)
     alert:SetClampedToScreen(true)
-    alert.title = ns.Font(alert, 22, "OUTLINE", T.accent)
-    alert.title:SetPoint("TOP", 0, -4)
-    alert.title:SetText("Restock")
-    alert.text = ns.Font(alert, 16, "OUTLINE")
-    alert.text:SetPoint("TOP", alert.title, "BOTTOM", 0, -4)
+    alert.title = ns.Font(alert, TITLE_SIZE, "OUTLINE", T.accent)
+    alert.title:SetPoint("TOP", 0, -TITLE_TOP)
+    alert.title:SetText(TEXT_TITLE)
+    alert.text = ns.Font(alert, TEXT_SIZE, "OUTLINE")
+    alert.text:SetPoint("TOP", alert.title, "BOTTOM", 0, -TEXT_GAP)
     alert.text:SetJustifyH("CENTER")
     alert.backdrop = Parts.HudBackdrop(alert, { mode = "none" })
 
-    -- Pulses a few times when it appears, then stays solid until it is dealt with.
     flash = alert:CreateAnimationGroup()
     flash:SetLooping("BOUNCE")
-    flash:SetScript("OnLoop", function(self)
-        self.loops = self.loops + 1
-        if self.loops >= 6 then self:Stop() end
-    end)
+    flash:SetScript("OnLoop", OnFlashLoop)
     local pulse = flash:CreateAnimation("Alpha")
     pulse:SetFromAlpha(1)
-    pulse:SetToAlpha(0.35)
-    pulse:SetDuration(0.6)
+    pulse:SetToAlpha(FLASH_ALPHA)
+    pulse:SetDuration(FLASH_TIME)
 
     alert:Hide()
-    ns.AlertStack(alert, 4)
+    ns.AlertStack(alert, STACK_ORDER)
 end
 
 local function HideAlert()
@@ -206,7 +247,7 @@ local function HideAlert()
     end
 end
 
-local function Style()
+local function Restyle()
     local font, size, outline = S.Get("restockFont"), S.Get("restockFontSize"), S.Get("restockOutline")
     local mode = alert.backdrop:SetMode(S.Get("restockBackground"))
     Parts.HudFont(alert.title, font, size + TITLE_GROW, outline, mode)
@@ -215,11 +256,10 @@ end
 
 local function ShowAlert(lines)
     if not alert then BuildAlert() end
-    Style()
+    Restyle()
     alert.text:SetText(table.concat(lines, "\n"))
-    alert:SetSize(math.max(alert.title:GetStringWidth(), alert.text:GetStringWidth()) + 16,
-        alert.title:GetStringHeight() + alert.text:GetStringHeight() + 12)
-    -- Refreshed as bags change; only a new appearance pulses.
+    alert:SetSize(math.max(alert.title:GetStringWidth(), alert.text:GetStringWidth()) + PAD_W,
+        alert.title:GetStringHeight() + alert.text:GetStringHeight() + PAD_H)
     if not alert:IsShown() then
         alert:Show()
         flash.loops = 0
@@ -227,7 +267,6 @@ local function ShowAlert(lines)
     end
 end
 
--- Shown on reaching a rested area, and again after a vendor if anything is still short.
 local function Check()
     if not On() or not IsResting() or InCombatLockdown() or IsInInstance()
         or (MerchantFrame and MerchantFrame:IsShown()) then
@@ -238,20 +277,16 @@ local function Check()
     if #lines > 0 then ShowAlert(lines) else HideAlert() end
 end
 
--------------------------------------------------------------------------------
---  At the vendor
--------------------------------------------------------------------------------
--- Returns what it spent: GetMoney() does not drop until the server answers.
 local function Repair()
     if not (S.Get("autoRepair") and CanMerchantRepair()) then return 0 end
     local cost, canRepair = GetRepairAllCost()
     if not (canRepair and cost > 0) then return 0 end
     if GetMoney() < cost then
-        ns.Print("Not enough gold to repair (" .. C_CurrencyInfo.GetCoinTextureString(cost) .. ").")
+        ns.Print(TEXT_NO_GOLD .. C_CurrencyInfo.GetCoinTextureString(cost) .. ").")
         return 0
     end
     RepairAllItems()
-    ns.Print("Repaired for " .. C_CurrencyInfo.GetCoinTextureString(cost))
+    ns.Print(TEXT_REPAIRED .. C_CurrencyInfo.GetCoinTextureString(cost))
     return cost
 end
 
@@ -262,78 +297,85 @@ local function SellJunk()
     end
 end
 
--- Buys each wanted item this vendor sells for gold, up to its target. A vendor that sells in
--- bundles (arrows by 200) only takes whole bundles, so the amount rounds up to one.
+local function Bundles(index, itemID, target, info, money)
+    local bundle = math.max(info.stackCount, 1)
+    local bundles = math.ceil((target - C_Item.GetItemCount(itemID)) / bundle)
+    if info.numAvailable and info.numAvailable >= 0 then
+        bundles = math.min(bundles, info.numAvailable)
+    end
+    if info.price > 0 then bundles = math.min(bundles, math.floor(money / info.price)) end
+    return bundles, bundle, math.max(math.floor(GetMerchantItemMaxStack(index) / bundle), 1)
+end
+
+local function BuyBundles(index, bundles, bundle, perBuy)
+    local left = bundles
+    while left > 0 do
+        local take = math.min(left, perBuy)
+        BuyMerchantItem(index, take * bundle)
+        left = left - take
+    end
+end
+
 local function Buy(alreadySpent)
     if not S.Get("restockBuy") then return end
     local want = Wanted()
     local money = GetMoney() - alreadySpent
     local spent, bought = 0, {}
     for index = 1, GetMerchantNumItems() do
-        local itemID = tonumber((GetMerchantItemLink(index) or ""):match("item:(%d+)"))
+        local itemID = tonumber((GetMerchantItemLink(index) or ""):match(ITEM_PATTERN))
         local target = itemID and want[itemID]
         local info = target and C_MerchantFrame.GetItemInfo(index)
         if info and info.isPurchasable and not info.hasExtendedCost then
-            local bundle = math.max(info.stackCount, 1)
-            local bundles = math.ceil((target - C_Item.GetItemCount(itemID)) / bundle)
-            if info.numAvailable and info.numAvailable >= 0 then
-                bundles = math.min(bundles, info.numAvailable)
-            end
-            if info.price > 0 then bundles = math.min(bundles, math.floor(money / info.price)) end
+            local bundles, bundle, perBuy = Bundles(index, itemID, target, info, money)
             if bundles > 0 then
-                local perBuy = math.max(math.floor(GetMerchantItemMaxStack(index) / bundle), 1)
-                local left = bundles
-                while left > 0 do
-                    local take = math.min(left, perBuy)
-                    BuyMerchantItem(index, take * bundle)
-                    left = left - take
-                end
+                BuyBundles(index, bundles, bundle, perBuy)
                 money = money - bundles * info.price
                 spent = spent + bundles * info.price
-                bought[#bought + 1] = bundles * bundle .. "x " .. ItemName(itemID)
+                bought[#bought + 1] = bundles * bundle .. TEXT_BOUGHT .. ItemName(itemID)
             end
         end
     end
     if #bought > 0 then
-        ns.Print("Restocked " .. table.concat(bought, ", ") .. " for "
+        ns.Print(TEXT_RESTOCKED .. table.concat(bought, ", ") .. TEXT_FOR
             .. C_CurrencyInfo.GetCoinTextureString(math.floor(spent)))
     end
 end
 
--------------------------------------------------------------------------------
---  Wiring
--------------------------------------------------------------------------------
-local events = CreateFrame("Frame")
-events:SetScript("OnEvent", function(_, event, itemID)
+local function OnMerchantShow()
+    HideAlert()
+    SellJunk()
+    local spent = Repair()
+    if On() then Buy(spent) end
+end
+
+local function OnRestingChanged()
+    local resting = IsResting()
+    if resting and not wasResting then Check() end
+    if not resting then HideAlert() end
+    wasResting = resting
+end
+
+local function OnEvent(_, event, itemID)
     if event == "GET_ITEM_INFO_RECEIVED" then
         if not pendingItems[itemID] then return end
         pendingItems[itemID] = nil
     end
     if event == "MERCHANT_SHOW" then
-        HideAlert()
-        SellJunk()
-        local spent = Repair()
-        if On() then Buy(spent) end
+        OnMerchantShow()
     elseif event == "MERCHANT_CLOSED" then
-        -- Bags settle a moment after the last purchase or sale.
-        C_Timer.After(0.5, Check)
+        C_Timer.After(SETTLE_DELAY, Check)
     elseif event == "PLAYER_REGEN_DISABLED" then
         HideAlert()
     elseif event == "BAG_UPDATE_DELAYED" or event == "PLAYER_REGEN_ENABLED"
         or event == "GET_ITEM_INFO_RECEIVED" then
-        -- Restocked from the bank, mail or a trade: the list follows while it is up.
         Check()
     else
-        local resting = IsResting()
-        if resting and not wasResting then Check() end
-        if not resting then HideAlert() end
-        wasResting = resting
+        OnRestingChanged()
     end
-end)
+end
 
 local function Apply()
     events:UnregisterAllEvents()
-    -- Auto Repair and Auto Sell Junk work at the vendor whether or not the reminder is on.
     if S.Get("enabled") and (S.Get("restock") or S.Get("autoRepair") or S.Get("sellJunk")) then
         events:RegisterEvent("MERCHANT_SHOW")
     end
@@ -341,7 +383,6 @@ local function Apply()
         HideAlert()
         return
     end
-    -- Cached ahead so the reminder can name reagents the client has not seen this session.
     for itemID in pairs(TARGETS) do C_Item.RequestLoadItemDataByID(itemID) end
     events:RegisterEvent("PLAYER_UPDATE_RESTING")
     events:RegisterEvent("PLAYER_ENTERING_WORLD")
@@ -350,11 +391,18 @@ local function Apply()
     events:RegisterEvent("GET_ITEM_INFO_RECEIVED")
     events:RegisterEvent("MERCHANT_CLOSED")
     events:RegisterEvent("BAG_UPDATE_DELAYED")
-    pendingItems[159] = true
-    C_Item.RequestLoadItemDataByID(159)
+    pendingItems[DRINK_ITEM] = true
+    C_Item.RequestLoadItemDataByID(DRINK_ITEM)
     wasResting = IsResting()
     Check()
 end
+
+local function ShowSample()
+    if not On() then return end
+    ShowAlert(SAMPLE)
+end
+
+events:SetScript("OnEvent", OnEvent)
 
 hooksecurefunc(S, "Set", function(key)
     if key == "enabled" or key == "sellJunk" or key == "autoRepair"
@@ -363,20 +411,12 @@ hooksecurefunc(S, "Set", function(key)
     end
 end)
 hooksecurefunc(ns, "Apply", Apply)
-hooksecurefunc(ns, "ShowRaidReminderAnchorConfig", function()
-    if not On() then return end
-    ShowAlert({ "Arcane Powder  3 / 20", "Rough Arrow  150 / 1000", "Junk to sell  6" })
-end)
+hooksecurefunc(ns, "ShowRaidReminderAnchorConfig", ShowSample)
 hooksecurefunc(ns, "HideRaidReminderAnchorConfig", HideAlert)
 
 local boot = CreateFrame("Frame")
 boot:RegisterEvent("PLAYER_LOGIN")
 boot:SetScript("OnEvent", Apply)
-
-local Group = ns.Shared.Settings.Group
-local CARRY_HELP = "How many to carry. 0 stops reminding you about it."
-local CHECKS = { { "restockReagents", "reagents" }, { "restockAmmo", "ammo" }, { "restockFood", "food & drink" },
-    { "restockVendor", "junk & bags" } }
 
 local loot = ns.Shared.Settings.Page("QoL/Loot & Items", S)
 
@@ -416,19 +456,32 @@ local FIXED = {
 local CARRY_GROUP = Group("Reagents to Carry")
 local LOOK = ns.Shared.Settings.Look("restock", { text = true, size = { 10, 32, 1 }, background = "card" })
 
-local restockRows, reagentRows, seenReagents = {}, {}, {}
-
 local function ReagentRow(item)
     local row = reagentRows[item]
     if not row then
         local key = "restockTarget" .. item
-        row = { key = key, slider = { 0, 200, 1 }, help = CARRY_HELP, needs = "restockReagents",
+        row = { key = key, slider = { 0, CARRY_MAX, 1 }, help = CARRY_HELP, needs = "restockReagents",
             get = function() return Target(item) end,
             set = function(v) S.Set(key, v) end }
         reagentRows[item] = row
     end
     row.label = ItemName(item)
     return row
+end
+
+local function AddReagentRows(family, grouped)
+    for _, rank in ipairs(family) do
+        local item = rank[2]
+        if not seenReagents[item] then
+            seenReagents[item] = true
+            if not grouped then
+                restockRows[#restockRows + 1] = CARRY_GROUP
+                grouped = true
+            end
+            restockRows[#restockRows + 1] = ReagentRow(item)
+        end
+    end
+    return grouped
 end
 
 local function RestockRows()
@@ -438,19 +491,7 @@ local function RestockRows()
     local class = select(2, UnitClass("player"))
     local grouped = false
     for _, family in ipairs(FAMILIES) do
-        if family.class == class then
-            for _, rank in ipairs(family) do
-                local item = rank[2]
-                if not seenReagents[item] then
-                    seenReagents[item] = true
-                    if not grouped then
-                        restockRows[#restockRows + 1] = CARRY_GROUP
-                        grouped = true
-                    end
-                    restockRows[#restockRows + 1] = ReagentRow(item)
-                end
-            end
-        end
+        if family.class == class then grouped = AddReagentRows(family, grouped) end
     end
     restockRows[#restockRows + 1] = LOOK
     return restockRows
@@ -461,9 +502,9 @@ local function RestockSummary(store)
     for _, pair in ipairs(CHECKS) do
         if store.Get(pair[1]) then text = text and (text .. ", " .. pair[2]) or pair[2] end
     end
-    if not text then return "Nothing to check" end
+    if not text then return TEXT_NOTHING end
     text = text:sub(1, 1):upper() .. text:sub(2)
-    return store.Get("restockBuy") and (text .. "; buys at vendors") or text
+    return store.Get("restockBuy") and (text .. TEXT_BUYS) or text
 end
 
 loot:Card({

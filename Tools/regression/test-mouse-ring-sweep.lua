@@ -48,6 +48,7 @@ local function Session(settings)
     local S = { Get = function(k) return values[k] end, Set = function(k, v) values[k] = v end }
     local page = { Card = function() end }
     local ns = {
+        QoLConstants = dofile("Tools/regression/qol_constants.lua"),
         QoLSettings = S, UI = {}, THEME = {},
         Shared = { Settings = { Group = function() return {} end, Page = function() return page end } },
         GCDSpell = function() return 61304 end,

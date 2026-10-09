@@ -1,0 +1,20 @@
+-- Style.lua: the Training Planner's own look, on top of the house look in Shared/Style.lua.
+local ns = _G.NaowhForever
+
+ns.Training.Style = setmetatable({
+    WARN_RGB = { r = 0.94, g = 0.70, b = 0.29 },
+    UP_RGB = { r = 0.30, g = 0.82, b = 0.48 },
+    UP_CODE = "|cff4dd17a",
+    LOGO_FILE = "Interface\\AddOns\\NaowhForever\\Media\\LogoAddon.tga",
+    CROP_LOW = 0.08,
+    CROP_HIGH = 0.92,
+    SHADOW_ALPHA = 0.85,
+    LEARNED_ALPHA = 0.45,
+    DISABLED_ALPHA = 0.45,
+    UNPICKED_ALPHA = 0.55,
+    ROW_H = 30,
+    ROW_ICON = 22,
+    SKIP_W = 46,
+    SKIP_H = 18,
+    SECTION_GAP = 18,
+}, { __index = ns.Shared.Style })

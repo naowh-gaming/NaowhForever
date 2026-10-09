@@ -6,9 +6,10 @@ local f = assert(io.open("Core/NaowhForever_Widgets.lua", "rb"))
 local src = f:read("*a"):gsub("\r\n", "\n")
 f:close()
 
+local constants = assert(src:match("\n(local MEDIA = .-\n)\nlocal UI = {}\n"), "Widgets constants")
 local first = assert(src:find("local moduleDefaults = {}", 1, true))
 local last = assert(src:find("    local function Row(cfg, k, on)", first, true))
-local code = src:sub(first, last - 1) .. "    return S\nend\n"
+local code = constants .. src:sub(first, last - 1) .. "    return S\nend\n"
 
 local checks = 0
 local function check(label, value) assert(value, label); checks = checks + 1 end

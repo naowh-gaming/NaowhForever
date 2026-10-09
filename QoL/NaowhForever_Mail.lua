@@ -1,15 +1,44 @@
--------------------------------------------------------------------------------
---  NaowhForever_Mail.lua -- additions to Blizzard's mailbox: an alts list for the To box, quick
---  attach, and a login warning for expiring mail.
--------------------------------------------------------------------------------
+-- NaowhForever_Mail.lua: the mailbox additions: alts for the To box, quick attach, and the expiring mail warning.
 local ns = _G.NaowhForever
+
 local S = ns.QoLSettings
 
-local function Tag() return ns.Color("accent", "Naowh Mail") end
 local SEND_SLOTS = 12
-local EXPIRY_WARN = 3 * 86400
+local DAY = 86400
+local EXPIRY_DAYS = 3
+local EXPIRY_WARN = EXPIRY_DAYS * DAY
+local WARN_DELAY = 5
+local COIN_SIZE = 12
+local BUTTON_W, BUTTON_H = 64, 22
+local BUTTON_X, BUTTON_Y, BUTTON_GAP = 4, -30, 4
+local NO_SUBCLASS = -1
 local TRADE_GOODS = Enum.ItemClass.Tradegoods
 local GEAR = { [Enum.ItemClass.Weapon] = true, [Enum.ItemClass.Armor] = true }
+
+local TEXT_GOLD = "Gold on this realm: "
+local TEXT_NO_ALTS = "Log in on your other characters once and they appear here."
+local TEXT_ALT = "%s  |cff808080%d|r  %s"
+local TEXT_FULL = "%s: %d %s didn't fit, all %d attachment slots are full. Send this one and attach again."
+local TEXT_STACK, TEXT_STACKS = "stack", "stacks"
+local TEXT_ALL_GOODS = "All trade goods"
+local TEXT_OTHER_GOODS = "Other trade goods"
+local TEXT_GEAR = "Unbound gear"
+local TEXT_ATTACH_TITLE = "Attach from your bags"
+local TEXT_NOTHING = "No trade goods or unbound gear in your bags."
+local TEXT_ATTACH_ROW = "%s (%d %s)"
+local TEXT_EXPIRED = "may have expired"
+local TEXT_UNDER_DAY = "less than a day"
+local TEXT_DAYS = "d"
+local TEXT_EXPIRING = ": mail expiring soon on "
+local TEXT_KEEP = ". Open the mailbox on those characters to keep it."
+local TEXT_ALTS = "Alts"
+local TEXT_ALTS_TIP = "Your Characters"
+local TEXT_ALTS_HELP = "Pick one of your characters on this realm and faction to fill the To box. Shows each "
+    .. "one's level and gold."
+local TEXT_ATTACH = "Attach"
+local TEXT_ATTACH_TIP = "Quick Attach"
+local TEXT_ATTACH_HELP = "Attach every trade good, one type of trade good, or your unbound gear from your bags, "
+    .. "up to the 12 attachment slots."
 
 local altsButton, attachButton
 local qBag, qSlot, qItem = {}, {}, {}
@@ -17,13 +46,20 @@ local qHead, qCount = 1, 0
 local pendingSlot, pendingItem, pendingBag, pendingBagSlot
 local clicking = false
 local counts, labels, order = {}, {}, {}
+local events = CreateFrame("Frame")
+
+local function Tag() return ns.Color("accent", "Naowh Mail") end
 
 local function On(key)
     return S.Get("enabled") and S.Get(key)
 end
 
 local function Coins(copper)
-    return C_CurrencyInfo.GetCoinTextureString(copper, 12)
+    return C_CurrencyInfo.GetCoinTextureString(copper, COIN_SIZE)
+end
+
+local function Stacks(n)
+    return n == 1 and TEXT_STACK or TEXT_STACKS
 end
 
 local function OpenAltsMenu(owner)
@@ -31,14 +67,13 @@ local function OpenAltsMenu(owner)
     local total = GetMoney()
     for _, alt in ipairs(list) do total = total + alt.money end
     MenuUtil.CreateContextMenu(owner, function(_, root)
-        root:CreateTitle("Gold on this realm: " .. Coins(total))
+        root:CreateTitle(TEXT_GOLD .. Coins(total))
         if #list == 0 then
-            root:CreateTitle("Log in on your other characters once and they appear here.", WHITE_FONT_COLOR)
+            root:CreateTitle(TEXT_NO_ALTS, WHITE_FONT_COLOR)
             return
         end
         for _, alt in ipairs(list) do
-            local text = ("%s  |cff808080%d|r  %s"):format(ns.ClassColoredName(alt.name, alt.class),
-                alt.level, Coins(alt.money))
+            local text = TEXT_ALT:format(ns.ClassColoredName(alt.name, alt.class), alt.level, Coins(alt.money))
             root:CreateButton(text, function()
                 SendMailNameEditBox:SetText(alt.name)
                 SendMailSubjectEditBox:SetFocus()
@@ -46,12 +81,6 @@ local function OpenAltsMenu(owner)
         end
     end)
 end
-
--------------------------------------------------------------------------------
---  Quick attach: one stack at a time from a scan made at the click, each checked in its bag
---  slot and on the cursor before it goes in, and the next only once it has landed.
--------------------------------------------------------------------------------
-local events = CreateFrame("Frame")
 
 local function FreeSlot()
     for i = 1, SEND_SLOTS do
@@ -75,7 +104,7 @@ local function Mailable(bag, slot)
     local info = C_Container.GetContainerItemInfo(bag, slot)
     if not info or info.isBound or info.isLocked or info.itemID ~= itemID then return end
     if GEAR[classID] and (info.quality or 0) < Enum.ItemQuality.Uncommon then return end
-    return itemID, classID, subClassID or -1, subType
+    return itemID, classID, subClassID or NO_SUBCLASS, subType
 end
 
 local function Matches(key, classID, subClassID)
@@ -89,51 +118,65 @@ local function Landed()
     return itemID == pendingItem
 end
 
+local function StillPending()
+    if Landed() then
+        pendingSlot = nil
+        return false
+    end
+    local info = C_Container.GetContainerItemInfo(pendingBag, pendingBagSlot)
+    if not GetCursorInfo() and not (info and info.isLocked) then StopAttaching() end
+    return true
+end
+
+local function ReportFull()
+    local left = qCount - qHead + 1
+    ns.Print(TEXT_FULL:format(Tag(), left, Stacks(left), SEND_SLOTS))
+    StopAttaching()
+end
+
+local function OnCursor(itemID)
+    local kind, cursorID = GetCursorInfo()
+    return kind == "item" and cursorID == itemID, kind
+end
+
+local function AttachOne(slot, bag, bagSlot, itemID)
+    local info = C_Container.GetContainerItemInfo(bag, bagSlot)
+    if not (info and info.itemID == itemID and not info.isLocked and not info.isBound) then return true end
+    C_Container.PickupContainerItem(bag, bagSlot)
+    local held, kind = OnCursor(itemID)
+    if not held then
+        if kind then ClearCursor() end
+        StopAttaching()
+        return false
+    end
+    pendingSlot, pendingItem, pendingBag, pendingBagSlot = slot, itemID, bag, bagSlot
+    clicking = true
+    ClickSendMailItemButton(slot)
+    clicking = false
+    if OnCursor(itemID) then
+        ClearCursor()
+        StopAttaching()
+        return false
+    end
+    return true
+end
+
 local function AttachNext()
     if clicking then return end
     while true do
-        if pendingSlot then
-            if not Landed() then
-                local info = C_Container.GetContainerItemInfo(pendingBag, pendingBagSlot)
-                if not GetCursorInfo() and not (info and info.isLocked) then StopAttaching() end
-                return
-            end
-            pendingSlot = nil
-        end
+        if pendingSlot and StillPending() then return end
         if qHead > qCount or GetCursorInfo() then
             StopAttaching()
             return
         end
         local slot = FreeSlot()
         if not slot then
-            local left = qCount - qHead + 1
-            ns.Print(("%s: %d %s didn't fit, all %d attachment slots are full. Send this one and attach again.")
-                :format(Tag(), left, left == 1 and "stack" or "stacks", SEND_SLOTS))
-            StopAttaching()
+            ReportFull()
             return
         end
         local bag, bagSlot, itemID = qBag[qHead], qSlot[qHead], qItem[qHead]
         qHead = qHead + 1
-        local info = C_Container.GetContainerItemInfo(bag, bagSlot)
-        if info and info.itemID == itemID and not info.isLocked and not info.isBound then
-            C_Container.PickupContainerItem(bag, bagSlot)
-            local kind, cursorID = GetCursorInfo()
-            if kind ~= "item" or cursorID ~= itemID then
-                if kind then ClearCursor() end
-                StopAttaching()
-                return
-            end
-            pendingSlot, pendingItem, pendingBag, pendingBagSlot = slot, itemID, bag, bagSlot
-            clicking = true
-            ClickSendMailItemButton(slot)
-            clicking = false
-            kind, cursorID = GetCursorInfo()
-            if kind == "item" and cursorID == itemID then
-                ClearCursor()
-                StopAttaching()
-                return
-            end
-        end
+        if not AttachOne(slot, bag, bagSlot, itemID) then return end
     end
 end
 
@@ -174,10 +217,10 @@ local function Count()
             local itemID, classID, subClassID, subType = Mailable(bag, slot)
             if itemID then
                 if classID == TRADE_GOODS then
-                    Tally("all", "All trade goods")
-                    Tally(subClassID, subType or "Other trade goods")
+                    Tally("all", TEXT_ALL_GOODS)
+                    Tally(subClassID, subType or TEXT_OTHER_GOODS)
                 else
-                    Tally("gear", "Unbound gear")
+                    Tally("gear", TEXT_GEAR)
                 end
             end
         end
@@ -187,53 +230,55 @@ end
 local function OpenAttachMenu(owner)
     Count()
     MenuUtil.CreateContextMenu(owner, function(_, root)
-        root:CreateTitle("Attach from your bags")
+        root:CreateTitle(TEXT_ATTACH_TITLE)
         if #order == 0 then
-            root:CreateTitle("No trade goods or unbound gear in your bags.", WHITE_FONT_COLOR)
+            root:CreateTitle(TEXT_NOTHING, WHITE_FONT_COLOR)
             return
         end
         for _, key in ipairs(order) do
             local n = counts[key]
-            root:CreateButton(("%s (%d %s)"):format(labels[key], n, n == 1 and "stack" or "stacks"), function()
+            root:CreateButton(TEXT_ATTACH_ROW:format(labels[key], n, Stacks(n)), function()
                 Attach(key)
             end)
         end
     end)
 end
 
--------------------------------------------------------------------------------
---  Expiry warning
--------------------------------------------------------------------------------
+local function TimeLeft(left)
+    if left <= 0 then return TEXT_EXPIRED end
+    if left < DAY then return TEXT_UNDER_DAY end
+    return math.floor(left / DAY) .. TEXT_DAYS
+end
+
 local function WarnExpiring()
     local now, soon = time(), {}
     for _, realm in pairs(ns.AccountSettings().alts or {}) do
         for name, c in pairs(realm) do
             if c.mailExpires and (c.mailCount or 0) > 0 and c.mailExpires - now < EXPIRY_WARN then
-                local left = c.mailExpires - now
-                local when = left <= 0 and "may have expired" or left < 86400 and "less than a day"
-                    or math.floor(left / 86400) .. "d"
-                soon[#soon + 1] = ns.ClassColoredName(name, c.class) .. " (" .. when .. ")"
+                soon[#soon + 1] = ns.ClassColoredName(name, c.class) .. " (" .. TimeLeft(c.mailExpires - now) .. ")"
             end
         end
     end
     if #soon > 0 then
-        ns.Print(Tag() .. ": mail expiring soon on " .. table.concat(soon, ", ")
-            .. ". Open the mailbox on those characters to keep it.")
+        ns.Print(Tag() .. TEXT_EXPIRING .. table.concat(soon, ", ") .. TEXT_KEEP)
     end
 end
 
--------------------------------------------------------------------------------
---  Buttons on the send tab, in a column beside the mail frame.
--------------------------------------------------------------------------------
+local function OnAltsClick()
+    OpenAltsMenu(altsButton)
+end
+
+local function OnAttachClick()
+    OpenAttachMenu(attachButton)
+end
+
 local function Build()
     if altsButton or not (SendMailFrame and MailFrame) then return end
-    altsButton = ns.Button(SendMailFrame, "Alts", 64, 22, function() OpenAltsMenu(altsButton) end)
-    altsButton:SetPoint("TOPLEFT", MailFrame, "TOPRIGHT", 4, -30)
-    ns.Tooltip(altsButton, "Your Characters", "Pick one of your characters on this realm and "
-        .. "faction to fill the To box. Shows each one's level and gold.")
-    attachButton = ns.Button(SendMailFrame, "Attach", 64, 22, function() OpenAttachMenu(attachButton) end)
-    ns.Tooltip(attachButton, "Quick Attach", "Attach every trade good, one type of trade good, or "
-        .. "your unbound gear from your bags, up to the 12 attachment slots.")
+    altsButton = ns.Button(SendMailFrame, TEXT_ALTS, BUTTON_W, BUTTON_H, OnAltsClick)
+    altsButton:SetPoint("TOPLEFT", MailFrame, "TOPRIGHT", BUTTON_X, BUTTON_Y)
+    ns.Tooltip(altsButton, TEXT_ALTS_TIP, TEXT_ALTS_HELP)
+    attachButton = ns.Button(SendMailFrame, TEXT_ATTACH, BUTTON_W, BUTTON_H, OnAttachClick)
+    ns.Tooltip(attachButton, TEXT_ATTACH_TIP, TEXT_ATTACH_HELP)
 end
 
 local function Place()
@@ -241,14 +286,14 @@ local function Place()
     altsButton:SetShown(On("mailAlts"))
     attachButton:ClearAllPoints()
     if altsButton:IsShown() then
-        attachButton:SetPoint("TOPLEFT", altsButton, "BOTTOMLEFT", 0, -4)
+        attachButton:SetPoint("TOPLEFT", altsButton, "BOTTOMLEFT", 0, -BUTTON_GAP)
     else
-        attachButton:SetPoint("TOPLEFT", MailFrame, "TOPRIGHT", 4, -30)
+        attachButton:SetPoint("TOPLEFT", MailFrame, "TOPRIGHT", BUTTON_X, BUTTON_Y)
     end
     attachButton:SetShown(On("mailQuickAttach"))
 end
 
-events:SetScript("OnEvent", function(_, event, isLogin)
+local function OnEvent(_, event, isLogin)
     if event == "MAIL_SEND_INFO_UPDATE" then
         AttachNext()
     elseif event == "MAIL_SHOW" then
@@ -258,9 +303,9 @@ events:SetScript("OnEvent", function(_, event, isLogin)
         StopAttaching()
     elseif event == "PLAYER_ENTERING_WORLD" then
         events:UnregisterEvent("PLAYER_ENTERING_WORLD")
-        if isLogin then C_Timer.After(5, WarnExpiring) end
+        if isLogin then C_Timer.After(WARN_DELAY, WarnExpiring) end
     end
-end)
+end
 
 local function Apply()
     if On("mailAlts") or On("mailQuickAttach") then
@@ -275,6 +320,17 @@ local function Apply()
     Place()
 end
 
+local function OnLogin()
+    Apply()
+    if On("mailExpiry") then events:RegisterEvent("PLAYER_ENTERING_WORLD") end
+end
+
+local function ForgetCharacter()
+    ns.OpenForgetAltMenu(UIParent)
+end
+
+events:SetScript("OnEvent", OnEvent)
+
 hooksecurefunc(S, "Set", function(key)
     if key == "enabled" or key == "mailAlts" or key == "mailQuickAttach" then Apply() end
 end)
@@ -282,14 +338,7 @@ hooksecurefunc(ns, "Apply", Apply)
 
 local boot = CreateFrame("Frame")
 boot:RegisterEvent("PLAYER_LOGIN")
-boot:SetScript("OnEvent", function()
-    Apply()
-    if On("mailExpiry") then events:RegisterEvent("PLAYER_ENTERING_WORLD") end
-end)
-
-local function ForgetCharacter()
-    ns.OpenForgetAltMenu(UIParent)
-end
+boot:SetScript("OnEvent", OnLogin)
 
 ns.Shared.Settings.Page("QoL/Loot & Items", S):Card({
     id = "mailAlts", name = "Mail & Alts", order = 40,

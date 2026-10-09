@@ -284,12 +284,12 @@ local function Fixture()
             return { IsAnyMenuOpen = function() return state.menuOpen == true end, OpenMenu = NOTHING }
         end },
     }, { __index = _G })
-    local files = {}
+    local files = { "Core/NaowhForever_Features.lua" }
     for _, path in ipairs(TocFiles("^Shared/.*%.lua$")) do
         if not path:find("^Shared/Data/%a*Items?%a*%.lua$") then files[#files + 1] = path end
     end
     files[#files + 1] = "NaowhForever_BiS/NaowhScore/Data/Formula.lua"   -- the paperdoll's score; not its tooltips
-    files[#files + 1] = "NaowhForever_BiS/NaowhScore/Score.lua"
+    files[#files + 1] = "NaowhForever_BiS/NaowhScore/NaowhScore.lua"
     for _, path in ipairs(TocFiles("^NaowhForever_BiS/StatWeights/.*%.lua$")) do files[#files + 1] = path end
     for _, path in ipairs(TocFiles("^NaowhForever_BiS/BiS/.*%.lua$")) do files[#files + 1] = path end
     Load(files, env)
@@ -318,7 +318,7 @@ local Measure = dofile("Tools/regression/measure.lua")(check)
 -------------------------------------------------------------------------------
 local ns, state, S = Fixture()
 local B = ns.BiS
-check("BiS.xml loads its files", #TocFiles("^NaowhForever_BiS/BiS/.*%.lua$") == 26)
+check("BiS.xml loads its files", #TocFiles("^NaowhForever_BiS/BiS/.*%.lua$") == 36)
 
 ns.OpenBisWindow()
 local view = Views(state, B)[1]

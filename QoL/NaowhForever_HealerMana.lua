@@ -1,28 +1,23 @@
--------------------------------------------------------------------------------
---  NaowhForever_HealerMana.lua -- the QoL healer mana list: every healer in your group and
---  their mana, lowest first, with a cup by anyone drinking. Read from the units themselves, so
---  nobody else needs the addon. A healer has the healer role, or no role and a healing class.
---  Each healer has a frame of its own listening to that unit only, so the rest of the raid's
---  power and aura events never reach here; drinking is read from each aura event's own
---  changes; a burst of roster events is one rebuild.
--------------------------------------------------------------------------------
+-- NaowhForever_HealerMana.lua: Healer Mana, every healer in your group and their mana, lowest first.
 local ns = _G.NaowhForever
+
 local S = ns.QoLSettings
 local T = ns.THEME
 local Parts = ns.Shared.Parts
 local St = ns.Shared.Style
 
-local MANA, MANA_TOKEN = 0, "MANA"  -- Enum.PowerType.Mana, and its name in UNIT_POWER_UPDATE
-local DRINK_SPELL = 430             -- Drink: its name, in the client's language, is the buff's
+local MANA, MANA_TOKEN = 0, "MANA"
+local DRINK_SPELL = 430
 local DRINK_ICON = "Interface\\Icons\\INV_Drink_07"
 local HEALER_CLASSES = { PRIEST = true, PALADIN = true, DRUID = true, SHAMAN = true }
-local UPDATE_DELAY = 0.25           -- a burst of mana ticks is one redraw
--- A row is its font size and ROW_PAD tall; PAD is the card round the rows.
+local UPDATE_DELAY = 0.25
 local BASE_SIZE, ROW_PAD, PAD, ICON_GAP, COLUMN_GAP = 12, 4, 6, 4, 8
-local ICON_CROP = 0.07              -- the icon's own edge, cut off inside our border
-local ICON_DROP = 1                 -- the Naowh font sits low in its line: the cup moves down to it
--- Mana under these shares shows in the running low and the nearly out colour.
+local ICON_CROP = ns.QoLConstants.ICON_CROP_TIGHT
+local ICON_DROP = 1
 local LOW, OUT = 0.6, 0.3
+local RAID_SIZE, PARTY_SIZE = 40, 4
+local PERMILLE, ROUND, TENTHS = 1000, 0.5, 10
+local PERCENT = ns.QoLConstants.PERCENT
 local PCT_FORMAT = "%.1f%%"
 local DEAD, OFFLINE, UNKNOWN = "Dead", "Offline", "--"
 local NO_RANK = math.huge
@@ -30,26 +25,30 @@ local PLACE = { point = "LEFT", relPoint = "LEFT", x = 40, y = -120 }
 local UNIT_EVENTS = { "UNIT_POWER_UPDATE", "UNIT_MAXPOWER", "UNIT_DISPLAYPOWER", "UNIT_CONNECTION", "UNIT_AURA" }
 local GROUP_EVENTS = { "GROUP_ROSTER_UPDATE", "PLAYER_ROLES_ASSIGNED", "PLAYER_ENTERING_WORLD" }
 
+local MOVER_LABEL = "Healer Mana"
+local SETTINGS_PAGE, SETTINGS_CARD = "QoL/Combat", "QoL/Combat:healerMana"
+local TEXT_IN_GROUP = "Shown while you are in a group."
+local TEXT_IN_INSTANCES = "Shown in dungeons and raids."
+local SUMMARY = "%s, %d wide"
+local STAGE_H, NOTE_Y, NOTE_SIZE, STAGE_MARGIN = 150, 10, 11, 16
+
 local frame, unlocked, pending, rosterPending, drinkName, shareCurve
-local look = 0                      -- bumped by a look setting, so rows restyle once
+local look = 0
 local rows, members, list, tracked, rank, units, watchers = {}, {}, {}, {}, {}, {}, {}
 
--- The unit names walked, made once: a roster pass makes no strings of its own.
 local RAID, PARTY = {}, {}
-for i = 1, 40 do RAID[i] = "raid" .. i end
-for i = 1, 4 do PARTY[i] = "party" .. i end
-local backdrops = setmetatable({}, { __mode = "k" })  -- each owner's card: the list's and the preview's
+for i = 1, RAID_SIZE do RAID[i] = "raid" .. i end
+for i = 1, PARTY_SIZE do PARTY[i] = "party" .. i end
+local backdrops = setmetatable({}, { __mode = "k" })
 
 local function On()
     return S.Get("enabled") and S.Get("healerMana")
 end
 
--- Unit data can come back secret in restricted content; it is never compared then.
 local function Secret(v)
     return issecretvalue and issecretvalue(v)
 end
 
--- Dungeons and raids, or any group.
 local function Here()
     if not IsInGroup() then return false end
     if S.Get("healerManaWhere") == "group" then return true end
@@ -80,7 +79,16 @@ local function Units()
     return units
 end
 
--- The healers in the group, one kept entry each, refilled on a roster change.
+local function Track(unit, name, guid, class)
+    local n = #list + 1
+    local m = members[n] or {}
+    members[n] = m
+    if m.guid ~= guid then m.pct, m.drinking = nil, false end
+    m.unit, m.name, m.class, m.guid = unit, name, class, guid
+    list[n] = m
+    tracked[unit] = m
+end
+
 local function Roster()
     wipe(list)
     wipe(tracked)
@@ -88,25 +96,17 @@ local function Roster()
         local name, guid = UnitName(unit), UnitGUID(unit)
         local _, class = UnitClass(unit)
         if name and guid and not (Secret(name) or Secret(guid) or Secret(class)) and IsHealer(unit, class) then
-            local n = #list + 1
-            local m = members[n] or {}
-            members[n] = m
-            if m.guid ~= guid then m.pct, m.drinking = nil, false end
-            m.unit, m.name, m.class, m.guid = unit, name, class, guid
-            list[n] = m
-            tracked[unit] = m
+            Track(unit, name, guid, class)
         end
     end
 end
 
--- Auras go secret during boss pulls; the last answer stands until they clear.
 local function CanReadDrink()
     if not S.Get("healerManaDrinking") or C_Secrets.ShouldAurasBeSecret() then return false end
     drinkName = drinkName or C_Spell.GetSpellName(DRINK_SPELL)
     return drinkName ~= nil
 end
 
--- A full look, on a roster change or a full aura update.
 local function Drinking(m)
     if not (CanReadDrink() and C_UnitAuras.GetAuraDataBySpellName) then return end
     local aura = C_UnitAuras.GetAuraDataBySpellName(m.unit, drinkName, "HELPFUL")
@@ -114,7 +114,21 @@ local function Drinking(m)
     m.drinkID = aura and aura.auraInstanceID or nil
 end
 
--- From an aura event's own changes: Drink added, or the Drink seen removed. true if it changed.
+local function DrinkAdded(m, added)
+    for i = 1, #added do
+        local name = added[i].name
+        if not Secret(name) and name == drinkName then
+            m.drinking, m.drinkID = true, added[i].auraInstanceID
+        end
+    end
+end
+
+local function DrinkRemoved(m, removed, id)
+    for i = 1, #removed do
+        if removed[i] == id then m.drinking, m.drinkID = false, nil end
+    end
+end
+
 local function DrinkChanged(m, info)
     if not CanReadDrink() then return false end
     local was = m.drinking
@@ -122,25 +136,12 @@ local function DrinkChanged(m, info)
         Drinking(m)
         return m.drinking ~= was
     end
-    local added = info.addedAuras
-    if added then
-        for i = 1, #added do
-            local name = added[i].name
-            if not Secret(name) and name == drinkName then
-                m.drinking, m.drinkID = true, added[i].auraInstanceID
-            end
-        end
-    end
+    if info.addedAuras then DrinkAdded(m, info.addedAuras) end
     local removed, id = info.removedAuraInstanceIDs, m.drinkID
-    if removed and id then
-        for i = 1, #removed do
-            if removed[i] == id then m.drinking, m.drinkID = false, nil end
-        end
-    end
+    if removed and id then DrinkRemoved(m, removed, id) end
     return m.drinking ~= was
 end
 
--- A druid in a form keeps the last share it showed.
 local function Read(m)
     local unit = m.unit
     local online, dead = UnitIsConnected(unit), UnitIsDeadOrGhost(unit)
@@ -152,7 +153,6 @@ local function Read(m)
     if not m.secret and max > 0 then m.pct = cur / max end
 end
 
--- Dead and offline last, then the lowest mana, then by name.
 local function Less(a, b)
     if (a.state ~= nil) ~= (b.state ~= nil) then return b.state ~= nil end
     local pa, pb = a.pct or NO_RANK, b.pct or NO_RANK
@@ -161,8 +161,6 @@ local function Less(a, b)
     return a.guid < b.guid
 end
 
--- While a share is secret it cannot be compared: each keeps its place from the last plain
--- sort, and anyone new goes last.
 local function Held(a, b)
     local ra, rb = rank[a.guid] or NO_RANK, rank[b.guid] or NO_RANK
     if ra ~= rb then return ra < rb end
@@ -188,16 +186,13 @@ local function ManaColour(pct)
     return St.TIME_OK_RGB
 end
 
--- A secret share is turned into 0 to 100 and written by the client: UnitPowerPercent takes the
--- unit, power type and curve as given (none of them secret) and hands back the share, secret
--- or not, which SetFormattedText shows. false where the client has no UnitPowerPercent.
 local function SecretShare(fs, unit)
     if not (UnitPowerPercent and C_CurveUtil) then return false end
     if not shareCurve then
         shareCurve = C_CurveUtil.CreateCurve()
         shareCurve:SetType(Enum.LuaCurveType.Linear)
         shareCurve:AddPoint(0, 0)
-        shareCurve:AddPoint(1, 100)
+        shareCurve:AddPoint(1, PERCENT)
     end
     fs:SetFormattedText(PCT_FORMAT, UnitPowerPercent(unit, MANA, false, shareCurve))
     return true
@@ -249,10 +244,10 @@ function Look.Paint(row, m, drinks)
         row.shownPct = nil
         if not SecretShare(row.pct, m.unit) then row.pct:SetText(UNKNOWN) end
     elseif m.pct then
-        local shown = math.floor(m.pct * 1000 + 0.5)
+        local shown = math.floor(m.pct * PERMILLE + ROUND)
         if row.shownPct ~= shown then
             row.shownPct = shown
-            row.pct:SetText(PCT_FORMAT:format(shown / 10))
+            row.pct:SetText(PCT_FORMAT:format(shown / TENTHS))
         end
         Colour(row.pct, ManaColour(m.pct))
     else
@@ -263,24 +258,31 @@ function Look.Paint(row, m, drinks)
     row:Show()
 end
 
--- One row per entry on owner's own card, sized to fit them.
+local function FitCard(owner, count, step)
+    local backdrop = backdrops[owner] or Parts.HudBackdrop(owner)
+    backdrops[owner] = backdrop
+    if owner.look == look and owner.count == count then return end
+    owner.look, owner.count = look, count
+    backdrop:SetMode(S.Get("healerManaBackground"))
+    owner:SetSize(S.Get("healerManaWidth"), count * step + 2 * PAD)
+end
+
+local function PoolRow(owner, pool, i)
+    local row = pool[i]
+    if not row then
+        row = Look.NewRow(owner)
+        pool[i] = row
+    end
+    return row
+end
+
 function Look.Rows(owner, pool, entries)
     local size, drinks = S.Get("healerManaFontSize"), S.Get("healerManaDrinking")
     local iconRoom = drinks and size + ICON_GAP or 0
     local step = size + ROW_PAD
-    local backdrop = backdrops[owner] or Parts.HudBackdrop(owner)
-    backdrops[owner] = backdrop
-    if owner.look ~= look or owner.count ~= #entries then
-        owner.look, owner.count = look, #entries
-        backdrop:SetMode(S.Get("healerManaBackground"))
-        owner:SetSize(S.Get("healerManaWidth"), #entries * step + 2 * PAD)
-    end
+    FitCard(owner, #entries, step)
     for i, m in ipairs(entries) do
-        local row = pool[i]
-        if not row then
-            row = Look.NewRow(owner)
-            pool[i] = row
-        end
+        local row = PoolRow(owner, pool, i)
         if row.look ~= look then
             row.shownPct = nil
             row:ClearAllPoints()
@@ -337,7 +339,6 @@ end
 local events = CreateFrame("Frame")
 local Apply, OnUnitEvent
 
--- One frame per healer, listening to that unit only.
 local function Watch()
     for i, m in ipairs(list) do
         local w = watchers[i]
@@ -368,7 +369,17 @@ local function RosterSoon()
     C_Timer.After(UPDATE_DELAY, RosterDue)
 end
 
--- Unit events are heard only while the list shows, roster events while it is on.
+local function SavePosition(pos)
+    S.Set("healerManaPos", pos)
+end
+
+local function Build()
+    frame = CreateFrame("Frame", "NaowhForeverHealerMana", UIParent)
+    frame:SetMovable(true)
+    frame:SetClampedToScreen(true)
+    frame.mover = ns.UI.AttachMover(frame, MOVER_LABEL, SavePosition, SETTINGS_PAGE, SETTINGS_CARD)
+end
+
 function Apply()
     if not On() then
         events:UnregisterAllEvents()
@@ -378,13 +389,7 @@ function Apply()
         if frame then frame:Hide() end
         return
     end
-    if not frame then
-        frame = CreateFrame("Frame", "NaowhForeverHealerMana", UIParent)
-        frame:SetMovable(true)
-        frame:SetClampedToScreen(true)
-        frame.mover = ns.UI.AttachMover(frame, "Healer Mana", function(pos) S.Set("healerManaPos", pos) end,
-            "QoL/Combat", "QoL/Combat:healerMana")
-    end
+    if not frame then Build() end
     for _, event in ipairs(GROUP_EVENTS) do events:RegisterEvent(event) end
     wipe(list)
     wipe(tracked)
@@ -398,15 +403,16 @@ function Apply()
     Redraw()
 end
 
-events:SetScript("OnEvent", function(_, event)
+local function OnGroupEvent(_, event)
     if event == "PLAYER_ENTERING_WORLD" then
         Apply()
     else
         RosterSoon()
     end
-end)
+end
 
--- A healer's own event: mana ticks of other powers and auras that are not Drink end here.
+events:SetScript("OnEvent", OnGroupEvent)
+
 function OnUnitEvent(watcher, event, unit, arg)
     if event == "UNIT_POWER_UPDATE" and (Secret(arg) or arg ~= MANA_TOKEN) then return end
     local m = tracked[watcher.unit]
@@ -415,12 +421,14 @@ function OnUnitEvent(watcher, event, unit, arg)
     Soon()
 end
 
-hooksecurefunc(S, "Set", function(key)
+local function OnSettingChanged(key)
     if key == "enabled" or (key:find("^healerMana") and key ~= "healerManaPos") then
         look = look + 1
         Apply()
     end
-end)
+end
+
+hooksecurefunc(S, "Set", OnSettingChanged)
 hooksecurefunc(ns, "Apply", function() Apply() end)
 hooksecurefunc(ns, "ShowRaidReminderAnchorConfig", function()
     unlocked = On() == true
@@ -441,7 +449,6 @@ boot:SetScript("OnEvent", function() Apply() end)
 local Settings = ns.Shared and ns.Shared.Settings
 if not Settings then return end
 
-local STAGE_H, NOTE_Y, NOTE_SIZE, STAGE_MARGIN = 150, 10, 11, 16
 local STATES = {
     { key = "group", label = "In a Group", tip = "Your healers' mana, with sample healers." },
 }
@@ -459,8 +466,7 @@ end
 
 local function PaintPreview(preview)
     local group = preview.group
-    preview.note:SetText(S.Get("healerManaWhere") == "group" and "Shown while you are in a group."
-        or "Shown in dungeons and raids.")
+    preview.note:SetText(S.Get("healerManaWhere") == "group" and TEXT_IN_GROUP or TEXT_IN_INSTANCES)
     Look.Rows(group, preview.rows, SAMPLE)
     local w, h = group:GetWidth(), group:GetHeight()
     local roomW = preview:GetWidth() - STAGE_MARGIN * 2
@@ -474,7 +480,7 @@ local function PaintPreview(preview)
 end
 
 local function Summary(store)
-    return ("%s, %d wide"):format(WHERE[1][store.Get("healerManaWhere")] or WHERE[1].instance,
+    return SUMMARY:format(WHERE[1][store.Get("healerManaWhere")] or WHERE[1].instance,
         store.Get("healerManaWidth"))
 end
 

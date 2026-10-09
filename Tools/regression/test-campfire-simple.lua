@@ -17,6 +17,13 @@
 -- it until you leave the campfire while left clicks pass through.
 
 local Load = dofile("Tools/regression/load_files.lua")
+-- The AuraBuffs files the Campfire reminder and its cards are made of, in AuraBuffs.xml's order.
+local CAMP_FILES = { "Core/NaowhForever_Features.lua", "NaowhForever_AuraBuffs/AuraBuffs.lua",
+    "NaowhForever_AuraBuffs/Data/Campfire.lua", "NaowhForever_AuraBuffs/CampReader.lua",
+    "NaowhForever_AuraBuffs/View/Style.lua", "NaowhForever_AuraBuffs/View/CampIcon.lua",
+    "NaowhForever_AuraBuffs/View/CampBar.lua", "NaowhForever_AuraBuffs/View/CampAlert.lua",
+    "NaowhForever_AuraBuffs/UI/SettingsPage.lua", "NaowhForever_AuraBuffs/UI/Campfire.lua",
+    "NaowhForever_AuraBuffs/UI/CampfireCards.lua" }
 local TocFiles = dofile("Tools/regression/toc_files.lua")
 local Measure = dofile("Tools/regression/measure.lua")
 
@@ -328,8 +335,7 @@ local function Fixture(settings)
     }, { __index = _G })
     env._G = env
     local files = TocFiles("^Shared/.*%.lua$")
-    files[#files + 1] = "NaowhForever_AuraBuffs/NaowhForever_AuraBuffs.lua"
-    files[#files + 1] = "NaowhForever_AuraBuffs/NaowhForever_Campfire.lua"
+    for _, file in ipairs(CAMP_FILES) do files[#files + 1] = file end
     Load(files, env)
     state.ns, state.S, state.T, state.values, state.Frame = ns, ns.AuraBuffSettings, T, values, Frame
     state.St = ns.Shared.Style
@@ -525,7 +531,11 @@ do
 
     check("the house backdrop and black edge, no custom alpha", bar.backdrop and rawget(bar, "bg") == nil
         and bar.top.color == s.St.BORDER_RGB and s.St.BACKDROP_ALPHA
-        and not Read("NaowhForever_AuraBuffs/NaowhForever_Campfire.lua"):find("BAR%.ALPHA"))
+        and not (function()
+            for _, file in ipairs(CAMP_FILES) do
+                if Read(file):find("BAR%.ALPHA") then return true end
+            end
+        end)())
     local behind = 0
     for _, f in ipairs(s.frames) do if f.parent == bar.camp then behind = behind + 1 end end
     local c = bar.camp.tex.coords

@@ -12,8 +12,8 @@ local function Slice(a, b)
     return src:sub(first, assert(src:find(b, first + #a, true)) - 1)
 end
 
-local code = Slice("local function CharKey()", "function ns.SettingsRoot()")
-    .. Slice("function ns.SettingsRoot()", "-------------------------------------------------------------------------------")
+local code = assert(src:match("\n(local MODULE_KEY = .-\n)\nlocal ns = {}\n"), "Core constants")
+    .. Slice("local function CharKey()", "local DEFAULTS = {")
     .. Slice("function ns.MarkSeen()", "function ns.ListProfiles()")
 
 local function Login(sv, name, clock)

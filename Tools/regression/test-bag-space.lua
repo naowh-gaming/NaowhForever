@@ -8,7 +8,7 @@
 -- Run from the repo root: lua Tools/regression/test-bag-space.lua
 local f = assert(io.open(arg[1] or "QoL/NaowhForever_BagSpace.lua", "rb"))
 local source = f:read("*a"); f:close()
-local SHARED = { "Shared/Shared.lua", "Shared/Style.lua", "Shared/Parts.lua" }
+local SHARED = { "Shared/Shared.lua", "Shared/Style.lua", "Shared/Parts.lua", "Shared/Marks.lua", "Shared/Text.lua", "Shared/Hud.lua", "Shared/Timer.lua", "Shared/Share.lua", "Shared/Panels.lua" }
 
 -- itemID -> name, quality, required level, max stack, vendor price, class
 local ITEMS = {
@@ -106,6 +106,7 @@ local function Fixture(opts)
     local cards = {}
 
     local ns = {
+        QoLConstants = dofile("Tools/regression/qol_constants.lua"),
         Color = function(token, text) return "|cff" .. HEX[token] .. (text and (text .. "|r") or "") end,
         THEME = { accent = { r = 0, g = 0.57, b = 0.93 }, muted = { r = 0.6, g = 0.6, b = 0.6 },
             fg = { r = 0.94, g = 0.95, b = 0.95 }, bg = { r = 0.05, g = 0.06, b = 0.07 },

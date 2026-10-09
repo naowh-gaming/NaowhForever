@@ -1,4 +1,5 @@
 <Ui xmlns="http://www.blizzard.com/wow/ui/">
+    <!-- NaowhForever_TownMap.xml: the town map script and its world map pin templates. -->
     <Script file="NaowhForever_TownMap.lua"/>
     <Frame name="NaowhForeverTownPinTemplate" mixin="NaowhForeverTownPinMixin" enableMouseMotion="true" enableMouseClicks="false" virtual="true">
         <Size x="16" y="16"/>

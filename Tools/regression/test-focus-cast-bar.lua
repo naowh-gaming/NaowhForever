@@ -92,6 +92,7 @@ local kick = { IsZero = function() return state.kickReady end, GetRemainingDurat
 
 local frames = {}
 local ns = {
+    QoLConstants = dofile("Tools/regression/qol_constants.lua"),
     QoLSettings = S, THEME = { muted = {}, accent = ACCENT, bg = THEME_BG },
     UI = { FontPath = function() return "font" end, AttachMover = function() return Widget("Mover") end,
         TexturePath = function(name, own) if name == "" then return own end return "lsm:" .. name end },

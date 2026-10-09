@@ -1,10 +1,6 @@
--------------------------------------------------------------------------------
---  NaowhForever_CombatLogger.lua -- the QoL combat logger: turns the combat log on in raids and
---  dungeons and off when you leave. Each of the two logs always, never, or asks once per instance
---  and difficulty and remembers the answer (combatLogInstances). Also: keep logging after you
---  leave, a chat line when logging starts and stops, and the Advanced Combat Logging prompt.
--------------------------------------------------------------------------------
+-- NaowhForever_CombatLogger.lua: Auto Combat Logging, the combat log on in raids and dungeons and off when you leave.
 local ns = _G.NaowhForever
+
 local S = ns.QoLSettings
 local Group = ns.Shared.Settings.Group
 
@@ -12,6 +8,16 @@ local WHERE = { { ask = "Ask Once", always = "Always", never = "Never" }, { "ask
 local KIND_KEYS = { raid = "combatLogRaids", party = "combatLogDungeons" }
 local RECHECK = { enabled = true, combatLogger = true, combatLogRaids = true, combatLogDungeons = true,
     combatLogStopOnLeave = true, combatLogAclPrompt = true }
+local POPUP_INDEX = 3
+local ACL_CVAR = "advancedCombatLogging"
+local KEY_JOIN = ":"
+local TEXT_STARTED, TEXT_STOPPED = "Combat logging started.", "Combat logging stopped."
+local TEXT_RELOAD = "Advanced combat logging starts after a reload. Reload UI now?"
+local TEXT_FORGET = "Forget every saved answer? Each raid and dungeon set to Ask Once asks again the next time "
+    .. "you enter it."
+local TEXT_NONE, TEXT_ONE, TEXT_MANY = "nothing answered yet", "1 answer saved", " answers saved"
+local TEXT_LOGGING, TEXT_NOT_LOGGING = "Logging now", "Not logging"
+local SUMMARY = "%s. Raids: %s, dungeons: %s, %s"
 
 local logging = false
 
@@ -19,7 +25,6 @@ local function On()
     return S.Get("enabled") and S.Get("combatLogger")
 end
 
--- Created on first write, so the defaults table is never written into.
 local function Instances()
     local db = S.DB()
     db.combatLogInstances = db.combatLogInstances or {}
@@ -32,7 +37,7 @@ local function SetLogging(on)
     LoggingCombat(on)
     logging = on
     if S.Get("combatLogChat") then
-        ns.Print(on and "Combat logging started." or "Combat logging stopped.")
+        ns.Print(on and TEXT_STARTED or TEXT_STOPPED)
     end
 end
 
@@ -43,7 +48,6 @@ local function Mode(kind)
     return WHERE[1][mode] and mode or "never"
 end
 
--- The text is set when a prompt is shown, so its title follows the theme's accent.
 local function AclText()
     return ns.Color("accent", "Naowh") .. " Forever\n\nAdvanced Combat Logging is off. Warcraft Logs needs it "
         .. "for a detailed report. Turn it on now? This reloads your UI."
@@ -54,32 +58,36 @@ local function LogText()
         .. "Your choice will be remembered."
 end
 
+local function OnAclAccept()
+    SetCVar(ACL_CVAR, 1)
+    ns.ConfirmReload(TEXT_RELOAD)
+end
+
 StaticPopupDialogs["NAOWHFOREVER_ACL_PROMPT"] = {
     button1 = "Enable",
     button2 = "Skip",
-    -- The game's popup cannot reload for an addon, so ours asks, with a Reload UI that can.
-    OnAccept = function()
-        SetCVar("advancedCombatLogging", 1)
-        ns.ConfirmReload("Advanced combat logging starts after a reload. Reload UI now?")
-    end,
+    OnAccept = OnAclAccept,
     timeout = 0,
     hideOnEscape = true,
-    preferredIndex = 3,
+    preferredIndex = POPUP_INDEX,
 }
 
--- A client without the setting has nothing to turn on, so it never asks.
 local function AdvancedLoggingOn()
-    local acl = GetCVar("advancedCombatLogging")
+    local acl = GetCVar(ACL_CVAR)
     if acl == nil or acl == "1" or not S.Get("combatLogAclPrompt") then return true end
     StaticPopupDialogs["NAOWHFOREVER_ACL_PROMPT"].text = AclText()
     StaticPopup_Show("NAOWHFOREVER_ACL_PROMPT")
     return false
 end
 
+local function StartIfAllowed()
+    if AdvancedLoggingOn() then SetLogging(true) end
+end
+
 local function Remember(data, enabled)
     Instances()[data.key] = { enabled = enabled, name = data.name, diffName = data.diffName }
     if enabled then
-        if AdvancedLoggingOn() then SetLogging(true) end
+        StartIfAllowed()
     else
         SetLogging(false)
     end
@@ -92,8 +100,27 @@ StaticPopupDialogs["NAOWHFOREVER_COMBATLOG_PROMPT"] = {
     OnCancel = function(_, data) Remember(data, false) end,
     timeout = 0,
     hideOnEscape = true,
-    preferredIndex = 3,
+    preferredIndex = POPUP_INDEX,
 }
+
+local function Ask(key, name, diffName)
+    if not AdvancedLoggingOn() then return end
+    SetLogging(true)
+    StaticPopupDialogs["NAOWHFOREVER_COMBATLOG_PROMPT"].text = LogText()
+    StaticPopup_Show("NAOWHFOREVER_COMBATLOG_PROMPT", name, diffName, { key = key, name = name, diffName = diffName })
+end
+
+local function AskOnce(instanceID, difficulty, name, diffName)
+    local key = instanceID .. KEY_JOIN .. difficulty
+    local saved = Instances()[key]
+    if saved and saved.enabled == false then
+        SetLogging(false)
+    elseif saved then
+        StartIfAllowed()
+    else
+        Ask(key, name, diffName)
+    end
+end
 
 local function Check()
     if not On() then
@@ -111,23 +138,10 @@ local function Check()
         return
     end
     if mode == "always" then
-        if AdvancedLoggingOn() then SetLogging(true) end
+        StartIfAllowed()
         return
     end
-    local key = instanceID .. ":" .. difficulty
-    local saved = Instances()[key]
-    if saved and saved.enabled == false then
-        SetLogging(false)
-    elseif saved then
-        if AdvancedLoggingOn() then SetLogging(true) end
-    else
-        -- Logging starts while the question is up, so the pull it is asked on is not lost.
-        if not AdvancedLoggingOn() then return end
-        SetLogging(true)
-        StaticPopupDialogs["NAOWHFOREVER_COMBATLOG_PROMPT"].text = LogText()
-        StaticPopup_Show("NAOWHFOREVER_COMBATLOG_PROMPT", name, diffName,
-            { key = key, name = name, diffName = diffName })
-    end
+    AskOnce(instanceID, difficulty, name, diffName)
 end
 ns.CombatLogCheck = Check
 
@@ -135,20 +149,24 @@ function ns.CombatLogging()
     return logging
 end
 
-local events = CreateFrame("Frame")
-events:RegisterEvent("PLAYER_ENTERING_WORLD")
-events:RegisterEvent("ZONE_CHANGED_NEW_AREA")
-events:RegisterEvent("PLAYER_DIFFICULTY_CHANGED")
-events:SetScript("OnEvent", function(_, event, isLogin, isReload)
+local function OnEvent(_, event, isLogin, isReload)
     if event == "PLAYER_ENTERING_WORLD" and (isLogin or isReload) and On() then
         if not AdvancedLoggingOn() then return end
     end
     Check()
-end)
+end
 
-hooksecurefunc(S, "Set", function(key)
+local function OnSettingChanged(key)
     if RECHECK[key] then Check() end
-end)
+end
+
+local events = CreateFrame("Frame")
+events:RegisterEvent("PLAYER_ENTERING_WORLD")
+events:RegisterEvent("ZONE_CHANGED_NEW_AREA")
+events:RegisterEvent("PLAYER_DIFFICULTY_CHANGED")
+events:SetScript("OnEvent", OnEvent)
+
+hooksecurefunc(S, "Set", OnSettingChanged)
 hooksecurefunc(ns, "Apply", Check)
 
 local function Answered()
@@ -163,16 +181,19 @@ local function AnyAnswered()
     return Answered() > 0
 end
 
+local function Forget()
+    S.Set("combatLogInstances", nil)
+end
+
 local function ForgetAll()
-    ns.Confirm("Forget every saved answer? Each raid and dungeon set to Ask Once asks again the next time "
-        .. "you enter it.", function() S.Set("combatLogInstances", nil) end)
+    ns.Confirm(TEXT_FORGET, Forget)
 end
 
 local function Summary()
     local n = Answered()
-    local answered = n == 0 and "nothing answered yet" or n == 1 and "1 answer saved" or (n .. " answers saved")
-    return (logging and "Logging now" or "Not logging") .. ". Raids: " .. WHERE[1][Mode("raid")]:lower()
-        .. ", dungeons: " .. WHERE[1][Mode("party")]:lower() .. ", " .. answered
+    local answered = n == 0 and TEXT_NONE or n == 1 and TEXT_ONE or (n .. TEXT_MANY)
+    return SUMMARY:format(logging and TEXT_LOGGING or TEXT_NOT_LOGGING, WHERE[1][Mode("raid")]:lower(),
+        WHERE[1][Mode("party")]:lower(), answered)
 end
 
 ns.Shared.Settings.Page("QoL/System", S):Card({

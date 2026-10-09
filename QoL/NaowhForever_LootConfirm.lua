@@ -1,11 +1,8 @@
--------------------------------------------------------------------------------
---  NaowhForever_LootConfirm.lua -- the QoL loot confirmation skip: answers yes to roll, bind,
---  trade-timer and mail lock confirmations.
--------------------------------------------------------------------------------
+-- NaowhForever_LootConfirm.lua: the retired loot confirmation skip, kept inert so saved choices stay.
 local ns = _G.NaowhForever
+
 local S = ns.QoLSettings
 
--- event -> the confirm call, the popup it replaces, and how the event's arguments carry over.
 local CONFIRMATIONS = {
     CONFIRM_LOOT_ROLL = { confirm = "ConfirmLootRoll", popup = "CONFIRM_LOOT_ROLL", forward = true },
     CONFIRM_DISENCHANT_ROLL = { confirm = "ConfirmLootRoll", popup = "CONFIRM_LOOT_ROLL", forward = true },
@@ -16,11 +13,9 @@ local CONFIRMATIONS = {
     MAIL_LOCK_SEND_ITEMS = { confirm = "RespondMailLockSendItem", appendTrue = true },
 }
 
-local events = CreateFrame("Frame")
-events:SetScript("OnEvent", function(_, event, arg1, arg2, ...)
-    local entry = CONFIRMATIONS[event]
+local function Answer(entry, arg1, arg2)
     local fn = _G[entry.confirm]
-    if not fn then return end
+    if not fn then return false end
     if entry.appendTrue then
         fn(arg1, true)
     elseif entry.forward then
@@ -28,24 +23,31 @@ events:SetScript("OnEvent", function(_, event, arg1, arg2, ...)
     else
         fn()
     end
-    if entry.popup then
-        if entry.spreadExtra then
-            StaticPopup_Hide(entry.popup, ...)
-        else
-            StaticPopup_Hide(entry.popup)
-        end
+    return true
+end
+
+local function OnEvent(_, event, arg1, arg2, ...)
+    local entry = CONFIRMATIONS[event]
+    if not Answer(entry, arg1, arg2) or not entry.popup then return end
+    if entry.spreadExtra then
+        StaticPopup_Hide(entry.popup, ...)
+    else
+        StaticPopup_Hide(entry.popup)
     end
-end)
+end
+
+local events = CreateFrame("Frame")
+events:SetScript("OnEvent", OnEvent)
 
 local function Apply()
     events:UnregisterAllEvents()
-    -- Automatic confirmations are retired; keep saved preferences recoverable.
-    -- No events are registered, including for profiles that previously enabled it.
 end
 
-hooksecurefunc(S, "Set", function(key)
+local function OnSettingChanged(key)
     if key == "enabled" or key == "lootConfirm" then Apply() end
-end)
+end
+
+hooksecurefunc(S, "Set", OnSettingChanged)
 hooksecurefunc(ns, "Apply", Apply)
 
 local boot = CreateFrame("Frame")

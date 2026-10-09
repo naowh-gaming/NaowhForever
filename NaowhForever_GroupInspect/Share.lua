@@ -1,24 +1,8 @@
--------------------------------------------------------------------------------
---  Share.lua -- Group Inspect's stats and the Naowh Forever exchange. GI.StatsFromGear(record)
---  sums a member's stats from the gear they wear (statsShared false). Members who run Naowh
---  Forever send their exact stats, talent points per tree and version over addon messages in
---  the group channel, and their record gets statsShared, talents, hasNF and nfVersion:
---    request "1 R", sent only while the window is open (on opening it, and when someone joins)
---    answer  "1 S <GUID> <version> <t1>/<t2>/<t3> <STR> <AGI> <STA> <INT> <SPI> <AP> <SP>
---            <CRIT> <HIT> <ARMOR>", CRIT and HIT in tenths of a percent, one message under 255
---            bytes, sent after a short random wait, at most once per ANSWER_GAP, and again when
---            your gear or talents change while someone asked in the last ASKED_WINDOW seconds.
---  Answering needs Share Your Stats (groupInspectShare) and a group. An answer is kept only from
---  the member its GUID names (ns.SenderIs), still in the group, every field checked, at most one
---  per member per ACCEPT_GAP; nothing received is sent back.
--------------------------------------------------------------------------------
+-- Share.lua: Group Inspect's exchange with other players' Naowh Forever: exact stats, talents, version.
 local ns = _G.NaowhForever
 local GI = ns.GroupInspect
 local S = ns.QoLSettings
 local SW = ns.StatWeights
-local GEAR_SLOTS = ns.Shared.Items.GEAR_SLOTS
-
-local IsItemDataCachedByID, GetItemInfoInstant = C_Item.IsItemDataCachedByID, C_Item.GetItemInfoInstant
 
 local PREFIX = "NaowhGroup"
 local REQUEST = "1 R"
@@ -32,6 +16,9 @@ local MAX_POINTS = 100
 local STAT_KEYS = { "STR", "AGI", "STA", "INT", "SPI", "AP", "SP", "CRIT", "HIT", "ARMOR" }
 local STAT_MAX = { 99999, 99999, 99999, 99999, 99999, 99999, 99999, 1000, 1000, 999999 }
 local TENTHS = { CRIT = true, HIT = true }
+local TENTH_SCALE = 10
+local ROUND = 0.5
+local PRIMARY_STATS = 5
 local CHANNELS = { PARTY = true, RAID = true, INSTANCE_CHAT = true }
 local ANSWER_GAP = 10
 local ACCEPT_GAP = 8
@@ -50,22 +37,6 @@ local ROLE = {
 local DAMAGE = "Damage"
 local SCHOOLS_FIRST, SCHOOLS_LAST = 2, 7
 
-local PRIMARY, AP, RAP, POWER, SPELL_DAMAGE, HEALING, CRIT, SPELL_CRIT, HIT, SPELL_HIT = 1, 2, 3, 4, 5, 6, 7, 8, 9, 10
-local KIND = {
-    ITEM_MOD_STRENGTH_SHORT = PRIMARY, ITEM_MOD_AGILITY_SHORT = PRIMARY, ITEM_MOD_STAMINA_SHORT = PRIMARY,
-    ITEM_MOD_INTELLECT_SHORT = PRIMARY, ITEM_MOD_SPIRIT_SHORT = PRIMARY, RESISTANCE0_NAME = PRIMARY,
-    ITEM_MOD_ATTACK_POWER_SHORT = AP, ITEM_MOD_RANGED_ATTACK_POWER_SHORT = RAP,
-    ITEM_MOD_SPELL_POWER_SHORT = POWER, ITEM_MOD_SPELL_DAMAGE_DONE_SHORT = SPELL_DAMAGE,
-    ITEM_MOD_SPELL_HEALING_DONE_SHORT = HEALING,
-    ITEM_MOD_CRIT_RATING_SHORT = CRIT, ITEM_MOD_CRIT_SPELL_RATING_SHORT = SPELL_CRIT,
-    ITEM_MOD_SPELL_CRIT_RATING_SHORT = SPELL_CRIT,
-    ITEM_MOD_HIT_RATING_SHORT = HIT, ITEM_MOD_HIT_SPELL_RATING_SHORT = SPELL_HIT,
-}
-local PRIMARY_KEY = {
-    ITEM_MOD_STRENGTH_SHORT = "STR", ITEM_MOD_AGILITY_SHORT = "AGI", ITEM_MOD_STAMINA_SHORT = "STA",
-    ITEM_MOD_INTELLECT_SHORT = "INT", ITEM_MOD_SPIRIT_SHORT = "SPI", RESISTANCE0_NAME = "ARMOR",
-}
-
 local own, frame, prefixed, channel
 local version = type(ns.CODE_BUILD) == "string" and #ns.CODE_BUILD <= MAX_VERSION
     and ns.CODE_BUILD:find(VERSION_PATTERN) and ns.CODE_BUILD or "0"
@@ -74,8 +45,6 @@ local askedAt, lastAnswer, lastRequest = -ASKED_WINDOW, -ANSWER_GAP, -REQUEST_GA
 local answerQueued, requestQueued, changeQueued, held = false, false, false, false
 local lastFrom, fromCount = {}, 0
 local askedFor = {}
-local sums = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
-local primary = { STR = 0, AGI = 0, STA = 0, INT = 0, SPI = 0, ARMOR = 0 }
 local mine = { ok = false, stats = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, spent = { 0, 0, 0 } }
 local parsed = { stats = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }, spent = { 0, 0, 0 } }
 local groupIDs = {}
@@ -104,11 +73,7 @@ local function GroupChannel()
 end
 
 local function Round(value)
-    return math.floor(value + 0.5)
-end
-
-local function Tenth(value)
-    return math.floor(value * 10 + 0.5) / 10
+    return math.floor(value + ROUND)
 end
 
 local function Clamp(value, most)
@@ -116,54 +81,6 @@ local function Clamp(value, most)
     if value < 0 then return 0 end
     if value > most then return most end
     return value
-end
-
-local function AddItem(stats, hunter)
-    for key, amount in pairs(stats) do
-        local kind = KIND[key]
-        if kind and type(amount) == "number" and not Secret(amount) then
-            if kind == PRIMARY then
-                local name = PRIMARY_KEY[key]
-                primary[name] = primary[name] + amount
-            elseif kind == RAP then
-                if hunter then sums[AP] = sums[AP] + amount end
-            elseif kind == CRIT or kind == SPELL_CRIT or kind == HIT or kind == SPELL_HIT then
-                sums[kind] = sums[kind] + SW.KeyAmount(key, amount)
-            else
-                sums[kind] = sums[kind] + amount
-            end
-        end
-    end
-end
-
-function GI.StatsFromGear(record)
-    if type(record) ~= "table" or record.statsShared == true or type(record.gear) ~= "table" then return false end
-    for i = 1, #sums do sums[i] = 0 end
-    for key in pairs(primary) do primary[key] = 0 end
-    local hunter = record.classFile == "HUNTER"
-    local gear, complete = record.gear, true
-    for i = 1, #GEAR_SLOTS do
-        local entry = gear[GEAR_SLOTS[i][1]]
-        local link = entry and entry.link
-        if type(link) == "string" and not Secret(link) then
-            local id = entry.id or GetItemInfoInstant(link)
-            local stats = id and IsItemDataCachedByID(id) and SW.Stats(link)
-            if stats then AddItem(stats, hunter) else complete = false end
-        end
-    end
-    local into = record.stats
-    if type(into) ~= "table" then
-        into = {}
-        record.stats = into
-    end
-    into.STR, into.AGI, into.STA = primary.STR, primary.AGI, primary.STA
-    into.INT, into.SPI, into.ARMOR = primary.INT, primary.SPI, primary.ARMOR
-    into.AP = sums[AP]
-    into.SP = sums[POWER] + math.max(sums[SPELL_DAMAGE], sums[HEALING])
-    into.CRIT = Tenth(sums[CRIT] + sums[SPELL_CRIT])
-    into.HIT = Tenth(sums[HIT] + sums[SPELL_HIT])
-    record.statsShared = false
-    return complete
 end
 
 local function ReadSpent()
@@ -208,7 +125,7 @@ end
 local function ReadMine()
     if C_Secrets.ShouldUnitStatsBeSecret() then return mine.ok end
     local stats = mine.stats
-    for i = 1, 5 do
+    for i = 1, PRIMARY_STATS do
         local _, value = UnitStat("player", i)
         if Secret(value) then return mine.ok end
         stats[i] = Clamp(value, STAT_MAX[i])
@@ -231,8 +148,8 @@ local function ReadMine()
     end
     stats[6] = Clamp(base + up + down, STAT_MAX[6])
     stats[7] = Clamp(Best(spellDamage, healing), STAT_MAX[7])
-    stats[8] = Clamp(Best(meleeCrit, spellCrit) * 10, STAT_MAX[8])
-    stats[9] = Clamp(Best(meleeHit, spellHit) * 10, STAT_MAX[9])
+    stats[8] = Clamp(Best(meleeCrit, spellCrit) * TENTH_SCALE, STAT_MAX[8])
+    stats[9] = Clamp(Best(meleeHit, spellHit) * TENTH_SCALE, STAT_MAX[9])
     stats[10] = Clamp(armor, STAT_MAX[10])
     ReadSpent()
     mine.ok = true
@@ -250,7 +167,7 @@ local function Apply(guid, from)
     local stats = from.stats
     for i = 1, #STAT_KEYS do
         local key = STAT_KEYS[i]
-        into[key] = TENTHS[key] and stats[i] / 10 or stats[i]
+        into[key] = TENTHS[key] and stats[i] / TENTH_SCALE or stats[i]
     end
     local talents = record.talents
     if type(talents) ~= "table" then
@@ -324,7 +241,7 @@ end
 
 local function Spread()
     local tenths = channel == "PARTY" and PARTY_SPREAD or RAID_SPREAD
-    return math.random(1, tenths) / 10
+    return math.random(1, tenths) / TENTH_SCALE
 end
 
 local function AnswerSoon()

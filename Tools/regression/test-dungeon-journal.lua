@@ -549,6 +549,10 @@ local function fixture(settings, noBis)
     local senders = assert(loadfile("Core/NaowhForever_Senders.lua"))
     setfenv(senders, env)
     senders()
+    -- The feature switches the Journal's settings read their defaults from.
+    local features = assert(loadfile("Core/NaowhForever_Features.lua"))
+    setfenv(features, env)
+    features()
     local classCanUse, slotsFor = ns.ClassCanUse, ns.BisSlotsFor
     for _, path in ipairs(files) do
         if path:find("^NaowhForever_DungeonJournal/") and ns.Shared.Items.ClassCanUse ~= classCanUse then
@@ -673,21 +677,29 @@ do
     end
     check("nearly every boss has a tip", tips > 150)
     check("a boss with no NPC ID has no tip", J.Tip({ name = "Nobody" }) == nil)
-    -- Each boss names an ability once: Wowhead lists Old Serra'kis's Dazed four times.
+    -- Each boss names an ability once: Wowhead lists Old Serra'kis's Dazed four times. The
+    -- spells' names are in Tools/abilities_cache.json, which Tools/build_abilities.py builds
+    -- Data/Abilities.lua from (the data keeps only the IDs).
+    local cacheFile = assert(io.open("Tools/abilities_cache.json", "rb"))
+    local cache = cacheFile:read("*a"):gsub("\r\n", "\n")
+    cacheFile:close()
     local withAbilities = 0
-    for line in io.lines("NaowhForever_DungeonJournal/Data/Abilities.lua") do
-        local npc, ids, names = line:match("^%s*%[(%d+)%] = { ([%d, ]+) },  %-%- [^:]+: (.-)\r?$")
-        if npc then
-            local seen, count = {}, 0
-            for name in (names .. ", "):gmatch("(.-), ") do
-                check("boss " .. npc .. " lists " .. name .. " once", not seen[name])
-                seen[name], count = true, count + 1
-            end
-            local _, commas = ids:gsub(",", "")
-            check("boss " .. npc .. " names each of its spells", count == commas + 1
-                and #J.Abilities[tonumber(npc)] == count)
-            withAbilities = withAbilities + 1
+    for npc, ids in pairs(J.Abilities) do
+        local listed = cache:match('\n "' .. npc .. '": {\n  "abilities": %[(.-)\n  %]')
+        check("boss " .. npc .. " is in the abilities cache", listed ~= nil)
+        local nameOf = {}
+        for spell, name in (listed or ""):gmatch('%[\n%s*(%d+),\n%s*"(.-)"\n%s*%]') do
+            spell = tonumber(spell)
+            nameOf[spell] = nameOf[spell] or name
         end
+        local seen = {}
+        for _, spell in ipairs(ids) do
+            local name = nameOf[spell]
+            check("boss " .. npc .. " names each of its spells", name ~= nil)
+            check("boss " .. npc .. " lists " .. tostring(name) .. " once", not seen[name])
+            seen[name or spell] = true
+        end
+        withAbilities = withAbilities + 1
     end
     check("hundreds of bosses have abilities", withAbilities > 150)
 

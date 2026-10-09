@@ -1,13 +1,6 @@
--------------------------------------------------------------------------------
---  NaowhForever_PlayerHistory.lua -- Player History (ns.PlayerHistory): the players you grouped
---  and chatted with, and your notes and tags on them, by GUID in the account's saved data, read
---  by the Naowh Inspect panel. Of(guid) is nil or { name, classFile, firstSeen, lastSeen, groups,
---  dungeons, raids, sessions = { { at, seconds, kind, place, instance } }, chats = { { at, mine,
---  channel, text } } }, lists newest first; Note(guid) is nil or { text, tag, at, name }; also
---  On(), Forget(guid), SetNote(guid, text, tag, name) and TAGS. What they return is the saved
---  data itself: read it, never change it. Also the note line on player tooltips.
--------------------------------------------------------------------------------
+-- NaowhForever_PlayerHistory.lua: Player History (ns.PlayerHistory): players you grouped with, and your notes on them.
 local ns = _G.NaowhForever
+
 local S = ns.QoLSettings
 local Style = ns.Shared.Style
 local Decode = ns.Shared.Decode
@@ -24,21 +17,24 @@ local MAX_TEXT, MAX_NOTE, MAX_NAME, MAX_GUID, MAX_CLASS = 200, 120, 64, 64, 20
 local DAY = 86400
 local DAYS_MIN, DAYS_MAX, DAYS_DEFAULT = 7, 365, 90
 local UTF8_TAIL_MIN, UTF8_TAIL_MAX = 128, 191
-local NOTE_LABEL = "Note"
-
-local PlayerHistory = {}
-ns.PlayerHistory = PlayerHistory
-PlayerHistory.NOTE_MAX = MAX_NOTE
-
-PlayerHistory.TAGS = {
+local PARTY_SIZE, RAID_SIZE = 4, 40
+local SETTINGS = { enabled = true, playerHistory = true, playerHistoryChats = true, playerNotesTooltip = true }
+local TAGS = {
     { key = "tank", label = "Great Tank", color = Style.HAVE_RGB },
     { key = "healer", label = "Great Healer", color = Style.HAVE_RGB },
     { key = "dps", label = "Great DPS", color = Style.HAVE_RGB },
     { key = "friendly", label = "Friendly", color = Style.HAVE_RGB },
     { key = "avoid", label = "Avoid", color = Style.RED_RGB },
 }
+
+local NOTE_LABEL = "Note"
+local TEXT_CLEAR_HISTORY = "Clear the history of every player? Your notes are kept."
+local TEXT_CLEAR_NOTES = "Delete every note you wrote on a player?"
+local TEXT_NOTHING = "Nothing recorded yet"
+local TEXT_SUMMARY = "%d players, %d notes"
+
 local TAG = {}
-for _, tag in ipairs(PlayerHistory.TAGS) do TAG[tag.key] = tag end
+for _, tag in ipairs(TAGS) do TAG[tag.key] = tag end
 
 local CHANNEL = {
     CHAT_MSG_WHISPER = "WHISPER", CHAT_MSG_WHISPER_INFORM = "WHISPER",
@@ -50,8 +46,8 @@ local CHANNELS = { WHISPER = true, PARTY = true, RAID = true, INSTANCE_CHAT = tr
 local KINDS = { party = true, raid = true }
 local GROUP_EVENTS = { "GROUP_ROSTER_UPDATE", "PLAYER_ENTERING_WORLD", "ZONE_CHANGED_NEW_AREA", "PLAYER_LOGOUT" }
 local PARTY_UNITS, RAID_UNITS = {}, {}
-for i = 1, 4 do PARTY_UNITS[i] = "party" .. i end
-for i = 1, 40 do RAID_UNITS[i] = "raid" .. i end
+for i = 1, PARTY_SIZE do PARTY_UNITS[i] = "party" .. i end
+for i = 1, RAID_SIZE do RAID_UNITS[i] = "raid" .. i end
 
 local db, players, notes, count, frozen
 local frame, active, chatsOn, loggedIn, myGUID
@@ -59,6 +55,11 @@ local open, seen, pool, poolN = {}, {}, {}, 0
 local curInst, curPlace, curType
 local resume, resumeAt
 local tooltipOn, tooltipHooked
+
+local PlayerHistory = {}
+ns.PlayerHistory = PlayerHistory
+PlayerHistory.NOTE_MAX = MAX_NOTE
+PlayerHistory.TAGS = TAGS
 
 local function Secret(v)
     return issecretvalue ~= nil and issecretvalue(v)
@@ -310,9 +311,7 @@ local function Resume(st, guid, rec, now)
     st.extend = r.kept == true and last ~= nil and last.at == r.at
 end
 
-local function Open(guid, unit, now, raid)
-    local rec = Record(guid, now)
-    if not rec then return end
+local function Learn(rec, unit)
     local first, second = UnitFullName(unit)
     if Readable(first) and not Secret(second) then
         local name = Readable(second) and (first .. " " .. second) or first
@@ -320,15 +319,22 @@ local function Open(guid, unit, now, raid)
     end
     local _, class = UnitClass(unit)
     if Readable(class) and #class <= MAX_CLASS then rec.classFile = class end
+end
+
+local function Take()
+    if poolN == 0 then return {} end
+    local st = pool[poolN]
+    pool[poolN] = nil
+    poolN = poolN - 1
+    return st
+end
+
+local function Open(guid, unit, now, raid)
+    local rec = Record(guid, now)
+    if not rec then return end
+    Learn(rec, unit)
     rec.lastSeen = now
-    local st
-    if poolN > 0 then
-        st = pool[poolN]
-        pool[poolN] = nil
-        poolN = poolN - 1
-    else
-        st = {}
-    end
+    local st = Take()
     st.at, st.raid, st.inst, st.place, st.instance = now, raid, nil, nil, nil
     st.dungeons, st.raids, st.extend = 0, 0, false
     Resume(st, guid, rec, now)
@@ -412,39 +418,51 @@ local function SenderName(sender)
     if Readable(name) and #name <= MAX_NAME then return name end
 end
 
+local function Whisper(event, text, sender, guid)
+    if guid == myGUID or not IsPlayerGUID(guid) then return end
+    local clean = Clean(text, MAX_TEXT)
+    if not clean then return end
+    local now = time()
+    local rec = Record(guid, now)
+    if not rec then return end
+    if not rec.name then rec.name = SenderName(sender) end
+    if not rec.classFile then
+        local _, class = GetPlayerInfoByGUID(guid)
+        if Readable(class) and #class <= MAX_CLASS then rec.classFile = class end
+    end
+    AddChat(rec, now, event == "CHAT_MSG_WHISPER_INFORM", "WHISPER", clean)
+end
+
+local function MyLine(channel, text)
+    if next(open) == nil or IsInRaid() then return end
+    local clean = Clean(text, MAX_TEXT)
+    if not clean then return end
+    local now = time()
+    for other in pairs(open) do
+        local rec = players[other]
+        if rec then AddChat(rec, now, true, channel, clean) end
+    end
+end
+
+local function TheirLine(guid, channel, text)
+    local rec = players[guid]
+    if not rec then return end
+    local clean = Clean(text, MAX_TEXT)
+    if not clean then return end
+    AddChat(rec, time(), false, channel, clean)
+end
+
 local function Chat(event, text, sender, _, _, _, _, _, _, _, _, _, guid)
     if type(guid) ~= "string" or Secret(guid) or Secret(text) or Secret(sender) or type(text) ~= "string" then
         return
     end
     local channel = CHANNEL[event]
     if channel == "WHISPER" then
-        if guid == myGUID or not IsPlayerGUID(guid) then return end
-        local clean = Clean(text, MAX_TEXT)
-        if not clean then return end
-        local now = time()
-        local rec = Record(guid, now)
-        if not rec then return end
-        if not rec.name then rec.name = SenderName(sender) end
-        if not rec.classFile then
-            local _, class = GetPlayerInfoByGUID(guid)
-            if Readable(class) and #class <= MAX_CLASS then rec.classFile = class end
-        end
-        AddChat(rec, now, event == "CHAT_MSG_WHISPER_INFORM", channel, clean)
+        Whisper(event, text, sender, guid)
     elseif guid == myGUID then
-        if next(open) == nil or IsInRaid() then return end
-        local clean = Clean(text, MAX_TEXT)
-        if not clean then return end
-        local now = time()
-        for other in pairs(open) do
-            local rec = players[other]
-            if rec then AddChat(rec, now, true, channel, clean) end
-        end
+        MyLine(channel, text)
     elseif open[guid] then
-        local rec = players[guid]
-        if not rec then return end
-        local clean = Clean(text, MAX_TEXT)
-        if not clean then return end
-        AddChat(rec, time(), false, channel, clean)
+        TheirLine(guid, channel, text)
     end
 end
 
@@ -546,23 +564,11 @@ local function Apply()
     SyncTooltip()
 end
 
-local SETTINGS = { enabled = true, playerHistory = true, playerHistoryChats = true, playerNotesTooltip = true }
-hooksecurefunc(S, "Set", function(key)
-    if SETTINGS[key] then
-        Apply()
-    elseif key == "playerHistoryDays" and players then
-        Prune(time())
-    end
-end)
-hooksecurefunc(ns, "Apply", Apply)
-
-local boot = CreateFrame("Frame")
-boot:RegisterEvent("PLAYER_LOGIN")
-boot:SetScript("OnEvent", function(self)
+local function OnLogin(self)
     self:UnregisterEvent("PLAYER_LOGIN")
     loggedIn = true
     Apply()
-end)
+end
 
 PlayerHistory.On = On
 
@@ -616,29 +622,46 @@ local function HasNotes()
     return Load(false) and next(notes) ~= nil
 end
 
+local function WipeHistory()
+    if not Load(false) then return end
+    wipe(players)
+    count = 0
+    for guid in pairs(open) do Release(guid) end
+    db.resume, resume = nil, nil
+    if active then Scan(time()) end
+end
+
 local function ClearHistory()
-    ns.Confirm("Clear the history of every player? Your notes are kept.", function()
-        if not Load(false) then return end
-        wipe(players)
-        count = 0
-        for guid in pairs(open) do Release(guid) end
-        db.resume, resume = nil, nil
-        if active then Scan(time()) end
-    end)
+    ns.Confirm(TEXT_CLEAR_HISTORY, WipeHistory)
+end
+
+local function WipeNotes()
+    if Load(false) then wipe(notes) end
 end
 
 local function ClearNotes()
-    ns.Confirm("Delete every note you wrote on a player?", function()
-        if Load(false) then wipe(notes) end
-    end)
+    ns.Confirm(TEXT_CLEAR_NOTES, WipeNotes)
 end
 
 local function Summary()
-    if not Load(false) then return "Nothing recorded yet" end
+    if not Load(false) then return TEXT_NOTHING end
     local n = 0
     for _ in pairs(notes) do n = n + 1 end
-    return ("%d players, %d notes"):format(count, n)
+    return TEXT_SUMMARY:format(count, n)
 end
+
+hooksecurefunc(S, "Set", function(key)
+    if SETTINGS[key] then
+        Apply()
+    elseif key == "playerHistoryDays" and players then
+        Prune(time())
+    end
+end)
+hooksecurefunc(ns, "Apply", Apply)
+
+local boot = CreateFrame("Frame")
+boot:RegisterEvent("PLAYER_LOGIN")
+boot:SetScript("OnEvent", OnLogin)
 
 ns.Shared.Settings.Page("QoL/Questing & Group", S):Card({
     id = "playerHistory", name = "Player History", order = 40, switch = "playerHistory",
@@ -652,7 +675,7 @@ ns.Shared.Settings.Page("QoL/Questing & Group", S):Card({
         { key = "playerNotesTooltip", label = "Notes on Tooltips", toggle = true, always = true,
           help = "Shows your note and tag on a player's tooltip." },
         { label = "Clear History", buttonText = "Clear", button = ClearHistory, always = true,
-          needs = HasHistory, why = "Nothing recorded yet",
+          needs = HasHistory, why = TEXT_NOTHING,
           help = "Deletes every player's recorded history, keeping your notes." },
         { label = "Clear Notes", buttonText = "Clear", button = ClearNotes, always = true,
           needs = HasNotes, why = "No notes yet",

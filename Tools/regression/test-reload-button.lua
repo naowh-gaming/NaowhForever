@@ -86,12 +86,13 @@ check("in combat it is not laid over the button", not cover.shown)
 btn._onClick()
 check("and the button says to type /reload", printed[#printed]:find("Type /reload", 1, true) ~= nil)
 
--- No file calls the game's ReloadUI: the game would block it.
+-- No file calls the game's ReloadUI: the game would block it. Every Lua file the core TOC
+-- loads, through each area's XML too.
 local calls = {}
-for line in io.lines("NaowhForever.toc") do
-    local path = line:gsub("\r$", ""):match("^([^#%s]%S*%.lua)")
-    if path and not path:find("^Libs") then
-        path = path:gsub("\\", "/")
+local coreFiles = dofile("Tools/regression/toc_files.lua")("%.lua$", "NaowhForever.toc")
+check("the core TOC loads its files through the areas' XML", #coreFiles > 100)
+for _, path in ipairs(coreFiles) do
+    if not path:find("^Libs") then
         for code in Read(path):gmatch("[^\n]+") do
             if not code:match("^%s*%-%-") and code:find("%f[%w_.]ReloadUI%f[^%w_]") then
                 calls[#calls + 1] = path .. ": " .. code

@@ -1,7 +1,4 @@
--------------------------------------------------------------------------------
---  NaowhForever_QuizData.lua -- the flight and campfire quiz questions. The
---  first answer is the right one; the quiz shuffles them before showing.
--------------------------------------------------------------------------------
+-- NaowhForever_QuizData.lua: the quiz questions; the first answer is the right one.
 local ns = _G.NaowhForever
 
 ns.QUIZ_QUESTIONS = {

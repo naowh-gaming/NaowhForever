@@ -15,10 +15,14 @@ local FRAME_METHODS = { "SetScript", "Hide", "SetParent", "ClearAllPoints", "Set
 local FRAME_FREE = { ["GameTooltip:Hide"] = true }
 
 local FRAME_ALLOWED = {
-    ["TopBar/NaowhForever_TopBar.lua"] = {
-        why = "the bar's own tooltip size, put back on hide; the top-centre scores (no secure frames, only GhostFrame hangs from them) moved below the bar, put back when it goes",
-        calls = { ["GameTooltip:SetScale"] = 1, ["UIWidgetTopCenterContainerFrame:ClearAllPoints"] = 1,
-            ["UIWidgetTopCenterContainerFrame:SetPoint"] = 1 } },
+    ["NaowhForever_BiS/CharacterPanel/Chrome.lua"] = {
+        why = "the level line, not protected, put on the badge row while the panel is on and back on the game's strip when off",
+        calls = { ["PaperDollLevelInfo:ClearAllPoints"] = 1, ["PaperDollLevelInfo:SetPoint"] = 2 } },
+    ["TopBar/UI/Tooltips.lua"] = { why = "the bar's own tooltip size, put back on hide",
+        calls = { ["GameTooltip:SetScale"] = 1 } },
+    ["TopBar/UI/Widgets.lua"] = {
+        why = "the top-centre scores (no secure frames, only GhostFrame hangs from them) moved below the bar, put back when it goes",
+        calls = { ["UIWidgetTopCenterContainerFrame:ClearAllPoints"] = 1, ["UIWidgetTopCenterContainerFrame:SetPoint"] = 1 } },
     ["NaowhForever_BiS/CharacterPanel/Badge.lua"] = { why = "places the tooltip it owns",
         calls = { ["GameTooltip:ClearAllPoints"] = 1, ["GameTooltip:SetPoint"] = 1 } },
     ["QoL/NaowhForever_Flight.lua"] = { why = "faded leave button, out of combat only",
@@ -28,12 +32,12 @@ local FRAME_ALLOWED = {
             ["ActionStatus:UnregisterEvent"] = 2, ["ActionStatus:RegisterEvent"] = 2 } },
     ["QoL/NaowhForever_LootFeed.lua"] = { why = "loot window shrunk and restored, never hidden",
         calls = { ["LootFrame:SetScale"] = 2 } },
-    ["NaowhForever_Professions/NaowhForever_Professions.lua"] = {
+    ["NaowhForever_Professions/UI/Takeover.lua"] = {
         why = "pinned under ours out of combat; its overview tab docked beside ours, its points put back",
         calls = { ["ProfessionsFrame:ClearAllPoints"] = 1, ["ProfessionsFrame:SetPoint"] = 1,
             ["ProfessionsFrame.ProfessionsOverviewTab:ClearAllPoints"] = 2,
             ["ProfessionsFrame.ProfessionsOverviewTab:SetPoint"] = 2 } },
-    ["NaowhForever_BiS/InspectPanel/Panel.lua"] = {
+    ["NaowhForever_BiS/InspectPanel/InspectPanel.lua"] = {
         why = "the inspect window (no secure frames) a pane wider, its tabs' frames and inset kept left; put back off",
         calls = { ["InspectFrame:SetWidth"] = 1, ["InspectFrame.Inset:SetPoint"] = 1,
             ["_G[...]:ClearAllPoints"] = 1, ["_G[...]:SetPoint"] = 2, ["_G[...]:SetAllPoints"] = 1 } },
@@ -58,15 +62,18 @@ local UNGUARDED_ALLOWED = {
         calls = { ["C_Container.PickupContainerItem"] = 1 } },
     ["QoL/NaowhForever_ScrapMarker.lua"] = { why = "CanSell checks the merchant and combat each item",
         calls = { ["C_Container.UseContainerItem"] = 1 } },
-    ["NaowhForever_ActionBars/NaowhForever_ActionBars.lua"] = {
-        why = "Ready() refuses in combat; FillPending waits for PLAYER_REGEN_ENABLED",
+    ["NaowhForever_ActionBars/Import.lua"] = {
+        why = "Run is reached only through Sets.lua's Ready(), which refuses in combat, or as a test that changes nothing",
         calls = { CreateMacro = 1, SetBinding = 1, ["C_Spell.PickupSpell"] = 3, PickupMacro = 1,
-            PickupAction = 3, PlaceAction = 2 } },
-    ["NaowhForever_Macros/NaowhForever_Macros.lua"] = { why = "Update() and the Pickup entry points refuse in combat",
+            PickupAction = 2, PlaceAction = 1 } },
+    ["NaowhForever_ActionBars/Pending.lua"] = {
+        why = "FillPending runs from SpellsReady, which waits for PLAYER_REGEN_ENABLED in combat",
+        calls = { PickupAction = 1, PlaceAction = 1 } },
+    ["NaowhForever_Macros/Smart.lua"] = { why = "Update() and the Pickup entry points refuse in combat",
         calls = { EditMacro = 1, CreateMacro = 1 } },
     ["Core/NaowhForever_GameMenu.lua"] = { why = "our game menu button's own click",
         calls = { HideUIPanel = 1 } },
-    ["NaowhForever_Professions/NaowhForever_Professions.lua"] = { why = "the close button's click",
+    ["NaowhForever_Professions/UI/Window.lua"] = { why = "the close button's click",
         calls = { HideUIPanel = 1 } },
 }
 

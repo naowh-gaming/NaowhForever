@@ -1,19 +1,14 @@
--------------------------------------------------------------------------------
---  NaowhForever_AimTrainer.lua -- the QoL Aim Trainer: a click-the-targets minigame for
---  flights, opened by /nfaim, the Flight Timer's Games button or a flight starting (Flight Games,
---  NaowhForever_Flight.lua). A miss costs points and pops a "-50" where it landed. Every round
---  is the same for everyone (fixed length, target size and play area), so bests compare on the
---  leaderboard (NaowhForever_AimBoard.lua), opened from the header and the results card.
--------------------------------------------------------------------------------
+-- NaowhForever_AimTrainer.lua: the Aim Trainer, a click-the-targets minigame for flights (/nfaim).
 local ns = _G.NaowhForever
+
+local GetTime, GetCursorPosition = GetTime, GetCursorPosition
+local random, floor, min, max = math.random, math.floor, math.min, math.max
+
 local S = ns.QoLSettings
 local T = ns.THEME
 local UI = ns.UI
 local Parts, St = ns.Shared.Parts, ns.Shared.Style
 local BORDER_RGB = St.BORDER_RGB
-
-local GetTime, GetCursorPosition = GetTime, GetCursorPosition
-local random, floor, min, max = math.random, math.floor, math.min, math.max
 
 local ROUND = St.ROUND
 local MODE_ICON = "Interface\\AddOns\\NaowhForever\\Media\\Navigation\\grid.tga"
@@ -38,10 +33,6 @@ local MODE_TARGETS = { gridshot = 3, hexakill = 6, reflex = 1 }
 local MODE_NEXT = { gridshot = MODE_HEXA, hexakill = MODE_REFLEX, reflex = MODE_GRID }
 local IDLE, RUNNING, RESULTS = 1, 2, 3
 
-local function ModeOf(value)
-    return MODE_TARGETS[value] and value or MODE_HEXA
-end
-
 local MAX_TARGETS = 6
 local BASE_POINTS = 100
 local MISS_PENALTY = 50
@@ -64,7 +55,7 @@ local PANEL_ALPHA, CARD_ALPHA = 0.96, 0.97
 local LABEL_SIZE, VALUE_SIZE, LABEL_GAP = 10, 16, 2
 local HINT_SIZE, SUB_SIZE, LINE_GAP, HINT_Y = 20, 12, 6, 16
 local RIM = 2
-local ICON_CROP = 0.08
+local ICON_CROP = ns.QoLConstants.ICON_CROP
 local RING_SCALE, RING_ALPHA = 1.35, 0.55
 local PULSE_FROM, PULSE_TIME = 0.75, 0.9
 local POP_SCALE, POP_TIME = 1.8, 0.18
@@ -76,8 +67,44 @@ local CARD_W, CARD_PAD, CARD_TITLE_H, CARD_TITLE_SIZE = 240, 12, 24, 15
 local ROW_H, ROW_SIZE, CARD_GAP = 16, 12, 8
 local CARD_BTN_W, BTN_H = 104, 24
 local DEFAULT_Y = -60
-local NO_VALUE = "--"
-local IN_COMBAT = "The Aim Trainer can't open in combat."
+local HALF = 0.5
+local PERCENT = ns.QoLConstants.PERCENT
+local MS_PER_SECOND = 1000
+local TENTHS = 10
+local TEXT = {
+    NO_VALUE = "--",
+    IN_COMBAT = "The Aim Trainer can't open in combat.",
+    TITLE = "Aim Trainer",
+    MODE = "Mode",
+    TIP_MODE = "Switch between Gridshot, Hexakill and Reflex.",
+    BOARD = "Leaderboard",
+    TIP_BOARD = "The best scores of the players you have met, in this mode.",
+    AGAIN = "Play Again",
+    CLOSE = "Close",
+    START = "Click to Start",
+    REFLEX = "Reflex: one target at a time, gone in %.2gs. %ds rounds.",
+    HEXA = "Hexakill: six targets at once. %ds rounds.",
+    GRID = "Gridshot: three targets at once. %ds rounds.",
+    NO_BEST = "No best yet",
+    BEST = "Best ",
+    BEST_ACCURACY = "Best %s, best accuracy %d%%",
+    NEW_BEST = "New Best!",
+    ROUND_OVER = "Round Over",
+    TIME = "%.1f",
+    COUNT = "%d",
+    PERCENT = "%d%%",
+    MS = "%d ms",
+    COMBO = "x%d",
+    BEST_LINE = "%s, %d%%",
+    OFF = "The Aim Trainer is off. Turn it on in /nf, QoL, Travel.",
+    RESET = "Clear your Aim Trainer records?",
+    CLEAR_BOARD = "Clear the Aim Trainer leaderboard? Your own records stay.",
+    SUMMARY = "%s, %s",
+    SUMMARY_BEST = "best ",
+    SUMMARY_NO_BEST = "no best yet",
+    FLIGHT = "flight",
+    NO_SOUND = "none",
+}
 
 local HUD_LABELS = { "Time", "Score", "Accuracy", "Combo" }
 local RESULT_LABELS = { "Hits", "Misses", "Accuracy", "Reaction", "Best Combo", "Score", "Best" }
@@ -91,6 +118,10 @@ local state = IDLE
 local mode, pulse, soundKey, faces, faceCount = MODE_HEXA, false, nil, nil, 0
 local areaW, areaH, endAt, lastTenth, nextSpawn, active = 0, 0, 0, nil, 0, 0
 local hits, misses, combo, bestCombo, score, reactionSum = 0, 0, 0, 0, 0, 0
+
+local function ModeOf(value)
+    return MODE_TARGETS[value] and value or MODE_HEXA
+end
 
 local function On()
     return (S.Get("enabled") and S.Get("aimTrainer")) and true or false
@@ -120,7 +151,7 @@ end
 
 local function Points(reaction, streak)
     local speed = max(0, 1 - reaction / FAST_TIME)
-    return floor(BASE_POINTS * (1 + speed) * (1 + COMBO_STEP * min(streak - 1, COMBO_CAP)) + 0.5)
+    return floor(BASE_POINTS * (1 + speed) * (1 + COMBO_STEP * min(streak - 1, COMBO_CAP)) + HALF)
 end
 
 local function Ceiling(m)
@@ -157,6 +188,20 @@ local function Grow(group, from, to, duration)
     grow:SetDuration(duration)
 end
 
+function Look.LiveTarget(t, area)
+    t.pulse = t.ring:CreateAnimationGroup()
+    t.pulse:SetLooping("REPEAT")
+    Grow(t.pulse, PULSE_FROM, 1, PULSE_TIME)
+    Fade(t.pulse, RING_ALPHA, 0, PULSE_TIME)
+    t.pop = Disc(area, "OVERLAY", 0, T.accentSoft)
+    t.pop:Hide()
+    t.popAnim = t.pop:CreateAnimationGroup()
+    t.popAnim.tex = t.pop
+    Grow(t.popAnim, 1, POP_SCALE, POP_TIME)
+    Fade(t.popAnim, 1, 0, POP_TIME)
+    t.popAnim:SetScript("OnFinished", PopDone)
+end
+
 function Look.Target(area, live)
     local t = CreateFrame("Button", nil, area)
     t:SetFrameLevel(area:GetFrameLevel() + TARGET_LEVEL)
@@ -177,19 +222,7 @@ function Look.Target(area, live)
     t.face:Hide()
     t:EnableMouse(live)
     t:Hide()
-    if live then
-        t.pulse = t.ring:CreateAnimationGroup()
-        t.pulse:SetLooping("REPEAT")
-        Grow(t.pulse, PULSE_FROM, 1, PULSE_TIME)
-        Fade(t.pulse, RING_ALPHA, 0, PULSE_TIME)
-        t.pop = Disc(area, "OVERLAY", 0, T.accentSoft)
-        t.pop:Hide()
-        t.popAnim = t.pop:CreateAnimationGroup()
-        t.popAnim.tex = t.pop
-        Grow(t.popAnim, 1, POP_SCALE, POP_TIME)
-        Fade(t.popAnim, 1, 0, POP_TIME)
-        t.popAnim:SetScript("OnFinished", PopDone)
-    end
+    if live then Look.LiveTarget(t, area) end
     return t
 end
 
@@ -245,6 +278,19 @@ local function Quiet(button)
     return button
 end
 
+function Look.CardRows(card)
+    card.values = {}
+    for i, name in ipairs(RESULT_LABELS) do
+        local y = -(CARD_PAD + CARD_TITLE_H + i * ROW_H)
+        local label = ns.Font(card, ROW_SIZE, nil, T.muted)
+        label:SetPoint("TOPLEFT", CARD_PAD, y)
+        label:SetText(name)
+        local value = ns.Font(card, ROW_SIZE, nil)
+        value:SetPoint("TOPRIGHT", -CARD_PAD, y)
+        card.values[i] = value
+    end
+end
+
 local function NewCard(f, area, live)
     local card = CreateFrame("Frame", nil, area)
     card:SetSize(CARD_W, CARD_H)
@@ -257,21 +303,12 @@ local function NewCard(f, area, live)
     card.title:SetPoint("TOP", 0, -CARD_PAD)
     card.rank = ns.Font(card, ROW_SIZE, nil, T.accentSoft)
     card.rank:SetPoint("TOP", 0, -(CARD_PAD + CARD_TITLE_H))
-    card.values = {}
-    for i, name in ipairs(RESULT_LABELS) do
-        local y = -(CARD_PAD + CARD_TITLE_H + i * ROW_H)
-        local label = ns.Font(card, ROW_SIZE, nil, T.muted)
-        label:SetPoint("TOPLEFT", CARD_PAD, y)
-        label:SetText(name)
-        local value = ns.Font(card, ROW_SIZE, nil)
-        value:SetPoint("TOPRIGHT", -CARD_PAD, y)
-        card.values[i] = value
-    end
-    card.again = ns.AccentBorder(ns.Button(card, "Play Again", CARD_BTN_W, BTN_H))
+    Look.CardRows(card)
+    card.again = ns.AccentBorder(ns.Button(card, TEXT.AGAIN, CARD_BTN_W, BTN_H))
     card.again:SetPoint("BOTTOMLEFT", CARD_PAD, CARD_PAD)
-    card.close = ns.Button(card, "Close", CARD_BTN_W, BTN_H)
+    card.close = ns.Button(card, TEXT.CLOSE, CARD_BTN_W, BTN_H)
     card.close:SetPoint("BOTTOMRIGHT", -CARD_PAD, CARD_PAD)
-    card.board = ns.Button(card, "Leaderboard", CARD_W - 2 * CARD_PAD, BTN_H)
+    card.board = ns.Button(card, TEXT.BOARD, CARD_W - 2 * CARD_PAD, BTN_H)
     card.board:SetPoint("BOTTOMLEFT", card.again, "TOPLEFT", 0, CARD_GAP)
     card.buttons = { card.again, card.close, card.board }
     if not live then
@@ -283,29 +320,24 @@ local function NewCard(f, area, live)
     f.card = card
 end
 
-function Look.New(f, live)
-    f.backdrop = Parts.Backdrop(f)
-    f.backdrop:Card(PAD, HEADER_H + HUD_H, PAD, PAD)
-    f.backdrop:Paint(PANEL_ALPHA)
-    ns.Border(f, BORDER_RGB)
+function Look.Header(f, live)
     local rule = ns.Solid(f, "ARTWORK", BORDER_RGB, 1)
     rule:SetPoint("TOPLEFT", 0, -HEADER_H)
     rule:SetPoint("TOPRIGHT", 0, -HEADER_H)
     ns.Hairline(rule, "h")
-    f.close = Parts.TitleBar(f, "Aim Trainer", "", PAGE)
-    f.modeButton = Parts.BarButton(f, MODE_ICON, "Mode", "Switch between Gridshot, Hexakill and Reflex.", nil,
-        "Mode")
+    f.close = Parts.TitleBar(f, TEXT.TITLE, "", PAGE)
+    f.modeButton = Parts.BarButton(f, MODE_ICON, TEXT.MODE, TEXT.TIP_MODE, nil, TEXT.MODE)
     f.modeButton:SetPoint("RIGHT", f.close, "LEFT", -St.BAR_GAP, 0)
-    f.boardButton = Parts.BarButton(f, BOARD_ICON, "Leaderboard",
-        "The best scores of the players you have met, in this mode.", nil, "Leaderboard")
+    f.boardButton = Parts.BarButton(f, BOARD_ICON, TEXT.BOARD, TEXT.TIP_BOARD, nil, TEXT.BOARD)
     f.boardButton:SetPoint("RIGHT", f.modeButton, "LEFT", -St.BAR_GAP, 0)
-    if not live then
-        Quiet(f.logo)
-        Quiet(f.close)
-        Quiet(f.modeButton)
-        Quiet(f.boardButton)
-    end
+    if live then return end
+    Quiet(f.logo)
+    Quiet(f.close)
+    Quiet(f.modeButton)
+    Quiet(f.boardButton)
+end
 
+function Look.Hud(f)
     f.cells = {}
     for i, name in ipairs(HUD_LABELS) do
         local label = ns.Font(f, LABEL_SIZE, nil, T.muted)
@@ -315,7 +347,15 @@ function Look.New(f, live)
         f.cells[i] = { label = label, value = value }
     end
     f.time, f.score, f.accuracy, f.combo = f.cells[1].value, f.cells[2].value, f.cells[3].value, f.cells[4].value
+end
 
+function Look.New(f, live)
+    f.backdrop = Parts.Backdrop(f)
+    f.backdrop:Card(PAD, HEADER_H + HUD_H, PAD, PAD)
+    f.backdrop:Paint(PANEL_ALPHA)
+    ns.Border(f, BORDER_RGB)
+    Look.Header(f, live)
+    Look.Hud(f)
     local area = CreateFrame("Frame", nil, f)
     area:SetPoint("TOPLEFT", PAD, -(HEADER_H + HUD_H))
     area:SetClipsChildren(true)
@@ -338,7 +378,7 @@ function Look.New(f, live)
 end
 
 function Look.Layout(f, width)
-    local height = floor(width * AREA_RATIO + 0.5)
+    local height = floor(width * AREA_RATIO + HALF)
     f:SetSize(width + 2 * PAD, HEADER_H + HUD_H + height + PAD)
     f.area:SetSize(width, height)
     local cellW = width / #f.cells
@@ -354,18 +394,18 @@ function Look.Mode(f, m)
 end
 
 function Look.Time(f, left)
-    f.time:SetFormattedText("%.1f", max(0, left))
+    f.time:SetFormattedText(TEXT.TIME, max(0, left))
 end
 
 function Look.Stats(f, points, hit, missed, streak)
-    f.score:SetFormattedText("%d", points)
+    f.score:SetFormattedText(TEXT.COUNT, points)
     local shots = hit + missed
     if shots > 0 then
-        f.accuracy:SetFormattedText("%d%%", floor(hit * 100 / shots + 0.5))
+        f.accuracy:SetFormattedText(TEXT.PERCENT, floor(hit * PERCENT / shots + HALF))
     else
-        f.accuracy:SetText(NO_VALUE)
+        f.accuracy:SetText(TEXT.NO_VALUE)
     end
-    f.combo:SetFormattedText("x%d", streak)
+    f.combo:SetFormattedText(TEXT.COMBO, streak)
 end
 
 local function Best(m)
@@ -375,23 +415,23 @@ end
 
 local function BestText(m)
     local best = Best(m)
-    if not best then return "No best yet" end
+    if not best then return TEXT.NO_BEST end
     local accuracy = ns.AccountSettings().aimBestAccuracy
     accuracy = type(accuracy) == "table" and accuracy[m]
-    if accuracy then return ("Best %s, best accuracy %d%%"):format(BreakUpLargeNumbers(best), accuracy) end
-    return "Best " .. BreakUpLargeNumbers(best)
+    if accuracy then return TEXT.BEST_ACCURACY:format(BreakUpLargeNumbers(best), accuracy) end
+    return TEXT.BEST .. BreakUpLargeNumbers(best)
+end
+
+function Look.ModeLine(m)
+    if m == MODE_REFLEX then return TEXT.REFLEX:format(REFLEX_LIFETIME, ROUND_TIME) end
+    if m == MODE_HEXA then return TEXT.HEXA:format(ROUND_TIME) end
+    return TEXT.GRID:format(ROUND_TIME)
 end
 
 function Look.Idle(f, m)
     local area = f.area
-    area.hint:SetText("Click to Start")
-    if m == MODE_REFLEX then
-        area.sub:SetText(("Reflex: one target at a time, gone in %.2gs. %ds rounds."):format(REFLEX_LIFETIME, ROUND_TIME))
-    elseif m == MODE_HEXA then
-        area.sub:SetText(("Hexakill: six targets at once. %ds rounds."):format(ROUND_TIME))
-    else
-        area.sub:SetText(("Gridshot: three targets at once. %ds rounds."):format(ROUND_TIME))
-    end
+    area.hint:SetText(TEXT.START)
+    area.sub:SetText(Look.ModeLine(m))
     area.best:SetText(BestText(m))
     area.hint:Show()
     area.sub:Show()
@@ -414,16 +454,16 @@ end
 
 function Look.Results(f, record, hit, missed, accuracy, reaction, streak, points, best, bestAccuracy, rank)
     local card, v = f.card, f.card.values
-    card.title:SetText(record and "New Best!" or "Round Over")
+    card.title:SetText(record and TEXT.NEW_BEST or TEXT.ROUND_OVER)
     card.rank:SetText(rank or "")
-    v[1]:SetFormattedText("%d", hit)
-    v[2]:SetFormattedText("%d", missed)
-    if accuracy then v[3]:SetFormattedText("%d%%", accuracy) else v[3]:SetText(NO_VALUE) end
-    if reaction then v[4]:SetFormattedText("%d ms", reaction) else v[4]:SetText(NO_VALUE) end
-    v[5]:SetFormattedText("x%d", streak)
+    v[1]:SetFormattedText(TEXT.COUNT, hit)
+    v[2]:SetFormattedText(TEXT.COUNT, missed)
+    if accuracy then v[3]:SetFormattedText(TEXT.PERCENT, accuracy) else v[3]:SetText(TEXT.NO_VALUE) end
+    if reaction then v[4]:SetFormattedText(TEXT.MS, reaction) else v[4]:SetText(TEXT.NO_VALUE) end
+    v[5]:SetFormattedText(TEXT.COMBO, streak)
     v[6]:SetText(BreakUpLargeNumbers(points))
     if bestAccuracy then
-        v[7]:SetText(("%s, %d%%"):format(BreakUpLargeNumbers(best or 0), bestAccuracy))
+        v[7]:SetText(TEXT.BEST_LINE:format(BreakUpLargeNumbers(best or 0), bestAccuracy))
     else
         v[7]:SetText(BreakUpLargeNumbers(best or 0))
     end
@@ -560,39 +600,32 @@ local function Unlock()
     panel.boardButton:Show()
 end
 
-local function Finish()
-    panel:SetScript("OnUpdate", nil)
-    StopTargets()
-    state = RESULTS
-    local shots = hits + misses
-    local accuracy = shots > 0 and floor(hits * 100 / shots + 0.5) or nil
+local function SaveRecords(accuracy, shots)
     local best, bestAccuracy = Records("aimBest"), Records("aimBestAccuracy")
     local record = score > 0 and score > (best[mode] or 0)
     if record then best[mode] = score end
     if accuracy and shots >= MIN_SHOTS and accuracy > (bestAccuracy[mode] or 0) then bestAccuracy[mode] = accuracy end
     if record then ns.AimBoard.Record(mode) end
+    return record, best[mode], bestAccuracy[mode]
+end
+
+local function Finish()
+    panel:SetScript("OnUpdate", nil)
+    StopTargets()
+    state = RESULTS
+    local shots = hits + misses
+    local accuracy = shots > 0 and floor(hits * PERCENT / shots + HALF) or nil
+    local record, best, bestAccuracy = SaveRecords(accuracy, shots)
     Look.Time(panel, 0)
     Look.Lock(panel, true)
     CancelLock()
     lockTimer = C_Timer.NewTimer(RESULTS_LOCK, Unlock)
-    Look.Results(panel, record, hits, misses, accuracy, hits > 0 and floor(reactionSum / hits * 1000 + 0.5) or nil,
-        bestCombo, score, best[mode], bestAccuracy[mode], ns.AimBoard.RankLine(mode, record))
+    Look.Results(panel, record, hits, misses, accuracy,
+        hits > 0 and floor(reactionSum / hits * MS_PER_SECOND + HALF) or nil,
+        bestCombo, score, best, bestAccuracy, ns.AimBoard.RankLine(mode, record))
 end
 
-local function Tick(self)
-    local now = GetTime()
-    local left = endAt - now
-    if left <= 0 then
-        Finish()
-        return
-    end
-    local tenth = floor(left * 10)
-    if tenth ~= lastTenth then
-        lastTenth = tenth
-        Look.Time(self, left)
-    end
-    if mode ~= MODE_REFLEX then return end
-    local t = self.targets[1]
+local function TickReflex(t, now)
     if t.on then
         local shrink = 1 - (now - t.born) / REFLEX_LIFETIME
         if shrink <= 0 then
@@ -607,19 +640,38 @@ local function Tick(self)
     end
 end
 
+local function Tick(self)
+    local now = GetTime()
+    local left = endAt - now
+    if left <= 0 then
+        Finish()
+        return
+    end
+    local tenth = floor(left * TENTHS)
+    if tenth ~= lastTenth then
+        lastTenth = tenth
+        Look.Time(self, left)
+    end
+    if mode == MODE_REFLEX then TickReflex(self.targets[1], now) end
+end
+
 local function Settle()
     areaW, areaH = Look.Layout(panel, AREA_W)
+end
+
+local function ReadOptions()
+    mode = ModeOf(S.Get("aimMode"))
+    pulse = S.Get("aimPulse") and true or false
+    soundKey = S.Get("aimSound") and S.Get("aimSoundKey") or nil
+    if soundKey == TEXT.NO_SOUND then soundKey = nil end
+    faces = Faces(UnitFactionGroup("player"))
+    faceCount = faces and #faces or 0
 end
 
 local function Start()
     if state == RUNNING then return end
     CancelLock()
-    mode = ModeOf(S.Get("aimMode"))
-    pulse = S.Get("aimPulse") and true or false
-    soundKey = S.Get("aimSound") and S.Get("aimSoundKey") or nil
-    if soundKey == "none" then soundKey = nil end
-    faces = Faces(UnitFactionGroup("player"))
-    faceCount = faces and #faces or 0
+    ReadOptions()
     Settle()
     hits, misses, combo, bestCombo, score, reactionSum = 0, 0, 0, 0, 0, 0
     local now = GetTime()
@@ -760,7 +812,7 @@ end
 local function Open(reason)
     if not On() then return end
     if InCombatLockdown() then
-        ns.Print(IN_COMBAT)
+        ns.Print(TEXT.IN_COMBAT)
         return
     end
     if not panel then Build() end
@@ -799,7 +851,7 @@ function ns.ToggleAimTrainer()
     if panel and panel:IsShown() then
         panel:Hide()
     else
-        Open(UnitOnTaxi("player") and "flight" or nil)
+        Open(UnitOnTaxi("player") and TEXT.FLIGHT or nil)
     end
 end
 
@@ -815,7 +867,7 @@ end
 
 local REDRAW = { aimMode = true, aimPulse = true }
 
-hooksecurefunc(S, "Set", function(key)
+local function OnSettingChanged(key)
     if key == "enabled" or key == "aimTrainer" then
         Apply()
     elseif REDRAW[key] and panel and panel:IsShown() then
@@ -823,17 +875,21 @@ hooksecurefunc(S, "Set", function(key)
         Idle()
         if board then ToggleBoard() end
     end
-end)
-hooksecurefunc(ns, "Apply", Apply)
+end
 
-SLASH_NAOWHFOREVERAIM1 = "/nfaim"
-SlashCmdList.NAOWHFOREVERAIM = function()
+local function AimSlash()
     if not On() then
-        ns.Print("The Aim Trainer is off. Turn it on in /nf, QoL, Travel.")
+        ns.Print(TEXT.OFF)
         return
     end
     ns.ToggleAimTrainer()
 end
+
+hooksecurefunc(S, "Set", OnSettingChanged)
+hooksecurefunc(ns, "Apply", Apply)
+
+SLASH_NAOWHFOREVERAIM1 = "/nfaim"
+SlashCmdList.NAOWHFOREVERAIM = AimSlash
 
 local Settings = ns.Shared.Settings
 local Group = Settings.Group
@@ -857,15 +913,8 @@ local function NewPreview(stage)
     return preview
 end
 
-local function PaintPreview(preview, shown)
-    local f = preview.panel
-    local w, h = Look.Layout(f, AREA_W)
-    local m = ModeOf(S.Get("aimMode"))
+function Look.PreviewTargets(f, m, shown, w, h)
     local ids = Faces(UnitFactionGroup("player"))
-    Look.Mode(f, m)
-    Look.Busy(f)
-    Look.Time(f, SAMPLE.left)
-    Look.Stats(f, SAMPLE.score, SAMPLE.hits, SAMPLE.misses, SAMPLE.combo)
     local count = MODE_TARGETS[m]
     local s = TARGET_SIZE
     for i, t in ipairs(f.targets) do
@@ -878,13 +927,28 @@ local function PaintPreview(preview, shown)
             Look.Put(t, SAMPLE_SPOTS[i][1] * w, SAMPLE_SPOTS[i][2] * h)
         end
     end
-    if shown == "results" then
-        local hit, missed = SAMPLE.hits, SAMPLE.misses
-        Look.Results(f, false, hit, missed, floor(hit * 100 / (hit + missed) + 0.5), SAMPLE.reaction,
-            SAMPLE.bestCombo, SAMPLE.score, Best(m) or SAMPLE.score, nil, SAMPLE_RANK)
-    else
+end
+
+function Look.PreviewResults(f, m, shown)
+    if shown ~= "results" then
         f.card:Hide()
+        return
     end
+    local hit, missed = SAMPLE.hits, SAMPLE.misses
+    Look.Results(f, false, hit, missed, floor(hit * PERCENT / (hit + missed) + HALF), SAMPLE.reaction,
+        SAMPLE.bestCombo, SAMPLE.score, Best(m) or SAMPLE.score, nil, SAMPLE_RANK)
+end
+
+local function PaintPreview(preview, shown)
+    local f = preview.panel
+    local w, h = Look.Layout(f, AREA_W)
+    local m = ModeOf(S.Get("aimMode"))
+    Look.Mode(f, m)
+    Look.Busy(f)
+    Look.Time(f, SAMPLE.left)
+    Look.Stats(f, SAMPLE.score, SAMPLE.hits, SAMPLE.misses, SAMPLE.combo)
+    Look.PreviewTargets(f, m, shown, w, h)
+    Look.PreviewResults(f, m, shown)
     local scale = 1
     local fw, fh = f:GetWidth(), f:GetHeight()
     local roomW, roomH = preview:GetWidth() - STAGE_MARGIN * 2, preview:GetHeight() - STAGE_MARGIN * 2
@@ -914,30 +978,32 @@ end
 
 local function PlayNow()
     if InCombatLockdown() then
-        ns.Print(IN_COMBAT)
+        ns.Print(TEXT.IN_COMBAT)
         return
     end
     if ns.StashOptionsWindow then ns.StashOptionsWindow() end
-    Open(UnitOnTaxi("player") and "flight" or nil)
+    Open(UnitOnTaxi("player") and TEXT.FLIGHT or nil)
+end
+
+local function ForgetRecords()
+    local account = ns.AccountSettings()
+    account.aimBest, account.aimBestAccuracy = nil, nil
+    ns.AimBoard.Sync()
+    if panel and panel:IsShown() and state == IDLE then Idle() end
 end
 
 local function ResetRecords()
-    ns.Confirm("Clear your Aim Trainer records?", function()
-        local account = ns.AccountSettings()
-        account.aimBest, account.aimBestAccuracy = nil, nil
-        ns.AimBoard.Sync()
-        if panel and panel:IsShown() and state == IDLE then Idle() end
-    end)
+    ns.Confirm(TEXT.RESET, ForgetRecords)
 end
 
 local function ClearBoard()
-    ns.Confirm("Clear the Aim Trainer leaderboard? Your own records stay.", ns.AimBoard.Clear)
+    ns.Confirm(TEXT.CLEAR_BOARD, ns.AimBoard.Clear)
 end
 
 local function Summary(store)
     local m = ModeOf(store.Get("aimMode"))
     local best = Best(m)
-    return ("%s, %s"):format(MODE_NAMES[m], best and ("best " .. BreakUpLargeNumbers(best)) or "no best yet")
+    return TEXT.SUMMARY:format(MODE_NAMES[m], best and (TEXT.SUMMARY_BEST .. BreakUpLargeNumbers(best)) or TEXT.SUMMARY_NO_BEST)
 end
 
 Settings.Page("QoL/Travel", S):Card({

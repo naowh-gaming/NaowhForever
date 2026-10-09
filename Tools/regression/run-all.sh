@@ -12,7 +12,7 @@ args_for() {
         test-feint-recharge.lua | test_smart_charge_regressions.lua | test-smart-display-review-fixes.lua)
             echo "NaowhForever_SmartReminders/NaowhForever_SmartReminders.lua" ;;
         test-smart-minimap.lua)
-            echo "Core/NaowhForever_Window.lua" ;;
+            echo "Core/NaowhForever_Launchers.lua" ;;
         *) echo "" ;;
     esac
 }

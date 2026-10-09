@@ -1,24 +1,64 @@
--------------------------------------------------------------------------------
---  NaowhForever_Trainer.lua -- the QoL trainer popup: lists what you learned, glows new abilities
---  until used, and swaps outdated top ranks on your bars, leaving lower ranks for downranking.
--------------------------------------------------------------------------------
+-- NaowhForever_Trainer.lua: the QoL trainer popup: what you learned, new abilities lit until used, and rank swaps.
 local ns = _G.NaowhForever
+
 local S = ns.QoLSettings
 local T = ns.THEME
+local Style = ns.Shared.Style
 
 local PLAYER_BANK = Enum.SpellBookSpellBank.Player
+local SPELL_ITEM = Enum.SpellBookItemType.Spell
 local KEYBOARD_SLOTS = 180
 local MAX_ROWS = 8
 local ROW_H = 30
+local ROW_GAP = 2
+local ROW_W = 300
+local PAD = 12
+local LIST_TOP = 44
+local ICON_INSET = 4
+local ICON_CROP_LOW, ICON_CROP_HIGH = ns.QoLConstants.ICON_CROP_TIGHT, ns.QoLConstants.ICON_CROP_TIGHT_HIGH
+local NAME_GAP, RANK_GAP = 8, 6
+local NAME_SIZE, RANK_SIZE, TITLE_SIZE, RANKS_SIZE, MORE_SIZE = 13, 11, 16, 12, 11
+local POPUP_W = 324
+local POPUP_ALPHA = 0.95
+local LOGO_SIZE, LOGO_TOP, TITLE_GAP = 26, 8, 8
+local CLOSE_SIZE, CLOSE_INSET = 22, 10
+local BUTTON_H, SWAP_W, LATER_W, BUTTON_GAP = 26, 140, 80, 8
+local MORE_TOP, MORE_H = 2, 20
+local RANKS_TOP, RANKS_ROOM = 8, 14
+local BOTTOM_PAD = 14
+local DEFAULT_TOP = -160
 local GLOW_KEY = "NaowhNewAbility"
+local GLOW_LINES, GLOW_THICKNESS = 8, 2
+local SHOW_DELAY = 2
+local GLOW_EVENTS = { "ACTIONBAR_SLOT_CHANGED", "ACTIONBAR_PAGE_CHANGED", "UPDATE_BONUS_ACTIONBAR",
+    "PLAYER_ENTERING_WORLD" }
 
-local learned = {}          -- spellIDs learned since the window last showed, in order
-local listed = {}           -- the spellIDs the open window lists
-local manual = false        -- the open window came from a manual check, which always scans ranks
-local atTrainer, showQueued, showGen = false, false, 0
+local TEXT_NEW = "New Abilities"
+local TEXT_LOWER = "Lower Ranks on Your Bars"
+local TEXT_MORE = "+%d more"
+local TEXT_KEPT = "  (kept)"
+local TEXT_HOLD = "%d bar slot(s) hold a lower rank: %s"
+local TEXT_UPDATED = "updated %d bar slot(s): %s"
+local TEXT_COUNT = "%s (x%d)"
+local TEXT_DRAG = "Drag onto your bars to place it."
+local TEXT_UNKEEP = "Right-click to let Update Bars swap it again."
+local TEXT_KEEP = "Right-click to leave it as it is on your bars when you update them."
+local TEXT_COMBAT = "leave combat, then check your bars again."
+local TEXT_ALL_TOP = "every spell on your bars is at its highest rank."
+local TEXT_UPDATE = "Update Bars"
+local TEXT_LATER = "Later"
+local TEXT_CLOSE = "X"
+
+local learned = {}
+local listed = {}
+local manual = false
+local atTrainer, showQueued, showPending = false, false, 0
 local popup
 local glowing = {}
-local WatchGlow
+local glowQueued = false
+local charKey
+local events = CreateFrame("Frame")
+local WatchGlow, Render
 
 local function On()
     return S.Get("enabled") and S.Get("trainerPopup")
@@ -30,9 +70,6 @@ local function Account(key)
     return account[key]
 end
 
--- spellID -> true for abilities still waiting to be used; kept per character so a reload
--- does not drop the glow.
-local charKey
 local function NewSpells()
     local all = Account("trainerNew")
     charKey = charKey or UnitName("player") .. "-" .. GetRealmName()
@@ -40,7 +77,6 @@ local function NewSpells()
     return all[charKey]
 end
 
--- Spell names whose lower ranks stay on the bars, for deliberate downranking.
 local function Kept()
     return Account("rankKeep")
 end
@@ -49,24 +85,23 @@ local function RankOf(subtext)
     return tonumber(subtext and subtext:match("%d+")) or 0
 end
 
--------------------------------------------------------------------------------
---  Ranks
--------------------------------------------------------------------------------
--- name -> { rank, spellID } for the highest rank of each active spell in the spellbook.
+local function AddBest(best, slot)
+    local item = C_SpellBook.GetSpellBookItemInfo(slot, PLAYER_BANK)
+    if not (item and item.itemType == SPELL_ITEM and not item.isPassive) then return end
+    local rank = RankOf(item.subName)
+    local top = best[item.name]
+    if not top or rank > top.rank then
+        best[item.name] = { rank = rank, spellID = item.actionID }
+    end
+end
+
 local function HighestRanks()
     local best = {}
     for line = 1, C_SpellBook.GetNumSpellBookSkillLines() do
         local info = C_SpellBook.GetSpellBookSkillLineInfo(line)
         if info and not info.isGuild then
             for slot = info.itemIndexOffset + 1, info.itemIndexOffset + info.numSpellBookItems do
-                local item = C_SpellBook.GetSpellBookItemInfo(slot, PLAYER_BANK)
-                if item and item.itemType == Enum.SpellBookItemType.Spell and not item.isPassive then
-                    local rank = RankOf(item.subName)
-                    local top = best[item.name]
-                    if not top or rank > top.rank then
-                        best[item.name] = { rank = rank, spellID = item.actionID }
-                    end
-                end
+                AddBest(best, slot)
             end
         end
     end
@@ -77,15 +112,11 @@ local function CheckSlot(slot, best, found)
     local kind, id = GetActionInfo(slot)
     if kind ~= "spell" or not id then return end
     local name = C_Spell.GetSpellName(id)
-    -- An uncached spell has no subtext yet; read as rank 0 it would pass for a downrank.
     local subtext = C_Spell.GetSpellSubtext(id)
     if not (name and best[name] and subtext and subtext ~= "") then return end
     found[#found + 1] = { slot = slot, name = name, id = id, rank = RankOf(subtext) }
 end
 
--- Every bar slot, keyboard and controller, holding the highest rank of a spell on your bars
--- when you know a higher one. A lower rank beside it stays, for downranking: a healer's Rank 1
--- heal next to the main one. Kept spells are included, flagged, so the window can still list them.
 local function Upgrades()
     local best, kept, found, onBars, out = HighestRanks(), Kept(), {}, {}, {}
     for slot = 1, KEYBOARD_SLOTS do CheckSlot(slot, best, found) end
@@ -104,7 +135,6 @@ local function Upgrades()
     return out
 end
 
--- The spell names in a list of upgrades, with a count where one sits on several slots.
 local function Summary(ups)
     local counts, order = {}, {}
     for _, up in ipairs(ups) do
@@ -112,30 +142,26 @@ local function Summary(ups)
         counts[up.name] = (counts[up.name] or 0) + 1
     end
     for i, name in ipairs(order) do
-        if counts[name] > 1 then order[i] = ("%s (x%d)"):format(name, counts[name]) end
+        if counts[name] > 1 then order[i] = TEXT_COUNT:format(name, counts[name]) end
     end
     return table.concat(order, ", ")
 end
 
--------------------------------------------------------------------------------
---  Glow until used
--------------------------------------------------------------------------------
--- Blizzard's, EUI's and the controller bars' buttons all inherit ActionBarButtonTemplate,
--- which registers them here. Blizzard's own new-ability highlight is avoided: its marks
--- table is read from secure code and a write from an addon taints it.
+local function WantsGlow(btn, show, new)
+    if not (show and btn.action) then return false end
+    local kind, id = GetActionInfo(btn.action)
+    return kind == "spell" and not (issecretvalue and issecretvalue(id)) and new[id] == true
+end
+
 local function RefreshGlow()
     local new = NewSpells()
     local show = On() and S.Get("trainerGlow")
     local LCG = LibStub("LibCustomGlow-1.0")
+    local color = { T.accent.r, T.accent.g, T.accent.b, 1 }
     for _, btn in pairs(ActionBarButtonEventsFrame.frames) do
-        local want = false
-        if show and btn.action then
-            local kind, id = GetActionInfo(btn.action)
-            want = kind == "spell" and not (issecretvalue and issecretvalue(id)) and new[id] == true
-        end
+        local want = WantsGlow(btn, show, new)
         if want and not glowing[btn] then
-            LCG.PixelGlow_Start(btn, { T.accent.r, T.accent.g, T.accent.b, 1 }, 8, nil, nil, 2,
-                0, 0, nil, GLOW_KEY)
+            LCG.PixelGlow_Start(btn, color, GLOW_LINES, nil, nil, GLOW_THICKNESS, 0, 0, nil, GLOW_KEY)
             glowing[btn] = true
         elseif not want and glowing[btn] then
             LCG.PixelGlow_Stop(btn, GLOW_KEY)
@@ -145,32 +171,26 @@ local function RefreshGlow()
     WatchGlow()
 end
 
--- Paging and slot events arrive before the buttons pick up their new action, so the
--- refresh waits a frame and several events in a row cost one pass.
-local glowQueued = false
+local function RunQueuedGlow()
+    glowQueued = false
+    RefreshGlow()
+end
+
 local function QueueGlow()
     if glowQueued then return end
     glowQueued = true
-    C_Timer.After(0, function()
-        glowQueued = false
-        RefreshGlow()
-    end)
+    C_Timer.After(0, RunQueuedGlow)
 end
 
--------------------------------------------------------------------------------
---  The window
--------------------------------------------------------------------------------
 local function Place()
     local pos = S.Get("trainerPos")
     popup:ClearAllPoints()
     if pos then
         popup:SetPoint(pos.point, UIParent, pos.relPoint, pos.x, pos.y)
     else
-        popup:SetPoint("TOP", UIParent, "TOP", 0, -160)
+        popup:SetPoint("TOP", UIParent, "TOP", 0, DEFAULT_TOP)
     end
 end
-
-local Render
 
 local function ToggleKeep(name)
     local kept = Kept()
@@ -186,6 +206,10 @@ local function Swappable()
     return ups
 end
 
+local function HidePopup()
+    popup:Hide()
+end
+
 local function SwapRanks()
     if InCombatLockdown() then return end
     local ups = Swappable()
@@ -196,9 +220,8 @@ local function SwapRanks()
         ClearCursor()
     end
     if #ups > 0 then
-        ns.Print(("updated %d bar slot(s): %s"):format(#ups, Summary(ups)))
+        ns.Print(TEXT_UPDATED:format(#ups, Summary(ups)))
     end
-    -- Done once every slot is swapped; anything left over keeps the window up.
     if #Swappable() == 0 then
         popup:Hide()
     else
@@ -206,44 +229,56 @@ local function SwapRanks()
     end
 end
 
+local function OnRowDragStart(self)
+    if not InCombatLockdown() then C_Spell.PickupSpell(self.spellID) end
+end
+
+local function OnRowClick(self)
+    ToggleKeep(self.spellName)
+end
+
+local function OnRowEnter(self)
+    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+    GameTooltip:SetSpellByID(self.spellID)
+    GameTooltip:AddLine(" ")
+    GameTooltip:AddLine(TEXT_DRAG, 1, 1, 1)
+    GameTooltip:AddLine(Kept()[self.spellName] and TEXT_UNKEEP or TEXT_KEEP, 1, 1, 1)
+    GameTooltip:Show()
+end
+
 local function BuildRow(i)
     local row = CreateFrame("Button", nil, popup)
-    row:SetSize(300, ROW_H - 2)
-    row:SetPoint("TOPLEFT", 12, -44 - (i - 1) * ROW_H)
+    row:SetSize(ROW_W, ROW_H - ROW_GAP)
+    row:SetPoint("TOPLEFT", PAD, -LIST_TOP - (i - 1) * ROW_H)
     row:RegisterForClicks("RightButtonUp")
     row:RegisterForDrag("LeftButton")
 
     row.icon = row:CreateTexture(nil, "ARTWORK")
-    row.icon:SetSize(ROW_H - 4, ROW_H - 4)
+    row.icon:SetSize(ROW_H - ICON_INSET, ROW_H - ICON_INSET)
     row.icon:SetPoint("LEFT")
-    row.icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
+    row.icon:SetTexCoord(ICON_CROP_LOW, ICON_CROP_HIGH, ICON_CROP_LOW, ICON_CROP_HIGH)
 
-    row.name = ns.Font(row, 13, nil)
-    row.name:SetPoint("LEFT", row.icon, "RIGHT", 8, 0)
-    row.rank = ns.Font(row, 11, nil, T.muted)
-    row.rank:SetPoint("LEFT", row.name, "RIGHT", 6, 0)
+    row.name = ns.Font(row, NAME_SIZE, nil)
+    row.name:SetPoint("LEFT", row.icon, "RIGHT", NAME_GAP, 0)
+    row.rank = ns.Font(row, RANK_SIZE, nil, T.muted)
+    row.rank:SetPoint("LEFT", row.name, "RIGHT", RANK_GAP, 0)
 
-    row:SetScript("OnDragStart", function(self)
-        if not InCombatLockdown() then C_Spell.PickupSpell(self.spellID) end
-    end)
-    row:SetScript("OnClick", function(self) ToggleKeep(self.spellName) end)
-    row:SetScript("OnEnter", function(self)
-        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-        GameTooltip:SetSpellByID(self.spellID)
-        GameTooltip:AddLine(" ")
-        GameTooltip:AddLine("Drag onto your bars to place it.", 1, 1, 1)
-        GameTooltip:AddLine(Kept()[self.spellName]
-            and "Right-click to let Update Bars swap it again."
-            or "Right-click to leave it as it is on your bars when you update them.", 1, 1, 1)
-        GameTooltip:Show()
-    end)
+    row:SetScript("OnDragStart", OnRowDragStart)
+    row:SetScript("OnClick", OnRowClick)
+    row:SetScript("OnEnter", OnRowEnter)
     row:SetScript("OnLeave", GameTooltip_Hide)
     return row
 end
 
+local function OnPopupDragStop(self)
+    self:StopMovingOrSizing()
+    local point, _, relPoint, x, y = self:GetPoint()
+    S.Set("trainerPos", { point = point, relPoint = relPoint, x = x, y = y })
+end
+
 local function Build()
     popup = CreateFrame("Frame", "NaowhForeverTrainer", UIParent)
-    popup:SetWidth(324)
+    popup:SetWidth(POPUP_W)
     popup:SetFrameStrata("MEDIUM")
     popup:SetMovable(true)
     popup:SetClampedToScreen(true)
@@ -251,44 +286,36 @@ local function Build()
     popup:EnableMouse(true)
     popup:RegisterForDrag("LeftButton")
     popup:SetScript("OnDragStart", popup.StartMoving)
-    popup:SetScript("OnDragStop", function(self)
-        self:StopMovingOrSizing()
-        local point, _, relPoint, x, y = self:GetPoint()
-        S.Set("trainerPos", { point = point, relPoint = relPoint, x = x, y = y })
-    end)
-    ns.Solid(popup, "BACKGROUND", T.bg, 0.95):SetAllPoints()
+    popup:SetScript("OnDragStop", OnPopupDragStop)
+    ns.Solid(popup, "BACKGROUND", T.bg, POPUP_ALPHA):SetAllPoints()
     ns.Border(popup)
 
     local logo = popup:CreateTexture(nil, "ARTWORK")
-    logo:SetTexture("Interface\\AddOns\\NaowhForever\\Media\\LogoSmall.tga", nil, nil, "TRILINEAR")
-    logo:SetSize(26, 26)
-    logo:SetPoint("TOPLEFT", 12, -8)
+    logo:SetTexture(Style.LOGO_SMALL, nil, nil, "TRILINEAR")
+    logo:SetSize(LOGO_SIZE, LOGO_SIZE)
+    logo:SetPoint("TOPLEFT", PAD, -LOGO_TOP)
 
-    popup.title = ns.Font(popup, 16, "OUTLINE", T.accent)
-    popup.title:SetPoint("LEFT", logo, "RIGHT", 8, 0)
+    popup.title = ns.Font(popup, TITLE_SIZE, "OUTLINE", T.accent)
+    popup.title:SetPoint("LEFT", logo, "RIGHT", TITLE_GAP, 0)
 
-    local close = ns.Button(popup, "X", 22, 22, function() popup:Hide() end)
-    close:SetPoint("TOPRIGHT", -10, -10)
+    local close = ns.Button(popup, TEXT_CLOSE, CLOSE_SIZE, CLOSE_SIZE, HidePopup)
+    close:SetPoint("TOPRIGHT", -CLOSE_INSET, -CLOSE_INSET)
 
     popup.rows = {}
     for i = 1, MAX_ROWS do popup.rows[i] = BuildRow(i) end
 
-    popup.more = ns.Font(popup, 11, nil, T.muted)
-    popup.ranks = ns.Font(popup, 12, nil)
-    popup.ranks:SetWidth(300)
+    popup.more = ns.Font(popup, MORE_SIZE, nil, T.muted)
+    popup.ranks = ns.Font(popup, RANKS_SIZE, nil)
+    popup.ranks:SetWidth(ROW_W)
     popup.ranks:SetJustifyH("LEFT")
     popup.ranks:SetWordWrap(true)
 
-    popup.swap = ns.Button(popup, "Update Bars", 140, 26, SwapRanks)
-    popup.later = ns.Button(popup, "Later", 80, 26, function() popup:Hide() end)
+    popup.swap = ns.Button(popup, TEXT_UPDATE, SWAP_W, BUTTON_H, SwapRanks)
+    popup.later = ns.Button(popup, TEXT_LATER, LATER_W, BUTTON_H, HidePopup)
     popup:Hide()
 end
 
--- Lays the window out: what was learned, then any other spell your bars hold at a lower
--- rank, and the swap button while something is left to swap. Returns false when there is
--- nothing to show.
-Render = function()
-    local ups = (manual or S.Get("trainerRanks")) and Upgrades() or {}
+local function Rows(ups)
     local rows, seen, swappable = {}, {}, {}
     for _, id in ipairs(listed) do
         rows[#rows + 1] = id
@@ -301,13 +328,10 @@ Render = function()
         end
         if not up.kept then swappable[#swappable + 1] = up end
     end
-    if #rows == 0 then
-        if popup then popup:Hide() end
-        return false
-    end
-    if not popup then Build() end
+    return rows, swappable
+end
 
-    popup.title:SetText(#listed > 0 and "New Abilities" or "Lower Ranks on Your Bars")
+local function FillRows(rows)
     local kept = Kept()
     local shown = math.min(#rows, MAX_ROWS)
     for i, row in ipairs(popup.rows) do
@@ -317,52 +341,66 @@ Render = function()
             row.icon:SetTexture(C_Spell.GetSpellTexture(id))
             row.name:SetText(row.spellName)
             local rank = C_Spell.GetSpellSubtext(id) or ""
-            row.rank:SetText(kept[row.spellName] and (rank .. "  (kept)") or rank)
+            row.rank:SetText(kept[row.spellName] and (rank .. TEXT_KEPT) or rank)
             row:Show()
         else
             row:Hide()
         end
     end
+    return -LIST_TOP - shown * ROW_H
+end
 
-    local y = -44 - shown * ROW_H
+local function LayoutMore(rows, y)
     popup.more:ClearAllPoints()
-    if #rows > MAX_ROWS then
-        popup.more:SetPoint("TOPLEFT", 12, y - 2)
-        popup.more:SetText(("+%d more"):format(#rows - MAX_ROWS))
-        popup.more:Show()
-        y = y - 20
-    else
+    if #rows <= MAX_ROWS then
         popup.more:Hide()
+        return y
     end
+    popup.more:SetPoint("TOPLEFT", PAD, y - MORE_TOP)
+    popup.more:SetText(TEXT_MORE:format(#rows - MAX_ROWS))
+    popup.more:Show()
+    return y - MORE_H
+end
 
+local function LayoutSwap(swappable, y)
     popup.ranks:ClearAllPoints()
     popup.swap:ClearAllPoints()
     popup.later:ClearAllPoints()
-    if #swappable > 0 then
-        popup.ranks:SetPoint("TOPLEFT", 12, y - 8)
-        popup.ranks:SetText(("%d bar slot(s) hold a lower rank: %s"):format(#swappable,
-            Summary(swappable)))
-        popup.ranks:Show()
-        y = y - 14 - popup.ranks:GetStringHeight()
-        popup.swap:SetPoint("TOPLEFT", 12, y)
-        popup.swap:Show()
-        popup.later:SetPoint("LEFT", popup.swap, "RIGHT", 8, 0)
-        popup.later:Show()
-        y = y - 26
-    else
+    if #swappable == 0 then
         popup.ranks:Hide()
         popup.swap:Hide()
         popup.later:Hide()
+        return y
     end
+    popup.ranks:SetPoint("TOPLEFT", PAD, y - RANKS_TOP)
+    popup.ranks:SetText(TEXT_HOLD:format(#swappable, Summary(swappable)))
+    popup.ranks:Show()
+    y = y - RANKS_ROOM - popup.ranks:GetStringHeight()
+    popup.swap:SetPoint("TOPLEFT", PAD, y)
+    popup.swap:Show()
+    popup.later:SetPoint("LEFT", popup.swap, "RIGHT", BUTTON_GAP, 0)
+    popup.later:Show()
+    return y - BUTTON_H
+end
 
-    popup:SetHeight(-y + 14)
+Render = function()
+    local ups = (manual or S.Get("trainerRanks")) and Upgrades() or {}
+    local rows, swappable = Rows(ups)
+    if #rows == 0 then
+        if popup then popup:Hide() end
+        return false
+    end
+    if not popup then Build() end
+    popup.title:SetText(#listed > 0 and TEXT_NEW or TEXT_LOWER)
+    local y = FillRows(rows)
+    y = LayoutMore(rows, y)
+    y = LayoutSwap(swappable, y)
+    popup:SetHeight(-y + BOTTOM_PAD)
     Place()
     popup:Show()
     return true
 end
 
--- The window never opens in combat: rank swaps cannot happen there. It waits for combat
--- to end instead.
 local function Show()
     if not On() then return end
     if InCombatLockdown() then
@@ -370,31 +408,15 @@ local function Show()
         return
     end
     showQueued = false
-    -- Reopening after combat keeps the list the window already had.
     if #learned > 0 then listed, learned, manual = learned, {}, false end
     Render()
 end
 
--- /naowh ranks: check the bars now, as after a trainer visit.
-function ns.TrainerRankCheck()
-    if InCombatLockdown() then
-        ns.Print("leave combat, then check your bars again.")
-        return
-    end
-    listed, manual = {}, true
-    if not Render() then
-        ns.Print("every spell on your bars is at its highest rank.")
-    end
+local function OnShowTimer()
+    showPending = showPending - 1
+    if showPending == 0 and not atTrainer then Show() end
 end
 
-function ns.TrainerForgetKept()
-    ns.AccountSettings().rankKeep = {}
-    if popup and popup:IsShown() then Render() end
-end
-
--------------------------------------------------------------------------------
---  Events
--------------------------------------------------------------------------------
 local function Learned(spellID)
     if C_Spell.IsSpellPassive(spellID) then return end
     learned[#learned + 1] = spellID
@@ -403,15 +425,9 @@ local function Learned(spellID)
         WatchGlow()
         QueueGlow()
     end
-    -- Away from a trainer (a tome, a quest reward) the window follows a moment after the
-    -- last new ability instead of waiting for TRAINER_CLOSED.
-    if not atTrainer then
-        showGen = showGen + 1
-        local gen = showGen
-        C_Timer.After(2, function()
-            if gen == showGen and not atTrainer then Show() end
-        end)
-    end
+    if atTrainer then return end
+    showPending = showPending + 1
+    C_Timer.After(SHOW_DELAY, OnShowTimer)
 end
 
 local function Used(spellID)
@@ -423,25 +439,7 @@ local function Used(spellID)
     end
 end
 
-local events = CreateFrame("Frame")
-
-local GLOW_EVENTS = { "ACTIONBAR_SLOT_CHANGED", "ACTIONBAR_PAGE_CHANGED", "UPDATE_BONUS_ACTIONBAR",
-    "PLAYER_ENTERING_WORLD" }
-
--- Casts and bar changes only matter while a new ability is waiting to be used or still lit,
--- so they are heard only then.
-function WatchGlow()
-    local watch = On() and S.Get("trainerGlow") and (next(NewSpells()) ~= nil or next(glowing) ~= nil)
-    if watch then
-        events:RegisterUnitEvent("UNIT_SPELLCAST_SUCCEEDED", "player")
-        for _, event in ipairs(GLOW_EVENTS) do events:RegisterEvent(event) end
-    else
-        events:UnregisterEvent("UNIT_SPELLCAST_SUCCEEDED")
-        for _, event in ipairs(GLOW_EVENTS) do events:UnregisterEvent(event) end
-    end
-end
-
-events:SetScript("OnEvent", function(_, event, arg1, _, arg3)
+local function OnEvent(_, event, arg1, _, arg3)
     if event == "LEARNED_SPELL_IN_SKILL_LINE" then
         Learned(arg1)
     elseif event == "UNIT_SPELLCAST_SUCCEEDED" then
@@ -461,7 +459,34 @@ events:SetScript("OnEvent", function(_, event, arg1, _, arg3)
     else
         QueueGlow()
     end
-end)
+end
+
+function WatchGlow()
+    local watch = On() and S.Get("trainerGlow") and (next(NewSpells()) ~= nil or next(glowing) ~= nil)
+    if watch then
+        events:RegisterUnitEvent("UNIT_SPELLCAST_SUCCEEDED", "player")
+        for _, event in ipairs(GLOW_EVENTS) do events:RegisterEvent(event) end
+    else
+        events:UnregisterEvent("UNIT_SPELLCAST_SUCCEEDED")
+        for _, event in ipairs(GLOW_EVENTS) do events:UnregisterEvent(event) end
+    end
+end
+
+function ns.TrainerRankCheck()
+    if InCombatLockdown() then
+        ns.Print(TEXT_COMBAT)
+        return
+    end
+    listed, manual = {}, true
+    if not Render() then
+        ns.Print(TEXT_ALL_TOP)
+    end
+end
+
+function ns.TrainerForgetKept()
+    ns.AccountSettings().rankKeep = {}
+    if popup and popup:IsShown() then Render() end
+end
 
 local function Apply()
     events:UnregisterAllEvents()
@@ -480,6 +505,8 @@ local function Apply()
     WatchGlow()
     QueueGlow()
 end
+
+events:SetScript("OnEvent", OnEvent)
 
 hooksecurefunc(S, "Set", function(key)
     if key == "enabled" or (key:find("^trainer") and key ~= "trainerPos") then Apply() end

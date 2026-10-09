@@ -1,9 +1,6 @@
--------------------------------------------------------------------------------
---  NaowhForever_MouseRing.lua -- the QoL mouse ring: casts and the GCD swept around the cursor,
---  red while your target is out of the crosshair's melee range, and its card on QoL > Cursor
---  with a live preview drawn by the same code as the ring.
--------------------------------------------------------------------------------
+-- NaowhForever_MouseRing.lua: the QoL mouse ring: casts and the GCD swept around the cursor, and its settings card.
 local ns = _G.NaowhForever
+
 local S = ns.QoLSettings
 local UI = ns.UI
 local T = ns.THEME
@@ -21,11 +18,32 @@ local IDLE_FADE = 0.5
 local PI, TWO_PI = math.pi, math.pi * 2
 local floor, max, min = math.floor, math.max, math.min
 local RED = { r = 1, g = 0, b = 0 }
+local WHITE = "Interface\\Buttons\\WHITE8x8"
+local SPARKLES, SPARKLE_LOW, SPARKLE_HIGH, PERCENT = 40, 30, 90, 100
+local SWEEP_LEVEL = 5
+local ROUND = ns.QoLConstants.ROUND
+local TRAIL_TICK = 0.025
+local TRAIL_MIN_GAP, TRAIL_GAP_SHARE = 2, 0.1
+local TRAIL_MIN_TIME = 0.1
+local MS = 1000
+local STAGE_H = 170
+local EVENTS = { "PLAYER_ENTERING_WORLD", "PLAYER_REGEN_DISABLED", "PLAYER_REGEN_ENABLED",
+    "SPELL_UPDATE_COOLDOWN", "SPELLS_CHANGED", "PLAYER_TARGET_CHANGED", "UPDATE_SHAPESHIFT_FORM" }
+local PLAYER_EVENTS = { "PLAYER_FLAGS_CHANGED", "UNIT_SPELLCAST_SENT", "UNIT_SPELLCAST_START", "UNIT_SPELLCAST_STOP",
+    "UNIT_SPELLCAST_FAILED", "UNIT_SPELLCAST_INTERRUPTED", "UNIT_SPELLCAST_CHANNEL_START",
+    "UNIT_SPELLCAST_CHANNEL_STOP", "UNIT_SPELLCAST_DELAYED", "UNIT_SPELLCAST_CHANNEL_UPDATE" }
+local RESET_MELEE = { PLAYER_TARGET_CHANGED = true, SPELLS_CHANGED = true, UPDATE_SHAPESHIFT_FORM = true }
+
+local TEXT_NO_CAST = "Cast Sweep is off: only your global cooldown sweeps."
+local TEXT_NO_SWEEP = "GCD Sweep is off: nothing sweeps around the ring."
+local TEXT_FADED = "Idle Opacity is 0%: the ring fades out completely."
+local TEXT_SUMMARY = "%s, %d px%s%s"
+local TEXT_GCD, TEXT_TRAIL = ", GCD sweep", ", trail"
 
 local sparkleColors = {}
-for i = 1, 40 do
-    sparkleColors[i] = { r = math.random(30, 90) / 100, g = math.random(30, 90) / 100,
-        b = math.random(30, 90) / 100 }
+for i = 1, SPARKLES do
+    sparkleColors[i] = { r = math.random(SPARKLE_LOW, SPARKLE_HIGH) / PERCENT,
+        g = math.random(SPARKLE_LOW, SPARKLE_HIGH) / PERCENT, b = math.random(SPARKLE_LOW, SPARKLE_HIGH) / PERCENT }
 end
 
 local container, parts, sweep
@@ -42,7 +60,7 @@ local sweepState = { active = false, mode = nil, start = 0, duration = 1, modRat
 local castDelay, gcdDelay, alarmTicker
 local meleeSpell
 local meleeTicker, mouseWatcher = CreateFrame("Frame"), CreateFrame("Frame")
-
+local meleeAcc = 0
 local UpdateRender
 
 local function On()
@@ -73,15 +91,11 @@ local function Visible()
     return S.Get("mouseShowOOC")
 end
 
--- The idle fade is applied to the whole ring and trail, on top of this.
 local function Opacity()
     return (state.inCombat or state.inInstance) and S.Get("mouseOpacityCombat")
         or S.Get("mouseOpacityOOC")
 end
 
--------------------------------------------------------------------------------
---  Sweep: two half rings masked by rotating half discs
--------------------------------------------------------------------------------
 local Look = {}
 
 function Look.HideSweep(s)
@@ -103,7 +117,6 @@ function Look.Sweep(s, angle, r, g, b, a)
     end
 end
 
--- Returns true once the sweep has finished.
 local function UpdateSweep()
     local s = sweepState
     if not s.active then return end
@@ -148,14 +161,14 @@ function Look.New(f)
 
     local s = { frame = CreateFrame("Frame", nil, f) }
     s.frame:SetAllPoints()
-    s.frame:SetFrameLevel(f:GetFrameLevel() + 5)
+    s.frame:SetFrameLevel(f:GetFrameLevel() + SWEEP_LEVEL)
     s.frame:Hide()
     s.right, s.rightProg = SweepHalf(s.frame, 0, PI)
     s.left, s.leftProg = SweepHalf(s.frame, PI, 0)
     p.sweep = s
 
     p.dot = f:CreateTexture(nil, "OVERLAY")
-    p.dot:SetTexture("Interface\\Buttons\\WHITE8x8")
+    p.dot:SetTexture(WHITE)
     p.dot:SetPoint("CENTER")
     return p
 end
@@ -239,9 +252,30 @@ function Look.TrailPoint(tex, i, fade, c, alpha, size, sparkle)
     tex:Show()
 end
 
--------------------------------------------------------------------------------
---  Frames
--------------------------------------------------------------------------------
+local function Cursor()
+    local x, y = GetCursorPosition()
+    local scale = UIParent:GetEffectiveScale()
+    return floor(x / scale + ROUND), floor(y / scale + ROUND)
+end
+
+local function OnSweepUpdate()
+    if UpdateSweep() then UpdateRender() end
+end
+
+local function FadeIdle(self)
+    if S.Get("mouseFadeIdle") then
+        local idle = GetTime() - state.lastMove - S.Get("mouseFadeDelay")
+        local target = S.Get("mouseFadeOpacity")
+        state.idleAlpha = idle > 0 and max(target, 1 - idle / IDLE_FADE * (1 - target)) or 1
+        self:SetAlpha(state.idleAlpha)
+        if trail then trail:SetAlpha(state.idleAlpha) end
+    elseif state.idleAlpha ~= 1 then
+        state.idleAlpha = 1
+        self:SetAlpha(1)
+        if trail then trail:SetAlpha(1) end
+    end
+end
+
 local function BuildRing()
     container = CreateFrame("Frame", "NaowhForeverMouseRing", UIParent)
     container:SetFrameStrata("TOOLTIP")
@@ -249,32 +283,18 @@ local function BuildRing()
 
     parts = Look.New(container)
     sweep = parts.sweep
-    sweep.frame:SetScript("OnUpdate", function()
-        if UpdateSweep() then UpdateRender() end
-    end)
+    sweep.frame:SetScript("OnUpdate", OnSweepUpdate)
 
     local lastX, lastY = 0, 0
     container:SetScript("OnUpdate", function(self)
-        local x, y = GetCursorPosition()
-        local scale = UIParent:GetEffectiveScale()
-        x, y = floor(x / scale + 0.5), floor(y / scale + 0.5)
+        local x, y = Cursor()
         if x ~= lastX or y ~= lastY then
             lastX, lastY = x, y
             state.lastMove = GetTime()
             self:ClearAllPoints()
             self:SetPoint("CENTER", UIParent, "BOTTOMLEFT", x, y)
         end
-        if S.Get("mouseFadeIdle") then
-            local idle = GetTime() - state.lastMove - S.Get("mouseFadeDelay")
-            local target = S.Get("mouseFadeOpacity")
-            state.idleAlpha = idle > 0 and max(target, 1 - idle / IDLE_FADE * (1 - target)) or 1
-            self:SetAlpha(state.idleAlpha)
-            if trail then trail:SetAlpha(state.idleAlpha) end
-        elseif state.idleAlpha ~= 1 then
-            state.idleAlpha = 1
-            self:SetAlpha(1)
-            if trail then trail:SetAlpha(1) end
-        end
+        FadeIdle(self)
     end)
 end
 
@@ -292,15 +312,13 @@ local function BuildTrail()
     local head, lastX, lastY, acc, activeCount = 0, 0, 0, 0, 0
     local function Step(self, elapsed)
         acc = acc + elapsed
-        if acc < 0.025 then return end
+        if acc < TRAIL_TICK then return end
         acc = 0
         local now = GetTime()
         local tracking = S.Get("mouseTrail") and Visible()
         if tracking then
-            local x, y = GetCursorPosition()
-            local scale = UIParent:GetEffectiveScale()
-            x, y = floor(x / scale + 0.5), floor(y / scale + 0.5)
-            local spacing = max(2, S.Get("mouseTrailSize") * 0.1)
+            local x, y = Cursor()
+            local spacing = max(TRAIL_MIN_GAP, S.Get("mouseTrailSize") * TRAIL_GAP_SHARE)
             if (x - lastX) ^ 2 + (y - lastY) ^ 2 >= spacing * spacing then
                 lastX, lastY = x, y
                 head = head % S.Get("mouseTrailLength") + 1
@@ -310,7 +328,7 @@ local function BuildTrail()
             end
         end
         if activeCount > 0 then
-            local duration = max(S.Get("mouseTrailDuration"), 0.1)
+            local duration = max(S.Get("mouseTrailDuration"), TRAIL_MIN_TIME)
             local c = Color("mouseTrailColor", "mouseTrailClassColor")
             local alpha = Opacity() * S.Get("mouseTrailBrightness")
             local size = S.Get("mouseTrailSize")
@@ -341,9 +359,6 @@ local function StyleTrail()
     for _, pt in ipairs(trailPoints) do Look.TrailTexture(pt.tex, path) end
 end
 
--------------------------------------------------------------------------------
---  Render
--------------------------------------------------------------------------------
 local function StartSweep(mode, start, duration, modRate, c, alpha)
     sweepState.active, sweepState.mode = true, mode
     sweepState.start, sweepState.duration, sweepState.modRate = start, duration, modRate
@@ -369,7 +384,6 @@ function UpdateRender()
         StartSweep("cast", state.castStart, state.castEnd - state.castStart, 1,
             Color("mouseCastColor", "mouseCastClassColor"), sweepAlpha)
     elseif gcdOn and state.gcd and state.gcdSwipeAllowed then
-        -- A hard cast's own GCD still runs to time the ready ring, unseen, so the cast sweep is the only one.
         StartSweep("gcd", state.gcd.startTime, state.gcd.duration, state.gcd.modRate or 1,
             Color("mouseGCDColor", "mouseGCDClassColor"),
             state.gcdOwned and S.Get("mouseCastSwipe") and 0 or sweepAlpha)
@@ -383,9 +397,6 @@ function UpdateRender()
     if trail then trail:SetShown(S.Get("mouseTrail")) end
 end
 
--------------------------------------------------------------------------------
---  Melee range
--------------------------------------------------------------------------------
 local function StopAlarm()
     if alarmTicker then
         alarmTicker:Cancel()
@@ -410,7 +421,6 @@ local function SetOutOfMelee(out)
     UpdateRender()
 end
 
-local meleeAcc = 0
 local function MeleeTick(_, elapsed)
     meleeAcc = meleeAcc + elapsed
     if meleeAcc < MELEE_TICK then return end
@@ -437,17 +447,20 @@ local function EvaluateMelee()
     end
 end
 
--------------------------------------------------------------------------------
---  Casts and the global cooldown. The player's own casts are never secret; the global
---  cooldown is read only while the client hands it over readable.
--------------------------------------------------------------------------------
-local function DelaySwipe(field, timerVar)
+local function AllowCastSwipe()
+    state.castSwipeAllowed = true
+    UpdateRender()
+end
+
+local function AllowGCDSwipe()
+    state.gcdSwipeAllowed = true
+    UpdateRender()
+end
+
+local function DelaySwipe(field, timerVar, allow)
     state[field] = false
     if timerVar then timerVar:Cancel() end
-    return C_Timer.NewTimer(S.Get("mouseSwipeDelay"), function()
-        state[field] = true
-        UpdateRender()
-    end)
+    return C_Timer.NewTimer(S.Get("mouseSwipeDelay"), allow)
 end
 
 local function ReadCast()
@@ -455,10 +468,9 @@ local function ReadCast()
     local _, _, _, startMs, endMs = UnitCastingInfo("player")
     if not startMs then _, _, _, startMs, endMs = UnitChannelInfo("player") end
     if startMs and not Secret(startMs) and not Secret(endMs) then
-        -- A pushback moves the end of a cast already showing; only a new cast waits again.
         local already = state.casting
-        state.casting, state.castStart, state.castEnd = true, startMs / 1000, endMs / 1000
-        if not already then castDelay = DelaySwipe("castSwipeAllowed", castDelay) end
+        state.casting, state.castStart, state.castEnd = true, startMs / MS, endMs / MS
+        if not already then castDelay = DelaySwipe("castSwipeAllowed", castDelay, AllowCastSwipe) end
     else
         state.casting = false
         if castDelay then castDelay:Cancel(); castDelay = nil end
@@ -475,7 +487,7 @@ local function ReadGCD()
             state.gcdOwned = state.castPending or state.casting
         end
         state.gcd = info
-        if wasReady then gcdDelay = DelaySwipe("gcdSwipeAllowed", gcdDelay) end
+        if wasReady then gcdDelay = DelaySwipe("gcdSwipeAllowed", gcdDelay, AllowGCDSwipe) end
     else
         state.gcd = nil
         if gcdDelay then gcdDelay:Cancel(); gcdDelay = nil end
@@ -490,24 +502,30 @@ local function RefreshZone()
     state.afk = not state.inInstance and UnitIsAFK("player") or false
 end
 
+local function ResetMelee()
+    state.lastInRange = nil
+    StopAlarm()
+    SetOutOfMelee(false)
+    EvaluateMelee()
+end
+
+local function OnSent(castGUID, spellID)
+    state.castPending, state.sentGUID = false, nil
+    if not (S.Get("mouseGCD") and S.Get("mouseCastSwipe")) or Secret(spellID) or Secret(castGUID) then return end
+    local info = C_Spell.GetSpellInfo(spellID)
+    local castTime = info and info.castTime
+    if not Secret(castTime) and castTime and castTime > 0 then
+        state.castPending, state.sentGUID = true, castGUID
+    end
+end
+
 local events = CreateFrame("Frame")
 events:SetScript("OnEvent", function(_, event, _, arg2, arg3, arg4)
-    if event == "PLAYER_TARGET_CHANGED" or event == "SPELLS_CHANGED" or event == "UPDATE_SHAPESHIFT_FORM" then
-        state.lastInRange = nil
-        StopAlarm()
-        SetOutOfMelee(false)
-        EvaluateMelee()
+    if RESET_MELEE[event] then
+        ResetMelee()
         return
     elseif event == "UNIT_SPELLCAST_SENT" then
-        -- On Forever the GCD starts with the send and UNIT_SPELLCAST_START follows a round trip later.
-        state.castPending, state.sentGUID = false, nil
-        if S.Get("mouseGCD") and S.Get("mouseCastSwipe") and not Secret(arg4) and not Secret(arg3) then
-            local info = C_Spell.GetSpellInfo(arg4)
-            local castTime = info and info.castTime
-            if not Secret(castTime) and castTime and castTime > 0 then
-                state.castPending, state.sentGUID = true, arg3
-            end
-        end
+        OnSent(arg3, arg4)
         return
     elseif event == "SPELL_UPDATE_COOLDOWN" then
         if S.Get("mouseGCD") then ReadGCD() end
@@ -523,13 +541,15 @@ events:SetScript("OnEvent", function(_, event, _, arg2, arg3, arg4)
     UpdateRender()
 end)
 
-mouseWatcher:SetScript("OnUpdate", function()
+local function OnMouseWatch()
     local down = IsMouseButtonDown("RightButton")
     if down ~= state.rightDown then
         state.rightDown = down
         UpdateRender()
     end
-end)
+end
+
+mouseWatcher:SetScript("OnUpdate", OnMouseWatch)
 mouseWatcher:Hide()
 
 local function Apply()
@@ -549,15 +569,8 @@ local function Apply()
     StyleTrail()
     state.rightDown = false
     mouseWatcher:SetShown(S.Get("mouseHideOnClick"))
-    for _, event in ipairs({ "PLAYER_ENTERING_WORLD", "PLAYER_REGEN_DISABLED", "PLAYER_REGEN_ENABLED",
-        "SPELL_UPDATE_COOLDOWN", "SPELLS_CHANGED", "PLAYER_TARGET_CHANGED", "UPDATE_SHAPESHIFT_FORM" }) do
-        events:RegisterEvent(event)
-    end
-    for _, event in ipairs({ "PLAYER_FLAGS_CHANGED", "UNIT_SPELLCAST_SENT", "UNIT_SPELLCAST_START", "UNIT_SPELLCAST_STOP",
-        "UNIT_SPELLCAST_FAILED", "UNIT_SPELLCAST_INTERRUPTED", "UNIT_SPELLCAST_CHANNEL_START",
-        "UNIT_SPELLCAST_CHANNEL_STOP", "UNIT_SPELLCAST_DELAYED", "UNIT_SPELLCAST_CHANNEL_UPDATE" }) do
-        events:RegisterUnitEvent(event, "player")
-    end
+    for _, event in ipairs(EVENTS) do events:RegisterEvent(event) end
+    for _, event in ipairs(PLAYER_EVENTS) do events:RegisterUnitEvent(event, "player") end
     RefreshZone()
     ReadCast()
     ReadGCD()
@@ -677,10 +690,10 @@ local function PaintPreview(preview, moment)
         local c = cast and Color("mouseCastColor", "mouseCastClassColor") or Color("mouseGCDColor", "mouseGCDClassColor")
         p.sweep.frame:Show()
         Look.Sweep(p.sweep, CAST_SHOWN * TWO_PI, c.r, c.g, c.b, alpha * S.Get("mouseGCDAlpha"))
-        if not cast then note = "Cast Sweep is off: only your global cooldown sweeps." end
+        if not cast then note = TEXT_NO_CAST end
     else
         Look.HideSweep(p.sweep)
-        if casting then note = "GCD Sweep is off: nothing sweeps around the ring." end
+        if casting then note = TEXT_NO_SWEEP end
     end
     Look.Paint(p, alpha, false, not casting)
 
@@ -693,16 +706,15 @@ local function PaintPreview(preview, moment)
     local fade = 1
     if idle then
         fade = S.Get("mouseFadeOpacity")
-        if fade <= 0 then note = "Idle Opacity is 0%: the ring fades out completely." end
+        if fade <= 0 then note = TEXT_FADED end
     end
     preview.scene:SetAlpha(fade)
     preview.note:SetText(note)
 end
 
 local function Summary(store)
-    return ("%s, %d px%s%s"):format(SHAPE[1][store.Get("mouseShape")] or SHAPE[1]["ring.tga"],
-        store.Get("mouseSize"), store.Get("mouseGCD") and ", GCD sweep" or "",
-        store.Get("mouseTrail") and ", trail" or "")
+    return TEXT_SUMMARY:format(SHAPE[1][store.Get("mouseShape")] or SHAPE[1]["ring.tga"],
+        store.Get("mouseSize"), store.Get("mouseGCD") and TEXT_GCD or "", store.Get("mouseTrail") and TEXT_TRAIL or "")
 end
 
 ns.Shared.Settings.Page("QoL/Cursor", S):Card({
@@ -710,7 +722,7 @@ ns.Shared.Settings.Page("QoL/Cursor", S):Card({
     help = "A ring around your cursor so you never lose it in a busy fight, with your global "
         .. "cooldown and casts swept around it.",
     summary = Summary,
-    studio = { height = 170, states = STATES, new = NewPreview, paint = PaintPreview },
+    studio = { height = STAGE_H, states = STATES, new = NewPreview, paint = PaintPreview },
     rows = {
         Group("Ring"),
         { key = "mouseShape", label = "Shape", choice = SHAPE },

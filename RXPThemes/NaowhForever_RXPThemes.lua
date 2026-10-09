@@ -1,16 +1,15 @@
--------------------------------------------------------------------------------
---  NaowhForever_RXPThemes.lua -- Naowh, the eight Naowh themes and the player's current theme in
---  RestedXP Guides, and hooks that style its arrow, title bar, quest list and scroll bar. Off unless
---  Settings > RESTEDXP turns it on.
--------------------------------------------------------------------------------
+-- NaowhForever_RXPThemes.lua: the Naowh themes in RestedXP Guides, and the hooks that style it.
 local ns = _G.NaowhForever
+local F = ns.FEATURES.account
 
 local RXP_ADDON = "RXPGuides"
 local NAME_PREFIX = "NaowhForever:"
 local AUTHOR = "Naowh Forever"
 local DEFAULT_KEY, DEFAULT_NAME = "default", "Naowh"
 local CURRENT_KEY, CURRENT_NAME = "current", "Naowh (current)"
-local RXP_DEFAULT = "Default"   -- RestedXP's name for its own theme
+local RXP_DEFAULT = "Default"
+local TEXT_RXP_DEFAULT = "RestedXP (default)"
+local TEXT_CURRENT = "Current Theme"
 
 local RXP_TEXTURES = "Interface/AddOns/RXPGuides/Textures/"
 local TEXTURES = RXP_TEXTURES .. "DarkMode/"
@@ -19,52 +18,55 @@ local WHITE = "Interface/BUTTONS/WHITE8X8"
 local HIGHLIGHT_ALPHA = 0.5
 local RULE_ALPHA = 0.6
 local CHROME_ALPHA = 0.7
-local RULE_DROP = 3   -- quest rows are 3 apart; the rule sits at the far edge of that gap
+local RULE_DROP = 3
+local RULE_H = 1
 
 local MEDIA = "Interface\\AddOns\\NaowhForever\\Media\\"
 local FRAME = MEDIA .. "rxp_frame.tga"
-local ARROW_IMAGES = {   -- by shape, then by glow
+local ARROW_IMAGES = {
     kite = { [false] = MEDIA .. "rxp_arrow.tga", [true] = MEDIA .. "rxp_arrow_glow.tga" },
     wide = { [false] = MEDIA .. "rxp_arrow_wide.tga", [true] = MEDIA .. "rxp_arrow_wide_glow.tga" },
 }
 local DEFAULT_SHAPE = "kite"
 local ARROW_STYLES = { layer = true, image = true, off = true }
 local DEFAULT_ARROW = "layer"
--- Naowh's image is drawn this percent of RestedXP's arrow frame; with a glow the kite fills only
--- GLOW_FILL of it (Tools/make_media.py), so that image is drawn larger to keep the kite the same size.
 local SIZE_MIN, SIZE_MAX, SIZE_STEP, DEFAULT_SIZE = 60, 200, 5, 90
 local GLOW_FILL = 0.76
-local GAP_MIN, GAP_MAX, DEFAULT_GAP = 0, 20, 4   -- extra space between Naowh's image and the distance text
--- The layer is lighter at the top, deeper at the bottom and not full strength, so the dark arrow still shades it.
+local GAP_MIN, GAP_MAX, DEFAULT_GAP = 0, 20, 4
+local GAP_STEP = 1
+local PERCENT = 100
+local CHANNEL_MAX = 255
+local ROUND = 0.5
 local TOP_TOWARD_WHITE = 0.22
 local BOTTOM_SHARE = 0.72
 local LAYER_STRENGTH = 0.9
 
--------------------------------------------------------------------------------
---  Settings
--------------------------------------------------------------------------------
-local PaintArrow   -- defined below
-local boot         -- our frame, which also waits for the end of combat
+local BARS = { "GuideName", "Footer" }
+local COG = MEDIA .. "cog.tga"
+local GRIP = MEDIA .. "rxp_grip.tga"
+local ARROWS = { "ScrollUpButton", "ScrollDownButton" }
+local ARROW_PARTS = { "Normal", "Highlight", "Pushed", "Disabled" }
+local THUMB_W, THUMB_H = 8, 40
 
----@return boolean
+local PaintArrow
+local boot
+
 function ns.RXPThemesAvailable()
     return C_AddOns.DoesAddOnExist(RXP_ADDON) == true
 end
 
----@return boolean
 function ns.RXPThemesEnabled()
-    return ns.AccountSettings().rxpThemes == true
+    local on = ns.AccountSettings().rxpThemes
+    if on == nil then return F.rxpThemes end
+    return on == true
 end
 
----@param on boolean
 function ns.SetRXPThemes(on)
     ns.AccountSettings().rxpThemes = on and true or nil
 end
 
----@return table values by id
----@return table order
 function ns.RXPThemeChoices()
-    local values = { [""] = "RestedXP (default)", [CURRENT_KEY] = "Current Theme", [DEFAULT_KEY] = DEFAULT_NAME }
+    local values = { [""] = TEXT_RXP_DEFAULT, [CURRENT_KEY] = TEXT_CURRENT, [DEFAULT_KEY] = DEFAULT_NAME }
     local order = { "", CURRENT_KEY, DEFAULT_KEY }
     for _, key in ipairs(ns.THEME_PRESET_ORDER) do
         values[key] = ns.THEME_PRESETS[key].name
@@ -81,7 +83,6 @@ local function Has(object, method)
     return type(object) == "table" and type(object[method]) == "function"
 end
 
--- t[k1][k2]... when every step is a table, else nil.
 local function Dig(t, ...)
     for i = 1, select("#", ...) do
         if type(t) ~= "table" then return nil end
@@ -94,7 +95,6 @@ local function Ours(name)
     return type(name) == "string" and name:find(NAME_PREFIX, 1, true) == 1
 end
 
--- RestedXP's own theme reload, which scales its protected target frame: in combat it waits for the end of it.
 local function Reload()
     local rxp = _G.RXP
     if not Has(rxp, "ReloadTheme") then return end
@@ -105,24 +105,18 @@ local function Reload()
     rxp:ReloadTheme()
 end
 
--- Our themes are in RestedXP's list, which they are after the reload that follows turning them on.
----@return boolean
 function ns.RXPThemesReady()
     local rxp = _G.RXP
     return type(Dig(rxp, "settings", "profile")) == "table" and Has(rxp, "ReloadTheme")
         and type(Dig(rxp, "themes", NAME_PREFIX .. DEFAULT_KEY)) == "table"
 end
 
----@return string "" or a theme's id
 function ns.RXPThemeChoice()
     local name = Dig(_G.RXP, "settings", "profile", "activeTheme")
     local key = Ours(name) and name:sub(#NAME_PREFIX + 1)
     return ThemeId(key) and Dig(_G.RXP, "themes", name) and key or ""
 end
 
--- Written only when the player picks; "" puts RestedXP back on its own theme if it is on one of ours.
----@param key string
----@return string|nil "reload" when RestedXP shows the theme only after a reload
 function ns.SetRXPThemeChoice(key)
     local rxp = _G.RXP
     local profile = Dig(rxp, "settings", "profile")
@@ -139,7 +133,6 @@ function ns.SetRXPThemeChoice(key)
     Reload()
 end
 
--- On unless saved as false.
 local function Wanted(key)
     return ns.AccountSettings()[key] ~= false
 end
@@ -148,59 +141,45 @@ local function Want(key, on)
     if on then ns.AccountSettings()[key] = nil else ns.AccountSettings()[key] = false end
 end
 
--- The font and text color are in the themes, which RestedXP reads as it starts: they take a reload.
----@return boolean
 function ns.RXPFontEnabled() return Wanted("rxpFont") end
 
----@param on boolean
 function ns.SetRXPFont(on) Want("rxpFont", on) end
 
----@return boolean
 function ns.RXPTextColorEnabled() return Wanted("rxpTextColor") end
 
----@param on boolean
 function ns.SetRXPTextColor(on) Want("rxpTextColor", on) end
 
----@return string "layer", "image" or "off"
 function ns.RXPArrowStyle()
     local style = ns.AccountSettings().rxpArrow
     return ARROW_STYLES[style] and style or DEFAULT_ARROW
 end
 
----@param style string
 function ns.SetRXPArrowStyle(style)
     ns.AccountSettings().rxpArrow = (ARROW_STYLES[style] and style ~= DEFAULT_ARROW) and style or nil
     PaintArrow()
 end
 
----@return string "kite" or "wide"
 function ns.RXPArrowShape()
     local shape = ns.AccountSettings().rxpArrowShape
     return ARROW_IMAGES[shape] and shape or DEFAULT_SHAPE
 end
 
----@param shape string
 function ns.SetRXPArrowShape(shape)
     ns.AccountSettings().rxpArrowShape = (ARROW_IMAGES[shape] and shape ~= DEFAULT_SHAPE) and shape or nil
     PaintArrow()
 end
 
----@return number min
----@return number max
----@return number step
 function ns.RXPArrowSizeRange() return SIZE_MIN, SIZE_MAX, SIZE_STEP end
 
 local function Snap(value, lo, hi, step)
-    return math.min(hi, math.max(lo, math.floor(value / step + 0.5) * step))
+    return math.min(hi, math.max(lo, math.floor(value / step + ROUND) * step))
 end
 
----@return number percent of RestedXP's arrow frame
 function ns.RXPArrowSize()
     local size = tonumber(ns.AccountSettings().rxpArrowSize)
     return size and Snap(size, SIZE_MIN, SIZE_MAX, SIZE_STEP) or DEFAULT_SIZE
 end
 
----@param size number
 function ns.SetRXPArrowSize(size)
     size = tonumber(size)
     size = size and Snap(size, SIZE_MIN, SIZE_MAX, SIZE_STEP)
@@ -208,57 +187,45 @@ function ns.SetRXPArrowSize(size)
     PaintArrow()
 end
 
----@return number min
----@return number max
 function ns.RXPArrowGapRange() return GAP_MIN, GAP_MAX end
 
----@return number pixels
 function ns.RXPArrowGap()
     local gap = tonumber(ns.AccountSettings().rxpArrowGap)
-    return gap and Snap(gap, GAP_MIN, GAP_MAX, 1) or DEFAULT_GAP
+    return gap and Snap(gap, GAP_MIN, GAP_MAX, GAP_STEP) or DEFAULT_GAP
 end
 
----@param gap number
 function ns.SetRXPArrowGap(gap)
     gap = tonumber(gap)
-    gap = gap and Snap(gap, GAP_MIN, GAP_MAX, 1)
+    gap = gap and Snap(gap, GAP_MIN, GAP_MAX, GAP_STEP)
     ns.AccountSettings().rxpArrowGap = gap ~= DEFAULT_GAP and gap or nil
     PaintArrow()
 end
 
----@return boolean
 function ns.RXPArrowTextEnabled() return Wanted("rxpArrowText") end
 
----@param on boolean
 function ns.SetRXPArrowText(on)
     Want("rxpArrowText", on)
     PaintArrow()
 end
 
----@return boolean
 function ns.RXPArrowGlow()
     return ns.AccountSettings().rxpArrowGlow == true
 end
 
----@param on boolean
 function ns.SetRXPArrowGlow(on)
     ns.AccountSettings().rxpArrowGlow = on and true or nil
     PaintArrow()
 end
 
--------------------------------------------------------------------------------
---  Themes
--------------------------------------------------------------------------------
 local function Rgba(c, alpha)
     return { c.r, c.g, c.b, alpha }
 end
 
 local function Hex(c)
-    return ("%02x%02x%02x"):format(math.floor(c.r * 255 + 0.5), math.floor(c.g * 255 + 0.5),
-        math.floor(c.b * 255 + 0.5))
+    return ("%02x%02x%02x"):format(math.floor(c.r * CHANNEL_MAX + ROUND),
+        math.floor(c.g * CHANNEL_MAX + ROUND), math.floor(c.b * CHANNEL_MAX + ROUND))
 end
 
--- One theme from a Naowh palette: source is a preset's key, "" for the default theme, or "custom".
 local function Theme(id, displayName, source)
     local palette = ns.ThemePalette(source)
     local c = {}
@@ -270,32 +237,30 @@ local function Theme(id, displayName, source)
         background = Rgba(c.panel, 1),
         bottomFrameBG = Rgba(c.panel, 1),
         bottomFrameHighlight = Rgba(c.accent, HIGHLIGHT_ALPHA),
-        dividerColor = Rgba(c.line, RULE_ALPHA),   -- this and chromeColor are ours, not RestedXP's
+        dividerColor = Rgba(c.line, RULE_ALPHA),
         chromeColor = Rgba(c.muted, CHROME_ALPHA),
         mapPins = Rgba(c.accent, 1),
         tooltip = "|cff" .. Hex(c.accent),
-        -- Left out, RestedXP uses its own. AddonFontPath, not UIFontPath: that one remembers what it finds,
-        -- and this runs before every addon has loaded.
         textColor = ns.RXPTextColorEnabled() and { c.fg.r, c.fg.g, c.fg.b } or nil,
         font = ns.RXPFontEnabled() and ns.AddonFontPath() or nil,
         texturePath = TEXTURES,
-        bgTextures = { edge = WHITE, bottom = WHITE, guideName = WHITE },   -- the bars need a fill to show
+        bgTextures = { edge = WHITE, bottom = WHITE, guideName = WHITE },
         edges = { edge = FRAME, guideName = FRAME },
     }
 end
 
-local late   -- RestedXP was up before us
+local late
 
--- RestedXP imports the global list as it starts. If it is up already, the themes go in through its own call.
+local function Add(themes, id, displayName, source)
+    local theme = Theme(id, displayName, source)
+    themes[theme.name] = theme
+end
+
 local function Register()
     local themes = {}
-    local function Add(id, displayName, source)
-        local theme = Theme(id, displayName, source)
-        themes[theme.name] = theme
-    end
-    Add(DEFAULT_KEY, DEFAULT_NAME, "")
-    for _, key in ipairs(ns.THEME_PRESET_ORDER) do Add(key, ns.THEME_PRESETS[key].name, key) end
-    Add(CURRENT_KEY, CURRENT_NAME, ns.ThemePresetKey())
+    Add(themes, DEFAULT_KEY, DEFAULT_NAME, "")
+    for _, key in ipairs(ns.THEME_PRESET_ORDER) do Add(themes, key, ns.THEME_PRESETS[key].name, key) end
+    Add(themes, CURRENT_KEY, CURRENT_NAME, ns.ThemePresetKey())
     local rxp = _G.RXP
     if Has(rxp, "RegisterTheme") and type(rxp.activeTheme) == "table" then
         late = true
@@ -310,16 +275,12 @@ local function Register()
     for name, theme in pairs(themes) do list[name] = theme end
 end
 
--- RestedXP started before the themes were in, so it fell back from a theme of ours that it was saved on.
 local function Resume()
     local rxp = _G.RXP
     local saved = Dig(rxp, "themes", Dig(rxp, "settings", "profile", "activeTheme"))
     if type(saved) == "table" and Ours(saved.name) and saved ~= rxp.activeTheme then Reload() end
 end
 
--------------------------------------------------------------------------------
---  Hooks into RestedXP's window. Each checks what it needs and does nothing without it.
--------------------------------------------------------------------------------
 local function ActiveTheme()
     local rxp = _G.RXP
     local theme = rxp and rxp.activeTheme
@@ -329,13 +290,13 @@ local function ActiveTheme()
     end
 end
 
--- The arrow
-local layer     -- our layer over the arrow
-local swapped   -- our image is on the arrow in place of RestedXP's
-local fitted    -- how many times the frame our image is drawn; set while our image and tint are on
-local rxpImage  -- the image RestedXP last set
-local textHome  -- where RestedXP anchored the distance text, as GetPoint gives it
-local textHidden  -- we have hidden that text
+local layer
+local swapped
+local fitted
+local rxpImage
+local textHome
+local textHidden
+local hookedArrow
 
 local function BuildLayer(arrow)
     local texture = arrow.texture
@@ -366,7 +327,6 @@ local function ShowLayer(arrow, c)
     layer:Show()
 end
 
--- The distance text goes `down` lower than RestedXP puts it.
 local function MoveText(arrow, down)
     local text = arrow.text
     if not Has(text, "GetPoint") then return end
@@ -375,8 +335,6 @@ local function MoveText(arrow, down)
     text:SetPoint(point, relativeTo, relativePoint, x, y - down)
 end
 
--- The image over the arrow's frame, `scale` times its size around the same center, so it still turns in
--- place; and the distance text clear of wherever the image now reaches.
 local function Fit(arrow, texture, scale)
     if not (Has(texture, "ClearAllPoints") and Has(arrow, "GetSize")) then return end
     local w, h = arrow:GetSize()
@@ -390,7 +348,7 @@ end
 local function ShowImage(arrow, texture, c)
     texture:SetTexture(ARROW_IMAGES[ns.RXPArrowShape()][ns.RXPArrowGlow()])
     texture:SetVertexColor(c[1], c[2], c[3], 1)
-    fitted = ns.RXPArrowSize() / 100 / (ns.RXPArrowGlow() and GLOW_FILL or 1)
+    fitted = ns.RXPArrowSize() / PERCENT / (ns.RXPArrowGlow() and GLOW_FILL or 1)
     Fit(arrow, texture, fitted)
     swapped = true
 end
@@ -411,7 +369,6 @@ local function HandBack(arrow, texture)
     end
 end
 
--- RestedXP only sets the text, never shows or hides it.
 local function PaintText(arrow, theme)
     local text = arrow.text
     if not Has(text, "Hide") then return end
@@ -443,7 +400,6 @@ function PaintArrow()
     PaintText(arrow, theme)
 end
 
--- RestedXP has just set its own image again (its theme loaded or changed).
 local function OnRxpUpdate()
     local arrow = _G.RXPG_ARROW
     swapped = false
@@ -451,21 +407,21 @@ local function OnRxpUpdate()
     PaintArrow()
 end
 
+local function OnArrowSize()
+    if fitted then Fit(hookedArrow, hookedArrow.texture, fitted) end
+end
+
 local function HookArrow()
     local arrow = _G.RXPG_ARROW
     if not (arrow and arrow.texture and Has(arrow, "UpdateVisuals")) then return end
     hooksecurefunc(arrow, "UpdateVisuals", OnRxpUpdate)
-    if Has(arrow, "HookScript") then   -- its Arrow Size setting resizes the frame silently
-        arrow:HookScript("OnSizeChanged", function()
-            if fitted then Fit(arrow, arrow.texture, fitted) end
-        end)
+    if Has(arrow, "HookScript") then
+        hookedArrow = arrow
+        arrow:HookScript("OnSizeChanged", OnArrowSize)
     end
     OnRxpUpdate()
 end
 
--- The title bar and footer: a fill under a banner image that is plain black in DarkMode. The image is
--- hidden so the fill shows; RestedXP sets it again whenever it draws its theme, so SetTexture is watched.
-local BARS = { "GuideName", "Footer" }
 local barsHidden
 
 local function Banner(name)
@@ -491,13 +447,6 @@ local function HookBars()
     PaintBars()
 end
 
--- The cog, the corner grip and the scroll bar have no theme field: the cog and grip are swapped for Naowh's
--- images, and the scroll bar is a thin thumb without arrows, as in Naowh's windows. All in Secondary Text.
-local COG = MEDIA .. "cog.tga"
-local GRIP = MEDIA .. "rxp_grip.tga"
-local ARROWS = { "ScrollUpButton", "ScrollDownButton" }
-local ARROW_PARTS = { "Normal", "Highlight", "Pushed", "Disabled" }
-local THUMB_W, THUMB_H = 8, 40
 local chromeTinted, gripOriginal, thumbSize
 
 local function Skin(texture, path, color)
@@ -530,7 +479,7 @@ local function PaintChrome()
     chromeTinted = color ~= nil
     local frame = _G.RXPFrame
     local grip = Normal(Dig(frame, "Footer", "icon"))
-    if Has(grip, "GetTexture") then gripOriginal = gripOriginal or grip:GetTexture() end   -- RestedXP never sets it again
+    if Has(grip, "GetTexture") then gripOriginal = gripOriginal or grip:GetTexture() end
     Skin(Normal(Dig(frame, "Footer", "cog")), color and COG, color)
     Skin(grip, color and GRIP or gripOriginal, color)
     local bar = Dig(frame, "ScrollFrame", "ScrollBar")
@@ -549,9 +498,7 @@ local function HookChrome()
     PaintChrome()
 end
 
--- The quest list: a rule at the bottom of each row. Rows are made when a guide loads, which ends in
--- SetStep, so that is watched; rules are redrawn only when the theme or the row count changes.
-local rules = setmetatable({}, { __mode = "k" })   -- row -> its rule
+local rules = setmetatable({}, { __mode = "k" })
 local ruleTheme, ruleRows
 
 local function PaintRules()
@@ -568,7 +515,7 @@ local function PaintRules()
             rule = row:CreateTexture(nil, "ARTWORK")
             rule:SetPoint("BOTTOMLEFT", row, "BOTTOMLEFT", 0, -RULE_DROP)
             rule:SetPoint("BOTTOMRIGHT", row, "BOTTOMRIGHT", 0, -RULE_DROP)
-            rule:SetHeight(1)
+            rule:SetHeight(RULE_H)
             rules[row] = rule
         end
         if rule and color then
@@ -586,10 +533,7 @@ local function HookRules()
     PaintRules()
 end
 
--- Themes go in while our addon loads; the hooks need RestedXP's frames, so they wait for PLAYER_LOGIN.
-boot = CreateFrame("Frame")
-boot:RegisterEvent("ADDON_LOADED")
-boot:SetScript("OnEvent", function(self, event, name)
+local function OnBootEvent(self, event, name)
     if event == "ADDON_LOADED" then
         if name ~= ns.MODULE_KEY then return end
         self:UnregisterEvent("ADDON_LOADED")
@@ -608,4 +552,8 @@ boot:SetScript("OnEvent", function(self, event, name)
         HookChrome()
         HookRules()
     end
-end)
+end
+
+boot = CreateFrame("Frame")
+boot:RegisterEvent("ADDON_LOADED")
+boot:SetScript("OnEvent", OnBootEvent)

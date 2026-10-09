@@ -1,20 +1,12 @@
--------------------------------------------------------------------------------
---  NaowhForever_Senders.lua -- ns.SenderIs(sender, channel, guid): whether an addon message's
---  sender is the player with that GUID, found in your group, your guild or your friends list.
---  Used by every module that keeps what a message says about its sender (Naowh Score, the Aim
---  Trainer's board, Group XP, Journal quest sharing); anything it cannot match is dropped.
---  And ns.InGuild(guid): whether that player is in your guild (Naowh Score keeps guildmates'
---  scores for the guild list's offline members). And ns.SenderIsUnit(sender, unit, guid): whether
---  the sender is the player on that unit token, with that GUID, wherever they are (the Naowh
---  Inspect Panel's answers come from whoever you inspect, often a stranger).
--------------------------------------------------------------------------------
+-- NaowhForever_Senders.lua: whether an addon message's sender is who it says (ns.SenderIs, ns.SenderIsUnit, ns.InGuild).
 local ns = _G.NaowhForever
 
 local DASH, SPACE = 45, 32
+local PARTY_OTHERS, RAID_SIZE = 4, 40
 local GROUP = { PARTY = true, RAID = true, INSTANCE_CHAT = true }
 local PARTY_UNITS, RAID_UNITS = { "player" }, {}
-for i = 1, 4 do PARTY_UNITS[i + 1] = "party" .. i end
-for i = 1, 40 do RAID_UNITS[i] = "raid" .. i end
+for i = 1, PARTY_OTHERS do PARTY_UNITS[i + 1] = "party" .. i end
+for i = 1, RAID_SIZE do RAID_UNITS[i] = "raid" .. i end
 
 local guildGUID, guildMember = {}, {}
 local guildStale = true

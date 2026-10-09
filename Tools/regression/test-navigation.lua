@@ -154,6 +154,7 @@ local function Load(path)
     local f = assert(loadfile(path)); setfenv(f, env); f("NaowhForever")
 end
 Load("Core/NaowhForever_Core.lua")
+Load("Core/NaowhForever_Features.lua")
 local ns = env.NaowhForever
 local account, settings = {}, {}
 ns.AccountSettings = function() return account end
@@ -161,11 +162,18 @@ ns.SettingsRoot = function() return settings end
 ns.RegisterReapply = function() end
 ns.QueueReapply = function() end
 Load("Core/NaowhForever_Widgets.lua")
-Load("Core/NaowhForever_UnlockMode.lua")
-Load("Core/NaowhForever_Window.lua")
+for _, path in ipairs(dofile("Tools/regression/toc_files.lua")("^Core/NaowhForever_Unlock.-%.lua$")) do Load(path) end
+-- The options window is several files now: its modules, the window, its Settings page, commands and launchers.
+local function LoadWindow()
+    for _, name in ipairs({ "Modules", "Window", "SettingsPage", "Commands", "Launchers" }) do
+        Load("Core/NaowhForever_" .. name .. ".lua")
+    end
+end
+LoadWindow()
 Load("Core/NaowhForever_Search.lua")
 for _, path in ipairs(dofile("Tools/regression/toc_files.lua")("^Shared/.*%.lua$")) do Load(path) end
 Load("QoL/NaowhForever_QoL.lua")
+Load("QoL/Constants.lua")
 env.GameTooltip = New("Frame")
 env.GameTooltip.GetOwner = function() return nil end
 for _, name in ipairs({ "UnitGroupRolesAssigned", "GetShapeshiftFormID", "GetShapeshiftForm", "IsInGroup",
@@ -201,7 +209,8 @@ env.hooksecurefunc = function(target, key, fn)
         target[key] = function(...) if prior then prior(...) end; fn(...) end
     end
 end
-for _, path in ipairs({ "TopBar/NaowhForever_TopBar.lua", "QoL/NaowhForever_DeathRelease.lua",
+for _, path in ipairs(dofile("Tools/regression/toc_files.lua")("^TopBar/.*%.lua$")) do Load(path) end
+for _, path in ipairs({ "QoL/NaowhForever_DeathRelease.lua",
     "QoL/NaowhForever_StealthReminder.lua", "QoL/NaowhForever_CoTank.lua" }) do Load(path) end
 local UI = ns.UI
 ns.BuildQoLInterfacePage = function(parent, y) return y end
@@ -672,7 +681,7 @@ end
 -- Macros; the group still sits above UTILITIES.
 missingAddOns.NaowhForever_GearSets, missingAddOns.NaowhForever_Blessings = true, true
 local built = #frames
-Load("Core/NaowhForever_Window.lua")
+LoadWindow()
 ns.OpenOptionsWindow(); Flush()
 local headY = {}
 for i = built + 1, #frames do

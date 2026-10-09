@@ -8,6 +8,4 @@
 ## Group: NaowhForever
 ## IconTexture: Interface\AddOns\NaowhForever\Media\LogoAddon.tga
 
-# Its own XML loads its files in order (see README.md). With the BiS List on too, it marks
-# your BiS; without it, the rest works and it offers to turn the BiS List on.
 DungeonJournal.xml

@@ -7,7 +7,4 @@
 ## Group: NaowhForever
 ## IconTexture: Interface\AddOns\NaowhForever\Media\LogoAddon.tga
 
-NaowhForever_Blessings.xml
-NaowhForever_Blessings.lua
-NaowhForever_BlessingsPage.lua
-NaowhForever_BlessingsWindow.lua
+Blessings.xml

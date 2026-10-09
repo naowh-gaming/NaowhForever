@@ -1,8 +1,6 @@
--------------------------------------------------------------------------------
---  NaowhForever_FocusCastBar.lua -- the QoL focus cast bar, coloured by whether your interrupt
---  is ready. Focus casts are secret, so they only ever reach setters that accept secrets.
--------------------------------------------------------------------------------
+-- NaowhForever_FocusCastBar.lua: the Focus Cast Bar, coloured by whether your interrupt is ready.
 local ns = _G.NaowhForever
+
 local S = ns.QoLSettings
 local UI = ns.UI
 local T = ns.THEME
@@ -10,18 +8,41 @@ local Parts = ns.Shared.Parts
 
 local BAR = "Interface\\Buttons\\WHITE8X8"
 local THROTTLE = 0.033
--- Forever cannot tell which spec you play, so the first of these you know is your interrupt.
 local INTERRUPTS = {
-    WARRIOR = { 6552, 72 },     -- Pummel, Shield Bash
-    ROGUE = { 1766 },           -- Kick
-    MAGE = { 2139 },            -- Counterspell
-    SHAMAN = { 8042 },          -- Earth Shock
-    PRIEST = { 15487 },         -- Silence
-    DRUID = { 16979 },          -- Feral Charge
+    WARRIOR = { 6552, 72 },
+    ROGUE = { 1766 },
+    MAGE = { 2139 },
+    SHAMAN = { 8042 },
+    PRIEST = { 15487 },
+    DRUID = { 16979 },
 }
 local INTERRUPTED = "Interrupted"
 local SAMPLE_SPELL, SAMPLE_NAME, SAMPLE_ICON = 116, "Frostbolt", 135846
 local SAMPLE_TOTAL, SAMPLE_LEFT, SAMPLE_KICK, SAMPLE_STOPPED = 2.5, 1.4, 2, 0.6
+local BLACK = { r = 0, g = 0, b = 0 }
+local ICON_CROP = ns.QoLConstants.ICON_CROP_TIGHT
+local TICK_W, TICK_ALPHA = 2, 0.9
+local SHIELD_W, SHIELD_H, SHIELD_RISE = 29, 33, 4
+local SHIELD_ATLAS = "ui-castingbar-shield"
+local TEXT_ABOVE = 5
+local FONT_SIZE, TEXT_INSET = 12, 4
+local ICON_GAP = 1
+local CHAR_WIDTH = 0.6
+local DEFAULT_Y = 100
+local TIME_FORMAT = "%.1f"
+local NOT_INTERRUPTIBLE_CAST, NOT_INTERRUPTIBLE_CHANNEL = 8, 7
+local MOVER_LABEL = "Focus Cast Bar"
+local SETTINGS_PAGE, SETTINGS_CARD = "QoL/Combat", "QoL/Combat:focusCastBar"
+local NOTE_NO_FADE = "Interrupted Fade is 0: the bar hides at once."
+local NOTE_HIDE_COOLDOWN = "Hide While Interrupt Is on Cooldown is on: the bar stays hidden."
+local NOTE_HIDE_NONINT = "Hide Uninterruptible Casts is on: the bar stays hidden."
+local SUMMARY = "%d by %d%s"
+local SUMMARY_SOUND, SUMMARY_SPEAKS = ", plays a sound", ", speaks"
+local STAGE_H, NOTE_Y, NOTE_SIZE, STAGE_MARGIN = 150, 10, 11, 16
+local UNIT_EVENTS = { "UNIT_SPELLCAST_START", "UNIT_SPELLCAST_CHANNEL_START", "UNIT_SPELLCAST_STOP",
+    "UNIT_SPELLCAST_CHANNEL_STOP", "UNIT_SPELLCAST_FAILED", "UNIT_SPELLCAST_INTERRUPTED",
+    "UNIT_SPELLCAST_INTERRUPTIBLE", "UNIT_SPELLCAST_NOT_INTERRUPTIBLE", "UNIT_SPELLCAST_DELAYED",
+    "UNIT_SPELLCAST_CHANNEL_UPDATE" }
 
 local frame, bar, tickBar, icon, shield, nameText, targetText, timeText
 local unlocked, casting, channeling, fadeTimer
@@ -42,7 +63,6 @@ local function ClassColor(key, classKey)
     return S.Get(key)
 end
 
--- Apply Theme: the theme's Accent for the ready colour and its Background behind the bar.
 local function Themed(key, themeKey)
     if S.Get("focusThemeColors") then return T[themeKey] end
     return S.Get(key)
@@ -58,7 +78,6 @@ local function FindInterrupt()
     end
 end
 
--- A secret boolean in combat. No duration object at all means no cooldown running.
 local function KickReady()
     if not interrupt then return true end
     local cd = C_Spell.GetSpellCooldownDuration(interrupt)
@@ -75,17 +94,15 @@ end
 
 local Look = {}
 
-function Look.New(f)
+local function NewBars(f)
     f.bg = f:CreateTexture(nil, "BACKGROUND")
     f.bg:SetAllPoints()
     f.bg:SetTexture(BAR)
-    ns.Border(f, { r = 0, g = 0, b = 0 })
-
+    ns.Border(f, BLACK)
     f.bar = CreateFrame("StatusBar", nil, f)
     f.bar:SetAllPoints()
     f.bar:SetStatusBarTexture(BAR)
     f.bar:SetMinMaxValues(0, 1)
-
     f.tickBar = CreateFrame("StatusBar", nil, f)
     f.tickBar:SetAllPoints(f.bar)
     f.tickBar:SetStatusBarTexture(BAR)
@@ -93,33 +110,79 @@ function Look.New(f)
     f.tickBar:Hide()
     f.tick = f.tickBar:CreateTexture(nil, "OVERLAY")
     f.tick:SetTexture(BAR)
-    f.tick:SetWidth(2)
+    f.tick:SetWidth(TICK_W)
+end
 
+local function NewIconAndShield(f)
     f.icon = CreateFrame("Frame", nil, f)
     f.icon.tex = f.icon:CreateTexture(nil, "ARTWORK")
     f.icon.tex:SetAllPoints()
-    f.icon.tex:SetTexCoord(0.07, 0.93, 0.07, 0.93)
-    ns.Border(f.icon, { r = 0, g = 0, b = 0 })
-
+    f.icon.tex:SetTexCoord(ICON_CROP, 1 - ICON_CROP, ICON_CROP, 1 - ICON_CROP)
+    ns.Border(f.icon, BLACK)
     f.shield = f:CreateTexture(nil, "OVERLAY")
-    f.shield:SetAtlas("ui-castingbar-shield")
-    f.shield:SetSize(29, 33)
-    f.shield:SetPoint("TOP", f, "BOTTOM", 0, 4)
+    f.shield:SetAtlas(SHIELD_ATLAS)
+    f.shield:SetSize(SHIELD_W, SHIELD_H)
+    f.shield:SetPoint("TOP", f, "BOTTOM", 0, SHIELD_RISE)
     f.shield:Hide()
+end
 
+local function NewTexts(f)
     local text = CreateFrame("Frame", nil, f)
     text:SetAllPoints(f.bar)
-    text:SetFrameLevel(f:GetFrameLevel() + 5)
-    f.nameText = ns.Font(text, 12, "OUTLINE")
-    f.nameText:SetPoint("LEFT", 4, 0)
+    text:SetFrameLevel(f:GetFrameLevel() + TEXT_ABOVE)
+    f.nameText = ns.Font(text, FONT_SIZE, "OUTLINE")
+    f.nameText:SetPoint("LEFT", TEXT_INSET, 0)
     f.nameText:SetJustifyH("LEFT")
     f.nameText:SetWordWrap(false)
-    f.targetText = ns.Font(text, 12, "OUTLINE")
+    f.targetText = ns.Font(text, FONT_SIZE, "OUTLINE")
     f.targetText:SetJustifyH("LEFT")
     f.targetText:SetWordWrap(false)
-    f.timeText = ns.Font(text, 12, "OUTLINE")
-    f.timeText:SetPoint("RIGHT", -4, 0)
+    f.timeText = ns.Font(text, FONT_SIZE, "OUTLINE")
+    f.timeText:SetPoint("RIGHT", -TEXT_INSET, 0)
     f.timeText:SetJustifyH("RIGHT")
+    f.texts = { f.nameText, f.targetText, f.timeText }
+end
+
+function Look.New(f)
+    NewBars(f)
+    NewIconAndShield(f)
+    NewTexts(f)
+end
+
+local function PlaceIcon(f, h)
+    local spell = f.icon
+    spell:ClearAllPoints()
+    spell:SetSize(h, h)
+    local side = S.Get("focusIconSide")
+    if side == "RIGHT" then
+        spell:SetPoint("LEFT", f, "RIGHT", ICON_GAP, 0)
+    elseif side == "TOP" then
+        spell:SetPoint("BOTTOM", f, "TOP", 0, ICON_GAP)
+    elseif side == "BOTTOM" then
+        spell:SetPoint("TOP", f, "BOTTOM", 0, -ICON_GAP)
+    else
+        spell:SetPoint("RIGHT", f, "LEFT", -ICON_GAP, 0)
+    end
+    spell:SetShown(S.Get("focusIcon"))
+end
+
+local function StyleTexts(f)
+    local font, size, outline = S.Get("focusFont"), S.Get("focusFontSize"), S.Get("focusOutline")
+    local tc = ClassColor("focusTextColor", "focusTextClassColor")
+    for _, fs in ipairs(f.texts) do
+        Parts.HudFont(fs, font, size, outline)
+        fs:SetTextColor(tc.r, tc.g, tc.b, 1)
+    end
+    local chars = S.Get("focusNameLength")
+    f.nameText:SetWidth(chars > 0 and chars * size * CHAR_WIDTH or 0)
+    f.nameText:SetShown(S.Get("focusSpellName"))
+    f.targetText:ClearAllPoints()
+    if S.Get("focusSpellName") then
+        f.targetText:SetPoint("LEFT", f.nameText, "RIGHT", TEXT_INSET, 0)
+    else
+        f.targetText:SetPoint("LEFT", f.bar, "LEFT", TEXT_INSET, 0)
+    end
+    f.timeText:SetShown(S.Get("focusTime"))
 end
 
 function Look.Layout(f)
@@ -128,41 +191,11 @@ function Look.Layout(f)
     local c = Themed("focusBgColor", "bg")
     f.bg:SetVertexColor(c.r, c.g, c.b, S.Get("focusBgAlpha"))
     f.bar:SetStatusBarTexture(UI.TexturePath(S.Get("focusTexture"), BAR))
-
-    local spell = f.icon
-    spell:ClearAllPoints()
-    spell:SetSize(h, h)
-    local side = S.Get("focusIconSide")
-    if side == "RIGHT" then
-        spell:SetPoint("LEFT", f, "RIGHT", 1, 0)
-    elseif side == "TOP" then
-        spell:SetPoint("BOTTOM", f, "TOP", 0, 1)
-    elseif side == "BOTTOM" then
-        spell:SetPoint("TOP", f, "BOTTOM", 0, -1)
-    else
-        spell:SetPoint("RIGHT", f, "LEFT", -1, 0)
-    end
-    spell:SetShown(S.Get("focusIcon"))
-
-    local font, size, outline = S.Get("focusFont"), S.Get("focusFontSize"), S.Get("focusOutline")
-    local tc = ClassColor("focusTextColor", "focusTextClassColor")
-    for _, fs in ipairs({ f.nameText, f.targetText, f.timeText }) do
-        Parts.HudFont(fs, font, size, outline)
-        fs:SetTextColor(tc.r, tc.g, tc.b, 1)
-    end
-    local chars = S.Get("focusNameLength")
-    f.nameText:SetWidth(chars > 0 and chars * size * 0.6 or 0)
-    f.nameText:SetShown(S.Get("focusSpellName"))
-    f.targetText:ClearAllPoints()
-    if S.Get("focusSpellName") then
-        f.targetText:SetPoint("LEFT", f.nameText, "RIGHT", 4, 0)
-    else
-        f.targetText:SetPoint("LEFT", f.bar, "LEFT", 4, 0)
-    end
-    f.timeText:SetShown(S.Get("focusTime"))
+    PlaceIcon(f, h)
+    StyleTexts(f)
     f.tick:SetHeight(h)
     local t = ClassColor("focusTickColor", "focusTickClassColor")
-    f.tick:SetVertexColor(t.r, t.g, t.b, 0.9)
+    f.tick:SetVertexColor(t.r, t.g, t.b, TICK_ALPHA)
 end
 
 function Look.StateColour(state)
@@ -212,13 +245,13 @@ function Look.Sample(f, state)
         f.targetText:SetText("")
         f.timeText:SetText("")
         Look.Paint(f, Look.StateColour("interrupted"))
-        if S.Get("focusFadeTime") <= 0 then return "Interrupted Fade is 0: the bar hides at once." end
+        if S.Get("focusFadeTime") <= 0 then return NOTE_NO_FADE end
         return nil
     end
     f.bar:SetValue((SAMPLE_TOTAL - SAMPLE_LEFT) / SAMPLE_TOTAL)
     f.nameText:SetText(C_Spell.GetSpellName(SAMPLE_SPELL) or SAMPLE_NAME)
     f.targetText:SetText(S.Get("focusTarget") and WrapClass(you, class) or "")
-    f.timeText:SetFormattedText("%.1f", SAMPLE_LEFT)
+    f.timeText:SetFormattedText(TIME_FORMAT, SAMPLE_LEFT)
     local colour, note = Look.StateColour("ready"), nil
     if state == "cooldown" then
         colour = Look.StateColour("cooldown")
@@ -228,7 +261,7 @@ function Look.Sample(f, state)
         end
         if S.Get("focusHideOnCooldown") then
             f:SetAlpha(0)
-            note = "Hide While Interrupt Is on Cooldown is on: the bar stays hidden."
+            note = NOTE_HIDE_COOLDOWN
         end
     elseif state == "nonint" then
         if S.Get("focusColorNonInt") then colour = Look.StateColour("nonint") end
@@ -238,11 +271,15 @@ function Look.Sample(f, state)
         end
         if S.Get("focusHideNonInt") then
             f:SetAlpha(0)
-            note = "Hide Uninterruptible Casts is on: the bar stays hidden."
+            note = NOTE_HIDE_NONINT
         end
     end
     Look.Paint(f, colour)
     return note
+end
+
+local function SavePosition(pos)
+    S.Set("focusCastBarPos", pos)
 end
 
 local function Build()
@@ -252,8 +289,7 @@ local function Build()
     Look.New(frame)
     bar, tickBar, icon, shield = frame.bar, frame.tickBar, frame.icon, frame.shield
     nameText, targetText, timeText = frame.nameText, frame.targetText, frame.timeText
-
-    frame.mover = UI.AttachMover(frame, "Focus Cast Bar", function(pos) S.Set("focusCastBarPos", pos) end, "QoL/Combat", "QoL/Combat:focusCastBar")
+    frame.mover = UI.AttachMover(frame, MOVER_LABEL, SavePosition, SETTINGS_PAGE, SETTINGS_CARD)
     frame:Hide()
 end
 
@@ -263,13 +299,13 @@ local function Place()
     if pos then
         frame:SetPoint(pos.point, UIParent, pos.relPoint, pos.x, pos.y)
     else
-        frame:SetPoint("CENTER", UIParent, "CENTER", 0, 100)
+        frame:SetPoint("CENTER", UIParent, "CENTER", 0, DEFAULT_Y)
     end
 end
 
 local function NotInterruptible()
-    if casting then return select(8, UnitCastingInfo("focus")) end
-    if channeling then return select(7, UnitChannelInfo("focus")) end
+    if casting then return select(NOT_INTERRUPTIBLE_CAST, UnitCastingInfo("focus")) end
+    if channeling then return select(NOT_INTERRUPTIBLE_CHANNEL, UnitChannelInfo("focus")) end
 end
 
 local function Fill(color, c)
@@ -313,8 +349,6 @@ local function Colors(interrupted)
     end
 end
 
--- Where the interrupt comes off cooldown, fixed at the cast's start. Summed only when both
--- numbers are readable; otherwise the kick's remaining time alone, which is right at the start.
 local function UpdateTick()
     local duration = casting and UnitCastingDuration("focus") or channeling and UnitChannelDuration("focus")
     local cd = interrupt and C_Spell.GetSpellCooldownDuration(interrupt)
@@ -339,19 +373,27 @@ local function UpdateTick()
     tickBar:SetAlphaFromBoolean(cd:IsZero(), 0, 1)
 end
 
+local function Speak()
+    local voice = S.Get("focusVoice")
+    if voice == "" then voice = ns.TTSVoiceID() end
+    C_VoiceChat.SpeakText(voice, S.Get("focusSpeech"), S.Get("focusRate"), S.Get("focusVolume"), true)
+end
+
 local function Announce()
     local mode = S.Get("focusAudio")
     if mode == "sound" then
         UI._PlayLSMSound(UI.SoundPathFor(S.Get("focusSound")))
     elseif mode == "tts" and C_VoiceChat and C_VoiceChat.SpeakText and S.Get("focusSpeech") ~= "" then
-        local voice = S.Get("focusVoice")
-        if voice == "" then voice = ns.TTSVoiceID() end
-        C_VoiceChat.SpeakText(voice, S.Get("focusSpeech"), S.Get("focusRate"), S.Get("focusVolume"), true)
+        Speak()
     end
 end
 
-local function Stop()
+local function CancelFade()
     if fadeTimer then fadeTimer:Cancel(); fadeTimer = nil end
+end
+
+local function Stop()
+    CancelFade()
     casting, channeling, tickSnapshot = false, false, nil
     tickBar:Hide()
     shield:Hide()
@@ -364,6 +406,15 @@ local function FriendlyFocus()
     return not Secret(friend) and friend
 end
 
+local function ShowTarget(isChannel)
+    targetText:SetText("")
+    if not S.Get("focusTarget") or isChannel then return end
+    local target = UnitSpellTargetName("focus")
+    if Secret(target) or target then
+        targetText:SetText(WrapClass(target, UnitSpellTargetClass("focus")))
+    end
+end
+
 local function Start(isChannel, announce)
     if S.Get("focusHideFriendly") and FriendlyFocus() then return end
     local _, text, texture
@@ -372,19 +423,11 @@ local function Start(isChannel, announce)
     else
         _, text, texture = UnitCastingInfo("focus")
     end
-    if fadeTimer then fadeTimer:Cancel(); fadeTimer = nil end
+    CancelFade()
     casting, channeling, tickSnapshot = not isChannel, isChannel, nil
     icon.tex:SetTexture(texture)
     nameText:SetText(text)
-
-    targetText:SetText("")
-    if S.Get("focusTarget") and not isChannel then
-        local target = UnitSpellTargetName("focus")
-        if Secret(target) or target then
-            targetText:SetText(WrapClass(target, UnitSpellTargetClass("focus")))
-        end
-    end
-
+    ShowTarget(isChannel)
     local duration = isChannel and UnitChannelDuration("focus") or UnitCastingDuration("focus")
     if duration then
         bar:SetTimerDuration(duration, Enum.StatusBarInterpolation.Immediate,
@@ -396,13 +439,7 @@ local function Start(isChannel, announce)
     if announce then Announce() end
 end
 
--- Holds the bar where it stopped, in the interrupted colour, for the fade time.
-local function Interrupted(by)
-    local fade = S.Get("focusFadeTime")
-    if fade <= 0 then
-        Stop()
-        return
-    end
+local function HoldBar()
     local timer, value = bar:GetTimerDuration(), nil
     if timer then
         if channeling then
@@ -415,15 +452,31 @@ local function Interrupted(by)
     if bar.ClearTimerDuration then bar:ClearTimerDuration() end
     bar:SetMinMaxValues(0, 1)
     bar:SetValue(value)
-    casting, channeling = false, false
-    local label = INTERRUPTED
-    if S.Get("focusInterrupter") and (Secret(by) or (by and by ~= "")) then
-        local name = UnitNameFromGUID(by)
-        if Secret(name) or name then
-            label = Look.Interrupter(name, select(2, GetPlayerInfoByGUID(by)))
-        end
+end
+
+local function InterruptedLabel(by)
+    if not (S.Get("focusInterrupter") and (Secret(by) or (by and by ~= ""))) then return INTERRUPTED end
+    local name = UnitNameFromGUID(by)
+    if Secret(name) or name then
+        return Look.Interrupter(name, select(2, GetPlayerInfoByGUID(by)))
     end
-    nameText:SetText(label)
+    return INTERRUPTED
+end
+
+local function FadeDone()
+    fadeTimer = nil
+    Stop()
+end
+
+local function Interrupted(by)
+    local fade = S.Get("focusFadeTime")
+    if fade <= 0 then
+        Stop()
+        return
+    end
+    HoldBar()
+    casting, channeling = false, false
+    nameText:SetText(InterruptedLabel(by))
     targetText:SetText("")
     timeText:SetText("")
     shield:Hide()
@@ -431,10 +484,7 @@ local function Interrupted(by)
     Colors(true)
     frame:Show()
     if fadeTimer then fadeTimer:Cancel() end
-    fadeTimer = C_Timer.NewTimer(fade, function()
-        fadeTimer = nil
-        Stop()
-    end)
+    fadeTimer = C_Timer.NewTimer(fade, FadeDone)
 end
 
 local function Check()
@@ -462,12 +512,19 @@ local function OnUpdate(_, elapsed)
     Colors()
     if S.Get("focusTime") then
         local duration = casting and UnitCastingDuration("focus") or UnitChannelDuration("focus")
-        if duration then timeText:SetFormattedText("%.1f", duration:GetRemainingDuration()) end
+        if duration then timeText:SetFormattedText(TIME_FORMAT, duration:GetRemainingDuration()) end
     end
 end
 
-local events = CreateFrame("Frame")
-events:SetScript("OnEvent", function(_, event, _, _, _, interruptedBy)
+local function OnChannelStop(interruptedBy)
+    if Secret(interruptedBy) or (interruptedBy and interruptedBy ~= "") then
+        Interrupted(interruptedBy)
+    elseif not fadeTimer then
+        Stop()
+    end
+end
+
+local function OnEvent(_, event, _, _, _, interruptedBy)
     if event == "SPELLS_CHANGED" then
         FindInterrupt()
         return
@@ -482,18 +539,16 @@ events:SetScript("OnEvent", function(_, event, _, _, _, interruptedBy)
     elseif event == "UNIT_SPELLCAST_INTERRUPTED" then
         Interrupted(interruptedBy)
     elseif event == "UNIT_SPELLCAST_CHANNEL_STOP" then
-        -- interruptedBy can be secret, so it is never tested for truth directly.
-        if Secret(interruptedBy) or (interruptedBy and interruptedBy ~= "") then
-            Interrupted(interruptedBy)
-        elseif not fadeTimer then
-            Stop()
-        end
+        OnChannelStop(interruptedBy)
     elseif event == "UNIT_SPELLCAST_STOP" or event == "UNIT_SPELLCAST_FAILED" then
         if not fadeTimer then Stop() end
     elseif (casting or channeling) then
         Colors()
     end
-end)
+end
+
+local events = CreateFrame("Frame")
+events:SetScript("OnEvent", OnEvent)
 
 local function Apply()
     events:UnregisterAllEvents()
@@ -516,18 +571,15 @@ local function Apply()
     end
     events:RegisterEvent("PLAYER_FOCUS_CHANGED")
     events:RegisterEvent("SPELLS_CHANGED")
-    for _, event in ipairs({ "UNIT_SPELLCAST_START", "UNIT_SPELLCAST_CHANNEL_START", "UNIT_SPELLCAST_STOP",
-        "UNIT_SPELLCAST_CHANNEL_STOP", "UNIT_SPELLCAST_FAILED", "UNIT_SPELLCAST_INTERRUPTED",
-        "UNIT_SPELLCAST_INTERRUPTIBLE", "UNIT_SPELLCAST_NOT_INTERRUPTIBLE", "UNIT_SPELLCAST_DELAYED",
-        "UNIT_SPELLCAST_CHANNEL_UPDATE" }) do
-        events:RegisterUnitEvent(event, "focus")
-    end
+    for _, event in ipairs(UNIT_EVENTS) do events:RegisterUnitEvent(event, "focus") end
     Check()
 end
 
-hooksecurefunc(S, "Set", function(key)
+local function OnSettingChanged(key)
     if key == "enabled" or (key:find("^focus") and key ~= "focusCastBarPos") then Apply() end
-end)
+end
+
+hooksecurefunc(S, "Set", OnSettingChanged)
 hooksecurefunc(ns, "Apply", Apply)
 hooksecurefunc(ns, "ShowRaidReminderAnchorConfig", function()
     unlocked = S.Get("enabled") == true
@@ -547,7 +599,6 @@ local SIDE = { { LEFT = "Left", RIGHT = "Right", TOP = "Top", BOTTOM = "Bottom" 
 local AUDIO = { { none = "None", sound = "Sound", tts = "Text to Speech" }, { "none", "sound", "tts" } }
 local AUDIO_HELP = "A sound, or the Speech text read aloud, as each cast starts."
 local VOICE_HELP = "Game Default speaks in the voice the rest of the addon uses."
-local STAGE_H, NOTE_Y, NOTE_SIZE, STAGE_MARGIN = 150, 10, 11, 16
 local STATES = {
     { key = "ready", label = "Interrupt Ready", tip = "A cast while your interrupt is ready." },
     { key = "cooldown", label = "On Cooldown", tip = "A cast while your interrupt is on cooldown, with the tick where it comes back." },
@@ -580,8 +631,8 @@ local function Fit(preview)
     local f = preview.bar
     local h = S.Get("focusHeight")
     local side = S.Get("focusIconSide")
-    local across = S.Get("focusIcon") and (side == "LEFT" or side == "RIGHT") and h + 1 or 0
-    local down = S.Get("focusIcon") and (side == "TOP" or side == "BOTTOM") and h + 1 or 0
+    local across = S.Get("focusIcon") and (side == "LEFT" or side == "RIGHT") and h + ICON_GAP or 0
+    local down = S.Get("focusIcon") and (side == "TOP" or side == "BOTTOM") and h + ICON_GAP or 0
     local x = side == "LEFT" and across / 2 or -across / 2
     local y = side == "BOTTOM" and down / 2 or -down / 2
     local width = S.Get("focusWidth") + across
@@ -601,8 +652,8 @@ end
 
 local function Summary(store)
     local audio = store.Get("focusAudio")
-    return ("%d by %d%s"):format(store.Get("focusWidth"), store.Get("focusHeight"),
-        audio == "sound" and ", plays a sound" or audio == "tts" and ", speaks" or "")
+    return SUMMARY:format(store.Get("focusWidth"), store.Get("focusHeight"),
+        audio == "sound" and SUMMARY_SOUND or audio == "tts" and SUMMARY_SPEAKS or "")
 end
 
 ns.Shared.Settings.Page("QoL/Combat", S):Card({

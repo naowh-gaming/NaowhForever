@@ -1,14 +1,6 @@
--------------------------------------------------------------------------------
---  NaowhForever_Defaults.lua -- QoL > System > Defaults: a Setup dropdown of Naowh's presets
---  (ns.PRESETS). Picking one puts the profile in use to it after a confirm, then offers the
---  reload (ns.UsePreset, also the welcome window's choice); hovering it lists what each one
---  turns on and off against your settings now (ns.PresetChanges), read from the modules' and
---  the feature cards' own switches. Smart Reminders, what you answered about EllesmereUI's windows and the
---  account's data stay, and so does what you made in the profile (KEEP: saved quest rewards,
---  lists, enchant rules, HUD layouts). Tailor Setup asks a few questions instead (ns.ShowSetup), and Before
---  Tailoring puts back what it changed (ns.Setup.Restore).
--------------------------------------------------------------------------------
+-- NaowhForever_Defaults.lua: QoL > System > Defaults, Naowh's setups applied, compared and tailored.
 local ns = _G.NaowhForever
+
 local S = ns.QoLSettings
 local P = ns.PRESETS
 local Settings = ns.Shared.Settings
@@ -25,29 +17,46 @@ local KEEP = {
 }
 local RESTORE_ASK = "Put every setting back to how it was before tailoring?"
 local RESTORED = "Your settings are back. Reload now to finish?"
+local APPLY, RESTORE = "Apply", "Restore"
+local KEEP_ROOT = "tankReminder"
+local LINE_BREAK, PARAGRAPH, LIST_JOIN = "\n", "\n\n", ", "
 
-function ns.ApplyPreset(key)
-    local root = ns.SettingsRoot()
-    local qol = type(root.qol) == "table" and root.qol or {}
-    local own, was, kept = {}, {}, {}
-    for _, k in ipairs(ns.PROFILE_OWN.qol) do own[k] = qol[k] end
+local function Kept(root)
+    local kept = {}
     for db, keys in pairs(KEEP) do
         local values = type(root[db]) == "table" and root[db]
         for _, k in ipairs(keys) do
             if values and values[k] ~= nil then kept[db] = kept[db] or {}; kept[db][k] = values[k] end
         end
     end
-    for _, k in ipairs(RIVALS) do was[k] = S.Get(k) end
-    for k in pairs(root) do
-        if k ~= "tankReminder" then root[k] = nil end
-    end
-    for k, values in pairs(P[key].profile) do root[k] = CopyTable(values) end
-    if type(root.qol) ~= "table" then root.qol = {} end
-    for k, value in pairs(own) do root.qol[k] = value end
+    return kept
+end
+
+local function PutBack(root, kept)
     for db, values in pairs(kept) do
         if type(root[db]) ~= "table" then root[db] = {} end
         for k, value in pairs(values) do root[db][k] = value end
     end
+end
+
+local function Replace(root, profile)
+    for k in pairs(root) do
+        if k ~= KEEP_ROOT then root[k] = nil end
+    end
+    for k, values in pairs(profile) do root[k] = CopyTable(values) end
+    if type(root.qol) ~= "table" then root.qol = {} end
+end
+
+function ns.ApplyPreset(key)
+    local root = ns.SettingsRoot()
+    local qol = type(root.qol) == "table" and root.qol or {}
+    local own, was = {}, {}
+    for _, k in ipairs(ns.PROFILE_OWN.qol) do own[k] = qol[k] end
+    local kept = Kept(root)
+    for _, k in ipairs(RIVALS) do was[k] = S.Get(k) end
+    Replace(root, P[key].profile)
+    for k, value in pairs(own) do root.qol[k] = value end
+    PutBack(root, kept)
     root.qol.preset = key
     for _, k in ipairs(RIVALS) do
         if S.Get(k) ~= was[k] then S.Set(k, S.Get(k)) end
@@ -61,7 +70,7 @@ function ns.UsePreset(key, ask)
         ns.ConfirmReload(DONE:format(name))
     end
     if ask == false then return Go() end
-    ns.Confirm(ASK:format(name), Go, nil, "Apply")
+    ns.Confirm(ASK:format(name), Go, nil, APPLY)
 end
 
 local function ByName(a, b) return a < b end
@@ -79,9 +88,7 @@ local function Compare(profile, on, off, seen, name, store, switch)
     end
 end
 
-function ns.PresetChanges(key)
-    local profile = P[key].profile
-    local on, off, seen = {}, {}, {}
+local function CompareAll(profile, on, off, seen)
     if ns.ModuleSwitches then
         for _, mod in ipairs(ns.ModuleSwitches()) do
             Compare(profile, on, off, seen, mod.name, mod.store, mod.key)
@@ -94,13 +101,18 @@ function ns.PresetChanges(key)
             end
         end
     end
+end
+
+function ns.PresetChanges(key)
+    local on, off, seen = {}, {}, {}
+    CompareAll(P[key].profile, on, off, seen)
     table.sort(on, ByName)
     table.sort(off, ByName)
     local name, lines = P[key].name, {}
-    if #on > 0 then lines[#lines + 1] = ON:format(name, ns.Color("accent", table.concat(on, ", "))) end
-    if #off > 0 then lines[#lines + 1] = OFF:format(name, ns.Color("muted", table.concat(off, ", "))) end
+    if #on > 0 then lines[#lines + 1] = ON:format(name, ns.Color("accent", table.concat(on, LIST_JOIN))) end
+    if #off > 0 then lines[#lines + 1] = OFF:format(name, ns.Color("muted", table.concat(off, LIST_JOIN))) end
     if #lines == 0 then lines[1] = SAME:format(name) end
-    return table.concat(lines, "\n")
+    return table.concat(lines, LINE_BREAK)
 end
 
 local function Tip()
@@ -108,13 +120,15 @@ local function Tip()
     for _, key in ipairs(P.order) do
         if key ~= S.Get("preset") then lines[#lines + 1] = ns.PresetChanges(key) end
     end
-    return table.concat(lines, "\n\n")
+    return table.concat(lines, PARAGRAPH)
+end
+
+local function DoRestore()
+    if ns.Setup.Restore() then ns.ConfirmReload(RESTORED) end
 end
 
 local function Restore()
-    ns.Confirm(RESTORE_ASK, function()
-        if ns.Setup.Restore() then ns.ConfirmReload(RESTORED) end
-    end, nil, "Restore")
+    ns.Confirm(RESTORE_ASK, DoRestore, nil, RESTORE)
 end
 
 local function NoBackup()

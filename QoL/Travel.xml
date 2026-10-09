@@ -1,0 +1,10 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/">
+    <!-- Travel.xml: the Flight Timer, its games and the waypoint pin, after the Top Bar. -->
+    <Script file="NaowhForever_FlightData.lua"/>
+    <Script file="NaowhForever_Flight.lua"/>
+    <Script file="NaowhForever_Waypoints.lua"/>
+    <Script file="NaowhForever_QuizData.lua"/>
+    <Script file="NaowhForever_Quiz.lua"/>
+    <Script file="NaowhForever_AimTrainer.lua"/>
+    <Script file="NaowhForever_AimBoard.lua"/>
+</Ui>

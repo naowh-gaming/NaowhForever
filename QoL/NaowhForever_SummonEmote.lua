@@ -1,12 +1,13 @@
--------------------------------------------------------------------------------
---  NaowhForever_SummonEmote.lua -- the QoL summon emote: an /emote of your own when you start
---  casting a spell you listed, such as Ritual of Summoning, so the group knows to click.
--------------------------------------------------------------------------------
+-- NaowhForever_SummonEmote.lua: the QoL summon emote, an /emote when you start casting a spell you listed.
 local ns = _G.NaowhForever
+
 local S = ns.QoLSettings
+
+local LIST_PATTERN = "(%d+)%s*:%s*([^;]+)"
 
 local spells = {}
 local lastEmote, pending = 0, nil
+local events
 
 local function On()
     return S.Get("enabled") and S.Get("autoEmote")
@@ -17,10 +18,9 @@ local function InInstance()
     return inInstance and kind ~= "none"
 end
 
--- "698: prepares a ritual of summoning; 29893: prepares a soulwell"
 local function ParseSpells()
     wipe(spells)
-    for id, text in S.Get("autoEmoteList"):gmatch("(%d+)%s*:%s*([^;]+)") do
+    for id, text in S.Get("autoEmoteList"):gmatch(LIST_PATTERN) do
         text = strtrim(text)
         if text ~= "" then spells[tonumber(id)] = text end
     end
@@ -31,20 +31,20 @@ local function SendEmote(text)
     lastEmote = GetTime()
 end
 
-local events = CreateFrame("Frame")
-events:SetScript("OnEvent", function(_, event, ...)
-    if event == "PLAYER_REGEN_ENABLED" then
-        if pending and On() and InInstance() then
-            C_Timer.After(0, function()
-                if pending then SendEmote(pending) end
-                pending = nil
-            end)
-        else
-            pending = nil
-        end
-        return
+local function SendPending()
+    if pending then SendEmote(pending) end
+    pending = nil
+end
+
+local function OnCombatEnd()
+    if pending and On() and InInstance() then
+        C_Timer.After(0, SendPending)
+    else
+        pending = nil
     end
-    local _, _, spellID = ...
+end
+
+local function OnCastStart(spellID)
     local text = spells[spellID]
     if not (text and On() and InInstance()) then return end
     if GetTime() - lastEmote < S.Get("autoEmoteCooldown") then return end
@@ -53,7 +53,18 @@ events:SetScript("OnEvent", function(_, event, ...)
     else
         SendEmote(text)
     end
-end)
+end
+
+local function OnEvent(_, event, _, _, spellID)
+    if event == "PLAYER_REGEN_ENABLED" then
+        OnCombatEnd()
+    else
+        OnCastStart(spellID)
+    end
+end
+
+events = CreateFrame("Frame")
+events:SetScript("OnEvent", OnEvent)
 
 local function Apply()
     events:UnregisterAllEvents()

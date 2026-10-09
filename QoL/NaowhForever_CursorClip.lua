@@ -1,25 +1,41 @@
--------------------------------------------------------------------------------
---  NaowhForever_CursorClip.lua -- the QoL combat cursor clip: keeps the cursor inside the
---  game window during combat, then puts the ClipCursor setting back as it was.
--------------------------------------------------------------------------------
+-- NaowhForever_CursorClip.lua: Combat Cursor Clip, the cursor kept inside the game window in combat.
 local ns = _G.NaowhForever
+
 local S = ns.QoLSettings
 
--- The player's own ClipCursor value while we hold it at 1; nil when we are not holding it.
--- Saved, so a crash or a killed client mid-fight is put right at the next login instead of
--- the held 1 being taken for the player's own setting.
+local CVAR = "ClipCursor"
+local CLIPPED, NOT_CLIPPED = "1", "0"
+
+local function IsOn()
+    return S.Get("enabled") and S.Get("cursorClip")
+end
+
 local function Clip()
     local account = ns.AccountSettings()
-    if account.clipCursorSaved or not (S.Get("enabled") and S.Get("cursorClip")) then return end
-    account.clipCursorSaved = GetCVar("ClipCursor") or "0"
-    SetCVar("ClipCursor", "1")
+    if account.clipCursorSaved or not IsOn() then return end
+    account.clipCursorSaved = GetCVar(CVAR) or NOT_CLIPPED
+    SetCVar(CVAR, CLIPPED)
 end
 
 local function Restore()
     local account = ns.AccountSettings()
     if not account.clipCursorSaved then return end
-    SetCVar("ClipCursor", account.clipCursorSaved)
+    SetCVar(CVAR, account.clipCursorSaved)
     account.clipCursorSaved = nil
+end
+
+local function OnEvent(_, event)
+    if event == "PLAYER_REGEN_DISABLED" or (event == "PLAYER_LOGIN" and InCombatLockdown()) then
+        Clip()
+    else
+        Restore()
+    end
+end
+
+local function OnSettingChanged(key)
+    if key ~= "enabled" and key ~= "cursorClip" then return end
+    if InCombatLockdown() then Clip() end
+    if not IsOn() then Restore() end
 end
 
 local events = CreateFrame("Frame")
@@ -27,16 +43,6 @@ events:RegisterEvent("PLAYER_REGEN_DISABLED")
 events:RegisterEvent("PLAYER_REGEN_ENABLED")
 events:RegisterEvent("PLAYER_LOGOUT")
 events:RegisterEvent("PLAYER_LOGIN")
-events:SetScript("OnEvent", function(_, event)
-    if event == "PLAYER_REGEN_DISABLED" or (event == "PLAYER_LOGIN" and InCombatLockdown()) then
-        Clip()
-    else
-        Restore()
-    end
-end)
+events:SetScript("OnEvent", OnEvent)
 
-hooksecurefunc(S, "Set", function(key)
-    if key ~= "enabled" and key ~= "cursorClip" then return end
-    if InCombatLockdown() then Clip() end
-    if not (S.Get("enabled") and S.Get("cursorClip")) then Restore() end
-end)
+hooksecurefunc(S, "Set", OnSettingChanged)

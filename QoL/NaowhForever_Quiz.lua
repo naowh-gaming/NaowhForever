@@ -1,21 +1,42 @@
--------------------------------------------------------------------------------
---  NaowhForever_Quiz.lua -- a WoW quiz for campfires and, when Flight Games picks it
---  (NaowhForever_Flight.lua), flights; also opened by /naowh quiz.
--------------------------------------------------------------------------------
+-- NaowhForever_Quiz.lua: the WoW quiz for campfires and flights, also opened by /naowh quiz.
 local ns = _G.NaowhForever
+
 local S = ns.QoLSettings
 local T = ns.THEME
+local St = ns.Shared.Style
 
--- Forever's "Welcoming Campfire" aura: present only while seated at a camp fire (probed
--- 2026-09-24). "Campfire Nearby" (1283391) is an area aura from simply walking past one.
 local CAMPFIRE_SEATED = 1229739
+local RIGHT, WRONG = St.HAVE_RGB, St.RED_RGB
+local QUIZ_W, QUIZ_H = 400, 330
+local QUIZ_ALPHA = 0.95
+local PAD, INSET = 12, 16
+local LOGO_SIZE, LOGO_TOP, TITLE_GAP = 26, 8, 8
+local TITLE_SIZE, QUESTION_SIZE, RESULT_SIZE, SCORE_SIZE = 16, 14, 14, 11
+local CLOSE_SIZE, CLOSE_INSET = 22, 10
+local QUESTION_TOP, QUESTION_H = 48, 44
+local ANSWERS = 4
+local ANSWER_W, ANSWER_H, ANSWER_TOP, ANSWER_STEP = 368, 30, 100, 36
+local RESULT_TOP, NEXT_TOP = 250, 246
+local NEXT_W, NEXT_H = 130, 26
+local SCORE_BOTTOM = 14
+local DEFAULT_Y = 120
 
-local RIGHT, WRONG = { r = 0.30, g = 0.82, b = 0.48 }, { r = 0.97, g = 0.44, b = 0.44 }
+local TEXT_TITLE = "Naowh Quiz"
+local TEXT_SCORE = "%d / %d right   |   streak %d   |   best %d"
+local TEXT_RIGHT = "|cff4dd17aCorrect!|r"
+local TEXT_WRONG = St.RED_CODE .. "Not quite.|r"
+local TEXT_NEXT = "Next Question"
+local TEXT_CLOSE = "X"
+local TEXT_BOTH = "While flying and at the campfire"
+local TEXT_FLYING = "While flying"
+local TEXT_CAMP = "At the campfire"
+local TEXT_BY_HAND = "Only when you open it"
 
 local quiz, deck, current
-local openedFor         -- "flight", "camp", or nil when opened by hand
+local openedFor
 local atCamp
 local asked, correct, streak = 0, 0, 0
+local events = CreateFrame("Frame")
 
 local function Best()
     return ns.AccountSettings().quizBest or 0
@@ -32,8 +53,7 @@ local function Shuffled(n)
 end
 
 local function UpdateScore()
-    quiz.score:SetText(("%d / %d right   |   streak %d   |   best %d"):format(correct, asked,
-        streak, Best()))
+    quiz.score:SetText(TEXT_SCORE:format(correct, asked, streak, Best()))
 end
 
 local function NextQuestion()
@@ -65,19 +85,29 @@ local function Answer(btn)
     if btn.right then
         correct, streak = correct + 1, streak + 1
         if streak > Best() then ns.AccountSettings().quizBest = streak end
-        quiz.result:SetText("|cff4dd17aCorrect!|r")
+        quiz.result:SetText(TEXT_RIGHT)
     else
         streak = 0
         btn.label:SetTextColor(WRONG.r, WRONG.g, WRONG.b)
-        quiz.result:SetText("|cfff87171Not quite.|r")
+        quiz.result:SetText(TEXT_WRONG)
     end
     UpdateScore()
     quiz.next:Show()
 end
 
-local function Build()
+local function OnDragStop(self)
+    self:StopMovingOrSizing()
+    local point, _, relPoint, x, y = self:GetPoint()
+    S.Set("quizPos", { point = point, relPoint = relPoint, x = x, y = y })
+end
+
+local function OnClose()
+    ns.QuizDismiss()
+end
+
+local function BuildFrame()
     quiz = CreateFrame("Frame", "NaowhForeverQuiz", UIParent)
-    quiz:SetSize(400, 330)
+    quiz:SetSize(QUIZ_W, QUIZ_H)
     quiz:SetFrameStrata("MEDIUM")
     quiz:SetMovable(true)
     quiz:SetClampedToScreen(true)
@@ -85,51 +115,57 @@ local function Build()
     quiz:EnableMouse(true)
     quiz:RegisterForDrag("LeftButton")
     quiz:SetScript("OnDragStart", quiz.StartMoving)
-    quiz:SetScript("OnDragStop", function(self)
-        self:StopMovingOrSizing()
-        local point, _, relPoint, x, y = self:GetPoint()
-        S.Set("quizPos", { point = point, relPoint = relPoint, x = x, y = y })
-    end)
-    ns.Solid(quiz, "BACKGROUND", T.bg, 0.95):SetAllPoints()
+    quiz:SetScript("OnDragStop", OnDragStop)
+    ns.Solid(quiz, "BACKGROUND", T.bg, QUIZ_ALPHA):SetAllPoints()
     ns.Border(quiz)
+end
 
+local function BuildTitle()
     local logo = quiz:CreateTexture(nil, "ARTWORK")
-    logo:SetTexture("Interface\\AddOns\\NaowhForever\\Media\\LogoSmall.tga", nil, nil, "TRILINEAR")
-    logo:SetSize(26, 26)
-    logo:SetPoint("TOPLEFT", 12, -8)
+    logo:SetTexture(St.LOGO_SMALL, nil, nil, "TRILINEAR")
+    logo:SetSize(LOGO_SIZE, LOGO_SIZE)
+    logo:SetPoint("TOPLEFT", PAD, -LOGO_TOP)
 
-    local title = ns.Font(quiz, 16, "OUTLINE", T.accent)
-    title:SetPoint("LEFT", logo, "RIGHT", 8, 0)
-    title:SetText("Naowh Quiz")
+    local title = ns.Font(quiz, TITLE_SIZE, "OUTLINE", T.accent)
+    title:SetPoint("LEFT", logo, "RIGHT", TITLE_GAP, 0)
+    title:SetText(TEXT_TITLE)
 
-    local close = ns.Button(quiz, "X", 22, 22, function() ns.QuizDismiss() end)
-    close:SetPoint("TOPRIGHT", -10, -10)
+    local close = ns.Button(quiz, TEXT_CLOSE, CLOSE_SIZE, CLOSE_SIZE, OnClose)
+    close:SetPoint("TOPRIGHT", -CLOSE_INSET, -CLOSE_INSET)
+end
 
-    quiz.question = ns.Font(quiz, 14, nil)
-    quiz.question:SetPoint("TOPLEFT", 16, -48)
-    quiz.question:SetPoint("RIGHT", -16, 0)
+local function BuildBody()
+    quiz.question = ns.Font(quiz, QUESTION_SIZE, nil)
+    quiz.question:SetPoint("TOPLEFT", INSET, -QUESTION_TOP)
+    quiz.question:SetPoint("RIGHT", -INSET, 0)
     quiz.question:SetJustifyH("LEFT")
     quiz.question:SetWordWrap(true)
-    quiz.question:SetHeight(44)
+    quiz.question:SetHeight(QUESTION_H)
     quiz.question:SetJustifyV("TOP")
 
     quiz.answers = {}
-    for i = 1, 4 do
-        local btn = ns.Button(quiz, "", 368, 30)
-        btn:SetPoint("TOPLEFT", 16, -100 - (i - 1) * 36)
+    for i = 1, ANSWERS do
+        local btn = ns.Button(quiz, "", ANSWER_W, ANSWER_H)
+        btn:SetPoint("TOPLEFT", INSET, -ANSWER_TOP - (i - 1) * ANSWER_STEP)
         btn:SetScript("OnClick", Answer)
         btn:SetMotionScriptsWhileDisabled(true)
         quiz.answers[i] = btn
     end
 
-    quiz.result = ns.Font(quiz, 14, "OUTLINE")
-    quiz.result:SetPoint("TOPLEFT", 16, -250)
+    quiz.result = ns.Font(quiz, RESULT_SIZE, "OUTLINE")
+    quiz.result:SetPoint("TOPLEFT", INSET, -RESULT_TOP)
 
-    quiz.next = ns.Button(quiz, "Next Question", 130, 26, NextQuestion)
-    quiz.next:SetPoint("TOPRIGHT", -16, -246)
+    quiz.next = ns.Button(quiz, TEXT_NEXT, NEXT_W, NEXT_H, NextQuestion)
+    quiz.next:SetPoint("TOPRIGHT", -INSET, -NEXT_TOP)
 
-    quiz.score = ns.Font(quiz, 11, nil, T.muted)
-    quiz.score:SetPoint("BOTTOMLEFT", 16, 14)
+    quiz.score = ns.Font(quiz, SCORE_SIZE, nil, T.muted)
+    quiz.score:SetPoint("BOTTOMLEFT", INSET, SCORE_BOTTOM)
+end
+
+local function Build()
+    BuildFrame()
+    BuildTitle()
+    BuildBody()
     quiz:Hide()
 end
 
@@ -139,7 +175,7 @@ local function Place()
     if pos then
         quiz:SetPoint(pos.point, UIParent, pos.relPoint, pos.x, pos.y)
     else
-        quiz:SetPoint("CENTER", UIParent, "CENTER", 0, 120)
+        quiz:SetPoint("CENTER", UIParent, "CENTER", 0, DEFAULT_Y)
     end
 end
 
@@ -154,8 +190,18 @@ local function Open(reason)
     quiz:Show()
 end
 
--- A reason-less dismiss is the close button; a reason closes only what that reason opened,
--- so landing never shuts a quiz opened by hand.
+local function OnEvent(_, event)
+    if event == "PLAYER_REGEN_DISABLED" then
+        ns.QuizDismiss(openedFor)
+        return
+    end
+    if InCombatLockdown() or C_Secrets.ShouldAurasBeSecret() then return end
+    local here = C_UnitAuras.GetPlayerAuraBySpellID(CAMPFIRE_SEATED) ~= nil
+    if here == atCamp then return end
+    atCamp = here
+    if here then ns.QuizOffer("camp") else ns.QuizDismiss("camp") end
+end
+
 function ns.QuizDismiss(reason)
     if not (quiz and quiz:IsShown()) then return end
     if reason and openedFor ~= reason then return end
@@ -177,21 +223,6 @@ function ns.ToggleQuiz()
     if quiz and quiz:IsShown() then quiz:Hide() else Open(nil) end
 end
 
--- Auras cannot be read in combat, so the camp check pauses there rather than reading a
--- missing aura as having walked away.
-local events = CreateFrame("Frame")
-events:SetScript("OnEvent", function(_, event)
-    if event == "PLAYER_REGEN_DISABLED" then
-        ns.QuizDismiss(openedFor)
-        return
-    end
-    if InCombatLockdown() or C_Secrets.ShouldAurasBeSecret() then return end
-    local here = C_UnitAuras.GetPlayerAuraBySpellID(CAMPFIRE_SEATED) ~= nil
-    if here == atCamp then return end
-    atCamp = here
-    if here then ns.QuizOffer("camp") else ns.QuizDismiss("camp") end
-end)
-
 local function Apply()
     events:UnregisterAllEvents()
     if not S.Get("enabled") then
@@ -206,6 +237,16 @@ local function Apply()
     end
 end
 
+local function Summary(store)
+    local flight, camp = store.Get("flightGame") == "quiz", store.Get("quizCamp")
+    if flight and camp then return TEXT_BOTH end
+    if flight then return TEXT_FLYING end
+    if camp then return TEXT_CAMP end
+    return TEXT_BY_HAND
+end
+
+events:SetScript("OnEvent", OnEvent)
+
 hooksecurefunc(S, "Set", function(key)
     if key == "enabled" or key == "quizCamp" then Apply() end
 end)
@@ -214,14 +255,6 @@ hooksecurefunc(ns, "Apply", Apply)
 local boot = CreateFrame("Frame")
 boot:RegisterEvent("PLAYER_LOGIN")
 boot:SetScript("OnEvent", Apply)
-
-local function Summary(store)
-    local flight, camp = store.Get("flightGame") == "quiz", store.Get("quizCamp")
-    if flight and camp then return "While flying and at the campfire" end
-    if flight then return "While flying" end
-    if camp then return "At the campfire" end
-    return "Only when you open it"
-end
 
 ns.Shared.Settings.Page("QoL/Travel", S):Card({
     id = "quiz", name = "Quiz", order = 20,

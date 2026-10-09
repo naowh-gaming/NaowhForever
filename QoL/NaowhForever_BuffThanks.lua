@@ -1,16 +1,9 @@
--------------------------------------------------------------------------------
---  NaowhForever_BuffThanks.lua -- the QoL Buff Thank You Message: a whisper of thanks when
---  another player gives you a class buff in the open world. The game only names a caster
---  who has a nameplate, is your target or mouseover, or is in your group; for anyone else,
---  an optional /emote instead (an addon may not /say outside instances).
--------------------------------------------------------------------------------
+-- NaowhForever_BuffThanks.lua: Buff Thank You Message, a whisper of thanks for a class buff in the open world.
 local ns = _G.NaowhForever
+
 local S = ns.QoLSettings
 local Parts = ns.Shared.Parts
 
--- Every rank and group version of each class buff another player can give you (Wowhead
--- Forever). Kept here, not read from Auras & Buffs: that module can be turned off. Each
--- family has its own lines under Lines Per Buff, in the setting named by key.
 local FAMILIES = {
     { key = "buffThanksIntellect", label = "Intellect Lines", what = "Arcane Intellect and Brilliance",
       ids = { 10157, 10156, 1461, 1460, 1459, 23028 } },
@@ -25,31 +18,34 @@ local FAMILIES = {
     { key = "buffThanksThorns", label = "Thorns Lines", what = "Thorns",
       ids = { 467, 782, 1075, 8914, 9756, 9910 } },
     { key = "buffThanksBlessing", label = "Blessing Lines", what = "every Paladin blessing",
-      ids = { 25291, 19838, 19837, 19836, 19835, 19834, 19740, 25916, 25782,    -- Might
-          25290, 19854, 19853, 19852, 19850, 19742, 25918, 25894,               -- Wisdom
-          20217, 25898, 1038, 25895, 19979, 19978, 19977, 25890,                -- Kings, Salvation, Light
-          1022, 5599, 10278, 1044, 6940, 20729 } },                             -- Protection, Freedom, Sacrifice
+      ids = { 25291, 19838, 19837, 19836, 19835, 19834, 19740, 25916, 25782,
+          25290, 19854, 19853, 19852, 19850, 19742, 25918, 25894,
+          20217, 25898, 1038, 25895, 19979, 19978, 19977, 25890,
+          1022, 5599, 10278, 1044, 6940, 20729 } },
 }
 
--- The rest, always on the Whisper Lines.
 local OTHERS = {
-    1008, 8455, 10169, 10170,               -- Amplify Magic
-    604, 8450, 8451, 10173, 10174,          -- Dampen Magic
-    6346, 10060, 1706,                      -- Fear Ward, Power Infusion, Levitate
-    29166,                                  -- Innervate
-    5697, 132, 2970, 11743,                 -- Unending Breath, Detect Invisibility
-    131, 546,                               -- Water Breathing, Water Walking
+    1008, 8455, 10169, 10170,
+    604, 8450, 8451, 10173, 10174,
+    6346, 10060, 1706,
+    29166,
+    5697, 132, 2970, 11743,
+    131, 546,
 }
 
--- Other players decide when this speaks, so a crowd buffing you gets a few thanks, not a flood.
 local SENT_MAX, SENT_WINDOW = 3, 60
+local SECONDS_PER_MINUTE = 60
 
 local OPTIONS_WINDOW = "NaowhForeverOptions"
-local EDITOR_INSET = 6      -- the lines' gap to the editor's edge
-local EDGE = { r = 0, g = 0, b = 0 }    -- an input box's 1px black edge
+local EDITOR_INSET = 6
+local EDGE = { r = 0, g = 0, b = 0 }
+local STRANGER = "stranger"
+local EMOTE_KEY = "?"
+local WHISPER_KEY, EMOTE_LINES_KEY = "buffThanksText", "buffThanksEmoteText"
+local TEXT_SAVE, TEXT_CANCEL = "Save", "Cancel"
 
-local buffs                 -- spell ID -> its family's setting, or true; built on first enable
-local thanked = {}          -- caster GUID (or name), or "?" .. buff for the emote, -> GetTime() of the last thanks
+local buffs
+local thanked = {}
 local windowAt, sentCount = 0, 0
 local editor, editKey
 
@@ -61,7 +57,6 @@ local function On()
     return S.Get("enabled") and S.Get("buffThanks")
 end
 
--- One of the setting's lines at random, with {buff} and {name} filled in; nil when it has none.
 local function Line(key, buff, name)
     local lines = {}
     for line in S.Get(key):gmatch("[^\n]+") do
@@ -73,9 +68,8 @@ local function Line(key, buff, name)
     return (text:gsub("{name}", function() return name end))
 end
 
--- True, and marked, when key was not thanked within the cooldown. Entries past it are dropped.
 local function Due(key)
-    local now, wait = GetTime(), S.Get("buffThanksCooldown") * 60
+    local now, wait = GetTime(), S.Get("buffThanksCooldown") * SECONDS_PER_MINUTE
     for k, at in pairs(thanked) do
         if now - at >= wait then thanked[k] = nil end
     end
@@ -84,7 +78,6 @@ local function Due(key)
     return true
 end
 
--- True while this minute's thanks are not used up.
 local function Room(now)
     if now - windowAt >= SENT_WINDOW then windowAt, sentCount = now, 0 end
     return sentCount < SENT_MAX
@@ -95,72 +88,79 @@ local function Send(text, channel, to)
     C_ChatInfo.SendChatMessage(text, channel, nil, to)
 end
 
+local function ThankCaster(unit, id, buff)
+    if UnitIsUnit(unit, "player") or not UnitIsPlayer(unit) then return end
+    if not S.Get("buffThanksGroup") and (UnitInParty(unit) or UnitInRaid(unit)) then return end
+    local name, guid = GetUnitName(unit, true), UnitGUID(unit)
+    if not name or not Due(guid and not Secret(guid) and guid or name) then return end
+    local short, family = Ambiguate(name, "short"), buffs[id]
+    local text = S.Get("buffThanksPerBuff") and family ~= true and Line(family, buff, short)
+        or Line(WHISPER_KEY, buff, short)
+    if text then Send(text, "WHISPER", name) end
+end
+
+local function ThankStranger(buff)
+    if not (S.Get("buffThanksEmote") and Due(EMOTE_KEY .. buff)) then return end
+    local text = Line(EMOTE_LINES_KEY, buff, STRANGER)
+    if text then Send(text, "EMOTE") end
+end
+
 local function Thank(aura)
     local unit, id = aura.sourceUnit, aura.spellId
     if Secret(unit) or Secret(id) or not buffs[id] or not Room(GetTime()) then return end
-    local buff = aura.name
     if unit then
-        if UnitIsUnit(unit, "player") or not UnitIsPlayer(unit) then return end
-        if not S.Get("buffThanksGroup") and (UnitInParty(unit) or UnitInRaid(unit)) then return end
-        local name, guid = GetUnitName(unit, true), UnitGUID(unit)
-        -- Forever's first names are not unique: two players called the same each get their thanks.
-        if not name or not Due(guid and not Secret(guid) and guid or name) then return end
-        local short, family = Ambiguate(name, "short"), buffs[id]
-        local text = S.Get("buffThanksPerBuff") and family ~= true and Line(family, buff, short)
-            or Line("buffThanksText", buff, short)
-        if text then Send(text, "WHISPER", name) end
-    elseif S.Get("buffThanksEmote") and Due("?" .. buff) then
-        local text = Line("buffThanksEmoteText", buff, "stranger")
-        if text then Send(text, "EMOTE") end
+        ThankCaster(unit, id, aura.name)
+    else
+        ThankStranger(aura.name)
     end
 end
 
-local events = CreateFrame("Frame")
-events:SetScript("OnEvent", function(_, _, _, info)
+local function OnAura(_, _, _, info)
     if not (info and info.addedAuras) or C_Secrets.ShouldAurasBeSecret() then return end
     if UnitAffectingCombat("player") or IsInInstance() or C_ChatInfo.InChatMessagingLockdown() then return end
     for _, aura in ipairs(info.addedAuras) do
         if aura.isHelpful then Thank(aura) end
     end
-end)
+end
 
--- Runs on every options change too; who was thanked is kept until the feature is turned off.
+local events = CreateFrame("Frame")
+events:SetScript("OnEvent", OnAura)
+
+local function BuildBuffs()
+    buffs = {}
+    for _, family in ipairs(FAMILIES) do
+        for _, id in ipairs(family.ids) do buffs[id] = family.key end
+    end
+    for _, id in ipairs(OTHERS) do buffs[id] = true end
+end
+
 local function Apply()
     events:UnregisterAllEvents()
     if not On() then
         wipe(thanked)
         return
     end
-    if not buffs then
-        buffs = {}
-        for _, family in ipairs(FAMILIES) do
-            for _, id in ipairs(family.ids) do buffs[id] = family.key end
-        end
-        for _, id in ipairs(OTHERS) do buffs[id] = true end
-    end
+    if not buffs then BuildBuffs() end
     events:RegisterUnitEvent("UNIT_AURA", "player")
 end
 
-hooksecurefunc(S, "Set", function(key)
+local function OnSettingChanged(key)
     if key == "enabled" or key == "buffThanks" then Apply() end
-end)
+end
+
+hooksecurefunc(S, "Set", OnSettingChanged)
 hooksecurefunc(ns, "Apply", Apply)
 
 local boot = CreateFrame("Frame")
 boot:RegisterEvent("PLAYER_LOGIN")
 boot:SetScript("OnEvent", Apply)
 
--------------------------------------------------------------------------------
---  The line editor: a side panel beside the options window, one message per line.
--------------------------------------------------------------------------------
--- The box fills the scroll area down to the buttons, and grows past it with the lines.
 local function FitEditor()
     if not editor then return end
     local view = editor.view
     view:SetHeight(math.max(editor.scroll:GetHeight(), view.box:GetHeight()))
 end
 
--- Keeps the line being typed in sight.
 local function FollowCursor(_, _, y, _, h)
     local scroll = editor.scroll
     local top, shown, offset = -y, scroll:GetHeight(), scroll:GetVerticalScroll()
@@ -169,6 +169,12 @@ local function FollowCursor(_, _, y, _, h)
     elseif top + h > offset + shown then
         scroll:SetVerticalScroll(top + h - shown)
     end
+end
+
+local function FocusEnd(view)
+    local box = view.box
+    box:SetFocus()
+    box:SetCursorPosition(#box:GetText())
 end
 
 local function NewEditorView(scroll)
@@ -185,12 +191,8 @@ local function NewEditorView(scroll)
     box:SetScript("OnEscapePressed", box.ClearFocus)
     box:SetScript("OnCursorChanged", FollowCursor)
     box:SetScript("OnSizeChanged", FitEditor)
-    -- A click below the last line puts the cursor at the end.
     view:EnableMouse(true)
-    view:SetScript("OnMouseDown", function()
-        box:SetFocus()
-        box:SetCursorPosition(#box:GetText())
-    end)
+    view:SetScript("OnMouseDown", FocusEnd)
     view.box = box
     return view
 end
@@ -204,9 +206,13 @@ local function SaveLines()
     editor:Hide()
 end
 
+local function CloseEditor()
+    editor:Hide()
+end
+
 local function EditLines(key, title)
     if not editor then
-        editor = Parts.SidePanel({ { "Save", SaveLines }, { "Cancel", function() editor:Hide() end } },
+        editor = Parts.SidePanel({ { TEXT_SAVE, SaveLines }, { TEXT_CANCEL, CloseEditor } },
             NewEditorView, Opaque)
         editor.scroll:HookScript("OnSizeChanged", FitEditor)
     end
@@ -214,7 +220,6 @@ local function EditLines(key, title)
     editor.title:SetText(title)
     editor.view.box:SetText(S.Get(key))
     Parts.ShowBeside(editor, _G[OPTIONS_WINDOW])
-    -- ShowBeside sets the height once; its bottom tied to the window's too, it follows a resize.
     local point, owner, relative, x = editor:GetPoint(1)
     editor:SetPoint(point == "TOPLEFT" and "BOTTOMLEFT" or "BOTTOMRIGHT", owner,
         relative == "TOPRIGHT" and "BOTTOMRIGHT" or "BOTTOMLEFT", x, 0)

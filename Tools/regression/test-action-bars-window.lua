@@ -246,13 +246,19 @@ local env = setmetatable({
         t[key] = function(...) original(...); fn(...) end
     end,
     strtrim = function(s) return (s:gsub("^%s+", ""):gsub("%s+$", "")) end,
+    wipe = function(t) for k in pairs(t) do t[k] = nil end return t end,
     time = os.time, date = os.date,
     print = function(text) state.printed[#state.printed + 1] = text end,
 }, { __index = _G })
 env._G.NaowhForever = ns
 
-Load({ "Shared/Shared.lua", "Shared/Style.lua", "Shared/Parts.lua", "Shared/Window.lua",
-    "NaowhForever_ActionBars/NaowhForever_ActionBars.lua", "NaowhForever_ActionBars/NaowhForever_ActionBarsWindow.lua" }, env)
+Load({ "Shared/Shared.lua", "Shared/Style.lua", "Shared/Parts.lua", "Shared/Marks.lua", "Shared/Text.lua", "Shared/Hud.lua", "Shared/Timer.lua", "Shared/Share.lua", "Shared/Panels.lua", "Shared/Window.lua", "Shared/Tabs.lua", "Shared/SettingsCard.lua",
+    }, env)
+local MODULE = { "Core/NaowhForever_Features.lua" }
+for _, path in ipairs(dofile("Tools/regression/toc_files.lua")("^NaowhForever_ActionBars/.*%.lua$")) do
+    if not path:find("SettingsPage%.lua$") then MODULE[#MODULE + 1] = path end
+end
+Load(MODULE, env)
 
 local function RunTimers()
     local timers = state.timers

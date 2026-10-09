@@ -80,6 +80,7 @@ local function Fixture(saved)
     }
     function S.Set(k, v) values[k] = v end
     local ns = {
+        QoLConstants = dofile("Tools/regression/qol_constants.lua"),
         THEME = T,
         Color = function(_, text) return text end,
         Font = function(parent, size, flags, color)
@@ -160,7 +161,7 @@ local function Fixture(saved)
     }, { __index = _G })
     env._G = env
     local files = TocFiles("^Shared/.*%.lua$")
-    for _, path in ipairs({ "QoL/NaowhForever_QoL.lua", "QoL/NaowhForever_AlertStack.lua",
+    for _, path in ipairs({ "Core/NaowhForever_Features.lua", "QoL/NaowhForever_QoL.lua", "QoL/NaowhForever_AlertStack.lua",
         "QoL/NaowhForever_CombatAlert.lua", "QoL/NaowhForever_CombatTimer.lua",
         "QoL/NaowhForever_StealthReminder.lua", "QoL/NaowhForever_TalentPoints.lua",
         "QoL/NaowhForever_Durability.lua", "QoL/NaowhForever_Restock.lua",

@@ -63,6 +63,7 @@ local function Fixture(settings, units)
         if settings[k] == nil then settings[k] = v end
     end
     local env = { pairs = pairs, ipairs = ipairs, type = type, math = math, table = table, select = select,
+        setmetatable = setmetatable,
         tostring = tostring, tonumber = tonumber, string = string, wipe = function(t)
             for k in pairs(t) do t[k] = nil end
             return t
@@ -200,7 +201,7 @@ local function Fixture(settings, units)
     end
     ns.CompletoSettings = { Get = function(k) return settings[k] end, Set = function(k, v) settings[k] = v end,
         DB = function() return settings end }
-    ns.Completo = {}
+    ns.Completo = { Settings = ns.CompletoSettings }
     -- The settings pages' cards, by id, to reach their rows.
     ns.cards = {}
     local page = { Window = function() end, Card = function(_, spec) ns.cards[spec.id] = spec end }
@@ -332,9 +333,12 @@ local function Fixture(settings, units)
     env.worldMap = map
     env.NaowhForever = ns
     env._G = env
-    Load({ "NaowhForever_Completo/NaowhForever_CompletoRares.lua",
-        "NaowhForever_Completo/NaowhForever_CompletoRareAlert.lua",
-        "NaowhForever_Completo/NaowhForever_CompletoRareMap.lua" }, env)
+    Load({ "NaowhForever_Completo/Constants.lua", "NaowhForever_Completo/Data/AlertSounds.lua",
+        "NaowhForever_Completo/Data/RaidMarks.lua", "NaowhForever_Completo/Rares.lua",
+        "NaowhForever_Completo/Kills.lua", "NaowhForever_Completo/Sounds.lua", "NaowhForever_Completo/Marks.lua",
+        "NaowhForever_Completo/View/Style.lua", "NaowhForever_Completo/View/AlertCard.lua",
+        "NaowhForever_Completo/UI/RareAlert.lua", "NaowhForever_Completo/UI/RarePanel.lua",
+        "NaowhForever_Completo/UI/RarePins.lua", "NaowhForever_Completo/UI/RaresSettings.lua" }, env)
     env.Fire("PLAYER_LOGIN")
     return ns, env, account
 end

@@ -1,16 +1,9 @@
--------------------------------------------------------------------------------
---  Bags.lua -- the item buttons in your bags, for the marks modules paint on them (the BiS
---  List's Bag Marks, QoL's Scrap Marker): the game's bag frames, with each module's painter
---  run after a frame updates its items, and EllesmereUI's bags, through the hook it offers
---  other addons. Nothing is hooked until a module first asks.
--------------------------------------------------------------------------------
+-- Bags.lua: the item buttons in your bags, the game's and EllesmereUI's, for the marks modules paint on them (ns.Shared.Bags).
 local ns = _G.NaowhForever
-local Shared = ns.Shared
 
-local Bags = {}
-Shared.Bags = Bags
-
+local ELLESMERE_ADDON = "EllesmereUIBags"
 local ELLESMERE_WINDOWS = { "EUI_Bags", "EUI_BagsReagent" }
+local UPDATE_METHOD = "UpdateItems"
 
 local frames = {}
 local painters = {}
@@ -24,9 +17,12 @@ local function HookGameBags()
     for i = 1, list and #list or 0 do frames[#frames + 1] = list[i] end
     frames[#frames + 1] = ContainerFrameCombinedBags
     for _, frame in ipairs(frames) do
-        if frame.UpdateItems then hooksecurefunc(frame, "UpdateItems", Painted) end
+        if frame[UPDATE_METHOD] then hooksecurefunc(frame, UPDATE_METHOD, Painted) end
     end
 end
+
+local Bags = {}
+ns.Shared.Bags = Bags
 
 function Bags.OnGameUpdate(painter)
     if #painters == 0 then HookGameBags() end
@@ -41,7 +37,7 @@ end
 
 function Bags.Ellesmere()
     local bags = _G.EUI_Bags
-    return C_AddOns.IsAddOnLoaded("EllesmereUIBags") and bags and bags.RegisterItemOverlayIcon and bags or nil
+    return C_AddOns.IsAddOnLoaded(ELLESMERE_ADDON) and bags and bags.RegisterItemOverlayIcon and bags or nil
 end
 
 function Bags.RefreshEllesmere()

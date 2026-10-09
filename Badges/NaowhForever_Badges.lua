@@ -1,31 +1,56 @@
--------------------------------------------------------------------------------
---  NaowhForever_Badges.lua -- supporter badges: the Naowh Forever N next to the name of
---  Naowh, a Developer, a Moderator, EllesmereUI's creator or a Legendary Patron in chat, a card when you hover it,
---  a plate over their player tooltip, and a banner when one joins your group. Each part has its
---  own setting in QoL > Character: badges, card and tooltip start on so everyone sees them,
---  the banner starts off (Naowh's call). /nf badges preview puts one on your own name
---  (staff only). While ns.FEATURE_BADGES (Core) is 0 only the team's badges show, on the
---  settings' defaults whatever a profile saved: no patron tier or list, no settings card, and
---  no words about support.
--------------------------------------------------------------------------------
+-- NaowhForever_Badges.lua: the team's and patrons' badges in chat, on a card, on tooltips and in a banner.
 local ns = _G.NaowhForever
 local T = ns.THEME
 local S = ns.QoLSettings
 local PATRONS = ns.FEATURE_BADGES == 1
+local RENUMBERED = { [110] = 90 }
+
+local MEDIA = "Interface\\AddOns\\NaowhForever\\Media\\Badges\\"
+local CACHE_SIZE = 200
+local TOAST_HOLD = 4
+local BYTE = 255
+local PARTY_OTHERS, RAID_SIZE = 4, 40
+local CHROME = { bgAlpha = 0.97, barInset = 1, barH = 2, glowGrow = 1.3, edgeAlpha = 0.9 }
+local SHINE = { bands = 2, w = 12, h = 90, alpha = 0.45, travel = 110, duration = 0.9, delay = 0.3, rest = 2.4 }
+local CARD = { name = "NaowhForeverBadgeCard", w = 360, icon = 80, glowX = 2, pulseFrom = 0.2, pulseTo = 0.75,
+    pulseTime = 1.1, shrink = 0.94, grow = 1.06, brandSize = 10, titleSize = 19, playerSize = 13, aboutSize = 11,
+    sinceSize = 10, titleGap = 4, aboutGap = 6, aboutW = 238, siteSize = 10, siteX = 10, siteY = 8, sinceAlpha = 0.85,
+    h = 112, sinceH = 136, cursorX = 16, cursorY = 12, textLeft = 110, textTop = 16 }
+local PLATE = { h = 26, icon = 18, gap = 2, pad = 6, glowNudge = 2, titleSize = 12 }
+local TOAST = { name = "NaowhForeverBadgeToast", w = 360, h = 66, y = 150, icon = 50, glowX = 2, brandSize = 9,
+    brandX = 74, brandY = 12, textSize = 14, titleSize = 12, lineGap = 3, fadeIn = 0.3, growFrom = 0.92, fadeOut = 0.6 }
+local LIST = { badge = 14, gap = 3 }
+local CODE = { w = 440, h = 150, headSize = 14, headY = 14, hintSize = 11, hintGap = 6, textW = 400, boxGap = 12,
+    boxH = 28, buttonW = 96, buttonH = 26, buttonShift = 52, pad = 14 }
+local PREVIEW_TITLE = "Lead Developer"
+local TEXT_BRAND = "NAOWH FOREVER"
+local TEXT_SITE = "naowh.gg"
+local TEXT_NAMED = "Naowh Forever "
+local TEXT_SINCE = "Supporter since %s %s"
+local TEXT_JOINED = "%s joined your %s"
+local TEXT_A_SUPPORTER, TEXT_A_TEAM_MEMBER = "A supporter", "A team member"
+local TEXT_RAID, TEXT_PARTY = "raid", "party"
+local TEXT_CODE_TITLE = "Your badge code"
+local TEXT_CHARACTER, TEXT_CHARACTERS = " character", " characters"
+local TEXT_CODE_SUPPORT = ". Ctrl+C to copy it, then send it in a support request on Discord to be added."
+local TEXT_CODE_TEAM = ". Ctrl+C to copy it, then send it to the team on Discord to be added."
+local TEXT_DISCORD, TEXT_CLOSE, TEXT_DISCORD_TITLE = "Discord", "Close", "Naowh's Discord"
+local TEXT_STAFF_ONLY = "Badge previews are for the Naowh Forever team."
+local TEXT_PREVIEW_NONE = "Preview on: you wear no badge until you reload, as a player without one sees it."
+local TEXT_PREVIEW_ON = "Preview on: your name wears the %s badge until you reload. Say something to see it."
+local TEXT_PREVIEW_OFF = "Preview off."
+local TEXT_USAGE = "/nf badges id | preview [%smoderator|developer|ellesmere|naowh|none] | preview off | toast"
+local TEXT_USAGE_PATRON = "legendary|"
+local TEXT_SUMMARY = "%d of %d on"
+local MONTHS = { "January", "February", "March", "April", "May", "June", "July", "August",
+    "September", "October", "November", "December" }
 
 local function Setting(key)
     if PATRONS then return S.Get(key) end
     return S.Default(key)
 end
 
-local MEDIA = "Interface\\AddOns\\NaowhForever\\Media\\Badges\\"
-local CACHE_SIZE = 200    -- chat lines remembered for the hover card
-local TOAST_HOLD = 4      -- seconds a group toast stays up
-local MONTHS = { "January", "February", "March", "April", "May", "June", "July", "August",
-    "September", "October", "November", "December" }
-
 local TIERS = {
-    -- Naowh himself: Artifact gold, the one quality above Legendary, and the biggest sound.
     naowh = {
         title = "Founder",
         about = "The Man. The King.",
@@ -43,7 +68,6 @@ local TIERS = {
         large = MEDIA .. "BadgeDeveloperLarge.tga",
         sound = "UI_72_ARTIFACT_FORGE_ACTIVATE_FINAL_TIER",
     },
-    -- Epic purple: the next quality down, for the people who keep the community running.
     moderator = {
         title = "Moderator",
         about = "Keeps the community running.",
@@ -68,49 +92,46 @@ local TIERS = {
         chat = MEDIA .. "BadgeLegendaryChat.tga",
         large = MEDIA .. "BadgeLegendaryLarge.tga",
         sound = "UI_LEGENDARY_LOOT_TOAST",
-        showsSince = true,  -- "Supporter since" is a patron's line, not a developer's
+        showsSince = true,
     },
 }
 if not PATRONS then TIERS.legendary = nil end
--- The chat badge is as tall as the chat's text, so a line is no taller for it, and goes
--- this much lower: the Naowh and game fonts leave room above their capitals, so letters sit
--- under the middle of the line an icon is centred on.
 local BADGE_DROP = 1
 
 for _, tier in pairs(TIERS) do
     local c = tier.color
-    tier.hex = string.format("ff%02x%02x%02x", c.r * 255, c.g * 255, c.b * 255)
+    tier.hex = string.format("ff%02x%02x%02x", c.r * BYTE, c.g * BYTE, c.b * BYTE)
     tier.markup = ("|T%s:0:0:0:%d|t"):format(tier.chat, -BADGE_DROP)
     tier.tooltipLine = "|T" .. tier.chat .. ":16:16|t |c" .. tier.hex
-        .. (tier.label or ("Naowh Forever " .. tier.title)) .. "|r"
+        .. (tier.label or (TEXT_NAMED .. tier.title)) .. "|r"
 end
 
 local issecretvalue = issecretvalue
 local function Secret(value) return issecretvalue and issecretvalue(value) end
 
--- A roster entry is a tier name ("developer"), or a table with a personal title and the
--- month the support started: { tier = "legendary", since = "2026-09", title = "..." }.
-local previewGUID, previewEntry  -- /nf badges preview, this session only
+local previewGUID, previewEntry
 
--- This region's badges, from the staff list and the generated patron list. Another
--- region's characters are never looked at, so a GUID that happens to exist in two regions
--- can't borrow a badge.
 local roster = {}
+
+local function AddRegion(lists, region, legendary)
+    local list = region and lists and lists[region]
+    if not list then return end
+    for guid, entry in pairs(list) do
+        if legendary then entry.tier = "legendary" end
+        roster[guid] = entry
+    end
+end
 
 local function BuildRoster()
     wipe(roster)
     local region = GetCurrentRegion and GetCurrentRegion()
-    local patrons = PATRONS and region and ns.BADGE_PATRONS and ns.BADGE_PATRONS[region]
-    if patrons then
-        for guid, entry in pairs(patrons) do
-            entry.tier = "legendary"
-            roster[guid] = entry
-        end
+    local before = region and RENUMBERED[region]
+    if PATRONS then
+        AddRegion(ns.BADGE_PATRONS, before, true)
+        AddRegion(ns.BADGE_PATRONS, region, true)
     end
-    local staff = region and ns.BADGE_STAFF and ns.BADGE_STAFF[region]
-    if staff then
-        for guid, entry in pairs(staff) do roster[guid] = entry end  -- staff wins
-    end
+    AddRegion(ns.BADGE_STAFF, before)
+    AddRegion(ns.BADGE_STAFF, region)
 end
 BuildRoster()
 
@@ -120,8 +141,6 @@ local function EntryOf(guid)
     return roster[guid]
 end
 
--- Preview and test toasts are for the team only, so nobody can screenshot a badge they
--- don't have. Any region counts: a preview only ever shows on your own screen.
 local function IsStaff(guid)
     for _, list in pairs(ns.BADGE_STAFF or {}) do
         if list[guid] then return true end
@@ -145,15 +164,9 @@ local function SinceOf(entry)
     local year, month = since:match("^(%d%d%d%d)%-(%d%d)$")
     month = year and MONTHS[tonumber(month)]
     if not month then return nil end
-    return "Supporter since " .. month .. " " .. year
+    return TEXT_SINCE:format(month, year)
 end
 
--------------------------------------------------------------------------------
---  Chat: the icon goes after the sender's name.
---  Blizzard skips this filter when the name is secret, so restricted chat stays untouched.
--------------------------------------------------------------------------------
--- Chat line -> sender GUID, so hovering a name finds its badge. A ring of reused slots: no
--- table per message, and the oldest line is forgotten first.
 local guidByLine, lineAt, nextSlot = {}, {}, 1
 
 local function Remember(lineID, guid)
@@ -163,7 +176,6 @@ local function Remember(lineID, guid)
     nextSlot = nextSlot % CACHE_SIZE + 1
 end
 
--- The badge goes after the name, so every name in chat starts where it would without one.
 local function DecorateName(_, name, _, _, _, _, _, _, _, _, _, _, lineID, guid)
     local tier = TierOf(EntryOf(guid))
     if not tier then return name end
@@ -171,23 +183,19 @@ local function DecorateName(_, name, _, _, _, _, _, _, _, _, _, _, lineID, guid)
     return name .. " " .. tier.markup
 end
 
--------------------------------------------------------------------------------
---  Shared chrome for the card and the toast: panel, tier border and top bar, and the big
---  logo with its glow.
--------------------------------------------------------------------------------
 local function Chrome(frame, iconSize)
-    local bg = ns.Solid(frame, "BACKGROUND", T.bg, 0.97)
+    local bg = ns.Solid(frame, "BACKGROUND", T.bg, CHROME.bgAlpha)
     bg:SetAllPoints()
     frame.border = ns.Border(frame)
 
     frame.bar = frame:CreateTexture(nil, "ARTWORK")
-    frame.bar:SetPoint("TOPLEFT", 1, -1)
-    frame.bar:SetPoint("TOPRIGHT", -1, -1)
-    frame.bar:SetHeight(2)
+    frame.bar:SetPoint("TOPLEFT", CHROME.barInset, -CHROME.barInset)
+    frame.bar:SetPoint("TOPRIGHT", -CHROME.barInset, -CHROME.barInset)
+    frame.bar:SetHeight(CHROME.barH)
     frame.bar:SetColorTexture(1, 1, 1, 1)
 
     frame.glow = frame:CreateTexture(nil, "ARTWORK")
-    frame.glow:SetSize(iconSize * 1.3, iconSize * 1.3)
+    frame.glow:SetSize(iconSize * CHROME.glowGrow, iconSize * CHROME.glowGrow)
     frame.glow:SetBlendMode("ADD")
 
     frame.icon = frame:CreateTexture(nil, "OVERLAY")
@@ -197,108 +205,109 @@ end
 
 local function Paint(frame, tier)
     local c = tier.color
-    frame.border:SetColor(c.r, c.g, c.b, 0.9)
+    frame.border:SetColor(c.r, c.g, c.b, CHROME.edgeAlpha)
     frame.bar:SetGradient("HORIZONTAL", CreateColor(c.r, c.g, c.b, 1), CreateColor(c.r, c.g, c.b, 0))
     frame.glow:SetTexture(tier.large)
     frame.icon:SetTexture(tier.large)
 end
 
--------------------------------------------------------------------------------
---  The card shown while you hover a badged name
--------------------------------------------------------------------------------
 local card
 
--- A soft band of light that crosses the logo every few seconds, clipped to its shape.
 local function AddShine(frame)
     frame.mask = frame:CreateMaskTexture()
     frame.mask:SetAllPoints(frame.icon)
     frame.shines = {}
-    for i = 1, 2 do
+    for i = 1, SHINE.bands do
         local band = frame:CreateTexture(nil, "OVERLAY", nil, 2)
-        band:SetSize(12, 90)
+        band:SetSize(SHINE.w, SHINE.h)
         band:SetColorTexture(1, 1, 1, 1)
         band:SetBlendMode("ADD")
         band:AddMaskTexture(frame.mask)
         if i == 1 then
             band:SetPoint("RIGHT", frame.icon, "LEFT", 0, 0)
-            band:SetGradient("HORIZONTAL", CreateColor(1, 1, 1, 0), CreateColor(1, 1, 1, 0.45))
+            band:SetGradient("HORIZONTAL", CreateColor(1, 1, 1, 0), CreateColor(1, 1, 1, SHINE.alpha))
         else
             band:SetPoint("LEFT", frame.shines[1], "RIGHT", 0, 0)
-            band:SetGradient("HORIZONTAL", CreateColor(1, 1, 1, 0.45), CreateColor(1, 1, 1, 0))
+            band:SetGradient("HORIZONTAL", CreateColor(1, 1, 1, SHINE.alpha), CreateColor(1, 1, 1, 0))
         end
         local sweep = band:CreateAnimationGroup()
         sweep:SetLooping("REPEAT")
         local move = sweep:CreateAnimation("Translation")
-        move:SetOffset(110, 0)
-        move:SetDuration(0.9)
-        move:SetStartDelay(0.3)
-        move:SetEndDelay(2.4)
+        move:SetOffset(SHINE.travel, 0)
+        move:SetDuration(SHINE.duration)
+        move:SetStartDelay(SHINE.delay)
+        move:SetEndDelay(SHINE.rest)
         move:SetSmoothing("IN_OUT")
         band.sweep = sweep
         frame.shines[i] = band
     end
 end
 
--- Where the card's lines start: right of the logo, under the top bar.
-local CARD_TEXT_LEFT, CARD_TEXT_TOP = 110, 16
-
-local function BuildCard()
-    card = CreateFrame("Frame", "NaowhForeverBadgeCard", UIParent)
-    card:SetFrameStrata("TOOLTIP")
-    card:SetWidth(360)
-    card:SetClampedToScreen(true)
-    card:Hide()
-    Chrome(card, 80)
-    card.glow:SetPoint("LEFT", 2, 0)
-    AddShine(card)
-
-    card.pulse = card.glow:CreateAnimationGroup()
-    card.pulse:SetLooping("BOUNCE")
-    local fade = card.pulse:CreateAnimation("Alpha")
-    fade:SetFromAlpha(0.2)
-    fade:SetToAlpha(0.75)
-    fade:SetDuration(1.1)
+local function Pulse(glow)
+    local pulse = glow:CreateAnimationGroup()
+    pulse:SetLooping("BOUNCE")
+    local fade = pulse:CreateAnimation("Alpha")
+    fade:SetFromAlpha(CARD.pulseFrom)
+    fade:SetToAlpha(CARD.pulseTo)
+    fade:SetDuration(CARD.pulseTime)
     fade:SetSmoothing("IN_OUT")
-    local grow = card.pulse:CreateAnimation("Scale")
-    grow:SetScaleFrom(0.94, 0.94)
-    grow:SetScaleTo(1.06, 1.06)
-    grow:SetDuration(1.1)
+    local grow = pulse:CreateAnimation("Scale")
+    grow:SetScaleFrom(CARD.shrink, CARD.shrink)
+    grow:SetScaleTo(CARD.grow, CARD.grow)
+    grow:SetDuration(CARD.pulseTime)
     grow:SetSmoothing("IN_OUT")
-    card:SetScript("OnShow", function(self)
-        self.pulse:Play()
-        for i = 1, #self.shines do self.shines[i].sweep:Play() end
-    end)
-    card:SetScript("OnHide", function(self)
-        self.pulse:Stop()
-        for i = 1, #self.shines do self.shines[i].sweep:Stop() end
-    end)
-
-    -- The lines, each under the last, their letters on one left edge (ns.FontInset): each
-    -- is moved by the difference between its size's inset and the one above it.
-    local function Line(size, color, above, aboveSize, gap)
-        local line = ns.Font(card, size, nil, color)
-        if above then
-            line:SetPoint("TOPLEFT", above, "BOTTOMLEFT", ns.FontInset(aboveSize) - ns.FontInset(size), -gap)
-        else
-            line:SetPoint("TOPLEFT", CARD_TEXT_LEFT - ns.FontInset(size), -CARD_TEXT_TOP)
-        end
-        return line
-    end
-    card.brand = Line(10, T.muted)
-    card.brand:SetText("NAOWH FOREVER")
-    card.title = Line(19, nil, card.brand, 10, 4)
-    card.player = Line(13, nil, card.title, 19, 4)
-    card.about = Line(11, T.muted, card.player, 13, 6)
-    card.about:SetWidth(238)
-    card.about:SetJustifyH("LEFT")
-    card.since = Line(10, nil, card.about, 11, 6)
-
-    card.site = ns.Font(card, 10, nil, T.accentSoft)
-    card.site:SetPoint("BOTTOMRIGHT", -10, 8)
-    card.site:SetText("naowh.gg")
+    return pulse
 end
 
--- The card for a roster entry (or a preview's), at the cursor.
+local function OnCardShow(self)
+    self.pulse:Play()
+    for i = 1, #self.shines do self.shines[i].sweep:Play() end
+end
+
+local function OnCardHide(self)
+    self.pulse:Stop()
+    for i = 1, #self.shines do self.shines[i].sweep:Stop() end
+end
+
+local function CardLine(frame, size, color, above, aboveSize, gap)
+    local line = ns.Font(frame, size, nil, color)
+    if above then
+        line:SetPoint("TOPLEFT", above, "BOTTOMLEFT", ns.FontInset(aboveSize) - ns.FontInset(size), -gap)
+    else
+        line:SetPoint("TOPLEFT", CARD.textLeft - ns.FontInset(size), -CARD.textTop)
+    end
+    return line
+end
+
+local function CardLines(frame)
+    frame.brand = CardLine(frame, CARD.brandSize, T.muted)
+    frame.brand:SetText(TEXT_BRAND)
+    frame.title = CardLine(frame, CARD.titleSize, nil, frame.brand, CARD.brandSize, CARD.titleGap)
+    frame.player = CardLine(frame, CARD.playerSize, nil, frame.title, CARD.titleSize, CARD.titleGap)
+    frame.about = CardLine(frame, CARD.aboutSize, T.muted, frame.player, CARD.playerSize, CARD.aboutGap)
+    frame.about:SetWidth(CARD.aboutW)
+    frame.about:SetJustifyH("LEFT")
+    frame.since = CardLine(frame, CARD.sinceSize, nil, frame.about, CARD.aboutSize, CARD.aboutGap)
+    frame.site = ns.Font(frame, CARD.siteSize, nil, T.accentSoft)
+    frame.site:SetPoint("BOTTOMRIGHT", -CARD.siteX, CARD.siteY)
+    frame.site:SetText(TEXT_SITE)
+end
+
+local function BuildCard()
+    card = CreateFrame("Frame", CARD.name, UIParent)
+    card:SetFrameStrata("TOOLTIP")
+    card:SetWidth(CARD.w)
+    card:SetClampedToScreen(true)
+    card:Hide()
+    Chrome(card, CARD.icon)
+    card.glow:SetPoint("LEFT", CARD.glowX, 0)
+    AddShine(card)
+    card.pulse = Pulse(card.glow)
+    card:SetScript("OnShow", OnCardShow)
+    card:SetScript("OnHide", OnCardHide)
+    CardLines(card)
+end
+
 local function ShowEntryCard(entry, playerName)
     local tier = TierOf(entry)
     if not tier then return end
@@ -312,13 +321,13 @@ local function ShowEntryCard(entry, playerName)
     card.about:SetText(tier.about)
     local since = SinceOf(entry)
     card.since:SetText(since or "")
-    card.since:SetTextColor(c.r, c.g, c.b, 0.85)
-    card:SetHeight(since and 136 or 112)
+    card.since:SetTextColor(c.r, c.g, c.b, CARD.sinceAlpha)
+    card:SetHeight(since and CARD.sinceH or CARD.h)
 
     local x, y = GetCursorPosition()
     local scale = UIParent:GetEffectiveScale()
     card:ClearAllPoints()
-    card:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", x / scale + 16, y / scale + 12)
+    card:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", x / scale + CARD.cursorX, y / scale + CARD.cursorY)
     card:Show()
 end
 
@@ -326,8 +335,6 @@ local function ShowCard(guid, playerName)
     ShowEntryCard(EntryOf(guid), playerName)
 end
 
--- Chat frames report hovered links through EventRegistry; a player link reads
--- "player:Name-Realm:lineID:chatType...".
 local function OnLinkEnter(_, _, link)
     if not link or Secret(link) then return end
     local kind, name, lineID = strsplit(":", link)
@@ -340,24 +347,12 @@ local function OnLinkLeave()
     if card then card:Hide() end
 end
 
--------------------------------------------------------------------------------
---  Player tooltips: on the game's tooltip a plate of its own over its top, as wide as it, the
---  badge and the title in the tier's colour, as the hover card has them; on any other, a line.
---  The plate is ours, anchored to the tooltip (never the other way round), and goes when the
---  tooltip hides or moves on to someone else. The tooltip sizes itself after we add to it, so
---  the title is fitted each time the plate's width changes: in full where it fits, else the
---  title alone (the badge says it is Naowh Forever's), never cut off.
--------------------------------------------------------------------------------
-local PLATE_H, PLATE_ICON, PLATE_GAP, PLATE_PAD = 26, 18, 2, 6
 local plate, plateRow
 
 local function HidePlate()
     if plate then plate:Hide() end
 end
 
--- Watched from the plate, not by hooking GameTooltip's scripts: OnTooltipCleared runs in the
--- middle of the game's own tooltip building, and with our hook on it the game's unit colouring
--- was reported failing on secret values as tainted by Naowh Forever.
 local function PlateUpdate()
     if plateRow then
         if not ns.Shared.Roster.Showing(plateRow) then plate:Hide() end
@@ -377,13 +372,13 @@ end
 local function BuildPlate()
     plate = CreateFrame("Frame", nil, UIParent)
     plate:SetFrameStrata("TOOLTIP")
-    plate:SetHeight(PLATE_H)
+    plate:SetHeight(PLATE.h)
     plate:Hide()
-    Chrome(plate, PLATE_ICON)
-    plate.glow:SetPoint("LEFT", PLATE_PAD - 2, 0)
-    plate.title = ns.Font(plate, 12)
-    plate.title:SetPoint("LEFT", plate.icon, "RIGHT", PLATE_PAD, 0)
-    plate.title:SetPoint("RIGHT", -PLATE_PAD, 0)
+    Chrome(plate, PLATE.icon)
+    plate.glow:SetPoint("LEFT", PLATE.pad - PLATE.glowNudge, 0)
+    plate.title = ns.Font(plate, PLATE.titleSize)
+    plate.title:SetPoint("LEFT", plate.icon, "RIGHT", PLATE.pad, 0)
+    plate.title:SetPoint("RIGHT", -PLATE.pad, 0)
     plate.title:SetJustifyH("LEFT")
     plate.title:SetWordWrap(false)
     plate:SetScript("OnSizeChanged", FitTitle)
@@ -396,13 +391,13 @@ local function ShowPlate(tooltip, guid, entry, tier, row)
     Paint(plate, tier)
     local c = tier.color
     local title = TitleOf(entry, tier)
-    plate.full = tier.label or ("Naowh Forever " .. title)
+    plate.full = tier.label or (TEXT_NAMED .. title)
     plate.short = not tier.label and title or nil
     FitTitle()
     plate.title:SetTextColor(c.r, c.g, c.b, 1)
     plate:ClearAllPoints()
-    plate:SetPoint("BOTTOMLEFT", tooltip, "TOPLEFT", 0, PLATE_GAP)
-    plate:SetPoint("BOTTOMRIGHT", tooltip, "TOPRIGHT", 0, PLATE_GAP)
+    plate:SetPoint("BOTTOMLEFT", tooltip, "TOPLEFT", 0, PLATE.gap)
+    plate:SetPoint("BOTTOMRIGHT", tooltip, "TOPRIGHT", 0, PLATE.gap)
     plate:Show()
 end
 
@@ -428,51 +423,52 @@ local function AddRosterPlate(_, guid, _, row, anchor)
     if tier then ShowPlate(anchor, guid, entry, tier, row) end
 end
 
--------------------------------------------------------------------------------
---  Group toast: a supporter joining your group gets a short banner, once per group.
--------------------------------------------------------------------------------
 local toast
 local queueEntry, queueName, queueRaid, queueHead, queueTail = {}, {}, {}, 1, 0
 
-local function BuildToast()
-    toast = CreateFrame("Frame", "NaowhForeverBadgeToast", UIParent)
-    toast:SetFrameStrata("HIGH")
-    toast:SetSize(360, 66)
-    toast:SetPoint("TOP", UIParent, "TOP", 0, -150)
-    toast:Hide()
-    Chrome(toast, 50)
-    toast.glow:SetPoint("LEFT", 2, 0)
-
-    toast.brand = ns.Font(toast, 9, nil, T.muted)
-    toast.brand:SetPoint("TOPLEFT", 74, -12)
-    toast.brand:SetText("NAOWH FOREVER")
-    toast.text = ns.Font(toast, 14)
-    toast.text:SetPoint("TOPLEFT", toast.brand, "BOTTOMLEFT", 0, -3)
-    toast.title = ns.Font(toast, 12)
-    toast.title:SetPoint("TOPLEFT", toast.text, "BOTTOMLEFT", 0, -3)
-
-    toast.life = toast:CreateAnimationGroup()
-    toast.life:SetToFinalAlpha(true)
-    local inFade = toast.life:CreateAnimation("Alpha")
+local function ToastLife(frame)
+    local life = frame:CreateAnimationGroup()
+    life:SetToFinalAlpha(true)
+    local inFade = life:CreateAnimation("Alpha")
     inFade:SetFromAlpha(0)
     inFade:SetToAlpha(1)
-    inFade:SetDuration(0.3)
+    inFade:SetDuration(TOAST.fadeIn)
     inFade:SetOrder(1)
-    local inGrow = toast.life:CreateAnimation("Scale")
-    inGrow:SetScaleFrom(0.92, 0.92)
+    local inGrow = life:CreateAnimation("Scale")
+    inGrow:SetScaleFrom(TOAST.growFrom, TOAST.growFrom)
     inGrow:SetScaleTo(1, 1)
-    inGrow:SetDuration(0.3)
+    inGrow:SetDuration(TOAST.fadeIn)
     inGrow:SetOrder(1)
-    local hold = toast.life:CreateAnimation("Alpha")
+    local hold = life:CreateAnimation("Alpha")
     hold:SetFromAlpha(1)
     hold:SetToAlpha(1)
     hold:SetDuration(TOAST_HOLD)
     hold:SetOrder(2)
-    local outFade = toast.life:CreateAnimation("Alpha")
+    local outFade = life:CreateAnimation("Alpha")
     outFade:SetFromAlpha(1)
     outFade:SetToAlpha(0)
-    outFade:SetDuration(0.6)
+    outFade:SetDuration(TOAST.fadeOut)
     outFade:SetOrder(3)
+    return life
+end
+
+local function BuildToast()
+    toast = CreateFrame("Frame", TOAST.name, UIParent)
+    toast:SetFrameStrata("HIGH")
+    toast:SetSize(TOAST.w, TOAST.h)
+    toast:SetPoint("TOP", UIParent, "TOP", 0, -TOAST.y)
+    toast:Hide()
+    Chrome(toast, TOAST.icon)
+    toast.glow:SetPoint("LEFT", TOAST.glowX, 0)
+
+    toast.brand = ns.Font(toast, TOAST.brandSize, nil, T.muted)
+    toast.brand:SetPoint("TOPLEFT", TOAST.brandX, -TOAST.brandY)
+    toast.brand:SetText(TEXT_BRAND)
+    toast.text = ns.Font(toast, TOAST.textSize)
+    toast.text:SetPoint("TOPLEFT", toast.brand, "BOTTOMLEFT", 0, -TOAST.lineGap)
+    toast.title = ns.Font(toast, TOAST.titleSize)
+    toast.title:SetPoint("TOPLEFT", toast.text, "BOTTOMLEFT", 0, -TOAST.lineGap)
+    toast.life = ToastLife(toast)
 end
 
 local ShowNextToast
@@ -495,7 +491,8 @@ function ShowNextToast()
     end
     Paint(toast, tier)
     local c = tier.color
-    toast.text:SetText((name or (PATRONS and "A supporter" or "A team member")) .. " joined your " .. (raid and "raid" or "party"))
+    toast.text:SetText(TEXT_JOINED:format(name or (PATRONS and TEXT_A_SUPPORTER or TEXT_A_TEAM_MEMBER),
+        raid and TEXT_RAID or TEXT_PARTY))
     toast.title:SetText(TitleOf(entry, tier))
     toast.title:SetTextColor(c.r, c.g, c.b, 1)
     toast:Show()
@@ -504,7 +501,6 @@ function ShowNextToast()
     if kit then PlaySound(kit) end
 end
 
--- Forever names are a first name and a surname; UnitName only gives the first.
 local function FullName(unit)
     local first, surname = UnitFullName(unit)
     if not first or Secret(first) or Secret(surname) then return nil end
@@ -518,18 +514,14 @@ local function QueueToast(entry, name, raid)
     ShowNextToast()
 end
 
--- Unit tokens built once, so a scan makes no strings.
 local PARTY_UNITS, RAID_UNITS = {}, {}
-for i = 1, 4 do PARTY_UNITS[i] = "party" .. i end
-for i = 1, 40 do RAID_UNITS[i] = "raid" .. i end
+for i = 1, PARTY_OTHERS do PARTY_UNITS[i] = "party" .. i end
+for i = 1, RAID_SIZE do RAID_UNITS[i] = "raid" .. i end
 
--- Supporters already announced in this group; forgotten when you leave it.
 local announced = {}
 local playerGUID, bannerOn
 local groupEvents = CreateFrame("Frame")
 
--- Every character you log into, account-wide and by region, so /nf badges id can give one
--- code for your main and all your alts. One write per login.
 local function RememberCharacter()
     local region = GetCurrentRegion and GetCurrentRegion()
     local guid = UnitGUID("player")
@@ -541,15 +533,11 @@ local function RememberCharacter()
     characters[region][guid] = true
 end
 
--- quiet: note who is there without a toast (logging in or reloading inside a group).
--- Guild members see each other every day, so their banner is optional.
 local function InMyGuild(unit)
     local result = UnitIsInMyGuild and UnitIsInMyGuild(unit)
     return result == true and not Secret(result)
 end
 
--- A scan put off until combat ends keeps its quiet, unless a normal one was put off in the
--- same fight: someone who joined mid-fight still gets their banner.
 local deferQuiet
 
 local function ScanGroup(quiet)
@@ -580,7 +568,7 @@ local function ScanGroup(quiet)
     end
 end
 
-groupEvents:SetScript("OnEvent", function(self, event)
+local function OnGroupEvent(self, event)
     if event == "PLAYER_ENTERING_WORLD" then
         self:UnregisterEvent("PLAYER_ENTERING_WORLD")
         playerGUID = UnitGUID("player")
@@ -594,20 +582,12 @@ groupEvents:SetScript("OnEvent", function(self, event)
     else
         ScanGroup(false)
     end
-end)
--- Always on: one event at login, to remember the character for /nf badges id.
+end
+
+groupEvents:SetScript("OnEvent", OnGroupEvent)
 groupEvents:RegisterEvent("PLAYER_ENTERING_WORLD")
 
--------------------------------------------------------------------------------
---  The guild and community member list (Guild & Communities): the badge after each badged
---  member's name, as in chat. The list is Blizzard's, loaded when the window first opens;
---  the badge is the addon's own texture on a row, kept in a side table, set each time the
---  list fills a row (it reuses rows as it scrolls) and hidden when the row is someone else.
--------------------------------------------------------------------------------
-local LIST_BADGE = 14       -- as tall as the list's names
-local LIST_BADGE_GAP = 3    -- the name's end to the badge
-
-local listBadges = setmetatable({}, { __mode = "k" })   -- row -> its badge texture
+local listBadges = setmetatable({}, { __mode = "k" })
 local listOn, listWaiting
 
 local function MemberScroll()
@@ -615,7 +595,6 @@ local function MemberScroll()
     return frame and frame.MemberList and frame.MemberList.ScrollBox
 end
 
--- The row's member, read from Blizzard's own field (never written).
 local function PaintRow(row)
     local info = listOn and row.memberInfo
     local guid = info and info.guid
@@ -629,14 +608,13 @@ local function PaintRow(row)
     if not name then return end
     if not badge then
         badge = row.NameFrame:CreateTexture(nil, "OVERLAY")
-        badge:SetSize(LIST_BADGE, LIST_BADGE)
+        badge:SetSize(LIST.badge, LIST.badge)
         listBadges[row] = badge
     end
     badge:SetTexture(tier.chat)
     badge:ClearAllPoints()
-    -- After the name's text, or at its edge when the list cuts a long name short.
     local width = math.min(name:GetStringWidth(), name:GetWidth())
-    badge:SetPoint("LEFT", name, "LEFT", width + LIST_BADGE_GAP, -BADGE_DROP)
+    badge:SetPoint("LEFT", name, "LEFT", width + LIST.gap, -BADGE_DROP)
     badge:Show()
 end
 
@@ -652,8 +630,6 @@ local function HookList()
     scroll:ForEachFrame(PaintRow)
 end
 
--- On with the chat badges. The list's code loads with the window, so the first time this
--- may wait for it; off, the callback goes and every badge on the list is hidden.
 local function SyncList(on)
     if on == (listOn or false) then return end
     listOn = on
@@ -671,10 +647,6 @@ local function SyncList(on)
     end
 end
 
--------------------------------------------------------------------------------
---  Settings. Each part is registered only while it's on. The name filter needs
---  ChatFrameUtil (Forever 1.60, retail 12.x); without it there are no chat badges or cards.
--------------------------------------------------------------------------------
 local chatOn, cardOn, tooltipHooked
 
 local function Apply()
@@ -690,7 +662,6 @@ local function Apply()
     end
     SyncList(chat)
 
-    -- The card needs the chat badges: it finds its player through the line they wrote.
     local cardWanted = chat and Setting("badgeCard") == true
     if cardWanted ~= (cardOn or false) then
         cardOn = cardWanted
@@ -704,8 +675,6 @@ local function Apply()
         end
     end
 
-    -- A tooltip post-call can't be removed, so it's added the first time the line is wanted
-    -- and checks the setting itself.
     if Setting("badgeTooltip") and not tooltipHooked then
         tooltipHooked = true
         TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Unit, AddTooltipLine)
@@ -717,7 +686,7 @@ local function Apply()
         bannerOn = banner
         if banner then
             groupEvents:RegisterEvent("GROUP_ROSTER_UPDATE")
-            ScanGroup(true)  -- whoever is already in the group doesn't get a banner
+            ScanGroup(true)
         else
             groupEvents:UnregisterEvent("GROUP_ROSTER_UPDATE")
             groupEvents:UnregisterEvent("PLAYER_REGEN_ENABLED")
@@ -726,32 +695,33 @@ local function Apply()
     end
 end
 
-hooksecurefunc(S, "Set", function(key)
+local function OnSettingSet(key)
     if type(key) == "string" and key:find("^badge") then Apply() end
-end)
+end
+
+hooksecurefunc(S, "Set", OnSettingSet)
 hooksecurefunc(ns, "Apply", Apply)
 
--------------------------------------------------------------------------------
---  /nf badges
--------------------------------------------------------------------------------
 local function PreviewEntry(tierKey)
-    if tierKey == "developer" then return { tier = tierKey, title = "Lead Developer" } end
+    if tierKey == "developer" then return { tier = tierKey, title = PREVIEW_TITLE } end
     return { tier = tierKey, since = date("%Y-%m") }
 end
 
--- "90:Player-4613-006EB819,Player-4613-00ABCDEF": the region number (GetCurrentRegion;
--- Forever has its own, not retail's 1 to 5), then this character first. One group per region.
--- Returns the code and how many characters it holds.
+local currentRegion
+
+local function CurrentFirst(a, b)
+    if a == currentRegion or b == currentRegion then return a == currentRegion and b ~= currentRegion end
+    return a < b
+end
+
 local function BadgeCode()
     local characters = ns.AccountSettings().badgeCharacters or {}
     local current = GetCurrentRegion and GetCurrentRegion()
     local me = UnitGUID("player")
     local regions, count = {}, 0
     for region in pairs(characters) do regions[#regions + 1] = region end
-    table.sort(regions, function(a, b)
-        if a == current or b == current then return a == current and b ~= current end
-        return a < b
-    end)
+    currentRegion = current
+    table.sort(regions, CurrentFirst)
     local groups = {}
     for _, region in ipairs(regions) do
         local list = {}
@@ -768,39 +738,35 @@ local function BadgeCode()
     return table.concat(groups, ";"), count
 end
 
--- Naowh's Discord: where a badge is asked for (a support request), and more on the badges.
 local DISCORD = "https://discord.com/invite/naowh"
 ns.NAOWH_DISCORD = DISCORD
 
 local function ShowCode(code, count)
     local UI = ns.UI
-    local dimmer, panel = ns.MakeModal(440, 150, "badgeCode")
-    local head = UI.KeepFont(panel, "head", 14, "OUTLINE")
-    head:SetPoint("TOP", 0, -14)
-    head:SetText("Your badge code")
-    local hint = UI.KeepFont(panel, "hint", 11, nil, T.muted)
-    hint:SetPoint("TOP", head, "BOTTOM", 0, -6)
-    hint:SetWidth(400)   -- two lines at most: the code box sits under it
-    hint:SetText(count .. (count == 1 and " character" or " characters")
-        .. (PATRONS and ". Ctrl+C to copy it, then send it in a support request on Discord to be added."
-            or ". Ctrl+C to copy it, then send it to the team on Discord to be added."))
+    local dimmer, panel = ns.MakeModal(CODE.w, CODE.h, "badgeCode")
+    local head = UI.KeepFont(panel, "head", CODE.headSize, "OUTLINE")
+    head:SetPoint("TOP", 0, -CODE.headY)
+    head:SetText(TEXT_CODE_TITLE)
+    local hint = UI.KeepFont(panel, "hint", CODE.hintSize, nil, T.muted)
+    hint:SetPoint("TOP", head, "BOTTOM", 0, -CODE.hintGap)
+    hint:SetWidth(CODE.textW)
+    hint:SetText(count .. (count == 1 and TEXT_CHARACTER or TEXT_CHARACTERS)
+        .. (PATRONS and TEXT_CODE_SUPPORT or TEXT_CODE_TEAM))
     local box = UI.Keep(panel, "box", ns.NewEditBox)
-    box:SetPoint("TOP", hint, "BOTTOM", 0, -12)
-    box:SetSize(400, 28)
+    box:SetPoint("TOP", hint, "BOTTOM", 0, -CODE.boxGap)
+    box:SetSize(CODE.textW, CODE.boxH)
     box:SetMaxLetters(0)
     box:SetText(code)
-    -- Read only: typing puts the code back, so a stray key can't break it.
     box:SetScript("OnTextChanged", function(self, byUser)
         if byUser then self:SetText(code); self:HighlightText() end
     end)
     box:SetScript("OnEscapePressed", function() dimmer:Hide() end)
-    -- Discord's link to copy beside Close (the game opens no browser): the code first, then it.
-    UI.KeepButton(panel, "discord", "Discord", 96, 26, function()
+    UI.KeepButton(panel, "discord", TEXT_DISCORD, CODE.buttonW, CODE.buttonH, function()
         dimmer:Hide()
-        ns.ShowCopyLine("Naowh's Discord", DISCORD, (TIERS.legendary or TIERS.naowh).large)
-    end):SetPoint("BOTTOM", panel, "BOTTOM", -52, 14)
-    UI.KeepButton(panel, "close", "Close", 96, 26, function() dimmer:Hide() end)
-        :SetPoint("BOTTOM", panel, "BOTTOM", 52, 14)
+        ns.ShowCopyLine(TEXT_DISCORD_TITLE, DISCORD, (TIERS.legendary or TIERS.naowh).large)
+    end):SetPoint("BOTTOM", panel, "BOTTOM", -CODE.buttonShift, CODE.pad)
+    UI.KeepButton(panel, "close", TEXT_CLOSE, CODE.buttonW, CODE.buttonH, function() dimmer:Hide() end)
+        :SetPoint("BOTTOM", panel, "BOTTOM", CODE.buttonShift, CODE.pad)
     dimmer:Show()
     box:SetFocus()
     box:HighlightText()
@@ -813,36 +779,29 @@ function ns.BadgesCommand(arg)
     local previewTier = word == "preview" and PREVIEW_TIER or word:match("^preview (%a+)$")
     local staffOnly = previewTier or word == "toast"
     if staffOnly and not IsStaff(UnitGUID("player")) then
-        ns.Print("Badge previews are for the Naowh Forever team.")
+        ns.Print(TEXT_STAFF_ONLY)
     elseif word == "id" then
         RememberCharacter()
         local code, count = BadgeCode()
         ShowCode(code, count)
     elseif previewTier == "none" then
-        -- You as a player with no badge, to see what everyone else sees (no badge on your name
-        -- or your character panel): until the reload, or preview off.
         previewEntry = false
         previewGUID = UnitGUID("player")
-        ns.Print("Preview on: you wear no badge until you reload, as a player without one sees it.")
+        ns.Print(TEXT_PREVIEW_NONE)
     elseif previewTier and TIERS[previewTier] then
         previewEntry = PreviewEntry(previewTier)
         previewGUID = UnitGUID("player")
-        ns.Print("Preview on: your name wears the " .. TierOf(previewEntry).title
-            .. " badge until you reload. Say something to see it.")
+        ns.Print(TEXT_PREVIEW_ON:format(TierOf(previewEntry).title))
     elseif word == "preview off" then
         previewGUID, previewEntry = nil, nil
-        ns.Print("Preview off.")
+        ns.Print(TEXT_PREVIEW_OFF)
     elseif word == "toast" then
         QueueToast(previewEntry or PreviewEntry(PREVIEW_TIER), FullName("player"), IsInRaid())
     else
-        ns.Print("/nf badges id | preview [" .. (PATRONS and "legendary|" or "")
-            .. "moderator|developer|ellesmere|naowh|none] | preview off | toast")
+        ns.Print(TEXT_USAGE:format(PATRONS and TEXT_USAGE_PATRON or ""))
     end
 end
 
--- For the other modules (the character panel's badge): the badge a character wears, as its
--- tier ({ title, label, about, color, large }) and roster entry, nil for none; the tiers; a
--- patron's "Supporter since" line; and the badge code's card.
 function ns.BadgeOf(guid)
     local entry = EntryOf(guid)
     local tier = TierOf(entry)
@@ -857,8 +816,6 @@ function ns.ShowBadgeCode()
     ShowCode(BadgeCode())
 end
 
--- The card people see when they hover a badged name, for a tier's badge on playerName, as a
--- preview.
 function ns.ShowBadgeCard(tierKey, playerName)
     ShowEntryCard(PreviewEntry(tierKey), playerName)
 end
@@ -867,7 +824,6 @@ function ns.HideBadgeCard()
     if card then card:Hide() end
 end
 
--- For the offline test.
 ns._BadgesTest = { DecorateName = DecorateName, ListBadges = listBadges, OnLinkEnter = OnLinkEnter, TIERS = TIERS,
     guidByLine = guidByLine, CACHE_SIZE = CACHE_SIZE, SinceOf = SinceOf,
     BuildRoster = BuildRoster, BadgeCode = BadgeCode,
@@ -884,7 +840,7 @@ local function BadgesSummary(store)
     for i = 1, #BADGE_KEYS do
         if store.Get(BADGE_KEYS[i]) then on = on + 1 end
     end
-    return ("%d of %d on"):format(on, #BADGE_KEYS)
+    return TEXT_SUMMARY:format(on, #BADGE_KEYS)
 end
 
 Settings.Page("QoL/Character", S):Card({

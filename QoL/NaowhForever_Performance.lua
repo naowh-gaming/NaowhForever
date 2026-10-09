@@ -1,9 +1,20 @@
--------------------------------------------------------------------------------
---  NaowhForever_Performance.lua -- the QoL Performance page: NaowhQOL's recommended game settings.
---  The game keeps those per computer, so the values they replaced live in the account store.
--------------------------------------------------------------------------------
+-- NaowhForever_Performance.lua: the QoL Performance page, NaowhQOL's recommended game settings.
 local ns = _G.NaowhForever
 local UI = ns.UI
+local Group = ns.Shared.Settings.Group
+
+local SAME_WITHIN = 0.001
+local SPELL_QUEUE = "SpellQueueWindow"
+local SPELL_QUEUE_MAX = 400
+
+local TEXT_COMBAT = "Game settings can only be changed out of combat."
+local TEXT_RELOAD = "Some settings only take effect after a reload. Reload UI now?"
+local TEXT_APPLIED = "Applied %d recommended setting%s. Restore All puts yours back."
+local TEXT_RESTORED = "Restored %d setting%s."
+local TEXT_NOTHING_BACK = " was already at this value before, so there is nothing to put back."
+local TEXT_RESTORE_ALL = "Put back every setting this page has changed?"
+local TEXT_ROW_HELP = "Recommended: %s.|n|nOn sets it; off puts back the value you had before. Now: %s."
+local TEXT_SUMMARY = "%d of %d recommended settings in use"
 
 local CATEGORIES = {
     { name = "Render & Display", cvars = {
@@ -82,6 +93,12 @@ local CATEGORIES = {
     } },
 }
 
+local cvarRows, rows = {}, {}
+
+local function Plural(count)
+    return count == 1 and "" or "s"
+end
+
 local function Backups()
     local account = ns.AccountSettings()
     account.cvarBackups = account.cvarBackups or {}
@@ -95,13 +112,13 @@ end
 local function AtValue(cvar, value)
     local current = C_CVar.GetCVar(cvar)
     local a, b = tonumber(current), tonumber(value)
-    if a and b then return math.abs(a - b) < 0.001 end
+    if a and b then return math.abs(a - b) < SAME_WITHIN end
     return current == value
 end
 
 local function CanChange()
     if InCombatLockdown() then
-        ns.Print("Game settings can only be changed out of combat.")
+        ns.Print(TEXT_COMBAT)
         return false
     end
     return true
@@ -123,7 +140,7 @@ local function Restore(cvar)
 end
 
 local function OfferReload()
-    ns.ConfirmReload("Some settings only take effect after a reload. Reload UI now?")
+    ns.ConfirmReload(TEXT_RELOAD)
 end
 
 local function ApplyAll()
@@ -134,7 +151,7 @@ local function ApplyAll()
             if Exists(c[1]) and SetRecommended(c[1], c[2]) then count = count + 1 end
         end
     end
-    ns.Print(("Applied %d recommended setting%s. Restore All puts yours back."):format(count, count == 1 and "" or "s"))
+    ns.Print(TEXT_APPLIED:format(count, Plural(count)))
     UI:RefreshPage(true)
     if count > 0 then OfferReload() end
 end
@@ -145,35 +162,36 @@ local function RestoreAll()
     for cvar in pairs(Backups()) do
         if Restore(cvar) then count = count + 1 end
     end
-    ns.Print(("Restored %d setting%s."):format(count, count == 1 and "" or "s"))
+    ns.Print(TEXT_RESTORED:format(count, Plural(count)))
     UI:RefreshPage(true)
     if count > 0 then OfferReload() end
 end
 
 local function SetOne(cvar, value, name, on)
-    if CanChange() then
-        if on then
-            SetRecommended(cvar, value)
-        elseif not Restore(cvar) then
-            ns.Print(name .. " was already at this value before, so there is nothing to put back.")
-        end
+    if not CanChange() then
+        UI:RefreshPage(true)
+        return
+    end
+    if on then
+        SetRecommended(cvar, value)
+    elseif not Restore(cvar) then
+        ns.Print(name .. TEXT_NOTHING_BACK)
     end
     UI:RefreshPage(true)
 end
 
 local function SpellQueueGet()
-    return tonumber(C_CVar.GetCVar("SpellQueueWindow")) or 400
+    return tonumber(C_CVar.GetCVar(SPELL_QUEUE)) or SPELL_QUEUE_MAX
 end
 
 local function SpellQueueSet(v)
-    C_CVar.SetCVar("SpellQueueWindow", v)
+    C_CVar.SetCVar(SPELL_QUEUE, v)
 end
 
 local function ConfirmRestoreAll()
-    ns.Confirm("Put back every setting this page has changed?", RestoreAll)
+    ns.Confirm(TEXT_RESTORE_ALL, RestoreAll)
 end
 
-local Group = ns.Shared.Settings.Group
 local HEAD = {
     Group("Recommended"),
     { label = "Apply All Recommended", buttonText = "Apply All", button = ApplyAll,
@@ -191,8 +209,6 @@ local HEAD = {
 }
 for _, cat in ipairs(CATEGORIES) do cat.group = Group(cat.name) end
 
-local cvarRows, rows = {}, {}
-
 local function CVarRow(c)
     local row = cvarRows[c]
     if not row then
@@ -202,8 +218,7 @@ local function CVarRow(c)
             set = function(on) SetOne(cvar, value, name, on) end }
         cvarRows[c] = row
     end
-    row.help = ("Recommended: %s.|n|nOn sets it; off puts back the value you had before. Now: %s."):format(
-        c[4], tostring(C_CVar.GetCVar(c[1])))
+    row.help = TEXT_ROW_HELP:format(c[4], tostring(C_CVar.GetCVar(c[1])))
     return row
 end
 
@@ -235,7 +250,7 @@ local function Summary()
             end
         end
     end
-    return ("%d of %d recommended settings in use"):format(on, total)
+    return TEXT_SUMMARY:format(on, total)
 end
 
 ns.Shared.Settings.Page("QoL/System", ns.QoLSettings):Card({

@@ -1,12 +1,9 @@
--------------------------------------------------------------------------------
---  NaowhForever_LootFeed.lua -- the QoL loot feed and gold per hour counter. Forever never loads
---  Blizzard_Deprecated*, so item and coin calls go through C_Item and C_CurrencyInfo. The card's
---  preview edits in place: its edges, wheel, clicks and line menu set the settings. Style None
---  leaves the lines without their fill and edge.
--------------------------------------------------------------------------------
+-- NaowhForever_LootFeed.lua: the QoL loot feed, gold per hour, and quick loot with the loot window out of sight.
 local ns = _G.NaowhForever
+
 local S = ns.QoLSettings
 local Parts = ns.Shared.Parts
+local T = ns.THEME
 
 local COIN_ICON = "Interface\\Icons\\INV_Misc_Coin_02"
 local XP_ICON = "Interface\\Icons\\INV_Misc_Book_11"
@@ -18,26 +15,58 @@ local STYLES = {
     light = { bg = { 0.32, 0.23, 0.14, 0.7 }, edge = { 0.12, 0.08, 0.04, 1 } },
 }
 
--- What a theme changes in a row, with the default theme left as it was: the dark style's
--- fill follows Background and the light style's fill and edge follow Panels and Borders &
--- Lines, each at the same opacity (ns.ThemeTint returns these literals when the theme did
--- not change that color); the glow follows Accent.
 local DARK_BG = { r = 0.05, g = 0.05, b = 0.06 }
 local LIGHT_BG = { r = 0.32, g = 0.23, b = 0.14 }
 local LIGHT_EDGE = { r = 0.12, g = 0.08, b = 0.04 }
 local GLOW = { r = 1, g = 0.8, b = 0.3 }
+local GPH_RGB = { r = 1, g = 0.82, b = 0 }
+local ICON_CROP_LOW, ICON_CROP_HIGH = ns.QoLConstants.ICON_CROP, ns.QoLConstants.ICON_CROP_HIGH
+local ICON_INSET = 1
+local GLOW_ALPHA, GLOW_W = 0.7, 12
+local BAGS_SIZE, COIN_SIZE, VALUE_SIZE, NAME_SIZE, GPH_SIZE = 11, 12, 12, 13, 13
+local BAGS_INSET = 2
+local NAME_GAP, NAME_VALUE_GAP = 10, 8
+local MIN_BAGS_SIZE = 8
+local COPPER_PER_SILVER, COPPER_PER_GOLD = 100, 10000
+local SEPARATE_FROM = 1000
+local HOUR = 3600
+local MIN_HOURS = 1 / 60
+local APPEAR_TIME, FADE_TIME = 0.15, 0.4
+local LOOT_STEP, LOOT_GRACE = 0.05, 1
+local SHRUNK = 0.001
+local DEFAULT_X, DEFAULT_Y = -469, -141
+local TSM_SOURCE = "dbminbuyout"
+local EVENTS = { "CHAT_MSG_LOOT", "CHAT_MSG_MONEY", "CHAT_MSG_COMBAT_XP_GAIN",
+    "CHAT_MSG_COMBAT_FACTION_CHANGE", "QUEST_TURNED_IN", "BAG_UPDATE_DELAYED" }
+
+local TEXT_COINS = "Coins"
+local TEXT_PER_HOUR = "%dg %ds %dc/Hr"
+local TEXT_ITEM = "|c%s%s|r |cff20ff20x%d|r"
+local TEXT_QUEST = "Quest Complete"
+local TEXT_QUEST_XP = " XP|r"
+local TEXT_REP = " Rep|r"
+local TEXT_MOVER = "Loot Feed"
+local TEXT_FADES = "Each line fades out after %ss."
+local TEXT_SUMMARY = "%d lines, %s%s"
+local TEXT_NO_BACKGROUND, TEXT_LIGHT, TEXT_DARK = "no background", "light", "dark"
+local TEXT_GPH = ", gold per hour"
+local TEXT_EDIT = "Edit the Feed"
+local TEXT_LINES_SHOW = "Lines Show"
+local TEXT_GLOW = "Glow"
 
 local feed, gph, unlocked
 local rows, pool = {}, {}
-local coinRow   -- the coin line on screen, which later coin loot adds to
+local coinRow
 local sessionStart, sessionValue = nil, 0
+local lootHidden, lootScale, lootHooked
+local lootGen = 0
+local events = CreateFrame("Frame")
+local lootWatch = CreateFrame("Frame")
 
 local function On()
     return S.Get("enabled") and S.Get("lootFeed")
 end
 
--- "You receive loot: %sx%d." and friends, turned into patterns once. Pushed covers quest
--- rewards and anything handed straight to the bags.
 local PATTERNS = {}
 for _, fmt in ipairs({ LOOT_ITEM_SELF_MULTIPLE, LOOT_ITEM_SELF,
                        LOOT_ITEM_PUSHED_SELF_MULTIPLE, LOOT_ITEM_PUSHED_SELF }) do
@@ -46,19 +75,22 @@ for _, fmt in ipairs({ LOOT_ITEM_SELF_MULTIPLE, LOOT_ITEM_SELF,
     PATTERNS[#PATTERNS + 1] = "^" .. p .. "$"
 end
 
--- "%d Gold" and so on, for reading the amount out of a money message.
 local GOLD = GOLD_AMOUNT:gsub("%%d", "(%%d+)")
 local SILVER = SILVER_AMOUNT:gsub("%%d", "(%%d+)")
 local COPPER = COPPER_AMOUNT:gsub("%%d", "(%%d+)")
 
--- "Reputation with %s increased by %d."
 local REP_PATTERN = "^" .. FACTION_STANDING_INCREASED:gsub("([%(%)%.%+%-%*%?%[%]%^%$])", "%%%1")
     :gsub("%%s", "(.+)"):gsub("%%d", "(%%d+)") .. "$"
--- Experience with no source named ("You gain 6200 experience."), as a quest turn-in sends it.
 local UNNAMED_XP = COMBATLOG_XPGAIN_FIRSTPERSON_UNNAMED and "^" .. COMBATLOG_XPGAIN_FIRSTPERSON_UNNAMED
     :gsub("([%(%)%.%+%-%*%?%[%]%^%$])", "%%%1"):gsub("%%d", "(%%d+)")
 
 local COIN_TEXTURES = { "Interface\\MoneyFrame\\UI-GoldIcon", "Interface\\MoneyFrame\\UI-SilverIcon", "Interface\\MoneyFrame\\UI-CopperIcon" }
+local SAMPLE_PANTS, SAMPLE_CLOTH, SAMPLE_COINS, SAMPLE_PER_HOUR = 94, 39, 31250, 412550
+local SAMPLE_PANTS_BAGS, SAMPLE_CLOTH_BAGS, SAMPLE_CLOTH_BANK = 1, 7, 27
+local PANTS_ICON = "Interface\\Icons\\INV_Pants_04"
+local CLOTH_ICON = "Interface\\Icons\\INV_Fabric_Linen_01"
+local SAMPLE_PANTS_NAME = "|cff1eff00Journeyman's Pants|r |cff20ff20x1|r"
+local SAMPLE_CLOTH_NAME = "|cffffffffLinen Cloth|r |cff20ff20x3|r"
 local VALUE_INSET, COIN_GAP, PAIR_GAP = 8, 2, 5
 local GPH_GAP = 10
 
@@ -71,32 +103,32 @@ function Look.NewRow(parent)
     row.border = ns.Border(row)
 
     row.icon = row:CreateTexture(nil, "ARTWORK")
-    row.icon:SetPoint("LEFT", 1, 0)
-    row.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+    row.icon:SetPoint("LEFT", ICON_INSET, 0)
+    row.icon:SetTexCoord(ICON_CROP_LOW, ICON_CROP_HIGH, ICON_CROP_LOW, ICON_CROP_HIGH)
 
     row.glow = row:CreateTexture(nil, "ARTWORK")
     row.glow:SetColorTexture(1, 1, 1, 1)
     local glow = ns.ThemeTint("accent", GLOW)
-    row.glow:SetGradient("HORIZONTAL", CreateColor(glow.r, glow.g, glow.b, 0.7), CreateColor(glow.r, glow.g, glow.b, 0))
+    row.glow:SetGradient("HORIZONTAL", CreateColor(glow.r, glow.g, glow.b, GLOW_ALPHA), CreateColor(glow.r, glow.g, glow.b, 0))
     row.glow:SetPoint("TOPLEFT", row.icon, "TOPRIGHT", 0, 0)
     row.glow:SetPoint("BOTTOMLEFT", row.icon, "BOTTOMRIGHT", 0, 0)
-    row.glow:SetWidth(12)
+    row.glow:SetWidth(GLOW_W)
 
-    row.bags = ns.Font(row, 11, "OUTLINE")
-    row.bags:SetPoint("BOTTOMLEFT", row.icon, "BOTTOMLEFT", 2, 2)
+    row.bags = ns.Font(row, BAGS_SIZE, "OUTLINE")
+    row.bags:SetPoint("BOTTOMLEFT", row.icon, "BOTTOMLEFT", BAGS_INSET, BAGS_INSET)
 
     row.coins = {}
-    for i = 1, 3 do
-        local pair = { icon = row:CreateTexture(nil, "ARTWORK"), amount = ns.Font(row, 12, "OUTLINE") }
+    for i = 1, #COIN_TEXTURES do
+        local pair = { icon = row:CreateTexture(nil, "ARTWORK"), amount = ns.Font(row, COIN_SIZE, "OUTLINE") }
         pair.icon:SetTexture(COIN_TEXTURES[i])
         pair.amount:SetPoint("RIGHT", pair.icon, "LEFT", -COIN_GAP, 0)
         row.coins[i] = pair
     end
-    row.value = ns.Font(row, 12, "OUTLINE")
+    row.value = ns.Font(row, VALUE_SIZE, "OUTLINE")
     row.value:SetPoint("RIGHT", -VALUE_INSET, 0)
-    row.name = ns.Font(row, 13, "OUTLINE")
-    row.name:SetPoint("LEFT", row.icon, "RIGHT", 10, 0)
-    row.name:SetPoint("RIGHT", row.value, "LEFT", -8, 0)
+    row.name = ns.Font(row, NAME_SIZE, "OUTLINE")
+    row.name:SetPoint("LEFT", row.icon, "RIGHT", NAME_GAP, 0)
+    row.name:SetPoint("RIGHT", row.value, "LEFT", -NAME_VALUE_GAP, 0)
     row.name:SetJustifyH("LEFT")
     row.name:SetWordWrap(false)
     return row
@@ -104,7 +136,7 @@ end
 
 function Look.Size(row, w, h)
     row:SetSize(w, h)
-    row.icon:SetSize(h - 2, h - 2)
+    row.icon:SetSize(h - 2 * ICON_INSET, h - 2 * ICON_INSET)
 end
 
 function Look.StyleRow(row)
@@ -132,7 +164,7 @@ function Look.StyleRow(row)
         Parts.HudFont(pair.amount, font, size - 1, outline, shadow)
         pair.icon:SetSize(size - 1, size - 1)
     end
-    Parts.HudFont(row.bags, font, math.max(8, size - 2), outline, shadow)
+    Parts.HudFont(row.bags, font, math.max(MIN_BAGS_SIZE, size - 2), outline, shadow)
 end
 
 local function CoinPair(pair, amount, anchor)
@@ -147,7 +179,7 @@ local function CoinPair(pair, amount, anchor)
     else
         pair.icon:SetPoint("RIGHT", pair.icon:GetParent(), "RIGHT", -VALUE_INSET, 0)
     end
-    pair.amount:SetText(amount >= 1000 and BreakUpLargeNumbers(amount) or amount)
+    pair.amount:SetText(amount >= SEPARATE_FROM and BreakUpLargeNumbers(amount) or amount)
     pair.icon:Show()
     pair.amount:Show()
     return pair.amount
@@ -155,9 +187,9 @@ end
 
 function Look.Coins(row, copper)
     copper = copper or 0
-    local left = CoinPair(row.coins[3], copper % 100, nil)
-    left = CoinPair(row.coins[2], math.floor(copper / 100) % 100, left)
-    left = CoinPair(row.coins[1], math.floor(copper / 10000), left)
+    local left = CoinPair(row.coins[3], copper % COPPER_PER_SILVER, nil)
+    left = CoinPair(row.coins[2], math.floor(copper / COPPER_PER_SILVER) % COPPER_PER_SILVER, left)
+    left = CoinPair(row.coins[1], math.floor(copper / COPPER_PER_GOLD), left)
     row.value:ClearAllPoints()
     if left then
         row.value:SetPoint("RIGHT", left, "LEFT", -PAIR_GAP, 0)
@@ -196,14 +228,15 @@ function Look.GPHFont(text)
 end
 
 function Look.GPH(text, newest, per)
-    text:SetText(("%dg %ds %dc/Hr"):format(math.floor(per / 10000), math.floor(per / 100) % 100, per % 100))
+    text:SetText(TEXT_PER_HOUR:format(math.floor(per / COPPER_PER_GOLD), math.floor(per / COPPER_PER_SILVER) % COPPER_PER_SILVER,
+        per % COPPER_PER_SILVER))
     text:ClearAllPoints()
     text:SetPoint("LEFT", newest, "RIGHT", GPH_GAP, 0)
 end
 
 local function PerHour()
-    local hours = (GetTime() - sessionStart) / 3600
-    return math.floor(sessionValue / math.max(hours, 1 / 60))
+    local hours = (GetTime() - sessionStart) / HOUR
+    return math.floor(sessionValue / math.max(hours, MIN_HOURS))
 end
 
 local function AddSessionValue(copper)
@@ -216,15 +249,13 @@ function ns.ResetLootFeedSession()
     if gph then gph:Hide() end
 end
 
--- TradeSkillMaster is optional and its price call errors on a source it cannot resolve,
--- which is the one reason this is protected.
 local function UnitPrice(link, vendor)
     if S.Get("lootFeedPrice") == "ahscan" then
         local price = ns.AuctionPrice(C_Item.GetItemInfoInstant(link))
         if price then return price end
     end
     if S.Get("lootFeedPrice") == "tsm" and TSM_API and TSM_API.GetCustomPriceValue then
-        local ok, value = pcall(TSM_API.GetCustomPriceValue, "dbminbuyout", TSM_API.ToItemString(link))
+        local ok, value = pcall(TSM_API.GetCustomPriceValue, TSM_SOURCE, TSM_API.ToItemString(link))
         if ok and value then return value end
     end
     return vendor or 0
@@ -253,28 +284,33 @@ local function Release(row)
     Layout()
 end
 
+local function OnRowEnter(self)
+    if not self.link then return end
+    GameTooltip:SetOwner(self, "ANCHOR_LEFT")
+    GameTooltip:SetHyperlink(self.link)
+    GameTooltip:Show()
+end
+
+local function OnRowLeave()
+    GameTooltip:Hide()
+end
+
 local function NewRow()
     local row = Look.NewRow(feed)
 
-    -- Fades in, holds for the display time, then fades out and frees the slot.
     row.anim = row:CreateAnimationGroup()
     row.appear = row.anim:CreateAnimation("Alpha")
     row.appear:SetToAlpha(1)
-    row.appear:SetDuration(0.15)
+    row.appear:SetDuration(APPEAR_TIME)
     row.fade = row.anim:CreateAnimation("Alpha")
     row.fade:SetFromAlpha(1)
     row.fade:SetToAlpha(0)
-    row.fade:SetDuration(0.4)
+    row.fade:SetDuration(FADE_TIME)
     row.fade:SetOrder(2)
     row.anim:SetScript("OnFinished", function() Release(row) end)
 
-    row:SetScript("OnEnter", function(self)
-        if not self.link then return end
-        GameTooltip:SetOwner(self, "ANCHOR_LEFT")
-        GameTooltip:SetHyperlink(self.link)
-        GameTooltip:Show()
-    end)
-    row:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    row:SetScript("OnEnter", OnRowEnter)
+    row:SetScript("OnLeave", OnRowLeave)
     return row
 end
 
@@ -304,7 +340,7 @@ local function OnItem(link, count)
         local worth = UnitPrice(link, sellPrice) * count
         AddSessionValue(worth)
         local _, _, _, hex = C_Item.GetItemQualityColor(quality)
-        local name = ("|c%s%s|r |cff20ff20x%d|r"):format(hex, item:GetItemName(), count)
+        local name = TEXT_ITEM:format(hex, item:GetItemName(), count)
         local pick = ns.IsBisItem and ns.IsBisItem(item:GetItemID())
         if pick then name = name .. "  " .. ns.Color("accent", "BiS" .. (pick > 1 and " #" .. pick or "")) end
         local bags = C_Item.GetItemCount(link, S.Get("lootFeedBank"))
@@ -312,8 +348,6 @@ local function OnItem(link, count)
     end)
 end
 
--- CHAT_MSG_LOOT can arrive before the item is in the bags, which showed the total from
--- before the loot, so item rows read their total again once the bags settle.
 local function RefreshBags()
     for _, row in ipairs(rows) do
         if row.link then
@@ -323,8 +357,6 @@ local function RefreshBags()
     end
 end
 
--- Coin loot adds to the coin line still on screen and holds it for another display time,
--- rather than stacking a line per corpse. Its fade-in is skipped so the update does not blink.
 local function OnMoney(copper)
     AddSessionValue(copper)
     if not S.Get("lootFeedMoney") then return end
@@ -337,22 +369,17 @@ local function OnMoney(copper)
         Layout()
         return
     end
-    coinRow = Push(COIN_ICON, "Coins", nil, nil, nil, copper)
+    coinRow = Push(COIN_ICON, TEXT_COINS, nil, nil, nil, copper)
     coinRow.copper = copper
 end
 
--- CHAT_MSG_MONEY carries both your own looted coins and a group share, and only those, so
--- vendor sales and mail never reach the feed.
 local function MoneyMessage(text)
-    local copper = (tonumber(text:match(GOLD)) or 0) * 10000
-        + (tonumber(text:match(SILVER)) or 0) * 100
+    local copper = (tonumber(text:match(GOLD)) or 0) * COPPER_PER_GOLD
+        + (tonumber(text:match(SILVER)) or 0) * COPPER_PER_SILVER
         + (tonumber(text:match(COPPER)) or 0)
     if copper > 0 then OnMoney(copper) end
 end
 
--- A quest turn-in also sends its experience as a combat XP message, with no source named.
--- The quest line already shows it, so that one is skipped while quest lines are on. A
--- kill's message names the kill; its first number is the total gained, rested bonus included.
 local function KillXP(text)
     if UNNAMED_XP and S.Get("lootFeedQuest") and text:match(UNNAMED_XP) then return end
     local gained = tonumber(text:match("(%d+)"))
@@ -364,20 +391,29 @@ end
 local function QuestTurnedIn(questID, xp, money)
     if money > 0 then AddSessionValue(money) end
     if xp <= 0 and money <= 0 then return end
-    local xpText = xp > 0 and (XP_COLOR .. "+" .. BreakUpLargeNumbers(xp) .. " XP|r") or nil
-    local title = C_QuestLog.GetTitleForQuestID(questID) or "Quest Complete"
+    local xpText = xp > 0 and (XP_COLOR .. "+" .. BreakUpLargeNumbers(xp) .. TEXT_QUEST_XP) or nil
+    local title = C_QuestLog.GetTitleForQuestID(questID) or TEXT_QUEST
     Push(QUEST_ICON, "|cffffd100" .. title .. "|r", xpText, nil, nil, money)
 end
 
 local function Reputation(text)
     local faction, amount = text:match(REP_PATTERN)
     if faction then
-        Push(REP_ICON, REP_COLOR .. faction .. "|r", REP_COLOR .. "+" .. amount .. " Rep|r")
+        Push(REP_ICON, REP_COLOR .. faction .. "|r", REP_COLOR .. "+" .. amount .. TEXT_REP)
     end
 end
 
-local events = CreateFrame("Frame")
-events:SetScript("OnEvent", function(_, event, text, ...)
+local function LootMessage(text)
+    for _, pattern in ipairs(PATTERNS) do
+        local link, count = text:match(pattern)
+        if link then
+            OnItem(link, tonumber(count) or 1)
+            return
+        end
+    end
+end
+
+local function OnEvent(_, event, text, ...)
     if event == "BAG_UPDATE_DELAYED" then
         RefreshBags()
         return
@@ -386,16 +422,9 @@ events:SetScript("OnEvent", function(_, event, text, ...)
         if S.Get("lootFeedQuest") then QuestTurnedIn(text, ...) end
         return
     end
-    -- Chat payloads can be secret; nothing in one is worth recovering.
     if issecretvalue and issecretvalue(text) then return end
     if event == "CHAT_MSG_LOOT" then
-        for _, pattern in ipairs(PATTERNS) do
-            local link, count = text:match(pattern)
-            if link then
-                OnItem(link, tonumber(count) or 1)
-                return
-            end
-        end
+        LootMessage(text)
     elseif event == "CHAT_MSG_MONEY" then
         MoneyMessage(text)
     elseif event == "CHAT_MSG_COMBAT_XP_GAIN" then
@@ -403,20 +432,7 @@ events:SetScript("OnEvent", function(_, event, text, ...)
     elseif event == "CHAT_MSG_COMBAT_FACTION_CHANGE" then
         if S.Get("lootFeedRep") then Reputation(text) end
     end
-end)
-
-local EVENTS = { "CHAT_MSG_LOOT", "CHAT_MSG_MONEY", "CHAT_MSG_COMBAT_XP_GAIN",
-    "CHAT_MSG_COMBAT_FACTION_CHANGE", "QUEST_TURNED_IN", "BAG_UPDATE_DELAYED" }
-
--- Quick loot with Blizzard's loot window kept out of sight. Every slot is taken on
--- LOOT_READY, one every 0.05s. The window still opens
--- and closes as normal (hiding it would close the loot), shrunk to nothing instead: its open
--- and close animations both drive alpha, so alpha cannot hide it, and it is clamped to the
--- screen, so it cannot be moved off it. It stays full size whenever something would be left
--- behind for the player to deal with.
-local lootWatch = CreateFrame("Frame")
-local lootHidden, lootScale, lootHooked
-local lootGen = 0
+end
 
 local function AllTakeable()
     local threshold = IsInGroup() and GetLootThreshold()
@@ -437,7 +453,7 @@ end
 local function ShrinkLootWindow()
     if not lootScale then
         lootScale = LootFrame:GetScale()
-        LootFrame:SetScale(0.001)
+        LootFrame:SetScale(SHRUNK)
     end
 end
 
@@ -453,28 +469,31 @@ local function ShowLootWindow()
     RestoreLootWindow()
 end
 
+local function OnLootReady()
+    if IsShiftKeyDown() then return end
+    lootWatch:RegisterEvent("UI_ERROR_MESSAGE")
+    lootHidden = S.Get("hideLootWindow") and AllTakeable()
+    lootGen = lootGen + 1
+    local gen = lootGen
+    local count = GetNumLootItems()
+    for i = 1, count do
+        C_Timer.After(LOOT_STEP * i, function()
+            if gen == lootGen then LootSlot(i) end
+        end)
+    end
+    C_Timer.After(LOOT_STEP * count + LOOT_GRACE, function()
+        if gen == lootGen then ShowLootWindow() end
+    end)
+end
+
+local function OnLootWindowOpen()
+    if lootHidden then ShrinkLootWindow() else RestoreLootWindow() end
+end
+
 lootWatch:SetScript("OnEvent", function(_, event, _, arg2)
     if event == "LOOT_READY" then
-        if IsShiftKeyDown() then return end
-        -- Only a full-bags error during a loot matters, so errors are heard only while one is open.
-        lootWatch:RegisterEvent("UI_ERROR_MESSAGE")
-        lootHidden = S.Get("hideLootWindow") and AllTakeable()
-        lootGen = lootGen + 1
-        local gen = lootGen
-        local count = GetNumLootItems()
-        for i = 1, count do
-            C_Timer.After(0.05 * i, function()
-                if gen == lootGen then LootSlot(i) end
-            end)
-        end
-        -- Still open a second after the last slot: something could not be taken (unique,
-        -- max count, locked), so the player gets the window back.
-        C_Timer.After(0.05 * count + 1, function()
-            if gen == lootGen then ShowLootWindow() end
-        end)
+        OnLootReady()
     elseif event == "LOOT_CLOSED" then
-        -- The window is still playing its close animation here; it gets its size back once
-        -- that finishes, so it never flashes on the way out.
         lootGen = lootGen + 1
         lootHidden = false
         lootWatch:UnregisterEvent("UI_ERROR_MESSAGE")
@@ -488,9 +507,7 @@ local function ApplyLootWindow()
     if S.Get("enabled") and (S.Get("hideLootWindow") or S.Get("fastLoot")) then
         if not lootHooked then
             lootHooked = true
-            hooksecurefunc(LootFrame, "Open", function()
-                if lootHidden then ShrinkLootWindow() else RestoreLootWindow() end
-            end)
+            hooksecurefunc(LootFrame, "Open", OnLootWindowOpen)
             LootFrame.HideAnim:HookScript("OnFinished", RestoreLootWindow)
         end
         lootWatch:RegisterEvent("LOOT_READY")
@@ -508,7 +525,7 @@ local function PlaceFeed()
     if pos then
         feed:SetPoint(pos.point, UIParent, pos.relPoint, pos.x, pos.y)
     else
-        feed:SetPoint("CENTER", UIParent, "CENTER", -469, -141)
+        feed:SetPoint("CENTER", UIParent, "CENTER", DEFAULT_X, DEFAULT_Y)
     end
 end
 
@@ -516,9 +533,9 @@ local function CreateFeed()
     feed = CreateFrame("Frame", "NaowhForeverLootFeed", UIParent)
     feed:SetMovable(true)
     feed:SetClampedToScreen(true)
-    gph = ns.Font(feed, 13, "OUTLINE", { r = 1, g = 0.82, b = 0 })
+    gph = ns.Font(feed, GPH_SIZE, "OUTLINE", GPH_RGB)
     gph:Hide()
-    feed.mover = ns.UI.AttachMover(feed, "Loot Feed", function(pos) S.Set("lootFeedPos", pos) end, "QoL/Loot & Items", "QoL/Loot & Items:lootFeed")
+    feed.mover = ns.UI.AttachMover(feed, TEXT_MOVER, function(pos) S.Set("lootFeedPos", pos) end, "QoL/Loot & Items", "QoL/Loot & Items:lootFeed")
     PlaceFeed()
 end
 
@@ -542,20 +559,21 @@ local function Apply()
     Layout()
 end
 
+events:SetScript("OnEvent", OnEvent)
+
 hooksecurefunc(S, "Set", function(key)
     if key == "enabled" or key == "hideLootWindow" or key == "fastLoot"
         or (key:find("^lootFeed") and key ~= "lootFeedPos") then
         Apply()
     end
 end)
--- ns.Apply is what a profile switch re-runs.
 hooksecurefunc(ns, "Apply", Apply)
 hooksecurefunc(ns, "ShowRaidReminderAnchorConfig", function()
     unlocked = true
     if On() then
         Apply()
-        Push(COIN_ICON, "Coins", nil, nil, nil, 31250)
-        Push("Interface\\Icons\\INV_Pants_04", "|cff1eff00Journeyman's Pants|r |cff20ff20x1|r", nil, 1, nil, 94)
+        Push(COIN_ICON, TEXT_COINS, nil, nil, nil, SAMPLE_COINS)
+        Push(PANTS_ICON, SAMPLE_PANTS_NAME, nil, SAMPLE_PANTS_BAGS, nil, SAMPLE_PANTS)
     end
 end)
 hooksecurefunc(ns, "HideRaidReminderAnchorConfig", function()
@@ -574,11 +592,6 @@ local PRICE = { { vendor = "Vendor Price", ahscan = "Auction (Naowh Scan)", tsm 
     { "vendor", "ahscan", "tsm" } }
 local GROWTH = { { up = "Up", down = "Down" }, { "up", "down" } }
 
-local T = ns.THEME
-local SAMPLE_PANTS, SAMPLE_CLOTH, SAMPLE_COINS, SAMPLE_PER_HOUR = 94, 39, 31250, 412550
-local SAMPLE_PANTS_BAGS, SAMPLE_CLOTH_BAGS, SAMPLE_CLOTH_BANK = 1, 7, 27
-local PANTS_ICON = "Interface\\Icons\\INV_Pants_04"
-local CLOTH_ICON = "Interface\\Icons\\INV_Fabric_Linen_01"
 local FADING = { 1, 0.6, 0.25 }
 local ITEM_ROWS = 2
 local STAGE_H, STAGE_MARGIN, TEXT_ROOM = 220, 14, 58
@@ -637,7 +650,7 @@ end
 local function ShowTip(preview)
     local part, fg = preview.part, T.fg
     GameTooltip:SetOwner(preview.feed, "ANCHOR_RIGHT")
-    GameTooltip:AddLine("Edit the Feed", fg.r, fg.g, fg.b)
+    GameTooltip:AddLine(TEXT_EDIT, fg.r, fg.g, fg.b)
     for i = 1, #TIPS do
         local tip = TIPS[i]
         local c = tip[1] == part and T.accent or T.muted
@@ -776,13 +789,13 @@ local function Pick(choice)
 end
 
 local function LineMenu(_, root)
-    root:CreateTitle("Lines Show")
+    root:CreateTitle(TEXT_LINES_SHOW)
     for i = 1, #LINE_TOGGLES do
         local t = LINE_TOGGLES[i]
         root:CreateCheckbox(t[2], Toggled, Toggle, t[1])
     end
     root:CreateDivider()
-    root:CreateCheckbox("Glow", Toggled, Toggle, "lootFeedGlow")
+    root:CreateCheckbox(TEXT_GLOW, Toggled, Toggle, "lootFeedGlow")
     for i = 1, #RADIOS do
         local radio = RADIOS[i]
         root:CreateDivider()
@@ -888,7 +901,7 @@ local function NewPreview(stage)
     preview.list, preview.hits = {}, {}
     Hit(box, preview, "lines")
     preview.rows = { Look.NewRow(box), Look.NewRow(box), Look.NewRow(box) }
-    preview.gph = ns.Font(box, 13, "OUTLINE", { r = 1, g = 0.82, b = 0 })
+    preview.gph = ns.Font(box, GPH_SIZE, "OUTLINE", GPH_RGB)
     preview.edit = CreateFrame("Frame", nil, box)
     preview.edit:SetAllPoints()
     local widthHit = NewEdge(preview, "width", "TOP", "BOTTOM")
@@ -923,16 +936,15 @@ local function PaintPreview(preview, state)
     wipe(shown)
     local values, money = S.Get("lootFeedValue"), S.Get("lootFeedMoney")
     if money then
-        Look.Fill(samples[3], COIN_ICON, "Coins", nil, nil, SAMPLE_COINS)
+        Look.Fill(samples[3], COIN_ICON, TEXT_COINS, nil, nil, SAMPLE_COINS)
         shown[#shown + 1] = samples[3]
     else
         samples[3]:Hide()
     end
     local cloth = S.Get("lootFeedBank") and SAMPLE_CLOTH_BANK or SAMPLE_CLOTH_BAGS
-    Look.Fill(samples[2], CLOTH_ICON, "|cffffffffLinen Cloth|r |cff20ff20x3|r", nil, cloth, values and SAMPLE_CLOTH or nil)
+    Look.Fill(samples[2], CLOTH_ICON, SAMPLE_CLOTH_NAME, nil, cloth, values and SAMPLE_CLOTH or nil)
     shown[#shown + 1] = samples[2]
-    Look.Fill(samples[1], PANTS_ICON, "|cff1eff00Journeyman's Pants|r |cff20ff20x1|r", nil, SAMPLE_PANTS_BAGS,
-        values and SAMPLE_PANTS or nil)
+    Look.Fill(samples[1], PANTS_ICON, SAMPLE_PANTS_NAME, nil, SAMPLE_PANTS_BAGS, values and SAMPLE_PANTS or nil)
     shown[#shown + 1] = samples[1]
     for i, row in ipairs(shown) do
         Look.StyleRow(row)
@@ -951,7 +963,7 @@ local function PaintPreview(preview, state)
     end
     local scale = Fit(preview)
     Restack(preview, w, h)
-    preview.note:SetText(state == "fading" and ("Each line fades out after %ss."):format(S.Get("lootFeedFade")) or "")
+    preview.note:SetText(state == "fading" and TEXT_FADES:format(S.Get("lootFeedFade")) or "")
     local editable = On() and true or false
     local box = preview.feed
     preview.editable = editable
@@ -990,9 +1002,8 @@ end
 
 local function LootFeedSummary(store)
     local style = store.Get("lootFeedStyle")
-    style = style == "none" and "no background" or style == "light" and "light" or "dark"
-    return ("%d lines, %s%s"):format(store.Get("lootFeedCount"), style,
-        store.Get("lootFeedGPH") and ", gold per hour" or "")
+    style = style == "none" and TEXT_NO_BACKGROUND or style == "light" and TEXT_LIGHT or TEXT_DARK
+    return TEXT_SUMMARY:format(store.Get("lootFeedCount"), style, store.Get("lootFeedGPH") and TEXT_GPH or "")
 end
 
 ns.Shared.Settings.Page("QoL/Loot & Items", S):Card({

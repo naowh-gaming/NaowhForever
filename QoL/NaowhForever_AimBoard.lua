@@ -1,24 +1,14 @@
--------------------------------------------------------------------------------
---  NaowhForever_AimBoard.lua -- the Aim Trainer's leaderboard (ns.AimBoard): your best in each
---  mode, sent to your group and guild while Share My Scores is on once you have one (nothing is
---  registered before your first best), and the bests others send,
---  kept account-wide in aimBoard[mode][GUID] (Forever names are not unique) for the leaderboard
---  view and the results card's rank. Messages on "NaowhAim": "2 B guid mode score accuracy class
---  day" is a best ("-" for no accuracy), "2 R guid" asks for everyone's. Sent after login, on
---  joining a group, on a new best and in answer to a request, never in combat; what arrives is
---  checked, rate limited and capped. A best is kept only from the player its GUID names, found
---  in your group or guild (ns.SenderIs), and an entry saved under one name is not replaced
---  from another.
--------------------------------------------------------------------------------
+-- NaowhForever_AimBoard.lua: the Aim Trainer's leaderboard (ns.AimBoard), your bests shared and others' kept.
 local ns = _G.NaowhForever
+
+local GetTime, InCombatLockdown = GetTime, InCombatLockdown
+local floor, random, tonumber, tostring, pairs, type = math.floor, math.random, tonumber, tostring, pairs, type
+
 local S = ns.QoLSettings
 local T = ns.THEME
 local Rules = ns.AimRules
 local Parts, St = ns.Shared.Parts, ns.Shared.Style
 local BORDER_RGB = St.BORDER_RGB
-
-local GetTime, InCombatLockdown = GetTime, InCombatLockdown
-local floor, random, tonumber, tostring, pairs, type = math.floor, math.random, tonumber, tostring, pairs, type
 
 local PREFIX, VERSION = "NaowhAim", "2"
 local VERSION_PATTERN = "^(%d+) "
@@ -26,6 +16,9 @@ local GUID_PATTERN = "^Player%-%d+%-%x+$"
 local REQUEST_PATTERN = "^%d+ R (Player%-%d+%-%x+)$"
 local BEST_PATTERN = "^%d+ B (Player%-%d+%-%x+) (%l+) (%d+) ([%d%-]+) (%u+) (%d+)$"
 local NO_ACCURACY = "-"
+local REQUEST = " R "
+local BEST = "%s B %s %s %d %s %s %d"
+local GUILD_CHANNEL = "GUILD"
 local MAX_LENGTH, MAX_GUID_LENGTH, MAX_NAME_LENGTH, MAX_CLASS_LENGTH, MAX_ACCURACY = 112, 40, 40, 12, 100
 local MAX_ENTRIES = 200
 local RATE_WINDOW, RATE_COUNT, MAX_SENDERS = 60, 12, 400
@@ -42,6 +35,13 @@ local SHARING_OFF = ", sharing is off"
 local NO_SCORES = "No scores yet. Play a round, and meet\nother players running Naowh Forever."
 local NO_GUILD = "No scores from your guild yet."
 local KICKER = "LEADERBOARD"
+local TEXT_RECORD_RANK = "New personal best, rank #%d of %d"
+local TEXT_RANK = "Rank #%d of %d"
+local TEXT_PLAYER, TEXT_PLAYERS = "%d player%s", "%d players%s"
+local TEXT_RANK_NUMBER, TEXT_ACCURACY = "%d", "%d%%"
+local HEAD_RANK, HEAD_NAME, HEAD_SCORE, HEAD_ACC = "#", "Name", "Score", "Acc."
+local TEXT_BACK = "Back"
+local NAME_JOIN = " "
 
 local VIEW_W, VIEW_PAD, VIEW_GAP, VIEW_ALPHA = 300, 12, 8, 0.97
 local KICKER_H, TITLE_H, TITLE_SIZE, COUNT_H, TEXT_SIZE, SMALL_SIZE = 12, 18, 15, 14, 12, 10
@@ -111,24 +111,27 @@ local function Identify()
     if myGUID then return true end
     local guid = UnitGUID("player")
     if Secret(guid) or not GoodGUID(guid) then return false end
-    myGUID, request = guid, VERSION .. " R " .. guid
+    myGUID, request = guid, VERSION .. REQUEST .. guid
     local first, second = UnitFullName("player")
     if first and not (Secret(first) or Secret(second)) then
-        myName = (second and second ~= "") and (first .. " " .. second) or first
+        myName = (second and second ~= "") and (first .. NAME_JOIN .. second) or first
     end
     local _, class = UnitClass("player")
     if class and not Secret(class) then myClass = class end
     return true
 end
 
-local function List(m, make)
+local function BoardTable(make)
     local account = ns.AccountSettings()
-    local board = account.aimBoard
-    if type(board) ~= "table" then
-        if not make then return nil end
-        board = {}
-        account.aimBoard = board
-    end
+    if type(account.aimBoard) == "table" then return account.aimBoard end
+    if not make then return nil end
+    account.aimBoard = {}
+    return account.aimBoard
+end
+
+local function List(m, make)
+    local board = BoardTable(make)
+    if not board then return nil end
     local list = board[m]
     if type(list) ~= "table" then
         if not make then return nil end
@@ -156,18 +159,20 @@ local function Weakest(list)
     return count, weakest, low, lowDay
 end
 
+local function MakeRoom(list, score, day)
+    local count, weakest, low, lowDay = Weakest(list)
+    if count < MAX_ENTRIES then return true end
+    if score < low or (score == low and day <= lowDay) then return false end
+    list[weakest] = nil
+    return true
+end
+
 local function Keep(m, guid, who, score, accuracy, class, day, guild)
     local list = List(m, true)
     local entry = list[guid]
     if type(entry) == "table" and entry.name ~= nil and entry.name ~= who then return false end
     if type(entry) ~= "table" then
-        if entry == nil then
-            local count, weakest, low, lowDay = Weakest(list)
-            if count >= MAX_ENTRIES then
-                if score < low or (score == low and day <= lowDay) then return false end
-                list[weakest] = nil
-            end
-        end
+        if entry == nil and not MakeRoom(list, score, day) then return false end
         entry = {}
         list[guid] = entry
     end
@@ -213,7 +218,7 @@ local function Message(m)
     local score = OwnBest(m)
     if not score or score > Rules.Ceiling(m) or not Identify() or not myClass then return nil end
     local accuracy = OwnAccuracy(m)
-    return ("%s B %s %s %d %s %s %d"):format(VERSION, myGUID, m, score,
+    return BEST:format(VERSION, myGUID, m, score,
         accuracy and tostring(floor(accuracy)) or NO_ACCURACY, myClass, Today())
 end
 
@@ -232,7 +237,7 @@ local function Send(channel, only)
         if message then
             if channel then Post(message, channel) end
             if group then Post(message, group) end
-            if guild then Post(message, "GUILD") end
+            if guild then Post(message, GUILD_CHANNEL) end
         end
     end
 end
@@ -254,7 +259,7 @@ local function Joined()
     inGroup = group ~= nil
     if not guildAsked and IsInGuild() then
         guildAsked = true
-        Ask("GUILD")
+        Ask(GUILD_CHANNEL)
     end
 end
 
@@ -308,6 +313,26 @@ local function RefreshSoon()
     C_Timer.After(REFRESH_DELAY, Refresh)
 end
 
+local function ReadAccuracy(accuracy)
+    if accuracy == NO_ACCURACY then return nil, true end
+    accuracy = tonumber(accuracy)
+    if not accuracy or accuracy < 0 or accuracy > MAX_ACCURACY or accuracy ~= floor(accuracy) then return nil, false end
+    return accuracy, true
+end
+
+local function ReceivedBest(message, channel, sender)
+    local guid, m, score, accuracy, class, day = message:match(BEST_PATTERN)
+    if not (guid and guid ~= myGUID and GoodGUID(guid) and Rules.names[m]) or #class > MAX_CLASS_LENGTH then return end
+    score, day = tonumber(score), tonumber(day)
+    if not score or score < 1 or score > Rules.Ceiling(m) or not day or day < 1 or day > Today() + 1 then return end
+    local ok
+    accuracy, ok = ReadAccuracy(accuracy)
+    if not ok then return end
+    if not ns.SenderIs(sender, channel, guid) then return end
+    local who = sender:gsub("%-", NAME_JOIN, 1)
+    if Keep(m, guid, who, score, accuracy, class, day, channel == GUILD_CHANNEL) then RefreshSoon() end
+end
+
 local function Received(message, channel, sender)
     if #message > MAX_LENGTH then return end
     if sender == "" or #sender > MAX_NAME_LENGTH or not Identify() or not Allowed(sender) then return end
@@ -317,19 +342,7 @@ local function Received(message, channel, sender)
         if asker ~= myGUID and GoodGUID(asker) then AnswerSoon(channel) end
         return
     end
-    local guid, m, score, accuracy, class, day = message:match(BEST_PATTERN)
-    if not (guid and guid ~= myGUID and GoodGUID(guid) and Rules.names[m]) or #class > MAX_CLASS_LENGTH then return end
-    score, day = tonumber(score), tonumber(day)
-    if not score or score < 1 or score > Rules.Ceiling(m) or not day or day < 1 or day > Today() + 1 then return end
-    if accuracy == NO_ACCURACY then
-        accuracy = nil
-    else
-        accuracy = tonumber(accuracy)
-        if not accuracy or accuracy < 0 or accuracy > MAX_ACCURACY or accuracy ~= floor(accuracy) then return end
-    end
-    if not ns.SenderIs(sender, channel, guid) then return end
-    local who = sender:gsub("%-", " ", 1)
-    if Keep(m, guid, who, score, accuracy, class, day, channel == "GUILD") then RefreshSoon() end
+    ReceivedBest(message, channel, sender)
 end
 
 local CHANNELS = { PARTY = true, RAID = true, INSTANCE_CHAT = true, GUILD = true }
@@ -392,19 +405,23 @@ local function ByScore(a, b)
     return (a.name or "") < (b.name or "")
 end
 
+local function CollectOthers(m, guildOnly)
+    local n = 0
+    local list = List(m)
+    if not list then return n end
+    for key, e in pairs(list) do
+        if Valid(e) and (not guildOnly or e.guild) and key ~= myGUID and GoodGUID(key) then
+            n = n + 1
+            sorted[n] = e
+        end
+    end
+    return n
+end
+
 local function Collect(m, guildOnly)
     wipe(sorted)
     Identify()
-    local n = 0
-    local list = List(m)
-    if list then
-        for key, e in pairs(list) do
-            if Valid(e) and (not guildOnly or e.guild) and key ~= myGUID and GoodGUID(key) then
-                n = n + 1
-                sorted[n] = e
-            end
-        end
-    end
+    local n = CollectOthers(m, guildOnly)
     local best = OwnBest(m)
     if best then
         me.score, me.acc, me.class, me.name = best, OwnAccuracy(m), myClass, myName or YOU
@@ -429,7 +446,7 @@ end
 function Board.RankLine(m, record)
     local rank, n = Board.Rank(m)
     if not rank then return nil end
-    return (record and "New personal best, rank #%d of %d" or "Rank #%d of %d"):format(rank, n)
+    return (record and TEXT_RECORD_RANK or TEXT_RANK):format(rank, n)
 end
 
 function Board.Record(m)
@@ -465,12 +482,12 @@ end
 
 local function PaintRow(row, e, rank)
     row.mark:SetShown(e == me)
-    row.rank:SetFormattedText("%d", rank)
+    row.rank:SetFormattedText(TEXT_RANK_NUMBER, rank)
     row.name:SetText(e.name)
     local color = RAID_CLASS_COLORS and RAID_CLASS_COLORS[e.class] or T.fg
     row.name:SetTextColor(color.r, color.g, color.b)
     row.score:SetText(BreakUpLargeNumbers(e.score))
-    if e.acc then row.acc:SetFormattedText("%d%%", e.acc) else row.acc:SetText(NO_VALUE) end
+    if e.acc then row.acc:SetFormattedText(TEXT_ACCURACY, e.acc) else row.acc:SetText(NO_VALUE) end
     row:Show()
 end
 
@@ -478,7 +495,7 @@ Paint = function(v)
     local guildOnly = v.filter == GUILD
     local n, mine = Collect(v.mode, guildOnly)
     v.title:SetText(Rules.names[v.mode])
-    v.count:SetFormattedText(n == 1 and "%d player%s" or "%d players%s", n, Sharing() and "" or SHARING_OFF)
+    v.count:SetFormattedText(n == 1 and TEXT_PLAYER or TEXT_PLAYERS, n, Sharing() and "" or SHARING_OFF)
     Parts.PaintTabs(v.filters, v.filter)
     local rows = v.rows
     for i = 1, TOP_ROWS do
@@ -504,14 +521,7 @@ local function Picked(filter)
     Filter(view, filter)
 end
 
-function Board.NewView(parent, level)
-    local v = CreateFrame("Frame", nil, parent)
-    v:SetSize(VIEW_W, VIEW_H)
-    v:SetPoint("CENTER")
-    v:SetFrameLevel(parent:GetFrameLevel() + level)
-    v:EnableMouse(true)
-    Parts.Backdrop(v):Paint(VIEW_ALPHA)
-    ns.Border(v, BORDER_RGB)
+local function NewHead(v)
     local textW = VIEW_W - 2 * VIEW_PAD - FILTERS_W - TITLE_GAP
     v.kicker = ns.Font(v, SMALL_SIZE, nil, T.accent)
     v.kicker:SetPoint("TOPLEFT", VIEW_PAD, -VIEW_PAD)
@@ -526,17 +536,22 @@ function Board.NewView(parent, level)
     Line(v.count, textW)
     v.filters = Parts.Tabs(v, FILTERS_W, FILTERS, Picked)
     v.filters:SetPoint("TOPRIGHT", -VIEW_PAD, -(VIEW_PAD + (HEAD_H - St.TAB_H) / 2))
-    local top = VIEW_PAD + HEAD_H
+end
+
+local function NewColumnHeads(v, top)
     local head = NewRow(v)
     head:SetPoint("TOPLEFT", VIEW_PAD, -top)
     head.mark:Hide()
-    head.rank:SetText("#")
-    head.name:SetText("Name")
+    head.rank:SetText(HEAD_RANK)
+    head.name:SetText(HEAD_NAME)
     head.name:SetTextColor(T.muted.r, T.muted.g, T.muted.b)
-    head.score:SetText("Score")
+    head.score:SetText(HEAD_SCORE)
     head.score:SetTextColor(T.muted.r, T.muted.g, T.muted.b)
-    head.acc:SetText("Acc.")
+    head.acc:SetText(HEAD_ACC)
     head:Show()
+end
+
+local function NewRows(v, top)
     v.rows = {}
     for i = 1, TOP_ROWS do
         local row = NewRow(v)
@@ -545,9 +560,23 @@ function Board.NewView(parent, level)
     end
     v.you = NewRow(v)
     v.you:SetPoint("TOPLEFT", VIEW_PAD, -(top + (TOP_ROWS + 1) * ROW_H + YOU_GAP))
+end
+
+function Board.NewView(parent, level)
+    local v = CreateFrame("Frame", nil, parent)
+    v:SetSize(VIEW_W, VIEW_H)
+    v:SetPoint("CENTER")
+    v:SetFrameLevel(parent:GetFrameLevel() + level)
+    v:EnableMouse(true)
+    Parts.Backdrop(v):Paint(VIEW_ALPHA)
+    ns.Border(v, BORDER_RGB)
+    NewHead(v)
+    local top = VIEW_PAD + HEAD_H
+    NewColumnHeads(v, top)
+    NewRows(v, top)
     v.empty = ns.Font(v, TEXT_SIZE, nil, T.muted)
     v.empty:SetPoint("CENTER")
-    v.back = ns.Button(v, "Back", BACK_W, BTN_H)
+    v.back = ns.Button(v, TEXT_BACK, BACK_W, BTN_H)
     v.back:SetPoint("BOTTOM", 0, VIEW_PAD)
     v.filter = ALL
     v:Hide()
@@ -561,7 +590,9 @@ function Board.Show(v, m)
     v:Show()
 end
 
-hooksecurefunc(S, "Set", function(key)
+local function OnSettingChanged(key)
     if key == "enabled" or key == "aimTrainer" or key == "aimShare" then Sync() end
-end)
+end
+
+hooksecurefunc(S, "Set", OnSettingChanged)
 hooksecurefunc(ns, "Apply", Sync)

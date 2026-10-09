@@ -1,11 +1,6 @@
--------------------------------------------------------------------------------
---  NaowhForever_FoodBar.lua -- the Food & Drink Bar: one button for the best food and one for
---  the best drink in your bags, food only for classes without mana. Also ns.BestFoodAndDrink,
---  which the Macros module's NF Food uses, and ns.HEALTHSTONES and ns.HEALING_POTIONS (classic
---  item IDs, best first, each healthstone's two talented versions after it), which NF Health and
---  Aura Buffs' low health reminder use: here in the core, so either works with the other off.
--------------------------------------------------------------------------------
+-- NaowhForever_FoodBar.lua: the Food & Drink Bar, your best food and drink on two buttons, and the core's food and potion lists.
 local ns = _G.NaowhForever
+
 local UI = ns.UI
 local S = ns.QoLSettings
 
@@ -15,6 +10,17 @@ local CONJURED = {
     [1113] = true, [5349] = true,
 }
 local FOOD_SPELL, DRINK_SPELL = 433, 430
+local CONJURED_BONUS = 1000
+local REQUIRED_LEVEL = 5
+local ICON_INSET = 1
+local COUNT_SIZE, COUNT_INSET = 12, 2
+local BLACK = { r = 0, g = 0, b = 0 }
+local DEFAULT_Y = -210
+local BAR_BUTTONS = 2
+local MOVER_LABEL = "Food & Drink"
+local SETTINGS_PAGE, SETTINGS_CARD = "QoL/Loot & Items", "QoL/Loot & Items:foodBar"
+local ITEM_LINK = "item:"
+local SUMMARY = "%d px buttons"
 
 ns.HEALTHSTONES = { 9421, 19012, 19013, 5510, 19010, 19011, 5509, 19008, 19009, 5511, 19006, 19007, 5512, 19004,
     19005 }
@@ -23,17 +29,18 @@ local EMPTY = { { icon = 133971, text = "No food in your bags" },
     { icon = 132794, text = "No drink in your bags" } }
 local GAP = 4
 local BUTTON_NAMES = { "NaowhForeverFoodBarFood", "NaowhForeverFoodBarDrink" }
--- The bar was on the Macros page until 0.5.24; a profile's settings for it move here once.
 local MOVED = { "foodBar", "foodBarSize", "foodBarPos" }
 
 local bar, moving, pending
 local events = CreateFrame("Frame")
 
--- Key Bindings > Naowh Forever (Bindings.xml). The buttons exist once the bar is switched on.
 _G["BINDING_NAME_CLICK NaowhForeverFoodBarFood:LeftButton"] = "Use Best Food"
 _G["BINDING_NAME_CLICK NaowhForeverFoodBarDrink:LeftButton"] = "Use Best Drink"
 
--- Best food and best drink in the bags: conjured first, then the highest required level.
+local function Score(id)
+    return (CONJURED[id] and CONJURED_BONUS or 0) + (select(REQUIRED_LEVEL, C_Item.GetItemInfo(id)) or 0)
+end
+
 local function BestFoodAndDrink()
     local foodName, drinkName = C_Spell.GetSpellName(FOOD_SPELL), C_Spell.GetSpellName(DRINK_SPELL)
     local food, drink, foodScore, drinkScore
@@ -42,7 +49,7 @@ local function BestFoodAndDrink()
             local id = C_Container.GetContainerItemID(bag, slot)
             local spell = id and C_Item.GetItemSpell(id)
             if spell and (spell == foodName or spell == drinkName) then
-                local s = (CONJURED[id] and 1000 or 0) + (select(5, C_Item.GetItemInfo(id)) or 0)
+                local s = Score(id)
                 if spell == foodName then
                     if not foodScore or s > foodScore then food, foodScore = id, s end
                 elseif not drinkScore or s > drinkScore then
@@ -74,15 +81,15 @@ local Look = {}
 function Look.NewButton(parent, template, name)
     local button = CreateFrame("Button", name, parent, template)
     button.icon = button:CreateTexture(nil, "ARTWORK")
-    ns.PixelInset(button.icon, 1)
-    button.count = ns.Font(button, 12, "OUTLINE")
-    button.count:SetPoint("BOTTOMRIGHT", -2, 2)
-    ns.Border(button, { r = 0, g = 0, b = 0 })
+    ns.PixelInset(button.icon, ICON_INSET)
+    button.count = ns.Font(button, COUNT_SIZE, "OUTLINE")
+    button.count:SetPoint("BOTTOMRIGHT", -COUNT_INSET, COUNT_INSET)
+    ns.Border(button, BLACK)
     return button
 end
 
 function Look.Layout(frame, size)
-    local shown = Drinks() and 2 or 1
+    local shown = Drinks() and BAR_BUTTONS or 1
     frame:SetSize(size * shown + GAP * (shown - 1), size)
     for i, button in ipairs(frame.buttons) do
         button:SetSize(size, size)
@@ -102,7 +109,7 @@ local function FillButton(button, i, id)
     if id ~= button.itemID then
         button.itemID = id
         button:SetAttribute("type1", id and "item" or nil)
-        button:SetAttribute("item1", id and ("item:" .. id) or nil)
+        button:SetAttribute("item1", id and (ITEM_LINK .. id) or nil)
     end
     Look.Fill(button, i, id and (C_Item.GetItemIconByID(id) or EMPTY[i].icon), id and C_Item.GetItemCount(id))
 end
@@ -113,31 +120,47 @@ local function Fill()
     FillButton(bar.buttons[2], 2, Drinks() and drink or nil)
 end
 
+local function ButtonEnter(self)
+    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+    if self.itemID then
+        GameTooltip:SetItemByID(self.itemID)
+    else
+        GameTooltip:SetText(EMPTY[self.emptyIndex].text)
+    end
+    GameTooltip:Show()
+end
+
+local function ButtonLeave()
+    GameTooltip:Hide()
+end
+
+local function SavePosition(pos)
+    S.Set("foodBarPos", pos)
+end
+
 local function Build()
     bar = CreateFrame("Frame", "NaowhForeverFoodBar", UIParent)
     bar:SetMovable(true)
     bar:SetClampedToScreen(true)
     bar.buttons = {}
-    for i = 1, 2 do
+    for i = 1, BAR_BUTTONS do
         local button = Look.NewButton(bar, "SecureActionButtonTemplate", BUTTON_NAMES[i])
+        button.emptyIndex = i
         button:RegisterForClicks("AnyUp", "AnyDown")
-        button:SetScript("OnEnter", function(self)
-            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-            if self.itemID then
-                GameTooltip:SetItemByID(self.itemID)
-            else
-                GameTooltip:SetText(EMPTY[i].text)
-            end
-            GameTooltip:Show()
-        end)
-        button:SetScript("OnLeave", function() GameTooltip:Hide() end)
+        button:SetScript("OnEnter", ButtonEnter)
+        button:SetScript("OnLeave", ButtonLeave)
         bar.buttons[i] = button
     end
-    bar.mover = UI.AttachMover(bar, "Food & Drink", function(pos) S.Set("foodBarPos", pos) end,
-        "QoL/Loot & Items", "QoL/Loot & Items:foodBar")
+    bar.mover = UI.AttachMover(bar, MOVER_LABEL, SavePosition, SETTINGS_PAGE, SETTINGS_CARD)
 end
 
--- The buttons are secure, so the bar is built, shown, hidden and pointed at items out of combat.
+local function Place()
+    bar:ClearAllPoints()
+    local pos = S.Get("foodBarPos")
+    if pos then bar:SetPoint(pos.point, UIParent, pos.relPoint, pos.x, pos.y)
+    else bar:SetPoint("CENTER", UIParent, "CENTER", 0, DEFAULT_Y) end
+end
+
 local function Apply()
     Migrate()
     if InCombatLockdown() then
@@ -154,16 +177,13 @@ local function Apply()
     events:RegisterEvent("BAG_UPDATE_DELAYED")
     if not bar then Build() end
     Look.Layout(bar, S.Get("foodBarSize"))
-    bar:ClearAllPoints()
-    local pos = S.Get("foodBarPos")
-    if pos then bar:SetPoint(pos.point, UIParent, pos.relPoint, pos.x, pos.y)
-    else bar:SetPoint("CENTER", UIParent, "CENTER", 0, -210) end
+    Place()
     Fill()
     bar.mover:SetShown(moving == true)
     bar:Show()
 end
 
-events:SetScript("OnEvent", function(_, event)
+local function OnEvent(_, event)
     if event == "PLAYER_REGEN_ENABLED" then
         events:UnregisterEvent("PLAYER_REGEN_ENABLED")
         if not pending then return end
@@ -172,11 +192,15 @@ events:SetScript("OnEvent", function(_, event)
         return
     end
     Apply()
-end)
-events:RegisterEvent("PLAYER_ENTERING_WORLD")
-hooksecurefunc(S, "Set", function(key)
+end
+
+local function OnSettingChanged(key)
     if key == "enabled" or (key:find("^foodBar") and key ~= "foodBarPos") then Apply() end
-end)
+end
+
+events:SetScript("OnEvent", OnEvent)
+events:RegisterEvent("PLAYER_ENTERING_WORLD")
+hooksecurefunc(S, "Set", OnSettingChanged)
 hooksecurefunc(ns, "Apply", Apply)
 hooksecurefunc(ns, "ShowRaidReminderAnchorConfig", function() moving = true; Apply() end)
 hooksecurefunc(ns, "HideRaidReminderAnchorConfig", function() moving = false; Apply() end)
@@ -206,8 +230,12 @@ local function PaintPreview(preview, state)
     end
 end
 
+local function NoDrinks()
+    return not Drinks()
+end
+
 local function Summary(store)
-    return ("%d px buttons"):format(store.Get("foodBarSize"))
+    return SUMMARY:format(store.Get("foodBarSize"))
 end
 
 Settings.Page("QoL/Loot & Items", S):Card({
@@ -223,6 +251,6 @@ Settings.Page("QoL/Loot & Items", S):Card({
         { label = "Use Best Food", binding = "CLICK NaowhForeverFoodBarFood:LeftButton",
           help = "Eats the food on the bar." },
         { label = "Use Best Drink", binding = "CLICK NaowhForeverFoodBarDrink:LeftButton",
-          hidden = function() return not Drinks() end, help = "Drinks the drink on the bar." },
+          hidden = NoDrinks, help = "Drinks the drink on the bar." },
     },
 })

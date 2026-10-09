@@ -531,6 +531,14 @@ do  -- regions, staff over patrons, the badge code and who may preview
     s.staff("Player-1-BOTH", { tier = "moderator" })
     check("staff wins over patron", say(filter, "Both", 3, "Player-1-BOTH"):find("BadgeModerator", 1, true))
 
+    s.staff("Player-4613-OLD", { tier = "developer" }, 90)
+    s.region = 110
+    s.api.BuildRoster()
+    check("a region the game renumbered (90 is now 110) keeps its badges",
+        say(filter, "Old", 4, "Player-4613-OLD"):find("BadgeDeveloper", 1, true))
+    s.region = 3
+    s.api.BuildRoster()
+
     s.fire("PLAYER_ENTERING_WORLD")
     s.me = "Player-1-ALT2"
     s.fire("PLAYER_ENTERING_WORLD")  -- the event is unregistered after the first; log in again

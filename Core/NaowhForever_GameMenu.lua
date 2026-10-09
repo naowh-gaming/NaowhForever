@@ -1,17 +1,19 @@
--------------------------------------------------------------------------------
---  NaowhForever_GameMenu.lua -- a Naowh Forever button in the game menu (Esc), just before
---  EllesmereUI's when that is there, else under Options; it opens /nf. Switched with Game Menu
---  Button on the Settings page (account-wide, on by default).
--------------------------------------------------------------------------------
+-- NaowhForever_GameMenu.lua: the Naowh Forever button in the game menu, which opens /nf.
 local ns = _G.NaowhForever
+
+local F = ns.FEATURES.account
 
 local SECTION = 20
 local NUDGE = 0.001
+local ELLESMERE = "Ellesmere"
+local TEXT_NAOWH, TEXT_FOREVER = "Naowh ", "Forever"
 
 local button
 
 local function On()
-    return ns.AccountSettings().gameMenuButton ~= false
+    local on = ns.AccountSettings().gameMenuButton
+    if on == nil then return F.gameMenuButton end
+    return on ~= false
 end
 
 local function Clicked()
@@ -21,7 +23,7 @@ local function Clicked()
 end
 
 local function Label()
-    return "Naowh " .. ns.Color("accent", "Forever")
+    return TEXT_NAOWH .. ns.Color("accent", TEXT_FOREVER)
 end
 
 local function ButtonText(b)
@@ -37,7 +39,7 @@ local function Find(menu, test)
     end
 end
 
-local function IsEllesmere(text) return text:find("Ellesmere", 1, true) ~= nil end
+local function IsEllesmere(text) return text:find(ELLESMERE, 1, true) ~= nil end
 local function IsOptions(text) return text == GAMEMENU_OPTIONS end
 
 local function Added(menu)
@@ -46,27 +48,34 @@ local function Added(menu)
     button = menu:AddButton(Label(), Clicked)
 end
 
+local function PlaceAfterOptions(menu)
+    local options = Find(menu, IsOptions)
+    if not options then return false end
+    button.layoutIndex = options.layoutIndex + NUDGE
+    button.topPadding = SECTION
+    return true
+end
+
 local function Placed(menu)
     if not (button and button:IsShown()) then return end
     local before = Find(menu, IsEllesmere)
     if before then
         button.layoutIndex = before.layoutIndex - NUDGE
         button.topPadding, before.topPadding = before.topPadding, nil
-    else
-        local options = Find(menu, IsOptions)
-        if not options then return end
-        button.layoutIndex = options.layoutIndex + NUDGE
-        button.topPadding = SECTION
+    elseif not PlaceAfterOptions(menu) then
+        return
     end
     menu:MarkDirty()
+end
+
+local function OnBoot(self)
+    if not (GameMenuFrame and GameMenuFrame.InitButtons and GameMenuFrame.AddButton) then return end
+    self:UnregisterAllEvents()
+    hooksecurefunc(GameMenuFrame, "InitButtons", Added)
+    GameMenuFrame:HookScript("OnShow", Placed)
 end
 
 local boot = CreateFrame("Frame")
 boot:RegisterEvent("PLAYER_LOGIN")
 boot:RegisterEvent("ADDON_LOADED")
-boot:SetScript("OnEvent", function(self)
-    if not (GameMenuFrame and GameMenuFrame.InitButtons and GameMenuFrame.AddButton) then return end
-    self:UnregisterAllEvents()
-    hooksecurefunc(GameMenuFrame, "InitButtons", Added)
-    GameMenuFrame:HookScript("OnShow", Placed)
-end)
+boot:SetScript("OnEvent", OnBoot)

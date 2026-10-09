@@ -1,10 +1,17 @@
--------------------------------------------------------------------------------
---  NaowhForever_DeathRelease.lua -- Death Release Protection: in a dungeon or raid, Release
---  Spirit has to be held down, so a stray click cannot cost a battle res.
--------------------------------------------------------------------------------
+-- NaowhForever_DeathRelease.lua: Death Release Protection, Release Spirit held down in dungeons and raids.
 local ns = _G.NaowhForever
+
 local S = ns.QoLSettings
 local T = ns.THEME
+
+local FILL_ALPHA = 0.4
+local MIN_FILL_WIDTH = 1
+local LEVEL_ABOVE = 5
+local DEATH = "DEATH"
+local TIP_TITLE = "Release Spirit"
+local TIP_TEXT = "Hold for %.1f seconds to release. Naowh Forever's Death Release Protection "
+    .. "is on in dungeons and raids."
+local SUMMARY = "Hold Release Spirit for %ss in dungeons and raids"
 
 local guard
 
@@ -18,67 +25,77 @@ local function Reset(self)
     self.fill:Hide()
 end
 
--- A cover over the death dialog's Release Spirit button that takes the mouse: a click does
--- nothing, and holding it fills a bar, then presses the button underneath. The dialogs are
--- pooled, so it hides itself once that dialog is no longer the death one.
+local function OnMouseDown(self, button)
+    if button == "LeftButton" and self.target:IsEnabled() then self.held = 0 end
+end
+
+local function Fill(self)
+    local hold = S.Get("deathReleaseHold")
+    self.fill:SetWidth(math.max(MIN_FILL_WIDTH, self:GetWidth() * math.min(1, self.held / hold)))
+    self.fill:Show()
+    if self.held >= hold then
+        Reset(self)
+        self.target:Click()
+    end
+end
+
+local function OnUpdate(self, elapsed)
+    if not (self.dialog:IsShown() and self.dialog.which == DEATH) then
+        self:Hide()
+        return
+    end
+    if not self.held then return end
+    if not self.target:IsEnabled() then
+        Reset(self)
+        return
+    end
+    self.held = self.held + elapsed
+    Fill(self)
+end
+
+local function TipText()
+    return TIP_TEXT:format(S.Get("deathReleaseHold"))
+end
+
 local function Build()
     guard = CreateFrame("Button", nil, UIParent)
     guard.fill = guard:CreateTexture(nil, "OVERLAY")
     guard.fill:SetPoint("TOPLEFT")
     guard.fill:SetPoint("BOTTOMLEFT")
-    guard.fill:SetColorTexture(T.accent.r, T.accent.g, T.accent.b, 0.4)
+    guard.fill:SetColorTexture(T.accent.r, T.accent.g, T.accent.b, FILL_ALPHA)
     guard.fill:Hide()
-    guard:SetScript("OnMouseDown", function(self, button)
-        if button == "LeftButton" and self.target:IsEnabled() then self.held = 0 end
-    end)
+    guard:SetScript("OnMouseDown", OnMouseDown)
     guard:SetScript("OnMouseUp", Reset)
     guard:SetScript("OnHide", Reset)
-    guard:SetScript("OnUpdate", function(self, elapsed)
-        if not (self.dialog:IsShown() and self.dialog.which == "DEATH") then
-            self:Hide()
-            return
-        end
-        if not self.held then return end
-        -- Blizzard disables the button while falling or while an encounter holds the release.
-        if not self.target:IsEnabled() then
-            Reset(self)
-            return
-        end
-        self.held = self.held + elapsed
-        local hold = S.Get("deathReleaseHold")
-        self.fill:SetWidth(math.max(1, self:GetWidth() * math.min(1, self.held / hold)))
-        self.fill:Show()
-        if self.held >= hold then
-            Reset(self)
-            self.target:Click()
-        end
-    end)
-    ns.Tooltip(guard, "Release Spirit", function()
-        return ("Hold for %.1f seconds to release. Naowh Forever's Death Release Protection "
-            .. "is on in dungeons and raids."):format(S.Get("deathReleaseHold"))
-    end)
+    guard:SetScript("OnUpdate", OnUpdate)
+    ns.Tooltip(guard, TIP_TITLE, TipText)
 end
 
-hooksecurefunc("StaticPopup_Show", function(which)
-    if which ~= "DEATH" then return end
-    if not (S.Get("deathRelease") and InGroupContent()) then
-        if guard then guard:Hide() end
-        return
-    end
-    local dialog = StaticPopup_FindVisible("DEATH")
-    if not dialog then return end
+local function Cover(dialog)
     if not guard then Build() end
     local target = dialog:GetButton1()
     guard.dialog, guard.target = dialog, target
     guard:SetParent(dialog)
     guard:ClearAllPoints()
     guard:SetAllPoints(target)
-    guard:SetFrameLevel(target:GetFrameLevel() + 5)
+    guard:SetFrameLevel(target:GetFrameLevel() + LEVEL_ABOVE)
     guard:Show()
-end)
+end
+
+local function OnPopupShow(which)
+    if which ~= DEATH then return end
+    if not (S.Get("deathRelease") and InGroupContent()) then
+        if guard then guard:Hide() end
+        return
+    end
+    local dialog = StaticPopup_FindVisible(DEATH)
+    if dialog then Cover(dialog) end
+end
+
+hooksecurefunc("StaticPopup_Show", OnPopupShow)
 
 local function Summary(store)
-    return ("Hold Release Spirit for %ss in dungeons and raids"):format(store.Get("deathReleaseHold"))
+    return SUMMARY:format(store.Get("deathReleaseHold"))
 end
 
 ns.Shared.Settings.Page("QoL/Combat", S):Card({

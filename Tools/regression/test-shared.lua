@@ -155,7 +155,7 @@ local newItem = next(Shared.ForeverNew.items)
 check("an item new in Forever has the mark; one from the original game not", Parts.IsForever("items", newItem)
     and not Parts.IsForever("items", 19019))
 
-local partsSource = assert(io.open("Shared/Parts.lua", "rb")):read("*a")
+local partsSource = assert(io.open("Shared/Text.lua", "rb")):read("*a")
 local COINS_KEPT = tonumber(partsSource:match("local COINS_KEPT = (%d+)"))
 check("a price in coins, asked for again, is made once", Parts.Coins(12345) == "<12345>"
     and Parts.Coins(12345) == "<12345>" and coinCalls == 1)
@@ -420,8 +420,14 @@ check("and a tracker's width", plain.w == Shared.Style.TRACKER_W)
 --  choices, and Parts.HudFont.
 -------------------------------------------------------------------------------
 local widgets = assert(io.open("Core/NaowhForever_Widgets.lua", "rb")):read("*a"):gsub("\r\n", "\n")
-local helpers = assert(widgets:match("\n(function UI%.FontPath%(name%).-\nfunction UI%.TexturePath%(name, fallback%).-\nend)\n"),
+-- The media helpers, from the LibSharedMedia lookup (when Widgets has one) to TexturePath, with
+-- the file's text constants before them, since the helpers read those.
+local helpers = assert(widgets:match("\n(local function SharedMedia%(%).-\nfunction UI%.TexturePath%(name, fallback%).-\nend)\n")
+    or widgets:match("\n(function UI%.FontPath%(name%).-\nfunction UI%.TexturePath%(name, fallback%).-\nend)\n"),
     "Widgets: FontPath to TexturePath")
+local texts = {}
+for line in widgets:gmatch("\n(local TEXT_[%w_, ]+ = \"[^\n]*\")\n") do texts[#texts + 1] = line end
+helpers = table.concat(texts, "\n") .. "\n" .. helpers
 local MEDIA = { font = { Naowh = "naowh.ttf" },
     statusbar = { Blizzard = "bar.blp", Solid = "solid", ["Naowh Gradient"] = "gradient.tga" } }
 local LSM = {
@@ -451,7 +457,9 @@ check("texture path: the element's own for empty or missing", UI.TexturePath("",
     and UI.TexturePath("Gone", "own") == "own" and UI.TexturePath(nil, "own") == "own")
 local core = assert(io.open("Core/NaowhForever_Core.lua", "rb")):read("*a")
 check("the Naowh Gradient is a SharedMedia statusbar",
-    core:find('LSM:Register("statusbar", "Naowh Gradient", "Interface\\\\AddOns\\\\NaowhForever\\\\Media\\\\NaowhGradient.tga")', 1, true))
+    core:find('LSM:Register("statusbar", "Naowh Gradient", NAOWH_GRADIENT)', 1, true)
+    and core:find('local MEDIA = "Interface\\\\AddOns\\\\NaowhForever\\\\Media\\\\"', 1, true)
+    and core:find('local NAOWH_GRADIENT = MEDIA .. "NaowhGradient.tga"', 1, true))
 
 local function Keys(entries)
     local out = {}

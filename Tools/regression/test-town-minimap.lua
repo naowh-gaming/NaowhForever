@@ -15,6 +15,7 @@ local function Check(ok, label) assert(ok, label); checks = checks + 1 end
 local settings = { enabled = true, townMap = true, townMinimap = false, townMail = false, townSpiritHealers = false }
 local S = { Get = function(key) return settings[key] end, Set = function() end }
 local ns = {
+    QoLConstants = dofile("Tools/regression/qol_constants.lua"),
     QoLSettings = S, Apply = function() end, ThemeTint = function() end,
     TownCapitals = {}, TownNPCs = {},
     TownMailboxes = { [1] = { { 55, 50, "mail", "Mailbox", "", nil, "AH" }, { 50, 30, "mail", "Mailbox", "", nil, "AH" } } },

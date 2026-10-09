@@ -136,7 +136,7 @@ local function Fixture()
         end,
     }, { __index = _G })
     state.UnitGUID, state.units, state.SECRET = env.UnitGUID, units, {}
-    Load({ "Core/NaowhForever_Senders.lua", "NaowhForever_BiS/NaowhScore/Data/Formula.lua", "NaowhForever_BiS/NaowhScore/Score.lua", "NaowhForever_BiS/NaowhScore/Inspect.lua", "NaowhForever_BiS/NaowhScore/Share.lua" },
+    Load({ "Core/NaowhForever_Senders.lua", "NaowhForever_BiS/NaowhScore/Data/Formula.lua", "NaowhForever_BiS/NaowhScore/NaowhScore.lua", "NaowhForever_BiS/NaowhScore/Inspect.lua", "NaowhForever_BiS/NaowhScore/Share.lua" },
         env)
     -- An event, to every frame listening for it (Share always; Inspect while on).
     function state.Fire(event, ...)

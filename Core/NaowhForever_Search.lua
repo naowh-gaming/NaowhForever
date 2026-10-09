@@ -1,14 +1,9 @@
--------------------------------------------------------------------------------
---  NaowhForever_Search.lua -- the search box at the top of the options window's sidebar. What
---  is typed filters the window in place: pages without a match dim in the sidebar and the tabs,
---  the rest show how many they hold, and the page on show keeps only its matching cards and
---  settings, the typed words lit. It reads the declared settings (ns.Shared.Settings); pages
---  drawn some other way are found by their name only.
--------------------------------------------------------------------------------
+-- NaowhForever_Search.lua: the search box at the top of the options window's sidebar.
 local ns = _G.NaowhForever
 local UI = ns.UI
 
--- Lowercase words with single spaces, padded so " word" finds a word's start anywhere.
+local TEXT_SEARCH_HINT = "Search settings"
+
 local function Words(text)
     return " " .. text:lower():gsub("[^%w]+", " ") .. " "
 end
@@ -19,8 +14,6 @@ local function Typed(query)
     return typed
 end
 
--- Where a page, card or setting sits: `tag` names the module (or the window's own page), and
--- `trail` the tab and card under it.
 local function Place(page, cardName)
     local parts = {}
     local mod = page.module
@@ -29,10 +22,6 @@ local function Place(page, cardName)
     return ns.L(mod and mod.name or page.title or page.name), table.concat(parts, " / ")
 end
 
--- One list in window order: each page, then its cards, each card followed by its settings. A
--- setting knows its own words (name, help, group); a card its name and help; a page its
--- module's name and, when the module has more than one, its tab's. A lone tab is mostly
--- called Settings, which would match "set" on every module.
 local function Collect()
     local list = {}
     local Settings = ns.Shared and ns.Shared.Settings
@@ -52,7 +41,6 @@ local function Collect()
     return list
 end
 
--- Every typed word has to start a word of the target's own.
 local function Matches(list, typed)
     local out = {}
     if #typed == 0 then return out end
@@ -70,57 +58,57 @@ local function Find(list, query)
     return Matches(list, Typed(query))
 end
 
--- The filter the window draws with, or nil for nothing typed:
---   typed     the typed words, to light in what is drawn
---   count     page key -> its matching cards and settings; a page in it has a match
---   all       page key -> true when the page matched by its own name, so all of it shows
---   cards     card uid -> true when the card matched (all of it shows), else its matching labels
---   order     the pages with a match, in window order
---   first     page key -> the first matching card on it, to land on once the box is cleared
+local function AddMatch(f, t)
+    local key = t.page
+    if not f.count[key] then
+        f.count[key] = 0
+        f.order[#f.order + 1] = key
+    end
+    if not t.card then
+        f.all[key] = true
+        return
+    end
+    f.count[key] = f.count[key] + 1
+    f.first[key] = f.first[key] or t.card
+    if t.isCard then
+        f.cards[t.card] = true
+    elseif f.cards[t.card] ~= true then
+        local labels = f.cards[t.card] or {}
+        labels[t.label] = true
+        f.cards[t.card] = labels
+    end
+end
+
 local function Build(list, query)
     local typed = Typed(query)
     if #typed == 0 then return nil end
     local f = { typed = typed, count = {}, all = {}, cards = {}, order = {}, first = {} }
-    for _, t in ipairs(Matches(list, typed)) do
-        local key = t.page
-        if not f.count[key] then
-            f.count[key] = 0
-            f.order[#f.order + 1] = key
-        end
-        if not t.card then
-            f.all[key] = true
-        else
-            f.count[key] = f.count[key] + 1
-            f.first[key] = f.first[key] or t.card
-            if t.isCard then
-                f.cards[t.card] = true
-            elseif f.cards[t.card] ~= true then
-                local labels = f.cards[t.card] or {}
-                labels[t.label] = true
-                f.cards[t.card] = labels
-            end
-        end
-    end
+    for _, t in ipairs(Matches(list, typed)) do AddMatch(f, t) end
     return f
 end
 
--- text with every typed word lit in the accent where it starts a word.
-local function Mark(filter, text)
-    if not (filter and text) then return text end
-    local lower, lit = text:lower(), nil
+local function StartsWord(lower, s)
+    return s == 1 or not lower:sub(s - 1, s - 1):find("%w")
+end
+
+local function LitLetters(filter, lower)
+    local lit
     for _, word in ipairs(filter.typed) do
         local from = 1
         while true do
             local s, e = lower:find(word, from, true)
             if not s then break end
-            if s == 1 or not lower:sub(s - 1, s - 1):find("%w") then
+            if StartsWord(lower, s) then
                 lit = lit or {}
                 for i = s, e do lit[i] = true end
             end
             from = s + 1
         end
     end
-    if not lit then return text end
+    return lit
+end
+
+local function Paint(text, lit)
     local out, i = {}, 1
     while i <= #text do
         local on, j = lit[i] == true, i
@@ -132,16 +120,19 @@ local function Mark(filter, text)
     return table.concat(out)
 end
 
+local function Mark(filter, text)
+    if not (filter and text) then return text end
+    local lit = LitLetters(filter, text:lower())
+    if not lit then return text end
+    return Paint(text, lit)
+end
+
 UI.Search = { Collect = Collect, Find = Find, Build = Build, Mark = Mark }
 
--------------------------------------------------------------------------------
---  The box
--------------------------------------------------------------------------------
 local box, list, onFilter
 
 local function OnText(text)
     if text:find("%S") then
-        -- Collected once per search, so it lists the settings as they are now.
         list = list or Collect()
         UI.filter = Build(list, text)
     else
@@ -155,7 +146,6 @@ function UI.FocusSearch()
     box:HighlightText()
 end
 
--- Anything in the box, even text with no words to find.
 function UI.SearchTyped()
     return box:GetText() ~= ""
 end
@@ -165,10 +155,9 @@ function UI.ClearSearch()
     box:ClearFocus()
 end
 
--- onChange runs on every edit, with UI.filter already set for it. columns: Parts.SearchBox's.
 function UI.AttachSearchBox(parent, onChange, columns)
     onFilter = onChange
-    box = ns.Shared.Parts.SearchBox(parent, "Search settings", OnText, columns)
+    box = ns.Shared.Parts.SearchBox(parent, TEXT_SEARCH_HINT, OnText, columns)
     UI:RegisterOnHide(UI.ClearSearch)
     return box
 end

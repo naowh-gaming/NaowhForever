@@ -157,6 +157,13 @@ local ns = {
     LINK_ICONS = "Interface\\AddOns\\NaowhForever\\Media\\Links\\",
     VersionText = function() return "v1.0.6" end,
     StashOptionsWindow = function() s.optionsClosed = (s.optionsClosed or 0) + 1 end,
+    -- Core's ns.Color for a color table: its |cffRRGGBB prefix, or text wrapped in it.
+    Color = function(c, text)
+        local function Byte(v) return math.floor(v * 255 + 0.5) end
+        local prefix = ("|cff%02x%02x%02x"):format(Byte(c.r), Byte(c.g), Byte(c.b))
+        if text == nil then return prefix end
+        return prefix .. text .. "|r"
+    end,
 }
 function ns.Button(parent, text, _, _, onClick)
     local b = Frame()

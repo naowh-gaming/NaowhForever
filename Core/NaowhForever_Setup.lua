@@ -1,13 +1,13 @@
--------------------------------------------------------------------------------
---  NaowhForever_Setup.lua -- Tailor my setup's questions and rules: from the answers, every
---  module and feature with what we think the player wants and why, Apply, and Restore. Used by
---  NaowhForever_SetupWindow.lua.
--------------------------------------------------------------------------------
+-- NaowhForever_Setup.lua: Tailor my setup's questions and rules, its Apply and Restore.
 local ns = _G.NaowhForever
 local Setup = {}
 ns.Setup = Setup
 
 local PICK_ANY = "Pick as many as you like."
+local PURIST, ESSENTIALS, EVERYTHING = "purist", "essentials", "everything"
+local RECOMMENDED, MINIMALIST, CUSTOM = "recommended", "minimalist", "custom"
+local BUNDLE_QUESTIONS = { "focus", "role" }
+local UNKNOWN_ORDER = 99
 
 Setup.QUESTIONS = {
     { id = "amount", title = "How much do you want Naowh Forever to do?", one = true, default = "helpful",
@@ -249,105 +249,142 @@ local function Chosen(answers, id)
     return value
 end
 
-function Setup.Plan(answers, ctx)
-    local amount = Chosen(answers, "amount")
-    local base = amount == "everything" and "recommended" or amount == "essentials" and "minimalist"
-    local want, why, forced = {}, {}, {}
-    local purist = amount == "purist"
-    if purist then
-        for id in pairs(Setup.ITEMS) do want[id], why[id] = false, WHY.purist end
-        for _, id in ipairs(Setup.PURIST) do want[id], why[id], forced[id] = true, WHY.kept, true end
+local function Set(p, id, on, reason)
+    if Setup.ITEMS[id] and not p.forced[id] then p.want[id], p.why[id] = on, reason end
+end
+
+local function Bundle(p, bundle)
+    for _, id in ipairs(bundle.core) do Set(p, id, true, bundle.why) end
+    if p.amount == ESSENTIALS then return end
+    for _, id in ipairs(bundle.more) do Set(p, id, true, bundle.why) end
+end
+
+local function PuristBase(p)
+    for id in pairs(Setup.ITEMS) do p.want[id], p.why[id] = false, WHY.purist end
+    for _, id in ipairs(Setup.PURIST) do p.want[id], p.why[id], p.forced[id] = true, WHY.kept, true end
+end
+
+local function PresetBase(p, base, ctx)
+    local baseWhy = WHY.base:format(ctx.presetName and ctx.presetName(base) or base)
+    for id in pairs(Setup.ITEMS) do
+        local value = ctx.base(base, id)
+        if value ~= nil then p.want[id], p.why[id] = value == true, baseWhy end
     end
-    if base then
-        local baseWhy = WHY.base:format(ctx.presetName and ctx.presetName(base) or base)
-        for id in pairs(Setup.ITEMS) do
-            local value = ctx.base(base, id)
-            if value ~= nil then want[id], why[id] = value == true, baseWhy end
-        end
-    end
+end
+
+local function QuietItems(p)
     for id, item in pairs(Setup.ITEMS) do
-        if item.quiet and (amount ~= "essentials" or Setup.QUIET_ESSENTIALS[id]) then
-            want[id], why[id], forced[id] = true, WHY.quiet, purist or nil
+        if item.quiet and (p.amount ~= ESSENTIALS or Setup.QUIET_ESSENTIALS[id]) then
+            p.want[id], p.why[id], p.forced[id] = true, WHY.quiet, p.purist or nil
         end
     end
-    local function Set(id, on, reason)
-        if Setup.ITEMS[id] and not forced[id] then want[id], why[id] = on, reason end
-    end
-    local function Bundle(bundle)
-        for _, id in ipairs(bundle.core) do Set(id, true, bundle.why) end
-        if amount ~= "essentials" then
-            for _, id in ipairs(bundle.more) do Set(id, true, bundle.why) end
-        end
-    end
-    for _, q in ipairs(purist and {} or { "focus", "role" }) do
+end
+
+local function AnsweredBundles(p, answers)
+    for _, q in ipairs(BUNDLE_QUESTIONS) do
         for _, a in ipairs(Question(q).answers) do
-            if Picked(answers, q, a[1]) then Bundle(Setup.BUNDLES[a[1]]) end
+            if Picked(answers, q, a[1]) then Bundle(p, Setup.BUNDLES[a[1]]) end
         end
     end
-    if not purist then
-        for _, id in ipairs(Setup.CLASS[ctx.class] or {}) do Set(id, true, WHY.class) end
-    end
+end
+
+local function ItemTraits(p, item, id, screen, group, classic)
+    if screen == "clean" and item.screen then Set(p, id, false, WHY.clean) end
+    if screen == "clean" and item.hide then Set(p, id, true, WHY.clean) end
+    if p.amount == EVERYTHING and item.extra then Set(p, id, true, WHY.everything) end
+    if screen == "all" and item.hud then Set(p, id, true, WHY.all) end
+    if group == "solo" and item.group then Set(p, id, false, WHY.solo) end
+    if group == "always" and item.group then Set(p, id, true, WHY.always) end
+    if classic == "new" and item.guide then Set(p, id, true, WHY.new) end
+    if classic == "expert" and item.guide then Set(p, id, false, WHY.expert) end
+end
+
+local function Traits(p, answers)
     local screen, group, classic = Chosen(answers, "screen"), Chosen(answers, "group"), Chosen(answers, "classic")
-    for id, item in pairs(purist and {} or Setup.ITEMS) do
-        if screen == "clean" and item.screen then Set(id, false, WHY.clean) end
-        if screen == "clean" and item.hide then Set(id, true, WHY.clean) end
-        if amount == "everything" and item.extra then Set(id, true, WHY.everything) end
-        if screen == "all" and item.hud then Set(id, true, WHY.all) end
-        if group == "solo" and item.group then Set(id, false, WHY.solo) end
-        if group == "always" and item.group then Set(id, true, WHY.always) end
-        if classic == "new" and item.guide then Set(id, true, WHY.new) end
-        if classic == "expert" and item.guide then Set(id, false, WHY.expert) end
-    end
+    for id, item in pairs(Setup.ITEMS) do ItemTraits(p, item, id, screen, group, classic) end
+end
+
+local function Overlaps(p, answers)
     for key, overlap in pairs(Setup.OVERLAP) do
-        if not purist and Picked(answers, "addons", key) then
+        if Picked(answers, "addons", key) then
             for _, id in ipairs(overlap.off) do
-                Set(id, false, overlap.why)
-                forced[id] = true
+                Set(p, id, false, overlap.why)
+                p.forced[id] = true
             end
         end
     end
-    for _, id in ipairs(purist and {} or Setup.CORE) do
-        want[id], why[id], forced[id] = true, WHY.core, true
+end
+
+local function Answered(p, answers, ctx)
+    AnsweredBundles(p, answers)
+    for _, id in ipairs(Setup.CLASS[ctx.class] or {}) do Set(p, id, true, WHY.class) end
+    Traits(p, answers)
+    Overlaps(p, answers)
+    for _, id in ipairs(Setup.CORE) do
+        p.want[id], p.why[id], p.forced[id] = true, WHY.core, true
     end
-    local links = ctx.links or {}
-    local function Kept(id)
-        return not purist and ctx.read(id) == false and ctx.mine(id) == true
-    end
+end
+
+local function Kept(p, ctx, id)
+    return not p.purist and ctx.read(id) == false and ctx.mine(id) == true
+end
+
+local function Needs(item, links, id)
+    return item.needs and { item.needs } or links[id]
+end
+
+local function MeetNeeds(p, ctx, links)
     for id, item in pairs(Setup.ITEMS) do
-        local needs = item.needs and { item.needs } or links[id]
-        for _, need in ipairs(needs or {}) do
-            local needOn = want[need]
+        for _, need in ipairs(Needs(item, links, id) or {}) do
+            local needOn = p.want[need]
             if needOn == nil then needOn = ctx.read(need) end
-            if want[id] and needOn == false and not Kept(id) then
-                if forced[need] then
-                    want[id], why[id] = false, WHY.needed:format(Setup.ITEMS[need].name)
+            if p.want[id] and needOn == false and not Kept(p, ctx, id) then
+                if p.forced[need] then
+                    p.want[id], p.why[id] = false, WHY.needed:format(Setup.ITEMS[need].name)
                 else
-                    want[need], why[need] = true, WHY.needs:format(item.name)
+                    p.want[need], p.why[need] = true, WHY.needs:format(item.name)
                 end
             end
         end
     end
+end
+
+local function Entry(p, ctx, links, id, item, now)
+    local suggest = p.want[id]
+    if suggest == nil then suggest = now end
+    local mine = not p.purist and suggest ~= now and ctx.mine(id) == true
+    return { id = id, name = item.name, theme = THEME_OF[id], now = now, suggest = suggest,
+        on = (mine and now) or (not mine and suggest), why = p.why[id] or WHY.stays, mine = mine,
+        module = item.addon ~= nil, loaded = not ctx.loaded or ctx.loaded(id) == true,
+        idle = item.addon ~= nil and not now and ctx.enabled ~= nil and ctx.enabled(id) == true,
+        needs = Needs(item, links, id) }
+end
+
+local themeOrder = {}
+for i, theme in ipairs(Setup.THEMES) do themeOrder[theme] = i end
+
+local function ByTheme(a, b)
+    if a.theme ~= b.theme then return (themeOrder[a.theme] or UNKNOWN_ORDER) < (themeOrder[b.theme] or UNKNOWN_ORDER) end
+    return a.name < b.name
+end
+
+function Setup.Plan(answers, ctx)
+    local amount = Chosen(answers, "amount")
+    local base = amount == EVERYTHING and RECOMMENDED or amount == ESSENTIALS and MINIMALIST
+    local p = { want = {}, why = {}, forced = {}, amount = amount, purist = amount == PURIST }
+    if p.purist then PuristBase(p) end
+    if base then PresetBase(p, base, ctx) end
+    QuietItems(p)
+    if not p.purist then Answered(p, answers, ctx) end
+    local links = ctx.links or {}
+    MeetNeeds(p, ctx, links)
     local entries = {}
     for id, item in pairs(Setup.ITEMS) do
         local now = ctx.read(id)
-        local needs = item.needs and { item.needs } or links[id]
-        if now ~= nil then
-            local suggest = want[id]
-            if suggest == nil then suggest = now end
-            local mine = not purist and suggest ~= now and ctx.mine(id) == true
-            entries[#entries + 1] = { id = id, name = item.name, theme = THEME_OF[id], now = now, suggest = suggest,
-                on = (mine and now) or (not mine and suggest), why = why[id] or WHY.stays, mine = mine,
-                module = item.addon ~= nil, loaded = not ctx.loaded or ctx.loaded(id) == true,
-                idle = item.addon ~= nil and not now and ctx.enabled ~= nil and ctx.enabled(id) == true, needs = needs }
-        end
+        if now ~= nil then entries[#entries + 1] = Entry(p, ctx, links, id, item, now) end
     end
     Setup.Settle(entries)
-    local order = {}
-    for i, theme in ipairs(Setup.THEMES) do order[theme] = i end
-    table.sort(entries, function(a, b)
-        if a.theme ~= b.theme then return (order[a.theme] or 99) < (order[b.theme] or 99) end
-        return a.name < b.name
-    end)
+    table.sort(entries, ByTheme)
     return entries
 end
 
@@ -379,20 +416,20 @@ end
 
 function Setup.Toggle(entries, id, on)
     local by = ByID(entries)
-    local function Set(e, value)
+    local function Flip(e, value)
         if not e or e.on == value then return end
         e.on = value
         if value then
-            for _, need in ipairs(e.needs or {}) do Set(by[need], true) end
+            for _, need in ipairs(e.needs or {}) do Flip(by[need], true) end
         else
             for _, other in ipairs(entries) do
                 for _, need in ipairs(other.on and other.needs or {}) do
-                    if need == e.id then Set(other, false) end
+                    if need == e.id then Flip(other, false) end
                 end
             end
         end
     end
-    Set(by[id], on)
+    Flip(by[id], on)
 end
 
 function Setup.Skips(answers)
@@ -568,56 +605,69 @@ function Setup.Restore()
     return true
 end
 
+local function EnableModule(item, mod)
+    local reload = false
+    for _, addon in ipairs(ns.LinkedAddons(item.addon, true)) do
+        if C_AddOns.GetAddOnEnableState(addon) == 0 then C_AddOns.EnableAddOn(addon) end
+        if not C_AddOns.IsAddOnLoaded(addon) then reload = true end
+    end
+    if mod and mod.store then
+        mod.store.Set(mod.key, true)
+        return reload
+    end
+    local root = ns.SettingsRoot()
+    if type(root[item.db]) ~= "table" then root[item.db] = {} end
+    root[item.db][item.key] = true
+    return true
+end
+
+local function ApplyModule(item, change)
+    local mod = Module(item)
+    if change.on then return EnableModule(item, mod) end
+    for _, addon in ipairs(ns.LinkedAddons(item.addon, false)) do C_AddOns.DisableAddOn(addon) end
+    return change.now
+end
+
+local function ApplySetting(item, change)
+    local store = Store(item)
+    if item.off then
+        if not change.on then
+            store.Set(item.key, item.off)
+        elseif store.Get(item.key) == item.off then
+            store.Set(item.key, store.Default(item.key))
+        end
+    else
+        store.Set(item.key, change.on)
+    end
+    for _, key in ipairs(item.also or {}) do store.Set(key, change.on) end
+    if not change.on then return end
+    for key, value in pairs(item.set or {}) do
+        if store.Get(key) == store.Default(key) then store.Set(key, value) end
+    end
+end
+
+local function Yours(entries)
+    local yours = {}
+    for _, change in ipairs(entries) do
+        if change.on ~= change.suggest then yours[change.id] = true end
+    end
+    return yours
+end
+
 function Setup.Apply(entries)
     Setup.Backup()
     local reload = false
     for _, change in ipairs(entries) do
         if Setup.Differs(change) then
             local item = Setup.ITEMS[change.id]
-            if item.addon then
-                local mod = Module(item)
-                if change.on then
-                    for _, addon in ipairs(ns.LinkedAddons(item.addon, true)) do
-                        if C_AddOns.GetAddOnEnableState(addon) == 0 then C_AddOns.EnableAddOn(addon) end
-                        if not C_AddOns.IsAddOnLoaded(addon) then reload = true end
-                    end
-                    if mod and mod.store then
-                        mod.store.Set(mod.key, true)
-                    else
-                        local root = ns.SettingsRoot()
-                        if type(root[item.db]) ~= "table" then root[item.db] = {} end
-                        root[item.db][item.key] = true
-                        reload = true
-                    end
-                else
-                    for _, addon in ipairs(ns.LinkedAddons(item.addon, false)) do C_AddOns.DisableAddOn(addon) end
-                    reload = reload or change.now
-                end
-            else
-                local store = Store(item)
-                if item.off then
-                    if not change.on then
-                        store.Set(item.key, item.off)
-                    elseif store.Get(item.key) == item.off then
-                        store.Set(item.key, store.Default(item.key))
-                    end
-                else
-                    store.Set(item.key, change.on)
-                end
-                for _, key in ipairs(item.also or {}) do store.Set(key, change.on) end
-                if change.on then
-                    for key, value in pairs(item.set or {}) do
-                        if store.Get(key) == store.Default(key) then store.Set(key, value) end
-                    end
-                end
+            if not item.addon then
+                ApplySetting(item, change)
+            elseif ApplyModule(item, change) then
+                reload = true
             end
         end
     end
-    local yours = {}
-    for _, change in ipairs(entries) do
-        if change.on ~= change.suggest then yours[change.id] = true end
-    end
-    ns.SettingsRoot().setupYours = yours
-    ns.QoLSettings.Set("preset", "custom")
+    ns.SettingsRoot().setupYours = Yours(entries)
+    ns.QoLSettings.Set("preset", CUSTOM)
     return reload
 end

@@ -1,24 +1,38 @@
--------------------------------------------------------------------------------
---  NaowhForever_Crosshair.lua -- the QoL crosshair at the middle of the screen, optionally
---  recoloured while your target is out of melee range, and its card on QoL > Cursor with a
---  live preview drawn by the same code as the crosshair.
--------------------------------------------------------------------------------
+-- NaowhForever_Crosshair.lua: the Crosshair at the middle of the screen, recoloured out of melee range, and its card.
 local ns = _G.NaowhForever
+
 local S = ns.QoLSettings
 local UI = ns.UI
 local T = ns.THEME
 
 local BAR = "Interface\\Buttons\\WHITE8x8"
 local RING = "Interface\\AddOns\\NaowhForever\\Media\\crosshair_ring.tga"
-local TEXEL_HALF = 0.5 / 512
+local RING_TEXELS = 512
+local TEXEL_HALF = 0.5 / RING_TEXELS
 local PI, sin, cos = math.pi, math.sin, math.cos
 local TICK = 0.05
+local SPAN_PAD = 2
+local FRAME_LEVEL = 50
+local ROUND = ns.QoLConstants.ROUND
 
--- A melee-range ability per class, lowest rank (Forever keeps every rank known). Druids
--- depend on form. Shamans without Stormstrike and casters have none; a spell ID of your own
--- can be set on the options page.
+local CAT_FORM, BEAR_FORM, DIRE_BEAR_FORM = 1, 5, 8
+local CLAW, MAUL = 1082, 6807
 local MELEE = { WARRIOR = 1715, ROGUE = 1752, HUNTER = 2973, SHAMAN = 17364, PALADIN = 679 }
-local DRUID_MELEE = { [1] = 1082, [5] = 6807, [8] = 6807 }   -- Claw in Cat, Maul in Bear
+local DRUID_MELEE = { [CAT_FORM] = CLAW, [BEAR_FORM] = MAUL, [DIRE_BEAR_FORM] = MAUL }
+local EVENTS = { "PLAYER_REGEN_DISABLED", "PLAYER_REGEN_ENABLED",
+    "PLAYER_MOUNT_DISPLAY_CHANGED", "PLAYER_TARGET_CHANGED", "UPDATE_SHAPESHIFT_FORM",
+    "SPELLS_CHANGED", "DISPLAY_SIZE_CHANGED", "UI_SCALE_CHANGED" }
+
+local PREVIEW_FIT = 120
+local PREVIEW_Y = 10
+local NOTE_Y, NOTE_SIZE = 10, 11
+local STATES = {
+    { key = "inRange", label = "In Range", tip = "No target, or your target in melee range: the crosshair in its own colours." },
+    { key = "outOfRange", label = "Out of Range", tip = "Your target out of melee range.", needs = "crossMelee" },
+}
+local SUMMARY = "%d %s%s%s%s"
+local ARM, ARMS_TEXT = "arm", "arms"
+local WITH_DOT, WITH_CIRCLE, COMBAT_ONLY = ", dot", ", circle", ", in combat only"
 
 local ARMS = {
     { key = "crossTop", base = 0 },
@@ -79,7 +93,6 @@ function Look.New(f)
     return p
 end
 
--- Draws one piece and its outline, centred on (x, y) from the frame's corner.
 local function Place(f, tex, shadow, w, h, x, y, angle, c, outline, ow, alpha)
     tex:SetSize(w, h)
     tex:ClearAllPoints()
@@ -99,57 +112,54 @@ local function Place(f, tex, shadow, w, h, x, y, angle, c, outline, ow, alpha)
     end
 end
 
-function Look.Paint(f, p, out)
+local function PaintArms(f, p, span, color, outline, ow, alpha)
     local size, thick, gap = S.Get("crossSize"), S.Get("crossThickness"), S.Get("crossGap")
-    local alpha = S.Get("crossOpacity")
-    local base = Color("crossColor", "crossClassColor")
-    local outline = S.Get("crossOutline") and S.Get("crossOutlineColor") or nil
-    local ow = S.Get("crossOutlineWeight")
-
-    local melee = S.Get("crossMelee") and out
-    local meleeColor = S.Get("crossMeleeColor")
-    if melee and S.Get("crossMeleeBorder") then outline = meleeColor end
-
-    local span = gap + size + (outline and ow or 0) + 2
-    f:SetSize(span * 2, span * 2)
-
-    local armColor = melee and S.Get("crossMeleeArms") and meleeColor or base
     for i, def in ipairs(ARMS) do
         if S.Get(def.key) then
             local dist = gap + size / 2
             Place(f, p.arms[i], p.shadows[i], thick, size, span + dist * sin(def.base),
-                span + dist * cos(def.base), -def.base, armColor, outline, ow, alpha)
+                span + dist * cos(def.base), -def.base, color, outline, ow, alpha)
         else
             p.arms[i]:Hide()
             p.shadows[i]:Hide()
         end
     end
+end
 
-    if S.Get("crossDot") then
-        local ds = S.Get("crossDotSize")
-        Place(f, p.dot, p.dotShadow, ds, ds, span, span, 0,
-            melee and S.Get("crossMeleeDot") and meleeColor or base, outline, ow, alpha)
-    else
-        p.dot:Hide()
-        p.dotShadow:Hide()
+local function PaintRound(f, tex, shadow, key, sizeKey, span, color, outline, ow, alpha)
+    if not S.Get(key) then
+        tex:Hide()
+        shadow:Hide()
+        return
     end
+    local size = S.Get(sizeKey)
+    Place(f, tex, shadow, size, size, span, span, 0, color, outline, ow, alpha)
+end
 
-    if S.Get("crossCircle") then
-        local cs = S.Get("crossCircleSize")
-        Place(f, p.ring, p.ringShadow, cs, cs, span, span, 0,
-            melee and S.Get("crossMeleeCircle") and meleeColor or S.Get("crossCircleColor"),
-            outline, ow, alpha)
-    else
-        p.ring:Hide()
-        p.ringShadow:Hide()
-    end
+function Look.Paint(f, p, out)
+    local alpha = S.Get("crossOpacity")
+    local base = Color("crossColor", "crossClassColor")
+    local outline = S.Get("crossOutline") and S.Get("crossOutlineColor") or nil
+    local ow = S.Get("crossOutlineWeight")
+    local melee = S.Get("crossMelee") and out
+    local meleeColor = S.Get("crossMeleeColor")
+    if melee and S.Get("crossMeleeBorder") then outline = meleeColor end
+
+    local span = S.Get("crossGap") + S.Get("crossSize") + (outline and ow or 0) + SPAN_PAD
+    f:SetSize(span * 2, span * 2)
+
+    PaintArms(f, p, span, melee and S.Get("crossMeleeArms") and meleeColor or base, outline, ow, alpha)
+    PaintRound(f, p.dot, p.dotShadow, "crossDot", "crossDotSize", span,
+        melee and S.Get("crossMeleeDot") and meleeColor or base, outline, ow, alpha)
+    PaintRound(f, p.ring, p.ringShadow, "crossCircle", "crossCircleSize", span,
+        melee and S.Get("crossMeleeCircle") and meleeColor or S.Get("crossCircleColor"), outline, ow, alpha)
     return span
 end
 
 local function Build()
     frame = CreateFrame("Frame", "NaowhForeverCrosshair", UIParent)
     frame:SetFrameStrata("HIGH")
-    frame:SetFrameLevel(50)
+    frame:SetFrameLevel(FRAME_LEVEL)
     frame:EnableMouse(false)
     parts = Look.New(frame)
 end
@@ -159,7 +169,7 @@ local function Layout()
     local scale = UIParent:GetEffectiveScale()
     frame:ClearAllPoints()
     frame:SetPoint("CENTER", UIParent, "CENTER",
-        math.floor(S.Get("crossX") * scale + 0.5) / scale, math.floor(S.Get("crossY") * scale + 0.5) / scale)
+        math.floor(S.Get("crossX") * scale + ROUND) / scale, math.floor(S.Get("crossY") * scale + ROUND) / scale)
 end
 
 local function Visible()
@@ -167,9 +177,6 @@ local function Visible()
     return not (S.Get("crossHideMounted") and IsMounted())
 end
 
--------------------------------------------------------------------------------
---  Melee range
--------------------------------------------------------------------------------
 local function PlayAlarm()
     UI._PlayLSMSound(UI.SoundPathFor(S.Get("crossMeleeSoundKey")))
 end
@@ -207,7 +214,6 @@ local function Tick(_, elapsed)
     tickAcc = 0
     local inRange = C_Spell.IsSpellInRange(spell, "target")
     if inRange == nil or Secret(inRange) then return end
-    -- The sound plays on leaving range, not on picking a target that is already out of it.
     if not inRange and lastInRange == true and S.Get("crossMeleeSound") then StartAlarm() end
     if inRange then StopAlarm() end
     lastInRange = inRange
@@ -227,20 +233,20 @@ local function EvaluateMelee()
     end
 end
 
--------------------------------------------------------------------------------
---  Lifecycle
--------------------------------------------------------------------------------
-local events = CreateFrame("Frame")
-events:SetScript("OnEvent", function(_, event)
+local function OnTargetChanged()
+    lastInRange = nil
+    StopAlarm()
+    SetOutOfMelee(false)
+    EvaluateMelee()
+end
+
+local function OnEvent(_, event)
     if event == "PLAYER_REGEN_DISABLED" then
         inCombat = true
     elseif event == "PLAYER_REGEN_ENABLED" then
         inCombat = false
     elseif event == "PLAYER_TARGET_CHANGED" then
-        lastInRange = nil
-        StopAlarm()
-        SetOutOfMelee(false)
-        EvaluateMelee()
+        OnTargetChanged()
         return
     elseif event == "UPDATE_SHAPESHIFT_FORM" or event == "SPELLS_CHANGED" then
         EvaluateMelee()
@@ -249,7 +255,10 @@ events:SetScript("OnEvent", function(_, event)
         Layout()
     end
     frame:SetShown(Visible())
-end)
+end
+
+local events = CreateFrame("Frame")
+events:SetScript("OnEvent", OnEvent)
 
 local function Apply()
     events:UnregisterAllEvents()
@@ -260,19 +269,17 @@ local function Apply()
     end
     if not frame then Build() end
     inCombat = UnitAffectingCombat("player")
-    for _, event in ipairs({ "PLAYER_REGEN_DISABLED", "PLAYER_REGEN_ENABLED",
-        "PLAYER_MOUNT_DISPLAY_CHANGED", "PLAYER_TARGET_CHANGED", "UPDATE_SHAPESHIFT_FORM",
-        "SPELLS_CHANGED", "DISPLAY_SIZE_CHANGED", "UI_SCALE_CHANGED" }) do
-        events:RegisterEvent(event)
-    end
+    for _, event in ipairs(EVENTS) do events:RegisterEvent(event) end
     Layout()
     frame:SetShown(Visible())
     EvaluateMelee()
 end
 
-hooksecurefunc(S, "Set", function(key)
+local function OnSettingChanged(key)
     if key == "enabled" or key:find("^cross") then Apply() end
-end)
+end
+
+hooksecurefunc(S, "Set", OnSettingChanged)
 hooksecurefunc(ns, "Apply", Apply)
 
 local boot = CreateFrame("Frame")
@@ -280,14 +287,6 @@ boot:RegisterEvent("PLAYER_LOGIN")
 boot:SetScript("OnEvent", Apply)
 
 local Group = ns.Shared.Settings.Group
-local PREVIEW_FIT = 120
-local PREVIEW_Y = 10
-local NOTE_Y, NOTE_SIZE = 10, 11
-local STATES = {
-    { key = "inRange", label = "In Range", tip = "No target, or your target in melee range: the crosshair in its own colours." },
-    { key = "outOfRange", label = "Out of Range", tip = "Your target out of melee range.", needs = "crossMelee" },
-}
-
 
 local function OwnColour() return not S.Get("crossClassColor") end
 
@@ -316,8 +315,8 @@ local function Summary(store)
     for _, def in ipairs(ARMS) do
         if store.Get(def.key) then arms = arms + 1 end
     end
-    return ("%d %s%s%s%s"):format(arms, arms == 1 and "arm" or "arms", store.Get("crossDot") and ", dot" or "",
-        store.Get("crossCircle") and ", circle" or "", store.Get("crossCombatOnly") and ", in combat only" or "")
+    return SUMMARY:format(arms, arms == 1 and ARM or ARMS_TEXT, store.Get("crossDot") and WITH_DOT or "",
+        store.Get("crossCircle") and WITH_CIRCLE or "", store.Get("crossCombatOnly") and COMBAT_ONLY or "")
 end
 
 ns.Shared.Settings.Page("QoL/Cursor", S):Card({

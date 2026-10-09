@@ -1,30 +1,86 @@
--------------------------------------------------------------------------------
---  NaowhForever_Widgets.lua -- the widget kit behind every options row.
---  ns.UI keeps the member names the page builders were written against (`local EUI = ns.UI`).
---  The window lifecycle members are filled in by the Window file, which loads after this one.
--------------------------------------------------------------------------------
+-- NaowhForever_Widgets.lua: the widget kit behind every options row (ns.UI).
 local ns = _G.NaowhForever
 local T = ns.THEME
+
+local MEDIA = "Interface\\AddOns\\NaowhForever\\Media\\"
+local CHEVRON = MEDIA .. "chevron.tga"
+local COGS_ICON = MEDIA .. "cog.tga"
+local TRACK_TEX = MEDIA .. "toggle_track.tga"
+local KNOB_TEX = MEDIA .. "toggle_knob.tga"
+local SPEAKER_TEX = MEDIA .. "speaker.tga"
+local VOICE_PATH = MEDIA .. "Voice\\"
 local BLACK = { r = 0, g = 0, b = 0 }
+local CURSOR_TIP = { anchor = "cursor", justify = "LEFT" }
+local CONTENT_PAD = 20
+local ROUND = 0.5
+local CHEVRON_DOWN = -math.pi / 2
+local PICK_TOLERANCE = 1 / 255
+local DROPDOWN_W, DROPDOWN_H, DROPDOWN_TEXT_SIZE = 160, 24, 12
+local DROPDOWN_TEXT_X, DROPDOWN_ARROW_ROOM, DROPDOWN_ARROW, DROPDOWN_ARROW_X = 8, 18, 10, 7
+local MENU_HEIGHT, MENU_DROP = 420, 2
+local SLIDER_TEXT_SIZE, SLIDER_BOX_INSET, SLIDER_MIN_FILL = 12, 4, 0.001
+local SLIDER_PRECISION = "%.4f"
+local ROW_H, HEADER_H = 50, 40
+local ROW_INSET, LABEL_GAP, LABEL_SIZE = 20, 8, 14
+local CONTROL_RAISE = 2
+local BUTTONS_W, BUTTONS_H, BUTTONS_GAP = 84, 24, 6
+local ICON_BUTTON, DEFAULT_ICON = 32, 134400
+local ROW_BUTTON_W, ROW_BUTTON_H = 90, 24
+local PLAY_SIZE, PLAY_GAP, PLAY_ICON = 24, 4, 14
+local SLIDER_TRACK_W, SLIDER_TRACK_H, SLIDER_THUMB = 120, 4, 12
+local SLIDER_BOX_W, SLIDER_BOX_H, SLIDER_MAX = 40, 22, 100
+local PALETTE_SIZE, PALETTE_GAP, PALETTE_EDGE_ALPHA = 22, 4, 0.6
+local DIM_ALPHA = 0.3
+local HIT_PAD = 4
+local RULE_ALPHA = 0.6
+local FALLBACK_ROW_W = 910
+local DIVIDER_INSET = 8
+local HEADER_TEXT_Y = 8
+local WIDE_BUTTON_W, WIDE_BUTTON_H = 200, 26
+local KEY_FIELD_W, KEY_FIELD_H, COMBAT_DIM = 150, 26, 0.4
+local SWATCH_W, SWATCH_H = 40, 20
+local BAND_ALPHA = 0.35
+local SCROLL_STEP = 60
+local GLIDE_RATE = 14
+local GLIDE_DONE = 0.5
+local TIP = { w = 240, pad = 8, size = 10, spacing = 3, gap = 4, cursorX = 16, cursorY = -12, alpha = 0.98 }
+local TOGGLE = { w = 40, h = 20, knobShare = 0.7, insetShare = 0.15, minInset = 2 }
+local FEATURE = { textSize = 16, textX = 30, arrow = 14, arrowX = 4, hitRoom = 120, hitRaise = 3 }
+local NOTE = { size = 12, inset = 20, top = 12, room = 24, fallbackW = 960 }
+local SCROLL = { slimW = 6, slimGap = 6, trackAlpha = 0.6, thumbAlpha = 0.8, minThumb = 24, sync = 0.5 }
+local SHARE_DEPTH = 4
+local SOUND_DROPDOWN_W = 200
+local NO_SOUND = "none"
+local SHARED_MEDIA_PREFIX = "sm:"
+local SHARED_MEDIA_NONE = "None"
+local MODIFIER_KEYS = { LSHIFT = true, RSHIFT = true, LCTRL = true, RCTRL = true, LALT = true, RALT = true }
+local RACIAL_VOICES = {
+    ["voice:stoneform-ready"] = "stoneform-ready.ogg",
+    ["voice:stoneform-preview"] = "stoneform-preview.ogg",
+    ["voice:shadowmeld-ready"] = "shadowmeld-ready.ogg",
+    ["voice:shadowmeld-preview"] = "shadowmeld-preview.ogg",
+}
+local TEXT_EDIT = "Edit"
+local TEXT_PLAY, TEXT_PLAY_HELP = "Play it", "Plays the sound picked here."
+local TEXT_PRESS_KEY, TEXT_NOT_BOUND = "Press a key...", "|cff808080Not bound|r"
+local TEXT_REBOUND = "%s is now bound to %s instead of %s."
+local TEXT_KEY_HELP = "Click, then press a key to bind it. Escape cancels; right-click clears. "
+    .. "The same binding as in Key Bindings > Naowh Forever."
+local TEXT_RELOAD = "Reload UI"
+local TEXT_ADDON_FONT = "Addon Font"
+local TEXT_UNAVAILABLE = " (unavailable)"
+local TEXT_NONE = "None"
+local TEXT_VOICE = "Voice: %s (English)"
 
 local UI = {}
 ns.UI = UI
 
-local CHEVRON = "Interface\\AddOns\\NaowhForever\\Media\\chevron.tga"
 UI.CHEVRON = CHEVRON
-
-UI.CONTENT_PAD = 20
-UI.COGS_ICON = "Interface\\AddOns\\NaowhForever\\Media\\cog.tga"
+UI.CONTENT_PAD = CONTENT_PAD
+UI.COGS_ICON = COGS_ICON
 
 function UI.L(text) return ns.L(text) end
 
--------------------------------------------------------------------------------
---  Tooltip: the house help card, a dark panel with a black edge, its text wrapped at TIP_W,
---  down and right of the cursor or centred over the frame it is for.
--------------------------------------------------------------------------------
-local TIP_W, TIP_PAD, TIP_SIZE, TIP_SPACING = 240, 8, 10, 3
-local TIP_GAP = 4                           -- over the frame it is for
-local TIP_CURSOR_X, TIP_CURSOR_Y = 16, -12  -- clear of the pointer, down and right of its tip
 local card
 
 local function Card()
@@ -32,76 +88,62 @@ local function Card()
     card = CreateFrame("Frame", nil, UIParent)
     card:SetFrameStrata("TOOLTIP")
     card:SetClampedToScreen(true)
-    ns.Solid(card, "BACKGROUND", T.panel, 0.98):SetAllPoints()
+    ns.Solid(card, "BACKGROUND", T.panel, TIP.alpha):SetAllPoints()
     ns.Border(card, BLACK)
-    card.text = ns.Font(card, TIP_SIZE, nil)
-    card.text:SetPoint("TOPLEFT", TIP_PAD, -TIP_PAD)
-    card.text:SetSpacing(TIP_SPACING)
+    card.text = ns.Font(card, TIP.size, nil)
+    card.text:SetPoint("TOPLEFT", TIP.pad, -TIP.pad)
+    card.text:SetSpacing(TIP.spacing)
     card:Hide()
     return card
 end
 
--- In restricted content the client can hand back a secret for a string's size.
 local function Usable(v) return not (issecretvalue and issecretvalue(v)) end
 
---- A help card for owner. text may be a function, called only when the card shows.
---- opts (optional): anchor = "cursor" puts it by the cursor; justify, as SetJustifyH.
+local function PlaceCard(t, owner, opts)
+    t:ClearAllPoints()
+    if opts and opts.anchor == "cursor" then
+        local scale = UIParent:GetEffectiveScale()
+        local x, y = GetCursorPosition()
+        t:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", x / scale + TIP.cursorX, y / scale + TIP.cursorY)
+    else
+        t:SetPoint("BOTTOM", owner, "TOP", 0, TIP.gap)
+    end
+end
+
 function UI.ShowWidgetTooltip(owner, text, opts)
     if type(text) == "function" then text = text() end
     if not text or text == "" then return end
     local t = Card()
     local fs = t.text
     fs:SetJustifyH(opts and opts.justify or "CENTER")
-    fs:SetWidth(TIP_W - 2 * TIP_PAD)
+    fs:SetWidth(TIP.w - 2 * TIP.pad)
     fs:SetText(text)
-    t:ClearAllPoints()
-    if opts and opts.anchor == "cursor" then
-        local scale = UIParent:GetEffectiveScale()
-        local x, y = GetCursorPosition()
-        t:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", x / scale + TIP_CURSOR_X, y / scale + TIP_CURSOR_Y)
-    else
-        t:SetPoint("BOTTOM", owner, "TOP", 0, TIP_GAP)
-    end
-    -- Sized once shown: a hidden frame's text reports the wrong size. A short line narrows the
-    -- card to fit it.
+    PlaceCard(t, owner, opts)
     t:Show()
     local w, h = fs:GetStringWidth(), fs:GetStringHeight()
-    if Usable(w) and w < TIP_W - 2 * TIP_PAD then fs:SetWidth(math.ceil(w)) end
-    if not Usable(h) then h = TIP_SIZE end
-    t:SetSize(fs:GetWidth() + 2 * TIP_PAD, h + 2 * TIP_PAD)
+    if Usable(w) and w < TIP.w - 2 * TIP.pad then fs:SetWidth(math.ceil(w)) end
+    if not Usable(h) then h = TIP.size end
+    t:SetSize(fs:GetWidth() + 2 * TIP.pad, h + 2 * TIP.pad)
 end
 
 function UI.HideWidgetTooltip()
     if card then card:Hide() end
 end
 
--------------------------------------------------------------------------------
---  Bare controls
--------------------------------------------------------------------------------
--- A pill switch. WoW has no rounded-rectangle primitive, and a mask gets about one pixel of
--- gradient at 20px (stepped ends), so track and knob are antialiased art tinted with
--- SetVertexColor. toggle_track.tga is 128x64, the 2:1 ratio of W:H below; changing that
--- ratio means redrawing it.
-local TRACK_TEX = "Interface\\AddOns\\NaowhForever\\Media\\toggle_track.tga"
-local KNOB_TEX = "Interface\\AddOns\\NaowhForever\\Media\\toggle_knob.tga"
-local SPEAKER_TEX = "Interface\\AddOns\\NaowhForever\\Media\\speaker.tga"   -- a sound dropdown's play button
+local function Smooth(tex)
+    tex:SetTexelSnappingBias(0)
+    tex:SetSnapToPixelGrid(false)
+end
 
--- w/h/knobSize are optional overrides for a smaller switch; knob and inset scale off the
--- height (70% and 15%).
+local function Truthy(v) return v and true or false end
+
 function UI.BuildToggleControl(parent, frameLevel, get, set, w, h, knobSize)
-    local W, H = w or 40, h or 20
-    local KNOB = knobSize or math.floor(H * 0.7 + 0.5)
-    local INSET = math.max(2, math.floor(H * 0.15 + 0.5))
+    local W, H = w or TOGGLE.w, h or TOGGLE.h
+    local KNOB = knobSize or math.floor(H * TOGGLE.knobShare + ROUND)
+    local INSET = math.max(TOGGLE.minInset, math.floor(H * TOGGLE.insetShare + ROUND))
     local t = CreateFrame("Button", nil, parent)
     t:SetSize(W, H)
     if frameLevel then t:SetFrameLevel(frameLevel) end
-
-    -- Pixel snapping throws away the art's antialiasing (the real cause of the jagged
-    -- switch); Blizzard's NineSlice makes the same two calls.
-    local function Smooth(tex)
-        tex:SetTexelSnappingBias(0)
-        tex:SetSnapToPixelGrid(false)
-    end
 
     local track = t:CreateTexture(nil, "BACKGROUND")
     track:SetTexture(TRACK_TEX)
@@ -113,7 +155,6 @@ function UI.BuildToggleControl(parent, frameLevel, get, set, w, h, knobSize)
     knob:SetSize(KNOB, KNOB)
     Smooth(knob)
 
-    -- Read through fields so a kept control can be pointed at new callbacks (UI.KeepToggle).
     t._get, t._set = get, set
     local on = false
     local function PaintTrack(c, a)
@@ -121,7 +162,7 @@ function UI.BuildToggleControl(parent, frameLevel, get, set, w, h, knobSize)
     end
 
     local function Paint(state)
-        on = state and true or false
+        on = Truthy(state)
         knob:ClearAllPoints()
         if on then
             PaintTrack(T.accent, 1)
@@ -134,8 +175,6 @@ function UI.BuildToggleControl(parent, frameLevel, get, set, w, h, knobSize)
         end
     end
 
-    -- Off has no border to light up the way ns.Button's hover does, so the track itself
-    -- carries it: the lighter accent when on, the neutral row fill when off.
     t:SetScript("OnEnter", function()
         PaintTrack(on and T.accentSoft or T.grey, 1)
     end)
@@ -143,9 +182,9 @@ function UI.BuildToggleControl(parent, frameLevel, get, set, w, h, knobSize)
         PaintTrack(on and T.accent or T.line, 1)
     end)
 
-    local function Snap() Paint(t._get() and true or false) end
+    local function Snap() Paint(Truthy(t._get())) end
     t:SetScript("OnClick", function()
-        t._set(not (t._get() and true or false))
+        t._set(not Truthy(t._get()))
         Snap()
     end)
     Snap()
@@ -153,111 +192,138 @@ function UI.BuildToggleControl(parent, frameLevel, get, set, w, h, knobSize)
     return t, Paint, Snap
 end
 
+local function ByText(a, b) return tostring(a) < tostring(b) end
+
+local function DropdownKeys(btn)
+    if btn._order then return btn._order end
+    local out = {}
+    for k in pairs(btn._values) do out[#out + 1] = k end
+    table.sort(out, ByText)
+    return out
+end
+
+local function DropdownHandlesMouse(_, buttonName, event)
+    return event == "GLOBAL_MOUSE_DOWN" and buttonName == "LeftButton"
+end
+
+local function MenuApi()
+    return MenuUtil and MenuUtil.CreateRootMenuDescription and MenuVariants
+        and Menu and Menu.GetManager and AnchorUtil
+end
+
+local function OpenDropdownMenu(btn)
+    if not MenuApi() then return end
+    local desc = MenuUtil.CreateRootMenuDescription(MenuVariants.GetDefaultMenuMixin())
+    if not desc then return end
+    local menuHeight = btn._menuHeight
+    if type(menuHeight) == "function" then menuHeight = menuHeight() end
+    if desc.SetScrollMode then desc:SetScrollMode(menuHeight or MENU_HEIGHT) end
+    for _, k in ipairs(DropdownKeys(btn)) do
+        local key = k
+        desc:CreateRadio(btn._values[key] or tostring(key),
+            function() return btn._get() == key end,
+            function()
+                btn._set(key)
+                btn._refreshLabel()
+            end)
+    end
+    btn._menu = Menu.GetManager():OpenMenu(btn, desc,
+        AnchorUtil.CreateAnchor("TOPLEFT", btn, "BOTTOMLEFT", 0, -MENU_DROP))
+end
+
+local function CloseDropdownMenu(btn)
+    btn._menu:Close()
+    btn._menu = nil
+end
+
+local function OnDropdownMouseDown(btn)
+    if btn._menu and btn._menu.IsShown and btn._menu:IsShown() then
+        return CloseDropdownMenu(btn)
+    end
+    OpenDropdownMenu(btn)
+end
+
+local function OnDropdownHide(btn)
+    if btn._menu then CloseDropdownMenu(btn) end
+end
+
+local function DropdownArrow(btn)
+    local arrow = btn:CreateTexture(nil, "ARTWORK")
+    arrow:SetTexture(CHEVRON)
+    arrow:SetSize(DROPDOWN_ARROW, DROPDOWN_ARROW)
+    if arrow.SetRotation then arrow:SetRotation(CHEVRON_DOWN) end
+    arrow:SetVertexColor(T.muted.r, T.muted.g, T.muted.b, 1)
+    arrow:SetPoint("RIGHT", -DROPDOWN_ARROW_X, 0)
+    return arrow
+end
+
 function UI.BuildDropdownControl(parent, ddW, fLevel, values, order, get, set)
     local btn = CreateFrame("Button", nil, parent)
-    btn:SetSize(ddW or 160, 24)
+    btn:SetSize(ddW or DROPDOWN_W, DROPDOWN_H)
     if fLevel then btn:SetFrameLevel(fLevel) end
     local bg = ns.Solid(btn, "BACKGROUND", T.panel, 1)
     bg:SetAllPoints()
     local border = ns.Border(btn, BLACK)
-    local lbl = ns.Font(btn, 12, nil)
-    lbl:SetPoint("LEFT", 8, 0)
-    lbl:SetPoint("RIGHT", -18, 0)
+    local lbl = ns.Font(btn, DROPDOWN_TEXT_SIZE, nil)
+    lbl:SetPoint("LEFT", DROPDOWN_TEXT_X, 0)
+    lbl:SetPoint("RIGHT", -DROPDOWN_ARROW_ROOM, 0)
     lbl:SetJustifyH("LEFT")
     lbl:SetWordWrap(false)
-    local arrow = btn:CreateTexture(nil, "ARTWORK")
-    arrow:SetTexture(CHEVRON)
-    arrow:SetSize(10, 10)
-    if arrow.SetRotation then arrow:SetRotation(-math.pi / 2) end
-    arrow:SetVertexColor(T.muted.r, T.muted.g, T.muted.b, 1)
-    arrow:SetPoint("RIGHT", -7, 0)
-    -- Read through fields so a kept control can be pointed at new data (UI.KeepDropdown).
+    DropdownArrow(btn)
     btn._values, btn._order, btn._get, btn._set = values, order, get, set
-    local function Keys()
-        if btn._order then return btn._order end
-        local out = {}
-        for k in pairs(btn._values) do out[#out + 1] = k end
-        table.sort(out, function(a, b) return tostring(a) < tostring(b) end)
-        return out
-    end
     btn._refreshLabel = function()
         local v = btn._get()
         lbl:SetText(btn._values[v] or tostring(v or ""))
     end
-    -- An anchored dropdown, not a context menu, and it closes itself. Three things line up:
-    --   * OpenContextMenu anchors to the cursor; OpenMenu with an anchor is the dropdown case.
-    --   * The manager closes menus on GLOBAL_MOUSE_DOWN, after this script, so toggling on
-    --     OnClick always found the menu gone and reopened it.
-    --   * It skips that close only when the hovered frame answers HandlesGlobalMouseEvent
-    --     (Menu.lua), as Blizzard's DropdownButton does.
-    btn.HandlesGlobalMouseEvent = function(_, buttonName, event)
-        return event == "GLOBAL_MOUSE_DOWN" and buttonName == "LeftButton"
-    end
-
-    local function MenuOpen()
-        return btn._menu and btn._menu.IsShown and btn._menu:IsShown()
-    end
-
-    btn:SetScript("OnMouseDown", function()
-        if MenuOpen() then
-            btn._menu:Close()
-            btn._menu = nil
-            return
-        end
-        if not (MenuUtil and MenuUtil.CreateRootMenuDescription and MenuVariants
-            and Menu and Menu.GetManager and AnchorUtil) then return end
-        local desc = MenuUtil.CreateRootMenuDescription(MenuVariants.GetDefaultMenuMixin())
-        if not desc then return end
-        -- Scrolling is opt-in on Blizzard's menu (IsScrollable is false until this is
-        -- called); unset, a long list ran off the screen. It only engages past this height:
-        -- 420, or the caller's btn._menuHeight (a number, or a function giving one) for a list
-        -- meant to show whole.
-        local menuHeight = btn._menuHeight
-        if type(menuHeight) == "function" then menuHeight = menuHeight() end
-        if desc.SetScrollMode then desc:SetScrollMode(menuHeight or 420) end
-        for _, k in ipairs(Keys()) do
-            local key = k
-            desc:CreateRadio(btn._values[key] or tostring(key),
-                function() return btn._get() == key end,
-                function()
-                    btn._set(key)
-                    btn._refreshLabel()
-                end)
-        end
-        btn._menu = Menu.GetManager():OpenMenu(btn, desc,
-            AnchorUtil.CreateAnchor("TOPLEFT", btn, "BOTTOMLEFT", 0, -2))
-    end)
+    btn.HandlesGlobalMouseEvent = DropdownHandlesMouse
+    btn:SetScript("OnMouseDown", OnDropdownMouseDown)
     btn:SetScript("OnEnter", function()
         border:SetColor(T.accent.r, T.accent.g, T.accent.b, 1)
     end)
     btn:SetScript("OnLeave", function()
-        border:SetColor(0, 0, 0, 1)
+        border:SetColor(BLACK.r, BLACK.g, BLACK.b, 1)
     end)
     btn._refreshLabel()
     btn._refreshValue = btn._refreshLabel
-    btn:SetScript("OnHide", function()
-        if btn._menu then btn._menu:Close(); btn._menu = nil end
-    end)
+    btn:SetScript("OnHide", OnDropdownHide)
     return btn, lbl
+end
+
+local function SliderClamp(track, v)
+    v = tonumber(v)
+    if not v then return nil end
+    local lo, hi, st = track._minV, track._maxV, track._step
+    v = math.floor((v - lo) / st + ROUND) * st + lo
+    v = tonumber((SLIDER_PRECISION):format(v))
+    if v < lo then v = lo elseif v > hi then v = hi end
+    return v
+end
+
+local function SliderValueBox(parent, inputW, inputH, inputFontSz, inputAlpha)
+    local valBox = CreateFrame("EditBox", nil, parent)
+    valBox:SetSize(inputW, inputH)
+    valBox:SetAutoFocus(false)
+    valBox:SetFont(ns.UIFontPath(), inputFontSz or SLIDER_TEXT_SIZE, "")
+    valBox:SetTextColor(T.fg.r, T.fg.g, T.fg.b, 1)
+    valBox:SetTextInsets(SLIDER_BOX_INSET, SLIDER_BOX_INSET, 0, 0)
+    valBox:SetJustifyH("CENTER")
+    valBox:SetAlpha(inputAlpha or 1)
+    local boxBg = ns.Solid(valBox, "BACKGROUND", T.bg, 1)
+    boxBg:SetAllPoints()
+    local boxBorder = ns.Border(valBox, BLACK)
+    valBox:SetScript("OnEnter", function() boxBorder:SetColor(T.accent.r, T.accent.g, T.accent.b, 1) end)
+    valBox:SetScript("OnLeave", function() boxBorder:SetColor(BLACK.r, BLACK.g, BLACK.b, 1) end)
+    return valBox, boxBg, boxBorder
 end
 
 function UI.BuildSliderCore(parent, trackW, trackH, thumbSz, inputW, inputH, inputFontSz,
                             inputAlpha, minV, maxV, step, get, set)
     local track = CreateFrame("Frame", nil, parent)
     track._minV, track._maxV, track._step = minV, maxV, step or 1
-    local function Clamp(v)
-        v = tonumber(v)
-        if not v then return nil end
-        local lo, hi, st = track._minV, track._maxV, track._step
-        v = math.floor((v - lo) / st + 0.5) * st + lo
-        v = tonumber(("%.4f"):format(v))
-        if v < lo then v = lo elseif v > hi then v = hi end
-        return v
-    end
+    local function Clamp(v) return SliderClamp(track, v) end
 
     track:SetSize(trackW, math.max(trackH, thumbSz))
     track:EnableMouse(true)
-    -- Read through fields so a kept control can be pointed at new callbacks (UI.KeepSlider).
     track._get, track._set = get, set
     local rail = ns.Solid(track, "BACKGROUND", T.line, 1)
     rail:SetPoint("LEFT", 0, 0)
@@ -271,25 +337,13 @@ function UI.BuildSliderCore(parent, trackW, trackH, thumbSz, inputW, inputH, inp
     thumb:SetVertexColor(T.fg.r, T.fg.g, T.fg.b, 1)
     thumb:SetSize(thumbSz, thumbSz)
 
-    local valBox = CreateFrame("EditBox", nil, parent)
-    valBox:SetSize(inputW, inputH)
-    valBox:SetAutoFocus(false)
-    valBox:SetFont(ns.UIFontPath(), inputFontSz or 12, "")
-    valBox:SetTextColor(T.fg.r, T.fg.g, T.fg.b, 1)
-    valBox:SetTextInsets(4, 4, 0, 0)
-    valBox:SetJustifyH("CENTER")
-    valBox:SetAlpha(inputAlpha or 1)
-    local boxBg = ns.Solid(valBox, "BACKGROUND", T.bg, 1)
-    boxBg:SetAllPoints()
-    local boxBorder = ns.Border(valBox, BLACK)
-    valBox:SetScript("OnEnter", function() boxBorder:SetColor(T.accent.r, T.accent.g, T.accent.b, 1) end)
-    valBox:SetScript("OnLeave", function() boxBorder:SetColor(0, 0, 0, 1) end)
+    local valBox, boxBg, boxBorder = SliderValueBox(parent, inputW, inputH, inputFontSz, inputAlpha)
 
     local function Paint()
         local lo, hi = track._minV, track._maxV
         local v = Clamp(track._get()) or lo
         local frac = (hi > lo) and (v - lo) / (hi - lo) or 0
-        fill:SetWidth(math.max(0.001, frac * trackW))
+        fill:SetWidth(math.max(SLIDER_MIN_FILL, frac * trackW))
         thumb:ClearAllPoints()
         thumb:SetPoint("CENTER", track, "LEFT", frac * trackW, 0)
         valBox:SetText(track._format and track._format(v) or tostring(v))
@@ -310,10 +364,6 @@ function UI.BuildSliderCore(parent, trackW, trackH, thumbSz, inputW, inputH, inp
         Paint()
     end
 
-    -- The drag ends when the button comes up, wherever the cursor is: OnMouseUp alone
-    -- strands the drag when the release lands outside the track. While it runs, UI.sliderDrag
-    -- is the track, so a page that redraws on every change (Shared/Settings/Page.lua) waits
-    -- for the release: its redraw hides the rows, which ended the drag after one step.
     local function EndDrag()
         track:SetScript("OnUpdate", nil)
         if UI.sliderDrag == track then UI.sliderDrag = nil end
@@ -339,7 +389,6 @@ function UI.BuildSliderCore(parent, trackW, trackH, thumbSz, inputW, inputH, inp
 
     local function Commit()
         if UI.rebindingRows then return end
-        -- What a formatted box shows ("120%", "6s") reads back as its number.
         local v = Clamp((valBox:GetText():gsub("[^%d%.%-]", "")))
         if v ~= nil then track._set(v) end
         Paint()
@@ -355,9 +404,6 @@ function UI.BuildSliderCore(parent, trackW, trackH, thumbSz, inputW, inputH, inp
     Paint()
     track._refreshValue = Paint
     track._valBox = valBox
-    -- Its parts, public for a caller that styles its own slider (the Dungeon Journal's
-    -- opacity): the rail, the filled part, the thumb, and the value box with its fill and
-    -- border ({ _frame, SetColor }). Paint only sizes and moves them, so a restyle lasts.
     track.rail, track.fill, track.thumb = rail, fill, thumb
     track.valueBox, track.valueFill, track.valueBorder = valBox, boxBg, boxBorder
     return track, valBox, Paint
@@ -367,23 +413,12 @@ function UI.SetSliderRange(track, minV, maxV, step)
     track._minV, track._maxV, track._step = minV, maxV, step or 1
 end
 
--- What a slider's value box shows, set as track._format (or a row's cfg.format): a percent
--- or seconds. The box reads either back as a plain number.
 function UI.FormatPercent(v) return v .. "%" end
 function UI.FormatSeconds(v) return v .. "s" end
 
--------------------------------------------------------------------------------
---  Row factory (the W: dialect every options page is written in)
--------------------------------------------------------------------------------
 local W = {}
 UI.Widgets = W
 
-local ROW_H, HEADER_H = 50, 40
-local BUTTONS_W, BUTTONS_H, BUTTONS_GAP = 84, 24, 6   -- a button row's buttons
-
--- Features a player has opened this session, by page and name. A feature's options sit
--- under its row (W:Feature); on a page marked `collapse` they start closed, still built so
--- callers keep the frames they expect, but hidden and taking no height.
 local openFeatures = {}
 
 local function Collapsed(parent, frame, h)
@@ -394,8 +429,6 @@ local function Collapsed(parent, frame, h)
     return frame, h
 end
 
--- Only enabled for pages whose rows have stable identities. Config objects stay
--- attached to their controls; rebuilding updates their callbacks and dropdown data.
 function UI.BeginReusableRows(parent)
     parent._rowCache = parent._rowCache or {}
     parent._rowUses = {}
@@ -407,12 +440,17 @@ function UI.BeginReusableRows(parent)
     UI.rebindingRows = nil
 end
 
-local function CachedRow(parent, key)
-    if not parent._rowCache then return nil end
+local function NextUse(parent, key)
     local index = (parent._rowUses[key] or 0) + 1
     parent._rowUses[key] = index
-    local rows = parent._rowCache[key]
-    if not rows then rows = {}; parent._rowCache[key] = rows end
+    local list = parent._rowCache[key]
+    if not list then list = {}; parent._rowCache[key] = list end
+    return list, index
+end
+
+local function CachedRow(parent, key)
+    if not parent._rowCache then return nil end
+    local rows, index = NextUse(parent, key)
     local row = rows[index]
     if not row then
         row = CreateFrame("Frame", nil, parent)
@@ -423,16 +461,9 @@ local function CachedRow(parent, key)
     return row
 end
 
--- Any frame or region a builder makes, reused like the rows: on a parent that reuses its
--- rows, each key hands back what this call site made last build, in build order; elsewhere
--- it is made fresh. One-time setup belongs in create(parent); the caller sets everything
--- else every build. The second return is true for an element made just now.
 function UI.Keep(parent, key, create)
     if not parent._rowCache then return create(parent), true end
-    local index = (parent._rowUses[key] or 0) + 1
-    parent._rowUses[key] = index
-    local list = parent._rowCache[key]
-    if not list then list = {}; parent._rowCache[key] = list end
+    local list, index = NextUse(parent, key)
     local el, new = list[index], false
     if not el then
         el, new = create(parent), true
@@ -456,7 +487,7 @@ function UI.KeepToggle(parent, key, get, set, w, h, knobSize)
         return UI.BuildToggleControl(p, nil, get, set, w, h, knobSize)
     end)
     t._get, t._set = get, set
-    t:SetFrameLevel(parent:GetFrameLevel() + 2)
+    t:SetFrameLevel(parent:GetFrameLevel() + CONTROL_RAISE)
     t._refreshValue()
     return t
 end
@@ -466,18 +497,16 @@ function UI.KeepDropdown(parent, key, width, values, order, get, set)
         return UI.BuildDropdownControl(p, width, nil, values, order, get, set)
     end)
     dd._values, dd._order, dd._get, dd._set = values, order, get, set
-    dd:SetFrameLevel(parent:GetFrameLevel() + 2)
+    dd:SetFrameLevel(parent:GetFrameLevel() + CONTROL_RAISE)
     dd._refreshLabel()
     return dd
 end
 
--- The range is fixed when it is made, so one key is one slider shape.
 function UI.KeepSlider(parent, key, trackW, trackH, thumbSz, inputW, inputH, inputFontSz,
                        inputAlpha, minV, maxV, step, get, set)
     local track = UI.Keep(parent, key, function(p)
         local t = UI.BuildSliderCore(p, trackW, trackH, thumbSz, inputW, inputH, inputFontSz,
             inputAlpha, minV, maxV, step, get, set)
-        -- The value box is the track's sibling, so it follows the track in and out of use.
         t:HookScript("OnShow", function() t._valBox:Show() end)
         t:HookScript("OnHide", function() t._valBox:Hide() end)
         return t
@@ -496,13 +525,14 @@ function UI.KeepButton(parent, key, text, w, h, onClick)
     return btn
 end
 
+local CONFIG_LISTS = { "values", "order" }
+
 local function UpdateConfig(dst, src)
     if dst == src then return end
-    -- Dropdowns retain these table identities in their menu callbacks.
     local values, order = dst.values, dst.order
     for k in pairs(dst) do dst[k] = nil end
     for k, v in pairs(src) do dst[k] = v end
-    for _, key in ipairs({ "values", "order" }) do
+    for _, key in ipairs(CONFIG_LISTS) do
         local prior = key == "values" and values or order
         if type(prior) == "table" and type(src[key]) == "table" then
             if prior ~= src[key] then
@@ -514,155 +544,171 @@ local function UpdateConfig(dst, src)
     end
 end
 
-local function BuildRegionControl(rgn, cfg)
-    local function Get() return cfg.getValue() end
-    local function Set(...) return cfg.setValue(...) end
-    if cfg.type == "iconbutton" then
-        local button = CreateFrame("Button", nil, rgn)
-        button:SetSize(32, 32)
-        button:SetPoint("RIGHT", rgn, "RIGHT", -20, 0)
-        local icon = button:CreateTexture(nil, "ARTWORK")
-        icon:SetAllPoints()
-        ns.Border(button, { r = 0, g = 0, b = 0 })
-        button:RegisterForDrag("LeftButton")
-        button:RegisterForClicks("LeftButtonUp", "RightButtonUp")
-        button:SetScript("OnClick", function(_, mouse)
-            if mouse == "RightButton" then
-                if cfg.onRightClick then cfg.onRightClick() end
-            else
-                cfg.onClick()
-            end
-        end)
-        button:SetScript("OnDragStart", function() cfg.onClick() end)
-        button:SetScript("OnEnter", function(self)
-            if cfg.tooltip then UI.ShowWidgetTooltip(self, cfg.tooltip, { anchor = "cursor", justify = "LEFT" }) end
-        end)
-        button:SetScript("OnLeave", function() UI.HideWidgetTooltip() end)
-        button._refreshValue = function()
-            icon:SetTexture(cfg.icon or 134400)
-            icon:SetDesaturated(cfg.active ~= nil and not cfg.active())
-        end
-        button._refreshValue()
-        return button
-    elseif cfg.type == "button" then
-        local button = ns.Button(rgn, cfg.buttonText or "Edit", 90, 24, function() cfg.onClick() end)
-        button:SetPoint("RIGHT", rgn, "RIGHT", -20, 0)
-        return button
-    elseif cfg.type == "buttons" then
-        -- A row of buttons, right to left from the region's edge: cfg.buttons = { { text,
-        -- onClick, tooltip, width }, ... }. Clicks and tooltips are read from cfg when they
-        -- happen, so a reused row follows its new config.
-        local holder = CreateFrame("Frame", nil, rgn)
-        holder:SetHeight(BUTTONS_H)
-        holder:SetPoint("RIGHT", rgn, "RIGHT", -20, 0)
-        holder._buttons = {}
-        local x = 0
-        for i = #cfg.buttons, 1, -1 do
-            local w = cfg.buttons[i].width or BUTTONS_W
-            local button = ns.Button(holder, "", w, BUTTONS_H, function() cfg.buttons[i].onClick() end)
-            button:SetPoint("RIGHT", holder, "RIGHT", -x, 0)
-            holder._buttons[i] = button
-            x = x + w + BUTTONS_GAP
-        end
-        holder:SetWidth(math.max(1, x - BUTTONS_GAP))
-        holder._refreshValue = function()
-            for i, button in ipairs(holder._buttons) do
-                local b = cfg.buttons[i]
-                ns.SetButtonText(button, b.text)
-                if b.tooltip then ns.Tooltip(button, b.text, b.tooltip) end
-            end
-        end
-        holder._refreshValue()
-        return holder
-    elseif cfg.type == "toggle" then
-        local toggle = UI.BuildToggleControl(rgn, rgn:GetFrameLevel() + 2,
-            Get, Set)
-        toggle:SetPoint("RIGHT", rgn, "RIGHT", -20, 0)
-        return toggle
-    elseif cfg.type == "dropdown" then
-        local dd = UI.BuildDropdownControl(rgn, cfg.width or 160, rgn:GetFrameLevel() + 2,
-            cfg.values, cfg.order, Get, Set)
-        dd:SetPoint("RIGHT", rgn, "RIGHT", -20, 0)
-        -- A sound's: a play button before it (cfg.preview plays the picked one). The dropdown's
-        -- child, so it dims with it, and in _buttons, so it takes no clicks while off.
-        if cfg.preview then
-            local play = CreateFrame("Button", nil, dd)
-            play:SetSize(24, 24)
-            play:SetPoint("RIGHT", dd, "LEFT", -4, 0)
-            ns.Solid(play, "BACKGROUND", T.panel, 1):SetAllPoints()
-            ns.Border(play, BLACK)
-            play.icon = play:CreateTexture(nil, "ARTWORK")
-            play.icon:SetTexture(SPEAKER_TEX)
-            play.icon:SetSize(14, 14)
-            play.icon:SetPoint("CENTER")
-            play.icon:SetVertexColor(T.muted.r, T.muted.g, T.muted.b)
-            play:SetScript("OnClick", function() cfg.preview(Get()) end)
-            ns.Tooltip(play, "Play it", "Plays the sound picked here.")
-            play:HookScript("OnEnter", function(self) self.icon:SetVertexColor(T.fg.r, T.fg.g, T.fg.b) end)
-            play:HookScript("OnLeave", function(self) self.icon:SetVertexColor(T.muted.r, T.muted.g, T.muted.b) end)
-            dd._buttons = { play }
-        end
-        return dd
-    elseif cfg.type == "slider" then
-        local track, valBox = UI.BuildSliderCore(rgn, cfg.trackWidth or 120, 4, 12, cfg.boxWidth or 40, 22, 12,
-            1, cfg.min or 0, cfg.max or 100, cfg.step or 1, Get, Set)
-        -- Read on every paint, so a reused row follows its config's format.
-        track._format = function(v) return cfg.format and cfg.format(v) or tostring(v) end
-        track._refreshValue()
-        valBox:SetPoint("RIGHT", rgn, "RIGHT", -20, 0)
-        track:SetPoint("RIGHT", valBox, "LEFT", -8, 0)
-        return track
-    elseif cfg.type == "palette" then
-        -- A row of small chips showing colors; nothing to click. One chip per color that
-        -- cfg.colors() returns, built as they are first needed and hidden when a later call
-        -- returns fewer.
-        local SIZE, GAP = 22, 4
-        local chips = CreateFrame("Frame", nil, rgn)
-        chips:SetHeight(SIZE)
-        chips:SetPoint("RIGHT", rgn, "RIGHT", -20, 0)
-        local made = {}
-        local function Paint()
-            local colors = cfg.colors()
-            local n = #colors
-            chips:SetWidth(math.max(1, n * (SIZE + GAP) - GAP))
-            for i = 1, n do
-                local chip = made[i]
-                if not chip then
-                    chip = CreateFrame("Frame", nil, chips)
-                    chip:SetSize(SIZE, SIZE)
-                    chip:SetPoint("LEFT", chips, "LEFT", (i - 1) * (SIZE + GAP), 0)
-                    chip.fill = ns.Solid(chip, "BACKGROUND", T.bg, 1)
-                    chip.fill:SetAllPoints()
-                    ns.Border(chip, T.muted, 0.6)
-                    made[i] = chip
-                end
-                local c = colors[i]
-                chip.fill:SetColorTexture(c.r, c.g, c.b, 1)
-                chip:Show()
-            end
-            for i = n + 1, #made do made[i]:Hide() end
-        end
-        chips._refreshValue = Paint
-        Paint()
-        return chips
-    elseif cfg.type == "colorpicker" then
-        -- Text Color in the custom and Ability Reminder editors.
-        local swatch = UI.BuildColorSwatchControl(rgn, Get, Set, cfg.hasAlpha)
-        swatch:SetPoint("RIGHT", rgn, "RIGHT", -20, 0)
-        return swatch
-    end
+local function AtRowEnd(control, rgn)
+    control:SetPoint("RIGHT", rgn, "RIGHT", -ROW_INSET, 0)
+    return control
 end
 
--- A row that is switched off (cfg.disabled) greys out whatever its control is, and the
--- control takes no clicks: a slider's value box and every button of a button row included.
-local DIM_ALPHA = 0.3
+local function IconButtonControl(rgn, cfg)
+    local button = CreateFrame("Button", nil, rgn)
+    button:SetSize(ICON_BUTTON, ICON_BUTTON)
+    AtRowEnd(button, rgn)
+    local icon = button:CreateTexture(nil, "ARTWORK")
+    icon:SetAllPoints()
+    ns.Border(button, BLACK)
+    button:RegisterForDrag("LeftButton")
+    button:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+    button:SetScript("OnClick", function(_, mouse)
+        if mouse == "RightButton" then
+            if cfg.onRightClick then cfg.onRightClick() end
+        else
+            cfg.onClick()
+        end
+    end)
+    button:SetScript("OnDragStart", function() cfg.onClick() end)
+    button:SetScript("OnEnter", function(self)
+        if cfg.tooltip then UI.ShowWidgetTooltip(self, cfg.tooltip, CURSOR_TIP) end
+    end)
+    button:SetScript("OnLeave", function() UI.HideWidgetTooltip() end)
+    button._refreshValue = function()
+        icon:SetTexture(cfg.icon or DEFAULT_ICON)
+        icon:SetDesaturated(cfg.active ~= nil and not cfg.active())
+    end
+    button._refreshValue()
+    return button
+end
+
+local function ButtonControl(rgn, cfg)
+    local button = ns.Button(rgn, cfg.buttonText or TEXT_EDIT, ROW_BUTTON_W, ROW_BUTTON_H, function() cfg.onClick() end)
+    return AtRowEnd(button, rgn)
+end
+
+local function ButtonsControl(rgn, cfg)
+    local holder = CreateFrame("Frame", nil, rgn)
+    holder:SetHeight(BUTTONS_H)
+    AtRowEnd(holder, rgn)
+    holder._buttons = {}
+    local x = 0
+    for i = #cfg.buttons, 1, -1 do
+        local w = cfg.buttons[i].width or BUTTONS_W
+        local button = ns.Button(holder, "", w, BUTTONS_H, function() cfg.buttons[i].onClick() end)
+        button:SetPoint("RIGHT", holder, "RIGHT", -x, 0)
+        holder._buttons[i] = button
+        x = x + w + BUTTONS_GAP
+    end
+    holder:SetWidth(math.max(1, x - BUTTONS_GAP))
+    holder._refreshValue = function()
+        for i, button in ipairs(holder._buttons) do
+            local b = cfg.buttons[i]
+            ns.SetButtonText(button, b.text)
+            if b.tooltip then ns.Tooltip(button, b.text, b.tooltip) end
+        end
+    end
+    holder._refreshValue()
+    return holder
+end
+
+local function ToggleControl(rgn, _, Get, Set)
+    return AtRowEnd(UI.BuildToggleControl(rgn, rgn:GetFrameLevel() + CONTROL_RAISE, Get, Set), rgn)
+end
+
+local function PlayButton(dd, cfg, Get)
+    local play = CreateFrame("Button", nil, dd)
+    play:SetSize(PLAY_SIZE, PLAY_SIZE)
+    play:SetPoint("RIGHT", dd, "LEFT", -PLAY_GAP, 0)
+    ns.Solid(play, "BACKGROUND", T.panel, 1):SetAllPoints()
+    ns.Border(play, BLACK)
+    play.icon = play:CreateTexture(nil, "ARTWORK")
+    play.icon:SetTexture(SPEAKER_TEX)
+    play.icon:SetSize(PLAY_ICON, PLAY_ICON)
+    play.icon:SetPoint("CENTER")
+    play.icon:SetVertexColor(T.muted.r, T.muted.g, T.muted.b)
+    play:SetScript("OnClick", function() cfg.preview(Get()) end)
+    ns.Tooltip(play, TEXT_PLAY, TEXT_PLAY_HELP)
+    play:HookScript("OnEnter", function(self) self.icon:SetVertexColor(T.fg.r, T.fg.g, T.fg.b) end)
+    play:HookScript("OnLeave", function(self) self.icon:SetVertexColor(T.muted.r, T.muted.g, T.muted.b) end)
+    return play
+end
+
+local function DropdownControl(rgn, cfg, Get, Set)
+    local dd = UI.BuildDropdownControl(rgn, cfg.width or DROPDOWN_W, rgn:GetFrameLevel() + CONTROL_RAISE,
+        cfg.values, cfg.order, Get, Set)
+    AtRowEnd(dd, rgn)
+    if cfg.preview then dd._buttons = { PlayButton(dd, cfg, Get) } end
+    return dd
+end
+
+local function SliderControl(rgn, cfg, Get, Set)
+    local track, valBox = UI.BuildSliderCore(rgn, cfg.trackWidth or SLIDER_TRACK_W, SLIDER_TRACK_H, SLIDER_THUMB,
+        cfg.boxWidth or SLIDER_BOX_W, SLIDER_BOX_H, SLIDER_TEXT_SIZE, 1, cfg.min or 0, cfg.max or SLIDER_MAX,
+        cfg.step or 1, Get, Set)
+    track._format = function(v) return cfg.format and cfg.format(v) or tostring(v) end
+    track._refreshValue()
+    AtRowEnd(valBox, rgn)
+    track:SetPoint("RIGHT", valBox, "LEFT", -LABEL_GAP, 0)
+    return track
+end
+
+local function PaletteChip(chips, i)
+    local chip = CreateFrame("Frame", nil, chips)
+    chip:SetSize(PALETTE_SIZE, PALETTE_SIZE)
+    chip:SetPoint("LEFT", chips, "LEFT", (i - 1) * (PALETTE_SIZE + PALETTE_GAP), 0)
+    chip.fill = ns.Solid(chip, "BACKGROUND", T.bg, 1)
+    chip.fill:SetAllPoints()
+    ns.Border(chip, T.muted, PALETTE_EDGE_ALPHA)
+    return chip
+end
+
+local function PaletteControl(rgn, cfg)
+    local chips = CreateFrame("Frame", nil, rgn)
+    chips:SetHeight(PALETTE_SIZE)
+    AtRowEnd(chips, rgn)
+    local made = {}
+    local function Paint()
+        local colors = cfg.colors()
+        local n = #colors
+        chips:SetWidth(math.max(1, n * (PALETTE_SIZE + PALETTE_GAP) - PALETTE_GAP))
+        for i = 1, n do
+            made[i] = made[i] or PaletteChip(chips, i)
+            local c = colors[i]
+            made[i].fill:SetColorTexture(c.r, c.g, c.b, 1)
+            made[i]:Show()
+        end
+        for i = n + 1, #made do made[i]:Hide() end
+    end
+    chips._refreshValue = Paint
+    Paint()
+    return chips
+end
+
+local function ColorPickerControl(rgn, cfg, Get, Set)
+    return AtRowEnd(UI.BuildColorSwatchControl(rgn, Get, Set, cfg.hasAlpha), rgn)
+end
+
+local CONTROLS = {
+    iconbutton = IconButtonControl,
+    button = ButtonControl,
+    buttons = ButtonsControl,
+    toggle = ToggleControl,
+    dropdown = DropdownControl,
+    slider = SliderControl,
+    palette = PaletteControl,
+    colorpicker = ColorPickerControl,
+}
+
+local function BuildRegionControl(rgn, cfg)
+    local build = CONTROLS[cfg.type]
+    if not build then return nil end
+    local function Get() return cfg.getValue() end
+    local function Set(...) return cfg.setValue(...) end
+    return build(rgn, cfg, Get, Set)
+end
 
 local function Dim(cfg, lbl, control, off)
     local alpha = off and DIM_ALPHA or 1
     lbl:SetAlpha(alpha)
     if not control then return end
     control:SetAlpha(alpha)
-    -- A palette and a button row's holder take no clicks themselves.
     if cfg.type ~= "palette" and cfg.type ~= "buttons" then control:EnableMouse(not off) end
     local box = control._valBox
     if box then
@@ -679,6 +725,34 @@ local function Dim(cfg, lbl, control, off)
     end
 end
 
+local function Disabled(cfg)
+    return type(cfg.disabled) == "function" and cfg.disabled()
+end
+
+local function RegionLabel(rgn, control, cfg)
+    local lbl = ns.Font(rgn, LABEL_SIZE, nil)
+    lbl:SetPoint("LEFT", rgn, "LEFT", ROW_INSET, 0)
+    if control then
+        lbl:SetPoint("RIGHT", control, "LEFT", -LABEL_GAP, 0)
+    else
+        lbl:SetPoint("RIGHT", rgn, "RIGHT", -ROW_INSET, 0)
+    end
+    lbl:SetJustifyH("LEFT")
+    lbl:SetWordWrap(false)
+    lbl:SetText(cfg.text or "")
+    return lbl
+end
+
+local function RegionTooltip(rgn, lbl, cfg)
+    local hit = CreateFrame("Button", nil, rgn)
+    hit:SetPoint("TOPLEFT", lbl, "TOPLEFT", -HIT_PAD, HIT_PAD)
+    hit:SetPoint("BOTTOMRIGHT", lbl, "BOTTOMRIGHT", HIT_PAD, -HIT_PAD)
+    hit:SetScript("OnEnter", function(self)
+        UI.ShowWidgetTooltip(self, Disabled(cfg) and cfg.disabledTooltip or cfg.tooltip, CURSOR_TIP)
+    end)
+    hit:SetScript("OnLeave", function() UI.HideWidgetTooltip() end)
+end
+
 local function BuildRegion(row, cfg, left, width)
     local rgn = CreateFrame("Frame", nil, row)
     rgn:SetPoint("TOPLEFT", row, "TOPLEFT", left, 0)
@@ -686,47 +760,25 @@ local function BuildRegion(row, cfg, left, width)
 
     local control = BuildRegionControl(rgn, cfg)
     rgn._control = control
-    local disabled = type(cfg.disabled) == "function" and cfg.disabled()
+    local disabled = Disabled(cfg)
 
-    local lbl = ns.Font(rgn, 14, nil)
-    lbl:SetPoint("LEFT", rgn, "LEFT", 20, 0)
-    if control then
-        lbl:SetPoint("RIGHT", control, "LEFT", -8, 0)
-    else
-        lbl:SetPoint("RIGHT", rgn, "RIGHT", -20, 0)
-    end
-    lbl:SetJustifyH("LEFT")
-    lbl:SetWordWrap(false)
-    lbl:SetText(cfg.text or "")
+    local lbl = RegionLabel(rgn, control, cfg)
     rgn._label = lbl
     Dim(cfg, lbl, control, disabled)
 
     rgn._cfg = cfg
     rgn._refresh = function(newCfg)
         UpdateConfig(cfg, newCfg)
-        local off = type(cfg.disabled) == "function" and cfg.disabled()
         lbl:SetText(cfg.text or "")
-        Dim(cfg, lbl, control, off)
+        Dim(cfg, lbl, control, Disabled(cfg))
         if control and control._refreshValue then control._refreshValue() end
     end
 
     local tip = disabled and cfg.disabledTooltip or cfg.tooltip
-    if tip then
-        local hit = CreateFrame("Button", nil, rgn)
-        hit:SetPoint("TOPLEFT", lbl, "TOPLEFT", -4, 4)
-        hit:SetPoint("BOTTOMRIGHT", lbl, "BOTTOMRIGHT", 4, -4)
-        hit:SetScript("OnEnter", function(self)
-            local off = type(cfg.disabled) == "function" and cfg.disabled()
-            UI.ShowWidgetTooltip(self, off and cfg.disabledTooltip or cfg.tooltip,
-                { anchor = "cursor", justify = "LEFT" })
-        end)
-        hit:SetScript("OnLeave", function() UI.HideWidgetTooltip() end)
-    end
+    if tip then RegionTooltip(rgn, lbl, cfg) end
     return rgn
 end
 
--- A slider's range is fixed when it is built, so it is part of what makes a cached row
--- reusable for a config.
 local function RegionKey(cfg)
     local key = cfg.type .. ":" .. (cfg.text or "")
     if cfg.type == "slider" then
@@ -740,51 +792,60 @@ local function RegionKey(cfg)
     return key
 end
 
+local function PlaceRow(row, parent, yOffset, h)
+    row:SetHeight(h)
+    row:SetPoint("TOPLEFT", parent, "TOPLEFT", CONTENT_PAD, yOffset)
+    row:SetPoint("TOPRIGHT", parent, "TOPRIGHT", -CONTENT_PAD, yOffset)
+end
+
+local function ContentWidth(parent, fallback)
+    local w = (parent:GetWidth() or 0) - CONTENT_PAD * 2
+    if w <= 0 then w = fallback end
+    return w
+end
+
+local function NewRowRegions(row, parent, leftCfg, rightCfg)
+    local w = row:GetWidth()
+    if w <= 0 then w = ContentWidth(parent, FALLBACK_ROW_W) end
+    if not rightCfg then
+        row._leftRegion = BuildRegion(row, leftCfg, 0, w)
+        return
+    end
+    local half = w / 2
+    row._leftRegion = BuildRegion(row, leftCfg, 0, half)
+    row._rightRegion = BuildRegion(row, rightCfg, half, half)
+    local divider = ns.Solid(row, "ARTWORK", T.line, RULE_ALPHA)
+    divider:SetPoint("TOP", row, "TOP", 0, -DIVIDER_INSET)
+    divider:SetPoint("BOTTOM", row, "BOTTOM", 0, DIVIDER_INSET)
+    ns.Hairline(divider, "v")
+end
+
+local function FitRegions(row, parent, rightCfg)
+    local width = math.max(1, parent:GetWidth() - CONTENT_PAD * 2)
+    local half = rightCfg and width / 2 or width
+    row._leftRegion:SetWidth(half)
+    if row._rightRegion then
+        row._rightRegion:SetWidth(half)
+        row._rightRegion:SetPoint("TOPLEFT", row, "TOPLEFT", half, 0)
+    end
+end
+
 function W:DualRow(parent, yOffset, leftCfg, rightCfg)
     local key = "row:" .. RegionKey(leftCfg) .. ":" .. (rightCfg and RegionKey(rightCfg) or "")
     local row = CachedRow(parent, key) or CreateFrame("Frame", nil, parent)
-    row:SetHeight(ROW_H)
-    row:SetPoint("TOPLEFT", parent, "TOPLEFT", UI.CONTENT_PAD, yOffset)
-    row:SetPoint("TOPRIGHT", parent, "TOPRIGHT", -UI.CONTENT_PAD, yOffset)
+    PlaceRow(row, parent, yOffset, ROW_H)
 
     if not row._rule then
-        row._rule = ns.Solid(row, "ARTWORK", T.line, 0.6)
+        row._rule = ns.Solid(row, "ARTWORK", T.line, RULE_ALPHA)
         row._rule:SetPoint("BOTTOMLEFT"); row._rule:SetPoint("BOTTOMRIGHT"); ns.Hairline(row._rule, "h")
-    end
-    local function FitRegions()
-        local width = math.max(1, parent:GetWidth() - UI.CONTENT_PAD * 2)
-        local half = rightCfg and width / 2 or width
-        row._leftRegion:SetWidth(half)
-        if row._rightRegion then
-            row._rightRegion:SetWidth(half)
-            row._rightRegion:SetPoint("TOPLEFT", row, "TOPLEFT", half, 0)
-        end
     end
     if row._leftRegion then
         row._leftRegion._refresh(leftCfg)
         if rightCfg then row._rightRegion._refresh(rightCfg) end
-        FitRegions()
+        FitRegions(row, parent, rightCfg)
         return Collapsed(parent, row, ROW_H)
     end
-
-    local w = row:GetWidth()
-    if w <= 0 then
-        -- Anchored-both-sides width is not resolved until layout runs; derive it. The
-        -- final fallback is the options window's content width.
-        w = (parent:GetWidth() or 0) - UI.CONTENT_PAD * 2
-        if w <= 0 then w = 910 end
-    end
-    if rightCfg then
-        local half = w / 2
-        row._leftRegion = BuildRegion(row, leftCfg, 0, half)
-        row._rightRegion = BuildRegion(row, rightCfg, half, half)
-        local divider = ns.Solid(row, "ARTWORK", T.line, 0.6)
-        divider:SetPoint("TOP", row, "TOP", 0, -8)
-        divider:SetPoint("BOTTOM", row, "BOTTOM", 0, 8)
-        ns.Hairline(divider, "v")
-    else
-        row._leftRegion = BuildRegion(row, leftCfg, 0, w)
-    end
+    NewRowRegions(row, parent, leftCfg, rightCfg)
     return Collapsed(parent, row, ROW_H)
 end
 
@@ -792,13 +853,11 @@ function W:SectionHeader(parent, text, yOffset)
     parent._nsuiRowCount = 0
     parent._nsuiCollapsed, parent._nsuiFeatureId = nil, nil
     local f = CachedRow(parent, "header:" .. text) or CreateFrame("Frame", nil, parent)
-    f:SetHeight(HEADER_H)
-    f:SetPoint("TOPLEFT", parent, "TOPLEFT", UI.CONTENT_PAD, yOffset)
-    f:SetPoint("TOPRIGHT", parent, "TOPRIGHT", -UI.CONTENT_PAD, yOffset)
+    PlaceRow(f, parent, yOffset, HEADER_H)
     if f._headerBuilt then return f, HEADER_H end
     f._headerBuilt = true
-    local lbl = ns.Font(f, 14, nil, T.fg)
-    lbl:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 0, 8)
+    local lbl = ns.Font(f, LABEL_SIZE, nil, T.fg)
+    lbl:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 0, HEADER_TEXT_Y)
     lbl:SetText(text)
     local sep = ns.Solid(f, "ARTWORK", T.line, 1)
     sep:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 0, 0)
@@ -807,15 +866,41 @@ function W:SectionHeader(parent, text, yOffset)
     return f, HEADER_H
 end
 
--- A feature with several options: one full-width row with an arrow, its name and, when cfg
--- is a toggle, its on/off switch, so it can be switched without opening it. Its options are
--- the rows after it, up to the next section header, feature or W:EndFeature. key names the
--- feature for its open state when cfg.text is not stable.
+local function OnFeatureClick(hit)
+    openFeatures[hit._id] = not openFeatures[hit._id] or nil
+    UI:RefreshPage(true)
+end
+
+local function FeatureParts(row, cfg)
+    row._feature = true
+    row._leftRegion._label:SetFont(ns.UIFontPath(), cfg.type == "label" and LABEL_SIZE or FEATURE.textSize, "")
+    row._leftRegion._label:SetPoint("LEFT", row._leftRegion, "LEFT", FEATURE.textX, 0)
+    row.arrow = row:CreateTexture(nil, "ARTWORK")
+    row.arrow:SetTexture(CHEVRON)
+    row.arrow:SetSize(FEATURE.arrow, FEATURE.arrow)
+    row.arrow:SetPoint("LEFT", row, "LEFT", FEATURE.arrowX, 0)
+    row.arrow:SetVertexColor(T.muted.r, T.muted.g, T.muted.b, 1)
+    row.hit = CreateFrame("Button", nil, row)
+    row.hit:SetPoint("TOPLEFT")
+    row.hit:SetPoint("BOTTOMLEFT")
+    row.hit:SetPoint("RIGHT", row._leftRegion, "RIGHT", -FEATURE.hitRoom, 0)
+    row.hit:SetFrameLevel(row._leftRegion:GetFrameLevel() + FEATURE.hitRaise)
+    row.hit:SetScript("OnClick", OnFeatureClick)
+    row.hit:SetScript("OnEnter", function(hit)
+        row.arrow:SetVertexColor(T.fg.r, T.fg.g, T.fg.b, 1)
+        local tip = hit._cfg.tooltip
+        if tip then UI.ShowWidgetTooltip(hit, tip, CURSOR_TIP) end
+    end)
+    row.hit:SetScript("OnLeave", function()
+        row.arrow:SetVertexColor(T.muted.r, T.muted.g, T.muted.b, 1)
+        UI.HideWidgetTooltip()
+    end)
+end
+
 function W:Feature(parent, yOffset, cfg, key)
     parent._nsuiCollapsed, parent._nsuiFeatureId = nil, nil
     local collapsible = parent._collapsible == true
     local id = collapsible and (parent._pageKey .. ":" .. (key or cfg.text)) or nil
-    -- The feature switch opens its options on enable and closes them on disable.
     if collapsible and cfg.type == "toggle" then
         local set = cfg.setValue
         cfg.setValue = function(v)
@@ -824,47 +909,17 @@ function W:Feature(parent, yOffset, cfg, key)
         end
     end
     local row = W:DualRow(parent, yOffset, cfg)
-    if not row._feature then
-        row._feature = true
-        row._leftRegion._label:SetFont(ns.UIFontPath(), cfg.type == "label" and 14 or 16, "")
-        row._leftRegion._label:SetPoint("LEFT", row._leftRegion, "LEFT", 30, 0)
-        row.arrow = row:CreateTexture(nil, "ARTWORK")
-        row.arrow:SetTexture("Interface\\AddOns\\NaowhForever\\Media\\chevron.tga")
-        row.arrow:SetSize(14, 14)
-        row.arrow:SetPoint("LEFT", row, "LEFT", 4, 0)
-        row.arrow:SetVertexColor(T.muted.r, T.muted.g, T.muted.b, 1)
-        row.hit = CreateFrame("Button", nil, row)
-        row.hit:SetPoint("TOPLEFT")
-        row.hit:SetPoint("BOTTOMLEFT")
-        row.hit:SetPoint("RIGHT", row._leftRegion, "RIGHT", -120, 0)
-        row.hit:SetFrameLevel(row._leftRegion:GetFrameLevel() + 3)
-        row.hit:SetScript("OnClick", function(hit)
-            openFeatures[hit._id] = not openFeatures[hit._id] or nil
-            UI:RefreshPage(true)
-        end)
-        row.hit:SetScript("OnEnter", function(hit)
-            row.arrow:SetVertexColor(T.fg.r, T.fg.g, T.fg.b, 1)
-            local tip = hit._cfg.tooltip
-            if tip then UI.ShowWidgetTooltip(hit, tip, { anchor = "cursor", justify = "LEFT" }) end
-        end)
-        row.hit:SetScript("OnLeave", function()
-            row.arrow:SetVertexColor(T.muted.r, T.muted.g, T.muted.b, 1)
-            UI.HideWidgetTooltip()
-        end)
-    end
+    if not row._feature then FeatureParts(row, cfg) end
     row.hit._id, row.hit._cfg = id, cfg
     local closed = collapsible and not openFeatures[id]
     row.hit:SetShown(collapsible)
     row.arrow:SetShown(collapsible)
-    -- One chevron: pointing right while closed, turned to point down while open.
-    row.arrow:SetRotation(closed and 0 or -math.pi / 2)
+    row.arrow:SetRotation(closed and 0 or CHEVRON_DOWN)
     parent._nsuiCollapsed = closed or nil
     parent._nsuiFeatureId = (parent._pageKey or "") .. ":" .. (key or cfg.text)
     return row, ROW_H
 end
 
--- A presentation-only disclosure nested inside an existing feature. Settings keep
--- their original keys.
 function W:Disclosure(parent, yOffset, text, key)
     local cfg = type(text) == "table" and text or { type = "label", text = text }
     local parentId = parent._nsuiFeatureId
@@ -888,51 +943,63 @@ end
 
 function W:Button(parent, text, yOffset, onClick)
     local row = CachedRow(parent, "button:" .. text) or CreateFrame("Frame", nil, parent)
-    row:SetHeight(ROW_H)
-    row:SetPoint("TOPLEFT", parent, "TOPLEFT", UI.CONTENT_PAD, yOffset)
-    row:SetPoint("TOPRIGHT", parent, "TOPRIGHT", -UI.CONTENT_PAD, yOffset)
+    PlaceRow(row, parent, yOffset, ROW_H)
     row._onClick = onClick
     if not row._btn then
-        row._btn = ns.Button(row, text, 200, 26, function() row._onClick() end)
-        row._btn:SetPoint("LEFT", row, "LEFT", 20, 0)
+        row._btn = ns.Button(row, text, WIDE_BUTTON_W, WIDE_BUTTON_H, function() row._onClick() end)
+        row._btn:SetPoint("LEFT", row, "LEFT", ROW_INSET, 0)
     end
     return Collapsed(parent, row, ROW_H)
 end
 
-local MODIFIER_KEYS = { LSHIFT = true, RSHIFT = true, LCTRL = true, RCTRL = true, LALT = true, RALT = true }
+local function KeyCombo(key)
+    return (IsAltKeyDown() and "ALT-" or "") .. (IsControlKeyDown() and "CTRL-" or "")
+        .. (IsShiftKeyDown() and "SHIFT-" or "") .. key
+end
 
--- A key field for one binding action (Bindings.xml), saved where the game's Key Bindings
--- screen saves it.
--- Click it and press a key to bind, Escape to cancel; right-click clears it.
--- The page reuses its rows, so a region that already has its key button keeps it.
+local function SaveKeyBindings()
+    SaveBindings(GetCurrentBindingSet())
+end
+
+local function ClearBinding(action)
+    if InCombatLockdown() then return end
+    for _, key in ipairs({ GetBindingKey(action) }) do SetBinding(key) end
+end
+
+local function Bind(combo, action, label)
+    if InCombatLockdown() then return end
+    local previous = GetBindingAction(combo)
+    ClearBinding(action)
+    SetBinding(combo, action)
+    SaveKeyBindings()
+    if previous ~= "" and previous ~= action then
+        ns.Print(TEXT_REBOUND:format(GetBindingText(combo), label, GetBindingName(previous)))
+    end
+end
+
 function UI.KeyField(rgn, action, label)
     if rgn._keyField then return end
     rgn._keyField = true
-    local btn = ns.Button(rgn, "", 150, 26)
-    btn:SetPoint("RIGHT", rgn, "RIGHT", -20, 0)
-    -- The row's label, and the hover area that shows its tooltip, end where the field starts,
-    -- or that tooltip covers the field.
-    if rgn._label then rgn._label:SetPoint("RIGHT", btn, "LEFT", -8, 0) end
+    local btn = ns.Button(rgn, "", KEY_FIELD_W, KEY_FIELD_H)
+    btn:SetPoint("RIGHT", rgn, "RIGHT", -ROW_INSET, 0)
+    if rgn._label then rgn._label:SetPoint("RIGHT", btn, "LEFT", -LABEL_GAP, 0) end
     btn:RegisterForClicks("LeftButtonUp", "RightButtonUp")
     local capturing
     local function Show()
         local key = GetBindingKey(action)
-        btn.label:SetText(capturing and "Press a key..." or key and GetBindingText(key) or "|cff808080Not bound|r")
-        btn:SetAlpha(InCombatLockdown() and 0.4 or 1)
+        btn.label:SetText(capturing and TEXT_PRESS_KEY or key and GetBindingText(key) or TEXT_NOT_BOUND)
+        btn:SetAlpha(InCombatLockdown() and COMBAT_DIM or 1)
     end
     local function Stop()
         capturing = false
         btn:EnableKeyboard(false)
         Show()
     end
-    local function Save()
-        SaveBindings(GetCurrentBindingSet())
-    end
     btn:SetScript("OnClick", function(_, button)
         if InCombatLockdown() then return end
         if button == "RightButton" then
-            for _, key in ipairs({ GetBindingKey(action) }) do SetBinding(key) end
-            Save()
+            ClearBinding(action)
+            SaveKeyBindings()
             Stop()
             return
         end
@@ -943,44 +1010,54 @@ function UI.KeyField(rgn, action, label)
     end)
     btn:SetScript("OnKeyDown", function(_, key)
         if MODIFIER_KEYS[key] then return end
-        if key == "ESCAPE" or InCombatLockdown() then
-            Stop()
-            return
-        end
-        local combo = (IsAltKeyDown() and "ALT-" or "") .. (IsControlKeyDown() and "CTRL-" or "")
-            .. (IsShiftKeyDown() and "SHIFT-" or "") .. key
-        local previous = GetBindingAction(combo)
-        for _, old in ipairs({ GetBindingKey(action) }) do SetBinding(old) end
-        SetBinding(combo, action)
-        Save()
-        if previous ~= "" and previous ~= action then
-            ns.Print(("%s is now bound to %s instead of %s."):format(GetBindingText(combo), label,
-                GetBindingName(previous)))
-        end
+        if key ~= "ESCAPE" and not InCombatLockdown() then Bind(KeyCombo(key), action, label) end
         Stop()
     end)
-    -- Setting an OnKeyDown script turns keyboard input on; it stays off until the field is clicked.
     btn:EnableKeyboard(false)
     btn:SetScript("OnShow", Show)
     btn:SetScript("OnHide", function() if capturing then Stop() end end)
-    ns.Tooltip(btn, label, "Click, then press a key to bind it. Escape cancels; right-click clears. "
-        .. "The same binding as in Key Bindings > Naowh Forever.")
+    ns.Tooltip(btn, label, TEXT_KEY_HELP)
     Show()
 end
 
--- A full-row Reload UI button (see Reload UI in the Core file).
 function W:ReloadButton(parent, yOffset)
-    local row, h = self:Button(parent, "Reload UI", yOffset)
+    local row, h = self:Button(parent, TEXT_RELOAD, yOffset)
     if row and row._btn then ns.MakeReloadButton(row._btn) end
     return row, h
 end
 
--- The swatch alone, sized to drop into either a full row (W:ColorPicker below) or a
--- DualRow region (BuildRegionControl's "colorpicker" slot) -- one Blizzard color picker
--- wiring, not two copies of it drifting apart.
+local function Near(a, b) return math.abs(a - b) <= PICK_TOLERANCE end
+
+local function OpenColorPicker(swatchBtn, PaintSwatch)
+    local read, write, withAlpha = swatchBtn._get, swatchBtn._set, swatchBtn._hasAlpha
+    local r, g, b, a = read()
+    r, g, b, a = r or 1, g or 1, b or 1, a or 1
+    local changed = false
+    local function Apply()
+        local nr, ng, nb = ColorPickerFrame:GetColorRGB()
+        local na = withAlpha and ColorPickerFrame:GetColorAlpha() or 1
+        if not changed and Near(nr, r) and Near(ng, g) and Near(nb, b) and Near(na, a) then return end
+        changed = true
+        write(nr, ng, nb, na)
+        PaintSwatch()
+    end
+    ColorPickerFrame:SetupColorPickerAndShow({
+        r = r, g = g, b = b,
+        opacity = a,
+        hasOpacity = withAlpha and true or false,
+        swatchFunc = Apply,
+        opacityFunc = Apply,
+        cancelFunc = function()
+            if not changed then return end
+            write(r, g, b, a)
+            PaintSwatch()
+        end,
+    })
+end
+
 function UI.BuildColorSwatchControl(parent, get, set, hasAlpha)
     local swatchBtn = CreateFrame("Button", nil, parent)
-    swatchBtn:SetSize(40, 20)
+    swatchBtn:SetSize(SWATCH_W, SWATCH_H)
     ns.Border(swatchBtn, BLACK)
     local swatch = ns.Solid(swatchBtn, "BACKGROUND", T.fg, 1)
     swatch:SetAllPoints()
@@ -991,49 +1068,31 @@ function UI.BuildColorSwatchControl(parent, get, set, hasAlpha)
     end
     PaintSwatch()
     swatchBtn._refreshValue = PaintSwatch
-
-    -- The picker calls swatchFunc as it opens and cancelFunc on Escape or a click away, so
-    -- nothing is saved until the color actually moves off the one it opened with.
-    swatchBtn:SetScript("OnClick", function()
-        local read, write, withAlpha = swatchBtn._get, swatchBtn._set, swatchBtn._hasAlpha
-        local r, g, b, a = read()
-        r, g, b, a = r or 1, g or 1, b or 1, a or 1
-        local changed = false
-        local function Apply()
-            local nr, ng, nb = ColorPickerFrame:GetColorRGB()
-            local na = withAlpha and ColorPickerFrame:GetColorAlpha() or 1
-            local near = 1 / 255
-            if not changed and math.abs(nr - r) <= near and math.abs(ng - g) <= near
-                and math.abs(nb - b) <= near and math.abs(na - a) <= near then
-                return
-            end
-            changed = true
-            write(nr, ng, nb, na)
-            PaintSwatch()
-        end
-        ColorPickerFrame:SetupColorPickerAndShow({
-            r = r, g = g, b = b,
-            opacity = a,
-            hasOpacity = withAlpha and true or false,
-            swatchFunc = Apply,
-            opacityFunc = Apply,
-            cancelFunc = function()
-                if not changed then return end
-                write(r, g, b, a)
-                PaintSwatch()
-            end,
-        })
-    end)
+    swatchBtn:SetScript("OnClick", function() OpenColorPicker(swatchBtn, PaintSwatch) end)
     return swatchBtn
+end
+
+local function NewColorRow(row, text, hasAlpha, count, banded)
+    if count % 2 == 1 or banded then
+        local band = ns.Solid(row, "BACKGROUND", T.panel, BAND_ALPHA)
+        band:SetAllPoints()
+        band:SetShown(count % 2 == 1)
+        row._band = band
+    end
+    local lbl = ns.Font(row, LABEL_SIZE, nil)
+    lbl:SetPoint("LEFT", row, "LEFT", ROW_INSET, 0)
+    lbl:SetText(text)
+    local swatchBtn = UI.BuildColorSwatchControl(row,
+        function() return row._colorGet() end,
+        function(...) return row._colorSet(...) end, hasAlpha)
+    row._swatch = swatchBtn
+    swatchBtn:SetPoint("RIGHT", row, "RIGHT", -ROW_INSET, 0)
 end
 
 function W:ColorPicker(parent, text, yOffset, get, set, hasAlpha)
     local row = CachedRow(parent, "color:" .. text) or CreateFrame("Frame", nil, parent)
     row._colorGet, row._colorSet = get, set
-    row:SetHeight(ROW_H)
-    row:SetPoint("TOPLEFT", parent, "TOPLEFT", UI.CONTENT_PAD, yOffset)
-    row:SetPoint("TOPRIGHT", parent, "TOPRIGHT", -UI.CONTENT_PAD, yOffset)
-
+    PlaceRow(row, parent, yOffset, ROW_H)
     local count = (parent._nsuiRowCount or 0) + 1
     parent._nsuiRowCount = count
     if row._swatch then
@@ -1041,27 +1100,10 @@ function W:ColorPicker(parent, text, yOffset, get, set, hasAlpha)
         if row._band then row._band:SetShown(count % 2 == 1) end
         return Collapsed(parent, row, ROW_H)
     end
-    if count % 2 == 1 or parent._rowCache then
-        local band = ns.Solid(row, "BACKGROUND", T.panel, 0.35)
-        band:SetAllPoints()
-        band:SetShown(count % 2 == 1)
-        row._band = band
-    end
-
-    local lbl = ns.Font(row, 14, nil)
-    lbl:SetPoint("LEFT", row, "LEFT", 20, 0)
-    lbl:SetText(text)
-
-    local swatchBtn = UI.BuildColorSwatchControl(row,
-        function() return row._colorGet() end,
-        function(...) return row._colorSet(...) end, hasAlpha)
-    row._swatch = swatchBtn
-    swatchBtn:SetPoint("RIGHT", row, "RIGHT", -20, 0)
+    NewColorRow(row, text, hasAlpha, count, parent._rowCache)
     return Collapsed(parent, row, ROW_H)
 end
 
--- A wrapped line of muted text across the content width, for context a row label cannot
--- carry. On a page that reuses its rows the font string is reused too, in build order.
 function W:Note(parent, text, yOffset)
     local row = CachedRow(parent, "note")
     if row then
@@ -1070,34 +1112,22 @@ function W:Note(parent, text, yOffset)
     end
     local fs = row and row._fs
     if not fs then
-        fs = ns.Font(row or parent, 12, nil, T.muted)
+        fs = ns.Font(row or parent, NOTE.size, nil, T.muted)
         fs:SetJustifyH("LEFT")
         fs:SetWordWrap(true)
         if row then row._fs = fs end
     end
     fs:ClearAllPoints()
-    fs:SetPoint("TOPLEFT", parent, "TOPLEFT", UI.CONTENT_PAD + 20, yOffset - 12)
+    fs:SetPoint("TOPLEFT", parent, "TOPLEFT", CONTENT_PAD + NOTE.inset, yOffset - NOTE.top)
     local w = parent:GetWidth() or 0
-    if w <= 0 then w = 960 end
-    fs:SetWidth(w - (UI.CONTENT_PAD + 20) * 2)
+    if w <= 0 then w = NOTE.fallbackW end
+    fs:SetWidth(w - (CONTENT_PAD + NOTE.inset) * 2)
     fs:SetText(text)
     fs:Show()
-    local h = math.ceil(fs:GetStringHeight()) + 24
+    local h = math.ceil(fs:GetStringHeight()) + NOTE.room
     return Collapsed(parent, fs, h)
 end
 
--------------------------------------------------------------------------------
---  Slim scroll
--------------------------------------------------------------------------------
--- A scroll frame with a thin scrollbar in the theme's colours, in place of Blizzard's grey
--- one with its arrow buttons: a track and a thumb sized to how much of the content shows,
--- dragged, clicked or moved with the mouse wheel. It hides while everything fits. The bar
--- sits to the right of the frame, width + gap inside whatever the frame is anchored in.
-local SCROLL_STEP = 60
-local GLIDE_RATE = 14   -- how fast a wheel glide closes on its target; higher is snappier
-local GLIDE_DONE = 0.5  -- a glide this close to its target lands on it
-
--- Rounds toward the target on the screen's pixel grid, so text never rests between pixels.
 local function OnPixel(scroll, value, target)
     local px = ns.OnePixel(scroll)
     local snapped = target > value and math.ceil(value / px) * px or math.floor(value / px) * px
@@ -1112,7 +1142,6 @@ end
 
 local function Glide(self, elapsed)
     local at = self:GetVerticalScroll()
-    -- Moved by something else (a page change, a drag on the bar): that move wins.
     if math.abs(at - self._glideAt) > GLIDE_DONE then return StopGlide(self) end
     local target = math.max(0, math.min(self:GetVerticalScrollRange(), self._glideTo))
     local nextAt
@@ -1126,22 +1155,18 @@ local function Glide(self, elapsed)
     self:SetVerticalScroll(nextAt)
 end
 
--- The mouse wheel eases the frame toward where it was sent instead of jumping there. Each
--- notch is `step` further on from where the glide is headed, so quick notches add up.
--- The OnUpdate runs only while a glide is moving.
 function UI.SmoothWheel(scroll, step)
     step = step or SCROLL_STEP
     scroll:EnableMouseWheel(true)
     scroll:SetScript("OnMouseWheel", function(self, delta)
         local range = self:GetVerticalScrollRange()
         if range <= 0 then return end
-        -- A glide something else has since moved is over, even before its next tick notices.
         local at = self:GetVerticalScroll()
         local continuing = self._gliding and math.abs(at - self._glideAt) <= GLIDE_DONE
         local from = continuing and self._glideTo or at
         local px = ns.OnePixel(self)
         local target = math.max(0, math.min(range, from - delta * step))
-        self._glideTo = math.min(range, math.floor(target / px + 0.5) * px)
+        self._glideTo = math.min(range, math.floor(target / px + ROUND) * px)
         self._glideAt = at
         if not self._gliding then
             self._gliding = true
@@ -1150,34 +1175,36 @@ function UI.SmoothWheel(scroll, step)
     end)
 end
 
-function UI.SlimScroll(parent, width, gap)
-    width, gap = width or 6, gap or 6
-    local scroll = CreateFrame("ScrollFrame", nil, parent)
+local function StopDrag(self) self:SetScript("OnUpdate", nil) end
+
+local function ScrollBar(parent, scroll, width, gap)
     local bar = CreateFrame("Slider", nil, parent)
     bar:SetOrientation("VERTICAL")
     bar:SetWidth(width)
     bar:SetPoint("TOPLEFT", scroll, "TOPRIGHT", gap, 0)
     bar:SetPoint("BOTTOMLEFT", scroll, "BOTTOMRIGHT", gap, 0)
     bar:SetObeyStepOnDrag(false)
-    local track = ns.Solid(bar, "BACKGROUND", T.line, 0.6)
+    local track = ns.Solid(bar, "BACKGROUND", T.line, SCROLL.trackAlpha)
     track:SetAllPoints()
     local thumb = bar:CreateTexture(nil, "ARTWORK")
-    thumb:SetColorTexture(T.muted.r, T.muted.g, T.muted.b, 0.8)
+    thumb:SetColorTexture(T.muted.r, T.muted.g, T.muted.b, SCROLL.thumbAlpha)
     thumb:SetWidth(width)
     bar:SetThumbTexture(thumb)
     bar:SetMinMaxValues(0, 0)
     bar:Hide()
     bar:SetScript("OnValueChanged", function(_, value) scroll:SetVerticalScroll(value) end)
+    return bar, thumb
+end
 
-    -- The Slider's own thumb drag runs against the cursor on Forever, so a grip over the bar
-    -- takes the mouse and the drag is done here. A press on the track brings the thumb's
-    -- middle to the cursor, then drags from there.
+local function ScrollGrip(bar, thumb, scroll)
     bar:EnableMouse(false)
     local grip = CreateFrame("Frame", nil, bar)
     grip:SetAllPoints()
     grip:EnableMouse(true)
     grip:SetScript("OnEnter", function() thumb:SetColorTexture(T.accent.r, T.accent.g, T.accent.b, 1) end)
-    grip:SetScript("OnLeave", function() thumb:SetColorTexture(T.muted.r, T.muted.g, T.muted.b, 0.8) end)
+    grip:SetScript("OnLeave", function()
+        thumb:SetColorTexture(T.muted.r, T.muted.g, T.muted.b, SCROLL.thumbAlpha)
+    end)
     local grabY, grabValue
     local function CursorY()
         local _, y = GetCursorPosition()
@@ -1199,19 +1226,26 @@ function UI.SlimScroll(parent, width, gap)
         self:SetScript("OnUpdate", Drag)
         Drag(self)
     end)
-    grip:SetScript("OnMouseUp", function(self) self:SetScript("OnUpdate", nil) end)
-    grip:SetScript("OnHide", function(self) self:SetScript("OnUpdate", nil) end)
+    grip:SetScript("OnMouseUp", StopDrag)
+    grip:SetScript("OnHide", StopDrag)
+    return grip
+end
 
+function UI.SlimScroll(parent, width, gap)
+    width, gap = width or SCROLL.slimW, gap or SCROLL.slimGap
+    local scroll = CreateFrame("ScrollFrame", nil, parent)
+    local bar, thumb = ScrollBar(parent, scroll, width, gap)
+    local grip = ScrollGrip(bar, thumb, scroll)
     scroll:SetScript("OnScrollRangeChanged", function(self, _, range)
         range = range or self:GetVerticalScrollRange()
         local shown = self:GetHeight()
         bar:SetMinMaxValues(0, range)
         bar:SetShown(range > 0)
-        thumb:SetHeight(math.max(24, bar:GetHeight() * shown / (shown + range)))
+        thumb:SetHeight(math.max(SCROLL.minThumb, bar:GetHeight() * shown / (shown + range)))
         if bar:GetValue() > range then bar:SetValue(range) end
     end)
     scroll:SetScript("OnVerticalScroll", function(_, offset)
-        if math.abs(bar:GetValue() - offset) > 0.5 then bar:SetValue(offset) end
+        if math.abs(bar:GetValue() - offset) > SCROLL.sync then bar:SetValue(offset) end
     end)
     UI.SmoothWheel(scroll)
     grip:EnableMouseWheel(true)
@@ -1220,36 +1254,39 @@ function UI.SlimScroll(parent, width, gap)
     return scroll
 end
 
--- Font dropdown data: "" follows the Addon Font, then every SharedMedia font. A saved font
--- that has since gone missing stays listed so the dropdown does not show a blank.
+local function SharedMedia()
+    return LibStub and LibStub("LibSharedMedia-3.0", true)
+end
+
+local function KeepMissing(values, order, selected)
+    if type(selected) == "string" and selected ~= "" and not values[selected] then
+        values[selected] = selected .. TEXT_UNAVAILABLE
+        order[#order + 1] = selected
+    end
+    return values, order
+end
+
 function UI.FontChoices(selected)
-    local values, order = { [""] = "Addon Font" }, { "" }
-    local LSM = LibStub and LibStub("LibSharedMedia-3.0", true)
+    local values, order = { [""] = TEXT_ADDON_FONT }, { "" }
+    local LSM = SharedMedia()
     if LSM then
         for _, name in ipairs(LSM:List("font")) do
             values[name] = name
             order[#order + 1] = name
         end
     end
-    if type(selected) == "string" and selected ~= "" and not values[selected] then
-        values[selected] = selected .. " (unavailable)"
-        order[#order + 1] = selected
-    end
-    return values, order
+    return KeepMissing(values, order, selected)
 end
 
--- A SharedMedia font by name, or the Addon Font for "" and anything missing.
 function UI.FontPath(name)
-    local LSM = LibStub and LibStub("LibSharedMedia-3.0", true)
+    local LSM = SharedMedia()
     local path = LSM and name and name ~= "" and LSM:Fetch("font", name, true)
     return path or ns.UIFontPath()
 end
 
--- Bar texture dropdown data: "" is the element's own texture, named by label, then every
--- SharedMedia statusbar. A saved texture that has since gone missing stays listed.
 function UI.TextureChoices(selected, label)
     local values, order = { [""] = label }, { "" }
-    local LSM = LibStub and LibStub("LibSharedMedia-3.0", true)
+    local LSM = SharedMedia()
     if LSM then
         for _, name in ipairs(LSM:List("statusbar")) do
             if name ~= label then
@@ -1258,29 +1295,16 @@ function UI.TextureChoices(selected, label)
             end
         end
     end
-    if type(selected) == "string" and selected ~= "" and not values[selected] then
-        values[selected] = selected .. " (unavailable)"
-        order[#order + 1] = selected
-    end
-    return values, order
+    return KeepMissing(values, order, selected)
 end
 
--- A SharedMedia statusbar by name, or fallback (the element's own texture) for "" and anything missing.
 function UI.TexturePath(name, fallback)
-    local LSM = LibStub and LibStub("LibSharedMedia-3.0", true)
+    local LSM = SharedMedia()
     local path = LSM and name and name ~= "" and LSM:Fetch("statusbar", name, true)
     return path or fallback
 end
 
--- Settings for the Naowh Forever modules: one table per module inside the active profile,
--- read through defaults so a key an older profile never wrote picks up the current default.
--- The row makers return W:DualRow configs; `on` names the master toggle a row depends on, or
--- lists several (off while any of them is), and every toggle redraws the page so dependants
--- dim and undim with it.
--- S.OnChange(fn) calls fn(key, value) after every S.Set, in the order they were added: a
--- module listens to its own settings there instead of wrapping S.Set with hooksecurefunc.
 local moduleDefaults = {}
-local SHARE_DEPTH = 4
 
 local function Plain(v, depth)
     local t = type(v)
@@ -1300,8 +1324,6 @@ local function CopyPlain(v)
     return out
 end
 
--- What a profile string carries of a module: each setting it has a default for, as that type
--- (not the lists it keeps, which default to empty), and its HUD Editor positions and anchors.
 local function Shareable(defaults, k, v)
     if type(k) ~= "string" then return false end
     if k == "anchoredTo" then return type(v) == "table" and Plain(v, 0) end
@@ -1312,8 +1334,6 @@ local function Shareable(defaults, k, v)
     return true
 end
 
--- Every module's defaults are kept in the account at login, so a module switched off (its addon
--- not loaded, so it registered none) still has its settings checked, exported and imported.
 local function SavedDefaults()
     local account = ns.AccountSettings()
     if type(account.moduleDefaults) ~= "table" then account.moduleDefaults = {} end
@@ -1327,7 +1347,6 @@ local function AllDefaults()
     return all
 end
 
--- At login, once every module that is on has loaded (Window.lua).
 function ns.SaveModuleDefaults()
     local saved = SavedDefaults()
     for key, defaults in pairs(moduleDefaults) do
@@ -1339,24 +1358,26 @@ function ns.SaveModuleDefaults()
     end
 end
 
-function ns.ExportModuleSettings(root)
-    local out
-    for key, defaults in pairs(AllDefaults()) do
-        local t = root[key]
-        if type(t) == "table" then
-            for k, v in pairs(t) do
-                if Shareable(defaults, k, v) then
-                    out = out or {}
-                    out[key] = out[key] or {}
-                    out[key][k] = CopyPlain(v)
-                end
-            end
+local function ExportModule(out, key, defaults, t)
+    for k, v in pairs(t) do
+        if Shareable(defaults, k, v) then
+            out = out or {}
+            out[key] = out[key] or {}
+            out[key][k] = CopyPlain(v)
         end
     end
     return out
 end
 
--- A module's defaults by its settings key; nil for a key no module has registered.
+function ns.ExportModuleSettings(root)
+    local out
+    for key, defaults in pairs(AllDefaults()) do
+        local t = root[key]
+        if type(t) == "table" then out = ExportModule(out, key, defaults, t) end
+    end
+    return out
+end
+
 function ns.ModuleDefaults(key)
     return moduleDefaults[key] or SavedDefaults()[key]
 end
@@ -1374,17 +1395,33 @@ function ns.ImportModuleSettings(root, modules)
     end
 end
 
+local function RegisterDefaults(key, defaults)
+    local known = moduleDefaults[key]
+    if not known then
+        moduleDefaults[key] = defaults
+        return
+    end
+    for k, v in pairs(defaults) do
+        if known[k] == nil then known[k] = v end
+    end
+end
+
+local function DependsOn(S, on)
+    if type(on) == "table" then
+        return function()
+            for i = 1, #on do
+                if not S.Get(on[i]) then return true end
+            end
+            return false
+        end
+    end
+    return function() return not S.Get(on) end
+end
+
 function UI.ModuleSettings(key, defaults)
     local S = { key = key }
     local listeners = {}
-    local known = moduleDefaults[key]
-    if known then
-        for k, v in pairs(defaults) do
-            if known[k] == nil then known[k] = v end
-        end
-    else
-        moduleDefaults[key] = defaults
-    end
+    RegisterDefaults(key, defaults)
     function S.DB()
         local root = ns.SettingsRoot()
         if type(root[key]) ~= "table" then root[key] = {} end
@@ -1406,16 +1443,7 @@ function UI.ModuleSettings(key, defaults)
     local function Row(cfg, k, on)
         cfg.getValue = function() return S.Get(k) end
         cfg.setValue = cfg.setValue or function(v) S.Set(k, v) end
-        if type(on) == "table" then
-            cfg.disabled = function()
-                for i = 1, #on do
-                    if not S.Get(on[i]) then return true end
-                end
-                return false
-            end
-        elseif on then
-            cfg.disabled = function() return not S.Get(on) end
-        end
+        if on then cfg.disabled = DependsOn(S, on) end
         return cfg
     end
     function S.Toggle(k, text, tooltip, on)
@@ -1430,12 +1458,10 @@ function UI.ModuleSettings(key, defaults)
         return Row({ type = "dropdown", text = text, tooltip = tooltip,
             values = values, order = order }, k, on)
     end
-    -- A sound to pick: it plays as you pick it, and its play button plays it again. play
-    -- takes the key; UI.PlaySoundKey (the addon's sound list) unless given.
     function S.SoundDropdown(k, text, values, order, tooltip, on, play)
         play = play or UI.PlaySoundKey
         return Row({ type = "dropdown", text = text, tooltip = tooltip, values = values, order = order,
-            width = 200, preview = play, setValue = function(v) S.Set(k, v); play(v) end }, k, on)
+            width = SOUND_DROPDOWN_W, preview = play, setValue = function(v) S.Set(k, v); play(v) end }, k, on)
     end
     return S
 end
@@ -1443,11 +1469,6 @@ end
 ns.UnlockModeSettings = UI.ModuleSettings("unlockMode", { guides = true, hidden = {}, locked = {},
     elementsPanel = true, anchoredTo = { ["Loot Feed"] = { target = "Alerts", side = "RIGHT", x = -300, y = 206 } } })
 
--------------------------------------------------------------------------------
---  Sounds
--------------------------------------------------------------------------------
--- Bundled English voice clips work without an optional SharedMedia provider.
--- Stable keys are shared by preview, native aura registrations and exported rules.
 local bundledVoices = {
     { key = "voice:dispel-me", text = "Dispel me", file = "dispel-me.ogg" },
     { key = "voice:move-out", text = "Move out", file = "move-out.ogg" },
@@ -1455,31 +1476,31 @@ local bundledVoices = {
     { key = "voice:combat", text = "Combat", file = "combat.ogg" },
     { key = "voice:safe", text = "Safe", file = "safe.ogg" },
 }
-local voicePath = "Interface\\AddOns\\NaowhForever\\Media\\Voice\\"
+
 function UI.BuildAlertSoundTables()
-    local paths, names, order = {}, { none = "None" }, { "none" }
+    local paths, names, order = {}, { [NO_SOUND] = TEXT_NONE }, { NO_SOUND }
     for _, voice in ipairs(bundledVoices) do
-        paths[voice.key] = voicePath .. voice.file
-        names[voice.key] = "Voice: " .. voice.text .. " (English)"
+        paths[voice.key] = VOICE_PATH .. voice.file
+        names[voice.key] = TEXT_VOICE:format(voice.text)
         order[#order + 1] = voice.key
     end
     return paths, names, order
 end
 
+local function ByLower(a, b) return a:lower() < b:lower() end
+
 function UI.AppendSharedMediaSounds(paths, names, order)
-    local LSM = LibStub and LibStub("LibSharedMedia-3.0", true)
+    local LSM = SharedMedia()
     if not LSM then return end
     local list = LSM:HashTable("sound")
     if not list then return end
     local sorted = {}
     for name in pairs(list) do sorted[#sorted + 1] = name end
-    table.sort(sorted, function(a, b) return a:lower() < b:lower() end)
+    table.sort(sorted, ByLower)
     for _, name in ipairs(sorted) do
-        local key = "sm:" .. name
-        if name == "None" then
-            -- LibSharedMedia's own silent placeholder. It stays out of the list, but a
-            -- choice saved before keeps a readable name instead of the raw "sm:None".
-            names[key] = names[key] or "None"
+        local key = SHARED_MEDIA_PREFIX .. name
+        if name == SHARED_MEDIA_NONE then
+            names[key] = names[key] or TEXT_NONE
         elseif not names[key] then
             paths[key] = list[name]
             names[key] = name
@@ -1488,7 +1509,6 @@ function UI.AppendSharedMediaSounds(paths, names, order)
     end
 end
 
--- Plays a sound by its key in the addon's sound list (ns.SoundChoices); "none" plays nothing.
 function UI.PlaySoundKey(key)
     UI._PlayLSMSound(UI.SoundPathFor(key))
 end
@@ -1502,9 +1522,6 @@ function UI._PlayLSMSound(v)
     end
 end
 
--- Resolves a stored soundKey to a playable path. Built once and dropped whenever SharedMedia
--- registers another sound (boss mods register theirs when they load, often after login).
--- Rebuilding on a miss instead re-sorted every sound on every callout once a pack was removed.
 local soundPaths
 local soundProvider
 local function SoundRegistered(_, mediatype)
@@ -1514,27 +1531,31 @@ local function SoundRegistered(_, mediatype)
     end
 end
 
-function UI.SoundPathFor(key)
-    if not key or key == "none" then return nil end
-    -- Dedicated files keep racial gating separate from previews and other sounds.
-    if key == "voice:stoneform-ready" then return voicePath .. "stoneform-ready.ogg" end
-    if key == "voice:stoneform-preview" then return voicePath .. "stoneform-preview.ogg" end
-    if key == "voice:shadowmeld-ready" then return voicePath .. "shadowmeld-ready.ogg" end
-    if key == "voice:shadowmeld-preview" then return voicePath .. "shadowmeld-preview.ogg" end
+local function BundledVoicePath(key)
+    local racial = RACIAL_VOICES[key]
+    if racial then return VOICE_PATH .. racial end
     for _, voice in ipairs(bundledVoices) do
-        if key == voice.key then return voicePath .. voice.file end
+        if key == voice.key then return VOICE_PATH .. voice.file end
     end
-    local provider = LibStub and LibStub("LibSharedMedia-3.0", true)
-    -- A missing optional provider is not a cached miss. It may load later.
+end
+
+local function WatchProvider(provider)
+    if provider == soundProvider then return end
+    if soundProvider then
+        soundProvider.UnregisterCallback(UI, "LibSharedMedia_Registered")
+    end
+    provider.RegisterCallback(UI, "LibSharedMedia_Registered", SoundRegistered)
+    soundProvider = provider
+    soundPaths = nil
+end
+
+function UI.SoundPathFor(key)
+    if not key or key == NO_SOUND then return nil end
+    local bundled = BundledVoicePath(key)
+    if bundled then return bundled end
+    local provider = SharedMedia()
     if not provider then return nil end
-    if provider ~= soundProvider then
-        if soundProvider then
-            soundProvider.UnregisterCallback(UI, "LibSharedMedia_Registered")
-        end
-        provider.RegisterCallback(UI, "LibSharedMedia_Registered", SoundRegistered)
-        soundProvider = provider
-        soundPaths = nil
-    end
+    WatchProvider(provider)
     if not soundPaths then
         local paths, names, order = UI.BuildAlertSoundTables()
         UI.AppendSharedMediaSounds(paths, names, order)
@@ -1543,14 +1564,12 @@ function UI.SoundPathFor(key)
     return soundPaths[key]
 end
 
--- Fresh tables per call: the SharedMedia appender mutates in place and caches by
--- table identity, so handing the same tables to two dropdowns collapses them into one.
 function ns.SoundChoices()
     local paths, names, order = UI.BuildAlertSoundTables()
     UI.AppendSharedMediaSounds(paths, names, order)
-    names["none"] = nil
+    names[NO_SOUND] = nil
     for i = #order, 1, -1 do
-        if order[i] == "none" then table.remove(order, i) end
+        if order[i] == NO_SOUND then table.remove(order, i) end
     end
     return paths, names, order
 end

@@ -205,9 +205,13 @@ do
         UnitIsGroupLeader = function() return false end, UnitIsGroupAssistant = function() return false end,
     }, { __index = _G })
     env._G = env
-    local chunk = assert(loadfile("NaowhForever_Blessings/NaowhForever_Blessings.lua"))
-    setfenv(chunk, env)
-    chunk("NaowhForever", ns)
+    for _, path in ipairs(dofile("Tools/regression/toc_files.lua")("^NaowhForever_Blessings/.*%.lua$")) do
+        if not path:find("/UI/Window%.lua$") then
+            local chunk = assert(loadfile(path))
+            setfenv(chunk, env)
+            chunk("NaowhForever", ns)
+        end
+    end
     local fire
     for _, f in ipairs(frames) do
         if f.scripts.OnEvent and not fire then

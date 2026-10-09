@@ -1,3 +1,4 @@
+-- ruRU.lua: the Russian strings.
 local L = _G.NaowhForeverLocale
 if not L then return end
 
@@ -25,4 +26,3 @@ L["Preview"] = "Предпросмотр"
 L["Remove"] = "Убрать"
 L["Save"] = "Сохранить"
 L["Test"] = "Тест"
-

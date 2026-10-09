@@ -1,7 +1,8 @@
 local root = arg[1] or "."
 local function Read(suffix)
     local name = suffix == "" and "_SmartReminders" or suffix
-    local dir = (name == "_Core" or name == "_Widgets" or name == "_Packs") and "/Core" or "/NaowhForever_SmartReminders"
+    local dir = (name == "_Core" or name == "_Widgets" or name == "_Packs" or name == "_Features") and "/Core"
+        or "/NaowhForever_SmartReminders"
     local f = assert(io.open(root .. dir .. "/NaowhForever" .. name .. ".lua", "rb"))
     local s = f:read("*a"):gsub("\r\n", "\n"); f:close(); return s
 end
@@ -28,7 +29,9 @@ Case("late LSM, negative cache, and later sound registration", function()
         UnregisterCallback = function() end,
     }
     local env = { UI = ui, LibStub = false }
-    Eval(Slice(widgets, "local bundledVoices =", "-- Fresh tables per call"), env)
+    Eval(assert(widgets:match("\n(local MEDIA = .-\n)\nlocal UI = {}\n"), "Widgets constants")
+        .. assert(widgets:match("\n(local function SharedMedia%(%).-\nend\n)"), "SharedMedia")
+        .. Slice(widgets, "local bundledVoices =", "function ns.SoundChoices()"), env)
     assert(ui.SoundPathFor("sm:later") == nil)
     env.LibStub = function() return provider end
     assert(ui.SoundPathFor("sm:later") == "later.ogg")
@@ -38,7 +41,9 @@ Case("late LSM, negative cache, and later sound registration", function()
     assert(ui.SoundPathFor("sm:added") == "added.ogg" and builds == 2)
 end)
 
-local validate = Eval(Slice(Read("_Packs"), "local SECTIONS =", "-- LibSerialize's Deserialize")
+local packsSource = Read("_Packs")
+local validate = Eval(assert(packsSource:match("\n(local PREFIX = .-\n)\nlocal function ByLower"), "Packs constants")
+    .. Slice(packsSource, "local function CountSection(", "local function Codec()")
     .. "\nreturn ValidData", {})
 local function Data()
     return { bindingsBySpec = true,
@@ -104,7 +109,8 @@ local function Fixture(kind)
             After = function(_, cb) state.queue[#state.queue + 1] = cb end,
         },
     }
-    Eval(Slice(Read("_Core"), "function ns.HealerRemindersEnabled()", "-- Stored as a percent"), env)
+    Eval(Read("_Features"), { _G = { NaowhForever = ns } })
+    Eval(Slice(Read("_Core"), "function ns.HealerRemindersEnabled()", "function ns.UIScale()"), env)
     Eval(tracking .. scheduler .. firing .. queue, env)
     if kind == "bwtimer" then ns.HandleRaidReminderAbility(123, 20, "bar")
     elseif kind == "pull" then ns.CheckRaidReminderPullTriggers()

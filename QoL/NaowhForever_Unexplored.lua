@@ -1,32 +1,34 @@
--------------------------------------------------------------------------------
---  NaowhForever_Unexplored.lua -- the world map's unexplored areas drawn in full, darkened
---  (by the Darkness setting) instead of left blank, from NaowhForever_MapOverlays.lua.
--------------------------------------------------------------------------------
+-- NaowhForever_Unexplored.lua: the world map's unexplored areas drawn darkened instead of left blank.
 local ns = _G.NaowhForever
+
 local S = ns.QoLSettings
 
 local TEMPLATE = "NaowhForeverUnexploredPinTemplate"
-local TILE = 256   -- the overlays' tile size, see Tools/build_map_overlays.py
+local TILE = 256
+local SMALLEST_FILE = 16
+local AREA_FIELDS = 4
+local PERCENT, ROUND = 100, 0.5
+local EMPTY = {}
+local TEXT_DARK = "%d%% dark"
+
+local explored = {}
+local added
+local provider = CreateFromMixins(MapCanvasDataProviderMixin)
+local events = CreateFrame("Frame")
 
 local function On()
     return S.Get("enabled") and S.Get("mapUnexplored")
 end
 
--- A tile's drawn size and its texture file's size, along one side: the last tile of a row or
--- column holds what is left, in a file rounded up to a power of two.
 local function Span(index, count, size)
     if index < count then return TILE, TILE end
     local pixels = size % TILE
     if pixels == 0 then pixels = TILE end
-    local file = 16
+    local file = SMALLEST_FILE
     while file < pixels do file = file * 2 end
     return pixels, file
 end
 
--------------------------------------------------------------------------------
---  The pin: one for the whole map, holding every unexplored area's tiles
--------------------------------------------------------------------------------
--- A global so the XML template can name it.
 NaowhForeverUnexploredPinMixin = CreateFromMixins(MapCanvasPinMixin)
 
 function NaowhForeverUnexploredPinMixin:OnLoad()
@@ -35,8 +37,35 @@ function NaowhForeverUnexploredPinMixin:OnLoad()
     self.textures = CreateTexturePool(self, "ARTWORK", 0)
 end
 
--- Its SetPassThroughButtons is protected in combat, and this pin takes no clicks.
 function NaowhForeverUnexploredPinMixin:CheckMouseButtonPassthrough() end
+
+local function DrawTile(pin, area, row, col, wide, tall, shade)
+    local width, height, x, y = area[1], area[2], area[3], area[4]
+    local rowPixels, rowFile = Span(row, tall, height)
+    local colPixels, colFile = Span(col, wide, width)
+    local tex = pin.textures:Acquire()
+    tex:SetSize(colPixels, rowPixels)
+    tex:SetTexCoord(0, colPixels / colFile, 0, rowPixels / rowFile)
+    tex:SetPoint("TOPLEFT", x + TILE * (col - 1), -(y + TILE * (row - 1)))
+    tex:SetTexture(area[AREA_FIELDS + (row - 1) * wide + col], nil, nil, "TRILINEAR")
+    tex:SetDesaturated(true)
+    tex:SetVertexColor(shade, shade, shade)
+    tex:Show()
+end
+
+local function DrawArea(pin, area, shade)
+    local wide, tall = math.ceil(area[1] / TILE), math.ceil(area[2] / TILE)
+    for row = 1, tall do
+        for col = 1, wide do DrawTile(pin, area, row, col, wide, tall, shade) end
+    end
+end
+
+local function NoteExplored(mapID)
+    wipe(explored)
+    for _, info in ipairs(C_MapExplorationInfo.GetExploredMapTextures(mapID) or EMPTY) do
+        explored[info.textureWidth .. ":" .. info.textureHeight .. ":" .. info.offsetX .. ":" .. info.offsetY] = true
+    end
+end
 
 function NaowhForeverUnexploredPinMixin:Refresh()
     self.textures:ReleaseAll()
@@ -47,39 +76,17 @@ function NaowhForeverUnexploredPinMixin:Refresh()
     self:SetSize(map:DenormalizeHorizontalSize(1), map:DenormalizeVerticalSize(1))
     self:SetAlpha(map:GetGlobalAlpha())
     local shade = 1 - S.Get("mapUnexploredDark")
-
-    local explored = {}
-    for _, info in ipairs(C_MapExplorationInfo.GetExploredMapTextures(mapID) or {}) do
-        explored[info.textureWidth .. ":" .. info.textureHeight .. ":" .. info.offsetX .. ":" .. info.offsetY] = true
-    end
+    NoteExplored(mapID)
     for _, area in ipairs(overlays) do
-        local width, height, x, y = area[1], area[2], area[3], area[4]
-        if not explored[width .. ":" .. height .. ":" .. x .. ":" .. y] then
-            local wide, tall = math.ceil(width / TILE), math.ceil(height / TILE)
-            for row = 1, tall do
-                local rowPixels, rowFile = Span(row, tall, height)
-                for col = 1, wide do
-                    local colPixels, colFile = Span(col, wide, width)
-                    local tex = self.textures:Acquire()
-                    tex:SetSize(colPixels, rowPixels)
-                    tex:SetTexCoord(0, colPixels / colFile, 0, rowPixels / rowFile)
-                    tex:SetPoint("TOPLEFT", x + TILE * (col - 1), -(y + TILE * (row - 1)))
-                    tex:SetTexture(area[4 + (row - 1) * wide + col], nil, nil, "TRILINEAR")
-                    tex:SetDesaturated(true)
-                    tex:SetVertexColor(shade, shade, shade)
-                    tex:Show()
-                end
-            end
-        end
+        if not explored[area[1] .. ":" .. area[2] .. ":" .. area[3] .. ":" .. area[4]] then DrawArea(self, area, shade) end
     end
 end
 
--------------------------------------------------------------------------------
---  The map's data provider
--------------------------------------------------------------------------------
-local provider = CreateFromMixins(MapCanvasDataProviderMixin)
-local events = CreateFrame("Frame")
-events:SetScript("OnEvent", function() provider.pin:Refresh() end)
+local function OnExplored()
+    provider.pin:Refresh()
+end
+
+events:SetScript("OnEvent", OnExplored)
 
 function provider:OnAdded(map)
     MapCanvasDataProviderMixin.OnAdded(self, map)
@@ -107,7 +114,6 @@ function provider:OnGlobalAlphaChanged()
     self.pin:SetAlpha(self:GetMap():GetGlobalAlpha())
 end
 
-local added
 local function Apply()
     if not added then
         if not On() then return end
@@ -133,12 +139,14 @@ local boot = CreateFrame("Frame")
 boot:RegisterEvent("PLAYER_LOGIN")
 boot:SetScript("OnEvent", Apply)
 
+local function Summary(store)
+    return TEXT_DARK:format(math.floor(store.Get("mapUnexploredDark") * PERCENT + ROUND))
+end
+
 ns.Shared.Settings.Page("QoL/Interface", S):Card({
     id = "mapUnexplored", name = "Unexplored Areas", order = 45, switch = "mapUnexplored",
     help = "Shows the parts of the world map you have not explored yet, darkened.",
-    summary = function(store)
-        return ("%d%% dark"):format(math.floor(store.Get("mapUnexploredDark") * 100 + 0.5))
-    end,
+    summary = Summary,
     rows = {
         { key = "mapUnexploredDark", label = "Darkness", slider = { 10, 90, 5 }, unit = "%", scale = 0.01 },
     },
