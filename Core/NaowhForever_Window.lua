@@ -412,7 +412,7 @@ local function PaintNavButton(btn, hover)
     local active = btn.fill:IsShown()
     local found = UI.filter and btn.found
     local off = btn.mod ~= nil and not ModuleOn(btn.mod)
-    local c = (active or hover) and T.fg or T.muted
+    local c = (active or hover) and T.fg or (ns.classicSkin and T.accent or T.muted)
     local a = (off and not active and not hover) and NAV_OFF_ALPHA or 1
     if found == false and not active and not hover then a = MISS_ALPHA end
     btn.label:SetTextColor(c.r, c.g, c.b, a)
@@ -1159,6 +1159,19 @@ local function NavigationButton(parent, label, y, onClick, icon)
     btn.marker = ns.Solid(btn, "ARTWORK", T.accent, 1)
     btn.marker:SetPoint("TOPLEFT"); btn.marker:SetPoint("BOTTOMLEFT"); btn.marker:SetWidth(3)
     btn.marker:Hide()
+    -- Classic+: the game's blue list glow, fading to the right, with a lit line along its top.
+    if ns.classicSkin then
+        local St = ns.Shared.Style
+        local c = St.CLASSIC_PICK_RGB
+        btn.fill:SetColorTexture(1, 1, 1, 1)
+        btn.fill:SetGradient("HORIZONTAL", CreateColor(c.r, c.g, c.b, St.CLASSIC_PICK_ALPHA),
+            CreateColor(c.r, c.g, c.b, St.CLASSIC_PICK_FADE))
+        local line = St.CLASSIC_PICK_LINE_RGB
+        btn.marker:SetColorTexture(line.r, line.g, line.b, St.CLASSIC_PICK_LINE_ALPHA)
+        btn.marker:ClearAllPoints()
+        btn.marker:SetPoint("TOPLEFT"); btn.marker:SetPoint("TOPRIGHT")
+        ns.Hairline(btn.marker, "h")
+    end
     btn.label = ns.Font(btn, 14, nil, T.muted)
     btn.label:SetPoint("LEFT", icon and NAV_LABEL_X or 18, 0)
     btn.label:SetPoint("RIGHT", -10, 0)

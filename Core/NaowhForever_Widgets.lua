@@ -857,6 +857,20 @@ function W:SectionHeader(parent, text, yOffset)
     sep:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 0, 0)
     sep:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", 0, 0)
     ns.Hairline(sep, "h")
+    -- Classic+: a gold gem before the name, in gold, over a gold rule that fades out.
+    if ns.classicSkin then
+        local St = ns.Shared.Style
+        local gold = St.CLASSIC_GOLD_RGB
+        local gem = f:CreateTexture(nil, "ARTWORK")
+        gem:SetTexture(St.GEM, nil, nil, "TRILINEAR")
+        gem:SetVertexColor(gold.r, gold.g, gold.b, 1)
+        gem:SetSize(St.CLASSIC_SECTION_GEM, St.CLASSIC_SECTION_GEM)
+        lbl:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", St.CLASSIC_SECTION_GEM + St.CLASSIC_SECTION_GEM_GAP, 8)
+        gem:SetPoint("RIGHT", lbl, "LEFT", -St.CLASSIC_SECTION_GEM_GAP, 0)
+        lbl:SetTextColor(T.accent.r, T.accent.g, T.accent.b, 1)
+        sep:SetColorTexture(1, 1, 1, 1)
+        sep:SetGradient("HORIZONTAL", CreateColor(gold.r, gold.g, gold.b, 1), CreateColor(gold.r, gold.g, gold.b, 0))
+    end
     return f, HEADER_H
 end
 
