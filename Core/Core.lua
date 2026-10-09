@@ -667,8 +667,9 @@ function ns.Button(parent, text, w, h, onClick)
     return btn
 end
 
+-- The game's own buttons (Classic+) have no main-action edge, so they keep theirs off.
 function ns.AccentBorder(frame)
-    if not (frame and frame._border) then return frame end
+    if not (frame and frame._border) or frame._art then return frame end
     local accent = ns.THEME.accent
     frame._rest = accent
     frame._border:SetColor(accent.r, accent.g, accent.b, 1)

@@ -107,9 +107,12 @@ btn.disabled = false
 btn.scripts.OnEnable(btn)
 check("enabled again", Art(art.up) and btn.label.color[1] == accent.r)
 
--- The edge still marks a picked button, as callers set it, and goes again when they clear it.
+-- A main action is the game's button like any other, with no edge.
 ns.AccentBorder(btn)
-check("a main action keeps its accent edge", btn._rest == accent and not btn._border._frame.hidden)
+check("a main action has no accent edge", btn._rest ~= accent and btn._border._frame.hidden)
+-- The edge still marks a picked button, as callers set it, and goes again when they clear it.
+btn._border:SetColor(accent.r, accent.g, accent.b, 1)
+check("a picked button shows its edge", not btn._border._frame.hidden)
 btn._border:SetColor(0, 0, 0, 1)
 check("cleared to black, the edge goes", btn._border._frame.hidden)
 
