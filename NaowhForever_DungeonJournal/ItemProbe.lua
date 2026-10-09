@@ -1,4 +1,4 @@
--- ItemProbe.lua: /nf itemprobe: asks the server for every item the Journal lists, for Tools/items_in_game.py.
+-- ItemProbe.lua: /nf itemprobe: asks the server for every item the Journal lists, for Tools/sources/items_in_game.py.
 local ns = _G.NaowhForever
 
 local GetItemNameByID = C_Item.GetItemNameByID
@@ -10,7 +10,7 @@ local BATCH = 50
 local WAIT = 5
 
 local TEXT_DONE = "Item probe: %d items load, %d are not in Forever. /reload to save them, then run "
-    .. "Tools/items_in_game.py."
+    .. "Tools/sources/items_in_game.py."
 local TEXT_RUNNING = "Item probe: still running."
 local TEXT_ASKING = "Item probe: asking for %d items."
 

@@ -2,7 +2,9 @@
 -- addon its TOC lists under Dependencies, so turning any other module off cannot break it. The
 -- core and every module may read a field from elsewhere only behind a nil guard (ns.X and,
 -- if ns.X then, if not ns.X then return, ns.X ~= nil, type(ns.X), ns.X or, or a local copy of
--- ns.X checked before its first use). Run from the repo root:
+-- ns.X checked before its first use). Quality of Life (NaowhForever_QoL) is optional too: with it
+-- off, nothing else may read its fields unguarded or at load, so the base and every module that
+-- does not list it load and run without it. Run from the repo root:
 --   lua5.1 Tools/regression/test-module-boundaries.lua
 local TocFiles = dofile("Tools/regression/toc_files.lua")
 local CORE = "NaowhForever"
@@ -20,19 +22,19 @@ local ALLOWED = {
       reason = "the item menu offers it only when Loot.BisOn: the BiS List loaded and on" },
     { addon = "NaowhForever_DungeonJournal", field = "RemoveBisItem", file = "NaowhForever_DungeonJournal/View/ItemMenu.lua",
       reason = "the item menu offers it only when Loot.BisOn: the BiS List loaded and on" },
-    { addon = "NaowhForever", field = "SetEnabled", file = "Core/Modules.lua",
+    { addon = "NaowhForever", field = "SetEnabled", file = "Core/Options/Modules.lua",
       reason = "dead branch: every MODULES entry has settings, so SetModuleOn never reaches ns.SetEnabled" },
-    { addon = "NaowhForever", field = "MacroText", file = "Core/ProfileShare.lua",
+    { addon = "NaowhForever", field = "MacroText", file = "Core/Profiles/ProfileShare.lua",
       reason = "AddLibrary runs only behind wanted.library and ns.MacroText" },
-    { addon = "NaowhForever", field = "TrainingBuilds", file = "Core/ProfileShare.lua",
+    { addon = "NaowhForever", field = "TrainingBuilds", file = "Core/Profiles/ProfileShare.lua",
       reason = "AddBuilds runs only behind ns.Training, which the same addon defines" },
-    { addon = "NaowhForever", field = "Training", file = "Core/ProfileShare.lua",
+    { addon = "NaowhForever", field = "Training", file = "Core/Profiles/ProfileShare.lua",
       reason = "AddBuilds runs only behind wanted.builds and ns.Training" },
-    { addon = "NaowhForever", field = "Training", file = "Core/ProfileDialogs.lua",
+    { addon = "NaowhForever", field = "Training", file = "Core/Profiles/ProfileDialogs.lua",
       reason = "the build hand-off's Add button shows only when ns[needs] (Training) is set" },
-    { addon = "NaowhForever", field = "ImportMacroString", file = "Core/ProfileDialogs.lua",
+    { addon = "NaowhForever", field = "ImportMacroString", file = "Core/Profiles/ProfileDialogs.lua",
       reason = "the macro hand-off's Add button shows only when ns[needs] (ImportMacroString) is set" },
-    { addon = "NaowhForever", field = "ImportBisList", file = "Core/ProfileDialogs.lua",
+    { addon = "NaowhForever", field = "ImportBisList", file = "Core/Profiles/ProfileDialogs.lua",
       reason = "the BiS hand-off's Add button shows only when ns[needs] (ImportBisList) is set" },
     { addon = "NaowhForever_BiS", field = "Journal", file = "NaowhForever_BiS/BiS/Quests.lua",
       reason = "Rewards, Choice and Zones run only after Quests.Available() checks ns.Journal" },
@@ -188,6 +190,7 @@ local function Scan(a, path)
     local code = Strip(Read(path))
     local line, lineStart, cursor = 1, 1, 1
     local depth, guards, lineGuards, returns = 0, {}, {}, {}
+    local kinds, inFunction = {}, 0
     local cond, prevWord
     local function Advance(pos)
         while true do
@@ -235,7 +238,8 @@ local function Scan(a, path)
         local safe = guard or Guarded(field)
             or (field:find("^%[") and not after:find("^%s*[%.:%(%[]"))
         if guard then lineGuards[field] = true end
-        a.reads[#a.reads + 1] = { field = field, file = path, where = path .. ":" .. line, guarded = safe and true or false }
+        a.reads[#a.reads + 1] = { field = field, file = path, where = path .. ":" .. line, guarded = safe and true or false,
+            atLoad = inFunction == 0 }
     end
     for pos, word in code:gmatch("()([%a_][%w_]*)") do
         local prevChar = pos > 1 and code:sub(pos - 1, pos - 1) or ""
@@ -268,6 +272,7 @@ local function Scan(a, path)
             elseif word == "if" or word == "elseif" then
                 if word == "if" then
                     depth = depth + 1
+                    kinds[depth] = false
                 else
                     DropGuards(depth, true)
                     returns[depth] = nil
@@ -294,10 +299,14 @@ local function Scan(a, path)
                 if returns[depth] then returns[depth].returns = true end
             elseif OPENERS[word] then
                 depth = depth + 1
+                kinds[depth] = word == "function"
+                if kinds[depth] then inFunction = inFunction + 1 end
             elseif CLOSERS[word] then
                 local closing = returns[depth]
                 returns[depth] = nil
                 DropGuards(depth)
+                if kinds[depth] then inFunction = inFunction - 1 end
+                kinds[depth] = nil
                 depth = depth - 1
                 if closing and closing.returns then
                     for _, f in ipairs(closing.fields) do
@@ -387,7 +396,51 @@ for _, list in ipairs({ ALLOWED, KNOWN }) do
     end
 end
 
+local QOL = "NaowhForever_QoL"
+local qol = byName[QOL]
+local qolReads, dependents = 0, {}
+if not qol then
+    failures[#failures + 1] = QOL .. " is not a module addon in .pkgmeta"
+else
+    local onlyQoL = {}
+    for field in pairs(qol.defines) do
+        local elsewhere = false
+        for _, other in ipairs(addons) do
+            if other ~= qol and other.defines[field] then elsewhere = true end
+        end
+        if not elsewhere then onlyQoL[field] = true end
+    end
+    for _, a in ipairs(addons) do
+        if a ~= qol and Closure(a)[QOL] then
+            dependents[#dependents + 1] = a.name
+        elseif a ~= qol then
+            for _, r in ipairs(a.reads) do
+                if onlyQoL[r.field] then
+                    qolReads = qolReads + 1
+                    if not r.guarded then
+                        failures[#failures + 1] = ("without %s: %s reads ns.%s unguarded at %s"):format(QOL, a.name,
+                            r.field, r.where)
+                    elseif r.atLoad then
+                        failures[#failures + 1] = ("without %s: %s reads ns.%s at load, before QoL loads, at %s"):format(
+                            QOL, a.name, r.field, r.where)
+                    end
+                end
+            end
+        end
+    end
+    local hard = table.concat(qol.hard, ",")
+    if hard ~= CORE then
+        failures[#failures + 1] = QOL .. " must depend on the core alone, not: " .. hard
+    end
+    local topBar = byName.NaowhForever_TopBar
+    if not (topBar and Closure(topBar)[QOL]) then
+        failures[#failures + 1] = "the Top Bar's card is on QoL > Interface, so NaowhForever_TopBar must depend on " .. QOL
+    end
+end
+
 for _, w in ipairs(warnings) do print("WARNING " .. w) end
 for _, f in ipairs(failures) do print("FAIL " .. f) end
 assert(#failures == 0, #failures .. " ns read(s) cross a module boundary unguarded")
 print(("test-module-boundaries: %d addons, %d reads checked, %d known issue(s)"):format(#addons, checked, #warnings))
+print(("  without %s: %d guarded read(s) of its fields elsewhere, none at load; needed by %s"):format(QOL,
+    qolReads, table.concat(dependents, ", ")))

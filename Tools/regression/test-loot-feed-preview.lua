@@ -136,7 +136,7 @@ env._G = env
 local settingsFile = assert(loadfile("Shared/Settings/Settings.lua"))
 setfenv(settingsFile, env)
 settingsFile()
-local chunk = assert(loadfile("QoL/LootFeed.lua"))
+local chunk = assert(loadfile("NaowhForever_QoL/Loot/LootFeed.lua"))
 setfenv(chunk, env)
 chunk()
 local cards = ns.Shared.Settings.pages["QoL/Loot & Items"].cards

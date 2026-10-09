@@ -6,7 +6,7 @@ ns.Macros.Style = setmetatable({
     WARNING_RGB = { r = 0.94, g = 0.70, b = 0.29 },
     ERROR_RGB = Shared.Style.RED_RGB,
     OK_RGB = Shared.Style.HAVE_RGB,
-    CODE_FONT = "Interface\\AddOns\\NaowhForever\\Media\\Fonts\\JetBrainsMonoNL-Regular.ttf",
+    CODE_FONT = "Interface\\AddOns\\NaowhForever\\Core\\Media\\Fonts\\JetBrainsMonoNL-Regular.ttf",
 
     PAD = 14,
     LIST_W = 270,

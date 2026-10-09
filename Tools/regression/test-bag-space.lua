@@ -6,9 +6,9 @@
 -- Font, Font Size and Outline (the header and prices scale with the size), the tooltip lines that
 -- explain the badges, its settings preview and card rows, and what a scan costs.
 -- Run from the repo root: lua Tools/regression/test-bag-space.lua
-local f = assert(io.open(arg[1] or "QoL/BagSpace.lua", "rb"))
+local f = assert(io.open(arg[1] or "NaowhForever_QoL/Loot/BagSpace.lua", "rb"))
 local source = f:read("*a"); f:close()
-local SHARED = { "Shared/Shared.lua", "Shared/Style.lua", "Shared/Parts.lua", "Shared/Marks.lua", "Shared/Text.lua", "Shared/Hud.lua", "Shared/Timer.lua", "Shared/Share.lua", "Shared/Panels.lua" }
+local SHARED = { "Shared/Shared.lua", "Shared/Style.lua", "Shared/UI/Parts.lua", "Shared/UI/Marks.lua", "Shared/UI/Text.lua", "Shared/UI/Hud.lua", "Shared/UI/Timer.lua", "Shared/UI/Share.lua", "Shared/UI/Panels.lua" }
 
 -- itemID -> name, quality, required level, max stack, vendor price, class
 local ITEMS = {
@@ -653,7 +653,7 @@ do
     t.Set("bagSpaceBackground", "card")
     Check("background: back to the card", backdrop.fill.shown and backdrop.border._frame.shown and SoftShown(false), true)
     Check("background: the house shadow again", AllShadow(St.HUD_SHADOW_X, St.HUD_SHADOW_Y, St.HUD_SHADOW_ALPHA), true)
-    local qol = io.open("QoL/QoL.lua", "rb")
+    local qol = io.open("Core/Settings.lua", "rb")
     local defaults = qol:read("*a"); qol:close()
     Check("background: Card by default in the settings", defaults:find('bagSpaceBackground = "card"', 1, true) ~= nil, true)
 end
@@ -697,7 +697,7 @@ do
     local grown = collectgarbage("count") - kb
     collectgarbage("restart")
     Check("text: no garbage per scan", grown / 500 < 0.05, true)
-    local qol = io.open("QoL/QoL.lua", "rb")
+    local qol = io.open("Core/Settings.lua", "rb")
     local defaults = qol:read("*a"); qol:close()
     Check("text: today's look in the settings", defaults:find('bagSpaceFont = "", bagSpaceFontSize = 12, '
         .. 'bagSpaceOutline = ""', 1, true) ~= nil, true)

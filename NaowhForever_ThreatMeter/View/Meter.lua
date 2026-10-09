@@ -18,7 +18,7 @@ local FALLBACK_COLOR = { r = 0.6, g = 0.6, b = 0.6 }
 local OWN_DARKEN = 0.27
 local DANGER_G, DANGER_B = 0.35, 0.25
 local YOUR_SHADE = 0.75
-local GRADIENT_TEX = "Interface\\AddOns\\NaowhForever\\Media\\NaowhGradient.tga"
+local GRADIENT_TEX = "Interface\\AddOns\\NaowhForever\\Core\\Media\\NaowhGradient.tga"
 local ICON_PATH = "Interface\\Icons\\ClassIcon_"
 local LINE_ICON = "Interface\\Icons\\Ability_Warrior_Challange"
 local PET_ICON = "Interface\\Icons\\Ability_Hunter_BeastCall"

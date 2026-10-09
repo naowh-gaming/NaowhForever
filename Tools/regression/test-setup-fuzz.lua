@@ -1,6 +1,6 @@
 -- Tailor my setup against thousands of random players: random answers, characters, switches,
 -- module addons enabled, loaded or not, presets and review corrections, on the real setup engine
--- and the options window's real module code (Core/Window.lua). Every plan is checked
+-- and the options window's real module code (Core/Options/Window.lua). Every plan is checked
 -- for its rules, applied, reloaded, planned again and restored. From the repo root:
 -- lua5.1 Tools/regression/test-setup-fuzz.lua [seed] [runs]
 local SEED, RUNS = tonumber(arg[1]) or 20261008, tonumber(arg[2]) or 3000
@@ -29,7 +29,7 @@ local function Same(a, b)
     return true
 end
 
-local window = Read("Core/Modules.lua")
+local window = Read("Core/Options/Modules.lua")
 local function Slice(source, a, b)
     local first = assert(source:find(a, 1, true), a)
     return source:sub(first, assert(source:find(b, first + #a, true), b) - 1)
@@ -66,7 +66,7 @@ local Setup
 do
     local env = setmetatable({ ns = {}, CopyTable = CopyTable }, { __index = _G })
     env._G = { NaowhForever = env.ns }
-    local chunk = assert(loadfile("Core/Setup.lua"))
+    local chunk = assert(loadfile("Core/Onboarding/Setup.lua"))
     setfenv(chunk, env)
     chunk()
     Setup = env.ns.Setup
@@ -210,7 +210,7 @@ local function World()
     local sEnv = setmetatable({ ns = ns, CopyTable = CopyTable, C_AddOns = C_AddOns,
         UnitClass = function() return world.class, world.class end }, { __index = _G })
     sEnv._G = { NaowhForever = ns }
-    local setup = assert(loadfile("Core/Setup.lua"))
+    local setup = assert(loadfile("Core/Onboarding/Setup.lua"))
     setfenv(setup, sEnv)
     setup()
     world.Setup = ns.Setup

@@ -41,7 +41,7 @@ local TEXT_HINT = "Drag to turn" .. PLACE_DOT .. "Scroll to zoom" .. PLACE_DOT .
 local BLANK = " "
 
 local function TryOn(model, slot, id)
-    model:TryOn(select(2, C_Item.GetItemInfo(id)) or "item:" .. id, HAND[slot])
+    model:TryOn(select(2, C_Item.GetItemInfo(id)) or ("item:" .. id), HAND[slot])
 end
 
 local function Dress(model)

@@ -25,8 +25,8 @@ P.Style = setmetatable({
     ALERT_CODE = "|cffff4d4d",
     VENDOR_ICON = "|TInterface\\GossipFrame\\VendorGossipIcon:14:14|t",
     TRAINER_ICON = "Interface\\GossipFrame\\TrainerGossipIcon",
-    LOGO = "Interface\\AddOns\\NaowhForever\\Media\\LogoSmall.tga",
-    GRADIENT = "Interface\\AddOns\\NaowhForever\\Media\\NaowhGradient.tga",
+    LOGO = "Interface\\AddOns\\NaowhForever\\Core\\Media\\LogoSmall.tga",
+    GRADIENT = "Interface\\AddOns\\NaowhForever\\Core\\Media\\NaowhGradient.tga",
 
     CROP_LOW = 0.07,
     CROP_HIGH = 0.93,

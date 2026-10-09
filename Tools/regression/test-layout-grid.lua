@@ -6,7 +6,7 @@ local checks = 0
 local function Check(ok, label) assert(ok, label); checks = checks + 1 end
 
 -- The grid's own file, from its first named value on: T and Pixel come from the stub env below.
-local f = assert(io.open("Core/UnlockGrid.lua", "rb"))
+local f = assert(io.open("Core/Unlock/Grid.lua", "rb"))
 local source = f:read("*a"):gsub("\r\n", "\n"); f:close()
 local first = assert(source:find("local GRID_STEP", 1, true))
 local last = assert(source:find("\nfunction ns.SetAnchorGridShown", first, true))

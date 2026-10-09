@@ -69,7 +69,7 @@ end
 
 local T = { fg = { r = 1, g = 1, b = 1 }, muted = { r = 0.5, g = 0.5, b = 0.5 }, accent = { r = 0, g = 0.5, b = 1 },
     accentSoft = { r = 0.3, g = 0.7, b = 1 }, line = { r = 0.2, g = 0.2, b = 0.2 }, bg = {}, panel = {} }
-local s = { combat = false, applied = nil, reloadAsked = nil, printed = nil }
+local s = { combat = false, applied = nil, reloadAsked = nil, printed = nil, account = { freshInstall = true } }
 local buttons, toggles, fonts = {}, {}, {}
 
 local plan = {
@@ -150,11 +150,12 @@ local ns = {
         return edge
     end,
     Print = function(msg) s.printed = msg end,
+    AccountSettings = function() return s.account end,
     ConfirmReload = function(msg) s.reloadAsked = msg end,
     ShowCopyLine = function(title, text) s.copied = { title = title, text = text } end,
     LINKS = { { "Discord", "discord", function() return "https://discord.gg/x" end },
         { "GitHub", "github", function() return "https://github.com/x" end } },
-    LINK_ICONS = "Interface\\AddOns\\NaowhForever\\Media\\Links\\",
+    LINK_ICONS = "Interface\\AddOns\\NaowhForever\\Core\\Media\\Links\\",
     VersionText = function() return "v1.0.6" end,
     StashOptionsWindow = function() s.optionsClosed = (s.optionsClosed or 0) + 1 end,
     -- Core's ns.Color for a color table: its |cffRRGGBB prefix, or text wrapped in it.
@@ -228,7 +229,7 @@ local env = setmetatable({ _G = { NaowhForever = ns }, CreateFrame = function(_,
         f.parent = parent
         return f
     end, InCombatLockdown = function() return s.combat end }, { __index = _G })
-local chunk = assert(loadfile("Core/SetupWindow.lua"))
+local chunk = assert(loadfile("Core/Onboarding/SetupWindow.lua"))
 setfenv(chunk, env)
 chunk()
 
@@ -313,8 +314,13 @@ check("the version sits at the bottom right", Said("v1.0.6") ~= nil)
 Tip("Discord").Click()
 check("our socials at the bottom left, each showing its address", Tip("GitHub") ~= nil
     and s.copied.text == "https://discord.gg/x")
+window.scripts.OnHide(window)
+check("the whole UI hidden with it is not a close: not seen yet", s.account.welcomeSeen == nil
+    and s.account.freshInstall == true)
 Link("or keep my setup as it is").Click()
 check("keep my setup as it is: the window closes", not window.shown)
+check("closed: the onboarding is seen, so it never opens by itself again", s.account.welcomeSeen == true
+    and s.account.freshInstall == nil)
 
 ns.ShowSetup()
 Find("Let's start").Click()

@@ -37,7 +37,7 @@ local SECRET_TEXT = "Secret: hidden text"
 local WIDE_COLON = "\239\188\154"
 
 -- The Naowh font's advance widths, characters 32 to 126, per 1000 units of its size
--- (Media/Fonts/Naowh.ttf).
+-- (Core/Media/Fonts/Naowh.ttf).
 local ADVANCE = {
     295, 277, 325, 555, 555, 837, 684, 218, 407, 407, 573, 600, 208, 353, 208, 499, 537, 316, 527, 544,
     570, 550, 553, 476, 534, 553, 208, 208, 583, 579, 583, 518, 760, 683, 580, 782, 738, 530, 492, 837,

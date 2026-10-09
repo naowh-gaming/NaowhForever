@@ -147,9 +147,9 @@ local env = setmetatable({
     end,
 }, { __index = _G })
 env._G = env
-local f = assert(io.open("QoL/Waypoints.lua", "rb"))
+local f = assert(io.open("NaowhForever_QoL/Interface/Waypoints.lua", "rb"))
 local source = f:read("*a"):gsub("\r\n", "\n"); f:close()
-local chunk = assert(loadstring(source, "QoL/Waypoints.lua"))
+local chunk = assert(loadstring(source, "NaowhForever_QoL/Interface/Waypoints.lua"))
 setfenv(chunk, env)
 chunk()
 

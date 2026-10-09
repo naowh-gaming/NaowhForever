@@ -32,7 +32,7 @@ if [ -n "$shipped" ] && [ "${NO_CHANGELOG:-false}" != "true" ]; then
     if [ "$added" -eq 0 ]; then
         if [ -z "${PR_BODY+set}" ]; then
             echo "Changelog: not checked here, it goes under '## Changelog' in the PR description."
-        elif ! printf '%s' "$PR_BODY" | python3 Tools/release.py check-body; then
+        elif ! printf '%s' "$PR_BODY" | python3 Tools/release/release.py check-body; then
             echo "  This PR changes addon files. Under '## Changelog' in the description, add a line"
             echo "  for players starting Added:, Changed: or Fixed:, or label the PR 'no changelog'"
             echo "  if nothing changes for them."

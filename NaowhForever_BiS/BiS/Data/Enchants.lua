@@ -1,4 +1,4 @@
--- Enchants.lua: every enchant an enchanter can put on your gear (Tools/build_enchants.py).
+-- Enchants.lua: every enchant an enchanter can put on your gear (Tools/build/enchants.py).
 local ns = _G.NaowhForever
 
 ns.BiSEnchants = {

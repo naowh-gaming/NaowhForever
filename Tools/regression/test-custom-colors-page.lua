@@ -9,8 +9,8 @@ local function Read(path)
 end
 local coreSource = Read("Core/Core.lua")
 local featuresSource = Read("Core/Features.lua")
-local rxpSource = Read("RXPThemes/RXPThemes.lua")
-local source = Read("Core/SettingsPage.lua")
+local rxpSource = Read("Core/Integrations/RestedXP/Themes.lua")
+local source = Read("Core/Options/SettingsPage.lua")
 local constants = assert(source:match("\n(local DEFAULT_SCALE = .-\n)\nlocal colorsPending = false\n"), "named values")
 local empty = assert(source:match("\n(local function Empty%(%).-end\n)"), "Empty")
 local first = assert(source:find("local function ThemeChoices()", 1, true))
@@ -251,7 +251,7 @@ end
 
 -- The chips themselves: the control is cut out of Widgets.lua and run with stub frames.
 do
-    local widgets = Read("Core/Widgets.lua")
+    local widgets = Read("Core/Options/Widgets.lua")
     local widgetConstants = assert(widgets:match("\n(local MEDIA = .-\n)\nlocal UI = {}\n"), "Widgets constants")
     local atEnd = assert(widgets:match("\n(local function AtRowEnd%(.-\nend\n)"), "AtRowEnd")
     local from = assert(widgets:find("local function PaletteChip(", 1, true))
@@ -299,6 +299,7 @@ do
     control._refreshValue()
     Check(painted[1][1] == 0.5 and painted[2][1] == 0.5 and painted[3][1] == 1, "a refresh repaints from the current colors")
     Check(#frames == 8 and Shown() == 2, "fewer colors hide the extra chips and build nothing")
+    ---@diagnostic disable-next-line: duplicate-set-field
     cfg.colors = function() return List(8, 0.25) end
     control._refreshValue()
     Check(#frames == 10 and Shown() == 8 and #painted == 8 and painted[8][1] == 0.25, "more colors build only the missing chips and show them all")

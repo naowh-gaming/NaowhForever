@@ -1,29 +1,27 @@
 ## Interface: 16001
 ## Title: |cff0091edNaowh|r Forever
-## Notes: Naowh's Forever companion: QoL, the Top Bar and the window every module shares.
+## Notes: Naowh's Forever companion: the window every module shares.
 ## Author: Naowh
 ## Version: 1.0.6
 ## OptionalDeps: NaowhUI_Media, BigWigs, DBM-Core
 ## SavedVariables: NaowhForeverDB, NaowhUI_SmartRemindersDB
 ## Group: NaowhForever
-## IconTexture: Interface\AddOns\NaowhForever\Media\LogoAddon.tga
+## IconTexture: Interface\AddOns\NaowhForever\Core\Media\LogoAddon.tga
 ## AddonCompartmentFunc: NaowhForever_OnCompartmentClick
 
 Libs\embeds.xml
 
 # Locales stay in the TOC: AllowLoadTextLocale is a TOC option. Each area loads its own
 # files through its XML, in this order; add a file to that XML, never here.
-Locales\enUS.lua
-Locales\deDE.lua [AllowLoadTextLocale deDE]
-Locales\ruRU.lua [AllowLoadTextLocale ruRU]
+Core\Locales\enUS.lua
+Core\Locales\deDE.lua [AllowLoadTextLocale deDE]
+Core\Locales\ruRU.lua [AllowLoadTextLocale ruRU]
 
 Core\Core.xml
-RXPThemes\RXPThemes.xml
+Core\Integrations\RestedXP\RestedXP.xml
 Core\Options.xml
 Shared\Shared.xml
 Core\Packs.xml
-QoL\QoL.xml
-TopBar\TopBar.xml
-QoL\Travel.xml
-Badges\Badges.xml
+Core\Settings.xml
+Core\Badges\Badges.xml
 Core\Pages.xml

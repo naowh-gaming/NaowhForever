@@ -106,7 +106,6 @@ function methods:SetValue(v) self.value = v end
 function methods:GetValue() return self.value or 0 end
 function methods:SetMinMaxValues(a, b) self.min, self.max = a, b end
 function methods:GetMinMaxValues() return self.min, self.max end
-function methods:GetEffectiveScale() return 1 end
 function methods:GetScale() return 1 end
 function methods:EnableMouse(v) self.mouse = v end
 function methods:ClearFocus() self.focus = false end
@@ -161,19 +160,19 @@ ns.AccountSettings = function() return account end
 ns.SettingsRoot = function() return settings end
 ns.RegisterReapply = function() end
 ns.QueueReapply = function() end
-Load("Core/Widgets.lua")
-for _, path in ipairs(dofile("Tools/regression/toc_files.lua")("^Core/Unlock.-%.lua$")) do Load(path) end
+Load("Core/Options/Widgets.lua")
+for _, path in ipairs(dofile("Tools/regression/toc_files.lua")("^Core/Unlock/.-%.lua$")) do Load(path) end
 -- The options window is several files now: its modules, the window, its Settings page, commands and launchers.
 local function LoadWindow()
-    for _, name in ipairs({ "Modules", "Window", "SettingsPage", "Commands", "Launchers" }) do
+    for _, name in ipairs({ "Options/Modules", "Options/Window", "Options/SettingsPage", "Commands", "Options/Launchers" }) do
         Load("Core/" .. name .. ".lua")
     end
 end
 LoadWindow()
-Load("Core/Search.lua")
+Load("Core/Options/Search.lua")
 for _, path in ipairs(dofile("Tools/regression/toc_files.lua")("^Shared/.*%.lua$")) do Load(path) end
-Load("QoL/QoL.lua")
-Load("QoL/Constants.lua")
+Load("Core/Settings.lua")
+Load("NaowhForever_QoL/Constants.lua")
 env.GameTooltip = New("Frame")
 env.GameTooltip.GetOwner = function() return nil end
 for _, name in ipairs({ "UnitGroupRolesAssigned", "GetShapeshiftFormID", "GetShapeshiftForm", "IsInGroup",
@@ -209,9 +208,9 @@ env.hooksecurefunc = function(target, key, fn)
         target[key] = function(...) if prior then prior(...) end; fn(...) end
     end
 end
-for _, path in ipairs(dofile("Tools/regression/toc_files.lua")("^TopBar/.*%.lua$")) do Load(path) end
-for _, path in ipairs({ "QoL/DeathRelease.lua",
-    "QoL/StealthReminder.lua", "QoL/CoTank.lua" }) do Load(path) end
+for _, path in ipairs(dofile("Tools/regression/toc_files.lua")("^NaowhForever_TopBar/.*%.lua$")) do Load(path) end
+for _, path in ipairs({ "NaowhForever_QoL/Combat/DeathRelease.lua",
+    "NaowhForever_QoL/Combat/StealthReminder.lua", "NaowhForever_QoL/Combat/CoTank.lua" }) do Load(path) end
 local UI = ns.UI
 ns.BuildQoLInterfacePage = function(parent, y) return y end
 for _, name in ipairs({ "JournalSettings", "DiscoverySettings", "ProfessionSettings", "MacroSettings", "AuraBuffSettings",
@@ -238,9 +237,10 @@ local function Check(ok, why) assert(ok, why); cases = cases + 1 end
 local function Click(button) button.scripts.OnClick(button) end
 ns.OpenOptionsWindow()
 local function Head(name)
-    local label = Text(name)
-    local head = label and label.parent
-    return head and head.card and head or nil
+    for _, f in ipairs(frames) do
+        local head = f.text == name and f:IsShown() and f.parent
+        if head and head.card then return head end
+    end
 end
 Check(Text("Quality of Life / Interface") ~= nil and Head("Top Bar") ~= nil, "opens to QoL Interface, the Top Bar's card first")
 Check(Text("ADVENTURE") and Text("COMBAT") and Text("UTILITIES"), "grouped navigation")
@@ -255,8 +255,13 @@ for _, name in ipairs({ "Quality of Life", "Dungeon Journal", "Discovery", "BiS 
     "Macros", "Action Bars" }) do
     Check(Button(name).icon ~= nil, name .. " is listed with its glyph")
 end
-Check(Head("Top Bar").card.uid == "QoL/Interface:topBar", "Top Bar is a card on QoL Interface, not its own module")
+Check(Head("Top Bar").card.uid == "QoL/Interface:topBar", "the Top Bar's own addon puts its card on QoL Interface")
 local moduleList = Button("Action Bars").parent
+local navTopBar = false
+for _, f in ipairs(frames) do
+    if f.text == "Top Bar" and f.parent and f.parent.parent == moduleList then navTopBar = true end
+end
+Check(not navTopBar, "the Top Bar has no sidebar entry: it is switched in Settings and set on QoL Interface")
 local moduleScroll = moduleList.parent
 local mainWindow = moduleScroll.parent.parent
 local originalHeight = mainWindow:GetHeight()
@@ -290,7 +295,8 @@ Check(moduleScroll:GetVerticalScroll() == 0 and not moduleScroll.ScrollBar:IsSho
 local pageScroll
 for _, f in ipairs(frames) do if f.bar and f.parent == mainWindow then pageScroll = f end end
 local pageBar = pageScroll.bar
-local pageThumb, grip = pageBar.thumbTexture
+local pageThumb = pageBar.thumbTexture
+local grip
 for _, f in ipairs(pageBar.children) do if f.scripts.OnMouseDown then grip = f end end
 Check(pageBar.mouse == false and grip.mouse, "the page scrollbar's own Slider drag is off, its grip takes the mouse")
 local cursorY, buttonDown = 0, true
@@ -406,7 +412,7 @@ for _, child in ipairs(strip.children) do
         Check(child.points.LEFT and child.points.LEFT[4] == 0, "QoL categories share one row")
     end
 end
-Check(tabs == 9, "every QoL category has a tab")
+Check(tabs == 8, "every QoL category has a tab")
 Check(strip.buttons and strip:GetWidth() <= 1440 - 240 - 56, "the tabs are the boxed switch, inside the content width")
 Click(Button("Combat")); Flush()
 Check(Text("Quality of Life / Combat") ~= nil, "category navigation works")
@@ -432,12 +438,15 @@ for _, child in ipairs(header.children) do if child._get then switch = child end
 Check(switch and switch._get() == true, "header switch reads the current module")
 ns.QoLSettings.Set("deathReleaseHold", 2)
 switch.scripts.OnClick(); Flush()
-Check(ns.QoLSettings.Get("enabled") == false and ns.QoLSettings.Get("deathReleaseHold") == 2,
-    "module switch preserves feature settings")
+Check(Text("Disable Quality of Life? Top Bar needs it, so both will be disabled.") ~= nil
+    and ns.QoLSettings.Get("enabled") == true and ns.QoLSettings.Get("deathReleaseHold") == 2,
+    "switching QoL off asks to turn its addon off, with the Top Bar, and its settings are kept")
+Click(Button("Cancel")); Flush()
+Check(not disabled.NaowhForever_QoL and switch._get() == true, "Cancel keeps QoL on")
 Click(Button("Threat Meter")); Flush()
 Check(switch._get() == false, "same switch rebinds to the newly selected module")
 switch.scripts.OnClick(); Flush()
-Check(ns.ThreatMeterSettings.Get("enabled") == true and ns.QoLSettings.Get("enabled") == false,
+Check(ns.ThreatMeterSettings.Get("enabled") == true and ns.QoLSettings.Get("enabled") == true,
     "switch changes only the selected module")
 Click(Button("Quality of Life")); Flush()
 settings = { qol = { enabled = true, deathReleaseHold = 1.5 } }
@@ -690,6 +699,45 @@ for i = built + 1, #frames do
 end
 Check(headY.COMBAT and headY.UTILITIES and headY.COMBAT > headY.UTILITIES, "COMBAT stays above UTILITIES with its first modules off")
 missingAddOns.NaowhForever_GearSets, missingAddOns.NaowhForever_Blessings = nil, nil
+
+-- Quality of Life is its own addon. The Top Bar needs it (its card sits on QoL > Interface), so
+-- switching QoL off takes the Top Bar with it; while QoL is not loaded, the sidebar drops it and
+-- its pages land on Settings.
+local qolMod
+for _, mod in ipairs(ns.Options.MODULES) do
+    if mod.addon == "NaowhForever_QoL" then qolMod = mod end
+end
+Check(qolMod and qolMod.name == "QoL", "Quality of Life is a module addon, NaowhForever_QoL")
+local qolRow = false
+for _, mod in ipairs(ns.ModuleAddons()) do
+    if mod.addon == "NaowhForever_QoL" and mod.store == ns.QoLSettings and mod.key == "enabled" then qolRow = true end
+end
+Check(qolRow, "and has its own switch under Settings > Modules, on the core's QoL store")
+Check(ns.LinkedAddons("NaowhForever_TopBar", true)[2] == "NaowhForever_QoL", "turning the Top Bar on brings QoL")
+Check(ns.LinkedAddons("NaowhForever_QoL", false)[2] == "NaowhForever_TopBar", "turning QoL off takes the Top Bar")
+confirmText, confirmYes = nil, nil
+for addon in pairs(disabled) do disabled[addon] = nil end
+ns.Options.SwitchModuleAddon(qolMod, false)
+Check(confirmText and confirmText:find("Quality of Life", 1, true) and confirmText:find("Top Bar", 1, true),
+    "switching Quality of Life off names the Top Bar in its confirm")
+confirmYes()
+Check(disabled.NaowhForever_QoL and disabled.NaowhForever_TopBar, "confirming disables QoL and the Top Bar together")
+disabled.NaowhForever_QoL, disabled.NaowhForever_TopBar = nil, nil
+missingAddOns.NaowhForever_QoL, missingAddOns.NaowhForever_TopBar = true, true
+for _, page in ipairs(UI.SearchPages()) do
+    Check(not (page.module and page.module.name == "QoL"), "Quality of Life off is not searched")
+end
+built = #frames
+LoadWindow()
+ns.OpenOptionsWindow(); Flush()
+local qolShown = false
+for i = built + 1, #frames do
+    local f = frames[i]
+    if f.text == "Quality of Life" and f:IsShown() and f.parent and f.parent.icon then qolShown = true end
+end
+Check(not qolShown, "with QoL not loaded, Quality of Life leaves the sidebar")
+Check(Text("MODULES") ~= nil, "and the window opens on Settings instead of QoL > Interface")
+missingAddOns.NaowhForever_QoL, missingAddOns.NaowhForever_TopBar = nil, nil
 
 print(cases .. " navigation checks passed")
 -- Available only to an offline renderer that loads this test environment.

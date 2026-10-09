@@ -1,10 +1,10 @@
 -- Top Bar layout: the saved layout, its migration from the old button keys, the order the bar
--- draws in, and the preview editor's remove, move and add. TopBar/Layout.lua and its look are
--- loaded on stubs; the preview's key handling is cut out of TopBar/UI/Preview.lua.
+-- draws in, and the preview editor's remove, move and add. NaowhForever_TopBar/Layout.lua and its look are
+-- loaded on stubs; the preview's key handling is cut out of NaowhForever_TopBar/UI/Preview.lua.
 
 -- The Top Bar's files as TopBar.xml lists them, read as one source.
 local parts = {}
-for _, path in ipairs(dofile("Tools/regression/toc_files.lua")("^TopBar/.*%.lua$")) do
+for _, path in ipairs(dofile("Tools/regression/toc_files.lua")("^NaowhForever_TopBar/.*%.lua$")) do
     local f = assert(io.open(path, "rb"))
     parts[#parts + 1] = f:read("*a"):gsub("\r\n", "\n")
     f:close()
@@ -19,7 +19,7 @@ local function Slice(a, b)
 end
 
 local defaultLayout = assert(loadstring("return " .. assert(source:match("\n    layout = (%b{}),\n"))))()
-local FILES = { "TopBar/Constants.lua", "TopBar/Layout.lua", "TopBar/View/Style.lua", "TopBar/View/Look.lua" }
+local FILES = { "NaowhForever_TopBar/Constants.lua", "NaowhForever_TopBar/Layout.lua", "NaowhForever_TopBar/View/Style.lua", "NaowhForever_TopBar/View/Look.lua" }
 
 local function Store(db)
     local S = { sets = 0 }
@@ -113,7 +113,7 @@ check("skipped brokers stay in the layout", db.layout.left[1] == "ldb:Missing" a
 -- Every Naowh Forever launcher in the default layout has its own glyph, and the file is there.
 local glyphs = {}
 for name, path in pairs(api.Style.GLYPH) do
-    glyphs[name] = "Media/TopBar/" .. path:sub(#api.Style.MEDIA + 1)
+    glyphs[name] = "NaowhForever_TopBar/Media/" .. path:sub(#api.Style.MEDIA + 1)
 end
 local missing = {}
 for _, side in ipairs({ "left", "right" }) do

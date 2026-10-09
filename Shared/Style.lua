@@ -1,7 +1,7 @@
 -- Style.lua: the house look every module shares (ns.Shared.Style): colors, icons and sizes.
 local Shared = _G.NaowhForever.Shared
 
-local MEDIA = "Interface\\AddOns\\NaowhForever\\Media\\"
+local MEDIA = "Interface\\AddOns\\NaowhForever\\Core\\Media\\"
 
 Shared.Style = {
     BORDER_RGB = { r = 0, g = 0, b = 0 },

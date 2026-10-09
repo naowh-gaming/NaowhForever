@@ -201,8 +201,8 @@ local env = setmetatable({
 env._G = env
 
 Load({
-    "Shared/Shared.lua", "Shared/Data/Forever.lua", "Shared/Style.lua", "Shared/Items.lua", "Shared/Gear.lua", "Shared/Places.lua",
-    "Shared/Parts.lua", "Shared/Marks.lua", "Shared/Text.lua", "Shared/Hud.lua", "Shared/Timer.lua", "Shared/Share.lua", "Shared/Panels.lua", "Shared/Window.lua", "Shared/Tabs.lua", "Shared/SettingsCard.lua", "Shared/View.lua", "Shared/Kinds.lua",
+    "Shared/Shared.lua", "Shared/Data/Forever.lua", "Shared/Style.lua", "Shared/Game/Items.lua", "Shared/Game/Gear.lua", "Shared/Game/Places.lua",
+    "Shared/UI/Parts.lua", "Shared/UI/Marks.lua", "Shared/UI/Text.lua", "Shared/UI/Hud.lua", "Shared/UI/Timer.lua", "Shared/UI/Share.lua", "Shared/UI/Panels.lua", "Shared/UI/Window.lua", "Shared/UI/Tabs.lua", "Shared/UI/SettingsCard.lua", "Shared/View/View.lua", "Shared/View/Kinds.lua",
     "Shared/Settings/Settings.lua",
     "Core/Features.lua",
 }, env)
@@ -301,7 +301,7 @@ local declared = ns.Shared.Settings.pages["Training Planner/Settings"]
 local windowCard, trainer = declared and declared.items[1], declared and declared.cards.trainer
 check("the settings page is declared, the planner's window card first", windowCard and windowCard.window
     and windowCard.text == "Open Training Planner")
-check("with the trainer popup's card, switched by its own setting", trainer and trainer.switch == "trainerPopup")
+check("and no trainer popup card of its own: QoL's Trainer declares it, so it goes with QoL", trainer == nil)
 
 local backed = 0
 window:Hide()

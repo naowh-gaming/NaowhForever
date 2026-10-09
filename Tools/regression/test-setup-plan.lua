@@ -15,7 +15,7 @@ local function Load(env)
     setmetatable(env, { __index = _G })
     env._G = { NaowhForever = env.ns }
     env.CopyTable = CopyTable
-    local chunk = assert(loadfile("Core/Setup.lua"))
+    local chunk = assert(loadfile("Core/Onboarding/Setup.lua"))
     setfenv(chunk, env)
     chunk()
     return env.ns.Setup, env

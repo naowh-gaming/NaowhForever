@@ -3,7 +3,7 @@
 -- attached two stacks and stopped: MAIL_SEND_INFO_UPDATE is a synchronous, unique event on
 -- Forever, so it fires inside ClickSendMailItemButton and not again for an attach made from its
 -- own handler. The mail here works the same way, or lands each attachment later (async).
-local path = arg and arg[1] or "QoL/Mail.lua"
+local path = arg and arg[1] or "NaowhForever_QoL/Loot/Mail.lua"
 
 local CLOTH, METAL, OTHER = 5, 7, 11
 local ITEMS = {

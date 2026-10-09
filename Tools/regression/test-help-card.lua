@@ -5,7 +5,7 @@
 local checks = 0
 local function Check(ok, label) assert(ok, label); checks = checks + 1 end
 
-local f = assert(io.open("Core/Widgets.lua", "rb"))
+local f = assert(io.open("Core/Options/Widgets.lua", "rb"))
 local source = f:read("*a"):gsub("\r\n", "\n"); f:close()
 -- The file's named values, then the card: from its state to the toggle's first helper.
 local constants = assert(source:match("\n(local MEDIA = .-\n)\nlocal UI = {}\n"), "Widgets constants")

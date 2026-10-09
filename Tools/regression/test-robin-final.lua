@@ -216,6 +216,7 @@ do
     s.ns.DecodeProfile = function() return { parts = { smartReminders = { utilityReminders = {
         consumables = { { category = 'flask', itemID = 13510 } } } } } } end
     check('profile string gives its consumables', s.ns.ParseConsumableList('NFPROFILE1:x')[1].itemID == 13510)
+    ---@diagnostic disable-next-line: duplicate-set-field
     s.ns.DecodeProfile = function() return nil end
     check('anything else holds no list', not s.ns.ParseConsumableList('hello'))
     check('invalid IDs rejected', not parse('food', '123, x') and not parse('food', '0, 1'))

@@ -1,8 +1,8 @@
 -- Run with Lua 5.1 from the repository root: every module's settings travel in a profile
--- string (ns.ExportModuleSettings / ns.ImportModuleSettings in Core/Widgets.lua):
+-- string (ns.ExportModuleSettings / ns.ImportModuleSettings in Core/Options/Widgets.lua):
 -- set values and positions go out and come back; lists, unknown keys, wrong types and
 -- unknown modules do not.
-local f = assert(io.open("Core/Widgets.lua", "rb"))
+local f = assert(io.open("Core/Options/Widgets.lua", "rb"))
 local src = f:read("*a"):gsub("\r\n", "\n")
 f:close()
 

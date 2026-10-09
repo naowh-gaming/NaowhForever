@@ -19,11 +19,11 @@ end
 
 -- Files with those words in their strings, each loaded below with the flag both ways.
 local GATED = {
-    ["Badges/Badges.lua"] = true,
+    ["Core/Badges/Badges.lua"] = true,
     ["CharacterPanel/UI/SettingsPage.lua"] = true,
     ["InspectPanel/UI/SettingsPage.lua"] = true,
-    ["Core/Credits.lua"] = true,
-    ["Core/PatchNotes.lua"] = true,
+    ["Core/Pages/Credits.lua"] = true,
+    ["Core/Pages/PatchNotes.lua"] = true,
 }
 -- The same words meaning something else: the patrons of a dungeon's bar.
 local UNRELATED = {
@@ -212,9 +212,9 @@ local function Shown(flag)
         strtrim = function(s) return (s:gsub("^%s+", ""):gsub("%s+$", "")) end,
         date = os.date,
     }, { __index = _G })
-    Load({ Located("Badges/Badges.lua"), Located("CharacterPanel/UI/SettingsPage.lua"),
+    Load({ Located("Core/Badges/Badges.lua"), Located("CharacterPanel/UI/SettingsPage.lua"),
         Located("InspectPanel/UI/SettingsPage.lua"),
-        Located("Core/Credits.lua"), Located("Core/PatchNotes.lua") }, env)
+        Located("Core/Pages/Credits.lua"), Located("Core/Pages/PatchNotes.lua") }, env)
     ns.BuildCreditsPage({ GetWidth = function() return 800 end }, 0)
 
     for _, def in ipairs(cards) do

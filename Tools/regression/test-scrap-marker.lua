@@ -298,11 +298,15 @@ env.wipe = function(t) for k in pairs(t) do t[k] = nil end return t end
 env.GameTooltip.GetOwner = function() return nil end
 
 local files = TocFiles("^Shared/.*%.lua$")
-check("the Shared bag helper loads with Shared", #TocFiles("^Shared/Bags%.lua$") == 1)
-check("the TOC loads the Scrap Marker and its list", #TocFiles("^QoL/ScrapMarker%.lua$") == 1
-    and #TocFiles("^QoL/ScrapList%.lua$") == 1)
-files[#files + 1] = "QoL/ScrapMarker.lua"
-files[#files + 1] = "QoL/ScrapList.lua"
+check("the Shared bag helper loads with Shared", #TocFiles("^Shared/Game/Bags%.lua$") == 1)
+check("the TOC loads the Scrap Marker and its list", #TocFiles("^NaowhForever_QoL/Loot/ScrapMarker%.lua$") == 1
+    and #TocFiles("^NaowhForever_QoL/Loot/ScrapList%.lua$") == 1)
+-- The copy cards are stubbed, so their Shared file is left out.
+for i = #files, 1, -1 do
+    if files[i] == "Shared/UI/CopyCard.lua" then table.remove(files, i) end
+end
+files[#files + 1] = "NaowhForever_QoL/Loot/ScrapMarker.lua"
+files[#files + 1] = "NaowhForever_QoL/Loot/ScrapList.lua"
 local before = made
 Load(files, env)
 check("nothing made at load", made == before and #loose == 0)

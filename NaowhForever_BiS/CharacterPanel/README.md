@@ -33,7 +33,7 @@ CharacterPanel/
                        the game's All Stats; the switch at the bottom
   Chrome.lua           the frame: our backdrop and title, the game's art faded or tinted,
                        the stats' rows restyled as the game's list makes them
-  UI/SettingsPage.lua  its cards on QoL > Character
+  UI/SettingsPage.lua  its cards on BiS List > Character
 ```
 
 The Inspect Panel (`InspectPanel/`) dresses the inspect window with the same parts: the rule
@@ -49,7 +49,7 @@ the game's art comes back and ours hides.
 
 ## Why
 
-- With both on, a player new to Naowh Forever (the welcome not seen yet) gets Naowh's panel from the
+- With both on, a player new to Naowh Forever (the onboarding not seen yet) gets Naowh's panel from the
   next reload, told in chat; anyone else is asked once. At most one question a login, the character
   panel's first: a second confirm would close the first. The question waits `ASK_DELAY` seconds after
   entering the world, and never comes in combat.

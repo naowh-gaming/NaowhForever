@@ -4,7 +4,7 @@
 -- look: the defaults draw today's flat, outlined bar, and font, outline, bar texture, background
 -- opacity and Apply Theme each apply on change.
 -- Run from the repo root: lua Tools/regression/test-focus-cast-bar.lua
-local f = assert(io.open(arg[1] or "QoL/FocusCastBar.lua", "rb"))
+local f = assert(io.open(arg[1] or "NaowhForever_QoL/Combat/FocusCastBar.lua", "rb"))
 local source = f:read("*a"); f:close()
 
 local checks = 0

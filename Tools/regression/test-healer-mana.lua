@@ -112,7 +112,7 @@ local function boot(settings, units)
     }
     setmetatable(env, { __index = _G })
     s.env = env
-    local f = assert(io.open("QoL/HealerMana.lua", "rb"))
+    local f = assert(io.open("NaowhForever_QoL/Combat/HealerMana.lua", "rb"))
     local src = f:read("*a"); f:close()
     local chunk = assert(loadstring(src, "HealerMana")); setfenv(chunk, env); chunk()
     local events, bootFrame = s.created[1], s.created[2]

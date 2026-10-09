@@ -1,9 +1,10 @@
 local root = arg[1] or "."
+local CORE_FILES = { _Core = "Core", _Features = "Features", _Widgets = "Options/Widgets", _Packs = "Profiles/Packs" }
 local function Read(suffix)
     local name = suffix == "" and "_SmartReminders" or suffix
     local dir = (name == "_Core" or name == "_Widgets" or name == "_Packs" or name == "_Features") and "/Core"
         or "/NaowhForever_SmartReminders"
-    local f = assert(io.open(root .. dir .. "/" .. (dir == "/Core" and name:sub(2) or "NaowhForever" .. name) .. ".lua", "rb"))
+    local f = assert(io.open(root .. dir .. "/" .. (dir == "/Core" and CORE_FILES[name] or "NaowhForever" .. name) .. ".lua", "rb"))
     local s = f:read("*a"):gsub("\r\n", "\n"); f:close(); return s
 end
 local function Slice(s, first, last)
@@ -21,7 +22,7 @@ end
 local main, raid, widgets = Read(""), Read("_RaidReminders"), Read("_Widgets")
 
 Case("late LSM, negative cache, and later sound registration", function()
-    local ui, builds, callback = {}, 0
+    local ui, builds, callback = {}, 0, nil
     local media = { later = "later.ogg" }
     local provider = {
         HashTable = function() builds = builds + 1; return media end,

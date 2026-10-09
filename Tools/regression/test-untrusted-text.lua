@@ -1,6 +1,6 @@
 -- Run with Lua 5.1 from the repository root: text from other players and shared strings is shown
 -- as plain text. ns.PlainText (Core) on crafted names, and a crafted Reminder Pack's preview
--- (Core/Packs.lua, through the real LibSerialize and LibDeflate).
+-- (Core/Profiles/Packs.lua, through the real LibSerialize and LibDeflate).
 strmatch = string.match
 dofile("Libs/LibStub/LibStub.lua")
 dofile("Libs/LibDeflate/LibDeflate.lua")
@@ -11,7 +11,7 @@ local PlainText = dofile("Tools/regression/plain_text.lua")()
 local count = 0
 local function Case(name, fn) fn(); count = count + 1; print("PASS " .. name) end
 
-local BADGE = "|TInterface\\AddOns\\NaowhForever\\Media\\Badges\\BadgeNaowhChat.tga:0:0:0:-1|t"
+local BADGE = "|TInterface\\AddOns\\NaowhForever\\Core\\Badges\\Media\\BadgeNaowhChat.tga:0:0:0:-1|t"
 
 local function Live(text)
     return (text:gsub("||", "")):find("|", 1, true) ~= nil or text:find("%c") ~= nil
@@ -53,7 +53,7 @@ local function Packs()
         Color = function(_, text) return "|cff0091ed" .. (text and (text .. "|r") or "") end }
     local env = setmetatable({ _G = { NaowhForever = ns }, LibStub = LibStub }, { __index = _G })
     ns.Shared = { Decode = dofile("Tools/regression/load_decode.lua")(env) }
-    local f = assert(io.open("Core/Packs.lua", "rb"))
+    local f = assert(io.open("Core/Profiles/Packs.lua", "rb"))
     local source = f:read("*a"):gsub("\r\n", "\n"); f:close()
     local chunk = assert(loadstring(source, "Packs")); setfenv(chunk, env); chunk()
     return ns
@@ -116,7 +116,7 @@ Case("ns.Print starts every line with the Naowh logo, which chat from players ca
     local chunk = assert(loadstring(source, "Core")); setfenv(chunk, env); chunk("NaowhForever")
     env.NaowhForever.Print("%s hi")
     local line = said[#said]
-    assert(line:find("|TInterface\\AddOns\\NaowhForever\\Media\\LogoAddon.tga:0:0:0:", 1, true) == 1, line)
+    assert(line:find("|TInterface\\AddOns\\NaowhForever\\Core\\Media\\LogoAddon.tga:0:0:0:", 1, true) == 1, line)
     assert(line:find("|t |cff0091edNaowh|r Forever: %s hi", 1, true), line)
 end)
 

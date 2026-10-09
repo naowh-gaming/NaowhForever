@@ -43,7 +43,7 @@ the open tab, the macro in the editor) and the functions its UI files call on ea
 ## Why
 
 - NF Health picks from the core's healing lists (`ns.HEALTHSTONES`, `ns.HEALING_POTIONS`, in
-  `QoL/FoodBar.lua`), never Aura Buffs', so it works with Aura Buffs off.
+  `Shared/Game/Consumables.lua`), never Aura Buffs', so it works with Aura Buffs off.
 - `LIMIT` is 255: the game keeps only the first 255 bytes of a macro's text, counted in bytes.
 - `NAME_MAX` is 16, the bytes a macro's name holds. The name box's `SetMaxBytes` is one more, as
   it counts the closing null byte.

@@ -11,7 +11,7 @@ ns.Journal.Maps = {
             [11519] = { 1, 0.422, 0.842 },
         },
     },
-    HallOfThanes = { image = "Interface\\AddOns\\NaowhForever\\Media\\Maps\\HallOfThanes", floors = 1,
+    HallOfThanes = { image = "Interface\\AddOns\\NaowhForever_DungeonJournal\\Media\\Maps\\HallOfThanes", floors = 1,
         entrance = { 1, 0.512, 0.95 },
         pins = {
             [261306] = { 1, 0.479, 0.671 },
@@ -20,7 +20,7 @@ ns.Journal.Maps = {
             [261319] = { 1, 0.51, 0.17 },
         },
     },
-    WailingCaverns = { image = "Interface\\AddOns\\NaowhForever\\Media\\Maps\\WailingCaverns", floors = 1,
+    WailingCaverns = { image = "Interface\\AddOns\\NaowhForever_DungeonJournal\\Media\\Maps\\WailingCaverns", floors = 1,
         entrance = { 1, 0.465, 0.59 },
         pins = {
             [3654] = { 1, 0.345, 0.13 },
@@ -48,7 +48,7 @@ ns.Journal.Maps = {
             [3586] = { 1, 0.529, 0.503 },
         },
     },
-    RuinsOfLordaeron = { image = "Interface\\AddOns\\NaowhForever\\Media\\Maps\\RuinsOfLordaeron", floors = 1,
+    RuinsOfLordaeron = { image = "Interface\\AddOns\\NaowhForever_DungeonJournal\\Media\\Maps\\RuinsOfLordaeron", floors = 1,
         entrance = { 1, 0.616, 0.217 },
         pins = {
             [250483] = { 1, 0.707, 0.397 },
@@ -100,7 +100,7 @@ ns.Journal.Maps = {
             [1663] = { 1, 0.735, 0.575 },
         },
     },
-    Dalaran = { image = "Interface\\AddOns\\NaowhForever\\Media\\Maps\\Dalaran", floors = 2,
+    Dalaran = { image = "Interface\\AddOns\\NaowhForever_DungeonJournal\\Media\\Maps\\Dalaran", floors = 2,
         names = { [1] = "The Underbelly", [2] = "City of Dalaran" },
         entrance = { 1, 0.188, 0.846 },
         pins = {
@@ -112,7 +112,7 @@ ns.Journal.Maps = {
             [246016] = { 2, 0.68, 0.51 },
         },
     },
-    ExcavationSite = { image = "Interface\\AddOns\\NaowhForever\\Media\\Maps\\ExcavationSite",
+    ExcavationSite = { image = "Interface\\AddOns\\NaowhForever_DungeonJournal\\Media\\Maps\\ExcavationSite",
         floors = 1,
         entrance = { 1, 0.889, 0.262 },
         pins = {
@@ -288,8 +288,8 @@ ns.Journal.Maps = {
     UpperBlackrockSpire = { art = "BlackrockSpire", floors = 9, order = { 9, 8, 7 },
         names = { [8] = "Hall of Binding and the Rookery", [9] = "Dragonspire Hall" },
         images = {
-            [8] = "Interface\\AddOns\\NaowhForever\\Media\\Maps\\UpperBlackrockSpire8",
-            [9] = "Interface\\AddOns\\NaowhForever\\Media\\Maps\\UpperBlackrockSpire9",
+            [8] = "Interface\\AddOns\\NaowhForever_DungeonJournal\\Media\\Maps\\UpperBlackrockSpire8",
+            [9] = "Interface\\AddOns\\NaowhForever_DungeonJournal\\Media\\Maps\\UpperBlackrockSpire9",
         },
         entrance = { 9, 0.374, 0.326 },
         pins = {

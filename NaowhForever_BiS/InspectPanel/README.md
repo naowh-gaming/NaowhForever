@@ -7,7 +7,7 @@ the Talents button, the Guild tab. Naowh fades its art (`SetAlpha`, never `Hide`
 window by the pane (its own frames keep their width on the left) and lays its own frames over
 it, from post-hooks only.
 
-On by default (QoL > Character > Inspect Panel), like the Character Panel, and nothing is hooked
+On by default (BiS List > Character > Inspect Panel), like the Character Panel, and nothing is hooked
 or built until the game loads its inspect window (`Blizzard_InspectUI`, on the first inspect).
 EllesmereUI's inspect sheet and this one are never on at once, by the Character Panel's rule
 (`CP.Rival`): turning this on turns `EllesmereUIDB.themedInspectSheet` off, off turns it back on if
@@ -69,7 +69,7 @@ InspectPanel/
   Card.lua             the score card and the badge plate
   Details.lua          the Player tab
   History.lua          the History tab
-  UI/SettingsPage.lua  its card on QoL > Character
+  UI/SettingsPage.lua  its card on BiS List > Character
 ```
 
 Its sizes and colours shared with the Character Panel come from `CP.C` (`CharacterPanel/Constants.lua`).

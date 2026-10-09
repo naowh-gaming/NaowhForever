@@ -1,8 +1,9 @@
 local root = arg[1] or "."
+local CORE_FILES = { _Core = "Core", _Features = "Features", _Widgets = "Options/Widgets", _Packs = "Profiles/Packs" }
 local function Read(suffix)
     local name = suffix == "" and "_SmartReminders" or suffix
     local dir = (name == "_Core" or name == "_Widgets" or name == "_Features") and "/Core" or "/NaowhForever_SmartReminders"
-    local f = assert(io.open(root .. dir .. "/" .. (dir == "/Core" and name:sub(2) or "NaowhForever" .. name) .. ".lua", "rb"))
+    local f = assert(io.open(root .. dir .. "/" .. (dir == "/Core" and CORE_FILES[name] or "NaowhForever" .. name) .. ".lua", "rb"))
     local s = f:read("*a"):gsub("\r\n", "\n"); f:close(); return s
 end
 local function Slice(s, a, b)
@@ -160,6 +161,7 @@ print("PASS ability filtering, saved checkbox state, alias/encounter isolation a
 -- The actual boss-mod entry point skips scheduling filtered bindings and supplies
 -- a live validity predicate for the existing scheduler's cancellation sweep.
 local scheduledAbility
+---@diagnostic disable-next-line: duplicate-set-field
 ns.BossSource = function() return "bigwigs" end
 ns.HasMessageDefensive = function() return false end
 ns.SampleTanking = function() end

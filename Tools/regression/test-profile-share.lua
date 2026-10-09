@@ -71,8 +71,8 @@ local function World()
     local env = setmetatable({ _G = { NaowhForever = ns }, UnitName = function() return "Glyadin" end,
         date = os.date }, { __index = _G })
     ns.Shared = { Decode = dofile("Tools/regression/load_decode.lua")(env) }
-    for _, path in ipairs({ "Core/ProfileShare.lua", "Core/ProfileDialogs.lua",
-        "Core/ProfilesPage.lua" }) do
+    for _, path in ipairs({ "Core/Profiles/ProfileShare.lua", "Core/Profiles/ProfileDialogs.lua",
+        "Core/Options/ProfilesPage.lua" }) do
         local chunk = assert(loadfile(path))
         setfenv(chunk, env)
         chunk()
@@ -311,7 +311,7 @@ end
 Case("a crafted string's name, author, date and list names show as plain text", function()
     local w = World()
     local LS, LD = LibStub("LibSerialize"), LibStub("LibDeflate")
-    local BADGE = "|TInterface\\AddOns\\NaowhForever\\Media\\Badges\\BadgeNaowhChat.tga:16|t"
+    local BADGE = "|TInterface\\AddOns\\NaowhForever\\Core\\Badges\\Media\\BadgeNaowhChat.tga:16|t"
     local text = "NFPROFILE1:" .. LD:EncodeForPrint(LD:CompressDeflate(LS:Serialize({
         format = 1, name = BADGE .. " |cffe6cc80Naowh's Official|r\nVerified by the team",
         author = "%s%d%n |Hplayer:Naowh|h[Naowh]|h", made = ("|cffff0000x|r"):rep(400),
@@ -647,6 +647,7 @@ Case("the page: the profile in use, the others with Use, a switch per part, a pa
     assert(tiles[4].key == "smartReminders" and tiles[4].detail.text == "From a pack", tiles[4].detail.text)
     assert(tiles[4].switch.mouse == false)
 
+    ---@diagnostic disable-next-line: duplicate-set-field
     ns.ListProfiles = function() return { "Default" } end
     ns.BuildProfileSettings(parent, -10)
     mine = view.drawn.active[1]

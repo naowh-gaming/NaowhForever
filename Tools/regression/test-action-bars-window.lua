@@ -252,7 +252,7 @@ local env = setmetatable({
 }, { __index = _G })
 env._G.NaowhForever = ns
 
-Load({ "Shared/Shared.lua", "Shared/Style.lua", "Shared/Parts.lua", "Shared/Marks.lua", "Shared/Text.lua", "Shared/Hud.lua", "Shared/Timer.lua", "Shared/Share.lua", "Shared/Panels.lua", "Shared/Window.lua", "Shared/Tabs.lua", "Shared/SettingsCard.lua",
+Load({ "Shared/Shared.lua", "Shared/Style.lua", "Shared/UI/Parts.lua", "Shared/UI/Marks.lua", "Shared/UI/Text.lua", "Shared/UI/Hud.lua", "Shared/UI/Timer.lua", "Shared/UI/Share.lua", "Shared/UI/Panels.lua", "Shared/UI/Window.lua", "Shared/UI/Tabs.lua", "Shared/UI/SettingsCard.lua",
     }, env)
 local MODULE = { "Core/Features.lua" }
 for _, path in ipairs(dofile("Tools/regression/toc_files.lua")("^NaowhForever_ActionBars/.*%.lua$")) do

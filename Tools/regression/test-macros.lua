@@ -1,4 +1,4 @@
--- Loads QoL's Food & Drink Bar and the Macros module's rules (Macros.lua through Profile.lua)
+-- Loads the shared food lists, QoL's Food & Drink Bar and the Macros module's rules (Macros.lua through Profile.lua)
 -- against stubbed macro, bag and item APIs and checks what they write. Run from the repo root:
 -- lua Tools/regression/test-macros.lua
 local function Read(path)
@@ -6,9 +6,9 @@ local function Read(path)
     local text = f:read("*a"); f:close()
     return text
 end
-local foodSource = Read("QoL/FoodBar.lua")
+local foodSource = Read("NaowhForever_QoL/Loot/FoodBar.lua")
 local MACRO_FILES = { "Macros.lua", "Constants.lua", "Data/Items.lua", "Commands.lua", "Smart.lua", "Profile.lua" }
-local sources = { Read("Core/Features.lua"), foodSource }
+local sources = { Read("Core/Features.lua"), Read("Shared/Game/Consumables.lua"), foodSource }
 for _, file in ipairs(MACRO_FILES) do sources[#sources + 1] = Read("NaowhForever_Macros/" .. file) end
 
 local FOOD, DRINK = "Food", "Drink"

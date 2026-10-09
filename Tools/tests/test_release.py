@@ -1,4 +1,4 @@
-"""Tests for Tools/release.py, each in a throwaway git repo. From the repo root:
+"""Tests for Tools/release/release.py, each in a throwaway git repo. From the repo root:
 
     python -m unittest discover -s Tools/tests
 """
@@ -9,6 +9,7 @@ import unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import paths  # noqa: E402,F401
 import release  # noqa: E402
 
 CHANGELOG = ("# Changelog\r\n\r\n## Unreleased\r\n\r\n### Fixed\r\n- A fix.\r\n\r\n"

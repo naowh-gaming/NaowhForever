@@ -5,7 +5,7 @@ ns.Training.Style = setmetatable({
     WARN_RGB = { r = 0.94, g = 0.70, b = 0.29 },
     UP_RGB = { r = 0.30, g = 0.82, b = 0.48 },
     UP_CODE = "|cff4dd17a",
-    LOGO_FILE = "Interface\\AddOns\\NaowhForever\\Media\\LogoAddon.tga",
+    LOGO_FILE = "Interface\\AddOns\\NaowhForever\\Core\\Media\\LogoAddon.tga",
     CROP_LOW = 0.08,
     CROP_HIGH = 0.92,
     SHADOW_ALPHA = 0.85,

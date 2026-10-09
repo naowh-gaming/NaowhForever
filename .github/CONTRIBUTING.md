@@ -74,13 +74,13 @@ comment, sent back for changes, or merged and fixed up by me.
 - Each module has its own folder and loads its files through its own XML file, which its
   TOC lists once, and names its files plainly inside its folder. The Dungeon Journal is the
   example: `NaowhForever_DungeonJournal/DungeonJournal.xml`, with its layout in
-  `NaowhForever_DungeonJournal/README.md`. The core areas (Core, QoL, TopBar, Badges,
-  RXPThemes) load through their own XML files too. Add a new file to its area's XML, never
+  `NaowhForever_DungeonJournal/README.md`. The core areas (Core, Badges, Core/Integrations/)
+  load through their own XML files too. Add a new file to its area's XML, never
   to `NaowhForever.toc`. The checks read the XML too, so its files are linted and compiled.
 - A feature's on/off switch and its default live in `Core/Features.lua`
   (`ns.FEATURES`), and the module's settings read it from there.
 - Settings go through `UI.ModuleSettings`, option widgets through the `ns.UI` kit in
-  `Core/Widgets.lua`, confirmations through `ns.Confirm` / `ns.PromptText`,
+  `Core/Options/Widgets.lua`, confirmations through `ns.Confirm` / `ns.PromptText`,
   and movable frames through `UI.AttachMover` so they show up in Unlock Mode.
 - One comment per file: its first line, `-- <File>.lua: <what it is>.` Anything a reader
   needs that the code cannot say goes in the module's `README.md`, under Why.
@@ -88,7 +88,7 @@ comment, sent back for changes, or merged and fixed up by me.
 ### Shared components
 
 - Build every piece of UI from the shared components: `Shared/` (listed in
-  `Shared/README.md`) and the `ns.UI` widgets in `Core/Widgets.lua`. Windows,
+  `Shared/README.md`) and the `ns.UI` widgets in `Core/Options/Widgets.lua`. Windows,
   title bars, buttons, tabs, links, borders, fonts, colours, settings cards, confirmations
   and tooltips all have one.
 - Never hand-roll a part that already exists, and never copy one into your module to change

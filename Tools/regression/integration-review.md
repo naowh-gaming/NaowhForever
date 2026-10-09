@@ -110,8 +110,8 @@ Code build: 1.3.6-debuff-voices-test1. Sound choices now include Voice: Dispel m
 Voice: Move out and Voice: Use a defensive (English). These are bundled synthetic
 speech files, not live text input. Existing sound keys and imports are preserved.
 Built-in paths resolve without LibSharedMedia; external sounds retain their
-existing lookup and cache behavior. Media/Voice is not excluded by .pkgmeta.
-Tools/generate-voice-clips.ps1 records the reproducible generation procedure.
+existing lookup and cache behavior. Core/Media/Voice is not excluded by .pkgmeta.
+Tools/media/generate-voice-clips.ps1 records the reproducible generation procedure.
 
 Focused verification: Lua 5.1 syntax, all 15 integration cases, including actual
 bundled file paths/native aura registration with no SharedMedia, and decoding all

@@ -67,7 +67,7 @@ local constants=assert(core:match('\n(local MODULE_KEY = .-\n)\nlocal ns = {}\n'
 local first=assert(core:find('local function NewCopyScroll',1,true))
 local last=assert(core:find('local function ConfirmHead',first,true))
 local copy=assert(loadstring(constants..core:sub(first,last-1)));setfenv(copy,setmetatable({ns=ns},{__index=env}));copy()
-local chunk=assert(loadfile('QoL/GlobalCopy.lua'));setfenv(chunk,env);chunk()
+for _,path in ipairs({'Shared/UI/CopyCard.lua','NaowhForever_QoL/Interface/GlobalCopy.lua'}) do local chunk=assert(loadfile(path));setfenv(chunk,env);chunk() end
 for name,tip in pairs({GameTooltip=tooltip,ItemRefTooltip=env.ItemRefTooltip,ShoppingTooltip1=env.ShoppingTooltip1,
  ShoppingTooltip2=env.ShoppingTooltip2}) do tip.name=name end
 local function clear()

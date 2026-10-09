@@ -1,4 +1,4 @@
--- Regression: QoL > System > Defaults is a Setup dropdown of the presets (ns.PRESETS). Picking one
+-- Regression: the Profiles page's Setups card is a Setup dropdown of the presets (ns.PRESETS). Picking one
 -- asks, then puts the profile in use to it: every module's settings and positions, keeping Smart
 -- Reminders and what this player answered about EllesmereUI's windows, telling the character and
 -- inspect panels so they swap back, remembering which it is, and offering the reload. Hovering
@@ -52,7 +52,7 @@ function S.Set(k, v)
     root.qol[k] = v
     sets[#sets + 1] = k .. "=" .. tostring(v)
 end
-local pages = { ["QoL/Character"] = { cards = {
+local pages = { ["BiS List/Character"] = { cards = {
     characterPanel = { name = "Character Panel", switch = "characterPanel", store = S },
     lootFeed = { name = "Loot Feed", switch = "lootFeed", store = S },
     custom = { name = "Not A Switch", switch = { get = function() return true end }, store = S },
@@ -73,17 +73,20 @@ local ns = {
     Confirm = function(text, yes) asked = text; yes() end,
     ConfirmReload = function(text) reload = text end,
     Color = function(_, text) return text end,
+    SETUPS_PAGE = "Profiles/Setups",
     Shared = { Settings = { pages = pages, Page = function(key)
         return { Card = function(_, c) c.page = key; card = c end }
     end } },
 }
 local env = setmetatable({ _G = { NaowhForever = ns }, CopyTable = Copy }, { __index = _G })
-local chunk = assert(loadfile("QoL/Defaults.lua"))
-setfenv(chunk, env)
-chunk()
+for _, path in ipairs({ "Core/Profiles/Setups.lua", "Core/Profiles/SetupsCard.lua" }) do
+    local chunk = assert(loadfile(path))
+    setfenv(chunk, env)
+    chunk()
+end
 
 local row = card and card.rows[1]
-check("the card sits on QoL > System with the Setup dropdown first", card.page == "QoL/System" and #card.rows == 3
+check("the card sits on the Profiles page with the Setup dropdown first", card.page == "Profiles/Setups" and #card.rows == 3
     and row.label == "Setup" and row.always == true and row.choice[2] == PRESETS.order)
 local tailor, before = card.rows[2], card.rows[3]
 check("then Tailor Setup, which opens the questions", tailor.label == "Tailor Setup" and tailor.buttonText == "Start")

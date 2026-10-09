@@ -167,10 +167,10 @@ local function AddGroup(playerBuffs)
     wipe(classes)
     local n = GetNumGroupMembers()
     if IsInRaid() then
-        for i = 1, n do AddMember(RAID_UNITS[i] or "raid" .. i, playerBuffs) end
+        for i = 1, n do AddMember(RAID_UNITS[i] or ("raid" .. i), playerBuffs) end
     else
         AddMember("player", playerBuffs)
-        for i = 1, n - 1 do AddMember(PARTY_UNITS_LIST[i] or "party" .. i, playerBuffs) end
+        for i = 1, n - 1 do AddMember(PARTY_UNITS_LIST[i] or ("party" .. i), playerBuffs) end
     end
 end
 

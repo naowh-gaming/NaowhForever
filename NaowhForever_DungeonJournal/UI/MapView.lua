@@ -44,7 +44,7 @@ local ROUND_HALF = 0.5
 local ENTRANCE_KEY = "entrance"
 local TAG_SHORT = { RARE = "R", OPTIONAL = "O", QUEST = "Q" }
 local TAG_WORDS = { RARE = "Rare", OPTIONAL = "Optional", QUEST = "Quest boss", CHEST = "Chest" }
-local MASK = "Interface\\AddOns\\NaowhForever\\Media\\circle_mask.tga"
+local MASK = "Interface\\AddOns\\NaowhForever\\Core\\Media\\circle_mask.tga"
 local MASK_WRAP = "CLAMPTOBLACKADDITIVE"
 
 local TEXT_ENTRANCE = "Entrance"

@@ -1,4 +1,4 @@
--- SettingsPage.lua: the Character Panel's and Slot Marks' cards on QoL > Character.
+-- SettingsPage.lua: the Character Panel's and Slot Marks' cards on BiS List > Character.
 local ns = _G.NaowhForever
 
 local CP = ns.CharacterPanel
@@ -54,7 +54,7 @@ if ns.FEATURE_BADGES == BADGES_LIVE then
         help = "Your supporter badge, big in the panel's top corner, if you have one." })
 end
 
-local page = Settings.Page("QoL/Character", S)
+local page = Settings.Page("BiS List/Character", S)
 
 page:Card({
     id = "characterPanel", name = "Character Panel", order = 10, switch = "characterPanel", store = S,

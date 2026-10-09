@@ -4,7 +4,7 @@ local ns = _G.NaowhForever
 local J = ns.Journal
 local Shared = ns.Shared
 
-local MEDIA = "Interface\\AddOns\\NaowhForever\\Media\\"
+local MEDIA = "Interface\\AddOns\\NaowhForever\\Core\\Media\\"
 local BYTE = 255
 local TINTED_MARK = "|T%s:0:0:0:0:64:64:0:64:0:64:%d:%d:%d|t"
 

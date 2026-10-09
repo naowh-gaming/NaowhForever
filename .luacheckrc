@@ -1,7 +1,7 @@
 -- luacheck settings for Naowh Forever. From the repo root: luacheck .
 -- Lua 5.1, as the game runs it. Libs/ is fetched by the packager and not ours to lint.
 std = "lua51"
-exclude_files = { "Libs/" }
+exclude_files = { "Libs/", ".claude/" }
 
 -- WoW calls handlers with fixed arguments (self, event, ...), so unused ones are normal.
 ignore = { "212" }
@@ -150,7 +150,7 @@ read_globals = {
 files["Tools/regression/"] = {
     globals = { "strmatch" },
 }
-files["Tools/build_presets.lua"] = { globals = { "strmatch" } }
+files["Tools/build/presets.lua"] = { globals = { "strmatch" } }
 
 -- Baseline: warnings that were already in the code when this config was added, silenced
 -- only where they are (file, warning code, name) so any new warning still fails. Remove

@@ -1,4 +1,4 @@
--- Spots.lua: where the NPC that drops or sells a ranked BiS item stands (Tools/build_bis_spots.py).
+-- Spots.lua: where the NPC that drops or sells a ranked BiS item stands (Tools/build/bis_spots.py).
 local ns = _G.NaowhForever
 
 ns.BiSSpots = {

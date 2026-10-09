@@ -80,7 +80,7 @@ modifier = false
 Click("trade:Player-1-5E1F:2259:171")
 check("your own link starts no link view", not api.Viewing())
 
-for _, link in ipairs({ "trade:|TInterface\\AddOns\\NaowhForever\\Media\\Badges\\BadgeNaowhChat.tga:0|t:2259:171",
+for _, link in ipairs({ "trade:|TInterface\\AddOns\\NaowhForever\\Core\\Badges\\Media\\BadgeNaowhChat.tga:0|t:2259:171",
     "trade:%s%d:2259:171", "trade:Player-1-ZZZZ:2259:171", "trade:Player-1-AAAA", "trade:" .. ("x"):rep(4000),
     "trade::2259:171", 42 }) do
     Click(link)

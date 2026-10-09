@@ -292,7 +292,7 @@ for _, path in ipairs({ "NaowhForever_Discovery/Discovery.lua", "NaowhForever_Di
         "NaowhForever_Discovery/View/StepRow.lua", "NaowhForever_Discovery/UI/Window.lua",
         "NaowhForever_Discovery/UI/BagTracker.lua", "NaowhForever_Discovery/UI/BagPins.lua",
         "NaowhForever_Discovery/UI/BagSettings.lua", "NaowhForever_Discovery/UI/BooksSettings.lua",
-        "Core/Window.lua", "Core/Modules.lua" }) do
+        "Core/Options/Window.lua", "Core/Options/Modules.lua" }) do
     Check(not Read(path):find("Sleeping Bags", 1, true), path .. ": one name, Sleeping Bag")
 end
 local bagPage = Read("NaowhForever_Discovery/UI/BagSettings.lua")

@@ -20,8 +20,6 @@ local TEXT_BOTH, TEXT_TOAST, TEXT_PANEL, TEXT_NOTHING =
     "Level-up toast and trainer panel", "Level-up toast", "Trainer panel", "Nothing on the way"
 local TEXT_WINDOW = "%d%% opacity%s"
 local TEXT_MINI_SHOWN = ", mini bar shown"
-local TEXT_GLOW_RANKS, TEXT_GLOW, TEXT_RANKS, TEXT_LISTS =
-    "Glows new abilities, offers rank swaps", "Glows new abilities", "Offers rank swaps", "Lists what you learned"
 
 local function Headline(plan)
     if #plan.now > 0 then
@@ -67,14 +65,6 @@ local function WindowSummary(store)
         store.Get("miniShown") and TEXT_MINI_SHOWN or "")
 end
 
-local function TrainerSummary(store)
-    local glow, ranks = store.Get("trainerGlow"), store.Get("trainerRanks")
-    if glow and ranks then return TEXT_GLOW_RANKS end
-    if glow then return TEXT_GLOW end
-    if ranks then return TEXT_RANKS end
-    return TEXT_LISTS
-end
-
 local page = Settings.Page("Training Planner/Settings", S)
 
 page:Window({
@@ -113,27 +103,5 @@ page:Card({
               .. "by dragging." },
         { key = "windowAlpha", label = "Window Opacity", slider = { Style.OPACITY_MIN, OPACITY_MAX, OPACITY_STEP },
           unit = "%", scale = 1 / PERCENT, help = "How solid the planner's window is, in percent. Also on its title bar." },
-    },
-})
-
-page:Card({
-    id = "trainer", name = "Trainer Popup", order = 30, switch = "trainerPopup", store = ns.QoLSettings,
-    help = "After visiting a trainer, a small window lists the abilities you just learned. Abilities from a "
-        .. "tome or a quest show a moment after you learn them. Drag one from the window onto your bars.",
-    summary = TrainerSummary,
-    rows = {
-        { key = "trainerGlow", label = "Glow New Abilities", toggle = true,
-          help = "Lights up the new abilities on your action bars until you use them." },
-        { key = "trainerRanks", label = "Offer to Replace Lower Ranks", toggle = true,
-          help = "Adds a button to the popup that swaps every lower rank on your bars for the highest rank "
-              .. "you know. Keyboard and controller bars land in the same slot. Right-click a spell in the "
-              .. "popup to keep its lower ranks, for downranking. Rank swaps only happen out of combat." },
-        { label = "Check My Bars Now", buttonText = "Check Bars", always = true,
-          button = function() ns.TrainerRankCheck() end,
-          help = "Looks for lower ranks on your bars now, as after a trainer visit (also /naowh ranks). Out of "
-              .. "combat only." },
-        { label = "Forget Kept Spells", buttonText = "Forget Kept", always = true,
-          button = function() ns.TrainerForgetKept() end,
-          help = "Forgets the spells you chose to keep at lower ranks, so the popup offers to swap them again." },
     },
 })

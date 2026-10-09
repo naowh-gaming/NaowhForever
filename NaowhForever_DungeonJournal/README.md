@@ -33,7 +33,7 @@ NaowhForever_DungeonJournal/
   ShareQuests.lua      Share All: a dungeon's quests in your log shared with your group, one at a time
   AcceptShared.lua     Accept Shared Dungeon Quests
   Quartermasters.lua   where each faction's quartermaster and your rank vendor stand, learned at the vendor
-  ItemProbe.lua        /nf itemprobe: asks the server for every item listed, for Tools/items_in_game.py
+  ItemProbe.lua        /nf itemprobe: asks the server for every item listed, for Tools/sources/items_in_game.py
   Data/                data, no logic
     Build.lua          the game build the data is read from and its date, generated
     Items.lua          the loot not in Forever yet, generated (the rest is Shared's ItemFacts)
@@ -115,22 +115,22 @@ calls are on `ns`.
 | --- | --- |
 | A colour, a size, spacing, an icon | `View/Style.lua`; the house look every module shares (borders, BiS stars, cards, item rows, windows) is `Shared/Style.lua`. A number one file uses is at the top of that file; the dungeon map's are at the top of `UI/MapView.lua` and `UI/MapWindow.lua` |
 | A boss tip | `Data/Tips.lua`, keyed by the boss's NPC ID, one short sentence |
-| A dungeon's bosses, wings, kill order, entrance or zone | `Tools/journal_bosses.json`, then `python Tools/build_journal.py` |
-| A rare, an optional boss or a loot chest | `"rare"`, `"optional"` or `"chests": { "Name": objectID }` on its wing in `Tools/journal_bosses.json` |
+| A dungeon's bosses, wings, kill order, entrance or zone | `Tools/data/journal_bosses.json`, then `python Tools/build/journal.py` |
+| A rare, an optional boss or a loot chest | `"rare"`, `"optional"` or `"chests": { "Name": objectID }` on its wing in `Tools/data/journal_bosses.json` |
 | An item a boss drops that no source has placed yet | `"add": { "Boss Name": [itemID] }` on the dungeon (`"Trash"` for its trash) |
 | A boss wowsrc names differently | `"wowsrcNames": { "Their Name": "Our Name" }` on the dungeon |
-| A boss's NPC ID the build cannot find | `"npcs": { "Name": ID }` on the dungeon in `Tools/journal_bosses.json` |
-| Whether a dungeon is open, where the game's tables say otherwise | `"open": true` or `false` on the dungeon in `Tools/journal_bosses.json` |
+| A boss's NPC ID the build cannot find | `"npcs": { "Name": ID }` on the dungeon in `Tools/data/journal_bosses.json` |
+| Whether a dungeon is open, where the game's tables say otherwise | `"open": true` or `false` on the dungeon in `Tools/data/journal_bosses.json` |
 | Where a boss stands on its dungeon's map | `/nf mappins` in game, drag the pins (one on another floor waits along the top, a right-click takes one off its floor), Copy, and paste the line into `Data/Maps.lua`. `/nf mapcheck` says which map art and floors the client has |
 | A dungeon's map | `Data/Maps.lua`: its art folder (`Interface\WorldMap\<art>`) and floor count, as `/nf mapcheck` finds them, the order you walk its floors in, and the addon's own picture of a floor the art lacks (`Media/Maps`); with none, Map says "Coming soon" |
 | A key binding | `Bindings.xml` and its `BINDING_NAME_...` line (Open Dungeon Journal is in `UI/Window.lua`, Boss Loot at Cursor in `UI/Popup.lua`) |
-| An icon's drawing | its function in `Tools/make_media.py`, then run it (writes `Media/*.tga`) |
+| An icon's drawing | its function in `Tools/media/make_media.py`, then run it (writes `Core/Media/*.tga`) |
 | What counts as usable, BiS, an upgrade, a new look | `Loot.lua` |
 | A quest's state, the list's order, where its waypoint goes | `Quests.lua` |
-| A dungeon quest | `Data/Quests.lua`, then `python Tools/build_quest_chains.py` for its chain |
-| A faction, its zone or the dungeons it is earned in | `Tools/journal_factions.json`, then `python Tools/build_factions.py` |
+| A dungeon quest | `Data/Quests.lua`, then `python Tools/build/quest_chains.py` for its chain |
+| A faction, its zone or the dungeons it is earned in | `Tools/data/journal_factions.json`, then `python Tools/build/factions.py` |
 | What a standing means, prices in short, the PvP rank | `Reputation.lua` |
-| The game build the faction data is read from | `BUILD` in `Tools/wago.py`; the daily build watcher (`.github/workflows/daily-watch.yml`) opens a pull request when a newer one is out (or, where the organization does not let workflows open one, an issue with a one-click link to it). Items a new build lacks because wago.tools has not recorded its hotfixes yet are carried over from the build before (`CARRY_FROM`), and the pull request lists them |
+| The game build the faction data is read from | `BUILD` in `Tools/sources/wago.py`; the daily build watcher (`.github/workflows/daily-watch.yml`) opens a pull request when a newer one is out (or, where the organization does not let workflows open one, an issue with a one-click link to it). Items a new build lacks because wago.tools has not recorded its hotfixes yet are carried over from the build before (`CARRY_FROM`), and the pull request lists them |
 | A setting or its default | `DungeonJournal.lua` (`UI.ModuleSettings("journal", ...)`; an on/off switch's default is in `Core/Features.lua`, `ns.FEATURES.journal`) and its card in `UI/SettingsPage.lua` |
 
 `Data/Dungeons/*.lua`, `Data/Factions/*.lua`, `Data/Items.lua`, Shared's `Data/ItemFacts.lua` and
@@ -142,7 +142,7 @@ write the one-line header and nothing else as comments.
 ## Where the loot comes from
 
 Nothing in the game client says who drops what (loot lives on the server), so the boss loot
-is put together offline by `Tools/build_journal.py` and shipped as data. No source is right
+is put together offline by `Tools/build/journal.py` and shipped as data. No source is right
 on its own, so the build stacks them:
 
 ```mermaid
@@ -163,7 +163,7 @@ flowchart TD
     merge["merge with wowsrc:<br/>their items added, their chances win,<br/>old items they moved dropped"] --> build
     hand --> build
     wago -->|"encounter IDs for kill counts"| build
-    build["build_journal.py"] --> out["Data/Dungeons/*.lua<br/>Data/Items.lua"]
+    build["build/journal.py"] --> out["Data/Dungeons/*.lua<br/>Data/Items.lua"]
 ```
 
 The rules, in plain words:
@@ -177,33 +177,33 @@ The rules, in plain words:
 - **wowsrc.com** lists what each boss drops in Forever (they gave us permission to use
   their site). It wins where it disagrees: its items go in, its chance is used, and an old
   item it lists somewhere else is taken off the boss. It's also where each Trash card comes
-  from. Its pages have no item IDs, so `Tools/wowsrc.py` maps names to IDs once and keeps
-  them in `Tools/item_names.json`.
+  from. Its pages have no item IDs, so `Tools/sources/wowsrc.py` maps names to IDs once and keeps
+  them in `Tools/data/item_names.json`.
 - **By hand** (`"add"`): items two other sources agree on that neither Wowhead nor wowsrc
   places yet.
 - **Everything, and what is not in Forever yet marked.** Forever keeps a row in its Item table
   for every Classic item, but the server only sends the items in the game; asked for any other,
   the client shows "Item 10800" and its tooltip waits forever. An item is in the game when its
   tables have it (ItemSparse, read through wago.tools, hotfixes in) or the server sent it
-  (`Tools/items_in_game.json`, see below). The rest are still listed, as `NotYet` in
+  (`Tools/data/items_in_game.json`, see below). The rest are still listed, as `NotYet` in
   `Data/Items.lua`: name, quality, levels and icon from Classic Era's tables, drawn without
   asking the server, tagged "Not in Forever yet", with a tooltip of our own. They are never
   your BiS, an upgrade or a look to collect, and nothing outside the Journal (the Naowh Score,
   the BiS List's sources and picker) sees them. A build that has them makes them ordinary.
 - **What the game sends.** wago.tools records the items Blizzard adds by hotfix late, and not
-  always all of them (Ravager loads in game with no row there). `python Tools/items_in_game.py`
+  always all of them (Ravager loads in game with no row there). `python Tools/sources/items_in_game.py`
   reads what a Forever client was sent, from its hotfix cache (`Cache/ADB/enUS/DBCache.bin`)
   and from `/nf itemprobe`, which asks the server for every item the Journal lists and keeps
-  the answers for it at `/reload`. It writes `Tools/items_in_game.json`; commit it, then rebuild.
+  the answers for it at `/reload`. It writes `Tools/data/items_in_game.json`; commit it, then rebuild.
 - **Open or not.** A dungeon is open when the game's own tables have at least half of its
   instance's boss loot (Scarlet Monastery's four wings are one instance), or `"open"` on it in
-  `Tools/journal_bosses.json` says so; an item the server sends on request does not count. One
+  `Tools/data/journal_bosses.json` says so; an item the server sends on request does not count. One
   not open says "Not open on Forever yet." at the top of its page (`closed` in its data).
 - A boss nobody has loot for yet says so on its card. Keys, quest items and recipes are left
   out: the Journal lists gear.
 
-To refresh it all: `python Tools/wowsrc.py` (new pages), `python Tools/wowsrc.py --resolve`
-(new names), then `python Tools/build_journal.py`. Read what the build prints at the end:
+To refresh it all: `python Tools/sources/wowsrc.py` (new pages), `python Tools/sources/wowsrc.py --resolve`
+(new names), then `python Tools/build/journal.py`. Read what the build prints at the end:
 bosses it found no loot for, wowsrc bosses we don't list, names it couldn't map.
 
 The daily CI does the same when wowsrc's pages change (`.github/workflows/daily-watch.yml`,
@@ -212,18 +212,18 @@ the game's own tables, and what they can't settle is listed in the pull request 
 
 ## Adding things
 
-- **A dungeon:** add it to `Tools/journal_bosses.json`, rebuild, and add the line the build
+- **A dungeon:** add it to `Tools/data/journal_bosses.json`, rebuild, and add the line the build
   prints to `DungeonJournal.xml`.
-- **A faction:** add it to `Tools/journal_factions.json` (its ID and tab), run
-  `python Tools/build_factions.py`, and add the line it prints to `DungeonJournal.xml`. Its
+- **A faction:** add it to `Tools/data/journal_factions.json` (its ID and tab), run
+  `python Tools/build/factions.py`, and add the line it prints to `DungeonJournal.xml`. Its
   rewards, their standings and prices come from the game's own item tables, through
-  wago.tools (`Tools/wago.py`, whose `BUILD` is the game build they are read from). Its
+  wago.tools (`Tools/sources/wago.py`, whose `BUILD` is the game build they are read from). Its
   `zone`, any zones in its `"alsoIn"` list and its `battleground` become the game's map and
   instance IDs, from the game's map tables: there, the world map shows its page beside it
   (Factions Beside the Map). A zone name the tables do not know stops the build.
 - **A faction reward the game's tables do not have yet** (announced, on the test realm):
-  add it to the faction's `"add"` list in `Tools/journal_factions.json`, then run
-  `python Tools/build_factions.py`. Standing by name, price in coins, both as the game
+  add it to the faction's `"add"` list in `Tools/data/journal_factions.json`, then run
+  `python Tools/build/factions.py`. Standing by name, price in coins, both as the game
   writes them; `price` and `note` can be left out:
 
   ```json
@@ -238,9 +238,9 @@ the game's own tables, and what they can't settle is listed in the pull request 
   says its line can go.
 - **A faction's repeatable hand-in:** the game's tables have no quest rewards (the server
   sends them), so these are kept by hand in the faction's `"turnins"` list in
-  `Tools/journal_factions.json`, from the quest's page on Wowhead Forever: its name, its IDs
+  `Tools/data/journal_factions.json`, from the quest's page on Wowhead Forever: its name, its IDs
   (one per side), the reputation one hand-in gives and the items it takes. Then run
-  `python Tools/build_factions.py`; an item the game's tables do not know stops it, as a typo.
+  `python Tools/build/factions.py`; an item the game's tables do not know stops it, as a typo.
   The faction's page lists them under Quests, with how many your bags hold:
 
   ```json
@@ -251,7 +251,7 @@ the game's own tables, and what they can't settle is listed in the pull request 
 - **A row kind:** a file in `View/` that fills `J.View.Kinds.<name>` with `New(view)`
   (makes the frame once) and `Set(row, ...)` (fills it and returns its height). List it in
   `DungeonJournal.xml` after `View/View.lua`, and draw it with `view:Add("<name>", ...)`.
-  A kind every module could use goes in `Shared/Kinds.lua` instead.
+  A kind every module could use goes in `Shared/View/Kinds.lua` instead.
 - **A file:** list it in `DungeonJournal.xml` where its layer is, never in the TOC.
 
 ## Data formats

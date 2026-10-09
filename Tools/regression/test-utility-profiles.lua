@@ -33,7 +33,7 @@ local function Fixture()
         CreateFrame = function() return { SetScript = function() end } end,
     }, { __index = _G })
     env._G = env
-    local chunk = assert(loadfile(root .. "/Core/Packs.lua"))
+    local chunk = assert(loadfile(root .. "/Core/Profiles/Packs.lua"))
     setfenv(chunk, env); chunk()
     ns.Shared = { Decode = dofile("Tools/regression/load_decode.lua")(env, true) }
     e.ns, e.env = ns, env

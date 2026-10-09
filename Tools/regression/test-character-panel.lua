@@ -473,7 +473,7 @@ state.badges = nil
 character.LeftPaneHost.hooks.OnShow(character.LeftPaneHost)
 
 -- No preview setting, grey badge or pitch is left in the panel's files.
-for _, path in ipairs({ "NaowhForever_BiS/CharacterPanel/Badge.lua", "NaowhForever_BiS/CharacterPanel/UI/SettingsPage.lua", "QoL/QoL.lua" }) do
+for _, path in ipairs({ "NaowhForever_BiS/CharacterPanel/Badge.lua", "NaowhForever_BiS/CharacterPanel/UI/SettingsPage.lua", "Core/Settings.lua" }) do
     local f = assert(io.open(path, "rb"))
     local source = f:read("*a")
     f:close()
@@ -561,6 +561,7 @@ statsList.hooks.OnShow(statsList)
 check("many stats: every row fits above the switch", rows[14].shown ~= false and rows[15].shown == false
     and 14 * rows[1].h <= 300 - 52)
 -- A caster: its spell hit, the game's spell hit (rating and talents) as its total.
+---@diagnostic disable-next-line: duplicate-set-field
 ns.StatWeights.For = function() return { spell = 1, int = 0.3, shit = 14, sta = 0.05, armor = 0.005 } end
 statsList.hooks.OnShow(statsList)
 check("a caster's spell hit, its own total, after its power", rows[3].name.text == "Spell Hit %"

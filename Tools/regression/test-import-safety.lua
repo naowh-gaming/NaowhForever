@@ -109,7 +109,7 @@ local function World()
         CreateFrame = function() return { SetScript = function() end } end }, { __index = _G })
     env._G = env
     ns.Shared = { Decode = LoadDecode(env) }
-    for _, path in ipairs({ "Core/Packs.lua", "Core/ProfileShare.lua" }) do
+    for _, path in ipairs({ "Core/Profiles/Packs.lua", "Core/Profiles/ProfileShare.lua" }) do
         local chunk = assert(loadfile(path))
         setfenv(chunk, env)
         chunk()
@@ -128,7 +128,7 @@ do -- a profile string: names, Smart Reminders, class macros, the look and BiS l
     check(("a shared-table profile is refused without a freeze (%.3f s)"):format(took), bomb == nil and took < 2)
 
     local payload = w.ns.DecodeProfile(Profile({ format = 1,
-        name = "|TInterface\\AddOns\\NaowhForever\\Media\\Badges\\BadgeNaowhChat.tga:0|t Official",
+        name = "|TInterface\\AddOns\\NaowhForever\\Core\\Badges\\Media\\BadgeNaowhChat.tga:0|t Official",
         author = "|cffe6cc80Naowh|r\n[Naowh]: trust me", made = "|Hurl:x|h",
         parts = {
             smartReminders = { customReminders = { ["1"] = { a = { name = 5 } } } },

@@ -25,6 +25,7 @@ NaowhForever_<Name>/
     Style.lua               its own look, on top of Shared/Style.lua
   UI/                       where it shows: windows, trackers, map pins, popups
     SettingsPage.lua        its settings page, declared as cards
+  Media/                    art only this module uses; shared icons and fonts are in Core/Media
   README.md                 Layout (the tree above, one line a file) and Why
 ```
 
@@ -63,26 +64,30 @@ edits it**: a file is added to its area's XML.
 
 | Load point | What it loads |
 | --- | --- |
-| `Locales\*.lua` | the locale tables, before the namespace; listed in the TOC because `AllowLoadTextLocale` is a TOC option |
+| `Core\Locales\*.lua` | the locale tables, before the namespace; listed in the TOC because `AllowLoadTextLocale` is a TOC option |
 | `Core\Core.xml` | the namespace and DB (`Core.lua`), the feature switches, presets, message senders, waypoints |
-| `RXPThemes\RXPThemes.xml` | the Naowh themes in RestedXP Guides; needs the core's theme palettes |
+| `Core\Integrations\RestedXP\RestedXP.xml` | the Naowh themes in RestedXP Guides; needs the core's theme palettes |
 | `Core\Options.xml` | the widget kit (`ns.UI`), Unlock Mode, the options window, the Game Menu button, the settings search |
 | `Shared\Shared.xml` | what every module shares (see `Shared/README.md`) |
 | `Core\Packs.xml` | Reminder Packs, their signature check, the profile strings |
-| `QoL\QoL.xml` | the QoL store (`QoL.lua`) and the QoL features up to the Trainer |
-| `TopBar\TopBar.xml` | the Top Bar |
-| `QoL\Travel.xml` | the Flight Timer, its games and the waypoint pin |
-| `Badges\Badges.xml` | the staff and patron lists, then the badges that read them |
-| `Core\Pages.xml` | Patch Notes, Credits, the welcome window and setup, after the Badges |
+| `Core\Settings.xml` | the QoL settings store (`Settings.lua`), Naowh's setups applied to it, the Alerts group |
+| `Core\Badges\Badges.xml` | the staff and patron lists, then the badges that read them |
+| `Core\Pages.xml` | Patch Notes, Credits, the onboarding, after the Badges |
 
-- An area that loads at two points has one XML per point, named for what it holds (QoL's
-  `QoL.xml` and `Travel.xml`). A new file goes in the XML of the point it needs.
-- **QoL** is one file per feature: its rules, its drawing, then its settings card at the end.
-  A feature's data is `<Feature>Data.lua` before it; an XML template sits beside its Lua and is
-  included in its place. Numbers several QoL files share go in `QoL/Constants.lua`.
-- **Core**, **TopBar**, **Badges**, **RXPThemes** follow the same file anatomy. Each area keeps
-  a `README.md` with Layout and Why, as `Shared/` does.
+- An area that loads at two points has one XML per point, named for what it holds (Core's
+  `Packs.xml` and `Settings.xml`). A new file goes in the XML of the point it needs.
+- **QoL** (`NaowhForever_QoL/`) is a module addon of one file per feature, in folders by its
+  settings tab: its rules, its drawing, then its settings card at the end. A feature's data is
+  `<Feature>Data.lua` before it; an XML template sits beside its Lua and is included in its place.
+  Numbers several QoL files share go in `NaowhForever_QoL/Constants.lua`. Its settings store stays
+  in the core (`Core/Settings.lua`), which the core and other modules read.
+- **Core**, **Badges**, **Integrations** follow the same file anatomy. Each area keeps a
+  `README.md` with Layout and Why, as `Shared/` does.
 - **Shared** loads through `Shared.xml` before any module and makes nothing at load.
+- **Art lives with its owner.** `Core/Media` holds what everyone uses: the icon set
+  `Tools/media/make_media.py` draws, the fonts, links, navigation glyphs and voice clips. Art
+  only one area uses sits in that area's `Media/` (`Core/Badges/Media`, `Core/Onboarding/Media`,
+  `NaowhForever_TopBar/Media`), so a module's art travels with its folder.
 
 ## 2. File anatomy
 
@@ -257,16 +262,16 @@ almost fits, add an optional input that leaves every caller as it was. If none f
 
 | Need | Use |
 | --- | --- |
-| A window | `Parts.Window`, `Parts.TitleBar`, `Parts.Opacity`, `Parts.BarButton`, `Parts.BarIcon`, `Parts.FooterBrand`, `Parts.Resizable` (`Shared/Window.lua`), `Parts.Shadow` (`Shared/Hud.lua`) |
-| Tabs and search | `Parts.Tabs`, `Parts.SetTabs`, `Parts.PaintTabs`, `Parts.SearchBox` (`Shared/Tabs.lua`) |
-| A tracker | `Parts.TrackerPanel`, `Parts.RowBands` (`Shared/Tracker.lua`) |
-| A page of rows | `ns.Shared.View.New`, `View.NewKinds`; common rows in `Shared/Kinds.lua` |
+| A window | `Parts.Window`, `Parts.TitleBar`, `Parts.Opacity`, `Parts.BarButton`, `Parts.BarIcon`, `Parts.FooterBrand`, `Parts.Resizable` (`Shared/UI/Window.lua`), `Parts.Shadow` (`Shared/UI/Hud.lua`) |
+| Tabs and search | `Parts.Tabs`, `Parts.SetTabs`, `Parts.PaintTabs`, `Parts.SearchBox` (`Shared/UI/Tabs.lua`) |
+| A tracker | `Parts.TrackerPanel`, `Parts.RowBands` (`Shared/UI/Tracker.lua`) |
+| A page of rows | `ns.Shared.View.New`, `View.NewKinds`; common rows in `Shared/View/Kinds.lua` |
 | Settings | `UI.ModuleSettings` for the store, `ns.Shared.Settings.Page(page, S):Card{ ... }` for the page, `Settings.Look` for a HUD element's text and bar rows, `Settings.EditZone` and Studio for a live preview |
-| Small parts | `Parts.Pill`, `Parts.SetPill`, `Parts.Link`, `Parts.SetLink`, `Parts.IconButton` (`Shared/Parts.lua`), `Parts.ItemIcon` (`Shared/Marks.lua`), `Parts.Coins`, `Parts.LabelRow` (`Shared/Text.lua`), `Parts.Panel`, `Parts.SidePanel`, `Parts.Backdrop` (`Shared/Panels.lua`); every part's file is in `Shared/README.md` |
-| HUD | `Parts.HudBackdrop`, `Parts.HudText`, `Parts.HudFont`, `Parts.ProgressLine` (`Shared/Hud.lua`), `Parts.TimerLine` (`Shared/Timer.lua`) |
-| Widgets (`Core/Widgets.lua`) | `UI.BuildToggleControl`, `UI.BuildSliderCore`, `UI.BuildDropdownControl`, `UI.BuildColorSwatchControl`, `UI.KeyField`, `UI.SlimScroll`, `UI.Keep*` |
+| Small parts | `Parts.Pill`, `Parts.SetPill`, `Parts.Link`, `Parts.SetLink`, `Parts.IconButton` (`Shared/UI/Parts.lua`), `Parts.ItemIcon` (`Shared/UI/Marks.lua`), `Parts.Coins`, `Parts.LabelRow` (`Shared/UI/Text.lua`), `Parts.Panel`, `Parts.SidePanel`, `Parts.Backdrop` (`Shared/UI/Panels.lua`); every part's file is in `Shared/README.md` |
+| HUD | `Parts.HudBackdrop`, `Parts.HudText`, `Parts.HudFont`, `Parts.ProgressLine` (`Shared/UI/Hud.lua`), `Parts.TimerLine` (`Shared/UI/Timer.lua`) |
+| Widgets (`Core/Options/Widgets.lua`) | `UI.BuildToggleControl`, `UI.BuildSliderCore`, `UI.BuildDropdownControl`, `UI.BuildColorSwatchControl`, `UI.KeyField`, `UI.SlimScroll`, `UI.Keep*` |
 | Core chrome (`Core/Core.lua`) | `ns.Button`, `ns.Font`, `ns.Border`, `ns.AccentBorder`, `ns.Tooltip`, `ns.NewEditBox`, `ns.NewSearchBox`, `ns.Confirm`, `ns.PromptText`, `ns.MakeModal` |
-| Moving it | `UI.AttachMover` (`Core/UnlockMovers.lua`), so it shows in Unlock Mode |
+| Moving it | `UI.AttachMover` (`Core/Unlock/Movers.lua`), so it shows in Unlock Mode |
 | The look | `ns.THEME` (`T.bg`, `T.panel`, `T.line`, `T.fg`, `T.muted`, `T.accent`), `ns.Shared.Style`, and a module's `Style` made with `setmetatable({ ... }, { __index = ns.Shared.Style })` |
 
 ## 8. Checking

@@ -1,4 +1,4 @@
--- BiS.lua: ranked best-in-slot candidates per spec and item sources, from wowsrc.com (Tools/build_bis_data.py).
+-- BiS.lua: ranked best-in-slot candidates per spec and item sources, from wowsrc.com (Tools/build/bis_data.py).
 local ns = _G.NaowhForever
 
 ns.BiSData = {

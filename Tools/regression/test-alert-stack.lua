@@ -64,7 +64,7 @@ local function Fixture(qol, aura)
         local orig = t[key]
         t[key] = function(...) orig(...); fn(...) end
     end
-    Load({ "QoL/AlertStack.lua" }, env)
+    Load({ "Core/AlertStack.lua" }, env)
     return ns, env
 end
 

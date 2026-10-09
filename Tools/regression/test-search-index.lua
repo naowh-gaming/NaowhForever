@@ -23,7 +23,7 @@ local function Load(path)
     chunk()
 end
 Load("Shared/Settings/Settings.lua")
-Load("Core/Search.lua")
+Load("Core/Options/Search.lua")
 local UI, Settings = ns.UI, ns.Shared.Settings
 
 local store = { Get = function() end, Set = function() end, Default = function() end, OnChange = function() end }
@@ -142,8 +142,8 @@ end
 
 -- The builder scan, its row tags, the jump's glow and the old bar are gone for good.
 do
-    local widgets = Read("Core/Widgets.lua")
-    local window = Read("Core/Window.lua")
+    local widgets = Read("Core/Options/Widgets.lua")
+    local window = Read("Core/Options/Window.lua")
     Check(not widgets:find("searchScan", 1, true) and not widgets:find("_searchL", 1, true), "no scan in the widgets")
     Check(not window:find("noscan", 1, true) and not window:find("Flash", 1, true), "no scan flags or glow in the window")
     Check(window:find("searchBox = UI.AttachSearchBox(sidebar", 1, true), "the sidebar holds the search box")

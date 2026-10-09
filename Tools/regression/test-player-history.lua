@@ -74,7 +74,7 @@ local function Boot(settings, account, now)
         TooltipDataProcessor = { AddTooltipPostCall = function(kind, fn) s.posts[#s.posts + 1] = { kind, fn } end },
     }, { __index = _G })
     ns.Shared.Decode = LoadDecode(env)
-    local chunk = assert(loadfile("QoL/PlayerHistory.lua"))
+    local chunk = assert(loadfile("NaowhForever_QoL/Questing/PlayerHistory.lua"))
     setfenv(chunk, env)
     chunk()
     s.ns, s.PH, s.S = ns, ns.PlayerHistory, ns.QoLSettings

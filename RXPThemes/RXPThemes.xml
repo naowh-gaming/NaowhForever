@@ -1,4 +1,0 @@
-<Ui xmlns="http://www.blizzard.com/wow/ui/">
-    <!-- RXPThemes.xml: the Naowh themes in RestedXP Guides. -->
-    <Script file="RXPThemes.lua"/>
-</Ui>

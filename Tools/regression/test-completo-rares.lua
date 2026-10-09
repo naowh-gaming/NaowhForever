@@ -182,6 +182,7 @@ local function Fixture(settings, units)
     env.UIParent.GetRight = function() return 1000 end
     -- The card, by its frame name.
     local create = env.CreateFrame
+    ---@diagnostic disable-next-line: duplicate-set-field
     env.CreateFrame = function(kind, name, ...)
         local f = create(kind, name, ...)
         if name == "NaowhForeverRareAlert" then ns.alert = f end

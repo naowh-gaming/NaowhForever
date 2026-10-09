@@ -74,7 +74,7 @@ do -- Co-Tank
     local S = Store({ enabled = true, coTank = true, coTankWidth = 180, coTankHeight = 30, coTankBgAlpha = 0.6,
         coTankFont = "", coTankFontSize = 12, coTankOutline = "OUTLINE", coTankTexture = "", coTankDebuffs = false,
         coTankAnchor = "UIParent" })
-    local frames = Load("QoL/CoTank.lua", { QoLSettings = S }, {
+    local frames = Load("NaowhForever_QoL/Combat/CoTank.lua", { QoLSettings = S }, {
         UnitClass = function() return "Warrior", "WARRIOR" end,
         InCombatLockdown = function() return false end,
         UnitGroupRolesAssigned = Noop, GetShapeshiftFormID = Noop, IsInRaid = Noop,
@@ -113,7 +113,7 @@ do -- Total Craft Timer, drawn on its card's preview
     local preview = card.studio.new(Widget("Frame"))
     card.studio.paint(preview, "crafting")
     check("craft timer default: the Naowh Gradient", preview.track.texture
-        == "Interface\\AddOns\\NaowhForever\\Media\\NaowhGradient.tga")
+        == "Interface\\AddOns\\NaowhForever\\Core\\Media\\NaowhGradient.tga")
     check("craft timer default: outlined labels at 14, the time at 18", preview.labels[1].font == " 14 OUTLINE"
         and preview.time.font == " 18 OUTLINE")
     check("craft timer default: the background at 90%", preview.bg.color[4] == 0.9)

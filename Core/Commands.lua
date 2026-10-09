@@ -18,8 +18,11 @@ BINDING_NAME_NAOWHFOREVER_BOSSLOOT = "Boss Loot at Cursor"
 BINDING_NAME_NAOWHFOREVER_BIS = "Open BiS List"
 BINDING_NAME_NAOWHFOREVER_GROUPINSPECT = "Open Group Inspect"
 BINDING_NAME_NAOWHFOREVER_COMPLETO = "Open Completo"
+BINDING_NAME_NAOWHFOREVER_BAGSPACE_PICKUP = "Pick Up Cheapest Item"
 _G["BINDING_NAME_CLICK NaowhForeverBlessNext:LeftButton"] = "Next Blessing"
 _G["BINDING_NAME_CLICK NaowhForeverBlessNextGreater:LeftButton"] = "Next Greater Blessing"
+_G["BINDING_NAME_CLICK NaowhForeverFoodBarFood:LeftButton"] = "Use Best Food"
+_G["BINDING_NAME_CLICK NaowhForeverFoodBarDrink:LeftButton"] = "Use Best Drink"
 
 local function SwitchedOff(name)
     return function() ns.Print(TEXT_SWITCHED_OFF:format(name)) end
@@ -29,6 +32,7 @@ NaowhForever_BossLoot = SwitchedOff("Dungeon Journal")
 NaowhForever_ToggleBis = SwitchedOff("BiS List")
 NaowhForever_ToggleGroupInspect = SwitchedOff("Group Inspect")
 NaowhForever_ToggleCompleto = SwitchedOff("Completo")
+NaowhForever_BagSpacePickUp = SwitchedOff("Quality of Life")
 
 SLASH_NAOWHFOREVER1 = "/smartreminders"
 SLASH_NAOWHFOREVER2 = "/naowh"
@@ -67,9 +71,7 @@ SlashCmdList["NAOWHFOREVER"] = function(msg)
         ns.BadgesCommand(arg)
     elseif cmd == "scrap" and ns.ToggleScrapList then
         ns.ToggleScrapList()
-    elseif cmd == "welcome" and ns.ShowWelcome then
-        ns.ShowWelcome()
-    elseif cmd == "setup" and ns.ShowSetup then
+    elseif (cmd == "setup" or cmd == "welcome") and ns.ShowSetup then
         ns.ShowSetup()
     else
         ns.ToggleOptionsWindow()

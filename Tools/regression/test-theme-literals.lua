@@ -53,43 +53,43 @@ local ROWS = {
       [==[local TEXT_DUNGEON_QUEST = "(dungeon quest)"]==],
       [==["x" .. "  " .. ns.Color("accentSoft", "(dungeon quest)")]==],
       [==["x" .. "  |cff4db5f5(dungeon quest)|r"]==] },
-    { [==[QoL/BagSpace.lua]==],
+    { [==[NaowhForever_QoL/Loot/BagSpace.lua]==],
       [==[("  " .. ns.Color("muted", "(%s each x%d)")):format(Coins(each), count)]==],
       [==[("  " .. ns.Color("muted", "(%s each x%d)")):format("5g", 3)]==],
       [==[("  |cff9a9ea6(%s each x%d)|r"):format("5g", 3)]==] },
-    { [==[QoL/BagSpace.lua]==],
+    { [==[NaowhForever_QoL/Loot/BagSpace.lua]==],
       [==[GameTooltip:AddLine(ns.Color("accent", "Click") .. "  stack now", 1, 1, 1)]==],
       [==[ns.Color("accent", "Click") .. "  stack now"]==],
       [==["|cff0091edClick|r  stack now"]==] },
-    { [==[QoL/BagSpace.lua]==],
+    { [==[NaowhForever_QoL/Loot/BagSpace.lua]==],
       [==[or ns.Color("muted", "unknown")]==],
       [==[ns.Color("muted", "unknown")]==],
       [==["|cff9a9ea6unknown|r"]==] },
-    { [==[QoL/BagSpace.lua]==],
+    { [==[NaowhForever_QoL/Loot/BagSpace.lua]==],
       [==[GameTooltip:AddLine(ns.Color("accent", "Ctrl-click") .. "  twice to delete", 1, 1, 1)]==],
       [==[ns.Color("accent", "Ctrl-click") .. "  twice to delete"]==],
       [==["|cff0091edCtrl-click|r  twice to delete"]==] },
-    { [==[QoL/BagSpace.lua]==],
+    { [==[NaowhForever_QoL/Loot/BagSpace.lua]==],
       [==[GameTooltip:AddLine(ns.Color("accent", "Ctrl-click") .. "  pick up to delete", 1, 1, 1)]==],
       [==[ns.Color("accent", "Ctrl-click") .. "  pick up to delete"]==],
       [==["|cff0091edCtrl-click|r  pick up to delete"]==] },
-    { [==[QoL/BagSpace.lua]==],
+    { [==[NaowhForever_QoL/Loot/BagSpace.lua]==],
       [==[GameTooltip:AddLine(ns.Color("accent", "Ctrl-click") .. "  delete now", 1, 1, 1)]==],
       [==[ns.Color("accent", "Ctrl-click") .. "  delete now"]==],
       [==["|cff0091edCtrl-click|r  delete now"]==] },
-    { [==[QoL/BagSpace.lua]==],
+    { [==[NaowhForever_QoL/Loot/BagSpace.lua]==],
       [==[GameTooltip:AddLine(ns.Color("accent", "Click") .. "  sell", 1, 1, 1)]==],
       [==[ns.Color("accent", "Click") .. "  sell"]==],
       [==["|cff0091edClick|r  sell"]==] },
-    { [==[QoL/BagSpace.lua]==],
+    { [==[NaowhForever_QoL/Loot/BagSpace.lua]==],
       [==[GameTooltip:AddLine(ns.Color("accent", "Middle-click") .. "  ignore this item", 1, 1, 1)]==],
       [==[ns.Color("accent", "Middle-click") .. "  ignore this item"]==],
       [==["|cff0091edMiddle-click|r  ignore this item"]==] },
-    { [==[QoL/LootFeed.lua]==],
+    { [==[NaowhForever_QoL/Loot/LootFeed.lua]==],
       [==[name = name .. "  " .. ns.Color("accent", "BiS" .. (pick > 1 and " #" .. pick or ""))]==],
       [==["n" .. "  " .. ns.Color("accent", "BiS" .. (2 > 1 and " #" .. 2 or ""))]==],
       [==["n" .. "  |cff0091edBiS" .. (2 > 1 and " #" .. 2 or "") .. "|r"]==] },
-    { [==[QoL/XPBar.lua]==],
+    { [==[NaowhForever_QoL/XP/XPBar.lua]==],
       [==[local LABEL, VALUE = ns.Color("muted"), ns.Color("fg")]==],
       [==[ns.Color("muted") .. "Session:|r " .. ns.Color("fg") .. "1h" .. "|r"]==],
       [==["|cff9a9ea6" .. "Session:|r " .. "|cfff0f1f3" .. "1h" .. "|r"]==] },
@@ -161,23 +161,23 @@ local ROWS = {
       [==[ns.Print(("copied " .. ns.Color("accent", "%d") .. " %s from %s%s."):format(]==],
       [==[("copied " .. ns.Color("accent", "%d") .. " %s from %s%s."):format(3, "rules", "Spec", "")]==],
       [==[("copied |cff0091ed%d|r %s from %s%s."):format(3, "rules", "Spec", "")]==] },
-    { [==[Core/Packs.lua]==],
+    { [==[Core/Profiles/Packs.lua]==],
       [==[(ns.Color("accent", "%s") .. " by %s"):format(]==],
       [==[(ns.Color("accent", "%s") .. " by %s"):format("Pack", "Me")]==],
       [==[("|cff0091ed%s|r by %s"):format("Pack", "Me")]==] },
-    { [==[Core/Packs.lua]==],
+    { [==[Core/Profiles/Packs.lua]==],
       [==[("  " .. ns.Color("accent", "%s") .. "%s"):format(ns.PlainText(p.name), specText)]==],
       [==[("  " .. ns.Color("accent", "%s") .. "%s"):format("Pack", " (Arms)")]==],
       [==[("  |cff0091ed%s|r%s"):format("Pack", " (Arms)")]==] },
-    { [==[Core/Packs.lua]==],
+    { [==[Core/Profiles/Packs.lua]==],
       [==[(ns.Color("accent", "%s") .. "%s"):format(names[i],]==],
       [==[(ns.Color("accent", "%s") .. "%s"):format("Pack", " -- Arms")]==],
       [==[("|cff0091ed%s|r%s"):format("Pack", " -- Arms")]==] },
-    { [==[Core/Packs.lua]==],
+    { [==[Core/Profiles/Packs.lua]==],
       [==[(ns.Color("accent", "%s") .. " by %s%s%s|n%s"):format(]==],
       [==[(ns.Color("accent", "%s") .. " by %s%s%s|n%s"):format("Pack", "Me", " (x)", "", "d")]==],
       [==[("|cff0091ed%s|r by %s%s%s|n%s"):format("Pack", "Me", " (x)", "", "d")]==] },
-    { [==[Core/PackDialogs.lua]==],
+    { [==[Core/Profiles/PackDialogs.lua]==],
       [==[ns.Print(("merged into " .. ns.Color("accent", "%s") .. ": %d spec sections]==],
       [==[("merged into " .. ns.Color("accent", "%s") .. ": %d spec sections and %d reminders. Specs you " .. "did not tick are exactly as they were."):format("T", 1, 2)]==],
       [==[("merged into |cff0091ed%s|r: %d spec sections and %d reminders. Specs you " .. "did not tick are exactly as they were."):format("T", 1, 2)]==] },
@@ -261,21 +261,21 @@ local function Run(code, env)
     return chunk()
 end
 
-local TAGS = { { "NaowhForever_BiS/BiS/Alerts.lua", "|cff0091edNaowh BiS|r" }, { "QoL/Alts.lua", "|cff0091edNaowh|r" },
-    { "QoL/AuctionPrices.lua", "|cff0091edNaowh AH|r" }, { "QoL/Mail.lua", "|cff0091edNaowh Mail|r" } }
+local TAGS = { { "NaowhForever_BiS/BiS/Alerts.lua", "|cff0091edNaowh BiS|r" }, { "NaowhForever_QoL/Loot/Alts.lua", "|cff0091edNaowh|r" },
+    { "NaowhForever_QoL/Loot/AuctionPrices.lua", "|cff0091edNaowh AH|r" }, { "NaowhForever_QoL/Loot/Mail.lua", "|cff0091edNaowh Mail|r" } }
 for _, t in ipairs(TAGS) do
     local code = Slice(t[1], "local function Tag()", " end") .. "\nreturn Tag()"
     Check(Run(code, { ns = ns }) == t[2], t[1] .. ": Tag() is the old TAG")
 end
 
 do -- the two combat logging prompts
-    local acl = Run(Slice("QoL/CombatLogger.lua", "local function AclText()", "\nend") .. "\nreturn AclText()", { ns = ns })
+    local acl = Run(Slice("NaowhForever_QoL/System/CombatLogger.lua", "local function AclText()", "\nend") .. "\nreturn AclText()", { ns = ns })
     Check(acl == "|cff0091edNaowh|r Forever\n\nAdvanced Combat Logging is off. Warcraft Logs needs it "
         .. "for a detailed report. Turn it on now? This reloads your UI.", "the advanced logging prompt text")
-    local log = Run(Slice("QoL/CombatLogger.lua", "local function LogText()", "\nend") .. "\nreturn LogText()", { ns = ns })
+    local log = Run(Slice("NaowhForever_QoL/System/CombatLogger.lua", "local function LogText()", "\nend") .. "\nreturn LogText()", { ns = ns })
     Check(log == "|cff0091edNaowh|r Forever\n\nEnable combat logging for:\n|cffffa300%s|r\n(%s)\n\n"
         .. "Your choice will be remembered.", "the combat logging prompt text")
-    local src = Read("QoL/CombatLogger.lua")
+    local src = Read("NaowhForever_QoL/System/CombatLogger.lua")
     Check(src:find('.text = AclText()', 1, true) and src:find('.text = LogText()', 1, true), "the text is set when shown")
 end
 

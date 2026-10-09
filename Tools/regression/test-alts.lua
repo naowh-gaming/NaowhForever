@@ -3,7 +3,7 @@
 -- look at), the bag count kept for this character, and what a tooltip refresh and a bag scan
 -- cost: an item tooltip in the bags is redrawn several times a second while hovered.
 -- Run from the repo root: lua Tools/regression/test-alts.lua
-local f = assert(io.open(arg[1] or "QoL/Alts.lua", "rb"))
+local f = assert(io.open(arg[1] or "NaowhForever_QoL/Loot/Alts.lua", "rb"))
 local source = f:read("*a"); f:close()
 
 local checks = 0

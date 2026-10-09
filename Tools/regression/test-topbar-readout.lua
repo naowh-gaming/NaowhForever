@@ -1,5 +1,5 @@
 -- Top Bar FPS / MS readout: its colours and text, and what the ticker's second costs. Its look
--- (TopBar/View/Look.lua) is loaded and UpdateSystem cut out of TopBar/UI/Bar.lua, run on stubs that
+-- (NaowhForever_TopBar/View/Look.lua) is loaded and UpdateSystem cut out of NaowhForever_TopBar/UI/Bar.lua, run on stubs that
 -- make no garbage. Run from the repo root.
 local checks = 0
 local function check(label, ok) assert(ok, label); checks = checks + 1 end
@@ -7,7 +7,7 @@ local Measure = dofile("Tools/regression/measure.lua")(check)
 
 -- The Top Bar's files as TopBar.xml lists them, read as one source.
 local parts = {}
-for _, path in ipairs(dofile("Tools/regression/toc_files.lua")("^TopBar/.*%.lua$")) do
+for _, path in ipairs(dofile("Tools/regression/toc_files.lua")("^NaowhForever_TopBar/.*%.lua$")) do
     local f = assert(io.open(path, "rb"))
     parts[#parts + 1] = f:read("*a"):gsub("\r\n", "\n")
     f:close()
@@ -33,7 +33,7 @@ local function LoadLook(S)
     local ns = { TopBar = { Settings = S }, Shared = { Style = {}, Parts = {} }, THEME = {}, UI = {} }
     local env = setmetatable({ NaowhForever = ns }, { __index = _G })
     env._G = env
-    for _, path in ipairs({ "TopBar/Constants.lua", "TopBar/View/Style.lua", "TopBar/View/Look.lua" }) do
+    for _, path in ipairs({ "NaowhForever_TopBar/Constants.lua", "NaowhForever_TopBar/View/Style.lua", "NaowhForever_TopBar/View/Look.lua" }) do
         local chunk = assert(loadfile(path))
         setfenv(chunk, env)
         chunk()

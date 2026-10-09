@@ -86,7 +86,7 @@ local env = setmetatable({
     COMBATLOG_XPGAIN_FIRSTPERSON_UNNAMED = "You gain %d experience.",
 }, { __index = _G })
 env._G = env
-local chunk = assert(loadfile("QoL/LootFeed.lua"))
+local chunk = assert(loadfile("NaowhForever_QoL/Loot/LootFeed.lua"))
 setfenv(chunk, env)
 chunk()
 

@@ -4,7 +4,7 @@
 -- item's source is the Journal's boss and dungeon, and wowsrc's wording only for the rest.
 local Load = dofile("Tools/regression/load_files.lua")
 local TocFiles = dofile("Tools/regression/toc_files.lua")
-local RULES = { "Shared/Shared.lua", "Shared/Style.lua", "Shared/Items.lua", "Shared/Gear.lua", "NaowhForever_BiS/BiS/BiS.lua", "NaowhForever_BiS/BiS/Constants.lua", "NaowhForever_BiS/BiS/Rankings.lua",
+local RULES = { "Shared/Shared.lua", "Shared/Style.lua", "Shared/Game/Items.lua", "Shared/Game/Gear.lua", "NaowhForever_BiS/BiS/BiS.lua", "NaowhForever_BiS/BiS/Constants.lua", "NaowhForever_BiS/BiS/Rankings.lua",
     "NaowhForever_BiS/BiS/Sources.lua" }
 local SEP = " \194\183 "
 
@@ -185,13 +185,13 @@ for _, id in ipairs({ 5821, 263435, 263436, 270039, 270046, 272996, 276727, 2772
     -- wowsrc's lists of 2 Oct 2026: none on Wowhead's item pages either.
     7948, 276719, 281263, 281295, 281693, 281694, 281702, 285351,
     -- wowsrc's lists of 3 Oct 2026 (the daily watch's #49): no source on wowsrc, and none on
-    -- Wowhead's item pages either (build_bis_data.py --sources-only found the rest).
+    -- Wowhead's item pages either (build/bis_data.py --sources-only found the rest).
     2944, 7949, 7950, 7952, 7953, 8663, 213105, 270065, 270066, 270073,
     270076, 270077, 270082, 270083, 271720, 274042, 274068, 274149, 274915, 274916,
     274919, 274920, 274928, 274929, 274938, 274939, 274940, 274941, 274942, 274943,
     274944, 274946, 274948, 276102, 276897, 278019, 281308, 282642, 282658, 284382,
     284383, 284399, 284401, 284403, 284697, 285190, 285192,
-    -- wowsrc's lists read again on 3 Oct 2026, with Wowhead (build_bis_data.py): no source
+    -- wowsrc's lists read again on 3 Oct 2026, with Wowhead (build/bis_data.py): no source
     -- on either.
     282653, 282710, 284459 }) do UNSOURCED[id] = true end
 

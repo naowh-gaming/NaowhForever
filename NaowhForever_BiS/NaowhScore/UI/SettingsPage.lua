@@ -1,4 +1,4 @@
--- SettingsPage.lua: the Naowh Score's card on QoL > Character.
+-- SettingsPage.lua: the Naowh Score's card on BiS List > Character.
 local ns = _G.NaowhForever
 
 local Score = ns.NaowhScore
@@ -15,7 +15,7 @@ local function Summary()
     return TEXT_YOURS_NOW .. Score.Colored((Score.Unit("player")), UnitLevel("player"))
 end
 
-Settings.Page("QoL/Character", S):Card({
+Settings.Page("BiS List/Character", S):Card({
     id = "naowhScore", name = "Naowh Score", order = 30, switch = "naowhScore", store = S,
     help = "One number for a character's gear, on the item level scale: 26.4 means gear worth a set of level "
         .. "26 epics. Yours is shared with your group and guild as it changes. Your own is always on the BiS "

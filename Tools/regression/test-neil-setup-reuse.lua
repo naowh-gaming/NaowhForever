@@ -1,10 +1,11 @@
 -- Exercises the reusable row widgets the Smart Reminders window's pages are built from. The
 -- frame model checks allocation/rebinding, not WoW rendering, protected execution or keyboard input.
 local root = arg[1] or "."
+local CORE_FILES = { _Core = "Core", _Features = "Features", _Widgets = "Options/Widgets", _Packs = "Profiles/Packs" }
 local function Read(suffix)
     local name = suffix == "" and "_SmartReminders" or suffix
     local dir = (name == "_Core" or name == "_Widgets") and "/Core" or "/NaowhForever_SmartReminders"
-    local f = assert(io.open(root .. dir .. "/" .. (dir == "/Core" and name:sub(2) or "NaowhForever" .. name) .. ".lua", "rb"))
+    local f = assert(io.open(root .. dir .. "/" .. (dir == "/Core" and CORE_FILES[name] or "NaowhForever" .. name) .. ".lua", "rb"))
     local s = f:read("*a"):gsub("\r\n", "\n"); f:close(); return s
 end
 local count, methods = 0, {}

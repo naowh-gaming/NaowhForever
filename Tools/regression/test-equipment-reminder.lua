@@ -2,7 +2,7 @@
 -- nothing while off, and when on, gear changes for you only (UNIT_INVENTORY_CHANGED fires for every
 -- group member, so a raid's gear swaps would otherwise all reach the handler).
 -- Run from the repo root: lua Tools/regression/test-equipment-reminder.lua
-local f = assert(io.open(arg[1] or "QoL/EquipmentReminder.lua", "rb"))
+local f = assert(io.open(arg[1] or "NaowhForever_QoL/Loot/EquipmentReminder.lua", "rb"))
 local source = f:read("*a"); f:close()
 
 local checks = 0

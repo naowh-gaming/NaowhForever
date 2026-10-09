@@ -1,4 +1,4 @@
--- SettingsPage.lua: the Inspect Panel's card on QoL > Character.
+-- SettingsPage.lua: the Inspect Panel's card on BiS List > Character.
 local ns = _G.NaowhForever
 
 local IP = ns.InspectPanel
@@ -38,7 +38,7 @@ if ns.FEATURE_BADGES == BADGES_LIVE then
         help = "Their supporter badge in the window's corner, if they have one." })
 end
 
-Settings.Page("QoL/Character", S):Card({
+Settings.Page("BiS List/Character", S):Card({
     id = "inspectPanel", name = "Inspect Panel", order = 15, switch = "inspectPanel", store = S,
     help = "The inspect window in the BiS List's look, with their score, gear check, talents and history.",
     summary = Summary,

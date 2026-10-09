@@ -69,7 +69,7 @@ local env = setmetatable({
     GetPlayerFacing = function() return facing end,
     wipe = function(t) for k in pairs(t) do t[k] = nil end return t end,
 }, { __index = _G })
-local chunk = assert(loadstring(Read("QoL/TownMap.lua")))
+local chunk = assert(loadstring(Read("NaowhForever_QoL/Interface/TownMap.lua")))
 setfenv(chunk, env)
 chunk()
 
@@ -146,7 +146,7 @@ Check(mini.scripts.OnUpdate == nil, "back on while standing still, nothing runs"
 settings.townMinimap = false
 boot.scripts.OnEvent()
 
-Check(Read("QoL/QoL.lua"):find("townMinimap = true", 1, true), "Minimap mailboxes start on")
-Check(Read("QoL/QoL.lua"):find("townMinimapSpirit = true", 1, true), "Minimap spirit healers start on")
+Check(Read("Core/Settings.lua"):find("townMinimap = true", 1, true), "Minimap mailboxes start on")
+Check(Read("Core/Settings.lua"):find("townMinimapSpirit = true", 1, true), "Minimap spirit healers start on")
 
 print(("test-town-minimap: %d checks passed"):format(checks))

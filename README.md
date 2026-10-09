@@ -124,7 +124,7 @@ The code only has your region and your characters' IDs. No names, nothing else.
 
 ### Adding staff (maintainers)
 
-Staff are in `Badges/BadgesStaff.lua`, by region and then character ID. The
+Staff are in `Core/Badges/Staff.lua`, by region and then character ID. The
 number before the `:` in the code is the region. Forever has its own region numbers, not
 retail's 1 to 5, so always copy it from the code. For `90:Player-4613-006EB819`:
 
@@ -135,7 +135,7 @@ retail's 1 to 5, so always copy it from the code. For `90:Player-4613-006EB819`:
 ```
 
 Tiers are `naowh`, `developer` and `moderator`; `title` is optional. Add one line per
-character in the code. Don't edit `Badges/BadgesPatrons.lua`: the patron sync
+character in the code. Don't edit `Core/Badges/Patrons.lua`: the patron sync
 writes it. Staff can check a badge with
 `/nf badges preview [naowh|developer|moderator|legendary]` and `/nf badges toast`.
 
@@ -158,7 +158,7 @@ addon, site or tool against its license or terms. See
 For maintainers. A release is one click:
 
 1. Check that everything for the release is merged into `main`. On an up-to-date `main`,
-   `GH_REPO=nwh-gaming-ab/NaowhForever python Tools/release.py pending` (needs `gh`) prints
+   `GH_REPO=nwh-gaming-ab/NaowhForever python Tools/release/release.py pending` (needs `gh`) prints
    `## Unreleased` as the release will write it, with the `## Changelog` lines from the
    merged PRs' descriptions; fix a line by editing that PR's description.
 2. Open **Actions > Release > Run workflow** and keep the branch on `main`.

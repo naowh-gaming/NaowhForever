@@ -351,7 +351,7 @@ local function Source(path)
     f:close()
     return text
 end
-local qol = Source("QoL/QoL.lua")
+local qol = Source("Core/Settings.lua")
 local switches = Source("Core/Features.lua")
 check("its defaults: off, sharing on, by score, the gear view", qol:find("groupInspect = F.groupInspect,", 1, true)
     and switches:find("groupInspect = false,", 1, true) and switches:find("groupInspectShare = true,", 1, true)
@@ -378,7 +378,7 @@ check("the key binding and the window's opacity", pageCards.binding.rows[1].bind
 check("the banner says you are not in a group", banner.headline() == "Not in a group" and banner.detail():find("preview"))
 check("nothing hooks the unit menus while off", #menus.modified == 0)
 
-local core = Source("Core/Modules.lua")
+local core = Source("Core/Options/Modules.lua")
 local list = assert(core:match("local MODULES = (%b{})"))
 local MODULES = assert(loadstring("return " .. list))()
 local module
@@ -400,7 +400,7 @@ check("its window from /nfgroup, the Top Bar and its minimap button", module.com
     and module.short == "Group" and module.open == "ToggleGroupInspect" and module.icon ~= nil
     and module.navIcon == "group" and module.tabs[1].name == "Settings")
 do
-    local chunk = assert(Source("Core/Launchers.lua"):match("(local LOGO = .*)"))
+    local chunk = assert(Source("Core/Options/Launchers.lua"):match("(local LOGO = .*)"))
     local objects, opened, event = {}, nil, nil
     local frame = { SetScript = function(_, _, fn) event = fn end, RegisterEvent = NOTHING, UnregisterEvent = NOTHING }
     local libs = {

@@ -61,7 +61,7 @@ local function Load(account)
     }, { __index = _G })
     env._G = env
     for _, path in ipairs({ "Core/Core.lua", "Shared/Shared.lua", "Shared/Style.lua",
-        "Core/Widgets.lua" }) do
+        "Core/Options/Widgets.lua" }) do
         local chunk = assert(loadstring(Read(path), path))
         setfenv(chunk, env)
         chunk("NaowhForever", env.NaowhForever)

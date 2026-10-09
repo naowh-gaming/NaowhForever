@@ -1,6 +1,0 @@
-<Ui xmlns="http://www.blizzard.com/wow/ui/">
-    <!-- Badges.xml: the staff and patron lists, then the badges that read them. -->
-    <Script file="BadgesStaff.lua"/>
-    <Script file="BadgesPatrons.lua"/>
-    <Script file="Badges.lua"/>
-</Ui>

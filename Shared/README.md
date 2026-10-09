@@ -13,51 +13,58 @@ Shared/
                    and how long ago a time was (Shared.Ago)
   Style.lua        the house look: colors (BiS stars, worn green, looks, red and warning orange), icons, sizes
   Data/            data only, generated; never edited by hand
-    Forever.lua      what is new in WoW Forever, by ID (Shared.ForeverNew), from Tools/build_forever_new.py
+    Forever.lua      what is new in WoW Forever, by ID (Shared.ForeverNew), from Tools/build/forever_new.py
     ItemFacts.lua    each dungeon item's class, subclass, item level, required level and quality before the
-                     client loads it (Shared.ItemFacts), from Tools/build_journal.py: the Journal's loot,
+                     client loads it (Shared.ItemFacts), from Tools/build/journal.py: the Journal's loot,
                      the BiS List's levels and the Naowh Score's best read it
-    FactionItems.lua the same for the factions' rewards, added to it, from Tools/build_factions.py
+    FactionItems.lua the same for the factions' rewards, added to it, from Tools/build/factions.py
   Decode.lua       a pasted import string read back as plain data, with size, depth and bomb caps, and
                    outside text cleaned for display (Decode.String, Decode.Text)
-  Items.lua        item helpers: an ID from a link or URL, its name and quality color, In Bag and In Bank,
+  Game/Items.lua   item helpers: an ID from a link or URL, its name and quality color, In Bag and In Bank,
                    your loot lines, waiting on item data, the items the server would not send
-  Gear.lua         gear helpers on Shared.Items: gear slots, what fits where, what you wear, weapons in
+  Game/Gear.lua    gear helpers on Shared.Items: gear slots, what fits where, what you wear, weapons in
                    short ("1h Sword"), what a class can use (ns.ClassCanUse)
-  Bags.lua         the item buttons in your bags, the game's and EllesmereUI's, for the marks
+  Game/Bags.lua    the item buttons in your bags, the game's and EllesmereUI's, for the marks
                    painted on them (Bag Marks, Scrap Marker)
-  Roster.lua       our part of a player's tooltip in the Guild & Communities and Friends lists (Badges, Naowh Score)
-  Places.lua       zones by name, and showing one on the world map
-  Played.lua       the character's /played time, asked for once with the chat print muted (XP Bar, XP per Hour)
-  Parts.lua        the small parts: icons in text (Parts.Inline), smooth textures, hover cards (Parts.Tip,
+  Game/Consumables.lua your best food and drink in your bags (ns.BestFoodAndDrink), and the healthstones and
+                   healing potions, best first (ns.HEALTHSTONES, ns.HEALING_POTIONS): QoL's Food & Drink
+                   Bar, the Macros' NF Food and NF Health, and Aura Buffs' low health reminder
+  Game/Roster.lua  our part of a player's tooltip in the Guild & Communities and Friends lists (Badges, Naowh Score)
+  Game/Places.lua  zones by name, and showing one on the world map
+  Game/Towns.lua   town service NPCs by world map (ns.TownNPCs) and the capitals (ns.TownCapitals), by hand:
+                   QoL's Map Pins, the Training Planner's trainers and Professions' rank alerts read it
+  Game/Played.lua  the character's /played time, asked for once with the chat print muted (XP Bar, XP per Hour)
+  UI/Parts.lua     the small parts: icons in text (Parts.Inline), smooth textures, hover cards (Parts.Tip,
                    Parts.TipLines), the chevron, links, icon buttons, a short label in a pill of its color
                    (Parts.Pill, Parts.SetPill: Group Inspect's "NF"), the worn bar, the Wowhead copy card
-  Marks.lua        an item's marks: rank stars and lines, the upgrade line, Forever's mark, the item icon,
+  UI/Marks.lua     an item's marks: rank stars and lines, the upgrade line, Forever's mark, the item icon,
                    its slot marks (item level, star, Forever's mark, upgrade arrow) and an atlas badge on
                    its top corner (Parts.ItemBadge: Bag Space's clock and quest "!")
-  Text.lua         text made once and kept: counts ("3/10"), money with its coins (Parts.Coins; compact,
+  UI/Text.lua      text made once and kept: counts ("3/10"), money with its coins (Parts.Coins; compact,
                    its largest coin only), plain where-lines, numbers lined up to the pixel (Parts.Cells),
                    and a row of labels packed or spread evenly (Parts.LabelRow)
-  Hud.lua          the HUD look: a HUD line's shadow, font, size and outline (Parts.HudText, Parts.HudFont),
+  UI/Hud.lua       the HUD look: a HUD line's shadow, font, size and outline (Parts.HudText, Parts.HudFont),
                    a HUD card's background: the card, a soft fade or none (Parts.HudBackdrop), a window's
                    soft drop shadow (Parts.Shadow), and a progress line that holds still (Parts.ProgressLine)
-  Timer.lua        a timer line the client runs down by itself (Parts.TimerLine), its short time text
+  UI/Timer.lua     a timer line the client runs down by itself (Parts.TimerLine), its short time text
                    (Parts.ShortTime), and stopping any timer bar (Parts.StopTimer)
-  Share.lua        sharing a line in chat or on a copy card (Parts.ShareMenu), and a spot on the map with
+  UI/Share.lua     sharing a line in chat or on a copy card (Parts.ShareMenu), and a spot on the map with
                    its pin link (Parts.SharePlace)
-  Panels.lua       a window's backdrop and its cards (Parts.Backdrop), the panel a view sits in, and the
+  UI/CopyCard.lua  the copy cards: an ID with its Wowhead links (ns.ShowCopyCard), or any line
+                   (ns.ShowCopyLine)
+  UI/Panels.lua    a window's backdrop and its cards (Parts.Backdrop), the panel a view sits in, and the
                    side panel that opens beside a window
-  Window.lua       a window: the frame, its size grip, the title bar with its logo, icons and opacity
+  UI/Window.lua    a window: the frame, its size grip, the title bar with its logo, icons and opacity
                    slider, the link back to the window it was opened from, and the footer; on the
                    Classic+ skin its trim (Parts.ClassicTrim), title plate (Parts.TitlePlate) and a
                    box's bronze line (Parts.ClassicBox)
-  Tabs.lua         a switch of parts side by side (Parts.Tabs), and a search box (Parts.SearchBox)
-  SettingsCard.lua a module's card at the top of its settings page: the logo, a line or two, and the
+  UI/Tabs.lua      a switch of parts side by side (Parts.Tabs), and a search box (Parts.SearchBox)
+  UI/SettingsCard.lua a module's card at the top of its settings page: the logo, a line or two, and the
                    button that opens its window
-  Tracker.lua      a tracker's small window (Parts.TrackerPanel), and a list row's bands
+  UI/Tracker.lua   a tracker's small window (Parts.TrackerPanel), and a list row's bands
                    (Parts.RowBands: stripe, hover, the line under it)
-  View.lua         the row engine: pooled rows, cards, the card grid, one redraw per burst
-  Kinds.lua        the rows every page has: section title (shorter with view.tightTitles), note, card, and
+  View/View.lua    the row engine: pooled rows, cards, the card grid, one redraw per burst
+  View/Kinds.lua   the rows every page has: section title (shorter with view.tightTitles), note, card, and
                    an item in a list you keep (icon, name in its quality color, a line under it, a tag, a
                    value, an X)
   Settings/
@@ -162,8 +169,8 @@ Each file uses only the ones above it in `Shared.xml`. Every part sits on `ns.Sh
   lower; `icons[i]` is its texture, false for none. Anchor the row by its left edge.
   Refilling it with the same strings makes no garbage.
 - **Copying:** `Parts.CopyWowhead(kind, id, name)` opens the copy card on an item, quest or
-  NPC's Wowhead link; a menu's Copy uses `ns.ShowCopyLine(title, text, icon)` (QoL's Global
-  Copy) for any line.
+  NPC's Wowhead link; a menu's Copy uses `ns.ShowCopyLine(title, text, icon)` (`CopyCard.lua`)
+  for any line. `ns.ShowCopyCard(kind, label, id, title, mode, onClose)` opens the ID card itself.
 - **Text on the game world:** `Parts.HudText(fontString, shadow)` gives a HUD line (the XP
   Ticker, an alert) the house look: no outline, a soft drop shadow (`HUD_SHADOW_RGB`,
   `HUD_SHADOW_ALPHA`, `HUD_SHADOW_X`, `HUD_SHADOW_Y` in `Style.lua`). Pass `shadow` false to
@@ -178,7 +185,7 @@ Each file uses only the ones above it in `Shared.xml`. Every part sits on `ns.Sh
   at `HUD_CARD_ALPHA` with the 1px black edge (`backdrop.fill`, `backdrop.border`). Soft has no
   edge: a fade in the theme's background, `HUD_SOFT_ALPHA` behind the text and clear
   `HUD_SOFT_FADE` further out, `HUD_SOFT_INSET` of it inside the frame. It is nine pieces of one
-  round texture (`Style.SOFT_SHADE`, from `Tools/make_media.py`), so its corners are round and no
+  round texture (`Style.SOFT_SHADE`, from `Tools/media/make_media.py`), so its corners are round and no
   edge shows, made the first time Soft is picked (`backdrop.soft`). None shows nothing. `opts`, all
   optional: `alpha` (the card's fill), `color` (`T.bg`), `softAlpha`, `fade`, `inset` and `mode`.
   Pass the mode to `Parts.HudText` for each line on it; the choice row's values are
@@ -216,7 +223,7 @@ Each file uses only the ones above it in `Shared.xml`. Every part sits on `ns.Sh
   `Played.LeveledUp(level, total)` with `hooksecurefunc` to hear the answer and each ding. A /played
   the player types updates it too. The XP Bar and XP per Hour use it.
 - **Forever's mark:** `Parts.IsForever(kind, id)` says whether Wowhead's Forever database has
-  it as new in Forever (`Data/Forever.lua`, generated by `Tools/build_forever_new.py`; do not
+  it as new in Forever (`Data/Forever.lua`, generated by `Tools/build/forever_new.py`; do not
   edit by hand).
 
 ## The rule: always use these
@@ -258,7 +265,7 @@ What a comment in the code used to say, in short. The house rules behind it are 
 - `PICKED_RGB` (a boss picked on a dungeon map) is the game's quest gold until the player picks
   an Accent of their own. `GUIDE_RGB` (the HUD Editor's guides) is amber so it never reads as
   the accent's selection.
-- The addon's own icons in `Media/` are white, so they take any color; `Tools/make_media.py`
+- The addon's own icons in `Core/Media/` are white, so they take any color; `Tools/media/make_media.py`
   draws them. `ROUND` is 128px: load it "TRILINEAR" or it is jagged small. `FOREVER` is 32 by 16;
   `ELBOW` is 8 by 8 and drawn at that size.
 - HUD text without the card: Soft fades from `HUD_SOFT_ALPHA` behind the text to clear over

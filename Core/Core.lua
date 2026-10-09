@@ -2,7 +2,7 @@
 local ADDON_NAME = ...
 
 local MODULE_KEY = "NaowhForever"
-local MEDIA = "Interface\\AddOns\\NaowhForever\\Media\\"
+local MEDIA = "Interface\\AddOns\\NaowhForever\\Core\\Media\\"
 local NAOWH_FONT = MEDIA .. "Fonts\\Naowh.ttf"
 local NAOWH_GRADIENT = MEDIA .. "NaowhGradient.tga"
 local PRINT_LOGO_PATH = MEDIA .. "LogoAddon.tga"
