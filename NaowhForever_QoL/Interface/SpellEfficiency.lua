@@ -7,6 +7,8 @@ local GetSpellBonusHealing = GetSpellBonusHealing
 local GetSpellBonusDamage = GetSpellBonusDamage
 local UnitLevel = UnitLevel
 local floor = math.floor
+local find, sub = string.find, string.sub
+local tonumber = tonumber
 
 local S = ns.QoLSettings
 local T = ns.THEME
@@ -19,6 +21,9 @@ local PART_START, PART_SIZE = 4, 9
 local KIND, DIRECT, DIRECT_PER_LEVEL, DIRECT_COEFFICIENT = 0, 1, 2, 3
 local TICK, TICK_PER_LEVEL, TICK_COEFFICIENT, TICKS, SECONDS = 4, 5, 6, 7, 8
 local HEAL, DAMAGE = 1, 0
+local DATA_SEPARATOR = ","
+local DATA_NUMBER = "^%-?%d+%.?%d*$"
+local COLOR_KEY = "spellEfficiencyColor"
 local LOW_LEVEL_CAP, LOW_LEVEL_STEP = 20, 0.0375
 local MS_PER_SECOND = 1000
 local MANA = Enum.PowerType.Mana
@@ -59,6 +64,7 @@ local NUMBER_FORMATS = {}
 for decimals = 0, DECIMALS_MAX do NUMBER_FORMATS[decimals] = "%." .. decimals .. "f" end
 
 local hooked
+local decoded = {}
 local decoratedAt = setmetatable({}, { __mode = "k" })
 local decoratedText = setmetatable({}, { __mode = "k" })
 
@@ -72,6 +78,48 @@ end
 
 local function Readable(v)
     return not Secret(v) and (not canaccessvalue or canaccessvalue(v))
+end
+
+local function ReadableTable(v)
+    return Readable(v) and not (issecrettable and issecrettable(v)) and type(v) == "table"
+end
+
+local function Decode(text)
+    if type(text) ~= "string" then return false end
+    local entry, count, at = {}, 0, 1
+    repeat
+        local stop = find(text, DATA_SEPARATOR, at, true)
+        local field = sub(text, at, (stop or 0) - 1)
+        if not find(field, DATA_NUMBER) then return false end
+        count = count + 1
+        entry[count] = tonumber(field)
+        at = stop and stop + 1
+    until not at
+    if count <= MAX_LEVEL or (count - MAX_LEVEL) % PART_SIZE ~= 0 then return false end
+    for part = PART_START, count, PART_SIZE do
+        local kind = entry[part + KIND]
+        if kind ~= HEAL and kind ~= DAMAGE then return false end
+    end
+    return entry
+end
+
+local function Entry(spellID)
+    local entry = decoded[spellID]
+    if entry == nil then
+        local text = Data[spellID]
+        if text == nil then return nil end
+        entry = Decode(text)
+        decoded[spellID] = entry
+    end
+    return entry or nil
+end
+
+local function LineColor()
+    local color = S.Get(COLOR_KEY)
+    if type(color) == "table" and type(color.r) == "number" and type(color.g) == "number" and type(color.b) == "number" then
+        return color
+    end
+    return S.Default(COLOR_KEY)
 end
 
 local function Shows(kind)
@@ -135,7 +183,7 @@ end
 
 local function ManaCost(spellID)
     local costs = GetSpellPowerCost(spellID)
-    if not Readable(costs) or type(costs) ~= "table" then return nil end
+    if not ReadableTable(costs) then return nil end
     for i = 1, #costs do
         local cost = costs[i]
         local powerType, amount = cost.type, cost.cost
@@ -147,7 +195,7 @@ end
 
 local function CastMs(spellID)
     local info = GetSpellInfo(spellID)
-    if not info then return nil end
+    if not ReadableTable(info) then return nil end
     local castMs = info.castTime
     if not Readable(castMs) or type(castMs) ~= "number" then return nil end
     return castMs
@@ -175,7 +223,7 @@ local function AlreadyDecorated(tooltip, text)
 end
 
 local function AddLines(tooltip, spellID)
-    local entry = Data[spellID]
+    local entry = Entry(spellID)
     if not entry then return end
     local mana = ManaCost(spellID)
     if not mana then return end
@@ -184,7 +232,7 @@ local function AddLines(tooltip, spellID)
     local level = UnitLevel("player")
     if not Readable(level) then return end
     local gain = Gain(entry, level)
-    local color = S.Get("spellEfficiencyColor")
+    local color = LineColor()
     local first
     for at = PART_START, #entry, PART_SIZE do
         local kind = entry[at + KIND]
@@ -207,7 +255,7 @@ local function AddLines(tooltip, spellID)
 end
 
 local function SpellOf(data)
-    if not Readable(data) or (issecrettable and issecrettable(data)) or type(data) ~= "table" then return nil end
+    if not ReadableTable(data) then return nil end
     local id = data.id
     if not Readable(id) or type(id) ~= "number" then return nil end
     return id
@@ -286,7 +334,7 @@ local function NewPreview(stage)
 end
 
 local function PaintPreview(shot)
-    local color = S.Get("spellEfficiencyColor")
+    local color = LineColor()
     for i = 1, #SAMPLES do
         local sample, mock = SAMPLES[i], shot.mocks[i]
         mock.name:SetText(sample.name)

@@ -60,6 +60,7 @@ ELSEWHERE_AURAS = {42, 231, 226}
 PLACEHOLDER = 1                  # a direct base of 1 with no bonus stands in for a scripted amount (Swiftmend)
 MS = 1000
 DECIMALS = 4
+SEPARATOR = ","                  # between an entry's numbers in its string
 COLUMNS = {
     "SkillLine": ("ID", "CategoryID"),
     "SkillLineAbility": ("SkillLine", "Spell", "ClassMask"),
@@ -72,7 +73,8 @@ COLUMNS = {
     "SpellDuration": ("ID", "Duration"),
 }
 # An entry's fields, in order, then one or two parts of PART_FIELDS each (a damage part and a
-# heal part when the spell does both to its target). SpellEfficiency.lua reads them by place.
+# heal part when the spell does both to its target), written as one string (lua_entry).
+# SpellEfficiency.lua reads them by place.
 FIELDS = ("school", "level", "maxLevel")
 PART_FIELDS = ("heal", "direct", "directPerLevel", "directCoefficient", "tick", "tickPerLevel",
                "tickCoefficient", "ticks", "seconds")
@@ -245,10 +247,13 @@ def lua_number(value):
 
 
 def lua_entry(found):
+    """The entry as one quoted string of its numbers joined by SEPARATOR: a string per spell
+    holds far less memory at login than a table per spell, and SpellEfficiency.lua splits a
+    spell's string into its table the first time that spell's tooltip needs it."""
     values = [found[field] for field in FIELDS]
     for part in found["parts"]:
         values += [part[field] for field in PART_FIELDS]
-    return "{ " + ", ".join(lua_number(value) for value in values) + " }"
+    return '"' + SEPARATOR.join(lua_number(value) for value in values) + '"'
 
 
 def lua(found, build):

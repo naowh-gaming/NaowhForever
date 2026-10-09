@@ -1,8 +1,9 @@
 -- Run with Lua 5.1 from the repository root: Mana Efficiency (QoL > Interface > Tooltips) on stubs.
--- The generated data's shape, the line's math (direct, periodic, hybrid, both on one target, spell
--- power and its sub-20 penalty, cast against instant), mana-only gating, secrets failing to no line,
--- off meaning no hook, every option's effect on the line, the card's preview and Preview Tooltip,
--- and the card's rows, defaults and search.
+-- The generated data's shape (one string per spell), the line's math (direct, periodic, hybrid, both
+-- on one target, spell power and its sub-20 penalty, cast against instant), mana-only gating, secrets
+-- and malformed entries failing to no line, no garbage per hover once a spell is decoded, off meaning
+-- no hook, every option's effect on the line, a bad imported color falling back to the default, the
+-- card's preview and Preview Tooltip, and the card's rows, defaults and search.
 local checks = 0
 local function check(label, value) assert(value, label); checks = checks + 1 end
 
@@ -26,7 +27,11 @@ for id in source:gmatch("\n    %[(%d+)%] = ") do
 end
 check("the data lists a few hundred spells", count > 200)
 
-local secret = setmetatable({}, { __tostring = function() error("formatted a secret") end })
+local secret = setmetatable({}, {
+    __tostring = function() error("formatted a secret") end,
+    __index = function() error("indexed a secret") end,
+})
+local secretTable = {}
 local settings = {
     enabled = true, spellEfficiency = false, spellEfficiencyPerMana = true, spellEfficiencyPerSecond = true,
     spellEfficiencyPerManaSecond = false, spellEfficiencyStyle = "long", spellEfficiencyDecimals = 2,
@@ -57,7 +62,8 @@ local function Frame()
 end
 
 local posts, damageReads = {}, {}
-local costs, casts = {}, {}
+local costs, casts, infos = {}, {}, {}
+local spellInfo
 local power = { heal = 0 }
 local level, statsSecret = 60, false
 local tooltip, refTip, shopTip = Frame(), Frame(), Frame()
@@ -69,7 +75,10 @@ end
 function tooltip:SetOwner(owner) self.owner = owner; self.lines = {}; self.shown = false end
 function tooltip:SetSpellByID(id) self.lines = {}; Post(self, { type = 1, id = id }) end
 
-local S = { Get = function(k) return settings[k] end, Set = function(k, v) settings[k] = v end }
+local S = {
+    Get = function(k) return settings[k] end, Set = function(k, v) settings[k] = v end,
+    Default = function(k) return defaults[k] end,
+}
 local ns = {
     QoLSettings = S, Apply = noop,
     THEME = { muted = { r = 0.6, g = 0.6, b = 0.6 }, fg = { r = 1, g = 1, b = 1 }, accent = { r = 0, g = 0.5, b = 1 } },
@@ -84,7 +93,13 @@ local env = {
     TooltipDataProcessor = { AddTooltipPostCall = function(kind, fn) if kind == 1 then posts[#posts + 1] = fn end end },
     C_Spell = {
         GetSpellPowerCost = function(id) return costs[id] end,
-        GetSpellInfo = function(id) return casts[id] and { castTime = casts[id] } end,
+        GetSpellInfo = function(id)
+            if spellInfo ~= nil then return spellInfo end
+            if casts[id] == nil then return nil end
+            local info = infos[id] or {}
+            infos[id], info.castTime = info, casts[id]
+            return info
+        end,
     },
     C_Secrets = { ShouldUnitStatsBeSecret = function() return statsSecret end },
     GetSpellBonusHealing = function() return power.heal end,
@@ -93,7 +108,7 @@ local env = {
     GetMouseFoci = function() return {} end,
     issecretvalue = function(v) return rawequal(v, secret) end,
     canaccessvalue = function(v) return not rawequal(v, secret) end,
-    issecrettable = function(v) return rawequal(v, secret) end,
+    issecrettable = function(v) return rawequal(v, secret) or rawequal(v, secretTable) end,
     hooksecurefunc = function(t, k, fn) local old = t[k]; t[k] = function(...) old(...); return fn(...) end end,
 }
 setmetatable(env, { __index = function(_, key)
@@ -110,12 +125,23 @@ for _, path in ipairs({ DATA, "NaowhForever_QoL/Interface/SpellEfficiency.lua" }
     chunk()
 end
 
+local function Fields(text)
+    local entry, n = {}, 0
+    for field in (text .. ","):gmatch("([^,]*),") do
+        n = n + 1
+        entry[n] = field:match("^%-?%d+%.?%d*$") and tonumber(field)
+    end
+    return entry, n
+end
+
 local Data = ns.SpellEfficiencyData
-for id, entry in pairs(Data) do
+for id, text in pairs(Data) do
     check("spell IDs are whole numbers", type(id) == "number" and id > 0 and id == math.floor(id))
-    check(id .. " has its fields and whole parts", #entry > FIELDS and (#entry - FIELDS) % PART == 0)
-    for i = 1, #entry do check(id .. " holds numbers only", type(entry[i]) == "number") end
-    for at = FIELDS + 1, #entry, PART do
+    check(id .. " is one string, not a table built at login", type(text) == "string")
+    local entry, n = Fields(text)
+    check(id .. " has its fields and whole parts", n > FIELDS and (n - FIELDS) % PART == 0)
+    for i = 1, n do check(id .. " holds numbers only", type(entry[i]) == "number") end
+    for at = FIELDS + 1, n, PART do
         check(id .. " is a heal or damage", entry[at] == 0 or entry[at] == 1)
         check(id .. " has whole ticks", entry[at + 7] == math.floor(entry[at + 7]))
     end
@@ -176,10 +202,10 @@ check("Frostbolt 1 with no frost damage", Show(116)[1][1] == "0.84 damage per ma
 power[5] = 100
 check("Frostbolt 1 with 100 frost damage", Show(116)[1][1] == "1.49 damage per mana  ||  25 per second")
 
-Data[900001] = { 3, 60, 0, 0, 100, 0, 0, 0, 0, 0, 0, 0 }
+Data[900001] = "3,60,0,0,100,0,0,0,0,0,0,0"
 costs[900001], casts[900001] = { { type = 0, cost = 50 } }, 0
 check("an instant spell with no periodic part has no per second", Show(900001)[1][1] == "2.00 damage per mana")
-Data[900002] = { 2, 60, 0, 0, 40, 0, 0, 0, 0, 0, 0, 0, 1, 20, 0, 0, 0, 0, 0, 0, 0 }
+Data[900002] = "2,60,0,0,40,0,0,0,0,0,0,0,1,20,0,0,0,0,0,0,0"
 costs[900002], casts[900002] = { { type = 0, cost = 10 } }, 1000
 lines = Show(900002)
 check("both on one target: a damage line and a heal line", #lines == 2
@@ -195,7 +221,34 @@ costs[2050] = { { type = 0, cost = 30 } }
 casts[2050] = secret
 check("a secret cast time, nothing", #Show(2050) == 0)
 casts[2050] = 1500
+spellInfo = secret
+check("secret spell info, nothing (never indexed)", #Show(2050) == 0)
+spellInfo = secretTable
+check("a secret spell info table, nothing", #Show(2050) == 0)
+spellInfo = 7
+check("spell info that is not a table, nothing", #Show(2050) == 0)
+spellInfo = nil
+check("readable spell info again: the line", Show(2050)[1][1] == "1.76 healing per mana  ||  35 per second")
 check("a spell with no data gets nothing", #Show(12345) == 0)
+
+local MALFORMED = {
+    [900010] = "3,60,0,0,100,0,0,0,0,0,0",
+    [900011] = "3,60,0",
+    [900012] = "3,60,0,0,abc,0,0,0,0,0,0,0",
+    [900013] = "3,60,0,0,100,0,0,0,0,0,0,0,",
+    [900014] = "3,60,0,0,,0,0,0,0,0,0,0",
+    [900015] = "3,60,0,2,100,0,0,0,0,0,0,0",
+    [900016] = "3,60,0,0,inf,0,0,0,0,0,0,0",
+    [900017] = "3,60,0,0,0x10,0,0,0,0,0,0,0",
+    [900018] = "",
+    [900019] = { 3, 60, 0, 0, 100, 0, 0, 0, 0, 0, 0, 0 },
+}
+for id, text in pairs(MALFORMED) do
+    Data[id] = text
+    costs[id], casts[id] = { { type = 0, cost = 50 } }, 0
+    check("malformed entry " .. id .. ": no line, no error", #Show(id) == 0)
+    check("malformed entry " .. id .. " again: still nothing", #Show(id) == 0)
+end
 
 statsSecret = true
 check("stats secret: nothing rather than a guess", #Show(2050) == 0)
@@ -206,6 +259,37 @@ statsSecret = false
 power.heal = secret
 check("a secret healing bonus, nothing", #Show(2050) == 0)
 power.heal = 0
+
+local HOVERS = 200
+local AddLine, NumLines = tooltip.AddLine, tooltip.NumLines
+local added = 0
+tooltip.AddLine = function() added = added + 1 end
+tooltip.NumLines = function() return added end
+local function Garbage(data, runs, warm)
+    collectgarbage("collect")
+    collectgarbage("stop")
+    if warm then
+        added = 0
+        Post(tooltip, data)
+    end
+    local before = collectgarbage("count")
+    for _ = 1, runs do
+        added = 0
+        Post(tooltip, data)
+    end
+    local grown = collectgarbage("count") - before
+    collectgarbage("restart")
+    return grown
+end
+Data[900020] = "2,60,0,1,80,0,0,0,0,0,0,0"
+costs[900020], casts[900020] = { { type = 0, cost = 20 } }, 2000
+local fresh = { type = 1, id = 900020 }
+check("a spell's first hover decodes its entry (allocates)", Garbage(fresh, 1) > 0 and added == 1)
+check("later hovers of a decoded spell: no garbage", Garbage(fresh, HOVERS, true) == 0 and added == 1)
+check("hovering Lesser Heal again and again: no garbage", Garbage({ type = 1, id = 2050 }, HOVERS, true) == 0 and added == 1)
+check("hovering a malformed entry again: no garbage", Garbage({ type = 1, id = 900012 }, HOVERS, true) == 0 and added == 0)
+check("hovering a spell with no data: no garbage", Garbage({ type = 1, id = 12345 }, HOVERS, true) == 0 and added == 0)
+tooltip.AddLine, tooltip.NumLines = AddLine, NumLines
 
 Show(2050)
 Post(tooltip, { type = 1, id = 2050 })
@@ -248,6 +332,14 @@ settings.spellEfficiencyPerMana, settings.spellEfficiencyPerSecond = true, true
 settings.spellEfficiencyColor = { r = 1, g = 0.5, b = 0 }
 lines = Show(2050)
 check("the color setting colors the line", lines[1][2] == 1 and lines[1][3] == 0.5 and lines[1][4] == 0)
+local BROKEN_COLORS = { {}, { r = 1, g = 0.5 }, { r = "1", g = 0.5, b = 0 }, { r = 1, g = true, b = 0 }, { r = 1, g = 0.5, b = {} } }
+local fallback = defaults.spellEfficiencyColor
+for i, broken in ipairs(BROKEN_COLORS) do
+    settings.spellEfficiencyColor = broken
+    lines = Show(2050)
+    check("an imported color with a missing or bad channel (" .. i .. ") falls back to the default",
+        #lines == 1 and lines[1][2] == fallback.r and lines[1][3] == fallback.g and lines[1][4] == fallback.b)
+end
 settings.spellEfficiencyColor = defaults.spellEfficiencyColor
 settings.spellEfficiencyShow = "heal"
 check("Heals Only: a heal", #Show(2050) == 1)
@@ -295,6 +387,12 @@ settings.spellEfficiencyShow = "all"
 settings.spellEfficiencyColor = { r = 1, g = 0, b = 0 }
 studio.paint(shot, studio.states[1].key)
 check("preview: the color follows", heal.color[1] == 1 and heal.color[2] == 0)
+for i, broken in ipairs(BROKEN_COLORS) do
+    settings.spellEfficiencyColor = broken
+    studio.paint(shot, studio.states[1].key)
+    check("preview: a bad imported color (" .. i .. ") paints the default", heal.color[1] == fallback.r
+        and heal.color[2] == fallback.g and heal.color[3] == fallback.b and bolt.color[1] == fallback.r)
+end
 settings.spellEfficiencyColor = defaults.spellEfficiencyColor
 S.Set("spellEfficiency", false)
 studio.paint(shot, studio.states[1].key)
