@@ -162,6 +162,10 @@ local function OpenJournal()
     ns.OpenJournalWindow()
 end
 
+local function OpenTracker()
+    J.QuestTracker.Show(ForYou() or J.Dungeons()[1])
+end
+
 local function OnSettingChanged(key)
     if key == "enabled" then ns.UI:RefreshPage(true) end
 end
@@ -204,6 +208,7 @@ end
 
 local function DeclareTracker()
     local tracker = Settings.Page("Dungeon Journal/Quest Tracker", S)
+    tracker:Window({ text = "Open Quest Tracker", open = OpenTracker, headline = Headline, detail = Detail })
     tracker:Card({
         id = "quests", name = "Quests", order = ORDER_FIRST,
         help = "The quest tracker, and sharing dungeon quests with your group.",
