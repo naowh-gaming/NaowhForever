@@ -33,7 +33,7 @@ local SHOW_DELAY = 2
 local GLOW_EVENTS = { "ACTIONBAR_SLOT_CHANGED", "ACTIONBAR_PAGE_CHANGED", "UPDATE_BONUS_ACTIONBAR",
     "PLAYER_ENTERING_WORLD" }
 
-local TRAINING_PAGE = "Training Planner/Settings"
+local SETTINGS_PAGE = "QoL/Questing & Group"
 local TEXT_GLOW_RANKS, TEXT_GLOW, TEXT_RANKS, TEXT_LISTS =
     "Glows new abilities, offers rank swaps", "Glows new abilities", "Offers rank swaps", "Lists what you learned"
 local TEXT_NEW = "New Abilities"
@@ -531,8 +531,8 @@ local function TrainerSummary(store)
     return TEXT_LISTS
 end
 
-Settings.Page(TRAINING_PAGE):Card({
-    id = "trainer", name = "Trainer Popup", order = 30, switch = "trainerPopup", store = S,
+Settings.Page(SETTINGS_PAGE, S):Card({
+    id = "trainer", name = "Trainer Popup", order = 35, switch = "trainerPopup",
     help = "After visiting a trainer, a small window lists the abilities you just learned. Abilities from a "
         .. "tome or a quest show a moment after you learn them. Drag one from the window onto your bars.",
     summary = TrainerSummary,
