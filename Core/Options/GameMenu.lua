@@ -18,7 +18,7 @@ end
 
 local function Clicked()
     PlaySound(SOUNDKIT.IG_MAINMENU_OPTION)
-    if not InputUtil.IsGamepadUIEnabled() then HideUIPanel(GameMenuFrame) end
+    HideUIPanel(GameMenuFrame)
     ns.OpenOptionsWindow()
 end
 
@@ -44,7 +44,7 @@ local function IsOptions(text) return text == GAMEMENU_OPTIONS end
 
 local function Added(menu)
     button = nil
-    if not On() then return end
+    if not On() or CanAutoSetGamePadCursorControl(false) then return end
     button = MainMenuFrameMixin.AddButton(menu, Label(), Clicked)
 end
 

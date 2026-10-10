@@ -116,7 +116,7 @@ for _, name in ipairs({ "RegisterEvent", "RegisterUnitEvent", "UnregisterEvent",
     "SetFrameStrata", "SetScale", "SetMovable", "SetClampedToScreen", "EnableKeyboard", "SetPropagateKeyboardInput",
     "RegisterForDrag", "RegisterForClicks", "SetResizable", "SetResizeBounds", "SetNormalTexture", "SetHighlightTexture",
     "SetPushedTexture", "SetTexCoord", "SetTexelSnappingBias", "SetSnapToPixelGrid", "SetOrientation", "SetValueStep",
-    "SetObeyStepOnDrag", "EnableMouseWheel", "UpdateScrollChildRect", "SetToplevel", "Raise",
+    "SetObeyStepOnDrag", "EnableMouseWheel", "UpdateScrollChildRect", "SetToplevel",
     "SetBackdrop", "SetBackdropColor", "SetBackdropBorderColor", "SetHitRectInsets", "HighlightText",
     "StartMoving", "StopMovingOrSizing", "StartSizing" }) do methods[name] = function() end end
 function methods:SetThumbTexture(t) self.thumbTexture = t end

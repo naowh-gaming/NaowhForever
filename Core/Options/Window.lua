@@ -896,7 +896,6 @@ function ns.OpenOptionsWindow(pageName)
         ShowPage(currentPage)
     end
     window:Show()
-    window:Raise()
 end
 
 function ns.OpenFromOptions(open)
