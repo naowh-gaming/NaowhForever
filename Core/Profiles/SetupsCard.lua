@@ -43,7 +43,7 @@ Settings.Page(ns.SETUPS_PAGE, S):Card({
           get = function() return S.Get("preset") or "custom" end,
           set = function(key) if P[key] then ns.UsePreset(key) end end,
           tip = Tip,
-          help = "Minimalist has almost everything off; Recommended is Naowh's setup with the modules he uses on." },
+          help = "Minimalist has almost every setting off and skips the spoiler modules; Recommended is Naowh's setup with the modules he uses on." },
         { label = "Onboarding", buttonText = "Start", button = function() ns.ShowSetup() end,
           help = "Walks you through a profile, a skin and your modules." },
         { label = "Before Onboarding", buttonText = "Restore", button = Restore, hidden = NoBackup,

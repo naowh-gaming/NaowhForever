@@ -12,8 +12,11 @@
 -- INFO's modules, when a preset has them, are the module addons it turns on: applying it switches every
 -- other module off (Core/Onboarding/Setup.lua, Setup.PresetSwitches). Without them its switches decide.
 local INFO = {
-    minimalist = { order = 1, name = "Minimalist", about = "Almost everything off, to turn on what you want.",
-        modules = { "NaowhForever_QoL", "NaowhForever_BiS", "NaowhForever_DungeonJournal" } },
+    minimalist = { order = 1, name = "Minimalist", about = "Every module but Completo, Discovery and Group Inspect, with almost every setting off.",
+        modules = { "NaowhForever_QoL", "NaowhForever_DungeonJournal", "NaowhForever_BiS", "NaowhForever_Training",
+            "NaowhForever_GearSets", "NaowhForever_Blessings", "NaowhForever_Professions", "NaowhForever_Macros",
+            "NaowhForever_ActionBars", "NaowhForever_AuraBuffs", "NaowhForever_ThreatMeter", "NaowhForever_PvP",
+            "NaowhForever_TopBar", "NaowhForever_SwingTimer" } },
     recommended = { order = 2, name = "Recommended", about = "Naowh's recommended setup, with the modules he uses on." },
 }
 local NEW_INSTALL = "minimalist"

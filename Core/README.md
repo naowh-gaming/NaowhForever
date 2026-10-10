@@ -318,10 +318,10 @@ Onboarding
   onboarding or the old welcome never closed) and no `setupBefore` (no Apply yet). Anyone else starts
   on Keep mine, so opening it again changes nothing unless they pick something.
 - The modules step starts from the picked profile: a preset's `modules` list when it has one
-  (Minimalist: Quality of Life, BiS List and Dungeon Journal), else its switches, with the feature's
-  default for a switch it leaves out; Keep mine starts from what is on now (its addon enabled, for this
-  character in its own mode, and its switch on). A module on without what it needs (`needs` in
-  `Options/Modules.lua`) cannot run, so it starts off. Picking another profile starts the modules
+  (Minimalist: every module but Completo, Discovery and Group Inspect, which spoil what there is to
+  find), else its switches, with the feature's default for a switch it leaves out; Keep mine starts
+  from what is on now (its addon enabled, for this character in its own mode, and its switch on). A
+  module on without what it needs (`needs` in `Options/Modules.lua`) cannot run, so it starts off. Picking another profile starts the modules
   again; going back and forth keeps the flips. A flip on brings what it needs, a flip off takes
   what needs it (`ns.LinkedAddons`).
 - A preset's module list is defined once, in Presets.lua (from `Tools/build/presets.lua`'s INFO):
@@ -331,7 +331,7 @@ Onboarding
   skin), applies the profile as the Setups card does (`ns.ApplyPreset`, without its confirms), sets the
   skin, then each module: on enables its addon and switches it on (through its store when loaded, so
   it starts at once); off disables its addon if it is on, or, after a preset, if it is enabled at all,
-  so Minimalist leaves exactly its three. Keep mine leaves an enabled module that is switched off as
+  so Minimalist leaves exactly its list. Keep mine leaves an enabled module that is switched off as
   it is.
 - A reload is asked only when something needs one: a profile or a skin applied, a module turned on
   whose addon is not loaded, or a loaded one turned off; else the done line is printed. The summary
