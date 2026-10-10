@@ -4,7 +4,6 @@ local ns = _G.NaowhForever
 ns.Journal.AddDungeon("Dalaran", {
     name = "City of Dalaran",
     new = true,
-    closed = true,
     zone = "Alterac Mountains", territory = "Contested",
     entrance = { map = 1416, x = 21.7, y = 68.3 },
     wings = {
@@ -12,8 +11,8 @@ ns.Journal.AddDungeon("Dalaran", {
             { npc = 247126, name = "Atrexis the Grave Knight", model = 145787, encounters = { 3311 } },
             { npc = 245999, name = "Arcane Anomaly", model = 129891, encounters = { 3298 } },
             { npc = 246003, name = "Fel Ancient", model = 129894, encounters = { 3299 } },
-            { npc = 246017, name = "Unstable Sentinel", model = 129954, encounters = { 3302 } },
-            { npc = 246020, name = "Shade of the Archmage", model = 130061, encounters = { 3303 } },
+            { npc = 246017, name = "Unstable Sentinel", model = 129954, encounters = { 3302 }, loot = { 273046 } },
+            { npc = 246020, name = "Shade of the Archmage", model = 130061, encounters = { 3303 }, loot = { 273052 } },
             { npc = 247032, name = "Lyn the Ignored", model = 130235, rare = true, encounters = { 3310 } },
             { npc = 246931, name = "Mana Wraith", model = 130220, optional = true, encounters = { 3312 } },
             { npc = 246008, name = "Mana Devourer", model = 129895, optional = true, encounters = { 3300 } },
