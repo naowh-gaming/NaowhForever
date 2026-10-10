@@ -61,6 +61,7 @@ local nav = { frame = nil, valid = true, clamped = false, distance = 312, x = 11
 local navFrame = NewFrame("NavFrame")
 function navFrame:GetCenter() return nav.x, nav.y end
 local userWaypoint, cleared, superCleared = nil, 0, 0
+local playerMap = 88
 local timers, played, printed = {}, {}, {}
 local speed = 0
 local tracking = 1   -- Enum.SuperTrackingType.UserWaypoint
@@ -121,6 +122,7 @@ local env = setmetatable({
         ClearAllSuperTracked = function() superCleared = superCleared + 1 end,
     },
     C_Map = {
+        GetBestMapForUnit = function() return playerMap end,
         GetUserWaypoint = function() return userWaypoint end,
         ClearUserWaypoint = function() userWaypoint = nil; cleared = cleared + 1 end,
         GetMapInfo = function() return { name = "Thunder Bluff" } end,
@@ -300,6 +302,13 @@ local was = nav.distance
 nav.distance = 30
 driver.scripts.OnUpdate()
 Check(pin:IsShown() and cleared == clearedBefore, "30 yards out it is still up and nothing is cleared")
+-- Next to a stop on the way (a zone's exit), which lies on another map than the waypoint, it is not the spot.
+playerMap = 1411
+nav.distance = 4
+driver.scripts.OnUpdate()
+Check(pin.card.dist.text ~= "Arrived" and cleared == clearedBefore and #played == playedBefore,
+    "next to a stop on another map the waypoint is left alone")
+playerMap = 88
 nav.distance = 4
 driver.scripts.OnUpdate()
 Check(pin.card.dist.text == "Arrived" and #played == playedBefore + 1, "within 5 yards the arrival shows, with its sound")

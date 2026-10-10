@@ -373,6 +373,11 @@ local function PlaceOnSpot(nx, ny, scale)
     lastX, lastY = nx, ny + lift * scale
 end
 
+local function OnWaypointMap()
+    local point = C_Map.GetUserWaypoint()
+    return point ~= nil and point.uiMapID == C_Map.GetBestMapForUnit("player")
+end
+
 local function CheckReached(yards)
     if shown.ground or yards > LEAVE then
         reached = false
@@ -431,7 +436,7 @@ local function Update()
         PlaceOnSpot(nx, ny, scale)
     end
     CheckReached(yards)
-    if shown.user and not shown.onRoute and not selfCleared and yards <= REACHED then
+    if shown.user and not shown.onRoute and not selfCleared and yards <= REACHED and OnWaypointMap() then
         selfCleared = true
         Arrived()
         ns.ClearWaypoint()
