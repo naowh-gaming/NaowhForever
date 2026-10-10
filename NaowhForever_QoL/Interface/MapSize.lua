@@ -15,6 +15,7 @@ local GRIP_HIGHLIGHT = "Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Highlight"
 local GRIP_DOWN = "Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Down"
 local TITLE_HEIGHT = 22
 local TITLE_BUTTONS = 80
+local HANDLE_LEVEL = 80
 local KEEP_ON_SCREEN = 60
 
 local TEXT_TITLE = "Map Window"
@@ -217,14 +218,13 @@ local function BuildHandle()
     handle:SetPoint("TOPLEFT")
     handle:SetPoint("TOPRIGHT", -TITLE_BUTTONS, 0)
     handle:SetHeight(TITLE_HEIGHT)
-    handle:SetFrameLevel(map:GetFrameLevel() + TITLE_BUTTONS)
+    handle:SetFrameLevel(map:GetFrameLevel() + HANDLE_LEVEL)
     handle:EnableMouse(true)
     handle:SetScript("OnMouseDown", OnHandleDown)
     handle:SetScript("OnMouseUp", OnHandleUp)
     handle:SetScript("OnHide", OnHandleHide)
 end
 
--- Opening the map places it before showing it, and a hidden map is left where it was.
 local function OnPanelsPlaced(frame)
     if not On() then return end
     local map = WorldMapFrame
