@@ -59,6 +59,11 @@ Shared/
                    slider, the link back to the window it was opened from, and the footer; on the
                    Classic+ skin its trim (Parts.ClassicTrim), title plate (Parts.TitlePlate) and a
                    box's bronze line (Parts.ClassicBox)
+  UI/Forever.lua   the Forever skin's parts, each on the game's own art with a drawn fallback: the window
+                   frame with its title bar, portrait and red close (Parts.ForeverFrame), insets, buttons,
+                   fields, the search box, tabs, side tabs, check boxes, dropdowns, sliders, swatches, the
+                   help tip, list bars, title plaques, row bands, scroll chevrons, and the options
+                   window's header band and bronze rails (Parts.ForeverPanes)
   UI/Tabs.lua      a switch of parts side by side (Parts.Tabs), and a search box (Parts.SearchBox)
   UI/SettingsCard.lua a module's card at the top of its settings page: the logo, a line or two, and the
                    button that opens its window
@@ -452,6 +457,85 @@ What a comment in the code used to say, in short. The house rules behind it are 
 - Headings stand out as the game's titles do: a size up (`CLASSIC_HEADING_STEP`), on a black drop
   shadow.
 
+### The Forever skin
+
+- The skin is read once per load with the theme's colors, like Classic+: `ns.Skin()` is `""`,
+  `"classic"` or `"forever"`, and `ns.foreverSkin` is true on Forever. A change takes a reload.
+- It dresses the windows as WoW Forever's own (Talents, Spellbook, Character, Professions) and is
+  built on their art. Every atlas is asked for with `C_Texture.GetAtlasInfo` first (once, then
+  remembered), and a whole frame only through `NineSliceUtil` when all of its pieces exist; when one
+  is missing the part is drawn from the `FOREVER_*` tokens in `Style.lua`, so nothing shows a missing
+  texture. A file texture is checked by `SetTexture`'s answer the same way.
+- Nothing is inherited from a Blizzard template: our frames take the art (`SetAtlas`,
+  `NineSliceUtil.ApplyLayoutByName` on a frame of our own), so no Blizzard script or secure code runs.
+- A window's frame is the game's portrait frame (`PortraitFrameTemplate`'s nine-slice) on a frame
+  laid round the window: `FOREVER_TITLE_H` above it for the title bar, `FOREVER_SIDE` out on the
+  other sides, so nothing inside the window moves. Its name is the addon's, in gold, centred on the
+  bar; the Naowh logo sits in the portrait, which takes the old logo's click, and the window's own
+  close button gives way to the game's red one. The title bar drags the window. Drawn, it is a rim of
+  black, dark bronze, bronze, deep bronze and black with a ring round the portrait.
+- The chrome sits `FOREVER_CHROME_LEVEL` over the window, under the size grip, so the metal edge is
+  drawn over the content's edge as the game draws it.
+- A window's backdrop is the game's rock (`UI-Background-Rock`), darkened (`FOREVER_ROCK_SHADE`) and
+  partly see-through (`FOREVER_ROCK_ALPHA`), fading with the window's opacity.
+- Every button is the game's one red button, the Friends list's Add Friend
+  (`SharedButtonTemplate`, `Blizzard_SharedXML/Shared/Button/ThreeSliceButtonTemplate.xml` on the
+  `forever` branch): the `128-RedButton` three-slice (`128-RedButton-Left`, `_128-RedButton-Center`,
+  `128-RedButton-Right`, each with `-Pressed` and `-Disabled`, and `128-RedButton-Highlight`), named as
+  `ThreeSliceButtonMixin` names them (`ThreeSliceButtonTemplate.lua`), its ends scaled to the button's
+  height and cropped when it is narrow, as the game's are. Gold text, white under the mouse, grey when
+  disabled (`FOREVER_DISABLED_TEXT_RGB`, as `GameFontDisable`). There is no main-action variant: the
+  game uses the one red button, so `ns.AccentBorder` leaves it as it is, and a picked button's colored
+  edge still shows. Without the atlases it is drawn: a red gradient (`FOREVER_RED_RGB`, brighter under
+  the mouse, grey when disabled) in a bronze rim. The onboarding's Forever preview uses the same art
+  (`Parts.ForeverButtonArt`).
+- Tabs are the game's panel tabs turned to sit on top, as its top tabs are: their art flipped and
+  `FOREVER_TOP_TAB_SHARE` of it tall (`FOREVER_TOP_TAB_CROP`). The picked one is the lit tab.
+- A settings card is only its list bar, the Friends list's category header ("Favorites 0/2"):
+  `SocialUIScrollableHeaderTemplate` (`Blizzard_SocialUIShared/SocialUISharedTemplates.xml`) on
+  `ListHeaderVisualTemplate` (`Blizzard_SharedXML/ListTemplates.xml`), whose bar is
+  `common-button-list-collapseExpand`. It is `FOREVER_CARD_BAR_H` tall and `FOREVER_CARD_GAP` apart,
+  with no card box round it: a bar inside a box read as boxes in boxes. Its title is gold, its summary
+  right-aligned before the sign, and the sign is the header's collapse button: `common-button-list-plus`
+  or `common-button-list-minus` at the atlas's own size (`CollapseButtonMixin`, `ListTemplates.lua`),
+  centered `FOREVER_SIGN_RIGHT` in from the right, with the same atlas as its glow. Stretched to a square
+  the slim minus read as a solid yellow block, so it never is. Its switch, a check box, sits at its
+  left. Drawn, the bar is a lighter brown gradient in a thin rim with a gold `+` or `-`. An open
+  card's rows lie right under its bar (`FOREVER_BODY_GAP` above and below them), and the page is as
+  tall as its bars and open rows, so it reflows as a card opens or closes. Groups are the character
+  sheet's title
+  plaque (`UI-Character-Info-Title`), `FOREVER_PILL_W` wide; settings rows lie on its stat line
+  (`UI-Character-Info-Line-Bounce`), every other line, with gold labels. A pair of rows side by side
+  is one line: the band turns over when the row's top changes, and starts again under each card head
+  and group.
+- A check box is the game's own beveled one (`UI-CheckBox-Up`, `-Down` and `-Highlight`, with
+  `UI-CheckBox-Check`), `FOREVER_CHECK_SIZE` square everywhere, the card bars' switches too, so every
+  box matches; its highlight lights it under the mouse. Without the file it is drawn: a dark
+  `FOREVER_CHECK_DRAWN` box in the same square, the game's yellow tick a size up (`FOREVER_CHECK_SCALE`).
+  A row that is off (its card switched off, or a setting it needs) keeps its box whole, as the game's
+  disabled check button does (`UICheckButtonArtTemplate`, `Blizzard_SharedXML/Shared/Button/
+  CheckButtonTemplates.xml`): `UI-CheckBox-Up` at `FOREVER_CHECK_DIM_ALPHA` and, ticked,
+  `UI-CheckBox-Check-Disabled`; the label dims as before. Fading the whole box made it vanish.
+- The help card is the game's help tip: its gradient, a yellow edge two pixels wide, and the talent
+  frame's yellow pointer under it when it sits over what it explains (none at the cursor).
+- The options window is laid out as the game's Legacy Challenges window (`Parts.ForeverPanes`).
+  Under the title bar a header band (`FOREVER_BAND_H`) holds the page's name and path, clear of the
+  portrait, and Enable, HUD Editor and Reload UI at its right, so no strip is spent on two buttons.
+  A bronze rail (`FOREVER_RAIL`) closes the band off and runs down between the module list and the
+  content.
+- Its sidebar has no logo: the portrait ring is the brand. The search box sits at its top, and the
+  modules under it are darker list bars (`FOREVER_LEAF_SHADE`, `FOREVER_BAR_GAP` from the next) with
+  no icons, the picked one lit and edged in gold. The content is the frame's own rock, lighter in
+  the middle (`FOREVER_LIGHT_ALPHA`), not a boxed inset, with its section tabs at its top. A module's
+  own window keeps its content in the game's inset frame.
+- A slim scroll bar has the game's chevrons at its ends (`Parts.ForeverScrollArrows`), each a wheel
+  notch, and like the bar they show only when the list overflows.
+- Settings, Profiles, Patch Notes and Credits are the game's side tabs (`common-sidetab`), hung on
+  the frame's outer right edge (`FOREVER_SIDE` out, where the metal ends), outside the content. The
+  window clips nothing, so none of them is cut off.
+- Fonts are the game's, as on Classic+: Friz Quadrata for text and headings, Arial Narrow for
+  numbers, unless an Addon Font is picked.
+
 ## Checking
 
 `lua Tools/regression/test-shared.lua` loads these files as `Shared.xml` lists them, against
@@ -463,3 +547,8 @@ and `toc_files.lua`, and times its draws with `measure.lua`: see
 lists every file the parts it uses are made in: `Parts.lua` with `Marks.lua`, `Text.lua`,
 `Hud.lua`, `Timer.lua`, `Share.lua` and `Panels.lua`; `Window.lua` with `Tabs.lua` and
 `SettingsCard.lua`; `Items.lua` with `Gear.lua`.
+
+`lua Tools/regression/test-forever-skin.lua` builds every Forever part twice, on a client with all of
+the game's art and on one with none of it, and checks Naowh and Classic+ make none of it. It draws a
+settings page (bare bars that reflow as a card opens and closes) and builds the options window on
+Forever: its header band and rails, the buttons on the band, no sidebar logo and no boxed content.

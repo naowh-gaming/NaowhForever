@@ -17,7 +17,7 @@ local ALPHA_RANGE = ns.Shared.Style.ALPHA_RANGE
 local TEXT_NO_CLOCK, TEXT_24H, TEXT_12H = "No clock", "24-hour clock", "12-hour clock"
 local TEXT_SUMMARY = "%s, %d buttons%s"
 local TEXT_FADES = ", fades until hovered"
-local TEXT_CLASSIC_ICONS = "Classic+ icons are in full color"
+local TEXT_CLASSIC_ICONS = "Classic+ and Forever icons are in full color"
 
 local STATES = {
     { key = "normal", label = "Normal", tip = "The bar as it sits on your screen." },
@@ -34,7 +34,7 @@ local function Summary(store)
 end
 
 local function NotClassic()
-    return not ns.classicSkin
+    return not (ns.classicSkin or ns.foreverSkin)
 end
 
 local ROWS = {
