@@ -46,23 +46,34 @@ local function Fixture(completoOn, discoveryOn, oldFolderLoaded)
     return ns, completo, discovery, disabled, function() return reloads end
 end
 
-local ns, completo, discovery = Fixture(false, true)
-Check(completo.enabled == true, "Discovery on: the Quest List is on")
-ns.DiscoverySettings.Set("enabled", false)
-Check(completo.enabled == false, "Discovery switched off: the Quest List goes with it")
-ns.DiscoverySettings.Set("enabled", true)
-Check(completo.enabled == true, "and back")
+do
+    local ns, completo = Fixture(false, true)
+    Check(completo.enabled == true, "Discovery on: the Quest List is on")
+    ns.DiscoverySettings.Set("enabled", false)
+    Check(completo.enabled == false, "Discovery switched off: the Quest List goes with it")
+    ns.DiscoverySettings.Set("enabled", true)
+    Check(completo.enabled == true, "and back")
+end
 
-ns, completo, discovery = Fixture(true, false)
-Check(discovery.enabled == true and completo.enabled == true, "an old profile with Completo on turns Discovery on")
+do
+    local _, completo, discovery = Fixture(true, false)
+    Check(discovery.enabled == true and completo.enabled == true, "an old profile with Completo on turns Discovery on")
+end
 
-ns, completo, discovery = Fixture(false, false)
-Check(completo.enabled == false and discovery.enabled == false, "both off stays off")
+do
+    local _, completo, discovery = Fixture(false, false)
+    Check(completo.enabled == false and discovery.enabled == false, "both off stays off")
+end
 
-local disabled, reloads
-ns, completo, discovery, disabled, reloads = Fixture(false, true, true)
-Check(disabled[1] == "NaowhForever_Completo" and reloads() == 1, "an old Completo folder still loaded is turned off, with a reload prompt")
-ns, completo, discovery, disabled, reloads = Fixture(false, true, false)
-Check(#disabled == 0 and reloads() == 0, "none loaded: nothing to do")
+do
+    local _, _, _, disabled, reloads = Fixture(false, true, true)
+    Check(disabled[1] == "NaowhForever_Completo" and reloads() == 1,
+        "an old Completo folder still loaded is turned off, with a reload prompt")
+end
+
+do
+    local _, _, _, disabled, reloads = Fixture(false, true, false)
+    Check(#disabled == 0 and reloads() == 0, "none loaded: nothing to do")
+end
 
 print(("test-quest-list-switch: %d checks passed"):format(checks))
