@@ -10,7 +10,7 @@ local Changed = Training.Changed
 local LEVEL, SPELL = Training.C.ENTRY_LEVEL, Training.C.ENTRY_SPELL
 local FOLLOW_EVENTS = { "TRAIT_TREE_CURRENCY_INFO_UPDATED", "PLAYER_REGEN_ENABLED" }
 
-local scanQueued = false
+local scanQueued, changeQueued = false, false
 local events
 
 local function SpellsByService()
@@ -56,13 +56,24 @@ local function QueueScan()
     C_Timer.After(0, RunScan)
 end
 
+local function RunChanged()
+    changeQueued = false
+    Changed()
+end
+
+local function QueueChanged()
+    if changeQueued then return end
+    changeQueued = true
+    C_Timer.After(0, RunChanged)
+end
+
 local function OnEvent(_, event)
     if event == "TRAINER_SHOW" or event == "TRAINER_UPDATE" then
         QueueScan()
     elseif event == "TRAIT_TREE_CURRENCY_INFO_UPDATED" or event == "PLAYER_REGEN_ENABLED" then
         Training.LearnFollowed()
     else
-        Changed()
+        QueueChanged()
     end
 end
 
