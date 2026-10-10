@@ -6,6 +6,7 @@
     python Tools/release/release.py start-next
     python Tools/release/release.py pending
     python Tools/release/release.py check-body < description.md
+    python Tools/release/release.py add-unreleased < lines.txt
 
 prepare: each pull request merged since the newest tag adds the lines under "## Changelog" in
 its description to "## Unreleased" (one that edited CHANGELOG.md itself is skipped), then
@@ -27,6 +28,10 @@ pending: "## Unreleased" as the next release would write it, from the pull reque
 far. Needs gh, signed in.
 
 check-body: a pull request description on stdin has at least one changelog line, for CI.
+
+add-unreleased: changelog lines on stdin (Added:, Changed: or Fixed:) go under "## Unreleased"
+in CHANGELOG.md, for a commit pushed to main without a pull request (the daily watch's data);
+prints how many.
 """
 import argparse
 import json
@@ -394,6 +399,16 @@ def pending(root, fetch_body=pr_body):
     return "\n".join(["## Unreleased", *(section(changelog, "Unreleased") or [])]).rstrip()
 
 
+def add_unreleased(root, text):
+    entries = body_entries("## Changelog\n" + text) or []
+    changelog = read(root, CHANGELOG)
+    if section(changelog.replace("\r", ""), "Unreleased") is None:
+        raise ReleaseError(f"{CHANGELOG} has no '## Unreleased'")
+    if entries:
+        write(root, CHANGELOG, add_entries(changelog, entries))
+    return len(entries)
+
+
 def start_next(root):
     changelog = read(root, CHANGELOG)
     lines = changelog.replace("\r", "").splitlines()
@@ -423,6 +438,7 @@ def main(argv=None):
     commands.add_parser("start-next")
     commands.add_parser("pending")
     commands.add_parser("check-body")
+    commands.add_parser("add-unreleased")
     args = parser.parse_args(argv)
     try:
         if args.command == "prepare":
@@ -439,6 +455,8 @@ def main(argv=None):
             if not entries:
                 raise ReleaseError("no changelog line under '## Changelog' in the description")
             print(f"Changelog: {len(entries)} line(s) in the description")
+        elif args.command == "add-unreleased":
+            print(add_unreleased(".", sys.stdin.read()))
         else:
             start_next(".")
     except ReleaseError as error:

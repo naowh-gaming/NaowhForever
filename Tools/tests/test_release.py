@@ -250,6 +250,18 @@ class ReleaseTest(unittest.TestCase):
                          "## Unreleased\n\n### Added\n- Two.\n\n### Fixed\n- A fix.")
         self.assertUnchanged()
 
+    def test_add_unreleased(self):
+        count = release.add_unreleased(self.root, "Changed: BiS List: new picks.\nFixed: Two.\n")
+        self.assertEqual(count, 2)
+        self.assertEqual(self.read(release.CHANGELOG),
+                         "# Changelog\r\n\r\n## Unreleased\r\n\r\n### Changed\r\n"
+                         "- BiS List: new picks.\r\n\r\n### Fixed\r\n- A fix.\r\n- Two.\r\n\r\n"
+                         "## 0.5.16-beta\r\n\r\n- Old.\r\n")
+
+    def test_add_unreleased_without_lines_changes_nothing(self):
+        self.assertEqual(release.add_unreleased(self.root, ""), 0)
+        self.assertUnchanged()
+
     def test_body_entries(self):
         self.assertIsNone(release.body_entries(None))
         self.assertIsNone(release.body_entries("## Checklist\n- [x] Fixed: x\n"))
