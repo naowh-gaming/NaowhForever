@@ -158,6 +158,15 @@ Case("a level up and the spells it teaches refresh the page once, on the next fr
     t.Fire("LEARNED_SPELL_IN_SKILL_LINE")
     assert(#timers == 2, "a later spell queues again")
 end)
+Case("buying at a trainer: the new prices and the learned spell refresh the page once", function()
+    local timers = {}
+    local t = Fixture({ timers = timers, services = { { "Fireball", 6, 95 } } })
+    t.Scan()
+    t.Fire("LEARNED_SPELL_IN_SKILL_LINE")
+    local i = 1
+    while timers[i] do timers[i](); i = i + 1 end
+    assert(t.Prices()[143] == 95 and t.Refreshes() == 1, "one refresh, " .. t.Refreshes())
+end)
 
 -- What a rank adds, from two ranks' descriptions as the client writes them.
 local upgrades = { NaowhForever = { Training = {} } }

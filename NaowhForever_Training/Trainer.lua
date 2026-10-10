@@ -30,6 +30,17 @@ local function ServiceSpell(byKey, i)
     return name and byKey[name .. "|" .. (level or 0)]
 end
 
+local function RunChanged()
+    changeQueued = false
+    if Training.On() then Changed() end
+end
+
+local function QueueChanged()
+    if changeQueued then return end
+    changeQueued = true
+    C_Timer.After(0, RunChanged)
+end
+
 local function ScanTrainer()
     if IsTradeskillTrainer() then return end
     local byKey = SpellsByService()
@@ -42,7 +53,7 @@ local function ScanTrainer()
             changed = true
         end
     end
-    if changed then Changed() end
+    if changed then QueueChanged() end
 end
 
 local function RunScan()
@@ -54,17 +65,6 @@ local function QueueScan()
     if scanQueued then return end
     scanQueued = true
     C_Timer.After(0, RunScan)
-end
-
-local function RunChanged()
-    changeQueued = false
-    Changed()
-end
-
-local function QueueChanged()
-    if changeQueued then return end
-    changeQueued = true
-    C_Timer.After(0, RunChanged)
 end
 
 local function OnEvent(_, event)
