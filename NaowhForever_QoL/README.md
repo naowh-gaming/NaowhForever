@@ -107,7 +107,7 @@ NaowhForever_QoL/
   `Tools/regression/test-module-boundaries.lua` checks it.
 - The Top Bar's card sits on QoL > Interface, so the Top Bar depends on QoL: switching QoL off takes
   it along; turning the Top Bar on in the onboarding turns QoL on.
-- The Trainer Popup card is declared here, on the Training Planner's page, so it goes when QoL is
+- The Trainer Popup card is declared here, on QoL > XP with Talent Points, so it goes when QoL is
   off. The Bag Space and Food & Drink key binding names live in `Core/Commands.lua`, so the key
   bindings read right with QoL off, where the Bag Space key says so.
 - QoL loads after the core now, not between the profile strings and the Badges: nothing in the core

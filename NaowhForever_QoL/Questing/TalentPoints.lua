@@ -9,7 +9,7 @@ local GOLD = { r = 1, g = 0.82, b = 0 }
 local WIDTH, ROOM = 300, 10
 local FONT_SIZE = 22
 local STACK_ORDER = 2
-local PAGE = "QoL/Questing & Group"
+local PAGE = "QoL/XP"
 local TEXT_ALERT = "Talent Points"
 local SAMPLE_POINTS = 2
 local TEXT_RANGE = { 10, 48, 1 }
@@ -109,7 +109,7 @@ boot:SetScript("OnEvent", Apply)
 local Settings = ns.Shared.Settings
 
 Settings.Page(PAGE, S):Card({
-    id = "talentPoints", name = "Talent Points", order = 30, switch = "talentPoints",
+    id = "talentPoints", name = "Talent Points", order = 40, switch = "talentPoints",
     help = "Text on screen while you have talent points to spend. Hidden in combat. Move it in the "
         .. "HUD Editor.",
     rows = {

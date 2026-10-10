@@ -81,7 +81,7 @@ do
     local camp, talent, pet = Member(200, 26), Member(300, 32), Member(220, 36)
     ns.AlertStack(pet, 5, "Pet Tracker", "QoL/Combat", "QoL/Combat:petTracker")
     ns.AlertStack(camp, 1, "Camp Nearby", "AuraBuffs/Settings", "AuraBuffs/Settings:campNearby")
-    ns.AlertStack(talent, 2, "Talent Points", "QoL/Questing & Group", "QoL/Questing & Group:talentPoints")
+    ns.AlertStack(talent, 2, "Talent Points", "QoL/XP", "QoL/XP:talentPoints")
     Check(qol.alertsPos.point == "CENTER" and qol.alertsPos.y == 150,
         "no old spot and no AuraBuffs: the group starts at its default and saves it")
     talent:Show()

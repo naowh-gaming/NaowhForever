@@ -392,6 +392,7 @@ function Settings.IsOpen(card)
     local state = open[card.uid]
     if state ~= nil then return state end
     if card.info then return card.open == true end
+    if card.collapsed then return false end
     local cards, first = CountCards(card.page)
     return cards == 1 or (first == card and card.studio ~= nil)
 end

@@ -29,7 +29,7 @@ local MODULES = {
       subtitle = "Naowh's quality of life tweaks, trimmed to what Forever has.",
       tabs = {
           { name = "Interface", reuse = true },
-          { name = "Cursor", reuse = true },
+          { name = "Cursor & Crosshair", reuse = true },
           { name = "Combat", reuse = true },
           { name = "Questing & Group", reuse = true },
           { name = "XP", reuse = true },
