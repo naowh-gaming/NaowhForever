@@ -362,10 +362,10 @@ for i, mod in ipairs(w.MODULES) do
     check(mod.addon .. ": its icon and its line", tile.icon.tex.texture == ns.MEDIA .. "Navigation\\" .. mod.navIcon .. ".tga"
         and tile.blurb.text == w.ns.Setup.ITEMS[tile.key].blurb)
 end
-local MINIMALIST = "Quality of Life,Dungeon Journal,BiS List,Training Planner,Gear & Trinkets,Blessings,Professions,"
-    .. "Macros,Action Bars,AuraBuffs,Threat Meter,PvP,Top Bar,Swing Timer"
-local MINIMALIST_ON = #w.MODULES - 3
-check("Minimalist: all but Discovery, Completo and Group Inspect", Picked() == MINIMALIST
+local MINIMALIST = "Quality of Life,Dungeon Journal,BiS List,Training Planner,Blessings,Professions,Macros,Action Bars,"
+    .. "AuraBuffs,Threat Meter,PvP,Top Bar"
+local MINIMALIST_ON = #w.MODULES - #w.ns.PRESETS.minimalist.modulesOff
+check("Minimalist: all but its five", Picked() == MINIMALIST
     and Said(MINIMALIST_ON .. " of " .. #w.MODULES .. " on") ~= nil)
 check("three to a row", tiles[1].point[5] == tiles[3].point[5] and tiles[4].point[5] ~= tiles[1].point[5])
 local completo, topBar, qol = Tile("Completo"), Tile("Top Bar"), Tile("Quality of Life")
@@ -416,6 +416,7 @@ check("applied: the window closes and the reload is offered", not window.shown a
 check("its modules on, the rest off, Classic+, Minimalist", w.enabled.NaowhForever_QoL and w.enabled.NaowhForever_BiS
     and w.enabled.NaowhForever_ThreatMeter and w.enabled.NaowhForever_PvP and not w.enabled.NaowhForever_Discovery
     and not w.enabled.NaowhForever_Completo and not w.enabled.NaowhForever_GroupInspect
+    and not w.enabled.NaowhForever_SwingTimer
     and w.account.skin == "classic" and w.root.qol.preset == "minimalist" and w.account.setupBefore ~= nil)
 check("closed: the onboarding is seen, so it never opens by itself again", w.account.onboardingSeen == true
     and w.account.welcomeSeen == true)
