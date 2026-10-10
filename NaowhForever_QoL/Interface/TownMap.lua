@@ -565,7 +565,7 @@ boot:RegisterEvent("PLAYER_LOGIN")
 boot:SetScript("OnEvent", Apply)
 
 ns.TownPinRows = PIN_ROWS
-ns.TownPinTexts = { TEXT_TOWN, TEXT_TOWN_PINS, TEXT_TOWN_TIP }
+ns.TownPinTexts = { group = TEXT_TOWN, switch = TEXT_TOWN_PINS, tip = TEXT_TOWN_TIP }
 
 ns.Shared.Settings.Page("QoL/Interface", S):Card({
     id = "townMap", name = "Map Options and Pins", order = 40,

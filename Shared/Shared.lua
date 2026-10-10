@@ -45,15 +45,15 @@ function Shared.ScalePin(pin)
 end
 
 function Shared.MapPinSections()
-    local list = {}
+    local list, seq = {}, {}
     for i, section in ipairs(Shared.MapPins) do
-        section.seq = i
+        seq[section] = i
         list[i] = section
     end
     table.sort(list, function(a, b)
         local x, y = a.order or LAST_PIN_ORDER, b.order or LAST_PIN_ORDER
         if x ~= y then return x < y end
-        return a.seq < b.seq
+        return seq[a] < seq[b]
     end)
     return list
 end

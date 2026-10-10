@@ -27,7 +27,7 @@ local SCROLL_W, SCROLL_IN = 4, 2
 local TEXT_TITLE = "Map Options and Pins"
 local TEXT_TIP = "Click to choose which pins and options show on the map."
 local TEXT_CLOSE = "x"
-local TEXT_TOWN, TEXT_TOWN_PINS, TEXT_TOWN_TIP = unpack(ns.TownPinTexts)
+local TEXT_TOWN, TEXT_TOWN_PINS, TEXT_TOWN_TIP = ns.TownPinTexts.group, ns.TownPinTexts.switch, ns.TownPinTexts.tip
 
 local ROWS = ns.TownPinRows
 
@@ -38,15 +38,8 @@ local function TownOn()
     return S.Get("townMap")
 end
 
-local function AnySectionOn()
-    for _, section in ipairs(ns.Shared.MapPinSections()) do
-        if section.store.Get("enabled") and section.store.Get(section.switch) then return true end
-    end
-    return false
-end
-
 local function On()
-    return S.Get("enabled") and (S.Get("townMap") or AnySectionOn())
+    return S.Get("enabled")
 end
 
 local function PanelWidth()
@@ -56,8 +49,13 @@ local function PanelWidth()
 end
 
 local function Needed(row)
-    if type(row.needs) == "string" then return row.store.Get(row.needs) end
-    return row.needs()
+    local needs = row.needs
+    if type(needs) == "function" then return needs() end
+    if type(needs) == "string" then return row.store.Get(needs) end
+    for _, key in ipairs(needs) do
+        if not row.store.Get(key) then return false end
+    end
+    return true
 end
 
 local function RefreshRows()

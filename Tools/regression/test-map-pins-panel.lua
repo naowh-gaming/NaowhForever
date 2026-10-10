@@ -1,7 +1,7 @@
 -- Run with Lua 5.1 from the repository root: the Map Options and Pins panel on the world map.
 -- Every town pin switch is on the panel and on the options card, both drawn from one list, with
 -- Town Pins and Town Pin Size on the card. Other modules' and QoL's own rows (ns.Shared.MapPins,
--- in order) follow on both, and the button shows while any set of pins or options is on.
+-- in order) follow on both, and the button shows whenever QoL is on.
 local function Read(path)
     local f = assert(io.open(path, "rb"))
     local s = f:read("*a"):gsub("\r\n", "\n"); f:close()
@@ -45,6 +45,7 @@ local questSection = { title = "Quests", store = questStore, switch = "mapPins",
     { key = "mapGrey", label = "Low Level Quests", toggle = true, store = questStore, always = true,
       needs = QuestPinsOn },
     { key = "mapChainsOnly", label = "Chains Only", toggle = true, store = questStore, needs = "mapPins" },
+    { key = "mapRepeat", label = "Repeatable", toggle = true, store = questStore, needs = { "enabled", "mapPins" } },
     { key = "mapPinSize", label = "Quest Pin Size", slider = { 12, 32, 1 }, store = questStore, always = true },
 } }
 
@@ -85,7 +86,7 @@ do
     Check(rows[5].needs == "townMap" and not rows[2].needs, "the town rows wait for Town Pins, which itself does not")
     Check(groups[4] == "Quests", "the sections follow under their own titles")
     local lastRow = rows[#rows]
-    Check(lastRow == questSection.rows[4] and rows[#rows - 3] == questSection.rows[1],
+    Check(lastRow == questSection.rows[5] and rows[#rows - 4] == questSection.rows[1],
         "a module's rows as it declared them, after the QoL ones")
     Check(lastRow.lent and not rows[1].lent, "lent to the card: its Reset and changed count leave them alone")
     local ownAt, questAt
@@ -97,6 +98,7 @@ do
     Check(not ownSection.rows[1].lent and not ownSection.rows[2].lent, "its rows are the card's own store's: Reset takes them")
     Check(rows[ownAt - 1].group == nil, "so it follows the last town row directly")
     pinTexts = cardNs.TownPinTexts
+    Check(pinTexts.group and pinTexts.switch and pinTexts.tip, "the drawer's town texts are named, not positional")
     Check(cardNs.TownPinRows ~= nil, "the list is shared with the panel")
     local Search = dofile("Tools/regression/settings_search.lua")({ ["QoL/Interface"] = { card } })
     local hit = Search("flight master")[1]
@@ -224,13 +226,12 @@ local chunk = assert(loadstring(Read("NaowhForever_QoL/Interface/MapPinsPanel.lu
 setfenv(chunk, env)
 chunk()
 boot.scripts.OnEvent(boot)
-Check(made == 0, "nothing made while every set of pins is off")
-questStore.Set("mapPins", true)
-Check(made == 1, "a module's pins switched on bring the button, town pins off")
-questStore.Set("mapPins", false)
-Check(not button.shown, "and take it away again with every set of pins off")
+Check(made == 1 and button.shown, "the button is made with QoL on, whatever is switched on")
+S.Set("enabled", false)
+Check(not button.shown, "QoL off takes it away")
+S.Set("enabled", true)
+Check(button.shown, "and on brings it back")
 S.Set("townMap", true)
-Check(button.shown, "the town pins bring it back")
 Check(button.point[1] == "TOPRIGHT" and button.point[3] == "TOPLEFT" and button.point[2].GetPoint
     and select(4, button.point[2].GetPoint()) == -36, "top right, left of the map's own buttons there")
 S.Set("townFlight", true)
@@ -242,8 +243,9 @@ button.scripts.OnClick()
 Check(panel and panel.shown, "the button opens the drawer")
 local towns = 0
 for _, row in ipairs(pinRows) do if row.key then towns = towns + 1 end end
-Check(#toggles == 1 + towns + 3, "a Town Pins switch, every town row, and the module's switches only")
-local quest, grey, chains, flight = toggles[#toggles - 2], toggles[#toggles - 1], toggles[#toggles], toggles[2]
+Check(#toggles == 1 + towns + 4, "a Town Pins switch, every town row, and the module's switches only")
+local quest, grey, chains, repeatable = toggles[#toggles - 3], toggles[#toggles - 2], toggles[#toggles - 1], toggles[#toggles]
+local flight = toggles[2]
 quest.set(true)
 Check(questStore.values.mapPins == true and settings.mapPins == nil and quest.get(),
     "a module's switch reads and writes its own store")
@@ -252,6 +254,7 @@ questStore.Set("mapPins", false)
 Check(grey.alpha == 0.35 and grey.mouse == false and quest.alpha == 1,
     "the open drawer follows the module's store: a row whose parent is off is dimmed and locked")
 Check(chains.alpha == 0.35 and chains.mouse == false, "a row that names its parent by key is too")
+Check(repeatable.alpha == 0.35 and repeatable.mouse == false, "and one that names several")
 questStore.Set("enabled", false)
 Check(quest.mouse == false, "the module off: its switch too")
 questStore.Set("enabled", true)
@@ -263,8 +266,9 @@ toggles[1].set(true)
 Check(flight.mouse == true, "and back")
 quest.set(false)
 toggles[1].set(false)
-Check(not button.shown and not panel.shown, "every set of pins off: the button and drawer go")
-S.Set("townMap", true)
+Check(button.shown and panel.shown, "everything off: the button and drawer stay, to turn it back on")
+toggles[1].set(true)
+button.scripts.OnClick()
 button.scripts.OnClick()
 Check(panel.point[1] == "TOPRIGHT" and panel.point[2] == map and panel.point[3] == "TOPLEFT",
     "against the map window's left side")
