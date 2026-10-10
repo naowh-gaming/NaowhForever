@@ -4,6 +4,7 @@ local ns = _G.NaowhForever
 local GetContainerNumSlots = C_Container.GetContainerNumSlots
 local GetContainerItemInfo = C_Container.GetContainerItemInfo
 local GetItemInfoInstant = C_Item.GetItemInfoInstant
+local GetItemQualityByID = C_Item.GetItemQualityByID
 
 local P = ns.Professions
 
@@ -28,6 +29,7 @@ local function KeepList()
 end
 
 local function Takes(itemID, quality)
+    quality = quality or GetItemQualityByID(itemID)
     if not quality or quality < UNCOMMON or quality > EPIC then return false end
     local _, _, _, equip, _, class = GetItemInfoInstant(itemID)
     if class ~= WEAPON and class ~= ARMOR then return false end
@@ -39,7 +41,8 @@ local function Note(bag, slot, info)
     local r = records[count] or {}
     records[count] = r
     r.bag, r.slot, r.itemID = bag, slot, info.itemID
-    r.link, r.icon, r.quality = info.hyperlink, info.iconFileID, info.quality
+    r.link, r.icon = info.hyperlink, info.iconFileID
+    r.quality = info.quality or GetItemQualityByID(info.itemID)
     r.locked = info.isLocked == true
 end
 

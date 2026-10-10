@@ -28,7 +28,7 @@ local OPEN_W, OPEN_H, OPEN_RIGHT, OPEN_DROP = 90, 22, 36, 7
 local EVENTS = { "BAG_UPDATE_DELAYED", "ITEM_LOCK_CHANGED", "PLAYER_REGEN_ENABLED", "PLAYER_REGEN_DISABLED" }
 
 local TEXT_TITLE = "Disenchant"
-local TEXT_SUBTITLE = "Right-click an item to keep it. Disenchant All takes the rest."
+local TEXT_SUBTITLE = "Right-click an item to keep it."
 local TEXT_ALL, TEXT_ALL_COUNT = "Disenchant All", "Disenchant All (%d)"
 local TEXT_OPEN = "Disenchant"
 local TEXT_SUMMARY = "%d to disenchant, %d kept"
