@@ -44,8 +44,8 @@ NaowhForever_Discovery/QuestList/
     QuestPins.lua, .xml       the quest giver pins on the world map, and their template
     RarePins.lua, .xml        the rare stars on the world map, and their template
     GeneralSettings.lua       the key binding and window cards, on the Discovery/Quest List page
-    QuestsSettings.lua        the quest cards on the Discovery/Quest List page, and the quest pins on Map Pins
-    RaresSettings.lua         the Discovery/Rares settings page, with the alert's live preview, and the rare pins on Map Pins
+    QuestsSettings.lua        the quest cards on the Discovery/Quest List page, and the quest pins on Map Options and Pins
+    RaresSettings.lua         the Discovery/Rares settings page, with the alert's live preview, and the rare pins on Map Options and Pins
 ```
 
 Each layer only uses the ones above it: `Data` fills the rules, `View` draws what they decide,
