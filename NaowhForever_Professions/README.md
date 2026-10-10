@@ -36,6 +36,7 @@ NaowhForever_Professions/
   BagRoom.lua          how many crafts the bags have room for (ns.CraftBagRoom)
   ShoppingPlan.lua     the shopping list's store and make-or-buy plan (P.Shopping)
   Patterns.lua         favourites at a trainer, and their patterns to buy (P.Patterns, ns.TrainerServiceInfo)
+  Disenchant.lua       the bag items Disenchant can take, the ones you keep, the next one (P.Disenchant)
   View/
     Style.lua          the module's own look, over Shared/Style.lua (P.Style)
     Widgets.lua        flat checkbox, skill bar, star, count box, Search AH button (P.Widgets)
@@ -58,6 +59,7 @@ NaowhForever_Professions/
     FavoritePatterns.lua Search Favorites AH beside the auction house
     CraftTimer.lua     Total Craft Timer
     GatherTracking.lua the Tracking Reminder
+    Disenchant.lua     the Disenchant window and its button on the Enchanting window (ns.ToggleDisenchant)
     SettingsPage.lua   its settings page (Professions/Settings), declared as cards
 ```
 
@@ -176,6 +178,20 @@ Each layer uses only the ones above it, or reads a later one's table at call tim
 - VendorReagents are flux, thread, vials, salt and spices, water and milk, rods, coal, wood, stocks,
   bleach and dyes. CooldownRecipes are Transmute: Arcanite (2 days), the other transmutes but Elemental
   Fire (1 day, shared) and Mooncloth (4 days).
+- Disenchanting casts a spell on an item, which only a click may do, so Disenchant All is a secure
+  button armed with Disenchant (13262) and the next item's bag and slot: one item per click. The
+  secure template only uses that slot while the spell waits for an item target, so a click that does
+  not start the spell never equips the item. The button is armed again after each bag update.
+- An item the spell will not take leaves the cursor targeting after the click; PostClick stops that
+  and skips the item until a reload. Moving or another cast in progress are expected to fail without
+  leaving the cursor targeting, so they skip nothing (not yet seen in game).
+- The window holds that secure button and so is protected: it opens out of combat only, and closes on
+  PLAYER_REGEN_DISABLED, the last moment it still may.
+- Disenchant takes Uncommon to Epic weapons and armor; shirts and tabards never. The skill an item
+  needs is left to the game (the refused-item skip), not a table: Forever's may differ from classic's.
+- Kept items are saved account-wide by item ID (`profDisenchantKeep`), so a kept item is kept on
+  every character and in every copy.
+- Enchanting's profession ID is 333; the window's Disenchant button shows for your own Enchanting only.
 
 ## Checking
 

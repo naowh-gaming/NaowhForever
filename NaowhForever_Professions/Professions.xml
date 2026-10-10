@@ -20,6 +20,7 @@
     <Script file="BagRoom.lua"/>
     <Script file="ShoppingPlan.lua"/>
     <Script file="Patterns.lua"/>
+    <Script file="Disenchant.lua"/>
     <Script file="View\Style.lua"/>
     <Script file="View\Widgets.lua"/>
     <Script file="View\Popup.lua"/>
@@ -40,5 +41,6 @@
     <Script file="UI\FavoritePatterns.lua"/>
     <Script file="UI\CraftTimer.lua"/>
     <Script file="UI\GatherTracking.lua"/>
+    <Script file="UI\Disenchant.lua"/>
     <Script file="UI\SettingsPage.lua"/>
 </Ui>

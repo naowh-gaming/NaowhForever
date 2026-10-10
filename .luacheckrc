@@ -128,7 +128,7 @@ read_globals = {
     "TextToSpeech_GetSelectedVoice", "time", "ToggleCalendar", "TomTom",
     "TooltipDataProcessor", "TRADE_SKILLS", "TSM_API", "UIErrorsFrame", "UiMapPoint",
     "TimerTracker", "UIParent", "UIWidgetTopCenterContainerFrame", "UNKNOWNOBJECT", "UnitAffectingCombat", "UnitAttackSpeed", "UnitCanAttack",
-    "UnitCastingDuration", "UnitCastingInfo", "UnitChannelDuration", "UnitChannelInfo",
+    "SpellIsTargeting", "SpellStopTargeting", "UnitCastingDuration", "UnitCastingInfo", "UnitChannelDuration", "UnitChannelInfo",
     "UnitClass", "UnitDetailedThreatSituation", "UnitExists", "UnitFactionGroup",
     "UnitFullName", "UnitGetTotalAbsorbs", "UnitGroupRolesAssigned", "UnitGUID", "UnitHealth", "UnitHealthMax",
     "UnitHealthPercent", "UnitInParty", "UnitInRaid", "UnitIsAFK", "UnitIsConnected", "UnitIsDead", "UnitIsTapDenied", "UnitClassification",
