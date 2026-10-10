@@ -290,6 +290,25 @@ Check(pin:IsShown() and pin.card.dist.text == "Arrived" and navBar:IsShown(), "c
 timers[#timers].fn()
 Check(not pin:IsShown() and not navBar:IsShown(), "until its time is up")
 
+-- A map waypoint the game does not clear: no arrival event comes, so within 5 yards the pin
+-- arrives and clears it itself, once.
+tracking = 1
+nav.frame = navFrame
+events.scripts.OnEvent(events, "NAVIGATION_FRAME_CREATED")
+local clearedBefore, playedBefore = cleared, #played
+local was = nav.distance
+nav.distance = 30
+driver.scripts.OnUpdate()
+Check(pin:IsShown() and cleared == clearedBefore, "30 yards out it is still up and nothing is cleared")
+nav.distance = 4
+driver.scripts.OnUpdate()
+Check(pin.card.dist.text == "Arrived" and #played == playedBefore + 1, "within 5 yards the arrival shows, with its sound")
+Check(cleared == clearedBefore + 1 and superCleared >= 1, "and the waypoint is cleared")
+timers[#timers].fn()
+nav.distance = was
+tracking = 1
+cleared, superCleared = 0, 0
+
 -- A stop on a route: the navigator says which, and the arrival names the next stop, or says the
 -- route is done on its last.
 tracking = 1

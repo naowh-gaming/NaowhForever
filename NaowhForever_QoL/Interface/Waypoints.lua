@@ -256,6 +256,7 @@ end
 
 local pin, nav, cue, driver, navFrame, unlocked, gameHidden, warned
 local arrived, arrivals = false, 0
+local Arrived
 local reached
 local lastX, lastY
 local shown = {}
@@ -429,6 +430,11 @@ local function Update()
         PlaceOnSpot(nx, ny, scale)
     end
     CheckReached(yards)
+    if shown.user and yards <= REACHED then
+        Arrived()
+        ns.ClearWaypoint()
+        return
+    end
     pin:SetShown(not (behind or reached) and (mode ~= "edge" or S.Get("waypointEdge")))
     cue:SetShown(behind and not reached and S.Get("waypointEdge"))
     Paint(mode, side, yards, WalkSeconds(yards), angle)
@@ -444,7 +450,8 @@ local function Retitle()
     shown.onRoute = placed and route ~= nil
     if shown.onRoute then shown.sub = TEXT_STOP:format(route, St.PLACE_DOT, at, n) end
     shown.shape = S.Get("waypointShape")
-    shown.ground = kind == types.UserWaypoint or kind == types.Corpse
+    shown.user = kind == types.UserWaypoint
+    shown.ground = shown.user or kind == types.Corpse
     shown.card, shown.beam = S.Get("waypointCard"), S.Get("waypointBeam") and shown.ground
     pin.onNav, reached = false, false
 end
@@ -487,7 +494,7 @@ local function OnArrivalOver(this)
     if navFrame then Attach() else Detach() end
 end
 
-local function Arrived()
+function Arrived()
     if not (driver and lastX) then return end
     arrived = true
     arrivals = arrivals + 1
