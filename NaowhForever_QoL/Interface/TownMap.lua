@@ -52,6 +52,7 @@ local CATEGORIES = {
     mail       = { "townMail", "Interface\\Icons\\INV_Letter_15", "Send and collect mail" },
 }
 local EVERYWHERE = { flight = true, inn = true, stable = true }
+local STABLE_CLASS = "HUNTER"
 local PIN_ROWS = {
     { header = "OPTIONS" },
     { key = "townCapitalsOnly", text = "Vendors & Trainers Only in Cities",
@@ -73,7 +74,7 @@ local PIN_ROWS = {
     { key = "townBank", text = "Bank & Auction House" },
     { key = "townRepair", text = "Repairs" },
     { key = "townSupplies", text = "Reagents, Ammo & Food" },
-    { key = "townStable", text = "Stable Masters" },
+    { key = "townStable", text = "Stable Masters", tip = "Hunters only." },
     { key = "townVendors", text = "Other Vendors", tip = "Trade goods and every other merchant." },
 }
 
@@ -317,7 +318,7 @@ local function AddNPCs(map, list, faction, class, shops)
     for _, npc in ipairs(list or EMPTY) do
         local kind = npc[3]
         if (shops or EVERYWHERE[kind]) and npc[7]:find(faction, 1, true) and S.Get(CATEGORIES[kind][1])
-            and (kind ~= "class" or npc[6] == class) then
+            and (kind ~= "class" or npc[6] == class) and (kind ~= "stable" or class == STABLE_CLASS) then
             map:AcquirePin(TEMPLATE, npc)
         end
     end
