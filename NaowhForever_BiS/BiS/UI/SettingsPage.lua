@@ -11,7 +11,7 @@ if not Settings then return end
 
 local PLACE_DOT = St.PLACE_DOT
 local PERCENT, ROUND = B.C.PERCENT, B.C.ROUND
-local ORDER_MARKS, ORDER_DROP_ALERT, ORDER_LISTS, ORDER_WINDOW = 10, 20, 30, 80
+local ORDER_MARKS, ORDER_DROP_ALERT, ORDER_LISTS, ORDER_KEYS, ORDER_WINDOW = 10, 20, 30, 50, 80
 local SCALE_RANGE = { 60, 160, 5 }
 local TIME_RANGE = { 2, 15, 1 }
 local ALPHA_RANGE = St.ALPHA_RANGE
@@ -47,7 +47,7 @@ local ALERT_FOR = { { bis = "Your BiS only", top2 = "Your top two", all = "Every
 local STARS = { { icon = "On the icon, left", iconRight = "On the icon, right", name = "Before the name",
     none = "Hidden" }, { "icon", "iconRight", "name", "none" } }
 local BORDERS = { { none = "None", black = "Black", quality = "The item's quality",
-    rank = "Your rank's colour (BiS orange)" }, { "none", "black", "quality", "rank" } }
+    rank = "Your rank's color (BiS orange)" }, { "none", "black", "quality", "rank" } }
 
 local function Sounds()
     local _, names, order = ns.SoundChoices()
@@ -125,12 +125,13 @@ page:Window({
 })
 
 page:Card({
-    id = "marks", name = "BiS List", order = ORDER_MARKS,
+    id = "marks", name = "Marks on Items", order = ORDER_MARKS,
     help = "Your list's marks on items out in the game.",
     summary = MarksSummary,
     rows = {
         { key = "bisTooltip", label = "Show on Tooltips", toggle = true, needs = "bis", why = BIS_OFF,
-          help = "Your list's rank on the items in it." },
+          help = "Your list's rank on the items in it.",
+          search = "alt shift click alt+shift-click add remove item link" },
         { key = "bisBagMarks", label = "Bag Marks", toggle = true, needs = "bis", why = BIS_OFF,
           help = "Your BiS List's slot marks on the items in your bags: item level, your BiS's star, Forever's "
               .. "mark and the green arrow on an upgrade. In the game's bags or EllesmereUI's." },
@@ -167,11 +168,11 @@ page:Card({
         { key = "bisToastAlpha", label = "Background", slider = ALPHA_RANGE, unit = "%", scale = TO_FRACTION,
           needs = NEEDS_LOOKS, help = "How solid its background is." },
         { key = "bisToastGlow", label = "Glow", toggle = true, needs = NEEDS_LOOKS,
-          help = "A soft glow round it in your rank's colour." },
+          help = "A soft glow round it in your rank's color." },
         { key = "bisToastStar", label = "Star", choice = STARS, needs = NEEDS_LOOKS,
           help = "Where your star sits: on the icon's corner, before the name, or hidden." },
         { key = "bisToastBorder", label = "Border", choice = BORDERS, needs = NEEDS_LOOKS,
-          help = "Its edge: none, black, the item's quality, or your rank's colour." },
+          help = "Its edge: none, black, the item's quality, or your rank's color." },
         Settings.Look("bisToast", { text = true, size = FONT_RANGE, needs = NEEDS_LOOKS }),
         Settings.Group("Line Under the Name"),
         { key = "bisToastEvent", label = "What Happened", toggle = true, needs = NEEDS_LOOKS,
@@ -191,13 +192,21 @@ page:Card({
     id = "lists", name = "Lists", order = ORDER_LISTS,
     help = "Lists are shared by every character of your class; each character keeps using the one picked "
         .. "here. New, Rename, Import, Export and Delete are in the BiS List's window.",
+    search = "list button title bar alt shift click alt+shift-click add remove item link",
     summary = ListsSummary,
     rows = {
         { label = "Your List", choice = ns.BisListChoices, get = ListGet, set = ns.SelectBisList,
           help = "The list this character uses." },
         { label = "Rankings For", choice = SpecChoices, get = SpecGet, set = ns.SetBisSpec,
           help = "Whose ranking the picker shows. Each spec keeps its own picks on a list." },
-        { label = "Key Binding", binding = "NAOWHFOREVER_BIS",
+    },
+})
+
+page:Card({
+    id = "keys", name = "Key Binding", order = ORDER_KEYS,
+    help = "The key that opens the BiS List.",
+    rows = {
+        { label = "Open BiS List", binding = "NAOWHFOREVER_BIS",
           help = "Press this key to open the BiS List, and again to close it." },
     },
 })

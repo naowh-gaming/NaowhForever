@@ -351,7 +351,7 @@ do
     env.hasFocus = true
     env.Fire("PLAYER_FOCUS_CHANGED")
     Check(header.shown and header.name.text == "Kalerith" and header.name.textColor[1] == 0.25 and header.class.shown,
-        "a focus: their name in their class's colour, and their class icon")
+        "a focus: their name in their class's color, and their class icon")
     env.focusClass = nil
     env.Fire("PLAYER_FOCUS_CHANGED")
     Check(header.name.textColor[1] == 1 and not header.class.shown, "a class the game does not give: white, no icon")
@@ -377,7 +377,7 @@ do
     local button = c.buttons[1]
     local options = button.timerOptions
     Check(options and options.textFormatter and options.textColor and options.textColor.property == 0,
-        "each icon's time left: our compact format and a colour curve on the time remaining")
+        "each icon's time left: our compact format and a color curve on the time remaining")
     local points = options.textColor.curve.points
     local function At(x)
         for _, point in ipairs(points) do
@@ -465,6 +465,28 @@ do
     Check(S.Get("cc_sap") == false and S.Get("cc_polymorph") == false, "Hide All dims every ability")
     showAll()
     Check(S.Get("cc_sap") == true and S.Get("cc_polymorph") == true, "Show All lights them again")
+    local function SpellRow(card, label)
+        for _, row in ipairs(card.rows) do
+            for _, inner in ipairs(row[1] and row or {}) do
+                if inner.label == label then return inner end
+            end
+        end
+    end
+    local sapRow, polyRow = SpellRow(env.cards.crowdControl, "Sap"), SpellRow(env.cards.crowdControl, "Polymorph")
+    Check(sapRow and polyRow and sapRow.hidden and polyRow.hidden and not sapRow.key,
+        "each ability is a hidden row too, so the search finds it, never drawn and never a changed setting")
+    Check(sapRow.help == "Rogue" and sapRow.get() == true, "found by its class too, and reads the grid's setting")
+    sapRow.set(false)
+    Check(S.Get("cc_sap") == false, "and writes the same setting as its tile")
+    sapRow.set(true)
+    local msRow = SpellRow(env.cards.debuffs, "Mortal Strike")
+    Check(msRow and msRow.hidden and msRow.get() == S.Get("debuff_mortalStrike"), "the debuffs as well")
+    local Search = dofile("Tools/regression/settings_search.lua")({
+        ["PvP/Auras"] = { env.cards.crowdControl, env.cards.debuffs } })
+    for query, card in pairs({ polymorph = "crowdControl", sap = "crowdControl", ["mortal strike"] = "debuffs" }) do
+        local hit = Search(query)[1]
+        Check(hit and hit.card == "PvP/Auras:" .. card, "the options search finds " .. query)
+    end
     local debuffKeys = Keys(env.cards.debuffs)
     Check(debuffKeys.debuffExtra and debuffKeys.debuffExtra.text and #env.cards.debuffs.studio.new(Frame("Frame")).tiles
         == #ns.PvPSpells.debuffs, "the Debuffs card: a grid of every debuff, and spell IDs by hand")

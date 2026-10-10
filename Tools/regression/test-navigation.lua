@@ -333,7 +333,7 @@ ns.OpenOptionsWindow("QoL/Combat"); Flush()
 local S = ns.QoLSettings
 Check(Head("Stealth Reminder") and Head("Co-Tank Frame") and Head("Death Release Protection"),
     "each feature on the page is a card")
-Check(not Text("Out of Stealth Colour") and not Text("Max Icons"), "cards start closed: their settings do not show")
+Check(not Text("Out of Stealth Color") and not Text("Max Icons"), "cards start closed: their settings do not show")
 local function Setting(label)
     local text = Text(label)
     return text and text.parent.setting and text.parent or nil
@@ -363,8 +363,8 @@ coTank = Head("Co-Tank Frame")
 coTank.scripts.OnClick(coTank); Flush()
 Check(not Text("Max Icons"), "a click on its head closes it")
 Check(not S.Get("coTank"), "closing it keeps its settings")
-UI.GoToSetting("QoL/Combat", "Out of Stealth Colour", "QoL/Combat:stealthReminder"); Flush()
-Check(Setting("Out of Stealth Colour") ~= nil, "a jump to a setting opens its card and shows the setting")
+UI.GoToSetting("QoL/Combat", "Out of Stealth Color", "QoL/Combat:stealthReminder"); Flush()
+Check(Setting("Out of Stealth Color") ~= nil, "a jump to a setting opens its card and shows the setting")
 ns.OpenOptionsWindow("QoL/Interface"); Flush()
 local topBar = Head("Top Bar")
 if not Text("24-Hour Clock") then Click(topBar); Flush() end
@@ -459,7 +459,7 @@ local pages = UI.SearchPages
 UI.SearchPages = function()
     for _, page in ipairs(pages()) do if page.key == "QoL/Combat" then return { page } end end
 end
-local hit = UI.Search.Find(UI.Search.Collect(), "Out of Stealth Colour")[1]
+local hit = UI.Search.Find(UI.Search.Collect(), "Out of Stealth Color")[1]
 Check(hit and hit.card == "QoL/Combat:stealthReminder" and hit.trail:find("Stealth Reminder", 1, true),
     "a setting is found in its card, the card named in its trail")
 local debuffHit = UI.Search.Find(UI.Search.Collect(), "Co-Tank Debuffs")[1]
@@ -564,23 +564,23 @@ do
     ns.OpenOptionsWindow("QoL/Combat"); Flush()
     Check(Head("Stealth Reminder") ~= nil, "and it reopens on the whole page")
     input:SetText("max icons"); Flush()
-    UI.GoToSetting("QoL/Combat", "Out of Stealth Colour", "QoL/Combat:stealthReminder"); Flush()
-    Check(UI.filter == nil and Setting("Out of Stealth Colour") ~= nil, "a jump to a setting clears the search first")
+    UI.GoToSetting("QoL/Combat", "Out of Stealth Color", "QoL/Combat:stealthReminder"); Flush()
+    Check(UI.filter == nil and Setting("Out of Stealth Color") ~= nil, "a jump to a setting clears the search first")
     local Settings = ns.Shared.Settings
     Settings.SetOpen(Settings.CardOf("QoL/Combat:stealthReminder"), false)
     UI:RefreshPage(true); Flush()
-    input:SetText("colour"); Flush()
+    input:SetText("color"); Flush()
     UI.GoToSetting("QoL/Interface", nil, "QoL/Interface:topBar"); Flush()
     Click(Button("Combat")); Flush()
-    Check(not Text("Out of Stealth Colour"), "a jump away does not leave the search's cards open on the page it left")
+    Check(not Text("Out of Stealth Color"), "a jump away does not leave the search's cards open on the page it left")
 
     -- A page its own builder draws can carry a declared settings page, as Profiles carries the
     -- Setups card: typing what only that card has lands on the page, counts it there, and the
     -- page draws the card with the typed words lit; cleared, the page is whole again.
     input:SetText(""); Flush()
     Settings.Page("Profiles/Setups", S):Card({ id = "setups", name = "Setups", help = "Naowh's setups for you.",
-        rows = { { label = "Tailor Setup", buttonText = "Start", button = function() end,
-            help = "Asks a few questions." } } })
+        rows = { { label = "Onboarding", buttonText = "Start", button = function() end,
+            help = "Walks you through a profile, a skin and your modules." } } })
     UI.SearchCarries("Profiles", "Profiles/Setups")
     local drawnWith = {}
     ns.BuildProfileSettings = function(parent, y)
@@ -589,18 +589,65 @@ do
         return y - Settings.Render(parent, "Profiles/Setups", function() end, filter)
     end
     ns.OpenOptionsWindow("QoL/Combat"); Flush()
-    input:SetText("tailor setup"); Flush()
-    Check(Shown("Tailor Setup") and Shown("Setups") and not Shown("Stealth Reminder"),
+    input:SetText("onboarding"); Flush()
+    Check(Shown("Onboarding") and Shown("Setups") and not Shown("Stealth Reminder"),
         "a setting only the carried card has moves the window to the Profiles page, at that card")
     Check(Button("Profiles").count.text == "1" and Button("Quality of Life").count.text == "",
         "the Profiles page counts it")
-    Check(Shown("Tailor Setup").text:find(ns.Color("accent", "Tailor"), 1, true) and drawnWith[#drawnWith] ~= false,
+    Check(Shown("Onboarding").text:find(ns.Color("accent", "Onboarding"), 1, true) and drawnWith[#drawnWith] ~= false,
         "drawn with the search, its words lit")
-    input:SetText("questions"); Flush()
+    input:SetText("skin"); Flush()
     Check(drawnWith[#drawnWith] == UI.filter, "the page draws again as the words change")
     root.scripts.OnKeyDown(root, "ESCAPE"); Flush()
-    Check(UI.filter == nil and drawnWith[#drawnWith] == false and Shown("Tailor Setup") ~= nil,
+    Check(UI.filter == nil and drawnWith[#drawnWith] == false and Shown("Onboarding") ~= nil,
         "cleared, the page is drawn whole again")
+
+    -- A window card is found by its button and drawn on its page while the search holds it.
+    Settings.Page("QoL/Combat", S):Window({ text = "Open Test Log", open = function() end, headline = "Test Log",
+        detail = "Every test, logged." })
+    input:SetText("test log"); Flush()
+    Check(Text("Quality of Life / Combat") and Shown("Test Log") and not Shown("Stealth Reminder"),
+        "a window card found shows on its page, the rest left out")
+
+    -- The Settings page is drawn by its own builder and names what is on it.
+    local function NavCount(name)
+        for _, f in ipairs(frames) do
+            if f.text == name and f:IsShown() and f.parent.count then return tonumber(f.parent.count.text) end
+        end
+    end
+    for _, query in ipairs({ "minimap", "game menu", "window scale", "addon font", "skin", "theme", "modules" }) do
+        input:SetText(query); Flush()
+        Check(NavCount("Settings"), "'" .. query .. "' is counted on the Settings page")
+    end
+
+    -- A module that is off has no pages to search, so its name finds the Settings page, which says so.
+    input:SetText(""); Flush()
+    missingAddOns.NaowhForever_Training = true
+    ns.OpenOptionsWindow("Settings"); Flush()
+    input:SetText("training planner"); Flush()
+    Check(Text("Training Planner is turned off, so its settings are hidden. Turn it on under Modules below.")
+        and Text("MODULES") and NavCount("Settings") >= 1, "a module that is off is found on Settings, with how to turn it on")
+    input:SetText(""); Flush()
+    missingAddOns.NaowhForever_Training = nil
+    input:SetText("training planner"); Flush()
+    Check(not Text("Training Planner is turned off, so its settings are hidden. Turn it on under Modules below."),
+        "on, it is not called off")
+
+    -- A page its own builder draws says when nothing on it matches, as card pages do.
+    input:SetText("zzzz"); Flush()
+    Check(Text(note) and Text("MODULES"), "nothing found on the Settings page, it says so over the page")
+    input:SetText(""); Flush()
+    Check(not Text(note) and Text("MODULES"), "cleared, the note goes")
+
+    -- A module's open-window icon always shows, dimmed until the mouse is on its row.
+    local journal = Button("Dungeon Journal")
+    Check(journal.open:IsShown() and journal.open.alpha < 1, "the open-window icon shows, dimmed")
+    journal.open.scripts.OnEnter(journal.open)
+    Check(journal.open.alpha == 1, "and lights up under the mouse")
+    journal.open.scripts.OnLeave(journal.open)
+    input:SetText("max icons"); Flush()
+    Check(journal.open:IsShown() and journal.open.alpha < 1, "it stays while searching")
+    input:SetText(""); Flush()
     ns.BuildProfileSettings = nil
 end
 
@@ -678,13 +725,13 @@ ns.OpenOptionsWindow("Blessings/Settings"); Flush()
 Check(Text("Blessings / Settings") ~= nil, "existing module/tab deep links still work")
 ns.OpenOptionsWindow("QoL/Combat"); Flush()
 local Settings = ns.Shared.Settings
-local function British(text) return not (text and text:find("Color", 1, true)) end
+local function American(text) return not (text and text:find("Colour", 1, true)) end
 for key, page in pairs(Settings.pages) do
     for _, card in ipairs(page.items) do
         if not card.window then
             local where = key .. " > " .. card.name
             Check(card.help and card.help ~= "", where .. " has its help")
-            Check(British(card.name) and British(card.help), where .. " spells Colour the house's way")
+            Check(American(card.name) and American(card.help), where .. " spells Color the house's way")
             if type(card.switch) == "string" then
                 Check(card.store.Default(card.switch) ~= nil, where .. ": its switch has a default")
             end
@@ -694,7 +741,7 @@ for key, page in pairs(Settings.pages) do
                     local what = where .. " > " .. tostring(row.label)
                     Check(row.label and not labels[row.label], what .. " has a name of its own on the card")
                     labels[row.label] = true
-                    Check(British(row.label) and British(row.help), what .. " spells Colour the house's way")
+                    Check(American(row.label) and American(row.help), what .. " spells Color the house's way")
                     if row.key and row.store == card.store then
                         Check(card.store.Default(row.key) ~= nil, what .. ": " .. row.key .. " has a default")
                     end

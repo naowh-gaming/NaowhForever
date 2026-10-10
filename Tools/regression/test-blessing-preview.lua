@@ -127,6 +127,11 @@ local env = setmetatable({
     C_SpellBook = { IsSpellKnown = function() return true end },
     UnitClass = function() return "Class", class end,
     UnitName = function() return "Glyadin" end,
+    UnitFullName = function() return "Glyadin" end,
+    UnitGUID = function() return "me" end,
+    IsInRaid = function() return false end,
+    GetNumSubgroupMembers = function() return 0 end,
+    GetNormalizedRealmName = function() return "Forever" end,
     GetRealmName = function() return "Forever" end,
     LOCALIZED_CLASS_NAMES_MALE = { WARRIOR = "Warrior", PRIEST = "Priest", ROGUE = "Rogue", MAGE = "Mage" },
     MenuUtil = { CreateContextMenu = function(owner, generate)
@@ -379,5 +384,54 @@ check("clicking the aura opens the aura menu", menu and menu.items[1].label == "
 check("choosing one sets your aura", Pick("Spell 7294") and B.Store().aura == "retribution")
 studio.paint(mine, "group")
 check("the preview shows your aura", mine.aura.icon.texture == 7294)
+
+-- A class with someone on their own blessing says so, and can hand them back the class blessing.
+local function Has(label)
+    for _, item in ipairs(menu.items) do if item.label == label then return true end end
+end
+B.ClassMenu(mine.cells[1], "PALADIN", true)
+check("nobody on their own blessing: no line about it", not Has("Give them the class blessing"))
+B.Store().players.me = "might"
+B.ClassMenu(mine.cells[1], "PALADIN", true)
+check("the class menu counts who has their own blessing", Has("1 player has their own blessing"))
+B.ClassMenu(mine.cells[1], "WARRIOR", true)
+check("and only for that class's members", not Has("Give them the class blessing"))
+B.ClassMenu(mine.cells[1], "PALADIN", true)
+refreshed = 0
+check("its button gives them the class blessing again", Pick("Give them the class blessing")
+    and B.Store().players.me == nil and refreshed > 0)
+
+-- The card lists every class's blessing too, writing the same plan as the menus.
+local classRows
+for _, row in ipairs(cards.bar.rows) do
+    if row[1] and row[1].group == "Blessings by Class" then classRows = row end
+end
+check("the card has a Blessings by Class group, a row per class", classRows and #classRows == #B.CLASSES + 1)
+local warriorRow = classRows[2]
+check("each row is named for its class", warriorRow.label == "Warrior")
+check("its help names the blessings, so a search for one finds it",
+    warriorRow.help:find("Kings", 1, true) and warriorRow.help:find("Might", 1, true)
+    and warriorRow.help:find("Wisdom", 1, true))
+check("the row shows the plan", warriorRow.get() == "kings")
+local values, order = warriorRow.choice()
+check("its choices are the blessings, then None", values.kings == "Spell 20217" and order[#order] == "none"
+    and #order == #B.BLESSINGS + 1)
+refreshed = 0
+warriorRow.set("might")
+check("choosing one writes the plan and refreshes the page", B.Store().classes.WARRIOR == "might" and refreshed > 0)
+warriorRow.set("none")
+check("None clears it", B.Store().classes.WARRIOR == nil and warriorRow.get() == "none")
+check("shown to paladins", not warriorRow.hidden())
+class = "WARRIOR"
+check("and hidden from everyone else", warriorRow.hidden())
+for i = #cards.bar.rows, 1, -1 do
+    local row = cards.bar.rows[i]
+    if row[1] and row[1].look then table.remove(cards.bar.rows, i) end
+end
+local Search = dofile("Tools/regression/settings_search.lua")({ ["Blessings/Settings"] = { cards.bar } })
+local kings = Search("kings")
+check("the options search finds Kings on the Blessing Bar card, a row per class",
+    #kings >= #B.CLASSES and kings[1].label == "Warrior" and kings[1].card == "Blessings/Settings:bar")
+check("and finds them by \"greater\"", #Search("greater") >= #B.CLASSES)
 
 print(("test-blessing-preview: %d checks passed"):format(checks))

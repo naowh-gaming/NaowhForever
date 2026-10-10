@@ -79,7 +79,7 @@ character or share them with a friend.
 | `/nfthreat` | Threat Meter |
 | `/nfgroup` | Group Inspect (also `/nf group`) |
 | `/nfpvp` | PvP |
-| `/nf setup` | The onboarding, to tailor your setup again |
+| `/nf setup` | The onboarding, to pick your profile, skin and modules again |
 | `/nf quiz` | A WoW quiz for flights and campfires |
 | `/nfaim` | The Aim Trainer |
 | `/nf scrap` | Your Scrap List (Scrap Marker, QoL > Loot & Items) |
@@ -202,6 +202,20 @@ newest section, a merged PR's changelog line does not start with `Added:`, `Chan
 `Fixed:` (the error names the PR), the tag already exists, or the version is not like
 `1.0.7`. Pushing a tag by hand still releases, but only with what `CHANGELOG.md`
 already says: the PRs' lines are added by the workflow.
+
+### On a schedule
+
+- **Every Wednesday at 18:00 UTC** the same release runs by itself, as a patch, when main has
+  anything for players since the last release. A quiet week releases nothing.
+- **Every night at 22:00 UTC** a beta: main's version is stamped on a commit of its own and
+  tagged `<next>-beta.<n>` (after `1.0.6`: `1.0.7-beta.1`, `1.0.7-beta.2`, ...). That commit is
+  never pushed to `main`. CurseForge publishes it on the beta channel, and the GitHub release's
+  notes are `## Unreleased` as `pending` prints it. Betas post nothing to Discord, and a night
+  with nothing new on `main` since the last release or beta tags nothing.
+- **Run workflow** with **beta** ticked tags tonight's beta at once.
+
+Betas never move the release's number: the next release counts from the newest version
+without a suffix.
 
 ## License
 

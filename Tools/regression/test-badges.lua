@@ -697,7 +697,8 @@ do  -- the settings card, with the flag on
     local s = fixture(true)
     local card = s.cards["QoL/Interface:supporterBadges"]
     check("flag 1: the Supporter Badges card is on QoL > Interface", card and card.name == "Supporter Badges"
-        and #card.rows == 5)
+        and #card.rows == 6)
+    check("flag 1: its last row shows your badge code", card.rows[6].button == s.ns.ShowBadgeCode)
     check("flag 1: /nf badges answers", type(s.ns.BadgesCommand) == "function" and s.ns.BADGE_TIERS ~= nil)
 end
 
@@ -767,7 +768,7 @@ do
     for line = 3, 1002 do
         out = filter("CHAT_MSG_SAY", "Glyalith", long, "Glyalith", "", "", "", "", 0, 0, "", 0, line, "Player-1-DEV")
     end
-    check("a 4000-letter line of colour codes costs the filter nothing", #long > 4000
+    check("a 4000-letter line of color codes costs the filter nothing", #long > 4000
         and out == "Glyalith " .. s.api.TIERS.developer.markup and os.clock() - started < 0.5)
     check("the filter returns the name, never the message", not out:find("Naowh Forever:", 1, true))
 

@@ -43,7 +43,7 @@ local ns = {
     Shared = { Parts = {} },
     UI = {},
     L = function(text) return text end,
-    TitleFontPath = function() return "morpheus" end,
+    TitleFontPath = function() return "naowh" end,
 }
 function ns.PixelInset(region, n, relativeTo) insets[#insets + 1] = { region = region, n = n, to = relativeTo } end
 function ns.Border(frame, color) borders[#borders + 1] = { frame = frame, color = color } end
@@ -86,7 +86,7 @@ check("a gem on each corner, each on its black edge", #gems.textures == 8 and go
 
 local plate = Parts.TitlePlate(window, "Naowh Forever")
 local title = plate.strings[1]
-check("the title in capitals, in the title font", title.text == "NAOWH FOREVER" and title.font == "morpheus")
+check("the title in capitals, in the title font", title.text == "NAOWH FOREVER" and title.font == "naowh")
 check("the title over the middle of the top edge", title.points[1][1] == "CENTER" and title.points[1][2] == window
     and title.points[1][3] == "TOP")
 check("the plate sized by the title, with room each side", plate.points[1][1] == "LEFT" and plate.points[1][2] == title
@@ -98,7 +98,7 @@ check("default skin: the glyph stays", Parts.ClassicIcon(icon, "map") == false a
 ns.classicSkin = true
 check("Classic+: the game's icon for a glyph", Parts.ClassicIcon(icon, "map") == true
     and icon.texture == St.CLASSIC_ICON_PATH .. St.CLASSIC_ICONS.map)
-check("cropped inside its edge, in its own colours", icon.coords[1] == St.CLASSIC_ICON_CROP
+check("cropped inside its edge, in its own colors", icon.coords[1] == St.CLASSIC_ICON_CROP
     and icon.coords[2] == 1 - St.CLASSIC_ICON_CROP and icon.desaturated == false and icon.color[1] == 1)
 check("a name with no icon keeps its glyph", Parts.ClassicIcon(New("Texture"), "nothing") == false)
 missing[St.CLASSIC_ICON_PATH .. St.CLASSIC_ICONS.hearth] = true

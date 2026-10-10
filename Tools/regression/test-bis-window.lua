@@ -379,7 +379,7 @@ check("a BiS you wear has the green line under its icon", head.worn.shown == tru
 check("and the marks every slot has: its item level in the corner, no star (each is your BiS)",
     head.marks.level.text ~= nil and head.marks.level.text ~= "" and head.marks.rank.text == ""
     and head.marks.forever == head.iconFrame.forever)
-check("one you do not wear has no line, and keeps its colour", head.iconFrame.badge == nil
+check("one you do not wear has no line, and keeps its color", head.iconFrame.badge == nil
     and neck.worn.shown == false
     and neck.icon.desaturated == false)
 check("a slot's row marks what you wear with the green bar, not the check",
@@ -736,7 +736,7 @@ S.Set("bisDropSound", "game:raidwarning")
 -- How it looks.
 local toast = B.Toast.New(Frame())
 paint(toast, bisHead, 1, "dropped")
-check("by default: the star, a border and a glow in your rank's colour", toast.star:IsShown()
+check("by default: the star, a border and a glow in your rank's color", toast.star:IsShown()
     and toast.edge.opacity == 1 and toast.glow:IsShown() and toast.bg.alpha == 0.95)
 S.Set("bisToastStar", "none")
 S.Set("bisToastBorder", "none")
@@ -805,11 +805,13 @@ for _, item in ipairs(page.items) do
 end
 check("one page: the window's card, then its cards in order", page.items[1].window
     and page.items[1].text == "Open BiS List" and table.concat(cards, ",")
-    == "marks,dropAlert,lists,statWeights,window")
+    == "marks,dropAlert,lists,statWeights,keys,window")
+check("the tooltip and bag marks card is named for them", page.cards.marks.name == "Marks on Items")
 check("Drop Alert: its switch and its preview", page.cards.dropAlert.switch == "bisLootAlert"
     and page.cards.dropAlert.studio == studio)
 check("no list management on it: that is the window's", rows["Manage Lists"] == nil and rows["Your List"]
-    and rows["Rankings For"] and rows["Key Binding"].binding == "NAOWHFOREVER_BIS")
+    and rows["Rankings For"] and rows["Key Binding"] == nil and page.cards.keys.rows[1].label == "Open BiS List"
+    and page.cards.keys.rows[1].binding == "NAOWHFOREVER_BIS")
 check("how it looks needs On-Screen Alert", rows["Size"].needs[2] == "bisToast" and rows["Star"].needs[2] == "bisToast")
 check("a size in percent is saved as a scale", rows["Size"].get() == 100)
 rows["Size"].set(120)

@@ -17,6 +17,7 @@ local ALPHA_RANGE = ns.Shared.Style.ALPHA_RANGE
 local TEXT_NO_CLOCK, TEXT_24H, TEXT_12H = "No clock", "24-hour clock", "12-hour clock"
 local TEXT_SUMMARY = "%s, %d buttons%s"
 local TEXT_FADES = ", fades until hovered"
+local TEXT_CLASSIC_ICONS = "Classic+ icons are in full color"
 
 local STATES = {
     { key = "normal", label = "Normal", tip = "The bar as it sits on your screen." },
@@ -32,10 +33,15 @@ local function Summary(store)
     return TEXT_SUMMARY:format(clock, #layout.left + #layout.right, store.Get("mouseover") and TEXT_FADES or "")
 end
 
+local function NotClassic()
+    return not ns.classicSkin
+end
+
 local ROWS = {
     Group("Clock"),
     { key = "showClock", label = "Show Clock", toggle = true,
-      help = "The time between the two sides. Click it for the calendar." },
+      help = "The time between the two sides. Click it for the calendar (not with a gamepad).",
+      search = "lockouts saved instances /nf lockouts nf lockouts" },
     { key = "use24h", label = "24-Hour Clock", toggle = true, needs = "showClock" },
     Group("Buttons"),
     { key = "layout", label = "Reset Layout", button = ResetLayout, buttonText = "Reset",
@@ -60,8 +66,8 @@ local ROWS = {
       help = "A black outline round the clock." },
     Group("Background"),
     { key = "bgAlpha", label = "Bar Opacity", slider = ALPHA_RANGE, unit = "%" },
-    Group("Colours"),
-    { key = "iconColor", label = "Icon Colour", colour = true,
+    Group("Colors"),
+    { key = "iconColor", label = "Icon Color", colour = true, needs = NotClassic, why = TEXT_CLASSIC_ICONS,
       help = "The tint on every button's icon: Naowh's own and any addon's." },
     Group("Visibility"),
     { key = "hideInCombat", label = "Hide In Combat", toggle = true, help = "The FPS / MS readout stays up." },

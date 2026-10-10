@@ -14,6 +14,8 @@ NaowhForever_QoL/
   QoL.xml                          every file, in load order
   Constants.lua                    the numbers, colors and patterns several QoL features share (ns.QoLConstants)
   Interface/
+    SpellEfficiencyData.lua  each mana spell rank's healing or damage (ns.SpellEfficiencyData), generated
+    SpellEfficiency.lua Mana Efficiency on spell tooltips, its Preview Tooltip and the Tooltips card's preview
     GlobalCopy.lua      /copy, and tooltip IDs with their copy shortcut (the card is Shared/UI/CopyCard.lua)
     HideClutter.lua     UI Clutter
     ChatZones.lua       Chat Zones
@@ -28,6 +30,8 @@ NaowhForever_QoL/
     MapOverlays.lua     each zone map's explorable areas (ns.MapOverlays), generated
     Unexplored.xml      the unexplored pin template, then Unexplored.lua
     Unexplored.lua      Unexplored Areas on the world map
+    ZoneLevelsData.lua  each zone's level range (ns.ZoneLevels), generated
+    ZoneLevels.lua      Zone Levels on the world map
     SkyborneData.lua    the Skyborne spots every player starts with (ns.SkyborneSpots), MIT notice inside
     SkyborneSpots.xml   the Skyborne pin template, then SkyborneSpots.lua
     SkyborneSpots.lua   Skyborne Spots on the world map
@@ -45,7 +49,7 @@ NaowhForever_QoL/
     CursorCooldown.lua  Cooldown at Cursor
     GcdTracker.lua      GCD Tracker (ns.GCDSpell)
     FocusCastBar.lua    the Focus Cast Bar
-    StealthReminder.lua the stealth, stance, aura and form reminders
+    StealthReminder.lua the Stealth Reminder
     PetTracker.lua      the Pet Tracker
     SummonEmote.lua     the Summon Emote
   Questing/
@@ -102,7 +106,7 @@ NaowhForever_QoL/
   `Shared/` (the copy cards, the town NPCs, the food and potion lists).
   `Tools/regression/test-module-boundaries.lua` checks it.
 - The Top Bar's card sits on QoL > Interface, so the Top Bar depends on QoL: switching QoL off takes
-  it along. Turning a QoL feature on in Tailor my setup turns QoL on.
+  it along; turning the Top Bar on in the onboarding turns QoL on.
 - The Trainer Popup card is declared here, on the Training Planner's page, so it goes when QoL is
   off. The Bag Space and Food & Drink key binding names live in `Core/Commands.lua`, so the key
   bindings read right with QoL off, where the Bag Space key says so.
@@ -148,6 +152,7 @@ NaowhForever_QoL/
 - Durability is fully red at or below 15% (`FLOOR_PCT`). Its card is fitted to the text only with
   a background, so what is anchored to it keeps its spot; the Unlock Mode preview shows 20%.
 - UI Clutter's Hide Red Error Text is the same switch as Blizzard's `/uierrorsoff`.
+- Hide Bag Bar fades `BagsBar` with SetAlpha and turns its buttons' mouse off, never Hide: Edit Mode lays the bar out, and its Show and Hide are protected in combat.
 - The event toast frame is not in every client. Its own hide button stays usable while shown,
   and toasts are closed 0.05s after they display.
 - `showTutorials` is the Show Tutorials box in Blizzard's options. What you had before Turn Off
@@ -184,8 +189,9 @@ NaowhForever_QoL/
   it, and its `isOnGCD` flag stays readable in combat. A press and a cooldown error within 0.3s
   (`MATCH_WINDOW`) are one.
 - Buff Thank You Message: the game only names a caster who has a nameplate, is your target or
-  mouseover, or is in your group; for anyone else it can send an /emote instead (an addon may not
-  /say outside instances).
+  mouseover, or is in your group; for anyone else it can send the built-in /thank instead. An
+  addon's custom /emote, like /say, is blocked outside instances without a key press, but
+  `C_ChatInfo.PerformEmote` is not (tested on Forever from a `C_Timer` callback).
 - Its buff lists hold every rank and group version of each class buff another player can give
   you (Wowhead Forever). They are kept in the file, not read from Auras & Buffs, because that
   module can be turned off. The Blessing list is Might, Wisdom, then Kings, Salvation and Light,
@@ -490,11 +496,8 @@ NaowhForever_QoL/
 - `SAME_WITHIN` compares numeric CVars loosely, as the game writes some back with float noise.
 
 ### Stealth Reminder
-- Forever does not expose your spec, so a druid or priest picks their form on the settings page.
 - The form IDs are `GetShapeshiftFormID` values, the same ones the Threat Meter reads.
-- The form reminder's code stays, but `On("formReminder")` is always false: it is held back for later review.
 - A reminder is fitted to its text only with a background, so elements anchored to it keep their spot.
-- The form alarm plays as the warning appears, then again every Repeat Every seconds while it stays up.
 
 ### Quiz
 - `CAMPFIRE_SEATED` (1229739) is Forever's "Welcoming Campfire" aura, present only while seated at a campfire (probed 2026-09-24). "Campfire Nearby" (1283391) is an area aura from simply walking past one, so it is not used.
@@ -529,6 +532,8 @@ NaowhForever_QoL/
 - A command's handler is called directly. Sending it through the chat box ran the game's chat code from the addon, and the player's next chat message was blocked.
 - /cast, /use, /target and the other secure commands run only from the chat box or a macro, so a custom command refuses them. The game blocks ReloadUI from addon code, so /reload is refused too.
 - The chat box caches handlers in `hash_SlashCmdList` the first time any slash command is typed, so a refresh drops our own cached entries there; the taint scan allows that one write.
+- A window command shows or hides the frame from addon code, so its OnShow / OnHide run tainted;
+  while `ns.GamepadOwnsPanels()` their gamepad handling is forbidden, so the command refuses.
 - Only the windows this client has are offered: `FRAMES` names each one's load-on-demand addon where it is not loaded up front.
 
 ### Town Map
@@ -536,7 +541,7 @@ NaowhForever_QoL/
 - `ns.TownCapitals` lists the capitals' maps: the game reports them as zones, so this is the only way to tell.
 - `/naowh townaudit` checks that data against Forever by standing at each NPC: opening their window records where you are next to where the data puts them, in the account store (`townAudit[mapID][name]`).
 - The hint lines' light blue (`HINT`) goes through `SoftBlue`: the shade it always was, or the theme's lighter Accent once a theme changes the Accent.
-- The map calls `CheckMouseButtonPassthrough` on every acquired pin, and its SetPassThroughButtons is protected: from our refresh it is blocked in combat. Town pins take no clicks, so clicks reach the map anyway; zone exits and docks are separate clickable pins, so the vendor and trainer pins stay click-through. A zeppelin tower's pin has a second destination on right click.
+- The map calls `CheckMouseButtonPassthrough` on every acquired pin, and its SetPassThroughButtons is protected: from our refresh it is blocked in combat. Town pins take no clicks, so clicks reach the map anyway; zone exits and docks are separate clickable pins, so the vendor and trainer pins stay click-through. A zeppelin tower's pin has a second destination on right click. Their click opens the map with `C_Map.OpenWorldMap`, never the map's `SetMapID`: written from addon code, the map's `mapID` stays tainted for the session, and the next map opened in combat blocks the quest pins' SetPassThroughButtons.
 - Forever has no map links of its own (`GetMapLinksForMap` returns nothing), so the exits come from `ZoneExits.lua`. `EXIT_LENGTH` is an exit arrow's length, in pin sizes.
 - Vendors & Trainers Only in Cities (`townCapitalsOnly`) keeps vendors, trainers and the bank off questing maps. Flight masters, innkeepers and stable masters (`EVERYWHERE`) are what a traveller looks for in any town, so they show on every map with it on; so do mailboxes and spirit healers, which are what you look for out in the world.
 - `townMinimap` is the minimap's mailboxes and `townMinimapSpirit` its spirit healers: `townMinimap` once held both, so existing profiles keep their mailboxes.
@@ -636,6 +641,33 @@ NaowhForever_QoL/
 - The overlays (`MapOverlays.lua`, generated by `Tools/build/map_overlays.py` from the game's tables) are `[uiMapID] = { { width, height, offsetX, offsetY, fileDataID, ... } }`: an area's size and place on the map art in its pixels, then its `TILE` (256 px) tiles row by row (`AREA_FIELDS` before them).
 - A tile's drawn size and its texture file's size differ along one side: the last tile of a row or column holds what is left, in a file rounded up to a power of two (from `SMALLEST_FILE`).
 - The pin is one for the whole map, holding every unexplored area's tiles. Its `CheckMouseButtonPassthrough` is left empty: the map calls it on every acquired pin, its SetPassThroughButtons is protected in combat, and this pin takes no clicks.
+
+### Zone Levels
+- Forever's client tables give no outdoor zone a level range (no ContentTuningID on UiMap or AreaTable), so `C_Map.GetMapLevels` has nothing and the game's own map label never shows one. The ranges come from Wowhead's Forever world map instead, written to `ZoneLevelsData.lua` by `Tools/build/zone_levels.py`; Moonglade, Mount Hyjal and Shen'dralas have none there.
+- The range is our own text under the game's area label (its Description), so nothing is written into Blizzard's label. The colour follows the game's rule for a range: the low end's colour below it, the high end less `BELOW_RANGE` above it, yellow inside.
+- No source gives the fishing skill a zone needs, so it is not shown.
+
+### Mana Efficiency
+- Its amounts come from `SpellEfficiencyData.lua`, generated by `Tools/build/spell_efficiency.py` from the game's own spell tables (wago.tools, the build in its header), keyed by spell ID. Nothing is read from tooltip text.
+- An entry is `school, level, maxLevel`, then one part per kind of amount the spell has on its target: `kind, direct, directPerLevel, directCoefficient, tick, tickPerLevel, tickCoefficient, ticks, seconds`. A spell that heals and damages the same target has two parts and gets two lines (none does in this build).
+- Each entry is one string of those numbers joined by commas, not a table, so the data stays small while the feature is off: 482 tables held about 120 KB after login, the strings hold about 42 KB (measured in Lua 5.1, 32-bit; the 64-bit client holds more of both).
+- A spell's string is split into its table (string.find and tonumber, never loadstring) the first time its tooltip needs it, and kept in `decoded`: later hovers of that spell allocate nothing.
+- An entry that does not split into whole parts of plain numbers, each part a heal or damage, counts as no data: no line, no error.
+- The direct amount is the middle of the client's roll (`EffectBasePointsF`, rolled plus or minus half its `Variance`), plus `EffectRealPointsPerLevel` for each level you are above the spell's level, up to its max level.
+- Spell power counts through each effect's own `EffectBonusCoefficient` from the tables, per tick for healing and damage over time.
+- A spell learned below level 20 gets 3.75% less of its coefficient per level under 20 (`LOW_LEVEL_CAP`, `LOW_LEVEL_STEP`): the classic level 20 penalty, `1 - ((20 - sLvl) * 0.0375)`, from warcraft.wiki.gg/wiki/Downranking. It is the one rule not in the tables. Vanilla had no downranking penalty above level 20, so none is applied there.
+- Mana is the game's own cost (`C_Spell.GetSpellPowerCost`), so talents and gear that change it count. A spell with no mana cost (rage, energy, Bear and Cat Form abilities) gets no line, with no class checks.
+- Per second is over the cast time (`C_Spell.GetSpellInfo`), read only when its info is a readable, non-secret table. An instant or channeled spell counts the time its periodic part runs instead; an instant spell with nothing periodic shows no per second.
+- Per second is a whole number; Decimals sets the per mana numbers only (Per Mana, Per Mana per Second).
+- Your bonus healing, or spell damage of the spell's school, is read only with Include My Spell Power on. While `C_Secrets.ShouldUnitStatsBeSecret()` says stats are secret, or any value read is secret, the line is left off rather than guessed.
+- Not counted: talents and buffs that add a percent, crits, hit, resists and target conditions. A chain or area spell counts its first target.
+- Left out, with no line, because part of their amount is somewhere the client's tables do not say (better no line than a wrong number): weapon damage (Aimed Shot, Multi-Shot), a triggered spell or proc (seals, Judgement), an area trigger the server runs (Blizzard, Rain of Fire, Consecration, Flamestrike, Hurricane, Volley), a dummy or script effect (Swiftmend, and Immolate, whose ranks carry a script effect in this build), and a direct base of 1 with no bonus (a scripted amount's placeholder).
+- A periodic trigger is counted (Arcane Missiles): the missile spell is named in the effect itself, not chosen by a seal or a proc.
+- What a spell does is what it does to its target: a heal on the caster from a damage spell (Drain Life, Death Coil) is not counted.
+- The separator is written `||`, which the game draws as one `|`.
+- The spell post-call goes on the first time the switch is on, and stays inert after it goes off (TooltipDataProcessor has no removal). The line is added once per tooltip build, as the ID line is.
+- Preview Tooltip opens Lesser Heal rank 3 (`PREVIEW_SPELL`) with the line, even with the switch off. The card's preview draws two sample spells from fixed numbers (`SAMPLES`, `SAMPLE_POWER`), never a real spell.
+- The line's default color is the theme's soft accent as shipped. A saved color whose r, g or b is missing or not a number (a profile import checks only that it is a table) draws in the default from the QoL store (`S.Default`), on the tooltip and in the card's preview. Both of Naowh's setups set the switch off (`Tools/data/preset_*.lua`).
 
 ### XP per Hour
 - Played time comes from `Shared.Played`. Level times are kept per character by GUID, with the played time each level was reached at (shown beside each past level), which Compare Characters reads for every character on the account to mark your pace and color past levels against the fastest. A character's first login after the GUID change takes over the old entry under its first name and realm, once, if no one else has and its level fits.
