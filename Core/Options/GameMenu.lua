@@ -44,7 +44,7 @@ local function IsOptions(text) return text == GAMEMENU_OPTIONS end
 
 local function Added(menu)
     button = nil
-    if not On() or CanAutoSetGamePadCursorControl(false) then return end
+    if not On() or InputUtil.IsGamepadUIEnabled() or CanAutoSetGamePadCursorControl(false) then return end
     button = MainMenuFrameMixin.AddButton(menu, Label(), Clicked)
 end
 
@@ -69,7 +69,7 @@ local function Placed(menu)
 end
 
 local function OnBoot(self)
-    if not (GameMenuFrame and GameMenuFrame.InitButtons and GameMenuFrame.AddButton) then return end
+    if not (GameMenuFrame and GameMenuFrame.InitButtons and MainMenuFrameMixin) then return end
     self:UnregisterAllEvents()
     hooksecurefunc(GameMenuFrame, "InitButtons", Added)
     GameMenuFrame:HookScript("OnShow", Placed)

@@ -180,8 +180,9 @@ Modals and windows
   `AddButton`, which also lists it in `GameMenuFrame.buttons`. In gamepad mode the menu's OnHide
   walks that list and then calls the protected `SetGamePadCursorControl`, so our entry got every
   close, Options included, forbidden. Our own click hides the menu from addon code and would hit
-  the same call, so the button is left out whenever the menu will make it
-  (`CanAutoSetGamePadCursorControl(false)`, the test its OnHide uses); /nf still opens the window.
+  the same call, so the button is left out whenever OnHide does gamepad work: the gamepad UI (its
+  footer drops override bindings, blocked in combat) or `CanAutoSetGamePadCursorControl(false)`.
+  /nf still opens the window.
 - The options window is DIALOG and the HUD Editor draws at HIGH, so the two never share the
   screen: Unlock Mode steps the window out and puts it back on exit. Stash the window before
   arming, or its OnHide disarms the mode in the same click.
