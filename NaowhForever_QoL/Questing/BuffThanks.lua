@@ -40,6 +40,8 @@ local OPTIONS_WINDOW = "NaowhForeverOptions"
 local EDITOR_INSET = 6
 local COOLDOWN_RANGE = { 1, 60, 1 }
 local EDGE = ns.Shared.Style.BORDER_RGB
+local EMOTE_KEY = "?"
+local THANK_EMOTE = "THANK"
 local WHISPER_KEY = "buffThanksText"
 local TEXT_SAVE, TEXT_CANCEL = "Save", "Cancel"
 
@@ -98,10 +100,20 @@ local function ThankCaster(unit, id, buff)
     if text then Send(text, "WHISPER", name) end
 end
 
+local function ThankStranger()
+    if not (S.Get("buffThanksEmote") and Due(EMOTE_KEY)) then return end
+    sentCount = sentCount + 1
+    C_ChatInfo.PerformEmote(THANK_EMOTE)
+end
+
 local function Thank(aura)
     local unit, id = aura.sourceUnit, aura.spellId
-    if not unit or Secret(unit) or Secret(id) or not buffs[id] or not Room(GetTime()) then return end
-    ThankCaster(unit, id, aura.name)
+    if Secret(unit) or Secret(id) or not buffs[id] or not Room(GetTime()) then return end
+    if unit then
+        ThankCaster(unit, id, aura.name)
+    else
+        ThankStranger()
+    end
 end
 
 local function OnAura(_, _, _, info)
@@ -216,6 +228,8 @@ local function EditLines(key, title)
     editor.view.box:SetFocus()
 end
 
+local Group = ns.Shared.Settings.Group
+
 local function PerBuffOff()
     return not S.Get("buffThanksPerBuff")
 end
@@ -236,6 +250,9 @@ for _, family in ipairs(FAMILIES) do
         button = function() EditLines(family.key, family.label) end,
         help = "Whispers for " .. family.what .. "." }
 end
+rows[#rows + 1] = Group("Unknown Casters")
+rows[#rows + 1] = { key = "buffThanksEmote", label = "Thank With an Emote", toggle = true,
+    help = "A /thank to everyone around you when the game cannot name the caster." }
 
 ns.Shared.Settings.Page("QoL/Questing & Group", S):Card({
     id = "buffThanks", name = "Buff Thank You Message", order = 40, switch = "buffThanks",

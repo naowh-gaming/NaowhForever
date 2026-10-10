@@ -1,10 +1,10 @@
 -- Run with Lua 5.1 from the repository root: Buff Thank You Message whispers a player who
 -- gives you a class buff, once per cooldown, in the open world and out of combat only; a
--- caster the game cannot name gets nothing, since an outdoor /emote needs a key press; and
--- nothing is registered while it is off.
+-- caster the game cannot name gets the optional built-in /thank; and nothing is registered
+-- while it is off.
 local settings = {
     enabled = true, buffThanks = false, buffThanksCooldown = 10, buffThanksGroup = false,
-    buffThanksText = "Thanks for the {buff}, {name}!",
+    buffThanksEmote = false, buffThanksText = "Thanks for the {buff}, {name}!",
     buffThanksPerBuff = false, buffThanksBlessing = "Light be with you, {name}!", buffThanksIntellect = "",
 }
 local S = { Get = function(key) return settings[key] end }
@@ -53,6 +53,7 @@ local env = setmetatable({
     C_ChatInfo = {
         SendChatMessage = function(text, channel, _, to) sent[#sent + 1] = { text = text, channel = channel, to = to } end,
         InChatMessagingLockdown = function() return lockdown end,
+        PerformEmote = function(emote) sent[#sent + 1] = { emote = emote } end,
     },
     GetTime = function() return now end,
     UnitAffectingCombat = function() return combat end,
@@ -159,10 +160,8 @@ Case("a secret caster or spell ID: nothing", function()
     secret = nil
     assert(#sent == 0, #sent)
 end)
-Case("an unnamed caster: nothing", function()
+Case("an unnamed caster: nothing unless Thank With an Emote is on", function()
     Gain(20217, "Blessing of Kings", nil)
-    Gain(9885, "Mark of the Wild", nil)
-    Gain(467, "Thorns", nil)
     assert(#sent == 0)
 end)
 Case("every class: Arcane Intellect, Fortitude, Mark of the Wild, Unending Breath", function()
@@ -172,6 +171,15 @@ Case("every class: Arcane Intellect, Fortitude, Mark of the Wild, Unending Breat
         Gain(id, "Buff", "nameplate38")
     end
     assert(#sent == 4, #sent)
+    settings.buffThanksEmote = true
+end)
+Case("unnamed casters with the emote on: one built-in /thank per cooldown", function()
+    Gain(9885, "Mark of the Wild", nil)
+    Gain(467, "Thorns", nil)
+    assert(#sent == 1 and sent[1].emote == "THANK" and sent[1].channel == nil, #sent)
+    now = now + 3600
+    Gain(20217, "Blessing of Kings", nil)
+    assert(#sent == 2 and sent[2].emote == "THANK", #sent)
 end)
 Case("several lines: one is picked, trimmed, placeholders filled in", function()
     now = now + 3600
