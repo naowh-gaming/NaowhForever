@@ -49,6 +49,7 @@ local function NewTab(bar)
         button.line:SetPoint("TOPLEFT")
         button.line:SetPoint("TOPRIGHT")
     end
+    if ns.foreverSkin then Parts.ForeverTab(button) end
     button:SetScript("OnClick", TabClicked)
     button:SetScript("OnEnter", TabEnter)
     button:SetScript("OnLeave", TabLeave)
@@ -99,6 +100,7 @@ function Parts.PaintTabs(bar, shown)
         button.text:SetTextColor(color.r, color.g, color.b)
         button.fill:SetShown(on)
         button.line:SetShown(on)
+        if ns.foreverSkin then Parts.PaintForeverTab(button, on) end
     end
 end
 
@@ -112,7 +114,7 @@ function Parts.SetTabs(bar, items)
         local w = i == #items and width - x or math.floor(button.want + spare + 0.5)
         button:SetSize(w, TAB_H)
         button:SetPoint("LEFT", x, 0)
-        if i > 1 then Split(bar, i, x) end
+        if i > 1 and not ns.foreverSkin then Split(bar, i, x) end
         x = x + w
     end
 end
@@ -128,8 +130,10 @@ end
 function Parts.Tabs(parent, width, items, onPick)
     local bar = CreateFrame("Frame", nil, parent)
     bar:SetSize(width, TAB_H)
-    ns.Solid(bar, "BACKGROUND", T.panel, 1):SetAllPoints()
-    ns.Border(bar, BORDER_RGB)
+    if not ns.foreverSkin then
+        ns.Solid(bar, "BACKGROUND", T.panel, 1):SetAllPoints()
+        ns.Border(bar, BORDER_RGB)
+    end
     bar.buttons, bar.splits, bar.onPick = {}, {}, onPick
     Parts.SetTabs(bar, items)
     return bar
@@ -153,5 +157,6 @@ function Parts.SearchBox(parent, hint, onSearch, columns)
     Edge(box, BORDER_RGB)
     box:HookScript("OnEditFocusGained", SearchFocus)
     box:HookScript("OnEditFocusLost", SearchBlur)
+    if ns.foreverSkin then Parts.ForeverSearch(box, fill, icon) end
     return box
 end
