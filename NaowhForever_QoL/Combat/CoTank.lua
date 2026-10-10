@@ -490,11 +490,11 @@ local Group = ns.Shared.Settings.Group
 local FILTER = { { important = "Boss & Important", nonplayer = "Non-Player Auras", all = "All Debuffs",
     dispellable = "Dispellable by You" }, { "important", "nonplayer", "all", "dispellable" } }
 local POSITION = { { top = "Above", bottom = "Below", left = "Left", right = "Right", topleft = "Top Left",
-    topright = "Top Right", bottomleft = "Bottom Left", bottomright = "Bottom Right", center = "Centre" },
+    topright = "Top Right", bottomleft = "Bottom Left", bottomright = "Bottom Right", center = "Center" },
     { "top", "bottom", "left", "right", "topleft", "topright", "bottomleft", "bottomright", "center" } }
-local GROW = { { CENTER = "Centred", RIGHT = "Right", LEFT = "Left", UP = "Up", DOWN = "Down" },
+local GROW = { { CENTER = "Centered", RIGHT = "Right", LEFT = "Left", UP = "Up", DOWN = "Down" },
     { "CENTER", "RIGHT", "LEFT", "UP", "DOWN" } }
-local FROM_ANCHOR = "From the centre of the anchor frame. Only used while anchored to a frame."
+local FROM_ANCHOR = "From the center of the anchor frame. Only used while anchored to a frame."
 
 local function OwnHealthColour() return not S.Get("coTankClassColor") end
 local function OwnNameColour() return S.Get("coTankName") and not S.Get("coTankNameClassColor") end

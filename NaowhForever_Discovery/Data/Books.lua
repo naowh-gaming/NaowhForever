@@ -111,7 +111,7 @@ ns.LibraryBooks = {
       spots = { { 1447, 20.7, 62.0, "Haldarr Encampment" } } },
     { quest = 81953, item = 220349, tier = 45, side = "B", turnIn = "librarian",
       name = "Stonewrought Design",
-      spots = { { 1428, 29.0, 28.9, "Blackrock Mountain", "In the centre vault on the large platform, outside the dungeons." } } },
+      spots = { { 1428, 29.0, 28.9, "Blackrock Mountain", "In the center vault on the large platform, outside the dungeons." } } },
     { quest = 81954, item = 220350, tier = 45, side = "B", turnIn = "librarian",
       name = "Venomous Journeys",
       spots = { { 1425, 36.0, 72.8, "Shadra'Alor" } } },

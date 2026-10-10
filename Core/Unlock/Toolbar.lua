@@ -31,7 +31,7 @@ local TEXT_REDO, TEXT_REDO_HELP = "Redo", "Makes the change again. Ctrl + Y."
 local TEXT_REVERT, TEXT_REVERT_HELP = "Revert", "Puts back everything changed since the HUD Editor opened."
 local TEXT_ELEMENTS, TEXT_ELEMENTS_HELP = "Elements", "Shows or hides the list of every element."
 local TEXT_GUIDES = "Guides"
-local TEXT_GUIDES_HELP = "Lines a dragged element up with the others and the screen centre. Hold Alt to drag freely."
+local TEXT_GUIDES_HELP = "Lines a dragged element up with the others and the screen center. Hold Alt to drag freely."
 local TEXT_LAYOUTS = "Layouts"
 local TEXT_LAYOUTS_HELP = "Saves where everything is under a name, to load again later."
 
