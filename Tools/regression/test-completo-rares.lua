@@ -222,7 +222,7 @@ local function Fixture(settings, units)
         if opts.background == "card" then rows[#rows + 1] = { key = prefix .. "Background" } end
         return rows
     end
-    ns.Shared = { Settings = Settings,
+    ns.Shared = { Settings = Settings, MapPins = {},
         -- Per character, by the player's GUID.
         CharacterData = function(key)
             account[key] = account[key] or {}
@@ -791,7 +791,11 @@ do
     local ns, env = Fixture(settings, units)
     local R = ns.Completo.Rares
     Check(env.provider == nil, "no map provider while Map Pins is off")
-    Check(ns.cards.rarePins and ns.cards.rarePins.switch == "rarePins", "Rares has a Map Pins card")
+    Check(not ns.cards.rarePins, "no Map Pins card of its own on the Rares page")
+    local section = ns.Shared.MapPins[1]
+    Check(section and section.title == "Rares" and section.rows[1].key == "rarePins"
+        and section.rows[1].store == ns.CompletoSettings and section.rows[1].always,
+        "its switch is a row on QoL's Map Pins, in Completo's store")
     ns.CompletoSettings.Set("rarePins", true)
     local pins = env.worldMap.pins
     Check(#pins == 2, "one star each for Mist Howler and Prince Raze; none for the Horde-friendly rare or one "

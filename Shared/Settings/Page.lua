@@ -109,7 +109,7 @@ local function WatchPage(view, page)
     for _, item in ipairs(page and page.items or NO_EVENTS) do
         if item.store then Watch(item.store, view) end
         for _, store in ipairs(item.watch or NO_EVENTS) do Watch(store, view) end
-        for _, row in ipairs(item.rows or NO_EVENTS) do
+        for _, row in ipairs(item.rowsFn and Settings.Rows(item) or item.rows or NO_EVENTS) do
             if row.store and row.store ~= item.store then Watch(row.store, view) end
         end
     end

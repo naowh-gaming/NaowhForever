@@ -9,8 +9,9 @@ through `Shared.xml`. Nothing is made or listened to at load.
 ```
 Shared/
   Shared.xml       what loads, in order (the core TOC's Shared load point)
-  Shared.lua       the namespace (ns.Shared), what a character keeps by its GUID (Shared.CharacterData),
-                   and how long ago a time was (Shared.Ago)
+  Shared.lua       the namespace (ns.Shared), the map pin sections other modules add to QoL's Map Pins
+                   (Shared.MapPins), a map pin's scale (Shared.ScalePin), what a character keeps by its
+                   GUID (Shared.CharacterData), and how long ago a time was (Shared.Ago)
   Style.lua        the house look: colors (BiS stars, worn green, looks, red and warning orange), icons, sizes
   Data/            data only, generated; never edited by hand
     Forever.lua      what is new in WoW Forever, by ID (Shared.ForeverNew), from Tools/build/forever_new.py
@@ -254,6 +255,11 @@ What a comment in the code used to say, in short. The house rules behind it are 
   it shows it, so Shared costs nothing for a feature that is off.
 - `Shared.CharacterData` keys a character's data by its GUID: first names are not unique on
   Forever, so a name key collides. It returns nil before the game knows who you are.
+- `Shared.ScalePin` is a map pin's `ApplyCurrentScale`. Pins sit on the map's canvas, which the
+  map scales to fit and to zoom, so the pin's scale is `PIN_SCALE` (1.5) over the canvas scale:
+  the same size on screen at every zoom. The map's global pin scale still applies.
+- `Shared.MapPins` is a plain list, filled at load by the modules that have map pins and read
+  only when QoL's Map Pins card or drawer is drawn, so the load order of the addons does not matter.
 - `Decode.lua` loads with nothing else from the addon and returns its table, so the offline
   tests can load it on its own.
 

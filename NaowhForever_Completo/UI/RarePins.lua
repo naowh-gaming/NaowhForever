@@ -35,7 +35,7 @@ local shown = {}
 local spot = {}
 
 NaowhForeverRarePinMixin = CreateFromMixins(MapCanvasPinMixin)
-NaowhForeverRarePinMixin.ApplyCurrentScale = Completo.ScalePin
+NaowhForeverRarePinMixin.ApplyCurrentScale = ns.Shared.ScalePin
 
 local function On()
     return S.Get("enabled") and S.Get("rarePins")

@@ -14,8 +14,7 @@ turn it on in Completo's settings pages (Completo/General, Completo/Quests and C
 NaowhForever_Completo/
   NaowhForever_Completo.toc   its metadata, and one file line: Completo.xml
   Completo.xml                every file, in load order
-  Completo.lua                its settings (ns.CompletoSettings), the module table (ns.Completo) and
-                              the map pins' scale (Completo.ScalePin)
+  Completo.lua                its settings (ns.CompletoSettings) and the module table (ns.Completo)
   Constants.lua               the numbers several files share: a rare drop's fields, the sample rare
   Data/
     Quests.lua                every quest of every zone and its chain, generated
@@ -105,12 +104,10 @@ quest and creature pages. Do not edit them by hand: change the tool and run it a
   its `SetPassThroughButtons` is protected, so calling it from our refresh is blocked in combat.
   Our pins want their clicks, so there is nothing to pass through.
 - The pin mixins are globals so the XML templates can name them.
-- `MIN_PIN_SCALE` is 1.5: the world map scales its canvas to fit, and in the small map's window
-  pins sized in map units shrink with it. `ScalePin` keeps a rare star at least 1.5 times its size
-  on screen there; on the full-screen map it is left as it is, and grows as you zoom.
-- Pin Size is halved for quest pins on the full screen map (`FULL_SCREEN_SHARE`), where they
-  otherwise stand out far too big, as the Skyborne and entrance pins do. The map going full
-  screen or back only changes their sizes, so it is safe in combat too.
+- Quest and rare pins scale with `ns.Shared.ScalePin`, so they keep one size on screen however far
+  the map is zoomed, in the small map's window and on the full screen map alike.
+- Their switches, Pin Sizes and options are rows on QoL's Map Pins card and in its world map drawer
+  (`ns.Shared.MapPins`), with every other map pin; the keys stay in Completo's store.
 - Quest pins redraw on a quest taken, handed in or dropped, and on a level up (which turns some
   grey and lets others be picked up). A giver whose quests are all repeatable gets the game's blue
   mark; where an atlas is missing, the gossip window's ! is tinted instead.
@@ -168,6 +165,6 @@ quest and creature pages. Do not edit them by hand: change the tool and run it a
 - `lua Tools/regression/test-completo-rares.lua`: the rare rules, counting kills, Rare Alerts,
   their settings and preview, and the rare map pins and their focus. Its `SetRaidTarget` raises
   an error, so no rare path may set a raid mark.
-- `lua Tools/regression/test-completo-quest-pins.lua`: the quest pins are Pin Size on the small
-  map, half that on the full screen map, and resize when the map changes between the two.
+- `lua Tools/regression/test-completo-quest-pins.lua`: the quest pins are Pin Size and keep one
+  size on screen as the map zooms.
 - In game: `/reload` after changing a file. A new file needs a restart.

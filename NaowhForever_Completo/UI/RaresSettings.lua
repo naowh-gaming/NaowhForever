@@ -1,4 +1,4 @@
--- RaresSettings.lua: Completo's Rares settings page (Completo/Rares), declared as cards, with the alert's preview.
+-- RaresSettings.lua: Completo's Rares settings page (Completo/Rares), declared as cards, with the alert's preview, and its rare pins' rows on Map Pins.
 local ns = _G.NaowhForever
 
 local Completo = ns.Completo
@@ -27,21 +27,21 @@ local ALERT_SCALE = { 50, 200, 5 }
 local FONT_SIZE = { 10, 20, 1 }
 local PIN_SIZE = ns.Shared.Style.PIN_SIZE_RANGE
 local PERCENT_SCALE = ns.Shared.Style.PERCENT_SCALE
-local ORDER_RARES, ORDER_ALERT, ORDER_PINS = 10, 20, 30
+local ORDER_RARES, ORDER_ALERT = 10, 20
 local TEXT_OFF = "Turn on Completo"
 local TEXT_SOUND_OFF = "Needs Play a Sound"
+local TEXT_PINS_OFF = "Turn on Rares"
 local TEXT_PROGRESS = "%d of %d rares killed"
 local TEXT_ZONE = "%s: %d of %d."
 local TEXT_EVERY_RARE = "Every rare of every zone, and which of them you have killed."
 local TEXT_WARNING = "A warning when a rare is near"
 local TEXT_WITH_SOUND = ", a sound"
-local TEXT_PINS_ALL = "Every rare, the ones you killed in grey"
-local TEXT_PINS_ALIVE = "The rares you have not killed"
 
 local page = Settings.Page(PAGE, S)
 
 local function Enabled() return S.Get("enabled") == true end
 local function SoundOn() return Enabled() and S.Get("rareSound") == true end
+local function PinsOn() return Enabled() and S.Get("rarePins") == true end
 
 local function Headline()
     return TEXT_PROGRESS:format(R.Progress())
@@ -61,10 +61,6 @@ end
 local function AlertSummary(store)
     if store.Get("rareSound") then return TEXT_WARNING .. TEXT_WITH_SOUND end
     return TEXT_WARNING
-end
-
-local function PinsSummary(store)
-    return store.Get("rarePinsKilled") and TEXT_PINS_ALL or TEXT_PINS_ALIVE
 end
 
 local function GetSound()
@@ -168,16 +164,16 @@ page:Card({
     },
 })
 
-page:Card({
-    id = "rarePins", name = "Map Pins", order = ORDER_PINS, switch = "rarePins",
-    help = "A star on the world map for every rare you have not killed, where it is most likely to be. "
-        .. "Hover one for the rare and its drops, its other spawn spots and, if it patrols, its way; "
-        .. "click it for a waypoint, right-click it to keep its spots and way shown.",
-    summary = PinsSummary,
+table.insert(ns.Shared.MapPins, {
+    title = "Rares",
     rows = {
-        { key = "rarePinsKilled", label = "Show Killed Rares", toggle = true, needs = Enabled, why = TEXT_OFF,
-          help = "Also a grey star on the map for the rares you have killed." },
-        { key = "rarePinSize", label = "Pin Size", slider = PIN_SIZE, needs = Enabled, why = TEXT_OFF,
-          help = "How big the stars are on the map." },
+        { key = "rarePins", label = "Rares", toggle = true, store = S, always = true, needs = Enabled, why = TEXT_OFF,
+          help = "A star on the world map for every rare you have not killed, where it is most likely to be. "
+              .. "Hover one for the rare and its drops, its other spawn spots and, if it patrols, its way; "
+              .. "click it for a waypoint, right-click it to keep its spots and way shown." },
+        { key = "rarePinsKilled", label = "Show Killed Rares", toggle = true, store = S, always = true, needs = PinsOn,
+          why = TEXT_PINS_OFF, help = "Also a grey star on the map for the rares you have killed." },
+        { key = "rarePinSize", label = "Rare Pin Size", slider = PIN_SIZE, store = S, always = true, needs = PinsOn,
+          why = TEXT_PINS_OFF, help = "How big the stars are on the map." },
     },
 })

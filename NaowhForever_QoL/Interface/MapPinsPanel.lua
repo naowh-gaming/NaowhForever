@@ -1,4 +1,4 @@
--- MapPinsPanel.lua: the Map Pins button on the world map and its drawer of which town pins show.
+-- MapPinsPanel.lua: the Map Pins button on the world map and its drawer of which pins show.
 local ns = _G.NaowhForever
 
 local T = ns.THEME
@@ -25,6 +25,9 @@ local ICON_INSET = 4
 local TEXT_TITLE = "Map Pins"
 local TEXT_TIP = "Click to choose which pins show on the map."
 local TEXT_CLOSE = "x"
+local TEXT_TOWN = "TOWN"
+local TEXT_TOWN_PINS = "Town Pins"
+local TEXT_TOWN_TIP = "Service NPCs, mailboxes, spirit healers, exits and docks; the rows below pick which."
 
 local ROWS = ns.TownPinRows
 
@@ -32,7 +35,7 @@ local button, buttonBorder, panel
 local controls, strips = {}, {}
 
 local function On()
-    return S.Get("enabled") and S.Get("townMap")
+    return S.Get("enabled") and (S.Get("townMap") or #ns.Shared.MapPins > 0)
 end
 
 local function PanelWidth()
@@ -80,27 +83,27 @@ local function MakeGroup(parent, title)
     Rule(frame)
 end
 
-local function SetRow(key, value)
-    S.Set(key, value)
+local function SetRow(store, key, value)
+    store.Set(key, value)
     if UI.RefreshPage then UI:RefreshPage(true) end
 end
 
-local function MakeRow(parent, row)
+local function MakeRow(parent, store, key, text, tip)
     local frame = Strip(parent, 0, ROW_H)
     strips[#strips + 1] = frame
     frame:EnableMouse(true)
     Rule(frame)
     local control = UI.BuildToggleControl(frame, frame:GetFrameLevel() + CONTROL_LEVEL,
-        function() return S.Get(row.key) end,
-        function(value) SetRow(row.key, value) end)
+        function() return store.Get(key) end,
+        function(value) SetRow(store, key, value) end)
     control:SetPoint("RIGHT", frame, "RIGHT", -PAD, 0)
     local label = ns.Font(frame, LABEL_SIZE, nil, T.fg)
     label:SetJustifyH("LEFT")
     label:SetWordWrap(false)
     label:SetPoint("LEFT", PAD, 0)
     label:SetPoint("RIGHT", control, "LEFT", -LABEL_GAP, 0)
-    label:SetText(row.text)
-    if row.tip then ns.Tooltip(frame, row.text, row.tip) end
+    label:SetText(text)
+    if tip then ns.Tooltip(frame, text, tip) end
     controls[#controls + 1] = control
 end
 
@@ -161,8 +164,16 @@ local function BuildPanel()
     title:SetText(TEXT_TITLE)
     local close = ns.Button(head, TEXT_CLOSE, CLOSE_SIZE, CLOSE_SIZE, HidePanel)
     close:SetPoint("RIGHT", -CLOSE_IN, 0)
+    MakeGroup(panel, TEXT_TOWN)
+    MakeRow(panel, S, "townMap", TEXT_TOWN_PINS, TEXT_TOWN_TIP)
     for _, row in ipairs(ROWS) do
-        if row.header then MakeGroup(panel, row.header) else MakeRow(panel, row) end
+        if row.header then MakeGroup(panel, row.header) else MakeRow(panel, S, row.key, row.text, row.tip) end
+    end
+    for _, section in ipairs(ns.Shared.MapPins) do
+        MakeGroup(panel, section.title:upper())
+        for _, row in ipairs(section.rows) do
+            if row.toggle then MakeRow(panel, row.store, row.key, row.label, row.help) end
+        end
     end
     panel:SetScript("OnShow", RefreshRows)
     if WorldMapFrame.Maximize then hooksecurefunc(WorldMapFrame, "Maximize", PlacePanel) end

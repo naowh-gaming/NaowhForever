@@ -1,6 +1,7 @@
 -- Run with Lua 5.1 from the repository root: the Map Pins panel on the world map. Every town
 -- pin switch is on the panel and on the options card, both drawn from one list, with Pin Size
--- on the card, and the button is made only once the map pins are on.
+-- on the card. Other modules' pin rows (ns.Shared.MapPins) follow on both, in their own store,
+-- and the button is made once the town pins are on or a module adds pins.
 local function Read(path)
     local f = assert(io.open(path, "rb"))
     local s = f:read("*a"):gsub("\r\n", "\n"); f:close()
@@ -22,12 +23,21 @@ Check(panelSrc:find("local ROWS = ns.TownPinRows", 1, true), "the panel reads th
 Check(townSrc:find('key = "townPinSize"', 1, true), "the card keeps Pin Size")
 local pinRows = assert(loadstring("return " .. townSrc:match("local PIN_ROWS = (%b{})")))()
 
+local questStore = { values = { mapPins = false } }
+function questStore.Get(key) return questStore.values[key] end
+function questStore.Set(key, v) questStore.values[key] = v end
+local questSection = { title = "Quests", rows = {
+    { key = "mapPins", label = "Quest Givers", toggle = true, store = questStore, always = true },
+    { key = "mapPinSize", label = "Quest Pin Size", slider = { 12, 32, 1 }, store = questStore, always = true },
+} }
+
 do
     local card
     local function Group(title) return { group = title } end
     local cardNs = { QoLConstants = dofile("Tools/regression/qol_constants.lua"), QoLSettings = {},
         Apply = function() end, ThemeTint = function() end, TownCapitals = {}, TownNPCs = {},
-        Shared = { Settings = { Group = Group, Page = function() return { Card = function(_, c) card = c end } end } } }
+        Shared = { MapPins = { questSection }, ScalePin = function() end,
+            Settings = { Group = Group, Page = function() return { Card = function(_, c) card = c end } end } } }
     local cardEnv = setmetatable({ _G = { NaowhForever = cardNs },
         CreateFromMixins = function() return {} end, MapCanvasPinMixin = {}, MapCanvasDataProviderMixin = {},
         hooksecurefunc = function() end,
@@ -37,14 +47,17 @@ do
     setfenv(chunk, cardEnv)
     chunk()
     local labels, groups = {}, {}
-    for _, row in ipairs(card.rows) do
+    local rows = card.rows()
+    for _, row in ipairs(rows) do
         if row.group then groups[#groups + 1] = row.group elseif row.toggle then labels[row.key] = row.label end
     end
     for _, row in ipairs(pinRows) do
         if row.key then Check(labels[row.key] == row.text, "the card has the panel's toggle: " .. row.key) end
     end
     Check(groups[1] == "Options" and groups[2] == "Show", "grouped as the drawer groups them")
-    Check(card.rows[1].key == "townPinSize", "Pin Size first")
+    Check(rows[1].key == "townPinSize", "Pin Size first")
+    Check(groups[3] == "Quests" and rows[#rows - 1] == questSection.rows[1] and rows[#rows] == questSection.rows[2],
+        "a module's pin rows follow the town rows under its own title, as it declared them")
     Check(cardNs.TownPinRows ~= nil, "the list is shared with the panel")
     local Search = dofile("Tools/regression/settings_search.lua")({ ["QoL/Interface"] = { card } })
     local hit = Search("flight master")[1]
@@ -52,6 +65,9 @@ do
         "the options search finds a pin by name")
     hit = Search("graveyard")[1]
     Check(hit and hit.card == "QoL/Interface:townMap", "and the card by its search words")
+    hit = Search("quest givers")[1]
+    Check(hit and hit.label == "Quest Givers" and hit.card == "QoL/Interface:townMap",
+        "and a module's pin row on it")
 end
 Check(Read("NaowhForever_QoL/Interface/TownMap.xml"):find('<Script file="MapPinsPanel.lua"/>', 1, true),
     "the panel loads")
@@ -91,14 +107,18 @@ local function NewFrame()
 end
 ns.Solid = function() return { SetAllPoints = function() end, SetPoint = function() end } end
 ns.Hairline = function() end
-ns.Shared = { Style = { BACKDROP_ALPHA = 0.97, BORDER_RGB = {}, LOGO_SMALL = "LogoSmall" } }
+ns.Shared = { MapPins = {}, Style = { BACKDROP_ALPHA = 0.97, BORDER_RGB = {}, LOGO_SMALL = "LogoSmall" } }
 ns.Border = function() return { SetColor = function() end } end
 ns.Tooltip = function() end
 local function Text() return { SetPoint = function() end, SetText = function() end, SetJustifyH = function() end,
     SetWordWrap = function() end } end
 ns.Font = Text
 ns.Button = function() return { SetPoint = function() end } end
-ns.UI.BuildToggleControl = function() return { SetPoint = function() end, _refreshValue = function() end } end
+local toggles = {}
+ns.UI.BuildToggleControl = function(_, _, get, set)
+    toggles[#toggles + 1] = { get = get, set = set }
+    return { SetPoint = function() end, _refreshValue = function() end }
+end
 local env = setmetatable({
     _G = { NaowhForever = ns },
     CreateFrame = function(kind)
@@ -123,9 +143,11 @@ local chunk = assert(loadstring(Read("NaowhForever_QoL/Interface/MapPinsPanel.lu
 setfenv(chunk, env)
 chunk()
 boot.scripts.OnEvent(boot)
-Check(made == 0, "nothing made while the map pins are off")
+Check(made == 0, "nothing made while the town pins are off and no module adds pins")
+ns.Shared.MapPins[1] = questSection
+ns.Apply()
+Check(made == 1, "a module's pins bring the button, town pins off")
 S.Set("townMap", true)
-Check(made == 1, "the button comes with the map pins")
 Check(button.point[1] == "TOPRIGHT" and button.point[3] == "TOPLEFT" and button.point[2].GetPoint
     and select(4, button.point[2].GetPoint()) == -36, "top right, left of the map's own buttons there")
 S.Set("townFlight", true)
@@ -135,14 +157,27 @@ Check(made == 1, "and is made once")
 local map = env.WorldMapFrame
 button.scripts.OnClick()
 Check(panel and panel.shown, "the button opens the drawer")
+local towns = 0
+for _, row in ipairs(pinRows) do if row.key then towns = towns + 1 end end
+Check(#toggles == 1 + towns + 1, "a Town Pins switch, every town row, and the module's switches only")
+toggles[1].set(false)
+Check(settings.townMap == false, "Town Pins is the town map's own switch")
+toggles[1].set(true)
+toggles[#toggles].set(true)
+Check(questStore.values.mapPins == true and settings.mapPins == nil and toggles[#toggles].get(),
+    "a module's switch reads and writes its own store")
 Check(panel.point[1] == "TOPRIGHT" and panel.point[2] == map and panel.point[3] == "TOPLEFT",
     "against the map window's left side")
 Check(panel.height == 700, "the map's height")
 button.scripts.OnClick()
 Check(not panel.shown, "and closes it")
-mapHeight = 450
+mapHeight = 500
 button.scripts.OnClick()
-Check(panel.height == 450, "a small map: the rows shrink so the drawer keeps the map's height")
+Check(panel.height == 500, "a small map: the rows shrink so the drawer keeps the map's height")
+button.scripts.OnClick()
+mapHeight = 300
+button.scripts.OnClick()
+Check(panel.height > 300, "too small for every row: the drawer runs past the map's foot rather than lose one")
 button.scripts.OnClick()
 mapHeight = 700
 mapLeft = 100

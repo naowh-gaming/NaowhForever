@@ -2,12 +2,14 @@
 local ns = _G.NaowhForever
 
 local S = ns.QoLSettings
+local ScalePin = ns.Shared.ScalePin
 
 local TEMPLATE = "NaowhForeverTownPinTemplate"
 local LINK_TEMPLATE = "NaowhForeverZoneLinkPinTemplate"
 local TRAVEL_ATLAS = "vehicle-templeofkotmogu-cyanball"
 local EXIT_ATLAS = "house-reward-green-arrow-up"
 local EXIT_LENGTH = 1.8
+local EXIT_SHRINK = 0.6
 local CAPITALS = ns.TownCapitals
 local PERCENT = ns.QoLConstants.PERCENT
 local PERMILLE, TENTHS, ROUND = ns.QoLConstants.PERMILLE, ns.QoLConstants.TENTHS, ns.QoLConstants.ROUND
@@ -20,7 +22,6 @@ local MASK_WRAP = "CLAMPTOBLACKADDITIVE"
 local FILE_MARK = "\\"
 local ICON_FOLDER = "\\Icons\\"
 local FULL_LOW, FULL_HIGH = 0, 1
-local MIN_PIN_SCALE = 1.5
 local HINT = ns.QoLConstants.HINT_RGB
 local EMPTY = {}
 local MINI_SIZE = 12
@@ -142,18 +143,6 @@ local function IsFile(art)
     return art:find(FILE_MARK, 1, true) ~= nil
 end
 
-local function ScalePin(pin)
-    local map = pin:GetMap()
-    local canvas = map and map.GetCanvasScale and map:GetCanvasScale()
-    if not canvas or canvas <= 0 then return end
-    local scale = math.max(1, MIN_PIN_SCALE / canvas)
-    if map.GetGlobalPinScale and not (pin.IsIgnoringGlobalPinScale and pin:IsIgnoringGlobalPinScale()) then
-        scale = scale * map:GetGlobalPinScale()
-    end
-    pin:SetScale(scale)
-    pin:ApplyCurrentPosition()
-end
-
 local function SetRound(pin, round)
     if round and not pin.roundMask then
         pin.roundMask = pin:CreateMaskTexture()
@@ -249,7 +238,11 @@ function NaowhForeverZoneLinkPinMixin:CheckMouseButtonPassthrough() end
 function NaowhForeverZoneLinkPinMixin:OnAcquired(link)
     self.link = link
     local size = S.Get("townPinSize")
-    local length = link.atlasName == EXIT_ATLAS and size * EXIT_LENGTH or size
+    local length = size
+    if link.atlasName == EXIT_ATLAS then
+        size = size * EXIT_SHRINK
+        length = size * EXIT_LENGTH
+    end
     self:SetSize(length, length)
     local art = link.atlasName
     local itemIcon = art:find(ICON_FOLDER, 1, true) ~= nil
@@ -531,6 +524,10 @@ local function CardRows()
             rows[#rows + 1] = { key = row.key, label = row.text, toggle = true, help = row.tip }
         end
     end
+    for _, section in ipairs(ns.Shared.MapPins) do
+        rows[#rows + 1] = ns.Shared.Settings.Group(section.title)
+        for _, row in ipairs(section.rows) do rows[#rows + 1] = row end
+    end
     return rows
 end
 
@@ -558,8 +555,9 @@ ns.TownPinRows = PIN_ROWS
 
 ns.Shared.Settings.Page("QoL/Interface", S):Card({
     id = "townMap", name = "Map Pins", order = 40, switch = "townMap",
-    help = "Service NPCs for your faction on the world map; also set from its Map Pins button.",
+    help = "Every pin on the world map. The switch is for the town pins (service NPCs for your faction); "
+        .. "quest, rare and entrance pins have their own. Also set from its Map Pins button.",
     search = TEXT_PINS_SEARCH,
     summary = TownSummary,
-    rows = CardRows(),
+    rows = CardRows,
 })
