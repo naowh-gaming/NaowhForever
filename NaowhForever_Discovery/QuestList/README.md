@@ -40,7 +40,7 @@ NaowhForever_Discovery/QuestList/
     AlertCard.lua             the Rare Alert's card, live or in its preview (Completo.AlertCard)
   UI/
     RareAlert.lua             the alert on screen: seeing a rare, the card, its place (Completo.RareAlert)
-    Window.lua                the Quest List window (/nfquests, /nfcompleto, its key binding) and its three tabs
+    Window.lua                the Quest List window (its key binding) and its three tabs
     QuestPins.lua, .xml       the quest giver pins on the world map, and their template
     RarePins.lua, .xml        the rare stars on the world map, and their template
     GeneralSettings.lua       the key binding and window cards, on the Discovery/Quest List page
@@ -160,6 +160,11 @@ quest and creature pages. Do not edit them by hand: change the tool and run it a
   character, with Completo on, Shift-L is bound to it if nothing else has it and Completo has no
   key yet; else a chat line says where to bind it. Never again after that, so a key changed or
   cleared stays as it was left.
+
+- `/nfquests` and `/nfcompleto` are made in `Core/Commands.lua`, not here, and call
+  `NaowhForever_ToggleCompleto`, which the core defines as "Discovery is switched off" and this
+  window's file replaces when Discovery loads. So with Discovery off they say so instead of doing
+  nothing, as the key binding does, and `/nf help` lists them.
 
 ## Checking
 

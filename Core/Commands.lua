@@ -29,6 +29,7 @@ local HELP_LINES = {
     "/nf scrap: the Scrap List",
     "/nf quiz: the WoW quiz",
     "/nf setup: the onboarding",
+    "/nfquests (or /nfcompleto): the Quest List, in Discovery",
 }
 
 function _G.NaowhForever_OnCompartmentClick()
@@ -86,6 +87,10 @@ NaowhForever_ToggleBis = SwitchedOff("BiS List")
 NaowhForever_ToggleGroupInspect = SwitchedOff("Group Inspect")
 NaowhForever_ToggleCompleto = SwitchedOff("Discovery")
 NaowhForever_BagSpacePickUp = SwitchedOff("Quality of Life")
+
+SLASH_NAOWHFOREVERQUESTLIST1 = "/nfquests"
+SLASH_NAOWHFOREVERQUESTLIST2 = "/nfcompleto"
+SlashCmdList.NAOWHFOREVERQUESTLIST = function() NaowhForever_ToggleCompleto() end
 
 SLASH_NAOWHFOREVER1 = "/naowh"
 SLASH_NAOWHFOREVER2 = "/nao"

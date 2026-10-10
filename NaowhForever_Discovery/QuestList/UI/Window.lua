@@ -1,4 +1,4 @@
--- Window.lua: the Quest List window (/nfquests, /nfcompleto, its key binding): the Overview, and the Quests and Rares tabs by zone.
+-- Window.lua: the Quest List window (/nfquests, its key binding): the Overview, and the Quests and Rares tabs by zone.
 local ns = _G.NaowhForever
 
 local Completo = ns.Completo
@@ -470,10 +470,6 @@ end
 function NaowhForever_ToggleCompleto()
     ns.ToggleCompletoWindow()
 end
-
-SLASH_NAOWHFOREVERQUESTLIST1 = "/nfquests"
-SLASH_NAOWHFOREVERQUESTLIST2 = "/nfcompleto"
-SlashCmdList.NAOWHFOREVERQUESTLIST = NaowhForever_ToggleCompleto
 
 S.OnChange(OnSettingChanged)
 R.OnChange(OnRareChanged)

@@ -64,10 +64,18 @@ do
         end
     end
     check("an alias is on its module's line", Printed(s, "/nfjournal or /nfdj: opens Dungeon Journal"))
+    check("it names /nfquests and its alias", Printed(s, "/nfquests (or /nfcompleto)"))
     check("no badge code before badges launch", not Printed(s, "badges"))
     local before = #s.printed
     nf(" ? ")
     check("/nf ? prints it too", #s.printed > before and s.toggled == 0)
+
+    local before2 = #s.printed
+    s.env.SlashCmdList.NAOWHFOREVERQUESTLIST()
+    check("/nfquests with Discovery off says so, not nothing", #s.printed == before2 + 1
+        and Printed(s, "Discovery is switched off"))
+    check("both names are the Quest List's", s.env.SLASH_NAOWHFOREVERQUESTLIST1 == "/nfquests"
+        and s.env.SLASH_NAOWHFOREVERQUESTLIST2 == "/nfcompleto")
 
     nf("move")
     check("/nf move opens the HUD Editor", s.unlock)
