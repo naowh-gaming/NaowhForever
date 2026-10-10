@@ -1,7 +1,7 @@
--- Run with Lua 5.1 from the repository root: the Map Pins panel on the world map. Every town
--- pin switch is on the panel and on the options card, both drawn from one list, with Pin Size
--- on the card. Other modules' pin rows (ns.Shared.MapPins) follow on both, in their own store,
--- and the button is made once the town pins are on or a module adds pins.
+-- Run with Lua 5.1 from the repository root: the Map Options and Pins panel on the world map.
+-- Every town pin switch is on the panel and on the options card, both drawn from one list, with
+-- Town Pins and Town Pin Size on the card. Other modules' and QoL's own rows (ns.Shared.MapPins,
+-- in order) follow on both, and the button shows while any set of pins or options is on.
 local function Read(path)
     local f = assert(io.open(path, "rb"))
     local s = f:read("*a"):gsub("\r\n", "\n"); f:close()
@@ -23,6 +23,14 @@ Check(panelSrc:find("local ROWS = ns.TownPinRows", 1, true), "the panel reads th
 Check(townSrc:find('key = "townPinSize"', 1, true), "the card keeps Pin Size")
 local pinRows = assert(loadstring("return " .. townSrc:match("local PIN_ROWS = (%b{})")))()
 
+local function RealShared()
+    local holder = {}
+    local chunk = assert(loadstring(Read("Shared/Shared.lua")))
+    setfenv(chunk, setmetatable({ _G = { NaowhForever = holder } }, { __index = _G }))
+    chunk()
+    return holder.Shared
+end
+
 local questStore = { values = { enabled = true, mapPins = false }, listeners = {} }
 function questStore.Get(key) return questStore.values[key] end
 function questStore.Set(key, v)
@@ -36,16 +44,24 @@ local questSection = { title = "Quests", store = questStore, switch = "mapPins",
     { key = "mapPins", label = "Quest Givers", toggle = true, store = questStore, always = true, needs = QuestsOn },
     { key = "mapGrey", label = "Low Level Quests", toggle = true, store = questStore, always = true,
       needs = QuestPinsOn },
+    { key = "mapChainsOnly", label = "Chains Only", toggle = true, store = questStore, needs = "mapPins" },
     { key = "mapPinSize", label = "Quest Pin Size", slider = { 12, 32, 1 }, store = questStore, always = true },
 } }
 
+local pinTexts
 do
     local card
     local function Group(title) return { group = title } end
-    local cardNs = { QoLConstants = dofile("Tools/regression/qol_constants.lua"), QoLSettings = {},
-        Apply = function() end, ThemeTint = function() end, TownCapitals = {}, TownNPCs = {},
-        Shared = { MapPins = { questSection }, ScalePin = function() end,
-            Settings = { Group = Group, Page = function() return { Card = function(_, c) card = c end } end } } }
+    local own = {}
+    local ownSection = { order = 11, store = own, switch = "mapSize", rows = {
+        { key = "mapSize", label = "Map Window", toggle = true, store = own },
+        { key = "mapSizePercent", label = "Map Scale", slider = { 50, 150, 5 }, store = own, needs = "mapSize" },
+    } }
+    local shared = RealShared()
+    shared.MapPins = { questSection, ownSection }
+    shared.Settings = { Group = Group, Page = function() return { Card = function(_, c) card = c end } end }
+    local cardNs = { QoLConstants = dofile("Tools/regression/qol_constants.lua"), QoLSettings = own,
+        Apply = function() end, ThemeTint = function() end, TownCapitals = {}, TownNPCs = {}, Shared = shared }
     local cardEnv = setmetatable({ _G = { NaowhForever = cardNs },
         CreateFromMixins = function() return {} end, MapCanvasPinMixin = {}, MapCanvasDataProviderMixin = {},
         hooksecurefunc = function() end,
@@ -62,11 +78,25 @@ do
     for _, row in ipairs(pinRows) do
         if row.key then Check(labels[row.key] == row.text, "the card has the panel's toggle: " .. row.key) end
     end
-    Check(groups[1] == "Options" and groups[2] == "Show", "grouped as the drawer groups them")
-    Check(rows[1].key == "townPinSize", "Pin Size first")
-    Check(groups[3] == "Quests" and rows[#rows - 2] == questSection.rows[1] and rows[#rows] == questSection.rows[3],
-        "a module's pin rows follow the town rows under its own title, as it declared them")
-    Check(rows[#rows].lent and not rows[1].lent, "lent to the card: its Reset and changed count leave them alone")
+    Check(groups[1] == "Town" and groups[2] == "Town options" and groups[3] == "Show in town",
+        "the town rows are grouped as the drawer groups them")
+    Check(rows[2].key == "townMap" and rows[3].key == "townPinSize" and rows[3].needs == "townMap",
+        "Town Pins first, then the size, which waits for it")
+    Check(rows[5].needs == "townMap" and not rows[2].needs, "the town rows wait for Town Pins, which itself does not")
+    Check(groups[4] == "Quests", "the sections follow under their own titles")
+    local lastRow = rows[#rows]
+    Check(lastRow == questSection.rows[4] and rows[#rows - 3] == questSection.rows[1],
+        "a module's rows as it declared them, after the QoL ones")
+    Check(lastRow.lent and not rows[1].lent, "lent to the card: its Reset and changed count leave them alone")
+    local ownAt, questAt
+    for i, row in ipairs(rows) do
+        if row == ownSection.rows[1] then ownAt = i end
+        if row == questSection.rows[1] then questAt = i end
+    end
+    Check(ownAt and questAt and ownAt < questAt, "QoL's own section comes first, by its order")
+    Check(not ownSection.rows[1].lent and not ownSection.rows[2].lent, "its rows are the card's own store's: Reset takes them")
+    Check(rows[ownAt - 1].group == nil, "so it follows the last town row directly")
+    pinTexts = cardNs.TownPinTexts
     Check(cardNs.TownPinRows ~= nil, "the list is shared with the panel")
     local Search = dofile("Tools/regression/settings_search.lua")({ ["QoL/Interface"] = { card } })
     local hit = Search("flight master")[1]
@@ -77,6 +107,8 @@ do
     hit = Search("quest givers")[1]
     Check(hit and hit.label == "Quest Givers" and hit.card == "QoL/Interface:townMap",
         "and a module's pin row on it")
+    hit = Search("map window")[1]
+    Check(hit and hit.label == "Map Window" and hit.card == "QoL/Interface:townMap", "and QoL's own map options")
 end
 -- A card's Reset and changed count skip rows lent to it from another module's store.
 do
@@ -147,8 +179,11 @@ local function NewFrame()
 end
 ns.Solid = function() return { SetAllPoints = function() end, SetPoint = function() end } end
 ns.Hairline = function() end
-ns.Shared = { MapPins = { questSection }, Settings = { Style = { DIM_ALPHA = 0.35 } },
-    Style = { BACKDROP_ALPHA = 0.97, BORDER_RGB = {}, LOGO_SMALL = "LogoSmall" } }
+ns.Shared = RealShared()
+ns.Shared.MapPins = { questSection }
+ns.Shared.Settings = { Style = { DIM_ALPHA = 0.35 } }
+ns.Shared.Style = { BACKDROP_ALPHA = 0.97, BORDER_RGB = {}, LOGO_SMALL = "LogoSmall" }
+ns.TownPinTexts = pinTexts
 ns.Border = function() return { SetColor = function() end } end
 ns.Tooltip = function() end
 local function Text() return { SetPoint = function() end, SetText = function() end, SetJustifyH = function() end,
@@ -207,8 +242,8 @@ button.scripts.OnClick()
 Check(panel and panel.shown, "the button opens the drawer")
 local towns = 0
 for _, row in ipairs(pinRows) do if row.key then towns = towns + 1 end end
-Check(#toggles == 1 + towns + 2, "a Town Pins switch, every town row, and the module's switches only")
-local quest, grey, flight = toggles[#toggles - 1], toggles[#toggles], toggles[2]
+Check(#toggles == 1 + towns + 3, "a Town Pins switch, every town row, and the module's switches only")
+local quest, grey, chains, flight = toggles[#toggles - 2], toggles[#toggles - 1], toggles[#toggles], toggles[2]
 quest.set(true)
 Check(questStore.values.mapPins == true and settings.mapPins == nil and quest.get(),
     "a module's switch reads and writes its own store")
@@ -216,6 +251,7 @@ Check(grey.alpha == 1 and grey.mouse, "a row whose parent is on can be used")
 questStore.Set("mapPins", false)
 Check(grey.alpha == 0.35 and grey.mouse == false and quest.alpha == 1,
     "the open drawer follows the module's store: a row whose parent is off is dimmed and locked")
+Check(chains.alpha == 0.35 and chains.mouse == false, "a row that names its parent by key is too")
 questStore.Set("enabled", false)
 Check(quest.mouse == false, "the module off: its switch too")
 questStore.Set("enabled", true)

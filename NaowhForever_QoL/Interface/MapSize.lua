@@ -18,6 +18,8 @@ local TITLE_BUTTONS = 80
 local HANDLE_LEVEL = 80
 local KEEP_ON_SCREEN = 60
 
+local SECTION_ORDER = 10
+local TEXT_SECTION = "Map"
 local TEXT_TITLE = "Map Window"
 local TEXT_TIP = "Drag to make the map bigger or smaller.\nRight-click: back to 100%."
 local TEXT_HELP = "Makes the windowed world map bigger or smaller and lets you move it: drag the grip in "
@@ -263,10 +265,10 @@ local boot = CreateFrame("Frame")
 boot:RegisterEvent("PLAYER_LOGIN")
 boot:SetScript("OnEvent", OnLogin)
 
-ns.Shared.Settings.Page("QoL/Interface", S):Card({
-    id = "mapSize", name = TEXT_TITLE, order = 41, switch = "mapSize",
-    help = TEXT_HELP,
+table.insert(ns.Shared.MapPins, {
+    title = TEXT_SECTION, order = SECTION_ORDER, store = S, switch = "mapSize",
     rows = {
-        { key = "mapSizePercent", label = TEXT_SCALE, slider = SCALE_RANGE, unit = "%" },
+        { key = "mapSize", label = TEXT_TITLE, toggle = true, store = S, help = TEXT_HELP },
+        { key = "mapSizePercent", label = TEXT_SCALE, slider = SCALE_RANGE, unit = "%", store = S, needs = "mapSize" },
     },
 })

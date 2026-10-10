@@ -53,13 +53,13 @@ local CATEGORIES = {
 }
 local EVERYWHERE = { flight = true, inn = true, stable = true }
 local PIN_ROWS = {
-    { header = "OPTIONS" },
+    { header = "TOWN OPTIONS" },
     { key = "townCapitalsOnly", text = "Vendors & Trainers Only in Cities",
       tip = "Keeps vendors, trainers and the bank off questing maps." },
     { key = "townMinimap", text = "Mailboxes on Minimap", tip = "Pins the mailboxes near you on the minimap." },
     { key = "townMinimapSpirit", text = "Spirit Healers on Minimap",
       tip = "Pins the spirit healers near you on the minimap." },
-    { header = "SHOW" },
+    { header = "SHOW IN TOWN" },
     { key = "townFlight", text = "Flight Masters" },
     { key = "townInn", text = "Innkeepers" },
     { key = "townMail", text = "Mailboxes", tip = "Every mailbox, in towns and out in the world." },
@@ -108,7 +108,10 @@ local TEXT_AUDIT_MISSING = "%s: you %.1f, %.1f on map %d, not in the data"
 local TEXT_AUDIT = "Town audit %s. %d NPCs recorded so far."
 local TEXT_AUDIT_ON = "on: open an NPC's window while standing next to them"
 local TEXT_AUDIT_OFF = "off"
-local TEXT_SUMMARY = "%d of %d shown%s"
+local TEXT_TOWN, TEXT_TOWN_PINS = "Town", "Town Pins"
+local TEXT_TOWN_TIP = "Service NPCs, mailboxes, spirit healers, exits and docks; the rows below pick which."
+local TEXT_TOWN_OFF = "Town pins off"
+local TEXT_SUMMARY = "Town pins: %d of %d shown%s"
 local TEXT_CAPITALS = ", vendors and trainers in cities only"
 local TEXT_PINS_SEARCH = "vendor vendors trainer trainers mailbox graveyard npc npcs"
 
@@ -518,18 +521,22 @@ function ns.TownAudit()
 end
 
 local function CardRows()
-    local rows = { { key = "townPinSize", label = "Pin Size", slider = PIN_RANGE } }
+    local rows = {
+        ns.Shared.Settings.Group(TEXT_TOWN),
+        { key = "townMap", label = TEXT_TOWN_PINS, toggle = true, help = TEXT_TOWN_TIP },
+        { key = "townPinSize", label = "Town Pin Size", slider = PIN_RANGE, needs = "townMap" },
+    }
     for _, row in ipairs(PIN_ROWS) do
         if row.header then
             rows[#rows + 1] = ns.Shared.Settings.Group(row.header:sub(1, 1) .. row.header:sub(2):lower())
         else
-            rows[#rows + 1] = { key = row.key, label = row.text, toggle = true, help = row.tip }
+            rows[#rows + 1] = { key = row.key, label = row.text, toggle = true, help = row.tip, needs = "townMap" }
         end
     end
-    for _, section in ipairs(ns.Shared.MapPins) do
-        rows[#rows + 1] = ns.Shared.Settings.Group(section.title)
+    for _, section in ipairs(ns.Shared.MapPinSections()) do
+        if section.title then rows[#rows + 1] = ns.Shared.Settings.Group(section.title) end
         for _, row in ipairs(section.rows) do
-            row.lent = true
+            row.lent = row.store ~= S
             rows[#rows + 1] = row
         end
     end
@@ -537,6 +544,7 @@ local function CardRows()
 end
 
 local function TownSummary(store)
+    if not store.Get("townMap") then return TEXT_TOWN_OFF end
     local shown = 0
     for i = 1, #TOWN_SHOW do
         if store.Get(TOWN_SHOW[i]) then shown = shown + 1 end
@@ -557,11 +565,12 @@ boot:RegisterEvent("PLAYER_LOGIN")
 boot:SetScript("OnEvent", Apply)
 
 ns.TownPinRows = PIN_ROWS
+ns.TownPinTexts = { TEXT_TOWN, TEXT_TOWN_PINS, TEXT_TOWN_TIP }
 
 ns.Shared.Settings.Page("QoL/Interface", S):Card({
-    id = "townMap", name = "Map Pins", order = 40, switch = "townMap",
-    help = "Every pin on the world map. The switch is for the town pins (service NPCs for your faction); "
-        .. "quest, rare and entrance pins have their own. Also set from its Map Pins button.",
+    id = "townMap", name = "Map Options and Pins", order = 40,
+    help = "The world map's options and every pin on it: town pins (service NPCs for your faction), "
+        .. "quests, rares and entrances. Also set from the button on the map.",
     search = TEXT_PINS_SEARCH,
     summary = TownSummary,
     rows = CardRows,

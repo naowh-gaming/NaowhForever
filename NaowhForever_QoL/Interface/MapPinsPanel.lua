@@ -1,4 +1,4 @@
--- MapPinsPanel.lua: the Map Pins button on the world map and its drawer of which pins show.
+-- MapPinsPanel.lua: the Map Options and Pins button on the world map and its drawer of which pins and options show.
 local ns = _G.NaowhForever
 
 local T = ns.THEME
@@ -24,12 +24,10 @@ local BUTTON_ALPHA = 0.9
 local ICON_INSET = 4
 local SCROLL_W, SCROLL_IN = 4, 2
 
-local TEXT_TITLE = "Map Pins"
-local TEXT_TIP = "Click to choose which pins show on the map."
+local TEXT_TITLE = "Map Options and Pins"
+local TEXT_TIP = "Click to choose which pins and options show on the map."
 local TEXT_CLOSE = "x"
-local TEXT_TOWN = "TOWN"
-local TEXT_TOWN_PINS = "Town Pins"
-local TEXT_TOWN_TIP = "Service NPCs, mailboxes, spirit healers, exits and docks; the rows below pick which."
+local TEXT_TOWN, TEXT_TOWN_PINS, TEXT_TOWN_TIP = unpack(ns.TownPinTexts)
 
 local ROWS = ns.TownPinRows
 
@@ -41,7 +39,7 @@ local function TownOn()
 end
 
 local function AnySectionOn()
-    for _, section in ipairs(ns.Shared.MapPins) do
+    for _, section in ipairs(ns.Shared.MapPinSections()) do
         if section.store.Get("enabled") and section.store.Get(section.switch) then return true end
     end
     return false
@@ -57,11 +55,16 @@ local function PanelWidth()
     return w > 0 and w or PANEL_W
 end
 
+local function Needed(row)
+    if type(row.needs) == "string" then return row.store.Get(row.needs) end
+    return row.needs()
+end
+
 local function RefreshRows()
     for _, row in ipairs(rows) do
         row.control._refreshValue()
         if row.needs then
-            local on = row.needs() and true or false
+            local on = Needed(row) and true or false
             local alpha = on and 1 or DIM_ALPHA
             row.label:SetAlpha(alpha)
             row.control:SetAlpha(alpha)
@@ -127,7 +130,7 @@ local function MakeRow(parent, store, key, text, tip, needs)
     label:SetPoint("RIGHT", control, "LEFT", -LABEL_GAP, 0)
     label:SetText(text)
     if tip then ns.Tooltip(frame, text, tip) end
-    rows[#rows + 1] = { control = control, label = label, needs = needs }
+    rows[#rows + 1] = { control = control, label = label, needs = needs, store = store }
 end
 
 local function PlaceMaximized(map)
@@ -196,7 +199,7 @@ local function BuildPanel()
     scroll:SetScrollChild(content)
     scroll.bar:SetFrameLevel(content:GetFrameLevel() + CONTROL_LEVEL)
     scroll:SetScript("OnSizeChanged", function(_, w) content:SetWidth(w) end)
-    MakeGroup(content, TEXT_TOWN)
+    MakeGroup(content, TEXT_TOWN:upper())
     MakeRow(content, S, "townMap", TEXT_TOWN_PINS, TEXT_TOWN_TIP)
     for _, row in ipairs(ROWS) do
         if row.header then
@@ -205,8 +208,8 @@ local function BuildPanel()
             MakeRow(content, S, row.key, row.text, row.tip, TownOn)
         end
     end
-    for _, section in ipairs(ns.Shared.MapPins) do
-        MakeGroup(content, section.title:upper())
+    for _, section in ipairs(ns.Shared.MapPinSections()) do
+        if section.title then MakeGroup(content, section.title:upper()) end
         for _, row in ipairs(section.rows) do
             if row.toggle then MakeRow(content, row.store, row.key, row.label, row.help, row.needs) end
         end
@@ -297,7 +300,7 @@ end
 local function OnLogin(self)
     self:UnregisterAllEvents()
     local watched = {}
-    for _, section in ipairs(ns.Shared.MapPins) do
+    for _, section in ipairs(ns.Shared.MapPinSections()) do
         if not watched[section.store] then
             watched[section.store] = true
             section.store.OnChange(Apply)

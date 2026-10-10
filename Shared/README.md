@@ -9,8 +9,8 @@ through `Shared.xml`. Nothing is made or listened to at load.
 ```
 Shared/
   Shared.xml       what loads, in order (the core TOC's Shared load point)
-  Shared.lua       the namespace (ns.Shared), the map pin sections other modules add to QoL's Map Pins
-                   (Shared.MapPins), a map pin's scale (Shared.ScalePin), what a character keeps by its
+  Shared.lua       the namespace (ns.Shared), the map pin sections that QoL and other modules add to its Map Options and Pins
+                   (Shared.MapPins, in order by Shared.MapPinSections), a map pin's scale (Shared.ScalePin), what a character keeps by its
                    GUID (Shared.CharacterData), and how long ago a time was (Shared.Ago)
   Style.lua        the house look: colors (BiS stars, worn green, looks, red and warning orange), icons, sizes
   Data/            data only, generated; never edited by hand
@@ -33,7 +33,7 @@ Shared/
   Game/Roster.lua  our part of a player's tooltip in the Guild & Communities and Friends lists (Badges, Naowh Score)
   Game/Places.lua  zones by name, and showing one on the world map
   Game/Towns.lua   town service NPCs by world map (ns.TownNPCs) and the capitals (ns.TownCapitals), by hand:
-                   QoL's Map Pins, the Training Planner's trainers and Professions' rank alerts read it
+                   QoL's Map Options and Pins, the Training Planner's trainers and Professions' rank alerts read it
   Game/Played.lua  the character's /played time, asked for once with the chat print muted (XP Bar, XP per Hour)
   UI/Parts.lua     the small parts: icons in text (Parts.Inline), smooth textures, hover cards (Parts.Tip,
                    Parts.TipLines), the chevron, links, icon buttons, a short label in a pill of its color
@@ -259,8 +259,8 @@ What a comment in the code used to say, in short. The house rules behind it are 
   map scales to fit and to zoom, so the pin's scale is `PIN_SCALE` (1.5) over the canvas scale:
   the same size on screen at every zoom. The map's global pin scale still applies.
 - `Shared.MapPins` is a plain list, filled at load by the modules that have map pins and read
-  only when QoL's Map Pins card or drawer is drawn, so the load order of the addons does not matter.
-  A section is `{ title, store, switch, rows }`: `switch` is its own on and off key in `store`.
+  only when QoL's Map Options and Pins card or drawer is drawn, so the load order of the addons does not matter.
+  A section is `{ title, order, store, switch, rows }`: `switch` is its own on and off key in `store`, `order` (default 50, after the lower ones, then by load order) where it comes, and `title` its group, none to continue the one above.
 - A settings row marked `lent` belongs to another module's store: its card's Reset and changed
   count leave it out, while its own changed dot still resets it.
 - `Decode.lua` loads with nothing else from the addon and returns its table, so the offline

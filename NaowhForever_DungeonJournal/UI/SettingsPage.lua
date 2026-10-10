@@ -1,4 +1,4 @@
--- SettingsPage.lua: the Dungeon Journal's settings page, declared as cards, and its entrance pins' rows on Map Pins.
+-- SettingsPage.lua: the Dungeon Journal's settings page, declared as cards, and its entrance pins' rows on Map Options and Pins.
 local ns = _G.NaowhForever
 
 local J = ns.Journal

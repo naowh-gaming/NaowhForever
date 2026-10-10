@@ -33,10 +33,9 @@ Check(ns.MapOverlays[1454] == nil, "a capital has none")
 -- The pin, against stubs.
 local settings = { enabled = true, mapUnexplored = false, mapUnexploredDark = 0.6 }
 local S = { Get = function(key) return settings[key] end, Set = function() end }
-local card
 ns.QoLSettings = S
 ns.QoLConstants = dofile("Tools/regression/qol_constants.lua")
-ns.Shared = { Style = dofile("Tools/regression/shared_style.lua"), Settings = { Page = function() return { Card = function(_, c) card = c end } end } }
+ns.Shared = { Style = dofile("Tools/regression/shared_style.lua"), MapPins = {} }
 ns.Apply = function() end
 ns.MapOverlays = { [1] = { { 300, 100, 10, 20, 11, 12 }, { 64, 64, 500, 400, 13 } } }
 
@@ -116,10 +115,13 @@ explored = { { textureWidth = 300, textureHeight = 100, offsetX = 10, offsetY = 
 pin:Refresh()
 Check(#textures == 1 and textures[1].file == 13, "an explored area is left to the game")
 
-Check(card and card.switch == "mapUnexplored", "the card switches the setting")
+local section = ns.Shared.MapPins[1]
+Check(section and section.switch == "mapUnexplored" and section.store == S, "its section on Map Options and Pins switches the setting")
+Check(section.rows[1].key == "mapUnexplored" and section.rows[1].toggle, "with its own switch row")
 Check(Read("Core/Settings.lua"):find("mapUnexplored = F.mapUnexplored, mapUnexploredDark = 0.5", 1, true)
     and Read("Core/Features.lua"):find("mapUnexplored = true,", 1, true),
     "Unexplored Areas starts on, half dark")
-Check(card.rows[1].key == "mapUnexploredDark" and card.rows[1].slider[2] == 90, "the slider sets the darkness, never to black")
+Check(section.rows[2].key == "mapUnexploredDark" and section.rows[2].slider[2] == 90 and section.rows[2].needs == "mapUnexplored",
+    "the slider sets the darkness, never to black, and waits for the switch")
 
 print(("test-map-unexplored: %d checks passed"):format(checks))
