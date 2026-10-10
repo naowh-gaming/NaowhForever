@@ -45,7 +45,7 @@ local function IsOptions(text) return text == GAMEMENU_OPTIONS end
 local function Added(menu)
     button = nil
     if not On() then return end
-    button = menu:AddButton(Label(), Clicked)
+    button = MainMenuFrameMixin.AddButton(menu, Label(), Clicked)
 end
 
 local function PlaceAfterOptions(menu)

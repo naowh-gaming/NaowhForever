@@ -176,6 +176,10 @@ Modals and windows
   CloseAllWindows. `SetPropagateKeyboardInput` is protected, so in combat the keyboard is not taken
   at all (taking it without propagation swallows every keybind); the close button still works.
 - The full-screen dimmer keeps the mouse off so what is underneath stays clickable.
+- The game menu button goes in through `MainMenuFrameMixin.AddButton`, not the menu's own
+  `AddButton`, which also lists it in `GameMenuFrame.buttons`. In gamepad mode the menu's OnHide
+  walks that list and then calls the protected `SetGamePadCursorControl`, so our entry got every
+  close, Options included, forbidden.
 - The options window is DIALOG and the HUD Editor draws at HIGH, so the two never share the
   screen: Unlock Mode steps the window out and puts it back on exit. Stash the window before
   arming, or its OnHide disarms the mode in the same click.
