@@ -257,6 +257,7 @@ end
 local pin, nav, cue, driver, navFrame, unlocked, gameHidden, warned
 local arrived, arrivals = false, 0
 local Arrived
+local selfCleared
 local reached
 local lastX, lastY
 local shown = {}
@@ -430,7 +431,8 @@ local function Update()
         PlaceOnSpot(nx, ny, scale)
     end
     CheckReached(yards)
-    if shown.user and yards <= REACHED then
+    if shown.user and not shown.onRoute and not selfCleared and yards <= REACHED then
+        selfCleared = true
         Arrived()
         ns.ClearWaypoint()
         return
@@ -457,7 +459,7 @@ local function Retitle()
 end
 
 local function Detach()
-    navFrame = nil
+    navFrame, selfCleared = nil, false
     if not driver then return end
     driver:SetScript("OnUpdate", nil)
     if arrived then return end
@@ -535,6 +537,7 @@ local function OnEvent(_, event, isWaypoint)
     elseif not navFrame then
         if C_Navigation.GetFrame() then Attach() end
     elseif not arrived then
+        selfCleared = false
         Retitle()
     end
 end

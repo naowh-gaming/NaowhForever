@@ -304,7 +304,24 @@ nav.distance = 4
 driver.scripts.OnUpdate()
 Check(pin.card.dist.text == "Arrived" and #played == playedBefore + 1, "within 5 yards the arrival shows, with its sound")
 Check(cleared == clearedBefore + 1 and superCleared >= 1, "and the waypoint is cleared")
+-- The clear waits while the world map is open, so the arrival is not repeated every hold.
 timers[#timers].fn()
+local arrivalsBefore = #played
+driver.scripts.OnUpdate()
+Check(#played == arrivalsBefore and cleared == clearedBefore + 1, "still standing there after the hold: no second arrival, no second clear")
+-- A route's stop is left to the game's arrival, which is what moves the route on.
+events.scripts.OnEvent(events, "NAVIGATION_FRAME_DESTROYED")
+nav.distance = 30
+events.scripts.OnEvent(events, "NAVIGATION_FRAME_CREATED")
+routeInfo = { "Training run", 1, 3, "Weapon Master" }
+ns.placedWaypoint = { title = "Mage Trainer", map = 88, x = 46.2, y = 49.8 }
+userWaypoint = { uiMapID = 88, position = { x = 0.462, y = 0.498 } }
+events.scripts.OnEvent(events, "SUPER_TRACKING_CHANGED")
+clearedBefore = cleared
+nav.distance = 4
+driver.scripts.OnUpdate()
+Check(cleared == clearedBefore, "on a route's stop the pin clears nothing itself")
+routeInfo = nil
 nav.distance = was
 tracking = 1
 cleared, superCleared = 0, 0
