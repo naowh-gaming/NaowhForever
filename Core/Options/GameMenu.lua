@@ -18,7 +18,7 @@ end
 
 local function Clicked()
     PlaySound(SOUNDKIT.IG_MAINMENU_OPTION)
-    HideUIPanel(GameMenuFrame)
+    if not ns.GamepadOwnsPanels() then HideUIPanel(GameMenuFrame) end
     ns.OpenOptionsWindow()
 end
 
