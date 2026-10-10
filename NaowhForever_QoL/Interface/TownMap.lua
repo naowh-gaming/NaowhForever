@@ -211,6 +211,7 @@ function NaowhForeverTownPinMixin:OnAcquired(npc)
     self:SetSize(size, size)
     SetPinArt(self, npc)
     self:SetPosition(npc[1] / PERCENT, npc[2] / PERCENT)
+    self:ApplyCurrentScale()
 end
 
 function NaowhForeverTownPinMixin:OnMouseEnter()
@@ -258,6 +259,7 @@ function NaowhForeverZoneLinkPinMixin:OnAcquired(link)
     self.Icon:SetSize(size, length)
     self.Icon:SetRotation(link.rotation or 0)
     self:SetPosition(link.position:GetXY())
+    self:ApplyCurrentScale()
 end
 
 function NaowhForeverZoneLinkPinMixin:OnClick(button)
@@ -526,7 +528,10 @@ local function CardRows()
     end
     for _, section in ipairs(ns.Shared.MapPins) do
         rows[#rows + 1] = ns.Shared.Settings.Group(section.title)
-        for _, row in ipairs(section.rows) do rows[#rows + 1] = row end
+        for _, row in ipairs(section.rows) do
+            row.lent = true
+            rows[#rows + 1] = row
+        end
     end
     return rows
 end

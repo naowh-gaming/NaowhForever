@@ -103,6 +103,7 @@ local function MakePinMixin()
         self:SetSize(size, size)
         if not (AllRaids(group.dungeons) and self.Icon:SetAtlas(RAID_ICON)) then self.Icon:SetAtlas(ICON) end
         self:SetPosition(group.x, group.y)
+        self:ApplyCurrentScale()
     end
 
     function Pin:OnMouseEnter()

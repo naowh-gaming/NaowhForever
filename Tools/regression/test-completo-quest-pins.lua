@@ -71,6 +71,7 @@ end
 local pin = NewPin()
 pin:OnAcquired({ x = 50, y = 50, quests = { 1 } })
 Check(pin.size == 20, "Pin Size on the small map")
+Check(pin.scale == 1.5, "scaled as it is placed, not only on the next zoom")
 maximized = true
 local big = NewPin()
 big:OnAcquired({ x = 50, y = 50, quests = { 1 } })

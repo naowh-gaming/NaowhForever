@@ -11,7 +11,6 @@ local CHOICE_W, TEXT_W, BUTTON_W, BUTTON_H = 170, 200, 110, 24
 local BINDING_W = 170
 local TEXT_GROW, TEXT_INSET = 2, 6
 local TEXT_BOX = { inset = TEXT_INSET, border = SS.BORDER_RGB, hover = false }
-local DIM = 0.35
 local NO_SOUND = "none"
 local CHOICE_KINDS = { choice = true, font = true, texture = true, sound = true }
 local TEXT_NONE = "None"
@@ -184,7 +183,7 @@ function Control.Bind(control, setting)
 end
 
 function Control.Dim(row, control, off)
-    local alpha = off and DIM or 1
+    local alpha = off and SS.DIM_ALPHA or 1
     row.label:SetAlpha(alpha)
     control:SetAlpha(alpha)
     control:EnableMouse(not off)

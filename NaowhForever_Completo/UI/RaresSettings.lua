@@ -165,7 +165,7 @@ page:Card({
 })
 
 table.insert(ns.Shared.MapPins, {
-    title = "Rares",
+    title = "Rares", store = S, switch = "rarePins",
     rows = {
         { key = "rarePins", label = "Rares", toggle = true, store = S, always = true, needs = Enabled, why = TEXT_OFF,
           help = "A star on the world map for every rare you have not killed, where it is most likely to be. "

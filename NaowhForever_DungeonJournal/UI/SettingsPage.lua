@@ -274,7 +274,7 @@ local function DeclareMapPins()
         .. "waypoint.")
     entrances.store, entrances.always = S, true
     table.insert(ns.Shared.MapPins, {
-        title = "Dungeons & Raids",
+        title = "Dungeons & Raids", store = S, switch = "mapEntrances",
         rows = {
             entrances,
             { key = "mapEntranceScale", label = "Entrance Icon Size", slider = { ICON_MIN, ICON_MAX, ICON_STEP },

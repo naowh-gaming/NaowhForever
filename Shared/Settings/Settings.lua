@@ -334,7 +334,7 @@ end
 function Settings.ChangedCount(card)
     local n = 0
     for _, row in ipairs(card.rows) do
-        if row.kind ~= "group" and Settings.Changed(row) then n = n + 1 end
+        if row.kind ~= "group" and not row.lent and Settings.Changed(row) then n = n + 1 end
     end
     return n
 end
@@ -352,7 +352,9 @@ function Settings.ResetRow(row)
 end
 
 function Settings.Reset(card)
-    for _, row in ipairs(card.rows) do Settings.ResetRow(row) end
+    for _, row in ipairs(card.rows) do
+        if not row.lent then Settings.ResetRow(row) end
+    end
 end
 
 function Settings.UnderOf(card, label)

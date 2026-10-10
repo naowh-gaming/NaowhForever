@@ -66,6 +66,7 @@ function NaowhForeverQuestGiverPinMixin:OnAcquired(giver)
     self:SetSize(size, size)
     SetMark(self.Icon, giver.grey, giver.repeatable)
     self:SetPosition(giver.x / PERCENT, giver.y / PERCENT)
+    self:ApplyCurrentScale()
 end
 
 function NaowhForeverQuestGiverPinMixin:OnMouseEnter()

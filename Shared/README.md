@@ -260,6 +260,9 @@ What a comment in the code used to say, in short. The house rules behind it are 
   the same size on screen at every zoom. The map's global pin scale still applies.
 - `Shared.MapPins` is a plain list, filled at load by the modules that have map pins and read
   only when QoL's Map Pins card or drawer is drawn, so the load order of the addons does not matter.
+  A section is `{ title, store, switch, rows }`: `switch` is its own on and off key in `store`.
+- A settings row marked `lent` belongs to another module's store: its card's Reset and changed
+  count leave it out, while its own changed dot still resets it.
 - `Decode.lua` loads with nothing else from the addon and returns its table, so the offline
   tests can load it on its own.
 

@@ -53,7 +53,7 @@ page:Card({
 })
 
 table.insert(ns.Shared.MapPins, {
-    title = "Quests",
+    title = "Quests", store = S, switch = "mapPins",
     rows = {
         { key = "mapPins", label = "Quest Givers", toggle = true, store = S, always = true, needs = On, why = TEXT_OFF,
           help = "A yellow ! on the world map at every quest giver with a quest you can pick up that still gives "
