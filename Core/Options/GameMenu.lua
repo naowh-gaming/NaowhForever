@@ -44,7 +44,7 @@ local function IsOptions(text) return text == GAMEMENU_OPTIONS end
 
 local function Added(menu)
     button = nil
-    if not On() or InputUtil.IsGamepadUIEnabled() or CanAutoSetGamePadCursorControl(false) then return end
+    if not On() or ns.GamepadOwnsPanels() then return end
     button = MainMenuFrameMixin.AddButton(menu, Label(), Clicked)
 end
 

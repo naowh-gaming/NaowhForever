@@ -180,9 +180,12 @@ Modals and windows
   `AddButton`, which also lists it in `GameMenuFrame.buttons`. In gamepad mode the menu's OnHide
   walks that list and then calls the protected `SetGamePadCursorControl`, so our entry got every
   close, Options included, forbidden. Our own click hides the menu from addon code and would hit
-  the same call, so the button is left out whenever OnHide does gamepad work: the gamepad UI (its
-  footer drops override bindings, blocked in combat) or `CanAutoSetGamePadCursorControl(false)`.
-  /nf still opens the window.
+  the same call, so the button is left out while `ns.GamepadOwnsPanels()`; /nf still opens the window.
+- `ns.GamepadOwnsPanels()` is true while Blizzard's gamepad handling runs when its panels open or
+  close: the gamepad UI (footer override bindings, blocked in combat) or gamepad cursor auto-control
+  (`ShowUIPanel`, the game menu and bags call the protected `SetGamePadCursorControl`). Opening or
+  closing a Blizzard panel from addon code then gets forbidden, so anything that would (the game
+  menu button, the Top Bar clock, custom slash commands) stands down.
 - The options window is DIALOG and the HUD Editor draws at HIGH, so the two never share the
   screen: Unlock Mode steps the window out and puts it back on exit. Stash the window before
   arming, or its OnHide disarms the mode in the same click.
