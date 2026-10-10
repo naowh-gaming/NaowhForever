@@ -343,11 +343,11 @@ local function Fixture(settings, units)
     env.worldMap = map
     env.NaowhForever = ns
     env._G = env
-    Load({ "NaowhForever_Completo/Constants.lua", "NaowhForever_Completo/Data/AlertSounds.lua",
-        "NaowhForever_Completo/Rares.lua", "NaowhForever_Completo/Kills.lua", "NaowhForever_Completo/Sounds.lua",
-        "NaowhForever_Completo/View/Style.lua", "NaowhForever_Completo/View/AlertCard.lua",
-        "NaowhForever_Completo/UI/RareAlert.lua", "NaowhForever_Completo/UI/RarePins.lua",
-        "NaowhForever_Completo/UI/RaresSettings.lua" }, env)
+    Load({ "NaowhForever_Discovery/QuestList/Constants.lua", "NaowhForever_Discovery/QuestList/Data/AlertSounds.lua",
+        "NaowhForever_Discovery/QuestList/Rares.lua", "NaowhForever_Discovery/QuestList/Kills.lua", "NaowhForever_Discovery/QuestList/Sounds.lua",
+        "NaowhForever_Discovery/QuestList/View/Style.lua", "NaowhForever_Discovery/QuestList/View/AlertCard.lua",
+        "NaowhForever_Discovery/QuestList/UI/RareAlert.lua", "NaowhForever_Discovery/QuestList/UI/RarePins.lua",
+        "NaowhForever_Discovery/QuestList/UI/RaresSettings.lua" }, env)
     env.Fire("PLAYER_LOGIN")
     return ns, env, account
 end
@@ -441,8 +441,8 @@ do
     Check(wp and wp[1] == "Mist Howler" and wp[2] == 1440 and wp[3] == 50 and wp[4] == 40,
         "its pin sets a waypoint to its spot")
     local mover = ns.movers["Rare Alert"]
-    Check(mover and mover.frame == holder and mover.frame ~= ns.alert and mover.page == "Completo/Rares"
-        and mover.feature == "Completo/Rares:rareAlert",
+    Check(mover and mover.frame == holder and mover.frame ~= ns.alert and mover.page == "Discovery/Rares"
+        and mover.feature == "Discovery/Rares:rareAlert",
         "it moves in the HUD Editor by a holder that stays shown, with its settings card")
     Check(holder.at[1] == 0 and holder.at[2] == 260, "above the middle of the screen at first")
     mover.onMoved({ point = "CENTER", relPoint = "CENTER", x = 10, y = 120 })

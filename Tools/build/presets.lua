@@ -14,7 +14,7 @@
 -- into its profile, so a new install starting from it agrees. Without it the preset's switches decide.
 local INFO = {
     minimalist = { order = 1, name = "Minimalist", about = "Fewer modules and settings on, and none that spoil the game.",
-        modulesOff = { "NaowhForever_Completo", "NaowhForever_Discovery", "NaowhForever_GroupInspect",
+        modulesOff = { "NaowhForever_Discovery", "NaowhForever_GroupInspect",
             "NaowhForever_GearSets", "NaowhForever_SwingTimer" } },
     recommended = { order = 2, name = "Recommended", about = "Naowh's recommended setup, with the modules he uses on." },
 }

@@ -1,4 +1,4 @@
--- QuestsSettings.lua: Completo's Quests settings page (Completo/Quests), declared as cards, and its quest pins' rows on Map Pins.
+-- QuestsSettings.lua: the Quest List's quest cards (Discovery/Quest List), and its quest pins' rows on Map Pins.
 local ns = _G.NaowhForever
 
 local Completo = ns.Completo
@@ -6,10 +6,10 @@ local S = Completo.Settings
 local Q = Completo.Quests
 local Settings = ns.Shared.Settings
 
-local PAGE = "Completo/Quests"
+local PAGE = "Discovery/Quest List"
 local PIN_SIZE = ns.Shared.Style.PIN_SIZE_RANGE
 local ORDER_QUESTS = 10
-local TEXT_OFF = "Turn on Completo"
+local TEXT_OFF = "Turn on Discovery"
 local TEXT_PINS_OFF = "Turn on Quest Givers"
 local TEXT_PROGRESS = "%d of %d zone quests done"
 local TEXT_ZONE = "%s: %d of %d."
@@ -37,7 +37,7 @@ local function OpenQuests()
 end
 
 page:Window({
-    text = "Open Quests",
+    text = "Open Quest List",
     open = OpenQuests,
     headline = Headline,
     detail = Detail,
@@ -45,7 +45,7 @@ page:Window({
 
 page:Card({
     id = "quests", name = "Quests", order = ORDER_QUESTS,
-    help = "What a zone's page in the Completo window lists.",
+    help = "What a zone's page in the Quest List window lists.",
     rows = {
         { key = "hideDone", label = "Hide Done", toggle = true,
           help = "Leave out the quests and chains you have finished." },

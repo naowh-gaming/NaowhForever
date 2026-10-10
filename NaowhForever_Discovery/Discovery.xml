@@ -20,4 +20,5 @@
     <Include file="UI\BagPins.xml"/>
     <Script file="UI\BooksSettings.lua"/>
     <Script file="UI\BagSettings.lua"/>
+    <Include file="QuestList\QuestList.xml"/>
 </Ui>

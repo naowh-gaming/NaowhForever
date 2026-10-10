@@ -69,7 +69,7 @@ BINDING_NAME_NAOWHFOREVER_JOURNAL = "Open Dungeon Journal"
 BINDING_NAME_NAOWHFOREVER_BOSSLOOT = "Boss Loot at Cursor"
 BINDING_NAME_NAOWHFOREVER_BIS = "Open BiS List"
 BINDING_NAME_NAOWHFOREVER_GROUPINSPECT = "Open Group Inspect"
-BINDING_NAME_NAOWHFOREVER_COMPLETO = "Open Completo"
+BINDING_NAME_NAOWHFOREVER_COMPLETO = "Open Quest List"
 BINDING_NAME_NAOWHFOREVER_BAGSPACE_PICKUP = "Pick Up Cheapest Item"
 BINDING_NAME_NAOWHFOREVER_HUD = "Open or Close the HUD Editor"
 _G["BINDING_NAME_CLICK NaowhForeverBlessNext:LeftButton"] = "Next Blessing"
@@ -84,7 +84,7 @@ NaowhForever_ToggleJournal = SwitchedOff("Dungeon Journal")
 NaowhForever_BossLoot = SwitchedOff("Dungeon Journal")
 NaowhForever_ToggleBis = SwitchedOff("BiS List")
 NaowhForever_ToggleGroupInspect = SwitchedOff("Group Inspect")
-NaowhForever_ToggleCompleto = SwitchedOff("Completo")
+NaowhForever_ToggleCompleto = SwitchedOff("Discovery")
 NaowhForever_BagSpacePickUp = SwitchedOff("Quality of Life")
 
 SLASH_NAOWHFOREVER1 = "/naowh"

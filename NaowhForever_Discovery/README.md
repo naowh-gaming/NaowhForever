@@ -1,6 +1,7 @@
 # Discovery
 
-The library books and the Cozy Sleeping Bag: where to find each one, on the map and nearby. Its
+The library books and the Cozy Sleeping Bag: where to find each one, on the map and nearby, and
+every quest and rare by zone (the Quest List and Rares tabs, in `QuestList/`, see its README). Its
 Library Books tab has every book for your faction by zone, where it lies, whether you carry it,
 and your road to the Friend of the Library rewards; its Sleeping Bag tab the bag's hidden quest
 chain, step by step. Each has a tracker and map pins, and the books a nearby alert. Off by
@@ -36,6 +37,7 @@ NaowhForever_Discovery/
     BagPins.lua, .xml         the chain's step pins on the world map, and their template
     BooksSettings.lua         the Discovery/Library Books settings page, declared as cards
     BagSettings.lua           the Discovery/Sleeping Bag settings page, declared as cards
+  QuestList/                  the Quest List and Rares (Completo until 2026-10-10): its own README
 ```
 
 Each layer only uses the ones above it. Everything the module shares hangs off `ns.Discovery`;

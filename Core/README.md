@@ -334,7 +334,7 @@ Onboarding
   onboarding or the old welcome never closed) and no `setupBefore` (no Apply yet). Anyone else starts
   on Keep mine, so opening it again changes nothing unless they pick something.
 - The modules step starts from the picked profile: when a preset has a `modulesOff` list, every
-  module but those (Minimalist leaves off Completo, Discovery and Group Inspect, which spoil what
+  module but those (Minimalist leaves off Discovery, with its Quest List, and Group Inspect, which spoil what
   there is to find, and Gear & Trinkets and Swing Timer, which show nothing until set up), else its
   switches, with the feature's default for a switch it leaves out; Keep mine starts from what is on
   now (its addon enabled, for this character in its own mode, and its switch on). A module on without

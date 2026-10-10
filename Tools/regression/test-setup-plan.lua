@@ -8,7 +8,7 @@ local function check(label, ok) assert(ok, label); checks = checks + 1 end
 local World = dofile("Tools/regression/setup_world.lua")
 local MINIMALIST_ON = { qol = true, journal = true, bis = true, training = true, blessings = true, professions = true,
     macros = true, actionBars = true, auraBuffs = true, threatMeter = true, pvp = true, topBar = true }
-local MINIMALIST_OFF = "NaowhForever_Completo,NaowhForever_Discovery,NaowhForever_GroupInspect,NaowhForever_GearSets,"
+local MINIMALIST_OFF = "NaowhForever_Discovery,NaowhForever_GroupInspect,NaowhForever_GearSets,"
     .. "NaowhForever_SwingTimer"
 
 local function All(value)
@@ -99,18 +99,18 @@ do
         for k, it in pairs(Setup.ITEMS) do if it == item then id = k end end
         check(id .. ": Recommended pre-selects what its switches say", recommended[id] == (v == true))
     end
-    check("Recommended keeps its modules: the Threat Meter on, Completo off", recommended.threatMeter
-        and not recommended.completo and recommended.topBar and recommended.qol)
+    check("Recommended keeps its modules: the Threat Meter and Discovery on", recommended.threatMeter
+        and recommended.discovery and recommended.topBar and recommended.qol)
 end
 
 do
     local enabled = All(true)
     enabled.NaowhForever_PvP, enabled.NaowhForever_QoL = false, false
-    local w = Game({ enabled = enabled, root = { completo = { enabled = true }, journal = { enabled = false } } })
+    local w = Game({ enabled = enabled, root = { discovery = { enabled = true }, journal = { enabled = false } } })
     local mine = w.ns.Setup.ModuleDefaults(w.ns.Setup.KEEP)
     check("keep mine: a module whose addon is off is off", mine.pvp == false)
-    check("one switched on in the profile is on, one switched off is off", mine.completo and mine.journal == false)
-    check("one left alone follows its default", mine.threatMeter == true and mine.discovery == false)
+    check("one switched on in the profile is on, one switched off is off", mine.discovery and mine.journal == false)
+    check("one left alone follows its default", mine.threatMeter == true and mine.groupInspect == false)
     check("the Top Bar without Quality of Life cannot run: off", mine.topBar == false and mine.qol == false)
 end
 
@@ -196,7 +196,7 @@ do
         check("Minimalist, applied: " .. id .. (MINIMALIST_ON[id] and " enabled" or " disabled"),
             w.enabled[item.addon] == (MINIMALIST_ON[id] == true))
     end
-    check("for every character", w.others.NaowhForever_Completo == false and w.others.NaowhForever_QoL == true)
+    check("for every character", w.others.NaowhForever_Discovery == false and w.others.NaowhForever_QoL == true)
     check("no call named a character", (function()
         for _, c in ipairs(w.calls) do if not w.ForEveryone(c) then return false end end
         return #w.calls > 0
@@ -308,7 +308,7 @@ do
 end
 
 do
-    local w = Game({ account = { welcomeSeen = true }, root = { completo = { enabled = true } } })
+    local w = Game({ account = { welcomeSeen = true }, root = { discovery = { enabled = true } } })
     w.ns.ApplyPreset("minimalist")
     local on = {}
     for id, value in pairs(w.ns.Setup.ModuleDefaults(w.ns.Setup.KEEP)) do if value then on[#on + 1] = id end end
@@ -317,19 +317,19 @@ do
         Names(on) == "actionBars,auraBuffs,bis,blessings,journal,macros,professions,pvp,qol,threatMeter,topBar,training")
     local tip = w.ns.PresetChanges("recommended")
     check("and its hover names what Recommended turns back on", tip:find("Group Inspect", 1, true) ~= nil)
-    w = Game({ account = { welcomeSeen = true }, root = { completo = { enabled = true } } })
+    w = Game({ account = { welcomeSeen = true }, root = { discovery = { enabled = true } } })
     check("the hover for Minimalist names the modules it turns off", w.ns.PresetChanges("minimalist")
-        :find("Minimalist turns off: ", 1, true) ~= nil and w.ns.PresetChanges("minimalist"):find("Completo", 1, true))
+        :find("Minimalist turns off: ", 1, true) ~= nil and w.ns.PresetChanges("minimalist"):find("Discovery", 1, true))
     local enabled, loaded = All(true), All(true)
     enabled.NaowhForever_ThreatMeter, loaded.NaowhForever_ThreatMeter = false, false
-    enabled.NaowhForever_Completo, loaded.NaowhForever_Completo = false, false
+    enabled.NaowhForever_Discovery, loaded.NaowhForever_Discovery = false, false
     w = Game({ account = { welcomeSeen = true }, enabled = enabled, loaded = loaded })
     w.ns.ConfirmReload = function() end
     check("the hover counts a module whose addon is not loaded", w.ns.PresetChanges("minimalist")
-        :find("Threat Meter", 1, true) ~= nil and not w.ns.PresetChanges("minimalist"):find("Completo", 1, true))
+        :find("Threat Meter", 1, true) ~= nil and not w.ns.PresetChanges("minimalist"):find("Discovery", 1, true))
     w.ns.UsePreset("minimalist", false)
     check("the Setups card enables the addons it turns on, and only those", w.enabled.NaowhForever_ThreatMeter
-        and not w.enabled.NaowhForever_Completo and w.root.threatMeter.enabled == true)
+        and not w.enabled.NaowhForever_Discovery and w.root.threatMeter.enabled == true)
 end
 
 print("PASS setup plan: " .. checks .. " checks")

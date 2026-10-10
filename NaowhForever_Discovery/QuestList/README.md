@@ -1,20 +1,22 @@
-# Completo
+# Quest List
 
-Everything there is to do, and how much of it you have done. Its Overview tab, where it opens
-first, shows how far along you are in Quests and Rares, everywhere and in the zone you are in.
+Discovery's Quest List and Rares tabs (Completo in the code: `ns.Completo`, `/nfcompleto`, the
+`completo` settings store), everything there is to do and how much of it you have done. They
+share Discovery's switch: the Quest List follows Discovery's `enabled`, and an old profile with
+Completo on turns Discovery on. The Quest List window's Overview tab, where it opens first, shows how far along you are in Quests and Rares, everywhere and in the zone you are in.
 Its Quests tab has every quest of every zone for your character, how many you have done per zone, and for each quest chain the step
 you are on; its Rares tab every rare of every zone and which of them this character has killed.
 Map Pins put a ! on the world map at each quest giver with a quest for you, and a star where each
 rare spawns; Rare Alerts warn you when a rare is near. Off by default, every feature too: players
-turn it on in Completo's settings pages (Completo/General, Completo/Quests and Completo/Rares).
+turn it on in Discovery's settings pages (Discovery/Quest List and Discovery/Rares).
 
 ## Layout
 
 ```
-NaowhForever_Completo/
-  NaowhForever_Completo.toc   its metadata, and one file line: Completo.xml
-  Completo.xml                every file, in load order
-  Completo.lua                its settings (ns.CompletoSettings) and the module table (ns.Completo)
+NaowhForever_Discovery/QuestList/
+  QuestList.xml               every file, in load order, included by Discovery.xml
+  Completo.lua                its settings (ns.CompletoSettings), the module table (ns.Completo), its
+                              switch following Discovery's, and turning off an old Completo folder
   Constants.lua               the numbers several files share: a rare drop's fields, the sample rare
   Data/
     Quests.lua                every quest of every zone and its chain, generated
@@ -38,12 +40,12 @@ NaowhForever_Completo/
     AlertCard.lua             the Rare Alert's card, live or in its preview (Completo.AlertCard)
   UI/
     RareAlert.lua             the alert on screen: seeing a rare, the card, its place (Completo.RareAlert)
-    Window.lua                the window (/nfcompleto, its key binding) and its three tabs
+    Window.lua                the Quest List window (/nfquests, /nfcompleto, its key binding) and its three tabs
     QuestPins.lua, .xml       the quest giver pins on the world map, and their template
     RarePins.lua, .xml        the rare stars on the world map, and their template
-    GeneralSettings.lua       the Completo/General settings page: the key binding and the window
-    QuestsSettings.lua        the Completo/Quests settings page, declared as cards
-    RaresSettings.lua         the Completo/Rares settings page, with the alert's live preview
+    GeneralSettings.lua       the key binding and window cards, on the Discovery/Quest List page
+    QuestsSettings.lua        the quest cards on the Discovery/Quest List page, and the quest pins on Map Pins
+    RaresSettings.lua         the Discovery/Rares settings page, with the alert's live preview, and the rare pins on Map Pins
 ```
 
 Each layer only uses the ones above it: `Data` fills the rules, `View` draws what they decide,
@@ -161,7 +163,7 @@ quest and creature pages. Do not edit them by hand: change the tool and run it a
 
 ## Checking
 
-- `luacheck NaowhForever_Completo` from the repo root.
+- `luacheck NaowhForever_Discovery` from the repo root.
 - `lua Tools/regression/test-completo-rares.lua`: the rare rules, counting kills, Rare Alerts,
   their settings and preview, and the rare map pins and their focus. Its `SetRaidTarget` raises
   an error, so no rare path may set a raid mark.

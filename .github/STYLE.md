@@ -229,7 +229,7 @@ icon:SetPoint("LEFT", text, "RIGHT", ICON_GAP, -PIN_DROP)
 
 Every on/off switch of a feature, and its default, lives in one file:
 `Core/Features.lua`, as `ns.FEATURES`, grouped by the settings store it is saved
-in (`qol`, `journal`, `completo`, `discovery`, `pvp`, ...). It loads right after the core,
+in (`qol`, `journal`, `completo` (the Quest List, in Discovery), `discovery`, `pvp`, ...). It loads right after the core,
 before every store. A module reads its switch defaults from it:
 
 ```lua

@@ -1,4 +1,4 @@
--- RaresSettings.lua: Completo's Rares settings page (Completo/Rares), declared as cards, with the alert's preview, and its rare pins' rows on Map Pins.
+-- RaresSettings.lua: the Rares settings page (Discovery/Rares), declared as cards, with the alert's preview, and its rare pins' rows on Map Pins.
 local ns = _G.NaowhForever
 
 local Completo = ns.Completo
@@ -10,7 +10,7 @@ local Card = Completo.AlertCard
 local RareAlert = Completo.RareAlert
 local Settings = ns.Shared.Settings
 
-local PAGE = "Completo/Rares"
+local PAGE = "Discovery/Rares"
 local STAGE_H = 110
 local CARD_ROOM = 32
 local CARD_ROOM_V = 8
@@ -28,7 +28,7 @@ local FONT_SIZE = { 10, 20, 1 }
 local PIN_SIZE = ns.Shared.Style.PIN_SIZE_RANGE
 local PERCENT_SCALE = ns.Shared.Style.PERCENT_SCALE
 local ORDER_RARES, ORDER_ALERT = 10, 20
-local TEXT_OFF = "Turn on Completo"
+local TEXT_OFF = "Turn on Discovery"
 local TEXT_SOUND_OFF = "Needs Play a Sound"
 local TEXT_PINS_OFF = "Turn on Rares"
 local TEXT_PROGRESS = "%d of %d rares killed"
@@ -124,11 +124,11 @@ page:Window({
 
 page:Card({
     id = "rares", name = "Rares", order = ORDER_RARES,
-    help = "What a zone's page in the Completo window lists. Kills count from when Completo is on: "
+    help = "What a zone's page in the Quest List window lists. Kills count from when Discovery is on: "
         .. "Shift-click a rare there to tick off one you killed before.",
     rows = {
         { key = "rareHideKilled", label = "Hide Killed Rares", toggle = true,
-          help = "Leaves the rares you have killed out of a zone's list in the Completo window." },
+          help = "Leaves the rares you have killed out of a zone's list in the Quest List window." },
     },
 })
 

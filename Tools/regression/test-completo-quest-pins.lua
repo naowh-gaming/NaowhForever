@@ -51,7 +51,7 @@ local env = setmetatable({
 local shared = assert(loadstring(Read("Shared/Shared.lua")))
 setfenv(shared, env)
 shared()
-local chunk = assert(loadstring(Read("NaowhForever_Completo/UI/QuestPins.lua")))
+local chunk = assert(loadstring(Read("NaowhForever_Discovery/QuestList/UI/QuestPins.lua")))
 setfenv(chunk, env)
 chunk()
 boot.OnEvent(boot)

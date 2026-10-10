@@ -248,7 +248,7 @@ Check(not Text("Close") and Button("Reload UI") ~= nil, "no footer: Reload UI si
 Check(not Text("Custom Reminders"), "unfinished module is absent from navigation")
 Check(Button("Quality of Life").switch == nil, "navigation does not toggle modules")
 for _, name in ipairs({ "Quality of Life", "Dungeon Journal", "Discovery", "BiS List", "Professions",
-    "Gear & Trinkets", "Blessings", "Completo", "AuraBuffs", "Threat Meter", "Swing Timer",
+    "Gear & Trinkets", "Blessings", "AuraBuffs", "Threat Meter", "Swing Timer",
     "Macros", "Action Bars" }) do
     Check(Button(name).icon ~= nil, name .. " is listed with its glyph")
 end

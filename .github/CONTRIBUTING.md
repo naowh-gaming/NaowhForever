@@ -6,7 +6,7 @@ upkeep it adds and how much code it brings. If you want to build a feature, mess
 Glyalith on [Discord](https://discord.gg/naowh) before you start.**
 
 Naowh Forever is Naowh's companion addon for the WoW Forever client: BiS, Dungeon
-Journal, Completo, Discovery, Training Planner, Professions, Gear Sets, Blessings, Macros,
+Journal, Discovery, Training Planner, Professions, Gear Sets, Blessings, Macros,
 Action Bars, buff reminders, Threat Meter, Group Inspect, PvP, Swing Timer, Top Bar and QoL,
 in one window.
 
