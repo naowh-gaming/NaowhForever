@@ -7,6 +7,7 @@ local Control = Settings.Control
 local SS = Settings.Style
 
 local PAD, CONTROL_GAP, CONTROL_LEVEL, RULE_ALPHA = SS.PAD, SS.CONTROL_GAP, SS.CONTROL_LEVEL, SS.RULE_ALPHA
+local DIM_ALPHA = SS.DIM
 local SMALL_SIZE = SS.SMALL_SIZE
 local ROW_H = 36
 local HEAD_H, GROUP_H = SS.HEAD_H, SS.GROUP_H
@@ -31,6 +32,7 @@ local TEXT_PUT_BACK_DEFAULT = "Click to put back the default."
 local TEXT_ONE_CHANGED = "1 setting changed from its default"
 local TEXT_MANY_CHANGED = " settings changed from their defaults"
 local TEXT_RESET = "Reset "
+local FOOT_GAP = 8
 local TEXT_OFF = "Off"
 
 local NO_ICONS = {}
@@ -301,7 +303,10 @@ local function PlaceSwitch(head, card)
         head.switch:Hide()
         return head.name
     end
+    local held = card.switchWhy and card.switchWhy() ~= nil
     head.switch:Show()
+    head.switch:EnableMouse(not held)
+    head.switch:SetAlpha(held and DIM_ALPHA or 1)
     head.switch._refreshValue()
     head.switch:ClearAllPoints()
     head.switch:SetPoint("LEFT", head.name, "RIGHT", TOGGLE_GAP, 0)
@@ -309,6 +314,8 @@ local function PlaceSwitch(head, card)
 end
 
 local function Summary(card)
+    local why = card.switchWhy and card.switchWhy()
+    if why then return why end
     local off = card.switchGet and not card.switchGet()
     local summary = card.summary
     if type(summary) == "function" then summary = summary(card.store) end
@@ -361,6 +368,9 @@ local function NewFoot(view)
     foot.text:SetPoint("LEFT", PAD, 0)
     foot.reset = Parts.Link(foot, ResetClicked, true)
     foot.reset:SetPoint("RIGHT", -PAD, 0)
+    foot.text:SetPoint("RIGHT", foot.reset, "LEFT", -FOOT_GAP, 0)
+    foot.text:SetJustifyH("LEFT")
+    foot.text:SetWordWrap(false)
     return foot
 end
 
