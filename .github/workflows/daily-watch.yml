@@ -34,8 +34,8 @@ name: daily-watch
 # workflows may not open one. A check that fails leaves out only its own change.
 # The scheduled run goes further: when the change passes the checks a pull request would run
 # (tests, pre-commit), it is pushed straight to main with its changelog lines in CHANGELOG.md,
-# and a patch release follows. Held for a run on our machines, or failing a check: the pull
-# request, as above.
+# and that night's beta ships it (release.yml). Held for a run on our machines, or failing a
+# check: the pull request, as above.
 on:
   schedule:
     # New builds and hotfixes come with the US realms' weekly maintenance (Tuesday mornings,
@@ -62,7 +62,7 @@ on:
         type: boolean
         default: false
       merge:
-        description: "Merge to main and release when the checks pass, as the scheduled run does (untick: a pull request)"
+        description: "Merge to main when the checks pass, as the scheduled run does (untick: a pull request)"
         type: boolean
         default: false
 
@@ -82,12 +82,10 @@ jobs:
       contents: write
       pull-requests: write
       issues: write
-      # Starts the Release workflow after a merge.
-      actions: write
     env:
       # A scheduled run always opens the pull request; a manual one when asked.
       OPEN_PR: ${{ github.event_name == 'schedule' || inputs.open_pr }}
-      # A scheduled run merges and releases what passes its checks; a manual one when asked.
+      # A scheduled run merges what passes its checks; a manual one when asked.
       MERGE: ${{ github.event_name == 'schedule' || inputs.merge }}
       PR: bash Tools/hooks/daily-pull-request.sh
     steps:
@@ -307,15 +305,6 @@ jobs:
           SERVER: ${{ github.server_url }}
           RUN_ID: ${{ github.run_id }}
         run: $PR open daily-data
-
-      # The data went in: a patch release of main, through the Release workflow (CurseForge,
-      # GitHub and Discord). It ships whatever else main has since the last release too.
-      - name: Release
-        if: ${{ !cancelled() && steps.merge.outputs.merged == 'true' }}
-        env:
-          GH_TOKEN: ${{ github.token }}
-          REPO: ${{ github.repository }}
-        run: gh workflow run release.yml --repo "$REPO" --ref main -f bump=patch
 
       # The run says a check failed, after the others' changes went in.
       - name: Fail if a check failed
