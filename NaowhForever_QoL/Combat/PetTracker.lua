@@ -5,8 +5,7 @@ local S = ns.QoLSettings
 local Parts, St = ns.Shared.Parts, ns.Shared.Style
 
 local CALL_PET, SUMMON_IMP = 883, 688
--- 415370 is the talent node spell; 409979 teaches it and is the one seen known in the Forever client.
-local LONE_WOLF, LONE_WOLF_TAUGHT = 415370, 409979 -- https://www.wowhead.com/forever/spell=415370
+local LONE_WOLF, LONE_WOLF_TAUGHT = 415370, 409979
 local ICON = 132161
 local WIDTH, ICON_GAP = 220, 8
 local DISMOUNT_DELAY = 5
