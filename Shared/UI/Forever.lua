@@ -20,7 +20,7 @@ local SIDE_ATLASES = { St.FOREVER_SIDE_TAB_ATLAS.normal, St.FOREVER_SIDE_TAB_ATL
 local SEARCH_ATLASES = { St.FOREVER_SEARCH_ATLAS.left, St.FOREVER_SEARCH_ATLAS.middle, St.FOREVER_SEARCH_ATLAS.right }
 local SIGN_ATLASES = { St.FOREVER_PLUS_ATLAS, St.FOREVER_MINUS_ATLAS }
 local TITLE_SUBLEVEL = 7
-local LOGO_SHARE = 0.72
+local PORTRAIT_ART = { logo = 0.94, glow = 0.7, glowAlpha = 0.45, shade = 1, shadeAlpha = 0.55 }
 local SIDE_ICON_X = -4
 local KNOB_RAISE = 2
 local KNOB_EDGE = 2
@@ -187,10 +187,18 @@ local function Portrait(chrome, drawn)
     end
     holder.disc = Round(middle, "ARTWORK", disc, St.FOREVER_PORTRAIT_RGB)
     holder.disc:SetPoint("CENTER")
+    holder.glow = Round(middle, "ARTWORK", disc * PORTRAIT_ART.glow, St.FOREVER_PORTRAIT_GLOW_RGB, 1)
+    holder.glow:SetAlpha(PORTRAIT_ART.glowAlpha)
+    holder.glow:SetPoint("CENTER")
     holder.logo = middle:CreateTexture(nil, "OVERLAY")
     holder.logo:SetTexture(St.LOGO, nil, nil, "TRILINEAR")
-    holder.logo:SetSize(disc * LOGO_SHARE, disc * LOGO_SHARE)
+    holder.logo:SetSize(disc * PORTRAIT_ART.logo, disc * PORTRAIT_ART.logo)
     holder.logo:SetPoint("CENTER")
+    holder.shade = middle:CreateTexture(nil, "OVERLAY", nil, 1)
+    holder.shade:SetTexture(St.RING, nil, nil, "TRILINEAR")
+    holder.shade:SetSize(disc * PORTRAIT_ART.shade, disc * PORTRAIT_ART.shade)
+    holder.shade:SetVertexColor(BLACK.r, BLACK.g, BLACK.b, PORTRAIT_ART.shadeAlpha)
+    holder.shade:SetPoint("CENTER")
     holder.middle = middle
     return holder
 end
@@ -516,6 +524,7 @@ local function TabPieces(button, atlas, leftX, rightX)
         Atlas(piece, name, true)
         piece:SetTexCoord(0, 1, 1, St.FOREVER_TOP_TAB_CROP)
         piece:SetHeight(piece:GetHeight() * St.FOREVER_TOP_TAB_SHARE)
+        if i ~= 2 then piece:SetWidth(piece:GetWidth() * St.FOREVER_TOP_TAB_SHARE) end
         pieces[i] = piece
     end
     local left, middle, right = pieces[1], pieces[2], pieces[3]
@@ -537,8 +546,11 @@ function Parts.ForeverTab(button)
             St.FOREVER_ACTIVE_RIGHT_X)
         button.fill:SetColorTexture(0, 0, 0, 0)
         button.line:SetColorTexture(0, 0, 0, 0)
+        local idle = button.idleArt
+        button.capRoom = math.max((idle[1]:GetWidth() or 0) + (idle[3]:GetWidth() or 0), 2 * St.FOREVER_TAB_PAD)
         return true
     end
+    button.capRoom = 2 * St.FOREVER_TAB_PAD
     button.idleFill = Fill(button, St.FOREVER_TAB_RGB, "BACKGROUND")
     Gradient(button.fill, St.FOREVER_TAB_ACTIVE_RGB)
     local rim = St.FOREVER_PICK_RIM_RGB
