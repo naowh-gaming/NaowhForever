@@ -76,6 +76,21 @@ Follow()
 check("moved after combat", pf.points[1][4] == 300 and not Pending())
 check("window back on Blizzard's after combat", win.points[1][2] == pf)
 
+-- EllesmereUI's Shifter re-places Blizzard's window at its saved spot on every SetPoint, so the
+-- dragged spot is written there too; with Shifter off its positions are left alone.
+EllesmereUIDB = { shifterEnabled = false }
+Follow()
+check("Shifter off untouched", EllesmereUIDB.shifterPositions == nil)
+EllesmereUIDB = { shifterEnabled = true, shifterPositions = { ProfessionsFrame = { point = "CENTER", relPoint = "CENTER", x = 0, y = 0 } } }
+Follow()
+local shifted = EllesmereUIDB.shifterPositions.ProfessionsFrame
+check("Shifter spot follows the drag", shifted.point == "TOPLEFT" and shifted.relPoint == "BOTTOMLEFT"
+    and shifted.x == 300 and shifted.y == 700)
+EllesmereUIDB = { shifterEnabled = true }
+Follow()
+check("Shifter spot written when it had none", EllesmereUIDB.shifterPositions.ProfessionsFrame.x == 300)
+EllesmereUIDB = nil
+
 -- A hidden window (module off, or a profession it does not show) does not pull Blizzard's.
 pf.points = { { "TOPLEFT", ui, "TOPLEFT", 16, -116 } }
 win.shown = false
