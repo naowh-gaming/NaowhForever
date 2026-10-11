@@ -51,6 +51,9 @@ table (the frame, `Show` and `Redraw`) when it builds them.
   by the name the slot carries.
 - This character's macros are found by name and text, and by text alone, so a set's macro is
   found again under another name and never made twice, and a macro the player has is never changed.
+- A Smart Macro (`ns.MacroSmart.list`, NF Bandage and the rest) is found by name alone: the Macros
+  module rewrites its text on every character for what that character carries, so an alt's copy
+  never matches the saved text, and making the saved one gave a second, stale macro of that name.
 - Sets saved before macros were kept whole carry only the macros on their bars, in their slots.
 - `GetMacroInfo` gives a `#showtooltip` macro the icon it was showing. Made with that icon, the
   macro would stop following its spell, so it is made with the question mark (`QUESTION`, 134400).

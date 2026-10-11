@@ -314,6 +314,18 @@ Case("a macro of the same name with other text is never overwritten", function()
     w.run("import M")
     assert(w.macros[1].body == "/yell PULLING" and w.macros[2].body == "/say pull", "made alongside")
 end)
+Case("a Smart Macro is found by name, since every character writes its own items into it", function()
+    local w = World({})
+    w.ns.MacroSmart = { list = { { key = "bandage", name = "NF Bandage" } } }
+    w.macros = { { name = "NF Bandage", icon = 1, body = "#showtooltip\n/use item:6450" } }
+    w.bars = { [5] = Macro("NF Bandage") }
+    w.run("save M")
+    w.macros[1].body = "#showtooltip\n/use item:1251"
+    w.bars = {}
+    w.run("import M")
+    assert(#w.macros == 1 and w.macros[1].body == "#showtooltip\n/use item:1251", "no second NF Bandage")
+    assert(Bars(w) == "5=NF Bandage", Bars(w))
+end)
 Case("a #showtooltip macro is made with the question mark so it follows its spell", function()
     local w = World({})
     w.charMacros = { { name = "Heal", icon = 135913, body = "#showtooltip\n/cast Heal" } }
