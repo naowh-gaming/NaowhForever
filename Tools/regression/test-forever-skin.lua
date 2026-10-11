@@ -275,6 +275,8 @@ do
         and chrome.close.pushedAtlas == St.FOREVER_CLOSE_ATLAS.pushed and chrome.close.cross == nil)
     check("the logo in the portrait, the old close and logo stood down", chrome.portrait.logo.texture == St.LOGO
         and not close.shown and not window.logo.icon.shown and window.title.points[1][4] == St.FOREVER_PORTRAIT_ROOM)
+    check("the logo fills the portrait, on a soft glow under the ring's shade", chrome.portrait.glow and chrome.portrait.glow.texture == St.ROUND
+        and chrome.portrait.shade and chrome.portrait.shade.texture == St.RING)
     chrome.close.scripts.OnClick(chrome.close)
     check("the red close button closes the window", window.shown == false)
     check("the game's rock behind it", window.backdrop.pattern.texture == St.FOREVER_ROCK
@@ -327,6 +329,11 @@ do
     check("the picked tab lit, the others idle", picked.activeArt[1].shown and not picked.idleArt[1].shown
         and other.idleArt[1].shown and not other.activeArt[1].shown and picked.text.color[1] == St.FOREVER_TAB_ON_RGB.r
         and other.text.color[1] == St.FOREVER_MUTED_RGB.r)
+    check("a tab is as wide as its label plus room for the art's caps", picked.capRoom >= 2 * St.FOREVER_TAB_PAD
+        and picked.want == 20 + picked.capRoom)
+    check("tabs keep their own width, side by side, not stretched to fill the row", picked.w == picked.want
+        and other.w == other.want and other.points[1][2] == picked.want + St.FOREVER_TAB_GAP)
+    check("the tab art's caps scale with its height", picked.idleArt[1].w ~= nil)
 
     local search = Parts.SearchBox(New("Frame"), "Search", function() end)
     check("the search box on the game's search art", search.foreverArt and search.foreverArt[1].atlas == St.FOREVER_SEARCH_ATLAS.left
@@ -450,6 +457,7 @@ do
     Parts.PaintTabs(tabs, "a")
     check("drawn tabs, gold when picked", tabs.buttons[1].idleArt == nil and tabs.buttons[1].idleFill
         and tabs.buttons[1].fill.gradient[2].r == St.FOREVER_TAB_ACTIVE_RGB[1].r)
+    check("drawn tabs pad their label too", tabs.buttons[1].want == 20 + 2 * St.FOREVER_TAB_PAD)
     local search = Parts.SearchBox(New("Frame"), "Search", function() end)
     check("a drawn search field", search.foreverArt == nil)
     local c = Controls(ns)

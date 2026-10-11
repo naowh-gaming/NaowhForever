@@ -63,7 +63,7 @@ local function FillTabs(bar, items)
         bar.buttons[i] = button
         button.key, button.label, button.tip = item.key, item.label, item.tip
         button.text:SetText(item.label)
-        button.want = math.ceil(button.text:GetStringWidth())
+        button.want = math.ceil(button.text:GetStringWidth()) + (button.capRoom or 0)
         words = words + button.want
         button:Show()
     end
@@ -112,10 +112,11 @@ function Parts.SetTabs(bar, items)
     for i = 1, #items do
         local button = bar.buttons[i]
         local w = i == #items and width - x or math.floor(button.want + spare + 0.5)
+        if ns.foreverSkin then w = button.want end
         button:SetSize(w, TAB_H)
         button:SetPoint("LEFT", x, 0)
         if i > 1 and not ns.foreverSkin then Split(bar, i, x) end
-        x = x + w
+        x = x + w + (ns.foreverSkin and St.FOREVER_TAB_GAP or 0)
     end
 end
 

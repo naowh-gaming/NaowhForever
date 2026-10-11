@@ -474,6 +474,10 @@ What a comment in the code used to say, in short. The house rules behind it are 
   bar; the Naowh logo sits in the portrait, which takes the old logo's click, and the window's own
   close button gives way to the game's red one. The title bar drags the window. Drawn, it is a rim of
   black, dark bronze, bronze, deep bronze and black with a ring round the portrait.
+- The logo fills the portrait as the game's own portraits do (`PORTRAIT_ART.logo` of the disc: the
+  logo's hexagon is as wide as its file, so its corners stay inside the ring), on a deep blue disc with
+  a soft lighter middle (`FOREVER_PORTRAIT_GLOW_RGB`) and a dark edge under the ring (`St.RING`), so it
+  sits in the ring instead of floating on a flat fill.
 - The chrome sits `FOREVER_CHROME_LEVEL` over the window, under the size grip, so the metal edge is
   drawn over the content's edge as the game draws it.
 - A window's backdrop is the game's rock (`UI-Background-Rock`), darkened (`FOREVER_ROCK_SHADE`) and
@@ -491,6 +495,11 @@ What a comment in the code used to say, in short. The house rules behind it are 
   (`Parts.ForeverButtonArt`).
 - Tabs are the game's panel tabs turned to sit on top, as its top tabs are: their art flipped and
   `FOREVER_TOP_TAB_SHARE` of it tall (`FOREVER_TOP_TAB_CROP`). The picked one is the lit tab.
+- A tab is measured as its label plus its art's two end caps (`capRoom`, at least two
+  `FOREVER_TAB_PAD`): measured on the label alone, a long one ("Dungeons & Raids") ran past its caps.
+- Forever tabs keep that width and sit side by side `FOREVER_TAB_GAP` apart, as the game's do, instead of
+  stretching to fill the row; the end caps are scaled by `FOREVER_TOP_TAB_SHARE` with the tab's height, so
+  the art keeps its shape.
 - A settings card is only its list bar, the Friends list's category header ("Favorites 0/2"):
   `SocialUIScrollableHeaderTemplate` (`Blizzard_SocialUIShared/SocialUISharedTemplates.xml`) on
   `ListHeaderVisualTemplate` (`Blizzard_SharedXML/ListTemplates.xml`), whose bar is
