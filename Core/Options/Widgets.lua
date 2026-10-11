@@ -272,14 +272,18 @@ local function OpenDropdownMenu(btn)
     local menuHeight = btn._menuHeight
     if type(menuHeight) == "function" then menuHeight = menuHeight() end
     if desc.SetScrollMode then desc:SetScrollMode(menuHeight or MENU_HEIGHT) end
-    for _, k in ipairs(DropdownKeys(btn)) do
-        local key = k
-        desc:CreateRadio(btn._values[key] or tostring(key),
-            function() return btn._get() == key end,
-            function()
-                btn._set(key)
-                btn._refreshLabel()
-            end)
+    if btn._menuFill then
+        btn._menuFill(desc)
+    else
+        for _, k in ipairs(DropdownKeys(btn)) do
+            local key = k
+            desc:CreateRadio(btn._values[key] or tostring(key),
+                function() return btn._get() == key end,
+                function()
+                    btn._set(key)
+                    btn._refreshLabel()
+                end)
+        end
     end
     btn._menu = Menu.GetManager():OpenMenu(btn, desc,
         AnchorUtil.CreateAnchor("TOPLEFT", btn, "BOTTOMLEFT", 0, -MENU_DROP))

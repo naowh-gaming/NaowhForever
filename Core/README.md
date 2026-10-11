@@ -273,6 +273,9 @@ HUD Editor
   arrow nudges to one selection is one step. Loading a layout is a change like any other.
 - A module's resize grip sizes from its own corner, so the anchor leaves the frame alone until
   the grip lets go.
+- On the Forever skin the toolbar, the Elements list and the movers wear Blizzard's Edit Mode look
+  (its selection art, the metal frame, a Layouts dropdown): `Shared/README.md`, The HUD Editor on
+  Forever, names each atlas and the file it comes from.
 - The main chunk of a Lua 5.1 file holds at most 200 locals, which is why the HUD Editor, the
   window and the setup window group their sizes into tables.
 

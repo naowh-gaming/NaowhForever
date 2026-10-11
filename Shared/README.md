@@ -536,6 +536,56 @@ What a comment in the code used to say, in short. The house rules behind it are 
 - Fonts are the game's, as on Classic+: Friz Quadrata for text and headings, Arial Narrow for
   numbers, unless an Addon Font is picked.
 
+#### The HUD Editor on Forever
+
+WoW Forever ships Blizzard's Edit Mode (`Blizzard_EditMode` on the `forever` branch, Shared files
+with Camelot overrides that change no look), so the HUD Editor borrows its look. Nothing inherits an
+Edit Mode template or touches `EditModeManagerFrame`: the art goes on our own frames.
+
+- The toolbar and the Elements list wear the bare metal frame (`Parts.ForeverFrame(window, { bare,
+  title, onClose })`): `ButtonFrameTemplateNoPortrait` (`UI-Frame-Metal-CornerTopLeft`,
+  `-CornerTopRight`, `-CornerBottomLeft`, `-CornerBottomRight`, `_UI-Frame-Metal-EdgeTop`,
+  `_UI-Frame-Metal-EdgeBottom`, `!UI-Frame-Metal-EdgeLeft`, `!UI-Frame-Metal-EdgeRight`) from
+  `Blizzard_SharedXML/Mainline/NineSliceLayouts.lua`, with Camelot's offsets
+  (`Blizzard_SharedXML/Camelot/NineSliceLayoutOverrides.lua`). Two small floating panels with a
+  portrait each read as two windows, so neither has one; the title sits centred on the bar. The
+  toolbar's red close button (`RedButton-Exit`) is its old Exit Config and leaves the HUD Editor;
+  the list's closes the list as the Elements button does. Drawn, both are the rings round a window.
+- Undo, Redo, Revert and Elements are the red button at one height (22).
+  With nothing to take back they are disabled, so they wear `128-RedButton-*-Disabled` and grey
+  text instead of fading, and their tooltips still show (`SetMotionScriptsWhileDisabled`).
+  Elements wears `-Pressed` while the list is open (`Parts.SetForeverLatched`).
+- Layouts is a dropdown, as Edit Mode's layout picker (`EditModeManagerFrame.LayoutDropdown`, a
+  `WowStyle1DropdownTemplate` in `Blizzard_EditMode/Shared/EditModeManager.xml`, filled in
+  `EditModeManager.lua`: the layouts as radios, a divider, then New Layout and the rest). It is the
+  kit's dropdown (`common-dropdown-a-button`) with the same entries as the old Layouts menu:
+  the layouts to switch to, then Save to, Save as New Layout, Rename and Delete. There is no
+  separate Manage step: Edit Mode keeps its actions in the same list, and so does ours.
+- Each mover wears Edit Mode's selection (`EditModeSystemSelectionBaseTemplate` in
+  `Blizzard_EditMode/Shared/EditModeSystemTemplates.xml`): its kits `editmode-actionbar-highlight`
+  and `editmode-actionbar-selected` (`FOREVER_SELECTION_KIT`) on the layout
+  `EditModeSystemSelectionLayout` copied from `Blizzard_EditMode/Shared/EditModeSystemTemplates.lua`
+  (`%s-NineSlice-Corner` mirrored and `FOREVER_SELECTION_OUT` out, `_%s-NineSlice-EdgeTop`,
+  `_%s-NineSlice-EdgeBottom`, `!%s-NineSlice-EdgeLeft`, `!%s-NineSlice-EdgeRight`,
+  `%s-NineSlice-Center`), applied with `NineSliceUtil.ApplyLayout`. Blue at rest, yellow when
+  picked, and under the mouse the highlight kit again added on top at 0.4, as its
+  `MouseOverHighlight`. The name stays centred on it at all times (Edit Mode only names a picked
+  one, but ours have no other label). Drag, snap, lock and hide are ours, unchanged. A mover is
+  dressed the first time the HUD Editor shows it, never at load. Drawn: a see-through blue fill in
+  a light blue edge, yellow when picked.
+- The list's groups are list bars (`common-button-list-collapseExpand`, the gold name, and
+  `common-button-list-plus` or `-minus`) that fold with a click, for the session; a search shows
+  every match whatever is folded. The picked row lights with the quest log's
+  `UI-QuestLogTitleHighlight`, gold. The eye and padlock stay ours, a size up (16): Forever's files
+  have an open eye (`GM-icon-visible`, `Blizzard_CompactRaidFrames/Mainline/
+  Blizzard_CompactRaidFrameManager.xml`) but no closed one, and their padlock
+  (`QuestSharing-Padlock`, `Blizzard_ActionBar/Mainline/ActionButtonTemplate.xml`) is a colored
+  badge that sits badly beside a flat eye.
+- Guides is the game's check box, as Edit Mode's own (`EditModeCheckButtonTemplate`,
+  `Blizzard_EditMode/Shared/EditModeTemplates.xml`, uses the same `UI-CheckBox-*` files). Snap
+  lines were already one screen pixel, so they are lighter instead: `FOREVER_GUIDE_RGB` at
+  `FOREVER_GUIDE_ALPHA`, not the orange.
+
 ## Checking
 
 `lua Tools/regression/test-shared.lua` loads these files as `Shared.xml` lists them, against
@@ -552,3 +602,8 @@ lists every file the parts it uses are made in: `Parts.lua` with `Marks.lua`, `T
 the game's art and on one with none of it, and checks Naowh and Classic+ make none of it. It draws a
 settings page (bare bars that reflow as a card opens and closes) and builds the options window on
 Forever: its header band and rails, the buttons on the band, no sidebar logo and no boxed content.
+
+`lua Tools/regression/test-forever-unlock.lua` opens the HUD Editor on Forever, with all of the art
+and with none of it: both frames, the close buttons, the disabled and pressed buttons, the Layouts
+dropdown, Edit Mode's selection on a mover (not made before the editor opens), the folding list bars
+and the lighter guides; and checks Naowh and Classic+ keep their HUD Editor.
