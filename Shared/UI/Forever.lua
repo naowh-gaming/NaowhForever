@@ -548,6 +548,8 @@ function Parts.ForeverTab(button)
         button.line:SetColorTexture(0, 0, 0, 0)
         local idle = button.idleArt
         button.capRoom = math.max((idle[1]:GetWidth() or 0) + (idle[3]:GetWidth() or 0), 2 * St.FOREVER_TAB_PAD)
+        button.text:ClearAllPoints()
+        button.text:SetPoint("CENTER", idle[2], "CENTER", 0, St.FOREVER_TAB_TEXT_Y)
         return true
     end
     button.capRoom = 2 * St.FOREVER_TAB_PAD

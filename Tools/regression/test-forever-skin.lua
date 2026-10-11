@@ -334,6 +334,8 @@ do
     check("tabs keep their own width, side by side, not stretched to fill the row", picked.w == picked.want
         and other.w == other.want and other.points[1][2] == picked.want + St.FOREVER_TAB_GAP)
     check("the tab art's caps scale with its height", picked.idleArt[1].w ~= nil)
+    check("the label sits in the middle of the tab art, not of the taller button", picked.text.points[1][2] == picked.idleArt[2]
+        and picked.text.points[1][1] == "CENTER")
 
     local search = Parts.SearchBox(New("Frame"), "Search", function() end)
     check("the search box on the game's search art", search.foreverArt and search.foreverArt[1].atlas == St.FOREVER_SEARCH_ATLAS.left
