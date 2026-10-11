@@ -5,25 +5,35 @@ ns.TownTravel = {
     [1411] = {
         { 50.8, 13.3, "H", "Zeppelin to Grom'gol", 1434, "Zeppelin to Undercity", 1420 },
     },
+    [1412] = {
+        { 34.3, 26.1, "H", "Zeppelin to Zephras Isle", 2521 },
+    },
     [1413] = {
         { 63.8, 38.8, "AH", "Boat to Booty Bay", 1434 },
     },
+    [1416] = {
+        { 12.8, 51.2, "A", "Zeppelin to Zephras Isle", 2521 },
+    },
     [1420] = {
         { 61.2, 58.9, "H", "Zeppelin to Orgrimmar", 1411, "Zeppelin to Grom'gol", 1434 },
+    },
+    [1424] = {
+        { 50.7, 70.4, "A", "Boat to Auberdine", 1439, "Boat to Menethil Harbor", 1437 },
     },
     [1434] = {
         { 25.7, 73.1, "AH", "Boat to Ratchet", 1413 },
         { 31.4, 29.8, "H", "Zeppelin to Orgrimmar", 1411, "Zeppelin to Undercity", 1420 },
     },
     [1437] = {
-        { 4.5, 56.7, "A", "Boat to Auberdine", 1439 },
+        { 4.5, 56.7, "A", "Boat to Auberdine", 1439, "Boat to Southshore", 1424 },
         { 4.7, 63.8, "A", "Boat to Theramore", 1445 },
     },
     [1438] = {
         { 54.8, 97.2, "A", "Boat to Auberdine", 1439 },
     },
     [1439] = {
-        { 32.3, 44.1, "A", "Boat to Menethil Harbor", 1437 },
+        { 30.5, 40.9, "A", "Boat to Stormwind Harbor", 1453 },
+        { 32.3, 44.1, "A", "Boat to Menethil Harbor", 1437, "Boat to Southshore", 1424 },
         { 33.3, 39.8, "A", "Boat to Rut'theran Village", 1438 },
     },
     [1444] = {
@@ -32,5 +42,18 @@ ns.TownTravel = {
     },
     [1445] = {
         { 71.7, 56.7, "A", "Boat to Menethil Harbor", 1437 },
+    },
+    [1446] = {
+        { 68.6, 23, "AH", "Boat to Powderfuse Port", 2548 },
+    },
+    [1453] = {
+        { 21.8, 56.9, "A", "Boat to Auberdine", 1439 },
+    },
+    [2521] = {
+        { 57.7, 81, "H", "Zeppelin to Mulgore", 1412 },
+        { 65.8, 83.8, "A", "Zeppelin to Dalaran", 1416 },
+    },
+    [2548] = {
+        { 80.6, 54.6, "AH", "Boat to Steamwheedle Port", 1446 },
     },
 }

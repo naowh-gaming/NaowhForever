@@ -33,6 +33,7 @@ local TEXT_MANY_CHANGED = " settings changed from their defaults"
 local TEXT_RESET = "Reset "
 local FOOT_GAP = 8
 local TEXT_OFF = "Off"
+local NOTE_GAP = ", "
 
 local NO_ICONS = {}
 
@@ -87,7 +88,8 @@ local function DotEnter(dot)
     GameTooltip:SetOwner(dot, "ANCHOR_RIGHT")
     GameTooltip:SetText(TEXT_CHANGED, TIP_TITLE, TIP_TITLE, TIP_TITLE)
     local default = Control.Shown(setting, setting.store.Default(setting.key))
-    GameTooltip:AddLine(default and (TEXT_DEFAULT_IS .. default .. TEXT_PUT_BACK) or TEXT_PUT_BACK_DEFAULT,
+    local putBack = dot.noReset and "." or TEXT_PUT_BACK
+    GameTooltip:AddLine(default and (TEXT_DEFAULT_IS .. default .. putBack) or TEXT_PUT_BACK_DEFAULT,
         T.muted.r, T.muted.g, T.muted.b, true)
     GameTooltip:Show()
 end
@@ -238,7 +240,7 @@ local function SetSetting(row, setting, split)
     row.split:SetShown(split)
     local off, why = Settings.Off(setting)
     Control.Dim(row, control, off)
-    PlaceLabel(row, SetIcons(row, setting, control, off), off and why or nil)
+    PlaceLabel(row, SetIcons(row, setting, control, off), off and why or (setting.note and setting.note(setting)))
     return ROW_H
 end
 
@@ -288,6 +290,9 @@ local function NewHead(view)
     head.name:SetPoint("LEFT", head.chevron, "RIGHT", CONTROL_GAP, 0)
     head.nameHit = HelpHit(head, head.name)
     head.switch = HeadSwitch(head)
+    head.dot = Dot(head)
+    head.dot.noReset = true
+    head.dot:SetScript("OnClick", nil)
     head.summary = ns.Font(head, SMALL_SIZE, nil, T.muted)
     head.summary:SetJustifyH("LEFT")
     head.summary:SetWordWrap(false)
@@ -313,12 +318,16 @@ local function Summary(card)
     local off = card.switchGet and not card.switchGet()
     local summary = card.summary
     if type(summary) == "function" then summary = summary(card.store) end
-    if off then return TEXT_OFF end
-    return summary
+    if off then summary = TEXT_OFF end
+    local note = card.note and card.note(card)
+    if note and summary then return summary .. NOTE_GAP .. note end
+    return note or summary
 end
 
 local function SetHead(head, card, isOpen, held)
     head.card, head.held = card, held
+    head.setting = card.switchSetting
+    head.dot:SetShown(head.setting ~= nil and Settings.Changed(head.setting))
     head.name:SetText(Marked(head, card.name))
     head.nameHit.help = card.help
     head.chevron:SetRotation(isOpen and OPEN_TURN or 0)

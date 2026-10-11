@@ -25,12 +25,13 @@ Shared/
                    your loot lines, waiting on item data, the items the server would not send
   Game/Gear.lua    gear helpers on Shared.Items: gear slots, what fits where, what you wear, weapons in
                    short ("1h Sword"), what a class can use (ns.ClassCanUse)
-  Game/Bags.lua    the item buttons in your bags, the game's and EllesmereUI's, for the marks
-                   painted on them (Bag Marks, Scrap Marker)
-  Game/Consumables.lua your best food and drink in your bags (ns.BestFoodAndDrink), the healthstones and
-                   healing potions, best first (ns.HEALTHSTONES, ns.HEALING_POTIONS), and the food spells
-                   and Well Fed buffs (ns.FOOD_SPELLS, ns.WELL_FED): QoL's Food & Drink Bar, the Macros' NF
-                   Food and NF Health, Aura Buffs' reminders and the Consumable Bar's Hide After Use
+  Game/Bags.lua    the item buttons in your bags, the game's, EllesmereUI's and Baganator's, for
+                   the marks painted on them (Bag Marks, Scrap Marker)
+  Game/Consumables.lua your best food and drink in your bags (ns.BestFoodAndDrink), the healthstones,
+                   healing and mana potions, best first (ns.HEALTHSTONES, ns.HEALING_POTIONS,
+                   ns.MANA_POTIONS), the food spells and Well Fed buffs (ns.FOOD_SPELLS, ns.WELL_FED),
+                   whether you use mana (ns.UsesMana) and whether an item is a drink (ns.IsDrink): QoL's
+                   Food & Drink Bar, the Macros' Smart Macros, Aura Buffs' reminders and the Consumable Bar
   Game/ActionKeys.lua the keys on action buttons: the game's bars, LibActionButton bars and EllesmereUI's
                    (Shared.ActionKeys): the Consumable Bar's and the Food & Drink Bar's Show Keybinds
   Game/Roster.lua  our part of a player's tooltip in the Guild & Communities and Friends lists (Badges, Naowh Score)
@@ -79,6 +80,8 @@ Shared/
                    value, an X)
   Settings/
     Settings.lua   every settings page, declared once: pages, cards, rows, what changed, reset, search index
+    Ellesmere.lua  the note on a setting EllesmereUI also has, saying whether it is on there
+                   (Settings.EllesmereNote)
     Style.lua      the numbers a settings page's controls, rows and page share (Settings.Style)
     Controls.lua   the control on a row for each kind of setting, made once per row (Settings.Control)
     Rows.lua       a settings page's row kinds: a setting, a card's head and foot, a group, an info line,
@@ -110,8 +113,11 @@ Each file uses only the ones above it in `Shared.xml`. Every part sits on `ns.Sh
   row's `cog = { title, tip }` puts a cog left of its control, opening a small panel of the rows
   declared `under` that row's label: hidden rows, still searched, counted and reset with the
   card, and a search hit on one opens the cog. `icons = { { texture, tip, open, enabled }, ... }`
-  adds other icons beside it. A card's `watch = { store, ... }` draws it again when another
-  module's settings change too. A card's or row's `search = "..."` adds words the settings
+  adds other icons beside it. A row's or card's `note` is a function given the row or card that
+  returns a short line for it, or nil: beside a row's control, after a card's summary.
+  `Settings.EllesmereNote` is the one for a setting EllesmereUI also has. A card's
+  `watch = { store, ... }` draws it again when another module's settings change too. A card's
+  or row's `search = "..."` adds words the settings
   search finds but nothing shows, for clicks and slash commands too small for its help. The page
   in the options window, its search entries, the dot on what you changed and each card's reset
   all come from that one declaration. Settings pages hold settings only: a module's lists and
@@ -326,12 +332,16 @@ What a comment in the code used to say, in short. The house rules behind it are 
 - `Items.ClassCanUse` reads an item's facts as `ItemFacts` holds them: `{ class, subclass, item
   level, required level, quality }`, class 2 a weapon, subclass 0 no armor type, 6 a shield.
 - `Items.SlotsFor` returns shared tables: read them, never change them.
+- `Items.SlotName` names a slot in the player's language. The cloak slot's catalog key is
+  "Back (slot)", because "Back" alone is also the Back button; `enUS.lua` gives it its English
+  text.
 
 ### Bags, tooltips, maps and /played
 
 - Bag marks hook each bag frame's `UpdateItems` with `hooksecurefunc`, never `SetScript`, and
   only once a module first asks. EllesmereUI's bags are painted through the
-  `RegisterItemOverlayIcon` hook it offers other addons.
+  `RegisterItemOverlayIcon` hook it offers other addons. `Bags.Baganator` hands back Baganator's
+  public `Baganator.API` when it is loaded; a module registers its own corner widget there.
 - The guild list's tooltip is GameTooltip, so our lines go on it. The Friends list's tooltip has
   fixed lines, so ours is a tooltip of our own `TIP_GAP` under it, which hides itself as soon as
   the Friends tooltip stops showing that row. List rows are hooked with `HookScript`, after the
@@ -463,6 +473,11 @@ What a comment in the code used to say, in short. The house rules behind it are 
 - A cog opens one shared panel, drawn with the page's own row kinds, so its rows' dots, controls
   and help are the same. A redraw of the page puts it back under the cog. The page's rows hide for
   a moment on every redraw, so the panel closes only once the page itself is gone, a frame later.
+- `Settings.EllesmereNote` reads EllesmereUI's saved settings where its own code reads them:
+  `EllesmereUIDB` (account-wide, Forever Essentials' features in a table of their own) and the
+  Quest Tracker's profile (`_EQT_DB`). A value it never saved reads as its default, as EllesmereUI
+  does. Nothing shows while the addon that runs the feature is off, or its table is not there.
+  Auto-accept and hand-in read off while the Quest Tracker itself is off: they never run then.
 - A settings view changed while hidden is marked stale and drawn again as it shows, so it never
   shows an old value (an options window that stepped aside for a picker, a page another changed).
 

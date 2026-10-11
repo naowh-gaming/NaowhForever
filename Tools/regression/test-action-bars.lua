@@ -16,7 +16,7 @@ local SPELLS = {
 
 local function World(known)
     local w = { bars = {}, macros = {}, charMacros = {}, binds = {}, cursor = nil, opts = {}, account = {},
-        printed = {}, combat = false, level = 1, guid = "Player-1" }
+        printed = {}, combat = false, level = 1, guid = "Player-1", timers = {} }
     local book = {}
     for _, id in ipairs(known) do
         book[#book + 1] = { name = SPELLS[id][1], subName = "Rank " .. SPELLS[id][2], actionID = id,
@@ -143,7 +143,7 @@ local function World(known)
         PickupMacro = function(i)
             -- A macro slot reports the spell it shows; this one shows nothing.
             local m = i > 120 and w.charMacros[i - 120] or w.macros[i]
-            w.cursor = { kind = "macro", id = 0, name = m.name }
+            w.cursor = { kind = "macro", id = 0, name = m.name, index = i }
         end,
         GetNumBindings = function() return #w.binds end,
         GetBinding = function(i) local b = w.binds[i]; return b[1], "HEADER", b[2], b[3] end,
@@ -167,7 +167,7 @@ local function World(known)
         SaveBindings = function(set) w.savedBindings = set end,
         InCombatLockdown = function() return w.combat end,
         UnitClass = function() return "Priest", "PRIEST" end,
-        UnitName = function() return "Preview" end,
+        UnitName = function() return w.name or "Preview" end,
         UnitLevel = function() return w.level end,
         UnitXP = function() return w.xp or 0 end,
         GetRealmName = function() return "Realm" end,
@@ -182,6 +182,7 @@ local function World(known)
             return f
         end,
         strtrim = function(s) return s:match("^%s*(.-)%s*$") end,
+        C_Timer = { After = function(_, fn) w.timers[#w.timers + 1] = fn end },
         time = os.time, date = os.date,
         print = function(m) w.printed[#w.printed + 1] = m end,
         _G = { NaowhForever = ns },
@@ -192,6 +193,16 @@ local function World(known)
         local chunk = assert(loadfile(path)); setfenv(chunk, env); chunk()
     end
     w.run = ns.ActionBarsCommand
+    -- Changes the bars, lets the logout copy's timer run, then logs out.
+    function w.logout(changed)
+        if changed then
+            w.events.handler(w.events, "ACTIONBAR_SLOT_CHANGED")
+            local timers = w.timers
+            w.timers = {}
+            for _, fn in ipairs(timers) do fn() end
+        end
+        w.events.handler(w.events, "PLAYER_LOGOUT")
+    end
     return w
 end
 
@@ -314,6 +325,44 @@ Case("a macro of the same name with other text is never overwritten", function()
     w.run("import M")
     assert(w.macros[1].body == "/yell PULLING" and w.macros[2].body == "/say pull", "made alongside")
 end)
+Case("a Smart Macro is found by name, since every character writes its own items into it", function()
+    local w = World({})
+    w.ns.MacroSmart = { list = { { key = "bandage", name = "NF Bandage" } } }
+    w.macros = { { name = "NF Bandage", icon = 1, body = "#showtooltip\n/use item:6450" } }
+    w.bars = { [5] = Macro("NF Bandage") }
+    w.run("save M")
+    w.macros[1].body = "#showtooltip\n/use item:1251"
+    w.bars = {}
+    w.run("import M")
+    assert(#w.macros == 1 and w.macros[1].body == "#showtooltip\n/use item:1251", "no second NF Bandage")
+    assert(Bars(w) == "5=NF Bandage", Bars(w))
+end)
+Case("a stale NF macro left by an older import is passed over for the one kept current", function()
+    local w = World({})
+    w.ns.MacroSmart = { list = { { key = "bandage", name = "NF Bandage" }, { key = "drink", name = "NF Drink" } } }
+    w.macros = { { name = "NF Bandage", icon = 1, body = "#showtooltip\n/use item:6450" },
+        { name = "NF Drink", icon = 1, body = "#showtooltip" } }
+    w.bars = { [5] = Macro("NF Bandage"), [6] = Macro("NF Drink") }
+    w.run("save M")
+    w.macros = { { name = "NF Bandage", icon = 1, body = "#showtooltip\n/use item:1251" },
+        { name = "NF Bandage", icon = 1, body = "#showtooltip\n/use item:6450" },
+        { name = "NF Drink", icon = 1, body = "#showtooltip\n/use item:159" },
+        { name = "NF Health", icon = 1, body = "#showtooltip" } }
+    w.bars = {}
+    w.run("import M")
+    assert(#w.macros == 4, "nothing made")
+    assert(w.bars[5].index == 1 and w.bars[6].index == 3, "the kept copy, and not NF Health for its text")
+end)
+Case("an NF macro switched off on this account is not made again", function()
+    local w = World({})
+    w.ns.MacroSmart = { list = { { key = "trinket1", name = "NF Trinket 1" } } }
+    w.macros = { { name = "NF Trinket 1", icon = 1, body = "/use 13" } }
+    w.bars = { [5] = Macro("NF Trinket 1") }
+    w.run("save M")
+    w.macros, w.bars = {}, {}
+    w.run("import M")
+    assert(#w.macros == 0 and Bars(w) == "", Bars(w))
+end)
 Case("a #showtooltip macro is made with the question mark so it follows its spell", function()
     local w = World({})
     w.charMacros = { { name = "Heal", icon = 135913, body = "#showtooltip\n/cast Heal" } }
@@ -393,16 +442,77 @@ Case("nothing changes in combat", function()
     w.run("restore C")
     assert(Bars(w) == "")
 end)
-Case("Save on Logout writes back the last set used, only when on", function()
+Case("Save on Logout writes back the last set saved, only when on", function()
     local w = World({ 598, 2055 })
     w.bars = { [2] = Spell(598) }
     w.run("save Daily")
     w.bars = { [2] = Spell(2055) }
-    w.events.handler(w.events, "PLAYER_LOGOUT")
+    w.logout(true)
     assert(w.account.barSets.PRIEST.Daily.slots[2].id == 598, "off: left alone")
-    w.opts.saveOnLogout = true
-    w.events.handler(w.events, "PLAYER_LOGOUT")
+    w.ns.ActionBarSettings.Set("saveOnLogout", true)
+    w.logout(true)
     assert(w.account.barSets.PRIEST.Daily.slots[2].id == 2055, "on: saved again")
+end)
+Case("Save on Logout writes the bars as they were before logging out, not as the game reads them then", function()
+    local w = World({ 598, 2055 })
+    w.ns.ActionBarSettings.Set("saveOnLogout", true)
+    w.bars = { [2] = Spell(598) }
+    w.run("save Daily")
+    w.bars = { [2] = Spell(598), [3] = Spell(2055) }
+    w.events.handler(w.events, "ACTIONBAR_SLOT_CHANGED")
+    for _, fn in ipairs(w.timers) do fn() end
+    w.bars = {}
+    w.events.handler(w.events, "PLAYER_LOGOUT")
+    local set = w.account.barSets.PRIEST.Daily
+    assert(set.slots[2].id == 598 and set.slots[3].id == 2055, "the copy from before logout")
+end)
+Case("Save on Logout leaves a set alone with nothing changed since it was saved", function()
+    local w = World({ 598, 2055 })
+    w.ns.ActionBarSettings.Set("saveOnLogout", true)
+    w.bars = { [2] = Spell(2055) }
+    w.logout(true)
+    w.run("save Daily")
+    w.bars = {}
+    w.logout(false)
+    assert(w.account.barSets.PRIEST.Daily.slots[2].id == 2055, "the hand save stands")
+end)
+Case("switching Save on Logout off drops its copy, and on takes a new one", function()
+    local w = World({ 598, 2055 })
+    local S = w.ns.ActionBarSettings
+    S.Set("saveOnLogout", true)
+    w.bars = { [2] = Spell(598) }
+    w.run("save Daily")
+    w.bars = { [2] = Spell(2055) }
+    w.logout(true)
+    S.Set("saveOnLogout", false)
+    w.bars = { [3] = Spell(598) }
+    S.Set("saveOnLogout", true)
+    for _, fn in ipairs(w.timers) do fn() end
+    w.logout(false)
+    local set = w.account.barSets.PRIEST.Daily
+    assert(set.slots[3] and not set.slots[2], "the bars as they are, not the copy from before")
+end)
+Case("a renamed set keeps its logout copy", function()
+    local w = World({ 598, 2055 })
+    w.ns.ActionBarSettings.Set("saveOnLogout", true)
+    w.bars = { [2] = Spell(598) }
+    w.run("save Daily")
+    w.bars = { [2] = Spell(2055) }
+    w.events.handler(w.events, "ACTIONBAR_SLOT_CHANGED")
+    for _, fn in ipairs(w.timers) do fn() end
+    w.ns.ActionBars.Rename("Daily", "Main")
+    w.logout(false)
+    assert(w.account.barSets.PRIEST.Main.slots[2].id == 2055, "saved under the new name")
+end)
+Case("a set last used before the saved flag existed is still written back", function()
+    local w = World({ 598, 2055 })
+    w.ns.ActionBarSettings.Set("saveOnLogout", true)
+    w.bars = { [2] = Spell(598) }
+    w.run("save Daily")
+    w.account.barSetLast["Preview-Realm"].saved = nil
+    w.bars = { [2] = Spell(2055) }
+    w.logout(true)
+    assert(w.account.barSets.PRIEST.Daily.slots[2].id == 2055, "written back as before")
 end)
 Case("renaming a set to its own name keeps it", function()
     local w = World({ 598 })
@@ -521,8 +631,8 @@ Case("saving again, by hand or on logout, keeps the set's choices", function()
     w.run("save Keep")
     local set = w.account.barSets.PRIEST.Keep
     assert(not set.slots[2] and set.bindings == nil, "slash save keeps the picks")
-    w.opts.saveOnLogout = true
-    w.events.handler(w.events, "PLAYER_LOGOUT")
+    w.ns.ActionBarSettings.Set("saveOnLogout", true)
+    w.logout(true)
     set = w.account.barSets.PRIEST.Keep
     assert(not set.slots[2] and set.bindings == nil and set.choices.skip[2], "logout keeps the picks")
 end)
@@ -538,6 +648,15 @@ local function Alt(known)
     alt.events.handler(alt.events, "PLAYER_LOGIN")
     return alt
 end
+Case("Save on Logout never writes an alt's bars over a set it only imported", function()
+    local alt = Alt({ 598 })
+    alt.name = "Alt"
+    alt.ns.ActionBarSettings.Set("saveOnLogout", true)
+    alt.run("import P")
+    alt.bars[1] = nil
+    alt.logout(true)
+    assert(alt.account.barSets.PRIEST.P.slots[1].id == 598, "the saved set is untouched")
+end)
 Case("the preview says what each slot becomes and changes nothing", function()
     local alt = Alt()
     alt.bars = { [4] = Spell(598), [5] = Spell(598) }
