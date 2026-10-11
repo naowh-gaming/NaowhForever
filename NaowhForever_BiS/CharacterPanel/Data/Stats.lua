@@ -1,7 +1,12 @@
--- Stats.lua: the stats the character panel lists for your spec, in order, and what each one does (CP.Stats).
+-- Stats.lua: the stats the character panel lists for your spec, in order, and what each one does for your class (CP.Stats).
 local ns = _G.NaowhForever
 
 local CP = ns.CharacterPanel
+
+local AGI_MELEE = "Attack power, ranged attack power, crit chance, armor and dodge."
+local STR_BLOCK = "Attack power and block value."
+local INT_NO_MANA = "Faster weapon skill gains."
+local SPI_NO_MANA = "Health back out of combat."
 
 CP.Stats = {
     ORDER = { "agi", "str", "int", "spi", "ap", "rap", "spell", "heal", "fire", "frost", "shadow",
@@ -13,11 +18,22 @@ CP.Stats = {
     HEADING = { agi = "VS AGI", str = "VS STR", sta = "VS STA", spell = "VS SPELL", heal = "VS HEAL",
         int = "VS INT", ap = "VS AP" },
     PERCENT = { hit = true, shit = true, crit = true, haste = true, scrit = true, dodge = true, block = true },
+    DOES_BY_CLASS = {
+        agi = {
+            WARRIOR = "Ranged attack power, crit chance, armor and dodge.",
+            ROGUE = AGI_MELEE,
+            HUNTER = AGI_MELEE,
+            DRUID = "Attack power in Cat Form, crit chance, armor and dodge.",
+        },
+        str = { WARRIOR = STR_BLOCK, PALADIN = STR_BLOCK, SHAMAN = STR_BLOCK },
+        int = { WARRIOR = INT_NO_MANA, ROGUE = INT_NO_MANA },
+        spi = { WARRIOR = SPI_NO_MANA, ROGUE = SPI_NO_MANA },
+    },
     DOES = {
-        agi = "Attack power, crit chance, dodge and armor.",
-        str = "Attack power, and block with a shield.",
-        int = "Mana and spell crit chance.",
-        spi = "Mana and health back while not casting.",
+        agi = "Crit chance, armor and dodge.",
+        str = "Attack power.",
+        int = "Mana, spell crit chance and faster weapon skill gains.",
+        spi = "Health back out of combat, and mana back while not casting.",
         ap = "More damage from your weapons.",
         rap = "More damage from your ranged weapon.",
         spell = "More damage from your spells.",
