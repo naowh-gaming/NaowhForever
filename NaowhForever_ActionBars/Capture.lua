@@ -39,7 +39,8 @@ local function MacroKey(name, body)
 end
 
 local function MacroIndex()
-    local index = { text = {}, body = {}, name = {} }
+    local index = { text = {}, body = {}, name = {}, managed = {} }
+    for _, m in ipairs(ns.MacroSmart and ns.MacroSmart.list or {}) do index.managed[m.name] = true end
     for _, i in ipairs(MacroIndices()) do
         local name, _, body = GetMacroInfo(i)
         if name then
@@ -52,17 +53,10 @@ local function MacroIndex()
     return index
 end
 
-local function Managed(name)
-    for _, m in ipairs(ns.MacroSmart and ns.MacroSmart.list or {}) do
-        if m.name == name then return true end
-    end
-    return false
-end
-
 local function Lookup(index, macro)
+    if index.managed[macro.name] then return index.name[macro.name] end
     local text = Body(macro.body)
-    return index.text[MacroKey(macro.name, macro.body)] or (text ~= "" and index.body[text])
-        or (Managed(macro.name) and index.name[macro.name]) or nil
+    return index.text[MacroKey(macro.name, macro.body)] or (text ~= "" and index.body[text]) or nil
 end
 
 local function MacroSlot(slot)
