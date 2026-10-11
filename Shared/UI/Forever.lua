@@ -41,6 +41,28 @@ for i, suffix in ipairs(St.FOREVER_RED_BUTTON_STATES) do
     for _, name in ipairs(RED_NAMES[i]) do RED_ATLASES[#RED_ATLASES + 1] = name end
 end
 
+local HIGHLIGHT, SELECTED = "highlight", "selected"
+local SELECTION_SLOTS = { "TopLeftCorner", "TopRightCorner", "BottomLeftCorner", "BottomRightCorner", "TopEdge",
+    "BottomEdge", "LeftEdge", "RightEdge", "Center" }
+local SELECTION_OUT = St.FOREVER_SELECTION_OUT
+local SELECTION_PIECES = St.FOREVER_SELECTION_PIECES
+local SELECTION_LAYOUT = {
+    TopLeftCorner = { atlas = SELECTION_PIECES.corner, mirrorLayout = true, x = -SELECTION_OUT, y = SELECTION_OUT },
+    TopRightCorner = { atlas = SELECTION_PIECES.corner, mirrorLayout = true, x = SELECTION_OUT, y = SELECTION_OUT },
+    BottomLeftCorner = { atlas = SELECTION_PIECES.corner, mirrorLayout = true, x = -SELECTION_OUT, y = -SELECTION_OUT },
+    BottomRightCorner = { atlas = SELECTION_PIECES.corner, mirrorLayout = true, x = SELECTION_OUT, y = -SELECTION_OUT },
+    TopEdge = { atlas = SELECTION_PIECES.top },
+    BottomEdge = { atlas = SELECTION_PIECES.bottom },
+    LeftEdge = { atlas = SELECTION_PIECES.left },
+    RightEdge = { atlas = SELECTION_PIECES.right },
+    Center = { atlas = SELECTION_PIECES.center, x = -SELECTION_OUT, y = SELECTION_OUT, x1 = SELECTION_OUT,
+        y1 = -SELECTION_OUT },
+}
+local SELECTION_ATLASES = {}
+for _, kit in pairs(St.FOREVER_SELECTION_KIT) do
+    for _, piece in pairs(SELECTION_PIECES) do SELECTION_ATLASES[#SELECTION_ATLASES + 1] = piece:format(kit) end
+end
+
 local known = {}
 local redInfo = {}
 local gradients = {}
@@ -137,14 +159,14 @@ Parts.ForeverAtlas = Atlas
 Parts.ForeverGradient = Gradient
 Parts.ForeverRim = Rim
 
-local function Title(chrome)
+local function Title(chrome, text, left)
     local title = ns.Font(chrome, St.FOREVER_TITLE_SIZE, nil, GOLD, true)
     title:SetDrawLayer("OVERLAY", TITLE_SUBLEVEL)
     title:SetPoint("TOP", chrome, "TOP", 0, -St.FOREVER_TITLE_Y)
-    title:SetPoint("LEFT", chrome, "LEFT", St.FOREVER_TITLE_LEFT, 0)
+    title:SetPoint("LEFT", chrome, "LEFT", left, 0)
     title:SetPoint("RIGHT", chrome, "RIGHT", -St.FOREVER_TITLE_RIGHT, 0)
     title:SetWordWrap(false)
-    title:SetText(TEXT_ADDON)
+    title:SetText(text or TEXT_ADDON)
     return title
 end
 
@@ -174,14 +196,15 @@ local function Portrait(chrome, drawn)
 end
 
 local function CloseClicked(close)
+    if close.onClose then return close.onClose() end
     close.window:Hide()
 end
 
-local function Close(chrome, window)
+local function Close(chrome, window, onClose)
     local close = CreateFrame("Button", nil, chrome)
     close:SetSize(St.FOREVER_CLOSE, St.FOREVER_CLOSE)
     close:SetPoint("TOPRIGHT", chrome, "TOPRIGHT", St.FOREVER_CLOSE_X, St.FOREVER_CLOSE_Y)
-    close.window = window
+    close.window, close.onClose = window, onClose
     close:SetScript("OnClick", CloseClicked)
     local atlas = St.FOREVER_CLOSE_ATLAS
     if HasAtlases(CLOSE_ATLASES) then
@@ -225,7 +248,8 @@ local function Strip(chrome, window)
     return strip
 end
 
-function Parts.ForeverFrame(window)
+function Parts.ForeverFrame(window, opts)
+    local bare = opts and opts.bare
     local chrome = CreateFrame("Frame", nil, window)
     chrome:SetPoint("TOPLEFT", window, "TOPLEFT", -St.FOREVER_SIDE, St.FOREVER_TITLE_H)
     chrome:SetPoint("BOTTOMRIGHT", window, "BOTTOMRIGHT", St.FOREVER_SIDE, -St.FOREVER_SIDE)
@@ -235,7 +259,11 @@ function Parts.ForeverFrame(window)
     chrome.bar:SetPoint("TOPRIGHT")
     chrome.bar:SetHeight(St.FOREVER_TITLE_H)
     Gradient(chrome.bar, St.FOREVER_TITLE_BAR_RGB)
-    chrome.art = Layout(chrome, St.FOREVER_FRAME_LAYOUT, St.FOREVER_FRAME_ATLASES)
+    if bare then
+        chrome.art = Layout(chrome, St.FOREVER_BARE_LAYOUT, St.FOREVER_BARE_ATLASES)
+    else
+        chrome.art = Layout(chrome, St.FOREVER_FRAME_LAYOUT, St.FOREVER_FRAME_ATLASES)
+    end
     if not chrome.art then
         chrome.rings = Rings(chrome, FRAME_RINGS)
         chrome.rule = ns.Solid(chrome, "ARTWORK", St.FOREVER_BRONZE_DARK_RGB, 1)
@@ -243,10 +271,10 @@ function Parts.ForeverFrame(window)
         chrome.rule:SetPoint("TOPRIGHT", chrome.bar, "BOTTOMRIGHT")
         ns.Hairline(chrome.rule, "h")
     end
-    chrome.title = Title(chrome)
-    chrome.portrait = Portrait(chrome, not chrome.art)
+    chrome.title = Title(chrome, opts and opts.title, bare and St.FOREVER_TITLE_RIGHT or St.FOREVER_TITLE_LEFT)
+    if not bare then chrome.portrait = Portrait(chrome, not chrome.art) end
     chrome.strip = Strip(chrome, window)
-    chrome.close = Close(chrome, window)
+    chrome.close = Close(chrome, window, opts and opts.onClose)
     window.forever = chrome
     return chrome
 end
@@ -301,7 +329,7 @@ end
 
 local function RedState(frame)
     if frame.IsEnabled and not frame:IsEnabled() then return RED_DISABLED end
-    if frame._pressed then return RED_PRESSED end
+    if frame._pressed or frame._latched then return RED_PRESSED end
     return RED_NORMAL
 end
 
@@ -438,6 +466,11 @@ function Parts.ForeverButton(btn, bg, border, lbl)
     btn:SetScript("OnEnable", ButtonEnable)
     PaintRed(btn)
     return btn
+end
+
+function Parts.SetForeverLatched(btn, on)
+    btn._latched = on or nil
+    PaintRed(btn)
 end
 
 function Parts.ForeverField(box)
@@ -791,6 +824,69 @@ end
 
 function Parts.ForeverSwatch(swatch)
     return Rings(swatch, SWATCH_RINGS)
+end
+
+function Parts.ForeverPick(row)
+    local pick = row:CreateTexture(nil, "BACKGROUND", nil, PICK_SUBLEVEL)
+    pick:SetAllPoints()
+    if pick:SetTexture(St.FOREVER_HIGHLIGHT) then
+        pick:SetBlendMode("ADD")
+        pick:SetAlpha(St.FOREVER_GLOW_ALPHA)
+        Tint(pick, GOLD)
+    else
+        Gradient(pick, St.FOREVER_NAV_PICK_RGB)
+    end
+    pick:Hide()
+    return pick
+end
+
+local function PaintSelectionArt(mover, kit)
+    NineSliceUtil.ApplyLayout(mover, SELECTION_LAYOUT, kit)
+end
+
+local function GlowPieces(glow)
+    for i = 1, #SELECTION_SLOTS do
+        local piece = glow[SELECTION_SLOTS[i]]
+        if piece then piece:SetBlendMode("ADD") end
+    end
+end
+
+function Parts.ForeverSelection(mover)
+    local glow = CreateFrame("Frame", nil, mover)
+    glow:SetAllPoints()
+    glow:SetAlpha(St.FOREVER_SELECTION_GLOW_ALPHA)
+    glow:Hide()
+    mover.editGlow = glow
+    if NineSliceUtil and NineSliceUtil.ApplyLayout and HasAtlases(SELECTION_ATLASES) then
+        PaintSelectionArt(glow, St.FOREVER_SELECTION_KIT.highlight)
+        GlowPieces(glow)
+        mover.editArt = true
+        return true
+    end
+    mover.editFill = mover:CreateTexture(nil, "BACKGROUND", nil, PICK_SUBLEVEL)
+    mover.editFill:SetAllPoints()
+    mover.editEdge = ns.Border(mover, St.FOREVER_SELECTION_EDGE_RGB)
+    local lit = glow:CreateTexture(nil, "ARTWORK")
+    lit:SetAllPoints()
+    local c = St.FOREVER_SELECTION_RGB
+    lit:SetColorTexture(c.r, c.g, c.b, 1)
+    lit:SetBlendMode("ADD")
+    return false
+end
+
+function Parts.PaintForeverSelection(mover, selected, hovered)
+    local state = selected and SELECTED or HIGHLIGHT
+    if mover.editState ~= state then
+        mover.editState = state
+        if mover.editArt then
+            PaintSelectionArt(mover, St.FOREVER_SELECTION_KIT[state])
+        else
+            local fill = selected and St.FOREVER_SELECTED_RGB or St.FOREVER_SELECTION_RGB
+            mover.editFill:SetColorTexture(fill.r, fill.g, fill.b, St.FOREVER_SELECTION_ALPHA)
+            Paint(mover.editEdge, selected and St.FOREVER_SELECTED_EDGE_RGB or St.FOREVER_SELECTION_EDGE_RGB)
+        end
+    end
+    mover.editGlow:SetShown(hovered and true or false)
 end
 
 function Parts.ForeverTip(card)
