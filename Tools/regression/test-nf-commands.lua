@@ -9,7 +9,7 @@ local function Read(path)
 end
 
 local function Fixture(badges)
-    local s = { printed = {}, opened = {}, barArgs = {}, toggled = 0, unlock = false }
+    local s = { printed = {}, opened = {}, barArgs = {}, abArgs = {}, toggled = 0, unlock = false }
     local ns = {
         UI = {},
         FEATURE_BADGES = badges, BADGES_LIVE = 1,
@@ -20,6 +20,7 @@ local function Fixture(badges)
         ShowUnlockMode = function() s.unlock = true end,
         HideUnlockMode = function() s.unlock = false end,
         ActionBarsCommand = function(text) s.barArgs[#s.barArgs + 1] = text end,
+        ActionBarsImportCommand = function(text) s.abArgs[#s.abArgs + 1] = text end,
     }
     local env = setmetatable({
         NaowhForever = ns,
@@ -53,7 +54,7 @@ do
     nf("help")
     check("/nf help prints a list and leaves the window alone", #s.printed > 10 and s.toggled == 0)
     check("it names /nf move", Printed(s, "/nf move"))
-    for _, word in ipairs({ "/nf bars", "/nf xp", "/nf lockouts", "/nf ranks", "/nf trainer", "/nf profrank",
+    for _, word in ipairs({ "/nf bars", "/nf ab", "/nf xp", "/nf lockouts", "/nf ranks", "/nf trainer", "/nf profrank",
             "/nf scrap", "/nf quiz", "/nf setup" }) do
         check("it names " .. word, Printed(s, word))
     end
@@ -103,6 +104,11 @@ do
     check("/nfbars on its own opens the module", s.opened[1] == "bars" and #s.barArgs == 1)
     list.NAOWHFOREVERBIS("save Raid")
     check("other module commands ignore their words", s.opened[2] == "bis" and #s.barArgs == 1)
+    nf = list.NAOWHFOREVER
+    nf("ab Raid")
+    check("/nf ab Raid imports the set by its typed name", s.abArgs[1] == "Raid")
+    nf("AB")
+    check("/nf ab on its own passes no name", s.abArgs[2] == "")
     list.NAOWHFOREVERJOURNAL("")
     check("a module command opens its module", s.opened[3] == "journal")
 end

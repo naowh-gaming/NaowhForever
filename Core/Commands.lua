@@ -21,6 +21,7 @@ local HELP_LINES = {
     "/nf help: this list",
     "/nf move (or /nf hud): opens or closes the HUD Editor",
     "/nf bars save, restore, test or delete <name>: your action bar sets; /nf bars list lists them",
+    "/nf ab <name>: imports a saved action bar set; /nf ab lists them",
     "/nf xp start, pause or reset: the XP ticker",
     "/nf lockouts: your raid and dungeon lockouts",
     "/nf ranks: higher ranks to put on your bars",
@@ -111,6 +112,8 @@ SlashCmdList["NAOWHFOREVER"] = function(msg)
         ns.ToggleGroupInspect()
     elseif cmd == "bars" and ns.ActionBarsCommand then
         ns.ActionBarsCommand(strtrim(msg):match("^%S+%s*(.-)$"))
+    elseif cmd == "ab" and ns.ActionBarsImportCommand then
+        ns.ActionBarsImportCommand(strtrim(msg):match("^%S+%s*(.-)$"))
     elseif cmd == "lockouts" and ns.LockoutsCommand then
         ns.LockoutsCommand()
     elseif cmd == "ranks" and ns.TrainerRankCheck then

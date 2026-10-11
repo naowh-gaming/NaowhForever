@@ -74,6 +74,7 @@ character or share them with a friend.
 | `/nfbless` | Blessings |
 | `/nfmacros` | Macros |
 | `/nfbars` | Action Bars |
+| `/nf ab <name>` | Imports a saved action bar set; `/nf ab` alone lists them |
 | `/nfbuffs` | Buffs & Reminders |
 | `/nfthreat` | Threat Meter |
 | `/nfgroup` | Group Inspect (also `/nf group`) |

@@ -16,7 +16,7 @@ local SPELLS = {
 
 local function World(known)
     local w = { bars = {}, macros = {}, charMacros = {}, binds = {}, cursor = nil, opts = {}, account = {},
-        printed = {}, combat = false }
+        printed = {}, combat = false, level = 1, guid = "Player-1" }
     local book = {}
     for _, id in ipairs(known) do
         book[#book + 1] = { name = SPELLS[id][1], subName = "Rank " .. SPELLS[id][2], actionID = id,
@@ -30,6 +30,7 @@ local function World(known)
             itemType = 1, isPassive = false }
     end
     w.opts.enabled, w.opts.importMacros, w.opts.importBindings = true, true, true
+    w.opts.autoImportSet = ""
     local listeners = {}
     local S = {
         Get = function(k) return w.opts[k] end,
@@ -62,6 +63,11 @@ local function World(known)
         Solid = function() return Fake("solid") end,
         AccentBorder = function(f) return f end,
         AccountSettings = function() return w.account end,
+        Shared = { CharacterData = function(key)
+            w.account[key] = w.account[key] or {}
+            w.account[key][w.guid] = w.account[key][w.guid] or {}
+            return w.account[key][w.guid]
+        end },
         Print = function(m) w.printed[#w.printed + 1] = m end,
         UI = { ModuleSettings = function() return S end, RefreshPage = function() end, CONTENT_PAD = 12,
             Keep = function(_, key) return Fake(key) end,
@@ -162,6 +168,7 @@ local function World(known)
         InCombatLockdown = function() return w.combat end,
         UnitClass = function() return "Priest", "PRIEST" end,
         UnitName = function() return "Preview" end,
+        UnitLevel = function() return w.level end,
         GetRealmName = function() return "Realm" end,
         CreateFrame = function()
             local f = { registered = {} }
@@ -612,5 +619,69 @@ Case("/nf bars delete asks first, and keeps the set on No", function()
     asked = nil
     w.run("delete %s%d|TInterface\\Icons\\X:0|t")
     assert(not asked and w.printed[#w.printed]:find("%s%d", 1, true), "an unknown name with format codes is only named")
+end)
+
+local function NewCharacter(set, level, guid)
+    local w = World({ 598 })
+    w.bars = { [1] = Spell(598), [3] = Macro("Pull") }
+    w.macros = { { name = "Pull", icon = 1, body = "/say pull" } }
+    w.run("save P")
+    local n = World({ 598 })
+    n.account, n.level, n.guid = w.account, level or 1, guid or "Player-2"
+    n.opts.autoImportSet = set
+    n.macros = { { name = "Pull", icon = 1, body = "/say pull" } }
+    n.events.handler(n.events, "PLAYER_LOGIN")
+    return n
+end
+local function EnterWorld(n) n.events.handler(n.events, "PLAYER_ENTERING_WORLD") end
+Case("/nf ab imports the named set, and lists the sets with no name", function()
+    local w = World({ 598 })
+    w.bars = { [1] = Spell(598) }
+    w.run("save Raid")
+    w.bars = {}
+    w.ns.ActionBarsImportCommand("  raid ")
+    assert(Bars(w) == "1=spell598", Bars(w))
+    w.ns.ActionBarsImportCommand("")
+    assert(w.printed[#w.printed]:find("Raid", 1, true), w.printed[#w.printed])
+    w.ns.ActionBarsImportCommand("Nope")
+    assert(w.printed[#w.printed]:find("No bar set called Nope", 1, true), w.printed[#w.printed])
+end)
+Case("a level 1 character gets the chosen set once, after entering the world", function()
+    local n = NewCharacter("P")
+    assert(Bars(n) == "", "not before the world is entered")
+    EnterWorld(n)
+    assert(Bars(n) == "1=spell598 3=Pull", Bars(n))
+    n.bars = {}
+    n.events.handler(n.events, "PLAYER_LOGIN")
+    EnterWorld(n)
+    assert(Bars(n) == "", "a second login does not import again")
+end)
+Case("a character above level 1 is left alone", function()
+    local n = NewCharacter("P", 2)
+    EnterWorld(n)
+    assert(Bars(n) == "" and next(n.account.barSetAuto or {}) == nil, Bars(n))
+end)
+Case("no set chosen, a missing set or Action Bars off imports nothing", function()
+    local n = NewCharacter("")
+    EnterWorld(n)
+    assert(Bars(n) == "")
+    n = NewCharacter("Gone")
+    EnterWorld(n)
+    assert(Bars(n) == "")
+    n = NewCharacter("P")
+    n.opts.enabled = false
+    n.events.handler(n.events, "PLAYER_LOGIN")
+    EnterWorld(n)
+    assert(Bars(n) == "")
+end)
+Case("in combat the import waits for the end of combat", function()
+    local n = NewCharacter("P")
+    n.combat = true
+    EnterWorld(n)
+    assert(Bars(n) == "" and n.events.registered.PLAYER_REGEN_ENABLED, "waiting")
+    n.combat = false
+    n.events.handler(n.events, "PLAYER_REGEN_ENABLED")
+    assert(Bars(n) == "1=spell598 3=Pull", Bars(n))
+    assert(not n.events.registered.PLAYER_REGEN_ENABLED)
 end)
 print(count .. " action bar set regressions passed")
