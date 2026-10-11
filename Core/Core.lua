@@ -675,9 +675,9 @@ local function ClassicButton(btn, bg, border, lbl)
     end)
 end
 
-function ns.Button(parent, text, w, h, onClick)
+function ns.Button(parent, text, w, h, onClick, template)
     local T = ns.THEME
-    local btn = CreateFrame("Button", nil, parent)
+    local btn = CreateFrame("Button", nil, parent, template)
     btn:SetSize(w, h)
     local bg = ns.Solid(btn, "BACKGROUND", T.panel, BUTTON_REST_ALPHA)
     bg:SetAllPoints()
@@ -689,7 +689,7 @@ function ns.Button(parent, text, w, h, onClick)
     lbl:SetText(ns.L(text))
     btn.label = lbl
     btn._onClick = onClick
-    btn:SetScript("OnClick", function() if btn._onClick then btn._onClick() end end)
+    if not template then btn:SetScript("OnClick", function() if btn._onClick then btn._onClick() end end) end
     if ns.classicSkin then
         ClassicButton(btn, bg, border, lbl)
         return btn

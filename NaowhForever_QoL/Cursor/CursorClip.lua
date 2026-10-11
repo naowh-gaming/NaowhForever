@@ -47,7 +47,7 @@ events:SetScript("OnEvent", OnEvent)
 
 hooksecurefunc(S, "Set", OnSettingChanged)
 
-ns.Shared.Settings.Page("QoL/Cursor", S):Card({
+ns.Shared.Settings.Page("QoL/Cursor & Crosshair", S):Card({
     id = "cursorClip", name = "Cursor in Window", order = 30,
     help = "Keeps the cursor inside the game window while you fight.",
     rows = {

@@ -61,6 +61,9 @@ local nav = { frame = nil, valid = true, clamped = false, distance = 312, x = 11
 local navFrame = NewFrame("NavFrame")
 function navFrame:GetCenter() return nav.x, nav.y end
 local userWaypoint, cleared, superCleared = nil, 0, 0
+local playerMap = 88
+local tracked, mapOpen, mapHide = {}, false, nil
+local parents = { [1500] = 88 }   -- a leaf zone inside the waypoint's map
 local timers, played, printed = {}, {}, {}
 local speed = 0
 local tracking = 1   -- Enum.SuperTrackingType.UserWaypoint
@@ -116,14 +119,20 @@ local env = setmetatable({
         GetDistance = function() return nav.distance end,
     },
     C_SuperTrack = {
+        IsSuperTrackingUserWaypoint = function() return tracking == 1 end,
+        SetSuperTrackedUserWaypoint = function(on) tracked[#tracked + 1] = on end,
         GetHighestPrioritySuperTrackingType = function() return tracking end,
         GetSuperTrackedQuestID = function() return 7 end,
         ClearAllSuperTracked = function() superCleared = superCleared + 1 end,
     },
+    WorldMapFrame = { IsVisible = function() return mapOpen end,
+        HookScript = function(_, name, fn) if name == "OnHide" then mapHide = fn end end },
     C_Map = {
+        HasUserWaypoint = function() return userWaypoint ~= nil end,
+        GetBestMapForUnit = function() return playerMap end,
         GetUserWaypoint = function() return userWaypoint end,
         ClearUserWaypoint = function() userWaypoint = nil; cleared = cleared + 1 end,
-        GetMapInfo = function() return { name = "Thunder Bluff" } end,
+        GetMapInfo = function(id) return { name = "Thunder Bluff", parentMapID = parents[id] or 0 } end,
     },
     C_QuestLog = { GetTitleForQuestID = function() return "The Barrens Oases" end },
     C_Timer = { After = function(delay, fn) timers[#timers + 1] = { delay = delay, fn = fn } end },
@@ -260,35 +269,76 @@ local timersBefore = #timers
 events.scripts.OnEvent(events, "NAVIGATION_DESTINATION_REACHED", true)
 driver.scripts.OnUpdate(driver, 0)
 Check(pin.card.dist.text ~= "Arrived" and #timers == timersBefore and #played == 0, "a stop on the way is not an arrival")
-local stoodScale = pin.scale
 
 -- Reaching a waypoint you set: the game clears its tracking and the frame goes before the
--- event reaches us. The arrival still shows, named, where the pin stood, then goes.
+-- event reaches us. It is over at once: the sound, and nothing left on screen, no card held.
 tracking = nil
 events.scripts.OnEvent(events, "SUPER_TRACKING_CHANGED")
 nav.frame = nil
 events.scripts.OnEvent(events, "NAVIGATION_FRAME_DESTROYED")
+local timersAtArrival, playedAtArrival = #timers, #played
 events.scripts.OnEvent(events, "NAVIGATION_DESTINATION_REACHED", false)
-Check(pin:IsShown() and pin.card.dist.text == "Arrived" and pin.check.shown and pin.card.name.text == "Mage Trainer",
-    "the arrival shows, still named, after the game cleared it")
-Check(pin.point[2] == UIParent and pin.point[3] == "BOTTOMLEFT" and pin.point[4] == 1100
-    and math.abs(pin.point[5] - (700 + (36 / 2 + 80) * stoodScale)) < 1e-6,
-    "where the pin stood")
-Check(navBar:IsShown() and navBar.dist.text == "Arrived" and played[#played] == "sound:naowh", "on the bar too, with the sound")
-timers[#timers].fn()
-Check(not pin:IsShown() and not navBar:IsShown() and driver.scripts.OnUpdate == nil, "then it goes, and it is idle")
--- The other order: the arrival first, then the game clears it. The arrival stays up.
+Check(not pin:IsShown() and not navBar:IsShown() and driver.scripts.OnUpdate == nil, "the pin and the bar go at once")
+Check(played[#played] == "sound:naowh" and #played == playedAtArrival + 1 and #timers == timersAtArrival,
+    "with the sound, and no timer holding an arrival")
+-- The other order: the arrival first, then the game clears it.
 tracking = 1
 nav.frame = navFrame
 events.scripts.OnEvent(events, "NAVIGATION_FRAME_CREATED")
 events.scripts.OnEvent(events, "NAVIGATION_DESTINATION_REACHED", false)
+Check(not pin:IsShown() and not navBar:IsShown() and #played == playedAtArrival + 2, "arrival first: gone at once too")
 tracking = nil
 events.scripts.OnEvent(events, "SUPER_TRACKING_CHANGED")
 nav.frame = nil
 events.scripts.OnEvent(events, "NAVIGATION_FRAME_DESTROYED")
-Check(pin:IsShown() and pin.card.dist.text == "Arrived" and navBar:IsShown(), "cleared after the arrival, it stays up")
-timers[#timers].fn()
-Check(not pin:IsShown() and not navBar:IsShown(), "until its time is up")
+Check(not pin:IsShown() and not navBar:IsShown(), "and still gone once the game has cleared it")
+
+-- A map waypoint the game does not clear: no arrival event comes, so within 5 yards the pin
+-- arrives and clears it itself, once.
+tracking = 1
+nav.frame = navFrame
+local was = nav.distance
+nav.distance = 3
+events.scripts.OnEvent(events, "NAVIGATION_FRAME_CREATED")
+local clearedBefore, playedBefore = cleared, #played
+driver.scripts.OnUpdate()
+Check(pin.card.dist.text ~= "Arrived" and cleared == clearedBefore and #played == playedBefore,
+    "a waypoint that starts within reach is not arrived at before you have been away from it")
+nav.distance = 30
+driver.scripts.OnUpdate()
+Check(pin:IsShown() and cleared == clearedBefore, "30 yards out it is still up and nothing is cleared")
+-- Something else changing what is tracked on the way does not make it forget you were away.
+events.scripts.OnEvent(events, "SUPER_TRACKING_CHANGED")
+-- Next to a stop on the way (a zone's exit), which lies on another map than the waypoint, it is not the spot.
+playerMap = 1411
+nav.distance = 4
+driver.scripts.OnUpdate()
+Check(pin.card.dist.text ~= "Arrived" and cleared == clearedBefore and #played == playedBefore,
+    "next to a stop on another map the waypoint is left alone")
+-- Placed on a parent map (a continent), standing in a zone inside it: that is the spot's map too.
+playerMap = 1500
+nav.distance = 4
+driver.scripts.OnUpdate()
+Check(not pin:IsShown() and #played == playedBefore + 1, "within 5 yards it is over at once, with its sound, on a map inside the waypoint's")
+Check(cleared == clearedBefore + 1 and superCleared >= 1, "and the waypoint is cleared")
+-- The clear waits while the world map is open: standing there, nothing repeats.
+Check(driver.scripts.OnUpdate == nil and cleared == clearedBefore + 1, "the pin stops following, and does not arrive or clear again")
+-- A route's stop is left to the game's arrival, which is what moves the route on.
+events.scripts.OnEvent(events, "NAVIGATION_FRAME_DESTROYED")
+nav.distance = 30
+events.scripts.OnEvent(events, "NAVIGATION_FRAME_CREATED")
+routeInfo = { "Training run", 1, 3, "Weapon Master" }
+ns.placedWaypoint = { title = "Mage Trainer", map = 88, x = 46.2, y = 49.8 }
+userWaypoint = { uiMapID = 88, position = { x = 0.462, y = 0.498 } }
+events.scripts.OnEvent(events, "SUPER_TRACKING_CHANGED")
+clearedBefore = cleared
+nav.distance = 4
+driver.scripts.OnUpdate()
+Check(cleared == clearedBefore, "on a route's stop the pin clears nothing itself")
+routeInfo = nil
+nav.distance = was
+tracking = 1
+cleared, superCleared = 0, 0
 
 -- A stop on a route: the navigator says which, and the arrival names the next stop, or says the
 -- route is done on its last.
@@ -376,6 +426,35 @@ Check(not navBar:IsShown() and not pin:IsShown() and driver.scripts.OnUpdate == 
 tracking = 1
 events.scripts.OnEvent(events, "SUPER_TRACKING_CHANGED")
 Check(navBar:IsShown() and driver.scripts.OnUpdate ~= nil, "tracking again on that frame brings it back")
+
+-- A waypoint placed on the map is not tracked by the game, so the pin tracks it: at once when the
+-- map is closed, as the map closes when it is open (placing one from an addon while it is open
+-- taints it), and not when it already is, or when there is none.
+userWaypoint = { uiMapID = 88, position = { x = 0.5, y = 0.5 } }
+tracking = nil
+local trackTimers = #timers
+tracked = {}
+events.scripts.OnEvent(events, "USER_WAYPOINT_UPDATED")
+Check(#timers == trackTimers + 1 and #tracked == 0, "placed with the map closed: tracked after the game has finished with it")
+timers[#timers].fn()
+Check(tracked[1] == true and #tracked == 1, "and then it is")
+mapOpen, tracked = true, {}
+events.scripts.OnEvent(events, "USER_WAYPOINT_UPDATED")
+Check(#tracked == 0 and mapHide ~= nil, "placed with the map open: nothing yet")
+mapOpen = false
+mapHide()
+Check(tracked[1] == true and #tracked == 1, "tracked as the map closes")
+mapHide()
+Check(#tracked == 1, "once")
+tracking, tracked = 1, {}
+events.scripts.OnEvent(events, "USER_WAYPOINT_UPDATED")
+timers[#timers].fn()
+Check(#tracked == 0, "already tracked: left alone")
+userWaypoint, tracking = nil, nil
+trackTimers = #timers
+events.scripts.OnEvent(events, "USER_WAYPOINT_UPDATED")
+Check(#timers == trackTimers and #tracked == 0, "cleared: nothing to track")
+tracking = 1
 
 -- Off again: idle, and the game's marker back.
 S.Set("waypoints", false)

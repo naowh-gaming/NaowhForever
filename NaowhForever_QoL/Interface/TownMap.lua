@@ -2,12 +2,14 @@
 local ns = _G.NaowhForever
 
 local S = ns.QoLSettings
+local ScalePin = ns.Shared.ScalePin
 
 local TEMPLATE = "NaowhForeverTownPinTemplate"
 local LINK_TEMPLATE = "NaowhForeverZoneLinkPinTemplate"
 local TRAVEL_ATLAS = "vehicle-templeofkotmogu-cyanball"
 local EXIT_ATLAS = "house-reward-green-arrow-up"
 local EXIT_LENGTH = 1.8
+local EXIT_SHRINK = 0.6
 local CAPITALS = ns.TownCapitals
 local PERCENT = ns.QoLConstants.PERCENT
 local PERMILLE, TENTHS, ROUND = ns.QoLConstants.PERMILLE, ns.QoLConstants.TENTHS, ns.QoLConstants.ROUND
@@ -20,7 +22,6 @@ local MASK_WRAP = "CLAMPTOBLACKADDITIVE"
 local FILE_MARK = "\\"
 local ICON_FOLDER = "\\Icons\\"
 local FULL_LOW, FULL_HIGH = 0, 1
-local MIN_PIN_SCALE = 1.5
 local HINT = ns.QoLConstants.HINT_RGB
 local EMPTY = {}
 local MINI_SIZE = 12
@@ -51,14 +52,15 @@ local CATEGORIES = {
     mail       = { "townMail", "Interface\\Icons\\INV_Letter_15", "Send and collect mail" },
 }
 local EVERYWHERE = { flight = true, inn = true, stable = true }
+local STABLE_CLASS = "HUNTER"
 local PIN_ROWS = {
-    { header = "OPTIONS" },
+    { header = "TOWN OPTIONS" },
     { key = "townCapitalsOnly", text = "Vendors & Trainers Only in Cities",
       tip = "Keeps vendors, trainers and the bank off questing maps." },
     { key = "townMinimap", text = "Mailboxes on Minimap", tip = "Pins the mailboxes near you on the minimap." },
     { key = "townMinimapSpirit", text = "Spirit Healers on Minimap",
       tip = "Pins the spirit healers near you on the minimap." },
-    { header = "SHOW" },
+    { header = "SHOW IN TOWN" },
     { key = "townFlight", text = "Flight Masters" },
     { key = "townInn", text = "Innkeepers" },
     { key = "townMail", text = "Mailboxes", tip = "Every mailbox, in towns and out in the world." },
@@ -72,7 +74,7 @@ local PIN_ROWS = {
     { key = "townBank", text = "Bank & Auction House" },
     { key = "townRepair", text = "Repairs" },
     { key = "townSupplies", text = "Reagents, Ammo & Food" },
-    { key = "townStable", text = "Stable Masters" },
+    { key = "townStable", text = "Stable Masters", tip = "Hunters only." },
     { key = "townVendors", text = "Other Vendors", tip = "Trade goods and every other merchant." },
 }
 
@@ -107,7 +109,10 @@ local TEXT_AUDIT_MISSING = "%s: you %.1f, %.1f on map %d, not in the data"
 local TEXT_AUDIT = "Town audit %s. %d NPCs recorded so far."
 local TEXT_AUDIT_ON = "on: open an NPC's window while standing next to them"
 local TEXT_AUDIT_OFF = "off"
-local TEXT_SUMMARY = "%d of %d shown%s"
+local TEXT_TOWN, TEXT_TOWN_PINS = "Town", "Town Pins"
+local TEXT_TOWN_TIP = "Service NPCs, mailboxes, spirit healers, exits and docks; the rows below pick which."
+local TEXT_TOWN_OFF = "Town pins off"
+local TEXT_SUMMARY = "Town pins: %d of %d shown%s"
 local TEXT_CAPITALS = ", vendors and trainers in cities only"
 local TEXT_PINS_SEARCH = "vendor vendors trainer trainers mailbox graveyard npc npcs"
 
@@ -140,18 +145,6 @@ end
 
 local function IsFile(art)
     return art:find(FILE_MARK, 1, true) ~= nil
-end
-
-local function ScalePin(pin)
-    local map = pin:GetMap()
-    local canvas = map and map.GetCanvasScale and map:GetCanvasScale()
-    if not canvas or canvas <= 0 then return end
-    local scale = math.max(1, MIN_PIN_SCALE / canvas)
-    if map.GetGlobalPinScale and not (pin.IsIgnoringGlobalPinScale and pin:IsIgnoringGlobalPinScale()) then
-        scale = scale * map:GetGlobalPinScale()
-    end
-    pin:SetScale(scale)
-    pin:ApplyCurrentPosition()
 end
 
 local function SetRound(pin, round)
@@ -222,6 +215,7 @@ function NaowhForeverTownPinMixin:OnAcquired(npc)
     self:SetSize(size, size)
     SetPinArt(self, npc)
     self:SetPosition(npc[1] / PERCENT, npc[2] / PERCENT)
+    self:ApplyCurrentScale()
 end
 
 function NaowhForeverTownPinMixin:OnMouseEnter()
@@ -249,7 +243,11 @@ function NaowhForeverZoneLinkPinMixin:CheckMouseButtonPassthrough() end
 function NaowhForeverZoneLinkPinMixin:OnAcquired(link)
     self.link = link
     local size = S.Get("townPinSize")
-    local length = link.atlasName == EXIT_ATLAS and size * EXIT_LENGTH or size
+    local length = size
+    if link.atlasName == EXIT_ATLAS then
+        size = size * EXIT_SHRINK
+        length = size * EXIT_LENGTH
+    end
     self:SetSize(length, length)
     local art = link.atlasName
     local itemIcon = art:find(ICON_FOLDER, 1, true) ~= nil
@@ -265,6 +263,7 @@ function NaowhForeverZoneLinkPinMixin:OnAcquired(link)
     self.Icon:SetSize(size, length)
     self.Icon:SetRotation(link.rotation or 0)
     self:SetPosition(link.position:GetXY())
+    self:ApplyCurrentScale()
 end
 
 function NaowhForeverZoneLinkPinMixin:OnClick(button)
@@ -322,7 +321,7 @@ local function AddNPCs(map, list, faction, class, shops)
     for _, npc in ipairs(list or EMPTY) do
         local kind = npc[3]
         if (shops or EVERYWHERE[kind]) and npc[7]:find(faction, 1, true) and S.Get(CATEGORIES[kind][1])
-            and (kind ~= "class" or npc[6] == class) then
+            and (kind ~= "class" or npc[6] == class) and (kind ~= "stable" or class == STABLE_CLASS) then
             map:AcquirePin(TEMPLATE, npc)
         end
     end
@@ -523,18 +522,30 @@ function ns.TownAudit()
 end
 
 local function CardRows()
-    local rows = { { key = "townPinSize", label = "Pin Size", slider = PIN_RANGE } }
+    local rows = {
+        ns.Shared.Settings.Group(TEXT_TOWN),
+        { key = "townMap", label = TEXT_TOWN_PINS, toggle = true, help = TEXT_TOWN_TIP },
+        { key = "townPinSize", label = "Town Pin Size", slider = PIN_RANGE, needs = "townMap" },
+    }
     for _, row in ipairs(PIN_ROWS) do
         if row.header then
             rows[#rows + 1] = ns.Shared.Settings.Group(row.header:sub(1, 1) .. row.header:sub(2):lower())
         else
-            rows[#rows + 1] = { key = row.key, label = row.text, toggle = true, help = row.tip }
+            rows[#rows + 1] = { key = row.key, label = row.text, toggle = true, help = row.tip, needs = "townMap" }
+        end
+    end
+    for _, section in ipairs(ns.Shared.MapPinSections()) do
+        if section.title then rows[#rows + 1] = ns.Shared.Settings.Group(section.title) end
+        for _, row in ipairs(section.rows) do
+            row.lent = row.store ~= S
+            rows[#rows + 1] = row
         end
     end
     return rows
 end
 
 local function TownSummary(store)
+    if not store.Get("townMap") then return TEXT_TOWN_OFF end
     local shown = 0
     for i = 1, #TOWN_SHOW do
         if store.Get(TOWN_SHOW[i]) then shown = shown + 1 end
@@ -555,11 +566,13 @@ boot:RegisterEvent("PLAYER_LOGIN")
 boot:SetScript("OnEvent", Apply)
 
 ns.TownPinRows = PIN_ROWS
+ns.TownPinTexts = { group = TEXT_TOWN, switch = TEXT_TOWN_PINS, tip = TEXT_TOWN_TIP }
 
 ns.Shared.Settings.Page("QoL/Interface", S):Card({
-    id = "townMap", name = "Map Pins", order = 40, switch = "townMap",
-    help = "Service NPCs for your faction on the world map; also set from its Map Pins button.",
+    id = "townMap", name = "Map Options and Pins", order = 40,
+    help = "The world map's options and every pin on it: town pins (service NPCs for your faction), "
+        .. "quests, rares and entrances. Also set from the button on the map.",
     search = TEXT_PINS_SEARCH,
     summary = TownSummary,
-    rows = CardRows(),
+    rows = CardRows,
 })

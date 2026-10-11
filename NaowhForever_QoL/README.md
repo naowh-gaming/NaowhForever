@@ -24,8 +24,8 @@ NaowhForever_QoL/
     TownTravel.lua      boats and zeppelins by map (ns.TownTravel), generated
     ZoneExits.lua       each zone's exits (ns.ZoneExits), generated
     TownMap.xml         TownMap.lua, the town pin templates, then MapPinsPanel.lua
-    TownMap.lua         Map Pins on the world map and minimap, /naowh townaudit (ns.TownAudit)
-    MapPinsPanel.lua    the Map Pins button on the world map and its drawer of which pins show
+    TownMap.lua         the town pins on the world map and minimap, and the Map Options and Pins card, /naowh townaudit (ns.TownAudit)
+    MapPinsPanel.lua    the Map Options and Pins button on the world map and its drawer of which pins and options show
     MapSize.lua         Map Window: the windowed world map scaled by a corner grip or a slider, moved by its title bar
     MapOverlays.lua     each zone map's explorable areas (ns.MapOverlays), generated
     Unexplored.xml      the unexplored pin template, then Unexplored.lua
@@ -41,7 +41,6 @@ NaowhForever_QoL/
     Crosshair.lua       the Crosshair (ns.MeleeRangeSpell)
     MouseRing.lua       the Mouse Ring
   Combat/
-    DeathRelease.lua    Death Release Protection
     CoTank.lua          the Co-Tank Frame and its debuffs
     HealerMana.lua      Healer Mana
     CombatAlert.lua     Combat Alert
@@ -51,7 +50,6 @@ NaowhForever_QoL/
     FocusCastBar.lua    the Focus Cast Bar
     StealthReminder.lua the Stealth Reminder
     PetTracker.lua      the Pet Tracker
-    SummonEmote.lua     the Summon Emote
   Questing/
     BuffThanks.lua      Buff Thank You Message and its line editor
     GroupButtons.lua    On-Screen Buttons (Invite, Disband)
@@ -88,7 +86,6 @@ NaowhForever_QoL/
     QuizData.lua        the quiz questions (ns.QUIZ_QUESTIONS)
     Quiz.lua            the Quiz (ns.ToggleQuiz, ns.QuizOffer, ns.QuizDismiss)
   System/
-    CombatLogger.lua    Auto Combat Logging (ns.CombatLogCheck, ns.CombatLogging)
     SlashCommands.lua   Custom Slash Commands and their editor (ns.SlashCommandList, ns.RefreshSlashCommands)
     Performance.lua     QoL > System > Performance: recommended game settings and their backups
   Media/
@@ -107,7 +104,7 @@ NaowhForever_QoL/
   `Tools/regression/test-module-boundaries.lua` checks it.
 - The Top Bar's card sits on QoL > Interface, so the Top Bar depends on QoL: switching QoL off takes
   it along; turning the Top Bar on in the onboarding turns QoL on.
-- The Trainer Popup card is declared here, on the Training Planner's page, so it goes when QoL is
+- The Trainer Popup card is declared here, on QoL > XP with Talent Points, so it goes when QoL is
   off. The Bag Space and Food & Drink key binding names live in `Core/Commands.lua`, so the key
   bindings read right with QoL off, where the Bag Space key says so.
 - QoL loads after the core now, not between the profile strings and the Badges: nothing in the core
@@ -147,15 +144,6 @@ NaowhForever_QoL/
 - The Pet Tracker skips Pet Missing for a hunter with Lone Wolf. `LONE_WOLF` (415370) is the
   talent node spell in the talent data; `LONE_WOLF_TAUGHT` (409979) is the spell it teaches,
   the one seen known in the Forever client. Either counts.
-- Death Release Protection lays a button over the death dialog's Release Spirit that takes the
-  mouse: a click does nothing, and holding it fills a bar, then clicks the button under it. The
-  dialogs are pooled, so it hides itself once its dialog is no longer the death one.
-- That button is parented to Release Spirit, not to the dialog. Forever's dialog sizes itself
-  around every shown child it has, and the button stays shown after the death dialog closes. When
-  the ghost's "enter the instance" dialog reused it with no buttons, Release Spirit had no
-  position, so the button counted from the screen's corner and stretched the dialog to fill it.
-- Blizzard disables Release Spirit while falling or while an encounter holds the release, so the
-  hold resets then.
 - Durability is fully red at or below 15% (`FLOOR_PCT`). Its card is fitted to the text only with
   a background, so what is anchored to it keeps its spot; the Unlock Mode preview shows 20%.
 - UI Clutter's Hide Red Error Text is the same switch as Blizzard's `/uierrorsoff`.
@@ -182,14 +170,6 @@ NaowhForever_QoL/
   addon uses.
 - Speech is made on the game's own thread and the client waits for it, so Combat Alert speaks a
   frame after the combat change instead of stacking on it while every other addon handles it.
-- Auto Combat Logging asks once per instance and difficulty and remembers the answer in
-  `combatLogInstances`, made on first write so the defaults table is never written into.
-- The two logging prompts set their text when shown, so the title follows the theme's accent
-  (`AclText` and `LogText` stay self-contained: a test runs them on their own).
-- The game's popup cannot reload for an addon, so the Advanced Combat Logging prompt asks with a
-  Reload UI that can. A client without `advancedCombatLogging` has nothing to turn on, so it
-  never asks.
-- Logging starts while the Ask Once question is up, so the pull it is asked on is not lost.
 - Cooldown at Cursor's time is a duration object the game counts down itself (swipe and text),
   so it works in combat, where Forever keeps cooldown numbers secret.
 - The global cooldown alone brings no Cooldown at Cursor card: the game raises the same error for
@@ -425,6 +405,10 @@ NaowhForever_QoL/
   scale with it. The card is the house panel at the Flight Timer's fill (0.85) round a slim
   header (the bag, free slots out of your total, Scrap Marker's "+N", the Stack button) over a
   cell per item (its icon, its marks, its price under it).
+- Bag Space's cells and gap shrink with the Icon Size below 36 (the size the rest is drawn for):
+  the gap, the price column and the price font follow it, to a floor, so a small row stays
+  compact. At 36 and above nothing changes. Reverse Order only swaps which end the cheapest
+  cell takes: the cells fill the same spots, so the card and its anchor do not move.
 - Bag Space's scan reads every bag slot, so its container and item APIs are aliased once and the
   settings a scan reads for every slot are read once at its start. Scan entries are pooled and
   reused; a scan runs after every loot and must not leave tables behind. The row's buttons point
@@ -499,6 +483,10 @@ NaowhForever_QoL/
 - A quest a player shared with you is not shared again when you accept it: the group already has it.
 - Sharing makes the same call as Blizzard's Share button (QuestLogPushQuest). It is blocked in combat, so a quest accepted mid-fight is not shared.
 - An NPC with several quests: the first finished one is handed in, else the first on offer is opened. A choice of rewards waits for the player unless the profile has a pick for it.
+- The quest Modifier key keeps its saved key `questSkipModifier`; `questModifierMode` says whether holding it skips the quest steps (the default) or is what triggers them.
+- Auto Gossip picks a lone option only when its icon is one of `GOSSIP_ICON_PATHS` (vendor, taxi, trainer, banker, auctioneer, stable master), resolved with GetFileIDFromPath on first use. The binder (hearthstone), the generic gossip icon and the rest are never picked, so nothing that costs money or moves you. Without GetFileIDFromPath it does nothing.
+- Auto Gossip leaves a flagged `selectOptionWhenOnlyOption` option to Blizzard's gossip frame, which selects it before GOSSIP_SHOW reaches the addon, and leaves any window the game forces open (`ForceGossip`). It never acts with a quest listed (that is the quest automation's), with more than one option, with an option that is not Available, or in combat, and selects once until GOSSIP_CLOSED.
+- Auto Gossip has its own Modifier and Modifier Does, as the quests do. `SelectOptionByIndex` is not hardware-gated in the API documentation (its secret-argument rule only allows untainted callers), and Blizzard's gossip frame makes the same call on show.
 
 ### Pet Tracker
 - Demonic Sacrifice leaves one of `SACRIFICE_BUFFS` on the warlock in place of the demon, so a warlock who sacrificed theirs is left alone.
@@ -559,25 +547,26 @@ NaowhForever_QoL/
 - `/naowh townaudit` checks that data against Forever by standing at each NPC: opening their window records where you are next to where the data puts them, in the account store (`townAudit[mapID][name]`).
 - The hint lines' light blue (`HINT`) goes through `SoftBlue`: the shade it always was, or the theme's lighter Accent once a theme changes the Accent.
 - The map calls `CheckMouseButtonPassthrough` on every acquired pin, and its SetPassThroughButtons is protected: from our refresh it is blocked in combat. Town pins take no clicks, so clicks reach the map anyway; zone exits and docks are separate clickable pins, so the vendor and trainer pins stay click-through. A zeppelin tower's pin has a second destination on right click. Their click opens the map with `C_Map.OpenWorldMap`, never the map's `SetMapID`: written from addon code, the map's `mapID` stays tainted for the session, and the next map opened in combat blocks the quest pins' SetPassThroughButtons.
-- Forever has no map links of its own (`GetMapLinksForMap` returns nothing), so the exits come from `ZoneExits.lua`. `EXIT_LENGTH` is an exit arrow's length, in pin sizes.
-- Vendors & Trainers Only in Cities (`townCapitalsOnly`) keeps vendors, trainers and the bank off questing maps. Flight masters, innkeepers and stable masters (`EVERYWHERE`) are what a traveller looks for in any town, so they show on every map with it on; so do mailboxes and spirit healers, which are what you look for out in the world.
+- Forever has no map links of its own (`GetMapLinksForMap` returns nothing), so the exits come from `ZoneExits.lua`. `EXIT_SHRINK` (0.6) makes an exit arrow 40% smaller than a pin, so it stands no bigger than the others, and `EXIT_LENGTH` is its length in its own widths.
+- Vendors & Trainers Only in Cities (`townCapitalsOnly`) keeps vendors, trainers and the bank off questing maps. Flight masters, innkeepers and stable masters (`EVERYWHERE`) are what a traveller looks for in any town, so they show on every map with it on, except stable masters, which only a hunter (`STABLE_CLASS`) sees; so do mailboxes and spirit healers, which are what you look for out in the world.
 - `townMinimap` is the minimap's mailboxes and `townMinimapSpirit` its spirit healers: `townMinimap` once held both, so existing profiles keep their mailboxes.
-- Which pins show is chosen on the map itself, from the Map Pins button (`MapPinsPanel.lua`), so the options card holds only the switch and Pin Size. The keys stay in the QoL store, so saved settings carry over. The button and its drawer are made the first time the map pins are on.
-- The Map Pins button sits in the map's top right corner, left of the buttons the map keeps there and at their size, so they read as one row. Those are found by where they sit, not by name, so a map with more, fewer or none of them still gets a free spot.
+- Which pins and options show is chosen on the map itself, from the Map Options and Pins button (`MapPinsPanel.lua`), and the options card (QoL > Interface, id `townMap`) has the same rows. The keys stay in the QoL store, so saved settings carry over. The button shows whenever QoL is on, since the drawer is also where a switch that is off is turned back on.
+- Map Options and Pins is the home of every map pin and map option: the town pins (the card's Town Pins row, which the town rows wait for), QoL's own Map Window, Unexplored Areas, Zone Levels and Skyborne Spots, the Quest List's quests and rares (Discovery) and the Dungeon Journal's entrances. Each of the last adds a section to `ns.Shared.MapPins` (`{ title, order, store, switch, rows }`), and `ns.Shared.MapPinSections()` hands them back by `order` (10 to 12 the map options, then the sections with no `order`, which count as 50, in load order, and Skyborne last at 60). A section's `title` is its group; one with no title continues the group above. The card reads them below the town rows, and the drawer (switches only) after its town rows. Rows of another module's store are `lent`, so the card's Reset and changed count leave them to their module. Each section names its store and switch, which the drawer watches (`OnChange`), so an open drawer follows changes made elsewhere. Drawer rows dim and lock while their `needs` (a function, or the key of a switch in the row's store) fails, as on the card: the town rows while Town Pins is off. A module that is not loaded adds nothing. The drawer has its own Town Pins switch, so the town pins can be turned back on from the map.
+- The Map Options and Pins button sits in the map's top right corner, left of the buttons the map keeps there and at their size, so they read as one row. Those are found by where they sit, not by name, so a map with more, fewer or none of them still gets a free spot.
 - The drawer is the options window's look: a header strip in the panel color, small accent group titles and ruled rows with the switch on the right. It is the map's child, so it opens, closes and scales with the map, `PANEL_LEVEL` over the map's pins as the Dungeon Journal's drawer.
-- The drawer sits against the map window's left side (the Dungeon Journal takes the right), `GAP` -1 putting its border on the map's so the two read as one window; with no room there, the right. It is the map's height, as wide as the quest log beside the map (`PANEL_W` where there is none), and its rows shrink to fit a small map, down to `ROW_MIN_H`.
-- The maximized map letterboxes its picture on a wide screen, so there the drawer goes in the black bar left of the picture, as wide as the bar allows; with no bar `BAR_MIN_W` wide it hangs under the Map Pins button, which stays free to close it. The map's Maximize and Minimize place it again.
+- The drawer sits against the map window's left side (the Dungeon Journal takes the right), `GAP` -1 putting its border on the map's so the two read as one window; with no room there, the right. It is the map's height, as wide as the quest log beside the map (`PANEL_W` where there is none), and its rows shrink to fit a small map, down to `ROW_MIN_H`; past that they scroll, so the drawer never runs off the map. The scroll bar sits inside the rows' right margin, raised over them so its grip takes the mouse.
+- The maximized map letterboxes its picture on a wide screen, so there the drawer goes in the black bar left of the picture, as wide as the bar allows; with no bar `BAR_MIN_W` wide it hangs under the Map Pins button, which stays free to close it. Either way it is no taller than the picture and its rows scroll. The map's Maximize and Minimize place it again.
 - On the minimap, the game says when you start and stop moving but not where you are, so the pins are placed every `MINI_INTERVAL` (0.05 s) while you move, or always with a rotating minimap, for turning. The zone's map is kept in world coordinates (its continent, top left corner and the steps for one whole map across and down): `UnitPosition` makes no table each tick, `GetPlayerMapPosition` does.
 - Pins draw the game's own map art, not square spell icons with a border: `MAP_ART` lists each kind's art in order, the redesigned atlases of the minimap's object icon sheet (`Interface/Minimap/ObjectIconsAtlas`) first, then the older `Interface/Minimap/Tracking` and gossip files. A kind whose art the client lacks keeps its square icon. A missing file makes SetTexture return false, so a file is only kept where it loaded.
 - Flight masters are the flight map's green spot (`Taxi_Frame_Green`): its yellow one is lost on the Barrens' yellow. Vendors and trade goods are the sheet's bags, which is its `Banker` art, so the bank shares it.
 - Spirit healers are the sheet's blue spirit ghost. Where the client lacks it, the Spirit Healer's angel cut round (`ROUND_ART`, `ROUND_MASK`), as the Skyborne pins are, reads better than a tombstone. Pins are pooled across kinds, so the mask goes on and comes off again.
 - `TRAVEL_ART` picks a dock's art by the first word of its label. Boats are the flight map's ferry (`FlightMasterFerry`). Forever has no zeppelin map art (no atlas names one), so zeppelin towers are the flight map's globe for travel to another continent, which is what a zeppelin does. An item icon there (`ICON_FOLDER`) is cut round. The cyan ball is left for a client with none of them.
 - Checked in game: Forever lacks `Vehicle-AllianceShip` and `Vehicle-HordeShip`, `ShipMissionIcon-*-Map` are badges, not ships, and `Vehicle-Air-Horde` reads as a warship. Wowpedia's small icon numbers ("obj220") are cells of the object icon sheet, not `GetPOITextureCoords` indices; townlong-yak's AtlasInfo.lua names them.
-- `MIN_PIN_SCALE` is 1.5, as in Completo: the world map scales its canvas to fit, so in the small map's window pins sized in map units shrank with it. `ScalePin` keeps them at least 1.5 times their size on screen there, leaves them as they are on the full screen map, and they grow as you zoom.
+- Pins scale with `ns.Shared.ScalePin`: 1.5 times their size on screen whatever the canvas scale, so they keep one size as the map zooms, in the window and full screen.
 - `MapOverlays.lua`, `TownMailboxes.lua`, `TownSpiritHealers.lua`, `TownTravel.lua` and `ZoneExits.lua` are generated (`Tools/build/map_overlays.py`, `mailboxes.py`, `spirit_healers.py`, `travel.py`, `zone_exits.py`): change the builder and run it, never the file.
 
 ### Map Window
-- Only the map frame's scale changes, so its pins, the Map Pins drawer and the quest log scale with it. An anchor's offsets are in the frame's own scale, so they are corrected to keep its top left corner where it was on screen.
+- Only the map frame's scale changes, so its pins, the Map Options and Pins drawer and the quest log scale with it. An anchor's offsets are in the frame's own scale, so they are corrected to keep its top left corner where it was on screen.
 - The grip is the options window's own (`UI-ChatIM-SizeGrabber`). Dragged away from the map's top left corner the map grows, towards it it shrinks, by how far the cursor is from that corner in screen pixels, so the distance does not change as the map's own scale does. It snaps to `STEP_PCT` between `MIN_PCT` and `MAX_PCT`; right click puts it back to 100%. A drag the map's hiding cuts short keeps the size it got to.
 - The full screen map is drawn at the game's size: its Maximize sets the scale back to 1 and hides the grip, Minimize puts ours back.
 - The title bar moves the map: an invisible handle over it, short of `TITLE_BUTTONS` on the right so the map's own buttons still work. It places the map by hand while the cursor moves, never with StartMoving, so the game does not save it as a user-placed frame. The spot (`mapSizePos`, the top left corner in UIParent units) is kept at least `KEEP_ON_SCREEN` on screen.
@@ -603,7 +592,8 @@ NaowhForever_QoL/
 - Your speed reads secret at times, as in restricted content, so the last readable one is kept; standing still, the walking time uses `RUN_SPEED` (7 yards a second).
 - The card and navigator are repainted only when the mode, side, whole yards or whole seconds change; the place and arrows move every frame, and nothing is built per frame.
 - `BEHIND` is the angle either side of straight down that counts as behind you. `FAR` is the distance at which the pin is smallest (`FAR_SCALE`), and `FADE_FLOOR` its alpha at your feet with Fade Up Close on.
-- The arrival holds where the pin last stood for `ARRIVED_HOLD`. The game clears a waypoint you set as you reach it, its navigation frame going too, before or after NAVIGATION_DESTINATION_REACHED; that event's `isWaypoint` is a stop on the way (a zone's exit), not the spot itself.
+- The game places a waypoint you click on the map without tracking it (its map code calls `SetSuperTrackedUserWaypoint(false)` right after `SetUserWaypoint`), and the pin only follows what is tracked, so on `USER_WAYPOINT_UPDATED` it tracks the new waypoint itself: one frame later with the map closed (the game's own untracking has run by then), or as the map closes (`trackOnMapClose`), as `Core/Waypoint.lua` holds its own placements, since setting one with the map open taints it. Already tracked, it leaves it.
+- A waypoint you set has no held arrival: reaching it plays the sound and the pin, cue and bar go at once. A quest, the corpse and a route's stop hold the arrival where the pin last stood for `ARRIVED_HOLD` (a route's names the next stop). The game clears a waypoint you set as you reach it, its navigation frame going too, before or after NAVIGATION_DESTINATION_REACHED; that event's `isWaypoint` is a stop on the way (a zone's exit), not the spot itself. A waypoint you set does not wait for it: on the waypoint's map or one inside it (a waypoint placed on a continent still counts in its zones; the game routes a waypoint on another map through stops on the way, such as a zone's exit, which are not the spot), within `REACHED` of its spot, once the pin has seen you more than `LEAVE` away since the waypoint was attached or placed (a new waypoint can report no distance at first, and one placed under you has nothing to reach; other tracking changes on the way do not reset it), the pin shows the arrival and clears the waypoint itself, so it goes even when the game sends no arrival, or sends it as a stop. The game's event, when it does come first, clears it before the pin does. It does this once per waypoint (`selfCleared`: with the world map open the clear is held, and the pin must not arrive again every hold), and never on a route's stop, which moves on by the game's arrival event: clearing it would end the route.
 - Nothing tracked means cleared or reached. A clear can leave the navigation frame up with no NAVIGATION_FRAME_DESTROYED, which used to leave the navigator showing.
 - The game's own marker keeps setting its frame's alpha, so Hide the Game's Marker fades its parts (`GAME_PARTS`) instead.
 - With no waypoint, Unlock Mode still shows the navigator on a sample, to place it by.
@@ -682,6 +672,7 @@ NaowhForever_QoL/
 - A periodic trigger is counted (Arcane Missiles): the missile spell is named in the effect itself, not chosen by a seal or a proc.
 - What a spell does is what it does to its target: a heal on the caster from a damage spell (Drain Life, Death Coil) is not counted.
 - The separator is written `||`, which the game draws as one `|`.
+- A macro on an action bar has its own tooltip type (`Enum.TooltipDataType.Macro`, 25), so it gets its own post-call. The macro's tooltip data is not documented, so the spell comes from the hovered button instead: the tooltip owner's `action` slot through `GetActionInfo`, which returns `"macro", spellID, "spell"` while the macro shows a spell (Blizzard's glow and assisted-combat code compare that id to a spell ID) and `"macro", macroID` otherwise, resolved by `GetMacroSpell`. A `#showtooltip` macro follows its conditionals because the game resolves the spell. With no readable action, `data.id` is tried as the macro index. A macro with no spell, or whose spell has no entry, gets no line, and the line is added once per tooltip build as for spells.
 - The spell post-call goes on the first time the switch is on, and stays inert after it goes off (TooltipDataProcessor has no removal). The line is added once per tooltip build, as the ID line is.
 - Preview Tooltip opens Lesser Heal rank 3 (`PREVIEW_SPELL`) with the line, even with the switch off. The card's preview draws two sample spells from fixed numbers (`SAMPLES`, `SAMPLE_POWER`), never a real spell.
 - The line's default color is the theme's soft accent as shipped. A saved color whose r, g or b is missing or not a number (a profile import checks only that it is a table) draws in the default from the QoL store (`S.Default`), on the tooltip and in the card's preview. Both of Naowh's setups set the switch off (`Tools/data/preset_*.lua`).

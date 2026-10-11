@@ -325,8 +325,8 @@ local function Summary(store)
         store.Get("crossCircle") and WITH_CIRCLE or "", store.Get("crossCombatOnly") and COMBAT_ONLY or "")
 end
 
-ns.Shared.Settings.Page("QoL/Cursor", S):Card({
-    id = "crosshair", name = "Crosshair", order = 10, switch = "crosshair",
+ns.Shared.Settings.Page("QoL/Cursor & Crosshair", S):Card({
+    id = "crosshair", name = "Crosshair", order = 10, switch = "crosshair", collapsed = true,
     help = "A crosshair at the middle of your screen.",
     summary = Summary,
     studio = { height = STAGE_H, states = STATES, new = NewPreview, paint = PaintPreview },

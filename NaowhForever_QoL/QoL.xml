@@ -1,7 +1,6 @@
 <Ui xmlns="http://www.blizzard.com/wow/ui/">
     <!-- QoL.xml: every QoL feature, in load order. -->
     <Script file="Constants.lua"/>
-    <Script file="Combat\DeathRelease.lua"/>
     <Script file="Combat\StealthReminder.lua"/>
     <Script file="Combat\CoTank.lua"/>
     <Script file="Combat\HealerMana.lua"/>
@@ -17,7 +16,6 @@
     <Script file="Cursor\CursorClip.lua"/>
     <Script file="Combat\CombatTimer.lua"/>
     <Script file="Combat\CursorCooldown.lua"/>
-    <Script file="System\CombatLogger.lua"/>
     <Script file="Interface\SpellEfficiencyData.lua"/>
     <Script file="Interface\SpellEfficiency.lua"/>
     <Script file="Interface\GlobalCopy.lua"/>
@@ -27,7 +25,6 @@
     <Script file="Cursor\MouseRing.lua"/>
     <Script file="Combat\PetTracker.lua"/>
     <Script file="Loot\EquipmentReminder.lua"/>
-    <Script file="Combat\SummonEmote.lua"/>
     <Script file="Interface\ChatZones.lua"/>
     <Script file="Combat\GcdTracker.lua"/>
     <Script file="Combat\FocusCastBar.lua"/>

@@ -15,7 +15,7 @@ local DEFAULT_Y = 260
 local PERCENT = C.PERCENT
 local STRATA = "HIGH"
 local HOLDER_NAME, CARD_NAME = "NaowhForeverRareAlertHolder", "NaowhForeverRareAlert"
-local MOVER_LABEL, MOVER_PAGE, MOVER_FEATURE = "Rare Alert", "Completo/Rares", "Completo/Rares:rareAlert"
+local MOVER_LABEL, MOVER_PAGE, MOVER_FEATURE = "Rare Alert", "Discovery/Rares", "Discovery/Rares:rareAlert"
 local RARE = { rare = true, rareelite = true }
 local LOOK_PREFIX = "^rareAlert"
 local TEXT_RARE = "Rare"

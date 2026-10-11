@@ -7,12 +7,11 @@ local TEMPLATE = "NaowhForeverUnexploredPinTemplate"
 local TILE = 256
 local SMALLEST_FILE = 16
 local AREA_FIELDS = 4
-local PERCENT, ROUND = ns.QoLConstants.PERCENT, ns.QoLConstants.ROUND
 local MAP_CENTRE = 0.5
 local DARK_RANGE = { 10, 90, 5 }
 local PERCENT_SCALE = ns.Shared.Style.PERCENT_SCALE
 local EMPTY = {}
-local TEXT_DARK = "%d%% dark"
+local SECTION_ORDER = 11
 
 local explored = {}
 local added
@@ -142,15 +141,12 @@ local boot = CreateFrame("Frame")
 boot:RegisterEvent("PLAYER_LOGIN")
 boot:SetScript("OnEvent", Apply)
 
-local function Summary(store)
-    return TEXT_DARK:format(math.floor(store.Get("mapUnexploredDark") * PERCENT + ROUND))
-end
-
-ns.Shared.Settings.Page("QoL/Interface", S):Card({
-    id = "mapUnexplored", name = "Unexplored Areas", order = 45, switch = "mapUnexplored",
-    help = "Shows the parts of the world map you have not explored yet, darkened.",
-    summary = Summary,
+table.insert(ns.Shared.MapPins, {
+    order = SECTION_ORDER, store = S, switch = "mapUnexplored",
     rows = {
-        { key = "mapUnexploredDark", label = "Darkness", slider = DARK_RANGE, unit = "%", scale = PERCENT_SCALE },
+        { key = "mapUnexplored", label = "Unexplored Areas", toggle = true, store = S,
+          help = "Shows the parts of the world map you have not explored yet, darkened." },
+        { key = "mapUnexploredDark", label = "Unexplored Darkness", slider = DARK_RANGE, unit = "%",
+          scale = PERCENT_SCALE, store = S, needs = "mapUnexplored" },
     },
 })

@@ -80,7 +80,7 @@ local S = {
     end,
     OnChange = function(fn) state.listeners[#state.listeners + 1] = fn end,
 }
-state.values = { enabled = true, bis = true, bisBagMarks = false, bisBagLevels = true }
+state.values = { enabled = true, bis = true, bisBagMarks = false }
 
 local ns = {
     THEME = setmetatable({}, { __index = function() return WHITE end }),
@@ -246,13 +246,8 @@ check("without them, the corners of every slot of ours", mark.rank.points.BOTTOM
 S.Set("bisBagLevels", false)
 bagFrame:UpdateItems()
 paint(eHelm, data)
-check("Item Level in Bags off: no level, the other marks stay", helm.level.text == "" and helm.shown == true
-    and mark.level.text == "")
-check("and EllesmereUI's own item level shows again", eHelm.ItemLevelText.alpha == 1)
-S.Set("bisBagLevels", true)
-bagFrame:UpdateItems()
-paint(eHelm, data)
-check("on again: ours back, standing in for its", helm.level.text == 30 and eHelm.ItemLevelText.alpha == 0)
+check("an old profile's Item Level in Bags off is ignored: Bag Marks keeps the level, in both bags",
+    helm.level.text == 30 and mark.level.text == 30 and eHelm.ItemLevelText.alpha == 0)
 check("the level in its quality's color, never a stack count's white", helm.level.cr == 0.64
     and helm.level.cb == 0.93)
 state.quality = 1

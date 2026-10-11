@@ -17,6 +17,7 @@ local S = ns.UI.ModuleSettings("professions", {
     gatherFont = "", gatherFontSize = 13, gatherOutline = "OUTLINE",
     ahSearch = F.ahSearch, ahShiftClick = F.ahShiftClick, craftProfit = F.craftProfit,
     craftProfitList = F.craftProfitList, buyMaterials = F.buyMaterials, buyVendor = F.buyVendor,
+    disenchant = F.disenchant,
     filterMaterials = false, filterSkillUp = false, filterProfit = false,
     filterBoE = false, filterBoP = false, filterFavorite = false,
 })

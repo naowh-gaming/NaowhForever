@@ -44,8 +44,10 @@ Check(map:find("ns.ZoneExits[mapID]", 1, true) and not map:find("GetMapLinksForM
     "the town map draws our own exits")
 Check(map:find('if S.Get("townZoneLinks") then', 1, true), "on the Clickable Zone Exits setting")
 Check(map:find("self.Icon:SetRotation(link.rotation or 0)", 1, true), "each arrow turned to face out")
-Check(map:find("local length = link.atlasName == EXIT_ATLAS and size * EXIT_LENGTH or size", 1, true)
-    and map:find("self.Icon:SetSize(size, length)", 1, true), "each arrow stretched along its length")
+Check(map:find("local EXIT_SHRINK = 0.6", 1, true) and map:find("size = size * EXIT_SHRINK", 1, true),
+    "each arrow 40% smaller than a pin")
+Check(map:find("length = size * EXIT_LENGTH", 1, true) and map:find("self.Icon:SetSize(size, length)", 1, true),
+    "each arrow stretched along its length")
 Check(not map:find("PlaceWaypoint", 1, true) and not map:find("exitX", 1, true), "right click: no waypoint")
 
 print(("test-zone-exits: %d checks passed"):format(checks))

@@ -66,8 +66,8 @@ purpose.
 
 | Tool | What it does | Why |
 | --- | --- | --- |
-| `completo_quests.py` | Builds `NaowhForever_Completo/Data/Quests.lua`: every quest of every zone, its chain and where its quest giver stands, from Wowhead Forever's zone and quest pages. Cached in `data/completo_zones.json`, `data/completo_quests.json`, `data/completo_requires.json` and `data/completo_items.json`; `--offline` writes from the caches only. | A zone's quests and what to do first. |
-| `completo_rares.py` | Builds `NaowhForever_Completo/Data/Rares.lua`: every rare of every zone, where it spawns and its special drops. Cached in `data/completo_rares.json`; `--offline` writes from the caches only. | The rares worth hunting, on the map. |
+| `completo_quests.py` | Builds `NaowhForever_Discovery/QuestList/Data/Quests.lua`: every quest of every zone, its chain and where its quest giver stands, from Wowhead Forever's zone and quest pages. Cached in `data/completo_zones.json`, `data/completo_quests.json`, `data/completo_requires.json` and `data/completo_items.json`; `--offline` writes from the caches only. | A zone's quests and what to do first. |
+| `completo_rares.py` | Builds `NaowhForever_Discovery/QuestList/Data/Rares.lua`: every rare of every zone, where it spawns and its special drops. Cached in `data/completo_rares.json`; `--offline` writes from the caches only. | The rares worth hunting, on the map. |
 
 ## build/: World and town map
 

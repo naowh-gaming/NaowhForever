@@ -13,7 +13,6 @@ local MACRO_NAME_MAX, MACRO_BODY_MAX, MACRO_NOTE_MAX = 16, 255, 200
 local MAX_CONSUMABLES, MAX_AURAS, MAX_CLASS_MACROS = 500, 100, 100
 local MAX_ID = 2147483647
 local ITEM_ID_LIMIT = 2147483648
-local SAYS_MAX = 80
 local MAX_PICKS = 50
 local ZERO = "\0"
 local DEFAULT_PROFILE = "Default"
@@ -58,7 +57,6 @@ local TEXT_DAMAGED = "The string is damaged: copy it again in full."
 local TEXT_NEWER = "This string is from a newer Naowh Forever: update first."
 local TEXT_MODULES = "%d modules"
 local TEXT_CLASS_MACROS = "%d class macros"
-local TEXT_SAYS = '%s, which says "%s"'
 local TEXT_NOTHING_TO_READ = "Nothing to read."
 local TEXT_IMPORT_FAILED = "Naowh Forever import failed: "
 local TEXT_SPEC_SWITCH_OFF = "Per-spec profile switching is off while every character shares '%s'; your spec "
@@ -380,7 +378,6 @@ local function SellsScrap(values)
 end
 
 local ACTING = {
-    { module = "qol", key = "autoEmote", label = "Summon Emote", says = "autoEmoteList" },
     { module = "qol", key = "questAccept", label = "Accept Quests" },
     { module = "qol", key = "questTurnIn", label = "Hand In Quests" },
     { module = "qol", key = "questShare", label = "Share Quests With Group" },
@@ -391,14 +388,6 @@ local ACTING = {
     { module = "qol", key = "scrapMarker", label = "Scrap Marker, which sells what it marks", when = SellsScrap },
     { module = "journal", key = "acceptShared", label = "Accept Shared Dungeon Quests" },
 }
-
-local function EmoteLines(list)
-    if type(list) ~= "string" then return nil end
-    local lines = {}
-    for text in list:gmatch("%d+%s*:%s*([^;]+)") do lines[#lines + 1] = text:match("^%s*(.-)%s*$") end
-    if #lines == 0 then return nil end
-    return ns.PlainText(table.concat(lines, " / "), SAYS_MAX)
-end
 
 local function ActingOn(settings, item)
     local values = type(settings) == "table" and settings[item.module]
@@ -412,8 +401,7 @@ function ns.ProfileActing(payload)
     local out, settings = {}, type(payload.parts) == "table" and payload.parts.settings
     for _, item in ipairs(ACTING) do
         if ActingOn(settings, item) then
-            local says = item.says and EmoteLines(settings[item.module][item.says])
-            out[#out + 1] = says and TEXT_SAYS:format(item.label, says) or item.label
+            out[#out + 1] = item.label
         end
     end
     return out
@@ -523,7 +511,7 @@ local function LibraryEntry(m, mine)
     local taken = false
     for _, e in ipairs(mine) do taken = taken or e.name == name end
     if not (name and #name >= 1 and #name <= MACRO_NAME_MAX and type(body) == "string" and #body >= 1
-        and #body <= ns.MacroText.LIMIT and not taken) then return nil end
+        and #body <= ns.Macros.C.LIMIT and not taken) then return nil end
     local icon = (type(m.icon) == "number" or type(m.icon) == "string") and m.icon or nil
     return { name = name, body = body, icon = icon }
 end
@@ -610,7 +598,6 @@ local function ImportSettings(root, settings, wanted)
         local values = root[item.module]
         if type(values) == "table" and ActingOn(settings, item) then
             values[item.key] = nil
-            if item.says then values[item.says] = nil end
         end
     end
 end
@@ -659,7 +646,7 @@ function ns.ImportProfile(payload, wanted, name, overwrite)
     if wanted.macros and type(parts.macros) == "table" then ImportMacros(root, parts.macros) end
     local added = { bisLists = 0, library = 0, builds = 0 }
     if wanted.bisLists and type(parts.bisLists) == "table" then added.bisLists = AddBisLists(parts.bisLists) end
-    if wanted.library and ns.MacroText and type(parts.library) == "table" then added.library = AddLibrary(parts.library) end
+    if wanted.library and ns.Macros and type(parts.library) == "table" then added.library = AddLibrary(parts.library) end
     if wanted.builds and ns.Training and type(parts.builds) == "table" then added.builds = AddBuilds(parts.builds) end
     if wanted.look and type(parts.look) == "table" then ImportLook(parts.look) end
 

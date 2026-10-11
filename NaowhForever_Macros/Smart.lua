@@ -12,7 +12,8 @@ local TRINKET_TOP, TRINKET_BOTTOM = 13, 14
 local TEXT_FULL = "%s macros are full, so %s could not be made. Delete one and it will be added."
 local TEXT_IN_COMBAT = "Move macros outside combat."
 local TEXT_ENABLE_FIRST = "Enable Macros first."
-local TEXT_NO_ROOM = "Carry a matching item and make room in General macros first."
+local TEXT_NO_ROOM = "Make room in General macros first."
+local TEXT_TOO_LONG = "%s with your extra lines is over %d characters, so they were left out."
 local TEXT_REMOVE_IN_COMBAT = "Remove macros outside combat."
 local TEXT_HEADLINE = "%d of %d macros kept current for you"
 local TEXT_OFF = "Turn on Macros to keep them current."
@@ -21,8 +22,11 @@ local TEXT_CLASS_MACROS = "%d class macro%s from your profile for your %s."
 
 local MACROS = {
     { key = "health", name = "NF Health" },
+    { key = "healthstone", name = "NF Healthstone" },
+    { key = "healthPotion", name = "NF Health Potion" },
     { key = "mana", name = "NF Mana" },
     { key = "food", name = "NF Food" },
+    { key = "drink", name = "NF Drink" },
     { key = "bandage", name = "NF Bandage" },
     { key = "trinket1", name = "NF Trinket 1" },
     { key = "trinket2", name = "NF Trinket 2" },
@@ -30,11 +34,16 @@ local MACROS = {
     { key = "acceptPopup", name = "NF Accept", icon = C.ACCEPT_ICON },
 }
 
-local BAG_MACROS = { health = true, mana = true, food = true, bandage = true }
+local BAG_MACROS = { health = true, healthstone = true, healthPotion = true, mana = true, food = true,
+    drink = true, bandage = true }
 local POTION_STEPS = 8
+local PLACEHOLDER = "#showtooltip"
+local EXTRA_SUFFIX = "Extra"
+local LINE_BREAK = "\\n"
 
 local ready, pending
 local warnedFull = {}
+local warnedLong = {}
 local toDelete = {}
 local steps = {}
 local events = CreateFrame("Frame")
@@ -55,6 +64,18 @@ local function ItemLine(id, prefix)
     return id and ("/use " .. (prefix or "") .. "item:" .. id)
 end
 
+local function Sequence(list)
+    if #list < 2 then return UseLines(ItemLine(list[1])) end
+    return "#showtooltip\n/castsequence reset=combat item:" .. table.concat(list, ", item:")
+end
+
+local function PotionSteps()
+    wipe(steps)
+    for _, id in ipairs(ns.HEALING_POTIONS) do
+        for _ = 1, math.min(C_Item.GetItemCount(id), POTION_STEPS - #steps) do steps[#steps + 1] = id end
+    end
+end
+
 local function TrinketLines(slot)
     return "#showtooltip " .. slot .. "\n/use " .. slot
 end
@@ -65,22 +86,25 @@ end
 
 local BODIES = {
     health = function()
-        wipe(steps)
-        for _, id in ipairs(ns.HEALING_POTIONS) do
-            for _ = 1, math.min(C_Item.GetItemCount(id), POTION_STEPS - #steps) do steps[#steps + 1] = id end
-        end
+        PotionSteps()
         local stone = FirstCarried(ns.HEALTHSTONES)
         if stone then
             table.insert(steps, (S.Get("healthOrder") == "potion" and steps[1]) and 2 or 1, stone)
         end
-        if #steps < 2 then return UseLines(ItemLine(steps[1])) end
-        return "#showtooltip\n/castsequence reset=combat item:" .. table.concat(steps, ", item:")
+        return Sequence(steps)
+    end,
+    healthstone = function() return UseLines(ItemLine(FirstCarried(ns.HEALTHSTONES))) end,
+    healthPotion = function()
+        PotionSteps()
+        return Sequence(steps)
     end,
     mana = function() return UseLines(ItemLine(FirstCarried(Items.MANA_POTIONS))) end,
     food = function()
         local food, drink = ns.BestFoodAndDrink()
+        if S.Get("foodOnly") then drink = nil end
         return UseLines(ItemLine(food), ItemLine(drink))
     end,
+    drink = function() return UseLines(ItemLine((select(2, ns.BestFoodAndDrink())))) end,
     bandage = function() return UseLines(ItemLine(FirstCarried(Items.BANDAGES), "[@player] ")) end,
     trinket1 = function() return TrinketLines(TRINKET_TOP) end,
     trinket2 = function() return TrinketLines(TRINKET_BOTTOM) end,
@@ -94,7 +118,28 @@ local BODIES = {
     end,
 }
 
-local function Body(key) return BODIES[key]() end
+local function WithExtra(m, body)
+    local extra = S.Get(m.key .. EXTRA_SUFFIX)
+    if not extra or extra == "" then return body end
+    local full = body .. "\n" .. extra:gsub(LINE_BREAK, "\n")
+    if #full <= C.LIMIT then return full end
+    if warnedLong[m.key] ~= extra then
+        warnedLong[m.key] = extra
+        ns.Print(TEXT_TOO_LONG:format(m.name, C.LIMIT))
+    end
+    return body
+end
+
+local function Named(key)
+    for _, macro in ipairs(MACROS) do
+        if macro.key == key then return macro end
+    end
+end
+
+local function Body(key)
+    local body = BODIES[key]()
+    if body then return WithExtra(Named(key), body) end
+end
 
 local function IsFull(perCharacter)
     local accountCount, characterCount = GetNumMacros()
@@ -147,7 +192,11 @@ end
 
 local function Keep(m)
     toDelete[m.name] = nil
-    local body = BODIES[m.key]()
+    local body = Body(m.key)
+    if not body and BAG_MACROS[m.key] then
+        local index = GetMacroIndexByName(m.name)
+        if index == 0 or not GetMacroBody(index):find("item:", 1, true) then body = WithExtra(m, PLACEHOLDER) end
+    end
     if body then Write(m, body) end
 end
 
@@ -174,12 +223,6 @@ end
 
 local function Refresh()
     if ns.UI.RefreshPage then ns.UI:RefreshPage(true) end
-end
-
-local function Named(key)
-    for _, macro in ipairs(MACROS) do
-        if macro.key == key then return macro end
-    end
 end
 
 local function SettingChanged(key, value)
@@ -231,7 +274,7 @@ local function Detail()
     return TEXT_CLASS_MACROS:format(count, count == 1 and "" or "s", name)
 end
 
-local Smart = { list = MACROS, Body = Body, Write = Write, On = On, KeptCount = KeptCount,
+local Smart = { list = MACROS, bag = BAG_MACROS, Body = Body, Write = Write, On = On, KeptCount = KeptCount,
     Headline = Headline, Detail = Detail }
 M.Smart = Smart
 

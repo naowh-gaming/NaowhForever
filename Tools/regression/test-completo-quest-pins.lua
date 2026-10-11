@@ -1,6 +1,6 @@
 -- Run with Lua 5.1 from the repository root: Completo's quest giver pins on the world map are
--- Pin Size on the small map and half that on the full screen map, and resize when the map
--- changes between the two.
+-- Pin Size on the small map and the full screen map alike, and keep one size on screen as the
+-- map zooms.
 local function Read(path)
     local f = assert(io.open(path, "rb"))
     local s = f:read("*a"):gsub("\r\n", "\n"); f:close()
@@ -16,13 +16,13 @@ local ns = { CompletoSettings = S, Apply = function() end, ThemeTint = function(
     Completo = { Settings = S, Style = {}, C = { PERCENT = 100 },
         Quests = { Refresh = function() end, Givers = function() return {} end } } }
 
-local maximized, onSize = false, nil
+local maximized, canvasScale = false, 1
 local pins = {}
 local map = {
     IsShown = function() return true end,
     IsMaximized = function() return maximized end,
     AddDataProvider = function() end,
-    HookScript = function(_, name, fn) if name == "OnSizeChanged" then onSize = fn end end,
+    GetCanvasScale = function() return canvasScale end,
     GetMapID = function() return 1 end,
     RemoveAllPinsByTemplate = function() end,
     AcquirePin = function() end,
@@ -48,7 +48,10 @@ local env = setmetatable({
     WorldMapFrame = map,
     wipe = function(t) for k in pairs(t) do t[k] = nil end return t end,
 }, { __index = _G })
-local chunk = assert(loadstring(Read("NaowhForever_Completo/UI/QuestPins.lua")))
+local shared = assert(loadstring(Read("Shared/Shared.lua")))
+setfenv(shared, env)
+shared()
+local chunk = assert(loadstring(Read("NaowhForever_Discovery/QuestList/UI/QuestPins.lua")))
 setfenv(chunk, env)
 chunk()
 boot.OnEvent(boot)
@@ -60,23 +63,28 @@ local function NewPin()
     function pin:GetMap() return map end
     function pin:SetSize(w) self.size = w end
     function pin:SetPosition() end
+    function pin:SetScale(s) self.scale = s end
+    function pin:ApplyCurrentPosition() end
     return pin
 end
 
 local pin = NewPin()
 pin:OnAcquired({ x = 50, y = 50, quests = { 1 } })
 Check(pin.size == 20, "Pin Size on the small map")
+Check(pin.scale == 1.5, "scaled as it is placed, not only on the next zoom")
 maximized = true
 local big = NewPin()
 big:OnAcquired({ x = 50, y = 50, quests = { 1 } })
-Check(big.size == 10, "half that on the full screen map")
+Check(big.size == 20, "the same on the full screen map")
 
-pins = { pin }
-Check(onSize ~= nil, "the pins follow the map's size")
-onSize()
-Check(pin.size == 10, "going full screen shrinks the pins already drawn")
-maximized = false
-onSize()
-Check(pin.size == 20, "and back")
+Check(Pin.ApplyCurrentScale == ns.Shared.ScalePin, "scaled by the shared map pin scale")
+local onScreen
+for _, scale in ipairs({ 0.5, 1, 2.5 }) do
+    canvasScale = scale
+    pin:ApplyCurrentScale()
+    local size = pin.scale * scale
+    Check(not onScreen or math.abs(size - onScreen) < 1e-9, "one size on screen at canvas scale " .. scale)
+    onScreen = size
+end
 
 print(("test-completo-quest-pins: %d checks passed"):format(checks))

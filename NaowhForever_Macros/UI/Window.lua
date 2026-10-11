@@ -16,38 +16,38 @@ local NAME = "Naowh's Forge"
 local PAGE = "Macros/Settings"
 local WIDTH, HEIGHT = 1100, 720
 local HEADER, FOOTER = St.WINDOW_HEADER, St.WINDOW_FOOTER
-local PAD, SECTION_H, LIST_W, INSPECTOR_W = St.PAD, St.SECTION_H, St.LIST_W, St.INSPECTOR_W
+local PAD, SECTION_H, INSPECTOR_W = St.PAD, St.SECTION_H, St.INSPECTOR_W
 local SMALL_SIZE, NOTE_SIZE, TEXT_SIZE = St.SMALL_SIZE, St.NOTE_SIZE, St.TEXT_SIZE
 local CARD_INSET, GAP, TOOL_GAP = 6, 6, 10
 local TOP = HEADER + TOOL_GAP + St.TAB_H + TOOL_GAP
-local SWITCH_W, SEARCH_W, CLASS_W = 330, 240, 200
-local SCROLLBAR_ROOM, SCROLL_BOTTOM, LIST_TOP = St.SCROLLBAR_ROOM, 4, 4
+local SWITCH_W, CLASS_W = 220, 200
+local SCROLLBAR_ROOM, SCROLL_BOTTOM = St.SCROLLBAR_ROOM, 4
 local METER_W, METER_H, METER_GAP, METER_SPACE, METER_LABEL_GAP = 54, 3, 12, 14, 6
 local EXPORT_GAP = 6
 local SMART_TOP, SIDE_TOP, SIDE_GAP, SIDE_SPACING = 10, 12, 10, 3
 local CLASS_TOP = 4
 local LIB_TITLE_SIZE, LIB_LEAD_GAP, LIB_TOP = 22, 6, 64
+local SAVE_W = 120
 local PERCENT = 100
 local ROUND = 0.5
 
+local TEXT_SAVE_MACRO = "Save a Macro"
+local TEXT_SAVE_TIP = "Keeps a copy of one of your game macros in the Library under your class, for every character of that class."
 local TEXT_EXPORT_TIP = "Every macro in the list, as one string to share."
 local TEXT_IMPORT_TIP = "Add macros someone shared with you."
-local TEXT_NEW_TIP = "Start a new macro in the editor."
 local TEXT_NOTHING_TO_EXPORT = "You have no macros to export yet."
 local TEXT_YOUR_MACROS = "Your macros"
-local TEXT_SEARCH = "Search your macros"
 local TEXT_SMART_NOTE = "They keep themselves up to date from your bags and gear"
 local TEXT_SMART_HOW = "Each one is an account macro. Put it on a bar once and it keeps itself current: loot a "
     .. "better potion, conjure fresh food or pick up bandages and the macro is rewritten to use the best "
     .. "you carry.\n\nThe game does not let macros change mid-fight, so a change during combat waits "
     .. "until it ends."
-local TEXT_FOOTER = "Macros are kept by the game: Account for every character, Character for this one"
+local TEXT_FOOTER = "Smart Macros are account macros, for every character. A Library macro you add is for this character only."
 local TEXT_ACCOUNT = "Account "
 
 local TABS = {
-    { key = "mine", label = "My Macros", tip = "Your macros, and the editor." },
     { key = "smart", label = "Smart Macros", tip = "Macros that keep themselves up to date." },
-    { key = "lib", label = "Library", tip = "Macros by class, for every character. Add yours with To Library in the editor." },
+    { key = "lib", label = "Library", tip = "Macros by class, for every character." },
 }
 
 local window
@@ -79,11 +79,7 @@ end
 local function Render()
     if not (window and window:IsShown()) then return end
     Subtitle()
-    if not F.draft then F.NewDraft() end
-    if F.tab == "mine" then
-        F.DrawList()
-        F.RenderEditor()
-    elseif F.tab == "smart" then
+    if F.tab == "smart" then
         F.DrawSmart()
     else
         F.DrawLibrary()
@@ -97,13 +93,11 @@ end
 local function SetTab(key)
     F.tab = key
     Parts.PaintTabs(window.switch, key)
-    window.mine:SetShown(key == "mine")
     window.smartView:SetShown(key == "smart")
     window.libView:SetShown(key == "lib")
     for name, cards in pairs(window.cards) do
         for _, card in ipairs(cards) do ShowCard(card, name == key) end
     end
-    window.search:SetShown(key == "mine")
     if window:IsShown() then Render() end
 end
 
@@ -159,16 +153,6 @@ local function ExportAll()
     ns.ShowCopyBox(TEXT_YOUR_MACROS, Sharing.Export(all))
 end
 
-local function NewMacro()
-    F.NewDraft()
-    SetTab("mine")
-    window.code:SetFocus()
-end
-
-local function Search()
-    if F.tab == "mine" then F.DrawList() end
-end
-
 local function BuildMeters()
     window.meters = {}
     local after = window.subtitle
@@ -191,43 +175,22 @@ local function BuildBar(opacityIcon)
     exportButton:SetPoint("RIGHT", opacityIcon, "LEFT", -St.BAR_GAP - EXPORT_GAP, 0)
     local importButton = Parts.BarButton(window, St.IMPORT, "Import", TEXT_IMPORT_TIP, Sharing.Prompt, "Import")
     importButton:SetPoint("RIGHT", exportButton, "LEFT", -St.BAR_GAP, 0)
-    local newButton = Parts.BarButton(window, St.PLUS, "New Macro", TEXT_NEW_TIP, NewMacro, "New")
-    newButton:SetPoint("RIGHT", importButton, "LEFT", -St.BAR_GAP, 0)
 end
 
 local function BuildTabs()
     window.switch = Parts.Tabs(window, SWITCH_W, TABS, SetTab)
     window.switch:SetPoint("TOPLEFT", CARD_INSET, -(HEADER + TOOL_GAP))
-    window.search = Parts.SearchBox(window, TEXT_SEARCH, Search)
-    window.search:SetSize(SEARCH_W, St.SEARCH_H)
-    window.search:SetPoint("RIGHT", window, "TOPRIGHT", -CARD_INSET, -(HEADER + TOOL_GAP + St.TAB_H / 2))
 end
 
 local function BuildCards()
     local backdrop, bottom = window.backdrop, FOOTER + CARD_INSET
-    local editorLeft = CARD_INSET + LIST_W + GAP
     local inspectorLeft = WIDTH - CARD_INSET - INSPECTOR_W
     window.cards = {
-        mine = { backdrop:Card(CARD_INSET, TOP, WIDTH - CARD_INSET - LIST_W, bottom),
-            backdrop:Card(editorLeft, TOP, CARD_INSET + INSPECTOR_W + GAP, bottom),
-            backdrop:Card(inspectorLeft, TOP, CARD_INSET, bottom) },
         smart = { backdrop:Card(CARD_INSET, TOP, CARD_INSET + INSPECTOR_W + GAP, bottom),
             backdrop:Card(inspectorLeft, TOP, CARD_INSET, bottom) },
         lib = { backdrop:Card(CARD_INSET, TOP, WIDTH - CARD_INSET - CLASS_W, bottom),
             backdrop:Card(CARD_INSET + CLASS_W + GAP, TOP, CARD_INSET, bottom) },
     }
-end
-
-local function BuildMine()
-    window.mine = View()
-    local listArea = Area(CARD_INSET, WIDTH - CARD_INSET - LIST_W, window.mine)
-    local list = { area = listArea }
-    list.scroll, list.body = Scroller(listArea, LIST_TOP)
-    list.rows = P.Pool(function() return F.NewMacroRow(list.body) end)
-    list.sections = P.Pool(function() return P.NewSection(list.body) end)
-    window.list = list
-    F.BuildEditor(Area(CARD_INSET + LIST_W + GAP, CARD_INSET + INSPECTOR_W + GAP, window.mine))
-    F.BuildInspector(Area(WIDTH - CARD_INSET - INSPECTOR_W, CARD_INSET, window.mine))
 end
 
 local function BuildSmartSide(sideArea)
@@ -268,6 +231,9 @@ local function BuildLibrary()
     lib.title:SetPoint("TOPLEFT", PAD, -PAD)
     lib.lead = P.Text(libArea, NOTE_SIZE, T.muted)
     lib.lead:SetPoint("TOPLEFT", lib.title, "BOTTOMLEFT", 0, -LIB_LEAD_GAP)
+    lib.save = ns.Button(libArea, TEXT_SAVE_MACRO, SAVE_W, St.BUTTON_H, function() F.SavePicker(lib.save) end)
+    lib.save:SetPoint("TOPRIGHT", libArea, "TOPRIGHT", -PAD, -PAD)
+    ns.Tooltip(lib.save, TEXT_SAVE_MACRO, TEXT_SAVE_TIP)
     lib.scroll, lib.body = Scroller(libArea, LIB_TOP)
     lib.scroll:SetPoint("TOPLEFT", PAD, -LIB_TOP)
     lib.cards = P.Pool(function() return F.NewLibCard(lib.body) end)
@@ -295,7 +261,6 @@ local function Build()
     BuildBar(opacityIcon)
     BuildTabs()
     BuildCards()
-    BuildMine()
     BuildSmart()
     BuildLibrary()
     Parts.FooterBrand(window, PAGE, CARD_INSET)

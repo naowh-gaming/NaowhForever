@@ -562,6 +562,55 @@ end
 statsList.hooks.OnShow(statsList)
 check("many stats: every row fits above the switch", rows[14].shown ~= false and rows[15].shown == false
     and 14 * rows[1].h <= 300 - 52)
+-- What each primary stat does, for each class, as the game's own character sheet says it
+-- (<CLASS>_<STAT>_TOOLTIP, else DEFAULT_<STAT>_TOOLTIP, Forever's GlobalStrings). Reported on
+-- Forever: a Warrior's Agility gives only ranged attack power, a Shaman's no attack power at all.
+check("many stats: the primary stats first, Stamina among the last", rows[1].stat == "agi"
+    and rows[2].stat == "str" and rows[3].stat == "int" and rows[4].stat == "spi" and rows[13].stat == "sta")
+local AGI_ALL = "Attack power, ranged attack power, crit chance, armor and dodge."
+local AGI_NONE = "Crit chance, armor and dodge."
+local STR_BLOCK, STR_PLAIN = "Attack power and block value.", "Attack power."
+local INT_MANA, INT_NONE = "Mana, spell crit chance and faster weapon skill gains.", "Faster weapon skill gains."
+local SPI_MANA = "Health back out of combat, and mana back while not casting."
+local SPI_NONE = "Health back out of combat."
+local DOES = {
+    WARRIOR = { "Ranged attack power, crit chance, armor and dodge.", STR_BLOCK, INT_NONE, SPI_NONE },
+    ROGUE = { AGI_ALL, STR_PLAIN, INT_NONE, SPI_NONE },
+    HUNTER = { AGI_ALL, STR_PLAIN, INT_MANA, SPI_MANA },
+    DRUID = { "Attack power in Cat Form, crit chance, armor and dodge.", STR_PLAIN, INT_MANA, SPI_MANA },
+    PALADIN = { AGI_NONE, STR_BLOCK, INT_MANA, SPI_MANA },
+    SHAMAN = { AGI_NONE, STR_BLOCK, INT_MANA, SPI_MANA },
+    PRIEST = { AGI_NONE, STR_PLAIN, INT_MANA, SPI_MANA },
+    MAGE = { AGI_NONE, STR_PLAIN, INT_MANA, SPI_MANA },
+    WARLOCK = { AGI_NONE, STR_PLAIN, INT_MANA, SPI_MANA },
+}
+local function Does(i)
+    rows[i].scripts.OnEnter(rows[i])
+    return tooltip.lines[3]
+end
+local function MeleeAttackPower(text)
+    return (text:lower():gsub("ranged attack power", "")):find("attack power", 1, true) ~= nil
+end
+local classes = 0
+for class, does in pairs(DOES) do
+    env.UnitClass = function() return class, class end
+    classes = classes + 1
+    for i = 1, 4 do check(class .. "'s " .. rows[i].stat .. ": " .. does[i], Does(i) == does[i]) end
+    check(class .. "'s Stamina: health", Does(13) == "Health.")
+end
+check("all nine classes", classes == 9)
+env.UnitClass = function() return "Warrior", "WARRIOR" end
+check("a Warrior's Agility: ranged attack power, never melee", Does(1):find("Ranged attack power", 1, true)
+    and not MeleeAttackPower(Does(1)))
+env.UnitClass = function() return "Shaman", "SHAMAN" end
+check("a Shaman's Agility: no attack power at all", not Does(1):lower():find("attack power", 1, true))
+for _, class in ipairs({ "ROGUE", "HUNTER" }) do
+    env.UnitClass = function() return class, class end
+    check(class .. "'s Agility: attack power and ranged attack power", MeleeAttackPower(Does(1))
+        and Does(1):find("ranged attack power", 1, true))
+end
+env.UnitClass = function() return "Rogue", "ROGUE" end
+check("a stat the game does not split by class: one line for all", Does(5) == "More damage from your weapons.")
 -- A caster: its spell hit, the game's spell hit (rating and talents) as its total.
 ---@diagnostic disable-next-line: duplicate-set-field
 ns.StatWeights.For = function() return { spell = 1, int = 0.3, shit = 14, sta = 0.05, armor = 0.005 } end

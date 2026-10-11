@@ -1,9 +1,10 @@
--- MapPinsPanel.lua: the Map Pins button on the world map and its drawer of which town pins show.
+-- MapPinsPanel.lua: the Map Options and Pins button on the world map and its drawer of which pins and options show.
 local ns = _G.NaowhForever
 
 local T = ns.THEME
 local UI = ns.UI
 local St = ns.Shared.Style
+local DIM_ALPHA = ns.Shared.Settings.Style.DIM_ALPHA
 local S = ns.QoLSettings
 
 local PAD, HEAD_H, ROW_H, ROW_MIN_H = 14, 40, 28, 20
@@ -21,18 +22,24 @@ local CLOSE_SIZE, CLOSE_IN = 22, 9
 local BUTTON_SIZE, BUTTON_GAP, BUTTON_RIGHT, BUTTON_TOP = 32, 2, 4, 2
 local BUTTON_ALPHA = 0.9
 local ICON_INSET = 4
+local SCROLL_W, SCROLL_IN = 4, 2
 
-local TEXT_TITLE = "Map Pins"
-local TEXT_TIP = "Click to choose which pins show on the map."
+local TEXT_TITLE = "Map Options and Pins"
+local TEXT_TIP = "Click to choose which pins and options show on the map."
 local TEXT_CLOSE = "x"
+local TEXT_TOWN, TEXT_TOWN_PINS, TEXT_TOWN_TIP = ns.TownPinTexts.group, ns.TownPinTexts.switch, ns.TownPinTexts.tip
 
 local ROWS = ns.TownPinRows
 
-local button, buttonBorder, panel
-local controls, strips = {}, {}
+local button, buttonBorder, panel, content
+local rows, strips = {}, {}
+
+local function TownOn()
+    return S.Get("townMap")
+end
 
 local function On()
-    return S.Get("enabled") and S.Get("townMap")
+    return S.Get("enabled")
 end
 
 local function PanelWidth()
@@ -41,8 +48,27 @@ local function PanelWidth()
     return w > 0 and w or PANEL_W
 end
 
+local function Needed(row)
+    local needs = row.needs
+    if type(needs) == "function" then return needs() end
+    if type(needs) == "string" then return row.store.Get(needs) end
+    for _, key in ipairs(needs) do
+        if not row.store.Get(key) then return false end
+    end
+    return true
+end
+
 local function RefreshRows()
-    for _, control in ipairs(controls) do control._refreshValue() end
+    for _, row in ipairs(rows) do
+        row.control._refreshValue()
+        if row.needs then
+            local on = Needed(row) and true or false
+            local alpha = on and 1 or DIM_ALPHA
+            row.label:SetAlpha(alpha)
+            row.control:SetAlpha(alpha)
+            row.control:EnableMouse(on)
+        end
+    end
 end
 
 local function Rule(frame, alpha)
@@ -52,27 +78,28 @@ local function Rule(frame, alpha)
     ns.Hairline(rule, "h")
 end
 
-local function Strip(parent, y, h)
+local function Strip(parent, y, h, inset)
     local frame = CreateFrame("Frame", nil, parent)
     frame:SetHeight(h)
-    frame:SetPoint("TOPLEFT", parent, "TOPLEFT", 1, y)
-    frame:SetPoint("TOPRIGHT", parent, "TOPRIGHT", -1, y)
+    frame:SetPoint("TOPLEFT", parent, "TOPLEFT", inset, y)
+    frame:SetPoint("TOPRIGHT", parent, "TOPRIGHT", -inset, y)
     return frame
 end
 
 local function Layout(rowH)
-    local y = -1 - HEAD_H
+    local y = 0
     for _, frame in ipairs(strips) do
         frame:SetHeight(rowH)
-        frame:SetPoint("TOPLEFT", panel, "TOPLEFT", 1, y)
-        frame:SetPoint("TOPRIGHT", panel, "TOPRIGHT", -1, y)
+        frame:SetPoint("TOPLEFT", content, "TOPLEFT", 0, y)
+        frame:SetPoint("TOPRIGHT", content, "TOPRIGHT", 0, y)
         y = y - rowH
     end
-    return -y + 1
+    content:SetHeight(-y)
+    return HEAD_H + BORDERS - y
 end
 
 local function MakeGroup(parent, title)
-    local frame = Strip(parent, 0, ROW_H)
+    local frame = Strip(parent, 0, ROW_H, 0)
     strips[#strips + 1] = frame
     local text = ns.Font(frame, SMALL_SIZE, nil, T.accentSoft)
     text:SetPoint("BOTTOMLEFT", PAD, GROUP_DROP)
@@ -80,41 +107,43 @@ local function MakeGroup(parent, title)
     Rule(frame)
 end
 
-local function SetRow(key, value)
-    S.Set(key, value)
+local function SetRow(store, key, value)
+    store.Set(key, value)
     if UI.RefreshPage then UI:RefreshPage(true) end
 end
 
-local function MakeRow(parent, row)
-    local frame = Strip(parent, 0, ROW_H)
+local function MakeRow(parent, store, key, text, tip, needs)
+    local frame = Strip(parent, 0, ROW_H, 0)
     strips[#strips + 1] = frame
     frame:EnableMouse(true)
     Rule(frame)
     local control = UI.BuildToggleControl(frame, frame:GetFrameLevel() + CONTROL_LEVEL,
-        function() return S.Get(row.key) end,
-        function(value) SetRow(row.key, value) end)
+        function() return store.Get(key) end,
+        function(value) SetRow(store, key, value) end)
     control:SetPoint("RIGHT", frame, "RIGHT", -PAD, 0)
     local label = ns.Font(frame, LABEL_SIZE, nil, T.fg)
     label:SetJustifyH("LEFT")
     label:SetWordWrap(false)
     label:SetPoint("LEFT", PAD, 0)
     label:SetPoint("RIGHT", control, "LEFT", -LABEL_GAP, 0)
-    label:SetText(row.text)
-    if row.tip then ns.Tooltip(frame, row.text, row.tip) end
-    controls[#controls + 1] = control
+    label:SetText(text)
+    if tip then ns.Tooltip(frame, text, tip) end
+    rows[#rows + 1] = { control = control, label = label, needs = needs, store = store }
 end
 
 local function PlaceMaximized(map)
     local canvas = map:GetCanvasContainer()
     local bar = (canvas:GetLeft() or 0) - (map:GetLeft() or 0) - BAR_MARGIN * 2
+    local room = canvas:GetHeight()
     if bar >= BAR_MIN_W then
         panel:SetWidth(math.min(PanelWidth(), bar))
         panel:SetPoint("TOPRIGHT", canvas, "TOPLEFT", -BAR_MARGIN, 0)
     else
         panel:SetWidth(PanelWidth())
         panel:SetPoint("TOPRIGHT", button, "BOTTOMRIGHT", 0, -UNDER_BUTTON)
+        room = room - button:GetHeight() - UNDER_BUTTON - BUTTON_TOP
     end
-    panel:SetHeight(Layout(ROW_H))
+    panel:SetHeight(math.min(Layout(ROW_H), room))
 end
 
 local function PlaceWindowed(map)
@@ -126,8 +155,8 @@ local function PlaceWindowed(map)
         panel:SetPoint("TOPLEFT", map, "TOPRIGHT", GAP, 0)
     end
     local fit = math.floor((map:GetHeight() - HEAD_H - BORDERS) / #strips)
-    local h = Layout(math.max(ROW_MIN_H, math.min(ROW_H, fit)))
-    panel:SetHeight(math.max(h, map:GetHeight()))
+    Layout(math.max(ROW_MIN_H, math.min(ROW_H, fit)))
+    panel:SetHeight(map:GetHeight())
 end
 
 local function PlacePanel()
@@ -153,7 +182,7 @@ local function BuildPanel()
     panel:Hide()
     ns.Solid(panel, "BACKGROUND", T.bg, St.BACKDROP_ALPHA):SetAllPoints()
     ns.Border(panel, St.BORDER_RGB)
-    local head = Strip(panel, -1, HEAD_H)
+    local head = Strip(panel, -1, HEAD_H, 1)
     ns.Solid(head, "BACKGROUND", T.panel, 1):SetAllPoints()
     Rule(head, 1)
     local title = ns.Font(head, NAME_SIZE, nil, T.fg)
@@ -161,8 +190,27 @@ local function BuildPanel()
     title:SetText(TEXT_TITLE)
     local close = ns.Button(head, TEXT_CLOSE, CLOSE_SIZE, CLOSE_SIZE, HidePanel)
     close:SetPoint("RIGHT", -CLOSE_IN, 0)
+    local scroll = UI.SlimScroll(panel, SCROLL_W, -SCROLL_W - SCROLL_IN)
+    scroll:SetPoint("TOPLEFT", panel, "TOPLEFT", 1, -1 - HEAD_H)
+    scroll:SetPoint("BOTTOMRIGHT", panel, "BOTTOMRIGHT", -1, 1)
+    content = CreateFrame("Frame", nil, scroll)
+    scroll:SetScrollChild(content)
+    scroll.bar:SetFrameLevel(content:GetFrameLevel() + CONTROL_LEVEL)
+    scroll:SetScript("OnSizeChanged", function(_, w) content:SetWidth(w) end)
+    MakeGroup(content, TEXT_TOWN:upper())
+    MakeRow(content, S, "townMap", TEXT_TOWN_PINS, TEXT_TOWN_TIP)
     for _, row in ipairs(ROWS) do
-        if row.header then MakeGroup(panel, row.header) else MakeRow(panel, row) end
+        if row.header then
+            MakeGroup(content, row.header)
+        else
+            MakeRow(content, S, row.key, row.text, row.tip, TownOn)
+        end
+    end
+    for _, section in ipairs(ns.Shared.MapPinSections()) do
+        if section.title then MakeGroup(content, section.title:upper()) end
+        for _, row in ipairs(section.rows) do
+            if row.toggle then MakeRow(content, row.store, row.key, row.label, row.help, row.needs) end
+        end
     end
     panel:SetScript("OnShow", RefreshRows)
     if WorldMapFrame.Maximize then hooksecurefunc(WorldMapFrame, "Maximize", PlacePanel) end
@@ -249,6 +297,13 @@ end
 
 local function OnLogin(self)
     self:UnregisterAllEvents()
+    local watched = {}
+    for _, section in ipairs(ns.Shared.MapPinSections()) do
+        if not watched[section.store] then
+            watched[section.store] = true
+            section.store.OnChange(Apply)
+        end
+    end
     Apply()
 end
 

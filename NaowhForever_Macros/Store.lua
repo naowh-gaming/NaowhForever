@@ -72,13 +72,5 @@ local function OwnMacros(class)
     return own and own[class] or {}
 end
 
-local function NameFits(name)
-    return name ~= "" and #name <= M.C.NAME_MAX
-end
-
-local function BodyFits(body)
-    return body ~= "" and #body <= M.C.LIMIT
-end
-
-M.Store = { Limits = Limits, BodyIcon = BodyIcon, ShownIcon = ShownIcon, GameMacros = GameMacros, Find = Find,
-    Room = Room, PackMacros = PackMacros, OwnMacros = OwnMacros, NameFits = NameFits, BodyFits = BodyFits }
+M.Store = { Limits = Limits, ShownIcon = ShownIcon, GameMacros = GameMacros, Find = Find, Room = Room,
+    PackMacros = PackMacros, OwnMacros = OwnMacros }

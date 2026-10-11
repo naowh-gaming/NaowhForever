@@ -1,6 +1,7 @@
 -- Run with Lua 5.1 from the repository root: the town map's Vendors & Trainers Only in Cities.
 -- With it on, a questing map keeps its flight masters, innkeepers and stable masters but not its
 -- vendors and trainers; a capital keeps everything; with it off every map keeps everything.
+-- Stable masters are for hunters only.
 local function Read(path)
     local f = assert(io.open(path, "rb"))
     local s = f:read("*a"):gsub("\r\n", "\n"); f:close()
@@ -33,6 +34,7 @@ local ns = {
     Shared = { Settings = { Group = function() end, Page = function() return { Card = function() end } end } },
 }
 
+local playerClass = "HUNTER"
 local frames = {}
 local function NewFrame()
     local f = { events = {}, scripts = {} }
@@ -58,7 +60,7 @@ local env = setmetatable({
     hooksecurefunc = function() end,
     WorldMapFrame = { AddDataProvider = function(_, p) provider = p end, IsShown = function() return false end },
     UnitFactionGroup = function() return "Alliance" end,
-    UnitClass = function() return "Warrior", "WARRIOR" end,
+    UnitClass = function() return playerClass, playerClass end,
     wipe = function(t) for k in pairs(t) do t[k] = nil end return t end,
 }, { __index = _G })
 local chunk = assert(loadstring(Read("NaowhForever_QoL/Interface/TownMap.lua")))
@@ -84,5 +86,12 @@ settings.townCapitalsOnly = false
 Check(Shown(1) == "bank flight inn profession repair stable vendor", "switched off, every map keeps everything")
 settings.townCapitalsOnly, settings.townFlight = true, false
 Check(Shown(1) == "inn stable", "a category switched off stays off")
+
+playerClass = "WARRIOR"
+settings.townCapitalsOnly, settings.townFlight = false, true
+Check(Shown(1) == "bank flight inn profession repair vendor", "stable masters are left off for a warrior")
+Check(Shown(2) == "bank flight inn profession repair vendor", "in a capital too")
+playerClass = "HUNTER"
+Check(Shown(1) == "bank flight inn profession repair stable vendor", "and shown for a hunter")
 
 print(("test-town-capitals: %d checks passed"):format(checks))

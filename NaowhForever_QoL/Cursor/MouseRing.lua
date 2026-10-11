@@ -724,7 +724,7 @@ local function Summary(store)
         store.Get("mouseSize"), store.Get("mouseGCD") and TEXT_GCD or "", store.Get("mouseTrail") and TEXT_TRAIL or "")
 end
 
-ns.Shared.Settings.Page("QoL/Cursor", S):Card({
+ns.Shared.Settings.Page("QoL/Cursor & Crosshair", S):Card({
     id = "mouseRing", name = "Mouse Ring", order = 20, switch = "mouseRing",
     help = "A ring around your cursor so you never lose it in a busy fight, with your global "
         .. "cooldown and casts swept around it.",

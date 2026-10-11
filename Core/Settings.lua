@@ -6,7 +6,6 @@ local F = ns.FEATURES.qol
 
 local S = UI.ModuleSettings("qol", {
     enabled = F.enabled,
-    deathRelease = F.deathRelease, deathReleaseHold = 1,
     stealthReminder = F.stealthReminder,
     reminderInGroup = false, reminderHideResting = true,
     stealthShowStealthed = true, stealthDruid = "cat",
@@ -27,7 +26,8 @@ local S = UI.ModuleSettings("qol", {
 
     deleteConfirm = F.deleteConfirm, lootConfirm = F.lootConfirm,
     questAccept = F.questAccept, questTurnIn = F.questTurnIn, questGossip = F.questGossip, questRewardPicks = F.questRewardPicks,
-    questSkipModifier = "ALT",
+    questSkipModifier = "ALT", questModifierMode = "SKIP",
+    gossipAuto = F.gossipAuto, gossipModifier = "ALT", gossipModifierMode = "SKIP",
     groupButtons = F.groupButtons, groupButtonsLayout = "stacked", groupButtonsWidth = 90, groupButtonsHeight = 24,
     groupButtonsFont = "", groupButtonsFontSize = 12, groupButtonsOutline = "NONE", groupButtonsBackground = "card",
     questShare = F.questShare,
@@ -36,8 +36,6 @@ local S = UI.ModuleSettings("qol", {
     combatTimerColor = { r = 1, g = 1, b = 1 }, combatTimerClassColor = false,
     combatTimerFont = "", combatTimerFontSize = 32, combatTimerOutline = "OUTLINE",
     cursorCooldown = F.cursorCooldown, cursorCooldownSize = 29, cursorCooldownTime = 0.75,
-    combatLogger = F.combatLogger, combatLogRaids = "ask", combatLogDungeons = "never",
-    combatLogStopOnLeave = true, combatLogChat = false, combatLogAclPrompt = true,
     globalCopy = F.globalCopy, copyTooltipIds = true, copyModifier = "CTRL-SHIFT", copyKey = "C", copyShortcutSynced = false,
     badgeChat = F.badgeChat, badgeCard = F.badgeCard, badgeTooltip = F.badgeTooltip,
     badgeBanner = F.badgeBanner, badgeBannerSkipGuild = true,
@@ -113,7 +111,7 @@ local S = UI.ModuleSettings("qol", {
     consumableBarKeyOutside = false, consumableBarKeyX = 0, consumableBarKeyY = 0,
     consumableBarAnchor = "UIParent", consumableBarAnchorPoint = "CENTER", consumableBarAnchorRelPoint = "CENTER",
     consumableBarX = 0, consumableBarY = 0,
-    bagSpace = F.bagSpace, bagSpaceCount = 4, bagSpaceSize = 36, bagSpaceGrow = "RIGHT",
+    bagSpace = F.bagSpace, bagSpaceCount = 4, bagSpaceSize = 36, bagSpaceGrow = "RIGHT", bagSpaceReverse = false,
     bagSpaceMaxQuality = 2, bagSpaceJunkFirst = false, bagSpaceAuction = true,
     bagSpaceProtect = true, bagSpaceFreeBelow = 0, bagSpaceHideCombat = true,
     bagSpaceOnFull = true, bagSpaceShowFree = true, bagSpaceStack = true, bagSpaceOldFirst = false,
@@ -134,7 +132,7 @@ local S = UI.ModuleSettings("qol", {
     gearSets = F.gearSets, gearBarVisible = F.gearBarVisible, trinketBar = F.trinketBar, trinketSize = 36, trinketSpacing = 4, gearBarSize = 32, gearMounted = "", gearResting = "",
     gearWindowAlpha = 1, gearBarSpacing = 4, gearBarShow = "always",
     gearPos = { point = "CENTER", relPoint = "CENTER", x = -403, y = -379 },
-    bis = F.bis, bisTooltip = true, bisBagMarks = true, bisBagLevels = true, bisLootAlert = F.bisLootAlert, bisWindowAlpha = 1,
+    bis = F.bis, bisTooltip = true, bisBagMarks = true, bisLootAlert = F.bisLootAlert, bisWindowAlpha = 1,
     bisAlertFor = "all", bisAlertChat = true, bisAlertBadge = true, bisToast = true,
     bisDropSound = "game:raidwarning", bisYoursSound = "game:epicloot",
     bisToastScale = 1, bisToastTime = 6, bisToastAlpha = 0.95, bisToastGlow = true, bisToastStar = "icon",
@@ -197,7 +195,6 @@ local S = UI.ModuleSettings("qol", {
     petMissingText = "Pet Missing", petPassiveText = "Pet Passive", petLowHealthText = "Pet Low HP",
     equipReminder = F.equipReminder, equipOnInstance = true, equipOnReadyCheck = true, equipAutoHide = 10,
     equipIconSize = 40, equipEnchants = true, equipEnchantRules = {},
-    autoEmote = F.autoEmote, autoEmoteCooldown = 2, autoEmoteList = "698: prepares a ritual of summoning",
     chatZones = F.chatZones, chatZonesLevel = true, chatZonesClassColour = true, chatZonesFinder = true, chatZonesWhere = true, chatZonesMaxAge = 15, chatZonesAsk = true, chatZonesShare = false,
 
     mouseRing = F.mouseRing, mouseShape = "ring.tga", mouseSize = 48,

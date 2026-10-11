@@ -22,7 +22,7 @@ CharacterPanel/
                        and the Inspect Panel share (CP.C)
   Data/Slots.lua       the game's equipment slots by slot ID, named as its slot buttons are (CP.SLOTS)
   Data/Stats.lua       the stats your spec's list can show, in order, their short names and
-                       yardsticks, and what each one does (CP.Stats)
+                       yardsticks, and what each one does for your class (CP.Stats)
   Totals.lua           your total now for each stat, plain or while the game keeps it secret (CP.Totals)
   Worth.lua            what a stat is worth to your spec, in words: its yardstick, the list's title and
                        the hover card's line (CP.Worth)
@@ -112,6 +112,17 @@ the game's art comes back and ours hides.
   Strength for fighters, Stamina for tanks, Spell Damage or Healing for casters), else the heaviest
   of `YARDSTICKS`.
 - A row's bar is its weight's share of the heaviest by the square root, so a small one still shows.
+- What a primary stat does is what the game's own character sheet says for your class. Its
+  `PaperDollFrame_SetStatTooltip2` (`Interface/AddOns/Blizzard_UIPanels_Game/Camelot/PaperDollFrameStats.lua`,
+  Gethe/wow-ui-source `forever` branch) picks `<CLASS>_<STAT>_TOOLTIP`, else `DEFAULT_<STAT>_TOOLTIP`;
+  Forever's strings are in Ketho/BlizzardInterfaceResources `forever`, `Resources/GlobalStrings/enUS.lua`.
+  `DOES_BY_CLASS` holds the class ones, `DOES` the default.
+- By those strings, Agility gives Warriors ranged attack power only, Rogues and Hunters attack power and
+  ranged attack power, Druids attack power in Cat Form, and every other class none. Only Warriors,
+  Paladins and Shamans get block value from Strength. Warriors and Rogues get no mana from Intellect
+  or Spirit.
+- The game's numbers stay out of the description: they go secret under the game's addon restrictions,
+  and the hover card already shows your total.
 - The badge art is 128px: drawn at a third of that it needs the mipmapped (`TRILINEAR`) filter to
   stay sharp. Its plate sits over the model, which is at frame level 50.
 - While `ns.FEATURE_BADGES` is 0 only the team's badges exist, and the badge setting's default holds;

@@ -222,7 +222,7 @@ local function Fixture(settings, units)
         if opts.background == "card" then rows[#rows + 1] = { key = prefix .. "Background" } end
         return rows
     end
-    ns.Shared = { Settings = Settings,
+    ns.Shared = { Settings = Settings, MapPins = {},
         -- Per character, by the player's GUID.
         CharacterData = function(key)
             account[key] = account[key] or {}
@@ -343,11 +343,11 @@ local function Fixture(settings, units)
     env.worldMap = map
     env.NaowhForever = ns
     env._G = env
-    Load({ "NaowhForever_Completo/Constants.lua", "NaowhForever_Completo/Data/AlertSounds.lua",
-        "NaowhForever_Completo/Rares.lua", "NaowhForever_Completo/Kills.lua", "NaowhForever_Completo/Sounds.lua",
-        "NaowhForever_Completo/View/Style.lua", "NaowhForever_Completo/View/AlertCard.lua",
-        "NaowhForever_Completo/UI/RareAlert.lua", "NaowhForever_Completo/UI/RarePins.lua",
-        "NaowhForever_Completo/UI/RaresSettings.lua" }, env)
+    Load({ "NaowhForever_Discovery/QuestList/Constants.lua", "NaowhForever_Discovery/QuestList/Data/AlertSounds.lua",
+        "NaowhForever_Discovery/QuestList/Rares.lua", "NaowhForever_Discovery/QuestList/Kills.lua", "NaowhForever_Discovery/QuestList/Sounds.lua",
+        "NaowhForever_Discovery/QuestList/View/Style.lua", "NaowhForever_Discovery/QuestList/View/AlertCard.lua",
+        "NaowhForever_Discovery/QuestList/UI/RareAlert.lua", "NaowhForever_Discovery/QuestList/UI/RarePins.lua",
+        "NaowhForever_Discovery/QuestList/UI/RaresSettings.lua" }, env)
     env.Fire("PLAYER_LOGIN")
     return ns, env, account
 end
@@ -441,8 +441,8 @@ do
     Check(wp and wp[1] == "Mist Howler" and wp[2] == 1440 and wp[3] == 50 and wp[4] == 40,
         "its pin sets a waypoint to its spot")
     local mover = ns.movers["Rare Alert"]
-    Check(mover and mover.frame == holder and mover.frame ~= ns.alert and mover.page == "Completo/Rares"
-        and mover.feature == "Completo/Rares:rareAlert",
+    Check(mover and mover.frame == holder and mover.frame ~= ns.alert and mover.page == "Discovery/Rares"
+        and mover.feature == "Discovery/Rares:rareAlert",
         "it moves in the HUD Editor by a holder that stays shown, with its settings card")
     Check(holder.at[1] == 0 and holder.at[2] == 260, "above the middle of the screen at first")
     mover.onMoved({ point = "CENTER", relPoint = "CENTER", x = 10, y = 120 })
@@ -791,7 +791,11 @@ do
     local ns, env = Fixture(settings, units)
     local R = ns.Completo.Rares
     Check(env.provider == nil, "no map provider while Map Pins is off")
-    Check(ns.cards.rarePins and ns.cards.rarePins.switch == "rarePins", "Rares has a Map Pins card")
+    Check(not ns.cards.rarePins, "no Map Pins card of its own on the Rares page")
+    local section = ns.Shared.MapPins[1]
+    Check(section and section.title == "Rares" and section.rows[1].key == "rarePins"
+        and section.rows[1].store == ns.CompletoSettings and section.rows[1].always,
+        "its switch is a row on QoL's Map Pins, in Completo's store")
     ns.CompletoSettings.Set("rarePins", true)
     local pins = env.worldMap.pins
     Check(#pins == 2, "one star each for Mist Howler and Prince Raze; none for the Horde-friendly rare or one "

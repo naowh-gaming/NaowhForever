@@ -11,9 +11,19 @@ local ORDER_IMPORTING, ORDER_WINDOW = 10, 20
 local BARS_OFF = "Turn on Action Bars"
 local TEXT_HIGHEST, TEXT_SAVED = "Highest ranks", "Saved ranks"
 local TEXT_MACROS, TEXT_KEYBINDS = "macros", "keybinds"
+local TEXT_NONE = "None"
 local TEXT_FILLS, TEXT_SAVES = "fills in later", "saves on logout"
 
 local On = A.On
+
+local function AutoImportChoices()
+    local values, order = { [""] = TEXT_NONE }, { "" }
+    for _, name in ipairs(A.SortedNames()) do
+        values[name] = name
+        order[#order + 1] = name
+    end
+    return values, order
+end
 
 local function ImportingSummary(store)
     local parts = { store.Get("highestRank") and TEXT_HIGHEST or TEXT_SAVED }
@@ -37,7 +47,7 @@ page:Card({
     id = "importing", name = "Importing", order = ORDER_IMPORTING,
     help = "What a saved set brings back when you import it. Sets are saved and imported from the Action "
         .. "Bars window, out of combat.",
-    search = "/nf bars nf bars /nfbars nfbars save restore import test delete list",
+    search = "/nf bars nf bars /nfbars nfbars save restore import test delete list /nf ab nf ab",
     summary = ImportingSummary,
     rows = {
         { key = "highestRank", label = "Highest Rank", toggle = true, needs = On, why = BARS_OFF,
@@ -51,6 +61,8 @@ page:Card({
         { key = "fillLater", label = "Fill In As You Learn", toggle = true, needs = On, why = BARS_OFF,
           help = "A spell an import could not place because you do not know it yet goes into its saved slot "
               .. "when you learn it, unless you have put something else there." },
+        { key = "autoImportSet", label = "Import on New Character", choice = AutoImportChoices, needs = On,
+          why = BARS_OFF, help = "Imports this set once, when a character first logs in at level 1." },
         { key = "saveOnLogout", label = "Save on Logout", toggle = true, needs = On, why = BARS_OFF,
           help = "When you log out, the set this character saved or imported last is saved again with your "
               .. "bars, macros and keybinds as they are." },

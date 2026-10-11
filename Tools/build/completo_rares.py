@@ -1,4 +1,4 @@
-"""Build NaowhForever_Completo/Data/Rares.lua: every rare of every zone.
+"""Build NaowhForever_Discovery/QuestList/Data/Rares.lua: every rare of every zone.
 
 A zone page (/forever/zone=<areaID>) lists the creatures found there in its "npcs" listview;
 the rare ones have classification 4 (rare) or 2 (rare elite). Each rare's page
@@ -36,7 +36,7 @@ from completo_quests import GAP, fetch_npc, forever_spot, load, lua_string, save
 from quest_chains import ZONE_MAP  # noqa: E402
 
 ROOT = paths.ROOT
-OUT = ROOT / "NaowhForever_Completo" / "Data" / "Rares.lua"
+OUT = ROOT / "NaowhForever_Discovery" / "QuestList" / "Data" / "Rares.lua"
 CACHE = paths.DATA / "completo_rares.json"
 ZONES = paths.DATA / "completo_zones.json"
 RARE, RARE_ELITE = 4, 2

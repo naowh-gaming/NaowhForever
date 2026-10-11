@@ -211,7 +211,7 @@ local ELEMENTS = {
     { "Stealth Reminder", "stealth", function(s) return s.movers["Stealth Reminder"].frame end, 22, 300, 12,
       "QoL/Combat", "stealthReminder" },
     { "Talent Points", "talentPoints", function(s) return s.named.NaowhForeverTalentPoints end, 22, 300, 10,
-      "QoL/Questing & Group", "talentPoints" },
+      "QoL/XP", "talentPoints" },
     { "Durability", "durability", function(s) return s.named.NaowhForeverDurability end, 22, 300, 10,
       "QoL/Loot & Items", "durability" },
     { "Pet Tracker", "pet", function(s) return s.named.NaowhForeverPetTracker end, 20, 220, 16,

@@ -28,6 +28,8 @@ local BORDER_RGB = St.BORDER_RGB
 local CARD_ALPHA = 0.85
 local PAD = 6
 local GAP = 6
+local GAP_MIN = 2
+local ICON_BASE = 36
 local HEAD_H = 16
 local HEAD_GAP = 5
 local HEAD_SPACE = 12
@@ -37,6 +39,7 @@ local ICON_DROP = Parts.CARD_DROP
 local TEXT_GAP = 4
 local STACK_PAD = 8
 local PRICE_SIZE = 10
+local PRICE_MIN = 8
 local PRICE_H = 12
 local PRICE_GAP = 3
 local PRICE_W = 32
@@ -51,7 +54,7 @@ local COLOR_MAX = 255
 local FULL_SLACK = 0.1
 local DEFAULT_Y = 180
 local PLAIN_BAG = ns.QoLConstants.PLAIN_BAG
-local COUNT_RANGE, FREE_BELOW_RANGE, ICON_RANGE = { 1, 8, 1 }, { 0, 30, 1 }, { 24, 56, 1 }
+local COUNT_RANGE, FREE_BELOW_RANGE, ICON_RANGE = { 1, 8, 1 }, { 0, 30, 1 }, { 16, 56, 1 }
 local TEXT_RANGE = St.HUD_TEXT_RANGE
 local MOVER_LABEL = "Bag Space"
 local SETTINGS_PAGE, SETTINGS_CARD = "QoL/Loot & Items", "QoL/Loot & Items:bagSpace"
@@ -649,11 +652,14 @@ end
 local function Style(view)
     local mode = view.backdrop:SetMode(S.Get("bagSpaceBackground"))
     local font, size, outline = S.Get("bagSpaceFont"), S.Get("bagSpaceFontSize"), S.Get("bagSpaceOutline")
-    if view.shadow == mode and view.font == font and view.size == size and view.outline == outline then return end
-    view.shadow, view.font, view.size, view.outline = mode, font, size, outline
+    local iconSize = S.Get("bagSpaceSize")
+    if view.shadow == mode and view.font == font and view.size == size and view.outline == outline
+        and view.iconSize == iconSize then return end
+    view.shadow, view.font, view.size, view.outline, view.iconSize = mode, font, size, outline, iconSize
     local scale = size / HEAD_SIZE
-    local price = Scaled(PRICE_SIZE, scale)
-    view.priceSize, view.priceH, view.priceW = price, Scaled(PRICE_H, scale), Scaled(PRICE_W, scale)
+    local fit = math.min(1, iconSize / ICON_BASE)
+    local price = math.max(PRICE_MIN, Scaled(PRICE_SIZE, scale * fit))
+    view.priceSize, view.priceH, view.priceW = price, Scaled(PRICE_H, scale), Scaled(PRICE_W, scale * fit)
     view.headH, view.headIcon = Scaled(HEAD_H, scale), Scaled(HEAD_ICON, scale)
     local f, cells = view.free, view.cells
     f:SetHeight(view.headH)
@@ -669,13 +675,14 @@ end
 local STEP = { RIGHT = { 1, 0 }, LEFT = { -1, 0 }, UP = { 0, 1 }, DOWN = { 0, -1 } }
 
 local function PlaceCells(view, shown, size, stepX, stepY, prices)
-    local cells = view.cells
+    local cells, reverse = view.cells, S.Get("bagSpaceReverse")
     for i = 1, shown do
+        local at = reverse and shown - i or i - 1
         local b = cells[i] or NewCell(view, i, size)
         b:SetSize(size, size)
         Parts.SizeItemMarks(b.marks, size)
         b:ClearAllPoints()
-        b:SetPoint("CENTER", view, "CENTER", (i - 1) * stepX, (i - 1) * stepY)
+        b:SetPoint("CENTER", view, "CENTER", at * stepX, at * stepY)
         b.price:SetShown(prices)
         b:Show()
     end
@@ -689,7 +696,8 @@ local function Layout(view, shown, headW)
     local half = size / 2
     local cellW = prices and math.max(size, view.priceW) or size
     local cellH = prices and size + PRICE_GAP + view.priceH or size
-    local stepX, stepY = (cellW + GAP) * dir[1], (cellH + GAP) * dir[2]
+    local gap = math.max(GAP_MIN, Scaled(GAP, math.min(1, size / ICON_BASE)))
+    local stepX, stepY = (cellW + gap) * dir[1], (cellH + gap) * dir[2]
     view:SetSize(size, size)
     PlaceCells(view, shown, size, stepX, stepY, prices)
     local spanX, spanY = (shown - 1) * stepX, (shown - 1) * stepY
@@ -1038,6 +1046,8 @@ Settings.Page("QoL/Loot & Items", S):Card({
         Group("Size"),
         { key = "bagSpaceSize", label = "Icon Size", slider = ICON_RANGE },
         { key = "bagSpaceGrow", label = "Direction", choice = DIRECTION },
+        { key = "bagSpaceReverse", label = "Reverse Order", toggle = true,
+          help = "Puts the cheapest item at the far end of the row instead of next to its anchor." },
         Settings.Look("bagSpace", { text = true, size = TEXT_RANGE, background = "card" }),
         Group("Visibility"),
         { key = "bagSpaceHideCombat", label = "Hide in Combat", toggle = true },

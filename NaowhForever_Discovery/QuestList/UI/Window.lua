@@ -1,4 +1,4 @@
--- Window.lua: Completo's own window (/nfcompleto, its key binding): the Overview, and the Quests and Rares tabs by zone.
+-- Window.lua: the Quest List window (/nfquests, its key binding): the Overview, and the Quests and Rares tabs by zone.
 local ns = _G.NaowhForever
 
 local Completo = ns.Completo
@@ -23,7 +23,7 @@ local SEARCH_MAX = 150
 local TABS_TOP_GAP = 4
 local SCROLL_TOP_GAP = 8
 local SCROLL_GAP = 4
-local PAGE = "Completo/General"
+local PAGE = "Discovery/Quest List"
 local ALL_ZONES = "All Zones"
 local CONTINENTS = { [0] = "Eastern Kingdoms", [1] = "Kalimdor" }
 local ELSEWHERE = "Elsewhere"
@@ -36,7 +36,7 @@ local TABS = {
     { key = "rares", label = "Rares", tip = "Every rare of every zone, and which of them you have killed." },
 }
 local SEARCH_HINT = { quests = "Search quests or quest givers", rares = "Search rares" }
-local TEXT_TITLE = "Completo"
+local TEXT_TITLE = "Quest List"
 local TEXT_ABOUT = "Everything there is to do, and how much of it you have done."
 local TEXT_ALL_ZONES = "All zones"
 local TEXT_KILLED_PERCENT = "%d%% killed"

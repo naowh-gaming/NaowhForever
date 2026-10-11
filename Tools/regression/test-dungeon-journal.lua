@@ -3777,25 +3777,26 @@ do
     pin.GetMap = function() return map end
     pin:OnAcquired(pins[1])
     check("a raid's pin shows the raid door", state.atlases.raid == true)
-    -- Its size: by the kind of map shown, halved full screen.
+    -- Its size: by the kind of map shown, the same full screen, one size on screen at any zoom.
     state.mapInfo = { [1445] = { mapType = 3 }, [1414] = { mapType = 2 }, [947] = { mapType = 1 } }
     local function SizeOn(mapID)
         shownMap = mapID
         pin:OnAcquired(pins[1])
         return pin.w
     end
-    check("on a zone's map at 200%", SizeOn(1445) == 44 and pin.h == 44)
-    check("on a continent's at 150%", SizeOn(1414) == 33)
-    check("on the world's at 120%", math.abs(SizeOn(947) - 26.4) < 1e-9)
+    check("on a zone's map at 100%", SizeOn(1445) == 18 and pin.h == 18)
+    check("on a continent's at 75%", SizeOn(1414) == 13.5)
+    check("on the world's at 60%", math.abs(SizeOn(947) - 10.8) < 1e-9)
     state.mapMaximised = true
-    check("full screen, half that", math.abs(SizeOn(947) - 13.2) < 1e-9)
+    check("full screen, the same", math.abs(SizeOn(947) - 10.8) < 1e-9)
     state.mapMaximised = false
+    check("scaled by the shared map pin scale", Pin.ApplyCurrentScale == ns.Shared.ScalePin)
     shownMap = 1445
     local shown = { pin }
     map.EnumeratePinsByTemplate = function() local i = 0; return function() i = i + 1; return shown[i] end end
     local count = #pins
     S.Set("mapEntranceScale", 0.5)
-    check("Icon Size resizes the pins shown without drawing them again", pin.w == 22 and #pins == count)
+    check("Icon Size resizes the pins shown without drawing them again", pin.w == 9 and #pins == count)
     state.mapInfo = nil
     pin:OnMouseEnter()
     pin:OnClick("LeftButton")

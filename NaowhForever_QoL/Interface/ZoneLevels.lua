@@ -3,6 +3,7 @@ local ns = _G.NaowhForever
 
 local S = ns.QoLSettings
 
+local SECTION_ORDER = 12
 local TEXT_SIZE = 16
 local TEXT_GAP = 2
 local BELOW_RANGE = 2
@@ -84,7 +85,10 @@ local boot = CreateFrame("Frame")
 boot:RegisterEvent("PLAYER_LOGIN")
 boot:SetScript("OnEvent", Apply)
 
-ns.Shared.Settings.Page("QoL/Interface", S):Card({
-    id = "zoneLevels", name = "Zone Levels", order = 47, switch = "zoneLevels",
-    help = "Shows a zone's level range when you hover it on the world map.",
+table.insert(ns.Shared.MapPins, {
+    order = SECTION_ORDER, store = S, switch = "zoneLevels",
+    rows = {
+        { key = "zoneLevels", label = "Zone Levels", toggle = true, store = S,
+          help = "Shows a zone's level range when you hover it on the world map." },
+    },
 })

@@ -1,4 +1,4 @@
--- KeyBinding.lua: binds Shift-L to Completo once per character, if nothing else has it.
+-- KeyBinding.lua: binds Shift-L to the Quest List once per character, if nothing else has it.
 local ns = _G.NaowhForever
 
 local Completo = ns.Completo
@@ -6,8 +6,8 @@ local S = Completo.Settings
 
 local ACTION, DEFAULT_KEY = "NAOWHFOREVER_COMPLETO", "SHIFT-L"
 local KEY_SET_STORE = "completoKeySet"
-local TEXT_BOUND = "Shift-L now opens Completo. Change it in Completo's settings or Key Bindings."
-local TEXT_TAKEN = "Shift-L is already %s, so Completo has no key. Pick one in its settings."
+local TEXT_BOUND = "Shift-L now opens the Quest List. Change it under Discovery > Quest List or Key Bindings."
+local TEXT_TAKEN = "Shift-L is already %s, so the Quest List has no key. Pick one under Discovery > Quest List."
 
 local function FirstTime()
     local account = ns.AccountSettings()

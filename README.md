@@ -27,8 +27,7 @@ and a lot of quality of life, all in one window.
 | **BiS List** | Your best-in-slot list in its own window: your gear on a paperdoll, every pick per slot ranked with stars, where each drops and where to run next. Marked on tooltips and called out when it drops. Open it with its own key too. |
 | **Stat Weights** | What each stat is worth to your spec, with your own changes: a line on gear tooltips ("Fire: +9% upgrade" and what it is weighed against), and the BiS List's upgrades and enchants. On BiS List's Stat Weights tab. |
 | **Dungeon Journal** | Every dungeon on Forever, the new ones included, and the raids: its bosses in order and what they drop, your BiS marked, your quests there with what to do first, a tip from Naowh for each boss and how many times you have killed it. A map of each classic dungeon with every boss on it, and in a dungeon the world map (M) shows it, with the Journal beside it. Open it with its own key too. |
-| **Completo** | Everything there is to do, and how much of it you have done. Quests: every quest of every zone for your character, your progress per zone, and every quest chain with the step you are on. Rares: every rare of every zone on the map, with an alert when you see one. Open it with `/nfcompleto`. |
-| **Discovery** | Library books to find around Azeroth and who to hand them to, and the Cozy Sleeping Bag's chain step by step. |
+| **Discovery** | Library books to find around Azeroth and who to hand them to, and the Cozy Sleeping Bag's chain step by step. Its Quest List tab has every quest of every zone for your character, your progress per zone, and every quest chain with the step you are on; its Rares tab every rare of every zone on the map, with an alert when you see one. Open the Quest List with `/nfquests`. |
 | **Training Planner** | What you can train now, what each level brings and what it costs, with the way to your nearest trainer. |
 | **Professions** | Recipes, reagents and crafting in one window, including the recipes you have not learned yet. |
 | **Gear & Trinkets** | Swap equipment sets from a bar, or automatically while you ride or rest. |
@@ -68,13 +67,14 @@ character or share them with a friend.
 | `/nf` | The main window (also `/naowh` and `/nao`) |
 | `/nfbis` | Your BiS list |
 | `/nfjournal` | Dungeon Journal (also `/nfdj`) |
-| `/nfcompleto` | Completo: your quests and rares per zone, and quest chains |
+| `/nfquests` | Quest List: your quests and rares per zone, and quest chains (`/nfcompleto` too) |
 | `/nfdiscovery` | Discovery |
 | `/nftraining` | Training Planner |
 | `/nfgear` | Gear Sets |
 | `/nfbless` | Blessings |
 | `/nfmacros` | Macros |
 | `/nfbars` | Action Bars |
+| `/nf ab <name>` | Imports a saved action bar set; `/nf ab` alone lists them |
 | `/nfbuffs` | Buffs & Reminders |
 | `/nfthreat` | Threat Meter |
 | `/nfgroup` | Group Inspect (also `/nf group`) |

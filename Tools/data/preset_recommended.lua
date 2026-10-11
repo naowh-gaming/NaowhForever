@@ -145,11 +145,9 @@ return {
 ["scrapMarkerVendor"] = "ask",
 ["mailAlts"] = true,
 ["copyShortcutSynced"] = true,
-["bisBagLevels"] = false,
 ["bagSpace"] = true,
 ["restockAmmo"] = false,
 ["townSupplies"] = false,
-["deathRelease"] = false,
 ["gearPos"] = {
 ["y"] = -188.1003569762739,
 ["relPoint"] = "CENTER",

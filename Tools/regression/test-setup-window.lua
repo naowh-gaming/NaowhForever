@@ -368,7 +368,7 @@ local MINIMALIST_ON = #w.MODULES - #w.ns.PRESETS.minimalist.modulesOff
 check("Minimalist: all but its five", Picked() == MINIMALIST
     and Said(MINIMALIST_ON .. " of " .. #w.MODULES .. " on") ~= nil)
 check("three to a row", tiles[1].point[5] == tiles[3].point[5] and tiles[4].point[5] ~= tiles[1].point[5])
-local completo, topBar, qol = Tile("Completo"), Tile("Top Bar"), Tile("Quality of Life")
+local completo, topBar, qol = Tile("Discovery"), Tile("Top Bar"), Tile("Quality of Life")
 Clicked(completo)
 check("a click flips it, glowing", completo.on and completo.glow.plays == 1
     and Said(MINIMALIST_ON + 1 .. " of " .. #w.MODULES .. " on") ~= nil)
@@ -386,7 +386,7 @@ check("Back goes a step back, the pick kept", window.subtitle.text == "Step 1 of
 Find("Next").Click()
 check("the skin kept too", Picked() == "Classic+")
 Find("Next").Click()
-check("the same profile: the module flips kept", Tile("Completo").on and Tile("Professions").on)
+check("the same profile: the module flips kept", Tile("Discovery").on and Tile("Professions").on)
 Find("Back").Click()
 Find("Back").Click()
 Clicked(Tile("Recommended"))
@@ -415,7 +415,7 @@ Find("Apply").Click()
 check("applied: the window closes and the reload is offered", not window.shown and s.reloadAsked ~= nil)
 check("its modules on, the rest off, Classic+, Minimalist", w.enabled.NaowhForever_QoL and w.enabled.NaowhForever_BiS
     and w.enabled.NaowhForever_ThreatMeter and w.enabled.NaowhForever_PvP and not w.enabled.NaowhForever_Discovery
-    and not w.enabled.NaowhForever_Completo and not w.enabled.NaowhForever_GroupInspect
+    and not w.enabled.NaowhForever_GroupInspect
     and not w.enabled.NaowhForever_SwingTimer and not w.enabled.NaowhForever_ConsumableBar
     and w.account.skin == "classic" and w.root.qol.preset == "minimalist" and w.account.setupBefore ~= nil)
 check("closed: the onboarding is seen, so it never opens by itself again", w.account.onboardingSeen == true

@@ -15,7 +15,7 @@ local LEY_CAST, LEY_BUFF, SKY_CAST, SKY_BUFF = 1259705, 1259691, 1259686, 127089
 
 local settings = { enabled = true, mapSkyborne = true, mapSkyborneSize = 20 }
 local S = { Get = function(key) return settings[key] end, Set = function() end }
-local account, printed, card = {}, {}, nil
+local account, printed = {}, {}
 local ns = {
     QoLConstants = dofile("Tools/regression/qol_constants.lua"),
     QoLSettings = S,
@@ -24,8 +24,7 @@ local ns = {
     Print = function(msg) printed[#printed + 1] = msg end,
     ThemeTint = function() return nil end,
     PlaceWaypoint = function() end,
-    Shared = { Style = dofile("Tools/regression/shared_style.lua"),
-        Settings = { Page = function() return { Card = function(_, c) card = c end } end } },
+    Shared = { Style = dofile("Tools/regression/shared_style.lua"), MapPins = {} },
 }
 
 local race, faction, combat, now = "Skyborne", "Horde", false, 1000
@@ -126,7 +125,10 @@ Check(Read("NaowhForever_QoL/Interface/SkyborneData.lua"):find("Copyright (c) 20
 
 Check(Read("Core/Settings.lua"):find("mapSkyborne = F.mapSkyborne,", 1, true)
     and Read("Core/Features.lua"):find("mapSkyborne = false,", 1, true), "Skyborne Spots starts off")
-Check(card and card.switch == "mapSkyborne", "the card switches the setting")
+local section = ns.Shared.MapPins[1]
+Check(section and section.switch == "mapSkyborne" and section.store == S and section.rows[1].key == "mapSkyborne",
+    "its section on Map Options and Pins switches the setting")
+Check(section.rows[2].key == "mapSkyborneSize" and section.rows[2].needs == "mapSkyborne", "the pin size waits for the switch")
 
 local function CastAt(spellID, buffID, duration)
     now = now + 100
@@ -206,6 +208,5 @@ boot.onEvent(boot, "PLAYER_LOGIN")
 Check(next(watch.unitEvents) == nil, "another race watches nothing")
 provider:RefreshAllData()
 Check(#pins == 0, "and sees no pins")
-Check(card.summary() == "Only for Skyborne characters", "the card says who it is for")
 
 print(("test-skyborne-spots: %d checks passed (%d shipped spots)"):format(checks, shipped))

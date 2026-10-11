@@ -807,6 +807,9 @@ check("one page: the window's card, then its cards in order", page.items[1].wind
     and page.items[1].text == "Open BiS List" and table.concat(cards, ",")
     == "marks,dropAlert,lists,statWeights,keys,window")
 check("the tooltip and bag marks card is named for them", page.cards.marks.name == "Marks on Items")
+check("Marks on Items holds Show on Tooltips and Bag Marks only: Bag Marks draws the level",
+    #page.cards.marks.rows == 2 and page.cards.marks.rows[1].key == "bisTooltip"
+    and page.cards.marks.rows[2].key == "bisBagMarks" and rows["Item Level in Bags"] == nil)
 check("Drop Alert: its switch and its preview", page.cards.dropAlert.switch == "bisLootAlert"
     and page.cards.dropAlert.studio == studio)
 check("no list management on it: that is the window's", rows["Manage Lists"] == nil and rows["Your List"]

@@ -1,4 +1,4 @@
--- SettingsPage.lua: the Dungeon Journal's settings page, declared as cards.
+-- SettingsPage.lua: the Dungeon Journal's settings page, declared as cards, and its entrance pins' rows on Map Options and Pins.
 local ns = _G.NaowhForever
 
 local J = ns.Journal
@@ -12,7 +12,7 @@ local ICON_MIN, ICON_MAX, ICON_STEP = 50, 200, 10
 local TO_FRACTION = J.Style.PERCENT_SCALE
 local PERCENT = J.C.PERCENT
 local ROUND_HALF = J.C.ROUND_HALF
-local ORDER_FIRST, ORDER_SECOND, ORDER_THIRD, ORDER_FOURTH, ORDER_LAST = 10, 15, 20, 30, 90
+local ORDER_FIRST, ORDER_THIRD, ORDER_FOURTH, ORDER_LAST = 10, 20, 30, 90
 
 local TEXT_JOURNAL_OFF = "Turn on the Dungeon Journal"
 local TEXT_BIS_OFF = "Needs the BiS List"
@@ -148,10 +148,6 @@ local function QuestsSummary(store)
     return text == TEXT_OFF and TEXT_TRACKER .. where or text .. TEXT_AND_TRACKER .. where
 end
 
-local function EntrancesSummary(store)
-    return store.Get("mapEntrances") and "Entrances shown" or TEXT_OFF
-end
-
 local function OpacitySummary(key)
     return function(store)
         return TEXT_OPACITY:format(math.floor((store.Get(key) or 1) * PERCENT + ROUND_HALF))
@@ -255,19 +251,6 @@ local function DeclareMap()
         },
     })
     map:Card({
-        id = "mapentrances", name = "On the World Map", order = ORDER_SECOND,
-        help = "The dungeon and raid entrances on the world map.",
-        summary = EntrancesSummary,
-        rows = {
-            Toggle("mapEntrances", "Dungeon and Raid Entrances", "A door on each dungeon and raid entrance on the "
-                .. "world map, for the sides the Journal lists. Hover it for the levels, click it for a waypoint."),
-            { key = "mapEntranceScale", label = "Icon Size", slider = { ICON_MIN, ICON_MAX, ICON_STEP }, unit = "%",
-              scale = TO_FRACTION, needs = EntrancesOn, why = TEXT_ENTRANCES_OFF,
-              help = "How big the entrance icons are. They are already largest on a zone's map, smaller on a "
-                  .. "continent's and the world's, and smaller while the map fills the screen." },
-        },
-    })
-    map:Card({
         id = "mapwindow", name = "Window", order = ORDER_LAST,
         help = "The map's window, the Journal beside the world map and Boss Loot at Cursor.",
         search = "dungeon page map link pin fold map and bosses only",
@@ -285,9 +268,27 @@ local function DeclareMap()
     })
 end
 
+local function DeclareMapPins()
+    local entrances = Toggle("mapEntrances", "Dungeon and Raid Entrances", "A door on each dungeon and raid "
+        .. "entrance on the world map, for the sides the Journal lists. Hover it for the levels, click it for a "
+        .. "waypoint.")
+    entrances.store, entrances.always = S, true
+    table.insert(ns.Shared.MapPins, {
+        title = "Dungeons & Raids", store = S, switch = "mapEntrances",
+        rows = {
+            entrances,
+            { key = "mapEntranceScale", label = "Entrance Icon Size", slider = { ICON_MIN, ICON_MAX, ICON_STEP },
+              unit = "%", scale = TO_FRACTION, store = S, always = true, needs = EntrancesOn,
+              why = TEXT_ENTRANCES_OFF, help = "How big the entrance icons are. They are largest on a zone's map, "
+                  .. "smaller on a continent's and the world's." },
+        },
+    })
+end
+
 S.OnChange(OnSettingChanged)
 if Settings then
     DeclareJournal()
     DeclareTracker()
     DeclareMap()
+    DeclareMapPins()
 end

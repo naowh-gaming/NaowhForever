@@ -21,6 +21,7 @@ local HELP_LINES = {
     "/nf help: this list",
     "/nf move (or /nf hud): opens or closes the HUD Editor",
     "/nf bars save, restore, test or delete <name>: your action bar sets; /nf bars list lists them",
+    "/nf ab <name>: imports a saved action bar set; /nf ab lists them",
     "/nf xp start, pause or reset: the XP ticker",
     "/nf lockouts: your raid and dungeon lockouts",
     "/nf ranks: higher ranks to put on your bars",
@@ -29,6 +30,7 @@ local HELP_LINES = {
     "/nf scrap: the Scrap List",
     "/nf quiz: the WoW quiz",
     "/nf setup: the onboarding",
+    "/nfquests (or /nfcompleto): the Quest List, in Discovery",
 }
 
 function _G.NaowhForever_OnCompartmentClick()
@@ -69,7 +71,7 @@ BINDING_NAME_NAOWHFOREVER_JOURNAL = "Open Dungeon Journal"
 BINDING_NAME_NAOWHFOREVER_BOSSLOOT = "Boss Loot at Cursor"
 BINDING_NAME_NAOWHFOREVER_BIS = "Open BiS List"
 BINDING_NAME_NAOWHFOREVER_GROUPINSPECT = "Open Group Inspect"
-BINDING_NAME_NAOWHFOREVER_COMPLETO = "Open Completo"
+BINDING_NAME_NAOWHFOREVER_COMPLETO = "Open Quest List"
 BINDING_NAME_NAOWHFOREVER_BAGSPACE_PICKUP = "Pick Up Cheapest Item"
 BINDING_NAME_NAOWHFOREVER_HUD = "Open or Close the HUD Editor"
 _G["BINDING_NAME_CLICK NaowhForeverBlessNext:LeftButton"] = "Next Blessing"
@@ -84,8 +86,12 @@ NaowhForever_ToggleJournal = SwitchedOff("Dungeon Journal")
 NaowhForever_BossLoot = SwitchedOff("Dungeon Journal")
 NaowhForever_ToggleBis = SwitchedOff("BiS List")
 NaowhForever_ToggleGroupInspect = SwitchedOff("Group Inspect")
-NaowhForever_ToggleCompleto = SwitchedOff("Completo")
+NaowhForever_ToggleCompleto = SwitchedOff("Discovery")
 NaowhForever_BagSpacePickUp = SwitchedOff("Quality of Life")
+
+SLASH_NAOWHFOREVERQUESTLIST1 = "/nfquests"
+SLASH_NAOWHFOREVERQUESTLIST2 = "/nfcompleto"
+SlashCmdList.NAOWHFOREVERQUESTLIST = function() NaowhForever_ToggleCompleto() end
 
 SLASH_NAOWHFOREVER1 = "/naowh"
 SLASH_NAOWHFOREVER2 = "/nao"
@@ -106,6 +112,8 @@ SlashCmdList["NAOWHFOREVER"] = function(msg)
         ns.ToggleGroupInspect()
     elseif cmd == "bars" and ns.ActionBarsCommand then
         ns.ActionBarsCommand(strtrim(msg):match("^%S+%s*(.-)$"))
+    elseif cmd == "ab" and ns.ActionBarsImportCommand then
+        ns.ActionBarsImportCommand(strtrim(msg):match("^%S+%s*(.-)$"))
     elseif cmd == "lockouts" and ns.LockoutsCommand then
         ns.LockoutsCommand()
     elseif cmd == "ranks" and ns.TrainerRankCheck then
@@ -124,6 +132,8 @@ SlashCmdList["NAOWHFOREVER"] = function(msg)
         ns.DungeonMapCommand(cmd)
     elseif cmd == "badges" and ns.BadgesCommand then
         ns.BadgesCommand(arg)
+    elseif cmd == "disenchant" and ns.ToggleDisenchant then
+        ns.ToggleDisenchant()
     elseif cmd == "scrap" and ns.ToggleScrapList then
         ns.ToggleScrapList()
     elseif (cmd == "setup" or cmd == "welcome") and ns.ShowSetup then

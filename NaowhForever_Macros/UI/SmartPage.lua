@@ -8,7 +8,8 @@ local S = M.Settings
 local C = M.C
 local St = M.Style
 local P = M.Parts
-local F = M.Forge
+local F = { tab = "smart" }
+M.Forge = F
 
 local QUESTION = C.QUESTION
 local ROW_ICON, ICON_EDGES, BLACK, CARD_GAP = St.ROW_ICON, St.ICON_EDGES, St.BORDER_RGB, St.CARD_GAP
@@ -31,7 +32,8 @@ local TEXT_ACCEPT = "Clicks Yes on popups"
 local TEXT_NOTHING = "Nothing in your bags"
 local COUNT, SLOT = "x%d", "slot %s"
 
-local NOTES = { health = "Healthstone and potions", mana = "Best mana potion", food = "Conjured food first",
+local NOTES = { health = "Healthstone and potions", healthstone = "Best healthstone", healthPotion = "Best healing potion",
+    mana = "Best mana potion", food = "Conjured food first", drink = "Conjured drink first",
     bandage = "On yourself", trinket1 = "Top trinket slot", trinket2 = "Bottom trinket slot",
     focus = "Marks and announces", acceptPopup = "Ready checks, summons" }
 

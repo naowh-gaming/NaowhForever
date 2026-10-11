@@ -1,21 +1,22 @@
-# Completo
+# Quest List
 
-Everything there is to do, and how much of it you have done. Its Overview tab, where it opens
-first, shows how far along you are in Quests and Rares, everywhere and in the zone you are in.
+Discovery's Quest List and Rares tabs (Completo in the code: `ns.Completo`, `/nfcompleto`, the
+`completo` settings store), everything there is to do and how much of it you have done. They
+share Discovery's switch: the Quest List follows Discovery's `enabled`, and an old profile with
+Completo on turns Discovery on. The Quest List window's Overview tab, where it opens first, shows how far along you are in Quests and Rares, everywhere and in the zone you are in.
 Its Quests tab has every quest of every zone for your character, how many you have done per zone, and for each quest chain the step
 you are on; its Rares tab every rare of every zone and which of them this character has killed.
 Map Pins put a ! on the world map at each quest giver with a quest for you, and a star where each
 rare spawns; Rare Alerts warn you when a rare is near. Off by default, every feature too: players
-turn it on in Completo's settings pages (Completo/General, Completo/Quests and Completo/Rares).
+turn it on in Discovery's settings pages (Discovery/Quest List and Discovery/Rares).
 
 ## Layout
 
 ```
-NaowhForever_Completo/
-  NaowhForever_Completo.toc   its metadata, and one file line: Completo.xml
-  Completo.xml                every file, in load order
-  Completo.lua                its settings (ns.CompletoSettings), the module table (ns.Completo) and
-                              the map pins' scale (Completo.ScalePin)
+NaowhForever_Discovery/QuestList/
+  QuestList.xml               every file, in load order, included by Discovery.xml
+  Completo.lua                its settings (ns.CompletoSettings), the module table (ns.Completo), its
+                              switch following Discovery's, and turning off an old Completo folder
   Constants.lua               the numbers several files share: a rare drop's fields, the sample rare
   Data/
     Quests.lua                every quest of every zone and its chain, generated
@@ -39,12 +40,12 @@ NaowhForever_Completo/
     AlertCard.lua             the Rare Alert's card, live or in its preview (Completo.AlertCard)
   UI/
     RareAlert.lua             the alert on screen: seeing a rare, the card, its place (Completo.RareAlert)
-    Window.lua                the window (/nfcompleto, its key binding) and its three tabs
+    Window.lua                the Quest List window (its key binding) and its three tabs
     QuestPins.lua, .xml       the quest giver pins on the world map, and their template
     RarePins.lua, .xml        the rare stars on the world map, and their template
-    GeneralSettings.lua       the Completo/General settings page: the key binding and the window
-    QuestsSettings.lua        the Completo/Quests settings page, declared as cards
-    RaresSettings.lua         the Completo/Rares settings page, with the alert's live preview
+    GeneralSettings.lua       the key binding and window cards, on the Discovery/Quest List page
+    QuestsSettings.lua        the quest cards on the Discovery/Quest List page, and the quest pins on Map Options and Pins
+    RaresSettings.lua         the Discovery/Rares settings page, with the alert's live preview, and the rare pins on Map Options and Pins
 ```
 
 Each layer only uses the ones above it: `Data` fills the rules, `View` draws what they decide,
@@ -105,12 +106,10 @@ quest and creature pages. Do not edit them by hand: change the tool and run it a
   its `SetPassThroughButtons` is protected, so calling it from our refresh is blocked in combat.
   Our pins want their clicks, so there is nothing to pass through.
 - The pin mixins are globals so the XML templates can name them.
-- `MIN_PIN_SCALE` is 1.5: the world map scales its canvas to fit, and in the small map's window
-  pins sized in map units shrink with it. `ScalePin` keeps a rare star at least 1.5 times its size
-  on screen there; on the full-screen map it is left as it is, and grows as you zoom.
-- Pin Size is halved for quest pins on the full screen map (`FULL_SCREEN_SHARE`), where they
-  otherwise stand out far too big, as the Skyborne and entrance pins do. The map going full
-  screen or back only changes their sizes, so it is safe in combat too.
+- Quest and rare pins scale with `ns.Shared.ScalePin`, so they keep one size on screen however far
+  the map is zoomed, in the small map's window and on the full screen map alike.
+- Their switches, Pin Sizes and options are rows on QoL's Map Options and Pins card and in its world map drawer
+  (`ns.Shared.MapPins`), with every other map pin; the keys stay in Completo's store.
 - Quest pins redraw on a quest taken, handed in or dropped, and on a level up (which turns some
   grey and lets others be picked up). A giver whose quests are all repeatable gets the game's blue
   mark; where an atlas is missing, the gossip window's ! is tinted instead.
@@ -162,12 +161,17 @@ quest and creature pages. Do not edit them by hand: change the tool and run it a
   key yet; else a chat line says where to bind it. Never again after that, so a key changed or
   cleared stays as it was left.
 
+- `/nfquests` and `/nfcompleto` are made in `Core/Commands.lua`, not here, and call
+  `NaowhForever_ToggleCompleto`, which the core defines as "Discovery is switched off" and this
+  window's file replaces when Discovery loads. So with Discovery off they say so instead of doing
+  nothing, as the key binding does, and `/nf help` lists them.
+
 ## Checking
 
-- `luacheck NaowhForever_Completo` from the repo root.
+- `luacheck NaowhForever_Discovery` from the repo root.
 - `lua Tools/regression/test-completo-rares.lua`: the rare rules, counting kills, Rare Alerts,
   their settings and preview, and the rare map pins and their focus. Its `SetRaidTarget` raises
   an error, so no rare path may set a raid mark.
-- `lua Tools/regression/test-completo-quest-pins.lua`: the quest pins are Pin Size on the small
-  map, half that on the full screen map, and resize when the map changes between the two.
+- `lua Tools/regression/test-completo-quest-pins.lua`: the quest pins are Pin Size and keep one
+  size on screen as the map zooms.
 - In game: `/reload` after changing a file. A new file needs a restart.

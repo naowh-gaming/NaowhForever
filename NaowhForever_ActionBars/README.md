@@ -5,7 +5,8 @@ Sets belong to a class and are shared by every character of that class on the ac
 window (`/nfbars`, `/nf bars`, Open Action Bars on its settings page) shows your class's saved
 sets, the set builder (pick the bars, slots, keybinds and macros that go in) and the import
 preview (your bars as an import would leave them). `/nf bars save|import|test|delete <name>`
-and `/nf bars list` do the same from chat.
+and `/nf bars list` do the same from chat. `/nf ab <name>` imports a set and `/nf ab` lists them.
+Import on New Character imports a chosen set once, the first time a level 1 character logs in.
 
 ## Layout
 
@@ -69,6 +70,11 @@ table (the frame, `Show` and `Redraw`) when it builds them.
 - The window's redraws are gathered into one on the next frame (`C_Timer.After(0, ...)`).
 - The builder's switches read the draft when they are made, so a draft exists before the window
   is built.
+- `/nf ab` is its own command, not the module alias `/nfab`: an alias shares `/nfbars`'s handler, which
+  cannot tell the two apart and would read the set name as a `/nf bars` subcommand.
+- Import on New Character waits for `PLAYER_ENTERING_WORLD`, when the spellbook is loaded, and for
+  the end of combat. The character is recorded by GUID (`barSetAuto`) when the import runs, so it
+  never repeats; the spells a level 1 character has not learned are placed by Fill In As You Learn.
 - `/nf bars restore` still imports, as it did before `import` was its name.
 
 ## Checking

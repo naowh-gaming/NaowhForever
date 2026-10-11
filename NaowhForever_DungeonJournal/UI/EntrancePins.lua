@@ -8,10 +8,9 @@ local St = J.Style
 local KIND_RGB, NAME_RGB, HINT_RGB = St.ENTRANCE_KIND_RGB, St.GOLD_NAME_RGB, St.ENTRANCE_HINT_RGB
 
 local TEMPLATE = "NaowhForeverEntrancePinTemplate"
-local PIN_SIZE = 22
+local PIN_SIZE = 18
 local MAP_COSMIC, MAP_WORLD, MAP_CONTINENT = 0, 1, 2
-local ZONE_SIZE, CONTINENT_SIZE, WORLD_SIZE = 2, 1.5, 1.2
-local MAXIMIZED_SHRINK = 2
+local ZONE_SIZE, CONTINENT_SIZE, WORLD_SIZE = 1, 0.75, 0.6
 local WORLD_POS_RETURN = 2
 local ICON = "dungeon"
 local RAID_ICON = "raid"
@@ -38,9 +37,7 @@ local function PinSize(map)
     local kind = info and info.mapType
     local step = (kind == MAP_COSMIC or kind == MAP_WORLD) and WORLD_SIZE
         or kind == MAP_CONTINENT and CONTINENT_SIZE or ZONE_SIZE
-    local size = PIN_SIZE * step * (S.Get("mapEntranceScale") or 1)
-    if map:IsMaximized() then size = size / MAXIMIZED_SHRINK end
-    return size
+    return PIN_SIZE * step * (S.Get("mapEntranceScale") or 1)
 end
 
 local function OnMap(px, py)
@@ -92,6 +89,7 @@ end
 local function MakePinMixin()
     NaowhForeverEntrancePinMixin = CreateFromMixins(MapCanvasPinMixin)
     local Pin = NaowhForeverEntrancePinMixin
+    Pin.ApplyCurrentScale = ns.Shared.ScalePin
 
     function Pin:OnLoad()
         self:UseFrameLevelType(FRAME_LEVEL)
@@ -105,6 +103,7 @@ local function MakePinMixin()
         self:SetSize(size, size)
         if not (AllRaids(group.dungeons) and self.Icon:SetAtlas(RAID_ICON)) then self.Icon:SetAtlas(ICON) end
         self:SetPosition(group.x, group.y)
+        self:ApplyCurrentScale()
     end
 
     function Pin:OnMouseEnter()
@@ -196,7 +195,6 @@ local function Setup()
     MakeProvider()
     events = CreateFrame("Frame")
     events:SetScript("OnEvent", Event)
-    WorldMapFrame:HookScript("OnSizeChanged", Resize)
 end
 
 local function Apply()

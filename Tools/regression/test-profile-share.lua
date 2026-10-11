@@ -49,7 +49,7 @@ local function World()
     w.buildsChanged = 0
     local ns = {
         UI = { PROFILES_PAGE = "Profiles" }, CODE_BUILD = "test", PlainText = PlainText,
-        MacroText = { LIMIT = 255 },
+        Macros = { C = { LIMIT = 255 } },
         TrainingBuilds = { [2] = { talents = {} } },
         -- Points that cannot be taken start with 0 here; the real rules are Training's own test.
         Training = {
@@ -342,6 +342,18 @@ Case("a value of the wrong type, or for no module, is not taken in", function()
     assert(p.tankReminder.leadTime == nil and p.tankReminder.utilityReminders.consumables[1].importedPack == nil)
 end)
 
+Case("a string from before Death Release, Combat Logging and Summon Emote were removed still imports", function()
+    local w = World()
+    local payload = assert(w.ns.DecodeProfile((w.ns.ExportProfile())))
+    local qol = payload.parts.settings.qol
+    qol.deathRelease, qol.deathReleaseHold, qol.combatLogger, qol.combatLogRaids = true, 2, true, "always"
+    qol.autoEmote, qol.autoEmoteList = true, "698: prepares a ritual of summoning"
+    assert(#w.ns.ProfileActing(payload) == 0, "the removed Summon Emote is not named")
+    w.ns.ImportProfile(payload, ALL, "Old")
+    local p = w.db.profiles.Old
+    assert(p.qol.fastLoot == true and p.qol.bisSlots[1] == 6948, "the rest of the string comes along")
+end)
+
 -- Forever raises on 1 / 0, which LibSerialize does to each 0 it writes: none may reach it.
 Case("a 0 comes back as 0 and never reaches the serializer", function()
     local w = World()
@@ -520,24 +532,20 @@ end)
 Case("settings that act for you are named, and stay off unless asked for", function()
     local w = World()
     local qol = w.db.profiles.Default.qol
-    qol.autoEmote, qol.sellJunk, qol.questAccept = true, true, false
-    qol.autoEmoteList = "698: |TInterface\\Icons\\X:0|t prepares a ritual|n; 29893: makes a soulwell"
+    qol.lootConfirm, qol.sellJunk, qol.questAccept = true, true, false
     local payload = assert(w.ns.DecodeProfile((w.ns.ExportProfile())))
     local acting = w.ns.ProfileActing(payload)
-    assert(#acting == 2 and acting[1]:find('Summon Emote, which says "', 1, true) == 1, acting[1])
-    assert(acting[1]:find("prepares a ritual||n / makes a soulwell", 1, true), acting[1])
-    assert(not Live(acting[1]), "the emote's text is shown escaped")
-    assert(acting[2] == "Auto Sell Junk")
+    assert(#acting == 2 and acting[1] == "Auto Sell Junk" and acting[2] == "Skip Loot Confirmations", acting[1])
     w.ns.ImportProfile(payload, ALL)
     local landed = w.db.profiles[w.switched].qol
-    assert(landed.autoEmote == nil and landed.autoEmoteList == nil and landed.sellJunk == nil, "left out")
+    assert(landed.lootConfirm == nil and landed.sellJunk == nil, "left out")
     assert(landed.fastLoot == true and landed.questAccept == false, "every other setting comes along")
     local all = { acting = true }
     for k, v in pairs(ALL) do all[k] = v end
     w.active = "Default"
     w.ns.ImportProfile(payload, all)
     landed = w.db.profiles[w.switched].qol
-    assert(landed.autoEmote == true and landed.sellJunk == true and landed.autoEmoteList, "taken when asked for")
+    assert(landed.lootConfirm == true and landed.sellJunk == true, "taken when asked for")
     assert(#w.ns.ProfileActing(assert(World().ns.DecodeProfile((World().ns.ExportProfile())))) == 0,
         "a profile that acts for nobody names nothing")
 end)

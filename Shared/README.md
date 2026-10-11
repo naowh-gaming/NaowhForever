@@ -9,8 +9,9 @@ through `Shared.xml`. Nothing is made or listened to at load.
 ```
 Shared/
   Shared.xml       what loads, in order (the core TOC's Shared load point)
-  Shared.lua       the namespace (ns.Shared), what a character keeps by its GUID (Shared.CharacterData),
-                   and how long ago a time was (Shared.Ago)
+  Shared.lua       the namespace (ns.Shared), the map pin sections that QoL and other modules add to its Map Options and Pins
+                   (Shared.MapPins, in order by Shared.MapPinSections), a map pin's scale (Shared.ScalePin), what a character keeps by its
+                   GUID (Shared.CharacterData), and how long ago a time was (Shared.Ago)
   Style.lua        the house look: colors (BiS stars, worn green, looks, red and warning orange), icons, sizes
   Data/            data only, generated; never edited by hand
     Forever.lua      what is new in WoW Forever, by ID (Shared.ForeverNew), from Tools/build/forever_new.py
@@ -35,7 +36,7 @@ Shared/
   Game/Roster.lua  our part of a player's tooltip in the Guild & Communities and Friends lists (Badges, Naowh Score)
   Game/Places.lua  zones by name, and showing one on the world map
   Game/Towns.lua   town service NPCs by world map (ns.TownNPCs) and the capitals (ns.TownCapitals), by hand:
-                   QoL's Map Pins, the Training Planner's trainers and Professions' rank alerts read it
+                   QoL's Map Options and Pins, the Training Planner's trainers and Professions' rank alerts read it
   Game/Played.lua  the character's /played time, asked for once with the chat print muted (XP Bar, XP per Hour)
   UI/Parts.lua     the small parts: icons in text (Parts.Inline), smooth textures, hover cards (Parts.Tip,
                    Parts.TipLines), the chevron, links, icon buttons, a short label in a pill of its color
@@ -262,6 +263,14 @@ What a comment in the code used to say, in short. The house rules behind it are 
   it shows it, so Shared costs nothing for a feature that is off.
 - `Shared.CharacterData` keys a character's data by its GUID: first names are not unique on
   Forever, so a name key collides. It returns nil before the game knows who you are.
+- `Shared.ScalePin` is a map pin's `ApplyCurrentScale`. Pins sit on the map's canvas, which the
+  map scales to fit and to zoom, so the pin's scale is `PIN_SCALE` (1.5) over the canvas scale:
+  the same size on screen at every zoom. The map's global pin scale still applies.
+- `Shared.MapPins` is a plain list, filled at load by the modules that have map pins and read
+  only when QoL's Map Options and Pins card or drawer is drawn, so the load order of the addons does not matter.
+  A section is `{ title, order, store, switch, rows }`: `switch` is its own on and off key in `store`, `order` (default 50, after the lower ones, then by load order) where it comes, and `title` its group, none to continue the one above.
+- A settings row marked `lent` belongs to another module's store: its card's Reset and changed
+  count leave it out, while its own changed dot still resets it.
 - `Decode.lua` loads with nothing else from the addon and returns its table, so the offline
   tests can load it on its own.
 
@@ -439,7 +448,8 @@ What a comment in the code used to say, in short. The house rules behind it are 
 - A settings row with `field` is one entry of a table setting: its dot and reset are that
   entry's own. A number counts as unchanged within `SAME_WITHIN`, so a value saved back through
   a slider or color picker still reads as the default.
-- A page's only card opens by itself, as does its first card when it has a live preview. A
+- A page's only card opens by itself, as does its first card when it has a live preview, unless
+  the card says `collapsed = true` (the Crosshair, so the Cursor & Crosshair tab opens folded). A
   search holds a card open, so its head does not fold it.
 - A hidden row is set on the card's preview instead; it is still searched, counted and reset. A
   search match on a hidden row shows the card whole, and part of a card shows no reset, which

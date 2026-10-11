@@ -209,8 +209,7 @@ env.hooksecurefunc = function(target, key, fn)
     end
 end
 for _, path in ipairs(dofile("Tools/regression/toc_files.lua")("^NaowhForever_TopBar/.*%.lua$")) do Load(path) end
-for _, path in ipairs({ "NaowhForever_QoL/Combat/DeathRelease.lua",
-    "NaowhForever_QoL/Combat/StealthReminder.lua", "NaowhForever_QoL/Combat/CoTank.lua" }) do Load(path) end
+for _, path in ipairs({ "NaowhForever_QoL/Combat/StealthReminder.lua", "NaowhForever_QoL/Combat/CoTank.lua" }) do Load(path) end
 local UI = ns.UI
 ns.BuildQoLInterfacePage = function(parent, y) return y end
 for _, name in ipairs({ "JournalSettings", "DiscoverySettings", "ProfessionSettings", "MacroSettings", "AuraBuffSettings",
@@ -248,7 +247,7 @@ Check(not Text("Close") and Button("Reload UI") ~= nil, "no footer: Reload UI si
 Check(not Text("Custom Reminders"), "unfinished module is absent from navigation")
 Check(Button("Quality of Life").switch == nil, "navigation does not toggle modules")
 for _, name in ipairs({ "Quality of Life", "Dungeon Journal", "Discovery", "BiS List", "Professions",
-    "Gear & Trinkets", "Blessings", "Completo", "AuraBuffs", "Threat Meter", "Swing Timer",
+    "Gear & Trinkets", "Blessings", "AuraBuffs", "Threat Meter", "Swing Timer",
     "Macros", "Action Bars" }) do
     Check(Button(name).icon ~= nil, name .. " is listed with its glyph")
 end
@@ -266,7 +265,6 @@ local originalHeight = mainWindow:GetHeight()
 local TALL_WINDOW = 1000
 mainWindow:SetHeight(822)
 moduleScroll.scripts.OnSizeChanged(moduleScroll)
-Check(moduleScroll.bar:IsShown(), "the default 822-high window shows the navigation scrollbar when the list is longer")
 local lastModule
 for _, f in ipairs(frames) do
     if f.parent == moduleList and f.points and f.points.TOPLEFT and f:IsShown()
@@ -343,7 +341,7 @@ pageScroll:SetVerticalScroll(0)
 
 ns.OpenOptionsWindow("QoL/Combat"); Flush()
 local S = ns.QoLSettings
-Check(Head("Stealth Reminder") and Head("Co-Tank Frame") and Head("Death Release Protection"),
+Check(Head("Stealth Reminder") and Head("Co-Tank Frame"),
     "each feature on the page is a card")
 Check(not Text("Out of Stealth Color") and not Text("Max Icons"), "cards start closed: their settings do not show")
 local function Setting(label)
@@ -443,15 +441,15 @@ root:Hide(); UI:RefreshPage(true)
 local hiddenCount = #frames
 Check(#frames == hiddenCount, "hidden refresh does not build controls")
 ns.OpenOptionsWindow("QoL/Combat"); Flush()
-Check(Text("Death Release Protection") ~= nil, "reopening rebuilds the visible page")
+Check(Text("Co-Tank Frame") ~= nil, "reopening rebuilds the visible page")
 local header = Text("Enable QoL").parent
 local switch
 for _, child in ipairs(header.children) do if child._get then switch = child end end
 Check(switch and switch._get() == true, "header switch reads the current module")
-ns.QoLSettings.Set("deathReleaseHold", 2)
+ns.QoLSettings.Set("coTankWidth", 222)
 switch.scripts.OnClick(); Flush()
 Check(Text("Disable Quality of Life? Top Bar needs it, so both will be disabled.") ~= nil
-    and ns.QoLSettings.Get("enabled") == true and ns.QoLSettings.Get("deathReleaseHold") == 2,
+    and ns.QoLSettings.Get("enabled") == true and ns.QoLSettings.Get("coTankWidth") == 222,
     "switching QoL off asks to turn its addon off, with the Top Bar, and its settings are kept")
 Click(Button("Cancel")); Flush()
 Check(not disabled.NaowhForever_QoL and switch._get() == true, "Cancel keeps QoL on")
@@ -461,15 +459,15 @@ switch.scripts.OnClick(); Flush()
 Check(ns.ThreatMeterSettings.Get("enabled") == true and ns.QoLSettings.Get("enabled") == true,
     "switch changes only the selected module")
 Click(Button("Quality of Life")); Flush()
-settings = { qol = { enabled = true, deathReleaseHold = 1.5 } }
+settings = { qol = { enabled = true, coTankWidth = 233 } }
 UI:RefreshPage(true); Flush()
-Check(switch._get() == true and ns.QoLSettings.Get("deathReleaseHold") == 1.5,
+Check(switch._get() == true and ns.QoLSettings.Get("coTankWidth") == 233,
     "profile replacement refreshes controls against the new settings")
-local beforeWidth = Head("Death Release Protection"):GetWidth()
+local beforeWidth = Head("Stealth Reminder"):GetWidth()
 root:SetWidth(1640); UI:RefreshPage(true); Flush()
-Check(Head("Death Release Protection"):GetWidth() > beforeWidth, "cards grow with the window")
+Check(Head("Stealth Reminder"):GetWidth() > beforeWidth, "cards grow with the window")
 root:SetWidth(1440); UI:RefreshPage(true); Flush()
-Check(Head("Death Release Protection"):GetWidth() == beforeWidth, "and shrink with it")
+Check(Head("Stealth Reminder"):GetWidth() == beforeWidth, "and shrink with it")
 local pages = UI.SearchPages
 UI.SearchPages = function()
     for _, page in ipairs(pages()) do if page.key == "QoL/Combat" then return { page } end end
@@ -529,7 +527,7 @@ do
     Check(icons and icons.parent.setting and Shown("Co-Tank Frame"), "the matching setting shows, its card open")
     Check(icons.text:find(ns.Color("accent", "Max"), 1, true) and icons.text:find(ns.Color("accent", "Icons"), 1, true),
         "the typed words are lit in its name")
-    Check(not Shown("Width") and not Shown("Stealth Reminder") and not Shown("Death Release Protection"),
+    Check(not Shown("Width") and not Shown("Stealth Reminder"),
         "the rest of the page is left out")
     Check(Button("Quality of Life").count.text == "1" and Alpha(Button("Quality of Life")) == 1,
         "the module with the match counts it")
@@ -558,7 +556,7 @@ do
     input:SetText("max icons"); Flush()
     root.scripts.OnKeyDown(root, "ESCAPE"); Flush()
     Check(root:IsShown() and input:GetText() == "" and UI.filter == nil, "Escape clears the search, not the window")
-    Check(Head("Stealth Reminder") and Head("Death Release Protection") and not Text(note), "the whole page is back")
+    Check(Head("Stealth Reminder") and not Text(note), "the whole page is back")
     Check(Setting("Max Icons") ~= nil, "the card the search found stays open")
     Check(Button("Quality of Life").count.text == "" and Alpha(Button("Threat Meter")) == threatAlpha
         and Button("Interface").text.alpha == 1, "the counts go and nothing is dimmed")

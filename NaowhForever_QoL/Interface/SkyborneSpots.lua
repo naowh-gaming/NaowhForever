@@ -34,9 +34,8 @@ local TEXT_SAVED = "%s saved on your map: %s %.1f, %.1f."
 local TEXT_UNKNOWN_MAP = "?"
 local TEXT_CLICK = "Click for a waypoint."
 local TEXT_FORGET = "Right-click to forget this spot."
-local TEXT_NOT_SKYBORNE = "Only for Skyborne characters"
-local TEXT_KNOWN = "%d %s known"
-local TEXT_PLURAL = "s"
+local SECTION_ORDER = 60
+local TEXT_SECTION = "Skyborne"
 
 local waiting
 local events
@@ -322,14 +321,6 @@ local function ForgetAll()
     Redraw()
 end
 
-local function Summary()
-    local kind = MyKind()
-    if not kind then return TEXT_NOT_SKYBORNE end
-    local count = #ns.SkyborneSpots[kind] + #Found(kind)
-    local name = KINDS[kind].name
-    return TEXT_KNOWN:format(count, count == 1 and name or name .. TEXT_PLURAL)
-end
-
 watch:SetScript("OnEvent", OnWatchEvent)
 
 hooksecurefunc(S, "Set", function(key)
@@ -345,17 +336,18 @@ local boot = CreateFrame("Frame")
 boot:RegisterEvent("PLAYER_LOGIN")
 boot:SetScript("OnEvent", Apply)
 
-ns.Shared.Settings.Page("QoL/Interface", S):Card({
-    id = "mapSkyborne", name = "Skyborne Spots", order = 46, switch = "mapSkyborne",
-    help = "For Skyborne characters: ley lines (Alliance, for Read Ley Line) or Elemental "
-        .. "Convergences (Horde, for Skysight) pinned on the world map. The game does not mark "
-        .. "them: the addon knows the ones players have found, and saves each new one you cast "
-        .. "your racial on. Other races see no pins.",
-    summary = Summary,
+table.insert(ns.Shared.MapPins, {
+    title = TEXT_SECTION, order = SECTION_ORDER, store = S, switch = "mapSkyborne",
     rows = {
-        { key = "mapSkyborneSize", label = "Pin Size", slider = PIN_RANGE },
-        { label = "Forget Found Spots", buttonText = "Forget All", button = ForgetAll, needs = AnyFound,
-          why = "No spots found yet",
+        { key = "mapSkyborne", label = "Skyborne Spots", toggle = true, store = S,
+          help = "For Skyborne characters: ley lines (Alliance, for Read Ley Line) or Elemental "
+              .. "Convergences (Horde, for Skysight) pinned on the world map. The game does not mark "
+              .. "them: the addon knows the ones players have found, and saves each new one you cast "
+              .. "your racial on. Other races see no pins." },
+        { key = "mapSkyborneSize", label = "Skyborne Pin Size", slider = PIN_RANGE, store = S,
+          needs = "mapSkyborne" },
+        { label = "Forget Found Spots", buttonText = "Forget All", button = ForgetAll, store = S,
+          needs = AnyFound, why = "No spots found yet",
           help = "Forgets every spot this account found. The addon's own list stays.",
           search = "right-click right click pin forget one spot" },
     },

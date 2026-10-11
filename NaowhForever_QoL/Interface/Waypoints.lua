@@ -256,6 +256,9 @@ end
 
 local pin, nav, cue, driver, navFrame, unlocked, gameHidden, warned
 local arrived, arrivals = false, 0
+local Arrived
+local selfCleared, seenAway
+local mapHooked, trackOnMapClose
 local reached
 local lastX, lastY
 local shown = {}
@@ -371,6 +374,18 @@ local function PlaceOnSpot(nx, ny, scale)
     lastX, lastY = nx, ny + lift * scale
 end
 
+local function OnWaypointMap()
+    local point = C_Map.GetUserWaypoint()
+    if not point then return false end
+    local map = C_Map.GetBestMapForUnit("player")
+    while map and map ~= 0 do
+        if map == point.uiMapID then return true end
+        local info = C_Map.GetMapInfo(map)
+        map = info and info.parentMapID
+    end
+    return false
+end
+
 local function CheckReached(yards)
     if shown.ground or yards > LEAVE then
         reached = false
@@ -429,6 +444,13 @@ local function Update()
         PlaceOnSpot(nx, ny, scale)
     end
     CheckReached(yards)
+    if yards > LEAVE then seenAway = true end
+    if shown.user and not shown.onRoute and not selfCleared and seenAway and yards <= REACHED and OnWaypointMap() then
+        selfCleared = true
+        Arrived()
+        ns.ClearWaypoint()
+        return
+    end
     pin:SetShown(not (behind or reached) and (mode ~= "edge" or S.Get("waypointEdge")))
     cue:SetShown(behind and not reached and S.Get("waypointEdge"))
     Paint(mode, side, yards, WalkSeconds(yards), angle)
@@ -444,13 +466,14 @@ local function Retitle()
     shown.onRoute = placed and route ~= nil
     if shown.onRoute then shown.sub = TEXT_STOP:format(route, St.PLACE_DOT, at, n) end
     shown.shape = S.Get("waypointShape")
-    shown.ground = kind == types.UserWaypoint or kind == types.Corpse
+    shown.user = kind == types.UserWaypoint
+    shown.ground = shown.user or kind == types.Corpse
     shown.card, shown.beam = S.Get("waypointCard"), S.Get("waypointBeam") and shown.ground
     pin.onNav, reached = false, false
 end
 
 local function Detach()
-    navFrame = nil
+    navFrame, selfCleared = nil, false
     if not driver then return end
     driver:SetScript("OnUpdate", nil)
     if arrived then return end
@@ -473,6 +496,7 @@ local function Attach()
     navFrame = C_Navigation.GetFrame()
     if not navFrame then Detach() return end
     if not driver then Build() end
+    seenAway = false
     PlaceNav()
     Retitle()
     lastX, lastY = nil, nil
@@ -487,8 +511,17 @@ local function OnArrivalOver(this)
     if navFrame then Attach() else Detach() end
 end
 
-local function Arrived()
-    if not (driver and lastX) then return end
+function Arrived()
+    if not driver then return end
+    if shown.user and not shown.onRoute then
+        driver:SetScript("OnUpdate", nil)
+        pin:Hide()
+        cue:Hide()
+        nav:Hide()
+        ns.UI._PlayLSMSound(ns.UI.SoundPathFor(S.Get("waypointSound")))
+        return
+    end
+    if not lastX then return end
     arrived = true
     arrivals = arrivals + 1
     local this = arrivals
@@ -516,7 +549,35 @@ local function Arrived()
     C_Timer.After(ARRIVED_HOLD, function() OnArrivalOver(this) end)
 end
 
+local function TrackPlaced()
+    trackOnMapClose = false
+    if C_Map.HasUserWaypoint() and not C_SuperTrack.IsSuperTrackingUserWaypoint() then
+        C_SuperTrack.SetSuperTrackedUserWaypoint(true)
+    end
+end
+
+local function OnMapHide()
+    if trackOnMapClose then TrackPlaced() end
+end
+
+local function WatchPlaced()
+    if not C_Map.HasUserWaypoint() then return end
+    if WorldMapFrame and WorldMapFrame:IsVisible() then
+        if not mapHooked then
+            WorldMapFrame:HookScript("OnHide", OnMapHide)
+            mapHooked = true
+        end
+        trackOnMapClose = true
+    else
+        C_Timer.After(0, TrackPlaced)
+    end
+end
+
 local function OnEvent(_, event, isWaypoint)
+    if event == "USER_WAYPOINT_UPDATED" then
+        seenAway = false
+        WatchPlaced()
+    end
     if event == "NAVIGATION_FRAME_CREATED" then
         Attach()
     elseif event == "NAVIGATION_FRAME_DESTROYED" then
@@ -528,6 +589,7 @@ local function OnEvent(_, event, isWaypoint)
     elseif not navFrame then
         if C_Navigation.GetFrame() then Attach() end
     elseif not arrived then
+        selfCleared = false
         Retitle()
     end
 end
@@ -622,7 +684,7 @@ end
 
 Settings.Page("QoL/Interface", S):Card({
     id = "waypoints", name = "Waypoint Pin", order = 42, switch = "waypoints",
-    help = "Marks the spot you are heading to in the world, with its distance.",
+    help = "Marks the spot you are heading to in the world, with its distance. A waypoint you place on the map is tracked for you.",
     summary = Summary,
     studio = { height = STAGE_H, states = STATES, new = NewPreview, paint = PaintPreview },
     rows = {

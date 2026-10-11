@@ -33,6 +33,9 @@ local TEXT_DETAIL_OFF = "Turn on Action Bars to save and import your bars."
 local TEXT_DETAIL_LAST = "This character last used %s. Import any set from the window, out of combat."
 local TEXT_DETAIL = "Save your bars from the window, or with /nf bars save and a name."
 
+local AUTO_IMPORT_LEVEL = 1
+local AUTO_STORE = "barSetAuto"
+
 local COMMANDS = { save = true, import = true, restore = true, test = true, delete = true }
 
 local function Ready(what)
@@ -163,12 +166,38 @@ local function SaveOnLogout()
     if key and sets[key] then sets[key] = Capture.Snapshot(sets[key].choices) end
 end
 
+local function AutoImportDue()
+    local name = S.Get("autoImportSet")
+    if name == "" or not S.Get("enabled") or UnitLevel("player") ~= AUTO_IMPORT_LEVEL then return false end
+    local done = ns.Shared.CharacterData(AUTO_STORE, true)
+    return not done.imported and A.Find(name) ~= nil
+end
+
+local function AutoImport()
+    if not A.autoWaiting then return end
+    if InCombatLockdown() then
+        Pending.events:RegisterEvent("PLAYER_REGEN_ENABLED")
+        return
+    end
+    A.autoWaiting = false
+    ns.Shared.CharacterData(AUTO_STORE, true).imported = true
+    ImportSet(S.Get("autoImportSet"))
+end
+
 local function OnEvent(_, event)
     if event == "PLAYER_LOGIN" then
         Pending.Watch()
+        if AutoImportDue() then
+            A.autoWaiting = true
+            Pending.events:RegisterEvent("PLAYER_ENTERING_WORLD")
+        end
+    elseif event == "PLAYER_ENTERING_WORLD" then
+        Pending.events:UnregisterEvent(event)
+        AutoImport()
     elseif event == "LEARNED_SPELL_IN_SKILL_LINE" then
         Pending.events:RegisterEvent("SPELLS_CHANGED")
     elseif event == "SPELLS_CHANGED" or event == "PLAYER_REGEN_ENABLED" then
+        if event == "PLAYER_REGEN_ENABLED" then AutoImport() end
         Pending.SpellsReady(event)
     else
         SaveOnLogout()
@@ -193,6 +222,11 @@ function ns.ActionBarsCommand(text)
     else
         DeleteNamed(name)
     end
+end
+
+function ns.ActionBarsImportCommand(text)
+    local name = strtrim(text or "")
+    if name == "" then List() else ImportSet(name) end
 end
 
 ns.ActionBarSets = {

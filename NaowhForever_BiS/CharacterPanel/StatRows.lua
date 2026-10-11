@@ -50,13 +50,21 @@ local function YouLine(row)
     end
 end
 
+local function Does(stat)
+    local byClass = D.DOES_BY_CLASS[stat]
+    if not byClass then return D.DOES[stat] end
+    local _, class = UnitClass("player")
+    return byClass[class] or D.DOES[stat]
+end
+
 local function RowEnter(row)
     if not row.stat or not Parts.Tip(row, "ANCHOR_RIGHT") then return end
     local a, m, view = T.accentSoft, T.muted, row.view
     GameTooltip:SetText(NAME[row.stat] or row.stat, TITLE_RGB.r, TITLE_RGB.g, TITLE_RGB.b)
     GameTooltip:AddLine(Worth.Line(row.stat, row.weight, view.specName, view.yard, view.yardWeight), a.r, a.g, a.b,
         true)
-    if D.DOES[row.stat] then GameTooltip:AddLine(D.DOES[row.stat], m.r, m.g, m.b, true) end
+    local does = Does(row.stat)
+    if does then GameTooltip:AddLine(does, m.r, m.g, m.b, true) end
     YouLine(row)
     GameTooltip:Show()
 end

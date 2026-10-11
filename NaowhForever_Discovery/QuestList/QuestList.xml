@@ -1,5 +1,5 @@
 <Ui xmlns="http://www.blizzard.com/wow/ui/">
-    <!-- Completo.xml: Completo's files, in load order. -->
+    <!-- QuestList.xml: the Quest List's files (Completo in the code), in load order. -->
     <Script file="Completo.lua"/>
     <Script file="Constants.lua"/>
     <Script file="Data\Quests.lua"/>

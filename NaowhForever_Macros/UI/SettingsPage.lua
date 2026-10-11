@@ -8,7 +8,7 @@ local Settings = ns.Shared.Settings
 local Group = Settings.Group
 
 local OPACITY_RANGE, PERCENT_SCALE = ns.Shared.Style.OPACITY_RANGE, ns.Shared.Style.PERCENT_SCALE
-local ORDER_KEPT, ORDER_HEALTH, ORDER_FOCUS, ORDER_WINDOW = 5, 20, 30, 40
+local ORDER_KEPT, ORDER_HEALTH, ORDER_FOOD, ORDER_EXTRA, ORDER_FOCUS, ORDER_WINDOW = 5, 20, 22, 25, 30, 40
 local MACROS_OFF = "Turn on Macros"
 local TEXT_KEPT = "%d of %d kept current"
 local TEXT_ANNOUNCES_MARKS = "Announces and marks your focus"
@@ -59,10 +59,16 @@ page:Card({
     rows = {
         { key = "health", label = "NF Health", toggle = true, needs = On, why = MACROS_OFF,
           help = "Your best healthstone or healing potion." },
+        { key = "healthstone", label = "NF Healthstone", toggle = true, needs = On, why = MACROS_OFF,
+          help = "Your best healthstone alone." },
+        { key = "healthPotion", label = "NF Health Potion", toggle = true, needs = On, why = MACROS_OFF,
+          help = "Your best healing potion alone." },
         { key = "mana", label = "NF Mana", toggle = true, needs = On, why = MACROS_OFF,
           help = "Your best mana potion." },
         { key = "food", label = "NF Food", toggle = true, needs = On, why = MACROS_OFF,
           help = "Your best food and drink, conjured first." },
+        { key = "drink", label = "NF Drink", toggle = true, needs = On, why = MACROS_OFF,
+          help = "Your best drink alone, conjured first." },
         { key = "bandage", label = "NF Bandage", toggle = true, needs = On, why = MACROS_OFF,
           help = "Your best bandage, on yourself." },
         { key = "trinket1", label = "NF Trinket 1", toggle = true, needs = On, why = MACROS_OFF,
@@ -88,6 +94,35 @@ page:Card({
 })
 
 page:Card({
+    id = "food", name = "Food Macro", order = ORDER_FOOD,
+    help = "NF Food uses the best food and drink in your bags. Switch it on in Kept Current.",
+    rows = {
+        { key = "foodOnly", label = "Food Only", toggle = true, needs = On, why = MACROS_OFF,
+          help = "NF Food uses only food, and NF Drink is the one for drink." },
+    },
+})
+
+local EXTRA_HELP = "Lines added after the macro's own. Write \n between lines, as in "
+    .. "/use [@mouseover,help][]Holy Light\n/cqs. Left out, with a message, if the macro would pass 255 characters."
+
+local function ExtraRows()
+    local rows = {}
+    for _, m in ipairs(Smart.list) do
+        if Smart.bag[m.key] then
+            rows[#rows + 1] = { key = m.key .. "Extra", label = m.name, text = true, wide = true, needs = On,
+                why = MACROS_OFF, help = EXTRA_HELP }
+        end
+    end
+    return rows
+end
+
+page:Card({
+    id = "extra", name = "Extra Lines", order = ORDER_EXTRA,
+    help = "Add your own lines to the bag macros. They are kept after the item, whatever is in your bags.",
+    rows = ExtraRows(),
+})
+
+page:Card({
     id = "focus", name = "Focus Macro", order = ORDER_FOCUS,
     help = "NF Focus focuses your mouseover, or your target. Switch it on in Kept Current.",
     summary = FocusSummary,
@@ -105,8 +140,8 @@ page:Card({
 
 page:Card({
     id = "window", name = "Window", order = ORDER_WINDOW,
-    help = "Naowh's Forge, Macros' own window: your macros, the ones kept current, and Naowh's library.",
-    search = "import export macro strings shorten to library save right-click right click icon star favorite",
+    help = "Naowh's Forge, Macros' own window: the macros kept current, and Naowh's library.",
+    search = "import export macro strings",
     rows = {
         { key = "windowAlpha", label = "Window Opacity", slider = OPACITY_RANGE,
           unit = "%", scale = PERCENT_SCALE, help = "How solid the window is, in percent. Also on its title bar." },
