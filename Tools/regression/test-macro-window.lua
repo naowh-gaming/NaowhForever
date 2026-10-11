@@ -369,7 +369,7 @@ for _, key in ipairs({ "conditions", "commands", "icons", "explain" }) do window
 -------------------------------------------------------------------------------
 window.switch.onPick("smart")
 local cards = Shown(function(f) return rawget(f, "key") ~= nil and rawget(f, "uses") ~= nil end)
-check("one card per Smart Macro", #cards == 8)
+check("one card per Smart Macro", #cards == 11)
 local health
 for _, c in ipairs(cards) do if c.key == "health" then health = c end end
 check("the health card says what it will use", health.uses[1].text.text == "Item 5509")

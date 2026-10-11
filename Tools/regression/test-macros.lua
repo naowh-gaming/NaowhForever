@@ -241,7 +241,7 @@ do
         "#showtooltip\n/castsequence reset=combat item:247241, item:858")
     t = Fixture({ settings = { health = true, healthOrder = "potion" }, bags = { 17348, 11951 } })
     t.Fire("PLAYER_ENTERING_WORLD")
-    Check("health, no draught or tuber", t.Body("NF Health"), nil)
+    Check("health, no draught or tuber", t.Body("NF Health"), "#showtooltip")
 end
 
 -- One step per potion carried, so running out of one kind mid-fight moves on to the next.
@@ -268,11 +268,11 @@ do
     Check("conjured food first, no drink", t.Body("NF Food"), "#showtooltip\n/use item:5349")
 end
 
--- Nothing carried: no macro is made, and an existing one is left as it was.
+-- Nothing carried: a bare #showtooltip macro is made to place on a bar, and an existing one is left as it was.
 do
     local t = Fixture({ settings = { bandage = true }, bags = {} })
     t.Fire("PLAYER_ENTERING_WORLD")
-    Check("no bandage macro without bandages", t.Body("NF Bandage"), nil)
+    Check("placeholder bandage macro without bandages", t.Body("NF Bandage"), "#showtooltip")
     t.Bags({ 14529 })
     t.Fire("BAG_UPDATE_DELAYED")
     Check("bandage on self", t.Body("NF Bandage"), "#showtooltip\n/use [@player] item:14529")
@@ -280,6 +280,78 @@ do
     t.Fire("BAG_UPDATE_DELAYED")
     Check("bandage kept after the last is used", t.Body("NF Bandage"),
         "#showtooltip\n/use [@player] item:14529")
+end
+
+-- Health split in two: the stone alone, the potions alone, NF Health unchanged.
+do
+    local t = Fixture({ settings = { health = true, healthstone = true, healthPotion = true },
+        bags = { 929, 929, 5509 } })
+    t.Fire("PLAYER_ENTERING_WORLD")
+    Check("NF Health still mixes", t.Body("NF Health"),
+        "#showtooltip\n/castsequence reset=combat item:5509, item:929, item:929")
+    Check("NF Healthstone is the stone", t.Body("NF Healthstone"), "#showtooltip\n/use item:5509")
+    Check("NF Health Potion is the potions", t.Body("NF Health Potion"),
+        "#showtooltip\n/castsequence reset=combat item:929, item:929")
+    t.Bags({ 929 })
+    t.Fire("BAG_UPDATE_DELAYED")
+    Check("stone macro keeps its item once the stone is gone", t.Body("NF Healthstone"), "#showtooltip\n/use item:5509")
+    Check("one potion is a plain use", t.Body("NF Health Potion"), "#showtooltip\n/use item:929")
+    t = Fixture({ settings = { healthstone = true, healthPotion = true } })
+    t.Fire("PLAYER_ENTERING_WORLD")
+    Check("healthstone placeholder", t.Body("NF Healthstone"), "#showtooltip")
+    Check("health potion placeholder", t.Body("NF Health Potion"), "#showtooltip")
+    Check("NF Health stays off", t.Body("NF Health"), nil)
+    t.Bags({ 5509 })
+    t.Fire("BAG_UPDATE_DELAYED")
+    Check("placeholder filled when the stone arrives", t.Body("NF Healthstone"), "#showtooltip\n/use item:5509")
+    Check("potion macro ignores a stone", t.Body("NF Health Potion"), "#showtooltip")
+end
+
+-- Food apart from drink.
+do
+    local t = Fixture({ settings = { food = true, drink = true }, bags = { 8932, 8079 } })
+    t.Fire("PLAYER_ENTERING_WORLD")
+    Check("food with drink as before", t.Body("NF Food"), "#showtooltip\n/use item:8932\n/use item:8079")
+    Check("NF Drink is the drink", t.Body("NF Drink"), "#showtooltip\n/use item:8079")
+    t.Set("foodOnly", true)
+    Check("food only drops the drink", t.Body("NF Food"), "#showtooltip\n/use item:8932")
+    Check("drink unaffected by food only", t.Body("NF Drink"), "#showtooltip\n/use item:8079")
+    t = Fixture({ settings = { food = true, drink = true, foodOnly = true } })
+    t.Fire("PLAYER_ENTERING_WORLD")
+    Check("food placeholder", t.Body("NF Food"), "#showtooltip")
+    Check("drink placeholder", t.Body("NF Drink"), "#showtooltip")
+    t = Fixture({ settings = { mana = true } })
+    t.Fire("PLAYER_ENTERING_WORLD")
+    Check("mana placeholder", t.Body("NF Mana"), "#showtooltip")
+    Check("trinket needs no placeholder", t.Body("NF Trinket 1"), nil)
+end
+
+-- Extra lines follow the generated ones, \n splits them, and 255 characters is the cap.
+do
+    local extra = "/use [@mouseover,help][]Holy Light\n/cqs"
+    local t = Fixture({ settings = { mana = true, manaExtra = extra }, bags = { 3827 } })
+    t.Fire("PLAYER_ENTERING_WORLD")
+    Check("extra lines appended", t.Body("NF Mana"),
+        "#showtooltip\n/use item:3827\n/use [@mouseover,help][]Holy Light\n/cqs")
+    t.Set("manaExtra", "")
+    Check("clearing the extra lines edits the macro", t.Body("NF Mana"), "#showtooltip\n/use item:3827")
+    t.Set("manaExtra", extra)
+    t.Bags({})
+    t.Set("mana", false)
+    t.Set("mana", true)
+    Check("extra lines on the placeholder", t.Body("NF Mana"),
+        "#showtooltip\n/use [@mouseover,help][]Holy Light\n/cqs")
+    local long = "/say " .. string.rep("x", 250)
+    t.Set("manaExtra", long)
+    Check("over the cap: extra lines left out", t.Body("NF Mana"), "#showtooltip")
+    Check("over the cap: said once", #t.printed, 1)
+    t.Set("manaExtra", long)
+    Check("over the cap: not repeated", #t.printed, 1)
+    Check("over the cap: names the macro", t.printed[1]:find("NF Mana", 1, true) ~= nil, true)
+    t = Fixture({ settings = { food = true, foodExtra = "/say " .. string.rep("x", 222) }, bags = { 8932 } })
+    t.Fire("PLAYER_ENTERING_WORLD")
+    local body = t.Body("NF Food")
+    Check("exactly 255 is kept", body ~= nil and #body == 255, true)
 end
 
 -- Combat defers the write until it ends; an unchanged body is not rewritten.

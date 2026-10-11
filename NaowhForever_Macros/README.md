@@ -3,8 +3,9 @@
 Naowh's Forge, the Macros module's own window (`/nfmacros`): your account and character
 macros and your pack's in a list, the one you pick in an editor that counts its bytes against
 the game's 255, marks the lines that will not work and says what each line does in plain words.
-The Smart Macros (NF Health, NF Mana, NF Food, NF Bandage, NF Trinket 1 and 2, NF Focus, NF
-Accept) are written by the module and kept on the best item or spell you carry, out of combat.
+The Smart Macros (NF Health, NF Healthstone, NF Health Potion, NF Mana, NF Food, NF Drink, NF
+Bandage, NF Trinket 1 and 2, NF Focus, NF Accept) are written by the module and kept on the best
+item or spell you carry, out of combat.
 The Library keeps, by class, the macros you saved to it and those your profile pack brings.
 
 ## Layout
@@ -42,6 +43,17 @@ the open tab, the macro in the editor) and the functions its UI files call on ea
 
 ## Why
 
+- NF Healthstone and NF Health Potion are NF Health split by item kind; NF Health itself is
+  unchanged. NF Drink is the drink half of NF Food, and the Food Only setting (off) drops the
+  drink from NF Food, so macros players already have do not change.
+- A bag macro (health, healthstone, health potion, mana, food, drink, bandage) is made with a bare
+  `#showtooltip` when nothing in the bags matches, so it can be placed on a bar before the item
+  arrives. It is filled when the item shows up, and a macro that already holds an item is left
+  alone when the last one is used.
+- Extra Lines is one single-line text row per bag macro (`<key>Extra`), because the settings
+  engine has no multi-line box. A typed `\n` starts a new line; `;` cannot, as it already
+  separates clauses inside a macro line. The lines go after the generated ones; if the macro
+  would pass `LIMIT` they are left out and the player gets a message once per text.
 - NF Health picks from the core's healing lists (`ns.HEALTHSTONES`, `ns.HEALING_POTIONS`, in
   `Shared/Game/Consumables.lua`), never Aura Buffs', so it works with Aura Buffs off.
 - `LIMIT` is 255: the game keeps only the first 255 bytes of a macro's text, counted in bytes.

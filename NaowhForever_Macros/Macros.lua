@@ -5,8 +5,10 @@ local F = ns.FEATURES.macros
 
 local S = ns.UI.ModuleSettings("macros", {
     enabled = F.enabled, classMacros = {},
-    health = F.health, healthOrder = "potion",
-    mana = F.mana, food = F.food, bandage = F.bandage,
+    health = F.health, healthOrder = "potion", healthstone = false, healthPotion = false,
+    mana = F.mana, food = F.food, foodOnly = false, drink = false, bandage = F.bandage,
+    healthExtra = "", healthstoneExtra = "", healthPotionExtra = "", manaExtra = "", foodExtra = "",
+    drinkExtra = "", bandageExtra = "",
     trinket1 = F.trinket1, trinket2 = F.trinket2,
     focus = F.focus, focusMark = true, focusMarker = 8, focusAnnounce = true,
     acceptPopup = F.acceptPopup, windowAlpha = 1,
