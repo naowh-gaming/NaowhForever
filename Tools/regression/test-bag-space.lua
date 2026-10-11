@@ -34,7 +34,7 @@ local function Fixture(opts)
     local settings = opts.settings or {}
     local defaults = {
         enabled = true, bagSpace = true, bagSpaceCount = 4, bagSpaceSize = 36,
-        bagSpaceGrow = "RIGHT", bagSpaceMaxQuality = 2, bagSpaceJunkFirst = false,
+        bagSpaceGrow = "RIGHT", bagSpaceReverse = false, bagSpaceMaxQuality = 2, bagSpaceJunkFirst = false,
         bagSpaceAuction = true, bagSpaceProtect = true, bagSpaceFreeBelow = 0,
         bagSpaceHideCombat = true, bagSpaceOnFull = true, bagSpaceShowFree = true,
         bagSpaceStack = true, bagSpaceOldFirst = false, bagSpacePrices = true,
@@ -578,12 +578,35 @@ do
     Check("look: no soft fade made until it is picked", backdrop.soft, nil)
     Check("look: the card wraps the row", t.buttons.row.card.w, 3 * 36 + 2 * 6 + 2 * 6)
     t.Set("bagSpaceSize", 24)
-    Check("look: small icons keep room for a price", egg.x - old.x, 32 + 6)
+    Check("look: small icons close up, the price narrower with them", egg.x - old.x, 24 + 4)
+    t.Set("bagSpaceSize", 16)
+    Check("look: the gap keeps a floor", egg.x - old.x, 16 + 3)
     t.Set("bagSpaceSize", 36)
     t.Set("bagSpacePrices", false)
     Check("look: Show Prices off", old.price.shown, false)
     t.Set("bagSpaceGrow", "DOWN")
     Check("look: down, one under another", egg.x == 0 and egg.y < 0, true)
+end
+
+-- Reverse Order: the cheapest sits at the far end, the card and its anchor stay put.
+do
+    local bags = { [0] = Bag(16, { { 9, 20 }, { 1, 3 }, { 2, 4 }, { 3, 5 } }) }
+    for dir, step in pairs({ RIGHT = { 1, 0 }, LEFT = { -1, 0 }, UP = { 0, 1 }, DOWN = { 0, -1 } }) do
+        local t = Fixture({ settings = { bagSpaceCount = 3, bagSpaceGrow = dir }, bags = bags })
+        local row = t.buttons.row
+        local first, last = row.cells[1], row.cells[3]
+        local card, cheapest = { row.card.w, row.card.h, row.cardX, row.cardY }, first.price.text
+        Check("reverse " .. dir .. ": cheapest next to the anchor by default", first.x == 0 and first.y == 0, true)
+        local span = (last.x - first.x) * step[1] + (last.y - first.y) * step[2]
+        Check("reverse " .. dir .. ": later cells step away", span > 0, true)
+        t.Set("bagSpaceReverse", true)
+        Check("reverse " .. dir .. ": the last cell takes the anchor", last.x == 0 and last.y == 0, true)
+        Check("reverse " .. dir .. ": the cheapest a full span away",
+            first.x == span * step[1] and first.y == span * step[2], true)
+        Check("reverse " .. dir .. ": still the cheapest in cell 1", first.price.text, cheapest)
+        Check("reverse " .. dir .. ": the card is the same", row.card.w == card[1] and row.card.h == card[2]
+            and row.cardX == card[3] and row.cardY == card[4], true)
+    end
 end
 
 -- Background: the card by default; Soft swaps it for the shared fade with the stronger shadow on

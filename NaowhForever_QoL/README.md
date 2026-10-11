@@ -415,6 +415,10 @@ NaowhForever_QoL/
   scale with it. The card is the house panel at the Flight Timer's fill (0.85) round a slim
   header (the bag, free slots out of your total, Scrap Marker's "+N", the Stack button) over a
   cell per item (its icon, its marks, its price under it).
+- Bag Space's cells and gap shrink with the Icon Size below 36 (the size the rest is drawn for):
+  the gap, the price column and the price font follow it, to a floor, so a small row stays
+  compact. At 36 and above nothing changes. Reverse Order only swaps which end the cheapest
+  cell takes: the cells fill the same spots, so the card and its anchor do not move.
 - Bag Space's scan reads every bag slot, so its container and item APIs are aliased once and the
   settings a scan reads for every slot are read once at its start. Scan entries are pooled and
   reused; a scan runs after every loot and must not leave tables behind. The row's buttons point

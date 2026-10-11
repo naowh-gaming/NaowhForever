@@ -94,7 +94,7 @@ local S = UI.ModuleSettings("qol", {
     restockBuy = false,
     restockFont = "", restockFontSize = 16, restockOutline = "OUTLINE", restockBackground = "none",
     foodBar = F.foodBar, foodBarSize = 36,
-    bagSpace = F.bagSpace, bagSpaceCount = 4, bagSpaceSize = 36, bagSpaceGrow = "RIGHT",
+    bagSpace = F.bagSpace, bagSpaceCount = 4, bagSpaceSize = 36, bagSpaceGrow = "RIGHT", bagSpaceReverse = false,
     bagSpaceMaxQuality = 2, bagSpaceJunkFirst = false, bagSpaceAuction = true,
     bagSpaceProtect = true, bagSpaceFreeBelow = 0, bagSpaceHideCombat = true,
     bagSpaceOnFull = true, bagSpaceShowFree = true, bagSpaceStack = true, bagSpaceOldFirst = false,
