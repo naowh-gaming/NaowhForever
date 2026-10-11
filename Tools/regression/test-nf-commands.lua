@@ -104,7 +104,7 @@ do
     check("/nfbars on its own opens the module", s.opened[1] == "bars" and #s.barArgs == 1)
     list.NAOWHFOREVERBIS("save Raid")
     check("other module commands ignore their words", s.opened[2] == "bis" and #s.barArgs == 1)
-    nf = list.NAOWHFOREVER
+    local nf = list.NAOWHFOREVER
     nf("ab Raid")
     check("/nf ab Raid imports the set by its typed name", s.abArgs[1] == "Raid")
     nf("AB")
