@@ -343,8 +343,7 @@ do
     switched.on = false
     parent.settingsView:Redraw()
     check("switched off from its default, the card head shows the dot", head.dot.shown == true)
-    head.dot.scripts.OnClick(head.dot)
-    check("and clicking it puts the default back", switched.on == true)
+    check("and it has no click, so a stray click never switches a feature on", head.dot.scripts.OnClick == nil)
 end
 
 -------------------------------------------------------------------------------
