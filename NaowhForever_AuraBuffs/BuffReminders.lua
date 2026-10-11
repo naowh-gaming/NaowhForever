@@ -205,13 +205,20 @@ local function PersonalPicked(family)
     return S.Get("personalBuffPicks")[family.key] ~= false
 end
 
-local function Enchanted(slots)
+local function Lasts(left, warn, duration)
+    if not left or left <= 0 then return true end
+    if duration and duration <= warn then warn = 0 end
+    if left <= warn then return false end
+    Wake(left - warn)
+    return true
+end
+
+local function Enchanted(slots, warn)
     local enchants = { GetWeaponEnchantInfo() }
     for _, slot in ipairs(slots) do
         local i = slot == 16 and 1 or 5
         if GetInventoryItemID("player", slot) then
-            if not enchants[i] then return false end
-            Wake(enchants[i + 1] / 1000)
+            if not (enchants[i] and Lasts(enchants[i + 1] / 1000, warn)) then return false end
         end
     end
     return true
@@ -235,21 +242,33 @@ local function EliteTarget()
     return not Secret(kind) and ELITE[kind] or false
 end
 
-local function Has(family, buffs)
-    if family.weapons then return Enchanted(family.weapons) end
+local function Has(family, buffs, warn)
+    if family.weapons then return Enchanted(family.weapons, warn) end
     if family.target then return not EliteTarget() or TargetHas(family.spells) end
-    return Find(buffs, family.spells) ~= nil
+    local aura = Find(buffs, family.spells)
+    local duration = aura and not Secret(aura.duration) and aura.duration or nil
+    return aura and Lasts(Left(aura), warn, duration), aura
 end
 
 local function PersonalBuffs(list, buffs)
     if UnitIsDeadOrGhost("player") or S.Get("hideResting") and IsResting() then return end
     local _, class = UnitClass("player")
+    local warn = S.Get("consumablesMinutes") * SECONDS
     for _, family in ipairs(D.PERSONAL) do
         local spell = family.class == class and PersonalPicked(family) and Knows(family.spells)
-        if spell and not Has(family, buffs) then
-            list[#list + 1] = { icon = C_Spell.GetSpellTexture(spell) }
+        if spell then
+            local has, aura = Has(family, buffs, warn)
+            if not has then list[#list + 1] = { icon = C_Spell.GetSpellTexture(spell), aura = aura } end
         end
     end
+end
+
+local function ClassHasPersonal()
+    local _, class = UnitClass("player")
+    for _, family in ipairs(D.PERSONAL) do
+        if family.class == class then return true end
+    end
+    return false
 end
 
 local Reminders = {}
@@ -263,7 +282,7 @@ Reminders.Secret = Secret
 
 function Reminders.On()
     return S.Get("enabled") and (#(S.Get("consumableEntries") or {}) > 0 or S.Get("raidBuffs")
-        or S.Get("personalBuffs"))
+        or S.Get("personalBuffs") and ClassHasPersonal())
 end
 
 function Reminders.WatchesTarget()

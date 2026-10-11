@@ -99,7 +99,13 @@ NaowhForever_AuraBuffs/
   2026-10-11; not yet checked in the client).
 - Poisons and imbues are temporary weapon enchants (`GetWeaponEnchantInfo`), so any one counts,
   a sharpening stone too. Nothing reliable fires when one runs out (Blizzard's own display polls),
-  so its expiry is timed. Poisons check every equipped weapon, imbues the main hand.
+  so its expiry is timed. Poisons check every equipped weapon, imbues the main hand. An enchant
+  reported with no time left counts as up and times nothing.
+- Warn With Minutes Left covers personal buffs too, except a buff no longer than the warning
+  (Battle Shout's 2 minutes), which would otherwise show the moment it is cast. Poisons last 30
+  minutes and Forever's imbues 60, past the slider's 10.
+- A class with no personal buff (paladin) gets no Personal Buffs group, and the switch alone does
+  not turn the row on.
 - Hunter's Mark is asked for only with a hostile elite, rare elite or boss targeted, read from the
   target's debuffs; like every reminder it holds what it showed once combat starts.
 - The buff menu holds secure buttons, so it can only be hidden outside combat. It uses

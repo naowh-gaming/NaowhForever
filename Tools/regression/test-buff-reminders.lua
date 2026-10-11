@@ -58,6 +58,8 @@ local function Fixture(opts)
         f = Recorder({ shown = true, events = {}, scripts = {}, attributes = {}, template = template })
         function f:SetAttribute(k, v) f.attributes[k] = v end
         function f:IsShown() return f.shown end
+        function f:GetWidth() return 400 end
+        function f:GetHeight() return 120 end
         function f:Show() f.shown = true end
         function f:Hide() f.shown = false end
         function f:SetShown(v) f.shown = v and true or false end
@@ -602,13 +604,57 @@ do
     t.Fire("UNIT_INVENTORY_CHANGED", "player")
     t.Advance(0.5)
     Check("off hand unpoisoned", t.Shown(), "spell:2842")
-    t.state.weapons[17] = 30
+    t.state.weapons[17] = 60
+    t.Fire("UNIT_INVENTORY_CHANGED", "player")
+    t.Advance(0.5)
+    Check("off hand under Warn With Minutes Left", t.Shown(), "spell:2842")
+    t.state.weapons[17] = 300
     t.Fire("UNIT_INVENTORY_CHANGED", "player")
     t.Advance(0.5)
     Check("both poisoned", t.Shown(), "")
-    t.state.weapons[17] = false
-    t.Advance(30)
-    Check("woken when the off hand runs out", t.Shown(), "spell:2842")
+    t.state.weapons[17] = 115
+    t.Advance(185)
+    Check("woken at two minutes left", t.Shown(), "spell:2842")
+end
+
+-- An enchant the game reports with no time left counts as up and arms no wake timer.
+do
+    local t = Fixture({ units = { player = "SHAMAN" }, known = { [8017] = true }, weapons = { [16] = 0 } })
+    t.Login()
+    Check("untimed imbue counts", t.Shown(), "")
+    Check("untimed imbue arms nothing", t.Pending(), 0)
+end
+
+-- Warn With Minutes Left covers personal buffs, but not one shorter than the warning.
+do
+    local t = Fixture({ units = { player = "MAGE" }, known = { [168] = true },
+        auras = { player = { { 168, 60, 1800 } } } })
+    t.Login()
+    Check("armor running out, with its timer", t.Shown(), "spell:168(t)")
+    t.state.auras.player = { { 168, 300, 1800 } }
+    t.Fire("UNIT_AURA", "player")
+    t.Advance(0.5)
+    Check("armor with time left", t.Shown(), "")
+    t.Advance(185)
+    Check("woken at two minutes left", t.Shown(), "spell:168(t)")
+    local w = Fixture({ units = { player = "WARRIOR" }, known = { [6673] = true },
+        auras = { player = { { 6673, 60, 120 } } } })
+    w.Login()
+    Check("two minute shout is not nagged early", w.Shown(), "")
+end
+
+-- A class with no personal buff: the default profile keeps the row off and the card shows no group.
+do
+    local t = Fixture({ page = true, settings = { consumableEntries = {} }, units = { player = "PALADIN" },
+        known = { [19740] = true } })
+    t.Login()
+    Check("paladin default: no aura listener", t.Listening("UNIT_AURA"), false)
+    local card = t.ns.Shared.Settings.pages["AuraBuffs/Settings"].cards.buffs
+    local found
+    for _, row in ipairs(card.rows) do
+        if row.key == "personalBuffs" then found = true end
+    end
+    Check("paladin default: no personal buffs group", found, nil)
 end
 
 -- Hunter's Mark: only for a hostile elite target without the mark.
@@ -646,6 +692,18 @@ do
         if row.key == "personalBuffPicks" then fields[#fields + 1] = row.field end
     end
     Check("shaman picks", table.concat(fields, " "), "imbue shield")
+    local shot = card.studio.new(t.ns.Shared.Settings)
+    local function Preview(state)
+        card.studio.paint(shot, state)
+        local out = {}
+        for _, cell in ipairs(shot.cells) do
+            if cell.shown then out[#out + 1] = cell.icon.texture end
+        end
+        if shot.personal.shown then out[#out + 1] = "personal:" .. shot.personal.icon.texture end
+        return table.concat(out, " ")
+    end
+    Check("preview in the world", Preview("world"), "personal:spell:16362")
+    Check("preview resting", Preview("resting"), "")
 end
 
 if failures > 0 then
