@@ -296,9 +296,13 @@ Check(not pin:IsShown() and not navBar:IsShown(), "until its time is up")
 -- arrives and clears it itself, once.
 tracking = 1
 nav.frame = navFrame
+local was = nav.distance
+nav.distance = 3
 events.scripts.OnEvent(events, "NAVIGATION_FRAME_CREATED")
 local clearedBefore, playedBefore = cleared, #played
-local was = nav.distance
+driver.scripts.OnUpdate()
+Check(pin.card.dist.text ~= "Arrived" and cleared == clearedBefore and #played == playedBefore,
+    "a waypoint that starts within reach is not arrived at before you have been away from it")
 nav.distance = 30
 driver.scripts.OnUpdate()
 Check(pin:IsShown() and cleared == clearedBefore, "30 yards out it is still up and nothing is cleared")

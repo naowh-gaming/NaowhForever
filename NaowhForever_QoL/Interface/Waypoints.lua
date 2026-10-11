@@ -257,7 +257,7 @@ end
 local pin, nav, cue, driver, navFrame, unlocked, gameHidden, warned
 local arrived, arrivals = false, 0
 local Arrived
-local selfCleared
+local selfCleared, seenAway
 local reached
 local lastX, lastY
 local shown = {}
@@ -436,7 +436,8 @@ local function Update()
         PlaceOnSpot(nx, ny, scale)
     end
     CheckReached(yards)
-    if shown.user and not shown.onRoute and not selfCleared and yards <= REACHED and OnWaypointMap() then
+    if yards > LEAVE then seenAway = true end
+    if shown.user and not shown.onRoute and not selfCleared and seenAway and yards <= REACHED and OnWaypointMap() then
         selfCleared = true
         Arrived()
         ns.ClearWaypoint()
@@ -460,7 +461,7 @@ local function Retitle()
     shown.user = kind == types.UserWaypoint
     shown.ground = shown.user or kind == types.Corpse
     shown.card, shown.beam = S.Get("waypointCard"), S.Get("waypointBeam") and shown.ground
-    pin.onNav, reached = false, false
+    pin.onNav, reached, seenAway = false, false, false
 end
 
 local function Detach()
