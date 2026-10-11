@@ -37,6 +37,7 @@ local S = UI.ModuleSettings("qol", {
     combatTimerSticky = false, combatTimerHidePrefix = false, combatTimerBackground = "none",
     combatTimerColor = { r = 1, g = 1, b = 1 }, combatTimerClassColor = false,
     combatTimerFont = "", combatTimerFontSize = 32, combatTimerOutline = "OUTLINE",
+    damageMeterSkin = F.damageMeterSkin, damageMeterBars = "class",
     cursorCooldown = F.cursorCooldown, cursorCooldownSize = 29, cursorCooldownTime = 0.75,
     globalCopy = F.globalCopy, copyTooltipIds = true, copyModifier = "CTRL-SHIFT", copyKey = "C", copyShortcutSynced = false,
     badgeChat = F.badgeChat, badgeCard = F.badgeCard, badgeTooltip = F.badgeTooltip,

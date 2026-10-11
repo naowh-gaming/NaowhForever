@@ -26,6 +26,7 @@ ns.FEATURES = {
         groupButtons = false,
         freeForAll = false,
         combatTimer = false,
+        damageMeterSkin = false,
         cursorCooldown = false,
         globalCopy = false,
         badgeChat = true,
