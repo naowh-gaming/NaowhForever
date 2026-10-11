@@ -68,7 +68,6 @@ local function Click(f, ...) assert(f.scripts.OnClick, "clickable")(f, ...) end
 -------------------------------------------------------------------------------
 local MAX_ACCOUNT, MAX_CHARACTER = 120, 18
 local store = { account = {}, character = {} }
-local picked
 local function Sort(list) table.sort(list, function(a, b) return a.name < b.name end) end
 local function At(index)
     if index <= MAX_ACCOUNT then return store.account[index], store.account, index end
@@ -96,7 +95,7 @@ local macroAPI = {
         local _, list, i = At(index)
         table.remove(list, i)
     end,
-    PickupMacro = function(index) picked = index end,
+    PickupMacro = function() end,
     GetMacroIndexByName = function(name)
         for i, m in ipairs(store.account) do if m.name == name then return i end end
         for i, m in ipairs(store.character) do if m.name == name then return MAX_ACCOUNT + i end end
