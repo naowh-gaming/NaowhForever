@@ -1,4 +1,4 @@
--- Ellesmere.lua: the note on a setting EllesmereUI also has, saying whether it is on there, read live from its settings (Settings.EllesmereNote).
+-- Ellesmere.lua: the note on a setting EllesmereUI also has, saying whether it is on there, read from its settings each time the row is drawn (Settings.EllesmereNote).
 local ns = _G.NaowhForever
 local Settings = ns.Shared.Settings
 
@@ -17,7 +17,7 @@ local OVERLAPS = {
     fastLoot = { addon = QOL, path = { DB, "quickLoot" }, default = false },
     hideLootWindow = { addon = QOL, path = { DB, "quickLoot" }, default = false },
     deleteConfirm = { addon = QOL, path = { DB, "autoFillDelete" }, default = false },
-    skipCinematics = { addon = QOL, path = { DB, "skipCinematics" }, default = false },
+    skipCinematics = { addon = QOL, path = { DB, "skipCinematicsAuto" }, default = false },
     hideErrors = { addon = QOL, path = { DB, "hideErrorMessages" }, default = false },
     hideTutorials = { addon = QOL, path = { DB, "hideTutorials" }, default = false },
     hideScreenshot = { addon = QOL, path = { DB, "hideScreenshotStatus" }, default = true },

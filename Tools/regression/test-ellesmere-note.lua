@@ -29,13 +29,15 @@ local repair, cinematics = { key = "autoRepair" }, { key = "skipCinematics" }
 
 check("no note without EllesmereUI", Note(repair) == nil and Note(cinematics) == nil)
 
-env.EllesmereUIDB = { autoRepair = true, skipCinematics = true }
+env.EllesmereUIDB = { autoRepair = true, skipCinematicsAuto = true }
 check("no note while its QoL addon is not loaded", Note(repair) == nil)
 
 loaded.EllesmereUIQoL = true
 check("on there", Note(repair) == ON and Note(cinematics) == ON)
-env.EllesmereUIDB.autoRepair, env.EllesmereUIDB.skipCinematics = false, false
+env.EllesmereUIDB.autoRepair, env.EllesmereUIDB.skipCinematicsAuto = false, false
 check("off there", Note(repair) == OFF and Note(cinematics) == OFF)
+env.EllesmereUIDB.skipCinematics = true
+check("skipping only on a key press there is not the same as skipping", Note(cinematics) == OFF)
 
 env.EllesmereUIDB = {}
 check("a key never saved reads as EllesmereUI's default",
