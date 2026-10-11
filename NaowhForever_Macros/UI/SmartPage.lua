@@ -8,7 +8,8 @@ local S = M.Settings
 local C = M.C
 local St = M.Style
 local P = M.Parts
-local F = M.Forge
+local F = { tab = "smart" }
+M.Forge = F
 
 local QUESTION = C.QUESTION
 local ROW_ICON, ICON_EDGES, BLACK, CARD_GAP = St.ROW_ICON, St.ICON_EDGES, St.BORDER_RGB, St.CARD_GAP

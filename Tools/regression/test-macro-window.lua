@@ -1,7 +1,7 @@
 -- Run with Lua 5.1 from the repository root: Naowh's Forge, the Macros module's window, built
--- on the Shared kit and opened against stubs and a stand-in for the game's macros. Every tab is
--- drawn and its controls used: a macro is created, edited, renamed and deleted in the game's
--- store, the Library starts empty and fills from the pack, and a share string round-trips.
+-- on the Shared kit and opened against stubs and a stand-in for the game's macros. Both tabs are
+-- drawn and their controls used: the Smart Macros, the Library that starts empty and fills from
+-- the pack and from the player's own, and a share string that round-trips.
 local Load = dofile("Tools/regression/load_files.lua")
 
 local checks = 0
@@ -269,7 +269,7 @@ local function Shown(test)
 end
 
 -------------------------------------------------------------------------------
---  My Macros
+--  The window and its two tabs
 -------------------------------------------------------------------------------
 store.account[1] = { name = "Hearth", icon = 134400, body = "#showtooltip\n/use Hearthstone" }
 store.character[1] = { name = "Sheep", icon = 134400, body = "#showtooltip Polymorph\n/cast [@focus,harm][] Polymorph" }
@@ -280,94 +280,17 @@ check("Naowh's Forge is built by the kit", window and window.backdrop and window
 check("its title is Naowh's Forge", window.title:GetText() == "Naowh's Forge")
 check("the subtitle names the character and meters the slots", window.subtitle:GetText() == "Glyalith, MAGE"
     and window.meters[1].label:GetText() == "Account 1/120" and window.meters[2].label:GetText() == "MAGE 1/18")
-check("a new macro waits in the editor", window.name:GetText() == "New Macro")
-
-local rows = Shown(function(f) return rawget(f, "macro") ~= nil end)
-check("both macros are listed", #rows == 2)
-local sheepRow
-for _, r in ipairs(rows) do if r.macro.name == "Sheep" then sheepRow = r end end
-Click(sheepRow)
-check("clicking one opens it", window.name:GetText() == "Sheep" and ns.MacroText.Strip(window.code:GetText()):find("Polymorph"))
-sheepRow.scripts.OnDragStart(sheepRow)
-check("dragging a row picks the macro up", picked == MAX_ACCOUNT + 1)
-
--- Edit and rename: the game re-sorts, the editor follows it.
-window.name:SetText("Asheep")
-window.code:SetText("#showtooltip Polymorph\n/stopcasting\n/cast [@focus,harm][] Polymorph")
--- The editor's buttons, in the order they are made: Save, Shorten, Export, Revert, To Library, Delete.
-local editorButtons = {}
+local tabs = {}
 for _, f in ipairs(frames) do
-    if rawget(f, "_onClick") and f.parent == window.editor then editorButtons[#editorButtons + 1] = f end
+    if f.parent == window.switch and rawget(f, "key") then tabs[#tabs + 1] = f.key end
 end
-check("the editor has Save, Shorten, Export, Revert, To Library and Delete", #editorButtons == 6)
-Click(editorButtons[1])
-check("saving edits the game's macro", store.character[1].name == "Asheep"
-    and store.character[1].body:find("/stopcasting", 1, true))
-check("and says so", printed[#printed]:find("Saved Asheep", 1, true))
-
--- Shorten, Export.
-window.code:SetText("/cast [ target=focus ] Polymorph ; Frostbolt")
-Click(editorButtons[2])
-check("Shorten rewrites it", ns.MacroText.Strip(window.code:GetText()) == "/cast [@focus] Polymorph;Frostbolt")
-Click(editorButtons[3])
-check("Export gives a share string", (account.lastCopy or ""):find("^!NFM1!"))
-
--- New macro on the account, then delete it.
-local newButton
-local importButton, exportAllButton
-for _, f in ipairs(frames) do
-    local tip = rawget(f, "tip")
-    if tip == "New Macro" then newButton = f elseif tip == "Import" then importButton = f
-    elseif tip == "Export" then exportAllButton = f end
-end
-Click(newButton)
-check("New starts an empty macro", window.name:GetText() == "New Macro")
-Click(window.editor.scopeAccount)
-window.name:SetText("Mount")
-window.code:SetText("#showtooltip\n/use Swift Brown Steed")
-Click(editorButtons[1])
-check("Create makes an account macro", #store.account == 2 and store.account[2].name == "Mount")
-Click(editorButtons[6])
-check("Delete removes it from the game", #store.account == 1)
-
--- Problems show on the right line.
-window.code:SetText("#showtooltip\n/castsequnce Scorch, Fire Blast")
-check("an unknown command is caught", window.editor.issueLines[1]:GetText():find("^L2", 1) ~= nil)
-
--- In the game, sizing the edit box fires its OnTextChanged, and the editor sizes it when the
--- text changes: at the same height it must leave it alone, or that runs every frame.
-local sized = 0
-window.code.SetHeight = function(f, h)
-    f.h = h
-    sized = sized + 1
-    if sized < 50 then f.scripts.OnTextChanged(f, false) end
-end
-window.code:SetText("/cast Frostbolt")
-check("sizing the code box does not draw it over and over", sized <= 2)
-window.code.SetHeight = nil
-
--- The first draw can come while the page is 1 pixel wide, wrapping every line; once the scroll
--- frame has its width, the editor must draw again at it.
-local measure, page = window.editor.measure, window.editor.page
-measure.GetStringHeight = function() return page:GetWidth() < 100 and 1000 or 16 end
-page:SetWidth(1)
-window.code:SetText("/cast Frostbolt")
-local narrow = window.code.h
-window.editor.scroll.scripts.OnSizeChanged(window.editor.scroll, 600)
-check("the editor draws again once the page has its width", page.w == 600 and window.code.h < narrow)
-measure.GetStringHeight = nil
-
--- One cursor, the game's own: the editor draws no caret of its own and runs nothing every frame.
-check("one cursor: no caret of our own, nothing every frame", window.code.scripts.OnEditFocusGained == nil
-    and window.code.scripts.OnUpdate == nil and window.code.scripts.OnCursorChanged ~= nil)
-
--- The inspector's panes.
-for _, key in ipairs({ "conditions", "commands", "icons", "explain" }) do window.inspector.Show(key) end
+check("the window has Smart Macros and Library, nothing else", #tabs == 2 and tabs[1] == "smart" and tabs[2] == "lib")
+check("it opens on Smart Macros", window.switch.shown == "smart" and window.smartView:IsShown()
+    and not window.libView:IsShown())
 
 -------------------------------------------------------------------------------
 --  Smart Macros and Library
 -------------------------------------------------------------------------------
-window.switch.onPick("smart")
 local cards = Shown(function(f) return rawget(f, "key") ~= nil and rawget(f, "uses") ~= nil end)
 check("one card per Smart Macro", #cards == 11)
 local health
@@ -376,24 +299,43 @@ check("the health card says what it will use", health.uses[1].text.text == "Item
 Click(health.toggle)
 check("its switch turns the macro off, on by default", settings.health == false)
 
+local function LibCards() return Shown(function(f) return rawget(f, "add") ~= nil end) end
+local function LibCard(name)
+    for _, c in ipairs(LibCards()) do
+        if c.title.text == name then return c end
+    end
+end
+
 window.switch.onPick("lib")
 check("the Library starts empty, with nothing but the class name", not window.lib.lead:IsShown()
-    and #Shown(function(f) return rawget(f, "open") ~= nil and rawget(f, "add") ~= nil end) == 0)
+    and #LibCards() == 0)
 packMacros.MAGE = { { name = "Naowh Sheep", body = "#showtooltip Polymorph\n/cast Polymorph", note = "Naowh's" } }
-window.switch.onPick("mine")
+window.switch.onPick("smart")
 window.switch.onPick("lib")
-local libCards = Shown(function(f) return rawget(f, "open") ~= nil and rawget(f, "add") ~= nil end)
+local libCards = LibCards()
 check("the pack's macros fill it", #libCards == 1 and window.lib.lead:IsShown())
+check("a card has no editor button", rawget(libCards[1], "open") == nil)
 Click(libCards[1].add)
-check("Add makes a character macro", store.character[2] and store.character[2].name == "Naowh Sheep")
+check("Add makes a character macro", #store.character == 2 and store.character[1].name == "Naowh Sheep")
+check("and says where to find it", printed[#printed]:find("/macro", 1, true)
+    and not printed[#printed]:find("My Macros", 1, true))
+
+local importButton, exportAllButton, newButton
+for _, f in ipairs(frames) do
+    local tip = rawget(f, "tip")
+    if tip == "Import" then importButton = f elseif tip == "Export" then exportAllButton = f
+    elseif tip == "New Macro" then newButton = f end
+end
+check("the bar has Import and Export, no New Macro", importButton and exportAllButton and not newButton)
 
 -------------------------------------------------------------------------------
---  Import
+--  Import and Export
 -------------------------------------------------------------------------------
+Click(exportAllButton)
 Click(importButton)
 lastPrompt(account.lastCopy)
 check("a macro whose name you already have is not imported again", #store.character == 2
-    and printed[#printed]:find("Added 0 of 1: 1 uses a name you already have", 1, true))
+    and printed[#printed]:find("Added 0 of 3: 3 use a name you already have", 1, true))
 store.character[1].name = "Bsheep"
 Click(importButton)
 lastPrompt(account.lastCopy)
@@ -401,54 +343,15 @@ check("a share string imports as character macros", #store.character == 3)
 lastPrompt("not a string")
 check("anything else is turned away", printed[#printed]:find("not a Naowh Forever macro string", 1, true))
 
--------------------------------------------------------------------------------
---  The game moves macros: the editor follows the one it has open
--------------------------------------------------------------------------------
-local function OpenNamed(name)
-    window.switch.onPick("mine")
-    for _, r in ipairs(Shown(function(f) return rawget(f, "macro") ~= nil end)) do
-        if r.macro.name == name then return Click(r) end
-    end
-    error("no row for " .. name)
-end
-
-store.account = { { name = "Zed", icon = 136243, body = "/cast Zed" } }
-OpenNamed("Zed")
-macroAPI.CreateMacro("Abc", 134400, "/cast Abc", false)   -- a Smart Macro made meanwhile sorts before it
-window.code:SetText("/cast Zed 2")
-Click(editorButtons[1])
-check("Save follows the open macro to its new slot", store.account[1].body == "/cast Abc"
-    and store.account[2].name == "Zed" and store.account[2].body == "/cast Zed 2")
-macroAPI.CreateMacro("Aaa", 134400, "/cast Aaa", false)
-Click(editorButtons[6])
-check("Delete removes the open macro, not whatever moved into its slot", #store.account == 2
-    and store.account[1].name == "Aaa" and store.account[2].name == "Abc")
-
-OpenNamed("Abc")
-macroAPI.DeleteMacro(2)   -- removed outside the Forge
-window.code:SetText("/cast Abc 2")
-Click(editorButtons[1])
-check("a macro gone from under it is not saved over another", #store.account == 1 and store.account[1].name == "Aaa"
-    and printed[#printed]:find("changed or removed outside", 1, true))
-Click(editorButtons[1])
-check("Save then makes it again as a new macro", #store.account == 2 and store.account[2].body == "/cast Abc 2")
-
--- Saving text leaves a question mark icon alone, so it keeps following #showtooltip.
-store.character = { { name = "Show", icon = 134400, body = "#showtooltip Polymorph\n/cast Polymorph" } }
-OpenNamed("Show")
-window.code:SetText("#showtooltip Polymorph\n/stopcasting\n/cast Polymorph")
-Click(editorButtons[1])
-check("the icon stays the question mark", store.character[1].icon == 134400
-    and store.character[1].body:find("/stopcasting", 1, true))
-
--- Import: any number, as many as fit; a script in any case is called out.
+-- Any number, as many as fit; a script in any case is called out.
+store.account = {}
 local twenty = {}
 for i = 1, 20 do twenty[i] = { name = "M" .. i, body = "/cast Spell " .. i } end
 vault[1] = { v = 1, macros = twenty }
 Click(importButton)
 lastPrompt("!NFM1!S")
 check("all 20 are read, as many added as fit", #store.character == 18
-    and printed[#printed]:find("Added 17 of 20", 1, true))
+    and printed[#printed]:find("Added 15 of 20", 1, true))
 store.character = {}
 for _, body in ipairs({ "/RUN print(1)", "/dump GetTime()" }) do
     vault[1] = { v = 1, macros = { { name = "X", body = body } } }
@@ -462,122 +365,24 @@ Click(importButton)
 lastPrompt("!NFM1!S")
 check("addon and unknown commands are called out, by name", account.lastConfirm:find(" Some use Naowh Forever's own"
     .. " commands (/nf), use other addons' commands (/dbm) and use commands the game does not know (/foo): read them"
-    .. " in the editor before you use them.", 1, true))
+    .. " in /macro before you use them.", 1, true))
 vault[1] = { v = 1, macros = { { name = "A", body = "/run x()\n/nf scrap" } } }
 Click(importButton)
 lastPrompt("!NFM1!S")
 check("a script and our own command in one macro", account.lastConfirm:find(" One runs a script and uses Naowh"
-    .. " Forever's own commands (/nf): read it in the editor before you use it.", 1, true))
+    .. " Forever's own commands (/nf): read it in /macro before you use it.", 1, true))
 vault[1] = { v = 1, macros = { { name = "A", body = "/cast Polymorph\n/1 hello" } } }
 Click(importButton)
 lastPrompt("!NFM1!S")
 check("the game's own commands need no warning", account.lastConfirm:find("macros?", 1, true)
     and not account.lastConfirm:find("read", 1, true))
 
-window.switch.onPick("mine")
-window.code:SetText(string.rep("/cast A\n", 12))
-check("the text scrolls inside the editor box", window.code.parent == window.editor.page
-    and window.editor.page.parent == window.editor.scroll and window.code.h == window.editor.page.h
-    and window.editor.page.h > 12 * 17)
-
--------------------------------------------------------------------------------
---  Second review
--------------------------------------------------------------------------------
--- The list lights the open macro after the game re-sorts.
-store.account = { { name = "Zed", icon = 136243, body = "/cast Zed" } }
-OpenNamed("Zed")
-macroAPI.CreateMacro("Abc", 134400, "/cast Abc", false)
-window.switch.onPick("smart")
-window.switch.onPick("mine")
-local lit = Shown(function(f) return rawget(f, "macro") ~= nil and f.picked end)
-check("the open macro's row is lit, not its old slot", #lit == 1 and lit[1].macro.name == "Zed")
-
--- Switching tabs keeps what you typed.
-window.name:SetText("Zed Renamed")
-window.code:SetText("/cast Zed 3")
-window.switch.onPick("lib")
-window.switch.onPick("mine")
-check("a tab switch keeps an unsaved name and text", window.name:GetText() == "Zed Renamed"
-    and ns.MacroText.Strip(window.code:GetText()) == "/cast Zed 3")
-
--- Export only what Import takes.
-account.lastCopy = nil
-window.code:SetText(string.rep("x", 300))
-Click(editorButtons[3])
-check("an oversize macro is not exported", account.lastCopy == nil and printed[#printed]:find("1 to 255", 1, true))
-
--- Library Add: the pack's checks.
-store.character = {}
-packMacros.MAGE = {
-    { name = "Scripted", body = "/run print(1)\n/cast Polymorph" },
-    { name = "A name far too long", body = "/cast Frostbolt" },
-    { name = "Plain", body = "/cast Frost Nova" },
-}
-account.lastConfirm = nil
-window.switch.onPick("lib")
-local function LibCard(name)
-    for _, c in ipairs(Shown(function(f) return rawget(f, "add") ~= nil end)) do
-        if c.title.text == name then return c end
-    end
-end
-Click(LibCard("Scripted").add)
-check("a pack script needs the player's yes", (account.lastConfirm or ""):find("runs a script from a shared pack", 1, true))
-Click(LibCard("A name far too long").add)
-check("a name the game cannot hold is turned away", printed[#printed]:find("not a macro the game can hold", 1, true)
-    and #store.character == 1)
-window.switch.onPick("lib")
-Click(LibCard("Plain").add)
-window.switch.onPick("lib")
-Click(LibCard("Plain").add)
-check("adding it twice makes one macro", #store.character == 2 and printed[#printed]:find("already", 1, true))
-
--------------------------------------------------------------------------------
---  Third review
--------------------------------------------------------------------------------
--- A pack import refreshes the Library.
-packMacros.MAGE = {}
-window.switch.onPick("lib")
-packMacros.MAGE = { { name = "Iconic", body = "/cast Blink", icon = 135736 } }
-for _, fn in ipairs(applyHooks) do fn() end
-check("a pack import fills the open Library", LibCard("Iconic") ~= nil and window.lib.lead:IsShown())
-
--- Pack macros keep the pack's icon.
-store.character = {}
-Click(LibCard("Iconic").add)
-check("Add makes it with the pack's icon", store.character[1] and store.character[1].icon == 135736)
-store.character = {}
-window.switch.onPick("lib")
-Click(LibCard("Iconic").open)
-Click(editorButtons[1])
-check("Create from the pack uses its icon too", store.character[1] and store.character[1].icon == 135736)
-
--- A name already in use is not taken twice.
-Click(newButton)
-window.name:SetText("Iconic")
-window.code:SetText("/cast Frostbolt")
-Click(editorButtons[1])
-check("Save will not make a second macro of a name", #store.character == 1
-    and printed[#printed]:find("already have a macro called Iconic", 1, true))
-store.character = { { name = "Iconic", icon = 134400, body = "/cast Something Else" } }
-packMacros.MAGE = { { name = "Iconic", body = "/cast Blink", icon = 135736 } }
-window.switch.onPick("lib")
-Click(LibCard("Iconic").add)
-check("Library Add will not take a name in use", #store.character == 1
-    and printed[#printed]:find("different macro called Iconic", 1, true))
-
--- Revert puts the name back as well.
-OpenNamed("Iconic")
-window.name:SetText("Typed")
-window.code:SetText("/cast Typed")
-Click(editorButtons[4])
-check("Revert restores the name and the text", window.name:GetText() == "Iconic"
-    and ns.MacroText.Strip(window.code:GetText()) == "/cast Something Else")
-
 -- A name that is only stripped characters is turned away.
+store.character = {}
 vault[1] = { v = 1, macros = { { name = "|", body = "/cast X" } } }
 Click(importButton)
 lastPrompt("!NFM1!S")
-check("an import name stripped to nothing is turned away", #store.character == 1
+check("an import name stripped to nothing is turned away", #store.character == 0
     and printed[#printed]:find("not a Naowh Forever macro string", 1, true))
 
 -- Nothing to export.
@@ -586,9 +391,6 @@ account.lastCopy = nil
 Click(exportAllButton)
 check("with no macros, Export says so", account.lastCopy == nil and printed[#printed]:find("no macros to export", 1, true))
 
--------------------------------------------------------------------------------
---  Last review
--------------------------------------------------------------------------------
 -- Export everything: an empty macro still imports, the Smart Macros stay home.
 store.account = { { name = "NF Health", icon = 134400, body = "/use item:5509" },
     { name = "Blank", icon = 134400, body = "" } }
@@ -603,78 +405,72 @@ lastPrompt(account.lastCopy)
 check("an export with an empty macro imports whole", #store.character == 2
     and printed[#printed]:find("Added 2.", 1, true))
 
--- A macro opens at its first line.
-OpenNamed("Mine")
-check("an opened macro starts at the top", window.code.cursor == 0)
+-------------------------------------------------------------------------------
+--  Library Add: the pack's checks
+-------------------------------------------------------------------------------
+store.character = {}
+packMacros.MAGE = {
+    { name = "Scripted", body = "/run print(1)\n/cast Polymorph" },
+    { name = "A name far too long", body = "/cast Frostbolt" },
+    { name = "Plain", body = "/cast Frost Nova" },
+}
+account.lastConfirm = nil
+window.switch.onPick("smart")
+window.switch.onPick("lib")
+Click(LibCard("Scripted").add)
+check("a pack script needs the player's yes", (account.lastConfirm or ""):find("runs a script from a shared pack", 1, true))
+Click(LibCard("A name far too long").add)
+check("a name the game cannot hold is turned away", printed[#printed]:find("not a macro the game can hold", 1, true)
+    and #store.character == 1)
+window.switch.onPick("lib")
+Click(LibCard("Plain").add)
+window.switch.onPick("lib")
+Click(LibCard("Plain").add)
+check("adding it twice makes one macro", #store.character == 2 and printed[#printed]:find("already", 1, true))
 
--------------------------------------------------------------------------------
---  Looks: colours in the code box, never in the game's macros
--------------------------------------------------------------------------------
-store.account, store.character = {}, {}
-Click(newButton)
-window.name:SetText("Colored")
-window.code:SetText("#showtooltip\n/cast [@focus,harm] Polymorph")
-check("the code box shows the macro in color", window.code:GetText():find("|cff6cc4ff/cast|r", 1, true) ~= nil)
-Click(editorButtons[1])
-check("what is saved has no color codes", store.character[1].body == "#showtooltip\n/cast [@focus,harm] Polymorph")
-window.code.cursor = nil
-window.code:Insert("\n/stopcasting")
-check("text put in is colored too", window.code:GetText():find("|cff6cc4ff/stopcasting|r", 1, true) ~= nil
-    and ns.MacroText.Strip(window.code:GetText()):find("Polymorph\n/stopcasting$") ~= nil)
+-- A pack import refreshes the Library.
+packMacros.MAGE = {}
+window.switch.onPick("lib")
+packMacros.MAGE = { { name = "Iconic", body = "/cast Blink", icon = 135736 } }
+for _, fn in ipairs(applyHooks) do fn() end
+check("a pack import fills the open Library", LibCard("Iconic") ~= nil and window.lib.lead:IsShown())
+
+-- Pack macros keep the pack's icon.
+store.character = {}
+Click(LibCard("Iconic").add)
+check("Add makes it with the pack's icon", store.character[1] and store.character[1].icon == 135736)
+
+-- A name already in use is not taken twice.
+store.character = { { name = "Iconic", icon = 134400, body = "/cast Something Else" } }
+packMacros.MAGE = { { name = "Iconic", body = "/cast Blink", icon = 135736 } }
+window.switch.onPick("lib")
+Click(LibCard("Iconic").add)
+check("Library Add will not take a name in use", #store.character == 1
+    and printed[#printed]:find("different macro called Iconic", 1, true))
 
 -------------------------------------------------------------------------------
 --  Your own Library
 -------------------------------------------------------------------------------
 store.account, store.character = {}, {}
 packMacros.MAGE = { { name = "Pack One", body = "/cast Arcane Missiles" } }
-Click(newButton)
-window.name:SetText("My Blink")
-window.code:SetText("/cast Blink")
-Click(editorButtons[5])
-check("To Library keeps a copy under your class, not a game macro", account.libraryMacros.MAGE[1].name == "My Blink"
-    and account.libraryMacros.MAGE[1].body == "/cast Blink" and #store.character == 0)
-window.code:SetText("/cast [@cursor] Blink")
-Click(editorButtons[5])
-check("saving it again replaces it", #account.libraryMacros.MAGE == 1
-    and account.libraryMacros.MAGE[1].body == "/cast [@cursor] Blink" and printed[#printed]:find("Updated", 1, true))
-window.name:SetText("")
-Click(editorButtons[5])
-check("a macro with no name is turned away", #account.libraryMacros.MAGE == 1)
-
+account.libraryMacros = { MAGE = { { name = "My Blink", body = "/cast Blink" },
+    { name = "My Script", body = "/run print(1)" }, { name = "Pack Run", body = "/run print(2)", pack = true } } }
+window.switch.onPick("smart")
 window.switch.onPick("lib")
 local mine, packed = LibCard("My Blink"), LibCard("Pack One")
 check("yours shows in the Library beside the pack's", mine and mine.tag.text == "YOURS" and mine.remove:IsShown()
     and packed and packed.tag.text:find("NAOWH", 1, true) and not packed.remove:IsShown())
-Click(mine.open)
-check("Open in Editor brings it to the editor", window.name:GetText() == "My Blink"
-    and window.editor.where:GetText():find("From your Library", 1, true))
-check("Open in Editor switches to My Macros", window.switch.shown == "mine" and window.mine:IsShown()
-    and not window.libView:IsShown() and window.search:IsShown())
 
-account.libraryMacros.MAGE[2] = { name = "My Script", body = "/run print(1)" }
 account.lastConfirm = nil
-window.switch.onPick("lib")
 Click(LibCard("My Script").add)
 check("your own script is added without a warning", account.lastConfirm == nil
     and store.character[1] and store.character[1].name == "My Script")
-
-window.switch.onPick("lib")
-Click(LibCard("My Blink").remove)
-window.switch.onPick("lib")
-check("Remove takes it out of the Library", #account.libraryMacros.MAGE == 1 and LibCard("My Blink") == nil
-    and LibCard("My Script") ~= nil)
-
--- A pack script copied to the Library keeps the pack's warning.
-store.character = {}
-packMacros.MAGE = { { name = "Pack Run", body = "/run print(2)" } }
-window.switch.onPick("lib")
-Click(LibCard("Pack Run").open)
-Click(editorButtons[5])
-check("a pack macro's copy is marked as from the pack", account.libraryMacros.MAGE[2].pack == true)
-account.lastConfirm = nil
-packMacros.MAGE = {}
-window.switch.onPick("lib")
 Click(LibCard("Pack Run").add)
-check("and its script still asks first", (account.lastConfirm or ""):find("runs a script from a shared pack", 1, true))
+check("a script copied from the pack still asks first",
+    (account.lastConfirm or ""):find("runs a script from a shared pack", 1, true))
+
+Click(LibCard("My Blink").remove)
+check("Remove takes it out of the Library", #account.libraryMacros.MAGE == 2 and LibCard("My Blink") == nil
+    and LibCard("My Script") ~= nil)
 
 print(("test-macro-window: %d checks passed"):format(checks))

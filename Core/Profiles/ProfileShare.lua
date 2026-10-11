@@ -523,7 +523,7 @@ local function LibraryEntry(m, mine)
     local taken = false
     for _, e in ipairs(mine) do taken = taken or e.name == name end
     if not (name and #name >= 1 and #name <= MACRO_NAME_MAX and type(body) == "string" and #body >= 1
-        and #body <= ns.MacroText.LIMIT and not taken) then return nil end
+        and #body <= ns.Macros.C.LIMIT and not taken) then return nil end
     local icon = (type(m.icon) == "number" or type(m.icon) == "string") and m.icon or nil
     return { name = name, body = body, icon = icon }
 end
@@ -659,7 +659,7 @@ function ns.ImportProfile(payload, wanted, name, overwrite)
     if wanted.macros and type(parts.macros) == "table" then ImportMacros(root, parts.macros) end
     local added = { bisLists = 0, library = 0, builds = 0 }
     if wanted.bisLists and type(parts.bisLists) == "table" then added.bisLists = AddBisLists(parts.bisLists) end
-    if wanted.library and ns.MacroText and type(parts.library) == "table" then added.library = AddLibrary(parts.library) end
+    if wanted.library and ns.Macros and type(parts.library) == "table" then added.library = AddLibrary(parts.library) end
     if wanted.builds and ns.Training and type(parts.builds) == "table" then added.builds = AddBuilds(parts.builds) end
     if wanted.look and type(parts.look) == "table" then ImportLook(parts.look) end
 

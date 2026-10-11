@@ -81,7 +81,7 @@ end
 local function World()
     local w = { profiles = { Default = { tankReminder = {} } }, account = {}, printed = {} }
     local ns = {
-        UI = { Widgets = {} }, CODE_BUILD = "test", MacroText = { LIMIT = 255 },
+        UI = { Widgets = {} }, CODE_BUILD = "test", Macros = { C = { LIMIT = 255 } },
         THEME = { accent = {}, muted = {}, fg = {}, panel = {}, bg = {}, line = {} },
         Color = function(_, text) return text or "" end,
         Print = function(m) w.printed[#w.printed + 1] = m end,

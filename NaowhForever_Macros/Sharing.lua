@@ -19,7 +19,7 @@ local TEXT_ADDED_SOME = "Added %d of %d: %s."
 local TEXT_TAKEN = " a name you already have"
 local TEXT_FULL = "character macros are full"
 local TEXT_SCRIPT = "run%s a script"
-local TEXT_WARNING = " %s %s: read %s in the editor before you use %s."
+local TEXT_WARNING = " %s %s: read %s in /macro before you use %s."
 local TEXT_PROMPT = "Paste a Naowh Forever macro string"
 
 local COMMAND_KINDS = {

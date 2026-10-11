@@ -49,7 +49,7 @@ local function World()
     w.buildsChanged = 0
     local ns = {
         UI = { PROFILES_PAGE = "Profiles" }, CODE_BUILD = "test", PlainText = PlainText,
-        MacroText = { LIMIT = 255 },
+        Macros = { C = { LIMIT = 255 } },
         TrainingBuilds = { [2] = { talents = {} } },
         -- Points that cannot be taken start with 0 here; the real rules are Training's own test.
         Training = {
