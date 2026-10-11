@@ -39,7 +39,7 @@ local TEXT_SMART_HOW = "Each one is an account macro. Put it on a bar once and i
     .. "better potion, conjure fresh food or pick up bandages and the macro is rewritten to use the best "
     .. "you carry.\n\nThe game does not let macros change mid-fight, so a change during combat waits "
     .. "until it ends."
-local TEXT_FOOTER = "Macros are kept by the game: Account for every character, Character for this one"
+local TEXT_FOOTER = "Smart Macros are account macros, for every character. A Library macro you add is for this character only."
 local TEXT_ACCOUNT = "Account "
 
 local TABS = {
