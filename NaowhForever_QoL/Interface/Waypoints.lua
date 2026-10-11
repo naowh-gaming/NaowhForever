@@ -505,6 +505,14 @@ end
 
 function Arrived()
     if not (driver and lastX) then return end
+    if shown.user and not shown.onRoute then
+        driver:SetScript("OnUpdate", nil)
+        pin:Hide()
+        cue:Hide()
+        nav:Hide()
+        ns.UI._PlayLSMSound(ns.UI.SoundPathFor(S.Get("waypointSound")))
+        return
+    end
     arrived = true
     arrivals = arrivals + 1
     local this = arrivals

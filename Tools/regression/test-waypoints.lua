@@ -268,35 +268,29 @@ local timersBefore = #timers
 events.scripts.OnEvent(events, "NAVIGATION_DESTINATION_REACHED", true)
 driver.scripts.OnUpdate(driver, 0)
 Check(pin.card.dist.text ~= "Arrived" and #timers == timersBefore and #played == 0, "a stop on the way is not an arrival")
-local stoodScale = pin.scale
 
 -- Reaching a waypoint you set: the game clears its tracking and the frame goes before the
--- event reaches us. The arrival still shows, named, where the pin stood, then goes.
+-- event reaches us. It is over at once: the sound, and nothing left on screen, no card held.
 tracking = nil
 events.scripts.OnEvent(events, "SUPER_TRACKING_CHANGED")
 nav.frame = nil
 events.scripts.OnEvent(events, "NAVIGATION_FRAME_DESTROYED")
+local timersAtArrival, playedAtArrival = #timers, #played
 events.scripts.OnEvent(events, "NAVIGATION_DESTINATION_REACHED", false)
-Check(pin:IsShown() and pin.card.dist.text == "Arrived" and pin.check.shown and pin.card.name.text == "Mage Trainer",
-    "the arrival shows, still named, after the game cleared it")
-Check(pin.point[2] == UIParent and pin.point[3] == "BOTTOMLEFT" and pin.point[4] == 1100
-    and math.abs(pin.point[5] - (700 + (36 / 2 + 80) * stoodScale)) < 1e-6,
-    "where the pin stood")
-Check(navBar:IsShown() and navBar.dist.text == "Arrived" and played[#played] == "sound:naowh", "on the bar too, with the sound")
-timers[#timers].fn()
-Check(not pin:IsShown() and not navBar:IsShown() and driver.scripts.OnUpdate == nil, "then it goes, and it is idle")
--- The other order: the arrival first, then the game clears it. The arrival stays up.
+Check(not pin:IsShown() and not navBar:IsShown() and driver.scripts.OnUpdate == nil, "the pin and the bar go at once")
+Check(played[#played] == "sound:naowh" and #played == playedAtArrival + 1 and #timers == timersAtArrival,
+    "with the sound, and no timer holding an arrival")
+-- The other order: the arrival first, then the game clears it.
 tracking = 1
 nav.frame = navFrame
 events.scripts.OnEvent(events, "NAVIGATION_FRAME_CREATED")
 events.scripts.OnEvent(events, "NAVIGATION_DESTINATION_REACHED", false)
+Check(not pin:IsShown() and not navBar:IsShown() and #played == playedAtArrival + 2, "arrival first: gone at once too")
 tracking = nil
 events.scripts.OnEvent(events, "SUPER_TRACKING_CHANGED")
 nav.frame = nil
 events.scripts.OnEvent(events, "NAVIGATION_FRAME_DESTROYED")
-Check(pin:IsShown() and pin.card.dist.text == "Arrived" and navBar:IsShown(), "cleared after the arrival, it stays up")
-timers[#timers].fn()
-Check(not pin:IsShown() and not navBar:IsShown(), "until its time is up")
+Check(not pin:IsShown() and not navBar:IsShown(), "and still gone once the game has cleared it")
 
 -- A map waypoint the game does not clear: no arrival event comes, so within 5 yards the pin
 -- arrives and clears it itself, once.
@@ -321,13 +315,10 @@ Check(pin.card.dist.text ~= "Arrived" and cleared == clearedBefore and #played =
 playerMap = 88
 nav.distance = 4
 driver.scripts.OnUpdate()
-Check(pin.card.dist.text == "Arrived" and #played == playedBefore + 1, "within 5 yards the arrival shows, with its sound")
+Check(not pin:IsShown() and not navBar:IsShown() and #played == playedBefore + 1, "within 5 yards it is over at once, with its sound")
 Check(cleared == clearedBefore + 1 and superCleared >= 1, "and the waypoint is cleared")
--- The clear waits while the world map is open, so the arrival is not repeated every hold.
-timers[#timers].fn()
-local arrivalsBefore = #played
-driver.scripts.OnUpdate()
-Check(#played == arrivalsBefore and cleared == clearedBefore + 1, "still standing there after the hold: no second arrival, no second clear")
+-- The clear waits while the world map is open: standing there, nothing repeats.
+Check(driver.scripts.OnUpdate == nil and cleared == clearedBefore + 1, "the pin stops following, and does not arrive or clear again")
 -- A route's stop is left to the game's arrival, which is what moves the route on.
 events.scripts.OnEvent(events, "NAVIGATION_FRAME_DESTROYED")
 nav.distance = 30
