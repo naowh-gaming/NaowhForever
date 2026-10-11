@@ -63,6 +63,7 @@ function navFrame:GetCenter() return nav.x, nav.y end
 local userWaypoint, cleared, superCleared = nil, 0, 0
 local playerMap = 88
 local tracked, mapOpen, mapHide = {}, false, nil
+local parents = { [1500] = 88 }   -- a leaf zone inside the waypoint's map
 local timers, played, printed = {}, {}, {}
 local speed = 0
 local tracking = 1   -- Enum.SuperTrackingType.UserWaypoint
@@ -131,7 +132,7 @@ local env = setmetatable({
         GetBestMapForUnit = function() return playerMap end,
         GetUserWaypoint = function() return userWaypoint end,
         ClearUserWaypoint = function() userWaypoint = nil; cleared = cleared + 1 end,
-        GetMapInfo = function() return { name = "Thunder Bluff" } end,
+        GetMapInfo = function(id) return { name = "Thunder Bluff", parentMapID = parents[id] or 0 } end,
     },
     C_QuestLog = { GetTitleForQuestID = function() return "The Barrens Oases" end },
     C_Timer = { After = function(delay, fn) timers[#timers + 1] = { delay = delay, fn = fn } end },
@@ -306,16 +307,19 @@ Check(pin.card.dist.text ~= "Arrived" and cleared == clearedBefore and #played =
 nav.distance = 30
 driver.scripts.OnUpdate()
 Check(pin:IsShown() and cleared == clearedBefore, "30 yards out it is still up and nothing is cleared")
+-- Something else changing what is tracked on the way does not make it forget you were away.
+events.scripts.OnEvent(events, "SUPER_TRACKING_CHANGED")
 -- Next to a stop on the way (a zone's exit), which lies on another map than the waypoint, it is not the spot.
 playerMap = 1411
 nav.distance = 4
 driver.scripts.OnUpdate()
 Check(pin.card.dist.text ~= "Arrived" and cleared == clearedBefore and #played == playedBefore,
     "next to a stop on another map the waypoint is left alone")
-playerMap = 88
+-- Placed on a parent map (a continent), standing in a zone inside it: that is the spot's map too.
+playerMap = 1500
 nav.distance = 4
 driver.scripts.OnUpdate()
-Check(not pin:IsShown() and not navBar:IsShown() and #played == playedBefore + 1, "within 5 yards it is over at once, with its sound")
+Check(not pin:IsShown() and #played == playedBefore + 1, "within 5 yards it is over at once, with its sound, on a map inside the waypoint's")
 Check(cleared == clearedBefore + 1 and superCleared >= 1, "and the waypoint is cleared")
 -- The clear waits while the world map is open: standing there, nothing repeats.
 Check(driver.scripts.OnUpdate == nil and cleared == clearedBefore + 1, "the pin stops following, and does not arrive or clear again")

@@ -376,7 +376,14 @@ end
 
 local function OnWaypointMap()
     local point = C_Map.GetUserWaypoint()
-    return point ~= nil and point.uiMapID == C_Map.GetBestMapForUnit("player")
+    if not point then return false end
+    local map = C_Map.GetBestMapForUnit("player")
+    while map and map ~= 0 do
+        if map == point.uiMapID then return true end
+        local info = C_Map.GetMapInfo(map)
+        map = info and info.parentMapID
+    end
+    return false
 end
 
 local function CheckReached(yards)
@@ -462,7 +469,7 @@ local function Retitle()
     shown.user = kind == types.UserWaypoint
     shown.ground = shown.user or kind == types.Corpse
     shown.card, shown.beam = S.Get("waypointCard"), S.Get("waypointBeam") and shown.ground
-    pin.onNav, reached, seenAway = false, false, false
+    pin.onNav, reached = false, false
 end
 
 local function Detach()
@@ -489,6 +496,7 @@ local function Attach()
     navFrame = C_Navigation.GetFrame()
     if not navFrame then Detach() return end
     if not driver then Build() end
+    seenAway = false
     PlaceNav()
     Retitle()
     lastX, lastY = nil, nil
@@ -504,7 +512,7 @@ local function OnArrivalOver(this)
 end
 
 function Arrived()
-    if not (driver and lastX) then return end
+    if not driver then return end
     if shown.user and not shown.onRoute then
         driver:SetScript("OnUpdate", nil)
         pin:Hide()
@@ -513,6 +521,7 @@ function Arrived()
         ns.UI._PlayLSMSound(ns.UI.SoundPathFor(S.Get("waypointSound")))
         return
     end
+    if not lastX then return end
     arrived = true
     arrivals = arrivals + 1
     local this = arrivals
@@ -565,7 +574,10 @@ local function WatchPlaced()
 end
 
 local function OnEvent(_, event, isWaypoint)
-    if event == "USER_WAYPOINT_UPDATED" then WatchPlaced() end
+    if event == "USER_WAYPOINT_UPDATED" then
+        seenAway = false
+        WatchPlaced()
+    end
     if event == "NAVIGATION_FRAME_CREATED" then
         Attach()
     elseif event == "NAVIGATION_FRAME_DESTROYED" then
