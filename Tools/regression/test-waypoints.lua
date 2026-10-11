@@ -62,6 +62,7 @@ local navFrame = NewFrame("NavFrame")
 function navFrame:GetCenter() return nav.x, nav.y end
 local userWaypoint, cleared, superCleared = nil, 0, 0
 local playerMap = 88
+local tracked, mapOpen, mapHide = {}, false, nil
 local timers, played, printed = {}, {}, {}
 local speed = 0
 local tracking = 1   -- Enum.SuperTrackingType.UserWaypoint
@@ -117,11 +118,16 @@ local env = setmetatable({
         GetDistance = function() return nav.distance end,
     },
     C_SuperTrack = {
+        IsSuperTrackingUserWaypoint = function() return tracking == 1 end,
+        SetSuperTrackedUserWaypoint = function(on) tracked[#tracked + 1] = on end,
         GetHighestPrioritySuperTrackingType = function() return tracking end,
         GetSuperTrackedQuestID = function() return 7 end,
         ClearAllSuperTracked = function() superCleared = superCleared + 1 end,
     },
+    WorldMapFrame = { IsVisible = function() return mapOpen end,
+        HookScript = function(_, name, fn) if name == "OnHide" then mapHide = fn end end },
     C_Map = {
+        HasUserWaypoint = function() return userWaypoint ~= nil end,
         GetBestMapForUnit = function() return playerMap end,
         GetUserWaypoint = function() return userWaypoint end,
         ClearUserWaypoint = function() userWaypoint = nil; cleared = cleared + 1 end,
@@ -425,6 +431,36 @@ Check(not navBar:IsShown() and not pin:IsShown() and driver.scripts.OnUpdate == 
 tracking = 1
 events.scripts.OnEvent(events, "SUPER_TRACKING_CHANGED")
 Check(navBar:IsShown() and driver.scripts.OnUpdate ~= nil, "tracking again on that frame brings it back")
+
+-- A waypoint placed on the map is not tracked by the game, so the pin tracks it: at once when the
+-- map is closed, as the map closes when it is open (placing one from an addon while it is open
+-- taints it), and not when it already is, or when there is none.
+userWaypoint = { uiMapID = 88, position = { x = 0.5, y = 0.5 } }
+tracking = nil
+local timersBefore = #timers
+tracked = {}
+events.scripts.OnEvent(events, "USER_WAYPOINT_UPDATED")
+Check(#timers == timersBefore + 1 and #tracked == 0, "placed with the map closed: tracked after the game has finished with it")
+timers[#timers].fn()
+Check(tracked[1] == true and #tracked == 1, "and then it is")
+mapOpen, tracked = true, {}
+events.scripts.OnEvent(events, "USER_WAYPOINT_UPDATED")
+Check(#tracked == 0 and mapHide ~= nil, "placed with the map open: nothing yet")
+mapOpen = false
+mapHide()
+Check(tracked[1] == true and #tracked == 1, "tracked as the map closes")
+mapHide()
+Check(#tracked == 1, "once")
+tracking, tracked = 1, {}
+timersBefore = #timers
+events.scripts.OnEvent(events, "USER_WAYPOINT_UPDATED")
+timers[#timers].fn()
+Check(#tracked == 0, "already tracked: left alone")
+userWaypoint, tracking = nil, nil
+timersBefore = #timers
+events.scripts.OnEvent(events, "USER_WAYPOINT_UPDATED")
+Check(#timers == timersBefore and #tracked == 0, "cleared: nothing to track")
+tracking = 1
 
 -- Off again: idle, and the game's marker back.
 S.Set("waypoints", false)

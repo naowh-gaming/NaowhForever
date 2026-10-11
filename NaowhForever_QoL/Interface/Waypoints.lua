@@ -258,6 +258,7 @@ local pin, nav, cue, driver, navFrame, unlocked, gameHidden, warned
 local arrived, arrivals = false, 0
 local Arrived
 local selfCleared, seenAway
+local mapHooked, trackOnMapClose
 local reached
 local lastX, lastY
 local shown = {}
@@ -531,7 +532,32 @@ function Arrived()
     C_Timer.After(ARRIVED_HOLD, function() OnArrivalOver(this) end)
 end
 
+local function TrackPlaced()
+    trackOnMapClose = false
+    if C_Map.HasUserWaypoint() and not C_SuperTrack.IsSuperTrackingUserWaypoint() then
+        C_SuperTrack.SetSuperTrackedUserWaypoint(true)
+    end
+end
+
+local function OnMapHide()
+    if trackOnMapClose then TrackPlaced() end
+end
+
+local function WatchPlaced()
+    if not C_Map.HasUserWaypoint() then return end
+    if WorldMapFrame and WorldMapFrame:IsVisible() then
+        if not mapHooked then
+            WorldMapFrame:HookScript("OnHide", OnMapHide)
+            mapHooked = true
+        end
+        trackOnMapClose = true
+    else
+        C_Timer.After(0, TrackPlaced)
+    end
+end
+
 local function OnEvent(_, event, isWaypoint)
+    if event == "USER_WAYPOINT_UPDATED" then WatchPlaced() end
     if event == "NAVIGATION_FRAME_CREATED" then
         Attach()
     elseif event == "NAVIGATION_FRAME_DESTROYED" then
@@ -638,7 +664,7 @@ end
 
 Settings.Page("QoL/Interface", S):Card({
     id = "waypoints", name = "Waypoint Pin", order = 42, switch = "waypoints",
-    help = "Marks the spot you are heading to in the world, with its distance.",
+    help = "Marks the spot you are heading to in the world, with its distance. A waypoint you place on the map is tracked for you.",
     summary = Summary,
     studio = { height = STAGE_H, states = STATES, new = NewPreview, paint = PaintPreview },
     rows = {
