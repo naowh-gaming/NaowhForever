@@ -6,7 +6,6 @@ local F = ns.FEATURES.qol
 
 local S = UI.ModuleSettings("qol", {
     enabled = F.enabled,
-    deathRelease = F.deathRelease, deathReleaseHold = 1,
     stealthReminder = F.stealthReminder,
     reminderInGroup = false, reminderHideResting = true,
     stealthShowStealthed = true, stealthDruid = "cat",
@@ -37,8 +36,6 @@ local S = UI.ModuleSettings("qol", {
     combatTimerColor = { r = 1, g = 1, b = 1 }, combatTimerClassColor = false,
     combatTimerFont = "", combatTimerFontSize = 32, combatTimerOutline = "OUTLINE",
     cursorCooldown = F.cursorCooldown, cursorCooldownSize = 29, cursorCooldownTime = 0.75,
-    combatLogger = F.combatLogger, combatLogRaids = "ask", combatLogDungeons = "never",
-    combatLogStopOnLeave = true, combatLogChat = false, combatLogAclPrompt = true,
     globalCopy = F.globalCopy, copyTooltipIds = true, copyModifier = "CTRL-SHIFT", copyKey = "C", copyShortcutSynced = false,
     badgeChat = F.badgeChat, badgeCard = F.badgeCard, badgeTooltip = F.badgeTooltip,
     badgeBanner = F.badgeBanner, badgeBannerSkipGuild = true,
@@ -179,7 +176,6 @@ local S = UI.ModuleSettings("qol", {
     petMissingText = "Pet Missing", petPassiveText = "Pet Passive", petLowHealthText = "Pet Low HP",
     equipReminder = F.equipReminder, equipOnInstance = true, equipOnReadyCheck = true, equipAutoHide = 10,
     equipIconSize = 40, equipEnchants = true, equipEnchantRules = {},
-    autoEmote = F.autoEmote, autoEmoteCooldown = 2, autoEmoteList = "698: prepares a ritual of summoning",
     chatZones = F.chatZones, chatZonesLevel = true, chatZonesClassColour = true, chatZonesFinder = true, chatZonesWhere = true, chatZonesMaxAge = 15, chatZonesAsk = true, chatZonesShare = false,
 
     mouseRing = F.mouseRing, mouseShape = "ring.tga", mouseSize = 48,

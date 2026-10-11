@@ -136,7 +136,6 @@ return {
 ["restockAmmo"] = false,
 ["restock"] = false,
 ["townSupplies"] = false,
-["deathRelease"] = false,
 ["gearPos"] = {
 ["y"] = -188.1003569762739,
 ["relPoint"] = "CENTER",

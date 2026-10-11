@@ -148,15 +148,4 @@ for _, t in ipairs(TAGS) do
     Check(Run(code, { ns = ns }) == t[2], t[1] .. ": Tag() is the old TAG")
 end
 
-do -- the two combat logging prompts
-    local acl = Run(Slice("NaowhForever_QoL/System/CombatLogger.lua", "local function AclText()", "\nend") .. "\nreturn AclText()", { ns = ns })
-    Check(acl == "|cff0091edNaowh|r Forever\n\nAdvanced Combat Logging is off. Warcraft Logs needs it "
-        .. "for a detailed report. Turn it on now? This reloads your UI.", "the advanced logging prompt text")
-    local log = Run(Slice("NaowhForever_QoL/System/CombatLogger.lua", "local function LogText()", "\nend") .. "\nreturn LogText()", { ns = ns })
-    Check(log == "|cff0091edNaowh|r Forever\n\nEnable combat logging for:\n|cffffa300%s|r\n(%s)\n\n"
-        .. "Your choice will be remembered.", "the combat logging prompt text")
-    local src = Read("NaowhForever_QoL/System/CombatLogger.lua")
-    Check(src:find('.text = AclText()', 1, true) and src:find('.text = LogText()', 1, true), "the text is set when shown")
-end
-
-print("PASS theme literals: " .. cases .. " checks (" .. #ROWS .. " rows, the tag and prompt accessors, and a scan for leftovers)")
+print("PASS theme literals: " .. cases .. " checks (" .. #ROWS .. " rows, the tag accessors, and a scan for leftovers)")

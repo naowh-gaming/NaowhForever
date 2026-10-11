@@ -105,7 +105,7 @@ read_globals = {
     "issecrettable", "issecretvalue", "issecurevariable", "IsSecureCmd", "IsShiftKeyDown", "IsStealthed", "IsTradeskillTrainer",
     "IsXPUserDisabled", "Item", "ItemEventListener", "ItemRefTooltip",
     "ItemRefTooltipTextLeft1", "ITEM_QUALITY_COLORS", "LE_PARTY_CATEGORY_INSTANCE", "LibStub",
-    "LOCALIZED_CLASS_NAMES_MALE", "LoggingCombat", "LootFrame", "LootSlot",
+    "LOCALIZED_CLASS_NAMES_MALE", "LootFrame", "LootSlot",
     "LOOT_ITEM_PUSHED_SELF", "LOOT_ITEM_PUSHED_SELF_MULTIPLE", "LOOT_ITEM_SELF",
     "LOOT_ITEM_SELF_MULTIPLE", "MainMenuBarVehicleLeaveButton", "MapCanvasDataProviderMixin", "MapCanvasPinMixin", "FlightMap_FlightPointPinMixin",
     "GetMinimapShape", "GetPlayerFacing", "Minimap",

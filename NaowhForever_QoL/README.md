@@ -41,7 +41,6 @@ NaowhForever_QoL/
     Crosshair.lua       the Crosshair (ns.MeleeRangeSpell)
     MouseRing.lua       the Mouse Ring
   Combat/
-    DeathRelease.lua    Death Release Protection
     CoTank.lua          the Co-Tank Frame and its debuffs
     HealerMana.lua      Healer Mana
     CombatAlert.lua     Combat Alert
@@ -51,7 +50,6 @@ NaowhForever_QoL/
     FocusCastBar.lua    the Focus Cast Bar
     StealthReminder.lua the Stealth Reminder
     PetTracker.lua      the Pet Tracker
-    SummonEmote.lua     the Summon Emote
   Questing/
     BuffThanks.lua      Buff Thank You Message and its line editor
     GroupButtons.lua    On-Screen Buttons (Invite, Disband)
@@ -88,7 +86,6 @@ NaowhForever_QoL/
     QuizData.lua        the quiz questions (ns.QUIZ_QUESTIONS)
     Quiz.lua            the Quiz (ns.ToggleQuiz, ns.QuizOffer, ns.QuizDismiss)
   System/
-    CombatLogger.lua    Auto Combat Logging (ns.CombatLogCheck, ns.CombatLogging)
     SlashCommands.lua   Custom Slash Commands and their editor (ns.SlashCommandList, ns.RefreshSlashCommands)
     Performance.lua     QoL > System > Performance: recommended game settings and their backups
   Media/
@@ -147,15 +144,6 @@ NaowhForever_QoL/
 - The Pet Tracker skips Pet Missing for a hunter with Lone Wolf. `LONE_WOLF` (415370) is the
   talent node spell in the talent data; `LONE_WOLF_TAUGHT` (409979) is the spell it teaches,
   the one seen known in the Forever client. Either counts.
-- Death Release Protection lays a button over the death dialog's Release Spirit that takes the
-  mouse: a click does nothing, and holding it fills a bar, then clicks the button under it. The
-  dialogs are pooled, so it hides itself once its dialog is no longer the death one.
-- That button is parented to Release Spirit, not to the dialog. Forever's dialog sizes itself
-  around every shown child it has, and the button stays shown after the death dialog closes. When
-  the ghost's "enter the instance" dialog reused it with no buttons, Release Spirit had no
-  position, so the button counted from the screen's corner and stretched the dialog to fill it.
-- Blizzard disables Release Spirit while falling or while an encounter holds the release, so the
-  hold resets then.
 - Durability is fully red at or below 15% (`FLOOR_PCT`). Its card is fitted to the text only with
   a background, so what is anchored to it keeps its spot; the Unlock Mode preview shows 20%.
 - UI Clutter's Hide Red Error Text is the same switch as Blizzard's `/uierrorsoff`.
@@ -182,14 +170,6 @@ NaowhForever_QoL/
   addon uses.
 - Speech is made on the game's own thread and the client waits for it, so Combat Alert speaks a
   frame after the combat change instead of stacking on it while every other addon handles it.
-- Auto Combat Logging asks once per instance and difficulty and remembers the answer in
-  `combatLogInstances`, made on first write so the defaults table is never written into.
-- The two logging prompts set their text when shown, so the title follows the theme's accent
-  (`AclText` and `LogText` stay self-contained: a test runs them on their own).
-- The game's popup cannot reload for an addon, so the Advanced Combat Logging prompt asks with a
-  Reload UI that can. A client without `advancedCombatLogging` has nothing to turn on, so it
-  never asks.
-- Logging starts while the Ask Once question is up, so the pull it is asked on is not lost.
 - Cooldown at Cursor's time is a duration object the game counts down itself (swipe and text),
   so it works in combat, where Forever keeps cooldown numbers secret.
 - The global cooldown alone brings no Cooldown at Cursor card: the game raises the same error for
