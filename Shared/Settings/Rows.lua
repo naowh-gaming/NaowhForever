@@ -288,6 +288,7 @@ local function NewHead(view)
     head.name:SetPoint("LEFT", head.chevron, "RIGHT", CONTROL_GAP, 0)
     head.nameHit = HelpHit(head, head.name)
     head.switch = HeadSwitch(head)
+    head.dot = Dot(head)
     head.summary = ns.Font(head, SMALL_SIZE, nil, T.muted)
     head.summary:SetJustifyH("LEFT")
     head.summary:SetWordWrap(false)
@@ -319,6 +320,8 @@ end
 
 local function SetHead(head, card, isOpen, held)
     head.card, head.held = card, held
+    head.setting = card.switchSetting
+    head.dot:SetShown(head.setting ~= nil and Settings.Changed(head.setting))
     head.name:SetText(Marked(head, card.name))
     head.nameHit.help = card.help
     head.chevron:SetRotation(isOpen and OPEN_TURN or 0)
