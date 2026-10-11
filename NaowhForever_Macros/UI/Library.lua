@@ -89,7 +89,7 @@ local function OwnList(class)
 end
 
 local function SaveToLibrary(macro)
-    if not Fits(macro) then ns.Print(TEXT_TOO_BIG:format(macro.name)) return end
+    if not Fits(macro) then ns.Print(TEXT_TOO_BIG:format(macro.name)) return false end
     local _, class = UnitClass("player")
     local list = OwnList(class)
     local entry = { name = macro.name, body = macro.body, icon = macro.icon ~= QUESTION and macro.icon or nil }
@@ -98,12 +98,13 @@ local function SaveToLibrary(macro)
             list[i] = entry
             ns.Print(TEXT_UPDATED:format(macro.name))
             F.Render()
-            return
+            return true
         end
     end
     list[#list + 1] = entry
     ns.Print(TEXT_SAVED:format(macro.name, LOCALIZED_CLASS_NAMES_MALE[class] or class))
     F.Render()
+    return true
 end
 
 local function FillPicker(_, root)
@@ -247,7 +248,7 @@ local function PaintCard(c, entry, mine)
     c.add:SetAlpha(mine and 1 or DISABLED_ALPHA)
 end
 
-F.NewClassRow, F.NewLibCard = NewClassRow, NewLibCard
+F.NewClassRow, F.NewLibCard, F.SaveToLibrary, F.Add = NewClassRow, NewLibCard, SaveToLibrary, Add
 
 function F.DrawLibrary()
     local view = F.window.lib
@@ -269,4 +270,5 @@ function F.DrawLibrary()
     view.body:SetHeight(math.max(1, math.ceil(#list / CARD_COLS) * (CARD_H + CARD_GAP)))
     view.lead:SetShown(#list > 0)
     view.save:SetShown(libClass == myClass)
+    view.new:SetShown(libClass == myClass)
 end

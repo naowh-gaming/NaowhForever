@@ -46,6 +46,7 @@ local METHODS = {
     IsShown = function(f) return rawget(f, "shown") ~= false end,
     IsVisible = function(f) return rawget(f, "shown") ~= false end,
     SetEnabled = function(f, on) f.enabled = on end,
+    SetMaxBytes = function(f, n) f.maxBytes = n end,
     SetClipsChildren = function(f, on) f.clips = on end,
     SetCursorPosition = function(f, at) f.cursor = at end,
     GetCursorPosition = function(f) return rawget(f, "cursor") or #(rawget(f, "text") or "") end,
@@ -164,13 +165,23 @@ local ns = { MEDIA = dofile("Tools/regression/core_media.lua"),
     Border = function(parent) return { SetColor = NOTHING, _frame = Frame(parent) } end,
     AllowOffscreen = NOTHING,
     AccentBorder = function(b) return b end,
-    Button = function(parent, _, _, _, onClick)
+    Button = function(parent, text, _, _, onClick)
         local b = Frame(parent)
+        b.caption = text
         b.label, b._border, b._rest, b._onClick = Frame(b), { SetColor = NOTHING }, WHITE, onClick
         b.scripts.OnClick = function() if b._onClick then b._onClick() end end
         return b
     end,
-    NewEditBox = function(parent) return Frame(parent) end,
+    NewEditBox = function(parent)
+        local box = Frame(parent)
+        box.isName = true
+        return box
+    end,
+    MakeModal = function()
+        local dimmer, panel = Frame(), Frame()
+        dimmer.shown = false
+        return dimmer, panel
+    end,
     NewSearchBox = function(parent)
         local box = Frame(parent)
         box.hint, box.border = Frame(box), { SetColor = NOTHING }
@@ -195,7 +206,11 @@ local env = setmetatable({
     UIParent = {},
     GameTooltip = Frame(),
     GameTooltip_Hide = NOTHING,
-    CreateFrame = function(_, _, parent) return Frame(parent) end,
+    CreateFrame = function(kind, _, parent)
+        local f = Frame(parent)
+        if kind == "EditBox" then f.isBody = true end
+        return f
+    end,
     CreateColor = function() return { SetRGBA = NOTHING } end,
     hooksecurefunc = function(t, name, fn)
         if type(t) == "table" and name == "Set" then setHooks[#setHooks + 1] = fn end
@@ -521,5 +536,60 @@ check("with no game macros the picker says so", #menu.items == 1 and menu.items[
 local priest = Shown(function(f) return rawget(f, "class") == "PRIEST" end)[1]
 Click(priest)
 check("the button is only for your own class: not on another's page", priest and not window.lib.save:IsShown())
+
+-------------------------------------------------------------------------------
+--  New Macro: write one
+-------------------------------------------------------------------------------
+store.account, store.character = {}, {}
+account.libraryMacros = { MAGE = {} }
+window.switch.onPick("smart")
+window.switch.onPick("lib")
+Click(Shown(function(f) return rawget(f, "class") == "MAGE" end)[1])
+check("the Library has a New Macro button beside Save a Macro, on your own class", window.lib.new:IsShown())
+Click(window.lib.new)
+local function Named(test) return Shown(function(f) return test(f) end)[1] end
+local nameBox = Named(function(f) return rawget(f, "isName") end)
+local bodyBox = Named(function(f) return rawget(f, "isBody") end)
+local saveButton = Named(function(f) return rawget(f, "caption") == "Save to Library" end)
+local addButton = Named(function(f) return rawget(f, "caption") == "Save and Add" end)
+local cancelButton = Named(function(f) return rawget(f, "caption") == "Cancel" end)
+check("it opens a dialog with its name and text empty and the three buttons",
+    nameBox and bodyBox and saveButton and addButton and cancelButton and nameBox:GetText() == ""
+    and bodyBox:GetText() == "")
+check("the dialog holds a name of 16 bytes and a macro of 255", nameBox.maxBytes == 17 and bodyBox.maxBytes == 256)
+bodyBox:SetText("#showtooltip\n/cast Frostbolt")
+local meter = Named(function(f) return type(rawget(f, "text")) == "string" and f.text:find("bytes", 1, true) end)
+check("the byte meter counts the text against 255", meter.text == "28 / 255 bytes")
+
+nameBox:SetText("")
+Click(saveButton)
+check("a macro with no name is refused and the dialog stays", #account.libraryMacros.MAGE == 0)
+nameBox:SetText("A name that is far too long")
+Click(saveButton)
+check("so is a name over 16 bytes", #account.libraryMacros.MAGE == 0)
+nameBox:SetText("  Frost Combo  ")
+Click(saveButton)
+check("Save to Library keeps it under your class, trimmed, and adds no character macro",
+    #account.libraryMacros.MAGE == 1 and account.libraryMacros.MAGE[1].name == "Frost Combo"
+    and account.libraryMacros.MAGE[1].body == "#showtooltip\n/cast Frostbolt" and #store.character == 0)
+check("and it shows in the Library as yours", LibCard("Frost Combo") and LibCard("Frost Combo").tag.text == "YOURS")
+
+Click(window.lib.new)
+check("opened again it starts empty", nameBox:GetText() == "" and bodyBox:GetText() == "")
+nameBox:SetText("Blink Pair")
+bodyBox:SetText("/cast Blink")
+Click(addButton)
+check("Save and Add also makes it this character's macro",
+    #account.libraryMacros.MAGE == 2 and #store.character == 1 and store.character[1].name == "Blink Pair"
+    and store.character[1].body == "/cast Blink")
+
+Click(window.lib.new)
+nameBox:SetText("Unsaved")
+bodyBox:SetText("/cast Fireball")
+Click(cancelButton)
+check("Cancel keeps nothing", #account.libraryMacros.MAGE == 2)
+local priestRow = Shown(function(f) return rawget(f, "class") == "PRIEST" end)[1]
+Click(priestRow)
+check("New Macro is only on your own class's page", not window.lib.new:IsShown())
 
 print(("test-macro-window: %d checks passed"):format(checks))

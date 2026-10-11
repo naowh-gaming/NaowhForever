@@ -6,7 +6,8 @@ Forge's title bar share them as a string. The Smart Macros (NF Health, NF Health
 Bandage, NF Trinket 1 and 2, NF Focus, NF Accept) are written by the module and kept on the best
 item or spell you carry, out of combat.
 The Library keeps, by class, the macros you saved to it and those your profile pack brings. Save a Macro on its
-tab lists your game macros and keeps the one you pick under your class, so it can be added to any character of that class.
+tab lists your game macros and keeps the one you pick under your class, so it can be added to any character of that class,
+and New Macro opens a small dialog to write one: a name and its text, with a byte counter against the game's 255.
 
 ## Layout
 
@@ -29,6 +30,7 @@ NaowhForever_Macros/
   UI/
     SmartPage.lua           the Smart Macros tab (M.Forge, the window's shared state)
     Library.lua             the Library tab, and its Save a Macro picker (F.SavePicker)
+    NewMacro.lua            the New Macro dialog on the Library tab (F.NewMacro)
     Window.lua              the window, its tabs, title bar and footer (ns.OpenMacroWindow)
     SettingsPage.lua        its settings page (Macros/Settings), declared as cards
   README.md                 this file
@@ -66,7 +68,11 @@ the open tab) and the functions its UI files call on each other.
   the pack's own.
 - The window has no macro editor: the game's own macro window (`/macro`) already edits, renames and
   deletes macros, and a second one only had to keep up with it. Library cards, Import and the profile
-  hand-off add character macros, and say so in `/macro`.
+  hand-off add character macros, and say so in `/macro`. New Macro is only a way to write a macro into
+  the Library, not an editor: a name and its text (a name holds 16 bytes and the text 255, both capped
+  by the boxes), saved under your class like Save a Macro does, and added to this character too with
+  Save and Add. Changing one later is `/macro` for a game macro, or saving the same name again to
+  update its Library copy.
 - The known commands come from the client's `SLASH_` and `EMOTE_CMD` strings. Commands of addons
   that are not loaded are missing from that list, so an unknown command is a warning, not an error.
 - The Smart Macros' item lists are classic-era item IDs, best first.
