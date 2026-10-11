@@ -27,9 +27,12 @@ local EXPORT_GAP = 6
 local SMART_TOP, SIDE_TOP, SIDE_GAP, SIDE_SPACING = 10, 12, 10, 3
 local CLASS_TOP = 4
 local LIB_TITLE_SIZE, LIB_LEAD_GAP, LIB_TOP = 22, 6, 64
+local SAVE_W = 120
 local PERCENT = 100
 local ROUND = 0.5
 
+local TEXT_SAVE_MACRO = "Save a Macro"
+local TEXT_SAVE_TIP = "Keeps a copy of one of your game macros in the Library under your class, for every character of that class."
 local TEXT_EXPORT_TIP = "Every macro in the list, as one string to share."
 local TEXT_IMPORT_TIP = "Add macros someone shared with you."
 local TEXT_NOTHING_TO_EXPORT = "You have no macros to export yet."
@@ -228,6 +231,9 @@ local function BuildLibrary()
     lib.title:SetPoint("TOPLEFT", PAD, -PAD)
     lib.lead = P.Text(libArea, NOTE_SIZE, T.muted)
     lib.lead:SetPoint("TOPLEFT", lib.title, "BOTTOMLEFT", 0, -LIB_LEAD_GAP)
+    lib.save = ns.Button(libArea, TEXT_SAVE_MACRO, SAVE_W, St.BUTTON_H, function() F.SavePicker(lib.save) end)
+    lib.save:SetPoint("TOPRIGHT", libArea, "TOPRIGHT", -PAD, -PAD)
+    ns.Tooltip(lib.save, TEXT_SAVE_MACRO, TEXT_SAVE_TIP)
     lib.scroll, lib.body = Scroller(libArea, LIB_TOP)
     lib.scroll:SetPoint("TOPLEFT", PAD, -LIB_TOP)
     lib.cards = P.Pool(function() return F.NewLibCard(lib.body) end)

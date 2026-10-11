@@ -20,6 +20,7 @@ local TEXT_GAP, TAG_TOP, NOTE_GAP = St.ICON_TEXT_GAP, 16, 8
 local CODE_BOTTOM, CODE_INSET_X, CODE_INSET_Y = 44, 8, 6
 local BUTTON_BOTTOM = 10
 local ADD_W, REMOVE_W = 64, 70
+local PICKER_HEIGHT = 400
 local DISABLED_ALPHA = 0.4
 
 local CLASSES = { "WARRIOR", "PALADIN", "HUNTER", "ROGUE", "PRIEST", "SHAMAN", "MAGE", "WARLOCK", "DRUID" }
@@ -35,7 +36,12 @@ local TEXT_REMOVE = "Remove %s from your Library? Macros already made from it st
 local TEXT_COUNT = "%d macros"
 local TEXT_YOURS = "YOURS"
 local TEXT_NAOWH = GOLD_CODE .. "NAOWH|r"
-local TEXT_MINE = "Macros for your class. Add one to this character to use it."
+local TEXT_SAVED = "Saved %s to your Library, for every %s you play."
+local TEXT_UPDATED = "Updated %s in your Library."
+local TEXT_NO_GAME_MACROS = "You have no game macros to save."
+local TEXT_ACCOUNT_MACROS = "Account macros"
+local TEXT_CHARACTER_MACROS = "This character's macros"
+local TEXT_MINE = "Macros for your class. Add one to this character to use it, or save one of yours here."
 local TEXT_THEIRS = "Another class's macros, to read. Add them on a character of that class."
 
 local libClass
@@ -73,6 +79,52 @@ local function AddFromPack(entry)
         return
     end
     Add(entry)
+end
+
+local function OwnList(class)
+    local account = ns.AccountSettings()
+    account.libraryMacros = account.libraryMacros or {}
+    account.libraryMacros[class] = account.libraryMacros[class] or {}
+    return account.libraryMacros[class]
+end
+
+local function SaveToLibrary(macro)
+    if not Fits(macro) then ns.Print(TEXT_TOO_BIG:format(macro.name)) return end
+    local _, class = UnitClass("player")
+    local list = OwnList(class)
+    local entry = { name = macro.name, body = macro.body, icon = macro.icon ~= QUESTION and macro.icon or nil }
+    for i, e in ipairs(list) do
+        if e.name == macro.name then
+            list[i] = entry
+            ns.Print(TEXT_UPDATED:format(macro.name))
+            F.Render()
+            return
+        end
+    end
+    list[#list + 1] = entry
+    ns.Print(TEXT_SAVED:format(macro.name, LOCALIZED_CLASS_NAMES_MALE[class] or class))
+    F.Render()
+end
+
+local function FillPicker(_, root)
+    if root.SetScrollMode then root:SetScrollMode(PICKER_HEIGHT) end
+    local macros = Store.GameMacros()
+    if #macros == 0 then
+        root:CreateTitle(TEXT_NO_GAME_MACROS)
+        return
+    end
+    local accountSide
+    for _, macro in ipairs(macros) do
+        if macro.account ~= accountSide then
+            accountSide = macro.account
+            root:CreateTitle(accountSide and TEXT_ACCOUNT_MACROS or TEXT_CHARACTER_MACROS)
+        end
+        root:CreateButton(macro.name, function() SaveToLibrary(macro) end)
+    end
+end
+
+function F.SavePicker(owner)
+    MenuUtil.CreateContextMenu(owner, FillPicker)
 end
 
 local function NewClassRow(parent)
@@ -216,4 +268,5 @@ function F.DrawLibrary()
     end
     view.body:SetHeight(math.max(1, math.ceil(#list / CARD_COLS) * (CARD_H + CARD_GAP)))
     view.lead:SetShown(#list > 0)
+    view.save:SetShown(libClass == myClass)
 end

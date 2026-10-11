@@ -5,7 +5,8 @@ Library. Your own macros are written in the game's macro window (`/macro`), and 
 Forge's title bar share them as a string. The Smart Macros (NF Health, NF Healthstone, NF Health Potion, NF Mana, NF Food, NF Drink, NF
 Bandage, NF Trinket 1 and 2, NF Focus, NF Accept) are written by the module and kept on the best
 item or spell you carry, out of combat.
-The Library keeps, by class, the macros you saved to it and those your profile pack brings.
+The Library keeps, by class, the macros you saved to it and those your profile pack brings. Save a Macro on its
+tab lists your game macros and keeps the one you pick under your class, so it can be added to any character of that class.
 
 ## Layout
 
@@ -27,7 +28,7 @@ NaowhForever_Macros/
     Parts.lua               the Forge's small parts: text, pools, icons, section titles, list rows (M.Parts)
   UI/
     SmartPage.lua           the Smart Macros tab (M.Forge, the window's shared state)
-    Library.lua             the Library tab
+    Library.lua             the Library tab, and its Save a Macro picker (F.SavePicker)
     Window.lua              the window, its tabs, title bar and footer (ns.OpenMacroWindow)
     SettingsPage.lua        its settings page (Macros/Settings), declared as cards
   README.md                 this file

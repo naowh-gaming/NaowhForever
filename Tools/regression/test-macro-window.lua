@@ -68,6 +68,7 @@ local function Click(f, ...) assert(f.scripts.OnClick, "clickable")(f, ...) end
 -------------------------------------------------------------------------------
 local MAX_ACCOUNT, MAX_CHARACTER = 120, 18
 local store = { account = {}, character = {} }
+local menu
 local function Sort(list) table.sort(list, function(a, b) return a.name < b.name end) end
 local function At(index)
     if index <= MAX_ACCOUNT then return store.account[index], store.account, index end
@@ -201,6 +202,14 @@ local env = setmetatable({
         if t == ns and name == "Apply" then applyHooks[#applyHooks + 1] = fn end
     end,
     InCombatLockdown = function() return false end,
+    MenuUtil = { CreateContextMenu = function(owner, fill)
+        menu = { owner = owner, items = {} }
+        local root = {}
+        function root:CreateTitle(text) menu.items[#menu.items + 1] = { title = text } end
+        function root:CreateButton(text, pick) menu.items[#menu.items + 1] = { text = text, pick = pick } end
+        function root:SetScrollMode(height) menu.scroll = height end
+        fill(owner, root)
+    end },
     IsMouseButtonDown = function() return false end,
     strtrim = function(s) return (s:gsub("^%s+", ""):gsub("%s+$", "")) end,
     UnitClass = function() return "Mage", "MAGE", 8 end,
@@ -471,5 +480,46 @@ check("a script copied from the pack still asks first",
 Click(LibCard("My Blink").remove)
 check("Remove takes it out of the Library", #account.libraryMacros.MAGE == 2 and LibCard("My Blink") == nil
     and LibCard("My Script") ~= nil)
+
+-------------------------------------------------------------------------------
+--  Save a Macro: the picker
+-------------------------------------------------------------------------------
+store.account = { { name = "Ice Lance", icon = 135846, body = "/cast Ice Lance" } }
+store.character = { { name = "Blink Now", icon = 134400, body = "/cast Blink" },
+    { name = "Too Long", icon = 134400, body = ("x"):rep(256) } }
+account.libraryMacros = { MAGE = {} }
+window.switch.onPick("lib")
+check("the Library has a Save a Macro button on your own class", window.lib.save:IsShown())
+Click(window.lib.save)
+local texts = {}
+for _, item in ipairs(menu.items) do texts[#texts + 1] = item.title or item.text end
+check("the picker lists the account's macros, then this character's, scrolling",
+    menu.owner == window.lib.save and menu.scroll
+    and table.concat(texts, "|") == "Account macros|Ice Lance|This character's macros|Blink Now|Too Long")
+local function Pick(name)
+    for _, item in ipairs(menu.items) do if item.text == name then item.pick() end end
+end
+Pick("Ice Lance")
+check("picking one saves it under your class, with its icon",
+    #account.libraryMacros.MAGE == 1 and account.libraryMacros.MAGE[1].name == "Ice Lance"
+    and account.libraryMacros.MAGE[1].body == "/cast Ice Lance" and account.libraryMacros.MAGE[1].icon == 135846)
+check("and it shows in the Library as yours", LibCard("Ice Lance") and LibCard("Ice Lance").tag.text == "YOURS")
+Pick("Blink Now")
+check("a question mark icon is not kept, so it keeps following its spell",
+    account.libraryMacros.MAGE[2].name == "Blink Now" and account.libraryMacros.MAGE[2].icon == nil)
+store.account[1].body = "/cast Ice Lance Rank 2"
+Click(window.lib.save)
+Pick("Ice Lance")
+check("saving the same name again updates it", #account.libraryMacros.MAGE == 2
+    and account.libraryMacros.MAGE[1].body == "/cast Ice Lance Rank 2")
+Click(window.lib.save)
+Pick("Too Long")
+check("a macro the game cannot hold is refused", #account.libraryMacros.MAGE == 2)
+store.account, store.character = {}, {}
+Click(window.lib.save)
+check("with no game macros the picker says so", #menu.items == 1 and menu.items[1].title == "You have no game macros to save.")
+local priest = Shown(function(f) return rawget(f, "class") == "PRIEST" end)[1]
+Click(priest)
+check("the button is only for your own class: not on another's page", priest and not window.lib.save:IsShown())
 
 print(("test-macro-window: %d checks passed"):format(checks))
