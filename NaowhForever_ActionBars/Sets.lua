@@ -35,8 +35,12 @@ local TEXT_DETAIL = "Save your bars from the window, or with /nf bars save and a
 
 local AUTO_IMPORT_LEVEL, AUTO_IMPORT_XP = 1, 0
 local AUTO_STORE = "barSetAuto"
+local LOGOUT_COPY_DELAY = 1
+local LOGOUT_EVENTS = { "ACTIONBAR_SLOT_CHANGED", "UPDATE_MACROS", "UPDATE_BINDINGS" }
 
 local COMMANDS = { save = true, import = true, restore = true, test = true, delete = true }
+
+local logoutCopy, copyQueued
 
 local function Ready(what)
     if not S.Get("enabled") then ns.Print(TEXT_OFF) return false end
@@ -49,7 +53,8 @@ local function Save(name, choices)
     local key = A.Find(name) or name
     local sets = A.Sets()
     sets[key] = Capture.Snapshot(choices or (sets[key] and sets[key].choices))
-    A.SetLast(key)
+    A.SetLast(key, true)
+    logoutCopy = nil
     ns.Print(TEXT_SAVED:format(key))
     A.Refresh()
     return key
@@ -172,12 +177,35 @@ local function DeleteNamed(name)
     if key then ConfirmDelete(key) else ns.Print(TEXT_NO_SET:format(name)) end
 end
 
-local function SaveOnLogout()
-    if not (S.Get("enabled") and S.Get("saveOnLogout")) then return end
+local function LogoutKey()
+    if not (S.Get("enabled") and S.Get("saveOnLogout")) then return nil end
     local last = A.Last()
-    local key = last and last.name
-    local sets = A.Sets()
-    if key and sets[key] then sets[key] = Capture.Snapshot(sets[key].choices) end
+    local key = last and last.saved and last.name
+    return key and A.Sets()[key] and key or nil
+end
+
+local function CopyBars()
+    copyQueued = false
+    local key = LogoutKey()
+    logoutCopy = key and { key = key, set = Capture.Snapshot(A.Sets()[key].choices) } or nil
+end
+
+local function QueueCopy()
+    if copyQueued then return end
+    copyQueued = true
+    C_Timer.After(LOGOUT_COPY_DELAY, CopyBars)
+end
+
+local function WatchLogout()
+    local on = S.Get("enabled") and S.Get("saveOnLogout")
+    for _, event in ipairs(LOGOUT_EVENTS) do
+        if on then Pending.events:RegisterEvent(event) else Pending.events:UnregisterEvent(event) end
+    end
+end
+
+local function SaveOnLogout()
+    local key = LogoutKey()
+    if key and logoutCopy and logoutCopy.key == key then A.Sets()[key] = logoutCopy.set end
 end
 
 local function AutoImportDue()
@@ -204,6 +232,7 @@ end
 local function OnEvent(_, event)
     if event == "PLAYER_LOGIN" then
         Pending.Watch()
+        WatchLogout()
         if AutoImportDue() then
             A.autoWaiting = true
             Pending.events:RegisterEvent("PLAYER_ENTERING_WORLD")
@@ -216,8 +245,10 @@ local function OnEvent(_, event)
     elseif event == "SPELLS_CHANGED" or event == "PLAYER_REGEN_ENABLED" then
         if event == "PLAYER_REGEN_ENABLED" then AutoImport() end
         Pending.SpellsReady(event)
-    else
+    elseif event == "PLAYER_LOGOUT" then
         SaveOnLogout()
+    else
+        QueueCopy()
     end
 end
 
@@ -261,4 +292,5 @@ Pending.events:SetScript("OnEvent", OnEvent)
 
 S.OnChange(function(key)
     if key == "enabled" or key == "fillLater" then Pending.Watch() end
+    if key == "enabled" or key == "saveOnLogout" then WatchLogout() end
 end)

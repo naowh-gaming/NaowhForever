@@ -45,7 +45,13 @@ table (the frame, `Show` and `Redraw`) when it builds them.
 - In `Data/Bars.lua` the main bar's second page and the stance bars answer to the main bar's keys
   (`ACTIONBUTTON`), as the game binds them.
 - The last set this character saved or imported (`barSetLast`) is kept with its class, since a
-  set's name means something only within its class. Save on Logout writes back to it.
+  set's name means something only within its class. Save on Logout writes back only to a set this
+  character saved (`saved`), so an alt that imported a set never writes its own, half-filled bars
+  over it.
+- The game no longer reports the action bars at `PLAYER_LOGOUT` (macros and keybinds still read):
+  saving then wrote a set with no actions (Itsmarco and POK, 2026-10-11). Save on Logout keeps a
+  copy instead, taken `LOGOUT_COPY_DELAY` after the bars, macros or keybinds change, and writes
+  that. A hand save drops the copy, so logging out right after it changes nothing.
 - Set names match without case, so `/nf bars` finds them however they are typed.
 - A macro slot's action ID is the spell or item it shows, not the macro, so the macro is found
   by the name the slot carries.
