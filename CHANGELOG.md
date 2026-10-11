@@ -1,6 +1,79 @@
 # Changelog
 
-## Unreleased
+## 1.1.6
+
+### Added
+- Bag Space: Reverse Order puts the cheapest item at the far end of the row, so it can grow left
+  with the cheapest on the left.
+- Action Bars: `/nf ab <set>` imports a saved set, and `/nf ab` lists them.
+- Action Bars: Import on New Character imports a saved set once when a character first logs in at
+  level 1.
+- Macros: NF Healthstone, NF Health Potion and NF Drink macros, and a Food-only option for NF Food.
+- Macros: Extra Lines on each smart macro, such as a mouseover heal after your potion.
+- Quests: Modifier Does lets the quest key trigger the quest steps instead of skipping them, so they
+  can be off by default with a key to accept.
+- Quests: NPC Gossip picks the only option of a vendor, flight master, trainer, banker, auctioneer
+  or stable master, with its own modifier.
+- Macros: Save a Macro on the Library tab keeps one of your game macros under your class.
+- Professions: Disenchant Window. With Enchanting open, a Disenchant button lists every item in your
+  bags you can disenchant; right-click one to keep it, and Disenchant All disenchants the rest one
+  click at a time.
+- Consumable Bar (Utilities > Consumable Bar): your consumables on a bar you click, with counts,
+  cooldowns and keys, and an Edit Items window to add, move and set up each item.
+- Food & Drink Bar: Show Count and Show Keybinds, with cogs for their font, size, colour and
+  position.
+- Food & Drink Bar and Consumable Bar: anchor to one of your unit frames, or to another Naowh
+  Forever element through the HUD Editor.
+- New module that tracks instance history, lockouts remaining, an optional timer that shows current
+  run stats and how many lockouts used in the last hour, the ability to see what runs your alts have
+  done, has the ability to communicate with Nova Instance Tracker to send/receive instance reset
+  messages, and automates announcing instance resets in chat.
+- Macros: New Macro on the Library tab writes a macro with a name and its text, kept in your Library
+  or added to this character.
+
+### Changed
+- XP per Hour: level splits are named by the level you reached, so the time you hit 14 shows on the
+  Level 14 row.
+- Map Pins: quest, rare and dungeon and raid entrance pins are set from Map Pins (QoL > Interface,
+  and the Map Pins button on the world map) instead of Completo and the Dungeon Journal.
+- Map Pins: zone exit arrows are smaller, in line with the other pins.
+- Completo is now part of Discovery: its quests are the Quest List tab and its rares the Rares tab,
+  under one switch. `/nfquests` opens the Quest List.
+- Map Pins: stable masters only show for hunters.
+- Map Pins is now Map Options and Pins: Map Window, Unexplored Areas, Zone Levels and Skyborne Spots
+  moved into it from QoL > Interface.
+- QoL: the Cursor tab is now Cursor & Crosshair and opens with its cards folded.
+- QoL: Talent Points and Trainer Popup moved from Questing & Group to XP.
+- The BiS List's Item Level in Bags option is gone. Bag Marks always shows item levels on gear in
+  your bags.
+- Bag Space: the gap and the price text shrink with the icon size, and icons can go down to 16.
+- Macros: a smart macro for something you carry none of is made with a placeholder, so it can go on
+  your bars before you have the item.
+- QoL: Death Release Protection, Auto Combat Logging and Summon Emote are removed.
+- Macros: the My Macros tab and the macro editor are removed; Naowh's Forge is Smart Macros and
+  Library.
+- Food & Drink Bar: its settings move under Consumable Bar while that module is on.
+
+### Fixed
+- XP per Hour: picking None for the text outline no longer leaves the window and its settings blank.
+- Completo: spotting a rare no longer triggers the game's "blocked from an action" popup. Mark Rare
+  is removed, since Forever doesn't let addons set raid marks.
+- Map Pins: quest, rare, entrance and town pins keep the same size as you zoom the map.
+- Character Panel stat hover cards say what Strength, Agility, Intellect and Spirit give your class
+  (a Warrior's Agility gives only ranged attack power, a Shaman's none).
+- Waypoint Pin: a waypoint you place on the map is tracked, so the pin shows it, and it goes away as
+  soon as you reach it.
+- Waypoint Pin: a waypoint placed on a continent map goes away when you reach it, and one you have
+  been away from still does after another quest is tracked.
+- Mana Efficiency: the line now shows on the tooltip of a macro that casts a mana spell.
+- Settings: on a narrow card the "settings changed" note no longer runs into the Reset link.
+- Smart Macros: extra lines that run a script are left out, and a change to the extra lines or Food
+  Only updates the macro straight away.
+- Action Bars: Import on New Character is chosen per class, follows a renamed set, and leaves an
+  existing level 1 character's bars alone.
+- Action Bars: Import on New Character still runs after combat when a setting is changed mid-fight.
+- Quests: Auto Gossip no longer picks a lone flight master option.
+- Tooltips: Mana Efficiency shows on macros on other addons' action bars.
 
 ## 1.1.5
 
