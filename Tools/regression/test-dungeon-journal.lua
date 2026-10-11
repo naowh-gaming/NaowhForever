@@ -1440,7 +1440,7 @@ do
     check("and nothing once you have them all", BisText() == nil)
     Measure("the dungeon list's repaint", 2, function() List.Paint(deadmines) end)
     state.bis[first], state.owned[first] = nil, nil
-    -- The list's groups: Behind you first, closed until you open it; your level's right under it.
+    -- The list's groups: Low level first, closed until you open it; your level's right under it.
     do
         local function GroupHeader(label)
             for _, font in ipairs(state.fonts) do
@@ -1448,13 +1448,13 @@ do
                 if rawget(font, "text") == label and parent and rawget(parent, "arrow") then return parent end
             end
         end
-        check("Behind you starts closed", state.defaults.closedGroup3 == true)
+        check("Low level starts closed", state.defaults.closedGroup3 == true)
         local levelBefore = state.level
         state.level = 30
         S.Set("closedGroup3", true)
         List.Layout()
-        local behind, yours = GroupHeader("BEHIND YOU"), GroupHeader("FOR YOUR LEVEL")
-        check("Behind you sits above your level's dungeons", behind and yours and behind.pointY > yours.pointY)
+        local behind, yours = GroupHeader("LOW LEVEL"), GroupHeader("FOR YOUR LEVEL")
+        check("Low level sits above your level's dungeons", behind and yours and behind.pointY > yours.pointY)
         check("closed, it shows how many it holds", (tonumber(rawget(behind.count, "text")) or 0) > 0)
         local deadminesRow
         for _, font in ipairs(state.fonts) do
