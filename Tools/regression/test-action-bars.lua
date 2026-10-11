@@ -438,6 +438,44 @@ Case("Save on Logout leaves a set alone with nothing changed since it was saved"
     w.logout(false)
     assert(w.account.barSets.PRIEST.Daily.slots[2].id == 2055, "the hand save stands")
 end)
+Case("switching Save on Logout off drops its copy, and on takes a new one", function()
+    local w = World({ 598, 2055 })
+    local S = w.ns.ActionBarSettings
+    S.Set("saveOnLogout", true)
+    w.bars = { [2] = Spell(598) }
+    w.run("save Daily")
+    w.bars = { [2] = Spell(2055) }
+    w.logout(true)
+    S.Set("saveOnLogout", false)
+    w.bars = { [3] = Spell(598) }
+    S.Set("saveOnLogout", true)
+    for _, fn in ipairs(w.timers) do fn() end
+    w.logout(false)
+    local set = w.account.barSets.PRIEST.Daily
+    assert(set.slots[3] and not set.slots[2], "the bars as they are, not the copy from before")
+end)
+Case("a renamed set keeps its logout copy", function()
+    local w = World({ 598, 2055 })
+    w.ns.ActionBarSettings.Set("saveOnLogout", true)
+    w.bars = { [2] = Spell(598) }
+    w.run("save Daily")
+    w.bars = { [2] = Spell(2055) }
+    w.events.handler(w.events, "ACTIONBAR_SLOT_CHANGED")
+    for _, fn in ipairs(w.timers) do fn() end
+    w.ns.ActionBars.Rename("Daily", "Main")
+    w.logout(false)
+    assert(w.account.barSets.PRIEST.Main.slots[2].id == 2055, "saved under the new name")
+end)
+Case("a set last used before the saved flag existed is still written back", function()
+    local w = World({ 598, 2055 })
+    w.ns.ActionBarSettings.Set("saveOnLogout", true)
+    w.bars = { [2] = Spell(598) }
+    w.run("save Daily")
+    w.account.barSetLast["Preview-Realm"].saved = nil
+    w.bars = { [2] = Spell(2055) }
+    w.logout(true)
+    assert(w.account.barSets.PRIEST.Daily.slots[2].id == 2055, "written back as before")
+end)
 Case("renaming a set to its own name keeps it", function()
     local w = World({ 598 })
     w.bars = { [2] = Spell(598) }
