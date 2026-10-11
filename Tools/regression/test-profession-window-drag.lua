@@ -37,6 +37,7 @@ local env = {
     ProfessionsFrame = pf,
     UIParent = ui,
 }
+env._G = env
 local fn = assert(loadstring(chunk))
 setfenv(fn, setmetatable(env, { __index = _G }))
 local SetWin, Drag = fn()
@@ -78,18 +79,18 @@ check("window back on Blizzard's after combat", win.points[1][2] == pf)
 
 -- EllesmereUI's Shifter re-places Blizzard's window at its saved spot on every SetPoint, so the
 -- dragged spot is written there too; with Shifter off its positions are left alone.
-EllesmereUIDB = { shifterEnabled = false }
+env.EllesmereUIDB = { shifterEnabled = false }
 Follow()
-check("Shifter off untouched", EllesmereUIDB.shifterPositions == nil)
-EllesmereUIDB = { shifterEnabled = true, shifterPositions = { ProfessionsFrame = { point = "CENTER", relPoint = "CENTER", x = 0, y = 0 } } }
+check("Shifter off untouched", env.EllesmereUIDB.shifterPositions == nil)
+env.EllesmereUIDB = { shifterEnabled = true, shifterPositions = { ProfessionsFrame = { point = "CENTER", relPoint = "CENTER", x = 0, y = 0 } } }
 Follow()
-local shifted = EllesmereUIDB.shifterPositions.ProfessionsFrame
+local shifted = env.EllesmereUIDB.shifterPositions.ProfessionsFrame
 check("Shifter spot follows the drag", shifted.point == "TOPLEFT" and shifted.relPoint == "BOTTOMLEFT"
     and shifted.x == 300 and shifted.y == 700)
-EllesmereUIDB = { shifterEnabled = true }
+env.EllesmereUIDB = { shifterEnabled = true }
 Follow()
-check("Shifter spot written when it had none", EllesmereUIDB.shifterPositions.ProfessionsFrame.x == 300)
-EllesmereUIDB = nil
+check("Shifter spot written when it had none", env.EllesmereUIDB.shifterPositions.ProfessionsFrame.x == 300)
+env.EllesmereUIDB = nil
 
 -- A hidden window (module off, or a profession it does not show) does not pull Blizzard's.
 pf.points = { { "TOPLEFT", ui, "TOPLEFT", 16, -116 } }
