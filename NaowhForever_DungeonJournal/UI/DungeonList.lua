@@ -25,6 +25,7 @@ local CONTESTED_RGB = { r = 0xe6 / 255, g = 0xcc / 255, b = 0x80 / 255 }
 local GROUPS = { "For your level", "Coming up", "Raids", "Behind you" }
 local CLOSED_KEYS = { "closedGroup1", "closedGroup2", "closedGroup4", "closedGroup3" }
 local FOR_YOUR_LEVEL, COMING_UP, RAIDS, BEHIND_YOU = 1, 2, 3, 4
+local ORDER = { BEHIND_YOU, FOR_YOUR_LEVEL, COMING_UP, RAIDS }
 local CONTESTED_SIDE = "Contested"
 
 local TEXT_HERE = "You are here"
@@ -261,7 +262,7 @@ end
 
 function List.Layout()
     local y = 0
-    for g, header in ipairs(groups) do y = LayoutGroup(g, header, y) end
+    for _, g in ipairs(ORDER) do y = LayoutGroup(g, groups[g], y) end
     content:SetHeight(math.max(1, y))
 end
 
