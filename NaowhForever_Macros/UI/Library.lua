@@ -38,6 +38,7 @@ local TEXT_YOURS = "YOURS"
 local TEXT_NAOWH = GOLD_CODE .. "NAOWH|r"
 local TEXT_SAVED = "Saved %s to your Library, for every %s you play."
 local TEXT_UPDATED = "Updated %s in your Library."
+local TEXT_REPLACE = "%s is already in your Library with other text. Replace it?"
 local TEXT_NO_GAME_MACROS = "You have no game macros to save."
 local TEXT_ACCOUNT_MACROS = "Account macros"
 local TEXT_CHARACTER_MACROS = "This character's macros"
@@ -88,23 +89,27 @@ local function OwnList(class)
     return account.libraryMacros[class]
 end
 
-local function SaveToLibrary(macro)
-    if not Fits(macro) then ns.Print(TEXT_TOO_BIG:format(macro.name)) return false end
+local function SaveToLibrary(macro, done)
+    if not Fits(macro) then ns.Print(TEXT_TOO_BIG:format(macro.name)) return end
     local _, class = UnitClass("player")
     local list = OwnList(class)
     local entry = { name = macro.name, body = macro.body, icon = macro.icon ~= QUESTION and macro.icon or nil }
     for i, e in ipairs(list) do
         if e.name == macro.name then
-            list[i] = entry
-            ns.Print(TEXT_UPDATED:format(macro.name))
-            F.Render()
-            return true
+            local function Replace()
+                list[i] = entry
+                ns.Print(TEXT_UPDATED:format(macro.name))
+                F.Render()
+                if done then done() end
+            end
+            if e.body == macro.body then Replace() else ns.Confirm(TEXT_REPLACE:format(macro.name), Replace) end
+            return
         end
     end
     list[#list + 1] = entry
     ns.Print(TEXT_SAVED:format(macro.name, LOCALIZED_CLASS_NAMES_MALE[class] or class))
     F.Render()
-    return true
+    if done then done() end
 end
 
 local function FillPicker(_, root)

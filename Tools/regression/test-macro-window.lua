@@ -522,10 +522,16 @@ check("and it shows in the Library as yours", LibCard("Ice Lance") and LibCard("
 Pick("Blink Now")
 check("a question mark icon is not kept, so it keeps following its spell",
     account.libraryMacros.MAGE[2].name == "Blink Now" and account.libraryMacros.MAGE[2].icon == nil)
+account.lastConfirm = nil
+Click(window.lib.save)
+Pick("Ice Lance")
+check("saving the same name with the same text updates it without asking", account.lastConfirm == nil
+    and #account.libraryMacros.MAGE == 2)
 store.account[1].body = "/cast Ice Lance Rank 2"
 Click(window.lib.save)
 Pick("Ice Lance")
-check("saving the same name again updates it", #account.libraryMacros.MAGE == 2
+check("with other text it asks before replacing, then updates it", #account.libraryMacros.MAGE == 2
+    and (account.lastConfirm or ""):find("already in your Library with other text", 1, true)
     and account.libraryMacros.MAGE[1].body == "/cast Ice Lance Rank 2")
 Click(window.lib.save)
 Pick("Too Long")
@@ -588,6 +594,15 @@ nameBox:SetText("Unsaved")
 bodyBox:SetText("/cast Fireball")
 Click(cancelButton)
 check("Cancel keeps nothing", #account.libraryMacros.MAGE == 2)
+local scroller = bodyBox.parent
+local at = 0
+scroller.GetVerticalScroll = function() return at end
+scroller.SetVerticalScroll = function(_, v) at = v end
+scroller.GetHeight = function() return 160 end
+bodyBox.scripts.OnCursorChanged(bodyBox, 0, -200, 2, 14)
+check("the text box scrolls down to keep the cursor in view", at == 54)
+bodyBox.scripts.OnCursorChanged(bodyBox, 0, -10, 2, 14)
+check("and back up", at == 10)
 local priestRow = Shown(function(f) return rawget(f, "class") == "PRIEST" end)[1]
 Click(priestRow)
 check("New Macro is only on your own class's page", not window.lib.new:IsShown())

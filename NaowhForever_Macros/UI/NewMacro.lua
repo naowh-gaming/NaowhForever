@@ -36,6 +36,16 @@ local function Label(panel, y, text)
     return label
 end
 
+local function FollowCursor(self, _, y, _, h)
+    local scroll = self:GetParent()
+    local top, view, at = -y, scroll:GetHeight(), scroll:GetVerticalScroll()
+    if top < at then
+        scroll:SetVerticalScroll(top)
+    elseif top + h > at + view then
+        scroll:SetVerticalScroll(top + h - view)
+    end
+end
+
 local function Meter()
     dialog.meter:SetText(TEXT_METER:format(#dialog.body:GetText(), LIMIT))
 end
@@ -56,6 +66,7 @@ local function NewBody(panel)
     box:SetHeight(BODY_H)
     box:SetScript("OnEscapePressed", ClearFocus)
     box:SetScript("OnTextChanged", Meter)
+    box:SetScript("OnCursorChanged", FollowCursor)
     scroll:SetScrollChild(box)
     scroll:SetScript("OnSizeChanged", function(_, w) box:SetWidth(w) end)
     scroll:EnableMouse(true)
@@ -65,9 +76,10 @@ end
 
 local function Accept(andAdd)
     local macro = { name = strtrim(dialog.name:GetText()), body = strtrim(dialog.body:GetText()) }
-    if not F.SaveToLibrary(macro) then return end
-    dialog.dimmer:Hide()
-    if andAdd then F.Add({ name = macro.name, body = macro.body, own = true }) end
+    F.SaveToLibrary(macro, function()
+        dialog.dimmer:Hide()
+        if andAdd then F.Add({ name = macro.name, body = macro.body, own = true }) end
+    end)
 end
 
 local function SaveOnly() Accept(false) end
