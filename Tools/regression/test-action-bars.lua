@@ -30,7 +30,7 @@ local function World(known)
             itemType = 1, isPassive = false }
     end
     w.opts.enabled, w.opts.importMacros, w.opts.importBindings = true, true, true
-    w.opts.autoImportSet = ""
+    w.opts.autoImportSets = {}
     local listeners = {}
     local S = {
         Get = function(k) return w.opts[k] end,
@@ -169,6 +169,7 @@ local function World(known)
         UnitClass = function() return "Priest", "PRIEST" end,
         UnitName = function() return "Preview" end,
         UnitLevel = function() return w.level end,
+        UnitXP = function() return w.xp or 0 end,
         GetRealmName = function() return "Realm" end,
         CreateFrame = function()
             local f = { registered = {} }
@@ -628,7 +629,7 @@ local function NewCharacter(set, level, guid)
     w.run("save P")
     local n = World({ 598 })
     n.account, n.level, n.guid = w.account, level or 1, guid or "Player-2"
-    n.opts.autoImportSet = set
+    n.opts.autoImportSets = set ~= "" and { PRIEST = set } or {}
     n.macros = { { name = "Pull", icon = 1, body = "/say pull" } }
     n.events.handler(n.events, "PLAYER_LOGIN")
     return n
@@ -683,5 +684,44 @@ Case("in combat the import waits for the end of combat", function()
     n.events.handler(n.events, "PLAYER_REGEN_ENABLED")
     assert(Bars(n) == "1=spell598 3=Pull", Bars(n))
     assert(not n.events.registered.PLAYER_REGEN_ENABLED)
+end)
+Case("a level 1 character that has earned experience is left alone", function()
+    local m = World({ 598 })
+    m.bars = { [1] = Spell(598) }
+    m.run("save P")
+    local fresh = World({ 598 })
+    fresh.account, fresh.level, fresh.guid, fresh.xp = m.account, 1, "Player-9", 40
+    fresh.opts.autoImportSets = { PRIEST = "P" }
+    fresh.events.handler(fresh.events, "PLAYER_LOGIN")
+    EnterWorld(fresh)
+    assert(Bars(fresh) == "", "an existing level 1 alt with experience keeps its bars: " .. Bars(fresh))
+end)
+Case("the choice is per class: another class's set is not imported", function()
+    local n = NewCharacter("")
+    n.opts.autoImportSets = { MAGE = "P" }
+    n.events.handler(n.events, "PLAYER_LOGIN")
+    EnterWorld(n)
+    assert(Bars(n) == "", Bars(n))
+end)
+Case("renaming or deleting the chosen set follows it", function()
+    local w = World({ 598 })
+    w.bars = { [1] = Spell(598) }
+    w.run("save Leveling")
+    w.ns.ActionBars.SetAutoImport("Leveling")
+    assert(w.opts.autoImportSets.PRIEST == "Leveling")
+    w.ns.ActionBars.Rename("Leveling", "Leveling 2")
+    assert(w.opts.autoImportSets.PRIEST == "Leveling 2", tostring(w.opts.autoImportSets.PRIEST))
+    w.ns.ActionBars.Delete("Leveling 2")
+    assert(w.opts.autoImportSets.PRIEST == nil, "deleting it clears the choice")
+end)
+Case("changing Fill In Later during the fight does not drop the wait for the end of combat", function()
+    local n = NewCharacter("P")
+    n.combat = true
+    EnterWorld(n)
+    n.ns.ActionBarSettings.Set("fillLater", false)
+    assert(n.events.registered.PLAYER_REGEN_ENABLED, "still waiting")
+    n.combat = false
+    n.events.handler(n.events, "PLAYER_REGEN_ENABLED")
+    assert(Bars(n) == "1=spell598 3=Pull", Bars(n))
 end)
 print(count .. " action bar set regressions passed")

@@ -12,7 +12,7 @@ local MODIFIER_MODE = { { SKIP = "Skips", TRIGGER = "Triggers" }, { "SKIP", "TRI
 local DOING = { { "questAccept", "accepts" }, { "questTurnIn", "turns in" }, { "questGossip", "picks from NPCs" },
     { "questShare", "shares" } }
 
-local GOSSIP_ICON_PATHS = { "VendorGossipIcon", "TaxiGossipIcon", "TrainerGossipIcon", "BankerGossipIcon",
+local GOSSIP_ICON_PATHS = { "VendorGossipIcon", "TrainerGossipIcon", "BankerGossipIcon",
     "AuctioneerGossipIcon", "StableMasterGossipIcon" }
 local GOSSIP_ICON_DIR = "Interface\\GossipFrame\\"
 
@@ -123,7 +123,8 @@ local function PickFromGossip()
 end
 
 local function Blocked(modifierKey, modeKey)
-    local down = SKIP_HELD[S.Get(modifierKey)]()
+    local held = SKIP_HELD[S.Get(modifierKey)]
+    local down = held ~= nil and held()
     if S.Get(modeKey) == "TRIGGER" then return not down end
     return down
 end
@@ -156,10 +157,7 @@ local function AutoGossip()
 end
 
 local function OnGossip()
-    if On("questGossip") and (On("questAccept") or On("questTurnIn"))
-        and not Blocked("questSkipModifier", "questModifierMode") then
-        PickFromGossip()
-    end
+    if On("questGossip") and not Blocked("questSkipModifier", "questModifierMode") then PickFromGossip() end
     AutoGossip()
 end
 
@@ -279,7 +277,7 @@ page:Card({
 
 page:Card({
     id = "gossip", name = "NPC Gossip", order = 15, switch = "gossipAuto",
-    help = "Picks the only option of a vendor, flight master, trainer, banker, auctioneer or stable "
+    help = "Picks the only option of a vendor, trainer, banker, auctioneer or stable "
         .. "master; nothing that costs money or moves you.",
     rows = {
         { key = "gossipModifier", label = "Modifier", choice = MODIFIER,

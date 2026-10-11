@@ -33,7 +33,7 @@ local TEXT_DETAIL_OFF = "Turn on Action Bars to save and import your bars."
 local TEXT_DETAIL_LAST = "This character last used %s. Import any set from the window, out of combat."
 local TEXT_DETAIL = "Save your bars from the window, or with /nf bars save and a name."
 
-local AUTO_IMPORT_LEVEL = 1
+local AUTO_IMPORT_LEVEL, AUTO_IMPORT_XP = 1, 0
 local AUTO_STORE = "barSetAuto"
 
 local COMMANDS = { save = true, import = true, restore = true, test = true, delete = true }
@@ -105,8 +105,21 @@ local function ImportSet(name, test)
     return result
 end
 
+function A.AutoImportName()
+    local chosen = S.Get("autoImportSets")
+    return chosen and chosen[A.Class()] or ""
+end
+
+function A.SetAutoImport(name)
+    local chosen = {}
+    for class, set in pairs(S.Get("autoImportSets") or {}) do chosen[class] = set end
+    chosen[A.Class()] = name ~= "" and name or nil
+    S.Set("autoImportSets", chosen)
+end
+
 local function Delete(key)
     A.Sets()[key] = nil
+    if A.AutoImportName() == key then A.SetAutoImport("") end
     ns.Print(TEXT_DELETED:format(key))
     A.Refresh()
 end
@@ -121,6 +134,7 @@ local function Rename(key, new)
     for _, last in pairs(A.Account("barSetLast")) do
         if last.class == A.Class() and last.name == key then last.name = new end
     end
+    if A.AutoImportName() == key then A.SetAutoImport(new) end
     A.Refresh()
 end
 
@@ -167,8 +181,11 @@ local function SaveOnLogout()
 end
 
 local function AutoImportDue()
-    local name = S.Get("autoImportSet")
-    if name == "" or not S.Get("enabled") or UnitLevel("player") ~= AUTO_IMPORT_LEVEL then return false end
+    local name = A.AutoImportName()
+    if name == "" or not S.Get("enabled") or UnitLevel("player") ~= AUTO_IMPORT_LEVEL
+        or UnitXP("player") ~= AUTO_IMPORT_XP then
+        return false
+    end
     local done = ns.Shared.CharacterData(AUTO_STORE, true)
     return not done.imported and A.Find(name) ~= nil
 end
@@ -181,7 +198,7 @@ local function AutoImport()
     end
     A.autoWaiting = false
     ns.Shared.CharacterData(AUTO_STORE, true).imported = true
-    ImportSet(S.Get("autoImportSet"))
+    ImportSet(A.AutoImportName())
 end
 
 local function OnEvent(_, event)

@@ -102,8 +102,9 @@ page:Card({
     },
 })
 
-local EXTRA_HELP = "Lines added after the macro's own. Write \n between lines, as in "
-    .. "/use [@mouseover,help][]Holy Light\n/cqs. Left out, with a message, if the macro would pass 255 characters."
+local EXTRA_HELP = "Lines added after the macro's own. Write \\n between lines, as in "
+    .. "/use [@mouseover,help][]Holy Light\\n/cqs. Left out, with a message, if the macro would pass 255 characters "
+    .. "or the lines run a script."
 
 local function ExtraRows()
     local rows = {}

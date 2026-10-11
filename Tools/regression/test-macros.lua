@@ -417,6 +417,29 @@ do
     Check("exactly 255 is kept", body ~= nil and #body == 255, true)
 end
 
+-- Extra lines that run a script are left out; a change reaches a placeholder or a stale body at once.
+do
+    local t = Fixture({ settings = { mana = true, manaExtra = "/run print(1)" }, bags = { 3827 } })
+    t.Fire("PLAYER_ENTERING_WORLD")
+    Check("script extra lines left out", t.Body("NF Mana"), "#showtooltip\n/use item:3827")
+    Check("script extra lines: said once", #t.printed, 1)
+    t.Fire("BAG_UPDATE_DELAYED")
+    Check("script extra lines: not repeated", #t.printed, 1)
+    t.Set("manaExtra", "/cqs\n/script print(1)")
+    Check("a script on a later line is caught too", t.Body("NF Mana"), "#showtooltip\n/use item:3827")
+    t = Fixture({ settings = { mana = true } })
+    t.Fire("PLAYER_ENTERING_WORLD")
+    t.Set("manaExtra", "/cqs")
+    Check("extra lines reach the placeholder at once", t.Body("NF Mana"), "#showtooltip\n/cqs")
+    t.Set("manaExtra", "")
+    Check("clearing them reaches the placeholder", t.Body("NF Mana"), "#showtooltip")
+    t = Fixture({ settings = { food = true }, bags = { 8079 } })
+    t.Fire("PLAYER_ENTERING_WORLD")
+    Check("food with only drink", t.Body("NF Food"), "#showtooltip\n/use item:8079")
+    t.Set("foodOnly", true)
+    Check("food only with no food drops the drink", t.Body("NF Food"), "#showtooltip")
+end
+
 -- Combat defers the write until it ends; an unchanged body is not rewritten.
 do
     local t = Fixture({ settings = { mana = true }, bags = { 3827 } })

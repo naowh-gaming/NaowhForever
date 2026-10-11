@@ -51,7 +51,10 @@ the open tab) and the functions its UI files call on each other.
 - Extra Lines is one single-line text row per bag macro (`<key>Extra`), because the settings
   engine has no multi-line box. A typed `\n` starts a new line; `;` cannot, as it already
   separates clauses inside a macro line. The lines go after the generated ones; if the macro
-  would pass `LIMIT` they are left out and the player gets a message once per text.
+  would pass `LIMIT`, or they run a script (`Commands.RunsScript`), they are left out and the player
+  gets a message once per text. A change to them, or to Food Only, rewrites the macro at once, even
+  when it holds a placeholder or an item it would otherwise keep. The Smart Macros page lists what
+  the generated lines use (`Smart.Body`), so an item named in the extras is not shown as the macro's.
 - NF Health picks from the core's healing lists (`ns.HEALTHSTONES`, `ns.HEALING_POTIONS`, in
   `Shared/Game/Consumables.lua`), never Aura Buffs', so it works with Aura Buffs off.
 - `LIMIT` is 255: the game keeps only the first 255 bytes of a macro's text, counted in bytes.

@@ -6,7 +6,8 @@ window (`/nfbars`, `/nf bars`, Open Action Bars on its settings page) shows your
 sets, the set builder (pick the bars, slots, keybinds and macros that go in) and the import
 preview (your bars as an import would leave them). `/nf bars save|import|test|delete <name>`
 and `/nf bars list` do the same from chat. `/nf ab <name>` imports a set and `/nf ab` lists them.
-Import on New Character imports a chosen set once, the first time a level 1 character logs in.
+Import on New Character imports a chosen set once, the first time a new character of that class
+logs in (level 1, no experience yet).
 
 ## Layout
 
@@ -75,6 +76,8 @@ table (the frame, `Show` and `Redraw`) when it builds them.
 - Import on New Character waits for `PLAYER_ENTERING_WORLD`, when the spellbook is loaded, and for
   the end of combat. The character is recorded by GUID (`barSetAuto`) when the import runs, so it
   never repeats; the spells a level 1 character has not learned are placed by Fill In As You Learn.
+  The choice is kept per class (`autoImportSets`, class token to set name), follows a rename and is
+  cleared when its set is deleted. `UnitXP` must be 0 too, so an existing level 1 alt is left alone.
 - `/nf bars restore` still imports, as it did before `import` was its name.
 
 ## Checking

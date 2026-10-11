@@ -140,11 +140,14 @@ local function Reset() Fire("GOSSIP_CLOSED") end
 options = { ONLY }
 Gossip("a lone vendor option is picked", true)
 Gossip("not picked twice in one window", false)
-for _, name in ipairs({ "TaxiGossipIcon", "TrainerGossipIcon", "BankerGossipIcon", "AuctioneerGossipIcon" }) do
+for _, name in ipairs({ "TrainerGossipIcon", "BankerGossipIcon", "AuctioneerGossipIcon" }) do
     Reset()
     options = { { orderIndex = 3, status = 0, icon = ICON_IDS[name] } }
     Gossip(name .. " is picked", true)
 end
+Reset()
+options = { { orderIndex = 3, status = 0, icon = ICON_IDS.TaxiGossipIcon } }
+Gossip("a lone taxi option is left alone: some fly you straight off", false)
 Reset()
 options = { { orderIndex = 3, status = 0, icon = UNRESOLVED } }
 Gossip("an icon that did not resolve is left alone", false)

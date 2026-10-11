@@ -659,7 +659,7 @@ local function Style(view)
     local scale = size / HEAD_SIZE
     local fit = math.min(1, iconSize / ICON_BASE)
     local price = math.max(PRICE_MIN, Scaled(PRICE_SIZE, scale * fit))
-    view.priceSize, view.priceH, view.priceW = price, Scaled(PRICE_H, scale), Scaled(PRICE_W, scale * fit)
+    view.priceSize, view.priceH, view.priceW = price, Scaled(PRICE_H, scale * fit), Scaled(PRICE_W, scale * fit)
     view.headH, view.headIcon = Scaled(HEAD_H, scale), Scaled(HEAD_ICON, scale)
     local f, cells = view.free, view.cells
     f:SetHeight(view.headH)
