@@ -1,10 +1,12 @@
--- SpellEfficiency.lua: Mana Efficiency, a mana spell's healing or damage per mana and per second on its tooltip, and its card preview.
+-- SpellEfficiency.lua: Mana Efficiency, a mana spell's (or macro's) healing or damage per mana and per second on its tooltip, and its card preview.
 local ns = _G.NaowhForever
 
 local GetSpellPowerCost = C_Spell.GetSpellPowerCost
 local GetSpellInfo = C_Spell.GetSpellInfo
 local GetSpellBonusHealing = GetSpellBonusHealing
 local GetSpellBonusDamage = GetSpellBonusDamage
+local GetActionInfo = GetActionInfo
+local GetMacroSpell = GetMacroSpell
 local UnitLevel = UnitLevel
 local floor = math.floor
 local find, sub = string.find, string.sub
@@ -261,9 +263,32 @@ local function SpellOf(data)
     return id
 end
 
+local function MacroSpellOf(tooltip, data)
+    local macroID = ReadableTable(data) and data.id
+    local owner = tooltip:GetOwner()
+    local action = owner and owner.action
+    if Readable(action) and type(action) == "number" then
+        local kind, id, subType = GetActionInfo(action)
+        if kind == "macro" and Readable(id) and type(id) == "number" then
+            if subType == "spell" then return id end
+            macroID = id
+        end
+    end
+    if not (Readable(macroID) and type(macroID) == "number") then return nil end
+    local spellID = GetMacroSpell(macroID)
+    if Readable(spellID) and type(spellID) == "number" then return spellID end
+    return nil
+end
+
 local function Decorate(tooltip, data)
     if not On() or tooltip:IsForbidden() or not Decorates(tooltip) then return end
     local spellID = SpellOf(data)
+    if spellID then AddLines(tooltip, spellID) end
+end
+
+local function DecorateMacro(tooltip, data)
+    if not On() or tooltip:IsForbidden() or not Decorates(tooltip) then return end
+    local spellID = MacroSpellOf(tooltip, data)
     if spellID then AddLines(tooltip, spellID) end
 end
 
@@ -271,6 +296,7 @@ local function Apply()
     if hooked or not On() then return end
     hooked = true
     TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Spell, Decorate)
+    TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Macro, DecorateMacro)
 end
 
 local function OnSettingChanged(key)

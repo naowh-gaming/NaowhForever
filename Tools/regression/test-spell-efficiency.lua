@@ -61,7 +61,8 @@ local function Frame()
     return setmetatable(f, { __index = function() return noop end })
 end
 
-local posts, damageReads = {}, {}
+local posts, macroPosts, damageReads = {}, {}, {}
+local actions, macroSpells = {}, {}
 local costs, casts, infos = {}, {}, {}
 local spellInfo
 local power = { heal = 0 }
@@ -89,8 +90,12 @@ local ns = {
 local env = {
     _G = { NaowhForever = ns }, GameTooltip = tooltip, ItemRefTooltip = refTip, ShoppingTooltip1 = shopTip,
     UIParent = Frame(), CreateFrame = Frame,
-    Enum = { PowerType = { Mana = 0, Rage = 1 }, TooltipDataType = { Spell = 1, Item = 2, Unit = 3 } },
-    TooltipDataProcessor = { AddTooltipPostCall = function(kind, fn) if kind == 1 then posts[#posts + 1] = fn end end },
+    Enum = { PowerType = { Mana = 0, Rage = 1 }, TooltipDataType = { Spell = 1, Item = 2, Unit = 3, Macro = 25 } },
+    TooltipDataProcessor = { AddTooltipPostCall = function(kind, fn)
+        if kind == 1 then posts[#posts + 1] = fn elseif kind == 25 then macroPosts[#macroPosts + 1] = fn end
+    end },
+    GetActionInfo = function(slot) local a = actions[slot]; if a then return a[1], a[2], a[3] end end,
+    GetMacroSpell = function(id) return macroSpells[id] end,
     C_Spell = {
         GetSpellPowerCost = function(id) return costs[id] end,
         GetSpellInfo = function(id)
@@ -154,7 +159,7 @@ check("Swiftmend's scripted heal is left out", Data[18562] == nil)
 check("Lesser Heal, Frostbolt, Shadow Word: Pain, Exorcism, Arcane Missiles are in",
     Data[2050] and Data[116] and Data[589] and Data[879] and Data[5143])
 
-check("off: no tooltip hook at all", #posts == 0)
+check("off: no tooltip hook at all", #posts == 0 and #macroPosts == 0)
 
 local function Show(id, tip)
     tip = tip or tooltip
@@ -172,6 +177,34 @@ costs[8936], casts[8936] = { { type = 0, cost = 70 } }, 2000
 
 S.Set("spellEfficiency", true)
 check("on: the spell post-call is installed once", #posts == 1)
+check("on: the macro post-call is installed once", #macroPosts == 1)
+
+local function ShowMacro(slot, id, tip)
+    tip = tip or tooltip
+    tip.lines, tip.owner = {}, slot and { action = slot } or false
+    for i = 1, #macroPosts do macroPosts[i](tip, { type = 25, id = id }) end
+    return tip.lines
+end
+function tooltip:GetOwner() return self.owner end
+actions[1], actions[2], actions[3], actions[4] = { "macro", 2050, "spell" }, { "macro", 7 }, { "macro", 8 }, { "spell", 2050 }
+macroSpells[7] = 2052
+check("a macro showing a spell gets the line", ShowMacro(1, 7)[1][1] == "1.76 healing per mana  ||  35 per second")
+check("a macro is decorated once", #ShowMacro(1, 7) == 1)
+check("a macro with no spell shown resolves through GetMacroSpell",
+    ShowMacro(2, 7)[1][1] == "1.86 healing per mana  ||  42 per second")
+check("a macro with no spell gets no line", #ShowMacro(3, 8) == 0)
+check("a non-macro action gets no line from the macro hook", #ShowMacro(4, 7) == 1 and ShowMacro(4, 7)[1][1]:find("42", 1, true))
+check("with no action slot the tooltip's macro id is used", ShowMacro(nil, 7)[1][1]:find("42", 1, true))
+check("with no action slot and no spell there is no line", #ShowMacro(nil, 8) == 0)
+tooltip.lines = {}
+Post(tooltip, { type = 1, id = 2050 })
+tooltip.owner = { action = 1 }
+for i = 1, #macroPosts do macroPosts[i](tooltip, { type = 25, id = 7 }) end
+check("a spell tooltip and macro post-call on the same build add the line once", #tooltip.lines == 1)
+tooltip.forbidden = true
+check("a forbidden tooltip gets no macro line", #ShowMacro(1, 7) == 0)
+tooltip.forbidden = nil
+tooltip.owner = false
 
 local lines = Show(2050)
 check("Lesser Heal 1, no spell power: per mana and per second",
@@ -352,7 +385,7 @@ check("Damage Only: a damage spell", #Show(589) == 1)
 settings.spellEfficiencyShow = "all"
 
 S.Set("spellEfficiency", false)
-check("switched off: the hook stays but adds nothing", #posts == 1 and #Show(2050) == 0)
+check("switched off: the hook stays but adds nothing", #posts == 1 and #Show(2050) == 0 and #ShowMacro(1, 7) == 0)
 
 costs[2053], casts[2053] = { { type = 0, cost = 75 } }, 2500
 ns.PreviewSpellEfficiency()
