@@ -1205,6 +1205,7 @@ ns.BiSData = {
         [281634] = "Greater Friend of the Library · Quest",
         [281635] = "Greater Friend of the Library · Quest",
         [282283] = "Nightveil Rotheap · World Boss (Alliance)",
+        [282716] = "Scargil · Hillsbrad Foothills",
         [285276] = "Engineering · Crafted",
         [285292] = "Sneed's Shredder · The Deadmines",
         [285330] = "Swiftmane · The Barrens",

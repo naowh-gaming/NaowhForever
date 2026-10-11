@@ -166,9 +166,9 @@ def resolve():
         else:
             left.append(f"{key}: {'not found' if not ids else 'several: ' + str(sorted(ids))}")
         if i % 50 == 0:
-            NAMES.write_text(json.dumps(mapped, indent=1, sort_keys=True) + "\n", encoding="utf-8")
+            NAMES.write_text(json.dumps(mapped, indent=1, sort_keys=True) + "\n", encoding="utf-8", newline="\n")
             print(f"{i}/{len(wanted)}", file=sys.stderr)
-    NAMES.write_text(json.dumps(mapped, indent=1, sort_keys=True) + "\n", encoding="utf-8")
+    NAMES.write_text(json.dumps(mapped, indent=1, sort_keys=True) + "\n", encoding="utf-8", newline="\n")
     print(f"{len(wanted) - len(left)} of {len(wanted)} names mapped; left:", file=sys.stderr)
     for line in left:
         print("  " + line, file=sys.stderr)
