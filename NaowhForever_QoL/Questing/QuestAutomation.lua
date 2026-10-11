@@ -12,6 +12,10 @@ local MODIFIER_MODE = { { SKIP = "Skips", TRIGGER = "Triggers" }, { "SKIP", "TRI
 local DOING = { { "questAccept", "accepts" }, { "questTurnIn", "turns in" }, { "questGossip", "picks from NPCs" },
     { "questShare", "shares" } }
 
+local GOSSIP_ICON_PATHS = { "VendorGossipIcon", "TaxiGossipIcon", "TrainerGossipIcon", "BankerGossipIcon",
+    "AuctioneerGossipIcon", "StableMasterGossipIcon" }
+local GOSSIP_ICON_DIR = "Interface\\GossipFrame\\"
+
 local TEXT_CLEARED = "Cleared the saved reward for %s."
 local TEXT_SAVED = "%s is your reward for %s in this profile."
 local TEXT_ITEM = "item "
@@ -20,6 +24,7 @@ local TEXT_BY_HAND = "All by hand"
 local hooked = {}
 local sharedWithMe
 local gossipPicked
+local safeIcons
 local events = CreateFrame("Frame")
 
 local function On(key)
@@ -123,15 +128,27 @@ local function Blocked(modifierKey, modeKey)
     return down
 end
 
+local function SafeIcons()
+    if not safeIcons then
+        safeIcons = {}
+        for _, name in ipairs(GOSSIP_ICON_PATHS) do
+            local id = GetFileIDFromPath(GOSSIP_ICON_DIR .. name)
+            if id and id ~= 0 then safeIcons[id] = true end
+        end
+    end
+    return safeIcons
+end
+
 local function AutoGossip()
-    if gossipPicked or not On("gossipAuto") or Blocked("gossipModifier", "gossipModifierMode")
+    if gossipPicked or not GetFileIDFromPath or not On("gossipAuto") or Blocked("gossipModifier", "gossipModifierMode")
         or InCombatLockdown() or C_GossipInfo.ForceGossip() then
         return
     end
     if #C_GossipInfo.GetActiveQuests() > 0 or #C_GossipInfo.GetAvailableQuests() > 0 then return end
     local options = C_GossipInfo.GetOptions()
     local option = options[1]
-    if #options ~= 1 or not option.selectOptionWhenOnlyOption or option.status ~= Enum.GossipOptionStatus.Available then
+    if #options ~= 1 or option.selectOptionWhenOnlyOption or option.status ~= Enum.GossipOptionStatus.Available
+        or not SafeIcons()[option.icon] then
         return
     end
     gossipPicked = true
@@ -259,8 +276,8 @@ page:Card({
 
 page:Card({
     id = "gossip", name = "NPC Gossip", order = 15, switch = "gossipAuto",
-    help = "Picks the only option when an NPC's window opens with one and the game itself would "
-        .. "pick it, never with quests on offer or in combat.",
+    help = "Picks the only option of a vendor, flight master, trainer, banker, auctioneer or stable "
+        .. "master; nothing that costs money or moves you.",
     rows = {
         { key = "gossipModifier", label = "Modifier", choice = MODIFIER,
           help = "The key that changes Auto Gossip for that NPC." },

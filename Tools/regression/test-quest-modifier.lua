@@ -1,5 +1,5 @@
 -- Run with Lua 5.1 from the repository root: the quest automation's Modifier skips or triggers
--- every quest step, and Auto Gossip picks only the one option the game itself would pick.
+-- every quest step, and Auto Gossip picks a lone option only when its icon is on the safe list.
 local settings = {
     enabled = true, questAccept = true, questTurnIn = true, questGossip = true, questShare = true,
     questRewardPicks = false, questSkipModifier = "ALT", questModifierMode = "SKIP",
@@ -8,6 +8,9 @@ local settings = {
 local down = {}
 local calls
 local combat, forced = false, false
+local ICON_IDS = { VendorGossipIcon = 101, TaxiGossipIcon = 102, TrainerGossipIcon = 103, BankerGossipIcon = 104,
+    AuctioneerGossipIcon = 105, StableMasterGossipIcon = 0, BinderGossipIcon = 107, GossipGossipIcon = 108 }
+local VENDOR, BINDER, GENERIC, UNRESOLVED = 101, 107, 108, 0
 local activeQuests, availableQuests, options = {}, {}, {}
 
 local frames = {}
@@ -31,6 +34,9 @@ local env = setmetatable({
     NaowhForever = ns,
     CreateFrame = Frame,
     hooksecurefunc = function() end,
+    GetFileIDFromPath = function(path)
+        return ICON_IDS[path:match("^Interface\\GossipFrame\\(%w+)$")]
+    end,
     IsAltKeyDown = function() return down.ALT == true end,
     IsControlKeyDown = function() return down.CTRL == true end,
     IsShiftKeyDown = function() return down.SHIFT == true end,
@@ -115,7 +121,7 @@ settings.questSkipModifier, settings.questModifierMode = "ALT", "SKIP"
 down = {}
 availableQuests = {}
 
-local ONLY = { orderIndex = 3, status = 0, selectOptionWhenOnlyOption = true }
+local ONLY = { orderIndex = 3, status = 0, icon = VENDOR, selectOptionWhenOnlyOption = false }
 local function Gossip(label, want)
     Fire("GOSSIP_SHOW")
     check(label, (Count("SelectOptionByIndex") == 1) == want)
@@ -124,17 +130,32 @@ end
 local function Reset() Fire("GOSSIP_CLOSED") end
 
 options = { ONLY }
-Gossip("single flagged option is picked", true)
+Gossip("a lone vendor option is picked", true)
 Gossip("not picked twice in one window", false)
+for _, name in ipairs({ "TaxiGossipIcon", "TrainerGossipIcon", "BankerGossipIcon", "AuctioneerGossipIcon" }) do
+    Reset()
+    options = { { orderIndex = 3, status = 0, icon = ICON_IDS[name] } }
+    Gossip(name .. " is picked", true)
+end
+Reset()
+options = { { orderIndex = 3, status = 0, icon = UNRESOLVED } }
+Gossip("an icon that did not resolve is left alone", false)
+options = { ONLY }
+Gossip("picked once the window is clear", true)
+Gossip("still once", false)
 Reset()
 Gossip("picked again in the next window", true)
 
 Reset()
-options = { ONLY, { orderIndex = 4, status = 0, selectOptionWhenOnlyOption = true } }
+options = { ONLY, { orderIndex = 4, status = 0, icon = VENDOR } }
 Gossip("two options are left alone", false)
-options = { { orderIndex = 3, status = 0, selectOptionWhenOnlyOption = false } }
-Gossip("an option without the game's flag is left alone", false)
-options = { { orderIndex = 3, status = 2, selectOptionWhenOnlyOption = true } }
+options = { { orderIndex = 3, status = 0, icon = BINDER } }
+Gossip("a lone binder option is left alone", false)
+options = { { orderIndex = 3, status = 0, icon = GENERIC } }
+Gossip("a lone generic gossip option is left alone", false)
+options = { { orderIndex = 3, status = 0, icon = VENDOR, selectOptionWhenOnlyOption = true } }
+Gossip("an option the game selects itself is left to it", false)
+options = { { orderIndex = 3, status = 2, icon = VENDOR } }
 Gossip("a locked option is left alone", false)
 options = { ONLY }
 forced = true
@@ -152,6 +173,10 @@ combat = false
 settings.gossipAuto = false
 Gossip("the switch is off", false)
 settings.gossipAuto = true
+local resolver = env.GetFileIDFromPath
+env.GetFileIDFromPath = nil
+Gossip("no pick without GetFileIDFromPath", false)
+env.GetFileIDFromPath = resolver
 
 down.ALT = true
 Gossip("skips mode: key held", false)
