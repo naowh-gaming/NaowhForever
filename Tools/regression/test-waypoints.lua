@@ -428,10 +428,10 @@ Check(navBar:IsShown() and driver.scripts.OnUpdate ~= nil, "tracking again on th
 -- taints it), and not when it already is, or when there is none.
 userWaypoint = { uiMapID = 88, position = { x = 0.5, y = 0.5 } }
 tracking = nil
-local timersBefore = #timers
+local trackTimers = #timers
 tracked = {}
 events.scripts.OnEvent(events, "USER_WAYPOINT_UPDATED")
-Check(#timers == timersBefore + 1 and #tracked == 0, "placed with the map closed: tracked after the game has finished with it")
+Check(#timers == trackTimers + 1 and #tracked == 0, "placed with the map closed: tracked after the game has finished with it")
 timers[#timers].fn()
 Check(tracked[1] == true and #tracked == 1, "and then it is")
 mapOpen, tracked = true, {}
@@ -443,14 +443,13 @@ Check(tracked[1] == true and #tracked == 1, "tracked as the map closes")
 mapHide()
 Check(#tracked == 1, "once")
 tracking, tracked = 1, {}
-timersBefore = #timers
 events.scripts.OnEvent(events, "USER_WAYPOINT_UPDATED")
 timers[#timers].fn()
 Check(#tracked == 0, "already tracked: left alone")
 userWaypoint, tracking = nil, nil
-timersBefore = #timers
+trackTimers = #timers
 events.scripts.OnEvent(events, "USER_WAYPOINT_UPDATED")
-Check(#timers == timersBefore and #tracked == 0, "cleared: nothing to track")
+Check(#timers == trackTimers and #tracked == 0, "cleared: nothing to track")
 tracking = 1
 
 -- Off again: idle, and the game's marker back.
