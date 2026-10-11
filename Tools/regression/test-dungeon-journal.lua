@@ -611,8 +611,11 @@ do
                         check("chance is a percent, 0 when unknown: " .. boss.name, c >= 0 and c <= 100)
                     end
                 end
+                local listed = {}
                 for _, id in ipairs(boss.loot or {}) do
                     items = items + 1
+                    check("item " .. id .. " listed once on " .. boss.name .. " (" .. dungeon.name .. ")", not listed[id])
+                    listed[id] = true
                     local facts = J.Items[id] or J.NotYet[id]
                     check("item " .. id .. " has its facts", facts ~= nil)
                     check("item " .. id .. " is uncommon or better", facts[J.FACT.QUALITY] >= 2)

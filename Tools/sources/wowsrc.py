@@ -367,7 +367,7 @@ def main():
             return args[args.index(flag) + 1] if flag in args else None
         return check(value("--report"), value("--github-output"))
     loot = read_all("--fresh" in sys.argv)
-    OUT.write_text(json.dumps(loot, indent=1, sort_keys=True) + "\n", encoding="utf-8")
+    OUT.write_text(json.dumps(loot, indent=1, sort_keys=True) + "\n", encoding="utf-8", newline="\n")
     print(f"{len(loot)} loot pages -> {OUT.name}", file=sys.stderr)
 
 

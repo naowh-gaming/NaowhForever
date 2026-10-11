@@ -766,9 +766,13 @@ def main():
             # The wing's trash, last: what its other mobs drop, by wowsrc's list.
             trash = merge_wowsrc([], (listed.get((here, "trash")) or {"items": [], "complete": True}))
             if here == dungeon["wings"][-1].get("name"):   # placed by hand ("add": { "Trash": [...] })
+                # An item can be placed twice (by hand and as a BiS source, the Stockade's
+                # Defias Renegade Ring): listed once.
                 have = {i["id"] for i in trash}
-                trash += [dict(i, chance=None) for i in extra.get("trash", []) if i["id"] not in have
-                          and i["quality"] >= MIN_QUALITY and i["slot"] in EQUIPPABLE]
+                for i in extra.get("trash", []):
+                    if i["id"] not in have and i["quality"] >= MIN_QUALITY and i["slot"] in EQUIPPABLE:
+                        have.add(i["id"])
+                        trash.append(dict(i, chance=None))
             trash = {"npc": None, "name": "Trash", "rare": False, "trash": True, "loot": trash}
             if trash["loot"]:
                 for item in trash["loot"]:

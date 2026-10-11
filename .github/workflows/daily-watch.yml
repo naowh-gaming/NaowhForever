@@ -210,6 +210,10 @@ jobs:
         run: |
           git reset -q --hard HEAD && git clean -fdq -- Tools NaowhForever_DungeonJournal NaowhForever_BiS Shared
           python Tools/build/journal.py --refresh-drops > /dev/null 2> "$RUNNER_TEMP/drops-build.txt"
+          # Each time Wowhead answered 403/429/503 and the fetch waited: a block shows here first.
+          waits="$(grep -c "retrying in" "$RUNNER_TEMP/drops-build.txt" || true)"
+          echo "Wowhead made the refresh wait ${waits:-0} times." >> "$GITHUB_STEP_SUMMARY"
+          if [ "${waits:-0}" -gt 0 ]; then echo "::warning::Wowhead made the drop refresh wait $waits times."; fi
           if git diff --quiet -- NaowhForever_DungeonJournal/Data Shared/Data; then
             echo "changes=false" >> "$GITHUB_OUTPUT"
             echo "No drop chance moved a whole percent." >> "$GITHUB_STEP_SUMMARY"
