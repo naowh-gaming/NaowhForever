@@ -35,8 +35,9 @@ end
 
 local function OnQuestDetail()
     local qol = ns.QoLSettings
-    local held = SKIP_HELD[qol.Get("questSkipModifier")]
-    if (held and held()) or not UnitIsPlayer("questnpc") or not dungeonQuestIDs[GetQuestID()] then return end
+    local down = SKIP_HELD[qol.Get("questSkipModifier")]()
+    if down == (qol.Get("questModifierMode") == "SKIP") then return end
+    if not UnitIsPlayer("questnpc") or not dungeonQuestIDs[GetQuestID()] then return end
     if qol.Get("enabled") and qol.Get("questAccept") then return end
     if QuestGetAutoAccept() then CloseQuest() else AcceptQuest() end
 end

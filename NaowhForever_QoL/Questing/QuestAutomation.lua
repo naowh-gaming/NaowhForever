@@ -7,7 +7,8 @@ local CHOICE_ITEM_ID = 6
 local SKIP_HELD = { ALT = IsAltKeyDown, CTRL = IsControlKeyDown, SHIFT = IsShiftKeyDown }
 local AUTO_EVENTS = { "QUEST_DETAIL", "QUEST_ACCEPT_CONFIRM", "QUEST_PROGRESS", "QUEST_COMPLETE",
     "QUEST_GREETING", "GOSSIP_SHOW" }
-local SKIP = { { ALT = "Alt", CTRL = "Ctrl", SHIFT = "Shift" }, { "ALT", "CTRL", "SHIFT" } }
+local MODIFIER = { { ALT = "Alt", CTRL = "Ctrl", SHIFT = "Shift" }, { "ALT", "CTRL", "SHIFT" } }
+local MODIFIER_MODE = { { SKIP = "Skips", TRIGGER = "Triggers" }, { "SKIP", "TRIGGER" } }
 local DOING = { { "questAccept", "accepts" }, { "questTurnIn", "turns in" }, { "questGossip", "picks from NPCs" },
     { "questShare", "shares" } }
 
@@ -18,6 +19,7 @@ local TEXT_BY_HAND = "All by hand"
 
 local hooked = {}
 local sharedWithMe
+local gossipPicked
 local events = CreateFrame("Frame")
 
 local function On(key)
@@ -115,6 +117,32 @@ local function PickFromGossip()
     end
 end
 
+local function Blocked(modifierKey, modeKey)
+    local down = SKIP_HELD[S.Get(modifierKey)]()
+    if S.Get(modeKey) == "TRIGGER" then return not down end
+    return down
+end
+
+local function AutoGossip()
+    if gossipPicked or not On("gossipAuto") or Blocked("gossipModifier", "gossipModifierMode")
+        or InCombatLockdown() or C_GossipInfo.ForceGossip() then
+        return
+    end
+    if #C_GossipInfo.GetActiveQuests() > 0 or #C_GossipInfo.GetAvailableQuests() > 0 then return end
+    local options = C_GossipInfo.GetOptions()
+    local option = options[1]
+    if #options ~= 1 or not option.selectOptionWhenOnlyOption or option.status ~= Enum.GossipOptionStatus.Available then
+        return
+    end
+    gossipPicked = true
+    C_GossipInfo.SelectOptionByIndex(option.orderIndex)
+end
+
+local function OnGossip()
+    if On("questGossip") and not Blocked("questSkipModifier", "questModifierMode") then PickFromGossip() end
+    AutoGossip()
+end
+
 local HANDLERS = {}
 
 function HANDLERS.QUEST_ACCEPTED(questID)
@@ -151,18 +179,23 @@ function HANDLERS.QUEST_GREETING()
     if On("questGossip") then PickFromGreeting() end
 end
 
-function HANDLERS.GOSSIP_SHOW()
-    if On("questGossip") then PickFromGossip() end
-end
-
 local function OnEvent(_, event, questID)
+    if event == "GOSSIP_CLOSED" then
+        gossipPicked = false
+        return
+    end
+    if event == "GOSSIP_SHOW" then return OnGossip() end
     if event == "QUEST_DETAIL" then sharedWithMe = UnitIsPlayer("questnpc") and GetQuestID() or nil end
-    if SKIP_HELD[S.Get("questSkipModifier")]() then return end
+    if Blocked("questSkipModifier", "questModifierMode") then return end
     HANDLERS[event](questID)
 end
 
 local function Apply()
     events:UnregisterAllEvents()
+    if On("gossipAuto") then
+        events:RegisterEvent("GOSSIP_SHOW")
+        events:RegisterEvent("GOSSIP_CLOSED")
+    end
     if On("questShare") then
         events:RegisterEvent("QUEST_ACCEPTED")
         events:RegisterEvent("QUEST_DETAIL")
@@ -185,7 +218,7 @@ hooksecurefunc("QuestInfo_ShowRewards", OnShowRewards)
 events:SetScript("OnEvent", OnEvent)
 
 hooksecurefunc(S, "Set", function(key)
-    if key == "enabled" or key:find("^quest") then Apply() end
+    if key == "enabled" or key:find("^quest") or key:find("^gossip") then Apply() end
 end)
 hooksecurefunc(ns, "Apply", Apply)
 
@@ -198,14 +231,14 @@ local page = ns.Shared.Settings.Page("QoL/Questing & Group", S)
 page:Card({
     id = "quests", name = "Quests", order = 10,
     help = "Accepts, hands in and shares quests for you, and remembers the reward you saved for a "
-        .. "quest. Hold the Skip Modifier to deal with one quest yourself.",
+        .. "quest. The Modifier skips them or triggers them, as Modifier Does says.",
     summary = QuestSummary,
     rows = {
         { key = "questAccept", label = "Accept Quests", toggle = true,
-          help = "Accepts a quest as soon as its text opens. Hold the Skip Modifier to read it first." },
+          help = "Accepts a quest as soon as its text opens. Use the Modifier to read it first." },
         { key = "questTurnIn", label = "Hand In Quests", toggle = true,
           help = "Hands in finished quests. A quest with a choice of rewards waits for you to pick "
-              .. "one, unless you saved a reward for it. Hold the Skip Modifier to skip it." },
+              .. "one, unless you saved a reward for it. The Modifier skips it for that quest." },
         { key = "questGossip", label = "Pick Quests From NPCs", toggle = true,
           help = "When an NPC offers several things, goes straight to a finished quest to hand in, "
               .. "or the first quest on offer. Works with the two options above." },
@@ -216,8 +249,22 @@ page:Card({
         { key = "questShare", label = "Share Quests With Group", toggle = true,
           help = "While you are in a group, shares each quest you accept from an NPC with the "
               .. "others, if the quest can be shared. A quest someone shared with you is not "
-              .. "shared again. Hold the Skip Modifier as you accept to keep it to yourself." },
-        { key = "questSkipModifier", label = "Skip Modifier", choice = SKIP,
-          help = "Hold it to skip Accept Quests, Hand In Quests, Pick Quests From NPCs and sharing for that quest." },
+              .. "shared again. The Modifier as you accept keeps it to yourself." },
+        { key = "questSkipModifier", label = "Modifier", choice = MODIFIER,
+          help = "The key that changes Accept Quests, Hand In Quests, Pick Quests From NPCs and sharing." },
+        { key = "questModifierMode", label = "Modifier Does", choice = MODIFIER_MODE,
+          help = "Skips: the quest steps run unless you hold the key. Triggers: they run only while you hold it." },
+    },
+})
+
+page:Card({
+    id = "gossip", name = "NPC Gossip", order = 15, switch = "gossipAuto",
+    help = "Picks the only option when an NPC's window opens with one and the game itself would "
+        .. "pick it, never with quests on offer or in combat.",
+    rows = {
+        { key = "gossipModifier", label = "Modifier", choice = MODIFIER,
+          help = "The key that changes Auto Gossip for that NPC." },
+        { key = "gossipModifierMode", label = "Modifier Does", choice = MODIFIER_MODE,
+          help = "Skips: it picks unless you hold the key. Triggers: it picks only while you hold it." },
     },
 })

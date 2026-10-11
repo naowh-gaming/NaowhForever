@@ -23,6 +23,7 @@ ns.FEATURES = {
         questGossip = true,
         questRewardPicks = true,
         questShare = true,
+        gossipAuto = false,
         groupButtons = false,
         combatTimer = false,
         cursorCooldown = false,
