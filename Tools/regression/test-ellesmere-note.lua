@@ -66,6 +66,9 @@ env._EQT_DB = { profile = { questTracker = { autoAccept = true } } }
 check("the Quest Tracker's profile read", Note(accept) == ON)
 env._EQT_DB.profile.questTracker.autoAccept = false
 check("the Quest Tracker's profile read off", Note(accept) == OFF)
+env._EQT_DB.profile.questTracker.autoAccept = true
+env._EQT_DB.profile.questTracker.enabled = false
+check("off while the Quest Tracker itself is off, as its auto-accept then never runs", Note(accept) == OFF)
 
 local ns = {}
 _G.NaowhForever = ns

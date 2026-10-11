@@ -9,6 +9,7 @@ local DB = "EllesmereUIDB"
 local QUEST_DB = "_EQT_DB"
 local TEXT_ON = "EllesmereUI has it on"
 local TEXT_OFF = "EllesmereUI has it off"
+local TRACKER_ON = { path = { QUEST_DB, "profile", "questTracker", "enabled" }, default = true }
 
 local OVERLAPS = {
     autoRepair = { addon = QOL, path = { DB, "autoRepair" }, default = true },
@@ -25,8 +26,10 @@ local OVERLAPS = {
     gossipAuto = { addon = QOL, path = { DB, "autoGossip" }, default = false },
     lootFeed = { addon = ESSENTIALS, path = { DB, "lootFeed", "enabled" }, default = false },
     flightTimer = { addon = ESSENTIALS, path = { DB, "flightTimer", "enabled" }, default = true },
-    questAccept = { addon = QUESTS, path = { QUEST_DB, "profile", "questTracker", "autoAccept" }, default = false },
-    questTurnIn = { addon = QUESTS, path = { QUEST_DB, "profile", "questTracker", "autoTurnIn" }, default = false },
+    questAccept = { addon = QUESTS, path = { QUEST_DB, "profile", "questTracker", "autoAccept" }, default = false,
+        gate = TRACKER_ON },
+    questTurnIn = { addon = QUESTS, path = { QUEST_DB, "profile", "questTracker", "autoTurnIn" }, default = false,
+        gate = TRACKER_ON },
 }
 
 local function Read(entry)
@@ -45,5 +48,6 @@ function Settings.EllesmereNote(item)
     if not (entry and C_AddOns.IsAddOnLoaded(entry.addon)) then return nil end
     local on = Read(entry)
     if on == nil then return nil end
+    if on and entry.gate and Read(entry.gate) == false then on = false end
     return on and TEXT_ON or TEXT_OFF
 end

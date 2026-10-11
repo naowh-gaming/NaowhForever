@@ -472,6 +472,7 @@ What a comment in the code used to say, in short. The house rules behind it are 
   `EllesmereUIDB` (account-wide, Forever Essentials' features in a table of their own) and the
   Quest Tracker's profile (`_EQT_DB`). A value it never saved reads as its default, as EllesmereUI
   does. Nothing shows while the addon that runs the feature is off, or its table is not there.
+  Auto-accept and hand-in read off while the Quest Tracker itself is off: they never run then.
 - A settings view changed while hidden is marked stale and drawn again as it shows, so it never
   shows an old value (an options window that stepped aside for a picker, a page another changed).
 
