@@ -25,8 +25,8 @@ Shared/
                    your loot lines, waiting on item data, the items the server would not send
   Game/Gear.lua    gear helpers on Shared.Items: gear slots, what fits where, what you wear, weapons in
                    short ("1h Sword"), what a class can use (ns.ClassCanUse)
-  Game/Bags.lua    the item buttons in your bags, the game's and EllesmereUI's, for the marks
-                   painted on them (Bag Marks, Scrap Marker)
+  Game/Bags.lua    the item buttons in your bags, the game's, EllesmereUI's and Baganator's, for
+                   the marks painted on them (Bag Marks, Scrap Marker)
   Game/Consumables.lua your best food and drink in your bags (ns.BestFoodAndDrink), the healthstones,
                    healing and mana potions, best first (ns.HEALTHSTONES, ns.HEALING_POTIONS,
                    ns.MANA_POTIONS), the food spells and Well Fed buffs (ns.FOOD_SPELLS, ns.WELL_FED),
@@ -327,12 +327,16 @@ What a comment in the code used to say, in short. The house rules behind it are 
 - `Items.ClassCanUse` reads an item's facts as `ItemFacts` holds them: `{ class, subclass, item
   level, required level, quality }`, class 2 a weapon, subclass 0 no armor type, 6 a shield.
 - `Items.SlotsFor` returns shared tables: read them, never change them.
+- `Items.SlotName` names a slot in the player's language. The cloak slot's catalog key is
+  "Back (slot)", because "Back" alone is also the Back button; `enUS.lua` gives it its English
+  text.
 
 ### Bags, tooltips, maps and /played
 
 - Bag marks hook each bag frame's `UpdateItems` with `hooksecurefunc`, never `SetScript`, and
   only once a module first asks. EllesmereUI's bags are painted through the
-  `RegisterItemOverlayIcon` hook it offers other addons.
+  `RegisterItemOverlayIcon` hook it offers other addons. `Bags.Baganator` hands back Baganator's
+  public `Baganator.API` when it is loaded; a module registers its own corner widget there.
 - The guild list's tooltip is GameTooltip, so our lines go on it. The Friends list's tooltip has
   fixed lines, so ours is a tooltip of our own `TIP_GAP` under it, which hides itself as soon as
   the Friends tooltip stops showing that row. List rows are hooked with `HookScript`, after the

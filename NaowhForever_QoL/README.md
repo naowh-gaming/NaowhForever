@@ -18,6 +18,7 @@ NaowhForever_QoL/
     SpellEfficiency.lua Mana Efficiency on spell tooltips, its Preview Tooltip and the Tooltips card's preview
     GlobalCopy.lua      /copy, and tooltip IDs with their copy shortcut (the card is Shared/UI/CopyCard.lua)
     HideClutter.lua     UI Clutter
+    UnitNames.lua       Names Over Heads: guild names, guild titles and player titles with player names
     ChatZones.lua       Chat Zones
     TownMailboxes.lua   mailboxes by map (ns.TownMailboxes), generated
     TownSpiritHealers.lua  spirit healers by map (ns.TownSpiritHealers), generated
@@ -152,6 +153,9 @@ NaowhForever_QoL/
   and toasts are closed 0.05s after they display.
 - `showTutorials` is the Show Tutorials box in Blizzard's options. What you had before Turn Off
   Tutorials is kept in the account store and put back when it goes off, even in a later session.
+- Names Over Heads writes the game's own `UnitNamePlayerGuild`, `UnitNameGuildTitle` and
+  `UnitNamePlayerPVPTitle` and keeps nothing: the game saves them. Forever's options have no box for
+  them (only your own, NPC and player names), and a row shows only where the client has its setting.
 - In-game cinematics carry no ID, so one is known by the zone and subzone it plays in. Skipping
   one waits a frame so CinematicFrame has taken the start before it is cancelled.
 - Finishing a movie shows UIParent again, which combat lockdown would block, so a movie is never
@@ -519,7 +523,10 @@ NaowhForever_QoL/
 - Scrap sells `BATCH` (6) items at a time, `STEP_DELAY` (0.25 s) apart, and each sale checks again that you are still at the vendor, out of combat, with the same item in that slot. That is why the taint scan allows its one `C_Container.UseContainerItem`; keep that check right before the call.
 - A generation number drops a step left over from an earlier sale, so closing the vendor or entering combat ends a sale cleanly.
 - The X on a rule match keeps it (`scrapKeep`), so the rule leaves it alone until you mark it yourself.
-- Bag buttons, the game's and EllesmereUI's, are hooked once with HookScript, and only out of combat.
+- Bag buttons, the game's, EllesmereUI's and Baganator's, are hooked once with HookScript, and only out of combat.
+- Baganator gets the mark as a corner widget and the marks as a junk plugin, through `Baganator.API`. Neither can be taken back, so both are registered once, the first time the Scrap Marker is on, and answer nothing while it is off.
+- Baganator pools its item buttons and moves them between slots, so an Alt-click reads the button's bag and slot when it lands, not at the last paint. Its buttons for other characters' bags have no bag, so they get no click and no mark.
+- Baganator's junk plugin takes over its junk detection, so ours counts grey items with a sell price as junk too, as Baganator's own Poor quality does, and adds scrap on top.
 - `MAX_ITEM_ID` caps an imported ID at the largest 32-bit signed number, so a pasted list cannot ask for an impossible item.
 
 ### Skyborne Spots
