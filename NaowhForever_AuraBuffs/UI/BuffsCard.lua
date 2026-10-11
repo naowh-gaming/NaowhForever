@@ -27,12 +27,14 @@ local STATES = {
 
 local OFF = "Turn on AuraBuffs"
 local NEEDS_RAID = "Needs Raid Buff Reminders"
+local NEEDS_PERSONAL = "Needs Personal Buff Reminders"
 local TEXT_NOTHING = "Nothing to remind you of here."
 local TEXT_SAMPLE = "Sample icons: add the consumables to watch in the AuraBuffs window."
 local TEXT_BLESSINGS = "Off by default: the Blessings module covers them."
 
 local Enabled = A.Enabled
 local RaidBuffsOn = A.Needs("raidBuffs")
+local PersonalBuffsOn = A.Needs("personalBuffs")
 
 local function OpenList()
     ns.OpenAuraBuffsWindow("consumables")
@@ -108,9 +110,10 @@ end
 
 local function Summary(store)
     local n = #(store.Get("consumableEntries") or {})
-    local text = n == 1 and "1 consumable" or (n .. " consumables")
-    if store.Get("raidBuffs") then text = text .. " and raid buffs" end
-    return text
+    local parts = { n == 1 and "1 consumable" or (n .. " consumables") }
+    if store.Get("raidBuffs") then parts[#parts + 1] = "raid buffs" end
+    if store.Get("personalBuffs") then parts[#parts + 1] = "personal buffs" end
+    return table.concat(parts, ", ")
 end
 
 local function PickRow(family)
@@ -126,6 +129,18 @@ local function PickRow(family)
         end }
 end
 
+local function PersonalRow(family)
+    return { key = "personalBuffPicks", field = family.key, label = family.name, toggle = true,
+        needs = PersonalBuffsOn, why = NEEDS_PERSONAL, help = family.help,
+        get = function() return R.PersonalPicked(family) end,
+        set = function(on)
+            local picks = {}
+            for k, v in pairs(S.Get("personalBuffPicks")) do picks[k] = v end
+            picks[family.key] = on
+            S.Set("personalBuffPicks", picks)
+        end }
+end
+
 local rows = {
     Group("Consumables"),
     { key = "consumablesWhere", label = "Show In", choice = WHERE, needs = Enabled, why = OFF },
@@ -134,7 +149,7 @@ local rows = {
     { key = "onlyIfCarried", label = "Only If I Carry One", toggle = true, needs = Enabled, why = OFF,
       help = "Off: a reminder for each kind you watch, even with none in your bags." },
     { key = "hideResting", label = "Hide While Resting", toggle = true, needs = Enabled, why = OFF,
-      help = "No consumable reminders in cities and inns." },
+      help = "No consumable or personal buff reminders in cities and inns." },
     { label = "Consumables to Watch", buttonText = "Edit List", needs = Enabled, why = OFF,
       button = EditList,
       help = "Opens the AuraBuffs window, where you add each item by its item ID and buff spell ID.",
@@ -148,6 +163,14 @@ local rows = {
       why = NEEDS_RAID, help = "Off: every buff a class in your group can cast." },
 }
 for _, family in ipairs(D.RAID) do rows[#rows + 1] = PickRow(family) end
+rows[#rows + 1] = Group("Personal Buffs")
+rows[#rows + 1] = { key = "personalBuffs", label = "Personal Buff Reminders", toggle = true, needs = Enabled,
+    why = OFF, help = "Your own class buff when it is missing: an armor, Inner Fire, Battle Shout, poisons or a "
+        .. "weapon imbue. Talent buffs only once you have the talent. Hide While Resting hides them too." }
+local _, playerClass = UnitClass("player")
+for _, family in ipairs(D.PERSONAL) do
+    if family.class == playerClass then rows[#rows + 1] = PersonalRow(family) end
+end
 rows[#rows + 1] = Group("Size")
 rows[#rows + 1] = { key = "iconSize", label = "Icon Size", slider = ICON_RANGE, needs = Enabled, why = OFF }
 rows[#rows + 1] = Settings.Look("buffs", { text = true, size = TEXT_RANGE, needs = Enabled, why = OFF })
