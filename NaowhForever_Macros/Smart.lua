@@ -288,7 +288,7 @@ local function On() return S.Get("enabled") == true end
 local function KeptCount(store)
     local n = 0
     for _, m in ipairs(MACROS) do
-        if store.Get(m.key) then n = n + 1 end
+        if store.Get(m.key) or UsedByBar(m.key) then n = n + 1 end
     end
     return n
 end

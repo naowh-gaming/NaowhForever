@@ -145,7 +145,7 @@ function CB.HasMacro(key)
 end
 
 function ns.ConsumableBarUsesMacro(key)
-    return CB.On() and CB.Has(CB.Items(), MACRO_PREFIX .. key) or false
+    return CB.On() and CB.HasMacro(key) or false
 end
 
 function CB.OnChange(fn)

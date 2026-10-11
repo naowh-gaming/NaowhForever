@@ -225,7 +225,7 @@ end
 
 local function SyncMacros()
     local used = ""
-    for _, entry in ipairs(CB.Items()) do
+    for _, entry in ipairs(CB.SavedItems()) do
         if CB.On() and CB.MacroInfo(entry) then used = used .. entry end
     end
     if used == syncedMacros then return end

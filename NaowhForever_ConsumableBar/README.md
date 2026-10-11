@@ -97,8 +97,9 @@ NaowhForever_ConsumableBar/
   with Macros' Food Only on), NF Drink drinks, NF Bandage bandages. Scan Bags and Ask to Add skip
   what is covered; adding one by hand asks first.
 - For a class with no mana (warriors and rogues, `ns.UsesMana`) NF Mana and NF Drink are
-  not shown, even from another character's profile, nor used from Macros, but stay saved, so edits
-  on that character keep them for the next; their switches wait, saying why, and Scan Bags and Ask to
+  not shown, even from another character's profile, but stay saved and kept by Macros
+  (`ns.ConsumableBarUsesMacro` reads the saved list): the NF macros are account-wide, so letting one
+  go would delete a caster's macro from their action bars. Edits on that character keep them for the next; their switches wait, saying why, and Scan Bags and Ask to
   Add skip drinks and mana potions; adding one by hand asks first.
 - Anchoring is the shared one (`Shared/UI/Anchor.lua`): unit frames there, and the HUD Editor's own
   Anchor for another Naowh Forever element (Anchor to an Element). Another addon's frame could move

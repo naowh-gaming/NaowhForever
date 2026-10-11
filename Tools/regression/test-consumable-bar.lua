@@ -1811,7 +1811,8 @@ do
     local rogue = fixture({ consumableBar = true, consumableBarItems = { 'macro:mana', 13446 } }, false, 'ROGUE')
     check("NF Mana from another character's profile is not shown", #rogue.buttons() == 1
         and rogue.buttons()[1].entry == 13446)
-    check('nor used from Macros', not rogue.ns.ConsumableBarUsesMacro('mana') and rogue.macroUpdates == 0)
+    check("but still used from Macros, as it is the caster's too",rogue.ns.ConsumableBarUsesMacro('mana')
+        and rogue.macroUpdates == 1)
     local manaRow = rogue.pageRow('adding', 'NF Mana')
     check('its switch waits, saying why', manaRow.needs() == false and manaRow.why == "You don't use mana")
     rogue.set('consumableBarItems', { 13446 })

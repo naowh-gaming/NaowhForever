@@ -893,6 +893,18 @@ do
     Check("the card is drawn again when the bar's items change", t.cards["Macros/Settings:kept"].watch[1],
         t.ns.QoLSettings)
     Check("the bar's Health cog offers the same priority", t.ns.HealthOrderChoices.values.potion, "Potion First")
+    Check("counted as kept current", t.cards["Macros/Settings:kept"].summary(t.ns.MacroSettings), "1 of 11 kept current")
+end
+
+-- A warrior on a profile shared with a caster whose bar carries NF Mana: the account-wide macro stays.
+do
+    local mana = { name = "NF Mana", body = "#showtooltip\n/use item:13444" }
+    local t = Fixture({ class = "WARRIOR", settings = { barOnly = { mana = true } }, macros = { mana } })
+    t.ns.ConsumableBarUsesMacro = function(key) return key == "mana" end
+    t.Fire("PLAYER_ENTERING_WORLD")
+    local _, _, deleted = t.Counts()
+    Check("the warrior deletes nothing", deleted, 0)
+    Check("the caster's NF Mana is kept as it was", t.Body("NF Mana"), "#showtooltip\n/use item:13444")
 end
 
 if failures > 0 then
