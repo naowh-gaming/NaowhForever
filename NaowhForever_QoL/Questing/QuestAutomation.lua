@@ -156,7 +156,10 @@ local function AutoGossip()
 end
 
 local function OnGossip()
-    if On("questGossip") and not Blocked("questSkipModifier", "questModifierMode") then PickFromGossip() end
+    if On("questGossip") and (On("questAccept") or On("questTurnIn"))
+        and not Blocked("questSkipModifier", "questModifierMode") then
+        PickFromGossip()
+    end
     AutoGossip()
 end
 

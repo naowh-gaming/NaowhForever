@@ -121,6 +121,14 @@ settings.questSkipModifier, settings.questModifierMode = "ALT", "SKIP"
 down = {}
 availableQuests = {}
 
+-- Auto Gossip listening for the window must not bring the quest picking back when accepting and handing in are off.
+settings.questAccept, settings.questTurnIn = false, false
+availableQuests = { { questID = 9 } }
+Fire("GOSSIP_SHOW")
+check("accepting and handing in off: a quest on offer is not picked by the gossip listener", Count("SelectAvailableQuest") == 0)
+settings.questAccept, settings.questTurnIn = true, true
+availableQuests = {}
+
 local ONLY = { orderIndex = 3, status = 0, icon = VENDOR, selectOptionWhenOnlyOption = false }
 local function Gossip(label, want)
     Fire("GOSSIP_SHOW")
