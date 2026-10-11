@@ -115,7 +115,7 @@ local S = UI.ModuleSettings("qol", {
     gearSets = F.gearSets, gearBarVisible = F.gearBarVisible, trinketBar = F.trinketBar, trinketSize = 36, trinketSpacing = 4, gearBarSize = 32, gearMounted = "", gearResting = "",
     gearWindowAlpha = 1, gearBarSpacing = 4, gearBarShow = "always",
     gearPos = { point = "CENTER", relPoint = "CENTER", x = -403, y = -379 },
-    bis = F.bis, bisTooltip = true, bisBagMarks = true, bisBagLevels = true, bisLootAlert = F.bisLootAlert, bisWindowAlpha = 1,
+    bis = F.bis, bisTooltip = true, bisBagMarks = true, bisLootAlert = F.bisLootAlert, bisWindowAlpha = 1,
     bisAlertFor = "all", bisAlertChat = true, bisAlertBadge = true, bisToast = true,
     bisDropSound = "game:raidwarning", bisYoursSound = "game:epicloot",
     bisToastScale = 1, bisToastTime = 6, bisToastAlpha = 0.95, bisToastGlow = true, bisToastStar = "icon",

@@ -132,7 +132,6 @@ return {
 ["scrapMarkerVendor"] = "ask",
 ["mailAlts"] = true,
 ["copyShortcutSynced"] = true,
-["bisBagLevels"] = false,
 ["bagSpace"] = false,
 ["restockAmmo"] = false,
 ["restock"] = false,

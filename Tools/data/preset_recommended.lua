@@ -145,7 +145,6 @@ return {
 ["scrapMarkerVendor"] = "ask",
 ["mailAlts"] = true,
 ["copyShortcutSynced"] = true,
-["bisBagLevels"] = false,
 ["bagSpace"] = true,
 ["restockAmmo"] = false,
 ["townSupplies"] = false,

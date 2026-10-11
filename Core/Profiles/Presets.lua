@@ -111,7 +111,6 @@ ns.PRESETS = {
                     y = -332.61648489706971,
                 },
                 bis = true,
-                bisBagLevels = false,
                 bisBagMarks = false,
                 bisToastPos = {
                     point = "CENTER",
@@ -400,7 +399,6 @@ ns.PRESETS = {
                     x = 734.05017356594703,
                     y = -332.61648489706971,
                 },
-                bisBagLevels = false,
                 bisBagMarks = true,
                 bisToastPos = {
                     point = "CENTER",

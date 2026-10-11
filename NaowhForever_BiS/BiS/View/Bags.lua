@@ -18,7 +18,7 @@ local PLAIN_QUALITY = 1
 local PLAIN_LEVEL_RGB = { r = 1, g = 0.82, b = 0 }
 local BIND_GAP = 1
 local FOREVER_KIND = B.C.FOREVER_KIND
-local SETTINGS = { enabled = true, bis = true, bisBagMarks = true, bisBagLevels = true }
+local SETTINGS = { enabled = true, bis = true, bisBagMarks = true }
 
 local sets = {}
 local ellesmere = {}
@@ -62,7 +62,7 @@ local function Paint(set, id, link)
     end
     set:Show()
     local gear = Items.SlotsFor(id) ~= nil
-    local level = gear and S.Get("bisBagLevels") and GetDetailedItemLevelInfo(link or id) or nil
+    local level = gear and GetDetailedItemLevelInfo(link or id) or nil
     local upgrade = gear and SW.BestGain(id, link, Weights()) ~= nil
     local shown = Parts.PaintItemMarks(set, level, ns.IsBisItem(id), Parts.IsForever(FOREVER_KIND, id), upgrade)
     if shown then PaintLevel(set, id) end
