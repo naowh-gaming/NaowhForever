@@ -12,6 +12,7 @@
     <Script file="View\Parts.lua"/>
     <Script file="UI\SmartPage.lua"/>
     <Script file="UI\Library.lua"/>
+    <Script file="UI\NewMacro.lua"/>
     <Script file="UI\Window.lua"/>
     <Script file="UI\SettingsPage.lua"/>
 </Ui>
