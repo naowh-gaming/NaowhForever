@@ -14,6 +14,7 @@ local TEXT_IN_COMBAT = "Move macros outside combat."
 local TEXT_ENABLE_FIRST = "Enable Macros first."
 local TEXT_NO_ROOM = "Make room in General macros first."
 local TEXT_TOO_LONG = "%s with your extra lines is over %d characters, so they were left out."
+local TEXT_EXTRA_SCRIPT = "%s's extra lines run a script, so they were left out. Write scripts in /macro."
 local TEXT_REMOVE_IN_COMBAT = "Remove macros outside combat."
 local TEXT_HEADLINE = "%d of %d macros kept current for you"
 local TEXT_OFF = "Turn on Macros to keep them current."
@@ -43,7 +44,8 @@ local LINE_BREAK = "\\n"
 
 local ready, pending
 local warnedFull = {}
-local warnedLong = {}
+local warnedLong, warnedScript = {}, {}
+local refresh = {}
 local toDelete = {}
 local steps = {}
 local events = CreateFrame("Frame")
@@ -121,7 +123,15 @@ local BODIES = {
 local function WithExtra(m, body)
     local extra = S.Get(m.key .. EXTRA_SUFFIX)
     if not extra or extra == "" then return body end
-    local full = body .. "\n" .. extra:gsub(LINE_BREAK, "\n")
+    local lines = extra:gsub(LINE_BREAK, "\n")
+    if M.Commands.RunsScript(lines) then
+        if warnedScript[m.key] ~= extra then
+            warnedScript[m.key] = extra
+            ns.Print(TEXT_EXTRA_SCRIPT:format(m.name))
+        end
+        return body
+    end
+    local full = body .. "\n" .. lines
     if #full <= C.LIMIT then return full end
     if warnedLong[m.key] ~= extra then
         warnedLong[m.key] = extra
@@ -136,9 +146,11 @@ local function Named(key)
     end
 end
 
-local function Body(key)
-    local body = BODIES[key]()
-    if body then return WithExtra(Named(key), body) end
+local function Body(key) return BODIES[key]() end
+
+local function Full(m)
+    local body = Body(m.key)
+    if body then return WithExtra(m, body) end
 end
 
 local function IsFull(perCharacter)
@@ -192,11 +204,13 @@ end
 
 local function Keep(m)
     toDelete[m.name] = nil
-    local body = Body(m.key)
+    local body = Full(m)
     if not body and BAG_MACROS[m.key] then
         local index = GetMacroIndexByName(m.name)
-        if index == 0 or not GetMacroBody(index):find("item:", 1, true) then body = WithExtra(m, PLACEHOLDER) end
+        local current = index > 0 and GetMacroBody(index) or ""
+        if index == 0 or refresh[m.key] or not current:find("item:", 1, true) then body = WithExtra(m, PLACEHOLDER) end
     end
+    refresh[m.key] = nil
     if body then Write(m, body) end
 end
 
@@ -226,6 +240,9 @@ local function Refresh()
 end
 
 local function SettingChanged(key, value)
+    for _, m in ipairs(MACROS) do
+        if key == m.key .. EXTRA_SUFFIX or (key == "foodOnly" and m.key == "food") then refresh[m.key] = true end
+    end
     if value == false then
         for _, m in ipairs(MACROS) do
             if key == "enabled" or key == m.key then toDelete[m.name] = true end

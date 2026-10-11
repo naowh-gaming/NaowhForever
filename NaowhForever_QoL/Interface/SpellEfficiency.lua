@@ -263,19 +263,21 @@ local function SpellOf(data)
     return id
 end
 
-local function MacroSpellOf(tooltip, data)
-    local macroID = ReadableTable(data) and data.id
+local function ActionSlot(owner)
+    local action = owner.action
+    if Readable(action) and type(action) == "number" then return action end
+    action = owner.GetAttribute and owner:GetAttribute("action")
+    if Readable(action) and type(action) == "number" then return action end
+end
+
+local function MacroSpellOf(tooltip)
     local owner = tooltip:GetOwner()
-    local action = owner and owner.action
-    if Readable(action) and type(action) == "number" then
-        local kind, id, subType = GetActionInfo(action)
-        if kind == "macro" and Readable(id) and type(id) == "number" then
-            if subType == "spell" then return id end
-            macroID = id
-        end
-    end
-    if not (Readable(macroID) and type(macroID) == "number") then return nil end
-    local spellID = GetMacroSpell(macroID)
+    local action = owner and ActionSlot(owner)
+    if not action then return nil end
+    local kind, id, subType = GetActionInfo(action)
+    if kind ~= "macro" or not (Readable(id) and type(id) == "number") then return nil end
+    if subType == "spell" then return id end
+    local spellID = GetMacroSpell(id)
     if Readable(spellID) and type(spellID) == "number" then return spellID end
     return nil
 end
@@ -286,9 +288,9 @@ local function Decorate(tooltip, data)
     if spellID then AddLines(tooltip, spellID) end
 end
 
-local function DecorateMacro(tooltip, data)
+local function DecorateMacro(tooltip)
     if not On() or tooltip:IsForbidden() or not Decorates(tooltip) then return end
-    local spellID = MacroSpellOf(tooltip, data)
+    local spellID = MacroSpellOf(tooltip)
     if spellID then AddLines(tooltip, spellID) end
 end
 

@@ -61,8 +61,9 @@ page:Card({
         { key = "fillLater", label = "Fill In As You Learn", toggle = true, needs = On, why = BARS_OFF,
           help = "A spell an import could not place because you do not know it yet goes into its saved slot "
               .. "when you learn it, unless you have put something else there." },
-        { key = "autoImportSet", label = "Import on New Character", choice = AutoImportChoices, needs = On,
-          why = BARS_OFF, help = "Imports this set once, when a character first logs in at level 1." },
+        { label = "Import on New Character", choice = AutoImportChoices, get = A.AutoImportName,
+          set = A.SetAutoImport, needs = On, why = BARS_OFF,
+          help = "For your class: imports this set once on a new character, at level 1 with no experience yet." },
         { key = "saveOnLogout", label = "Save on Logout", toggle = true, needs = On, why = BARS_OFF,
           help = "When you log out, the set this character saved or imported last is saved again with your "
               .. "bars, macros and keybinds as they are." },

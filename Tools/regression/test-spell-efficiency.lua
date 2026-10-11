@@ -193,8 +193,12 @@ check("a macro is decorated once", #ShowMacro(1, 7) == 1)
 check("a macro with no spell shown resolves through GetMacroSpell",
     ShowMacro(2, 7)[1][1] == "1.86 healing per mana  ||  42 per second")
 check("a macro with no spell gets no line", #ShowMacro(3, 8) == 0)
-check("a non-macro action gets no line from the macro hook", #ShowMacro(4, 7) == 1 and ShowMacro(4, 7)[1][1]:find("42", 1, true))
-check("with no action slot the tooltip's macro id is used", ShowMacro(nil, 7)[1][1]:find("42", 1, true))
+check("a non-macro action gets no line from the macro hook", #ShowMacro(4, 7) == 0)
+check("with no action slot the tooltip's own id is not trusted: no line", #ShowMacro(nil, 7) == 0)
+tooltip.lines, tooltip.owner = {}, { GetAttribute = function(_, name) return name == "action" and 2 or nil end }
+for i = 1, #macroPosts do macroPosts[i](tooltip, { type = 25, id = 99 }) end
+check("a bar button with only an action attribute resolves through it",
+    tooltip.lines[1] ~= nil and tooltip.lines[1][1]:find("42", 1, true) ~= nil)
 check("with no action slot and no spell there is no line", #ShowMacro(nil, 8) == 0)
 tooltip.lines = {}
 Post(tooltip, { type = 1, id = 2050 })

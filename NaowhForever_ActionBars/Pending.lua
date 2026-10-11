@@ -26,7 +26,7 @@ local function Watch()
     end
     events:UnregisterEvent("LEARNED_SPELL_IN_SKILL_LINE")
     events:UnregisterEvent("SPELLS_CHANGED")
-    events:UnregisterEvent("PLAYER_REGEN_ENABLED")
+    if not A.autoWaiting then events:UnregisterEvent("PLAYER_REGEN_ENABLED") end
 end
 
 local function Remember(key, result)
