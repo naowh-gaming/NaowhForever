@@ -174,13 +174,10 @@ local function ButtonTip()
     return TEXT_TIP .. ns.AuctionScanSummary()
 end
 
--- Auctionator adds its tabs after Auctions, so sit past its last one.
 local function LastTab(frame)
-    if C_AddOns.IsAddOnLoaded("Auctionator") then
-        local lib = LibStub and LibStub("LibAHTab-1-0", true)
-        local tabs = lib and lib.internalState and lib.internalState.Tabs
-        if tabs and #tabs > 0 then return tabs[#tabs] end
-    end
+    local lib = LibStub and LibStub("LibAHTab-1-0", true)
+    local tabs = lib and lib.internalState and lib.internalState.Tabs
+    if tabs and #tabs > 0 then return tabs[#tabs] end
     return frame.AuctionsTab
 end
 
@@ -208,7 +205,6 @@ local function ShowButton()
     if not frame then return end
     if not button then BuildButton(frame) end
     Anchor()
-    -- Auctionator builds its tabs on this same event, possibly after us; re-anchor once it has.
     C_Timer.After(0, Anchor)
     button:SetShown(S.Get("ahPrices"))
     ShowAge()
