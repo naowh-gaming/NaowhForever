@@ -39,7 +39,7 @@ function canvas:GetMapID() return shownMap end
 function canvas:RemoveAllPinsByTemplate() pins = {} end
 function canvas:AcquirePin()
     local pin = {}
-    function pin:SetPosition(x, y) self.x, self.y = x, y end
+    pin.SetPosition = function(p, x, y) p.x, p.y = x, y end
     pins[#pins + 1] = pin
     return pin
 end
