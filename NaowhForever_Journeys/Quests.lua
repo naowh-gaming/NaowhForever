@@ -47,11 +47,32 @@ local function InZones(quest, continent)
     return bestMap, bestX, bestY
 end
 
+local function Nearest(camps)
+    local here = World.Player()
+    local best, bestMap, bestX, bestY
+    for _, camp in ipairs(camps) do
+        local there = here and World.FromMap(camp[1], camp[2], camp[3])
+        local far = there and (there.c ~= here.c and math.huge or (there.x - here.x) ^ 2 + (there.y - here.y) ^ 2)
+        if far and (not best or far < best) then best, bestMap, bestX, bestY = far, camp[1], camp[2], camp[3] end
+    end
+    if bestMap then return bestMap, bestX / PERCENT, bestY / PERCENT end
+end
+
+local function FromData(quest)
+    local spots = ns.JourneyQuestSpots[quest]
+    if not spots then return nil end
+    local turnIn, camps = spots[1], spots[2]
+    if turnIn and (C_QuestLog.IsComplete(quest) or #camps == 0) then
+        return turnIn[1], turnIn[2] / PERCENT, turnIn[3] / PERCENT
+    end
+    return Nearest(camps)
+end
+
 local function Target(quest)
     local map, x, y = C_QuestLog.GetNextWaypoint(quest)
     if map and x and y then return map, x, y end
     local here = C_Map.GetBestMapForUnit(PLAYER)
-    if not here then return nil end
+    if not here then return FromData(quest) end
     x, y = OnMap(quest, here)
     if x then return here, x, y end
     local mine = Continent(here)
@@ -65,6 +86,7 @@ local function Target(quest)
             if map then return map, x, y end
         end
     end
+    return FromData(quest)
 end
 
 local function Far(map, x, y)

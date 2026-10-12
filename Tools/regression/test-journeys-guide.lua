@@ -42,6 +42,10 @@ local function RunTimers()
 end
 
 local ns = {
+    JourneyQuestSpots = {
+        [104] = { { IRONFORGE, 50, 50 }, { { DARNASSUS, 50, 50 }, { IRONFORGE, 50, 50 } } },
+        [105] = { { DARNASSUS, 50, 50 }, { { IRONFORGE, 50, 50 } } },
+    },
     Print = function(msg) printed[#printed + 1] = msg end,
     WaypointPinOn = function() return true end,
     AccountSettings = function() return account end,
@@ -136,6 +140,7 @@ local env = setmetatable({
     C_QuestLog = {
         GetNextWaypoint = function(id) local q = QUESTS[id]; if q then return q[1], q[2], q[3] end end,
         GetTitleForQuestID = function(id) return "Quest " .. id end,
+        IsComplete = function(id) return id == 105 end,
         GetQuestsOnMap = function(map)
             if map == DARNASSUS then return { { questID = 103, x = 0.5, y = 0.5 } } end
             return {}
@@ -248,6 +253,17 @@ Check(not Jy.Guide.Current(), "and the game tracking that quest again does not b
 tracking = 103
 Fire("SUPER_TRACKING_CHANGED")
 Check(Jy.Guide.Current() and Jy.Guide.Current().quest == 103, "tracking another quest starts its journey")
+Jy.Guide.Cancel()
+
+here = { x = 9945.0, y = 2490.0, c = 1 }
+tracking = 104
+Fire("SUPER_TRACKING_CHANGED")
+Check(not Jy.Guide.Current(), "a quest the game has no point for goes to its nearest camp, here")
+here = { x = -4821.8, y = -1155.4, c = 0 }
+tracking = 105
+Fire("SUPER_TRACKING_CHANGED")
+local done = Jy.Guide.Current()
+Check(done and done.quest == 105 and done.stops[1][2] == DARNASSUS, "a finished quest goes to its turn-in")
 Jy.Guide.Cancel()
 
 Jy.Settings.Set("quests", false)
