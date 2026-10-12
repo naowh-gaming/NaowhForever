@@ -54,6 +54,7 @@ local function Boot(opts)
         s.timers = {}
         for _, fn in ipairs(list) do fn() end
     end
+    s.card = { rows = ns.DamageMeterLayout.rows }
     s.slider = s.card.rows[1]
     s.copy = s.card.rows[2]
     return s
@@ -62,10 +63,10 @@ end
 -- the card
 do
     local s = Boot()
-    check("one card, with a slider of the game's range and a backup button", s.card.id == "damageMeterLayout"
-        and s.slider.slider[1] == 15 and s.slider.slider[2] == 40 and s.slider.label == "Bar Height"
+    check("a slider of the game's range and a backup button", s.slider.slider[1] == 15
+        and s.slider.slider[2] == 40 and s.slider.label == "Bar Height"
         and type(s.copy.button) == "function")
-    check("help is short", #s.card.help < 100 and #s.slider.help < 100 and #s.copy.help < 100)
+    check("help is short", #s.slider.help < 100 and #s.copy.help < 100)
     check("the slider shows the layout's value: stored 5 is 20", s.slider.get() == 20)
 end
 

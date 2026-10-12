@@ -182,6 +182,9 @@ local function Boot(settings, loaded, windows)
     end
     function meter:SetupSessionWindow() end
     local ns = { QoLSettings = store, THEME = THEME, Apply = function() end,
+        DamageMeterLayout = { rows = {
+            { label = "Bar Height", slider = { 15, 40, 1 }, get = function() return 20 end, set = function() end },
+            { label = "Layout Backup", buttonText = "Copy", button = function() end } } },
         Print = function(text) s.printed[#s.printed + 1] = text end,
         UIFontPath = function() return FONT end,
         UI = { FontPath = function(name) return "Fonts\\" .. name .. ".ttf" end,
@@ -268,10 +271,12 @@ end
 -- the card
 do
     local s = Boot()
-    check("two cards, on the Combat page's store", #s.cards == 2)
+    check("one card, on the Combat page's store", #s.cards == 1)
     local card = s.cards[1]
-    check("its id, name and switch", card.id == "damageMeterSkin" and card.name == "Damage Meter Skin" and card.switch == "damageMeterSkin")
-    local row = card.rows[1]
+    check("its id and name, a Reskin toggle first and no switch of its own", card.id == "damageMeterSkin"
+        and card.name == "Default Damage Meter" and card.switch == nil and card.rows[1].key == "damageMeterSkin"
+        and card.rows[1].toggle == true)
+    local row = card.rows[2]
     check("a bar color choice", row.key == "damageMeterBars" and row.choice[2][1] == "class" and row.choice[2][2] == "accent"
         and row.choice[1].class == "Class Colors" and row.choice[1].accent == "Theme Accent")
     check("one short help sentence", #card.help < 100 and not card.help:find("%d"))
@@ -538,6 +543,7 @@ do
         check(key .. ": help is one short sentence", row.help == nil or #row.help < 100)
     end
     check("Custom Bar Color is off until Bar Color is Custom Color", rows.damageMeterBarColor.needs() == false)
+    store.Set("damageMeterSkin", true)
     store.Set("damageMeterBars", "custom")
     check("and on with it", rows.damageMeterBarColor.needs() == true)
 end
@@ -592,8 +598,9 @@ do
     check("a second window is the game's own to place", second.points ~= nil and #second.points == 0
         and second.scripts == nil and second.movable == nil)
 
-    local resetCard = s.cards[2]
-    resetCard.rows[1].button()
+    for _, item in ipairs(s.cards[1].rows) do
+        if item.label == "Window Position" then item.button() end
+    end
     check("Reset: back to where Edit Mode has it, and kept there", store.Get("damageMeterPos").left == 100
         and store.Get("damageMeterPos").top == 500 and window.points[1][4] == 100)
 
@@ -817,15 +824,17 @@ do
     check("rows: buttons, and their color that waits for Themed", rows.damageMeterButtons
         and #rows.damageMeterButtons.choice[2] == 2 and rows.damageMeterButtonColor.colour
         and rows.damageMeterButtonColor.needs() == false)
+    store.Set("damageMeterSkin", true)
     store.Set("damageMeterButtons", "themed")
-    check("rows: and is on with Themed", rows.damageMeterButtonColor.needs() == true)
+    check("rows: and is on with Themed, once the reskin is on", rows.damageMeterButtonColor.needs() == true)
     check("rows: the scroll bar and title bar choices", #rows.damageMeterScrollBar.choice[2] == 3
         and #rows.damageMeterTitleFade.choice[2] == 2)
     check("rows: border color and faded opacity wait for their switches", rows.damageMeterBorderColor.needs() == false
         and rows.damageMeterTitleFadeAlpha.needs() == false)
+    store.Set("damageMeterSkin", true)
     store.Set("damageMeterBorder", true)
     store.Set("damageMeterTitleFade", "hover")
-    check("rows: and are on with them", rows.damageMeterBorderColor.needs() == true
+    check("rows: and are on with them, once the reskin is on", rows.damageMeterBorderColor.needs() == true
         and rows.damageMeterTitleFadeAlpha.needs() == true)
     for key, row in pairs(rows) do
         check(key .. ": help is one short sentence", row.help == nil or #row.help < 100)

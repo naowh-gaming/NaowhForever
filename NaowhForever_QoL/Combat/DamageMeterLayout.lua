@@ -1,9 +1,6 @@
 -- DamageMeterLayout.lua: the game's damage meter Bar Height, set in the active Edit Mode layout without opening Edit Mode.
 local ns = _G.NaowhForever
 
-local S = ns.QoLSettings
-local Settings = ns.Shared.Settings
-
 local BAR_MIN, BAR_MAX, BAR_DEFAULT = 15, 40, 20
 local BAR_RANGE = { BAR_MIN, BAR_MAX, 1 }
 local DEBOUNCE = 0.5
@@ -130,13 +127,11 @@ local function ShowBackup()
     ns.ShowCopyBox(TEXT_BACKUP_TITLE:format(tostring(saved.name)), saved.text)
 end
 
-Settings.Page("QoL/Combat", S):Card({
-    id = "damageMeterLayout", name = "Damage Meter Layout", order = 112,
-    help = "The game's damage meter Bar Height, set here instead of in Edit Mode.",
+ns.DamageMeterLayout = {
     rows = {
         { label = "Bar Height", slider = BAR_RANGE, unit = "px", get = CurrentHeight, set = Request,
           help = "Saved in your active Edit Mode layout, which must be one of your own." },
         { label = "Layout Backup", buttonText = "Copy", button = ShowBackup,
           help = "Your layout as it was before the first change, to import in Edit Mode." },
     },
-})
+}
