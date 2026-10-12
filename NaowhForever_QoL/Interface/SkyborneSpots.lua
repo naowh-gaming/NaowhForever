@@ -57,6 +57,10 @@ local function MyKind()
     end
 end
 
+local function NotSkyborne()
+    return MyKind() == nil
+end
+
 local function Found(kind)
     local account = ns.AccountSettings()
     account.skyborneSpots = account.skyborneSpots or {}
@@ -338,7 +342,7 @@ boot:RegisterEvent("PLAYER_LOGIN")
 boot:SetScript("OnEvent", Apply)
 
 table.insert(ns.Shared.MapPins, {
-    title = TEXT_SECTION, order = SECTION_ORDER, store = S, switch = "mapSkyborne",
+    title = TEXT_SECTION, order = SECTION_ORDER, store = S, switch = "mapSkyborne", hidden = NotSkyborne,
     rows = {
         { key = "mapSkyborne", label = "Skyborne Spots", toggle = true, store = S,
           help = "For Skyborne characters: ley lines (Alliance, for Read Ley Line) or Elemental "

@@ -216,10 +216,11 @@ local function BuildPanel()
     scroll:SetScript("OnSizeChanged", function(_, w) content:SetWidth(w) end)
     MakeGroup(content, TEXT_TOWN:upper())
     MakeRow(content, S, "townMap", TEXT_TOWN_PINS, TEXT_TOWN_TIP)
+    local _, class = UnitClass("player")
     for _, row in ipairs(ROWS) do
         if row.header then
             MakeGroup(content, row.header)
-        else
+        elseif not row.class or row.class == class then
             MakeRow(content, S, row.key, row.text, row.tip, TownOn)
         end
     end

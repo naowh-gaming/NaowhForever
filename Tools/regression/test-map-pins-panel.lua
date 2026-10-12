@@ -23,6 +23,11 @@ end
 Check(panelSrc:find("local ROWS = ns.TownPinRows", 1, true), "the panel reads the town map's list")
 Check(townSrc:find('key = "townPinSize"', 1, true), "the card keeps Pin Size")
 local pinRows = assert(loadstring("return " .. townSrc:match("local PIN_ROWS = (%b{})")))()
+Check(townSrc:find('key = "townStable", text = "Stable Masters", tip = "Hunters only.", class = STABLE_CLASS', 1, true),
+    "Stable Masters is a hunter's row")
+for _, row in ipairs(pinRows) do
+    if row.key == "townStable" then row.class = "HUNTER" end
+end
 
 local function RealShared()
     local holder = {}
@@ -61,7 +66,9 @@ do
           needs = "mapUnexplored" },
     } }
     local shared = RealShared()
-    shared.MapPins = { questSection, ownSection }
+    local hiddenSection = { title = "Skyborne", store = own, switch = "mapSkyborne", hidden = function() return true end,
+        rows = { { key = "mapSkyborne", label = "Skyborne Spots", toggle = true, store = own } } }
+    shared.MapPins = { questSection, ownSection, hiddenSection }
     shared.Settings = { Group = Group, Page = function(key)
         return { Card = function(_, c) c.pageKey = key; cards[c.id] = c end }
     end }
@@ -88,7 +95,7 @@ do
     Check(rows[1].group == "Town" and rows[2].key == "townPinSize" and rows[2].needs == "townMap" and rows[2].why,
         "Town Pin Size under Town, waiting for Town Pins with its reason")
     Check(rows[3].group == "Quests" and rows[4] == questSection.rows[1] and rows[8] == questSection.rows[5]
-        and #rows == 8, "a module's rows under its title, its switches with them")
+        and #rows == 8, "a module's rows under its title, its switches with them, and a hidden one left out")
     Check(rows[4].lent and not rows[2].lent, "lent to the card: its Reset and changed count leave them alone")
     local mapRows = mapCard.rows()
     Check(#mapRows == 2 and mapRows[1] == ownSection.rows[1] and mapRows[2] == ownSection.rows[2],
@@ -213,6 +220,7 @@ local env = setmetatable({
         else boot = f end
         return f
     end,
+    UnitClass = function() return "Mage", "MAGE" end,
     hooksecurefunc = function(t, name, fn)
         local old = t[name]
         t[name] = function(...) old(...); fn(...) end
@@ -244,8 +252,8 @@ local map = env.WorldMapFrame
 button.scripts.OnClick()
 Check(panel and panel.shown, "the button opens the drawer")
 local towns = 0
-for _, row in ipairs(pinRows) do if row.key then towns = towns + 1 end end
-Check(#toggles == 1 + towns, "a Town Pins switch and every town row, nothing from other modules")
+for _, row in ipairs(pinRows) do if row.key and not row.class then towns = towns + 1 end end
+Check(#toggles == 1 + towns, "a Town Pins switch and every town row, nothing from other modules; a mage has no Stable Masters")
 local flight = toggles[2]
 toggles[1].set(false)
 Check(panel.shown and flight.mouse == false and toggles[1].mouse == nil,

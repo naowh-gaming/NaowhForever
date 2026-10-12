@@ -75,7 +75,7 @@ local PIN_ROWS = {
     { key = "townBank", text = "Bank & Auction House" },
     { key = "townRepair", text = "Repairs" },
     { key = "townSupplies", text = "Reagents, Ammo & Food" },
-    { key = "townStable", text = "Stable Masters", tip = "Hunters only." },
+    { key = "townStable", text = "Stable Masters", tip = "Hunters only.", class = STABLE_CLASS },
     { key = "townVendors", text = "Other Vendors", tip = "Trade goods and every other merchant." },
 }
 
@@ -545,7 +545,7 @@ local function PinCardRows()
         { key = "townPinSize", label = "Town Pin Size", slider = PIN_RANGE, needs = "townMap", why = TEXT_TOWN_OFF },
     }
     for _, section in ipairs(ns.Shared.MapPinSections()) do
-        if not section.map then AddSectionRows(rows, section, true) end
+        if not section.map and not (section.hidden and section.hidden()) then AddSectionRows(rows, section, true) end
     end
     return rows
 end
