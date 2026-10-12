@@ -273,7 +273,7 @@ What a comment in the code used to say, in short. The house rules behind it are 
   map scales to fit and to zoom, so the pin's scale is `PIN_SCALE` (1.5) over the canvas scale:
   the same size on screen at every zoom. The map's global pin scale still applies. An optional
   `factor` sizes one kind of pin against the rest, so that `PIN_SIZE_DEFAULT` (20) is the right size for each
-  and one Pin Size number means the same on every kind (town 0.5625, quests 0.5, rares 0.75).
+  and one Pin Size number means the same on every kind (town 0.5625, quests, library books and Sleeping Bag steps 0.5, rares 0.75).
   On the full screen map pins are `FULL_SCREEN_PIN_SCALE` (1.5) times that: the same size on screen
   as in the small map's window read as too small on a map that fills the screen.
 - `Shared.MapPins` is a plain list, filled at load by the modules that have map pins and read
