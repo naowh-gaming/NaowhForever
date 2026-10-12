@@ -1569,8 +1569,8 @@ end
 -- Target, mouseover, and nameplates. A cast GUID arrives on its own event.
 -- Outdoor GUIDs and secrets return nothing, and this does not poll.
 local function UnitCopy(unit)
-    if type(unit) ~= "string" or unit == "" or not UnitGUID then return end
-    if Secret(unit) then return end
+    if type(unit) ~= "string" or Secret(unit) then return end
+    if unit == "" or not UnitGUID then return end
     return CopyParts(UnitGUID(unit))
 end
 
