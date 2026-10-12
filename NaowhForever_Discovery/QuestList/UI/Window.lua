@@ -34,7 +34,7 @@ local TEXT_FIRST_OF = ns.L("The first %d of %d; type more to narrow it down.")
 local TEXT_RARES_PROGRESS = ns.L("%d of %d rares killed")
 local TEXT_QUESTS_PROGRESS = ns.L("%d of %d zone quests done")
 
-local window, scroll, view, search
+local window, scroll, view, searchBox
 local opened = {}
 local kept, focus
 local tab = "quests"
@@ -95,8 +95,8 @@ end
 
 local function OpenFound(picked)
     SetZoneOpen(picked)
-    search:SetText("")
-    search:ClearFocus()
+    searchBox:SetText("")
+    searchBox:ClearFocus()
     Redraw()
 end
 
@@ -213,7 +213,7 @@ local function AddQuestHit(self, id, _, stripe)
 end
 
 local function SearchText()
-    return strtrim(search:GetText() or ""):lower()
+    return strtrim(searchBox:GetText() or ""):lower()
 end
 
 local function DrawRares(self)
@@ -284,7 +284,7 @@ local function Paint()
         window.note.text:SetText(TEXT_QUESTS_PROGRESS:format(Q.Progress()))
     end
     window.note:SetWidth(math.max(1, math.ceil(window.note.text:GetStringWidth())))
-    search.hint:SetText(SEARCH_HINT[tab])
+    searchBox.hint:SetText(SEARCH_HINT[tab])
 end
 
 local function IsShown()
@@ -300,8 +300,8 @@ function Tabs.Build(host, frame, width)
     view = Shared.View.New(scroll, V.Kinds, Draw)
     view:SetWidth(width)
     scroll:SetScrollChild(view)
-    search = Parts.SearchBox(host, SEARCH_HINT.quests, Searched)
-    return search
+    searchBox = Parts.SearchBox(host, SEARCH_HINT.quests, Searched)
+    return searchBox
 end
 
 local function IsRare(row, npc) return row.rare == npc end
@@ -315,11 +315,11 @@ function Tabs.Show(key, opening)
         if focus then
             rareZone = R.Zone(focus) or rareZone
             opened[focus] = true
-            search:SetText("")
+            searchBox:SetText("")
         end
     end
     scroll:Show()
-    search:Show()
+    searchBox:Show()
     Paint()
     Redraw()
     local row = focus and view:Find("rare", IsRare, focus)
@@ -329,7 +329,7 @@ end
 
 function Tabs.Hide()
     scroll:Hide()
-    search:Hide()
+    searchBox:Hide()
 end
 
 local function OnSettingChanged(key)
