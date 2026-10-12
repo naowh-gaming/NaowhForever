@@ -1,7 +1,7 @@
 -- Run with Lua 5.1 from the repository root: the Map Options and Pins panel on the world map.
--- Every town pin switch is on the panel and on QoL's Map Pins card, both drawn from one list, with
--- Town Pins and Town Pin Size on the card. Other modules' pin rows (ns.Shared.MapPins, in order)
--- follow on both; sections marked map go on the Map Options card instead. The button shows
+-- Every pin and map switch is on the panel only, the town ones drawn from TownMap's list. QoL's Map
+-- & Pins tab keeps the rest: a Map Options card and a Map Pins card with Town Pin Size and each
+-- module's sizes and buttons (ns.Shared.MapPins, in order, under their titles). The button shows
 -- whenever QoL is on.
 local function Read(path)
     local f = assert(io.open(path, "rb"))
@@ -80,42 +80,30 @@ do
         "two cards on QoL's Map & Pins tab: Map Options and Map Pins")
     Check(mapCard.order < card.order and not card.switch and not mapCard.switch,
         "map options first, and neither has a switch of its own")
-    local labels, groups = {}, {}
     local rows = card.rows()
     for _, row in ipairs(rows) do
-        if row.group then groups[#groups + 1] = row.group elseif row.toggle then labels[row.key] = row.label end
+        Check(not row.toggle, "no switch on the card, they are on the map: " .. tostring(row.key or row.group))
     end
-    for _, row in ipairs(pinRows) do
-        if row.key then Check(labels[row.key] == row.text, "the card has the panel's toggle: " .. row.key) end
-    end
-    Check(groups[1] == "Town" and groups[2] == "Town options" and groups[3] == "Show in town",
-        "the town rows are grouped as the drawer groups them")
-    Check(rows[2].key == "townMap" and rows[3].key == "townPinSize" and rows[3].needs == "townMap",
-        "Town Pins first, then the size, which waits for it")
-    Check(rows[5].needs == "townMap" and not rows[2].needs, "the town rows wait for Town Pins, which itself does not")
-    Check(groups[4] == "Quests" and #groups == 4, "a module's pins follow under their own title, map options do not")
-    local lastRow = rows[#rows]
-    Check(lastRow == questSection.rows[5] and rows[#rows - 4] == questSection.rows[1],
-        "a module's rows as it declared them, after the town ones")
-    Check(lastRow.lent and not rows[1].lent, "lent to the card: its Reset and changed count leave them alone")
+    Check(rows[1].group == "Town" and rows[2].key == "townPinSize" and rows[2].needs == "townMap" and rows[2].why,
+        "Town Pin Size under Town, waiting for Town Pins with its reason")
+    Check(rows[3].group == "Quests" and rows[4] == questSection.rows[5] and #rows == 4,
+        "a module's size under its title, its switches left out")
+    Check(rows[4].lent and not rows[2].lent, "lent to the card: its Reset and changed count leave them alone")
     local mapRows = mapCard.rows()
-    Check(#mapRows == 2 and mapRows[1] == ownSection.rows[1] and mapRows[2] == ownSection.rows[2],
-        "the map options card: the map sections' rows, without their title")
+    Check(#mapRows == 1 and mapRows[1] == ownSection.rows[2], "Map Options: the darkness, not the switch or a title")
     Check(not mapRows[1].lent, "QoL's own rows are the card's own store's: Reset takes them")
     pinTexts = cardNs.TownPinTexts
     Check(pinTexts.group and pinTexts.switch and pinTexts.tip, "the drawer's town texts are named, not positional")
     Check(cardNs.TownPinRows ~= nil, "the list is shared with the panel")
     local Search = dofile("Tools/regression/settings_search.lua")({ ["QoL/Map & Pins"] = { card, mapCard } })
     local hit = Search("flight master")[1]
-    Check(hit and hit.label == "Flight Masters" and hit.card == "QoL/Map & Pins:townMap",
-        "the options search finds a pin by name")
+    Check(hit and hit.card == "QoL/Map & Pins:townMap", "the options search still leads a pin's name to the card")
     hit = Search("graveyard")[1]
-    Check(hit and hit.card == "QoL/Map & Pins:townMap", "and the card by its search words")
-    hit = Search("quest givers")[1]
-    Check(hit and hit.label == "Quest Givers" and hit.card == "QoL/Map & Pins:townMap",
-        "and a module's pin row on it")
-    hit = Search("unexplored areas")[1]
-    Check(hit and hit.label == "Unexplored Areas" and hit.card == "QoL/Map & Pins:mapOptions",
+    Check(hit and hit.card == "QoL/Map & Pins:townMap", "and its search words")
+    hit = Search("quest pin size")[1]
+    Check(hit and hit.label == "Quest Pin Size" and hit.card == "QoL/Map & Pins:townMap", "a module's size on it")
+    hit = Search("unexplored darkness")[1]
+    Check(hit and hit.label == "Unexplored Darkness" and hit.card == "QoL/Map & Pins:mapOptions",
         "and a map option on the other card")
 end
 -- A card's Reset and changed count skip rows lent to it from another module's store.

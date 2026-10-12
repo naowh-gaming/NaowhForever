@@ -115,7 +115,7 @@ local TEXT_TOWN_TIP = "Service NPCs, mailboxes, spirit healers, exits and docks;
 local TEXT_TOWN_OFF = "Town pins off"
 local TEXT_SUMMARY = "Town pins: %d of %d shown%s"
 local TEXT_CAPITALS = ", vendors and trainers in cities only"
-local TEXT_ON_MAP = " Also set from the button at the top right of the world map."
+local TEXT_ON_MAP = " Which ones show is switched on the map, from the button at its top right."
 local MAP_CARD_ORDER, PIN_CARD_ORDER = 10, 20
 local TEXT_MAP_CARD, TEXT_PIN_CARD = "Map Options", "Map Pins"
 local TEXT_MAP_HELP = "How the world map looks."
@@ -531,31 +531,25 @@ function ns.TownAudit()
     ns.Print(TEXT_AUDIT:format(auditing and TEXT_AUDIT_ON or TEXT_AUDIT_OFF, count))
 end
 
-local function AddSectionRows(rows, section)
+local function AddSectionRows(rows, section, titled)
+    local first = true
     for _, row in ipairs(section.rows) do
-        row.lent = row.store ~= S
-        rows[#rows + 1] = row
+        if not row.toggle then
+            if first and titled and section.title then rows[#rows + 1] = ns.Shared.Settings.Group(section.title) end
+            first = false
+            row.lent = row.store ~= S
+            rows[#rows + 1] = row
+        end
     end
 end
 
 local function PinCardRows()
     local rows = {
         ns.Shared.Settings.Group(TEXT_TOWN),
-        { key = "townMap", label = TEXT_TOWN_PINS, toggle = true, help = TEXT_TOWN_TIP },
-        { key = "townPinSize", label = "Town Pin Size", slider = PIN_RANGE, needs = "townMap" },
+        { key = "townPinSize", label = "Town Pin Size", slider = PIN_RANGE, needs = "townMap", why = TEXT_TOWN_OFF },
     }
-    for _, row in ipairs(PIN_ROWS) do
-        if row.header then
-            rows[#rows + 1] = ns.Shared.Settings.Group(row.header:sub(1, 1) .. row.header:sub(2):lower())
-        else
-            rows[#rows + 1] = { key = row.key, label = row.text, toggle = true, help = row.tip, needs = "townMap" }
-        end
-    end
     for _, section in ipairs(ns.Shared.MapPinSections()) do
-        if not section.map then
-            if section.title then rows[#rows + 1] = ns.Shared.Settings.Group(section.title) end
-            AddSectionRows(rows, section)
-        end
+        if not section.map then AddSectionRows(rows, section, true) end
     end
     return rows
 end
@@ -563,9 +557,17 @@ end
 local function MapCardRows()
     local rows = {}
     for _, section in ipairs(ns.Shared.MapPinSections()) do
-        if section.map then AddSectionRows(rows, section) end
+        if section.map then AddSectionRows(rows, section, false) end
     end
     return rows
+end
+
+local function PinSearch()
+    local words = { TEXT_PINS_SEARCH }
+    for _, row in ipairs(PIN_ROWS) do
+        if row.text then words[#words + 1] = row.text:lower() end
+    end
+    return table.concat(words, " ")
 end
 
 local function TownSummary(store)
@@ -604,7 +606,7 @@ page:Card({
 page:Card({
     id = "townMap", name = TEXT_PIN_CARD, order = PIN_CARD_ORDER,
     help = TEXT_PIN_HELP .. TEXT_ON_MAP,
-    search = TEXT_PINS_SEARCH,
+    search = PinSearch(),
     summary = TownSummary,
     rows = PinCardRows,
 })

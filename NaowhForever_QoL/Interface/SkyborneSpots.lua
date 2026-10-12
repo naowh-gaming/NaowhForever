@@ -36,6 +36,7 @@ local TEXT_CLICK = "Click for a waypoint."
 local TEXT_FORGET = "Right-click to forget this spot."
 local SECTION_ORDER = 60
 local TEXT_SECTION = "Skyborne"
+local TEXT_OFF = "Skyborne Spots off"
 
 local waiting
 local events
@@ -345,7 +346,7 @@ table.insert(ns.Shared.MapPins, {
               .. "them: the addon knows the ones players have found, and saves each new one you cast "
               .. "your racial on. Other races see no pins." },
         { key = "mapSkyborneSize", label = "Skyborne Pin Size", slider = PIN_RANGE, store = S,
-          needs = "mapSkyborne" },
+          needs = "mapSkyborne", why = TEXT_OFF },
         { label = "Forget Found Spots", buttonText = "Forget All", button = ForgetAll, store = S,
           needs = AnyFound, why = "No spots found yet",
           help = "Forgets every spot this account found. The addon's own list stays.",

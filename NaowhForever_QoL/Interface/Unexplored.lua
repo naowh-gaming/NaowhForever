@@ -13,6 +13,7 @@ local PERCENT_SCALE = ns.Shared.Style.PERCENT_SCALE
 local EMPTY = {}
 local SECTION_ORDER = 11
 local TEXT_SECTION = "Map"
+local TEXT_OFF = "Unexplored Areas off"
 
 local explored = {}
 local added
@@ -149,6 +150,6 @@ table.insert(ns.Shared.MapPins, {
         { key = "mapUnexplored", label = "Unexplored Areas", toggle = true, store = S,
           help = "Shows the parts of the world map you have not explored yet, darkened." },
         { key = "mapUnexploredDark", label = "Unexplored Darkness", slider = DARK_RANGE, unit = "%",
-          scale = PERCENT_SCALE, store = S, needs = "mapUnexplored" },
+          scale = PERCENT_SCALE, store = S, needs = "mapUnexplored", why = TEXT_OFF },
     },
 })
