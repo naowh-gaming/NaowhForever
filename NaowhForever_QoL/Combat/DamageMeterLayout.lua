@@ -3,7 +3,7 @@ local ns = _G.NaowhForever
 
 local BAR_MIN, BAR_MAX, BAR_DEFAULT = 15, 40, 20
 local BAR_RANGE = { BAR_MIN, BAR_MAX, 1 }
-local DEBOUNCE = 0.5
+local DEBOUNCE, VERIFY = 0.5, 0.5
 local BACKUP_KEY = "damageMeterLayoutBackup"
 local TEXT_COMBAT = "Damage Meter Layout: not in combat."
 local TEXT_NO_EDIT_MODE = "Damage Meter Layout: the game's layouts are not available."
@@ -12,11 +12,13 @@ local TEXT_PRESET = "Damage Meter Layout: your active layout is one of the game'
 local TEXT_NO_SYSTEM = "Damage Meter Layout: this layout has no damage meter."
 local TEXT_FAILED = "Damage Meter Layout: the game would not save the layout (%s)."
 local TEXT_SAVED = "Damage Meter Layout: Bar Height %d saved. If the bars have not changed, /reload."
+local TEXT_NOT_APPLIED = "Damage Meter Layout: saved, but the game has not applied it yet. /reload to see it."
 local TEXT_NO_BACKUP = "Damage Meter Layout: no backup yet; one is made before the first change."
 local TEXT_BACKUP_TITLE = "Edit Mode layout backup: %s"
 
 local pending = 0
 local backedUp = false
+local shown
 
 local function Has(object, method)
     return type(object) == "table" and type(object[method]) == "function"
@@ -59,12 +61,16 @@ local function HeightOf(system)
     return BAR_DEFAULT
 end
 
-local function CurrentHeight()
+local function LayoutHeight()
     local frame = Manager()
     local layout = frame and ActiveLayout(frame.layoutInfo)
     local system = layout and SystemOf(layout)
     if system then return HeightOf(system) end
     return BAR_DEFAULT
+end
+
+local function CurrentHeight()
+    return shown or LayoutHeight()
 end
 
 local function Backup(layout)
@@ -103,18 +109,34 @@ local function Change(height)
     Backup(layout)
     Write(system, height)
     local ok, err = pcall(C_EditMode.SaveLayouts, info)
-    if ok then
-        ns.Print(TEXT_SAVED:format(height))
-    else
+    if not ok then
         ns.Print(TEXT_FAILED:format(tostring(err)))
+        return false
     end
+    ns.Print(TEXT_SAVED:format(height))
+    return true
+end
+
+local function Flush(height)
+    if not Change(height) then
+        shown = nil
+        return
+    end
+    C_Timer.After(VERIFY, function()
+        if LayoutHeight() == height then
+            shown = nil
+        else
+            ns.Print(TEXT_NOT_APPLIED)
+        end
+    end)
 end
 
 local function Request(height)
+    shown = Clamp(height)
     pending = pending + 1
     local token = pending
     C_Timer.After(DEBOUNCE, function()
-        if token == pending then Change(height) end
+        if token == pending then Flush(height) end
     end)
 end
 

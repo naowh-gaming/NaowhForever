@@ -39,6 +39,7 @@ local function Boot(opts)
         C_EditMode = { SaveLayouts = function(info)
                 if s.saveError then error(s.saveError) end
                 s.saves[#s.saves + 1] = info
+                if opts.apply then s.manager.layoutInfo = Copy(info) end
             end,
             ConvertLayoutInfoToString = function(layout)
                 s.converts = s.converts + 1
@@ -156,6 +157,36 @@ do
     s.saveError = "protected"
     s.slider.set(30); s.Flush()
     check("a refused save is said, with the reason", #s.printed == 1 and s.printed[1]:find("protected", 1, true) ~= nil)
+end
+
+-- the slider shows where it is going, and says when the game did not take it
+do
+    local s = Boot({ apply = true })
+    s.slider.set(30)
+    check("the slider shows the new height at once, before anything is saved", s.slider.get() == 30 and #s.saves == 0)
+    s.Flush()
+    s.Flush()
+    check("saved and taken: the layout says it too", s.slider.get() == 30 and #s.printed == 1
+        and s.manager.layoutInfo.layouts[3].systems[2].settings[1].value == 15)
+    s.manager.layoutInfo.layouts[3].systems[2].settings[1].value = 0
+    check("and when the layout changes elsewhere, the slider follows it", s.slider.get() == 15)
+    local stale = Boot()
+    stale.slider.set(30)
+    stale.Flush()
+    stale.Flush()
+    check("saved but not taken: said, and the slider keeps what was saved", stale.slider.get() == 30
+        and #stale.printed == 2 and stale.printed[2]:find("reload", 1, true) ~= nil)
+    local refused = Boot()
+    refused.combat = true
+    refused.slider.set(30)
+    check("a change on its way is shown", refused.slider.get() == 30)
+    refused.Flush()
+    check("refused: the slider goes back to the layout's own", refused.slider.get() == 20)
+    local same = Boot()
+    same.slider.set(20)
+    same.Flush()
+    check("the height it already has: nothing saved, and the slider is the layout's", #same.saves == 0
+        and same.slider.get() == 20)
 end
 
 -- the backup button
