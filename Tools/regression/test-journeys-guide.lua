@@ -237,6 +237,19 @@ Check(found and found.quest == 103 and found.stops[1][2] == DARNASSUS,
     "a quest with no next point is found on its zone map, on another continent")
 Jy.Guide.Cancel()
 
+tracking = 101
+Fire("SUPER_TRACKING_CHANGED")
+Check(Jy.Guide.Current() and Jy.Guide.Current().quest == 101, "a far quest's journey again")
+ns.ClearWaypoint()
+Check(not Jy.Guide.Current(), "clearing the waypoint ends it")
+tracking = 101
+Fire("SUPER_TRACKING_CHANGED")
+Check(not Jy.Guide.Current(), "and the game tracking that quest again does not bring it back")
+tracking = 103
+Fire("SUPER_TRACKING_CHANGED")
+Check(Jy.Guide.Current() and Jy.Guide.Current().quest == 103, "tracking another quest starts its journey")
+Jy.Guide.Cancel()
+
 Jy.Settings.Set("quests", false)
 here = { x = -4821.8, y = -1155.4, c = 0 }
 Fire("SUPER_TRACKING_CHANGED")

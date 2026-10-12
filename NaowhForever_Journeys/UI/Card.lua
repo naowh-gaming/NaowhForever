@@ -50,7 +50,7 @@ end
 local function BuildPanel()
     panel = Parts.TrackerPanel(TEXT_TITLE, {
         titleTip = TEXT_NAME,
-        onClose = Guide.Cancel,
+        onClose = ns.ClearWaypoint,
         bar = true,
         settings = { page = SETTINGS_PAGE, card = "card", tip = "Journey settings",
             hint = "Opens the Journey card's settings." },

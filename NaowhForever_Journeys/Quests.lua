@@ -78,6 +78,8 @@ end
 local function OnSuperTrack()
     local quest = C_SuperTrack.GetSuperTrackedQuestID()
     if not quest or quest == 0 then return end
+    if quest == Guide.Dismissed() then return end
+    Guide.Undismiss()
     local current = Guide.Current()
     if current and current.quest == quest then return end
     local map, x, y = Target(quest)

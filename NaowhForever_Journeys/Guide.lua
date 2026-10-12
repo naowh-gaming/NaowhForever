@@ -25,7 +25,7 @@ local TEXT_NO_WAY = "No way found to %s from here; placed a plain waypoint."
 local Guide = {}
 Jy.Guide = Guide
 
-local journey, events, step, working, driver
+local journey, events, step, working, driver, dismissed
 local replanQueued = false
 local listeners = {}
 
@@ -249,6 +249,7 @@ end
 
 function Guide.Cancel()
     if not journey then return end
+    dismissed = journey.quest
     journey, step = nil, nil
     events:UnregisterAllEvents()
     Changed()
@@ -256,6 +257,14 @@ end
 
 function Guide.Current()
     return journey
+end
+
+function Guide.Dismissed()
+    return dismissed
+end
+
+function Guide.Undismiss()
+    dismissed = nil
 end
 
 function Guide.Step()
