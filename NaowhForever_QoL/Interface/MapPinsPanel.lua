@@ -69,6 +69,12 @@ local function RefreshRows()
             row.label:SetAlpha(alpha)
             row.control:SetAlpha(alpha)
             row.control:EnableMouse(on)
+            local box = row.control._valBox
+            if box then
+                box:SetAlpha(alpha)
+                box:EnableMouse(on)
+                if not on then box:ClearFocus() end
+            end
         end
     end
 end
