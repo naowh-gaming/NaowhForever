@@ -147,7 +147,7 @@ Check(Read("NaowhForever_QoL/Interface/TownMap.xml"):find('<Script file="MapPins
 local settings = { enabled = true, townMap = false }
 local canvasHeight = 600
 local S = { Get = function(key) return settings[key] end, Set = function(key, v) settings[key] = v end }
-local ns = { QoLSettings = S, TownPinRows = pinRows, Apply = function() end, THEME = { bg = {}, line = {}, accent = {}, accentSoft = {}, panel = {}, fg = {} }, UI = {} }
+local ns = { QoLSettings = S, TownPinRows = pinRows, Apply = function() end, THEME = { bg = {}, line = {}, accent = {}, accentSoft = {}, panel = {}, fg = {}, muted = {} }, UI = {} }
 local made, boot, button, panel = 0, nil, nil, nil
 local mapLeft, maximized, mapHeight = 500, false, 700
 local canvasLeft = 350
@@ -202,6 +202,12 @@ end
 local scroll = { SetPoint = function() end, SetScript = function() end, bar = { SetFrameLevel = function() end },
     SetScrollChild = function(self, child) self.child = child end }
 ns.UI.SlimScroll = function() return scroll end
+ns.UI.BuildSliderCore = function()
+    local track = { SetPoint = function() end, _refreshValue = function() end,
+        SetAlpha = function(self, a) self.alpha = a end, EnableMouse = function(self, on) self.mouse = on end }
+    return track, { SetPoint = function() end }
+end
+ns.TownPinRange = { 10, 28, 1 }
 local env = setmetatable({
     _G = { NaowhForever = ns },
     CreateFrame = function(kind)
