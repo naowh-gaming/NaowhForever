@@ -98,6 +98,7 @@ local env = setmetatable({
         return here.x, here.y, 0, here.c
     end,
     UnitName = function() return "Glyadin" end,
+    UnitOnTaxi = function() return false end,
     GetRealmName = function() return "Forever" end,
     UnitFactionGroup = function() return "Alliance" end,
     GetServerTime = function() return 0 end,
@@ -305,7 +306,17 @@ Check(Jy.Guide.Current() and not Jy.Guide.Current().waiting, "out of the instanc
 -- The ticker plans again as you move, and a plain waypoint is cleared on arrival.
 local planned = Jy.Guide.Current().plan
 for _ = 1, 3 do Tick() end
-Check(Jy.Guide.Current().plan ~= planned, "every few seconds the journey is planned again from where you stand")
+Check(Jy.Guide.Current().plan == planned, "standing still, it is not planned again")
+here = { x = here.x + 20, y = here.y, c = here.c }
+for _ = 1, 3 do Tick() end
+Check(Jy.Guide.Current().plan ~= planned, "every few seconds on the move it is planned again from where you stand")
+local kept = Jy.Guide.Current().plan
+local realPlan = Jy.Planner.Plan
+Jy.Planner.Plan = function() return nil end
+here = { x = here.x + 20, y = here.y, c = here.c }
+for _ = 1, 3 do Tick() end
+Jy.Planner.Plan = realPlan
+Check(Jy.Guide.Current() and Jy.Guide.Current().plan == kept, "a plan that finds no way keeps the journey and its last plan")
 Jy.Guide.Cancel()
 here = { x = -4821.8, y = -1155.4, c = 0 }
 Check(ns.PlaceWaypoint(unpack(DESTINATION)) and Jy.Guide.Current() and current, "a journey with its pin up")
