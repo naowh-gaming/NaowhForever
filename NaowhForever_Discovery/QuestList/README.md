@@ -107,7 +107,9 @@ quest and creature pages. Do not edit them by hand: change the tool and run it a
   Our pins want their clicks, so there is nothing to pass through.
 - The pin mixins are globals so the XML templates can name them.
 - Quest and rare pins scale with `ns.Shared.ScalePin`, so they keep one size on screen however far
-  the map is zoomed, in the small map's window and on the full screen map alike.
+  the map is zoomed, in the small map's window and on the full screen map alike. Quest pins take
+  `QUEST_PIN_SCALE` (0.5) of it: at the full 1.5 the ! covered the map, and even the smallest Pin Size
+  was bigger than they used to be.
 - Their switches, Pin Sizes and options are rows on the Map Pins card of QoL's Map & Pins tab and in its world map
   drawer (`ns.Shared.MapPins`), with every other map pin; the keys stay in Completo's store.
 - Quest pins redraw on a quest taken, handed in or dropped, and on a level up (which turns some
