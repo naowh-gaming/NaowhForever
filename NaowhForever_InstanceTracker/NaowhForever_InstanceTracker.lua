@@ -966,10 +966,10 @@ local COPY_KINDS = {
 }
 
 local function PlainGuid(guid)
-    if type(guid) ~= "string" or guid == "" then return false end
+    if type(guid) ~= "string" then return false end
     if issecretvalue and issecretvalue(guid) then return false end
     if canaccessvalue and not canaccessvalue(guid) then return false end
-    return true
+    return guid ~= ""
 end
 
 local function CopyParts(guid)
