@@ -112,7 +112,10 @@ NaowhForever_QoL/
   The title bar fade, the scroll bar and the opacities are `SetAlpha` and `SetVertexColor` calls on the
   game's own parts, never a Hide. A tick of ours (a frame made only while one of them is on) moves the
   title parts toward the mouse state and puts the scroll bar's alpha back, since the game's own
-  emphasis animation sets it again. The window border is a frame of ours round the window.
+  emphasis animation sets it again. The window border is a frame of ours round the window. The title
+  bar's buttons are greyed with `SetDesaturated` and tinted with `SetVertexColor`, their first look
+  remembered to give back; sizes are one setting each for the names, the amounts and the title, 0
+  keeping the game's own, which Edit Mode's Text Size still scales.
 - Damage Meter Window re-anchors the primary session window to the screen and sizes it, since the game
   leaves that window to Edit Mode (`CanMoveOrResizeSessionWindow` is false for it). Only the session
   window moves: the Edit Mode frame it hangs from is never touched, and the game's own window setup is

@@ -26,6 +26,11 @@ local TITLE_PARTS = { "Header", "MinimizeButton", "SettingsDropdown", "SessionDr
 local FADE_EVERY, FADE_STEP, SCROLL_DEPTH, PERCENT = 0.1, 0.35, 3, 100
 local PERCENT_RANGE = { 0, PERCENT, 5 }
 local FONT_SIZE_RANGE = { 0, 24, 1 }
+local BUTTON_PARTS = { "MinimizeButton", "SettingsDropdown", "SessionDropdown", "DamageMeterTypeDropdown" }
+local BUTTON_DEPTH = 2
+local BUTTONS_GAME, BUTTONS_THEMED = "game", "themed"
+local BUTTONS = { { game = "Game Default", themed = "Themed" }, { BUTTONS_GAME, BUTTONS_THEMED } }
+local TEXT_NEEDS_THEMED = "Set Buttons to Themed"
 local TEXT_NEEDS_BORDER, TEXT_NEEDS_FADE = "Turn on Window Border", "Set Title Bar to Shown on Hover"
 local SETTING_KEYS = { enabled = true, damageMeterSkin = true, damageMeterBars = true, damageMeterBarColor = true,
     damageMeterTexture = true, damageMeterFont = true, damageMeterOutline = true, damageMeterIconEdge = true,
@@ -33,7 +38,8 @@ local SETTING_KEYS = { enabled = true, damageMeterSkin = true, damageMeterBars =
     damageMeterValueColor = true, damageMeterTitleColor = true, damageMeterFree = true, damageMeterBarAlpha = true,
     damageMeterBarBgColor = true, damageMeterBarBgAlpha = true, damageMeterScrollBar = true,
     damageMeterBorder = true, damageMeterBorderColor = true, damageMeterTitleFade = true,
-    damageMeterTitleFadeAlpha = true, damageMeterFontSize = true }
+    damageMeterTitleFadeAlpha = true, damageMeterNameSize = true, damageMeterValueSize = true,
+    damageMeterTitleSize = true, damageMeterButtons = true, damageMeterButtonColor = true }
 
 local OUTLINES = { { [OUTLINE_GAME] = TEXT_GAME_DEFAULT }, { OUTLINE_GAME } }
 for key, name in pairs(Parts.HUD_OUTLINES[1]) do OUTLINES[1][key] = name end
@@ -51,6 +57,8 @@ local faced = setmetatable({}, { __mode = "k" })
 local faded = setmetatable({}, { __mode = "k" })
 local scrolled = setmetatable({}, { __mode = "k" })
 local tints = setmetatable({}, { __mode = "k" })
+local glyphs = setmetatable({}, { __mode = "k" })
+local buttoned = setmetatable({}, { __mode = "k" })
 local fader
 local sinceTick = 0
 local hovering, lowAlpha, scrollHidden = false, 0, false
@@ -132,29 +140,29 @@ local function Shadow(fontString, was)
     fontString:SetShadowColor(was.shadowR, was.shadowG, was.shadowB, was.shadowA)
 end
 
-local function Size(game)
-    local size = S.Get("damageMeterFontSize")
+local function Size(game, key)
+    local size = S.Get(key)
     if type(size) == "number" and size > 0 then return size end
     return game
 end
 
-local function Face(fontString, was)
+local function Face(fontString, was, key)
     local outline = S.Get("damageMeterOutline")
     if outline == OUTLINE_GAME then
-        fontString:SetFont(FontPath(), Size(was[2]), was[3])
+        fontString:SetFont(FontPath(), Size(was[2], key), was[3])
         Shadow(fontString, was)
         return
     end
-    fontString:SetFont(FontPath(), Size(was[2]), Parts.HudFlags(outline))
+    fontString:SetFont(FontPath(), Size(was[2], key), Parts.HudFlags(outline))
     if outline == OUTLINE_SHADOW then Parts.HudText(fontString) else Parts.HudText(fontString, false) end
 end
 
-local function Text(fontString, c)
+local function Text(fontString, c, sizeKey)
     if not Has(fontString, "SetTextColor") then return end
     local was = looks[fontString] or Remember(fontString)
     if was[2] and faced[fontString] ~= generation then
         faced[fontString] = generation
-        Face(fontString, was)
+        Face(fontString, was, sizeKey)
     end
     fontString:SetTextColor(c.r, c.g, c.b)
 end
@@ -211,8 +219,8 @@ local function Restyle(entry)
     Flat(bar.Background, BarBackground())
     if Has(bar.Background, "SetAlpha") then bar.Background:SetAlpha(Fraction("damageMeterBarBgAlpha")) end
     if Has(bar.BackgroundEdge, "SetAlpha") then bar.BackgroundEdge:SetAlpha(0) end
-    Text(bar.Name, Pick("damageMeterNameColor", "fg"))
-    Text(bar.Value, Pick("damageMeterValueColor", "muted"))
+    Text(bar.Name, Pick("damageMeterNameColor", "fg"), "damageMeterNameSize")
+    Text(bar.Value, Pick("damageMeterValueColor", "muted"), "damageMeterValueSize")
     Edge(entry.Icon)
     BarTexture(entry)
     Tint(entry)
@@ -284,6 +292,28 @@ local function ScrollBar(window, mode)
     end
 end
 
+local function Buttons(window, themed)
+    if not themed and not buttoned[window] then return end
+    buttoned[window] = true
+    local c = Pick("damageMeterButtonColor", "accent")
+    for _, key in ipairs(BUTTON_PARTS) do
+        for _, texture in ipairs(Textures(window[key], BUTTON_DEPTH, {})) do
+            if glyphs[texture] == nil and Has(texture, "GetVertexColor") then
+                local r, g, b, a = texture:GetVertexColor()
+                glyphs[texture] = { r, g, b, a, Has(texture, "IsDesaturated") and texture:IsDesaturated() or false }
+            end
+            local was = glyphs[texture]
+            if themed then
+                if Has(texture, "SetDesaturated") then texture:SetDesaturated(true) end
+                texture:SetVertexColor(c.r, c.g, c.b)
+            elseif was then
+                if Has(texture, "SetDesaturated") then texture:SetDesaturated(was[5]) end
+                texture:SetVertexColor(was[1], was[2], was[3], was[4])
+            end
+        end
+    end
+end
+
 local function TitleAlpha(window, alpha)
     for _, key in ipairs(TITLE_PARTS) do
         local part = window[key]
@@ -295,10 +325,11 @@ local function SkinWindow(window)
     local titles, values = Pick("damageMeterTitleColor", "fg"), Pick("damageMeterValueColor", "muted")
     local header, background = Pick("damageMeterHeaderColor", "panel"), Pick("damageMeterWindowColor", "bg")
     Flat(window.Header, header)
-    Text(window.SessionTimer, values)
-    Text(Dig(window, "SessionDropdown", "SessionName"), titles)
-    Text(Dig(window, "DamageMeterTypeDropdown", "TypeName"), titles)
+    Text(window.SessionTimer, values, "damageMeterValueSize")
+    Text(Dig(window, "SessionDropdown", "SessionName"), titles, "damageMeterTitleSize")
+    Text(Dig(window, "DamageMeterTypeDropdown", "TypeName"), titles, "damageMeterTitleSize")
     WindowBorder(window)
+    Buttons(window, S.Get("damageMeterButtons") == BUTTONS_THEMED)
     local container = window.MinimizeContainer
     if type(container) ~= "table" then return end
     Flat(container.Background, background)
@@ -318,6 +349,7 @@ local function RestoreWindow(window)
         TitleAlpha(window, 1)
     end
     if scrolled[window] then ScrollBar(window, SCROLL_GAME) end
+    if buttoned[window] then Buttons(window, false) end
 end
 
 local function GiveBack()
@@ -557,6 +589,10 @@ local function FadingTitle()
     return S.Get("damageMeterTitleFade") == FADE_HOVER
 end
 
+local function ThemedButtons()
+    return S.Get("damageMeterButtons") == BUTTONS_THEMED
+end
+
 local function ColorRow(key, label, token, help, needs, why)
     return { key = key, label = label, colour = true, help = help, needs = needs, why = why,
         get = function()
@@ -597,13 +633,17 @@ Settings.Page("QoL/Combat", S):Card({
           help = "The game's own, in your Accent, or hidden. The mouse wheel still scrolls." },
         Settings.Group("Text"),
         { key = "damageMeterFont", label = "Font", font = true },
-        { key = "damageMeterFontSize", label = "Font Size", slider = FONT_SIZE_RANGE, unit = "px",
-          help = "0 keeps the game's own size. Edit Mode's Text Size still scales it." },
         { key = "damageMeterOutline", label = "Outline", choice = OUTLINES,
           help = "The game's own, none, the soft shadow, a thin outline or a thick one." },
         ColorRow("damageMeterNameColor", "Name Color", "fg", "The names on the bars."),
+        { key = "damageMeterNameSize", label = "Name Size", slider = FONT_SIZE_RANGE, unit = "px",
+          help = "0 keeps the game's own size. Edit Mode's Text Size still scales it." },
         ColorRow("damageMeterValueColor", "Amount Color", "muted", "The amounts, and the fight time."),
+        { key = "damageMeterValueSize", label = "Amount Size", slider = FONT_SIZE_RANGE, unit = "px",
+          help = "The amounts and the fight time. 0 keeps the game's own size." },
         ColorRow("damageMeterTitleColor", "Title Color", "fg", "The list and session names in the title bar."),
+        { key = "damageMeterTitleSize", label = "Title Size", slider = FONT_SIZE_RANGE, unit = "px",
+          help = "The list and session names. 0 keeps the game's own size." },
         Settings.Group("Window"),
         ColorRow("damageMeterHeaderColor", "Title Bar Color", "panel", "The title bar and the spell panel."),
         ColorRow("damageMeterWindowColor", "Window Color", "bg", "The window and the shadow behind each bar."),
@@ -611,6 +651,10 @@ Settings.Page("QoL/Combat", S):Card({
           help = "A thin border round the whole window." },
         ColorRow("damageMeterBorderColor", "Border Color", "line", "The border round the window.",
             Bordered, TEXT_NEEDS_BORDER),
+        { key = "damageMeterButtons", label = "Buttons", choice = BUTTONS,
+          help = "The title bar's buttons: the game's own, or in your theme." },
+        ColorRow("damageMeterButtonColor", "Button Color", "accent", "The buttons, when they are Themed.",
+            ThemedButtons, TEXT_NEEDS_THEMED),
         { key = "damageMeterTitleFade", label = "Title Bar", choice = FADES,
           help = "Always shown, or faded until the mouse is over the window." },
         { key = "damageMeterTitleFadeAlpha", label = "Faded Title Opacity", slider = PERCENT_RANGE, unit = "%",

@@ -21,6 +21,8 @@ local function Texture(atlas)
         local v = self.vertex or { 1, 1, 1 }
         return v[1], v[2], v[3], 1
     end
+    function t:SetDesaturated(on) self.desaturated = on end
+    function t:IsDesaturated() return self.desaturated == true end
     function t:SetAlpha(a) self.alpha = a end
     function t:SetVertexColor(r, g, b) self.vertex = { r, g, b } end
     return t
@@ -92,8 +94,10 @@ end
 local function Window()
     local source = { Background = Texture("common-dropdown-bg"), ScrollBox = ScrollBox({ Entry() }) }
     local function Part()
-        local part = { alpha = 1 }
+        local part = { alpha = 1, glyph = Texture("glyph") }
         function part:SetAlpha(a) self.alpha = a end
+        function part:GetRegions() return self.glyph end
+        function part:GetChildren() end
         return part
     end
     local thumb, track = Texture("thumb"), Texture("track")
@@ -119,6 +123,9 @@ local function Window()
         points = {}, left = 100, top = 500, width = 300, height = 200, editLeft = 100, editTop = 500 }
     function w.SessionDropdown:SetAlpha(a) self.alpha = a end
     function w.DamageMeterTypeDropdown:SetAlpha(a) self.alpha = a end
+    w.DamageMeterTypeDropdown.glyph = Texture("arrow")
+    function w.DamageMeterTypeDropdown:GetRegions() return self.glyph end
+    function w.DamageMeterTypeDropdown:GetChildren() end
     function w:IsMouseOver() return self.mouseOver == true end
     function w:GetFrameLevel() return 1 end
     function w:ClearAllPoints() self.points = {} end
@@ -159,7 +166,8 @@ local function Boot(settings, loaded, windows)
         damageMeterPos = false, damageMeterBarAlpha = 100, damageMeterBarBgColor = false,
         damageMeterBarBgAlpha = 100, damageMeterScrollBar = "game", damageMeterBorder = false,
         damageMeterBorderColor = false, damageMeterTitleFade = "always", damageMeterTitleFadeAlpha = 0,
-        damageMeterFontSize = 0 }
+        damageMeterNameSize = 0, damageMeterValueSize = 0, damageMeterTitleSize = 0, damageMeterButtons = "themed",
+        damageMeterButtonColor = false }
     local store = {}
     function store.Get(k)
         local v = s.settings[k]
@@ -726,20 +734,42 @@ do
         and scroll.alpha == 1)
 end
 
--- a size of our own
+-- a size for each: the names, the amounts, the title
 do
-    local _, store, meter, _, frames = Boot({ damageMeterSkin = true, damageMeterFontSize = 16 }, true)
+    local _, store, meter, _, frames = Boot({ damageMeterSkin = true, damageMeterNameSize = 16,
+        damageMeterValueSize = 12, damageMeterTitleSize = 20 }, true)
     Login(frames)
     local window = meter.windows[1]
-    local name = window.MinimizeContainer.ScrollBox.frames[1].StatusBar.Name
-    check("size: the picked size on the names, the amounts and the title", name.size == 16
-        and window.SessionTimer.size == 16 and window.SessionDropdown.SessionName.size == 16)
-    store.Set("damageMeterFontSize", 0)
-    check("size: 0 is the game's own", name.size == GAME_SIZE)
-    store.Set("damageMeterFontSize", 12)
-    check("size: a new pick is applied at once", name.size == 12)
+    local bar = window.MinimizeContainer.ScrollBox.frames[1].StatusBar
+    check("sizes: the names have theirs", bar.Name.size == 16)
+    check("sizes: the amounts and the timer have theirs", bar.Value.size == 12 and window.SessionTimer.size == 12)
+    check("sizes: the list and session names have theirs", window.SessionDropdown.SessionName.size == 20
+        and window.DamageMeterTypeDropdown.TypeName.size == 20)
+    store.Set("damageMeterNameSize", 0)
+    check("sizes: 0 is the game's own, for that one only", bar.Name.size == GAME_SIZE and bar.Value.size == 12
+        and window.SessionDropdown.SessionName.size == 20)
     store.Set("damageMeterSkin", false)
-    check("size: off gives the game's size back", name.size == GAME_SIZE)
+    check("sizes: off gives the game's sizes back", bar.Value.size == GAME_SIZE and window.SessionTimer.size == GAME_SIZE
+        and window.SessionDropdown.SessionName.size == GAME_SIZE)
+end
+
+-- the buttons in the theme
+do
+    local _, store, meter, _, frames = Boot({ damageMeterSkin = true }, true)
+    Login(frames)
+    local window = meter.windows[1]
+    local gear, arrow = window.SettingsDropdown.glyph, window.DamageMeterTypeDropdown.glyph
+    check("buttons: grey first, then tinted to the Accent", gear.desaturated == true and SameRgb(gear.vertex, THEME.accent)
+        and SameRgb(arrow.vertex, THEME.accent) and window.MinimizeButton.glyph.desaturated == true)
+    store.Set("damageMeterButtonColor", { r = 1, g = 0, b = 0 })
+    check("buttons: a picked color", SameRgb(gear.vertex, { r = 1, g = 0, b = 0 }))
+    store.Set("damageMeterButtons", "game")
+    check("buttons: Game Default puts the art back", gear.desaturated == false
+        and SameRgb(gear.vertex, { r = 1, g = 1, b = 1 }))
+    store.Set("damageMeterButtons", "themed")
+    store.Set("damageMeterSkin", false)
+    check("buttons: skin off gives them back", gear.desaturated == false and arrow.desaturated == false
+        and SameRgb(arrow.vertex, { r = 1, g = 1, b = 1 }))
 end
 
 -- every theme token the skin asks for is one the theme has
@@ -775,7 +805,13 @@ do
         and rows.damageMeterBarBgColor.colour and rows.damageMeterBarBgAlpha and rows.damageMeterScrollBar)
     check("rows: window border, its color, the title bar and its faded opacity", rows.damageMeterBorder
         and rows.damageMeterBorderColor.colour and rows.damageMeterTitleFade and rows.damageMeterTitleFadeAlpha)
-    check("rows: a font size, 0 for the game's own", rows.damageMeterFontSize ~= nil)
+    check("rows: a size for the names, the amounts and the title", rows.damageMeterNameSize
+        and rows.damageMeterValueSize and rows.damageMeterTitleSize and rows.damageMeterFontSize == nil)
+    check("rows: buttons, and their color that waits for Themed", rows.damageMeterButtons
+        and #rows.damageMeterButtons.choice[2] == 2 and rows.damageMeterButtonColor.colour
+        and rows.damageMeterButtonColor.needs() == true)
+    store.Set("damageMeterButtons", "game")
+    check("rows: and off with the game's own", rows.damageMeterButtonColor.needs() == false)
     check("rows: the scroll bar and title bar choices", #rows.damageMeterScrollBar.choice[2] == 3
         and #rows.damageMeterTitleFade.choice[2] == 2)
     check("rows: border color and faded opacity wait for their switches", rows.damageMeterBorderColor.needs() == false
