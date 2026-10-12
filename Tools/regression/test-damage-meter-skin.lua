@@ -166,7 +166,7 @@ local function Boot(settings, loaded, windows)
         damageMeterPos = false, damageMeterBarAlpha = 100, damageMeterBarBgColor = false,
         damageMeterBarBgAlpha = 100, damageMeterScrollBar = "game", damageMeterBorder = false,
         damageMeterBorderColor = false, damageMeterTitleFade = "always", damageMeterTitleFadeAlpha = 0,
-        damageMeterNameSize = 0, damageMeterValueSize = 0, damageMeterTitleSize = 0, damageMeterButtons = "themed",
+        damageMeterNameSize = 0, damageMeterValueSize = 0, damageMeterTitleSize = 0, damageMeterButtons = "game",
         damageMeterButtonColor = false }
     local store = {}
     function store.Get(k)
@@ -753,9 +753,16 @@ do
         and window.SessionDropdown.SessionName.size == GAME_SIZE)
 end
 
--- the buttons in the theme
+-- the buttons: the game's own until Themed is picked, then in the theme
 do
-    local _, store, meter, _, frames = Boot({ damageMeterSkin = true }, true)
+    local _, _, plain, _, plainFrames = Boot({ damageMeterSkin = true }, true)
+    Login(plainFrames)
+    local own = plain.windows[1].SettingsDropdown.glyph
+    check("buttons: the game's own by default", own.desaturated ~= true and own.vertex == nil)
+end
+
+do
+    local _, store, meter, _, frames = Boot({ damageMeterSkin = true, damageMeterButtons = "themed" }, true)
     Login(frames)
     local window = meter.windows[1]
     local gear, arrow = window.SettingsDropdown.glyph, window.DamageMeterTypeDropdown.glyph
@@ -809,9 +816,9 @@ do
         and rows.damageMeterValueSize and rows.damageMeterTitleSize and rows.damageMeterFontSize == nil)
     check("rows: buttons, and their color that waits for Themed", rows.damageMeterButtons
         and #rows.damageMeterButtons.choice[2] == 2 and rows.damageMeterButtonColor.colour
-        and rows.damageMeterButtonColor.needs() == true)
-    store.Set("damageMeterButtons", "game")
-    check("rows: and off with the game's own", rows.damageMeterButtonColor.needs() == false)
+        and rows.damageMeterButtonColor.needs() == false)
+    store.Set("damageMeterButtons", "themed")
+    check("rows: and is on with Themed", rows.damageMeterButtonColor.needs() == true)
     check("rows: the scroll bar and title bar choices", #rows.damageMeterScrollBar.choice[2] == 3
         and #rows.damageMeterTitleFade.choice[2] == 2)
     check("rows: border color and faded opacity wait for their switches", rows.damageMeterBorderColor.needs() == false
