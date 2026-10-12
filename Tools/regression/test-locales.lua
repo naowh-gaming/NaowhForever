@@ -119,7 +119,7 @@ end
 local wui = LoadWidgets().UI
 local values, order = wui.KeepMissing({ en = "English" }, { "en" }, "ghostCode")
 check("KeepMissing adds a stale saved value back in", values.ghostCode ~= nil and order[#order] == "ghostCode")
-values, order = wui.KeepMissing({ en = "English" }, { "en" }, "en")
-check("and leaves a known value alone", order[#order] == "en" and #order == 1)
+local _, order2 = wui.KeepMissing({ en = "English" }, { "en" }, "en")
+check("and leaves a known value alone", order2[#order2] == "en" and #order2 == 1)
 
 print(checks .. " locale checks passed")
