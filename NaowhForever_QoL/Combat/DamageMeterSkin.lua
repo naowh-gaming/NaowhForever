@@ -16,7 +16,7 @@ local ENTRY_REFRESH = { "UpdateStyle", "UpdateBackground", "UpdateStatusBarColor
 local SETTING_KEYS = { enabled = true, damageMeterSkin = true, damageMeterBars = true, damageMeterBarColor = true,
     damageMeterTexture = true, damageMeterFont = true, damageMeterOutline = true, damageMeterIconEdge = true,
     damageMeterHeaderColor = true, damageMeterWindowColor = true, damageMeterNameColor = true,
-    damageMeterValueColor = true, damageMeterTitleColor = true }
+    damageMeterValueColor = true, damageMeterTitleColor = true, damageMeterFree = true }
 
 local OUTLINES = { { [OUTLINE_GAME] = TEXT_GAME_DEFAULT }, { OUTLINE_GAME } }
 for key, name in pairs(Parts.HUD_OUTLINES[1]) do OUTLINES[1][key] = name end
@@ -34,6 +34,10 @@ local faced = setmetatable({}, { __mode = "k" })
 
 local function On()
     return S.Get("enabled") and S.Get("damageMeterSkin")
+end
+
+local function Free()
+    return S.Get("enabled") and S.Get("damageMeterFree")
 end
 
 local function Has(object, method)
@@ -227,6 +231,87 @@ local function GiveBack()
     end
 end
 
+local placed = false
+
+local function Locked(window)
+    return Has(window, "IsLocked") and window:IsLocked() == true
+end
+
+local function Save(window)
+    local left, top = window:GetLeft(), window:GetTop()
+    if not (left and top) then return end
+    S.Set("damageMeterPos", { left = left, top = top, width = window:GetWidth(), height = window:GetHeight() })
+end
+
+local function Handles(window)
+    if hooked[window] or not Has(window, "HookScript") then return end
+    hooked[window] = true
+    window:HookScript("OnDragStart", function(self)
+        if Free() and not Locked(self) then self:StartMoving() end
+    end)
+    window:HookScript("OnDragStop", function(self)
+        if not Free() then return end
+        self:StopMovingOrSizing()
+        Save(self)
+    end)
+    local grip = Dig(window, "MinimizeContainer", "ResizeButton")
+    if not Has(grip, "HookScript") then return end
+    grip:HookScript("OnMouseDown", function(_, button)
+        if button == "LeftButton" and Free() and not Locked(window) then window:StartSizing("BOTTOMRIGHT") end
+    end)
+    grip:HookScript("OnMouseUp", function(_, button)
+        if button ~= "LeftButton" or not Free() then return end
+        window:StopMovingOrSizing()
+        Save(window)
+    end)
+    grip:HookScript("OnEnter", function(self)
+        if Free() and not Locked(window) then self:SetAlpha(1) end
+    end)
+    grip:HookScript("OnLeave", function(self)
+        if Free() then self:SetAlpha(0) end
+    end)
+end
+
+local function Reattach(window)
+    placed = false
+    window:ClearAllPoints()
+    window:SetPoint("TOPLEFT")
+    window:SetPoint("BOTTOMRIGHT")
+    if Has(window, "SetMovable") then window:SetMovable(false) end
+    if Has(window, "SetResizable") then window:SetResizable(false) end
+end
+
+local function Place()
+    if not Has(meter, "GetPrimarySessionWindow") then return end
+    local window = meter:GetPrimarySessionWindow()
+    if not (Has(window, "SetPoint") and Has(window, "ClearAllPoints") and Has(window, "SetSize")) then return end
+    if not Free() then
+        if placed then Reattach(window) end
+        return
+    end
+    local pos = S.Get("damageMeterPos")
+    if type(pos) ~= "table" then
+        Save(window)
+        pos = S.Get("damageMeterPos")
+        if type(pos) ~= "table" then return end
+    end
+    window:ClearAllPoints()
+    window:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", pos.left, pos.top)
+    window:SetSize(pos.width, pos.height)
+    if Has(window, "SetMovable") then window:SetMovable(true) end
+    if Has(window, "SetResizable") then window:SetResizable(true) end
+    placed = true
+    Handles(window)
+end
+
+local function ResetPosition()
+    if not Has(meter, "GetPrimarySessionWindow") then return end
+    local window = meter:GetPrimarySessionWindow()
+    if placed and Has(window, "ClearAllPoints") then Reattach(window) end
+    S.Set("damageMeterPos", false)
+    Place()
+end
+
 local function Apply()
     if not meter then return end
     generation = generation + 1
@@ -239,6 +324,7 @@ local function Apply()
             Tint(entry)
         end
     end
+    Place()
 end
 
 local function Hook()
@@ -248,7 +334,7 @@ local function Hook()
 end
 
 local function Start()
-    if meter or not On() then return end
+    if meter or not (On() or Free()) then return end
     if C_AddOns.IsAddOnLoaded(ADDON) then
         Hook()
     else
@@ -309,5 +395,14 @@ Settings.Page("QoL/Combat", S):Card({
         Settings.Group("Window"),
         ColorRow("damageMeterHeaderColor", "Title Bar Color", "panel", "The title bar and the spell panel."),
         ColorRow("damageMeterWindowColor", "Window Color", "bg", "The window and the shadow behind each bar."),
+    },
+})
+
+Settings.Page("QoL/Combat", S):Card({
+    id = "damageMeterWindow", name = "Damage Meter Window", order = 111, switch = "damageMeterFree",
+    help = "Move and resize the game's damage meter here, without Edit Mode.",
+    rows = {
+        { label = "Window Position", buttonText = "Reset", button = ResetPosition,
+          help = "Puts the window back where Edit Mode has it." },
     },
 })

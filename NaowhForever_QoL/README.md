@@ -49,7 +49,7 @@ NaowhForever_QoL/
     CursorCooldown.lua  Cooldown at Cursor
     GcdTracker.lua      GCD Tracker (ns.GCDSpell)
     FocusCastBar.lua    the Focus Cast Bar
-    DamageMeterSkin.lua the game's damage meter in the theme's colors, texture and font
+    DamageMeterSkin.lua the game's damage meter in the theme's colors, texture and font, and its place
     StealthReminder.lua the Stealth Reminder
     PetTracker.lua      the Pet Tracker
   Questing/
@@ -109,6 +109,13 @@ NaowhForever_QoL/
   Bar Texture swaps the file on the bar's own texture, which the game only ever colors. Font and
   Outline are written once per change of a setting, since the game never sets them again; the
   colors are the theme's tokens until one is picked, as in the Damage Meter module.
+- Damage Meter Window re-anchors the primary session window to the screen and sizes it, since the game
+  leaves that window to Edit Mode (`CanMoveOrResizeSessionWindow` is false for it). Only the session
+  window moves: the Edit Mode frame it hangs from is never touched, and the game's own window setup is
+  followed by ours (hooksecurefunc on `SetupSessionWindow`). The drag and the grip are `HookScript`s
+  beside the game's own, which return early for this window, and the game's per-window lock is
+  respected. Switching it off anchors the window to its parent again exactly as the game did. Windows
+  2 and 3 are the game's own to move.
 - QoL is optional: the base and every other module read what they need from it behind a nil
   guard, never at load, and the data they share with it lives in the core (`Core/Settings.lua`,
   the Alerts group in `Core/AlertStack.lua`, Naowh's setups in `Core/Profiles/Setups.lua`) or in

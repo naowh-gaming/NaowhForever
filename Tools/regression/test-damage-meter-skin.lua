@@ -83,10 +83,42 @@ end
 
 local function Window()
     local source = { Background = Texture("common-dropdown-bg"), ScrollBox = ScrollBox({ Entry() }) }
+    local grip = { alpha = 0 }
+    function grip:HookScript(name, fn)
+        self.scripts = self.scripts or {}
+        self.scripts[name] = fn
+    end
+    function grip:SetAlpha(a) self.alpha = a end
     local w = { Header = Texture("ui-damagemeters-header-bar"), SessionTimer = FontString(),
         SessionDropdown = { SessionName = FontString() }, DamageMeterTypeDropdown = { TypeName = FontString() },
         MinimizeContainer = { Background = Texture("damagemeters-background"), LocalPlayerEntry = Entry(),
-            ScrollBox = ScrollBox({ Entry(), Entry() }), SourceWindow = source } }
+            ScrollBox = ScrollBox({ Entry(), Entry() }), SourceWindow = source, ResizeButton = grip },
+        points = {}, left = 100, top = 500, width = 300, height = 200, editLeft = 100, editTop = 500 }
+    function w:ClearAllPoints() self.points = {} end
+    function w:SetPoint(point, relativeTo, relPoint, x, y)
+        self.points[#self.points + 1] = { point, relativeTo, relPoint, x, y }
+        if relativeTo ~= nil then
+            self.left, self.top = x, y
+        else
+            self.left, self.top = self.editLeft, self.editTop
+            self.width, self.height = 300, 200
+        end
+    end
+    function w:SetSize(width, height) self.width, self.height = width, height end
+    function w:GetLeft() return self.left end
+    function w:GetTop() return self.top end
+    function w:GetWidth() return self.width end
+    function w:GetHeight() return self.height end
+    function w:SetMovable(on) self.movable = on end
+    function w:SetResizable(on) self.resizable = on end
+    function w:IsLocked() return self.locked == true end
+    function w:StartMoving() self.moving = true end
+    function w:StartSizing(corner) self.sizing = corner end
+    function w:StopMovingOrSizing() self.moving, self.sizing = false, nil end
+    function w:HookScript(name, fn)
+        self.scripts = self.scripts or {}
+        self.scripts[name] = fn
+    end
     return w
 end
 
@@ -96,7 +128,8 @@ local function Boot(settings, loaded, windows)
     local defaults = { enabled = true, damageMeterSkin = false, damageMeterBars = "class", damageMeterBarColor = false,
         damageMeterTexture = "", damageMeterFont = "", damageMeterOutline = "game", damageMeterIconEdge = true,
         damageMeterHeaderColor = false, damageMeterWindowColor = false, damageMeterNameColor = false,
-        damageMeterValueColor = false, damageMeterTitleColor = false }
+        damageMeterValueColor = false, damageMeterTitleColor = false, damageMeterFree = false,
+        damageMeterPos = false }
     local store = {}
     function store.Get(k)
         local v = s.settings[k]
@@ -105,6 +138,7 @@ local function Boot(settings, loaded, windows)
     end
     function store.Set(k, v) s.settings[k] = v end
     local meter = { windows = windows or { Window() } }
+    function meter:GetPrimarySessionWindow() return self.windows[1] end
     function meter:ForEachSessionWindow(fn)
         for _, w in ipairs(self.windows) do fn(w) end
     end
@@ -143,6 +177,7 @@ local function Boot(settings, loaded, windows)
                 return page
             end } } }
     local env = { unpack = unpack, ipairs = ipairs, pairs = pairs, type = type, select = select,
+        UIParent = { name = "UIParent" },
         setmetatable = setmetatable, tostring = tostring, NaowhForever = ns,
         hooksecurefunc = function(tbl, name, fn)
             s.hooks = s.hooks + 1
@@ -188,7 +223,7 @@ end
 -- the card
 do
     local s = Boot()
-    check("one card, on the Combat page's store", #s.cards == 1)
+    check("two cards, on the Combat page's store", #s.cards == 2)
     local card = s.cards[1]
     check("its id, name and switch", card.id == "damageMeterSkin" and card.name == "Damage Meter Skin" and card.switch == "damageMeterSkin")
     local row = card.rows[1]
@@ -460,6 +495,87 @@ do
     check("Custom Bar Color is off until Bar Color is Custom Color", rows.damageMeterBarColor.needs() == false)
     store.Set("damageMeterBars", "custom")
     check("and on with it", rows.damageMeterBarColor.needs() == true)
+end
+
+-- moving and resizing the primary window without Edit Mode
+do
+    local s, store, meter, _, frames, env = Boot({ damageMeterFree = true }, true, { Window(), Window() })
+    Login(frames)
+    local window = meter.windows[1]
+    local second = meter.windows[2]
+    local grip = window.MinimizeContainer.ResizeButton
+    check("free: the window is taken off the Edit Mode frame to a spot of its own",
+        window.points[1][1] == "TOPLEFT" and window.points[1][2] == env.UIParent
+        and window.points[1][3] == "BOTTOMLEFT" and window.points[1][4] == 100 and window.points[1][5] == 500
+        and window.width == 300 and window.height == 200 and #window.points == 1)
+    check("free: movable and resizable", window.movable == true and window.resizable == true)
+    check("free: the rect it had is kept, so nothing jumps", store.Get("damageMeterPos").left == 100
+        and store.Get("damageMeterPos").top == 500 and store.Get("damageMeterPos").height == 200)
+    check("free: a skin that is off stays off", #s.borders == 0 and window.Header.solid == nil)
+
+    window.scripts.OnDragStart(window)
+    check("a drag starts the move", window.moving == true)
+    window.left, window.top = 250, 400
+    window.scripts.OnDragStop(window)
+    check("and the end of it keeps the new place", window.moving == false and store.Get("damageMeterPos").left == 250
+        and store.Get("damageMeterPos").top == 400)
+
+    window.locked = true
+    window.scripts.OnDragStart(window)
+    check("the game's own lock is respected", window.moving == false)
+    grip.scripts.OnMouseDown(grip, "LeftButton")
+    check("and it holds the grip too", window.sizing == nil)
+    window.locked = false
+
+    grip.scripts.OnMouseDown(grip, "RightButton")
+    check("the right button does nothing", window.sizing == nil)
+    grip.scripts.OnMouseDown(grip, "LeftButton")
+    check("the grip starts a resize from the corner", window.sizing == "BOTTOMRIGHT")
+    window.width, window.height = 340, 260
+    grip.scripts.OnMouseUp(grip, "LeftButton")
+    check("and keeps the new size", store.Get("damageMeterPos").width == 340 and store.Get("damageMeterPos").height == 260
+        and window.sizing == nil)
+    grip.scripts.OnEnter(grip)
+    check("the grip shows on hover", grip.alpha == 1)
+    grip.scripts.OnLeave(grip)
+    check("and hides again", grip.alpha == 0)
+
+    window:ClearAllPoints(); window:SetPoint("TOPLEFT"); window:SetPoint("BOTTOMRIGHT")
+    meter:SetupSessionWindow()
+    check("the game sets the window up again: ours again", window.points[1][2] == env.UIParent
+        and window.points[1][4] == 250 and window.width == 340 and #window.points == 1)
+    check("a second window is the game's own to place", second.points ~= nil and #second.points == 0
+        and second.scripts == nil and second.movable == nil)
+
+    local resetCard = s.cards[2]
+    resetCard.rows[1].button()
+    check("Reset: back to where Edit Mode has it, and kept there", store.Get("damageMeterPos").left == 100
+        and store.Get("damageMeterPos").top == 500 and window.points[1][4] == 100)
+
+    store.Set("damageMeterFree", false)
+    check("off: back on the Edit Mode frame, as the game made it", #window.points == 2
+        and window.points[1][1] == "TOPLEFT" and window.points[1][2] == nil and window.points[2][1] == "BOTTOMRIGHT"
+        and window.points[2][2] == nil and window.movable == false and window.resizable == false)
+    window.moving = false
+    window.scripts.OnDragStart(window)
+    check("off: a drag does nothing of ours", window.moving == false)
+    store.Set("damageMeterFree", true)
+    check("on again: where it was left", window.points[1][2] == env.UIParent and window.points[1][4] == 100)
+end
+
+do
+    local s, _, meter, _, frames = Boot({}, true)
+    local window = meter.windows[1]
+    Login(frames)
+    check("off by default: nothing placed, nothing hooked", #window.points == 0 and window.scripts == nil
+        and s.hooks == s.base and next(s.waiting) == nil)
+    local noPrimary = { windows = {} }
+    function noPrimary:SetupSessionWindow() end
+    local _, store, _, _, bootFrames, env = Boot({ damageMeterFree = true }, true, {})
+    env.DamageMeter = noPrimary
+    Login(bootFrames)
+    store.Set("damageMeterFree", false)
+    check("a meter without the call for its primary window: nothing to do", store ~= nil)
 end
 
 print("PASS damage meter skin: " .. checks .. " checks")

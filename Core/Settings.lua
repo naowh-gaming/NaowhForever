@@ -38,6 +38,7 @@ local S = UI.ModuleSettings("qol", {
     combatTimerColor = { r = 1, g = 1, b = 1 }, combatTimerClassColor = false,
     combatTimerFont = "", combatTimerFontSize = 32, combatTimerOutline = "OUTLINE",
     damageMeterSkin = F.damageMeterSkin, damageMeterBars = "class", damageMeterBarColor = false,
+    damageMeterFree = F.damageMeterFree, damageMeterPos = false,
     damageMeterTexture = "", damageMeterFont = "", damageMeterOutline = "game", damageMeterIconEdge = true,
     damageMeterHeaderColor = false, damageMeterWindowColor = false, damageMeterNameColor = false,
     damageMeterValueColor = false, damageMeterTitleColor = false,
