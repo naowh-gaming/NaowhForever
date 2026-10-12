@@ -69,6 +69,7 @@ do
     local hiddenSection = { title = "Skyborne", store = own, switch = "mapSkyborne", hidden = function() return true end,
         rows = { { key = "mapSkyborne", label = "Skyborne Spots", toggle = true, store = own } } }
     shared.MapPins = { questSection, ownSection, hiddenSection }
+    shared.Style = dofile("Tools/regression/shared_style.lua")
     shared.Settings = { Group = Group, Page = function(key)
         return { Card = function(_, c) c.pageKey = key; cards[c.id] = c end }
     end }

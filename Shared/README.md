@@ -272,7 +272,8 @@ What a comment in the code used to say, in short. The house rules behind it are 
 - `Shared.ScalePin` is a map pin's `ApplyCurrentScale`. Pins sit on the map's canvas, which the
   map scales to fit and to zoom, so the pin's scale is `PIN_SCALE` (1.5) over the canvas scale:
   the same size on screen at every zoom. The map's global pin scale still applies. An optional
-  `factor` sizes one kind of pin against the rest (QoL's town pins are 0.75).
+  `factor` sizes one kind of pin against the rest, so that `PIN_SIZE_DEFAULT` (20) is the right size for each
+  and one Pin Size number means the same on every kind (town 0.5625, quests 0.5, rares 0.75).
 - `Shared.MapPins` is a plain list, filled at load by the modules that have map pins and read
   only when QoL's Map Options or Map Pins card is drawn, so the load order of the addons does not matter.
   A section is `{ title, order, store, switch, rows, map }`: `map` puts it on the Map Options card instead of Map Pins, `switch` is its own on and off key in `store`, `order` (default 50, after the lower ones, then by load order) where it comes, and `title` its group, none to continue the one above.
@@ -307,7 +308,7 @@ What a comment in the code used to say, in short. The house rules behind it are 
   with `PI`, not `math.pi`: the offline tests load `Style.lua` without the math library.
 - The slider ranges every module shares live here: `OPACITY_RANGE` (a window's opacity, from
   `OPACITY_MIN`), `ALPHA_RANGE` (a HUD part's opacity, down to 0), `SCALE_RANGE`,
-  `PIN_SIZE_RANGE` (a map pin) and `HUD_TEXT_RANGE` (a HUD part's text size in `Settings.Look`).
+  `PIN_SIZE_RANGE` (a map pin, `PIN_SIZE_DEFAULT` the default every pin size shares) and `HUD_TEXT_RANGE` (a HUD part's text size in `Settings.Look`).
   `PERCENT_SCALE` turns a percent slider into the 0 to 1 the setting saves.
 - `STAGE_MARGIN`, `STAGE_NOTE_Y` and `STAGE_NOTE_SIZE` place a settings card's live preview and
   the muted note under it.

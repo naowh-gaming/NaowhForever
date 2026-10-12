@@ -123,7 +123,7 @@ local S = UI.ModuleSettings("qol", {
     townCapitalsOnly = true, townSpiritHealers = true, townZoneLinks = true,
     townMap = F.townMap, townClass = true, townProfession = true, townFlight = true, townInn = true,
     townBank = true, townStable = false, townRepair = true, townSupplies = true,
-    townVendors = false, townMail = true, townPinSize = 16, townMinimap = true, townMinimapSpirit = true,
+    townVendors = false, townMail = true, townPinSize = 20, townMinimap = true, townMinimapSpirit = true,
     townTravel = false,
     mapUnexplored = F.mapUnexplored, mapUnexploredDark = 0.5,
     zoneLevels = F.zoneLevels,
