@@ -23,11 +23,19 @@ local function Texture(atlas)
 end
 
 local function FontString()
-    local f = { path = GAME_FONT, size = GAME_SIZE, flags = GAME_FLAGS, r = 1, g = 0.82, b = 0 }
+    local f = { path = GAME_FONT, size = GAME_SIZE, flags = GAME_FLAGS, r = 1, g = 0.82, b = 0, sx = 1, sy = -1,
+        shadow = { 0, 0, 0, 0.5 } }
     function f:GetFont() return self.path, self.size, self.flags end
-    function f:SetFont(path, size, flags) self.path, self.size, self.flags = path, size, flags end
+    function f:SetFont(path, size, flags)
+        self.path, self.size, self.flags = path, size, flags
+        self.fontSets = (self.fontSets or 0) + 1
+    end
     function f:GetTextColor() return self.r, self.g, self.b end
     function f:SetTextColor(r, g, b) self.r, self.g, self.b = r, g, b end
+    function f:GetShadowOffset() return self.sx, self.sy end
+    function f:SetShadowOffset(x, y) self.sx, self.sy = x, y end
+    function f:GetShadowColor() return self.shadow[1], self.shadow[2], self.shadow[3], self.shadow[4] end
+    function f:SetShadowColor(r, g, b, a) self.shadow = { r, g, b, a } end
     return f
 end
 
@@ -36,6 +44,10 @@ local function Entry()
     local bar = { Background = Texture("ui-damagemeters-bar-shadowbg"), BackgroundEdge = Texture("ui-damagemeters-bar-shadowedge"),
         Name = FontString(), Value = FontString() }
     local barTexture = Texture("UI-HUD-CoolDownManager-Bar")
+    function bar:SetStatusBarTexture(file)
+        self.file, self.fileSets = file, (self.fileSets or 0) + 1
+        barTexture.atlas = nil
+    end
     local e = { StatusBar = bar, Icon = { level = 1 }, refreshes = 0 }
     function e:GetStatusBarTexture() return barTexture end
     function e:UpdateStyle()
@@ -81,7 +93,10 @@ end
 -- Builds the addon's environment. loaded: Blizzard_DamageMeter is already loaded. Returns the pieces tests poke.
 local function Boot(settings, loaded, windows)
     local s = { settings = settings or {}, hooks = 0, borders = {}, cards = {}, waiting = {} }
-    local defaults = { enabled = true, damageMeterSkin = false, damageMeterBars = "class" }
+    local defaults = { enabled = true, damageMeterSkin = false, damageMeterBars = "class", damageMeterBarColor = false,
+        damageMeterTexture = "", damageMeterFont = "", damageMeterOutline = "game", damageMeterIconEdge = true,
+        damageMeterHeaderColor = false, damageMeterWindowColor = false, damageMeterNameColor = false,
+        damageMeterValueColor = false }
     local store = {}
     function store.Get(k)
         local v = s.settings[k]
@@ -96,6 +111,11 @@ local function Boot(settings, loaded, windows)
     function meter:SetupSessionWindow() end
     local ns = { QoLSettings = store, THEME = THEME, Apply = function() end,
         UIFontPath = function() return FONT end,
+        UI = { FontPath = function(name) return "Fonts\\" .. name .. ".ttf" end,
+            TexturePath = function(name, fallback)
+                if name == "" then return fallback end
+                return "Textures\\" .. name
+            end },
         Border = function(frame, color)
             local border = { frame = frame, color = color, _frame = { shown = true } }
             function border._frame:Show() self.shown = true end
@@ -103,11 +123,25 @@ local function Boot(settings, loaded, windows)
             s.borders[#s.borders + 1] = border
             return border
         end,
-        Shared = { Settings = { Page = function(_, name)
-            local page = { name = name }
-            function page:Card(def) s.cards[#s.cards + 1] = def; return self end
-            return page
-        end } } }
+        Shared = { Parts = {
+            HUD_OUTLINES = { { NONE = "None", [""] = "Shadow", OUTLINE = "Outline", THICKOUTLINE = "Thick Outline" },
+                { "NONE", "", "OUTLINE", "THICKOUTLINE" } },
+            HudFlags = function(outline)
+                if outline == "NONE" or type(outline) ~= "string" then return "" end
+                return outline
+            end,
+            HudText = function(fs, shadow)
+                if shadow == false then
+                    fs.sx, fs.sy, fs.shadow, fs.shadowMode = 0, 0, { 0, 0, 0, 0 }, false
+                else
+                    fs.sx, fs.sy, fs.shadow, fs.shadowMode = 2, -2, { 0, 0, 0, 0.8 }, "house"
+                end
+            end },
+            Settings = { Group = function(title) return { group = title } end, Page = function(_, name)
+                local page = { name = name }
+                function page:Card(def) s.cards[#s.cards + 1] = def; return self end
+                return page
+            end } } }
     local env = { unpack = unpack, ipairs = ipairs, pairs = pairs, type = type, select = select,
         setmetatable = setmetatable, tostring = tostring, NaowhForever = ns,
         hooksecurefunc = function(tbl, name, fn)
@@ -299,6 +333,128 @@ do
     local _, _, noMeter, _, bootFrames = Boot({ damageMeterSkin = true }, true, {})
     Login(bootFrames)
     check("no windows: nothing to do", noMeter ~= nil)
+end
+
+-- the look rows: texture, font, outline, icon border
+do
+    local _, store, meter, _, frames = Boot({ damageMeterSkin = true, damageMeterTexture = "Flat" }, true)
+    Login(frames)
+    local all = Entries(meter.windows[1])
+    for i, entry in ipairs(all) do
+        check("texture " .. i .. ": the bar has the picked file once, and keeps the class color",
+            entry.StatusBar.file == "Textures\\Flat" and entry.StatusBar.fileSets == 1
+            and SameRgb(entry.barTexture.vertex, { r = CLASS_RGB[1], g = CLASS_RGB[2], b = CLASS_RGB[3] }))
+    end
+    local first = all[2]
+    first:UpdateStatusBarColor(); first:UpdateStyle(); first:UpdateBackground()
+    check("texture: the game's refreshes do not write the file again", first.StatusBar.fileSets == 1)
+    store.Set("damageMeterTexture", "Other")
+    check("texture: a new pick is written once", first.StatusBar.file == "Textures\\Other" and first.StatusBar.fileSets == 2)
+    store.Set("damageMeterTexture", "")
+    check("texture: Game Default puts the game's art back", first.barTexture.atlas == "UI-HUD-CoolDownManager-Bar")
+    store.Set("damageMeterTexture", "Flat")
+    store.Set("damageMeterSkin", false)
+    check("texture: switched off, the game's art is back", first.barTexture.atlas == "UI-HUD-CoolDownManager-Bar")
+end
+
+do
+    local _, store, meter, _, frames = Boot({ damageMeterSkin = true, damageMeterFont = "Exo",
+        damageMeterOutline = "THICKOUTLINE" }, true)
+    Login(frames)
+    local window = meter.windows[1]
+    local name = window.MinimizeContainer.ScrollBox.frames[1].StatusBar.Name
+    check("font: the picked face, the game's size", name.path == "Fonts\\Exo.ttf" and name.size == GAME_SIZE)
+    check("outline: Thick Outline, the shadow cleared", name.flags == "THICKOUTLINE" and name.sx == 0)
+    check("font: the dropdown names and the timer take it too", window.SessionTimer.path == "Fonts\\Exo.ttf"
+        and window.SessionDropdown.SessionName.flags == "THICKOUTLINE")
+    local sets = name.fontSets
+    local entry = window.MinimizeContainer.ScrollBox.frames[1]
+    entry:UpdateStyle(); entry:UpdateBackground(); entry:UpdateStatusBarColor()
+    check("font: the game's refreshes do not write the face again", name.fontSets == sets)
+    store.Set("damageMeterOutline", "NONE")
+    check("outline: None is no flags", name.flags == "")
+    store.Set("damageMeterOutline", "")
+    check("outline: Shadow is no flags and the soft shadow", name.flags == "" and name.shadowMode == "house")
+    store.Set("damageMeterOutline", "game")
+    check("outline: Game Default keeps the game's flags and brings its shadow back",
+        name.flags == GAME_FLAGS and name.sx == 1 and name.sy == -1)
+    store.Set("damageMeterOutline", "THICKOUTLINE")
+    store.Set("damageMeterSkin", false)
+    check("off: the font, flags and shadow are the game's", name.path == GAME_FONT and name.size == GAME_SIZE
+        and name.flags == GAME_FLAGS and name.sx == 1 and name.sy == -1)
+    store.Set("damageMeterSkin", true)
+    check("on again: the face is ours again", name.path == "Fonts\\Exo.ttf" and name.flags == "THICKOUTLINE")
+end
+
+do
+    local red, green = { r = 1, g = 0, b = 0 }, { r = 0, g = 1, b = 0 }
+    local blue, grey = { r = 0, g = 0, b = 1 }, { r = 0.5, g = 0.5, b = 0.5 }
+    local _, store, meter, _, frames = Boot({ damageMeterSkin = true, damageMeterNameColor = red,
+        damageMeterValueColor = green, damageMeterHeaderColor = blue, damageMeterWindowColor = grey }, true)
+    Login(frames)
+    local window = meter.windows[1]
+    local c = window.MinimizeContainer
+    local bar = c.ScrollBox.frames[1].StatusBar
+    check("colors: the names, in the entries and the dropdowns", bar.Name.r == 1 and bar.Name.g == 0
+        and window.SessionDropdown.SessionName.r == 1 and window.DamageMeterTypeDropdown.TypeName.g == 0)
+    check("colors: the amounts and the timer", bar.Value.g == 1 and bar.Value.r == 0 and window.SessionTimer.g == 1)
+    check("colors: the title bar and the spell panel", SameRgb(window.Header.solid, blue)
+        and SameRgb(c.SourceWindow.Background.solid, blue))
+    check("colors: the window and the shadow behind each bar", SameRgb(c.Background.solid, grey)
+        and SameRgb(bar.Background.solid, grey))
+    store.Set("damageMeterNameColor", false)
+    check("colors: not picked follows the theme", bar.Name.r == THEME.fg.r)
+end
+
+do
+    local _, store, meter, _, frames = Boot({ damageMeterSkin = true, damageMeterBars = "custom" }, true)
+    Login(frames)
+    local entry = meter.windows[1].MinimizeContainer.ScrollBox.frames[1]
+    check("custom bars: no color picked yet follows the Accent", SameRgb(entry.barTexture.vertex, THEME.accent))
+    store.Set("damageMeterBarColor", { r = 0.1, g = 0.2, b = 0.3 })
+    check("custom bars: the picked color", SameRgb(entry.barTexture.vertex, { r = 0.1, g = 0.2, b = 0.3 }))
+    entry:UpdateStatusBarColor()
+    check("custom bars: the game sets its color again, ours again", SameRgb(entry.barTexture.vertex, { r = 0.1, g = 0.2, b = 0.3 }))
+    store.Set("damageMeterBars", "class")
+    check("custom bars: class colors again", SameRgb(entry.barTexture.vertex, { r = CLASS_RGB[1], g = CLASS_RGB[2], b = CLASS_RGB[3] }))
+end
+
+do
+    local s, store, meter, _, frames = Boot({ damageMeterSkin = true }, true)
+    Login(frames)
+    check("icon border on by default", #s.borders == 4 and s.borders[1]._frame.shown == true)
+    store.Set("damageMeterIconEdge", false)
+    local hidden = true
+    for _, border in ipairs(s.borders) do hidden = hidden and border._frame.shown == false end
+    check("icon border off hides every border", hidden)
+    meter.windows[1].MinimizeContainer.ScrollBox.frames[1]:UpdateStyle()
+    check("and a refresh does not bring it back", s.borders[2]._frame.shown == false)
+    store.Set("damageMeterIconEdge", true)
+    check("icon border on again shows them", s.borders[1]._frame.shown == true and #s.borders == 4)
+end
+
+do
+    local s, store = Boot()
+    local card = s.cards[1]
+    local rows = {}
+    for _, row in ipairs(card.rows) do
+        if row.key then rows[row.key] = row end
+    end
+    check("the rows: texture, font, outline and the icon border",
+        rows.damageMeterTexture and rows.damageMeterFont and rows.damageMeterOutline and rows.damageMeterIconEdge)
+    check("the color rows: bars, names, amounts, title bar and window", rows.damageMeterBarColor.colour
+        and rows.damageMeterNameColor.colour and rows.damageMeterValueColor.colour
+        and rows.damageMeterHeaderColor.colour and rows.damageMeterWindowColor.colour)
+    check("the outline choice leads with the game's own, then the shared four",
+        rows.damageMeterOutline.choice[2][1] == "game" and #rows.damageMeterOutline.choice[2] == 5
+        and rows.damageMeterOutline.choice[1].game == "Game Default")
+    check("the texture row names the game's own as its default", rows.damageMeterTexture.texture == "Game Default")
+    for key, row in pairs(rows) do
+        check(key .. ": help is one short sentence", row.help == nil or #row.help < 100)
+    end
+    check("Custom Bar Color is off until Bar Color is Custom Color", rows.damageMeterBarColor.needs() == false)
+    store.Set("damageMeterBars", "custom")
+    check("and on with it", rows.damageMeterBarColor.needs() == true)
 end
 
 print("PASS damage meter skin: " .. checks .. " checks")

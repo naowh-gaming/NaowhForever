@@ -1,20 +1,36 @@
--- DamageMeterSkin.lua: Damage Meter Skin, the game's damage meter in the theme's colors.
+-- DamageMeterSkin.lua: Damage Meter Skin, the game's damage meter in the theme's colors, texture and font.
 local ns = _G.NaowhForever
 
 local S = ns.QoLSettings
 local T = ns.THEME
 local Settings = ns.Shared.Settings
+local Parts = ns.Shared.Parts
 
 local ADDON = "Blizzard_DamageMeter"
-local BARS = { { class = "Class Colors", accent = "Theme Accent" }, { "class", "accent" } }
+local BAR_CLASS, BAR_ACCENT, BAR_CUSTOM = "class", "accent", "custom"
+local BARS = { { class = "Class Colors", accent = "Theme Accent", custom = "Custom Color" },
+    { BAR_CLASS, BAR_ACCENT, BAR_CUSTOM } }
+local OUTLINE_GAME, OUTLINE_SHADOW = "game", ""
+local TEXT_GAME_DEFAULT, TEXT_NEEDS_CUSTOM = "Game Default", "Set Bar Color to Custom Color"
 local ENTRY_REFRESH = { "UpdateStyle", "UpdateBackground", "UpdateStatusBarColor" }
-local SETTING_KEYS = { enabled = true, damageMeterSkin = true, damageMeterBars = true }
+local SETTING_KEYS = { enabled = true, damageMeterSkin = true, damageMeterBars = true, damageMeterBarColor = true,
+    damageMeterTexture = true, damageMeterFont = true, damageMeterOutline = true, damageMeterIconEdge = true,
+    damageMeterHeaderColor = true, damageMeterWindowColor = true, damageMeterNameColor = true,
+    damageMeterValueColor = true }
+
+local OUTLINES = { { [OUTLINE_GAME] = TEXT_GAME_DEFAULT }, { OUTLINE_GAME } }
+for key, name in pairs(Parts.HUD_OUTLINES[1]) do OUTLINES[1][key] = name end
+for _, key in ipairs(Parts.HUD_OUTLINES[2]) do OUTLINES[2][#OUTLINES[2] + 1] = key end
 
 local meter
-local looks = setmetatable({}, { __mode = "k" })     -- texture or font string -> what the game had on it
-local hooked = setmetatable({}, { __mode = "k" })    -- entry or scroll box -> it is ours to restyle
-local edges = setmetatable({}, { __mode = "k" })     -- icon frame -> its border
-local entries = setmetatable({}, { __mode = "k" })   -- every entry skinned, to give back
+local generation = 0
+local looks = setmetatable({}, { __mode = "k" })
+local hooked = setmetatable({}, { __mode = "k" })
+local edges = setmetatable({}, { __mode = "k" })
+local entries = setmetatable({}, { __mode = "k" })
+local arts = setmetatable({}, { __mode = "k" })
+local swapped = setmetatable({}, { __mode = "k" })
+local faced = setmetatable({}, { __mode = "k" })
 
 local function On()
     return S.Get("enabled") and S.Get("damageMeterSkin")
@@ -32,6 +48,24 @@ local function Dig(t, ...)
     return t
 end
 
+local function Pick(key, token)
+    local c = S.Get(key)
+    if type(c) == "table" then return c end
+    return T[token]
+end
+
+local function BarColor()
+    local choice = S.Get("damageMeterBars")
+    if choice == BAR_ACCENT then return T.accent end
+    if choice == BAR_CUSTOM then return Pick("damageMeterBarColor", "accent") end
+end
+
+local function FontPath()
+    local name = S.Get("damageMeterFont")
+    if name == "" then return ns.UIFontPath() end
+    return ns.UI.FontPath(name)
+end
+
 local function Flat(texture, c)
     if not Has(texture, "SetColorTexture") then return end
     local atlas = Has(texture, "GetAtlas") and texture:GetAtlas() or nil
@@ -39,20 +73,51 @@ local function Flat(texture, c)
     texture:SetColorTexture(c.r, c.g, c.b, 1)
 end
 
+local function Remember(fontString)
+    local path, size, flags = fontString:GetFont()
+    local r, g, b = fontString:GetTextColor()
+    local was = { path, size, flags, r, g, b }
+    if Has(fontString, "GetShadowOffset") and Has(fontString, "GetShadowColor") then
+        was.shadowX, was.shadowY = fontString:GetShadowOffset()
+        was.shadowR, was.shadowG, was.shadowB, was.shadowA = fontString:GetShadowColor()
+    end
+    looks[fontString] = was
+    return was
+end
+
+local function Shadow(fontString, was)
+    if not (was.shadowX and Has(fontString, "SetShadowOffset") and Has(fontString, "SetShadowColor")) then return end
+    fontString:SetShadowOffset(was.shadowX, was.shadowY)
+    fontString:SetShadowColor(was.shadowR, was.shadowG, was.shadowB, was.shadowA)
+end
+
+local function Face(fontString, was)
+    local outline = S.Get("damageMeterOutline")
+    if outline == OUTLINE_GAME then
+        fontString:SetFont(FontPath(), was[2], was[3])
+        Shadow(fontString, was)
+        return
+    end
+    fontString:SetFont(FontPath(), was[2], Parts.HudFlags(outline))
+    if outline == OUTLINE_SHADOW then Parts.HudText(fontString) else Parts.HudText(fontString, false) end
+end
+
 local function Text(fontString, c)
     if not Has(fontString, "SetTextColor") then return end
-    if not looks[fontString] then
-        local path, size, flags = fontString:GetFont()
-        local r, g, b = fontString:GetTextColor()
-        looks[fontString] = { path, size, flags, r, g, b }
+    local was = looks[fontString] or Remember(fontString)
+    if was[2] and faced[fontString] ~= generation then
+        faced[fontString] = generation
+        Face(fontString, was)
     end
-    local _, size, flags = unpack(looks[fontString])
-    if size then fontString:SetFont(ns.UIFontPath(), size, flags) end
     fontString:SetTextColor(c.r, c.g, c.b)
 end
 
 local function Edge(frame)
     if not Has(frame, "GetFrameLevel") then return end
+    if S.Get("damageMeterIconEdge") == false then
+        if edges[frame] then edges[frame]._frame:Hide() end
+        return
+    end
     edges[frame] = edges[frame] or ns.Border(frame, T.outline)
     edges[frame]._frame:Show()
 end
@@ -61,10 +126,28 @@ local function Tint(entry)
     if not Has(entry, "GetStatusBarTexture") then return end
     local texture = entry:GetStatusBarTexture()
     if not Has(texture, "SetVertexColor") then return end
-    if On() and S.Get("damageMeterBars") == "accent" then
-        texture:SetVertexColor(T.accent.r, T.accent.g, T.accent.b)
+    local color = On() and BarColor()
+    if color then
+        texture:SetVertexColor(color.r, color.g, color.b)
     elseif entry.statusBarColor then
         texture:SetVertexColor(entry.statusBarColor:GetRGB())
+    end
+end
+
+local function BarTexture(entry)
+    local bar = entry.StatusBar
+    if not (Has(bar, "SetStatusBarTexture") and Has(entry, "GetStatusBarTexture")) then return end
+    local art = entry:GetStatusBarTexture()
+    local file = ns.UI.TexturePath(S.Get("damageMeterTexture"), nil)
+    if file then
+        if arts[entry] == nil then arts[entry] = Has(art, "GetAtlas") and art:GetAtlas() or false end
+        if swapped[entry] ~= file then
+            swapped[entry] = file
+            bar:SetStatusBarTexture(file)
+        end
+    elseif swapped[entry] then
+        swapped[entry] = nil
+        if arts[entry] and Has(art, "SetAtlas") then art:SetAtlas(arts[entry]) end
     end
 end
 
@@ -72,11 +155,12 @@ local function Restyle(entry)
     if not On() then return end
     local bar = entry.StatusBar
     if type(bar) ~= "table" then return end
-    Flat(bar.Background, T.bg)
+    Flat(bar.Background, Pick("damageMeterWindowColor", "bg"))
     if Has(bar.BackgroundEdge, "SetAlpha") then bar.BackgroundEdge:SetAlpha(0) end
-    Text(bar.Name, T.fg)
-    Text(bar.Value, T.muted)
+    Text(bar.Name, Pick("damageMeterNameColor", "fg"))
+    Text(bar.Value, Pick("damageMeterValueColor", "muted"))
     Edge(entry.Icon)
+    BarTexture(entry)
     Tint(entry)
 end
 
@@ -102,18 +186,20 @@ local function Entries(scrollBox)
 end
 
 local function SkinWindow(window)
-    Flat(window.Header, T.panel)
-    Text(window.SessionTimer, T.muted)
-    Text(Dig(window, "SessionDropdown", "SessionName"), T.fg)
-    Text(Dig(window, "DamageMeterTypeDropdown", "TypeName"), T.fg)
+    local names, values = Pick("damageMeterNameColor", "fg"), Pick("damageMeterValueColor", "muted")
+    local header, background = Pick("damageMeterHeaderColor", "panel"), Pick("damageMeterWindowColor", "bg")
+    Flat(window.Header, header)
+    Text(window.SessionTimer, values)
+    Text(Dig(window, "SessionDropdown", "SessionName"), names)
+    Text(Dig(window, "DamageMeterTypeDropdown", "TypeName"), names)
     local container = window.MinimizeContainer
     if type(container) ~= "table" then return end
-    Flat(container.Background, T.bg)
+    Flat(container.Background, background)
     Skin(container.LocalPlayerEntry)
     Entries(container.ScrollBox)
     local source = container.SourceWindow
     if type(source) == "table" then
-        Flat(source.Background, T.panel)
+        Flat(source.Background, header)
         Entries(source.ScrollBox)
     end
 end
@@ -125,23 +211,33 @@ local function GiveBack()
         elseif type(was) == "table" and was[1] then
             region:SetFont(was[1], was[2], was[3])
             region:SetTextColor(was[4], was[5], was[6])
+            Shadow(region, was)
         end
     end
     for _, border in pairs(edges) do border._frame:Hide() end
     for entry in pairs(entries) do
         local bar = entry.StatusBar
         if type(bar) == "table" and Has(bar.BackgroundEdge, "SetAlpha") then bar.BackgroundEdge:SetAlpha(1) end
+        if swapped[entry] then
+            swapped[entry] = nil
+            local art = Has(entry, "GetStatusBarTexture") and entry:GetStatusBarTexture() or nil
+            if arts[entry] and Has(art, "SetAtlas") then art:SetAtlas(arts[entry]) end
+        end
         Tint(entry)
     end
 end
 
 local function Apply()
     if not meter then return end
+    generation = generation + 1
     if not On() then
         GiveBack()
     elseif Has(meter, "ForEachSessionWindow") then
         meter:ForEachSessionWindow(SkinWindow)
-        for entry in pairs(entries) do Tint(entry) end
+        for entry in pairs(entries) do
+            BarTexture(entry)
+            Tint(entry)
+        end
     end
 end
 
@@ -174,10 +270,43 @@ local boot = CreateFrame("Frame")
 boot:RegisterEvent("PLAYER_LOGIN")
 boot:SetScript("OnEvent", Start)
 
+local function CustomBars()
+    return S.Get("damageMeterBars") == BAR_CUSTOM
+end
+
+local function ColorRow(key, label, token, help)
+    return { key = key, label = label, colour = true, help = help,
+        get = function()
+            local c = Pick(key, token)
+            return c.r, c.g, c.b, 1
+        end,
+        set = function(r, g, b) S.Set(key, { r = r, g = g, b = b }) end }
+end
+
 Settings.Page("QoL/Combat", S):Card({
     id = "damageMeterSkin", name = "Damage Meter Skin", order = 110, switch = "damageMeterSkin",
     help = "The game's damage meter in your theme's colors.",
     rows = {
         { key = "damageMeterBars", label = "Bar Color", choice = BARS },
+        { key = "damageMeterBarColor", label = "Custom Bar Color", colour = true, needs = CustomBars,
+          why = TEXT_NEEDS_CUSTOM,
+          get = function()
+              local c = Pick("damageMeterBarColor", "accent")
+              return c.r, c.g, c.b, 1
+          end,
+          set = function(r, g, b) S.Set("damageMeterBarColor", { r = r, g = g, b = b }) end,
+          help = "The bars' color when Bar Color is Custom Color." },
+        { key = "damageMeterTexture", label = "Bar Texture", texture = TEXT_GAME_DEFAULT },
+        { key = "damageMeterIconEdge", label = "Icon Border", toggle = true,
+          help = "A thin border round each bar's icon." },
+        Settings.Group("Text"),
+        { key = "damageMeterFont", label = "Font", font = true },
+        { key = "damageMeterOutline", label = "Outline", choice = OUTLINES,
+          help = "The game's own, none, the soft shadow, a thin outline or a thick one." },
+        ColorRow("damageMeterNameColor", "Name Color", "fg", "The names, and the list and session names."),
+        ColorRow("damageMeterValueColor", "Amount Color", "muted", "The amounts, and the fight time."),
+        Settings.Group("Window"),
+        ColorRow("damageMeterHeaderColor", "Title Bar Color", "panel", "The title bar and the spell panel."),
+        ColorRow("damageMeterWindowColor", "Window Color", "bg", "The window and the shadow behind each bar."),
     },
 })

@@ -49,7 +49,7 @@ NaowhForever_QoL/
     CursorCooldown.lua  Cooldown at Cursor
     GcdTracker.lua      GCD Tracker (ns.GCDSpell)
     FocusCastBar.lua    the Focus Cast Bar
-    DamageMeterSkin.lua the game's damage meter in the theme's colors
+    DamageMeterSkin.lua the game's damage meter in the theme's colors, texture and font
     StealthReminder.lua the Stealth Reminder
     PetTracker.lua      the Pet Tracker
   Questing/
@@ -104,8 +104,11 @@ NaowhForever_QoL/
 
 - The Damage Meter Skin never hides or re-lays out the game's meter: it recolors its textures and
   fonts after the game sets them (hooksecurefunc on each entry, a scroll box callback for new
-  ones), and remembers the art to give it back when the switch goes off. It reads no damage
-  numbers, which are secret in combat.
+  ones), and remembers the art, the font with its flags and shadow, and the bar's atlas to give
+  them back when the switch goes off. It reads no damage numbers, which are secret in combat.
+  Bar Texture swaps the file on the bar's own texture, which the game only ever colors. Font and
+  Outline are written once per change of a setting, since the game never sets them again; the
+  colors are the theme's tokens until one is picked, as in the Damage Meter module.
 - QoL is optional: the base and every other module read what they need from it behind a nil
   guard, never at load, and the data they share with it lives in the core (`Core/Settings.lua`,
   the Alerts group in `Core/AlertStack.lua`, Naowh's setups in `Core/Profiles/Setups.lua`) or in
