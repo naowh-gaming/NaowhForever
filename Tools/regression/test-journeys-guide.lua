@@ -14,6 +14,7 @@ local function Check(ok, label) assert(ok, label); checks = checks + 1 end
 local SCALE = 1000
 local WORLD_MAP = 9000
 local IRONFORGE, DARNASSUS = 1455, 1457
+local EASTERN_KINGDOMS, KALIMDOR = 1415, 1414
 local MAPS = {
     [IRONFORGE] = { c = 0, x = -4821.8, y = -1155.4 },
     [DARNASSUS] = { c = 1, x = 9945.0, y = 2490.0 },
@@ -91,14 +92,18 @@ local env = setmetatable({
     InCombatLockdown = function() return combat end,
     GetBindLocation = function() return "Ironforge" end,
     CreateVector2D = function(x, y) return { x = x, y = y } end,
-    Enum = { UIMapType = { Continent = 2 }, FlightPathState = { Unreachable = 2 } },
+    Enum = { UIMapType = { Continent = 2, Zone = 3 }, FlightPathState = { Unreachable = 2 } },
     C_Item = { GetItemCount = function() return 0 end },
     C_AddOns = { IsAddOnLoaded = function() return false end, LoadAddOn = function() end },
     debugprofilestop = function() return 0 end,
     geterrorhandler = function() return error end,
     C_SpellBook = { IsSpellKnown = function() return false end },
     C_Map = {
-        GetBestMapForUnit = function() return nil end,
+        GetBestMapForUnit = function() return IRONFORGE end,
+        GetMapChildrenInfo = function(continent)
+            if continent == KALIMDOR then return { { mapID = DARNASSUS } } end
+            return { { mapID = IRONFORGE } }
+        end,
         CanSetUserWaypointOnMap = function() return true end,
         SetUserWaypoint = function(point)
             current = { uiMapID = point.map, position = { x = point.x, y = point.y } }
@@ -109,7 +114,10 @@ local env = setmetatable({
             Fire("USER_WAYPOINT_UPDATED")
         end,
         GetUserWaypoint = function() return current end,
-        GetMapInfo = function() return { name = "Somewhere", mapType = 3 } end,
+        GetMapInfo = function(map)
+            if map == KALIMDOR or map == EASTERN_KINGDOMS then return { mapID = map, mapType = 2 } end
+            return { name = "Somewhere", mapType = 3, parentMapID = map == DARNASSUS and KALIMDOR or EASTERN_KINGDOMS }
+        end,
         GetWorldPosFromMapPos = function(map)
             local spot = MAPS[map]
             if not spot then return nil end
@@ -128,7 +136,10 @@ local env = setmetatable({
     C_QuestLog = {
         GetNextWaypoint = function(id) local q = QUESTS[id]; if q then return q[1], q[2], q[3] end end,
         GetTitleForQuestID = function(id) return "Quest " .. id end,
-        GetQuestsOnMap = function() return {} end,
+        GetQuestsOnMap = function(map)
+            if map == DARNASSUS then return { { questID = 103, x = 0.5, y = 0.5 } } end
+            return {}
+        end,
     },
     UiMapPoint = { CreateFromCoordinates = function(map, x, y) return { map = map, x = x, y = y } end },
 }, { __index = _G })
@@ -216,6 +227,15 @@ RunTimers()
 Check(not Jy.Guide.Current() and handedBack == 101 and tracking == 101, "arriving tracks the quest again")
 Fire("SUPER_TRACKING_CHANGED")
 Check(not Jy.Guide.Current(), "and the quest, now close, does not start another")
+
+Jy.Guide.Cancel()
+here = { x = -4821.8, y = -1155.4, c = 0 }
+tracking = 103
+Fire("SUPER_TRACKING_CHANGED")
+local found = Jy.Guide.Current()
+Check(found and found.quest == 103 and found.stops[1][2] == DARNASSUS,
+    "a quest with no next point is found on its zone map, on another continent")
+Jy.Guide.Cancel()
 
 Jy.Settings.Set("quests", false)
 here = { x = -4821.8, y = -1155.4, c = 0 }

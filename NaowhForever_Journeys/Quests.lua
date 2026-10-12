@@ -8,7 +8,9 @@ local World = Jy.World
 local Guide = Jy.Guide
 
 local PERCENT = 100
+local CENTER = 0.5
 local PLAYER = "player"
+local CONTINENTS = { 1415, 1414 }
 
 local events
 
@@ -16,13 +18,52 @@ local function On()
     return Jy.On() and S.Get("quests")
 end
 
+local function OnMap(quest, map)
+    for _, info in ipairs(C_QuestLog.GetQuestsOnMap(map)) do
+        if info.questID == quest then return info.x, info.y end
+    end
+end
+
+local function Continent(map)
+    local info = C_Map.GetMapInfo(map)
+    while info and info.mapType ~= Enum.UIMapType.Continent do
+        info = info.parentMapID and info.parentMapID ~= 0 and C_Map.GetMapInfo(info.parentMapID) or nil
+    end
+    return info and info.mapID
+end
+
+local function Inside(x, y)
+    return CENTER - math.max(math.abs(x - CENTER), math.abs(y - CENTER))
+end
+
+local function InZones(quest, continent)
+    local bestMap, bestX, bestY, bestInside
+    for _, zone in ipairs(C_Map.GetMapChildrenInfo(continent, Enum.UIMapType.Zone, true)) do
+        local x, y = OnMap(quest, zone.mapID)
+        if x and (not bestInside or Inside(x, y) > bestInside) then
+            bestMap, bestX, bestY, bestInside = zone.mapID, x, y, Inside(x, y)
+        end
+    end
+    return bestMap, bestX, bestY
+end
+
 local function Target(quest)
     local map, x, y = C_QuestLog.GetNextWaypoint(quest)
     if map and x and y then return map, x, y end
     local here = C_Map.GetBestMapForUnit(PLAYER)
     if not here then return nil end
-    for _, info in ipairs(C_QuestLog.GetQuestsOnMap(here)) do
-        if info.questID == quest then return info.mapID or here, info.x, info.y end
+    x, y = OnMap(quest, here)
+    if x then return here, x, y end
+    local mine = Continent(here)
+    if mine then
+        map, x, y = InZones(quest, mine)
+        if map then return map, x, y end
+    end
+    for _, continent in ipairs(CONTINENTS) do
+        if continent ~= mine then
+            map, x, y = InZones(quest, continent)
+            if map then return map, x, y end
+        end
     end
 end
 
