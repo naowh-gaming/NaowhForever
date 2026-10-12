@@ -20,6 +20,8 @@ local MAPS = {
 }
 
 local frames, timers, printed = {}, {}, {}
+local tracking, handedBack = 0, nil
+local QUESTS = { [101] = { 1457, 0.5, 0.5 }, [102] = { 1455, 0.5, 0.5 } }
 local here = { x = -4821.8, y = -1155.4, c = 0 }
 local current
 local combat = false
@@ -96,6 +98,7 @@ local env = setmetatable({
     geterrorhandler = function() return error end,
     C_SpellBook = { IsSpellKnown = function() return false end },
     C_Map = {
+        GetBestMapForUnit = function() return nil end,
         CanSetUserWaypointOnMap = function() return true end,
         SetUserWaypoint = function(point)
             current = { uiMapID = point.map, position = { x = point.x, y = point.y } }
@@ -116,7 +119,17 @@ local env = setmetatable({
             return WORLD_MAP + c, { x = pos.x / SCALE, y = pos.y / SCALE }
         end,
     },
-    C_SuperTrack = { SetSuperTrackedUserWaypoint = function() end, ClearAllSuperTracked = function() end },
+    C_SuperTrack = {
+        SetSuperTrackedUserWaypoint = function() tracking = 0 end,
+        ClearAllSuperTracked = function() tracking = 0 end,
+        GetSuperTrackedQuestID = function() return tracking end,
+        SetSuperTrackedQuestID = function(id) tracking = id; handedBack = id end,
+    },
+    C_QuestLog = {
+        GetNextWaypoint = function(id) local q = QUESTS[id]; if q then return q[1], q[2], q[3] end end,
+        GetTitleForQuestID = function(id) return "Quest " .. id end,
+        GetQuestsOnMap = function() return {} end,
+    },
     UiMapPoint = { CreateFromCoordinates = function(map, x, y) return { map = map, x = x, y = y } end },
 }, { __index = _G })
 env._G = env
@@ -125,7 +138,7 @@ env.WorldMapFrame = nil
 for _, path in ipairs({ "Core/Waypoint.lua", "NaowhForever_Journeys/Journeys.lua", "NaowhForever_Journeys/Constants.lua",
         "NaowhForever_Journeys/Data/Network.lua", "NaowhForever_Journeys/Data/Teleports.lua",
         "NaowhForever_Journeys/Planner.lua", "NaowhForever_Journeys/World.lua", "NaowhForever_Journeys/Walk.lua",
-        "NaowhForever_Journeys/Guide.lua" }) do
+        "NaowhForever_Journeys/Guide.lua", "NaowhForever_Journeys/Quests.lua" }) do
     local chunk = assert(loadstring(Read(path), path))
     setfenv(chunk, env)
     chunk()
@@ -187,6 +200,27 @@ Check(ns.PlaceWaypoint(unpack(DESTINATION)) and not Jy.Guide.Current(), "already
 local stops = { { "A", IRONFORGE, 50, 50 }, { "B", DARNASSUS, 50, 50 } }
 Check(ns.PlaceWaypointRoute("Training run", stops) and #stops[1] == 4 and stops[1].spot == nil,
     "a route becomes one journey, and its stops are not written to")
+
+Jy.Guide.Cancel()
+here = { x = -4821.8, y = -1155.4, c = 0 }
+tracking = 102
+Fire("SUPER_TRACKING_CHANGED")
+Check(not Jy.Guide.Current(), "a tracked quest close by stays with the game's own arrow")
+tracking = 101
+Fire("SUPER_TRACKING_CHANGED")
+local quest = Jy.Guide.Current()
+Check(quest and quest.quest == 101 and quest.title == "Quest 101", "a far tracked quest becomes a journey")
+here = { x = 9945.0, y = 2490.0, c = 1 }
+Fire("PLAYER_ENTERING_WORLD")
+RunTimers()
+Check(not Jy.Guide.Current() and handedBack == 101 and tracking == 101, "arriving tracks the quest again")
+Fire("SUPER_TRACKING_CHANGED")
+Check(not Jy.Guide.Current(), "and the quest, now close, does not start another")
+
+Jy.Settings.Set("quests", false)
+here = { x = -4821.8, y = -1155.4, c = 0 }
+Fire("SUPER_TRACKING_CHANGED")
+Check(not Jy.Guide.Current(), "with Journeys to Tracked Quests off, tracking a quest is left alone")
 
 Jy.Settings.Set("enabled", false)
 Check(not Jy.Guide.Current(), "turning Journeys off ends the journey")

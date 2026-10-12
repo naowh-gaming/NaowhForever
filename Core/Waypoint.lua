@@ -71,12 +71,23 @@ local function ClearNow()
     if C_SuperTrack then C_SuperTrack.ClearAllSuperTracked() end
 end
 
+local function TrackNow(quest)
+    C_Map.ClearUserWaypoint()
+    C_SuperTrack.SetSuperTrackedQuestID(quest)
+end
+
 local function Flush()
     local change = pending
     if not change then return end
     pending = nil
     held:UnregisterAllEvents()
-    if change == CLEAR then ClearNow() else SetNow(unpack(change, 1, STOP_FIELDS)) end
+    if change == CLEAR then
+        ClearNow()
+    elseif change.quest then
+        TrackNow(change.quest)
+    else
+        SetNow(unpack(change, 1, STOP_FIELDS))
+    end
 end
 
 local function DropPending()
@@ -101,6 +112,10 @@ local function SetGameWaypoint(title, map, x, y, note, icon)
     end
     Hold({ title, map, x, y, note, icon })
     return true
+end
+
+function ns.TrackQuest(quest)
+    if MapOpen() then Hold({ quest = quest }) else TrackNow(quest) end
 end
 
 function ns.ClearWaypoint()

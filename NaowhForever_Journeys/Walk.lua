@@ -460,20 +460,21 @@ function Walk.Path(a, b)
 end
 
 -- Walking yards (water counted dearer) between two ends: each a place key of the network ("f2",
--- "s3.1", "l1.2") or a reach from Walk.From. nil when the data cannot say.
+-- "s3.1", "l1.2") or a reach from Walk.From. false when there is no walk; nil when the data cannot
+-- say, as for a place with no ground baked near it (the Stormwind Harbor dock).
 function Walk.Cost(map, a, b)
     if not Walk.Ready() then return nil end
     local p = Places(map)
     if type(a) == "string" and type(b) == "string" then
         local i, j = p and p.index[a], p and p.index[b]
-        if not i or not j then return nil end
+        if not i or not j or not p.r[i][1] or not p.r[j][1] then return nil end
         local d = p.d[(i - 1) * p.count + j]
         return d >= 0 and d or false
     end
     if type(a) == "string" then a, b = b, a end
     if type(b) == "string" then
         local i = p and p.index[b]
-        if not i then return nil end
+        if not i or not p.r[i][1] then return nil end
         return ToPlace(a, p, i) or false
     end
     return Between(a, b) or false

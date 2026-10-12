@@ -17,6 +17,7 @@ NaowhForever_Journeys/
   World.lua                   the player's spot, map and world positions, learned flight points and landings
   Walk.lua                    walking costs and paths over the baked walking maps, loaded when first needed
   Guide.lua                   the journey being followed, one step at a time on the game's waypoint
+  Quests.lua                  a far quest you track becomes a journey, handed back to the game on arrival
   UI/Card.lua                 the Journey card
   UI/MapRoute.lua, .xml       the journey drawn on the world map
   UI/SettingsPage.lua         the settings page, as cards
@@ -48,6 +49,11 @@ NaowhForever_Journeys/
   the funnel algorithm. The guide puts the waypoint on each corner in turn, at least `CORNER_GAP`
   yards apart, and plans again at the last.
 - Water costs `SWIM` times its yards and the sea `SEA` times, the same factors the bake used.
+- Tracking a quest (`SUPER_TRACKING_CHANGED`) starts a journey to the game's own next point for it
+  (`C_QuestLog.GetNextWaypoint`), or its marker on your map, when that is over `QUEST_NEAR` yards away
+  or on another continent. Close by, the game's quest arrow and area are better. On arrival the quest
+  is tracked again, so the game shows its area; if that point was only a zone crossing, the next is
+  far again and the journey goes on.
 - The route on the world map is one pin the size of the canvas with lines in it, so the lines move and
   zoom with the map; it ignores the global pin scale and thins its lines as the map zooms in.
 - `FLIGHT_SPEED` is the flight timer's own figure (`NaowhForever_QoL/Travel/Flight.lua`).

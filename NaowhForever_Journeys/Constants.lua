@@ -20,6 +20,7 @@ ns.Journeys.C = {
     WALK_REACH = 80,
     HEIGHT_WEIGHT = 0.25,
     CORNER_GAP = 15,
+    QUEST_NEAR = 300,
     ARRIVED = 15,
     HEARTHSTONE = 6948,
     HEARTH_SPELL = 8690,

@@ -168,9 +168,13 @@ local function Replan()
     if not here then return end
     while Close(here, Stop().spot) do
         if journey.at == #journey.stops then
+            local quest = journey.quest
             journey = nil
             if events then events:UnregisterAllEvents() end
             Changed()
+            if quest then
+                ns.TrackQuest(quest)
+            end
             return
         end
         journey.at = journey.at + 1
@@ -225,7 +229,7 @@ local function OnEvent(_, event, isWaypoint)
     end
 end
 
-function Guide.Start(title, stops)
+function Guide.Start(title, stops, quest)
     if not Jy.On() or not World.Player() then return false end
     local own = {}
     for i, stop in ipairs(stops) do
@@ -233,7 +237,7 @@ function Guide.Start(title, stops)
         if not spot then return false end
         own[i] = { stop[1], stop[2], stop[3], stop[4], stop[5], stop[6], spot = spot }
     end
-    journey = { title = title, stops = own, at = 1, done = 0 }
+    journey = { title = title, stops = own, at = 1, done = 0, quest = quest }
     if not events then
         events = CreateFrame("Frame")
         events:SetScript("OnEvent", OnEvent)

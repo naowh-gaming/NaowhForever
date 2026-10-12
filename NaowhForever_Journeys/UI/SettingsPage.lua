@@ -68,6 +68,8 @@ page:Card({
           help = "Keep your Hearthstone unless it saves at least this long." },
         { key = "teleports", label = "Use Class Teleports", toggle = true, needs = Jy.On, why = TEXT_OFF,
           help = "Start with a mage or druid teleport you know." },
+        { key = "quests", label = "Journeys to Tracked Quests", toggle = true, needs = Jy.On, why = TEXT_OFF,
+          help = "Track a quest that is far away and Journeys plans the way there." },
         { key = "mapRoute", label = "Route on the World Map", toggle = true, needs = Jy.On, why = TEXT_OFF,
           help = "Draw the journey on the world map: the walk you are on, then each leg after it." },
     },
