@@ -19,6 +19,7 @@ NaowhForever_Journeys/
   Walk.lua                    walking costs and paths over the baked walking maps, loaded when first needed
   Guide.lua                   the journey being followed, one step at a time on the game's waypoint
   Quests.lua                  a far quest you track becomes a journey, handed back to the game on arrival
+  Media/                      the mode icons (walk, ship, fly, tram, portal, hearth, teleport, goal), drawn by Tools/media/make_media.py
   UI/Card.lua                 the Journey card
   UI/MapRoute.lua, .xml       the journey drawn on the world map
   UI/SettingsPage.lua         the settings page, as cards
@@ -58,6 +59,10 @@ NaowhForever_Journeys/
 - The game's own points come first: its next point, then the quest's marker on your map, then on
   any zone's map. Only a quest the game marks nowhere uses `Data/QuestSpots.lua`, from Wowhead: the
   turn-in once it is complete (or when it has no objective camps), else its nearest camp.
+- The Journey card is a frame of its own, not the shared tracker panel: that panel's title bar, bar and
+  footer take a third of the height a three-step journey needs, and it is shared by other modules. A line
+  a step (icon, name, time), the total time, the cog and the close button in one header, and one thin
+  segment a step in place of a bar. The close button clears the waypoint, which ends the journey.
 - The route on the world map is one pin the size of the canvas with lines in it, so the lines move and
   zoom with the map; it ignores the global pin scale and thins its lines as the map zooms in.
 - `FLIGHT_SPEED` is the flight timer's own figure (`NaowhForever_QoL/Travel/Flight.lua`).
