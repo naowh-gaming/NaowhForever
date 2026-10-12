@@ -54,9 +54,10 @@ do
     local cards = {}
     local function Group(title) return { group = title } end
     local own = {}
-    local ownSection = { order = 11, store = own, switch = "mapSize", rows = {
-        { key = "mapSize", label = "Map Window", toggle = true, store = own, help = "Bigger map." },
-        { key = "mapSizePercent", label = "Map Scale", slider = { 50, 150, 5 }, store = own, needs = "mapSize" },
+    local ownSection = { order = 11, store = own, switch = "mapUnexplored", rows = {
+        { key = "mapUnexplored", label = "Unexplored Areas", toggle = true, store = own, help = "Darker map." },
+        { key = "mapUnexploredDark", label = "Unexplored Darkness", slider = { 0, 100, 5 }, store = own,
+          needs = "mapUnexplored" },
     } }
     local shared = RealShared()
     shared.Settings = { Group = Group, Page = function(key, store)
@@ -66,7 +67,7 @@ do
         end }
     end }
     shared.AddMapPins("questPins", questSection)
-    shared.AddMapPins("mapWindow", ownSection)
+    shared.AddMapPins("unexplored", ownSection)
     local cardNs = { QoLConstants = dofile("Tools/regression/qol_constants.lua"), QoLSettings = own,
         Apply = function() end, ThemeTint = function() end, TownCapitals = {}, TownNPCs = {}, Shared = shared }
     local cardEnv = setmetatable({ _G = { NaowhForever = cardNs },
@@ -97,7 +98,7 @@ do
     Check(#quest.rows == 4 and quest.rows[1] == questSection.rows[2] and quest.rows[4] == questSection.rows[5],
         "the rest of its rows as it declared them")
     Check(shared.MapPins[1] == questSection and shared.MapPins[2] == ownSection, "and its section on the panel")
-    Check(cards.mapWindow and cards.mapWindow.order == 11 and cards.mapWindow.help == "Bigger map.",
+    Check(cards.unexplored and cards.unexplored.order == 11 and cards.unexplored.help == "Darker map.",
         "the card's order and help come from the section")
     pinTexts = cardNs.TownPinTexts
     Check(pinTexts.group and pinTexts.switch and pinTexts.tip, "the drawer's town texts are named, not positional")
