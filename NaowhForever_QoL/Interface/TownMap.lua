@@ -115,7 +115,7 @@ local TEXT_TOWN_TIP = "Service NPCs, mailboxes, spirit healers, exits and docks;
 local TEXT_TOWN_OFF = "Town pins off"
 local TEXT_SUMMARY = "Town pins: %d of %d shown%s"
 local TEXT_CAPITALS = ", vendors and trainers in cities only"
-local TEXT_ON_MAP = " Which ones show is switched on the map, from the button at its top right."
+local TEXT_ON_MAP = " Which town pins show is switched on the map, from the button at its top right."
 local MAP_CARD_ORDER, PIN_CARD_ORDER = 10, 20
 local TEXT_MAP_CARD, TEXT_PIN_CARD = "Map Options", "Map Pins"
 local TEXT_MAP_HELP = "How the world map looks."
@@ -532,14 +532,10 @@ function ns.TownAudit()
 end
 
 local function AddSectionRows(rows, section, titled)
-    local first = true
+    if titled and section.title then rows[#rows + 1] = ns.Shared.Settings.Group(section.title) end
     for _, row in ipairs(section.rows) do
-        if not row.toggle then
-            if first and titled and section.title then rows[#rows + 1] = ns.Shared.Settings.Group(section.title) end
-            first = false
-            row.lent = row.store ~= S
-            rows[#rows + 1] = row
-        end
+        row.lent = row.store ~= S
+        rows[#rows + 1] = row
     end
 end
 
@@ -599,7 +595,7 @@ local page = ns.Shared.Settings.Page("QoL/Map & Pins", S)
 
 page:Card({
     id = "mapOptions", name = TEXT_MAP_CARD, order = MAP_CARD_ORDER,
-    help = TEXT_MAP_HELP .. TEXT_ON_MAP,
+    help = TEXT_MAP_HELP,
     rows = MapCardRows,
 })
 

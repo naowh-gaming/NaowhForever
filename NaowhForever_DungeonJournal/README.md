@@ -487,7 +487,7 @@ the game's own tables, and what they can't settle is listed in the pull request 
   so a redraw asked for then waits for combat to end; changing only their size is safe. A pin's
   size follows its kind of map, largest on a zone's, and stays the same on screen as the map
   zooms (`ns.Shared.ScalePin`). Its switch and Entrance Icon Size are rows on the Map Pins card of QoL's Map & Pins tab
-  and in its drawer (`ns.Shared.MapPins`); the keys stay in the Journal's store.
+  (`ns.Shared.MapPins`); the keys stay in the Journal's store.
 - The game's quest tracker is faded with `SetAlpha`, never hidden: it is an Edit Mode frame with
   secure quest item buttons.
 - The quest tracker scrolls past 70% of the screen's height at its scale, and 420 at the least.

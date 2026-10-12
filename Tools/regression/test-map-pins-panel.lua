@@ -1,8 +1,8 @@
 -- Run with Lua 5.1 from the repository root: the Map Options and Pins panel on the world map.
--- Every pin and map switch is on the panel only, the town ones drawn from TownMap's list. QoL's Map
--- & Pins tab keeps the rest: a Map Options card and a Map Pins card with Town Pin Size and each
--- module's sizes and buttons (ns.Shared.MapPins, in order, under their titles). The button shows
--- whenever QoL is on.
+-- The panel holds the town pins only, drawn from TownMap's list; their switches are not on the tab.
+-- QoL's Map & Pins tab has the rest: a Map Options card and a Map Pins card with Town Pin Size and
+-- each module's rows (ns.Shared.MapPins, in order, under their titles). The button shows whenever
+-- QoL is on.
 local function Read(path)
     local f = assert(io.open(path, "rb"))
     local s = f:read("*a"):gsub("\r\n", "\n"); f:close()
@@ -82,15 +82,17 @@ do
         "map options first, and neither has a switch of its own")
     local rows = card.rows()
     for _, row in ipairs(rows) do
-        Check(not row.toggle, "no switch on the card, they are on the map: " .. tostring(row.key or row.group))
+        Check(not (row.key and row.key:find("^town") and row.toggle),
+            "no town switch on the card, they are on the map: " .. tostring(row.key))
     end
     Check(rows[1].group == "Town" and rows[2].key == "townPinSize" and rows[2].needs == "townMap" and rows[2].why,
         "Town Pin Size under Town, waiting for Town Pins with its reason")
-    Check(rows[3].group == "Quests" and rows[4] == questSection.rows[5] and #rows == 4,
-        "a module's size under its title, its switches left out")
+    Check(rows[3].group == "Quests" and rows[4] == questSection.rows[1] and rows[8] == questSection.rows[5]
+        and #rows == 8, "a module's rows under its title, its switches with them")
     Check(rows[4].lent and not rows[2].lent, "lent to the card: its Reset and changed count leave them alone")
     local mapRows = mapCard.rows()
-    Check(#mapRows == 1 and mapRows[1] == ownSection.rows[2], "Map Options: the darkness, not the switch or a title")
+    Check(#mapRows == 2 and mapRows[1] == ownSection.rows[1] and mapRows[2] == ownSection.rows[2],
+        "Map Options: the map sections' rows, switch and all, without their title")
     Check(not mapRows[1].lent, "QoL's own rows are the card's own store's: Reset takes them")
     pinTexts = cardNs.TownPinTexts
     Check(pinTexts.group and pinTexts.switch and pinTexts.tip, "the drawer's town texts are named, not positional")
@@ -243,28 +245,13 @@ button.scripts.OnClick()
 Check(panel and panel.shown, "the button opens the drawer")
 local towns = 0
 for _, row in ipairs(pinRows) do if row.key then towns = towns + 1 end end
-Check(#toggles == 1 + towns + 4, "a Town Pins switch, every town row, and the module's switches only")
-local quest, grey, chains, repeatable = toggles[#toggles - 3], toggles[#toggles - 2], toggles[#toggles - 1], toggles[#toggles]
+Check(#toggles == 1 + towns, "a Town Pins switch and every town row, nothing from other modules")
 local flight = toggles[2]
-quest.set(true)
-Check(questStore.values.mapPins == true and settings.mapPins == nil and quest.get(),
-    "a module's switch reads and writes its own store")
-Check(grey.alpha == 1 and grey.mouse, "a row whose parent is on can be used")
-questStore.Set("mapPins", false)
-Check(grey.alpha == 0.35 and grey.mouse == false and quest.alpha == 1,
-    "the open drawer follows the module's store: a row whose parent is off is dimmed and locked")
-Check(chains.alpha == 0.35 and chains.mouse == false, "a row that names its parent by key is too")
-Check(repeatable.alpha == 0.35 and repeatable.mouse == false, "and one that names several")
-questStore.Set("enabled", false)
-Check(quest.mouse == false, "the module off: its switch too")
-questStore.Set("enabled", true)
-quest.set(true)
 toggles[1].set(false)
 Check(panel.shown and flight.mouse == false and toggles[1].mouse == nil,
     "Town Pins off: the town rows are dimmed, its own switch stays")
 toggles[1].set(true)
 Check(flight.mouse == true, "and back")
-quest.set(false)
 toggles[1].set(false)
 Check(button.shown and panel.shown, "everything off: the button and drawer stay, to turn it back on")
 toggles[1].set(true)

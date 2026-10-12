@@ -274,7 +274,7 @@ What a comment in the code used to say, in short. The house rules behind it are 
   the same size on screen at every zoom. The map's global pin scale still applies. An optional
   `factor` sizes one kind of pin against the rest (QoL's town pins are 0.75).
 - `Shared.MapPins` is a plain list, filled at load by the modules that have map pins and read
-  only when QoL's Map Options or Map Pins card, or the drawer, is drawn, so the load order of the addons does not matter.
+  only when QoL's Map Options or Map Pins card is drawn, so the load order of the addons does not matter.
   A section is `{ title, order, store, switch, rows, map }`: `map` puts it on the Map Options card instead of Map Pins, `switch` is its own on and off key in `store`, `order` (default 50, after the lower ones, then by load order) where it comes, and `title` its group, none to continue the one above.
 - A settings row marked `lent` belongs to another module's store: its card's Reset and changed
   count leave it out, while its own changed dot still resets it.
