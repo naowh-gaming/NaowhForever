@@ -7,6 +7,9 @@ local Settings = ns.Shared.Settings
 local Parts = ns.Shared.Parts
 
 local ADDON = "Blizzard_DamageMeter"
+local PRIMARY_WINDOW = "DamageMeterSessionWindow1"
+local TEXT_NO_WINDOW = "Damage Meter Window: the game's meter has no window to place."
+local TEXT_NO_PLACE = "Damage Meter Window: the game's meter has no place on screen yet. Show it, then switch this off and on."
 local BAR_CLASS, BAR_ACCENT, BAR_CUSTOM = "class", "accent", "custom"
 local BARS = { { class = "Class Colors", accent = "Theme Accent", custom = "Custom Color" },
     { BAR_CLASS, BAR_ACCENT, BAR_CUSTOM } }
@@ -232,6 +235,19 @@ local function GiveBack()
 end
 
 local placed = false
+local noted = false
+
+local function Note(text)
+    if noted then return end
+    noted = true
+    ns.Print(text)
+end
+
+local function Primary()
+    local window = Has(meter, "GetPrimarySessionWindow") and meter:GetPrimarySessionWindow() or nil
+    if type(window) ~= "table" then window = _G[PRIMARY_WINDOW] end
+    return window
+end
 
 local function Locked(window)
     return Has(window, "IsLocked") and window:IsLocked() == true
@@ -282,9 +298,11 @@ local function Reattach(window)
 end
 
 local function Place()
-    if not Has(meter, "GetPrimarySessionWindow") then return end
-    local window = meter:GetPrimarySessionWindow()
-    if not (Has(window, "SetPoint") and Has(window, "ClearAllPoints") and Has(window, "SetSize")) then return end
+    local window = Primary()
+    if not (Has(window, "SetPoint") and Has(window, "ClearAllPoints") and Has(window, "SetSize")) then
+        if Free() then Note(TEXT_NO_WINDOW) end
+        return
+    end
     if not Free() then
         if placed then Reattach(window) end
         return
@@ -293,7 +311,10 @@ local function Place()
     if type(pos) ~= "table" then
         Save(window)
         pos = S.Get("damageMeterPos")
-        if type(pos) ~= "table" then return end
+        if type(pos) ~= "table" then
+            Note(TEXT_NO_PLACE)
+            return
+        end
     end
     window:ClearAllPoints()
     window:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", pos.left, pos.top)
@@ -305,8 +326,7 @@ local function Place()
 end
 
 local function ResetPosition()
-    if not Has(meter, "GetPrimarySessionWindow") then return end
-    local window = meter:GetPrimarySessionWindow()
+    local window = Primary()
     if placed and Has(window, "ClearAllPoints") then Reattach(window) end
     S.Set("damageMeterPos", false)
     Place()

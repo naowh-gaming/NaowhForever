@@ -124,7 +124,7 @@ end
 
 -- Builds the addon's environment. loaded: Blizzard_DamageMeter is already loaded. Returns the pieces tests poke.
 local function Boot(settings, loaded, windows)
-    local s = { settings = settings or {}, hooks = 0, borders = {}, cards = {}, waiting = {} }
+    local s = { settings = settings or {}, hooks = 0, borders = {}, cards = {}, waiting = {}, printed = {} }
     local defaults = { enabled = true, damageMeterSkin = false, damageMeterBars = "class", damageMeterBarColor = false,
         damageMeterTexture = "", damageMeterFont = "", damageMeterOutline = "game", damageMeterIconEdge = true,
         damageMeterHeaderColor = false, damageMeterWindowColor = false, damageMeterNameColor = false,
@@ -144,6 +144,7 @@ local function Boot(settings, loaded, windows)
     end
     function meter:SetupSessionWindow() end
     local ns = { QoLSettings = store, THEME = THEME, Apply = function() end,
+        Print = function(text) s.printed[#s.printed + 1] = text end,
         UIFontPath = function() return FONT end,
         UI = { FontPath = function(name) return "Fonts\\" .. name .. ".ttf" end,
             TexturePath = function(name, fallback)
@@ -569,13 +570,39 @@ do
     Login(frames)
     check("off by default: nothing placed, nothing hooked", #window.points == 0 and window.scripts == nil
         and s.hooks == s.base and next(s.waiting) == nil)
-    local noPrimary = { windows = {} }
-    function noPrimary:SetupSessionWindow() end
-    local _, store, _, _, bootFrames, env = Boot({ damageMeterFree = true }, true, {})
-    env.DamageMeter = noPrimary
+    local bare = { windows = {} }
+    function bare:SetupSessionWindow() end
+    local s2, store, _, _, bootFrames, env = Boot({ damageMeterFree = true }, true, {})
+    env.DamageMeter = bare
     Login(bootFrames)
+    check("no window to place: one short note, and nothing else", #s2.printed == 1)
     store.Set("damageMeterFree", false)
-    check("a meter without the call for its primary window: nothing to do", store ~= nil)
+    store.Set("damageMeterFree", true)
+    check("and only once", #s2.printed == 1)
+end
+
+-- the game's meter without a call for its primary window: the first window is the primary one
+do
+    local one = Window()
+    local plain = { windows = { one } }
+    function plain:SetupSessionWindow() end
+    function plain:ForEachSessionWindow(fn) fn(one) end
+    local s3, store, _, _, bootFrames, env = Boot({ damageMeterFree = true }, true, { one })
+    env.DamageMeter = plain
+    env.DamageMeterSessionWindow1 = one
+    Login(bootFrames)
+    check("found by its name: placed, movable, kept", one.points[1][2] == env.UIParent and one.movable == true
+        and type(store.Get("damageMeterPos")) == "table" and #s3.printed == 0)
+end
+
+-- a window that has no place on screen yet: it is said, once
+do
+    local one = Window()
+    one.left, one.top = nil, nil
+    local s4, store, _, _, bootFrames = Boot({ damageMeterFree = true }, true, { one })
+    Login(bootFrames)
+    check("no rect yet: not placed, and one note", #one.points == 0 and one.movable == nil and #s4.printed == 1
+        and store.Get("damageMeterPos") == false)
 end
 
 print("PASS damage meter skin: " .. checks .. " checks")
