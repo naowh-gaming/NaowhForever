@@ -196,6 +196,8 @@ local function Replan()
             Changed()
             if quest then
                 ns.TrackQuest(quest)
+            else
+                ns.ClearWaypoint()
             end
             return
         end
