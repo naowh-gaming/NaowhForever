@@ -50,6 +50,7 @@ NaowhForever_QoL/
     GcdTracker.lua      GCD Tracker (ns.GCDSpell)
     FocusCastBar.lua    the Focus Cast Bar
     DamageMeterSkin.lua the game's damage meter in the theme's colors, texture and font, and its place
+    DamageMeterLayout.lua the game's damage meter Bar Height, saved in the active Edit Mode layout
     StealthReminder.lua the Stealth Reminder
     PetTracker.lua      the Pet Tracker
   Questing/
@@ -116,6 +117,12 @@ NaowhForever_QoL/
   bar's buttons are greyed with `SetDesaturated` and tinted with `SetVertexColor`, their first look
   remembered to give back; sizes are one setting each for the names, the amounts and the title, 0
   keeping the game's own, which Edit Mode's Text Size still scales.
+- The Damage Meter Layout writes the game's own Bar Height setting through `C_EditMode`: it copies the
+  manager's layout info (never writes into it), changes the one value in the copy and saves that, so
+  the game applies it with its own code and nothing of its is tainted. The stored value is the height
+  less the slider's minimum (15). It keeps one backup string of the layout before the first change,
+  refuses in combat, with Edit Mode open and on the game's built-in layouts, and waits half a second
+  after the slider stops, since every save re-lays out the game's systems.
 - Damage Meter Window re-anchors the primary session window to the screen and sizes it, since the game
   leaves that window to Edit Mode (`CanMoveOrResizeSessionWindow` is false for it). Only the session
   window moves: the Edit Mode frame it hangs from is never touched, and the game's own window setup is
