@@ -1,0 +1,194 @@
+-- Run with Lua 5.1 from the repository root: a waypoint becomes a journey. With Journeys off, or in a
+-- spot the game gives no position for, the plain waypoint is placed. With it on, the game's waypoint
+-- goes on the first thing to do, named for it; arriving plans again from where you stand; combat
+-- waits; another waypoint, or clearing it, ends the journey; and the pin hears it is on a route.
+local function Read(path)
+    local f = assert(io.open(path, "rb"))
+    local s = f:read("*a"):gsub("\r\n", "\n"); f:close()
+    return s
+end
+
+local checks = 0
+local function Check(ok, label) assert(ok, label); checks = checks + 1 end
+
+local SCALE = 1000
+local WORLD_MAP = 9000
+local IRONFORGE, DARNASSUS = 1455, 1457
+local MAPS = {
+    [IRONFORGE] = { c = 0, x = -4821.8, y = -1155.4 },
+    [DARNASSUS] = { c = 1, x = 9945.0, y = 2490.0 },
+}
+
+local frames, timers, printed = {}, {}, {}
+local here = { x = -4821.8, y = -1155.4, c = 0 }
+local current
+local combat = false
+local account = {}
+local store = {}
+
+local function Fire(event, ...)
+    for _, f in ipairs(frames) do
+        if f.events[event] then f.scripts.OnEvent(f, event, ...) end
+    end
+end
+
+local function RunTimers()
+    local run = timers
+    timers = {}
+    for _, fn in ipairs(run) do fn() end
+end
+
+local ns = {
+    Print = function(msg) printed[#printed + 1] = msg end,
+    WaypointPinOn = function() return true end,
+    AccountSettings = function() return account end,
+    FEATURES = { journeys = { enabled = false, card = true } },
+    Apply = function() end,
+}
+ns.UI = {
+    ModuleSettings = function(_, defaults)
+        local S, listeners = {}, {}
+        function S.Get(k)
+            if store[k] == nil then return defaults[k] end
+            return store[k]
+        end
+        function S.Set(k, v)
+            store[k] = v
+            for _, fn in ipairs(listeners) do fn(k, v) end
+        end
+        function S.OnChange(fn) listeners[#listeners + 1] = fn end
+        return S
+    end,
+}
+
+local env = setmetatable({
+    NaowhForever = ns,
+    CreateFrame = function()
+        local f = { events = {}, scripts = {} }
+        function f:SetScript(k, fn) self.scripts[k] = fn end
+        function f:RegisterEvent(e) self.events[e] = true end
+        function f:RegisterUnitEvent(e) self.events[e] = true end
+        function f:UnregisterAllEvents() self.events = {} end
+        frames[#frames + 1] = f
+        return f
+    end,
+    hooksecurefunc = function(t, k, fn)
+        local old = t[k]
+        t[k] = function(...) local r = old(...); fn(...); return r end
+    end,
+    C_Timer = { After = function(_, fn) timers[#timers + 1] = fn end },
+    UnitPosition = function()
+        if not here then return nil end
+        return here.x, here.y, 0, here.c
+    end,
+    UnitName = function() return "Glyadin" end,
+    GetRealmName = function() return "Forever" end,
+    UnitFactionGroup = function() return "Alliance" end,
+    GetServerTime = function() return 0 end,
+    GetTime = function() return 0 end,
+    InCombatLockdown = function() return combat end,
+    GetBindLocation = function() return "Ironforge" end,
+    CreateVector2D = function(x, y) return { x = x, y = y } end,
+    Enum = { UIMapType = { Continent = 2 }, FlightPathState = { Unreachable = 2 } },
+    C_Item = { GetItemCount = function() return 0 end },
+    C_AddOns = { IsAddOnLoaded = function() return false end, LoadAddOn = function() end },
+    debugprofilestop = function() return 0 end,
+    geterrorhandler = function() return error end,
+    C_SpellBook = { IsSpellKnown = function() return false end },
+    C_Map = {
+        CanSetUserWaypointOnMap = function() return true end,
+        SetUserWaypoint = function(point)
+            current = { uiMapID = point.map, position = { x = point.x, y = point.y } }
+            Fire("USER_WAYPOINT_UPDATED")
+        end,
+        ClearUserWaypoint = function()
+            current = nil
+            Fire("USER_WAYPOINT_UPDATED")
+        end,
+        GetUserWaypoint = function() return current end,
+        GetMapInfo = function() return { name = "Somewhere", mapType = 3 } end,
+        GetWorldPosFromMapPos = function(map)
+            local spot = MAPS[map]
+            if not spot then return nil end
+            return spot.c, { x = spot.x, y = spot.y }
+        end,
+        GetMapPosFromWorldPos = function(c, pos)
+            return WORLD_MAP + c, { x = pos.x / SCALE, y = pos.y / SCALE }
+        end,
+    },
+    C_SuperTrack = { SetSuperTrackedUserWaypoint = function() end, ClearAllSuperTracked = function() end },
+    UiMapPoint = { CreateFromCoordinates = function(map, x, y) return { map = map, x = x, y = y } end },
+}, { __index = _G })
+env._G = env
+env.WorldMapFrame = nil
+
+for _, path in ipairs({ "Core/Waypoint.lua", "NaowhForever_Journeys/Journeys.lua", "NaowhForever_Journeys/Constants.lua",
+        "NaowhForever_Journeys/Data/Network.lua", "NaowhForever_Journeys/Data/Teleports.lua",
+        "NaowhForever_Journeys/Planner.lua", "NaowhForever_Journeys/World.lua", "NaowhForever_Journeys/Walk.lua",
+        "NaowhForever_Journeys/Guide.lua" }) do
+    local chunk = assert(loadstring(Read(path), path))
+    setfenv(chunk, env)
+    chunk()
+end
+local Jy = ns.Journeys
+local DESTINATION = { "Mathrengyl Bearwalker", DARNASSUS, 50, 50, " (Druid Trainer)" }
+
+local function Title()
+    return ns.placedWaypoint and ns.placedWaypoint.title
+end
+
+Check(ns.PlaceWaypoint(unpack(DESTINATION)), "placed with Journeys off")
+Check(Title() == "Mathrengyl Bearwalker" and not Jy.Guide.Current(), "off: the plain waypoint, no journey")
+
+Jy.Settings.Set("enabled", true)
+account.journeyFlights = { ["Glyadin-Forever"] = { [2] = true, [6] = true, [7] = true, [26] = true, [27] = true } }
+
+here = nil
+Check(ns.PlaceWaypoint(unpack(DESTINATION)) and not Jy.Guide.Current(), "no position (an instance): the plain waypoint")
+here = { x = -4821.8, y = -1155.4, c = 0 }
+
+Check(ns.PlaceWaypoint(unpack(DESTINATION)), "placed with Journeys on")
+local journey = Jy.Guide.Current()
+Check(journey and journey.title == "Mathrengyl Bearwalker", "a journey to the trainer")
+Check(Title() == "Deeprun Tram to Stormwind", "the waypoint names the first thing to do: " .. tostring(Title()))
+local route, at, n, nextTitle = ns.WaypointRoute()
+Check(route == "Mathrengyl Bearwalker" and at == 1 and n > 3 and nextTitle, "the pin hears it is on a route")
+
+local tram = journey.plan.legs[1]
+here = { x = tram.x, y = tram.y, c = tram.c }
+Fire("NAVIGATION_DESTINATION_REACHED", false)
+RunTimers()
+Check(Title() == "Deeprun Tram to Stormwind" and Jy.Guide.Current().plan.legs[1].mode == "tram",
+    "at the tram: ride it, the waypoint now at the far end")
+
+local before = Title()
+combat = true
+here = { x = -8346.5, y = 514.0, c = 0 }
+Fire("PLAYER_ENTERING_WORLD")
+RunTimers()
+Check(Title() == before and Jy.Guide.Current().waiting, "in combat the plan waits")
+combat = false
+Fire("PLAYER_REGEN_ENABLED")
+RunTimers()
+Check(Title() == "Boat to Auberdine" and not Jy.Guide.Current().waiting,
+    "and is made again when combat ends, from Stormwind: " .. tostring(Title()))
+Check(Jy.Guide.Current().done > 0, "the steps behind you count as done")
+
+env.C_Map.SetUserWaypoint({ map = 1, x = 0.1, y = 0.1 })
+Check(not Jy.Guide.Current() and ns.WaypointRoute() == nil, "another waypoint ends the journey")
+
+Check(ns.PlaceWaypoint(unpack(DESTINATION)) and Jy.Guide.Current(), "a new journey")
+ns.ClearWaypoint()
+Check(not Jy.Guide.Current(), "clearing the waypoint ends it")
+
+here = { x = 9945.0, y = 2490.0, c = 1 }
+Check(ns.PlaceWaypoint(unpack(DESTINATION)) and not Jy.Guide.Current(), "already there: no journey left")
+
+local stops = { { "A", IRONFORGE, 50, 50 }, { "B", DARNASSUS, 50, 50 } }
+Check(ns.PlaceWaypointRoute("Training run", stops) and #stops[1] == 4 and stops[1].spot == nil,
+    "a route becomes one journey, and its stops are not written to")
+
+Jy.Settings.Set("enabled", false)
+Check(not Jy.Guide.Current(), "turning Journeys off ends the journey")
+
+print(("journeys guide: %d checks passed"):format(checks))
