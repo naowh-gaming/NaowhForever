@@ -85,7 +85,8 @@ local boot = CreateFrame("Frame")
 boot:RegisterEvent("PLAYER_LOGIN")
 boot:SetScript("OnEvent", Apply)
 
-ns.Shared.AddMapPins("zoneLevels", {
+table.insert(ns.Shared.MapPins, {
+    map = true,
     order = SECTION_ORDER, store = S, switch = "zoneLevels",
     rows = {
         { key = "zoneLevels", label = "Zone Levels", toggle = true, store = S,

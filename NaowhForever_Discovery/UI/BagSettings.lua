@@ -72,7 +72,7 @@ bags:Card({
     },
 })
 
-ns.Shared.AddMapPins("bagPins", {
+table.insert(ns.Shared.MapPins, {
     title = TEXT_SECTION, store = S, switch = "bagMapPins",
     rows = {
         { key = "bagMapPins", label = "Sleeping Bag Steps", toggle = true, store = S, needs = On, why = TEXT_OFF,

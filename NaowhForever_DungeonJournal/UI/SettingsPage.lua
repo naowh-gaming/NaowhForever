@@ -273,7 +273,7 @@ local function DeclareMapPins()
         .. "entrance on the world map, for the sides the Journal lists. Hover it for the levels, click it for a "
         .. "waypoint.")
     entrances.store, entrances.always = S, true
-    ns.Shared.AddMapPins("entrances", {
+    table.insert(ns.Shared.MapPins, {
         title = "Dungeons & Raids", store = S, switch = "mapEntrances",
         rows = {
             entrances,

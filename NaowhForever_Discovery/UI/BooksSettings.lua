@@ -83,7 +83,7 @@ page:Card({
     },
 })
 
-ns.Shared.AddMapPins("bookPins", {
+table.insert(ns.Shared.MapPins, {
     title = TEXT_SECTION, store = S, switch = "mapPins",
     rows = {
         { key = "mapPins", label = TEXT_SECTION, toggle = true, store = S, needs = On, why = TEXT_OFF,

@@ -11,7 +11,6 @@ local TEXT_YESTERDAY = "yesterday"
 local TEXT_DAYS = "%d days ago"
 local PIN_SCALE = 1.5
 local LAST_PIN_ORDER = 50
-local MAP_PAGE = "QoL/Map & Pins"
 
 local Shared = { Parts = {}, Kinds = {}, Items = {}, View = {}, MapPins = {} }
 ns.Shared = Shared
@@ -43,19 +42,6 @@ function Shared.ScalePin(pin, factor)
     end
     pin:SetScale(scale)
     pin:ApplyCurrentPosition()
-end
-
-function Shared.AddMapPins(id, section)
-    Shared.MapPins[#Shared.MapPins + 1] = section
-    local Settings = Shared.Settings
-    if not (Settings and Settings.Page) then return end
-    local switch, rows = nil, {}
-    for _, row in ipairs(section.rows) do
-        if row.key == section.switch and row.toggle then switch = row else rows[#rows + 1] = row end
-    end
-    local card = { id = id, name = switch.label, order = section.order or LAST_PIN_ORDER, switch = section.switch,
-        help = switch.help, search = switch.search, rows = rows }
-    Settings.Page(MAP_PAGE, section.store):Card(card)
 end
 
 function Shared.MapPinSections()
