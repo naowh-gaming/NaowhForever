@@ -5,7 +5,7 @@ local function check(label, ok) assert(ok, label); checks = checks + 1 end
 
 local THEME = {
     bg = { r = 0.1, g = 0.1, b = 0.1 }, panel = { r = 0.2, g = 0.2, b = 0.2 }, fg = { r = 0.9, g = 0.9, b = 0.9 },
-    muted = { r = 0.6, g = 0.6, b = 0.6 }, accent = { r = 0, g = 0.5, b = 1 }, outline = { r = 0, g = 0, b = 0 },
+    muted = { r = 0.6, g = 0.6, b = 0.6 }, accent = { r = 0, g = 0.5, b = 1 }, line = { r = 0, g = 0, b = 0 },
 }
 local ADDON = "Blizzard_DamageMeter"
 local FONT = "Interface\\AddOns\\NaowhForever\\Media\\Fonts\\Naowh.ttf"
@@ -305,7 +305,7 @@ do
         check("entry " .. i .. ": its icon has a border", edged)
         check("entry " .. i .. ": class colors are the game's own", SameRgb(entry.barTexture.vertex, { r = CLASS_RGB[1], g = CLASS_RGB[2], b = CLASS_RGB[3] }))
     end
-    check("four icons, four borders, in the outline color", #s.borders == 4 and s.borders[1].color == THEME.outline)
+    check("four icons, four borders, in the line color", #s.borders == 4 and s.borders[1].color == THEME.line)
 
     -- the game sets its art again: ours again
     local entry = c.ScrollBox.frames[1]
@@ -676,7 +676,7 @@ do
     Login(frames)
     local window = meter.windows[1]
     check("border: one frame round the window, in the Outline token", #s.borders == 1 and s.borders[1].frame == window
-        and s.borders[1]._frame.shown == true and s.borders[1].color[1] == THEME.outline.r)
+        and s.borders[1]._frame.shown == true and s.borders[1].color[1] == THEME.line.r)
     store.Set("damageMeterBorderColor", { r = 1, g = 0.5, b = 0 })
     check("border: a picked color", s.borders[1].color[2] == 0.5)
     store.Set("damageMeterBorder", false)
@@ -740,6 +740,28 @@ do
     check("size: a new pick is applied at once", name.size == 12)
     store.Set("damageMeterSkin", false)
     check("size: off gives the game's size back", name.size == GAME_SIZE)
+end
+
+-- every theme token the skin asks for is one the theme has
+do
+    local function Read(path)
+        local file = assert(io.open(path, "rb"))
+        local text = file:read("*a")
+        file:close()
+        return text
+    end
+    local block = Read("Core/Core.lua"):match("ns%.THEME = {(.-)\r?\n}")
+    local have = {}
+    for key in block:gmatch("(%a+)%s*=%s*{") do have[key] = true end
+    local skin = Read("NaowhForever_QoL/Combat/DamageMeterSkin.lua")
+    local wanted = {}
+    for token in skin:gmatch('Pick%("%a+", "(%a+)"%)') do wanted[token] = true end
+    for token in skin:gmatch('ColorRow%("%a+", "[^"]+", "(%a+)"') do wanted[token] = true end
+    for token in skin:gmatch("%f[%w_]T%.(%a+)") do wanted[token] = true end
+    check("the theme's tokens were read", have.bg and have.line and have.accent and have.fg)
+    for token in pairs(wanted) do
+        check("the theme has the token " .. token, have[token] == true)
+    end
 end
 
 -- the rows

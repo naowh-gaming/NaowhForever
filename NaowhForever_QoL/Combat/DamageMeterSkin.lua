@@ -165,7 +165,7 @@ local function Edge(frame)
         if edges[frame] then edges[frame]._frame:Hide() end
         return
     end
-    edges[frame] = edges[frame] or ns.Border(frame, T.outline)
+    edges[frame] = edges[frame] or ns.Border(frame, T.line)
     edges[frame]._frame:Show()
 end
 
@@ -246,7 +246,7 @@ local function WindowBorder(window)
         if border then border._frame:Hide() end
         return
     end
-    local c = Pick("damageMeterBorderColor", "outline")
+    local c = Pick("damageMeterBorderColor", "line")
     if not border then
         border = ns.Border(window, c)
         edges[window] = border
@@ -609,7 +609,7 @@ Settings.Page("QoL/Combat", S):Card({
         ColorRow("damageMeterWindowColor", "Window Color", "bg", "The window and the shadow behind each bar."),
         { key = "damageMeterBorder", label = "Window Border", toggle = true,
           help = "A thin border round the whole window." },
-        ColorRow("damageMeterBorderColor", "Border Color", "outline", "The border round the window.",
+        ColorRow("damageMeterBorderColor", "Border Color", "line", "The border round the window.",
             Bordered, TEXT_NEEDS_BORDER),
         { key = "damageMeterTitleFade", label = "Title Bar", choice = FADES,
           help = "Always shown, or faded until the mouse is over the window." },
