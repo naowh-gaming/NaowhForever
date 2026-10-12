@@ -18,6 +18,7 @@ local TEXT_FLY = "Fly to %s"
 local TEXT_SHIP = "%s to %s"
 local TEXT_TRAM = "Deeprun Tram to %s"
 local TEXT_PORTAL = "Portal to %s"
+local TEXT_LIFT = "Lift to %s"
 local TEXT_HEARTH = "Hearthstone to %s"
 local TEXT_TELEPORT = "Teleport to %s"
 local TEXT_NO_WAY = "No way found to %s from here; placed a plain waypoint."
@@ -49,6 +50,7 @@ function Guide.LegText(leg)
     if mode == "ship" then return TEXT_SHIP:format(leg.shipKind or "", name) end
     if mode == "tram" then return TEXT_TRAM:format(name) end
     if mode == "portal" then return TEXT_PORTAL:format(name) end
+    if mode == "lift" then return TEXT_LIFT:format(name) end
     if mode == "hearth" then return TEXT_HEARTH:format(name) end
     return TEXT_TELEPORT:format(name)
 end
