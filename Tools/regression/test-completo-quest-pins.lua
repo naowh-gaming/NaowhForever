@@ -75,7 +75,9 @@ Check(pin.scale == 0.75, "scaled as it is placed, not only on the next zoom, at 
 maximized = true
 local big = NewPin()
 big:OnAcquired({ x = 50, y = 50, quests = { 1 } })
-Check(big.size == 20, "the same on the full screen map")
+Check(big.size == 20, "the same Pin Size on the full screen map")
+Check(math.abs(big.scale - pin.scale * 1.5) < 1e-9, "drawn half as big again there")
+maximized = false
 
 Check(Pin.ApplyCurrentScale ~= nil, "scaled by the shared map pin scale, with its own factor")
 local onScreen

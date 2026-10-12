@@ -10,6 +10,7 @@ local TEXT_HOURS = "%d h ago"
 local TEXT_YESTERDAY = "yesterday"
 local TEXT_DAYS = "%d days ago"
 local PIN_SCALE = 1.5
+local FULL_SCREEN_PIN_SCALE = 1.5
 local LAST_PIN_ORDER = 50
 
 local Shared = { Parts = {}, Kinds = {}, Items = {}, View = {}, MapPins = {} }
@@ -37,6 +38,7 @@ function Shared.ScalePin(pin, factor)
     local canvas = map and map.GetCanvasScale and map:GetCanvasScale()
     if not canvas or canvas <= 0 then return end
     local scale = PIN_SCALE * (factor or 1) / canvas
+    if map.IsMaximized and map:IsMaximized() then scale = scale * FULL_SCREEN_PIN_SCALE end
     if map.GetGlobalPinScale and not (pin.IsIgnoringGlobalPinScale and pin:IsIgnoringGlobalPinScale()) then
         scale = scale * map:GetGlobalPinScale()
     end
