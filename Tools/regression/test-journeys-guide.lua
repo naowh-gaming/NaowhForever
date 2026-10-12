@@ -20,7 +20,7 @@ local MAPS = {
     [DARNASSUS] = { c = 1, x = 9945.0, y = 2490.0 },
 }
 
-local frames, timers, printed = {}, {}, {}
+local frames, timers, printed, tickers = {}, {}, {}, {}
 local tracking, handedBack = 0, nil
 local QUESTS = { [101] = { 1457, 0.5, 0.5 }, [102] = { 1455, 0.5, 0.5 } }
 local here = { x = -4821.8, y = -1155.4, c = 0 }
@@ -84,7 +84,15 @@ local env = setmetatable({
         local old = t[k]
         t[k] = function(...) local r = old(...); fn(...); return r end
     end,
-    C_Timer = { After = function(_, fn) timers[#timers + 1] = fn end },
+    C_Timer = {
+        After = function(_, fn) timers[#timers + 1] = fn end,
+        NewTicker = function(_, fn)
+            local t = { fn = fn }
+            function t:Cancel() self.cancelled = true end
+            tickers[#tickers + 1] = t
+            return t
+        end,
+    },
     UnitPosition = function()
         if not here then return nil end
         return here.x, here.y, 0, here.c
@@ -168,6 +176,11 @@ for _, path in ipairs({ "Core/Waypoint.lua", "NaowhForever_Journeys/Journeys.lua
     chunk()
 end
 local Jy = ns.Journeys
+local function Tick()
+    for _, t in ipairs(tickers) do
+        if not t.cancelled then t.fn() end
+    end
+end
 local DESTINATION = { "Mathrengyl Bearwalker", DARNASSUS, 50, 50, " (Druid Trainer)" }
 
 local function Title()
@@ -273,6 +286,34 @@ Fire("SUPER_TRACKING_CHANGED")
 local done = Jy.Guide.Current()
 Check(done and done.quest == 105 and done.stops[1][2] == DARNASSUS, "a finished quest goes to its turn-in")
 Jy.Guide.Cancel()
+
+-- Inside the tram (an instance, outside the continents) the journey holds, and picks up on the way out.
+Check(ns.PlaceWaypoint(unpack(DESTINATION)) and Jy.Guide.Current(), "a journey for the tram test")
+local legs = #Jy.Guide.Current().plan.legs
+here = { x = 20, y = 30, c = 369 }
+Fire("PLAYER_ENTERING_WORLD")
+RunTimers()
+Check(Jy.Guide.Current() and #Jy.Guide.Current().plan.legs == legs and Jy.Guide.Current().waiting,
+    "in an instance the journey is kept, not given up")
+Tick()
+Check(Jy.Guide.Current() and Jy.Guide.Current().waiting, "and the ticker leaves it alone")
+here = { x = -8346.5, y = 514.0, c = 0 }
+Fire("PLAYER_ENTERING_WORLD")
+RunTimers()
+Check(Jy.Guide.Current() and not Jy.Guide.Current().waiting, "out of the instance it plans again")
+
+-- The ticker plans again as you move, and a plain waypoint is cleared on arrival.
+local planned = Jy.Guide.Current().plan
+for _ = 1, 3 do Tick() end
+Check(Jy.Guide.Current().plan ~= planned, "every few seconds the journey is planned again from where you stand")
+Jy.Guide.Cancel()
+here = { x = -4821.8, y = -1155.4, c = 0 }
+Check(ns.PlaceWaypoint(unpack(DESTINATION)) and Jy.Guide.Current() and current, "a journey with its pin up")
+here = { x = 9945.0, y = 2490.0, c = 1 }
+Tick()
+Check(not Jy.Guide.Current() and current == nil, "arriving, found by the ticker, ends it and clears the pin")
+here = { x = -4821.8, y = -1155.4, c = 0 }
+Tick()
 
 Jy.Settings.Set("quests", false)
 here = { x = -4821.8, y = -1155.4, c = 0 }

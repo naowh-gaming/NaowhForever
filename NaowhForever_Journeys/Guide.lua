@@ -29,6 +29,7 @@ Jy.Guide = Guide
 
 local journey, events, step, working, driver, dismissed
 local replanQueued = false
+local ticker, ticks
 local listeners = {}
 
 local function Changed()
@@ -188,15 +189,18 @@ local function Replan()
     journey.waiting = false
     local here = World.Player()
     if not here then return end
+    if not C.CONTINENTS[here.c] then
+        journey.waiting = true
+        if not journey.plan then StopStep() end
+        return
+    end
     while Close(here, Stop().spot) do
         if journey.at == #journey.stops then
             local quest = journey.quest
             journey = nil
             if events then events:UnregisterAllEvents() end
             Changed()
-            if quest then
-                ns.TrackQuest(quest)
-            end
+            if quest then ns.TrackQuest(quest) else ns.ClearWaypoint() end
             return
         end
         journey.at = journey.at + 1
@@ -225,6 +229,21 @@ local function QueueReplan()
     if replanQueued then return end
     replanQueued = true
     C_Timer.After(REPLAN_DELAY, QueuedReplan)
+end
+
+local function Tick()
+    if not journey then
+        ticker:Cancel()
+        ticker = nil
+        return
+    end
+    if working or replanQueued or journey.waiting then return end
+    ticks = ticks + 1
+    local here = World.Player()
+    if ticks >= C.REPLAN_TICKS or here and Close(here, Stop().spot) then
+        ticks = 0
+        Replan()
+    end
 end
 
 local function OnStep(point)
@@ -265,6 +284,8 @@ function Guide.Start(title, stops, quest)
         events:SetScript("OnEvent", OnEvent)
     end
     for _, event in ipairs(EVENTS) do events:RegisterEvent(event) end
+    ticks = 0
+    ticker = ticker or C_Timer.NewTicker(C.TICK, Tick)
     Replan()
     return true
 end
