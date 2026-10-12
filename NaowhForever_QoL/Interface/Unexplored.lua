@@ -141,7 +141,7 @@ local boot = CreateFrame("Frame")
 boot:RegisterEvent("PLAYER_LOGIN")
 boot:SetScript("OnEvent", Apply)
 
-table.insert(ns.Shared.MapPins, {
+ns.Shared.AddMapPins("unexplored", {
     order = SECTION_ORDER, store = S, switch = "mapUnexplored",
     rows = {
         { key = "mapUnexplored", label = "Unexplored Areas", toggle = true, store = S,

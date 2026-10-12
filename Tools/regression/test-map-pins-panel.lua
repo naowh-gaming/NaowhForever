@@ -1,7 +1,7 @@
 -- Run with Lua 5.1 from the repository root: the Map Options and Pins panel on the world map.
--- Every town pin switch is on the panel and on the options card, both drawn from one list, with
--- Town Pins and Town Pin Size on the card. Other modules' and QoL's own rows (ns.Shared.MapPins,
--- in order) follow on both, and the button shows whenever QoL is on.
+-- Every town pin switch is on the panel and on the Town Pins card, both drawn from one list, with
+-- Town Pin Size on the card. Each other pin type (ns.Shared.AddMapPins) gets its own card on
+-- QoL's Map & Pins tab and its rows on the panel, and the button shows whenever QoL is on.
 local function Read(path)
     local f = assert(io.open(path, "rb"))
     local s = f:read("*a"):gsub("\r\n", "\n"); f:close()
@@ -51,16 +51,22 @@ local questSection = { title = "Quests", store = questStore, switch = "mapPins",
 
 local pinTexts
 do
-    local card
+    local cards = {}
     local function Group(title) return { group = title } end
     local own = {}
     local ownSection = { order = 11, store = own, switch = "mapSize", rows = {
-        { key = "mapSize", label = "Map Window", toggle = true, store = own },
+        { key = "mapSize", label = "Map Window", toggle = true, store = own, help = "Bigger map." },
         { key = "mapSizePercent", label = "Map Scale", slider = { 50, 150, 5 }, store = own, needs = "mapSize" },
     } }
     local shared = RealShared()
-    shared.MapPins = { questSection, ownSection }
-    shared.Settings = { Group = Group, Page = function() return { Card = function(_, c) card = c end } end }
+    shared.Settings = { Group = Group, Page = function(key, store)
+        return { Card = function(_, c)
+            c.pageKey, c.store = key, c.store or store
+            cards[c.id] = c
+        end }
+    end }
+    shared.AddMapPins("questPins", questSection)
+    shared.AddMapPins("mapWindow", ownSection)
     local cardNs = { QoLConstants = dofile("Tools/regression/qol_constants.lua"), QoLSettings = own,
         Apply = function() end, ThemeTint = function() end, TownCapitals = {}, TownNPCs = {}, Shared = shared }
     local cardEnv = setmetatable({ _G = { NaowhForever = cardNs },
@@ -71,6 +77,9 @@ do
     local chunk = assert(loadstring(townSrc))
     setfenv(chunk, cardEnv)
     chunk()
+    local card = cards.townMap
+    Check(card and card.pageKey == "QoL/Map & Pins" and card.switch == "townMap",
+        "Town Pins is a card on QoL's Map & Pins tab, switched by Town Pins")
     local labels, groups = {}, {}
     local rows = card.rows()
     for _, row in ipairs(rows) do
@@ -79,38 +88,26 @@ do
     for _, row in ipairs(pinRows) do
         if row.key then Check(labels[row.key] == row.text, "the card has the panel's toggle: " .. row.key) end
     end
-    Check(groups[1] == "Town" and groups[2] == "Town options" and groups[3] == "Show in town",
-        "the town rows are grouped as the drawer groups them")
-    Check(rows[2].key == "townMap" and rows[3].key == "townPinSize" and rows[3].needs == "townMap",
-        "Town Pins first, then the size, which waits for it")
-    Check(rows[5].needs == "townMap" and not rows[2].needs, "the town rows wait for Town Pins, which itself does not")
-    Check(groups[4] == "Quests", "the sections follow under their own titles")
-    local lastRow = rows[#rows]
-    Check(lastRow == questSection.rows[5] and rows[#rows - 4] == questSection.rows[1],
-        "a module's rows as it declared them, after the QoL ones")
-    Check(lastRow.lent and not rows[1].lent, "lent to the card: its Reset and changed count leave them alone")
-    local ownAt, questAt
-    for i, row in ipairs(rows) do
-        if row == ownSection.rows[1] then ownAt = i end
-        if row == questSection.rows[1] then questAt = i end
-    end
-    Check(ownAt and questAt and ownAt < questAt, "QoL's own section comes first, by its order")
-    Check(not ownSection.rows[1].lent and not ownSection.rows[2].lent, "its rows are the card's own store's: Reset takes them")
-    Check(rows[ownAt - 1].group == nil, "so it follows the last town row directly")
+    Check(groups[1] == "Town options" and groups[2] == "Show in town" and #groups == 2,
+        "the town rows are grouped as the drawer groups them, and nothing else is on the card")
+    Check(rows[1].key == "townPinSize", "the size first")
+    local quest = cards.questPins
+    Check(quest and quest.pageKey == "QoL/Map & Pins" and quest.store == questStore and quest.switch == "mapPins"
+        and quest.name == "Quest Givers", "a module's pins: its own card, its store, its switch row as the header")
+    Check(#quest.rows == 4 and quest.rows[1] == questSection.rows[2] and quest.rows[4] == questSection.rows[5],
+        "the rest of its rows as it declared them")
+    Check(shared.MapPins[1] == questSection and shared.MapPins[2] == ownSection, "and its section on the panel")
+    Check(cards.mapWindow and cards.mapWindow.order == 11 and cards.mapWindow.help == "Bigger map.",
+        "the card's order and help come from the section")
     pinTexts = cardNs.TownPinTexts
     Check(pinTexts.group and pinTexts.switch and pinTexts.tip, "the drawer's town texts are named, not positional")
     Check(cardNs.TownPinRows ~= nil, "the list is shared with the panel")
-    local Search = dofile("Tools/regression/settings_search.lua")({ ["QoL/Interface"] = { card } })
+    local Search = dofile("Tools/regression/settings_search.lua")({ ["QoL/Map & Pins"] = { card } })
     local hit = Search("flight master")[1]
-    Check(hit and hit.label == "Flight Masters" and hit.card == "QoL/Interface:townMap",
+    Check(hit and hit.label == "Flight Masters" and hit.card == "QoL/Map & Pins:townMap",
         "the options search finds a pin by name")
     hit = Search("graveyard")[1]
-    Check(hit and hit.card == "QoL/Interface:townMap", "and the card by its search words")
-    hit = Search("quest givers")[1]
-    Check(hit and hit.label == "Quest Givers" and hit.card == "QoL/Interface:townMap",
-        "and a module's pin row on it")
-    hit = Search("map window")[1]
-    Check(hit and hit.label == "Map Window" and hit.card == "QoL/Interface:townMap", "and QoL's own map options")
+    Check(hit and hit.card == "QoL/Map & Pins:townMap", "and the card by its search words")
 end
 -- A card's Reset and changed count skip rows lent to it from another module's store.
 do

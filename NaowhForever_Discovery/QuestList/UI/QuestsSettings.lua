@@ -52,7 +52,7 @@ page:Card({
     },
 })
 
-table.insert(ns.Shared.MapPins, {
+ns.Shared.AddMapPins("questPins", {
     title = "Quests", store = S, switch = "mapPins",
     rows = {
         { key = "mapPins", label = "Quest Givers", toggle = true, store = S, always = true, needs = On, why = TEXT_OFF,

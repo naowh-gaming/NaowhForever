@@ -164,7 +164,7 @@ page:Card({
     },
 })
 
-table.insert(ns.Shared.MapPins, {
+ns.Shared.AddMapPins("rarePins", {
     title = "Rares", store = S, switch = "rarePins",
     rows = {
         { key = "rarePins", label = "Rares", toggle = true, store = S, always = true, needs = Enabled, why = TEXT_OFF,

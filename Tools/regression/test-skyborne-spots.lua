@@ -16,6 +16,7 @@ local LEY_CAST, LEY_BUFF, SKY_CAST, SKY_BUFF = 1259705, 1259691, 1259686, 127089
 local settings = { enabled = true, mapSkyborne = true, mapSkyborneSize = 20 }
 local S = { Get = function(key) return settings[key] end, Set = function() end }
 local account, printed = {}, {}
+local mapPins = {}
 local ns = {
     QoLConstants = dofile("Tools/regression/qol_constants.lua"),
     QoLSettings = S,
@@ -24,7 +25,8 @@ local ns = {
     Print = function(msg) printed[#printed + 1] = msg end,
     ThemeTint = function() return nil end,
     PlaceWaypoint = function() end,
-    Shared = { Style = dofile("Tools/regression/shared_style.lua"), MapPins = {} },
+    Shared = { Style = dofile("Tools/regression/shared_style.lua"), MapPins = mapPins,
+        AddMapPins = function(_, section) table.insert(mapPins, section) end },
 }
 
 local race, faction, combat, now = "Skyborne", "Horde", false, 1000

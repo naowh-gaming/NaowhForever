@@ -115,6 +115,8 @@ local TEXT_TOWN_TIP = "Service NPCs, mailboxes, spirit healers, exits and docks;
 local TEXT_TOWN_OFF = "Town pins off"
 local TEXT_SUMMARY = "Town pins: %d of %d shown%s"
 local TEXT_CAPITALS = ", vendors and trainers in cities only"
+local TEXT_ON_MAP = " Also set from the button at the top right of the world map."
+local TOWN_CARD_ORDER = 20
 local TEXT_PINS_SEARCH = "vendor vendors trainer trainers mailbox graveyard npc npcs"
 
 local miniPins, miniSpots = {}, {}
@@ -528,22 +530,13 @@ end
 
 local function CardRows()
     local rows = {
-        ns.Shared.Settings.Group(TEXT_TOWN),
-        { key = "townMap", label = TEXT_TOWN_PINS, toggle = true, help = TEXT_TOWN_TIP },
-        { key = "townPinSize", label = "Town Pin Size", slider = PIN_RANGE, needs = "townMap" },
+        { key = "townPinSize", label = "Town Pin Size", slider = PIN_RANGE },
     }
     for _, row in ipairs(PIN_ROWS) do
         if row.header then
             rows[#rows + 1] = ns.Shared.Settings.Group(row.header:sub(1, 1) .. row.header:sub(2):lower())
         else
-            rows[#rows + 1] = { key = row.key, label = row.text, toggle = true, help = row.tip, needs = "townMap" }
-        end
-    end
-    for _, section in ipairs(ns.Shared.MapPinSections()) do
-        if section.title then rows[#rows + 1] = ns.Shared.Settings.Group(section.title) end
-        for _, row in ipairs(section.rows) do
-            row.lent = row.store ~= S
-            rows[#rows + 1] = row
+            rows[#rows + 1] = { key = row.key, label = row.text, toggle = true, help = row.tip }
         end
     end
     return rows
@@ -574,10 +567,9 @@ ns.TownPinRows = PIN_ROWS
 ns.TownPinRange = PIN_RANGE
 ns.TownPinTexts = { group = TEXT_TOWN, switch = TEXT_TOWN_PINS, tip = TEXT_TOWN_TIP }
 
-ns.Shared.Settings.Page("QoL/Interface", S):Card({
-    id = "townMap", name = "Map Options and Pins", order = 40,
-    help = "The world map's options and every pin on it: town pins (service NPCs for your faction), "
-        .. "quests, rares and entrances. Also set from the button on the map.",
+ns.Shared.Settings.Page("QoL/Map & Pins", S):Card({
+    id = "townMap", name = TEXT_TOWN_PINS, order = TOWN_CARD_ORDER, switch = "townMap",
+    help = TEXT_TOWN_TIP .. TEXT_ON_MAP,
     search = TEXT_PINS_SEARCH,
     summary = TownSummary,
     rows = CardRows,

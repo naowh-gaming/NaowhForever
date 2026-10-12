@@ -336,7 +336,7 @@ local boot = CreateFrame("Frame")
 boot:RegisterEvent("PLAYER_LOGIN")
 boot:SetScript("OnEvent", Apply)
 
-table.insert(ns.Shared.MapPins, {
+ns.Shared.AddMapPins("skyborne", {
     title = TEXT_SECTION, order = SECTION_ORDER, store = S, switch = "mapSkyborne",
     rows = {
         { key = "mapSkyborne", label = "Skyborne Spots", toggle = true, store = S,

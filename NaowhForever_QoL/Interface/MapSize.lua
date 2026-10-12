@@ -265,7 +265,7 @@ local boot = CreateFrame("Frame")
 boot:RegisterEvent("PLAYER_LOGIN")
 boot:SetScript("OnEvent", OnLogin)
 
-table.insert(ns.Shared.MapPins, {
+ns.Shared.AddMapPins("mapWindow", {
     title = TEXT_SECTION, order = SECTION_ORDER, store = S, switch = "mapSize",
     rows = {
         { key = "mapSize", label = TEXT_TITLE, toggle = true, store = S, help = TEXT_HELP },

@@ -222,7 +222,7 @@ local function Fixture(settings, units)
         if opts.background == "card" then rows[#rows + 1] = { key = prefix .. "Background" } end
         return rows
     end
-    ns.Shared = { Settings = Settings, MapPins = {},
+    ns.Shared = { Settings = Settings, MapPins = {}, AddMapPins = function(_, section) table.insert(ns.Shared.MapPins, section) end,
         -- Per character, by the player's GUID.
         CharacterData = function(key)
             account[key] = account[key] or {}
