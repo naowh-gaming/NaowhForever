@@ -23,6 +23,7 @@ const Q = 1;
 const ATTACH_REACH = 80;
 const NO_WAY = -1;
 const MAIN_SIZE = 300;
+const MAX_POLY_VERTS = 8;   // Walk.lua keys a polygon's edges as polygon * 8 + edge
 const DATA = join(ROOT, 'NaowhForever_JourneysData', 'Data');
 const FILE_BYTES = 3500000;
 const CRLF = String.fromCharCode(13, 10);
@@ -206,6 +207,7 @@ export async function pack(map) {
     const p = [];
     let index = 0;
     for (const poly of tile.polys) {
+      if (poly.verts.length > MAX_POLY_VERTS) throw new Error(`tile ${key} has a polygon of ${poly.verts.length} corners`);
       p.push(poly.verts.length);
       for (const i of poly.verts) { p.push(i + 1 - index); index = i + 1; }
     }

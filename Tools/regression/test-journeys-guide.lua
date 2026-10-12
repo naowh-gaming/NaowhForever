@@ -271,6 +271,61 @@ here = { x = -4821.8, y = -1155.4, c = 0 }
 Fire("SUPER_TRACKING_CHANGED")
 Check(not Jy.Guide.Current(), "with Journeys to Tracked Quests off, tracking a quest is left alone")
 
+local function Driver()
+    for _, f in ipairs(frames) do
+        if f.scripts.OnUpdate then return f end
+    end
+end
+local realFrom, slow = Jy.Walk.From, true
+Jy.Walk.From = function()
+    if slow then coroutine.yield() end
+    return nil
+end
+Jy.Settings.Set("quests", true)
+here = { x = -4821.8, y = -1155.4, c = 0 }
+Check(ns.PlaceWaypoint(unpack(DESTINATION)) and Jy.Guide.Current(), "a journey whose search takes frames")
+Check(Driver() ~= nil and not Jy.Guide.Current().plan, "its search runs from an update, and has no plan yet")
+slow = false
+Fire("PLAYER_ENTERING_WORLD")
+RunTimers()
+Check(Jy.Guide.Current().plan ~= nil and Driver() == nil, "a replan that finishes at once leaves the slow one's update gone")
+Jy.Guide.Cancel()
+slow = true
+Check(ns.PlaceWaypoint(unpack(DESTINATION)) and Driver() ~= nil, "a slow search again")
+Jy.Guide.Cancel()
+Check(Driver() == nil, "cancelling the journey stops its search")
+slow = false
+
+ns.placedWaypoint = nil
+combat = true
+Check(ns.PlaceWaypoint(unpack(DESTINATION)) and ns.placedWaypoint and ns.placedWaypoint.title == "Mathrengyl Bearwalker"
+    and Jy.Guide.Current().waiting, "a click in combat puts the plain waypoint up at once")
+combat = false
+Fire("PLAYER_REGEN_ENABLED")
+RunTimers()
+Check(Jy.Guide.Current().plan ~= nil and ns.placedWaypoint.title ~= "Mathrengyl Bearwalker",
+    "and the journey takes over when combat ends")
+Jy.Guide.Cancel()
+
+here = { x = -8832.8, y = 478.6, c = 0 }
+local two = { { "Ironforge", IRONFORGE, 50, 50 }, { "Darnassus", DARNASSUS, 50, 50 } }
+Check(ns.PlaceWaypointRoute("Training run", two), "a two-stop route")
+local first = #Jy.Guide.Current().plan.legs
+Check(Jy.Guide.Current().done == 0, "no step done yet")
+here = { x = -4821.8, y = -1155.4, c = 0 }
+Fire("PLAYER_ENTERING_WORLD")
+RunTimers()
+Check(Jy.Guide.Current().at == 2 and Jy.Guide.Current().done == first,
+    "reaching the first stop counts all its steps, whatever the next plan's length: " .. Jy.Guide.Current().done)
+Jy.Guide.Cancel()
+
+env.C_Map.CanSetUserWaypointOnMap = function() return false end
+here = { x = -4821.8, y = -1155.4, c = 0 }
+Check(ns.PlaceWaypoint(unpack(DESTINATION)) and not Jy.Guide.Current(),
+    "a journey whose steps no map takes a waypoint for ends, and says so")
+env.C_Map.CanSetUserWaypointOnMap = function() return true end
+Jy.Walk.From = realFrom
+
 Jy.Settings.Set("enabled", false)
 Check(not Jy.Guide.Current(), "turning Journeys off ends the journey")
 

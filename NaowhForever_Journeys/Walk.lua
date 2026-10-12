@@ -444,8 +444,7 @@ function Walk.Path(a, b)
     for k = 1, #chain do
         local id = chain[k]
         local toPoly = PolyFor(tile, id)
-        if not toPoly then return nil end
-        Segment(tile, fromPoly, fromX, fromY, toPoly, g.px[id], g.py[id], out)
+        if not toPoly or not Segment(tile, fromPoly, fromX, fromY, toPoly, g.px[id], g.py[id], out) then return nil end
         local nextTile
         local nextId = chain[k + 1]
         local tx, ty = Walk.TileOf(g.px[id] + (nextId and (g.px[nextId] - g.px[id]) * 0.01 or (b.x - g.px[id]) * 0.01),
@@ -455,8 +454,7 @@ function Walk.Path(a, b)
         tile, fromPoly, fromX, fromY = nextTile, PolyFor(nextTile, id), g.px[id], g.py[id]
         if not fromPoly then return nil end
     end
-    Segment(tile, fromPoly, fromX, fromY, b.poly, b.x, b.y, out)
-    return out
+    return Segment(tile, fromPoly, fromX, fromY, b.poly, b.x, b.y, out) and out or nil
 end
 
 -- Walking yards (water counted dearer) between two ends: each a place key of the network ("f2",

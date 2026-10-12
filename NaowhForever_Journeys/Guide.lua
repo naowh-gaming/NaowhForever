@@ -21,6 +21,7 @@ local TEXT_PORTAL = "Portal to %s"
 local TEXT_HEARTH = "Hearthstone to %s"
 local TEXT_TELEPORT = "Teleport to %s"
 local TEXT_NO_WAY = "No way found to %s from here; placed a plain waypoint."
+local TEXT_NO_PLACE = "That journey ends where the game takes no waypoints."
 
 local Guide = {}
 Jy.Guide = Guide
@@ -77,6 +78,12 @@ local function Corner()
     return { c = journey.plan.legs[1].c, x = corners[at * 2 - 1], y = corners[at * 2] }
 end
 
+local function StopStep()
+    local stop = Stop()
+    step = { title = stop[1], map = stop[2], x = stop[3], y = stop[4], note = stop[5], icon = stop[6] }
+    return ns.ShowJourneyStep(step.title, step.map, step.x, step.y, step.note, step.icon)
+end
+
 local function ShowStep()
     local stop = Stop()
     local action, spot = Action(journey.plan.legs)
@@ -87,7 +94,10 @@ local function ShowStep()
         local map, x, y = World.ToMap(spot)
         if map then step.map, step.x, step.y = map, x, y end
     end
-    ns.ShowJourneyStep(step.title, step.map, step.x, step.y, step.note, step.icon)
+    if not ns.ShowJourneyStep(step.title, step.map, step.x, step.y, step.note, step.icon) and not StopStep() then
+        ns.Print(TEXT_NO_PLACE)
+        return Guide.Cancel()
+    end
     Changed()
 end
 
@@ -112,10 +122,12 @@ end
 local function Planned(plan)
     if not journey then return end
     if not plan then return PlainWaypoint(Stop()) end
-    if journey.plan and #plan.legs < #journey.plan.legs then
-        journey.done = journey.done + #journey.plan.legs - #plan.legs
+    local before = journey.plan
+    if before then
+        local finished = journey.planAt == journey.at and math.max(0, #before.legs - #plan.legs) or #before.legs
+        journey.done = journey.done + finished
     end
-    journey.plan = plan
+    journey.plan, journey.planAt = plan, journey.at
     journey.corners, journey.corner = plan.corners, FIRST_CORNER
     ShowStep()
 end
@@ -144,7 +156,13 @@ local function Work(here, to)
     return plan
 end
 
+local function Abandon()
+    working = nil
+    if driver then driver:SetScript("OnUpdate", nil) end
+end
+
 local function Drive()
+    if not working then return Abandon() end
     Walk.StartBudget()
     local ok, plan = coroutine.resume(working)
     if coroutine.status(working) ~= "dead" then return end
@@ -159,8 +177,10 @@ end
 
 local function Replan()
     if not journey then return end
+    Abandon()
     if InCombatLockdown() then
         journey.waiting = true
+        if not journey.plan then StopStep() end
         return
     end
     journey.waiting = false
@@ -251,6 +271,7 @@ function Guide.Cancel()
     if not journey then return end
     dismissed = journey.quest
     journey, step = nil, nil
+    Abandon()
     events:UnregisterAllEvents()
     Changed()
 end
