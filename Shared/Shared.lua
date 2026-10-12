@@ -1,4 +1,4 @@
--- Shared.lua: the namespace every module shares (ns.Shared), the Map Options and Pins sections and pin scale, what a character keeps by its GUID, and how long ago a time was.
+-- Shared.lua: the namespace every module shares (ns.Shared), the Map & Pins sections and pin scale, what a character keeps by its GUID, and how long ago a time was.
 local ns = _G.NaowhForever
 
 local MINUTE, HOUR, DAY = 60, 3600, 86400

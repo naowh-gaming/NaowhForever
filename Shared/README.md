@@ -9,7 +9,7 @@ through `Shared.xml`. Nothing is made or listened to at load.
 ```
 Shared/
   Shared.xml       what loads, in order (the core TOC's Shared load point)
-  Shared.lua       the namespace (ns.Shared), the map pin sections that QoL and other modules add to its Map Options and Pins
+  Shared.lua       the namespace (ns.Shared), the map pin sections that QoL and other modules add to its Map & Pins tab
                    (Shared.MapPins, in order by Shared.MapPinSections), a map pin's scale (Shared.ScalePin), what a character keeps by its
                    GUID (Shared.CharacterData), and how long ago a time was (Shared.Ago)
   Style.lua        the house look: colors (BiS stars, worn green, looks, red and warning orange), icons, sizes
@@ -37,7 +37,7 @@ Shared/
   Game/Roster.lua  our part of a player's tooltip in the Guild & Communities and Friends lists (Badges, Naowh Score)
   Game/Places.lua  zones by name, and showing one on the world map
   Game/Towns.lua   town service NPCs by world map (ns.TownNPCs) and the capitals (ns.TownCapitals), by hand:
-                   QoL's Map Options and Pins, the Training Planner's trainers and Professions' rank alerts read it
+                   QoL's town pins, the Training Planner's trainers and Professions' rank alerts read it
   Game/Played.lua  the character's /played time, asked for once with the chat print muted (XP Bar, XP per Hour)
   UI/Parts.lua     the small parts: icons in text (Parts.Inline), smooth textures, hover cards (Parts.Tip,
                    Parts.TipLines), the chevron, links, icon buttons, a short label in a pill of its color

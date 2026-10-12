@@ -1,4 +1,4 @@
--- Run with Lua 5.1 from the repository root: the Map Options and Pins panel on the world map.
+-- Run with Lua 5.1 from the repository root: the Town Pins drawer on the world map, and the Map & Pins tab.
 -- The panel holds the town pins only, drawn from TownMap's list; their switches are not on the tab.
 -- QoL's Map & Pins tab has the rest: a Map Options card and a Map Pins card with Town Pin Size and
 -- each module's rows (ns.Shared.MapPins, in order, under their titles). The button shows whenever
