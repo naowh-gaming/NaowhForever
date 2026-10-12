@@ -17,6 +17,10 @@ local function Texture(atlas)
     function t:SetColorTexture(r, g, b, a) self.solid = { r, g, b, a }; self.atlas = nil end
     function t:SetAtlas(name) self.atlas = name; self.solid = nil end
     function t:GetAtlas() return self.atlas end
+    function t:GetVertexColor()
+        local v = self.vertex or { 1, 1, 1 }
+        return v[1], v[2], v[3], 1
+    end
     function t:SetAlpha(a) self.alpha = a end
     function t:SetVertexColor(r, g, b) self.vertex = { r, g, b } end
     return t
@@ -31,6 +35,7 @@ local function FontString()
         self.fontSets = (self.fontSets or 0) + 1
     end
     function f:GetTextColor() return self.r, self.g, self.b end
+    function f:SetAlpha(a) self.alpha = a end
     function f:SetTextColor(r, g, b) self.r, self.g, self.b = r, g, b end
     function f:GetShadowOffset() return self.sx, self.sy end
     function f:SetShadowOffset(x, y) self.sx, self.sy = x, y end
@@ -54,7 +59,10 @@ local function Entry()
         self.refreshes = self.refreshes + 1
         bar.Background:SetAtlas("ui-damagemeters-bar-shadowbg")
     end
-    function e:UpdateBackground() bar.BackgroundEdge:SetAlpha(1) end
+    function e:UpdateBackground()
+        bar.BackgroundEdge:SetAlpha(1)
+        bar.Background:SetAlpha(1)
+    end
     function e:UpdateStatusBarColor()
         self.statusBarColor = { GetRGB = function() return CLASS_RGB[1], CLASS_RGB[2], CLASS_RGB[3] end }
         barTexture:SetVertexColor(CLASS_RGB[1], CLASS_RGB[2], CLASS_RGB[3])
@@ -83,6 +91,19 @@ end
 
 local function Window()
     local source = { Background = Texture("common-dropdown-bg"), ScrollBox = ScrollBox({ Entry() }) }
+    local function Part()
+        local part = { alpha = 1 }
+        function part:SetAlpha(a) self.alpha = a end
+        return part
+    end
+    local thumb, track = Texture("thumb"), Texture("track")
+    local trackFrame = {}
+    function trackFrame:GetRegions() return track end
+    function trackFrame:GetChildren() end
+    local scroll = { alpha = 1, thumb = thumb, track = track }
+    function scroll:SetAlpha(a) self.alpha = a end
+    function scroll:GetRegions() return thumb end
+    function scroll:GetChildren() return trackFrame end
     local grip = { alpha = 0 }
     function grip:HookScript(name, fn)
         self.scripts = self.scripts or {}
@@ -92,8 +113,14 @@ local function Window()
     local w = { Header = Texture("ui-damagemeters-header-bar"), SessionTimer = FontString(),
         SessionDropdown = { SessionName = FontString() }, DamageMeterTypeDropdown = { TypeName = FontString() },
         MinimizeContainer = { Background = Texture("damagemeters-background"), LocalPlayerEntry = Entry(),
-            ScrollBox = ScrollBox({ Entry(), Entry() }), SourceWindow = source, ResizeButton = grip },
+            ScrollBox = ScrollBox({ Entry(), Entry() }), SourceWindow = source, ResizeButton = grip,
+            ScrollBar = scroll },
+        MinimizeButton = Part(), SettingsDropdown = Part(),
         points = {}, left = 100, top = 500, width = 300, height = 200, editLeft = 100, editTop = 500 }
+    function w.SessionDropdown:SetAlpha(a) self.alpha = a end
+    function w.DamageMeterTypeDropdown:SetAlpha(a) self.alpha = a end
+    function w:IsMouseOver() return self.mouseOver == true end
+    function w:GetFrameLevel() return 1 end
     function w:ClearAllPoints() self.points = {} end
     function w:SetPoint(point, relativeTo, relPoint, x, y)
         self.points[#self.points + 1] = { point, relativeTo, relPoint, x, y }
@@ -129,7 +156,10 @@ local function Boot(settings, loaded, windows)
         damageMeterTexture = "", damageMeterFont = "", damageMeterOutline = "game", damageMeterIconEdge = true,
         damageMeterHeaderColor = false, damageMeterWindowColor = false, damageMeterNameColor = false,
         damageMeterValueColor = false, damageMeterTitleColor = false, damageMeterFree = false,
-        damageMeterPos = false }
+        damageMeterPos = false, damageMeterBarAlpha = 100, damageMeterBarBgColor = false,
+        damageMeterBarBgAlpha = 100, damageMeterScrollBar = "game", damageMeterBorder = false,
+        damageMeterBorderColor = false, damageMeterTitleFade = "always", damageMeterTitleFadeAlpha = 0,
+        damageMeterFontSize = 0 }
     local store = {}
     function store.Get(k)
         local v = s.settings[k]
@@ -155,6 +185,7 @@ local function Boot(settings, loaded, windows)
             local border = { frame = frame, color = color, _frame = { shown = true } }
             function border._frame:Show() self.shown = true end
             function border._frame:Hide() self.shown = false end
+            function border:SetColor(r, g, b, a) self.color = { r, g, b, a } end
             s.borders[#s.borders + 1] = border
             return border
         end,
@@ -193,9 +224,14 @@ local function Boot(settings, loaded, windows)
         C_AddOns = { IsAddOnLoaded = function(name) return loaded and name == ADDON end },
         EventUtil = { ContinueOnAddOnLoaded = function(name, fn) s.waiting[name] = fn end },
         CreateFrame = function()
-            local f = { events = {} }
+            local f = { events = {}, scripts = {}, shown = true }
             function f:RegisterEvent(e) self.events[e] = true end
-            function f:SetScript(_, fn) self.onEvent = fn end
+            function f:SetScript(name, fn)
+                self.scripts[name] = fn
+                self.onEvent = fn
+            end
+            function f:Show() self.shown = true end
+            function f:Hide() self.shown = false end
             return f
         end }
     env._G = env
@@ -603,6 +639,132 @@ do
     Login(bootFrames)
     check("no rect yet: not placed, and one note", #one.points == 0 and one.movable == nil and #s4.printed == 1
         and store.Get("damageMeterPos") == false)
+end
+
+-- the title bar fades until the mouse is over the window
+do
+    local _, store, meter, _, frames = Boot({ damageMeterSkin = true, damageMeterTitleFade = "hover",
+        damageMeterTitleFadeAlpha = 20 }, true)
+    Login(frames)
+    local window = meter.windows[1]
+    local fader = frames[#frames]
+    local function Tick(n)
+        for _ = 1, n do fader.scripts.OnUpdate(fader, 0.1) end
+    end
+    check("fade: a frame of ours ticks, and is shown", fader.scripts and fader.scripts.OnUpdate and fader.shown == true)
+    window.mouseOver = false
+    Tick(5)
+    check("fade: away from the window the title parts sit at the faded opacity",
+        window.Header.alpha == 0.2 and window.MinimizeButton.alpha == 0.2 and window.SettingsDropdown.alpha == 0.2
+        and window.SessionDropdown.alpha == 0.2 and window.DamageMeterTypeDropdown.alpha == 0.2
+        and window.SessionTimer.alpha == 0.2)
+    window.mouseOver = true
+    Tick(5)
+    check("fade: with the mouse over the window they are whole", window.Header.alpha == 1
+        and window.MinimizeButton.alpha == 1 and window.SessionTimer.alpha == 1)
+    window.mouseOver = false
+    Tick(5)
+    store.Set("damageMeterTitleFade", "always")
+    check("fade: always shown puts them whole at once and stops the tick", window.Header.alpha == 1
+        and window.SettingsDropdown.alpha == 1 and fader.shown == false)
+end
+
+-- a border round the whole window
+do
+    local s, store, meter, _, frames = Boot({ damageMeterSkin = true, damageMeterBorder = true,
+        damageMeterIconEdge = false }, true)
+    Login(frames)
+    local window = meter.windows[1]
+    check("border: one frame round the window, in the Outline token", #s.borders == 1 and s.borders[1].frame == window
+        and s.borders[1]._frame.shown == true and s.borders[1].color[1] == THEME.outline.r)
+    store.Set("damageMeterBorderColor", { r = 1, g = 0.5, b = 0 })
+    check("border: a picked color", s.borders[1].color[2] == 0.5)
+    store.Set("damageMeterBorder", false)
+    check("border: off hides it", s.borders[1]._frame.shown == false)
+    store.Set("damageMeterBorder", true)
+    check("border: on again shows the same one", s.borders[1]._frame.shown == true and #s.borders == 1)
+end
+
+-- the color behind each bar, and how solid the bars are
+do
+    local grey = { r = 0.3, g = 0.3, b = 0.3 }
+    local _, store, meter, _, frames = Boot({ damageMeterSkin = true, damageMeterBarBgColor = grey,
+        damageMeterBarBgAlpha = 50, damageMeterBarAlpha = 60 }, true)
+    Login(frames)
+    local entry = meter.windows[1].MinimizeContainer.ScrollBox.frames[1]
+    local bar = entry.StatusBar
+    check("bar background: the color picked, half as solid", SameRgb(bar.Background.solid, grey)
+        and bar.Background.alpha == 0.5)
+    check("bar fill: a little see-through", entry.barTexture.alpha == 0.6)
+    entry:UpdateBackground()
+    check("bar background: the game's refresh does not undo it", bar.Background.alpha == 0.5)
+    store.Set("damageMeterBarBgColor", false)
+    check("bar background: not picked follows the Window Color", SameRgb(bar.Background.solid, THEME.bg))
+    store.Set("damageMeterSkin", false)
+    check("off: the game's own opacities are back", bar.Background.alpha == 1 and entry.barTexture.alpha == 1)
+end
+
+-- the scroll bar
+do
+    local _, store, meter, _, frames = Boot({ damageMeterSkin = true, damageMeterScrollBar = "hidden" }, true)
+    Login(frames)
+    local scroll = meter.windows[1].MinimizeContainer.ScrollBar
+    local fader = frames[#frames]
+    check("scroll bar: hidden is see-through, and we tick to keep it so", scroll.alpha == 0 and fader.shown == true)
+    scroll.alpha = 1
+    fader.scripts.OnUpdate(fader, 0.1)
+    check("scroll bar: the game's emphasis is put back at the next tick", scroll.alpha == 0)
+    store.Set("damageMeterScrollBar", "accent")
+    check("scroll bar: the Accent on every piece, and shown", SameRgb(scroll.thumb.vertex, THEME.accent)
+        and SameRgb(scroll.track.vertex, THEME.accent) and scroll.alpha == 1 and fader.shown == false)
+    store.Set("damageMeterScrollBar", "game")
+    check("scroll bar: the game's colors back", SameRgb(scroll.thumb.vertex, { r = 1, g = 1, b = 1 })
+        and SameRgb(scroll.track.vertex, { r = 1, g = 1, b = 1 }))
+    store.Set("damageMeterScrollBar", "accent")
+    store.Set("damageMeterSkin", false)
+    check("scroll bar: skin off gives it back", SameRgb(scroll.thumb.vertex, { r = 1, g = 1, b = 1 })
+        and scroll.alpha == 1)
+end
+
+-- a size of our own
+do
+    local _, store, meter, _, frames = Boot({ damageMeterSkin = true, damageMeterFontSize = 16 }, true)
+    Login(frames)
+    local window = meter.windows[1]
+    local name = window.MinimizeContainer.ScrollBox.frames[1].StatusBar.Name
+    check("size: the picked size on the names, the amounts and the title", name.size == 16
+        and window.SessionTimer.size == 16 and window.SessionDropdown.SessionName.size == 16)
+    store.Set("damageMeterFontSize", 0)
+    check("size: 0 is the game's own", name.size == GAME_SIZE)
+    store.Set("damageMeterFontSize", 12)
+    check("size: a new pick is applied at once", name.size == 12)
+    store.Set("damageMeterSkin", false)
+    check("size: off gives the game's size back", name.size == GAME_SIZE)
+end
+
+-- the rows
+do
+    local s, store = Boot()
+    local rows = {}
+    for _, row in ipairs(s.cards[1].rows) do
+        if row.key then rows[row.key] = row end
+    end
+    check("rows: bar opacity, background color and opacity, scroll bar", rows.damageMeterBarAlpha
+        and rows.damageMeterBarBgColor.colour and rows.damageMeterBarBgAlpha and rows.damageMeterScrollBar)
+    check("rows: window border, its color, the title bar and its faded opacity", rows.damageMeterBorder
+        and rows.damageMeterBorderColor.colour and rows.damageMeterTitleFade and rows.damageMeterTitleFadeAlpha)
+    check("rows: a font size, 0 for the game's own", rows.damageMeterFontSize ~= nil)
+    check("rows: the scroll bar and title bar choices", #rows.damageMeterScrollBar.choice[2] == 3
+        and #rows.damageMeterTitleFade.choice[2] == 2)
+    check("rows: border color and faded opacity wait for their switches", rows.damageMeterBorderColor.needs() == false
+        and rows.damageMeterTitleFadeAlpha.needs() == false)
+    store.Set("damageMeterBorder", true)
+    store.Set("damageMeterTitleFade", "hover")
+    check("rows: and are on with them", rows.damageMeterBorderColor.needs() == true
+        and rows.damageMeterTitleFadeAlpha.needs() == true)
+    for key, row in pairs(rows) do
+        check(key .. ": help is one short sentence", row.help == nil or #row.help < 100)
+    end
 end
 
 print("PASS damage meter skin: " .. checks .. " checks")

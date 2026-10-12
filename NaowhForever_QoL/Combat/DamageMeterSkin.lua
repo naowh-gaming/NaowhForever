@@ -16,10 +16,24 @@ local BARS = { { class = "Class Colors", accent = "Theme Accent", custom = "Cust
 local OUTLINE_GAME, OUTLINE_SHADOW = "game", ""
 local TEXT_GAME_DEFAULT, TEXT_NEEDS_CUSTOM = "Game Default", "Set Bar Color to Custom Color"
 local ENTRY_REFRESH = { "UpdateStyle", "UpdateBackground", "UpdateStatusBarColor" }
+local SCROLL_GAME, SCROLL_ACCENT, SCROLL_HIDDEN = "game", "accent", "hidden"
+local SCROLLS = { { game = "Game Default", accent = "Theme Accent", hidden = "Hidden" },
+    { SCROLL_GAME, SCROLL_ACCENT, SCROLL_HIDDEN } }
+local FADE_ALWAYS, FADE_HOVER = "always", "hover"
+local FADES = { { always = "Always Shown", hover = "Shown on Hover" }, { FADE_ALWAYS, FADE_HOVER } }
+local TITLE_PARTS = { "Header", "MinimizeButton", "SettingsDropdown", "SessionDropdown",
+    "DamageMeterTypeDropdown", "SessionTimer" }
+local FADE_EVERY, FADE_STEP, SCROLL_DEPTH, PERCENT = 0.1, 0.35, 3, 100
+local PERCENT_RANGE = { 0, PERCENT, 5 }
+local FONT_SIZE_RANGE = { 0, 24, 1 }
+local TEXT_NEEDS_BORDER, TEXT_NEEDS_FADE = "Turn on Window Border", "Set Title Bar to Shown on Hover"
 local SETTING_KEYS = { enabled = true, damageMeterSkin = true, damageMeterBars = true, damageMeterBarColor = true,
     damageMeterTexture = true, damageMeterFont = true, damageMeterOutline = true, damageMeterIconEdge = true,
     damageMeterHeaderColor = true, damageMeterWindowColor = true, damageMeterNameColor = true,
-    damageMeterValueColor = true, damageMeterTitleColor = true, damageMeterFree = true }
+    damageMeterValueColor = true, damageMeterTitleColor = true, damageMeterFree = true, damageMeterBarAlpha = true,
+    damageMeterBarBgColor = true, damageMeterBarBgAlpha = true, damageMeterScrollBar = true,
+    damageMeterBorder = true, damageMeterBorderColor = true, damageMeterTitleFade = true,
+    damageMeterTitleFadeAlpha = true, damageMeterFontSize = true }
 
 local OUTLINES = { { [OUTLINE_GAME] = TEXT_GAME_DEFAULT }, { OUTLINE_GAME } }
 for key, name in pairs(Parts.HUD_OUTLINES[1]) do OUTLINES[1][key] = name end
@@ -34,6 +48,12 @@ local entries = setmetatable({}, { __mode = "k" })
 local arts = setmetatable({}, { __mode = "k" })
 local swapped = setmetatable({}, { __mode = "k" })
 local faced = setmetatable({}, { __mode = "k" })
+local faded = setmetatable({}, { __mode = "k" })
+local scrolled = setmetatable({}, { __mode = "k" })
+local tints = setmetatable({}, { __mode = "k" })
+local fader
+local sinceTick = 0
+local hovering, lowAlpha, scrollHidden = false, 0, false
 
 local function On()
     return S.Get("enabled") and S.Get("damageMeterSkin")
@@ -59,6 +79,20 @@ local function Pick(key, token)
     local c = S.Get(key)
     if type(c) == "table" then return c end
     return T[token]
+end
+
+local function Fraction(key)
+    local v = S.Get(key)
+    if type(v) ~= "number" then return 1 end
+    if v > PERCENT then v = PERCENT end
+    if v < 0 then v = 0 end
+    return v / PERCENT
+end
+
+local function BarBackground()
+    local c = S.Get("damageMeterBarBgColor")
+    if type(c) == "table" then return c end
+    return Pick("damageMeterWindowColor", "bg")
 end
 
 local function BarColor()
@@ -98,14 +132,20 @@ local function Shadow(fontString, was)
     fontString:SetShadowColor(was.shadowR, was.shadowG, was.shadowB, was.shadowA)
 end
 
+local function Size(game)
+    local size = S.Get("damageMeterFontSize")
+    if type(size) == "number" and size > 0 then return size end
+    return game
+end
+
 local function Face(fontString, was)
     local outline = S.Get("damageMeterOutline")
     if outline == OUTLINE_GAME then
-        fontString:SetFont(FontPath(), was[2], was[3])
+        fontString:SetFont(FontPath(), Size(was[2]), was[3])
         Shadow(fontString, was)
         return
     end
-    fontString:SetFont(FontPath(), was[2], Parts.HudFlags(outline))
+    fontString:SetFont(FontPath(), Size(was[2]), Parts.HudFlags(outline))
     if outline == OUTLINE_SHADOW then Parts.HudText(fontString) else Parts.HudText(fontString, false) end
 end
 
@@ -158,17 +198,25 @@ local function BarTexture(entry)
     end
 end
 
+local function Fill(entry, alpha)
+    if not Has(entry, "GetStatusBarTexture") then return end
+    local texture = entry:GetStatusBarTexture()
+    if Has(texture, "SetAlpha") then texture:SetAlpha(alpha) end
+end
+
 local function Restyle(entry)
     if not On() then return end
     local bar = entry.StatusBar
     if type(bar) ~= "table" then return end
-    Flat(bar.Background, Pick("damageMeterWindowColor", "bg"))
+    Flat(bar.Background, BarBackground())
+    if Has(bar.Background, "SetAlpha") then bar.Background:SetAlpha(Fraction("damageMeterBarBgAlpha")) end
     if Has(bar.BackgroundEdge, "SetAlpha") then bar.BackgroundEdge:SetAlpha(0) end
     Text(bar.Name, Pick("damageMeterNameColor", "fg"))
     Text(bar.Value, Pick("damageMeterValueColor", "muted"))
     Edge(entry.Icon)
     BarTexture(entry)
     Tint(entry)
+    Fill(entry, Fraction("damageMeterBarAlpha"))
 end
 
 local function Skin(entry)
@@ -192,6 +240,57 @@ local function Entries(scrollBox)
     for _, frame in scrollBox:EnumerateFrames() do Skin(frame) end
 end
 
+local function WindowBorder(window)
+    local border = edges[window]
+    if S.Get("damageMeterBorder") ~= true or not Has(window, "GetFrameLevel") then
+        if border then border._frame:Hide() end
+        return
+    end
+    local c = Pick("damageMeterBorderColor", "outline")
+    if not border then
+        border = ns.Border(window, c)
+        edges[window] = border
+    end
+    border:SetColor(c.r, c.g, c.b, 1)
+    border._frame:Show()
+end
+
+local function Textures(frame, depth, out)
+    if Has(frame, "GetRegions") then
+        for _, region in ipairs({ frame:GetRegions() }) do
+            if Has(region, "SetVertexColor") then out[#out + 1] = region end
+        end
+    end
+    if depth > 0 and Has(frame, "GetChildren") then
+        for _, child in ipairs({ frame:GetChildren() }) do Textures(child, depth - 1, out) end
+    end
+    return out
+end
+
+local function ScrollBar(window, mode)
+    local bar = Dig(window, "MinimizeContainer", "ScrollBar")
+    if type(bar) ~= "table" then return end
+    if mode == SCROLL_GAME and not scrolled[window] then return end
+    scrolled[window] = true
+    if Has(bar, "SetAlpha") then bar:SetAlpha(mode == SCROLL_HIDDEN and 0 or 1) end
+    for _, texture in ipairs(Textures(bar, SCROLL_DEPTH, {})) do
+        if tints[texture] == nil and Has(texture, "GetVertexColor") then tints[texture] = { texture:GetVertexColor() } end
+        local was = tints[texture]
+        if mode == SCROLL_ACCENT then
+            texture:SetVertexColor(T.accent.r, T.accent.g, T.accent.b)
+        elseif was then
+            texture:SetVertexColor(was[1], was[2], was[3], was[4])
+        end
+    end
+end
+
+local function TitleAlpha(window, alpha)
+    for _, key in ipairs(TITLE_PARTS) do
+        local part = window[key]
+        if Has(part, "SetAlpha") then part:SetAlpha(alpha) end
+    end
+end
+
 local function SkinWindow(window)
     local titles, values = Pick("damageMeterTitleColor", "fg"), Pick("damageMeterValueColor", "muted")
     local header, background = Pick("damageMeterHeaderColor", "panel"), Pick("damageMeterWindowColor", "bg")
@@ -199,9 +298,11 @@ local function SkinWindow(window)
     Text(window.SessionTimer, values)
     Text(Dig(window, "SessionDropdown", "SessionName"), titles)
     Text(Dig(window, "DamageMeterTypeDropdown", "TypeName"), titles)
+    WindowBorder(window)
     local container = window.MinimizeContainer
     if type(container) ~= "table" then return end
     Flat(container.Background, background)
+    ScrollBar(window, S.Get("damageMeterScrollBar"))
     Skin(container.LocalPlayerEntry)
     Entries(container.ScrollBox)
     local source = container.SourceWindow
@@ -209,6 +310,14 @@ local function SkinWindow(window)
         Flat(source.Background, header)
         Entries(source.ScrollBox)
     end
+end
+
+local function RestoreWindow(window)
+    if faded[window] then
+        faded[window] = nil
+        TitleAlpha(window, 1)
+    end
+    if scrolled[window] then ScrollBar(window, SCROLL_GAME) end
 end
 
 local function GiveBack()
@@ -225,6 +334,8 @@ local function GiveBack()
     for entry in pairs(entries) do
         local bar = entry.StatusBar
         if type(bar) == "table" and Has(bar.BackgroundEdge, "SetAlpha") then bar.BackgroundEdge:SetAlpha(1) end
+        if type(bar) == "table" and Has(bar.Background, "SetAlpha") then bar.Background:SetAlpha(1) end
+        Fill(entry, 1)
         if swapped[entry] then
             swapped[entry] = nil
             local art = Has(entry, "GetStatusBarTexture") and entry:GetStatusBarTexture() or nil
@@ -232,6 +343,7 @@ local function GiveBack()
         end
         Tint(entry)
     end
+    if Has(meter, "ForEachSessionWindow") then meter:ForEachSessionWindow(RestoreWindow) end
 end
 
 local placed = false
@@ -332,6 +444,60 @@ local function ResetPosition()
     Place()
 end
 
+local function Toward(now, want)
+    if now < want then
+        now = now + FADE_STEP
+        if now > want then now = want end
+    else
+        now = now - FADE_STEP
+        if now < want then now = want end
+    end
+    return now
+end
+
+local function TickWindow(window)
+    if hovering then
+        local want = (Has(window, "IsMouseOver") and window:IsMouseOver()) and 1 or lowAlpha
+        local now = faded[window] or 1
+        if now ~= want then
+            now = Toward(now, want)
+            faded[window] = now
+            TitleAlpha(window, now)
+        end
+    elseif faded[window] then
+        faded[window] = nil
+        TitleAlpha(window, 1)
+    end
+    if scrollHidden then
+        local bar = Dig(window, "MinimizeContainer", "ScrollBar")
+        if Has(bar, "SetAlpha") then bar:SetAlpha(0) end
+    end
+end
+
+local function Tick()
+    if not (meter and On() and Has(meter, "ForEachSessionWindow")) then return end
+    hovering = S.Get("damageMeterTitleFade") == FADE_HOVER
+    lowAlpha = Fraction("damageMeterTitleFadeAlpha")
+    scrollHidden = S.Get("damageMeterScrollBar") == SCROLL_HIDDEN
+    meter:ForEachSessionWindow(TickWindow)
+end
+
+local function Pace()
+    local need = On() and (S.Get("damageMeterTitleFade") == FADE_HOVER
+        or S.Get("damageMeterScrollBar") == SCROLL_HIDDEN)
+    if need and not fader then
+        fader = CreateFrame("Frame")
+        fader:SetScript("OnUpdate", function(_, elapsed)
+            sinceTick = sinceTick + elapsed
+            if sinceTick < FADE_EVERY then return end
+            sinceTick = 0
+            Tick()
+        end)
+    end
+    if not fader then return end
+    if need then fader:Show() else fader:Hide() end
+end
+
 local function Apply()
     if not meter then return end
     generation = generation + 1
@@ -342,9 +508,12 @@ local function Apply()
         for entry in pairs(entries) do
             BarTexture(entry)
             Tint(entry)
+            Fill(entry, Fraction("damageMeterBarAlpha"))
         end
     end
     Place()
+    Tick()
+    Pace()
 end
 
 local function Hook()
@@ -380,8 +549,16 @@ local function CustomBars()
     return S.Get("damageMeterBars") == BAR_CUSTOM
 end
 
-local function ColorRow(key, label, token, help)
-    return { key = key, label = label, colour = true, help = help,
+local function Bordered()
+    return S.Get("damageMeterBorder") == true
+end
+
+local function FadingTitle()
+    return S.Get("damageMeterTitleFade") == FADE_HOVER
+end
+
+local function ColorRow(key, label, token, help, needs, why)
+    return { key = key, label = label, colour = true, help = help, needs = needs, why = why,
         get = function()
             local c = Pick(key, token)
             return c.r, c.g, c.b, 1
@@ -405,8 +582,23 @@ Settings.Page("QoL/Combat", S):Card({
         { key = "damageMeterTexture", label = "Bar Texture", texture = TEXT_GAME_DEFAULT },
         { key = "damageMeterIconEdge", label = "Icon Border", toggle = true,
           help = "A thin border round each bar's icon." },
+        { key = "damageMeterBarAlpha", label = "Bar Opacity", slider = PERCENT_RANGE, unit = "%",
+          help = "How solid the bars are." },
+        { key = "damageMeterBarBgColor", label = "Bar Background Color", colour = true,
+          get = function()
+              local c = BarBackground()
+              return c.r, c.g, c.b, 1
+          end,
+          set = function(r, g, b) S.Set("damageMeterBarBgColor", { r = r, g = g, b = b }) end,
+          help = "The color behind each bar. Not picked: the Window Color." },
+        { key = "damageMeterBarBgAlpha", label = "Bar Background Opacity", slider = PERCENT_RANGE, unit = "%",
+          help = "How solid the color behind each bar is." },
+        { key = "damageMeterScrollBar", label = "Scroll Bar", choice = SCROLLS,
+          help = "The game's own, in your Accent, or hidden. The mouse wheel still scrolls." },
         Settings.Group("Text"),
         { key = "damageMeterFont", label = "Font", font = true },
+        { key = "damageMeterFontSize", label = "Font Size", slider = FONT_SIZE_RANGE, unit = "px",
+          help = "0 keeps the game's own size. Edit Mode's Text Size still scales it." },
         { key = "damageMeterOutline", label = "Outline", choice = OUTLINES,
           help = "The game's own, none, the soft shadow, a thin outline or a thick one." },
         ColorRow("damageMeterNameColor", "Name Color", "fg", "The names on the bars."),
@@ -415,6 +607,14 @@ Settings.Page("QoL/Combat", S):Card({
         Settings.Group("Window"),
         ColorRow("damageMeterHeaderColor", "Title Bar Color", "panel", "The title bar and the spell panel."),
         ColorRow("damageMeterWindowColor", "Window Color", "bg", "The window and the shadow behind each bar."),
+        { key = "damageMeterBorder", label = "Window Border", toggle = true,
+          help = "A thin border round the whole window." },
+        ColorRow("damageMeterBorderColor", "Border Color", "outline", "The border round the window.",
+            Bordered, TEXT_NEEDS_BORDER),
+        { key = "damageMeterTitleFade", label = "Title Bar", choice = FADES,
+          help = "Always shown, or faded until the mouse is over the window." },
+        { key = "damageMeterTitleFadeAlpha", label = "Faded Title Opacity", slider = PERCENT_RANGE, unit = "%",
+          needs = FadingTitle, why = TEXT_NEEDS_FADE, help = "How much of the title bar stays while the mouse is away." },
     },
 })
 
