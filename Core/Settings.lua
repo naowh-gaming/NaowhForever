@@ -40,7 +40,7 @@ local S = UI.ModuleSettings("qol", {
     damageMeterSkin = F.damageMeterSkin, damageMeterBars = "class", damageMeterBarColor = false,
     damageMeterTexture = "", damageMeterFont = "", damageMeterOutline = "game", damageMeterIconEdge = true,
     damageMeterHeaderColor = false, damageMeterWindowColor = false, damageMeterNameColor = false,
-    damageMeterValueColor = false,
+    damageMeterValueColor = false, damageMeterTitleColor = false,
     cursorCooldown = F.cursorCooldown, cursorCooldownSize = 29, cursorCooldownTime = 0.75,
     globalCopy = F.globalCopy, copyTooltipIds = true, copyModifier = "CTRL-SHIFT", copyKey = "C", copyShortcutSynced = false,
     badgeChat = F.badgeChat, badgeCard = F.badgeCard, badgeTooltip = F.badgeTooltip,

@@ -96,7 +96,7 @@ local function Boot(settings, loaded, windows)
     local defaults = { enabled = true, damageMeterSkin = false, damageMeterBars = "class", damageMeterBarColor = false,
         damageMeterTexture = "", damageMeterFont = "", damageMeterOutline = "game", damageMeterIconEdge = true,
         damageMeterHeaderColor = false, damageMeterWindowColor = false, damageMeterNameColor = false,
-        damageMeterValueColor = false }
+        damageMeterValueColor = false, damageMeterTitleColor = false }
     local store = {}
     function store.Get(k)
         local v = s.settings[k]
@@ -395,8 +395,12 @@ do
     local window = meter.windows[1]
     local c = window.MinimizeContainer
     local bar = c.ScrollBox.frames[1].StatusBar
-    check("colors: the names, in the entries and the dropdowns", bar.Name.r == 1 and bar.Name.g == 0
-        and window.SessionDropdown.SessionName.r == 1 and window.DamageMeterTypeDropdown.TypeName.g == 0)
+    check("colors: the names on the bars only, not the title", bar.Name.r == 1 and bar.Name.g == 0
+        and window.SessionDropdown.SessionName.r == THEME.fg.r
+        and window.DamageMeterTypeDropdown.TypeName.r == THEME.fg.r)
+    store.Set("damageMeterTitleColor", { r = 0.2, g = 0.4, b = 0.6 })
+    check("colors: the title has its own color, the names stay", window.SessionDropdown.SessionName.b == 0.6
+        and window.DamageMeterTypeDropdown.TypeName.g == 0.4 and bar.Name.r == 1 and bar.Name.g == 0)
     check("colors: the amounts and the timer", bar.Value.g == 1 and bar.Value.r == 0 and window.SessionTimer.g == 1)
     check("colors: the title bar and the spell panel", SameRgb(window.Header.solid, blue)
         and SameRgb(c.SourceWindow.Background.solid, blue))
@@ -442,8 +446,9 @@ do
     end
     check("the rows: texture, font, outline and the icon border",
         rows.damageMeterTexture and rows.damageMeterFont and rows.damageMeterOutline and rows.damageMeterIconEdge)
-    check("the color rows: bars, names, amounts, title bar and window", rows.damageMeterBarColor.colour
+    check("the color rows: bars, names, amounts, title, title bar and window", rows.damageMeterBarColor.colour
         and rows.damageMeterNameColor.colour and rows.damageMeterValueColor.colour
+        and rows.damageMeterTitleColor.colour
         and rows.damageMeterHeaderColor.colour and rows.damageMeterWindowColor.colour)
     check("the outline choice leads with the game's own, then the shared four",
         rows.damageMeterOutline.choice[2][1] == "game" and #rows.damageMeterOutline.choice[2] == 5

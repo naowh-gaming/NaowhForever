@@ -16,7 +16,7 @@ local ENTRY_REFRESH = { "UpdateStyle", "UpdateBackground", "UpdateStatusBarColor
 local SETTING_KEYS = { enabled = true, damageMeterSkin = true, damageMeterBars = true, damageMeterBarColor = true,
     damageMeterTexture = true, damageMeterFont = true, damageMeterOutline = true, damageMeterIconEdge = true,
     damageMeterHeaderColor = true, damageMeterWindowColor = true, damageMeterNameColor = true,
-    damageMeterValueColor = true }
+    damageMeterValueColor = true, damageMeterTitleColor = true }
 
 local OUTLINES = { { [OUTLINE_GAME] = TEXT_GAME_DEFAULT }, { OUTLINE_GAME } }
 for key, name in pairs(Parts.HUD_OUTLINES[1]) do OUTLINES[1][key] = name end
@@ -186,12 +186,12 @@ local function Entries(scrollBox)
 end
 
 local function SkinWindow(window)
-    local names, values = Pick("damageMeterNameColor", "fg"), Pick("damageMeterValueColor", "muted")
+    local titles, values = Pick("damageMeterTitleColor", "fg"), Pick("damageMeterValueColor", "muted")
     local header, background = Pick("damageMeterHeaderColor", "panel"), Pick("damageMeterWindowColor", "bg")
     Flat(window.Header, header)
     Text(window.SessionTimer, values)
-    Text(Dig(window, "SessionDropdown", "SessionName"), names)
-    Text(Dig(window, "DamageMeterTypeDropdown", "TypeName"), names)
+    Text(Dig(window, "SessionDropdown", "SessionName"), titles)
+    Text(Dig(window, "DamageMeterTypeDropdown", "TypeName"), titles)
     local container = window.MinimizeContainer
     if type(container) ~= "table" then return end
     Flat(container.Background, background)
@@ -303,8 +303,9 @@ Settings.Page("QoL/Combat", S):Card({
         { key = "damageMeterFont", label = "Font", font = true },
         { key = "damageMeterOutline", label = "Outline", choice = OUTLINES,
           help = "The game's own, none, the soft shadow, a thin outline or a thick one." },
-        ColorRow("damageMeterNameColor", "Name Color", "fg", "The names, and the list and session names."),
+        ColorRow("damageMeterNameColor", "Name Color", "fg", "The names on the bars."),
         ColorRow("damageMeterValueColor", "Amount Color", "muted", "The amounts, and the fight time."),
+        ColorRow("damageMeterTitleColor", "Title Color", "fg", "The list and session names in the title bar."),
         Settings.Group("Window"),
         ColorRow("damageMeterHeaderColor", "Title Bar Color", "panel", "The title bar and the spell panel."),
         ColorRow("damageMeterWindowColor", "Window Color", "bg", "The window and the shadow behind each bar."),
