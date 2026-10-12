@@ -12,6 +12,7 @@ local S = ns.UI.ModuleSettings("journeys", {
     hearthSaving = 120,
     teleports = true,
     mapRoute = true,
+    minimapRoute = true,
     quests = true,
 })
 ns.JourneysSettings = S

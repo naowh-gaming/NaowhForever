@@ -280,6 +280,25 @@ function Guide.Current()
     return journey
 end
 
+function Guide.Points()
+    if not journey or not journey.plan then return nil end
+    local legs = journey.plan.legs
+    if #legs == 0 then return nil end
+    local list, first = {}, 1
+    local corners = journey.corners
+    if corners then
+        for i = (journey.corner or 1) * 2 - 1, #corners, 2 do
+            list[#list + 1] = { c = legs[1].c, x = corners[i], y = corners[i + 1], walk = true }
+        end
+        first = 2
+    end
+    for i = first, #legs do
+        local leg = legs[i]
+        list[#list + 1] = { c = leg.c, x = leg.x, y = leg.y, walk = leg.mode == "walk" }
+    end
+    return list
+end
+
 function Guide.Dismissed()
     return dismissed
 end

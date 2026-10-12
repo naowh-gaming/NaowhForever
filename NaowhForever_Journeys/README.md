@@ -22,6 +22,7 @@ NaowhForever_Journeys/
   Media/                      the mode icons (walk, ship, fly, tram, portal, hearth, teleport, goal), drawn by Tools/media/make_media.py
   UI/Card.lua                 the Journey card
   UI/MapRoute.lua, .xml       the journey drawn on the world map
+  UI/MinimapRoute.lua         the journey drawn on the minimap
   UI/SettingsPage.lua         the settings page, as cards
 ```
 
@@ -50,6 +51,10 @@ NaowhForever_Journeys/
 - A walk's path is the crossings it passes, then each tile's polygons between them, pulled tight by
   the funnel algorithm. The guide puts the waypoint on each corner in turn, at least `CORNER_GAP`
   yards apart, and plans again at the last.
+- The minimap route is lines on a frame over the minimap, each segment clipped to the minimap's circle in
+  code (a line frame cannot be masked), placed from your position with `C_Minimap.GetViewRadius` and turned by
+  `GetPlayerFacing` when `rotateMinimap` is on. It redraws every `UPDATE_EVERY` seconds, only while a
+  journey is on, so a moving player keeps it in place; with none it has no update at all.
 - Water costs `SWIM` times its yards and the sea `SEA` times, the same factors the bake used.
 - Tracking a quest (`SUPER_TRACKING_CHANGED`) starts a journey to the game's own next point for it
   (`C_QuestLog.GetNextWaypoint`), or its marker on your map, when that is over `QUEST_NEAR` yards away

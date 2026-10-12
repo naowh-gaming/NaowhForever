@@ -12,5 +12,6 @@
     <Script file="Quests.lua"/>
     <Script file="UI\Card.lua"/>
     <Include file="UI\MapRoute.xml"/>
+    <Script file="UI\MinimapRoute.lua"/>
     <Script file="UI\SettingsPage.lua"/>
 </Ui>
