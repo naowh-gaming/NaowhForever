@@ -15,22 +15,22 @@ local TEXT_NOTHING = "Nothing to restore yet: it remembers your settings from be
 
 -- the game's own list, in its own order; stored values are what Edit Mode keeps (see its ConvertValue functions)
 local SPECS = {
-    { name = "Style", label = "Style", enum = "DamageMeterStyle", members = { "Default", "Bordered", "Thin" },
-      names = { "Default", "Bordered", "Thin" }, help = "The look of the bars: Default, Bordered or Thin." },
+    { name = "Style", label = "Bar Style", enum = "DamageMeterStyle", members = { "Default", "Bordered", "Thin" },
+      names = { "Default", "Bordered", "Thin" }, help = "Default, Bordered or Thin bars." },
     { name = "Numbers", label = "Numbers", enum = "DamageMeterNumbers", members = { "Minimal", "Compact", "Complete" },
       names = { "Minimal", "Compact", "Complete" }, default = "Compact", help = "How much of each number is written." },
-    { name = "FrameWidth", label = "Frame Width", convert = DIFF, min = 200, max = 600, step = 1, default = 300,
-      unit = "px", frame = true, help = "The window's width." },
-    { name = "FrameHeight", label = "Frame Height", convert = DIFF, min = 120, max = 400, step = 1, default = 200,
-      unit = "px", frame = true, help = "The window's height." },
+    { name = "FrameWidth", label = "Window Width", convert = DIFF, min = 200, max = 600, step = 1, default = 300,
+      unit = "px", frame = true, help = "The window's width. Move and Resize sets it by dragging." },
+    { name = "FrameHeight", label = "Window Height", convert = DIFF, min = 120, max = 400, step = 1, default = 200,
+      unit = "px", frame = true, help = "The window's height. Move and Resize sets it by dragging." },
     { name = "BarHeight", label = "Bar Height", convert = DIFF, min = 15, max = 40, step = 1, default = 24,
       unit = "px", help = "How tall each bar is." },
     { name = "Padding", label = "Bar Spacing", convert = STEP, min = 2, max = 10, step = 1, default = 4,
       unit = "px", help = "The gap between the bars." },
-    { name = "Transparency", label = "Transparency", convert = STEP, min = 50, max = 100, step = 1, default = 100,
-      unit = "%", help = "How solid the whole window is." },
-    { name = "BackgroundTransparency", label = "Background", convert = STEP, min = 0, max = 100, step = 1,
-      default = 0, unit = "%", help = "How solid the window's background is." },
+    { name = "Transparency", label = "Window Opacity", convert = STEP, min = 50, max = 100, step = 1, default = 100,
+      unit = "%", help = "How solid the whole window is, from half to full." },
+    { name = "BackgroundTransparency", label = "Background Opacity", convert = STEP, min = 0, max = 100, step = 1,
+      default = 0, unit = "%", help = "How solid the window's own background is. 0 is none." },
     { name = "TextSize", label = "Text Size", convert = STEP, min = 50, max = 150, step = 10, default = 100,
       unit = "%", help = "The size of all the text, against normal." },
     { name = "Visibility", label = "Visibility", enum = "DamageMeterVisibility",
@@ -287,12 +287,16 @@ local function Row(spec)
         set = function(value) Request(spec, value) end }
 end
 
-local rows = {}
+local rows, rowOf = {}, {}
 for _, spec in ipairs(SPECS) do
     local row = Row(spec)
-    if row then rows[#rows + 1] = row end
+    if row then
+        rows[#rows + 1] = row
+        rowOf[spec.name] = row
+    end
 end
-rows[#rows + 1] = { label = "Original Settings", buttonText = "Restore", button = Restore, note = Note("Restore"),
-    help = "Puts all of these back to how they were before your first change since login." }
+local restore = { label = "Restore Game Settings", buttonText = "Restore", button = Restore, note = Note("Restore"),
+    help = "Puts the game's own settings back to how they were before your first change since login." }
+rows[#rows + 1] = restore
 
-ns.DamageMeterLayout = { rows = rows }
+ns.DamageMeterLayout = { rows = rows, byName = rowOf, restore = restore }

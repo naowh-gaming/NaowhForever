@@ -183,11 +183,16 @@ local function Boot(settings, loaded, windows)
     end
     function meter:SetupSessionWindow() end
     local ns = { QoLSettings = store, THEME = THEME, Apply = function() end,
-        DamageMeterLayout = { rows = {
-            { label = "Frame Width", slider = { 200, 600, 1 }, frame = true, get = function() return 300 end,
-              set = function() end },
-            { label = "Bar Height", slider = { 15, 40, 1 }, get = function() return 24 end, set = function() end },
-            { label = "Original Settings", buttonText = "Restore", button = function() end } } },
+        DamageMeterLayout = { rows = {}, byName = {
+            FrameWidth = { label = "Window Width", slider = { 200, 600, 1 }, frame = true,
+                get = function() return 300 end, set = function() end },
+            FrameHeight = { label = "Window Height", slider = { 120, 400, 1 }, frame = true,
+                get = function() return 200 end, set = function() end },
+            BarHeight = { label = "Bar Height", slider = { 15, 40, 1 }, get = function() return 24 end,
+                set = function() end },
+            Visibility = { label = "Visibility", choice = { { ["0"] = "Always Visible" }, { "0" } },
+                get = function() return "0" end, set = function() end } },
+            restore = { label = "Restore Game Settings", buttonText = "Restore", button = function() end } },
         Print = function(text) s.printed[#s.printed + 1] = text end,
         MEDIA = "Media\\",
         UIFontPath = function() return FONT end,
@@ -281,7 +286,10 @@ do
     check("its id and name, a Reskin toggle first and no switch of its own", card.id == "damageMeterSkin"
         and card.name == "Default Damage Meter" and card.switch == nil and card.rows[1].key == "damageMeterSkin"
         and card.rows[1].toggle == true)
-    local row = card.rows[2]
+    local row
+    for _, item in ipairs(card.rows) do
+        if item.key == "damageMeterBars" then row = item end
+    end
     check("a bar color choice", row.key == "damageMeterBars" and row.choice[2][1] == "class" and row.choice[2][2] == "accent"
         and row.choice[1].class == "Class Colors" and row.choice[1].accent == "Theme Accent")
     check("one short help sentence", #card.help < 100 and not card.help:find("%d"))
@@ -858,21 +866,34 @@ do
     end
 end
 
--- the game's own settings sit in the card, under their own heading
+-- the card is in clear sections, with the game's own settings among the reskin's
 do
     local s, store = Boot()
-    local found, frameRow, heading = {}, nil, false
+    local heads, at, last = {}, {}, nil
+    local width
+    local byLabel = {}
     for _, item in ipairs(s.cards[1].rows) do
-        if item.group == "Edit Mode Settings" then heading = true end
-        if item.label then found[item.label] = item end
-        if item.frame then frameRow = item end
+        if item.group then
+            heads[#heads + 1] = item.group
+            last = item.group
+        elseif item.label then
+            at[item.label] = last or "top"
+            byLabel[item.label] = item
+            if item.label == "Window Width" then width = item end
+        end
     end
-    check("edit mode settings: a heading, the rows and the restore button", heading and found["Bar Height"]
-        and found["Original Settings"] and frameRow ~= nil)
-    check("edit mode settings: the width and height wait for Move and Resize to be off", frameRow.needs() == true)
+    check("sections, in order", table.concat(heads, "|") == "Window|Bars|Text|Title Bar|Reset")
+    check("each row sits where it belongs", at["Reskin"] == "top" and at["Visibility"] == "Window"
+        and at["Window Width"] == "Window" and at["Move and Resize"] == "Window" and at["Window Color"] == "Window"
+        and at["Bar Height"] == "Bars" and at["Bar Texture"] == "Bars" and at["Font"] == "Text"
+        and at["Name Color"] == "Text" and at["Title Color"] == "Title Bar" and at["Buttons"] == "Title Bar"
+        and at["Restore Game Settings"] == "Reset")
+    check("the reskin's rows wait for its switch, the game's own do not", byLabel["Bar Texture"].needs == "damageMeterSkin"
+        and byLabel["Bar Height"].needs == nil and byLabel["Visibility"].needs == nil
+        and byLabel["Move and Resize"].needs == nil)
+    check("the width waits for Move and Resize to be off", width.needs() == true)
     store.Set("damageMeterFree", true)
-    check("edit mode settings: and are off with it, and say why", frameRow.needs() == false
-        and frameRow.why == "Turn off Move and Resize")
+    check("and is off with it, and says why", width.needs() == false and width.why == "Turn off Move and Resize")
 end
 
 -- the rows

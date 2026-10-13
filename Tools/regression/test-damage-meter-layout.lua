@@ -89,17 +89,17 @@ do
     local labels = {}
     for _, row in ipairs(s.rows) do labels[#labels + 1] = row.label end
     check("the game's settings in its order, then Restore", table.concat(labels, "|") ==
-        "Style|Numbers|Frame Width|Frame Height|Bar Height|Bar Spacing|Transparency|Background|Text Size|Visibility"
-        .. "|Show Spec Icon|Show Class Color|Original Settings")
-    check("choices: the game's names", s.Row("Style").choice[1]["1"] == "Bordered"
+        "Bar Style|Numbers|Window Width|Window Height|Bar Height|Bar Spacing|Window Opacity|Background Opacity|Text Size|Visibility"
+        .. "|Show Spec Icon|Show Class Color|Restore Game Settings")
+    check("choices: the game's names", s.Row("Bar Style").choice[1]["1"] == "Bordered"
         and s.Row("Visibility").choice[1]["3"] == "In Group" and #s.Row("Numbers").choice[2] == 3)
     check("what each reads, from what Edit Mode stores", s.Row("Bar Height").get() == 20 and s.Row("Bar Spacing").get() == 4
-        and s.Row("Text Size").get() == 100 and s.Row("Transparency").get() == 100 and s.Row("Background").get() == 0
-        and s.Row("Frame Width").get() == 300 and s.Row("Style").get() == "0" and s.Row("Numbers").get() == "1"
+        and s.Row("Text Size").get() == 100 and s.Row("Window Opacity").get() == 100 and s.Row("Background Opacity").get() == 0
+        and s.Row("Window Width").get() == 300 and s.Row("Bar Style").get() == "0" and s.Row("Numbers").get() == "1"
         and s.Row("Visibility").get() == "0" and s.Row("Show Spec Icon").get() == true)
     check("sliders have the game's ranges and steps", s.Row("Bar Height").slider[1] == 15 and s.Row("Bar Height").slider[2] == 40
-        and s.Row("Text Size").slider[3] == 10 and s.Row("Transparency").slider[1] == 50
-        and s.Row("Frame Height").slider[2] == 400 and s.Row("Frame Width").frame == true)
+        and s.Row("Text Size").slider[3] == 10 and s.Row("Window Opacity").slider[1] == 50
+        and s.Row("Window Height").slider[2] == 400 and s.Row("Window Width").frame == true)
     for _, row in ipairs(s.rows) do
         check(row.label .. ": help is short", #row.help < 100)
     end
@@ -111,10 +111,10 @@ do
     s.Row("Bar Height").set(30)
     s.Row("Bar Spacing").set(6)
     s.Row("Text Size").set(120)
-    s.Row("Transparency").set(80)
-    s.Row("Background").set(25)
-    s.Row("Frame Width").set(400)
-    s.Row("Style").set("1")
+    s.Row("Window Opacity").set(80)
+    s.Row("Background Opacity").set(25)
+    s.Row("Window Width").set(400)
+    s.Row("Bar Style").set("1")
     s.Row("Visibility").set("2")
     s.Row("Show Spec Icon").set(false)
     check("nothing is written while the sliders move", #s.saves == 0)
@@ -224,16 +224,16 @@ end
 -- Original Settings puts back what the first change found
 do
     local s = Boot({ apply = true })
-    s.Row("Original Settings").button()
-    check("nothing to restore yet: said, nothing saved", #s.saves == 0 and s.Row("Original Settings").note() ~= nil)
+    s.Row("Restore Game Settings").button()
+    check("nothing to restore yet: said, nothing saved", #s.saves == 0 and s.Row("Restore Game Settings").note() ~= nil)
     s.Row("Bar Height").set(30); s.Flush(); s.Flush()
     s.Row("Text Size").set(120); s.Flush(); s.Flush()
     check("two changes were saved", #s.saves == 2 and s.account.damageMeterLayoutBackup.name == "Mine"
         and s.account.damageMeterLayoutBackup.values.BarHeight == 5
         and s.account.damageMeterLayoutBackup.values.TextSize == 5 and s.converts == 1)
-    s.Row("Original Settings").button()
+    s.Row("Restore Game Settings").button()
     check("the rows show the originals at once", s.Row("Bar Height").get() == 20 and s.Row("Text Size").get() == 100
-        and s.Row("Original Settings").note() == nil)
+        and s.Row("Restore Game Settings").note() == nil)
     s.Flush(); s.Flush()
     local last = s.saves[#s.saves]
     check("one save puts them all back, as stored", #s.saves == 3 and s.Stored(last, E.BarHeight) == 5
@@ -241,7 +241,7 @@ do
     local late = Boot()
     late.Row("Bar Height").set(30); late.Flush(); late.Flush()
     late.manager.layoutInfo.layouts[3].systems[2].settings[1].value = 15
-    late.Row("Original Settings").button()
+    late.Row("Restore Game Settings").button()
     check("the rows show the originals before the game has taken them", late.Row("Bar Height").get() == 20)
 end
 

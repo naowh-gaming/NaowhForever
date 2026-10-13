@@ -610,6 +610,10 @@ local function SkinOn()
     return S.Get("damageMeterSkin") == true
 end
 
+local function NotFree()
+    return S.Get("damageMeterFree") ~= true
+end
+
 local function ColorRow(key, label, token, help, needs, why)
     return { key = key, label = label, colour = true, help = help, needs = needs, why = why,
         get = function()
@@ -617,20 +621,6 @@ local function ColorRow(key, label, token, help, needs, why)
             return c.r, c.g, c.b, 1
         end,
         set = function(r, g, b) S.Set(key, { r = r, g = g, b = b }) end }
-end
-
-local function Skinned(rows)
-    for _, row in ipairs(rows) do
-        if row.group == nil then
-            local own = row.needs
-            if type(own) == "function" then
-                row.needs = function() return SkinOn() and own() end
-            elseif own == nil then
-                row.needs = "damageMeterSkin"
-            end
-        end
-    end
-    return rows
 end
 
 local function SizeRow(key, label, help)
@@ -644,9 +634,9 @@ local function SizeRow(key, label, help)
         set = function(v) S.Set(key, v) end }
 end
 
-local rows = Skinned({
-    { key = "damageMeterBars", label = "Bar Color", choice = BARS },
-    { key = "damageMeterBarColor", label = "Custom Bar Color", colour = true, needs = CustomBars,
+local skin = {
+    barColor = { key = "damageMeterBars", label = "Bar Color", choice = BARS },
+    customBarColor = { key = "damageMeterBarColor", label = "Custom Bar Color", colour = true, needs = CustomBars,
       why = TEXT_NEEDS_CUSTOM,
       get = function()
           local c = Pick("damageMeterBarColor", "accent")
@@ -654,74 +644,100 @@ local rows = Skinned({
       end,
       set = function(r, g, b) S.Set("damageMeterBarColor", { r = r, g = g, b = b }) end,
       help = "The bars' color when Bar Color is Custom Color." },
-    { key = "damageMeterTexture", label = "Bar Texture", texture = TEXT_GRADIENT },
-    { key = "damageMeterIconEdge", label = "Icon Border", toggle = true,
+    texture = { key = "damageMeterTexture", label = "Bar Texture", texture = TEXT_GRADIENT },
+    iconEdge = { key = "damageMeterIconEdge", label = "Icon Border", toggle = true,
       help = "A thin border round each bar's icon." },
-    { key = "damageMeterBarAlpha", label = "Bar Opacity", slider = PERCENT_RANGE, unit = "%",
+    barAlpha = { key = "damageMeterBarAlpha", label = "Bar Opacity", slider = PERCENT_RANGE, unit = "%",
       help = "How solid the bars are." },
-    { key = "damageMeterBarBgColor", label = "Bar Background Color", colour = true,
+    barBgColor = { key = "damageMeterBarBgColor", label = "Bar Background Color", colour = true,
       get = function()
           local c = BarBackground()
           return c.r, c.g, c.b, 1
       end,
       set = function(r, g, b) S.Set("damageMeterBarBgColor", { r = r, g = g, b = b }) end,
       help = "The color behind each bar. Not picked: the Window Color." },
-    { key = "damageMeterBarBgAlpha", label = "Bar Background Opacity", slider = PERCENT_RANGE, unit = "%",
+    barBgAlpha = { key = "damageMeterBarBgAlpha", label = "Bar Background Opacity", slider = PERCENT_RANGE, unit = "%",
       help = "How solid the color behind each bar is." },
-    { key = "damageMeterScrollBar", label = "Scroll Bar", choice = SCROLLS,
+    scrollBar = { key = "damageMeterScrollBar", label = "Scroll Bar", choice = SCROLLS,
       help = "The game's own, in your Accent, or hidden. The mouse wheel still scrolls." },
-    Settings.Group("Text"),
-    { key = "damageMeterFont", label = "Font", font = true },
-    { key = "damageMeterOutline", label = "Outline", choice = OUTLINES,
+    font = { key = "damageMeterFont", label = "Font", font = true },
+    outline = { key = "damageMeterOutline", label = "Outline", choice = OUTLINES,
       help = "The game's own, none, the soft shadow, a thin outline or a thick one." },
-    ColorRow("damageMeterNameColor", "Name Color", "fg", "The names on the bars."),
-    SizeRow("damageMeterNameSize", "Name Size",
-        "The names on the bars. 0 is the game's own size; Edit Mode's Text Size still scales it."),
-    ColorRow("damageMeterValueColor", "Amount Color", "muted", "The amounts, and the fight time."),
-    SizeRow("damageMeterValueSize", "Amount Size", "The amounts and the fight time. 0 is the game's own size."),
-    ColorRow("damageMeterTitleColor", "Title Color", "fg", "The list and session names in the title bar."),
-    SizeRow("damageMeterTitleSize", "Title Size", "The list name in the title bar. 0 is the game's own size."),
-    Settings.Group("Window"),
-    ColorRow("damageMeterHeaderColor", "Title Bar Color", "panel", "The title bar and the spell panel."),
-    ColorRow("damageMeterWindowColor", "Window Color", "bg", "The window and the shadow behind each bar."),
-    { key = "damageMeterBorder", label = "Window Border", toggle = true,
+    nameColor = ColorRow("damageMeterNameColor", "Name Color", "fg", "The names on the bars."),
+    nameSize = SizeRow("damageMeterNameSize", "Name Size",
+        "The names on the bars. 0 is the game's own size; Text Size still scales it."),
+    valueColor = ColorRow("damageMeterValueColor", "Amount Color", "muted", "The amounts, and the fight time."),
+    valueSize = SizeRow("damageMeterValueSize", "Amount Size", "The amounts and the fight time. 0 is the game's own size."),
+    titleColor = ColorRow("damageMeterTitleColor", "Title Color", "fg", "The list and session names in the title bar."),
+    titleSize = SizeRow("damageMeterTitleSize", "Title Size", "The list name in the title bar. 0 is the game's own size."),
+    headerColor = ColorRow("damageMeterHeaderColor", "Title Bar Color", "panel", "The title bar and the spell panel."),
+    windowColor = ColorRow("damageMeterWindowColor", "Window Color", "bg", "The window and the shadow behind each bar."),
+    border = { key = "damageMeterBorder", label = "Window Border", toggle = true,
       help = "A thin border round the whole window." },
-    ColorRow("damageMeterBorderColor", "Border Color", "line", "The border round the window.",
+    borderColor = ColorRow("damageMeterBorderColor", "Border Color", "line", "The border round the window.",
         Bordered, TEXT_NEEDS_BORDER),
-    { key = "damageMeterButtons", label = "Buttons", choice = BUTTONS,
+    buttons = { key = "damageMeterButtons", label = "Buttons", choice = BUTTONS,
       help = "The title bar's buttons: the game's own, or in your theme." },
-    ColorRow("damageMeterButtonColor", "Button Color", "accent", "The buttons, when they are Themed.",
+    buttonColor = ColorRow("damageMeterButtonColor", "Button Color", "accent", "The buttons, when they are Themed.",
         ThemedButtons, TEXT_NEEDS_THEMED),
-    { key = "damageMeterTitleFade", label = "Title Bar", choice = FADES,
+    titleFade = { key = "damageMeterTitleFade", label = "Title Bar", choice = FADES,
       help = "Always shown, or faded until the mouse is over the window." },
-    { key = "damageMeterTitleFadeAlpha", label = "Faded Title Opacity", slider = PERCENT_RANGE, unit = "%",
-      needs = FadingTitle, why = TEXT_NEEDS_FADE, help = "How much of the title bar stays while the mouse is away." },
-})
+    titleFadeAlpha = { key = "damageMeterTitleFadeAlpha", label = "Faded Title Opacity", slider = PERCENT_RANGE,
+      unit = "%", needs = FadingTitle, why = TEXT_NEEDS_FADE,
+      help = "How much of the title bar stays while the mouse is away." },
+}
 
-local card = { { key = "damageMeterSkin", label = "Reskin", toggle = true,
-    help = "Draws the game's damage meter in your theme." } }
-for _, row in ipairs(rows) do card[#card + 1] = row end
-card[#card + 1] = Settings.Group("Position and Size")
-card[#card + 1] = { key = "damageMeterFree", label = "Move and Resize", toggle = true,
-    note = function() return placementNote end,
-    help = "Drag the window and its corner here, without Edit Mode." }
-card[#card + 1] = { label = "Window Position", buttonText = "Reset", button = ResetPosition,
-    needs = "damageMeterFree", help = "Puts the window back where Edit Mode has it." }
-local function NotFree()
-    return S.Get("damageMeterFree") ~= true
+-- every row of the reskin waits for the Reskin switch; the game's own settings and moving do not
+for _, row in pairs(skin) do
+    local own = row.needs
+    if type(own) == "function" then
+        row.needs = function() return SkinOn() and own() end
+    elseif own == nil then
+        row.needs = "damageMeterSkin"
+    end
 end
 
-if ns.DamageMeterLayout then
-    card[#card + 1] = Settings.Group("Edit Mode Settings")
-    for _, row in ipairs(ns.DamageMeterLayout.rows) do
-        if row.frame then row.needs, row.why = NotFree, TEXT_NEEDS_NOT_FREE end
-        card[#card + 1] = row
+local layout = ns.DamageMeterLayout
+local game = layout and layout.byName or {}
+for _, name in ipairs({ "FrameWidth", "FrameHeight" }) do
+    if game[name] then game[name].needs, game[name].why = NotFree, TEXT_NEEDS_NOT_FREE end
+end
+
+local card = {}
+local function Add(...)
+    for index = 1, select("#", ...) do
+        local row = select(index, ...)
+        if row then card[#card + 1] = row end
     end
+end
+
+Add({ key = "damageMeterSkin", label = "Reskin", toggle = true,
+    help = "Draws the game's damage meter in your theme. The rows that need it wait for this." })
+Add(Settings.Group("Window"))
+Add(game.Visibility, game.FrameWidth, game.FrameHeight)
+Add({ key = "damageMeterFree", label = "Move and Resize", toggle = true,
+    note = function() return placementNote end,
+    help = "Drag the window and its corner here, without Edit Mode." })
+Add({ label = "Window Position", buttonText = "Reset", button = ResetPosition,
+    needs = "damageMeterFree", help = "Puts the window back where Edit Mode has it." })
+Add(game.Transparency, game.BackgroundTransparency, skin.windowColor, skin.border, skin.borderColor)
+Add(Settings.Group("Bars"))
+Add(game.Style, game.BarHeight, game.Padding, skin.texture, skin.barColor, skin.customBarColor, skin.barAlpha,
+    skin.barBgColor, skin.barBgAlpha, game.ShowSpecIcon, game.ShowClassColor, skin.iconEdge, skin.scrollBar)
+Add(Settings.Group("Text"))
+Add(skin.font, skin.outline, game.TextSize, game.Numbers, skin.nameColor, skin.nameSize, skin.valueColor,
+    skin.valueSize)
+Add(Settings.Group("Title Bar"))
+Add(skin.titleColor, skin.titleSize, skin.headerColor, skin.buttons, skin.buttonColor, skin.titleFade,
+    skin.titleFadeAlpha)
+if layout and layout.restore then
+    Add(Settings.Group("Reset"))
+    Add(layout.restore)
 end
 
 Settings.Page("QoL/Combat", S):Card({
     id = "damageMeterSkin", name = "Default Damage Meter", order = 110,
-    help = "The game's own damage meter: in your theme, and moved and sized without Edit Mode.",
-    search = "damage meter skin reskin blizzard default bar height move resize edit mode",
+    help = "The game's own damage meter: in your theme, sized and set here instead of in Edit Mode.",
+    search = "damage meter skin reskin blizzard default bar height move resize edit mode style numbers padding",
     rows = card,
 })
