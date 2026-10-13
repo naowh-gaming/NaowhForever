@@ -169,6 +169,35 @@ do -- an old Reminder Pack string, even a bomb, is refused unread and changes no
 end
 
 -------------------------------------------------------------------------------
+--  The Wago-facing half of NaowhForever_API: any profile exports, the same string decodes
+-------------------------------------------------------------------------------
+do
+    local w = World()
+    local API = w.env.NaowhForever_API
+    w.profiles.Other = { tankReminder = {}, qol = { enabled = false } }
+    w.profiles.Default.qol = { enabled = true }
+    w.ns.ListProfiles = function() return { "Default", "Other" } end
+    w.ns.SwitchProfile = function(name) w.switched = name return true end
+    w.ns.KnownCharacters = function() return { { char = "Me-Realm", profile = "Other" } } end
+    local keys = API:GetProfileKeys()
+    check("every profile is a key", keys.Default == true and keys.Other == true and not keys.Nope)
+    check("the current profile key", API:GetCurrentProfileKey() == "Default")
+    check("assignments are character to profile", API:GetProfileAssignments()["Me-Realm"] == "Other")
+    local str = API:ExportProfile("Other")
+    check("a profile that is not current exports as a profile string", type(str) == "string" and str:sub(1, 11) == "NFPROFILE1:")
+    local payload = w.ns.DecodeProfile(str)
+    check("it carries that profile, named after it", payload.name == "Other" and payload.parts.settings.qol.enabled == false)
+    check("the current profile still exports its own", w.ns.DecodeProfile(API:ExportProfile("Default")).parts.settings.qol.enabled == true)
+    check("decoding gives the parts", API:DecodeProfileString(str).settings.qol.enabled == false)
+    check("decoding junk gives nil", API:DecodeProfileString("garbage") == nil and API:DecodeProfileString(nil) == nil)
+    check("an unknown or bad key exports nothing and makes no profile", API:ExportProfile("Nope") == nil
+        and API:ExportProfile(nil) == nil and API:ExportProfile({}) == nil and w.profiles.Nope == nil)
+    check("SetProfile switches to an existing profile", API:SetProfile("Other") == true and w.switched == "Other")
+    w.switched = nil
+    check("SetProfile ignores an unknown one", API:SetProfile("Nope") == false and w.switched == nil)
+end
+
+-------------------------------------------------------------------------------
 --  Blessings: a paladin's per-player choices are capped
 -------------------------------------------------------------------------------
 do

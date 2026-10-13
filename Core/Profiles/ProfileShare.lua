@@ -281,8 +281,9 @@ local function CollectLook(account, budget)
     return next(look) and look or nil
 end
 
-local function Collect()
-    local root, account = ns.SettingsRoot(), ns.AccountSettings()
+local function Collect(root)
+    root = root or ns.SettingsRoot()
+    local account = ns.AccountSettings()
     local budget = { n = 0 }
     local utility = Utility(root.tankReminder)
     local parts = {}
@@ -301,10 +302,10 @@ local function Collect()
     return parts, budget.over
 end
 
-function ns.ExportProfile(wanted)
+function ns.ExportProfile(wanted, profileName)
     local LS, LD = Codec()
     if not LS then return nil, TEXT_NO_LIBRARIES end
-    local all, over = Collect()
+    local all, over = Collect(profileName and ns.ProfileRoot(profileName))
     if over then return nil, TEXT_TOO_BIG_PROFILE end
     local parts = {}
     for key, data in pairs(all) do
@@ -314,7 +315,7 @@ function ns.ExportProfile(wanted)
         return nil, next(all) and TEXT_TICK_PART or TEXT_NOTHING_TO_EXPORT
     end
     local payload = {
-        format = FORMAT, name = ns.ActiveProfileName(), author = UnitName("player"),
+        format = FORMAT, name = profileName or ns.ActiveProfileName(), author = UnitName("player"),
         made = date("%Y-%m-%d"), build = ns.CODE_BUILD, parts = parts,
     }
     return PREFIX .. LD:EncodeForPrint(LD:CompressDeflate(LS:Serialize(Swap(payload, 0, ZERO))))
@@ -736,6 +737,45 @@ function API:ImportProfile(str, profileName)
     if set and specKey then ns.SpecProfileMap()[specKey] = specWas end
     if set and autoOff then ns.Print(TEXT_SPEC_SWITCH_OFF:format(landed)) end
     return true, landed
+end
+
+function API:ExportProfile(profileKey)
+    if type(profileKey) ~= "string" or not self:GetProfileKeys()[profileKey] then return nil end
+    return (ns.ExportProfile(nil, profileKey))
+end
+
+function API:DecodeProfileString(str)
+    local payload = ns.DecodeProfile(str)
+    return payload and payload.parts
+end
+
+function API:SetProfile(profileKey)
+    if type(profileKey) ~= "string" or not self:GetProfileKeys()[profileKey] then return false end
+    return (ns.SwitchProfile(profileKey))
+end
+
+function API:GetProfileKeys()
+    local keys = {}
+    for _, name in ipairs(ns.ListProfiles()) do keys[name] = true end
+    return keys
+end
+
+function API:GetProfileAssignments()
+    local out = {}
+    for _, known in ipairs(ns.KnownCharacters()) do out[known.char] = known.profile end
+    return out
+end
+
+function API:GetCurrentProfileKey()
+    return ns.ActiveProfileName()
+end
+
+function API:OpenConfig()
+    ns.OpenOptionsWindow("Profiles")
+end
+
+function API:CloseConfig()
+    ns.StashOptionsWindow()
 end
 
 Profiles.PARTS = PARTS
