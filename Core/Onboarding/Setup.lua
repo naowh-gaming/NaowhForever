@@ -141,6 +141,8 @@ local function Settle(modules, list)
     return modules
 end
 
+Setup.Settle, Setup.SetSwitch = Settle, SetSwitch
+
 function Setup.Modules()
     local list = {}
     for _, mod in ipairs(ns.ModuleAddons(character)) do
@@ -268,6 +270,7 @@ local function ApplyModule(m, want, preset)
     end
     if not (preset and Enabled(m) or IsOn(m)) then return false end
     SetAddOn(m.addon, false, character)
+    SetSwitch(m, false)
     return Loaded(m)
 end
 

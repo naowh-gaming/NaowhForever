@@ -1418,6 +1418,7 @@ function ns.SwitchProfile(name)
     local spec = ns.CurrentSpec and ns.CurrentSpec()
     if spec and spec > 0 then ns.SetSpecProfile(spec, name) end
     ns.QueueReapply()
+    if ns.ReconcileModules then ns.ReconcileModules() end
     return true
 end
 
@@ -1447,6 +1448,7 @@ function ns.SetAccountProfile(name)
     sv.autoSpecProfile = nil
     activeRoot = nil
     ns.QueueReapply()
+    if ns.ReconcileModules then ns.ReconcileModules() end
     return true, turnedOff
 end
 
