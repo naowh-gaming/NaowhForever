@@ -2,6 +2,7 @@
 local ns = _G.NaowhForever
 local T = ns.THEME
 local S = ns.QoLSettings
+local Confirm = ns.BadgeConfirm
 local PATRONS = ns.FEATURE_BADGES == ns.BADGES_LIVE
 local RENUMBERED = { [110] = 90 }
 
@@ -41,9 +42,20 @@ local TEXT_STAFF_ONLY = ns.L("Badge previews are for the Naowh Forever team.")
 local TEXT_PREVIEW_NONE = ns.L("Preview on: you wear no badge until you reload, as a player without one sees it.")
 local TEXT_PREVIEW_ON = ns.L("Preview on: your name wears the %s badge until you reload. Say something to see it.")
 local TEXT_PREVIEW_OFF = ns.L("Preview off.")
-local TEXT_USAGE = "/nf badges id || preview [%smoderator||developer||ellesmere||naowh||none] || preview off || toast"
+local TEXT_USAGE = "/nf badges id || status || claim CODE || preview [%smoderator||developer||ellesmere||naowh||none] || preview off || toast"
 local TEXT_USAGE_PATRON = "legendary||epic||"
 local TEXT_SUMMARY = ns.L("%d of %d on")
+local TEXT_STATUS_NONE = ns.L("No badge on this character")
+local TEXT_STATUS_CONFIRMED = ns.L("%s, your claim matches naowh.gg")
+local TEXT_STATUS_CHECKING = ns.L("%s, checking your claim")
+local TEXT_STATUS_UNCLAIMED = ns.L("%s, not claimed on this character yet")
+local TEXT_STATUS_OFF = ns.L("%s, off: the claim or BattleTag does not match naowh.gg")
+local TEXT_CLAIM_BAD = ns.L("That is not a claim code: it looks like K7P2-9XQM, from your naowh.gg account.")
+local TEXT_CLAIM_DONE = ns.L("Your Naowh Forever badge is claimed on this character.")
+local TEXT_CLAIM_WRONG = ns.L("That claim is not this character's, or the BattleTag saved on naowh.gg is not yours.")
+local TEXT_CLAIM_SAVED = ns.L("Claim saved: your badge shows once this character is on the badge list, "
+    .. "with the next Naowh Forever update.")
+local CLAIM_COMMAND = "^[Cc][Ll][Aa][Ii][Mm]%s+(%S+)$"
 local PATREON_LINK = { "Patreon", "patreon", function() return "https://www.patreon.com/naowh" end }
 local MONTHS = { ns.L("January"), ns.L("February"), ns.L("March"), ns.L("April"), ns.L("May"), ns.L("June"),
     ns.L("July"), ns.L("August"), ns.L("September"), ns.L("October"), ns.L("November"), ns.L("December") }
@@ -126,18 +138,24 @@ local function Secret(value) return issecretvalue and issecretvalue(value) end
 local previewGUID, previewEntry
 
 local roster = {}
+local patronCount = 0
 
 local function AddRegion(lists, region, patrons)
     local list = region and lists and lists[region]
     if not list then return end
     for guid, entry in pairs(list) do
-        if patrons and not PATRON_TIER[entry.tier] then entry.tier = DEFAULT_PATRON_TIER end
+        if patrons then
+            if not PATRON_TIER[entry.tier] then entry.tier = DEFAULT_PATRON_TIER end
+            entry.patron = true
+            patronCount = patronCount + 1
+        end
         roster[guid] = entry
     end
 end
 
 local function BuildRoster()
     wipe(roster)
+    patronCount = 0
     local region = GetCurrentRegion and GetCurrentRegion()
     local before = region and RENUMBERED[region]
     if PATRONS then
@@ -149,10 +167,12 @@ local function BuildRoster()
 end
 BuildRoster()
 
-local function EntryOf(guid)
+local function EntryOf(guid, who, unit)
     if not guid or Secret(guid) then return nil end
     if guid == previewGUID then return previewEntry end
-    return roster[guid]
+    local entry = roster[guid]
+    if entry and entry.patron and not Confirm.Shows(guid, who, unit) then return nil end
+    return entry
 end
 
 local function IsStaff(guid)
@@ -190,8 +210,8 @@ local function Remember(lineID, guid)
     nextSlot = nextSlot % CACHE_SIZE + 1
 end
 
-local function DecorateName(_, name, _, _, _, _, _, _, _, _, _, _, lineID, guid)
-    local tier = TierOf(EntryOf(guid))
+local function DecorateName(_, name, _, sender, _, _, _, _, _, _, _, _, lineID, guid)
+    local tier = TierOf(EntryOf(guid, sender))
     if not tier then return name end
     if lineID and not Secret(lineID) then Remember(lineID, guid) end
     return name .. " " .. tier.markup
@@ -415,9 +435,24 @@ local function ShowPlate(tooltip, guid, entry, tier, row)
     plate:Show()
 end
 
+local FullName
+
+local function PatronListed(guid)
+    local listed = guid and not Secret(guid) and roster[guid]
+    return listed and listed.patron
+end
+
+local function TooltipUnit(tooltip)
+    local unit = tooltip and tooltip.GetUnit and select(2, tooltip:GetUnit())
+    if type(unit) ~= "string" or Secret(unit) then return nil end
+    return unit
+end
+
 local function AddTooltipLine(tooltip, data)
     if not Setting("badgeTooltip") then return end
-    local entry = EntryOf(data and data.guid)
+    local guid = data and data.guid
+    local unit = PatronListed(guid) and TooltipUnit(tooltip)
+    local entry = EntryOf(guid, unit and FullName(unit), unit or nil)
     local tier = TierOf(entry)
     if not tier then
         if tooltip == GameTooltip then HidePlate() end
@@ -515,7 +550,7 @@ function ShowNextToast()
     if kit then PlaySound(kit) end
 end
 
-local function FullName(unit)
+function FullName(unit)
     local first, surname = UnitFullName(unit)
     if not first or Secret(first) or Secret(surname) then return nil end
     if surname and surname ~= "" then return first .. " " .. surname end
@@ -533,7 +568,9 @@ for i = 1, PARTY_OTHERS do PARTY_UNITS[i] = "party" .. i end
 for i = 1, RAID_SIZE do RAID_UNITS[i] = "raid" .. i end
 
 local announced = {}
+local waitName, waitRaid = {}, {}
 local playerGUID, bannerOn
+local SyncListen
 local groupEvents = CreateFrame("Frame")
 
 local function RememberCharacter()
@@ -557,6 +594,8 @@ local deferQuiet
 local function ScanGroup(quiet)
     if not IsInGroup() then
         wipe(announced)
+        wipe(waitName)
+        wipe(waitRaid)
         return
     end
     if InCombatLockdown() then
@@ -571,12 +610,14 @@ local function ScanGroup(quiet)
         local unit = units[i]
         local guid = UnitGUID(unit)
         if guid and not Secret(guid) and guid ~= playerGUID and not announced[guid] then
-            local entry = roster[guid]
+            local name = roster[guid] and FullName(unit)
+            local entry = EntryOf(guid, name, unit)
+            local wanted = not quiet and not (Setting("badgeBannerSkipGuild") and InMyGuild(unit))
             if TierOf(entry) then
                 announced[guid] = true
-                if not quiet and not (Setting("badgeBannerSkipGuild") and InMyGuild(unit)) then
-                    QueueToast(entry, FullName(unit), raid)
-                end
+                if wanted then QueueToast(entry, name, raid) end
+            elseif wanted and roster[guid] and roster[guid].patron then
+                waitName[guid], waitRaid[guid] = name or false, raid
             end
         end
     end
@@ -586,6 +627,10 @@ local function OnGroupEvent(self, event)
     if event == "PLAYER_ENTERING_WORLD" then
         self:UnregisterEvent("PLAYER_ENTERING_WORLD")
         playerGUID = UnitGUID("player")
+        local mine = roster[playerGUID]
+        Confirm.SetEntry(mine and mine.patron and mine or nil)
+        if mine and mine.patron then Confirm.Mine() end
+        SyncListen()
         RememberCharacter()
         if bannerOn then ScanGroup(true) end
     elseif event == "PLAYER_REGEN_ENABLED" then
@@ -612,7 +657,7 @@ end
 local function PaintRow(row)
     local info = listOn and row.memberInfo
     local guid = info and info.guid
-    local tier = guid and not Secret(guid) and TierOf(EntryOf(guid))
+    local tier = guid and not Secret(guid) and TierOf(EntryOf(guid, info.name))
     local badge = listBadges[row]
     if not tier then
         if badge then badge:Hide() end
@@ -661,7 +706,27 @@ local function SyncList(on)
     end
 end
 
+local function OnConfirmed(guid)
+    if listOn then
+        local scroll = MemberScroll()
+        if scroll then scroll:ForEachFrame(PaintRow) end
+    end
+    local name = waitName[guid]
+    if name ~= nil and bannerOn and not announced[guid] then
+        announced[guid] = true
+        QueueToast(roster[guid], name or nil, waitRaid[guid])
+    end
+    waitName[guid], waitRaid[guid] = nil, nil
+end
+Confirm.OnConfirmed(OnConfirmed)
+
 local chatOn, cardOn, tooltipHooked
+
+function SyncListen()
+    local mine = playerGUID and roster[playerGUID]
+    local shown = chatOn or Setting("badgeTooltip") or bannerOn
+    Confirm.Listen(PATRONS and patronCount > 0 and (shown or (mine and mine.patron)) and true or false)
+end
 
 local function Apply()
     local chatAPI = (ChatFrameUtil and ChatFrameUtil.AddSenderNameFilter) ~= nil
@@ -705,8 +770,12 @@ local function Apply()
             groupEvents:UnregisterEvent("GROUP_ROSTER_UPDATE")
             groupEvents:UnregisterEvent("PLAYER_REGEN_ENABLED")
             wipe(announced)
+            wipe(waitName)
+            wipe(waitRaid)
         end
     end
+
+    SyncListen()
 end
 
 local function OnSettingSet(key)
@@ -788,8 +857,40 @@ end
 
 local PREVIEW_TIER = PATRONS and "legendary" or "developer"
 
+local function BadgeStatus()
+    local guid = playerGUID or UnitGUID("player")
+    local entry = guid and not Secret(guid) and roster[guid]
+    local tier = TierOf(entry)
+    if not tier then return TEXT_STATUS_NONE end
+    local title = TitleOf(entry, tier)
+    if not entry.patron then return title end
+    local state = Confirm.State()
+    if state == Confirm.CONFIRMED then return TEXT_STATUS_CONFIRMED:format(title) end
+    if state == Confirm.UNCLAIMED then return TEXT_STATUS_UNCLAIMED:format(title) end
+    if state == Confirm.MISMATCH then return TEXT_STATUS_OFF:format(title) end
+    return TEXT_STATUS_CHECKING:format(title)
+end
+
+local function ClaimCommand(code)
+    local ok, state = Confirm.Claim(code)
+    if not ok then
+        ns.Print(TEXT_CLAIM_BAD)
+    elseif state == Confirm.CONFIRMED then
+        ns.Print(TEXT_CLAIM_DONE)
+    elseif state == Confirm.UNCLAIMED or state == Confirm.MISMATCH then
+        ns.Print(TEXT_CLAIM_WRONG)
+    elseif not Confirm.Listed() then
+        ns.Print(TEXT_CLAIM_SAVED)
+    else
+        ns.Print(BadgeStatus())
+    end
+end
+
 function ns.BadgesCommand(arg)
-    local word = strtrim(arg or ""):lower()
+    local raw = strtrim(arg or "")
+    local claim = PATRONS and raw:match(CLAIM_COMMAND)
+    if claim then return ClaimCommand(claim) end
+    local word = raw:lower()
     local previewTier = word == "preview" and PREVIEW_TIER or word:match("^preview (%a+)$")
     local staffOnly = previewTier or word == "toast"
     if staffOnly and not IsStaff(UnitGUID("player")) then
@@ -798,6 +899,8 @@ function ns.BadgesCommand(arg)
         RememberCharacter()
         local code, count = BadgeCode()
         ShowCode(code, count)
+    elseif word == "status" and PATRONS then
+        ns.Print(BadgeStatus())
     elseif previewTier == "none" then
         previewEntry = false
         previewGUID = UnitGUID("player")
@@ -816,8 +919,8 @@ function ns.BadgesCommand(arg)
     end
 end
 
-function ns.BadgeOf(guid)
-    local entry = EntryOf(guid)
+function ns.BadgeOf(guid, who, unit)
+    local entry = EntryOf(guid, who, unit)
     local tier = TierOf(entry)
     if not tier then return nil end
     return tier, entry
@@ -840,7 +943,7 @@ end
 
 ns._BadgesTest = { DecorateName = DecorateName, ListBadges = listBadges, OnLinkEnter = OnLinkEnter, TIERS = TIERS,
     guidByLine = guidByLine, CACHE_SIZE = CACHE_SIZE, SinceOf = SinceOf,
-    BuildRoster = BuildRoster, BadgeCode = BadgeCode,
+    BuildRoster = BuildRoster, BadgeCode = BadgeCode, BadgeStatus = BadgeStatus,
     Card = function() return card end, Toast = function() return toast end,
     QueueSize = function() return queueTail - queueHead + 1 end, GroupEvents = groupEvents }
 
@@ -876,6 +979,19 @@ Settings.Page("QoL/Interface", S):Card({
           help = "A banner and a sound when one of them joins your group." },
         { key = "badgeBannerSkipGuild", label = "No Banner For Guild Members", toggle = true,
           needs = "badgeBanner", help = "Skips the banner when they're in your guild." },
+        { label = "Show My Badge Code", buttonText = "Show", button = ns.ShowBadgeCode,
+          help = "Your code to claim your badge, the same as /nf badges id." },
+    },
+})
+
+if not ns.SETUPS_PAGE then return end
+
+Settings.Page(ns.SETUPS_PAGE, S):Card({
+    id = "yourBadge", name = "Your Badge", order = 5,
+    help = "Your badge on this character, and whether it matched the BattleTag saved on naowh.gg.",
+    search = "badge battletag status supporter patron",
+    summary = BadgeStatus,
+    rows = {
         { label = "Show My Badge Code", buttonText = "Show", button = ns.ShowBadgeCode,
           help = "Your code to claim your badge, the same as /nf badges id." },
     },
