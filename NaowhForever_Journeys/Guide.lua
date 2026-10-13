@@ -135,7 +135,7 @@ end
 local function Planned(plan)
     if not journey then return end
     if not plan then
-        if journey.plan then return end
+        if journey.plan and journey.planAt == journey.at then return end
         return PlainWaypoint(Stop())
     end
     local before = journey.plan
@@ -204,7 +204,7 @@ local function Replan()
     if not here then return end
     if not C.CONTINENTS[here.c] then
         journey.waiting = true
-        if not journey.plan then StopStep() end
+        if not journey.plan and not step then StopStep() end
         return
     end
     while Close(here, Stop().spot) do
@@ -289,7 +289,7 @@ function Guide.Start(title, stops, quest)
         if not spot then return false end
         own[i] = { stop[1], stop[2], stop[3], stop[4], stop[5], stop[6], spot = spot }
     end
-    journey = { title = title, stops = own, at = 1, done = 0, quest = quest }
+    journey, step = { title = title, stops = own, at = 1, done = 0, quest = quest }, nil
     if not events then
         events = CreateFrame("Frame")
         events:SetScript("OnEvent", OnEvent)

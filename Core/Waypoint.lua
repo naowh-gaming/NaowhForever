@@ -69,6 +69,7 @@ local function SetNow(title, map, x, y, note, icon)
 end
 
 local function ClearNow()
+    ns.placedWaypoint = nil
     C_Map.ClearUserWaypoint()
     if C_SuperTrack then C_SuperTrack.ClearAllSuperTracked() end
 end
