@@ -655,7 +655,7 @@ do
         and s.hooks == s.base and next(s.waiting) == nil)
     local bare = { windows = {} }
     function bare:SetupSessionWindow() end
-    local s2, store, _, _, bootFrames, env = Boot({ damageMeterFree = true }, true, {})
+    local s2, _, _, _, bootFrames, env = Boot({ damageMeterFree = true }, true, {})
     env.DamageMeter = bare
     Login(bootFrames)
     local function MoveNote(boot)

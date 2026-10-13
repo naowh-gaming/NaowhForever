@@ -799,8 +799,8 @@ Add(layout and layout.restore)
 
 local function OtherMeters()
     local names
-    for _, meter in ipairs(OTHER_METERS) do
-        if C_AddOns.IsAddOnLoaded(meter.addon) then names = names and (names .. ", " .. meter.name) or meter.name end
+    for _, other in ipairs(OTHER_METERS) do
+        if C_AddOns.IsAddOnLoaded(other.addon) then names = names and (names .. ", " .. other.name) or other.name end
     end
     if not names then return TEXT_OTHERS end
     return TEXT_OTHERS_NAMED:format(names)
