@@ -178,7 +178,8 @@ function ns.ConsumableBarUsesMacro(key)
 end
 
 function CB.HasFoodButtons()
-    return CB.Has(CB.SavedItems(), FOOD)
+    local saved = CB.SavedItems()
+    return CB.Has(saved, FOOD) or (ns.UsesMana() and CB.Has(saved, DRINK))
 end
 
 function ns.ConsumableBarUsesFood()

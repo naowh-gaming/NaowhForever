@@ -38,13 +38,15 @@ local function NotADrinkForFoodOnly(itemID)
     return not (FoodOnly() and ns.IsDrink(itemID))
 end
 
-local function DrinkForMana(itemID)
-    return ns.UsesMana() or not ns.IsDrink(itemID)
+local function NotADrink(itemID)
+    return not ns.IsDrink(itemID)
 end
 
 local COVERS = {
-    [CB.FOOD] = { ask = ns.L("The Food & Drink buttons already use your best food and drink. Add %s too?"),
-        category = "food", also = DrinkForMana },
+    [CB.FOOD] = { ask = ns.L("The food button already uses your best food. Add %s too?"), category = "food",
+        also = NotADrink },
+    [CB.DRINK] = { ask = ns.L("The drink button already uses your best drink. Add %s too?"), category = "food",
+        also = ns.IsDrink },
     ["macro:food"] = { ask = ns.L("NF Food already uses your best food and drink. Add %s too?"),
         category = "food", also = NotADrinkForFoodOnly },
     ["macro:drink"] = { ask = ns.L("NF Drink already uses your best drink. Add %s too?"), category = "food",

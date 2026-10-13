@@ -110,11 +110,15 @@ NaowhForever_ConsumableBar/
   the Food & Drink Bar steps aside.
 - NF Health's priority and NF Food's Food Only sit behind cogs on their rows. They are the Macros
   module's own settings (`ns.MacroSettings`), shown in both places, so there is never a second copy.
-- A smart button covers a kind of item: the Food & Drink buttons food and drink (drinks only for a
-  class with mana, as only it gets the drink button), NF Health healthstones and healing potions, NF Healthstone
-  and NF Health Potion one of those each, NF Mana mana potions, NF Food food and drink (food alone
-  with Macros' Food Only on), NF Drink drinks, NF Bandage bandages. Scan Bags and Ask to Add skip
-  what is covered; adding one by hand asks first.
+- A smart button covers a kind of item: the food button food and the drink button drinks, each on
+  its own, NF Health healthstones and healing potions, NF Healthstone and NF Health Potion one of
+  those each, NF Mana mana potions, NF Food food and drink (food alone with Macros' Food Only on),
+  NF Drink drinks, NF Bandage bandages. Scan Bags and Ask to Add skip what is covered; adding one
+  by hand asks first.
+- Either Food & Drink button on the bar counts as the buttons being there (`CB.HasFoodButtons`), so
+  one left alone still keeps the Food & Drink Bar aside and its keys working. The drink button
+  counts only for a class with mana: a warrior on a caster's profile does not see it, so it does not
+  take their Food & Drink Bar away.
 - For a class with no mana (warriors and rogues, `ns.UsesMana`) NF Mana, NF Drink and the drink
   button are not shown, even from another character's profile, but stay saved and kept by Macros
   (`ns.ConsumableBarUsesMacro` reads the saved list): the NF macros are account-wide, so letting one

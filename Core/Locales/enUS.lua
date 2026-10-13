@@ -4971,7 +4971,8 @@ L["Your best food and drink, conjured first; the Food & Drink Bar steps aside."]
 L["Best Food"] = true
 L["Best Drink"] = true
 L["A smart button already covers some of these, or they need mana: %s. Add them anyway?"] = true
-L["The Food & Drink buttons already use your best food and drink. Add %s too?"] = true
+L["The food button already uses your best food. Add %s too?"] = true
+L["The drink button already uses your best drink. Add %s too?"] = true
 L["The Food & Drink buttons are on the bar. Take them off to use %s."] = true
 L["%s is on the bar. Take it off to use the Food & Drink buttons."] = true
 L["The Food & Drink buttons are on the bar"] = true

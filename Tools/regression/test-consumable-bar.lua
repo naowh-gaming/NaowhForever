@@ -2105,4 +2105,31 @@ do
         == 'smart:food,smart:drink,14530')
 end
 
+-- One button left alone: either one is the Food & Drink buttons being on the bar, and each covers
+-- only its own half; a lone drink button counts only for a class with mana, as only it shows it
+do
+    local s = fixture({ consumableBar = true, consumableBarItems = { 'smart:drink' } })
+    check('the drink button alone keeps the Food & Drink Bar aside', s.ns.ConsumableBarUsesFood() == true
+        and s.pageRow('adding', 'Food & Drink Buttons').get() == true)
+    check('and holds NF Food back', s.pageRow('adding', 'NF Food').needs() == false)
+    s.bags[0] = { 8932, 8766 }
+    s.CB.ScanBags()
+    check('it covers drinks, not food', table.concat(s.settings.consumableBarItems, ',') == 'smart:drink,8932')
+    s.set('consumableBarItems', { 'smart:food' })
+    s.CB.ScanBags()
+    check('the food button alone covers food, not drinks', table.concat(s.settings.consumableBarItems, ',')
+        == 'smart:food,8766')
+    local box = s.editor()
+    s.cursor = { 'item', 8932 }
+    box.scripts.OnReceiveDrag(box)
+    check('and says so when food is added by hand', s.confirmText
+        == 'The food button already uses your best food. Add Item8932 too?')
+    s.pageRow('adding', 'Food & Drink Buttons').set(false)
+    check('its switch takes off whichever is there', #s.settings.consumableBarItems == 1
+        and s.settings.consumableBarItems[1] == 8766)
+    local warrior = fixture({ consumableBar = true, consumableBarItems = { 'smart:drink' } }, false, 'WARRIOR')
+    check("a warrior's hidden drink button does not keep their Food & Drink Bar aside",
+        warrior.ns.ConsumableBarUsesFood() == false and warrior.pageRow('adding', 'Food & Drink Buttons').get() == false)
+end
+
 print(checks .. ' consumable-bar checks passed')
