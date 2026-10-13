@@ -94,6 +94,7 @@ end
 
 local function Window()
     local source = { Background = Texture("common-dropdown-bg"), ScrollBox = ScrollBox({ Entry() }) }
+    function source:GetFrameLevel() return 1 end
     local function Part()
         local part = { alpha = 1, glyph = Texture("glyph") }
         function part:SetAlpha(a) self.alpha = a end
@@ -169,7 +170,7 @@ local function Boot(settings, loaded, windows)
         damageMeterBarBgAlpha = 100, damageMeterScrollBar = "game", damageMeterBorder = false,
         damageMeterBorderColor = false, damageMeterTitleFade = "always", damageMeterTitleFadeAlpha = 0,
         damageMeterNameSize = 0, damageMeterValueSize = 0, damageMeterTitleSize = 0, damageMeterButtons = "game",
-        damageMeterButtonColor = false }
+        damageMeterButtonColor = false, damageMeterPanelColor = false, damageMeterPanelAlpha = 70 }
     local store = {}
     function store.Get(k)
         local v = s.settings[k]
@@ -317,7 +318,7 @@ do
     local c = window.MinimizeContainer
     check("the header is the Panels color", window.Header.solid and SameRgb(window.Header.solid, THEME.panel))
     check("the window background is the Background color", SameRgb(c.Background.solid, THEME.bg))
-    check("the source window is the Panels color", SameRgb(c.SourceWindow.Background.solid, THEME.panel))
+    check("the spell panel is the Window Color", SameRgb(c.SourceWindow.Background.solid, THEME.bg))
     check("the timer is Secondary Text, the names Text",
         SameRgb({ window.SessionTimer.r, window.SessionTimer.g, window.SessionTimer.b }, THEME.muted)
         and window.SessionDropdown.SessionName.r == 1 and window.DamageMeterTypeDropdown.TypeName.r == THEME.fg.r)
@@ -504,8 +505,8 @@ do
         window.DamageMeterTypeDropdown.TypeName.g == 0.4 and window.SessionDropdown.SessionName.g == 0.82
         and bar.Name.r == 1 and bar.Name.g == 0)
     check("colors: the amounts and the timer", bar.Value.g == 1 and bar.Value.r == 0 and window.SessionTimer.g == 1)
-    check("colors: the title bar and the spell panel", SameRgb(window.Header.solid, blue)
-        and SameRgb(c.SourceWindow.Background.solid, blue))
+    check("colors: the title bar, and the spell panel follows the window", SameRgb(window.Header.solid, blue)
+        and SameRgb(c.SourceWindow.Background.solid, grey))
     check("colors: the window and the shadow behind each bar", SameRgb(c.Background.solid, grey)
         and SameRgb(bar.Background.solid, grey))
     store.Set("damageMeterNameColor", false)
@@ -722,14 +723,15 @@ do
         damageMeterIconEdge = false }, true)
     Login(frames)
     local window = meter.windows[1]
-    check("border: one frame round the window, in the Outline token", #s.borders == 1 and s.borders[1].frame == window
+    check("border: a frame round the window and one round the spell panel, in the line color",
+        #s.borders == 2 and s.borders[1].frame == window
         and s.borders[1]._frame.shown == true and s.borders[1].color[1] == THEME.line.r)
     store.Set("damageMeterBorderColor", { r = 1, g = 0.5, b = 0 })
     check("border: a picked color", s.borders[1].color[2] == 0.5)
     store.Set("damageMeterBorder", false)
     check("border: off hides it", s.borders[1]._frame.shown == false)
     store.Set("damageMeterBorder", true)
-    check("border: on again shows the same one", s.borders[1]._frame.shown == true and #s.borders == 1)
+    check("border: on again shows the same ones", s.borders[1]._frame.shown == true and #s.borders == 2)
 end
 
 -- the color behind each bar, and how solid the bars are
@@ -869,6 +871,29 @@ do
     end
 end
 
+-- the panel a left click opens: the window's color by default, with a color and an opacity of its own
+do
+    local grey = { r = 0.4, g = 0.4, b = 0.4 }
+    local s, store, meter, _, frames = Boot({ damageMeterSkin = true, damageMeterWindowColor = grey }, true)
+    local panel = meter.windows[1].MinimizeContainer.SourceWindow.Background
+    panel.alpha = 0.9
+    Login(frames)
+    check("spell panel: the Window Color when no color is picked, 70 percent solid", SameRgb(panel.solid, grey)
+        and panel.alpha == 0.7)
+    store.Set("damageMeterPanelColor", { r = 0.1, g = 0.2, b = 0.3 })
+    store.Set("damageMeterPanelAlpha", 40)
+    check("spell panel: its own color and opacity", SameRgb(panel.solid, { r = 0.1, g = 0.2, b = 0.3 })
+        and panel.alpha == 0.4)
+    store.Set("damageMeterBorder", true)
+    local framed = false
+    for _, border in ipairs(s.borders) do
+        framed = framed or border.frame == meter.windows[1].MinimizeContainer.SourceWindow
+    end
+    check("spell panel: Window Border puts one round it too", framed)
+    store.Set("damageMeterSkin", false)
+    check("spell panel: off gives the game's own opacity back", panel.alpha == 0.9)
+end
+
 -- the card says to turn off the other damage meters, and names the ones that are on
 do
     local s = Boot()
@@ -896,7 +921,7 @@ do
             if item.label == "Window Width" then width = item end
         end
     end
-    check("sections, in order", table.concat(heads, "|") == "Window|Bars|Text|Title Bar|Reset")
+    check("sections, in order", table.concat(heads, "|") == "Window|Bars|Text|Title Bar|Spell Panel|Reset")
     check("each row sits where it belongs", at["Reskin"] == "top" and at["Visibility"] == "Window"
         and at["Window Width"] == "Window" and at["Move and Resize"] == "Window" and at["Window Color"] == "Window"
         and at["Bar Height"] == "Bars" and at["Bar Texture"] == "Bars" and at["Font"] == "Text"

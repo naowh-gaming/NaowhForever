@@ -45,7 +45,8 @@ local SETTING_KEYS = { enabled = true, damageMeterSkin = true, damageMeterBars =
     damageMeterBarBgColor = true, damageMeterBarBgAlpha = true, damageMeterScrollBar = true,
     damageMeterBorder = true, damageMeterBorderColor = true, damageMeterTitleFade = true,
     damageMeterTitleFadeAlpha = true, damageMeterNameSize = true, damageMeterValueSize = true,
-    damageMeterTitleSize = true, damageMeterButtons = true, damageMeterButtonColor = true }
+    damageMeterTitleSize = true, damageMeterButtons = true, damageMeterButtonColor = true,
+    damageMeterPanelColor = true, damageMeterPanelAlpha = true }
 
 local OUTLINES = { { [OUTLINE_GAME] = TEXT_GAME_DEFAULT }, { OUTLINE_GAME } }
 for key, name in pairs(Parts.HUD_OUTLINES[1]) do OUTLINES[1][key] = name end
@@ -66,6 +67,7 @@ local tints = setmetatable({}, { __mode = "k" })
 local glyphs = setmetatable({}, { __mode = "k" })
 local buttoned = setmetatable({}, { __mode = "k" })
 local gameSizes = {}
+local alphas = setmetatable({}, { __mode = "k" })
 local placementNote
 local fader
 local sinceTick = 0
@@ -107,6 +109,12 @@ end
 
 local function BarBackground()
     local c = S.Get("damageMeterBarBgColor")
+    if type(c) == "table" then return c end
+    return Pick("damageMeterWindowColor", "bg")
+end
+
+local function PanelColor()
+    local c = S.Get("damageMeterPanelColor")
     if type(c) == "table" then return c end
     return Pick("damageMeterWindowColor", "bg")
 end
@@ -257,6 +265,12 @@ local function Entries(scrollBox)
     for _, frame in scrollBox:EnumerateFrames() do Skin(frame) end
 end
 
+local function Opacity(region, alpha)
+    if not Has(region, "SetAlpha") then return end
+    if alphas[region] == nil then alphas[region] = Has(region, "GetAlpha") and region:GetAlpha() or 1 end
+    region:SetAlpha(alpha)
+end
+
 local function WindowBorder(window)
     local border = edges[window]
     if S.Get("damageMeterBorder") ~= true or not Has(window, "GetFrameLevel") then
@@ -355,7 +369,9 @@ local function SkinWindow(window)
     Entries(container.ScrollBox)
     local source = container.SourceWindow
     if type(source) == "table" then
-        Flat(source.Background, header)
+        Flat(source.Background, PanelColor())
+        Opacity(source.Background, Fraction("damageMeterPanelAlpha"))
+        WindowBorder(source)
         Entries(source.ScrollBox)
     end
 end
@@ -367,6 +383,8 @@ local function RestoreWindow(window)
     end
     if scrolled[window] then ScrollBar(window, SCROLL_GAME) end
     if buttoned[window] then Buttons(window, false) end
+    local panel = Dig(window, "MinimizeContainer", "SourceWindow", "Background")
+    if panel and alphas[panel] ~= nil then Opacity(panel, alphas[panel]) end
 end
 
 local function GiveBack()
@@ -674,10 +692,19 @@ local skin = {
     valueSize = SizeRow("damageMeterValueSize", "Amount Size", "The amounts and the fight time. 0 is the game's own size."),
     titleColor = ColorRow("damageMeterTitleColor", "Title Color", "fg", "The list and session names in the title bar."),
     titleSize = SizeRow("damageMeterTitleSize", "Title Size", "The list name in the title bar. 0 is the game's own size."),
-    headerColor = ColorRow("damageMeterHeaderColor", "Title Bar Color", "panel", "The title bar and the spell panel."),
+    headerColor = ColorRow("damageMeterHeaderColor", "Title Bar Color", "panel", "The title bar."),
+    panelColor = { key = "damageMeterPanelColor", label = "Spell Panel Color", colour = true,
+      get = function()
+          local c = PanelColor()
+          return c.r, c.g, c.b, 1
+      end,
+      set = function(r, g, b) S.Set("damageMeterPanelColor", { r = r, g = g, b = b }) end,
+      help = "The panel a left click opens. Not picked: the Window Color." },
+    panelAlpha = { key = "damageMeterPanelAlpha", label = "Spell Panel Opacity", slider = PERCENT_RANGE, unit = "%",
+      help = "How solid the panel a left click opens is." },
     windowColor = ColorRow("damageMeterWindowColor", "Window Color", "bg", "The window and the shadow behind each bar."),
     border = { key = "damageMeterBorder", label = "Window Border", toggle = true,
-      help = "A thin border round the whole window." },
+      help = "A thin border round the window and the spell panel." },
     borderColor = ColorRow("damageMeterBorderColor", "Border Color", "line", "The border round the window.",
         Bordered, TEXT_NEEDS_BORDER),
     buttons = { key = "damageMeterButtons", label = "Buttons", choice = BUTTONS,
@@ -734,6 +761,8 @@ Add(skin.font, skin.outline, game.TextSize, game.Numbers, skin.nameColor, skin.n
 Add(Settings.Group("Title Bar"))
 Add(skin.titleColor, skin.titleSize, skin.headerColor, skin.buttons, skin.buttonColor, skin.titleFade,
     skin.titleFadeAlpha)
+Add(Settings.Group("Spell Panel"))
+Add(skin.panelColor, skin.panelAlpha)
 if layout and layout.restore then
     Add(Settings.Group("Reset"))
     Add(layout.restore)

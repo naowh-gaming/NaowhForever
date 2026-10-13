@@ -117,7 +117,7 @@ NaowhForever_QoL/
   bar's buttons are greyed with `SetDesaturated` and tinted with `SetVertexColor`, their first look
   remembered to give back; sizes are one setting each for the names, the amounts and the title, 0
   keeping the game's own, which Edit Mode's Text Size still scales.
-- The card is in sections (Window, Bars, Text, Title Bar, Reset) that mix the reskin's rows, which wait
+- The card is in sections (Window, Bars, Text, Title Bar, Spell Panel, Reset) that mix the reskin's rows, which wait
   for the Reskin switch, with the game's own settings, which do not.
 - The game's own settings in it (`DamageMeterLayout.lua`) are the game's list for its damage
   meter, written through `C_EditMode`: it copies the manager's layout info (never writes into it),
