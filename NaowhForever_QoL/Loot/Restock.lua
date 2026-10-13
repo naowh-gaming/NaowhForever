@@ -480,7 +480,7 @@ local FIXED = {
 local HUNTER = {
     Group("Hunter Ammo"),
     { key = "restockHunterAmmo", label = "Hunter Ammo Reminder", toggle = true,
-      help = "Uses your ammo warning amount instead of the carry target while enabled." },
+      help = "Reminds you about your equipped ammo at its own amount, not the carry target." },
     { key = "restockHunterAmmoBelow", label = "Remind Me When Ammo Falls To", slider = AMMO_RANGE,
       needs = "restockHunterAmmo",
       help = "Reminds at or below this many equipped arrows or shot across all bag stacks." },

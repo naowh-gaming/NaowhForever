@@ -5907,5 +5907,5 @@ L["Zeppelin"] = true
 L["Hunter Ammo"] = true
 L["Hunter Ammo Reminder"] = true
 L["Remind Me When Ammo Falls To"] = true
-L["Uses your ammo warning amount instead of the carry target while enabled."] = true
+L["Reminds you about your equipped ammo at its own amount, not the carry target."] = true
 L["Reminds at or below this many equipped arrows or shot across all bag stacks."] = true
