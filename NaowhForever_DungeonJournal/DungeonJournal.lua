@@ -58,7 +58,7 @@ local S = ns.UI.ModuleSettings("journal", {
     shareRequests = true,
     acceptShared = false,
     trackerAuto = true,
-    hideGameTracker = false,
+    hideGameTracker = F.hideGameTracker,
     trackerOutside = false,
 })
 ns.JournalSettings = S

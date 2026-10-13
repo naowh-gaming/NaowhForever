@@ -110,6 +110,7 @@ ns.FEATURES = {
         mapPanel = true,
         mapFactions = false,
         mapEntrances = false,
+        hideGameTracker = false,
     },
     statWeights = {
         enabled = false,
