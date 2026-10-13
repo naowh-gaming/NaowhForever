@@ -1,7 +1,7 @@
 -- luacheck settings for Naowh Forever. From the repo root: luacheck .
 -- Lua 5.1, as the game runs it. Libs/ is fetched by the packager and not ours to lint.
 std = "lua51"
-exclude_files = { "Libs/", ".claude/" }
+exclude_files = { "Libs/", ".claude/", "NaowhForever_DamageMeter/" }
 
 -- WoW calls handlers with fixed arguments (self, event, ...), so unused ones are normal.
 ignore = { "212" }
