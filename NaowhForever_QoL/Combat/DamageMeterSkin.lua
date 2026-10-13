@@ -31,7 +31,7 @@ local FADE_ALWAYS, FADE_HOVER = "always", "hover"
 local FADES = { { always = "Always Shown", hover = "Shown on Hover" }, { FADE_ALWAYS, FADE_HOVER } }
 local TITLE_PARTS = { "Header", "MinimizeButton", "SettingsDropdown", "SessionDropdown",
     "DamageMeterTypeDropdown", "SessionTimer" }
-local FADE_EVERY, FADE_STEP, SCROLL_DEPTH, PERCENT = 0.1, 0.35, 3, 100
+local FADE_EVERY, FADE_STEP, SETTLE, WATCH_DEPTH, SCROLL_DEPTH, PERCENT = 0.1, 0.35, 1, 5, 3, 100
 local PERCENT_RANGE = { 0, PERCENT, 5 }
 local FONT_SIZE_RANGE, FONT_SIZE_DEFAULT = { 0, 24, 1 }, 12
 local BUTTON_PARTS = { "MinimizeButton", "SettingsDropdown", "SessionDropdown", "DamageMeterTypeDropdown" }
@@ -56,12 +56,12 @@ local meter
 local generation = 0
 local looks, hooked, edges, entries = Weak(), Weak(), Weak(), Weak()
 local arts, swapped, faced, faded = Weak(), Weak(), Weak(), Weak()
-local scrolled, tints, glyphs, buttoned, alphas = Weak(), Weak(), Weak(), Weak(), Weak()
+local scrolled, tints, glyphs, buttoned, alphas, watched = Weak(), Weak(), Weak(), Weak(), Weak(), Weak()
 local gameSizes = {}
 local placementNote
 local fader
 local sinceTick = 0
-local hovering, lowAlpha, scrollHidden = false, 0, false
+local hovering, lowAlpha, scrollHidden, busy, awake = false, 0, false, false, 0
 
 local function On()
     return S.Get("enabled") and S.Get("damageMeterSkin")
@@ -88,6 +88,17 @@ local function ScrollHidden()
     return S.Get("damageMeterScrollBar") == SCROLL_HIDDEN
 end
 
+local function Needed()
+    return On() and (FadingTitle() or ScrollHidden())
+end
+
+local function Wake()
+    if fader and Needed() then
+        awake = SETTLE
+        fader:Show()
+    end
+end
+
 local function Has(object, method)
     return type(object) == "table" and type(object[method]) == "function"
 end
@@ -98,6 +109,17 @@ local function Dig(t, ...)
         t = t[select(i, ...)]
     end
     return t
+end
+
+local function Watch(frame, depth)
+    if not (Has(frame, "HookScript") and (not Has(frame, "HasScript") or frame:HasScript("OnEnter"))) then return end
+    if not watched[frame] then
+        watched[frame] = true
+        frame:HookScript("OnEnter", Wake)
+    end
+    if depth > 0 and Has(frame, "GetChildren") then
+        for _, child in ipairs({ frame:GetChildren() }) do Watch(child, depth - 1) end
+    end
 end
 
 local function Pick(key, token)
@@ -244,6 +266,7 @@ end
 
 local function Restyle(entry)
     if not On() then return end
+    if ScrollHidden() then Wake() end
     local bar = entry.StatusBar
     if type(bar) ~= "table" then return end
     Flat(bar.Background, BarBackground())
@@ -260,6 +283,7 @@ end
 local function Skin(entry)
     if type(entry) ~= "table" then return end
     entries[entry] = true
+    if not watched[entry] and Needed() then Watch(entry, WATCH_DEPTH) end
     if not hooked[entry] then
         hooked[entry] = true
         for _, method in ipairs(ENTRY_REFRESH) do
@@ -379,6 +403,7 @@ local function SkinWindow(window)
     Text(Dig(window, "DamageMeterTypeDropdown", "TypeName"), titles, "damageMeterTitleSize")
     WindowBorder(window)
     Buttons(window, ThemedButtons())
+    if Needed() then Watch(window, WATCH_DEPTH) end
     local container = window.MinimizeContainer
     if type(container) ~= "table" then return end
     Flat(container.Background, WindowColor())
@@ -543,10 +568,13 @@ local function Toward(now, want)
 end
 
 local function TickWindow(window)
+    local over = Has(window, "IsMouseOver") and window:IsMouseOver()
+    if over then busy = true end
     if hovering then
-        local want = (Has(window, "IsMouseOver") and window:IsMouseOver()) and 1 or lowAlpha
+        local want = over and 1 or lowAlpha
         local now = faded[window] or 1
         if now ~= want then
+            busy = true
             now = Toward(now, want)
             faded[window] = now
             TitleAlpha(window, now)
@@ -562,6 +590,7 @@ local function TickWindow(window)
 end
 
 local function Tick()
+    busy = false
     if not (meter and On() and Has(meter, "ForEachSessionWindow")) then return end
     hovering = FadingTitle()
     lowAlpha = Fraction("damageMeterTitleFadeAlpha")
@@ -569,19 +598,27 @@ local function Tick()
     meter:ForEachSessionWindow(TickWindow)
 end
 
+local function OnFade(self, elapsed)
+    sinceTick = sinceTick + elapsed
+    if sinceTick < FADE_EVERY then return end
+    awake = awake - sinceTick
+    sinceTick = 0
+    Tick()
+    if busy then awake = SETTLE end
+    if awake <= 0 then self:Hide() end
+end
+
 local function Pace()
-    local need = On() and (FadingTitle() or ScrollHidden())
-    if need and not fader then
-        fader = CreateFrame("Frame")
-        fader:SetScript("OnUpdate", function(_, elapsed)
-            sinceTick = sinceTick + elapsed
-            if sinceTick < FADE_EVERY then return end
-            sinceTick = 0
-            Tick()
-        end)
+    if not Needed() then
+        if fader then fader:Hide() end
+        return
     end
-    if not fader then return end
-    if need then fader:Show() else fader:Hide() end
+    if not fader then
+        fader = CreateFrame("Frame")
+        fader:Hide()
+        fader:SetScript("OnUpdate", OnFade)
+    end
+    Wake()
 end
 
 local function Apply()

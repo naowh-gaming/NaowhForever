@@ -47,6 +47,20 @@ local function FontString()
     return f
 end
 
+-- HookScript adds to what is there, as the game's does, so a frame can be hooked by more than one thing.
+local function HookScript(self, name, fn)
+    self.scripts = self.scripts or {}
+    local prior = self.scripts[name]
+    if not prior then
+        self.scripts[name] = fn
+        return
+    end
+    self.scripts[name] = function(...)
+        prior(...)
+        fn(...)
+    end
+end
+
 -- The game's entry: it sets its own art and colour from UpdateStyle, UpdateBackground and UpdateStatusBarColor.
 local function Entry()
     local bar = { Background = Texture("ui-damagemeters-bar-shadowbg"), BackgroundEdge = Texture("ui-damagemeters-bar-shadowedge"),
@@ -56,7 +70,7 @@ local function Entry()
         self.file, self.fileSets = file, (self.fileSets or 0) + 1
         barTexture.atlas = nil
     end
-    local e = { StatusBar = bar, Icon = { level = 1 }, refreshes = 0 }
+    local e = { StatusBar = bar, Icon = { level = 1 }, refreshes = 0, HookScript = HookScript }
     function e:GetStatusBarTexture() return barTexture end
     function e:UpdateStyle()
         self.refreshes = self.refreshes + 1
@@ -110,11 +124,7 @@ local function Window()
     function scroll:SetAlpha(a) self.alpha = a end
     function scroll:GetRegions() return thumb end
     function scroll:GetChildren() return trackFrame end
-    local grip = { alpha = 0 }
-    function grip:HookScript(name, fn)
-        self.scripts = self.scripts or {}
-        self.scripts[name] = fn
-    end
+    local grip = { alpha = 0, HookScript = HookScript }
     function grip:SetAlpha(a) self.alpha = a end
     local w = { Header = Texture("ui-damagemeters-header-bar"), SessionTimer = FontString(),
         SessionDropdown = { SessionName = FontString() }, DamageMeterTypeDropdown = { TypeName = FontString() },
@@ -151,10 +161,11 @@ local function Window()
     function w:StartMoving() self.moving = true end
     function w:StartSizing(corner) self.sizing = corner end
     function w:StopMovingOrSizing() self.moving, self.sizing = false, nil end
-    function w:HookScript(name, fn)
-        self.scripts = self.scripts or {}
-        self.scripts[name] = fn
-    end
+    w.HookScript = HookScript
+    function w:GetChildren() return self.MinimizeContainer end
+    local container = w.MinimizeContainer
+    container.HookScript = HookScript
+    function container:GetChildren() return self.ResizeButton, self.ScrollBar end
     return w
 end
 
@@ -316,6 +327,9 @@ do
     Login(frames)
     local window = meter.windows[1]
     local c = window.MinimizeContainer
+    check("nothing ticks and nothing watches the mouse unless a fade or a hidden scroll bar asks",
+        #frames == 1 and window.scripts == nil and c.ResizeButton.scripts == nil
+        and c.ScrollBox.frames[1].scripts == nil)
     check("the header is the Panels color", window.Header.solid and SameRgb(window.Header.solid, THEME.panel))
     check("the window background is the Background color", SameRgb(c.Background.solid, THEME.bg))
     check("the spell panel is the Window Color", SameRgb(c.SourceWindow.Background.solid, THEME.bg))
@@ -699,6 +713,7 @@ do
     local function Tick(n)
         for _ = 1, n do fader.scripts.OnUpdate(fader, 0.1) end
     end
+    local grip = window.MinimizeContainer.ResizeButton
     check("fade: a frame of ours ticks, and is shown", fader.scripts and fader.scripts.OnUpdate and fader.shown == true)
     window.mouseOver = false
     Tick(5)
@@ -706,15 +721,37 @@ do
         window.Header.alpha == 0.2 and window.MinimizeButton.alpha == 0.2 and window.SettingsDropdown.alpha == 0.2
         and window.SessionDropdown.alpha == 0.2 and window.DamageMeterTypeDropdown.alpha == 0.2
         and window.SessionTimer.alpha == 0.2)
+    Tick(12)
+    check("fade: faded and the mouse away, the tick stops", fader.shown == false)
+    check("fade: the window, a child of it and an entry are watched for the mouse",
+        window.scripts.OnEnter ~= nil and grip.scripts.OnEnter ~= nil
+        and window.MinimizeContainer.ScrollBox.frames[1].scripts.OnEnter ~= nil)
     window.mouseOver = true
+    window.scripts.OnEnter(window)
+    check("fade: the mouse coming in wakes it", fader.shown == true)
     Tick(5)
     check("fade: with the mouse over the window they are whole", window.Header.alpha == 1
         and window.MinimizeButton.alpha == 1 and window.SessionTimer.alpha == 1)
+    Tick(30)
+    check("fade: it keeps ticking while the mouse stays", fader.shown == true)
+    window.mouseOver = false
+    Tick(5)
+    check("fade: the mouse gone, they fade again", window.Header.alpha == 0.2)
+    Tick(12)
+    check("fade: and the tick stops once they have", fader.shown == false and window.Header.alpha == 0.2)
+    window.mouseOver = true
+    grip.scripts.OnEnter(grip)
+    check("fade: entering a child of the window wakes it as well", fader.shown == true)
+    local fresh = Entry()
+    window.MinimizeContainer.ScrollBox:Acquire(fresh)
+    check("fade: an entry acquired later is watched too", fresh.scripts ~= nil and fresh.scripts.OnEnter ~= nil)
     window.mouseOver = false
     Tick(5)
     store.Set("damageMeterTitleFade", "always")
     check("fade: always shown puts them whole at once and stops the tick", window.Header.alpha == 1
         and window.SettingsDropdown.alpha == 1 and fader.shown == false)
+    window.scripts.OnEnter(window)
+    check("fade: always shown, the hooks left behind wake nothing", fader.shown == false)
 end
 
 -- a border round the whole window
@@ -757,12 +794,23 @@ end
 do
     local _, store, meter, _, frames = Boot({ damageMeterSkin = true, damageMeterScrollBar = "hidden" }, true)
     Login(frames)
-    local scroll = meter.windows[1].MinimizeContainer.ScrollBar
+    local window = meter.windows[1]
+    local scroll = window.MinimizeContainer.ScrollBar
     local fader = frames[#frames]
     check("scroll bar: hidden is see-through, and we tick to keep it so", scroll.alpha == 0 and fader.shown == true)
     scroll.alpha = 1
     fader.scripts.OnUpdate(fader, 0.1)
     check("scroll bar: the game's emphasis is put back at the next tick", scroll.alpha == 0)
+    for _ = 1, 12 do fader.scripts.OnUpdate(fader, 0.1) end
+    check("scroll bar: the mouse away and nothing changing, it stops ticking", fader.shown == false)
+    window.MinimizeContainer.ScrollBox.frames[1]:UpdateStyle()
+    check("scroll bar: a refresh of an entry wakes it", fader.shown == true)
+    for _ = 1, 12 do fader.scripts.OnUpdate(fader, 0.1) end
+    window.scripts.OnEnter(window)
+    scroll.alpha = 1
+    fader.scripts.OnUpdate(fader, 0.1)
+    check("scroll bar: the mouse coming in wakes it, and the emphasis is put back",
+        fader.shown == true and scroll.alpha == 0)
     store.Set("damageMeterScrollBar", "accent")
     check("scroll bar: the Accent on every piece, and shown", SameRgb(scroll.thumb.vertex, THEME.accent)
         and SameRgb(scroll.track.vertex, THEME.accent) and scroll.alpha == 1 and fader.shown == false)
