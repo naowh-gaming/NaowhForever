@@ -22,8 +22,9 @@ end
 
 local function Boot(opts)
     opts = opts or {}
-    local s = { printed = {}, saves = {}, timers = {}, converts = 0, copies = {}, account = {} }
+    local s = { printed = {}, saves = {}, timers = {}, converts = 0, copies = {}, account = {}, refreshes = 0 }
     local ns = { QoLSettings = {}, Print = function(text) s.printed[#s.printed + 1] = text end,
+        UI = { RefreshPage = function() s.refreshes = s.refreshes + 1 end },
         AccountSettings = function() return s.account end,
         ShowCopyBox = function(title, text) s.copies[#s.copies + 1] = { title = title, text = text } end,
         Shared = { Settings = { Page = function()
@@ -64,7 +65,7 @@ end
 -- the card
 do
     local s = Boot()
-    check("a slider of the game's range and a backup button", s.slider.slider[1] == 15
+    check("a slider of the game's range and a restore button", s.slider.slider[1] == 15
         and s.slider.slider[2] == 40 and s.slider.label == "Bar Height"
         and type(s.copy.button) == "function")
     check("help is short", #s.slider.help < 100 and #s.copy.help < 100)
@@ -86,9 +87,10 @@ do
         and saved.layouts[3].systems[1].settings[1].value == 9 and saved.activeLayout == 3 and #saved.layouts == 3)
     check("the game's own table is not touched", s.manager.layoutInfo.layouts[3].systems[2].settings[1].value == 5
         and saved ~= s.manager.layoutInfo)
-    check("a backup of the layout, as it was", s.account.damageMeterLayoutBackup.text == "export:Mine"
-        and s.account.damageMeterLayoutBackup.name == "Mine" and s.converts == 1)
-    check("and a line that says so", #s.printed == 1 and s.printed[1]:find("30", 1, true) ~= nil)
+    check("a backup of the layout, as it was, with the height it had", s.account.damageMeterLayoutBackup.text == "export:Mine"
+        and s.account.damageMeterLayoutBackup.name == "Mine" and s.account.damageMeterLayoutBackup.height == 20
+        and s.converts == 1)
+    check("and nothing to say: no note, no chat line", s.slider.note() == nil and #s.printed == 0)
     s.manager.layoutInfo.layouts[3].systems[2].settings[1].value = 15
     s.slider.set(35); s.Flush()
     check("a second change is a second save, with no second backup", #s.saves == 2 and s.converts == 1)
@@ -123,32 +125,34 @@ do
     local s = Boot()
     s.combat = true
     s.slider.set(30); s.Flush()
-    check("in combat: not saved, said", #s.saves == 0 and #s.printed == 1)
+    check("in combat: not saved, said under the slider", #s.saves == 0 and s.slider.note() ~= nil
+        and s.slider.note():find("combat", 1, true) ~= nil and #s.printed == 0 and s.refreshes >= 1)
     s.combat = false
     s.editOpen = true
     s.slider.set(30); s.Flush()
-    check("with Edit Mode open: not saved, said", #s.saves == 0 and #s.printed == 2)
+    check("with Edit Mode open: not saved, said", #s.saves == 0 and s.slider.note():find("Edit Mode", 1, true) ~= nil)
     s.editOpen = false
     s.manager.layoutInfo.activeLayout = 1
     s.slider.set(30); s.Flush()
-    check("on one of the game's own layouts: not saved, said", #s.saves == 0 and #s.printed == 3
-        and s.printed[3]:find("copy", 1, true) ~= nil and s.converts == 0)
+    check("on one of the game's own layouts: not saved, said", #s.saves == 0
+        and s.slider.note():find("copy", 1, true) ~= nil and s.converts == 0)
     s.manager.layoutInfo.activeLayout = 2
     check("and the slider still reads without an error", s.slider.get() == 20)
     s.manager.layoutInfo.activeLayout = 9
     s.slider.set(30); s.Flush()
-    check("an active layout that is not there: not saved, said", #s.saves == 0 and #s.printed == 4)
+    check("an active layout that is not there: not saved, said", #s.saves == 0 and s.slider.note() ~= nil)
     s.manager.layoutInfo.activeLayout = 3
     s.manager.layoutInfo.layouts[3].systems[2] = nil
     s.slider.set(30); s.Flush()
-    check("a layout without a damage meter: not saved, said", #s.saves == 0 and #s.printed == 5)
+    check("a layout without a damage meter: not saved, said", #s.saves == 0
+        and s.slider.note():find("damage meter", 1, true) ~= nil and #s.printed == 0)
 end
 
 do
     local s = Boot({ noManager = true })
     check("no manager: the slider reads the default", s.slider.get() == 20)
     s.slider.set(30); s.Flush()
-    check("and says so, saving nothing", #s.saves == 0 and #s.printed == 1)
+    check("and says so, saving nothing", #s.saves == 0 and s.slider.note() ~= nil)
 end
 
 -- the game refuses
@@ -156,7 +160,8 @@ do
     local s = Boot()
     s.saveError = "protected"
     s.slider.set(30); s.Flush()
-    check("a refused save is said, with the reason", #s.printed == 1 and s.printed[1]:find("protected", 1, true) ~= nil)
+    check("a refused save is said, with the reason", s.slider.note():find("protected", 1, true) ~= nil
+        and #s.printed == 0)
 end
 
 -- the slider shows where it is going, and says when the game did not take it
@@ -166,7 +171,7 @@ do
     check("the slider shows the new height at once, before anything is saved", s.slider.get() == 30 and #s.saves == 0)
     s.Flush()
     s.Flush()
-    check("saved and taken: the layout says it too", s.slider.get() == 30 and #s.printed == 1
+    check("saved and taken: the layout says it too, with no note", s.slider.get() == 30 and s.slider.note() == nil
         and s.manager.layoutInfo.layouts[3].systems[2].settings[1].value == 15)
     s.manager.layoutInfo.layouts[3].systems[2].settings[1].value = 0
     check("and when the layout changes elsewhere, the slider follows it", s.slider.get() == 15)
@@ -175,7 +180,7 @@ do
     stale.Flush()
     stale.Flush()
     check("saved but not taken: said, and the slider keeps what was saved", stale.slider.get() == 30
-        and #stale.printed == 2 and stale.printed[2]:find("reload", 1, true) ~= nil)
+        and stale.slider.note() == "Needs a /reload" and #stale.printed == 0)
     local refused = Boot()
     refused.combat = true
     refused.slider.set(30)
@@ -189,15 +194,24 @@ do
         and same.slider.get() == 20)
 end
 
--- the backup button
+-- Original Height puts back what it was before the first change
 do
-    local s = Boot()
+    local s = Boot({ apply = true })
     s.copy.button()
-    check("no backup yet: said", #s.copies == 0 and #s.printed == 1)
-    s.slider.set(30); s.Flush()
+    check("nothing to restore yet: said under the button, nothing saved", #s.saves == 0 and s.copy.note() ~= nil
+        and #s.printed == 0)
+    s.slider.set(30); s.Flush(); s.Flush()
+    check("a change was saved, and the height from before is remembered", #s.saves == 1
+        and s.account.damageMeterLayoutBackup.height == 20 and s.slider.get() == 30)
     s.copy.button()
-    check("after a change: the copy box has the layout string", #s.copies == 1 and s.copies[1].text == "export:Mine"
-        and s.copies[1].title:find("Mine", 1, true) ~= nil)
+    check("the slider shows the original height at once", s.slider.get() == 20 and s.copy.note() == nil)
+    s.Flush(); s.Flush()
+    check("Restore saves it: 20 is 5, as stored", #s.saves == 2
+        and s.saves[2].layouts[3].systems[2].settings[1].value == 5 and s.slider.get() == 20)
+    s.slider.set(35); s.Flush(); s.Flush()
+    s.copy.button(); s.Flush(); s.Flush()
+    check("a later change does not move what Restore goes back to", s.account.damageMeterLayoutBackup.height == 20
+        and s.saves[#s.saves].layouts[3].systems[2].settings[1].value == 5)
 end
 
 print("PASS damage meter layout: " .. checks .. " checks")

@@ -8,8 +8,8 @@ local Parts = ns.Shared.Parts
 
 local ADDON = "Blizzard_DamageMeter"
 local PRIMARY_WINDOW = "DamageMeterSessionWindow1"
-local TEXT_NO_WINDOW = "Damage Meter Window: the game's meter has no window to place."
-local TEXT_NO_PLACE = "Damage Meter Window: the game's meter has no place on screen yet. Show it, then switch this off and on."
+local TEXT_NO_WINDOW = "The game's meter has no window to place."
+local TEXT_NO_PLACE = "The game's meter has no place on screen yet. Show it, then switch this off and on."
 local BAR_CLASS, BAR_ACCENT, BAR_CUSTOM = "class", "accent", "custom"
 local BARS = { { class = "Class Colors", accent = "Theme Accent", custom = "Custom Color" },
     { BAR_CLASS, BAR_ACCENT, BAR_CUSTOM } }
@@ -25,7 +25,7 @@ local TITLE_PARTS = { "Header", "MinimizeButton", "SettingsDropdown", "SessionDr
     "DamageMeterTypeDropdown", "SessionTimer" }
 local FADE_EVERY, FADE_STEP, SCROLL_DEPTH, PERCENT = 0.1, 0.35, 3, 100
 local PERCENT_RANGE = { 0, PERCENT, 5 }
-local FONT_SIZE_RANGE = { 0, 24, 1 }
+local FONT_SIZE_RANGE, FONT_SIZE_DEFAULT = { 0, 24, 1 }, 12
 local BUTTON_PARTS = { "MinimizeButton", "SettingsDropdown", "SessionDropdown", "DamageMeterTypeDropdown" }
 local BUTTON_DEPTH = 2
 local BUTTONS_GAME, BUTTONS_THEMED = "game", "themed"
@@ -39,7 +39,8 @@ local SETTING_KEYS = { enabled = true, damageMeterSkin = true, damageMeterBars =
     damageMeterBarBgColor = true, damageMeterBarBgAlpha = true, damageMeterScrollBar = true,
     damageMeterBorder = true, damageMeterBorderColor = true, damageMeterTitleFade = true,
     damageMeterTitleFadeAlpha = true, damageMeterNameSize = true, damageMeterValueSize = true,
-    damageMeterTitleSize = true, damageMeterButtons = true, damageMeterButtonColor = true }
+    damageMeterTitleSize = true, damageMeterButtons = true, damageMeterButtonColor = true,
+    damageMeterWindowAlpha = true }
 
 local OUTLINES = { { [OUTLINE_GAME] = TEXT_GAME_DEFAULT }, { OUTLINE_GAME } }
 for key, name in pairs(Parts.HUD_OUTLINES[1]) do OUTLINES[1][key] = name end
@@ -59,6 +60,9 @@ local scrolled = setmetatable({}, { __mode = "k" })
 local tints = setmetatable({}, { __mode = "k" })
 local glyphs = setmetatable({}, { __mode = "k" })
 local buttoned = setmetatable({}, { __mode = "k" })
+local gameSizes = {}
+local alphas = setmetatable({}, { __mode = "k" })
+local placementNote
 local fader
 local sinceTick = 0
 local hovering, lowAlpha, scrollHidden = false, 0, false
@@ -141,7 +145,7 @@ local function Shadow(fontString, was)
 end
 
 local function Size(game, key)
-    local size = S.Get(key)
+    local size = key and S.Get(key)
     if type(size) == "number" and size > 0 then return size end
     return game
 end
@@ -160,6 +164,7 @@ end
 local function Text(fontString, c, sizeKey)
     if not Has(fontString, "SetTextColor") then return end
     local was = looks[fontString] or Remember(fontString)
+    if sizeKey and was[2] and gameSizes[sizeKey] == nil then gameSizes[sizeKey] = was[2] end
     if was[2] and faced[fontString] ~= generation then
         faced[fontString] = generation
         Face(fontString, was, sizeKey)
@@ -248,6 +253,12 @@ local function Entries(scrollBox)
     for _, frame in scrollBox:EnumerateFrames() do Skin(frame) end
 end
 
+local function Opacity(region, alpha)
+    if not Has(region, "SetAlpha") then return end
+    if alphas[region] == nil then alphas[region] = Has(region, "GetAlpha") and region:GetAlpha() or 1 end
+    region:SetAlpha(alpha)
+end
+
 local function WindowBorder(window)
     local border = edges[window]
     if S.Get("damageMeterBorder") ~= true or not Has(window, "GetFrameLevel") then
@@ -321,18 +332,27 @@ local function TitleAlpha(window, alpha)
     end
 end
 
+local function Label(fontString)
+    if not Has(fontString, "SetTextColor") then return end
+    local was = looks[fontString] or Remember(fontString)
+    local c = { r = was[4], g = was[5], b = was[6] }
+    if S.Get("damageMeterButtons") == BUTTONS_THEMED then c = Pick("damageMeterButtonColor", "accent") end
+    Text(fontString, c, nil)
+end
+
 local function SkinWindow(window)
     local titles, values = Pick("damageMeterTitleColor", "fg"), Pick("damageMeterValueColor", "muted")
     local header, background = Pick("damageMeterHeaderColor", "panel"), Pick("damageMeterWindowColor", "bg")
     Flat(window.Header, header)
     Text(window.SessionTimer, values, "damageMeterValueSize")
-    Text(Dig(window, "SessionDropdown", "SessionName"), titles, "damageMeterTitleSize")
+    Label(Dig(window, "SessionDropdown", "SessionName"))
     Text(Dig(window, "DamageMeterTypeDropdown", "TypeName"), titles, "damageMeterTitleSize")
     WindowBorder(window)
     Buttons(window, S.Get("damageMeterButtons") == BUTTONS_THEMED)
     local container = window.MinimizeContainer
     if type(container) ~= "table" then return end
     Flat(container.Background, background)
+    Opacity(container.Background, Fraction("damageMeterWindowAlpha"))
     ScrollBar(window, S.Get("damageMeterScrollBar"))
     Skin(container.LocalPlayerEntry)
     Entries(container.ScrollBox)
@@ -350,6 +370,8 @@ local function RestoreWindow(window)
     end
     if scrolled[window] then ScrollBar(window, SCROLL_GAME) end
     if buttoned[window] then Buttons(window, false) end
+    local background = Dig(window, "MinimizeContainer", "Background")
+    if alphas[background] ~= nil then Opacity(background, alphas[background]) end
 end
 
 local function GiveBack()
@@ -379,12 +401,11 @@ local function GiveBack()
 end
 
 local placed = false
-local noted = false
 
 local function Note(text)
-    if noted then return end
-    noted = true
-    ns.Print(text)
+    if placementNote == text then return end
+    placementNote = text
+    if ns.UI and ns.UI.RefreshPage then ns.UI:RefreshPage(true) end
 end
 
 local function Primary()
@@ -466,6 +487,7 @@ local function Place()
     if Has(window, "SetMovable") then window:SetMovable(true) end
     if Has(window, "SetResizable") then window:SetResizable(true) end
     placed = true
+    Note(nil)
     Handles(window)
 end
 
@@ -620,6 +642,17 @@ local function Skinned(rows)
     return rows
 end
 
+local function SizeRow(key, label, help)
+    return { key = key, label = label, slider = FONT_SIZE_RANGE, unit = "px", help = help,
+        get = function()
+            local picked = S.Get(key)
+            if type(picked) == "number" and picked > 0 then return picked end
+            local game = gameSizes[key] or FONT_SIZE_DEFAULT
+            return game - game % 1
+        end,
+        set = function(v) S.Set(key, v) end }
+end
+
 local rows = Skinned({
     { key = "damageMeterBars", label = "Bar Color", choice = BARS },
     { key = "damageMeterBarColor", label = "Custom Bar Color", colour = true, needs = CustomBars,
@@ -651,17 +684,17 @@ local rows = Skinned({
     { key = "damageMeterOutline", label = "Outline", choice = OUTLINES,
       help = "The game's own, none, the soft shadow, a thin outline or a thick one." },
     ColorRow("damageMeterNameColor", "Name Color", "fg", "The names on the bars."),
-    { key = "damageMeterNameSize", label = "Name Size", slider = FONT_SIZE_RANGE, unit = "px",
-      help = "0 keeps the game's own size. Edit Mode's Text Size still scales it." },
+    SizeRow("damageMeterNameSize", "Name Size",
+        "The names on the bars. 0 is the game's own size; Edit Mode's Text Size still scales it."),
     ColorRow("damageMeterValueColor", "Amount Color", "muted", "The amounts, and the fight time."),
-    { key = "damageMeterValueSize", label = "Amount Size", slider = FONT_SIZE_RANGE, unit = "px",
-      help = "The amounts and the fight time. 0 keeps the game's own size." },
+    SizeRow("damageMeterValueSize", "Amount Size", "The amounts and the fight time. 0 is the game's own size."),
     ColorRow("damageMeterTitleColor", "Title Color", "fg", "The list and session names in the title bar."),
-    { key = "damageMeterTitleSize", label = "Title Size", slider = FONT_SIZE_RANGE, unit = "px",
-      help = "The list and session names. 0 keeps the game's own size." },
+    SizeRow("damageMeterTitleSize", "Title Size", "The list name in the title bar. 0 is the game's own size."),
     Settings.Group("Window"),
     ColorRow("damageMeterHeaderColor", "Title Bar Color", "panel", "The title bar and the spell panel."),
     ColorRow("damageMeterWindowColor", "Window Color", "bg", "The window and the shadow behind each bar."),
+    { key = "damageMeterWindowAlpha", label = "Window Opacity", slider = PERCENT_RANGE, unit = "%",
+      help = "How solid the window's background is." },
     { key = "damageMeterBorder", label = "Window Border", toggle = true,
       help = "A thin border round the whole window." },
     ColorRow("damageMeterBorderColor", "Border Color", "line", "The border round the window.",
@@ -681,6 +714,7 @@ local card = { { key = "damageMeterSkin", label = "Reskin", toggle = true,
 for _, row in ipairs(rows) do card[#card + 1] = row end
 card[#card + 1] = Settings.Group("Position and Size")
 card[#card + 1] = { key = "damageMeterFree", label = "Move and Resize", toggle = true,
+    note = function() return placementNote end,
     help = "Drag the window and its corner here, without Edit Mode." }
 card[#card + 1] = { label = "Window Position", buttonText = "Reset", button = ResetPosition,
     needs = "damageMeterFree", help = "Puts the window back where Edit Mode has it." }

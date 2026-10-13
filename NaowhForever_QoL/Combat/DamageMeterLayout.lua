@@ -5,23 +5,31 @@ local BAR_MIN, BAR_MAX, BAR_DEFAULT = 15, 40, 20
 local BAR_RANGE = { BAR_MIN, BAR_MAX, 1 }
 local DEBOUNCE, VERIFY = 0.5, 0.5
 local BACKUP_KEY = "damageMeterLayoutBackup"
-local TEXT_COMBAT = "Damage Meter Layout: not in combat."
-local TEXT_NO_EDIT_MODE = "Damage Meter Layout: the game's layouts are not available."
-local TEXT_EDIT_MODE_OPEN = "Damage Meter Layout: close Edit Mode first."
-local TEXT_PRESET = "Damage Meter Layout: your active layout is one of the game's own. Make a copy in Edit Mode first."
-local TEXT_NO_SYSTEM = "Damage Meter Layout: this layout has no damage meter."
-local TEXT_FAILED = "Damage Meter Layout: the game would not save the layout (%s)."
-local TEXT_SAVED = "Damage Meter Layout: Bar Height %d saved. If the bars have not changed, /reload."
-local TEXT_NOT_APPLIED = "Damage Meter Layout: saved, but the game has not applied it yet. /reload to see it."
-local TEXT_NO_BACKUP = "Damage Meter Layout: no backup yet; one is made before the first change."
-local TEXT_BACKUP_TITLE = "Edit Mode layout backup: %s"
+local TEXT_COMBAT = "Not in combat."
+local TEXT_NO_EDIT_MODE = "The game's layouts are not available."
+local TEXT_EDIT_MODE_OPEN = "Close Edit Mode first."
+local TEXT_PRESET = "Your active layout is one of the game's own. Make a copy in Edit Mode first."
+local TEXT_NO_SYSTEM = "This layout has no damage meter."
+local TEXT_FAILED = "The game would not save the layout (%s)."
+local TEXT_RELOAD = "Needs a /reload"
+local TEXT_NO_BACKUP = "Nothing to restore yet: it remembers the height from before your first change."
 
 local pending = 0
 local backedUp = false
-local shown
+local shown, status, backupStatus
 
 local function Has(object, method)
     return type(object) == "table" and type(object[method]) == "function"
+end
+
+local function Refresh()
+    if ns.UI and ns.UI.RefreshPage then ns.UI:RefreshPage(true) end
+end
+
+local function Say(text)
+    if status == text then return end
+    status = text
+    Refresh()
 end
 
 local function Manager()
@@ -73,13 +81,15 @@ local function CurrentHeight()
     return shown or LayoutHeight()
 end
 
-local function Backup(layout)
-    if backedUp or not (C_EditMode and C_EditMode.ConvertLayoutInfoToString) then return end
+local function Backup(layout, system)
+    if backedUp then return end
     backedUp = true
-    local ok, text = pcall(C_EditMode.ConvertLayoutInfoToString, layout)
-    if ok and type(text) == "string" then
-        ns.AccountSettings()[BACKUP_KEY] = { name = layout.layoutName, text = text }
+    local saved = { name = layout.layoutName, height = HeightOf(system) }
+    if C_EditMode and C_EditMode.ConvertLayoutInfoToString then
+        local ok, text = pcall(C_EditMode.ConvertLayoutInfoToString, layout)
+        if ok and type(text) == "string" then saved.text = text end
     end
+    ns.AccountSettings()[BACKUP_KEY] = saved
 end
 
 local function Write(system, height)
@@ -94,26 +104,26 @@ local function Write(system, height)
 end
 
 local function Change(height)
-    if InCombatLockdown() then ns.Print(TEXT_COMBAT) return end
+    if InCombatLockdown() then Say(TEXT_COMBAT) return end
     local frame = Manager()
-    if not (frame and C_EditMode and C_EditMode.SaveLayouts) then ns.Print(TEXT_NO_EDIT_MODE) return end
-    if Has(frame, "IsShown") and frame:IsShown() then ns.Print(TEXT_EDIT_MODE_OPEN) return end
+    if not (frame and C_EditMode and C_EditMode.SaveLayouts) then Say(TEXT_NO_EDIT_MODE) return end
+    if Has(frame, "IsShown") and frame:IsShown() then Say(TEXT_EDIT_MODE_OPEN) return end
     local info = CopyTable(frame.layoutInfo)
     local layout = ActiveLayout(info)
-    if not layout then ns.Print(TEXT_NO_EDIT_MODE) return end
-    if layout.layoutType == Enum.EditModeLayoutType.Preset then ns.Print(TEXT_PRESET) return end
+    if not layout then Say(TEXT_NO_EDIT_MODE) return end
+    if layout.layoutType == Enum.EditModeLayoutType.Preset then Say(TEXT_PRESET) return end
     local system = SystemOf(layout)
-    if not system then ns.Print(TEXT_NO_SYSTEM) return end
+    if not system then Say(TEXT_NO_SYSTEM) return end
     height = Clamp(height)
     if height == HeightOf(system) and EntryOf(system) then return end
-    Backup(layout)
+    Backup(layout, system)
     Write(system, height)
     local ok, err = pcall(C_EditMode.SaveLayouts, info)
     if not ok then
-        ns.Print(TEXT_FAILED:format(tostring(err)))
+        Say(TEXT_FAILED:format(tostring(err)))
         return false
     end
-    ns.Print(TEXT_SAVED:format(height))
+    Say(nil)
     return true
 end
 
@@ -126,13 +136,14 @@ local function Flush(height)
         if LayoutHeight() == height then
             shown = nil
         else
-            ns.Print(TEXT_NOT_APPLIED)
+            Say(TEXT_RELOAD)
         end
     end)
 end
 
 local function Request(height)
     shown = Clamp(height)
+    status = nil
     pending = pending + 1
     local token = pending
     C_Timer.After(DEBOUNCE, function()
@@ -140,20 +151,27 @@ local function Request(height)
     end)
 end
 
-local function ShowBackup()
+local function Restore()
     local saved = ns.AccountSettings()[BACKUP_KEY]
-    if type(saved) ~= "table" then
-        ns.Print(TEXT_NO_BACKUP)
+    if type(saved) ~= "table" or type(saved.height) ~= "number" then
+        backupStatus = TEXT_NO_BACKUP
+        Refresh()
         return
     end
-    ns.ShowCopyBox(TEXT_BACKUP_TITLE:format(tostring(saved.name)), saved.text)
+    backupStatus = nil
+    status = nil
+    shown = Clamp(saved.height)
+    Flush(shown)
+    Refresh()
 end
 
 ns.DamageMeterLayout = {
     rows = {
         { label = "Bar Height", slider = BAR_RANGE, unit = "px", get = CurrentHeight, set = Request,
+          note = function() return status end,
           help = "Saved in your active Edit Mode layout, which must be one of your own." },
-        { label = "Layout Backup", buttonText = "Copy", button = ShowBackup,
-          help = "Your layout as it was before the first change, to import in Edit Mode." },
+        { label = "Original Height", buttonText = "Restore", button = Restore,
+          note = function() return backupStatus end,
+          help = "Puts Bar Height back to what it was before you first changed it here." },
     },
 }

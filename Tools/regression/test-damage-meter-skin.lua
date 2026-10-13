@@ -21,6 +21,7 @@ local function Texture(atlas)
         local v = self.vertex or { 1, 1, 1 }
         return v[1], v[2], v[3], 1
     end
+    function t:GetAlpha() return self.alpha end
     function t:SetDesaturated(on) self.desaturated = on end
     function t:IsDesaturated() return self.desaturated == true end
     function t:SetAlpha(a) self.alpha = a end
@@ -167,7 +168,7 @@ local function Boot(settings, loaded, windows)
         damageMeterBarBgAlpha = 100, damageMeterScrollBar = "game", damageMeterBorder = false,
         damageMeterBorderColor = false, damageMeterTitleFade = "always", damageMeterTitleFadeAlpha = 0,
         damageMeterNameSize = 0, damageMeterValueSize = 0, damageMeterTitleSize = 0, damageMeterButtons = "game",
-        damageMeterButtonColor = false }
+        damageMeterButtonColor = false, damageMeterWindowAlpha = 100 }
     local store = {}
     function store.Get(k)
         local v = s.settings[k]
@@ -188,6 +189,7 @@ local function Boot(settings, loaded, windows)
         Print = function(text) s.printed[#s.printed + 1] = text end,
         UIFontPath = function() return FONT end,
         UI = { FontPath = function(name) return "Fonts\\" .. name .. ".ttf" end,
+            RefreshPage = function() s.refreshes = (s.refreshes or 0) + 1 end,
             TexturePath = function(name, fallback)
                 if name == "" then return fallback end
                 return "Textures\\" .. name
@@ -304,7 +306,7 @@ do
     check("the source window is the Panels color", SameRgb(c.SourceWindow.Background.solid, THEME.panel))
     check("the timer is Secondary Text, the names Text",
         SameRgb({ window.SessionTimer.r, window.SessionTimer.g, window.SessionTimer.b }, THEME.muted)
-        and window.SessionDropdown.SessionName.r == THEME.fg.r and window.DamageMeterTypeDropdown.TypeName.r == THEME.fg.r)
+        and window.SessionDropdown.SessionName.r == 1 and window.DamageMeterTypeDropdown.TypeName.r == THEME.fg.r)
     check("the header text is in the addon font, the game's size and flags",
         window.SessionTimer.path == FONT and window.SessionTimer.size == GAME_SIZE and window.SessionTimer.flags == GAME_FLAGS)
     for i, entry in ipairs(Entries(window)) do
@@ -480,12 +482,13 @@ do
     local window = meter.windows[1]
     local c = window.MinimizeContainer
     local bar = c.ScrollBox.frames[1].StatusBar
-    check("colors: the names on the bars only, not the title", bar.Name.r == 1 and bar.Name.g == 0
-        and window.SessionDropdown.SessionName.r == THEME.fg.r
+    check("colors: the names on the bars only, not the title or the session button", bar.Name.r == 1
+        and bar.Name.g == 0 and window.SessionDropdown.SessionName.g == 0.82
         and window.DamageMeterTypeDropdown.TypeName.r == THEME.fg.r)
     store.Set("damageMeterTitleColor", { r = 0.2, g = 0.4, b = 0.6 })
-    check("colors: the title has its own color, the names stay", window.SessionDropdown.SessionName.b == 0.6
-        and window.DamageMeterTypeDropdown.TypeName.g == 0.4 and bar.Name.r == 1 and bar.Name.g == 0)
+    check("colors: the title has its own color, the names and the session button stay",
+        window.DamageMeterTypeDropdown.TypeName.g == 0.4 and window.SessionDropdown.SessionName.g == 0.82
+        and bar.Name.r == 1 and bar.Name.g == 0)
     check("colors: the amounts and the timer", bar.Value.g == 1 and bar.Value.r == 0 and window.SessionTimer.g == 1)
     check("colors: the title bar and the spell panel", SameRgb(window.Header.solid, blue)
         and SameRgb(c.SourceWindow.Background.solid, blue))
@@ -626,10 +629,13 @@ do
     local s2, store, _, _, bootFrames, env = Boot({ damageMeterFree = true }, true, {})
     env.DamageMeter = bare
     Login(bootFrames)
-    check("no window to place: one short note, and nothing else", #s2.printed == 1)
-    store.Set("damageMeterFree", false)
-    store.Set("damageMeterFree", true)
-    check("and only once", #s2.printed == 1)
+    local function MoveNote(boot)
+        for _, item in ipairs(boot.cards[1].rows) do
+            if item.label == "Move and Resize" then return item.note() end
+        end
+    end
+    check("no window to place: a note under the row, and nothing in the chat", MoveNote(s2) ~= nil
+        and #s2.printed == 0 and (s2.refreshes or 0) >= 1)
 end
 
 -- the game's meter without a call for its primary window: the first window is the primary one
@@ -643,7 +649,7 @@ do
     env.DamageMeterSessionWindow1 = one
     Login(bootFrames)
     check("found by its name: placed, movable, kept", one.points[1][2] == env.UIParent and one.movable == true
-        and type(store.Get("damageMeterPos")) == "table" and #s3.printed == 0)
+        and type(store.Get("damageMeterPos")) == "table" and #s3.printed == 0 and s3.cards[1] ~= nil)
 end
 
 -- a window that has no place on screen yet: it is said, once
@@ -652,8 +658,20 @@ do
     one.left, one.top = nil, nil
     local s4, store, _, _, bootFrames = Boot({ damageMeterFree = true }, true, { one })
     Login(bootFrames)
-    check("no rect yet: not placed, and one note", #one.points == 0 and one.movable == nil and #s4.printed == 1
-        and store.Get("damageMeterPos") == false)
+    local noted
+    for _, item in ipairs(s4.cards[1].rows) do
+        if item.label == "Move and Resize" then noted = item.note() end
+    end
+    check("no rect yet: not placed, and a note under the row", #one.points == 0 and one.movable == nil
+        and noted ~= nil and #s4.printed == 0 and store.Get("damageMeterPos") == false)
+    one.left, one.top = 100, 500
+    store.Set("damageMeterFree", false)
+    store.Set("damageMeterFree", true)
+    local after
+    for _, item in ipairs(s4.cards[1].rows) do
+        if item.label == "Move and Resize" then after = item.note() end
+    end
+    check("and the note goes once it is placed", after == nil and one.movable == true)
 end
 
 -- the title bar fades until the mouse is over the window
@@ -750,14 +768,43 @@ do
     local bar = window.MinimizeContainer.ScrollBox.frames[1].StatusBar
     check("sizes: the names have theirs", bar.Name.size == 16)
     check("sizes: the amounts and the timer have theirs", bar.Value.size == 12 and window.SessionTimer.size == 12)
-    check("sizes: the list and session names have theirs", window.SessionDropdown.SessionName.size == 20
-        and window.DamageMeterTypeDropdown.TypeName.size == 20)
+    check("sizes: the list name has its own, the session button does not follow it",
+        window.DamageMeterTypeDropdown.TypeName.size == 20 and window.SessionDropdown.SessionName.size == GAME_SIZE)
     store.Set("damageMeterNameSize", 0)
     check("sizes: 0 is the game's own, for that one only", bar.Name.size == GAME_SIZE and bar.Value.size == 12
-        and window.SessionDropdown.SessionName.size == 20)
+        and window.DamageMeterTypeDropdown.TypeName.size == 20)
     store.Set("damageMeterSkin", false)
     check("sizes: off gives the game's sizes back", bar.Value.size == GAME_SIZE and window.SessionTimer.size == GAME_SIZE
         and window.SessionDropdown.SessionName.size == GAME_SIZE)
+end
+
+-- the size rows show the game's own size until one is picked
+do
+    local s, store, _, _, frames = Boot({ damageMeterSkin = true }, true)
+    Login(frames)
+    local rows = {}
+    for _, row in ipairs(s.cards[1].rows) do
+        if row.key then rows[row.key] = row end
+    end
+    check("size rows: the game's own size, not 0", rows.damageMeterNameSize.get() == GAME_SIZE
+        and rows.damageMeterValueSize.get() == GAME_SIZE and rows.damageMeterTitleSize.get() == GAME_SIZE)
+    rows.damageMeterNameSize.set(18)
+    check("size rows: a picked size is what they show", rows.damageMeterNameSize.get() == 18
+        and store.Get("damageMeterNameSize") == 18)
+    rows.damageMeterNameSize.set(0)
+    check("size rows: 0 is the game's own again", rows.damageMeterNameSize.get() == GAME_SIZE)
+end
+
+-- the session button's letter is a button: it follows Button Color with Themed, never the title
+do
+    local _, store, meter, _, frames = Boot({ damageMeterSkin = true, damageMeterButtons = "themed" }, true)
+    Login(frames)
+    local label = meter.windows[1].SessionDropdown.SessionName
+    check("session button: in the Button Color when Themed", label.r == THEME.accent.r and label.b == THEME.accent.b)
+    store.Set("damageMeterButtonColor", { r = 1, g = 0, b = 0 })
+    check("session button: and follows a picked Button Color", label.r == 1 and label.g == 0)
+    store.Set("damageMeterButtons", "game")
+    check("session button: the game's own color with Game Default", label.r == 1 and label.g == 0.82)
 end
 
 -- the buttons: the game's own until Themed is picked, then in the theme
@@ -808,6 +855,19 @@ do
     end
 end
 
+-- how solid the window's background is
+do
+    local _, store, meter, _, frames = Boot({ damageMeterSkin = true, damageMeterWindowAlpha = 40 }, true)
+    meter.windows[1].MinimizeContainer.Background.alpha = 0.8
+    Login(frames)
+    local background = meter.windows[1].MinimizeContainer.Background
+    check("window opacity: 40 percent", background.alpha == 0.4)
+    store.Set("damageMeterWindowAlpha", 70)
+    check("window opacity: a new pick is applied at once", background.alpha == 0.7)
+    store.Set("damageMeterSkin", false)
+    check("window opacity: off puts back the game's own, not a plain 1", background.alpha == 0.8)
+end
+
 -- the rows
 do
     local s, store = Boot()
@@ -819,6 +879,7 @@ do
         and rows.damageMeterBarBgColor.colour and rows.damageMeterBarBgAlpha and rows.damageMeterScrollBar)
     check("rows: window border, its color, the title bar and its faded opacity", rows.damageMeterBorder
         and rows.damageMeterBorderColor.colour and rows.damageMeterTitleFade and rows.damageMeterTitleFadeAlpha)
+    check("rows: a window opacity", rows.damageMeterWindowAlpha ~= nil and rows.damageMeterWindowAlpha.slider[2] == 100)
     check("rows: a size for the names, the amounts and the title", rows.damageMeterNameSize
         and rows.damageMeterValueSize and rows.damageMeterTitleSize and rows.damageMeterFontSize == nil)
     check("rows: buttons, and their color that waits for Themed", rows.damageMeterButtons

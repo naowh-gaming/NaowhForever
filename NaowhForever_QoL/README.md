@@ -120,9 +120,10 @@ NaowhForever_QoL/
 - Bar Height (`DamageMeterLayout.lua`) writes the game's own Bar Height setting through `C_EditMode`: it copies the
   manager's layout info (never writes into it), changes the one value in the copy and saves that, so
   the game applies it with its own code and nothing of its is tainted. The stored value is the height
-  less the slider's minimum (15). It keeps one backup string of the layout before the first change,
-  refuses in combat, with Edit Mode open and on the game's built-in layouts, and waits half a second
-  after the slider stops, since every save re-lays out the game's systems.
+  less the slider's minimum (15). Before the first change it keeps the height the layout had, which
+  Original Height puts back, and a backup string of the whole layout; it refuses in combat, with Edit
+  Mode open and on the game's built-in layouts, says why in a note under the slider, and waits half a
+  second after the slider stops, since every save re-lays out the game's systems.
 - Move and Resize re-anchors the primary session window to the screen and sizes it, since the game
   leaves that window to Edit Mode (`CanMoveOrResizeSessionWindow` is false for it). Only the session
   window moves: the Edit Mode frame it hangs from is never touched, and the game's own window setup is
