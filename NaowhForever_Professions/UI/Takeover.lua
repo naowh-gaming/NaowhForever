@@ -67,6 +67,7 @@ local function ShowUnlearn(button)
     if not C_Texture.GetAtlasInfo(UNLEARN_ATLAS) then icon:SetTexture(UNLEARN_FALLBACK) end
     icon:SetSize(UNLEARN_SIZE, UNLEARN_SIZE)
     icon:SetAlpha(1)
+    if button.Overlay then button.Overlay:SetSize(UNLEARN_SIZE, UNLEARN_SIZE) end
 end
 
 local function DockTabs(on)
