@@ -405,7 +405,7 @@ do  -- chat, card, tooltip
     s.ns.BadgesCommand("preview off")
     check("preview off", say(filter, "Me", 901, "Player-1-SELF") == "Me")
     s.ns.BadgesCommand("id")
-    check("id shows your GUID with its region", s.box.text == "3:Player-1-SELF")
+    check("id shows your GUID with its region and name", s.box.text == "3:Player-1-SELF=Me_Myself")
     s.ns.BadgesCommand("nope")
     local usage = s.printed[#s.printed]
     check("the help names both patron tiers, its pipes escaped", usage:find("[legendary||epic||moderator||", 1, true)
@@ -598,9 +598,13 @@ do  -- regions, staff over patrons, the badge code and who may preview
     s.api.GroupEvents:RegisterEvent("PLAYER_ENTERING_WORLD")
     s.fire("PLAYER_ENTERING_WORLD")
     s.region, s.me = 3, "Player-1-ALT1"
+    s.ns.AccountSettings().badgeCharacters[3]["Player-1-OLD"] = true
     local code, count = s.api.BadgeCode()
-    check("one code for every character, this one first, by region",
-        code == "3:Player-1-ALT1,Player-1-ALT2,Player-1-SELF;1:Player-7-US" and count == 4)
+    check("one code for every character, this one first, by region, with names", code
+        == "3:Player-1-ALT1=Me_Myself,Player-1-ALT2=Me_Myself,Player-1-OLD,Player-1-SELF=Me_Myself;1:Player-7-US=Me_Myself"
+        and count == 5)
+    s.ns.AccountSettings().badgeCharacters[3]["Player-1-OLD"] = nil
+    code = s.api.BadgeCode()
     s.ns.BadgesCommand("id")
     check("id shows the code in a copy box", s.box.text == code and s.modal.visible)
     s.box.scripts.OnTextChanged(s.box, true)

@@ -583,7 +583,7 @@ local function RememberCharacter()
     account.badgeCharacters = account.badgeCharacters or {}
     local characters = account.badgeCharacters
     characters[region] = characters[region] or {}
-    characters[region][guid] = true
+    characters[region][guid] = FullName("player") or characters[region][guid] or true
 end
 
 local function InMyGuild(unit)
@@ -799,6 +799,11 @@ local function CurrentFirst(a, b)
     return a < b
 end
 
+local function CodeEntry(guid, name)
+    if type(name) ~= "string" then return guid end
+    return guid .. "=" .. (name:gsub("[%s,;:=]", "_"))
+end
+
 local function BadgeCode()
     local characters = ns.AccountSettings().badgeCharacters or {}
     local current = GetCurrentRegion and GetCurrentRegion()
@@ -810,11 +815,13 @@ local function BadgeCode()
     local groups = {}
     for _, region in ipairs(regions) do
         local list = {}
-        for guid in pairs(characters[region]) do
+        local names = characters[region]
+        for guid in pairs(names) do
             if not (region == current and guid == me) then list[#list + 1] = guid end
         end
         table.sort(list)
-        if region == current and me then table.insert(list, 1, me) end
+        for i = 1, #list do list[i] = CodeEntry(list[i], names[list[i]]) end
+        if region == current and me then table.insert(list, 1, CodeEntry(me, names[me])) end
         if #list > 0 then
             count = count + #list
             groups[#groups + 1] = region .. ":" .. table.concat(list, ",")
