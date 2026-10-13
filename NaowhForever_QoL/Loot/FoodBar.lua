@@ -86,10 +86,13 @@ local function FillButton(button, i, id)
     Look.Fill(button, i, id and (C_Item.GetItemIconByID(id) or EMPTY[i].icon), id and C_Item.GetItemCount(id))
 end
 
-local function Fill()
-    local food, drink = ns.BestFoodAndDrink()
+local function Point(food, drink)
     FillButton(bar.buttons[1], 1, food)
     FillButton(bar.buttons[2], 2, Drinks() and drink or nil)
+end
+
+local function Fill()
+    Point(ns.BestFoodAndDrink())
 end
 
 local function ItemOfSlot(slot, item)
@@ -141,7 +144,7 @@ local function Apply()
         if bar then bar:Hide() end
         return
     end
-    events:RegisterEvent("BAG_UPDATE_DELAYED")
+    if On() then events:RegisterEvent("BAG_UPDATE_DELAYED") else events:UnregisterEvent("BAG_UPDATE_DELAYED") end
     ActionKeys.Listen(events, S.Get("foodBarKeybinds"))
     if not bar then Build() end
     Look.Layout(bar, S.Get("foodBarSize"))
@@ -168,6 +171,12 @@ local function OnEvent(_, event)
         return
     end
     Apply()
+end
+
+function ns.FoodBarPoint(food, drink)
+    if not bar or On() or not Kept() or InCombatLockdown() then return end
+    Point(food, drink)
+    QueueKeys()
 end
 
 local function Restyle()

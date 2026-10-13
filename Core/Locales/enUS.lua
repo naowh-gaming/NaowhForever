@@ -871,7 +871,6 @@ L["A shooting game for flights: click the other faction's races as fast as you c
 L["A short flash of text entering and leaving combat. Move it in the HUD Editor."] = true
 L["A small bar with your next trainer visit and your gold, to leave up while you level. Move it by dragging."] = true
 L["A small health bar for the other tank in your group, shown while you are tanking: tank role, Bear Form, Defensive Stance or Righteous Fury. The other tank is whoever has the tank role or the raid's Main Tank assignment. Click it to target them. Changes made in combat apply when the fight ends. Move it in the HUD Editor."] = true
-L["A Smart Macro already covers some of these, or they need mana: %s. Add them anyway?"] = true
 L["A Sit button beside the reminder and Camp Nearby, to sit down at the campfire."] = true
 L["A soft glow around Naowh's arrow."] = true
 L["A soft glow beside each icon."] = true
@@ -4963,7 +4962,6 @@ L["What Naowh's profession window adds to each recipe: the ones you have not lea
 L["What opens when a flight starts; Off hides the Games button."] = true
 L["What Rows Show"] = true
 L["What shows while you know a find but track none."] = true
-L["What the bar offers to add, and the Smart Macros that pick your best item."] = true
 L["What the bar offers to add, and the smart buttons that pick your best item."] = true
 L["Smart Buttons"] = true
 L["Food & Drink Buttons"] = true

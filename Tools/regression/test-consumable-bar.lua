@@ -2003,11 +2003,17 @@ do
         and s.G.NaowhForeverFoodBarDrink == drink)
     check('each uses your best one', food.attrs.item1 == 'item:8932' and drink.attrs.item1 == 'item:8766'
         and food.count.text == 3)
+    s.counts[13446] = 2
+    s.set('consumableBarHideEmpty', SHIPPED_HIDE_EMPTY)
     s.bags[0] = { 8766 }
     s.counts[8932] = 0
     s.fire('BAG_UPDATE_DELAYED')
-    check('out of food: nothing to use, its own empty icon and tooltip', food.attrs.item1 == nil
-        and food.icon.texture == 133971 and food.emptyTip == 'No food in your bags')
+    check('out of food with Hide When Out on, the default: it leaves the bar and the gap closes',
+        not food.shown and #s.buttons() == 2 and s.buttons()[2] == drink and drink.slot == 2)
+    s.set('consumableBarHideEmpty', false)
+    check('with it off: nothing to use, NONE on its own empty icon and tooltip', food.shown
+        and food.attrs.item1 == nil and food.none.shown and food.icon.texture == 133971
+        and food.emptyTip == 'No food in your bags')
     s.fight(true)
     s.bags[0] = { 8932, 8766 }
     s.counts[8932] = 2
@@ -2111,6 +2117,13 @@ do
     local s = fixture({ consumableBar = true, consumableBarItems = { 'smart:drink' } })
     check('the drink button alone keeps the Food & Drink Bar aside', s.ns.ConsumableBarUsesFood() == true
         and s.pageRow('adding', 'Food & Drink Buttons').get() == true)
+    local pointed
+    s.ns.FoodBarPoint = function(food, drink) pointed = { food, drink } end
+    s.bags[0] = { 8932, 8766 }
+    s.fire('BAG_UPDATE_DELAYED')
+    check('a bag change hands what it found to the hidden Food & Drink Bar', pointed
+        and pointed[1] == 8932 and pointed[2] == 8766)
+    s.bags[0] = {}
     check('and holds NF Food back', s.pageRow('adding', 'NF Food').needs() == false)
     s.bags[0] = { 8932, 8766 }
     s.CB.ScanBags()

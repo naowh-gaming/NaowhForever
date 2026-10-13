@@ -655,6 +655,10 @@ do
     t.Tick()
     local bar = t.FoodBar()
     local food, drink = bar.buttons[1], bar.buttons[2]
+    local before = food.attrs.item1
+    t.ns.FoodBarPoint(4599, 1179)
+    Check("shown on its own, it keeps its own search", food.attrs.item1, before)
+    Check("and listens to the bags itself", t.Listening("BAG_UPDATE_DELAYED"), true)
     local foodEvents, registers = t.FoodEvents(), 0
     local register = foodEvents.RegisterEvent
     function foodEvents:RegisterEvent(event)
@@ -776,9 +780,10 @@ do
     Check("but hidden", bar.shown, false)
     Check("its buttons on your best food and drink", bar.buttons[1].attrs.item1 .. bar.buttons[2].attrs.item1,
         "item:5349item:8766")
-    t.Bags({ 4599, 8766 })
-    t.Fire("BAG_UPDATE_DELAYED")
-    Check("kept current while hidden", bar.buttons[1].attrs.item1, "item:4599")
+    Check("it leaves the bags to the Consumable Bar, so they are searched once", t.Listening("BAG_UPDATE_DELAYED"),
+        false)
+    t.ns.FoodBarPoint(4599, 8766)
+    Check("kept current while hidden, on what that bar found", bar.buttons[1].attrs.item1, "item:4599")
     t.ns.ShowUnlockMode()
     Check("nor shown in the HUD Editor", bar.mover.shown, false)
     t.ns.HideUnlockMode()

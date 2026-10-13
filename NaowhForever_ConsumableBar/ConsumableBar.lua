@@ -120,6 +120,8 @@ end
 
 function CB.RefreshSmart()
     best[FOOD], best[DRINK] = ns.BestFoodAndDrink()
+    local point = ns.FoodBarPoint
+    if point then point(best[FOOD], best[DRINK]) end
 end
 
 function CB.Resolve(entry)
