@@ -749,8 +749,6 @@ Add(game.Visibility, game.FrameWidth, game.FrameHeight)
 Add({ key = "damageMeterFree", label = "Move and Resize", toggle = true,
     note = function() return placementNote end,
     help = "Drag the window and its corner here, without Edit Mode." })
-Add({ label = "Window Position", buttonText = "Reset", button = ResetPosition,
-    needs = "damageMeterFree", help = "Puts the window back where Edit Mode has it." })
 Add(game.Transparency, game.BackgroundTransparency, skin.windowColor, skin.border, skin.borderColor)
 Add(Settings.Group("Bars"))
 Add(game.Style, game.BarHeight, game.Padding, skin.texture, skin.barColor, skin.customBarColor, skin.barAlpha,
@@ -763,10 +761,10 @@ Add(skin.titleColor, skin.titleSize, skin.headerColor, skin.buttons, skin.button
     skin.titleFadeAlpha)
 Add(Settings.Group("Spell Panel"))
 Add(skin.panelColor, skin.panelAlpha)
-if layout and layout.restore then
-    Add(Settings.Group("Reset"))
-    Add(layout.restore)
-end
+Add(Settings.Group("Reset"))
+Add({ label = "Window Position", buttonText = "Reset", button = ResetPosition,
+    needs = "damageMeterFree", help = "Puts the window back where Edit Mode has it." })
+Add(layout and layout.restore)
 
 local function OtherMeters()
     local names

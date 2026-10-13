@@ -926,7 +926,7 @@ do
         and at["Window Width"] == "Window" and at["Move and Resize"] == "Window" and at["Window Color"] == "Window"
         and at["Bar Height"] == "Bars" and at["Bar Texture"] == "Bars" and at["Font"] == "Text"
         and at["Name Color"] == "Text" and at["Title Color"] == "Title Bar" and at["Buttons"] == "Title Bar"
-        and at["Restore Game Settings"] == "Reset")
+        and at["Window Position"] == "Reset" and at["Restore Game Settings"] == "Reset")
     check("the reskin's rows wait for its switch, the game's own do not", byLabel["Bar Texture"].needs == "damageMeterSkin"
         and byLabel["Bar Height"].needs == nil and byLabel["Visibility"].needs == nil
         and byLabel["Move and Resize"].needs == nil)
