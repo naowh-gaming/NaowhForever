@@ -745,6 +745,17 @@ do
     Check("guardian listed, no generic elixir", t.Shown(), "item:13510 item:13445")
 end
 
+-- With nothing listed, nothing shows until Only If I Carry One goes off.
+do
+    local t = Fixture({ instance = "raid", units = { player = "MAGE" }, settings = { personalBuffs = false } })
+    t.Login()
+    Check("nothing listed, nothing shown", t.Shown(), "")
+    t.Set("onlyIfCarried", false)
+    Check("switch off, kinds shown", t.Shown(), "item:13931 item:13510 item:13454")
+    t.Set("onlyIfCarried", true)
+    Check("switch back on, nothing shown", t.Shown(), "")
+end
+
 -- Weapon Enhancement Reminder: stone or oil missing on a weapon, off by default.
 do
     local t = Fixture({ instance = "raid", units = { player = "MAGE" }, bags = { 20750 },
