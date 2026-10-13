@@ -8,6 +8,10 @@ local Parts = ns.Shared.Parts
 
 local ADDON = "Blizzard_DamageMeter"
 local PRIMARY_WINDOW = "DamageMeterSessionWindow1"
+local OTHER_METERS = { { "Details", "Details" }, { "EllesmereUIDamageMeters", "EllesmereUI Damage Meters" },
+    { "Skada", "Skada" }, { "Recount", "Recount" }, { "TinyDPS", "TinyDPS" } }
+local TEXT_OTHERS = "Turn off every other damage meter first. They switch the game's own meter off."
+local TEXT_OTHERS_NAMED = "Turn off %s first. They switch the game's own meter off."
 local GRADIENT_TEX = ns.MEDIA .. "NaowhGradient.tga"
 local TEXT_GRADIENT, TEXT_NEEDS_NOT_FREE = "Naowh Gradient", "Turn off Move and Resize"
 local TEXT_NO_WINDOW = "The game's meter has no window to place."
@@ -735,8 +739,17 @@ if layout and layout.restore then
     Add(layout.restore)
 end
 
+local function OtherMeters()
+    local names
+    for _, meter in ipairs(OTHER_METERS) do
+        if C_AddOns.IsAddOnLoaded(meter[1]) then names = names and (names .. ", " .. meter[2]) or meter[2] end
+    end
+    if not names then return TEXT_OTHERS end
+    return TEXT_OTHERS_NAMED:format(names)
+end
+
 Settings.Page("QoL/Combat", S):Card({
-    id = "damageMeterSkin", name = "Default Damage Meter", order = 110,
+    id = "damageMeterSkin", name = "Default Damage Meter", order = 110, note = OtherMeters,
     help = "The game's own damage meter: in your theme, sized and set here instead of in Edit Mode.",
     search = "damage meter skin reskin blizzard default bar height move resize edit mode style numbers padding",
     rows = card,

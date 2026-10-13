@@ -159,7 +159,8 @@ end
 
 -- Builds the addon's environment. loaded: Blizzard_DamageMeter is already loaded. Returns the pieces tests poke.
 local function Boot(settings, loaded, windows)
-    local s = { settings = settings or {}, hooks = 0, borders = {}, cards = {}, waiting = {}, printed = {} }
+    local s = { settings = settings or {}, hooks = 0, borders = {}, cards = {}, waiting = {}, printed = {},
+        others = {} }
     local defaults = { enabled = true, damageMeterSkin = false, damageMeterBars = "class", damageMeterBarColor = false,
         damageMeterTexture = "", damageMeterFont = "", damageMeterOutline = "game", damageMeterIconEdge = true,
         damageMeterHeaderColor = false, damageMeterWindowColor = false, damageMeterNameColor = false,
@@ -242,7 +243,9 @@ local function Boot(settings, loaded, windows)
             end
         end,
         ScrollUtil = { AddAcquiredFrameCallback = function(box, fn) box.callbacks[#box.callbacks + 1] = fn end },
-        C_AddOns = { IsAddOnLoaded = function(name) return loaded and name == ADDON end },
+        C_AddOns = { IsAddOnLoaded = function(name)
+            return (loaded and name == ADDON) or s.others[name] == true
+        end },
         EventUtil = { ContinueOnAddOnLoaded = function(name, fn) s.waiting[name] = fn end },
         CreateFrame = function()
             local f = { events = {}, scripts = {}, shown = true }
@@ -864,6 +867,17 @@ do
     for token in pairs(wanted) do
         check("the theme has the token " .. token, have[token] == true)
     end
+end
+
+-- the card says to turn off the other damage meters, and names the ones that are on
+do
+    local s = Boot()
+    local note = s.cards[1].note
+    check("the card says to turn off every other damage meter", note():find("every other damage meter", 1, true) ~= nil)
+    s.others.EllesmereUIDamageMeters = true
+    s.others.Details = true
+    check("and names the ones that are on", note():find("Details, EllesmereUI Damage Meters", 1, true) ~= nil
+        and note():find("every other", 1, true) == nil)
 end
 
 -- the card is in clear sections, with the game's own settings among the reskin's
