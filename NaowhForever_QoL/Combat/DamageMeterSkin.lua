@@ -8,6 +8,8 @@ local Parts = ns.Shared.Parts
 
 local ADDON = "Blizzard_DamageMeter"
 local PRIMARY_WINDOW = "DamageMeterSessionWindow1"
+local GRADIENT_TEX = ns.MEDIA .. "NaowhGradient.tga"
+local TEXT_GRADIENT, TEXT_NEEDS_NOT_FREE = "Naowh Gradient", "Turn off Move and Resize"
 local TEXT_NO_WINDOW = "The game's meter has no window to place."
 local TEXT_NO_PLACE = "The game's meter has no place on screen yet. Show it, then switch this off and on."
 local BAR_CLASS, BAR_ACCENT, BAR_CUSTOM = "class", "accent", "custom"
@@ -39,8 +41,7 @@ local SETTING_KEYS = { enabled = true, damageMeterSkin = true, damageMeterBars =
     damageMeterBarBgColor = true, damageMeterBarBgAlpha = true, damageMeterScrollBar = true,
     damageMeterBorder = true, damageMeterBorderColor = true, damageMeterTitleFade = true,
     damageMeterTitleFadeAlpha = true, damageMeterNameSize = true, damageMeterValueSize = true,
-    damageMeterTitleSize = true, damageMeterButtons = true, damageMeterButtonColor = true,
-    damageMeterWindowAlpha = true }
+    damageMeterTitleSize = true, damageMeterButtons = true, damageMeterButtonColor = true }
 
 local OUTLINES = { { [OUTLINE_GAME] = TEXT_GAME_DEFAULT }, { OUTLINE_GAME } }
 for key, name in pairs(Parts.HUD_OUTLINES[1]) do OUTLINES[1][key] = name end
@@ -61,7 +62,6 @@ local tints = setmetatable({}, { __mode = "k" })
 local glyphs = setmetatable({}, { __mode = "k" })
 local buttoned = setmetatable({}, { __mode = "k" })
 local gameSizes = {}
-local alphas = setmetatable({}, { __mode = "k" })
 local placementNote
 local fader
 local sinceTick = 0
@@ -198,7 +198,7 @@ local function BarTexture(entry)
     local bar = entry.StatusBar
     if not (Has(bar, "SetStatusBarTexture") and Has(entry, "GetStatusBarTexture")) then return end
     local art = entry:GetStatusBarTexture()
-    local file = ns.UI.TexturePath(S.Get("damageMeterTexture"), nil)
+    local file = ns.UI.TexturePath(S.Get("damageMeterTexture"), GRADIENT_TEX)
     if file then
         if arts[entry] == nil then arts[entry] = Has(art, "GetAtlas") and art:GetAtlas() or false end
         if swapped[entry] ~= file then
@@ -251,12 +251,6 @@ local function Entries(scrollBox)
         ScrollUtil.AddAcquiredFrameCallback(scrollBox, function(_, frame) Skin(frame) end)
     end
     for _, frame in scrollBox:EnumerateFrames() do Skin(frame) end
-end
-
-local function Opacity(region, alpha)
-    if not Has(region, "SetAlpha") then return end
-    if alphas[region] == nil then alphas[region] = Has(region, "GetAlpha") and region:GetAlpha() or 1 end
-    region:SetAlpha(alpha)
 end
 
 local function WindowBorder(window)
@@ -352,7 +346,6 @@ local function SkinWindow(window)
     local container = window.MinimizeContainer
     if type(container) ~= "table" then return end
     Flat(container.Background, background)
-    Opacity(container.Background, Fraction("damageMeterWindowAlpha"))
     ScrollBar(window, S.Get("damageMeterScrollBar"))
     Skin(container.LocalPlayerEntry)
     Entries(container.ScrollBox)
@@ -370,8 +363,6 @@ local function RestoreWindow(window)
     end
     if scrolled[window] then ScrollBar(window, SCROLL_GAME) end
     if buttoned[window] then Buttons(window, false) end
-    local background = Dig(window, "MinimizeContainer", "Background")
-    if alphas[background] ~= nil then Opacity(background, alphas[background]) end
 end
 
 local function GiveBack()
@@ -663,7 +654,7 @@ local rows = Skinned({
       end,
       set = function(r, g, b) S.Set("damageMeterBarColor", { r = r, g = g, b = b }) end,
       help = "The bars' color when Bar Color is Custom Color." },
-    { key = "damageMeterTexture", label = "Bar Texture", texture = TEXT_GAME_DEFAULT },
+    { key = "damageMeterTexture", label = "Bar Texture", texture = TEXT_GRADIENT },
     { key = "damageMeterIconEdge", label = "Icon Border", toggle = true,
       help = "A thin border round each bar's icon." },
     { key = "damageMeterBarAlpha", label = "Bar Opacity", slider = PERCENT_RANGE, unit = "%",
@@ -693,8 +684,6 @@ local rows = Skinned({
     Settings.Group("Window"),
     ColorRow("damageMeterHeaderColor", "Title Bar Color", "panel", "The title bar and the spell panel."),
     ColorRow("damageMeterWindowColor", "Window Color", "bg", "The window and the shadow behind each bar."),
-    { key = "damageMeterWindowAlpha", label = "Window Opacity", slider = PERCENT_RANGE, unit = "%",
-      help = "How solid the window's background is." },
     { key = "damageMeterBorder", label = "Window Border", toggle = true,
       help = "A thin border round the whole window." },
     ColorRow("damageMeterBorderColor", "Border Color", "line", "The border round the window.",
@@ -718,9 +707,16 @@ card[#card + 1] = { key = "damageMeterFree", label = "Move and Resize", toggle =
     help = "Drag the window and its corner here, without Edit Mode." }
 card[#card + 1] = { label = "Window Position", buttonText = "Reset", button = ResetPosition,
     needs = "damageMeterFree", help = "Puts the window back where Edit Mode has it." }
+local function NotFree()
+    return S.Get("damageMeterFree") ~= true
+end
+
 if ns.DamageMeterLayout then
-    card[#card + 1] = Settings.Group("Bars")
-    for _, row in ipairs(ns.DamageMeterLayout.rows) do card[#card + 1] = row end
+    card[#card + 1] = Settings.Group("Edit Mode Settings")
+    for _, row in ipairs(ns.DamageMeterLayout.rows) do
+        if row.frame then row.needs, row.why = NotFree, TEXT_NEEDS_NOT_FREE end
+        card[#card + 1] = row
+    end
 end
 
 Settings.Page("QoL/Combat", S):Card({

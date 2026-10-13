@@ -117,13 +117,18 @@ NaowhForever_QoL/
   bar's buttons are greyed with `SetDesaturated` and tinted with `SetVertexColor`, their first look
   remembered to give back; sizes are one setting each for the names, the amounts and the title, 0
   keeping the game's own, which Edit Mode's Text Size still scales.
-- Bar Height (`DamageMeterLayout.lua`) writes the game's own Bar Height setting through `C_EditMode`: it copies the
-  manager's layout info (never writes into it), changes the one value in the copy and saves that, so
-  the game applies it with its own code and nothing of its is tainted. The stored value is the height
-  less the slider's minimum (15). Before the first change it keeps the height the layout had, which
-  Original Height puts back, and a backup string of the whole layout; it refuses in combat, with Edit
-  Mode open and on the game's built-in layouts, says why in a note under the slider, and waits half a
-  second after the slider stops, since every save re-lays out the game's systems.
+- The Edit Mode settings of the card (`DamageMeterLayout.lua`) are the game's own list for its damage
+  meter, written through `C_EditMode`: it copies the manager's layout info (never writes into it),
+  changes the values in the copy and saves that, so the game applies it with its own code and
+  nothing of its is tainted. Each value is stored as Edit Mode stores it: the setting less the
+  slider's minimum (Bar Height, Frame Width and Height), less the minimum over the step (Bar
+  Spacing, Text Size, Transparency, Background), or the enum itself (Style, Numbers, Visibility).
+  Before the first change since login it keeps every value and a backup string of the layout,
+  which Original Settings puts back. It refuses in combat, with Edit Mode open and on the game's
+  built-in layouts, says why in a note under the row, shows the value on its way until the save
+  is done, and waits half a second after a slider stops, since every save re-lays out the game's
+  systems. Frame Width and Height wait for Move and Resize to be off, since that anchors the
+  window on its own.
 - Move and Resize re-anchors the primary session window to the screen and sizes it, since the game
   leaves that window to Edit Mode (`CanMoveOrResizeSessionWindow` is false for it). Only the session
   window moves: the Edit Mode frame it hangs from is never touched, and the game's own window setup is

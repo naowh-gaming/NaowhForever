@@ -168,7 +168,7 @@ local function Boot(settings, loaded, windows)
         damageMeterBarBgAlpha = 100, damageMeterScrollBar = "game", damageMeterBorder = false,
         damageMeterBorderColor = false, damageMeterTitleFade = "always", damageMeterTitleFadeAlpha = 0,
         damageMeterNameSize = 0, damageMeterValueSize = 0, damageMeterTitleSize = 0, damageMeterButtons = "game",
-        damageMeterButtonColor = false, damageMeterWindowAlpha = 100 }
+        damageMeterButtonColor = false }
     local store = {}
     function store.Get(k)
         local v = s.settings[k]
@@ -184,9 +184,12 @@ local function Boot(settings, loaded, windows)
     function meter:SetupSessionWindow() end
     local ns = { QoLSettings = store, THEME = THEME, Apply = function() end,
         DamageMeterLayout = { rows = {
-            { label = "Bar Height", slider = { 15, 40, 1 }, get = function() return 20 end, set = function() end },
-            { label = "Layout Backup", buttonText = "Copy", button = function() end } } },
+            { label = "Frame Width", slider = { 200, 600, 1 }, frame = true, get = function() return 300 end,
+              set = function() end },
+            { label = "Bar Height", slider = { 15, 40, 1 }, get = function() return 24 end, set = function() end },
+            { label = "Original Settings", buttonText = "Restore", button = function() end } } },
         Print = function(text) s.printed[#s.printed + 1] = text end,
+        MEDIA = "Media\\",
         UIFontPath = function() return FONT end,
         UI = { FontPath = function(name) return "Fonts\\" .. name .. ".ttf" end,
             RefreshPage = function() s.refreshes = (s.refreshes or 0) + 1 end,
@@ -438,7 +441,7 @@ do
     store.Set("damageMeterTexture", "Other")
     check("texture: a new pick is written once", first.StatusBar.file == "Textures\\Other" and first.StatusBar.fileSets == 2)
     store.Set("damageMeterTexture", "")
-    check("texture: Game Default puts the game's art back", first.barTexture.atlas == "UI-HUD-CoolDownManager-Bar")
+    check("texture: not picked is the Naowh Gradient", first.StatusBar.file == "Media\\NaowhGradient.tga")
     store.Set("damageMeterTexture", "Flat")
     store.Set("damageMeterSkin", false)
     check("texture: switched off, the game's art is back", first.barTexture.atlas == "UI-HUD-CoolDownManager-Bar")
@@ -541,7 +544,7 @@ do
     check("the outline choice leads with the game's own, then the shared four",
         rows.damageMeterOutline.choice[2][1] == "game" and #rows.damageMeterOutline.choice[2] == 5
         and rows.damageMeterOutline.choice[1].game == "Game Default")
-    check("the texture row names the game's own as its default", rows.damageMeterTexture.texture == "Game Default")
+    check("the texture row names the Naowh Gradient as its default", rows.damageMeterTexture.texture == "Naowh Gradient")
     for key, row in pairs(rows) do
         check(key .. ": help is one short sentence", row.help == nil or #row.help < 100)
     end
@@ -855,17 +858,21 @@ do
     end
 end
 
--- how solid the window's background is
+-- the game's own settings sit in the card, under their own heading
 do
-    local _, store, meter, _, frames = Boot({ damageMeterSkin = true, damageMeterWindowAlpha = 40 }, true)
-    meter.windows[1].MinimizeContainer.Background.alpha = 0.8
-    Login(frames)
-    local background = meter.windows[1].MinimizeContainer.Background
-    check("window opacity: 40 percent", background.alpha == 0.4)
-    store.Set("damageMeterWindowAlpha", 70)
-    check("window opacity: a new pick is applied at once", background.alpha == 0.7)
-    store.Set("damageMeterSkin", false)
-    check("window opacity: off puts back the game's own, not a plain 1", background.alpha == 0.8)
+    local s, store = Boot()
+    local found, frameRow, heading = {}, nil, false
+    for _, item in ipairs(s.cards[1].rows) do
+        if item.group == "Edit Mode Settings" then heading = true end
+        if item.label then found[item.label] = item end
+        if item.frame then frameRow = item end
+    end
+    check("edit mode settings: a heading, the rows and the restore button", heading and found["Bar Height"]
+        and found["Original Settings"] and frameRow ~= nil)
+    check("edit mode settings: the width and height wait for Move and Resize to be off", frameRow.needs() == true)
+    store.Set("damageMeterFree", true)
+    check("edit mode settings: and are off with it, and say why", frameRow.needs() == false
+        and frameRow.why == "Turn off Move and Resize")
 end
 
 -- the rows
@@ -879,7 +886,6 @@ do
         and rows.damageMeterBarBgColor.colour and rows.damageMeterBarBgAlpha and rows.damageMeterScrollBar)
     check("rows: window border, its color, the title bar and its faded opacity", rows.damageMeterBorder
         and rows.damageMeterBorderColor.colour and rows.damageMeterTitleFade and rows.damageMeterTitleFadeAlpha)
-    check("rows: a window opacity", rows.damageMeterWindowAlpha ~= nil and rows.damageMeterWindowAlpha.slider[2] == 100)
     check("rows: a size for the names, the amounts and the title", rows.damageMeterNameSize
         and rows.damageMeterValueSize and rows.damageMeterTitleSize and rows.damageMeterFontSize == nil)
     check("rows: buttons, and their color that waits for Themed", rows.damageMeterButtons
