@@ -3,17 +3,14 @@ local ns = _G.NaowhForever
 
 local A = ns.AuraBuffs
 local S = A.Settings
-local St = A.Style
-local Low, Look = A.LowHealth, A.LowHealthLook
+local Low, Look, Glow = A.LowHealth, A.LowHealthLook, A.Glow
 
 local HOME_Y = -180
-local GLOW_RGBA, GLOW_THICKNESS = St.LOW_GLOW_RGBA, St.LOW_GLOW_THICKNESS
 local CARD = A.PAGE .. ":lowHealth"
 local TEXT_MOVER = "Low Health"
-local GLOW_LIB = "LibCustomGlow-1.0"
 
 local frame, curve, unlocked
-local shownItem, wasLow, glowing
+local shownItem, wasLow
 local events = CreateFrame("Frame")
 
 local function UpdateItem()
@@ -28,16 +25,7 @@ local function UpdateItem()
 end
 
 local function SetGlow(on)
-    on = on and true or false
-    if on == glowing then return end
-    glowing = on
-    local LCG = LibStub(GLOW_LIB, true)
-    if not LCG then return end
-    if on then
-        LCG.PixelGlow_Start(frame, GLOW_RGBA, nil, nil, nil, GLOW_THICKNESS)
-    else
-        LCG.PixelGlow_Stop(frame)
-    end
+    Glow.Set(frame, on, "lowHealthGlow")
 end
 
 local function CheckSound()

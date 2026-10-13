@@ -89,7 +89,8 @@ do
         lowHealthFont = "", lowHealthFontSize = 16, lowHealthOutline = "OUTLINE" }
     local S, fonts = Load({ "Core/Features.lua", "NaowhForever_AuraBuffs/AuraBuffs.lua",
         "NaowhForever_AuraBuffs/Constants.lua", "NaowhForever_AuraBuffs/LowHealth.lua", "NaowhForever_AuraBuffs/View/Style.lua",
-        "NaowhForever_AuraBuffs/View/LowHealthLook.lua", "NaowhForever_AuraBuffs/UI/LowHealth.lua",
+        "NaowhForever_AuraBuffs/View/Glow.lua", "NaowhForever_AuraBuffs/View/LowHealthLook.lua",
+        "NaowhForever_AuraBuffs/UI/GlowRows.lua", "NaowhForever_AuraBuffs/UI/LowHealth.lua",
         "NaowhForever_AuraBuffs/UI/LowHealthCard.lua" }, settings)
     local label, count = Find(fonts, "LOW HEALTH"), fonts[1]
     check("Low Health: the warning as today", label.font == "" and label.size == 16 and label.outline == "OUTLINE")

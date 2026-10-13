@@ -190,6 +190,10 @@ if #PERSONAL > 0 then
             .. "talent. Hide While Resting hides them too." }
     for _, family in ipairs(PERSONAL) do rows[#rows + 1] = PersonalRow(family) end
 end
+rows[#rows + 1] = Group("Glow")
+rows[#rows + 1] = { key = "buffGlow", label = "Glow", toggle = true, needs = Enabled, why = OFF,
+    help = "A glow around each reminder icon, since each is a buff that is missing or running out." }
+rows[#rows + 1] = A.GlowRows("buffGlow")
 rows[#rows + 1] = Group("Size")
 rows[#rows + 1] = { key = "iconSize", label = "Icon Size", slider = ICON_RANGE, needs = Enabled, why = OFF }
 rows[#rows + 1] = Settings.Look("buffs", { text = true, size = TEXT_RANGE, needs = Enabled, why = OFF })
