@@ -47,6 +47,10 @@ local function ByName(a, b)
     return a < b
 end
 
+local function RemoveReward(_, questID)
+    Rewards.Remove(questID)
+end
+
 local Draw = {}
 
 function Draw:Redraw()
@@ -55,7 +59,7 @@ function Draw:Redraw()
     for _, questID in ipairs(ids) do names[questID] = QuestName(questID):lower() end
     table.sort(ids, ByName)
     for _, questID in ipairs(ids) do
-        self:Add("item", Rewards.ItemID(questID), QuestName(questID), "", Rewards.Remove, TEXT_REMOVE, nil, nil, nil,
+        self:Add("item", Rewards.ItemID(questID), QuestName(questID), "", RemoveReward, TEXT_REMOVE, nil, nil, nil,
             questID)
     end
     if #ids == 0 then self:Note(TEXT_EMPTY) end
