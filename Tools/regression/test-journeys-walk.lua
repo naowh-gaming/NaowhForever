@@ -82,9 +82,9 @@ env.GetTime = function() return 0 end
 env.debugprofilestop = function() return 0 end
 
 Load("NaowhForever_Journeys/Constants.lua")
-Load("NaowhForever_JourneysData/Data.lua")
-for line in Read("NaowhForever_JourneysData/JourneysData.xml"):gmatch('file="Data\\(Map2991[^"]*)"') do
-    Load("NaowhForever_JourneysData/Data/" .. line)
+Load("NaowhForever_Journeys/Data/WalkData.lua")
+for line in Read("NaowhForever_Journeys/Data/Maps.xml"):gmatch('file="(Map2991[^"]*)"') do
+    Load("NaowhForever_Journeys/Data/" .. line)
 end
 Load("NaowhForever_Journeys/Walk.lua")
 local Walk = ns.Journeys.Walk

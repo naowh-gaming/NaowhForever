@@ -1,14 +1,14 @@
 # Tools/nav: the walking maps
 
 Bakes the Forever client's terrain into the walking maps Journeys plans walks on, and packs them into
-`NaowhForever_JourneysData/`. Node, not Python: the two libraries it stands on are JavaScript. Nothing
+`NaowhForever_Journeys/Data/`. Node, not Python: the two libraries it stands on are JavaScript. Nothing
 here ships.
 
 ```
 cd Tools/nav
 npm install --ignore-scripts      # once: @rhyster/wow-casc-dbc and recast-navigation, pinned
 node bake.mjs 1                   # Kalimdor; 0 is the Eastern Kingdoms, 2991 Zephras Isle
-node pack.mjs 1 --write           # writes NaowhForever_JourneysData/Data/Map1*.lua and the XML
+node pack.mjs 1 --write           # writes NaowhForever_Journeys/Data/Map1*.lua and the XML
 ```
 
 A bake downloads the client's files from Blizzard's CDN the first time (`.cache/files`, about 2 GB for
