@@ -11,8 +11,8 @@ local PRIMARY_WINDOW = "DamageMeterSessionWindow1"
 local OTHER_METERS = { { addon = "Details", name = "Details" },
     { addon = "EllesmereUIDamageMeters", name = "EllesmereUI Damage Meters" }, { addon = "Skada", name = "Skada" },
     { addon = "Recount", name = "Recount" }, { addon = "TinyDPS", name = "TinyDPS" } }
-local TEXT_OTHERS = "Turn off every other damage meter first, as they switch the game's own meter off."
-local TEXT_OTHERS_NAMED = "Turn off %s first, as they switch the game's own meter off."
+local TEXT_OTHERS = "Turn off every other damage meter first."
+local TEXT_OTHERS_NAMED = "Turn off %s first."
 local CARD_ORDER = 110
 local GRADIENT_TEX = ns.MEDIA .. "NaowhGradient.tga"
 local TEXT_GRADIENT, TEXT_NEEDS_NOT_FREE = "Naowh Gradient", "Turn off Move and Resize"
