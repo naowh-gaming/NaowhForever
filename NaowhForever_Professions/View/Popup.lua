@@ -19,6 +19,11 @@ local BUTTON_W, BUTTON_H = 64, 20
 local NOTE_GAP = Style.NOTE_GAP
 local NAME_GAP = Style.ICON_NAME_GAP
 local FOOTER_H, BARE_FOOTER = 36, 14
+local PAGE_ROWS = Style.SIDE_PANEL_ROWS
+local PAGE_BUTTON, PAGE_GAP = 20, 4
+local PAGER_EDGE, PAGER_BOTTOM = 10, 8
+local TEXT_PREVIOUS, TEXT_NEXT = "<", ">"
+local TEXT_PAGE = "%d / %d"
 
 local Popup = {}
 P.Popup = Popup
@@ -84,6 +89,47 @@ function Popup.Row(p, i, label, onClick)
     row:SetScript("OnLeave", GameTooltip_Hide)
     p.rows[i] = row
     return row
+end
+
+local function Turn(p, by)
+    local page = math.max(1, math.min(p.pages, p.page + by))
+    if page == p.page then return end
+    p.page = page
+    p.onPage()
+end
+
+local function OnWheel(p, delta)
+    Turn(p, -delta)
+end
+
+local function BuildPager(p)
+    local pager = CreateFrame("Frame", nil, p)
+    pager:SetSize(PAGE_BUTTON, PAGE_BUTTON)
+    pager:SetPoint("BOTTOMRIGHT", -PAGER_EDGE, PAGER_BOTTOM)
+    pager.next = ns.Button(pager, TEXT_NEXT, PAGE_BUTTON, PAGE_BUTTON, function() Turn(p, 1) end)
+    pager.next:SetPoint("RIGHT")
+    pager.previous = ns.Button(pager, TEXT_PREVIOUS, PAGE_BUTTON, PAGE_BUTTON, function() Turn(p, -1) end)
+    pager.previous:SetPoint("RIGHT", pager.next, "LEFT", -PAGE_GAP, 0)
+    pager.label = ns.Font(pager, Style.FONT_SMALL, nil, T.muted)
+    pager.label:SetPoint("RIGHT", pager.previous, "LEFT", -NOTE_GAP, 0)
+    p:EnableMouseWheel(true)
+    p:SetScript("OnMouseWheel", OnWheel)
+    p.pager = pager
+end
+
+function Popup.Page(p, total, onPage)
+    p.onPage = onPage
+    p.pages = math.max(1, math.ceil(total / PAGE_ROWS))
+    p.page = math.max(1, math.min(p.page or 1, p.pages))
+    if p.pages > 1 and not p.pager then BuildPager(p) end
+    if p.pager then
+        p.pager:SetShown(p.pages > 1)
+        p.pager.label:SetText(TEXT_PAGE:format(p.page, p.pages))
+        Widgets.EnableButton(p.pager.previous, p.page > 1)
+        Widgets.EnableButton(p.pager.next, p.page < p.pages)
+    end
+    local first = (p.page - 1) * PAGE_ROWS + 1
+    return first, math.min(total, first + PAGE_ROWS - 1)
 end
 
 function Popup.Fit(p, shown, footer)

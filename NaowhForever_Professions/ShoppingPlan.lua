@@ -2,6 +2,7 @@
 local ns = _G.NaowhForever
 
 local P = ns.Professions
+local S = P.Settings
 local C = P.C
 local Text = P.Text
 
@@ -309,6 +310,20 @@ local function Redraw()
     if Shopping.Render then Shopping.Render() end
 end
 
+local function MarkedCrafts()
+    if S.Get("shoppingList") and S.Get("shoppingMarks") then return List() end
+end
+
+local function Marked(recipeID)
+    local craft = MarkedCrafts()
+    craft = craft and craft[recipeID]
+    return craft and craft.count
+end
+
+local function Remark()
+    if S.Get("shoppingMarks") and ns.ProfWindowRefresh then ns.ProfWindowRefresh() end
+end
+
 local function Add(info, crafts)
     local need = Needs(info.recipeID)
     if next(need) == nil then return end
@@ -327,6 +342,7 @@ local function Add(info, crafts)
     end
     ns.Print(TEXT_ADDED:format(info.name, crafts, crafts == 1 and TEXT_CRAFT or TEXT_CRAFTS, table.concat(parts, ", ")))
     Redraw()
+    Remark()
 end
 
 local function Step(recipeID, by)
@@ -335,18 +351,21 @@ local function Step(recipeID, by)
     craft.count = math.max(1, math.min(C.MAX_CRAFTS, craft.count + by))
     Trim()
     Redraw()
+    Remark()
 end
 
 local function Remove(recipeID)
     List()[recipeID] = nil
     Trim()
     Redraw()
+    Remark()
 end
 
 local function Clear()
     wipe(List())
     Trim()
     Redraw()
+    Remark()
 end
 
 Shopping.ItemName = ItemName
@@ -367,4 +386,7 @@ Shopping.Step = Step
 Shopping.Remove = Remove
 Shopping.Clear = Clear
 Shopping.Redraw = Redraw
+Shopping.Marked = Marked
+Shopping.MarkedCrafts = MarkedCrafts
+Shopping.Remark = Remark
 Shopping.ByName = ByName

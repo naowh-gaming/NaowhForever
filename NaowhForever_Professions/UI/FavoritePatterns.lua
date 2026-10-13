@@ -11,7 +11,6 @@ local Popup = P.Popup
 local Text = P.Text
 local Style = P.Style
 
-local MAX_ROWS = Style.SIDE_PANEL_ROWS
 local LOOKUP_TIMEOUT = 3
 local QUEUE_DELAY = C.QUEUE_DELAY
 local PURCHASE_SETTLE = 1
@@ -35,7 +34,7 @@ local TEXT_NONE_LISTED = ns.L("none listed")
 local TEXT_SCAN = ns.L("scan ")
 local TEXT_NOT_LISTED = ns.L("not listed")
 local TEXT_NO_SCAN = ns.L("no scan yet")
-local TEXT_MORE = ns.L("+%d more")
+local TEXT_COUNT = ns.L("%d patterns")
 local TEXT_PATTERN = ns.L("the pattern")
 local TEXT_ACCEPT, TEXT_CANCEL, TEXT_CLOSE = ns.L("Accept"), ns.L("Cancel"), ns.L("Close")
 local TEXT_TRY_AGAIN, TEXT_SEARCH = ns.L("Try Again"), ns.L("Search")
@@ -298,9 +297,10 @@ Render = function()
     if not market then market = Popup.New(TEXT_TITLE) end
     if market.dismissed then return end
     local scanned = ns.AuctionScanTime and ns.AuctionScanTime()
-    for i = 1, math.min(#list, MAX_ROWS) do FillRow(i, list[i], scanned) end
-    Popup.Fit(market, math.min(#list, MAX_ROWS), #list > MAX_ROWS)
-    market.note:SetText(#list > MAX_ROWS and TEXT_MORE:format(#list - MAX_ROWS) or "")
+    local first, last = Popup.Page(market, #list, Render)
+    for i = first, last do FillRow(i - first + 1, list[i], scanned) end
+    Popup.Fit(market, last - first + 1, market.pages > 1)
+    market.note:SetText(market.pages > 1 and TEXT_COUNT:format(#list) or "")
     market:ClearAllPoints()
     market:SetPoint("TOPLEFT", ah, "TOPRIGHT", PANEL_GAP, 0)
     market:Show()
@@ -356,7 +356,7 @@ end
 
 local function OnEvent(_, event, name, loaded)
     if event == "AUCTION_HOUSE_SHOW" then
-        if market then market.dismissed = nil end
+        if market then market.dismissed, market.page = nil, 1 end
     elseif event == "AUCTION_HOUSE_CLOSED" then
         return Closed()
     elseif event == "ITEM_SEARCH_RESULTS_UPDATED" then

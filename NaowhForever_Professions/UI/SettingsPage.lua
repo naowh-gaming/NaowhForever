@@ -44,6 +44,10 @@ local function ProfitOn()
     return On() and S.Get("craftProfit") == true
 end
 
+local function ShoppingOn()
+    return On() and S.Get("shoppingList") == true
+end
+
 local function ProfessionLine(index)
     if not index then return nil end
     local name, _, rank, maxRank = GetProfessionInfo(index)
@@ -206,6 +210,12 @@ page:Card({
               .. "scan, then Buy All goes through the list one material at a time, each bought only when you "
               .. "confirm its final price. A material you can make for less from its parts, such as a bar from "
               .. "ore, has its parts bought instead." },
+        { key = "shoppingMarks", label = "Shopping List Marks", toggle = true, needs = ShoppingOn,
+          why = "Needs Shopping List",
+          help = "Marks the recipes on your shopping list, and says how many crafts beside the chosen one." },
+        { key = "auctionCounts", label = "Your Auctions", toggle = true, needs = On, why = TEXT_OFF,
+          help = "Shows beside each recipe how many of its item you have up for sale on the auction house.",
+          search = "not selling filter listed" },
         Group("Vendors"),
         { key = "vendorMaterials", label = "Crafts with Vendor Buys", toggle = true, needs = On,
           why = TEXT_OFF,

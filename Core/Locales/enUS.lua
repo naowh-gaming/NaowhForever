@@ -5289,3 +5289,13 @@ L["The language of this addon. Game Language follows your game client. Saved for
 L["Korean"] = true
 L["Chinese (Simplified)"] = true
 L["Chinese (Traditional)"] = true
+
+L["Not Selling"] = true
+L["Turn on Your Auctions in the Professions settings first."] = true
+L["(%d in Shopping List)"] = true
+L["%d patterns"] = true
+L["Shopping List Marks"] = true
+L["Needs Shopping List"] = true
+L["Marks the recipes on your shopping list, and says how many crafts beside the chosen one."] = true
+L["Your Auctions"] = true
+L["Shows beside each recipe how many of its item you have up for sale on the auction house."] = true

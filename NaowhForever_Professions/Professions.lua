@@ -11,15 +11,15 @@ local S = ns.UI.ModuleSettings("professions", {
     craftTimer = F.craftTimer,
     craftTimerFont = "", craftTimerFontSize = 14, craftTimerOutline = "OUTLINE", craftTimerTexture = "",
     craftTimerBgAlpha = 0.9,
-    shoppingList = F.shoppingList,
+    shoppingList = F.shoppingList, shoppingMarks = F.shoppingMarks,
     trainFavorites = F.trainFavorites, searchFavoritesAH = F.searchFavoritesAH,
     gatherReminder = F.gatherReminder, gatherInInstances = false, gatherIconSize = 40, gatherFish = false,
     gatherFont = "", gatherFontSize = 13, gatherOutline = "OUTLINE",
     ahSearch = F.ahSearch, ahShiftClick = F.ahShiftClick, craftProfit = F.craftProfit,
-    craftProfitList = F.craftProfitList, buyMaterials = F.buyMaterials, buyVendor = F.buyVendor,
+    craftProfitList = F.craftProfitList, auctionCounts = F.auctionCounts, buyMaterials = F.buyMaterials, buyVendor = F.buyVendor,
     disenchant = F.disenchant,
     filterMaterials = false, filterSkillUp = false, filterProfit = false,
-    filterBoE = false, filterBoP = false, filterFavorite = false,
+    filterBoE = false, filterBoP = false, filterFavorite = false, filterNotSelling = false,
 })
 ns.ProfessionSettings = S
 ns.ProfBagChanges = 0

@@ -10,6 +10,7 @@ local W = P.State
 local R = P.Recipes
 local V = P.Vendors
 local Favorites = P.Favorites
+local Shopping = P.Shopping
 local Text = P.Text
 local Style = P.Style
 local Widgets = P.Widgets
@@ -37,6 +38,8 @@ local TEXT_CREATE, TEXT_CREATE_ALL = ns.L("Create"), ns.L("Create All")
 local TEXT_CREATE_ALL_COUNT = ns.L("Create All (%d)")
 local TEXT_SEARCH = ns.L("Search AH")
 local TEXT_TRACK = _G.PROFESSIONS_TRACK_RECIPE or ns.L("Track Recipe")
+local TEXT_IN_LIST = ns.L("(%d in Shopping List)")
+local TEXT_NAME_NOTE = "%s %s%s|r"
 local TIP_FAVORITE = ns.L("Favorite")
 local TIP_FAVORITE_HELP = ns.L("Makes this recipe a favourite, or no longer one. Favourites "
     .. "get a star in the list, and the Filter menu's Favorites shows only them. Right-click "
@@ -144,7 +147,9 @@ end
 local function FillHeader(info, output)
     local d = win.detail
     d.icon:SetTexture(info.icon)
-    d.name:SetText(info.name)
+    local listed = not W.linked and Shopping.Marked(info.recipeID)
+    d.name:SetText(listed and TEXT_NAME_NOTE:format(info.name, Text.Hex(T.muted), TEXT_IN_LIST:format(listed))
+        or info.name)
     d.fav:SetShown(not W.linked)
     Widgets.Star(d.fav.tex, Favorites.Is(info))
     SetColor(d.name, Style.DIFFICULTY_RGB[info.relativeDifficulty] or T.fg)

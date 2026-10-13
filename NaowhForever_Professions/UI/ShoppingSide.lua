@@ -12,9 +12,7 @@ local Style = P.Style
 local Widgets = P.Widgets
 
 local SIDE_W, SIDE_ROW_H = 260, 20
-local SIDE_CRAFTS, SIDE_MATERIALS, SIDE_MADE = 6, 12, 6
 local SIDE_GAP = 8
-local ROW_W_ROOM = 16
 local ROW_SHRINK = 2
 local ICON_SHRINK = Style.ROW_ICON_SHRINK
 local NAME_GAP = Style.ICON_NAME_GAP
@@ -22,11 +20,16 @@ local TITLE_X, TITLE_DROP = 10, 10
 local HINT_DROP = 36
 local HINT_ROOM = 20
 local HINT_SPACING = 2
-local LIST_TOP = -36
+local LIST_TOP = 36
+local SCROLL_W, SCROLL_GAP = 6, 2
+local SCROLL_ROOM = SCROLL_W + 2 * SCROLL_GAP
 local HEAD_X, HEAD_STEP = 10, 18
 local SECTION_GAP = 8
 local ROW_X = 8
+local ROW_W = SIDE_W - SCROLL_ROOM - ROW_X
 local TOTAL_X, TOTAL_BOTTOM, TOTAL_RIGHT = 10, 16, 100
+local TOTAL_ROOM = 32
+local LIST_BOTTOM = TOTAL_BOTTOM + TOTAL_ROOM
 local CLEAR_W, CLEAR_EDGE = 80, 10
 local SMALL_BUTTON = 16
 local STEP_GAP, MINUS_GAP = 6, 2
@@ -90,8 +93,8 @@ end
 local function SideRow(pool, i)
     local row = pool[i]
     if row then return row end
-    row = CreateFrame("Frame", nil, side)
-    row:SetSize(SIDE_W - ROW_W_ROOM, SIDE_ROW_H - ROW_SHRINK)
+    row = CreateFrame("Frame", nil, side.content)
+    row:SetSize(ROW_W, SIDE_ROW_H - ROW_SHRINK)
     row:EnableMouse(true)
     row.icon = Widgets.Crop(row:CreateTexture(nil, "ARTWORK"))
     row.icon:SetSize(SIDE_ROW_H - ICON_SHRINK, SIDE_ROW_H - ICON_SHRINK)
@@ -110,7 +113,7 @@ local function SideRow(pool, i)
 end
 
 local function Head(text)
-    local head = ns.Font(side, Style.FONT, nil, Style.GOLD_RGB)
+    local head = ns.Font(side.content, Style.FONT, nil, Style.GOLD_RGB)
     head:SetText(text)
     return head
 end
@@ -131,6 +134,12 @@ local function BuildSide(win)
     side.hint:SetWordWrap(true)
     side.hint:SetSpacing(HINT_SPACING)
     side.hint:SetText(TEXT_HINT)
+    side.scroll = ns.UI.SlimScroll(side, SCROLL_W, SCROLL_GAP)
+    side.scroll:SetPoint("TOPLEFT", 0, -LIST_TOP)
+    side.scroll:SetPoint("BOTTOMRIGHT", -SCROLL_ROOM, LIST_BOTTOM)
+    side.content = CreateFrame("Frame", nil, side.scroll)
+    side.content:SetSize(SIDE_W - SCROLL_ROOM, 1)
+    side.scroll:SetScrollChild(side.content)
     side.craftsHead = Head(TEXT_CRAFTS)
     side.materialsHead = Head(TEXT_MATERIALS)
     side.madeHead = Head(TEXT_MADE)
@@ -193,7 +202,7 @@ local function DrawCrafts(y)
     for i = 1, math.max(#crafts, #side.crafts) do
         local e = crafts[i]
         local row = (e or side.crafts[i]) and SideRow(side.crafts, i)
-        if row and e and i <= SIDE_CRAFTS then
+        if row and e then
             if not row.remove then CraftButtons(row) end
             Widgets.EnableButton(row.minus, e.craft.count > 1)
             row.recipeID, row.spell = e.id, e.id
@@ -238,7 +247,7 @@ local function DrawMaterials(materials, plan, y)
     for i = 1, math.max(#materials, #side.materials) do
         local m = materials[i]
         local row = (m or side.materials[i]) and SideRow(side.materials, i)
-        if m and i <= SIDE_MATERIALS then
+        if m then
             FillMaterial(row, m, plan)
             y = PlaceRow(row, y)
         elseif row then
@@ -297,13 +306,14 @@ local function DrawMade(made, plan, y)
     for i = 1, math.max(#makes, #side.made) do
         local e = makes[i]
         local row = (e or side.made[i]) and SideRow(side.made, i)
-        if e and i <= SIDE_MADE then
+        if e then
             FillMade(row, e, plan)
             y = PlaceRow(row, y)
         elseif row then
             row:Hide()
         end
     end
+    return y
 end
 
 local function RenderSide()
@@ -315,9 +325,9 @@ local function RenderSide()
     side.hint:SetShown(#crafts == 0)
     side.craftsHead:SetShown(#crafts > 0)
     side.materialsHead:SetShown(#materials > 0)
-    local y = DrawCrafts(LIST_TOP)
+    local y = DrawCrafts(0)
     y = DrawMaterials(materials, plan, y)
-    DrawMade(made, plan, y)
+    side.content:SetHeight(math.max(1, -DrawMade(made, plan, y)))
     side.total:SetText(#materials > 0 and Shopping.Estimate(materials, TEXT_UNPRICED) or "")
     side.clear:SetShown(#crafts > 0)
     side:Show()

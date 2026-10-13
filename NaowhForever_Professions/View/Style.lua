@@ -24,6 +24,7 @@ P.Style = setmetatable({
     },
     ALERT_CODE = "|cffff4d4d",
     VENDOR_ICON = "|TInterface\\GossipFrame\\VendorGossipIcon:14:14|t",
+    AUCTION_ICON = "|TInterface\\Minimap\\Tracking\\Auctioneer:14:14|t",
     TRAINER_ICON = "Interface\\GossipFrame\\TrainerGossipIcon",
     LOGO = ns.MEDIA .. "LogoSmall.tga",
     GRADIENT = ns.MEDIA .. "NaowhGradient.tga",

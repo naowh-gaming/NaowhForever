@@ -29,6 +29,7 @@ NaowhForever_Professions/
   Favorites.lua        favourite recipes (P.Favorites, ns.ProfFavorites)
   RecipeFinder.lua     the unlearned recipes, what they need and where they come from (ns.RecipeFinder)
   RankAlert.lua        a profession ready for its next rank, in the window and once in chat (ns.ProfessionRank)
+  Auctions.lua         how many of each item you have up for sale on the auction house, per character (P.Auctions)
   Filters.lua          the Filter menu's rules (P.Filters)
   Entries.lua          what the recipe list holds, by category and group (P.Entries)
   Orders.lua           craft orders: value, tip, messages, sending (P.Orders)
@@ -40,7 +41,7 @@ NaowhForever_Professions/
   View/
     Style.lua          the module's own look, over Shared/Style.lua (P.Style)
     Widgets.lua        flat checkbox, skill bar, star, count box, Search AH button (P.Widgets)
-    Popup.lua          the small window beside the trainer or the auction house (P.Popup)
+    Popup.lua          the small window beside the trainer or the auction house, a page at a time (P.Popup)
   UI/
     RecipeList.lua     the recipe list and its scrollbar (P.List)
     Reagents.lua       a recipe's reagent rows (P.Reagents)
@@ -145,7 +146,19 @@ Each layer uses only the ones above it, or reads a later one's table at call tim
 - A pattern bought waits in the mailbox, where the game cannot be asked, so it stays off the list for
   30 days (how long auction mail keeps) unless it turns up in your bags or bank first. Patterns are
   single listings; their live prices are looked up one at a time, 0.3s apart, so the auction house's
-  limit on searches is never hit.
+  limit on searches is never hit. The window shows 8 a page (`SIDE_PANEL_ROWS`), turned with its
+  buttons or the mouse wheel, and only the page shown is looked up, so a long list does not fill
+  the search queue.
+- The game answers for your own auctions only while the auction house is open, so Your Auctions
+  asks once it opens and after you post or cancel, reads every OWNED_AUCTIONS_UPDATED (the game's
+  Auctions tab asks too), and keeps the counts per character until the next visit: an item sold
+  while you are away still counts until then. Only active listings count (`Enum.AuctionStatus`
+  Active, 0); a sold one stays in the list until its gold is collected. Its events are registered
+  only while it is on.
+- The Not Selling filter leaves out unlearned recipes: you cannot be selling what you cannot craft.
+  With Profitable it is the list of profitable crafts you have none of on the auction house.
+- The shopping list column scrolls, so no craft or material is ever cut off; its rows end above the
+  estimate, which takes up to two lines (`TOTAL_ROOM`, 32).
 - Starting a commodity purchase is protected (ADDON_ACTION_BLOCKED when tried on its own, seen
   2026-09-30), so the shopping list buys each material after the first on a click of Buy Next. A
   final price 10% over the check is warned about. A search sent while the auction house is busy is

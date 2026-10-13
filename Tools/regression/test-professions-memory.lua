@@ -289,7 +289,11 @@ local itemKeys = {}
 
 local settings = { enabled = true, recipeFinder = true, vendorMaterials = true, craftProfit = true,
     craftProfitList = true, ahSearch = true, bagReagents = true, bankReagents = true,
-    buyMaterials = true, shoppingList = true, searchFavoritesAH = true }
+    buyMaterials = true, shoppingList = true, searchFavoritesAH = true, shoppingMarks = true,
+    auctionCounts = true }
+-- Pattern items no bag or bank holds, so Favorite Patterns lists them; and the player's auctions.
+local unowned = {}
+local owned = {}
 local defaults = {}
 local db = {}
 local account = {}
@@ -303,6 +307,11 @@ ns = { L = dofile("Tools/regression/locale_stub.lua").L, Upper = string.upper, L
         panel = { r = 0.1, g = 0.1, b = 0.1 }, line = { r = 0.18, g = 0.19, b = 0.21 },
         accentSoft = { r = 0.3, g = 0.71, b = 0.96 } },
     UI = {
+        SlimScroll = function(parent)
+            local scroll = Widget(parent)
+            scroll.bar = Widget(scroll)
+            return scroll
+        end,
         ModuleSettings = function(_, defs)
             for k, v in pairs(defs) do defaults[k] = v end
             local S = {}
@@ -406,7 +415,10 @@ env = {
     C_Item = {
         GetItemNameByID = function(id) if loaded[id] then return ItemNameOf(id) end end,
         RequestLoadItemDataByID = RequestLoad,
-        GetItemCount = function(id, bank) return (id % 5) + (bank and 3 or 0) end,
+        GetItemCount = function(id, bank)
+            if unowned[id] then return 0 end
+            return (id % 5) + (bank and 3 or 0)
+        end,
         GetItemIconByID = function(id) return id end,
         GetItemInfo = function(id)
             if not loaded[id] then return nil end
@@ -429,6 +441,9 @@ env = {
         end,
         SendSearchQuery = Noop,
         IsThrottledMessageSystemReady = function() return true end,
+        QueryOwnedAuctions = function() Count("QueryOwnedAuctions") end,
+        GetNumOwnedAuctions = function() return #owned end,
+        GetOwnedAuctionInfo = function(i) return owned[i] end,
     },
     C_TradeSkillUI = {
         GetChildProfessionInfo = function() return childInfo end,
@@ -688,6 +703,137 @@ end)
 check("browsing the auction house reads no recipe list", d.reread == 0)
 check("browsing draws at most once per burst", d.render <= 20)
 check("each of those draws reads at most the chosen recipe's info", d.GetRecipeInfo <= 3 * d.render)
+
+-------------------------------------------------------------------------------
+--  3c. What PR #454 asked for: Shopping List Marks, Your Auctions and its Not Selling filter, the
+--  whole shopping list column, and Favorite Patterns a page at a time
+-------------------------------------------------------------------------------
+local PS = ns.ProfessionSettings
+local Shopping = ns.Professions.Shopping
+local W = ns.Professions.State
+
+local function ShownRow(recipeID)
+    for _, row in ipairs(win.list.children) do
+        local e = row.entry
+        if row.shown and e and e.recipe and (not recipeID or e.recipe.recipeID == recipeID) then return row end
+    end
+end
+
+local function Showing(part)
+    return part ~= nil and part.shown
+end
+
+local function Listed(recipeID)
+    for _, e in ipairs(ns.Professions.Entries.list) do
+        if e.recipe and e.recipe.recipeID == recipeID then return true end
+    end
+    return false
+end
+
+local marked = ShownRow().entry.recipe.recipeID
+check("a recipe off the shopping list has no mark", not Showing(ShownRow(marked).cart))
+Shopping.Add(recipeInfo[marked], 2)
+Step()
+check("adding a recipe to the shopping list marks its row", Showing(ShownRow(marked).cart))
+W.selectedID, W.selectedUnlearned = marked, nil
+Redraw()
+check("and says how many crafts beside the chosen recipe's name",
+    win.detail.name.text:find("(2 in Shopping List)", 1, true) ~= nil)
+PS.Set("shoppingMarks", false)
+Step()
+check("with Shopping List Marks off the row has no mark", not Showing(ShownRow(marked).cart))
+check("nor the name a count", win.detail.name.text == recipeInfo[marked].name)
+PS.Set("shoppingMarks", true)
+Step()
+
+local queried = calls.QueryOwnedAuctions
+check("opening the auction house asks for your auctions", queried > 0)
+for _ = 1, 3 do Fire("AUCTION_HOUSE_AUCTION_CREATED") end
+Advance(0.3)
+check("posting three auctions asks once more", calls.QueryOwnedAuctions == queried + 1)
+local output = schematic[marked].outputItemID
+owned[1] = { itemKey = { itemID = output }, quantity = 3, status = 0 }
+owned[2] = { itemKey = { itemID = output }, quantity = 2, status = 0 }
+owned[3] = { itemKey = { itemID = output }, quantity = 5, status = 1 }
+Fire("OWNED_AUCTIONS_UPDATED")
+Step()
+local row = ShownRow(marked)
+check("your active auctions of a recipe's item show on its row", Showing(row.listed)
+    and row.listed.text:sub(-1) == "5")
+local other = ShownRow(recipes[LEARNED_N].spell)
+check("a recipe you have none listed of shows no count", not (other and Showing(other.listed)))
+
+PS.Set("filterNotSelling", true)
+Redraw()
+check("Not Selling leaves out a recipe you have listed", not Listed(marked))
+check("and keeps one you have not", Listed(recipes[LEARNED_N].spell))
+check("and counts as an active filter", ns.Professions.Filters.Active() == 1)
+PS.Set("filterNotSelling", false)
+Redraw()
+check("off, the recipe is back", Listed(marked))
+
+PS.Set("auctionCounts", false)
+Redraw()
+check("Your Auctions off listens to no auction event", next(registry.OWNED_AUCTIONS_UPDATED) == nil)
+check("and shows no count", not Showing(ShownRow(marked).listed))
+PS.Set("filterNotSelling", true)
+Redraw()
+check("and its filter does nothing", Listed(marked) and ns.Professions.Filters.Active() == 0)
+PS.Set("filterNotSelling", false)
+PS.Set("auctionCounts", true)
+Redraw()
+
+local side
+for _, child in ipairs(win.mid.children) do
+    if child.content then side = child end
+end
+local added = {}
+for i = 2, 10 do
+    local spell = recipes[i].spell
+    if spell ~= marked then
+        added[#added + 1] = spell
+        Shopping.Add(recipeInfo[spell], 1)
+    end
+end
+local crafts, shown = 0, 0
+for _ in pairs(Shopping.List()) do crafts = crafts + 1 end
+for _, r in ipairs(side.crafts) do
+    if r.shown then shown = shown + 1 end
+end
+check("the shopping list column shows every craft, past the old six", crafts > 6 and shown == crafts)
+for _, spell in ipairs(added) do Shopping.Remove(spell) end
+Shopping.Remove(marked)
+Step()
+
+local pages = {}
+for i = LEARNED_N + 1, #recipes do
+    local r = recipes[i]
+    if r.recipe and r.recipe ~= BROKEN and #pages < 12 then
+        pages[#pages + 1] = r
+        favorites[r.spell] = true
+        unowned[r.recipe] = true
+    end
+end
+Fire("AUCTION_HOUSE_SHOW")
+Advance(0.5)
+local market = ns.FavoritePatternsFrames()
+local patterns = ns.Professions.Patterns.List()
+check("twelve favourite patterns make two pages", market and market:IsShown() and market.pages == 2)
+check("the first page shows eight", market.rows[8].shown and market.rows[1].item == patterns[1].item)
+market.scripts.OnMouseWheel(market, -1)
+check("the mouse wheel turns to the next page", market.page == 2 and market.rows[1].item == patterns[9].item)
+check("which shows the other four", market.rows[4].shown and not market.rows[5].shown)
+market.scripts.OnMouseWheel(market, -1)
+check("and stops at the last", market.page == 2)
+market.pager.previous.scripts.OnClick()
+check("the previous button turns back", market.page == 1)
+for _, r in ipairs(pages) do
+    favorites[r.spell] = nil
+    unowned[r.recipe] = nil
+end
+-- The lookups the pages queued finish here, not in the rounds below that weigh retained memory.
+Fire("PLAYER_MONEY")
+Advance(60)
 
 -------------------------------------------------------------------------------
 --  4. Repeating it all grows no retained memory

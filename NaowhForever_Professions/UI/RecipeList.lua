@@ -10,6 +10,8 @@ local R = P.Recipes
 local V = P.Vendors
 local Prices = P.Prices
 local Favorites = P.Favorites
+local Auctions = P.Auctions
+local Shopping = P.Shopping
 local Entries = P.Entries
 local Orders = P.Orders
 local Text = P.Text
@@ -31,6 +33,7 @@ local ICON_SHRINK = Style.ROW_ICON_SHRINK
 local TEXT_GAP = 6
 local STAR_GAP = 4
 local STAR_SIZE = 12
+local CART_SIZE = 12
 local HEAD_X, SUB_HEAD_X = 4, 14
 local COUNT_X, COUNT_GAP, ICON_X = 4, 6, 24
 local TEXT_HEAD = "%s (%d)"
@@ -41,6 +44,8 @@ local TEXT_REQUIRED = ns.L("Required skill: %d  (%s)")
 
 local win
 local rows = {}
+local listedText = {}
+local inList, onSale
 
 local List = {}
 P.List = List
@@ -183,9 +188,38 @@ local function NewRow(i)
     return row
 end
 
-local function TextBeforeStar(row, fav)
-    row.fav:SetShown(fav)
-    row.text:SetPoint("RIGHT", fav and row.fav or row.profit, "LEFT", fav and -STAR_GAP or -TEXT_GAP, 0)
+local function ListedText(n)
+    local text = listedText[n]
+    if not text then
+        text = Style.AUCTION_ICON .. n
+        listedText[n] = text
+    end
+    return text
+end
+
+local function NewMarks(row)
+    row.cart = row:CreateTexture(nil, "OVERLAY")
+    row.cart:SetSize(CART_SIZE, CART_SIZE)
+    row.cart:SetTexture(Style.BAG)
+    row.listed = ns.Font(row, Style.FONT_SMALL, nil, T.muted)
+end
+
+local function Mark(part, shown, anchor)
+    if not part then return anchor end
+    part:SetShown(shown)
+    if not shown then return anchor end
+    part:SetPoint("RIGHT", anchor, "LEFT", -STAR_GAP, 0)
+    return part
+end
+
+local function TextBeforeMarks(row, fav, cart, listed)
+    local anchor = Mark(row.fav, fav, row.profit)
+    if (cart or listed > 0) and not row.cart then NewMarks(row) end
+    anchor = Mark(row.cart, cart, anchor)
+    if cart then row.cart:SetVertexColor(T.accent.r, T.accent.g, T.accent.b) end
+    anchor = Mark(row.listed, listed > 0, anchor)
+    if listed > 0 then row.listed:SetText(ListedText(listed)) end
+    row.text:SetPoint("RIGHT", anchor, "LEFT", anchor == row.profit and -TEXT_GAP or -STAR_GAP, 0)
 end
 
 local function FillHeader(row, cat)
@@ -196,8 +230,7 @@ local function FillHeader(row, cat)
     row.count:SetText("")
     row.profit:SetText("")
     row.icon:Hide()
-    row.fav:Hide()
-    row.text:SetPoint("RIGHT", row.profit, "LEFT", -TEXT_GAP, 0)
+    TextBeforeMarks(row, false, false, 0)
     row.head:Show()
     row.sel:Hide()
 end
@@ -215,7 +248,7 @@ local function FillUnlearned(row, r)
     local profit, color = ListProfit(r.spell, r.item or read, made)
     row.profit:SetText(profit)
     SetColor(row.profit, color)
-    TextBeforeStar(row, Favorites.Is(r))
+    TextBeforeMarks(row, Favorites.Is(r), false, 0)
     row.head:Hide()
     row.sel:SetShown(r == W.selectedUnlearned)
 end
@@ -228,8 +261,11 @@ local function FillRecipe(row, info)
     row.text:SetText(info.name)
     SetColor(row.text, Style.DIFFICULTY_RGB[info.relativeDifficulty] or T.fg)
     row.count:SetText(W.linked and Orders.Count(info.recipeID) or FormatCraftCount(info))
-    TextBeforeStar(row, not W.linked and Favorites.Is(info))
-    local profit, color = ListProfit(info.recipeID, R.OutputItem(info.recipeID))
+    local output = R.OutputItem(info.recipeID)
+    local own = not W.linked
+    TextBeforeMarks(row, own and Favorites.Is(info), own and inList ~= nil and inList[info.recipeID] ~= nil,
+        own and onSale and output and onSale[output] or 0)
+    local profit, color = ListProfit(info.recipeID, output)
     row.profit:SetText(profit)
     SetColor(row.profit, color)
     row.head:Hide()
@@ -268,6 +304,7 @@ end
 
 function List.Render()
     local visible = VisibleRows()
+    inList, onSale = Shopping.MarkedCrafts(), Auctions.Counts()
     W.offset = math.min(W.offset, math.max(0, #entries - visible))
     for i = 1, visible do
         local e = entries[i + W.offset]

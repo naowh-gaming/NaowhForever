@@ -543,6 +543,7 @@ local function OnPurchased(e)
     if #(Shopping.Materials()) == 0 then
         wipe(Shopping.List())
         Shopping.Trim()
+        Shopping.Remark()
     end
     NextBuy()
 end
