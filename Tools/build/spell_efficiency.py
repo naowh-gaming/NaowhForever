@@ -16,6 +16,8 @@ second at hover time, without reading tooltip text:
   EffectBonusCoefficient;
 - the ticks: the aura's duration (SpellMisc.DurationIndex -> SpellDuration) over its
   EffectAuraPeriod;
+- whether it is an area spell: its first amount effect reaches everyone in an area or cone, or
+  puts an aura on everyone near (a flag on the entry, so the tooltip says per target);
 - the levels the per-level growth counts between (SpellLevels.SpellLevel and MaxLevel), and
   the school spell damage is read for (SpellMisc.SchoolMask).
 
@@ -24,15 +26,28 @@ one does (the same implicit targets). A heal on the caster from a damage spell (
 Death Coil) is left out; a spell that both heals and deals damage to that one target gets both.
 
 A spell is left out, with no line, when part of its amount is somewhere the tables do not say:
-weapon damage (Aimed Shot, Multi-Shot), a triggered spell or a proc (seals, Judgement), or an
-area trigger the server runs (Blizzard, Rain of Fire, Consecration, Flamestrike's burn).
-Better no line than a wrong number.
+weapon damage (Aimed Shot, Multi-Shot), a triggered spell or a proc (seals, Judgement). Better no
+line than a wrong number.
+
+The one exception is a spell whose own description names the spell that holds its amount, which
+is how the client's own tooltip finds it (Spell.Description_lang: "$1279976s1 Frost damage"):
+- an area trigger (effect 179, with a periodic dummy aura 226 for the period) that the server
+  runs: Blizzard, Rain of Fire, Flamestrike's burn, Consecration, Hurricane, Volley. The named
+  spell's damage lands once per period for the aura's duration, on every enemy in the area, so it
+  is one target's share; a description that multiplies it by a count (the "*8" of Consecration)
+  must agree with the ticks, and a description that makes the amount a percent of power
+  (Healing Rain's "$<healpower>*$m1/100") is left out. Consecration's second amount is the
+  extra the first enemies take, which one target always gets;
+- a dummy spell whose description names a spell for each amount, once and not over time (Holy
+  Shock: damage to an enemy, healing to an ally; Fire Nova), one direct part for each. It is an
+  area spell when the named spell's targets are.
 
 Writes NaowhForever_QoL/Interface/SpellEfficiencyData.lua.
 
 Usage: python Tools/build/spell_efficiency.py [--build 1.60.1.70205]
 """
 import argparse
+import re
 import sys
 from pathlib import Path
 
@@ -57,6 +72,17 @@ PERIODIC_TRIGGER = 23            # EffectAura: periodic trigger spell
 ELSEWHERE_EFFECTS = {3, 77, 17, 31, 58, 121, 64, 142, 179}
 # Auras whose amount the tables do not hold: proc trigger spell (plain, with value), periodic dummy.
 ELSEWHERE_AURAS = {42, 231, 226}
+# Implicit targets that reach every unit in an area or cone (Frost Nova, Prayer of Healing, Cone of
+# Cold), and the effects that put an aura on everyone near (Tranquility). A chain jumps one target
+# to the next with less each time, so it counts as its first target and is not area.
+AREA_TARGETS = {15, 16, 24, 30, 31, 33, 34, 37, 54, 56, 61}
+AREA_EFFECTS = {27, 35, 65}
+AREA_TRIGGER, PERIODIC_DUMMY, DUMMY = 179, 226, 3
+REFERENCE = re.compile(r"\$(\d{3,})[sm]\d")
+POWER_PERCENT = re.compile(r"\$<\w+>\*\$\d*[sm]\d/100")
+OVER_TIME = re.compile(r"every|over |next |\$\d*[td]|\$\d*t\d")
+COUNT_BEFORE = re.compile(r"\{(\d+)\*\$\d+m\d\}")
+COUNT_AFTER = re.compile(r"\$\d+m\d\*(\d+)\}")
 PLACEHOLDER = 1                  # a direct base of 1 with no bonus stands in for a scripted amount (Swiftmend)
 MS = 1000
 DECIMALS = 4
@@ -71,11 +97,12 @@ COLUMNS = {
     "SpellLevels": ("SpellID", "SpellLevel", "MaxLevel"),
     "SpellMisc": ("SpellID", "DurationIndex", "SchoolMask"),
     "SpellDuration": ("ID", "Duration"),
+    "Spell": ("ID", "Description_lang"),
 }
 # An entry's fields, in order, then one or two parts of PART_FIELDS each (a damage part and a
 # heal part when the spell does both to its target), written as one string (lua_entry).
 # SpellEfficiency.lua reads them by place.
-FIELDS = ("school", "level", "maxLevel")
+FIELDS = ("school", "level", "maxLevel", "area")
 PART_FIELDS = ("heal", "direct", "directPerLevel", "directCoefficient", "tick", "tickPerLevel",
                "tickCoefficient", "ticks", "seconds")
 
@@ -124,6 +151,16 @@ def elsewhere(effect):
 
 def target(effect):
     return effect.get("ImplicitTarget_0") or "0", effect.get("ImplicitTarget_1") or "0"
+
+
+def is_area(effect, effects):
+    """Whether the effect lands on everyone in an area; a periodic trigger is area when the spell
+    it triggers is."""
+    if int(effect["EffectAura"] or 0) == PERIODIC_TRIGGER and int(effect["Effect"] or 0) in AURA_EFFECTS:
+        triggered = effects.get(int(effect["EffectTriggerSpell"] or 0), [])
+        return any(is_area(row, effects) for row in triggered if direct_amount(row))
+    return (int(effect["Effect"] or 0) in AREA_EFFECTS
+            or any(int(effect.get(key) or 0) in AREA_TARGETS for key in ("ImplicitTarget_0", "ImplicitTarget_1")))
 
 
 def direct_amount(effect):
@@ -208,8 +245,14 @@ def entry(spell, effects, levels, misc, durations):
     info = misc.get(spell, {})
     duration = durations.get(info.get("DurationIndex"), 0)
     parts = {}
+    triggers = any(int(e["EffectAura"] or 0) == PERIODIC_TRIGGER and periodic_amount(e, effects) for e in own)
     for effect in own:
-        if target(effect) == target(first) and not add_effect(parts, effect, effects, duration):
+        if target(effect) != target(first):
+            continue
+        # Hellfire's own damage to the caster is not what its triggered spell does to each enemy.
+        if triggers and int(effect["EffectAura"] or 0) in PERIODIC:
+            continue
+        if not add_effect(parts, effect, effects, duration):
             return None
     found = [part for part in parts.values() if part["direct"] or part["directCoefficient"] or part["ticks"]]
     if not found:
@@ -222,7 +265,95 @@ def entry(spell, effects, levels, misc, durations):
         "school": (mask & -mask).bit_length() or 1,
         "level": int(level.get("SpellLevel") or 0),
         "maxLevel": int(level.get("MaxLevel") or 0),
+        "area": int(is_area(first, effects)),
         "parts": found,
+    }
+
+
+def referenced(text, spell):
+    """The spells a description names, in order, apart from the spell itself."""
+    out = []
+    for found in REFERENCE.findall(text):
+        if int(found) != spell and int(found) not in out:
+            out.append(int(found))
+    return out
+
+
+def unsupported(effect):
+    """Whether the effect is more than a trigger spell's description can account for."""
+    kind = int(effect["Effect"] or 0)
+    if kind in (0, DUMMY, AREA_TRIGGER) or kind in DIRECT:
+        return False
+    return not (kind in AURA_EFFECTS and int(effect["EffectAura"] or 0) == PERIODIC_DUMMY)
+
+
+def amount_rows(spell, effects):
+    return [row for row in effects.get(spell, []) if direct_amount(row)]
+
+
+def trigger_entry(spell, effects, levels, misc, durations, text):
+    """The entry for a spell whose amount is in the spell its description names, else None (see the
+    top). An area trigger gives its named spell's amount every period, plus any damage of its own;
+    a dummy spell gives each named spell's amount once."""
+    own = effects.get(spell, [])
+    refs = referenced(text, spell)
+    if not refs or POWER_PERCENT.search(text) or any(unsupported(effect) for effect in own):
+        return None
+    info = misc.get(spell, {})
+    parts, area = {}, False
+    triggered = any(int(e["Effect"] or 0) == AREA_TRIGGER for e in own)
+    if triggered:
+        period = next((int(number(e["EffectAuraPeriod"])) for e in own if int(e["EffectAura"] or 0) == PERIODIC_DUMMY), 0)
+        duration = durations.get(info.get("DurationIndex"), 0)
+        if len(refs) != 1 or period <= 0 or duration < period:
+            return None
+        ticks = duration // period
+        counted = COUNT_BEFORE.search(text) or COUNT_AFTER.search(text)
+        if (counted and int(counted.group(1)) != ticks) or ("*$d" in text and period != MS):
+            return None
+        rows = amount_rows(refs[0], effects)
+        if not rows or any(elsewhere(row) for row in effects.get(refs[0], [])):
+            return None
+        for row in own:
+            amount = direct_amount(row)
+            if amount:
+                part = parts.setdefault(amount[0], new_part(amount[0]))
+                part["direct"] += amount[1]
+                part["directPerLevel"] += amount[2]
+                part["directCoefficient"] += amount[3]
+        kinds = {direct_amount(row)[0] for row in rows}
+        if len(kinds) != 1 or (parts and set(parts) != kinds):
+            return None
+        part = parts.setdefault(kinds.pop(), new_part(direct_amount(rows[0])[0]))
+        for row in rows:
+            amount = direct_amount(row)
+            part["tick"] += amount[1]
+            part["tickPerLevel"] += amount[2]
+            part["tickCoefficient"] += amount[3]
+        part["ticks"], part["seconds"] = ticks, ticks * period / MS
+    else:
+        if OVER_TIME.search(text) or amount_rows(spell, effects) or any(int(e["Effect"] or 0) not in (0, DUMMY) for e in own):
+            return None
+        for ref in refs:
+            rows = amount_rows(ref, effects)
+            if len(rows) != 1 or any(elsewhere(row) for row in effects.get(ref, [])):
+                return None
+            amount = direct_amount(rows[0])
+            if amount[0] in parts:
+                return None
+            part = parts.setdefault(amount[0], new_part(amount[0]))
+            part["direct"], part["directPerLevel"], part["directCoefficient"] = amount[1:]
+            area = area or is_area(rows[0], effects)
+    for part in parts.values():
+        del part["period"]
+    level = levels.get(spell, {})
+    mask = int(info.get("SchoolMask") or 0)
+    return {
+        "school": (mask & -mask).bit_length() or 1,
+        "level": int(level.get("SpellLevel") or 0),
+        "maxLevel": int(level.get("MaxLevel") or 0),
+        "area": int(triggered or area),
+        "parts": list(parts.values()),
     }
 
 
@@ -233,9 +364,12 @@ def entries(tables):
     levels = {int(r["SpellID"]): r for r in tables["SpellLevels"]}
     misc = {int(r["SpellID"]): r for r in tables["SpellMisc"]}
     durations = {r["ID"]: max(int(number(r["Duration"])), 0) for r in tables["SpellDuration"]}
+    texts = {int(r["ID"]): r["Description_lang"] for r in tables.get("Spell", [])}
     out = {}
     for spell in sorted(spells):
         found = entry(spell, effects, levels, misc, durations)
+        if not found and spell in texts:
+            found = trigger_entry(spell, effects, levels, misc, durations, texts[spell])
         if found:
             out[spell] = found
     return out

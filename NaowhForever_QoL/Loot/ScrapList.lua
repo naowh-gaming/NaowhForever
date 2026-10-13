@@ -382,9 +382,14 @@ local function OpenFromCard()
 end
 
 Shared.Settings.Page(PAGE, ns.QoLSettings):Window({
-    order = 26,
+    order = 66,
     text = "Open Scrap List",
     open = OpenFromCard,
     headline = "Scrap List",
     detail = "Every item marked as scrap, to search, unmark, share or add to.",
+})
+
+ns.RegisterMinimapFeature({
+    id = "ScrapList", name = "Scrap List", icon = "Interface\\Icons\\INV_Misc_Bag_08",
+    open = ns.ToggleScrapList, tooltip = "Click to open or close the Scrap List.",
 })

@@ -9,6 +9,7 @@ local Style = Training.Style
 local Rows = Training.Rows
 local V = Training.View
 local Header, Take, Paint, Text, Icon = Rows.Header, Rows.Take, Rows.Paint, Rows.Text, Rows.Icon
+local Parts = ns.Shared.Parts
 
 local CLASSES = { 1, 2, 3, 4, 5, 7, 8, 9, 11 }
 local CLASS_H, CLASS_GAP = 26, 6
@@ -18,12 +19,15 @@ local SELECTED_BAR, PICKED = 2, 0.10
 local NAME_X, NAME_DROP, SPEC_DROP, LINE_RIGHT = 12, 8, 4, 8
 local SHARE_W = 64
 local EDIT_W = 80
+local EDIT_TABS_W = 240
 local BUTTON_GAP = 6
 local LEARN_W, FOLLOW_W = 140, 140
 local STEP_LEVEL_X, STEP_LEVEL_W = 10, 90
 local STEP_TEXT_GAP, STEP_STATE_RIGHT = 8, 10
 local NODE, NODE_GAP, NODE_ROW = 36, 12, 56
 local COUNT_GAP = 2
+local CHECK, CHECK_X, TICK_INSET, CHECK_GAP = 16, 10, 4, 10
+local SKIP_LEVEL_W = 70
 local TREE_ROWS, TREE_SLOTS = 7, 4
 local SPEC_H = 28
 local NODE_SPELL, NODE_RANKS, NODE_ROW_INDEX, NODE_COLUMN, NODE_SLOT = C.NODE_SPELL, C.NODE_RANKS, C.NODE_ROW, C.NODE_COLUMN, 5
@@ -39,9 +43,13 @@ local TEXT_NEXT_AT = ns.L("Next, at level ")
 local TEXT_NODE_RANK = ns.L("Rank %d of %d")
 local TEXT_NODE_HINT = ns.L("Click to take the next point here, right-click to give one back.")
 local TEXT_UNDO, TEXT_CLEAR, TEXT_DONE = "Undo", "Clear", "Done"
+local TEXT_SELECT_ALL = "Select All"
+local TEXT_TALENTS, TEXT_SPELLS = "Talents", "Spells"
 local TEXT_CLEAR_ASK = ns.L("Take every point out of %s?")
 local TEXT_EDITING = ns.L("EDITING ")
 local TEXT_EDIT_NOTE = ns.L("%d of %d points. Click talents in the order you take them")
+local TEXT_SKIPS, TEXT_SKIPS_NOTE = ns.L("SPELLS TO SKIP"), ns.L("Checked spells are left out when you train; everything else is trained")
+local TEXT_SKIPPING = ns.L(", skipping %d")
 local TEXT_BY_LEVEL, TEXT_BY_LEVEL_NOTE = ns.L("LEVEL BY LEVEL"), ns.L("The order the points are taken in")
 local TEXT_LEARN_NEXT = "Learn Next Points"
 local TEXT_FOLLOW, TEXT_STOP_FOLLOW = "Follow This Build", "Stop Following"
@@ -263,19 +271,51 @@ local function NewEditButton()
     return ns.Button(V.body, "", EDIT_W, Style.SKIP_H + BUTTON_GAP)
 end
 
-local function EditButtons(tree, build, y)
-    local actions = {
+local function EditDone()
+    V.editing = false
+    Redraw()
+end
+
+local function EditActions(classID, tree, build)
+    if V.editTab == "spells" then
+        return {
+            { TEXT_SELECT_ALL, function() Training.SkipAll(classID, build, true) end },
+            { TEXT_CLEAR, function() Training.SkipAll(classID, build, false) end },
+            { TEXT_DONE, EditDone },
+        }
+    end
+    return {
         { TEXT_UNDO, function()
             if #build.points > 0 then Training.UndoPoint(tree, build) end
         end },
         { TEXT_CLEAR, function()
             ns.Confirm(TEXT_CLEAR_ASK:format(build.name), function() Training.ClearPoints(build) end)
         end },
-        { TEXT_DONE, function()
-            V.editing = false
-            Redraw()
-        end },
+        { TEXT_DONE, EditDone },
     }
+end
+
+local function PickEditTab(key)
+    V.editTab = key
+    Redraw()
+end
+
+local function NewEditTabs()
+    return Parts.Tabs(V.body, EDIT_TABS_W, {
+        { key = "talents", label = TEXT_TALENTS },
+        { key = "spells", label = TEXT_SPELLS },
+    }, PickEditTab)
+end
+
+local function EditTabs(y)
+    local bar = Take("editTabs", NewEditTabs)
+    bar:SetPoint("TOPLEFT", V.body, "TOPLEFT", V.paneX, y)
+    Parts.PaintTabs(bar, V.editTab)
+    return y - Style.TAB_H - BUTTON_GAP
+end
+
+local function EditButtons(classID, tree, build, y)
+    local actions = EditActions(classID, tree, build)
     for i, action in ipairs(actions) do
         local b = Take("edit", NewEditButton)
         b:SetPoint("TOPLEFT", V.body, "TOPLEFT", V.paneX + (i - 1) * (EDIT_W + BUTTON_GAP), y)
@@ -283,6 +323,61 @@ local function EditButtons(tree, build, y)
         b._onClick = action[2]
     end
     return y - Style.SKIP_H - BUTTON_GAP - Style.SECTION_GAP
+end
+
+local function SkipEnter(self)
+    self.band:SetAlpha(Style.HOVER)
+    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+    GameTooltip:SetSpellByID(self.group.spell)
+    GameTooltip:Show()
+end
+
+local function NewSkipRow()
+    local r = CreateFrame("Button", nil, V.body)
+    r:SetHeight(Style.ROW_H)
+    Rows.ListRow(r)
+    local check = CreateFrame("Frame", nil, r)
+    check:SetSize(CHECK, CHECK)
+    check:SetPoint("LEFT", CHECK_X, 0)
+    ns.Solid(check, "BACKGROUND", T.panel, 1):SetAllPoints()
+    r.box = ns.Border(check, T.line)
+    r.tick = ns.Solid(check, "ARTWORK", T.accent, 1)
+    r.tick:SetPoint("TOPLEFT", TICK_INSET, -TICK_INSET)
+    r.tick:SetPoint("BOTTOMRIGHT", -TICK_INSET, TICK_INSET)
+    r.icon = Icon(r, Style.ROW_ICON)
+    r.icon.edge:SetPoint("LEFT", check, "RIGHT", CHECK_GAP, 0)
+    r.name = Text(r, FONT_ROW, nil)
+    r.name:SetPoint("LEFT", r.icon, "RIGHT", STEP_TEXT_GAP, 0)
+    r.level = Text(r, FONT, nil, T.muted)
+    r.level:SetPoint("RIGHT", -STEP_STATE_RIGHT, 0)
+    r.level:SetWidth(SKIP_LEVEL_W)
+    r.level:SetJustifyH("RIGHT")
+    r:SetScript("OnEnter", SkipEnter)
+    r:SetScript("OnLeave", StepLeave)
+    return r
+end
+
+local function DrawSkips(classID, build, y)
+    local skipped = Training.SkipCount(build)
+    y = Header(y, TEXT_SKIPS, skipped > 0 and skipped or nil, TEXT_SKIPS_NOTE)
+    for _, group in ipairs(Training.SkipGroups(classID)) do
+        local r = Take("skip", NewSkipRow)
+        r:SetPoint("TOPLEFT", V.body, "TOPLEFT", V.paneX, y)
+        r:SetPoint("TOPRIGHT", V.body, "TOPRIGHT", 0, y)
+        r.group = group
+        local on = Training.IsSkipping(build, group)
+        r.tick:SetShown(on)
+        local c = on and T.accent or T.line
+        r.box:SetColor(c.r, c.g, c.b, 1)
+        r.icon:SetTexture(C_Spell.GetSpellTexture(group.spell))
+        r.name:SetText(group.name)
+        r.level:SetText(TEXT_LEVEL .. group.level)
+        r:SetAlpha(on and 1 or Style.LEARNED_ALPHA)
+        r:SetScript("OnClick", function() Training.ToggleSkip(build, group) end)
+        Rows.Stripe(r)
+        y = y - Style.ROW_H
+    end
+    return y - Style.SECTION_GAP
 end
 
 local function Spent(tree, points)
@@ -320,10 +415,12 @@ local function DrawNode(tree, build, node, talent, count, x, y)
     end)
 end
 
-local function DrawEditor(tree, build, level, y)
+local function DrawEditor(classID, tree, build, level, y)
     local points = build.points
     y = Header(y, TEXT_EDITING .. build.name:upper(), nil, TEXT_EDIT_NOTE:format(#points, C.MAX_POINTS))
-    y = EditButtons(tree, build, y)
+    y = EditTabs(y)
+    y = EditButtons(classID, tree, build, y)
+    if V.editTab == "spells" then return DrawSkips(classID, build, y) end
     local count, spent = Spent(tree, points)
     local colW = math.floor((V.body:GetWidth() - V.paneX) / #tree.specs)
     local gridW = TREE_SLOTS * NODE + (TREE_SLOTS - 1) * NODE_GAP
@@ -373,7 +470,7 @@ local function ShareActions(actions, classID, build)
     local saved = build.saved == true
     if saved then
         actions[#actions + 1] = { TEXT_EDIT, SHARE_W, function()
-            V.editing = true
+            V.editing, V.editTab = true, "talents"
             Redraw()
         end }
         actions[#actions + 1] = { TEXT_RENAME, SHARE_W, function()
@@ -383,7 +480,7 @@ local function ShareActions(actions, classID, build)
         end }
     else
         actions[#actions + 1] = { TEXT_COPY, SHARE_W, function()
-            V.buildIndex, V.editing = Training.NewBuild(classID, build.name .. TEXT_COPY_SUFFIX, build), true
+            V.buildIndex, V.editing, V.editTab = Training.NewBuild(classID, build.name .. TEXT_COPY_SUFFIX, build), true, "talents"
             Redraw()
         end }
     end
@@ -424,11 +521,12 @@ local function TakenNote(build, ranks)
         if ranks[node] >= count[node] then taken = taken + 1 end
     end
     return TEXT_TAKEN_COUNT:format(taken, #build.points)
+        .. (Training.SkipCount(build) > 0 and TEXT_SKIPPING:format(Training.SkipCount(build)) or "")
         .. (Training.Followed() == build and TEXT_FOLLOWING or "")
 end
 
 local function DrawPicked(classID, myClass, tree, build, level, y)
-    if V.editing and build.saved then return DrawEditor(tree, build, level, y) end
+    if V.editing and build.saved then return DrawEditor(classID, tree, build, level, y) end
     local ranks = classID == myClass and Training.Ranks(tree.talents) or nil
     local bottom = Header(y, build.name:upper(), nil, TakenNote(build, ranks))
     bottom = BuildActions(classID, build, ranks ~= nil, bottom)

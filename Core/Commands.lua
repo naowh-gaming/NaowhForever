@@ -7,11 +7,14 @@ local MODULES, OpenModule, DisplayName = O.MODULES, O.OpenModule, O.DisplayName
 local COMMAND_PREFIX = "/nf"
 local SLASH_KEY = "NAOWHFOREVER"
 local MODULE_ARGS = { bars = "ActionBarsCommand" }
+local MODULE_KEYS = { instance = true, discovery = true, gear = true, bless = true, macros = true, bars = true,
+    buffs = true, threat = true, pvp = true }
 local TIP_TITLE = { r = 1, g = 0.82, b = 0 }
 local TIP_TEXT = { r = 1, g = 1, b = 1 }
 local TEXT_BRAND = "Naowh Forever"
 local TEXT_CLICK = ns.L("Click to open settings.")
 local TEXT_SWITCHED_OFF = ns.L("%s is switched off. Turn it on under Settings > Modules.")
+local TEXT_OPEN = ns.L("Open %s")
 local TEXT_HELP_TITLE = ns.L("Commands:")
 local TEXT_HELP_MODULE = ns.L("%s%s: opens %s")
 local TEXT_HELP_ALIAS = ns.L("%s%s or %s%s: opens %s")
@@ -28,6 +31,7 @@ local HELP_LINES = {
     ns.L("/nf trainer: a waypoint to your nearest class trainer"),
     "/nf profrank: your professions' next ranks",
     ns.L("/nf scrap: the Scrap List"),
+    ns.L("/nf shopping: the Professions Shopping List"),
     ns.L("/nf quiz: the WoW quiz"),
     "/nf setup: the onboarding",
     ns.L("/nfquests (or /nfcompleto): the Quest List, in Discovery"),
@@ -75,8 +79,6 @@ BINDING_NAME_NAOWHFOREVER_COMPLETO = ns.L("Open Quest List")
 BINDING_NAME_NAOWHFOREVER_BAGSPACE_PICKUP = ns.L("Pick Up Cheapest Item")
 BINDING_NAME_NAOWHFOREVER_HUD = ns.L("Open or Close the HUD Editor")
 BINDING_NAME_NAOWHFOREVER_TRAINING = ns.L("Open Training Planner")
-BINDING_NAME_NAOWHFOREVER_DAMAGEMETER_RESET = ns.L("Reset the Damage Meter")
-BINDING_NAME_NAOWHFOREVER_DAMAGEMETER_TOGGLE = ns.L("Show or Hide the Damage Meter")
 _G["BINDING_NAME_CLICK NaowhForeverBlessNext:LeftButton"] = ns.L("Next Blessing")
 _G["BINDING_NAME_CLICK NaowhForeverBlessNextGreater:LeftButton"] = ns.L("Next Greater Blessing")
 _G["BINDING_NAME_CLICK NaowhForeverFoodBarFood:LeftButton"] = ns.L("Use Best Food")
@@ -92,8 +94,6 @@ NaowhForever_ToggleGroupInspect = SwitchedOff("Group Inspect")
 NaowhForever_ToggleCompleto = SwitchedOff("Discovery")
 NaowhForever_BagSpacePickUp = SwitchedOff("Quality of Life")
 NaowhForever_ToggleTraining = SwitchedOff("Training Planner")
-NaowhForever_ResetDamageMeter = SwitchedOff("Damage Meter")
-NaowhForever_ToggleDamageMeter = SwitchedOff("Damage Meter")
 
 SLASH_NAOWHFOREVERQUESTLIST1 = "/nfquests"
 SLASH_NAOWHFOREVERQUESTLIST2 = "/nfcompleto"
@@ -144,6 +144,8 @@ SlashCmdList["NAOWHFOREVER"] = function(msg)
         ns.ToggleDisenchant()
     elseif cmd == "scrap" and ns.ToggleScrapList then
         ns.ToggleScrapList()
+    elseif cmd == "shopping" and ns.ToggleShoppingList then
+        ns.ToggleShoppingList()
     elseif (cmd == "setup" or cmd == "welcome") and ns.ShowSetup then
         ns.ShowSetup()
     else
@@ -165,4 +167,13 @@ end
 
 for _, mod in ipairs(MODULES) do
     if mod.command then AddModuleCommand(mod) end
+    if MODULE_KEYS[mod.command] then
+        _G["BINDING_NAME_NAOWHFOREVER_" .. mod.command:upper()] = TEXT_OPEN:format(DisplayName(mod))
+    end
+end
+
+function _G.NaowhForever_ToggleModule(command)
+    for _, mod in ipairs(MODULES) do
+        if mod.command == command then return OpenModule(mod) end
+    end
 end

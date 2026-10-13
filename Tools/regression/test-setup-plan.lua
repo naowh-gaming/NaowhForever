@@ -7,9 +7,9 @@ local function check(label, ok) assert(ok, label); checks = checks + 1 end
 
 local World = dofile("Tools/regression/setup_world.lua")
 local MINIMALIST_ON = { qol = true, journal = true, bis = true, training = true, blessings = true, professions = true,
-    macros = true, actionBars = true, auraBuffs = true, threatMeter = true, pvp = true, topBar = true }
+    macros = true, actionBars = true, auraBuffs = true, threatMeter = true, pvp = true }
 local MINIMALIST_OFF = "NaowhForever_Discovery,NaowhForever_GroupInspect,NaowhForever_GearSets,"
-    .. "NaowhForever_SwingTimer,NaowhForever_ConsumableBar,NaowhForever_InstanceTracker,NaowhForever_Journeys,NaowhForever_DamageMeter"
+    .. "NaowhForever_SwingTimer,NaowhForever_ConsumableBar,NaowhForever_InstanceTracker,NaowhForever_Journeys"
 
 local function All(value)
     local out = {}
@@ -36,7 +36,8 @@ end
 
 do
     local w = Game()
-    local Setup, MODULES = w.ns.Setup, w.MODULES
+    local Setup, MODULES = w.ns.Setup, {}
+    for _, mod in ipairs(w.MODULES) do if not mod.inQoL then MODULES[#MODULES + 1] = mod end end
     local byAddon, seen = {}, {}
     for id, item in pairs(Setup.ITEMS) do
         byAddon[item.addon] = id
@@ -84,7 +85,7 @@ do
     local on = {}
     for id, value in pairs(minimal) do if value then on[#on + 1] = id end end
     table.sort(on)
-    check("Minimalist pre-selects all but its seven: " .. Names(on), Names(on) == "actionBars,auraBuffs,bis,blessings,journal,macros,professions,pvp,qol,threatMeter,topBar,training")
+    check("Minimalist pre-selects all but its seven: " .. Names(on), Names(on) == "actionBars,auraBuffs,bis,blessings,journal,macros,professions,pvp,qol,threatMeter,training")
     check("the list is the preset's own", Names(w.ns.PRESETS.minimalist.modulesOff) == MINIMALIST_OFF)
     local starter = Game({ root = w.env.CopyTable(w.ns.STARTER.profile) })
     for id in pairs(Setup.ITEMS) do
@@ -100,7 +101,7 @@ do
         check(id .. ": Recommended pre-selects what its switches say", recommended[id] == (v == true))
     end
     check("Recommended keeps its modules: the Threat Meter and Discovery on", recommended.threatMeter
-        and recommended.discovery and recommended.topBar and recommended.qol)
+        and recommended.discovery and recommended.qol)
 end
 
 do
@@ -111,7 +112,6 @@ do
     check("keep mine: a module whose addon is off is off", mine.pvp == false)
     check("one switched on in the profile is on, one switched off is off", mine.discovery and mine.journal == false)
     check("one left alone follows its default", mine.threatMeter == true and mine.groupInspect == false)
-    check("the Top Bar without Quality of Life cannot run: off", mine.topBar == false and mine.qol == false)
 end
 
 do
@@ -119,14 +119,10 @@ do
     local Setup = w.ns.Setup
     local picks = Setup.Fresh()
     Setup.PickProfile(picks, "minimalist")
-    Setup.Toggle(picks, "topBar", true)
-    check("turning the Top Bar on turns Quality of Life on", picks.modules.topBar and picks.modules.qol)
-    Setup.Toggle(picks, "qol", false)
-    check("turning Quality of Life off turns the Top Bar off", not picks.modules.topBar and not picks.modules.qol)
     Setup.Toggle(picks, "professions", false)
-    check("Professions off takes the Training Planner", not picks.modules.training)
+    check("Professions off leaves the Training Planner on", picks.modules.training)
     Setup.Toggle(picks, "training", true)
-    check("the Training Planner brings Professions", picks.modules.training and picks.modules.professions)
+    check("the Training Planner does not bring Professions", not picks.modules.professions)
     Setup.Toggle(picks, "groupInspect", true)
     Setup.Toggle(picks, "bis", false)
     check("the BiS List off takes Group Inspect", not picks.modules.bis and not picks.modules.groupInspect)
@@ -250,7 +246,6 @@ end
 
 do
     local enabled = All(true)
-    enabled.NaowhForever_Training, enabled.NaowhForever_Professions = false, false
     local w = Game({ enabled = enabled, loaded = enabled, account = { welcomeSeen = true },
         root = { pvp = { enabled = false }, qol = { characterPanel = true, inspectPanel = false, groupInspect = true } } })
     local Setup = w.ns.Setup
@@ -264,12 +259,15 @@ do
     check("the character panel on: picked, so it takes over without asking; the inspect panel off: not",
         w.root.qol.characterPanelPicked == true and w.root.qol.inspectPanelPicked == nil)
     Setup.Restore()
-    picks = Setup.Fresh()
-    Setup.Toggle(picks, "training", true)
-    plan = Applied(w, picks)
+    local off = All(true)
+    off.NaowhForever_GroupInspect, off.NaowhForever_BiS = false, false
+    local w2 = Game({ enabled = off, loaded = off, account = { welcomeSeen = true }, root = { qol = {} } })
+    local picks2 = w2.ns.Setup.Fresh()
+    w2.ns.Setup.Toggle(picks2, "groupInspect", true)
+    plan = Applied(w2, picks2)
     check("a module whose addon is off: it and what it needs enabled, with a reload", plan.reload
-        and Names(plan.on) == "Training Planner,Professions" and w.enabled.NaowhForever_Training
-        and w.enabled.NaowhForever_Professions and w.Switch("training"))
+        and Names(plan.on) == "BiS List,Group Inspect" and w2.enabled.NaowhForever_GroupInspect
+        and w2.enabled.NaowhForever_BiS and w2.Switch("groupInspect"))
     Setup.Restore()
     picks = Setup.Fresh()
     Setup.Toggle(picks, "bis", false)
@@ -314,7 +312,7 @@ do
     for id, value in pairs(w.ns.Setup.ModuleDefaults(w.ns.Setup.KEEP)) do if value then on[#on + 1] = id end end
     table.sort(on)
     check("Minimalist from the Profiles page's Setups card: the same modules on, the rest off: " .. Names(on),
-        Names(on) == "actionBars,auraBuffs,bis,blessings,journal,macros,professions,pvp,qol,threatMeter,topBar,training")
+        Names(on) == "actionBars,auraBuffs,bis,blessings,journal,macros,professions,pvp,qol,threatMeter,training")
     local tip = w.ns.PresetChanges("recommended")
     check("and its hover names what Recommended turns back on", tip:find("Group Inspect", 1, true) ~= nil)
     w = Game({ account = { welcomeSeen = true }, root = { discovery = { enabled = true } } })

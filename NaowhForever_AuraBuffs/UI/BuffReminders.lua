@@ -17,7 +17,7 @@ local TEXT_MOVER = "Buff Reminders"
 local KEYS = {
     consumableEntries = true, enabled = true, consumablesWhere = true, consumablesMinutes = true,
     onlyIfCarried = true, hideResting = true, raidBuffs = true, raidBuffsOwn = true, raidBuffPicks = true, iconSize = true,
-    personalBuffs = true, personalBuffPicks = true,
+    personalBuffs = true, personalBuffPicks = true, weaponEnhancements = true,
     buffsFont = true, buffsFontSize = true, buffsOutline = true,
 }
 local PREVIEW = {
@@ -129,7 +129,8 @@ local function OnEvent(_, event, unit, _, spellID)
         return
     end
     if event == "ITEM_DATA_LOAD_RESULT" and not R.Requested(unit) then return end
-    if event == "UNIT_SPELLCAST_SUCCEEDED" then R.NoteImbueCast(spellID) end
+    if event == "UNIT_SPELLCAST_SUCCEEDED" and (Secret(spellID)
+        or not (R.NoteImbueCast(spellID) or R.NoteFoodCast(spellID))) then return end
     Queue()
 end
 
@@ -164,8 +165,12 @@ local function Listen()
         events:RegisterUnitEvent("UNIT_AURA", "player")
     end
     if R.WatchesTarget() then events:RegisterEvent("PLAYER_TARGET_CHANGED") end
-    if S.Get("personalBuffs") then events:RegisterUnitEvent("UNIT_INVENTORY_CHANGED", "player") end
-    if R.WatchesImbue() then events:RegisterUnitEvent("UNIT_SPELLCAST_SUCCEEDED", "player") end
+    if S.Get("personalBuffs") or S.Get("weaponEnhancements") then
+        events:RegisterUnitEvent("UNIT_INVENTORY_CHANGED", "player")
+    end
+    if R.WatchesImbue() or not S.Get("onlyIfCarried") then
+        events:RegisterUnitEvent("UNIT_SPELLCAST_SUCCEEDED", "player")
+    end
     events:RegisterEvent("PLAYER_ENTERING_WORLD")
     events:RegisterEvent("PLAYER_REGEN_ENABLED")
     events:RegisterEvent("PLAYER_UPDATE_RESTING")
