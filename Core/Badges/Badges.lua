@@ -33,9 +33,9 @@ local TEXT_SINCE = ns.L("Supporter since %s %s")
 local TEXT_JOINED = ns.L("%s joined your %s")
 local TEXT_A_SUPPORTER, TEXT_A_TEAM_MEMBER = ns.L("A supporter"), ns.L("A team member")
 local TEXT_RAID, TEXT_PARTY = ns.L("raid"), ns.L("party")
-local TEXT_CODE_TITLE = ns.L("Your badge code")
+local TEXT_CODE_TITLE = ns.L("Your character code")
 local TEXT_CHARACTER, TEXT_CHARACTERS = ns.L(" character"), ns.L(" characters")
-local TEXT_CODE_SUPPORT = ns.L(". Ctrl+C to copy it, then send it in a support request on Discord to be added.")
+local TEXT_CODE_SUPPORT = ns.L(". Ctrl+C to copy it, then paste it on naowh.gg/forever/account.")
 local TEXT_CODE_TEAM = ns.L(". Ctrl+C to copy it, then send it to the team on Discord to be added.")
 local TEXT_DISCORD, TEXT_CLOSE, TEXT_DISCORD_TITLE = ns.L("Discord"), ns.L("Close"), ns.L("Naowh's Discord")
 local TEXT_STAFF_ONLY = ns.L("Badge previews are for the Naowh Forever team.")
@@ -56,6 +56,8 @@ local TEXT_CLAIM_WRONG = ns.L("That claim is not this character's, or the Battle
 local TEXT_CLAIM_SAVED = ns.L("Claim saved: your badge shows once this character is on the badge list, "
     .. "with the next Naowh Forever update.")
 local CLAIM_COMMAND = "^[Cc][Ll][Aa][Ii][Mm]%s+(%S+)$"
+local TEXT_CLAIM_PROMPT = ns.L("Paste your claim code from naowh.gg")
+local CLAIM_LETTERS = 9
 local PATREON_LINK = { "Patreon", "patreon", function() return "https://www.patreon.com/naowh" end }
 local MONTHS = { ns.L("January"), ns.L("February"), ns.L("March"), ns.L("April"), ns.L("May"), ns.L("June"),
     ns.L("July"), ns.L("August"), ns.L("September"), ns.L("October"), ns.L("November"), ns.L("December") }
@@ -928,6 +930,10 @@ end
 ns.BADGE_TIERS = TIERS
 ns.BadgeSince = SinceOf
 
+function ns.PromptBadgeClaim()
+    ns.PromptText(TEXT_CLAIM_PROMPT, "", CLAIM_LETTERS, ClaimCommand)
+end
+
 function ns.ShowBadgeCode()
     RememberCharacter()
     ShowCode(BadgeCode())
@@ -979,8 +985,8 @@ Settings.Page("QoL/Interface", S):Card({
           help = "A banner and a sound when one of them joins your group." },
         { key = "badgeBannerSkipGuild", label = "No Banner For Guild Members", toggle = true,
           needs = "badgeBanner", help = "Skips the banner when they're in your guild." },
-        { label = "Show My Badge Code", buttonText = "Show", button = ns.ShowBadgeCode,
-          help = "Your code to claim your badge, the same as /nf badges id." },
+        { label = "Show My Character Code", buttonText = "Show", button = ns.ShowBadgeCode,
+          help = "Your characters' code, to add them to your badge on naowh.gg." },
     },
 })
 
@@ -989,10 +995,12 @@ if not ns.SETUPS_PAGE then return end
 Settings.Page(ns.SETUPS_PAGE, S):Card({
     id = "yourBadge", name = "Your Badge", order = 5,
     help = "Your badge on this character, and whether it matched the BattleTag saved on naowh.gg.",
-    search = "badge battletag status supporter patron",
+    search = "badge battletag status supporter patron claim code",
     summary = BadgeStatus,
     rows = {
-        { label = "Show My Badge Code", buttonText = "Show", button = ns.ShowBadgeCode,
-          help = "Your code to claim your badge, the same as /nf badges id." },
+        { label = "Claim", buttonText = "Claim", button = ns.PromptBadgeClaim,
+          help = "Paste the claim code from naowh.gg, if the Naowh Forever app doesn't do it for you." },
+        { label = "Show My Character Code", buttonText = "Show", button = ns.ShowBadgeCode,
+          help = "Your characters' code, to add them to your badge on naowh.gg." },
     },
 })

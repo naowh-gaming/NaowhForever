@@ -874,6 +874,19 @@ do  -- your own badge and your answers
     v.me = "Player-4613-0000F00D"
     v.ns.BadgesCommand("claim K7P2-9XQM")
     check("claim: saved before the character is on the list", v.printed[#v.printed]:find("next Naowh Forever update", 1, true))
+
+    local x = fixture(true)
+    x.me = DIE
+    x.patron(x.me, "2026-01", nil, nil, true, DIE_HASH)
+    x.battletag = "Dieman#21611"
+    x.fire("PLAYER_ENTERING_WORLD")
+    local accept
+    x.ns.PromptText = function(_, _, letters, onAccept) accept = onAccept; x.letters = letters end
+    x.cards["Profiles/Setups:yourBadge"].rows[1].button()
+    check("claim button: asks for the code in the shared prompt", accept ~= nil and x.letters == 9)
+    accept("k7p2-9xqm")
+    check("claim button: a pasted code claims the badge", x.account.badgeClaims[DIE] == DIE_CLAIM
+        and x.cards["Profiles/Setups:yourBadge"].summary() == "Legendary Patron, your claim matches naowh.gg")
 end
 
 do  -- the group banner waits for the confirmation
@@ -891,7 +904,8 @@ do  -- your badge's status, at the top of Profiles and from /nf badges status
     local s = fixture(true)
     local card = s.cards["Profiles/Setups:yourBadge"]
     check("status: the Your Badge card is on Profiles, before Setups", card and card.order < 10
-        and card.rows[1].button == s.ns.ShowBadgeCode)
+        and card.rows[1].button == s.ns.PromptBadgeClaim and card.rows[2].button == s.ns.ShowBadgeCode
+        and card.rows[2].label == "Show My Character Code")
     s.me = "Player-1-PLAIN"
     check("status: no badge", card.summary() == "No badge on this character")
     s.me = "Player-1-STAFF"
