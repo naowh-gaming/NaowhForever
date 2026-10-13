@@ -13,7 +13,8 @@ max_line_length = false
 -- key bindings, map pin mixins, popups, the Global Font setting's font paths, and the table
 -- RestedXP imports its themes from.
 globals = {
-    "NaowhForever", "NaowhForever_API", "NaowhForeverDB",
+    "NaowhForever", "NaowhForever_API", "NaowhForeverDB", "NaowhForeverLanguageDB", "NaowhForeverLocaleCode",
+    "NaowhForeverTranslation",
     "NaowhForever_OnCompartmentClick", "NaowhForever_BagSpacePickUp", "NaowhForever_BossLoot", "NaowhForever_ToggleJournal", "NaowhForever_ToggleBis", "NaowhForever_ToggleCompleto",
     "NaowhForever_ToggleGroupInspect", "BINDING_NAME_NAOWHFOREVER_GROUPINSPECT",
     "NaowhForever_OnCompartmentEnter", "NaowhForever_OnCompartmentLeave", "NaowhForever_ToggleHudEditor",
@@ -25,7 +26,7 @@ globals = {
     "SLASH_NAOWHFOREVERCOPY1", "SLASH_NAOWHFOREVERCOPY2", "SLASH_NAOWHFOREVERAIM1",
     "BINDING_HEADER_NAOWHFOREVER", "BINDING_NAME_NAOWHFOREVER_BAGSPACE_PICKUP",
     "BINDING_NAME_NAOWHFOREVER_BOSSLOOT", "BINDING_NAME_NAOWHFOREVER_JOURNAL", "BINDING_NAME_NAOWHFOREVER_BIS", "BINDING_NAME_NAOWHFOREVER_COMPLETO",
-    "NaowhForeverTownPinMixin", "NaowhForeverZoneLinkPinMixin", "NaowhForeverUnexploredPinMixin", "NaowhForeverSkybornePinMixin", "NaowhForeverLibraryPinMixin", "NaowhForeverJourneyRoutePinMixin", "NaowhForeverSleepingBagPinMixin", "NaowhForeverEntrancePinMixin",
+    "NaowhForeverTownPinMixin", "NaowhForeverZoneLinkPinMixin", "NaowhForeverUnexploredPinMixin", "NaowhForeverSkybornePinMixin", "NaowhForeverLibraryPinMixin", "NaowhForeverJourneyRoutePinMixin", "NaowhForeverSleepingBagPinMixin", "NaowhForeverEntrancePinMixin", "NaowhForeverWaypointPreviewPinMixin",
     "NaowhForeverQuestGiverPinMixin",
     "NaowhForeverRarePinMixin",
     "SlashCmdList", "hash_SlashCmdList", "StaticPopupDialogs",
