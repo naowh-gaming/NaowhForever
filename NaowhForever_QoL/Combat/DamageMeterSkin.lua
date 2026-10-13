@@ -8,14 +8,16 @@ local Parts = ns.Shared.Parts
 
 local ADDON = "Blizzard_DamageMeter"
 local PRIMARY_WINDOW = "DamageMeterSessionWindow1"
-local OTHER_METERS = { { "Details", "Details" }, { "EllesmereUIDamageMeters", "EllesmereUI Damage Meters" },
-    { "Skada", "Skada" }, { "Recount", "Recount" }, { "TinyDPS", "TinyDPS" } }
-local TEXT_OTHERS = "Turn off every other damage meter first. They switch the game's own meter off."
-local TEXT_OTHERS_NAMED = "Turn off %s first. They switch the game's own meter off."
+local OTHER_METERS = { { addon = "Details", name = "Details" },
+    { addon = "EllesmereUIDamageMeters", name = "EllesmereUI Damage Meters" }, { addon = "Skada", name = "Skada" },
+    { addon = "Recount", name = "Recount" }, { addon = "TinyDPS", name = "TinyDPS" } }
+local TEXT_OTHERS = "Turn off every other damage meter first, as they switch the game's own meter off."
+local TEXT_OTHERS_NAMED = "Turn off %s first, as they switch the game's own meter off."
+local CARD_ORDER = 110
 local GRADIENT_TEX = ns.MEDIA .. "NaowhGradient.tga"
 local TEXT_GRADIENT, TEXT_NEEDS_NOT_FREE = "Naowh Gradient", "Turn off Move and Resize"
 local TEXT_NO_WINDOW = "The game's meter has no window to place."
-local TEXT_NO_PLACE = "The game's meter has no place on screen yet. Show it, then switch this off and on."
+local TEXT_NO_PLACE = "Show the game's meter first, then switch this off and on."
 local BAR_CLASS, BAR_ACCENT, BAR_CUSTOM = "class", "accent", "custom"
 local BARS = { { class = "Class Colors", accent = "Theme Accent", custom = "Custom Color" },
     { BAR_CLASS, BAR_ACCENT, BAR_CUSTOM } }
@@ -40,9 +42,11 @@ local TEXT_NEEDS_THEMED = "Set Buttons to Themed"
 local TEXT_NEEDS_BORDER, TEXT_NEEDS_FADE = "Turn on Window Border", "Set Title Bar to Shown on Hover"
 local SETTING_PREFIX, POSITION_KEY = "^damageMeter", "damageMeterPos"
 
-local OUTLINES = { { [OUTLINE_GAME] = TEXT_GAME_DEFAULT }, { OUTLINE_GAME } }
-for key, name in pairs(Parts.HUD_OUTLINES[1]) do OUTLINES[1][key] = name end
-for _, key in ipairs(Parts.HUD_OUTLINES[2]) do OUTLINES[2][#OUTLINES[2] + 1] = key end
+local HUD_NAMES, HUD_ORDER = unpack(Parts.HUD_OUTLINES)
+local OUTLINE_NAMES, OUTLINE_ORDER = { [OUTLINE_GAME] = TEXT_GAME_DEFAULT }, { OUTLINE_GAME }
+for key, name in pairs(HUD_NAMES) do OUTLINE_NAMES[key] = name end
+for _, key in ipairs(HUD_ORDER) do OUTLINE_ORDER[#OUTLINE_ORDER + 1] = key end
+local OUTLINES = { OUTLINE_NAMES, OUTLINE_ORDER }
 
 local function Weak()
     return setmetatable({}, { __mode = "k" })
@@ -150,7 +154,7 @@ end
 local function Remember(fontString)
     local path, size, flags = fontString:GetFont()
     local r, g, b = fontString:GetTextColor()
-    local was = { path, size, flags, r, g, b }
+    local was = { path = path, size = size, flags = flags, r = r, g = g, b = b }
     if Has(fontString, "GetShadowOffset") and Has(fontString, "GetShadowColor") then
         was.shadowX, was.shadowY = fontString:GetShadowOffset()
         was.shadowR, was.shadowG, was.shadowB, was.shadowA = fontString:GetShadowColor()
@@ -174,19 +178,19 @@ end
 local function Face(fontString, was, key)
     local outline = S.Get("damageMeterOutline")
     if outline == OUTLINE_GAME then
-        fontString:SetFont(FontPath(), Size(was[2], key), was[3])
+        fontString:SetFont(FontPath(), Size(was.size, key), was.flags)
         Shadow(fontString, was)
         return
     end
-    fontString:SetFont(FontPath(), Size(was[2], key), Parts.HudFlags(outline))
+    fontString:SetFont(FontPath(), Size(was.size, key), Parts.HudFlags(outline))
     if outline == OUTLINE_SHADOW then Parts.HudText(fontString) else Parts.HudText(fontString, false) end
 end
 
 local function Text(fontString, c, sizeKey)
     if not Has(fontString, "SetTextColor") then return end
     local was = looks[fontString] or Remember(fontString)
-    if sizeKey and was[2] and gameSizes[sizeKey] == nil then gameSizes[sizeKey] = was[2] end
-    if was[2] and faced[fontString] ~= generation then
+    if sizeKey and was.size and gameSizes[sizeKey] == nil then gameSizes[sizeKey] = was.size end
+    if was.size and faced[fontString] ~= generation then
         faced[fontString] = generation
         Face(fontString, was, sizeKey)
     end
@@ -307,6 +311,11 @@ local function Textures(frame, depth, out)
     return out
 end
 
+local function Vertex(texture)
+    local r, g, b, a = texture:GetVertexColor()
+    return { r = r, g = g, b = b, a = a }
+end
+
 local function ScrollBar(window, mode)
     local bar = Dig(window, "MinimizeContainer", "ScrollBar")
     if type(bar) ~= "table" then return end
@@ -314,12 +323,12 @@ local function ScrollBar(window, mode)
     scrolled[window] = true
     if Has(bar, "SetAlpha") then bar:SetAlpha(mode == SCROLL_HIDDEN and 0 or 1) end
     for _, texture in ipairs(Textures(bar, SCROLL_DEPTH, {})) do
-        if tints[texture] == nil and Has(texture, "GetVertexColor") then tints[texture] = { texture:GetVertexColor() } end
+        if tints[texture] == nil and Has(texture, "GetVertexColor") then tints[texture] = Vertex(texture) end
         local was = tints[texture]
         if mode == SCROLL_ACCENT then
             texture:SetVertexColor(T.accent.r, T.accent.g, T.accent.b)
         elseif was then
-            texture:SetVertexColor(was[1], was[2], was[3], was[4])
+            texture:SetVertexColor(was.r, was.g, was.b, was.a)
         end
     end
 end
@@ -331,16 +340,17 @@ local function Buttons(window, themed)
     for _, key in ipairs(BUTTON_PARTS) do
         for _, texture in ipairs(Textures(window[key], BUTTON_DEPTH, {})) do
             if glyphs[texture] == nil and Has(texture, "GetVertexColor") then
-                local r, g, b, a = texture:GetVertexColor()
-                glyphs[texture] = { r, g, b, a, Has(texture, "IsDesaturated") and texture:IsDesaturated() or false }
+                local first = Vertex(texture)
+                first.desaturated = Has(texture, "IsDesaturated") and texture:IsDesaturated() or false
+                glyphs[texture] = first
             end
             local was = glyphs[texture]
             if themed then
                 if Has(texture, "SetDesaturated") then texture:SetDesaturated(true) end
                 texture:SetVertexColor(c.r, c.g, c.b)
             elseif was then
-                if Has(texture, "SetDesaturated") then texture:SetDesaturated(was[5]) end
-                texture:SetVertexColor(was[1], was[2], was[3], was[4])
+                if Has(texture, "SetDesaturated") then texture:SetDesaturated(was.desaturated) end
+                texture:SetVertexColor(was.r, was.g, was.b, was.a)
             end
         end
     end
@@ -356,7 +366,7 @@ end
 local function Label(fontString)
     if not Has(fontString, "SetTextColor") then return end
     local was = looks[fontString] or Remember(fontString)
-    local c = { r = was[4], g = was[5], b = was[6] }
+    local c = { r = was.r, g = was.g, b = was.b }
     if ThemedButtons() then c = Pick("damageMeterButtonColor", "accent") end
     Text(fontString, c, nil)
 end
@@ -399,9 +409,9 @@ local function GiveBack()
     for region, was in pairs(looks) do
         if type(was) == "string" and Has(region, "SetAtlas") then
             region:SetAtlas(was)
-        elseif type(was) == "table" and was[1] then
-            region:SetFont(was[1], was[2], was[3])
-            region:SetTextColor(was[4], was[5], was[6])
+        elseif type(was) == "table" and was.path then
+            region:SetFont(was.path, was.size, was.flags)
+            region:SetTextColor(was.r, was.g, was.b)
             Shadow(region, was)
         end
     end
@@ -667,24 +677,24 @@ local skin = {
     barAlpha = { key = "damageMeterBarAlpha", label = "Bar Opacity", slider = PERCENT_RANGE, unit = "%",
       help = "How solid the bars are." },
     barBgColor = ColorRow("damageMeterBarBgColor", "Bar Background Color", "bg",
-        "The color behind each bar. Not picked: the Window Color.", nil, nil, BarBackground),
+        "The color behind each bar, the Window Color until you pick one.", nil, nil, BarBackground),
     barBgAlpha = { key = "damageMeterBarBgAlpha", label = "Bar Background Opacity", slider = PERCENT_RANGE, unit = "%",
       help = "How solid the color behind each bar is." },
     scrollBar = { key = "damageMeterScrollBar", label = "Scroll Bar", choice = SCROLLS,
-      help = "The game's own, in your Accent, or hidden. The mouse wheel still scrolls." },
+      help = "The game's own, in your Accent, or hidden; the mouse wheel still scrolls." },
     font = { key = "damageMeterFont", label = "Font", font = true },
     outline = { key = "damageMeterOutline", label = "Outline", choice = OUTLINES,
       help = "The game's own, none, the soft shadow, a thin outline or a thick one." },
     nameColor = ColorRow("damageMeterNameColor", "Name Color", "fg", "The names on the bars."),
     nameSize = SizeRow("damageMeterNameSize", "Name Size",
-        "The names on the bars. 0 is the game's own size; Text Size still scales it."),
+        "The names on the bars, 0 being the game's own size."),
     valueColor = ColorRow("damageMeterValueColor", "Amount Color", "muted", "The amounts, and the fight time."),
-    valueSize = SizeRow("damageMeterValueSize", "Amount Size", "The amounts and the fight time. 0 is the game's own size."),
+    valueSize = SizeRow("damageMeterValueSize", "Amount Size", "The amounts and the fight time, 0 being the game's own size."),
     titleColor = ColorRow("damageMeterTitleColor", "Title Color", "fg", "The list and session names in the title bar."),
-    titleSize = SizeRow("damageMeterTitleSize", "Title Size", "The list name in the title bar. 0 is the game's own size."),
+    titleSize = SizeRow("damageMeterTitleSize", "Title Size", "The list name in the title bar, 0 being the game's own size."),
     headerColor = ColorRow("damageMeterHeaderColor", "Title Bar Color", "panel", "The title bar."),
     panelColor = ColorRow("damageMeterPanelColor", "Spell Panel Color", "bg",
-        "The panel a left click opens. Not picked: the Window Color.", nil, nil, PanelColor),
+        "The panel a left click opens, the Window Color until you pick one.", nil, nil, PanelColor),
     panelAlpha = { key = "damageMeterPanelAlpha", label = "Spell Panel Opacity", slider = PERCENT_RANGE, unit = "%",
       help = "How solid the panel a left click opens is." },
     windowColor = ColorRow("damageMeterWindowColor", "Window Color", "bg", "The window and the shadow behind each bar."),
@@ -703,7 +713,6 @@ local skin = {
       help = "How much of the title bar stays while the mouse is away." },
 }
 
--- every row of the reskin waits for the Reskin switch; the game's own settings and moving do not
 for _, row in pairs(skin) do
     local own = row.needs
     if type(own) == "function" then
@@ -728,7 +737,7 @@ local function Add(...)
 end
 
 Add({ key = "damageMeterSkin", label = "Reskin", toggle = true,
-    help = "Draws the game's damage meter in your theme. The rows that need it wait for this." })
+    help = "Draws the game's damage meter in your theme; the rows that need it wait for this." })
 Add(Settings.Group("Window"))
 Add(game.Visibility, game.FrameWidth, game.FrameHeight)
 Add({ key = "damageMeterFree", label = "Move and Resize", toggle = true,
@@ -754,14 +763,14 @@ Add(layout and layout.restore)
 local function OtherMeters()
     local names
     for _, meter in ipairs(OTHER_METERS) do
-        if C_AddOns.IsAddOnLoaded(meter[1]) then names = names and (names .. ", " .. meter[2]) or meter[2] end
+        if C_AddOns.IsAddOnLoaded(meter.addon) then names = names and (names .. ", " .. meter.name) or meter.name end
     end
     if not names then return TEXT_OTHERS end
     return TEXT_OTHERS_NAMED:format(names)
 end
 
 Settings.Page("QoL/Combat", S):Card({
-    id = "damageMeterSkin", name = "Default Damage Meter", order = 110, note = OtherMeters,
+    id = "damageMeterSkin", name = "Default Damage Meter", order = CARD_ORDER, note = OtherMeters,
     help = "The game's own damage meter: in your theme, sized and set here instead of in Edit Mode.",
     search = "damage meter skin reskin blizzard default bar height move resize edit mode style numbers padding",
     rows = card,

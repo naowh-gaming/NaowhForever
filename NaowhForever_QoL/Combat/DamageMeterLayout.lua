@@ -7,22 +7,21 @@ local DIFF, STEP, FLAG = "diff", "step", "flag"
 local TEXT_COMBAT = "Not in combat."
 local TEXT_NO_EDIT_MODE = "The game's layouts are not available."
 local TEXT_EDIT_MODE_OPEN = "Close Edit Mode first."
-local TEXT_PRESET = "Your active layout is one of the game's own. Make a copy in Edit Mode first."
+local TEXT_PRESET = "Your active layout is one of the game's own: make a copy in Edit Mode first."
 local TEXT_NO_SYSTEM = "This layout has no damage meter."
 local TEXT_FAILED = "The game would not save the layout (%s)."
 local TEXT_RELOAD = "Needs a /reload"
 local TEXT_NOTHING = "Nothing to restore yet: it remembers your settings from before your first change."
 
--- the game's own list, in its own order; stored values are what Edit Mode keeps (see its ConvertValue functions)
 local SPECS = {
     { name = "Style", label = "Bar Style", enum = "DamageMeterStyle", members = { "Default", "Bordered", "Thin" },
       names = { "Default", "Bordered", "Thin" }, help = "Default, Bordered or Thin bars." },
     { name = "Numbers", label = "Numbers", enum = "DamageMeterNumbers", members = { "Minimal", "Compact", "Complete" },
       names = { "Minimal", "Compact", "Complete" }, default = "Compact", help = "How much of each number is written." },
     { name = "FrameWidth", label = "Window Width", convert = DIFF, min = 200, max = 600, step = 1, default = 300,
-      unit = "px", frame = true, help = "The window's width. Move and Resize sets it by dragging." },
+      unit = "px", frame = true, help = "The window's width, which Move and Resize sets by dragging." },
     { name = "FrameHeight", label = "Window Height", convert = DIFF, min = 120, max = 400, step = 1, default = 200,
-      unit = "px", frame = true, help = "The window's height. Move and Resize sets it by dragging." },
+      unit = "px", frame = true, help = "The window's height, which Move and Resize sets by dragging." },
     { name = "BarHeight", label = "Bar Height", convert = DIFF, min = 15, max = 40, step = 1, default = 24,
       unit = "px", help = "How tall each bar is." },
     { name = "Padding", label = "Bar Spacing", convert = STEP, min = 2, max = 10, step = 1, default = 4,
@@ -30,7 +29,7 @@ local SPECS = {
     { name = "Transparency", label = "Window Opacity", convert = STEP, min = 50, max = 100, step = 1, default = 100,
       unit = "%", help = "How solid the whole window is, from half to full." },
     { name = "BackgroundTransparency", label = "Background Opacity", convert = STEP, min = 0, max = 100, step = 1,
-      default = 0, unit = "%", help = "How solid the window's own background is. 0 is none." },
+      default = 0, unit = "%", help = "How solid the window's own background is, from none to full." },
     { name = "TextSize", label = "Text Size", convert = STEP, min = 50, max = 150, step = 10, default = 100,
       unit = "%", help = "The size of all the text, against normal." },
     { name = "Visibility", label = "Visibility", enum = "DamageMeterVisibility",
@@ -40,7 +39,7 @@ local SPECS = {
     { name = "ShowSpecIcon", label = "Show Spec Icon", convert = FLAG, default = true,
       help = "A spec icon at the start of each bar." },
     { name = "ShowClassColor", label = "Show Class Color", convert = FLAG, default = true,
-      help = "Color each bar by class. The reskin can override it." },
+      help = "Colors each bar by class, unless the reskin picks another color." },
 }
 
 local byName = {}
@@ -157,7 +156,6 @@ local function Backup(layout, system)
     ns.AccountSettings()[BACKUP_KEY] = saved
 end
 
--- a copy of the active layout to change, or nothing, with the reason said under the row
 local function Target(owner)
     if InCombatLockdown() then Say(owner, TEXT_COMBAT) return nil end
     local frame = Manager()
@@ -172,7 +170,6 @@ local function Target(owner)
     return info, layout, system
 end
 
--- updates: setting name -> the value Edit Mode stores, or false to take the entry out
 local function Differs(system, updates)
     for name, value in pairs(updates) do
         local id = SettingId(byName[name])
