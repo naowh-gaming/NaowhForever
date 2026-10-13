@@ -10,6 +10,8 @@ local SECONDS = A.C.SECONDS
 local PARTY_UNITS = MAX_PARTY_MEMBERS or 4
 local RAID_UNITS_MAX = MAX_RAID_MEMBERS or 40
 local CATEGORY_ORDER = A.CATEGORY_ORDER
+local WEAPON_SLOTS = { 16, 17 }
+local CLASS_INDEX = 6
 local ELITE = { elite = true, rareelite = true, worldboss = true }
 
 local GROUP_UNIT = { player = true }
@@ -95,6 +97,18 @@ local function Wake(seconds)
     if not wakeAt or seconds < wakeAt then wakeAt = seconds end
 end
 
+local function FoodItemIcon(spellID)
+    for bag = 0, NUM_BAG_SLOTS do
+        for slot = 1, C_Container.GetContainerNumSlots(bag) do
+            local id = C_Container.GetContainerItemID(bag, slot)
+            if id then
+                local _, spell = C_Item.GetItemSpell(id)
+                if spell == spellID then return C_Item.GetItemIconByID(id) end
+            end
+        end
+    end
+end
+
 local function Consumable(list, buffs, group, item, icon)
     local aura = Find(buffs, group.auras) or group.wellFed and WellFed(buffs)
     local left = aura and Left(aura)
@@ -128,12 +142,19 @@ end
 
 local function Consumables(list, buffs)
     local groups = Groups()
+    local defaults = not S.Get("onlyIfCarried")
     for _, category in ipairs(CATEGORY_ORDER) do
         local group = groups[category]
+        if not group and defaults and not (category == "battle" and groups.guardian) then
+            group = D.DEFAULT_GROUPS[category]
+        end
         if group then
             local before = #list
-            Consumable(list, buffs, group, FirstCarried(group.items),
-                C_Item.GetItemIconByID(group.items[1]))
+            local icon = group.items[1] and C_Item.GetItemIconByID(group.items[1])
+            if category == "food" then
+                icon = ns.AccountSettings().lastFoodIcon or icon or C_Spell.GetSpellTexture(D.WELL_FED[1])
+            end
+            Consumable(list, buffs, group, FirstCarried(group.items), icon)
             if #list > before then list[#list].items = group.items end
         end
     end
@@ -230,6 +251,37 @@ local function Enchanted(slots, warn)
     return true
 end
 
+local function WeaponSlots()
+    local slots = {}
+    for _, slot in ipairs(WEAPON_SLOTS) do
+        local id = GetInventoryItemID("player", slot)
+        if id and select(CLASS_INDEX, C_Item.GetItemInfoInstant(id)) == Enum.ItemClass.Weapon then
+            slots[#slots + 1] = slot
+        end
+    end
+    return slots
+end
+
+local function OwnWeaponBuff()
+    if not S.Get("personalBuffs") then return false end
+    local _, class = UnitClass("player")
+    for _, family in ipairs(D.PERSONAL) do
+        if family.weapons and family.class == class and PersonalPicked(family) and Knows(family.spells) then
+            return true
+        end
+    end
+    return false
+end
+
+local function WeaponEnhancement(list)
+    if OwnWeaponBuff() then return end
+    local slots = WeaponSlots()
+    if #slots == 0 or Enchanted(slots, S.Get("consumablesMinutes") * SECONDS) then return end
+    local item = FirstCarried(D.WEAPON_ITEMS)
+    if not item and S.Get("onlyIfCarried") then return end
+    list[#list + 1] = { icon = C_Item.GetItemIconByID(item or D.WEAPON_ITEMS[1]), items = D.WEAPON_ITEMS }
+end
+
 local function TargetHas(spells)
     for i = 1, MAX_AURAS do
         local aura = C_UnitAuras.GetAuraDataByIndex("target", i, "HARMFUL")
@@ -290,8 +342,8 @@ Reminders.PersonalPicked = PersonalPicked
 Reminders.Secret = Secret
 
 function Reminders.On()
-    return S.Get("enabled") and (#(S.Get("consumableEntries") or {}) > 0 or S.Get("raidBuffs")
-        or S.Get("personalBuffs") and ClassHasPersonal())
+    return S.Get("enabled") and (#(S.Get("consumableEntries") or {}) > 0 or not S.Get("onlyIfCarried")
+        or S.Get("raidBuffs") or S.Get("weaponEnhancements") or S.Get("personalBuffs") and ClassHasPersonal())
 end
 
 function Reminders.WatchesTarget()
@@ -318,11 +370,24 @@ function Reminders.NoteImbueCast(spellID)
     for _, family in ipairs(D.PERSONAL) do
         if family.key == "imbue" then
             for _, id in ipairs(family.spells) do
-                if id == spellID then lastImbue = spellID end
+                if id == spellID then
+                    lastImbue = spellID
+                    return true
+                end
             end
-            return
+            return false
         end
     end
+    return false
+end
+
+function Reminders.NoteFoodCast(spellID)
+    if not D.FOOD_SPELLS[spellID] then return false end
+    local icon = FoodItemIcon(spellID) or C_Spell.GetSpellTexture(spellID)
+    local account = ns.AccountSettings()
+    if not icon or account.lastFoodIcon == icon then return false end
+    account.lastFoodIcon = icon
+    return true
 end
 
 function Reminders.Requested(itemID)
@@ -339,7 +404,10 @@ function Reminders.Collect()
     if not buffs then return nil end
     local list = {}
     wakeAt = nil
-    if ConsumablesHere() then Consumables(list, buffs) end
+    if ConsumablesHere() then
+        Consumables(list, buffs)
+        if S.Get("weaponEnhancements") then WeaponEnhancement(list) end
+    end
     if S.Get("personalBuffs") then PersonalBuffs(list, buffs) end
     if S.Get("raidBuffs") then RaidBuffs(list, buffs) end
     return list

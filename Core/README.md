@@ -41,7 +41,7 @@ Core/
   Options/Window.lua   the options window, a module's own window, ns.OpenOptionsWindow
   Options/SettingsPage.lua the Settings page: modules, minimap icons, scale, fonts, colors, RestedXP
   Commands.lua         /nf and the module commands, binding names, the compartment entry
-  Options/Launchers.lua the broker launchers and minimap icons
+  Options/Launchers.lua the broker launchers and minimap icons; a feature with its own window adds a button with ns.RegisterMinimapFeature
   Options/GameMenu.lua the Naowh Forever button in the game menu
   Options/Search.lua   the sidebar's settings search
 
@@ -112,7 +112,8 @@ The QoL store and the Alerts group
 - Before the group each alert had its own spot (`OLD_POSITIONS`): the first one a player had
   moved, from the bottom up, becomes the group's.
 - A key binding whose module is off prints that it is switched off (`SwitchedOff`), instead of
-  calling a function that was never made.
+  calling a function that was never made. The bindings for the modules' own windows and settings
+  (`NaowhForever_ToggleModule`) go through `OpenModule`, which says the same.
 
 Namespace and builds
 - `MODULE_KEY` must match the addon folder: the DB and saved positions key off it.
@@ -128,9 +129,9 @@ Namespace and builds
   from a client that was not reloaded.
 - Libs/ is not in git; the packager adds it. An install from the source zip has none, so login
   says so once instead of features failing one by one.
-- The Damage Meter turns the game's meter (`damageMeterEnabled`) off and keeps what it was on the
-  account. With that addon disabled or removed nothing of it runs to put it back, so the core does at
-  login when it is not loaded.
+- The Damage Meter module is no longer shipped (its folder stays in git). It turned the game's meter
+  (`damageMeterEnabled`) off and kept what it was on the account, so the core puts that back at login
+  when the addon is not loaded.
 
 Theme
 - Naowh's scheme is dark grey with his blue (#0091ed) as the single accent. Each preset keeps text

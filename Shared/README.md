@@ -70,8 +70,9 @@ Shared/
   UI/Tracker.lua   a tracker's small window (Parts.TrackerPanel), and a list row's bands
                    (Parts.RowBands: stripe, hover, the line under it)
   UI/ItemBar.lua   an item bar (Shared.ItemBar): secure item buttons in a grid, their count and key texts,
-                   the bar's mover, its place or anchor, and the count and keybind rows with their cogs:
-                   the Consumable Bar and QoL's Food & Drink Bar
+                   the bar's mover, its place or anchor, the count and keybind rows with their cogs, and the
+                   Growth Direction choice and placing (ItemBar.GrowChoice, Place): the Consumable Bar,
+                   QoL's Food & Drink Bar and Group Buttons, and the Gear Set, Trinket and Blessing bars
   UI/Anchor.lua    anchoring a bar to a frame (Shared.Anchor): its Anchor rows, the picker that lights the
                    frame under the cursor, and the editor beside the bar
   View/View.lua    the row engine: pooled rows, cards, the card grid, one redraw per burst
@@ -107,7 +108,10 @@ Each file uses only the ones above it in `Shared.xml`. Every part sits on `ns.Sh
   studio, rows = { ... } })`, rows like `{ key = "iconSize", label = "Icon Size", slider = { 12,
   32, 1 } }` and `Settings.Group("Clock")` between them (see `Settings/Settings.lua`). A
   row with `field` (and its own `get`/`set`) is one entry of a table setting `key`, with its own dot
-  and reset (AuraBuffs' raid buff switches). A row or
+  and reset (AuraBuffs' raid buff switches). A card's `switchWhy`, a function, holds its switch
+  and its rows while it returns a reason, greyed with the reason in place of Off (the Food & Drink Bar while its
+  buttons are on the Consumable Bar). A row's `why` beside a `needs` function may be a function
+  too, for a row held for more than one reason (NF Drink on the Consumable Bar). A row or
   group with `hidden` is left off the page: `true` for one set on the preview instead, or a
   function, so rows for one choice only (the Campfire's Round and Simple rows) show with it. A
   row's `cog = { title, tip }` puts a cog left of its control, opening a small panel of the rows
@@ -115,7 +119,9 @@ Each file uses only the ones above it in `Shared.xml`. Every part sits on `ns.Sh
   card, and a search hit on one opens the cog. `icons = { { texture, tip, open, enabled }, ... }`
   adds other icons beside it. A row's or card's `note` is a function given the row or card that
   returns a short line for it, or nil: beside a row's control, after a card's summary.
-  A card's
+  A card with `into = "<id>"` puts its rows, under a group named for it, in the card of that id on the
+  same page, in `order`, instead of drawing a card of its own (QoL's Looting, Vendors, Auction Prices
+  and Mail & Alts are one card); it has no switch, and its id still finds the shared card. A card's
   `watch = { store, ... }` draws it again when another module's settings change too. A card's
   or row's `search = "..."` adds words the settings
   search finds but nothing shows, for clicks and slash commands too small for its help. The page

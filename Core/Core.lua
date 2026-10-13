@@ -27,7 +27,7 @@ local SKIN_CLASSIC = "classic"
 -- The Classic+ skin sets text as the game does: Friz Quadrata, and Arial Narrow for compact numbers.
 local FONT_NAOWH, FONT_CLASSIC, FONT_DATA = "Naowh", "Friz Quadrata TT", "Arial Narrow"
 local FONT_HEADING = FONT_CLASSIC
-local LOCALE_ADDON_PREFIX, ENGLISH = "NaowhForever_", "enUS"
+local LOCALE_ADDON, ENGLISH = "NaowhForever_Locales", "enUS"
 local GLYPH_FONTS = { koKR = "Fonts\\2002.TTF", zhCN = "Fonts\\ARKai_T.ttf", zhTW = "Fonts\\bLEI00D.ttf" }
 local FRIZ_CYRILLIC = "Fonts\\FRIZQT___CYR.TTF"
 local LANGUAGES = { "enUS", "deDE", "esES", "esMX", "frFR", "itIT", "ptBR", "ruRU", "koKR", "zhCN", "zhTW" }
@@ -84,7 +84,7 @@ end
 ns.LOCALE = PickLocale()
 ns.LANGUAGES, ns.LANGUAGE_NAMES = LANGUAGES, LANGUAGE_NAMES
 if ns.LOCALE ~= ENGLISH then
-    C_AddOns.LoadAddOn(LOCALE_ADDON_PREFIX .. ns.LOCALE)
+    C_AddOns.LoadAddOn(LOCALE_ADDON)
 end
 
 local catalog = _G.NaowhForeverLocale or {}
@@ -1069,7 +1069,7 @@ function ns.Confirm(text, onYes, onNo, yesText, noText)
     panel:SetHeight(math.max(CONFIRM_H, head:GetStringHeight() + CONFIRM_ROOM))
     local w = (yesText or noText) and CONFIRM_WIDE or CONFIRM_W
     local shift = w / 2 + CONFIRM_BUTTON_GAP
-    DialogButton(UI, panel, "yes", yesText or "Yes", w, function()
+    local yes = DialogButton(UI, panel, "yes", yesText or "Yes", w, function()
         dimmer.onClose = nil
         dimmer:Hide()
         onYes()
@@ -1077,6 +1077,7 @@ function ns.Confirm(text, onYes, onNo, yesText, noText)
     DialogButton(UI, panel, "no", noText or "No", w, function() dimmer:Hide() end, shift)
     dimmer.onClose = onNo
     dimmer:Show()
+    return yes, dimmer
 end
 
 local activeRoot, provisional
