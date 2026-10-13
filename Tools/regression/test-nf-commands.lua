@@ -177,14 +177,16 @@ do
     t.env.NaowhForever_OpenTopBar()
     check("and otherwise opens QoL > Interface", page == "QoL/Interface")
 end
-for key, window in pairs({ SCRAP = { "scrap", "ToggleScrapList", "Scrap List" }, DISENCHANT = { "disenchant", "ToggleDisenchant", "Disenchant" },
-        QUIZ = { "quiz", "ToggleQuiz", "Quiz" }, AIM = { "aim", "ToggleAimTrainer", "Aim Trainer" } }) do
+for key, window in pairs({ SCRAP = { "scrap", "ToggleScrapList", "Scrap List", "Quality of Life" },
+        DISENCHANT = { "disenchant", "ToggleDisenchant", "Disenchant", "Professions" },
+        QUIZ = { "quiz", "ToggleQuiz", "Quiz", "Quality of Life" }, AIM = { "aim", "ToggleAimTrainer", "Aim Trainer", "Quality of Life" } }) do
     local t = Fixture(0)
     check("a key binding for the " .. window[3], bindings:find('NAOWHFOREVER_' .. key .. '" category="BINDING_HEADER_NAOWHFOREVER">'
         .. 'NaowhForever_ToggleWindow("' .. window[1] .. '")</Binding>', 1, true))
     check("with its name", t.env["BINDING_NAME_NAOWHFOREVER_" .. key] == "Open " .. window[3])
     t.env.NaowhForever_ToggleWindow(window[1])
-    check("which says so while it is not loaded", t.printed[#t.printed]:find(window[3], 1, true))
+    check("which names the addon that is off while it is not loaded",
+        t.printed[#t.printed] == window[4] .. " is switched off. Turn it on under Settings > Modules.")
     local toggled = 0
     t.ns[window[2]] = function() toggled = toggled + 1 end
     t.env.NaowhForever_ToggleWindow(window[1])

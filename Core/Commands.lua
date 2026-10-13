@@ -11,8 +11,9 @@ local MODULE_KEYS = { instance = true, discovery = true, gear = true, bless = tr
     buffs = true, threat = true, pvp = true }
 local NAMED_KEYS = { Journeys = "JOURNEYS", Professions = "PROFESSIONS", ["Consumable Bar"] = "CONSUMABLEBAR",
     ["Swing Timer"] = "SWINGTIMER" }
-local WINDOW_KEYS = { scrap = { "ToggleScrapList", "Scrap List" }, disenchant = { "ToggleDisenchant", "Disenchant" },
-    quiz = { "ToggleQuiz", "Quiz" }, aim = { "ToggleAimTrainer", "Aim Trainer" } }
+local WINDOW_KEYS = { scrap = { "ToggleScrapList", "Scrap List", "Quality of Life" },
+    disenchant = { "ToggleDisenchant", "Disenchant", "Professions" }, quiz = { "ToggleQuiz", "Quiz", "Quality of Life" },
+    aim = { "ToggleAimTrainer", "Aim Trainer", "Quality of Life" } }
 local TIP_TITLE = { r = 1, g = 0.82, b = 0 }
 local TIP_TEXT = { r = 1, g = 1, b = 1 }
 local TEXT_BRAND = "Naowh Forever"
@@ -198,5 +199,5 @@ end
 
 function _G.NaowhForever_ToggleWindow(key)
     local window = WINDOW_KEYS[key]
-    if ns[window[1]] then ns[window[1]]() else ns.Print(TEXT_SWITCHED_OFF:format(ns.L(window[2]))) end
+    if ns[window[1]] then ns[window[1]]() else ns.Print(TEXT_SWITCHED_OFF:format(ns.L(window[3]))) end
 end
