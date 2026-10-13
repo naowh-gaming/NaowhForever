@@ -30,7 +30,7 @@ NaowhForever_Training/
     Style.lua        the planner's own look, over Shared/Style.lua (Training.Style)
     Rows.lua         pooled cards, rows and section titles, a spell's tooltip and menu (Training.Rows)
     Spells.lua       the Spells tab: next visit, road to 60, spell lists (Training.Spells)
-    Builds.lua       the Builds tab: builds, steps, the talent tree editor (Training.BuildsView)
+    Builds.lua       the Builds tab: builds, steps, the editor (Talents and Spells tabs) (Training.BuildsView)
   UI/
     Place.lua        windows on whole pixels, kept account-wide
     Window.lua       the window (/nftraining, ns.OpenTrainingWindow, ns.ToggleTrainingWindow)
@@ -82,7 +82,7 @@ view files and the window share.
   its place in the data: names repeat, so they cannot be keys. Committing talents fires the talent
   events that start a followed build's learning again, so learning is guarded while it runs.
 - A saved build can carry spells to skip (`skip`, spell IDs by rank, set in the editor, any spell of the
-  class whether learned or not). The build you follow decides what Learn All at the trainer leaves out
+  class whether learned or not). The build you follow decides what Learn Selected at the trainer leaves out
   and what the Spells tab calls skipped, next to the character's own right-click skips. Those own skips
   are kept per character, so they never reach a new one; the build's are account-wide, travel in a
   build's export string and the Profiles share, and a new character gets them by following the build.
