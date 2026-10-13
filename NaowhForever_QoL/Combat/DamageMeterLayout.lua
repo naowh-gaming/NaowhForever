@@ -123,13 +123,18 @@ local function DefaultDisplay(spec)
     return spec.default
 end
 
+local function StoredOf(system, spec)
+    local id = SettingId(spec)
+    local entry = id and EntryOf(system, id)
+    if entry and type(entry.value) == "number" then return entry.value end
+end
+
 local function LayoutValue(spec)
     local frame = Manager()
     local layout = frame and ActiveLayout(frame.layoutInfo)
     local system = layout and SystemOf(layout)
-    local id = SettingId(spec)
-    local entry = system and id and EntryOf(system, id)
-    if entry and type(entry.value) == "number" then return ToDisplay(spec, entry.value) end
+    local stored = system and StoredOf(system, spec)
+    if stored then return ToDisplay(spec, stored) end
     return DefaultDisplay(spec)
 end
 
@@ -143,11 +148,7 @@ local function Backup(layout, system)
     if backedUp then return end
     backedUp = true
     local values = {}
-    for _, spec in ipairs(SPECS) do
-        local id = SettingId(spec)
-        local entry = id and EntryOf(system, id)
-        values[spec.name] = (entry and type(entry.value) == "number") and entry.value or false
-    end
+    for _, spec in ipairs(SPECS) do values[spec.name] = StoredOf(system, spec) or false end
     local saved = { name = layout.layoutName, values = values }
     if C_EditMode and C_EditMode.ConvertLayoutInfoToString then
         local ok, text = pcall(C_EditMode.ConvertLayoutInfoToString, layout)
@@ -156,30 +157,36 @@ local function Backup(layout, system)
     ns.AccountSettings()[BACKUP_KEY] = saved
 end
 
--- updates: setting name -> the value Edit Mode stores, or false to take the entry out
-local function Change(updates, owner)
-    if InCombatLockdown() then Say(owner, TEXT_COMBAT) return false end
+-- a copy of the active layout to change, or nothing, with the reason said under the row
+local function Target(owner)
+    if InCombatLockdown() then Say(owner, TEXT_COMBAT) return nil end
     local frame = Manager()
-    if not (frame and C_EditMode and C_EditMode.SaveLayouts) then Say(owner, TEXT_NO_EDIT_MODE) return false end
-    if Has(frame, "IsShown") and frame:IsShown() then Say(owner, TEXT_EDIT_MODE_OPEN) return false end
+    if not (frame and C_EditMode and C_EditMode.SaveLayouts) then Say(owner, TEXT_NO_EDIT_MODE) return nil end
+    if Has(frame, "IsShown") and frame:IsShown() then Say(owner, TEXT_EDIT_MODE_OPEN) return nil end
     local info = CopyTable(frame.layoutInfo)
     local layout = ActiveLayout(info)
-    if not layout then Say(owner, TEXT_NO_EDIT_MODE) return false end
-    if layout.layoutType == Enum.EditModeLayoutType.Preset then Say(owner, TEXT_PRESET) return false end
+    if not layout then Say(owner, TEXT_NO_EDIT_MODE) return nil end
+    if layout.layoutType == Enum.EditModeLayoutType.Preset then Say(owner, TEXT_PRESET) return nil end
     local system = SystemOf(layout)
-    if not system then Say(owner, TEXT_NO_SYSTEM) return false end
-    local changed = false
+    if not system then Say(owner, TEXT_NO_SYSTEM) return nil end
+    return info, layout, system
+end
+
+-- updates: setting name -> the value Edit Mode stores, or false to take the entry out
+local function Differs(system, updates)
     for name, value in pairs(updates) do
         local id = SettingId(byName[name])
         local entry = id and EntryOf(system, id)
         if value == false then
-            if entry then changed = true end
+            if entry then return true end
         elseif not entry or entry.value ~= value then
-            changed = true
+            return true
         end
     end
-    if not changed then return false end
-    Backup(layout, system)
+    return false
+end
+
+local function Write(system, updates)
     system.settings = system.settings or {}
     for name, value in pairs(updates) do
         local id = SettingId(byName[name])
@@ -194,6 +201,13 @@ local function Change(updates, owner)
             end
         end
     end
+end
+
+local function Change(updates, owner)
+    local info, layout, system = Target(owner)
+    if not info or not Differs(system, updates) then return false end
+    Backup(layout, system)
+    Write(system, updates)
     local ok, err = pcall(C_EditMode.SaveLayouts, info)
     if not ok then
         Say(owner, TEXT_FAILED:format(tostring(err)))

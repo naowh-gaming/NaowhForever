@@ -123,13 +123,14 @@ NaowhForever_QoL/
   meter, written through `C_EditMode`: it copies the manager's layout info (never writes into it),
   changes the values in the copy and saves that, so the game applies it with its own code and
   nothing of its is tainted. Each value is stored as Edit Mode stores it: the setting less the
-  slider's minimum (Bar Height, Frame Width and Height), less the minimum over the step (Bar
-  Spacing, Text Size, Transparency, Background), or the enum itself (Style, Numbers, Visibility).
+  slider's minimum (Bar Height, Window Width and Height), less the minimum over the step (Bar
+  Spacing, Text Size, Window and Background Opacity), or the enum itself (Bar Style, Numbers,
+  Visibility).
   Before the first change since login it keeps every value and a backup string of the layout,
-  which Original Settings puts back. It refuses in combat, with Edit Mode open and on the game's
+  which Restore Game Settings puts back. It refuses in combat, with Edit Mode open and on the game's
   built-in layouts, says why in a note under the row, shows the value on its way until the save
   is done, and waits half a second after a slider stops, since every save re-lays out the game's
-  systems. Frame Width and Height wait for Move and Resize to be off, since that anchors the
+  systems. Window Width and Height wait for Move and Resize to be off, since that anchors the
   window on its own.
 - Move and Resize re-anchors the primary session window to the screen and sizes it, since the game
   leaves that window to Edit Mode (`CanMoveOrResizeSessionWindow` is false for it). Only the session
