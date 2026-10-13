@@ -24,7 +24,7 @@ local frames, timers, printed, tickers = {}, {}, {}, {}
 local tracking, handedBack = 0, nil
 local QUESTS = { [101] = { 1457, 0.5, 0.5 }, [102] = { 1455, 0.5, 0.5 } }
 local here = { x = -4821.8, y = -1155.4, c = 0 }
-local current
+local current, placedAtSet
 local combat = false
 local account = {}
 local store = {}
@@ -120,6 +120,7 @@ local env = setmetatable({
         end,
         CanSetUserWaypointOnMap = function() return true end,
         SetUserWaypoint = function(point)
+            placedAtSet = ns.placedWaypoint
             current = { uiMapID = point.map, position = { x = point.x, y = point.y } }
             Fire("USER_WAYPOINT_UPDATED")
         end,
@@ -171,7 +172,7 @@ env.WorldMapFrame = nil
 for _, path in ipairs({ "Core/Waypoint.lua", "NaowhForever_Journeys/Journeys.lua", "NaowhForever_Journeys/Constants.lua",
         "NaowhForever_Journeys/Data/Network.lua", "NaowhForever_Journeys/Data/Teleports.lua",
         "NaowhForever_Journeys/Planner.lua", "NaowhForever_Journeys/World.lua", "NaowhForever_Journeys/Walk.lua",
-        "NaowhForever_Journeys/Guide.lua", "NaowhForever_Journeys/Quests.lua" }) do
+        "NaowhForever_Journeys/Guide.lua", "NaowhForever_Journeys/Quests.lua", "NaowhForever_Journeys/Pins.lua" }) do
     local chunk = assert(loadstring(Read(path), path))
     setfenv(chunk, env)
     chunk()
@@ -201,6 +202,7 @@ here = { x = -4821.8, y = -1155.4, c = 0 }
 Check(ns.PlaceWaypoint(unpack(DESTINATION)), "placed with Journeys on")
 local journey = Jy.Guide.Current()
 Check(journey and journey.title == "Mathrengyl Bearwalker", "a journey to the trainer")
+Check(placedAtSet and placedAtSet.title == Title(), "the pin is known as ours before the game hears of it")
 Check(Title() == "Deeprun Tram to Stormwind", "the waypoint names the first thing to do: " .. tostring(Title()))
 local route, at, n, nextTitle = ns.WaypointRoute()
 Check(route == "Mathrengyl Bearwalker" and at == 1 and n > 3 and nextTitle, "the pin hears it is on a route")
@@ -287,6 +289,23 @@ Fire("SUPER_TRACKING_CHANGED")
 local done = Jy.Guide.Current()
 Check(done and done.quest == 105 and done.stops[1][2] == DARNASSUS, "a finished quest goes to its turn-in")
 Jy.Guide.Cancel()
+
+-- A pin you put on the map yourself becomes a journey; our own pins do not start another.
+Jy.Guide.Cancel()
+here = { x = -4821.8, y = -1155.4, c = 0 }
+env.C_Map.SetUserWaypoint({ map = DARNASSUS, x = 0.5, y = 0.5 })
+RunTimers()
+Check(Jy.Guide.Current() and Jy.Guide.Current().title == "Map Pin", "a pin set on the map starts a journey to it")
+local pinJourney = Jy.Guide.Current()
+RunTimers()
+Check(Jy.Guide.Current() == pinJourney, "and the pin the journey puts up does not start another")
+Jy.Settings.Set("mapPins", false)
+Jy.Guide.Cancel()
+env.C_Map.SetUserWaypoint({ map = DARNASSUS, x = 0.5, y = 0.5 })
+RunTimers()
+Check(not Jy.Guide.Current(), "with Journeys to Map Pins off, a pin is left alone")
+Jy.Settings.Set("mapPins", true)
+env.C_Map.ClearUserWaypoint()
 
 -- Inside the tram (an instance, outside the continents) the journey holds, and picks up on the way out.
 Check(ns.PlaceWaypoint(unpack(DESTINATION)) and Jy.Guide.Current(), "a journey for the tram test")
