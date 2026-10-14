@@ -115,7 +115,7 @@ NaowhForever_QoL/
   Travel/
     FlightData.lua      each flight route's flown length (ns.FLIGHT_ROUTES), generated
     Flight.lua          the Flight Timer, Flight Games and flight times on the flight map
-    FlightPoint.lua     the reminder to learn a town's flight point
+    FlightPoint.lua     zone-entry and nearby-town flight point reminders
     AimTrainer.lua      the Aim Trainer (/nfaim, ns.AimRules, ns.AimPlay, ns.AimOffer)
     AimBoard.lua        the Aim Trainer's leaderboard (ns.AimBoard)
     QuizData.lua        the quiz questions (ns.QUIZ_QUESTIONS)
@@ -265,8 +265,9 @@ NaowhForever_QoL/
   it, and its `isOnGCD` flag stays readable in combat. A press and a cooldown error within 0.3s
   (`MATCH_WINDOW`) are one.
 - Buff Thank You Message: the game only names a caster who has a nameplate, is your target or
-  mouseover, or is in your group; for anyone else it can send the built-in /thank instead. An
-  addon's custom /emote, like /say, is blocked outside instances without a key press, but
+  mouseover, or is in your group; unknown casters are skipped. With whispers off, the built-in
+  /thank receives the caster's unit token, without changing your current target. An addon's
+  custom /emote, like /say, is blocked outside instances without a key press, but
   `C_ChatInfo.PerformEmote` is not (tested on Forever from a `C_Timer` callback).
 - Its buff lists hold every rank and group version of each class buff another player can give
   you (Wowhead Forever). They are kept in the file, not read from Auras & Buffs, because that
@@ -531,6 +532,12 @@ NaowhForever_QoL/
   as known, so the reminder hides without opening the flight map, and does not mark the snapshot
   complete. The snapshot is this character's GUID in `flightPoints` (`TAXIMAP_OPENED`), and opening
   the map still replaces every node from `GetAllTaxiNodes`. A name cannot tell two characters apart.
+- Opening a flight map saves both its taxi map ID and the player's real continent in
+  `seenMaps`. Classic and Forever use separate taxi maps: 1463 for Eastern Kingdoms (1415)
+  and 1464 for Kalimdor (1414). `TAXI_MAPS` lets both the screen reminder and pin hint recognize
+  older saves containing only those taxi map IDs after a reload, without another visit.
+- The learn sentence drops a leading `The ` from the place name so The Sepulcher reads
+  "Learn the Sepulcher flight point". The original name still matches the town's subzone.
 - A node is reminded only when it is unlearned and its faction is neutral or the player's.
   An Alliance character in Undercity sees nothing, because that flight point is Horde.
 - A capital (`ns.TownCapitals`) reminds you only of that city's own flight point, and only while
@@ -540,6 +547,20 @@ NaowhForever_QoL/
   be within 400 yards, or standing in the subzone of that flight point, which is how the Auberdine
   inn counts. The Crossroads and Ratchet are about 1,200 yards apart, so one town does not
   light the next. An empty subzone matches nothing.
+- Entering a zone also shows one reminder through `ns.AlertStack`, anywhere in that zone.
+  `ZONE_HOLD` is ten seconds so the entry alert clears while you keep questing. Stops, subzone
+  changes and restyling do not restart it. Combat and flying defer the alert until they end.
+  Leaving the zone or disabling the reminder cancels its timer. Returning to the zone allows
+  another entry alert. Nearby-town reminders still stay up until the node is learned or you leave.
+- Node world positions are projected into the current zone with `C_Map.GetMapPosFromWorldPos`.
+  Only coordinates inside that zone's map count for the entry alert, including when the taxi API
+  falls back to the continent. A flight point in another zone cannot trigger that alert.
+- Existing `TownMap.lua` flight-master pins add the learn reminder to their tooltip when the
+  closest friendly taxi node within `TOWN_RANGE` is unlearned. Known nodes get no reminder,
+  even if another unlearned node is nearby. The Town Pins and Flight Masters switches still
+  control those pins; Flight Point Reminder controls the extra tooltip line. No pin system or
+  setting is added. Gossip still uses the nearby-town scan, so a distant entry alert cannot
+  record that node as learned.
 - It checks on a zone change, when you stop, when you talk to a flight master, when the flight map
   opens or closes, when a flight takes or returns control, and when combat starts or ends. While the
   switch is off, none of those events are registered and the frame is not built.
@@ -762,12 +783,12 @@ NaowhForever_QoL/
 ### Waypoint Pin
 - It follows the game's navigation frame (`C_Navigation`), so quests, your corpse and map pins get it as well as `ns.PlaceWaypoint`'s spots, which it names. A user waypoint counts as ours when it lies within `SAME_SPOT` (map percent) of `ns.placedWaypoint`.
 - A map pin's or corpse's navigation point is the spot on the ground: the ring at the line's foot goes there and the pin stands above it. A quest giver's is over their head, where the pin goes as it is, with no line down.
-- The game clears a map pin on arrival, but a quest stays tracked at the quest giver, so the pin goes within `REACHED` (5 yards) of a quest's target and comes back past `LEAVE` (7), so a step back does not make it flicker. The navigator stays.
-- Your speed reads secret at times, as in restricted content, so the last readable one is kept; standing still, the walking time uses `RUN_SPEED` (7 yards a second).
+- The game clears a map pin on arrival, but it keeps tracking a quest, and Forever reports a quest reached only right on its point. So for a tracked quest the pin and cue go within `QUEST_NEAR` (40 yards) of its point, the quest's area or the quest giver, and come back past `QUEST_LEAVE` (55), so walking about the area does not make them flicker. The game has no call that says you are inside a quest's area (Forever's QuestLog and Navigation docs: only map points, `IsOnMap` and a display state), so the distance stands in for it. Other targets use Arrival Distance (`waypointArrive`, 5 yards by default) and come back `LEAVE_MARGIN` (2) yards past it. The navigator stays.
+- The walking time comes from how fast the distance shrinks, sampled every `SAMPLE_EVERY` second and smoothed by `SMOOTH`. Your speed reads secret at times (on a mount too), and the last readable one was often the run on foot, so a mounted time came out about double. A sample under `MIN_CLOSING` (stopped, turned away) or over `MAX_CLOSING` (the spot moved) drops the pace, and so does a new target; without one, the time uses your last readable speed, or `RUN_SPEED` (7 yards a second) standing still.
 - The card and navigator are repainted only when the mode, side, whole yards or whole seconds change; the place and arrows move every frame, and nothing is built per frame.
 - `BEHIND` is the angle either side of straight down that counts as behind you. `FAR` is the distance at which the pin is smallest (`FAR_SCALE`), and `FADE_FLOOR` its alpha at your feet with Fade Up Close on.
 - The game places a waypoint you click on the map without tracking it (its map code calls `SetSuperTrackedUserWaypoint(false)` right after `SetUserWaypoint`), and the pin only follows what is tracked, so on `USER_WAYPOINT_UPDATED` it tracks the new waypoint itself: one frame later with the map closed (the game's own untracking has run by then), or as the map closes (`trackOnMapClose`), as `Core/Waypoint.lua` holds its own placements, since setting one with the map open taints it. Already tracked, it leaves it.
-- A waypoint you set has no held arrival: reaching it plays the sound and the pin, cue and bar go at once. A quest, the corpse and a route's stop hold the arrival where the pin last stood for `ARRIVED_HOLD` (a route's names the next stop). The game clears a waypoint you set as you reach it, its navigation frame going too, before or after NAVIGATION_DESTINATION_REACHED; that event's `isWaypoint` is a stop on the way (a zone's exit), not the spot itself. A waypoint you set does not wait for it: on the waypoint's map or one inside it (a waypoint placed on a continent still counts in its zones; the game routes a waypoint on another map through stops on the way, such as a zone's exit, which are not the spot), within `REACHED` of its spot, once the pin has seen you more than `LEAVE` away since the waypoint was attached or placed (a new waypoint can report no distance at first, and one placed under you has nothing to reach; other tracking changes on the way do not reset it), the pin shows the arrival and clears the waypoint itself, so it goes even when the game sends no arrival, or sends it as a stop. The game's event, when it does come first, clears it before the pin does. It does this once per waypoint (`selfCleared`: with the world map open the clear is held, and the pin must not arrive again every hold), and never on a route's stop, which moves on by the game's arrival event: clearing it would end the route.
+- A waypoint you set has no held arrival: reaching it plays the sound and the pin, cue and bar go at once. A quest, the corpse and a route's stop hold the arrival where the pin last stood for `ARRIVED_HOLD` (a route's names the next stop). The game clears a waypoint you set as you reach it, its navigation frame going too, before or after NAVIGATION_DESTINATION_REACHED; that event's `isWaypoint` is a stop on the way (a zone's exit), not the spot itself. A waypoint you set does not wait for it: on the waypoint's map or one inside it (a waypoint placed on a continent still counts in its zones; the game routes a waypoint on another map through stops on the way, such as a zone's exit, which are not the spot), within Arrival Distance of its spot once the pin has seen you more than `LEAVE_MARGIN` past it, or within `REACHED` (5 yards) once it has seen you more than `LEAVE_MARGIN` past that, since the waypoint was attached or placed (a new waypoint can report no distance at first, and one placed under you has nothing to reach; other tracking changes on the way do not reset it), the pin shows the arrival and clears the waypoint itself, so it goes even when the game sends no arrival, or sends it as a stop. The game's event, when it does come first, clears it before the pin does. It does this once per waypoint (`selfCleared`: with the world map open the clear is held, and the pin must not arrive again every hold), and never on a route's stop, which moves on by the game's arrival event: clearing it would end the route. The `REACHED` fallback keeps a waypoint placed inside a long Arrival Distance from clearing at once.
 - Nothing tracked means cleared or reached. A clear can leave the navigation frame up with no NAVIGATION_FRAME_DESTROYED, which used to leave the navigator showing.
 - The game's own marker keeps setting its frame's alpha, so Hide the Game's Marker fades its parts (`GAME_PARTS`) instead.
 - With no waypoint, Unlock Mode still shows the navigator on a sample, to place it by.
