@@ -418,7 +418,8 @@ Module state
   Settings, a module's window, the onboarding or an import. `ns.SetModuleState(addon, on)` writes the
   switch and this character's list (`UnitGUID("player")`, never every character) together.
 - `ns.ReconcileModules` makes the list match the profile. It runs 8 seconds after login, when a profile
-  is switched to (`ns.SwitchProfile`, `ns.SetAccountProfile`) and after a Setups card apply, and costs
+  is switched to (`ns.SwitchProfile`, so a spec swap to a profile with other switches too,
+  `ns.SetAccountProfile`) and after a Setups card apply, and costs
   one pass over the modules; no events or timers are kept. It does nothing before `onboardingSeen`, so
   a first install follows the onboarding.
 - Each character keeps what its list was at the last pass (`account.moduleList`, by GUID). A list
@@ -430,6 +431,9 @@ Module state
   what was turned off. A module whose switch is only its default is not written to.
 - A module on without what it needs is turned off (`Setup.Settle`), and turning a module on or off
   from Settings brings or takes the linked ones (`ns.LinkedAddons`), as before.
+- The Top Bar is part of QoL and has no item, so it has no switch here: `ns.SetModuleState` changes only
+  its list entry (turning it on switches its own store on, when loaded), and `ns.ReconcileModules`
+  leaves it alone.
 - A change to the list takes a reload: one prompt (`ns.ConfirmReload`) after a pass that changed
   something, held until combat ends. Settings > Modules and the module windows read this character's
   list together with the switch, so they agree with the game's AddOn list.

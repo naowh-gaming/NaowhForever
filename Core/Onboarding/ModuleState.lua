@@ -20,7 +20,7 @@ end
 
 local function StoreOf(addon)
     for _, switch in ipairs(ns.ModuleSwitches()) do
-        if switch.addon == addon then return switch.store end
+        if switch.addon == addon then return switch.store, switch.key end
     end
 end
 
@@ -43,8 +43,12 @@ end
 function ns.SetModuleState(addon, on)
     local m = byAddon[addon]
     SetListed(addon, on, UnitGUID("player"))
-    m.store = StoreOf(addon)
-    Setup.SetSwitch(m, on)
+    if m then
+        m.store = StoreOf(addon)
+        return Setup.SetSwitch(m, on)
+    end
+    local store, key = StoreOf(addon)
+    if on and store then store.Set(key, true) end
 end
 
 function ns.ReconcileModules(quiet)

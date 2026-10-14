@@ -7,7 +7,8 @@ local function check(label, ok) assert(ok, label); checks = checks + 1 end
 
 local World = dofile("Tools/regression/setup_world.lua")
 local MACROS, GEAR, BLESS = "NaowhForever_Macros", "NaowhForever_GearSets", "NaowhForever_Blessings"
-local PROF, TRAIN, DISC = "NaowhForever_Professions", "NaowhForever_Training", "NaowhForever_Discovery"
+local BIS, INSPECT, DISC = "NaowhForever_BiS", "NaowhForever_GroupInspect", "NaowhForever_Discovery"
+local QOL, TOPBAR = "NaowhForever_QoL", "NaowhForever_TopBar"
 
 local function All(value)
     local out = {}
@@ -84,15 +85,15 @@ do
 end
 
 do
-    local w = Game()
+    local w = Game({ qol = { groupInspect = true } })
     w.ns.ReconcileModules()
-    w.root.professions = { enabled = false }
+    w.root.qol.bis = false
     w.ns.ReconcileModules()
-    check("a module its profile turns off takes the module that needs it", not w.enabled[PROF] and not w.enabled[TRAIN]
-        and w.root.training.enabled == false)
-    w.root.professions.enabled = true
+    check("a module its profile turns off takes the module that needs it", not w.enabled[BIS] and not w.enabled[INSPECT]
+        and w.root.qol.groupInspect == false)
+    w.root.qol.bis = true
     w.ns.ReconcileModules()
-    check("the module that needs it stays off until it is turned on", w.enabled[PROF] and not w.enabled[TRAIN])
+    check("the module that needs it stays off until it is turned on", w.enabled[BIS] and not w.enabled[INSPECT])
 end
 
 do
@@ -140,6 +141,15 @@ do
     check("including one that is off by default", w.root.discovery.enabled == true)
     w.ns.ReconcileModules()
     check("and the next check agrees", #w.reloads == 0)
+end
+
+do
+    local w = Game()
+    for _, addon in ipairs(w.ns.LinkedAddons(QOL, false)) do w.ns.SetModuleState(addon, false) end
+    check("QoL off takes the Top Bar, which has no onboarding item, out of the list", not w.enabled[QOL]
+        and not w.enabled[TOPBAR] and w.root.qol.enabled == false)
+    w.ns.SetModuleState(TOPBAR, true)
+    check("and its Settings > Modules row puts it back", w.enabled[TOPBAR])
 end
 
 do
