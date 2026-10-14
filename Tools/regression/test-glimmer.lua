@@ -334,6 +334,10 @@ check("a quest giver with a quest to hand in lights up", Lit(log) ~= nil)
 log.game.cursor = "Interface\\Cursor\\Quest"
 log.Fire("PLAYER_SOFT_INTERACT_CHANGED", "y", "z")
 check("and one with a quest to pick up", Lit(log) ~= nil)
+log.Set("giver", false)
+log.Fire("PLAYER_SOFT_INTERACT_CHANGED", "z", "y")
+check("quest givers switched off: dark, and no nameplate opened", cv.SoftTargetNameplateInteract == "0" and Lit(log) == nil)
+log.Set("giver", true)
 log.game.cursor = nil
 log.Fire("PLAYER_SOFT_INTERACT_CHANGED", "z", "y")
 check("an NPC with no quest stays dark", Lit(log) == nil)
@@ -354,6 +358,10 @@ log.game.guid, log.game.related = GUID(999999), true
 log.game.tooltip = { lines = { { type = 1, leftText = "Supply Crate" }, { type = 8, leftText = "Supplies: 1/4" } } }
 log.Fire("PLAYER_SOFT_INTERACT_CHANGED", "b", "c")
 check("a quest object shows what is still needed", Lit(log) ~= nil and LineText(log) == "Supplies: 1/4")
+log.Set("giver", false)
+log.Fire("PLAYER_SOFT_INTERACT_CHANGED", "z", "y")
+check("quest objects stay lit with quest givers off", Lit(log) ~= nil)
+log.Set("giver", true)
 log.game.related = false
 
 -- The game does not call it quest related, but its tooltip lists the objective: still a quest object,
