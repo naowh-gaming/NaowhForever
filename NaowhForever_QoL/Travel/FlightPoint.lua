@@ -246,8 +246,13 @@ local function Nearest(zoneWide)
     return nil, ask, spoken, node
 end
 
+local function LearnText(place)
+    local name = place:gsub("^The ", "")
+    return TEXT:format(name)
+end
+
 local function Show(place)
-    frame.text:SetText(place and TEXT:format(place) or OPEN)
+    frame.text:SetText(place and LearnText(place) or OPEN)
     frame:SetWidth(frame.mode == "none" and WIDTH or frame.text:GetStringWidth() + 2 * St.CARD_PAD)
     frame:Show()
 end
@@ -383,7 +388,7 @@ function ns.FlightPointReminderForPin(map, npc)
     end
     local mine = Mine()
     local seen = Seen(mine, zone)
-    if nearest and Kind(nearest, mine, seen) == LEARN then return TEXT:format(PlaceName(nearest.name)) end
+    if nearest and Kind(nearest, mine, seen) == LEARN then return LearnText(PlaceName(nearest.name)) end
 end
 
 events:SetScript("OnEvent", OnEvent)

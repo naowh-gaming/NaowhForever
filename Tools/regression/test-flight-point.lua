@@ -546,4 +546,23 @@ check("saving the player's continent does not depend on a recognized taxi map",
     account.flightPoints[GUID].seenMaps[EASTERN_KINGDOMS] == true
     and Text() == "Learn the Darkshire flight point")
 
+state.subzone, state.pos, state.faction = "The Sepulcher", nil, "Horde"
+local sepulcher = Node("The Sepulcher, Silverpine Forest", HORDE, 8000, false, 69)
+check("the sentence drops a leading The while the town still matches its original subzone",
+    At(DUSKWOOD, { sepulcher }) == "Learn the Sepulcher flight point")
+check("the pin sentence also drops the duplicated article",
+    ns.FlightPointReminderForPin(DUSKWOOD, { 80, 0 }) == "Learn the Sepulcher flight point")
+state.zoneAlerts, state.subzone, state.pos = true, "", { x = 0, y = 0 }
+At(BARRENS, {})
+check("the zone-entry sentence also drops the duplicated article",
+    At(DUSKWOOD, { sepulcher }) == "Learn the Sepulcher flight point")
+Expire()
+state.zoneAlerts = false
+check("a name merely beginning with The keeps its spelling",
+    At(DUSKWOOD, { Node("Thelsamar, Loch Modan", NEUTRAL, 50, false, 70) })
+    == "Learn the Thelsamar flight point")
+check("The inside a name is preserved",
+    At(DUSKWOOD, { Node("Ruins of The City", NEUTRAL, 50, false, 71) })
+    == "Learn the Ruins of The City flight point")
+
 print(checks .. " flight point checks passed")

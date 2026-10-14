@@ -530,6 +530,8 @@ NaowhForever_QoL/
   `seenMaps`. Classic and Forever use separate taxi maps: 1463 for Eastern Kingdoms (1415)
   and 1464 for Kalimdor (1414). `TAXI_MAPS` lets both the screen reminder and pin hint recognize
   older saves containing only those taxi map IDs after a reload, without another visit.
+- The learn sentence drops a leading `The ` from the place name so The Sepulcher reads
+  "Learn the Sepulcher flight point". The original name still matches the town's subzone.
 - A node is reminded only when it is unlearned and its faction is neutral or the player's.
   An Alliance character in Undercity sees nothing, because that flight point is Horde.
 - A capital (`ns.TownCapitals`) reminds you only of that city's own flight point, and only while
