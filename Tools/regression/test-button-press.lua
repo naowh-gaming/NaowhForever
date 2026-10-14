@@ -1,6 +1,7 @@
 -- The game's hover glow and pressed look on the bars' buttons (Parts.Press): the glow and pushed
 -- textures are set, the pushed one draws over the icon, a down click pushes the button and an up
--- click lets it go, and every bar's buttons go through it. Run with Lua 5.1 from the repo root.
+-- click lets it go, and every bar's buttons go through it after their OnClick is set. Run with
+-- Lua 5.1 from the repo root.
 local checks = 0
 local function check(label, ok) assert(ok, label); checks = checks + 1 end
 
@@ -45,8 +46,14 @@ end
 for path, count in pairs({ ["Shared/UI/ItemBar.lua"] = 1, ["NaowhForever_Blessings/UI/Recipient.lua"] = 1,
     ["NaowhForever_Blessings/UI/Bar.lua"] = 1, ["NaowhForever_GearSets/UI/Bar.lua"] = 1,
     ["NaowhForever_GearSets/UI/TrinketBar.lua"] = 2, ["NaowhForever_QoL/Questing/GroupButtons.lua"] = 1 }) do
-    local _, found = Source(path):gsub("Parts%.Press%(", "")
+    local source = Source(path)
+    local _, found = source:gsub("Parts%.Press%(", "")
     check(path .. " dresses its buttons with Parts.Press", found == count)
+    for at, name in source:gmatch("()Parts%.Press%(([%w_.]+)%)") do
+        local rest = source:sub(at, (source:find("\nend", at, true)))
+        check(path .. " sets no OnClick over the hook after Parts.Press(" .. name .. ")",
+            not rest:find(name .. ':SetScript("OnClick"', 1, true))
+    end
 end
 
 print("test-button-press: " .. checks .. " checks passed")
