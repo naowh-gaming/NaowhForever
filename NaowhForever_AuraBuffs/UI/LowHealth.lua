@@ -10,7 +10,7 @@ local CARD = A.PAGE .. ":lowHealth"
 local TEXT_MOVER = "Low Health"
 
 local frame, curve, unlocked
-local shownItem, wasLow
+local shownItem, wasLow, glowing
 local events = CreateFrame("Frame")
 
 local function UpdateItem()
@@ -25,6 +25,9 @@ local function UpdateItem()
 end
 
 local function SetGlow(on)
+    on = on and true or false
+    if on == glowing then return end
+    glowing = on
     Glow.Set(frame, on, "lowHealthGlow")
 end
 
@@ -109,6 +112,7 @@ local function Apply()
     curve = Low.Curve(curve)
     frame.itemShown = nil
     UpdateItem()
+    glowing = nil
     SetGlow(unlocked and S.Get("lowHealthGlow"))
     frame.mover:SetShown(unlocked == true)
     frame:Show()
