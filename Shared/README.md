@@ -40,7 +40,9 @@ Shared/
                    QoL's town pins, the Training Planner's trainers and Professions' rank alerts read it
   Game/Played.lua  the character's /played time, asked for once with the chat print muted (XP Bar, XP per Hour)
   UI/Parts.lua     the small parts: icons in text (Parts.Inline), smooth textures, hover cards (Parts.Tip,
-                   Parts.TipLines), the chevron, links, icon buttons, a short label in a pill of its color
+                   Parts.TipLines), the chevron, links, icon buttons, the game's hover glow and pressed look
+                   on a bar button (Parts.Press: the item bars, Blessings, Gear Set and Trinket bars, Group
+                   Buttons), a short label in a pill of its color
                    (Parts.Pill, Parts.SetPill: Group Inspect's "NF"), the worn bar, the Wowhead copy card
   UI/Marks.lua     an item's marks: rank stars and lines, the upgrade line, Forever's mark, the item icon,
                    its slot marks (item level, star, Forever's mark, upgrade arrow) and an atlas badge on
@@ -118,7 +120,8 @@ Each file uses only the ones above it in `Shared.xml`. Every part sits on `ns.Sh
   declared `under` that row's label: hidden rows, still searched, counted and reset with the
   card, and a search hit on one opens the cog. `icons = { { texture, tip, open, enabled }, ... }`
   adds other icons beside it. A row's or card's `note` is a function given the row or card that
-  returns a short line for it, or nil: beside a row's control, after a card's summary.
+  returns a short line for it, or nil: beside a row's control, after a card's summary. A row's
+  `labelColor` is a color table for its label (AuraBuffs' class colors and grey).
   A card with `into = "<id>"` puts its rows, under a group named for it, in the card of that id on the
   same page, in `order`, instead of drawing a card of its own (QoL's Looting, Vendors, Auction Prices
   and Mail & Alts are one card); it has no switch, and its id still finds the shared card. A card's
