@@ -312,6 +312,15 @@ check("Mining learned: ore lights again", Lit(log) ~= nil)
 log.game.guid, log.game.object = "Creature-0-1-2-3-4-5", false
 log.Fire("PLAYER_SOFT_INTERACT_CHANGED", "y", "z")
 check("an NPC closes the nameplate", cv.SoftTargetNameplateInteract == "0" and Lit(log) == nil)
+log.game.cursor = "Interface\\Cursor\\QuestTurnIn"
+log.Fire("PLAYER_SOFT_INTERACT_CHANGED", "z", "y")
+check("a quest giver with a quest to hand in lights up", Lit(log) ~= nil)
+log.game.cursor = "Interface\\Cursor\\Quest"
+log.Fire("PLAYER_SOFT_INTERACT_CHANGED", "y", "z")
+check("and one with a quest to pick up", Lit(log) ~= nil)
+log.game.cursor = nil
+log.Fire("PLAYER_SOFT_INTERACT_CHANGED", "z", "y")
+check("an NPC with no quest stays dark", Lit(log) == nil)
 log.game.object = true
 
 -- Chests and the bobber come from their IDs; a switched off category stays dark.

@@ -47,7 +47,7 @@ local CATEGORY_NAMES = {
 local CATEGORY_HELP = {
     ore = "Mining veins and deposits.",
     herb = "Plants you can gather.",
-    quest = "Objects one of your quests needs, lit as you walk up to them.",
+    quest = "Objects your quests need, and quest givers with a quest to pick up or hand in.",
     chest = "Chests, strongboxes and footlockers out in the world.",
     bobber = "Your fishing bobber.",
 }

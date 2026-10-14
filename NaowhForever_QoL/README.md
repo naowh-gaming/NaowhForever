@@ -818,7 +818,10 @@ NaowhForever_QoL/
   and the same table means every setting carried over with no migration.
 - Herbs and ore take the color of your chance of a skill-up and get a line under their name saying so; a
   node your skill is too low for shows red with the skill it needs; a character without Herbalism or
-  Mining at all sees no herbs or ore lit, since they are not theirs to gather. Quest objects get the line of the
+  Mining at all sees no herbs or ore lit, since they are not theirs to gather. Quest objects are
+  found three ways: the game marking them quest related, a quest objective in their tooltip, or the
+  quest pick-up or turn-in cursor the game shows on them; that cursor is also what lights an NPC with a
+  quest to pick up or hand in, the only NPCs Glimmer lights. Quest objects get the line of the
   quest objective they count for. Quest Item Sparkle keeps the game's loot sparkle on quest items
   through graphics presets. Minimap Icons shows every spot herbs and ore grow near you, ringed in their
   skill-up color, and Gathered on the Map every herb and vein you gather. Behind My Character cuts the

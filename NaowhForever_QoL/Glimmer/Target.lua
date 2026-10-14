@@ -107,9 +107,20 @@ function Target.Reach(unit)
     return near and true or false
 end
 
+local function QuestGiver(unit, info)
+    local category, unable = Cursor(unit)
+    if category ~= "quest" then return end
+    wipe(info)
+    info.category, info.unable = category, unable or false
+    info.locked = info.unable
+    info.ready = Target.Reach(unit)
+    return info
+end
+
 function Target.Read(unit, info)
     local object = UnitIsGameObject(unit)
-    if not (Plain(object) and object) then return end
+    if not Plain(object) then return end
+    if not object then return QuestGiver(unit, info) end
     wipe(info)
     local id = ObjectID(unit)
     local node = id and G.NODES[id]
