@@ -294,7 +294,6 @@ local function Tick()
         ticker = nil
         return
     end
-    Walk.Keep()
     if working or replanQueued or InCombatLockdown() or UnitOnTaxi("player") then return end
     ticks = ticks + 1
     local here = World.Player()
