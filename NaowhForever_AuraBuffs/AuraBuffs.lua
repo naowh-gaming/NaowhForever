@@ -13,7 +13,7 @@ local S = ns.UI.ModuleSettings("auraBuffs", {
     personalBuffs = F.personalBuffs, personalBuffPicks = {}, weaponEnhancements = F.weaponEnhancements,
     buffGlow = false, buffGlowType = "standard", buffGlowColor = { r = 1, g = 0.82, b = 0.2 }, buffGlowLines = 8,
     buffGlowThickness = 2, buffGlowSpeed = 5,
-    iconSize = 36, buffsFont = "", buffsFontSize = 14, buffsOutline = "OUTLINE",
+    iconSize = 48, buffIconMode = "default", buffsFont = "", buffsFontSize = 14, buffsOutline = "OUTLINE",
     buffsPos = { point = "TOP", relPoint = "TOP", x = 0, y = -232 },
 
     campfire = F.campfire, campTimer = true, campBuffs = true,
