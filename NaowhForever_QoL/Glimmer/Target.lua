@@ -131,7 +131,7 @@ function Target.Read(unit, info)
         info.skill = Target.Skill(category)
         info.need = node and node[2]
         if info.need then info.tier = Target.Tier(info.skill, info.need) end
-        info.locked = info.tier == "red" or info.unable
+        info.locked = info.tier == "red" or info.skill <= 0 or info.unable
     else
         local line = QuestLine(unit)
         local related = IsRelated and IsRelated(unit)

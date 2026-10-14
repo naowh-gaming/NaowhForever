@@ -317,6 +317,13 @@ log.game.mining = 70
 log.Fire("PLAYER_SOFT_INTERACT_CHANGED", "x", "y")
 check("Mining learned: ore lights in its color", Lit(log) and Lit(log).locked == false)
 
+-- A vein missing from the node data, known only by its cursor: grey without Mining too.
+log.game.guid, log.game.cursor, log.game.mining = GUID(999999), "Interface\\Cursor\\Mine", 0
+log.Fire("PLAYER_SOFT_INTERACT_CHANGED", "x", "y")
+fx = Lit(log)
+check("unlisted vein, no Mining: grey and locked", fx and fx.locked == true and fx.r == St.LOCKED_RGB.r)
+log.game.guid, log.game.cursor, log.game.mining = GUID(TIN), nil, 70
+
 -- An NPC: no nameplate opened for it.
 log.game.guid, log.game.object = "Creature-0-1-2-3-4-5", false
 log.Fire("PLAYER_SOFT_INTERACT_CHANGED", "y", "z")
