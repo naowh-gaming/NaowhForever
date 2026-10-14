@@ -4,7 +4,7 @@ local ns = _G.NaowhForever
 local DM = ns.DamageMeter
 local C = DM.C
 
-local TEXT_UNKNOWN, TEXT_TARGETS = "Unknown", "Targets"
+local TEXT_UNKNOWN, TEXT_TARGETS = ns.L("Unknown"), ns.L("Targets")
 
 function DM.SpellName(spell)
     local getName = C_Spell and C_Spell.GetSpellName
@@ -22,6 +22,11 @@ function DM.SpellIcon(spell)
     local ok, texture = pcall(getTexture, spell.spellID)
     if ok and type(texture) ~= "nil" then return texture end
     return nil
+end
+
+local function Figure(data, key)
+    if type(data) == "table" and type(data[key]) ~= "nil" then return data[key] end
+    return 0
 end
 
 function DM.SpellSession(data, source, view)
@@ -44,6 +49,6 @@ function DM.SpellSession(data, source, view)
     end
     local empty
     if #spells == 0 then empty = view.inCombat and C.TEXT_SPELLS_COMBAT or C.TEXT_SPELLS_NONE end
-    return { combatSources = rows, maxAmount = data and data.maxAmount or 0, totalAmount = data and data.totalAmount or 0,
+    return { combatSources = rows, maxAmount = Figure(data, "maxAmount"), totalAmount = Figure(data, "totalAmount"),
         emptyText = empty }
 end

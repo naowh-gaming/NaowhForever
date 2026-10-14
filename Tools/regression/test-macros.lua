@@ -1,4 +1,4 @@
--- Loads the shared food lists, QoL's Food & Drink Bar and the Macros module's rules (Macros.lua through Profile.lua)
+-- Loads the shared food lists, QoL's Food & Drink Bar and the Macros module's rules (Macros.lua through Smart.lua)
 -- against stubbed macro, bag and item APIs and checks what they write. Run from the repo root:
 -- lua Tools/regression/test-macros.lua
 local function Read(path)
@@ -7,7 +7,7 @@ local function Read(path)
     return text
 end
 local foodSource = Read("NaowhForever_QoL/Loot/FoodBar.lua")
-local MACRO_FILES = { "Macros.lua", "Constants.lua", "Data/Items.lua", "Commands.lua", "Smart.lua", "Profile.lua",
+local MACRO_FILES = { "Macros.lua", "Constants.lua", "Data/Items.lua", "Commands.lua", "Smart.lua",
     "UI/SettingsPage.lua" }
 local sources = { Read("Core/Features.lua"), Read("Shared/Game/Consumables.lua"), Read("Shared/Game/ActionKeys.lua"),
     Read("Shared/UI/ItemBar.lua"), Read("Shared/UI/Anchor.lua"), foodSource }
@@ -40,7 +40,7 @@ local function Fixture(opts)
     local macros, created, edited, deleted, printed = opts.macros or {}, 0, 0, 0, {}
     local account = {}
     local combat, group = false, opts.group
-    local consts = { MAX_ACCOUNT_MACROS = opts.max or 30, MAX_CHARACTER_MACROS = opts.maxChar or 30 }
+    local consts = { MAX_ACCOUNT_MACROS = opts.max or 30 }
     local frames = {}
     local globals = {}
     local bindings, actions, timers = {}, {}, {}
@@ -92,6 +92,7 @@ local function Fixture(opts)
         QoLSettings = Q,
         Shared = {
             Style = dofile("Tools/regression/shared_style.lua"),
+            Parts = { Press = function(button) button.pressed = true end },
             -- The settings kit, keeping the cards each page declares.
             Settings = {
                 Group = function(title) return { group = title } end,
@@ -517,7 +518,7 @@ do
     Check("deleted after combat", t.Body("NF Trinket 2"), nil)
 end
 
--- Full character macros: warned once, nothing made; made once a slot frees up.
+-- Full General macros: warned once, nothing made; made once a slot frees up.
 do
     local t = Fixture({ settings = { trinket1 = true, trinket2 = true }, max = 0 })
     t.Fire("PLAYER_ENTERING_WORLD")
@@ -532,13 +533,6 @@ end
 do
     local t = Fixture({})
     t.Fire("PLAYER_ENTERING_WORLD")
-    t.ns.PickupProfileMacro({ name = "Example", body = "/say test", icon = 1 })
-    Check("profile macro created", t.Body("Example"), "/say test")
-    Check("profile macro is a character macro", t.Macro("Example").perChar, true)
-    t.ns.PickupProfileMacro({ name = "Example", body = "/say replaced" })
-    Check("name collision preserves existing", t.Body("Example"), "/say test")
-    t.ns.PickupProfileMacro({ name = "TooLongBody", body = string.rep("x", 256) })
-    Check("oversize macro rejected", t.Body("TooLongBody"), nil)
     t.Combat(true)
     t.ns.PickupManagedMacro("trinket1")
     Check("click in combat does not create", t.Body("NF Trinket 1"), nil)
@@ -546,62 +540,6 @@ do
     t.ns.PickupManagedMacro("trinket1")
     Check("click creates macro", t.Body("NF Trinket 1"), "#showtooltip 13\n/use 13")
     Check("managed macro stays a General macro", t.Macro("NF Trinket 1").perChar, false)
-    t.Combat(true)
-    t.ns.RemoveManagedMacro("trinket1")
-    Check("remove in combat keeps macro", t.Body("NF Trinket 1") ~= nil, true)
-    t.Combat(false)
-    t.ns.RemoveManagedMacro("trinket1")
-    Check("right-click removes macro", t.Body("NF Trinket 1"), nil)
-end
-
--- Shared profile macros that run Lua ask before they are created.
-do
-    local t = Fixture({})
-    t.Fire("PLAYER_ENTERING_WORLD")
-    local accept
-    t.ns.Confirm = function(_, onYes) accept = onYes end
-    t.ns.PickupProfileMacro({ name = "Sneaky", body = "#showtooltip\n/run print(1)" })
-    Check("script macro waits for confirmation", t.Body("Sneaky"), nil)
-    accept()
-    Check("confirmed script macro created", t.Body("Sneaky") ~= nil, true)
-    accept = nil
-    t.ns.PickupProfileMacro({ name = "Plain", body = "/cast Frostbolt" })
-    Check("plain macro needs no confirmation", accept == nil and t.Body("Plain") ~= nil, true)
-end
-
--- Class macros go to the character tab, so its limit is the one checked.
-do
-    local t = Fixture({ maxChar = 1 })
-    t.Fire("PLAYER_ENTERING_WORLD")
-    t.ns.PickupProfileMacro({ name = "One", body = "/say one" })
-    t.ns.PickupProfileMacro({ name = "Two", body = "/say two" })
-    Check("character limit respected", t.Body("Two"), nil)
-    Check("character limit named", t.printed[#t.printed]:find("Character macros are full", 1, true) ~= nil, true)
-end
-
--- A full General tab warning once must not silence a full Character tab.
-do
-    local t = Fixture({ settings = { trinket1 = true }, max = 0, maxChar = 0 })
-    t.Fire("PLAYER_ENTERING_WORLD")
-    t.ns.PickupProfileMacro({ name = "One", body = "/say one" })
-    Check("each tab warns", #t.printed, 2)
-end
-
--- Command checks warn about what would fail when pressed, and leave script lines alone.
-do
-    local t = Fixture({})
-    t.Fire("PLAYER_ENTERING_WORLD")
-    local function Problems(body) return #t.ns.MacroProblems(body) end
-    Check("known commands pass", Problems("#showtooltip\n/cast [@mouseover,help][] Heal\n/tm [@focus] 8"), 0)
-    Check("emotes and channels pass", Problems("/wave\n/2 LFG"), 0)
-    Check("unknown command flagged", Problems("/castt Frostbolt"), 1)
-    Check("case does not matter", Problems("/CAST Frostbolt"), 0)
-    Check("non-command line flagged", Problems("cast Frostbolt"), 1)
-    Check("unbalanced bracket flagged", Problems("/cast [@mouseover Heal"), 1)
-    Check("script brackets ignored", Problems("/run local t = {}; t[1] = 2 print(t[1]"), 0)
-    t.ns.PickupProfileMacro({ name = "Typo", body = "/castt Frostbolt" })
-    Check("typo macro still created", t.Body("Typo"), "/castt Frostbolt")
-    Check("typo macro warns", t.printed[#t.printed]:find("Typo may not work", 1, true) ~= nil, true)
 end
 
 -- Food & Drink bar: built only once switched on, best food and drink, updates after combat.
@@ -655,6 +593,10 @@ do
     t.Tick()
     local bar = t.FoodBar()
     local food, drink = bar.buttons[1], bar.buttons[2]
+    local before = food.attrs.item1
+    t.ns.FoodBarPoint(4599, 1179)
+    Check("shown on its own, it keeps its own search", food.attrs.item1, before)
+    Check("and listens to the bags itself", t.Listening("BAG_UPDATE_DELAYED"), true)
     local foodEvents, registers = t.FoodEvents(), 0
     local register = foodEvents.RegisterEvent
     function foodEvents:RegisterEvent(event)
@@ -742,6 +684,65 @@ do
     Check("its name still says food", card.name:find("Food") ~= nil, true)
     Check("the same switch", card.switch, "foodBar")
     Check("the HUD Editor opens it there", t.Mover().feature, "Consumable Bar/Settings:foodBar")
+end
+
+-- While its buttons are on the Consumable Bar, the Food & Drink Bar steps aside, and its card says why.
+do
+    local t = Fixture({ consumableBarLoaded = true, qol = { foodBar = true, consumableBar = true }, bags = { 5349 } })
+    local onMain = false
+    t.ns.ConsumableBarUsesFood = function() return onMain end
+    t.Fire("PLAYER_ENTERING_WORLD")
+    local bar = t.FoodBar()
+    local card = t.cards["Consumable Bar/Settings:foodBar"]
+    Check("up while its buttons are not on the main bar", bar.shown, true)
+    Check("its switch is its own", card.switchWhy(), nil)
+    onMain = true
+    t.SetQoL("consumableBarItems", { "smart:food", "smart:drink" })
+    Check("their being put on the main bar hides it", bar.shown, false)
+    Check("its switch is held, saying why", card.switchWhy(), "Its buttons are on the Consumable Bar")
+    Check("its own setting is kept for later", t.qol.foodBar, true)
+    onMain = false
+    t.SetQoL("consumableBarItems", {})
+    Check("taken off the main bar, it is back", bar.shown, true)
+end
+
+-- Hidden for the Consumable Bar, it is still kept on your best food and drink: the keys both bars
+-- share click its buttons. That holds with the Food & Drink Bar itself switched off.
+do
+    local t = Fixture({ qol = { foodBar = false }, bags = { 5349, 8766 } })
+    local onMain = true
+    t.ns.ConsumableBarUsesFood = function() return onMain end
+    t.Fire("PLAYER_ENTERING_WORLD")
+    local bar = t.FoodBar()
+    Check("built for the Consumable Bar's keys", bar ~= nil, true)
+    Check("but hidden", bar.shown, false)
+    Check("its buttons on your best food and drink", bar.buttons[1].attrs.item1 .. bar.buttons[2].attrs.item1,
+        "item:5349item:8766")
+    Check("it leaves the bags to the Consumable Bar, so they are searched once", t.Listening("BAG_UPDATE_DELAYED"),
+        false)
+    t.ns.FoodBarPoint(4599, 8766)
+    Check("kept current while hidden, on what that bar found", bar.buttons[1].attrs.item1, "item:4599")
+    t.ns.ShowUnlockMode()
+    Check("nor shown in the HUD Editor", bar.mover.shown, false)
+    t.ns.HideUnlockMode()
+    Check("the bindings both bars use", t.ns.FoodBarBindings.food, "CLICK NaowhForeverFoodBarFood:LeftButton")
+    local rows = t.cards["QoL/Loot & Items:foodBar"].rows
+    local food
+    for _, row in ipairs(rows) do if row.label == "Use Best Food" then food = row end end
+    Check("the same as its own Use Best Food row", food.binding, t.ns.FoodBarBindings.food)
+    onMain = false
+    t.SetQoL("consumableBarItems", {})
+    Check("taken off the main bar with its own switch off, it rests", t.Listening("BAG_UPDATE_DELAYED"), false)
+end
+
+-- The Consumable Bar is its own switch, so the keys stay with QoL's switch off too.
+do
+    local t = Fixture({ qol = { enabled = false, foodBar = true }, bags = { 5349 } })
+    t.ns.ConsumableBarUsesFood = function() return true end
+    t.Fire("PLAYER_ENTERING_WORLD")
+    local bar = t.FoodBar()
+    Check("with QoL off, its buttons are kept for the Consumable Bar", bar ~= nil and bar.buttons[1].attrs.item1,
+        "item:5349")
 end
 
 -- No mana (warriors and rogues): the food button alone, and the drink button does nothing.
@@ -854,9 +855,6 @@ do
     local used = { health = true }
     t.ns.ConsumableBarUsesMacro = function(key) return used[key] == true end
     t.Fire("PLAYER_ENTERING_WORLD")
-    t.ns.RemoveManagedMacro("health")
-    Check("right-click cannot remove a macro the bar uses", t.Body("NF Health"), "#showtooltip\n/use item:5509")
-    Check("it says why", (t.printed[#t.printed] or ""):find("Consumable Bar") ~= nil, true)
     t.Set("health", false)
     Check("switching it off keeps it while the bar uses it", t.Body("NF Health"), "#showtooltip\n/use item:5509")
     t.Set("enabled", false)

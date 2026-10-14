@@ -1,4 +1,4 @@
--- Bar.lua: the Consumable Bar on screen: one secure button per entry (an item or a Smart Macro), laid out, placed and shown or hidden out of combat.
+-- Bar.lua: the Consumable Bar on screen: one secure button per entry (an item, a Smart Macro or a Food & Drink button), laid out, placed and shown or hidden out of combat.
 local ns = _G.NaowhForever
 
 local InCombatLockdown = InCombatLockdown
@@ -28,7 +28,7 @@ local buttons = {}
 local pool = {}
 local events
 
-local UpdateVisibility
+local UpdateVisibility, Apply
 
 local function Driver(f, rule)
     if f.visRule == rule then return end
@@ -94,7 +94,8 @@ function CB.BarFrame()
 end
 
 local function Layout()
-    local items = CB.Items()
+    CB.RefreshSmart()
+    local items = CB.ShownItems()
     local size, gap, grow, perRow = CB.Grid()
     local inUse = {}
     for i = #buttons, 1, -1 do buttons[i] = nil end
@@ -204,6 +205,40 @@ local function HasMacros()
     return Has(CB.MacroInfo)
 end
 
+local function HasSmart()
+    return Has(CB.Smart)
+end
+
+local function RestyleWhere(test)
+    local size = CB.Grid()
+    for _, button in ipairs(buttons) do
+        if test(button.entry) then
+            Point(button, button.entry)
+            CB.StyleCell(button, button.entry, size)
+        end
+    end
+end
+
+local function RefreshSmart()
+    if not HasSmart() then return end
+    if InCombatLockdown() then
+        pending = true
+        events:RegisterEvent("PLAYER_REGEN_ENABLED")
+        return
+    end
+    CB.RefreshSmart()
+    RestyleWhere(CB.Smart)
+end
+
+local function OutChanged()
+    if not S.Get("consumableBarHideEmpty") then return false end
+    for _, entry in ipairs(CB.Items()) do
+        local button = pool[entry]
+        if (button ~= nil and button.entry ~= nil) == CB.Out(entry) then return true end
+    end
+    return false
+end
+
 local function RefreshMacros()
     local fight = InCombatLockdown()
     for _, button in ipairs(buttons) do
@@ -221,6 +256,7 @@ local function RefreshMacros()
     UpdateVisibility()
     QueueKeys()
     CB.Changed()
+    if OutChanged() then Apply() end
 end
 
 local function SyncMacros()
@@ -240,8 +276,6 @@ local function AnyHideUsed()
     end
     return false
 end
-
-local Apply
 
 local function OnEvent(_, event, unit, _, spellID)
     if event == "PLAYER_LOGIN" then
@@ -266,8 +300,10 @@ local function OnEvent(_, event, unit, _, spellID)
     elseif event == "UPDATE_MACROS" then
         RefreshMacros()
     elseif event == "BAG_UPDATE_DELAYED" then
+        RefreshSmart()
         UpdateCounts()
         UpdateCooldowns()
+        if OutChanged() then Apply() end
         CB.CheckNewItems()
         CB.Changed()
     else

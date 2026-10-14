@@ -89,21 +89,22 @@ local function Send(text, channel, to)
     C_ChatInfo.SendChatMessage(text, channel, nil, to)
 end
 
+local function ThankStranger()
+    if not (S.Get("buffThanksEmote") and Due(EMOTE_KEY)) then return end
+    sentCount = sentCount + 1
+    C_ChatInfo.PerformEmote(THANK_EMOTE)
+end
+
 local function ThankCaster(unit, id, buff)
     if UnitIsUnit(unit, "player") or not UnitIsPlayer(unit) then return end
     if not S.Get("buffThanksGroup") and (UnitInParty(unit) or UnitInRaid(unit)) then return end
+    if not S.Get("buffThanksWhisper") then return ThankStranger() end
     local name, guid = GetUnitName(unit, true), UnitGUID(unit)
     if not name or not Due(guid and not Secret(guid) and guid or name) then return end
     local short, family = Ambiguate(name, "short"), buffs[id]
     local text = S.Get("buffThanksPerBuff") and family ~= true and Line(family, buff, short)
         or Line(WHISPER_KEY, buff, short)
     if text then Send(text, "WHISPER", name) end
-end
-
-local function ThankStranger()
-    if not (S.Get("buffThanksEmote") and Due(EMOTE_KEY)) then return end
-    sentCount = sentCount + 1
-    C_ChatInfo.PerformEmote(THANK_EMOTE)
 end
 
 local function Thank(aura)
@@ -238,6 +239,8 @@ local rows = {
     { key = "buffThanksText", label = "Whisper Lines", buttonText = "Edit",
       button = function() EditLines("buffThanksText", ns.L("Whisper Lines")) end,
       help = "One whisper per line, picked at random; {buff} and {name} are filled in." },
+    { key = "buffThanksWhisper", label = "Whisper Named Players", toggle = true,
+      help = "Off thanks every caster with the /thank emote instead; needs Thank With an Emote." },
     { key = "buffThanksCooldown", label = "Once Per Player Every", slider = COOLDOWN_RANGE, unit = "m",
       help = "The shortest time between two thanks to the same player." },
     { key = "buffThanksGroup", label = "Thank Group Members", toggle = true,
@@ -254,7 +257,7 @@ rows[#rows + 1] = Group("Unknown Casters")
 rows[#rows + 1] = { key = "buffThanksEmote", label = "Thank With an Emote", toggle = true,
     help = "A /thank to everyone around you when the game cannot name the caster." }
 
-ns.Shared.Settings.Page("QoL/Questing & Group", S):Card({
+ns.Shared.Settings.Page("QoL/Interface", S):Card({
     id = "buffThanks", name = "Buff Thank You Message", order = 40, switch = "buffThanks",
     help = "Whispers thanks when a player gives you a class buff in the open world; turn friendly "
         .. "nameplates on so the game can name them.",

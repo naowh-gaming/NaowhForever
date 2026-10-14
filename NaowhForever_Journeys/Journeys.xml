@@ -4,13 +4,13 @@
     <Script file="Constants.lua"/>
     <Script file="Data\Network.lua"/>
     <Script file="Data\Teleports.lua"/>
-    <Script file="Data\QuestSpots.lua"/>
     <Script file="Planner.lua"/>
     <Script file="World.lua"/>
     <Script file="Walk.lua"/>
     <Script file="Guide.lua"/>
     <Script file="Lifts.lua"/>
     <Script file="Quests.lua"/>
+    <Script file="Pins.lua"/>
     <Script file="UI\Card.lua"/>
     <Include file="UI\MapRoute.xml"/>
     <Script file="UI\MinimapRoute.lua"/>

@@ -12,7 +12,7 @@ local WIDTH, ROOM = 300, 10
 local FONT_SIZE = 22
 local PREVIEW_PCT = 20
 local STACK_ORDER = 3
-local PAGE = "QoL/Loot & Items"
+local PAGE = "QoL/Combat"
 local TEXT_ALERT = "Durability"
 local PERCENT = ns.QoLConstants.PERCENT
 local WARN_RANGE = { 5, 100, 1 }
@@ -119,7 +119,7 @@ end
 hooksecurefunc(S, "Set", OnSettingChanged)
 hooksecurefunc(ns, "Apply", Apply)
 hooksecurefunc(ns, "ShowUnlockMode", function()
-    unlocked = S.Get("enabled") == true
+    unlocked = On() == true
     Apply()
 end)
 hooksecurefunc(ns, "HideUnlockMode", function()

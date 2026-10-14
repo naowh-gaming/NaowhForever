@@ -1,6 +1,9 @@
 return {
 ["training"] = {
 },
+["glimmer"] = {
+["enabled"] = false,
+},
 ["discovery"] = {
 ["enabled"] = true,
 ["bagMapPinSize"] = 16,
@@ -158,7 +161,6 @@ return {
 ["bagSpaceBackground"] = "none",
 ["questAccept"] = false,
 ["restockBagsBelow"] = 10,
-["equipReminder"] = false,
 ["combatAlert"] = false,
 ["foodBar"] = false,
 ["tooltipCopy"] = false,

@@ -37,8 +37,17 @@ local function TextReset(box)
     box:ClearFocus()
 end
 
+local function ButtonText(setting)
+    local text = setting.buttonText
+    if type(text) == "function" then text = text() end
+    return text or TEXT_GO
+end
+
 local function ButtonClicked(row)
-    if row.setting then row.setting.button() end
+    local setting = row.setting
+    if not setting then return end
+    setting.button()
+    if type(setting.buttonText) == "function" then ns.SetButtonText(row.controls.button, ButtonText(setting)) end
 end
 
 function Makers.toggle(row)
@@ -50,7 +59,6 @@ function Makers.slider(row)
         BOX_ALPHA, SLIDER_MIN, SLIDER_MAX, SLIDER_STEP, row.Get, row.Set)
     box:SetPoint("RIGHT", row, "RIGHT", -PAD, 0)
     track:SetPoint("RIGHT", box, "LEFT", -CONTROL_GAP, 0)
-    track.leftEdge = track
     return track
 end
 
@@ -154,7 +162,7 @@ local function BindValue(control, setting)
     elseif kind == "toggle" or kind == "text" then
         control._refreshValue()
     elseif kind == "button" then
-        ns.SetButtonText(control, setting.buttonText or TEXT_GO)
+        ns.SetButtonText(control, ButtonText(setting))
         if setting.help then ns.Tooltip(control, setting.label, setting.help) end
     elseif kind == "binding" then
         BindingField(control, setting)
@@ -185,7 +193,7 @@ end
 function Control.Dim(row, control, off)
     local alpha = off and SS.DIM_ALPHA or 1
     row.label:SetAlpha(alpha)
-    control:SetAlpha(alpha)
+    if control._dim then control._dim(control, off) else control:SetAlpha(alpha) end
     control:EnableMouse(not off)
     local box = control._valBox
     if box then

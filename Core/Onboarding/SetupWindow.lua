@@ -5,7 +5,7 @@ local Parts = ns.Shared.Parts
 local St = ns.Shared.Style
 local Setup = ns.Setup
 
-local WIDTH, HEIGHT = 780, 580
+local WIDTH, HEIGHT = 960, 660
 local INSET, EDGE, HEADER = St.CONTENT_INSET, St.WINDOW_PAD, St.WINDOW_HEADER
 local BUTTON_H, NAV_W, APPLY_W, START_W, START_H = 26, 110, 150, 170, 32
 local FOOT_H = BUTTON_H + EDGE * 2
@@ -40,11 +40,13 @@ local ANIM = { fadeIn = 0.18, glowOut = 0.45, glowAlpha = 0.5, popIn = 0.18, pop
 local SEG = { w = 26, h = 4, gap = 4, right = 44 }
 local TILE_LAYOUT = { checkInset = 6, markInset = 4, iconTop = 20, nameGap = 14, textRoom = 20, blurbGap = 5,
     hintGap = 6 }
-local SKIN_LAYOUT = { columns = 2, tileH = 220, nameGap = 14 }
+local SKIN_LAYOUT = { columns = #Setup.SKINS, tileH = 220, nameGap = 14 }
 local PREVIEW = { w = 190, h = 112, bar = 22, pad = 8, titleSize = 12, bodySize = 11, labelSize = 10,
     buttonW = 64, buttonH = 20 }
-local MODULE_LAYOUT = { columns = 3, tileH = 56, gap = 8, plate = 36, glyph = 22, iconX = 10, textGap = 10,
-    textRoom = 30, blurbGap = 2 }
+local FOREVER_PREVIEW = { scale = 0.7, left = St.FOREVER_SIDE + 13, top = St.FOREVER_TITLE_H + 16,
+    right = St.FOREVER_SIDE + 5, bottom = St.FOREVER_SIDE + 5 }
+local MODULE_LAYOUT = { columns = 4, tileH = 56, pad = 10, gap = 8, plate = 36, glyph = 22, iconX = 10, textGap = 10,
+    textRoom = 30, blurbGap = 2, sectionH = 16, sectionGap = 10, groupGap = 14, ruleGap = 8 }
 local SUMMARY_LAYOUT = { w = 560, rowH = 58, gap = 10, plate = 34, glyph = 22, iconX = 12, textGap = 12,
     textRoom = 70, subGap = 3, pad = 22, rows = 4 }
 local FOOT_LAYOUT = { noteGap = 12 }
@@ -78,11 +80,12 @@ local TEXT_PROFILE = { title = ns.L("Where do you want to start?"), hint = ns.L(
     keepName = ns.L("Keep mine"), keepBlurb = ns.L("Your settings stay as they are.") }
 local TEXT_SKIN = { title = ns.L("How should Naowh Forever look?"), hint = ns.L("For every character on this computer."),
     previewTitle = "Naowh Forever", previewBody = ns.L("Every window looks like this."), previewButton = ns.L("Start") }
-local SKIN_NAMES = { [Setup.SKIN_NAOWH] = "Naowh", [Setup.SKIN_CLASSIC] = "Classic+" }
+local SKIN_NAMES = { [Setup.SKIN_NAOWH] = "Naowh", [Setup.SKIN_FOREVER] = "Forever" }
 local SKIN_BLURBS = { [Setup.SKIN_NAOWH] = ns.L("Naowh's dark look, with his blue."),
-    [Setup.SKIN_CLASSIC] = ns.L("The game's own look, in gold and bronze.") }
+    [Setup.SKIN_FOREVER] = ns.L("WoW Forever's own windows, in metal and stone.") }
 local TEXT_MODULES = { title = ns.L("Which modules do you want?"), hint = ns.L("Click a module to turn it on or off."),
-    hintFor = ns.L("Click a module to turn it on or off, for %s only."), count = ns.L("%d of %d on") }
+    hintFor = ns.L("Click a module to turn it on or off, for %s only."), count = ns.L("%d of %d on"),
+    on = ns.L("Enabled"), off = ns.L("Disabled") }
 local TEXT_SUMMARY = { title = ns.L("Here's your setup"), hint = ns.L("Nothing changes until you apply it."),
     profile = ns.L("Profile"), skin = ns.L("Skin"), on = ns.L("Turns on"), off = ns.L("Turns off"), stays = ns.L("Your settings stay."),
     sameSkin = ns.L("%s, as now") }
@@ -547,23 +550,33 @@ end
 
 local function PaintProfile()
     local page = window.profile
-    PlaceGrid(page, #page.tiles, #page.tiles, TileWidth(#page.tiles), TILE_H, TILE_GAP)
+    local height = TILE_H
+    for _, tile in ipairs(page.tiles) do
+        height = math.max(height, TILE_LAYOUT.iconTop * 2 + ICON + TILE_LAYOUT.nameGap + tile.name:GetStringHeight()
+            + TILE_LAYOUT.blurbGap + tile.blurb:GetStringHeight())
+    end
+    for _, tile in ipairs(page.tiles) do tile:SetHeight(height) end
+    PlaceGrid(page, #page.tiles, #page.tiles, TileWidth(#page.tiles), height, TILE_GAP)
     for _, tile in ipairs(page.tiles) do PaintTile(tile, tile.key == picks.profile) end
 end
 
 local function Palette(skin)
-    if skin == Setup.SKIN_CLASSIC then return ns.CLASSIC_PLUS end
+    if skin == Setup.SKIN_FOREVER then return ns.FOREVER_SKIN end
     local out = {}
     for i, c in ipairs(ns.ThemePalette(ns.ThemePresetKey())) do out[ns.THEME_EDITABLE[i]] = c end
     return out
 end
 
+local function ForeverLook(c)
+    return { colors = c, scale = FOREVER_PREVIEW.scale, redButton = true, label = c.accent,
+        body = ns.AddonFontPath(true), heading = ns.HeadingFontPath(true) }
+end
+
 local function SkinLook(skin)
-    local classic = skin == Setup.SKIN_CLASSIC
     local c = Palette(skin)
-    return { colors = c, edge = classic and St.CLASSIC_GOLD_RGB or BLACK, title = classic and c.accent or c.fg,
-        gameArt = classic, fill = { c.panel, c.panel }, rim = c.accent, label = classic and c.accent or c.fg,
-        body = ns.AddonFontPath(classic), heading = ns.HeadingFontPath(classic) }
+    if skin == Setup.SKIN_FOREVER then return ForeverLook(c) end
+    return { colors = c, scale = 1, edge = BLACK, title = c.fg, fill = { c.panel, c.panel }, rim = c.accent,
+        label = c.fg, body = ns.AddonFontPath(false), heading = ns.HeadingFontPath(false) }
 end
 
 local function PreviewText(parent, path, size, color)
@@ -573,11 +586,12 @@ local function PreviewText(parent, path, size, color)
 end
 
 local function PreviewButton(preview, look)
+    local s = look.scale
     local button = CreateFrame("Frame", nil, preview)
-    button:SetSize(PREVIEW.buttonW, PREVIEW.buttonH)
-    button:SetPoint("BOTTOMRIGHT", -PREVIEW.pad, PREVIEW.pad)
-    if look.gameArt then
-        ns.GameButtonArt(button)
+    button:SetSize(PREVIEW.buttonW / s, PREVIEW.buttonH / s)
+    button:SetPoint("BOTTOMRIGHT", -PREVIEW.pad / s, PREVIEW.pad / s)
+    if look.redButton then
+        Parts.ForeverButtonArt(button)
     else
         local top, bottom = look.fill[1], look.fill[2]
         button.fill = ns.Solid(button, "BACKGROUND", WHITE, 1)
@@ -585,14 +599,40 @@ local function PreviewButton(preview, look)
         button.fill:SetGradient("VERTICAL", CreateColor(bottom.r, bottom.g, bottom.b, 1), CreateColor(top.r, top.g, top.b, 1))
         button.edge = ns.Border(button, look.rim)
     end
-    button.label = PreviewText(button, look.heading, PREVIEW.labelSize, look.label)
+    button.label = PreviewText(button, look.heading, PREVIEW.labelSize / s, look.label)
     button.label:SetPoint("CENTER")
     button.label:SetText(TEXT_SKIN.previewButton)
     return button
 end
 
+local function ForeverPreview(tile, look)
+    local c, s = look.colors, look.scale
+    local preview = CreateFrame("Frame", nil, tile)
+    preview:SetSize(PREVIEW.w, PREVIEW.h)
+    preview.look = look
+    local mini = CreateFrame("Frame", nil, preview)
+    mini:SetScale(s)
+    mini:SetPoint("TOPLEFT", FOREVER_PREVIEW.left, -FOREVER_PREVIEW.top)
+    mini:SetPoint("BOTTOMRIGHT", -FOREVER_PREVIEW.right, FOREVER_PREVIEW.bottom)
+    mini.backdrop = Parts.Backdrop(mini, true)
+    mini.backdrop:Paint(1, c)
+    ns.Border(mini, BLACK)
+    preview.window = mini
+    preview.frame = Parts.ForeverFrame(mini, { title = TEXT_SKIN.previewTitle, preview = true })
+    preview.title = preview.frame.title
+    preview.title:SetFont(look.heading, St.FOREVER_TITLE_SIZE + St.CLASSIC_HEADING_STEP, "")
+    preview.title:SetShadowColor(0, 0, 0, 1)
+    preview.title:SetShadowOffset(St.CLASSIC_HEADING_SHADOW, -St.CLASSIC_HEADING_SHADOW)
+    preview.body = PreviewText(mini, look.body, PREVIEW.bodySize / s, c.muted)
+    preview.body:SetPoint("TOPLEFT", PREVIEW.pad / s, -HEADER)
+    preview.body:SetText(TEXT_SKIN.previewBody)
+    preview.button = PreviewButton(mini, look)
+    return preview
+end
+
 local function Preview(tile, skin)
     local look = SkinLook(skin)
+    if skin == Setup.SKIN_FOREVER then return ForeverPreview(tile, look) end
     local c = look.colors
     local preview = CreateFrame("Frame", nil, tile)
     preview:SetSize(PREVIEW.w, PREVIEW.h)
@@ -653,11 +693,11 @@ local function PaintSkin()
 end
 
 local function LayoutModuleTile(tile, width)
-    tile:SetSize(width, MODULE_LAYOUT.tileH)
+    tile:SetWidth(width)
     tile.icon:SetSize(MODULE_LAYOUT.plate, MODULE_LAYOUT.plate)
     tile.icon.tex:SetSize(MODULE_LAYOUT.glyph, MODULE_LAYOUT.glyph)
     tile.icon:ClearAllPoints()
-    tile.icon:SetPoint("LEFT", MODULE_LAYOUT.iconX, 0)
+    tile.icon:SetPoint("TOPLEFT", MODULE_LAYOUT.iconX, -MODULE_LAYOUT.pad)
     local textW = width - MODULE_LAYOUT.iconX - MODULE_LAYOUT.plate - MODULE_LAYOUT.textGap - MODULE_LAYOUT.textRoom
     tile.name:SetJustifyH("LEFT")
     tile.name:ClearAllPoints()
@@ -674,8 +714,65 @@ local function FlipModule(tile)
     Paint()
 end
 
+local function Section(page, text)
+    local section = CreateFrame("Frame", nil, page)
+    section:SetHeight(MODULE_LAYOUT.sectionH)
+    section.label = Text(section, SMALL_SIZE, T.muted)
+    section.label:SetPoint("LEFT")
+    section.label:SetText(text)
+    section.rule = Rule(section)
+    section.rule:SetPoint("LEFT", section.label, "RIGHT", MODULE_LAYOUT.ruleGap, 0)
+    section.rule:SetPoint("RIGHT")
+    return section
+end
+
 local function BuildModules()
-    return BuildStep(TEXT_MODULES.title)
+    local page = BuildStep(TEXT_MODULES.title)
+    page.onSection = Section(page, TEXT_MODULES.on)
+    page.offSection = Section(page, TEXT_MODULES.off)
+    page.on, page.off = {}, {}
+    return page
+end
+
+local function ModuleTileHeight(tiles)
+    local height = MODULE_LAYOUT.tileH
+    for _, tile in ipairs(tiles) do
+        height = math.max(height, MODULE_LAYOUT.pad * 2 + tile.name:GetStringHeight() + MODULE_LAYOUT.blurbGap
+            + tile.blurb:GetStringHeight())
+    end
+    return math.ceil(height)
+end
+
+local function PlaceGroup(page, section, tiles, left, y, width)
+    section:SetShown(#tiles > 0)
+    if #tiles == 0 then return y end
+    local columns = MODULE_LAYOUT.columns
+    section:ClearAllPoints()
+    section:SetPoint("TOPLEFT", page, "TOPLEFT", left, -y)
+    section:SetWidth(columns * width + (columns - 1) * MODULE_LAYOUT.gap)
+    y = y + MODULE_LAYOUT.sectionH + MODULE_LAYOUT.sectionGap
+    for i, tile in ipairs(tiles) do
+        local row, col = math.floor((i - 1) / columns), (i - 1) % columns
+        tile:ClearAllPoints()
+        tile:SetPoint("TOPLEFT", page, "TOPLEFT", left + col * (width + MODULE_LAYOUT.gap),
+            -(y + row * (page.tileH + MODULE_LAYOUT.gap)))
+        tile:SetHeight(page.tileH)
+        tile:Show()
+    end
+    local rows = math.ceil(#tiles / columns)
+    return y + rows * page.tileH + (rows - 1) * MODULE_LAYOUT.gap + MODULE_LAYOUT.groupGap
+end
+
+local function PlaceModules(page, width)
+    local columns = MODULE_LAYOUT.columns
+    local left = (WIDTH - columns * width - (columns - 1) * MODULE_LAYOUT.gap) / 2
+    page.title:ClearAllPoints()
+    page.title:SetPoint("TOP", 0, -INSET)
+    local y = INSET + page.title:GetStringHeight() + TILE_LAYOUT.hintGap + page.hint:GetStringHeight() + HINT_GAP
+    page.tileH = math.max(ModuleTileHeight(page.on), ModuleTileHeight(page.off))
+    y = PlaceGroup(page, page.onSection, page.on, left, y, width)
+    PlaceGroup(page, page.offSection, page.off, left, y, width)
+    for i = #modules + 1, #page.tiles do page.tiles[i]:Hide() end
 end
 
 local function OnCount()
@@ -690,6 +787,8 @@ local function PaintModules()
     local page = window.modules
     page.hint:SetText(forCharacter and TEXT_MODULES.hintFor:format(forCharacter) or TEXT_MODULES.hint)
     local width = TileWidth(MODULE_LAYOUT.columns)
+    wipe(page.on)
+    wipe(page.off)
     for i, m in ipairs(modules) do
         local tile = Tile(page, i)
         LayoutModuleTile(tile, width)
@@ -697,9 +796,12 @@ local function PaintModules()
         tile.name:SetText(m.name)
         tile.blurb:SetText(m.blurb)
         tile.icon.tex:SetTexture(NAV_ICONS .. (m.navIcon or NAV_FALLBACK) .. ".tga", nil, nil, FILTER)
+        local on = picks.modules[m.id] == true
+        PaintTile(tile, on)
+        local group = on and page.on or page.off
+        group[#group + 1] = tile
     end
-    PlaceGrid(page, #modules, MODULE_LAYOUT.columns, width, MODULE_LAYOUT.tileH, MODULE_LAYOUT.gap)
-    for i, m in ipairs(modules) do PaintTile(page.tiles[i], picks.modules[m.id] == true) end
+    PlaceModules(page, width)
     window.note:SetText(TEXT_MODULES.count:format(OnCount(), #modules))
 end
 

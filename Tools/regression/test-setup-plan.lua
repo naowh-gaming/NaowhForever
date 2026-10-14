@@ -6,10 +6,7 @@ local checks = 0
 local function check(label, ok) assert(ok, label); checks = checks + 1 end
 
 local World = dofile("Tools/regression/setup_world.lua")
-local MINIMALIST_ON = { qol = true, journal = true, bis = true, training = true, blessings = true, professions = true,
-    macros = true, actionBars = true, auraBuffs = true, threatMeter = true, pvp = true, topBar = true }
-local MINIMALIST_OFF = "NaowhForever_Discovery,NaowhForever_GroupInspect,NaowhForever_GearSets,"
-    .. "NaowhForever_SwingTimer,NaowhForever_ConsumableBar,NaowhForever_InstanceTracker,NaowhForever_Journeys,NaowhForever_DamageMeter"
+local MINIMALIST_ON = { qol = true, journal = true, bis = true }
 
 local function All(value)
     local out = {}
@@ -36,7 +33,8 @@ end
 
 do
     local w = Game()
-    local Setup, MODULES = w.ns.Setup, w.MODULES
+    local Setup, MODULES = w.ns.Setup, {}
+    for _, mod in ipairs(w.MODULES) do if not mod.inQoL then MODULES[#MODULES + 1] = mod end end
     local byAddon, seen = {}, {}
     for id, item in pairs(Setup.ITEMS) do
         byAddon[item.addon] = id
@@ -65,14 +63,15 @@ end
 do
     local w = Game()
     local Setup = w.ns.Setup
-    check("an account never set up starts on Recommended", Setup.DefaultProfile() == "recommended")
+    check("an account never set up starts on Minimalist", Setup.DefaultProfile() == "minimalist")
     w.account.welcomeSeen = true
     check("one that has seen the onboarding (or the old welcome) keeps its own", Setup.DefaultProfile() == Setup.KEEP)
     w.account.welcomeSeen, w.account.setupBefore = nil, {}
     check("and one with a backup from an earlier Apply", Setup.DefaultProfile() == Setup.KEEP)
     check("the skin starts as the one in use", Setup.Fresh().skin == "")
-    w.account.skin = "classic"
-    check("Classic+ in use: Classic+", Setup.Fresh().skin == "classic")
+    w.account.skin = "forever"
+    check("Forever in use: Forever", Setup.Fresh().skin == "forever")
+    check("two skins to pick from", #Setup.SKINS == 2 and Setup.SKINS[2] == "forever")
     w.account.skin = "nonsense"
     check("anything else: Naowh", Setup.Fresh().skin == "")
 end
@@ -84,8 +83,13 @@ do
     local on = {}
     for id, value in pairs(minimal) do if value then on[#on + 1] = id end end
     table.sort(on)
-    check("Minimalist pre-selects all but its seven: " .. Names(on), Names(on) == "actionBars,auraBuffs,bis,blessings,journal,macros,professions,pvp,qol,threatMeter,topBar,training")
-    check("the list is the preset's own", Names(w.ns.PRESETS.minimalist.modulesOff) == MINIMALIST_OFF)
+    check("Minimalist pre-selects Quality of Life, the Dungeon Journal and the BiS List: " .. Names(on),
+        Names(on) == "bis,journal,qol")
+    for id, item in pairs(Setup.ITEMS) do
+        local listed = false
+        for _, addon in ipairs(w.ns.PRESETS.minimalist.modulesOff) do listed = listed or addon == item.addon end
+        check("the list is the preset's own: " .. id, listed == not MINIMALIST_ON[id])
+    end
     local starter = Game({ root = w.env.CopyTable(w.ns.STARTER.profile) })
     for id in pairs(Setup.ITEMS) do
         check("a new install's switches agree with Minimalist: " .. id, starter.Switch(id) == (MINIMALIST_ON[id] == true))
@@ -99,8 +103,9 @@ do
         for k, it in pairs(Setup.ITEMS) do if it == item then id = k end end
         check(id .. ": Recommended pre-selects what its switches say", recommended[id] == (v == true))
     end
-    check("Recommended keeps its modules: the Threat Meter and Discovery on", recommended.threatMeter
-        and recommended.discovery and recommended.topBar and recommended.qol)
+    for id in pairs(Setup.ITEMS) do
+        check("Everything Enabled pre-selects every module: " .. id, recommended[id] == true)
+    end
 end
 
 do
@@ -111,32 +116,28 @@ do
     check("keep mine: a module whose addon is off is off", mine.pvp == false)
     check("one switched on in the profile is on, one switched off is off", mine.discovery and mine.journal == false)
     check("one left alone follows its default", mine.threatMeter == true and mine.groupInspect == false)
-    check("the Top Bar without Quality of Life cannot run: off", mine.topBar == false and mine.qol == false)
 end
 
 do
     local w = Game()
     local Setup = w.ns.Setup
     local picks = Setup.Fresh()
-    Setup.PickProfile(picks, "minimalist")
-    Setup.Toggle(picks, "topBar", true)
-    check("turning the Top Bar on turns Quality of Life on", picks.modules.topBar and picks.modules.qol)
-    Setup.Toggle(picks, "qol", false)
-    check("turning Quality of Life off turns the Top Bar off", not picks.modules.topBar and not picks.modules.qol)
+    Setup.PickProfile(picks, "recommended")
     Setup.Toggle(picks, "professions", false)
-    check("Professions off takes the Training Planner", not picks.modules.training)
+    check("Professions off leaves the Training Planner on", picks.modules.training)
     Setup.Toggle(picks, "training", true)
-    check("the Training Planner brings Professions", picks.modules.training and picks.modules.professions)
+    check("the Training Planner does not bring Professions", not picks.modules.professions)
     Setup.Toggle(picks, "groupInspect", true)
     Setup.Toggle(picks, "bis", false)
     check("the BiS List off takes Group Inspect", not picks.modules.bis and not picks.modules.groupInspect)
     Setup.Toggle(picks, "nothing", true)
     check("an unknown module changes nothing", picks.modules.nothing == nil)
     local edited = picks.modules
-    Setup.PickProfile(picks, "minimalist")
-    check("picking the same profile keeps the edits", picks.modules == edited)
     Setup.PickProfile(picks, "recommended")
-    check("another profile starts its modules again", picks.modules ~= edited and picks.modules.threatMeter)
+    check("picking the same profile keeps the edits", picks.modules == edited)
+    Setup.PickProfile(picks, "minimalist")
+    check("another profile starts its modules again", picks.modules ~= edited and picks.modules.bis
+        and not picks.modules.professions)
 end
 
 do
@@ -158,13 +159,13 @@ do
     plan = Setup.Plan(picks)
     check("a loaded module turned off: listed, with a reload", Names(plan.off) == "Swing Timer" and plan.reload)
     Setup.Toggle(picks, "swingTimer", true)
-    picks.skin = "classic"
+    picks.skin = "forever"
     plan = Setup.Plan(picks)
-    check("a new skin: listed and reloads", plan.changes and plan.skinChanged and plan.reload and plan.skin == "classic")
+    check("a new skin: listed and reloads", plan.changes and plan.skinChanged and plan.reload and plan.skin == "forever")
     picks.skin = ""
     Setup.PickProfile(picks, "recommended")
     plan = Setup.Plan(picks)
-    check("a profile: named, with a reload", plan.profile == "Recommended" and plan.reload)
+    check("a profile: named, with a reload", plan.profile == "Everything Enabled" and plan.reload)
 end
 
 local function Applied(w, picks)
@@ -205,7 +206,7 @@ do
         and w.root.qol.questRewards[1] == 2 and w.root == before)
     check("its switches say the same: off for the rest", w.root.completo.enabled == false
         and w.root.discovery.enabled == false and w.root.qol.groupInspect == false and w.root.qol.bis == true
-        and w.root.threatMeter.enabled == true)
+        and w.root.threatMeter.enabled == false and w.root.journal.enabled == true)
     check("a backup of what was there", w.account.setupBefore and w.account.setupBefore.root.qol.xpBar == false
         and w.account.setupBefore.addons.NaowhForever_PvP == true and w.account.setupBefore.skin == "")
     check("Minimalist has both panels off: neither is picked", w.root.qol.characterPanelPicked == nil
@@ -250,7 +251,6 @@ end
 
 do
     local enabled = All(true)
-    enabled.NaowhForever_Training, enabled.NaowhForever_Professions = false, false
     local w = Game({ enabled = enabled, loaded = enabled, account = { welcomeSeen = true },
         root = { pvp = { enabled = false }, qol = { characterPanel = true, inspectPanel = false, groupInspect = true } } })
     local Setup = w.ns.Setup
@@ -264,12 +264,15 @@ do
     check("the character panel on: picked, so it takes over without asking; the inspect panel off: not",
         w.root.qol.characterPanelPicked == true and w.root.qol.inspectPanelPicked == nil)
     Setup.Restore()
-    picks = Setup.Fresh()
-    Setup.Toggle(picks, "training", true)
-    plan = Applied(w, picks)
+    local off = All(true)
+    off.NaowhForever_GroupInspect, off.NaowhForever_BiS = false, false
+    local w2 = Game({ enabled = off, loaded = off, account = { welcomeSeen = true }, root = { qol = {} } })
+    local picks2 = w2.ns.Setup.Fresh()
+    w2.ns.Setup.Toggle(picks2, "groupInspect", true)
+    plan = Applied(w2, picks2)
     check("a module whose addon is off: it and what it needs enabled, with a reload", plan.reload
-        and Names(plan.on) == "Training Planner,Professions" and w.enabled.NaowhForever_Training
-        and w.enabled.NaowhForever_Professions and w.Switch("training"))
+        and Names(plan.on) == "BiS List,Group Inspect" and w2.enabled.NaowhForever_GroupInspect
+        and w2.enabled.NaowhForever_BiS and w2.Switch("groupInspect"))
     Setup.Restore()
     picks = Setup.Fresh()
     Setup.Toggle(picks, "bis", false)
@@ -283,15 +286,15 @@ do
     local w = Game({ account = { welcomeSeen = true } })
     local Setup = w.ns.Setup
     local picks = Setup.Fresh()
-    picks.skin = "classic"
-    check("a new skin: applied, with a reload", select(2, Applied(w, picks)) and w.account.skin == "classic")
+    picks.skin = "forever"
+    check("a new skin: applied, with a reload", select(2, Applied(w, picks)) and w.account.skin == "forever")
     check("only the skin changed: the setup's name stays", w.root.qol == nil or w.root.qol.preset == nil)
     Setup.Restore()
     check("restored: back to Naowh", w.account.skin == nil)
-    w.account.skin = "classic"
+    w.account.skin = "forever"
     w.account.setupBefore = { profile = "Default", root = {}, addons = {} }
     Setup.Restore()
-    check("a backup from before skins were saved leaves the skin alone", w.account.skin == "classic")
+    check("a backup from before skins were saved leaves the skin alone", w.account.skin == "forever")
     w.account.setupBefore = { profile = "Other", root = {}, addons = {} }
     check("a backup of another profile is not restored here", not Setup.CanRestore() and not Setup.Restore())
 end
@@ -302,7 +305,7 @@ do
     local picks = Setup.Fresh()
     Setup.PickProfile(picks, "recommended")
     Applied(w, picks)
-    check("Recommended with no flips: its own name stays", w.root.qol.preset == "recommended")
+    check("Everything Enabled with no flips: its own name stays", w.root.qol.preset == "recommended")
     check("the character and inspect panels on in it, with the BiS List: both picked",
         w.root.qol.characterPanelPicked == true and w.root.qol.inspectPanelPicked == true)
 end
@@ -314,22 +317,22 @@ do
     for id, value in pairs(w.ns.Setup.ModuleDefaults(w.ns.Setup.KEEP)) do if value then on[#on + 1] = id end end
     table.sort(on)
     check("Minimalist from the Profiles page's Setups card: the same modules on, the rest off: " .. Names(on),
-        Names(on) == "actionBars,auraBuffs,bis,blessings,journal,macros,professions,pvp,qol,threatMeter,topBar,training")
+        Names(on) == "bis,journal,qol")
     local tip = w.ns.PresetChanges("recommended")
-    check("and its hover names what Recommended turns back on", tip:find("Group Inspect", 1, true) ~= nil)
+    check("and its hover names what Everything Enabled turns back on", tip:find("Group Inspect", 1, true) ~= nil)
     w = Game({ account = { welcomeSeen = true }, root = { discovery = { enabled = true } } })
     check("the hover for Minimalist names the modules it turns off", w.ns.PresetChanges("minimalist")
         :find("Minimalist turns off: ", 1, true) ~= nil and w.ns.PresetChanges("minimalist"):find("Discovery", 1, true))
     local enabled, loaded = All(true), All(true)
-    enabled.NaowhForever_ThreatMeter, loaded.NaowhForever_ThreatMeter = false, false
+    enabled.NaowhForever_DungeonJournal, loaded.NaowhForever_DungeonJournal = false, false
     enabled.NaowhForever_Discovery, loaded.NaowhForever_Discovery = false, false
     w = Game({ account = { welcomeSeen = true }, enabled = enabled, loaded = loaded })
     w.ns.ConfirmReload = function() end
     check("the hover counts a module whose addon is not loaded", w.ns.PresetChanges("minimalist")
-        :find("Threat Meter", 1, true) ~= nil and not w.ns.PresetChanges("minimalist"):find("Discovery", 1, true))
+        :find("Dungeon Journal", 1, true) ~= nil and not w.ns.PresetChanges("minimalist"):find("Discovery", 1, true))
     w.ns.UsePreset("minimalist", false)
-    check("the Setups card enables the addons it turns on, and only those", w.enabled.NaowhForever_ThreatMeter
-        and not w.enabled.NaowhForever_Discovery and w.root.threatMeter.enabled == true)
+    check("the Setups card enables the addons it turns on, and only those", w.enabled.NaowhForever_DungeonJournal
+        and not w.enabled.NaowhForever_Discovery and w.root.journal.enabled == true)
 end
 
 print("PASS setup plan: " .. checks .. " checks")

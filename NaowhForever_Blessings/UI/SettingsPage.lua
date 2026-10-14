@@ -4,6 +4,7 @@ local ns = _G.NaowhForever
 local S = ns.QoLSettings
 local T = ns.THEME
 local St = ns.Shared.Style
+local ItemBar = ns.Shared.ItemBar
 local B = ns.Blessings
 local Look = B.Look
 
@@ -27,7 +28,7 @@ local ICON_DROP, ICON_SIDE = 2, 3
 local SIZE_SLIDER, SPACING_SLIDER, GROUP_SLIDER = { 20, 70, 1 }, { 0, 30, 1 }, { 0, 40, 1 }
 local FONT_SLIDER = St.HUD_TEXT_RANGE
 local OPACITY_SLIDER, TO_FRACTION = St.OPACITY_RANGE, St.PERCENT_SCALE
-local ORDER_BAR, ORDER_WINDOW = 10, 20
+local ORDER_BAR, ORDER_ANCHOR, ORDER_WINDOW = 10, 15, 20
 local AURA_LABEL, FURY_LABEL, GROUP_LABEL = ns.L("Aura Button"), ns.L("Righteous Fury Button"), "Aura / Class Gap"
 local HINT = ns.L("Right-click a class for its blessing. Wheel: size, Shift-wheel: spacing. x hides a button.")
 local HINT_OFF = ns.L("Turn on Blessings to edit the bar here.")
@@ -36,7 +37,10 @@ local ADD_AURA, ADD_FURY, ADD_BOTH = ns.L("Brings back the Aura button."), ns.L(
     ns.L("Choose which button to bring back.")
 local GAP_TIP = ns.L("Drag left or right to change the gap between your aura and the class buttons.")
 local GAP_TIP_VERTICAL = ns.L("Drag up or down to change the gap between your aura and the class buttons.")
-local LAYOUT = { { horizontal = "Horizontal", vertical = "Vertical" }, { "horizontal", "vertical" } }
+local LAYOUT = ns.Shared.ItemBar.GrowChoice("horizontal", "vertical")
+local ANCHOR = { store = S, prefix = "bless", name = "Blessing Bar", frame = B.BarFrame,
+    on = function() return S.Get("blessings") == true and B.IsPaladin() end }
+local NO_BAR = ns.L("Turn on Blessings on a paladin")
 local AURA_HERE = ns.L("Here: click to choose your aura. Its x hides the button.")
 local SELF_HERE = ns.L("Here: its x hides the button.")
 local CLASS_TIP = ns.L("On the bar, left-click blesses the next %s who needs it, missing first, skipping anyone "
@@ -67,6 +71,7 @@ local function On() return S.Get("blessings") == true end
 local function OpenWindow() ns.OpenBlessingsWindow() end
 local function LabelsOn() return On() and S.Get("blessShowLabels") == true end
 local function NotPaladin() return not B.IsPaladin() end
+local function HasBar() return ANCHOR.on() and B.BarFrame() ~= nil end
 
 local function BlessingChoices(class)
     local values, order = { [NONE] = TEXT_NONE }, {}
@@ -175,7 +180,7 @@ end
 
 local function GripUpdate(grip)
     local cursorX, cursorY = GetCursorPosition()
-    local moved = grip.vertical and (grip.fromY - cursorY) or (cursorX - grip.fromX)
+    local moved = (grip.vertical and (grip.fromY - cursorY) or (cursorX - grip.fromX)) * grip.sign
     local value = grip.from + math.floor(moved / grip.scale + ROUND)
     value = math.min(GROUP_SLIDER[2], math.max(GROUP_SLIDER[1], value))
     if value ~= S.Get("blessGroupSpacing") then S.Set("blessGroupSpacing", value) end
@@ -194,6 +199,7 @@ local function GripDown(grip, mouse)
     grip.fromX, grip.fromY = GetCursorPosition()
     grip.scale, grip.from = grip:GetEffectiveScale(), S.Get("blessGroupSpacing")
     grip.vertical = Look.vertical
+    grip.sign = (Look.grow == "LEFT" or Look.grow == "UP") and -1 or 1
     grip.dragging = true
     grip.preview.remove:Hide()
     grip.line:Show()
@@ -220,7 +226,7 @@ local function NewButton(preview, onClick)
     local button = CreateFrame("Button", nil, preview.bar)
     button.preview = preview
     Look.Icon(button)
-    button:SetHighlightTexture(Look.HIGHLIGHT, "ADD")
+    Look.Hover(button)
     button:RegisterForClicks("LeftButtonUp", "RightButtonUp")
     button:SetScript("OnClick", onClick)
     button:SetScript("OnMouseWheel", Wheel)
@@ -258,7 +264,7 @@ local function NewPlus(preview)
     plus.icon:SetSize(PLUS_ICON, PLUS_ICON)
     plus.icon:SetPoint("CENTER")
     PlusLeave(plus)
-    plus:SetHighlightTexture(Look.HIGHLIGHT, "ADD")
+    Look.Hover(plus)
     plus:SetScript("OnEnter", PlusEnter)
     plus:SetScript("OnLeave", PlusLeave)
     plus:SetScript("OnClick", PlusClick)
@@ -366,17 +372,15 @@ local function PlaceGrip(grip, shown, x, bar)
     local width = math.max(GRIP_MIN, span)
     local at = x - Look.gap - (width - span) / 2
     local line = grip.line
-    grip:ClearAllPoints()
     line:ClearAllPoints()
+    Look.Pin(grip, bar, at)
     if Look.vertical then
         grip:SetSize(Look.size, width)
-        grip:SetPoint("TOP", bar, "TOP", 0, 0 - at)
         line:SetPoint("LEFT")
         line:SetPoint("RIGHT")
         line:SetHeight(GRIP_LINE)
     else
         grip:SetSize(width, Look.size)
-        grip:SetPoint("LEFT", bar, "LEFT", at, 0)
         line:SetPoint("TOP")
         line:SetPoint("BOTTOM")
         line:SetWidth(GRIP_LINE)
@@ -395,8 +399,7 @@ local function PaintPreview(preview, state)
     plus:SetShown(adding)
     if adding then
         plus:SetSize(Look.size, Look.size)
-        plus:ClearAllPoints()
-        plus:SetPoint(Look.vertical and "TOP" or "LEFT", bar, Look.vertical and "TOP" or "LEFT", 0, 0)
+        Look.Pin(plus, bar, 0)
         x = Look.size + Look.gap
         ns.Tooltip(plus, ADD_TITLE, showAura and ADD_FURY or showFury and ADD_AURA or ADD_BOTH)
     end
@@ -428,7 +431,7 @@ end
 
 local function BarSummary(store)
     return (ns.L("%d px buttons%s%s%s")):format(store.Get("blessBarSize"),
-        store.Get("blessLayout") == "vertical" and ns.L(", vertical") or "",
+        ItemBar.Vertical(ItemBar.GrowOf(store.Get("blessLayout"))) and ns.L(", vertical") or "",
         store.Get("blessShowAura") and ns.L(", aura") or "", store.Get("blessTimers") and ns.L(", minutes left") or "")
 end
 
@@ -470,9 +473,6 @@ page:Card({
           help = "The gap between two buttons." },
         { key = "blessGroupSpacing", label = GROUP_LABEL, slider = GROUP_SLIDER, needs = On,
           why = BLESSINGS_OFF, help = "The extra gap between your aura and Righteous Fury and the class buttons." },
-        { key = "blessLayout", label = "Direction", choice = LAYOUT, needs = On, why = BLESSINGS_OFF,
-          help = "Horizontal: a row, left to right. Vertical: a column, top to bottom, with the class labels "
-              .. "beside the buttons." },
         Settings.Look("bless", { text = true, size = FONT_SLIDER, keys = { FontSize = "blessTimerSize" }, needs = On,
             why = BLESSINGS_OFF }),
         Group("Colors"),
@@ -486,6 +486,23 @@ page:Card({
           help = "The same with a Greater Blessing, for a class that shares one blessing, while you carry "
               .. "Symbols of Kings." },
     },
+})
+
+local function AnchorRows()
+    local rows = ns.Shared.Anchor.Rows(ANCHOR)
+    table.insert(rows, 1, { key = "blessLayout", label = "Growth Direction", choice = LAYOUT, needs = On,
+        why = BLESSINGS_OFF, help = "Which way the bar grows from its first button. A column puts the class labels "
+            .. "beside the buttons." })
+    rows[#rows + 1] = { label = "Reset Position", button = B.ResetPosition, buttonText = "Reset", needs = HasBar,
+        why = NO_BAR, help = "Puts the bar back above Buff Reminders, anchored to them." }
+    return rows
+end
+
+page:Card({
+    id = "anchor", name = "Anchor", order = ORDER_ANCHOR,
+    help = "Where the bar sits: above Buff Reminders at first, then on another element, a unit frame or where you "
+        .. "drag it.",
+    rows = AnchorRows(),
 })
 
 page:Card({

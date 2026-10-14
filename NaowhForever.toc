@@ -2,7 +2,8 @@
 ## Title: |cff0091edNaowh|r Forever
 ## Notes: Naowh's Forever companion: the window every module shares.
 ## Author: Naowh
-## Version: 1.1.9
+## Version: 1.1.16
+## Dependencies: NaowhForever_Language
 ## OptionalDeps: NaowhUI_Media
 ## SavedVariables: NaowhForeverDB
 ## Group: NaowhForever
@@ -13,11 +14,10 @@
 
 Libs\embeds.xml
 
-# Locales stay in the TOC: AllowLoadTextLocale is a TOC option. Each area loads its own
-# files through its XML, in this order; add a file to that XML, never here.
+# The English catalog first; the other languages are their own NaowhForever_<code> addon, loaded
+# by Core.lua. Each area loads its own files through its XML, in this order; add a file to that
+# XML, never here.
 Core\Locales\enUS.lua
-Core\Locales\deDE.lua [AllowLoadTextLocale deDE]
-Core\Locales\ruRU.lua [AllowLoadTextLocale ruRU]
 
 Core\Core.xml
 Core\Integrations\RestedXP\RestedXP.xml

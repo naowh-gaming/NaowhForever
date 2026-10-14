@@ -12,7 +12,8 @@ if not Settings then return end
 local Group = Settings.Group
 
 local STAGE_H, NOTE_Y, NOTE_SIZE, STAGE_MARGIN = 120, A.Style.STAGE_NOTE_Y, A.Style.STAGE_NOTE_SIZE, A.Style.STAGE_MARGIN
-local MINUTES_RANGE, ICON_RANGE, TEXT_RANGE = { 0, 10, 1 }, { 20, 64, 1 }, ns.Shared.Style.HUD_TEXT_RANGE
+local MINUTES_RANGE, ICON_RANGE, TEXT_RANGE = { 0, 10, 1 }, { 20, 96, 1 }, ns.Shared.Style.HUD_TEXT_RANGE
+local ICON_MODES = { { default = "Default", last = "Last Used" }, { "default", "last" } }
 local ORDER_BUFFS = 10
 local PREVIEW = A.BuffPreview
 local RAID_SAMPLE = #PREVIEW
@@ -32,10 +33,14 @@ local TEXT_NOTHING = ns.L("Nothing to remind you of here.")
 local TEXT_SAMPLE = ns.L("Sample icons: add the consumables to watch in the AuraBuffs window.")
 local TEXT_BLESSINGS = ns.L("Off by default: the Blessings module covers them.")
 
-local PERSONAL = {}
+local PERSONAL, ALL_PERSONAL = {}, {}
 local _, playerClass = UnitClass("player")
 for _, family in ipairs(D.PERSONAL) do
     if family.class == playerClass then PERSONAL[#PERSONAL + 1] = family end
+end
+for _, family in ipairs(PERSONAL) do ALL_PERSONAL[#ALL_PERSONAL + 1] = family end
+for _, family in ipairs(D.PERSONAL) do
+    if family.class ~= playerClass then ALL_PERSONAL[#ALL_PERSONAL + 1] = family end
 end
 
 local Enabled = A.Enabled
@@ -132,6 +137,15 @@ local function Summary(store)
     return table.concat(parts, ", ")
 end
 
+local function ClassRow(row, family)
+    local color = RAID_CLASS_COLORS[family.class]
+    row.labelColor = family.class == playerClass and color or T.muted
+    row.note = function()
+        return color:WrapTextInColorCode(LOCALIZED_CLASS_NAMES_MALE[family.class] or family.class)
+    end
+    return row
+end
+
 local function PickRow(family)
     return { key = "raidBuffPicks", field = family.key, label = family.name, toggle = true,
         needs = RaidBuffsOn, why = NEEDS_RAID,
@@ -146,7 +160,7 @@ local function PickRow(family)
 end
 
 local function PersonalRow(family)
-    return { key = "personalBuffPicks", field = family.key, label = family.name, toggle = true,
+    return ClassRow({ key = "personalBuffPicks", field = family.key, label = family.name, toggle = true,
         needs = PersonalBuffsOn, why = NEEDS_PERSONAL, help = family.help,
         get = function() return R.PersonalPicked(family) end,
         set = function(on)
@@ -154,7 +168,7 @@ local function PersonalRow(family)
             for k, v in pairs(S.Get("personalBuffPicks")) do picks[k] = v end
             picks[family.key] = on
             S.Set("personalBuffPicks", picks)
-        end }
+        end }, family)
 end
 
 local rows = {
@@ -164,7 +178,9 @@ local rows = {
       needs = Enabled, why = OFF,
       help = "A consumable or personal buff with less time than this left counts as missing." },
     { key = "onlyIfCarried", label = "Only If I Carry One", toggle = true, needs = Enabled, why = OFF,
-      help = "Off: a reminder for each kind you watch, even with none in your bags." },
+      help = "On: any flask, elixir or buff food in your bags reminds you, listed or not; off: even with none." },
+    { key = "weaponEnhancements", label = "Weapon Enhancement Reminder", toggle = true, needs = Enabled, why = OFF,
+      help = "A reminder when a weapon has no sharpening stone, weightstone or oil on it." },
     { key = "hideResting", label = "Hide While Resting", toggle = true, needs = Enabled, why = OFF,
       help = "No consumable or personal buff reminders in cities and inns." },
     { label = "Consumables to Watch", buttonText = "Edit List", needs = Enabled, why = OFF,
@@ -180,16 +196,19 @@ local rows = {
       why = NEEDS_RAID, help = "Off: every buff a class in your group can cast." },
 }
 for _, family in ipairs(D.RAID) do rows[#rows + 1] = PickRow(family) end
-if #PERSONAL > 0 then
-    rows[#rows + 1] = Group("Personal Buffs")
-    rows[#rows + 1] = { key = "personalBuffs", label = "Personal Buff Reminders", toggle = true, needs = Enabled,
-        why = OFF, help = "Your own class buff when it is missing or under Warn With Minutes Left: an armor, "
-            .. "Inner Fire, Battle Shout, poisons or a weapon imbue. Talent buffs only once you have the "
-            .. "talent. Hide While Resting hides them too." }
-    for _, family in ipairs(PERSONAL) do rows[#rows + 1] = PersonalRow(family) end
-end
+rows[#rows + 1] = Group("Personal Buffs")
+rows[#rows + 1] = { key = "personalBuffs", label = "Personal Buff Reminders", toggle = true, needs = Enabled,
+    why = OFF, help = "Your class buffs when they are missing or about to run out." }
+for _, family in ipairs(ALL_PERSONAL) do rows[#rows + 1] = PersonalRow(family) end
+rows[#rows + 1] = Group("Glow")
+rows[#rows + 1] = { key = "buffGlow", label = "Glow", toggle = true, needs = Enabled, why = OFF,
+    help = "A glow around each reminder icon, since each is a buff that is missing or running out." }
+rows[#rows + 1] = A.GlowRows("buffGlow")
 rows[#rows + 1] = Group("Size")
 rows[#rows + 1] = { key = "iconSize", label = "Icon Size", slider = ICON_RANGE, needs = Enabled, why = OFF }
+rows[#rows + 1] = { key = "buffIconMode", label = "Icon", choice = ICON_MODES, needs = Enabled, why = OFF,
+    help = "Default: the item you carry, or the kind's usual icon. Last Used: the icon of the food, flask, "
+        .. "elixir, scroll or weapon item you used last." }
 rows[#rows + 1] = Settings.Look("buffs", { text = true, size = TEXT_RANGE, needs = Enabled, why = OFF })
 
 Settings.Page(A.PAGE, S):Card({

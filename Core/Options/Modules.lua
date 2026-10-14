@@ -34,9 +34,11 @@ local MODULES = {
           { name = "Map & Pins", reuse = true },
           { name = "Cursor & Crosshair", reuse = true },
           { name = "Combat", reuse = true },
+          { name = "Damage Meter", reuse = true },
           { name = "Questing & Group", reuse = true },
           { name = "XP", reuse = true },
           { name = "Loot & Items", reuse = true },
+          { name = "Glimmer", reuse = true },
           { name = "Travel", reuse = true },
           { name = "System", reuse = true },
       } },
@@ -50,8 +52,7 @@ local MODULES = {
           { name = "Quest Tracker", reuse = true },
           { name = "Map", reuse = true },
       } },
-    -- This hour and the visit history are a window of their own (open); only the settings live here.
-    { name = "Instance Tracker", group = "ADVENTURE", navIcon = "person", settings = "InstanceTrackerSettings",
+    { name = "Instance Tracker", group = "UTILITIES", navIcon = "person", settings = "InstanceTrackerSettings",
       addon = "NaowhForever_InstanceTracker",
       open = "ToggleInstanceTrackerWindow",
       command = "instance", short = "Instance", icon = "Interface\\Icons\\INV_Misc_PocketWatch_01",
@@ -69,14 +70,14 @@ local MODULES = {
           { name = "Character", reuse = true },
       } },
     { name = "Training Planner", group = "ADVENTURE", navIcon = "notes", settings = "TrainingSettings",
-      addon = "NaowhForever_Training", needs = { "NaowhForever_Professions" },
+      addon = "NaowhForever_Training",
       open = "ToggleTrainingWindow",
       command = "training", short = "Training", icon = "Interface\\Icons\\INV_Misc_Book_11",
       subtitle = "What you can train now, what each level brings and what it costs.",
       tabs = {
           { name = "Settings", reuse = true },
       } },
-    { name = "Journeys", group = "ADVENTURE", navIcon = "compass", settings = "JourneysSettings",
+    { name = "Journeys", group = "UTILITIES", navIcon = "compass", settings = "JourneysSettings",
       addon = "NaowhForever_Journeys",
       subtitle = "The fastest way anywhere: walking, flights, boats, zeppelins, the tram, portals and your Hearthstone.",
       tabs = {
@@ -117,10 +118,13 @@ local MODULES = {
       } },
     { name = "Macros", group = "UTILITIES", navIcon = "pen", settings = "MacroSettings",
       addon = "NaowhForever_Macros",
-      open = "ToggleMacroWindow",
+      open = "OpenMacroWindow",
       command = "macros", short = "Macros", icon = "Interface\\Icons\\INV_Misc_Note_01",
-      subtitle = "Naowh's Forge: your macros, checked and explained, and macros kept current for you.",
+      subtitle = "Your macros, checked and explained, and macros kept current for you.",
       tabs = {
+          { name = "My Macros", build = "BuildForgePage", arg = "mine", terms = "ForgeSearchTerms", reuse = true },
+          { name = "Smart Macros", build = "BuildForgePage", arg = "smart", reuse = true },
+          { name = "Library", build = "BuildForgePage", arg = "lib", reuse = true },
           { name = "Settings", reuse = true },
       } },
     { name = "Consumable Bar", group = "UTILITIES", navIcon = "heart", settings = "QoLSettings",
@@ -152,12 +156,6 @@ local MODULES = {
       tabs = {
           { name = "Settings", reuse = true },
       } },
-    { name = "Damage Meter", group = "COMBAT", navIcon = "bars", settings = "DamageMeterSettings",
-      addon = "NaowhForever_DamageMeter",
-      subtitle = "Damage, healing and more for your group, in your theme.",
-      tabs = {
-          { name = "Settings", reuse = true },
-      } },
     { name = "Group Inspect", group = "COMBAT", navIcon = "group", settings = "QoLSettings",
       enabledKey = "groupInspect", addon = "NaowhForever_GroupInspect", needs = { "NaowhForever_BiS" },
       open = "ToggleGroupInspect",
@@ -176,6 +174,7 @@ local MODULES = {
           { name = "Flag", reuse = true },
       } },
     { name = "Top Bar", navIcon = "window", settings = "TopBarSettings", addon = "NaowhForever_TopBar", needs = { "NaowhForever_QoL" },
+      inQoL = true,
       subtitle = "Your buttons on either side of an optional clock, with FPS and latency underneath.",
       tabs = {} },
     { name = "Swing Timer", group = "COMBAT", navIcon = "infinity", settings = "SwingTimerSettings",
@@ -254,11 +253,7 @@ local function SwitchModuleAddon(mod, on)
     local text = SwitchQuestion(mod, mods, on)
     local yes = SwitchButton(mods, on)
     ns.Confirm(text, function()
-        for _, m in ipairs(mods) do
-            if on then C_AddOns.EnableAddOn(m.addon) else C_AddOns.DisableAddOn(m.addon) end
-            local store = on and m.settings and ns[m.settings]
-            if store then store.Set(m.enabledKey or "enabled", true) end
-        end
+        for _, m in ipairs(mods) do ns.SetModuleState(m.addon, on) end
         UI:RefreshPage(true)
         ns.ConfirmReload((on and TEXT_RELOAD_ON or TEXT_RELOAD_OFF):format(NameList(mods)))
     end, function() UI:RefreshPage(true) end, yes, TEXT_CANCEL)
@@ -317,7 +312,7 @@ local function SetModuleOn(mod, on)
     local store = mod.settings and ns[mod.settings]
     if mod.settings and not store or not Loaded(mod) then return SwitchModuleAddon(mod, true) end
     if mod.addon then
-        for _, m in ipairs(Linked(mod, true)) do C_AddOns.EnableAddOn(m.addon) end
+        for _, m in ipairs(Linked(mod, true)) do ns.SetModuleState(m.addon, true) end
     end
     if store then store.Set(mod.enabledKey or "enabled", on) end
     UI:RefreshPage(true)
@@ -351,5 +346,6 @@ AddPages()
 
 Options.SYSTEM_PAGES, Options.MODULES, Options.PAGES = SYSTEM_PAGES, MODULES, PAGES
 Options.DisplayName, Options.Loaded, Options.NameList = DisplayName, Loaded, NameList
-Options.ModuleOn, Options.SetModuleOn, Options.SwitchModuleAddon = ModuleOn, SetModuleOn, SwitchModuleAddon
+Options.SetModuleOn, Options.SwitchModuleAddon = SetModuleOn, SwitchModuleAddon
+function Options.ModuleOn(mod) return ModuleOn(mod, UnitGUID("player")) end
 Options.MinimapButtonOn = MinimapButtonOn

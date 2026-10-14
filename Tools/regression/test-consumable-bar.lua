@@ -14,6 +14,9 @@ local DEFAULTS = (function()
     defaults.enabled = true
     return defaults
 end)()
+-- Most checks lay out items they have none of; the ones about Hide When Out switch it on themselves.
+local SHIPPED_HIDE_EMPTY = DEFAULTS.consumableBarHideEmpty
+DEFAULTS.consumableBarHideEmpty = false
 local checks = 0
 local function check(label, ok) assert(ok, label); checks = checks + 1 end
 
@@ -34,6 +37,7 @@ local KNOWN = {
     [2862] = { 135248, 7, 2828, 0 },  -- Rough Sharpening Stone, filed as a trade good here
     [5509] = { 135230, 0, 6263, 8 },  -- Healthstone, Other Consumables
     [21023] = { 134021, 0, 24869, 5 }, -- Dirge's Kickin' Chimaerok Chops: eating, then Well Fed
+    [17202] = { 132387, 0, 21343, 8 }, -- Snowball, Other Consumables
 }
 
 -- Food and drink by the spell they cast, as Shared/Game/Consumables.lua reads them.
@@ -190,6 +194,7 @@ local function fixture(settings, noMacros, class)
         -- The Shared kit: a window's parts, and the settings pages a file declares.
         Shared = {
             Parts = {
+                Press = function(button) button.pressed = true end,
                 -- The kit's panel: its title and its x, as Parts.Panel makes them.
                 Panel = function(title)
                     local f = frame('Panel')
@@ -503,17 +508,36 @@ do
     s.set('consumableBarFontSize', 30)
     check('NONE follows the icon, not the font size', b[2].none.fontSize == noneSize)
 
+    check('on by default, Hide When Out', SHIPPED_HIDE_EMPTY == true)
+    check('both items take their place', s.bar.w == 132)
     s.set('consumableBarHideEmpty', true)
-    check('Hide When Out hides an empty icon instead of NONE', b[2].alpha == 0 and not b[2].none.shown)
+    check('Hide When Out takes an empty item off the bar', #s.buttons() == 1 and s.buttons()[1] == b[1]
+        and not b[2].shown)
+    check('and the bar closes up behind it', s.bar.w == 64)
     check('Hide When Out leaves a carried item alone', b[1].alpha == 1)
     s.fight(true)
+    local before = s.blocked
     s.counts[13446] = 0
     s.fire('BAG_UPDATE_DELAYED')
-    check('the last one used in combat hides at once', b[1].alpha == 0)
+    check('the last one used in combat fades at once', b[1].alpha == 0 and b[1].shown)
     s.counts[13446] = 3
     s.fire('BAG_UPDATE_DELAYED')
     check('one looted in combat comes back at once', b[1].alpha == 1 and b[1].count.text == 3)
+    s.counts[5512] = 1
+    s.fire('BAG_UPDATE_DELAYED')
+    check('one gained in combat waits for the fight to end', #s.buttons() == 1 and s.blocked == before)
     s.fight(false)
+    check('then takes its old place on the bar', #s.buttons() == 2 and s.buttons()[2] == b[2] and b[2].shown
+        and s.bar.w == 132)
+    s.counts[13446] = 0
+    s.fire('BAG_UPDATE_DELAYED')
+    check('one used up out of combat leaves at once', #s.buttons() == 1 and s.buttons()[1] == b[2]
+        and b[2].point[4] == 0)
+    s.ns.ShowUnlockMode()
+    check('Unlock Mode shows every item', #s.buttons() == 2)
+    s.ns.HideUnlockMode()
+    s.counts[13446] = 3
+    s.set('consumableBarHideEmpty', false)
 
     s.fight(true)
     local blocked = s.blocked
@@ -667,19 +691,21 @@ do
     local s = fixture({ consumableBar = true, consumableBarHideEmpty = true, consumableBarItems = { 13446, 20007 } })
     s.counts[13446], s.counts[20007] = 0, 2
     s.fire('BAG_UPDATE_DELAYED')
-    local out, have = s.buttons()[1], s.buttons()[2]
-    check('an icon hidden when out takes no clicks', out.alpha == 0 and out.mouse == false and have.mouse == true)
+    check('an item you have none of has no button on the bar', #s.buttons() == 1
+        and s.buttons()[1].attrs.item1 == 'item:20007')
     s.counts[13446] = 1
     s.fire('BAG_UPDATE_DELAYED')
-    check('it takes them again once you have one', out.alpha == 1 and out.mouse == true)
+    local out = s.buttons()[1]
+    check('it gets one, first in line, once you have one', #s.buttons() == 2 and out.attrs.item1 == 'item:13446'
+        and out.mouse == true)
     s.fight(true)
     s.counts[13446] = 0
     s.fire('BAG_UPDATE_DELAYED')
-    check('in combat it can only fade', out.alpha == 0 and out.mouse == true)
+    check('in combat it can only fade', out.alpha == 0 and out.mouse == true and out.shown)
     s.fight(false)
-    check('after the fight it stops taking clicks', out.mouse == false)
+    check('after the fight it leaves the bar', not out.shown and out.slot == nil and #s.buttons() == 1)
     s.set('consumableBarHideEmpty', false)
-    check('with Hide When Out off, NONE stays clickable', out.mouse == true)
+    check('with Hide When Out off, NONE stays clickable', out.shown and out.mouse == true and out.none.shown)
 end
 
 -- Show Before It Ends
@@ -1002,6 +1028,13 @@ do
     check('the stage fits one row', studio.height() == 90)
     s.set('consumableBarGrow', 'DOWN')
     check('a column makes it taller', studio.height() == 3 * 40 - 4 + 2 * s.CB.C.BG_PAD + 24)
+    s.set('consumableBarHideCombat', false)
+    s.set('consumableBarGrow', 'RIGHT')
+    s.counts[5512] = 1
+    s.set('consumableBarHideEmpty', true)
+    studio.paint(holder, 'rest')
+    check('Hide When Out leaves the preview what you carry', holder.cells[1].itemID == 5512
+        and not holder.cells[2].shown and holder.w == 36)
     s.set('consumableBarItems', {})
     studio.paint(holder, 'rest')
     check('an empty bar says how to add items', holder.note.shown and not holder.cells[1].shown)
@@ -1236,6 +1269,19 @@ do
     check('the panel follows the window\'s opacity', s.side.opacity() == 1)
 end
 
+-- Ask to Add asks at the bar, even one with nothing on it yet, so the question shows where the item will go
+do
+    local s = fixture({ consumableBar = true, consumableBarAskNew = true })
+    s.fire('BAG_UPDATE_DELAYED')
+    check('an empty bar shows nothing', not s.bar.shown)
+    s.bags[0] = { 5512 }
+    s.counts[5512] = 1
+    s.fire('BAG_UPDATE_DELAYED')
+    local ask = s.panels[1]
+    check('a new consumable is asked about at the empty bar', ask and ask.shown and ask.point
+        and ask.point[1] == 'BOTTOM' and ask.point[2] == s.bar and ask.point[3] == 'TOP')
+end
+
 -- New consumables ask to be added
 do
     local s = fixture({ consumableBar = true, consumableBarAskNew = true, consumableBarItems = { 13446 } })
@@ -1290,6 +1336,34 @@ do
     check('with the option off nothing asks', not ask.shown)
 end
 
+-- An item that left the bags and is looted again is new again
+do
+    local s = fixture({ consumableBar = true, consumableBarAskNew = true, consumableBarItems = {} })
+    s.fire('BAG_UPDATE_DELAYED')
+    local function popup()
+        for _, f in ipairs(s.frames) do
+            local icon = rawget(f, 'icon')
+            if type(icon) == 'table' and rawget(icon, 'tex') then return f end
+        end
+    end
+    s.bags[0] = { 5512, 20007 }
+    s.counts[5512], s.counts[20007] = 1, 1
+    s.fire('BAG_UPDATE_DELAYED')
+    local ask = popup()
+    check('the first of two new items asks, the other waits', ask and ask.shown and ask.itemID == 5512)
+    s.bags[0] = { 5512 }
+    s.counts[20007] = 0
+    s.fire('BAG_UPDATE_DELAYED')
+    for _, f in ipairs(s.frames) do
+        if f.parent == ask and f.label == 'Add' then f.onClick() end
+    end
+    check('the one used up meanwhile is not asked about', not ask.shown)
+    s.bags[0] = { 5512, 20007 }
+    s.counts[20007] = 1
+    s.fire('BAG_UPDATE_DELAYED')
+    check('looted again, it asks', ask.shown and ask.itemID == 20007)
+end
+
 do
     local s = fixture({ consumableBar = true, consumableBarAskNew = true, consumableBarDeclined = { [20007] = true } })
     s.fire('BAG_UPDATE_DELAYED')
@@ -1315,6 +1389,33 @@ do
     check('clear waits for the confirmation', #s.settings.consumableBarItems == 3)
     s.confirm()
     check('clear removes every item', #s.settings.consumableBarItems == 0)
+end
+
+-- Other Consumables are left to the player; Remove Empty
+do
+    local s = fixture({ consumableBar = true })
+    s.bags[0] = { 13446, 17202, 5512 }
+    s.counts[13446], s.counts[17202], s.counts[5512] = 2, 5, 1
+    s.CB.ScanBags()
+    local items = s.settings.consumableBarItems
+    check('by default a scan leaves Other Consumables out', #items == 2 and not s.CB.Has(items, 17202))
+    s.set('consumableBarSkip', {})
+    s.CB.ScanBags()
+    check('switched on, the next scan adds them', s.CB.Has(s.settings.consumableBarItems, 17202))
+    s.CB.SetMacro('health', true)
+    s.counts[13446], s.counts[17202] = 0, 0
+    s.confirm = nil
+    s.CB.RemoveEmpty()
+    check('Remove Empty asks first, saying how many', s.confirm ~= nil
+        and s.confirmText:find('Remove 2 items', 1, true) ~= nil and #s.settings.consumableBarItems == 4)
+    s.confirm()
+    items = s.settings.consumableBarItems
+    check('then takes off the items you have none of and keeps Smart Macros', #items == 2 and items[1] == 5512
+        and items[2] == 'macro:health')
+    s.confirm = nil
+    s.CB.RemoveEmpty()
+    check('with nothing to take off it only says so', s.confirm == nil
+        and s.printed:find('at least one of every item', 1, true) ~= nil)
 end
 
 do
@@ -1368,7 +1469,9 @@ do
     check('shown at the chosen opacity', b[1].bg.shown and b[1].bg.alpha == 0.5)
     s.set('consumableBarHideEmpty', true)
     s.fire('BAG_UPDATE_DELAYED')
-    check('an icon hidden when out takes its piece with it', b[3].alpha == 0 and b[1].alpha == 1)
+    check('an icon hidden when out takes its piece with it', not b[3].shown and b[1].shown)
+    check('and the icon above its old place reaches past the bottom now', select(4, reach(b[1])) == 3)
+    s.set('consumableBarHideEmpty', false)
     s.set('consumableBarGrow', 'DOWN')
     l, r, t, bo = reach(b[1])
     check('growing down: neighbours below and to the right', l == 3 and r == 2 and t == 3 and bo == 2)
@@ -1662,6 +1765,14 @@ do
     s.counts[13446] = 0
     s.fire('BAG_UPDATE_DELAYED')
     check('out of the item the macro still names: NONE', b.none.shown and b.icon.texture == 134830)
+    s.set('consumableBarHideEmpty', true)
+    check('with Hide When Out it leaves the bar', not b.shown and b.slot == nil)
+    s.counts[5509] = 1
+    s.macroBodies['NF Health'] = '#showtooltip\n/use item:5509'
+    s.fire('UPDATE_MACROS')
+    check('and comes back when the macro is rewritten to an item you carry', b.shown and b.slot ~= nil
+        and b.itemID == 5509)
+    s.set('consumableBarHideEmpty', false)
 
     s.pageRow('adding', 'NF Health').set(false)
     check('switching it off takes it off the bar', not s.CB.HasMacro('health') and #s.buttons() == 1)
@@ -1918,6 +2029,162 @@ do
     check('no button for it', #s.buttons() == 1 and s.buttons()[1].entry == 13446)
     s.CB.AddItems({ 5512 })
     check('and it stays saved for when Macros is back', s.settings.consumableBarItems[1] == 'macro:health')
+end
+
+-- The Food & Drink buttons: the smart food and drink of the Food & Drink Bar, on the main bar
+do
+    local s = fixture({ consumableBar = true, consumableBarItems = { 13446 } })
+    s.bags[0] = { 8932, 8766 }
+    s.counts[8932], s.counts[8766] = 3, 5
+    local row = s.pageRow('adding', 'Food & Drink Buttons')
+    row.set(true)
+    check('its switch puts the food and the drink buttons at the end', table.concat(s.settings.consumableBarItems, ',')
+        == '13446,smart:food,smart:drink' and row.get() == true)
+    local food, drink = s.buttons()[2], s.buttons()[3]
+    check('without QoL, named as the Food & Drink Bar\'s, so its keys click them', s.G.NaowhForeverFoodBarFood == food
+        and s.G.NaowhForeverFoodBarDrink == drink)
+    check('each uses your best one', food.attrs.item1 == 'item:8932' and drink.attrs.item1 == 'item:8766'
+        and food.count.text == 3)
+    s.counts[13446] = 2
+    s.set('consumableBarHideEmpty', SHIPPED_HIDE_EMPTY)
+    s.bags[0] = { 8766 }
+    s.counts[8932] = 0
+    s.fire('BAG_UPDATE_DELAYED')
+    check('out of food with Hide When Out on, the default: it leaves the bar and the gap closes',
+        not food.shown and #s.buttons() == 2 and s.buttons()[2] == drink and drink.slot == 2)
+    s.set('consumableBarHideEmpty', false)
+    check('with it off: nothing to use, NONE on its own empty icon and tooltip', food.shown
+        and food.attrs.item1 == nil and food.none.shown and food.icon.texture == 133971
+        and food.emptyTip == 'No food in your bags')
+    s.fight(true)
+    s.bags[0] = { 8932, 8766 }
+    s.counts[8932] = 2
+    local blocked = s.blocked
+    s.fire('BAG_UPDATE_DELAYED')
+    check('a bag change in a fight touches no secure button', s.blocked == blocked and food.attrs.item1 == nil)
+    s.fight(false)
+    check('it is pointed at the food when the fight ends', food.attrs.item1 == 'item:8932')
+    check('the Food & Drink Bar steps aside', s.ns.ConsumableBarUsesFood() == true)
+    s.set('consumableBar', false)
+    check('unless the Consumable Bar is off', s.ns.ConsumableBarUsesFood() == false)
+    s.set('consumableBar', true)
+    row.set(false)
+    check('switched off, both go', table.concat(s.settings.consumableBarItems, ',') == '13446'
+        and not food.shown and not drink.shown and s.ns.ConsumableBarUsesFood() == false)
+end
+
+-- The Food & Drink buttons share the Food & Drink Bar's keys: one key, shown in both places
+do
+    local s = fixture({ consumableBar = true, consumableBarKeybinds = true, consumableBarItems = { 'smart:food' } })
+    check('without QoL, the key bound to Use Best Food clicks the button itself', s.CB.BindAction('smart:food')
+        == 'CLICK NaowhForeverFoodBarFood:LeftButton' and s.G.NaowhForeverFoodBarFood == s.buttons()[1])
+    s.ns.FoodBarBindings = { food = 'CLICK NaowhForeverFoodBarFood:LeftButton',
+        drink = 'CLICK NaowhForeverFoodBarDrink:LeftButton' }
+    check('with QoL, the button has a name of its own, as that bar\'s hidden button has this one',
+        s.CB.ButtonName('smart:food') == 'NaowhForeverConsumableBarSmartFood')
+    check('with it, the food button binds the Food & Drink Bar\'s Use Best Food',
+        s.CB.BindAction('smart:food') == 'CLICK NaowhForeverFoodBarFood:LeftButton'
+        and s.CB.BindAction('smart:drink') == 'CLICK NaowhForeverFoodBarDrink:LeftButton')
+    s.bindings['CLICK NaowhForeverFoodBarFood:LeftButton'] = 'F'
+    s.fire('UPDATE_BINDINGS')
+    s.advance(0)
+    check('a key bound on the Food & Drink Bar shows on the button', s.buttons()[1].key.text == '*F')
+    local cells = s.editor().cells
+    cells[1].scripts.OnClick(cells[1], 'RightButton')
+    check('and its Key row in Edit Items is that same binding',
+        s.itemRow('Key').binding() == 'CLICK NaowhForeverFoodBarFood:LeftButton')
+    check('an item keeps its own', s.CB.BindAction(13446) == 'CLICK NaowhForeverConsumableBarItem13446:LeftButton')
+end
+
+-- The Food & Drink buttons or NF Food and NF Drink: one or the other, saying which is in the way
+do
+    local s = fixture({ consumableBar = true })
+    local food, drink = s.pageRow('adding', 'NF Food'), s.pageRow('adding', 'NF Drink')
+    local buttons = s.pageRow('adding', 'Food & Drink Buttons')
+    check('all are offered', food.needs() and drink.needs() and buttons.needs())
+    buttons.set(true)
+    check('with the buttons on, NF Food and NF Drink wait, saying why', food.needs() == false
+        and drink.needs() == false and food.why == 'The Food & Drink buttons are on the bar'
+        and drink.why() == 'The Food & Drink buttons are on the bar')
+    food.set(true)
+    check('and cannot be added', not s.CB.HasMacro('food') and s.printed:find('Take them off to use NF Food', 1, true))
+    s.macros[21] = 'NF Drink'
+    s.cursor = { 'macro', 21 }
+    local box = s.editor()
+    box.scripts.OnReceiveDrag(box)
+    check('nor dragged in', not s.CB.HasMacro('drink') and s.cursor ~= nil)
+    s.cursor = nil
+    buttons.set(false)
+    drink.set(true)
+    check('the other way round, naming the macro', buttons.needs() == false
+        and buttons.why() == 'NF Drink is on the bar')
+    buttons.set(true)
+    check('the buttons wait while NF Drink is on', not s.CB.HasFoodButtons()
+        and s.printed:find('NF Drink is on the bar. Take it off', 1, true))
+    drink.set(false)
+    food.set(true)
+    check('and while NF Food is on', buttons.why() == 'NF Food is on the bar')
+end
+
+-- No mana: the food button alone, a drink button saved by a caster's profile stays saved, and the
+-- buttons cover drinks only for a class with mana
+do
+    local s = fixture({ consumableBar = true }, false, 'WARRIOR')
+    s.pageRow('adding', 'Food & Drink Buttons').set(true)
+    check('a warrior gets the food button alone', table.concat(s.settings.consumableBarItems, ',') == 'smart:food')
+    s.bags[0] = { 8932, 8766, 13446 }
+    s.CB.ScanBags()
+    check('Scan Bags skips food, and drinks as ever', table.concat(s.settings.consumableBarItems, ',')
+        == 'smart:food,13446')
+    local box = s.editor()
+    s.cursor = { 'item', 8766 }
+    box.scripts.OnReceiveDrag(box)
+    check("a drink dragged in asks as one you can't use, not as one the buttons cover",
+        s.confirmText and s.confirmText:find("You don't use mana", 1, true) ~= nil)
+    local rogue = fixture({ consumableBar = true, consumableBarItems = { 'smart:food', 'smart:drink' } }, false, 'ROGUE')
+    check("a drink button from another character's profile is not shown", #rogue.buttons() == 1
+        and rogue.buttons()[1].entry == 'smart:food')
+    rogue.CB.AddItems({ 13446 })
+    check('and stays saved', table.concat(rogue.settings.consumableBarItems, ',') == 'smart:food,smart:drink,13446')
+    local mage = fixture({ consumableBar = true, consumableBarItems = { 'smart:food', 'smart:drink' } })
+    mage.bags[0] = { 8932, 8766, 14530 }
+    mage.CB.ScanBags()
+    check('the buttons cover food and drink', table.concat(mage.settings.consumableBarItems, ',')
+        == 'smart:food,smart:drink,14530')
+end
+
+-- One button left alone: either one is the Food & Drink buttons being on the bar, and each covers
+-- only its own half; a lone drink button counts only for a class with mana, as only it shows it
+do
+    local s = fixture({ consumableBar = true, consumableBarItems = { 'smart:drink' } })
+    check('the drink button alone keeps the Food & Drink Bar aside', s.ns.ConsumableBarUsesFood() == true
+        and s.pageRow('adding', 'Food & Drink Buttons').get() == true)
+    local pointed
+    s.ns.FoodBarPoint = function(food, drink) pointed = { food, drink } end
+    s.bags[0] = { 8932, 8766 }
+    s.fire('BAG_UPDATE_DELAYED')
+    check('a bag change hands what it found to the hidden Food & Drink Bar', pointed
+        and pointed[1] == 8932 and pointed[2] == 8766)
+    s.bags[0] = {}
+    check('and holds NF Food back', s.pageRow('adding', 'NF Food').needs() == false)
+    s.bags[0] = { 8932, 8766 }
+    s.CB.ScanBags()
+    check('it covers drinks, not food', table.concat(s.settings.consumableBarItems, ',') == 'smart:drink,8932')
+    s.set('consumableBarItems', { 'smart:food' })
+    s.CB.ScanBags()
+    check('the food button alone covers food, not drinks', table.concat(s.settings.consumableBarItems, ',')
+        == 'smart:food,8766')
+    local box = s.editor()
+    s.cursor = { 'item', 8932 }
+    box.scripts.OnReceiveDrag(box)
+    check('and says so when food is added by hand', s.confirmText
+        == 'The food button already uses your best food. Add Item8932 too?')
+    s.pageRow('adding', 'Food & Drink Buttons').set(false)
+    check('its switch takes off whichever is there', #s.settings.consumableBarItems == 1
+        and s.settings.consumableBarItems[1] == 8766)
+    local warrior = fixture({ consumableBar = true, consumableBarItems = { 'smart:drink' } }, false, 'WARRIOR')
+    check("a warrior's hidden drink button does not keep their Food & Drink Bar aside",
+        warrior.ns.ConsumableBarUsesFood() == false and warrior.pageRow('adding', 'Food & Drink Buttons').get() == false)
 end
 
 print(checks .. ' consumable-bar checks passed')

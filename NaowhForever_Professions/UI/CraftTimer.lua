@@ -4,6 +4,7 @@ local ns = _G.NaowhForever
 local T = ns.THEME
 
 local P = ns.Professions
+local R = P.Recipes
 local S = P.Settings
 local Style = P.Style
 local Widgets = P.Widgets
@@ -193,7 +194,9 @@ local function OnSucceeded()
 end
 
 local function OnEvent(_, event, _, _, spellID)
-    if not job or spellID ~= job.recipeID then return end
+    if not job then return end
+    if event == "UPDATE_TRADESKILL_CAST_STOPPED" then return Stop() end
+    if spellID ~= job.recipeID then return end
     if event == "UNIT_SPELLCAST_START" then return OnStart() end
     if event == "UNIT_SPELLCAST_SUCCEEDED" then return OnSucceeded() end
     if event == "UNIT_SPELLCAST_FAILED" and select(CASTING_SPELL, UnitCastingInfo("player")) == job.recipeID then
@@ -207,17 +210,20 @@ local function Watch()
 end
 
 local function OnCraft(recipeID, count)
+    if not On() then return end
+    local recipe = C_TradeSkillUI.GetRecipeInfo(recipeID)
     count = tonumber(count) or 1
+    if recipe then count = math.min(count, R.Craftable(recipe)) end
+    if count < MIN_BATCH then return end
     local spell = C_Spell.GetSpellInfo(recipeID)
     local cast = spell and (spell.castTime or 0) / MS or 0
-    if not On() or count < MIN_BATCH then return end
-    local recipe = C_TradeSkillUI.GetRecipeInfo(recipeID)
     Stop()
     job = { recipeID = recipeID, name = recipe and recipe.name or (spell and spell.name),
         icon = recipe and recipe.icon or (spell and spell.iconID), count = count, done = 0,
         cast = cast > 0 and cast or GUESS_CAST, gap = GAP, start = GetTime() }
     Resync(job.cast)
     for _, event in ipairs(CAST_EVENTS) do events:RegisterUnitEvent(event, "player") end
+    events:RegisterEvent("UPDATE_TRADESKILL_CAST_STOPPED")
     watch = C_Timer.NewTicker(WATCH_EVERY, Watch)
     Show()
 end

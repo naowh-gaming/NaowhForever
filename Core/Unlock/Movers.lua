@@ -1,4 +1,4 @@
--- Movers.lua: the HUD Editor's movers: a plate over each element, bound to it, and its marks.
+-- Movers.lua: the HUD Editor's movers: a plate over each element, bound to it, its marks, and on Forever Edit Mode's selection look.
 local ns = _G.NaowhForever
 local T = ns.THEME
 local UI = ns.UI
@@ -8,13 +8,32 @@ local placement = H.placement
 local Grouped, Bounds, IsHidden, IsLocked = H.Grouped, H.Bounds, H.IsHidden, H.IsLocked
 local Queue, Moved, ReapplyAll = H.Queue, H.Moved, H.ReapplyAll
 local StopDrag, Refresh, PickTarget = H.StopDrag, H.Refresh, H.PickTarget
+local AnchorOf, Capture = H.AnchorOf, H.Capture
 
 local C = H.C
 local LOCK_BADGE, LOCK_INSET = 12, 4
 local MOVER_RAISE = 20
 local MOVER_TEXT_SIZE = 12
 
+local function DressEditMode(h)
+    h._editDressed = true
+    ns.Shared.Parts.ForeverSelection(h)
+    h._fill:Hide()
+    h._strip:Hide()
+    h._border._frame:Hide()
+end
+
+local function PaintEditMode(item)
+    local h = item.handle
+    if not h._editDressed then
+        if not (placement.active and h._strip) then return end
+        DressEditMode(h)
+    end
+    ns.Shared.Parts.PaintForeverSelection(h, item.selected or item.dragging, item.hovered)
+end
+
 local function PaintMarks(item)
+    if ns.foreverSkin then PaintEditMode(item) end
     local hidden, h = IsHidden(item), item.handle
     h:SetAlpha(hidden and 0 or 1)
     h:EnableMouse(not hidden)
@@ -114,6 +133,7 @@ function UI.AttachMover(frame, label, onMoved, page, feature, ownAnchor)
     strip:SetPoint("TOPLEFT")
     strip:SetPoint("TOPRIGHT")
     strip:SetHeight(C.MOVER_STRIP)
+    mover._strip = strip
     mover._border = ns.Border(mover, C.BLACK)
     local text = ns.Shared.Parts.HudText(ns.Font(mover, MOVER_TEXT_SIZE))
     text:SetPoint("CENTER", mover, "CENTER")
@@ -130,6 +150,14 @@ end
 
 function UI.SetMoverChoices(mover, choices)
     mover._placement.choices = choices
+end
+
+function UI.SetMoverGrow(mover, grow)
+    local item = mover._placement
+    if item.grow == grow then return end
+    local info = item.grow and not item.ownAnchor and AnchorOf(item.label)
+    item.grow = grow
+    if info then Capture(item, info) end
 end
 
 function UI.CenterPosition(frame)
@@ -157,7 +185,7 @@ local function OnWatchEvent(_, event)
     end
 end
 
-H.PaintMarks = PaintMarks
+H.PaintMarks, H.PaintEditMode = PaintMarks, PaintEditMode
 
 local watch = CreateFrame("Frame")
 watch:RegisterEvent("PLAYER_LOGIN")

@@ -2,8 +2,6 @@
     <!-- QuestList.xml: the Quest List's files (Completo in the code), in load order. -->
     <Script file="Completo.lua"/>
     <Script file="Constants.lua"/>
-    <Script file="Data\Quests.lua"/>
-    <Script file="Data\Rares.lua"/>
     <Script file="Data\AlertSounds.lua"/>
     <Script file="Quests.lua"/>
     <Script file="Givers.lua"/>
@@ -15,7 +13,6 @@
     <Script file="View\View.lua"/>
     <Script file="View\Hero.lua"/>
     <Script file="View\ZoneRow.lua"/>
-    <Script file="View\PartRow.lua"/>
     <Script file="View\QuestRow.lua"/>
     <Script file="View\RareRow.lua"/>
     <Script file="View\DropRow.lua"/>

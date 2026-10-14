@@ -10,7 +10,24 @@
     <Binding name="NAOWHFOREVER_COMPLETO" category="BINDING_HEADER_NAOWHFOREVER">NaowhForever_ToggleCompleto()</Binding>
     <Binding name="NAOWHFOREVER_BOSSLOOT" category="BINDING_HEADER_NAOWHFOREVER">NaowhForever_BossLoot()</Binding>
     <Binding name="NAOWHFOREVER_HUD" category="BINDING_HEADER_NAOWHFOREVER">NaowhForever_ToggleHudEditor()</Binding>
+    <Binding name="NAOWHFOREVER_INSTANCE" category="BINDING_HEADER_NAOWHFOREVER">NaowhForever_ToggleModule("instance")</Binding>
+    <Binding name="NAOWHFOREVER_DISCOVERY" category="BINDING_HEADER_NAOWHFOREVER">NaowhForever_ToggleModule("discovery")</Binding>
+    <Binding name="NAOWHFOREVER_GEAR" category="BINDING_HEADER_NAOWHFOREVER">NaowhForever_ToggleModule("gear")</Binding>
+    <Binding name="NAOWHFOREVER_BLESS" category="BINDING_HEADER_NAOWHFOREVER">NaowhForever_ToggleModule("bless")</Binding>
+    <Binding name="NAOWHFOREVER_MACROS" category="BINDING_HEADER_NAOWHFOREVER">NaowhForever_ToggleModule("macros")</Binding>
+    <Binding name="NAOWHFOREVER_BARS" category="BINDING_HEADER_NAOWHFOREVER">NaowhForever_ToggleModule("bars")</Binding>
+    <Binding name="NAOWHFOREVER_BUFFS" category="BINDING_HEADER_NAOWHFOREVER">NaowhForever_ToggleModule("buffs")</Binding>
+    <Binding name="NAOWHFOREVER_THREAT" category="BINDING_HEADER_NAOWHFOREVER">NaowhForever_ToggleModule("threat")</Binding>
+    <Binding name="NAOWHFOREVER_PVP" category="BINDING_HEADER_NAOWHFOREVER">NaowhForever_ToggleModule("pvp")</Binding>
     <Binding name="NAOWHFOREVER_TRAINING" category="BINDING_HEADER_NAOWHFOREVER">NaowhForever_ToggleTraining()</Binding>
-    <Binding name="NAOWHFOREVER_DAMAGEMETER_TOGGLE" category="BINDING_HEADER_NAOWHFOREVER">NaowhForever_ToggleDamageMeter()</Binding>
-    <Binding name="NAOWHFOREVER_DAMAGEMETER_RESET" category="BINDING_HEADER_NAOWHFOREVER">NaowhForever_ResetDamageMeter()</Binding>
+    <Binding name="NAOWHFOREVER_JOURNEYS" category="BINDING_HEADER_NAOWHFOREVER">NaowhForever_ToggleModule("Journeys")</Binding>
+    <Binding name="NAOWHFOREVER_PROFESSIONS" category="BINDING_HEADER_NAOWHFOREVER">NaowhForever_ToggleModule("Professions")</Binding>
+    <Binding name="NAOWHFOREVER_CONSUMABLEBAR" category="BINDING_HEADER_NAOWHFOREVER">NaowhForever_ToggleModule("Consumable Bar")</Binding>
+    <Binding name="NAOWHFOREVER_SWINGTIMER" category="BINDING_HEADER_NAOWHFOREVER">NaowhForever_ToggleModule("Swing Timer")</Binding>
+    <Binding name="NAOWHFOREVER_TOPBAR" category="BINDING_HEADER_NAOWHFOREVER">NaowhForever_OpenTopBar()</Binding>
+    <Binding name="NAOWHFOREVER_SCRAP" category="BINDING_HEADER_NAOWHFOREVER">NaowhForever_ToggleWindow("scrap")</Binding>
+    <Binding name="NAOWHFOREVER_DISENCHANT" category="BINDING_HEADER_NAOWHFOREVER">NaowhForever_ToggleWindow("disenchant")</Binding>
+    <Binding name="NAOWHFOREVER_QUIZ" category="BINDING_HEADER_NAOWHFOREVER">NaowhForever_ToggleWindow("quiz")</Binding>
+    <Binding name="NAOWHFOREVER_AIM" category="BINDING_HEADER_NAOWHFOREVER">NaowhForever_ToggleWindow("aim")</Binding>
+    <Binding name="NAOWHFOREVER_EFFICIENCY" category="BINDING_HEADER_NAOWHFOREVER">NaowhForever_ToggleWindow("efficiency")</Binding>
 </Bindings>

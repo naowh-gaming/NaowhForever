@@ -22,6 +22,9 @@ Core/Integrations/RestedXP/
 - The hooks need RestedXP's frames, so they wait for PLAYER_LOGIN. Each checks what it needs and
   does nothing without it.
 - RestedXP's theme reload scales its protected target frame, so in combat it waits for the end.
+- Naowh (current) is read from `ns.THEME`, the colors the addon itself is drawn in, not from the
+  theme picked: the Forever skin overrides that pick (`ThemeSource` in Core.lua). The fixed themes
+  come from `ns.ThemePalette`, which never carries the player's own colors.
 - The font and text color are part of the themes, which RestedXP reads as it starts: they take a
   reload. The font is `ns.AddonFontPath`, not `UIFontPath`, which remembers what it finds and this
   runs before every addon has loaded.
@@ -33,7 +36,8 @@ Core/Integrations/RestedXP/
   OnSizeChanged is watched.
 - The colored layer over RestedXP's arrow is lighter at the top, deeper at the bottom and not full
   strength, so the dark arrow still shades it. It follows the arrow's rotation through a post-hook
-  on its SetRotation.
+  on its SetRotation. A turned arrow reaches past its square frame, so the layer covers the square's
+  diagonal and its mask cuts it to the arrow; at the frame's own size the tips lost their color.
 - RestedXP only sets the distance text, never shows or hides it, so hiding it is ours to undo.
 - The title bar and footer banners are plain black in DarkMode, so they are faded with SetAlpha to
   let the fill show; RestedXP sets them again whenever it draws its theme, so SetTexture is

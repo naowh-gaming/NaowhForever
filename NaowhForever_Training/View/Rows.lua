@@ -34,16 +34,21 @@ local TEXT_AT_TRAINER = ns.L("At the trainer")
 local TEXT_RANK_FIRST = ns.L("Learn %s (%s) first.")
 local TEXT_NEEDS_TALENT = ns.L("Needs the talent %s.")
 local TEXT_TRAINABLE = ns.L("Trainable at level %d.")
+local TEXT_BY_BUILD = ns.L("Skipped by the build you follow.")
+local TEXT_YOUR_BUILD = ns.L("Your build")
 local TEXT_BY_QUEST = ns.L("Taught by a quest, not a trainer.")
 local TEXT_OVER = ns.L("Over %s: %s %s to %s, +%d%%")
 local TEXT_RANK_BEFORE = ns.L("the rank before")
 local TEXT_HINT = ns.L("Shift-click to link it. Right-click to skip it.")
+local TEXT_HINT_WEAPON = ns.L("Shift-click to link it. Click for a waypoint to where it is taught.")
+local TEXT_BY_MASTER = ns.L("Taught by a weapon master: %s.")
+local TEXT_BY_CLASS = ns.L("Taught by your class trainer.")
 local TEXT_SPELL = ns.L("Spell ")
 local TEXT_STOP_SKIP, TEXT_STOP_SKIP_ALL = ns.L("Stop Skipping"), ns.L("Stop Skipping All Ranks")
 local TEXT_SKIP_ALL = ns.L("Skip All Ranks")
 local TEXT_UPGRADE = "  %s+%d%%|r"
 
-local V = { tab = "spells", buildIndex = 1, paneX = 0, editing = false }
+local V = { tab = "spells", buildIndex = 1, paneX = 0, editing = false, editTab = "talents" }
 Training.View = V
 
 local pools = {}
@@ -106,11 +111,19 @@ end
 
 local Text, Paint, Take, Icon = Rows.Text, Rows.Paint, Rows.Take, Rows.Icon
 
+local function FromBuild(spell)
+    return Training.BuildSkipped(spell) and not Training.Ignored()[spell]
+end
+
 local function Reason(entry, state)
-    if state == "rank" then
+    if state == "ignored" and FromBuild(entry[SPELL]) then
+        return TEXT_BY_BUILD
+    elseif state == "rank" then
         return TEXT_RANK_FIRST:format(C_Spell.GetSpellName(entry.needs) or "", C_Spell.GetSpellSubtext(entry.needs) or "")
     elseif state == "talent" then
         return TEXT_NEEDS_TALENT:format(C_Spell.GetSpellName(entry.talent) or "")
+    elseif state == "weapon" then
+        return entry.masters and TEXT_BY_MASTER:format(table.concat(entry.masters, ", ")) or TEXT_BY_CLASS
     elseif state == "soon" or state == "later" then
         return TEXT_TRAINABLE:format(entry[LEVEL])
     elseif entry.quest then
@@ -146,7 +159,7 @@ local function SpellEnter(self)
         GameTooltip:AddLine(reason, c.r, c.g, c.b, true)
     end
     GameTooltip:AddLine(" ")
-    GameTooltip:AddLine(TEXT_HINT, T.muted.r, T.muted.g, T.muted.b, true)
+    GameTooltip:AddLine(self.state == "weapon" and TEXT_HINT_WEAPON or TEXT_HINT, T.muted.r, T.muted.g, T.muted.b, true)
     GameTooltip:Show()
 end
 
@@ -176,9 +189,12 @@ end
 local function SpellClick(self, button)
     local spell = self.entry[SPELL]
     if button == "RightButton" then
+        if self.state == "weapon" or self.state == "ignored" and FromBuild(spell) then return end
         MenuUtil.CreateContextMenu(self, SkipMenu(spell, self.state == "ignored"))
     elseif IsModifiedClick("CHATLINK") then
         ChatFrameUtil.InsertLink(C_Spell.GetSpellLink(spell))
+    elseif self.state == "weapon" then
+        Training.WaypointToMaster(self.entry)
     end
 end
 
@@ -281,10 +297,11 @@ function Rows.Row(entry, state, y, why)
     r.name:SetText(C_Spell.GetSpellName(entry[SPELL]) or "")
     r.rank:SetText((C_Spell.GetSpellSubtext(entry[SPELL]) or "") .. (state == "learned" and "" or Rows.UpgradeTag(entry)))
     r.price:SetText(PriceText(entry))
-    r.why:SetText(why or "")
+    local fromBuild = state == "ignored" and FromBuild(entry[SPELL])
+    r.why:SetText(fromBuild and TEXT_YOUR_BUILD or why or "")
     Paint(r.why, (state == "rank" or state == "talent") and Style.WARN_RGB or T.muted)
-    r.why:SetShown(state ~= "ignored")
-    r.restore:SetShown(state == "ignored")
+    r.why:SetShown(state ~= "ignored" or fromBuild)
+    r.restore:SetShown(state == "ignored" and not fromBuild)
     r.restore._onClick = function() Training.SetIgnored(entry[SPELL], false, false) end
     Rows.Stripe(r)
     return y - Style.ROW_H

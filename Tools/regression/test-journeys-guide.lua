@@ -1,7 +1,8 @@
 -- Run with Lua 5.1 from the repository root: a waypoint becomes a journey. With Journeys off, or in a
 -- spot the game gives no position for, the plain waypoint is placed. With it on, the game's waypoint
 -- goes on the first thing to do, named for it; arriving plans again from where you stand; combat
--- waits; another waypoint, or clearing it, ends the journey; and the pin hears it is on a route.
+-- waits; another waypoint, or clearing it, ends the journey; and the pin hears it is on a route. A tracked
+-- quest goes to its own marker, and a flight point learned on the way plans again.
 local function Read(path)
     local f = assert(io.open(path, "rb"))
     local s = f:read("*a"):gsub("\r\n", "\n"); f:close()
@@ -14,17 +15,20 @@ local function Check(ok, label) assert(ok, label); checks = checks + 1 end
 local SCALE = 1000
 local WORLD_MAP = 9000
 local IRONFORGE, DARNASSUS = 1455, 1457
+local CROSSING, DUSKWOOD = 1426, 1431
 local EASTERN_KINGDOMS, KALIMDOR = 1415, 1414
 local MAPS = {
     [IRONFORGE] = { c = 0, x = -4821.8, y = -1155.4 },
     [DARNASSUS] = { c = 1, x = 9945.0, y = 2490.0 },
+    [CROSSING] = { c = 0, x = -5500.0, y = -1500.0 },
+    [DUSKWOOD] = { c = 0, x = -10560.0, y = -1170.0 },
 }
 
-local frames, timers, printed = {}, {}, {}
+local frames, timers, printed, tickers = {}, {}, {}, {}
 local tracking, handedBack = 0, nil
-local QUESTS = { [101] = { 1457, 0.5, 0.5 }, [102] = { 1455, 0.5, 0.5 } }
+local QUESTS = { [101] = { 1457, 0.5, 0.5 }, [102] = { 1455, 0.5, 0.5 }, [106] = { CROSSING, 0.5, 0.5 } }
 local here = { x = -4821.8, y = -1155.4, c = 0 }
-local current
+local current, placedAtSet
 local combat = false
 local account = {}
 local store = {}
@@ -84,12 +88,21 @@ local env = setmetatable({
         local old = t[k]
         t[k] = function(...) local r = old(...); fn(...); return r end
     end,
-    C_Timer = { After = function(_, fn) timers[#timers + 1] = fn end },
+    C_Timer = {
+        After = function(_, fn) timers[#timers + 1] = fn end,
+        NewTicker = function(_, fn)
+            local t = { fn = fn }
+            function t:Cancel() self.cancelled = true end
+            tickers[#tickers + 1] = t
+            return t
+        end,
+    },
     UnitPosition = function()
         if not here then return nil end
         return here.x, here.y, 0, here.c
     end,
     UnitName = function() return "Glyadin" end,
+    UnitOnTaxi = function() return false end,
     GetRealmName = function() return "Forever" end,
     UnitFactionGroup = function() return "Alliance" end,
     GetServerTime = function() return 0 end,
@@ -111,6 +124,7 @@ local env = setmetatable({
         end,
         CanSetUserWaypointOnMap = function() return true end,
         SetUserWaypoint = function(point)
+            placedAtSet = ns.placedWaypoint
             current = { uiMapID = point.map, position = { x = point.x, y = point.y } }
             Fire("USER_WAYPOINT_UPDATED")
         end,
@@ -143,10 +157,17 @@ local env = setmetatable({
         GetTitleForQuestID = function(id) return "Quest " .. id end,
         IsComplete = function(id) return id == 105 end,
         GetQuestsOnMap = function(map)
-            if map == DARNASSUS then return { { questID = 103, x = 0.5, y = 0.5 } } end
+            if map == DARNASSUS then return { { questID = 103, x = 0.5, y = 0.5 }, { questID = 106, x = 0.5, y = 0.5 } } end
             return {}
         end,
     },
+    CreateFromMixins = function(...)
+        local t = {}
+        for i = 1, select("#", ...) do for k, v in pairs((select(i, ...))) do t[k] = v end end
+        return t
+    end,
+    MapCanvasPinMixin = {},
+    MapCanvasDataProviderMixin = {},
     UiMapPoint = { CreateFromCoordinates = function(map, x, y) return { map = map, x = x, y = y } end },
 }, { __index = _G })
 env._G = env
@@ -155,12 +176,17 @@ env.WorldMapFrame = nil
 for _, path in ipairs({ "Core/Waypoint.lua", "NaowhForever_Journeys/Journeys.lua", "NaowhForever_Journeys/Constants.lua",
         "NaowhForever_Journeys/Data/Network.lua", "NaowhForever_Journeys/Data/Teleports.lua",
         "NaowhForever_Journeys/Planner.lua", "NaowhForever_Journeys/World.lua", "NaowhForever_Journeys/Walk.lua",
-        "NaowhForever_Journeys/Guide.lua", "NaowhForever_Journeys/Quests.lua" }) do
+        "NaowhForever_Journeys/Guide.lua", "NaowhForever_Journeys/Quests.lua", "NaowhForever_Journeys/Pins.lua" }) do
     local chunk = assert(loadstring(Read(path), path))
     setfenv(chunk, env)
     chunk()
 end
 local Jy = ns.Journeys
+local function Tick()
+    for _, t in ipairs(tickers) do
+        if not t.cancelled then t.fn() end
+    end
+end
 local DESTINATION = { "Mathrengyl Bearwalker", DARNASSUS, 50, 50, " (Druid Trainer)" }
 
 local function Title()
@@ -176,10 +202,12 @@ account.journeyFlights = { ["Glyadin-Forever"] = { [2] = true, [6] = true, [7] =
 here = nil
 Check(ns.PlaceWaypoint(unpack(DESTINATION)) and not Jy.Guide.Current(), "no position (an instance): the plain waypoint")
 here = { x = -4821.8, y = -1155.4, c = 0 }
+Check(Jy.World.Player().z == nil, "UnitPosition's placeholder height of 0 is no height at all")
 
 Check(ns.PlaceWaypoint(unpack(DESTINATION)), "placed with Journeys on")
 local journey = Jy.Guide.Current()
 Check(journey and journey.title == "Mathrengyl Bearwalker", "a journey to the trainer")
+Check(placedAtSet and placedAtSet.title == Title(), "the pin is known as ours before the game hears of it")
 Check(Title() == "Deeprun Tram to Stormwind", "the waypoint names the first thing to do: " .. tostring(Title()))
 local route, at, n, nextTitle = ns.WaypointRoute()
 Check(route == "Mathrengyl Bearwalker" and at == 1 and n > 3 and nextTitle, "the pin hears it is on a route")
@@ -242,6 +270,12 @@ local found = Jy.Guide.Current()
 Check(found and found.quest == 103 and found.stops[1][2] == DARNASSUS,
     "a quest with no next point is found on its zone map, on another continent")
 Jy.Guide.Cancel()
+tracking = 106
+Fire("SUPER_TRACKING_CHANGED")
+local marked = Jy.Guide.Current()
+Check(marked and marked.quest == 106 and marked.stops[1][2] == DARNASSUS,
+    "a quest the game routes through a zone crossing goes to its own marker, not the crossing")
+Jy.Guide.Cancel()
 
 tracking = 101
 Fire("SUPER_TRACKING_CHANGED")
@@ -266,6 +300,61 @@ Fire("SUPER_TRACKING_CHANGED")
 local done = Jy.Guide.Current()
 Check(done and done.quest == 105 and done.stops[1][2] == DARNASSUS, "a finished quest goes to its turn-in")
 Jy.Guide.Cancel()
+
+-- A pin you put on the map yourself becomes a journey; our own pins do not start another.
+Jy.Guide.Cancel()
+here = { x = -4821.8, y = -1155.4, c = 0 }
+env.C_Map.SetUserWaypoint({ map = DARNASSUS, x = 0.5, y = 0.5 })
+RunTimers()
+Check(Jy.Guide.Current() and Jy.Guide.Current().title == "Map Pin", "a pin set on the map starts a journey to it")
+local pinJourney = Jy.Guide.Current()
+RunTimers()
+Check(Jy.Guide.Current() == pinJourney, "and the pin the journey puts up does not start another")
+Jy.Settings.Set("mapPins", false)
+Jy.Guide.Cancel()
+env.C_Map.SetUserWaypoint({ map = DARNASSUS, x = 0.5, y = 0.5 })
+RunTimers()
+Check(not Jy.Guide.Current(), "with Journeys to Map Pins off, a pin is left alone")
+Jy.Settings.Set("mapPins", true)
+env.C_Map.ClearUserWaypoint()
+
+-- Inside the tram (an instance, outside the continents) the journey holds, and picks up on the way out.
+Check(ns.PlaceWaypoint(unpack(DESTINATION)) and Jy.Guide.Current(), "a journey for the tram test")
+local legs = #Jy.Guide.Current().plan.legs
+here = { x = 20, y = 30, c = 369 }
+Fire("PLAYER_ENTERING_WORLD")
+RunTimers()
+Check(Jy.Guide.Current() and #Jy.Guide.Current().plan.legs == legs and Jy.Guide.Current().waiting,
+    "in an instance the journey is kept, not given up")
+Tick()
+Check(Jy.Guide.Current() and Jy.Guide.Current().waiting, "and the ticker leaves it alone")
+here = { x = -8346.5, y = 514.0, c = 0 }
+Fire("PLAYER_ENTERING_WORLD")
+RunTimers()
+Check(Jy.Guide.Current() and not Jy.Guide.Current().waiting, "out of the instance it plans again")
+
+-- The ticker plans again as you move, and a plain waypoint is cleared on arrival.
+local planned = Jy.Guide.Current().plan
+for _ = 1, 3 do Tick() end
+Check(Jy.Guide.Current().plan == planned, "standing still, it is not planned again")
+here = { x = here.x + 20, y = here.y, c = here.c }
+for _ = 1, 3 do Tick() end
+Check(Jy.Guide.Current().plan ~= planned, "every few seconds on the move it is planned again from where you stand")
+local kept = Jy.Guide.Current().plan
+local realPlan = Jy.Planner.Plan
+Jy.Planner.Plan = function() return nil end
+here = { x = here.x + 20, y = here.y, c = here.c }
+for _ = 1, 3 do Tick() end
+Jy.Planner.Plan = realPlan
+Check(Jy.Guide.Current() and Jy.Guide.Current().plan == kept, "a plan that finds no way keeps the journey and its last plan")
+Jy.Guide.Cancel()
+here = { x = -4821.8, y = -1155.4, c = 0 }
+Check(ns.PlaceWaypoint(unpack(DESTINATION)) and Jy.Guide.Current() and current, "a journey with its pin up")
+here = { x = 9945.0, y = 2490.0, c = 1 }
+Tick()
+Check(not Jy.Guide.Current() and current == nil, "arriving, found by the ticker, ends it and clears the pin")
+here = { x = -4821.8, y = -1155.4, c = 0 }
+Tick()
 
 Jy.Settings.Set("quests", false)
 here = { x = -4821.8, y = -1155.4, c = 0 }
@@ -327,7 +416,115 @@ Check(ns.PlaceWaypoint(unpack(DESTINATION)) and not Jy.Guide.Current(),
 env.C_Map.CanSetUserWaypointOnMap = function() return true end
 Jy.Walk.From = realFrom
 
+local realPath, realCost = Jy.Walk.Path, Jy.Walk.Cost
+local WALK_START_X, WALK_START_Y = -4821.8, -1155.4
+local WALK_MID_X, WALK_MID_Y = WALK_START_X - 30, WALK_START_Y
+local WALK_END_X, WALK_END_Y = WALK_START_X - 60, WALK_START_Y
+local reachesFor = {}
+Jy.Walk.From = function(spot)
+    local key = spot.x .. "," .. spot.y
+    reachesFor[key] = (reachesFor[key] or 0) + 1
+    return { c = spot.c, x = spot.x, y = spot.y }
+end
+Jy.Walk.Path = function(a, b) return { a.x, a.y, WALK_MID_X, WALK_MID_Y, b.x, b.y } end
+Jy.Walk.Cost = function(_, a, b)
+    if type(a) ~= "table" or type(b) ~= "table" then return nil end
+    local dx, dy = a.x - b.x, a.y - b.y
+    return math.sqrt(dx * dx + dy * dy)
+end
+MAPS[IRONFORGE] = { c = 0, x = WALK_END_X, y = WALK_END_Y }
+here = { x = WALK_START_X, y = WALK_START_Y, c = 0 }
+Check(ns.PlaceWaypoint("Nearby Spot", IRONFORGE, 50, 50), "a short walk-only journey")
+Check(Jy.Guide.Current() ~= nil, "it starts a journey")
+Check(current and math.abs(current.position.x - WALK_END_X / SCALE) < 1e-6, "the waypoint goes where the walk ends, not on its bends")
+here = { x = WALK_MID_X, y = WALK_MID_Y, c = 0 }
+Fire("NAVIGATION_DESTINATION_REACHED", false)
+RunTimers()
+Check(Jy.Guide.Current() ~= nil, "not there yet, at the walk's middle corner")
+Check(reachesFor[WALK_END_X .. "," .. WALK_END_Y] == 1 and reachesFor[WALK_MID_X .. "," .. WALK_MID_Y] == 1,
+    "planning again walks out from where you stand, keeping the journey's own reach for where it ends")
+here = { x = WALK_END_X, y = WALK_END_Y, c = 0 }
+Fire("NAVIGATION_DESTINATION_REACHED", false)
+RunTimers()
+Check(not Jy.Guide.Current(), "arriving at the walk's last corner ends the journey")
+Check(current == nil, "and clears the game's waypoint, instead of leaving the pin where you now stand")
+Jy.Settings.Set("stepEnds", false)
+here = { x = WALK_START_X, y = WALK_START_Y, c = 0 }
+Check(ns.PlaceWaypoint("Nearby Spot", IRONFORGE, 50, 50) and current and math.abs(current.position.x - WALK_MID_X / SCALE) < 1e-6,
+    "with Waypoint Only Where Steps End off, it goes on each bend")
+Jy.Guide.Cancel()
+Jy.Settings.Set("stepEnds", true)
+
+here = { x = -8835.6, y = 489.3, c = 0 }
+local flights = account.journeyFlights["Glyadin-Forever"]
+account.journeyFlights["Glyadin-Forever"] = {}
+Check(ns.PlaceWaypoint("Far Spot", IRONFORGE, 50, 50), "a journey by the tram")
+Check(printed[#printed] and printed[#printed]:find("flight points", 1, true), "with no flight points known, it says how to learn them")
+local tramLegs = Jy.Guide.Current().plan.legs
+Check(tramLegs[2].mode == "tram" and tramLegs[3].mode == "walk" and tramLegs[3].corners, "the walk after the tram has its own path")
+local points = Jy.Guide.Points()
+Check(points[#points].walk and points[#points - 1].x == WALK_MID_X, "the route draws that walk's bends")
+local rides = 0
+for _, p in ipairs(points) do
+    if p.mode == "tram" then rides = rides + 1 end
+end
+Check(rides == 1, "and the tram as a ride")
+Jy.Guide.Cancel()
+account.journeyFlights["Glyadin-Forever"] = flights
+Jy.Walk.Path, Jy.Walk.Cost = realPath, realCost
+
 Check(Jy.Guide.LegText({ mode = "lift", name = "The Rise" }) == "Lift to The Rise", "a lift step reads as one")
+
+-- On the boat the plan holds: out on the water it is not made again, and reaching the far dock makes it again.
+Jy.Walk.From = realFrom
+here = { x = -8654.5, y = 1344.4, c = 0 }
+Check(ns.PlaceWaypoint(unpack(DESTINATION)) and Title() == "Boat to Auberdine" and Jy.Guide.Current().ride,
+    "at the Stormwind dock the boat is the next thing to do: " .. tostring(Title()))
+local aboard = Jy.Guide.Current().plan
+local realAshore = Jy.Walk.Ashore
+Jy.Walk.Ashore = function() return false end
+here = { x = -8700.0, y = 1700.0, c = 0 }
+for _ = 1, 3 do Tick() end
+Fire("PLAYER_ENTERING_WORLD")
+RunTimers()
+Check(Jy.Guide.Current().plan == aboard and Title() == "Boat to Auberdine", "out on the water the boat stays the plan")
+here = { x = 6548.3, y = 942.2, c = 1 }
+Fire("NAVIGATION_DESTINATION_REACHED", false)
+RunTimers()
+Check(Jy.Guide.Current().plan ~= aboard and not Jy.Guide.Current().ride, "reaching the far dock plans again: " .. tostring(Title()))
+Jy.Walk.Ashore = realAshore
+Jy.Guide.Cancel()
+
+-- A flight point learned at a flight master plans the journey again, and a flight is drawn through its stops.
+local MENETHIL, DARKSHIRE_FLIGHT = { c = 0, x = -3793.4, y = -782.4 }, 12
+local nodes = {}
+env.GetTaxiMapID = function() return EASTERN_KINGDOMS end
+env.C_TaxiMap = { GetAllTaxiNodes = function() return nodes end }
+here = { x = MENETHIL.x, y = MENETHIL.y, c = MENETHIL.c }
+Check(ns.PlaceWaypoint("Darkshire", DUSKWOOD, 50, 50) and Jy.Guide.Current(), "a journey to Duskwood")
+local unlearned = Jy.Guide.Current().plan
+Check(unlearned.legs[#unlearned.legs - 1].name ~= "Darkshire, Duskwood", "with Darkshire's flight point unknown, it does not fly there")
+nodes = { { nodeID = 6, state = 1 } }
+Fire("TAXIMAP_OPENED")
+RunTimers()
+Fire("TAXIMAP_CLOSED")
+Check(Jy.Guide.Current().plan == unlearned, "a flight master's map with nothing new leaves the plan alone")
+nodes = { { nodeID = DARKSHIRE_FLIGHT, state = 1 } }
+Fire("TAXIMAP_OPENED")
+RunTimers()
+Fire("TAXIMAP_CLOSED")
+local learnedPlan = Jy.Guide.Current().plan
+local flight = learnedPlan.legs[1]
+Check(learnedPlan ~= unlearned and flight.mode == "fly" and flight.name == "Darkshire, Duskwood",
+    "learning Darkshire's flight point plans again, flying there")
+local stopsAt = {}
+for _, p in ipairs(Jy.Guide.Points()) do
+    if p.mode == "fly" then stopsAt[#stopsAt + 1] = p.x end
+end
+Check(#stopsAt == 3 and stopsAt[1] == ns.JourneyNetwork.flights[6][3] and stopsAt[2] == ns.JourneyNetwork.flights[2][3],
+    "and the flight is drawn through Ironforge and Stormwind, where it stops: " .. #stopsAt)
+Jy.Guide.Cancel()
+account.journeyFlights["Glyadin-Forever"][DARKSHIRE_FLIGHT] = nil
 
 Jy.Settings.Set("enabled", false)
 Check(not Jy.Guide.Current(), "turning Journeys off ends the journey")

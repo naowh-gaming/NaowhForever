@@ -5,6 +5,7 @@ local B = ns.Blessings
 local S = B.Settings
 local T = ns.THEME
 local Parts = ns.Shared.Parts
+local ItemBar = ns.Shared.ItemBar
 
 local RED = { r = 0.97, g = 0.27, b = 0.27 }
 local YELLOW = { r = 1, g = 0.85, b = 0.3 }
@@ -18,17 +19,20 @@ local LABEL_DROP, LABEL_SIDE, TIMER_Y = 2, 3, 1
 local CLASS_ICON_PATH = "Interface\\Icons\\ClassIcon_"
 local CLASS_ICON_MIN, CLASS_ICON_MAX = 12, 24
 local CLASS_ICON_SHARE = 2 / 3
-local HIGHLIGHT = "Interface\\Buttons\\ButtonHilight-Square"
+local HOVER_ALPHA, PUSHED_ALPHA = 0.15, 0.35
+local FLAT_BLEND = "BLEND"
 local SECONDS = 60
 local ROUND = B.ROUND
 local MINUTES = "m"
 local MARK = "!"
+local EDGE = { RIGHT = "LEFT", LEFT = "RIGHT", DOWN = "TOP", UP = "BOTTOM" }
+local TOWARD = { RIGHT = 1, LEFT = -1, DOWN = -1, UP = 1 }
 
 local tints = { [RED] = RED, [YELLOW] = YELLOW, [BLUE] = BLUE }
 local deepAccent
 
-local Look = { RED = RED, YELLOW = YELLOW, BLUE = BLUE, HIGHLIGHT = HIGHLIGHT, ICON_BORDER = ICON_BORDER,
-    ICON_CROP = ICON_CROP, CLASS_ICON_PATH = CLASS_ICON_PATH }
+local Look = { RED = RED, YELLOW = YELLOW, BLUE = BLUE, ICON_BORDER = ICON_BORDER,
+    ICON_CROP = ICON_CROP, CLASS_ICON_PATH = CLASS_ICON_PATH, EDGE = EDGE, TOWARD = TOWARD }
 B.Look = Look
 
 local function Shorten(text, n)
@@ -102,6 +106,23 @@ function Look.Icon(frame)
     frame.timer:SetPoint("BOTTOM", 0, TIMER_Y)
 end
 
+local function Flat(texture, colour, alpha)
+    texture:SetColorTexture(colour.r, colour.g, colour.b, alpha)
+    texture:SetBlendMode(FLAT_BLEND)
+    ns.PixelInset(texture, 1)
+end
+
+function Look.Hover(button)
+    local hover = button:GetHighlightTexture()
+    if not hover then
+        hover = ns.Solid(button, "HIGHLIGHT")
+        button:SetHighlightTexture(hover)
+    end
+    Flat(hover, T.fg, HOVER_ALPHA)
+    local pushed = button:GetPushedTexture()
+    if pushed then Flat(pushed, ICON_BORDER, PUSHED_ALPHA) end
+end
+
 function Look.Label(cell, class)
     cell.label = ns.Font(cell, LABEL_SIZE, "OUTLINE")
     cell.label:SetPoint("TOP", cell, "BOTTOM", 0, -LABEL_DROP)
@@ -115,7 +136,8 @@ function Look.Read()
     Look.timerSize, Look.labels = S.Get("blessTimerSize"), S.Get("blessShowLabels")
     Look.icons = S.Get("blessLabelStyle") == "icon"
     Look.font, Look.outline = S.Get("blessFont"), S.Get("blessOutline")
-    Look.vertical = S.Get("blessLayout") == "vertical"
+    Look.grow = ItemBar.GrowOf(S.Get("blessLayout"))
+    Look.vertical = ItemBar.Vertical(Look.grow)
     if S.Get("blessThemeColors") then
         deepAccent = deepAccent or { r = T.accent.r * DEEP_SHADE, g = T.accent.g * DEEP_SHADE, b = T.accent.b * DEEP_SHADE }
         tints[RED], tints[YELLOW], tints[BLUE] = T.accent, T.accentSoft, deepAccent
@@ -137,14 +159,19 @@ function Look.Place(frame, row, x)
     Parts.HudFont(frame.mark, font, MARK_SIZE, outline)
     frame.mark:SetTextColor(missing.r, missing.g, missing.b)
     if frame.label then PlaceLabel(frame, size) end
-    frame:ClearAllPoints()
-    if Look.vertical then
-        frame:SetPoint("TOP", row, "TOP", 0, 0 - x)
-    else
-        frame:SetPoint("LEFT", row, "LEFT", x, 0)
-    end
+    Look.Pin(frame, row, x)
     frame:Show()
     return x + size + Look.gap
+end
+
+function Look.Pin(frame, row, x)
+    local edge, step = EDGE[Look.grow], TOWARD[Look.grow] * x
+    frame:ClearAllPoints()
+    if Look.vertical then
+        frame:SetPoint(edge, row, edge, 0, step)
+    else
+        frame:SetPoint(edge, row, edge, step, 0)
+    end
 end
 
 function Look.IconSize()

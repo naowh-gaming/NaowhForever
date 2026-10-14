@@ -83,6 +83,7 @@ local ns = { L = dofile("Tools/regression/locale_stub.lua").L, Upper = string.up
         Style = setmetatable({ PLUS = "plus", CROSS = "cross", OPACITY_MIN = 20 },
             { __index = dofile("Tools/regression/shared_style.lua") }),
         Parts = { HudFont = function(fs, font, size, outline) fs.font, fs.size, fs.outline = font, size, outline end },
+        Anchor = { Rows = function(spec) return { { anchor = spec } } end },
         Settings = {
             Group = function(name) return { group = name } end,
             Look = function(prefix, opts) return { { look = prefix, opts = opts } } end,
@@ -149,6 +150,7 @@ local function Load(path)
     setfenv(fn, env)
     fn("NaowhForever", ns)
 end
+Load("Shared/UI/ItemBar.lua")
 for _, path in ipairs(dofile("Tools/regression/toc_files.lua")("^NaowhForever_Blessings/.*%.lua$")) do
     if not path:find("/UI/Window%.lua$") then Load(path) end
 end
@@ -160,6 +162,47 @@ local function Stage()
     stage:SetSize(600, 160)
     return stage
 end
+
+-- The bar's buttons keep their 1px black border: Look.Hover repaints the game's square glow and
+-- quickslot depress (Parts.Press) as flat fills inside the border, with no other texture made.
+local function Region()
+    local r = {}
+    function r:SetColorTexture(cr, cg, cb, a) self.rgba = { cr, cg, cb, a } end
+    function r:SetBlendMode(mode) self.blend = mode end
+    return r
+end
+local inset = {}
+local realInset = ns.PixelInset
+ns.PixelInset = function(region, n) inset[region] = n end
+local made = 0
+local realSolid = ns.Solid
+ns.Solid = function(...) made = made + 1; return realSolid(...) end
+local glow, depress = Region(), Region()
+glow.blend = "ADD"
+local secure = { GetHighlightTexture = function() return glow end, GetPushedTexture = function() return depress end,
+    SetHighlightTexture = function() error("the glow is repainted, not replaced") end }
+B.Look.Hover(secure)
+check("hover: the game's glow becomes a faint flat white", glow.rgba[1] == 1 and glow.rgba[4] > 0
+    and glow.rgba[4] < 0.5 and glow.blend == "BLEND")
+check("pressed: the depress becomes a flat black shade", depress.rgba[1] == 0 and depress.rgba[3] == 0
+    and depress.rgba[4] > glow.rgba[4] and depress.blend == "BLEND")
+check("both sit inside the 1px black border", inset[glow] == 1 and inset[depress] == 1)
+check("no texture is added beside the game's ones", made == 0)
+local plain = { level = 0, GetHighlightTexture = function() return nil end, GetPushedTexture = function() return nil end }
+function plain:SetHighlightTexture(t) self.highlight = t end
+B.Look.Hover(plain)
+check("a plain preview button gets the same hover, made once", made == 1 and plain.highlight ~= nil
+    and inset[plain.highlight] == 1)
+ns.PixelInset, ns.Solid = realInset, realSolid
+local barSource = io.open("NaowhForever_Blessings/UI/Bar.lua", "rb"):read("*a")
+local recipientSource = io.open("NaowhForever_Blessings/UI/Recipient.lua", "rb"):read("*a")
+check("the aura and Righteous Fury buttons are repainted after Parts.Press",
+    barSource:find("Parts%.Press%(btn%)\r?\n%s*Look%.Hover%(btn%)") ~= nil)
+check("so are the class buttons",
+    recipientSource:find("Parts%.Press%(button%)\r?\n%s*B%.Look%.Hover%(button%)") ~= nil)
+check("the preview has no game glow left", not io.open("NaowhForever_Blessings/UI/SettingsPage.lua", "rb"):read("*a")
+    :find("ButtonHilight", 1, true) and not io.open("NaowhForever_Blessings/View/Look.lua", "rb"):read("*a")
+    :find("ButtonHilight", 1, true))
 
 -- A warrior's view: the bar as a sample, still editable for its look.
 local preview = studio.new(Stage())
@@ -327,6 +370,35 @@ check("the icon stops at 24 px on big buttons", classIcon.w == 24)
 settings.blessBarSize = 20
 studio.paint(preview, "group")
 check("and keeps two thirds on small ones", classIcon.w == 13)
+-- Growth Direction: Left and Up grow from the opposite edge; the saved Horizontal and Vertical still mean Right and Down.
+settings.blessBarSize, settings.blessLabelStyle, settings.blessLayout = nil, nil, "LEFT"
+studio.paint(preview, "group")
+check("left: the class buttons stack from the right edge", first.point == "RIGHT" and second.point == "RIGHT"
+    and second.x == first.x - 36 and second.y == 0)
+check("left: the bar is a row with the labels under it", preview.bar.h == 30 and first.label.point == "TOP"
+    and preview.plus.point == "RIGHT")
+cursorX = 100
+grip.scripts.OnMouseDown(grip, "LeftButton")
+cursorX = 90
+grip.scripts.OnUpdate(grip)
+check("left: dragging left widens the gap", S.Get("blessGroupSpacing") == 16)
+grip.scripts.OnMouseUp(grip, "LeftButton")
+cursorX, settings.blessGroupSpacing = 0, nil
+settings.blessLayout = "UP"
+studio.paint(preview, "group")
+check("up: the class buttons stack from the bottom", first.point == "BOTTOM" and second.point == "BOTTOM"
+    and second.y == first.y + 36 and second.x == 0)
+check("up: the bar is a column with the labels beside it", preview.bar.w == 30 and first.label.point == "LEFT")
+cursorY = 100
+grip.scripts.OnMouseDown(grip, "LeftButton")
+cursorY = 110
+grip.scripts.OnUpdate(grip)
+check("up: dragging up widens the gap", S.Get("blessGroupSpacing") == 16)
+grip.scripts.OnMouseUp(grip, "LeftButton")
+check("the card's summary says vertical for up", cards.bar.summary(S):find(", vertical", 1, true))
+cursorY, settings.blessGroupSpacing, settings.blessLayout = 0, nil, nil
+studio.paint(preview, "group")
+
 settings.blessShowLabels = false
 studio.paint(preview, "group")
 check("Class Labels off hides the icon too", not classIcon.shown and not warriorCell.label.shown)
@@ -347,6 +419,21 @@ check("a column's names sit beside it with nothing to run into: never squeezed",
     warriorCell.label.text == "Warrior" and warriorCell.label.size == 10)
 settings.blessBarSize, settings.blessSpacing, settings.blessLayout = nil, nil, nil
 studio.paint(preview, "group")
+
+-- The Anchor card: Growth Direction first, the shared anchor rows on the bar's own settings, and a way
+-- back above Buff Reminders. The Blessing Bar card no longer lists Growth Direction.
+local anchorRows = cards.anchor and cards.anchor.rows
+check("the Anchor card starts with Growth Direction", anchorRows and anchorRows[1].key == "blessLayout"
+    and anchorRows[1].label == "Growth Direction")
+local layoutValues, layoutOrder = anchorRows[1].choice[1], anchorRows[1].choice[2]
+check("Growth Direction offers Right, Left, Up and Down, keeping the saved Horizontal and Vertical",
+    layoutOrder[1] == "horizontal" and layoutOrder[2] == "LEFT" and layoutOrder[3] == "UP"
+    and layoutOrder[4] == "vertical" and layoutValues.horizontal == "Right" and layoutValues.vertical == "Down")
+check("the Anchor card has the shared rows and Reset Position", anchorRows[2].anchor.prefix == "bless"
+    and anchorRows[3].label == "Reset Position" and anchorRows[3].button == B.ResetPosition)
+local barLayoutRow = false
+for _, row in ipairs(cards.bar.rows) do if row.key == "blessLayout" then barLayoutRow = true end end
+check("Growth Direction is on one card only", not barLayoutRow)
 
 -- Off: nothing in the preview edits.
 settings.blessings = false

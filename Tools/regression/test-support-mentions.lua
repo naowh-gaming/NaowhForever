@@ -108,7 +108,7 @@ end
 
 local scanned, hitFiles = 0, {}
 for _, path in ipairs(TOC_LUA) do
-    local f = not path:find("^Libs/") and not path:find("^Core/Locales/") and io.open(path, "rb")
+    local f = not path:find("^Libs/") and not path:find("^Core/Locales/") and not path:find("^NaowhForever_Locales/") and io.open(path, "rb")
     if f then
         local src = f:read("*a")
         f:close()
@@ -211,8 +211,11 @@ local function Shown(flag)
         wipe = function(t) for k in pairs(t) do t[k] = nil end return t end,
         strtrim = function(s) return (s:gsub("^%s+", ""):gsub("%s+$", "")) end,
         date = os.date,
+        -- The patron is of the other faction, whose badges show as listed, with no whisper to confirm.
+        UnitFactionGroup = function() return "Alliance" end,
+        GetPlayerInfoByGUID = function(guid) if guid == "Player-1-PATRON" then return nil, nil, nil, "Orc" end end,
     }, { __index = _G })
-    Load({ Located("Core/Badges/Badges.lua"), Located("CharacterPanel/UI/SettingsPage.lua"),
+    Load({ Located("Core/Badges/Confirm.lua"), Located("Core/Badges/Badges.lua"), Located("CharacterPanel/UI/SettingsPage.lua"),
         Located("InspectPanel/UI/SettingsPage.lua"),
         Located("Core/Pages/Credits.lua"), Located("Core/Pages/PatchNotes.lua") }, env)
     ns.BuildCreditsPage({ GetWidth = function() return 800 end }, 0)
@@ -241,11 +244,10 @@ local function Shown(flag)
     end
     local pages = #texts
 
-    for key, tier in pairs(ns.BADGE_TIERS) do
+    for _, tier in pairs(ns.BADGE_TIERS) do
         for _, field in ipairs({ "title", "about", "label", "tooltipLine" }) do
             if tier[field] then texts[#texts + 1] = tier[field] end
         end
-        ns.ShowBadgeCard(key, "Someone")
     end
     texts[#texts + 1] = ns.BadgeSince({ tier = "legendary", since = "2026-03" })
     for _, command in ipairs({ "", "preview", "toast", "preview none", "preview off", "id" }) do

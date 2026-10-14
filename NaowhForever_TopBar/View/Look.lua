@@ -79,15 +79,14 @@ function Look.Accent()
     return T.accent.r, T.accent.g, T.accent.b
 end
 
--- Classic+ icons are in full colour, so nothing tints them; the game's highlight shows the hover.
 function Look.IconColor()
-    if ns.classicSkin then return 1, 1, 1 end
+    if ns.foreverSkin then return 1, 1, 1 end
     local c = S.Get("iconColor")
     return c.r, c.g, c.b
 end
 
 function Look.HoverColor()
-    if ns.classicSkin then return 1, 1, 1 end
+    if ns.foreverSkin then return 1, 1, 1 end
     return Look.Accent()
 end
 
@@ -155,7 +154,8 @@ function Look.ClockFont(clock)
         clock:SetFont(ns.UIFontPath(), size, flags)
     end
     Parts.HudText(clock, outline == "" and "card" or false)
-    clock:SetTextColor(Tone("fg", WHITE))
+    local c = S.Get("clockColor")
+    clock:SetTextColor(c.r, c.g, c.b)
 end
 
 function Look.ClockText()

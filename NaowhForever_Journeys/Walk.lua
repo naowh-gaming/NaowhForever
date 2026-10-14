@@ -1,4 +1,4 @@
--- Walk.lua: walking costs over the baked walking maps (NaowhForever_JourneysData), loaded when first needed.
+-- Walk.lua: walking costs over the baked walking maps (NaowhForever_JourneysData), built when needed, let go when idle.
 local ns = _G.NaowhForever
 
 local sqrt, floor = math.sqrt, math.floor
@@ -14,7 +14,10 @@ local ORIGIN = 32 * TILE
 local Q = 1
 local EDGE_KEY = 65536
 local SIDE = 8
-local FACTOR = { [0] = 1, [1] = C.SWIM, [2] = C.SEA }
+local OCEAN = 2
+local PIER_WIDTH = 30
+local BOAT = "Boat"
+local FACTOR = { [0] = 1, [1] = C.SWIM, [OCEAN] = C.SEA }
 
 local Walk = {}
 Jy.Walk = Walk
@@ -23,6 +26,7 @@ local loaded, store
 local tiles, used = {}, {}
 local graphs, places = {}, {}
 local budgetEnd = 0
+local lastUse, releasing = 0, false
 
 local function Decode(s)
     local u = C_EncodingUtil
@@ -38,6 +42,26 @@ end
 
 function Walk.StartBudget()
     budgetEnd = debugprofilestop() + C.WALK_BUDGET
+end
+
+local function Release()
+    local idle = GetTime() - lastUse
+    if idle < C.WALK_RELEASE then
+        C_Timer.After(C.WALK_RELEASE - idle, Release)
+        return
+    end
+    releasing = false
+    wipe(tiles)
+    wipe(used)
+    wipe(graphs)
+    wipe(places)
+end
+
+local function Used()
+    lastUse = GetTime()
+    if releasing then return end
+    releasing = true
+    C_Timer.After(C.WALK_RELEASE, Release)
 end
 
 function Walk.Ready()
@@ -124,6 +148,7 @@ function Walk.Tile(map, tx, ty)
         tiles[key] = tile
     end
     used[key] = GetTime()
+    Used()
     return tile or nil
 end
 
@@ -145,19 +170,27 @@ local function Inside(tile, poly, x, y)
     return inside
 end
 
-function Walk.StandOn(tile, x, y, z)
+function Walk.StandOn(tile, x, y, z, dry)
     local best, bestScore, extra = nil, math.huge, 0
+    local area = dry and tile.area
     for p = 1, #tile.polys do
         local dx, dy = tile.cx[p] - x, tile.cy[p] - y
         local flat = sqrt(dx * dx + dy * dy)
         local inside = Inside(tile, tile.polys[p], x, y)
         local height = z and math.abs(tile.cz[p] - z) or 0
         local score = inside and height or flat + height * C.HEIGHT_WEIGHT
-        if (inside or flat < C.WALK_REACH) and score < bestScore then
+        if (inside or flat < C.WALK_REACH) and score < bestScore and not (area and area[p] == OCEAN) then
             best, bestScore, extra = p, score, inside and 0 or flat + height
         end
     end
     return best, extra
+end
+
+function Walk.Ashore(spot)
+    if not Walk.Ready() then return true end
+    local tile = Walk.Tile(spot.c, Walk.TileOf(spot.x, spot.y))
+    local poly = tile and Walk.StandOn(tile, spot.x, spot.y, spot.z)
+    return poly ~= nil and not (tile.area and tile.area[poly] == OCEAN)
 end
 
 local function Push(heap, cost, node)
@@ -229,6 +262,7 @@ function Walk.Spread(tile, from, extra)
 end
 
 local function Graph(map)
+    Used()
     local g = graphs[map]
     if g == nil then
         local s = store.graph[map]
@@ -254,6 +288,7 @@ local function Graph(map)
 end
 
 local function Places(map)
+    Used()
     local p = places[map]
     if p == nil then
         local s = store.walks[map]
@@ -294,16 +329,58 @@ local function Search(g, seeds)
     return cost, prev
 end
 
--- A spot's walking reach, for Walk.Cost: nil where the map has no walking data under it.
+local function Pier(map, spot)
+    local p = Places(map)
+    if not p then return nil end
+    for s, ship in ipairs(ns.JourneyNetwork.ships) do
+        if ship[1] == BOAT then
+            for i = 3, #ship do
+                local dock = ship[i]
+                local at = dock[1] == map and p.index["s" .. s .. "." .. i - 2]
+                local r = at and p.r[at]
+                local tile = r and r[1] and Walk.Tile(map, r[1], r[2])
+                if tile then
+                    local rx, ry = tile.cx[r[3]], tile.cy[r[3]]
+                    local span = sqrt((dock[2] - rx) ^ 2 + (dock[3] - ry) ^ 2)
+                    local toRoot = sqrt((spot.x - rx) ^ 2 + (spot.y - ry) ^ 2)
+                    local toDock = sqrt((spot.x - dock[2]) ^ 2 + (spot.y - dock[3]) ^ 2)
+                    if toDock + toRoot <= span + PIER_WIDTH then return tile, r[1], r[2], r[3], toRoot end
+                end
+            end
+        end
+    end
+end
+
 function Walk.From(spot)
     if not Walk.Ready() then return nil end
     local map = spot.c
     local tx, ty = Walk.TileOf(spot.x, spot.y)
     local tile = Walk.Tile(map, tx, ty)
     local g = Graph(map)
-    if not tile or not g then return nil end
-    local poly, extra = Walk.StandOn(tile, spot.x, spot.y, spot.z)
-    if not poly then return nil end
+    if not g then return nil end
+    local poly, extra
+    if tile then poly, extra = Walk.StandOn(tile, spot.x, spot.y, spot.z, true) end
+    if not poly then
+        local x0, y0 = tx, ty
+        for dx = -1, 1 do
+            for dy = -1, 1 do
+                local t = Walk.Tile(map, x0 + dx, y0 + dy)
+                if t then
+                    local p, e = Walk.StandOn(t, spot.x, spot.y, spot.z, true)
+                    if p and (not poly or e < extra) then poly, extra, tile, tx, ty = p, e, t, x0 + dx, y0 + dy end
+                end
+            end
+        end
+    end
+    local pier
+    if not poly or extra > 0 then
+        local t, x, y, p, e = Pier(map, spot)
+        if t then tile, tx, ty, poly, extra, pier = t, x, y, p, e, true end
+    end
+    if not poly then return false end
+    local x, y, off = spot.x, spot.y, nil
+    local sx, sy = Walk.TileOf(spot.x, spot.y)
+    if pier or sx ~= tx or sy ~= ty then x, y, off = tile.cx[poly], tile.cy[poly], { spot.x, spot.y } end
     local near, nearPrev = Walk.Spread(tile, poly, extra)
     local seeds = {}
     for _, c in ipairs(tile.cross) do
@@ -314,7 +391,7 @@ function Walk.From(spot)
         end
     end
     local far, farPrev = Search(g, seeds)
-    return { map = map, tx = tx, ty = ty, poly = poly, x = spot.x, y = spot.y, near = near, nearPrev = nearPrev,
+    return { map = map, tx = tx, ty = ty, poly = poly, x = x, y = y, off = off, near = near, nearPrev = nearPrev,
         far = far, farPrev = farPrev }
 end
 
@@ -417,21 +494,26 @@ local function Segment(tile, fromPoly, fromX, fromY, toPoly, toX, toY, out)
     return true
 end
 
+local SIDES = { { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } }
+
 local function PolyFor(tile, crossing)
     for _, c in ipairs(tile.cross) do
         if c[1] == crossing then return c[2] end
     end
 end
 
--- The walk from reach a to reach b as corner points { x1, y1, x2, y2, ... }, start and end included,
--- or nil when there is no walk between them.
+local function Ends(b, out)
+    if b.off then out[#out + 1], out[#out + 2] = b.off[1], b.off[2] end
+    return out
+end
+
 function Walk.Path(a, b)
     local _, via = Between(a, b)
-    local out = { a.x, a.y }
+    local out = a.off and { a.off[1], a.off[2], a.x, a.y } or { a.x, a.y }
     if not via then
         if a.tx ~= b.tx or a.ty ~= b.ty or not a.near[b.poly] then return nil end
         local tile = Walk.Tile(a.map, a.tx, a.ty)
-        return Segment(tile, a.poly, a.x, a.y, b.poly, b.x, b.y, out) and out or nil
+        return Segment(tile, a.poly, a.x, a.y, b.poly, b.x, b.y, out) and Ends(b, out) or nil
     end
     local g = Graph(a.map)
     local chain, c = {}, via
@@ -439,27 +521,28 @@ function Walk.Path(a, b)
         table.insert(chain, 1, c)
         c = a.farPrev[c]
     end
-    local tile = Walk.Tile(a.map, a.tx, a.ty)
+    local tx, ty = a.tx, a.ty
+    local tile = Walk.Tile(a.map, tx, ty)
     local fromPoly, fromX, fromY = a.poly, a.x, a.y
     for k = 1, #chain do
         local id = chain[k]
         local toPoly = PolyFor(tile, id)
         if not toPoly or not Segment(tile, fromPoly, fromX, fromY, toPoly, g.px[id], g.py[id], out) then return nil end
-        local nextTile
-        local nextId = chain[k + 1]
-        local tx, ty = Walk.TileOf(g.px[id] + (nextId and (g.px[nextId] - g.px[id]) * 0.01 or (b.x - g.px[id]) * 0.01),
-            g.py[id] + (nextId and (g.py[nextId] - g.py[id]) * 0.01 or (b.y - g.py[id]) * 0.01))
-        nextTile = Walk.Tile(a.map, tx, ty)
-        if not nextTile then return nil end
-        tile, fromPoly, fromX, fromY = nextTile, PolyFor(nextTile, id), g.px[id], g.py[id]
+        fromPoly = nil
+        for _, step in ipairs(SIDES) do
+            local nextTile = Walk.Tile(a.map, tx + step[1], ty + step[2])
+            local poly = nextTile and PolyFor(nextTile, id)
+            if poly then
+                tile, fromPoly, tx, ty = nextTile, poly, tx + step[1], ty + step[2]
+                break
+            end
+        end
         if not fromPoly then return nil end
+        fromX, fromY = g.px[id], g.py[id]
     end
-    return Segment(tile, fromPoly, fromX, fromY, b.poly, b.x, b.y, out) and out or nil
+    return Segment(tile, fromPoly, fromX, fromY, b.poly, b.x, b.y, out) and Ends(b, out) or nil
 end
 
--- Walking yards (water counted dearer) between two ends: each a place key of the network ("f2",
--- "s3.1", "l1.2") or a reach from Walk.From. false when there is no walk; nil when the data cannot
--- say, as for a place with no ground baked near it (the Stormwind Harbor dock).
 function Walk.Cost(map, a, b)
     if not Walk.Ready() then return nil end
     local p = Places(map)

@@ -6,6 +6,7 @@
 local NOTHING = function() end
 local frames, printed, disbanded, invited, invitedAll = {}, {}, 0, {}, 0
 local combat = false
+local shift, grouped, leading = false, false, false
 
 local function Frame(kind, parent, template)
     local f = { kind = kind, parent = parent, template = template, scripts = {}, attrs = {}, events = {} }
@@ -13,6 +14,10 @@ local function Frame(kind, parent, template)
         if type(k) == "string" and k:find("^%u") then return NOTHING end
     end })
     function f:SetScript(name, fn) self.scripts[name] = fn end
+    function f:HookScript(name, fn)
+        local before = self.scripts[name]
+        self.scripts[name] = before and function(...) before(...); fn(...) end or fn
+    end
     function f:SetAttribute(k, v) self.attrs[k] = v end
     function f:SetSize(w, h) self.w, self.h = w, h end
     function f:Show() self.shown = true end
@@ -38,7 +43,7 @@ local ns = { L = dofile("Tools/regression/locale_stub.lua").L, Upper = string.up
     THEME = setmetatable({}, { __index = function() return { r = 1, g = 1, b = 1 } end }),
     UI = { AttachMover = function(parent) return Frame("Mover", parent) end,
         FontPath = function(name) return name == "" and "font" or "lsm:" .. name end },
-    Shared = { Style = dofile("Tools/regression/shared_style.lua"), Parts = { HudFont = function(fs, font, size, outline)
+    Shared = { Style = dofile("Tools/regression/shared_style.lua"), Parts = { Press = function(button) button.pressed = true end, HudFont = function(fs, font, size, outline)
         fs:SetFont(font == "" and "font" or "lsm:" .. font, size, outline == "NONE" and "" or outline)
     end, HudBackdrop = function(_, opts)
         local backdrop = { opts = opts, border = { SetColor = NOTHING } }
@@ -50,6 +55,7 @@ local ns = { L = dofile("Tools/regression/locale_stub.lua").L, Upper = string.up
     Font = function(parent) return Frame("FontString", parent) end,
     Print = function(m) printed[#printed + 1] = m end,
     DisbandGroup = function() disbanded = disbanded + 1 end,
+    DisbandMacro = function() return "/uninvite Gly" end,
     InvitePerson = function(i) invited[#invited + 1] = i end,
     InviteAll = function() invitedAll = invitedAll + 1 end,
     InviteWho = function(entry) return entry.tag or entry.char end,
@@ -60,15 +66,21 @@ local env = setmetatable({
     UIParent = {},
     CreateFrame = function(kind, _, parent, template) return Frame(kind, parent, template) end,
     InCombatLockdown = function() return combat end,
+    IsShiftKeyDown = function() return shift end,
+    GameTooltip = setmetatable({}, { __index = function() return NOTHING end }),
+    IsInGroup = function() return grouped end,
+    UnitIsGroupLeader = function() return leading end,
     wipe = function(t) for k in pairs(t) do t[k] = nil end return t end,
     hooksecurefunc = function(t, _, fn)
         if t == S then setHooks[#setHooks + 1] = fn end
     end,
 }, { __index = _G })
 env._G = env
-local chunk = assert(loadfile("NaowhForever_QoL/Questing/GroupButtons.lua"))
-setfenv(chunk, env)
-chunk()
+for _, path in ipairs({ "Shared/UI/ItemBar.lua", "NaowhForever_QoL/Questing/GroupButtons.lua" }) do
+    local chunk = assert(loadfile(path))
+    setfenv(chunk, env)
+    chunk()
+end
 local events, boot = frames[1], frames[2]
 
 local function Set(k, v)
@@ -96,7 +108,9 @@ Case("on: Invite runs the game's /invite from a secure button, stacked over Disb
     assert(bar and bar.shown)
     assert(bar.invite.template == "SecureActionButtonTemplate")
     assert(bar.invite.attrs.type1 == "macro" and bar.invite.attrs.macrotext1 == "/invite")
-    assert(bar.disband.template == nil, "Disband is the addon's own")
+    assert(bar.disband.template == "SecureActionButtonTemplate" and bar.disband.attrs["shift-type1"] == "macro",
+        "Disband is secure for its Shift-click only")
+    assert(bar.disband.attrs.type1 == nil, "a plain click runs no macro")
     assert(bar.w == 90 and bar.h == 52, "stacked: " .. bar.w .. "x" .. bar.h)
     assert(bar.disband.point[3] == "BOTTOMLEFT", "Disband under Invite")
 end)
@@ -106,6 +120,21 @@ Case("side by side", function()
     local bar = Bar()
     assert(bar.w == 184 and bar.h == 24, "row: " .. bar.w .. "x" .. bar.h)
     assert(bar.disband.point[3] == "TOPRIGHT", "Disband right of Invite")
+end)
+
+Case("growing left and up", function()
+    Set("groupButtonsLayout", "LEFT")
+    local bar = Bar()
+    assert(bar.w == 184 and bar.h == 24, "left: " .. bar.w .. "x" .. bar.h)
+    assert(bar.invite.point[1] == "TOPRIGHT" and #bar.invite.point == 1, "Invite at the right edge")
+    assert(bar.disband.point[1] == "TOPRIGHT" and bar.disband.point[3] == "TOPLEFT" and bar.disband.point[4] == -4,
+        "Disband left of Invite")
+    Set("groupButtonsLayout", "UP")
+    assert(bar.w == 90 and bar.h == 52, "up: " .. bar.w .. "x" .. bar.h)
+    assert(bar.invite.point[1] == "BOTTOMLEFT" and #bar.invite.point == 1, "Invite at the bottom")
+    assert(bar.disband.point[1] == "BOTTOMLEFT" and bar.disband.point[3] == "TOPLEFT" and bar.disband.point[5] == 4,
+        "Disband over Invite")
+    Set("groupButtonsLayout", "row")
 end)
 
 Case("today's look by default: 90x24, the panel card, the Addon Font at 12 with no outline", function()
@@ -145,11 +174,30 @@ end)
 Case("Disband waits for the end of a fight, then disbands", function()
     local bar = Bar()
     combat = true
-    bar.disband.scripts.OnClick(bar.disband)
+    bar.disband.scripts.PostClick(bar.disband, "LeftButton", false)
     assert(disbanded == 0 and printed[#printed]:find("fight is over"), "refused in combat")
     combat = false
-    bar.disband.scripts.OnClick(bar.disband)
+    bar.disband.scripts.PostClick(bar.disband, "LeftButton", true)
+    assert(disbanded == 0, "the press itself does nothing")
+    bar.disband.scripts.PostClick(bar.disband, "LeftButton", false)
     assert(disbanded == 1)
+end)
+
+Case("Shift-click disbands at once for the leader, with no question", function()
+    local bar = Bar()
+    grouped, leading = true, true
+    bar.disband.scripts.OnEnter(bar.disband)
+    assert(bar.disband.attrs["shift-macrotext1"] == "/uninvite Gly", "hovering arms the uninvite macro")
+    local before = disbanded
+    shift = true
+    bar.disband.scripts.PostClick(bar.disband, "LeftButton", false)
+    assert(disbanded == before, "Shift-click leaves it to the macro: no question")
+    leading = false
+    bar.disband.scripts.OnEnter(bar.disband)
+    assert(bar.disband.attrs["shift-macrotext1"] == "", "not the leader: no macro")
+    bar.disband.scripts.PostClick(bar.disband, "LeftButton", false)
+    assert(disbanded == before + 1, "not the leader: the usual path, which says why")
+    shift, grouped = false, false
 end)
 
 Case("each kept person gets a button between Invite and Disband", function()

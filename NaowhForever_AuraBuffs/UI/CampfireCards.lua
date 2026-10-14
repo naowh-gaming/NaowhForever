@@ -239,7 +239,8 @@ local function PaintBarPreview(shot, state, hidden)
     shot.dragRange[1] = math.max(WIDTH_RANGE[1], math.ceil(f.minW / step) * step)
 
     FitBar(shot)
-    shot.barHost:SetShown(not hidden)
+    shot.barHost:Show()
+    shot.barHost:SetAlpha(hidden and HIDDEN_ALPHA or 1)
     shot.hint:SetText(editable and SIMPLE_HINT or SIMPLE_OFF_HINT)
     shot.note:ClearAllPoints()
     shot.note:SetPoint("BOTTOM", shot.hint, "TOP", 0, NOTE_GAP_Y)
@@ -276,7 +277,8 @@ local function PaintPreview(shot, state)
         Run(f, SAMPLES[state] or SAMPLES.up, CAMP_HOUR)
         if not note and mode == "hover" then note = TEXT_HOVER end
     end
-    f:SetShown(not hidden)
+    f:Show()
+    f:SetAlpha(hidden and HIDDEN_ALPHA or 1)
     shot.note:SetText(note or "")
 end
 
@@ -392,6 +394,11 @@ campCard = page:Card({
           help = "The time left, turning yellow, then red, as the camp runs down." },
         { key = "campShowMissing", label = "Show Refresh Reminder", toggle = true, needs = Enabled, why = OFF,
           help = "Stays on screen, greyed out, while you have no Camp Benefits." },
+        { key = "campGlow", label = "Glow When Refresh Needed", toggle = true, needs = Needs("campShowMissing"),
+          why = "Needs Show Refresh Reminder", help = "A glow around the reminder while you have no Camp Benefits." },
+        A.GlowRows("campGlow", Needs("campShowMissing")),
+        { key = "campSitButton", label = "Click the Fire to Sit", toggle = true, needs = Enabled, why = OFF,
+          help = "Near a campfire the reminder's fire lights up: click it to sit down." },
         { key = "campShowUnder", label = "Show Only When Low", toggle = true, needs = Enabled, why = OFF,
           help = "Hides it until the camp drops under Show Under." },
         { key = "campShowUnderMinutes", label = "Show Under", slider = MINUTES_RANGE, unit = " min",

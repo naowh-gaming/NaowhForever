@@ -21,8 +21,8 @@ function DM.Mode(key)
 end
 
 function DM.ModeLabel(mode)
-    if mode.short and DM.Settings.Get("shortNames") == true then return mode.short end
-    return mode.label
+    if mode.short and DM.Settings.Get("shortNames") == true then return ns.L(mode.short) end
+    return ns.L(mode.label)
 end
 
 function DM.Available()
@@ -70,7 +70,14 @@ local function Newest(a, b)
     return a.id > b.id
 end
 
+local holding, held
+
+function DM.HoldFights(on)
+    holding, held = on, nil
+end
+
 function DM.Fights()
+    if held then return held end
     local fights = {}
     if not (DM.Available() and C_DamageMeter.GetAvailableCombatSessions) then return fights end
     local ok, sessions = pcall(C_DamageMeter.GetAvailableCombatSessions)
@@ -85,23 +92,27 @@ function DM.Fights()
     end
     table.sort(fights, Newest)
     for i = #fights, DM.Settings.Get("fightsShown") + 1, -1 do fights[i] = nil end
+    if holding then held = fights end
     return fights
 end
 
-function DM.FightLabel(fight)
-    local label = fight.name or ("Fight " .. fight.id)
+function DM.FightLabel(fight, shown)
+    local label = fight.name or (shown and ns.L("Fight %d"):format(fight.id) or ("Fight " .. fight.id))
     if fight.seconds then
         label = ("%s (%d:%02d)"):format(label, math.floor(fight.seconds / 60), math.floor(fight.seconds % 60))
     end
     return label
 end
 
-function DM.SessionName(sessionKey, fightID)
-    if fightID == nil then return C.SESSION_LABELS[sessionKey] or C.SESSION_LABELS.current end
-    for _, fight in ipairs(DM.Fights()) do
-        if fight.id == fightID then return DM.FightLabel(fight) end
+function DM.SessionName(sessionKey, fightID, shown)
+    if fightID == nil then
+        local label = C.SESSION_LABELS[sessionKey] or C.SESSION_LABELS.current
+        return shown and ns.L(label) or label
     end
-    return "Fight " .. fightID
+    for _, fight in ipairs(DM.Fights()) do
+        if fight.id == fightID then return DM.FightLabel(fight, shown) end
+    end
+    return shown and ns.L("Fight %d"):format(fightID) or "Fight " .. fightID
 end
 
 function DM.Duration(sessionKey, fightID)
@@ -118,7 +129,7 @@ function DM.Duration(sessionKey, fightID)
 end
 
 function DM.FightName(sessionKey, fightID)
-    if fightID == nil and sessionKey == "overall" then return C.SESSION_LABELS.overall end
+    if fightID == nil and sessionKey == "overall" then return ns.L(C.SESSION_LABELS.overall) end
     if fightID == nil and InCombatLockdown() then return nil end
     for _, fight in ipairs(DM.Fights()) do
         if fightID == nil or fight.id == fightID then return fight.name end

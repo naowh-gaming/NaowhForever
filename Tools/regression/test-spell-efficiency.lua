@@ -1,9 +1,10 @@
 -- Run with Lua 5.1 from the repository root: Mana Efficiency (QoL > Interface > Tooltips) on stubs.
 -- The generated data's shape (one string per spell), the line's math (direct, periodic, hybrid, both
 -- on one target, spell power and its sub-20 penalty, cast against instant), mana-only gating, secrets
--- and malformed entries failing to no line, no garbage per hover once a spell is decoded, off meaning
+-- area spells saying per target, talents (percent mods by rank, crit refunds, free casts) and malformed entries failing to no line, no garbage per hover once a spell is decoded, off meaning
 -- no hook, every option's effect on the line, a bad imported color falling back to the default, the
--- card's preview and Preview Tooltip, and the card's rows, defaults and search.
+-- card's preview and Preview Tooltip, the line's numbers being ns.SpellEfficiencyOf's (which the Mana Efficiency
+-- window shows), and the card's rows, defaults and search.
 local checks = 0
 local function check(label, value) assert(value, label); checks = checks + 1 end
 
@@ -15,17 +16,32 @@ local function Read(path)
 end
 
 local DATA = "NaowhForever_QoL/Interface/SpellEfficiencyData.lua"
-local FIELDS, PART = 3, 9
+local FIELDS, PART = 4, 9
 
 local source = Read(DATA)
 check("the data's header names its builder", source:match("^%-%- SpellEfficiencyData%.lua: .-Tools/build/spell_efficiency%.py"))
 local seen, count = {}, 0
-for id in source:gmatch("\n    %[(%d+)%] = ") do
+local spells = source:match("ns%.SpellEfficiencyData = {\n(.-)\n}")
+for id in spells:gmatch("\n?    %[(%d+)%] = ") do
     check("spell " .. id .. " is listed once", not seen[id])
     seen[id] = true
     count = count + 1
 end
 check("the data lists a few hundred spells", count > 200)
+
+local talents = source:match("ns%.SpellEfficiencyTalents = {\n(.-)\n}")
+check("the data lists the spells' talents", talents ~= nil)
+local modSpells = 0
+for id, text in talents:gmatch("%[(%d+)%] = \"([^\"]*)\"") do
+    check("spell " .. id .. " with talents is a spell with data", seen[id])
+    for mod in (text .. ";"):gmatch("([^;]*);") do
+        local node = mod:match("^(%d+),[0-3],%-?%d[%d%.]*")
+        check("spell " .. id .. "'s mod '" .. mod .. "' is node, op, then a value for each rank", node and #node >= 5)
+        for field in mod:gmatch("[^,]+") do check("'" .. field .. "' is a number", tonumber(field)) end
+    end
+    modSpells = modSpells + 1
+end
+check("a few hundred spells have talents", modSpells > 200)
 
 local secret = setmetatable({}, {
     __tostring = function() error("formatted a secret") end,
@@ -35,7 +51,8 @@ local secretTable = {}
 local settings = {
     enabled = true, spellEfficiency = false, spellEfficiencyPerMana = true, spellEfficiencyPerSecond = true,
     spellEfficiencyPerManaSecond = false, spellEfficiencyStyle = "long", spellEfficiencyDecimals = 2,
-    spellEfficiencyColor = { r = 0.3, g = 0.71, b = 0.96 }, spellEfficiencyBonus = true, spellEfficiencyShow = "all",
+    spellEfficiencyColor = { r = 0.3, g = 0.71, b = 0.96 }, spellEfficiencyBonus = true, spellEfficiencyTalents = true,
+    spellEfficiencyShow = "all",
 }
 local defaults = {}
 for key, value in pairs(settings) do defaults[key] = value end
@@ -67,6 +84,7 @@ local costs, casts, infos = {}, {}, {}
 local spellInfo
 local power = { heal = 0 }
 local level, statsSecret = 60, false
+local nodeRanks, crit, configID = {}, 10, 1
 local tooltip, refTip, shopTip = Frame(), Frame(), Frame()
 tooltip.name, refTip.name, shopTip.name = "GameTooltip", "ItemRefTooltip", "ShoppingTooltip1"
 
@@ -107,6 +125,11 @@ local env = {
         end,
     },
     C_Secrets = { ShouldUnitStatsBeSecret = function() return statsSecret end },
+    C_ClassTalents = { GetActiveConfigID = function() return configID end },
+    C_Traits = { GetNodeInfo = function(config, node)
+        if config == configID and nodeRanks[node] then return { activeRank = nodeRanks[node] } end
+    end },
+    GetSpellCritChance = function() return crit end,
     GetSpellBonusHealing = function() return power.heal end,
     GetSpellBonusDamage = function(school) damageReads[#damageReads + 1] = school; return power[school] or 0 end,
     UnitLevel = function() return level end,
@@ -154,8 +177,20 @@ end
 check("the weapon shot (Aimed Shot) is left out", Data[19434] == nil)
 check("Multi-Shot is left out", Data[2643] == nil)
 check("seals and Judgement are left out", Data[21084] == nil and Data[20271] == nil and Data[20154] == nil)
-check("area triggers (Consecration, Blizzard) are left out", Data[26573] == nil and Data[10] == nil)
+check("percent of power and over time triggers are left out (Healing Rain, Penance, Light's Vigil, Starfall)",
+    Data[415236] == nil and Data[402174] == nil and Data[1310911] == nil and Data[439748] == nil)
 check("Swiftmend's scripted heal is left out", Data[18562] == nil)
+local function Area(id) return tonumber(Data[id]:match("^%d+,%d+,%d+,(%d)")) end
+check("area spells are flagged (Frost Nova, Arcane Explosion, Prayer of Healing, Tranquility, Wild Growth, Mind Sear)",
+    Area(122) == 1 and Area(1449) == 1 and Area(596) == 1 and Area(740) == 1 and Area(408120) == 1 and Area(15237) == 1)
+check("single target spells and chains are not (Frostbolt, Lesser Heal, Chain Heal, Chain Lightning)",
+    Area(116) == 0 and Area(2050) == 0 and Area(1064) == 0 and Area(421) == 0)
+check("area triggers are in and flagged (Blizzard, Rain of Fire, Flamestrike, Consecration, Hurricane, Volley, Fire Nova)",
+    Area(10) == 1 and Area(5740) == 1 and Area(2120) == 1 and Area(26573) == 1 and Area(16914) == 1
+    and Area(1510) == 1 and Area(408341) == 1)
+check("Holy Shock is in, not area, with a damage part and a heal part", Area(20473) == 0 and #Data[20473] > 40)
+check("Hellfire counts the triggered spell's 82 a tick, not its self damage as well",
+    Area(1949) == 1 and Data[1949]:match(",(%d+),[%d.]+,[%d.]+,15,15$") == "82")
 check("Lesser Heal, Frostbolt, Shadow Word: Pain, Exorcism, Arcane Missiles are in",
     Data[2050] and Data[116] and Data[589] and Data[879] and Data[5143])
 
@@ -239,14 +274,100 @@ check("Frostbolt 1 with no frost damage", Show(116)[1][1] == "0.84 damage per ma
 power[5] = 100
 check("Frostbolt 1 with 100 frost damage", Show(116)[1][1] == "1.49 damage per mana  ||  25 per second")
 
-Data[900001] = "3,60,0,0,100,0,0,0,0,0,0,0"
+Data[900001] = "3,60,0,0,0,100,0,0,0,0,0,0,0"
 costs[900001], casts[900001] = { { type = 0, cost = 50 } }, 0
 check("an instant spell with no periodic part has no per second", Show(900001)[1][1] == "2.00 damage per mana")
-Data[900002] = "2,60,0,0,40,0,0,0,0,0,0,0,1,20,0,0,0,0,0,0,0"
+Data[900002] = "2,60,0,0,0,40,0,0,0,0,0,0,0,1,20,0,0,0,0,0,0,0"
 costs[900002], casts[900002] = { { type = 0, cost = 10 } }, 1000
 lines = Show(900002)
 check("both on one target: a damage line and a heal line", #lines == 2
     and lines[1][1] == "4.00 damage per mana  ||  40 per second" and lines[2][1] == "2.00 healing per mana  ||  20 per second")
+
+Data[920010] = "3,60,0,0,0,100,0,0,0,0,0,0,0"
+costs[920010], casts[920010] = { { type = 0, cost = 50 } }, 0
+local mods = ns.SpellEfficiencyTalents
+mods[920010] = "1001,0,0.04,0.08,0.12;1002,2,0.1,0.2,0.3;1003,3,0.1"
+check("a talent you have no rank in changes nothing", Show(920010)[1][1] == "2.00 damage per mana")
+nodeRanks[1001] = 2
+check("a percent talent counts its value at your rank", Show(920010)[1][1] == "2.16 damage per mana")
+nodeRanks[1001] = 5
+check("a rank past the last value uses the last", Show(920010)[1][1] == "2.24 damage per mana")
+nodeRanks[1001] = nil
+nodeRanks[1002], crit = 2, 50
+check("a crit refund takes its value at your rank times your crit chance off the cost",
+    Show(920010)[1][1] == "2.22 damage per mana")
+statsSecret = true
+check("with stats secret the crit refund is skipped and the line is left off", #Show(920010) == 0)
+statsSecret = false
+nodeRanks[1002] = nil
+nodeRanks[1003] = 1
+check("a free cast chance takes its share off the cost", Show(920010)[1][1] == "2.22 damage per mana")
+nodeRanks[1001], nodeRanks[1003] = 1, nil
+S.Set("spellEfficiencyTalents", false)
+check("with Include My Talents off the talents do not count", Show(920010)[1][1] == "2.00 damage per mana")
+S.Set("spellEfficiencyTalents", true)
+check("with it on again they do", Show(920010)[1][1] == "2.08 damage per mana")
+configID = nil
+check("with no talent config nothing counts", Show(920010)[1][1] == "2.00 damage per mana")
+configID = 1
+nodeRanks[1001] = nil
+mods[920011], Data[920011] = "1001,0,oops", Data[920010]
+costs[920011], casts[920011] = costs[920010], 0
+check("a malformed talent entry counts as no talents", Show(920011)[1][1] == "2.00 damage per mana")
+Data[920012], mods[920012] = "2,60,0,0,0,0,0,0,10,0,0.5,4,4", "1001,1,0.5;1001,0,0.5"
+costs[920012], casts[920012] = { { type = 0, cost = 10 } }, 0
+nodeRanks[1001] = 1
+check("a periodic talent counts on the ticks only", Show(920012)[1][1] == "6.00 damage per mana  ||  15 per second")
+nodeRanks[1001] = nil
+check("and the same spell without it", Show(920012)[1][1] == "4.00 damage per mana  ||  10 per second")
+costs[635], casts[635] = { { type = 0, cost = 35 } }, 2500
+local holyLight = Show(635)[1][1]
+nodeRanks[105333] = 3
+check("Healing Light (the node in the tree data) raises Holy Light's line", Show(635)[1][1] ~= holyLight)
+nodeRanks[105333] = nil
+costs[740], casts[740] = { { type = 0, cost = 375 } }, 0
+nodeRanks[104916] = 5
+check("Gift of Nature 5/5 raises Tranquility, which only ticks, by 10%", Show(740)[1][1]
+    == "1.33 healing per mana / target  ||  50 per second / target")
+nodeRanks[104916] = nil
+costs[401502], casts[401502] = { { type = 0, cost = 100 } }, 3000
+check("Frostfire Bolt 1 with no talents", Show(401502)[1][1] == "1.37 damage per mana  ||  46 per second")
+nodeRanks[105773] = 3
+check("Piercing Ice 3/3 adds 6% to Frostfire Bolt's ticks too", Show(401502)[1][1] == "1.46 damage per mana  ||  49 per second")
+nodeRanks[105773], nodeRanks[105799] = nil, 3
+check("Arcane Instability 3/3 adds 3% to Frostfire Bolt's ticks too", Show(401502)[1][1] == "1.42 damage per mana  ||  47 per second")
+nodeRanks[105799] = nil
+local frostPower = power[5]
+power[5] = 0
+costs[10], casts[10] = { { type = 0, cost = 320 } }, 0
+check("Blizzard 1 is one target's eight ticks of 24.5, per target", Show(10)[1][1]
+    == "0.61 damage per mana / target  ||  25 per second / target")
+power[5] = frostPower
+costs[5740], casts[5740] = { { type = 0, cost = 500 } }, 0
+check("Rain of Fire 1 is four ticks of 41.5", Show(5740)[1][1]
+    == "0.33 damage per mana / target  ||  21 per second / target")
+costs[20473], casts[20473] = { { type = 0, cost = 90 } }, 0
+lines = Show(20473)
+check("Holy Shock 1 gets a damage line and a heal line, for one target each",
+    #lines == 2 and lines[1][1] == "2.02 damage per mana" and lines[2][1] == "1.73 healing per mana")
+
+Data[900003] = "2,60,0,1,0,40,0,0,0,0,0,0,0"
+costs[900003], casts[900003] = { { type = 0, cost = 10 } }, 1000
+Data[900004] = "2,60,0,1,0,40,0,0,0,0,0,0,0,1,20,0,0,0,0,0,0,0"
+costs[900004], casts[900004] = { { type = 0, cost = 10 } }, 1000
+check("an area spell says per target on every number",
+    Show(900003)[1][1] == "4.00 damage per mana / target  ||  40 per second / target")
+lines = Show(900004)
+check("an area spell with both parts says per target on both", #lines == 2
+    and lines[1][1] == "4.00 damage per mana / target  ||  40 per second / target"
+    and lines[2][1] == "2.00 healing per mana / target  ||  20 per second / target")
+settings.spellEfficiencyStyle, settings.spellEfficiencyPerManaSecond = "short", true
+check("Short area line", Show(900003)[1][1] == "DPM 4.00 / target  ||  DPS 40 / target  ||  DPM/s 4.00 / target")
+settings.spellEfficiencyStyle, settings.spellEfficiencyPerManaSecond = "long", false
+settings.spellEfficiencyPerMana = false
+check("without per mana the first part names the kind and the target", Show(900003)[1][1] == "40 damage per second / target")
+settings.spellEfficiencyPerMana = true
+check("a single target spell has no target suffix", not Show(2050)[1][1]:find("target", 1, true))
 
 costs[2050] = { { type = 1, cost = 10 } }
 check("a spell that costs rage gets nothing", #Show(2050) == 0)
@@ -266,17 +387,36 @@ spellInfo = 7
 check("spell info that is not a table, nothing", #Show(2050) == 0)
 spellInfo = nil
 check("readable spell info again: the line", Show(2050)[1][1] == "1.76 healing per mana  ||  35 per second")
+
+local KIND_WORDS = { [0] = "damage", [1] = "healing" }
+local function SharedLines(id)
+    local result, out = ns.SpellEfficiencyOf(id), {}
+    for i = 1, result.count do
+        local part, target = result[i], result.area and " / target" or ""
+        local text = ns.SpellEfficiencyNumber(part.perMana) .. " " .. KIND_WORDS[part.kind] .. " per mana" .. target
+        if part.perSecond then
+            text = text .. "  ||  " .. ns.SpellEfficiencyNumber(part.perSecond, true) .. " per second" .. target
+        end
+        out[i] = text
+    end
+    return out
+end
+for _, id in ipairs({ 2050, 2053, 589, 116, 8936, 10, 5740, 20473, 900002, 900004 }) do
+    local shown, shared = Show(id), SharedLines(id)
+    check(id .. ": the tooltip has a line for each part ns.SpellEfficiencyOf returns", #shown == #shared and #shown > 0)
+    for i = 1, #shown do check(id .. ": the tooltip's numbers are ns.SpellEfficiencyOf's", shown[i][1] == shared[i]) end
+end
 check("a spell with no data gets nothing", #Show(12345) == 0)
 
 local MALFORMED = {
-    [900010] = "3,60,0,0,100,0,0,0,0,0,0",
+    [900010] = "3,60,0,0,0,100,0,0,0,0,0,0",
     [900011] = "3,60,0",
-    [900012] = "3,60,0,0,abc,0,0,0,0,0,0,0",
-    [900013] = "3,60,0,0,100,0,0,0,0,0,0,0,",
-    [900014] = "3,60,0,0,,0,0,0,0,0,0,0",
-    [900015] = "3,60,0,2,100,0,0,0,0,0,0,0",
-    [900016] = "3,60,0,0,inf,0,0,0,0,0,0,0",
-    [900017] = "3,60,0,0,0x10,0,0,0,0,0,0,0",
+    [900012] = "3,60,0,0,0,abc,0,0,0,0,0,0,0",
+    [900013] = "3,60,0,0,0,100,0,0,0,0,0,0,0,",
+    [900014] = "3,60,0,0,0,,0,0,0,0,0,0,0",
+    [900015] = "3,60,0,0,2,100,0,0,0,0,0,0,0",
+    [900016] = "3,60,0,0,0,inf,0,0,0,0,0,0,0",
+    [900017] = "3,60,0,0,0,0x10,0,0,0,0,0,0,0",
     [900018] = "",
     [900019] = { 3, 60, 0, 0, 100, 0, 0, 0, 0, 0, 0, 0 },
 }
@@ -318,7 +458,7 @@ local function Garbage(data, runs, warm)
     collectgarbage("restart")
     return grown
 end
-Data[900020] = "2,60,0,1,80,0,0,0,0,0,0,0"
+Data[900020] = "2,60,0,0,1,80,0,0,0,0,0,0,0"
 costs[900020], casts[900020] = { { type = 0, cost = 20 } }, 2000
 local fresh = { type = 1, id = 900020 }
 check("a spell's first hover decodes its entry (allocates)", Garbage(fresh, 1) > 0 and added == 1)
@@ -404,13 +544,15 @@ local studio = ns.SpellEfficiencyStudio
 check("the card's preview is a studio", studio and studio.new and studio.paint and studio.states[1].key)
 local shot = studio.new(Frame())
 studio.paint(shot, studio.states[1].key)
-local heal, bolt = shot.mocks[1].line, shot.mocks[2].line
+local heal, bolt, nova = shot.mocks[1].line, shot.mocks[2].line, shot.mocks[3].line
 check("preview: the sample heal", heal.text == "1.79 healing per mana  ||  214 per second")
 check("preview: the sample bolt", bolt.text == "2.43 damage per mana  ||  162 per second")
+check("preview: the area sample says per target", nova.text == "1.61 damage per mana / target  ||  107 per second / target")
 check("preview: in the line's color", heal.color[1] == 0.3 and heal.color[3] == 0.96)
 settings.spellEfficiencyStyle = "short"
 studio.paint(shot, studio.states[1].key)
 check("preview redraws with Short", heal.text == "HPM 1.79  ||  HPS 214" and bolt.text == "DPM 2.43  ||  DPS 162")
+check("preview: the area sample says per target in Short", nova.text == "DPM 1.61 / target  ||  DPS 107 / target")
 settings.spellEfficiencyStyle = "long"
 settings.spellEfficiencyBonus = false
 studio.paint(shot, studio.states[1].key)
@@ -448,6 +590,7 @@ local cardNs = setmetatable({
     } },
 }, { __index = ns })
 cardEnv._G = setmetatable({ NaowhForever = cardNs }, { __index = cardEnv })
+ns.OpenSpellEfficiencyReport = function() end
 local chunk = assert(loadfile("NaowhForever_QoL/Interface/GlobalCopy.lua"))
 setfenv(chunk, cardEnv)
 chunk()
@@ -470,6 +613,10 @@ end
 check("the switch row", rows.spellEfficiency.row.label == "Mana Efficiency" and rows.spellEfficiency.row.always)
 check("its options need it", rows.spellEfficiencyStyle.row.needs == "spellEfficiency")
 check("Preview Tooltip opens the sample", rows["Preview Tooltip"].row.button == ns.PreviewSpellEfficiency)
+local report = rows["Mana Efficiency Report"]
+check("a button opens the Mana Efficiency window", report and report.group == "Spell Efficiency"
+    and report.row.button == ns.OpenSpellEfficiencyReport and report.row.always)
+check("with one short sentence of help", #report.row.help < 100 and not report.row.help:sub(1, -2):find("%. "))
 
 local Search = dofile("Tools/regression/settings_search.lua")({ ["QoL/Interface"] = { card } })
 local function Finds(query, label)
@@ -484,6 +631,8 @@ check("search finds Per Mana per Second", Finds("per mana per second", "Per Mana
 check("search finds Include My Spell Power", Finds("spell power", "Include My Spell Power"))
 check("search finds Show On", Finds("show on", "Show On"))
 check("search finds the Preview Tooltip", Finds("preview tooltip", "Preview Tooltip"))
+check("search finds the report", Finds("mana efficiency report", "Mana Efficiency Report"))
+check("and by its command", Finds("/nf efficiency", "Mana Efficiency Report"))
 
 local function DeepCopy(t)
     if type(t) ~= "table" then return t end
