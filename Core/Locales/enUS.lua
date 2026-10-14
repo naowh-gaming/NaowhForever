@@ -6013,6 +6013,7 @@ L["Yourself"] = true
 L["Zeppelin"] = true
 
 L["Hunter Ammo"] = true
+L["Hunter Ammo (Hunters only)"] = true
 L["Hunter Ammo Reminder"] = true
 L["Remind Me When Ammo Falls To"] = true
 L["Reminds you about your equipped ammo at its own amount, not the carry target."] = true

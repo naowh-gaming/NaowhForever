@@ -478,12 +478,12 @@ local FIXED = {
     { key = "restockBagsBelow", label = "Free Slots Below", slider = BAGS_BELOW_RANGE, needs = "restockVendor" },
 }
 local HUNTER = {
-    Group("Hunter Ammo"),
-    { key = "restockHunterAmmo", label = "Hunter Ammo Reminder", toggle = true,
-      help = "Reminds you about your equipped ammo at its own amount, not the carry target." },
-    { key = "restockHunterAmmoBelow", label = "Remind Me When Ammo Falls To", slider = AMMO_RANGE,
+    Group(ns.L("Hunter Ammo (Hunters only)")),
+    { key = "restockHunterAmmo", label = ns.L("Hunter Ammo Reminder"), toggle = true,
+      help = ns.L("Reminds you about your equipped ammo at its own amount, not the carry target.") },
+    { key = "restockHunterAmmoBelow", label = ns.L("Remind Me When Ammo Falls To"), slider = AMMO_RANGE,
       needs = "restockHunterAmmo",
-      help = "Reminds at or below this many equipped arrows or shot across all bag stacks." },
+      help = ns.L("Reminds at or below this many equipped arrows or shot across all bag stacks.") },
 }
 local CARRY_GROUP = Group("Reagents to Carry")
 local LOOK = ns.Shared.Settings.Look("restock", { text = true, size = TEXT_RANGE, background = "card" })
@@ -521,9 +521,7 @@ local function RestockRows()
     wipe(seenReagents)
     for i = 1, #FIXED do restockRows[i] = FIXED[i] end
     local class = select(2, UnitClass("player"))
-    if class == "HUNTER" then
-        for _, row in ipairs(HUNTER) do restockRows[#restockRows + 1] = row end
-    end
+    for _, row in ipairs(HUNTER) do restockRows[#restockRows + 1] = row end
     local grouped = false
     for _, family in ipairs(FAMILIES) do
         if family.class == class then grouped = AddReagentRows(family, grouped) end
