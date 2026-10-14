@@ -99,6 +99,7 @@ local function Session(settings, opts)
         UnitGUID = function() return game.guid end,
         UnitIsGameObject = function() return game.guid ~= nil and game.object end,
         UnitIsInInteractRange = function() return game.near end,
+        UnitIsUnit = function(unit) return unit ~= "nameplate9" end,
         SetUnitCursorTexture = function() return false end,
         GetFileIDFromPath = function() return nil end,
         GetProfessions = function() return 1 end,
@@ -323,6 +324,75 @@ do
     check("asked once a session", #c.confirms == 1)
     c.confirms[1].yes()
     check("yes: disabled, then the house reload prompt", next(c.game.loaded) == nil and #c.reloads == 1)
+end
+
+-- A look setting repaints the lit effect without starting it over; a nameplate that is not the soft target
+-- is passed over.
+do
+    local r = Session({ enabled = true })
+    r.Login()
+    r.game.guid, r.game.plate = GUID(COPPER), Widget(r)
+    r.Fire("PLAYER_SOFT_INTERACT_CHANGED", "", "x")
+    local lit = Lit(r)
+    for _ = 1, 20 do lit.OnUpdate(lit, 0.05) end
+    check("faded in", lit.appear == 1)
+    r.Set("size", 1.3)
+    check("a size change repaints in place", Lit(r) == lit and lit.size == 1.3 and lit.appear == 1)
+    r.Set("brightness", 0.5)
+    check("and so does brightness", lit.alpha == 0.5 and lit.appear == 1)
+    local writes = #r.writes
+    r.Set("range", 12)
+    check("range writes the game setting, and leaves the effect", r.cvars.SoftTargetInteractRange == "12"
+        and #r.writes == writes + 1 and lit.appear == 1)
+    r.game.guid = nil
+    r.Fire("PLAYER_SOFT_INTERACT_CHANGED", "x", "")
+    r.game.guid = GUID(COPPER)
+    local reads = 0
+    local Read = r.ns.Glimmer.Target.Read
+    r.ns.Glimmer.Target.Read = function(...) reads = reads + 1; return Read(...) end
+    r.Fire("NAME_PLATE_UNIT_ADDED", "nameplate9")
+    check("another unit's nameplate is passed over", reads == 0)
+    r.Fire("NAME_PLATE_UNIT_ADDED", "nameplate1")
+    check("the soft target's is read", reads == 1)
+end
+
+-- The quest sparkle comes back whatever case the game names the setting in.
+do
+    local q = Session({ enabled = true, questSparkle = true })
+    q.Login()
+    q.cvars.graphicsOutlineMode = "2"
+    q.Fire("CVAR_UPDATE", "graphicsoutlinemode", "2")
+    q.RunTimers()
+    check("a lower-case name still puts the sparkle back", q.cvars.graphicsOutlineMode == "0")
+end
+
+-- With the addon turned off, the core puts Glimmer's saved game settings back at login.
+do
+    local f = assert(io.open("Core/Core.lua", "rb"))
+    local source = f:read("*a"):gsub("\r\n", "\n")
+    f:close()
+    local first = assert(source:find("local function RestoreGlimmerSettings()", 1, true))
+    local last = assert(source:find("\nlocal meterCheck", first, true))
+    local names = assert(source:match("\n(local GLIMMER_ADDON, .-\n)"))
+    local account = { glimmerSoftCVars = { SoftTargetInteract = "1" }, glimmerSparkleCVars = { graphicsOutlineMode = "2" } }
+    local cvars, loaded, combat = { SoftTargetInteract = "3", graphicsOutlineMode = "0" }, true, false
+    local chunk = assert(loadstring(names .. source:sub(first, last) .. "return RestoreGlimmerSettings"))
+    setfenv(chunk, setmetatable({
+        ns = { AccountSettings = function() return account end },
+        C_AddOns = { IsAddOnLoaded = function(name) return loaded and name == "NaowhForever_Glimmer" end },
+        InCombatLockdown = function() return combat end,
+        C_CVar = { SetCVar = function(k, v) cvars[k] = v end },
+    }, { __index = _G }))
+    local Restore = chunk()
+    Restore()
+    check("core: Glimmer loaded puts them back itself", cvars.SoftTargetInteract == "3" and account.glimmerSoftCVars)
+    loaded, combat = false, true
+    Restore()
+    check("core: not in combat", cvars.SoftTargetInteract == "3")
+    combat = false
+    Restore()
+    check("core: Glimmer off: both sets put back and forgotten", cvars.SoftTargetInteract == "1"
+        and cvars.graphicsOutlineMode == "2" and account.glimmerSoftCVars == nil and account.glimmerSparkleCVars == nil)
 end
 
 print(("test-glimmer: %d checks passed"):format(checks))

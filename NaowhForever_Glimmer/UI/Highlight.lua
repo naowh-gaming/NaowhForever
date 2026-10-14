@@ -2,6 +2,7 @@
 local ns = _G.NaowhForever
 
 local GetNamePlateForUnit = C_NamePlate.GetNamePlateForUnit
+local UnitIsUnit = UnitIsUnit
 
 local G = ns.Glimmer
 local S = G.Settings
@@ -28,7 +29,10 @@ local EVENTS = {
 local events, watch, fx, line
 local plate, shown
 local wantReady, wantSince
-local applyQueued = false
+local read = {}
+local queued, fullQueued, cvarsQueued = false, false, false
+local FULL_KEYS = { enabled = true, questSparkle = true }
+local CVAR_KEYS = { range = true, arc = true }
 
 local function Paused()
     if InCombatLockdown() then return true end
@@ -104,7 +108,7 @@ local function Evaluate()
         CVars.SetPlate(false)
         return Release()
     end
-    local info = Target.Read(UNIT)
+    local info = Target.Read(UNIT, read)
     local wanted = info and Target.Wanted(info.category) and not (info.locked and S.Get("hideLocked"))
     if not wanted then
         CVars.SetPlate(not S.Get("onlyHighlighted"))
@@ -145,7 +149,8 @@ local function OnEvent(_, event, unit)
         CVars.SetPlate(false)
         Release()
     elseif event == "NAME_PLATE_UNIT_ADDED" then
-        if not plate then Evaluate() end
+        local soft = UnitIsUnit(unit, UNIT)
+        if not plate and not (Plain(soft) and not soft) then Evaluate() end
     elseif event == "NAME_PLATE_UNIT_REMOVED" then
         if plate and GetNamePlateForUnit(unit) == plate then Release() end
     elseif event == "PLAYER_SOFT_INTERACT_CHANGED" then
@@ -159,7 +164,6 @@ local function OnEvent(_, event, unit)
 end
 
 local function Apply()
-    applyQueued = false
     CVars.Apply()
     if not G.On() then
         if events then events:UnregisterAllEvents() end
@@ -178,10 +182,20 @@ local function Apply()
     G.CheckOthers()
 end
 
-local function OnSet()
-    if applyQueued then return end
-    applyQueued = true
-    C_Timer.After(0, Apply)
+local function RunQueued()
+    local full, cvars = fullQueued, cvarsQueued
+    queued, fullQueued, cvarsQueued = false, false, false
+    if full then return Apply() end
+    if cvars then CVars.Apply() end
+    if G.On() and events then Evaluate() end
+end
+
+local function OnSet(key)
+    fullQueued = fullQueued or FULL_KEYS[key] or false
+    cvarsQueued = cvarsQueued or CVAR_KEYS[key] or false
+    if queued then return end
+    queued = true
+    C_Timer.After(0, RunQueued)
 end
 
 hooksecurefunc(S, "Set", OnSet)

@@ -19,7 +19,6 @@ local QUEST_LINE = Enum.TooltipDataLineType.QuestObjective
 local Target = {}
 G.Target = Target
 
-local info = {}
 local cursorIDs
 local probe
 
@@ -93,7 +92,7 @@ function Target.Reach(unit)
     return near and true or false
 end
 
-function Target.Read(unit)
+function Target.Read(unit, info)
     local object = UnitIsGameObject(unit)
     if not (Plain(object) and object) then return end
     wipe(info)
