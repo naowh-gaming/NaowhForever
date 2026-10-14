@@ -34,10 +34,10 @@ local TEXT_LATER_NEEDS = ns.L("A later point needs it. ")
 local TEXT_NOTHING_TO_GIVE = ns.L("No points in it to give back.")
 local TEXT_LEARNED = ns.L("Learned %d talent %s from %s.")
 local TEXT_POINT, TEXT_POINTS = ns.L("point"), ns.L("points")
-local TEXT_RESET_ASK = ns.L("Your talents were reset. Learn %s again?")
-local TEXT_LEARN_AGAIN, TEXT_STOP_FOLLOW = "Learn Again", "Stop Following"
+local TEXT_RESET_ASK = ns.L("Your talent points were refunded. Learn %s again?")
+local TEXT_LEARN_AGAIN, TEXT_STOP_FOLLOW = ns.L("Learn Again"), ns.L("Stop Following")
 
-local learning, asking, spent = false, false, nil
+local learning, asking = false, false
 
 local function Saved(classID)
     local all = Account("trainingBuilds")
@@ -364,8 +364,9 @@ end
 function Training.LearnFollowed()
     local build, classID = Training.Followed()
     if not build or asking or not ns.TrainingBuilds[classID] then return end
-    local now, before = Spent(classID), spent
-    spent = now
+    local followed = Account("trainingFollow")[CharKey()]
+    local now, before = Spent(classID), followed.spent
+    if now then followed.spent = now end
     if now and before and now < before then
         asking = true
         ns.Confirm(TEXT_RESET_ASK:format(build.name), function()

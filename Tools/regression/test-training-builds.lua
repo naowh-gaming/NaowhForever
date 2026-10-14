@@ -349,4 +349,16 @@ Case("a followed build learns new points, but a talent reset asks before spendin
     assert(t.Commits() == 4 and t.T.Followed() ~= nil, "Learn Again learns and keeps following")
 end)
 
+Case("following a build again starts from the talents you have now", function()
+    local ranks, asked = { [13] = 5 }, 0
+    local t = Fixture({ config = 1, points = 30, ranks = ranks, confirm = function() asked = asked + 1 end })
+    t.T.Follow(8, TREE[8][1])
+    t.T.LearnFollowed()
+    t.T.Follow(8, nil)
+    ranks[13] = 0
+    t.T.Follow(8, TREE[8][1])
+    t.T.LearnFollowed()
+    assert(asked == 0 and t.Commits() == 2, "no ask after a reset made while not following")
+end)
+
 print(("test-training-builds: %d cases passed"):format(count))
