@@ -120,12 +120,13 @@ NaowhForever_AuraBuffs/
 - Warn With Minutes Left covers personal buffs too, except a buff no longer than the warning
   (Battle Shout's 2 minutes), which would otherwise show the moment it is cast. Poisons last 30
   minutes and Forever's imbues 60, past the slider's 10.
-- The card lists every class's personal buffs and raid buffs, the player's own class first: its label in
-  the class color, the others grey with the class named in its color beside the switch. Picks are stored
-  under the buff's own key (`personalBuffPicks.demonArmor`), so a Warlock buff switched off on a Priest is
-  ready for the Warlock; every rule checks `family.class` against the player's class, so nothing
-  fires for another class. A class with no personal buff (paladin) still gets the group for the others,
-  and the switch alone does not turn the row on.
+- The card lists every class's personal buffs, the player's own class first: its label in the class
+  color, the others grey with the class named in its color beside the switch. Picks are stored under
+  the buff's own key (`personalBuffPicks.demonArmor`), so a Warlock buff switched off on a Priest is
+  ready for the Warlock; every personal rule checks `family.class` against the player's class, so
+  none fires for another class. Raid buff picks are not greyed: another class's raid buff fires when a
+  group member of that class can cast it. A class with no personal buff (paladin) still gets the
+  group for the others, and the switch alone does not turn the row on.
 - Hunter's Mark is asked for only with a hostile elite, rare elite or boss targeted, read from the
   target's debuffs; like every reminder it holds what it showed once combat starts.
 - The buff menu holds secure buttons, so it can only be hidden outside combat. It uses

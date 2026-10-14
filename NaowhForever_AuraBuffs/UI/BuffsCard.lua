@@ -146,7 +146,7 @@ local function ClassRow(row, family)
 end
 
 local function PickRow(family)
-    return ClassRow({ key = "raidBuffPicks", field = family.key, label = family.name, toggle = true,
+    return { key = "raidBuffPicks", field = family.key, label = family.name, toggle = true,
         needs = RaidBuffsOn, why = NEEDS_RAID,
         help = family.class == "PALADIN" and TEXT_BLESSINGS or nil,
         get = function() return R.Picked(family) end,
@@ -155,7 +155,7 @@ local function PickRow(family)
             for k, v in pairs(S.Get("raidBuffPicks")) do picks[k] = v end
             picks[family.key] = on
             S.Set("raidBuffPicks", picks)
-        end }, family)
+        end }
 end
 
 local function PersonalRow(family)
@@ -197,10 +197,7 @@ local rows = {
 for _, family in ipairs(D.RAID) do rows[#rows + 1] = PickRow(family) end
 rows[#rows + 1] = Group("Personal Buffs")
 rows[#rows + 1] = { key = "personalBuffs", label = "Personal Buff Reminders", toggle = true, needs = Enabled,
-    why = OFF, help = "Your own class buff when it is missing or under Warn With Minutes Left: an armor, "
-        .. "Inner Fire, Battle Shout, poisons or a weapon imbue. Talent buffs only once you have the "
-        .. "talent. Hide While Resting hides them too. Other classes' buffs are in grey: switch them on "
-        .. "or off now, and they apply when you play that class." }
+    why = OFF, help = "Your class buffs when they are missing or about to run out." }
 for _, family in ipairs(ALL_PERSONAL) do rows[#rows + 1] = PersonalRow(family) end
 rows[#rows + 1] = Group("Size")
 rows[#rows + 1] = { key = "iconSize", label = "Icon Size", slider = ICON_RANGE, needs = Enabled, why = OFF }

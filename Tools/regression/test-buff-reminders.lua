@@ -736,6 +736,11 @@ do
     Check("switched off for a class that is not played", byField.demonArmor.get(), false)
     Check("stored by the buff's own key", t.Get("personalBuffPicks").demonArmor, false)
     byField.demonArmor.set(true)
+    local intellect
+    for _, row in ipairs(card.rows) do
+        if row.key == "raidBuffPicks" and row.field == "intellect" then intellect = row end
+    end
+    Check("another class's raid buff is not grey", intellect.labelColor, nil)
     local shot = card.studio.new(t.ns.Shared.Settings)
     local function Preview(state)
         card.studio.paint(shot, state)
