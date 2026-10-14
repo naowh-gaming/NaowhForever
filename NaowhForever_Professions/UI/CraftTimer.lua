@@ -4,6 +4,7 @@ local ns = _G.NaowhForever
 local T = ns.THEME
 
 local P = ns.Professions
+local R = P.Recipes
 local S = P.Settings
 local Style = P.Style
 local Widgets = P.Widgets
@@ -22,7 +23,6 @@ local GAP = 0.3
 local GUESS_CAST = 3
 local MIN_BATCH = 2
 local STALE = 5
-local IDLE = 2
 local WATCH_EVERY = 1
 local MS = 1000
 local SECONDS_PER_MINUTE = 60
@@ -205,21 +205,18 @@ local function OnEvent(_, event, _, _, spellID)
     Stop()
 end
 
--- A craft the client refuses (missing reagents) sends no spellcast events.
 local function Watch()
-    if not job then return end
-    local now = GetTime()
-    local idle = select(CASTING_SPELL, UnitCastingInfo("player")) ~= job.recipeID
-        and now > (job.lastEnd or job.start) + IDLE
-    if idle or now > job.start + job.known + STALE then Stop() end
+    if job and GetTime() > job.start + job.known + STALE then Stop() end
 end
 
 local function OnCraft(recipeID, count)
+    if not On() then return end
+    local recipe = C_TradeSkillUI.GetRecipeInfo(recipeID)
     count = tonumber(count) or 1
+    if recipe then count = math.min(count, R.Craftable(recipe)) end
+    if count < MIN_BATCH then return end
     local spell = C_Spell.GetSpellInfo(recipeID)
     local cast = spell and (spell.castTime or 0) / MS or 0
-    if not On() or count < MIN_BATCH then return end
-    local recipe = C_TradeSkillUI.GetRecipeInfo(recipeID)
     Stop()
     job = { recipeID = recipeID, name = recipe and recipe.name or (spell and spell.name),
         icon = recipe and recipe.icon or (spell and spell.iconID), count = count, done = 0,
