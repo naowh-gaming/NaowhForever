@@ -61,9 +61,16 @@ function Spots.Tier(objectID)
     return Target.Tier(Target.Skill(node[1]), node[2])
 end
 
-local function Snap(mapID, objectID, x, y)
-    local all = ns.GlimmerSpots and ns.GlimmerSpots[mapID]
+local function Snap(mapID, gathered, objectID, x, y)
     local bestX, bestY, best = x, y, C.SNAP * C.SNAP
+    for _, e in pairs(gathered) do
+        if e.id == objectID then
+            local d = (e.x - x) ^ 2 + (e.y - y) ^ 2
+            if d <= best then bestX, bestY, best = e.x, e.y, d end
+        end
+    end
+    if best < C.SNAP * C.SNAP then return bestX, bestY end
+    local all = ns.GlimmerSpots and ns.GlimmerSpots[mapID]
     for i = 1, all and #all or 0, 3 do
         if all[i] == objectID then
             local d = (all[i + 1] - x) ^ 2 + (all[i + 2] - y) ^ 2
@@ -83,11 +90,12 @@ function Spots.Record(objectID)
     local pos = mapID and C_Map.GetPlayerMapPosition(mapID, "player")
     if not pos then return end
     local px, py = pos:GetXY()
-    local x, y = Snap(mapID, objectID, math.floor(px * C.SPOT_SCALE + 0.5), math.floor(py * C.SPOT_SCALE + 0.5))
     local account = ns.AccountSettings()
     account[GATHERED] = account[GATHERED] or {}
     local map = account[GATHERED][mapID] or {}
     account[GATHERED][mapID] = map
+    local x, y = Snap(mapID, map, objectID, math.floor(px * C.SPOT_SCALE + 0.5),
+        math.floor(py * C.SPOT_SCALE + 0.5))
     local key = KEY:format(objectID, x, y)
     local entry = map[key]
     if not entry then

@@ -81,7 +81,7 @@ NaowhForever_Glimmer/
   height, `CUTOUT_Y` below the middle) with its size and height as settings, and Show the Cut-Out
   outlines it in red so you can fit it. The mask belongs to the effect's frame but is anchored to the
   screen, so its size and place are scaled from the screen's scale to the nameplate's, which changes
-  with distance; it is placed again on every reach check. Its texture is opaque to its edges, so
+  with distance; it is placed again on every repaint and every reach check. Its texture is opaque to its edges, so
   anything outside it stays visible.
 - Other addons that change the same soft target settings (`OTHER_ADDONS`) undo Glimmer's and it
   undoes theirs; with one on as well, Glimmer asks once per session to disable it.
@@ -94,14 +94,18 @@ NaowhForever_Glimmer/
 - The minimap shows at most `MINIMAP_MAX` icons, the spots inside its view. Placing them is
   `Parts.MinimapLayer` (Shared/UI/MinimapPins.lua): it moves them only while you move or the minimap
   turns.
-- The spot data loads the first time a map switch is on, out of combat: loading an addon in combat is
-  not something to rely on, so it waits for the fight to end (`PLAYER_REGEN_ENABLED` is one of the
-  minimap's events).
+- The spot data loads the first time Minimap Icons is on, out of combat: loading an addon in combat is
+  not something to rely on, so it waits for the fight to end, and only then does `PLAYER_REGEN_ENABLED`
+  redraw the icons. A skill-up repaints their rings, and redraws them only when it changes whether
+  herbs or ore show. Gathered on the Map alone never loads the data.
 - Only My Professions shows herbs to an herbalist and ore to a miner; a character with neither sees
   both, so the icons still help someone deciding what to learn.
-- A gather is noted when the loot window opens while the soft target is a herb or vein in reach, so it
-  needs no spell IDs. Where it is noted is the data's own spot for that node within `SNAP` (tenths of
-  a map percent) of where you stand, so gathering the same node again counts on the same pin. Each
+- A gather is noted when the loot window opens while the soft target is a herb or vein in reach and
+  the loot came from it (`GetLootSourceInfo`), so it needs no spell IDs and a corpse looted beside a
+  node does not count. One node counts once per loot window, even if it is opened again. Where it is
+  noted is a pin already there for that node within `SNAP` (tenths of a map percent) of where you
+  stand, else the data's own spot for it when the data is loaded, else where you stand, so gathering
+  a node again when it grows back counts on the same pin. Each
   map keeps at most `MAX_GATHERED` nodes, dropping the one gathered longest ago. They are kept in the
   account settings, so every character's gathering shows.
 

@@ -9,10 +9,10 @@ local Spots = G.Spots
 local RING_GROW = 1.6
 local ICON_SHARE = 0.7
 local OWN_KEYS = { enabled = true, minimapIcons = true, minimapSize = true, myProfessions = true, ore = true,
-    herb = true, skillColors = true }
+    herb = true, skillColors = true, oreColor = true, herbColor = true }
 local TEXT_LINE = "%s (%d)"
 
-local layer, events
+local layer, events, kinds
 local spots = {}
 
 local function On()
@@ -62,7 +62,12 @@ local function Paint(pin, list, i)
     pin.ring:SetVertexColor(c.r, c.g, c.b)
 end
 
+local function Kinds()
+    return (Spots.Wanted("ore") and "o" or "") .. (Spots.Wanted("herb") and "h" or "")
+end
+
 local function Refresh()
+    kinds = Kinds()
     if not On() or not Spots.Load() then
         if layer then layer:Set(nil) end
         return
@@ -72,11 +77,21 @@ local function Refresh()
     layer:Set(mapID, spots, mapID and Spots.ForMap(mapID, spots) or 0)
 end
 
+local function OnEvent(_, event)
+    if event == "PLAYER_REGEN_ENABLED" then
+        if not ns.GlimmerSpots then Refresh() end
+    elseif event == "SKILL_LINES_CHANGED" then
+        if Kinds() ~= kinds then Refresh() elseif layer then layer:Repaint() end
+    else
+        Refresh()
+    end
+end
+
 local function Apply()
     if On() then
         if not events then
             events = CreateFrame("Frame")
-            events:SetScript("OnEvent", Refresh)
+            events:SetScript("OnEvent", OnEvent)
         end
         for _, event in ipairs(C.MAP_EVENTS) do events:RegisterEvent(event) end
     elseif events then
