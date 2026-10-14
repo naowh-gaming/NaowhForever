@@ -272,6 +272,10 @@ HUD Editor
   moved it kept an anchor to Alerts, some on its top side where the growing plate still carried
   the feed. Each profile lets go of any Loot Feed anchor to Alerts once, in its saved layouts too
   (`lootFeedOffAlerts`); the feed stays at its own saved spot.
+- An element that grows one way (`UI.SetMoverGrow`, the Blessing Bar) keeps that edge on its
+  anchor instead of its centre, along the target's side, so it widens away from where it was put.
+  Changing the way it grows takes the offset again from where it is, so it does not move.
+  `UI.SetAnchor` anchors an element from its own settings (Reset Position), `UI.HasAnchor` asks.
 - Size and position changes are queued and handled once a frame.
 - Before each change by hand the editor keeps every element's spot and anchor (50 steps); a run of
   arrow nudges to one selection is one step. Loading a layout is a change like any other.
@@ -365,15 +369,15 @@ Onboarding
 - Closing it also sets `welcomeSeen`, which the Character Panel reads to tell a player new to the
   addon from anyone else; players who saw the old welcome window already have it, so they are not
   treated as new.
-- The onboarding asks three things, a step each: a profile (Naowh's Minimalist or Recommended, or Keep
-  mine), a skin, and the modules; then a summary of what changes, and Apply. Players new to addons
+- The onboarding asks three things, a step each: a profile (Naowh's Minimalist or Everything Enabled, or
+  Keep mine), a skin, and the modules; then a summary of what changes, and Apply. Players new to addons
   do not want many choices, so it no longer asks about how they play.
-- The profile step starts on Recommended only for an account never set up: no `welcomeSeen` (the
-  onboarding or the old welcome never closed) and no `setupBefore` (no Apply yet). Anyone else starts
-  on Keep mine, so opening it again changes nothing unless they pick something.
+- The profile step starts on Minimalist, the preset a new install starts from (`newInstall`), only for
+  an account never set up: no `welcomeSeen` (the onboarding or the old welcome never closed) and no
+  `setupBefore` (no Apply yet). Anyone else starts on Keep mine, so opening it again changes nothing unless they pick something.
 - The modules step starts from the picked profile: when a preset has a `modulesOff` list, every
-  module but those (Minimalist leaves off Discovery, with its Quest List, and Group Inspect, which spoil what
-  there is to find, and Gear & Trinkets and Swing Timer, which show nothing until set up), else its
+  module but those (Minimalist keeps only Quality of Life, the Dungeon Journal and the BiS List, for
+  players who would rather opt in; Everything Enabled's list is empty, so every module is on), else its
   switches, with the feature's default for a switch it leaves out; Keep mine starts from what is on
   now (its addon enabled, for this character in its own mode, and its switch on). A module on without
   what it needs (`needs` in `Options/Modules.lua`) cannot run, so it starts off. Picking another
@@ -406,6 +410,9 @@ Onboarding
   fonts (`ns.AddonFontPath` and `ns.HeadingFontPath` take whether to preview the game's) and button:
   Forever's has its dark title bar, a bronze edge and the game's red button (`Parts.ForeverButtonArt`).
   The step has a tile per skin in `Setup.SKINS` (Naowh, Forever), side by side.
+- The modules step lists the modules that are on first and the ones off under a line, each group in
+  the options' order; a flip moves its tile across at once, laid out again from the same tiles. Four
+  tiles a row keep up to 21 modules above the footer, with both groups shown.
 - A character new to the account gets its own page in the onboarding window, after the onboarding has
   been seen: two tiles, Same as its main or Set Up on its own, with the welcome's bottom row and no
   Back or Next. A new character starts on the account's profile, usually the main's, so the main no
