@@ -306,6 +306,7 @@ L["Travel"] = true
 L["Trinket 1"] = true
 L["Trinket 2"] = true
 L["Try Again"] = true
+L["Turn on Hunter Ammo Reminder below to get it."] = true
 L["Turn on the Shopping List in the Professions settings first."] = true
 L["Unanchor"] = true
 L["Undo"] = true

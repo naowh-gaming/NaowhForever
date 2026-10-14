@@ -87,6 +87,7 @@ local CARRY_HELP = ns.L("How many to carry. 0 stops reminding you about it.")
 local TEXT_NOTHING = ns.L("Nothing to check")
 local TEXT_BUYS = ns.L("; buys at vendors")
 local TEXT_STOCKED = "Nothing shows while you carry what you need."
+local TEXT_HUNTER_OFF = "Turn on Hunter Ammo Reminder below to get it."
 
 local alert, flash
 local wasResting
@@ -608,8 +609,7 @@ local function SampleLines(lines, state)
     wipe(lines)
     if state == "stocked" then return lines end
     if state == "low" then SampleCarried(lines) end
-    local hunterTab = state == "hunter" and S.Get("restockHunterAmmo")
-    if hunterTab or (state == "low" and HunterAmmoOn()) then
+    if state == "hunter" or (state == "low" and HunterAmmoOn()) then
         AddShort(lines, SAMPLE_AMMO, S.Get("restockHunterAmmoBelow"))
     end
     if state == "low" then SampleBags(lines) end
@@ -645,7 +645,9 @@ local function PaintPreview(preview, state)
     local lines = SampleLines(preview.lines, state)
     local shown = #lines > 0
     preview.view:SetShown(shown)
-    preview.note:SetText(state == "stocked" and ns.L(TEXT_STOCKED) or not shown and TEXT_NOTHING or "")
+    local hunterOff = state == "hunter" and not S.Get("restockHunterAmmo")
+    preview.note:SetText(state == "stocked" and ns.L(TEXT_STOCKED) or hunterOff and ns.L(TEXT_HUNTER_OFF)
+        or not shown and TEXT_NOTHING or "")
     if not shown then return end
     Fill(preview.view, lines)
     Fit(preview)
