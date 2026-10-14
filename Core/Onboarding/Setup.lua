@@ -4,10 +4,9 @@ local Setup = {}
 ns.Setup = Setup
 
 local KEEP = "keep"
-local RECOMMENDED = "recommended"
 local CUSTOM = "custom"
 local PRESET_KEY = "preset"
-local SKIN_NAOWH, SKIN_CLASSIC = "", "classic"
+local SKIN_NAOWH, SKIN_FOREVER = "", "forever"
 local BIS = "bis"
 local PANELS = { { key = "characterPanel", pick = "characterPanelPicked" },
     { key = "inspectPanel", pick = "inspectPanelPicked" } }
@@ -17,8 +16,8 @@ local COPY_NAME = "%s %d"
 local character
 
 Setup.KEEP = KEEP
-Setup.SKIN_NAOWH, Setup.SKIN_CLASSIC = SKIN_NAOWH, SKIN_CLASSIC
-Setup.SKINS = { SKIN_NAOWH, SKIN_CLASSIC }
+Setup.SKIN_NAOWH, Setup.SKIN_FOREVER = SKIN_NAOWH, SKIN_FOREVER
+Setup.SKINS = { SKIN_NAOWH, SKIN_FOREVER }
 
 Setup.ITEMS = {
     qol = { addon = "NaowhForever_QoL", db = "qol", key = "enabled",
@@ -173,12 +172,13 @@ end
 
 function Setup.DefaultProfile()
     local account = ns.AccountSettings()
-    if account.welcomeSeen or account.setupBefore or not Preset(RECOMMENDED) then return KEEP end
-    return RECOMMENDED
+    local start = ns.PRESETS.newInstall
+    if account.welcomeSeen or account.setupBefore or not Preset(start) then return KEEP end
+    return start
 end
 
 function Setup.CurrentSkin()
-    return ns.AccountSettings().skin == SKIN_CLASSIC and SKIN_CLASSIC or SKIN_NAOWH
+    return ns.AccountSettings().skin == SKIN_FOREVER and SKIN_FOREVER or SKIN_NAOWH
 end
 
 function Setup.Fresh()
