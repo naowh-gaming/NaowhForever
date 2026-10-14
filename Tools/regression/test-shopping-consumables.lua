@@ -146,7 +146,7 @@ local function NewEnv(withModules)
     return env, ns, levels, timers, account
 end
 
-local env, ns, levels = NewEnv(true)
+local _, ns, levels = NewEnv(true)
 local P = ns.Professions
 local D, C, SL = P.ConsumableItems, P.Consumables, P.Shopping
 
@@ -218,14 +218,14 @@ by, best = Picked(50, "MAGE", true, true)
 check("a line of one item: shown, not Best", by[13512] == "flask" and not best[13512])
 
 -- An item with two stats counts in the line of each stat you use, not only its first.
-by, best, later = Picked(45, "ROGUE", true, false)
+by, _, later = Picked(45, "ROGUE", true, false)
 check("rogue 45: agility's next tier is 46", by[13452] and later[13452])
 check("rogue 45: the level 55 strength-and-agility elixir is two tiers up", not by[250350])
 check("rogue 45: the level 55 agility-and-intellect elixir too", not by[250328])
 by = Picked(50, "ROGUE", true, false)
 check("rogue 50: both are the next agility tier now", by[250350] and by[250328])
 check("rogue 50: strength alone still not offered", not by[250351])
-by, best, later = Picked(45, "MAGE", true, true)
+by, _, later = Picked(45, "MAGE", true, true)
 check("mage 45: agility-and-intellect elixir is intellect's next tier", by[250328] and later[250328])
 check("mage 45: no strength-and-agility elixir", not by[250350])
 
@@ -244,7 +244,7 @@ check("unknown class: armor and healing potions only", by[13445] and by[13446] a
 
 -- Only for my class off: everything, every level, the best still marked.
 local order
-by, best, later, order = Picked(45, "WARRIOR", false, false)
+by, _, later, order = Picked(45, "WARRIOR", false, false)
 check("everything: caster and mana items too", by[9179] and by[13444] and by[20750])
 check("everything: every tier up", by[250351] and later[250351])
 local last = 0
