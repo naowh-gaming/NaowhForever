@@ -20,8 +20,8 @@ local FIELDS, PART = 4, 9
 local source = Read(DATA)
 check("the data's header names its builder", source:match("^%-%- SpellEfficiencyData%.lua: .-Tools/build/spell_efficiency%.py"))
 local seen, count = {}, 0
-local data = source:match("ns%.SpellEfficiencyData = {\n(.-)\n}")
-for id in data:gmatch("\n?    %[(%d+)%] = ") do
+local spells = source:match("ns%.SpellEfficiencyData = {\n(.-)\n}")
+for id in spells:gmatch("\n?    %[(%d+)%] = ") do
     check("spell " .. id .. " is listed once", not seen[id])
     seen[id] = true
     count = count + 1
@@ -34,7 +34,7 @@ local modSpells = 0
 for id, text in talents:gmatch("%[(%d+)%] = \"([^\"]*)\"") do
     check("spell " .. id .. " with talents is a spell with data", seen[id])
     for mod in (text .. ";"):gmatch("([^;]*);") do
-        local node, op = mod:match("^(%d+),([0-3]),%-?%d[%d%.]*")
+        local node = mod:match("^(%d+),[0-3],%-?%d[%d%.]*")
         check("spell " .. id .. "'s mod '" .. mod .. "' is node, op, then a value for each rank", node and #node >= 5)
         for field in mod:gmatch("[^,]+") do check("'" .. field .. "' is a number", tonumber(field)) end
     end
@@ -324,6 +324,18 @@ local holyLight = Show(635)[1][1]
 nodeRanks[105333] = 3
 check("Healing Light (the node in the tree data) raises Holy Light's line", Show(635)[1][1] ~= holyLight)
 nodeRanks[105333] = nil
+costs[740], casts[740] = { { type = 0, cost = 375 } }, 0
+nodeRanks[104916] = 5
+check("Gift of Nature 5/5 raises Tranquility, which only ticks, by 10%", Show(740)[1][1]
+    == "1.33 healing per mana / target  ||  50 per second / target")
+nodeRanks[104916] = nil
+costs[401502], casts[401502] = { { type = 0, cost = 100 } }, 3000
+check("Frostfire Bolt 1 with no talents", Show(401502)[1][1] == "1.37 damage per mana  ||  46 per second")
+nodeRanks[105773] = 3
+check("Piercing Ice 3/3 adds 6% to Frostfire Bolt's ticks too", Show(401502)[1][1] == "1.46 damage per mana  ||  49 per second")
+nodeRanks[105773], nodeRanks[105799] = nil, 3
+check("Arcane Instability 3/3 adds 3% to Frostfire Bolt's ticks too", Show(401502)[1][1] == "1.42 damage per mana  ||  47 per second")
+nodeRanks[105799] = nil
 local frostPower = power[5]
 power[5] = 0
 costs[10], casts[10] = { { type = 0, cost = 320 } }, 0

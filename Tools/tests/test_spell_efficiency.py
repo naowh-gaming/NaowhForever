@@ -200,9 +200,20 @@ class Talents(unittest.TestCase):
         self.assertIn(2, mods)
         self.assertNotIn(3, mods, "another class's spell family")
 
-    def test_a_rank_with_no_curve_uses_its_base(self):
+    def test_an_effect_with_no_curve_grows_like_the_talents_other(self):
+        mods = se.talent_mods(self.tables, self.found, self.nodes)
+        self.assertEqual([(n, o, [round(v, 4) for v in values]) for n, o, values in mods[4]],
+                         [(105000, 1, [0.09, 0.18, 0.27])])
+
+    def test_a_talent_with_no_curve_uses_its_base(self):
+        self.tables["TraitDefinitionEffectPoints"] = []
         mods = se.talent_mods(self.tables, self.found, self.nodes)
         self.assertEqual(mods[4], [(105000, 1, [0.09])])
+
+    def test_a_direct_percent_counts_on_the_ticks_of_a_spell_it_names(self):
+        mods = se.talent_mods(self.tables, self.found, self.nodes)
+        self.assertEqual([(n, o) for n, o, _ in mods[2]], [(105000, 0), (105000, 1)])
+        self.assertEqual([(n, o) for n, o, _ in mods[1]], [(105000, 0)], "no ticks")
 
     def test_active_and_cost_talents_are_left_out(self):
         mods = se.talent_mods(self.tables, self.found, self.nodes)

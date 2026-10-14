@@ -56,7 +56,10 @@ the next damage spell is free).
 
 A talent with several ranks does not have a spell per rank in Forever: the value of each of its
 effects at each rank is a curve (TraitDefinitionEffectPoints -> CurvePoint), 4, 8, 12 for Healing
-Light. A mod is written with its value at every rank.
+Light. A mod is written with its value at every rank. An effect with no curve of its own grows
+like the talent's effect that has one (Piercing Ice's periodic percent), scaled to its own base.
+A talent whose direct percent names a spell with ticks, and no periodic percent of it does,
+counts on the ticks too (Gift of Nature on Tranquility, which has no direct part).
 
 Writes NaowhForever_QoL/Interface/SpellEfficiencyData.lua.
 
@@ -107,8 +110,8 @@ DECIMALS = 4
 # or damage and healing over time, and the op each is written with.
 MOD_AURA_PERCENT = 108
 PASSIVE = 0x40                   # SpellMisc.Attributes_0: a talent that is not a spell to cast (Arcane Power is)
-MOD_OPS = {0: 0, 22: 1}
-OP_CRIT_REFUND, OP_FREE_CAST = 2, 3
+OP_DIRECT, OP_PERIODIC, OP_CRIT_REFUND, OP_FREE_CAST = 0, 1, 2, 3
+MOD_OPS = {0: OP_DIRECT, 22: OP_PERIODIC}
 # Talents the tables do not decide (see the top), by their first rank. Illumination: gives back
 # 50% of the cost of a crit heal, for the heals named, with the chance its first effect has at
 # each rank. Elemental Focus: a 10% chance to make the next damage spell free, for fire, frost and
@@ -468,7 +471,12 @@ def talent_mods(tables, found, nodes):
             continue
         for effect in effects.get(talent, []):
             op = MOD_OPS.get(int(effect["EffectMiscValue_0"] or 0))
-            amounts = [v / 100 for v in ranks.get((talent, int(effect["EffectIndex"])), [number(effect["EffectBasePointsF"])])]
+            base = number(effect["EffectBasePointsF"])
+            curve = ranks.get((talent, int(effect["EffectIndex"])))
+            if curve is None:
+                other = next((values for (spell, _), values in sorted(ranks.items()) if spell == talent), None)
+                curve = [v * base / other[0] for v in other] if other and other[0] else [base]
+            amounts = [v / 100 for v in curve]
             if int(effect["EffectAura"] or 0) != MOD_AURA_PERCENT or op is None or amounts[0] <= 0:
                 continue
             mask = mask_words(effect, "EffectSpellClassMask_")
@@ -478,6 +486,11 @@ def talent_mods(tables, found, nodes):
                 if (family(spell) == family(talent)
                         and any(a & b for a, b in zip(mask_words(options[spell], "SpellClassMask_"), mask))):
                     mods.setdefault(spell, []).append((node, op, amounts))
+    for spell, found_mods in mods.items():
+        if any(part["ticks"] for part in found[spell]["parts"]):
+            over_time = {node for node, op, _ in found_mods if op == OP_PERIODIC}
+            found_mods += [(node, OP_PERIODIC, amounts) for node, op, amounts in list(found_mods)
+                           if op == OP_DIRECT and node not in over_time]
     for spell, entry_ in found.items():
         heals = any(part["heal"] == HEAL for part in entry_["parts"])
         if ILLUMINATION in nodes and heals and names.get(spell) in ILLUMINATION_SPELLS \
@@ -515,7 +528,6 @@ def lua(found, build, mods):
         lines.append(f"    [{spell}] = {lua_entry(found[spell])},")
     lines.append("}")
     lines.append("")
-    lines.append("-- per spell: node, op, value at each rank; mods apart by ;  ops: 0 direct, 1 periodic, 2 crit refund, 3 free cast")
     lines.append("ns.SpellEfficiencyTalents = {")
     for spell in sorted(mods):
         text = ";".join(SEPARATOR.join([str(node), str(op)] + [lua_number(v) for v in values])
