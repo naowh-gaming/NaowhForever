@@ -708,11 +708,11 @@ end
 Shared.Settings.Page("QoL/Loot & Items", S):Card({
     id = "scrapMarker", name = "Scrap Marker", order = 65, switch = "scrapMarker",
     help = function() return MARK_HELP[Scrap.Modifier()] end,
-    search = "/nf scrap nf scrap list",
+    search = "/nf scrap nf scrap list alt-click ctrl-click mark scrap sell vendor",
     summary = Summary,
     rows = {
         { key = "scrapMarkerModifier", label = "Marking Modifier", choice = MODIFIER,
-          help = "The key to hold while left-clicking an item to mark or unmark it as scrap." },
+          help = "The key to hold as you click an item to mark it; Ctrl also opens the dressing room on gear." },
         { key = "scrapMarkerVendor", label = "At the Vendor", choice = VENDOR,
           help = "Sell your scrap when you open a vendor, ask you first, or do nothing." },
         { key = "scrapMarkerScope", label = "New Marks", choice = SCOPE,
