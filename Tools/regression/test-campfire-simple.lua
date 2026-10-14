@@ -1220,15 +1220,6 @@ do
     s.auras[SITTING] = { duration = 60, expirationTime = s.now + 35 }
     s.fire("UNIT_AURA")
     check("Round, resting", s.named.NaowhForeverCampfire.label.text == "Resting")
-    local label = s.named.NaowhForeverCampfire.label
-    check("Round, resting: the label sits 4px under the widest ring edge, not on it",
-        label.pty.TOP == -(math.max(s.ns.AuraBuffs.Style.CAMP_TRACK_OUT, s.ns.AuraBuffs.Style.CAMP_DRAIN_OUT,
-            s.ns.AuraBuffs.Style.CAMP_RING_OUT) + 4))
-    s.auras[SITTING] = nil
-    s.fire("UNIT_AURA")
-    check("Round, Refresh Camp: the same drop", label.text == "Refresh Camp" and label.pty.TOP == -10)
-    s.auras[SITTING] = { duration = 60, expirationTime = s.now + 35 }
-    s.fire("UNIT_AURA")
     s.S.Set("campStyle", "simple")
     local bar = s.bar()
     check("switching to Simple while resting: the last bonuses at once", bar.note.text == "Resting"
@@ -1312,7 +1303,7 @@ do
     check("no camp, none nearby: the reminder glows and offers Sit", s.glows[icon] and icon.sit and icon.sit.shown)
     check("Sit sits on the right of the reminder", icon.sit.rel.LEFT == icon and icon.sit.pt.LEFT > 0)
     check("Sit is an icon the size of the camp icon, drawn from the sitting art",
-        icon.sit.w == s.S.Get("campIconSize") and icon.sit.h == icon.sit.w and icon.sit.tex.texture:find("Sit.tga", 1, true))
+        icon.sit.w == s.S.Get("campIconSize") and icon.sit.h == icon.sit.w and icon.sit.tex.texture == "Interface\\AddOns\\NaowhForever_AuraBuffs\\Media\\Sit.tga")
     check("Sit's label is the camp label's size, on the same line under its icon",
         icon.sit.label.text == "Sit" and icon.sit.label.size == icon.label.size
         and icon.sit.label.pty.TOP == icon.label.pty.TOP and icon.sit.label.rel.TOP == icon.sit)

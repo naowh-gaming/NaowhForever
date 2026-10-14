@@ -146,10 +146,8 @@ NaowhForever_AuraBuffs/
   old on/off switch (`campBuffs`), so nobody's setting changes. On Mouseover the buff lines stay
   written but invisible until the icon is hovered, and the icon only takes the mouse then, so
   clicks and camera drags otherwise go through.
-- The Round look's words sit `LABEL_GAP` (4) under the outermost edge of the icon's rings, the widest of
-  `TRACK_OUT`, `DRAIN_OUT` and `RING_OUT`, so Resting and Refresh Camp (and the Sit label) clear the time
-  ring. The Sit icon is the same round plate as the camp icon with the seated figure on it, and its
-  label uses the same drop.
+- The Sit icon is the same round plate as the camp icon with the seated figure on it, and its label
+  uses the camp label's drop (`LABEL_DROP`), so both labels sit on one line under the time ring.
 - The Round icon's plate follows the theme's Panels color (`ns.ThemeTint`), and a black circle one
   pixel wider behind it is its 1px round border. The black disk extends past the time ring on both
   sides, edging it.
