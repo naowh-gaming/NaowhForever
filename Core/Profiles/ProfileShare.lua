@@ -43,7 +43,6 @@ local PARTS = {
     { key = "look", label = "Look", help = "Skin, theme colors, font and window scale, for every profile",
       share = ns.L("Skin, theme colors, font and window scale.") },
 }
--- No longer offered on export; a string from an older build still carries them.
 local LEGACY_PARTS = {
     { key = "library", label = "Macro Library", help = "Added next to your Library, never over it",
       share = ns.L("The macros you saved to the Forge's Library.") },
