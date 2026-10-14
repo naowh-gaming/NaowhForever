@@ -4,15 +4,14 @@
 One saved layout orders the buttons on each side: Friends, Guild and Hearthstone (secure
 buttons) and any addon's LibDataBroker launcher. Its card on the QoL Interface page has a live
 preview that edits the layout: drag a button to move it, its x removes it, a side's + adds one.
-The bar moves in the HUD Editor. `/nf lockouts` prints your saved instances. Its TOC depends on
+The bar moves in the HUD Editor. `/nf lockouts` prints your saved instances. It is part of
 NaowhForever_QoL, where its card is: switching QoL off takes the Top Bar with it.
 
 ## Layout
 
 ```
-NaowhForever_TopBar/
-  NaowhForever_TopBar.toc  its metadata, and one file line: TopBar.xml
-  TopBar.xml            every file, in load order
+NaowhForever_QoL/TopBar/
+  TopBar.xml            every file, in load order, included last by QoL.xml
   TopBar.lua            its settings and the module table (ns.TopBar)
   Constants.lua         the gaps, sizes, rounding, Hearthstone and broker prefix several files share (TB.C)
   Layout.lua            the saved layout, its migration from the old button keys, editing it (TB.Layout)
@@ -27,8 +26,15 @@ NaowhForever_TopBar/
     Bar.lua             the bar on screen: built on first use, kept current, its events
     Preview.lua         the card's live preview, which edits the layout (TB.Preview)
     SettingsPage.lua    its card on the QoL Interface page, declared once
-  Media/                its button icons (icon-*.png) and the resting glyph (resting.blp)
   README.md             this file
+```
+
+Its art is in `NaowhForever_QoL/Media/TopBar/`:
+
+```
+NaowhForever_QoL/Media/TopBar/
+  icon-*.png            its button icons
+  resting.blp           the resting glyph
 ```
 
 Each layer uses only the ones above it. The bar hands its buttons the function that fades it
@@ -88,7 +94,7 @@ Each layer uses only the ones above it. The bar hands its buttons the function t
 
 ## Checking
 
-- `luacheck TopBar` from the repo root.
+- `luacheck NaowhForever_QoL/TopBar` from the repo root.
 - `lua Tools/regression/test-topbar-layout.lua`: the layout, its migration, the drawing order and
   the preview's remove, move and add.
 - `lua Tools/regression/test-topbar-look.lua`, `test-topbar-readout.lua`,
