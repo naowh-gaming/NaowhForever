@@ -154,6 +154,9 @@ local function Fixture(saved)
         C_CurveUtil = { CreateCurve = function()
             return setmetatable({}, { __index = function() return NOTHING end })
         end },
+        C_ClassColor = { GetClassColor = function()
+            return { WrapTextInColorCode = function(_, name) return name end }
+        end },
         C_Item = { RequestLoadItemDataByID = NOTHING },
         C_SpellBook = { IsSpellKnown = function() return false end },
         Enum = { LuaCurveType = { Step = 1 }, UIMapType = { Zone = 3, Continent = 2 },
