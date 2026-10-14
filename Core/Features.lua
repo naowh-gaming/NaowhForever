@@ -184,6 +184,7 @@ ns.FEATURES = {
         raidBuffs = false,
         personalBuffs = true,
         weaponEnhancements = false,
+        wornReminders = false,
         campfire = true,
         campNearbyAlert = true,
         lowHealth = true,
