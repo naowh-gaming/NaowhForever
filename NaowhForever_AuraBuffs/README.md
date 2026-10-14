@@ -158,6 +158,9 @@ NaowhForever_AuraBuffs/
   target's debuffs; like every reminder it holds what it showed once combat starts.
 - The buff menu holds secure buttons, so it can only be hidden outside combat. It uses
   `IsMouseOver` on the frame: the old `MouseIsOver` global is gone from the game.
+- The buff menu's icons are the row's Icon Size, centred under the icon you hover and spreading both
+  ways, each line of them centred too. With no room under the icon it opens above it; the screen
+  clamp keeps it in at the sides.
 - Camp Benefits (1229741, probed 2026-09-19), Campfire Nearby (1283391, the area aura in range of
   a campfire, 2026-09-24) and Welcoming Campfire (1229739 and the crafting 1289723, the 60 second
   aura while sitting, before Camp Benefits lands, 2026-09-25) were probed on the client.

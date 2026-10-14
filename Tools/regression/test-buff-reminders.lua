@@ -73,8 +73,13 @@ local function Fixture(opts)
         function f:RegisterEvent(e) f.events[e] = true end
         function f:RegisterUnitEvent(e) f.events[e] = true end
         function f:UnregisterAllEvents() f.events = {} end
-        function f:SetPoint(_, relativeTo) f.anchor = relativeTo end
+        function f:SetPoint(point, relativeTo, relativePoint, x, y)
+            f.anchor, f.point, f.relativePoint, f.x, f.y = relativeTo, point, relativePoint, x, y
+        end
         function f:ClearAllPoints() f.anchor = nil end
+        function f:SetSize(w, h) f.width, f.height = w, h end
+        function f:GetBottom() return rawget(f, "bottom") or 500 end
+        function f:GetEffectiveScale() return 1 end
         function f:CreateTexture()
             local t = Recorder()
             function t:SetTexture(tex) t.texture = tex end
@@ -685,12 +690,46 @@ do
     Check("using an item closes the menu", popup.shown, false)
     cell.scripts.OnEnter(cell)
     Check("open menu hangs under its cell", popup.anchor, cell)
+    Check("menu sits centred under its cell", popup.point .. ">" .. popup.relativePoint, "TOP>BOTTOM")
+    Check("menu icons are the row's size", popup.buttons[1].width .. "x" .. popup.buttons[1].height, "36x36")
+    Check("one item sits in the middle", popup.buttons[1].point .. " " .. popup.buttons[1].x, "TOP 0")
+    Check("menu fits one icon", popup.width .. "x" .. popup.height, "44x44")
+    t.Set("iconSize", 96)
+    cell.scripts.OnEnter(cell)
+    Check("menu icons grow with Icon Size", popup.buttons[1].width, 96)
+    Check("menu grows with them", popup.width .. "x" .. popup.height, "104x104")
+    cell.bottom = 50
+    cell.scripts.OnEnter(cell)
+    Check("no room under the cell: menu opens above it", popup.point .. ">" .. popup.relativePoint, "BOTTOM>TOP")
+    cell.bottom = nil
+    t.Set("iconSize", 36)
     t.Fire("PLAYER_REGEN_DISABLED")
     Check("combat entry closes hover menu", popup.shown, false)
     Check("closed menu lets go of its cell, so the cell stays movable in combat", rawget(popup, "anchor"), nil)
     t.state.combat = true
     cell.scripts.OnEnter(cell)
     Check("no menu in combat", popup.shown, false)
+end
+
+-- A full menu spreads out from the middle, each line centred under the hovered icon.
+do
+    local entries, bags = {}, {}
+    for i = 1, 9 do
+        entries[i] = { category = "food", itemID = 100 + i, auras = { 10 + i } }
+        bags[i] = 100 + i
+    end
+    local t = Fixture({ instance = "raid", bags = bags, settings = { consumableEntries = entries } })
+    t.Login()
+    local cell
+    for _, f in ipairs(t.frames) do if rawget(f, "items") then cell = f end end
+    cell.scripts.OnEnter(cell)
+    local popup
+    for _, f in ipairs(t.frames) do if rawget(f, "owner") == cell then popup = f end end
+    local xs = {}
+    for i = 1, 9 do xs[i] = popup.buttons[i].x .. "," .. popup.buttons[i].y end
+    Check("full line centred, the ninth alone under it", table.concat(xs, " "),
+        "-140,-4 -100,-4 -60,-4 -20,-4 20,-4 60,-4 100,-4 140,-4 0,-44")
+    Check("menu fits eight across, two lines", popup.width .. "x" .. popup.height, "324x84")
 end
 
 -- Personal buffs: the best armor you know shows until any armor is up; resting and a pick hide it.
