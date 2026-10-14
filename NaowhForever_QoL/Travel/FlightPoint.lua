@@ -14,6 +14,7 @@ local ZONE_HOLD = 10
 local PERCENT = ns.QoLConstants.PERCENT
 local ZONE = Enum.UIMapType.Zone
 local CONTINENT = Enum.UIMapType.Continent
+local TAXI_MAPS = { [1415] = 1463, [1414] = 1464 }
 local NEUTRAL = Enum.FlightPathFaction.Neutral
 local HORDE = Enum.FlightPathFaction.Horde
 local ALLIANCE = Enum.FlightPathFaction.Alliance
@@ -106,15 +107,22 @@ local function Up(id, mapType)
     if info and info.mapType == mapType then return info.mapID end
 end
 
+local function Seen(mine, zone)
+    local maps = mine and mine.seenMaps
+    local continent = Up(zone, CONTINENT)
+    return maps and continent and (maps[continent] or maps[TAXI_MAPS[continent]])
+end
+
 local function Learn()
     local mine = Mine(true)
     local taxi = mine and GetTaxiMapID()
     if not taxi then return end
-    local continent = Up(taxi, CONTINENT)
-    if continent then
-        mine.seenMaps = mine.seenMaps or {}
-        mine.seenMaps[continent] = true
-    end
+    local taxiContinent = Up(taxi, CONTINENT)
+    local continent = Up(C_Map.GetBestMapForUnit(PLAYER), CONTINENT)
+    mine.seenMaps = mine.seenMaps or {}
+    mine.seenMaps[taxi] = true
+    if taxiContinent then mine.seenMaps[taxiContinent] = true end
+    if continent then mine.seenMaps[continent] = true end
     for _, node in ipairs(C_TaxiMap.GetAllTaxiNodes(taxi)) do
         if node.nodeID then mine[node.nodeID] = node.state ~= UNREACHABLE end
     end
@@ -230,7 +238,7 @@ local function Nearest(zoneWide)
     if secret then return nil end
     local info = C_Map.GetMapInfo(zone)
     local subzone, mine = Subzone(), Mine()
-    local seen = mine and mine.seenMaps and mine.seenMaps[Up(zone, CONTINENT)]
+    local seen = Seen(mine, zone)
     local map, entries, blocked = NodesFor(zone)
     if blocked or not map then return nil end
     local best, ask, spoken, node = Scan(entries, map, zone, info and info.name or "", player, subzone, mine, seen, zoneWide)
@@ -374,7 +382,7 @@ function ns.FlightPointReminderForPin(map, npc)
         end
     end
     local mine = Mine()
-    local seen = mine and mine.seenMaps and mine.seenMaps[Up(zone, CONTINENT)]
+    local seen = Seen(mine, zone)
     if nearest and Kind(nearest, mine, seen) == LEARN then return TEXT:format(PlaceName(nearest.name)) end
 end
 

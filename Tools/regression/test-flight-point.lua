@@ -17,6 +17,7 @@ local NEUTRAL, HORDE, ALLIANCE = 0, 1, 2
 local BARRENS, STORMWIND, UNDERCITY, CAVES = 1413, 1453, 1458, 9001
 local DARKSHORE, KALIMDOR, DUSKWOOD, EASTERN_KINGDOMS = 1439, 1414, 1431, 1415
 local AUBERDINE, RATCHET, STORMWIND_FP, DARKSHIRE, THORIUM = 26, 80, 2, 12, 74
+local EASTERN_TAXI, KALIMDOR_TAXI = 1463, 1464
 local UNREACHABLE, CURRENT = 2, 0
 local SECRET = "secret"
 local GUID = "Player-1-GLYADIN"
@@ -24,7 +25,7 @@ local TAXI, VENDOR = 102, 101
 
 local state = { map = BARRENS, pos = { x = 0, y = 0 }, faction = "Alliance", taxi = false,
     combat = false, secret = false, guid = GUID, nodes = {}, asked = nil, asks = 0, subzone = "", openNodes = {},
-    options = {} }
+    options = {}, taxiMap = DARKSHORE }
 local frames, named, timers = {}, {}, {}
 
 local function Expire()
@@ -155,7 +156,7 @@ local env = {
     GetRealmName = function() return "Forever" end,
     UnitGUID = function() return state.guid end,
     GetSubZoneText = function() return state.subzone end,
-    GetTaxiMapID = function() return DARKSHORE end,
+    GetTaxiMapID = function() return state.taxiMap end,
     UnitOnTaxi = function() return state.taxi end,
     UnitAffectingCombat = function() return state.combat end,
     issecretvalue = function(v) return state.secret and v == SECRET end,
@@ -172,6 +173,9 @@ local env = {
     C_Map = {
         GetBestMapForUnit = function() return state.map end,
         GetMapInfo = function(id)
+            if id == EASTERN_TAXI or id == KALIMDOR_TAXI then
+                return { mapID = id, mapType = 2, parentMapID = 0 }
+            end
             if id == CAVES then return { mapID = CAVES, mapType = 4, parentMapID = UNDERCITY } end
             if id == DARKSHORE then return { mapID = DARKSHORE, mapType = 3, parentMapID = KALIMDOR } end
             if id == KALIMDOR then return { mapID = KALIMDOR, mapType = 2, parentMapID = 0 } end
@@ -476,5 +480,70 @@ S.Set("flightPoint", false)
 state.asks = 0
 check("a pin does no taxi data work while the reminder is off", ns.FlightPointReminderForPin(DARKSHORE, pin) == nil
     and state.asks == 0 and not Listening("ZONE_CHANGED"))
+
+local function Reload()
+    frames, named, timers = {}, {}, {}
+    S.Set = function(k, v) values[k] = v end
+    ns.Apply, ns.ShowUnlockMode, ns.HideUnlockMode = function() end, function() end, function() end
+    Load({ "NaowhForever_QoL/Travel/FlightPoint.lua" }, env)
+    Fire("PLAYER_LOGIN")
+end
+
+state.zoneAlerts, state.map, state.nodes, state.subzone = false, DUSKWOOD, {}, ""
+state.taxiMap = EASTERN_TAXI
+S.Set("flightPoint", true)
+account.flightPoints = { [GUID] = { [11] = true, seenMaps = { [EASTERN_TAXI] = true } } }
+state.nodes = { Node("Darkshire, Duskwood", ALLIANCE, 50, true, DARKSHIRE) }
+Reload()
+check("a reloaded 1463-only save recognizes Eastern Kingdoms without opening a flight map",
+    Text() == "Learn the Darkshire flight point")
+check("the pin hint also recognizes a 1463-only save",
+    ns.FlightPointReminderForPin(DUSKWOOD, { 0.5, 0 }) == "Learn the Darkshire flight point")
+check("the legacy save still hides its known node 11",
+    At(DUSKWOOD, { Node("Known Town, Duskwood", ALLIANCE, 50, true, 11) }) == nil)
+state.zoneAlerts = true
+At(BARRENS, {})
+check("a 1463-only save also enables the distant zone-entry learn reminder",
+    At(DUSKWOOD, { Node("Darkshire, Duskwood", ALLIANCE, 8000, true, DARKSHIRE) })
+    == "Learn the Darkshire flight point")
+Expire()
+state.zoneAlerts = false
+check("an Eastern Kingdoms taxi save does not mark Kalimdor seen",
+    At(DARKSHORE, { Node("Auberdine, Darkshore", ALLIANCE, 50, true, AUBERDINE) })
+    == "Open a flight master's map to save the points you know")
+state.guid = "Player-1-OTHER"
+check("the migrated continent belongs only to the saved character",
+    At(DUSKWOOD, { Node("Darkshire, Duskwood", ALLIANCE, 50, true, DARKSHIRE) })
+    == "Open a flight master's map to save the points you know")
+state.guid = GUID
+account.flightPoints[GUID] = { seenMaps = { [KALIMDOR_TAXI] = true } }
+check("a 1464-only save recognizes Kalimdor",
+    At(DARKSHORE, { Node("Auberdine, Darkshore", ALLIANCE, 50, true, AUBERDINE) })
+    == "Learn the Auberdine flight point")
+check("a Kalimdor taxi save does not mark Eastern Kingdoms seen",
+    At(DUSKWOOD, { Node("Darkshire, Duskwood", ALLIANCE, 50, true, DARKSHIRE) })
+    == "Open a flight master's map to save the points you know")
+account.flightPoints[GUID] = { seenMaps = { [9002] = true } }
+check("an unrelated saved map cannot mark a continent seen",
+    At(DUSKWOOD, { Node("Darkshire, Duskwood", ALLIANCE, 50, true, DARKSHIRE) })
+    == "Open a flight master's map to save the points you know")
+account.flightPoints = nil
+state.openNodes = { { nodeID = 11, state = CURRENT }, { nodeID = DARKSHIRE, state = UNREACHABLE } }
+Fire("TAXIMAP_OPENED")
+check("opening Forever's 1463 map saves both the taxi map and player's real continent",
+    account.flightPoints[GUID].seenMaps[EASTERN_TAXI] == true
+    and account.flightPoints[GUID].seenMaps[EASTERN_KINGDOMS] == true
+    and account.flightPoints[GUID][11] == true and account.flightPoints[GUID][DARKSHIRE] == false)
+Reload()
+check("the new snapshot keeps its learn reminder after reload", Text() == "Learn the Darkshire flight point")
+check("the new snapshot keeps its known node hidden after reload",
+    At(DUSKWOOD, { Node("Known Town, Duskwood", ALLIANCE, 50, true, 11) }) == nil)
+account.flightPoints = nil
+state.taxiMap = 9002
+state.nodes = { Node("Darkshire, Duskwood", ALLIANCE, 50, true, DARKSHIRE) }
+Fire("TAXIMAP_OPENED")
+check("saving the player's continent does not depend on a recognized taxi map",
+    account.flightPoints[GUID].seenMaps[EASTERN_KINGDOMS] == true
+    and Text() == "Learn the Darkshire flight point")
 
 print(checks .. " flight point checks passed")
