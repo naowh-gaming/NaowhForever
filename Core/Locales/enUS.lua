@@ -2,6 +2,9 @@
 local L = _G.NaowhForeverLocale or {}
 _G.NaowhForeverLocale = L
 
+L["Worn Gear Reminder"] = true
+L["An icon while you wear Cloak of Hermitic Bliss in Wailing Caverns, so you remember to swap it."] = true
+L["You are wearing this."] = true
 L["Group Finder Roles"] = true
 L["Groups need:"] = true
 L["Players:"] = true
@@ -2030,6 +2033,8 @@ L["Fade"] = true
 L["Fade After (s)"] = true
 L["Fade From"] = true
 L["Fade Up Close"] = true
+L["Arrival Distance"] = true
+L["How close counts as there: a map waypoint clears."] = true
 L["Fade When Idle"] = true
 L["Faded"] = true
 L["Faded Opacity"] = true
@@ -4617,6 +4622,7 @@ L["Test roll"] = true
 L["Text"] = true
 L["Text Color"] = true
 L["Text on screen in a town whose flight point you have not learned."] = true
+L["Reminds you of unlearned flight points when you enter a zone or reach a town."] = true
 L["Text on screen when any piece of gear drops below the threshold. Hidden in combat. Move it in the HUD Editor."] = true
 L["Text on screen while you have talent points to spend. Hidden in combat. Move it in the HUD Editor."] = true
 L["Text Outline"] = true
