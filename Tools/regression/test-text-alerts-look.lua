@@ -166,7 +166,7 @@ local function Fixture(saved)
     for _, path in ipairs({ "Core/Features.lua", "Core/Settings.lua", "Core/AlertStack.lua",
         "NaowhForever_QoL/Combat/CombatAlert.lua", "NaowhForever_QoL/Combat/CombatTimer.lua",
         "NaowhForever_QoL/Combat/StealthReminder.lua", "NaowhForever_QoL/Questing/TalentPoints.lua",
-        "NaowhForever_QoL/Loot/Durability.lua", "NaowhForever_QoL/Loot/Restock.lua",
+        "NaowhForever_QoL/Loot/LootCard.lua", "NaowhForever_QoL/Loot/Durability.lua", "NaowhForever_QoL/Loot/Restock.lua",
         "NaowhForever_QoL/Combat/PetTracker.lua" }) do
         files[#files + 1] = path
     end
@@ -213,7 +213,7 @@ local ELEMENTS = {
     { "Talent Points", "talentPoints", function(s) return s.named.NaowhForeverTalentPoints end, 22, 300, 10,
       "QoL/XP", "talentPoints" },
     { "Durability", "durability", function(s) return s.named.NaowhForeverDurability end, 22, 300, 10,
-      "QoL/Loot & Items", "durability" },
+      "QoL/Combat", "durability" },
     { "Pet Tracker", "pet", function(s) return s.named.NaowhForeverPetTracker end, 20, 220, 16,
       "QoL/Combat", "petTracker" },
 }
@@ -334,9 +334,9 @@ end
 do
     local s = Shown()
     local mover = s.movers.Alerts
-    check("Alerts group: HUD Editor > Settings opens Durability", mover.page == "QoL/Loot & Items"
-        and mover.feature == "QoL/Loot & Items:durability"
-        and s.ns.Shared.Settings.pages["QoL/Loot & Items"].cards.durability ~= nil)
+    check("Alerts group: HUD Editor > Settings opens Durability", mover.page == "QoL/Combat"
+        and mover.feature == "QoL/Combat:durability"
+        and s.ns.Shared.Settings.pages["QoL/Combat"].cards.durability ~= nil)
     local listed = {}
     for _, choice in ipairs(mover.choices) do
         local page, id = choice.feature:match("^(.+):([^:]+)$")

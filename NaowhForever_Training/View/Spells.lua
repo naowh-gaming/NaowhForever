@@ -41,6 +41,7 @@ local TEXT_SOON, TEXT_SOON_NOTE = ns.L("COMING SOON"), ns.L("Within %d levels, %
 local TEXT_LATER, TEXT_LATER_NOTE = ns.L("LATER"), ns.L("Click a level, or a dot above")
 local TEXT_MORE_LEVELS = ns.L("and %d more levels on the road above")
 local TEXT_TALENT, TEXT_TALENT_NOTE = ns.L("NEEDS A TALENT"), ns.L("Shows up once you take the talent")
+local TEXT_WEAPONS, TEXT_WEAPONS_NOTE = ns.L("WEAPON SKILLS"), ns.L("Click one for a waypoint to where it is taught")
 local TEXT_SKIPPED, TEXT_SKIPPED_NOTE = ns.L("SKIPPED"), ns.L("Skipping these saves ")
 local TEXT_LEARNED, TEXT_LEARNED_NOTE = ns.L("LEARNED"), ns.L("About %s spent")
 local TEXT_NO_MATCH, TEXT_NO_MATCH_NOTE = ns.L("NO SPELLS MATCH"), ns.L("Try part of a spell's name")
@@ -249,6 +250,11 @@ local function LevelWhy(entry)
     return TEXT_LEVEL .. entry[LEVEL]
 end
 
+local function WeaponWhy(entry)
+    if entry[LEVEL] > UnitLevel("player") then return TEXT_LEVEL .. entry[LEVEL] end
+    return Training.MasterPlace(entry)
+end
+
 local function NoWhy()
     return nil
 end
@@ -265,6 +271,12 @@ function Spells.DrawAll(plan, y)
     if #plan.soon > 0 then
         y = Header(y, TEXT_SOON, #plan.soon, TEXT_SOON_NOTE:format(Training.SOON, Training.Coins(Training.Total(plan.soon))))
         y = DrawRows(plan, "soon", y, LevelWhy) - Style.SECTION_GAP
+    end
+    local weapons = Training.Weapons()
+    if #weapons > 0 then
+        y = Header(y, TEXT_WEAPONS, #weapons, TEXT_WEAPONS_NOTE)
+        for _, entry in ipairs(weapons) do y = Row(entry, "weapon", y, WeaponWhy(entry)) end
+        y = y - Style.SECTION_GAP
     end
     if #plan.later > 0 then y = DrawLater(plan, y) end
     if #plan.talent > 0 then
