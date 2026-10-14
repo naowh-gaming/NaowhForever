@@ -146,6 +146,9 @@ Theme
 - The Classic+ skin (Settings > Skin) has its own colors, `ns.CLASSIC_PLUS`, in force whatever the
   Theme setting says. It is read with the colors, once per load, so a change to it waits for a
   reload too.
+- The Forever skin, the third choice, has its own colors the same way (`ns.FOREVER_SKIN`): parchment
+  text on charcoal stone, bronze lines and the game's gold. `ns.Skin()` says which skin is in force;
+  a saved skin it does not know is Naowh's. The Theme dropdown is greyed out under either game skin.
 - A secret-tainted message is dropped silently by the chat display, and `tostring` on a secret
   returns a secret string, so `ns.Print` asks `issecretvalue` before coercing anything.
 
@@ -155,9 +158,9 @@ Fonts and pixels
   and its Asia variant covers CJK clients.
 - The Naowh font starts a straight-sided capital 75/1000 of its size in (`STEM_INSET`), so lines of
   different sizes set at one x look ragged; `ns.FontInset` moves each line left by its inset.
-- Unpicked, the Addon Font is Naowh, or the game's Arial Narrow on Classic+. Headings (`ns.Font`'s
+- Unpicked, the Addon Font is Naowh, or the game's Arial Narrow on Classic+ and Forever. Headings (`ns.Font`'s
   `heading`: buttons, tabs, titles, card and section names) are the game's Friz Quadrata on
-  Classic+ unless an Addon Font is picked. A window's title plate is always the bundled Naowh face
+  Classic+ and Forever unless an Addon Font is picked. A window's title plate is always the bundled Naowh face
   (`Core/Media/Fonts/Naowh.ttf`), on every skin and client language.
 - Game Font and Combat Text Font touch only font objects and the three path globals, never a frame:
   taint-free, but with no undo, so a change takes a reload. The path globals are read when the
@@ -240,7 +243,7 @@ Widgets
 - The color picker saves nothing until the color moves off the one it opened with.
 - `ns.NewEditBox(parent, opts)` is every input box. `opts` is optional: `inset` (the text inset),
   `border` (its edge color, black by default), `hover = false` (no accent edge under the mouse) and
-  `sunken = false` (no Classic+ cut). A settings row's text box is one with no hover.
+  `sunken = false` (no Classic+ cut, no Forever rim). A settings row's text box is one with no hover.
 - The Slider's own thumb drag runs against the cursor on Forever, so the slim scroll bar's grip
   takes the mouse and drags itself.
 - Sound and font choice tables are fresh per call: the SharedMedia appender mutates in place and
@@ -253,6 +256,10 @@ Widgets
   is a check box with the game's own tick. A button is red in a gold rim, brighter under the mouse
   and turned over while pressed; its outer edge still marks a picked button, and its `_rim` and
   `_shine` are kept so the Flight Timer can fade them with the rest.
+- On Forever a field has a bronze rim one pixel outside its black edge (`Parts.ForeverField`), and
+  a button is the game's red `128-RedButton` (`Parts.ForeverButton`, see Shared/README.md); its
+  pieces are its `_art` as on Classic+, and drawn, its bronze rim hangs off the edge's frame, so the
+  Flight Timer fades them with the rest.
 - `UI.KeyField` takes a binding command, or functions for its action and label, for one field
   pointed at another binding each time its panel opens; its `_refreshValue` shows the new one.
 
@@ -273,6 +280,9 @@ HUD Editor
   arrow nudges to one selection is one step. Loading a layout is a change like any other.
 - A module's resize grip sizes from its own corner, so the anchor leaves the frame alone until
   the grip lets go.
+- On the Forever skin the toolbar, the Elements list and the movers wear Blizzard's Edit Mode look
+  (its selection art, the metal frame, a Layouts dropdown): `Shared/README.md`, The HUD Editor on
+  Forever, names each atlas and the file it comes from.
 - The main chunk of a Lua 5.1 file holds at most 200 locals, which is why the HUD Editor, the
   window and the setup window group their sizes into tables.
 
@@ -281,9 +291,18 @@ Profile strings
   profile string sends 0 as a marker and puts it back on import.
 - Reminder Packs (`NSRPACK2:`) are gone. An old pack string is refused before anything in it is
   read, in the Import box and through `NaowhForever_API:ImportProfile`, with a message saying so.
-- The Consumables part carries only `utilityReminders.consumables` from the reminders' store, and
-  its import replaces only that list. The store keeps its saved key, `tankReminder`: renaming saved
-  data would need a migration.
+- The Share picker offers Settings, Macros, Talent Builds, BiS Lists, Saved Quest Items and Look.
+  Macro Library and Consumables are no longer exported, but a string from an older build that carries
+  them still lists them on Import, and `NaowhForever_API:ImportProfile` still takes them. The
+  Consumables part is only `utilityReminders.consumables` from the reminders' store, and its import
+  replaces only that list. The store keeps its saved key, `tankReminder`: renaming saved data would
+  need a migration.
+- Saved Quest Items is `qol.questRewards`, the Alt-click reward picks, as a part of its own and
+  left out of the Settings part (`ns.PROFILE_OWN`), so unticking it keeps them out of the string.
+  Like every part it starts ticked. Import replaces the new profile's picks with the string's. A
+  string from before the part existed carries them inside Settings; the decode lifts them out into
+  the part, and a `questRewards` part wins over them. The part is checked whole (quest and item
+  IDs whole numbers from 1 to 2^31 - 1, at most 2000 picks), and one bad pick leaves it all out.
 - A string from an older build has its consumables inside a `smartReminders` or `reminders` part;
   the decode takes only those from either, and a `consumables` part wins over both. Older builds
   ignore the `consumables` key, so a string from this build brings them no consumables.
@@ -307,6 +326,16 @@ Profile strings
 - `NaowhForever_API:ImportProfile(str, "Naowh")` is the NaowhUI installer's entry point: it lands
   the string as that profile, replacing it, and moves every character to it. It prints its own
   failures because the installer ignores return values.
+- WagoUI Packs drives the same global table: `ExportProfile(key)` (any profile by name, the same
+  string the Profiles page makes with every part ticked), `ImportProfile(str, key)`,
+  `DecodeProfileString(str)` (the string's parts, for comparing), `SetProfile(key)` (this
+  character only), `GetProfileKeys()`, `GetProfileAssignments()`, `GetCurrentProfileKey()`,
+  `OpenConfig()` and `CloseConfig()`. Profile key = profile name. None of them reload the UI
+  themselves, but switching to a profile whose module switches differ from this character's
+  AddOn list changes the list and brings up the reload prompt (see Module state).
+- The AddOn list belongs to the character, not the profile, so a profile that is not the current one
+  exports its modules (`__modules`) from its own switches, leaving out a module whose addon is not
+  loaded here, and an export never writes to the profile it reads.
 
 Waypoints
 - The game redraws the world map's waypoint pin inside every change to its waypoint, so while that
@@ -376,8 +405,10 @@ Onboarding
 - Restore puts back the profile, the module addons for the character the backup was made for, and
   the skin; a backup from before skins were saved leaves the skin alone.
 - The skin step's previews are drawn, not pictures: a small window in each skin's own colors
-  (`ns.ThemePalette` for Naowh's, with the player's theme; `ns.CLASSIC_PLUS`), edge, fonts
-  (`ns.AddonFontPath` and `ns.HeadingFontPath` take the skin to preview) and button.
+  (`ns.ThemePalette` for Naowh's, with the player's theme; `ns.CLASSIC_PLUS`; `ns.FOREVER_SKIN`), edge,
+  fonts (`ns.AddonFontPath` and `ns.HeadingFontPath` take whether to preview the game's) and button:
+  Forever's has its dark title bar, a bronze edge and the game's red button (`Parts.ForeverButtonArt`).
+  The step has a tile per skin in `Setup.SKINS` (Naowh, Classic+, Forever), side by side.
 - A character new to the account gets its own page in the onboarding window, after the onboarding has
   been seen: two tiles, Same as its main or Set Up on its own, with the welcome's bottom row and no
   Back or Next. A new character starts on the account's profile, usually the main's, so the main no
