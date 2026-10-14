@@ -89,7 +89,7 @@ local function Favorites()
 end
 
 local function Matches(name)
-    return query == "" or name:lower():find(query, 1, true) ~= nil
+    return query == "" or ns.Lower(name):find(query, 1, true) ~= nil
 end
 
 local function OnQtyEnter(box)
@@ -290,7 +290,7 @@ local function OnMine(box)
 end
 
 local function OnSearch(text)
-    query = text:lower()
+    query = ns.Lower(text)
     if not (panel and panel:IsShown()) then return end
     panel.scroll:SetVerticalScroll(0)
     Layout()

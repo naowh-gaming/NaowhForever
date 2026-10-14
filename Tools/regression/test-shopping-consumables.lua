@@ -78,7 +78,7 @@ widgetMeta.__index = function(_, k) return methods[k] or (k:match("^%u") and Noo
 
 local function NewEnv(withModules)
     local account, levels, timers, profile = {}, {}, {}, {}
-    local ns = { L = dofile("Tools/regression/locale_stub.lua").L,
+    local ns = { L = dofile("Tools/regression/locale_stub.lua").L, Lower = string.lower,
         Professions = { Settings = { DB = function() return profile end } },
         THEME = { muted = {} },
         HEALING_POTIONS = { 13446, 3928, 929, 118 },
