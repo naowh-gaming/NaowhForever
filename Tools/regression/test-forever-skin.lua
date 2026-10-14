@@ -108,6 +108,7 @@ local function Load(account, atlases, files, extra)
             GetAddOnEnableState = function() return 2 end },
         C_Timer = { After = function(_, fn) timers[#timers + 1] = fn end },
         InCombatLockdown = function() return false end,
+        UnitGUID = function() return "Player-1" end,
         GameTooltip = New("Frame"),
         Mixin = function(object, ...)
             for i = 1, select("#", ...) do
