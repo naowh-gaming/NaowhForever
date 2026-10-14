@@ -54,6 +54,7 @@ local function FillTabs(bar, items)
         bar.buttons[i] = button
         button.key, button.label, button.tip = item.key, item.label, item.tip
         button.text:SetText(ns.L(item.label))
+        if ns.foreverSkin then button.text:SetTextScale(1) end
         button.want = math.ceil(button.text:GetStringWidth()) + (button.capRoom or 0)
         words = words + button.want
         button:Show()
@@ -95,19 +96,67 @@ function Parts.PaintTabs(bar, shown)
     end
 end
 
+local function HoldTabs(bar, n, room, held)
+    local pad, words, used = 2 * St.FOREVER_TAB_PAD, 0, 0
+    for i = 1, n do
+        local button = bar.buttons[i]
+        if held[i] then
+            used = used + button.minW
+        else
+            words, used = words + button.want - button.capRoom, used + pad
+        end
+    end
+    local scale = math.max((room - used) / math.max(words, 1), St.FOREVER_TAB_LEAST_SCALE)
+    local more = false
+    for i = 1, n do
+        local button = bar.buttons[i]
+        if not held[i] and (button.want - button.capRoom) * scale + pad < button.minW then held[i], more = true, true end
+    end
+    return scale, more
+end
+
+local function ForeverFit(bar, n, width)
+    local pad, room = 2 * St.FOREVER_TAB_PAD, width - (n - 1) * St.FOREVER_TAB_GAP
+    local want, least = 0, 0
+    for i = 1, n do
+        local button = bar.buttons[i]
+        want = want + button.want
+        least = least + math.max(button.want - button.capRoom + pad, button.minW)
+    end
+    if want <= room then return 1, 1 end
+    if least <= room then return 1, (room - least) / (want - least) end
+    local held, scale, more = {}, 1, true
+    while more do scale, more = HoldTabs(bar, n, room, held) end
+    return scale, 0
+end
+
+local function ForeverTabs(bar, n, width)
+    local scale, keep = ForeverFit(bar, n, width)
+    local pad, x = 2 * St.FOREVER_TAB_PAD, 0
+    for i = 1, n do
+        local button = bar.buttons[i]
+        local least = math.max(math.floor((button.want - button.capRoom) * scale + pad), button.minW)
+        local w = math.floor(least + keep * (button.want - least))
+        button.text:SetTextScale(scale)
+        button:SetSize(w, TAB_H)
+        button:SetPoint("LEFT", x, 0)
+        x = x + w + St.FOREVER_TAB_GAP
+    end
+end
+
 function Parts.SetTabs(bar, items)
     local width = bar:GetWidth()
     local words = FillTabs(bar, items)
     if #items == 0 then return end
+    if ns.foreverSkin then return ForeverTabs(bar, #items, width) end
     local spare, x = (width - words) / #items, 0
     for i = 1, #items do
         local button = bar.buttons[i]
         local w = i == #items and width - x or math.floor(button.want + spare + 0.5)
-        if ns.foreverSkin then w = button.want end
         button:SetSize(w, TAB_H)
         button:SetPoint("LEFT", x, 0)
-        if i > 1 and not ns.foreverSkin then Split(bar, i, x) end
-        x = x + w + (ns.foreverSkin and St.FOREVER_TAB_GAP or 0)
+        if i > 1 then Split(bar, i, x) end
+        x = x + w
     end
 end
 

@@ -548,13 +548,17 @@ function Parts.ForeverTab(button)
             St.FOREVER_ACTIVE_RIGHT_X)
         button.fill:SetColorTexture(0, 0, 0, 0)
         button.line:SetColorTexture(0, 0, 0, 0)
-        local idle = button.idleArt
+        local idle, active = button.idleArt, button.activeArt
         button.capRoom = math.max((idle[1]:GetWidth() or 0) + (idle[3]:GetWidth() or 0), 2 * St.FOREVER_TAB_PAD)
+        button.minW = math.max(
+            (idle[1]:GetWidth() or 0) + (idle[3]:GetWidth() or 0) + St.FOREVER_TAB_LEFT_X - St.FOREVER_TAB_RIGHT_X,
+            (active[1]:GetWidth() or 0) + (active[3]:GetWidth() or 0) + St.FOREVER_ACTIVE_LEFT_X
+                - St.FOREVER_ACTIVE_RIGHT_X)
         button.text:ClearAllPoints()
         button.text:SetPoint("CENTER", idle[2], "CENTER", 0, St.FOREVER_TAB_TEXT_Y)
         return true
     end
-    button.capRoom = 2 * St.FOREVER_TAB_PAD
+    button.capRoom, button.minW = 2 * St.FOREVER_TAB_PAD, 0
     button.idleFill = Fill(button, St.FOREVER_TAB_RGB, "BACKGROUND")
     Gradient(button.fill, St.FOREVER_TAB_ACTIVE_RGB)
     local rim = St.FOREVER_PICK_RIM_RGB

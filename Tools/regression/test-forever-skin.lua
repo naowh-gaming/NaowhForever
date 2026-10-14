@@ -67,6 +67,7 @@ local function New(kind, parent)
             elseif k == "GetText" then return self.text or ""
             elseif k == "SetText" then self.text = args[1]
             elseif k == "SetFont" then self.font = args[1]
+            elseif k == "SetTextScale" then self.textScale = args[1]
             elseif k == "GetTextColor" then return 1, 1, 1, 1
             elseif k == "SetAlpha" then self.alpha = args[1]
             elseif k == "EnableMouse" then self.mouse = args[1]
@@ -346,6 +347,28 @@ do
     check("tabs keep their own width, side by side, not stretched to fill the row", picked.w == picked.want
         and other.w == other.want and other.points[1][2] == picked.want + St.FOREVER_TAB_GAP)
     check("the tab art's caps scale with its height", picked.idleArt[1].w ~= nil)
+    check("a row that fits keeps its labels full size", picked.text.textScale == 1)
+    local function RowEnd(bar)
+        local last = bar.buttons[#bar.buttons]
+        return last.points[#last.points][2] + last.w
+    end
+    local eleven, long = {}, 100
+    for i = 1, 11 do eleven[i] = { key = i, label = "T" .. i } end
+    local strip = Parts.Tabs(New("Frame"), 2000, eleven, function() end)
+    for _, button in ipairs(strip.buttons) do button.text.GetStringWidth = function() return long end end
+    local least = long + 2 * St.FOREVER_TAB_PAD
+    strip:SetWidth(11 * least + 10 * St.FOREVER_TAB_GAP + 60)
+    Parts.SetTabs(strip, eleven)
+    local first = strip.buttons[1]
+    check("a row too wide for its bar gives up its caps' spare room first, labels full size",
+        RowEnd(strip) <= strip.w and first.w < first.want and first.w >= least and first.text.textScale == 1)
+    strip:SetWidth(11 * long)
+    Parts.SetTabs(strip, eleven)
+    check("then its labels shrink to fit, each tab still as wide as its art's caps", RowEnd(strip) <= strip.w
+        and first.text.textScale < 1 and first.w >= first.minW)
+    strip:SetWidth(11 * first.want + 10 * St.FOREVER_TAB_GAP)
+    Parts.SetTabs(strip, eleven)
+    check("given room again, the tabs and labels are full size", first.w == first.want and first.text.textScale == 1)
     check("the label sits in the middle of the tab art, not of the taller button", picked.text.points[1][2] == picked.idleArt[2]
         and picked.text.points[1][1] == "CENTER")
 

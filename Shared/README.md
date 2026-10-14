@@ -567,6 +567,11 @@ What a comment in the code used to say, in short. The house rules behind it are 
 - Forever tabs keep that width and sit side by side `FOREVER_TAB_GAP` apart, as the game's do, instead of
   stretching to fill the row; the end caps are scaled by `FOREVER_TOP_TAB_SHARE` with the tab's height, so
   the art keeps its shape.
+- A row of them wider than its bar (Quality of Life's eleven tabs, more so in German) first gives up
+  the caps' spare room, down to `FOREVER_TAB_PAD` a side, then shrinks every label by one scale (no less
+  than `FOREVER_TAB_LEAST_SCALE`). A tab is never narrower than its two caps (`minW`), as the game's
+  `PanelTemplates_TabResize` keeps them, so the middle piece never turns inside out. A row that fits is
+  untouched; placed only by their own widths, the tabs ran past the options window.
 - A settings card is only its list bar, the Friends list's category header ("Favorites 0/2"):
   `SocialUIScrollableHeaderTemplate` (`Blizzard_SocialUIShared/SocialUISharedTemplates.xml`) on
   `ListHeaderVisualTemplate` (`Blizzard_SharedXML/ListTemplates.xml`), whose bar is
