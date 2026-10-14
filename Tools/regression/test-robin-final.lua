@@ -59,6 +59,7 @@ local function fixture(kind)
         Shared = { Style = { TIME_OK_RGB = {}, TIME_LOW_RGB = {}, TIME_OUT_RGB = {} },
             Parts = { Smooth = function(t) return t end, HudText = function(t) return t end,
                 Pill = function() return frame() end, SetPill = function() return 0 end, ColorPill = function() end,
+                Press = function(button) button.pressed = true end,
                 HudFont = function(fs, font, size, outline) fs:SetFont(font, size, outline) end } },
         Font = function() return frame() end, Tooltip = function() end,
         Button = function(parent, text, w, h, callback)
@@ -112,6 +113,7 @@ local function fixture(kind)
     function state.load(path)
         local chunk = assert(loadfile(path)); setfenv(chunk, env); chunk()
     end
+    state.load('Shared/UI/ItemBar.lua')
     function state.loadModule(dir)
         for _, path in ipairs(TocFiles("^" .. dir .. "/.*%.lua$")) do state.load(path) end
     end
@@ -223,7 +225,7 @@ do
     check('anything else holds no list', not s.ns.ParseConsumableList('hello'))
     check('invalid IDs rejected', not parse('food', '123, x') and not parse('food', '0, 1'))
     s.S.Set('campShowUnder', false)
-    for _, file in ipairs({ 'Data/Campfire.lua', 'CampReader.lua', 'View/Style.lua', 'View/CampIcon.lua',
+    for _, file in ipairs({ 'Data/Campfire.lua', 'CampReader.lua', 'View/Style.lua', 'View/Glow.lua', 'View/CampIcon.lua',
         'View/CampBar.lua', 'View/CampAlert.lua', 'UI/Campfire.lua', 'UI/CampfireCards.lua' }) do
         s.load('NaowhForever_AuraBuffs/' .. file)
     end

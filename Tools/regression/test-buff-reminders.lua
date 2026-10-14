@@ -12,11 +12,12 @@ local MODULE = {}
 for i, path in ipairs({ "Core/Features.lua", "NaowhForever_AuraBuffs/AuraBuffs.lua",
     "NaowhForever_AuraBuffs/Constants.lua", "Shared/Game/Consumables.lua",
         "NaowhForever_AuraBuffs/Data/BuffReminders.lua", "NaowhForever_AuraBuffs/BuffReminders.lua",
-    "NaowhForever_AuraBuffs/View/Style.lua", "NaowhForever_AuraBuffs/View/BuffCell.lua",
+    "NaowhForever_AuraBuffs/View/Style.lua", "NaowhForever_AuraBuffs/View/Glow.lua",
+    "NaowhForever_AuraBuffs/View/BuffCell.lua",
     "NaowhForever_AuraBuffs/UI/BuffMenu.lua", "NaowhForever_AuraBuffs/UI/BuffReminders.lua" }) do
     MODULE[i] = Read(path)
 end
-local CARD = Read("NaowhForever_AuraBuffs/UI/BuffsCard.lua")
+local CARD = Read("NaowhForever_AuraBuffs/UI/GlowRows.lua") .. "\n" .. Read("NaowhForever_AuraBuffs/UI/BuffsCard.lua")
 local SETTINGS = Read("Shared/Settings/Settings.lua")
 
 -- itemID -> use spell, for the food scan.
@@ -50,6 +51,7 @@ local function Fixture(opts)
         target = opts.target,                       -- nil, or the target's classification
         itemSpells = opts.itemSpells or {},         -- itemID -> use spell, once the item is cached
         requested = {},
+        glows = {},
         reads = 0,
     }
     local timers, frames = {}, {}
@@ -86,10 +88,12 @@ local function Fixture(opts)
         enabled = true,
         consumablesWhere = "instance", consumablesMinutes = 2,
         onlyIfCarried = true, hideResting = true,
-        raidBuffs = false, raidBuffsOwn = true, iconSize = 36,
+        raidBuffs = false, raidBuffsOwn = true, iconSize = 36, buffIconMode = "default",
         buffsFont = "", buffsFontSize = 14, buffsOutline = "OUTLINE",
         raidBuffPicks = { intellect = true, stamina = true, spirit = true, wild = true, blessing = false },
         personalBuffs = true, personalBuffPicks = {}, weaponEnhancements = false,
+        buffGlow = false, buffGlowType = "standard", buffGlowColor = { r = 1, g = 0.82, b = 0.2 },
+        buffGlowLines = 8, buffGlowThickness = 2, buffGlowSpeed = 5,
     }
     local S = {}
     function S.Get(k)
@@ -131,6 +135,20 @@ local function Fixture(opts)
     local env = {
         NUM_BAG_SLOTS = 0,
         UIParent = {},
+        LibStub = function()
+            return {
+                PixelGlow_Start = function(frame) state.glows[frame] = "pixel" end,
+                PixelGlow_Stop = function(frame) state.glows[frame] = nil end,
+                ButtonGlow_Start = function(frame) state.glows[frame] = "standard" end,
+                ButtonGlow_Stop = function(frame) state.glows[frame] = nil end }
+        end,
+        RAID_CLASS_COLORS = setmetatable({}, { __index = function(colors, class)
+            local color = { r = 0.5, g = 0.5, b = 0.5 }
+            function color.WrapTextInColorCode(_, text) return "|c" .. class .. "|" .. text end
+            colors[class] = color
+            return color
+        end }),
+        LOCALIZED_CLASS_NAMES_MALE = setmetatable({}, { __index = function(_, class) return class:lower() end }),
         Enum = { ItemClass = { Weapon = 2 } },
         GetTime = function() return state.now end,
         InCombatLockdown = function() return state.combat end,
@@ -243,7 +261,9 @@ local function Fixture(opts)
         for _, timer in ipairs(timers) do if not timer.cancelled then n = n + 1 end end
         return n
     end
+    t.env = env
     function t.Set(k, v) S.Set(k, v) end
+    function t.Get(k) return S.Get(k) end
     function t.Login() t.Fire("PLAYER_LOGIN") end
     -- The textures of the visible reminder icons, left to right, with counts and timers.
     function t.Shown()
@@ -300,6 +320,27 @@ do
     t.Set("buffsFontSize", 18)
     t.Set("buffsOutline", "")
     Check("count font set", count.font .. count.size .. count.outline, "Naowh18")
+end
+
+-- Glow: off by default, then a Standard or Pixel glow on each shown reminder, gone when they are.
+do
+    local t = Fixture({ instance = "raid", bags = { 13931, 13510 } })
+    local function Glowing()
+        local out = {}
+        for frame, kind in pairs(t.state.glows) do
+            if frame.shown then out[#out + 1] = kind end
+        end
+        table.sort(out)
+        return table.concat(out, " ")
+    end
+    t.Login()
+    Check("no glow by default", Glowing(), "")
+    t.Set("buffGlow", true)
+    Check("Standard Glow on each reminder", Glowing(), "standard standard")
+    t.Set("buffGlowType", "pixel")
+    Check("Pixel Glow instead", Glowing(), "pixel pixel")
+    t.Set("buffGlow", false)
+    Check("Glow off stops them", Glowing(), "")
 end
 
 -- Show In: Dungeons & Raids keeps them out of the open world; Everywhere does not.
@@ -666,7 +707,7 @@ do
     Check("two minute shout is not nagged early", w.Shown(), "")
 end
 
--- A class with no personal buff: the default profile keeps the row off and the card shows no group.
+-- A class with no personal buff: the default profile keeps the row off, though the card lists other classes'.
 do
     local t = Fixture({ page = true, settings = { consumableEntries = {} }, units = { player = "PALADIN" },
         known = { [19740] = true } })
@@ -677,7 +718,7 @@ do
     for _, row in ipairs(card.rows) do
         if row.key == "personalBuffs" then found = true end
     end
-    Check("paladin default: no personal buffs group", found, nil)
+    Check("paladin: the group lists the other classes", found, true)
 end
 
 -- Hunter's Mark: only for a hostile elite target without the mark.
@@ -706,7 +747,7 @@ do
     Check("trueshot missing", t.Shown(), "spell:19506")
 end
 
--- The card lists the personal buffs of the player's class only.
+-- The card lists every class's personal buffs, the player's first and the rest in grey.
 do
     local t = Fixture({ page = true, units = { player = "SHAMAN" } })
     local card = t.ns.Shared.Settings.pages["AuraBuffs/Settings"].cards.buffs
@@ -714,7 +755,24 @@ do
     for _, row in ipairs(card.rows) do
         if row.key == "personalBuffPicks" then fields[#fields + 1] = row.field end
     end
-    Check("shaman picks", table.concat(fields, " "), "imbue shield")
+    Check("shaman picks come first, then every other class", table.concat(fields, " "),
+        "imbue shield demonArmor mageArmor poisons battleShout innerFire shadowform trueshot huntersMark thorns")
+    local byField = {}
+    for _, row in ipairs(card.rows) do
+        if row.key == "personalBuffPicks" then byField[row.field] = row end
+    end
+    Check("own class in its colour", byField.imbue.labelColor, t.env.RAID_CLASS_COLORS.SHAMAN)
+    Check("another class in grey", byField.demonArmor.labelColor, t.ns.THEME.muted)
+    Check("its class named in its colour", byField.demonArmor.note(), "|cWARLOCK|warlock")
+    byField.demonArmor.set(false)
+    Check("switched off for a class that is not played", byField.demonArmor.get(), false)
+    Check("stored by the buff's own key", t.Get("personalBuffPicks").demonArmor, false)
+    byField.demonArmor.set(true)
+    local intellect
+    for _, row in ipairs(card.rows) do
+        if row.key == "raidBuffPicks" and row.field == "intellect" then intellect = row end
+    end
+    Check("another class's raid buff is not grey", intellect.labelColor, nil)
     local shot = card.studio.new(t.ns.Shared.Settings)
     local function Preview(state)
         card.studio.paint(shot, state)
@@ -803,6 +861,29 @@ do
     t.Fire("UNIT_INVENTORY_CHANGED", "player")
     t.Advance(0.5)
     Check("off hand weapon bare", t.Shown(), "item:13931 item:13510 item:13452 item:20750")
+end
+
+-- Icon: Last Used shows the flask, elixir or weapon item used last, and only listens while it is chosen.
+do
+    local t = Fixture({ instance = "raid", units = { player = "MAGE" }, weapons = { [16] = false },
+        itemSpells = { [13511] = 17627, [20749] = 28898 },
+        settings = { consumableEntries = {}, onlyIfCarried = false, weaponEnhancements = true, personalBuffs = false } })
+    t.Login()
+    Check("default icons", t.Shown(), "spell:1248406 item:13510 item:13452 item:20750")
+    Check("off-mode listens for the food icon", t.Listening("UNIT_SPELLCAST_SUCCEEDED"), true)
+    t.Set("onlyIfCarried", true)
+    Check("not listening for casts", t.Listening("UNIT_SPELLCAST_SUCCEEDED"), false)
+    t.Set("buffIconMode", "last")
+    Check("listening once Last Used is chosen", t.Listening("UNIT_SPELLCAST_SUCCEEDED"), true)
+    t.Set("onlyIfCarried", false)
+    t.Fire("UNIT_SPELLCAST_SUCCEEDED", "player", "cast1", 17627)
+    t.Advance(0.5)
+    Check("a flask used", t.Shown(), "spell:1248406 item:13511 item:13452 item:20750")
+    t.Fire("UNIT_SPELLCAST_SUCCEEDED", "player", "cast2", 28898)
+    t.Advance(0.5)
+    Check("a weapon oil used", t.Shown(), "spell:1248406 item:13511 item:13452 item:20749")
+    t.Set("buffIconMode", "default")
+    Check("Default again", t.Shown(), "spell:1248406 item:13510 item:13452 item:20750")
 end
 
 -- A class with its own poison reminder does not get the generic one.
