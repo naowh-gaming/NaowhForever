@@ -324,7 +324,6 @@ local function SettingChanged(key)
 end
 
 F.Render = Render
-F.SetTab = SetTab
 M.Redraw = Render
 
 local function Host(page)
