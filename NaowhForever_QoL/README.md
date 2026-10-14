@@ -207,8 +207,13 @@ NaowhForever_QoL/
   skipped in combat.
 - On-Screen Buttons: Invite is a secure button running the game's own `/invite`, which invites
   your target; run from it, the game's code reads the target's name, so it works in combat.
-  Disband removes everyone through addon code (`ns.DisbandGroup`), which the game allows only out
-  of combat.
+  Disband can't remove anyone from addon code: `UninviteUnit` is protected for addons, even out
+  of combat. So the Disband dialog's Yes is covered, while the mouse is over it, by a secure
+  button that runs `/uninvite <name>` for each member, the same way the Reload UI dialog runs
+  `/reload`. The macro is built from the group as it is when the mouse reaches Yes. Names go in
+  whole from `GetUnitName(unit, true)`: Forever names have two parts ("Lilith Gremory"), and
+  `/uninvite` needs both. The dialog closes on the release, after the macro ran on the press or
+  the release, and a click on Yes that the cover missed says to try again.
 - Because Invite is secure, the bar is built, shown, hidden and laid out only out of combat; a
   change in combat waits for `PLAYER_REGEN_ENABLED`.
 - Combat Timer's Card background is the panel the old Show Background toggle drew (black, or
@@ -266,6 +271,15 @@ NaowhForever_QoL/
 - Its icons are cropped like the rest of the addon's (`ItemBar.CropIcon`). Before, it showed the
   full item art with the game's rounded border; for that look on this bar alone, add
   `ItemBar.CropIcon(button.icon, 0)` after `ItemBar.SecureButton` in `Build()`.
+- While its Food & Drink buttons, or either one, are on the Consumable Bar
+  (`ns.ConsumableBarUsesFood`), the bar steps aside and its card is held with why, its settings
+  greyed (the Consumable Bar's apply). The `foodBar` setting itself is kept, so the bar comes back
+  as it was once they leave the Consumable Bar.
+- Those buttons on the Consumable Bar use this bar's key bindings (`ns.FoodBarBindings`), so one key
+  works on either bar and shows in both places. Meanwhile this bar is still built and kept on your
+  best food and drink, hidden: its buttons are what those keys click. It does not search the bags
+  then: the Consumable Bar hands it what it found (`ns.FoodBarPoint`), so a bag change is one
+  search.
 - Alts are kept per realm and faction, because characters there can mail each other. Forever has
   been seen to return "Name-Realm" for the player, and the mail box wants the bare name, so the
   name is cut at the dash.
@@ -681,6 +695,7 @@ NaowhForever_QoL/
 - TradeSkillMaster is optional, and its price call errors on a source it cannot resolve: that is the one reason it runs under pcall.
 - CHAT_MSG_LOOT can arrive before the item is in the bags, which showed the count from before the loot, so item lines read their count again once the bags settle.
 - Coin loot adds to the coin line still on screen and holds it another display time, rather than stacking a line per corpse; its fade-in is skipped so the update does not blink.
+- Looting an item that already has a line on screen adds to that line's count and value and holds it another display time, the same as coins. Items match by link, so two variants of one item stay apart.
 - CHAT_MSG_MONEY carries your own looted coins and a group share, and only those, so vendor sales and mail never reach the feed.
 - A quest turn-in also sends its experience as a combat XP message with no source named. The quest line already shows it, so that one is skipped while quest lines are on. A kill's message names the kill, and its first number is the total gained, rested bonus included.
 - Chat payloads can be secret; nothing in one is worth recovering, so a secret one is dropped.
@@ -730,7 +745,8 @@ NaowhForever_QoL/
 - Include My Talents (on by default) counts the talents that change what a spell does or costs, at your rank in each (`C_ClassTalents.GetActiveConfigID` with `C_Traits.GetNodeInfo`, the same read the Training builds use). `SpellEfficiencyData.lua` also holds `ns.SpellEfficiencyTalents`, spell ID to a string of mods joined by `;`, each `node, op, value at rank 1, 2, ...`. The builder writes a mod for every passive class talent whose percent aura (spell mod 0, damage and healing, or 22, over time) has the spell in its class mask; a talent's value at each rank is a curve in the tables (`TraitDefinitionEffectPoints`, `CurvePoint`), since Forever has no spell per rank. Percents of one kind add together and multiply the whole amount, spell power included: Healing Light, Spiritual Healing, Improved Renew, Fire Power.
 - Two talents that spare mana have no numbers in the tables and are written from the game's description: Illumination (op 2: a crit heal gives back half its base cost, at the chance the tables give the rank; your cost is cut by that times your spell crit chance, `GetSpellCritChance` for the spell's school, left uncounted while stats are secret) and Elemental Focus (op 3: a 10% chance the next damage spell is free, for shaman fire, frost and nature spells). The cost they cut is the game's own shown cost, so talents that already lower the cost (Convection, Improved Healing) are counted by the game, not twice.
 - Not counted: buffs, crits' extra damage, hit, resists and target conditions, and talents with a dummy or script effect, an on-use talent (Arcane Power, Presence of Mind, Divine Favor), Arcane Concentration and the ones that change the cast time or duration (the cast time is the game's own). A chain spell (Chain Heal, Chain Lightning) counts its first target; an area spell counts one target of the area, with the same ticks per target. Nothing in this build splits one amount between the targets.
-- Left out, with no line, because part of their amount is somewhere the client's tables do not say (better no line than a wrong number): weapon damage (Aimed Shot, Multi-Shot), a triggered spell or proc (seals, Judgement), an area trigger the server runs (Blizzard, Rain of Fire, Consecration, Flamestrike, Hurricane, Volley), a dummy or script effect (Swiftmend, and Immolate, whose ranks carry a script effect in this build), and a direct base of 1 with no bonus (a scripted amount's placeholder).
+- Left out, with no line, because part of their amount is somewhere the client's tables do not say (better no line than a wrong number): weapon damage (Aimed Shot, Multi-Shot), a triggered spell or proc (seals, Judgement), a dummy or script effect (Swiftmend, and Immolate, whose ranks carry a script effect in this build), and a direct base of 1 with no bonus (a scripted amount's placeholder).
+- A spell whose amount is in a spell its own description names is read from that spell, the same pointer the game's tooltip follows (`Spell.Description_lang`, like `$1279976s1`). An area trigger (Blizzard, Rain of Fire, Flamestrike's burn, Consecration, Hurricane, Volley) is the named spell's amount once a period (the periodic dummy aura 226) for the aura's duration, as the ticks of one target; a count in the description ("*8") has to equal the ticks, or the spell is left out. Consecration's second amount, for the first enemies in the area, is added: one target is always among them. A dummy spell naming a damage spell and a heal spell that are not over time (Holy Shock, Fire Nova) gets a part for each, and is an area spell when the named spell's targets are. Healing Rain (its amount is a percent of healing power in the description), Penance (several hits) and Light's Vigil (a buff) are still left out.
 - A periodic trigger is counted (Arcane Missiles): the missile spell is named in the effect itself, not chosen by a seal or a proc.
 - What a spell does is what it does to its target: a heal on the caster from a damage spell (Drain Life, Death Coil) is not counted.
 - The separator is written `||`, which the game draws as one `|`.
