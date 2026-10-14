@@ -52,6 +52,6 @@ local function RunsScript(body)
     return false
 end
 
-M.Commands = { RunsScript = RunsScript }
+M.Commands = { RunsScript = RunsScript, Known = KnownCommands }
 
 ns.MacroCommandKind = CommandKind

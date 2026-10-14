@@ -4,7 +4,7 @@ local ns = _G.NaowhForever
 local A = ns.AuraBuffs
 local S = A.Settings
 local D = ns.BuffReminderData
-local R, Cell, Menu = A.Buffs, A.BuffCell, A.BuffMenu
+local R, Cell, Menu, Glow = A.Buffs, A.BuffCell, A.BuffMenu, A.Glow
 local Left, Secret, GROUP_UNIT = R.Left, R.Secret, R.GROUP_UNIT
 
 local QUEUE_DELAY = 0.3
@@ -17,8 +17,11 @@ local TEXT_MOVER = "Buff Reminders"
 local KEYS = {
     consumableEntries = true, enabled = true, consumablesWhere = true, consumablesMinutes = true,
     onlyIfCarried = true, hideResting = true, raidBuffs = true, raidBuffsOwn = true, raidBuffPicks = true, iconSize = true,
-    personalBuffs = true, personalBuffPicks = true,
+    buffIconMode = true,
+    personalBuffs = true, personalBuffPicks = true, weaponEnhancements = true,
     buffsFont = true, buffsFontSize = true, buffsOutline = true,
+    buffGlow = true, buffGlowType = true, buffGlowColor = true, buffGlowLines = true, buffGlowThickness = true,
+    buffGlowSpeed = true,
 }
 local PREVIEW = {
     { spell = D.WELL_FED[1] }, { item = D.FLASKS.items[1] }, { item = ELIXIR_ICON },
@@ -67,8 +70,12 @@ local function Show(list)
         cell.items = entry.items
         ShowTimer(cell, entry.aura)
         cell:Show()
+        Glow.Set(cell, S.Get("buffGlow") and not unlocked, "buffGlow")
     end
-    for i = #list + 1, #cells do cells[i]:Hide() end
+    for i = #list + 1, #cells do
+        Glow.Set(cells[i], false)
+        cells[i]:Hide()
+    end
     Cell.Fit(frame, #list, size)
     local owner = Menu.Owner()
     if not owner then return end
@@ -128,8 +135,10 @@ local function OnEvent(_, event, unit, _, spellID)
         Menu.Hide()
         return
     end
+    if event == "BAG_UPDATE_DELAYED" or event == "PLAYER_ENTERING_WORLD" then R.ForgetBags() end
     if event == "ITEM_DATA_LOAD_RESULT" and not R.Requested(unit) then return end
-    if event == "UNIT_SPELLCAST_SUCCEEDED" then R.NoteImbueCast(spellID) end
+    if event == "UNIT_SPELLCAST_SUCCEEDED" and (Secret(spellID)
+        or not (R.NoteImbueCast(spellID) or R.NoteFoodCast(spellID) or R.NoteUseCast(spellID))) then return end
     Queue()
 end
 
@@ -164,8 +173,12 @@ local function Listen()
         events:RegisterUnitEvent("UNIT_AURA", "player")
     end
     if R.WatchesTarget() then events:RegisterEvent("PLAYER_TARGET_CHANGED") end
-    if S.Get("personalBuffs") then events:RegisterUnitEvent("UNIT_INVENTORY_CHANGED", "player") end
-    if R.WatchesImbue() then events:RegisterUnitEvent("UNIT_SPELLCAST_SUCCEEDED", "player") end
+    if S.Get("personalBuffs") or S.Get("weaponEnhancements") then
+        events:RegisterUnitEvent("UNIT_INVENTORY_CHANGED", "player")
+    end
+    if R.WatchesImbue() or not S.Get("onlyIfCarried") or S.Get("buffIconMode") == "last" then
+        events:RegisterUnitEvent("UNIT_SPELLCAST_SUCCEEDED", "player")
+    end
     events:RegisterEvent("PLAYER_ENTERING_WORLD")
     events:RegisterEvent("PLAYER_REGEN_ENABLED")
     events:RegisterEvent("PLAYER_UPDATE_RESTING")

@@ -12,6 +12,9 @@ minimap and Top Bar button). Its on/off switches and their defaults come from
   Simple, a bar in the windows' backdrop with the campfire at its left, the camp's bonuses with
   their amounts, and the time left on the right over a line that runs down green, yellow, then
   red. Hovering it lists each bonus, the time left and when to refresh.
+  With no Camp Benefits it glows (LibCustomGlow) and its fire is grey. With a campfire in range the
+  fire lights up, the words say Click to sit, and a click on the fire performs the /sit emote; it
+  glows brighter under the mouse. Camp Nearby's fire does the same.
 - **Camp Nearby:** the same bar drawn bare (no backdrop, edge or line), larger by its own scale,
   sized to what it says and stacked in the Alerts group (`ns.AlertStack`), with the camp's time
   left inline after a dot while it still runs.
@@ -38,6 +41,7 @@ NaowhForever_AuraBuffs/
   LowHealth.lua                the item to offer and the curve that shows it (A.LowHealth)
   View/
     Style.lua                  its look (A.Style), on top of Shared/Style.lua
+    Glow.lua                   a reminder's glow, Pixel or Standard, from its glow settings (A.Glow)
     BuffCell.lua               a buff reminder icon (A.BuffCell)
     CampIcon.lua               the campfire art and the Round look (A.CampIcon)
     CampBar.lua                the Simple bar (A.CampBar)
@@ -45,6 +49,7 @@ NaowhForever_AuraBuffs/
     LowHealthLook.lua          the Low Health icon and warning (A.LowHealthLook)
   UI/
     SettingsPage.lua           the page's banner (Open AuraBuffs) and its Window card
+    GlowRows.lua               the glow type, color and pixel look rows a card adds (A.GlowRows)
     Campfire.lua               the Campfire reminder and the Camp Nearby alert on screen
     CampfireCards.lua          the Campfire and Camp Nearby cards, with their editable previews
     LowHealth.lua              the Low Health icon on screen
@@ -91,13 +96,15 @@ NaowhForever_AuraBuffs/
 - Paladin blessings start off in the raid buff picks: the Blessings module covers them. A talent
   buff (Divine Spirit) only counts when you can cast it, since another player's talents cannot be
   seen. A camp buff standing in for a class buff is not seen, so it still counts as missing.
-- Personal buffs (`D.PERSONAL`) show only for the player's class and once a spell of the family is
+- Personal buffs (`D.PERSONAL`) fire only for the player's class and once a spell of the family is
   known, so a talent buff (Shadowform, Trueshot Aura, Water Shield) waits for the talent. Any spell
   of a family counts as up: Frost, Ice or Mage Armor all satisfy the mage. The icon is the first
   known spell, so families list the best first. Forever adds its own IDs: Trueshot Aura 1299346 and
   1299348, Water Shield 408510 (the TBC IDs do not exist), Fel Armor 403619 (Wowhead dataEnv=16,
   2026-10-11; not yet checked in the client).
-- Poisons and imbues are temporary weapon enchants (`GetWeaponEnchantInfo`), so any one counts,
+- Poisons and imbues are temporary weapon enchants (`C_Item.GetWeaponEnchantInfo`, which lists
+  several per weapon with the empty ones first: Windfury is its second entry, where the old
+  `GetWeaponEnchantInfo` global reads only the first), so any one counts,
   a sharpening stone too. Nothing reliable fires when one runs out (Blizzard's own display polls),
   so its expiry is timed. Poisons check every equipped weapon, imbues the main hand. An enchant
   reported with no time left counts as up and times nothing.
@@ -106,11 +113,47 @@ NaowhForever_AuraBuffs/
   trained more than one. `UNIT_SPELLCAST_SUCCEEDED` remembers the last one actually cast
   (`lastImbue`) and the icon follows that instead, falling back to the first known spell until a
   cast is seen.
+- The glow of a reminder (the buff icons, the Campfire's refresh reminder, Low Health) is Pixel Glow or
+  Standard Glow, both LibCustomGlow's. Standard is its ButtonGlow, the action button spell alert: Blizzard's
+  own `ActionButtonSpellAlertManager` only drives action buttons. Each feature has its own switch
+  (`buffGlow` off by default, `campGlow` and `lowHealthGlow` on as before), type, color, and for Pixel Glow lines,
+  thickness and speed. Speed is 1 to 8 as in EllesmereUI, the march taking `9 - speed` seconds, so 5 is the
+  four seconds the Campfire and Low Health glows always had; the default type, red color, eight lines and
+  thickness 2 are what they drew before. `Glow.Set` restarts a glow only when its settings or the icon's
+  width changed.
+- With Only If I Carry One off, food, flasks and elixirs with no entries still get a reminder: any Well Fed, flask or elixir of the
+  classic lists in `D.DEFAULT_GROUPS` (no battle/guardian split on Forever, so one elixir reminder, skipped when
+  guardian entries exist). Scrolls stay opt-in. Food's icon is the carried item's, else the last buff
+  food eaten (`lastFoodIcon` in the account settings, taken on `UNIT_SPELLCAST_SUCCEEDED` from the bag item
+  with that use spell, else the spell's own texture), else Well Fed's. Weapon Enhancement Reminder (off by default) asks for a stone or
+  oil (`D.WEAPON_ITEMS`) on each equipped weapon, an off hand only when it is a weapon, and defers to a class's
+  own poison or imbue reminder. Its icon is the carried item's, else a Dense Sharpening Stone (`D.WEAPON_ICON_ITEM`):
+  Naowh asked for classic-looking defaults, and the first oil in the list has a modern icon.
+- With Only If I Carry One on (the default), Robin asked for reminders only while you have the item, but a profile
+  with nothing listed should still remind you about the flask or buff food in your bags. So a kind shows when a
+  listed item is carried, else when an item of the same `D.DEFAULT_GROUPS` list is (buff food is any bag item whose
+  use spell is in `D.FOOD_SPELLS`), with that list's auras also counting as up. The listed item wins; else the
+  highest required level you can use, the rest following in the hover menu. The bags are read once after
+  `BAG_UPDATE_DELAYED` or `PLAYER_ENTERING_WORLD`, not on every refresh. This replaced "an empty profile never
+  invents reminders from bag items", so the row is on whenever the module is. Weapon Enhancement Reminder
+  already worked this way on `D.WEAPON_ITEMS`.
+- Icon (Default or Last Used): Last Used shows the icon of the flask, elixir, scroll or weapon item
+  used last (`lastIcons` in the account settings, food's is `lastFoodIcon`), taken from the item whose
+  use spell `UNIT_SPELLCAST_SUCCEEDED` reports; a spell no listed or default item uses is ignored, and
+  nothing is read in combat. The cast event is listened for only while Last Used is chosen or food
+  needs it (Only If I Carry One off). Icon Size defaults to 48 and goes to 96; a profile that saved a
+  size keeps it. The row is sized to its icons and anchored by its centre, so reminders spread left
+  and right of the saved spot, and one sits on it.
 - Warn With Minutes Left covers personal buffs too, except a buff no longer than the warning
   (Battle Shout's 2 minutes), which would otherwise show the moment it is cast. Poisons last 30
   minutes and Forever's imbues 60, past the slider's 10.
-- A class with no personal buff (paladin) gets no Personal Buffs group, and the switch alone does
-  not turn the row on.
+- The card lists every class's personal buffs, the player's own class first: its label in the class
+  color, the others grey with the class named in its color beside the switch. Picks are stored under
+  the buff's own key (`personalBuffPicks.demonArmor`), so a Warlock buff switched off on a Priest is
+  ready for the Warlock; every personal rule checks `family.class` against the player's class, so
+  none fires for another class. Raid buff picks are not greyed: another class's raid buff fires when a
+  group member of that class can cast it. A class with no personal buff (paladin) still gets the
+  group for the others.
 - Hunter's Mark is asked for only with a hostile elite, rare elite or boss targeted, read from the
   target's debuffs; like every reminder it holds what it showed once combat starts.
 - The buff menu holds secure buttons, so it can only be hidden outside combat. It uses
@@ -133,6 +176,10 @@ NaowhForever_AuraBuffs/
   old on/off switch (`campBuffs`), so nobody's setting changes. On Mouseover the buff lines stay
   written but invisible until the icon is hovered, and the icon only takes the mouse then, so
   clicks and camera drags otherwise go through.
+- Sitting is a click on the fire, not a second icon: a button beside the reminder doubled its size
+  for one emote. The click only takes the fire's own square, so Camp Nearby still lets every other
+  click through, and only while a campfire is in range, the only time /sit can refresh the camp.
+  A lit fire with no Camp Benefits is the hint: grey says no camp, lit says a fire is here to sit at.
 - The Round icon's plate follows the theme's Panels color (`ns.ThemeTint`), and a black circle one
   pixel wider behind it is its 1px round border. The black disk extends past the time ring on both
   sides, edging it.

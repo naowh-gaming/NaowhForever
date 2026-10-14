@@ -880,3 +880,67 @@ JOURNEY_ICONS = {
 os.makedirs(JOURNEYS_OUT, exist_ok=True)
 for name, pixel in JOURNEY_ICONS.items():
     write_tga(os.path.join(JOURNEYS_OUT, name + ".tga"), 64, pixel)
+
+
+GLIMMER_OUT = os.path.join(paths.ROOT, "NaowhForever_QoL", "Media", "Glimmer")
+
+
+def glimmer_glow(x, y, size):
+    d = math.hypot(x - size / 2.0, y - size / 2.0) / (size / 2.0)
+    a = max(0.0, 1.0 - d) ** 2
+    return (255, 255, 255, int(round(255 * a)))
+
+
+def glimmer_flare(x, y, size):
+    u, v = (x - size / 2.0) / (size / 2.0), (y - size / 2.0) / (size / 2.0)
+    arms = max(math.exp(-(v / 0.06) ** 2) * max(0.0, 1.0 - abs(u)) ** 1.5,
+               math.exp(-(u / 0.06) ** 2) * max(0.0, 1.0 - abs(v)) ** 1.5)
+    core = max(0.0, 1.0 - math.hypot(u, v) / 0.35) ** 2
+    return (255, 255, 255, int(round(255 * min(1.0, arms + core))))
+
+
+def glimmer_ring(x, y, size):
+    d = math.hypot(x - size / 2.0, y - size / 2.0) / (size / 2.0)
+    line = math.exp(-((d - 0.86) / 0.035) ** 2)
+    halo = 0.35 * math.exp(-((d - 0.86) / 0.12) ** 2)
+    return (255, 255, 255, int(round(255 * min(1.0, line + halo))))
+
+
+def glimmer_beam(x, y, size):
+    u = (x - size / 2.0) / (size / 2.0)
+    rise = y / size
+    a = math.exp(-(u / 0.32) ** 2) * rise ** 1.6
+    return (255, 255, 255, int(round(255 * a)))
+
+
+def glimmer_bracket(x, y, size):
+    w, length = size * 0.09, size * 0.62
+    top = smooth(w, y) if x < length else 0.0
+    left = smooth(w, x) if y < length else 0.0
+    return (255, 255, 255, int(round(255 * max(top, left))))
+
+
+def glimmer_capsule_dist(x, y, size):
+    # Distance outside an upright capsule, the shape a character stands in; negative inside.
+    c, half_w, half_h = size / 2.0, size * 0.2, size * 0.45
+    dy = max(abs(y - c) - (half_h - half_w), 0.0)
+    return math.hypot(x - c, dy) - half_w
+
+
+def glimmer_cutout(x, y, size):
+    a = max(0.0, min(1.0, glimmer_capsule_dist(x, y, size) / (size * 0.04) + 0.5))
+    return (255, 255, 255, int(round(255 * a)))
+
+
+def glimmer_cutout_edge(x, y, size):
+    return (255, 255, 255, int(round(255 * smooth(size * 0.012, abs(glimmer_capsule_dist(x, y, size))))))
+
+
+GLIMMER_TEXTURES = {
+    "glow": glimmer_glow, "flare": glimmer_flare, "ring": glimmer_ring,
+    "beam": glimmer_beam, "bracket": glimmer_bracket,
+    "cutout": glimmer_cutout, "cutout_edge": glimmer_cutout_edge,
+}
+os.makedirs(GLIMMER_OUT, exist_ok=True)
+for name, pixel in GLIMMER_TEXTURES.items():
+    write_tga(os.path.join(GLIMMER_OUT, name + ".tga"), 128, pixel)

@@ -2,8 +2,8 @@
 ## Title: |cff0091edNaowh|r Forever: Training Planner
 ## Notes: What to train now and on the road to 60, and talent builds.
 ## Author: Naowh
-## Version: 1.1.11
-## Dependencies: NaowhForever, NaowhForever_Professions
+## Version: 1.1.16
+## Dependencies: NaowhForever
 ## Group: NaowhForever
 ## IconTexture: Interface\AddOns\NaowhForever\Core\Media\LogoAddon.tga
 

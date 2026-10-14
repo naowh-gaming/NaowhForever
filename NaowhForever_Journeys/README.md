@@ -15,7 +15,7 @@ NaowhForever_Journeys/
   Data/Teleports.lua          the class teleports and where each lands until one is seen
   Planner.lua                 the fastest plan from one spot to another, as legs
   World.lua                   the player's spot, map and world positions, learned flight points and landings
-  Walk.lua                    walking costs and paths over the baked walking maps, loaded when first needed
+  Walk.lua                    walking costs and paths over the baked walking maps, loaded when first needed, let go after a minute unused
   Guide.lua                   the journey being followed, one step at a time on the game's waypoint
   Lifts.lua                   learns the lifts you ride, for /nf lifts
   Quests.lua                  a far quest you track becomes a journey, handed back to the game on arrival
@@ -40,22 +40,38 @@ NaowhForever_Journeys/
   stop of a journey with no quest to hand back to clears the waypoint on arrival; otherwise it would
   sit on the map pointing at where you already are.
 - The plan is made again from where you stand on each arrival, landing, loading screen and the end of
-  combat, never on a timer. In combat it waits: cooldowns and spell reads may be secret then.
+  combat, and every few seconds on the move. In combat it waits: cooldowns and spell reads may be secret
+  then. A new route replaces the one you follow only when it is `SWITCH_GAIN` seconds and `SWITCH_SHARE`
+  of the time quicker; the one you follow is timed from where you stand (the quickest way to its next
+  place, then the rest as it was), so near ties do not flip the journey back and forth.
 - Positions are world yards on a continent, as `UnitPosition`, `C_Map.GetWorldPosFromMapPos` and the
   game's tables give them, x north and y west.
+- `UnitPosition`'s height is a placeholder 0 (`NO_HEIGHT`), so a 0 is no height at all. Taken as a real
+  one, the walk from where you stand started on the ground nearest sea level and cost its height in yards.
 - Walking costs and paths come from the walking maps `Tools/nav` bakes from the client's terrain, in
   `NaowhForever_JourneysData`, a load-on-demand addon loaded on the first journey out of combat. Each
   tile is CBOR, deflated and in Base64, decoded by `C_EncodingUtil` when a walk first touches it; at
   most `WALK_TILES` stay decoded. Where there is no walking data (an instance, the tram's tunnel) the
-  walk is the straight line times `WALK_DETOUR`.
+  walk is the straight line times `WALK_DETOUR`. Where there is, a spot walks from the ground under it, or
+  the nearest within `WALK_REACH` yards that is not the sea; further out (on the sea, past a pier) it has
+  no walk at all: a straight line there crossed the sea and the hills, and the plan you follow is kept.
+- Piers are not in the walking maps, and a boat dock's spot is the ship's, in the water. The bake keeps
+  where each boat dock's pier meets the land (`Tools/nav/pack.mjs`), and a dock, or a player standing
+  between a dock and that root, walks from there. The drawn path runs out along the pier to the dock.
 - A walk between two spots is two searches over the crossings between tiles, from each end, run a few
   milliseconds a frame (`WALK_BUDGET`) in a coroutine: the guide's plan waits for them. Between two of
   the network's places the bake has the answer already.
+- Only your own end of a walk moves between plans, so a journey keeps the searches from its stops,
+  jumps and first places: each is a search over the whole continent's walking graph.
 - A walk's path is the crossings it passes, then each tile's polygons between them, pulled tight by
-  the funnel algorithm. The guide puts the waypoint on each corner in turn, at least `CORNER_GAP`
-  yards apart, and plans again at the last.
-- The minimap route is lines on a frame over the minimap, each segment clipped to the minimap's circle in
-  code (a line frame cannot be masked), placed from your position with `C_Minimap.GetViewRadius` and turned by
+  the funnel algorithm. The game's waypoint goes where the walk ends (the dock, the flight master, the goal)
+  with Waypoint Only Where Steps End on, the default; off, the guide puts it on each corner in turn, at
+  least `CORNER_GAP` yards apart, and plans again at the last.
+- Once the next thing to do is a boat, the plan holds while you stand on the sea (`Walk.Ashore`): aboard,
+  the planner cannot tell you are already on it and would weigh a fresh wait against swimming off. The game
+  reaching the far dock's waypoint, or stepping onto land, plans again.
+- The minimap route is dots on a frame over the minimap, those past the minimap's circle left out in
+  code, placed from your position with `C_Minimap.GetViewRadius` and turned by
   `GetPlayerFacing` when `rotateMinimap` is on. It redraws every `UPDATE_EVERY` seconds, only while a
   journey is on, so a moving player keeps it in place; with none it has no update at all.
 - Lifts are spawned by the server: neither the client's tables nor Wowhead have where they stand. With Learn
@@ -69,29 +85,44 @@ NaowhForever_Journeys/
 - `Walk.Cost` takes each end as a place key of the network ("f2", "s3.1", "l1.2") or a reach from
   `Walk.From`, and answers false when there is no walk but nil when the data cannot say, as for a
   place with no ground baked near it (the Stormwind Harbor dock). `Walk.From` is nil where the map
-  has no walking data under a spot; `Walk.Path` is the corners `{ x1, y1, x2, y2, ... }`, both ends
-  included, or nil with no walk.
-- Tracking a quest (`SUPER_TRACKING_CHANGED`) starts a journey to the game's own next point for it
-  (`C_QuestLog.GetNextWaypoint`), or its marker on your map, when that is over `QUEST_NEAR` yards away
-  or on another continent. Close by, the game's quest arrow and area are better. On arrival the quest
-  is tracked again, so the game shows its area; if that point was only a zone crossing, the next is
-  far again and the journey goes on.
-- The game's own points come first: its next point, then the quest's marker on your map, then on
-  any zone's map. Only a quest the game marks nowhere uses the quest spots, from Wowhead: the
-  turn-in once it is complete (or when it has no objective camps), else its nearest camp. They are
-  over a megabyte, so they ship in `NaowhForever_JourneysData` with the walking maps and load with
-  them the first time a quest needs them; such a quest becomes a journey, which loads them anyway.
+  has no walking data under a spot and false where the spot is off it; `Walk.Path` is the corners
+  `{ x1, y1, x2, y2, ... }`, both ends included, or nil with no walk.
+- Tracking a quest (`SUPER_TRACKING_CHANGED`) starts a journey to the quest itself when that is over
+  `QUEST_NEAR` yards away or on another continent. Close by, the game's quest arrow and area are better.
+  On arrival the quest is tracked again, so the game shows its area.
+- The quest's own place comes first: its marker on your map, then on any zone's map. A quest the game
+  marks nowhere uses the quest spots, from Wowhead: the turn-in once it is complete (or when it has
+  no objective camps), else its nearest camp. They are over a megabyte, so they ship in
+  `NaowhForever_JourneysData` with the walking maps and load with them the first time a quest needs
+  them; such a quest becomes a journey, which loads them anyway. The game's next point (`C_QuestLog.GetNextWaypoint`) is the
+  last resort: for a quest in another zone it is the zone crossing on your map, so a journey to it only
+  ever walked to the border, one zone at a time, and never flew.
+- `C_QuestLog.GetQuestsOnMap` may return nothing for a map: that map has no marker, and the next place is
+  looked at.
 - The Journey card is a frame of its own, not the shared tracker panel: that panel's title bar, bar and
   footer take a third of the height a three-step journey needs, and it is shared by other modules. A line
   a step (icon, name, time), the total time, the cog and the close button in one header, and one thin
   segment a step in place of a bar. The close button clears the waypoint, which ends the journey.
-- The route on the world map is one pin the size of the canvas with lines in it, so the lines move and
-  zoom with the map; it ignores the global pin scale and thins its lines as the map zooms in.
+- The route on the world map is one pin the size of the canvas with dots in it, so the dots move and
+  zoom with the map; it ignores the global pin scale and keeps its dots the same size on screen as the map
+  zooms in. On both maps the dots are spaced from the first corner ahead, so they hold still as you walk.
 - `FLIGHT_SPEED` is the flight timer's own figure (`NaowhForever_QoL/Travel/Flight.lua`).
 - `SHIP_SPEED` and the tram's 150 seconds are estimates until they are timed in game. A ship's
   expected wait is half its period until its departures are known.
 - Flight points come from the flight master's map (`TAXIMAP_OPENED`): `C_TaxiMap.GetAllTaxiNodes` only
-  answers there. They are kept per character in the account store, like the Action Bars' last set.
+  answers there. They are kept per character in the account store, like the Action Bars' last set, and
+  a new one plans the journey you follow again, so it can take that flight.
+  A node learned with the map open (`TAXI_NODE_STATUS_CHANGED`) is read then too, but only between
+  `TAXIMAP_OPENED` and `TAXIMAP_CLOSED`: the event also fires away from a flight master, where every node
+  reads as unreachable and would wipe the list. With none known, the first journey says how to learn them.
+- A link's ends (the tram, the Darnassus portal) carry their height from the game's AreaTrigger table: the
+  walking maps stack floors in the cities, and without it the Ironforge tram end attached to a roof cut
+  off from the city, so no journey used the tram.
+- Every walk in a plan gets its path (the first for the guide's corners, the later ones for the drawn
+  route), kept per journey so a replan does not search them again. Rides are drawn in their mode's colour,
+  on both maps, and a flight through each flight point it stops at on the way.
+- A tracked dungeon quest the game marks nowhere and the quest spots have no place for goes to its
+  dungeon's entrance from the Dungeon Journal, when that addon is on and the quest is not yet complete.
 - The Hearthstone lands where you stood when you bound it (`HEARTHSTONE_BOUND`, at the innkeeper), and
   where it last landed. A teleport lands at its city's flight master until it has been cast once; the
   client has no table of where a teleport goes.

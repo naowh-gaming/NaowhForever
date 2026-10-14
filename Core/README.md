@@ -41,7 +41,7 @@ Core/
   Options/Window.lua   the options window, a module's own window, ns.OpenOptionsWindow
   Options/SettingsPage.lua the Settings page: modules, minimap icons, scale, fonts, colors, RestedXP
   Commands.lua         /nf and the module commands, binding names, the compartment entry
-  Options/Launchers.lua the broker launchers and minimap icons
+  Options/Launchers.lua the broker launchers and minimap icons; a feature with its own window adds a button with ns.RegisterMinimapFeature
   Options/GameMenu.lua the Naowh Forever button in the game menu
   Options/Search.lua   the sidebar's settings search
 
@@ -63,6 +63,8 @@ Core/
   Pages/Credits.lua    Credits
   Onboarding/Setup.lua the onboarding's engine: each module's item, the picks (a profile, a skin, the modules)
                                     and their defaults, the summary's plan, Apply and Restore, a new character's profile
+  Onboarding/ModuleState.lua keeps this character's AddOn list the same as the profile's module switches
+                                    (ns.ReconcileModules, ns.SetModuleState)
   Onboarding/SetupWindow.lua the onboarding window: its welcome, a new character's page, then Profile, Skin
                                     (with a live preview of each), Modules and the summary with Apply
   Onboarding/FirstLogin.lua when the onboarding opens: an account's first login, a new character's page until it is answered
@@ -110,7 +112,8 @@ The QoL store and the Alerts group
 - Before the group each alert had its own spot (`OLD_POSITIONS`): the first one a player had
   moved, from the bottom up, becomes the group's.
 - A key binding whose module is off prints that it is switched off (`SwitchedOff`), instead of
-  calling a function that was never made.
+  calling a function that was never made. The bindings for the modules' own windows and settings
+  (`NaowhForever_ToggleModule`) go through `OpenModule`, which says the same.
 
 Namespace and builds
 - `MODULE_KEY` must match the addon folder: the DB and saved positions key off it.
@@ -126,9 +129,12 @@ Namespace and builds
   from a client that was not reloaded.
 - Libs/ is not in git; the packager adds it. An install from the source zip has none, so login
   says so once instead of features failing one by one.
-- The Damage Meter turns the game's meter (`damageMeterEnabled`) off and keeps what it was on the
-  account. With that addon disabled or removed nothing of it runs to put it back, so the core does at
-  login when it is not loaded.
+- The Damage Meter module is no longer shipped (its folder stays in git). It turned the game's meter
+  (`damageMeterEnabled`) off and kept what it was on the account, so the core puts that back at login
+  when the addon is not loaded.
+- QoL's Glimmer changes soft target and outline settings and keeps what they were on the account; the
+  core puts those back at login too when NaowhForever_QoL is not loaded, so turning QoL off in the
+  AddOns list, or applying a preset that turns it off, never leaves them changed.
 
 Theme
 - Naowh's scheme is dark grey with his blue (#0091ed) as the single accent. Each preset keeps text
@@ -140,9 +146,12 @@ Theme
 - The lighter accent and the selection fill follow the accent and the line. A pick equal to the
   shipped color is not a change: Custom starts as a copy, and the color picker hands back what it
   opened with.
-- The Classic+ skin (Settings > Skin) has its own colors, `ns.CLASSIC_PLUS`, in force whatever the
-  Theme setting says. It is read with the colors, once per load, so a change to it waits for a
-  reload too.
+- The Forever skin (Settings > Skin) has its own colors, `ns.FOREVER_SKIN`, in force whatever the
+  Theme setting says: parchment text on charcoal stone, bronze lines and the game's gold. It is read
+  with the colors, once per load, so a change to it waits for a reload too. `ns.Skin()` says which
+  skin is in force; a saved skin it does not know is Naowh's. The Theme dropdown is greyed out under it.
+- The Classic+ skin is gone: a saved `skin = "classic"` is saved as `"forever"` when the colors are
+  read, so a Classic+ player gets the other game skin rather than Naowh's.
 - A secret-tainted message is dropped silently by the chat display, and `tostring` on a secret
   returns a secret string, so `ns.Print` asks `issecretvalue` before coercing anything.
 
@@ -152,10 +161,9 @@ Fonts and pixels
   and its Asia variant covers CJK clients.
 - The Naowh font starts a straight-sided capital 75/1000 of its size in (`STEM_INSET`), so lines of
   different sizes set at one x look ragged; `ns.FontInset` moves each line left by its inset.
-- Unpicked, the Addon Font is Naowh, or the game's Arial Narrow on Classic+. Headings (`ns.Font`'s
+- Unpicked, the Addon Font is Naowh, or the game's Arial Narrow on Forever. Headings (`ns.Font`'s
   `heading`: buttons, tabs, titles, card and section names) are the game's Friz Quadrata on
-  Classic+ unless an Addon Font is picked. A window's title plate is always the bundled Naowh face
-  (`Core/Media/Fonts/Naowh.ttf`), on every skin and client language.
+  Forever unless an Addon Font is picked.
 - Game Font and Combat Text Font touch only font objects and the three path globals, never a frame:
   taint-free, but with no undo, so a change takes a reload. The path globals are read when the
   world loads, so they are set on ADDON_LOADED and again at login; combat text inherits
@@ -239,7 +247,7 @@ Widgets
 - The color picker saves nothing until the color moves off the one it opened with.
 - `ns.NewEditBox(parent, opts)` is every input box. `opts` is optional: `inset` (the text inset),
   `border` (its edge color, black by default), `hover = false` (no accent edge under the mouse) and
-  `sunken = false` (no Classic+ cut). A settings row's text box is one with no hover.
+  `sunken = false` (no Forever rim). A settings row's text box is one with no hover.
 - The Slider's own thumb drag runs against the cursor on Forever, so the slim scroll bar's grip
   takes the mouse and drags itself.
 - Sound and font choice tables are fresh per call: the SharedMedia appender mutates in place and
@@ -247,15 +255,11 @@ Widgets
   mods do after login); a missing optional provider is not a cached miss.
 - Every module's defaults are saved to the account at login, so a module whose addon is off still
   has its settings checked, exported and imported.
-- On Classic+ a field (an input, dropdown, check box or slider groove) is cut into the panel
-  (`ns.Sunken`): a lit edge one pixel outside its black one, along the bottom and right. A switch
-  is a check box with the game's own tick. A button is red in a gold rim, brighter under the mouse
-  and turned over while pressed; its outer edge still marks a picked button, and its `_rim` and
-  `_shine` are kept so the Flight Timer can fade them with the rest. A button hidden while pressed
-  never gets its mouse-up, so hiding it turns its art back up. `ns.AccentBorder` leaves the game's
-  button art alone: the game marks no button as the main one.
-- The Classic+ slider groove's edges are frames drawn over the track's own textures, so the gem
-  sits on a frame `KNOB_RAISE` levels above the groove.
+- On Forever a field has a bronze rim one pixel outside its black edge (`Parts.ForeverField`), and
+  a button is the game's red `128-RedButton` (`Parts.ForeverButton`, see Shared/README.md); its
+  pieces are its `_art`, and drawn, its bronze rim hangs off the edge's frame, so the
+  Flight Timer fades them with the rest. `ns.AccentBorder` leaves the game's button art alone: the
+  game marks no button as the main one.
 - `UI.KeyField` takes a binding command, or functions for its action and label, for one field
   pointed at another binding each time its panel opens; its `_refreshValue` shows the new one.
 
@@ -271,11 +275,18 @@ HUD Editor
   moved it kept an anchor to Alerts, some on its top side where the growing plate still carried
   the feed. Each profile lets go of any Loot Feed anchor to Alerts once, in its saved layouts too
   (`lootFeedOffAlerts`); the feed stays at its own saved spot.
+- An element that grows one way (`UI.SetMoverGrow`, the Blessing Bar) keeps that edge on its
+  anchor instead of its centre, along the target's side, so it widens away from where it was put.
+  Changing the way it grows takes the offset again from where it is, so it does not move.
+  `UI.SetAnchor` anchors an element from its own settings (Reset Position), `UI.HasAnchor` asks.
 - Size and position changes are queued and handled once a frame.
 - Before each change by hand the editor keeps every element's spot and anchor (50 steps); a run of
   arrow nudges to one selection is one step. Loading a layout is a change like any other.
 - A module's resize grip sizes from its own corner, so the anchor leaves the frame alone until
   the grip lets go.
+- On the Forever skin the toolbar, the Elements list and the movers wear Blizzard's Edit Mode look
+  (its selection art, the metal frame, a Layouts dropdown): `Shared/README.md`, The HUD Editor on
+  Forever, names each atlas and the file it comes from.
 - The main chunk of a Lua 5.1 file holds at most 200 locals, which is why the HUD Editor, the
   window and the setup window group their sizes into tables.
 
@@ -284,9 +295,18 @@ Profile strings
   profile string sends 0 as a marker and puts it back on import.
 - Reminder Packs (`NSRPACK2:`) are gone. An old pack string is refused before anything in it is
   read, in the Import box and through `NaowhForever_API:ImportProfile`, with a message saying so.
-- The Consumables part carries only `utilityReminders.consumables` from the reminders' store, and
-  its import replaces only that list. The store keeps its saved key, `tankReminder`: renaming saved
-  data would need a migration.
+- The Share picker offers Settings, Macros, Talent Builds, BiS Lists, Saved Quest Items and Look.
+  Macro Library and Consumables are no longer exported, but a string from an older build that carries
+  them still lists them on Import, and `NaowhForever_API:ImportProfile` still takes them. The
+  Consumables part is only `utilityReminders.consumables` from the reminders' store, and its import
+  replaces only that list. The store keeps its saved key, `tankReminder`: renaming saved data would
+  need a migration.
+- Saved Quest Items is `qol.questRewards`, the Alt-click reward picks, as a part of its own and
+  left out of the Settings part (`ns.PROFILE_OWN`), so unticking it keeps them out of the string.
+  Like every part it starts ticked. Import replaces the new profile's picks with the string's. A
+  string from before the part existed carries them inside Settings; the decode lifts them out into
+  the part, and a `questRewards` part wins over them. The part is checked whole (quest and item
+  IDs whole numbers from 1 to 2^31 - 1, at most 2000 picks), and one bad pick leaves it all out.
 - A string from an older build has its consumables inside a `smartReminders` or `reminders` part;
   the decode takes only those from either, and a `consumables` part wins over both. Older builds
   ignore the `consumables` key, so a string from this build brings them no consumables.
@@ -298,9 +318,10 @@ Profile strings
   reads are copied in.
 - What one player answered about EllesmereUI's windows, and their invite buttons' friends (`ns.PROFILE_OWN`),
   are never shared.
-- A module's on/off switch lives in the WoW AddOn list, not SavedVariables, so the Settings part
-  also carries each module's addon name and state (`__modules`) and import applies it with
-  `EnableAddOn`/`DisableAddOn` rather than merging it into the module's own settings table.
+- A module's on/off is its switch in the profile (`enabled`, or the QoL key the module reads) and, for
+  this character, its addon in the WoW AddOn list. The Settings part also carries each module's addon
+  name and state (`__modules`, read from this character's list); import writes it as the new profile's
+  switches, and the AddOn list follows when that profile is switched to (see Module state).
 - The skin travels in a profile string's Look part, with the theme, font and window scale. A
   consumable needs only its item ID; its buff IDs may be left out.
 - A multiline edit box is as tall as its text, so an empty one is given a height or it takes no
@@ -309,6 +330,16 @@ Profile strings
 - `NaowhForever_API:ImportProfile(str, "Naowh")` is the NaowhUI installer's entry point: it lands
   the string as that profile, replacing it, and moves every character to it. It prints its own
   failures because the installer ignores return values.
+- WagoUI Packs drives the same global table: `ExportProfile(key)` (any profile by name, the same
+  string the Profiles page makes with every part ticked), `ImportProfile(str, key)`,
+  `DecodeProfileString(str)` (the string's parts, for comparing), `SetProfile(key)` (this
+  character only), `GetProfileKeys()`, `GetProfileAssignments()`, `GetCurrentProfileKey()`,
+  `OpenConfig()` and `CloseConfig()`. Profile key = profile name. None of them reload the UI
+  themselves, but switching to a profile whose module switches differ from this character's
+  AddOn list changes the list and brings up the reload prompt (see Module state).
+- The AddOn list belongs to the character, not the profile, so a profile that is not the current one
+  exports its modules (`__modules`) from its own switches, leaving out a module whose addon is not
+  loaded here, and an export never writes to the profile it reads.
 
 Waypoints
 - The game redraws the world map's waypoint pin inside every change to its waypoint, so while that
@@ -341,15 +372,15 @@ Onboarding
 - Closing it also sets `welcomeSeen`, which the Character Panel reads to tell a player new to the
   addon from anyone else; players who saw the old welcome window already have it, so they are not
   treated as new.
-- The onboarding asks three things, a step each: a profile (Naowh's Minimalist or Recommended, or Keep
-  mine), a skin, and the modules; then a summary of what changes, and Apply. Players new to addons
+- The onboarding asks three things, a step each: a profile (Naowh's Minimalist or Everything Enabled, or
+  Keep mine), a skin, and the modules; then a summary of what changes, and Apply. Players new to addons
   do not want many choices, so it no longer asks about how they play.
-- The profile step starts on Recommended only for an account never set up: no `welcomeSeen` (the
-  onboarding or the old welcome never closed) and no `setupBefore` (no Apply yet). Anyone else starts
-  on Keep mine, so opening it again changes nothing unless they pick something.
+- The profile step starts on Minimalist, the preset a new install starts from (`newInstall`), only for
+  an account never set up: no `welcomeSeen` (the onboarding or the old welcome never closed) and no
+  `setupBefore` (no Apply yet). Anyone else starts on Keep mine, so opening it again changes nothing unless they pick something.
 - The modules step starts from the picked profile: when a preset has a `modulesOff` list, every
-  module but those (Minimalist leaves off Discovery, with its Quest List, and Group Inspect, which spoil what
-  there is to find, and Gear & Trinkets and Swing Timer, which show nothing until set up), else its
+  module but those (Minimalist keeps only Quality of Life, the Dungeon Journal and the BiS List, for
+  players who would rather opt in; Everything Enabled's list is empty, so every module is on), else its
   switches, with the feature's default for a switch it leaves out; Keep mine starts from what is on
   now (its addon enabled, for this character in its own mode, and its switch on). A module on without
   what it needs (`needs` in `Options/Modules.lua`) cannot run, so it starts off. Picking another
@@ -359,13 +390,14 @@ Onboarding
   into Presets.lua and as the switches in the preset's profile, so a new install starting from it
   agrees; `ns.ApplyPreset` writes it as the modules' switches (`Setup.PresetSwitches`), so applying
   Minimalist from the Setups card and from the onboarding agree. A module listed nowhere is on.
-- The Setups card also enables the addon of every module the preset turns on (a module turned off
-  keeps its addon, switched off), and its hover counts a module whose addon is not loaded.
+- The Setups card also enables the addon of every module the preset turns on and, through
+  `ns.ReconcileModules`, disables the addon of every module it turns off; its hover counts a module
+  whose addon is not loaded.
 - Apply backs up first (`setupBefore`: the profile, each module addon's state, whose it was and the
   skin), applies the profile as the Setups card does (`ns.ApplyPreset`, without its confirms), sets the
   skin, then each module: on enables its addon and switches it on (through its store when loaded, so
   it starts at once); off disables its addon if it is on, or, after a preset, if it is enabled at all,
-  so Minimalist leaves exactly its list. Keep mine leaves an enabled module that is switched off as
+  and writes its switch off, so Minimalist leaves exactly its list. Keep mine leaves an enabled module that is switched off as
   it is.
 - A reload is asked only when something needs one: a profile or a skin applied, a module turned on
   whose addon is not loaded, or a loaded one turned off; else the done line is printed. The summary
@@ -377,8 +409,22 @@ Onboarding
 - Restore puts back the profile, the module addons for the character the backup was made for, and
   the skin; a backup from before skins were saved leaves the skin alone.
 - The skin step's previews are drawn, not pictures: a small window in each skin's own colors
-  (`ns.ThemePalette` for Naowh's, with the player's theme; `ns.CLASSIC_PLUS`), edge, fonts
-  (`ns.AddonFontPath` and `ns.HeadingFontPath` take the skin to preview) and button.
+  (`ns.ThemePalette` for Naowh's, with the player's theme; `ns.FOREVER_SKIN`), edge,
+  fonts (`ns.AddonFontPath` and `ns.HeadingFontPath` take whether to preview the game's) and button.
+  Forever's is a small Forever window built from the skin's own parts whichever skin is on: the rock
+  backdrop in Forever's palette (`Parts.Backdrop(frame, true)`, `Paint(1, ns.FOREVER_SKIN)`), the
+  portrait frame with its gold title and red close (`Parts.ForeverFrame` with `preview`, so it
+  neither drags nor closes) and the game's red button (`Parts.ForeverButtonArt`). The game's frame art
+  cannot be sized down, so the little window is a frame at `FOREVER_PREVIEW.scale` of real size, its
+  text and button sized up by the same amount to match the Naowh preview's on screen. It is inset in
+  the preview's box by the room the frame's art takes outside the window: `FOREVER_SIDE` plus the
+  portrait corner's 13 to the left, `FOREVER_TITLE_H` plus its 16 above (`PortraitFrameTemplate` in
+  `NineSliceLayouts.lua`), and `FOREVER_SIDE` plus the drawn rim's 5 to the right and below. The text
+  starts under the header band (`WINDOW_HEADER`), clear of the portrait, as in a real window.
+  The step has a tile per skin in `Setup.SKINS` (Naowh, Forever), side by side.
+- The modules step lists the modules that are on first and the ones off under a line, each group in
+  the options' order; a flip moves its tile across at once, laid out again from the same tiles. Four
+  tiles a row keep up to 21 modules above the footer, with both groups shown.
 - A character new to the account gets its own page in the onboarding window, after the onboarding has
   been seen: two tiles, Same as its main or Set Up on its own, with the welcome's bottom row and no
   Back or Next. A new character starts on the account's profile, usually the main's, so the main no
@@ -411,6 +457,33 @@ Onboarding
 - `ns.ModuleAddons(who)` reads the all-characters state, or with a GUID that character's, so in one
   character's mode a module enabled only on other characters reads as off, and every C_AddOns call
   names it.
+
+Module state
+- Every module is its own addon, so the AddOn list decides what loads, per character, and a disabled
+  addon cannot report anything. The core keeps the answer in the profile: each module's switch
+  (`Setup.ITEMS` names it: `db` and `key`), written explicitly when a module is turned on or off from
+  Settings, a module's window, the onboarding or an import. `ns.SetModuleState(addon, on)` writes the
+  switch and this character's list (`UnitGUID("player")`, never every character) together.
+- `ns.ReconcileModules` makes the list match the profile. It runs 8 seconds after login, when a profile
+  is switched to (`ns.SwitchProfile`, so a spec swap to a profile with other switches too,
+  `ns.SetAccountProfile`) and after a Setups card apply, and costs
+  one pass over the modules; no events or timers are kept. It does nothing before `onboardingSeen`, so
+  a first install follows the onboarding.
+- Each character keeps what its list was at the last pass (`account.moduleList`, by GUID). A list
+  changed since (the game's AddOn list) is adopted into the profile; otherwise an explicit switch in
+  the profile is applied to the list (another character's change, an import, a new character on the
+  account's profile); a module with no switch follows the list. With nothing kept yet (a character
+  that predates this, or a new one) off wins: a module off in either place ends off in both, so an
+  addon turned off in the old way is not turned back on, and a new character does not bring back
+  what was turned off. A module whose switch is only its default is not written to.
+- A module on without what it needs is turned off (`Setup.Settle`), and turning a module on or off
+  from Settings brings or takes the linked ones (`ns.LinkedAddons`), as before.
+- The Top Bar is part of QoL and has no item, so it has no switch here: `ns.SetModuleState` changes only
+  its list entry (turning it on switches its own store on, when loaded), and `ns.ReconcileModules`
+  leaves it alone.
+- A change to the list takes a reload: one prompt (`ns.ConfirmReload`) after a pass that changed
+  something, held until combat ends. Settings > Modules and the module windows read this character's
+  list together with the switch, so they agree with the game's AddOn list.
 
 Credits
 - Every Credits card keeps an emblem-wide slot for its art, a badge emblem or a smaller icon, so

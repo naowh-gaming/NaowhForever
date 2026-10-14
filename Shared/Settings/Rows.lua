@@ -7,6 +7,7 @@ local Control = Settings.Control
 local SS = Settings.Style
 
 local PAD, CONTROL_GAP, CONTROL_LEVEL, RULE_ALPHA = SS.PAD, SS.CONTROL_GAP, SS.CONTROL_LEVEL, SS.RULE_ALPHA
+local DIM_ALPHA = SS.DIM_ALPHA
 local SMALL_SIZE = SS.SMALL_SIZE
 local ROW_H = 36
 local HEAD_H, GROUP_H = SS.HEAD_H, SS.GROUP_H
@@ -199,10 +200,14 @@ local function NewSetting(view)
     row.rule = Rule(row)
     row.split = Split(row)
     row.dot = Dot(row)
-    row.label = ns.Font(row, LABEL_SIZE, nil, T.fg)
+    row.label = ns.Font(row, LABEL_SIZE, nil, ns.foreverSkin and T.accent or T.fg)
     row.label:SetPoint("LEFT", PAD, 0)
     row.label:SetJustifyH("LEFT")
     row.label:SetWordWrap(false)
+    if ns.foreverSkin then
+        row.band = Parts.ForeverBand(row)
+        row.rule:Hide()
+    end
     row.why = ns.Font(row, SMALL_SIZE, nil, T.muted)
     row.why:SetJustifyH("RIGHT")
     row.why:SetWordWrap(false)
@@ -232,8 +237,19 @@ local function PlaceLabel(row, control, why)
     row.label:SetPoint("RIGHT", why and row.why or control, "LEFT", -CONTROL_GAP, 0)
 end
 
+local function Band(row)
+    local view = row:GetParent()
+    if view.cursor ~= view.bandTop then view.bandTop, view.banded = view.cursor, not view.banded end
+    row.band:SetShown(view.banded)
+end
+
+local function RestartBands(view)
+    view.bandTop, view.banded = nil, true
+end
+
 local function SetSetting(row, setting, split)
     row.setting = setting
+    if row.band then Band(row) end
     local control = ShowControl(row, setting.kind)
     Control.Bind(control, setting)
     row.label:SetText(Marked(row, ns.L(setting.label)))
@@ -242,6 +258,8 @@ local function SetSetting(row, setting, split)
     row.split:SetShown(split)
     local off, why = Settings.Off(setting)
     Control.Dim(row, control, off)
+    local tint = setting.labelColor or (ns.foreverSkin and T.accent) or T.fg
+    row.label:SetTextColor(tint.r, tint.g, tint.b, 1)
     PlaceLabel(row, SetIcons(row, setting, control, off), off and ns.L(why) or (setting.note and setting.note(setting)))
     return ROW_H
 end
@@ -280,18 +298,15 @@ end
 local function NewHead(view)
     local head = CreateFrame("Button", nil, view)
     head:SetHeight(HEAD_H)
-    ns.Solid(head, "BACKGROUND", T.panel, 1):SetAllPoints()
+    local fill = ns.Solid(head, "BACKGROUND", T.panel, 1)
+    fill:SetAllPoints()
     head.rule = Rule(head, 1)
     head.chevron = head:CreateTexture(nil, "ARTWORK")
     head.chevron:SetTexture(ns.UI.CHEVRON)
     head.chevron:SetSize(CHEVRON_SIZE, CHEVRON_SIZE)
     head.chevron:SetPoint("LEFT", PAD, 0)
     head.chevron:SetVertexColor(T.muted.r, T.muted.g, T.muted.b, 1)
-    head.name = ns.Font(head, NAME_SIZE, nil, ns.classicSkin and T.accent or T.fg, true)
-    if ns.classicSkin then
-        ns.Border(head, SS.BORDER_RGB)
-        Parts.ClassicBox(head)
-    end
+    head.name = ns.Font(head, NAME_SIZE, nil, T.fg, true)
     head.name:SetPoint("LEFT", head.chevron, "RIGHT", CONTROL_GAP, 0)
     head.nameHit = HelpHit(head, head.name)
     head.switch = HeadSwitch(head)
@@ -304,6 +319,11 @@ local function NewHead(view)
     head:SetScript("OnClick", HeadClicked)
     head:SetScript("OnEnter", HeadEnter)
     head:SetScript("OnLeave", HeadLeave)
+    if ns.foreverSkin then
+        fill:Hide()
+        Parts.ForeverBar(head)
+        head.summary:SetJustifyH("RIGHT")
+    end
     return head
 end
 
@@ -312,7 +332,10 @@ local function PlaceSwitch(head, card)
         head.switch:Hide()
         return head.name
     end
+    local held = card.switchWhy and card.switchWhy() ~= nil
     head.switch:Show()
+    head.switch:EnableMouse(not held)
+    head.switch:SetAlpha(held and DIM_ALPHA or 1)
     head.switch._refreshValue()
     head.switch:ClearAllPoints()
     head.switch:SetPoint("LEFT", head.name, "RIGHT", TOGGLE_GAP, 0)
@@ -320,6 +343,8 @@ local function PlaceSwitch(head, card)
 end
 
 local function Summary(card)
+    local why = card.switchWhy and card.switchWhy()
+    if why then return why end
     local off = card.switchGet and not card.switchGet()
     local summary = card.summary
     if type(summary) == "function" then summary = summary(card.store) end
@@ -330,12 +355,41 @@ local function Summary(card)
     return note or summary
 end
 
+local function SetForeverHead(head, card, isOpen, held)
+    head.chevron:Hide()
+    head.rule:Hide()
+    Parts.PaintForeverBar(head, isOpen, Settings.Openable(card) and not held)
+    local summary = isOpen and SS.FOREVER_SUMMARY_RGB or T.muted
+    head.name:SetTextColor(T.accent.r, T.accent.g, T.accent.b)
+    head.summary:SetTextColor(summary.r, summary.g, summary.b)
+    head.sign:ClearAllPoints()
+    head.sign:SetPoint("CENTER", head, "RIGHT", -SS.FOREVER_SIGN_RIGHT, 0)
+    head.name:ClearAllPoints()
+    if card.switchGet then
+        head.switch:Show()
+        head.switch._refreshValue()
+        head.switch:ClearAllPoints()
+        head.switch:SetPoint("LEFT", PAD, 0)
+        head.name:SetPoint("LEFT", head.switch, "RIGHT", CONTROL_GAP, 0)
+    else
+        head.switch:Hide()
+        head.name:SetPoint("LEFT", PAD, 0)
+    end
+    head.summary:ClearAllPoints()
+    head.summary:SetPoint("LEFT", head.name, "RIGHT", SUMMARY_GAP, 0)
+    head.summary:SetPoint("RIGHT", head.sign, "LEFT", -CONTROL_GAP, 0)
+    head.summary:SetText(Summary(card) or "")
+    RestartBands(head:GetParent())
+    return SS.FOREVER_CARD_BAR_H
+end
+
 local function SetHead(head, card, isOpen, held)
     head.card, head.held = card, held
     head.setting = card.switchSetting
     head.dot:SetShown(head.setting ~= nil and Settings.Changed(head.setting))
     head.name:SetText(Marked(head, ns.L(card.name)))
     head.nameHit.help = card.help
+    if head.sign then return SetForeverHead(head, card, isOpen, held) end
     head.chevron:SetRotation(isOpen and OPEN_TURN or 0)
     head.chevron:SetShown(Settings.Openable(card) and not held)
     head.rule:SetShown(isOpen)
@@ -351,11 +405,23 @@ local function NewGroup(view)
     local row = CreateFrame("Frame", nil, view)
     row.text = ns.Font(row, SMALL_SIZE, nil, T.accentSoft)
     row.text:SetPoint("BOTTOMLEFT", PAD, GROUP_RISE)
-    Rule(row)
+    local rule = Rule(row)
+    if ns.foreverSkin then
+        row.pill = Parts.ForeverPill(row, LABEL_SIZE)
+        row.pill:SetSize(SS.FOREVER_PILL_W, GROUP_H - 2 * SS.FOREVER_PILL_PAD)
+        row.pill:SetPoint("LEFT", SS.FOREVER_PILL_INSET, 0)
+        row.text:Hide()
+        rule:Hide()
+    end
     return row
 end
 
 local function SetGroup(row, title)
+    if row.pill then
+        row.pill.text:SetText(title)
+        RestartBands(row:GetParent())
+        return GROUP_H
+    end
     local label = groupLabels[title]
     if not label then
         label = ns.Upper(ns.L(title))

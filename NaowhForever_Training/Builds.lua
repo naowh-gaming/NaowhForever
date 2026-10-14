@@ -9,6 +9,8 @@ local Changed = Training.Changed
 
 local BUILD_PREFIX = "!NFB1!"
 local MAX_POINTS = C.MAX_POINTS
+local LEVEL, SPELL = C.ENTRY_LEVEL, C.ENTRY_SPELL
+local MAX_SKIPS = 1000
 local ROW_POINTS = 5
 local NODE_SPELL, NODE_RANKS, NODE_ROW, NODE_COLUMN, NODE_NEEDS = C.NODE_SPELL, C.NODE_RANKS, C.NODE_ROW, C.NODE_COLUMN, 6
 local DECODE_LIMITS = { maxChars = 100000, maxBytes = 1048576, maxDepth = 8, maxValues = 20000 }
@@ -32,8 +34,10 @@ local TEXT_LATER_NEEDS = ns.L("A later point needs it. ")
 local TEXT_NOTHING_TO_GIVE = ns.L("No points in it to give back.")
 local TEXT_LEARNED = ns.L("Learned %d talent %s from %s.")
 local TEXT_POINT, TEXT_POINTS = ns.L("point"), ns.L("points")
+local TEXT_RESET_ASK = ns.L("Your talent points were refunded. Learn %s again?")
+local TEXT_LEARN_AGAIN, TEXT_STOP_FOLLOW = ns.L("Learn Again"), ns.L("Stop Following")
 
-local learning = false
+local learning, asking = false, false
 
 local function Saved(classID)
     local all = Account("trainingBuilds")
@@ -54,6 +58,69 @@ function Training.Ranks(talents)
     local ranks = {}
     for node in pairs(talents) do ranks[node] = C_Traits.GetNodeInfo(config, node).activeRank end
     return ranks
+end
+
+function Training.SkipGroups(classID)
+    local groups, byName = {}, {}
+    for _, entry in ipairs(ns.TrainingData[classID] or {}) do
+        local name = not entry.quest and C_Spell.GetSpellName(entry[SPELL])
+        if name then
+            local group = byName[name]
+            if not group then
+                group = { name = name, level = entry[LEVEL], spell = entry[SPELL], spells = {} }
+                byName[name] = group
+                groups[#groups + 1] = group
+            end
+            group.spells[#group.spells + 1] = entry[SPELL]
+        end
+    end
+    return groups
+end
+
+function Training.IsSkipping(build, group)
+    return build.skip ~= nil and build.skip[group.spell] == true
+end
+
+function Training.ToggleSkip(build, group)
+    local on = not Training.IsSkipping(build, group)
+    build.skip = build.skip or {}
+    for _, spell in ipairs(group.spells) do build.skip[spell] = on or nil end
+    if next(build.skip) == nil then build.skip = nil end
+    Changed()
+end
+
+function Training.SkipAll(classID, build, on)
+    build.skip = on and {} or nil
+    for _, group in ipairs(Training.SkipGroups(classID)) do
+        for _, spell in ipairs(on and group.spells or {}) do build.skip[spell] = true end
+    end
+    if build.skip and next(build.skip) == nil then build.skip = nil end
+    Changed()
+end
+
+function Training.SkipCount(build)
+    local n = 0
+    for _ in pairs(build.skip or {}) do n = n + 1 end
+    return n
+end
+
+function Training.SkipList(build)
+    local list = {}
+    for spell in pairs(build.skip or {}) do list[#list + 1] = spell end
+    table.sort(list)
+    return #list > 0 and list or nil
+end
+
+function Training.CleanSkips(classID, list)
+    if type(list) ~= "table" then return nil end
+    local known = {}
+    for _, entry in ipairs(ns.TrainingData[classID] or {}) do known[entry[SPELL]] = true end
+    local skip = {}
+    for i, spell in ipairs(list) do
+        if i > MAX_SKIPS then break end
+        if known[spell] then skip[spell] = true end
+    end
+    return next(skip) and skip or nil
 end
 
 function Training.CheckBuild(tree, points)
@@ -100,6 +167,7 @@ function Training.ExportBuild(classID, build)
     local LS, LD = Codec()
     return BUILD_PREFIX .. LD:EncodeForPrint(LD:CompressDeflate(LS:Serialize({
         v = BUILD_VERSION, class = classID, name = build.name, spec = build.spec, points = build.points,
+        skip = Training.SkipList(build),
     })))
 end
 
@@ -116,7 +184,8 @@ local function DecodeBuild(text)
     end
     if #points == 0 or Training.CheckBuild(tree, points) then return end
     return data.class, { name = BuildName(data.name, TEXT_IMPORTED_BUILD),
-        spec = BuildName(data.spec, TEXT_IMPORTED_SPEC), points = points, saved = true }
+        spec = BuildName(data.spec, TEXT_IMPORTED_SPEC), points = points, saved = true,
+        skip = Training.CleanSkips(data.class, data.skip) }
 end
 
 function Training.ImportBuild(text, onAdded)
@@ -169,8 +238,13 @@ function Training.NewBuild(classID, name, from)
     local points = {}
     for i, node in ipairs(from and from.points or {}) do points[i] = node end
     local saved = Saved(classID)
+    local skip
+    for spell in pairs(from and from.skip or {}) do
+        skip = skip or {}
+        skip[spell] = true
+    end
     saved[#saved + 1] = { name = BuildName(name, TEXT_NEW_BUILD), spec = from and from.spec or TEXT_NO_POINTS_YET,
-        points = points, saved = true }
+        points = points, saved = true, skip = skip }
     Changed()
     return #(ns.TrainingBuilds[classID]) + #saved
 end
@@ -274,11 +348,37 @@ function Training.LearnedText(bought, name)
     return TEXT_LEARNED:format(bought, bought == 1 and TEXT_POINT or TEXT_POINTS, name)
 end
 
-function Training.LearnFollowed()
-    local build, classID = Training.Followed()
-    if not build then return end
+local function LearnAndPrint(classID, build)
     local bought = Training.LearnBuild(classID, build)
     if bought > 0 then ns.Print(Training.LearnedText(bought, build.name)) end
+end
+
+local function Spent(classID)
+    local ranks = Training.Ranks(ns.TrainingBuilds[classID].talents)
+    if not ranks then return nil end
+    local total = 0
+    for _, rank in pairs(ranks) do total = total + rank end
+    return total
+end
+
+function Training.LearnFollowed()
+    local build, classID = Training.Followed()
+    if not build or asking or not ns.TrainingBuilds[classID] then return end
+    local followed = Account("trainingFollow")[CharKey()]
+    local now, before = Spent(classID), followed.spent
+    if now then followed.spent = now end
+    if now and before and now < before then
+        asking = true
+        ns.Confirm(TEXT_RESET_ASK:format(build.name), function()
+            asking = false
+            LearnAndPrint(classID, build)
+        end, function()
+            asking = false
+            Training.Follow(classID, nil)
+        end, TEXT_LEARN_AGAIN, TEXT_STOP_FOLLOW)
+        return
+    end
+    LearnAndPrint(classID, build)
 end
 
 function Training.DeleteBuild(classID, build)

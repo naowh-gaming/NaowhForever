@@ -21,6 +21,8 @@ NaowhForever_Professions/
     RecipeData.lua     where each recipe, rank and trainer is (ns.RecipeData), by hand from Wowhead Forever
     VendorReagents.lua the reagents trade-goods vendors sell (P.VendorReagents)
     CooldownRecipes.lua the classic recipes on a cooldown (P.CooldownRecipes)
+    ConsumableItems.lua the consumables the Shopping List offers, the stats each is for, each class's stats
+                       (P.ConsumableItems)
   Text.lua             money and colour codes as text (P.Text)
   LinkView.lua         another player's profession opened from a trade link, and when it ends (P.Links)
   Recipes.lua          the open profession, reagents, what a recipe makes, bag counts (P.Recipes, ns.ProfWindowAPI)
@@ -34,7 +36,8 @@ NaowhForever_Professions/
   Orders.lua           craft orders: value, tip, messages, sending (P.Orders)
   AuctionHouse.lua     the auction house open, searching it, Shift-click (P.AH)
   BagRoom.lua          how many crafts the bags have room for (ns.CraftBagRoom)
-  ShoppingPlan.lua     the shopping list's store and make-or-buy plan (P.Shopping)
+  ShoppingPlan.lua     the shopping list's store (crafts and other items) and make-or-buy plan (P.Shopping)
+  Consumables.lua      the consumables that suit you, by class, mana and level, the best marked (P.Consumables)
   Patterns.lua         favourites at a trainer, and their patterns to buy (P.Patterns, ns.TrainerServiceInfo)
   Disenchant.lua       the bag items Disenchant can take, the ones you keep, the next one (P.Disenchant)
   View/
@@ -53,7 +56,9 @@ NaowhForever_Professions/
     Book.lua           the overview's profession cards (P.Book)
     Window.lua         the window: frame, title, skill bar, rank banner, search, Filter, drawing (P.Window)
     Takeover.lua       showing it over Blizzard's window, docking Blizzard's tabs and cards, dragging, events
-    ShoppingSide.lua   the shopping list's column in the window and Add to List
+    ShoppingAdd.lua    Add to List under a recipe, and the button that opens the shopping list
+    ShoppingWindow.lua the Shopping List window: crafts, other items, materials (ns.ToggleShoppingList)
+    ShoppingConsumables.lua the Consumables picker beside the Shopping List: search and favourites
     ShoppingList.lua   the shopping list beside the auction house: check and buy
     TrainFavorites.lua Train Favorites beside the trainer
     FavoritePatterns.lua Search Favorites AH beside the auction house
@@ -79,6 +84,10 @@ Each layer uses only the ones above it, or reads a later one's table at call tim
   its art at zero alpha; the buttons stay children of that card, where their click reads the
   spellbook offset. They are secure: docked out of combat only, and undocked whenever the overview
   is not showing.
+- Blizzard only makes a tab for a profession you have learned, so an unlearned one has none. The docked
+  tabs get a Naowh-blue outline so they stand out on the dark window. The Unlearn button beside a skill
+  bar is drawn from the atlas `Profession-button-red-crossmark` at 20px and full strength; where that
+  atlas is missing it falls back to the red cross of `ReadyCheck-NotReady`, or the button shows nothing.
 - With the overview docked our window holds secure buttons and is protected, so closing it in combat
   makes it transparent instead of hiding it. Resizing waits for combat to end for the same reason.
 - Once dragged, Blizzard's window is moved to where ours was put, out of combat only (it holds secure
@@ -152,6 +161,42 @@ Each layer uses only the ones above it, or reads a later one's table at call tim
   2026-09-30), so the shopping list buys each material after the first on a click of Buy Next. A
   final price 10% over the check is warned about. A search sent while the auction house is busy is
   dropped, so the check waits for it to be ready.
+- The shopping list is a window of its own, not a column of the profession window, so it stays open when
+  that closes. Other items (`profShopItems`, item ID to amount, per character like the crafts) are always
+  bought as they are, never made from parts; what was bought counts against them. Shift-click, a drag
+  from the bags, an ID or an exact name adds one; the window is built on first open and listens to bag
+  changes only while it shows.
+- The Consumables picker offers the Well Fed food, flasks, elixirs and stat scrolls of Naowh's consumables
+  list (the one in his profile, from Wowhead Forever), the Buff Reminders' weapon stones and oils, the
+  healing and mana potions in `Shared/Game/Consumables.lua` and the Smart Macros' bandages. Plain food and
+  drink come from vendors, so they are not on it. The stones, oils and bandages are read from those modules
+  when they are loaded. `WEAPON_ITEMS` and `BANDAGES` here are a copy used only while the Buff Reminders or
+  the Smart Macros addon is off, so those groups still show; keep them in step with
+  `NaowhForever_AuraBuffs/Data/BuffReminders.lua` and `NaowhForever_Macros/Data/Items.lua`. Only the oils'
+  stats are kept here (`WEAPON_STATS`); every other weapon item is for attack power.
+- What suits your class is `CLASS_STATS`: warriors strength, agility and attack power; rogues agility and
+  attack power; hunters those and intellect; mages and warlocks intellect, spirit and spell power; priests
+  those and healing; paladins, shamans and druids all of them, since the client does not say which talents
+  they took. An item tagged only with stats you do not want is left out, one tagged `mana` shows when you
+  use mana (`ns.UsesMana`), and one with no tag (stamina, armor, health, resistances, healing potions,
+  bandages) is for everyone. An item with two stats (Elixir of Ferocity) counts in the line of each stat
+  you use, so its tier is weighed against your other items of that stat.
+- The picker shows what you can use now and the next tier up of each kind and stat, by the level the game
+  gives each item. Their data is asked for when it first opens (`Items.OnLoaded`); an item not loaded yet
+  waits. The highest you can use of each kind and stat is Best, even its lowest tier; a line with only one
+  level in it (a single item, or bandages, which need First Aid instead) has none. Only for my class off
+  shows everything; the choice is kept account-wide (`profShopAllConsumables`), like the window's size.
+- A pick's amount is its amount on the list, as an other item, so Check Prices and Buy All at the auction
+  house buy it. Its box takes as many digits as `C.MAX_ITEMS` has. The picker is built on first open and
+  listens to bag changes and level ups only while it shows. The plan tells it of every list change
+  (`Shopping.OnChange`); changes and bag updates redraw at most once a frame and only rewrite the rows'
+  amounts and counts, while opening, a level up, the toggle and items loading pick the rows again.
+- A starred pick is a favourite: it moves out of its kind into Favorites at the top, in kind order. Favourites
+  are kept in the profile by item ID (`shopFavorites`), like the favourite recipes. Only what the picker
+  offers can show there, so a favourite the class filter or your level leaves out stays hidden until it is
+  offered again.
+- The search box above the list keeps the rows whose name holds what is typed, any case. Typing and a star
+  only lay out the rows already picked again, with no new pick; reopening the picker clears the search.
 - The shopping list makes a material from its parts, up to 4 levels down, only when whole crafts cost
   less than buying what is needed, and never from a recipe with a cooldown (it makes a few a day; a
   shared cooldown can read 0 on the spell). What was bought counts at every level, and a craft taken
@@ -205,5 +250,6 @@ Each layer uses only the ones above it, or reads a later one's table at call tim
 - The window's slices: `test-profession-combat-close.lua`, `test-profession-window-drag.lua`
   (Takeover.lua), `test-profession-link-view.lua` (LinkView.lua), `test-profession-shift-click.lua`
   (AuctionHouse.lua), `test-profession-merchant-events.lua` (Vendors.lua),
-  `test-shopping-list-plan.lua` (ShoppingPlan.lua), and the looks in `test-icon-look.lua` and
+  `test-shopping-list-plan.lua` (ShoppingPlan.lua), `test-shopping-consumables.lua` (Consumables.lua),
+  and the looks in `test-icon-look.lua` and
   `test-qol-bars-look.lua`.

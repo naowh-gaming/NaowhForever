@@ -5,6 +5,7 @@ local UI = ns.UI
 local T = ns.THEME
 local S = ns.QoLSettings
 local Parts = ns.Shared.Parts
+local ItemBar = ns.Shared.ItemBar
 
 local GAP, FILL_ALPHA = 4, 0.9
 local BLACK = ns.Shared.Style.BORDER_RGB
@@ -20,8 +21,8 @@ local TIP_PERSON = ns.L("Invites %s.")
 local TEXT_INVITE_ALL, TIP_INVITE_ALL = ns.L("Invite All"), ns.L("Invites everyone on your invite buttons.")
 local TEXT_DISBAND = ns.L("Disband")
 local TIP_DISBAND = ns.L("Removes everyone from your group. Group leader only, out of combat.")
+local TIP_DISBAND_SHIFT = ns.L("Shift-click to disband without the question.")
 local TEXT_IN_COMBAT = ns.L("The group can be disbanded once the fight is over.")
-local LAYOUT_NAMES = { stacked = "Stacked", row = "Side by Side" }
 local SUMMARY_ROW, SUMMARY_STACKED = ns.L("Side by Side"), ns.L("Stacked")
 
 local bar, moving, pending
@@ -48,6 +49,7 @@ local function Style(button, text, tip)
     button.label:SetPoint("CENTER")
     button.label:SetText(text)
     button.tip = tip
+    Parts.Press(button)
     button:SetScript("OnEnter", Enter)
     button:SetScript("OnLeave", Leave)
 end
@@ -58,6 +60,18 @@ local function OnDisbandClick()
         return
     end
     ns.DisbandGroup()
+end
+
+local function ArmDisband(button)
+    if InCombatLockdown() then return end
+    button.armed = IsInGroup() and UnitIsGroupLeader("player") or false
+    button:SetAttribute("shift-macrotext1", button.armed and ns.DisbandMacro() or "")
+end
+
+local function OnDisbandPostClick(button, _, down)
+    if down then return end
+    if IsShiftKeyDown() and button.armed then return end
+    OnDisbandClick()
 end
 
 local function OnPersonClick(button)
@@ -80,9 +94,12 @@ local function Build()
     bar.inviteAll = CreateFrame("Button", nil, bar)
     bar.inviteAll:SetScript("OnClick", ns.InviteAll)
     Style(bar.inviteAll, TEXT_INVITE_ALL, TIP_INVITE_ALL)
-    bar.disband = CreateFrame("Button", nil, bar)
-    bar.disband:SetScript("OnClick", OnDisbandClick)
-    Style(bar.disband, TEXT_DISBAND, TIP_DISBAND)
+    bar.disband = CreateFrame("Button", nil, bar, "SecureActionButtonTemplate")
+    bar.disband:RegisterForClicks("AnyUp", "AnyDown")
+    bar.disband:SetAttribute("shift-type1", "macro")
+    bar.disband:SetScript("PostClick", OnDisbandPostClick)
+    Style(bar.disband, TEXT_DISBAND, TIP_DISBAND .. "\n" .. TIP_DISBAND_SHIFT)
+    bar.disband:HookScript("OnEnter", ArmDisband)
     bar.mover = UI.AttachMover(bar, MOVER_LABEL, SavePosition, SETTINGS_PAGE, SETTINGS_CARD)
 end
 
@@ -124,21 +141,27 @@ local function StyleButtons(w, h)
 end
 
 local function Arrange(w, h)
-    local stacked = S.Get("groupButtonsLayout") ~= "row"
+    local grow = ItemBar.GrowOf(S.Get("groupButtonsLayout"))
+    local sideways = grow == "RIGHT" or grow == "LEFT"
     local count = #buttons
-    if stacked then
-        bar:SetSize(w, h * count + GAP * (count - 1))
-    else
+    if sideways then
         bar:SetSize(w * count + GAP * (count - 1), h)
+    else
+        bar:SetSize(w, h * count + GAP * (count - 1))
     end
     for i, button in ipairs(buttons) do
         button:ClearAllPoints()
-        if i == 1 then
+        local prev = buttons[i - 1]
+        if grow == "LEFT" then
+            if prev then button:SetPoint("TOPRIGHT", prev, "TOPLEFT", -GAP, 0) else button:SetPoint("TOPRIGHT") end
+        elseif grow == "UP" then
+            if prev then button:SetPoint("BOTTOMLEFT", prev, "TOPLEFT", 0, GAP) else button:SetPoint("BOTTOMLEFT") end
+        elseif not prev then
             button:SetPoint("TOPLEFT")
-        elseif stacked then
-            button:SetPoint("TOPLEFT", buttons[i - 1], "BOTTOMLEFT", 0, -GAP)
+        elseif sideways then
+            button:SetPoint("TOPLEFT", prev, "TOPRIGHT", GAP, 0)
         else
-            button:SetPoint("TOPLEFT", buttons[i - 1], "TOPRIGHT", GAP, 0)
+            button:SetPoint("TOPLEFT", prev, "BOTTOMLEFT", 0, -GAP)
         end
     end
 end
@@ -200,14 +223,15 @@ boot:SetScript("OnEvent", OnLogin)
 
 local Settings = ns.Shared and ns.Shared.Settings
 if not Settings then return end
-local LAYOUT = { LAYOUT_NAMES, { "stacked", "row" } }
+local LAYOUT = ItemBar.GrowChoice("row", "stacked")
 
 local function Disband()
     ns.DisbandGroup()
 end
 
 local function LayoutSummary(store)
-    return store.Get("groupButtonsLayout") == "row" and SUMMARY_ROW or SUMMARY_STACKED
+    local grow = ItemBar.GrowOf(store.Get("groupButtonsLayout"))
+    return (grow == "RIGHT" or grow == "LEFT") and SUMMARY_ROW or SUMMARY_STACKED
 end
 
 Settings.Page("QoL/Questing & Group", S):Card({
@@ -215,8 +239,8 @@ Settings.Page("QoL/Questing & Group", S):Card({
     help = "Invite, Disband and an invite button per friend, on your screen.",
     summary = LayoutSummary,
     rows = {
-        { key = "groupButtonsLayout", label = "Button Layout", choice = LAYOUT,
-          help = "The buttons stacked, or side by side." },
+        { key = "groupButtonsLayout", label = "Growth Direction", choice = LAYOUT,
+          help = "Which way the buttons line up from the first one." },
         { label = "Invite Buttons", button = ns.ShowInviteEditor, buttonText = "Edit...", always = true,
           help = "Pick the friends who get their own invite button." },
         { key = "groupButtonsTarget", label = "Invite Target Button", toggle = true,

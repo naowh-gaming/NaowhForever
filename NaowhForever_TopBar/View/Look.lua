@@ -80,13 +80,13 @@ function Look.Accent()
 end
 
 function Look.IconColor()
-    if ns.classicSkin then return 1, 1, 1 end
+    if ns.foreverSkin then return 1, 1, 1 end
     local c = S.Get("iconColor")
     return c.r, c.g, c.b
 end
 
 function Look.HoverColor()
-    if ns.classicSkin then return 1, 1, 1 end
+    if ns.foreverSkin then return 1, 1, 1 end
     return Look.Accent()
 end
 

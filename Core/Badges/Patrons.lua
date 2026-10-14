@@ -2,4 +2,17 @@
 local ns = _G.NaowhForever
 
 ns.BADGE_PATRONS = {
+    [90] = {
+        ["Player-4613-0099A208"] = { since = "2022-12", tier = "epic", claim = "f4e37165" },
+        ["Player-4618-014D6F5C"] = { since = "2023-07", tier = "epic", claim = "7d743438" },
+        ["Player-4619-00DC79AD"] = { since = "2024-04", tier = "epic", claim = "6164a7b6" },
+        ["Player-4619-01615B15"] = { since = "2026-05", tier = "epic", claim = "46f23f82" },
+    },
+    [110] = {
+        ["Player-4613-00D39033"] = { since = "2026-10", tier = "epic", claim = "515373bc" },
+        ["Player-4618-01570392"] = { since = "2026-10", tier = "epic", claim = "12dc74da" },
+        ["Player-4619-00BCDAD0"] = { since = "2026-10", tier = "epic", claim = "e969e61e" },
+        ["Player-4619-00D40148"] = { since = "2026-10", tier = "epic", claim = "c034f7b2" },
+        ["Player-4620-017C4879"] = { since = "2025-08", tier = "epic", claim = "472bbead" },
+    },
 }

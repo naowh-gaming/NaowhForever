@@ -46,15 +46,16 @@ function Backdrop:Card(left, top, right, bottom)
     return parts
 end
 
-function Backdrop:Paint(alpha)
-    local top, bg = T.panel, T.bg
+function Backdrop:Paint(alpha, colors)
+    local palette = colors or T
+    local top, bg = palette.panel, palette.bg
     self.bottom:SetRGBA((top.r + bg.r) / 2, (top.g + bg.g) / 2, (top.b + bg.b) / 2, alpha)
     self.top:SetRGBA(top.r, top.g, top.b, alpha)
     self.gradient:SetGradient("VERTICAL", self.bottom, self.top)
     local pattern = self.pattern
     if pattern then
-        local shade = St.CLASSIC_PATTERN_SHADE
-        pattern:SetVertexColor(shade, shade, shade, St.CLASSIC_PATTERN_ALPHA * alpha)
+        local shade = self.patternShade
+        pattern:SetVertexColor(shade, shade, shade, self.patternAlpha * alpha)
     end
     local flat = self.flat
     for i = 1, #flat do
@@ -108,19 +109,24 @@ local function PlaceBeside(panel, owner)
     end
 end
 
-function Parts.Backdrop(frame)
+local function Pattern(frame, file)
+    local pattern = frame:CreateTexture(nil, "BACKGROUND", nil, PATTERN_SUBLEVEL)
+    pattern:SetAllPoints()
+    pattern:SetTexture(file, "REPEAT", "REPEAT")
+    pattern:SetHorizTile(true)
+    pattern:SetVertTile(true)
+    return pattern
+end
+
+function Parts.Backdrop(frame, forever)
     local backdrop = setmetatable({ frame = frame, flat = {} }, Backdrop)
     backdrop.gradient = frame:CreateTexture(nil, "BACKGROUND", nil, GRADIENT_SUBLEVEL)
     backdrop.gradient:SetAllPoints()
     backdrop.gradient:SetColorTexture(1, 1, 1, 1)
     backdrop.bottom, backdrop.top = CreateColor(0, 0, 0, 1), CreateColor(0, 0, 0, 1)
-    if ns.classicSkin then
-        local pattern = frame:CreateTexture(nil, "BACKGROUND", nil, PATTERN_SUBLEVEL)
-        pattern:SetAllPoints()
-        pattern:SetTexture(St.CLASSIC_PATTERN, "REPEAT", "REPEAT")
-        pattern:SetHorizTile(true)
-        pattern:SetVertTile(true)
-        backdrop.pattern = pattern
+    if forever or ns.foreverSkin then
+        backdrop.pattern = Pattern(frame, St.FOREVER_ROCK)
+        backdrop.patternShade, backdrop.patternAlpha = St.FOREVER_ROCK_SHADE, St.FOREVER_ROCK_ALPHA
     end
     return backdrop
 end

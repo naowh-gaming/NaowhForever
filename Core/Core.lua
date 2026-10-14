@@ -22,11 +22,10 @@ local STEM_INSET = 0.075
 local MAX_FRAME_LEVEL = 9999
 local OFFSCREEN = 0.9
 local BUTTON_TEXT_SIZE, BUTTON_REST_ALPHA = 12, 0.9
-local BUTTON_SHADOW = 1
-local SKIN_CLASSIC = "classic"
+local SKIN_CLASSIC, SKIN_FOREVER = "classic", "forever"
 local FONT_NAOWH, FONT_CLASSIC, FONT_DATA = "Naowh", "Friz Quadrata TT", "Arial Narrow"
 local FONT_HEADING = FONT_CLASSIC
-local LOCALE_ADDON_PREFIX, ENGLISH = "NaowhForever_", "enUS"
+local LOCALE_ADDON, ENGLISH = "NaowhForever_Locales", "enUS"
 local GLYPH_FONTS = { koKR = "Fonts\\2002.TTF", zhCN = "Fonts\\ARKai_T.ttf", zhTW = "Fonts\\bLEI00D.ttf" }
 local FRIZ_CYRILLIC = "Fonts\\FRIZQT___CYR.TTF"
 local LANGUAGES = { "enUS", "deDE", "esES", "esMX", "frFR", "itIT", "ptBR", "ruRU", "koKR", "zhCN", "zhTW" }
@@ -55,6 +54,9 @@ local SCALE_DEFAULT, SCALE_MIN, SCALE_MAX, PERCENT = 100, 50, 200, 100
 local LOGIN_APPLY_DELAY = 1
 local DAMAGE_METER_ADDON, GAME_METER_CVAR, GAME_METER_SAVED = "NaowhForever_DamageMeter", "damageMeterEnabled",
     "damageMeterGameWas"
+local GLIMMER_ADDON, GLIMMER_SAVED = "NaowhForever_QoL", { "glimmerSoftCVars", "glimmerSparkleCVars" }
+local RETIRED_ADDONS = { "NaowhForever_Glimmer", "NaowhForever_GlimmerData" }
+local TEXT_RETIRED = "%s is now part of Quality of Life: delete its old folder from your AddOns folder."
 local ERR_NO_PROFILE = "no such profile"
 local TEXT_SECRET = "(withheld: this line contained a secret value)"
 local TEXT_LIBRARIES_MISSING = "Libraries missing (%s), so parts of the addon will not work. Download Naowh "
@@ -83,7 +85,7 @@ end
 ns.LOCALE = PickLocale()
 ns.LANGUAGES, ns.LANGUAGE_NAMES = LANGUAGES, LANGUAGE_NAMES
 if ns.LOCALE ~= ENGLISH then
-    C_AddOns.LoadAddOn(LOCALE_ADDON_PREFIX .. ns.LOCALE)
+    C_AddOns.LoadAddOn(LOCALE_ADDON)
 end
 
 local catalog = {}
@@ -120,7 +122,7 @@ function ns.Lower(text)
     return (text:lower():gsub(LATIN_CAPITAL, LatinLower))
 end
 
-ns.CODE_BUILD = "1.1.11"
+ns.CODE_BUILD = "1.1.16"
 
 ns.THEME = {
     bg     = { r = 0x0e / 255, g = 0x0f / 255, b = 0x11 / 255 },
@@ -202,12 +204,12 @@ ns.THEME_PRESETS = {
         accent = { r = 0xd6 / 255, g = 0x8e / 255, b = 0x35 / 255 } },
 }
 
-ns.CLASSIC_PLUS = {
-    bg     = { r = 0x0b / 255, g = 0x0a / 255, b = 0x08 / 255 },
-    panel  = { r = 0x17 / 255, g = 0x11 / 255, b = 0x0b / 255 },
-    line   = { r = 0x5e / 255, g = 0x4a / 255, b = 0x1c / 255 },
-    fg     = { r = 0xec / 255, g = 0xe3 / 255, b = 0xcc / 255 },
-    muted  = { r = 0xa8 / 255, g = 0x9a / 255, b = 0x7c / 255 },
+ns.FOREVER_SKIN = {
+    bg     = { r = 0x11 / 255, g = 0x10 / 255, b = 0x0e / 255 },
+    panel  = { r = 0x1b / 255, g = 0x19 / 255, b = 0x16 / 255 },
+    line   = { r = 0x6e / 255, g = 0x51 / 255, b = 0x26 / 255 },
+    fg     = { r = 0xe8 / 255, g = 0xda / 255, b = 0xb4 / 255 },
+    muted  = { r = 0x9a / 255, g = 0x8f / 255, b = 0x7a / 255 },
     accent = { r = 0xff / 255, g = 0xd1 / 255, b = 0x00 / 255 },
 }
 
@@ -250,7 +252,7 @@ local function Pick(source, key)
 end
 
 local function ThemeSource()
-    if ns.classicSkin then return ns.CLASSIC_PLUS end
+    if ns.foreverSkin then return ns.FOREVER_SKIN end
     local account = ns.AccountSettings()
     local preset = account.themePreset
     if preset == CUSTOM then return account.themeColors end
@@ -279,7 +281,10 @@ local function ShippedColor(key)
 end
 
 function ns.ApplyThemeColors()
-    ns.classicSkin = ns.AccountSettings().skin == SKIN_CLASSIC
+    local account = ns.AccountSettings()
+    if account.skin == SKIN_CLASSIC then account.skin = SKIN_FOREVER end
+    ns.skin = account.skin == SKIN_FOREVER and SKIN_FOREVER or ""
+    ns.foreverSkin = ns.skin == SKIN_FOREVER
     local source = ThemeSource()
     if not source then return end
     for _, key in ipairs(ns.THEME_EDITABLE) do
@@ -289,6 +294,10 @@ function ns.ApplyThemeColors()
     if themeShipped.accent then Paint("accentSoft", Lightened(ns.THEME.accent, ACCENT_SOFT_STEP)) end
     if themeShipped.line then Paint("grey", Lightened(ns.THEME.line, GREY_STEP)) end
     for key in pairs(colorPrefix) do colorPrefix[key] = nil end
+end
+
+function ns.Skin()
+    return ns.skin or ""
 end
 
 function ns.ThemePresetKey()
@@ -393,9 +402,31 @@ local function RestoreGameMeter()
     account[GAME_METER_SAVED] = nil
 end
 
+local function RestoreGlimmerSettings()
+    if C_AddOns.IsAddOnLoaded(GLIMMER_ADDON) or InCombatLockdown() then return end
+    local account = ns.AccountSettings()
+    for _, slot in ipairs(GLIMMER_SAVED) do
+        for name, value in pairs(account[slot] or {}) do C_CVar.SetCVar(name, value) end
+        account[slot] = nil
+    end
+end
+
+local function RetireOldFolders()
+    for _, addon in ipairs(RETIRED_ADDONS) do
+        if C_AddOns.DoesAddOnExist(addon) then
+            C_AddOns.DisableAddOn(addon)
+            ns.Print(ns.L(TEXT_RETIRED):format(addon))
+        end
+    end
+end
+
 local meterCheck = CreateFrame("Frame")
 meterCheck:RegisterEvent("PLAYER_LOGIN")
-meterCheck:SetScript("OnEvent", RestoreGameMeter)
+meterCheck:SetScript("OnEvent", function()
+    RetireOldFolders()
+    RestoreGameMeter()
+    RestoreGlimmerSettings()
+end)
 
 local reloader
 
@@ -472,7 +503,7 @@ function ns.FontInset(size)
 end
 
 function ns.AddonFontPath(classic)
-    if classic == nil then classic = ns.classicSkin end
+    if classic == nil then classic = ns.foreverSkin end
     local default = classic and FONT_CLASSIC or FONT_NAOWH
     return FontPath(ns.AccountSettings().uiFont or default) or ns.LocaleFont(default, STANDARD_TEXT_FONT)
 end
@@ -482,17 +513,13 @@ function ns.HeadingFontPath(classic)
         if not classic or ns.AccountSettings().uiFont then return ns.AddonFontPath(classic) end
         return FontPath(FONT_HEADING) or ns.AddonFontPath(classic)
     end
-    if not ns.classicSkin or ns.AccountSettings().uiFont then return ns.UIFontPath() end
+    if not ns.foreverSkin or ns.AccountSettings().uiFont then return ns.UIFontPath() end
     return FontPath(FONT_HEADING) or ns.UIFontPath()
 end
 
 function ns.DataFontPath()
-    if not ns.classicSkin or ns.AccountSettings().uiFont then return ns.UIFontPath() end
+    if not ns.foreverSkin or ns.AccountSettings().uiFont then return ns.UIFontPath() end
     return FontPath(FONT_DATA) or ns.UIFontPath()
-end
-
-function ns.TitleFontPath()
-    return ns.LocaleFont(FONT_NAOWH, NAOWH_FONT)
 end
 
 function ns.UIFontPath()
@@ -546,7 +573,7 @@ gameFontEvents:SetScript("OnEvent", OnGameFontEvent)
 function ns.Font(parent, size, flags, color, heading)
     local c = color or ns.THEME.fg
     local fs = parent:CreateFontString(nil, "OVERLAY")
-    if heading and ns.classicSkin then
+    if heading and ns.foreverSkin then
         local St = ns.Shared.Style
         size = size + St.CLASSIC_HEADING_STEP
         fs:SetShadowColor(0, 0, 0, 1)
@@ -631,19 +658,6 @@ function ns.Border(frame, color, alpha)
     }
 end
 
-function ns.Sunken(frame)
-    local c = ns.Shared.Style.CLASSIC_BEVEL_RGB
-    local edge = CreateFrame("Frame", nil, frame)
-    ns.PixelInset(edge, -1, frame)
-    local bottom = edge:CreateTexture(nil, "OVERLAY")
-    bottom:SetColorTexture(c.r, c.g, c.b, 1)
-    bottom:SetPoint("BOTTOMLEFT"); bottom:SetPoint("BOTTOMRIGHT"); ns.Hairline(bottom, "h")
-    local right = edge:CreateTexture(nil, "OVERLAY")
-    right:SetColorTexture(c.r, c.g, c.b, 1)
-    right:SetPoint("TOPRIGHT"); right:SetPoint("BOTTOMRIGHT"); ns.Hairline(right, "v")
-    return edge
-end
-
 function ns.Solid(parent, layer, color, alpha)
     local c = color or ns.THEME.panel
     local t = parent:CreateTexture(nil, layer or "BACKGROUND")
@@ -658,85 +672,6 @@ end
 function ns.AllowOffscreen(frame)
     ClampOffscreen(frame, frame:GetWidth(), frame:GetHeight())
     frame:HookScript("OnSizeChanged", ClampOffscreen)
-end
-
-local function SetArt(btn, file)
-    for _, piece in ipairs(btn._art) do piece:SetTexture(file) end
-end
-
-local function ArtPiece(btn, coords)
-    local piece = btn:CreateTexture(nil, "BACKGROUND")
-    piece:SetTexCoord(coords[1], coords[2], coords[3], coords[4])
-    return piece
-end
-
-local function FitCaps(btn, width)
-    local cap = math.min(ns.Shared.Style.CLASSIC_BUTTON_CAP, width / 2)
-    btn._art[1]:SetWidth(cap)
-    btn._art[3]:SetWidth(cap)
-end
-
-function ns.GameButtonArt(frame)
-    local St = ns.Shared.Style
-    local coords = St.CLASSIC_BUTTON_COORDS
-    local left, middle, right = ArtPiece(frame, coords.left), ArtPiece(frame, coords.middle), ArtPiece(frame, coords.right)
-    left:SetPoint("TOPLEFT"); left:SetPoint("BOTTOMLEFT")
-    right:SetPoint("TOPRIGHT"); right:SetPoint("BOTTOMRIGHT")
-    middle:SetPoint("TOPLEFT", left, "TOPRIGHT"); middle:SetPoint("BOTTOMRIGHT", right, "BOTTOMLEFT")
-    frame._art = { left, middle, right }
-    FitCaps(frame, frame:GetWidth())
-    frame:HookScript("OnSizeChanged", FitCaps)
-    SetArt(frame, St.CLASSIC_BUTTON_ART.up)
-end
-
-local function Unlight(btn)
-    local c = btn._litFrom
-    if not c then return end
-    btn._litFrom = nil
-    btn.label:SetTextColor(c[1], c[2], c[3], c[4])
-end
-
-local function ClassicButton(btn, bg, border, lbl)
-    local T, St = ns.THEME, ns.Shared.Style
-    local art, coords = St.CLASSIC_BUTTON_ART, St.CLASSIC_BUTTON_COORDS
-    bg:Hide()
-    local setColor = border.SetColor
-    border.SetColor = function(self, r, g, b, a)
-        setColor(self, r, g, b, a)
-        self._frame:SetShown(r ~= BLACK.r or g ~= BLACK.g or b ~= BLACK.b)
-    end
-    border._frame:Hide()
-    ns.GameButtonArt(btn)
-    btn:SetHighlightTexture(art.highlight, "ADD")
-    local glow = coords.glow
-    btn:GetHighlightTexture():SetTexCoord(glow[1], glow[2], glow[3], glow[4])
-    lbl:SetTextColor(T.accent.r, T.accent.g, T.accent.b, 1)
-    lbl:SetShadowColor(BLACK.r, BLACK.g, BLACK.b, 1)
-    lbl:SetShadowOffset(BUTTON_SHADOW, -BUTTON_SHADOW)
-    btn:SetScript("OnEnter", function(self)
-        if not self:IsEnabled() or self._litFrom then return end
-        self._litFrom = { lbl:GetTextColor() }
-        lbl:SetTextColor(1, 1, 1, 1)
-    end)
-    btn:SetScript("OnLeave", Unlight)
-    btn:SetScript("OnMouseDown", function(self)
-        if self:IsEnabled() then SetArt(self, art.down) end
-    end)
-    btn:SetScript("OnMouseUp", function(self)
-        if self:IsEnabled() then SetArt(self, art.up) end
-    end)
-    btn:HookScript("OnHide", function(self)
-        if self:IsEnabled() then SetArt(self, art.up) end
-    end)
-    btn:SetScript("OnDisable", function(self)
-        Unlight(self)
-        SetArt(self, art.disabled)
-        lbl:SetAlpha(St.CLASSIC_DISABLED_ALPHA)
-    end)
-    btn:SetScript("OnEnable", function(self)
-        SetArt(self, art.up)
-        lbl:SetAlpha(1)
-    end)
 end
 
 function ns.Button(parent, text, w, h, onClick, template)
@@ -754,8 +689,8 @@ function ns.Button(parent, text, w, h, onClick, template)
     btn.label = lbl
     btn._onClick = onClick
     if not template then btn:SetScript("OnClick", function() if btn._onClick then btn._onClick() end end) end
-    if ns.classicSkin then
-        ClassicButton(btn, bg, border, lbl)
+    if ns.foreverSkin then
+        ns.Shared.Parts.ForeverButton(btn, bg, border, lbl)
         return btn
     end
     btn:SetScript("OnEnter", function()
@@ -770,6 +705,7 @@ function ns.Button(parent, text, w, h, onClick, template)
 end
 
 function ns.AccentBorder(frame)
+    if frame and frame._forever then return frame end
     if not (frame and frame._border) or frame._art then return frame end
     local accent = ns.THEME.accent
     frame._rest = accent
@@ -906,7 +842,8 @@ function ns.NewEditBox(parent, opts)
     box:SetFontObject("GameFontHighlight")
     local inset = opts.inset or EDIT_INSET
     box:SetTextInsets(inset, inset, 0, 0)
-    ns.Solid(box, "BACKGROUND", ns.THEME.bg, 1):SetAllPoints()
+    box._fill = ns.Solid(box, "BACKGROUND", ns.THEME.bg, 1)
+    box._fill:SetAllPoints()
     local edge = opts.border or BLACK
     box._border = ns.Border(box, edge)
     box.border = box._border
@@ -917,7 +854,7 @@ function ns.NewEditBox(parent, opts)
         end)
         box:HookScript("OnLeave", function() box._border:SetColor(edge.r, edge.g, edge.b, 1) end)
     end
-    if ns.classicSkin and opts.sunken ~= false then ns.Sunken(box) end
+    if ns.foreverSkin and opts.sunken ~= false then ns.Shared.Parts.ForeverField(box) end
     return box
 end
 
@@ -1060,7 +997,7 @@ function ns.Confirm(text, onYes, onNo, yesText, noText)
     panel:SetHeight(math.max(CONFIRM_H, head:GetStringHeight() + CONFIRM_ROOM))
     local w = (yesText or noText) and CONFIRM_WIDE or CONFIRM_W
     local shift = w / 2 + CONFIRM_BUTTON_GAP
-    DialogButton(UI, panel, "yes", yesText or "Yes", w, function()
+    local yes = DialogButton(UI, panel, "yes", yesText or "Yes", w, function()
         dimmer.onClose = nil
         dimmer:Hide()
         onYes()
@@ -1068,6 +1005,7 @@ function ns.Confirm(text, onYes, onNo, yesText, noText)
     DialogButton(UI, panel, "no", noText or "No", w, function() dimmer:Hide() end, shift)
     dimmer.onClose = onNo
     dimmer:Show()
+    return yes, dimmer
 end
 
 local activeRoot, provisional
@@ -1391,6 +1329,11 @@ function ns.EnsureProfile(name)
     return sv.profiles[name].tankReminder
 end
 
+function ns.ProfileTable(name)
+    local p = DB().profiles[name]
+    return type(p) == "table" and p or nil
+end
+
 function ns.ProfileRoot(name)
     ns.EnsureProfile(name)
     return DB().profiles[name]
@@ -1404,6 +1347,7 @@ function ns.SwitchProfile(name)
     local spec = ns.CurrentSpec and ns.CurrentSpec()
     if spec and spec > 0 then ns.SetSpecProfile(spec, name) end
     ns.QueueReapply()
+    if ns.ReconcileModules then ns.ReconcileModules() end
     return true
 end
 
@@ -1433,6 +1377,7 @@ function ns.SetAccountProfile(name)
     sv.autoSpecProfile = nil
     activeRoot = nil
     ns.QueueReapply()
+    if ns.ReconcileModules then ns.ReconcileModules() end
     return true, turnedOff
 end
 

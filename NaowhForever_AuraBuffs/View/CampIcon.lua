@@ -14,14 +14,17 @@ local CLAMP = "CLAMPTOBLACKADDITIVE"
 local TEXT_SIZE, LABEL_GAP, BUFF_GAP = St.CAMP_TEXT_SIZE, St.CAMP_LABEL_GAP, St.CAMP_BUFF_GAP
 local TRACK_OUT, DRAIN_OUT, RING_OUT = St.CAMP_TRACK_OUT, St.CAMP_DRAIN_OUT, St.CAMP_RING_OUT
 local TIME_STEPS = St.CAMP_TIME_STEPS
+local LABEL_DROP = TRACK_OUT + LABEL_GAP
+local SIT_HOT = St.CAMP_SIT_HOT
 local ROUND_ART = { "tex", "plate", "ring" }
 local ROUND_EXTRAS = { "timer", "drain", "track", "label", "buffs" }
 local JUSTIFY = { right = "LEFT", left = "RIGHT" }
 
 local TEXT_REFRESH = ns.L("Refresh Camp")
+local TEXT_CLICK_SIT = ns.L("Click to sit")
 local TEXT_RESTING = ns.L("Resting")
 
-local Look = {}
+local Look = { LABEL_DROP = LABEL_DROP }
 A.CampIcon = Look
 
 local function Ring(icon)
@@ -53,6 +56,19 @@ function Look.Art(icon, bare)
     Ring(icon)
 end
 
+function Look.Hot(fire, on)
+    if not fire.hot then
+        if not on then return end
+        fire.hot = Parts.Smooth(fire:CreateTexture(nil, "OVERLAY"), ART)
+        fire.hot:SetAllPoints(fire.tex)
+        fire.hot:SetTexCoord(fire.tex:GetTexCoord())
+        fire.hot:SetBlendMode("ADD")
+        fire.hot:SetAlpha(SIT_HOT)
+        if fire.mask then fire.hot:AddMaskTexture(fire.mask) end
+    end
+    fire.hot:SetShown(on)
+end
+
 local function NewTimers(icon)
     icon.timer = CreateFrame("Cooldown", nil, icon, "CooldownFrameTemplate")
     icon.timer:SetAllPoints()
@@ -79,7 +95,7 @@ function Look.New(icon)
     Look.Art(icon)
     NewTimers(icon)
     icon.label = Parts.HudText(ns.Font(icon, TEXT_SIZE, nil, T.accentSoft))
-    icon.label:SetPoint("TOP", icon, "BOTTOM", 0, -LABEL_GAP)
+    icon.label:SetPoint("TOP", icon, "BOTTOM", 0, -LABEL_DROP)
     icon.label:SetText(TEXT_REFRESH)
     icon.buffs = Parts.HudText(ns.Font(icon, TEXT_SIZE))
     icon.buffs:SetPoint("TOP", icon, "BOTTOM", 0, -LABEL_GAP)
@@ -141,9 +157,9 @@ function Look.Sitting(icon)
     icon.buffs:Hide()
 end
 
-function Look.Missing(icon)
-    icon.tex:SetDesaturated(true)
-    icon.label:SetText(TEXT_REFRESH)
+function Look.Missing(icon, sit)
+    icon.tex:SetDesaturated(not sit)
+    icon.label:SetText(sit and TEXT_CLICK_SIT or TEXT_REFRESH)
     icon.label:Show()
     icon.buffs:Hide()
     Look.Timed(icon, false)

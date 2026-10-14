@@ -1,7 +1,7 @@
 -- luacheck settings for Naowh Forever. From the repo root: luacheck .
 -- Lua 5.1, as the game runs it. Libs/ is fetched by the packager and not ours to lint.
 std = "lua51"
-exclude_files = { "Libs/", ".claude/" }
+exclude_files = { "Libs/", ".claude/", "NaowhForever_DamageMeter/" }
 
 -- WoW calls handlers with fixed arguments (self, event, ...), so unused ones are normal.
 ignore = { "212" }
@@ -18,15 +18,14 @@ globals = {
     "NaowhForever_OnCompartmentClick", "NaowhForever_BagSpacePickUp", "NaowhForever_BossLoot", "NaowhForever_ToggleJournal", "NaowhForever_ToggleBis", "NaowhForever_ToggleCompleto",
     "NaowhForever_ToggleGroupInspect", "BINDING_NAME_NAOWHFOREVER_GROUPINSPECT",
     "NaowhForever_OnCompartmentEnter", "NaowhForever_OnCompartmentLeave", "NaowhForever_ToggleHudEditor",
-    "BINDING_NAME_NAOWHFOREVER_HUD", "NaowhForever_ToggleTraining", "BINDING_NAME_NAOWHFOREVER_TRAINING",
-    "NaowhForever_ResetDamageMeter", "BINDING_NAME_NAOWHFOREVER_DAMAGEMETER_RESET",
-    "NaowhForever_ToggleDamageMeter", "BINDING_NAME_NAOWHFOREVER_DAMAGEMETER_TOGGLE",
+    "NaowhForever_ToggleModule",
+    "BINDING_NAME_NAOWHFOREVER_HUD", "BINDING_NAME_NAOWHFOREVER_TOPBAR", "NaowhForever_ToggleTraining", "BINDING_NAME_NAOWHFOREVER_TRAINING",
     "SLASH_NAOWHFOREVER1", "SLASH_NAOWHFOREVER2", "SLASH_NAOWHFOREVER3",
     "SLASH_NAOWHFOREVERQUESTLIST1", "SLASH_NAOWHFOREVERQUESTLIST2",
     "SLASH_NAOWHFOREVERCOPY1", "SLASH_NAOWHFOREVERCOPY2", "SLASH_NAOWHFOREVERAIM1",
     "BINDING_HEADER_NAOWHFOREVER", "BINDING_NAME_NAOWHFOREVER_BAGSPACE_PICKUP",
     "BINDING_NAME_NAOWHFOREVER_BOSSLOOT", "BINDING_NAME_NAOWHFOREVER_JOURNAL", "BINDING_NAME_NAOWHFOREVER_BIS", "BINDING_NAME_NAOWHFOREVER_COMPLETO",
-    "NaowhForeverTownPinMixin", "NaowhForeverZoneLinkPinMixin", "NaowhForeverUnexploredPinMixin", "NaowhForeverSkybornePinMixin", "NaowhForeverLibraryPinMixin", "NaowhForeverJourneyRoutePinMixin", "NaowhForeverSleepingBagPinMixin", "NaowhForeverEntrancePinMixin", "NaowhForeverWaypointPreviewPinMixin",
+    "NaowhForeverTownPinMixin", "NaowhForeverZoneLinkPinMixin", "NaowhForeverUnexploredPinMixin", "NaowhForeverSkybornePinMixin", "NaowhForeverLibraryPinMixin", "NaowhForeverJourneyRoutePinMixin", "NaowhForeverSleepingBagPinMixin", "NaowhForeverGatheredPinMixin", "NaowhForeverEntrancePinMixin", "NaowhForeverWaypointPreviewPinMixin",
     "NaowhForeverQuestGiverPinMixin",
     "NaowhForeverRarePinMixin",
     "SlashCmdList", "hash_SlashCmdList", "StaticPopupDialogs",
@@ -66,7 +65,7 @@ read_globals = {
     "C_Item", "C_KeyBindings", "C_LFGList", "C_LootHistory", "C_MajorFactions", "C_Map", "C_Navigation", "C_MountJournal", "C_Transmog", "C_MerchantFrame", "C_NamePlate", "C_PaperDollInfo",
     "C_PartyInfo", "C_QuestLog", "C_Reputation", "C_SeasonInfo",
     "C_Secrets", "C_SpecializationInfo", "C_Spell", "C_SpellBook",
-    "C_StringUtil", "C_SuperTrack", "SuperTrackedFrame", "C_SwingTimer", "C_TaxiMap", "C_Texture", "C_Timer",
+    "C_StringUtil", "C_SuperTrack", "SuperTrackedFrame", "C_SwingTimer", "C_TaxiMap", "C_Texture", "NineSliceUtil", "C_Timer",
     "C_TooltipInfo", "C_TradeSkillUI", "C_Traits", "C_TransmogCollection",
     "C_UnitAuras", "C_VoiceChat", "date", "DEFAULT_CHAT_FRAME",
     "DeleteCursorItem", "DeleteMacro", "DELETE_GOOD_ITEM", "DELETE_ITEM_CONFIRM_STRING",
@@ -141,7 +140,7 @@ read_globals = {
     "UnitHealthPercent", "UnitInParty", "UnitInRaid", "UnitIsAFK", "UnitIsConnected", "UnitIsDead", "UnitIsTapDenied", "UnitClassification",
     "FlashClientIcon", "C_VignetteInfo", "UnitIsDeadOrGhost",
     "UnitIsFriend", "UnitIsGroupAssistant", "UnitIsGroupLeader", "UnitIsInMyGuild", "UnitIsPlayer", "UnitIsPVP", "GetPVPDesired", "BagsBar",
-    "UnitIsUnit", "UnitIsVisible",
+    "UnitIsUnit", "UnitIsVisible", "UnitIsGameObject", "UnitIsInInteractRange", "SetUnitCursorTexture",
     "UnitLevel", "UnitName", "UnitPower", "UnitPowerMax", "UnitPowerPercent", "UnitNameFromGUID", "UnitOnTaxi", "UnitPosition", "UnitRace", "UnitStat",
     "UnitSpellTargetClass", "UnitSpellTargetName",
     "UnitXP", "UnitXPMax", "UnregisterStateDriver",

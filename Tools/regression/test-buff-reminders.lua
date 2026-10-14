@@ -12,11 +12,12 @@ local MODULE = {}
 for i, path in ipairs({ "Core/Features.lua", "NaowhForever_AuraBuffs/AuraBuffs.lua",
     "NaowhForever_AuraBuffs/Constants.lua", "Shared/Game/Consumables.lua",
         "NaowhForever_AuraBuffs/Data/BuffReminders.lua", "NaowhForever_AuraBuffs/BuffReminders.lua",
-    "NaowhForever_AuraBuffs/View/Style.lua", "NaowhForever_AuraBuffs/View/BuffCell.lua",
+    "NaowhForever_AuraBuffs/View/Style.lua", "NaowhForever_AuraBuffs/View/Glow.lua",
+    "NaowhForever_AuraBuffs/View/BuffCell.lua",
     "NaowhForever_AuraBuffs/UI/BuffMenu.lua", "NaowhForever_AuraBuffs/UI/BuffReminders.lua" }) do
     MODULE[i] = Read(path)
 end
-local CARD = Read("NaowhForever_AuraBuffs/UI/BuffsCard.lua")
+local CARD = Read("NaowhForever_AuraBuffs/UI/GlowRows.lua") .. "\n" .. Read("NaowhForever_AuraBuffs/UI/BuffsCard.lua")
 local SETTINGS = Read("Shared/Settings/Settings.lua")
 
 -- itemID -> use spell, for the food scan.
@@ -45,10 +46,15 @@ local function Fixture(opts)
         group = opts.group,                         -- nil solo, "party" or "raid"
         units = opts.units or {},                   -- unit -> class; player included
         known = opts.known or {},
+        shields = opts.shields or {},               -- slot -> true for a shield in that slot
         weapons = opts.weapons or {},               -- slot -> enchant seconds left, false for none
         target = opts.target,                       -- nil, or the target's classification
         itemSpells = opts.itemSpells or {},         -- itemID -> use spell, once the item is cached
+        levels = opts.levels or {},                 -- itemID -> required level
+        level = 60,
+        slotReads = 0,
         requested = {},
+        glows = {},
         reads = 0,
     }
     local timers, frames = {}, {}
@@ -85,10 +91,12 @@ local function Fixture(opts)
         enabled = true,
         consumablesWhere = "instance", consumablesMinutes = 2,
         onlyIfCarried = true, hideResting = true,
-        raidBuffs = false, raidBuffsOwn = true, iconSize = 36,
+        raidBuffs = false, raidBuffsOwn = true, iconSize = 36, buffIconMode = "default",
         buffsFont = "", buffsFontSize = 14, buffsOutline = "OUTLINE",
         raidBuffPicks = { intellect = true, stamina = true, spirit = true, wild = true, blessing = false },
-        personalBuffs = true, personalBuffPicks = {},
+        personalBuffs = true, personalBuffPicks = {}, weaponEnhancements = false,
+        buffGlow = false, buffGlowType = "standard", buffGlowColor = { r = 1, g = 0.82, b = 0.2 },
+        buffGlowLines = 8, buffGlowThickness = 2, buffGlowSpeed = 5,
     }
     local S = {}
     function S.Get(k)
@@ -99,7 +107,8 @@ local function Fixture(opts)
     function S.Raw(k) return settings[k] end
     function S.Default(k) return defaults[k] end
 
-    local ns = { L = dofile("Tools/regression/locale_stub.lua").L, Upper = string.upper, Lower = string.lower, MEDIA = dofile("Tools/regression/core_media.lua"),
+    local account = {}
+    local ns = { AccountSettings = function() return account end, L = dofile("Tools/regression/locale_stub.lua").L, Upper = string.upper, Lower = string.lower, MEDIA = dofile("Tools/regression/core_media.lua"),
         AuraBuffSettings = S,
         Apply = function() end,
         ShowUnlockMode = function() end,
@@ -129,6 +138,21 @@ local function Fixture(opts)
     local env = {
         NUM_BAG_SLOTS = 0,
         UIParent = {},
+        LibStub = function()
+            return {
+                PixelGlow_Start = function(frame) state.glows[frame] = "pixel" end,
+                PixelGlow_Stop = function(frame) state.glows[frame] = nil end,
+                ButtonGlow_Start = function(frame) state.glows[frame] = "standard" end,
+                ButtonGlow_Stop = function(frame) state.glows[frame] = nil end }
+        end,
+        RAID_CLASS_COLORS = setmetatable({}, { __index = function(colors, class)
+            local color = { r = 0.5, g = 0.5, b = 0.5 }
+            function color.WrapTextInColorCode(_, text) return "|c" .. class .. "|" .. text end
+            colors[class] = color
+            return color
+        end }),
+        LOCALIZED_CLASS_NAMES_MALE = setmetatable({}, { __index = function(_, class) return class:lower() end }),
+        Enum = { ItemClass = { Weapon = 2 } },
         GetTime = function() return state.now end,
         InCombatLockdown = function() return state.combat end,
         IsResting = function() return state.resting end,
@@ -136,6 +160,7 @@ local function Fixture(opts)
         IsInRaid = function() return state.group == "raid" end,
         GetNumGroupMembers = function() return state.group and #Roster() or 0 end,
         UnitClass = function(unit) return "x", state.units[unit] end,
+        UnitLevel = function() return state.level end,
         UnitIsConnected = function() return true end,
         UnitIsDeadOrGhost = function() return false end,
         UnitIsVisible = function() return true end,
@@ -144,10 +169,6 @@ local function Fixture(opts)
         UnitCanAttack = function() return true end,
         UnitClassification = function() return state.target end,
         GetInventoryItemID = function(_, slot) return state.weapons[slot] ~= nil and 1000 + slot or nil end,
-        GetWeaponEnchantInfo = function()
-            local mh, oh = state.weapons[16], state.weapons[17]
-            return mh and true or false, mh and mh * 1000 or 0, 0, 0, oh and true or false, oh and oh * 1000 or 0
-        end,
         C_Secrets = { ShouldAurasBeSecret = function() return state.secret end },
         issecretvalue = function(v) return v == SECRET end,
         C_UnitAuras = {
@@ -162,7 +183,10 @@ local function Fixture(opts)
         },
         C_Container = {
             GetContainerNumSlots = function() return #state.bags end,
-            GetContainerItemID = function(_, slot) return state.bags[slot] end,
+            GetContainerItemID = function(_, slot)
+                state.slotReads = state.slotReads + 1
+                return state.bags[slot]
+            end,
         },
         C_Item = {
             GetItemCount = Count,
@@ -172,6 +196,16 @@ local function Fixture(opts)
                 if spell then return "spell", spell end
             end,
             RequestLoadItemDataByID = function(id) state.requested[id] = true end,
+            GetItemInfo = function(id) return "item", nil, nil, nil, state.levels[id] end,
+            GetWeaponEnchantInfo = function(weaponSlot)
+                local left = state.weapons[weaponSlot == 0 and 16 or 17]
+                return { { hasEnchant = false, timeLeft = 0 },
+                    { hasEnchant = left and true or false, timeLeft = left and left * 1000 or 0 } }
+            end,
+            GetItemInfoInstant = function(id)
+                local class = state.shields[id - 1000] and 4 or 2
+                return id, nil, nil, nil, nil, class
+            end,
         },
         C_Spell = {
             GetSpellTexture = function(id) return "spell:" .. id end,
@@ -235,7 +269,9 @@ local function Fixture(opts)
         for _, timer in ipairs(timers) do if not timer.cancelled then n = n + 1 end end
         return n
     end
+    t.env = env
     function t.Set(k, v) S.Set(k, v) end
+    function t.Get(k) return S.Get(k) end
     function t.Login() t.Fire("PLAYER_LOGIN") end
     -- The textures of the visible reminder icons, left to right, with counts and timers.
     function t.Shown()
@@ -292,6 +328,27 @@ do
     t.Set("buffsFontSize", 18)
     t.Set("buffsOutline", "")
     Check("count font set", count.font .. count.size .. count.outline, "Naowh18")
+end
+
+-- Glow: off by default, then a Standard or Pixel glow on each shown reminder, gone when they are.
+do
+    local t = Fixture({ instance = "raid", bags = { 13931, 13510 } })
+    local function Glowing()
+        local out = {}
+        for frame, kind in pairs(t.state.glows) do
+            if frame.shown then out[#out + 1] = kind end
+        end
+        table.sort(out)
+        return table.concat(out, " ")
+    end
+    t.Login()
+    Check("no glow by default", Glowing(), "")
+    t.Set("buffGlow", true)
+    Check("Standard Glow on each reminder", Glowing(), "standard standard")
+    t.Set("buffGlowType", "pixel")
+    Check("Pixel Glow instead", Glowing(), "pixel pixel")
+    t.Set("buffGlow", false)
+    Check("Glow off stops them", Glowing(), "")
 end
 
 -- Show In: Dungeons & Raids keeps them out of the open world; Everywhere does not.
@@ -436,20 +493,99 @@ do
     Check("after combat", t.Shown(), "")
 end
 
--- An empty profile never invents reminders from items in bags.
+-- Only If I Carry One with nothing listed: a flask, elixir or buff food in your bags reminds you.
 do
     local t = Fixture({ settings = { consumableEntries = {}, personalBuffs = false }, instance = "raid",
-        bags = { 13931, 13510, 13454, 10306 } })
+        bags = { 13510 } })
     t.Login()
-    Check("empty profile has no automatic reminders", t.Shown(), "")
-    Check("empty profile has no aura listener", t.Listening("UNIT_AURA"), false)
+    Check("empty profile, flask carried", t.Shown(), "item:13510")
+    Check("empty profile listens for auras", t.Listening("UNIT_AURA"), true)
+    t.state.bags = { 13510, 13931, 13454, 10306 }
+    t.Fire("BAG_UPDATE_DELAYED"); t.Advance(0.5)
+    Check("buff food and elixir too, scrolls stay opt-in", t.Shown(), "item:13931 item:13510 item:13454")
+    t.state.auras.player = { { 17626, 7000, 7200 }, { 1249520, 1800, 3600 }, { 11334, 3000, 3600 } }
+    t.Fire("UNIT_AURA", "player"); t.Advance(0.5)
+    Check("any flask, Well Fed and elixir counts", t.Shown(), "")
     t.Set("consumableEntries", { { category = "scroll", itemID = 10306, auras = { 12176 } } })
     Check("manual scroll added", t.Shown(), "item:10306")
-    t.state.auras.player = { { 12176, 1000, 1800 } }
+end
+
+-- Nothing listed and nothing carried: no reminder.
+do
+    local t = Fixture({ settings = { consumableEntries = {}, personalBuffs = false }, instance = "raid",
+        bags = { 2679, 10306 } })
+    t.Login()
+    Check("empty profile, nothing carried", t.Shown(), "")
+end
+
+-- A listed item is preferred; with none of it carried, a carried built-in one stands in.
+do
+    local t = Fixture({ instance = "raid", bags = { 13510, 13511 }, settings = { consumableEntries = {
+        { category = "flask", itemID = 13511, auras = { 17627 } } } } })
+    t.Login()
+    Check("listed flask preferred", t.Shown(), "item:13511")
+    t.state.bags = { 13510 }
+    t.Fire("BAG_UPDATE_DELAYED"); t.Advance(0.5)
+    Check("listed one gone, built-in carried", t.Shown(), "item:13510")
+    t.state.auras.player = { { 17627, 7000, 7200 } }
     t.Fire("UNIT_AURA", "player"); t.Advance(0.5)
-    Check("manual scroll buff suppresses reminder", t.Shown(), "")
-    t.Set("consumableEntries", {})
-    Check("removed configuration stays empty", t.Shown(), "")
+    Check("the listed buff still counts", t.Shown(), "")
+end
+
+-- The built-in item offered is the highest level one you can use, with every carried one in its menu.
+do
+    local t = Fixture({ instance = "raid", bags = { 9187, 13452, 9264 }, levels = { [9187] = 38, [13452] = 46, [9264] = 40 },
+        settings = { consumableEntries = {}, personalBuffs = false } })
+    t.Login()
+    Check("highest level elixir", t.Shown(), "item:13452")
+    local cell
+    for _, f in ipairs(t.frames) do if rawget(f, "items") and f.shown then cell = f end end
+    Check("menu lists the carried elixirs, best first", table.concat(cell.items, " "), "13452 9187 9264")
+    t.state.level = 40
+    t.Fire("BAG_UPDATE_DELAYED"); t.Advance(0.5)
+    Check("one too high for you is skipped", t.Shown(), "item:9264")
+    t.ns.AccountSettings().lastIcons = { battle = "item:9187" }
+    t.Set("buffIconMode", "last")
+    Check("Last Used icon kept", t.Shown(), "item:9187")
+end
+
+-- Guardian listed but not carried: no stand-in elixir, as the elixir kinds stay apart.
+do
+    local t = Fixture({ instance = "raid", bags = { 13454 }, settings = { consumableEntries = {
+        { category = "guardian", itemID = 13445, auras = { 11348 } } }, personalBuffs = false } })
+    t.Login()
+    Check("guardian listed, built-in elixir not used", t.Shown(), "")
+end
+
+-- Off is unchanged: a reminder per kind, carried or not.
+do
+    local t = Fixture({ instance = "raid", settings = { consumableEntries = {}, onlyIfCarried = false,
+        personalBuffs = false } })
+    t.Login()
+    Check("off, nothing carried", t.Shown(), "spell:1248406 item:13510 item:13452")
+end
+
+-- Bags are read once per bag change, not on every refresh; combat and secret auras still freeze the row.
+do
+    local t = Fixture({ settings = { consumableEntries = {}, personalBuffs = false }, instance = "raid",
+        bags = { 13510, 13931 } })
+    t.Login()
+    local reads = t.state.slotReads
+    for _ = 1, 5 do
+        t.Fire("UNIT_AURA", "player"); t.Advance(0.5)
+    end
+    Check("aura refreshes reuse the scan", t.state.slotReads, reads)
+    t.state.combat = true
+    t.state.bags = {}
+    t.Fire("BAG_UPDATE_DELAYED"); t.Advance(0.5)
+    Check("combat: frozen", t.Shown(), "item:13931 item:13510")
+    t.state.combat = false
+    t.state.secret = true
+    t.Fire("PLAYER_REGEN_ENABLED"); t.Advance(0.5)
+    Check("secret: frozen", t.Shown(), "item:13931 item:13510")
+    t.state.secret = false
+    t.Fire("PLAYER_REGEN_ENABLED"); t.Advance(0.5)
+    Check("after combat, nothing carried", t.Shown(), "")
 end
 
 -- Raid buffs: how many are missing each buff you can cast, or any class in the group can.
@@ -658,18 +794,18 @@ do
     Check("two minute shout is not nagged early", w.Shown(), "")
 end
 
--- A class with no personal buff: the default profile keeps the row off and the card shows no group.
+-- A class with no personal buff: the card still lists other classes'.
 do
     local t = Fixture({ page = true, settings = { consumableEntries = {} }, units = { player = "PALADIN" },
         known = { [19740] = true } })
     t.Login()
-    Check("paladin default: no aura listener", t.Listening("UNIT_AURA"), false)
+    Check("paladin default: listens, a carried flask can remind", t.Listening("UNIT_AURA"), true)
     local card = t.ns.Shared.Settings.pages["AuraBuffs/Settings"].cards.buffs
     local found
     for _, row in ipairs(card.rows) do
         if row.key == "personalBuffs" then found = true end
     end
-    Check("paladin default: no personal buffs group", found, nil)
+    Check("paladin: the group lists the other classes", found, true)
 end
 
 -- Hunter's Mark: only for a hostile elite target without the mark.
@@ -698,7 +834,7 @@ do
     Check("trueshot missing", t.Shown(), "spell:19506")
 end
 
--- The card lists the personal buffs of the player's class only.
+-- The card lists every class's personal buffs, the player's first and the rest in grey.
 do
     local t = Fixture({ page = true, units = { player = "SHAMAN" } })
     local card = t.ns.Shared.Settings.pages["AuraBuffs/Settings"].cards.buffs
@@ -706,7 +842,24 @@ do
     for _, row in ipairs(card.rows) do
         if row.key == "personalBuffPicks" then fields[#fields + 1] = row.field end
     end
-    Check("shaman picks", table.concat(fields, " "), "imbue shield")
+    Check("shaman picks come first, then every other class", table.concat(fields, " "),
+        "imbue shield demonArmor mageArmor poisons battleShout innerFire shadowform trueshot huntersMark thorns")
+    local byField = {}
+    for _, row in ipairs(card.rows) do
+        if row.key == "personalBuffPicks" then byField[row.field] = row end
+    end
+    Check("own class in its colour", byField.imbue.labelColor, t.env.RAID_CLASS_COLORS.SHAMAN)
+    Check("another class in grey", byField.demonArmor.labelColor, t.ns.THEME.muted)
+    Check("its class named in its colour", byField.demonArmor.note(), "|cWARLOCK|warlock")
+    byField.demonArmor.set(false)
+    Check("switched off for a class that is not played", byField.demonArmor.get(), false)
+    Check("stored by the buff's own key", t.Get("personalBuffPicks").demonArmor, false)
+    byField.demonArmor.set(true)
+    local intellect
+    for _, row in ipairs(card.rows) do
+        if row.key == "raidBuffPicks" and row.field == "intellect" then intellect = row end
+    end
+    Check("another class's raid buff is not grey", intellect.labelColor, nil)
     local shot = card.studio.new(t.ns.Shared.Settings)
     local function Preview(state)
         card.studio.paint(shot, state)
@@ -719,6 +872,113 @@ do
     end
     Check("preview in the world", Preview("world"), "personal:spell:16362")
     Check("preview resting", Preview("resting"), "")
+end
+
+-- Only If I Carry One off: flasks and elixirs show with none listed or carried, food only when listed.
+do
+    local t = Fixture({ instance = "raid", settings = { consumableEntries = {
+        { category = "food", itemID = 13931, auras = { 1249520 } } }, onlyIfCarried = false } })
+    t.Login()
+    Check("kinds not listed", t.Shown(), "item:13931 item:13510 item:13452")
+    t.state.auras.player = { { 1249520, 1800, 3600 }, { 17626, 7000, 7200 }, { 11334, 3000, 3600 } }
+    t.Fire("UNIT_AURA", "player")
+    t.Advance(0.5)
+    Check("any flask and elixir counts", t.Shown(), "")
+    t.Set("consumableEntries", { { category = "guardian", itemID = 13445, auras = { 11348 } } })
+    t.state.auras.player = {}
+    t.Fire("UNIT_AURA", "player")
+    t.Advance(0.5)
+    Check("guardian listed, no generic elixir", t.Shown(), "spell:1248406 item:13510 item:13445")
+end
+
+-- Only If I Carry One off: food shows with nothing listed, with the Well Fed icon until a food is eaten.
+do
+    local t = Fixture({ instance = "raid", bags = { 13931 }, settings = { consumableEntries = {}, onlyIfCarried = false } })
+    t.Login()
+    Check("nothing listed", t.Shown(), "spell:1248406 item:13510 item:13452")
+    t.Fire("UNIT_SPELLCAST_SUCCEEDED", "player", "cast1", 5)
+    t.Advance(0.5)
+    Check("other spell ignored", t.Shown(), "spell:1248406 item:13510 item:13452")
+    t.state.bags = {}
+    t.Fire("UNIT_SPELLCAST_SUCCEEDED", "player", "cast2", 1249513)
+    t.Advance(0.5)
+    Check("food eaten, item already gone", t.Shown(), "spell:1249513 item:13510 item:13452")
+    t.state.bags = { 13931 }
+    t.Fire("UNIT_SPELLCAST_SUCCEEDED", "player", "cast3", 1249513)
+    t.Advance(0.5)
+    t.state.bags = {}
+    t.Fire("BAG_UPDATE_DELAYED")
+    t.Advance(0.5)
+    Check("last food eaten icon", t.Shown(), "item:13931 item:13510 item:13452")
+    t.Set("onlyIfCarried", true)
+    Check("only carried, nothing carried", t.Shown(), "")
+end
+
+-- With nothing listed, nothing shows until Only If I Carry One goes off.
+do
+    local t = Fixture({ instance = "raid", units = { player = "MAGE" }, settings = { personalBuffs = false } })
+    t.Login()
+    Check("nothing listed, nothing shown", t.Shown(), "")
+    t.Set("onlyIfCarried", false)
+    Check("switch off, kinds shown", t.Shown(), "item:13931 item:13510 item:13454")
+    t.Set("onlyIfCarried", true)
+    Check("switch back on, nothing shown", t.Shown(), "")
+end
+
+-- Weapon Enhancement Reminder: stone or oil missing on a weapon, off by default.
+do
+    local t = Fixture({ instance = "raid", units = { player = "MAGE" }, bags = { 20750 },
+        weapons = { [16] = false, [17] = false }, shields = { [17] = true },
+        settings = { consumableEntries = { { category = "food", itemID = 13931 } } } })
+    t.Login()
+    Check("off by default", t.Shown(), "")
+    t.Set("weaponEnhancements", true)
+    Check("oil carried, main hand bare", t.Shown(), "item:20750")
+    t.state.bags = {}
+    t.Fire("BAG_UPDATE_DELAYED")
+    t.Advance(0.5)
+    Check("none carried", t.Shown(), "")
+    t.Set("onlyIfCarried", false)
+    Check("none carried, switch off", t.Shown(), "item:13931 item:13510 item:13452 item:12404")
+    t.state.weapons[16] = 1800
+    t.Fire("UNIT_INVENTORY_CHANGED", "player")
+    t.Advance(0.5)
+    Check("main hand enchanted, shield ignored", t.Shown(), "item:13931 item:13510 item:13452")
+    t.state.shields[17] = nil
+    t.Fire("UNIT_INVENTORY_CHANGED", "player")
+    t.Advance(0.5)
+    Check("off hand weapon bare", t.Shown(), "item:13931 item:13510 item:13452 item:12404")
+end
+
+-- Icon: Last Used shows the flask, elixir or weapon item used last, and only listens while it is chosen.
+do
+    local t = Fixture({ instance = "raid", units = { player = "MAGE" }, weapons = { [16] = false },
+        itemSpells = { [13511] = 17627, [20749] = 28898 },
+        settings = { consumableEntries = {}, onlyIfCarried = false, weaponEnhancements = true, personalBuffs = false } })
+    t.Login()
+    Check("default icons", t.Shown(), "spell:1248406 item:13510 item:13452 item:12404")
+    Check("off-mode listens for the food icon", t.Listening("UNIT_SPELLCAST_SUCCEEDED"), true)
+    t.Set("onlyIfCarried", true)
+    Check("not listening for casts", t.Listening("UNIT_SPELLCAST_SUCCEEDED"), false)
+    t.Set("buffIconMode", "last")
+    Check("listening once Last Used is chosen", t.Listening("UNIT_SPELLCAST_SUCCEEDED"), true)
+    t.Set("onlyIfCarried", false)
+    t.Fire("UNIT_SPELLCAST_SUCCEEDED", "player", "cast1", 17627)
+    t.Advance(0.5)
+    Check("a flask used", t.Shown(), "spell:1248406 item:13511 item:13452 item:12404")
+    t.Fire("UNIT_SPELLCAST_SUCCEEDED", "player", "cast2", 28898)
+    t.Advance(0.5)
+    Check("a weapon oil used", t.Shown(), "spell:1248406 item:13511 item:13452 item:20749")
+    t.Set("buffIconMode", "default")
+    Check("Default again", t.Shown(), "spell:1248406 item:13510 item:13452 item:12404")
+end
+
+-- A class with its own poison reminder does not get the generic one.
+do
+    local t = Fixture({ instance = "raid", units = { player = "ROGUE" }, known = { [2842] = true },
+        bags = { 20750 }, weapons = { [16] = false }, settings = { weaponEnhancements = true } })
+    t.Login()
+    Check("rogue keeps poisons only", t.Shown(), "spell:2842")
 end
 
 if failures > 0 then

@@ -1,5 +1,5 @@
 -- Run with Lua 5.1 from the repository root: the QoL text alerts' look settings (Combat Alert,
--- Combat Timer, Stealth Reminder, Talent Points, Durability, Restock, Pet Tracker), loaded from
+-- Combat Timer, Stealth Reminder, Talent Points, Durability, Restock, Pet Tracker, Flight Point Reminder), loaded from
 -- the real Shared files against stubs and shown through the HUD Editor. Each draws today's look
 -- until a setting is touched: its font and size, outlined text, no background. Font, Font Size,
 -- Outline and Background then apply at once; a background fits the frame to its words. Combat
@@ -156,7 +156,12 @@ local function Fixture(saved)
         end },
         C_Item = { RequestLoadItemDataByID = NOTHING },
         C_SpellBook = { IsSpellKnown = function() return false end },
-        Enum = { LuaCurveType = { Step = 1 } },
+        Enum = { LuaCurveType = { Step = 1 }, UIMapType = { Zone = 3, Continent = 2 },
+            FlightPathFaction = { Neutral = 0, Horde = 1, Alliance = 2 },
+            FlightPathState = { Unreachable = 2 } },
+        C_Map = { GetBestMapForUnit = function() return nil end, GetMapInfo = function() return nil end,
+            GetPlayerMapPosition = function() return nil end, GetWorldPosFromMapPos = function() return nil end },
+        C_TaxiMap = { GetTaxiNodesForMap = function() return {} end },
         Menu = { GetManager = function() return { IsAnyMenuOpen = function() return false end } end },
         GameTooltip = Frame(),
         UIParent = Frame(),
@@ -166,8 +171,8 @@ local function Fixture(saved)
     for _, path in ipairs({ "Core/Features.lua", "Core/Settings.lua", "Core/AlertStack.lua",
         "NaowhForever_QoL/Combat/CombatAlert.lua", "NaowhForever_QoL/Combat/CombatTimer.lua",
         "NaowhForever_QoL/Combat/StealthReminder.lua", "NaowhForever_QoL/Questing/TalentPoints.lua",
-        "NaowhForever_QoL/Loot/Durability.lua", "NaowhForever_QoL/Loot/Restock.lua",
-        "NaowhForever_QoL/Combat/PetTracker.lua" }) do
+        "NaowhForever_QoL/Loot/LootCard.lua", "NaowhForever_QoL/Loot/Durability.lua", "NaowhForever_QoL/Loot/Restock.lua",
+        "NaowhForever_QoL/Combat/PetTracker.lua", "NaowhForever_QoL/Travel/FlightPoint.lua" }) do
         files[#files + 1] = path
     end
     Load(files, env)
@@ -190,7 +195,7 @@ local function Fixture(saved)
 end
 
 local ON = { combatAlert = true, combatTimer = true, stealthReminder = true, talentPoints = true,
-    durability = true, restock = true, petTracker = true }
+    durability = true, restock = true, petTracker = true, flightPoint = true }
 
 local function Shown(saved)
     local values = {}
@@ -213,9 +218,11 @@ local ELEMENTS = {
     { "Talent Points", "talentPoints", function(s) return s.named.NaowhForeverTalentPoints end, 22, 300, 10,
       "QoL/XP", "talentPoints" },
     { "Durability", "durability", function(s) return s.named.NaowhForeverDurability end, 22, 300, 10,
-      "QoL/Loot & Items", "durability" },
+      "QoL/Combat", "durability" },
     { "Pet Tracker", "pet", function(s) return s.named.NaowhForeverPetTracker end, 20, 220, 16,
       "QoL/Combat", "petTracker" },
+    { "Flight Point Reminder", "flightPoint", function(s) return s.named.NaowhForeverFlightPoint end, 12, 300, 10,
+      "QoL/Travel", "flightPoint" },
 }
 
 for _, e in ipairs(ELEMENTS) do
@@ -254,7 +261,7 @@ end
 -- anchored to it stays put.
 do
     local s = Shown({ combatAlertBackground = "card", stealthBackground = "soft", talentPointsBackground = "card",
-        durabilityBackground = "card" })
+        durabilityBackground = "card", flightPointBackground = "card" })
     local pad = s.St.CARD_PAD
     local alert = s.named.NaowhForeverCombatAlert
     check("Combat Alert: the card fits its text", alert.w == Width("+Combat", 32) + 2 * pad)
@@ -264,6 +271,8 @@ do
     check("Talent Points: the card fits its text", talent.w == Width("2 Unspent Talent Points", 22) + 2 * pad)
     local dura = s.named.NaowhForeverDurability
     check("Durability: the card fits its text", dura.w == Width("Low Durability: 20%", 22) + 2 * pad)
+    local flight = s.named.NaowhForeverFlightPoint
+    check("Flight Point Reminder: the card fits its text", flight.w == Width("Learn the Ratchet flight point", 12) + 2 * pad)
 end
 
 do
@@ -320,6 +329,20 @@ do
     check("Talent Points: Apply Theme shows it in the accent", talent.text.r == s.T.accent.r
         and talent.text.g == s.T.accent.g and talent.text.b == s.T.accent.b)
 
+    local flight = s.named.NaowhForeverFlightPoint
+    check("Flight Point Reminder: the accent by default", flight.text.r == s.T.accent.r
+        and flight.text.g == s.T.accent.g and flight.text.b == s.T.accent.b)
+    local flightRows = s.rows("QoL/Travel", "flightPoint")
+    local swatch = s.S.Default("flightPointColor")
+    check("Flight Point Reminder: Custom Color off hides Text Color, and the swatch starts on the theme accent",
+        flightRows.flightPointCustom and s.ns.Shared.Settings.Off(flightRows.flightPointColor)
+        and swatch.r == s.T.accent.r and swatch.g == s.T.accent.g and swatch.b == s.T.accent.b)
+    s.S.Set("flightPointColor", { r = 0.2, g = 0.4, b = 0.6 })
+    s.S.Set("flightPointCustom", true)
+    check("Flight Point Reminder: Custom Color paints the saved color", flight.text.r == 0.2
+        and flight.text.g == 0.4 and flight.text.b == 0.6
+        and not s.ns.Shared.Settings.Off(flightRows.flightPointColor))
+
     -- 20% with Warn Below 25 sits halfway from red to the top colour.
     local dura = s.named.NaowhForeverDurability
     check("Durability: pink shading to red by default", dura.text.r == 1 and math.abs(dura.text.g - 0.205) < 1e-9
@@ -334,16 +357,16 @@ end
 do
     local s = Shown()
     local mover = s.movers.Alerts
-    check("Alerts group: HUD Editor > Settings opens Durability", mover.page == "QoL/Loot & Items"
-        and mover.feature == "QoL/Loot & Items:durability"
-        and s.ns.Shared.Settings.pages["QoL/Loot & Items"].cards.durability ~= nil)
+    check("Alerts group: HUD Editor > Settings opens Durability", mover.page == "QoL/Combat"
+        and mover.feature == "QoL/Combat:durability"
+        and s.ns.Shared.Settings.pages["QoL/Combat"].cards.durability ~= nil)
     local listed = {}
     for _, choice in ipairs(mover.choices) do
         local page, id = choice.feature:match("^(.+):([^:]+)$")
         listed[#listed + 1] = choice.page == page and s.ns.Shared.Settings.pages[page].cards[id] ~= nil and choice.name
     end
     check("its Settings lists each loaded alert, each opening a card that exists",
-        table.concat(listed, ",") == "Talent Points,Durability,Restock Reminder,Pet Tracker")
+        table.concat(listed, ",") == "Talent Points,Durability,Restock Reminder,Pet Tracker,Flight Point Reminder")
 end
 
 print(checks .. " text alert look checks passed")

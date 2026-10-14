@@ -14,6 +14,7 @@ local MAX_CONSUMABLES, MAX_AURAS, MAX_CLASS_MACROS = 500, 100, 100
 local MAX_ID = 2147483647
 local ITEM_ID_LIMIT = 2147483648
 local MAX_PICKS = 50
+local MAX_QUEST_REWARDS = 2000
 local ZERO = "\0"
 local DEFAULT_PROFILE = "Default"
 local IMPORTED_PROFILE = ns.L("Imported Profile")
@@ -27,25 +28,29 @@ local LOOK_TYPES = { themePreset = "string", themeColors = "table", uiFont = "st
 local GEAR_SLOT = { [1] = true, [2] = true, [3] = true, [5] = true, [6] = true, [7] = true, [8] = true, [9] = true,
     [10] = true, [11] = true, [12] = true, [13] = true, [14] = true, [15] = true, [16] = true, [17] = true, [18] = true }
 local OWN = { qol = { "characterPanelAsked", "characterPanelTookOver", "inspectPanelAsked", "inspectPanelTookOver",
-    "groupInvites" } }
+    "groupInvites", "questRewards" } }
 local PARTS = {
     { key = "settings", label = "Settings", help = "Every module's settings and positions",
       share = ns.L("Every module's settings and where its frames sit.") },
     { key = "macros", label = "Macros", help = "Your class macros and the Macros settings",
       share = ns.L("Your class macros and the Macros settings.") },
-    { key = "library", label = "Macro Library", help = "Added next to your Library, never over it",
-      share = ns.L("The macros you saved to the Forge's Library.") },
-    { key = "consumables", label = "Consumables", help = "The consumables your reminders watch",
-      share = "The consumables your reminders watch." },
     { key = "builds", label = "Talent Builds", help = "Added next to your saved builds",
       share = ns.L("The talent builds you saved in the Training Planner.") },
     { key = "bisLists", label = "BiS Lists", help = "Added next to your own lists, never over them",
       share = ns.L("Your BiS lists, for every class.") },
+    { key = "questRewards", label = "Saved Quest Items", help = "The rewards you saved for quests, in this profile",
+      share = ns.L("The quest rewards you saved with Alt-click.") },
     { key = "look", label = "Look", help = "Skin, theme colors, font and window scale, for every profile",
       share = ns.L("Skin, theme colors, font and window scale.") },
 }
+local LEGACY_PARTS = {
+    { key = "library", label = "Macro Library", help = "Added next to your Library, never over it",
+      share = ns.L("The macros you saved to the Forge's Library.") },
+    { key = "consumables", label = "Consumables", help = "The consumables your reminders watch",
+      share = "The consumables your reminders watch." },
+}
 local API_PARTS = { settings = true, macros = true, library = true, consumables = true, builds = true,
-    bisLists = true, look = true }
+    bisLists = true, questRewards = true, look = true }
 local LIST_NOUN = { bisLists = ns.L("lists"), library = ns.L("macros"), builds = ns.L("builds") }
 local TEXT_NO_LIBRARIES = ns.L("The serializer libraries are missing from this build.")
 local TEXT_TOO_BIG_PROFILE = ns.L("This profile is too big to share.")
@@ -58,6 +63,7 @@ local TEXT_DAMAGED = ns.L("The string is damaged: copy it again in full.")
 local TEXT_NEWER = ns.L("This string is from a newer Naowh Forever: update first.")
 local TEXT_MODULES = ns.L("%d modules")
 local TEXT_CLASS_MACROS = ns.L("%d class macros")
+local TEXT_QUEST_REWARDS = ns.L("%d quest rewards")
 local TEXT_NOTHING_TO_READ = ns.L("Nothing to read.")
 local TEXT_IMPORT_FAILED = ns.L("Naowh Forever import failed: ")
 local TEXT_SPEC_SWITCH_OFF = ns.L("Per-spec profile switching is off while every character shares '%s'; your spec "
@@ -129,6 +135,22 @@ local function ValidClassMacros(classMacros)
             or not ArrayOf(entries, MAX_CLASS_MACROS, ValidMacro) then return false end
     end
     return true
+end
+
+local function ValidQuestRewards(picks)
+    if type(picks) ~= "table" then return false end
+    local count = 0
+    for questID, itemID in pairs(picks) do
+        count = count + 1
+        if count > MAX_QUEST_REWARDS or not PositiveID(questID) or not PositiveID(itemID) then return false end
+    end
+    return true
+end
+
+local function CleanQuestRewards(picks)
+    local out = {}
+    for questID, itemID in pairs(picks) do out[questID] = itemID end
+    return next(out) and out or nil
 end
 
 local function CleanConsumables(list)
@@ -207,13 +229,23 @@ end
 
 local MODULE_STATE_KEY = "__modules"
 
-local function CollectModuleState()
+local function ProfileSwitch(root, m)
+    if not m.store then return nil end
+    local values, on = root[m.store.key], nil
+    if type(values) == "table" then on = values[m.key] end
+    if type(on) ~= "boolean" then on = m.store.Default(m.key) end
+    return on == true
+end
+
+local function CollectModuleState(profile)
     if type(ns.ModuleAddons) ~= "function" then return nil end
     local out
-    for _, m in ipairs(ns.ModuleAddons()) do
-        if type(m.addon) == "string" then
+    for _, m in ipairs(ns.ModuleAddons(UnitGUID("player"))) do
+        local on = m.on == true
+        if profile then on = ProfileSwitch(profile, m) end
+        if type(m.addon) == "string" and on ~= nil then
             out = out or {}
-            out[m.addon] = m.on == true
+            out[m.addon] = on
         end
     end
     return out
@@ -228,10 +260,10 @@ local function CollectMacros(root, utility, budget)
     return next(macros) and macros or nil
 end
 
-local function CollectConsumables(utility, budget)
-    local list = utility and utility.consumables
-    if type(list) ~= "table" or not next(list) then return nil end
-    return Plain(list, 1, budget)
+local function CollectQuestRewards(root, budget)
+    local picks = type(root.qol) == "table" and root.qol.questRewards
+    if type(picks) ~= "table" or not next(picks) then return nil end
+    return Plain(picks, 1, budget)
 end
 
 local function CollectBisLists(account, budget)
@@ -245,24 +277,17 @@ local function CollectBisLists(account, budget)
     return next(lists) and lists or nil
 end
 
-local function CollectLibrary(account, budget)
-    if type(account.libraryMacros) ~= "table" then return nil end
-    local library = {}
-    for class, list in pairs(account.libraryMacros) do
-        local own = {}
-        for i, m in ipairs(list) do own[i] = Plain(m, 1, budget) end
-        if #own > 0 then library[class] = own end
-    end
-    return next(library) and library or nil
-end
-
 local function CollectBuilds(account, budget)
     if type(account.trainingBuilds) ~= "table" then return nil end
     local builds = {}
     for classID, list in pairs(account.trainingBuilds) do
         local out = {}
         for i, b in ipairs(list) do
-            out[i] = { name = b.name, spec = b.spec, points = Plain(b.points, 1, budget) }
+            local skip = {}
+            for spell in pairs(type(b.skip) == "table" and b.skip or {}) do skip[#skip + 1] = spell end
+            table.sort(skip)
+            out[i] = { name = b.name, spec = b.spec, points = Plain(b.points, 1, budget),
+                skip = #skip > 0 and Plain(skip, 1, budget) or nil }
         end
         if #out > 0 then builds[classID] = out end
     end
@@ -277,30 +302,31 @@ local function CollectLook(account, budget)
     return next(look) and look or nil
 end
 
-local function Collect()
-    local root, account = ns.SettingsRoot(), ns.AccountSettings()
+local function Collect(root)
+    local active = ns.SettingsRoot()
+    root = root or active
+    local account = ns.AccountSettings()
     local budget = { n = 0 }
     local utility = Utility(root.tankReminder)
     local parts = {}
     parts.settings = CollectSettings(root, budget)
-    local moduleState = CollectModuleState()
+    local moduleState = CollectModuleState(root ~= active and root)
     if moduleState then
         parts.settings = parts.settings or {}
         parts.settings[MODULE_STATE_KEY] = moduleState
     end
     parts.macros = CollectMacros(root, utility, budget)
-    parts.consumables = CollectConsumables(utility, budget)
     parts.bisLists = CollectBisLists(account, budget)
-    parts.library = CollectLibrary(account, budget)
     parts.builds = CollectBuilds(account, budget)
+    parts.questRewards = CollectQuestRewards(root, budget)
     parts.look = CollectLook(account, budget)
     return parts, budget.over
 end
 
-function ns.ExportProfile(wanted)
+function ns.ExportProfile(wanted, profileName)
     local LS, LD = Codec()
     if not LS then return nil, TEXT_NO_LIBRARIES end
-    local all, over = Collect()
+    local all, over = Collect(profileName and ns.ProfileTable(profileName))
     if over then return nil, TEXT_TOO_BIG_PROFILE end
     local parts = {}
     for key, data in pairs(all) do
@@ -310,7 +336,7 @@ function ns.ExportProfile(wanted)
         return nil, next(all) and TEXT_TICK_PART or TEXT_NOTHING_TO_EXPORT
     end
     local payload = {
-        format = FORMAT, name = ns.ActiveProfileName(), author = UnitName("player"),
+        format = FORMAT, name = profileName or ns.ActiveProfileName(), author = UnitName("player"),
         made = date("%Y-%m-%d"), build = ns.CODE_BUILD, parts = parts,
     }
     return PREFIX .. LD:EncodeForPrint(LD:CompressDeflate(LS:Serialize(Swap(payload, 0, ZERO))))
@@ -340,6 +366,12 @@ local function CleanParts(payload)
         local state = parts.settings[MODULE_STATE_KEY]
         parts.settings[MODULE_STATE_KEY] = ValidModuleState(state) and state or nil
     end
+    local qol = type(parts.settings) == "table" and parts.settings.qol
+    if type(qol) == "table" then
+        if parts.questRewards == nil then parts.questRewards = qol.questRewards end
+        qol.questRewards = nil
+    end
+    parts.questRewards = ValidQuestRewards(parts.questRewards) and CleanQuestRewards(parts.questRewards) or nil
     OldConsumables(parts)
     parts.consumables = ValidConsumables(parts.consumables) and CleanConsumables(parts.consumables) or nil
     local macros = parts.macros
@@ -394,16 +426,19 @@ local function PartDetail(key, data)
         return TEXT_MODULES:format(n)
     end
     if key == "macros" then return TEXT_CLASS_MACROS:format(ClassMacroCount(data)) end
+    if key == "questRewards" then return TEXT_QUEST_REWARDS:format(Count(data)) end
     if LIST_NOUN[key] then return ("%d %s"):format(ListCount(data), LIST_NOUN[key]) end
 end
 
 function ns.ProfileStringParts(payload)
     local out, parts = {}, payload.parts
-    for _, part in ipairs(PARTS) do
-        local data = parts[part.key]
-        if type(data) == "table" and next(data) then
-            out[#out + 1] = { key = part.key, label = part.label, help = part.help,
-                detail = PartDetail(part.key, data) }
+    for _, list in ipairs({ PARTS, LEGACY_PARTS }) do
+        for _, part in ipairs(list) do
+            local data = parts[part.key]
+            if type(data) == "table" and next(data) then
+                out[#out + 1] = { key = part.key, label = part.label, help = part.help,
+                    detail = PartDetail(part.key, data) }
+            end
         end
     end
     return out
@@ -586,12 +621,13 @@ local function BuildPoints(b)
     return points
 end
 
-local function NewBuild(tree, b)
+local function NewBuild(classID, tree, b)
     local Training = ns.Training
     local points = BuildPoints(b)
     if #points == 0 or Training.CheckBuild(tree, points) then return nil end
     return { name = Training.BuildName(b.name, IMPORTED_BUILD),
-        spec = Training.BuildName(b.spec, IMPORTED_SPEC), points = points, saved = true }
+        spec = Training.BuildName(b.spec, IMPORTED_SPEC), points = points, saved = true,
+        skip = Training.CleanSkips(classID, b.skip) }
 end
 
 local function HasBuild(saved, build)
@@ -609,7 +645,7 @@ local function AddBuilds(incoming)
         if tree and type(list) == "table" then
             local saved = account.trainingBuilds[classID] or {}
             for _, b in ipairs(list) do
-                local build = NewBuild(tree, b)
+                local build = NewBuild(classID, tree, b)
                 if build and not HasBuild(saved, build) then
                     saved[#saved + 1] = build
                     account.trainingBuilds[classID] = saved
@@ -622,19 +658,13 @@ local function AddBuilds(incoming)
     return added
 end
 
-local function ApplyModuleState(state)
-    if type(state) ~= "table" or type(ns.ModuleAddons) ~= "function" or type(ns.LinkedAddons) ~= "function" then
-        return
-    end
-    for _, m in ipairs(ns.ModuleAddons()) do
-        local want = state[m.addon]
-        if want ~= nil and want ~= m.on then
-            if want then
-                for _, addon in ipairs(ns.LinkedAddons(m.addon, true)) do C_AddOns.EnableAddOn(addon) end
-                if m.store then m.store.Set(m.key, true) end
-            else
-                C_AddOns.DisableAddOn(m.addon)
-            end
+local function ApplyModuleState(root, state)
+    if type(state) ~= "table" then return end
+    for _, item in pairs(ns.Setup.ITEMS) do
+        local want = state[item.addon]
+        if type(want) == "boolean" then
+            if type(root[item.db]) ~= "table" then root[item.db] = {} end
+            root[item.db][item.key] = want
         end
     end
 end
@@ -646,7 +676,7 @@ local function ImportSettings(root, settings, wanted)
             root[key] = DropOwn(key, Checked(values, defaults))
         end
     end
-    ApplyModuleState(settings[MODULE_STATE_KEY])
+    ApplyModuleState(root, settings[MODULE_STATE_KEY])
     if wanted.acting then return end
     for _, item in ipairs(ACTING) do
         local values = root[item.module]
@@ -654,6 +684,11 @@ local function ImportSettings(root, settings, wanted)
             values[item.key] = nil
         end
     end
+end
+
+local function ImportQuestRewards(root, picks)
+    if type(root.qol) ~= "table" then root.qol = {} end
+    root.qol.questRewards = CleanQuestRewards(picks)
 end
 
 local function OwnUtility(root)
@@ -698,6 +733,9 @@ function ns.ImportProfile(payload, wanted, name, overwrite)
         OwnUtility(root).consumables = CleanConsumables(parts.consumables)
     end
     if wanted.macros and type(parts.macros) == "table" then ImportMacros(root, parts.macros) end
+    if wanted.questRewards and ValidQuestRewards(parts.questRewards) then
+        ImportQuestRewards(root, parts.questRewards)
+    end
     local added = { bisLists = 0, library = 0, builds = 0 }
     if wanted.bisLists and type(parts.bisLists) == "table" then added.bisLists = AddBisLists(parts.bisLists) end
     if wanted.library and ns.Macros and type(parts.library) == "table" then added.library = AddLibrary(parts.library) end
@@ -731,6 +769,45 @@ function API:ImportProfile(str, profileName)
     if set and specKey then ns.SpecProfileMap()[specKey] = specWas end
     if set and autoOff then ns.Print(TEXT_SPEC_SWITCH_OFF:format(landed)) end
     return true, landed
+end
+
+function API:ExportProfile(profileKey)
+    if type(profileKey) ~= "string" or not self:GetProfileKeys()[profileKey] then return nil end
+    return (ns.ExportProfile(nil, profileKey))
+end
+
+function API:DecodeProfileString(str)
+    local payload = ns.DecodeProfile(str)
+    return payload and payload.parts
+end
+
+function API:SetProfile(profileKey)
+    if type(profileKey) ~= "string" or not self:GetProfileKeys()[profileKey] then return false end
+    return (ns.SwitchProfile(profileKey))
+end
+
+function API:GetProfileKeys()
+    local keys = {}
+    for _, name in ipairs(ns.ListProfiles()) do keys[name] = true end
+    return keys
+end
+
+function API:GetProfileAssignments()
+    local out = {}
+    for _, known in ipairs(ns.KnownCharacters()) do out[known.char] = known.profile end
+    return out
+end
+
+function API:GetCurrentProfileKey()
+    return ns.ActiveProfileName()
+end
+
+function API:OpenConfig()
+    ns.OpenOptionsWindow("Profiles")
+end
+
+function API:CloseConfig()
+    ns.StashOptionsWindow()
 end
 
 Profiles.PARTS = PARTS

@@ -59,6 +59,7 @@ local function NewButton()
     btn.icon, btn.border = Look.Dress(btn)
     btn:RegisterForClicks("LeftButtonUp", "RightButtonUp")
     btn:SetScript("OnClick", OnButtonClick)
+    ns.Shared.Parts.Press(btn)
     btn:SetScript("OnEnter", SetTooltip)
     btn:SetScript("OnLeave", HideTooltip)
     return btn
@@ -66,16 +67,16 @@ end
 
 local function Layout()
     if not bar then return end
-    local size, gap = S.Get("gearBarSize"), S.Get("gearBarSpacing")
+    local size, gap, grow = S.Get("gearBarSize"), S.Get("gearBarSpacing"), S.Get("gearBarGrow")
     local sets = G.Sets()
     for i, set in ipairs(sets) do
         local btn = buttons[i] or NewButton()
         buttons[i] = btn
         btn.set = set
-        Look.SetButton(btn, set, i, size, gap)
+        Look.SetButton(btn, set, i, size, gap, grow)
     end
     for i = #sets + 1, #buttons do buttons[i]:Hide() end
-    Look.Fit(bar, addButton, #sets, size, gap)
+    Look.Fit(bar, addButton, #sets, size, gap, grow)
 end
 
 local function BarShown()

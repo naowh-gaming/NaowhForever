@@ -10,6 +10,9 @@ local SECONDS = A.C.SECONDS
 local PARTY_UNITS = MAX_PARTY_MEMBERS or 4
 local RAID_UNITS_MAX = MAX_RAID_MEMBERS or 40
 local CATEGORY_ORDER = A.CATEGORY_ORDER
+local WEAPON_SLOTS = { 16, 17 }
+local CLASS_INDEX = 6
+local REQUIRED_LEVEL = 5
 local ELITE = { elite = true, rareelite = true, worldboss = true }
 
 local GROUP_UNIT = { player = true }
@@ -23,8 +26,14 @@ for i = 1, RAID_UNITS_MAX do
     RAID_UNITS[i] = "raid" .. i
 end
 
+local BUILT_IN = {}
+for category, group in pairs(D.DEFAULT_GROUPS) do
+    for _, id in ipairs(group.items) do BUILT_IN[id] = category end
+end
+
 local buffPool, members, memberCount, classes = {}, {}, 0, {}
 local itemBuffs, requested = {}, {}
+local carried
 local wellFedName
 local wakeAt
 local lastImbue
@@ -95,7 +104,30 @@ local function Wake(seconds)
     if not wakeAt or seconds < wakeAt then wakeAt = seconds end
 end
 
-local function Consumable(list, buffs, group, item, icon)
+local function FoodItemIcon(spellID)
+    for bag = 0, NUM_BAG_SLOTS do
+        for slot = 1, C_Container.GetContainerNumSlots(bag) do
+            local id = C_Container.GetContainerItemID(bag, slot)
+            if id then
+                local _, spell = C_Item.GetItemSpell(id)
+                if spell == spellID then return C_Item.GetItemIconByID(id) end
+            end
+        end
+    end
+end
+
+local function LastUsed()
+    return S.Get("buffIconMode") == "last"
+end
+
+local function LastIcon(category)
+    if not LastUsed() then return nil end
+    if category == "food" then return ns.AccountSettings().lastFoodIcon end
+    local icons = ns.AccountSettings().lastIcons
+    return icons and icons[category]
+end
+
+local function Consumable(list, buffs, group, item, icon, last)
     local aura = Find(buffs, group.auras) or group.wellFed and WellFed(buffs)
     local left = aura and Left(aura)
     local warn = S.Get("consumablesMinutes") * SECONDS
@@ -104,7 +136,7 @@ local function Consumable(list, buffs, group, item, icon)
         return
     end
     if not item and S.Get("onlyIfCarried") then return end
-    list[#list + 1] = { icon = item and C_Item.GetItemIconByID(item) or icon, aura = aura }
+    list[#list + 1] = { icon = last or item and C_Item.GetItemIconByID(item) or icon, aura = aura }
 end
 
 local function Groups()
@@ -126,14 +158,61 @@ local function Groups()
     return groups
 end
 
+local function ScanBags()
+    carried = {}
+    local best, level = {}, UnitLevel("player")
+    for bag = 0, NUM_BAG_SLOTS do
+        for slot = 1, C_Container.GetContainerNumSlots(bag) do
+            local id = C_Container.GetContainerItemID(bag, slot)
+            local category = id and BUILT_IN[id]
+            if id and not category then
+                local _, spell = C_Item.GetItemSpell(id)
+                category = spell and D.FOOD_SPELLS[spell] and "food"
+            end
+            local need = category and select(REQUIRED_LEVEL, C_Item.GetItemInfo(id)) or 0
+            if category and need <= level then
+                local items = carried[category]
+                if not items then items = {}; carried[category] = items end
+                if not best[category] or need > best[category] then
+                    table.insert(items, 1, id)
+                    best[category] = need
+                else
+                    items[#items + 1] = id
+                end
+            end
+        end
+    end
+    return carried
+end
+
+local function CarriedBuiltIn(category, group, builtIn)
+    local items = (carried or ScanBags())[category]
+    if not items then return group end
+    local auras = builtIn.auras
+    if group then
+        auras = {}
+        for _, id in ipairs(group.auras) do auras[#auras + 1] = id end
+        for _, id in ipairs(builtIn.auras) do auras[#auras + 1] = id end
+    end
+    return { items = items, auras = auras, wellFed = builtIn.wellFed or group and group.wellFed }, items[1]
+end
+
 local function Consumables(list, buffs)
     local groups = Groups()
+    local onlyCarried = S.Get("onlyIfCarried")
     for _, category in ipairs(CATEGORY_ORDER) do
         local group = groups[category]
+        local builtIn = not (category == "battle" and groups.guardian) and D.DEFAULT_GROUPS[category]
+        if not (group or onlyCarried) then group = builtIn end
+        local item = group and FirstCarried(group.items)
+        if not item and onlyCarried and builtIn then group, item = CarriedBuiltIn(category, group, builtIn) end
         if group then
             local before = #list
-            Consumable(list, buffs, group, FirstCarried(group.items),
-                C_Item.GetItemIconByID(group.items[1]))
+            local icon = group.items[1] and C_Item.GetItemIconByID(group.items[1])
+            if category == "food" then
+                icon = ns.AccountSettings().lastFoodIcon or icon or C_Spell.GetSpellTexture(D.WELL_FED[1])
+            end
+            Consumable(list, buffs, group, item, icon, LastIcon(category))
             if #list > before then list[#list].items = group.items end
         end
     end
@@ -214,15 +293,52 @@ local function Lasts(left, warn, duration)
     return true
 end
 
+local function SlotEnchanted(weaponSlot, warn)
+    for _, enchant in pairs(C_Item.GetWeaponEnchantInfo(weaponSlot)) do
+        if enchant.hasEnchant and Lasts(enchant.timeLeft / 1000, warn) then return true end
+    end
+    return false
+end
+
 local function Enchanted(slots, warn)
-    local enchants = { GetWeaponEnchantInfo() }
     for _, slot in ipairs(slots) do
-        local i = slot == 16 and 1 or 5
-        if GetInventoryItemID("player", slot) then
-            if not (enchants[i] and Lasts(enchants[i + 1] / 1000, warn)) then return false end
+        if GetInventoryItemID("player", slot) and not SlotEnchanted(slot == 16 and 0 or 1, warn) then
+            return false
         end
     end
     return true
+end
+
+local function WeaponSlots()
+    local slots = {}
+    for _, slot in ipairs(WEAPON_SLOTS) do
+        local id = GetInventoryItemID("player", slot)
+        if id and select(CLASS_INDEX, C_Item.GetItemInfoInstant(id)) == Enum.ItemClass.Weapon then
+            slots[#slots + 1] = slot
+        end
+    end
+    return slots
+end
+
+local function OwnWeaponBuff()
+    if not S.Get("personalBuffs") then return false end
+    local _, class = UnitClass("player")
+    for _, family in ipairs(D.PERSONAL) do
+        if family.weapons and family.class == class and PersonalPicked(family) and Knows(family.spells) then
+            return true
+        end
+    end
+    return false
+end
+
+local function WeaponEnhancement(list)
+    if OwnWeaponBuff() then return end
+    local slots = WeaponSlots()
+    if #slots == 0 or Enchanted(slots, S.Get("consumablesMinutes") * SECONDS) then return end
+    local item = FirstCarried(D.WEAPON_ITEMS)
+    if not item and S.Get("onlyIfCarried") then return end
+    list[#list + 1] = { icon = LastIcon("weapon") or C_Item.GetItemIconByID(item or D.WEAPON_ICON_ITEM),
+        items = D.WEAPON_ITEMS }
 end
 
 local function TargetHas(spells)
@@ -267,14 +383,6 @@ local function PersonalBuffs(list, buffs)
     end
 end
 
-local function ClassHasPersonal()
-    local _, class = UnitClass("player")
-    for _, family in ipairs(D.PERSONAL) do
-        if family.class == class then return true end
-    end
-    return false
-end
-
 local Reminders = {}
 A.Buffs = Reminders
 
@@ -285,8 +393,11 @@ Reminders.PersonalPicked = PersonalPicked
 Reminders.Secret = Secret
 
 function Reminders.On()
-    return S.Get("enabled") and (#(S.Get("consumableEntries") or {}) > 0 or S.Get("raidBuffs")
-        or S.Get("personalBuffs") and ClassHasPersonal())
+    return S.Get("enabled")
+end
+
+function Reminders.ForgetBags()
+    carried = nil
 end
 
 function Reminders.WatchesTarget()
@@ -313,11 +424,53 @@ function Reminders.NoteImbueCast(spellID)
     for _, family in ipairs(D.PERSONAL) do
         if family.key == "imbue" then
             for _, id in ipairs(family.spells) do
-                if id == spellID then lastImbue = spellID end
+                if id == spellID then
+                    lastImbue = spellID
+                    return true
+                end
             end
-            return
+            return false
         end
     end
+    return false
+end
+
+function Reminders.NoteFoodCast(spellID)
+    if not D.FOOD_SPELLS[spellID] then return false end
+    local icon = FoodItemIcon(spellID) or C_Spell.GetSpellTexture(spellID)
+    local account = ns.AccountSettings()
+    if not icon or account.lastFoodIcon == icon then return false end
+    account.lastFoodIcon = icon
+    return true
+end
+
+local function UsedIcon(items, spellID)
+    for _, id in ipairs(items) do
+        local _, spell = C_Item.GetItemSpell(id)
+        if spell == spellID then return C_Item.GetItemIconByID(id) end
+    end
+end
+
+function Reminders.NoteUseCast(spellID)
+    if not LastUsed() or InCombatLockdown() then return false end
+    local category, icon = "weapon", UsedIcon(D.WEAPON_ITEMS, spellID)
+    if not icon then
+        local groups = Groups()
+        for _, name in ipairs(CATEGORY_ORDER) do
+            local group = groups[name] or not (name == "battle" and groups.guardian) and D.DEFAULT_GROUPS[name]
+            icon = group and not group.wellFed and UsedIcon(group.items, spellID)
+            if icon then
+                category = name
+                break
+            end
+        end
+    end
+    local account = ns.AccountSettings()
+    local icons = account.lastIcons or {}
+    if not icon or icons[category] == icon then return false end
+    icons[category] = icon
+    account.lastIcons = icons
+    return true
 end
 
 function Reminders.Requested(itemID)
@@ -334,7 +487,10 @@ function Reminders.Collect()
     if not buffs then return nil end
     local list = {}
     wakeAt = nil
-    if ConsumablesHere() then Consumables(list, buffs) end
+    if ConsumablesHere() then
+        Consumables(list, buffs)
+        if S.Get("weaponEnhancements") then WeaponEnhancement(list) end
+    end
     if S.Get("personalBuffs") then PersonalBuffs(list, buffs) end
     if S.Get("raidBuffs") then RaidBuffs(list, buffs) end
     return list

@@ -1,5 +1,5 @@
 -- Run with Lua 5.1 from the repository root: walking over the baked maps. Zephras Isle's real data is
--- decoded the way the client does (Base64, deflate, CBOR; LibDeflate and the readers below stand in for
+-- decoded the way the client does (Base64, deflate, CBOR; Tools/regression/encoding_util.lua stands in for
 -- C_EncodingUtil), a spot finds the polygon under it, a walk costs at least the straight line, the same
 -- walk costs the same both ways, and the network's own places walk to each other through the table.
 local function Read(path)
@@ -11,50 +11,6 @@ end
 local checks = 0
 local function Check(ok, label) assert(ok, label); checks = checks + 1 end
 
-local B64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
-local B64_VALUE = {}
-for i = 1, #B64 do B64_VALUE[B64:sub(i, i)] = i - 1 end
-
-local function DecodeBase64(s)
-    local out, bits, count = {}, 0, 0
-    for i = 1, #s do
-        local v = B64_VALUE[s:sub(i, i)]
-        if v then
-            bits, count = bits * 64 + v, count + 6
-            if count >= 8 then
-                count = count - 8
-                local byte = math.floor(bits / 2 ^ count)
-                out[#out + 1] = string.char(byte)
-                bits = bits - byte * 2 ^ count
-            end
-        end
-    end
-    return table.concat(out)
-end
-
-local function Cbor(s)
-    local at = 1
-    local function Arg(info)
-        if info < 24 then return info end
-        local n = ({ [24] = 1, [25] = 2, [26] = 4 })[info]
-        local v = 0
-        for _ = 1, n do v = v * 256 + s:byte(at); at = at + 1 end
-        return v
-    end
-    local function Item()
-        local head = s:byte(at); at = at + 1
-        local major, n = math.floor(head / 32), Arg(head % 32)
-        if major == 0 then return n end
-        if major == 1 then return -1 - n end
-        if major == 3 then local text = s:sub(at, at + n - 1); at = at + n; return text end
-        if major == 4 then local t = {}; for i = 1, n do t[i] = Item() end; return t end
-        local t = {}
-        for _ = 1, n do local k = Item(); t[k] = Item() end
-        return t
-    end
-    return Item()
-end
-
 local env = setmetatable({}, { __index = _G })
 env._G = env
 local function Load(path)
@@ -62,26 +18,27 @@ local function Load(path)
     setfenv(chunk, env)
     return chunk()
 end
-env.LibStub = nil
-env.strmatch = string.match
-Load("Libs/LibStub/LibStub.lua")
-Load("Libs/LibDeflate/LibDeflate.lua")
-local LibDeflate = env.LibStub("LibDeflate")
-
 local ns = { Journeys = {} }
 env.NaowhForever = ns
-env.C_EncodingUtil = {
-    DecodeBase64 = DecodeBase64,
-    DecompressString = function(s) return LibDeflate:DecompressDeflate(s) end,
-    DeserializeCBOR = Cbor,
-}
+env.C_EncodingUtil = dofile("Tools/regression/encoding_util.lua")()
 env.Enum = { CompressionMethod = { Deflate = 0 } }
 env.InCombatLockdown = function() return false end
 env.C_AddOns = { IsAddOnLoaded = function() return true end, LoadAddOn = function() end }
-env.GetTime = function() return 0 end
+local now, timers = 0, {}
+env.GetTime = function() return now end
+env.C_Timer = { After = function(delay, fn) timers[#timers + 1] = { at = now + delay, fn = fn } end }
+env.wipe = function(t) for k in pairs(t) do t[k] = nil end return t end
+local function RunTimers()
+    local due = timers
+    timers = {}
+    for _, t in ipairs(due) do
+        if t.at <= now then t.fn() else timers[#timers + 1] = t end
+    end
+end
 env.debugprofilestop = function() return 0 end
 
 Load("NaowhForever_Journeys/Constants.lua")
+Load("NaowhForever_Journeys/Data/Network.lua")
 Load("NaowhForever_JourneysData/Data.lua")
 for line in Read("NaowhForever_JourneysData/JourneysData.xml"):gmatch('file="Data\\(Map2991[^"]*)"') do
     Load("NaowhForever_JourneysData/Data/" .. line)
@@ -128,5 +85,42 @@ local placeCost = Walk.Cost(ZEPHRAS, a, "s8.2")
 Check(placeCost ~= nil, "a spot walks to a network place: " .. tostring(placeCost))
 Check(Walk.Cost(ZEPHRAS, "s8.2", "s8.2") == 0, "a place is no walk from itself")
 Check(Walk.Cost(ZEPHRAS, a, "nowhere") == nil, "an unknown place: no answer, not a wall")
+
+-- The Eastern Kingdoms: Stormwind Harbor's dock is the ship's spot in the water at the end of a long pier
+-- the walking maps do not have. Its walk ends where the pier meets the land, never across the harbour,
+-- and the open sea is no walk at all.
+for line in Read("NaowhForever_JourneysData/JourneysData.xml"):gmatch('file="Data\\(Map0[^"]*)"') do
+    Load("NaowhForever_JourneysData/Data/" .. line)
+end
+local EK = 0
+local CITY = { c = EK, x = -8830, y = 650 }
+local DOCK = { c = EK, x = -8654.5, y = 1344.4 }
+local city, dock = Walk.From(CITY), Walk.From(DOCK)
+Check(city and dock and dock.off, "the dock walks from the land its pier joins")
+local harbour = Walk.Path(city, dock)
+Check(harbour and harbour[#harbour - 1] == DOCK.x and harbour[#harbour] == DOCK.y, "the walk there is drawn, out to the dock")
+local measured, baked = Walk.Cost(EK, city, dock), Walk.Cost(EK, city, "s5.2")
+Check(measured and baked and math.abs(measured - baked) < 50, ("and costs what the baked table says: %s and %s"):format(
+    tostring(measured), tostring(baked)))
+local onPier = Walk.From({ c = EK, x = (DOCK.x + dock.x) / 2, y = (DOCK.y + dock.y) / 2 })
+Check(onPier and onPier.poly == dock.poly and onPier.tx == dock.tx, "halfway along the pier walks from its root too")
+Check(Walk.From({ c = EK, x = -10500, y = 2600 }) == false, "the open sea is off the walking maps: no walk, not a straight line")
+
+-- Idle for a minute, the built tiles, crossings and walks are let go: a journey or estimate builds them again.
+local before = Walk.Tile(EK, Walk.TileOf(CITY.x, CITY.y))
+now = now + 30
+RunTimers()
+Check(Walk.Tile(EK, Walk.TileOf(CITY.x, CITY.y)) == before, "in use, the built tiles are kept")
+Check(#timers == 1, "one release waits, however much is used")
+now = now + 59
+RunTimers()
+Check(Walk.Tile(EK, Walk.TileOf(CITY.x, CITY.y)) == before, "used again within the minute, they stay")
+now = now + 61
+RunTimers()
+RunTimers()
+local again = Walk.Tile(EK, Walk.TileOf(CITY.x, CITY.y))
+Check(again and again ~= before and #again.polys == #before.polys, "a minute idle, they are let go and built the same again")
+local city2 = Walk.From(CITY)
+Check(city2 and city2.poly == city.poly and Walk.Cost(EK, city2, dock) == measured, "and a walk after the release costs the same")
 
 print(("journeys walk: %d checks passed"):format(checks))
