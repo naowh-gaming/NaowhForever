@@ -19,6 +19,16 @@ local function Frame()
     function fr:IsShown() return self.shown end
     function fr:GetHeight() return self.height end
     function fr:SetHeight(h) self.setHeight = h end
+    function fr:SetScrollChild(child) self.child = child end
+    function fr:UpdateScrollChildRect()
+        local child = rawget(self, "child")
+        local range = child and math.max(0, child.height - self.height) or self.range
+        if range ~= self.range then
+            self.range = range
+            if rawget(self, "lazy") then return end
+            self:Fire("OnScrollRangeChanged", 0, range)
+        end
+    end
     function fr:GetVerticalScrollRange() return self.range end
     function fr:SetMinMaxValues(lo, hi) self.min, self.max = lo, hi end
     function fr:GetMinMaxValues() return self.min, self.max end
@@ -73,5 +83,22 @@ fresh.height, fresh.range, fresh.bar.setHeight = 0, 0, false
 fresh:Hide()
 fresh:Show()
 check("a scroll shown before it has a height leaves its thumb alone", fresh.bar.setHeight == false and not fresh.bar.shown)
+
+-- The game's scroll frame may not report a new range until something scrolls it (Discovery's
+-- tabs grew their content after showing and kept no bar until the mouse wheel moved them).
+local lazy = env.UI.SlimScroll(window)
+lazy.lazy = true
+local content = Frame()
+content.height = 0
+lazy:SetScrollChild(content)
+lazy:Show()
+check("an empty scroll shows no bar", not lazy.bar.shown)
+content.height = 400
+content:Fire("OnSizeChanged")
+check("content growing after show brings the bar without a wheel", lazy.bar.shown
+    and select(2, lazy.bar:GetMinMaxValues()) == 300)
+content.height = 50
+content:Fire("OnSizeChanged")
+check("and content shrinking takes it away again", not lazy.bar.shown)
 
 print(("test-slim-scroll: %d checks passed"):format(checks))

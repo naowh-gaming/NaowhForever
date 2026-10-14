@@ -1332,8 +1332,17 @@ function UI.SlimScroll(parent, width, gap)
         end
         if bar:GetValue() > range then bar:SetValue(range) end
     end
+    local function Refresh()
+        scroll:UpdateScrollChildRect()
+        Sync(scroll)
+    end
     scroll:SetScript("OnScrollRangeChanged", Sync)
-    scroll:HookScript("OnShow", Sync)
+    scroll:HookScript("OnShow", Refresh)
+    local setChild = scroll.SetScrollChild
+    function scroll:SetScrollChild(child)
+        setChild(self, child)
+        child:HookScript("OnSizeChanged", Refresh)
+    end
     scroll:HookScript("OnHide", function() bar:Hide() end)
     scroll:SetScript("OnVerticalScroll", function(_, offset)
         if math.abs(bar:GetValue() - offset) > SCROLL.sync then bar:SetValue(offset) end
