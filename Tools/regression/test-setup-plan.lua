@@ -198,7 +198,7 @@ do
     local plan = Applied(w, picks)
     check("Minimalist: the summary turns off every other module that was on, and on the rest of its own",
         #plan.off == wasOn and wasOn > 0 and #plan.on == wasOff)
-    for id, item in pairs(Setup.ITEMS) do
+    for id in pairs(Setup.ITEMS) do
         check("Minimalist, applied: " .. id .. (MINIMALIST_ON[id] and " enabled" or " disabled"),
             w.On(id) == (MINIMALIST_ON[id] == true))
     end
@@ -234,7 +234,7 @@ do
     local picks = Setup.Fresh()
     Setup.PickProfile(picks, "minimalist")
     Applied(w, picks)
-    for id, item in pairs(Setup.ITEMS) do
+    for id in pairs(Setup.ITEMS) do
         check("Minimalist for one character: " .. id, w.On(id) == (MINIMALIST_ON[id] == true))
     end
     local same = true
