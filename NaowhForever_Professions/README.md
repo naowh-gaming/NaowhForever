@@ -167,19 +167,27 @@ Each layer uses only the ones above it, or reads a later one's table at call tim
 - The Consumables picker offers the Well Fed food, flasks, elixirs and stat scrolls of Naowh's consumables
   list (the one in his profile, from Wowhead Forever), the Buff Reminders' weapon stones and oils, the
   healing and mana potions in `Shared/Game/Consumables.lua` and the Smart Macros' bandages. Plain food and
-  drink come from vendors, so they are not on it.
+  drink come from vendors, so they are not on it. The stones, oils and bandages are read from those modules
+  when the picker opens, not copied: with the Buff Reminders or the Smart Macros addon off, Weapon
+  Enhancements or Bandages are left out. Only the oils' stats are kept here (`WEAPON_STATS`); every other
+  weapon item is for attack power.
 - What suits your class is `CLASS_STATS`: warriors strength, agility and attack power; rogues agility and
   attack power; hunters those and intellect; mages and warlocks intellect, spirit and spell power; priests
   those and healing; paladins, shamans and druids all of them, since the client does not say which talents
   they took. An item tagged only with stats you do not want is left out, one tagged `mana` shows when you
   use mana (`ns.UsesMana`), and one with no tag (stamina, armor, health, resistances, healing potions,
-  bandages) is for everyone.
+  bandages) is for everyone. An item with two stats (Elixir of Ferocity) counts in the line of each stat
+  you use, so its tier is weighed against your other items of that stat.
 - The picker shows what you can use now and the next tier up of each kind and stat, by the level the game
   gives each item. Their data is asked for when it first opens (`Items.OnLoaded`); an item not loaded yet
-  waits. The highest you can use of each is Best; a kind whose items all ask the same level (bandages, which
-  need First Aid instead) has none. Only for my class off shows everything.
+  waits. The highest you can use of each kind and stat is Best, even its lowest tier; a line with only one
+  level in it (a single item, or bandages, which need First Aid instead) has none. Only for my class off
+  shows everything; the choice is kept account-wide (`profShopAllConsumables`), like the window's size.
 - A pick's amount is its amount on the list, as an other item, so Check Prices and Buy All at the auction
-  house buy it. The picker is built on first open and listens to bag changes only while it shows.
+  house buy it. Its box takes as many digits as `C.MAX_ITEMS` has. The picker is built on first open and
+  listens to bag changes and level ups only while it shows. The plan tells it of every list change
+  (`Shopping.OnChange`); changes and bag updates redraw at most once a frame and only rewrite the rows'
+  amounts and counts, while opening, a level up, the toggle and items loading pick the rows again.
 - The shopping list makes a material from its parts, up to 4 levels down, only when whole crafts cost
   less than buying what is needed, and never from a recipe with a cooldown (it makes a few a day; a
   shared cooldown can read 0 on the spell). What was bought counts at every level, and a craft taken

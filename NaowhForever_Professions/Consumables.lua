@@ -3,56 +3,79 @@ local ns = _G.NaowhForever
 
 local P = ns.Professions
 local D = P.ConsumableItems
+local Items = ns.Shared.Items
 
-local MIN_LEVEL = 5
+local REQUIRED_LEVEL = 5
 local MANA = "mana"
 local NO_STAT = ""
 local SEP = ":"
 local EMPTY = {}
 
 local levels = {}
-local best, soonest, lowest = {}, {}, {}
+local best, soonest, lowest, highest = {}, {}, {}, {}
+local lines = {}
 local groups, groupPool, rowPool = {}, {}, {}
-local potions
+local shared = {}
 
 local Consumables = {}
 P.Consumables = Consumables
 
-local function Potions()
-    if potions then return potions end
-    potions = {}
-    for _, id in ipairs(ns.HEALING_POTIONS) do potions[#potions + 1] = { id } end
-    for _, id in ipairs(ns.MANA_POTIONS) do potions[#potions + 1] = { id, MANA } end
-    return potions
+local function Tagged(list, tag)
+    local out = {}
+    for _, id in ipairs(list or EMPTY) do out[#out + 1] = { id, tag and tag(id) } end
+    return out
+end
+
+local function WeaponStat(id)
+    return D.WEAPON_STATS[id] or D.WEAPON_STAT
+end
+
+local function ManaTag()
+    return MANA
+end
+
+local function SharedList(group)
+    if shared[group] then return shared[group] end
+    local list
+    if group == "potion" then
+        list = Tagged(ns.HEALING_POTIONS)
+        for _, e in ipairs(Tagged(ns.MANA_POTIONS, ManaTag)) do list[#list + 1] = e end
+    elseif group == "weapon" then
+        local buffs = ns.BuffReminderData
+        list = Tagged(buffs and buffs.WEAPON_ITEMS, WeaponStat)
+    elseif group == "bandage" then
+        local macros = ns.Macros
+        list = Tagged(macros and macros.Items and macros.Items.BANDAGES)
+    end
+    shared[group] = list
+    return list
 end
 
 local function Entries(group)
-    if group == "potion" then return Potions() end
-    return D.ITEMS[group]
+    return D.ITEMS[group] or SharedList(group)
 end
 
 local function Level(id)
     local level = levels[id]
     if level then return level end
-    level = select(MIN_LEVEL, C_Item.GetItemInfo(id))
+    level = select(REQUIRED_LEVEL, C_Item.GetItemInfo(id))
     levels[id] = level
     return level
 end
 
-local function Line(group, e)
-    return group .. SEP .. (e[2] or NO_STAT)
-end
-
-local function Fits(e, stats, mana)
-    if #e == 1 then return true end
+local function Lines(group, e, stats, mine, mana)
+    wipe(lines)
+    if #e == 1 then
+        lines[1] = group .. SEP .. NO_STAT
+        return lines
+    end
     for i = 2, #e do
-        if e[i] == MANA then
-            if mana then return true end
-        elseif stats[e[i]] then
-            return true
+        local stat = e[i]
+        if not mine or (stat == MANA and mana) or (stat ~= MANA and stats[stat]) then
+            lines[#lines + 1] = group .. SEP .. stat
         end
     end
-    return false
+    return lines
 end
 
 local function ByLevel(a, b)
@@ -64,16 +87,30 @@ end
 local function Measure(group, level, stats, mine, mana)
     for _, e in ipairs(Entries(group)) do
         local lv = Level(e[1])
-        if lv and (not mine or Fits(e, stats, mana)) then
-            local line = Line(group, e)
-            if lv <= level then
-                if lv > (best[line] or -1) then best[line] = lv end
-            elseif lv < (soonest[line] or math.huge) then
-                soonest[line] = lv
+        if lv then
+            for _, line in ipairs(Lines(group, e, stats, mine, mana)) do
+                if lv <= level then
+                    if lv > (best[line] or -1) then best[line] = lv end
+                elseif lv < (soonest[line] or math.huge) then
+                    soonest[line] = lv
+                end
+                if lv < (lowest[line] or math.huge) then lowest[line] = lv end
+                if lv > (highest[line] or -1) then highest[line] = lv end
             end
-            if lv < (lowest[line] or math.huge) then lowest[line] = lv end
         end
     end
+end
+
+local function Fill(row, e, lv, level, group, stats, mine, mana)
+    local shown, isBest = not mine, false
+    for _, line in ipairs(Lines(group, e, stats, mine, mana)) do
+        if lv <= level or lv == soonest[line] then shown = true end
+        if lv == best[line] and lowest[line] < highest[line] then isBest = true end
+    end
+    if not shown then return false end
+    row.level, row.name = lv, Items.Name(e[1])
+    row.best, row.later = isBest, lv > level
+    return true
 end
 
 local function Collect(group, level, stats, mine, mana, n)
@@ -83,14 +120,10 @@ local function Collect(group, level, stats, mine, mana, n)
     wipe(rows)
     for _, e in ipairs(Entries(group)) do
         local id, lv = e[1], Level(e[1])
-        local line = lv and Line(group, e)
-        if lv and (not mine or (Fits(e, stats, mana) and (lv <= level or lv == soonest[line]))) then
+        if lv then
             local row = rowPool[id] or { id = id }
             rowPool[id] = row
-            row.level, row.name = lv, C_Item.GetItemNameByID(id) or NO_STAT
-            row.best = lv == best[line] and lowest[line] < lv
-            row.later = lv > level
-            rows[#rows + 1] = row
+            if Fill(row, e, lv, level, group, stats, mine, mana) then rows[#rows + 1] = row end
         end
     end
     if #rows == 0 then return n end
@@ -104,6 +137,7 @@ function Consumables.Pick(level, class, mine, mana)
     wipe(best)
     wipe(soonest)
     wipe(lowest)
+    wipe(highest)
     for _, group in ipairs(D.GROUPS) do Measure(group, level, stats, mine, mana) end
     local n = 0
     for _, group in ipairs(D.GROUPS) do n = Collect(group, level, stats, mine, mana, n) end

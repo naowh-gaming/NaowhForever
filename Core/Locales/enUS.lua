@@ -76,7 +76,6 @@ L["Battlegrounds"] = true
 L["BiS List"] = true
 L["Blessings"] = true
 L["(%d owned)"] = true
-L["%d owned"] = true
 L["/nf shopping: the Professions Shopping List"] = true
 L["Add an Item"] = true
 L["Add an item above, or click Add to List under a recipe: what you need to buy lands here."] = true

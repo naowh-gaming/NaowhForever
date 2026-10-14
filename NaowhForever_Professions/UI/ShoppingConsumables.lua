@@ -17,20 +17,21 @@ local ROW_SHRINK = 2
 local ICON_SHRINK = Style.ROW_ICON_SHRINK
 local NAME_GAP = Style.ICON_NAME_GAP
 local SMALL_BUTTON = 16
-local QTY_H = 18
+local QTY_W, QTY_H = 44, 18
+local QTY_LETTERS = #tostring(P.C.MAX_ITEMS)
 local STEP_GAP, NOTE_GAP = 2, 6
 local HEAD_X, HEAD_STEP, GROUP_GAP, TOP_GAP = 4, 18, 8, 2
 local CHECK_GAP, TITLE_GAP = 6, 8
 local FULL_OPACITY = 1
 local SEPARATOR = "  "
 local LATER_CODE, BEST_CODE, END_CODE = Text.Hex(Style.RED_RGB), Text.Hex(Style.READY_RGB), "|r"
-local EVENTS = { "BAG_UPDATE_DELAYED" }
+local EVENTS = { "BAG_UPDATE_DELAYED", "PLAYER_LEVEL_UP" }
 local TEXT_TITLE = ns.L("Consumables")
 local TEXT_MINE = ns.L("Only for my class")
 local TEXT_EMPTY = ns.L("No consumables to show yet.")
 local TEXT_BEST = ns.L("Best")
 local TEXT_LEVEL = ns.L("Lv %d")
-local TEXT_OWNED = ns.L("%d owned")
+local TEXT_OWNED = ns.L("(%d owned)")
 local GROUP_NAMES = {
     food = ns.L("Food & Drink"), flask = ns.L("Flasks"), elixir = ns.L("Elixirs"), potion = ns.L("Potions"),
     scroll = ns.L("Scrolls"), weapon = ns.L("Weapon Enhancements"), bandage = ns.L("Bandages"),
@@ -43,7 +44,8 @@ local TIP_QTY, TIP_QTY_HELP = ns.L("How Many"), ns.L("How many the shopping list
 
 local panel, body, empty, only, events
 local rows, heads = {}, {}
-local onlyMine = true
+local shownRows = 0
+local queued, repick, newLevel = false, false, nil
 
 local function Opacity()
     return FULL_OPACITY
@@ -64,9 +66,15 @@ local function OnRowEnter(self)
     GameTooltip:Show()
 end
 
+local function OnlyMine()
+    return not ns.AccountSettings().profShopAllConsumables
+end
+
 local function OnQtyEnter(box)
-    Shopping.SetItem(box:GetParent().id, tonumber(box:GetText()) or 0)
+    local id = box:GetParent().id
     box:ClearFocus()
+    Shopping.SetItem(id, tonumber(box:GetText()) or 0)
+    box:SetText(tostring(Listed(id)))
 end
 
 local function OnQtyEscape(box)
@@ -85,7 +93,8 @@ local function NewRow()
     row.plus:SetPoint("RIGHT")
     ns.Tooltip(row.plus, TIP_MORE, TIP_MORE_HELP)
     row.qty = Widgets.QtyBox(row)
-    row.qty:SetHeight(QTY_H)
+    row.qty:SetSize(QTY_W, QTY_H)
+    row.qty:SetMaxLetters(QTY_LETTERS)
     row.qty:SetPoint("RIGHT", row.plus, "LEFT", -STEP_GAP, 0)
     row.qty:SetScript("OnEnterPressed", OnQtyEnter)
     row.qty:SetScript("OnEscapePressed", OnQtyEscape)
@@ -124,14 +133,19 @@ local function Note(e)
     return note
 end
 
-local function FillRow(row, e)
-    row.id = e.id
-    row.icon:SetTexture(C_Item.GetItemIconByID(e.id))
-    row.name:SetText(Items.QualityHex(e.id) .. Items.Name(e.id) .. END_CODE)
+local function FillCounts(row)
+    local e = row.entry
     row.note:SetText(Note(e))
     local listed = Listed(e.id)
     if not row.qty:HasFocus() then row.qty:SetText(tostring(listed)) end
     Widgets.EnableButton(row.minus, listed > 0)
+end
+
+local function FillRow(row, e)
+    row.id, row.entry = e.id, e
+    row.icon:SetTexture(C_Item.GetItemIconByID(e.id))
+    row.name:SetText(Items.QualityHex(e.id) .. Items.Name(e.id) .. END_CODE)
+    FillCounts(row)
 end
 
 local function PlaceHead(head, y)
@@ -149,10 +163,10 @@ local function PlaceRow(row, y)
     return y - ROW_H
 end
 
-local function Redraw()
-    if not (panel and panel:IsShown()) then return end
+local function Repick()
     local _, class = UnitClass("player")
-    local groups = Consumables.Pick(UnitLevel("player"), class, onlyMine, ns.UsesMana())
+    local groups = Consumables.Pick(newLevel or UnitLevel("player"), class, OnlyMine(), ns.UsesMana())
+    newLevel = nil
     local y, n = -TOP_GAP, 0
     for i, group in ipairs(groups) do
         if i > 1 then y = y - GROUP_GAP end
@@ -169,14 +183,54 @@ local function Redraw()
     end
     for i = #groups + 1, #heads do heads[i]:Hide() end
     for i = n + 1, #rows do rows[i]:Hide() end
+    shownRows = n
     body:SetHeight(math.max(1, -y))
     empty:SetShown(n == 0)
 end
 
+local function Refresh()
+    for i = 1, shownRows do FillCounts(rows[i]) end
+end
+
+local function Flush()
+    queued = false
+    if not (panel and panel:IsShown()) then return end
+    if repick then
+        repick = false
+        Repick()
+    else
+        Refresh()
+    end
+end
+
+local function Queue(full)
+    if not (panel and panel:IsShown()) then return end
+    if full then repick = true end
+    if queued then return end
+    queued = true
+    C_Timer.After(0, Flush)
+end
+
+local function Repicked()
+    Queue(true)
+end
+
+local function Recount()
+    Queue(false)
+end
+
+local function OnEvent(_, event, level)
+    if event == "PLAYER_LEVEL_UP" then
+        newLevel = level
+        return Repicked()
+    end
+    Recount()
+end
+
 local function OnMine(box)
-    onlyMine = box:GetChecked() and true or false
+    ns.AccountSettings().profShopAllConsumables = not box:GetChecked() or nil
     panel.scroll:SetVerticalScroll(0)
-    Redraw()
+    Repick()
 end
 
 local function OnShow()
@@ -194,7 +248,7 @@ local function Build()
     only.text:SetPoint("RIGHT", panel.close, "LEFT", -TITLE_GAP, 0)
     only.text:SetText(TEXT_MINE)
     only:SetPoint("RIGHT", only.text, "LEFT", -CHECK_GAP, 0)
-    only:SetChecked(onlyMine)
+    only:SetChecked(OnlyMine())
     only:SetScript("OnClick", OnMine)
     ns.Tooltip(only, TIP_MINE, TIP_MINE_HELP)
     panel.title:SetText(TEXT_TITLE)
@@ -203,18 +257,19 @@ local function Build()
     empty:SetPoint("CENTER", panel.scroll, "CENTER")
     empty:SetText(TEXT_EMPTY)
     events = CreateFrame("Frame")
-    events:SetScript("OnEvent", Redraw)
+    events:SetScript("OnEvent", OnEvent)
     panel:HookScript("OnShow", OnShow)
     panel:HookScript("OnHide", OnHide)
     panel:Hide()
-    Items.OnLoaded(Consumables.IDs(), Redraw)
+    Items.OnLoaded(Consumables.IDs(), Repicked)
 end
 
 function Shopping.ToggleConsumables(from)
     if panel and panel:IsShown() then return panel:Hide() end
     if not panel then Build() end
     Parts.ShowBeside(panel, from)
-    Redraw()
+    repick = false
+    Repick()
 end
 
-hooksecurefunc(Shopping, "RenderWindow", Redraw)
+Shopping.OnChange(Recount)
