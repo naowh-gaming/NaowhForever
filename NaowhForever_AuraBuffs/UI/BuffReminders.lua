@@ -218,8 +218,10 @@ end
 
 function Apply()
     if InCombatLockdown() then
-        held = true
-        events:RegisterEvent("PLAYER_REGEN_ENABLED")
+        if R.On() or unlocked or frame and frame:IsShown() then
+            held = true
+            events:RegisterEvent("PLAYER_REGEN_ENABLED")
+        end
         return
     end
     held = nil

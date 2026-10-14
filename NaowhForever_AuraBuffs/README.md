@@ -185,9 +185,11 @@ NaowhForever_AuraBuffs/
   to whole pixels (`Cell.Snap`): at a UI scale where a unit is not a whole pixel, a menu icon a
   fraction of a pixel off the row was resampled and looked rougher than the icon above it.
 - The row's icons are secure item buttons (`type1 = "item"`), each using the carried item it shows
-  (under Last Used, the carried one with that icon); a class or raid buff icon uses nothing. Secure
-  buttons make the row protected, so in combat nothing touches it: a refresh waits, and a setting
-  change or Unlock Mode is applied once combat ends (`PLAYER_REGEN_ENABLED`).
+  (under Last Used, the carried one with that icon; when no carried item has it, the row shows and
+  uses the first carried item instead); a class or raid buff icon uses nothing. Secure buttons make the row
+  protected, so in combat nothing touches it: a refresh waits, and a setting change or Unlock Mode
+  is applied once combat ends (`PLAYER_REGEN_ENABLED`), registered only while the row is on or
+  showing.
 - A press glows the icon (`Glow.Press`): a short Pixel Glow in the Glow color, lines and thickness,
   under its own LibCustomGlow key so a reminder's own glow keeps running. It is not the game's button
   highlight or pushed look (`Parts.Press`). The menu waits for the glow before it closes.

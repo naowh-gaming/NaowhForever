@@ -703,6 +703,10 @@ do
     t.Login()
     Check("disabled: nothing shown", t.Shown(), "")
     Check("disabled: no aura events", t.Listening("UNIT_AURA"), false)
+    t.state.combat = true
+    t.ns.Apply()
+    Check("disabled: a profile apply in combat waits for nothing", t.Listening("PLAYER_REGEN_ENABLED"), false)
+    t.state.combat = false
     t.Set("enabled", true)
     Check("enabled: listening", t.Listening("UNIT_AURA"), true)
     Check("enabled: shown", t.Shown(), "item:13931")
@@ -797,6 +801,11 @@ do
     local popup
     for _, f in ipairs(t.frames) do if rawget(f, "owner") == cell then popup = f end end
     Check("menu icon edge follows Borders & Lines", popup.buttons[1].edge, line)
+    t.state.bags = { 111 }
+    t.Fire("BAG_UPDATE_DELAYED")
+    t.Advance(0.5)
+    Check("with the last food gone the row shows the carried one", cell.icon.texture, "item:111")
+    Check("and clicking it eats the one it shows", cell.attributes.item1, "item:111")
 end
 
 -- A full menu spreads out from the middle, each line centred under the hovered icon.
