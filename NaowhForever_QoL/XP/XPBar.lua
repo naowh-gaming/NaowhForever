@@ -97,11 +97,12 @@ local TEXT = {
     RESTED_SHARE = ns.L("Rested %.1f%%"),
     RESET_COLORS = "Put the XP Bar colors back to their defaults?",
     RESET_LAYOUT = "Put the XP Bar's size and texts back to their defaults?",
+    RESET_LAYOUT_LABEL = ns.L("Reset Size & Texts"),
+    RESET_COLORS_LABEL = ns.L("Reset Colors"),
     MOVER = "XP Bar",
-    PREVIEW_NOTE = ns.L("Click a text on the bar, or a spot around it, to change what it shows."),
+    PREVIEW_NOTE = ns.L("Click a text or a + to change what it shows. Right-click the bar to reset it."),
     ON = ns.L("(on "),
     CHANGE = ns.L("|nClick to change."),
-    ADD = "+ ",
     SUMMARY = "%d by %d%s",
     AT_MAX = ns.L(", shown at max level"),
 }
@@ -791,14 +792,24 @@ local function Apply()
     Update()
 end
 
-local PREVIEW_PAD = 12
-local PREVIEW_NOTE_SIZE = 12
-local PREVIEW_NOTE_H = 16
-local PREVIEW_SLOT_H = 18
-local PREVIEW_SLOT_GAP = 4
-local PREVIEW_BAR_MAX = 48
-local PREVIEW_FALLBACK_W = 870
-local PREVIEW_H = PREVIEW_PAD * 2 + PREVIEW_NOTE_H + (PREVIEW_SLOT_H + PREVIEW_SLOT_GAP) * 2 + PREVIEW_BAR_MAX
+local STAGE = {
+    H = 170, MARGIN = ns.Shared.Style.STAGE_MARGIN, NOTE_Y = ns.Shared.Style.STAGE_NOTE_Y,
+    NOTE_SIZE = ns.Shared.Style.STAGE_NOTE_SIZE, NOTE_LINE = 15, MAX_SCALE = 2, FALLBACK_W = 870,
+    CHIP = 12, CHIP_ICON = 8, CHIP_BG_ALPHA = 0.6, CHIP_LEVEL = 2, HOVER_ALPHA = 0.15, ZONE_PAD = 4,
+    PICK_BUTTON = "LeftButton", MENU_BUTTON = "RightButton", PLUS = ns.Shared.Style.PLUS,
+    TIP = { anchor = "cursor", justify = "LEFT" },
+    ROWS = {
+        { l = TOP_LEFT, m = TOP, r = TOP_RIGHT, point = "BOTTOMLEFT", rel = "TOPLEFT", x = 0, y = SLOT_DROP },
+        { l = BOTTOM_LEFT, m = BOTTOM, r = BOTTOM_RIGHT, point = "TOPLEFT", rel = "BOTTOMLEFT", x = 0,
+          y = -SLOT_DROP },
+        { inside = true, l = 1, m = 2, r = 3, point = "LEFT", rel = "LEFT", x = INSIDE_INSET, y = 0 },
+    },
+    BESIDE = {
+        { slot = LEFT, point = "RIGHT", rel = "LEFT", x = -SIDE_GAP, y = 0 },
+        { slot = RIGHT, point = "LEFT", rel = "RIGHT", x = SIDE_GAP, y = 0 },
+    },
+}
+STAGE.TEXT_ROOM = STAGE.NOTE_Y + STAGE.NOTE_LINE
 
 local SAMPLE_LEVEL, SAMPLE_MAX, SAMPLE_XP = 24, 23200, 9512
 local SAMPLE_DONE, SAMPLE_OPEN, SAMPLE_RESTED = 2784, 1856, 3596
@@ -830,8 +841,6 @@ local function PreviewSlotText(which, rested)
     return ""
 end
 
-local PREVIEW_HOVER_ALPHA = 0.15
-local ZONE_PAD = 4
 local SLOT_HINT = ns.L("|n|nCompleted Quests (both), Rested Experience, Time to Level and XP per Hour are "
     .. "hidden at max level.")
 
@@ -845,7 +854,7 @@ local function OpenChoices(zone)
         and Menu and Menu.GetManager and AnchorUtil) then return end
     local desc = MenuUtil.CreateRootMenuDescription(MenuVariants.GetDefaultMenuMixin())
     if not desc then return end
-    if desc.CreateTitle then desc:CreateTitle(zone._label) end
+    if desc.CreateTitle then desc:CreateTitle(ns.L(zone._label)) end
     local shownAt = {}
     for _, spot in ipairs(zone._spots) do
         if spot.key ~= zone._key then shownAt[TextOf(S.Get(spot.key) or "none")] = spot.label end
@@ -871,107 +880,237 @@ local function ChoiceName(zone)
     return zone._choices.values[S.Get(zone._key)] or zone._choices.values.none
 end
 
-local function NewZone(parent, fs, spot, spots, choices, hint)
-    local zone = CreateFrame("Button", nil, parent)
+local function BarMenu(_, root)
+    root:CreateTitle(ns.L(TEXT.MOVER))
+    root:CreateButton(TEXT.RESET_LAYOUT_LABEL, ns.ResetXPBarLayout)
+    root:CreateButton(TEXT.RESET_COLORS_LABEL, ns.ResetXPBarColors)
+end
+
+local function Reveal(preview, on)
+    preview.revealed = on
+    for _, chip in ipairs(preview.chips) do chip:SetShown(on and chip.placed) end
+end
+
+local function StageEnter(frame)
+    Reveal(frame.preview, true)
+end
+
+local function StageLeave(frame)
+    local preview = frame.preview
+    if not preview:IsMouseOver() then Reveal(preview, false) end
+end
+
+local function StageHidden(preview)
+    Reveal(preview, false)
+end
+
+local function ZoneEnter(zone)
+    zone.hover:Show()
+    zone.border._frame:Show()
+    StageEnter(zone)
+    ns.UI.ShowWidgetTooltip(zone, ns.L(zone._label) .. ": " .. ns.L(ChoiceName(zone)) .. TEXT.CHANGE .. zone._hint,
+        STAGE.TIP)
+end
+
+local function ZoneLeave(zone)
+    zone.hover:Hide()
+    zone.border._frame:Hide()
+    ns.UI.HideWidgetTooltip()
+    StageLeave(zone)
+end
+
+local function ZoneDown(zone, button)
+    if button ~= STAGE.MENU_BUTTON then return OpenChoices(zone) end
+    ns.UI.HideWidgetTooltip()
+    MenuUtil.CreateContextMenu(zone, BarMenu)
+end
+
+local function ZoneHidden(zone)
+    if zone._menu then zone._menu:Close(); zone._menu = nil end
+end
+
+local function ZoneHandles(_, button, event)
+    return event == "GLOBAL_MOUSE_DOWN" and button == STAGE.PICK_BUTTON
+end
+
+local function NewZone(preview, fs, spot, spots, choices, hint)
+    local b = preview.bar
+    local zone = CreateFrame("Button", nil, b)
+    zone:SetFrameLevel(b:GetFrameLevel() + PREVIEW_ZONE_LEVEL)
+    zone.preview = preview
     zone._fs, zone._label, zone._key, zone._spots, zone._choices = fs, spot.label, spot.key, spots, choices
     zone._hint = hint or ""
-    zone.hover = ns.Solid(zone, "BACKGROUND", T.accent, PREVIEW_HOVER_ALPHA)
+    zone.hover = ns.Solid(zone, "BACKGROUND", T.accent, STAGE.HOVER_ALPHA)
     zone.hover:SetAllPoints()
     zone.hover:Hide()
     zone.border = ns.Border(zone, T.accent)
     zone.border._frame:Hide()
-    zone.HandlesGlobalMouseEvent = function(_, button, event)
-        return event == "GLOBAL_MOUSE_DOWN" and button == "LeftButton"
-    end
-    zone:SetScript("OnMouseDown", OpenChoices)
-    zone:SetScript("OnEnter", function(self)
-        self.hover:Show()
-        self.border._frame:Show()
-        ns.UI.ShowWidgetTooltip(self, self._label .. ": " .. ChoiceName(self) .. TEXT.CHANGE
-            .. self._hint, { anchor = "cursor", justify = "LEFT" })
-    end)
-    zone:SetScript("OnLeave", function(self)
-        self.hover:Hide()
-        self.border._frame:Hide()
-        ns.UI.HideWidgetTooltip()
-    end)
-    zone:SetScript("OnHide", function(self)
-        if self._menu then self._menu:Close(); self._menu = nil end
-    end)
+    zone.HandlesGlobalMouseEvent = ZoneHandles
+    zone:SetScript("OnMouseDown", ZoneDown)
+    zone:SetScript("OnEnter", ZoneEnter)
+    zone:SetScript("OnLeave", ZoneLeave)
+    zone:SetScript("OnHide", ZoneHidden)
     return zone
+end
+
+local function NewChip(preview)
+    local b = preview.bar
+    local chip = CreateFrame("Frame", nil, b)
+    chip:SetFrameLevel(b:GetFrameLevel() + STAGE.CHIP_LEVEL)
+    chip:SetSize(STAGE.CHIP, STAGE.CHIP)
+    ns.Solid(chip, "BACKGROUND", T.bg, STAGE.CHIP_BG_ALPHA):SetAllPoints()
+    ns.Border(chip, T.line)
+    chip.icon = chip:CreateTexture(nil, "ARTWORK")
+    chip.icon:SetTexture(STAGE.PLUS)
+    chip.icon:SetSize(STAGE.CHIP_ICON, STAGE.CHIP_ICON)
+    chip.icon:SetPoint("CENTER")
+    chip.icon:SetVertexColor(T.muted.r, T.muted.g, T.muted.b, 1)
+    chip:Hide()
+    preview.chips[#preview.chips + 1] = chip
+    return chip
 end
 
 local function HugText(zone, h)
     local fs = zone._fs
-    local w = math.min(Natural(fs), fs:GetWidth()) + ZONE_PAD * 2
+    local pad = STAGE.ZONE_PAD
+    local w = math.min(Natural(fs), fs:GetWidth()) + pad * 2
     local justify = fs:GetJustifyH()
     local point = justify == "LEFT" and "LEFT" or justify == "RIGHT" and "RIGHT" or "CENTER"
-    local dx = point == "LEFT" and -ZONE_PAD or point == "RIGHT" and ZONE_PAD or 0
+    local dx = point == "LEFT" and -pad or point == "RIGHT" and pad or 0
     zone:ClearAllPoints()
     zone:SetPoint(point, fs, point, dx, 0)
-    zone:SetSize(w, h)
+    zone:SetSize(w, h or (fs:GetStringHeight() + pad * 2))
+end
+
+local function Seen(fs)
+    local n = Natural(fs)
+    if n == 0 then return 0 end
+    return math.min(n, fs:GetWidth())
+end
+
+local function Clear(x, from, to)
+    return to <= from or x + STAGE.CHIP + TEXT_GAP <= from or x >= to + TEXT_GAP
+end
+
+local function RowChips(w, l, m, r)
+    local chip = STAGE.CHIP
+    local lw, mw, rw = Seen(l), Seen(m), Seen(r)
+    local _, _, _, dx = m:GetPoint(1)
+    local centre = w / 2 + (dx or 0)
+    local mFrom, mTo = centre - mw / 2, centre + mw / 2
+    local lx, mx, rx
+    if lw == 0 and Clear(0, mFrom, mTo) and Clear(0, w - rw, w) then lx, lw = 0, chip end
+    if rw == 0 and Clear(w - chip, 0, lw) and Clear(w - chip, mFrom, mTo) then rx, rw = w - chip, chip end
+    if mw == 0 then
+        local from = lw > 0 and lw + TEXT_GAP or 0
+        local to = rw > 0 and w - rw - TEXT_GAP or w
+        if to - from >= chip then mx = math.min(math.max((w - chip) / 2, from), to - chip) end
+    end
+    return lx, mx, rx
+end
+
+local function PinChip(chip, x, at, b)
+    chip.placed = x ~= nil
+    if not x then return end
+    chip:ClearAllPoints()
+    chip:SetPoint(at.point, b, at.rel, at.x + x, at.y)
+end
+
+local function PlaceChips(preview, w)
+    local b = preview.bar
+    for _, row in ipairs(STAGE.ROWS) do
+        local texts = row.inside and b.inside or b.slots
+        local chips = row.inside and preview.insideChips or preview.slotChips
+        local lx, mx, rx = RowChips(w - row.x * 2, texts[row.l], texts[row.m], texts[row.r])
+        PinChip(chips[row.l], lx, row, b)
+        PinChip(chips[row.m], mx, row, b)
+        PinChip(chips[row.r], rx, row, b)
+    end
+    for _, side in ipairs(STAGE.BESIDE) do
+        PinChip(preview.slotChips[side.slot], Natural(b.slots[side.slot]) == 0 and 0 or nil, side, b)
+    end
+    Reveal(preview, preview.revealed == true)
+end
+
+local function PlaceZone(zone, chip, h)
+    local shown = Natural(zone._fs) > 0
+    if shown then
+        HugText(zone, h)
+    elseif chip.placed then
+        local size = STAGE.CHIP + STAGE.ZONE_PAD
+        zone:ClearAllPoints()
+        zone:SetPoint("CENTER", chip, "CENTER")
+        zone:SetSize(size, size)
+    end
+    zone:SetShown(shown or chip.placed)
+end
+
+local function PreviewScale(roomW, roomH, footW, footH)
+    return math.min(STAGE.MAX_SCALE, roomW / footW, roomH / footH)
+end
+
+local function FitStage(preview, w, h)
+    local b = preview.bar
+    local side = math.max(Natural(b.slots[LEFT]), Natural(b.slots[RIGHT]), STAGE.CHIP) + SIDE_GAP
+    local row = math.max(S.Get("xpBarFontSize"), STAGE.CHIP) + SLOT_DROP
+    local stageW, stageH = preview:GetWidth(), preview:GetHeight()
+    if stageW <= 0 then stageW = STAGE.FALLBACK_W end
+    if stageH <= 0 then stageH = STAGE.H end
+    local scale = PreviewScale(stageW - STAGE.MARGIN * 2, stageH - STAGE.MARGIN * 2 - STAGE.TEXT_ROOM,
+        w + side * 2, h + row * 2)
+    b:SetScale(scale)
+    b:ClearAllPoints()
+    b:SetPoint("CENTER", preview, "CENTER", 0, STAGE.TEXT_ROOM / 2 / scale)
 end
 
 local function NewPreview(stage)
     local preview = CreateFrame("Frame", nil, stage)
     preview:SetAllPoints()
-    preview.note = ns.Font(preview, PREVIEW_NOTE_SIZE, nil, T.muted)
-    preview.note:SetPoint("TOPLEFT", PREVIEW_PAD, -PREVIEW_PAD)
+    preview.preview = preview
+    preview:EnableMouse(true)
+    preview:SetScript("OnEnter", StageEnter)
+    preview:SetScript("OnLeave", StageLeave)
+    preview:SetScript("OnHide", StageHidden)
+    preview.note = ns.Font(preview, STAGE.NOTE_SIZE, nil, T.muted)
+    preview.note:SetPoint("BOTTOM", 0, STAGE.NOTE_Y)
     preview.note:SetText(TEXT.PREVIEW_NOTE)
     local b = CreateFrame("Frame", nil, preview)
     preview.bar = b
     b:SetFrameLevel(preview:GetFrameLevel() + PREVIEW_BAR_LEVEL)
     Look.New(b)
+    local body = ns.Shared.Settings.EditZone(b, { menu = BarMenu, enter = StageEnter, leave = StageLeave })
+    body.preview = preview
+    body:SetAllPoints()
+    body:SetFrameLevel(b:GetFrameLevel() + STAGE.CHIP_LEVEL)
+    preview.chips, preview.insideChips, preview.slotChips = {}, {}, {}
     preview.inside, preview.slots = {}, {}
     for i, spot in ipairs(INSIDE) do
-        local zone = NewZone(b, b.inside[i], spot, INSIDE, BAR_TEXTS)
-        zone:SetFrameLevel(b:GetFrameLevel() + PREVIEW_ZONE_LEVEL)
-        preview.inside[i] = zone
+        preview.inside[i] = NewZone(preview, b.inside[i], spot, INSIDE, BAR_TEXTS)
+        preview.insideChips[i] = NewChip(preview)
     end
     for i, slot in ipairs(SLOTS) do
-        local zone = NewZone(preview, b.slots[i], slot, SLOTS, SLOT_TEXTS, SLOT_HINT)
-        zone:SetFrameLevel(preview:GetFrameLevel() + 1)
-        preview.slots[i] = zone
+        preview.slots[i] = NewZone(preview, b.slots[i], slot, SLOTS, SLOT_TEXTS, SLOT_HINT)
+        preview.slotChips[i] = NewChip(preview)
     end
     return preview
-end
-
-local function Placeholder(fs, spot)
-    if S.Get(spot.key) == "none" or not S.Get(spot.key) then
-        fs:SetText(ns.Color("muted") .. TEXT.ADD .. spot.label .. "|r")
-    end
 end
 
 local function PaintPreview(preview, state)
     UpdateTextColors()
     local b = preview.bar
     local rested = state == "rested" and SAMPLE_RESTED or 0
-    for i, slot in ipairs(SLOTS) do
-        b.slots[i]:SetText(PreviewSlotText(S.Get(slot.key), rested))
-        Placeholder(b.slots[i], slot)
-    end
-    local beside = 0
-    for _, i in ipairs(BESIDE) do
-        SetSlotSize(b.slots[i], S.Get("xpBarFontSize"))
-        beside = math.max(beside, Natural(b.slots[i]))
-    end
-    local avail = preview:GetWidth()
-    if avail <= 0 then avail = PREVIEW_FALLBACK_W end
-    local w = math.max(1, math.min(math.max(S.Get("xpBarWidth"), ns.XPBarMinWidth),
-        avail - PREVIEW_PAD * 2 - (beside + SIDE_GAP) * 2))
-    local h = S.Get("xpBarHeight")
+    for i, slot in ipairs(SLOTS) do b.slots[i]:SetText(PreviewSlotText(S.Get(slot.key), rested)) end
+    local w, h = math.max(S.Get("xpBarWidth"), ns.XPBarMinWidth), S.Get("xpBarHeight")
     PaintBar(b)
     Look.Size(b, w, h)
-    b:ClearAllPoints()
-    b:SetPoint("TOP", preview, "TOP", 0, -(PREVIEW_PAD + PREVIEW_NOTE_H + PREVIEW_SLOT_H + PREVIEW_SLOT_GAP
-        + (PREVIEW_BAR_MAX - h) / 2))
     local pct = SAMPLE_XP / SAMPLE_MAX * PERCENT
     Look.Segments(b, w, pct, SAMPLE_DONE, SAMPLE_OPEN, rested, SAMPLE_MAX, false)
     Look.Texts(b, SAMPLE_LEVEL, SAMPLE_XP, SAMPLE_MAX, false, pct, rested)
-    for i, spot in ipairs(INSIDE) do Placeholder(b.inside[i], spot) end
     Look.Fit(b, w, h)
-    for _, zone in ipairs(preview.inside) do HugText(zone, h) end
-    for _, zone in ipairs(preview.slots) do HugText(zone, PREVIEW_SLOT_H) end
+    PlaceChips(preview, w)
+    for i, zone in ipairs(preview.inside) do PlaceZone(zone, preview.insideChips[i], h) end
+    for i, zone in ipairs(preview.slots) do PlaceZone(zone, preview.slotChips[i]) end
+    FitStage(preview, w, h)
 end
 
 function ns.ResetXPBarLayout()
@@ -987,6 +1126,7 @@ end
 
 local Group = ns.Shared.Settings.Group
 local SAME_COLOUR = 1 / 255
+local FONT_RANGE = { SLOT_FONT_MIN, 20, 1 }
 local BAR_TEXT_HELP = ns.L("A text on the bar: click it on the preview to change it. Each text shows in one "
     .. "place on the bar: picking one shown elsewhere moves it there.")
 local SLOT_TEXT_HELP = ns.L("A text around the bar: click it on the preview to change it. Each text shows in "
@@ -1026,13 +1166,14 @@ local function TextRow(spot, spots, choices, help)
         end }
 end
 
+local function BarRows()
+    local rows = ns.Shared.Settings.Look("xpBar", { bar = "Flat", background = "alpha" })
+    table.insert(rows, 2, { key = "xpBarWidth", label = "Width", slider = WIDTH_RANGE })
+    table.insert(rows, 3, { key = "xpBarHeight", label = "Height", slider = HEIGHT_RANGE })
+    return rows
+end
+
 local ROWS = {
-    Group("Size"),
-    { key = "xpBarWidth", label = "Width", slider = WIDTH_RANGE },
-    { key = "xpBarHeight", label = "Height", slider = HEIGHT_RANGE },
-    { label = "Reset Size & Texts", buttonText = "Reset", button = ns.ResetXPBarLayout,
-      help = "Width, height and the text in each spot back to their defaults. Where the bar sits, its "
-          .. "colors and its switches stay as they are." },
     Group("Show"),
     { key = "xpBarMaxLevel", label = "Show at Max Level", toggle = true,
       help = "Keeps the bar up at max level, with your played time and session." },
@@ -1041,8 +1182,8 @@ local ROWS = {
     { key = "xpBarResetOnReload", label = "Reset Session on Reload", toggle = true,
       help = "Starts the session time and XP/Hour again on a /reload. Off: a /reload carries on the "
           .. "session. A fresh login always starts a new one." },
-    ns.Shared.Settings.Look("xpBar", { text = true, size = { SLOT_FONT_MIN, 20, 1 }, bar = "Flat",
-        background = "alpha" }),
+    BarRows(),
+    ns.Shared.Settings.Look("xpBar", { text = true, size = FONT_RANGE }),
     Group("Colors"),
     ColourRow("xpBarFillColor", "Fill Color", "Your experience. Its left end is a darker shade."),
     ColourRow("xpBarQuestColor", "Completed Quests Color", "The XP of completed quests, and their text."),
@@ -1051,8 +1192,6 @@ local ROWS = {
     ColourRow("xpBarRestedColor", "Rested Color", "Rested experience, and its text."),
     ColourRow("xpBarBgColor", "Background Color", "Behind the fill."),
     ColourRow("xpBarBorderColor", "Border Color", "The line round the bar."),
-    { label = "Reset Colors", buttonText = "Reset Colors", button = ns.ResetXPBarColors,
-      help = "The colors back to their defaults, which follow the theme." },
     Hidden(Group("Text")),
 }
 for _, spot in ipairs(INSIDE) do ROWS[#ROWS + 1] = TextRow(spot, INSIDE, BAR_TEXTS, BAR_TEXT_HELP) end
@@ -1070,7 +1209,7 @@ ns.Shared.Settings.Page("QoL/XP", S):Card({
         .. "experience drawn past the fill. Replaces Blizzard's experience bar while it is on. Move it in the "
         .. "HUD Editor. Ctrl + right-click the bar to reset the session time and XP/Hour.",
     summary = Summary,
-    studio = { height = PREVIEW_H, states = STATES, new = NewPreview, paint = PaintPreview },
+    studio = { height = STAGE.H, states = STATES, new = NewPreview, paint = PaintPreview },
     rows = ROWS,
 })
 

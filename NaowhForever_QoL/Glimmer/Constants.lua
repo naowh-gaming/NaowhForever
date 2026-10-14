@@ -24,7 +24,7 @@ ns.Glimmer.C = {
     },
     SPARKLE_RESETS = { graphicsquality = true, raidgraphicsquality = true },
     SPARKLE_AGAIN = 1,
-    CURSOR_WORDS = { herb = "herb", mine = "ore" },
+    CURSOR_WORDS = { herb = "herb", mine = "ore", quest = "quest" },
     CURSOR_UNABLE = "unable",
     STATE_CHECK = 0.15,
     STATE_HOLD = 0.15,

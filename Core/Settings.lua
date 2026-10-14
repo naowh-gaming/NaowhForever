@@ -82,7 +82,7 @@ local S = UI.ModuleSettings("qol", {
     healerManaBackground = "card",
     playerHistory = F.playerHistory, playerHistoryChats = true, playerHistoryDays = 90, playerNotesTooltip = true,
     naowhScore = F.naowhScore, naowhScoreShare = true, naowhScoreTooltip = true, naowhScoreScan = true, naowhScoreNearby = true,
-    naowhScoreCompare = "both",
+    naowhScoreCompare = "level",
     characterPanel = F.characterPanel,
     characterPanelSlotMarks = F.characterPanelSlotMarks, characterPanelLevels = true, characterPanelMarks = true,
     characterPanelEnchants = true, characterPanelScore = true, characterPanelBadge = true, characterPanelStats = "spec",

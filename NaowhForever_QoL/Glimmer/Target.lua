@@ -12,7 +12,9 @@ local C = G.C
 local Plain = G.Plain
 
 local CURSOR_PATH = "Interface\\Cursor\\"
-local CURSOR_FILES = { Mine = "ore", GatherHerbs = "herb" }
+local CURSOR_FILES = {
+    Mine = "ore", GatherHerbs = "herb", QuestTurnIn = "quest", Quest = "quest", QuestRepeatable = "quest",
+}
 local UNABLE = "Unable"
 local QUEST_LINE = Enum.TooltipDataLineType.QuestObjective
 local TEXT_REQUIRES = ns.L("Requires %s %d")
@@ -115,15 +117,17 @@ function Target.Read(unit, info)
     local category = node and node[1] or (id == C.BOBBER and "bobber") or cursorCategory
     info.id, info.unable = id, unable or false
     if category == "ore" or category == "herb" then
-        info.need = node and node[2]
         info.skill = Target.Skill(category)
+        if info.skill <= 0 then return end
+        info.need = node and node[2]
         if info.need then info.tier = Target.Tier(info.skill, info.need) end
         info.locked = info.tier == "red" or info.unable
     else
-        local related = IsRelated(unit)
-        if Plain(related) and related then
+        local line = QuestLine(unit)
+        local related = IsRelated and IsRelated(unit)
+        if line or (Plain(related) and related) then
             category = "quest"
-            info.line = QuestLine(unit)
+            info.line = line
         end
         info.locked = info.unable
     end

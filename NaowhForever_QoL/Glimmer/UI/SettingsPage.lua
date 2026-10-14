@@ -26,7 +26,6 @@ local ORDER_DETECT, ORDER_MINIMAP, ORDER_GATHERED, ORDER_SPARKLE, ORDER_RESTORE 
 local MINIMAP_SIZE = { 10, 24, 1 }
 local CUTOUT_SIZE, CUTOUT_HEIGHT = { 50, 200, 5 }, { -30, 30, 1 }
 local ORDER_CUTOUT = 15
-local ORDER_ON = 7
 local PIN_SIZE = St.PIN_SIZE_RANGE
 local TEXT_SECTION = ns.L("Glimmer")
 local TEXT_PINS_OFF = ns.L("Turn on Gathered Herbs and Ore")
@@ -48,7 +47,7 @@ local CATEGORY_NAMES = {
 local CATEGORY_HELP = {
     ore = "Mining veins and deposits.",
     herb = "Plants you can gather.",
-    quest = "Objects one of your quests needs.",
+    quest = "Objects one of your quests needs, lit as you walk up to them.",
     chest = "Chests, strongboxes and footlockers out in the world.",
     bobber = "Your fishing bobber.",
 }
@@ -151,14 +150,8 @@ page:Window({
 })
 
 page:Card({
-    id = "glimmer", name = "Glimmer", order = ORDER_ON, switch = "enabled",
+    id = "look", name = "Glimmer", order = ORDER_LOOK, switch = "enabled",
     help = "Herbs, ore, chests and quest objects light up as you walk up to them.",
-    rows = {},
-})
-
-page:Card({
-    id = "look", name = "Look", order = ORDER_LOOK,
-    help = "How the object you are walking up to lights up.",
     studio = { height = STAGE_H, states = LOOK_STATES, new = NewPreview, paint = PaintPreview },
     rows = {
         { key = "style", label = "Effect", choice = STYLES, needs = Enabled, why = OFF },
@@ -247,7 +240,8 @@ table.insert(ns.Shared.MapPins, { title = TEXT_SECTION, store = S, switch = "gat
 
 page:Card({
     id = "questSparkle", name = "Quest Item Sparkle", order = ORDER_SPARKLE, switch = "questSparkle",
-    help = "Keep the game's loot sparkle on quest items, even after a graphics preset turns it off.",
+    help = "The game's own sparkle on every quest item, kept on through graphics presets; Glimmer's Effect "
+        .. "does not change it.",
     note = SparkleNote,
     rows = {},
 })

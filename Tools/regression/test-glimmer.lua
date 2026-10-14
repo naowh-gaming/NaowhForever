@@ -122,7 +122,10 @@ local function Session(settings, opts)
         UnitIsUnit = function(unit) return unit ~= "nameplate9" end,
         GetNumLootItems = function() return 1 end,
         GetLootSourceInfo = function() return game.lootFrom or game.guid end,
-        SetUnitCursorTexture = function() return false end,
+        SetUnitCursorTexture = function(texture)
+            texture.texture = game.cursor
+            return game.cursor ~= nil
+        end,
         GetFileIDFromPath = function() return nil end,
         GetProfessions = function() return 1, game.herbalism > 0 and 2 or nil end,
         GetProfessionInfo = function(i)
@@ -297,6 +300,14 @@ log.Set("hideLocked", true)
 check("too low and hidden: dark", Lit(log) == nil)
 log.Set("hideLocked", false)
 
+-- No Mining at all: ore is not this character's to gather.
+log.game.mining = 0
+log.Fire("PLAYER_SOFT_INTERACT_CHANGED", "x", "y")
+check("no Mining: ore stays dark", Lit(log) == nil)
+log.game.mining = 20
+log.Fire("PLAYER_SOFT_INTERACT_CHANGED", "x", "y")
+check("Mining learned: ore lights again", Lit(log) ~= nil)
+
 -- An NPC: no nameplate opened for it.
 log.game.guid, log.game.object = "Creature-0-1-2-3-4-5", false
 log.Fire("PLAYER_SOFT_INTERACT_CHANGED", "y", "z")
@@ -319,6 +330,24 @@ log.game.tooltip = { lines = { { type = 1, leftText = "Supply Crate" }, { type =
 log.Fire("PLAYER_SOFT_INTERACT_CHANGED", "b", "c")
 check("a quest object shows what is still needed", Lit(log) ~= nil and LineText(log) == "Supplies: 1/4")
 log.game.related = false
+
+-- The game does not call it quest related, but its tooltip lists the objective: still a quest object,
+-- in the effect picked for quest objects.
+log.Set("questStyle", "beam")
+log.Fire("PLAYER_SOFT_INTERACT_CHANGED", "c", "d")
+local questFx = Lit(log)
+check("the objective line alone makes it a quest object", questFx ~= nil and LineText(log) == "Supplies: 1/4")
+check("in the effect picked for quest objects", questFx and questFx.style == "beam")
+log.Set("questStyle", "same")
+log.game.tooltip = nil
+
+-- A quest finished and ready to hand in at an object: no objective left, but the game's turn-in cursor.
+log.game.cursor = "Interface\\Cursor\\QuestTurnIn"
+log.Fire("PLAYER_SOFT_INTERACT_CHANGED", "d", "e")
+check("a quest turn-in object lights up from its cursor", Lit(log) ~= nil and LineText(log) == nil)
+log.game.cursor = nil
+log.Fire("PLAYER_SOFT_INTERACT_CHANGED", "e", "f")
+check("without the cursor, objective or quest link it stays dark", Lit(log) == nil)
 
 -- Combat: the nameplate is closed before the lockdown, and settings wait for the fight to end.
 log.game.guid = GUID(COPPER)
