@@ -1185,6 +1185,37 @@ do
     Check("and is forgotten", account.lastIcons.weapon, nil)
 end
 
+-- Last Used with weapon items: the row picks the carried one with that classic icon and uses it, and
+-- every weapon icon on the row and in the menu is the classic one.
+do
+    local WIZARD, BRILLIANT = ICONS .. "inv_potion_104", ICONS .. "inv_potion_105"
+    local t = Fixture({ instance = "raid", units = { player = "MAGE" }, bags = { 20750, 20749 }, weapons = { [16] = false },
+        settings = { consumableEntries = {}, weaponEnhancements = true, personalBuffs = false, buffIconMode = "last" } })
+    local account = t.ns.AccountSettings()
+    account.lastIcons = { weapon = BRILLIANT }
+    t.Login()
+    local cell
+    for _, f in ipairs(t.frames) do if rawget(f, "items") and f.shown then cell = f end end
+    Check("Last Used oil shown with its classic icon", t.Shown(), BRILLIANT)
+    Check("and clicking it uses that oil", cell.attributes.item1, "item:20749")
+    cell.scripts.OnEnter(cell)
+    local popup
+    for _, f in ipairs(t.frames) do if rawget(f, "owner") == cell then popup = f end end
+    Check("menu oils have classic icons", popup.buttons[1].icon.texture .. " " .. popup.buttons[2].icon.texture,
+        WIZARD .. " " .. BRILLIANT)
+    t.state.bags = { 20750 }
+    t.Fire("BAG_UPDATE_DELAYED")
+    t.Advance(0.5)
+    Check("Last Used oil gone: the carried one's classic icon", t.Shown(), WIZARD)
+    Check("and clicking it uses the carried one", cell.attributes.item1, "item:20750")
+    t.state.bags = { 20750, 20749 }
+    t.Set("buffIconMode", "default")
+    account.lastIcons.weapon = "item:20749"
+    t.Set("buffIconMode", "last")
+    Check("an oil saved by an older version picks that oil", t.Shown(), BRILLIANT)
+    Check("and clicking it uses that oil too", cell.attributes.item1, "item:20749")
+end
+
 -- Worn Gear Reminder: Cloak of Hermitic Bliss worn in Wailing Caverns, off by default.
 do
     local t = Fixture({ instance = "party", instanceID = 43, units = { player = "MAGE" }, worn = { [15] = 273084 },
