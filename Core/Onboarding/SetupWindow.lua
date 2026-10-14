@@ -604,23 +604,23 @@ local function ForeverPreview(tile, look)
     local preview = CreateFrame("Frame", nil, tile)
     preview:SetSize(PREVIEW.w, PREVIEW.h)
     preview.look = look
-    local window = CreateFrame("Frame", nil, preview)
-    window:SetScale(s)
-    window:SetPoint("TOPLEFT", FOREVER_PREVIEW.left, -FOREVER_PREVIEW.top)
-    window:SetPoint("BOTTOMRIGHT", -FOREVER_PREVIEW.right, FOREVER_PREVIEW.bottom)
-    window.backdrop = Parts.Backdrop(window, true)
-    window.backdrop:Paint(1, c)
-    ns.Border(window, BLACK)
-    preview.window = window
-    preview.frame = Parts.ForeverFrame(window, { title = TEXT_SKIN.previewTitle, preview = true })
+    local mini = CreateFrame("Frame", nil, preview)
+    mini:SetScale(s)
+    mini:SetPoint("TOPLEFT", FOREVER_PREVIEW.left, -FOREVER_PREVIEW.top)
+    mini:SetPoint("BOTTOMRIGHT", -FOREVER_PREVIEW.right, FOREVER_PREVIEW.bottom)
+    mini.backdrop = Parts.Backdrop(mini, true)
+    mini.backdrop:Paint(1, c)
+    ns.Border(mini, BLACK)
+    preview.window = mini
+    preview.frame = Parts.ForeverFrame(mini, { title = TEXT_SKIN.previewTitle, preview = true })
     preview.title = preview.frame.title
     preview.title:SetFont(look.heading, St.FOREVER_TITLE_SIZE + St.CLASSIC_HEADING_STEP, "")
     preview.title:SetShadowColor(0, 0, 0, 1)
     preview.title:SetShadowOffset(St.CLASSIC_HEADING_SHADOW, -St.CLASSIC_HEADING_SHADOW)
-    preview.body = PreviewText(window, look.body, PREVIEW.bodySize / s, c.muted)
+    preview.body = PreviewText(mini, look.body, PREVIEW.bodySize / s, c.muted)
     preview.body:SetPoint("TOPLEFT", PREVIEW.pad / s, -HEADER)
     preview.body:SetText(TEXT_SKIN.previewBody)
-    preview.button = PreviewButton(window, look)
+    preview.button = PreviewButton(mini, look)
     return preview
 end
 

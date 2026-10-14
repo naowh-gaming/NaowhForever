@@ -47,8 +47,8 @@ function Backdrop:Card(left, top, right, bottom)
 end
 
 function Backdrop:Paint(alpha, colors)
-    local c = colors or T
-    local top, bg = c.panel, c.bg
+    local palette = colors or T
+    local top, bg = palette.panel, palette.bg
     self.bottom:SetRGBA((top.r + bg.r) / 2, (top.g + bg.g) / 2, (top.b + bg.b) / 2, alpha)
     self.top:SetRGBA(top.r, top.g, top.b, alpha)
     self.gradient:SetGradient("VERTICAL", self.bottom, self.top)
