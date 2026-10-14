@@ -141,15 +141,15 @@ ns.Shared.View.New = function(...)
 end
 db.questRewards = { [10] = 111, [20] = 222, [30] = 333 }
 ns.OpenQuestRewards()
-local list = views[1]
+local rewardView = views[1]
 local function Find(questID)
-    for i = 1, list.pools.item.used do
-        local row = list.pools.item[i]
+    for i = 1, rewardView.pools.item.used do
+        local row = rewardView.pools.item[i]
         if row:IsShown() and row.key == questID then return row end
     end
 end
 local row = Find(20)
-check("the window lists a row for each saved reward", list.pools.item.used == 3 and row and row.itemID == 222
+check("the window lists a row for each saved reward", rewardView.pools.item.used == 3 and row and row.itemID == 222
     and row.remove.shown == true)
 row.remove.scripts.OnClick(row.remove)
 check("its X removes that quest's reward only", db.questRewards[20] == nil and db.questRewards[10] == 111
