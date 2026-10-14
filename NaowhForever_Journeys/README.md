@@ -91,6 +91,8 @@ NaowhForever_Journeys/
   no objective camps), else its nearest camp. The game's next point (`C_QuestLog.GetNextWaypoint`) is the
   last resort: for a quest in another zone it is the zone crossing on your map, so a journey to it only
   ever walked to the border, one zone at a time, and never flew.
+- `C_QuestLog.GetQuestsOnMap` may return nothing for a map: that map has no marker, and the next place is
+  looked at.
 - The Journey card is a frame of its own, not the shared tracker panel: that panel's title bar, bar and
   footer take a third of the height a three-step journey needs, and it is shared by other modules. A line
   a step (icon, name, time), the total time, the cog and the close button in one header, and one thin

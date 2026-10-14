@@ -20,7 +20,9 @@ local function On()
 end
 
 local function OnMap(quest, map)
-    for _, info in ipairs(C_QuestLog.GetQuestsOnMap(map)) do
+    local quests = C_QuestLog.GetQuestsOnMap(map)
+    if not quests then return nil end
+    for _, info in ipairs(quests) do
         if info.questID == quest then return info.x, info.y end
     end
 end
