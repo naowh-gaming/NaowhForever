@@ -114,7 +114,7 @@ NaowhForever_QoL/
   Travel/
     FlightData.lua      each flight route's flown length (ns.FLIGHT_ROUTES), generated
     Flight.lua          the Flight Timer, Flight Games and flight times on the flight map
-    FlightPoint.lua     the reminder to learn a town's flight point
+    FlightPoint.lua     zone-entry and nearby-town flight point reminders
     AimTrainer.lua      the Aim Trainer (/nfaim, ns.AimRules, ns.AimPlay, ns.AimOffer)
     AimBoard.lua        the Aim Trainer's leaderboard (ns.AimBoard)
     QuizData.lua        the quiz questions (ns.QUIZ_QUESTIONS)
@@ -535,6 +535,20 @@ NaowhForever_QoL/
   be within 400 yards, or standing in the subzone of that flight point, which is how the Auberdine
   inn counts. The Crossroads and Ratchet are about 1,200 yards apart, so one town does not
   light the next. An empty subzone matches nothing.
+- Entering a zone also shows one reminder through `ns.AlertStack`, anywhere in that zone.
+  `ZONE_HOLD` is ten seconds so the entry alert clears while you keep questing. Stops, subzone
+  changes and restyling do not restart it. Combat and flying defer the alert until they end.
+  Leaving the zone or disabling the reminder cancels its timer. Returning to the zone allows
+  another entry alert. Nearby-town reminders still stay up until the node is learned or you leave.
+- Node world positions are projected into the current zone with `C_Map.GetMapPosFromWorldPos`.
+  Only coordinates inside that zone's map count for the entry alert, including when the taxi API
+  falls back to the continent. A flight point in another zone cannot trigger that alert.
+- Existing `TownMap.lua` flight-master pins add the learn reminder to their tooltip when the
+  closest friendly taxi node within `TOWN_RANGE` is unlearned. Known nodes get no reminder,
+  even if another unlearned node is nearby. The Town Pins and Flight Masters switches still
+  control those pins; Flight Point Reminder controls the extra tooltip line. No pin system or
+  setting is added. Gossip still uses the nearby-town scan, so a distant entry alert cannot
+  record that node as learned.
 - It checks on a zone change, when you stop, when you talk to a flight master, when the flight map
   opens or closes, when a flight takes or returns control, and when combat starts or ends. While the
   switch is off, none of those events are registered and the frame is not built.
