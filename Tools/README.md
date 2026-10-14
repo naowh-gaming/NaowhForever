@@ -61,6 +61,7 @@ purpose.
 
 | Tool | What it does | Why |
 | --- | --- | --- |
+| `training_weapons.py` | Builds `NaowhForever_Training/Data/TrainingWeapons.lua`: the weapon skills each class can learn and the weapon masters that teach them, from the masters' Wowhead Forever NPC pages (cached in `data/training_weapons_cache.json`), with the level a class may learn one at from the game's tables (via `wago.py`). | Wowhead's class lists leave the weapon skills out. |
 | `training.py` | Builds `NaowhForever_Training/Data/TrainingData.lua`: every spell each class learns from a trainer or a quest, with its level, base price, the rank before it, the talent it needs and its races. Spells, levels and prices from Wowhead Forever's class lists (cached in `data/training_cache.json`), talents from the game's tables (via `wago.py`). | The client has no list of what a trainer will teach you later, nor its prices. The addon updates a price from the trainer window once you open it. |
 
 ## build/: Completo
@@ -87,7 +88,7 @@ purpose.
 | Tool | What it does | Why |
 | --- | --- | --- |
 | `forever_new.py` | Builds `Shared/Data/Forever.lua`: the items, quests and NPCs Wowhead marks as new in Forever, the ones our data mentions. Cached in `data/forever_new.json` (`--refresh` asks again). | The addon's Forever mark. |
-| `spell_efficiency.py` | Builds `NaowhForever_QoL/Interface/SpellEfficiencyData.lua`: every class spell rank that costs mana and heals or deals damage, its amounts (base, per level, bonus coefficient, ticks), level and school, from the game's spell tables (wago.tools). Spells whose amount is elsewhere (weapon, proc, area trigger, script) are left out. Run it again when `wago.BUILD` moves on. | QoL's Mana Efficiency, without reading tooltip text. |
+| `spell_efficiency.py` | Builds `NaowhForever_QoL/Interface/SpellEfficiencyData.lua`: every class spell rank that costs mana and heals or deals damage, its amounts (base, per level, bonus coefficient, ticks), level and school, from the game's spell tables (wago.tools). Also each spell's talent mods (percent talents by rank, Illumination, Elemental Focus), read through the talent nodes in `NaowhForever_Training/Data/TrainingBuilds.lua`. Spells whose amount is elsewhere (weapon, proc, script) are left out; area triggers (Blizzard, Consecration) and Holy Shock are read from the spell their description names. Run it again when `wago.BUILD` moves on. | QoL's Mana Efficiency, without reading tooltip text. |
 | `pvp_auras.py` | Builds `NaowhForever_PvP/Data/Spells.lua`: PvP Auras' crowd control and debuff spell IDs, from the game's spell tables (wago.tools). | Forever's classic spells carry no aura flags to filter by. |
 | `presets.lua` | Writes `Core/Profiles/Presets.lua`, the setups a player can start from, one preset at a time: `lua5.1 Tools/build/presets.lua minimalist Tools/data/preset_minimalist.lua Naowh` (and `recommended`). | Naowh's two setups, kept in `data/` and rebuilt from there. |
 

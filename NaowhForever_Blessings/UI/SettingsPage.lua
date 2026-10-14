@@ -4,6 +4,7 @@ local ns = _G.NaowhForever
 local S = ns.QoLSettings
 local T = ns.THEME
 local St = ns.Shared.Style
+local ItemBar = ns.Shared.ItemBar
 local B = ns.Blessings
 local Look = B.Look
 
@@ -36,8 +37,7 @@ local ADD_AURA, ADD_FURY, ADD_BOTH = ns.L("Brings back the Aura button."), ns.L(
     ns.L("Choose which button to bring back.")
 local GAP_TIP = ns.L("Drag left or right to change the gap between your aura and the class buttons.")
 local GAP_TIP_VERTICAL = ns.L("Drag up or down to change the gap between your aura and the class buttons.")
-local GROW = { { right = "Right", left = "Left", up = "Up", down = "Down" }, { "right", "left", "up", "down" } }
-local GROW_SUMMARY = { left = ns.L(", grows left"), up = ns.L(", grows up"), down = ns.L(", grows down") }
+local LAYOUT = ns.Shared.ItemBar.GrowChoice("horizontal", "vertical")
 local ANCHOR = { store = S, prefix = "bless", name = "Blessing Bar", frame = B.BarFrame,
     on = function() return S.Get("blessings") == true and B.IsPaladin() end }
 local NO_BAR = ns.L("Turn on Blessings on a paladin")
@@ -180,8 +180,7 @@ end
 
 local function GripUpdate(grip)
     local cursorX, cursorY = GetCursorPosition()
-    local step = grip.step
-    local moved = step[1] * (cursorX - grip.fromX) + step[2] * (cursorY - grip.fromY)
+    local moved = (grip.vertical and (grip.fromY - cursorY) or (cursorX - grip.fromX)) * grip.sign
     local value = grip.from + math.floor(moved / grip.scale + ROUND)
     value = math.min(GROUP_SLIDER[2], math.max(GROUP_SLIDER[1], value))
     if value ~= S.Get("blessGroupSpacing") then S.Set("blessGroupSpacing", value) end
@@ -199,7 +198,8 @@ local function GripDown(grip, mouse)
     if mouse ~= "LeftButton" or not grip.preview.editable then return end
     grip.fromX, grip.fromY = GetCursorPosition()
     grip.scale, grip.from = grip:GetEffectiveScale(), S.Get("blessGroupSpacing")
-    grip.step = Look.STEP[Look.grow]
+    grip.vertical = Look.vertical
+    grip.sign = (Look.grow == "LEFT" or Look.grow == "UP") and -1 or 1
     grip.dragging = true
     grip.preview.remove:Hide()
     grip.line:Show()
@@ -372,9 +372,8 @@ local function PlaceGrip(grip, shown, x, bar)
     local width = math.max(GRIP_MIN, span)
     local at = x - Look.gap - (width - span) / 2
     local line = grip.line
-    grip:ClearAllPoints()
     line:ClearAllPoints()
-    Look.Along(grip, bar, at)
+    Look.Pin(grip, bar, at)
     if Look.vertical then
         grip:SetSize(Look.size, width)
         line:SetPoint("LEFT")
@@ -400,8 +399,7 @@ local function PaintPreview(preview, state)
     plus:SetShown(adding)
     if adding then
         plus:SetSize(Look.size, Look.size)
-        plus:ClearAllPoints()
-        Look.Along(plus, bar, 0)
+        Look.Pin(plus, bar, 0)
         x = Look.size + Look.gap
         ns.Tooltip(plus, ADD_TITLE, showAura and ADD_FURY or showFury and ADD_AURA or ADD_BOTH)
     end
@@ -433,7 +431,7 @@ end
 
 local function BarSummary(store)
     return (ns.L("%d px buttons%s%s%s")):format(store.Get("blessBarSize"),
-        GROW_SUMMARY[store.Get("blessGrow")] or "",
+        ItemBar.Vertical(ItemBar.GrowOf(store.Get("blessLayout"))) and ns.L(", vertical") or "",
         store.Get("blessShowAura") and ns.L(", aura") or "", store.Get("blessTimers") and ns.L(", minutes left") or "")
 end
 
@@ -450,8 +448,7 @@ page:Card({
     id = "bar", name = "Blessing Bar", order = ORDER_BAR,
     help = "For paladins, a button per class in your group. Left-click blesses the next member of that class "
         .. "who needs it, missing first, skipping anyone dead or out of range. Right-click a class to choose "
-        .. "its blessing or open its player list. It sits above Buff Reminders and moves with them; move it in the "
-        .. "HUD Editor or anchor it below. The preview edits it: right-click a "
+        .. "its blessing or open its player list. Move it in the HUD Editor. The preview edits it: right-click a "
         .. "class for its blessing, click the aura to choose it, wheel for size and Shift-wheel for spacing, drag "
         .. "the gap after the aura, x hides a button and + brings it back.",
     summary = BarSummary,
@@ -463,7 +460,7 @@ page:Card({
         { key = "blessShowFury", label = FURY_LABEL, toggle = true, needs = On, why = BLESSINGS_OFF,
           help = "Casts Righteous Fury on yourself. A red ! means it is not up." },
         { key = "blessShowLabels", label = "Class Labels", toggle = true, needs = On, why = BLESSINGS_OFF,
-          help = "Each class's name or icon, under its button or beside it when the bar grows up or down." },
+          help = "Each class's name or icon, under its button or beside it when the bar is vertical." },
         { key = "blessLabelStyle", label = "Class Label Style", choice = LABEL_STYLES, needs = LabelsOn,
           why = LABELS_OFF, help = "The class's name, or its class icon, which fits however small the buttons are." },
         { key = "blessTimers", label = "Minutes Left", toggle = true, needs = On, why = BLESSINGS_OFF,
@@ -476,9 +473,8 @@ page:Card({
           help = "The gap between two buttons." },
         { key = "blessGroupSpacing", label = GROUP_LABEL, slider = GROUP_SLIDER, needs = On,
           why = BLESSINGS_OFF, help = "The extra gap between your aura and Righteous Fury and the class buttons." },
-        { key = "blessGrow", label = "Grow", choice = GROW, needs = On, why = BLESSINGS_OFF,
-          help = "Which way new buttons are added from the first one: Right and Left make a row, Up and Down a "
-              .. "column with the class labels beside it." },
+        { key = "blessLayout", label = "Growth Direction", choice = LAYOUT, needs = On, why = BLESSINGS_OFF,
+          help = "Which way the bar grows from its first button. A column puts the class labels beside the buttons." },
         Settings.Look("bless", { text = true, size = FONT_SLIDER, keys = { FontSize = "blessTimerSize" }, needs = On,
             why = BLESSINGS_OFF }),
         Group("Colors"),

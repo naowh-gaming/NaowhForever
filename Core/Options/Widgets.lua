@@ -47,7 +47,7 @@ local GLIDE_RATE = 14
 local GLIDE_DONE = 0.5
 local TIP = { w = 240, pad = 8, size = 10, spacing = 3, gap = 4, cursorX = 16, cursorY = -12, alpha = 0.98 }
 local TOGGLE = { w = 40, h = 20, knobShare = 0.7, insetShare = 0.15, minInset = 2 }
-local FEATURE = { textSize = 16, textX = 30, arrow = 14, arrowX = 4, hitRoom = 120, hitRaise = 3 }
+local FEATURE = { textSize = 16, textX = 30, arrow = 14, arrowX = 4, hitRoom = 120, hitRaise = 3, foldInset = 22 }
 local NOTE = { size = 12, inset = 20, top = 12, room = 24, fallbackW = 960 }
 local SCROLL = { slimW = 6, slimGap = 6, trackAlpha = 0.6, thumbAlpha = 0.8, minThumb = 24, sync = 0.5 }
 local SHARE_DEPTH = 4
@@ -698,25 +698,6 @@ local function PlayButton(dd, cfg, Get)
     return play
 end
 
-local function DropdownControl(rgn, cfg, Get, Set)
-    local dd = UI.BuildDropdownControl(rgn, cfg.width or DROPDOWN_W, rgn:GetFrameLevel() + CONTROL_RAISE,
-        cfg.values, cfg.order, Get, Set)
-    AtRowEnd(dd, rgn)
-    if cfg.preview then dd._buttons = { PlayButton(dd, cfg, Get) } end
-    return dd
-end
-
-local function SliderControl(rgn, cfg, Get, Set)
-    local track, valBox = UI.BuildSliderCore(rgn, cfg.trackWidth or SLIDER_TRACK_W, SLIDER_TRACK_H, SLIDER_THUMB,
-        cfg.boxWidth or SLIDER_BOX_W, SLIDER_BOX_H, SLIDER_TEXT_SIZE, 1, cfg.min or 0, cfg.max or SLIDER_MAX,
-        cfg.step or 1, Get, Set)
-    track._format = function(v) return cfg.format and cfg.format(v) or tostring(v) end
-    track._refreshValue()
-    AtRowEnd(valBox, rgn)
-    track:SetPoint("RIGHT", valBox, "LEFT", -LABEL_GAP, 0)
-    return track
-end
-
 local function PaletteChip(chips, i)
     local chip = CreateFrame("Frame", nil, chips)
     chip:SetSize(PALETTE_SIZE, PALETTE_SIZE)
@@ -727,10 +708,10 @@ local function PaletteChip(chips, i)
     return chip
 end
 
-local function PaletteControl(rgn, cfg)
+local function PaletteControl(rgn, cfg, beside)
     local chips = CreateFrame("Frame", nil, rgn)
     chips:SetHeight(PALETTE_SIZE)
-    AtRowEnd(chips, rgn)
+    if beside then chips:SetPoint("RIGHT", beside, "LEFT", -LABEL_GAP, 0) else AtRowEnd(chips, rgn) end
     local made = {}
     local function Paint()
         local colors = cfg.colors()
@@ -747,6 +728,31 @@ local function PaletteControl(rgn, cfg)
     chips._refreshValue = Paint
     Paint()
     return chips
+end
+
+local function DropdownControl(rgn, cfg, Get, Set)
+    local dd = UI.BuildDropdownControl(rgn, cfg.width or DROPDOWN_W, rgn:GetFrameLevel() + CONTROL_RAISE,
+        cfg.values, cfg.order, Get, Set)
+    AtRowEnd(dd, rgn)
+    if cfg.preview then dd._buttons = { PlayButton(dd, cfg, Get) } end
+    if cfg.palette then
+        local chips = PaletteControl(rgn, { colors = cfg.palette }, dd)
+        local refreshLabel = dd._refreshValue
+        dd._labelEdge = chips
+        dd._refreshValue = function() refreshLabel(); chips._refreshValue() end
+    end
+    return dd
+end
+
+local function SliderControl(rgn, cfg, Get, Set)
+    local track, valBox = UI.BuildSliderCore(rgn, cfg.trackWidth or SLIDER_TRACK_W, SLIDER_TRACK_H, SLIDER_THUMB,
+        cfg.boxWidth or SLIDER_BOX_W, SLIDER_BOX_H, SLIDER_TEXT_SIZE, 1, cfg.min or 0, cfg.max or SLIDER_MAX,
+        cfg.step or 1, Get, Set)
+    track._format = function(v) return cfg.format and cfg.format(v) or tostring(v) end
+    track._refreshValue()
+    AtRowEnd(valBox, rgn)
+    track:SetPoint("RIGHT", valBox, "LEFT", -LABEL_GAP, 0)
+    return track
 end
 
 local function ColorPickerControl(rgn, cfg, Get, Set)
@@ -801,7 +807,7 @@ local function RegionLabel(rgn, control, cfg)
     local lbl = ns.Font(rgn, LABEL_SIZE, nil)
     lbl:SetPoint("LEFT", rgn, "LEFT", ROW_INSET, 0)
     if control then
-        lbl:SetPoint("RIGHT", control, "LEFT", -LABEL_GAP, 0)
+        lbl:SetPoint("RIGHT", control._labelEdge or control, "LEFT", -LABEL_GAP, 0)
     else
         lbl:SetPoint("RIGHT", rgn, "RIGHT", -ROW_INSET, 0)
     end
@@ -917,7 +923,7 @@ function W:DualRow(parent, yOffset, leftCfg, rightCfg)
     return Collapsed(parent, row, ROW_H)
 end
 
-function W:SectionHeader(parent, text, yOffset)
+function W:SectionHeader(parent, text, yOffset, inset)
     parent._nsuiRowCount = 0
     parent._nsuiCollapsed, parent._nsuiFeatureId = nil, nil
     local f = CachedRow(parent, "header:" .. text) or CreateFrame("Frame", nil, parent)
@@ -925,7 +931,8 @@ function W:SectionHeader(parent, text, yOffset)
     if f._headerBuilt then return f, HEADER_H end
     f._headerBuilt = true
     local lbl = ns.Font(f, LABEL_SIZE, nil, T.fg, true)
-    lbl:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 0, HEADER_TEXT_Y)
+    inset = inset or 0
+    lbl:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", inset, HEADER_TEXT_Y)
     lbl:SetText(ns.L(text))
     local sep = ns.Solid(f, "ARTWORK", T.line, 1)
     sep:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 0, 0)
@@ -938,13 +945,41 @@ function W:SectionHeader(parent, text, yOffset)
         gem:SetTexture(St.GEM, nil, nil, "TRILINEAR")
         gem:SetVertexColor(gold.r, gold.g, gold.b, 1)
         gem:SetSize(St.CLASSIC_SECTION_GEM, St.CLASSIC_SECTION_GEM)
-        lbl:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", St.CLASSIC_SECTION_GEM + St.CLASSIC_SECTION_GEM_GAP, HEADER_TEXT_Y)
+        lbl:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", inset + St.CLASSIC_SECTION_GEM + St.CLASSIC_SECTION_GEM_GAP, HEADER_TEXT_Y)
         gem:SetPoint("RIGHT", lbl, "LEFT", -St.CLASSIC_SECTION_GEM_GAP, 0)
         lbl:SetTextColor(T.accent.r, T.accent.g, T.accent.b, 1)
         sep:SetColorTexture(1, 1, 1, 1)
         sep:SetGradient("HORIZONTAL", CreateColor(gold.r, gold.g, gold.b, 1), CreateColor(gold.r, gold.g, gold.b, 0))
     end
     return f, HEADER_H
+end
+
+local openFolds = {}
+
+local function OnFoldClick(hit)
+    openFolds[hit._id] = not openFolds[hit._id] or nil
+    UI:RefreshPage(true)
+end
+
+function W:FoldHeader(parent, text, yOffset, forceOpen)
+    local f, h = W:SectionHeader(parent, text, yOffset, FEATURE.foldInset)
+    if not f.hit then
+        f.arrow = f:CreateTexture(nil, "ARTWORK")
+        f.arrow:SetTexture(CHEVRON)
+        f.arrow:SetSize(FEATURE.arrow, FEATURE.arrow)
+        f.arrow:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 0, HEADER_TEXT_Y)
+        f.arrow:SetVertexColor(T.muted.r, T.muted.g, T.muted.b, 1)
+        f.hit = CreateFrame("Button", nil, f)
+        f.hit:SetAllPoints()
+        f.hit:SetScript("OnClick", OnFoldClick)
+        f.hit:SetScript("OnEnter", function() f.arrow:SetVertexColor(T.fg.r, T.fg.g, T.fg.b, 1) end)
+        f.hit:SetScript("OnLeave", function() f.arrow:SetVertexColor(T.muted.r, T.muted.g, T.muted.b, 1) end)
+    end
+    f.hit._id = text
+    local open = forceOpen or openFolds[text]
+    f.arrow:SetRotation(open and CHEVRON_DOWN or 0)
+    parent._nsuiCollapsed = not open or nil
+    return f, h
 end
 
 local function OnFeatureClick(hit)
@@ -1326,14 +1361,17 @@ function UI.SlimScroll(parent, width, gap)
     local scroll = CreateFrame("ScrollFrame", nil, parent)
     local bar, thumb = ScrollBar(parent, scroll, width, gap)
     local grip = ScrollGrip(bar, thumb, scroll)
-    scroll:SetScript("OnScrollRangeChanged", function(self, _, range)
+    local function Sync(self, _, range)
         range = range or self:GetVerticalScrollRange()
         local shown = self:GetHeight()
         bar:SetMinMaxValues(0, range)
         bar:SetShown(range > 0)
         thumb:SetHeight(math.max(SCROLL.minThumb, bar:GetHeight() * shown / (shown + range)))
         if bar:GetValue() > range then bar:SetValue(range) end
-    end)
+    end
+    scroll:SetScript("OnScrollRangeChanged", Sync)
+    scroll:HookScript("OnShow", Sync)
+    scroll:HookScript("OnHide", function() bar:Hide() end)
     scroll:SetScript("OnVerticalScroll", function(_, offset)
         if math.abs(bar:GetValue() - offset) > SCROLL.sync then bar:SetValue(offset) end
     end)

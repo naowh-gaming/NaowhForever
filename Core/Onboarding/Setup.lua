@@ -51,14 +51,10 @@ Setup.ITEMS = {
         blurb = ns.L("Buff, food and campfire reminders.") },
     threatMeter = { addon = "NaowhForever_ThreatMeter", db = "threatMeter", key = "enabled",
         blurb = ns.L("Your group's threat on your target.") },
-    damageMeter = { addon = "NaowhForever_DamageMeter", db = "damageMeter", key = "enabled",
-        blurb = ns.L("Damage, healing and more for your group.") },
     groupInspect = { addon = "NaowhForever_GroupInspect", db = "qol", key = "groupInspect",
         blurb = ns.L("Your group's gear, talents and Naowh Score.") },
     pvp = { addon = "NaowhForever_PvP", db = "pvp", key = "enabled",
         blurb = ns.L("Your target's short buffs and crowd control.") },
-    topBar = { addon = "NaowhForever_TopBar", db = "topBar", key = "enabled",
-        blurb = ns.L("Your buttons and a clock along the top.") },
     swingTimer = { addon = "NaowhForever_SwingTimer", db = "swingTimer", key = "enabled",
         blurb = ns.L("Your swings, with marks to time around them.") },
 }
@@ -140,6 +136,8 @@ local function Settle(modules, list)
     end
     return modules
 end
+
+Setup.Settle, Setup.SetSwitch = Settle, SetSwitch
 
 function Setup.Modules()
     local list = {}
@@ -268,6 +266,7 @@ local function ApplyModule(m, want, preset)
     end
     if not (preset and Enabled(m) or IsOn(m)) then return false end
     SetAddOn(m.addon, false, character)
+    SetSwitch(m, false)
     return Loaded(m)
 end
 

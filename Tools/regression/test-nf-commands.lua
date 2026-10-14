@@ -35,7 +35,7 @@ local function Fixture(badges)
         chunk()
     end
     Load("Core/Options/Modules.lua")
-    ns.Options.OpenModule = function(mod) s.opened[#s.opened + 1] = mod.command end
+    ns.Options.OpenModule = function(mod) s.opened[#s.opened + 1] = mod.command or mod.name end
     Load("Core/Commands.lua")
     s.ns, s.env = ns, env
     return s
@@ -127,23 +127,70 @@ do
     t.env.NaowhForever_ToggleTraining()
     check("which says so while the Training Planner is not loaded", t.printed[#t.printed]:find("Training Planner", 1, true))
 end
-check("a key binding for showing or hiding the Damage Meter",
-    bindings:find('<Binding name="NAOWHFOREVER_DAMAGEMETER_TOGGLE" category="BINDING_HEADER_NAOWHFOREVER">'
-        .. "NaowhForever_ToggleDamageMeter()</Binding>", 1, true))
-do
+check("no key binding for the Damage Meter, which is not shipped", not bindings:find("DAMAGEMETER", 1, true))
+
+local KEYED = { instance = "Instance Tracker", discovery = "Discovery", gear = "Gear & Trinkets", bless = "Blessings",
+    macros = "Macros", bars = "Action Bars", buffs = "AuraBuffs", threat = "Threat Meter", pvp = "PvP" }
+for command, name in pairs(KEYED) do
+    local key = "NAOWHFOREVER_" .. command:upper()
+    check("a key binding for " .. name, bindings:find('<Binding name="' .. key
+        .. '" category="BINDING_HEADER_NAOWHFOREVER">NaowhForever_ToggleModule("' .. command .. '")</Binding>', 1, true))
     local t = Fixture(0)
-    check("with its name", t.env.BINDING_NAME_NAOWHFOREVER_DAMAGEMETER_TOGGLE ~= nil)
-    t.env.NaowhForever_ToggleDamageMeter()
-    check("which says so while the Damage Meter is not loaded", t.printed[#t.printed]:find("Damage Meter", 1, true))
+    check("with its name", t.env["BINDING_NAME_" .. key] == "Open " .. name)
+    t.env.NaowhForever_ToggleModule(command)
+    check("which opens its module", t.opened[#t.opened] == command)
 end
-check("a key binding for resetting the Damage Meter",
-    bindings:find('<Binding name="NAOWHFOREVER_DAMAGEMETER_RESET" category="BINDING_HEADER_NAOWHFOREVER">'
-        .. "NaowhForever_ResetDamageMeter()</Binding>", 1, true))
 do
     local t = Fixture(0)
-    check("with its name", t.env.BINDING_NAME_NAOWHFOREVER_DAMAGEMETER_RESET ~= nil)
-    t.env.NaowhForever_ResetDamageMeter()
-    check("which says so while the Damage Meter is not loaded", t.printed[#t.printed]:find("Damage Meter", 1, true))
+    t.env.NaowhForever_ToggleModule("nonsense")
+    check("an unknown command opens nothing", #t.opened == 0)
+end
+
+-- Modules with no slash command are bound by name.
+local NAMED = { JOURNEYS = "Journeys", PROFESSIONS = "Professions", CONSUMABLEBAR = "Consumable Bar",
+    SWINGTIMER = "Swing Timer" }
+for key, name in pairs(NAMED) do
+    check("a key binding for " .. name, bindings:find('<Binding name="NAOWHFOREVER_' .. key
+        .. '" category="BINDING_HEADER_NAOWHFOREVER">NaowhForever_ToggleModule("' .. name .. '")</Binding>', 1, true))
+    local t = Fixture(0)
+    check("with its name", t.env["BINDING_NAME_NAOWHFOREVER_" .. key] == "Open " .. name)
+    t.env.NaowhForever_ToggleModule(name)
+    check("which opens its module", t.opened[#t.opened] == name)
+end
+for key in bindings:gmatch('<Binding name="(NAOWHFOREVER_[%w_]+)"[^>]*>NaowhForever_ToggleModule') do
+    local id = key:match("^NAOWHFOREVER_(.+)$")
+    check(key .. " is one of the keyed modules", KEYED[id:lower()] or NAMED[id])
+end
+
+-- The Top Bar has no tabs of its own: its key opens the QoL Interface page. Window features open their window.
+do
+    local t = Fixture(0)
+    check("a key binding for the Top Bar", bindings:find('NAOWHFOREVER_TOPBAR" category="BINDING_HEADER_NAOWHFOREVER">'
+        .. "NaowhForever_OpenTopBar()</Binding>", 1, true))
+    check("with its name", t.env.BINDING_NAME_NAOWHFOREVER_TOPBAR == "Open Top Bar")
+    local page
+    t.ns.OpenOptionsWindow = function(name) page = name end
+    t.env.C_AddOns = { IsAddOnLoaded = function() return false end }
+    t.env.NaowhForever_OpenTopBar()
+    check("which says so while the Top Bar is not loaded", page == nil and t.printed[#t.printed]:find("Top Bar", 1, true))
+    t.env.C_AddOns = { IsAddOnLoaded = function() return true end }
+    t.env.NaowhForever_OpenTopBar()
+    check("and otherwise opens QoL > Interface", page == "QoL/Interface")
+end
+for key, window in pairs({ SCRAP = { "scrap", "ToggleScrapList", "Scrap List", "Quality of Life" },
+        DISENCHANT = { "disenchant", "ToggleDisenchant", "Disenchant", "Professions" },
+        QUIZ = { "quiz", "ToggleQuiz", "Quiz", "Quality of Life" }, AIM = { "aim", "ToggleAimTrainer", "Aim Trainer", "Quality of Life" } }) do
+    local t = Fixture(0)
+    check("a key binding for the " .. window[3], bindings:find('NAOWHFOREVER_' .. key .. '" category="BINDING_HEADER_NAOWHFOREVER">'
+        .. 'NaowhForever_ToggleWindow("' .. window[1] .. '")</Binding>', 1, true))
+    check("with its name", t.env["BINDING_NAME_NAOWHFOREVER_" .. key] == "Open " .. window[3])
+    t.env.NaowhForever_ToggleWindow(window[1])
+    check("which names the addon that is off while it is not loaded",
+        t.printed[#t.printed] == window[4] .. " is switched off. Turn it on under Settings > Modules.")
+    local toggled = 0
+    t.ns[window[2]] = function() toggled = toggled + 1 end
+    t.env.NaowhForever_ToggleWindow(window[1])
+    check("and otherwise toggles it", toggled == 1)
 end
 
 local toc = Read("NaowhForever.toc")

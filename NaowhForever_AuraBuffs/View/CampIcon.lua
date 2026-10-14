@@ -14,6 +14,8 @@ local CLAMP = "CLAMPTOBLACKADDITIVE"
 local TEXT_SIZE, LABEL_GAP, BUFF_GAP = St.CAMP_TEXT_SIZE, St.CAMP_LABEL_GAP, St.CAMP_BUFF_GAP
 local TRACK_OUT, DRAIN_OUT, RING_OUT = St.CAMP_TRACK_OUT, St.CAMP_DRAIN_OUT, St.CAMP_RING_OUT
 local TIME_STEPS = St.CAMP_TIME_STEPS
+local LABEL_DROP = TRACK_OUT + LABEL_GAP
+local SIT_ART, SIT_INSET = St.CAMP_SIT_ART, St.CAMP_SIT_INSET
 local ROUND_ART = { "tex", "plate", "ring" }
 local ROUND_EXTRAS = { "timer", "drain", "track", "label", "buffs" }
 local JUSTIFY = { right = "LEFT", left = "RIGHT" }
@@ -21,7 +23,7 @@ local JUSTIFY = { right = "LEFT", left = "RIGHT" }
 local TEXT_REFRESH = ns.L("Refresh Camp")
 local TEXT_RESTING = ns.L("Resting")
 
-local Look = {}
+local Look = { LABEL_DROP = LABEL_DROP }
 A.CampIcon = Look
 
 local function Ring(icon)
@@ -53,6 +55,19 @@ function Look.Art(icon, bare)
     Ring(icon)
 end
 
+function Look.NewSit(button)
+    Look.Art(button)
+    Parts.Smooth(button.tex, SIT_ART)
+end
+
+function Look.SitSize(button, size)
+    local inset = size * SIT_INSET
+    button:SetSize(size, size)
+    button.tex:ClearAllPoints()
+    button.tex:SetPoint("TOPLEFT", inset, -inset)
+    button.tex:SetPoint("BOTTOMRIGHT", -inset, inset)
+end
+
 local function NewTimers(icon)
     icon.timer = CreateFrame("Cooldown", nil, icon, "CooldownFrameTemplate")
     icon.timer:SetAllPoints()
@@ -79,7 +94,7 @@ function Look.New(icon)
     Look.Art(icon)
     NewTimers(icon)
     icon.label = Parts.HudText(ns.Font(icon, TEXT_SIZE, nil, T.accentSoft))
-    icon.label:SetPoint("TOP", icon, "BOTTOM", 0, -LABEL_GAP)
+    icon.label:SetPoint("TOP", icon, "BOTTOM", 0, -LABEL_DROP)
     icon.label:SetText(TEXT_REFRESH)
     icon.buffs = Parts.HudText(ns.Font(icon, TEXT_SIZE))
     icon.buffs:SetPoint("TOP", icon, "BOTTOM", 0, -LABEL_GAP)

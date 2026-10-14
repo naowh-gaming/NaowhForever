@@ -7,7 +7,7 @@ local T = ns.THEME
 local St = A.Style
 local Parts = ns.Shared.Parts
 local D, Camp = A.CampData, A.Camp
-local Look, Bar, Alert = A.CampIcon, A.CampBar, A.CampAlert
+local Look, Bar, Alert, Glow = A.CampIcon, A.CampBar, A.CampAlert, A.Glow
 
 local CAMP_BENEFITS, CAMPFIRE_NEARBY = D.CAMP_BENEFITS, D.CAMPFIRE_NEARBY
 local WELCOMING_CAMPFIRE, WELCOMING_CAMPFIRE_CRAFT = D.WELCOMING_CAMPFIRE, D.WELCOMING_CAMPFIRE_CRAFT
@@ -15,6 +15,7 @@ local TIME_STEPS = St.CAMP_TIME_STEPS
 local REFRESH_NOW = TIME_STEPS[2][1]
 local SIT_PREFIX = St.CAMP_SIT_PREFIX
 local SECONDS = A.C.SECONDS
+local SIT_GAP, SIT_TEXT_SIZE, TEXT_SIZE = St.CAMP_SIT_GAP, St.CAMP_BAR.TEXT, St.CAMP_TEXT_SIZE
 local TIMER_PAD = 0.1
 local UNLOCK_DURATION, UNLOCK_LEFT = 3600, 2400
 local DEFAULT_X, DEFAULT_Y = -260, 120
@@ -26,6 +27,7 @@ local DISMISS_TIP = ns.L("Right-click to dismiss until you leave the campfire.")
 local TEXT_MOVER = "Campfire"
 local TEXT_NEARBY = "Camp Nearby"
 local TEXT_TITLE = "Camp Benefits"
+local TEXT_SIT_BUTTON = "Sit"
 local TEXT_UPCOMING = ns.L("You'll get:")
 local TEXT_RESTING = ns.L("Resting at a campfire")
 local TEXT_LANDS_IN = ns.L("Camp Benefits in")
@@ -160,6 +162,67 @@ local function SavePos(pos)
     S.Set("campPos", pos)
 end
 
+local function SetGlow(on)
+    Glow.Set(icon, on and S.Get("campGlow") and not unlocked, "campGlow")
+end
+
+local function PaintSit(button, color)
+    button.tex:SetVertexColor(color.r, color.g, color.b, 1)
+    button.label:SetTextColor(color.r, color.g, color.b, 1)
+end
+
+local function OnSitEnter(self)
+    PaintSit(self, T.fg)
+end
+
+local function OnSitLeave(self)
+    PaintSit(self, T.accent)
+end
+
+local function OnSitClick()
+    C_ChatInfo.PerformEmote("SIT")
+end
+
+local function SitButton(host)
+    if host.sit then return host.sit end
+    local button = CreateFrame("Button", nil, host)
+    Look.NewSit(button)
+    button.label = Parts.HudText(ns.Font(button, TEXT_SIZE))
+    button.label:SetText(ns.L(TEXT_SIT_BUTTON))
+    button:SetPoint("LEFT", host, "RIGHT", SIT_GAP, 0)
+    PaintSit(button, T.accent)
+    button:SetScript("OnClick", OnSitClick)
+    button:SetScript("OnEnter", OnSitEnter)
+    button:SetScript("OnLeave", OnSitLeave)
+    host.sit = button
+    return button
+end
+
+local function LaySit(button, host)
+    local inline = host ~= icon or Simple()
+    local size = inline and host:GetHeight() or S.Get("campIconSize")
+    local font, outline = S.Get("campFont"), S.Get("campOutline")
+    local key = table.concat({ inline and 1 or 0, size, font, outline }, ":")
+    if button.laid == key then return end
+    button.laid = key
+    Look.SitSize(button, size)
+    Parts.HudFont(button.label, font, inline and SIT_TEXT_SIZE or TEXT_SIZE, outline)
+    button.label:ClearAllPoints()
+    if inline then
+        button.label:SetPoint("LEFT", button, "RIGHT", SIT_GAP, 0)
+    else
+        button.label:SetPoint("TOP", button, "BOTTOM", 0, -Look.LABEL_DROP)
+    end
+end
+
+local function ShowSit(host, on)
+    on = on and S.Get("campSitButton") and not unlocked and true or false
+    if not (on or host.sit) then return end
+    local button = SitButton(host)
+    if on then LaySit(button, host) end
+    button:SetShown(on)
+end
+
 local function Build()
     icon = CreateFrame("Frame", "NaowhForeverCampfire", UIParent)
     icon:SetMovable(true)
@@ -252,6 +315,8 @@ local function ShowUp(duration, expiry, text, labels, icons, n)
         Look.Up(icon, ns.CampBuffMode() ~= "off" and text or "")
         PaintBuffs()
     end
+    SetGlow(false)
+    ShowSit(icon, false)
     if timed then
         if shownExpiry ~= expiry then
             RunTimer(expiry - duration, duration)
@@ -275,6 +340,8 @@ local function ShowSitting(duration, expiry, upcoming)
     else
         Look.Sitting(icon)
     end
+    SetGlow(false)
+    ShowSit(icon, false)
     ringGen = ringGen + 1
     if timed and shownExpiry ~= expiry then
         RunTimer(expiry - duration, duration, SIT_PREFIX)
@@ -290,6 +357,8 @@ end
 local function ShowMissing(nearby)
     campState, campExpiry = "missing", nil
     if BarShown() then Bar.Missing(simpleBar, nearby) else Look.Missing(icon) end
+    SetGlow(true)
+    ShowSit(icon, true)
     ringGen = ringGen + 1
     shownExpiry = nil
     icon:SetShown(S.Get("campShowMissing") or unlocked == true)
@@ -371,6 +440,7 @@ local function SetAlert(show, start, duration)
         alert.passed = true
     end
     alert.click:EnableMouse(show and alert.passed and not unlocked or false)
+    ShowSit(alert, show)
 end
 
 local function DisarmAlert()
@@ -522,6 +592,7 @@ local function Apply()
         hasCamp = nil
         ringGen = ringGen + 1
         HideAlert()
+        if icon then SetGlow(false) end
         if icon and not unlocked then icon:Hide() end
         if not unlocked then return end
     end

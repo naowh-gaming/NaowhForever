@@ -4,12 +4,14 @@
     <Script file="Combat\StealthReminder.lua"/>
     <Script file="Combat\CoTank.lua"/>
     <Script file="Combat\HealerMana.lua"/>
+    <Script file="Loot\LootCard.lua"/>
     <Script file="Loot\DeleteConfirm.lua"/>
     <Script file="Loot\Durability.lua"/>
     <Script file="Questing\TalentPoints.lua"/>
     <Script file="Questing\BuffThanks.lua"/>
     <Script file="Combat\CombatAlert.lua"/>
     <Script file="Questing\QuestAutomation.lua"/>
+    <Script file="Questing\RewardList.lua"/>
     <Script file="Questing\Disband.lua"/>
     <Script file="Questing\Invites.lua"/>
     <Script file="Questing\GroupButtons.lua"/>
@@ -27,7 +29,6 @@
     <Script file="Cursor\Crosshair.lua"/>
     <Script file="Cursor\MouseRing.lua"/>
     <Script file="Combat\PetTracker.lua"/>
-    <Script file="Loot\EquipmentReminder.lua"/>
     <Script file="Interface\ChatZones.lua"/>
     <Script file="Combat\GcdTracker.lua"/>
     <Script file="Combat\FocusCastBar.lua"/>
@@ -57,6 +58,7 @@
     <Script file="Interface\MapOverlays.lua"/>
     <Include file="Interface\Unexplored.xml"/>
     <Script file="Interface\ZoneLevelsData.lua"/>
+    <Script file="Interface\FishingLevelsData.lua"/>
     <Script file="Interface\ZoneLevels.lua"/>
     <Script file="Interface\SkyborneData.lua"/>
     <Include file="Interface\SkyborneSpots.xml"/>

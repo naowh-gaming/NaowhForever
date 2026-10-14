@@ -17,7 +17,6 @@ local HOME_Y = 230
 local PREFIX, SCREEN, CENTER = "bless", "UIParent", "CENTER"
 local BUFFS_MOVER = "Buff Reminders"
 local DOCK_GAP = 18
-local GROW_KEY = { right = "RIGHT", left = "LEFT", up = "UP", down = "DOWN" }
 local SPOT = { TOPLEFT = { -1, 1 }, TOP = { 0, 1 }, TOPRIGHT = { 1, 1 }, LEFT = { -1, 0 }, CENTER = { 0, 0 },
     RIGHT = { 1, 0 }, BOTTOMLEFT = { -1, -1 }, BOTTOM = { 0, -1 }, BOTTOMRIGHT = { 1, -1 } }
 local RESCAN_DELAY = 1
@@ -155,7 +154,7 @@ local function NewSelfButton(name)
     btn:RegisterForClicks("AnyUp", "AnyDown")
     btn:SetAttribute("type1", "spell")
     btn:SetAttribute("unit1", "player")
-    btn:SetHighlightTexture(Look.HIGHLIGHT, "ADD")
+    ns.Shared.Parts.Press(btn)
     Look.Icon(btn)
     B.Watch(btn)
     return btn
@@ -218,8 +217,9 @@ local function PlaceCells(byClass, x)
 end
 
 local function FirstShift()
-    local half, step = Look.size / 2, Look.STEP[Look.grow]
-    return -step[1] * half, -step[2] * half
+    local shift = -Look.TOWARD[Look.grow] * Look.size / 2
+    if Look.vertical then return 0, shift end
+    return shift, 0
 end
 
 local function ToEdge(pos)
@@ -257,7 +257,7 @@ end
 local function DockAnchor()
     Look.Read()
     local dx = FirstShift()
-    if Look.grow == "down" then return { target = BUFFS_MOVER, side = "BOTTOM", x = dx, y = -DOCK_GAP } end
+    if Look.grow == "DOWN" then return { target = BUFFS_MOVER, side = "BOTTOM", x = dx, y = -DOCK_GAP } end
     return { target = BUFFS_MOVER, side = "TOP", x = dx, y = DOCK_GAP }
 end
 
@@ -449,7 +449,7 @@ function Apply()
     end
     if not bar then BuildBar() end
     Look.Read()
-    ns.UI.SetMoverGrow(bar.mover, GROW_KEY[Look.grow])
+    ns.UI.SetMoverGrow(bar.mover, Look.grow)
     placeDue = true
     ticker = C_Timer.NewTicker(TICK, OnTick)
     Refresh()

@@ -38,6 +38,7 @@ local SKINS = { [""] = TEXT_NAOWH_DEFAULT, [SKIN_CLASSIC] = TEXT_CLASSIC_PLUS }
 local SKIN_ORDER = { "", SKIN_CLASSIC }
 local TEXT_MINIMAP_TIP = ns.L("A minimap button that opens %s. /nf%s does the same, "
     .. "and the Top Bar can carry it too. Saved for this computer.")
+local TEXT_FEATURE_TIP = ns.L("A minimap button that opens %s. Saved for this computer.")
 local TEXT_TURNED_OFF = ns.L("%s is turned off, so its settings are hidden. Turn it on under Modules below.")
 local NONE = {}
 local TEXT_ON_ITS_OWN, TEXT_ITS_SETTINGS = ns.L("%s on its own"), ns.L("%s's settings")
@@ -71,19 +72,35 @@ local function ModuleRow(mod)
     return { type = "toggle", text = O.DisplayName(mod), module = mod,
         tooltip = mod.needs and NeedsTip(mod) or mod.subtitle,
         getValue = function()
-            if not Loaded(mod) then return C_AddOns.GetAddOnEnableState(mod.addon) > 0 end
+            if not Loaded(mod) then return C_AddOns.GetAddOnEnableState(mod.addon, UnitGUID("player")) > 0 end
             return ModuleOn(mod)
         end,
         setValue = function(v) SetModuleOn(mod, v) end }
 end
 
+local function SearchHit(title, rows)
+    local filter = UI.filter
+    if not filter then return false end
+    local Mark = UI.Search.Mark
+    local shown = ns.L(title)
+    if Mark(filter, shown) ~= shown then return true end
+    for _, row in ipairs(rows) do
+        if Mark(filter, row.text) ~= row.text then return true end
+    end
+    return false
+end
+
+local function FoldedRows(W, parent, y, title, rows)
+    local _, h = W:FoldHeader(parent, title, y, SearchHit(title, rows)); y = y - h
+    return Rows(W, parent, y, rows)
+end
+
 local function ModulesSection(W, parent, y)
-    local _, h = W:SectionHeader(parent, "MODULES", y); y = y - h
     local rows = {}
     for _, mod in ipairs(MODULES) do
-        if mod.addon then rows[#rows + 1] = ModuleRow(mod) end
+        if mod.addon and (not mod.inQoL or not Loaded(mod)) then rows[#rows + 1] = ModuleRow(mod) end
     end
-    return Rows(W, parent, y, rows)
+    return FoldedRows(W, parent, y, "MODULES", rows)
 end
 
 local function ShowIcon(name, shown)
@@ -107,6 +124,13 @@ local function ModuleButtonRow(mod)
         setValue = function(v) SetModuleButton(mod, v) end }
 end
 
+local function FeatureButtonRow(feature)
+    return { type = "toggle", text = feature.name,
+        tooltip = TEXT_FEATURE_TIP:format(ns.L(feature.name)),
+        getValue = function() return ns.MinimapFeatureOn(feature) end,
+        setValue = function(v) ns.SetMinimapFeature(feature, v) end }
+end
+
 local function MinimapShown()
     local mm = ns.AccountSettings().minimap
     return not (type(mm) == "table" and mm.hide)
@@ -124,9 +148,7 @@ local function GameMenuButtonOn()
 end
 
 local function MinimapSection(W, parent, y)
-    local _, h
-    _, h = W:SectionHeader(parent, "MINIMAP ICONS", y); y = y - h
-    _, h = W:DualRow(parent, y,
+    local rows = {
         { type = "toggle", text = "Minimap Button",
           tooltip = "The Naowh Forever button on the minimap. The addon compartment entry "
           .. "and /naowh open this window either way.",
@@ -136,13 +158,13 @@ local function MinimapSection(W, parent, y)
           tooltip = "Naowh Forever in the game menu (Esc), by the other addons' buttons. "
           .. "Saved for this computer. Not shown with a gamepad; use /nf.",
           getValue = GameMenuButtonOn,
-          setValue = function(v) ns.AccountSettings().gameMenuButton = v and true or false end }
-    ); y = y - h
-    local rows = {}
+          setValue = function(v) ns.AccountSettings().gameMenuButton = v and true or false end },
+    }
     for _, mod in ipairs(MODULES) do
         if mod.command and Loaded(mod) then rows[#rows + 1] = ModuleButtonRow(mod) end
     end
-    return Rows(W, parent, y, rows)
+    for _, feature in ipairs(ns.MinimapFeatures) do rows[#rows + 1] = FeatureButtonRow(feature) end
+    return FoldedRows(W, parent, y, "MINIMAP ICONS", rows)
 end
 
 local LANGUAGE_VALUES, LANGUAGE_ORDER = (function()
@@ -304,23 +326,26 @@ local function SkinRow()
         end }
 end
 
+local function ThemeRow(themes, themeOrder)
+    return { type = "dropdown", text = "Theme", values = themes, order = themeOrder,
+        tooltip = "Theme presets for the addon's windows and HUD frames, plus a Custom "
+        .. "option for your own colors. If text gets hard to read, pick Naowh (default). "
+        .. "Saved for this computer.|n|nTakes effect after a /reload.",
+        getValue = ns.ThemePresetKey,
+        disabled = ClassicSkin,
+        palette = function()
+            local colors = ns.ThemePalette(ns.ThemePresetKey())
+            return { colors[1], colors[math.floor(#colors / 2) + 1], colors[#colors] }
+        end,
+        setValue = function(v)
+            ns.SetThemePreset(v)
+            ColorsChanged()
+        end }
+end
+
 local function ColorsSection(W, parent, y)
     local _, h = W:SectionHeader(parent, "COLORS", y); y = y - h
-    _, h = W:DualRow(parent, y, SkinRow(), Empty()); y = y - h
-    local themes, themeOrder = ThemeChoices()
-    _, h = W:DualRow(parent, y,
-        { type = "dropdown", text = "Theme", values = themes, order = themeOrder,
-          tooltip = "Theme presets for the addon's windows and HUD frames, plus a Custom "
-          .. "option for your own colors. If text gets hard to read, pick Naowh (default). "
-          .. "Saved for this computer.|n|nTakes effect after a /reload.",
-          getValue = ns.ThemePresetKey,
-          disabled = ClassicSkin,
-          setValue = function(v)
-              ns.SetThemePreset(v)
-              ColorsChanged()
-          end },
-        { type = "palette", text = "", colors = function() return ns.ThemePalette(ns.ThemePresetKey()) end }
-    ); y = y - h
+    _, h = W:DualRow(parent, y, SkinRow(), ThemeRow(ThemeChoices())); y = y - h
     if ns.ThemePresetKey() == CUSTOM and not ClassicSkin() then y = CustomRows(W, parent, y) end
     if colorsPending then
         _, h = W:Note(parent, TEXT_COLORS_RELOAD, y); y = y - h
@@ -455,6 +480,8 @@ function Terms:SectionHeader(_, text)
     self.section = text
     return nil, 0
 end
+
+Terms.FoldHeader = Terms.SectionHeader
 
 function Terms:Take(row)
     if row.text == "" or row.type == "label" then return end

@@ -40,6 +40,8 @@ NaowhForever_Blessings/
 
 ## Why
 
+- `blessLayout` is the bar's Growth Direction. It keeps its old saved values: `horizontal` grows Right and
+  `vertical` grows Down (`ItemBar.GrowOf`), beside the new `LEFT` and `UP`, so no saved profile changes.
 - The ranks are lowest first, from Forever's spell data (build 1.60.1.69913).
 - Forever names carry a surname: `UnitName` gives only the first name ("Glyadin"), while
   `UnitFullName` and addon message senders give the whole one ("Glyadin Skywolf"). Names are kept as
@@ -112,7 +114,9 @@ NaowhForever_Blessings/
   unit test. Range and time left change with nothing to announce them, so the bar rescans every
   `TICK` seconds out of combat.
 - Auto-Assign: each class's blessings, most wanted first. In a raid Salvation moves up for classes
-  that do not tank; warriors, druids and paladins never get it, so a tank is never handed it. Whoever
+  that do not tank; warriors and druids never get it, so a tank is never handed it. Paladins get it
+  only when the group holds two or more of them and none has the Tank role (the class blessing cannot
+  tell a Retribution paladin from a Protection one, so the role is the check). Whoever
   knows least picks first, so a paladin with few blessings is not left with none, and each wanted
   blessing goes to the first paladin still free who knows it; one aura each. Another paladin's plan
   is kept here until their broadcast confirms it, and sent to them; planning everyone's needs the
@@ -125,20 +129,21 @@ NaowhForever_Blessings/
   characters, so a localized name never splits. Nothing sits beside a column's names, so only a row's
   are fitted. The class icon (Class Label Style: Class Icon) is two thirds of the button, kept between
   `CLASS_ICON_MIN` and `CLASS_ICON_MAX`, and made the first time it is asked for.
-- Grow (`blessGrow`) keeps the bar's first button where it is and adds buttons right, left, up or
-  down from it, so a class joining never shifts the buttons already there. Its place is saved by
-  that held edge (`blessPos` LEFT, RIGHT, BOTTOM or TOP of the bar, from the screen centre); a spot
-  the HUD Editor saves by its centre, or one saved before Grow, is turned into that edge once the bar
-  has its size. Changing Grow keeps the bar where it is. Grow replaced Direction (`blessLayout`): a
-  bar saved Vertical grows down, and the old key is dropped the first time the look is read.
+- The bar holds its first button, so a class joining or leaving never shifts the buttons already
+  there. Its place is saved by the edge Growth Direction grows from (`blessPos` LEFT, RIGHT, BOTTOM or
+  TOP of the bar, from the screen centre); a spot the HUD Editor saves by its centre, or one saved
+  before, is turned into that edge once the bar has its size. That rewrite of `blessPos` is one way:
+  the old centre is not kept, and the bar sits where it did. Changing Growth Direction keeps the bar
+  where it is.
 - The bar starts above Buff Reminders (AuraBuffs), held there by the HUD Editor's own Anchor, so it
   follows Buff Reminders, shows on the HUD Editor's tag, and lets go like any other element. It is
   tied to their centre, not their edge: Buff Reminders grows both ways as reminders come and go, and
   the bar's buttons must not slide under the cursor while blessing. The first button sits over
   that centre; growing down it sits under Buff Reminders instead, so it never grows into them. Each
   profile is anchored once (`blessDocked`), only if the bar was never moved there, so a spot or an
-  anchor the player chose stays. Without AuraBuffs there is nothing to follow, and the bar sits where
-  it last was, or above the action bars (`HOME_Y`) the first time. Reset Position anchors it again.
+  anchor the player chose stays. Without AuraBuffs the anchor is kept and waits: the HUD Editor
+  applies it once the Buff Reminders mover is made, and until then the bar sits where it last was, or
+  above the action bars (`HOME_Y`) the first time. Reset Position anchors it again.
 - Anchor to a Unit Frame is the shared item bar anchor (`blessAnchor` and the rest of the `bless`
   anchor keys); the bar then grows from the point picked there.
 

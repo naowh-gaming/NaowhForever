@@ -13,10 +13,10 @@
 -- other module on (Core/Onboarding/Setup.lua, Setup.PresetSwitches), and the build writes the same switches
 -- into its profile, so a new install starting from it agrees. Without it the preset's switches decide.
 local INFO = {
-    minimalist = { order = 1, name = "Minimalist", about = "Fewer modules and settings on, and none that spoil the game.",
+    minimalist = { order = 1, name = "Minimalist", about = "Perfect for Classic players who do not want a lot of addons. For players who prefer opting in to features over opting out.",
         modulesOff = { "NaowhForever_Discovery", "NaowhForever_GroupInspect",
             "NaowhForever_GearSets", "NaowhForever_SwingTimer", "NaowhForever_ConsumableBar", "NaowhForever_InstanceTracker",
-            "NaowhForever_Journeys", "NaowhForever_DamageMeter" } },
+            "NaowhForever_Journeys" } },
     recommended = { order = 2, name = "Recommended", about = "Naowh's recommended setup, with the modules he uses on." },
 }
 local NEW_INSTALL = "minimalist"

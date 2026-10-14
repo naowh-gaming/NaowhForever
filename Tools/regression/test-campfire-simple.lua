@@ -20,9 +20,9 @@ local Load = dofile("Tools/regression/load_files.lua")
 -- The AuraBuffs files the Campfire reminder and its cards are made of, in AuraBuffs.xml's order.
 local CAMP_FILES = { "Core/Features.lua", "NaowhForever_AuraBuffs/AuraBuffs.lua",
     "NaowhForever_AuraBuffs/Constants.lua", "NaowhForever_AuraBuffs/Data/Campfire.lua", "NaowhForever_AuraBuffs/CampReader.lua",
-    "NaowhForever_AuraBuffs/View/Style.lua", "NaowhForever_AuraBuffs/View/CampIcon.lua",
+    "NaowhForever_AuraBuffs/View/Style.lua", "NaowhForever_AuraBuffs/View/Glow.lua", "NaowhForever_AuraBuffs/View/CampIcon.lua",
     "NaowhForever_AuraBuffs/View/CampBar.lua", "NaowhForever_AuraBuffs/View/CampAlert.lua",
-    "NaowhForever_AuraBuffs/UI/SettingsPage.lua", "NaowhForever_AuraBuffs/UI/Campfire.lua",
+    "NaowhForever_AuraBuffs/UI/SettingsPage.lua", "NaowhForever_AuraBuffs/UI/GlowRows.lua", "NaowhForever_AuraBuffs/UI/Campfire.lua",
     "NaowhForever_AuraBuffs/UI/CampfireCards.lua" }
 local TocFiles = dofile("Tools/regression/toc_files.lua")
 local Measure = dofile("Tools/regression/measure.lua")
@@ -94,7 +94,7 @@ end
 
 local function Fixture(settings)
     local state = { now = 1000, auras = {}, frames = {}, named = {}, timers = {}, bars = 0, tips = {},
-        tooltipReads = 0, secret = false, combat = false, cursorX = 0, cursorY = 0, shift = false, menus = 0,
+        emotes = {}, glows = {}, tooltipReads = 0, secret = false, combat = false, cursorX = 0, cursorY = 0, shift = false, menus = 0,
         groups = {},
         tooltip = { lines = { { leftText = "Camp Benefits" } } }, spellNames = {} }
     for id, name in pairs(NAMES) do state.spellNames[id] = name end
@@ -302,6 +302,17 @@ local function Fixture(settings)
         issecretvalue = function(v) return v == SECRET_TEXT or (state.secret and v == 2) end,
         C_Secrets = { ShouldAurasBeSecret = function() return false end },
         C_UnitAuras = { GetPlayerAuraBySpellID = function(id) return state.auras[id] end },
+        C_ChatInfo = { PerformEmote = function(token) state.emotes[#state.emotes + 1] = token end },
+        LibStub = function()
+            return {
+                PixelGlow_Start = function(frame, color, lines, frequency, length, thickness)
+                    state.glows[frame] = { kind = "pixel", color = color, lines = lines, frequency = frequency,
+                        length = length, thickness = thickness }
+                end,
+                PixelGlow_Stop = function(frame) state.glows[frame] = nil end,
+                ButtonGlow_Start = function(frame, color) state.glows[frame] = { kind = "standard", color = color } end,
+                ButtonGlow_Stop = function(frame) state.glows[frame] = nil end }
+        end,
         C_Spell = { GetSpellTexture = function(id) return id end,
             GetSpellName = function(id) return state.spellNames[id] end },
         C_TooltipInfo = { GetUnitBuffByAuraInstanceID = function()
@@ -440,7 +451,7 @@ do
         { { "Incense Candle: An unfamiliar effect with a very long description." }, "+INT" },
         { { "Faction Banner: Spirit increased by 27." }, "+Spirit" },
         { { "Lodestone: Melee attack power increased by 49." }, "+ATK" },
-        { { "Enchanted Lute: Armor increased by 114 and all stats by 7." }, "+ARM" },
+        { { "Enchanted Lute: Armor increased by 114 and all stats by 7." }, "+MotW" },
         { { "Fish Bowl: All stats increased by 8%." }, "+Stats" },
         { { "Fish Bowl: Strength, Agility, Stamina, Intellect and Spirit increased by 8%." }, "+Stats" },
         { { "Anvil: Strength increased by 20.", "Toxin Study: Stamina increased by 34." }, "+STR\n+STA" },
@@ -1289,6 +1300,50 @@ do
     s.auras[NEARBY] = {}
     s.fire("UNIT_AURA")
     check("back in range after leaving: it shows again", alert.shown == true and click.mouse == true)
+end
+
+do
+    local s = Fixture()
+    s.fire("PLAYER_LOGIN")
+    local icon = s.named.NaowhForeverCampfire
+    check("no camp, none nearby: the reminder glows and offers Sit", s.glows[icon] and icon.sit and icon.sit.shown)
+    check("Sit sits on the right of the reminder", icon.sit.rel.LEFT == icon and icon.sit.pt.LEFT > 0)
+    check("Sit is an icon the size of the camp icon, drawn from the sitting art",
+        icon.sit.w == s.S.Get("campIconSize") and icon.sit.h == icon.sit.w and icon.sit.tex.texture == "Interface\\AddOns\\NaowhForever_AuraBuffs\\Media\\Sit.tga")
+    check("Sit's label is the camp label's size, on the same line under its icon",
+        icon.sit.label.text == "Sit" and icon.sit.label.size == icon.label.size
+        and icon.sit.label.pty.TOP == icon.label.pty.TOP and icon.sit.label.rel.TOP == icon.sit)
+    icon.sit.scripts.OnClick(icon.sit)
+    check("clicking Sit performs the /sit emote", #s.emotes == 1 and s.emotes[1] == "SIT")
+    s.auras[CAMP] = { duration = 3600, expirationTime = s.now + 2400, auraInstanceID = 1 }
+    s.fire("UNIT_AURA")
+    check("camp up: no glow, no Sit", not s.glows[icon] and icon.sit.shown == false)
+    s.auras[CAMP] = nil
+    s.S.Set("campGlow", false)
+    s.S.Set("campSitButton", false)
+    check("the options turn the glow and the Sit button off", not s.glows[icon] and icon.sit.shown == false)
+    s.S.Set("campGlow", true)
+    s.S.Set("campSitButton", true)
+    check("and on again", s.glows[icon] and icon.sit.shown)
+    local glow = s.glows[icon]
+    check("the default glow is today's: red pixel lines, eight, two thick, a four second march",
+        glow.kind == "pixel" and glow.color[1] == 0.97 and glow.color[2] == 0.27 and glow.lines == 8
+        and glow.thickness == 2 and glow.frequency == 0.25 and glow.length == nil)
+    s.S.Set("campGlowColor", { r = 0, g = 1, b = 0 })
+    s.S.Set("campGlowLines", 4)
+    s.S.Set("campGlowSpeed", 7)
+    glow = s.glows[icon]
+    check("a new color, lines and speed restart the pixel glow",
+        glow.color[2] == 1 and glow.lines == 4 and glow.frequency == 0.5)
+    s.S.Set("campGlowType", "standard")
+    check("Standard Glow replaces it, in the chosen color", s.glows[icon].kind == "standard"
+        and s.glows[icon].color[2] == 1)
+    s.fire("UNIT_AURA")
+    check("a refresh keeps the same glow", s.glows[icon].kind == "standard")
+    s.S.Set("campGlowType", "pixel")
+    check("and back to pixel", s.glows[icon].kind == "pixel")
+    s.S.Set("campGlow", false)
+    check("Enable Glow off stops either", s.glows[icon] == nil)
 end
 
 print(checks .. " campfire look checks passed")

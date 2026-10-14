@@ -14,7 +14,7 @@ NaowhForever_QoL/
   QoL.xml                          every file, in load order
   Constants.lua                    the numbers, colors and patterns several QoL features share (ns.QoLConstants)
   Interface/
-    SpellEfficiencyData.lua  each mana spell rank's healing or damage (ns.SpellEfficiencyData), generated
+    SpellEfficiencyData.lua  each mana spell rank's healing or damage (ns.SpellEfficiencyData) and their talents (ns.SpellEfficiencyTalents), generated
     SpellEfficiency.lua Mana Efficiency on spell tooltips, its Preview Tooltip and the Tooltips card's preview
     GlobalCopy.lua      /copy, and tooltip IDs with their copy shortcut (the card is Shared/UI/CopyCard.lua)
     HideClutter.lua     UI Clutter
@@ -32,7 +32,8 @@ NaowhForever_QoL/
     Unexplored.xml      the unexplored pin template, then Unexplored.lua
     Unexplored.lua      Unexplored Areas on the world map
     ZoneLevelsData.lua  each zone's level range (ns.ZoneLevels), generated
-    ZoneLevels.lua      Zone Levels on the world map
+    FishingLevelsData.lua  each zone's Fishing skill range (ns.FishingLevels)
+    ZoneLevels.lua      Zone Levels and Fishing Levels on the world map
     SkyborneData.lua    the Skyborne spots every player starts with (ns.SkyborneSpots), MIT notice inside
     SkyborneSpots.xml   the Skyborne pin template, then SkyborneSpots.lua
     SkyborneSpots.lua   Skyborne Spots on the world map
@@ -60,7 +61,8 @@ NaowhForever_QoL/
     GroupButtons.lua    On-Screen Buttons (Invite, your invite buttons, Invite All, Disband)
     FreeForAll.lua      Always Free for All, the party loot method while you lead
     TalentPoints.lua    the unspent talent points reminder
-    QuestAutomation.lua accept, hand in and share quests, saved reward picks
+    QuestAutomation.lua accept, hand in and share quests, saved reward picks (ns.QuestRewards)
+    RewardList.lua      the Saved Quest Rewards window (ns.OpenQuestRewards)
     PlayerHistory.lua   Player History (ns.PlayerHistory), read by the Naowh Inspect panel
     Disband.lua         removing everyone from your group (ns.DisbandGroup), for the Disband button
     Trainer.lua         the trainer popup and rank swaps (ns.TrainerRankCheck, ns.TrainerForgetKept),
@@ -70,10 +72,10 @@ NaowhForever_QoL/
     XPTicker.lua        XP per Hour (ns.ResetXPTicker)
     XPBar.lua           the XP Bar (ns.XPBarColor, ns.ResetXPBarSession, ns.ResetXPBarLayout)
   Loot/
+    LootCard.lua        the one card on Loot & Items that Looting, Vendors, Auction Prices and Mail & Alts join
     DeleteConfirm.lua   Type DELETE For You, and the Looting card
     Durability.lua      the low durability warning
     LootConfirm.lua     the retired loot confirmation skip, inert
-    EquipmentReminder.lua  Equipment Reminder (ns.ShowEquipmentReminder, ns.CaptureEnchants)
     AuctionPrices.lua   Auction Prices (ns.AuctionPrice, ns.AuctionAge, ns.AuctionScanSummary)
     FoodBar.lua         the Food & Drink Bar (its food and potion lists are Shared/Game/Consumables.lua)
     BagSpace.lua        Bag Space (ns.BagSpaceRescan; ns.BagSpace for its ignore list)
@@ -148,7 +150,8 @@ NaowhForever_QoL/
   `Shared/` (the copy cards, the town NPCs, the food and potion lists).
   `Tools/regression/test-module-boundaries.lua` checks it.
 - The Top Bar's card sits on QoL > Interface, so the Top Bar depends on QoL: switching QoL off takes
-  it along; turning the Top Bar on in the onboarding turns QoL on.
+  it along. It has no item in the onboarding and its own switch is on its card. Settings > Modules
+  lists it only while its addon is not loaded, so a player who switched it off can turn it back on.
 - The Trainer Popup card is declared here, on QoL > XP with Talent Points, so it goes when QoL is
   off. The Bag Space and Food & Drink key binding names live in `Core/Commands.lua`, so the key
   bindings read right with QoL off, where the Bag Space key says so.
@@ -206,8 +209,13 @@ NaowhForever_QoL/
   skipped in combat.
 - On-Screen Buttons: Invite is a secure button running the game's own `/invite`, which invites
   your target; run from it, the game's code reads the target's name, so it works in combat.
-  Disband removes everyone through addon code (`ns.DisbandGroup`), which the game allows only out
-  of combat.
+  Disband can't remove anyone from addon code: `UninviteUnit` is protected for addons, even out
+  of combat. So the Disband dialog's Yes is covered, while the mouse is over it, by a secure
+  button that runs `/uninvite <name>` for each member, the same way the Reload UI dialog runs
+  `/reload`. The macro is built from the group as it is when the mouse reaches Yes. Names go in
+  whole from `GetUnitName(unit, true)`: Forever names have two parts ("Lilith Gremory"), and
+  `/uninvite` needs both. The dialog closes on the release, after the macro ran on the press or
+  the release, and a click on Yes that the cover missed says to try again.
 - Because Invite is secure, the bar is built, shown, hidden and laid out only out of combat; a
   change in combat waits for `PLAYER_REGEN_ENABLED`.
 - Combat Timer's Card background is the panel the old Show Background toggle drew (black, or
@@ -265,6 +273,15 @@ NaowhForever_QoL/
 - Its icons are cropped like the rest of the addon's (`ItemBar.CropIcon`). Before, it showed the
   full item art with the game's rounded border; for that look on this bar alone, add
   `ItemBar.CropIcon(button.icon, 0)` after `ItemBar.SecureButton` in `Build()`.
+- While its Food & Drink buttons, or either one, are on the Consumable Bar
+  (`ns.ConsumableBarUsesFood`), the bar steps aside and its card is held with why, its settings
+  greyed (the Consumable Bar's apply). The `foodBar` setting itself is kept, so the bar comes back
+  as it was once they leave the Consumable Bar.
+- Those buttons on the Consumable Bar use this bar's key bindings (`ns.FoodBarBindings`), so one key
+  works on either bar and shows in both places. Meanwhile this bar is still built and kept on your
+  best food and drink, hidden: its buttons are what those keys click. It does not search the bags
+  then: the Consumable Bar hands it what it found (`ns.FoodBarPoint`), so a bag change is one
+  search.
 - Alts are kept per realm and faction, because characters there can mail each other. Forever has
   been seen to return "Name-Realm" for the player, and the mail box wants the bare name, so the
   name is cut at the dash.
@@ -607,7 +624,7 @@ NaowhForever_QoL/
 - Vendors & Trainers Only in Cities (`townCapitalsOnly`) keeps vendors, trainers and the bank off questing maps. Flight masters, innkeepers and stable masters (`EVERYWHERE`) are what a traveller looks for in any town, so they show on every map with it on, except stable masters, which only a hunter (`STABLE_CLASS`) sees; so do mailboxes and spirit healers, which are what you look for out in the world.
 - `townMinimap` is the minimap's mailboxes and `townMinimapSpirit` its spirit healers: `townMinimap` once held both, so existing profiles keep their mailboxes.
 - Which town pins show is chosen on the map itself, from the Town Pins button (`MapPinsPanel.lua`), and only there: the long list of town pin types is what you pick while looking at the map. Everything else is on QoL's Map & Pins tab and only there: a Map Options card (id `mapOptions`) and a Map Pins card (id `townMap`: Town Pin Size, then each module's pins under its title). No setting is in both places but Town Pin Size. The Map Pins card's search words include every town pin's name, so the options search still leads there. The keys stay in the QoL store, so saved settings carry over. The button shows whenever QoL is on, since the drawer is also where a switch that is off is turned back on.
-- Map & Pins is the home of every map pin and map option: the town pins, QoL's own Unexplored Areas, Zone Levels and Skyborne Spots, Discovery's quests, rares, library books and Sleeping Bag steps, and the Dungeon Journal's entrances. Each of the last adds a section to `ns.Shared.MapPins` (`{ title, order, store, switch, rows, map }`), and `ns.Shared.MapPinSections()` hands them back by `order` (10 to 12 the map options, then the sections with no `order`, which count as 50, in load order, and Skyborne last at 60). A section's `title` is its group; one with no title continues the group above. Sections marked `map` (Unexplored Areas, Zone Levels) are the Map Options card's rows, the rest follow Town Pin Size on Map Pins under their titles. Rows of another module's store are `lent`, so a card's Reset and changed count leave them to their module. A module that is not loaded adds nothing, and a section whose `hidden` says so is left off (Skyborne Spots for anyone not Skyborne). Drawer rows dim and lock while their `needs` fails: the town rows while Town Pins is off. A town row with a `class` shows only for that class (Stable Masters, hunters). The drawer has its own Town Pins switch, so the town pins can be turned back on from the map.
+- Map & Pins is the home of every map pin and map option: the town pins, QoL's own Unexplored Areas, Zone Levels, Fishing Levels and Skyborne Spots, Discovery's quests, rares, library books and Sleeping Bag steps, and the Dungeon Journal's entrances. Each of the last adds a section to `ns.Shared.MapPins` (`{ title, order, store, switch, rows, map }`), and `ns.Shared.MapPinSections()` hands them back by `order` (10 to 13 the map options, then the sections with no `order`, which count as 50, in load order, and Skyborne last at 60). A section's `title` is its group; one with no title continues the group above. Sections marked `map` (Unexplored Areas, Zone Levels, Fishing Levels) are the Map Options card's rows, the rest follow Town Pin Size on Map Pins under their titles. Rows of another module's store are `lent`, so a card's Reset and changed count leave them to their module. A module that is not loaded adds nothing, and a section whose `hidden` says so is left off (Skyborne Spots for anyone not Skyborne). Drawer rows dim and lock while their `needs` fails: the town rows while Town Pins is off. A town row with a `class` shows only for that class (Stable Masters, hunters). The drawer has its own Town Pins switch, so the town pins can be turned back on from the map.
 - The Town Pins button sits in the map's top right corner, left of the buttons the map keeps there and at their size, so they read as one row. Those are found by where they sit, not by name, so a map with more, fewer or none of them still gets a free spot.
 - The drawer is the options window's look: a header strip in the panel color, small accent group titles and ruled rows with the switch on the right. It is the map's child, so it opens, closes and scales with the map, `PANEL_LEVEL` over the map's pins as the Dungeon Journal's drawer.
 - The drawer sits against the map window's left side (the Dungeon Journal takes the right), `GAP` -1 putting its border on the map's so the two read as one window; with no room there, the right. It is the map's height, as wide as the quest log beside the map (`PANEL_W` where there is none), and its rows shrink to fit a small map, down to `ROW_MIN_H`; past that they scroll, so the drawer never runs off the map. The scroll bar sits inside the rows' right margin, raised over them so its grip takes the mouse.
@@ -680,6 +697,7 @@ NaowhForever_QoL/
 - TradeSkillMaster is optional, and its price call errors on a source it cannot resolve: that is the one reason it runs under pcall.
 - CHAT_MSG_LOOT can arrive before the item is in the bags, which showed the count from before the loot, so item lines read their count again once the bags settle.
 - Coin loot adds to the coin line still on screen and holds it another display time, rather than stacking a line per corpse; its fade-in is skipped so the update does not blink.
+- Looting an item that already has a line on screen adds to that line's count and value and holds it another display time, the same as coins. Items match by link, so two variants of one item stay apart.
 - CHAT_MSG_MONEY carries your own looted coins and a group share, and only those, so vendor sales and mail never reach the feed.
 - A quest turn-in also sends its experience as a combat XP message with no source named. The quest line already shows it, so that one is skipped while quest lines are on. A kill's message names the kill, and its first number is the total gained, rested bonus included.
 - Chat payloads can be secret; nothing in one is worth recovering, so a secret one is dropped.
@@ -708,14 +726,15 @@ NaowhForever_QoL/
 - A tile's drawn size and its texture file's size differ along one side: the last tile of a row or column holds what is left, in a file rounded up to a power of two (from `SMALLEST_FILE`).
 - The pin is one for the whole map, holding every unexplored area's tiles. Its `CheckMouseButtonPassthrough` is left empty: the map calls it on every acquired pin, its SetPassThroughButtons is protected in combat, and this pin takes no clicks.
 
-### Zone Levels
+### Zone Levels and Fishing Levels
 - Forever's client tables give no outdoor zone a level range (no ContentTuningID on UiMap or AreaTable), so `C_Map.GetMapLevels` has nothing and the game's own map label never shows one. The ranges come from Wowhead's Forever world map instead, written to `ZoneLevelsData.lua` by `Tools/build/zone_levels.py`; Moonglade, Mount Hyjal and Shen'dralas have none there.
 - The range is our own text under the game's area label (its Description), so nothing is written into Blizzard's label. The colour follows the game's rule for a range: the low end's colour below it, the high end less `BELOW_RANGE` above it, yellow inside.
-- No source gives the fishing skill a zone needs, so it is not shown.
+- Fishing Levels is a second line of our own under the range (under the game's Description when the range is off or the zone has none), on its own switch, from the same hovered zone. A zone's pair in `FishingLevelsData.lua` is the lowest skill that fishes there and the skill no fish gets away from, 95 apart, the low end never under 1. Neither the client tables nor Wowhead's Forever pages carry it, so the numbers are entered by hand from Classic and cross-checked against warcraft.wiki.gg and Classic fishing guides; zones with no water to fish and Forever's own zones are left out.
+- The colour is against your Fishing skill with gear and lures: red under the low end, yellow until the high end, green from it, grey without Fishing. Your skill is `GetProfessions()`'s fourth slot (`FISHING_SLOT`), read when the hovered zone changes.
 
 ### Mana Efficiency
 - Its amounts come from `SpellEfficiencyData.lua`, generated by `Tools/build/spell_efficiency.py` from the game's own spell tables (wago.tools, the build in its header), keyed by spell ID. Nothing is read from tooltip text.
-- An entry is `school, level, maxLevel`, then one part per kind of amount the spell has on its target: `kind, direct, directPerLevel, directCoefficient, tick, tickPerLevel, tickCoefficient, ticks, seconds`. A spell that heals and damages the same target has two parts and gets two lines (none does in this build).
+- An entry is `school, level, maxLevel, area`, then one part per kind of amount the spell has on its target: `kind, direct, directPerLevel, directCoefficient, tick, tickPerLevel, tickCoefficient, ticks, seconds`. A spell that heals and damages the same target has two parts and gets two lines (none does in this build). `area` is 1 for a spell whose first amount reaches everyone in an area or cone, or on an aura on everyone near (Frost Nova, Arcane Explosion, Prayer of Healing, Tranquility, Hellfire): its numbers are for one target and every number on its line ends with `/ target`.
 - Each entry is one string of those numbers joined by commas, not a table, so the data stays small while the feature is off: 482 tables held about 120 KB after login, the strings hold about 42 KB (measured in Lua 5.1, 32-bit; the 64-bit client holds more of both).
 - A spell's string is split into its table (string.find and tonumber, never loadstring) the first time its tooltip needs it, and kept in `decoded`: later hovers of that spell allocate nothing.
 - An entry that does not split into whole parts of plain numbers, each part a heal or damage, counts as no data: no line, no error.
@@ -726,8 +745,11 @@ NaowhForever_QoL/
 - Per second is over the cast time (`C_Spell.GetSpellInfo`), read only when its info is a readable, non-secret table. An instant or channeled spell counts the time its periodic part runs instead; an instant spell with nothing periodic shows no per second.
 - Per second is a whole number; Decimals sets the per mana numbers only (Per Mana, Per Mana per Second).
 - Your bonus healing, or spell damage of the spell's school, is read only with Include My Spell Power on. While `C_Secrets.ShouldUnitStatsBeSecret()` says stats are secret, or any value read is secret, the line is left off rather than guessed.
-- Not counted: talents and buffs that add a percent, crits, hit, resists and target conditions. A chain or area spell counts its first target.
-- Left out, with no line, because part of their amount is somewhere the client's tables do not say (better no line than a wrong number): weapon damage (Aimed Shot, Multi-Shot), a triggered spell or proc (seals, Judgement), an area trigger the server runs (Blizzard, Rain of Fire, Consecration, Flamestrike, Hurricane, Volley), a dummy or script effect (Swiftmend, and Immolate, whose ranks carry a script effect in this build), and a direct base of 1 with no bonus (a scripted amount's placeholder).
+- Include My Talents (on by default) counts the talents that change what a spell does or costs, at your rank in each (`C_ClassTalents.GetActiveConfigID` with `C_Traits.GetNodeInfo`, the same read the Training builds use). `SpellEfficiencyData.lua` also holds `ns.SpellEfficiencyTalents`, spell ID to a string of mods joined by `;`, each `node, op, value at rank 1, 2, ...`, where op 0 is the direct part, 1 the ticks, 2 a crit refund and 3 a free cast. The builder writes a mod for every passive class talent whose percent aura (spell mod 0, damage and healing, or 22, over time) has the spell in its class mask; a talent's value at each rank is a curve in the tables (`TraitDefinitionEffectPoints`, `CurvePoint`), since Forever has no spell per rank. An effect with no curve of its own grows like the talent's effect that has one (Piercing Ice's periodic percent), and a talent whose direct percent names a spell with ticks, with no periodic percent for it, counts on the ticks too (Gift of Nature on Tranquility, Arcane Instability on Frostfire Bolt). Percents of one kind add together and multiply the whole amount, spell power included: Healing Light, Spiritual Healing, Improved Renew, Fire Power.
+- Two talents that spare mana have no numbers in the tables and are written from the game's description: Illumination (op 2: a crit heal gives back half its base cost, at the chance the tables give the rank; your cost is cut by that times your spell crit chance, `GetSpellCritChance` for the spell's school, left uncounted while stats are secret) and Elemental Focus (op 3: a 10% chance the next damage spell is free, for shaman fire, frost and nature spells). The cost they cut is the game's own shown cost, so talents that already lower the cost (Convection, Improved Healing) are counted by the game, not twice.
+- Not counted: buffs, crits' extra damage, hit, resists and target conditions, and talents with a dummy or script effect, an on-use talent (Arcane Power, Presence of Mind, Divine Favor), Arcane Concentration and the ones that change the cast time or duration (the cast time is the game's own). A chain spell (Chain Heal, Chain Lightning) counts its first target; an area spell counts one target of the area, with the same ticks per target. Nothing in this build splits one amount between the targets.
+- Left out, with no line, because part of their amount is somewhere the client's tables do not say (better no line than a wrong number): weapon damage (Aimed Shot, Multi-Shot), a triggered spell or proc (seals, Judgement), a dummy or script effect (Swiftmend, and Immolate, whose ranks carry a script effect in this build), and a direct base of 1 with no bonus (a scripted amount's placeholder).
+- A spell whose amount is in a spell its own description names is read from that spell, the same pointer the game's tooltip follows (`Spell.Description_lang`, like `$1279976s1`). An area trigger (Blizzard, Rain of Fire, Flamestrike's burn, Consecration, Hurricane, Volley) is the named spell's amount once a period (the periodic dummy aura 226) for the aura's duration, as the ticks of one target; a count in the description ("*8") has to equal the ticks, or the spell is left out. Consecration's second amount, for the first enemies in the area, is added: one target is always among them. A dummy spell naming a damage spell and a heal spell that are not over time (Holy Shock, Fire Nova) gets a part for each, and is an area spell when the named spell's targets are. Healing Rain (its amount is a percent of healing power in the description), Penance (several hits) and Light's Vigil (a buff) are still left out.
 - A periodic trigger is counted (Arcane Missiles): the missile spell is named in the effect itself, not chosen by a seal or a proc.
 - What a spell does is what it does to its target: a heal on the caster from a damage spell (Drain Life, Death Coil) is not counted.
 - The separator is written `||`, which the game draws as one `|`.
