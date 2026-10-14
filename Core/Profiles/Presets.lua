@@ -6,12 +6,12 @@ ns.PRESETS = {
     order = { "minimalist", "recommended" },
     minimalist = {
         name = "Minimalist",
-        about = "Perfect for Classic players who do not want a lot of addons. For players who prefer opting in to features over opting out.",
+        about = "Perfect if you're a Classic player and don't want to use a lot of addons. This option is for you if you prefer opting in instead of opting out.",
         source = "Minimalist by Naowh, 2026-10-10",
-        modulesOff = { "NaowhForever_Discovery", "NaowhForever_GroupInspect", "NaowhForever_GearSets", "NaowhForever_SwingTimer", "NaowhForever_ConsumableBar", "NaowhForever_InstanceTracker", "NaowhForever_Journeys", "NaowhForever_Glimmer" },
+        modulesOff = { "NaowhForever_InstanceTracker", "NaowhForever_Training", "NaowhForever_Journeys", "NaowhForever_Discovery", "NaowhForever_GearSets", "NaowhForever_Blessings", "NaowhForever_Professions", "NaowhForever_Macros", "NaowhForever_ConsumableBar", "NaowhForever_ActionBars", "NaowhForever_AuraBuffs", "NaowhForever_ThreatMeter", "NaowhForever_GroupInspect", "NaowhForever_PvP", "NaowhForever_SwingTimer", "NaowhForever_Glimmer" },
         profile = {
             actionBars = {
-                enabled = true,
+                enabled = false,
             },
             auraBuffs = {
                 buffsPos = {
@@ -29,7 +29,7 @@ ns.PRESETS = {
                     y = 792.5447998046875,
                 },
                 campfire = false,
-                enabled = true,
+                enabled = false,
                 iconSize = 48,
                 lowHealth = false,
                 lowHealthPos = {
@@ -51,14 +51,23 @@ ns.PRESETS = {
                 mapPinSize = 18,
                 mapPins = false,
             },
+            glimmer = {
+                enabled = false,
+            },
+            instanceTracker = {
+                enabled = false,
+            },
             journal = {
                 enabled = true,
                 usableOnly = false,
             },
+            journeys = {
+                enabled = false,
+            },
             macros = {
                 acceptPopup = false,
                 bandage = false,
-                enabled = true,
+                enabled = false,
                 focus = false,
                 focusAnnounce = false,
                 focusMark = false,
@@ -77,7 +86,7 @@ ns.PRESETS = {
                 craftProfit = true,
                 craftProfitList = true,
                 craftTimer = true,
-                enabled = true,
+                enabled = false,
                 gatherIconSize = 46,
                 gatherReminder = true,
                 rankAlert = true,
@@ -87,7 +96,7 @@ ns.PRESETS = {
                 vendorMaterials = true,
             },
             pvp = {
-                enabled = true,
+                enabled = false,
             },
             qol = {
                 alertsPos = {
@@ -126,7 +135,7 @@ ns.PRESETS = {
                     y = 0,
                 },
                 blessShowFury = true,
-                blessings = true,
+                blessings = false,
                 characterPanel = false,
                 characterPanelSlotMarks = false,
                 coTank = false,
@@ -190,9 +199,9 @@ ns.PRESETS = {
                 restock = false,
                 restockAmmo = false,
                 restockAmmoTarget = 200,
+                restockBagsBelow = 10,
                 restockHunterAmmo = false,
                 restockHunterAmmoBelow = 500,
-                restockBagsBelow = 10,
                 restockReagents = false,
                 scrapMarker = false,
                 scrapMarkerScope = "char",
@@ -264,7 +273,7 @@ ns.PRESETS = {
                 swingWindow = false,
             },
             threatMeter = {
-                enabled = true,
+                enabled = false,
                 showHeader = false,
                 threatPos = {
                     point = "CENTER",
@@ -295,7 +304,7 @@ ns.PRESETS = {
                 use24h = true,
             },
             training = {
-                enabled = true,
+                enabled = false,
             },
             unlockMode = {
                 anchoredTo = {},
@@ -307,11 +316,14 @@ ns.PRESETS = {
         },
     },
     recommended = {
-        name = "Recommended",
-        about = "Naowh's recommended setup, with the modules he uses on.",
+        name = "Everything Enabled",
+        about = "Loads every module and gives you the full Naowh Forever experience.",
         source = "Recommended by Naowh, 2026-10-07",
+        modulesOff = {},
         profile = {
-            actionBars = {},
+            actionBars = {
+                enabled = true,
+            },
             auraBuffs = {
                 buffsPos = {
                     point = "CENTER",
@@ -328,6 +340,7 @@ ns.PRESETS = {
                     y = 792.5447998046875,
                 },
                 campfire = true,
+                enabled = true,
                 iconSize = 48,
                 lowHealth = true,
                 lowHealthPos = {
@@ -346,12 +359,23 @@ ns.PRESETS = {
                 mapPinSize = 18,
                 mapPins = true,
             },
+            glimmer = {
+                enabled = true,
+            },
+            instanceTracker = {
+                enabled = true,
+            },
             journal = {
+                enabled = true,
                 usableOnly = false,
+            },
+            journeys = {
+                enabled = true,
             },
             macros = {
                 acceptPopup = true,
                 bandage = true,
+                enabled = true,
                 focus = true,
                 focusAnnounce = false,
                 focusMark = false,
@@ -371,6 +395,7 @@ ns.PRESETS = {
                 craftProfit = true,
                 craftProfitList = true,
                 craftTimer = true,
+                enabled = true,
                 gatherIconSize = 46,
                 gatherReminder = true,
                 rankAlert = true,
@@ -378,6 +403,9 @@ ns.PRESETS = {
                 searchFavoritesAH = true,
                 shoppingList = true,
                 vendorMaterials = true,
+            },
+            pvp = {
+                enabled = true,
             },
             qol = {
                 alertsPos = {
@@ -400,6 +428,7 @@ ns.PRESETS = {
                     x = 734.05017356594703,
                     y = -332.61648489706971,
                 },
+                bis = true,
                 bisBagMarks = true,
                 bisToastPos = {
                     point = "CENTER",
@@ -415,6 +444,7 @@ ns.PRESETS = {
                     y = 0,
                 },
                 blessShowFury = true,
+                blessings = true,
                 characterPanel = true,
                 characterPanelSlotMarks = true,
                 coTank = false,
@@ -438,12 +468,14 @@ ns.PRESETS = {
                 },
                 combatTimer = false,
                 combatTimerFontSize = 22,
+                consumableBar = true,
                 copyKey = "C",
                 copyModifier = "CTRL-SHIFT",
                 copyShortcutSynced = true,
                 copyTooltipIds = true,
                 durability = true,
                 durabilityBelow = 20,
+                enabled = true,
                 flightGame = "quiz",
                 flightGameMigrated = true,
                 focusCastBarPos = {
@@ -467,6 +499,7 @@ ns.PRESETS = {
                     x = -721.43368620778222,
                     y = -188.1003569762739,
                 },
+                gearSets = true,
                 groupInspect = true,
                 groupInspectShare = false,
                 inspectPanel = true,
@@ -498,9 +531,9 @@ ns.PRESETS = {
                 restock = true,
                 restockAmmo = false,
                 restockAmmoTarget = 200,
+                restockBagsBelow = 10,
                 restockHunterAmmo = false,
                 restockHunterAmmoBelow = 500,
-                restockBagsBelow = 10,
                 restockReagents = false,
                 scrapMarker = true,
                 scrapMarkerScope = "char",
@@ -559,6 +592,7 @@ ns.PRESETS = {
                 enabled = true,
             },
             swingTimer = {
+                enabled = true,
                 queueHighlight = true,
                 sealColors = true,
                 showMH = false,
@@ -571,6 +605,7 @@ ns.PRESETS = {
                 swingWindow = false,
             },
             threatMeter = {
+                enabled = true,
                 showHeader = false,
                 threatPos = {
                     point = "CENTER",
@@ -599,7 +634,9 @@ ns.PRESETS = {
                 tooltipScale = 100,
                 use24h = true,
             },
-            training = {},
+            training = {
+                enabled = true,
+            },
             unlockMode = {
                 anchoredTo = {},
                 hidden = {},
