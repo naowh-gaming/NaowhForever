@@ -11,13 +11,14 @@ local TEMPLATE = "NaowhForeverGatheredPinTemplate"
 local PIN_SCALE = 0.5
 local PERCENT = 100
 local OWN_KEYS = { enabled = true, gatheredPins = true, gatheredPinSize = true, ore = true, herb = true,
-    myProfessions = true, skillColors = true }
+    myProfessions = true, skillColors = true, oreColor = true, herbColor = true }
 local TEXT_LINE = "%s (%d)"
 local TEXT_COUNT = ns.L("Gathered %d times, last %s.")
 local TEXT_WAYPOINT = ns.L("Click for a waypoint.")
 
 local provider = CreateFromMixins(MapCanvasDataProviderMixin)
-local added, events
+local added, events, lastGUID
+local read = {}
 
 NaowhForeverGatheredPinMixin = CreateFromMixins(MapCanvasPinMixin)
 
@@ -93,15 +94,25 @@ function provider:RefreshAllData()
     end
 end
 
+local function FromNode(guid)
+    for slot = 1, GetNumLootItems() do
+        local source = GetLootSourceInfo(slot)
+        if source and G.Plain(source) and source == guid then return true end
+    end
+    return false
+end
+
 local function OnLoot()
-    local info = Target.Read(C.UNIT)
+    local info = Target.Read(C.UNIT, read)
     if not (info and info.ready and info.id and (info.category == "ore" or info.category == "herb")) then return end
+    local guid = UnitGUID(C.UNIT)
+    if not (guid and G.Plain(guid)) or guid == lastGUID or not FromNode(guid) then return end
+    lastGUID = guid
     if Spots.Record(info.id) then Redraw() end
 end
 
 local function Apply()
     if On() then
-        Spots.Load()
         if not added then
             WorldMapFrame:AddDataProvider(provider)
             added = true
