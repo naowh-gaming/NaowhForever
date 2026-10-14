@@ -248,6 +248,8 @@ page:Card({
         .. "flight: move it in the HUD Editor as the Flight Timer.",
     studio = { height = CRAFT_STAGE_H, states = CRAFT_STATES, new = NewCraftPreview, paint = PaintCraftPreview },
     rows = {
+        { key = "craftTimerShowCastBar", label = "Show Normal Cast Bar", toggle = true, needs = On,
+          why = TEXT_OFF, help = "Keeps the normal cast bar visible alongside the total crafting timer." },
         Settings.Look("craftTimer", { text = true, size = TEXT_RANGE, bar = "Naowh Gradient", background = "alpha" }),
     },
 })
