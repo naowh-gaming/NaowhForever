@@ -205,6 +205,8 @@ ns.FEATURES = {
     glimmer = {
         enabled = false,
         questSparkle = false,
+        minimapIcons = false,
+        gatheredPins = false,
     },
     swingTimer = {
         enabled = true,
