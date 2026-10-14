@@ -18,6 +18,11 @@ for _, addon in ipairs(retired) do listed[addon] = true end
 check("the old Top Bar folder is retired", listed.NaowhForever_TopBar)
 check("as are the old Glimmer folders", listed.NaowhForever_Glimmer and listed.NaowhForever_GlimmerData)
 check("and the Top Bar ships no addon of its own", io.open("NaowhForever_TopBar/NaowhForever_TopBar.toc") == nil)
+for _, name in ipairs({ "GearSets", "Blessings", "AuraBuffs", "ThreatMeter", "PvP", "SwingTimer" }) do
+    local addon = "NaowhForever_" .. name
+    check(addon .. " is retired: it ships inside NaowhForever_Combat now", listed[addon]
+        and io.open(addon .. "/" .. addon .. ".toc") == nil and io.open("NaowhForever_Combat/" .. name .. "/" .. name .. ".xml") ~= nil)
+end
 
 local function Run(exists, loaded)
     local w = { disabled = {}, printed = {}, reloads = {} }

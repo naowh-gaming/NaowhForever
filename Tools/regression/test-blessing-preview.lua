@@ -151,7 +151,7 @@ local function Load(path)
     fn("NaowhForever", ns)
 end
 Load("Shared/UI/ItemBar.lua")
-for _, path in ipairs(dofile("Tools/regression/toc_files.lua")("^NaowhForever_Blessings/.*%.lua$")) do
+for _, path in ipairs(dofile("Tools/regression/toc_files.lua")("^NaowhForever_Combat/Blessings/.*%.lua$")) do
     if not path:find("/UI/Window%.lua$") then Load(path) end
 end
 local B = ns.Blessings
@@ -194,14 +194,14 @@ B.Look.Hover(plain)
 check("a plain preview button gets the same hover, made once", made == 1 and plain.highlight ~= nil
     and inset[plain.highlight] == 1)
 ns.PixelInset, ns.Solid = realInset, realSolid
-local barSource = io.open("NaowhForever_Blessings/UI/Bar.lua", "rb"):read("*a")
-local recipientSource = io.open("NaowhForever_Blessings/UI/Recipient.lua", "rb"):read("*a")
+local barSource = io.open("NaowhForever_Combat/Blessings/UI/Bar.lua", "rb"):read("*a")
+local recipientSource = io.open("NaowhForever_Combat/Blessings/UI/Recipient.lua", "rb"):read("*a")
 check("the aura and Righteous Fury buttons are repainted after Parts.Press",
     barSource:find("Parts%.Press%(btn%)\r?\n%s*Look%.Hover%(btn%)") ~= nil)
 check("so are the class buttons",
     recipientSource:find("Parts%.Press%(button%)\r?\n%s*B%.Look%.Hover%(button%)") ~= nil)
-check("the preview has no game glow left", not io.open("NaowhForever_Blessings/UI/SettingsPage.lua", "rb"):read("*a")
-    :find("ButtonHilight", 1, true) and not io.open("NaowhForever_Blessings/View/Look.lua", "rb"):read("*a")
+check("the preview has no game glow left", not io.open("NaowhForever_Combat/Blessings/UI/SettingsPage.lua", "rb"):read("*a")
+    :find("ButtonHilight", 1, true) and not io.open("NaowhForever_Combat/Blessings/View/Look.lua", "rb"):read("*a")
     :find("ButtonHilight", 1, true))
 
 -- A warrior's view: the bar as a sample, still editable for its look.

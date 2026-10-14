@@ -11,9 +11,8 @@ Blessings/Settings page, whose preview edits the bar on plain frames, never its 
 ## Layout
 
 ```
-NaowhForever_Blessings/
-  NaowhForever_Blessings.toc   the addon; lists only Blessings.xml
-  Blessings.xml                every file, in load order
+NaowhForever_Combat/Blessings/
+  Blessings.xml                every file, in load order, included by Combat.xml
   Blessings.lua                the module table (ns.Blessings, B), your saved plan, the class list
   Data/
     Spells.lua                 the blessings, auras and Righteous Fury, every rank, and plan codes

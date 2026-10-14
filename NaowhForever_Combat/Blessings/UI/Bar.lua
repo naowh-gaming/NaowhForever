@@ -463,7 +463,7 @@ end
 
 local function OnUnlock()
     unlocked = true
-    if bar and not InCombatLockdown() then
+    if bar and On() and not InCombatLockdown() then
         bar.mover:Show()
         bar:Show()
     end

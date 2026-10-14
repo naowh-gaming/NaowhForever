@@ -8,9 +8,8 @@ on/off switches and their defaults come from `ns.FEATURES.threatMeter`.
 ## Layout
 
 ```
-NaowhForever_ThreatMeter/
-  NaowhForever_ThreatMeter.toc   the addon; lists only ThreatMeter.xml
-  ThreatMeter.xml                every file, in load order
+NaowhForever_Combat/ThreatMeter/
+  ThreatMeter.xml                every file, in load order, included by Combat.xml
   ThreatMeter.lua                the settings (ns.ThreatMeterSettings), their migrations and the module
                                  table (ns.ThreatMeter, TM)
   Constants.lua                  the sizes and names its files share (TM.C)

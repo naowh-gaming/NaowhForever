@@ -212,7 +212,7 @@ local function Fixture(qol, pvp)
     env.NaowhForever = ns
     env._G = env
     Load({ "Core/Features.lua" }, env)
-    local files = TocFiles("^NaowhForever_PvP/.*%.lua$")
+    local files = TocFiles("^NaowhForever_Combat/PvP/.*%.lua$")
     files[#files + 1] = "NaowhForever_QoL/Combat/CursorCooldown.lua"
     Load(files, env)
     env.Fire("PLAYER_LOGIN")

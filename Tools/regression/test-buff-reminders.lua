@@ -9,15 +9,15 @@ local function Read(path)
     return source
 end
 local MODULE = {}
-for i, path in ipairs({ "Core/Features.lua", "NaowhForever_AuraBuffs/AuraBuffs.lua",
-    "NaowhForever_AuraBuffs/Constants.lua", "Shared/Game/Consumables.lua",
-        "NaowhForever_AuraBuffs/Data/BuffReminders.lua", "NaowhForever_AuraBuffs/BuffReminders.lua",
-    "NaowhForever_AuraBuffs/View/Style.lua", "NaowhForever_AuraBuffs/View/Glow.lua",
-    "NaowhForever_AuraBuffs/View/BuffCell.lua",
-    "NaowhForever_AuraBuffs/UI/BuffMenu.lua", "NaowhForever_AuraBuffs/UI/BuffReminders.lua" }) do
+for i, path in ipairs({ "Core/Features.lua", "NaowhForever_Combat/AuraBuffs/AuraBuffs.lua",
+    "NaowhForever_Combat/AuraBuffs/Constants.lua", "Shared/Game/Consumables.lua",
+        "NaowhForever_Combat/AuraBuffs/Data/BuffReminders.lua", "NaowhForever_Combat/AuraBuffs/BuffReminders.lua",
+    "NaowhForever_Combat/AuraBuffs/View/Style.lua", "NaowhForever_Combat/AuraBuffs/View/Glow.lua",
+    "NaowhForever_Combat/AuraBuffs/View/BuffCell.lua",
+    "NaowhForever_Combat/AuraBuffs/UI/BuffMenu.lua", "NaowhForever_Combat/AuraBuffs/UI/BuffReminders.lua" }) do
     MODULE[i] = Read(path)
 end
-local CARD = Read("NaowhForever_AuraBuffs/UI/GlowRows.lua") .. "\n" .. Read("NaowhForever_AuraBuffs/UI/BuffsCard.lua")
+local CARD = Read("NaowhForever_Combat/AuraBuffs/UI/GlowRows.lua") .. "\n" .. Read("NaowhForever_Combat/AuraBuffs/UI/BuffsCard.lua")
 local SETTINGS = Read("Shared/Settings/Settings.lua")
 
 -- itemID -> use spell, for the food scan.

@@ -10,9 +10,8 @@ Timer/Settings; its on/off switches and their defaults come from `ns.FEATURES.sw
 ## Layout
 
 ```
-NaowhForever_SwingTimer/
-  NaowhForever_SwingTimer.toc   the addon; lists only SwingTimer.xml
-  SwingTimer.xml                every file, in load order
+NaowhForever_Combat/SwingTimer/
+  SwingTimer.xml                every file, in load order, included by Combat.xml
   SwingTimer.lua                the settings (ns.SwingTimerSettings), the module table (ns.SwingTimer, ST),
                                 whether the client has the swing event, and the bars' colors
   Constants.lua                 the names, timings and textures its files share (ST.C)

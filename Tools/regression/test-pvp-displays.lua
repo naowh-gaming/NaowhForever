@@ -1,5 +1,5 @@
 -- PvP Battleground Displays: the game's scores and start countdown in the HUD Editor. Loads
--- NaowhForever_PvP/Displays.lua and its settings card on stub frames; does not emulate taint or rendering.
+-- NaowhForever_Combat/PvP/Displays.lua and its settings card on stub frames; does not emulate taint or rendering.
 -- From the repo root: lua5.1 Tools/regression/test-pvp-displays.lua
 local checks = 0
 local function check(label, ok) assert(ok, label); checks = checks + 1 end
@@ -54,7 +54,7 @@ local function Load(withFrames)
             local old = t[k]
             t[k] = function(...) local r = old(...); fn(...); return r end
         end }, { __index = _G })
-    for _, path in ipairs({ "NaowhForever_PvP/Displays.lua", "NaowhForever_PvP/UI/BattlegroundsPage.lua" }) do
+    for _, path in ipairs({ "NaowhForever_Combat/PvP/Displays.lua", "NaowhForever_Combat/PvP/UI/BattlegroundsPage.lua" }) do
         local chunk = assert(loadfile(path))
         setfenv(chunk, env)
         chunk()

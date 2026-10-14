@@ -28,9 +28,8 @@ minimap and Top Bar button). Its on/off switches and their defaults come from
 ## Layout
 
 ```
-NaowhForever_AuraBuffs/
-  NaowhForever_AuraBuffs.toc   the addon; lists only AuraBuffs.xml
-  AuraBuffs.xml                every file, in load order
+NaowhForever_Combat/AuraBuffs/
+  AuraBuffs.xml                every file, in load order, included by Combat.xml
   AuraBuffs.lua                the settings (ns.AuraBuffSettings), the module table (ns.AuraBuffs, A),
                                consumable entries kept in the profile, ns.ParseConsumableEntry,
                                the consumables list string (ns.ConsumableListString,

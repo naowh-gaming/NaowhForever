@@ -162,7 +162,7 @@ local function OnLock()
     unlocked = false
     if not bar then return end
     bar.mover:Hide()
-    if G.On() then bar:SetShown(BarShown()) end
+    bar:SetShown(G.On() and BarShown())
 end
 
 events:SetScript("OnEvent", OnEvent)

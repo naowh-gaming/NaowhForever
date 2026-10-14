@@ -243,7 +243,7 @@ do
         UnitIsGroupLeader = function() return false end, UnitIsGroupAssistant = function() return false end,
     }, { __index = _G })
     env._G = env
-    for _, path in ipairs(dofile("Tools/regression/toc_files.lua")("^NaowhForever_Blessings/.*%.lua$")) do
+    for _, path in ipairs(dofile("Tools/regression/toc_files.lua")("^NaowhForever_Combat/Blessings/.*%.lua$")) do
         if not path:find("/UI/Window%.lua$") then
             local chunk = assert(loadfile(path))
             setfenv(chunk, env)

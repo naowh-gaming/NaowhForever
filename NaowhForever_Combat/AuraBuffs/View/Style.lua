@@ -29,7 +29,7 @@ ns.AuraBuffs.Style = setmetatable({
     CAMP_SIT_HOT = 0.45,
     CAMP_MASK = ns.MEDIA .. "circle_mask.tga",
     CAMP_RING = ns.MEDIA .. "circle_ring.tga",
-    CAMP_ART = "Interface\\AddOns\\NaowhForever_AuraBuffs\\Media\\CampfireHD.tga",
+    CAMP_ART = "Interface\\AddOns\\NaowhForever_Combat\\AuraBuffs\\Media\\CampfireHD.tga",
     CAMP_ART_CROP = { 40 / 1024, 993 / 1024, 36 / 1024, 988 / 1024 },
     CAMP_TIME_STEPS = { { 1800, St.TIME_OK_RGB }, { 300, St.TIME_LOW_RGB }, { 0, St.TIME_OUT_RGB } },
     CAMP_FADE = { IN = 0.3, OUT = 0.4, BREATHE = 0.8, LOW = 0.6 },

@@ -11,9 +11,8 @@ minimap and Top Bar button, Open Gear Sets on its settings page).
 ## Layout
 
 ```
-NaowhForever_GearSets/
-  NaowhForever_GearSets.toc   the addon; lists only GearSets.xml
-  GearSets.xml                every file, in load order
+NaowhForever_Combat/GearSets/
+  GearSets.xml                every file, in load order, included by Combat.xml
   GearSets.lua                the rules and API (ns.GearSets, G): your sets, equipping one,
                               equipping after combat, the automatic swaps
   Constants.lua               what its files share (G.C): the settings page, the trinket slots
