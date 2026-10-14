@@ -139,6 +139,14 @@ local function LastIcon(category)
     return icons and icons[category]
 end
 
+local function ShownItem(items, icon, item)
+    if not item then return nil end
+    for _, id in ipairs(items) do
+        if C_Item.GetItemCount(id) > 0 and C_Item.GetItemIconByID(id) == icon then return id end
+    end
+    return item
+end
+
 local function Consumable(list, buffs, group, item, icon, last)
     local aura = Find(buffs, group.auras) or group.wellFed and WellFed(buffs)
     local left = aura and Left(aura)
@@ -148,7 +156,8 @@ local function Consumable(list, buffs, group, item, icon, last)
         return
     end
     if not item and S.Get("onlyIfCarried") then return end
-    list[#list + 1] = { icon = last or item and ItemIcon(item) or icon, aura = aura }
+    local shown = last or item and ItemIcon(item) or icon
+    list[#list + 1] = { icon = shown, aura = aura, item = ShownItem(group.items, shown, item) }
 end
 
 local function Groups()
@@ -349,8 +358,8 @@ local function WeaponEnhancement(list)
     if #slots == 0 or Enchanted(slots, S.Get("consumablesMinutes") * SECONDS) then return end
     local item = FirstCarried(D.WEAPON_ITEMS)
     if not item and S.Get("onlyIfCarried") then return end
-    list[#list + 1] = { icon = LastIcon("weapon") or C_Item.GetItemIconByID(item or D.WEAPON_ICON_ITEM),
-        items = D.WEAPON_ITEMS }
+    local shown = LastIcon("weapon") or C_Item.GetItemIconByID(item or D.WEAPON_ICON_ITEM)
+    list[#list + 1] = { icon = shown, items = D.WEAPON_ITEMS, item = ShownItem(D.WEAPON_ITEMS, shown, item) }
 end
 
 local function TargetHas(spells)
