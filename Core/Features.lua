@@ -79,6 +79,7 @@ ns.FEATURES = {
         durability = false,
         talentPoints = false,
         buffThanks = false,
+        gamble = false,
         combatAlert = true,
         hideErrors = false,
         hideTutorials = false,
@@ -92,6 +93,7 @@ ns.FEATURES = {
         crosshair = false,
         petTracker = false,
         chatZones = false,
+        finderRoles = false,
         mouseRing = false,
         gcdTracker = false,
         focusCastBar = false,
@@ -183,6 +185,7 @@ ns.FEATURES = {
         raidBuffs = false,
         personalBuffs = true,
         weaponEnhancements = false,
+        wornReminders = false,
         campfire = true,
         campNearbyAlert = true,
         lowHealth = true,
@@ -209,7 +212,6 @@ ns.FEATURES = {
         questSparkle = false,
         minimapIcons = false,
         gatheredPins = false,
-        cutout = false,
     },
     swingTimer = {
         enabled = true,
@@ -223,6 +225,9 @@ ns.FEATURES = {
     account = {
         gameMenuButton = true,
         rxpThemes = false,
+        rxpWindow = false,
+        rxpSetup = false,
+        rxpArrowOn = false,
     },
 }
 
