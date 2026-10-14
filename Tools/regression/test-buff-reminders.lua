@@ -1322,9 +1322,9 @@ do
         tbl[key] = function(...) orig(...); fn(...) end
     end
     for _, path in ipairs({ "Core/Core.lua", "Shared/Shared.lua", "Shared/Style.lua", "Core/Options/Widgets.lua",
-        "Core/Features.lua", "NaowhForever_AuraBuffs/AuraBuffs.lua", "NaowhForever_AuraBuffs/Constants.lua",
-        "Shared/Game/Consumables.lua", "NaowhForever_AuraBuffs/Data/BuffReminders.lua",
-        "NaowhForever_AuraBuffs/BuffReminders.lua", "NaowhForever_AuraBuffs/UI/WindowPages.lua" }) do
+        "Core/Features.lua", "NaowhForever_Combat/AuraBuffs/AuraBuffs.lua", "NaowhForever_Combat/AuraBuffs/Constants.lua",
+        "Shared/Game/Consumables.lua", "NaowhForever_Combat/AuraBuffs/Data/BuffReminders.lua",
+        "NaowhForever_Combat/AuraBuffs/BuffReminders.lua", "NaowhForever_Combat/AuraBuffs/UI/WindowPages.lua" }) do
         local chunk = assert(loadstring(Read(path), path))
         setfenv(chunk, env)
         chunk("NaowhForever", env.NaowhForever)

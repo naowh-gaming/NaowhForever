@@ -812,7 +812,7 @@ do
                 and f.parent._cfg.module.name == "Threat Meter" and f.parent._control == f then return f end
         end
     end
-    missingAddOns.NaowhForever_ThreatMeter = true
+    missingAddOns.NaowhForever_Combat = true
     local enabled = ns.ThreatMeterSettings.Get("enabled")
     local enable, load = env.C_AddOns.EnableAddOn, env.C_AddOns.LoadAddOn
     local calls = 0
@@ -834,12 +834,12 @@ do
     searchInput:SetText("pull"); Flush()
     searchInput:SetText(""); Flush()
     Check(ThreatSwitch(), "clearing search preserves a previously open module fold")
-    Check(calls == 0 and missingAddOns.NaowhForever_ThreatMeter
+    Check(calls == 0 and missingAddOns.NaowhForever_Combat
         and ns.ThreatMeterSettings.Get("enabled") == enabled,
         "search never enables or loads the module or changes its profile switch")
     Click(Text("MODULES").parent.hit); Flush()
     env.C_AddOns.EnableAddOn, env.C_AddOns.LoadAddOn = enable, load
-    missingAddOns.NaowhForever_ThreatMeter = nil
+    missingAddOns.NaowhForever_Combat = nil
 end
 Click(Text("MODULES").parent.hit); Flush()
 Click(Text("MINIMAP ICONS").parent.hit); Flush()
