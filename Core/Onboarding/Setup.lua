@@ -7,7 +7,7 @@ local KEEP = "keep"
 local RECOMMENDED = "recommended"
 local CUSTOM = "custom"
 local PRESET_KEY = "preset"
-local SKIN_NAOWH, SKIN_CLASSIC = "", "classic"
+local SKIN_NAOWH, SKIN_FOREVER = "", "forever"
 local BIS = "bis"
 local PANELS = { { key = "characterPanel", pick = "characterPanelPicked" },
     { key = "inspectPanel", pick = "inspectPanelPicked" } }
@@ -17,8 +17,8 @@ local COPY_NAME = "%s %d"
 local character
 
 Setup.KEEP = KEEP
-Setup.SKIN_NAOWH, Setup.SKIN_CLASSIC = SKIN_NAOWH, SKIN_CLASSIC
-Setup.SKINS = { SKIN_NAOWH, SKIN_CLASSIC }
+Setup.SKIN_NAOWH, Setup.SKIN_FOREVER = SKIN_NAOWH, SKIN_FOREVER
+Setup.SKINS = { SKIN_NAOWH, SKIN_FOREVER }
 
 Setup.ITEMS = {
     qol = { addon = "NaowhForever_QoL", db = "qol", key = "enabled",
@@ -139,6 +139,8 @@ local function Settle(modules, list)
     return modules
 end
 
+Setup.Settle, Setup.SetSwitch = Settle, SetSwitch
+
 function Setup.Modules()
     local list = {}
     for _, mod in ipairs(ns.ModuleAddons(character)) do
@@ -178,7 +180,7 @@ function Setup.DefaultProfile()
 end
 
 function Setup.CurrentSkin()
-    return ns.AccountSettings().skin == SKIN_CLASSIC and SKIN_CLASSIC or SKIN_NAOWH
+    return ns.AccountSettings().skin == SKIN_FOREVER and SKIN_FOREVER or SKIN_NAOWH
 end
 
 function Setup.Fresh()
@@ -266,6 +268,7 @@ local function ApplyModule(m, want, preset)
     end
     if not (preset and Enabled(m) or IsOn(m)) then return false end
     SetAddOn(m.addon, false, character)
+    SetSwitch(m, false)
     return Loaded(m)
 end
 
