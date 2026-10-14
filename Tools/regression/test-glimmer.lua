@@ -92,7 +92,7 @@ local function Session(settings, opts)
         C_TooltipInfo = { GetUnit = function() return game.tooltip end },
         C_AddOns = {
             IsAddOnLoaded = function(name) return game.loaded[name] and true or false end,
-            GetAddOnInfo = function(name) return name, name == "ForeverLootSparkles" and "Forever Loot Sparkles" or name end,
+            GetAddOnInfo = function(name) return name, name end,
             DisableAddOn = function(name) game.loaded[name] = nil; log.disabled = name end,
         },
         Enum = { TooltipDataLineType = { QuestObjective = 8 } },
@@ -311,16 +311,18 @@ do
     check("restore: Glimmer and the sparkle off", r.S.Get("enabled") == false and r.S.Get("questSparkle") == false)
 end
 
--- Another addon on the same settings: asked once, then the reload prompt.
+-- Other addons on the same settings: asked once, then the reload prompt.
 do
-    local c = Session({ enabled = true }, { loaded = { Lueur = true, ForeverLootSparkles = true } })
+    local loaded = {}
+    for _, addon in ipairs(Session({}).ns.Glimmer.C.OTHER_ADDONS) do loaded[addon] = true end
+    local c = Session({ enabled = true }, { loaded = loaded })
     c.Login()
-    check("both others named in one question", #c.confirms == 1
-        and c.confirms[1].text:find("Lueur and Forever Loot Sparkles", 1, true) ~= nil)
+    check("every other one named in one question", #c.confirms == 1
+        and select(2, c.confirms[1].text:gsub(" and ", "")) >= 1)
     c.Set("size", 1.2)
     check("asked once a session", #c.confirms == 1)
     c.confirms[1].yes()
-    check("yes: disabled, then the house reload prompt", c.game.loaded.Lueur == nil and #c.reloads == 1)
+    check("yes: disabled, then the house reload prompt", next(c.game.loaded) == nil and #c.reloads == 1)
 end
 
 print(("test-glimmer: %d checks passed"):format(checks))

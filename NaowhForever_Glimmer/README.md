@@ -68,8 +68,8 @@ NaowhForever_Glimmer/
   preset turns the quest sparkle settings back; `CVAR_UPDATE` on a preset or one of those settings
   puts them back `SPARKLE_AGAIN` seconds later, after the preset has finished writing.
 - Taking the quest sparkle off only shows after a full restart of the game, so the card says so.
-- Lueur and Forever Loot Sparkles change the same settings, so with either on as well the two
-  undo each other; Glimmer asks once per session to disable them.
+- Other addons that change the same soft target settings (`OTHER_ADDONS`) undo Glimmer's and it
+  undoes theirs; with one on as well, Glimmer asks once per session to disable it.
 - A slider drag sets its key on every step, so settings apply once on the next frame.
 
 ## Checking
