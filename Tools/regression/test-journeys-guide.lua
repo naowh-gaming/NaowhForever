@@ -442,8 +442,8 @@ local flights = account.journeyFlights["Glyadin-Forever"]
 account.journeyFlights["Glyadin-Forever"] = {}
 Check(ns.PlaceWaypoint("Far Spot", IRONFORGE, 50, 50), "a journey by the tram")
 Check(printed[#printed] and printed[#printed]:find("flight points", 1, true), "with no flight points known, it says how to learn them")
-local legs = Jy.Guide.Current().plan.legs
-Check(legs[2].mode == "tram" and legs[3].mode == "walk" and legs[3].corners, "the walk after the tram has its own path")
+local tramLegs = Jy.Guide.Current().plan.legs
+Check(tramLegs[2].mode == "tram" and tramLegs[3].mode == "walk" and tramLegs[3].corners, "the walk after the tram has its own path")
 local points = Jy.Guide.Points()
 Check(points[#points].walk and points[#points - 1].x == WALK_MID_X, "the route draws that walk's bends")
 local rides = 0
