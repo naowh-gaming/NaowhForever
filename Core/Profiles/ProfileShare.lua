@@ -207,13 +207,23 @@ end
 
 local MODULE_STATE_KEY = "__modules"
 
-local function CollectModuleState()
+local function ProfileSwitch(root, m)
+    if not m.store then return nil end
+    local values, on = root[m.store.key], nil
+    if type(values) == "table" then on = values[m.key] end
+    if type(on) ~= "boolean" then on = m.store.Default(m.key) end
+    return on == true
+end
+
+local function CollectModuleState(profile)
     if type(ns.ModuleAddons) ~= "function" then return nil end
     local out
     for _, m in ipairs(ns.ModuleAddons()) do
-        if type(m.addon) == "string" then
+        local on = m.on == true
+        if profile then on = ProfileSwitch(profile, m) end
+        if type(m.addon) == "string" and on ~= nil then
             out = out or {}
-            out[m.addon] = m.on == true
+            out[m.addon] = on
         end
     end
     return out
@@ -282,13 +292,14 @@ local function CollectLook(account, budget)
 end
 
 local function Collect(root)
-    root = root or ns.SettingsRoot()
+    local active = ns.SettingsRoot()
+    root = root or active
     local account = ns.AccountSettings()
     local budget = { n = 0 }
     local utility = Utility(root.tankReminder)
     local parts = {}
     parts.settings = CollectSettings(root, budget)
-    local moduleState = CollectModuleState()
+    local moduleState = CollectModuleState(root ~= active and root)
     if moduleState then
         parts.settings = parts.settings or {}
         parts.settings[MODULE_STATE_KEY] = moduleState
@@ -305,7 +316,7 @@ end
 function ns.ExportProfile(wanted, profileName)
     local LS, LD = Codec()
     if not LS then return nil, TEXT_NO_LIBRARIES end
-    local all, over = Collect(profileName and ns.ProfileRoot(profileName))
+    local all, over = Collect(profileName and ns.ProfileTable(profileName))
     if over then return nil, TEXT_TOO_BIG_PROFILE end
     local parts = {}
     for key, data in pairs(all) do

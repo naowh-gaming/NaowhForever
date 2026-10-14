@@ -91,6 +91,7 @@ local function World()
         ModuleDefaults = function(key) return key == "qol" and { enabled = true } or nil end,
         ActiveProfileName = function() return "Default" end,
         ProfileExists = function(name) return w.profiles[name] ~= nil end,
+        ProfileTable = function(name) return w.profiles[name] end,
         ProfileRoot = function(name)
             w.profiles[name] = w.profiles[name] or { tankReminder = {} }
             return w.profiles[name]
@@ -174,8 +175,13 @@ end
 do
     local w = World()
     local API = w.env.NaowhForever_API
-    w.profiles.Other = { tankReminder = {}, qol = { enabled = false } }
+    w.profiles.Other = { qol = { enabled = false } }
     w.profiles.Default.qol = { enabled = true }
+    local qolStore = { key = "qol", Default = function() return true end }
+    w.ns.ModuleAddons = function()
+        return { { addon = "NaowhForever_QoL", store = qolStore, key = "enabled", on = true },
+            { addon = "NaowhForever_Macros", key = "enabled", on = false } }
+    end
     w.ns.ListProfiles = function() return { "Default", "Other" } end
     w.ns.SwitchProfile = function(name) w.switched = name return true end
     w.ns.KnownCharacters = function() return { { char = "Me-Realm", profile = "Other" } } end
@@ -187,7 +193,14 @@ do
     check("a profile that is not current exports as a profile string", type(str) == "string" and str:sub(1, 11) == "NFPROFILE1:")
     local payload = w.ns.DecodeProfile(str)
     check("it carries that profile, named after it", payload.name == "Other" and payload.parts.settings.qol.enabled == false)
-    check("the current profile still exports its own", w.ns.DecodeProfile(API:ExportProfile("Default")).parts.settings.qol.enabled == true)
+    local modules = payload.parts.settings.__modules
+    check("its modules are that profile's switches, not this character's", modules.NaowhForever_QoL == false)
+    check("a module with no store here is left out", modules.NaowhForever_Macros == nil)
+    check("exporting it leaves the profile as it was", w.profiles.Other.tankReminder == nil)
+    local current = w.ns.DecodeProfile(API:ExportProfile("Default")).parts.settings
+    check("the current profile still exports its own", current.qol.enabled == true)
+    check("with this character's modules", current.__modules.NaowhForever_QoL == true
+        and current.__modules.NaowhForever_Macros == false)
     check("decoding gives the parts", API:DecodeProfileString(str).settings.qol.enabled == false)
     check("decoding junk gives nil", API:DecodeProfileString("garbage") == nil and API:DecodeProfileString(nil) == nil)
     check("an unknown or bad key exports nothing and makes no profile", API:ExportProfile("Nope") == nil

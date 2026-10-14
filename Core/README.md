@@ -310,6 +310,9 @@ Profile strings
   character only), `GetProfileKeys()`, `GetProfileAssignments()`, `GetCurrentProfileKey()`,
   `OpenConfig()` and `CloseConfig()`. Profile key = profile name. None of them reload the UI; a
   module switched on or off by a string takes effect on the next reload, which WagoUI schedules.
+- The AddOn list belongs to the character, not the profile, so a profile that is not the current one
+  exports its modules (`__modules`) from its own switches, leaving out a module whose addon is not
+  loaded here, and an export never writes to the profile it reads.
 
 Waypoints
 - The game redraws the world map's waypoint pin inside every change to its waypoint, so while that
