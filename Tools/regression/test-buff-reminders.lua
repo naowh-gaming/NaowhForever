@@ -1172,6 +1172,17 @@ do
     Check("a weapon oil used, its classic icon", t.Shown(), "spell:1248406 item:13511 item:13452 " .. ICONS .. "inv_potion_105")
     t.Set("buffIconMode", "default")
     Check("Default again", t.Shown(), "spell:1248406 item:13510 item:13452 " .. ROUGH)
+    local account = t.ns.AccountSettings()
+    account.lastIcons.weapon = "item:20749"
+    t.Set("buffIconMode", "last")
+    Check("an oil saved by an older version shows its classic icon", t.Shown(),
+        "spell:1248406 item:13511 item:13452 " .. ICONS .. "inv_potion_105")
+    Check("and is saved as that", account.lastIcons.weapon, ICONS .. "inv_potion_105")
+    t.Set("buffIconMode", "default")
+    account.lastIcons.weapon = 123456
+    t.Set("buffIconMode", "last")
+    Check("an old icon of no stone or oil falls back", t.Shown(), "spell:1248406 item:13511 item:13452 " .. ROUGH)
+    Check("and is forgotten", account.lastIcons.weapon, nil)
 end
 
 -- Worn Gear Reminder: Cloak of Hermitic Bliss worn in Wailing Caverns, off by default.

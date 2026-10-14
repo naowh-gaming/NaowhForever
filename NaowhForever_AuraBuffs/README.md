@@ -151,6 +151,8 @@ NaowhForever_AuraBuffs/
   and each stone, weightstone and oil shows its classic icon (`D.WEAPON_ICONS`, a texture path per item ID, here and in
   the hover menu) rather than the client's item icon: Naowh asked for classic-looking icons, and the first oil in the
   list has a modern one. The IDs and icon names are Wowhead Forever's (2026-10-14), which match Classic's.
+  A weapon item saved as Last Used before that (the client's item icon) is turned into its classic icon the
+  first time it is shown, or forgotten when no stone or oil has it.
 - With Only If I Carry One on (the default), Robin asked for reminders only while you have the item, but a profile
   with nothing listed should still remind you about the flask or buff food in your bags. So a kind shows when a
   listed item is carried, else when an item of the same `D.DEFAULT_GROUPS` list is (buff food is any bag item whose

@@ -33,6 +33,9 @@ for category, group in pairs(D.DEFAULT_GROUPS) do
     for _, id in ipairs(group.items) do BUILT_IN[id] = category end
 end
 
+local CLASSIC_WEAPON_ICON = {}
+for _, icon in pairs(D.WEAPON_ICONS) do CLASSIC_WEAPON_ICON[icon] = true end
+
 local buffPool, members, memberCount, classes = {}, {}, 0, {}
 local itemBuffs, requested = {}, {}
 local carried
@@ -133,11 +136,22 @@ local function LastUsed()
     return S.Get("buffIconMode") == "last"
 end
 
+local function ClassicWeaponIcon(icon)
+    for _, id in ipairs(D.WEAPON_ITEMS) do
+        if C_Item.GetItemIconByID(id) == icon then return D.WEAPON_ICONS[id] end
+    end
+end
+
 local function LastIcon(category)
     if not LastUsed() then return nil end
     if category == "food" then return ns.AccountSettings().lastFoodIcon end
     local icons = ns.AccountSettings().lastIcons
-    return icons and icons[category]
+    local icon = icons and icons[category]
+    if category == "weapon" and icon and not CLASSIC_WEAPON_ICON[icon] then
+        icon = ClassicWeaponIcon(icon)
+        icons.weapon = icon
+    end
+    return icon
 end
 
 local function Shown(items, last, item)
