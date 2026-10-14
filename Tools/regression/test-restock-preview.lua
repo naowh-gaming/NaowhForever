@@ -14,6 +14,7 @@ local function check(label, value) assert(value, label); checks = checks + 1 end
 local NAMES = { [17020] = "Arcane Powder", [2512] = "Rough Arrow", [17034] = "Maple Seed",
     [17021] = "Wild Berries" }
 local PAGE, CARD = "QoL/Loot & Items", "restock"
+local CLASS_HEX = { ROGUE = "fff468", WARRIOR = "c69b6d", HUNTER = "aad372" }
 
 local function Fixture(class, saved)
     local state = { frames = {}, named = {} }
@@ -140,8 +141,9 @@ local function Fixture(class, saved)
         GetTime = function() return 100 end,
         C_Timer = { After = NOTHING, NewTicker = function() return { Cancel = NOTHING } end },
         C_ClassColor = { GetClassColor = function(token)
-            return { WrapTextInColorCode = function(_, name) return "<" .. token .. ">" .. name .. "</>" end }
+            return { WrapTextInColorCode = function(_, name) return "|cff" .. CLASS_HEX[token] .. name .. "|r" end }
         end },
+        LOCALIZED_CLASS_NAMES_MALE = { ROGUE = "Rogue", WARRIOR = "Warrior", HUNTER = "Hunter" },
         C_Item = { RequestLoadItemDataByID = NOTHING, GetItemNameByID = function(id) return NAMES[id] end,
             GetItemCount = Forbidden, GetItemInfo = Forbidden },
         C_Container = setmetatable({}, { __index = Forbidden }),
@@ -159,7 +161,7 @@ local function Fixture(class, saved)
         files[#files + 1] = path
     end
     Load(files, env)
-    state.ns, state.S, state.T, state.St = ns, S, T, ns.Shared.Style
+    state.ns, state.S, state.T, state.St, state.Frame = ns, S, T, ns.Shared.Style, Frame
     state.card = ns.Shared.Settings.pages[PAGE].cards[CARD]
     function state.open()
         local stage = Frame()
@@ -194,9 +196,14 @@ for i, row in ipairs(rows) do
 end
 check("ammo follows class reagents and precedes food", positions["Class Reagents"] < positions.restockAmmo
     and positions.restockAmmo < positions.restockHunterAmmo and positions.restockHunterAmmo < positions["Food & Drink"])
+local SHARED_AMMO = "Ammo: |cfffff468Rogue|r, |cffc69b6dWarrior|r and |cffaad372Hunter|r"
 check("class-coloured groups precede their own preserved setting keys",
-    positions["Ammo: <ROGUE>Rogue</> and <WARRIOR>Warrior</>"] + 1 == positions.restockAmmo
-    and positions["Ammo: <HUNTER>Hunter</>"] + 1 == positions.restockHunterAmmo)
+    positions[SHARED_AMMO] + 1 == positions.restockAmmo
+    and positions["Ammo: |cffaad372Hunter|r"] + 1 == positions.restockHunterAmmo)
+local groupRow = s.ns.Shared.Settings.kinds.group.New(s.Frame())
+s.ns.Shared.Settings.kinds.group.Set(groupRow, SHARED_AMMO)
+check("an uppercased group keeps its colour codes working", groupRow.text.text
+    == "AMMO: |cFFFFF468ROGUE|r, |cFFC69B6DWARRIOR|r AND |cFFAAD372HUNTER|r")
 check("carry and hunter threshold keys remain distinct", positions.restockAmmoTarget and positions.restockHunterAmmoBelow)
 local function InventorySubscribed(state)
     for _, frame in ipairs(state.frames) do

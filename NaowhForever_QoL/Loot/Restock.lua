@@ -41,7 +41,6 @@ local TARGETS = {
 }
 
 local AMMO_SLOT, RANGED_SLOT = 0, 18
--- Thrown subclass metadata is unverified - needs Forever check.
 local WEAPON_CLASS, THROWN_SUBCLASS = 2, 16
 local THROWN_CLASSES = { ROGUE = true, WARRIOR = true }
 local PLAYER_CLASS = select(2, UnitClass("player"))
@@ -535,8 +534,8 @@ local function AddReagentRows(family, grouped)
     return grouped
 end
 
-local function ClassName(class, name)
-    return C_ClassColor.GetClassColor(class):WrapTextInColorCode(ns.L(name))
+local function ClassName(class)
+    return C_ClassColor.GetClassColor(class):WrapTextInColorCode(LOCALIZED_CLASS_NAMES_MALE[class])
 end
 
 local function RestockRows()
@@ -548,10 +547,10 @@ local function RestockRows()
     for _, family in ipairs(FAMILIES) do
         if family.class == class then grouped = AddReagentRows(family, grouped) end
     end
-    restockRows[#restockRows + 1] = Group(ns.L("Ammo: ") .. ClassName("ROGUE", "Rogue")
-        .. ns.L(" and ") .. ClassName("WARRIOR", "Warrior"))
+    restockRows[#restockRows + 1] = Group(ns.L("Ammo: %s, %s and %s", ClassName("ROGUE"), ClassName("WARRIOR"),
+        ClassName("HUNTER")))
     for _, row in ipairs(AMMO) do restockRows[#restockRows + 1] = row end
-    restockRows[#restockRows + 1] = Group(ns.L("Ammo: ") .. ClassName("HUNTER", "Hunter"))
+    restockRows[#restockRows + 1] = Group(ns.L("Ammo: %s", ClassName("HUNTER")))
     for _, row in ipairs(HUNTER) do restockRows[#restockRows + 1] = row end
     for _, row in ipairs(OTHER) do restockRows[#restockRows + 1] = row end
     restockRows[#restockRows + 1] = LOOK
