@@ -4,6 +4,7 @@ local ns = _G.NaowhForever
 local A = ns.AuraBuffs
 local S = A.Settings
 local St = A.Style
+local R, Cell = A.Buffs, A.BuffCell
 
 local COLS, PAD, GAP = St.MENU_COLS, St.MENU_PAD, St.MENU_GAP
 local ICON_GAP, CROP = St.BUFF_GAP, St.BUFF_CROP
@@ -80,7 +81,7 @@ local function Fill(items)
             local button = Button(count)
             button.itemID = id
             button:SetAttribute("item1", "item:" .. id)
-            button.icon:SetTexture(C_Item.GetItemIconByID(id))
+            button.icon:SetTexture(R.ItemIcon(id))
             button:Show()
         end
     end
@@ -89,28 +90,30 @@ local function Fill(items)
 end
 
 local function Lay(count, size)
-    local step = size + ICON_GAP
+    size = Cell.Snap(popup, size)
+    local step, pad = Cell.Snap(popup, size + ICON_GAP), Cell.Snap(popup, PAD)
     for i = 1, count do
         local row, col = math.floor((i - 1) / COLS), (i - 1) % COLS
         local across = math.min(COLS, count - row * COLS)
         local button = popup.buttons[i]
         button:SetSize(size, size)
         button:ClearAllPoints()
-        button:SetPoint("TOP", popup, "TOP", (col - (across - 1) / 2) * step, -PAD - row * step)
+        button:SetPoint("TOP", popup, "TOP", Cell.Snap(popup, (col - (across - 1) / 2) * step), -pad - row * step)
     end
     local cols, rows = math.max(1, math.min(count, COLS)), math.max(1, math.ceil(count / COLS))
-    local height = rows * step - ICON_GAP + PAD * 2
-    popup:SetSize(cols * step - ICON_GAP + PAD * 2, height)
+    local height = (rows - 1) * step + size + pad * 2
+    popup:SetSize((cols - 1) * step + size + pad * 2, height)
     return height
 end
 
 local function Anchor(cell, height)
     local below = (cell:GetBottom() or 0) * cell:GetEffectiveScale() / popup:GetEffectiveScale()
+    local gap = Cell.Snap(popup, GAP)
     popup:ClearAllPoints()
-    if below - GAP < height then
-        popup:SetPoint("BOTTOM", cell, "TOP", 0, GAP)
+    if below - gap < height then
+        popup:SetPoint("BOTTOM", cell, "TOP", 0, gap)
     else
-        popup:SetPoint("TOP", cell, "BOTTOM", 0, -GAP)
+        popup:SetPoint("TOP", cell, "BOTTOM", 0, -gap)
     end
 end
 
