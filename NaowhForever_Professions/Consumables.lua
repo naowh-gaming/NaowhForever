@@ -42,10 +42,10 @@ local function SharedList(group)
         for _, e in ipairs(Tagged(ns.MANA_POTIONS, ManaTag)) do list[#list + 1] = e end
     elseif group == "weapon" then
         local buffs = ns.BuffReminderData
-        list = Tagged(buffs and buffs.WEAPON_ITEMS, WeaponStat)
+        list = Tagged(buffs and buffs.WEAPON_ITEMS or D.WEAPON_ITEMS, WeaponStat)
     elseif group == "bandage" then
         local macros = ns.Macros
-        list = Tagged(macros and macros.Items and macros.Items.BANDAGES)
+        list = Tagged(macros and macros.Items and macros.Items.BANDAGES or D.BANDAGES)
     end
     shared[group] = list
     return list

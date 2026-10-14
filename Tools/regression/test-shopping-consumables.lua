@@ -177,7 +177,20 @@ for _, s in pairs(D.WEAPON_STATS) do check("known weapon stat " .. s, stats[s]) 
 for _, class in ipairs({ "WARRIOR", "ROGUE", "HUNTER", "MAGE", "WARLOCK", "PRIEST", "PALADIN", "SHAMAN", "DRUID" }) do
     check("stats for " .. class, D.CLASS_STATS[class] ~= nil)
 end
-check("weapons and bandages are not copied into the data", D.ITEMS.weapon == nil and D.ITEMS.bandage == nil)
+check("weapons and bandages are not item groups of the data", D.ITEMS.weapon == nil and D.ITEMS.bandage == nil)
+
+-- The fallback copies match the lists their modules own.
+local owners = { NaowhForever = { Macros = {} } }
+owners._G = owners
+Load({ "NaowhForever_AuraBuffs/Data/BuffReminders.lua", "NaowhForever_Macros/Data/Items.lua" },
+    setmetatable(owners, { __index = _G }))
+local function Same(a, b)
+    if #a ~= #b then return false end
+    for i = 1, #a do if a[i] ~= b[i] then return false end end
+    return true
+end
+check("weapon copy in step with the Buff Reminders", Same(D.WEAPON_ITEMS, owners.NaowhForever.BuffReminderData.WEAPON_ITEMS))
+check("bandage copy in step with the Smart Macros", Same(D.BANDAGES, owners.NaowhForever.Macros.Items.BANDAGES))
 
 -- A level 45 warrior: strength and agility up to 45 and the next tier, nothing for casters or mana.
 local by, best, later = Picked(45, "WARRIOR", true, false)
@@ -264,11 +277,18 @@ for _, id in ipairs(ids) do
 end
 check("potions, weapons and bandages asked for", once[13446] and once[2455] and once[12404] and once[14530])
 
--- With the Smart Macros and Buff Reminders off, their groups are simply not there.
+-- With the Smart Macros and Buff Reminders off, their groups come from the copy in the data.
 local _, nsOff = NewEnv(false)
 local off = {}
 for _, group in ipairs(nsOff.Professions.Consumables.Pick(45, "WARRIOR", false, false)) do off[group.key] = true end
-check("modules off: no weapon or bandage group", not off.weapon and not off.bandage and off.elixir)
+check("modules off: weapon and bandage groups still show, from the copy", off.weapon and off.bandage and off.elixir)
+local offIDs = {}
+for _, id in ipairs(nsOff.Professions.Consumables.IDs()) do offIDs[id] = true end
+check("modules off: the copy's stones and bandages", offIDs[7964] and offIDs[3239] and offIDs[8544] and offIDs[2581])
+local onIDs = {}
+for _, id in ipairs(C.IDs()) do onIDs[id] = true end
+check("modules on: their live lists are read, not the copy",
+    onIDs[3829] and onIDs[8545] and not onIDs[7964] and not onIDs[8544])
 
 -- Picks land on the list as other items: added, set, stepped down, taken off at zero, and every
 -- change is told to whoever listens.
