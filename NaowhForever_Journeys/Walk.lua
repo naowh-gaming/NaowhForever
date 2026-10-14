@@ -63,6 +63,7 @@ local function Used()
     releasing = true
     C_Timer.After(C.WALK_RELEASE, Release)
 end
+Walk.Keep = Used
 
 function Walk.Ready()
     if loaded ~= nil then return loaded end
