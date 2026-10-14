@@ -139,6 +139,9 @@ local function Fixture(class, saved)
         InCombatLockdown = function() return false end,
         GetTime = function() return 100 end,
         C_Timer = { After = NOTHING, NewTicker = function() return { Cancel = NOTHING } end },
+        C_ClassColor = { GetClassColor = function(token)
+            return { WrapTextInColorCode = function(_, name) return "<" .. token .. ">" .. name .. "</>" end }
+        end },
         C_Item = { RequestLoadItemDataByID = NOTHING, GetItemNameByID = function(id) return NAMES[id] end,
             GetItemCount = Forbidden, GetItemInfo = Forbidden },
         C_Container = setmetatable({}, { __index = Forbidden }),
@@ -183,6 +186,32 @@ local function Lines(...) return table.concat({ ... }, "\n") end
 local s = Fixture("MAGE")
 check("the card has a preview with Running Low, Hunter Ammo and All Stocked", s.card.studio
     and s.state("low") and s.state("hunter") and s.state("stocked"))
+local rows = s.ns.Shared.Settings.Rows(s.card)
+local positions = {}
+for i, row in ipairs(rows) do
+    if row.key then positions[row.key] = i end
+    if row.group then positions[row.group] = i end
+end
+check("ammo follows class reagents and precedes food", positions["Class Reagents"] < positions.restockAmmo
+    and positions.restockAmmo < positions.restockHunterAmmo and positions.restockHunterAmmo < positions["Food & Drink"])
+check("class-coloured groups precede their own preserved setting keys",
+    positions["Ammo: <ROGUE>Rogue</> and <WARRIOR>Warrior</>"] + 1 == positions.restockAmmo
+    and positions["Ammo: <HUNTER>Hunter</>"] + 1 == positions.restockHunterAmmo)
+check("carry and hunter threshold keys remain distinct", positions.restockAmmoTarget and positions.restockHunterAmmoBelow)
+local function InventorySubscribed(state)
+    for _, frame in ipairs(state.frames) do
+        if frame.events.UNIT_INVENTORY_CHANGED then return true end
+    end
+    return false
+end
+s.ns.Apply()
+check("equipped ammo changes are watched while enabled", InventorySubscribed(s))
+s.S.Set("restock", false)
+check("turning restock off drops the inventory subscription", not InventorySubscribed(s))
+s.S.Set("restock", true)
+s.S.Set("enabled", false)
+check("turning QoL off drops the inventory subscription", not InventorySubscribed(s))
+s.S.Set("enabled", true)
 local before = #s.frames
 check("nothing of the preview is built before the card opens", s.named.NaowhForeverRestock == nil)
 s.open()
