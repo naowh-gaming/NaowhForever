@@ -2,7 +2,6 @@
 local ns = _G.NaowhForever
 
 local G = ns.Glimmer
-local S = G.Settings
 local C = G.C
 local Target = G.Target
 
@@ -22,15 +21,8 @@ function Spots.Load()
     return ns.GlimmerSpots ~= nil
 end
 
-local function Has(category)
-    return Target.Skill(category) > 0
-end
-
 function Spots.Wanted(category)
-    if not S.Get(category) then return false end
-    if not S.Get("myProfessions") then return true end
-    if not (Has("ore") or Has("herb")) then return true end
-    return Has(category)
+    return Target.Wanted(category)
 end
 
 function Spots.ForMap(mapID, out)

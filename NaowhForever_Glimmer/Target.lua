@@ -29,6 +29,7 @@ G.Target = Target
 
 local cursorIDs
 local probe
+local professionSkills = {}
 
 local function CursorIDs()
     cursorIDs = {}
@@ -75,13 +76,22 @@ local function QuestLine(unit)
     end
 end
 
-function Target.Skill(category)
-    local line = C.PROFESSION_OF[category]
+function Target.RefreshProfessions()
+    wipe(professionSkills)
     for _, index in pairs({ GetProfessions() }) do
         local _, _, rank, _, _, _, skillLine = GetProfessionInfo(index)
-        if skillLine == line then return rank end
+        for category, line in pairs(C.PROFESSION_OF) do
+            if skillLine == line then professionSkills[category] = rank end
+        end
     end
-    return 0
+end
+
+function Target.Skill(category)
+    return professionSkills[category] or 0
+end
+
+function Target.HasProfession(category)
+    return Target.Skill(category) > 0
 end
 
 function Target.Tier(skill, need)
@@ -134,5 +144,20 @@ function Target.Read(unit, info)
 end
 
 function Target.Wanted(category)
-    return category ~= nil and S.Get(category) and true or false
+    if category == nil or not S.Get(category) then return false end
+    return not S.Get("myProfessions") or not C.PROFESSION_OF[category] or Target.HasProfession(category)
 end
+
+local professionEvents = CreateFrame("Frame")
+professionEvents:SetScript("OnEvent", Target.RefreshProfessions)
+
+function Target.SetProfessionEvents()
+    professionEvents:UnregisterAllEvents()
+    if not G.On() then return end
+    professionEvents:RegisterEvent("SKILL_LINES_CHANGED")
+    professionEvents:RegisterEvent("PROFESSIONS_CHANGED")
+    Target.RefreshProfessions()
+end
+
+hooksecurefunc(ns, "Apply", Target.SetProfessionEvents)
+Target.RefreshProfessions()
