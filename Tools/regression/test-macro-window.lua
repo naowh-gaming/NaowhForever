@@ -333,7 +333,7 @@ local function Cards(view)
     for i = 1, view.cards.used do out[i] = view.cards.list[i] end
     return out
 end
-local function Pick(text)
+local function PickItem(text)
     for _, item in ipairs(menu.items) do
         if item.text == text then return item.pick() end
     end
@@ -348,10 +348,10 @@ check("a new macro waits in the editor", editor.saveLabel.text == "Create" and B
 
 Click(Row("Sheep"))
 local builder = editor.builder
-local cards = Cards(builder)
-check("picking one opens it: its name and one card per line", window.name:GetText() == "Sheep" and #cards == 2)
-check("the #showtooltip line is the Button shows card", cards[1].shows:IsShown() and cards[1].shows:GetText() == "Polymorph")
-local cast = cards[2]
+local forgeCards = Cards(builder)
+check("picking one opens it: its name and one card per line", window.name:GetText() == "Sheep" and #forgeCards == 2)
+check("the #showtooltip line is the Button shows card", forgeCards[1].shows:IsShown() and forgeCards[1].shows:GetText() == "Polymorph")
+local cast = forgeCards[2]
 local first, second = cast.clauses.list[1], cast.clauses.list[2]
 check("the /cast line reads as two choices, each with its unit and spell", cast.clauses.used == 2
     and first.lead.text == "If" and second.lead.text == "Otherwise" and first.arg:GetText() == "Polymorph"
@@ -359,7 +359,7 @@ check("the /cast line reads as two choices, each with its unit and spell", cast.
 check("its condition is a chip", first.chips.used == 1 and first.chips.list[1].label.text == "hostile")
 
 Click(first.when)
-Pick("Alt")
+PickItem("Alt")
 check("+ when adds a condition to the line", Body() == "#showtooltip Polymorph\n/cast [@focus,harm,mod:alt][] Polymorph")
 check("and undo has it", editor.undo.enabled)
 cast = Cards(builder)[2]
@@ -369,7 +369,7 @@ check("the chip's x takes it out again", Body() == "#showtooltip Polymorph\n/cas
 
 cast = Cards(builder)[2]
 Click(cast.clauses.list[2].unit)
-Pick("yourself")
+PickItem("yourself")
 check("the unit menu aims a choice", Body() == "#showtooltip Polymorph\n/cast [@focus,harm][@player] Polymorph")
 
 cast = Cards(builder)[2]
