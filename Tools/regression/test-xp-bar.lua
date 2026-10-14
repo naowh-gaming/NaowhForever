@@ -177,12 +177,25 @@ do
     check("and counts up", Played.Total() == 368560 and Played.Level() == 10)
 
     local source = Read("NaowhForever_QoL/XP/XPBar.lua")
-    local chunk = Consts(source) .. assert(source:match("(local function Duration%(seconds%).-\nend)\n"))
+    local chunk = Consts(source) .. assert(source:match("(local function Short%(n%).-\nend)\n"))
+        .. "\n" .. assert(source:match("(local function Duration%(seconds%).-\nend)\n"))
         .. "\n" .. assert(source:match("(local function SlotText%(which, maxed, max%).-\nend)\n"))
-    local SlotText = Load(chunk .. "\nreturn SlotText", { Played = Played, sessionStart = 0,
-        time = function() return 0 end, ns = { L = dofile("Tools/regression/locale_stub.lua").L, Upper = string.upper, Lower = string.lower, Color = function() return "" end } })
-    check("the bar's Played text, from the helper", SlotText("played", false, 1)
-        == "Played:|r 4d 6h 22m|r - This Level:|r 0m|r")
+    local clock, xp = 0, 2000
+    local slotEnv = { Played = Played, sessionStart = 0, sessionXP = 0,
+        time = function() return clock end, UnitXP = function() return xp end,
+        ns = { L = dofile("Tools/regression/locale_stub.lua").L, Upper = string.upper, Lower = string.lower,
+            Color = function() return "" end } }
+    local SlotText = Load(chunk .. "\nreturn SlotText", slotEnv)
+    check("the bar's Played text, from the helper, in its two largest units", SlotText("played", false, 1)
+        == "Played:|r 4d 6h|r   This Level:|r 0m|r")
+    check("no XP yet this session: Time to Level and XP/Hour stay blank, not -- and 0",
+        SlotText("leveling", false, 10000) == "" and SlotText("xphour", false, 10000) == ""
+        and SlotText("pace", false, 10000) == "")
+    clock, slotEnv.sessionXP = 3600, 4000
+    check("with a rate they show, with short labels", SlotText("leveling", false, 10000) == "To Level:|r 2h 0m|r"
+        and SlotText("xphour", false, 10000) == "XP/h:|r 4.0k|r")
+    check("Leveling Pace says both in one text", SlotText("pace", false, 10000) == "2h 0m|r to level at 4.0k|r/h|r")
+    check("and hides at max level", SlotText("pace", true, 10000) == "")
 
     Played.Drop("xpBar")
     check("still listening while someone wants it", Events(frame).TIME_PLAYED_MSG)
@@ -212,10 +225,11 @@ do
         function t.SetColor() end
         return t
     end
-    local b = { fill = Tex(), done = Tex(), open = Tex(), rested = Tex(), bg = Tex(), edge = Tex() }
+    local b = { fill = Tex(), done = Tex(), open = Tex(), rested = Tex(), restedEdge = Tex(), bg = Tex(), edge = Tex() }
     local env = { S = S, T = { accent = { r = 0, g = 0.5, b = 1 }, bg = { r = 0.1, g = 0.1, b = 0.1 } },
         CreateColor = function(r, g, bl, a) return { r = r, g = g, b = bl, a = a } end,
-        ns = { L = dofile("Tools/regression/locale_stub.lua").L, Upper = string.upper, Lower = string.lower, ThemeTint = function(_, c) return c end, Shared = { Style = dofile("Tools/regression/shared_style.lua") },
+        ns = { XPBarFX = { Paint = function(bar, q, r) bar.painted = { q, r } end },
+            L = dofile("Tools/regression/locale_stub.lua").L, Upper = string.upper, Lower = string.lower, ThemeTint = function(_, c) return c end, Shared = { Style = dofile("Tools/regression/shared_style.lua") },
             UI = { TexturePath = function(name, own) if name == "" then return own end return "lsm:" .. name end } } }
     local PaintBar = Load(chunk .. "\nreturn PaintBar", env)
     PaintBar(b)
@@ -224,6 +238,8 @@ do
         and b.rested.texture == FLAT)
     check("default: quest XP in full, incomplete faded", b.done.color[4] == 1 and b.open.color[4] == 0.4)
     check("default: the background at 85%", b.bg.color[4] == 0.85 and b.bg.color[1] == 0.1)
+    check("the effects and the rested band are painted in the quest and rested colors", b.painted
+        and b.painted[1].r == b.done.color[1] and b.painted[2].b ~= nil)
     S.Set("xpBarTexture", "Smooth")
     S.Set("xpBarBgAlpha", 0.5)
     PaintBar(b)
@@ -395,9 +411,9 @@ do
     end
     local footW, footH = Footprint(520, 26, 0)
     local scale = F.PreviewScale(1098 - stage.MARGIN * 2, roomH, footW, footH)
-    check("the default bar is scaled up to fill the stage", scale > 1.5 and scale <= stage.MAX_SCALE
-        and footW * scale <= 1098 - stage.MARGIN * 2 and footH * scale <= roomH + 1e-6)
+    check("the default bar shows at its real size, never blown up", scale == 1 and stage.MAX_SCALE == 1)
     footW, footH = Footprint(1200, 48, 240)
+    check("the tallest bar fits the stage's height", footH <= roomH)
     scale = F.PreviewScale(700 - stage.MARGIN * 2, roomH, footW, footH)
     check("a wide bar with long side texts shrinks to fit a narrow stage", scale < 1
         and footW * scale <= 700 - stage.MARGIN * 2 + 1e-6)
@@ -411,7 +427,7 @@ do
     function bar.SetPoint(self, _, _, _, x, y) self.x, self.y = x, y end
     local shot = { bar = bar, GetWidth = function() return 1098 end, GetHeight = function() return stage.H end }
     F.FitStage(shot, 520, 26)
-    check("the stage centres the bar above its note", bar.x == 0 and bar.y > 0 and bar.scale > 1.5)
+    check("the stage centres the bar above its note", bar.x == 0 and bar.y > 0 and bar.scale == 1)
 
     check("no Reset rows on the card", not source:find("button = ns.ResetXPBar", 1, true))
     check("both resets in the bar's right-click menu", source:find(
@@ -420,6 +436,90 @@ do
         and source:find("EditZone(b, { menu = BarMenu", 1, true)
         and source:find("MenuUtil.CreateContextMenu(zone, BarMenu)", 1, true))
     check("the empty spots are no longer written into the texts", not source:find("TEXT.ADD", 1, true))
+end
+
+-- Show Texts On Mouseover: the texts stay up while it is Off; Around the Bar hides only the texts
+-- around it and All Texts those on it too, until the mouse is over the bar or the texts round it;
+-- the HUD Editor shows them all; the bar never takes a click unless Ctrl is held.
+do
+    local source = Read("NaowhForever_QoL/XP/XPBar.lua")
+    local chunk = Consts(source)
+        .. assert(source:match("(local function Natural%(fs%).-\nend)\n"))
+        .. "\nlocal bar, unlocked, hovered\n"
+        .. assert(source:match("(local Hover = .-\nend)\n\nlocal function Update%(%)"))
+    local S = Settings({ xpBarTextsHover = "off", xpBarFontSize = 13 })
+    local ctrl = false
+    local shown, hidden = nil, 0
+    local env = { S = S, IsControlKeyDown = function() return ctrl end,
+        FX = { ShowBreakdown = function(_, d) shown = d end, HideBreakdown = function() hidden = hidden + 1 end },
+        UnitXP = function() return 11941 end, UnitXPMax = function() return 23200 end,
+        UnitLevel = function() return 20 end, GetXPExhaustion = function() return 3596 end,
+        AtMaxLevel = function() return false end, time = function() return 3600 end,
+        Duration = function(s) return math.floor(s) .. "s" end }
+    env.questDone, env.questOpen, env.sessionStart, env.sessionXP = 11300, 1856, 0, 4000
+    Load(chunk .. "\nfunction Set(b) bar = b end\nfunction Unlock(on) unlocked = on end\n"
+        .. "Enter, Leave, Mouse = Hover.Enter, Hover.Leave, Hover.Mouse", env)
+
+    local function Layer() return { alpha = 1, SetAlpha = function(self, a) self.alpha = a end } end
+    local function FS(text, w)
+        return { GetText = function() return text end, GetStringWidth = function() return w end }
+    end
+    local b = { around = Layer(), text = Layer(), slots = {} }
+    for i = 1, 8 do b.slots[i] = FS("", 0) end
+    b.slots[1], b.slots[8], b.slots[5] = FS("Played: 6d", 120), FS("XP/Hour: 0", 80), FS("Rested", 49)
+    function b.SetHitRectInsets(self, l, r, t, bt) self.l, self.r, self.t, self.b = l, r, t, bt end
+    function b.SetMouseClickEnabled(self, on) self.click = on end
+    function b.SetMouseMotionEnabled(self, on) self.motion = on end
+    env.Set(b)
+
+    env.Mouse()
+    env.Leave()
+    check("Off: the texts stay up and the bar takes no mouse", b.around.alpha == 1 and b.text.alpha == 1
+        and not b.click and not b.motion)
+
+    S.db.xpBarTextsHover = "around"
+    env.Mouse()
+    env.Leave()
+    check("Around the Bar hides the texts around it only", b.around.alpha == 0 and b.text.alpha == 1)
+    check("it follows the mouse without taking clicks", b.motion and not b.click)
+    check("the hover area reaches the texts round the bar", b.t == -(13 + 4) and b.b == -(13 + 4)
+        and b.l == 0 and b.r == -(50 + 6))
+    env.Enter()
+    check("hovering shows them", b.around.alpha == 1)
+
+    S.db.xpBarTextsHover = "all"
+    env.Leave()
+    check("All Texts hides those on the bar too", b.around.alpha == 0 and b.text.alpha == 0)
+    env.Unlock(true)
+    env.Leave()
+    check("the HUD Editor shows every text", b.around.alpha == 1 and b.text.alpha == 1)
+    env.Unlock(false)
+
+    ctrl = true
+    env.Mouse()
+    check("Ctrl still lets the bar take its right-click", b.click and b.motion)
+    ctrl = false
+    S.db.xpBarTextsHover = "off"
+    env.Enter()
+    env.Mouse()
+    env.Leave()
+    check("turned Off, nothing stays hidden", b.around.alpha == 1 and b.text.alpha == 1 and not b.motion)
+    check("no breakdown unless it is on", shown == nil)
+
+    S.db.xpBarBreakdown = true
+    env.Mouse()
+    check("Hover Breakdown alone still follows the mouse, without taking clicks", b.motion and not b.click)
+    env.Enter()
+    check("hovering shows the breakdown: XP to level, quests, rested and the pace", shown and shown.left == 11259
+        and shown.level == 20 and shown.done == 11300 and shown.open == 1856 and shown.rested == 3596
+        and shown.pace == "10133s")
+    check("completed quests that cover the rest are ready", shown.ready == true)
+    local before = hidden
+    env.Leave()
+    check("leaving hides it", hidden == before + 1)
+    S.db.xpBarBreakdown = nil
+    check("the texts around the bar sit on their own layer",
+        source:find('ns.Font(b.around, S.Get("xpBarFontSize"), "OUTLINE")', 1, true) ~= nil)
 end
 
 print(("test-xp-bar: %d checks passed"):format(checks))

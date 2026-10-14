@@ -30,7 +30,7 @@ local SAME_TEXT = { levelshort = "level", levelnum = "level" }
 local BLIZZARD_BARS = { "MainMenuExpBar", "ExhaustionTick" }
 local EVENTS = { "PLAYER_XP_UPDATE", "PLAYER_LEVEL_UP", "UPDATE_EXHAUSTION", "PLAYER_UPDATE_RESTING",
     "QUEST_LOG_UPDATE", "DISABLE_XP_GAIN", "ENABLE_XP_GAIN", "PLAYER_LOGOUT", "MODIFIER_STATE_CHANGED",
-    "PLAYER_ENTERING_WORLD" }
+    "PLAYER_ENTERING_WORLD", "QUEST_TURNED_IN" }
 local PVP_INSTANCES = { pvp = true, arena = true }
 local SLOTS = {
     { key = "xpBarTopLeft", label = "Top Left", point = "BOTTOMLEFT", rel = "TOPLEFT", y = SLOT_DROP,
@@ -68,11 +68,15 @@ local BAR_TEXTS = {
         xp = "Current / Max XP", percent = "XP Percent", rested = "Rested Percent" },
     order = { "none", "level", "levelshort", "levelnum", "xp", "percent", "rested" },
 }
+local HOVER_TEXTS = {
+    values = { off = "Off", around = "Around the Bar", all = "All Texts" },
+    order = { "off", "around", "all" },
+}
 local SLOT_TEXTS = {
     values = { none = "None", played = "Played Time", session = "Session Time",
         completed = "Completed Quests (%)", completedxp = "Completed Quests (XP)",
-        rested = "Rested Experience", leveling = "Time to Level", xphour = "XP per Hour" },
-    order = { "none", "played", "session", "completed", "completedxp", "rested", "leveling", "xphour" },
+        rested = "Rested Experience", leveling = "Time to Level", xphour = "XP per Hour", pace = "Leveling Pace" },
+    order = { "none", "played", "session", "completed", "completedxp", "rested", "pace", "leveling", "xphour" },
 }
 local TEXT = {
     PLAYED = ns.L("Played:|r "),
@@ -80,13 +84,13 @@ local TEXT = {
     SESSION = ns.L("Session:|r "),
     COMPLETED = ns.L("Completed Quests:|r "),
     RESTED = ns.L("Rested:|r "),
-    TO_LEVEL = ns.L("Time to Level:|r "),
-    XP_HOUR = ns.L("XP/Hour:|r "),
-    PART = "|r - ",
+    TO_LEVEL = ns.L("To Level:|r "),
+    XP_HOUR = ns.L("XP/h:|r "),
+    PACE = ns.L("%s to level at %s/h"),
+    PART = "|r   ",
     PERCENT = "%.1f%%",
-    NO_RATE = "--",
-    DAYS = "%dd %dh %dm",
-    HOURS = "%dh %02dm",
+    DAYS = "%dd %dh",
+    HOURS = "%dh %dm",
     MINUTES = "%dm",
     MILLIONS = "%.1fm",
     THOUSANDS = "%.1fk",
@@ -103,8 +107,9 @@ local TEXT = {
     PREVIEW_NOTE = ns.L("Click a text or a + to change what it shows. Right-click the bar to reset it."),
     ON = ns.L("(on "),
     CHANGE = ns.L("|nClick to change."),
-    SUMMARY = "%d by %d%s",
+    SUMMARY = "%d by %d%s%s",
     AT_MAX = ns.L(", shown at max level"),
+    ON_HOVER = ns.L(", texts on mouseover"),
 }
 
 local FILL_FROM = CreateColor(0x00 / 255, 0x4f / 255, 0x85 / 255, 1)
@@ -112,6 +117,7 @@ local QUEST     = { r = 0xf2 / 255, g = 0xa9 / 255, b = 0x00 / 255 }
 local RESTED    = { r = 0x1e / 255, g = 0x40 / 255, b = 0xaf / 255 }
 local QUEST_HEX, RESTED_HEX = "|cfff2a900", "|cff6b8cff"
 local OPEN_ALPHA = 0.4
+local FX = ns.XPBarFX
 local FLAT = ns.Shared.Style.WHITE
 local EDGE = ns.Shared.Style.BORDER_RGB
 local FILL_DARK = 0.55
@@ -176,7 +182,7 @@ local function PaintBar(b)
         end
     end
     b.rested:SetTexture(tex)
-    b.rested:SetVertexColor(r.r, r.g, r.b, 1)
+    FX.Paint(b, q, r)
     b.bg:SetColorTexture(bg.r, bg.g, bg.b, S.Get("xpBarBgAlpha"))
     b.edge:SetColor(e.r, e.g, e.b, 1)
 end
@@ -218,7 +224,7 @@ function ns.ResetXPBarColors()
 end
 ns.XPBarMinWidth = MIN_WIDTH
 
-local bar, clock, unlocked, questTimer, inPvP
+local bar, clock, unlocked, questTimer, inPvP, hovered
 local sessionStart, sessionXP = nil, 0
 local lastXP, lastXPMax
 local questDone, questOpen = 0, 0
@@ -276,7 +282,7 @@ local function Duration(seconds)
     seconds = math.max(0, math.floor(seconds))
     local d, h, m = math.floor(seconds / DAY), math.floor(seconds / HOUR) % HOURS_PER_DAY,
         math.floor(seconds / MINUTE) % MINUTES_PER_HOUR
-    if d > 0 then return TEXT.DAYS:format(d, h, m) end
+    if d > 0 then return TEXT.DAYS:format(d, h) end
     if h > 0 then return TEXT.HOURS:format(h, m) end
     return TEXT.MINUTES:format(m)
 end
@@ -401,11 +407,16 @@ local function SlotText(which, maxed, max)
         return LABEL .. TEXT.RESTED .. restedHex .. TEXT.PERCENT:format((GetXPExhaustion() or 0) / max * PERCENT) .. "|r"
     end
     local rate = sessionXP / (math.max(elapsed, MIN_RATE_TIME) / HOUR)
+    if rate <= 0 then return "" end
     if which == "leveling" then
         local left = math.max(max - UnitXP("player"), 0)
-        return LABEL .. TEXT.TO_LEVEL .. VALUE .. (rate > 0 and Duration(left / rate * HOUR) or TEXT.NO_RATE) .. "|r"
+        return LABEL .. TEXT.TO_LEVEL .. VALUE .. Duration(left / rate * HOUR) .. "|r"
     elseif which == "xphour" then
         return LABEL .. TEXT.XP_HOUR .. VALUE .. Short(rate) .. "|r"
+    elseif which == "pace" then
+        local left = math.max(max - UnitXP("player"), 0)
+        return LABEL .. TEXT.PACE:format(VALUE .. Duration(left / rate * HOUR) .. "|r" .. LABEL,
+            VALUE .. Short(rate) .. "|r" .. LABEL) .. "|r"
     end
     return ""
 end
@@ -572,6 +583,9 @@ function Look.New(b)
     local text = CreateFrame("Frame", nil, b)
     text:SetAllPoints()
     text:SetFrameLevel(b:GetFrameLevel() + TEXT_RAISE)
+    b.text = text
+    b.around = CreateFrame("Frame", nil, b)
+    b.around:SetAllPoints()
     b.level = ns.Font(text, INSIDE_SIZE, "OUTLINE")
     b.level:SetPoint("LEFT", b.track, "LEFT", INSIDE_INSET, 0)
     b.level:SetJustifyH("LEFT")
@@ -588,7 +602,7 @@ function Look.New(b)
     end
     b.slots = {}
     for i, slot in ipairs(SLOTS) do
-        local fs = ns.Font(b, S.Get("xpBarFontSize"), "OUTLINE")
+        local fs = ns.Font(b.around, S.Get("xpBarFontSize"), "OUTLINE")
         fs:SetPoint(slot.point, b, slot.rel, slot.x or 0, slot.y)
         fs:SetJustifyH(slot.justify)
         fs:SetWordWrap(false)
@@ -599,10 +613,12 @@ function Look.New(b)
         fs:ClearAllPoints()
         fs:SetPoint(slot.point, b, slot.rel, dx, slot.y)
     end
+    FX.New(b)
 end
 
 function Look.Size(b, w, h)
     b:SetSize(w, h)
+    FX.Size(b, w, h)
     for _, fs in ipairs(b.inside) do SetSlotSize(fs, InsideFont(h)) end
     b._fitW = nil
 end
@@ -611,25 +627,27 @@ function Look.Segments(b, total, pct, done, open, rested, max, maxed)
     local x = Segment(b.fill, 0, total * pct / PERCENT, total)
     if maxed then
         b.done:Hide(); b.open:Hide(); b.rested:Hide()
-        return
+        return FX.Segments(b, total, x, nil, false, 0)
     end
-    x = Segment(b.done, x, total * done / max, total)
+    local doneEnd = Segment(b.done, x, total * done / max, total)
     if S.Get("xpBarIncomplete") then
-        Segment(b.open, x, total * open / max, total)
+        Segment(b.open, doneEnd, total * open / max, total)
     else
         b.open:Hide()
     end
-    local from = total * pct / PERCENT
-    local w = math.min(math.max(total * rested / max, RESTED_MIN_W), total - from)
+    local w = math.min(math.max(total * rested / max, RESTED_MIN_W), total - x)
+    local restedEnd
     if rested > 0 and w >= 1 then
         b.rested:ClearAllPoints()
-        b.rested:SetPoint("TOPLEFT", from, 0)
-        b.rested:SetPoint("BOTTOMLEFT", from, 0)
+        b.rested:SetPoint("TOPLEFT", x, 0)
+        b.rested:SetPoint("BOTTOMLEFT", x, 0)
         b.rested:SetWidth(w)
         b.rested:Show()
+        restedEnd = x + w
     else
         b.rested:Hide()
     end
+    FX.Segments(b, total, x, restedEnd, done > 0 and done >= max * (1 - pct / PERCENT), total / max)
 end
 
 function Look.Texts(b, level, xp, max, maxed, pct, rested)
@@ -657,6 +675,60 @@ local function ShowsText(which)
     return false
 end
 
+local Hover = { AWAY_DIM = 0.25, data = {} }
+
+function Hover.Away(b, mode, away)
+    b.around:SetAlpha(mode ~= "off" and away or 1)
+    b.text:SetAlpha(mode == "all" and away or 1)
+end
+
+function Hover.Reach(b)
+    local row = S.Get("xpBarFontSize") + SLOT_DROP
+    local top = math.max(Natural(b.slots[TOP_LEFT]), Natural(b.slots[TOP]), Natural(b.slots[TOP_RIGHT]))
+    local bottom = math.max(Natural(b.slots[BOTTOM_LEFT]), Natural(b.slots[BOTTOM]), Natural(b.slots[BOTTOM_RIGHT]))
+    local left, right = Natural(b.slots[LEFT]), Natural(b.slots[RIGHT])
+    b:SetHitRectInsets(left > 0 and -(left + SIDE_GAP) or 0, right > 0 and -(right + SIDE_GAP) or 0,
+        top > 0 and -row or 0, bottom > 0 and -row or 0)
+end
+
+function Hover.Update()
+    local mode = S.Get("xpBarTextsHover")
+    if mode ~= "off" then Hover.Reach(bar) end
+    Hover.Away(bar, mode, (unlocked or hovered) and 1 or 0)
+end
+
+function Hover.Data()
+    local d = Hover.data
+    local xp, max = UnitXP("player"), math.max(UnitXPMax("player"), 1)
+    d.level, d.left = UnitLevel("player"), math.max(max - xp, 0)
+    d.leftPct = d.left / max * PERCENT
+    d.done, d.open, d.rested = questDone, questOpen, GetXPExhaustion() or 0
+    d.ready = questDone > 0 and questDone >= d.left
+    local rate = sessionXP / (math.max(time() - sessionStart, MIN_RATE_TIME) / HOUR)
+    d.pace = rate > 0 and Duration(d.left / rate * HOUR) or nil
+    return d
+end
+
+function Hover.Enter()
+    hovered = true
+    Hover.Update()
+    if S.Get("xpBarBreakdown") and sessionStart and not AtMaxLevel() then FX.ShowBreakdown(bar, Hover.Data()) end
+end
+
+function Hover.Leave()
+    hovered = false
+    Hover.Update()
+    FX.HideBreakdown()
+end
+
+function Hover.Mouse()
+    local ctrl = IsControlKeyDown()
+    local motion = ctrl or S.Get("xpBarTextsHover") ~= "off" or S.Get("xpBarBreakdown")
+    if not motion then hovered = false end
+    bar:SetMouseClickEnabled(ctrl)
+    bar:SetMouseMotionEnabled(motion)
+end
+
 local function Update()
     if not bar then return end
     local maxed = AtMaxLevel()
@@ -677,6 +749,7 @@ local function Update()
         bar.slots[i]:SetText(SlotText(S.Get(slot.key), maxed, max))
     end
     Look.Fit(bar, total, bar:GetHeight())
+    Hover.Update()
     bar:Show()
 end
 
@@ -709,7 +782,14 @@ local function CountXP()
 end
 
 local events = CreateFrame("Frame")
-events:SetScript("OnEvent", function(_, event)
+events:SetScript("OnEvent", function(_, event, _, questXP)
+    if event == "QUEST_TURNED_IN" then
+        if questXP and questXP > 0 then
+            FX.Gain(bar, questXP)
+            C_Timer.After(FX.SETTLE, Update)
+        end
+        return
+    end
     if event == "PLAYER_LOGOUT" then
         SaveSession()
         return
@@ -719,13 +799,14 @@ events:SetScript("OnEvent", function(_, event)
         return
     end
     if event == "MODIFIER_STATE_CHANGED" then
-        bar:EnableMouse(IsControlKeyDown())
+        Hover.Mouse()
         return
     end
     if event == "PLAYER_ENTERING_WORLD" then
         inPvP = InPvP()
     elseif event == "PLAYER_LEVEL_UP" then
         QueueQuestScan()
+        FX.LevelUp(bar)
     elseif event == "PLAYER_XP_UPDATE" then
         CountXP()
     end
@@ -752,6 +833,8 @@ local function Create()
     bar:SetClampedToScreen(true)
     bar:EnableMouse(false)
     bar:SetScript("OnMouseUp", OnBarMouseUp)
+    bar:SetScript("OnEnter", Hover.Enter)
+    bar:SetScript("OnLeave", Hover.Leave)
     Look.New(bar)
 
     bar.mover = ns.UI.AttachMover(bar, TEXT.MOVER, function(pos) S.Set("xpBarPos", pos) end, "QoL/XP",
@@ -789,12 +872,13 @@ local function Apply()
     SetBlizzardHidden(true)
     ScanQuests()
     bar.mover:SetShown(unlocked == true)
+    Hover.Mouse()
     Update()
 end
 
 local STAGE = {
-    H = 170, MARGIN = ns.Shared.Style.STAGE_MARGIN, NOTE_Y = ns.Shared.Style.STAGE_NOTE_Y,
-    NOTE_SIZE = ns.Shared.Style.STAGE_NOTE_SIZE, NOTE_LINE = 15, MAX_SCALE = 2, FALLBACK_W = 870,
+    H = 140, MARGIN = ns.Shared.Style.STAGE_MARGIN, NOTE_Y = ns.Shared.Style.STAGE_NOTE_Y,
+    NOTE_SIZE = ns.Shared.Style.STAGE_NOTE_SIZE, NOTE_LINE = 15, MAX_SCALE = 1, FALLBACK_W = 870,
     CHIP = 12, CHIP_ICON = 8, CHIP_BG_ALPHA = 0.6, CHIP_LEVEL = 2, HOVER_ALPHA = 0.15, ZONE_PAD = 4,
     PICK_BUTTON = "LeftButton", MENU_BUTTON = "RightButton", PLUS = ns.Shared.Style.PLUS,
     TIP = { anchor = "cursor", justify = "LEFT" },
@@ -816,9 +900,18 @@ local SAMPLE_DONE, SAMPLE_OPEN, SAMPLE_RESTED = 2784, 1856, 3596
 local SAMPLE_PLAYED, SAMPLE_THIS_LEVEL, SAMPLE_SESSION = 368520, 12540, 4320
 local SAMPLE_TO_LEVEL, SAMPLE_RATE = 9600, 8100
 local STATES = {
-    { key = "levelling", label = "Levelling", tip = "Partway through a level, with quests to hand in." },
+    { key = "levelling", label = "Leveling", tip = "Partway through a level, with quests to hand in." },
     { key = "rested", label = "Rested", tip = "With rested experience ahead of the fill." },
+    { key = "away", label = "Mouse Away", tip = "While the mouse is away, with Show Texts On Mouseover on.",
+      needs = function() return S.Get("xpBarTextsHover") ~= "off" end },
+    { key = "gain", label = "Quest Hand-In", tip = "Just after handing in a quest, with Quest XP Pulse on.",
+      needs = function() return S.Get("xpBarGainPulse") end },
+    { key = "ready", label = "Ready", tip = "With enough completed quests to level, with Ready to Level on.",
+      needs = function() return S.Get("xpBarReadyGlow") end },
+    { key = "levelup", label = "Level Up", tip = "The moment you level up, with Level-Up Flash on.",
+      needs = function() return S.Get("xpBarLevelFlash") end },
 }
+local SAMPLE_GAIN = 845
 
 local function PreviewSlotText(which, rested)
     local LABEL, VALUE = ns.Color("muted"), ns.Color("fg")
@@ -837,12 +930,14 @@ local function PreviewSlotText(which, rested)
         return LABEL .. TEXT.TO_LEVEL .. VALUE .. Duration(SAMPLE_TO_LEVEL) .. "|r"
     elseif which == "xphour" then
         return LABEL .. TEXT.XP_HOUR .. VALUE .. Short(SAMPLE_RATE) .. "|r"
+    elseif which == "pace" then
+        return LABEL .. TEXT.PACE:format(VALUE .. Duration(SAMPLE_TO_LEVEL) .. "|r" .. LABEL,
+            VALUE .. Short(SAMPLE_RATE) .. "|r" .. LABEL) .. "|r"
     end
     return ""
 end
 
-local SLOT_HINT = ns.L("|n|nCompleted Quests (both), Rested Experience, Time to Level and XP per Hour are "
-    .. "hidden at max level.")
+local SLOT_HINT = ns.L("|n|nOnly Played Time and Session Time show at max level.")
 
 local function OpenChoices(zone)
     if zone._menu and zone._menu:IsShown() then
@@ -1104,9 +1199,13 @@ local function PaintPreview(preview, state)
     PaintBar(b)
     Look.Size(b, w, h)
     local pct = SAMPLE_XP / SAMPLE_MAX * PERCENT
-    Look.Segments(b, w, pct, SAMPLE_DONE, SAMPLE_OPEN, rested, SAMPLE_MAX, false)
+    local done = state == "ready" and SAMPLE_MAX - SAMPLE_XP or SAMPLE_DONE
+    if state == "gain" then FX.Gain(b, SAMPLE_GAIN, 0) end
+    Look.Segments(b, w, pct, done, SAMPLE_OPEN, rested, SAMPLE_MAX, false)
+    if state == "levelup" then FX.LevelUp(b) end
     Look.Texts(b, SAMPLE_LEVEL, SAMPLE_XP, SAMPLE_MAX, false, pct, rested)
     Look.Fit(b, w, h)
+    Hover.Away(b, state == "away" and S.Get("xpBarTextsHover") or "off", Hover.AWAY_DIM)
     PlaceChips(preview, w)
     for i, zone in ipairs(preview.inside) do PlaceZone(zone, preview.insideChips[i], h) end
     for i, zone in ipairs(preview.slots) do PlaceZone(zone, preview.slotChips[i]) end
@@ -1130,8 +1229,8 @@ local FONT_RANGE = { SLOT_FONT_MIN, 20, 1 }
 local BAR_TEXT_HELP = ns.L("A text on the bar: click it on the preview to change it. Each text shows in one "
     .. "place on the bar: picking one shown elsewhere moves it there.")
 local SLOT_TEXT_HELP = ns.L("A text around the bar: click it on the preview to change it. Each text shows in "
-    .. "one place around it: picking one shown elsewhere moves it there. Completed Quests (both), Rested Experience, Time to Level and "
-    .. "XP per Hour are hidden at max level.")
+    .. "one place around it: picking one shown elsewhere moves it there. Only Played Time and Session Time show at "
+    .. "max level.")
 
 local function SetColour(key, r, g, b)
     local d = ns.XPBarDefaultColor(key)
@@ -1177,12 +1276,15 @@ local ROWS = {
     Group("Show"),
     { key = "xpBarMaxLevel", label = "Show at Max Level", toggle = true,
       help = "Keeps the bar up at max level, with your played time and session." },
+    { key = "xpBarTextsHover", label = "Show Texts On Mouseover", choice = HOVER_TEXTS,
+      help = "Hides the texts until you hover the bar: the ones around it, or those on it too." },
     { key = "xpBarIncomplete", label = "Incomplete Quests", toggle = true,
       help = "The XP of quests still in progress, as a faded segment after the completed ones." },
     { key = "xpBarResetOnReload", label = "Reset Session on Reload", toggle = true,
       help = "Starts the session time and XP/Hour again on a /reload. Off: a /reload carries on the "
           .. "session. A fresh login always starts a new one." },
     BarRows(),
+    FX.Rows(Group),
     ns.Shared.Settings.Look("xpBar", { text = true, size = FONT_RANGE }),
     Group("Colors"),
     ColourRow("xpBarFillColor", "Fill Color", "Your experience. Its left end is a darker shade."),
@@ -1200,7 +1302,7 @@ for _, slot in ipairs(SLOTS) do ROWS[#ROWS + 1] = TextRow(slot, SLOTS, SLOT_TEXT
 
 local function Summary(store)
     return TEXT.SUMMARY:format(math.max(store.Get("xpBarWidth"), ns.XPBarMinWidth), store.Get("xpBarHeight"),
-        store.Get("xpBarMaxLevel") and TEXT.AT_MAX or "")
+        store.Get("xpBarMaxLevel") and TEXT.AT_MAX or "", store.Get("xpBarTextsHover") ~= "off" and TEXT.ON_HOVER or "")
 end
 
 ns.Shared.Settings.Page("QoL/XP", S):Card({
