@@ -144,6 +144,7 @@ env.InCombatLockdown = function() return false end
 env.LibStub = function() return nil end
 env.strtrim = function(s) return s:match("^%s*(.-)%s*$") end
 env.UnitName = function() return "Preview" end
+env.UnitGUID = function() return "Player-1-00000001" end
 env.UnitClass = function() return "Warrior", "WARRIOR", 1 end
 env.GetRealmName = function() return "Preview" end
 env.GetTime = function() return 0 end
@@ -172,6 +173,8 @@ LoadWindow()
 Load("Core/Options/Search.lua")
 for _, path in ipairs(dofile("Tools/regression/toc_files.lua")("^Shared/.*%.lua$")) do Load(path) end
 Load("Core/Settings.lua")
+Load("Core/Onboarding/Setup.lua")
+Load("Core/Onboarding/ModuleState.lua")
 Load("NaowhForever_QoL/Constants.lua")
 env.GameTooltip = New("Frame")
 env.GameTooltip.GetOwner = function() return nil end
@@ -245,7 +248,9 @@ Check(Text("Quality of Life / Interface") ~= nil and Head("Top Bar") ~= nil, "op
 Check(Text("ADVENTURE") and Text("COMBAT") and Text("UTILITIES"), "grouped navigation")
 Check(not Text("Close") and Button("Reload UI") ~= nil, "no footer: Reload UI sits in the header, closing is the X")
 Check(not Text("Custom Reminders"), "unfinished module is absent from navigation")
-Check(not Text("Damage Meter"), "the Damage Meter is not shipped, so it is not listed")
+local damageMeterLabels = 0
+for _, f in ipairs(frames) do if f.text == "Damage Meter" and f:IsShown() then damageMeterLabels = damageMeterLabels + 1 end end
+Check(damageMeterLabels == 1, "the Damage Meter is not shipped as a module: only the QoL tab carries the name")
 Check(Button("Quality of Life").switch == nil, "navigation does not toggle modules")
 for _, name in ipairs({ "Quality of Life", "Dungeon Journal", "Instance Tracker", "Discovery", "BiS List", "Professions",
     "Gear & Trinkets", "Blessings", "AuraBuffs", "Threat Meter", "Swing Timer",
@@ -423,10 +428,29 @@ for _, child in ipairs(strip.children) do
         Check(child.points.LEFT and child.points.LEFT[4] == 0, "QoL categories share one row")
     end
 end
-Check(tabs == 9, "every QoL category has a tab")
+Check(tabs == 10, "every QoL category has a tab")
 Check(strip.buttons and strip:GetWidth() <= 1440 - 240 - 56, "the tabs are the boxed switch, inside the content width")
 Click(Button("Combat")); Flush()
 Check(Text("Quality of Life / Combat") ~= nil, "category navigation works")
+local heldCard = ns.Shared.Settings.CardOf("QoL/Combat:coTank")
+local wasOn, wasOpen = S.Get("coTank"), ns.Shared.Settings.IsOpen(heldCard)
+S.Set("coTank", true); ns.Shared.Settings.SetOpen(heldCard, true)
+heldCard.switchWhy = function() return "Held by another setting" end
+S.Set("coTankDebuffs", S.Get("coTankDebuffs")); Flush()
+Check(Setting("Width").label.alpha < 1 and Setting("Width").why.text == "Held by another setting",
+    "its settings are greyed too, saying why, though its own switch is on")
+local coTankHead = Head("Co-Tank Frame")
+Check(coTankHead.summary.text == "Held by another setting" and coTankHead.switch.mouse == false and coTankHead.switch.alpha < 1,
+    "a card switch held by another setting is greyed, saying why instead of Off")
+heldCard.switchWhy = nil
+S.Set("coTankDebuffs", S.Get("coTankDebuffs")); Flush()
+Check(Setting("Width").label.alpha == 1, "let go, its settings work again")
+S.Set("coTank", wasOn); ns.Shared.Settings.SetOpen(heldCard, wasOpen); Flush()
+coTankHead = Head("Co-Tank Frame")
+Check(coTankHead.switch.mouse ~= false and coTankHead.switch.alpha == 1, "let go, it is its own switch again")
+local heldOff, heldWhy = ns.Shared.Settings.Off({ card = {}, needs = function() return false end,
+    why = function() return "Held for this reason" end })
+Check(heldOff and heldWhy == "Held for this reason", "a row held for more than one reason says the one that applies")
 Click(Button("Swing Timer")); Flush()
 Check(Text("Swing Timer / Settings") and not Text("Interface"), "each module shows only its own page")
 Click(Button("Threat Meter")); Flush()
@@ -698,7 +722,7 @@ Check(next(disabled) == nil, "nothing is disabled before the player confirms")
 confirmYes()
 Check(disabled.NaowhForever_DungeonJournal and not disabled.NaowhForever_BiS, "confirming disables the journal alone")
 Check(reloadText and reloadText:find("reload", 1, true), "then offers the reload")
-Check(ns.JournalSettings.Get("enabled") == true, "the module's own switch is kept for when it comes back")
+Check(ns.JournalSettings.Get("enabled") == false, "the profile's switch goes off with the addon, so another character follows it")
 Check(switch._get() == false, "the switch reads off while the disable waits for its reload")
 switch.scripts.OnClick(); Flush()
 Check(not disabled.NaowhForever_DungeonJournal and switch._get() == true,

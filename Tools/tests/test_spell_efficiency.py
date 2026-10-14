@@ -142,7 +142,7 @@ class Spells(unittest.TestCase):
         self.assertNotIn(11, self.found, "a script effect")
 
     def test_lua(self):
-        lines = se.lua(self.found, "1.60.1.1")
+        lines = se.lua(self.found, "1.60.1.1", {2: [(105000, 0, [0.04, 0.08]), (105001, 2, [0.1])]})
         self.assertTrue(lines[0].startswith("-- SpellEfficiencyData.lua: "))
         self.assertIn("Tools/build/spell_efficiency.py", lines[0])
         self.assertIn('    [1] = "2,1,3,0,1,51,0.9,0.429,0,0,0,0,0",', lines)
@@ -151,6 +151,156 @@ class Spells(unittest.TestCase):
         self.assertEqual(both.count(","), len(se.FIELDS) + 2 * len(se.PART_FIELDS))
         self.assertEqual(se.lua_number(0.28600001335), "0.286")
         self.assertEqual(se.lua_number(-0.0), "0")
+        self.assertIn('    [2] = "105000,0,0.04,0.08;105001,2,0.1",', lines)
+
+
+def mod(spell, index, aura, misc, base, mask):
+    row = effect(spell, index, 6, base=base, aura=aura)
+    row["EffectMiscValue_0"] = str(misc)
+    for i in range(4):
+        row[f"EffectSpellClassMask_{i}"] = str(mask if i == 0 else 0)
+    return row
+
+
+def options(spell, family, mask):
+    return {"SpellID": str(spell), "SpellClassSet": str(family), "SpellClassMask_0": str(mask),
+            "SpellClassMask_1": "0", "SpellClassMask_2": "0", "SpellClassMask_3": "0"}
+
+
+class Talents(unittest.TestCase):
+    def setUp(self):
+        t = tables()
+        t["SpellMisc"] = [dict(row, Attributes_0="0") for row in t["SpellMisc"]]
+        t["SpellMisc"] += [{"SpellID": "900", "DurationIndex": "0", "SchoolMask": "1", "Attributes_0": "464"},
+                           {"SpellID": "910", "DurationIndex": "0", "SchoolMask": "1", "Attributes_0": "33882112"},
+                           {"SpellID": "920", "DurationIndex": "0", "SchoolMask": "1", "Attributes_0": "464"}]
+        t["SpellEffect"] = t["SpellEffect"] + [
+            mod(900, 0, 108, 0, 4, 3),      # direct healing and damage on masks 1 and 2
+            mod(900, 1, 108, 22, 9, 4),     # over time, on mask 4
+            mod(910, 0, 108, 0, 30, 3),     # an on-use talent: not a passive
+            mod(920, 0, 108, 14, -10, 3),   # a cost mod: left to the game
+        ]
+        t["SpellClassOptions"] = [options(900, 6, 0), options(910, 6, 0), options(920, 6, 0), options(1, 6, 1),
+                                  options(2, 6, 2), options(3, 7, 1), options(4, 6, 4)]
+        t["SpellName"] = [{"ID": str(s), "Name_lang": f"Spell {s}"} for s in (1, 2, 3, 4)]
+        t["TalentTab"] = [{"ID": "1", "ClassMask": "16"}]
+        t["Talent"] = [{"TabID": "1", "SpellRank_0": str(s), "SpellRank_1": str(s + 1)} for s in (900, 910, 920)]
+        t["TraitDefinition"] = [{"ID": "1", "SpellID": "900"}]
+        t["TraitDefinitionEffectPoints"] = [{"TraitDefinitionID": "1", "EffectIndex": "0", "CurveID": "7"}]
+        t["CurvePoint"] = [{"CurveID": "7", "Pos_0": str(rank), "Pos_1": str(value)}
+                           for rank, value in ((1, 4), (2, 8), (3, 12))]
+        self.tables = t
+        self.found = se.entries(t)
+        self.nodes = {900: 105000, 910: 105001, 920: 105002}
+
+    def test_percent_by_rank_for_the_masked_spells(self):
+        mods = se.talent_mods(self.tables, self.found, self.nodes)
+        self.assertEqual([(n, o, [round(v, 4) for v in values]) for n, o, values in mods[1]],
+                         [(105000, 0, [0.04, 0.08, 0.12])])
+        self.assertIn(2, mods)
+        self.assertNotIn(3, mods, "another class's spell family")
+
+    def test_an_effect_with_no_curve_grows_like_the_talents_other(self):
+        mods = se.talent_mods(self.tables, self.found, self.nodes)
+        self.assertEqual([(n, o, [round(v, 4) for v in values]) for n, o, values in mods[4]],
+                         [(105000, 1, [0.09, 0.18, 0.27])])
+
+    def test_a_talent_with_no_curve_uses_its_base(self):
+        self.tables["TraitDefinitionEffectPoints"] = []
+        mods = se.talent_mods(self.tables, self.found, self.nodes)
+        self.assertEqual(mods[4], [(105000, 1, [0.09])])
+
+    def test_a_direct_percent_counts_on_the_ticks_of_a_spell_it_names(self):
+        mods = se.talent_mods(self.tables, self.found, self.nodes)
+        self.assertEqual([(n, o) for n, o, _ in mods[2]], [(105000, 0), (105000, 1)])
+        self.assertEqual([(n, o) for n, o, _ in mods[1]], [(105000, 0)], "no ticks")
+
+    def test_active_and_cost_talents_are_left_out(self):
+        mods = se.talent_mods(self.tables, self.found, self.nodes)
+        self.assertEqual({node for found in mods.values() for node, _, _ in found}, {105000})
+
+    def test_a_talent_not_in_the_tree_file_has_no_node(self):
+        self.assertEqual(se.talent_mods(self.tables, self.found, {}), {})
+
+    def test_nodes_from_the_tree_file(self):
+        text = "\n".join(["        talents = {",
+                          "            [105926] = { 20504, 2, 5, 2, 4 },",
+                          "            [105941] = { 12294, 1, 7, 1, 2, 105945 },",
+                          "        },",
+                          "        skip = { [772] = true },"])
+        self.assertEqual(se.talent_nodes(text), {20504: 105926, 12294: 105941})
+
+
+class Triggers(unittest.TestCase):
+    """Spells whose amount is in the spell their description names."""
+
+    def setUp(self):
+        t = tables()
+        cast = [20, 21, 22, 23, 24, 25, 26]
+        t["SkillLineAbility"] += [{"SkillLine": HOLY, "Spell": str(s), "ClassMask": "16"} for s in cast]
+        t["SpellPower"] += [{"SpellID": str(s), "PowerType": "0", "ManaCost": "50", "PowerCostPct": "0"} for s in cast]
+        t["SpellDuration"] += [{"ID": "9", "Duration": "8000"}]
+        t["SpellMisc"] += [{"SpellID": str(s), "DurationIndex": "9", "SchoolMask": "16"} for s in (20, 21, 24, 26)]
+        t["SpellLevels"] += [{"SpellID": "20", "SpellLevel": "20", "MaxLevel": "25"}]
+        t["SpellEffect"] = t["SpellEffect"] + [
+            effect(20, 0, 3, coefficient=0.03, target="87", target1="16"),                  # Blizzard
+            effect(20, 1, 179, target="87", target1="16"),
+            effect(20, 2, 6, aura=226, period=1000, target="1"),
+            effect(120, 0, 2, base=24, per_level=0.1, coefficient=0.042, target="87", target1="16"),
+            effect(21, 0, 2, base=60, coefficient=0.157, target="16"),                     # Flamestrike
+            effect(21, 1, 179, target="87", target1="16"),
+            effect(21, 2, 6, aura=226, period=2000, target="1"),
+            effect(121, 0, 2, base=11, coefficient=0.032, target="87", target1="16"),
+            effect(22, 0, 3, coefficient=1, target="25"),                                  # Holy Shock
+            effect(122, 0, 2, base=182, coefficient=0.429, target="6"),
+            effect(123, 0, 10, base=156, coefficient=0.429, target="21"),
+            effect(23, 0, 3, target="25"),                                                 # Penance
+            effect(124, 0, 2, base=81, coefficient=0.285, target="6"),
+            effect(24, 0, 179, target="87", target1="16"),                                 # a count of five
+            effect(24, 1, 6, aura=226, period=2000, target="1"),
+            effect(25, 0, 3, target="25"),                                                 # Healing Rain
+            effect(25, 1, 179, target="132", target1="31"),
+            effect(25, 2, 6, aura=226, period=1000, target="1"),
+            effect(125, 0, 10, base=15, coefficient=0.063, target="87", target1="31"),
+            effect(26, 0, 3, target="25"),                                                 # Fire Nova
+            effect(126, 0, 2, base=52, coefficient=0.1, target="22", target1="15"),
+        ]
+        t["Spell"] = [
+            {"ID": "20", "Description_lang": "Ice shards doing ${$120m1*$d*$<frostdamage>} Frost damage over $d."},
+            {"ID": "21", "Description_lang": "Burns for $s1 Fire damage and ${$121m1*4} Fire damage over $d."},
+            {"ID": "22", "Description_lang": "Causing $122s1 Holy damage to an enemy, or $123s1 healing to an ally."},
+            {"ID": "23", "Description_lang": "Causing $124s1 Holy damage to an enemy, instantly and every $2t2 sec for $2d."},
+            {"ID": "24", "Description_lang": "Burns for ${5*$124m1} Fire damage over $d."},
+            {"ID": "25", "Description_lang": "Heals for ${$<healpower>*$125m1/100} every second."},
+            {"ID": "26", "Description_lang": "Inflicts $126s1 fire damage to enemies within $126a1 yd."},
+        ]
+        self.found = se.entries(t)
+
+    def test_area_trigger_is_one_targets_ticks_of_the_named_spell(self):
+        entry = self.found[20]
+        part, = entry["parts"]
+        self.assertEqual((entry["area"], entry["school"], entry["level"], entry["maxLevel"]), (1, 5, 20, 25))
+        self.assertEqual((part["heal"], part["direct"], part["tick"], part["tickPerLevel"], part["tickCoefficient"],
+                          part["ticks"], part["seconds"]), (se.DAMAGE, 0, 24, 0.1, 0.042, 8, 8))
+
+    def test_the_spells_own_damage_stays_direct_and_the_named_one_ticks(self):
+        part, = self.found[21]["parts"]
+        self.assertEqual((part["direct"], part["directCoefficient"], part["tick"], part["ticks"]), (60, 0.157, 11, 4))
+
+    def test_dummy_spell_gets_a_part_for_each_named_spell(self):
+        entry = self.found[22]
+        self.assertEqual(entry["area"], 0)
+        self.assertEqual(sorted((p["heal"], p["direct"]) for p in entry["parts"]), [(se.DAMAGE, 182), (se.HEAL, 156)])
+
+    def test_over_time_percent_of_power_and_unnamed_are_left_out(self):
+        self.assertNotIn(23, self.found, "a volley over time: one hit would undercount it")
+        self.assertNotIn(25, self.found, "an amount that is a percent of healing power")
+
+    def test_dummy_spell_area_follows_the_named_spells_targets(self):
+        self.assertEqual(self.found[26]["area"], 1)
+
+    def test_a_count_that_disagrees_with_the_ticks_is_left_out(self):
+        self.assertNotIn(24, self.found, "five times over eight seconds of two-second ticks")
 
 
 if __name__ == "__main__":
