@@ -243,9 +243,8 @@ page:Card({
 page:Card({
     id = "craftTimer", name = "Total Craft Timer", order = ORDER_CRAFT_TIMER, switch = "craftTimer",
     help = "Crafting several at once (Create All, or Create with a count) shows one bar for the whole batch, "
-        .. "drawn like the Flight Timer: the recipe, how many are done and the time left on all of them, in place "
-        .. "of the cast bar that fills for every craft. It sits where the Flight Timer is, as nobody crafts in "
-        .. "flight: move it in the HUD Editor as the Flight Timer.",
+        .. "drawn like the Flight Timer: the recipe, how many are done and the time left on all of them. It sits "
+        .. "where the Flight Timer is, as nobody crafts in flight: move it in the HUD Editor as the Flight Timer.",
     studio = { height = CRAFT_STAGE_H, states = CRAFT_STATES, new = NewCraftPreview, paint = PaintCraftPreview },
     rows = {
         { key = "craftTimerShowCastBar", label = "Show Normal Cast Bar", toggle = true, needs = On,
