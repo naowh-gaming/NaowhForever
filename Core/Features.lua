@@ -79,6 +79,7 @@ ns.FEATURES = {
         durability = false,
         talentPoints = false,
         buffThanks = false,
+        gamble = false,
         combatAlert = true,
         hideErrors = false,
         hideTutorials = false,
@@ -184,6 +185,7 @@ ns.FEATURES = {
         raidBuffs = false,
         personalBuffs = true,
         weaponEnhancements = false,
+        wornReminders = false,
         campfire = true,
         campNearbyAlert = true,
         lowHealth = true,
@@ -223,6 +225,9 @@ ns.FEATURES = {
     account = {
         gameMenuButton = true,
         rxpThemes = false,
+        rxpWindow = false,
+        rxpSetup = false,
+        rxpArrowOn = false,
     },
 }
 
