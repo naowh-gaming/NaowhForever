@@ -367,6 +367,12 @@ local function StepItem(item, by)
     Redraw()
 end
 
+local function SetItem(item, qty)
+    Manual()[item] = qty > 0 and math.min(C.MAX_ITEMS, qty) or nil
+    Trim()
+    Redraw()
+end
+
 local function RemoveItem(item)
     Manual()[item] = nil
     Trim()
@@ -388,6 +394,7 @@ Shopping.Keep = Keep
 Shopping.Manual = Manual
 Shopping.AddItem = AddItem
 Shopping.StepItem = StepItem
+Shopping.SetItem = SetItem
 Shopping.RemoveItem = RemoveItem
 Shopping.Trim = Trim
 Shopping.BuyPrice = BuyPrice
