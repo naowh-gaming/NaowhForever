@@ -4,7 +4,7 @@
 local checks = 0
 local function check(label, ok) assert(ok, label); checks = checks + 1 end
 
-local FILES = dofile("Tools/regression/toc_files.lua")("^NaowhForever_Glimmer/.*%.lua$")
+local FILES = dofile("Tools/regression/toc_files.lua")("^NaowhForever_QoL/Glimmer/.*%.lua$")
 table.insert(FILES, 1, "Core/Features.lua")
 table.insert(FILES, 2, "Shared/UI/MinimapPins.lua")
 
@@ -489,7 +489,7 @@ do
     local chunk = assert(loadstring(names .. source:sub(first, last) .. "return RestoreGlimmerSettings"))
     setfenv(chunk, setmetatable({
         ns = { AccountSettings = function() return account end },
-        C_AddOns = { IsAddOnLoaded = function(name) return loaded and name == "NaowhForever_Glimmer" end },
+        C_AddOns = { IsAddOnLoaded = function(name) return loaded and name == "NaowhForever_QoL" end },
         InCombatLockdown = function() return combat end,
         C_CVar = { SetCVar = function(k, v) cvars[k] = v end },
     }, { __index = _G }))
@@ -539,6 +539,24 @@ do
     b.Set("cutout", false)
     lit = Lit(b)
     check("cut-out off: no mask", lit and lit.glow.mask == nil and lit.glints[1].tex.mask == nil)
+end
+
+-- Show the Cut-Out: a second click takes the outline off at once, and the button says which it does.
+do
+    local o = Session({ enabled = true, cutout = true })
+    o.Login()
+    local Cutout = o.ns.Glimmer.Cutout
+    check("the button offers to show it", Cutout.EdgeText() == "Show" and not Cutout.EdgeShown())
+    Cutout.ToggleEdge()
+    check("clicked: the outline shows, the button offers to hide it", Cutout.EdgeShown() and Cutout.EdgeText() == "Hide")
+    local stale = o.timers[#o.timers]
+    Cutout.ToggleEdge()
+    check("clicked again: it is off at once", not Cutout.EdgeShown() and Cutout.EdgeText() == "Show")
+    Cutout.ToggleEdge()
+    stale()
+    check("the first click's timer leaves a new outline alone", Cutout.EdgeShown())
+    o.RunTimers()
+    check("its own timer takes it off", not Cutout.EdgeShown() and Cutout.EdgeText() == "Show")
 end
 
 print(("test-glimmer: %d checks passed"):format(checks))

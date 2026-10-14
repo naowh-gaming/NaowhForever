@@ -2,7 +2,7 @@
 local ns = _G.NaowhForever
 
 ns.Glimmer.C = {
-    PAGE = "Glimmer/Settings",
+    PAGE = "QoL/Glimmer",
     UNIT = "softinteract",
     BOBBER = 35591,
     GUID_OBJECT = "^GameObject%-%d+%-%d+%-%d+%-%d+%-(%d+)%-",

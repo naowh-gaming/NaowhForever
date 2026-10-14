@@ -521,9 +521,7 @@ local function RestockRows()
     wipe(seenReagents)
     for i = 1, #FIXED do restockRows[i] = FIXED[i] end
     local class = select(2, UnitClass("player"))
-    if class == "HUNTER" then
-        for _, row in ipairs(HUNTER) do restockRows[#restockRows + 1] = row end
-    end
+    for _, row in ipairs(HUNTER) do restockRows[#restockRows + 1] = row end
     local grouped = false
     for _, family in ipairs(FAMILIES) do
         if family.class == class then grouped = AddReagentRows(family, grouped) end

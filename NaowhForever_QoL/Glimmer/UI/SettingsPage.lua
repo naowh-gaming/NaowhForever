@@ -1,4 +1,4 @@
--- SettingsPage.lua: Glimmer's settings page, declared as cards, with its live previews.
+-- SettingsPage.lua: Glimmer's tab of the QoL settings, declared as cards, with its live previews.
 local ns = _G.NaowhForever
 
 local T = ns.THEME
@@ -26,6 +26,7 @@ local ORDER_DETECT, ORDER_MINIMAP, ORDER_GATHERED, ORDER_SPARKLE, ORDER_RESTORE 
 local MINIMAP_SIZE = { 10, 24, 1 }
 local CUTOUT_SIZE, CUTOUT_HEIGHT = { 50, 200, 5 }, { -30, 30, 1 }
 local ORDER_CUTOUT = 15
+local ORDER_ON = 7
 local PIN_SIZE = St.PIN_SIZE_RANGE
 local TEXT_SECTION = ns.L("Glimmer")
 local TEXT_PINS_OFF = ns.L("Turn on Gathered Herbs and Ore")
@@ -150,6 +151,12 @@ page:Window({
 })
 
 page:Card({
+    id = "glimmer", name = "Glimmer", order = ORDER_ON, switch = "enabled",
+    help = "Herbs, ore, chests and quest objects light up as you walk up to them.",
+    rows = {},
+})
+
+page:Card({
     id = "look", name = "Look", order = ORDER_LOOK,
     help = "How the object you are walking up to lights up.",
     studio = { height = STAGE_H, states = LOOK_STATES, new = NewPreview, paint = PaintPreview },
@@ -176,7 +183,7 @@ page:Card({
           needs = CutoutOn, why = OFF, help = "Bigger if the effect still covers you, smaller if it stops short." },
         { key = "cutoutHeight", label = "Cut-Out Height", slider = CUTOUT_HEIGHT, unit = "%", scale = TO_FRACTION,
           needs = CutoutOn, why = OFF, help = "Moves the cut-out up or down the screen." },
-        { label = "Show the Cut-Out", button = G.Cutout.ShowEdge, buttonText = "Show",
+        { label = "Show the Cut-Out", button = G.Cutout.ToggleEdge, buttonText = G.Cutout.EdgeText,
           needs = CutoutOn, why = OFF, help = "Outlines it in red for a few seconds; it should hug your character." },
     },
 })

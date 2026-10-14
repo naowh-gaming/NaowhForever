@@ -1,6 +1,7 @@
 <Ui xmlns="http://www.blizzard.com/wow/ui/">
     <!-- QoL.xml: every QoL feature, in load order. -->
     <Script file="Constants.lua"/>
+    <Include file="Glimmer\Glimmer.xml"/>
     <Script file="Combat\StealthReminder.lua"/>
     <Script file="Combat\CoTank.lua"/>
     <Script file="Combat\HealerMana.lua"/>
