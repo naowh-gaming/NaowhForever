@@ -69,7 +69,9 @@ Each layer uses only the ones above it. The bar hands its buttons the function t
   combat. Everything `Apply` does moves or shows secure buttons, so in combat it waits for
   `PLAYER_REGEN_ENABLED`, and so does fitting the bar's width.
 - `PLAYER_ENTERING_WORLD` comes after every addon's login, so late launchers exist by then: the
-  bar is applied again there.
+  bar is applied again there. Like the bar's other events it is registered only while the bar is on:
+  the Top Bar ships inside QoL, so a Top Bar switched off must cost nothing, not even the saved
+  instances request it makes on every loading screen.
 - `GetSavedInstanceInfo`'s reset counts down from the last `UPDATE_INSTANCE_INFO`, not from now.
 - `ROSTER_CAP` (40) keeps a big guild's tooltip on the screen.
 - Roster names and zones can come back secret in combat, so the friends and guild lists wait for
