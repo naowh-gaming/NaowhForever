@@ -22,9 +22,13 @@ local Completo = { Settings = S }
 ns.Completo = Completo
 
 local function LoadData(data, key)
-    setmetatable(ns.CompletoQuestData, nil)
-    setmetatable(ns.CompletoRareData, nil)
-    C_AddOns.LoadAddOn(DATA_ADDON)
+    local quests, rares = ns.CompletoQuestData, ns.CompletoRareData
+    setmetatable(quests, nil)
+    setmetatable(rares, nil)
+    if not C_AddOns.LoadAddOn(DATA_ADDON) then
+        quests.Zones, quests.Quests, quests.Requires, quests.Chains = {}, {}, {}, {}
+        rares.Zones, rares.Rares = {}, {}
+    end
     return rawget(data, key)
 end
 

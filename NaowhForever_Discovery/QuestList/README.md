@@ -87,7 +87,9 @@ quest and creature pages. Do not edit them by hand: change the tool and run it a
 - The quests and rares (close to two megabytes once loaded) ship in `NaowhForever_DiscoveryData`, a
   load-on-demand addon. `ns.CompletoQuestData` and `ns.CompletoRareData` start empty with a hook
   that loads it on the first read of any field, so the files here keep the tables they took as they
-  loaded, and a player with the Quest List off never loads them.
+  loaded, and a player with the Quest List off never loads them. If it does not load (turned off
+  in the AddOns list, or missing), both tables are left with empty lists, so the Quest List shows
+  nothing instead of erroring, and the load is not tried again.
 - `RACE_BITS` maps the client's race IDs to their bit in Wowhead's race masks, Forever's own two
   races (95 and 96) too.
 - A chain keeps only the steps you can do; one left with a single step is no chain for you.
@@ -194,4 +196,6 @@ quest and creature pages. Do not edit them by hand: change the tool and run it a
   its giver offers.
 - `lua Tools/regression/test-completo-quest-pins.lua`: the quest pins are Pin Size and keep one
   size on screen as the map zooms.
+- `lua Tools/regression/test-discovery-data-load.lua`: the quests and rares load once on the first
+  read, and read as empty lists when `NaowhForever_DiscoveryData` does not load.
 - In game: `/reload` after changing a file. A new file needs a restart.
