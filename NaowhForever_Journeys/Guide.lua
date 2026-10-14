@@ -306,6 +306,10 @@ local function Tick()
     end
 end
 
+local function OnLearned()
+    if journey then QueueReplan() end
+end
+
 local function OnEvent(_, event, isWaypoint)
     if event == "USER_WAYPOINT_UPDATED" then
         local point = C_Map.GetUserWaypoint()
@@ -381,6 +385,10 @@ function Guide.Points()
                 list[#list + 1] = { c = leg.c, x = leg.corners[k], y = leg.corners[k + 1], walk = true }
             end
         else
+            local stops = leg.stops
+            if stops then
+                for k = 1, #stops, 2 do list[#list + 1] = { c = leg.c, x = stops[k], y = stops[k + 1], mode = leg.mode } end
+            end
             list[#list + 1] = { c = leg.c, x = leg.x, y = leg.y, walk = leg.mode == "walk", mode = leg.mode }
         end
     end
@@ -403,23 +411,16 @@ function Guide.Step()
     return journey.title, journey.done + 1, journey.done + math.max(#legs, 1), nextLeg and Guide.LegText(nextLeg)
 end
 
-function Guide.Estimate(map, x, y)
-    if not Jy.On() or InCombatLockdown() then return nil end
-    local here, there = World.Player(), World.FromMap(map, x, y)
-    if not here or not there then return nil end
-    return Planner.Plan(Context(here, { c = there.c, x = there.x, y = there.y }))
-end
-
 ns.JourneyTo = Guide.Start
 ns.JourneyCancel = Guide.Cancel
 ns.JourneyStep = Guide.Step
-ns.JourneyEstimate = Guide.Estimate
 
 local function Apply()
     World.Apply()
     if not Jy.On() then Guide.Cancel() end
 end
 
+World.OnLearned(OnLearned)
 Jy.Settings.OnChange(Apply)
 hooksecurefunc(ns, "Apply", Apply)
 Apply()
