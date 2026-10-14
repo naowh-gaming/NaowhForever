@@ -29,6 +29,18 @@ ns.GlimmerSettings = S
 local G = { Settings = S, CATEGORIES = CATEGORIES }
 ns.Glimmer = G
 
+local function SplitGivers()
+    if S.Raw("giver") ~= nil then return end
+    local style, color = S.Raw("questStyle"), S.Raw("questColor")
+    if style ~= nil and S.Raw("giverStyle") == nil then S.Set("giverStyle", style) end
+    if color ~= nil and S.Raw("giverColor") == nil then
+        S.Set("giverColor", { r = color.r, g = color.g, b = color.b })
+    end
+    S.Set("giver", S.Get("quest"))
+end
+
+hooksecurefunc(ns, "Apply", SplitGivers)
+
 function G.On()
     return S.Get("enabled") and true or false
 end

@@ -69,6 +69,7 @@ local function Session(settings, opts)
         UI = { ModuleSettings = function(_, defaults)
             function S.Get(k) local v = settings[k]; if v == nil then return defaults[k] end; return v end
             function S.Set(k, v) settings[k] = v end
+            function S.Raw(k) return settings[k] end
             return S
         end },
     }
@@ -230,6 +231,28 @@ do
     check("off by default", log.ns.Glimmer.On() == false)
     check("off: no game setting written", #log.writes == 0)
     check("off: no event but the login check", Registered(log) == 0)
+end
+
+-- Quest givers used to be part of Quest Objects: a profile without its own giver settings takes the
+-- quest ones, once, and a profile switched to later gets the same.
+do
+    local settings = { quest = false, questStyle = "ring", questColor = { r = 0.1, g = 0.2, b = 0.3 } }
+    local log = Session(settings)
+    log.ns.Apply()
+    check("quest objects off: quest givers stay off", settings.giver == false)
+    check("and keep the quest effect", settings.giverStyle == "ring")
+    check("and the quest color, as a copy", settings.giverColor ~= settings.questColor
+        and settings.giverColor.r == 0.1 and settings.giverColor.g == 0.2 and settings.giverColor.b == 0.3)
+    log.S.Set("giver", true)
+    log.S.Set("giverStyle", "beam")
+    log.ns.Apply()
+    check("only once: givers turned back on stay on", settings.giver == true and settings.giverStyle == "beam")
+
+    for k in pairs(settings) do settings[k] = nil end
+    settings.quest, settings.giverStyle = true, "glow"
+    log.ns.Apply()
+    check("another profile: givers follow quest objects", settings.giver == true)
+    check("a giver effect already picked is kept", settings.giverStyle == "glow" and settings.giverColor == nil)
 end
 
 -- Every effect draws, in reach and out, through its flash.
