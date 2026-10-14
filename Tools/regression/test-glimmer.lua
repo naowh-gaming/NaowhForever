@@ -304,13 +304,18 @@ log.Set("hideLocked", true)
 check("too low and hidden: dark", Lit(log) == nil)
 log.Set("hideLocked", false)
 
--- No Mining at all: ore is not this character's to gather.
+-- No Mining at all: grey, like a node the skill is too low for.
 log.game.mining = 0
 log.Fire("PLAYER_SOFT_INTERACT_CHANGED", "x", "y")
-check("no Mining: ore stays dark", Lit(log) == nil)
-log.game.mining = 20
+fx = Lit(log)
+check("no Mining: grey and locked", fx and fx.locked == true and fx.r == St.LOCKED_RGB.r)
+check("no Mining: the skill it needs", LineText(log) == "Requires Mining 65")
+log.Set("hideLocked", true)
+check("no Mining and hidden: dark", Lit(log) == nil)
+log.Set("hideLocked", false)
+log.game.mining = 70
 log.Fire("PLAYER_SOFT_INTERACT_CHANGED", "x", "y")
-check("Mining learned: ore lights again", Lit(log) ~= nil)
+check("Mining learned: ore lights in its color", Lit(log) and Lit(log).locked == false)
 
 -- An NPC: no nameplate opened for it.
 log.game.guid, log.game.object = "Creature-0-1-2-3-4-5", false
