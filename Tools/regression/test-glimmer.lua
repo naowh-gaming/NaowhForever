@@ -37,6 +37,10 @@ local function Widget(log)
     function w:SetPoint(...) self.point = { ... } end
     function w:SetVertexColor(r, g, b) self.color = { r, g, b } end
     function w:GetWidth() return 140 end
+    function w:GetEffectiveScale() return 1 end
+    function w:CreateMaskTexture() return Widget(log) end
+    function w:AddMaskTexture(m) self.mask = m end
+    function w:RemoveMaskTexture(m) if self.mask == m then self.mask = nil end end
     function w:GetHeight() return 140 end
     log.frames[#log.frames + 1] = w
     return w
@@ -419,6 +423,22 @@ do
     g.Set("ore", false)
     g.provider:RefreshAllData()
     check("ore off: not on the map", #g.game.pins == 0)
+end
+
+-- Behind my character: the effect's textures take the cut-out mask, and lose it when it is off.
+do
+    local b = Session({ enabled = true, cutout = true })
+    b.Login()
+    b.game.guid, b.game.plate = GUID(COPPER), Widget(b)
+    b.Fire("PLAYER_SOFT_INTERACT_CHANGED", "", "x")
+    local lit = Lit(b)
+    local masked = lit and lit.cutout and lit.glow.mask == lit.cutout and lit.glints[1].tex.mask == lit.cutout
+        and lit.burst.mask == lit.cutout
+    check("cut-out on: every texture of the effect is masked", masked)
+    check("anchored where the character stands", lit.cutout.point[2] ~= b.game.plate)
+    b.Set("cutout", false)
+    lit = Lit(b)
+    check("cut-out off: no mask", lit and lit.glow.mask == nil and lit.glints[1].tex.mask == nil)
 end
 
 print(("test-glimmer: %d checks passed"):format(checks))

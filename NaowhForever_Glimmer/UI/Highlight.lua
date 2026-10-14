@@ -77,6 +77,7 @@ local function Attach(to, info)
     fx:SetIgnoreParentAlpha(true)
     fx:ClearAllPoints()
     fx:SetPoint("CENTER", to, "CENTER", 0, St.PLATE_Y)
+    G.Cutout.Place(fx)
     line:ClearAllPoints()
     line:SetPoint("TOP", to, "BOTTOM", 0, St.LINE_Y)
     plate, shown = to, info
@@ -115,6 +116,7 @@ local function Watch(_, elapsed)
     watch.since = (watch.since or 0) + elapsed
     if watch.since < C.STATE_CHECK then return end
     watch.since = 0
+    G.Cutout.Place(fx)
     local ready = Target.Reach(UNIT)
     if ready == shown.ready then
         wantSince = nil
