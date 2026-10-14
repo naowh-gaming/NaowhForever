@@ -609,9 +609,9 @@ What a comment in the code used to say, in short. The house rules behind it are 
   own window keeps its content in the game's inset frame.
 - A slim scroll bar has the game's chevrons at its ends (`Parts.ForeverScrollArrows`), each a wheel
   notch, and like the bar they show only when the list overflows.
-- Settings, Profiles, Patch Notes and Credits are the game's side tabs (`common-sidetab`), hung on
-  the frame's outer right edge (`FOREVER_SIDE` out, where the metal ends), outside the content. The
-  window clips nothing, so none of them is cut off.
+- Settings, Profiles, Patch Notes and Credits stay at the sidebar's foot, where the Naowh skin has them,
+  as list bars like the modules above. As the game's side tabs on the frame's outer right edge they
+  were hard to find, and a screenshot of the window cropped them off.
 - Fonts are the game's: Friz Quadrata for text and headings, Arial Narrow for numbers, unless an
   Addon Font is picked. Headings stand out as the game's titles do: a size up
   (`CLASSIC_HEADING_STEP`), on a black drop shadow.

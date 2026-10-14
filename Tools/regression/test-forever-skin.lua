@@ -636,14 +636,12 @@ do
     check("the section tabs inside the content, the cards under them", tabs
         and tabs.points[1][4] == 240 + rail + 26 and tabs.points[1][5] == -(sideTop + 8)
         and scroll and scroll.points[1][4] == 240 + rail + 6 and scroll.points[1][5] == -(sideTop + 8 + 32 + 8))
-    local sideTabs = 0
-    for _, f in ipairs(frames) do
-        local p = f.points[1]
-        if p and p[2] == window and p[3] == "TOPRIGHT" and p[1] == "TOPLEFT" and p[4] == St.FOREVER_SIDE then
-            sideTabs = sideTabs + 1
-        end
+    local system = 0
+    for _, name in ipairs({ "Settings", "Profiles", "Patch Notes", "Credits" }) do
+        local btn = Find(frames, function(f) return f.label and f.label.text == name end)
+        if btn and btn.forever and btn.icon == nil then system = system + 1 end
     end
-    check("the four side tabs flush against the frame's outer right edge", sideTabs == 4)
+    check("Settings, Profiles, Patch Notes and Credits list bars at the sidebar's foot, as on Naowh", system == 4)
 end
 
 -- Forever on a client with none of the art: the same window, every part drawn.

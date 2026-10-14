@@ -92,7 +92,7 @@ local moduleWindows = {}
 local refreshQueued
 local lastFilter, searchJump
 local NO_TABS = {}
-local Forever = { tabs = {}, insetLeft = 3, insetRight = 4, insetBottom = 6, tabTop = 8, titleY = 8, crumbGap = 4,
+local Forever = { insetLeft = 3, insetRight = 4, insetBottom = 6, tabTop = 8, titleY = 8, crumbGap = 4,
     subGap = 12, headRoom = 560, edge = 16, buttonGap = 10, switchGap = 18, labelGap = 8, buttonH = 26, navText = 15 }
 
 function ns.VersionText()
@@ -213,7 +213,6 @@ local function PaintNav()
         PaintNavButton(btn, btn:IsMouseOver())
     end
     for _, bar in pairs(tabStrips) do PaintTabs(bar, currentPage, filter) end
-    for key, tab in pairs(Forever.tabs) do ns.Shared.Parts.SetForeverSideTab(tab, key == nav) end
 end
 
 local function LayoutHeader(page, mod, headerH)
@@ -780,19 +779,6 @@ function Forever.Frame()
     ns.Shared.Parts.ForeverPanes(window, ns.Shared.Style.FOREVER_BAND_H, SIDEBAR_W)
 end
 
-function Forever.SideTabs()
-    local St = ns.Shared.Style
-    local y = -St.FOREVER_SIDE_TAB_TOP
-    for _, entry in ipairs(SYSTEM_NAV) do
-        local key = entry[1]
-        local tab = ns.Shared.Parts.ForeverSideTab(window, entry[2], function() ShowPage(key) end)
-        tab:SetPoint("TOPLEFT", window, "TOPRIGHT", St.FOREVER_SIDE, y)
-        ns.Tooltip(tab, ns.L(key))
-        Forever.tabs[key] = tab
-        y = y - tab:GetHeight() - St.FOREVER_SIDE_TAB_GAP
-    end
-end
-
 local function Sidebar()
     local sidebar = CreateFrame("Frame", nil, window)
     sidebar:SetPoint("TOPLEFT", 0, -(window.forever and Forever.Top() or TOP_H)); sidebar:SetPoint("BOTTOMLEFT")
@@ -805,10 +791,10 @@ local function Sidebar()
     searchBox:SetPoint("TOPRIGHT", -SEARCH.right, -SEARCH.top)
     searchBox:SetHeight(SEARCH.h)
     local top = SEARCH.top + SEARCH.h + SEARCH.gap
-    local bottom = window.forever and FOOTER_H_SIDEBAR or FOOTER_H_SIDEBAR + SIDE.utilityRoom + NAV_STEP * #SYSTEM_NAV
+    local bottom = FOOTER_H_SIDEBAR + SIDE.utilityRoom + NAV_STEP * #SYSTEM_NAV
     local nav = NavigationScroll(sidebar, top, bottom, SIDEBAR_W)
     ModuleNav(nav)
-    if window.forever then Forever.SideTabs() else SystemNav(sidebar) end
+    SystemNav(sidebar)
     SidebarFooter(sidebar)
 end
 
