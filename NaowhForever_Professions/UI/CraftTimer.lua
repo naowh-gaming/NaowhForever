@@ -22,6 +22,7 @@ local GAP = 0.3
 local GUESS_CAST = 3
 local MIN_BATCH = 2
 local STALE = 5
+local IDLE = 2
 local WATCH_EVERY = 1
 local MS = 1000
 local SECONDS_PER_MINUTE = 60
@@ -204,8 +205,13 @@ local function OnEvent(_, event, _, _, spellID)
     Stop()
 end
 
+-- A craft the client refuses (missing reagents) sends no spellcast events.
 local function Watch()
-    if job and GetTime() > job.start + job.known + STALE then Stop() end
+    if not job then return end
+    local now = GetTime()
+    local idle = select(CASTING_SPELL, UnitCastingInfo("player")) ~= job.recipeID
+        and now > (job.lastEnd or job.start) + IDLE
+    if idle or now > job.start + job.known + STALE then Stop() end
 end
 
 local function OnCraft(recipeID, count)
