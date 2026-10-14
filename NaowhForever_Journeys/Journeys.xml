@@ -5,7 +5,6 @@
     <Script file="Data\Network.lua"/>
     <Script file="Data\Teleports.lua"/>
     <Script file="Data\QuestSpots.lua"/>
-    <Include file="Data\Maps.xml"/>
     <Script file="Planner.lua"/>
     <Script file="World.lua"/>
     <Script file="Walk.lua"/>

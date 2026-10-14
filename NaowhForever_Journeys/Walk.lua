@@ -1,4 +1,4 @@
--- Walk.lua: walking costs over the baked walking maps (Data/Maps.xml).
+-- Walk.lua: walking costs over the baked walking maps (NaowhForever_JourneysData), loaded when first needed.
 local ns = _G.NaowhForever
 
 local sqrt, floor = math.sqrt, math.floor
@@ -8,6 +8,7 @@ local debugprofilestop = debugprofilestop
 local Jy = ns.Journeys
 local C = Jy.C
 
+local DATA_ADDON = "NaowhForever_JourneysData"
 local TILE = 1600 / 3
 local ORIGIN = 32 * TILE
 local Q = 1
@@ -18,7 +19,7 @@ local FACTOR = { [0] = 1, [1] = C.SWIM, [2] = C.SEA }
 local Walk = {}
 Jy.Walk = Walk
 
-local store
+local loaded, store
 local tiles, used = {}, {}
 local graphs, places = {}, {}
 local budgetEnd = 0
@@ -40,8 +41,12 @@ function Walk.StartBudget()
 end
 
 function Walk.Ready()
-    store = store or ns.JourneyData
-    return store ~= nil
+    if loaded ~= nil then return loaded end
+    if InCombatLockdown() then return false end
+    if not C_AddOns.IsAddOnLoaded(DATA_ADDON) then C_AddOns.LoadAddOn(DATA_ADDON) end
+    store = ns.JourneyData
+    loaded = store ~= nil
+    return loaded
 end
 
 local function Neighbours(polys)
