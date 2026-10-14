@@ -762,7 +762,7 @@ Fire("MERCHANT_CLOSED")
 -------------------------------------------------------------------------------
 --  Save Marks off: a mark ends once its item has been in the bags and left them.
 -------------------------------------------------------------------------------
-local keptBags, marked = { state.bags[0], state.bags[1] }, state.account.scrapItems
+local keptBags, keptMarks = { state.bags[0], state.bags[1] }, state.account.scrapItems
 check("Save Marks on: the bags are not watched", not Registered("BAG_UPDATE_DELAYED"))
 state.account.scrapItems = { [201] = true, [214] = true, [212] = true }
 state.bags[0], state.bags[1] = { 201 }, {}
@@ -789,7 +789,7 @@ check("a character mark made in the bags ends the same way", state.account.scrap
 Set("scrapMarkerScope", "account")
 Set("scrapMarkerSave", true)
 check("Save Marks back on: the bags are not watched", not Registered("BAG_UPDATE_DELAYED"))
-state.account.scrapItems = marked
+state.account.scrapItems = keptMarks
 state.bags[0], state.bags[1] = keptBags[1], keptBags[2]
 
 -------------------------------------------------------------------------------
