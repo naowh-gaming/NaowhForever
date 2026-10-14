@@ -21,7 +21,7 @@ end
 
 local code = table.concat({
     "local S, Parts, UI, ns, Group, ResetLayout = ...",
-    Slice("local ROWS = {", "\nns.Shared.Settings.Page("),
+    Slice("local ROWS = {", "\nif C_AddOns.DoesAddOnExist("),
     "return { ROWS = ROWS }",
 }, "\n")
 

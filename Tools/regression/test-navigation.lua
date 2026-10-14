@@ -133,8 +133,9 @@ env.UIParent = New("Frame"); env.UIParent:SetSize(1920, 1080)
 env.C_Timer = { After = function(_, f) timers[#timers + 1] = f end,
     NewTicker = function() return { Cancel = function() end } end }
 -- missingAddOns: not loaded this session. disabled: switched off for the next reload.
-local missingAddOns, disabled = {}, {}
+local missingAddOns, disabled = { NaowhForever_TopBar = true }, {}
 env.C_AddOns = { GetAddOnMetadata = function() return "test" end,
+    DoesAddOnExist = function(name) return not missingAddOns[name] end,
     IsAddOnLoaded = function(name) return not missingAddOns[name] end,
     GetAddOnEnableState = function(name) return (missingAddOns[name] or disabled[name]) and 0 or 2 end,
     DisableAddOn = function(name) disabled[name] = true end,

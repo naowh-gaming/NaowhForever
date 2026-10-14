@@ -184,7 +184,11 @@ NaowhForever_QoL/
   profile's `topBar` table): it was a module addon of its own (NaowhForever_TopBar) before it moved
   into QoL, and the same table means every setting carried over. An old NaowhForever_TopBar folder
   is switched off at login (`RETIRED_ADDONS` in `Core/Core.lua`), with a reload offered when it
-  loaded, so the bar is never built twice.
+  loaded. In that one session the old addon, which loads after QoL, has the bar: `TB.On` is false
+  while it is loaded, and the QoL copy declares no card while it is enabled, since the old copy
+  stops on a second `topBar` card. The enable state is asked for all characters, as the player
+  may not be known yet while QoL loads; a folder enabled only on other characters costs the card
+  for one session.
 - The Trainer Popup card is declared here, on QoL > XP with Talent Points, so it goes when QoL is
   off. The Bag Space and Food & Drink key binding names live in `Core/Commands.lua`, so the key
   bindings read right with QoL off, where the Bag Space key says so.
