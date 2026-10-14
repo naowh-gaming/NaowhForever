@@ -103,7 +103,7 @@ local function World()
         SwitchProfile = function(name) w.switched = name end,
         RefreshRuntime = function() end,
     }
-    local env = setmetatable({ NaowhForever = ns, UnitName = function() return "Me" end, date = os.date,
+    local env = setmetatable({ NaowhForever = ns, UnitName = function() return "Me" end, UnitGUID = function() return "Player-1" end, date = os.date,
         CreateFrame = function() return { SetScript = function() end } end }, { __index = _G })
     env._G = env
     ns.Shared = { Decode = LoadDecode(env) }
