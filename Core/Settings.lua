@@ -274,5 +274,6 @@ local S = UI.ModuleSettings("qol", {
 
     gamble = F.gamble, gambleChannel = "PARTY", gamblePool = "200g00s", gambleMode = "classic",
     gambleJoinWord = "join", gambleLeaveWord = "leave",
+    presetKeepPositions = true,
 })
 ns.QoLSettings = S

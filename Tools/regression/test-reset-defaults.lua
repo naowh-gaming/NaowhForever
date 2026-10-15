@@ -86,9 +86,10 @@ for _, path in ipairs({ "Core/Profiles/Setups.lua", "Core/Profiles/SetupsCard.lu
 end
 
 local row = card and card.rows[1]
-check("the card sits on the Profiles page with the Setup dropdown first", card.page == "Profiles/Setups" and #card.rows == 3
+check("the card sits on the Profiles page with the Setup dropdown first", card.page == "Profiles/Setups" and #card.rows == 4
     and row.label == "Setup" and row.always == true and row.choice[2] == PRESETS.order)
-local tailor, before = card.rows[2], card.rows[3]
+local keep, tailor, before = card.rows[2], card.rows[3], card.rows[4]
+check("then Keep My Positions, a switch", keep.key == "presetKeepPositions" and keep.toggle == true)
 check("then Onboarding, which opens the onboarding", tailor.label == "Onboarding" and tailor.buttonText == "Start")
 local opened = false
 ns.ShowSetup = function() opened = true end

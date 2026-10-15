@@ -44,6 +44,8 @@ Settings.Page(ns.SETUPS_PAGE, S):Card({
           set = function(key) if P[key] then ns.UsePreset(key) end end,
           tip = Tip,
           help = "Recommended turns on the essentials and nothing that spoils the game; Everything Enabled turns on every module." },
+        { key = "presetKeepPositions", label = "Keep My Positions", toggle = true,
+          help = "Applying a setup leaves your frames where you put them." },
         { label = "Onboarding", buttonText = "Start", button = function() ns.ShowSetup() end,
           help = "Walks you through a profile, a skin and your modules." },
         { label = "Before Onboarding", buttonText = "Restore", button = Restore, hidden = NoBackup,
