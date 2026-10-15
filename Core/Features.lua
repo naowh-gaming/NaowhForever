@@ -145,6 +145,7 @@ ns.FEATURES = {
     },
     professions = {
         enabled = true,
+        skillThresholds = false,
         recipeFinder = false,
         rankAlert = false,
         bagReagents = false,

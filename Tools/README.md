@@ -98,6 +98,7 @@ purpose.
 | Tool | What it does | Why |
 | --- | --- | --- |
 | `wago.py` | Reads the game's own tables (DB2) for a Forever build from wago.tools, hotfixes included. `BUILD` is the build our data comes from. | The one source that is the game itself. |
+| `build/skill_thresholds.py` | Generates `NaowhForever_Professions/Data/SkillThresholds.lua` from the selected Forever build's `SkillLineAbility` rows through `wago.py`. Accepts `--build`, an offline `--csv`, and `--output`. | The optional selected-recipe difficulty line; green is inferred from yellow and grey at runtime. |
 | `wowhead.py` | Not a build: reading Wowhead's Forever pages (a polite `fetch`, listviews, a dungeon guide's loot) and writing Lua strings, for the tools that do. | Shared by the builders, `release/watch_build.py` and `wowsrc.py`. |
 | `wowsrc.py` | Reads wowsrc.com's Forever loot pages into `data/wowsrc_loot.json`. `--resolve` maps their item names to IDs in `data/item_names.json` (`--offline`: without Wowhead). `--check` says what changed on their pages since (daily in CI). | Wowhead hasn't tied Forever's new items to bosses yet; wowsrc has. They gave us permission. |
 | `items_in_game.py` | Writes `data/items_in_game.json`: the items a Forever client was sent, and refused, from its hotfix cache (`--cache`) and the Journal's `/nf itemprobe` (`--probe`, its SavedVariables). With neither, both are read from a Windows install. | wago.tools lacks some items the server sends; the build lists those as in the game. Run on a machine with the client, then commit the JSON. |

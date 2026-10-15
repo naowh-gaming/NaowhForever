@@ -3,6 +3,7 @@
     <Script file="Professions.lua"/>
     <Script file="Constants.lua"/>
     <Script file="Data\RecipeData.lua"/>
+    <Script file="Data\SkillThresholds.lua"/>
     <Script file="Data\VendorReagents.lua"/>
     <Script file="Data\CooldownRecipes.lua"/>
     <Script file="Data\ConsumableItems.lua"/>
@@ -25,6 +26,7 @@
     <Script file="Disenchant.lua"/>
     <Script file="View\Style.lua"/>
     <Script file="View\Widgets.lua"/>
+    <Script file="UI\SkillThresholds.lua"/>
     <Script file="View\Popup.lua"/>
     <Script file="UI\RecipeList.lua"/>
     <Script file="UI\Reagents.lua"/>

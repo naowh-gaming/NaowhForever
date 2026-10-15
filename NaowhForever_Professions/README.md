@@ -18,6 +18,7 @@ NaowhForever_Professions/
                        the window's shared state (P.State)
   Constants.lua        the numbers several files share: AH timeouts, the craft cap, coins, NPC rows (P.C)
   Data/
+    SkillThresholds.lua difficulty ranges from the Forever client's SkillLineAbility table, constructed only on first use
     RecipeData.lua     where each recipe, rank and trainer is (ns.RecipeData), by hand from Wowhead Forever
     VendorReagents.lua the reagents trade-goods vendors sell (P.VendorReagents)
     CooldownRecipes.lua the classic recipes on a cooldown (P.CooldownRecipes)
@@ -45,6 +46,7 @@ NaowhForever_Professions/
     Widgets.lua        flat checkbox, skill bar, star, count box, Search AH button (P.Widgets)
     Popup.lua          the small window beside the trainer or the auction house (P.Popup)
   UI/
+    SkillThresholds.lua the optional difficulty line beneath a selected recipe (P.SkillThresholds)
     RecipeList.lua     the recipe list and its scrollbar (P.List)
     Reagents.lua       a recipe's reagent rows (P.Reagents)
     ProfitLines.lua    lined-up amounts and the crafting profit (P.Lines)
@@ -72,6 +74,23 @@ Each layer uses only the ones above it, or reads a later one's table at call tim
 
 ## Why
 
+- Skill-up Thresholds is off by default. It creates its shared line and constructs its catalogue only
+  when an enabled recipe pane first needs them. Selection and skill updates use the existing redraw
+  path; this feature adds no events, hooks, timers, route planning or polling.
+- `Tools/build/skill_thresholds.py` generates the catalogue independently from the game's own
+  `SkillLineAbility` table through the existing `Tools/sources/wago.py` reader, including the selected
+  build's hotfixes. The generated catalogue records its build. Regenerate it when `wago.BUILD` changes.
+  Only crafting skill lines and recipe categories are included;
+  contradictory ranges and conflicting duplicate spell rows are omitted.
+- The data holds `MinSkillLineRank`, `TrivialSkillLineRankLow` (yellow), and
+  `TrivialSkillLineRankHigh` (grey). Green is inferred as the rounded-down midpoint of yellow and grey.
+  A positive live `maxTrivialLevel` replaces the bundled grey, and green is recalculated with it.
+  A live grey at or below yellow is contradictory, so no line is drawn. These are difficulty ranges,
+  not trainer requirements or measured skill-up probabilities. The existing recipe colour still
+  comes directly from the game's `relativeDifficulty`.
+- The line is drawn below the icon, with the description and reagents beneath it. Its current-skill
+  marker includes the profession modifier where the client reports it. Linked professions have no
+  marker or range: their recipes belong to someone else, not the current character.
 - The on/off switches' defaults (`enabled` and each feature's switch) are read from
   `ns.FEATURES.professions`; their options keep their own defaults in `Professions.lua`.
 - Blizzard's window stays open under ours at zero alpha: hiding it would close the trade skill (its
