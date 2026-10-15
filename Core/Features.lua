@@ -84,6 +84,7 @@ ns.FEATURES = {
         combatAlert = true,
         hideErrors = false,
         hideTutorials = false,
+        stopAutoPushSpells = false,
         hideScreenshot = false,
         skipCinematics = false,
         hideAlerts = false,

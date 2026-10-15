@@ -4,19 +4,21 @@ local ns = _G.NaowhForever
 local S = ns.QoLSettings
 
 local TOAST_CLOSE_DELAY = 0.05
+local AUTO_PUSH_SPELL = "AutoPushSpellToActionBar"
 local TUTORIAL_CVARS = { showTutorials = "0", hideHelptips = "1" }
 local CINEMATIC_KEY, ZONE_JOIN = "cinematic:", "/"
 local MOVIE_KEY = "movie:"
-local CLUTTER = { "hideErrors", "hideTutorials", "hideScreenshot", "skipCinematics", "hideAlerts",
+local CLUTTER = { "hideErrors", "hideTutorials", "stopAutoPushSpells", "hideScreenshot", "skipCinematics", "hideAlerts",
     "hideEventToasts", "hideZoneText", "hideBagBar" }
 local APPLY_KEYS = { enabled = true, hideErrors = true, hideTutorials = true, hideScreenshot = true,
-    skipCinematics = true, hideBagBar = true }
+    skipCinematics = true, hideBagBar = true, stopAutoPushSpells = true }
 local BAG_BUTTONS = { "MainMenuBarBackpackButton", "CharacterBag0Slot", "CharacterBag1Slot", "CharacterBag2Slot",
     "CharacterBag3Slot", "KeyRingButton", "BagBarExpandToggle" }
 local SUMMARY = ns.L("%d of %d on")
 
 local errorsHidden, screenshotHidden, movieHooked = false, false, false
 local bagBarHidden = false
+local autoPushEvents
 
 local function On(key)
     return S.Get("enabled") and S.Get(key) and true or false
@@ -85,6 +87,32 @@ local function ApplyTutorials()
     end
 end
 
+local function OnAutoPushCVarChanged(_, _, name)
+    if name ~= AUTO_PUSH_SPELL and name ~= "autopushspelltoactionbar" then return end
+    local current = C_CVar.GetCVar(AUTO_PUSH_SPELL)
+    if current and current ~= "0" then C_CVar.SetCVar(AUTO_PUSH_SPELL, "0") end
+end
+
+local function ApplyAutoPushSpells()
+    if autoPushEvents then autoPushEvents:UnregisterAllEvents() end
+    local account = ns.AccountSettings()
+    if not On("stopAutoPushSpells") and account.autoPushSpellCVar == nil then return end
+    local current = C_CVar.GetCVar(AUTO_PUSH_SPELL)
+    if current == nil then return end
+    if On("stopAutoPushSpells") then
+        if account.autoPushSpellCVar == nil then account.autoPushSpellCVar = current end
+        if current ~= "0" then C_CVar.SetCVar(AUTO_PUSH_SPELL, "0") end
+        if not autoPushEvents then
+            autoPushEvents = CreateFrame("Frame")
+            autoPushEvents:SetScript("OnEvent", OnAutoPushCVarChanged)
+        end
+        autoPushEvents:RegisterEvent("CVAR_UPDATE")
+    else
+        C_CVar.SetCVar(AUTO_PUSH_SPELL, account.autoPushSpellCVar)
+        account.autoPushSpellCVar = nil
+    end
+end
+
 local function ApplyErrors()
     local hide = On("hideErrors")
     if hide == errorsHidden then return end
@@ -133,6 +161,7 @@ local function Apply()
     ApplyErrors()
     ApplyScreenshot()
     ApplyTutorials()
+    ApplyAutoPushSpells()
     ApplyCinematics()
     ApplyBagBar()
 end
@@ -178,6 +207,8 @@ Settings.Page("QoL/Interface", S):Card({
         { key = "hideTutorials", label = "Turn Off Tutorials", toggle = true,
           help = "Turns off the game's tutorials and help tips. Turning this back off restores "
               .. "what you had before." },
+        { key = "stopAutoPushSpells", label = "Stop Auto Push Spells to Bars", toggle = true,
+          help = "Keeps newly learned abilities off your action bars." },
         { key = "hideScreenshot", label = "Hide Screen Captured Text", toggle = true,
           help = "Hides the \"Screen captured\" text when you take a screenshot." },
         { key = "skipCinematics", label = "Skip Cinematics", toggle = true,

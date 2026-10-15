@@ -231,6 +231,13 @@ NaowhForever_QoL/
   the one seen known in the Forever client. Either counts.
 - Durability is fully red at or below 15% (`FLOOR_PCT`). Its card is fitted to the text only with
   a background, so what is anchored to it keeps its spot; the Unlock Mode preview shows 20%.
+- UI Clutter's Stop Auto Push Spells to Bars sets `AutoPushSpellToActionBar` to 0.
+  The Forever branch of Blizzard_NewPlayerExperience/Blizzard_TutorialWatchers.lua uses
+  0 to stop auto-placement and 1 to allow it. The previous value is saved in the account
+  store and restored when the switch or QoL is turned off, including after a reload.
+  While enabled, CVAR_UPDATE keeps Blizzard tutorials from turning auto-placement back on.
+  Its event frame is created on first enable and unregistered on disable.
+  Missing CVars are left alone; Action Bars does not need to be enabled.
 - UI Clutter's Hide Red Error Text is the same switch as Blizzard's `/uierrorsoff`.
 - Hide Bag Bar fades `BagsBar` with SetAlpha and turns its buttons' mouse off, never Hide: Edit Mode lays the bar out, and its Show and Hide are protected in combat.
 - The event toast frame is not in every client. Its own hide button stays usable while shown,

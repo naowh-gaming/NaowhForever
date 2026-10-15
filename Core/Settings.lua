@@ -188,6 +188,7 @@ local S = UI.ModuleSettings("qol", {
     combatEnterVoice = "", combatEnterVolume = 50, combatEnterRate = 0,
     combatLeaveVoice = "", combatLeaveVolume = 50, combatLeaveRate = 0,
 
+    stopAutoPushSpells = F.stopAutoPushSpells,
     hideErrors = F.hideErrors, hideTutorials = F.hideTutorials, hideScreenshot = F.hideScreenshot,
     skipCinematics = F.skipCinematics,
     hideAlerts = F.hideAlerts, hideEventToasts = F.hideEventToasts, hideZoneText = F.hideZoneText,

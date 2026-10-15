@@ -12,12 +12,14 @@ end
 -- Loads the file against a fresh session: settings, the account store and CVars persist
 -- across sessions the way SavedVariables and the client do; frames and hooks do not.
 local function Session(settings, account, cvars)
-    local log = { cvarWrites = 0, errors = {} }
+    local log = { cvarWrites = 0, errors = {}, frames = {} }
     local boot
     local function Frame()
-        local frame = {}
-        function frame:RegisterEvent(e) if self == log.uiErrors then log.errors[#log.errors + 1] = "+" .. e end end
-        function frame:UnregisterEvent(e) if self == log.uiErrors then log.errors[#log.errors + 1] = "-" .. e end end
+        local frame = { events = {} }
+        log.frames[#log.frames + 1] = frame
+        function frame:RegisterEvent(e) self.events[e] = true; if self == log.uiErrors then log.errors[#log.errors + 1] = "+" .. e end end
+        function frame:UnregisterAllEvents() self.events = {} end
+        function frame:UnregisterEvent(e) self.events[e] = nil; if self == log.uiErrors then log.errors[#log.errors + 1] = "-" .. e end end
         function frame:SetScript(_, fn) self.onEvent = fn end
         return frame
     end
@@ -100,5 +102,44 @@ Case("the cursor settings live on the Cursor & Crosshair tab, not in UI Clutter 
     assert(clip:find('Page("QoL/Cursor & Crosshair", S):Card({', 1, true) and clip:find('key = "cursorClip"', 1, true))
     local cooldown = Read("NaowhForever_QoL/Combat/CursorCooldown.lua")
     assert(cooldown:find('Page("QoL/Cursor & Crosshair", S):Card({\n    id = "cursorCooldown"', 1, true))
+end)
+Case("auto push stays untouched by default", function()
+    local cvars = { AutoPushSpellToActionBar = "1" }
+    local _, log = Session({ enabled = true }, {}, cvars)
+    assert(log.cvarWrites == 0 and cvars.AutoPushSpellToActionBar == "1")
+end)
+Case("auto push is blocked and the original value survives a reload", function()
+    local cvars, account = { AutoPushSpellToActionBar = "1" }, {}
+    local settings = { enabled = true, stopAutoPushSpells = false }
+    local S = Session(settings, account, cvars)
+    S.Set("stopAutoPushSpells", true)
+    assert(cvars.AutoPushSpellToActionBar == "0" and account.autoPushSpellCVar == "1")
+    S = Session(settings, account, cvars)
+    S.Set("stopAutoPushSpells", false)
+    assert(cvars.AutoPushSpellToActionBar == "1" and account.autoPushSpellCVar == nil)
+end)
+Case("auto push restores an already disabled value and on module disable", function()
+    for _, original in ipairs({ "0", "1" }) do
+        local cvars, account = { AutoPushSpellToActionBar = original }, {}
+        local S = Session({ enabled = true, stopAutoPushSpells = true }, account, cvars)
+        S.Set("enabled", false)
+        assert(cvars.AutoPushSpellToActionBar == original and account.autoPushSpellCVar == nil)
+    end
+end)
+Case("Blizzard cannot re-enable auto push while the switch is on", function()
+    local cvars = { AutoPushSpellToActionBar = "1" }
+    local S, log = Session({ enabled = true, stopAutoPushSpells = true }, {}, cvars)
+    local watcher = log.frames[#log.frames]
+    assert(watcher.events.CVAR_UPDATE)
+    cvars.AutoPushSpellToActionBar = "1"
+    watcher.onEvent(watcher, "CVAR_UPDATE", "AutoPushSpellToActionBar")
+    assert(cvars.AutoPushSpellToActionBar == "0")
+    S.Set("stopAutoPushSpells", false)
+    assert(not watcher.events.CVAR_UPDATE and cvars.AutoPushSpellToActionBar == "1")
+end)
+Case("missing auto push CVar is never written", function()
+    local S, log = Session({ enabled = true, stopAutoPushSpells = true }, {}, {})
+    S.Set("stopAutoPushSpells", false)
+    assert(log.cvarWrites == 0)
 end)
 print(count .. " UI clutter regressions passed")
