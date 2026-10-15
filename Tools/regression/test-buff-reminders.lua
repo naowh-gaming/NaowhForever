@@ -2,6 +2,7 @@
 -- and checks which reminder icons show. Run from the repo root:
 -- lua Tools/regression/test-buff-reminders.lua
 -- Stands in for a secret value: any field or method use raises, as the client does.
+C_AddOns = { DoesAddOnExist = function() return false end, GetAddOnEnableState = function() return 0 end }
 local SECRET = setmetatable({}, { __index = function() error("attempt to index a secret value") end })
 local function Read(path)
     local f = assert(io.open(path, "rb"))

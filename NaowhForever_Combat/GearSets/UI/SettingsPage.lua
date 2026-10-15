@@ -123,6 +123,8 @@ local function OpenWindow()
     ns.OpenGearSetsWindow()
 end
 
+if G.OLD_COPY then return end
+
 local page = Settings.Page(C.PAGE, S)
 
 page:Window({

@@ -7,6 +7,8 @@ local St = ns.Shared.Style
 
 local RANGED_SHADE = 0.6
 local TARGET = "target"
+local OLD_ADDON = "NaowhForever_SwingTimer"
+local OLD_COPY = C_AddOns.DoesAddOnExist(OLD_ADDON) and C_AddOns.GetAddOnEnableState(OLD_ADDON) > 0
 
 local function Copy(c) return { r = c.r, g = c.g, b = c.b } end
 
@@ -69,7 +71,7 @@ local function Color(key)
     return c.r, c.g, c.b, c.a or 1
 end
 
-local ST = { Settings = S, SUPPORTED = SUPPORTED, TARGET = TARGET, Color = Color }
+local ST = { Settings = S, SUPPORTED = SUPPORTED, TARGET = TARGET, Color = Color, OLD_COPY = OLD_COPY }
 ns.SwingTimer = ST
 
 if SUPPORTED then
@@ -78,7 +80,7 @@ if SUPPORTED then
 end
 
 function ST.On()
-    return SUPPORTED and S.Get("enabled")
+    return SUPPORTED and S.Get("enabled") and not OLD_COPY
 end
 
 function ST.Plain(v)

@@ -68,6 +68,8 @@ local function Summary(store)
     return (ns.L("Below %d%%, %s")):format(store.Get("lowHealthBelow"), ns.L(ITEMS[1][store.Get("lowHealthItem")] or ""))
 end
 
+if A.OLD_COPY then return end
+
 Settings.Page(A.PAGE, S):Card({
     id = "lowHealth", name = "Low Health", order = ORDER_LOW_HEALTH, switch = "lowHealth",
     help = "Shows a healing item's icon the moment your health drops below the threshold, in combat too: "

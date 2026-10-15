@@ -348,6 +348,8 @@ local function WarningSummary(store)
     return ("At %d%%"):format(store.Get("warnAt"))
 end
 
+if TM.OLD_COPY then return end
+
 local page = Settings.Page(C.PAGE, S)
 
 page:Window({

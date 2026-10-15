@@ -57,6 +57,8 @@ local function SpellRows(entries, prefix)
     return rows
 end
 
+if P.OLD_COPY then return end
+
 local page = Settings.Page("PvP/Auras", S)
 
 page:Card({

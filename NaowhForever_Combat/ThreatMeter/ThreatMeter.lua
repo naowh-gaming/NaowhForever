@@ -5,6 +5,8 @@ local F = ns.FEATURES.threatMeter
 local St = ns.Shared.Style
 
 local OLD_TEXTURES = { smooth = "", flat = "Solid" }
+local OLD_ADDON = "NaowhForever_ThreatMeter"
+local OLD_COPY = C_AddOns.DoesAddOnExist(OLD_ADDON) and C_AddOns.GetAddOnEnableState(OLD_ADDON) > 0
 
 local function Copy(c) return { r = c.r, g = c.g, b = c.b } end
 
@@ -47,11 +49,11 @@ local function MigrateTexture()
     if name then db.texture = name ~= "" and name or nil end
 end
 
-local TM = { Settings = S }
+local TM = { Settings = S, OLD_COPY = OLD_COPY }
 ns.ThreatMeter = TM
 
 function TM.On()
-    return S.Get("enabled")
+    return S.Get("enabled") and not OLD_COPY
 end
 
 function TM.Migrate()

@@ -207,6 +207,8 @@ rows[#rows + 1] = { key = "buffIconMode", label = "Icon", choice = ICON_MODES, n
         .. "elixir, scroll or weapon item you used last." }
 rows[#rows + 1] = Settings.Look("buffs", { text = true, size = TEXT_RANGE, needs = Enabled, why = OFF })
 
+if A.OLD_COPY then return end
+
 Settings.Page(A.PAGE, S):Card({
     id = "buffs", name = "Buffs & Consumables", order = ORDER_BUFFS,
     help = "A row of icons for missing food, flask, elixir and scroll buffs, your own class buff, and class "

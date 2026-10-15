@@ -5,6 +5,7 @@
 -- the plan, nothing is editable while Blessings is off, and hovering or the wheel makes no garbage.
 -- The preview is plain frames, never the bar's secure buttons. Frames here are stubs: this does
 -- not emulate the game's renderer, menus or taint rules.
+C_AddOns = { DoesAddOnExist = function() return false end, GetAddOnEnableState = function() return 0 end }
 local checks = 0
 local function check(label, value) assert(value, label); checks = checks + 1 end
 local Measure = dofile("Tools/regression/measure.lua")(check)

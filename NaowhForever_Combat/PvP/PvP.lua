@@ -5,6 +5,8 @@ local F = ns.FEATURES.pvp
 local SPELLS = ns.PvPSpells
 
 local CC_PREFIX, DEBUFF_PREFIX = "cc_", "debuff_"
+local OLD_ADDON = "NaowhForever_PvP"
+local OLD_COPY = C_AddOns.DoesAddOnExist(OLD_ADDON) and C_AddOns.GetAddOnEnableState(OLD_ADDON) > 0
 
 local DEFAULTS = {
     enabled = F.enabled,
@@ -23,9 +25,16 @@ for _, entry in ipairs(SPELLS.crowdControl) do DEFAULTS[CC_PREFIX .. entry.key] 
 for _, entry in ipairs(SPELLS.debuffs) do DEFAULTS[DEBUFF_PREFIX .. entry.key] = false end
 
 local S = ns.UI.ModuleSettings("pvp", DEFAULTS)
+local GetSetting = S.Get
+
+function S.Get(key)
+    if key == "enabled" and OLD_COPY then return false end
+    return GetSetting(key)
+end
+
 ns.PvPSettings = S
 
-local P = { Settings = S, CC_PREFIX = CC_PREFIX, DEBUFF_PREFIX = DEBUFF_PREFIX }
+local P = { Settings = S, CC_PREFIX = CC_PREFIX, DEBUFF_PREFIX = DEBUFF_PREFIX, OLD_COPY = OLD_COPY }
 ns.PvP = P
 
 function P.Enabled()

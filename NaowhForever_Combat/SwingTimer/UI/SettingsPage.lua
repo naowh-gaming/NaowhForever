@@ -219,6 +219,8 @@ end
 
 local SHOW = { { always = "Always", combat = "In Combat" }, { "always", "combat" } }
 
+if ST.OLD_COPY then return end
+
 local page = Settings.Page(C.PAGE, S)
 
 page:Window({

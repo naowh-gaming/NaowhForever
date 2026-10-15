@@ -97,4 +97,55 @@ on, cards = Guard(true, true, true)
 check("the old addon loaded this session: the QoL Top Bar stays off", not on)
 check("and leaves the card to the old addon, which declares it after QoL", cards == 0)
 
+-- The Combat modules do the same: each asks once, as it loads, whether its old folder is enabled
+-- (OLD_COPY on its table). While it is, its switch reads off and its card files declare nothing.
+local function Source(path)
+    local file = assert(io.open(path, "rb"))
+    local s = file:read("*a"):gsub("\r\n", "\n")
+    file:close()
+    return s
+end
+
+local COMBAT = { GearSets = { "GearSets", "G" }, Blessings = { "Blessings", "B" }, AuraBuffs = { "AuraBuffs", "A" },
+    ThreatMeter = { "ThreatMeter", "TM" }, PvP = { "PvP", "P" }, SwingTimer = { "SwingTimer", "ST" } }
+local TocFiles = dofile("Tools/regression/toc_files.lua")
+for name, info in pairs(COMBAT) do
+    local main = Source("NaowhForever_Combat/" .. name .. "/" .. info[1] .. ".lua")
+    check(name .. " asks whether its old folder is enabled", main:find('\nlocal OLD_ADDON = "NaowhForever_' .. name
+        .. '"\nlocal OLD_COPY = C_AddOns.DoesAddOnExist(OLD_ADDON) and C_AddOns.GetAddOnEnableState(OLD_ADDON) > 0\n',
+        1, true) and main:find("OLD_COPY = OLD_COPY", 1, true))
+    local pages = 0
+    for _, path in ipairs(TocFiles("^NaowhForever_Combat/" .. name .. "/.*%.lua$")) do
+        local s = Source(path)
+        local at = s:find("Settings.Page(", 1, true)
+        if at then
+            pages = pages + 1
+            local guard = s:find("\nif " .. info[2] .. ".OLD_COPY then return end\n", 1, true)
+                or s:find("\nif ns." .. name .. ".OLD_COPY then return end\n", 1, true)
+            check(path .. " declares nothing while the old folder is enabled", guard and guard < at)
+        end
+    end
+    check(name .. " has its cards", pages > 0)
+end
+
+local function PvP(enabled)
+    local ns = { FEATURES = { pvp = { enabled = true, auras = true } }, PvPSpells = { crowdControl = {}, debuffs = {} },
+        UI = { ModuleSettings = function(_, defaults) return { Get = function(k) return defaults[k] end } end } }
+    local env = setmetatable({ NaowhForever = ns, C_AddOns = {
+        DoesAddOnExist = function(addon) return addon == "NaowhForever_PvP" end,
+        GetAddOnEnableState = function(addon) return addon == "NaowhForever_PvP" and enabled and 2 or 0 end,
+    } }, { __index = _G })
+    env._G = env
+    local chunk = assert(loadfile("NaowhForever_Combat/PvP/PvP.lua"))
+    setfenv(chunk, env)
+    chunk()
+    return ns.PvP.Enabled(), ns.PvPSettings.Get("auras")
+end
+
+local pvpOn, auras = PvP(false)
+check("PvP with its old folder switched off: on as its switch says", pvpOn == true and auras ~= nil)
+pvpOn, auras = PvP(true)
+check("PvP with its old folder enabled: its switch reads off, its other settings as saved", pvpOn == false
+    and auras ~= nil)
+
 print(("test-retired-folders: %d checks passed"):format(checks))

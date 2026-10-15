@@ -5,6 +5,8 @@ local S = ns.QoLSettings
 
 local TEXT_AFTER_COMBAT = ns.L("Gear set equips when combat ends.")
 local SWAP_KEYS = { "gearMounted", "gearResting" }
+local OLD_ADDON = "NaowhForever_GearSets"
+local OLD_COPY = C_AddOns.DoesAddOnExist(OLD_ADDON) and C_AddOns.GetAddOnEnableState(OLD_ADDON) > 0
 
 local pending
 local autoSet
@@ -60,13 +62,13 @@ local function WantedAuto()
     if IsResting() then return SetByName(S.Get("gearResting")) end
 end
 
-local G = { SWAP_KEYS = SWAP_KEYS }
+local G = { SWAP_KEYS = SWAP_KEYS, OLD_COPY = OLD_COPY }
 ns.GearSets = G
 
 G.Sets = Sets
 
 function G.On()
-    return S.Get("gearSets")
+    return S.Get("gearSets") and not OLD_COPY
 end
 
 function G.EquipByHand(setID)

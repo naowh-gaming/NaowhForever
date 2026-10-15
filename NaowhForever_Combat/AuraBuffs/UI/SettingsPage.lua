@@ -28,6 +28,8 @@ local function OpenWindow()
     ns.OpenAuraBuffsWindow()
 end
 
+if A.OLD_COPY then return end
+
 local page = Settings.Page(A.PAGE, S)
 
 page:Window({

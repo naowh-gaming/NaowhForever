@@ -39,6 +39,8 @@ local S = ns.UI.ModuleSettings("auraBuffs", {
 })
 
 local ENTRIES = "consumableEntries"
+local OLD_ADDON = "NaowhForever_AuraBuffs"
+local OLD_COPY = C_AddOns.DoesAddOnExist(OLD_ADDON) and C_AddOns.GetAddOnEnableState(OLD_ADDON) > 0
 local MIN_ID, MAX_ID = 1, 2147483647
 local LIST_PREFIX = "NFCONSUMABLES1:"
 local MAX_ENTRIES = 500
@@ -49,6 +51,7 @@ local CATEGORY_ORDER = { "food", "flask", "scroll", "battle", "guardian" }
 local GetSetting, SetSetting = S.Get, S.Set
 
 function S.Get(key)
+    if key == "enabled" and OLD_COPY then return false end
     if key == ENTRIES and ns.DB then
         local data = ns.DB().utilityReminders
         return data and data.consumables or {}
@@ -95,6 +98,7 @@ local A = {
     CATEGORY_NAMES = CATEGORY_NAMES,
     CATEGORY_ORDER = CATEGORY_ORDER,
     MAX_ENTRIES = MAX_ENTRIES,
+    OLD_COPY = OLD_COPY,
 }
 ns.AuraBuffs = A
 

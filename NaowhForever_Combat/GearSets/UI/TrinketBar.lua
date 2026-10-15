@@ -182,7 +182,7 @@ local function ApplyTrinkets()
         return
     end
     ClosePicker()
-    local on = S.Get("gearSets") and S.Get("trinketBar")
+    local on = G.On() and S.Get("trinketBar")
     for _, event in ipairs(WATCHED) do
         if on then watcher:RegisterEvent(event) else watcher:UnregisterEvent(event) end
     end

@@ -33,4 +33,10 @@ NaowhForever_Combat/
   reload: each checks its own switch before it registers an event, hooks or builds a frame, and
   stops when it goes off. One that is off costs only its loaded code and a few idle frames.
 - An old folder (`NaowhForever_GearSets` and the rest) left behind is switched off at login
-  (`RETIRED_ADDONS` in `Core/Core.lua`).
+  (`RETIRED_ADDONS` in `Core/Core.lua`), with a reload offered when it loaded. In that one session
+  the old addon has the module: each module asks once, as it loads, whether its old folder is
+  enabled (`OLD_COPY` on its table), and while it is, its switch reads off and its card files
+  declare nothing, since a second card with the same id stops the copy that declares it. Some old
+  folders load before this addon and some after, so it is the enable state that is asked, not
+  whether it has loaded yet. It is asked for all characters: a folder enabled only on another
+  character costs that module for one session.

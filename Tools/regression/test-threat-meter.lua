@@ -1,4 +1,5 @@
 -- Offline behavior checks; these do not emulate client taint or rendering.
+C_AddOns = { DoesAddOnExist = function() return false end, GetAddOnEnableState = function() return 0 end }
 local TocFiles = dofile('Tools/regression/toc_files.lua')
 local checks = 0
 local function check(label, ok) assert(ok, label); checks = checks + 1 end

@@ -3,6 +3,8 @@ local ns = _G.NaowhForever
 
 local S = ns.QoLSettings
 
+local OLD_ADDON = "NaowhForever_Blessings"
+local OLD_COPY = C_AddOns.DoesAddOnExist(OLD_ADDON) and C_AddOns.GetAddOnEnableState(OLD_ADDON) > 0
 local CLASSES = { "WARRIOR", "PALADIN", "HUNTER", "ROGUE", "PRIEST", "SHAMAN", "MAGE", "WARLOCK", "DRUID" }
 local VALID_CLASS = {}
 for _, class in ipairs(CLASSES) do VALID_CLASS[class] = true end
@@ -17,11 +19,12 @@ local B = {
     AURA_TIP = ns.L("Left-click: cast your aura.\nRight-click: choose it."),
     FURY_TIP = ns.L("Left-click: cast it on yourself."),
     others = {},
+    OLD_COPY = OLD_COPY,
 }
 ns.Blessings = B
 
 function B.On()
-    return S.Get("blessings")
+    return S.Get("blessings") and not OLD_COPY
 end
 
 function B.IsPaladin()

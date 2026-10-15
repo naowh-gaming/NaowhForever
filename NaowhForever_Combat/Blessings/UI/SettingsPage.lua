@@ -434,6 +434,8 @@ local function BarSummary(store)
         store.Get("blessShowAura") and ns.L(", aura") or "", store.Get("blessTimers") and ns.L(", minutes left") or "")
 end
 
+if B.OLD_COPY then return end
+
 local page = Settings.Page(B.PAGE, S)
 
 page:Window({

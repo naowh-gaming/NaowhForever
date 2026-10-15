@@ -9,6 +9,8 @@ local function Reset()
     S.Set("timerPos", false)
 end
 
+if ns.PvP.OLD_COPY then return end
+
 Settings.Page("PvP/Battlegrounds", S):Card({
     id = "displays", name = "Battleground Displays", order = 10,
     help = "Move the battleground scores and the start countdown in the HUD Editor, under PvP.",

@@ -2,6 +2,7 @@
 -- do to us. Bombs, cycles, shared tables, deep nesting, numbers that do not save, escape codes in
 -- names, flooding and claims made for someone else are each refused without an error and without
 -- touching saved data. Offline: no client taint, rendering or real addon channel.
+C_AddOns = { DoesAddOnExist = function() return false end, GetAddOnEnableState = function() return 0 end }
 strmatch = string.match
 dofile("Libs/LibStub/LibStub.lua")
 dofile("Libs/LibDeflate/LibDeflate.lua")

@@ -1,4 +1,5 @@
 -- Run with Lua 5.1 from the repository root. Hardware actions are recorded, not executed.
+C_AddOns = { DoesAddOnExist = function() return false end, GetAddOnEnableState = function() return 0 end }
 local TocFiles = dofile('Tools/regression/toc_files.lua')
 local checks = 0
 local function check(label, value) assert(value, label); checks = checks + 1 end

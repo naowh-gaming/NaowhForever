@@ -379,6 +379,8 @@ local function BonusRows()
     return rows
 end
 
+if A.OLD_COPY then return end
+
 local page = Settings.Page("AuraBuffs/Settings", S)
 
 campCard = page:Card({
