@@ -17,7 +17,7 @@ end
 function Times.Record(key, kind, now)
     if not key or (kind ~= ARRIVAL and kind ~= DEPARTURE) then return false end
     local row = observations and observations[key]
-    if row and (now < row.last or now - row.last > MAX_PERIOD) then
+    if row and (now < row.last or now - row.arrival > MAX_PERIOD) then
         observations[key] = nil
         row = nil
     end
@@ -34,9 +34,8 @@ function Times.Record(key, kind, now)
         row.dwell = dwell
     else
         local period = now - row.arrival
-        if period < MIN_PERIOD or period > MAX_PERIOD then return false end
+        if period < MIN_PERIOD then return false end
         row.period, row.arrival = period, now
-        if row.dwell >= period then row.dwell = nil end
     end
     row.last, row.kind = now, kind
     return true

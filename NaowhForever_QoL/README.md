@@ -135,41 +135,7 @@ NaowhForever_QoL/
 ```
 
 
-## Boat and Zeppelin Timers
-
-Enable **QoL > Travel > Boat and Zeppelin Timers**. Leave Dock and Route on Nearby
-or choose a dock route to watch remotely. Nearby picks the closest dock within 200 yards;
-at a shared zeppelin tower, choose the desired route explicitly in settings.
-
-At that dock, record **Arrived**, **Departed**, then **Arrived** again for the same
-boat or zeppelin on consecutive visits. No countdown appears until that complete cycle
-is observed. The HUD then shows an **Estimate** of its next departure or arrival. Keep
-recording stops to update the timing. Use **Reset** after missing a visit or making a
-mistake. Unlock Mode moves the HUD.
-
-Estimates expire two full cycles after the last recorded arrival, or after 15 minutes
-without an observation. Reset and record a fresh cycle when an estimate expires.
-Observations stay in this session only and clear when disabled, reloaded, or entering
-a world after a loading screen. A chosen remote dock needs its own observations; no
-other dock's timing is inferred. The HUD and client behavior still need in-game testing.
-
 ## Why
-
-- Transport routes and dock positions reuse `TownTravel.lua`, which loads even when Town Map
-  is off. The feature does not depend on Journeys or estimate real arrivals from its path lengths.
-- No verified Forever API supplies a live transport phase. Manual observations measure both
-  dock dwell and a full return period. Predictions always say Estimate because player input,
-  server changes and missed cycles can shift them.
-- `MIN_PERIOD` is 30 seconds and `MAX_PERIOD` is 900 seconds: reject accidental short cycles
-  and abandon observations separated by more than 15 minutes rather than invent a schedule.
-  `VALID_CYCLES` is 2 so unattended predictions expire instead of drifting indefinitely.
-- `NEAR_YARDS` is 200 because transport path stops lie in the water or above the platform,
-  rather than at the player's feet. Shared-tower routes need explicit selection.
-- Observations use session `GetTime` and are discarded on world entry so a reload, realm or
-  instance change cannot carry a previous server phase into a new world.
-- Events and frames are created on first enable. Nearby selection refreshes on zone and movement
-  events. OnUpdate runs only for an active countdown, with text refreshed every 0.2 seconds;
-  disabling or expiry removes it. No transport polling or ticker runs while learning or off.
 
 - The Damage Meter Skin never hides or re-lays out the game's meter: it recolors its textures and
   fonts after the game sets them (hooksecurefunc on each entry, a scroll box callback for new
@@ -737,6 +703,25 @@ other dock's timing is inferred. The HUD and client behavior still need in-game 
 - Auras cannot be read in combat, so the camp check pauses there rather than reading a missing aura as having walked away.
 - A dismiss with no reason is the close button; one with a reason closes only what that reason opened, so landing never shuts a quiz opened by hand.
 - In `QuizData.lua` the first answer is the right one; the quiz shuffles them before showing.
+
+### Boat and Zeppelin Timers
+- No verified Forever API gives a transport's live position or phase, so a dock is timed from the
+  stops the player records there: an arrival, its departure, then the next arrival. No countdown
+  shows until that full cycle is recorded, and every countdown says Estimate.
+- Docks and routes come from `TownTravel.lua`, which loads even when Town Map is off. Journeys'
+  ship waits are path-length estimates, not real arrivals, so they are not used.
+- A shared zeppelin tower is one point in `TownTravel.lua`, so Nearby picks its first route; the
+  other is chosen in settings. Each route learns on its own; nothing is inferred between docks.
+- `NEAR_YARDS` is 200: a dock's point is the ship's stop, in the water or above the platform,
+  not where the player stands.
+- `MIN_PERIOD` (30 s) rejects a mis-click cycle. A cycle longer than `MAX_PERIOD` (900 s) starts
+  learning again from that arrival, and 15 minutes with no stop recorded ends the estimate.
+  `VALID_CYCLES` is 2: an unattended estimate expires two cycles after the last arrival instead
+  of drifting.
+- Observations are session-only, on `GetTime`, and cleared on every PLAYER_ENTERING_WORLD, so no
+  phase carries across a loading screen.
+- The OnUpdate runs only while a countdown shows, repainting every `UPDATE_EVERY` (0.2 s), and
+  stops on expiry or disable. Nearby re-picks the dock on zone changes and PLAYER_STOPPED_MOVING.
 
 ### Mail
 - Quick Attach puts in one stack at a time, from a scan made at the click: each is checked in its bag slot and on the cursor before it goes in, and the next goes only once the last has landed (MAIL_SEND_INFO_UPDATE).

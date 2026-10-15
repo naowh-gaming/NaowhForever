@@ -12,8 +12,10 @@ local TITLE_SIZE, TEXT_SIZE = 14, 12
 local TITLE_Y, ROUTE_Y, STATUS_Y, HELP_Y, BUTTON_Y = -12, -36, -74, -100, -148
 local ROUTE_H, HELP_H = 34, 38
 local BUTTON_W, BUTTON_H, BUTTON_GAP = 132, 24, 10
-local UPDATE_EVERY, SECONDS_PER_MINUTE = 0.2, 60
-local NEAR_YARDS, PERCENT = 200, 100
+local UPDATE_EVERY = 0.2
+local SECONDS_PER_MINUTE = ns.QoLConstants.SECONDS_PER_MINUTE
+local NEAR_YARDS = 200
+local PERCENT = ns.QoLConstants.PERCENT
 local FIRST_LABEL, LABEL_STEP = 4, 2
 local PAGE, CARD = "QoL/Travel", "QoL/Travel:transportTimers"
 local NEARBY, PLAYER = "nearby", "player"
@@ -31,7 +33,7 @@ local TEXT_SELECT = ns.L("%s: %s")
 local TEXT_RESET = ns.L("Reset")
 local TEXT_ARRIVED, TEXT_DEPARTED = ns.L("Arrived"), ns.L("Departed")
 local EVENTS = { "PLAYER_ENTERING_WORLD", "ZONE_CHANGED_NEW_AREA", "ZONE_CHANGED",
-    "ZONE_CHANGED_INDOORS", "PLAYER_STOPPED_MOVING", "PLAYER_STARTED_MOVING" }
+    "ZONE_CHANGED_INDOORS", "PLAYER_STOPPED_MOVING" }
 
 local frame, events, docks, labels, order, selected
 local elapsed = 0
@@ -96,7 +98,6 @@ local function Paint()
     frame.arrived:SetEnabled(selected ~= nil and kind ~= "stale" and last ~= "arrival")
     frame.departed:SetEnabled(selected ~= nil and kind ~= "stale" and last == "arrival")
     frame.reset:SetEnabled(selected ~= nil)
-    frame:SetScript("OnUpdate", nil)
     if not selected then frame.status:SetText(TEXT_NONE)
     elseif seconds then
         local rounded = math.ceil(seconds)
@@ -113,7 +114,7 @@ local function OnUpdate(_, delta)
     elapsed = elapsed + delta
     if elapsed < UPDATE_EVERY then return end
     elapsed = 0
-    if Paint() then frame:SetScript("OnUpdate", OnUpdate) end
+    if not Paint() then frame:SetScript("OnUpdate", nil) end
 end
 
 local function Refresh()
@@ -122,7 +123,7 @@ local function Refresh()
     local key = S.Get("transportDock")
     selected = key == NEARBY and Nearest() or (docks[key] and key or nil)
     frame.route:SetText(selected and labels[selected] or TEXT_NEARBY)
-    if Paint() then frame:SetScript("OnUpdate", OnUpdate) end
+    frame:SetScript("OnUpdate", Paint() and OnUpdate or nil)
 end
 
 local function Arrived()

@@ -2,7 +2,8 @@
 local checks = 0
 local function Check(ok, why) assert(ok, why); checks = checks + 1 end
 local now = 100
-local ns = { Shared = { Parts = {}, Settings = {} }, THEME = {}, UI = {} }
+local ns = { Shared = { Parts = {}, Settings = {} }, THEME = {}, UI = {},
+    QoLConstants = { PERCENT = 100, SECONDS_PER_MINUTE = 60 } }
 _G.NaowhForever = ns
 ns.L = function(text) return text end
 
@@ -39,6 +40,9 @@ Next("boat", 349, nil, "stale")
 Times.Clear()
 Check(Times.Record("short", "arrival", 0) and Times.Record("short", "departure", 1), "short cycle starts")
 Check(not Times.Record("short", "arrival", 2), "implausibly short cycle rejected")
+Check(Times.Record("long", "arrival", 0) and Times.Record("long", "departure", 600), "long cycle starts")
+Check(Times.Record("long", "arrival", 1000), "an arrival past MAX_PERIOD restarts learning instead of being refused")
+Next("long", 1010, nil, "departure")
 Check(not Times.Record("short", "flight", 100), "unknown observation type rejected")
 Check(not Times.Record(nil, "arrival", 100), "no observations without a selected dock")
 Times.Clear()
