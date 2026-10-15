@@ -116,7 +116,8 @@ NaowhForever_QoL/
     FlightData.lua      each flight route's flown length (ns.FLIGHT_ROUTES), generated
     Flight.lua          the Flight Timer, Flight Games and flight times on the flight map
     FlightPoint.lua     zone-entry and nearby-town flight point reminders
-    TransportTimes.lua  session-only dock observations and expiring estimates (ns.TransportTimes)
+    TransportData.lua   estimated dock periods and dwells, generated from Journeys data
+    TransportTimes.lua  session-only server-clock sightings and estimates (ns.TransportTimes)
     Transport.lua       Boat and Zeppelin Timers, its HUD, nearby selection and Travel settings
     AimTrainer.lua      the Aim Trainer (/nfaim, ns.AimRules, ns.AimPlay, ns.AimOffer)
     AimBoard.lua        the Aim Trainer's leaderboard (ns.AimBoard)
@@ -705,23 +706,29 @@ NaowhForever_QoL/
 - In `QuizData.lua` the first answer is the right one; the quiz shuffles them before showing.
 
 ### Boat and Zeppelin Timers
-- No verified Forever API gives a transport's live position or phase, so a dock is timed from the
-  stops the player records there: an arrival, its departure, then the next arrival. No countdown
-  shows until that full cycle is recorded, and every countdown says Estimate.
-- Docks and routes come from `TownTravel.lua`, which loads even when Town Map is off. Journeys'
-  ship waits are path-length estimates, not real arrivals, so they are not used.
-- A shared zeppelin tower is one point in `TownTravel.lua`, so Nearby picks its first route; the
-  other is chosen in settings. Each route learns on its own; nothing is inferred between docks.
-- `NEAR_YARDS` is 200: a dock's point is the ship's stop, in the water or above the platform,
-  not where the player stands.
-- `MIN_PERIOD` (30 s) rejects a mis-click cycle. A cycle longer than `MAX_PERIOD` (900 s) starts
-  learning again from that arrival, and 15 minutes with no stop recorded ends the estimate.
-  `VALID_CYCLES` is 2: an unattended estimate expires two cycles after the last arrival instead
-  of drifting.
-- Observations are session-only, on `GetTime`, and cleared on every PLAYER_ENTERING_WORLD, so no
-  phase carries across a loading screen.
-- The OnUpdate runs only while a countdown shows, repainting every `UPDATE_EVERY` (0.2 s), and
-  stops on expiry or disable. Nearby re-picks the dock on zone changes and PLAYER_STOPPED_MOVING.
+- One Arrived or Departed click records a sighting against `GetServerTime`. Click at the actual
+  arrival or departure, rather than partway through its stop. Another click corrects the phase.
+- `TransportData.lua` freezes Journeys' dwell and leg data with its boat/zeppelin speeds:
+  each period is the sum of every dock's dwell plus every leg's yards divided by speed.
+  Run `lua5.1 Tools/build/transport.lua` after rebuilding Journeys' network or changing its speeds.
+  The generated file loads in QoL, so Journeys and Town Map can both stay disabled.
+- These periods are path-length estimates, not measured Forever schedules. Every countdown
+  says Estimate; acceleration, teleports and server changes can cause drift. In-game testing
+  must compare several real stops; a new sighting resynchronizes the estimate immediately.
+- Docks and routes come from `TownTravel.lua`. A shared tower is one point, so Nearby picks its
+  first route; choose the other in Travel settings. Each dock route calibrates independently,
+  including the two destinations at each stop of the three-stop Southshore route.
+- The HUD shows only within `NEAR_YARDS` (200) of the selected dock. This allows for the pin
+  being in the water or above the platform. Selecting a remote dock does not show a remote HUD.
+- Sightings stay in memory through PLAYER_LEAVING_WORLD and PLAYER_ENTERING_WORLD. Loading
+  screens hide the HUD without clearing its server-clock phase, even during a long ride.
+  Reload, logout, Reset, or disabling the feature/module clears sightings. A backwards server
+  clock suspends an estimate until a fresh sighting; estimates otherwise last for this session.
+- The HUD updates only during a visible countdown, every `UPDATE_EVERY` (1 s), including a
+  proximity check for riding away. Zone and movement events refresh proximity; while moving,
+  the event frame checks every `MOVE_EVERY` (0.5 s), so crossing the radius shows/hides the HUD
+  without waiting for the player to stop. It stops when movement stops or a loading screen
+  begins. Disable unregisters all events and stops both updates.
 
 ### Mail
 - Quick Attach puts in one stack at a time, from a scan made at the click: each is checked in its bag slot and on the cursor before it goes in, and the next goes only once the last has landed (MAIL_SEND_INFO_UPDATE).

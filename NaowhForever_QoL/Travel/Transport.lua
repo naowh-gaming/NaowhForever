@@ -1,7 +1,7 @@
 -- Transport.lua: manually calibrated boat and zeppelin countdowns and their Travel settings.
 local ns = _G.NaowhForever
 
-local GetTime = GetTime
+local GetServerTime = GetServerTime
 local S, UI = ns.QoLSettings, ns.UI
 local T = ns.THEME
 local Parts = ns.Shared.Parts
@@ -12,7 +12,7 @@ local TITLE_SIZE, TEXT_SIZE = 14, 12
 local TITLE_Y, ROUTE_Y, STATUS_Y, HELP_Y, BUTTON_Y = -12, -36, -74, -100, -148
 local ROUTE_H, HELP_H = 34, 38
 local BUTTON_W, BUTTON_H, BUTTON_GAP = 132, 24, 10
-local UPDATE_EVERY = 0.2
+local UPDATE_EVERY, MOVE_EVERY = 1, 0.5
 local SECONDS_PER_MINUTE = ns.QoLConstants.SECONDS_PER_MINUTE
 local NEAR_YARDS = 200
 local PERCENT = ns.QoLConstants.PERCENT
@@ -21,22 +21,20 @@ local PAGE, CARD = "QoL/Travel", "QoL/Travel:transportTimers"
 local NEARBY, PLAYER = "nearby", "player"
 local TITLE = ns.L("Boat and Zeppelin Timers")
 local TEXT_NEARBY = ns.L("Nearby dock")
-local TEXT_NONE = ns.L("No nearby dock; choose one in Travel settings.")
 local TEXT_ESTIMATE = ns.L("Estimate: %s in %d:%02d")
 local TEXT_ARRIVES, TEXT_LEAVES = ns.L("arrives"), ns.L("leaves")
-local TEXT_ARRIVAL = ns.L("Record an arrival to begin learning this dock.")
-local TEXT_DEPARTURE = ns.L("Record its departure, then its next arrival.")
-local TEXT_RETURN = ns.L("Record the next arrival to complete a cycle.")
-local TEXT_STALE = ns.L("Estimate expired; reset and record a fresh cycle.")
-local TEXT_HELP = ns.L("Record consecutive stops of the same route. Choose another dock in Travel settings.")
+local TEXT_SIGHTING = ns.L("Record an arrival or departure to start the estimate.")
+local TEXT_STALE = ns.L("Server clock changed; record a new sighting.")
+local TEXT_HELP = ns.L("Click as the transport arrives or leaves. Choose its route in Travel settings.")
 local TEXT_SELECT = ns.L("%s: %s")
 local TEXT_RESET = ns.L("Reset")
 local TEXT_ARRIVED, TEXT_DEPARTED = ns.L("Arrived"), ns.L("Departed")
-local EVENTS = { "PLAYER_ENTERING_WORLD", "ZONE_CHANGED_NEW_AREA", "ZONE_CHANGED",
-    "ZONE_CHANGED_INDOORS", "PLAYER_STOPPED_MOVING" }
+local EVENTS = { "PLAYER_ENTERING_WORLD", "PLAYER_LEAVING_WORLD", "ZONE_CHANGED_NEW_AREA", "ZONE_CHANGED",
+    "ZONE_CHANGED_INDOORS", "PLAYER_STARTED_MOVING", "PLAYER_STOPPED_MOVING" }
 
 local frame, events, docks, labels, order, selected
-local elapsed = 0
+local elapsed, moveElapsed = 0, 0
+local inWorld = true
 
 local function On()
     return S.Get("enabled") == true and S.Get("transportTimers") == true
@@ -69,7 +67,7 @@ local function Secret(value)
     return issecretvalue and issecretvalue(value)
 end
 
-local function Nearest()
+local function Nearest(choice)
     local map = C_Map.GetBestMapForUnit(PLAYER)
     local pos = map and C_Map.GetPlayerMapPosition(map, PLAYER)
     if not pos or Secret(pos.x) or Secret(pos.y) then return nil end
@@ -78,7 +76,7 @@ local function Nearest()
     local best, distance = nil, NEAR_YARDS * NEAR_YARDS
     for _, key in ipairs(order) do
         local dock = docks[key]
-        if dock then
+        if dock and (choice == NEARBY or choice == key) then
             if not dock.world then
                 dock.continent, dock.world = C_Map.GetWorldPosFromMapPos(dock.map, CreateVector2D(dock.x, dock.y))
             end
@@ -94,52 +92,69 @@ local function Nearest()
 end
 
 local function Paint()
-    local seconds, kind, last = Times.Next(selected, GetTime())
-    frame.arrived:SetEnabled(selected ~= nil and kind ~= "stale" and last ~= "arrival")
-    frame.departed:SetEnabled(selected ~= nil and kind ~= "stale" and last == "arrival")
+    local seconds, kind = Times.Next(selected, GetServerTime())
+    frame.arrived:SetEnabled(selected ~= nil)
+    frame.departed:SetEnabled(selected ~= nil)
     frame.reset:SetEnabled(selected ~= nil)
-    if not selected then frame.status:SetText(TEXT_NONE)
-    elseif seconds then
+    if seconds then
         local rounded = math.ceil(seconds)
         frame.status:SetText(TEXT_ESTIMATE:format(kind == "arrival" and TEXT_ARRIVES or TEXT_LEAVES,
             math.floor(rounded / SECONDS_PER_MINUTE), rounded % SECONDS_PER_MINUTE))
     elseif kind == "stale" then frame.status:SetText(TEXT_STALE)
-    elseif kind == "new" then frame.status:SetText(TEXT_ARRIVAL)
-    elseif kind == "departure" then frame.status:SetText(TEXT_DEPARTURE)
-    else frame.status:SetText(TEXT_RETURN) end
+    else frame.status:SetText(TEXT_SIGHTING) end
     return seconds ~= nil
 end
+
+local Refresh
 
 local function OnUpdate(_, delta)
     elapsed = elapsed + delta
     if elapsed < UPDATE_EVERY then return end
     elapsed = 0
-    if not Paint() then frame:SetScript("OnUpdate", nil) end
+    Refresh()
 end
 
-local function Refresh()
+local function OnMove(_, delta)
+    moveElapsed = moveElapsed + delta
+    if moveElapsed < MOVE_EVERY then return end
+    moveElapsed = 0
+    Refresh()
+end
+
+Refresh = function()
     if not On() then return end
     Prepare()
-    local key = S.Get("transportDock")
-    selected = key == NEARBY and Nearest() or (docks[key] and key or nil)
-    frame.route:SetText(selected and labels[selected] or TEXT_NEARBY)
+    selected = inWorld and Nearest(S.Get("transportDock")) or nil
+    if not selected then
+        frame:SetScript("OnUpdate", nil)
+        frame:Hide()
+        return
+    end
+    frame.route:SetText(labels[selected])
     frame:SetScript("OnUpdate", Paint() and OnUpdate or nil)
+    frame:Show()
 end
 
 local function Arrived()
-    if not On() or not selected then return end
-    Times.Record(selected, "arrival", GetTime())
+    if not On() then return end
+    Refresh()
+    if not selected then return end
+    Times.Record(selected, "arrival", GetServerTime())
     Refresh()
 end
 
 local function Departed()
-    if not On() or not selected then return end
-    Times.Record(selected, "departure", GetTime())
+    if not On() then return end
+    Refresh()
+    if not selected then return end
+    Times.Record(selected, "departure", GetServerTime())
     Refresh()
 end
 
 local function Reset()
     if not On() then return end
+    Refresh()
+    if not selected then return end
     Times.Clear(selected)
     Refresh()
 end
@@ -159,6 +174,7 @@ end
 
 local function Build()
     frame = CreateFrame("Frame", nil, UIParent)
+    frame:Hide()
     frame:SetSize(WIDTH, HEIGHT)
     frame:SetMovable(true)
     frame:SetClampedToScreen(true)
@@ -177,13 +193,26 @@ local function Build()
 end
 
 local function OnEvent(_, event)
-    if event == "PLAYER_ENTERING_WORLD" then Times.Clear() end
+    if event == "PLAYER_LEAVING_WORLD" then
+        inWorld = false
+        events:SetScript("OnUpdate", nil)
+        frame:SetScript("OnUpdate", nil)
+        frame:Hide()
+        selected = nil
+        return
+    end
+    if event == "PLAYER_ENTERING_WORLD" then inWorld = true end
+    if event == "PLAYER_STARTED_MOVING" or event == "PLAYER_STOPPED_MOVING"
+        or event == "PLAYER_ENTERING_WORLD" then
+        moveElapsed = 0
+        events:SetScript("OnUpdate", inWorld and IsPlayerMoving() and OnMove or nil)
+    end
     Refresh()
 end
 
 local function Apply()
     if not On() then
-        if events then events:UnregisterAllEvents() end
+        if events then events:UnregisterAllEvents(); events:SetScript("OnUpdate", nil) end
         if frame then frame:SetScript("OnUpdate", nil); frame:Hide() end
         Times.Clear()
         selected = nil
@@ -198,7 +227,8 @@ local function Apply()
         events:SetScript("OnEvent", OnEvent)
     end
     for _, event in ipairs(EVENTS) do events:RegisterEvent(event) end
-    frame:Show()
+    moveElapsed = 0
+    events:SetScript("OnUpdate", inWorld and IsPlayerMoving() and OnMove or nil)
     Refresh()
 end
 
