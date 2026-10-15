@@ -591,8 +591,24 @@ do
     t.Set("onlyIfCarried", false)
     t.state.bags = {}
     t.Fire("BAG_UPDATE_DELAYED"); t.Advance(0.5)
-    local shown = t.Shown()
-    Check("Only If I Carry One off: food, flask and elixir, no scroll", select(2, shown:gsub("%S+", "")), 3)
+    Check("Only If I Carry One off: food, flask and elixir, no scroll", t.Shown(), "spell:1248406 item:13510 item:13452")
+end
+
+-- Of one stat's scrolls the highest level is offered, even when another stat's scroll is the best in the bags.
+do
+    local t = Fixture({ settings = { consumableEntries = {}, personalBuffs = false }, instance = "raid",
+        bags = { 10307, 1181, 1712 }, levels = { [10307] = 55, [1181] = 1, [1712] = 15 },
+        auras = { player = { { 12178, 1700, 1800 } } } })
+    t.Login()
+    Check("Stamina IV up, Spirit II offered over Spirit I", t.Shown(), "item:1712")
+end
+
+-- A listed scroll keeps its own rules: a carried scroll of another stat does not stand in for it.
+do
+    local t = Fixture({ instance = "raid", bags = { 1711 }, auras = { player = { { 12174, 1700, 1800 } } },
+        settings = { personalBuffs = false, consumableEntries = { { category = "scroll", itemID = 10309, auras = { 12174 } } } } })
+    t.Login()
+    Check("listed Agility scroll up, a Stamina scroll carried: no scroll reminder", t.Shown(), "")
 end
 
 -- A listed item is preferred; with none of it carried, a carried built-in one stands in.

@@ -94,7 +94,6 @@ for _, scroll in ipairs(D.SCROLLS) do
         D.SCROLL_AURAS[id] = auras
         table.insert(D.DEFAULT_GROUPS.scroll.items, id)
     end
-    for _, id in ipairs(auras) do table.insert(D.DEFAULT_GROUPS.scroll.auras, id) end
 end
 
 D.PERSONAL = {

@@ -245,10 +245,15 @@ local function ScrollGroup(items, buffs)
             break
         end
     end
-    local same = {}
+    local same, best, bestNeed = {}, 1, -1
     for _, id in ipairs(items) do
-        if D.SCROLL_AURAS[id] == auras then same[#same + 1] = id end
+        if D.SCROLL_AURAS[id] == auras then
+            same[#same + 1] = id
+            local need = select(REQUIRED_LEVEL, C_Item.GetItemInfo(id)) or 0
+            if need > bestNeed then best, bestNeed = #same, need end
+        end
     end
+    same[1], same[best] = same[best], same[1]
     return { items = same, auras = auras }, same[1]
 end
 
@@ -258,6 +263,7 @@ local function Consumables(list, buffs)
     for _, category in ipairs(CATEGORY_ORDER) do
         local group = groups[category]
         local builtIn = not (category == "battle" and groups.guardian) and D.DEFAULT_GROUPS[category]
+        if group and builtIn and builtIn.carried then builtIn = nil end
         local carriedOnly = onlyCarried or builtIn and builtIn.carried
         if not (group or carriedOnly) then group = builtIn end
         local item = group and FirstCarried(group.items)
