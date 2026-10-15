@@ -22,7 +22,7 @@ local CARD_H = 2 * CARD_PAD + STRIP + NAME_SIZE + LINE_GAP + DIST_SIZE
 local CARD_ICON, ICON_GAP, ICON_CROP = NAME_SIZE + LINE_GAP + DIST_SIZE, 8, St.ICON_CROP
 local BEAM_W, BEAM_H, BEAM_ALPHA = 2, 80, 0.55
 local GROUND_W, GROUND_H = 44, 12
-local EDGE_INSET = 70
+local EDGE_RING = 0.3
 local BEHIND = math.rad(30)
 local BEHIND_Y, BEHIND_SIZE = 60, 13
 local FAR, FAR_SCALE = 400, 0.65
@@ -358,8 +358,9 @@ local function SizePin(mode, yards)
 end
 
 local function PlaceAtEdge(cx, cy, dx, dy, scale)
-    local hw, hh = UIParent:GetWidth() / 2 - EDGE_INSET, UIParent:GetHeight() / 2 - EDGE_INSET
-    local t = math.min(hw / math.max(math.abs(dx), 1), hh / math.max(math.abs(dy), 1))
+    local rx, ry = UIParent:GetWidth() * EDGE_RING, UIParent:GetHeight() * EDGE_RING
+    local reach = math.sqrt((dx / rx) ^ 2 + (dy / ry) ^ 2)
+    local t = reach > 0 and 1 / reach or 0
     pin:ClearAllPoints()
     pin:SetPoint("CENTER", UIParent, "CENTER", dx * t / scale, dy * t / scale)
     pin.onNav = false

@@ -266,12 +266,19 @@ Check(pin.card.dist.text == "1,240 yd", "long distances read with a comma")
 -- Off screen to the right: at the edge, the arrow pointing right, the card toward the middle.
 nav.clamped, nav.x, nav.y = true, 2400, 540
 driver.scripts.OnUpdate(driver, 0)
-Check(pin.point[2] == UIParent and pin.point[4] == W / 2 - 70 and pin.point[5] == 0, "clamped right, it sits at the edge")
+Check(pin.point[2] == UIParent and math.abs(pin.point[4] - W * 0.3) < 0.01 and pin.point[5] == 0,
+    "clamped right, it sits on the ring around the middle, not at the screen's edge")
 Check(pin.arrow.shown and pin.arrow.rotation == 0 and not pin.beam.shown, "with the arrow out and no line down")
 Check(pin.card.point[1] == "RIGHT" and pin.card.point[3] == "LEFT", "the card on the screen's side of it")
 S.Set("waypointScale", 1.5)
 driver.scripts.OnUpdate(driver, 0)
-Check(math.abs(pin.point[4] * pin.scale - (W / 2 - 70)) < 0.01, "a bigger pin still sits on the edge")
+Check(math.abs(pin.point[4] * pin.scale - W * 0.3) < 0.01, "a bigger pin still sits on the ring")
+-- Up and to the right, toward the minimap's corner: still on the ring, well inside the screen.
+nav.x, nav.y = 960 + 3000, 540 + 3000
+driver.scripts.OnUpdate(driver, 0)
+local px, py = pin.point[4] * pin.scale, pin.point[5] * pin.scale
+Check(math.abs((px / (W * 0.3)) ^ 2 + (py / (H * 0.3)) ^ 2 - 1) < 0.001 and px < W * 0.3 and py < H * 0.3,
+    "toward a corner it stays on the ring, clear of the corner")
 S.Set("waypointScale", nil)
 -- Off the bottom edge, but not behind: the card goes above the pin, on screen.
 nav.x, nav.y = 960 + 1000 * math.cos(math.rad(-50)), 540 + 1000 * math.sin(math.rad(-50))
