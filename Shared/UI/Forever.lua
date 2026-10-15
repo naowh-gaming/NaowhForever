@@ -14,13 +14,10 @@ local SWATCH_RINGS = { St.FOREVER_SWATCH_RIM_RGB, BLACK }
 local CLOSE_ATLASES = { St.FOREVER_CLOSE_ATLAS.normal, St.FOREVER_CLOSE_ATLAS.pushed, St.FOREVER_CLOSE_ATLAS.highlight }
 local TAB_ATLASES = { St.FOREVER_TAB_ATLAS.left, St.FOREVER_TAB_ATLAS.middle, St.FOREVER_TAB_ATLAS.right,
     St.FOREVER_ACTIVE_TAB_ATLAS.left, St.FOREVER_ACTIVE_TAB_ATLAS.middle, St.FOREVER_ACTIVE_TAB_ATLAS.right }
-local SIDE_ATLASES = { St.FOREVER_SIDE_TAB_ATLAS.normal, St.FOREVER_SIDE_TAB_ATLAS.selected,
-    St.FOREVER_SIDE_TAB_ATLAS.hover, St.FOREVER_SIDE_TAB_ATLAS.mask }
 local SEARCH_ATLASES = { St.FOREVER_SEARCH_ATLAS.left, St.FOREVER_SEARCH_ATLAS.middle, St.FOREVER_SEARCH_ATLAS.right }
 local SIGN_ATLASES = { St.FOREVER_PLUS_ATLAS, St.FOREVER_MINUS_ATLAS }
 local TITLE_SUBLEVEL = 7
 local PORTRAIT_ART = { logo = 0.94, glow = 0.7, glowAlpha = 0.45, shade = 1, shadeAlpha = 0.55 }
-local SIDE_ICON_X = -4
 local KNOB_RAISE = 2
 local KNOB_EDGE = 2
 local RING_EDGE = 1
@@ -574,54 +571,6 @@ function Parts.PaintForeverTab(button, on)
     button.text:SetTextColor(c.r, c.g, c.b)
 end
 
-function Parts.ForeverSideTab(parent, iconName, onClick)
-    local tab = CreateFrame("Button", nil, parent)
-    tab.icon = tab:CreateTexture(nil, "ARTWORK")
-    local path = St.CLASSIC_ICONS[iconName]
-    if path then tab.icon:SetTexture(St.CLASSIC_ICON_PATH .. path) end
-    local atlas = St.FOREVER_SIDE_TAB_ATLAS
-    if HasAtlases(SIDE_ATLASES) then
-        local bg = tab:CreateTexture(nil, "BACKGROUND")
-        Atlas(bg, atlas.normal, true)
-        bg:SetPoint("CENTER")
-        tab:SetSize(bg:GetWidth(), bg:GetHeight() - St.FOREVER_SIDE_TAB_TRIM)
-        tab.selected = tab:CreateTexture(nil, "OVERLAY")
-        Atlas(tab.selected, atlas.selected, true)
-        tab.selected:SetPoint("CENTER")
-        local hover = tab:CreateTexture(nil, "HIGHLIGHT")
-        Atlas(hover, atlas.hover, true)
-        hover:SetPoint("CENTER")
-        local mask = tab:CreateMaskTexture()
-        Atlas(mask, atlas.mask, true)
-        mask:SetPoint("CENTER", SIDE_ICON_X, 0)
-        tab.icon:SetAllPoints(mask)
-        tab.icon:AddMaskTexture(mask)
-        tab.art = true
-    else
-        tab:SetSize(St.FOREVER_SIDE_TAB, St.FOREVER_SIDE_TAB)
-        ns.Solid(tab, "BACKGROUND", St.FOREVER_SIDE_RGB, 1):SetAllPoints()
-        ns.Border(tab, BLACK)
-        tab.rim = Rim(tab, St.FOREVER_SWATCH_RIM_RGB)
-        tab.selected = tab:CreateTexture(nil, "OVERLAY")
-        tab.selected:SetAllPoints()
-        tab.selected:SetTexture(St.FOREVER_HIGHLIGHT)
-        tab.selected:SetBlendMode("ADD")
-        tab.selected:SetAlpha(St.FOREVER_GLOW_ALPHA)
-        tab.icon:SetSize(St.FOREVER_SIDE_TAB_ICON, St.FOREVER_SIDE_TAB_ICON)
-        tab.icon:SetPoint("CENTER")
-        local crop = St.CLASSIC_ICON_CROP
-        tab.icon:SetTexCoord(crop, 1 - crop, crop, 1 - crop)
-    end
-    tab.selected:Hide()
-    tab:SetScript("OnClick", onClick)
-    return tab
-end
-
-function Parts.SetForeverSideTab(tab, on)
-    tab.selected:SetShown(on)
-    if tab.rim then Paint(tab.rim, on and YELLOW or St.FOREVER_SWATCH_RIM_RGB) end
-end
-
 local function BarArt(bar, gap)
     bar.barArt = bar:CreateTexture(nil, "BACKGROUND")
     bar.barArt:SetPoint("TOPLEFT", 0, -gap)
@@ -677,34 +626,6 @@ function Parts.PaintForeverBar(bar, open, openable)
     Paint(bar.barRim, open and St.FOREVER_BRONZE_RGB or St.FOREVER_BAR_RIM_RGB)
 end
 
-local function Diamond(pill, point, x)
-    local gem = pill:CreateTexture(nil, "OVERLAY")
-    gem:SetTexture(St.GEM, nil, nil, "TRILINEAR")
-    gem:SetSize(St.FOREVER_PILL_DIAMOND, St.FOREVER_PILL_DIAMOND)
-    gem:SetPoint("CENTER", pill, point, x, 0)
-    Tint(gem, St.FOREVER_BRONZE_RGB)
-    return gem
-end
-
-function Parts.ForeverPill(parent, size)
-    local pill = CreateFrame("Frame", nil, parent)
-    local art = pill:CreateTexture(nil, "BACKGROUND")
-    art:SetAllPoints()
-    if Atlas(art, St.FOREVER_PILL_ATLAS) then
-        pill.art = true
-    else
-        Gradient(art, St.FOREVER_PILL_RGB)
-        ns.Border(pill, BLACK)
-        Rim(pill, St.FOREVER_PILL_RIM_RGB)
-        Diamond(pill, "LEFT", 0)
-        Diamond(pill, "RIGHT", 0)
-    end
-    pill.text = ns.Font(pill, size or St.TEXT_SIZE, nil, St.FOREVER_LIGHT_RGB, true)
-    pill.text:SetPoint("CENTER")
-    pill.text:SetWordWrap(false)
-    return pill
-end
-
 function Parts.ForeverHeading(parent, size, textX)
     local heading = CreateFrame("Frame", nil, parent)
     local brown = St.FOREVER_BRONZE_DARK_RGB
@@ -717,14 +638,6 @@ function Parts.ForeverHeading(parent, size, textX)
     heading.text:SetPoint("BOTTOMLEFT", heading.line, "TOPLEFT", textX or 0, St.FOREVER_HEADING_GAP)
     heading.text:SetWordWrap(false)
     return heading
-end
-
-function Parts.ForeverBand(row)
-    local band = row:CreateTexture(nil, "BACKGROUND")
-    band:SetAllPoints()
-    if not Atlas(band, St.FOREVER_BAND_ATLAS) then band:SetColorTexture(1, 1, 1, St.FOREVER_BAND_ALPHA) end
-    band:Hide()
-    return band
 end
 
 local function Tick(parent, size)

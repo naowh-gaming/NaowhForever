@@ -66,7 +66,7 @@ Shared/
                    back to the window it was opened from, and the footer
   UI/Forever.lua   the Forever skin's parts, each on the game's own art with a drawn fallback: the window
                    frame with its title bar, portrait and red close (Parts.ForeverFrame), insets, buttons,
-                   fields, the search box, tabs, side tabs, check boxes, dropdowns, sliders, swatches, the
+                   fields, the search box, tabs, check boxes, dropdowns, sliders, swatches, the
                    help tip, list bars, headings, scroll chevrons, and the options
                    window's header band and metal rails (Parts.ForeverPanes)
   UI/Tabs.lua      a switch of parts side by side (Parts.Tabs), and a search box (Parts.SearchBox)

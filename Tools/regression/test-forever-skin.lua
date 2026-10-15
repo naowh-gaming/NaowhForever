@@ -173,11 +173,11 @@ local function AllAtlases(St)
     for _, name in ipairs(St.FOREVER_INSET_ATLASES) do Add(name) end
     for _, name in ipairs(St.FOREVER_BARE_ATLASES) do Add(name) end
     for _, group in ipairs({ St.FOREVER_CLOSE_ATLAS, St.FOREVER_TAB_ATLAS, St.FOREVER_ACTIVE_TAB_ATLAS,
-        St.FOREVER_SIDE_TAB_ATLAS, St.FOREVER_SEARCH_ATLAS }) do
+        St.FOREVER_SEARCH_ATLAS }) do
         for _, name in pairs(group) do Add(name) end
     end
-    for _, name in ipairs({ St.FOREVER_PILL_ATLAS, St.FOREVER_BAND_ATLAS, St.FOREVER_BAR_ATLAS, St.FOREVER_PLUS_ATLAS,
-        St.FOREVER_MINUS_ATLAS, St.FOREVER_DROPDOWN_ATLAS }) do Add(name) end
+    for _, name in ipairs({ St.FOREVER_BAR_ATLAS, St.FOREVER_PLUS_ATLAS, St.FOREVER_MINUS_ATLAS,
+        St.FOREVER_DROPDOWN_ATLAS }) do Add(name) end
     local red = St.FOREVER_RED_BUTTON_ATLAS
     for _, suffix in ipairs(St.FOREVER_RED_BUTTON_STATES) do
         Add(red.left .. suffix); Add(red.center .. suffix); Add(red.right .. suffix)
@@ -427,10 +427,6 @@ do
     check("under the mouse the lines only, no fill", line.lines[1][1].shown and not line.lineFill[1].shown)
     Parts.PaintForeverNav(line, false, false)
     check("and nothing at rest", not line.lines[1][1].shown and not line.lines[2][1].shown)
-    local side = Parts.ForeverSideTab(New("Frame"), "settings", function() end)
-    Parts.SetForeverSideTab(side, true)
-    check("a side tab on the game's side tab, its icon masked", side.art and side.icon.mask and side.selected.shown
-        and side.icon.texture == St.CLASSIC_ICON_PATH .. St.CLASSIC_ICONS.settings)
 
     local switchOn = true
     local card = { name = "Tooltips", switchGet = function() return switchOn end, switchSet = function() end,
@@ -530,13 +526,8 @@ do
     ns.UI.ShowWidgetTooltip(New("Frame"), "Help")
     local tip = Tip()
     check("the help tip's pointer drawn", tip.arrow.texture == St.ARROW and tip.arrow.color[1] == St.FOREVER_CHECK_RGB.r)
-    local pill = Parts.ForeverPill(New("Frame"))
-    check("a drawn plaque with bronze diamonds", not pill.art and Holds(pill, function(x) return x.texture == St.GEM end))
     local inset = Parts.ForeverInset(New("Frame"))
     check("a drawn inset", not inset.art and inset.rim ~= nil)
-    local side = Parts.ForeverSideTab(New("Frame"), "settings", function() end)
-    Parts.SetForeverSideTab(side, true)
-    check("a drawn side tab, gold when picked", not side.art and side.w == St.FOREVER_SIDE_TAB and side.selected.shown)
     local card = { name = "Card", rows = { {} } }
     local head = Head(ns, card)
     check("a drawn list bar with a gold plus", not head.art and head.signText.text == "+" and head.signText.shown
@@ -566,8 +557,6 @@ do
     Parts.PaintForeverNav(nav, true)
     check("a drawn module bar, its rim gold when picked", not nav.art and nav.glow == nil
         and nav.barArt.gradient[2].r == St.FOREVER_BAR_RGB[1].r)
-    local band = Parts.ForeverBand(New("Frame"))
-    check("a faint band", band.atlas == nil and band.color[4] == St.FOREVER_BAND_ALPHA)
     check("no atlas ever set that the client lacks", #atlasCalls == 0)
 end
 
