@@ -10,7 +10,11 @@ local source = f:read("*a"):gsub("\r\n", "\n")
 f:close()
 
 local retired = assert(loadstring("return " .. assert(source:match("\nlocal RETIRED_ADDONS = (%b{})\n"), "RETIRED_ADDONS")))()
+local toCombat = assert(loadstring("return " .. assert(source:match("\nlocal RETIRED_TO_COMBAT = (%b{})\n"),
+    "RETIRED_TO_COMBAT")))()
 local text = assert(source:match('\nlocal TEXT_RETIRED = "([^"]+)"\n'), "TEXT_RETIRED")
+local combatText = assert(source:match('\nlocal TEXT_RETIRED_COMBAT = "([^"]+)"\n'), "TEXT_RETIRED_COMBAT")
+local reloadText = assert(source:match('\nlocal TEXT_RETIRED_RELOAD = "([^"]+)"\n'), "TEXT_RETIRED_RELOAD")
 local body = assert(source:match("\n(local function RetireOldFolders%(%)\n.-\nend)\n"), "RetireOldFolders")
 
 local listed = {}
@@ -36,9 +40,9 @@ local function Run(exists, loaded)
         IsAddOnLoaded = function(addon) return loaded[addon] == true end,
         DisableAddOn = function(addon, who) w.disabled[addon] = who == nil end,
     }
-    local chunk = assert(loadstring("local ns, C_AddOns, RETIRED_ADDONS, TEXT_RETIRED = ...\n" .. body
-        .. "\nRetireOldFolders()"))
-    chunk(ns, C_AddOns, retired, text)
+    local chunk = assert(loadstring("local ns, C_AddOns, RETIRED_ADDONS, RETIRED_TO_COMBAT, TEXT_RETIRED, "
+        .. "TEXT_RETIRED_COMBAT, TEXT_RETIRED_RELOAD = ...\n" .. body .. "\nRetireOldFolders()"))
+    chunk(ns, C_AddOns, retired, toCombat, text, combatText, reloadText)
     return w
 end
 
@@ -52,8 +56,18 @@ check("with a line in chat and no reload", #w.printed == 1 and w.printed[1] == t
 
 w = Run({ NaowhForever_TopBar = true }, { NaowhForever_TopBar = true })
 check("an old folder that loaded is switched off too", w.disabled.NaowhForever_TopBar)
-check("and a reload is offered instead of the chat line", #w.reloads == 1
-    and w.reloads[1] == text:format("NaowhForever_TopBar") and #w.printed == 0)
+check("and a reload is offered, the chat line still said", #w.reloads == 1 and w.reloads[1] == reloadText
+    and #w.printed == 1 and w.printed[1] == text:format("NaowhForever_TopBar"))
+
+w = Run({ NaowhForever_SwingTimer = true }, {})
+check("an old Combat module's folder is said to be in Combat, not Quality of Life",
+    #w.printed == 1 and w.printed[1] == combatText:format("NaowhForever_SwingTimer"))
+for addon in pairs(toCombat) do check(addon .. " is one of the retired folders", listed[addon]) end
+
+w = Run({ NaowhForever_PvP = true, NaowhForever_SwingTimer = true, NaowhForever_TopBar = true },
+    { NaowhForever_PvP = true, NaowhForever_SwingTimer = true, NaowhForever_TopBar = true })
+check("several old folders loaded: one line each, one reload", #w.printed == 3 and #w.reloads == 1
+    and w.disabled.NaowhForever_PvP and w.disabled.NaowhForever_SwingTimer and w.disabled.NaowhForever_TopBar)
 
 -- The QoL copy of the Top Bar, its TopBar.lua and its card's file, run on stubs.
 local function Guard(exists, enabled, loaded)
