@@ -729,7 +729,7 @@ Settings.Page("QoL/Interface", S):Card({
         { key = "waypointArrive", label = "Arrival Distance", slider = ARRIVE_RANGE, unit = "yd",
           help = "How close counts as there: a map waypoint clears." },
         { key = "waypointEdge", label = "Edge Arrow Off Screen", toggle = true,
-          help = "Keeps the pin at the edge of the screen, pointing the way, when the spot is off it." },
+          help = "Keeps the pin on screen, pointing the way, when the spot is off it." },
         { key = "waypointNav", label = "Navigator Bar", toggle = true,
           help = "A bar with the name, a turn arrow and the distance, while a waypoint is set." },
         { key = "waypointSound", label = "Arrival Sound", sound = true },
