@@ -2,7 +2,7 @@
 -- update and unit filter, the Buff Reminders aura burst and refresh, and the Blessings bar's
 -- aura reads. Run from the repo root. An optional first argument is a folder holding older
 -- copies of the modules (same layout), to print their numbers for comparison.
-C_AddOns = { DoesAddOnExist = function() return false end, GetAddOnEnableState = function() return 0 end }
+rawset(_G, "C_AddOns", { DoesAddOnExist = function() return false end, GetAddOnEnableState = function() return 0 end })
 local ROOT = arg[1] or ""
 local RUNS = 1000
 local checks, failures = 0, 0

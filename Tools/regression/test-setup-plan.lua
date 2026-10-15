@@ -340,4 +340,20 @@ do
         and not w.enabled.NaowhForever_Discovery and w.root.journal.enabled == true)
 end
 
+do
+    local enabled = All(true)
+    enabled.NaowhForever_Combat = false
+    local w = Game({ enabled = enabled, character = true, account = { welcomeSeen = true },
+        root = { qol = { blessings = true }, pvp = { enabled = false } } })
+    local Setup = w.ns.Setup
+    local picks = Setup.Fresh()
+    check("Combat disabled here: its modules start off, whatever their switches", picks.modules.blessings == false
+        and picks.modules.swingTimer == false)
+    Setup.Toggle(picks, "pvp", true)
+    Applied(w, picks)
+    check("one Combat module on brings Combat back for this character", w.enabled.NaowhForever_Combat and w.On("pvp"))
+    check("and the ones left off stay off, their switches cleared", not w.On("blessings") and not w.On("swingTimer")
+        and w.root.qol.blessings == false)
+end
+
 print("PASS setup plan: " .. checks .. " checks")

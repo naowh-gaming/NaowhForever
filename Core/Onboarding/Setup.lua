@@ -265,10 +265,14 @@ local function ApplyModule(m, want, preset)
         if not SwitchOn(m) then SetSwitch(m, true) end
         return not Loaded(m)
     end
+    if m.host then
+        if SwitchOn(m) then SetSwitch(m, false) end
+        return false
+    end
     if not (preset and Enabled(m) or IsOn(m)) then return false end
-    if not m.host then SetAddOn(m.addon, false, character) end
+    SetAddOn(m.addon, false, character)
     SetSwitch(m, false)
-    return Loaded(m) and not m.host
+    return Loaded(m)
 end
 
 local function SettleHosts(list, picks)

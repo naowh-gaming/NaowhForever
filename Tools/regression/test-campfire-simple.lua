@@ -15,7 +15,7 @@
 -- merge, and an empty tooltip is tried again every few seconds until it lists something. The bare
 -- alert is sized to its words with the time inline, at the bottom of the Alerts group, and a right-click hides
 -- it until you leave the campfire while left clicks pass through.
-C_AddOns = { DoesAddOnExist = function() return false end, GetAddOnEnableState = function() return 0 end }
+rawset(_G, "C_AddOns", { DoesAddOnExist = function() return false end, GetAddOnEnableState = function() return 0 end })
 
 local Load = dofile("Tools/regression/load_files.lua")
 -- The AuraBuffs files the Campfire reminder and its cards are made of, in AuraBuffs.xml's order.

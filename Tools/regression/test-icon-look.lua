@@ -1,7 +1,7 @@
 -- Run with Lua 5.1 from the repository root: the Low Health reminder and the Tracking reminder
 -- keep today's text until Font, Font Size or Outline change it, on the real frame and the
 -- card's preview alike. Frames are stubs that record what is set on them.
-C_AddOns = { DoesAddOnExist = function() return false end, GetAddOnEnableState = function() return 0 end }
+rawset(_G, "C_AddOns", { DoesAddOnExist = function() return false end, GetAddOnEnableState = function() return 0 end })
 local checks = 0
 local function check(label, value) assert(value, label); checks = checks + 1 end
 

@@ -1,6 +1,6 @@
 -- The module's files in SwingTimer.xml's order, after the feature switches; a first argument names
 -- one older single-file copy to run instead.
-C_AddOns = { DoesAddOnExist = function() return false end, GetAddOnEnableState = function() return 0 end }
+rawset(_G, "C_AddOns", { DoesAddOnExist = function() return false end, GetAddOnEnableState = function() return 0 end })
 local FILES = arg[1] and { arg[1] } or dofile("Tools/regression/toc_files.lua")("^NaowhForever_Combat/SwingTimer/.*%.lua$")
 if not arg[1] then table.insert(FILES, 1, "Core/Features.lua") end
 local sources = {}
