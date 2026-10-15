@@ -747,6 +747,12 @@ do
         and b[1].bg.points.BOTTOMRIGHT[5] == -s.CB.C.BG_PAD)
     s.set('consumableBarGrow', 'DOWN')
     check('flipped columns go to the left', b[4].point[1] == 'TOPRIGHT' and b[4].point[4] == -32)
+    s.set('consumableBarGrow', 'RIGHT')
+    check('flipped right, the next row goes above from the left', b[4].point[1] == 'BOTTOMLEFT'
+        and b[4].point[4] == 0 and b[4].point[5] == 32 and b[2].point[4] == 32 and b[2].point[5] == 0)
+    s.set('consumableBarGrow', 'UP')
+    check('flipped up, the next column goes to the left from the bottom', b[4].point[1] == 'BOTTOMRIGHT'
+        and b[4].point[4] == -32 and b[4].point[5] == 0 and b[2].point[5] == 32)
     s.set('consumableBarFlipRows', false)
     s.set('consumableBarPerRow', 12)
     s.set('consumableBarGrow', 'RIGHT')
@@ -755,15 +761,20 @@ do
     s.set('consumableBarHeight', 20)
     check('Icon Height does nothing while it is off', b[1].w == 30 and b[1].h == 30)
     s.set('consumableBarRect', true)
+    local crop = s.ns.Shared.Style.ICON_CROP
     check('rectangular icons take their own height', b[1].w == 30 and b[1].h == 20 and s.bar.h == 20)
     local tc = b[1].icon.texCoord
     check('a wide icon crops its art top and bottom, not stretched',
         math.abs((tc[2] - tc[1]) / (tc[4] - tc[3]) - 28 / 18) < 1e-9)
+    s.set('consumableBarHeight', 40)
+    tc = b[1].icon.texCoord
+    check('a tall icon crops its art at the sides', b[1].h == 40
+        and math.abs((tc[2] - tc[1]) / (tc[4] - tc[3]) - 28 / 38) < 1e-9 and math.abs(tc[3] - crop) < 1e-9)
+    s.set('consumableBarHeight', 20)
     s.set('consumableBarGrow', 'DOWN')
     check('a column steps by the icon height', b[2].point[5] == -22 and s.bar.h == 7 * 22 - 2 and s.bar.w == 30)
     s.set('consumableBarRect', false)
     s.set('consumableBarGrow', 'RIGHT')
-    local crop = s.ns.Shared.Style.ICON_CROP
     check('square again, the usual crop', b[1].h == 30 and b[1].icon.texCoord[1] == crop
         and b[1].icon.texCoord[3] == crop)
 end
@@ -1140,6 +1151,13 @@ do
     s.cursor = { 'item', 8932 }
     cells[1].scripts.OnDragStart(cells[1])
     check('nor does an icon while an item is on the cursor', not ghost.shown)
+    s.cursor = nil
+    s.set('consumableBarRect', true)
+    s.set('consumableBarHeight', 20)
+    cells[1].scripts.OnDragStart(cells[1])
+    local tc = ghost.icon.texCoord
+    check('the copy of a rectangular icon is cropped to its shape', ghost.h == 20
+        and math.abs((tc[2] - tc[1]) / (tc[4] - tc[3]) - cells[1].w / 20) < 1e-9)
 end
 
 -- Edit Items draws the bar at its real size
