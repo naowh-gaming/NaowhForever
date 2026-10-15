@@ -22,7 +22,7 @@ local TEXT_RESTORE_ALL = ns.L("Put back every setting this page has changed?")
 local TEXT_ROW_HELP = ns.L("Recommended: %s.|n|nOn sets it; off puts back the value you had before. Now: %s.")
 local TEXT_SUMMARY = ns.L("%d of %d recommended settings in use")
 local TEXT_HDR_OFF = ns.L("Turn on HDR")
-local TEXT_HDR_SETTINGS_OFF = ns.L("Needs %s"):format(ns.L("HDR Settings"))
+local TEXT_HDR_SETTINGS_OFF = ns.L("Needs %s", ns.L("HDR Settings"))
 
 local CATEGORIES = {
     { name = "Render & Display", cvars = {
