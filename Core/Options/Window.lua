@@ -92,6 +92,8 @@ local moduleWindows = {}
 local refreshQueued
 local lastFilter, searchJump
 local NO_TABS = {}
+local Off = { group = ns.L("TURNED OFF"), page = ns.L("%s is turned off. Turn it on to change these settings."),
+    row = "%s / %s" }
 local Forever = { insetLeft = 3, insetRight = 4, insetBottom = 6, tabTop = 8, titleY = 8, crumbGap = 4,
     subGap = 12, headRoom = 560, edge = 16, buttonGap = 10, switchGap = 18, labelGap = 8, buttonH = 26, navText = 15,
     itemX = 24, groupGap = 6, groupBelow = 2, railOut = 6 }
@@ -120,8 +122,26 @@ local function SoonPage(parent, text)
     return -SOON.height
 end
 
+function Off.Page(page, parent, filter)
+    local W, Search = UI.Widgets, UI.Search
+    local _, h = W:Note(parent, Off.page:format(DisplayName(page.module)), -PAGE_TOP)
+    local y = -PAGE_TOP - h
+    local rows = Search.OffRows(filter, page.key)
+    if not rows[1] then
+        _, h = W:Note(parent, TEXT_NO_MATCH, y)
+        return y - h
+    end
+    for _, t in ipairs(rows) do
+        local label = Search.Mark(filter, ns.L(t.label))
+        _, h = W:Note(parent, t.isCard and label or Off.row:format(Search.Mark(filter, t.trail), label), y)
+        y = y - h
+    end
+    return y
+end
+
 local function BuildPageInto(page, parent, filter)
     if page.soon then return SoonPage(parent, page.soon) end
+    if page.module and not Loaded(page.module) then return Off.Page(page, parent, filter) end
     local Settings = ns.Shared and ns.Shared.Settings
     if Settings and Settings.pages[page.key] then
         return -Settings.Render(parent, page.key, function(height)
@@ -177,6 +197,22 @@ local function LayoutNav()
     for _, block in ipairs(navBlocks) do LayoutBlock(block) end
 end
 
+function Off.Layout()
+    local y, shown = Off.top - Off.headH, false
+    for _, mod in ipairs(Off.mods) do
+        local btn = navButtons[mod.name]
+        local found = (btn.found or 0) > 0
+        btn:SetShown(found)
+        if found then
+            btn:SetPoint("TOPLEFT", NAV_INSET, y)
+            btn:SetPoint("TOPRIGHT", -NAV_INSET, y)
+            y, shown = y - NAV_ROW, true
+        end
+    end
+    Off.label:SetShown(shown)
+    Off.nav:SetHeight(-(shown and y or Off.top))
+end
+
 local function PaintNavButton(btn, hover)
     local active = btn.fill:IsShown()
     local found = UI.filter and btn.found
@@ -213,6 +249,7 @@ local function PaintNav()
         if filter then btn.found = Found(filter, name, btn) end
         PaintNavButton(btn, btn:IsMouseOver())
     end
+    Off.Layout()
     for _, bar in pairs(tabStrips) do PaintTabs(bar, currentPage, filter) end
 end
 
@@ -283,7 +320,7 @@ local function ShowWrapper(pageWrappers, child, key, filter)
 end
 
 local function ShowPage(key)
-    if PAGES[key].module and not Loaded(PAGES[key].module) then key = SETTINGS_PAGE end
+    if PAGES[key].module and not Loaded(PAGES[key].module) and not UI.filter then key = SETTINGS_PAGE end
     currentPage = key
     if PAGES[key].module then lastPages[PAGES[key].module.name] = key end
     LayoutContent()
@@ -298,6 +335,16 @@ function UI.SearchPages()
     for _, mod in ipairs(MODULES) do
         for _, tab in ipairs(mod.tabs) do
             if not tab.soon and Loaded(mod) then pages[#pages + 1] = tab end
+        end
+    end
+    return pages
+end
+
+function UI.SearchOffPages()
+    local pages = {}
+    for _, mod in ipairs(MODULES) do
+        for _, tab in ipairs(mod.tabs) do
+            if not tab.soon and not Loaded(mod) then pages[#pages + 1] = tab end
         end
     end
     return pages
@@ -722,6 +769,44 @@ local function NavGroups()
     return groups, grouped
 end
 
+function Off.First(mod)
+    for _, tab in ipairs(mod.tabs) do
+        if UI.filter and UI.filter.count[tab.key] then return tab.key end
+    end
+    return mod.tabs[1].key
+end
+
+function Off.Build(nav, top)
+    local label, headH
+    if ns.foreverSkin then
+        label = CreateFrame("Frame", nil, nav)
+        label:SetPoint("TOPLEFT", NAV_INSET, top - Forever.groupGap)
+        label:SetPoint("TOPRIGHT", -NAV_INSET, top - Forever.groupGap)
+        label:SetHeight(NAV_ROW)
+        ns.Shared.Parts.ForeverGroupBar(label, Off.group)
+        headH = Forever.groupGap + NAV_ROW + Forever.groupBelow
+    else
+        label = ns.Font(nav, SIDE.groupSize, nil, T.muted, true)
+        label:SetPoint("TOPLEFT", SIDE.groupX, top - SIDE.groupY)
+        label:SetText(Off.group)
+        headH = SIDE.groupStep
+    end
+    label:Hide()
+    local mods = {}
+    for _, mod in ipairs(MODULES) do
+        if Ready(mod) and not Loaded(mod) then
+            local btn = NavigationButton(nav, DisplayName(mod), top, function() ShowPage(Off.First(mod)) end,
+                mod.navIcon, true)
+            btn:SetHeight(NAV_ROW)
+            btn.mod = mod
+            btn:Hide()
+            navButtons[mod.name] = btn
+            mods[#mods + 1] = mod
+        end
+    end
+    Off.nav, Off.top, Off.label, Off.headH, Off.mods = nav, top, label, headH, mods
+end
+
 local function ModuleNav(nav)
     local groups, grouped = NavGroups()
     local ny = 0
@@ -748,6 +833,7 @@ local function ModuleNav(nav)
             ny = ny - NAV_ROW
         end
     end
+    Off.Build(nav, ny)
     nav:SetHeight(-ny)
 end
 
