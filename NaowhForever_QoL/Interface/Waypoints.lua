@@ -357,10 +357,8 @@ local function SizePin(mode, yards)
     return scale
 end
 
-local function PlaceAtEdge(cx, cy, dx, dy, scale)
-    local rx, ry = UIParent:GetWidth() * EDGE_RING, UIParent:GetHeight() * EDGE_RING
-    local reach = math.sqrt((dx / rx) ^ 2 + (dy / ry) ^ 2)
-    local t = reach > 0 and 1 / reach or 0
+local function PlaceAtEdge(cx, cy, dx, dy, scale, reach)
+    local t = 1 / reach
     pin:ClearAllPoints()
     pin:SetPoint("CENTER", UIParent, "CENTER", dx * t / scale, dy * t / scale)
     pin.onNav = false
@@ -457,12 +455,14 @@ local function Update()
     local nx, ny = navFrame:GetCenter()
     local dx, dy = nx - cx, ny - cy
     local angle = math.atan2(dy, dx)
-    local mode = C_Navigation.WasClampedToScreen() and "edge" or "world"
-    local behind = mode == "edge" and math.abs(angle - DOWN) < BEHIND
+    local reach = math.sqrt((dx / (UIParent:GetWidth() * EDGE_RING)) ^ 2 + (dy / (UIParent:GetHeight() * EDGE_RING)) ^ 2)
+    local clamped = C_Navigation.WasClampedToScreen()
+    local mode = (clamped or reach > 1 and S.Get("waypointEdge")) and "edge" or "world"
+    local behind = clamped and math.abs(angle - DOWN) < BEHIND
     local scale = SizePin(mode, yards)
     local side
     if mode == "edge" then
-        side = PlaceAtEdge(cx, cy, dx, dy, scale)
+        side = PlaceAtEdge(cx, cy, dx, dy, scale, reach)
     else
         PlaceOnSpot(nx, ny, scale)
     end

@@ -9,6 +9,7 @@ local checks = 0
 local function Check(ok, label) assert(ok, label); checks = checks + 1 end
 
 local W, H = 1920, 1080
+local EDGE_ROOM = 250
 local NOOP = function() end
 local made = {}
 local Frame = {}
@@ -277,8 +278,8 @@ Check(math.abs(pin.point[4] * pin.scale - W * 0.3) < 0.01, "a bigger pin still s
 nav.x, nav.y = 960 + 3000, 540 + 3000
 driver.scripts.OnUpdate(driver, 0)
 local px, py = pin.point[4] * pin.scale, pin.point[5] * pin.scale
-Check(math.abs((px / (W * 0.3)) ^ 2 + (py / (H * 0.3)) ^ 2 - 1) < 0.001 and px < W * 0.3 and py < H * 0.3,
-    "toward a corner it stays on the ring, clear of the corner")
+Check(W / 2 - px > EDGE_ROOM and H / 2 - py > EDGE_ROOM,
+    "toward a corner it stays " .. EDGE_ROOM .. " px clear of both edges, off the minimap")
 S.Set("waypointScale", nil)
 -- Off the bottom edge, but not behind: the card goes above the pin, on screen.
 nav.x, nav.y = 960 + 1000 * math.cos(math.rad(-50)), 540 + 1000 * math.sin(math.rad(-50))
@@ -299,6 +300,23 @@ S.Set("waypointEdge", nil)
 nav.clamped, nav.x, nav.y = false, 1100, 700
 driver.scripts.OnUpdate(driver, 0)
 Check(pin:IsShown() and pin.point[2] == navFrame, "back on screen, back on the navigation frame")
+-- On screen but out past the ring, up by the minimap: on the ring with the arrow, never on the corner.
+nav.x, nav.y = W - 60, H - 60
+driver.scripts.OnUpdate(driver, 0)
+Check(pin:IsShown() and pin.point[2] == UIParent and pin.arrow.shown and W / 2 - pin.point[4] > EDGE_ROOM,
+    "a spot on screen in the corner gets the arrow on the ring, not a pin on the minimap")
+-- Low on screen past the ring is in front of you, not behind.
+nav.x, nav.y = 960, 60
+driver.scripts.OnUpdate(driver, 0)
+Check(pin:IsShown() and not cue:IsShown(), "a spot low on screen is not behind you")
+-- With Edge Arrow off, a spot on screen keeps its pin on the spot, wherever it is.
+S.Set("waypointEdge", false)
+nav.x, nav.y = W - 60, H - 60
+driver.scripts.OnUpdate(driver, 0)
+Check(pin:IsShown() and pin.point[2] == navFrame, "Edge Arrow off: the pin stays on the spot")
+S.Set("waypointEdge", nil)
+nav.x, nav.y = 1100, 700
+driver.scripts.OnUpdate(driver, 0)
 
 -- A stop on the way there (a zone's exit) is not the arrival.
 S.Set("waypointSound", "naowh")
