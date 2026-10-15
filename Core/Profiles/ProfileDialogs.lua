@@ -4,7 +4,7 @@ local UI = ns.UI
 local Profiles = ns.Profiles
 
 local EXPORT_W, EXPORT_H, BOX_H = 560, 360, 180
-local IMPORT_W, IMPORT_H, PASTE_H = 600, 520, 110
+local IMPORT_W, IMPORT_H, PASTE_H = 600, 544, 110
 local PAD, ROW_H, BUTTON_W, BUTTON_H = 14, 24, 120, 26
 local BOX_RIGHT = 34
 local TITLE_SIZE, TEXT_SIZE, SMALL_SIZE = 14, 12, 11

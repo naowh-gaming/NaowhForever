@@ -65,7 +65,7 @@ function ns.ApplyPreset(key, keepPositions)
 end
 
 function ns.UsePreset(key, ask)
-    local name, keep = P[key].name, S.Get("presetKeepPositions")
+    local name, keep = P[key].name, ns.AccountSettings().presetKeepPositions ~= false
     local function Go()
         ns.ApplyPreset(key, keep)
         if ns.Setup then

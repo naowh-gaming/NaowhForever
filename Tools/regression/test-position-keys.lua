@@ -22,7 +22,7 @@ local NOT_KEPT = { statusPos = true, coTankDebuffPosition = true, campAlertPos =
     durabilityPos = true, restockPos = true, petTrackerPos = true, rareAlertPos = true, rxpWindowPos = true,
     minimapPos = true }
 
-local listed, source = {}, {}
+local listed, source, sourceFiles = {}, {}, {}
 for _, keys in pairs(LIST) do
     for _, key in ipairs(keys) do listed[key] = true end
 end
@@ -31,6 +31,7 @@ for path in files:lines() do
     if not (path:find("^Tools/") or path:find("^Libs/") or path:find("Locales/", 1, true)) then
         local f = assert(io.open(path, "rb"))
         source[#source + 1] = f:read("*a")
+        sourceFiles[#sourceFiles + 1] = source[#source]
         f:close()
     end
 end
@@ -46,6 +47,24 @@ for word in source:gmatch('"(%a+Position)"') do
     if not listed[word] and not NOT_KEPT[word] then missing[#missing + 1] = word end
 end
 Check(#missing == 0, "every saved position is on the list: add " .. table.concat(missing, ", "))
+
+local bars = 0
+for _, file in ipairs(sourceFiles) do
+    if file:find("Anchor.Rows(", 1, true) and not file:find("function Anchor.Rows(", 1, true) then
+        local prefix = file:match('prefix = "(%a+)"')
+        local name = not prefix and file:match("prefix = ([%w_%.]+)")
+        if name then
+            local spelled = "%f[%w_%.]" .. name:gsub("%.", "%%.") .. ' = "(%a+)"'
+            prefix = file:match(spelled) or source:match(spelled)
+        end
+        Check(prefix, "a bar pinned to a unit frame names its prefix")
+        bars = bars + 1
+        for _, suffix in ipairs({ "Anchor", "AnchorPoint", "AnchorRelPoint", "X", "Y" }) do
+            Check(listed[prefix .. suffix], "the pinned bar's " .. prefix .. suffix .. " is on the list")
+        end
+    end
+end
+Check(bars >= 3, "the Consumable Bar, the Food & Drink Bar and Blessings pin to a unit frame")
 
 for db, keys in pairs(LIST) do
     Check(source:find('ModuleSettings("' .. db .. '"', 1, true), db .. " is a settings store")

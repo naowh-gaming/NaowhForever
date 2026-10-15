@@ -342,8 +342,9 @@ Profile strings
   the account and an import never touches them. A new mover's key goes on the list;
   `test-position-keys` fails on a saved `...Pos` key that is missing. `NaowhForever_API:ImportProfile`
   never keeps them: the installer lands a whole layout on purpose.
-- The Setups card's Keep My Positions (`presetKeepPositions`, on) does the same when a setup is
-  applied from the card. The onboarding applies its setup without it, so a new install still gets
+- The Setups card's Keep My Positions does the same when a setup is applied from the card. It is
+  saved for the account (`presetKeepPositions`, on unless set false), since applying a setup
+  replaces the profile's QoL settings and a profile string would carry it. The onboarding applies its setup without it, so a new install still gets
   the team's HUD.
 - `NaowhForever_API:ImportProfile(str, "Naowh")` is the NaowhUI installer's entry point: it lands
   the string as that profile, replacing it, and moves every character to it. It prints its own
