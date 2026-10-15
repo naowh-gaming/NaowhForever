@@ -237,15 +237,34 @@ local function CarriedBuiltIn(category, group, builtIn)
     return { items = items, auras = auras, wellFed = builtIn.wellFed or group and group.wellFed }, items[1]
 end
 
+local function ScrollGroup(items, buffs)
+    local auras = D.SCROLL_AURAS[items[1]]
+    for _, id in ipairs(items) do
+        if not Find(buffs, D.SCROLL_AURAS[id]) then
+            auras = D.SCROLL_AURAS[id]
+            break
+        end
+    end
+    local same = {}
+    for _, id in ipairs(items) do
+        if D.SCROLL_AURAS[id] == auras then same[#same + 1] = id end
+    end
+    return { items = same, auras = auras }, same[1]
+end
+
 local function Consumables(list, buffs)
     local groups = Groups()
     local onlyCarried = S.Get("onlyIfCarried")
     for _, category in ipairs(CATEGORY_ORDER) do
         local group = groups[category]
         local builtIn = not (category == "battle" and groups.guardian) and D.DEFAULT_GROUPS[category]
-        if not (group or onlyCarried) then group = builtIn end
+        local carriedOnly = onlyCarried or builtIn and builtIn.carried
+        if not (group or carriedOnly) then group = builtIn end
         local item = group and FirstCarried(group.items)
-        if not item and onlyCarried and builtIn then group, item = CarriedBuiltIn(category, group, builtIn) end
+        if not item and carriedOnly and builtIn then
+            group, item = CarriedBuiltIn(category, group, builtIn)
+            if item and category == "scroll" then group, item = ScrollGroup(group.items, buffs) end
+        end
         if group then
             local before = #list
             local icon = group.items[1] and ItemIcon(group.items[1])
