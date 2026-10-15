@@ -376,7 +376,7 @@ ns.TownNPCs = {
         { 45.2, 51.8, "repair", "Boran Ironclink", "Armorer", nil, "A" },
         { 40.7, 65.1, "ammo", "Hegnar Rumbleshot", "Gunsmith", nil, "A" },
         { 47.4, 52.5, "inn", "Innkeeper Belm", "Innkeeper", nil, "A" },
-        { 63.5, 50.6, "inn", "Veron Amberstill", "Ram Breeder", nil, "A" },
+        { 63.5, 50.6, "vendor", "Veron Amberstill", "Ram Breeder", nil, "A" },
         { 63.1, 50.9, "vendor", "Yarlyn Amberstill", "", nil, "A" },
         { 45.3, 52.2, "repair", "Grawn Thromwyn", "Weaponsmith", nil, "A" },
         { 68.4, 54.5, "profession", "Cook Ghilm", "Cooking Trainer", nil, "A" },
