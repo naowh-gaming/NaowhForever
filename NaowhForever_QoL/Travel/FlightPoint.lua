@@ -25,6 +25,7 @@ local STORE = "flightPoints"
 local LEARN, ASK = "learn", "ask"
 local TEXT_ALERT = "Flight Point Reminder"
 local SAMPLE_PLACE = "Ratchet"
+local RETIRED = "^zz"
 local TAXI_ICON = "Interface\\GossipFrame\\TaxiGossipIcon"
 
 local TEXT = ns.L("Learn the %s flight point")
@@ -89,7 +90,7 @@ local function Mine(create)
 end
 
 local function Kind(node, mine, seen)
-    if not (Ours(node.faction) and node.name) then return nil end
+    if not (Ours(node.faction) and node.name) or node.name:find(RETIRED) then return nil end
     if mine and node.nodeID and mine[node.nodeID] == true then return nil end
     if node.isUndiscovered then return LEARN end
     if seen then

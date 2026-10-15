@@ -233,6 +233,11 @@ state.pos = { x = 0, y = 0 }
 check("a confirmed gap wins over a nearer point we have not checked",
     At(DARKSHORE, { Node("Auberdine, Darkshore", ALLIANCE, 50, false, AUBERDINE),
         Node("Lor'danel, Darkshore", ALLIANCE, 10, true, 99) }) == "Learn the Auberdine flight point")
+check("a retired zz node is never named, even nearer",
+    At(DARKSHORE, { Node("zzOLDPowderfuse Port", NEUTRAL, 10, false, 98),
+        Node("Auberdine, Darkshore", ALLIANCE, 50, false, AUBERDINE) }) == "Learn the Auberdine flight point")
+check("nor on its own",
+    not (At(DARKSHORE, { Node("zzOLDPowderfuse Port", NEUTRAL, 10, false, 98) }) or ""):find("zz", 1, true))
 state.pos = nil
 check("Auberdine's inn asks you to open the flight map before any snapshot",
     At(DARKSHORE, { Node("Auberdine, Darkshore", ALLIANCE, 0, true, AUBERDINE) }) == "Open a flight master's map to save the points you know")
