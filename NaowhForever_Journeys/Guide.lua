@@ -32,6 +32,7 @@ Jy.Guide = Guide
 local journey, events, step, working, driver, dismissed, hinted
 local replanQueued = false
 local ticker, ticks
+local scratch = Walk.Scratch()
 local listeners = {}
 
 local function Changed()
@@ -137,7 +138,7 @@ local function Context(from, to)
 end
 
 local function Reach(spot)
-    spot.reach = Walk.From(spot)
+    spot.reach = Walk.From(spot, scratch)
     return spot
 end
 
