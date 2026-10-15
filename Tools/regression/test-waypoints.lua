@@ -210,7 +210,7 @@ local function Centred(card)
     local row = #card.dist.text * GLYPH_W + (card.time.text ~= "" and 8 + #card.time.text * GLYPH_W or 0)
     local left = card.icon.shown and 8 + 35 + 8 or 8
     return card.name.justify == "CENTER" and card.note.justify == "CENTER"
-        and math.abs(card.dist.point[4] - (180 - left - 8 - row) / 2) < 0.01
+        and card.dist.point[4] == math.floor(math.max(180 - left - 8 - row, 0) / 2 + 0.5)
 end
 Check(Centred(pin.card), "the name, and the distance with its time, sit centred on the card")
 speed = 14
@@ -262,6 +262,11 @@ Check(pin.card.note.shown and pin.card.note.text == "Weapon Master" and pin.card
     "the note on its own line, the card taller")
 Check(pin.card.icon.shown and pin.card.icon.texture == 132 and pin.card.name.points[1][2] == pin.card.icon, "the icon beside the name")
 Check(Centred(pin.card), "with an icon, the text centres in the room beside it")
+nav.distance = 23456
+driver.scripts.OnUpdate(driver, 0)
+Check(pin.card.dist.point[4] == 0, "a row too long to centre starts at the column's edge, never over the icon")
+nav.distance = 312
+driver.scripts.OnUpdate(driver, 0)
 Check(navBar.sub.text == "Weapon Master . Thunder Bluff" and navBar.icon.shown and navBar.icon.texture == 132
     and not navBar.fill.shown, "the navigator: note and zone, the icon in place of the shape")
 ns.placedWaypoint.note, ns.placedWaypoint.icon = nil, nil

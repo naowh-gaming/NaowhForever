@@ -16,7 +16,7 @@ local CHEVRON, CHECK, CROSS = MEDIA .. "chevron", MEDIA .. "check", MEDIA .. "cr
 local PIN, MARK, ARROW = 36, 12, 18
 local MARK_LAYER = 2
 local FILL_ALPHA = 0.2
-local CARD_W, CARD_PAD, CARD_GAP, STRIP = 180, 8, 8, 2
+local CARD_W, CARD_PAD, CARD_GAP = 180, 8, 8
 local NAME_SIZE, NOTE_SIZE, DIST_SIZE, TIME_SIZE, LINE_GAP, TIME_GAP = 14, 11, 18, 11, 3, 8
 local CARD_H = 2 * CARD_PAD + NAME_SIZE + LINE_GAP + DIST_SIZE
 local CARD_ICON, ICON_GAP, ICON_CROP = NAME_SIZE + LINE_GAP + DIST_SIZE, 8, St.ICON_CROP
@@ -30,6 +30,7 @@ local FADE_FLOOR = 0.25
 local RUN_SPEED = 7
 local SAMPLE_EVERY, SMOOTH, MIN_CLOSING, MAX_CLOSING = 1, 0.5, 1, 60
 local NAV_W, NAV_H, NAV_PAD, NAV_ICON, NAV_ARROW = 320, 40, 10, 20, 14
+local STRIP = 2
 local NAV_NAME, NAV_SUB, NAV_DIST = 14, 11, 16
 local NAV_Y = -70
 local NAV_NAME_LIFT, NAV_SUB_GAP, CUE_TEXT_GAP = 2, 1, 2
@@ -186,7 +187,7 @@ function Look.PaintPin(pin, o)
     local left = o.icon and CARD_PAD + CARD_ICON + ICON_GAP or CARD_PAD
     card.dist:ClearAllPoints()
     card.dist:SetPoint("TOPLEFT", o.note and card.note or card.name, "BOTTOMLEFT",
-        (CARD_W - left - CARD_PAD - row) / 2, -LINE_GAP)
+        math.floor(math.max(CARD_W - left - CARD_PAD - row, 0) / 2 + ROUND), -LINE_GAP)
     Look.PlaceCard(pin, card, edge, o.angle or 0)
 end
 
