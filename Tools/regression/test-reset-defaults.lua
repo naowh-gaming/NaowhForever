@@ -134,7 +134,7 @@ check("what you answered about EllesmereUI's windows kept", root.qol.characterPa
     and root.qol.characterPanelTookOver == true)
 check("the character panel told it changed, the inspect panel not", #sets == 1 and sets[1] == "characterPanel=false")
 check("a reload offered", reload and reload:find("Minimalist", 1, true))
-asked, reload = nil, nil
+asked = nil
 keep.set(true)
 root.qol.lootFeedPos, root.unlockMode.hidden = { point = "TOP", x = 1, y = 2 }, { Loot = true }
 row.set("minimalist")
