@@ -116,6 +116,8 @@ NaowhForever_QoL/
     FlightData.lua      each flight route's flown length (ns.FLIGHT_ROUTES), generated
     Flight.lua          the Flight Timer, Flight Games and flight times on the flight map
     FlightPoint.lua     zone-entry and nearby-town flight point reminders
+    TransportTimes.lua  session-only dock observations and expiring estimates (ns.TransportTimes)
+    Transport.lua       Boat and Zeppelin Timers, its HUD, nearby selection and Travel settings
     AimTrainer.lua      the Aim Trainer (/nfaim, ns.AimRules, ns.AimPlay, ns.AimOffer)
     AimBoard.lua        the Aim Trainer's leaderboard (ns.AimBoard)
     QuizData.lua        the quiz questions (ns.QUIZ_QUESTIONS)
@@ -133,7 +135,41 @@ NaowhForever_QoL/
 ```
 
 
+## Boat and Zeppelin Timers
+
+Enable **QoL > Travel > Boat and Zeppelin Timers**. Leave Dock and Route on Nearby
+or choose a dock route to watch remotely. Nearby picks the closest dock within 200 yards;
+at a shared zeppelin tower, choose the desired route explicitly in settings.
+
+At that dock, record **Arrived**, **Departed**, then **Arrived** again for the same
+boat or zeppelin on consecutive visits. No countdown appears until that complete cycle
+is observed. The HUD then shows an **Estimate** of its next departure or arrival. Keep
+recording stops to update the timing. Use **Reset** after missing a visit or making a
+mistake. Unlock Mode moves the HUD.
+
+Estimates expire two full cycles after the last recorded arrival, or after 15 minutes
+without an observation. Reset and record a fresh cycle when an estimate expires.
+Observations stay in this session only and clear when disabled, reloaded, or entering
+a world after a loading screen. A chosen remote dock needs its own observations; no
+other dock's timing is inferred. The HUD and client behavior still need in-game testing.
+
 ## Why
+
+- Transport routes and dock positions reuse `TownTravel.lua`, which loads even when Town Map
+  is off. The feature does not depend on Journeys or estimate real arrivals from its path lengths.
+- No verified Forever API supplies a live transport phase. Manual observations measure both
+  dock dwell and a full return period. Predictions always say Estimate because player input,
+  server changes and missed cycles can shift them.
+- `MIN_PERIOD` is 30 seconds and `MAX_PERIOD` is 900 seconds: reject accidental short cycles
+  and abandon observations separated by more than 15 minutes rather than invent a schedule.
+  `VALID_CYCLES` is 2 so unattended predictions expire instead of drifting indefinitely.
+- `NEAR_YARDS` is 200 because transport path stops lie in the water or above the platform,
+  rather than at the player's feet. Shared-tower routes need explicit selection.
+- Observations use session `GetTime` and are discarded on world entry so a reload, realm or
+  instance change cannot carry a previous server phase into a new world.
+- Events and frames are created on first enable. Nearby selection refreshes on zone and movement
+  events. OnUpdate runs only for an active countdown, with text refreshed every 0.2 seconds;
+  disabling or expiry removes it. No transport polling or ticker runs while learning or off.
 
 - The Damage Meter Skin never hides or re-lays out the game's meter: it recolors its textures and
   fonts after the game sets them (hooksecurefunc on each entry, a scroll box callback for new

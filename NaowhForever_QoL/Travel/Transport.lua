@@ -1,0 +1,219 @@
+-- Transport.lua: manually calibrated boat and zeppelin countdowns and their Travel settings.
+local ns = _G.NaowhForever
+
+local GetTime = GetTime
+local S, UI = ns.QoLSettings, ns.UI
+local T = ns.THEME
+local Parts = ns.Shared.Parts
+local Times = ns.TransportTimes
+
+local WIDTH, HEIGHT, PAD = 440, 184, 12
+local TITLE_SIZE, TEXT_SIZE = 14, 12
+local TITLE_Y, ROUTE_Y, STATUS_Y, HELP_Y, BUTTON_Y = -12, -36, -74, -100, -148
+local ROUTE_H, HELP_H = 34, 38
+local BUTTON_W, BUTTON_H, BUTTON_GAP = 132, 24, 10
+local UPDATE_EVERY, SECONDS_PER_MINUTE = 0.2, 60
+local NEAR_YARDS, PERCENT = 200, 100
+local FIRST_LABEL, LABEL_STEP = 4, 2
+local PAGE, CARD = "QoL/Travel", "QoL/Travel:transportTimers"
+local NEARBY, PLAYER = "nearby", "player"
+local TITLE = ns.L("Boat and Zeppelin Timers")
+local TEXT_NEARBY = ns.L("Nearby dock")
+local TEXT_NONE = ns.L("No nearby dock; choose one in Travel settings.")
+local TEXT_ESTIMATE = ns.L("Estimate: %s in %d:%02d")
+local TEXT_ARRIVES, TEXT_LEAVES = ns.L("arrives"), ns.L("leaves")
+local TEXT_ARRIVAL = ns.L("Record an arrival to begin learning this dock.")
+local TEXT_DEPARTURE = ns.L("Record its departure, then its next arrival.")
+local TEXT_RETURN = ns.L("Record the next arrival to complete a cycle.")
+local TEXT_STALE = ns.L("Estimate expired; reset and record a fresh cycle.")
+local TEXT_HELP = ns.L("Record consecutive stops of the same route. Choose another dock in Travel settings.")
+local TEXT_SELECT = ns.L("%s: %s")
+local TEXT_RESET = ns.L("Reset")
+local TEXT_ARRIVED, TEXT_DEPARTED = ns.L("Arrived"), ns.L("Departed")
+local EVENTS = { "PLAYER_ENTERING_WORLD", "ZONE_CHANGED_NEW_AREA", "ZONE_CHANGED",
+    "ZONE_CHANGED_INDOORS", "PLAYER_STOPPED_MOVING", "PLAYER_STARTED_MOVING" }
+
+local frame, events, docks, labels, order, selected
+local elapsed = 0
+
+local function On()
+    return S.Get("enabled") == true and S.Get("transportTimers") == true
+end
+
+local function Prepare()
+    if docks then return end
+    docks, labels, order = {}, { [NEARBY] = TEXT_NEARBY }, {}
+    for map, pins in pairs(ns.TownTravel) do
+        local info = C_Map.GetMapInfo(map)
+        for index, pin in ipairs(pins) do
+            for label = FIRST_LABEL, #pin, LABEL_STEP do
+                local key = map .. ":" .. index .. ":" .. label
+                docks[key] = { map = map, x = pin[1] / PERCENT, y = pin[2] / PERCENT }
+                labels[key] = TEXT_SELECT:format(info and info.name or tostring(map), ns.L(pin[label]))
+                order[#order + 1] = key
+            end
+        end
+    end
+    table.sort(order)
+    table.insert(order, 1, NEARBY)
+end
+
+local function Choices()
+    Prepare()
+    return labels, order
+end
+
+local function Secret(value)
+    return issecretvalue and issecretvalue(value)
+end
+
+local function Nearest()
+    local map = C_Map.GetBestMapForUnit(PLAYER)
+    local pos = map and C_Map.GetPlayerMapPosition(map, PLAYER)
+    if not pos or Secret(pos.x) or Secret(pos.y) then return nil end
+    local continent, world = C_Map.GetWorldPosFromMapPos(map, pos)
+    if not world or Secret(world.x) or Secret(world.y) then return nil end
+    local best, distance = nil, NEAR_YARDS * NEAR_YARDS
+    for _, key in ipairs(order) do
+        local dock = docks[key]
+        if dock then
+            if not dock.world then
+                dock.continent, dock.world = C_Map.GetWorldPosFromMapPos(dock.map, CreateVector2D(dock.x, dock.y))
+            end
+            local point = dock.world
+            if dock.continent == continent and point and not Secret(point.x) and not Secret(point.y) then
+                local dx, dy = point.x - world.x, point.y - world.y
+                local yards = dx * dx + dy * dy
+                if yards < distance then best, distance = key, yards end
+            end
+        end
+    end
+    return best
+end
+
+local function Paint()
+    local seconds, kind, last = Times.Next(selected, GetTime())
+    frame.arrived:SetEnabled(selected ~= nil and kind ~= "stale" and last ~= "arrival")
+    frame.departed:SetEnabled(selected ~= nil and kind ~= "stale" and last == "arrival")
+    frame.reset:SetEnabled(selected ~= nil)
+    frame:SetScript("OnUpdate", nil)
+    if not selected then frame.status:SetText(TEXT_NONE)
+    elseif seconds then
+        local rounded = math.ceil(seconds)
+        frame.status:SetText(TEXT_ESTIMATE:format(kind == "arrival" and TEXT_ARRIVES or TEXT_LEAVES,
+            math.floor(rounded / SECONDS_PER_MINUTE), rounded % SECONDS_PER_MINUTE))
+    elseif kind == "stale" then frame.status:SetText(TEXT_STALE)
+    elseif kind == "new" then frame.status:SetText(TEXT_ARRIVAL)
+    elseif kind == "departure" then frame.status:SetText(TEXT_DEPARTURE)
+    else frame.status:SetText(TEXT_RETURN) end
+    return seconds ~= nil
+end
+
+local function OnUpdate(_, delta)
+    elapsed = elapsed + delta
+    if elapsed < UPDATE_EVERY then return end
+    elapsed = 0
+    if Paint() then frame:SetScript("OnUpdate", OnUpdate) end
+end
+
+local function Refresh()
+    if not On() then return end
+    Prepare()
+    local key = S.Get("transportDock")
+    selected = key == NEARBY and Nearest() or (docks[key] and key or nil)
+    frame.route:SetText(selected and labels[selected] or TEXT_NEARBY)
+    if Paint() then frame:SetScript("OnUpdate", OnUpdate) end
+end
+
+local function Arrived()
+    if not On() or not selected then return end
+    Times.Record(selected, "arrival", GetTime())
+    Refresh()
+end
+
+local function Departed()
+    if not On() or not selected then return end
+    Times.Record(selected, "departure", GetTime())
+    Refresh()
+end
+
+local function Reset()
+    if not On() then return end
+    Times.Clear(selected)
+    Refresh()
+end
+
+local function SavePosition(pos)
+    S.Set("transportTimersPos", { point = pos.point, relPoint = pos.relPoint, x = pos.x, y = pos.y })
+end
+
+local function Text(size, y, height, color)
+    local text = ns.Font(frame, size, nil, color)
+    text:SetPoint("TOPLEFT", PAD, y)
+    text:SetWidth(WIDTH - PAD - PAD)
+    text:SetJustifyH("LEFT")
+    if height then text:SetHeight(height) end
+    return text
+end
+
+local function Build()
+    frame = CreateFrame("Frame", nil, UIParent)
+    frame:SetSize(WIDTH, HEIGHT)
+    frame:SetMovable(true)
+    frame:SetClampedToScreen(true)
+    Parts.HudBackdrop(frame)
+    Text(TITLE_SIZE, TITLE_Y):SetText(TITLE)
+    frame.route = Text(TEXT_SIZE, ROUTE_Y, ROUTE_H)
+    frame.status = Text(TEXT_SIZE, STATUS_Y, nil, T.accent)
+    Text(TEXT_SIZE, HELP_Y, HELP_H, T.muted):SetText(TEXT_HELP)
+    frame.arrived = ns.Button(frame, TEXT_ARRIVED, BUTTON_W, BUTTON_H, Arrived)
+    frame.arrived:SetPoint("TOPLEFT", PAD, BUTTON_Y)
+    frame.departed = ns.Button(frame, TEXT_DEPARTED, BUTTON_W, BUTTON_H, Departed)
+    frame.departed:SetPoint("LEFT", frame.arrived, "RIGHT", BUTTON_GAP, 0)
+    frame.reset = ns.Button(frame, TEXT_RESET, BUTTON_W, BUTTON_H, Reset)
+    frame.reset:SetPoint("LEFT", frame.departed, "RIGHT", BUTTON_GAP, 0)
+    UI.AttachMover(frame, "Boat and Zeppelin Timers", SavePosition, PAGE, CARD)
+end
+
+local function OnEvent(_, event)
+    if event == "PLAYER_ENTERING_WORLD" then Times.Clear() end
+    Refresh()
+end
+
+local function Apply()
+    if not On() then
+        if events then events:UnregisterAllEvents() end
+        if frame then frame:SetScript("OnUpdate", nil); frame:Hide() end
+        Times.Clear()
+        selected = nil
+        return
+    end
+    if not frame then Build() end
+    local pos = S.Get("transportTimersPos")
+    frame:ClearAllPoints()
+    frame:SetPoint(pos.point, UIParent, pos.relPoint, pos.x, pos.y)
+    if not events then
+        events = CreateFrame("Frame")
+        events:SetScript("OnEvent", OnEvent)
+    end
+    for _, event in ipairs(EVENTS) do events:RegisterEvent(event) end
+    frame:Show()
+    Refresh()
+end
+
+local function OnSetting(key)
+    if key == "enabled" or key == "transportTimers" or key == "transportDock" then Apply() end
+end
+
+S.OnChange(OnSetting)
+hooksecurefunc(ns, "Apply", Apply)
+Apply()
+
+ns.Shared.Settings.Page(PAGE, S):Card({
+    id = "transportTimers", name = "Boat and Zeppelin Timers", order = 13, switch = "transportTimers",
+    help = "Estimate the next arrival or departure from stops you record at a dock.",
+    rows = {
+        { key = "transportDock", label = "Dock and Route", choice = Choices,
+          help = "Track a nearby dock or choose a specific route to watch." },
+    },
+})
