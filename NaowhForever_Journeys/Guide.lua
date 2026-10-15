@@ -32,7 +32,6 @@ Jy.Guide = Guide
 local journey, events, step, working, driver, dismissed, hinted
 local replanQueued = false
 local ticker, ticks
-local scratch = Walk.Scratch()
 local listeners = {}
 
 local function Changed()
@@ -138,7 +137,7 @@ local function Context(from, to)
 end
 
 local function Reach(spot)
-    spot.reach = Walk.From(spot, scratch)
+    spot.reach = Walk.From(spot, journey.scratch)
     return spot
 end
 
@@ -338,7 +337,8 @@ function Guide.Start(title, stops, quest)
         if not spot then return false end
         own[i] = { stop[1], stop[2], stop[3], stop[4], stop[5], stop[6], spot = spot }
     end
-    journey, step = { title = title, stops = own, at = 1, done = 0, quest = quest, paths = {}, reaches = {} }, nil
+    journey, step = { title = title, stops = own, at = 1, done = 0, quest = quest, paths = {}, reaches = {},
+        scratch = Walk.Scratch() }, nil
     if not hinted and next((World.Known())) == nil then
         hinted = true
         ns.Print(TEXT_NO_FLIGHTS)

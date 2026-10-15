@@ -74,6 +74,7 @@ local function Release()
     wipe(used)
     wipe(graphs)
     wipe(places)
+    segment = Set()
 end
 
 local function Used()
