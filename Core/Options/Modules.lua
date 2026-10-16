@@ -314,9 +314,16 @@ function ns.ModuleHost(addon)
     end
 end
 
+function ns.ModuleOn(addon)
+    for _, mod in ipairs(MODULES) do
+        if mod.addon == addon then return Loaded(mod) and ModuleOn(mod, UnitGUID("player")) == true end
+    end
+    return false
+end
+
 local function SetModuleOn(mod, on)
-    if mod.host and Loaded(mod) then
-        ns.SetModuleState(mod.addon, on)
+    if mod.host and C_AddOns.IsAddOnLoaded(mod.host) and (not on or Loaded(mod)) then
+        for _, m in ipairs(on and Linked(mod, true) or { mod }) do ns.SetModuleState(m.addon, on) end
         return UI:RefreshPage(true)
     end
     if mod.addon and not on then return SwitchModuleAddon(mod, false) end

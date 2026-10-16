@@ -10,6 +10,7 @@ local BIND_CLICK = "CLICK %s:LeftButton"
 local MACRO_PREFIX = "macro:"
 local MACRO_PATTERN = "^macro:(%a+)$"
 local MACRO_NAME = "%s (%s)"
+local MACROS_ADDON = "NaowhForever_Macros"
 local ITEM_IN_BODY = "item:(%d+)"
 local FOOD, DRINK = "smart:food", "smart:drink"
 local MANA_MACRO, DRINK_MACRO = "macro:mana", "macro:drink"
@@ -29,7 +30,7 @@ local NO_FLAGS = {}
 local NO_ITEMS = {}
 local listeners = {}
 local best = {}
-local shownFor, shown
+local shownFor, shownMacros, shown
 
 local CB = {}
 ns.ConsumableBar = CB
@@ -76,11 +77,15 @@ local function AnyHidden(items)
     return false
 end
 
+function CB.MacrosOn()
+    return ns.ModuleOn(MACROS_ADDON)
+end
+
 function CB.Items()
-    local items = CB.SavedItems()
-    if shownFor == items then return shown end
+    local items, macros = CB.SavedItems(), CB.MacrosOn()
+    if shownFor == items and shownMacros == macros then return shown end
     if not AnyHidden(items) then return items end
-    shownFor, shown = items, {}
+    shownFor, shownMacros, shown = items, macros, {}
     for _, entry in ipairs(items) do
         if not Hidden(entry) then shown[#shown + 1] = entry end
     end
@@ -104,7 +109,7 @@ end
 
 function CB.MacroKey(entry)
     local key = type(entry) == "string" and entry:match(MACRO_PATTERN)
-    return key and ns.ConsumableMacros and ns.ConsumableMacros[key] and key
+    return key and ns.ConsumableMacros and ns.ConsumableMacros[key] and CB.MacrosOn() and key
 end
 
 function CB.MacroInfo(entry)
@@ -179,7 +184,7 @@ function CB.HasMacro(key)
 end
 
 function ns.ConsumableBarUsesMacro(key)
-    return CB.On() and CB.HasMacro(key) or false
+    return CB.On() and CB.HasMacro(key) and CB.MacrosOn() or false
 end
 
 function CB.HasFoodButtons()

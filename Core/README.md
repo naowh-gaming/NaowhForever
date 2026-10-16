@@ -521,8 +521,14 @@ Module state
   AddOn list entry of its own: it is on when its host is enabled and its switch is on.
   `ns.SetModuleState`, `ns.ReconcileModules` and the onboarding's Apply keep the host enabled for this
   character while any of its modules is on and disable it once none is; switching one while its host
-  is loaded needs no reload. A module counts as loaded only while what it `needs` is loaded too, since
-  a host does not depend on it (Group Inspect in Utilities, needing the BiS List).
+  is loaded needs no reload, and switching one on switches on what it `needs`. A module counts as loaded
+  only while what it `needs` is loaded too, since a host does not depend on it (Group Inspect in
+  Utilities, needing the BiS List): until then Settings > Modules reads it from the AddOn list with
+  what it needs (`ns.ModuleListed`), turning it on asks for the reload, and the onboarding plans one.
+  Turning a hosted module off only sets its switch while its host is loaded.
+- `ns.ModuleOn(addon)` says whether a module is on for this character: loaded, listed and switched on.
+  A module reading another one that may ship in a combined addon asks it, not whether that one's
+  functions exist, since a hosted module's files stay loaded while its switch is off.
 - A change to the list takes a reload: one prompt (`ns.ConfirmReload`) after a pass that changed
   something, held until combat ends. Settings > Modules and the module windows read this character's
   list together with the switch, so they agree with the game's AddOn list.

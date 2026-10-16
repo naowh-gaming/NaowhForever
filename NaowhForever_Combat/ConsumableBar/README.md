@@ -103,12 +103,13 @@ NaowhForever_Combat/ConsumableBar/
 - The bar starts at `HOME_Y` (-260), under the Food & Drink Bar's spot (-210), so the two never sit
   on top of each other.
 - An entry is an item ID, a Smart Macro (`macro:health`, `macro:healthstone`, `macro:healthPotion`,
-  `macro:mana`, `macro:food`, `macro:drink`, `macro:bandage`, while the Macros module is loaded:
-  `NaowhForever_Utilities` loads before Combat, `OptionalDeps`), or a Food & Drink button (`smart:food`, `smart:drink`). A macro's
+  `macro:mana`, `macro:food`, `macro:drink`, `macro:bandage`, while the Macros module is on,
+  `ns.ModuleOn`: `NaowhForever_Utilities` loads before Combat, `OptionalDeps`), or a Food & Drink button (`smart:food`, `smart:drink`). A macro's
   button runs it by name, so Macros' rewrite needs nothing protected here. The bar never flips your
   Macros switches: Macros keeps a macro the bar uses (`ns.ConsumableBarUsesMacro`), and the bar only
   asks it to update (`ns.UpdateManagedMacros`) when the macros it uses change, so a bar that is off
-  costs nothing. A rewrite in combat only redraws the icon, since resizing a secure button waits for
+  costs nothing. Macros' files stay loaded while its switch is off, so then the bar leaves its macro entries
+  out, offers none, and lays itself out again when that switch changes (`CB.MacrosOn`). A rewrite in combat only redraws the icon, since resizing a secure button waits for
   the fight to end.
 - A Food & Drink button is a secure item button pointed at your best food or drink
   (`ns.BestFoodAndDrink`), out of combat only: a bag change in a fight points it when the fight

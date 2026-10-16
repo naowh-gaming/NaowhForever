@@ -53,7 +53,7 @@ local function fixture(settings, noMacros, class)
         secretAuras = false, auraReads = 0, bags = {}, focus = {}, mouseDown = false,
         enchant = {}, actions = {}, actionButtons = {}, bindings = {}, macros = {}, labButtons = nil,
         refreshes = 0, registers = 0, cards = {}, actionText = {}, macroBodies = {}, macroSettings = {},
-        macroUpdates = 0, writes = {}, panels = {}, stores = {}, windows = {}, renders = {}, sides = {}, hud = { anchoredTo = {} } }
+        macroUpdates = 0, macroListeners = {}, writes = {}, panels = {}, stores = {}, windows = {}, renders = {}, sides = {}, hud = { anchoredTo = {} } }
     local G = {}
     local function Evaluate(f)
         local rule = rawget(f, 'driver')
@@ -269,8 +269,16 @@ local function fixture(settings, noMacros, class)
         },
         MacroSettings = {
             Get = function(k) return s.macroSettings[k] end,
-            Set = function(k, v) s.macroSettings[k] = v end,
+            Set = function(k, v)
+                s.macroSettings[k] = v
+                for _, fn in ipairs(s.macroListeners) do fn(k, v) end
+            end,
+            OnChange = function(fn) s.macroListeners[#s.macroListeners + 1] = fn end,
         },
+        -- The Macros module on: the core's ns.ModuleOn, read from its switch here.
+        ModuleOn = function(addon)
+            return addon == 'NaowhForever_Macros' and not noMacros and s.macroSettings.enabled ~= false
+        end,
         UpdateManagedMacros = function() s.macroUpdates = s.macroUpdates + 1 end,
         HealthOrderChoices = { values = { stone = 'Healthstone First', potion = 'Potion First' },
             order = { 'stone', 'potion' } },
@@ -1854,6 +1862,28 @@ do
     s.set('consumableBarItems', { 'macro:mana' })
     s.set('consumableBar', false)
     check('a bar switched off uses no macro', not s.ns.ConsumableBarUsesMacro('mana'))
+end
+
+-- Macros ships in NaowhForever_Utilities, so its files stay loaded while its switch is off: the bar
+-- then carries no Smart Macro, as when the Macros addon was not loaded, and takes them back when it
+-- is switched on again.
+do
+    local s = fixture({ consumableBar = true, consumableBarItems = { 'macro:mana', 13446, 'macro:health' } })
+    local function MacroRows()
+        local n = 0
+        for _, row in ipairs(s.cards['Consumable Bar/Settings:adding'].rows) do
+            if row.label == 'NF Mana' and not (row.hidden and row.hidden()) then n = n + 1 end
+        end
+        return n
+    end
+    check('Macros on: its macros on the bar and offered', #s.buttons() == 3 and MacroRows() == 1)
+    s.ns.MacroSettings.Set('enabled', false)
+    check('Macros switched off: only the item stays, nothing of Macros is used or offered', #s.buttons() == 1
+        and s.buttons()[1].entry == 13446 and not s.ns.ConsumableBarUsesMacro('mana') and MacroRows() == 0
+        and not s.listens('UPDATE_MACROS'))
+    s.ns.MacroSettings.Set('enabled', true)
+    check('switched back on: the macros come back in their places', #s.buttons() == 3
+        and s.buttons()[1].entry == 'macro:mana' and s.ns.ConsumableBarUsesMacro('health') and MacroRows() == 1)
 end
 
 -- A macro's key: on an action bar, known by the macro's name on the slot, or its own button's

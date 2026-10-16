@@ -144,8 +144,10 @@ local addingRows = {
 }
 for _, category in ipairs(D.ORDER) do addingRows[#addingRows + 1] = Filter(category) end
 
+local function MacrosOff() return not CB.MacrosOn() end
+
 local function MacroRow(key, label, help)
-    return { label = label, toggle = true, help = help,
+    return { label = label, toggle = true, help = help, hidden = MacrosOff,
         get = function() return CB.HasMacro(key) end,
         set = function(v) CB.SetMacro(key, v) end }
 end

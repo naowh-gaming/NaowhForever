@@ -72,8 +72,8 @@ Each layer uses only the ones above it. `M.Forge` holds the tabs' shared state (
 - The Consumable Bar can carry every bag macro: NF Health, NF Healthstone, NF Health Potion, NF Mana,
   NF Food, NF Drink and NF Bandage (`ns.ConsumableMacros`).
   Its buttons run them by name, so this module's rewrite is all that keeps them current: a macro the
-  bar uses (`ns.ConsumableBarUsesMacro`) is written and kept current whatever its switch or the
-  module's, cannot be removed from here, and shows locked on in Kept Current. One written only for
+  bar uses (`ns.ConsumableBarUsesMacro`) is written and kept current whatever its own switch while
+  this module is on, cannot be removed from here, and shows locked on in Kept Current. One written only for
   the bar goes when the bar stops using it; one switched on here stays. Which ones only the bar
   wanted is saved (`barOnly`), so that still holds after a `/reload`.
 - `LIMIT` is 255: the game keeps only the first 255 bytes of a macro's text, counted in bytes.

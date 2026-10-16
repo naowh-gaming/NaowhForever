@@ -30,7 +30,7 @@ local ns = {
     Confirm = function(text, yes) confirms[#confirms + 1] = { text = text, yes = yes } end,
     ConfirmReload = function(text) reloads[#reloads + 1] = text end,
     AccountSettings = function() return {} end,
-    SettingsRoot = function() return {} end,
+    SettingsRoot = function() return { qol = qol, journal = journal } end,
 }
 local env = setmetatable({
     NaowhForever = ns,
@@ -128,5 +128,20 @@ check("with the BiS List loaded too: on at once, no prompt and no reload", #conf
 row.setValue(false)
 check("and off at once, Utilities left enabled", #confirms == 3 and qol.groupInspect == false
     and enabled.NaowhForever_Utilities and #reloads == reloadsWas)
+
+enabled.NaowhForever_BiS, qol.bis = nil, false
+row.setValue(true)
+check("the BiS List switched off earlier, still loaded: Group Inspect on brings it back, at once", #confirms == 3
+    and qol.groupInspect == true and qol.bis == true and enabled.NaowhForever_BiS and #reloads == reloadsWas)
+
+loaded.NaowhForever_BiS = false
+row.setValue(false)
+check("off without the BiS List loaded: its switch only, no prompt, no reload", #confirms == 3
+    and qol.groupInspect == false and #reloads == reloadsWas and enabled.NaowhForever_Utilities)
+qol.groupInspect, enabled.NaowhForever_BiS = true, nil
+check("its switch on but the BiS List out of the AddOn list: the row reads off, as nothing of it runs",
+    row.getValue() == false)
+enabled.NaowhForever_BiS = true
+check("the BiS List listed again: on after the reload", row.getValue() == true)
 
 print(("test-module-switches: %d checks passed"):format(checks))

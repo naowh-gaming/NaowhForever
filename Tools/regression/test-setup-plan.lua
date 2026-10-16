@@ -164,6 +164,12 @@ do
     check("a Utilities module turned off while Utilities is loaded: listed, no reload", Names(plan.off) == "Action Bars"
         and not plan.reload)
     Setup.Toggle(picks, "actionBars", true)
+    w.loaded.NaowhForever_BiS = false
+    Setup.Toggle(picks, "groupInspect", true)
+    check("Group Inspect picked with Utilities loaded but the BiS List not: a reload", Setup.Plan(picks).reload)
+    Setup.Toggle(picks, "groupInspect", false)
+    Setup.Toggle(picks, "bis", true)
+    w.loaded.NaowhForever_BiS = true
     Setup.Toggle(picks, "swingTimer", false)
     plan = Setup.Plan(picks)
     check("a Combat module turned off while Combat is loaded: listed, no reload", Names(plan.off) == "Swing Timer"

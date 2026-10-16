@@ -400,8 +400,13 @@ local function Lock()
     Apply()
 end
 
+local function OnMacrosChanged(key)
+    if key == "enabled" then Apply() end
+end
+
 hooksecurefunc(S, "Set", OnSettingChanged)
 hooksecurefunc(ns, "Apply", Apply)
+if ns.MacroSettings then ns.MacroSettings.OnChange(OnMacrosChanged) end
 hooksecurefunc(ns, "ShowUnlockMode", Unlock)
 hooksecurefunc(ns, "HideUnlockMode", Lock)
 

@@ -25,7 +25,7 @@ local ALLOWED = {
     { addon = "NaowhForever_DungeonJournal", field = "RemoveBisItem", file = "NaowhForever_DungeonJournal/View/ItemMenu.lua",
       reason = "the item menu offers it only when Loot.BisOn: the BiS List loaded and on" },
     { addon = "NaowhForever", field = "Macros", file = "Core/Profiles/ProfileShare.lua",
-      reason = "AddLibrary runs only behind wanted.library and ns.Macros" },
+      reason = "AddLibrary runs only behind wanted.library and ns.ModuleOn, the Macros module on" },
     { addon = "NaowhForever", field = "TrainingBuilds", file = "Core/Profiles/ProfileShare.lua",
       reason = "AddBuilds runs only behind ns.Training, which the same addon defines" },
     { addon = "NaowhForever", field = "Training", file = "Core/Profiles/ProfileShare.lua",
@@ -49,7 +49,7 @@ local ALLOWED = {
     { addon = "NaowhForever_Combat", field = "[BUILD[shown]]", file = "NaowhForever_Combat/AuraBuffs/UI/Window.lua",
       reason = "both page builders BUILD names are defined in UI/WindowPages.lua, the same addon" },
     { addon = "NaowhForever_Combat", field = "OpenMacroWindow", file = "NaowhForever_Combat/PvP/UI/AurasPage.lua",
-      reason = "the Open Forge button is disabled unless ForgeReady sees ns.OpenMacroWindow" },
+      reason = "the Open Forge button is disabled unless ForgeReady sees the Macros module on (ns.ModuleOn)" },
 }
 
 local KNOWN = {}
