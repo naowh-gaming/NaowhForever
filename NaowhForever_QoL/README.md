@@ -1206,8 +1206,8 @@ NaowhForever_QoL/
 
 ### Zone Info
 
-- QoL > Map & Pins > Zone Info adds a compact map hover and a pinned details panel. Use
-  Recommended enables the master switch and dungeon, fishing and travel content; the HUD and
+- QoL > Map & Pins > Zone Info adds a compact map hover and a pinned details panel.
+  Apply beside Recommended Details enables the master switch and dungeon, fishing and travel content; the HUD and
   gathering tab stay optional. Every new feature switch is off by default in Core/Features.lua.
 - The existing zone-level and fishing labels stand aside while Zone Info is enabled, without
   changing their saved switches, and return when it is disabled.
@@ -1240,3 +1240,7 @@ NaowhForever_QoL/
   territory for a different hovered zone is omitted because the existing registries do not supply it.
 - Details use shared panels, tabs, buttons, fonts and pooled row drawing. The preview uses the
   same HUD drawing with sample Westfall data; it does not activate the feature or register a mover.
+
+- Map panels use an opaque theme fill, with their layer set above the canvas after parenting,
+  so the map cannot cover their background, title or metadata. Parts.Panel accepts an optional
+  flat-fill opacity; other callers retain their existing opacity.

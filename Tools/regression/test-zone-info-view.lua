@@ -17,6 +17,8 @@ local env = getfenv(Z.MapInfo)
 local canvas = New("Frame"); canvas:SetSize(700, 500)
 local map = New("Frame")
 function map:GetCanvasContainer() return canvas end
+function map:GetCanvas() return canvas end
+canvas:SetFrameLevel(500)
 env.WorldMapFrame = map
 local info = { mapID = 1436, name = "Westfall", mapType = 3, parentMapID = 1415 }
 env.C_Map = { GetMapInfo = function(id) return id == 1436 and info or nil end }
@@ -48,6 +50,12 @@ Z.ShowDetails(false)
 local pinned
 for _, frame in ipairs(env.UIParent.children) do if frame.tabs and frame.view and frame.meta then pinned = frame end end
 Check(pinned and pinned.w == 220 and pinned.h == 236, "pinned card adapts to a small map canvas")
+Check(pinned.strata == "DIALOG" and pinned.level > canvas:GetFrameLevel(), "panel is above the map canvas after reparenting")
+local solid
+for _, child in ipairs(pinned.children) do
+    if child.kind == "Texture" and child.color and child.color[1] == ns.THEME.bg.r and child.color[4] == 1 then solid = child end
+end
+Check(solid ~= nil and pinned.backdrop == nil, "map details use an opaque theme fill rather than a window gradient")
 local entryRow = pinned.view.pools.zoneEntry[1]
 Check(entryRow.mark.points[1][3] < entryRow.journal.points[1][3], "narrow cards stack actions instead of overlapping")
 entryRow.journal.scripts.OnClick(entryRow.journal)
