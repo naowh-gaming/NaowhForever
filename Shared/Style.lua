@@ -302,6 +302,8 @@ Shared.Style = {
     HOVER = 0.05,
 
     CARD_FILL = 0.025,
+    SIDEBAR_SHADE = 0.15,
+    PREVIEW_SHADE = 0.4,
     CARD_PAD = 10,
     CARD_GAP = 10,
     CARD_BOTTOM = 6,
