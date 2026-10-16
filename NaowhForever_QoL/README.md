@@ -1258,3 +1258,6 @@ NaowhForever_QoL/
 - The built-in area-label frame is faded while our map summary is visible, then restored to
   its original alpha when the map closes or this layout is disabled; no Blizzard script,
   label content or layout is replaced. This avoids duplicate zone names at the top of the map.
+- A hover selection stays available across empty map space, the canvas boundary, same-map
+  redraws and character refreshes so its Pin Details action remains reachable. Another valid
+  zone replaces it; closing or changing the map, disabling the feature or combat clears it.

@@ -30,6 +30,14 @@ local function ResetHover()
     Z.Hover(nil)
 end
 
+local function RefreshHover()
+    local current = provider and provider:GetMap() and provider:GetMap():GetMapID()
+    if hovered and Z.Plain(current) and lastMap == current and not InCombatLockdown() then
+        lastX, lastY = nil, nil
+        Z.Hover(hovered)
+    else ResetHover() end
+end
+
 function Z.Pin(mapID, detached)
     if not Z.Enabled() or InCombatLockdown() then return end
     mapID = Z.ZoneMap(mapID)
@@ -53,14 +61,14 @@ local function OnUpdate(_, elapsed)
     elapsedTotal = 0
     local x, y = map:GetNormalizedCursorPosition()
     local current = map:GetMapID()
-    if not (Z.Plain(x) and Z.Plain(y) and Z.Plain(current)) then ResetHover(); return end
-    if not x or not y or x < 0 or y < 0 or x > 1 or y > 1 then ResetHover(); return end
+    if not (Z.Plain(x) and Z.Plain(y) and Z.Plain(current)) then return end
+    if not x or not y or x < 0 or y < 0 or x > 1 or y > 1 then return end
     if x == lastX and y == lastY and current == lastMap then return end
     lastX, lastY, lastMap = x, y, current
     local info = C_Map.GetMapInfoAtPosition(current, x, y)
     local id = info and Z.Plain(info) and Z.Plain(info.mapID) and info.mapID
     id = Z.ZoneMap(id or current)
-    if id ~= hovered then hovered = id; Z.Hover(id); MapText() end
+    if id and id ~= hovered then hovered = id; Z.Hover(id); MapText() end
 end
 
 local function AddMap()
@@ -97,7 +105,7 @@ local function AddMap()
         end
         function provider:RemoveAllData() self:OnHide() end
         function provider:RefreshAllData()
-            ResetHover()
+            RefreshHover()
             if Z.Enabled() and self:GetMap():IsShown() then Z.ShowDetails(false); MapText() end
         end
     end
@@ -140,7 +148,7 @@ local function RefreshCharacter()
     end
     ApplyHUD()
     Z.RefreshPanels()
-    ResetHover()
+    RefreshHover()
     MapText()
 end
 

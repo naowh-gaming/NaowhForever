@@ -227,6 +227,15 @@ do
     f.Tick(0.2)
     Check(f.hover == 1 and f.queries == 1, "summary remains clickable while crossing from map to external dock")
     f.mouse = true
+    f.target, f.x = 100, 0.6; f.Tick(0.1)
+    Check(f.hover == 1, "crossing empty continent map space keeps the last valid zone available")
+    f.x = 1.1; f.Tick(0.1)
+    Check(f.hover == 1, "crossing the canvas boundary cannot dismiss the pin action")
+    map.provider:RefreshAllData()
+    Check(f.hover == 1, "same-map redraw keeps the pin action")
+    f.Event("SKILL_LINES_CHANGED")
+    Check(f.hover == 1, "character refresh updates rather than dismisses the hover card")
+    f.target, f.x = 1, 0.5
     Z.Pin(1, false)
     f.target, f.x = 2, 0.7; f.Tick(0.1)
     Check(S.Get("zoneInfoPinned") == 1 and f.hover == 2, "hovering elsewhere never replaces the pinned zone")
@@ -277,7 +286,7 @@ do
     f.target, f.x = 2, 0.7; f.Tick(0.1)
     Check(f.summary == 2, "zoomed-out hover updates the on-map summary")
     map.provider:RefreshAllData()
-    Check(f.summary == 1, "map refresh restores the current zone instead of a stale hover")
+    Check(f.summary == 2, "same-map refresh retains the last valid hovered zone")
     f.map.mapID = 2
     f.map.GetMapID = function() return 2 end
     map.provider:RefreshAllData()
