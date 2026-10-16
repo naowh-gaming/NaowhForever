@@ -55,7 +55,7 @@ local modules = assert(loadstring(Read("Core/Options/Modules.lua"), "Modules"))
 setfenv(modules, env)
 modules()
 local O = ns.Options
-for _, path in ipairs({ "Core/Onboarding/Setup.lua", "Core/Onboarding/ModuleState.lua" }) do
+for _, path in ipairs({ "Core/Features.lua", "Core/Onboarding/Setup.lua", "Core/Onboarding/ModuleState.lua" }) do
     local chunk = assert(loadstring(Read(path), path))
     setfenv(chunk, env)
     chunk()
@@ -93,10 +93,10 @@ qol.groupInspect = false
 check("its addon off: reads off", row.getValue() == false)
 row.setValue(true)
 check("its addon not loaded: turned on through the reload prompt, nothing changed until confirmed",
-    #confirms == 1 and qol.groupInspect == false and not enabled.NaowhForever_GroupInspect)
+    #confirms == 1 and qol.groupInspect == false and not enabled.NaowhForever_Utilities)
 confirms[1].yes()
 check("confirmed: its addon enabled, its setting on for after the reload, and a reload offered",
-    enabled.NaowhForever_GroupInspect == true and qol.groupInspect == true and #reloads == 1)
+    enabled.NaowhForever_Utilities == true and qol.groupInspect == true and #reloads == 1)
 
 local training = Module("Training Planner")
 enabled.NaowhForever_Training = true
@@ -114,5 +114,19 @@ enabled.NaowhForever_DungeonJournal, others.NaowhForever_DungeonJournal = nil, t
 loaded.NaowhForever_DungeonJournal, journal.enabled = true, true
 check("on for another character only: Settings reads it off, as this character's AddOn list does",
     row.getValue() == false and O.ModuleOn(journalMod) == false)
+
+loaded.NaowhForever_Utilities, loaded.NaowhForever_BiS, qol.groupInspect = true, false, false
+row = ModuleRow(inspect)
+row.setValue(true)
+check("Utilities loaded without the BiS List it needs: Group Inspect still turns on through the reload prompt",
+    #confirms == 3 and qol.groupInspect == false and not O.Loaded(inspect))
+loaded.NaowhForever_BiS = true
+local reloadsWas = #reloads
+row.setValue(true)
+check("with the BiS List loaded too: on at once, no prompt and no reload", #confirms == 3 and qol.groupInspect == true
+    and #reloads == reloadsWas and enabled.NaowhForever_Utilities and row.getValue() == true)
+row.setValue(false)
+check("and off at once, Utilities left enabled", #confirms == 3 and qol.groupInspect == false
+    and enabled.NaowhForever_Utilities and #reloads == reloadsWas)
 
 print(("test-module-switches: %d checks passed"):format(checks))

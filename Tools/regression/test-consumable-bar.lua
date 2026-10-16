@@ -1,6 +1,7 @@
--- Offline behavior checks for the Consumable Bar (NaowhForever_ConsumableBar, on Shared/UI/ItemBar.lua
+-- Offline behavior checks for the Consumable Bar (NaowhForever_Combat/ConsumableBar, on Shared/UI/ItemBar.lua
 -- and Shared/UI/Anchor.lua); these do not emulate client taint, secure clicks, state drivers' secure
 -- side or rendering. Run from the repo root: lua Tools/regression/test-consumable-bar.lua
+rawset(_G, "C_AddOns", { DoesAddOnExist = function() return false end, GetAddOnEnableState = function() return 0 end })
 
 -- The Consumable Bar's defaults, as Core/Settings.lua declares them.
 local DEFAULTS = (function()
@@ -371,9 +372,9 @@ local function fixture(settings, noMacros, class)
     -- XML's order.
     local paths = { 'Core/Features.lua', 'Shared/Game/Consumables.lua', 'Shared/Game/ActionKeys.lua',
         'Shared/UI/ItemBar.lua', 'Shared/UI/Anchor.lua' }
-    local xml = assert(io.open('NaowhForever_ConsumableBar/ConsumableBar.xml', 'rb'))
+    local xml = assert(io.open('NaowhForever_Combat/ConsumableBar/ConsumableBar.xml', 'rb'))
     for file in xml:read('*a'):gmatch('<Script file="([^"]+)"') do
-        paths[#paths + 1] = 'NaowhForever_ConsumableBar/' .. file:gsub('\\', '/')
+        paths[#paths + 1] = 'NaowhForever_Combat/ConsumableBar/' .. file:gsub('\\', '/')
     end
     xml:close()
     for _, path in ipairs(paths) do
@@ -1541,9 +1542,9 @@ do
     end
     local qol = Read('Core/Settings.lua')
     local seen = {}
-    local xml = Read('NaowhForever_ConsumableBar/ConsumableBar.xml')
+    local xml = Read('NaowhForever_Combat/ConsumableBar/ConsumableBar.xml')
     for file in xml:gmatch('<Script file="([^"]+)"') do
-        local path = 'NaowhForever_ConsumableBar/' .. file:gsub('\\', '/')
+        local path = 'NaowhForever_Combat/ConsumableBar/' .. file:gsub('\\', '/')
         for key in Read(path):gmatch('"(consumableBar%w+)"') do
             -- Where it was dragged has none (it starts at its spot); the window's place is account-wide.
             if not seen[key] and key ~= 'consumableBarPos' and key ~= 'consumableBarWindow' then

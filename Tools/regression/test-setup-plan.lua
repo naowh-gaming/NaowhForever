@@ -155,9 +155,14 @@ do
     check("not loaded: it needs a reload", Setup.Plan(picks).reload)
     w.loaded.NaowhForever_Combat = true
     Setup.Toggle(picks, "pvp", false)
+    Setup.Toggle(picks, "professions", false)
+    plan = Setup.Plan(picks)
+    check("a loaded module turned off: listed, with a reload", Names(plan.off) == "Professions" and plan.reload)
+    Setup.Toggle(picks, "professions", true)
     Setup.Toggle(picks, "actionBars", false)
     plan = Setup.Plan(picks)
-    check("a loaded module turned off: listed, with a reload", Names(plan.off) == "Action Bars" and plan.reload)
+    check("a Utilities module turned off while Utilities is loaded: listed, no reload", Names(plan.off) == "Action Bars"
+        and not plan.reload)
     Setup.Toggle(picks, "actionBars", true)
     Setup.Toggle(picks, "swingTimer", false)
     plan = Setup.Plan(picks)
@@ -270,21 +275,21 @@ do
         w.root.qol.characterPanelPicked == true and w.root.qol.inspectPanelPicked == nil)
     Setup.Restore()
     local off = All(true)
-    off.NaowhForever_GroupInspect, off.NaowhForever_BiS = false, false
+    off.NaowhForever_BiS = false
     local w2 = Game({ enabled = off, loaded = off, account = { welcomeSeen = true }, root = { qol = {} } })
     local picks2 = w2.ns.Setup.Fresh()
     w2.ns.Setup.Toggle(picks2, "groupInspect", true)
     plan = Applied(w2, picks2)
-    check("a module whose addon is off: it and what it needs enabled, with a reload", plan.reload
-        and Names(plan.on) == "BiS List,Group Inspect" and w2.enabled.NaowhForever_GroupInspect
-        and w2.enabled.NaowhForever_BiS and w2.Switch("groupInspect"))
+    check("a module that needs an addon that is off: both on, with a reload", plan.reload
+        and Names(plan.on) == "BiS List,Group Inspect" and w2.On("groupInspect")
+        and w2.enabled.NaowhForever_BiS and w2.enabled.NaowhForever_Utilities)
     Setup.Restore()
     picks = Setup.Fresh()
     Setup.Toggle(picks, "bis", false)
     plan = Applied(w, picks)
     check("the BiS List off: Group Inspect with it, a reload, no panel pick", plan.reload
         and Names(plan.off) == "BiS List,Group Inspect" and not w.enabled.NaowhForever_BiS
-        and not w.enabled.NaowhForever_GroupInspect and w.root.qol.characterPanelPicked == nil)
+        and not w.On("groupInspect") and w.root.qol.characterPanelPicked == nil)
 end
 
 do
