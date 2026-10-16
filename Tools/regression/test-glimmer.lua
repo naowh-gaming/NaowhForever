@@ -523,7 +523,7 @@ do
         for _, f in ipairs(m.frames) do if f.ring and f.shown and f.id then n = n + 1 end end
         return n
     end
-    check("no herbalism or mining: no spots", Shown() == 0)
+    check("no herbalism or mining: no spots, and the spot data stays packed", Shown() == 0 and m.dataLoaded == nil)
     m.Set("myProfessions", false)
     check("Only My Professions off: every near spot", Shown() == 2)
 end
@@ -568,6 +568,9 @@ do
     g.game.mapShown = true
     g.provider:RefreshAllData()
     check("on the world map", #g.game.pins == 1 and g.game.pins[1] == entry)
+    g.game.mining = 0
+    g.provider:RefreshAllData()
+    check("an alt with no gathering still sees the account's gathers", #g.game.pins == 1)
     g.Set("ore", false)
     g.provider:RefreshAllData()
     check("ore off: not on the map", #g.game.pins == 0)

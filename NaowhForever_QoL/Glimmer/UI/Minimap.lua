@@ -91,7 +91,7 @@ end
 
 local function Refresh()
     kinds = Kinds()
-    if not On() or not Spots.Load() then
+    if not On() or kinds == "" or not Spots.Load() then
         if layer then layer:Set(nil) end
         return
     end

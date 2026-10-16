@@ -1133,7 +1133,9 @@ NaowhForever_QoL/
   redraw the icons. A skill-up repaints their rings, and redraws them only when it changes whether
   herbs or ore show. Gathered on the Map alone never loads the data.
 - Only My Professions shows herbs to an herbalist and ore to a miner, and nothing to a character with
-  neither; players read a character with no gathering showing both as the setting not working.
+  neither (the spot data is not even unpacked); players read a character with no gathering showing both
+  as the setting not working. It is a Minimap Icons setting: Gathered on the Map shows the account's
+  gathers on any character.
 - A gather is noted when the loot window opens while the soft target is a herb or vein in reach and
   the loot came from it (`GetLootSourceInfo`), so it needs no spell IDs and a corpse looted beside a
   node does not count. One node counts once per loot window, even if it is opened again. Where it is
