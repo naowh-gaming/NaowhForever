@@ -2,12 +2,6 @@
 -- one's data. Zephras Isle is 2521 and 2665: on 2665 the town map draws the island's zeppelin docks,
 -- town NPCs, mailboxes and spirit healers as on 2521, and the Quest List finds the island and its
 -- quest givers; a map without an alias keeps its own data.
-local function Read(path)
-    local f = assert(io.open(path, "rb"))
-    local s = f:read("*a"):gsub("\r\n", "\n"); f:close()
-    return s
-end
-
 local checks = 0
 local function Check(ok, label) assert(ok, label); checks = checks + 1 end
 
