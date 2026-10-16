@@ -141,8 +141,8 @@ end
 ns.CODE_BUILD = "1.1.24"
 
 ns.THEME = {
-    bg     = { r = 0x19 / 255, g = 0x1b / 255, b = 0x1e / 255 },
-    panel  = { r = 0x25 / 255, g = 0x28 / 255, b = 0x2c / 255 },
+    bg     = { r = 0x23 / 255, g = 0x26 / 255, b = 0x29 / 255 },
+    panel  = { r = 0x29 / 255, g = 0x2c / 255, b = 0x2f / 255 },
     line   = { r = 0x3a / 255, g = 0x3e / 255, b = 0x44 / 255 },
     fg     = { r = 0xf0 / 255, g = 0xf1 / 255, b = 0xf3 / 255 },
     muted  = { r = 0x9a / 255, g = 0x9e / 255, b = 0xa6 / 255 },
