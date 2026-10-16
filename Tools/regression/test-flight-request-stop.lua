@@ -201,6 +201,8 @@ do
     local s = fixture({ flightEarlyLanding = true })
     s.board()
     local land = s.button('land')
+    check('each icon is a real file path', land.icon.texture == 'Interface\\AddOns\\NaowhForever_QoL\\Media\\Flight\\land'
+        and s.button('word').icon.texture == 'Interface\\AddOns\\NaowhForever_QoL\\Media\\Flight\\word')
     check('a flight shows the Land button and one button per game', land.shown and s.button('quiz').shown
         and s.button('gridshot').shown and s.button('hexakill').shown and s.button('reflex').shown and s.button('word').shown)
     land._onClick()

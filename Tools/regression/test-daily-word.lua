@@ -77,7 +77,7 @@ local function fixture(settings)
     }
     local env = setmetatable({
         _G = { NaowhForever = ns },
-        CreateFrame = frame, UIParent = new("Frame"), ChatFontNormal = {},
+        CreateFrame = frame, UIParent = new("Frame"),
         GetServerTime = function() return s.now end,
         C_DateAndTime = { GetSecondsUntilDailyReset = function() return s.wait end },
         C_Timer = { NewTicker = function(_, fn) s.tick = fn; return { Cancel = function() s.tick = nil end } end },

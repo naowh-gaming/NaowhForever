@@ -19,7 +19,7 @@ local HOLE_LAYER = 2
 local LABEL_SIZE, LABEL_H, LABEL_GAP, LABEL_SPACE = 11, 12, 3, 8
 local FOOT_SIZE, NEXT_ROOM, BTN_H, BTN_GAP = 12, 90, 22, 6
 local ICON_SIZE, ICON_GAP, GAME_OFF_ALPHA = 16, 4, 0.35
-local ICON_MEDIA = "Interface\AddOns\NaowhForever_QoL\Media\Flight\\"
+local ICON_MEDIA = "Interface\\AddOns\\NaowhForever_QoL\\Media\\Flight\\"
 local CHEVRON_SIZE, TEXT_GAP, TEXT_DROP = 10, 5, 1
 local TRAIL_W, TRAIL_ALPHA, FILL_MIN = 48, 0.45, 0.01
 local HALOS = { { size = 32, alpha = 0.14 }, { size = 26, alpha = 0.22 } }
