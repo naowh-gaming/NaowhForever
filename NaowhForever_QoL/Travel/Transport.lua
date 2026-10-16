@@ -6,6 +6,7 @@ local UnitPosition = UnitPosition
 local S, UI = ns.QoLSettings, ns.UI
 local T = ns.THEME
 local Parts = ns.Shared.Parts
+local SameMap = ns.Shared.Places.SameMap
 local Times = ns.TransportTimes
 
 local WIDTH, HEIGHT, PAD = 300, 96, 10
@@ -192,7 +193,7 @@ end
 local function Watch()
     local map = C_Map.GetBestMapForUnit(PLAYER)
     moveElapsed = 0
-    events:SetScript("OnUpdate", inWorld and map and ns.TownTravel[map] and IsPlayerMoving() and OnMove or nil)
+    events:SetScript("OnUpdate", inWorld and map and ns.TownTravel[SameMap(map)] and IsPlayerMoving() and OnMove or nil)
 end
 
 local function OnEvent(_, event)

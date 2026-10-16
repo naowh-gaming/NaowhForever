@@ -2,7 +2,7 @@
 local checks = 0
 local function Check(ok, why) assert(ok, why); checks = checks + 1 end
 local now = 100
-local ns = { Shared = { Parts = {}, Settings = {} }, THEME = {}, UI = {},
+local ns = { Shared = { Parts = {}, Settings = {}, Places = dofile("Tools/regression/shared_places.lua") }, THEME = {}, UI = {},
     QoLConstants = { PERCENT = 100, SECONDS_PER_MINUTE = 60, SECONDS_PER_DAY = 86400 } }
 _G.NaowhForever = ns
 ns.L = function(text) return text end
