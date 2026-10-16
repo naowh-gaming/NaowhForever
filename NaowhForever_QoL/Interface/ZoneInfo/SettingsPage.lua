@@ -38,7 +38,7 @@ Settings.Page(PAGE, S):Card({
     help = "Shows zone summaries, pinned details and an optional current-zone panel.",
     studio = { height = PREVIEW_H, states = STATES, new = Preview, paint = PaintPreview },
     rows = {
-        { label = "Recommended Details", buttonText = "Use Recommended", button = Recommended, always = true,
+        { label = "Recommended Details", buttonText = "Apply", button = Recommended, always = true,
           help = "Shows dungeon, fishing and travel details with your profession filters." },
         Settings.Group("Display"),
         { key = "zoneInfoCurrent", label = "Current-Zone Panel", toggle = true,
