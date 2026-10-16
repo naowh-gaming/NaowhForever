@@ -148,6 +148,7 @@ local function AddRow(y, entry, state)
     r:SetPoint("TOPLEFT", panel.body, "TOPLEFT", 0, y)
     r:SetPoint("TOPRIGHT", panel.body, "TOPRIGHT", 0, y)
     Rows.FillRow(r, entry, state)
+    r.icon:SetDesaturated(state ~= "now")
     r.stripe:SetShown(rowCount % 2 == 0)
     r:Show()
     return y - Style.ROW_H

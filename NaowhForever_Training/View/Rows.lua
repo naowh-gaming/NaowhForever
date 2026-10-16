@@ -290,7 +290,7 @@ end
 function Rows.FillRow(r, entry, state, why)
     r.entry, r.state = entry, state
     r.icon:SetTexture(C_Spell.GetSpellTexture(entry[SPELL]))
-    r.icon:SetDesaturated(state ~= "now")
+    r.icon:SetDesaturated(true)
     r.name:SetText(C_Spell.GetSpellName(entry[SPELL]) or "")
     r.rank:SetText((C_Spell.GetSpellSubtext(entry[SPELL]) or "") .. (state == "learned" and "" or Rows.UpgradeTag(entry)))
     r.price:SetText(PriceText(entry))
