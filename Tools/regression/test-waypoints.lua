@@ -644,6 +644,7 @@ ns.placedWaypoint = { title = "Guide step", map = 88, x = 45, y = 60,
     details = { guide = true, quest = 7, title = "The Criminal Element", objectives = "0/10 Bandits" } }
 S.Set("waypoints", true)
 S.Set("waypointObjectives", true)
+S.Set("waypointCard", true)
 driver.scripts.OnUpdate()
 Check(pin.card.name.text == "The Criminal Element" and pin.objectives.text.text == "0/10 Bandits",
     "guide title and objective context reach the world pin")
