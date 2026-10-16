@@ -14,9 +14,18 @@ def row(spell=10, first=1, yellow=95, grey=130, line=197, category=1):
             "TradeSkillCategoryID": str(category)}
 
 
+RECIPES = (
+    'recipes = {\r\n'
+    '    { spell = 10, item = 1, skill = 75, source = "trainer", cost = 100 },\r\n'
+    '    { spell = 11, item = 2, skill = 45, yellow = 1, grey = 2, source = "drop", drops = {\r\n'
+    '    { spell = 12, skill = 20, yellow = 30, grey = 40, source = "trainer" },\r\n'
+    '    { cap = 150, skill = 50, spell = 10, name = "Journeyman" },\r\n'
+    '}\r\n')
+
+
 class ThresholdTests(unittest.TestCase):
     def test_bounds_are_read_from_the_client_fields(self):
-        self.assertEqual(st.collect([row()]), {10: (1, 95, 130)})
+        self.assertEqual(st.collect([row()]), {10: (95, 130)})
 
     def test_invalid_noncrafting_and_nonrecipe_rows_are_omitted(self):
         self.assertEqual(st.collect([row(first=100), row(grey=95), row(line=356), row(category=0)]), {})
@@ -27,19 +36,26 @@ class ThresholdTests(unittest.TestCase):
         self.assertEqual(st.collect(list(reversed(rows))), {})
 
     def test_identical_duplicates_are_kept_once(self):
-        self.assertEqual(st.collect([row(), row()]), {10: (1, 95, 130)})
+        self.assertEqual(st.collect([row(), row()]), {10: (95, 130)})
 
     def test_unknown_table_layout_fails(self):
         with self.assertRaises(ValueError):
             st.collect([{"Spell": "10"}])
 
-    def test_generated_data_is_lazy_ascii_crlf_and_identifies_build(self):
-        output = st.render({10: (1, 95, 130)}, "1.60.1.70374")
-        self.assertIn(b"function P.LoadSkillThresholdData()", output)
-        self.assertIn(b'build = "1.60.1.70374"', output)
-        self.assertIn(b"[10] = { 1, 95, 130 }", output)
-        self.assertNotIn(b"\n", output.replace(b"\r\n", b""))
-        output.decode("ascii")
+    def test_ranges_follow_the_learn_skill_and_old_ones_are_replaced_or_dropped(self):
+        output = st.apply(RECIPES, {10: (95, 130), 11: (30, 65)})
+        self.assertEqual(output, (
+            'recipes = {\r\n'
+            '    { spell = 10, item = 1, skill = 75, yellow = 95, grey = 130, source = "trainer", cost = 100 },\r\n'
+            '    { spell = 11, item = 2, skill = 45, yellow = 30, grey = 65, source = "drop", drops = {\r\n'
+            '    { spell = 12, skill = 20, source = "trainer" },\r\n'
+            '    { cap = 150, skill = 50, spell = 10, name = "Journeyman" },\r\n'
+            '}\r\n'))
+
+    def test_rewriting_is_repeatable(self):
+        values = {10: (95, 130), 11: (30, 65)}
+        once = st.apply(RECIPES, values)
+        self.assertEqual(st.apply(once, values), once)
 
 
 if __name__ == "__main__":

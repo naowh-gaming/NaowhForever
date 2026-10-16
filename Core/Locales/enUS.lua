@@ -2,6 +2,8 @@
 local L = _G.NaowhForeverLocale or {}
 _G.NaowhForeverLocale = L
 
+L["Skill-up Thresholds"] = true
+L["Shows when the selected recipe turns yellow, green and grey beneath its name."] = true
 L["Apply %s to every setting? Your positions, lists, notes and saved picks stay. Cannot be undone."] = true
 L["Applying a setup leaves your frames where you put them."] = true
 L["Keep My Positions"] = true

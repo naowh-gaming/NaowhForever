@@ -10,27 +10,30 @@ local Style = P.Style
 
 local HALF = 0.5
 
-local catalogue
-
 local Thresholds = {}
 P.SkillThresholds = Thresholds
 
+local function Entry(spell)
+    for _, data in pairs(ns.RecipeData) do
+        for _, r in ipairs(data.recipes) do
+            if r.spell == spell then return r end
+        end
+    end
+end
+
 function Thresholds.Read(info)
     if not S.Get("enabled") or not S.Get("skillThresholds") or W.linked then return nil end
-    if not catalogue then catalogue = P.LoadSkillThresholdData() end
-    local bounds = catalogue.values[info.recipeID]
-    if not bounds then return nil end
-    local first, yellow, grey = bounds[1], bounds[2], bounds[3]
+    local r = Entry(info.recipeID)
+    if not r or not r.yellow then return nil end
+    local learn, yellow, grey = r.skill, r.yellow, r.grey
     if type(info.maxTrivialLevel) == "number" and info.maxTrivialLevel > 0 then grey = info.maxTrivialLevel end
-    if first > yellow or yellow >= grey then return nil end
-    return first, yellow, math.floor((yellow + grey) * HALF), grey
+    if yellow >= grey or learn >= grey then return nil end
+    return learn, math.max(learn, yellow), math.max(learn, math.floor((yellow + grey) * HALF)), grey
 end
 
 local function Skill()
-    local live = Professions and Professions.GetProfessionInfo and Professions.GetProfessionInfo()
-    if live and live.skillLevel then return live.skillLevel + (live.skillModifier or 0) end
     local profession = R.Profession()
-    return profession and profession.skill
+    return profession and profession.skill + profession.modifier
 end
 
 function Thresholds.Render(parent, info)

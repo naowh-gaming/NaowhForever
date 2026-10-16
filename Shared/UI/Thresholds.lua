@@ -28,18 +28,21 @@ local function Layout(line)
         band:SetWidth(math.max(1, nextX - x))
         band:SetShown(nextX > x)
         local label = line.labels[i]
-        local labelWidth = label:GetStringWidth()
-        local left = Clamp(x - labelWidth * HALF, 0, math.max(0, width - labelWidth))
-        local row = 1
-        while row < St.THRESHOLD_LABEL_ROWS and left < line.rowRights[row] + St.THRESHOLD_LABEL_GAP do
-            row = row + 1
+        label:SetShown(nextX > x)
+        if nextX > x then
+            local labelWidth = label:GetStringWidth()
+            local left = Clamp(x - labelWidth * HALF, 0, math.max(0, width - labelWidth))
+            local row = 1
+            while row < St.THRESHOLD_LABEL_ROWS and left < line.rowRights[row] + St.THRESHOLD_LABEL_GAP do
+                row = row + 1
+            end
+            label:SetShown(left >= line.rowRights[row] + St.THRESHOLD_LABEL_GAP)
+            line.rowRights[row] = left + labelWidth
+            usedRows = math.max(usedRows, row)
+            local drop = St.THRESHOLD_BAR_HEIGHT + St.THRESHOLD_LABEL_GAP + (row - 1) * St.THRESHOLD_LABEL_HEIGHT
+            label:ClearAllPoints()
+            label:SetPoint("TOPLEFT", line, "TOPLEFT", left, -drop)
         end
-        label:SetShown(left >= line.rowRights[row] + St.THRESHOLD_LABEL_GAP)
-        line.rowRights[row] = left + labelWidth
-        usedRows = math.max(usedRows, row)
-        local drop = St.THRESHOLD_BAR_HEIGHT + St.THRESHOLD_LABEL_GAP + (row - 1) * St.THRESHOLD_LABEL_HEIGHT
-        label:ClearAllPoints()
-        label:SetPoint("TOPLEFT", line, "TOPLEFT", left, -drop)
     end
     local height = St.THRESHOLD_HEIGHT + (usedRows - 1) * St.THRESHOLD_LABEL_HEIGHT
     if line.drawnHeight ~= height then

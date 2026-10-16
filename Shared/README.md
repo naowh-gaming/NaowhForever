@@ -57,7 +57,7 @@ Shared/
   UI/Timer.lua     a timer line the client runs down by itself (Parts.TimerLine), its short time text
                    (Parts.ShortTime), and stopping any timer bar (Parts.StopTimer)
   UI/Thresholds.lua a proportional four-band line with numeric boundaries and a clamped current-value marker
-                   (Parts.ThresholdLine), composed from ProgressLine; close labels use extra rows
+                   (Parts.ThresholdLine), composed from ProgressLine; an empty band has no label, close labels use extra rows
   UI/Share.lua     sharing a line in chat or on a copy card (Parts.ShareMenu), and a spot on the map with
                    its pin link (Parts.SharePlace)
   UI/CopyCard.lua  the copy cards: an ID with its Wowhead links (ns.ShowCopyCard), or any line

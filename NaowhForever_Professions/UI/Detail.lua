@@ -149,7 +149,7 @@ local function FillHeader(info, output)
     Widgets.Star(d.fav.tex, Favorites.Is(info))
     SetColor(d.name, Style.DIFFICULTY_RGB[info.relativeDifficulty] or T.fg)
     Widgets.ShowSearch(d.search, not W.linked and output and (R.ItemName(output) or info.name) or nil, d.name, d)
-    if P.SkillThresholds and (S.Get("skillThresholds") or d.skillThresholdAnchor) then
+    if S.Get("skillThresholds") or d.skillThresholdAnchor then
         local range = P.SkillThresholds.Render(d, info)
         if range ~= d.skillThresholdAnchor then
             d.desc:ClearAllPoints()

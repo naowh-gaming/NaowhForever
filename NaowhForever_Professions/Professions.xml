@@ -3,7 +3,6 @@
     <Script file="Professions.lua"/>
     <Script file="Constants.lua"/>
     <Script file="Data\RecipeData.lua"/>
-    <Script file="Data\SkillThresholds.lua"/>
     <Script file="Data\VendorReagents.lua"/>
     <Script file="Data\CooldownRecipes.lua"/>
     <Script file="Data\ConsumableItems.lua"/>
