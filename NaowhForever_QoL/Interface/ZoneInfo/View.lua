@@ -12,7 +12,7 @@ local ROW_TOP, ROW_GAP, ROW_BOTTOM = 8, 5, 9
 local BUTTON_W, BUTTON_H, BUTTON_GAP = 100, 24, 8
 local MAP_INSET, PANEL_LEVEL, SCROLL_ROOM, HUD_META_Y = 12, 100, 22, 56
 local TABS_Y = 64
-local MIN_PANEL_H, MIN_PANEL_W = 190, 220
+local MIN_PANEL_H, MIN_PANEL_W, DOCK_GAP = 190, 220, 8
 local EMPTY = {}
 local OVERVIEW = { { key = "overview", label = "Overview" } }
 local BOTH = { OVERVIEW[1], { key = "gathering", label = "Gathering" } }
@@ -171,9 +171,15 @@ function Z.ShowDetails(detached)
         frame:SetHeight(HEIGHT)
     else
         local canvas = WorldMapFrame:GetCanvasContainer()
-        width = math.max(MIN_PANEL_W, math.min(WIDTH, canvas:GetWidth() - MAP_INSET * 2))
+        local scale = WorldMapFrame:GetEffectiveScale()
+        local screenRight = UIParent:GetRight() * UIParent:GetEffectiveScale() / scale
+        local rightRoom = screenRight - WorldMapFrame:GetRight() - DOCK_GAP
+        local leftRoom = WorldMapFrame:GetLeft() - DOCK_GAP
+        local left = rightRoom < MIN_PANEL_W and leftRoom >= MIN_PANEL_W
+        width = math.max(MIN_PANEL_W, math.min(WIDTH, left and leftRoom or rightRoom))
         frame:SetParent(WorldMapFrame)
-        frame:SetPoint("TOPRIGHT", canvas, "TOPRIGHT", -MAP_INSET, -MAP_INSET)
+        if left then frame:SetPoint("TOPRIGHT", WorldMapFrame, "TOPLEFT", -DOCK_GAP, 0)
+        else frame:SetPoint("TOPLEFT", WorldMapFrame, "TOPRIGHT", DOCK_GAP, 0) end
         frame:SetHeight(math.max(MIN_PANEL_H, math.min(HEIGHT, canvas:GetHeight() - MAP_INSET * 2)))
     end
     if Z.detached then frame:SetParent(UIParent) end

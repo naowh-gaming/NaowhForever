@@ -16,6 +16,10 @@ local Z, S = ns.ZoneInfo, ns.QoLSettings
 local env = getfenv(Z.MapInfo)
 local canvas = New("Frame"); canvas:SetSize(700, 500)
 local map = New("Frame")
+local right, left = 1000, 10
+function map:GetRight() return right end
+function map:GetLeft() return left end
+function env.UIParent:GetRight() return 1600 end
 function map:GetCanvasContainer() return canvas end
 function map:GetCanvas() return canvas end
 canvas:SetFrameLevel(500)
@@ -46,10 +50,18 @@ ns.OpenJournalWindow = function(value) opened = value end
 ns.PlaceWaypoint = function(title, id, x, y) marked = { title, id, x, y } end
 S.Set("zoneInfoDungeons", true)
 canvas:SetSize(230, 260)
+right = 1372
 Z.ShowDetails(false)
 local pinned
 for _, frame in ipairs(env.UIParent.children) do if frame.tabs and frame.view and frame.meta then pinned = frame end end
-Check(pinned and pinned.w == 220 and pinned.h == 236, "pinned card adapts to a small map canvas")
+Check(pinned and pinned.w == 220 and pinned.h == 236, "pinned card fits available side space and map height")
+Check(pinned.points[1][1] == "TOPLEFT" and pinned.points[1][2] == map and pinned.points[1][3] == "TOPRIGHT",
+    "details dock outside the entire map and quest log")
+right, left = 1590, 500
+Z.ShowDetails(false)
+Check(pinned.points[1][1] == "TOPRIGHT" and pinned.points[1][3] == "TOPLEFT", "no right-side room uses the outside left edge")
+right, left = 1372, 10
+Z.ShowDetails(false)
 Check(pinned.strata == "DIALOG" and pinned.level > canvas:GetFrameLevel(), "panel is above the map canvas after reparenting")
 local solid
 for _, child in ipairs(pinned.children) do

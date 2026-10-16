@@ -1244,3 +1244,5 @@ NaowhForever_QoL/
 - Map panels use an opaque theme fill, with their layer set above the canvas after parenting,
   so the map cannot cover their background, title or metadata. Parts.Panel accepts an optional
   flat-fill opacity; other callers retain their existing opacity.
+- Pinned map details dock outside the whole Map and Quest Log window on its right, with
+  width fitted to the available screen space. If only the left side has room, they dock there.
