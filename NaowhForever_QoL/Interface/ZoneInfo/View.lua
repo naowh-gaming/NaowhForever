@@ -173,6 +173,7 @@ local function Dock(frame, preferred, top)
 end
 
 function Z.ShowDetails(detached)
+    if S.Get("zoneInfoOnMap") then if panel then panel:Hide() end; return end
     local mapID = S.Get("zoneInfoPinned")
     if not Z.MapInfo(mapID) then return end
     local frame = DetailsPanel()
@@ -205,6 +206,7 @@ local function PinHovered()
 end
 
 function Z.Hover(mapID)
+    if S.Get("zoneInfoOnMap") then if hover then hover:Hide() end; return end
     if not mapID then
         if hover and hover:IsShown() then
             hover:Hide()
@@ -242,6 +244,7 @@ function Z.HoverFocused()
 end
 
 function Z.HideMap()
+    Z.HideMapText()
     if hover then hover:Hide() end
     if panel and not Z.detached then panel:Hide() end
 end

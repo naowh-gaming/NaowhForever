@@ -17,6 +17,14 @@ function Z.Enabled()
     return S.Get("enabled") and S.Get("zoneInfo") == true
 end
 
+local function MapText()
+    if not S.Get("zoneInfoOnMap") then Z.HideMapText(); return end
+    if added and WorldMapFrame:IsShown() then
+        local mapID = hovered or Z.ZoneMap(provider:GetMap():GetMapID()) or Z.current
+        Z.MapText(mapID)
+    else Z.HideMapText() end
+end
+
 local function ResetHover()
     lastX, lastY, lastMap, hovered = nil, nil, nil, nil
     Z.Hover(nil)
@@ -52,7 +60,7 @@ local function OnUpdate(_, elapsed)
     local info = C_Map.GetMapInfoAtPosition(current, x, y)
     local id = info and Z.Plain(info) and Z.Plain(info.mapID) and info.mapID
     id = Z.ZoneMap(id or current)
-    if id ~= hovered then hovered = id; Z.Hover(id) end
+    if id ~= hovered then hovered = id; Z.Hover(id); MapText() end
 end
 
 local function AddMap()
@@ -75,9 +83,10 @@ local function AddMap()
             ResetHover()
             tick:SetScript("OnUpdate", not InCombatLockdown() and OnUpdate or nil)
             tick:Show()
-            mapButton:Show()
+            mapButton:SetShown(not S.Get("zoneInfoOnMap"))
             mapButton:SetEnabled(not InCombatLockdown())
             Z.ShowDetails(false)
+            MapText()
         end
         function provider:OnHide()
             tick:SetScript("OnUpdate", nil)
@@ -87,7 +96,10 @@ local function AddMap()
             Z.HideMap()
         end
         function provider:RemoveAllData() self:OnHide() end
-        function provider:RefreshAllData() ResetHover(); if Z.Enabled() and self:GetMap():IsShown() then Z.ShowDetails(false) end end
+        function provider:RefreshAllData()
+            ResetHover()
+            if Z.Enabled() and self:GetMap():IsShown() then Z.ShowDetails(false); MapText() end
+        end
     end
     WorldMapFrame:AddDataProvider(provider)
     added = true
@@ -129,10 +141,11 @@ local function RefreshCharacter()
     ApplyHUD()
     Z.RefreshPanels()
     ResetHover()
+    MapText()
 end
 
 local function JournalChanged()
-    if Z.Enabled() then Z.RefreshPanels() end
+    if Z.Enabled() then Z.RefreshPanels(); MapText() end
 end
 
 local function WatchJournal()
@@ -152,6 +165,7 @@ local function OnEvent(_, event, addon)
     if event == "PLAYER_LEVEL_UP" and Z.Plain(addon) and type(addon) == "number" then
         Z.level = addon
         Z.RefreshPanels()
+        MapText()
     end
     if added and WorldMapFrame:IsShown() then
         tick:SetScript("OnUpdate", not InCombatLockdown() and OnUpdate or nil)
@@ -191,7 +205,11 @@ function Z.Apply()
     AddMap()
     WatchJournal()
     RefreshCharacter()
-    if WorldMapFrame and WorldMapFrame:IsShown() then Z.ShowDetails(false) end
+    if WorldMapFrame and WorldMapFrame:IsShown() then
+        Z.ShowDetails(false)
+        mapButton:SetShown(not S.Get("zoneInfoOnMap"))
+        MapText()
+    end
 end
 
 local function OnSetting(key)

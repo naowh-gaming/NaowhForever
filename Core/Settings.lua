@@ -148,7 +148,7 @@ local S = UI.ModuleSettings("qol", {
     townTravel = false,
     mapUnexplored = F.mapUnexplored, mapUnexploredDark = 0.5,
     zoneLevels = F.zoneLevels, mapFishing = F.mapFishing,
-    zoneInfo = F.zoneInfo, zoneInfoCurrent = F.zoneInfoCurrent, zoneInfoDungeons = F.zoneInfoDungeons,
+    zoneInfo = F.zoneInfo, zoneInfoOnMap = F.zoneInfoOnMap, zoneInfoCurrent = F.zoneInfoCurrent, zoneInfoDungeons = F.zoneInfoDungeons,
     zoneInfoFishing = F.zoneInfoFishing, zoneInfoTravel = F.zoneInfoTravel, zoneInfoGathering = F.zoneInfoGathering,
     zoneInfoHideCombat = F.zoneInfoHideCombat, zoneInfoOnlyProfessions = F.zoneInfoOnlyProfessions,
     zoneInfoPinned = 0, zoneInfoScale = 1,

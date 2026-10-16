@@ -11,6 +11,17 @@ local RECOMMENDED = { "zoneInfoDungeons", "zoneInfoFishing", "zoneInfoTravel", "
 
 local function Recommended()
     for _, key in ipairs(RECOMMENDED) do S.Set(key, true) end
+    S.Set("zoneInfoOnMap", false)
+    S.Set("zoneInfo", true)
+end
+
+local function MapOnly()
+    for _, key in ipairs(RECOMMENDED) do S.Set(key, true) end
+    S.Set("zoneInfoCurrent", false)
+    S.Set("zoneInfoGathering", true)
+    S.Set("zoneInfoOnlyProfessions", false)
+    S.Set("zoneInfoPinned", 0)
+    S.Set("zoneInfoOnMap", true)
     S.Set("zoneInfo", true)
 end
 
@@ -40,7 +51,11 @@ Settings.Page(PAGE, S):Card({
     rows = {
         { label = "Recommended Details", buttonText = "Apply", button = Recommended, always = true,
           help = "Shows dungeon, fishing and travel details with your profession filters." },
+        { label = "Map Text Only", buttonText = "Apply", button = MapOnly, always = true,
+          help = "Shows the zone summary on the map and turns off the panels." },
         Settings.Group("Display"),
+        { key = "zoneInfoOnMap", label = "On-map Summary", toggle = true,
+          help = "Draws zone information on the map instead of showing side panels." },
         { key = "zoneInfoCurrent", label = "Current-Zone Panel", toggle = true,
           help = "Shows a compact panel for the zone you are in." },
         { key = "zoneInfoHideCombat", label = "Hide Panel in Combat", toggle = true, needs = "zoneInfoCurrent",

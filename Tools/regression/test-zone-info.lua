@@ -120,10 +120,12 @@ local function Fixture(runtime)
     state.out = { rows = {} }
     state.ns, state.S, state.Z, state.map = ns, S, Z, map
     if runtime then
+        function Z.MapText(id) state.summary = id end
+        function Z.HideMapText() state.summary = nil end
         function Z.Hover(id) state.hover = id end
         function Z.HoverFocused() return state.focused end
         function Z.ShowDetails(detached) state.detailMap, state.detached = S.Get("zoneInfoPinned"), detached end
-        function Z.HideMap() state.hover = nil end
+        function Z.HideMap() state.hover = nil; Z.HideMapText() end
         function Z.HideAll() state.hidden = true; if state.hud then state.hud:Hide(); state.hud.mover:Hide() end end
         function Z.RefreshPanels() state.refreshes = (state.refreshes or 0) + 1 end
         function Z.HUD() state.hud = state.hud or Frame("HUD"); return state.hud end
@@ -259,6 +261,32 @@ do
     for _, frame in ipairs(f.frames) do Check(next(frame.events) == nil and frame.scripts.OnUpdate == nil, "disable leaves no registered events or ticking") end
     S.Set("zoneInfo", true)
     Check(#f.frames == count and map.provider, "reenabling reuses every constructed frame")
+end
+
+do
+    local f = Fixture(true)
+    local S, map = f.S, f.map
+    S.Set("zoneInfoOnMap", true)
+    Check(f.summary == nil and #f.frames == 0, "on-map option alone cannot activate a disabled feature")
+    S.Set("zoneInfo", true)
+    map.shown = true; map.provider:OnShow()
+    Check(f.summary == 1, "zoomed-out map initially summarizes the current zone")
+    local button
+    for _, frame in ipairs(f.frames) do if frame.kind == "Button" then button = frame end end
+    Check(button and not button.shown and f.hud == nil, "map-text layout hides the map button and leaves optional HUD off")
+    f.target, f.x = 2, 0.7; f.Tick(0.1)
+    Check(f.summary == 2, "zoomed-out hover updates the on-map summary")
+    map.provider:RefreshAllData()
+    Check(f.summary == 1, "map refresh restores the current zone instead of a stale hover")
+    f.map.mapID = 2
+    f.map.GetMapID = function() return 2 end
+    map.provider:RefreshAllData()
+    Check(f.summary == 2, "zooming into another zone summarizes the selected zone")
+    S.Set("zoneInfoOnMap", false)
+    Check(f.summary == nil and button.shown, "switching back removes map text and restores the panel button")
+    S.Set("zoneInfoOnMap", true)
+    map.shown = false; map.provider:OnHide()
+    Check(f.summary == nil, "closing the map hides its summary")
 end
 
 print("test-zone-info: " .. checks .. " checks passed")

@@ -193,6 +193,7 @@ local function Gathering(out, mapID)
             count = count + 1
             local row = Add(out, "entry", ns.L(node.name), skill and TEXT_SKILL:format(skill, node.need)
                 or TEXT_REQUIRES:format(node.need), mapID, node.x, node.y)
+            row.nodeKind = node.kind
             row.color = not skill and T.muted or skill >= node.need and ns.Shared.Style.HAVE_RGB or ns.Shared.Style.TIME_OUT_RGB
         end
     end

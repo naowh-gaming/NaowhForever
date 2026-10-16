@@ -1248,3 +1248,13 @@ NaowhForever_QoL/
   width fitted to the available screen space. If only the left side has room, they dock there.
 - The compact hover card uses the same external dock; visible pinned details stack below it.
   The map button sits above the two coordinate lines rather than covering their text.
+- On-map Summary is an off-by-default alternative to docked cards: centered outlined text
+  shows the selected zone, or the hovered/current zone on continent maps. Map Text Only > Apply
+  enables all content, disables the HUD, clears the pinned selection and selects this layout.
+  Recommended Details > Apply returns to the docked layout. Content switches still apply.
+- Map text is pooled, mouse-transparent and refreshed by the existing map provider and zone,
+  profession and level events. It has no additional ticker. Gathering remains known static
+  data; a short list ends with a count when there are more entries. Missing data is omitted.
+- The built-in area-label frame is faded while our map summary is visible, then restored to
+  its original alpha when the map closes or this layout is disabled; no Blizzard script,
+  label content or layout is replaced. This avoids duplicate zone names at the top of the map.

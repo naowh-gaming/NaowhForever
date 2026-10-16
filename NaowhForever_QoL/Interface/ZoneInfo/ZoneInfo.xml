@@ -2,6 +2,7 @@
     <!-- ZoneInfo.xml: zone information, its shared data model, panels and settings. -->
     <Script file="Model.lua"/>
     <Script file="View.lua"/>
+    <Script file="MapText.lua"/>
     <Script file="Runtime.lua"/>
     <Script file="SettingsPage.lua"/>
 </Ui>

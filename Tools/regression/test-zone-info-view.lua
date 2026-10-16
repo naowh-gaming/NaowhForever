@@ -8,7 +8,7 @@ head = head:gsub("C_AddOns = {", "C_Item = { GetItemInfo = function() end, GetIt
 local Load, New = assert(loadstring(head .. "\nreturn Load, New"))()
 local ns = Load({}, {}, {}, { "Core/Features.lua", "Core/Settings.lua", "Shared/Data/SameMaps.lua", "Shared/Game/Places.lua", "Shared/View/Kinds.lua", "Shared/Settings/Studio.lua",
     "NaowhForever_QoL/Interface/ZoneLevelsData.lua", "NaowhForever_QoL/Interface/FishingLevelsData.lua",
-    "NaowhForever_QoL/Interface/ZoneInfo/Model.lua", "NaowhForever_QoL/Interface/ZoneInfo/View.lua",
+    "NaowhForever_QoL/Interface/ZoneInfo/Model.lua", "NaowhForever_QoL/Interface/ZoneInfo/View.lua", "NaowhForever_QoL/Interface/ZoneInfo/MapText.lua",
     "NaowhForever_QoL/Interface/ZoneInfo/SettingsPage.lua" })
 local settingsRoot = {}
 ns.SettingsRoot = function() return settingsRoot end
@@ -89,7 +89,7 @@ local page = ns.Shared.Settings.pages["QoL/Map & Pins"]
 local card = page.items[1]
 ns.Shared.Settings.SetOpen(card, true)
 parent.settingsView:Redraw()
-Check(parent.settingsView.pools.setting.used == 10, "real options page renders every setting")
+Check(parent.settingsView.pools.setting.used == 12, "real options page renders every setting")
 local found
 for i = 1, parent.settingsView.pools.setting.used do
     local row = parent.settingsView.pools.setting[i]
@@ -100,4 +100,45 @@ found.controls.button.scripts.OnClick()
 Check(S.Get("zoneInfoDungeons") and S.Get("zoneInfoFishing") and S.Get("zoneInfoTravel") and S.Get("zoneInfo"),
     "recommended button configures details through the store")
 Check(not S.Get("zoneInfoCurrent") and not S.Get("zoneInfoGathering"), "recommended setup leaves optional HUD and gathering off")
+local mapOnly
+for i = 1, parent.settingsView.pools.setting.used do
+    local row = parent.settingsView.pools.setting[i]
+    if row.setting.label == "Map Text Only" then mapOnly = row.controls.button end
+end
+S.Set("zoneInfoCurrent", true)
+mapOnly.scripts.OnClick()
+Check(S.Get("zoneInfoOnMap") and not S.Get("zoneInfoCurrent") and S.Get("zoneInfoPinned") == 0,
+    "map-only preset replaces side panels and HUD without disabling content")
+Check(S.Get("zoneInfoGathering") and not S.Get("zoneInfoOnlyProfessions"), "map-only preset includes zone gathering data")
+ns.Glimmer = { NODES = { [1] = { "herb", 1, "Silverleaf" }, [2] = { "ore", 1, "Copper Vein" } },
+    C = { SPOT_SCALE = 1000 }, Spots = { Load = function() return true end } }
+ns.GlimmerSpots = { [1436] = { 1, 100, 200, 2, 300, 400 } }
+local areaLabel = New("Frame")
+areaLabel.Description = {}
+function areaLabel:GetAlpha() return self.alpha or 0.8 end
+map.dataProviders = { [{ Label = areaLabel }] = true }
+Z.MapText(1436)
+Check(areaLabel.alpha == 0, "on-map summary fades the built-in area text to avoid duplicate titles")
+local summaryText
+for _, frame in ipairs(map.children) do if frame.lines then summaryText = frame end end
+Check(summaryText and summaryText.shown and summaryText.mouse == false, "map text draws without blocking map mouse input")
+Check(summaryText.lines[1].text == "Westfall / Level 9-18", "map text shows the selected zone and level range")
+local function TextIncludes(value)
+    for _, line in ipairs(summaryText.lines) do
+        if line.shown and line.text and line.text:find(value, 1, true) then return true end
+    end
+end
+Check(TextIncludes("The Deadmines") and TextIncludes("Fishing 1 minimum"), "summary includes enabled dungeon and fishing data")
+Check(TextIncludes("Herbs: Silverleaf") and TextIncludes("Mining: Copper Vein"), "summary separates herbs and mining")
+S.Set("zoneInfoGathering", false)
+Z.MapText(1436)
+Check(not TextIncludes("Silverleaf") and not TextIncludes("Copper Vein"), "disabled gathering clears old summary lines")
+S.Set("zoneInfoPinned", 1436)
+Z.ShowDetails(false); Z.Hover(1436)
+Check(not pinned.shown and not summary.shown, "on-map mode suppresses both docked panels")
+S.Set("zoneInfoOnMap", false)
+Z.MapText(1436)
+Check(not summaryText.shown and areaLabel.alpha == 0.8, "switching off restores built-in area text at its original alpha")
+Z.ShowDetails(false)
+Check(pinned.shown, "turning map text off restores pinned details")
 print("test-zone-info-view: " .. checks .. " checks passed")
