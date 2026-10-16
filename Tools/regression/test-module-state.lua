@@ -11,7 +11,7 @@ local GEAR, COMBAT = "NaowhForever_GearSets", "NaowhForever_Combat"
 local COMBAT_IDS = { "consumableBar", "gearSets", "blessings", "auraBuffs", "threatMeter", "pvp", "swingTimer" }
 local MACROS, UTILITIES = "NaowhForever_Macros", "NaowhForever_Utilities"
 local UTILITY_IDS = { "instanceTracker", "journeys", "macros", "groupInspect", "actionBars" }
-local BIS, INSPECT, DISC = "NaowhForever_BiS", "NaowhForever_GroupInspect", "NaowhForever_Discovery"
+local BIS, DISC = "NaowhForever_BiS", "NaowhForever_Discovery"
 local QOL = "NaowhForever_QoL"
 
 local function All(value)
