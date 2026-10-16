@@ -117,7 +117,7 @@ NaowhForever_QoL/
     Flight.lua          the Flight Timer, Flight Games and flight times on the flight map
     FlightPoint.lua     zone-entry and nearby-town flight point reminders
     TransportData.lua   estimated dock periods and dwells, generated from Journeys data
-    TransportTimes.lua  session-only server-clock sightings and estimates (ns.TransportTimes)
+    TransportTimes.lua  saved per-realm server-clock sightings and estimates (ns.TransportTimes)
     Transport.lua       Boat and Zeppelin Timers, its HUD, nearby selection and Travel settings
     AimTrainer.lua      the Aim Trainer (/nfaim, ns.AimRules, ns.AimPlay, ns.AimOffer)
     AimBoard.lua        the Aim Trainer's leaderboard (ns.AimBoard)
@@ -713,22 +713,35 @@ NaowhForever_QoL/
   Run `lua5.1 Tools/build/transport.lua` after rebuilding Journeys' network or changing its speeds.
   The generated file loads in QoL, so Journeys and Town Map can both stay disabled.
 - These periods are path-length estimates, not measured Forever schedules. Every countdown
-  says Estimate; acceleration, teleports and server changes can cause drift. In-game testing
-  must compare several real stops; a new sighting resynchronizes the estimate immediately.
+  says Estimate; acceleration, teleports and server changes can cause drift.
+- A second sighting of the same kind (arrival after arrival, departure after departure) at the
+  same dock measures the period: the time between them divided by the whole cycles in it. It is
+  kept only when exactly one cycle count puts it within `REFINE_BAND` (15%) of the generated
+  period; otherwise the sighting just re-anchors the phase. The measured period is saved with it.
+- An estimate more than `STALE_CYCLES` (6) cycles past its last sighting shows as out of date
+  instead of a countdown: by then a small period error has added up to a large phase error.
 - Docks and routes come from `TownTravel.lua`. A shared tower is one point, so Nearby picks its
-  first route; choose the other in Travel settings. Each dock route calibrates independently,
-  including the two destinations at each stop of the three-stop Southshore route.
+  first route; choose the other in Travel settings. Sightings are keyed by the ship's stop at a
+  dock (`sighting` in the data), so the three-stop Southshore boat's two routes at each of its
+  docks share one sighting, while two zeppelins at one tower keep their own.
 - The HUD shows only within `NEAR_YARDS` (200) of the selected dock. This allows for the pin
   being in the water or above the platform. Selecting a remote dock does not show a remote HUD.
-- Sightings stay in memory through PLAYER_LEAVING_WORLD and PLAYER_ENTERING_WORLD. Loading
-  screens hide the HUD without clearing its server-clock phase, even during a long ride.
-  Reload, logout, Reset, or disabling the feature/module clears sightings. A backwards server
-  clock suspends an estimate until a fresh sighting; estimates otherwise last for this session.
+- Sightings are saved in the account settings per realm (`transportSightings`), not the
+  profile: a realm's transports run on the server's clock whichever character watches them.
+  Turning the feature or QoL off keeps them; Reset removes the selected dock's.
+- Each login and enable drops sightings older than the last weekly reset (from
+  `C_DateAndTime.GetSecondsUntilWeeklyReset`), since the weekly restart restarts the
+  transports. An unscheduled restart is not detectable; only a new sighting fixes that phase.
+  Enabling prunes only once `IsLoggedIn`; at login, PLAYER_ENTERING_WORLD prunes.
+- A backwards server clock suspends an estimate until a fresh sighting.
+- Positions come from `UnitPosition`, in the same world yards as `C_Map.GetWorldPosFromMapPos`,
+  so a proximity check allocates nothing; each dock's world point is worked out once.
 - The HUD updates only during a visible countdown, every `UPDATE_EVERY` (1 s), including a
-  proximity check for riding away. Zone and movement events refresh proximity; while moving,
-  the event frame checks every `MOVE_EVERY` (0.5 s), so crossing the radius shows/hides the HUD
-  without waiting for the player to stop. It stops when movement stops or a loading screen
-  begins. Disable unregisters all events and stops both updates.
+  proximity check for riding away. Zone, loading and movement events refresh proximity. Only
+  while moving on a map with docks does the event frame check every `MOVE_EVERY` (0.5 s), so
+  crossing the radius shows/hides the HUD without waiting for the player to stop. Riding a
+  transport into a dock's zone refreshes through the zone events. Disable unregisters all events
+  and stops both updates.
 
 ### Mail
 - Quick Attach puts in one stack at a time, from a scan made at the click: each is checked in its bag slot and on the cursor before it goes in, and the next goes only once the last has landed (MAIL_SEND_INFO_UPDATE).

@@ -11,7 +11,7 @@ Load("NaowhForever_Journeys/Data/Network.lua")
 Load("NaowhForever_QoL/Interface/TownTravel.lua")
 
 local timings = {}
-for _, ship in ipairs(ns.JourneyNetwork.ships) do
+for s, ship in ipairs(ns.JourneyNetwork.ships) do
     local period = 0
     for i = 3, #ship do
         period = period + ship[i][6] + ship[i][7] / ns.Journeys.C.SHIP_SPEED[ship[1]]
@@ -21,7 +21,7 @@ for _, ship in ipairs(ns.JourneyNetwork.ships) do
             if i ~= j then
                 local key = ship[i][4] .. ":" .. ship[1] .. " to " .. ship[j][5]
                 assert(not timings[key], "ambiguous dock: " .. key)
-                timings[key] = { period = period, dwell = ship[i][6] }
+                timings[key] = { period = period, dwell = ship[i][6], stop = s .. ":" .. i }
             end
         end
     end
@@ -36,12 +36,16 @@ local lines = {
     "",
     "ns.TransportData = {",
 }
+-- One ship's stop at one dock shares a sighting key, whichever destination is chosen there.
+local sightings = {}
 for _, map in ipairs(maps) do
     for index, pin in ipairs(ns.TownTravel[map]) do
         for label = 4, #pin, 2 do
             local timing = assert(timings[map .. ":" .. pin[label]], "dock missing from Journeys")
-            lines[#lines + 1] = ('    ["%d:%d:%d"] = { period = %.6f, dwell = %d },'):format(
-                map, index, label, timing.period, timing.dwell)
+            local key = map .. ":" .. index .. ":" .. label
+            sightings[timing.stop] = sightings[timing.stop] or key
+            lines[#lines + 1] = ('    ["%s"] = { period = %.6f, dwell = %d, sighting = "%s" },'):format(
+                key, timing.period, timing.dwell, sightings[timing.stop])
         end
     end
 end

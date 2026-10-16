@@ -1,17 +1,17 @@
--- Transport.lua: manually calibrated boat and zeppelin countdowns and their Travel settings.
+-- Transport.lua: boat and zeppelin estimates from a recorded sighting, their HUD and Travel settings.
 local ns = _G.NaowhForever
 
 local GetServerTime = GetServerTime
+local UnitPosition = UnitPosition
 local S, UI = ns.QoLSettings, ns.UI
 local T = ns.THEME
 local Parts = ns.Shared.Parts
 local Times = ns.TransportTimes
 
-local WIDTH, HEIGHT, PAD = 440, 184, 12
-local TITLE_SIZE, TEXT_SIZE = 14, 12
-local TITLE_Y, ROUTE_Y, STATUS_Y, HELP_Y, BUTTON_Y = -12, -36, -74, -100, -148
-local ROUTE_H, HELP_H = 34, 38
-local BUTTON_W, BUTTON_H, BUTTON_GAP = 132, 24, 10
+local WIDTH, HEIGHT, PAD = 300, 96, 10
+local TITLE_SIZE, TEXT_SIZE = 13, 12
+local TITLE_Y, ROUTE_Y, STATUS_Y, BUTTON_Y = -10, -28, -46, -64
+local BUTTON_W, BUTTON_H, BUTTON_GAP = 88, 22, 6
 local UPDATE_EVERY, MOVE_EVERY = 1, 0.5
 local SECONDS_PER_MINUTE = ns.QoLConstants.SECONDS_PER_MINUTE
 local NEAR_YARDS = 200
@@ -25,7 +25,7 @@ local TEXT_ESTIMATE = ns.L("Estimate: %s in %d:%02d")
 local TEXT_ARRIVES, TEXT_LEAVES = ns.L("arrives"), ns.L("leaves")
 local TEXT_SIGHTING = ns.L("Record an arrival or departure to start the estimate.")
 local TEXT_STALE = ns.L("Server clock changed; record a new sighting.")
-local TEXT_HELP = ns.L("Click as the transport arrives or leaves. Choose its route in Travel settings.")
+local TEXT_EXPIRED = ns.L("Estimate is out of date; record a new sighting.")
 local TEXT_SELECT = ns.L("%s: %s")
 local TEXT_RESET = ns.L("Reset")
 local TEXT_ARRIVED, TEXT_DEPARTED = ns.L("Arrived"), ns.L("Departed")
@@ -68,11 +68,8 @@ local function Secret(value)
 end
 
 local function Nearest(choice)
-    local map = C_Map.GetBestMapForUnit(PLAYER)
-    local pos = map and C_Map.GetPlayerMapPosition(map, PLAYER)
-    if not pos or Secret(pos.x) or Secret(pos.y) then return nil end
-    local continent, world = C_Map.GetWorldPosFromMapPos(map, pos)
-    if not world or Secret(world.x) or Secret(world.y) then return nil end
+    local x, y, _, continent = UnitPosition(PLAYER)
+    if not x or Secret(x) or Secret(y) then return nil end
     local best, distance = nil, NEAR_YARDS * NEAR_YARDS
     for _, key in ipairs(order) do
         local dock = docks[key]
@@ -82,7 +79,7 @@ local function Nearest(choice)
             end
             local point = dock.world
             if dock.continent == continent and point and not Secret(point.x) and not Secret(point.y) then
-                local dx, dy = point.x - world.x, point.y - world.y
+                local dx, dy = point.x - x, point.y - y
                 local yards = dx * dx + dy * dy
                 if yards < distance then best, distance = key, yards end
             end
@@ -101,6 +98,7 @@ local function Paint()
         frame.status:SetText(TEXT_ESTIMATE:format(kind == "arrival" and TEXT_ARRIVES or TEXT_LEAVES,
             math.floor(rounded / SECONDS_PER_MINUTE), rounded % SECONDS_PER_MINUTE))
     elseif kind == "stale" then frame.status:SetText(TEXT_STALE)
+    elseif kind == "expired" then frame.status:SetText(TEXT_EXPIRED)
     else frame.status:SetText(TEXT_SIGHTING) end
     return seconds ~= nil
 end
@@ -163,12 +161,12 @@ local function SavePosition(pos)
     S.Set("transportTimersPos", { point = pos.point, relPoint = pos.relPoint, x = pos.x, y = pos.y })
 end
 
-local function Text(size, y, height, color)
+local function Text(size, y, color)
     local text = ns.Font(frame, size, nil, color)
     text:SetPoint("TOPLEFT", PAD, y)
     text:SetWidth(WIDTH - PAD - PAD)
     text:SetJustifyH("LEFT")
-    if height then text:SetHeight(height) end
+    text:SetWordWrap(false)
     return text
 end
 
@@ -180,9 +178,8 @@ local function Build()
     frame:SetClampedToScreen(true)
     Parts.HudBackdrop(frame)
     Text(TITLE_SIZE, TITLE_Y):SetText(TITLE)
-    frame.route = Text(TEXT_SIZE, ROUTE_Y, ROUTE_H)
-    frame.status = Text(TEXT_SIZE, STATUS_Y, nil, T.accent)
-    Text(TEXT_SIZE, HELP_Y, HELP_H, T.muted):SetText(TEXT_HELP)
+    frame.route = Text(TEXT_SIZE, ROUTE_Y, T.muted)
+    frame.status = Text(TEXT_SIZE, STATUS_Y, T.accent)
     frame.arrived = ns.Button(frame, TEXT_ARRIVED, BUTTON_W, BUTTON_H, Arrived)
     frame.arrived:SetPoint("TOPLEFT", PAD, BUTTON_Y)
     frame.departed = ns.Button(frame, TEXT_DEPARTED, BUTTON_W, BUTTON_H, Departed)
@@ -190,6 +187,12 @@ local function Build()
     frame.reset = ns.Button(frame, TEXT_RESET, BUTTON_W, BUTTON_H, Reset)
     frame.reset:SetPoint("LEFT", frame.departed, "RIGHT", BUTTON_GAP, 0)
     UI.AttachMover(frame, "Boat and Zeppelin Timers", SavePosition, PAGE, CARD)
+end
+
+local function Watch()
+    local map = C_Map.GetBestMapForUnit(PLAYER)
+    moveElapsed = 0
+    events:SetScript("OnUpdate", inWorld and map and ns.TownTravel[map] and IsPlayerMoving() and OnMove or nil)
 end
 
 local function OnEvent(_, event)
@@ -201,12 +204,11 @@ local function OnEvent(_, event)
         selected = nil
         return
     end
-    if event == "PLAYER_ENTERING_WORLD" then inWorld = true end
-    if event == "PLAYER_STARTED_MOVING" or event == "PLAYER_STOPPED_MOVING"
-        or event == "PLAYER_ENTERING_WORLD" then
-        moveElapsed = 0
-        events:SetScript("OnUpdate", inWorld and IsPlayerMoving() and OnMove or nil)
+    if event == "PLAYER_ENTERING_WORLD" then
+        inWorld = true
+        Times.Prune(GetServerTime())
     end
+    Watch()
     Refresh()
 end
 
@@ -214,7 +216,6 @@ local function Apply()
     if not On() then
         if events then events:UnregisterAllEvents(); events:SetScript("OnUpdate", nil) end
         if frame then frame:SetScript("OnUpdate", nil); frame:Hide() end
-        Times.Clear()
         selected = nil
         return
     end
@@ -227,8 +228,8 @@ local function Apply()
         events:SetScript("OnEvent", OnEvent)
     end
     for _, event in ipairs(EVENTS) do events:RegisterEvent(event) end
-    moveElapsed = 0
-    events:SetScript("OnUpdate", inWorld and IsPlayerMoving() and OnMove or nil)
+    if IsLoggedIn() then Times.Prune(GetServerTime()) end
+    Watch()
     Refresh()
 end
 
