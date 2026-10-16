@@ -609,6 +609,18 @@ questObjectives[1].text = "1/10 Highlands Bandit slain"
 events.scripts.OnEvent(events, "QUEST_LOG_UPDATE")
 driver.scripts.OnUpdate()
 Check(pin.objectives.text.text:find("1/10", 1, true), "quest progress updates in place")
+questObjectives[1].text = "secret"
+events.scripts.OnEvent(events, "QUEST_LOG_UPDATE")
+driver.scripts.OnUpdate()
+Check(pin.objectives.text.text == "0/1 Bennic slain", "restricted objective text is skipped")
+questObjectives[1].text = "1/10 Highlands Bandit slain"
+questObjectives[1].finished, questObjectives[2].finished = true, true
+events.scripts.OnEvent(events, "QUEST_LOG_UPDATE")
+driver.scripts.OnUpdate()
+Check(not pin.objectives.shown, "completed objectives do not leave a stale panel")
+questObjectives[1].finished, questObjectives[2].finished = false, false
+events.scripts.OnEvent(events, "QUEST_LOG_UPDATE")
+driver.scripts.OnUpdate()
 events.scripts.OnEvent(events, "NAVIGATION_DESTINATION_REACHED", false)
 Check(driver.scripts.OnUpdate ~= nil and pin:IsShown(), "arrival does not hide unfinished quest objectives")
 nav.distance, nav.clamped, nav.x, nav.y = 300, true, 1900, 700
@@ -624,5 +636,25 @@ driver.scripts.OnUpdate()
 Check(not pin.objectives.shown and not events.events.QUEST_LOG_UPDATE, "objectives off releases its event")
 S.Set("waypoints", false)
 Check(next(events.events) == nil and driver.scripts.OnUpdate == nil, "all waypoint features stop while off")
+
+questObjectives = {}
+tracking, nav.distance = 1, 3
+userWaypoint = { uiMapID = 88, position = { x = 0.45, y = 0.60 } }
+ns.placedWaypoint = { title = "Guide step", map = 88, x = 45, y = 60,
+    details = { guide = true, quest = 7, title = "The Criminal Element", objectives = "0/10 Bandits" } }
+S.Set("waypoints", true)
+S.Set("waypointObjectives", true)
+driver.scripts.OnUpdate()
+Check(pin.card.name.text == "The Criminal Element" and pin.objectives.text.text == "0/10 Bandits",
+    "guide title and objective context reach the world pin")
+local guideClears = cleared
+nav.distance = 100
+driver.scripts.OnUpdate()
+nav.distance = 3
+driver.scripts.OnUpdate()
+Check(cleared == guideClears and pin:IsShown(), "guide pin skips manual distance auto-clear")
+events.scripts.OnEvent(events, "NAVIGATION_DESTINATION_REACHED", false)
+Check(driver.scripts.OnUpdate ~= nil, "guide arrival leaves guide advancement in charge")
+S.Set("waypoints", false)
 
 print(("test-waypoints: %d checks passed"):format(checks))
