@@ -160,6 +160,35 @@ CloseMap()
 Check(calls.set == sets + 1 and ns.placedWaypoint.title == "Grezz Ragefist" and select(2, ns.WaypointRoute()) == 1,
     "the first stop is set as the map closes, and the route goes on")
 
+-- Guide ownership and context survive the map-open hold and never clear a manual replacement.
+mapOpen = true
+sets = calls.set
+local details = { guide = true, quest = 7, objectives = "0/10 Bandits" }
+Check(ns.SetGuideWaypoint("Guide quest", 1454, 30, 40, details), "guide waypoint queued")
+Check(calls.set == sets and ns.GuideWaypointIsCurrent(), "guide uses the existing map-open hold")
+details.objectives = "1/10 Bandits"
+CloseMap()
+Check(ns.GuideWaypointIsCurrent() and ns.placedWaypoint.details == details
+    and ns.placedWaypoint.details.objectives == "1/10 Bandits", "guide context survives deferred placement")
+mapOpen = true
+local guideClears = calls.clear
+ns.ClearGuideWaypoint()
+Check(calls.clear == guideClears, "guide clear waits while map is open")
+CloseMap()
+Check(calls.clear == guideClears + 1 and not ns.GuideWaypointIsCurrent(), "owned guide clears when map closes")
+ns.SetGuideWaypoint("Guide quest", 1454, 30, 40, details)
+env.C_Map.SetUserWaypoint(env.UiMapPoint.CreateFromCoordinates(1411, 0.25, 0.75))
+guideClears = calls.clear
+ns.ClearGuideWaypoint()
+Check(calls.clear == guideClears and current.uiMapID == 1411, "guide clear preserves a user's replacement")
+
+ns.SetGuideWaypoint("Guide quest", 1454, 30, 40, details)
+env.C_SuperTrack.IsSuperTrackingUserWaypoint = function() return false end
+guideClears = calls.clear
+Check(not ns.GuideWaypointIsCurrent(), "ending native user-waypoint tracking ends guide ownership")
+ns.ClearGuideWaypoint()
+Check(calls.clear == guideClears, "an untracked guide pin is left alone")
+
 local TocFiles = dofile("Tools/regression/toc_files.lua")
 local OWNER = "Core/Waypoint.lua"
 local scanned = 0
