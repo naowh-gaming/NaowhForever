@@ -224,6 +224,7 @@ function ns.SetGuideWaypoint(title, map, x, y, details)
 end
 
 function ns.ClearGuideWaypoint()
+    if pending and pending[PLACE_FIELDS] and pending[PLACE_FIELDS].guide == true then DropPending() end
     if not ns.GuideWaypointIsCurrent() then return end
     if MapOpen() then Hold(CLEAR) else ClearNow() end
 end

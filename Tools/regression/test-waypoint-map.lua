@@ -192,6 +192,17 @@ Check(not ns.GuideWaypointIsCurrent(), "ending native user-waypoint tracking end
 ns.ClearGuideWaypoint()
 Check(calls.clear == guideClears, "an untracked guide pin is left alone")
 
+env.C_Map.SetUserWaypoint(env.UiMapPoint.CreateFromCoordinates(1411, 0.25, 0.75))
+mapOpen = true
+sets, guideClears = calls.set, calls.clear
+ns.SetGuideWaypoint("Guide quest", 1454, 30, 40, details)
+ns.ClearGuideWaypoint()
+Check(not ns.GuideWaypointIsCurrent() and calls.clear == guideClears,
+    "disabling a queued guide discards the pending placement without clearing the actual manual pin")
+CloseMap()
+Check(calls.set == sets and current.uiMapID == 1411 and calls.clear == guideClears,
+    "closing the map after cancelling a queued guide preserves the original manual pin")
+
 local TocFiles = dofile("Tools/regression/toc_files.lua")
 local OWNER = "Core/Waypoint.lua"
 local scanned = 0
