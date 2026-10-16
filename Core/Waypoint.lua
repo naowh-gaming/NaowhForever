@@ -217,6 +217,7 @@ end
 
 function ns.SetGuideWaypoint(title, map, x, y, details)
     if not C_Map.CanSetUserWaypointOnMap(map) then return false end
+    if ns.JourneyCancel then ns.JourneyCancel() end
     EndRoute()
     SetGameWaypoint(title, map, x, y, nil, nil, false, details)
     return true

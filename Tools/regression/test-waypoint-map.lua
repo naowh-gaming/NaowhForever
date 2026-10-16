@@ -164,7 +164,10 @@ Check(calls.set == sets + 1 and ns.placedWaypoint.title == "Grezz Ragefist" and 
 mapOpen = true
 sets = calls.set
 local details = { guide = true, quest = 7, objectives = "0/10 Bandits" }
+local journeyCancels = 0
+ns.JourneyCancel = function() journeyCancels = journeyCancels + 1 end
 Check(ns.SetGuideWaypoint("Guide quest", 1454, 30, 40, details), "guide waypoint queued")
+Check(journeyCancels == 1, "explicit guide destination ends a competing journey")
 Check(calls.set == sets and ns.GuideWaypointIsCurrent(), "guide uses the existing map-open hold")
 details.objectives = "1/10 Bandits"
 CloseMap()
