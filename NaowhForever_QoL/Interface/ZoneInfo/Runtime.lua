@@ -2,7 +2,7 @@
 local ns = _G.NaowhForever
 local Z = ns.ZoneInfo
 local S = ns.QoLSettings
-local INTERVAL, BUTTON_W, BUTTON_H, MAP_INSET = 0.08, 100, 24, 12
+local INTERVAL, BUTTON_W, BUTTON_H, MAP_INSET, BUTTON_BOTTOM = 0.08, 100, 24, 12, 42
 local SAMPLE_MAP = 1436
 local PAGE, CARD = "QoL/Map & Pins", "QoL/Map & Pins:zoneInfo"
 local EVENTS = { "PLAYER_ENTERING_WORLD", "ZONE_CHANGED_NEW_AREA", "ZONE_CHANGED", "ZONE_CHANGED_INDOORS",
@@ -70,7 +70,7 @@ local function AddMap()
                 tick:SetPoint("TOPLEFT")
                 tick:Hide()
                 mapButton = ns.Button(map:GetCanvasContainer(), TEXT_ZONE_INFO, BUTTON_W, BUTTON_H, MapButtonClicked)
-                mapButton:SetPoint("BOTTOMLEFT", MAP_INSET, MAP_INSET)
+                mapButton:SetPoint("BOTTOMLEFT", MAP_INSET, BUTTON_BOTTOM)
                 ns.Tooltip(mapButton, TEXT_ZONE_INFO, TEXT_PIN)
             end
         end

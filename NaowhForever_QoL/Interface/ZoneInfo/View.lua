@@ -5,7 +5,7 @@ local S = ns.QoLSettings
 local T = ns.THEME
 local Parts, View, St = ns.Shared.Parts, ns.Shared.View, ns.Shared.Style
 local WIDTH, HEIGHT, PAD, HEADER = 350, 450, 14, 100
-local HOVER_W, HOVER_H, HOVER_TOP = 260, 98, 14
+local HOVER_W, HOVER_H = 260, 98
 local HUD_W, HUD_H, HUD_ICON, HUD_TEXT_X = 280, 102, 24, 46
 local TITLE_SIZE, TEXT_SIZE, SMALL_SIZE = 14, 12, 11
 local ROW_TOP, ROW_GAP, ROW_BOTTOM = 8, 5, 9
@@ -158,6 +158,20 @@ function Z.PaintDetails()
     panel.view:Redraw()
 end
 
+local function Dock(frame, preferred, top)
+    local scale = WorldMapFrame:GetEffectiveScale()
+    local screenRight = UIParent:GetRight() * UIParent:GetEffectiveScale() / scale
+    local rightRoom = screenRight - WorldMapFrame:GetRight() - DOCK_GAP
+    local leftRoom = WorldMapFrame:GetLeft() - DOCK_GAP
+    local left = rightRoom < MIN_PANEL_W and leftRoom >= MIN_PANEL_W
+    local width = math.max(MIN_PANEL_W, math.min(preferred, left and leftRoom or rightRoom))
+    frame:ClearAllPoints()
+    if left then frame:SetPoint("TOPRIGHT", WorldMapFrame, "TOPLEFT", -DOCK_GAP, -top)
+    else frame:SetPoint("TOPLEFT", WorldMapFrame, "TOPRIGHT", DOCK_GAP, -top) end
+    frame:SetWidth(width)
+    return width
+end
+
 function Z.ShowDetails(detached)
     local mapID = S.Get("zoneInfoPinned")
     if not Z.MapInfo(mapID) then return end
@@ -171,16 +185,10 @@ function Z.ShowDetails(detached)
         frame:SetHeight(HEIGHT)
     else
         local canvas = WorldMapFrame:GetCanvasContainer()
-        local scale = WorldMapFrame:GetEffectiveScale()
-        local screenRight = UIParent:GetRight() * UIParent:GetEffectiveScale() / scale
-        local rightRoom = screenRight - WorldMapFrame:GetRight() - DOCK_GAP
-        local leftRoom = WorldMapFrame:GetLeft() - DOCK_GAP
-        local left = rightRoom < MIN_PANEL_W and leftRoom >= MIN_PANEL_W
-        width = math.max(MIN_PANEL_W, math.min(WIDTH, left and leftRoom or rightRoom))
         frame:SetParent(WorldMapFrame)
-        if left then frame:SetPoint("TOPRIGHT", WorldMapFrame, "TOPLEFT", -DOCK_GAP, 0)
-        else frame:SetPoint("TOPLEFT", WorldMapFrame, "TOPRIGHT", DOCK_GAP, 0) end
-        frame:SetHeight(math.max(MIN_PANEL_H, math.min(HEIGHT, canvas:GetHeight() - MAP_INSET * 2)))
+        local top = hover and hover:IsShown() and HOVER_H + DOCK_GAP or 0
+        width = Dock(frame, WIDTH, top)
+        frame:SetHeight(math.max(MIN_PANEL_H, math.min(HEIGHT, canvas:GetHeight() - MAP_INSET * 2 - top)))
     end
     if Z.detached then frame:SetParent(UIParent) end
     frame:SetFrameStrata("DIALOG")
@@ -197,7 +205,13 @@ local function PinHovered()
 end
 
 function Z.Hover(mapID)
-    if not mapID then if hover then hover:Hide() end; return end
+    if not mapID then
+        if hover and hover:IsShown() then
+            hover:Hide()
+            if panel and panel:IsShown() and not Z.detached then Z.ShowDetails(false) end
+        end
+        return
+    end
     local info = Z.MapInfo(mapID)
     if not info then return end
     if not hover then
@@ -206,7 +220,6 @@ function Z.Hover(mapID)
         hover:SetFrameStrata("DIALOG")
         hover:SetFrameLevel(WorldMapFrame:GetCanvas():GetFrameLevel() + PANEL_LEVEL)
         hover:SetSize(HOVER_W, HOVER_H)
-        hover:SetPoint("TOPLEFT", WorldMapFrame:GetCanvasContainer(), "TOPLEFT", HOVER_TOP, -HOVER_TOP)
         hover.close:Hide()
         hover.meta = ns.Font(hover, SMALL_SIZE, nil, T.muted)
         hover.meta:SetPoint("TOPLEFT", PAD, -PAD - TITLE_SIZE - ROW_GAP)
@@ -219,7 +232,9 @@ function Z.Hover(mapID)
     hover.title:SetText(info.name)
     local range, rating = Z.Levels(mapID)
     hover.meta:SetText(range .. (rating and " / " .. rating or ""))
+    Dock(hover, HOVER_W, 0)
     hover:Show()
+    if panel and panel:IsShown() and not Z.detached then Z.ShowDetails(false) end
 end
 
 function Z.HoverFocused()

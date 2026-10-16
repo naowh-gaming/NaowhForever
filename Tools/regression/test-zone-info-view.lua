@@ -68,6 +68,13 @@ for _, child in ipairs(pinned.children) do
     if child.kind == "Texture" and child.color and child.color[1] == ns.THEME.bg.r and child.color[4] == 1 then solid = child end
 end
 Check(solid ~= nil and pinned.backdrop == nil, "map details use an opaque theme fill rather than a window gradient")
+Z.Hover(1436)
+local summary
+for _, frame in ipairs(env.UIParent.children) do if frame.pin then summary = frame end end
+Check(summary and summary.points[1][2] == map and summary.points[1][3] == "TOPRIGHT", "compact summary also docks outside the map")
+Check(pinned.points[1][5] < -summary.h, "pinned details stack below the summary without overlap")
+Z.Hover(nil)
+Check(pinned.points[1][5] == 0, "details reclaim the top when the compact summary hides")
 local entryRow = pinned.view.pools.zoneEntry[1]
 Check(entryRow.mark.points[1][3] < entryRow.journal.points[1][3], "narrow cards stack actions instead of overlapping")
 entryRow.journal.scripts.OnClick(entryRow.journal)

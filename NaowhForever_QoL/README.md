@@ -1246,3 +1246,5 @@ NaowhForever_QoL/
   flat-fill opacity; other callers retain their existing opacity.
 - Pinned map details dock outside the whole Map and Quest Log window on its right, with
   width fitted to the available screen space. If only the left side has room, they dock there.
+- The compact hover card uses the same external dock; visible pinned details stack below it.
+  The map button sits above the two coordinate lines rather than covering their text.
