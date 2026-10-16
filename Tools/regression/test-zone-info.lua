@@ -221,6 +221,10 @@ do
     f.Tick(0.04); Check(f.queries == 0, "moving-map queries are throttled")
     f.Tick(0.05); Check(f.queries == 1 and f.hover == 1, "hover resolves the zone")
     f.Tick(0.2); Check(f.queries == 1, "stationary cursor performs no repeated query")
+    f.mouse = false
+    f.Tick(0.2)
+    Check(f.hover == 1 and f.queries == 1, "summary remains clickable while crossing from map to external dock")
+    f.mouse = true
     Z.Pin(1, false)
     f.target, f.x = 2, 0.7; f.Tick(0.1)
     Check(S.Get("zoneInfoPinned") == 1 and f.hover == 2, "hovering elsewhere never replaces the pinned zone")

@@ -39,10 +39,7 @@ local function OnUpdate(_, elapsed)
     if not Z.Enabled() or InCombatLockdown() then ResetHover(); tick:SetScript("OnUpdate", nil); return end
     if Z.HoverFocused() then return end
     local map = provider:GetMap()
-    if not map or not map:IsCanvasMouseFocus() then
-        if hovered then ResetHover() end
-        return
-    end
+    if not map or not map:IsCanvasMouseFocus() then return end
     elapsedTotal = elapsedTotal + elapsed
     if elapsedTotal < INTERVAL then return end
     elapsedTotal = 0
