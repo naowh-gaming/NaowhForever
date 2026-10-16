@@ -2,6 +2,9 @@
 local L = _G.NaowhForeverLocale or {}
 _G.NaowhForeverLocale = L
 
+L["Don't Show on Flights"] = true
+L["Flight Games won't open by themselves now; the Flight Timer's game buttons still have them."] = true
+L["Stops the games opening by themselves; the Flight Timer's buttons still have them."] = true
 L["A Trainable tab under your spellbook that lists the spells you can train."] = true
 L["Nearest trainer: %s"] = true
 L["Nothing to train in the next few levels."] = true
@@ -4554,6 +4557,7 @@ L["Sleeping Bag, step %d"] = true
 L["Sleeping Bag: step %d of %d"] = true
 L["Slim marks along the bottom of the bar at every 10%."] = true
 L["Slot "] = true
+L["Slug Outline"] = true
 L["Slot %d: %s"] = true
 L["slot %s"] = true
 L["Slot Marks"] = true
@@ -5021,6 +5025,7 @@ L["This Hour"] = true
 L["This is a BiS list. It is added next to your own lists."] = true
 L["This is a new adventure for all of us. Naowh Forever is crafted by a small, dedicated team with a lot of passion, and we hope you enjoy every bit of it."] = true
 L["This is a talent build. It is added to your builds in the Training Planner."] = true
+L["This is an action bar layout. It is saved as a new bar set for you to review."] = true
 L["This is not a Naowh Forever profile string."] = true
 L["This item's own settings on the bar."] = true
 L["This Level:|r "] = true
