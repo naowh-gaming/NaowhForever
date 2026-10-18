@@ -6,6 +6,7 @@ local GetItemInfoInstant = C_Item.GetItemInfoInstant
 local Items = ns.Shared.Items
 
 local WEAPON_CLASS = 2
+local ARMOR_CLASS = 4
 local NO_ARMOR_TYPE = 0
 local SHIELD_SUBCLASS = 6
 local HEAVY_ARMOR_LEVEL = 40
@@ -133,6 +134,7 @@ end
 function Items.ClassCanUse(class, item)
     local itemClass, sub, req = item[FACT_CLASS], item[FACT_SUBCLASS], item[FACT_REQUIRED]
     if itemClass == WEAPON_CLASS then return WEAPONS[class][sub] == true end
+    if itemClass ~= ARMOR_CLASS then return true end
     if sub == NO_ARMOR_TYPE then return true end
     if sub == SHIELD_SUBCLASS then return SHIELD[class] == true end
     if RELIC[sub] then return RELIC[sub] == class end

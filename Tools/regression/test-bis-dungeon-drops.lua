@@ -103,6 +103,13 @@ Case("weapons follow the class's weapon skills", function()
     assert(not Can("PALADIN", 9) and not Can("WARRIOR", 11) and not Can("HUNTER", 10))
 end)
 
+Case("a recipe is for everyone, whatever its profession's subclass", function()
+    local usable = Fixture("MAGE", 30).Usable
+    for _, sub in ipairs({ 1, 4, 6 }) do
+        assert(usable("MAGE", { 9, sub, 30, 25, 2 }) and usable("ROGUE", { 9, sub, 30, 25, 2 }), "subclass " .. sub)
+    end
+end)
+
 local function List(t) return table.concat(t, ",") end
 
 Case("the list is the slot's usable drops, highest required level first", function()
