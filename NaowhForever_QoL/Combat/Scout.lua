@@ -58,7 +58,7 @@ local TEXT_RANGES = ns.L("%d-%d yd")
 local TEXT_MELEE = ns.L("Melee")
 local TEXT_SUMMARY = ns.L("Hold %s for details")
 
-local abilities, tameable, stats, events, pending, details
+local abilities, tameable, stats, events, details
 local listed = {}
 local spellTips, named, requested = {}, {}, {}
 local shown
@@ -307,7 +307,6 @@ end
 local function OnEvent(_, event, key, down)
     if event == "PLAYER_REGEN_ENABLED" then
         if Load() then
-            pending = nil
             events:UnregisterEvent("PLAYER_REGEN_ENABLED")
         end
         return
@@ -332,7 +331,6 @@ local function Apply()
     events:UnregisterAllEvents()
     if S.Get("scoutAbilities") then events:RegisterEvent("MODIFIER_STATE_CHANGED") end
     if not Load() then
-        pending = true
         events:RegisterEvent("PLAYER_REGEN_ENABLED")
     end
 end
