@@ -1154,6 +1154,10 @@ NaowhForever_QoL/
   object 35591. IDs work in every language. A herb or vein the data does not know is still found by
   the cursor the game would show on it (`SetUnitCursorTexture`): Mine or GatherHerbs, with an Unable
   variant when the game would refuse it.
+- The game gives an NPC's quest cursor only as a low priority one: `SetUnitCursorTexture` answers false for a
+  quest giver unless its fourth argument, `includeLowPriority`, is true, so the giver check passes it and the
+  object check does not. The texture comes back as a name (`Cursor Crosshair_QuestTurnIn_64`), matched by its
+  words like the other cursors.
 - Quest objects come from `C_QuestLog.UnitIsRelatedToActiveQuest`, and their line is the quest
   objective line of the object's own tooltip, as the game words it.
 - Gathering gives a point every time up to 25 skill over the node's (orange), usually up to 50

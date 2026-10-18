@@ -127,9 +127,11 @@ local function Session(settings, opts)
         UnitIsUnit = function(unit) return unit ~= "nameplate9" end,
         GetNumLootItems = function() return 1 end,
         GetLootSourceInfo = function() return game.lootFrom or game.guid end,
-        SetUnitCursorTexture = function(texture)
-            texture.texture = game.cursor
-            return game.cursor ~= nil
+        SetUnitCursorTexture = function(texture, _, _, lowPriority)
+            local cursor = game.cursor
+            if game.cursorLow and not lowPriority then cursor = nil end
+            texture.texture = cursor
+            return cursor ~= nil
         end,
         GetFileIDFromPath = function() return nil end,
         GetProfessions = function() return 1, game.herbalism > 0 and 2 or nil end,
@@ -360,9 +362,10 @@ log.game.guid, log.game.cursor, log.game.mining = GUID(TIN), nil, 70
 log.game.guid, log.game.object = "Creature-0-1-2-3-4-5", false
 log.Fire("PLAYER_SOFT_INTERACT_CHANGED", "y", "z")
 check("an NPC closes the nameplate", cv.SoftTargetNameplateInteract == "0" and Lit(log) == nil)
-log.game.cursor = "Interface\\Cursor\\QuestTurnIn"
+log.game.cursor, log.game.cursorLow = "Cursor Crosshair_QuestTurnIn_64", true
 log.Fire("PLAYER_SOFT_INTERACT_CHANGED", "z", "y")
-check("a quest giver with a quest to hand in lights up", Lit(log) ~= nil)
+check("a quest giver with a quest to hand in lights up, though the game only gives its cursor as low priority",
+    Lit(log) ~= nil)
 log.game.cursor = "Interface\\Cursor\\Quest"
 log.Fire("PLAYER_SOFT_INTERACT_CHANGED", "y", "z")
 check("and one with a quest to pick up", Lit(log) ~= nil)
@@ -370,7 +373,7 @@ log.Set("giver", false)
 log.Fire("PLAYER_SOFT_INTERACT_CHANGED", "z", "y")
 check("quest givers switched off: dark, and no nameplate opened", cv.SoftTargetNameplateInteract == "0" and Lit(log) == nil)
 log.Set("giver", true)
-log.game.cursor = nil
+log.game.cursor, log.game.cursorLow = nil, nil
 log.Fire("PLAYER_SOFT_INTERACT_CHANGED", "z", "y")
 check("an NPC with no quest stays dark", Lit(log) == nil)
 log.game.object = true
