@@ -164,8 +164,7 @@ NaowhForever_Combat/Blessings/
   warriors, druids and paladins only (`TANKING`), never over a player's own choice and only if you know it. They
   resolve in `Assigned`, so the class button casts singles for a class with a tank, since a Greater Blessing
   would give the tank the class one. A tank is the Tank role or a Main Tank mark (`IsTank`, also what skips tanks
-  for Salvation and in Aura Buff Reminders); a leader or assistant can toggle a player's Main Tank mark from the
-  player list's menu in a raid.
+  for Salvation and in Aura Buff Reminders).
 - The Auto Buff button (off by default) is a secure button that clicks the Next Blessing key button on a left
   click and the Next Greater Blessing one on a right click, so it steps through the same queues and shows the
   next spell and how many are due. The buttons take `/click` in a macro: `NaowhForeverBlessNext`,
