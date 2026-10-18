@@ -122,7 +122,7 @@ end
 
 local function OnAssigned(who, target, plan)
     local from = InGroup(who)
-    local classes, aura = DecodePlan(plan)
+    local classes, aura, salv = DecodePlan(plan)
     if not (IsPaladin() and classes and from and CanAssign(from.unit)
             and target == MyName() .. "-" .. GetNormalizedRealmName()) then
         return
@@ -133,6 +133,7 @@ local function OnAssigned(who, target, plan)
         if Learned(BY_KEY[key]) then store.classes[class] = key end
     end
     store.aura = aura and Learned(BY_KEY[aura]) and aura or nil
+    if salv then store.salv = Learned(SALVATION) and true or nil end
     ns.Print(who .. TEXT_UPDATED)
     BroadcastSoon()
     B.Changed()
@@ -157,7 +158,9 @@ local function OnPlayers(who, part, list)
     for guid, code in list:gmatch("(Player%-[%w%-]+)=(%a)") do
         local entry = BY_CODE[code]
         local choices = from.choices or 0
-        if entry and entry.blessing and (from.players[guid] or choices < MAX_PLAYER_CHOICES) then
+        if entry and entry.salvation then
+            from.salv = true
+        elseif entry and entry.blessing and (from.players[guid] or choices < MAX_PLAYER_CHOICES) then
             if not from.players[guid] then from.choices = choices + 1 end
             from.players[guid] = entry.key
         end
