@@ -136,7 +136,7 @@ local function NewCell(class)
     cell.cast:SetAttribute("count", 0)
     cell.cast:SetScript("PreClick", function(_, button)
         if button == "LeftButton" and not InCombatLockdown() and not C_Secrets.ShouldAurasBeSecret() then
-            PrepareCell(cell)
+            if class == SALV then PrepareSalv(cell) else PrepareCell(cell) end
         end
     end)
     SecureHandlerWrapScript(cell.cast, "OnClick", secureHandler, CLASS_STEP)
