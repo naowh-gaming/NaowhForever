@@ -15,6 +15,10 @@ local Group = Settings.Group
 
 local BLESSINGS_OFF = ns.L("Turn on Blessings")
 local LABELS_OFF = ns.L("Turn on Blessings and Class Labels")
+local BORDERS = { values = { black = ns.L("Black"), accent = ns.L("Accent"), none = ns.L("None") },
+    order = { "black", "accent", "none" } }
+local OPACITY_RANGE, WINDOW_RANGE = { 10, 100, 5 }, { 60, 150, 5 }
+local WHY_BACKGROUND = ns.L("Pick a background texture")
 local LABEL_STYLES = { values = { name = ns.L("Name"), icon = "Class Icon" }, order = { "name", "icon" } }
 local STAGE_H, STAGE_MARGIN, LABEL_ROOM, LABEL_SIDE = 160, St.STAGE_MARGIN, 14, 46
 local NOTE_Y, NOTE_SIZE, NOTE_LINE = St.STAGE_NOTE_Y, St.STAGE_NOTE_SIZE, 15
@@ -63,6 +67,7 @@ local NOTES = {
 }
 local THEMED_GROUP = ns.L("Accent: missing the class blessing. Lighter: running out. Deeper: only players with their own.")
 local NONE = "none"
+local WHY_THEMED = ns.L("Turn off Apply Theme to Status Colors")
 local TEXT_NONE = ns.L("None")
 local TEXT_CLASS_HELP = ns.L("Which blessing you give this class: Might, Wisdom, Kings or Light.")
 local TEXT_SALV_HELP = ns.L("Gives Salvation, on top of the class blessing, to everyone but tanks.")
@@ -80,7 +85,7 @@ local function BlessingChoices(class)
     local values, order = { [NONE] = TEXT_NONE }, {}
     local current = B.Store().classes[class]
     for _, entry in ipairs(B.BLESSINGS) do
-        if entry.key == current or B.Learned(entry) then
+        if entry.key == current or (B.Learned(entry) and B.Allowed(class, entry.key)) then
             values[entry.key] = B.SpellName(entry.key)
             order[#order + 1] = entry.key
         end
@@ -112,6 +117,37 @@ local function ClassRows()
     for _, class in ipairs(B.CLASSES) do rows[#rows + 1] = ClassRow(class) end
     rows[#rows + 1] = SalvationRow()
     return rows
+end
+
+local function RoleChoices()
+    local values, order = { [NONE] = TEXT_NONE }, {}
+    for _, entry in ipairs(B.BLESSINGS) do
+        if B.Learned(entry) then
+            values[entry.key] = B.SpellName(entry.key)
+            order[#order + 1] = entry.key
+        end
+    end
+    order[#order + 1] = NONE
+    return values, order
+end
+
+local function RoleRow(key, label, help)
+    return { label = label, help = help, search = TEXT_CLASS_SEARCH, needs = On, why = BLESSINGS_OFF,
+        hidden = NotPaladin, choice = RoleChoices,
+        get = function() return S.Get(key) end, set = function(value) S.Set(key, value) end }
+end
+
+local function CustomColors() return On() and not S.Get("blessThemeColors") end
+local function Backdropped() return On() and S.Get("blessBackground") ~= NONE end
+
+local function BackgroundChoices()
+    local values, order = { [NONE] = TEXT_NONE }, { NONE }
+    local LSM = LibStub("LibSharedMedia-3.0", true)
+    for _, name in ipairs(LSM and LSM:List("statusbar") or {}) do
+        values[name] = name
+        order[#order + 1] = name
+    end
+    return values, order
 end
 
 local function Wheel(_, delta)
@@ -473,6 +509,18 @@ page:Card({
           help = "Casts your aura. Right-click it to choose which." },
         { key = "blessShowFury", label = FURY_LABEL, toggle = true, needs = On, why = BLESSINGS_OFF,
           help = "Casts Righteous Fury on yourself. A red ! means it is not up." },
+        { key = "blessShowAuto", label = "Auto Buff Button", toggle = true, needs = On, why = BLESSINGS_OFF,
+          help = "Left-click blesses the next player in need, right-click the next Greater Blessing." },
+        { key = "blessShowSeal", label = "Seal Button", toggle = true, needs = On, why = BLESSINGS_OFF,
+          help = "Casts your seal. Right-click it to choose which, wheel to cycle." },
+        { key = "blessAutoGreater", label = "Auto Buff Greater First", toggle = true, needs = On, why = BLESSINGS_OFF,
+          help = "Swaps the Auto Buff button: left-click casts a Greater Blessing, right-click a single one." },
+        { key = "blessPlayerList", label = "Player List", toggle = true, needs = On, why = BLESSINGS_OFF,
+          help = "Off removes the class buttons' player list." },
+        { key = "blessTooltips", label = "Show Tooltips", toggle = true, needs = On, why = BLESSINGS_OFF,
+          help = "A tooltip on each bar button." },
+        { key = "blessShowClasses", label = "Class Buttons", toggle = true, needs = On, why = BLESSINGS_OFF,
+          help = "Off leaves only the Auto Buff button and the key bindings." },
         { key = "blessShowLabels", label = "Class Labels", toggle = true, needs = On, why = BLESSINGS_OFF,
           help = "Each class's name or icon, under its button or beside it when the bar is vertical." },
         { key = "blessLabelStyle", label = "Class Label Style", choice = LABEL_STYLES, needs = LabelsOn,
@@ -480,6 +528,22 @@ page:Card({
         { key = "blessTimers", label = "Minutes Left", toggle = true, needs = On, why = BLESSINGS_OFF,
           help = "Minutes left on each class's shortest blessing, and on each player's." },
         ClassRows(),
+        Group("Rules"),
+        { key = "blessSmart", label = "Smart Blessings", toggle = true, needs = On, why = BLESSINGS_OFF,
+          help = "No Wisdom for warriors and rogues, no Might for priests, mages and warlocks in the menus." },
+        { key = "blessRespect", label = "Respect Blessing Time", toggle = true, needs = On, why = BLESSINGS_OFF,
+          help = "Only bless players who are missing a blessing or running out." },
+        { key = "blessWait", label = "Wait for Players", toggle = true, needs = On, why = BLESSINGS_OFF,
+          help = "Cast a Greater Blessing only when the whole class is in range." },
+        RoleRow("blessTank", "Tanks Get", "The blessing tanks get instead of their class blessing."),
+        RoleRow("blessAssist", "Main Assist Gets", "The blessing a Main Assist gets instead of their class blessing."),
+        Group("Visibility"),
+        { key = "blessInParty", label = "Use in Party", toggle = true, needs = On, why = BLESSINGS_OFF,
+          help = "Show the bar in a party. It always shows in a raid." },
+        { key = "blessSolo", label = "Use When Solo", toggle = true, needs = On, why = BLESSINGS_OFF,
+          help = "Show the bar when you are not in a group." },
+        { key = "blessBench", label = "Hide the Bench", toggle = true, needs = On, why = BLESSINGS_OFF,
+          help = "In a raid dungeon, hide the players outside its usual groups." },
         Group("Size"),
         { key = "blessBarSize", label = "Button Size", slider = SIZE_SLIDER, needs = On, why = BLESSINGS_OFF,
           help = "How big each button is." },
@@ -492,6 +556,25 @@ page:Card({
         Group("Colors"),
         { key = "blessThemeColors", label = "Apply Theme to Status Colors", toggle = true, needs = On,
           why = BLESSINGS_OFF, help = "Missing, running out and other blessings in your theme's Accent shades." },
+        { key = "blessColorMissing", label = "Missing Color", colour = true, needs = CustomColors, why = WHY_THEMED,
+          help = "A class button when someone is missing the class blessing." },
+        { key = "blessColorExpiring", label = "Running Out Color", colour = true, needs = CustomColors,
+          why = WHY_THEMED, help = "A class button when a blessing is running out." },
+        { key = "blessColorOwn", label = "Own Blessing Color", colour = true, needs = CustomColors, why = WHY_THEMED,
+          help = "A class button when only players on their own blessing need theirs." },
+        Group("Look"),
+        { key = "blessBorder", label = "Button Border", choice = BORDERS, needs = On, why = BLESSINGS_OFF,
+          help = "The edge of every button." },
+        { label = "Bar Background", choice = BackgroundChoices, needs = On, why = BLESSINGS_OFF,
+          help = "A texture behind the whole bar.",
+          get = function() return S.Get("blessBackground") end,
+          set = function(value) S.Set("blessBackground", value) end },
+        { key = "blessBackgroundAlpha", label = "Background Opacity", slider = OPACITY_RANGE, unit = "%",
+          scale = St.PERCENT_SCALE, needs = Backdropped, why = WHY_BACKGROUND,
+          help = "How solid the bar's background is." },
+        { key = "blessWindowScale", label = "Window Size", slider = WINDOW_RANGE, unit = "%",
+          scale = St.PERCENT_SCALE, needs = On, why = BLESSINGS_OFF,
+          help = "The size of the Blessings window. Dragging its corner changes it too." },
         Group("Key Bindings"),
         { label = "Next Blessing", binding = "CLICK NaowhForeverBlessNext:LeftButton",
           help = "Blesses the next player who needs it, most urgent first. In combat each press steps through "

@@ -51,6 +51,7 @@ local function Fixture(opts)
         units = opts.units or {},                   -- unit -> class; player included
         known = opts.known or {},
         roles = opts.roles or {},                   -- unit -> its assigned group role
+        mainTanks = opts.mainTanks or {},           -- unit -> true when flagged main tank
         shields = opts.shields or {},               -- slot -> true for a shield in that slot
         weapons = opts.weapons or {},               -- slot -> enchant seconds left, false for none
         worn = opts.worn or {},                     -- slot -> item ID worn there
@@ -133,7 +134,10 @@ local function Fixture(opts)
         Apply = function() end,
         ShowUnlockMode = function() end,
         HideUnlockMode = function() end,
-        Border = function(frame, color) rawset(frame, "edge", color) end, THEME = { bg = {} },
+        Border = function(frame, color)
+            rawset(frame, "edge", color)
+            return { SetColor = function(_, r, g, b) rawset(frame, "edge", { r = r, g = g, b = b }) end }
+        end, THEME = { bg = {} },
         ThemeTint = function(key, literal) return key == "line" and opts.themeLine or literal end,
         Solid = function() return Recorder() end,
         Font = function()
@@ -199,6 +203,7 @@ local function Fixture(opts)
         UnitIsConnected = function() return true end,
         UnitIsDeadOrGhost = function() return false end,
         UnitGroupRolesAssigned = function(unit) return state.roles[unit] or "NONE" end,
+        GetPartyAssignment = function(_, unit) return state.mainTanks[unit] end,
         UnitIsVisible = function() return true end,
         UnitIsUnit = function(a, b) return a == b end,
         UnitExists = function(unit) return unit ~= "target" or state.target ~= nil end,
@@ -852,6 +857,10 @@ do
     t.state.roles.party2 = "TANK"
     t.Fire("UNIT_AURA", "party1"); t.Advance(0.5)
     Check("a tank is not asked to have it", t.Shown(), "spell:1038x3")
+    t.state.roles.party2 = nil
+    t.state.mainTanks.party2 = true
+    t.Fire("UNIT_AURA", "party1"); t.Advance(0.5)
+    Check("a player flagged main tank is not asked either", t.Shown(), "spell:1038x3")
     t.state.auras.party3 = { { 1038 } }
     t.Fire("UNIT_AURA", "party3"); t.Advance(0.5)
     Check("one who has it is not missing it", t.Shown(), "spell:1038x2")
@@ -1029,6 +1038,28 @@ do
     t.Advance(0.5)
     Check("with the last food gone the row shows the carried one", cell.icon.texture, "item:111")
     Check("and clicking it eats the one it shows", cell.attributes.item1, "item:111")
+end
+
+-- A picked Border Color replaces the theme's on the row and menu icons, and clearing it brings the theme back.
+do
+    local line = { r = 0.2, g = 0.4, b = 0.6 }
+    local t = Fixture({ instance = "raid", bags = { 111 }, themeLine = line,
+        settings = { consumableEntries = { { category = "food", itemID = 111, auras = { 11 } } } } })
+    t.Login()
+    local cell
+    for _, f in ipairs(t.frames) do if rawget(f, "items") then cell = f end end
+    t.Set("buffsBorderColor", { r = 1, g = 0, b = 0 })
+    t.Advance(0.5)
+    local edge = cell.edge
+    Check("picked row edge", edge.r .. edge.g .. edge.b, "100")
+    cell.scripts.OnEnter(cell)
+    local popup
+    for _, f in ipairs(t.frames) do if rawget(f, "owner") == cell then popup = f end end
+    edge = popup.buttons[1].edge
+    Check("picked menu edge", edge.r .. edge.g .. edge.b, "100")
+    t.Set("buffsBorderColor", false)
+    t.Advance(0.5)
+    Check("cleared row edge follows the theme", cell.edge.b, line.b)
 end
 
 -- A full menu spreads out from the middle, each line centred under the hovered icon.

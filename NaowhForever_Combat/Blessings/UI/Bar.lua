@@ -3,7 +3,8 @@ local ns = _G.NaowhForever
 
 local B = ns.Blessings
 local S = B.Settings
-local CLASSES, AURAS, FURY, BY_KEY, FAMILY, QUESTION = B.CLASSES, B.AURAS, B.FURY, B.BY_KEY, B.FAMILY, B.QUESTION
+local CLASSES, AURAS, FURY, SEALS, BY_KEY, FAMILY, QUESTION = B.CLASSES, B.AURAS, B.FURY, B.SEALS, B.BY_KEY, B.FAMILY,
+    B.QUESTION
 local Look, Keys, PlayerList = B.Look, B.Keys, B.PlayerList
 local ItemBar = ns.Shared.ItemBar
 local On, IsPaladin, Secret, Store, Learned, HighestKnown = B.On, B.IsPaladin, B.Secret, B.Store, B.Learned, B.HighestKnown
@@ -34,6 +35,10 @@ local TEXT_TARGET = ns.L("Left-click: bless %s.\n")
 local TEXT_NEXT = ns.L("In combat each click blesses the next who needed it.\n")
 local TEXT_MENU = ns.L("Right-click: choose the blessing, the player list or assignments.")
 local TEXT_SALV_MENU = ns.L("Right-click: turn Salvation off or open assignments.")
+local TEXT_AUTO = ns.L("Auto Buff")
+local TEXT_SEAL = ns.L("Seal")
+local TEXT_SEAL_TIP = ns.L("Left-click: cast your seal.\nRight-click: choose it. Wheel: cycle through your seals.")
+local TEXT_AUTO_TIP = ns.L("Left-click: the next blessing. Right-click: the next Greater Blessing. Each goes to whoever needs it most.")
 local CLASS_STEP = [[
     if button ~= "LeftButton" then return end
     local n = self:GetAttribute("count") or 0
@@ -53,11 +58,30 @@ local CLASS_STEP = [[
     return false
 ]]
 
-local bar, cells, auraButton, furyButton, secureHandler
+local AUTO_STEP = [[
+    local left = self:GetAttribute("leftKind") or "N"
+    local kind = button == "RightButton" and (left == "N" and "G" or "N") or left
+    local i, n = self:GetAttribute("step" .. kind) or 1, self:GetAttribute("count" .. kind) or 0
+    if i > n then return false end
+    self:SetAttribute("unit", self:GetAttribute("unit" .. kind .. i))
+    self:SetAttribute("spell", self:GetAttribute("spell" .. kind .. i))
+    self:SetAttribute("step" .. kind, i + 1)
+]]
+
+local bar, cells, auraButton, furyButton, sealButton, autoButton, secureHandler
 local dirty, ticker, unlocked, buildAfterCombat, placeDue
 local refreshQueued, landing, landingQueued, sentSymbols
 local events = CreateFrame("Frame")
 local Refresh, Apply
+
+local function HideTip()
+    if not S.Get("blessTooltips") then ns.UI.HideWidgetTooltip() end
+end
+
+local function BarTip(frame, title, body)
+    ns.Tooltip(frame, title, body)
+    frame:HookScript("OnEnter", HideTip)
+end
 
 local function Changed()
     Refresh()
@@ -147,8 +171,8 @@ local function NewCell(class)
         if button == "LeftButton" then NoteCast(self:GetAttribute("unit"), self:GetAttribute("spell1")) end
     end)
     local function Tip() return CellTip(cell) end
-    ns.Tooltip(cell.cast, CellName(class), Tip)
-    ns.Tooltip(cell, CellName(class), Tip)
+    BarTip(cell.cast, CellName(class), Tip)
+    BarTip(cell, CellName(class), Tip)
     cell:EnableMouse(true)
     cell:SetScript("OnMouseUp", function(self, button)
         if button == "RightButton" then OpenMenu(self, class) end
@@ -164,19 +188,79 @@ local function CurrentAura()
     end
 end
 
+local function CurrentSeal()
+    local key = Store().seal
+    if key and Learned(BY_KEY[key]) then return key end
+    for _, entry in ipairs(SEALS) do
+        if Learned(entry) then return entry.key end
+    end
+end
+
+local function Cycle(list, current, choose, delta)
+    if InCombatLockdown() then return end
+    local known = {}
+    for _, entry in ipairs(list) do
+        if Learned(entry) then known[#known + 1] = entry.key end
+    end
+    if #known < 2 then return end
+    local at = 1
+    for i, key in ipairs(known) do
+        if key == current() then at = i end
+    end
+    choose(known[(at - 1 + (delta > 0 and 1 or -1)) % #known + 1])
+end
+
+local function ChooseAura(key)
+    B.SetOwn(B.AURA_COLUMN, key)
+end
+
 local function FuryName()
     return C_Spell.GetSpellName(FURY.ranks[1]) or TEXT_FURY
 end
 
-local function NewSelfButton(name)
+local function NewBarButton(name)
     local btn = CreateFrame("Button", name, bar, "SecureActionButtonTemplate")
+    ns.Shared.Parts.Press(btn)
+    Look.Icon(btn)
+    return btn
+end
+
+local function NewSelfButton(name)
+    local btn = NewBarButton(name)
     btn:RegisterForClicks("AnyUp", "AnyDown")
     btn:SetAttribute("type1", "spell")
     btn:SetAttribute("unit1", "player")
-    ns.Shared.Parts.Press(btn)
-    Look.Icon(btn)
     B.Watch(btn)
     return btn
+end
+
+local function NewAutoButton(name)
+    local btn = NewBarButton(name)
+    btn:RegisterForClicks("AnyUp")
+    btn:SetAttribute("useOnKeyDown", false)
+    btn:SetAttribute("type1", "spell")
+    btn:SetAttribute("type2", "spell")
+    btn:SetAttribute("countN", 0)
+    btn:SetAttribute("countG", 0)
+    SecureHandlerWrapScript(btn, "OnClick", secureHandler, AUTO_STEP)
+    btn:SetScript("PostClick", function(self) NoteCast(self:GetAttribute("unit"), self:GetAttribute("spell")) end)
+    Keys.SetAuto(btn)
+    return btn
+end
+
+local function PrepareSeal(btn, key)
+    local id = BY_KEY[key].ranks[1]
+    btn:SetAttribute("spell1", C_Spell.GetSpellName(id))
+    btn.icon:SetTexture(C_Spell.GetSpellTexture(id))
+    Look.Self(btn, false)
+end
+
+local function PaintAuto()
+    if not autoButton:IsShown() then return end
+    local spell, due = Keys.Peek()
+    autoButton.icon:SetTexture(spell and C_Spell.GetSpellTexture(spell) or QUESTION)
+    autoButton.icon:SetDesaturated(due == 0)
+    autoButton.mark:SetText(due > 0 and due or "")
 end
 
 local function PrepareSelf(btn, key)
@@ -200,6 +284,19 @@ local function PlaceSelf(x)
         x = Look.Place(furyButton, bar, x)
     else
         furyButton:Hide()
+    end
+    local seal = S.Get("blessShowSeal") and CurrentSeal()
+    if seal then
+        PrepareSeal(sealButton, seal)
+        x = Look.Place(sealButton, bar, x)
+    else
+        sealButton:Hide()
+    end
+    if S.Get("blessShowAuto") then
+        autoButton:SetAttribute("leftKind", S.Get("blessAutoGreater") and "G" or "N")
+        x = Look.Place(autoButton, bar, x)
+    else
+        autoButton:Hide()
     end
     return Look.Gap(x)
 end
@@ -307,6 +404,12 @@ local function Dock()
     ns.UI.SetAnchor(bar.mover, DockAnchor())
 end
 
+local function Wanted()
+    if IsInRaid() then return true end
+    if IsInGroup() then return S.Get("blessInParty") end
+    return S.Get("blessSolo")
+end
+
 function Refresh()
     if not bar then return end
     if InCombatLockdown() or (C_Secrets.ShouldAurasBeSecret() and not HiddenAuras()) then
@@ -314,7 +417,7 @@ function Refresh()
         return
     end
     dirty = false
-    if not (On() and IsPaladin()) then
+    if not (On() and IsPaladin() and Wanted()) then
         bar:Hide()
         Keys.Clear()
         return
@@ -329,16 +432,22 @@ function Refresh()
     end
     Settle()
     local x = PlaceSelf(0)
-    local roster = Roster()
+    local roster = B.Visible(Roster())
     local byClass = ByClass(roster)
-    x = PlaceCells(byClass, x)
+    if S.Get("blessShowClasses") then
+        x = PlaceCells(byClass, x)
+    else
+        for _, cell in pairs(cells) do HideCell(cell) end
+    end
     local members, tankClass
     if Store().salv and Learned(B.SALVATION) then members, tankClass = B.SalvationGroup(roster) end
     x = PlaceSalv(members, tankClass, x)
     PlayerList.Arrange(roster)
     Keys.Fill(byClass, members, tankClass)
+    PaintAuto()
     B.EndAuraMemo()
     Look.Fit(bar, x)
+    Look.Backdrop(bar)
     Settle()
     bar:SetShown(x > 0 or bar.mover:IsShown())
 end
@@ -368,12 +477,23 @@ local function BuildBar()
     bar.mover = ns.UI.AttachMover(bar, TEXT_MOVER, SavePosition, B.PAGE, CARD)
     auraButton = NewSelfButton("NaowhForeverBlessAura")
     auraButton:SetScript("PostClick", OnAuraClick)
-    ns.Tooltip(auraButton, TEXT_AURA, B.AURA_TIP)
+    BarTip(auraButton, TEXT_AURA, B.AURA_TIP)
     furyButton = NewSelfButton("NaowhForeverBlessFury")
     furyButton:SetScript("PostClick", OnSelfClick)
-    ns.Tooltip(furyButton, FuryName(), B.FURY_TIP)
+    BarTip(furyButton, FuryName(), B.FURY_TIP)
+    auraButton:EnableMouseWheel(true)
+    auraButton:SetScript("OnMouseWheel", function(_, delta) Cycle(AURAS, CurrentAura, ChooseAura, delta) end)
+    sealButton = NewSelfButton("NaowhForeverBlessSeal")
+    sealButton:SetScript("PostClick", function(self, button, down)
+        if button == "RightButton" and not down then B.SealMenu(self) end
+    end)
+    BarTip(sealButton, TEXT_SEAL, TEXT_SEAL_TIP)
+    sealButton:EnableMouseWheel(true)
+    sealButton:SetScript("OnMouseWheel", function(_, delta) Cycle(SEALS, CurrentSeal, B.SetSeal, delta) end)
     secureHandler = CreateFrame("Frame", nil, UIParent, "SecureHandlerBaseTemplate")
     Keys.Build(secureHandler)
+    autoButton = NewAutoButton("NaowhForeverBlessAuto")
+    BarTip(autoButton, TEXT_AUTO, TEXT_AUTO_TIP)
     PlayerList.Build(bar)
 end
 
@@ -532,7 +652,7 @@ function Apply()
 end
 
 local function OnSet(key)
-    if key:find("^bless") and key ~= "blessPos" then Apply() end
+    if key:find("^bless") and key ~= "blessPos" and key ~= "blessWindowScale" then Apply() end
 end
 
 local function OnUnlock()

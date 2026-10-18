@@ -16,7 +16,7 @@ local STEP = [[
     self:SetAttribute("step", i + 1)
 ]]
 
-local keyNext, keyGreater
+local keyNext, keyGreater, keyAuto
 
 local function NewKeyButton(name, handler)
     local btn = CreateFrame("Button", name, UIParent, "SecureActionButtonTemplate")
@@ -29,14 +29,15 @@ local function NewKeyButton(name, handler)
     return btn
 end
 
-local function SetQueue(btn, list)
+local function SetQueue(btn, list, kind)
+    kind = kind or ""
     table.sort(list, ByUrgency)
     for i, entry in ipairs(list) do
-        btn:SetAttribute("unit" .. i, entry.unit)
-        btn:SetAttribute("spell" .. i, entry.spell)
+        btn:SetAttribute("unit" .. kind .. i, entry.unit)
+        btn:SetAttribute("spell" .. kind .. i, entry.spell)
     end
-    btn:SetAttribute("count", #list)
-    btn:SetAttribute("step", 1)
+    btn:SetAttribute("count" .. kind, #list)
+    btn:SetAttribute("step" .. kind, 1)
 end
 
 local function Singles(members, single, shared)
@@ -52,6 +53,7 @@ end
 
 local function Greater(members, shared, symbols)
     local spell = shared and symbols and HighestKnown(BY_KEY[shared].greater)
+    if spell and not B.WaitedFor(members, spell) then spell = nil end
     local best
     for _, member in ipairs(spell and members or {}) do
         local rank, left = Due(member, shared, spell)
@@ -85,9 +87,22 @@ function Keys.Build(handler)
     keyGreater = NewKeyButton(NEXT_GREATER, handler)
 end
 
+function Keys.SetAuto(btn)
+    keyAuto = btn
+end
+
+function Keys.Peek()
+    if not keyNext then return end
+    return keyNext:GetAttribute("spell1") or keyGreater:GetAttribute("spell1"), keyNext:GetAttribute("count") or 0
+end
+
 function Keys.Clear()
     if keyNext then keyNext:SetAttribute("count", 0) end
     if keyGreater then keyGreater:SetAttribute("count", 0) end
+    if keyAuto then
+        keyAuto:SetAttribute("countN", 0)
+        keyAuto:SetAttribute("countG", 0)
+    end
 end
 
 function Keys.Fill(byClass, salvMembers, tankClass)
@@ -103,4 +118,8 @@ function Keys.Fill(byClass, salvMembers, tankClass)
     if salvMembers then Salvation(salvMembers, tankClass, single, greater, symbols) end
     SetQueue(keyNext, single)
     SetQueue(keyGreater, greater)
+    if keyAuto then
+        SetQueue(keyAuto, single, "N")
+        SetQueue(keyAuto, greater, "G")
+    end
 end
