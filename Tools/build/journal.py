@@ -379,9 +379,11 @@ def item_facts(item_id):
 
 WOWSRC = paths.DATA / "wowsrc_loot.json"
 ITEM_NAMES = paths.DATA / "item_names.json"
+RECIPE_DROPS = paths.DATA / "journal_recipes.json"   # Tools/sources/recipe_drops.py: {dungeon: {boss: [IDs]}}
 WING_SUFFIX = re.compile(r"^(.*) \((\w+)\)$")   # Dire Maul's "Hydrospawn (East)"
 wowsrc_pages = json.loads(WOWSRC.read_text(encoding="utf-8")) if WOWSRC.exists() else {}
 item_names = json.loads(ITEM_NAMES.read_text(encoding="utf-8")) if ITEM_NAMES.exists() else {}
+recipe_drops = json.loads(RECIPE_DROPS.read_text(encoding="utf-8")) if RECIPE_DROPS.exists() else {}
 
 
 def name_key(name):
@@ -701,11 +703,16 @@ def item_facts_file(items):
 
 
 def extra_loot(dungeon, bis):
-    """Boss name (lower case) -> the items the guide, the BiS sources and the dungeon's own
-    "add" list (by hand: items seen dropping that Wowhead has not tied to the boss yet) place
-    on it."""
+    """Boss name (lower case) -> the items the guide, the BiS sources, the recipes its item XML
+    ties to it (Tools/sources/recipe_drops.py) and the dungeon's own "add" list (by hand: items
+    seen dropping that Wowhead has not tied to the boss yet) place on it."""
     extra = guide_drops(dungeon["guide"]) if dungeon.get("guide") else {}
-    for boss, ids in dungeon.get("add", {}).items():
+    placed = {}
+    for source in (recipe_drops.get(dungeon["name"], {}), dungeon.get("add", {})):
+        for boss, ids in source.items():
+            mine = placed.setdefault(boss, [])
+            mine += [i for i in ids if i not in mine]
+    for boss, ids in placed.items():
         for item_id in ids:
             if not isinstance(item_id, int):
                 sys.exit(f"journal_bosses.json, {dungeon['name']}, {boss}: \"add\" takes item IDs, not {item_id!r}")

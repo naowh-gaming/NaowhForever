@@ -204,7 +204,8 @@ The rules, in plain words:
   Journal lists gear (uncommon or better) and the recipes a boss drops (common or better).
 
 To refresh it all: `python Tools/sources/wowsrc.py` (new pages), `python Tools/sources/wowsrc.py --resolve`
-(new names), then `python Tools/build/journal.py`. Read what the build prints at the end:
+(new names), `python Tools/sources/recipe_drops.py` (the recipes each boss drops, by their item XML), then
+`python Tools/build/journal.py`. Read what the build prints at the end:
 bosses it found no loot for, wowsrc bosses we don't list, names it couldn't map.
 
 The daily CI does the same when wowsrc's pages change (`.github/workflows/daily-watch.yml`,
