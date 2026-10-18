@@ -97,6 +97,7 @@ ns.FEATURES = {
         finderRoles = false,
         mouseRing = false,
         gcdTracker = false,
+        scout = false,
         focusCastBar = false,
         trainerPopup = true,
         flightTimer = true,
