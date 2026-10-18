@@ -2564,7 +2564,20 @@
   }
  },
  "247032": {
-  "abilities": [],
+  "abilities": [
+   [
+    1303266,
+    "Raise Dead"
+   ],
+   [
+    17228,
+    "Shadow Bolt Volley"
+   ],
+   [
+    1304473,
+    "Curse of Thorns"
+   ]
+  ],
   "npc": {
    "classification": 2,
    "maxlevel": null,
