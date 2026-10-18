@@ -352,8 +352,8 @@ the game's own tables, and what they can't settle is listed in the pull request 
   (`RECIPE_SKILL`); a book (0) is no profession's and is listed whatever yours are. A cosmetic
   item is armor subclass 5.
 - A recipe is kept from common quality, not uncommon like gear: many recipes bosses drop are
-  white. Every class can use one: `ClassCanUse` judges only weapons and armor, as a recipe's
-  subclass is its profession (Alchemy's 6 would read as a shield).
+  white. Its facts say no armor type (`{ 4, 0 }`), as a faction's recipe rewards do, so every
+  class can use it: its own subclass is its profession, and Alchemy's 6 would read as a shield.
 - Asked for a recipe's look, the game answers with the look of the item it makes, so only
   items with a slot count as wearable. The game has no appearance for some wearable items
   (Prison Shank on Forever 1.60.1): then whether you have the item's own look is all it can say.

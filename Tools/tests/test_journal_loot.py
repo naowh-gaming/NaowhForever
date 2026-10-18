@@ -73,6 +73,11 @@ class Kept(unittest.TestCase):
         self.assertTrue(journal.keeps(blueprint), "Blueprint: Spinning Wheel, Unstable Sentinel's")
         self.assertFalse(journal.keeps(dict(blueprint, quality=0)), "a poor one is left out")
 
+    def test_a_recipe_has_no_armor_type(self):
+        self.assertEqual(journal.kind({"class": journal.RECIPE, "subclass": 6}), (4, 0),
+                         "Alchemy's subclass 6 is not a shield: every class can use the recipe")
+        self.assertEqual(journal.kind({"class": 4, "subclass": 6}), (4, 6), "a shield stays one")
+
     def test_other_slotless_items_are_left_out(self):
         self.assertFalse(journal.keeps({"id": 251961, "slot": 0, "class": 12, "quality": 1}), "a quest item")
         self.assertFalse(journal.keeps({"id": 5, "slot": 0, "class": 13, "quality": 2}), "a key")
