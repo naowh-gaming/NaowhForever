@@ -22,20 +22,10 @@ local TEXT_BLESS = ns.L("Bless")
 local TEXT_BLESS_TIP = ns.L("Left-click: cast this player's blessing.\nRight-click: give "
     .. "them their own blessing, or back to the class default.\nCtrl-click: toggle Main Tank in a raid.")
 local TEXT_AFTER_COMBAT = ns.L("The player list opens after combat.")
-local TEXT_MAIN_TANK = ns.L("Main Tank")
 local TEXT_CLOSE = "X"
 
 local flyout, rows, flyoutClass
 local members = {}
-
-local function ToggleMainTank(unit)
-    if GetPartyAssignment("MAINTANK", unit) then
-        ClearPartyAssignment("MAINTANK", unit)
-    else
-        SetPartyAssignment("MAINTANK", unit)
-    end
-    B.Changed()
-end
 
 local function PlayerMenu(owner, member)
     local store = Store()
@@ -48,12 +38,7 @@ local function PlayerMenu(owner, member)
             store.players[member.guid] = key
             B.BroadcastSoon()
             B.Changed()
-        end, TEXT_DEFAULT, Can, function(root)
-            if not (IsInRaid() and B.CanAssign("player")) then return end
-            root:CreateDivider()
-            root:CreateCheckbox(TEXT_MAIN_TANK, function() return GetPartyAssignment("MAINTANK", member.unit) end,
-                function() ToggleMainTank(member.unit) end)
-        end)
+        end, TEXT_DEFAULT, Can)
 end
 
 local function NewRow(index)

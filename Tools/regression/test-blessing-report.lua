@@ -65,7 +65,7 @@ local lines = B.ReportLines()
 check("a header and a footer", lines[1] == "--- Paladin blessings ---" and lines[#lines] == "--- End of blessings ---")
 check("you: each blessing with its classes, Salvation and the aura",
     lines[2] == "Glyadin: Blessing of Might (Warrior, Rogue), Blessing of Kings (Mage), Blessing of Salvation, "
-        .. "Devotion Aura Aura")
+        .. "Devotion Aura")
 others["Bram Hollow"] = { classes = { PRIEST = "wisdom" } }
 others["Alma Reed"] = { classes = {} }
 lines = B.ReportLines()

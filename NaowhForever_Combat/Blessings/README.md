@@ -66,9 +66,11 @@ NaowhForever_Combat/Blessings/
   Symbol of Kings (`SYMBOL_OF_KINGS`), and covers the whole class, so it is cast once.
 - In a battleground or arena (`IsInInstance` says `pvp` or `arena`) the game hides other players' auras, so
   the bar would show nobody blessed or nothing at all. There the bar remembers what you cast instead
-  (`Memory.lua`): a click notes who it was aimed at (the whole class for a Greater Blessing), the cast
-  succeeding confirms it within `CAST_WINDOW`, and the blessing counts down an hour (`BLESSING_TIME`), an aura
-  or Righteous Fury never ends. A death forgets it, and so does leaving. Whoever you did not bless reads as
+  (`Memory.lua`): a click that sent a cast (`UNIT_SPELLCAST_SENT`, in the same frame) notes who it was aimed
+  at (the whole class for a Greater Blessing) under that cast's GUID, the same cast succeeding confirms it
+  within `CAST_WINDOW`, and the blessing counts down an hour (`BLESSING_TIME`), an aura or Righteous Fury
+  never ends. A click that cast nothing, such as one during the global cooldown, notes nothing. A death
+  forgets it (`UNIT_HEALTH`, registered only there), and so does leaving. Whoever you did not bless reads as
   missing, so the bar keeps working and a click blesses them; what another paladin cast cannot be seen.
   Elsewhere, hidden auras (a boss pull) stay unknown, not missing, and the bar holds as it was.
 - A buff's state is present (with the time left when it runs out), missing, or nil when unreadable.
@@ -162,8 +164,7 @@ NaowhForever_Combat/Blessings/
   warriors, druids and paladins only (`TANKING`), never over a player's own choice and only if you know it. They
   resolve in `Assigned`, so the class button casts singles for a class with a tank, since a Greater Blessing
   would give the tank the class one. A tank is the Tank role or a Main Tank mark (`IsTank`, also what skips tanks
-  for Salvation and in Aura Buff Reminders); a leader or assistant can toggle a player's Main Tank mark from the
-  player list's menu in a raid.
+  for Salvation and in Aura Buff Reminders).
 - The Auto Buff button (off by default) is a secure button with its own copy of the two key-binding queues
   (`countN` and `countG`, filled by `Keys.Fill`): a left click casts the next blessing and a right click the next
   Greater one, or the other way round with Auto Buff Greater First (`leftKind`). The secure `click` action cannot

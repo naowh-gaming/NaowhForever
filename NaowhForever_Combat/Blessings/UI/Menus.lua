@@ -49,7 +49,7 @@ function B.SetOwn(column, key)
     B.Changed()
 end
 
-function B.OpenMenu(owner, title, list, current, choose, noneText, can, extra)
+function B.OpenMenu(owner, title, list, current, choose, noneText, can)
     can = can or Learned
     MenuUtil.CreateContextMenu(owner, function(_, root)
         root:CreateTitle(title)
@@ -60,7 +60,6 @@ function B.OpenMenu(owner, title, list, current, choose, noneText, can, extra)
             end
         end
         root:CreateRadio(noneText, function() return current() == nil end, function() choose(nil) end)
-        if extra then extra(root) end
     end)
 end
 

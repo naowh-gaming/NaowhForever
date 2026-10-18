@@ -24,7 +24,6 @@ L["Pick a background texture"] = true
 L["Accent"] = true
 L["Off leaves only the Auto Buff button and the key bindings."] = true
 L["Class Buttons"] = true
-L["Main Tank"] = true
 L["Left-click: the next blessing. Right-click: the next Greater Blessing. Each goes to whoever needs it most."] = true
 L["Auto Buff"] = true
 L["Turn off Apply Theme to Status Colors"] = true

@@ -10,7 +10,8 @@ local CAST_WINDOW = 5
 local HIDING = { pvp = true, arena = true }
 
 local seen = {}
-local pending
+local casts = {}
+local sent
 
 function B.HiddenAuras()
     local _, kind = IsInInstance()
@@ -40,8 +41,25 @@ function B.Remembered(unit, key)
     return true, left ~= math.huge and left or nil
 end
 
+function B.ForgetIfDead(unit)
+    if not next(seen) then return end
+    local guid = UnitGUID(unit)
+    if not guid or Secret(guid) or not seen[guid] then return end
+    local dead = UnitIsDeadOrGhost(unit)
+    if not Secret(dead) and dead then seen[guid] = nil end
+end
+
+-- UNIT_SPELLCAST_SENT is synchronous, so a cast the click started has been sent by its PostClick.
+function B.CastSent(castGUID, spell)
+    sent = { guid = castGUID, spell = spell, at = GetTime() }
+end
+
 function B.NoteCast(unit, spell)
-    if not (unit and spell and B.HiddenAuras()) then return end
+    local cast = sent
+    sent = nil
+    if not (unit and spell and cast and cast.spell == spell and cast.at == GetTime() and B.HiddenAuras()) then
+        return
+    end
     local key = FAMILY[spell]
     if not key then return end
     local roster = B.Roster()
@@ -57,13 +75,17 @@ function B.NoteCast(unit, spell)
             guids[#guids + 1] = member.guid
         end
     end
-    pending = { key = key, spell = spell, guids = guids, at = GetTime() }
+    for id, old in pairs(casts) do
+        if GetTime() - old.at >= CAST_WINDOW then casts[id] = nil end
+    end
+    casts[cast.guid] = { key = key, guids = guids, at = GetTime() }
 end
 
-function B.CastDone(spell)
-    local cast = pending
-    if not (cast and cast.spell == spell and GetTime() - cast.at < CAST_WINDOW) then return end
-    pending = nil
+function B.CastDone(castGUID)
+    local cast = casts[castGUID]
+    if not cast then return end
+    casts[castGUID] = nil
+    if GetTime() - cast.at >= CAST_WINDOW then return end
     local ends = GetTime() + Lasts(cast.key)
     for _, guid in ipairs(cast.guids) do
         seen[guid] = seen[guid] or {}
@@ -72,6 +94,7 @@ function B.CastDone(spell)
 end
 
 function B.ForgetCasts()
-    pending = nil
+    sent = nil
+    wipe(casts)
     wipe(seen)
 end

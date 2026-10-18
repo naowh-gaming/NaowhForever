@@ -527,6 +527,11 @@ check("the preset keeps Salvation", account.blessingPreset["Glyadin"].salv == tr
 B.Store().salv = nil
 check("loading the preset gives it back", B.LoadPreset() and B.Store().salv == true)
 B.Store().salv = nil
+account.blessingPreset = { Glyadin = { classes = { MAGE = "salvation", WARRIOR = "might" } } }
+check("loading a preset from before the split", B.LoadPreset())
+check("turns its class Salvation into Salvation on",
+    B.Store().classes.MAGE == nil and B.Store().classes.WARRIOR == "might" and B.Store().salv == true)
+B.Store().salv = nil
 
 -- The seal button: seals are looked up like the other spells, picked from a menu and kept in your plan.
 check("the seals are indexed by key and spell", B.BY_KEY.sealCommand.ranks[1] == 20375 and B.FAMILY[20375] == "sealCommand")
