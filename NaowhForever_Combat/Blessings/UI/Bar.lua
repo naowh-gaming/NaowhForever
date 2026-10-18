@@ -431,7 +431,14 @@ local function OnEvent(_, event, ...)
     if event == "CHAT_MSG_ADDON" then
         OnAddonMessage(...)
     elseif event == "GROUP_ROSTER_UPDATE" or event == "PLAYER_ENTERING_WORLD" then
-        if event == "PLAYER_ENTERING_WORLD" and not HiddenAuras() then B.ForgetCasts() end
+        if event == "PLAYER_ENTERING_WORLD" then
+            if HiddenAuras() and IsPaladin() then
+                events:RegisterEvent("UNIT_HEALTH")
+            else
+                events:UnregisterEvent("UNIT_HEALTH")
+                B.ForgetCasts()
+            end
+        end
         B.SyncSoon()
         RefreshSoon()
     elseif event == "PARTY_LEADER_CHANGED" then
@@ -445,11 +452,17 @@ local function OnEvent(_, event, ...)
     elseif event == "SPELLS_CHANGED" then
         B.BroadcastSoon()
         RefreshSoon()
+    elseif event == "UNIT_SPELLCAST_SENT" then
+        local _, _, castGUID, spellID = ...
+        if Secret(castGUID) or Secret(spellID) or not FAMILY[spellID] then return end
+        B.CastSent(castGUID, spellID)
     elseif event == "UNIT_SPELLCAST_SUCCEEDED" then
-        local _, _, spellID = ...
-        if Secret(spellID) or not FAMILY[spellID] then return end
-        B.CastDone(spellID)
+        local _, castGUID, spellID = ...
+        if Secret(castGUID) or Secret(spellID) or not FAMILY[spellID] then return end
+        B.CastDone(castGUID)
         if not InCombatLockdown() then landing = GetTime() end
+    elseif event == "UNIT_HEALTH" then
+        B.ForgetIfDead(...)
     elseif event == "UNIT_AURA" then
         OnUnitAura(...)
     end
@@ -483,6 +496,7 @@ local function ListenPaladin()
     events:RegisterEvent("PLAYER_ROLES_ASSIGNED")
     events:RegisterEvent("SPELLS_CHANGED")
     events:RegisterEvent("PLAYER_REGEN_DISABLED")
+    events:RegisterUnitEvent("UNIT_SPELLCAST_SENT", "player")
     events:RegisterUnitEvent("UNIT_SPELLCAST_SUCCEEDED", "player")
 end
 
