@@ -7,7 +7,6 @@ local MyName, Store, Others = B.MyName, B.Store, B.Others
 local LINE_MAX = 240
 local TEXT_HEADER = ns.L("--- Paladin blessings ---")
 local TEXT_END = ns.L("--- End of blessings ---")
-local TEXT_AURA = ns.L("Aura")
 local TEXT_NOTHING = ns.L("Nothing")
 local TEXT_NONE = ns.L("There are no paladins to report.")
 local TEXT_COMBAT = ns.L("Reports are sent outside combat.")
@@ -52,7 +51,7 @@ local function Given(plan)
         parts[#parts + 1] = B.SpellName(key) .. " (" .. table.concat(byBlessing[key], ", ") .. ")"
     end
     if plan.salv then parts[#parts + 1] = B.SpellName(B.SALVATION.key) end
-    if plan.aura then parts[#parts + 1] = B.SpellName(plan.aura) .. " " .. TEXT_AURA end
+    if plan.aura then parts[#parts + 1] = B.SpellName(plan.aura) end
     return #parts > 0 and table.concat(parts, ", ") or TEXT_NOTHING
 end
 

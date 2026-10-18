@@ -96,11 +96,16 @@ end
 
 local function SavedPlan(p, saved)
     local plan = { classes = {} }
+    local salv = saved.salv
     for class, key in pairs(saved.classes or {}) do
-        if p.known[key] then plan.classes[class] = key end
+        if key == SALVATION.key then
+            salv = true
+        elseif p.known[key] then
+            plan.classes[class] = key
+        end
     end
     plan.aura = saved.aura and p.known[saved.aura] and saved.aura or nil
-    plan.salv = saved.salv and p.known[SALVATION.key] or nil
+    plan.salv = salv and p.known[SALVATION.key] or nil
     return plan
 end
 
