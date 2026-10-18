@@ -7,6 +7,7 @@ local BY_KEY, BY_CODE = B.BY_KEY, B.BY_CODE
 local others = B.others
 local Learned, Store, Roster, InGroup, CanAssign = B.Learned, B.Store, B.Roster, B.InGroup, B.CanAssign
 local MyName, IsPaladin = B.MyName, B.IsPaladin
+local SALVATION, SALV_FLAG = B.SALVATION, B.SALV_FLAG
 
 local PREFIX = "NaowhBless"
 local NONE = "-"
@@ -33,25 +34,29 @@ end
 
 local function DecodePlan(text)
     if #text ~= #CLASSES + 1 then return end
-    local classes = {}
+    local classes, salv = {}, false
     for i, class in ipairs(CLASSES) do
         local c = text:sub(i, i)
-        if c ~= NONE then
+        if c == SALVATION.code then
+            salv = true
+        elseif c ~= NONE then
             local entry = BY_CODE[c]
             if not (entry and entry.blessing) then return end
             classes[class] = entry.key
         end
     end
     local c = text:sub(-1)
-    if c == NONE then return classes end
+    if c == NONE then return classes, nil, salv end
     local entry = BY_CODE[c]
-    if entry and not entry.blessing then return classes, entry.key end
+    if entry and not (entry.blessing or entry.salvation) then return classes, entry.key, salv end
 end
 
 local function KnownCodes()
     local codes = {}
     for _, entry in ipairs(BLESSINGS) do if Learned(entry) then codes[#codes + 1] = entry.code end end
+    if Learned(SALVATION) then codes[#codes + 1] = SALVATION.code end
     for _, entry in ipairs(AURAS) do if Learned(entry) then codes[#codes + 1] = entry.code end end
+    if Store().salv then codes[#codes + 1] = SALV_FLAG end
     return table.concat(codes)
 end
 
@@ -133,6 +138,18 @@ local function OnAssigned(who, target, plan)
     B.Changed()
 end
 
+local function OnSalvAssigned(who, target, on)
+    local from = InGroup(who)
+    if not (IsPaladin() and from and CanAssign(from.unit)
+            and target == MyName() .. "-" .. GetNormalizedRealmName()) then
+        return
+    end
+    Store().salv = on and Learned(SALVATION) and true or nil
+    ns.Print(who .. TEXT_UPDATED)
+    BroadcastSoon()
+    B.Changed()
+end
+
 local function OnPlayers(who, part, list)
     local from = others[who]
     if not from then return end
@@ -151,15 +168,16 @@ end
 local function OnPlan(who, body, known)
     local member = body and InGroup(who)
     if not (member and member.class == "PALADIN") then return end
-    local classes, aura = DecodePlan(body)
+    local classes, aura, salv = DecodePlan(body)
     if not classes then return end
     local set = {}
     for code in known:gmatch(".") do
         if BY_CODE[code] then set[BY_CODE[code].key] = true end
+        if code == SALV_FLAG then salv = true end
     end
     local was = others[who]
-    others[who] = { classes = classes, aura = aura, known = set, players = was and was.players or {},
-        choices = was and was.choices or 0 }
+    others[who] = { classes = classes, aura = aura, salv = salv or nil, known = set,
+        players = was and was.players or {}, choices = was and was.choices or 0 }
     RefreshPage()
 end
 
@@ -183,6 +201,8 @@ function B.OnMessage(msg, sender)
     if msg == "R" then return BroadcastSoon() end
     local target, plan = msg:match("^S|([^|]+)|(%S+)$")
     if target then return OnAssigned(who, target, plan) end
+    local salvTarget, salvOn = msg:match("^V|([^|]+)|([01])$")
+    if salvTarget then return OnSalvAssigned(who, salvTarget, salvOn == "1") end
     local part, list = msg:match("^P|(%d+)|(.*)$")
     if part then return OnPlayers(who, part, list) end
     local body, known = msg:match("^F|(%S+)|(%a*)$")
@@ -193,6 +213,12 @@ function B.SendPlan(who, classes, aura)
     others[who].classes, others[who].aura = classes, aura
     local full = who:find("-") and who or who .. "-" .. GetNormalizedRealmName()
     Send("S|" .. full .. "|" .. EncodePlan(classes, aura), "S|" .. full)
+end
+
+function B.SendSalv(who, on)
+    others[who].salv = on or nil
+    local full = who:find("-") and who or who .. "-" .. GetNormalizedRealmName()
+    Send("V|" .. full .. "|" .. (on and "1" or "0"), "V|" .. full)
 end
 
 function B.SyncSoon()
