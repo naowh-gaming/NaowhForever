@@ -56,8 +56,8 @@ end
 
 local function StartResize(grip, button)
     if button == "RightButton" then
+        grip.scale = nil
         B.Settings.Set("blessWindowScale", 1)
-        window:SetScale(Scale())
         return
     end
     grip.startX, grip.startScale, grip.startEffective = GetCursorPosition(), B.Settings.Get("blessWindowScale"),
@@ -107,3 +107,6 @@ end
 
 hooksecurefunc(ns.UI, "RefreshPage", RedrawSoon)
 hooksecurefunc(ns, "Apply", RedrawSoon)
+hooksecurefunc(B.Settings, "Set", function(key)
+    if key == "blessWindowScale" and window then window:SetScale(Scale()) end
+end)
