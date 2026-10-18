@@ -19,6 +19,7 @@
     <Script file="Questing\Invites.lua"/>
     <Script file="Questing\GroupButtons.lua"/>
     <Script file="Questing\FreeForAll.lua"/>
+    <Script file="Questing\LayerSwap.lua"/>
     <Script file="Questing\FinderRoles.lua"/>
     <Script file="Loot\LootConfirm.lua"/>
     <Script file="Cursor\CursorClip.lua"/>
@@ -69,6 +70,7 @@
     <Script file="Interface\ZoneLevelsData.lua"/>
     <Script file="Interface\FishingLevelsData.lua"/>
     <Script file="Interface\ZoneLevels.lua"/>
+    <Include file="Interface\ZoneInfo\ZoneInfo.xml"/>
     <Script file="Interface\SkyborneData.lua"/>
     <Include file="Interface\SkyborneSpots.xml"/>
     <Script file="Questing\Trainer.lua"/>

@@ -1,4 +1,4 @@
--- Formula.lua: Naowh Score constants from build 1.60.1.70178's own item table (4,304 items).
+-- Formula.lua: Naowh Score constants from build 1.60.1.70450's own item table (4,313 items).
 local ns = _G.NaowhForever
 
 local Score = {}
@@ -10,4 +10,4 @@ Score.SLOTS = {
     [17] = 0.54, [18] = 0.31,
 }
 Score.SCALE = { [0] = 0.4, [1] = 0.61, [2] = 0.67, [3] = 0.78, [4] = 1, [5] = 1, [6] = 1, [7] = 1 }
-Score.SHIFT = { [0] = -3.2, [1] = -4.8, [2] = -5.3, [3] = -0.6, [4] = 0, [5] = 0, [6] = 0, [7] = 0 }
+Score.SHIFT = { [0] = -3.2, [1] = -4.8, [2] = -5.3, [3] = -0.7, [4] = 0, [5] = 0, [6] = 0, [7] = 0 }

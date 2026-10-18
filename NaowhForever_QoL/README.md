@@ -55,6 +55,8 @@ NaowhForever_QoL/
     ZoneLevelsData.lua  each zone's level range (ns.ZoneLevels), generated
     FishingLevelsData.lua  each zone's Fishing skill range (ns.FishingLevels)
     ZoneLevels.lua      Zone Levels and Fishing Levels on the world map
+    ZoneInfo/           Model.lua (zone details), View.lua (panels), Runtime.lua (map and HUD lifecycle),
+                        SettingsPage.lua (Map & Pins card), loaded by ZoneInfo.xml
     SkyborneData.lua    the Skyborne spots every player starts with (ns.SkyborneSpots), MIT notice inside
     SkyborneSpots.xml   the Skyborne pin template, then SkyborneSpots.lua
     SkyborneSpots.lua   Skyborne Spots on the world map
@@ -84,6 +86,7 @@ NaowhForever_QoL/
                         ns.InviteAll, ns.ShowInviteEditor)
     GroupButtons.lua    On-Screen Buttons (Invite, your invite buttons, Invite All, Disband)
     FreeForAll.lua      Always Free for All, the party loot method while you lead
+    LayerSwap.lua       Auto-Accept Layer Swap, confirming the game's layer swap prompt on joining a group
     FinderRoles.lua     Group Finder Roles, the role buttons on the Group Finder
     TalentPoints.lua    the unspent talent points reminder
     QuestAutomation.lua accept, hand in and share quests, saved reward picks (ns.QuestRewards)
@@ -599,6 +602,10 @@ NaowhForever_QoL/
 - The Flight Timer has one icon button per game (the Quiz, each Aim Trainer mode and the Daily
   Word), so a game opens in one click. A game whose feature is off keeps its button, greyed out,
   with a tooltip saying where to turn it on, as the old Games menu did for the Aim Trainer.
+- A game a flight opened by itself shows an eye beside its close button
+  (`ns.FlightGameHideButton`, `ns.FlightGameOffered`), so a player can stop that from the game
+  instead of the settings. It sets Flight Games to Buttons only, so the games stay one click away.
+  The Aim Trainer hides it with its other header buttons while a round runs.
 - Flight times come from the route data at 30.4 yards a second (`FLIGHT_SPEED`), fitted to
   measured Classic flight times. Frequent Flier, node 110300 of the Adventure Legacy tree (1188),
   makes flight path mounts 20% faster; Legacy perks are bought per character, and a character
@@ -998,6 +1005,9 @@ NaowhForever_QoL/
 - `FAMILIES` are the class spells that use a vendor reagent on Forever, from its SpellReagents data (build 1.60.1.69913). Each family lists its ranks from lowest; the highest rank you know sets the reagent, so a rank 2 Prayer of Fortitude asks for Sacred Candles, not Holy Candles.
 - `TARGETS` is how many of each reagent to carry unless the player sets their own.
 - Forever reports an empty ammo slot as item 0, not nil.
+- Equipped thrown weapons are restocked only when their maximum stack size exceeds one;
+  permanent single weapons are not ammunition. Uncached item data is requested once and the
+  existing GET_ITEM_INFO_RECEIVED path checks again, without guessing a restock target.
 - Food and drink are Consumable: Food & Drink (`FOOD_CLASS`, `FOOD_SUBCLASS`). Drink is told apart by its spell: `DRINK_ITEM` (159, Refreshing Spring Water) carries the localized Drink spell, so its data is asked for up front.
 - Quivers, ammo pouches and soul bags do not count as room: only plain bags (`PLAIN_BAG`) add free slots.
 - The reminder pulses `FLASH_LOOPS` times when it appears, then stays solid until it is dealt with; refreshed as bags change, only a new appearance pulses.
@@ -1186,6 +1196,10 @@ NaowhForever_QoL/
   object 35591. IDs work in every language. A herb or vein the data does not know is still found by
   the cursor the game would show on it (`SetUnitCursorTexture`): Mine or GatherHerbs, with an Unable
   variant when the game would refuse it.
+- The game gives an NPC's quest cursor only as a low priority one: `SetUnitCursorTexture` answers false for a
+  quest giver unless its fourth argument, `includeLowPriority`, is true, so the giver check passes it and the
+  object check does not. The texture comes back as a name (`Cursor Crosshair_QuestTurnIn_64`), matched by its
+  words like the other cursors.
 - Quest objects come from `C_QuestLog.UnitIsRelatedToActiveQuest`, and their line is the quest
   objective line of the object's own tooltip, as the game words it.
 - Gathering gives a point every time up to 25 skill over the node's (orange), usually up to 50
@@ -1196,6 +1210,12 @@ NaowhForever_QoL/
   object counts as in reach. Its answer is read every `STATE_CHECK` while an object is lit, and a
   change must hold for `STATE_HOLD` before it shows, so the edge of reach does not flicker. That
   check runs only while something is lit; nothing runs while no object is.
+- A quest giver's nameplate is the game's friendly one, with its health bar and level. Hide Health Bar and Level
+  (`giverHideBar`, off by default) sets the alpha of the plate's `HealthBarsContainer` and `LevelFrame` to 0 while
+  Glimmer lights a giver, leaving the name; the plate's unit frame is pooled by the game, so both are set back to 1
+  when the effect is released. Effect Height (`giverOffset`, pixels, 0 by default) moves a giver's effect from the
+  same anchor an object's uses, since a plate over a creature's head sits at a different height than one over an
+  object. Both apply on the next frame, like the other settings.
 - The effect is parented to the nameplate, one frame level under it so the game's name stays on
   top, and ignores the nameplate's alpha so it does not fade with it.
 - The game settings Glimmer changes are saved in the account settings before the first change and
@@ -1242,3 +1262,62 @@ NaowhForever_QoL/
 - Every on/off switch default in the QoL store is read from `ns.FEATURES.qol`; the values are unchanged.
 - The supporter badges are on by default so everyone sees them, except the group banner, which Naowh asked to start off.
 - The Character Panel's slot marks are on by default, an exception to off by default: they are marks on the game's own panel, with no restyle.
+
+
+### Zone Info
+
+- QoL > Map & Pins > Zone Info adds a compact map hover and a pinned details panel.
+  Apply beside Recommended Details enables the master switch and dungeon, fishing and travel content; the HUD and
+  gathering tab stay optional. Every new feature switch is off by default in Core/Features.lua.
+- The existing zone-level and fishing labels stand aside while Zone Info is enabled, without
+  changing their saved switches, and return when it is disabled.
+- Map hover queries run only while the map is visible and the cursor moves, at most once per
+  0.08 seconds. Closing the map clears the ticker; disabling removes the provider and unregisters
+  every feature event. No event frame, provider or HUD is constructed while the feature is off.
+- Pin details holds one zone through unrelated hovers and map changes. The saved map ID belongs
+  to the current profile. The map button pins the hovered zone, the displayed zone, or the player's
+  zone. Current Zone Details opens our own panel when the map is closed, without opening Blizzard UI.
+- The current-zone HUD belongs to the shared HUD Editor, with position and scale in QoL settings.
+  Zone, skill and level events refresh it, not a per-frame ticker. Combat hides it when requested;
+  otherwise it keeps its last checked character information until combat ends.
+- Profession skill includes GetProfessionInfo's eighth return (rankModifier). Levels, skills and
+  map fields are checked before use; unavailable skills are not treated as missing or ready.
+  Difficulty colors use the checked cached level and static house colors, not a helper which
+  reads UnitEffectiveLevel again. PLAYER_LEVEL_UP's level payload refreshes the cached level.
+- Dungeon entries reuse the enabled Journal's registry, entrances and level ranges. No Journal
+  means an explanation, not an assumed dependency. Journal settings repaint a visible zone panel.
+  Opening a dungeon is an explicit click on our own Journal UI. Waypoint actions use PlaceWaypoint
+  and are unavailable during combat; they never open or modify Blizzard's own frames.
+- Travel reuses TownNPCs flight masters, TownTravel stops and ZoneExits roads, filtering faction
+  stops against the checked character faction. SameMap resolves equivalent map IDs as it does
+  for existing map pins. Missing data is labeled rather than guessed.
+- Gathering reuses Glimmer's node definitions and compressed location data. It decodes only
+  when the gathering tab is requested outside combat and indexes unique node names per map.
+  Glimmer itself need not be enabled and none of its switches change. A waypoint is a known
+  historical location, not a claim that the object is currently spawned or the nearest node.
+- Fishing distinguishes the minimum skill from the reliable threshold and displays the player's
+  checked skill. Territory text is shown only for the current zone, from the client's PvP API;
+  territory for a different hovered zone is omitted because the existing registries do not supply it.
+- Details use shared panels, tabs, buttons, fonts and pooled row drawing. The preview uses the
+  same HUD drawing with sample Westfall data; it does not activate the feature or register a mover.
+
+- Map panels use an opaque theme fill, with their layer set above the canvas after parenting,
+  so the map cannot cover their background, title or metadata. Parts.Panel accepts an optional
+  flat-fill opacity; other callers retain their existing opacity.
+- Pinned map details dock outside the whole Map and Quest Log window on its right, with
+  width fitted to the available screen space. If only the left side has room, they dock there.
+- The compact hover card uses the same external dock; visible pinned details stack below it.
+  The map button sits above the two coordinate lines rather than covering their text.
+- On-map Summary is an off-by-default alternative to docked cards: centered outlined text
+  shows the selected zone, or the hovered/current zone on continent maps. Map Text Only > Apply
+  enables all content, disables the HUD, clears the pinned selection and selects this layout.
+  Recommended Details > Apply returns to the docked layout. Content switches still apply.
+- Map text is pooled, mouse-transparent and refreshed by the existing map provider and zone,
+  profession and level events. It has no additional ticker. Gathering remains known static
+  data; a short list ends with a count when there are more entries. Missing data is omitted.
+- The built-in area-label frame is faded while our map summary is visible, then restored to
+  its original alpha when the map closes or this layout is disabled; no Blizzard script,
+  label content or layout is replaced. This avoids duplicate zone names at the top of the map.
+- A hover selection stays available across empty map space, the canvas boundary, same-map
+  redraws and character refreshes so its Pin Details action remains reachable. Another valid
+  zone replaces it; closing or changing the map, disabling the feature or combat clears it.
