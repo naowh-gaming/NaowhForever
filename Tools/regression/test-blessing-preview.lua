@@ -518,6 +518,14 @@ check("the preset keeps Salvation", account.blessingPreset["Glyadin"].salv == tr
 B.Store().salv = nil
 check("loading the preset gives it back", B.LoadPreset() and B.Store().salv == true)
 B.Store().salv = nil
+
+-- Clear empties your whole plan.
+local plan = B.Store()
+plan.classes.WARRIOR, plan.aura, plan.salv, plan.players.me = "might", "retribution", true, "kings"
+B.ClearAll()
+plan = B.Store()
+check("Clear empties your classes, aura, Salvation and own choices",
+    next(plan.classes) == nil and plan.aura == nil and plan.salv == nil and next(plan.players) == nil)
 class = "WARRIOR"
 
 print(("test-blessing-preview: %d checks passed"):format(checks))

@@ -55,7 +55,7 @@ local CLASS_STEP = [[
 
 local bar, cells, auraButton, furyButton, secureHandler
 local dirty, ticker, unlocked, buildAfterCombat, placeDue
-local refreshQueued, landing, landingQueued
+local refreshQueued, landing, landingQueued, sentSymbols
 local events = CreateFrame("Frame")
 local Refresh, Apply
 
@@ -447,7 +447,9 @@ local function OnEvent(_, event, ...)
         RefreshSoon()
     elseif event == "UNIT_SPELLCAST_SUCCEEDED" then
         local _, _, spellID = ...
-        if Secret(spellID) or not FAMILY[spellID] then return end
+        if Secret(spellID) then return end
+        if B.IsStatusSpell(spellID) then B.BroadcastSoon() end
+        if not FAMILY[spellID] then return end
         B.CastDone(spellID)
         if not InCombatLockdown() then landing = GetTime() end
     elseif event == "UNIT_AURA" then
@@ -456,7 +458,13 @@ local function OnEvent(_, event, ...)
 end
 
 local function OnTick()
-    if bar:IsShown() and not InCombatLockdown() then RefreshSoon() end
+    if not (bar:IsShown() and not InCombatLockdown()) then return end
+    local symbols = C_Item.GetItemCount(B.SYMBOL_OF_KINGS)
+    if symbols ~= sentSymbols then
+        sentSymbols = symbols
+        B.BroadcastSoon()
+    end
+    RefreshSoon()
 end
 
 local function Stop()

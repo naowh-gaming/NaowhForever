@@ -2,6 +2,22 @@
 local L = _G.NaowhForeverLocale or {}
 _G.NaowhForeverLocale = L
 
+L["Ask the paladins for their plans"] = true
+L["Clear every paladin's plan"] = true
+L["Report"] = true
+L["Report the blessings"] = true
+L["ready"] = true
+L["DI %s"] = true
+L["LoH %s"] = true
+L["%d Symbols"] = true
+L["Lets other paladins change your blessings without being the leader or an assistant."] = true
+L["Free Assignment"] = true
+L["Report the blessings to"] = true
+L["Asked the group's paladins for their plans."] = true
+L["Clear every paladin's blessings and auras?"] = true
+L["There are no paladins to report."] = true
+L["--- End of blessings ---"] = true
+L["--- Paladin blessings ---"] = true
 L["Right-click: turn Salvation off or open assignments."] = true
 L["Gives Salvation, on top of the class blessing, to everyone but tanks."] = true
 L["Gives Salvation to everyone but tanks"] = true
