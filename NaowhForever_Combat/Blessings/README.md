@@ -169,6 +169,7 @@ NaowhForever_Combat/Blessings/
   next spell and how many are due. The buttons take `/click` in a macro: `NaowhForeverBlessNext`,
   `NaowhForeverBlessNextGreater`, `NaowhForeverBlessAuto`, `NaowhForeverBlessAura` and `NaowhForeverBlessFury`.
   The wheel on the aura button cycles through the auras you know, out of combat.
+  Class Buttons off hides every class button, leaving the Auto Buff button, Salvation and the key bindings.
 - Use in Party and Use When Solo (both on) hide the bar in a party or alone; a raid always shows it. Hide the
   Bench (off) drops the raid members past `ceil(size / 5)` groups in a raid dungeon, from `GetInstanceInfo`'s
   size and the group each member is in. The status colors (missing, running out, only own blessings) can be

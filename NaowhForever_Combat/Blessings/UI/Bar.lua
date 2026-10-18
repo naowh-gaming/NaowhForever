@@ -382,7 +382,11 @@ function Refresh()
     local x = PlaceSelf(0)
     local roster = B.Visible(Roster())
     local byClass = ByClass(roster)
-    x = PlaceCells(byClass, x)
+    if S.Get("blessShowClasses") then
+        x = PlaceCells(byClass, x)
+    else
+        for _, cell in pairs(cells) do HideCell(cell) end
+    end
     local members, tankClass
     if Store().salv and Learned(B.SALVATION) then members, tankClass = B.SalvationGroup(roster) end
     x = PlaceSalv(members, tankClass, x)

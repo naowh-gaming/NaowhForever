@@ -496,6 +496,8 @@ page:Card({
           help = "Casts Righteous Fury on yourself. A red ! means it is not up." },
         { key = "blessShowAuto", label = "Auto Buff Button", toggle = true, needs = On, why = BLESSINGS_OFF,
           help = "Left-click blesses the next player in need, right-click the next Greater Blessing." },
+        { key = "blessShowClasses", label = "Class Buttons", toggle = true, needs = On, why = BLESSINGS_OFF,
+          help = "Off leaves only the Auto Buff button and the key bindings." },
         { key = "blessShowLabels", label = "Class Labels", toggle = true, needs = On, why = BLESSINGS_OFF,
           help = "Each class's name or icon, under its button or beside it when the bar is vertical." },
         { key = "blessLabelStyle", label = "Class Label Style", choice = LABEL_STYLES, needs = LabelsOn,
