@@ -22,20 +22,38 @@ local TEXT_BLESS = ns.L("Bless")
 local TEXT_BLESS_TIP = ns.L("Left-click: cast this player's blessing.\nRight-click: give "
     .. "them their own blessing, or back to the class default.")
 local TEXT_AFTER_COMBAT = ns.L("The player list opens after combat.")
+local TEXT_MAIN_TANK = ns.L("Main Tank")
 local TEXT_CLOSE = "X"
 
 local flyout, rows, flyoutClass
 local members = {}
 
+local function ToggleMainTank(unit)
+    if GetPartyAssignment("MAINTANK", unit) then
+        ClearPartyAssignment("MAINTANK", unit)
+    else
+        SetPartyAssignment("MAINTANK", unit)
+    end
+    B.Changed()
+end
+
 local function PlayerMenu(owner, member)
     local store = Store()
+    local function Can(entry)
+        return B.Learned(entry) and (store.players[member.guid] == entry.key or B.Allowed(member.class, entry.key))
+    end
     B.OpenMenu(owner, Ambiguate(member.who, "short"), BLESSINGS,
         function() return store.players[member.guid] end,
         function(key)
             store.players[member.guid] = key
             B.BroadcastSoon()
             B.Changed()
-        end, TEXT_DEFAULT)
+        end, TEXT_DEFAULT, Can, function(root)
+            if not (IsInRaid() and B.CanAssign("player")) then return end
+            root:CreateDivider()
+            root:CreateCheckbox(TEXT_MAIN_TANK, function() return GetPartyAssignment("MAINTANK", member.unit) end,
+                function() ToggleMainTank(member.unit) end)
+        end)
 end
 
 local function NewRow(index)

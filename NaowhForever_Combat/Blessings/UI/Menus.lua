@@ -48,7 +48,7 @@ function B.SetOwn(column, key)
     B.Changed()
 end
 
-function B.OpenMenu(owner, title, list, current, choose, noneText, can)
+function B.OpenMenu(owner, title, list, current, choose, noneText, can, extra)
     can = can or Learned
     MenuUtil.CreateContextMenu(owner, function(_, root)
         root:CreateTitle(title)
@@ -59,6 +59,7 @@ function B.OpenMenu(owner, title, list, current, choose, noneText, can)
             end
         end
         root:CreateRadio(noneText, function() return current() == nil end, function() choose(nil) end)
+        if extra then extra(root) end
     end)
 end
 
@@ -97,7 +98,7 @@ function B.ClassMenu(owner, class, inSettings)
     MenuUtil.CreateContextMenu(owner, function(_, root)
         root:CreateTitle(ClassName(class))
         for _, entry in ipairs(BLESSINGS) do
-            if Learned(entry) then
+            if Learned(entry) and (Store().classes[class] == entry.key or B.Allowed(class, entry.key)) then
                 root:CreateRadio(SpellName(entry.key), function() return Store().classes[class] == entry.key end,
                     function() B.SetOwn(class, entry.key) end)
             end
