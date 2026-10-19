@@ -175,7 +175,7 @@ local function AddToLists(id)
 end
 
 local function Wanted(id, chainsOnly)
-    return Q.Available(id) and (chainOf[id] ~= nil or not chainsOnly)
+    return Q.Available(id) and (chainOf[id] ~= nil or not chainsOnly or Q.Dungeon(id))
 end
 
 local function AddToGiver(id, trivial)
