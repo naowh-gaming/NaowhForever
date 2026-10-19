@@ -281,6 +281,8 @@ NaowhForever_Combat/AuraBuffs/
   font are applied on the next refresh out of combat after a setting change.
 - `CAMP_BAG_SCALE` makes the bag about half the fire, as in Jason's mockup; `CAMP_BAG_FALLBACK_ICON`
   is the question mark, shown until the client has the bag's icon.
+- The bag's icon is set with a plain `SetTexture`, never through `Parts.Smooth`: a game icon file
+  (134400) loaded with the TRILINEAR filter crashed the Forever client on its disk thread.
 - The Round icon's plate follows the theme's Panels color (`ns.ThemeTint`), and a black circle one
   pixel wider behind it is its 1px round border. The black disk extends past the time ring on both
   sides, edging it.

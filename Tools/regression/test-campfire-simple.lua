@@ -154,7 +154,7 @@ local function Fixture(settings)
         SetVertexColor = function(f, r, g, b, a) f.r, f.g, f.b, f.a = r, g, b, a end,
         SetColorTexture = function(f, r, g, b, a) f.r, f.g, f.b, f.a = r, g, b, a end,
         SetGradient = function(f, _, from, to) f.from, f.to = from, to end,
-        SetTexture = function(f, texture) f.texture = texture end,
+        SetTexture = function(f, texture, _, _, filter) f.texture, f.filter = texture, filter end,
         Show = function(f) f.shown = true end,
         Hide = function(f) f.shown = false end,
         SetShown = function(f, shown) f.shown = shown and true or false end,
@@ -1489,6 +1489,7 @@ do
     check("bag: at the fire's lower right", bag.pt.CENTER == 500 + reach and bag.pty.CENTER == 300 - 32)
     check("bag: round like the fire, its plate, mask and ring",
         bag.plate and bag.mask and bag.ring and bag.tex.texture == St.CAMP_BAG_FALLBACK_ICON)
+    check("bag: a game icon is never loaded TRILINEAR, which crashed the client", bag.tex.filter == nil)
     s.itemIcons[BAG] = 777
     s.fire("UNIT_AURA")
     check("bag: the item's own icon once the client has it", bag.tex.texture == 777)

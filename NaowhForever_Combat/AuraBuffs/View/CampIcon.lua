@@ -41,7 +41,8 @@ local function Ring(icon)
 end
 
 function Look.Art(icon, bare, art)
-    icon.tex = Parts.Smooth(icon:CreateTexture(nil, "ARTWORK"), art or ART)
+    icon.tex = Parts.Smooth(icon:CreateTexture(nil, "ARTWORK"), not art and ART or nil)
+    if art then icon.tex:SetTexture(art) end
     icon.tex:SetAllPoints()
     if bare then
         icon.tex:SetTexCoord(ART_CROP[1], ART_CROP[2], ART_CROP[3], ART_CROP[4])
