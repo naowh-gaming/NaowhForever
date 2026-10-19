@@ -8147,20 +8147,6 @@
    "x": 39.4,
    "y": 82.2
   },
-  "8410": {
-   "after": [],
-   "dungeon": false,
-   "giver": "Haromm",
-   "level": 50,
-   "map": 1435,
-   "name": "Elemental Mastery",
-   "reqclass": 64,
-   "reqlevel": 50,
-   "reqrace": 0,
-   "side": 2,
-   "x": 48.2,
-   "y": 57.9
-  },
   "8411": {
    "after": [],
    "dungeon": false,

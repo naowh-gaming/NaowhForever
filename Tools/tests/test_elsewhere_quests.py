@@ -67,6 +67,17 @@ class GeometryMap(unittest.TestCase):
     def test_overlap_goes_to_the_map_it_is_well_inside(self):
         self.assertEqual(elsewhere_quests.geometry_map("0,20.0,500.0", self.rects), 1431)
 
+    def test_near_every_edge_takes_the_smallest(self):
+        rects = [self.rects[0], (1431, "0", -1000.0, 0.0, 10.0, 1000.0, (0.0, 0.0), (1.0, 1.0))]
+        self.assertEqual(elsewhere_quests.geometry_map("0,5.0,500.0", rects), 1429)
+
+    def test_part_of_a_map_projects_onto_its_part(self):
+        # The zone's rectangle is the right half of its map image, so the spawn on its western
+        # edge is in the middle of the map, not on an edge, and beats the bigger map.
+        rects = [(1429, "0", 0.0, 0.0, 1000.0, 1000.0, (0.5, 0.0), (1.0, 1.0)),
+                 (1431, "0", -1000.0, -1000.0, 2000.0, 3000.0, (0.0, 0.0), (1.0, 1.0))]
+        self.assertEqual(elsewhere_quests.geometry_map("0,500.0,1000.0", rects), 1429)
+
     def test_other_continent_and_outside(self):
         self.assertIsNone(elsewhere_quests.geometry_map("1,450.0,450.0", self.rects))
         self.assertIsNone(elsewhere_quests.geometry_map("0,5000.0,450.0", self.rects))

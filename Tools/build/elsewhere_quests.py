@@ -19,8 +19,9 @@ Tools/build/dungeon_quests.py only the Journal's. This adds the rest from what a
   (its README), and --resolved reads its SavedVariables file into
   Tools/data/completo_positions.json. The client misses too along zone borders, so its answer is
   taken only where the zone rectangles (UiMapAssignment) pick the same map: the smallest one the
-  spawn is at least EDGE map percent inside, else the smallest. A giver whose spawns land on more
-  than one map is left out, as is one whose spawns there stand apart. --resolved also says how often the client agrees with Wowhead on the givers both place.
+  spawn is at least EDGE map percent inside, else the smallest, and only on the map. A giver is
+  placed this way only when every spawn of it is, and not when they land on more than one map or
+  stand apart on one. Each run says how often that agrees with Wowhead on the givers both place.
 - Holiday and event quests (seasonal, Darkmoon Faire, the Ahn'Qiraj War) are left out, as are
   profession quests: nothing tells the addon your professions, so each would pin for everyone.
 
@@ -150,18 +151,18 @@ def main():
                         help="write the spawns not resolved yet for the QuestPositions addon")
     parser.add_argument("--resolved", metavar="FILE", help="the QuestPositions addon's SavedVariables file")
     args = parser.parse_args()
-    offline, resolved = args.offline, args.resolved
     data, quests, _, after = dungeon_quests.cmangos()
     in_forever = {int(r["ID"]) for r in wago.table("QuestV2")}
     sorts = {-int(r["ID"]): r["SortName_lang"] for r in wago.table("QuestSort")}
     have = {q["id"] for z in completo_quests.load(ZONES).values() for q in z["quests"]} | {int(k) for k in completo_quests.load(DUNGEON)["quests"]}
     pages = completo_quests.load(QUESTS)
     positions = completo_quests.load(POSITIONS)
-    if resolved:
-        positions.update(read_resolved(Path(resolved).read_text(encoding="utf-8")))
+    if args.resolved:
+        positions.update(read_resolved(Path(args.resolved).read_text(encoding="utf-8")))
         completo_quests.save(POSITIONS, positions)
     rects = zone_rects()
-    confident = {k: v for k, v in positions.items() if v and geometry_map(k, rects) == v[0]}
+    confident = {k: v for k, v in positions.items()
+                 if v and 0 <= v[1] <= 100 and 0 <= v[2] <= 100 and geometry_map(k, rects) == v[0]}
     names = {int(r["Entry"]): r["Name"] for r in data["creature_template"]}
     spawns = {}
     for r in data["creature"]:
@@ -197,7 +198,7 @@ def main():
     spots = giver_spots()
     todo = [i for i in wanted if str(i) not in pages and not any(spots.get(n) for n in npcs[i])]
     print(f"{len(wanted)} quests, {len(todo)} quest pages to fetch")
-    if not offline:
+    if not args.offline:
         for n, qid in enumerate(todo, 1):
             try:
                 pages[str(qid)] = completo_quests.fetch_quest(qid)
@@ -220,12 +221,16 @@ def main():
         own = spot_of((pages.get(str(qid)) or {}).get("start"))
         found = {own} if own else set().union(*(spots.get(n, set()) for n in npcs[qid]))
         if not found:
-            needed.update(key for n in npcs[qid] for key in spawns.get(n, ()))
+            keys = [key for n in npcs[qid] for key in spawns.get(n, ())]
+            needed.update(keys)
+            if any(key not in positions for key in keys):
+                skipped["giver not resolved in game yet"] += 1
+                continue
+            if not all(key in confident for key in keys):
+                skipped["giver near a zone border or on no zone"] += 1
+                continue
             found = client_spots(npcs[qid], spawns, confident, names)
             by_client += len(found) == 1
-            if not found and client_spots(npcs[qid], spawns, positions, names):
-                skipped["giver near a zone border"] += 1
-                continue
         if len(found) != 1:
             skipped["no giver spot" if not found else "giver in more than one spot"] += 1
             continue
@@ -249,12 +254,14 @@ def main():
         unresolved = {key for key in needed if key not in positions}
         write_resolver(unresolved)
         print(f"wrote {RESOLVER.relative_to(paths.ROOT)}: {len(unresolved)} positions to resolve in game")
-    resolved_check = [(n, spot) for n, spot in check.items() if any(k in confident for k in spawns[n])]
-    on_map = sum(any(confident[k][0] == m for k in spawns[n] if k in confident) for n, (m, _, _, _) in resolved_check)
-    agree = sum(any(confident[k][0] == m and math.hypot(confident[k][1] - x, confident[k][2] - y) <= CLOSE
-                    for k in spawns[n] if k in confident)
-                for n, (m, x, y, _) in resolved_check)
-    total = len(resolved_check)
+    total = on_map = agree = 0
+    for n, (m, x, y, _) in check.items():
+        if not all(k in confident for k in spawns[n]):
+            continue
+        total += 1
+        same = [confident[k] for k in spawns[n] if confident[k][0] == m]
+        on_map += bool(same)
+        agree += any(math.hypot(s[1] - x, s[2] - y) <= CLOSE for s in same)
     if total:
         print(f"of the {total} givers Wowhead places that the answers taken place too, {on_map} "
               f"({on_map / total:.1%}) are on Wowhead's map, {agree} ({agree / total:.1%}) within {CLOSE} of its spot")
