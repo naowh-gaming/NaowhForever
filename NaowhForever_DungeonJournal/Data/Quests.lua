@@ -122,7 +122,7 @@ J.QuestData = {
         { 96986, "The Grave Knight", 33, "H", true, "Hillsbrad Foothills, Tarren Mill - Melisara (62.6, 20.6)", 1424, 62.6, 20.6 },
         { 96988, "Source of Power", 33, "H", true, "Undercity - Doctor Martin Felben (46.6, 74.4)", 1458, 46.6, 74.4 },
         { 96984, "Heart of Disruption", 33, "H", false, "Silverpine Forest, near the City of Dalaran - Image of Archmage Modera, after Blood in the Streets (68.6, 45.2)", 1421, 68.6, 45.2 },
-        { 96987, "Opportunistic Education", 33, "H", true, "By the City of Dalaran's sewer entrance - Rexxie Copperclutch" },
+        { 96987, "Opportunistic Education", 33, "H", true, "City of Dalaran, inside by the sewer entrance - Rexxie Copperclutch" },
     } },
     { name = "Scarlet Monastery - Graveyard", map = 189, levels = { 26, 36 }, quests = {
         { 1051, "Vorrel's Revenge", 25, "H", true, "Scarlet Monastery, Graveyard - Vorrel Sengutz" },
