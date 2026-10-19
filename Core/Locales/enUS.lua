@@ -7065,3 +7065,4 @@ L["Placed when learned:"] = true
 L["(level %d)"] = true
 L["Fills in as you learn them"] = true
 L["A website layout always does: each spell drops into its slot when learned."] = true
+L["Click to use your Sleeping Bag."] = true
