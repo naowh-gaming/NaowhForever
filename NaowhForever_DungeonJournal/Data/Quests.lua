@@ -115,7 +115,7 @@ J.QuestData = {
         { 1144, "Willix the Importer", 22, "B", false, "Razorfen Kraul, Tent near final boss - Willix the Importer" },
     } },
     { name = "City of Dalaran", map = 2959, levels = { 28, 33 }, quests = {
-        { 92457, "Starving Arcane", 33, "B", true, "Outside the City of Dalaran - Archmage Modera" },
+        { 92457, "Starving Arcane", 33, "A", true, "Outside the City of Dalaran - Archmage Modera" },
         { 92489, "Power Overwhelming", 33, "A", true, "Stormwind - High Sorcerer Andromath (48.7, 87.8)", 1453, 48.7, 87.8 },
         { 92458, "Heart of Disruption", 33, "A", false, "Near the City of Dalaran - Image of Archmage Modera, after An Alarming Request" },
         { 92456, "A Green Sample", 33, "A", true, "Stormwind - Shylamiir (31.5, 62.6)", 1453, 31.5, 62.6 },
