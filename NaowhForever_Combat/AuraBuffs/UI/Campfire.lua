@@ -582,7 +582,7 @@ end
 
 local function Refresh(_, event)
     ShowCamp(event)
-    CampBag.Sync(icon, not unlocked and not BarShown())
+    CampBag.Sync(icon, not unlocked and not BarShown() and On() and Camp.InOpenWorld())
 end
 
 local function Layout(simple)
@@ -603,6 +603,7 @@ local function Listen()
     events:RegisterEvent("PLAYER_REGEN_ENABLED")
     events:RegisterEvent("PLAYER_REGEN_DISABLED")
     events:RegisterEvent("BAG_UPDATE_DELAYED")
+    events:RegisterEvent("BAG_UPDATE_COOLDOWN")
 end
 
 local function Apply()

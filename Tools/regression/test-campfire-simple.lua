@@ -147,6 +147,7 @@ local function Fixture(settings)
         GetStringWidth = function(f) return Width(rawget(f, "text") or "", rawget(f, "size") or 12) end,
         SetFont = function(f, path, size, outline) f.font, f.path, f.size, f.outline, f.flags = path, path, size, outline, outline end,
         SetAlpha = function(f, a) f.alpha = a end,
+        SetCooldown = function(f, start, duration) f.cooldownStart, f.cooldownDuration = start, duration end,
         SetCooldownFromExpirationTime = function(f, expiry, duration)
             f.cooldownExpiry, f.cooldownDuration = expiry, duration
         end,
@@ -342,6 +343,11 @@ local function Fixture(settings)
         },
         C_StringUtil = { CreateNumericRuleFormatter = function()
             return { SetBreakpoints = function(fmt, points) fmt.points = points end }
+        end },
+        C_Container = { GetItemCooldown = function()
+            local cd = state.bagCooldown
+            if not cd then return 0, 0, 1 end
+            return cd.start, cd.duration, 1
         end },
         C_Item = { GetItemCount = function(id) return state.carried[id] or 0 end,
             GetItemIconByID = function(id) return state.itemIcons[id] end },
@@ -1495,6 +1501,19 @@ do
     check("bag: the item's own icon once the client has it", bag.tex.texture == 777)
     bag.scripts.OnEnter(bag)
     check("bag: its tooltip says a click uses it", s.tipText():find("Click to use your Sleeping Bag.", 1, true))
+    check("bag: ready, in full color with no countdown", not bag.tex.desaturated and not bag.timer.shown)
+    s.bagCooldown = { start = s.now, duration = 1.5 }
+    s.fire("BAG_UPDATE_COOLDOWN")
+    check("bag: the global cooldown is not the bag's", not bag.tex.desaturated and not bag.timer.shown)
+    s.bagCooldown = { start = s.now, duration = 600 }
+    s.fire("BAG_UPDATE_COOLDOWN")
+    check("bag: used, it greys with a countdown", bag.tex.desaturated and bag.timer.shown
+        and bag.timer.cooldownStart == s.now and bag.timer.cooldownDuration == 600)
+    local waits = #s.timers
+    s.fire("UNIT_AURA")
+    check("bag: one wake per cooldown, not per refresh", #s.timers == waits)
+    s.advance(601)
+    check("bag: the cooldown over, it is ready again", not bag.tex.desaturated and not bag.timer.shown)
     do
         s.auras[CAMP] = { duration = 3600, expirationTime = s.now + 2400, auraInstanceID = 1 }
         s.fire("UNIT_AURA")
@@ -1526,14 +1545,27 @@ do
     check("bag: combat over, it hides", not bag.shown)
     s.auras[NEARBY] = {}
     s.S.Set("campBuffSide", "right")
-    check("bag: with the buffs on the right, at the lower left", bag.shown and bag.pt.CENTER == 500 - reach)
+    check("bag: buffs set to the right but none shown, still at the lower right",
+        bag.shown and bag.pt.CENTER == 500 + reach)
+    s.auras[CAMP] = { duration = 3600, expirationTime = s.now + 60, auraInstanceID = 2 }
+    s.fire("UNIT_AURA")
+    check("bag: with the buffs showing on the right, at the lower left",
+        icon.buffs.shown and bag.shown and bag.pt.CENTER == 500 - reach)
+    s.S.Set("campShowUnder", true)
+    s.auras[CAMP] = { duration = 3600, expirationTime = s.now + 3000, auraInstanceID = 3 }
+    s.fire("UNIT_AURA")
+    check("bag: the fire hidden until the camp runs low, the bag stays, at the lower right",
+        not icon.shown and bag.shown and bag.pt.CENTER == 500 + reach)
+    s.S.Set("campShowUnder", false)
+    s.auras[CAMP] = nil
+    s.fire("UNIT_AURA")
     s.S.Set("campBuffSide", "below")
     s.S.Set("campIconSize", 80)
     check("bag: a new icon size resizes it", bag.w == 80 * St.CAMP_BAG_SCALE)
     s.S.Set("campShowMissing", false)
-    check("bag: hidden with the fire", not icon.shown and not bag.shown)
+    check("bag: the fire hidden while missing, the bag stays", not icon.shown and bag.shown)
     s.S.Set("campShowMissing", true)
-    check("bag: back with the fire", bag.shown)
+    check("bag: the fire back, the bag still there", icon.shown and bag.shown)
     s.S.Set("campStyle", "simple")
     check("bag: Round only, never on the Simple bar", not bag.shown)
     s.S.Set("campStyle", "round")

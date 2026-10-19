@@ -167,6 +167,19 @@ function Look.NewBag(bag, art)
     bag.label = Parts.HudText(ns.Font(bag, BAG_TEXT_SIZE, nil, T.accentSoft))
     bag.label:SetPoint("TOP", bag, "BOTTOM", 0, -LABEL_GAP)
     bag.label:SetText(TEXT_SLEEPING_BAG)
+    bag.timer = CreateFrame("Cooldown", nil, bag, "CooldownFrameTemplate")
+    bag.timer:SetAllPoints()
+    bag.timer:SetSwipeTexture(MASK)
+    bag.timer:SetDrawBling(false)
+    bag.timer:SetDrawEdge(false)
+    bag.timer:Hide()
+end
+
+function Look.BagCooldown(bag, start, duration)
+    local on = start ~= nil
+    bag.tex:SetDesaturated(on)
+    if on then bag.timer:SetCooldown(start, duration) end
+    bag.timer:SetShown(on)
 end
 
 function Look.BagLayout(bag)
@@ -179,7 +192,7 @@ function Look.BagSpot(icon, bag)
     local x, y = icon:GetCenter()
     if not x then return end
     local reach = (icon:GetWidth() + bag:GetWidth()) / 2 + TRACK_OUT + BAG_GAP
-    if S.Get("campBuffSide") == "right" then reach = -reach end
+    if S.Get("campBuffSide") == "right" and icon:IsShown() and icon.buffs:IsShown() then reach = -reach end
     return x + reach, y - icon:GetHeight() / 2
 end
 

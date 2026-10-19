@@ -19,7 +19,9 @@ minimap and Top Bar button). Its on/off switches and their defaults come from
   /sit emote (Round: the icon and the label under it; Simple: the whole bar); it glows brighter
   under the mouse. Camp Nearby's fire does the same. With Round, while you carry the Cozy Sleeping
   Bag and a campfire is in range (or you sit at one), a smaller round Sleeping Bag icon sits at the
-  fire's lower right (lower left when the buffs are on the right); a click uses the bag.
+  fire's lower right (lower left while the buffs show on the right); a click uses the bag. It stays
+  while the fire itself is hidden (Show Only Under, Show When Missing off). While the
+  bag is on cooldown its icon is grey with a countdown.
 - **Camp Nearby:** the same bar drawn bare (no backdrop, edge or line), larger by its own scale,
   sized to what it says and stacked in the Alerts group (`ns.AlertStack`), with the camp's time
   left inline after a dot while it still runs.
@@ -270,7 +272,7 @@ NaowhForever_Combat/AuraBuffs/
   A lit fire with no Camp Benefits is the hint: grey says no camp, lit says a fire is here to sit at.
 - The Sleeping Bag icon is part of the Campfire, with no switch of its own: Jason's call. Its ID is
   `ns.Shared.Items.SLEEPING_BAG`, the one Discovery's chain uses, since either addon can load
-  without the other. It shows only out of combat, with Round, while the fire icon is shown, the bag
+  without the other. It shows only out of combat, with Round, in the open world, while the bag
   is carried (`C_Item.GetItemCount`, read again on `BAG_UPDATE_DELAYED`) and Campfire Nearby or
   Welcoming Campfire is on you.
 - The Sleeping Bag button is secure (`type1 = "item"`) so a click uses the bag. It is parented to
@@ -281,6 +283,9 @@ NaowhForever_Combat/AuraBuffs/
   font are applied on the next refresh out of combat after a setting change.
 - `CAMP_BAG_SCALE` makes the bag about half the fire, as in Jason's mockup; `CAMP_BAG_FALLBACK_ICON`
   is the question mark, shown until the client has the bag's icon.
+- The bag's cooldown is `C_Container.GetItemCooldown`, read on each refresh and on
+  `BAG_UPDATE_COOLDOWN`; one of `GCD` (1.5 s) or less is the global cooldown, not the bag's. One
+  timer per cooldown end shows it ready again, since no event fires when a cooldown runs out.
 - The bag's icon is set with a plain `SetTexture`, never through `Parts.Smooth`: a game icon file
   (134400) loaded with the TRILINEAR filter crashed the Forever client on its disk thread.
 - The Round icon's plate follows the theme's Panels color (`ns.ThemeTint`), and a black circle one

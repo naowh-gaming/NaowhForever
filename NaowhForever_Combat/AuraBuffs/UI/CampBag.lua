@@ -8,12 +8,15 @@ local Parts = ns.Shared.Parts
 local D, Look = A.CampData, A.CampIcon
 
 local ITEM = ns.Shared.Items.SLEEPING_BAG
+local GCD = A.C.GCD
+local WAKE_PAD = 0.1
 local FALLBACK_ICON = St.CAMP_BAG_FALLBACK_ICON
 local NEARBY, SITTING, SITTING_CRAFT = D.CAMPFIRE_NEARBY, D.WELCOMING_CAMPFIRE, D.WELCOMING_CAMPFIRE_CRAFT
 local TEXT_USE = ns.L("Click to use your Sleeping Bag.")
 
 local bag, dirty
 local waiter
+local readyAt
 
 local CampBag = {}
 A.CampBag = CampBag
@@ -32,6 +35,30 @@ end
 local function OnCombatEnd(self)
     self:UnregisterEvent("PLAYER_REGEN_ENABLED")
     A.Camp.Refresh()
+end
+
+local function OnReady()
+    readyAt = nil
+    A.Camp.Refresh()
+end
+
+local function Secret(value)
+    return issecretvalue ~= nil and issecretvalue(value)
+end
+
+local function Cooldown()
+    local start, duration, enable = C_Container.GetItemCooldown(ITEM)
+    if Secret(start) or Secret(duration) or Secret(enable) then return end
+    if enable == 1 and duration and duration > GCD and start + duration > GetTime() then return start, duration end
+end
+
+local function ShowCooldown()
+    local start, duration = Cooldown()
+    Look.BagCooldown(bag, start, duration)
+    local ends = start and start + duration
+    if not ends or ends == readyAt then return end
+    readyAt = ends
+    C_Timer.After(ends - GetTime() + WAKE_PAD, OnReady)
 end
 
 local function Build()
@@ -61,7 +88,7 @@ local function Near()
 end
 
 local function Wanted(icon, round)
-    return round and icon ~= nil and icon:IsShown() and C_Item.GetItemCount(ITEM) > 0 and Near() ~= nil
+    return round and icon ~= nil and C_Item.GetItemCount(ITEM) > 0 and Near() ~= nil
 end
 
 local function Art()
@@ -104,5 +131,6 @@ function CampBag.Sync(icon, round)
     end
     if not bag then Build() end
     Art()
+    ShowCooldown()
     bag:SetShown(Place(icon))
 end
