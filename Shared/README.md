@@ -306,6 +306,12 @@ What a comment in the code used to say, in short. The house rules behind it are 
   and one Pin Size number means the same on every kind (town 0.5625, quests, library books and Sleeping Bag steps 0.5, rares 0.75).
   On the full screen map pins are `FULL_SCREEN_PIN_SCALE` (1.5) times that: the same size on screen
   as in the small map's window read as too small on a map that fills the screen.
+- `Shared.PinClicks` is called by every clickable map pin as it is placed. While Ctrl is held
+  the pins take no clicks, so a Ctrl+Click on a pin goes to the map itself and places or removes
+  the game's waypoint there. The game's own waypoint pin lets left clicks through, so without
+  this a waypoint on a dungeon entrance or a rare could not be removed. The click is passed by
+  the game, never by addon code: clearing the waypoint from addon code while the map is open
+  would taint its pin. Clicks are turned off, not the mouse, so tooltips still show.
 - `Shared.MapPins` is a plain list, filled at load by the modules that have map pins and read
   only when QoL's Map Options or Map Pins card is drawn, so the load order of the addons does not matter.
   A section is `{ title, order, store, switch, rows, map }`: `map` puts it on the Map Options card instead of Map Pins, `switch` is its own on and off key in `store`, `order` (default 50, after the lower ones, then by load order) where it comes, and `title` its group, none to continue the one above.

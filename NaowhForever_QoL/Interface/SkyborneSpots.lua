@@ -222,6 +222,7 @@ local function MakePinMixin()
     function Pin:CheckMouseButtonPassthrough() end
 
     function Pin:OnAcquired(entry, x, y)
+        ns.Shared.PinClicks(self)
         self.entry = entry
         local size = PinSize(self:GetMap())
         self:SetSize(size, size)

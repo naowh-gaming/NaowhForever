@@ -128,6 +128,7 @@ function NaowhForeverRarePinMixin:OnAcquired(data)
     self.killed = R.Killed(data.npc)
     self:UseFrameLevelType(FRAME_LEVEL, data.kind and MORE_LEVEL or STAR_LEVEL)
     self:EnableMouse(not data.kind)
+    ns.Shared.PinClicks(self, not data.kind)
     local icon = self.Icon
     if not icon:SetAtlas(STAR_ATLAS) then icon:SetTexture(SKULL_FILE) end
     icon:SetDesaturated(self.killed)

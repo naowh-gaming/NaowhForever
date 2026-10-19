@@ -63,6 +63,7 @@ end
 function NaowhForeverQuestGiverPinMixin:CheckMouseButtonPassthrough() end
 
 function NaowhForeverQuestGiverPinMixin:OnAcquired(giver)
+    ns.Shared.PinClicks(self)
     self.quests = self.quests or {}
     wipe(self.quests)
     for i, id in ipairs(giver.quests) do self.quests[i] = id end

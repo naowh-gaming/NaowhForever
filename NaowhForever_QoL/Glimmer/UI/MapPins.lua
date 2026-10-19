@@ -42,6 +42,7 @@ end
 function NaowhForeverGatheredPinMixin:CheckMouseButtonPassthrough() end
 
 function NaowhForeverGatheredPinMixin:OnAcquired(entry)
+    ns.Shared.PinClicks(self)
     local node = G.NODES[entry.id]
     self.entry, self.node = entry, node
     local size = S.Get("gatheredPinSize")

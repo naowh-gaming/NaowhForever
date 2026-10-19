@@ -98,6 +98,7 @@ local function MakePinMixin()
     function Pin:CheckMouseButtonPassthrough() end
 
     function Pin:OnAcquired(group)
+        ns.Shared.PinClicks(self)
         self.group = group
         local size = PinSize(self:GetMap())
         self:SetSize(size, size)
