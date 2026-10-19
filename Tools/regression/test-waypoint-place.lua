@@ -183,4 +183,22 @@ ns.PlaceWaypoint("The Deadmines", 1436, 43.2, 72.4, " (entrance)", nil, true)
 ns.PlaceWaypointRoute("Training run", STOPS)
 Check(not Listening("PLAYER_ENTERING_WORLD"), "so does a route")
 
+-- With TomTom's arrow, a map pin's second click removes that arrow.
+local removed = 0
+env.TomTom = {
+    AddWaypoint = function(_, map, x, y, opts)
+        tomtom[#tomtom + 1] = { map = map, x = x, y = y, title = opts.title }
+        return #tomtom
+    end,
+    RemoveWaypoint = function() removed = removed + 1 end,
+}
+pinOn = false
+ns.ToggleWaypoint("Kaja", 1454, 50.0, 50.0)
+local arrows, gone = #tomtom, removed
+Check(tomtom[arrows].title == "Kaja", "a pin's click: TomTom's arrow")
+ns.ToggleWaypoint("Kaja", 1454, 50.0, 50.0)
+Check(removed == gone + 1 and #tomtom == arrows, "a second click removes it, nothing new")
+ns.ToggleWaypoint("Kaja", 1454, 50.0, 50.0)
+Check(#tomtom == arrows + 1 and removed == gone + 1, "a third places it again")
+
 print(("test-waypoint-place: %d checks passed"):format(checks))
