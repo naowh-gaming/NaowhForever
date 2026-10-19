@@ -106,7 +106,9 @@ Import Website Code, and the Profiles page's Import, accept versioned !NFA1! lay
 Sharing.lua validates the class, slots, action types, byte limits and decode limits before
 saving anything. Confirmation creates a uniquely named set and opens the existing preview;
 it never places actions. Applying remains the normal out-of-combat player action.
-Unfilled website slots and keys not assigned by the website build are preserved.
+Keyboard slots the layout leaves empty are cleared, so the bars end as they were built on the
+website. Gamepad slots, and every slot when the layout carries only macros, are left as they are.
+Keys not assigned by the website build keep what they do.
 Keybinds are restricted to known action-button commands, with at most two per action (192 total).
 Binding syntax supports punctuation, international characters, named keys, mouse buttons 3-31,
 F1-F24 and general or sided modifiers, including Meta. Modifier order is normalized; legacy

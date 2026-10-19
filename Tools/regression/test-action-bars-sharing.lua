@@ -1,4 +1,4 @@
--- Website imports save only after confirmation, preserve unrelated slots and reject unsafe data.
+-- Website imports save only after confirmation, clear the keyboard slots they leave empty and reject unsafe data.
 local checks = 0
 local function Check(label, value) assert(value, label); checks = checks + 1 end
 local payload, confirmation, opened, printed
@@ -36,7 +36,7 @@ end
 payload = Valid()
 local name, set = sharing.Decode("!NFA1!test")
 Check("valid name", name == "My bars")
-Check("unfilled keyboard and gamepad slots preserved", set.choices.skip[2] and set.choices.skip[181])
+Check("unfilled keyboard slots cleared, gamepad slots kept", not set.choices.skip[2] and set.choices.skip[181])
 Check("filled slot imported", not set.choices.skip[1] and set.slots[1].id == 100)
 Check("keybind imported", set.bindings["SHIFT-Q"] == "ACTIONBUTTON1" and set.choices.keys)
 for _, key in ipairs({ "CTRL-[", "CTRL-;", "ALT-\\", "NUMPAD0", "CTRL-NUMPADPLUS", "NUMPADENTER",
@@ -100,7 +100,7 @@ payload = Valid()
 payload.slots = {}
 payload.macros = { { name = "Shout", body = "/yell hi" } }
 set = select(2, sharing.Decode("!NFA1!test"))
-Check("a layout of macros alone is accepted", set and #set.macros == 1 and set.choices.skip[1])
+Check("a layout of macros alone is accepted and leaves the bars as they are", set and #set.macros == 1 and set.choices.skip[1] and set.choices.skip[2] and set.choices.skip[181])
 sharing.Import("!NFA1!test")
 Check("nothing saved or opened before confirmation", next(sets) == nil and opened == nil and confirmation ~= nil)
 confirmation()
