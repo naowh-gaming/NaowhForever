@@ -39,6 +39,7 @@ Check("valid name", name == "My bars")
 Check("unfilled keyboard slots cleared, gamepad slots kept", not set.choices.skip[2] and set.choices.skip[181])
 Check("filled slot imported", not set.choices.skip[1] and set.slots[1].id == 100)
 Check("keybind imported", set.bindings["SHIFT-Q"] == "ACTIONBUTTON1" and set.choices.keys)
+Check("its keys replace the action's old ones", set.choices.website == true)
 for _, key in ipairs({ "CTRL-[", "CTRL-;", "ALT-\\", "NUMPAD0", "CTRL-NUMPADPLUS", "NUMPADENTER",
     "ESCAPE", "ENTER", "DELETE", "CTRL-UP", "SHIFT-BUTTON31", "META-F24", "LCTRL-Q", "OEM_102", "\195\137" }) do
     payload = Valid()

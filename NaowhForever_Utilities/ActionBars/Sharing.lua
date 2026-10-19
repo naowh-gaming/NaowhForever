@@ -147,7 +147,7 @@ local function Decode(text)
         if not slots[slot] and (count == 0 or slot > A.C.KEYBOARD_SLOTS) then skip[slot] = true end
     end
     return data.name, { slots = slots, macros = macros, bindings = bindings,
-        choices = { skip = skip, keys = next(bindings) ~= nil, macros = true, macroOff = {} } }
+        choices = { skip = skip, keys = next(bindings) ~= nil, website = true, macros = true, macroOff = {} } }
 end
 
 local function Ready()
