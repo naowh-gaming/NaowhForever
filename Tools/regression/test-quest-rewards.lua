@@ -1,5 +1,5 @@
 -- Run with Lua 5.1 from the repository root: the saved quest rewards list reads, removes and clears the picks,
--- tolerates old and damaged entries, and falls back to the title kept at save time; the window's X removes that
+-- keeps them per class and hands old classless picks to the first class to log in, tolerates damaged entries, and falls back to the title kept at save time; the window's X removes that
 -- quest's pick, loaded with the Shared files and the window against stubs.
 local Load = dofile("Tools/regression/load_files.lua")
 local TocFiles = dofile("Tools/regression/toc_files.lua")
@@ -46,7 +46,9 @@ local timers = {}
 local tooltip = Frame()
 tooltip.GetOwner = function() return nil end
 
-local db, account = { questRewards = { [10] = 111, [20] = 222, [30] = 333, bad = 5, [40] = "x" } }, {}
+local db, account = { questRewards = { [10] = 111, [20] = 222, [30] = 333, bad = 5, [40] = "x",
+    PALADIN = { [10] = 999, [50] = 555 } } }, {}
+local class = "DRUID"
 local S = { Get = function() end, Set = function() end, DB = function() return db end }
 local ns = { L = dofile("Tools/regression/locale_stub.lua").L, Upper = string.upper, Lower = string.lower,
     QoLSettings = S, Print = NOTHING, Apply = NOTHING, AccountSettings = function() return account end,
@@ -70,6 +72,7 @@ local titles = { [10] = "Ten" }
 local env = setmetatable({
     NaowhForever = ns,
     CreateFrame = function(_, _, parent) return Frame(parent) end,
+    UnitClass = function() return "Class", class end,
     hooksecurefunc = function(a, b, c)
         if type(a) ~= "table" then return end
         local original = a[b]
@@ -118,6 +121,10 @@ local list = R.List({})
 table.sort(list)
 check("only well-formed picks are listed", #list == 3 and list[1] == 10 and list[3] == 30)
 check("an old numeric pick reads back its item", R.ItemID(20) == 222)
+check("old classless picks move under the class that logs in", db.questRewards.DRUID[20] == 222
+    and db.questRewards[20] == nil and db.questRewards[40] == nil and db.questRewards.bad == 5)
+check("another class keeps its own picks", db.questRewards.PALADIN[10] == 999 and db.questRewards.PALADIN[50] == 555
+    and R.ItemID(50) == nil and R.ItemID(10) == 111)
 
 check("a cached title wins", R.Title(10) == "Ten")
 check("no title is nil", R.Title(20) == nil)
@@ -127,10 +134,17 @@ check("the title kept at save time is the fallback", R.Title(20) == "Kept")
 local changed = 0
 R.OnChange(function() changed = changed + 1 end)
 R.Remove(20)
-check("remove drops that quest only", db.questRewards[20] == nil and db.questRewards[10] == 111 and changed == 1)
+local mine = db.questRewards.DRUID
+check("remove drops that quest only", mine[20] == nil and mine[10] == 111 and changed == 1)
 R.Clear()
-check("clear drops every pick", next(db.questRewards) == nil and changed == 2)
+check("clear drops this class's picks only", next(mine) == nil and db.questRewards.PALADIN[10] == 999
+    and changed == 2)
 check("an empty list is empty", #R.List({}) == 0)
+db.questRewards = { [10] = 111, DRUID = { [10] = 222 } }
+check("a class's own pick wins over an old classless one", R.ItemID(10) == 222 and db.questRewards[10] == nil)
+db.questRewards = { [10] = 111 }
+ns.Apply()
+check("a profile switch tells the window", changed == 3)
 
 local views = {}
 local NewView = ns.Shared.View.New
@@ -139,7 +153,7 @@ ns.Shared.View.New = function(...)
     views[#views + 1] = view
     return view
 end
-db.questRewards = { [10] = 111, [20] = 222, [30] = 333 }
+db.questRewards = { DRUID = { [10] = 111, [20] = 222, [30] = 333 }, PALADIN = { [60] = 666 } }
 ns.OpenQuestRewards()
 local rewardView = views[1]
 local function Find(questID)
@@ -152,8 +166,8 @@ local row = Find(20)
 check("the window lists a row for each saved reward", rewardView.pools.item.used == 3 and row and row.itemID == 222
     and row.remove.shown == true)
 row.remove.scripts.OnClick(row.remove)
-check("its X removes that quest's reward only", db.questRewards[20] == nil and db.questRewards[10] == 111
-    and db.questRewards[30] == 333)
+mine = db.questRewards.DRUID
+check("its X removes that quest's reward only", mine[20] == nil and mine[10] == 111 and mine[30] == 333)
 while #timers > 0 do table.remove(timers, 1)() end
 check("and the row goes", Find(20) == nil and Find(10) ~= nil)
 

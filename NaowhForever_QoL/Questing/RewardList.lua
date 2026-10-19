@@ -1,4 +1,4 @@
--- RewardList.lua: the Saved Quest Rewards window: every reward you saved for a quest, to look over and remove.
+-- RewardList.lua: the Saved Quest Rewards window: every reward this class saved for a quest, to look over and remove.
 local ns = _G.NaowhForever
 
 local T = ns.THEME
@@ -19,13 +19,13 @@ local SUMMARY_SIZE = 12
 local EVENTS = { "QUEST_DATA_LOAD_RESULT" }
 
 local TEXT_TITLE = ns.L("Saved Quest Rewards")
-local TEXT_SUBTITLE = ns.L("Picked for you when you hand the quest in. Alt-click a reward to save one.")
-local TEXT_EMPTY = ns.L("Nothing saved. Alt-click a quest reward to save it for that quest.")
+local TEXT_SUBTITLE = ns.L("Picked for you when you hand the quest in. Alt-click a reward to save one for this class.")
+local TEXT_EMPTY = ns.L("Nothing saved for this class. Alt-click a quest reward to save it for that quest.")
 local TEXT_QUEST = ns.L("Quest %d")
 local TEXT_REWARD, TEXT_REWARDS = ns.L("%d saved reward"), ns.L("%d saved rewards")
 local TEXT_REMOVE = ns.L("Remove")
 local TEXT_CLEAR = ns.L("Clear All")
-local TEXT_CLEAR_ASK = ns.L("Remove every saved quest reward in this profile?")
+local TEXT_CLEAR_ASK = ns.L("Remove every saved quest reward for this class?")
 
 local window, view, summary
 local ids = {}
@@ -110,5 +110,5 @@ Shared.Settings.Page(PAGE, ns.QoLSettings):Window({
     text = "Open Saved Rewards",
     open = ns.OpenQuestRewards,
     headline = "Saved Quest Rewards",
-    detail = "Every reward you saved for a quest, to look over and remove.",
+    detail = "Every reward this class saved for a quest, to look over and remove.",
 })
