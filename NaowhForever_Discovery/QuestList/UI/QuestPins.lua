@@ -37,11 +37,15 @@ end
 local function SetMark(icon, giver)
     icon:SetVertexColor(1, 1, 1)
     icon:SetDesaturated(false)
-    if giver.grey and icon:SetAtlas(GREY_ATLAS) then return end
-    local tint = giver.grey and Style.GREY_RGB or giver.dungeon and Style.DUNGEON_RGB
-    if not tint and giver.repeatable then
+    local tint
+    if giver.repeatable and not giver.dungeon then
         if icon:SetAtlas(REPEAT_ATLAS) then return end
         tint = Style.REPEAT_RGB
+    elseif giver.grey then
+        if icon:SetAtlas(GREY_ATLAS) then return end
+        tint = Style.GREY_RGB
+    elseif giver.dungeon then
+        tint = Style.DUNGEON_RGB
     end
     if not icon:SetAtlas(BANG_ATLAS) then icon:SetTexture(BANG_FILE) end
     if not tint then return end
