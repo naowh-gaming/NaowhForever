@@ -157,7 +157,7 @@ local function GiverEntry(quest)
     local entry = giverAt[key]
     if entry then return entry end
     entry = table.remove(spare) or { quests = {} }
-    entry.x, entry.y, entry.grey, entry.repeatable = quest[X], quest[Y], true, true
+    entry.x, entry.y, entry.grey, entry.repeatable, entry.dungeon = quest[X], quest[Y], true, true, false
     giverAt[key] = entry
     givers[#givers + 1] = entry
     return entry
@@ -183,6 +183,7 @@ local function AddToGiver(id, trivial)
     table.insert(entry.quests, id)
     if not trivial then entry.grey = false end
     if not Q.Repeatable(id) then entry.repeatable = false end
+    if Q.Dungeon(id) then entry.dungeon = true end
 end
 
 function Q.Refresh()

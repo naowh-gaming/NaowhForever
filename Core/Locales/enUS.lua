@@ -2136,6 +2136,7 @@ L["Drops"] = true
 L["Drops %s, which begins:"] = true
 L["Druids"] = true
 L["Dungeon"] = true
+L["Dungeon, "] = true
 L["Dungeon and Raid Entrances"] = true
 L["Dungeon and raid visits, and this hour."] = true
 L["Dungeon drops"] = true
