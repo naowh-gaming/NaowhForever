@@ -69,9 +69,13 @@ local function Paint(set, id, link)
     local gear = Items.SlotsFor(id) ~= nil
     local level = gear and GetDetailedItemLevelInfo(link or id) or nil
     local upgrade = gear and SW.BestGain(id, link, Weights()) ~= nil
-    local shown = Parts.PaintItemMarks(set, level, ns.IsBisItem(id), Parts.IsForever(FOREVER_KIND, id), upgrade)
+    local rank = ns.IsBisItem(id)
+    local forever = Parts.IsForever(FOREVER_KIND, id)
+    local shown = Parts.PaintItemMarks(set, level, rank, forever, upgrade)
     if shown then PaintLevel(set, id) end
-    return shown
+    -- The first result controls Ellesmere's native item-level text.  The second
+    -- tells Baganator whether *any* of our marks need to be displayed.
+    return shown, shown or rank ~= nil or forever or upgrade
 end
 
 local function GameBag(frame)
@@ -122,23 +126,28 @@ local function EllesmereSlot(button, data)
 end
 
 local function BaganatorInit(button)
-    Marks(button, button)
+    -- Baganator hides its returned corner widget when a slot becomes empty,
+    -- without necessarily calling onUpdate for the now-empty slot.  Keeping
+    -- the marks parented to the item button bypasses that cleanup and leaves
+    -- stale item levels and upgrade arrows visible after moving an item.
     local anchor = CreateFrame("Frame", nil, button)
+    anchor:SetSize(button:GetSize())
+    Marks(button, anchor)
     anchor:Hide()
     held[anchor] = button
     return anchor
 end
 
 local function BaganatorSlot(anchor, details)
-    anchor:Hide()
     local set = sets[held[anchor]]
     if not set or not On() then
         if set then set:Hide() end
         return false
     end
     local id = details and details.itemID
-    Paint(set, id, id and details.itemLink)
-    return false
+    local _, any = Paint(set, id, id and details.itemLink)
+    -- Let Baganator show/hide the owning anchor as items move in and out.
+    return any == true
 end
 
 local function RefreshBaganator()
