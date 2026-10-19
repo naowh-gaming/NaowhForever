@@ -148,6 +148,7 @@ local function Fixture(settings)
         SetFont = function(f, path, size, outline) f.font, f.path, f.size, f.outline, f.flags = path, path, size, outline, outline end,
         SetAlpha = function(f, a) f.alpha = a end,
         SetCooldown = function(f, start, duration) f.cooldownStart, f.cooldownDuration = start, duration end,
+        SetHideCountdownNumbers = function(f, on) f.hideNumbers = on end,
         SetCooldownFromExpirationTime = function(f, expiry, duration)
             f.cooldownExpiry, f.cooldownDuration = expiry, duration
         end,
@@ -1464,6 +1465,8 @@ do
     local BAG = tonumber(Read("Shared/Game/Items.lua"):match("local SLEEPING_BAG = (%d+)"))
     local s = Fixture()
     local St = s.ns.AuraBuffs.Style
+    local Look = s.ns.AuraBuffs.CampIcon
+    local WELL_RESTED = s.ns.AuraBuffs.CampData.WELL_RESTED
     local function Bag()
         for i = 1, #s.frames do
             local f = s.frames[i]
@@ -1491,7 +1494,7 @@ do
     check("bag: about half the fire, named in the fire's soft blue", bag.w == 64 * St.CAMP_BAG_SCALE
         and bag.label.text == "Sleeping Bag" and Same(bag.label, s.T.accentSoft)
         and bag.label.size == St.CAMP_BAG_TEXT_SIZE)
-    local reach = (64 + bag.w) / 2 + St.CAMP_TRACK_OUT + St.CAMP_BAG_GAP
+    local reach = (64 + bag.w) / 2 + St.CAMP_TRACK_OUT * 2 + St.CAMP_BAG_GAP
     check("bag: at the fire's lower right", bag.pt.CENTER == 500 + reach and bag.pty.CENTER == 300 - 32)
     check("bag: round like the fire, its plate, mask and ring",
         bag.plate and bag.mask and bag.ring and bag.tex.texture == St.CAMP_BAG_FALLBACK_ICON)
@@ -1501,14 +1504,30 @@ do
     check("bag: the item's own icon once the client has it", bag.tex.texture == 777)
     bag.scripts.OnEnter(bag)
     check("bag: its tooltip says a click uses it", s.tipText():find("Click to use your Sleeping Bag.", 1, true))
-    check("bag: ready, in full color with no countdown", not bag.tex.desaturated and not bag.timer.shown)
+    check("bag: ready, in full color with no countdown", not bag.tex.desaturated and not bag.cooldown.shown)
     s.bagCooldown = { start = s.now, duration = 1.5 }
     s.fire("BAG_UPDATE_COOLDOWN")
-    check("bag: the global cooldown is not the bag's", not bag.tex.desaturated and not bag.timer.shown)
+    check("bag: the global cooldown is not the bag's", not bag.tex.desaturated and not bag.cooldown.shown)
     s.bagCooldown = { start = s.now, duration = 600 }
     s.fire("BAG_UPDATE_COOLDOWN")
-    check("bag: used, it greys with a countdown", bag.tex.desaturated and bag.timer.shown
-        and bag.timer.cooldownStart == s.now and bag.timer.cooldownDuration == 600)
+    check("bag: used, it greys with a countdown", bag.tex.desaturated and bag.cooldown.shown
+        and bag.cooldown.cooldownStart == s.now and bag.cooldown.cooldownDuration == 600
+        and not bag.cooldown.hideNumbers)
+    check("bag: no Well-Rested, no ring and no stacks", not bag.drain.shown and not bag.timer.shown
+        and not bag.count.shown)
+    s.auras[WELL_RESTED] = { expirationTime = s.now + 5000, duration = 7200, applications = 3 }
+    s.fire("UNIT_AURA")
+    check("bag: Well-Rested runs the fire's ring and countdown, with its stacks",
+        bag.drain.shown and bag.timer.shown and bag.track.shown
+        and bag.drain.cooldownExpiry == s.now + 5000 and bag.drain.cooldownDuration == 7200
+        and bag.timer.cooldownExpiry == s.now + 5000 and bag.count.shown and bag.count.text == 3)
+    check("bag: the cooldown keeps its grey but leaves the middle to Well-Rested",
+        bag.tex.desaturated and bag.cooldown.hideNumbers == true)
+    check("bag: its label sits clear of the ring", bag.label.pty.TOP == -Look.LABEL_DROP)
+    s.auras[WELL_RESTED] = nil
+    s.fire("UNIT_AURA")
+    check("bag: Well-Rested gone, the ring and stacks go", not bag.drain.shown and not bag.count.shown
+        and bag.cooldown.hideNumbers == false)
     local waits = #s.timers
     s.fire("UNIT_AURA")
     check("bag: one wake per cooldown, not per refresh", #s.timers == waits)

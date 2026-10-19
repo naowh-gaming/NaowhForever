@@ -21,7 +21,9 @@ minimap and Top Bar button). Its on/off switches and their defaults come from
   Bag and a campfire is in range (or you sit at one), a smaller round Sleeping Bag icon sits at the
   fire's lower right (lower left while the buffs show on the right); a click uses the bag. It stays
   while the fire itself is hidden (Show Only Under, Show When Missing off). While the
-  bag is on cooldown its icon is grey with a countdown.
+  bag is on cooldown its icon is grey with a countdown. While its Well-Rested buff is on you, the
+  bag wears the fire's ring, in the accent blue, running down with the buff's time left, the time
+  in its middle and the stacks in its corner.
 - **Camp Nearby:** the same bar drawn bare (no backdrop, edge or line), larger by its own scale,
   sized to what it says and stacked in the Alerts group (`ns.AlertStack`), with the camp's time
   left inline after a dot while it still runs.
@@ -283,6 +285,9 @@ NaowhForever_Combat/AuraBuffs/
   font are applied on the next refresh out of combat after a setting change.
 - `CAMP_BAG_SCALE` makes the bag about half the fire, as in Jason's mockup; `CAMP_BAG_FALLBACK_ICON`
   is the question mark, shown until the client has the bag's icon.
+- Well-Rested (429959, read in game 2026-10-20) is the bag's stacking buff: three stacks, two
+  hours. The bag's use spell, Unroll Bag (429961), only places the bag. While Well-Rested shows,
+  the cooldown keeps its grey and swipe but hides its numbers, so the middle is the buff's time.
 - The bag's cooldown is `C_Container.GetItemCooldown`, read on each refresh and on
   `BAG_UPDATE_COOLDOWN`; one of `GCD` (1.5 s) or less is the global cooldown, not the bag's. One
   timer per cooldown end shows it ready again, since no event fires when a cooldown runs out.

@@ -12,6 +12,7 @@ local GCD = A.C.GCD
 local WAKE_PAD = 0.1
 local FALLBACK_ICON = St.CAMP_BAG_FALLBACK_ICON
 local NEARBY, SITTING, SITTING_CRAFT = D.CAMPFIRE_NEARBY, D.WELCOMING_CAMPFIRE, D.WELCOMING_CAMPFIRE_CRAFT
+local WELL_RESTED = D.WELL_RESTED
 local TEXT_USE = ns.L("Click to use your Sleeping Bag.")
 
 local bag, dirty
@@ -50,6 +51,15 @@ local function Cooldown()
     local start, duration, enable = C_Container.GetItemCooldown(ITEM)
     if Secret(start) or Secret(duration) or Secret(enable) then return end
     if enable == 1 and duration and duration > GCD and start + duration > GetTime() then return start, duration end
+end
+
+local function Rested()
+    local aura = C_UnitAuras.GetPlayerAuraBySpellID(WELL_RESTED)
+    if not aura then return end
+    local expiry, duration, stacks = aura.expirationTime, aura.duration, aura.applications
+    if Secret(expiry) or Secret(duration) or Secret(stacks) then return end
+    if not (duration and duration > 0 and expiry and expiry > GetTime()) then return end
+    return expiry, duration, stacks
 end
 
 local function ShowCooldown()
@@ -132,5 +142,6 @@ function CampBag.Sync(icon, round)
     if not bag then Build() end
     Art()
     ShowCooldown()
+    Look.BagRested(bag, Rested())
     bag:SetShown(Place(icon))
 end
