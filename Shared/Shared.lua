@@ -51,8 +51,7 @@ function Shared.ScalePin(pin, factor)
 end
 
 local function AllowClicks(pin)
-    local on = clickPins[pin] and not IsControlKeyDown()
-    if pin.SetMouseClickEnabled then pin:SetMouseClickEnabled(on) else pin:EnableMouse(on) end
+    pin:EnableMouse(clickPins[pin] and not IsControlKeyDown())
 end
 
 local function CtrlChanged(_, _, key)

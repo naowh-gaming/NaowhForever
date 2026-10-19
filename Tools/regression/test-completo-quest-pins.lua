@@ -68,7 +68,7 @@ local function NewPin()
     function pin:SetPosition() end
     function pin:SetScale(s) self.scale = s end
     function pin:ApplyCurrentPosition() end
-    function pin:SetMouseClickEnabled(on) self.clicks = on end
+    function pin:EnableMouse(on) self.clicks = on end
     return pin
 end
 
