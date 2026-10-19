@@ -441,8 +441,6 @@ local function PartDetail(key, data)
         if data[MODULE_STATE_KEY] then n = n - 1 end
         return TEXT_MODULES:format(n)
     end
-    if key == "macros" then return TEXT_CLASS_MACROS:format(ClassMacroCount(data)) end
-    if key == "questRewards" then return TEXT_QUEST_REWARDS:format(Count(data)) end
     if key == "actionBars" then
         local n = 0
         for _, sets in pairs(data) do
@@ -450,6 +448,8 @@ local function PartDetail(key, data)
         end
         return TEXT_BAR_SETS:format(n)
     end
+    if key == "macros" then return TEXT_CLASS_MACROS:format(ClassMacroCount(data)) end
+    if key == "questRewards" then return TEXT_QUEST_REWARDS:format(Count(data)) end
     if LIST_NOUN[key] then return ("%d %s"):format(ListCount(data), LIST_NOUN[key]) end
 end
 
