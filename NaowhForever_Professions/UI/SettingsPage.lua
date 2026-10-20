@@ -179,7 +179,7 @@ page:Card({
 })
 
 page:Card({
-    id = "craftOrders", name = "Craft Orders", order = ORDER_ORDERS, switch = "craftOrders",
+    id = "craftOrders", name = "Craft Orders", order = ORDER_ORDERS, switch = "craftOrders", switchWhy = ns.GamepadWhy,
     help = "Opens another player's profession link in this window, to order crafts from them. Choose a recipe, "
         .. "set how many crafts, tick the materials you bring (or type how many), and Add to Order. The order "
         .. "on the right has a suggested tip per craft that you can change; Ask sends the crafter one message "

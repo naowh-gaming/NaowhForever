@@ -191,7 +191,7 @@ local function Deactivate()
     elseif win then
         win:Hide()
     end
-    if ProfessionsFrame then
+    if ProfessionsFrame and hooked then
         DockTabs(false)
         DockBook(false)
         ProfessionsFrame:SetAlpha(1)
