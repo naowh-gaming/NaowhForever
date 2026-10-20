@@ -1005,6 +1005,18 @@ Case("an import backs up the bars first, and undo puts them back with their keys
     w.run("undo")
     assert(w.printed[#w.printed] == "There is no import to undo.", w.printed[#w.printed])
 end)
+Case("undo puts back the exact ranks the bars had, with Highest Rank on", function()
+    local w = World({ 2054, 2055, 598 })
+    w.bars = { [3] = Spell(598) }
+    w.run("save Raid")
+    w.bars = { [1] = Spell(2054), [2] = Spell(2055) }
+    w.opts.highestRank = true
+    w.run("import Raid")
+    assert(w.ns.ActionBars.Backups.List()[1].set.slots[2].top == true, "the backup marks the top rank it saw")
+    w.learn(6064)
+    w.run("undo")
+    assert(Bars(w) == "1=spell2054 2=spell2055", "a Rank 1 kept and a rank learned since passed over: " .. Bars(w))
+end)
 Case("only the last ten backups are kept, newest first", function()
     local w = World({ 598 })
     w.bars = { [1] = Spell(598) }

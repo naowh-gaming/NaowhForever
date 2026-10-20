@@ -73,7 +73,7 @@ local TEXT = {
     SPELLS = ns.L("%d spells you know are on no bar"), SPELLS_ONE = ns.L("1 spell you know is on no bar"),
     SPELLS_LINE = ns.L("Drag one onto your bars."),
     HIDE = ns.L("Hide These"),
-    HIDE_TIP = ns.L("Stops listing these spells. A spell you learn later is listed again."),
+    HIDE_TIP = ns.L("Stops listing these spells as new."),
     CURRENT_HEAD = ns.L("KEEPING CURRENT"),
     CURRENT = ns.L("%s saves on logout"),
     CURRENT_LINE = ns.L("Last saved %s"),
@@ -83,6 +83,7 @@ local TEXT = {
     RESTORE = ns.L("Put Back"), SAVE_AS = ns.L("Save as Set"),
     RESTORE_ASK = ns.L("Put back your bars, keybinds and macros from %s?"),
     BACKUP_NAME = ns.L("Name for the set made from this backup"),
+    REPLACE = ns.L("Replace %s with these bars?"),
     KEY_MAP = ns.L("Keybind Map"),
     MENU_TITLE = ns.L("Load a Bar Set"),
     MENU_ON = ns.L("%s (on your bars)"),
@@ -587,6 +588,15 @@ local function NewBackupRow(parent)
     return row
 end
 
+local function SaveBackup(index, name)
+    local existing = A.Find(name)
+    if existing then
+        ns.Confirm(TEXT.REPLACE:format(existing), function() A.SaveBackup(index, name) end)
+    else
+        A.SaveBackup(index, name)
+    end
+end
+
 local function DrawBackups(parent, y)
     local list = A.Backups.List()
     if #list == 0 then return y end
@@ -604,7 +614,7 @@ local function DrawBackups(parent, y)
             ns.Confirm(TEXT.RESTORE_ASK:format(when), function() A.RestoreBackup(i) end)
         end
         row.save._onClick = function()
-            ns.PromptText(TEXT.BACKUP_NAME, backup.why or "", NEW_NAME_MAX, function(name) A.SaveBackup(i, name) end)
+            ns.PromptText(TEXT.BACKUP_NAME, backup.why or "", NEW_NAME_MAX, function(name) SaveBackup(i, name) end)
         end
         y = y - BACKUP_H - BACKUP_GAP
     end
