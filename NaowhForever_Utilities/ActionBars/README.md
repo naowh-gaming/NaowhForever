@@ -158,9 +158,11 @@ table (the frame, `Show` and `Redraw`) when it builds them.
   read and written as it is, with no saved key: the game keeps it, so it stays as the player left it on the
   old QoL > System page, and it works whether Action Bars is on or not.
 - A backup keeps the bars, every keybind and only the macros on the bars: an import never deletes a macro,
-  so only one a backed-up slot needs can be missing. Putting one back is exact: keys the backup did not
-  have are unbound, the fill-in list is dropped and the character's last set is what it was. Putting a
+  so only one a backed-up slot needs can be missing. Putting one back is exact: each spell goes back at the
+  rank it had, whatever Highest Rank or a slot's Highest says, keys the backup did not have are unbound,
+  the fill-in list is dropped and the character's last set is what it was. Putting a
   backup back is itself backed up first, so it can be undone too. Backups are per character (by GUID).
+  Save as Set asks before it replaces a set of the same name, as the builder does.
 - The preview compares each slot with the bars as they are: added (green edge) where the button is empty
   now, swapped (accent edge) where something else is there, cleared (red edge and cross) where the set
   keeps it empty or its spell is not learned yet, and dimmed where nothing changes. A spell on the bars at

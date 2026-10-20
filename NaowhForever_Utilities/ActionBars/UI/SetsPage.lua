@@ -52,6 +52,7 @@ local TEXT_BACKUPS = ns.L("Backups")
 local TEXT_RESTORE, TEXT_SAVE_AS = ns.L("Put Back"), ns.L("Save as Set")
 local TEXT_RESTORE_ASK = ns.L("Put back your bars, keybinds and macros from %s?")
 local TEXT_BACKUP_NAME = ns.L("Name for the set made from this backup")
+local TEXT_REPLACE = ns.L("Replace %s with these bars?")
 local CONTENTS_JOIN = ", "
 
 local function OpenBuilder() ns.OpenActionBarsBuilder() end
@@ -215,6 +216,15 @@ local function DrawBanner(parent, y)
     return y - BANNER_H - CARD_GAP
 end
 
+local function SaveBackup(index, name)
+    local existing = A.Find(name)
+    if existing then
+        ns.Confirm(TEXT_REPLACE:format(existing), function() A.SaveBackup(index, name) end)
+    else
+        A.SaveBackup(index, name)
+    end
+end
+
 local function DrawBackups(parent, y)
     local list = A.Backups.List()
     if #list == 0 then return y end
@@ -230,7 +240,7 @@ local function DrawBackups(parent, y)
             ns.Confirm(TEXT_RESTORE_ASK:format(when), function() A.RestoreBackup(i) end)
         end
         row.save._onClick = function()
-            ns.PromptText(TEXT_BACKUP_NAME, backup.why or "", NEW_NAME_MAX, function(name) A.SaveBackup(i, name) end)
+            ns.PromptText(TEXT_BACKUP_NAME, backup.why or "", NEW_NAME_MAX, function(name) SaveBackup(i, name) end)
         end
         y = y - BACKUP_H - BACKUP_GAP
     end
