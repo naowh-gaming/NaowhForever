@@ -37,10 +37,12 @@ NaowhForever_Utilities/ActionBars/
                                 scene's, and a set row's small one), the scene with its pet row, form chips and bar
                                 picker, the tab's panes (A.Parts)
   UI/
-    SetsPage.lua                the home: Save Current Bars, Import Website Code and Export to Website cards, Undo, the
-                                bar check, a card per saved set (icon, tags, a small strip of its bars, Import and More),
-                                the backups (ns.BuildActionBarsPage)
-    Builder.lua                 the set builder: a name, icon and tags, your bars on the scene, keybinds and macros (A.Builder)
+    SetsPage.lua                the home: Paste Code, Get Code and Save Current Bars over it with the class pill, Undo,
+                                the bar check, a filter and a card per saved set (icon, tags, a small strip of its bars,
+                                Import and More), a card to save a new one, and the backups (ns.BuildActionBarsPage,
+                                A.BuildSetsHeader)
+    Builder.lua                 the set builder: a name, icon and tags, your bars on the scene, what goes in, the macros or
+                                keybinds, and a summary to save (A.Builder)
     Preview.lua                 the import preview: what changes counted, the same scene now or after the import with each
                                 change marked, then what comes across, what fills in later and the keys that change (A.Preview)
     Window.lua                  the Bar Sets tab, its views and its back link (ns.BuildActionBarsTab,
@@ -128,11 +130,13 @@ table (the frame, `Show` and `Redraw`) when it builds them.
 - The bar picker sits under Action Bar 3, beside the form chips, as the site's switcher does, so it never
   pushes the strip down.
 - One strip drawing (`P.PlaceStrip`) lays out the scene's buttons and a saved set's small strip on the home,
-  15 (`MINI_TILE`) with 1 between; the small one is textures only, drawn from the saved slots, never the bars.
+  12 (`MINI_TILE`) with 1 between, so three cards fit across the narrowest tab; the small one is textures only, drawn from the saved slots, never the bars.
   Its tags name what it cannot show: the form pages ("+ Stealth", "+ 3 forms"), other bars and the pet bar's keys.
 - The builder has no step strip: its three steps were one screen, so the tabs did nothing.
-- The builder's Keybinds and Macros heads sit side by side over the macro list, which takes the full width;
-  Keybinds counts the keys on your bars and those for other commands.
+- The builder's What Goes In panel holds the switches for keybinds, macros, Highest Rank (the import setting
+  itself) and, for Hunters and Warlocks, the pet bar's keys; Keybinds counts the keys on your bars and those
+  for other commands. Its list shows the macros (Select None keeps the ones on the bars) or, on its
+  Keybinds tab, each key with what it presses now.
 - A class with form pages (`A.FORMS`: a Rogue's Stealth, a Druid's forms and Prowl, a Warrior's stances)
   gets a chip per page under the strip; the chip picks which page Action Bar 1's row shows, with its
   count, and dims when that page is left out. The other bars (Action Bar 5 to 8, Page 2, the stance and extra
@@ -148,9 +152,9 @@ table (the frame, `Show` and `Redraw`) when it builds them.
   (`MONO_FONT`). Glass panels keep the site's faint white hairline (`GLASS_EDGE_ALPHA`) in place of the house
   black edge, so they read as the site's; buttons and tiles keep their black edge. The kit has no rounded
   corners, so the panels are square.
-- The main buttons (Save Set, Import, the home's Save, a row's Import) are the site's solid blue with white
-  text (`ns.PrimaryButton`); the others keep the house outline. A home card's button is a verb (Save, Paste
-  code, Get code) under its title, so the two never repeat.
+- The main buttons (Save Set, Import, the home's Save Current Bars, a row's Import) are the site's solid blue
+  with white text (`ns.PrimaryButton`); the others keep the house outline. The home's buttons say what they do
+  (Paste Code, Get Code), and their tooltips carry the old cards' titles and lines.
 - A wrapping line is held by its top corners (`TOPLEFT`, `TOPRIGHT`), never a `RIGHT` point: a side point
   also fixes its middle, which cut the home cards' lines short.
 - The views are one frame built into the Bar Sets tab, as the Macros page hosts Naowh's Forge: `/nfbars`,
