@@ -187,14 +187,17 @@ local function World(known)
         UnitName = function() return w.name or "Preview" end,
         UnitLevel = function() return w.level end,
         UnitXP = function() return w.xp or 0 end,
+        IsInInstance = function() return w.instance ~= nil, w.instance or "none" end,
         GetRealmName = function() return "Realm" end,
         CreateFrame = function()
             local f = { registered = {} }
             f.RegisterEvent = function(self, event) self.registered[event] = true end
             f.UnregisterEvent = function(self, event) self.registered[event] = nil end
+            f.UnregisterAllEvents = function(self) self.registered = {} end
+            -- Sets.lua's frame first, then AutoLoad.lua's.
             f.SetScript = function(self, _, fn)
                 self.handler = fn
-                w.events = self
+                if w.events then w.autoEvents = self else w.events = self end
             end
             return f
         end,
@@ -1035,4 +1038,69 @@ Case("the bar check upgrades a spell below the best rank, or leaves it once aske
     assert(#w.ns.ActionBars.Check.Upgrades() == 0, "kept for downranking")
 end)
 
+local function Zone(w, kind)
+    w.instance = kind
+    w.autoEvents.handler(w.autoEvents, "PLAYER_ENTERING_WORLD")
+end
+
+Case("a dungeon set loads on entering and the bars from before come back on leaving", function()
+    local w = World({ 2055, 598 })
+    w.bars = { [3] = Spell(598) }
+    w.run("save Dungeon")
+    w.bars = { [1] = Spell(2055) }
+    w.events.handler(w.events, "PLAYER_LOGIN")
+    assert(w.autoEvents == nil, "no rule, no frame")
+    w.ns.ActionBars.AutoLoad.SetRule("dungeon", "Dungeon")
+    assert(w.autoEvents.registered.PLAYER_ENTERING_WORLD, "a rule watches the zone")
+    Zone(w, "party")
+    assert(Bars(w) == "3=spell598", Bars(w))
+    Zone(w, "party")
+    assert(Bars(w) == "3=spell598", "a reload inside changes nothing")
+    Zone(w, nil)
+    assert(Bars(w) == "1=spell2055", Bars(w))
+end)
+Case("in combat the swap waits for the end of the fight", function()
+    local w = World({ 598 })
+    w.bars = { [3] = Spell(598) }
+    w.run("save BG")
+    w.bars = {}
+    w.ns.ActionBars.AutoLoad.SetRule("battleground", "BG")
+    w.combat = true
+    Zone(w, "pvp")
+    assert(Bars(w) == "" and w.autoEvents.registered.PLAYER_REGEN_ENABLED, "waiting")
+    w.combat = false
+    w.autoEvents.handler(w.autoEvents, "PLAYER_REGEN_ENABLED")
+    assert(Bars(w) == "3=spell598" and not w.autoEvents.registered.PLAYER_REGEN_ENABLED, Bars(w))
+end)
+Case("Put Back on Leaving off keeps the instance's set", function()
+    local w = World({ 598 })
+    w.bars = { [3] = Spell(598) }
+    w.run("save Raid")
+    w.bars = {}
+    w.ns.ActionBars.AutoLoad.SetRule("dungeon", "Raid")
+    w.ns.ActionBars.AutoLoad.SetRule("back", false)
+    Zone(w, "raid")
+    Zone(w, nil)
+    assert(Bars(w) == "3=spell598", Bars(w))
+end)
+Case("a level set loads once, at that level, and follows a rename", function()
+    local w = World({ 598 })
+    w.bars = { [3] = Spell(598) }
+    w.run("save Forty")
+    w.bars = {}
+    w.ns.ActionBars.AutoLoad.SetRule("levelSet", "Forty")
+    w.ns.ActionBars.AutoLoad.SetRule("level", 40)
+    w.ns.ActionBars.Rename("Forty", "AoE")
+    assert(w.ns.ActionBars.AutoLoad.Rule("levelSet") == "AoE", "renamed")
+    w.level = 39
+    w.autoEvents.handler(w.autoEvents, "PLAYER_LEVEL_UP")
+    assert(Bars(w) == "", "not yet")
+    w.level = 40
+    w.autoEvents.handler(w.autoEvents, "PLAYER_LEVEL_UP")
+    assert(Bars(w) == "3=spell598", Bars(w))
+    w.bars = {}
+    w.level = 41
+    w.autoEvents.handler(w.autoEvents, "PLAYER_LEVEL_UP")
+    assert(Bars(w) == "", "only once")
+end)
 print(count .. " action bar set regressions passed")
