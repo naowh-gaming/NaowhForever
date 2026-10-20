@@ -1,0 +1,107 @@
+{
+ "source": "Permitted Forever static entity export",
+ "received": "2026-10-19",
+ "coordinate_space": "forever",
+ "map_basis": "1.60.1.69893",
+ "source_sha256": "5bfaf79a7bfc45fd5579a9977e0cfa607e39dbee7ffd73fb48425ce333f086d9",
+ "bundle_sha256": "b314994798d4354dd16487129327949f73c387c211f54172f4cb371cf4bbf055",
+ "map_records_added_or_filled": 29,
+ "prerequisite_records_added": 142,
+ "validation": "Offline checks only; Forever client testing pending.",
+ "full_catalog_import": {
+  "source_catalog_records": 5232,
+  "source_records_in_quest_list": 5226,
+  "excluded_placeholder_ids": [
+   5691,
+   5692,
+   5693,
+   5704,
+   5705,
+   5706
+  ],
+  "unexpected_missing_source_ids": [],
+  "quest_list_total": 5275,
+  "existing_ids_outside_source_preserved": 49,
+  "existing_quest_rows_removed": [],
+  "existing_identity_and_restriction_fields_changed": [],
+  "existing_prerequisite_ids_removed": [],
+  "new_dependency_cycles": [],
+  "cataloged_quests_with_journey_destination": 4590,
+  "cataloged_quests_without_journey_destination": 685,
+  "zone_mapping_build": "1.60.1.70450",
+  "catalog_sha256": "59ed34680ae6b444bb0940436456489ce4a9bfb698a80ed22e913383bbafb866",
+  "validation": "Offline only; Forever client testing and screenshots pending."
+ },
+ "expanded_location_import": {
+  "listed_quests": 5275,
+  "previous_listed_destinations": 4590,
+  "listed_exact_destinations": 4624,
+  "listed_entrance_only_guidance": 141,
+  "listed_quests_with_guidance": 4765,
+  "listed_without_guidance": 510,
+  "new_exact_destinations": 34,
+  "new_entrance_only_guidance": 141,
+  "previous_route_rows_changed": [],
+  "quest_list_unchanged": true,
+  "validation": "Offline only; client verification pending.",
+  "candidate_bundle_sha256": "282b9dc9e59245a5babdcc95ba8261d9a3c96835e10d91ac6d95f92fdcb9c482"
+ },
+ "additional_location_import": {
+  "listed_quests": 5275,
+  "new_quests_with_objective_or_turn_in_guidance": 59,
+  "new_quests_with_entrance_only_guidance": 21,
+  "entrance_only_quests_upgraded": [
+   4201,
+   8949
+  ],
+  "listed_objective_or_turn_in_destinations": 4685,
+  "listed_entrance_only_guidance": 160,
+  "listed_without_guidance": 430,
+  "listed_with_guidance": 4845,
+  "previous_usable_objective_and_turn_in_rows_changed": [],
+  "quest_list_unchanged": true,
+  "shared_observation_export_available": false,
+  "validation": "261 Python tests run successfully (one skipped); 92 Journey regression checks, Lua 5.1 compilation, and changed-file pre-commit checks passed. Client testing pending.",
+  "permission": "User confirmed data reuse without credit on 2026-10-19.",
+  "bundle_sha256": "e0b6914339ec61e871f4cda3332377649f5158a7ec0bd454ae0a40b10823d870",
+  "dataset_revisions": [
+   "e3afe99b480a5adc50d2e60107dad4b10d48091d",
+   "f2faf7c8cfccbaf85d7d64c144f34c39de790f47"
+  ]
+ },
+ "reviewed_location_recovery": {
+  "listed_quests": 5275,
+  "targeted_missing_quests": 430,
+  "new_quests_with_objective_or_turn_in_guidance": 143,
+  "new_quests_with_entrance_only_guidance": 19,
+  "listed_objective_or_turn_in_destinations": 4828,
+  "listed_entrance_only_guidance": 179,
+  "listed_without_guidance": 268,
+  "listed_with_guidance": 5007,
+  "previous_usable_routes_changed": [],
+  "quest_list_unchanged": true,
+  "accessible_public_tooltip_records": 394,
+  "public_tooltips_not_found": 36,
+  "additional_directory_id_matches_checked": 200,
+  "legacy_database_new_finisher_links": 0,
+  "bundle_sha256": "56db53a87a91d87ccfb8b73ffb0f957f2d9800315ec6a61b4844558c3d330189",
+  "validation": "261 Python tests passed (one skipped); 95 Journey Lua regression checks, changed-addon Lua 5.1 compilation, and changed-file pre-commit checks passed. All 162 data additions and every prior usable cache/generated row verified. Client testing not performed.",
+  "limitations": [
+   "Entrances do not establish interior objective or turn-in positions.",
+   "Seasonal station data does not prove the event is currently active.",
+   "Static coverage does not prove every catalog quest is obtainable.",
+   "No shared saved observation export was available locally.",
+   "A destination is not a complete, stage-aware quest walkthrough.",
+   "Reported fixed actor locations still need confirmation in the client."
+  ],
+  "additional_directory_remaining_ids_checked": 271,
+  "unconfirmed_candidate_quest_ids_withheld": [
+   94818
+  ],
+  "writ_records_without_guidance": 126,
+  "rotating_faire_records_without_guidance": 36,
+  "completion_guard": "Completed quests without an eligible recorded turn-in do not revisit objective camps or item vendors; the native waypoint fallback remains available.",
+  "baseline_reconstruction_verified_against_preserved_inputs": true,
+  "in_game_tested": false
+ }
+}
