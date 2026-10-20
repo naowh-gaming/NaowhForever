@@ -15,10 +15,14 @@ local CLASS_INDEX = 6
 local REQUIRED_LEVEL = 5
 local ITEM_ICON = 10
 local ELITE = { elite = true, rareelite = true, worldboss = true }
+local MAX_LEVEL = 60
 local WHERE = {
-    consumables = { none = "consumablesWorld", party = "consumablesDungeon", raid = "consumablesRaid" },
-    raidBuffs = { none = "raidBuffsWorld", party = "raidBuffsDungeon", raid = "raidBuffsRaid" },
-    personalBuffs = { none = "personalBuffsWorld", party = "personalBuffsDungeon", raid = "personalBuffsRaid" },
+    consumables = { none = "consumablesWorld", party = "consumablesDungeon", raid = "consumablesRaid",
+        atMax = "consumablesMaxHide" },
+    raidBuffs = { none = "raidBuffsWorld", party = "raidBuffsDungeon", raid = "raidBuffsRaid",
+        atMax = "raidBuffsMaxHide" },
+    personalBuffs = { none = "personalBuffsWorld", party = "personalBuffsDungeon", raid = "personalBuffsRaid",
+        atMax = "personalBuffsMaxHide" },
 }
 
 local GROUP_UNIT = { player = true }
@@ -104,7 +108,9 @@ end
 
 local function ShowsHere(kind, zone)
     local keys = WHERE[kind]
-    return S.Get(keys[zone] or keys.none)
+    local key = keys[zone] or keys.none
+    if key == keys.none and S.Get(keys.atMax) and UnitLevel("player") >= MAX_LEVEL then return false end
+    return S.Get(key)
 end
 
 local function Wake(seconds)
@@ -461,6 +467,10 @@ Reminders.Picked = Picked
 Reminders.PersonalPicked = PersonalPicked
 Reminders.Secret = Secret
 Reminders.ShowsHere = ShowsHere
+
+function Reminders.WatchesLevel()
+    return S.Get("consumablesMaxHide") or S.Get("raidBuffsMaxHide") or S.Get("personalBuffsMaxHide")
+end
 
 function Reminders.InRange(entry)
     local count = 0

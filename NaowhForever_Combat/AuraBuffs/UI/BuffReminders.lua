@@ -21,6 +21,7 @@ local KEYS = {
     consumablesWorld = true, consumablesDungeon = true, consumablesRaid = true,
     raidBuffsWorld = true, raidBuffsDungeon = true, raidBuffsRaid = true,
     personalBuffsWorld = true, personalBuffsDungeon = true, personalBuffsRaid = true,
+    consumablesMaxHide = true, raidBuffsMaxHide = true, personalBuffsMaxHide = true,
     onlyIfCarried = true, carriedPicks = true, hideResting = true, raidBuffs = true, raidBuffsOwn = true, raidBuffPicks = true, iconSize = true,
     buffIconMode = true, raidBuffRange = true, raidBuffRangeHide = true, hideBlessingsOnPaladin = true,
     personalBuffs = true, personalBuffPicks = true, weaponEnhancements = true,
@@ -263,6 +264,7 @@ local function Listen()
         events:RegisterUnitEvent("UNIT_AURA", "player")
     end
     if R.WatchesTarget() then events:RegisterEvent("PLAYER_TARGET_CHANGED") end
+    if R.WatchesLevel() then events:RegisterEvent("PLAYER_LEVEL_UP") end
     if S.Get("personalBuffs") or S.Get("weaponEnhancements") then
         events:RegisterUnitEvent("UNIT_INVENTORY_CHANGED", "player")
     end
