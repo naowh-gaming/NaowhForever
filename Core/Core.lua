@@ -139,7 +139,7 @@ function ns.Lower(text)
     return (text:lower():gsub(LATIN_CAPITAL, LatinLower))
 end
 
-ns.CODE_BUILD = "1.1.35"
+ns.CODE_BUILD = "1.1.36"
 
 ns.THEME = {
     bg     = { r = 0x19 / 255, g = 0x1b / 255, b = 0x1d / 255 },
@@ -774,13 +774,14 @@ function ns.AccentBorder(frame)
     return frame
 end
 
-function ns.PrimaryButton(btn)
+function ns.PrimaryButton(btn, labelColor)
     if not btn or btn._forever then return btn end
     ns.AccentBorder(btn)
     btn._primary = true
     local T = ns.THEME
+    local c = labelColor or T.bg
     btn._bg:SetColorTexture(T.accent.r, T.accent.g, T.accent.b, 1)
-    btn.label:SetTextColor(T.bg.r, T.bg.g, T.bg.b, 1)
+    btn.label:SetTextColor(c.r, c.g, c.b, 1)
     return btn
 end
 
