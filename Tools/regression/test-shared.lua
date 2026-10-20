@@ -753,29 +753,38 @@ do
         Settings.Group("Picks", true),
         { key = "size", label = "Size", slider = { 8, 32, 1 } },
         { key = "alpha", label = "Opacity", slider = { 0, 100, 5 } },
+        Settings.Group("More", true),
+        { key = "more", label = "Opacity", slider = { 0, 100, 5 } },
     } })
     local parent = Frame()
     Settings.Render(parent, "Test/Folds", NOTHING)
-    local view = parent.settingsView
-    local fold = view.pools.group[2]
-    check("a folding group starts shut: both titles, only the rows above it",
-        view.pools.group.used == 2 and view.pools.setting.used == 1)
+    local foldView = parent.settingsView
+    local fold = foldView.pools.group[2]
+    check("a folding group starts shut: every title, only the rows above it",
+        foldView.pools.group.used == 3 and foldView.pools.setting.used == 1)
     check("only the folding group takes clicks and shows a chevron",
-        fold.hit.shown and fold.chevron.shown and not view.pools.group[1].hit.shown)
+        fold.hit.shown and fold.chevron.shown and not foldView.pools.group[1].hit.shown)
     fold.hit.scripts.OnClick(fold.hit)
     RunTimers()
-    check("a click opens it", view.pools.setting.used == 3)
+    check("a click opens it", foldView.pools.setting.used == 3)
     fold.hit.scripts.OnClick(fold.hit)
     RunTimers()
-    check("and a second click shuts it", view.pools.setting.used == 1)
+    check("and a second click shuts it", foldView.pools.setting.used == 1)
     Settings.Render(parent, "Test/Folds", NOTHING, { all = {}, cards = { [foldCard.uid] = { Opacity = true } } })
-    check("a search hit inside it shows the row", view.pools.setting.used == 1
-        and view.pools.setting[1].setting.label == "Opacity")
+    check("a search hit inside it shows the row, in each fold that has one", foldView.pools.setting.used == 2
+        and foldView.pools.setting[1].setting.label == "Opacity")
+    fold = foldView.pools.group[2]
+    fold.hit.scripts.OnClick(fold.hit)
+    RunTimers()
+    check("a click while searching changes nothing", foldView.pools.setting.used == 2)
     Settings.Render(parent, "Test/Folds", NOTHING)
-    check("the search gone, it is shut again", view.pools.setting.used == 1)
+    check("the search gone, it is shut as it was", foldView.pools.setting.used == 1)
     Settings.Reveal(foldCard.uid, "Size")
     Settings.Render(parent, "Test/Folds", NOTHING)
-    check("a jump to one of its rows opens it", view.pools.setting.used == 3)
+    check("a jump to one of its rows opens it", foldView.pools.setting.used == 3)
+    Settings.Reveal(foldCard.uid, "Opacity")
+    Settings.Render(parent, "Test/Folds", NOTHING)
+    check("a jump to a label two folds share opens both", foldView.pools.setting.used == 4)
 end
 
 -- The stubs that remember their calls make tables of their own: measure the cogPage alone.

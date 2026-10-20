@@ -351,7 +351,6 @@ function Settings.Reveal(cardUid, label)
             group = row.fold and row
         elseif group and label and row.label == label then
             Settings.SetGroupOpen(group, true)
-            return
         end
     end
 end

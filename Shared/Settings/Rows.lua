@@ -407,6 +407,7 @@ end
 
 local function GroupClicked(hit)
     local row = hit:GetParent()
+    if row:GetParent().filter then return end
     Settings.SetGroupOpen(row.spec, not Settings.GroupOpen(row.spec))
     row:GetParent():QueueSettingsRedraw()
 end
