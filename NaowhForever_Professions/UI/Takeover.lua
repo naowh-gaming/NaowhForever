@@ -47,7 +47,7 @@ local bookDocked, bookPending = false, nil
 local events = CreateFrame("Frame")
 
 local function On()
-    return S.Get("enabled")
+    return S.Get("enabled") and not ns.GamepadStandDown()
 end
 
 local function NextStrata(strata)
