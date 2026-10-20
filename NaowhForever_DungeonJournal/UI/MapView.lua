@@ -515,7 +515,10 @@ function View:DrawArt(map)
     local image = map.images and map.images[self.floor]
     if not image and map.image then image = self.floor > 1 and map.image .. self.floor or map.image end
     self.picture:SetShown(image ~= nil)
-    if image then self.picture:SetTexture(image, nil, nil, "TRILINEAR") end
+    if image then
+        self.picture:SetTexCoord(0, 1, 0, map.imageBottom or IMAGE_BOTTOM)
+        self.picture:SetTexture(image, nil, nil, "TRILINEAR")
+    end
     for i = 1, TILES do
         self.tiles[i]:SetShown(image == nil)
         if not image then self.tiles[i]:SetTexture(ART:format(map.art, map.art, self.floor, i)) end
