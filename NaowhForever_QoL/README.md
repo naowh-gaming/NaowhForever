@@ -789,6 +789,7 @@ NaowhForever_QoL/
 ### Quest Automation
 - Saved rewards live in the profile, kept per class (`questRewards[CLASS]`, quest ID to item ID), so a shared profile carries its picks and characters of different classes on one profile never take each other's reward. The Saved Quest Rewards window shows and clears only the current class's list, and redraws on a profile switch.
 - Picks from before they were kept per class sit at the top of `questRewards` with no class. The first class to read the picks takes them all, once; nothing is deleted, and a class's own pick wins over an old one for the same quest.
+- An old pick may be another class's, so it is taken as the negative item ID: not confirmed. It shows in the Saved Quest Rewards window as Not confirmed and is never selected or handed in for you; Alt-clicking that reward again confirms it.
 - A reward's item ID comes with it before the item is cached; its link may not.
 - Every layout of the rewards ends by clearing the choice (the reward panel's OnShow, then QUEST_ITEM_UPDATE as uncached items arrive), so the saved pick is selected after QuestInfo_ShowRewards.
 - A quest a player shared with you is not shared again when you accept it: the group already has it.

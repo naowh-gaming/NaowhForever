@@ -46,7 +46,7 @@ local function Picks()
     all[CLASS] = picks
     for questID, itemID in pairs(all) do
         if type(questID) == "number" then
-            picks[questID] = picks[questID] or itemID
+            if not picks[questID] and type(itemID) == "number" then picks[questID] = -itemID end
             all[questID] = nil
         end
     end
@@ -66,7 +66,7 @@ end
 
 local function PickedChoice()
     local picked = On("questRewardPicks") and Picks()[GetQuestID()]
-    if not picked then return end
+    if not picked or picked < 0 then return end
     for i = 1, GetNumQuestChoices() do
         if ChoiceItemID(i) == picked then return i end
     end
@@ -117,7 +117,9 @@ function QuestRewards.List(out)
 end
 
 function QuestRewards.ItemID(questID)
-    return Picks()[questID]
+    local itemID = Picks()[questID]
+    if itemID and itemID < 0 then return -itemID, true end
+    return itemID
 end
 
 function QuestRewards.Title(questID)

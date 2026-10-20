@@ -145,7 +145,8 @@ local function ValidQuestRewards(picks)
         if type(key) == "string" and key:match("^%u+$") and type(value) == "table" then
             for questID, itemID in pairs(value) do
                 count = count + 1
-                if count > MAX_QUEST_REWARDS or not PositiveID(questID) or not PositiveID(itemID) then return false end
+                local item = type(itemID) == "number" and math.abs(itemID)
+                if count > MAX_QUEST_REWARDS or not PositiveID(questID) or not PositiveID(item) then return false end
             end
         else
             count = count + 1

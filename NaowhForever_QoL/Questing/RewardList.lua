@@ -24,6 +24,7 @@ local TEXT_EMPTY = ns.L("Nothing saved for this class. Alt-click a quest reward 
 local TEXT_QUEST = ns.L("Quest %d")
 local TEXT_REWARD, TEXT_REWARDS = ns.L("%d saved reward"), ns.L("%d saved rewards")
 local TEXT_REMOVE = ns.L("Remove")
+local TEXT_UNCONFIRMED = ns.L("Not confirmed")
 local TEXT_CLEAR = ns.L("Clear All")
 local TEXT_CLEAR_ASK = ns.L("Remove every saved quest reward for this class?")
 
@@ -59,8 +60,9 @@ function Draw:Redraw()
     for _, questID in ipairs(ids) do names[questID] = QuestName(questID):lower() end
     table.sort(ids, ByName)
     for _, questID in ipairs(ids) do
-        self:Add("item", Rewards.ItemID(questID), QuestName(questID), "", RemoveReward, TEXT_REMOVE, nil, nil, nil,
-            questID)
+        local itemID, unconfirmed = Rewards.ItemID(questID)
+        self:Add("item", itemID, QuestName(questID), unconfirmed and TEXT_UNCONFIRMED or "", RemoveReward, TEXT_REMOVE,
+            nil, nil, nil, questID)
     end
     if #ids == 0 then self:Note(TEXT_EMPTY) end
     self:Fit(EVENTS)

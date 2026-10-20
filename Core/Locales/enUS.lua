@@ -241,6 +241,7 @@ L["Nothing saved for this class. Alt-click a quest reward to save it for that qu
 L["Open Saved Rewards"] = true
 L["Picked for you when you hand the quest in. Alt-click a reward to save one for this class."] = true
 L["Quest %d"] = true
+L["Not confirmed"] = true
 L["Remove every saved quest reward for this class?"] = true
 L["Threat Meter"] = true
 L["Meter"] = true
