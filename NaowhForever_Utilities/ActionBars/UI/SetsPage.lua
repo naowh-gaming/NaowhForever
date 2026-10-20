@@ -73,7 +73,7 @@ local TEXT = {
     SPELLS = ns.L("%d spells you know are on no bar"), SPELLS_ONE = ns.L("1 spell you know is on no bar"),
     SPELLS_LINE = ns.L("Drag one onto your bars."),
     HIDE = ns.L("Hide These"),
-    HIDE_TIP = ns.L("Stops listing these spells. A spell you learn later is listed again."),
+    HIDE_TIP = ns.L("Stops listing these spells as new."),
     CURRENT_HEAD = ns.L("KEEPING CURRENT"),
     CURRENT = ns.L("%s saves on logout"),
     CURRENT_LINE = ns.L("Last saved %s"),
