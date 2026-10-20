@@ -8,8 +8,9 @@ minimap and Top Bar button). Its on/off switches and their defaults come from
 - **Buffs & Consumables:** a row of icons for missing food, flask and elixir buffs from the
   consumables you watch, class buffs missing in your group, and your own class buff (armor, Inner
   Fire, Battle Shout, poisons, a weapon imbue, a hunter's aspect) when it is missing. Click one to use the item it
-  shows, or hover it to pick another carried item. The worn gear and fishing pole reminders moved
-  to QoL > Loot & Items > Gear Reminders (`NaowhForever_QoL/Loot/GearReminders.lua`).
+  shows or cast the buff, or hover it to pick another carried item. Middle-click one to hide it until you
+  reload. The worn gear and fishing pole reminders moved to QoL > Loot & Items > Gear Reminders
+  (`NaowhForever_QoL/Loot/GearReminders.lua`).
 - **Campfire:** in two looks on one mover. Round, a camp icon with a time ring and a countdown;
   Simple, a bar in the windows' backdrop with the campfire at its left, the camp's bonuses with
   their amounts, and the time left on the right over a line that runs down green, yellow, then
@@ -32,7 +33,7 @@ NaowhForever_Combat/AuraBuffs/
   AuraBuffs.lua                the settings (ns.AuraBuffSettings), the module table (ns.AuraBuffs, A),
                                consumable entries kept in the profile, ns.ParseConsumableEntry,
                                the consumables list string (ns.ConsumableListString,
-                               ns.ParseConsumableList), ns.CampBuffMode
+                               ns.ParseConsumableList), ns.CampBuffMode, A.Migrate
   Constants.lua                the numbers several of its files share (A.C)
   Data/
     BuffReminders.lua          the spells and items behind the buff reminders (ns.BuffReminderData)
@@ -69,6 +70,14 @@ NaowhForever_Combat/AuraBuffs/
 
 ## Why
 
+- Every icon in the row does something on a click. A consumable uses its item. A poison, stone or oil
+  goes on the weapon that lacks one (`ItemBar.SetWeapon`: the item, then `/use` on that slot, since
+  using it alone only asks which item to put it on); a right-click puts it on the other hand, and the
+  hover menu's items go on the same weapon. A rogue's Poisons reminder uses the best poison carried
+  (`D.POISON_ITEMS`, the strongest first) and offers the rest in the menu; with none carried it does
+  nothing. A personal buff casts its spell (Hunter's Mark on the target), and a raid buff you know is
+  cast on the first group member missing it, read when the row last refreshed, out of combat. A raid
+  buff only another class can cast does nothing.
 - In combat the client refuses addons the player's auras outright (`GetAuraDataByIndex` errors,
   `GetPlayerAuraBySpellID` returns nil with the buff up), and it withdraws them at boss pulls
   before `InCombatLockdown()` turns true. Every read is gated on
@@ -101,6 +110,15 @@ NaowhForever_Combat/AuraBuffs/
   `NFCONSUMABLES1:food=13931,2680;battle=13454/17539`. Import also takes a profile string and keeps
   only its consumables, through the same checks as the profile import; it adds what is not listed
   yet, up to `MAX_ENTRIES` (500, the same limit the profile import enforces).
+- Consumables (with the weapon enhancement reminder), raid buffs and personal buffs each have World,
+  Dungeons and Raids switches, read from `IsInInstance()`: a party instance is a dungeon, a raid
+  instance a raid, and anything else (the world, battlegrounds, arenas) the world, as the old Show In
+  choice treated it. `PLAYER_ENTERING_WORLD` fires through every instance's loading screen, so it
+  is enough to follow the place. There is no In Combat switch: the row does not refresh in combat,
+  and its buttons are secure, so it cannot be hidden then.
+- `A.Migrate` turns the old Show In choice (`consumablesWhere`) into the three consumables switches
+  on every Apply and clears it, so an old profile string is moved too: Everywhere is all three,
+  Dungeons & Raids the last two, Raids Only raids alone. Hide While Resting still applies on top.
 - Group auras change in bursts, so a buff refresh waits `QUEUE_DELAY` and covers the lot. Nothing
   fires as a buff runs down, so the earliest one to cross the warning time is timed.
 - Show Buff Range starts off. When enabled, raid buff reminders show confirmed recipients in
@@ -222,20 +240,27 @@ NaowhForever_Combat/AuraBuffs/
   so the icon is Monkey below level 10. Mounted or not makes no difference, as for every reminder.
 - The buff menu holds secure buttons, so it can only be hidden outside combat. It uses
   `IsMouseOver` on the frame: the old `MouseIsOver` global is gone from the game.
-- The buff menu's icons are the row's Icon Size, centred under the icon you hover and spreading both
-  ways, each line of them centred too. With no room under the icon it opens above it; the screen
-  clamp keeps it in at the sides. The icon size and every gap, in the row and the menu, are rounded
-  to whole pixels (`Cell.Snap`): at a UI scale where a unit is not a whole pixel, a menu icon a
-  fraction of a pixel off the row was resampled and looked rougher than the icon above it.
+- The buff menu's icons are `MENU_CELL` (32), whatever the row's Icon Size: Naowh found them too big
+  at the row's size. They sit centred under the icon you hover and spread both ways, each line of
+  them centred too. With no room under the icon it opens above it; the screen clamp keeps it in at
+  the sides. The icon size and every gap, in the row and the menu, are rounded to whole pixels
+  (`Cell.Snap`): at a UI scale where a unit is not a whole pixel, an icon a fraction of a pixel off
+  was resampled and looked rougher.
 - The row's icons are secure item buttons (`type1 = "item"`), each using the carried item it shows
   (under Last Used, the carried one with that icon; when no carried item has it, the row shows and
   uses the first carried item instead); a class or raid buff icon uses nothing. Secure buttons make the row
   protected, so in combat nothing touches it: a refresh waits, and a setting change or Unlock Mode
   is applied once combat ends (`PLAYER_REGEN_ENABLED`), registered only while the row is on or
   showing.
-- A press glows the icon (`Glow.Press`): a short Pixel Glow in the Glow color, lines and thickness,
-  under its own LibCustomGlow key so a reminder's own glow keeps running. It is not the game's button
-  highlight or pushed look (`Parts.Press`). The menu waits for the glow before it closes.
+- The row's and the menu's icons take the flat hover and pressed look (`Parts.Press`), as the
+  Consumable Bar's do. A press used to start a second, faster Pixel Glow over the reminder's own, so
+  the glow seemed to speed up; the pressed look replaced it. The menu closes when the click is let
+  go: the buttons take both the down and the up, and the item may be used on either.
+- Middle-click hides a reminder for the session: its key (the consumable kind, `weapon`, or the personal
+  or raid buff family's own table) goes in a table that is never saved, and `Collect` leaves it out.
+  A reload or relog brings it back. The secure buttons set only `type1`, so a middle click uses nothing;
+  `PostClick` sees both its down and its up and acts on the up. In combat the row holds, so the icon goes
+  once combat ends. There is no switch: it costs nothing until clicked.
 - The row's and the menu's icon edges take the theme's Borders & Lines color (`ns.ThemeTint`), and
   stay black with the default theme.
 - Camp Benefits (1229741, probed 2026-09-19), Campfire Nearby (1283391, the area aura in range of
