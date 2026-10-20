@@ -94,9 +94,8 @@ end
 local function OnTabArtPlaced(region)
     local saved = flippedArt[region]
     if placing or not (saved and savedTabPoints) then return end
-    local _, rel, _, x = region:GetPoint(1)
-    local first = saved.points[1]
-    if rel ~= first[2] or x ~= first[4] then return end
+    local _, rel = region:GetPoint(1)
+    if rel ~= saved.tab then return end
     FlipPoints(region, saved.tab, Points(region))
 end
 

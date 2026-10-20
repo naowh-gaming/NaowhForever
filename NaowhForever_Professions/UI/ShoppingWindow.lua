@@ -38,7 +38,7 @@ local STEP_GAP, MINUS_GAP = 6, 2
 local PIN_GAP = 4
 local MAKE_W, KEEP_W = 40, 34
 local SUMMARY_SIZE = 12
-local CLOSE = 22
+local CLOSE = Style.WINDOW_CLOSE
 local DETACH_W = 60
 local DOCK_GAP = 2
 local FLOAT_STRATA = "HIGH"
@@ -579,8 +579,6 @@ local function OnConsumables()
 end
 
 local function BuildBar(close)
-    close:SetSize(CLOSE, CLOSE)
-    ns.SetButtonText(close, TEXT_CLOSE)
     detach = ns.Button(window, TEXT_DETACH, DETACH_W, CLOSE, OnDetach)
     detach:SetPoint("RIGHT", close, "LEFT", -St.BAR_GAP, 0)
     detach:Hide()
@@ -594,7 +592,7 @@ end
 local function Build()
     window = Parts.Window(WIDTH, HEIGHT, "shoppingListWindow")
     window.backdrop:Card(CARD_INSET, HEADER + CARD_INSET, CARD_INSET, FOOTER + CARD_INSET)
-    BuildBar(Parts.TitleBar(window, TEXT_TITLE, TEXT_SUBTITLE, PAGE))
+    BuildBar(Parts.TitleBar(window, TEXT_TITLE, TEXT_SUBTITLE, PAGE, CLOSE, TEXT_CLOSE))
     Parts.FooterBrand(window, PAGE)
     BuildBody(BuildInput())
     BuildFooter()
