@@ -42,7 +42,6 @@ local win, hooked, lastMode
 local queued = false
 local savedTabPoints
 local docked = {}
-local outlines = setmetatable({}, { __mode = "k" })
 local bookDocked, bookPending = false, nil
 local events = CreateFrame("Frame")
 
@@ -55,11 +54,6 @@ local function NextStrata(strata)
         if s == strata then return STRATA[math.min(i + 1, #STRATA)] end
     end
     return FALLBACK_STRATA
-end
-
-local function OutlineTab(tab, on)
-    if on and not outlines[tab] then outlines[tab] = ns.Border(tab, ns.THEME.accent) end
-    if outlines[tab] then outlines[tab]._frame:SetShown(on) end
 end
 
 local function ShowUnlearn(button)
@@ -87,10 +81,8 @@ local function DockTabs(on)
         savedTabPoints = nil
     end
     if head.SetIgnoreParentAlpha then head:SetIgnoreParentAlpha(on) end
-    OutlineTab(head, on)
     for _, tab in ipairs(ProfessionsFrame.rightProfessionTabs or EMPTY) do
         if tab.SetIgnoreParentAlpha then tab:SetIgnoreParentAlpha(on) end
-        OutlineTab(tab, on)
     end
 end
 
