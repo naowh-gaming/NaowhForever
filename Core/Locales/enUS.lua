@@ -7066,3 +7066,4 @@ L["(level %d)"] = true
 L["Fills in as you learn them"] = true
 L["A website layout always does: each spell drops into its slot when learned."] = true
 L["Not available with the Gamepad interface style"] = true
+L["The world map cannot be opened from Naowh Forever with a gamepad."] = true
