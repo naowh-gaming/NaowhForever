@@ -352,7 +352,7 @@ local function Summary(store)
 end
 
 ns.Shared.Settings.Page("QoL/Interface", S):Card({
-    id = "scout", name = "Scout", order = 55, switch = "scout",
+    id = "scout", name = "Scout", order = 52, switch = "scout",
     help = "What a creature can do, and how much of your physical damage its armor takes, on its tooltip.",
     summary = Summary,
     rows = {

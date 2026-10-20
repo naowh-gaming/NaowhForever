@@ -191,7 +191,7 @@ do
     s.Login()
     check("off: nothing hooked, no frame but the login one", s.hooks == 0 and #s.frames == 2 and s.unpacked == nil)
     check("the card is on the Interface tab after Tooltips, with its switch", s.page == "QoL/Interface"
-        and s.card.order == 55 and s.card.switch == "scout")
+        and s.card.order == 52 and s.card.switch == "scout")
 end
 
 do
