@@ -492,30 +492,55 @@ check("the row's Import opens the preview on the same strip", Label("bottom") ==
 check("a macro the import makes is marked NEW", Tile("bottom", 3).badge.text.text == "NEW")
 check("a slot left out shows the alt's own action", Tile("bottom", 2).icon.texture == 135924
     and Tile("bottom", 2).icon.desaturated)
-check("what comes across sits in its own panels", Panel("2 of 2 actions")
-    and Panel("2 macros: 2 new, 0 already here") and Panel("2 keybinds"))
+local function With(field, other)
+    local out = {}
+    for _, frame in ipairs(state.frames) do
+        if rawget(frame, field) and (not other or rawget(frame, other)) and Visible(frame) then out[#out + 1] = frame end
+    end
+    return out
+end
+local function Tiles()
+    local out = {}
+    for _, tile in ipairs(With("number", "label")) do out[#out + 1] = tile.number.text .. " " .. tile.label.text end
+    return table.concat(out, "|")
+end
+local function Bring(name)
+    for _, choice in ipairs(With("box", "count")) do
+        if choice.name.text == name then return choice end
+    end
+end
+local function Note(text)
+    for _, frame in ipairs(With("note", "rows")) do
+        if frame.note.shown ~= false and frame.note.text == text then return frame end
+    end
+end
+check("tiles count what the import changes", Tiles()
+    == "3 slots change|2 added to empty buttons|1 cleared|0 fill in as you learn|2 macros made, 0 already here")
+check("Bring Across lists actions, macros and keybinds with what the set holds", Bring("Actions").count.text == 2
+    and Bring("Macros").count.text == 2 and Bring("Keybinds").count.text == 2)
 check("Import is primary", previewImport.primary)
-check("the caption counts what changes", Scene().caption.text:find("^3 slots change: 2 added, 1 cleared%.") ~= nil)
+check("the strip's caption says nothing changes yet", Scene().caption.text == "Nothing changes until you press Import.")
 check("a slot that fills an empty button is edged green, one taken off is crossed in red",
     Tile("bottom", 1).edge.red == ns.ActionBars.Style.GREEN_RGB.r and Tile("bottom", 7).mark.shown
     and Tile("bottom", 7).edge.red == ns.ActionBars.Style.RED_RGB.r)
 check("Import names how many changes it makes", previewImport.label == "Import 3 changes")
-local keyPanel = Panel("2 keybinds")
 local keyLines = {}
-for _, frame in ipairs(state.frames) do
-    if rawget(frame, "key") and rawget(frame, "text") and frame.parent == keyPanel and Visible(frame) then
-        keyLines[#keyLines + 1] = frame.key.text .. " " .. frame.text.text
-    end
+for _, line in ipairs(With("key", "text")) do
+    if type(line.key) == "table" then keyLines[#keyLines + 1] = line.key.text .. " " .. line.text.text end
 end
 table.sort(keyLines)
 check("the keys that change are listed with what they did and will do",
     keyLines[1] == "1 Item  ->  Smite" and keyLines[2] == "2 nothing  ->  Item")
-local keySwitch
-for _, toggle in ipairs(state.toggles) do if toggle.parent == keyPanel then keySwitch = toggle end end
-Click(keySwitch)
-check("switching keybinds off for this import leaves the keys alone", Panel("Keybinds")
-    and Panel("Keybinds").line.text == "Off: your keys stay as they are.")
-Click(keySwitch)
+Click(Bring("Keybinds"))
+check("leaving keybinds out of this import says the keys stay", Note("Off: your keys stay as they are.")
+    and not With("box", "count")[1].parent.rows[3].box.tick.shown)
+Click(Bring("Keybinds"))
+local modes = With("buttons", "onPick")[1]
+for _, button in ipairs(modes.buttons) do if button.key == "now" then Click(button) end end
+check("Your bars now shows the bars as they are, the slot the import clears edged red",
+    Tile("bottom", 7).icon.texture == 135924 and Tile("bottom", 7).edge.red == ns.ActionBars.Style.RED_RGB.r
+    and not Tile("bottom", 7).mark.shown)
+for _, button in ipairs(modes.buttons) do if button.key == "after" then Click(button) end end
 check("nothing changed yet", state.bars[2].kind == "item" and #state.macros == 0)
 previewImport.onClick()
 check("Import imports", state.bars[1].id == 585 and state.bars[3].kind == "macro" and #state.macros == 2)
@@ -644,10 +669,11 @@ Click(KEYS)
 ns.OpenActionBarsImport("Hunter")
 check("the preview shows the pet bar's row too, left out as saved", Visible(Scene().pet)
     and Scene().pet.label.text.text == "PET BAR" .. DOT .. "LEFT OUT" and Scene().pet.tiles[1].key.text == "CTRL-1")
-check("and counts one of each in the singular", Panel("1 of 1 action") and Panel("1 keybind"))
-local panels = Panel("1 of 1 action"):GetParent()
-panels.scripts.OnSizeChanged(panels, 1100)
-check("its three panels share the tab's width", Panel("1 of 1 action").w == 360 and Panel("1 keybind").w == 360)
+check("bars that already match change nothing", Tiles():find("^0 slots change") ~= nil and previewImport.label == "Import")
+local tile = With("number", "label")[1]
+local view = tile:GetParent()
+view.scripts.OnSizeChanged(view, 1100)
+check("its five tiles and three panels share the tab's width", tile.w == 212 and Bring("Actions"):GetParent().w == 360)
 
 state.class, state.className = "MAGE", "Mage"
 state.bars = {}

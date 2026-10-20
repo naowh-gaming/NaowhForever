@@ -39,8 +39,8 @@ NaowhForever_Utilities/ActionBars/
                                 row per saved set with a small strip of its bars, Import and More, and the backups
                                 (ns.BuildActionBarsPage)
     Builder.lua                 the set builder: your bars on the scene, keybinds and macros, a name (A.Builder)
-    Preview.lua                 the import preview: the same scene with each slot that changes marked, then what comes
-                                across, each part switchable for this import (A.Preview)
+    Preview.lua                 the import preview: what changes counted, the same scene now or after the import with each
+                                change marked, then what comes across, what fills in later and the keys that change (A.Preview)
     Window.lua                  the Bar Sets tab, its views and its back link (ns.BuildActionBarsTab,
                                 ns.OpenActionBarsWindow)
     SettingsPage.lua            its settings page (Action Bars/Settings), declared as cards
@@ -164,8 +164,9 @@ table (the frame, `Show` and `Redraw`) when it builds them.
 - The preview compares each slot with the bars as they are: added (green edge) where the button is empty
   now, swapped (accent edge) where something else is there, cleared (red edge and cross) where the set
   keeps it empty or its spell is not learned yet, and dimmed where nothing changes. A spell on the bars at
-  another rank counts as the same. Its Actions, Macros and Keybinds switches apply to this import only,
-  starting from the Settings tab's Import Macros and Import Keybinds.
+  another rank counts as the same. Your Bars Now shows the bars as they are with what the import clears or
+  swaps edged. Its Bring Across boxes (actions, macros, keybinds) apply to this import only, starting from
+  the Settings tab's Import Macros and Import Keybinds; Fill In As You Learn there is the setting itself.
 
 ## Checking
 
