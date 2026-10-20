@@ -6,7 +6,7 @@ local S = A.Settings
 local Settings = ns.Shared.Settings
 
 local ORDER_IMPORTING, ORDER_AUTO_LOAD, ORDER_NEW_SPELLS = 10, 15, 20
-local LEVEL_RANGE = { 2, 60, 1 }
+local LEVEL_RANGE = { A.C.FIRST_LOAD_LEVEL, 60, 1 }
 local AUTO_PUSH, PUSH_OFF, PUSH_ON = "AutoPushSpellToActionBar", "0", "1"
 local BARS_OFF = ns.L("Turn on Action Bars")
 local TEXT_HIGHEST, TEXT_SAVED = ns.L("Highest ranks"), ns.L("Saved ranks")
@@ -49,7 +49,7 @@ local function AutoLoadSummary()
     local parts = {}
     if Rule("dungeon") then parts[#parts + 1] = TEXT_IN_DUNGEONS end
     if Rule("battleground") then parts[#parts + 1] = TEXT_IN_BATTLEGROUNDS end
-    if Rule("levelSet") and (Rule("level") or 0) > 0 then parts[#parts + 1] = TEXT_AT_LEVEL:format(Rule("level")) end
+    if Rule("levelSet") then parts[#parts + 1] = TEXT_AT_LEVEL:format(A.AutoLoad.Level()) end
     return #parts > 0 and table.concat(parts, ", ") or TEXT_AUTO_OFF
 end
 
@@ -95,8 +95,7 @@ page:Card({
 
 page:Card({
     id = "autoLoad", name = "Load on Its Own", order = ORDER_AUTO_LOAD,
-    help = "Sets your class loads by itself, out of combat. Your bars are backed up first each time, so "
-        .. "Undo or Backups on the Bar Sets tab puts them back.",
+    help = "Loads a set by itself in an instance or at a level, after backing up your bars.",
     search = "auto load swap dungeon raid battleground instance level",
     summary = AutoLoadSummary,
     rows = {
@@ -111,7 +110,7 @@ page:Card({
         { label = "On Reaching a Level", choice = AutoImportChoices, get = RuleGet("levelSet"),
           set = RuleSet("levelSet"), needs = On, why = BARS_OFF, help = "Loads this set once, at the level below." },
         { label = "Level", slider = LEVEL_RANGE, needs = On, why = BARS_OFF,
-          get = function() return A.AutoLoad.Rule("level") or LEVEL_RANGE[1] end,
+          get = function() return A.AutoLoad.Level() end,
           set = function(level) A.AutoLoad.SetRule("level", level) end,
           help = "The level On Reaching a Level loads its set at." },
     },

@@ -3,6 +3,7 @@ local ns = _G.NaowhForever
 
 local A = ns.ActionBars
 local S = A.Settings
+local C = A.C
 local Backups = A.Backups
 
 local STORE = "barSetAutoLoad"
@@ -12,7 +13,7 @@ local TEXT_ENTERING = ns.L("Loading %s for this instance.")
 local TEXT_LEAVING = ns.L("Leaving the instance: putting back the bars you had before %s.")
 local TEXT_LEVEL = ns.L("Level %d: loading %s.")
 
-local events
+local events, levelUp
 
 local function Rules()
     local all = S.Get("autoLoad") or {}
@@ -38,9 +39,9 @@ local function State()
     return ns.Shared.CharacterData(STORE, true)
 end
 
-local function BackupIndex(saved)
+local function BackupIndex(id)
     for i, backup in ipairs(Backups.List()) do
-        if backup.saved == saved then return i end
+        if backup.id == id then return i end
     end
 end
 
@@ -59,7 +60,7 @@ local function Enter(state, zone)
     if not key then return end
     ns.Print(TEXT_ENTERING:format(key))
     if A.ImportSet(key) then
-        state.loaded, state.backup = key, Backups.List()[1].saved
+        state.loaded, state.backup = key, Backups.List()[1].id
     end
 end
 
@@ -67,28 +68,40 @@ local function CheckZone()
     local _, kind = IsInInstance()
     local zone = ZONES[kind]
     local state = State()
-    if zone == state.zone then return end
+    if zone == state.zone or (state.zone and UnitIsDeadOrGhost("player")) then return end
     if state.zone then Leave(state) end
     if zone then Enter(state, zone) end
 end
 
+local function Level()
+    return Rules().level or C.FIRST_LOAD_LEVEL
+end
+
 local function CheckLevel(level)
-    local key, at = Named("levelSet"), Rules().level or 0
-    local state = State()
-    if not key or at <= 0 or level < at or state.levelDone == at .. key then return end
-    state.levelDone = at .. key
+    local key = Named("levelSet")
+    if not key or level ~= Level() then return end
     ns.Print(TEXT_LEVEL:format(level, key))
     A.ImportSet(key)
 end
 
-local function Run()
+local function Run(_, event, level)
+    if event == "PLAYER_LEVEL_UP" then levelUp = level end
     if InCombatLockdown() then
         events:RegisterEvent("PLAYER_REGEN_ENABLED")
         return
     end
     events:UnregisterEvent("PLAYER_REGEN_ENABLED")
     CheckZone()
-    CheckLevel(UnitLevel("player"))
+    if levelUp then
+        CheckLevel(levelUp)
+        levelUp = nil
+    end
+end
+
+local function Forget()
+    local state = ns.Shared.CharacterData(STORE)
+    if state then state.zone, state.loaded, state.backup = nil, nil, nil end
+    levelUp = nil
 end
 
 local function Watch()
@@ -97,6 +110,7 @@ local function Watch()
         events = CreateFrame("Frame")
         events:SetScript("OnEvent", Run)
     end
+    if not on then Forget() end
     if not events then return end
     if on then
         events:RegisterEvent("PLAYER_ENTERING_WORLD")
@@ -116,4 +130,4 @@ S.OnChange(function(key)
     if key == "enabled" or key == "autoLoad" then Watch() end
 end)
 
-A.AutoLoad = { Rule = function(key) return Rules()[key] end, SetRule = SetRule, Watch = Watch, Run = Run }
+A.AutoLoad = { Rule = function(key) return Rules()[key] end, SetRule = SetRule, Level = Level, Watch = Watch, Run = Run }
