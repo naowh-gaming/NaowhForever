@@ -230,11 +230,20 @@ local function PlacedHere(map, x, y)
     return pending == nil and StillPlaced() and SameSpot(map, x, y, placed.map, placed.x, placed.y)
 end
 
+local function JourneyHere(map, x, y)
+    if not ns.JourneyDestination then return false end
+    local toMap, toX, toY = ns.JourneyDestination()
+    return toMap ~= nil and SameSpot(map, x, y, toMap, toX, toY)
+end
+
 function ns.ToggleWaypoint(title, map, x, y, note, icon, clearInside)
     local later = false
     if TomTomHere(map, x, y) then
         pcall(TomTom.RemoveWaypoint, TomTom, tomtomWaypoint)
         tomtomWaypoint, tomtomSpot = nil, nil
+    elseif JourneyHere(map, x, y) then
+        later = MapOpen()
+        ns.ClearWaypoint()
     elseif PendingHere(map, x, y) then
         DropPending()
     elseif PlacedHere(map, x, y) then
