@@ -5,7 +5,7 @@ local A = ns.AuraBuffs
 local T = ns.THEME
 local St = A.Style
 local Parts = ns.Shared.Parts
-local D, Look = A.CampData, A.CampIcon
+local D, Look, Secret = A.CampData, A.CampIcon, A.Camp.Secret
 
 local ITEM = ns.Shared.Items.SLEEPING_BAG
 local GCD = A.C.GCD
@@ -41,10 +41,6 @@ end
 local function OnReady()
     readyAt = nil
     A.Camp.Refresh()
-end
-
-local function Secret(value)
-    return issecretvalue ~= nil and issecretvalue(value)
 end
 
 local function Cooldown()

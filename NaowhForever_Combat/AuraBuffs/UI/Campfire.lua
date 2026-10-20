@@ -580,9 +580,18 @@ local function ShowCamp(event)
     UpdateAlert(aura)
 end
 
+local function SyncBag()
+    CampBag.Sync(icon, not unlocked and not BarShown() and On() and Camp.InOpenWorld())
+end
+
 local function Refresh(_, event)
     ShowCamp(event)
-    CampBag.Sync(icon, not unlocked and not BarShown() and On() and Camp.InOpenWorld())
+    SyncBag()
+end
+
+local function OnEvent(_, event)
+    if event == "BAG_UPDATE_DELAYED" or event == "BAG_UPDATE_COOLDOWN" then return SyncBag() end
+    Refresh(nil, event)
 end
 
 local function Layout(simple)
@@ -602,8 +611,13 @@ local function Listen()
     events:RegisterEvent("PLAYER_ENTERING_WORLD")
     events:RegisterEvent("PLAYER_REGEN_ENABLED")
     events:RegisterEvent("PLAYER_REGEN_DISABLED")
-    events:RegisterEvent("BAG_UPDATE_DELAYED")
-    events:RegisterEvent("BAG_UPDATE_COOLDOWN")
+    if Simple() then
+        events:UnregisterEvent("BAG_UPDATE_DELAYED")
+        events:UnregisterEvent("BAG_UPDATE_COOLDOWN")
+    else
+        events:RegisterEvent("BAG_UPDATE_DELAYED")
+        events:RegisterEvent("BAG_UPDATE_COOLDOWN")
+    end
 end
 
 local function Apply()
@@ -643,7 +657,7 @@ end
 
 Camp.Refresh = Refresh
 
-events:SetScript("OnEvent", Refresh)
+events:SetScript("OnEvent", OnEvent)
 hooksecurefunc(S, "Set", OnSet)
 hooksecurefunc(ns, "Apply", Apply)
 hooksecurefunc(ns, "ShowUnlockMode", OnUnlock)

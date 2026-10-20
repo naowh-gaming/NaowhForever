@@ -97,7 +97,7 @@ end
 local function Fixture(settings)
     local state = { now = 1000, auras = {}, frames = {}, named = {}, timers = {}, bars = 0, tips = {},
         emotes = {}, glows = {}, tooltipReads = 0, secret = false, combat = false, cursorX = 0, cursorY = 0, shift = false, menus = 0,
-        groups = {}, carried = {}, itemIcons = {},
+        groups = {}, carried = {}, itemIcons = {}, reads = {},
         tooltip = { lines = { { leftText = "Camp Benefits" } } }, spellNames = {} }
     for id, name in pairs(NAMES) do state.spellNames[id] = name end
     local widths = {}
@@ -317,7 +317,10 @@ local function Fixture(settings)
         IsInInstance = function() return false end,
         issecretvalue = function(v) return v == SECRET_TEXT or (state.secret and v == 2) end,
         C_Secrets = { ShouldAurasBeSecret = function() return false end },
-        C_UnitAuras = { GetPlayerAuraBySpellID = function(id) return state.auras[id] end },
+        C_UnitAuras = { GetPlayerAuraBySpellID = function(id)
+            state.reads[id] = (state.reads[id] or 0) + 1
+            return state.auras[id]
+        end },
         C_ChatInfo = { PerformEmote = function(token) state.emotes[#state.emotes + 1] = token end },
         LibStub = function()
             return {
@@ -1513,6 +1516,10 @@ do
     check("bag: used, it greys with a countdown", bag.tex.desaturated and bag.cooldown.shown
         and bag.cooldown.cooldownStart == s.now and bag.cooldown.cooldownDuration == 600
         and not bag.cooldown.hideNumbers)
+    local reads = s.reads[CAMP] or 0
+    s.fire("BAG_UPDATE_COOLDOWN")
+    check("bag: a bag event updates only the bag, not the whole campfire",
+        (s.reads[CAMP] or 0) == reads and bag.cooldown.shown)
     check("bag: no Well-Rested, no ring and no stacks", not bag.drain.shown and not bag.timer.shown
         and not bag.count.shown)
     s.auras[WELL_RESTED] = { expirationTime = s.now + 5000, duration = 7200, applications = 3 }
@@ -1570,6 +1577,13 @@ do
     s.fire("UNIT_AURA")
     check("bag: with the buffs showing on the right, at the lower left",
         icon.buffs.shown and bag.shown and bag.pt.CENTER == 500 - reach)
+    s.S.Set("campBuffMode", "hover")
+    check("bag: the buffs hidden until hovered, at the lower right",
+        icon.buffs.alpha == 0 and bag.shown and bag.pt.CENTER == 500 + reach)
+    s.S.Set("campBuffMode", "off")
+    check("bag: the buffs off, at the lower right", bag.shown and bag.pt.CENTER == 500 + reach)
+    s.S.Set("campBuffMode", "always")
+    check("bag: the buffs always shown again, at the lower left", bag.shown and bag.pt.CENTER == 500 - reach)
     s.S.Set("campShowUnder", true)
     s.auras[CAMP] = { duration = 3600, expirationTime = s.now + 3000, auraInstanceID = 3 }
     s.fire("UNIT_AURA")
@@ -1587,8 +1601,12 @@ do
     check("bag: the fire back, the bag still there", icon.shown and bag.shown)
     s.S.Set("campStyle", "simple")
     check("bag: Round only, never on the Simple bar", not bag.shown)
+    check("bag: Simple listens to no bag events", not s.listener("BAG_UPDATE_DELAYED")
+        and not s.listener("BAG_UPDATE_COOLDOWN"))
     s.S.Set("campStyle", "round")
     check("bag: Round again, it is back", bag.shown)
+    check("bag: Round listens to bag events again", s.listener("BAG_UPDATE_DELAYED") ~= nil
+        and s.listener("BAG_UPDATE_COOLDOWN") ~= nil)
     s.ns.ShowUnlockMode()
     check("bag: hidden in Unlock Mode", not bag.shown)
     s.ns.HideUnlockMode()

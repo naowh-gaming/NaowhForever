@@ -215,7 +215,9 @@ function Look.BagSpot(icon, bag)
     local x, y = icon:GetCenter()
     if not x then return end
     local reach = (icon:GetWidth() + bag:GetWidth()) / 2 + TRACK_OUT * 2 + BAG_GAP
-    if S.Get("campBuffSide") == "right" and icon:IsShown() and icon.buffs:IsShown() then reach = -reach end
+    if S.Get("campBuffSide") == "right" and ns.CampBuffMode() == "always" and icon:IsShown() and icon.buffs:IsShown() then
+        reach = -reach
+    end
     return x + reach, y - icon:GetHeight() / 2
 end
 

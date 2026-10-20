@@ -291,6 +291,8 @@ NaowhForever_Combat/AuraBuffs/
 - The bag's cooldown is `C_Container.GetItemCooldown`, read on each refresh and on
   `BAG_UPDATE_COOLDOWN`; one of `GCD` (1.5 s) or less is the global cooldown, not the bag's. One
   timer per cooldown end shows it ready again, since no event fires when a cooldown runs out.
+  `BAG_UPDATE_COOLDOWN` fires on every global cooldown, so the two bag events update only the
+  bag, not the whole Campfire, and are registered only while Round is picked.
 - The bag's icon is set with a plain `SetTexture`, never through `Parts.Smooth`: a game icon file
   (134400) loaded with the TRILINEAR filter crashed the Forever client on its disk thread.
 - The Round icon's plate follows the theme's Panels color (`ns.ThemeTint`), and a black circle one
