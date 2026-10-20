@@ -208,6 +208,7 @@ local function BuildHeader()
     win.title:SetPoint("LEFT", logo, "RIGHT", TITLE_GAP, 0)
     local close = ns.Button(win, "X", CLOSE, CLOSE, CloseAll)
     close:SetPoint("TOPRIGHT", -CLOSE_RIGHT, -CLOSE_DROP)
+    win.close = close
     local rank = CreateFrame("StatusBar", nil, win)
     rank:SetPoint("TOPLEFT", Style.PAD + RANK_INSET, -RANK_DROP)
     rank:SetSize(Style.WINDOW_W - Style.PAD * 2 - RANK_INSET * 2, RANK_H)

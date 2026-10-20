@@ -216,6 +216,7 @@ function Parts.Resizable(window, sizeKey, minW, minH, onSized, onReleased)
 end
 
 Parts.Logo = Logo
+Parts.Place = Place
 
 local function ForeverTitleBar(window, close, middle)
     local portrait = window.forever.portrait

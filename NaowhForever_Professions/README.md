@@ -64,7 +64,7 @@ NaowhForever_Professions/
     Window.lua         the window: frame, title, skill bar, rank banner, search, Filter, drawing (P.Window)
     Takeover.lua       showing it over Blizzard's window, docking Blizzard's tabs and cards, dragging, events
     ShoppingAdd.lua    Add to List under a recipe, and the button that opens the shopping list
-    ShoppingWindow.lua the Shopping List window: crafts, other items, materials (ns.ToggleShoppingList)
+    ShoppingWindow.lua the Shopping List window: crafts, other items, materials, docked beside the profession window or detached (ns.ToggleShoppingList)
     ShoppingConsumables.lua the Consumables picker beside the Shopping List: search and favourites
     ShoppingVendor.lua Shopping List materials sold by the open merchant, with Buy and Buy All
     ShoppingList.lua   the shopping list beside the auction house: check and buy
@@ -113,7 +113,18 @@ Each layer uses only the ones above it, or reads a later one's table at call tim
   profession, trainer and merchant windows with the D-pad from secure code, which the invisible
   window under ours, the docked tabs and cards, and our hooks on those windows would taint.
 - Blizzard's profession tabs switch profession by casting its spell, which only Blizzard's code may
-  do, so the real tabs move onto our window's edge and ignore their invisible parent's alpha.
+  do, so the real tabs move onto our window's left edge and ignore their invisible parent's alpha.
+- On the left edge the tabs are mirrored so their open side faces the window, and put back when
+  undocked: their atlas art is flipped and their anchors swapped; the icons keep their look. The
+  icon's mask is turned half a turn instead: a MaskTexture with flipped tex coords hides the icon,
+  and the side tab mask is the same top and bottom, so turning it mirrors it. Clicking a tab
+  re-anchors every icon to its right-side spot, so a SetPoint hook mirrors it again.
+- The window moves right just enough to keep the tabs on screen: the game opens it at the screen's
+  left edge.
+- The Shopping List docks on the right edge, where the tabs used to be. Opened from the profession
+  window it docks; Detach floats it where it is, to drag and resize, and Dock puts it back. Closing it
+  ends the detach. It comes back with the profession window only if it was docked and open when that
+  window closed (account `shoppingListPanel`).
 - The overview's spell buttons (Smelting, Find Minerals) cast and the red cross unlearns, so they stay
   Blizzard's. A card draws its buttons as part of itself, so Blizzard's whole card moves into ours with
   its art at zero alpha; the buttons stay children of that card, where their click reads the

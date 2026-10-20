@@ -12,12 +12,12 @@ local Widgets = P.Widgets
 local ADD_W = 90
 local ADD_DROP = 4
 local ADD_OVERHANG = 4
-local OPEN_W, QUEUE_W, OPEN_H, OPEN_RIGHT, OPEN_DROP, OPEN_GAP = 100, 108, 22, 132, 7, 6
+local OPEN_W, QUEUE_W, OPEN_H, OPEN_GAP = 100, 108, 22, 6
 local TEXT_ADD = ns.L("Add to List")
 local TEXT_ADD_QUEUE = ns.L("Add to Queue")
 local TEXT_OPEN = ns.L("Shopping List")
 local TEXT_QUEUE = ns.L("Crafting Queue")
-local TIP_OPEN, TIP_OPEN_HELP = ns.L("Shopping List"), ns.L("Opens your shopping list, which stays open when this window closes.")
+local TIP_OPEN, TIP_OPEN_HELP = ns.L("Shopping List"), ns.L("Opens your shopping list beside this window. Detach it to keep it open on its own.")
 local TIP_QUEUE_HELP = ns.L("Opens your crafting queue, which stays open when this window closes.")
 local TIP_ADD = ns.L("Add to Shopping List")
 local TIP_ADD_HELP = ns.L("Puts the materials for that many crafts on your "
@@ -74,13 +74,14 @@ function ns.ShoppingListAttach(win)
     minus:SetPoint("RIGHT", qty, "LEFT", -Style.STEP_GAP, 0)
     ns.Tooltip(qty, TIP_CRAFTS, TIP_CRAFTS_HELP)
     opener = ns.Button(win, TEXT_OPEN, OPEN_W, OPEN_H, ns.ToggleShoppingList)
-    opener:SetPoint("TOPRIGHT", -OPEN_RIGHT, -OPEN_DROP)
+    opener:SetPoint("RIGHT", win.close, "LEFT", -OPEN_GAP, 0)
     ns.Tooltip(opener, TIP_OPEN, TIP_OPEN_HELP)
     opener:Hide()
     queueOpener = ns.Button(win, TEXT_QUEUE, QUEUE_W, OPEN_H, ns.ToggleCraftQueue)
     queueOpener:SetPoint("RIGHT", opener, "LEFT", -OPEN_GAP, 0)
     ns.Tooltip(queueOpener, TEXT_QUEUE, TIP_QUEUE_HELP)
     queueOpener:Hide()
+    ns.ShoppingListDockTo(win)
 end
 
 function ns.ShoppingListRender(info, last)
