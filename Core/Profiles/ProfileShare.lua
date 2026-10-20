@@ -53,9 +53,13 @@ local LEGACY_PARTS = {
       share = "The consumables your reminders watch." },
 }
 local API_PARTS = { settings = true, macros = true, library = true, consumables = true, builds = true,
-    bisLists = true, actionBars = true, questRewards = true, look = true }
+    bisLists = true, questRewards = true, look = true }
 local BAR_KINDS_NEED_ID = { spell = true, item = true }
 local BAR_FLAGS = { "keys", "macros", "website" }
+local BAR_BUTTONS = { ACTIONBUTTON = true, MULTIACTIONBAR1BUTTON = true, MULTIACTIONBAR2BUTTON = true,
+    MULTIACTIONBAR3BUTTON = true, MULTIACTIONBAR4BUTTON = true, MULTIACTIONBAR5BUTTON = true,
+    MULTIACTIONBAR6BUTTON = true, MULTIACTIONBAR7BUTTON = true }
+local BAR_BUTTON_SLOTS, BAR_KEYS_PER_ACTION = 12, 2
 local LIST_NOUN = { bisLists = ns.L("lists"), library = ns.L("macros"), builds = ns.L("builds") }
 local TEXT_NO_LIBRARIES = ns.L("The serializer libraries are missing from this build.")
 local TEXT_TOO_BIG_PROFILE = ns.L("This profile is too big to share.")
@@ -621,6 +625,13 @@ local function CleanBarAction(entry, kind)
     return out
 end
 
+local function BarButton(command)
+    if type(command) ~= "string" then return false end
+    local prefix, n = command:match("^(.-)(%d+)$")
+    n = tonumber(n)
+    return BAR_BUTTONS[prefix] and n >= 1 and n <= BAR_BUTTON_SLOTS
+end
+
 local function CleanBarChoices(raw)
     local choices = { skip = {}, macroOff = {} }
     for slot, on in pairs(type(raw.skip) == "table" and raw.skip or {}) do
@@ -648,8 +659,10 @@ local function CleanBarSet(raw)
     end
     if type(raw.bindings) == "table" then
         set.bindings = {}
+        local keys = {}
         for key, command in pairs(raw.bindings) do
-            if BarName(key) and BarName(command, MACRO_BODY_MAX) then set.bindings[key] = command end
+            local n = BarName(key) and BarButton(command) and (keys[command] or 0) + 1
+            if n and n <= BAR_KEYS_PER_ACTION then set.bindings[key], keys[command] = command, n end
         end
     end
     if type(raw.choices) == "table" then set.choices = CleanBarChoices(raw.choices) end
@@ -664,25 +677,30 @@ local function BarSetTaken(sets, name)
     return false
 end
 
-local function HasBarSet(sets, set)
-    if not set.saved then return false end
-    for _, mine in pairs(sets) do
-        if type(mine) == "table" and mine.saved == set.saved and mine.by == set.by then return true end
+local function FindBarSet(sets, set)
+    if not set.saved then return nil end
+    for key, mine in pairs(sets) do
+        if type(mine) == "table" and mine.saved == set.saved and mine.by == set.by then return key end
     end
-    return false
+    return nil
 end
 
-local function AddBarSets(incoming)
+local function AddBarSets(incoming, root)
     local account = ns.AccountSettings()
     account.barSets = type(account.barSets) == "table" and account.barSets or {}
+    local chosen = type(root.actionBars) == "table" and root.actionBars.autoImportSets
+    chosen = type(chosen) == "table" and chosen or {}
     local added = 0
     for class, sets in pairs(incoming) do
         if type(class) == "string" and class:match("^%u+$") and type(sets) == "table" then
             local mine = type(account.barSets[class]) == "table" and account.barSets[class] or {}
+            local auto = chosen[class]
             for name, raw in pairs(sets) do
                 local set = BarName(name) and CleanBarSet(raw)
-                if set and not HasBarSet(mine, set) then
-                    local key, n = name, 1
+                local key = set and FindBarSet(mine, set)
+                if set and not key then
+                    local n = 1
+                    key = name
                     while BarSetTaken(mine, key) do
                         n = n + 1
                         key = ("%s %d"):format(name, n)
@@ -690,6 +708,7 @@ local function AddBarSets(incoming)
                     mine[key] = set
                     added = added + 1
                 end
+                if key and auto == name then chosen[class] = key end
             end
             if next(mine) then account.barSets[class] = mine end
         end
@@ -860,7 +879,7 @@ function ns.ImportProfile(payload, wanted, name, overwrite)
     end
     local added = { bisLists = 0, library = 0, builds = 0, actionBars = 0 }
     if wanted.bisLists and type(parts.bisLists) == "table" then added.bisLists = AddBisLists(parts.bisLists) end
-    if wanted.actionBars and type(parts.actionBars) == "table" then added.actionBars = AddBarSets(parts.actionBars) end
+    if wanted.actionBars and type(parts.actionBars) == "table" then added.actionBars = AddBarSets(parts.actionBars, root) end
     if wanted.library and ns.ModuleOn(MACROS_ADDON) and type(parts.library) == "table" then
         added.library = AddLibrary(parts.library)
     end
@@ -899,7 +918,7 @@ end
 
 function API:ExportProfile(profileKey)
     if type(profileKey) ~= "string" or not self:GetProfileKeys()[profileKey] then return nil end
-    return (ns.ExportProfile(nil, profileKey))
+    return (ns.ExportProfile(API_PARTS, profileKey))
 end
 
 function API:DecodeProfileString(str)

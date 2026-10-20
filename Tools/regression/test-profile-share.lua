@@ -25,6 +25,7 @@ local DEFAULTS = {
     qol = { enabled = true, fastLoot = false, bisSlots = {} },
     macros = { enabled = true, classMacros = {}, foodBar = false },
     topBar = { enabled = true, mouseoverAlpha = 0 },
+    actionBars = { enabled = false, autoImportSets = {} },
 }
 
 -- A fresh account: one profile, Default, with something in every part.
@@ -409,16 +410,21 @@ Case("bar sets join yours under a free name, never over them", function()
     raid.saved = 200
     raid.slots[1].id = 19750
     payload.parts.actionBars.MAGE = { Leveling = { saved = 300, slots = { [5] = { kind = "item", id = 5512 } } } }
-    local _, added = w.ns.ImportProfile(payload, { actionBars = true }, "B")
+    payload.parts.settings = { actionBars = { autoImportSets = { PALADIN = "Raid", MAGE = "Leveling" } } }
+    local _, added = w.ns.ImportProfile(payload, { actionBars = true, settings = true }, "B")
     local paladin = w.db.account.barSets.PALADIN
     assert(added.actionBars == 2, tostring(added.actionBars))
     assert(paladin.Raid.saved == 100 and paladin.Raid.slots[1].id == 635, "yours kept")
     assert(paladin["Raid 2"].slots[1].id == 19750 and paladin["Raid 2"].bindings["SHIFT-1"] == "ACTIONBUTTON1")
     assert(paladin["Raid 2"].choices.keys == true and paladin["Raid 2"].choices.macroOff, "its choices come along")
     assert(w.db.account.barSets.MAGE.Leveling.slots[5].id == 5512, "every class's sets")
-    _, added = w.ns.ImportProfile(payload, { actionBars = true }, "C")
+    local chosen = w.db.profiles.B.actionBars.autoImportSets
+    assert(chosen.PALADIN == "Raid 2" and chosen.MAGE == "Leveling", "the auto import choice follows the rename")
+    payload.parts.settings = { actionBars = { autoImportSets = { PALADIN = "Raid" } } }
+    _, added = w.ns.ImportProfile(payload, { actionBars = true, settings = true }, "C")
     assert(added.actionBars == 0 and paladin["Raid 3"] == nil, "a set you already took is not added again")
     assert(w.db.account.barSets.MAGE["Leveling 2"] == nil)
+    assert(w.db.profiles.C.actionBars.autoImportSets.PALADIN == "Raid 2", "and points at the one you took")
 end)
 
 Case("a bar set keeps only what an import can use", function()
@@ -430,7 +436,10 @@ Case("a bar set keeps only what an import can use", function()
                 [3] = { kind = "Bad", id = 1 }, [4] = { kind = "macro", name = "x" }, [-1] = { kind = "item", id = 1 },
                 [5] = { kind = "flyout", id = 9 } },
                 macros = { { name = "A|cff", body = "/x" }, { name = "B", body = "/b" } },
-                bindings = { ["CTRL-1"] = "ACTIONBUTTON1", ["X|r"] = "ACTIONBUTTON2" },
+                bindings = { ["CTRL-1"] = "ACTIONBUTTON1", ["X|r"] = "ACTIONBUTTON2", W = "MOVEFORWARD",
+                    ENTER = "OPENCHAT", ["CTRL-F12"] = "MULTIACTIONBAR7BUTTON12", F1 = "MULTIACTIONBAR8BUTTON1",
+                    F2 = "ACTIONBUTTON13", F3 = "ACTIONBUTTON0", F4 = "ACTIONBUTTON", F5 = "ACTIONBUTTON1X",
+                    ["1"] = "ACTIONBUTTON3", ["2"] = "ACTIONBUTTON3", ["3"] = "ACTIONBUTTON3", [5] = "ACTIONBUTTON4" },
                 choices = { skip = { [7] = true, x = true }, macroOff = { k = "yes" }, keys = "no", website = true } },
             NoSlots = { macros = {} },
             ["Bad|cname"] = { slots = {} },
@@ -443,9 +452,35 @@ Case("a bar set keeps only what an import can use", function()
     assert(good.slots[2] == nil and good.slots[3] == nil and good.slots[4] == nil and good.slots[-1] == nil)
     assert(#good.macros == 1 and good.macros[1].name == "B")
     assert(good.bindings["CTRL-1"] and good.bindings["X|r"] == nil)
+    assert(good.bindings["CTRL-F12"] == "MULTIACTIONBAR7BUTTON12", "every bar's buttons")
+    assert(good.bindings.W == nil and good.bindings.ENTER == nil, "movement and chat keys stay yours")
+    for _, key in ipairs({ "F1", "F2", "F3", "F4", "F5" }) do
+        assert(good.bindings[key] == nil, "no button past the bars: " .. key)
+    end
+    local three = 0
+    for _, command in pairs(good.bindings) do
+        if command == "ACTIONBUTTON3" then three = three + 1 end
+    end
+    assert(three == 2 and good.bindings[5] == nil, "at most 2 keys a button")
     assert(good.choices.skip[7] and good.choices.skip.x == nil and next(good.choices.macroOff) == nil)
     assert(good.choices.keys == nil and good.choices.website == true)
     assert(sets.NoSlots == nil and sets["Bad|cname"] == nil and w.db.account.barSets.lowercase == nil)
+end)
+
+Case("the installer API leaves bar sets out, both ways", function()
+    local w = World()
+    local ns = w.ns
+    ns.ListProfiles = function() return { "Default" } end
+    ns.ProfileTable = function(name) return w.db.profiles[name] end
+    ns.SetAccountProfile = function() return true end
+    local API = getfenv(ns.ExportProfile)._G.NaowhForever_API
+    local parts = assert(ns.DecodeProfile(assert(API:ExportProfile("Default")))).parts
+    assert(parts.actionBars == nil and parts.settings and parts.bisLists and parts.look, "every other part goes")
+    local text = assert(ns.ExportProfile())
+    w.db.account.barSets.PALADIN.Raid = nil
+    assert(API:ImportProfile(text, "Naowh"))
+    assert(w.switched == "Naowh" and w.db.profiles.Naowh.qol.fastLoot == true, "the rest lands")
+    assert(w.db.account.barSets.PALADIN.Raid == nil, "a string with bar sets adds none through the API")
 end)
 
 Case("Library macros join yours; a name you have, or one that is no macro, stays out", function()

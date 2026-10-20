@@ -324,6 +324,15 @@ Profile strings
   bars: a taken name gets a number, and a set you already have (same saved time and saver) is skipped,
   so importing a string twice adds nothing. Each set is cleaned on import to what Action Bars can read;
   a slot or macro it cannot use is dropped and the rest kept. The Action Bars module need not be on.
+- An imported set keeps only keybinds to action bar buttons, at most 2 keys each, the website code's
+  rule (`Sharing.lua`): a set saves every bound key, so another player's set would otherwise rebind
+  movement, chat and the camera. `BAR_BUTTONS` copies the button names from the Action Bars module's
+  `Data/Bars.lua`, which may not be loaded. Your own saved sets keep all their keys.
+- When a set lands under a new name, or is one you already have under another, the imported
+  settings' Import on New Character choice (`actionBars.autoImportSets`) for that class follows it,
+  so it still names the set it chose.
+- `NaowhForever_API` leaves Action Bars out of both import and export: an installer's string brings no
+  one's bar sets or keybinds.
 - Consumables and class macros come from another player, so each list is checked whole: IDs are
   whole numbers from 1 to 2^31 - 1, categories and class tokens are known shapes, names, bodies
   and notes fit the game's limits, lists have no holes, and there are at most 500 consumables and
@@ -358,7 +367,7 @@ Profile strings
   the string as that profile, replacing it, and moves every character to it. It prints its own
   failures because the installer ignores return values.
 - WagoUI Packs drives the same global table: `ExportProfile(key)` (any profile by name, the same
-  string the Profiles page makes with every part ticked), `ImportProfile(str, key)`,
+  string the Profiles page makes with every part but Action Bars ticked), `ImportProfile(str, key)`,
   `DecodeProfileString(str)` (the string's parts, for comparing), `SetProfile(key)` (this
   character only), `GetProfileKeys()`, `GetProfileAssignments()`, `GetCurrentProfileKey()`,
   `OpenConfig()` and `CloseConfig()`. Profile key = profile name. None of them reload the UI
