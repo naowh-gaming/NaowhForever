@@ -1,5 +1,6 @@
--- Run with Lua 5.1 from the repository root: the Action Bars window's three views (home, the
--- set builder and the import preview) built and drawn from the real files against stubs.
+-- Run with Lua 5.1 from the repository root: the Action Bars page's Bar Sets tab and its three views
+-- (home, the set builder and the import preview) built into a stand-in for the options window's page
+-- and drawn from the real files against stubs.
 -- Checks the home's cards and set rows, the paste and export popups, the scene's strip for each
 -- class (Bar 3 | Bar 2 over Bar 1 | Bar 4, form chips, the pet bar's keys), toggling a bar by its
 -- label, skipping a slot, the summary, saving, and the preview's strip and Import.
@@ -43,6 +44,13 @@ local METHODS = {
     Hide = function(f) f.shown = false end,
     SetShown = function(f, shown) f.shown = shown and true or false end,
     IsShown = function(f) return rawget(f, "shown") ~= false end,
+    IsVisible = function(f)
+        while f do
+            if rawget(f, "shown") == false then return false end
+            f = rawget(f, "parent")
+        end
+        return true
+    end,
     SetAlpha = function(f, alpha) f.alpha = alpha end,
     SetDesaturated = function(f, on) f.desaturated = on end,
     GetFrameLevel = function() return 1 end,
@@ -257,6 +265,10 @@ local env = setmetatable({
         for _, b in ipairs(state.binds) do if b[1] == command then return b[2] end end
     end,
     GetBindingText = function(key) return key end,
+    GetBindingAction = function(key)
+        for _, b in ipairs(state.binds) do if b[2] == key then return b[1] end end
+        return ""
+    end,
     SetBinding = function() return true end,
     SaveBindings = NOTHING, GetCurrentBindingSet = function() return 1 end,
     InCombatLockdown = function() return false end,
@@ -266,6 +278,7 @@ local env = setmetatable({
         if pet then return pet[1], pet[2], pet[3] end
     end,
     UnitName = function() return "Alt" end,
+    UnitGUID = function() return "Player-1" end,
     UnitLevel = function() return 20 end,
     GetRealmName = function() return "Realm" end,
     CreateFrame = function(_, _, parent)
@@ -393,7 +406,24 @@ state.macros = { { name = "Pull", icon = 1, body = "/say pull" }, { name = "Danc
 state.binds = { { "ACTIONBUTTON1", "1" }, { "ACTIONBUTTON2", "2" } }
 known[2054] = true
 
+local opened = {}
+ns.OpenOptionsWindow = function(key) opened[#opened + 1] = key end
 ns.OpenActionBarsWindow()
+check("/nfbars and its callers open the options window on the Bar Sets tab", opened[1] == "Action Bars/Bar Sets")
+
+-- The options window: a scroll frame, its scroll child, and the tab's page.
+local scrollFrame = Frame()
+local page = Frame(Frame(scrollFrame))
+ns.BuildActionBarsTab(page, -6)
+local function Under(frame, parent)
+    while frame do
+        if frame == parent then return true end
+        frame = frame:GetParent()
+    end
+    return false
+end
+check("the tab is built into the options window's page, no window of its own",
+    Under(Card("Save Current Bars"), page) and Visible(Card("Save Current Bars")))
 local previewImport = state.buttons.Import
 local editBox = state.editBox
 local save = Card("Save Current Bars")
@@ -456,6 +486,7 @@ check("Export to Website exports the bars as they are", exported and exported.sl
 known[2054] = nil
 state.macros = {}
 state.bars = { [2] = { kind = "item", id = 6948 }, [7] = { kind = "spell", id = 585 } }
+state.binds = { { "ACTIONBUTTON2", "1" } }
 Click(row.import)
 check("the row's Import opens the preview on the same strip", Label("bottom") == "ACTION BAR 1" .. DOT .. "MAIN")
 check("a macro the import makes is marked NEW", Tile("bottom", 3).badge.text.text == "NEW")
@@ -464,6 +495,27 @@ check("a slot left out shows the alt's own action", Tile("bottom", 2).icon.textu
 check("what comes across sits in its own panels", Panel("2 of 2 actions")
     and Panel("2 macros: 2 new, 0 already here") and Panel("2 keybinds"))
 check("Import is primary", previewImport.primary)
+check("the caption counts what changes", Scene().caption.text:find("^3 slots change: 2 added, 1 cleared%.") ~= nil)
+check("a slot that fills an empty button is edged green, one taken off is crossed in red",
+    Tile("bottom", 1).edge.red == ns.ActionBars.Style.GREEN_RGB.r and Tile("bottom", 7).mark.shown
+    and Tile("bottom", 7).edge.red == ns.ActionBars.Style.RED_RGB.r)
+check("Import names how many changes it makes", previewImport.label == "Import 3 changes")
+local keyPanel = Panel("2 keybinds")
+local keyLines = {}
+for _, frame in ipairs(state.frames) do
+    if rawget(frame, "key") and rawget(frame, "text") and frame.parent == keyPanel and Visible(frame) then
+        keyLines[#keyLines + 1] = frame.key.text .. " " .. frame.text.text
+    end
+end
+table.sort(keyLines)
+check("the keys that change are listed with what they did and will do",
+    keyLines[1] == "1 Item  ->  Smite" and keyLines[2] == "2 nothing  ->  Item")
+local keySwitch
+for _, toggle in ipairs(state.toggles) do if toggle.parent == keyPanel then keySwitch = toggle end end
+Click(keySwitch)
+check("switching keybinds off for this import leaves the keys alone", Panel("Keybinds")
+    and Panel("Keybinds").line.text == "Off: your keys stay as they are.")
+Click(keySwitch)
 check("nothing changed yet", state.bars[2].kind == "item" and #state.macros == 0)
 previewImport.onClick()
 check("Import imports", state.bars[1].id == 585 and state.bars[3].kind == "macro" and #state.macros == 2)
@@ -472,10 +524,28 @@ check("and clears a slot the set keeps empty", state.bars[7] == nil)
 RunTimers()
 check("and goes back home, the set listed", SetRow("Raid"))
 
--- More > Edit and Save Again opens the builder on the set, its picks in place.
-ns.OpenActionBarsBuilder("Raid")
-check("editing a set keeps its name", editBox.text == "Raid")
-check("and its left-out slot", Tile("bottom", 2).icon.desaturated == true)
+local function Shown(field)
+    for _, frame in ipairs(state.frames) do
+        if rawget(frame, field) and Visible(frame) then return frame end
+    end
+end
+local function AllShown(field)
+    local out = {}
+    for _, frame in ipairs(state.frames) do
+        if rawget(frame, field) and Visible(frame) then out[#out + 1] = frame end
+    end
+    return out
+end
+
+local banner = Shown("undo")
+check("home offers Undo for the import just made", banner
+    and banner.text.text == "Raid is on your bars. Your bars from before it are kept as a backup.")
+check("the backup taken first is listed", #AllShown("restore") == 1 and Shown("restore").why.text == "Before importing Raid")
+Click(banner.undo)
+RunTimers()
+check("Undo puts the alt's own bars back", state.bars[2].kind == "item" and state.bars[7].id == 585 and state.bars[1] == nil)
+check("and the banner goes", not Shown("undo"))
+check("putting a backup back is itself backed up", #AllShown("restore") == 2)
 
 -------------------------------------------------------------------------------
 --  Each class's strip
@@ -575,6 +645,9 @@ ns.OpenActionBarsImport("Hunter")
 check("the preview shows the pet bar's row too, left out as saved", Visible(Scene().pet)
     and Scene().pet.label.text.text == "PET BAR" .. DOT .. "LEFT OUT" and Scene().pet.tiles[1].key.text == "CTRL-1")
 check("and counts one of each in the singular", Panel("1 of 1 action") and Panel("1 keybind"))
+local panels = Panel("1 of 1 action"):GetParent()
+panels.scripts.OnSizeChanged(panels, 1100)
+check("its three panels share the tab's width", Panel("1 of 1 action").w == 360 and Panel("1 keybind").w == 360)
 
 state.class, state.className = "MAGE", "Mage"
 state.bars = {}
@@ -586,11 +659,5 @@ local back = BackLink()
 check("the builder links back to the saved sets", back and back.text.text == "Saved Sets")
 Click(back)
 check("which it opens", Card("Save Current Bars") and not BackLink())
-local settings = Frame()
-ns.Shared.Parts.OpenWithBack(ns.OpenActionBarsWindow, settings, function() state.settings = true end, "Back to Settings")
-back = BackLink()
-check("opened from Settings, the link goes back there", back and back.text.text == "Settings")
-Click(back)
-check("closing the window", not Visible(back))
 
 print(checks .. " action bar window checks passed")

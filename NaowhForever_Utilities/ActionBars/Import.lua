@@ -69,8 +69,13 @@ local function Unbind(...)
     for i = 1, select("#", ...) do SetBinding((select(i, ...))) end
 end
 
-local function ImportBindings(set, test)
+local function ImportBindings(set, test, exact)
     local count, cleared = 0, {}
+    if not test and exact then
+        for key in pairs(Capture.CaptureBindings()) do
+            if not set.bindings[key] then SetBinding(key) end
+        end
+    end
     if not test and set.choices and set.choices.website then
         for _, command in pairs(set.bindings) do
             if not cleared[command] then
@@ -136,16 +141,21 @@ local function Restore(result, slot, entry, test, ranks, index, fresh)
     return { entry = entry, state = new and "new" or "ok" }
 end
 
-local function Run(set, test)
+local function Options()
+    return { actions = true, macros = S.Get("importMacros"), keys = S.Get("importBindings") }
+end
+
+local function Run(set, test, opts)
+    opts = opts or Options()
     local skip = set.choices and set.choices.skip or {}
     local result = { slots = {}, actions = 0, placed = 0, later = {}, macros = {} }
     local index, fresh = Capture.MacroIndex(), {}
-    if S.Get("importMacros") then index, fresh, result.macros = ImportMacros(set, test) end
+    if opts.macros then index, fresh, result.macros = ImportMacros(set, test) end
     local ranks = Capture.Ranks()
     for _, slot in ipairs(Capture.Slots()) do
         local entry = set.slots[slot]
         local row
-        if skip[slot] or (entry and not RESTORABLE[entry.kind]) then
+        if not opts.actions or skip[slot] or (entry and not RESTORABLE[entry.kind]) then
             row = { entry = entry, state = "skip" }
         elseif not entry then
             row = { state = "clear" }
@@ -156,8 +166,8 @@ local function Run(set, test)
         ClearCursor()
         result.slots[slot] = row
     end
-    if set.bindings and S.Get("importBindings") then result.bound = ImportBindings(set, test) end
+    if set.bindings and opts.keys then result.bound = ImportBindings(set, test, opts.exact) end
     return result
 end
 
-A.Import = { Describe = Describe, HighestRanks = Capture.Ranks, PickUp = PickUp, Run = Run }
+A.Import = { Describe = Describe, HighestRanks = Capture.Ranks, PickUp = PickUp, Run = Run, Options = Options }
