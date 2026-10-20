@@ -8,6 +8,7 @@ ns.ActionBars.Style = setmetatable({
     ACCOUNT_RGB = { r = 0.17, g = 0.23, b = 0.29 },
     CHARACTER_RGB = { r = 0.23, g = 0.19, b = 0.31 },
     GOOD_RGB = Shared.Style.HAVE_RGB,
+    PICK_RGB = Shared.Style.PICKED_RGB,
 
     STACK_GAP = 3,
     FILL_W = 10,

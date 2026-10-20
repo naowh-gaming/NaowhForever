@@ -1,7 +1,8 @@
 -- Run with Lua 5.1 from the repository root: the Action Bars window's three views (saved
 -- sets, the set builder and the import preview) built and drawn from the real files against
 -- stubs. Checks that each draws, that the builder's clicks become the saved set's choices,
--- and that the preview's Import imports.
+-- that the builder lists the bars each class uses (forms, the pet bar's keys) and hides empty
+-- ones, and that the preview's Import imports.
 rawset(_G, "C_AddOns", { DoesAddOnExist = function() return false end, GetAddOnEnableState = function() return 0 end })
 local Load = dofile("Tools/regression/load_files.lua")
 
@@ -29,6 +30,7 @@ local METHODS = {
     GetWidth = function(f) return rawget(f, "w") or 300 end,
     GetHeight = function(f) return rawget(f, "h") or 24 end,
     SetText = function(f, text) f.text = text end,
+    SetPoint = function(f, point, x, y) if point == "TOPLEFT" and type(x) == "number" then f.y = y end end,
     GetText = function(f) return rawget(f, "text") or "" end,
     SetTexture = function(f, texture) f.texture = texture end,
     GetStringWidth = function() return 40 end,
@@ -115,6 +117,7 @@ ns = {
         end,
         BuildToggleControl = function(parent, _, get, set)
             local toggle = Frame(parent)
+            state.toggles[#state.toggles + 1] = toggle
             -- The real switch reads its value when it is made.
             toggle._get, toggle._set, toggle._refreshValue = get, set, function() get() end
             toggle._refreshValue()
@@ -138,7 +141,11 @@ ns = {
     Print = function(text) state.printed[#state.printed + 1] = text end,
     Color = function(_, text) return text end,
     L = function(text) return text end,
-    Font = function(parent) return Frame(parent) end,
+    Font = function(parent)
+        local fs = Frame(parent)
+        state.fonts[#state.fonts + 1] = fs
+        return fs
+    end,
     Solid = function(parent) return Frame(parent) end,
     Hairline = function(region) return region end,
     AllowOffscreen = function() end,
@@ -166,7 +173,8 @@ ns = {
     Confirm = function(text, yes) state.confirmed = text; yes() end,
     PromptText = NOTHING,
 }
-state.buttons, state.rowButtons = {}, {}
+state.buttons, state.rowButtons, state.toggles, state.fonts = {}, {}, {}, {}
+state.class, state.className = "PRIEST", "Priest"
 
 local function ActionInfo(slot)
     local a = state.bars[slot]
@@ -191,6 +199,7 @@ local env = setmetatable({
         GetSpellName = function(id) return SPELLS[id] end,
         GetSpellTexture = function() return 135924 end,
         GetSpellLevelLearned = function() return 30 end,
+        GetSpellSubtext = function() return "Rank 1" end,
         PickupSpell = function(id) if known[id] then state.cursor = { kind = "spell", id = id } end end,
     },
     C_Item = { GetItemIconByID = function() return 134400 end, GetItemNameByID = function() return "Item" end,
@@ -231,7 +240,11 @@ local env = setmetatable({
     SetBinding = function() return true end,
     SaveBindings = NOTHING, GetCurrentBindingSet = function() return 1 end,
     InCombatLockdown = function() return false end,
-    UnitClass = function() return "Priest", "PRIEST" end,
+    UnitClass = function() return state.className, state.class end,
+    GetPetActionInfo = function(i)
+        local pet = state.pet and state.pet[i]
+        if pet then return pet[1], pet[2], pet[3] end
+    end,
     UnitName = function() return "Alt" end,
     UnitLevel = function() return 20 end,
     GetRealmName = function() return "Realm" end,
@@ -333,5 +346,124 @@ check("and goes back to the saved sets, the new set listed", state.rowButtons.Im
 ns.OpenActionBarsBuilder("Raid")
 check("editing a set keeps its name", editBox.text == "Raid")
 check("and its left-out slot", Tiles()[2].icon.desaturated == true)
+
+-- The builder's bars for each class: the rows on screen, top to bottom, with their names.
+local DOT = ns.Shared.Style.PLACE_DOT
+local function Rows()
+    local rows = {}
+    for _, frame in ipairs(state.frames) do
+        if rawget(frame, "tiles") and rawget(frame, "box") and Visible(frame) then rows[#rows + 1] = frame end
+    end
+    table.sort(rows, function(a, b) return (a.y or 0) > (b.y or 0) end)
+    return rows
+end
+local function Names()
+    local names = {}
+    for i, row in ipairs(Rows()) do names[i] = row.name.text end
+    return table.concat(names, ", ")
+end
+local function Summary()
+    for _, fs in ipairs(state.fonts) do
+        local text = rawget(fs, "text")
+        if type(text) == "string" and text:find(" macro", 1, true) and text:find(DOT, 1, true) and Visible(fs) then
+            return text
+        end
+    end
+end
+local function Row(name)
+    for _, row in ipairs(Rows()) do if row.name.text == name then return row end end
+end
+local function Steps()
+    local on = {}
+    for _, frame in ipairs(state.frames) do
+        if rawget(frame, "step") and Visible(frame) then on[frame.step] = frame.line.shown ~= false end
+    end
+    return on
+end
+local function BackLink()
+    for _, frame in ipairs(state.frames) do
+        if rawget(frame, "underline") and Visible(frame) then return frame end
+    end
+end
+local SHOW_EMPTY, KEYS = state.toggles[1], state.toggles[2]
+local MAIN, STEALTH = "Action Bar 1" .. DOT .. "Main", "Action Bar 1" .. DOT .. "Stealth"
+
+state.class, state.className = "ROGUE", "Rogue"
+state.bars = { [1] = { kind = "spell", id = 585 }, [2] = { kind = "spell", id = 2054 },
+    [73] = { kind = "spell", id = 585 }, [61] = { kind = "spell", id = 2054 } }
+state.macros = { { name = "Pull", icon = 1, body = "/say pull" }, { name = "Dance", icon = 2, body = "/dance" } }
+state.binds = { { "ACTIONBUTTON1", "1" }, { "ACTIONBUTTON2", "2" } }
+ns.OpenActionBarsBuilder()
+check("a rogue sees the main bar, its Stealth page and Action Bar 2, empty bars hidden",
+    Names() == MAIN .. ", " .. STEALTH .. ", Action Bar 2")
+check("each bar counts its actions", Row(STEALTH).count.text == "1 action" and Row(MAIN).count.text == "2 actions")
+check("the summary counts actions, keybinds and macros", Summary() == "4 actions" .. DOT .. "2 keybinds" .. DOT .. "2 macros")
+Click(SHOW_EMPTY)
+check("Show empty bars lists every bar", #Rows() == 15)
+Click(SHOW_EMPTY)
+check("and off hides them again", #Rows() == 3)
+Click(Row(STEALTH).tiles[1])
+check("a click on one button leaves just that slot out", Row(STEALTH).tiles[1].icon.desaturated == true
+    and Row(STEALTH).tiles[2].icon.desaturated == false and Summary():find("^3 actions"))
+Click(Row("Action Bar 2").box)
+check("a bar's box leaves the whole bar out, and dims it", Row("Action Bar 2").alpha < 1 and Summary():find("^2 actions"))
+editBox:SetText("Rogue")
+state.buttons["Save Set"].onClick()
+set = state.account.barSets.ROGUE.Rogue
+check("the saved set leaves those slots out", set.slots[1] and set.slots[73] == nil and set.choices.skip[73]
+    and set.slots[61] == nil and set.choices.skip[72])
+
+state.class, state.className = "DRUID", "Druid"
+state.bars = { [1] = { kind = "spell", id = 585 }, [73] = { kind = "spell", id = 585 },
+    [85] = { kind = "spell", id = 585 }, [97] = { kind = "spell", id = 585 }, [109] = { kind = "spell", id = 585 } }
+ns.OpenActionBarsBuilder()
+check("a druid sees its forms after the main bar", Names() == MAIN .. ", Action Bar 1" .. DOT .. "Cat, Action Bar 1" .. DOT
+    .. "Prowl, Action Bar 1" .. DOT .. "Bear, Action Bar 1" .. DOT .. "Moonkin")
+check("a form page shows the main bar's keys", Row("Action Bar 1" .. DOT .. "Bear").tiles[1].key.text == "1")
+
+state.class, state.className = "HUNTER", "Hunter"
+state.bars = { [1] = { kind = "spell", id = 585 } }
+state.binds = { { "ACTIONBUTTON1", "1" }, { "BONUSACTIONBUTTON1", "CTRL-1" }, { "BONUSACTIONBUTTON2", "CTRL-2" } }
+state.pet = { { "Attack", "PET_ATTACK_TEXTURE", true } }
+ns.OpenActionBarsBuilder()
+local petBar = Row("Pet Bar")
+check("a hunter sees the pet bar last, keys only", Names() == MAIN .. ", Pet Bar" and petBar.tag.text.text == "keys only")
+check("with its ten buttons and their keys", petBar.tiles[10]:IsShown() and not petBar.tiles[11]:IsShown()
+    and petBar.tiles[1].key.text == "CTRL-1" and petBar.count.text == "2 keybinds")
+check("its keys count in the summary", Summary() == "1 action" .. DOT .. "3 keybinds" .. DOT .. "2 macros")
+Click(petBar.tiles[1])
+check("a pet button is not a slot to leave out", not petBar.tiles[1].icon.desaturated)
+Click(petBar.box)
+check("its box leaves the pet bar's keys out", Row("Pet Bar").alpha < 1 and Summary():find(DOT .. "1 keybind" .. DOT, 1, true))
+editBox:SetText("Hunter")
+state.buttons["Save Set"].onClick()
+set = state.account.barSets.HUNTER.Hunter
+check("so the set keeps the bar keys only", set.bindings["1"] == "ACTIONBUTTON1" and set.bindings["CTRL-1"] == nil
+    and set.choices.petOff == true)
+ns.OpenActionBarsBuilder("Hunter")
+Click(Row("Pet Bar").box)
+Click(KEYS)
+check("keybinds off dims the pet bar and drops keys from the summary", Row("Pet Bar").alpha < 1
+    and Summary() == "1 action" .. DOT .. "2 macros")
+check("the step strip marks Keybinds & macros", Steps()[2] and not Steps()[1] and not Steps()[3])
+Click(Row("Pet Bar").box)
+check("and its box cannot be ticked then", Row("Pet Bar").alpha < 1)
+
+state.class, state.className = "MAGE", "Mage"
+state.bars = {}
+state.binds = {}
+ns.OpenActionBarsBuilder()
+check("a character with nothing on its bars sees no rows until Show empty bars", #Rows() == 0)
+check("the step strip starts on Bars", Steps()[1] and not Steps()[2])
+local back = BackLink()
+check("the builder links back to the saved sets", back and back.text.text == "Saved Sets")
+Click(back)
+check("which it opens", state.rowButtons["Save Current Bars"] and not BackLink())
+local settings = Frame()
+ns.Shared.Parts.OpenWithBack(ns.OpenActionBarsWindow, settings, function() state.settings = true end, "Back to Settings")
+back = BackLink()
+check("opened from Settings, the link goes back there", back and back.text.text == "Settings")
+Click(back)
+check("closing the window", not Visible(back))
 
 print(checks .. " action bar window checks passed")

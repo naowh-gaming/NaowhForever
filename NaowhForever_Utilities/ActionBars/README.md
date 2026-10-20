@@ -17,8 +17,10 @@ NaowhForever_Utilities/ActionBars/
   ActionBars.lua                its settings, this class's saved sets and the module table (ns.ActionBars)
   Constants.lua                 the slot counts and icon several files share (A.C)
   Data/
-    Bars.lua                    the bars as the game numbers them, with the binding each answers to (A.BARS)
-  Capture.lua                   the bars, macros and keybinds as they are now, read into a set (A.Capture)
+    Bars.lua                    the bars as the game numbers them, with the binding each answers to (A.BARS), the
+                                pet bar's keys (A.PET_BAR) and the pages each class's forms swap in (A.FORMS)
+  Capture.lua                   the bars, macros and keybinds as they are now, read into a set, and the highest
+                                rank of each spell known (A.Capture)
   Import.lua                    one pass over the bars putting a set back, or testing it (A.Import)
   Pending.lua                   spells an import could not place, put in their slots when learned (A.Pending)
   Sets.lua                      save, import, rename, delete, /nf bars, and the public API (ns.ActionBarSets)
@@ -27,9 +29,9 @@ NaowhForever_Utilities/ActionBars/
     Parts.lua                   labels, chips, tick boxes, slot tiles, a bar's row, the window's panes (A.Parts)
   UI/
     SetsPage.lua                the saved sets, a row each with Import and More (ns.BuildActionBarsPage)
-    Builder.lua                 the set builder (A.Builder)
+    Builder.lua                 the set builder: its step strip, your bars, keybinds and macros, a name (A.Builder)
     Preview.lua                 the import preview (A.Preview)
-    Window.lua                  the window and its three views (ns.OpenActionBarsWindow)
+    Window.lua                  the window, its three views and its back link (ns.OpenActionBarsWindow)
     SettingsPage.lua            its settings page (Action Bars/Settings), declared as cards
   README.md                     this file
 ```
@@ -71,6 +73,15 @@ table (the frame, `Show` and `Redraw`) when it builds them.
 - A test import makes nothing, so it counts the macros it would make to know when the tabs fill.
 - A spell falls back to the highest rank known when the saved rank is not, so a set made at a
   higher level still imports. Highest Rank picks the highest first.
+- A slot marked Highest (`top`, from the website's Highest or saved from your bars) places the best rank
+  this character knows; one without it places its own rank, so a Rank 1 Frostbolt kept for downranking
+  stays Rank 1. Highest Rank still makes every slot Highest. Saving from your bars marks a spell Highest
+  when it is the highest rank you know.
+- The highest rank is the highest numbered rank (the spellbook's subtext) of the same spell name, the
+  name the client gives the slot's spell ID, so a website code's English names work in any language. A spell
+  with no number there, such as Polymorph: Pig, is a spell of its own: it is never swapped for another
+  spell's top rank, nor placed in its stead when it is not known. One the spellbook does not hold is read
+  with `C_Spell.GetSpellSubtext`. Rage and energy abilities that Forever keeps up to date are unchanged.
 - Every slot ends as it was saved: a slot the set keeps empty is cleared, and so is one whose
   action cannot come back. A slot left out of the set, or holding something no set can import (a
   mount, a pet, a flyout), is left as it is. Keys the set leaves free keep what they do.
@@ -91,6 +102,16 @@ table (the frame, `Show` and `Redraw`) when it builds them.
   The choice is kept per class (`autoImportSets`, class token to set name), follows a rename and is
   cleared when its set is deleted. `UnitXP` must be 0 too, so an existing level 1 alt is left alone.
 - `/nf bars restore` still imports, as it did before `import` was its name.
+- The pet bar (`BONUSACTIONBUTTON1` to `10`) comes along as keys only: a set never places a pet action,
+  since the pet's bar is the game's own. Saving keeps its keys with the rest; the builder's Pet Bar box
+  leaves them out (`choices.petOff`). Hunters and Warlocks see it in the builder.
+- The builder lists the bars as the game shows them: Action Bar 1, then the pages a class's forms swap in
+  (`A.FORMS`: a Rogue's Stealth, a Druid's forms and Prowl, a Warrior's stances) under Action Bar 1's name,
+  then the other bars. A bar with nothing on it is hidden until Show empty bars; hidden, it is still in
+  the set as empty, as before. Its tiles are 36 (`TILE`), smaller than the preview's, to fit twelve beside
+  the keybinds and macros. The step strip marks the part last used.
+- The window's back link sits by the close button. Opened from Settings, it reads Settings and closing
+  goes back there, as the options window asks; otherwise it goes back to the saved sets.
 - Stop Auto Push Spells to Bars (the New Spells card) is the game's `AutoPushSpellToActionBar` setting itself,
   read and written as it is, with no saved key: the game keeps it, so it stays as the player left it on the
   old QoL > System page, and it works whether Action Bars is on or not.
@@ -103,7 +124,8 @@ table (the frame, `Show` and `Redraw`) when it builds them.
 - `lua Tools/regression/test-action-bars-new-spells.lua`: the New Spells card's toggle against a fake of the
   game's setting.
 - `lua Tools/regression/test-action-bars-window.lua`: the window's three views built from the
-  real files, the builder's clicks becoming the saved set's choices, and the preview's Import.
+  real files, the builder's clicks becoming the saved set's choices, each class's bars (forms, the
+  pet bar), empty bars hidden, and the preview's Import.
 
 ## Website imports
 
@@ -121,7 +143,8 @@ A website layout (`choices.website`) also fills in its spells as they are learne
 As You Learn is on or not (`pending.always`): the player built the bars for the levels to come, and
 would not know to switch it on. The preview says so in place of the switch, and the import lists
 those spells with the level each is learned at.
-Keybinds are restricted to known action-button commands, with at most two per action (192 total).
+Keybinds are restricted to known action-button commands and the pet bar's 10, with at most two per
+action (212 total). A command outside them, or a button past a bar's end, rejects the whole code.
 Binding syntax supports punctuation, international characters, named keys, mouse buttons 3-31,
 F1-F24 and general or sided modifiers, including Meta. Modifier order is normalized; legacy
 MINUS/EQUALS names become the native -/= keys. Unknown device-specific names are left to the

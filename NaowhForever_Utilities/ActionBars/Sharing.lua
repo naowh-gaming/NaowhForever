@@ -4,7 +4,7 @@ local ns = _G.NaowhForever
 local A = ns.ActionBars
 local MAX_NAME, MAX_MACRO_NAME, MAX_BODY, MAX_ID = 40, 16, 255, 10000000
 local VERSION, MAX_SUFFIX, MAX_MACROS = 1, 1000, 30
-local MAX_BINDINGS, MAX_KEY, MAX_KEYS_PER_ACTION = 192, 40, 2
+local MAX_KEY, MAX_KEYS_PER_ACTION = 40, 2
 local MAX_BASE_KEY = 31
 local FIRST_MOUSE_BUTTON, LAST_MOUSE_BUTTON, LAST_FUNCTION_KEY = 3, 31, 24
 local MODIFIER_ORDER = { "LALT", "RALT", "LCTRL", "RCTRL", "LSHIFT", "RSHIFT", "LMETA", "RMETA",
@@ -17,6 +17,11 @@ local PREFIX = "!NFA1!"
 local LIMITS = { maxChars = 100000, maxBytes = 262144, maxDepth = 8, maxValues = 10000 }
 local CLASSES = { [1] = "WARRIOR", [2] = "PALADIN", [3] = "HUNTER", [4] = "ROGUE", [5] = "PRIEST",
     [7] = "SHAMAN", [8] = "MAGE", [9] = "WARLOCK", [11] = "DRUID" }
+local BUTTONS = {}
+for _, bar in ipairs(A.BARS) do BUTTONS[bar.button] = A.C.SLOTS_PER_BAR end
+BUTTONS[A.PET_BAR.button] = A.PET_BAR.buttons
+local MAX_BINDINGS = 0
+for _, count in pairs(BUTTONS) do MAX_BINDINGS = MAX_BINDINGS + count * MAX_KEYS_PER_ACTION end
 local TEXT_INVALID = ns.L("That is not a valid website bar layout for your class.")
 local TEXT_PROMPT = ns.L("Paste an Action Bars & Macros import code from naowh.gg")
 local TEXT_COMBAT = ns.L("Bar sets can be imported out of combat.")
@@ -45,7 +50,8 @@ local function Entry(row)
     if row.kind == "spell" or row.kind == "item" then
         if not Integer(row.id, MAX_ID) then return end
         if row.name ~= nil and not Text(row.name, MAX_BODY) then return end
-        return { kind = row.kind, id = row.id, name = row.name }
+        if row.top ~= nil and (type(row.top) ~= "boolean" or (row.top and row.kind ~= "spell")) then return end
+        return { kind = row.kind, id = row.id, name = row.name, top = row.top or nil }
     end
     if row.kind == "macro" then return Macro(row) end
 end
@@ -109,13 +115,9 @@ local function Bindings(input)
         local normalized = Key(key)
         if not normalized or bindings[normalized] or type(command) ~= "string" then return end
         local prefix, number = command:match("^(.-)(%d+)$")
-        local valid = false
-        if Integer(tonumber(number), A.C.SLOTS_PER_BAR) then
-            for _, bar in ipairs(A.BARS) do
-                if bar.button == prefix then valid = true break end
-            end
-        end
-        if not valid then return end
+        local buttons = prefix and BUTTONS[prefix]
+        local n = tonumber(number)
+        if not (buttons and Integer(n, buttons) and tostring(n) == number) then return end
         counts[command] = (counts[command] or 0) + 1
         if counts[command] > MAX_KEYS_PER_ACTION then return end
         count = count + 1

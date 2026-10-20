@@ -7,7 +7,7 @@ local A = ns.ActionBars
 local St = A.Style
 local Parts = ns.Shared.Parts
 
-local BLACK = St.BORDER_RGB
+local BLACK, PICK = St.BORDER_RGB, St.PICK_RGB
 local SLOTS_PER_BAR = A.C.SLOTS_PER_BAR
 local ROW_PAD, ROW_FILL, ICON_CROP = St.ROW_PAD, St.ROW_FILL, St.ICON_CROP
 local CHIP_H, CHIP_PAD = St.CHIP_H, 8
@@ -23,12 +23,12 @@ A.Parts = P
 local function TileEnter(tile)
     if not tile.tip then return end
     if not Parts.Tip(tile, "ANCHOR_TOP") then return end
-    tile.tip(GameTooltip)
+    tile.tip(GameTooltip, tile)
     GameTooltip:Show()
 end
 
 local function Clicked(frame)
-    if frame.onClick then frame.onClick() end
+    if frame.onClick then frame.onClick(frame) end
 end
 
 local function ContentSized(scroll, w)
@@ -71,12 +71,13 @@ function P.Box(parent)
     box.tick:SetTexture(St.TICK)
     box.tick:SetSize(TICK, TICK)
     box.tick:SetPoint("CENTER")
+    box.tick:SetVertexColor(T.bg.r, T.bg.g, T.bg.b)
     box:SetScript("OnClick", Clicked)
     return box
 end
 
 function P.PaintBox(box, on, locked)
-    local c = on and T.accent or T.bg
+    local c = on and PICK or T.bg
     box.fill:SetColorTexture(c.r, c.g, c.b, locked and LOCKED_ALPHA or 1)
     box.tick:SetShown(on)
 end
@@ -92,9 +93,9 @@ function P.Hint(owner, title, line)
     GameTooltip:Show()
 end
 
-function P.NewTile(parent)
+function P.NewTile(parent, size)
     local tile = CreateFrame("Button", nil, parent)
-    tile:SetSize(TILE, TILE)
+    tile:SetSize(size or TILE, size or TILE)
     tile.back = ns.Solid(tile, "BACKGROUND", T.bg, 1)
     tile.back:SetAllPoints()
     tile.icon = tile:CreateTexture(nil, "ARTWORK")
@@ -125,9 +126,10 @@ function P.PaintTile(tile, look)
     tile.tip, tile.onClick = look.tip, look.onClick
 end
 
-function P.NewBarRow(parent)
+function P.NewBarRow(parent, size)
+    local tileSize = size or TILE
     local row = CreateFrame("Frame", nil, parent)
-    row:SetHeight(ROW_PAD * 2 + ROW_HEAD + TILE)
+    row:SetHeight(ROW_PAD * 2 + ROW_HEAD + tileSize)
     ns.Solid(row, "BACKGROUND", T.bg, ROW_FILL):SetAllPoints()
     ns.Border(row, BLACK)
     row.box = P.Box(row)
@@ -137,8 +139,8 @@ function P.NewBarRow(parent)
     row.count:SetPoint("TOPRIGHT", -ROW_PAD, -ROW_PAD - COUNT_DROP)
     row.tiles = {}
     for i = 1, SLOTS_PER_BAR do
-        local tile = P.NewTile(row)
-        tile:SetPoint("TOPLEFT", ROW_PAD + (i - 1) * (TILE + TILE_GAP), -(ROW_PAD + ROW_HEAD + TILES_DROP))
+        local tile = P.NewTile(row, tileSize)
+        tile:SetPoint("TOPLEFT", ROW_PAD + (i - 1) * (tileSize + TILE_GAP), -(ROW_PAD + ROW_HEAD + TILES_DROP))
         row.tiles[i] = tile
     end
     return row
