@@ -419,6 +419,7 @@ NaowhForever_QoL/
 - An alt is kept by its whole name, surname included (`GetUnitName("player", true)`): `UnitName`
   gives only the first name on Forever, and the To box needs the whole name. A
   character saved under its first name before is moved to its whole name the next time it logs in.
+  Until then the Alts menu says so under the list, since another character's surname cannot be read.
 - Forget a character exists because deleted or transferred characters otherwise stay in the
   counts and the Alts list for good.
 - The Forever bank is the character bank tabs; a tab not bought has no slots.
