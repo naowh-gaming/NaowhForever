@@ -80,6 +80,7 @@ local function BuildSets()
     v.content:SetSize(1, 1)
     v.scroll:SetScrollChild(v.content)
     function v.Draw() DrawSets(v) end
+    v.events = { "ACTIONBAR_SLOT_CHANGED", "SPELLS_CHANGED" }
     return v
 end
 

@@ -565,12 +565,53 @@ end
 local banner = Shown("undo")
 check("home offers Undo for the import just made", banner
     and banner.text.text == "Raid is on your bars. Your bars from before it are kept as a backup.")
+check("and marks the set as on your bars", SetRow("Raid").on.shown ~= false
+    and SetRow("Raid").on.text.text == "ON YOUR BARS")
 check("the backup taken first is listed", #AllShown("restore") == 1 and Shown("restore").why.text == "Before importing Raid")
 Click(banner.undo)
 RunTimers()
 check("Undo puts the alt's own bars back", state.bars[2].kind == "item" and state.bars[7].id == 585 and state.bars[1] == nil)
 check("and the banner goes", not Shown("undo"))
 check("putting a backup back is itself backed up", #AllShown("restore") == 2)
+
+state.bars = {}
+RunTimers()
+ns.UI.RefreshPage()
+RunTimers()
+local spells = Shown("icons")
+check("a spell this priest knows and has on no bar is offered to drag", spells
+    and spells.title.text == "1 spell you know is on no bar" and spells.icons[1].spell == 585)
+Click(spells.first)
+RunTimers()
+check("Hide These stops listing it", not Shown("icons"))
+
+ns.PromptText = function(_, _, _, accept) accept("Dungeon") end
+ns.OpenActionBarsBuilder("Raid")
+Click(state.buttons["+ Tag"])
+local tagChip
+for _, frame in ipairs(AllShown("index")) do if not rawget(frame, "scene") then tagChip = frame end end
+check("+ Tag adds a tag to the set being built", tagChip and tagChip.text.text == "DUNGEON")
+state.bars = { [1] = { kind = "spell", id = 585 } }
+local iconButton
+for _, frame in ipairs(AllShown("texture")) do
+    if not rawget(frame, "spell") and frame.scripts.OnClick then iconButton = frame end
+end
+Click(iconButton)
+local picked
+for _, frame in ipairs(AllShown("texture")) do if frame.texture == 135924 and frame ~= iconButton then picked = frame end end
+Click(picked)
+state.binds = { { "ACTIONBUTTON1", "1" } }
+state.buttons["Save Set"].onClick()
+RunTimers()
+check("an icon picked from the bars is saved with the set", state.account.barSets.PRIEST.Raid.icon == 135924)
+check("the tag is saved with the set and shown on its card", state.account.barSets.PRIEST.Raid.tags[1] == "Dungeon"
+    and SetRow("Raid").tags[1].text.text == "DUNGEON")
+local filters = AllShown("edge")
+local dungeonFilter
+for _, chip in ipairs(filters) do
+    if rawget(chip, "text") and chip.text.text == "DUNGEON" and rawget(chip, "onClick") then dungeonFilter = chip end
+end
+check("a tag gets a filter over the saved sets", dungeonFilter ~= nil)
 
 -------------------------------------------------------------------------------
 --  Each class's strip

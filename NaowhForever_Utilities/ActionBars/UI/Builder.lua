@@ -16,7 +16,9 @@ local SMALL_SIZE, NOTE_SIZE = St.SMALL_SIZE, St.NOTE_SIZE
 local PET_BAR, PET_CLASSES = A.PET_BAR, A.PET_CLASSES
 local DOT = St.PLACE_DOT
 local MAIN_PAGE, LEFT_PAGE, TOP_PAGE, RIGHT_PAGE, MAIN_VIEW = P.MAIN_PAGE, P.LEFT_PAGE, P.TOP_PAGE, P.RIGHT_PAGE, P.MAIN_VIEW
-local NAME_BAR, HEAD_H = 62, 58
+local SUMMARY_BAR, PANEL_H, IDENT_H, LEFT_W = 56, 72, 50, 300
+local ICON_BUTTON, PICKER_TILE, PICKER_GAP, PICKER_COLUMNS, PICKER_MAX, PICKER_LEVEL = 44, 28, 3, 10, 40, 20
+local MAX_TAGS, TAG_MAX, TAG_PAD, TAG_H, TAGS_X, ADD_TAG_W = 3, 16, 8, 20, 18, 60
 local OFF_MACRO_ALPHA = 0.45
 local MACRO_ROW_H, MACRO_GAP, MACRO_INSET, MACRO_ICON = 30, 4, 8, 22
 local NAME_COLUMN, TEXT_GAP, TAG_GAP = 140, 8, 4
@@ -30,6 +32,12 @@ local TEXT_PICKED_BAR = "%s (%d)"
 local TEXT_CHIP = "%s %d"
 local TEXT_KEYBINDS, TEXT_MACROS, TEXT_SET_NAME = ns.L("Keybinds"), ns.L("Macros"), ns.L("Set name")
 local TEXT_SAVE_SET = ns.L("Save Set")
+local TEXT_ICON = ns.L("Set icon")
+local TEXT_ICON_TIP = ns.L("Pick one from your bars. Auto shows the set's first spell.")
+local TEXT_AUTO = ns.L("Auto")
+local TEXT_TAGS, TEXT_ADD_TAG = ns.L("Tags"), ns.L("+ Tag")
+local TEXT_NEW_TAG = ns.L("A tag for this set, such as Dungeon or PvP")
+local TEXT_TAG_TIP = ns.L("Click to take this tag off.")
 local TEXT_ACTION, TEXT_ACTIONS = ns.L("%d action"), ns.L("%d actions")
 local TEXT_KEYBIND, TEXT_KEYBINDS_N = ns.L("%d keybind"), ns.L("%d keybinds")
 local TEXT_MACRO, TEXT_MACROS_N = ns.L("%d macro"), ns.L("%d macros")
@@ -295,19 +303,20 @@ local function DrawMacros(v, slots)
     local choices, content = draft.choices, v.macroContent
     local bars, all = OnBars(slots, choices.skip), Sets.CaptureMacros()
     ns.UI.BeginReusableRows(content)
-    local y, kept = 0, 0
-    for _, macro in ipairs(all) do
+    local kept = 0
+    local width = (content:GetWidth() - MACRO_GAP) / 2
+    for i, macro in ipairs(all) do
         local key = Sets.MacroKey(macro.name, macro.body)
         local locked = bars[key]
         local on = locked or (choices.macros and not choices.macroOff[key])
         if on then kept = kept + 1 end
         local row = ns.UI.Keep(content, "macro", NewMacroRow)
-        row:SetPoint("TOPLEFT", 0, y)
-        row:SetPoint("TOPRIGHT", 0, y)
+        local column = (i - 1) % 2
+        row:SetPoint("TOPLEFT", column * (width + MACRO_GAP), -math.floor((i - 1) / 2) * (MACRO_ROW_H + MACRO_GAP))
+        row:SetWidth(width)
         PaintMacro(row, macro, key, locked, on, choices)
-        y = y - MACRO_ROW_H - MACRO_GAP
     end
-    content:SetHeight(math.max(1, -y))
+    content:SetHeight(math.max(1, math.ceil(#all / 2) * (MACRO_ROW_H + MACRO_GAP)))
     return kept, #all
 end
 
@@ -329,7 +338,8 @@ local function SaveDraft()
         return
     end
     local function Done()
-        if Sets.Save(name, draft.choices) then W.Show("sets") end
+        local style = { icon = draft.icon, tags = #draft.tags > 0 and draft.tags or nil }
+        if Sets.Save(name, draft.choices, style) then W.Show("sets") end
     end
     local existing = Sets.Find(name)
     if existing and existing ~= draft.key then
@@ -356,16 +366,14 @@ end
 local function BuildKeep(v, bottom)
     v.keys = P.GlassPanel(v.frame, TEXT_KEYBINDS)
     v.keys:SetPoint("TOPLEFT", v.scene, "BOTTOMLEFT", 0, -GAP)
-    v.keys:SetPoint("TOPRIGHT", v.scene, "BOTTOM", -GAP / 2, -GAP)
-    v.keys:SetHeight(HEAD_H)
+    v.keys:SetSize(LEFT_W, PANEL_H)
     v.keysSwitch = P.PanelSwitch(v.keys, KeysOn, SetKeys)
     v.macros = P.GlassPanel(v.frame, TEXT_MACROS)
-    v.macros:SetPoint("TOPLEFT", v.scene, "BOTTOM", GAP / 2, -GAP)
-    v.macros:SetPoint("TOPRIGHT", v.scene, "BOTTOMRIGHT", 0, -GAP)
-    v.macros:SetHeight(HEAD_H)
+    v.macros:SetPoint("TOPLEFT", v.keys, "BOTTOMLEFT", 0, -GAP)
+    v.macros:SetSize(LEFT_W, PANEL_H)
     v.macrosSwitch = P.PanelSwitch(v.macros, MacrosOn, SetMacros)
     local list = P.Glass(CreateFrame("Frame", nil, v.frame))
-    list:SetPoint("TOPLEFT", v.keys, "BOTTOMLEFT", 0, -GAP)
+    list:SetPoint("TOPLEFT", v.keys, "TOPRIGHT", GAP, 0)
     list:SetPoint("BOTTOMRIGHT", 0, bottom)
     local inner = CreateFrame("Frame", nil, list)
     P.Place(inner, GLASS_PAD, GLASS_PAD, GLASS_PAD, GLASS_PAD)
@@ -374,26 +382,181 @@ end
 
 local function UnFocus(box) box:ClearFocus() end
 
-local function BuildName(v)
-    local bar = P.Glass(CreateFrame("Frame", nil, v.frame))
-    bar:SetPoint("BOTTOMLEFT")
-    bar:SetPoint("BOTTOMRIGHT")
-    bar:SetHeight(NAME_BAR)
-    local label = P.Label(bar, SMALL_SIZE, T.muted)
-    label:SetPoint("TOPLEFT", GLASS_PAD, -GLASS_PAD + LINE_GAP)
+local function AutoIcon()
+    for _, page in ipairs(P.STRIP_PAGES) do
+        for i = 1, SLOTS_PER_BAR do
+            local texture = GetActionTexture((page - 1) * SLOTS_PER_BAR + i)
+            if texture then return texture end
+        end
+    end
+    return A.C.QUESTION
+end
+
+local function PickIcon(tile)
+    draft.icon = tile.texture
+    tile:GetParent():Hide()
+    W.Redraw()
+end
+
+local function IconTip(tile)
+    if tile.texture then return end
+    P.Hint(tile, TEXT_AUTO, TEXT_ICON_TIP)
+end
+
+local function NewPickerTile(grid, i)
+    local tile = CreateFrame("Button", nil, grid)
+    tile:SetSize(PICKER_TILE, PICKER_TILE)
+    tile.icon = tile:CreateTexture(nil, "ARTWORK")
+    tile.icon:SetAllPoints()
+    tile.icon:SetTexCoord(ICON_CROP, 1 - ICON_CROP, ICON_CROP, 1 - ICON_CROP)
+    ns.Border(tile, St.BORDER_RGB)
+    local column, row = (i - 1) % PICKER_COLUMNS, math.floor((i - 1) / PICKER_COLUMNS)
+    tile:SetPoint("TOPLEFT", GLASS_PAD + column * (PICKER_TILE + PICKER_GAP), -(GLASS_PAD + row * (PICKER_TILE + PICKER_GAP)))
+    tile:SetScript("OnClick", PickIcon)
+    tile:SetScript("OnEnter", IconTip)
+    tile:SetScript("OnLeave", GameTooltip_Hide)
+    return tile
+end
+
+local function FillPicker(grid)
+    local seen, textures = {}, { false }
+    for _, slot in ipairs(Sets.SlotList()) do
+        local texture = GetActionTexture(slot)
+        if texture and not seen[texture] and #textures < PICKER_MAX then
+            seen[texture] = true
+            textures[#textures + 1] = texture
+        end
+    end
+    for i, texture in ipairs(textures) do
+        local tile = grid.tiles[i] or NewPickerTile(grid, i)
+        grid.tiles[i] = tile
+        tile.texture = texture or nil
+        tile.icon:SetTexture(texture or A.C.QUESTION)
+        tile:Show()
+    end
+    for i = #textures + 1, #grid.tiles do grid.tiles[i]:Hide() end
+    local rows = math.ceil(#textures / PICKER_COLUMNS)
+    grid:SetSize(GLASS_PAD * 2 + PICKER_COLUMNS * (PICKER_TILE + PICKER_GAP) - PICKER_GAP,
+        GLASS_PAD * 2 + rows * (PICKER_TILE + PICKER_GAP) - PICKER_GAP)
+end
+
+local function TogglePicker(v)
+    local grid = v.iconGrid
+    if grid:IsShown() then grid:Hide() return end
+    FillPicker(grid)
+    grid:Show()
+end
+
+local function RemoveTag(chip)
+    table.remove(draft.tags, chip.index)
+    W.Redraw()
+end
+
+local function AddTag()
+    ns.PromptText(TEXT_NEW_TAG, "", TAG_MAX, function(text)
+        local tag = strtrim(text or "")
+        if tag == "" or #draft.tags >= MAX_TAGS then return end
+        for _, have in ipairs(draft.tags) do if have:lower() == tag:lower() then return end end
+        draft.tags[#draft.tags + 1] = tag
+        W.Redraw()
+    end)
+end
+
+local function TagEnter(chip)
+    P.Hint(chip, chip.text:GetText(), TEXT_TAG_TIP)
+end
+
+local function NewTagChip(parent)
+    local chip = CreateFrame("Button", nil, parent)
+    chip:SetHeight(TAG_H)
+    ns.Solid(chip, "BACKGROUND", St.ACCOUNT_RGB, 1):SetAllPoints()
+    ns.Border(chip, St.BORDER_RGB)
+    chip.text = P.Mono(chip, St.MONO_SIZE, T.fg)
+    chip.text:SetPoint("CENTER")
+    chip:SetScript("OnClick", RemoveTag)
+    chip:SetScript("OnEnter", TagEnter)
+    chip:SetScript("OnLeave", GameTooltip_Hide)
+    return chip
+end
+
+local function IconEnter(icon)
+    P.Hint(icon, TEXT_ICON, TEXT_ICON_TIP)
+end
+
+local function BuildIdentity(v)
+    v.icon = CreateFrame("Button", nil, v.frame)
+    v.icon:SetSize(ICON_BUTTON, ICON_BUTTON)
+    v.icon:SetPoint("TOPLEFT", 0, -VIEW_TOP)
+    v.icon.texture = v.icon:CreateTexture(nil, "ARTWORK")
+    v.icon.texture:SetAllPoints()
+    v.icon.texture:SetTexCoord(ICON_CROP, 1 - ICON_CROP, ICON_CROP, 1 - ICON_CROP)
+    ns.Border(v.icon, St.GOLD_RGB)
+    v.icon:SetScript("OnClick", function() TogglePicker(v) end)
+    v.icon:SetScript("OnEnter", IconEnter)
+    v.icon:SetScript("OnLeave", GameTooltip_Hide)
+    v.iconGrid = CreateFrame("Frame", nil, v.frame)
+    v.iconGrid:SetPoint("TOPLEFT", v.icon, "BOTTOMLEFT", 0, -LINE_GAP)
+    v.iconGrid:SetFrameLevel(v.frame:GetFrameLevel() + PICKER_LEVEL)
+    v.iconGrid:EnableMouse(true)
+    ns.Solid(v.iconGrid, "BACKGROUND", T.panel, 1):SetAllPoints()
+    ns.Border(v.iconGrid, St.BORDER_RGB)
+    v.iconGrid.tiles = {}
+    v.iconGrid:Hide()
+    local label = P.Label(v.frame, SMALL_SIZE, T.muted)
+    label:SetPoint("TOPLEFT", v.icon, "TOPRIGHT", SUMMARY_GAP, 0)
     label:SetText(TEXT_SET_NAME)
-    v.box = ns.NewEditBox(bar)
+    v.box = ns.NewEditBox(v.frame)
     v.box:SetSize(NAME_W, NAME_H)
     v.box:SetMaxLetters(NAME_MAX)
     v.box:SetPoint("TOPLEFT", label, "BOTTOMLEFT", 0, -LINE_GAP)
     v.box:SetScript("OnEnterPressed", UnFocus)
     v.box:SetScript("OnEscapePressed", UnFocus)
+    v.tagsAt = P.Label(v.frame, SMALL_SIZE, T.muted)
+    v.tagsAt:SetPoint("LEFT", label, "LEFT", NAME_W + TAGS_X, 0)
+    v.tagsAt:SetText(TEXT_TAGS)
+    v.tagChips = {}
+    v.addTag = ns.Button(v.frame, TEXT_ADD_TAG, ADD_TAG_W, TAG_H, AddTag)
+end
+
+local function BuildSummary(v)
+    local bar = P.Glass(CreateFrame("Frame", nil, v.frame))
+    bar:SetPoint("BOTTOMLEFT")
+    bar:SetPoint("BOTTOMRIGHT")
+    bar:SetHeight(SUMMARY_BAR)
     v.button = P.Primary(ns.Button(bar, TEXT_SAVE_SET, SAVE_W, BUTTON_H, SaveDraft))
     v.button:SetPoint("RIGHT", -GLASS_PAD, 0)
-    v.summary = P.Label(bar, NOTE_SIZE, T.fg)
-    v.summary:SetPoint("LEFT", v.box, "RIGHT", SUMMARY_GAP, 0)
+    v.summary = P.Label(bar, St.NAME_SIZE, T.fg)
+    v.summary:SetPoint("LEFT", GLASS_PAD, 0)
     v.summary:SetPoint("RIGHT", v.button, "LEFT", -SUMMARY_GAP, 0)
     v.summary:SetWordWrap(false)
+end
+
+local function PaintIdentity(v)
+    v.icon.texture:SetTexture(draft.icon or AutoIcon())
+    local after
+    for i, tag in ipairs(draft.tags) do
+        local chip = v.tagChips[i] or NewTagChip(v.frame)
+        v.tagChips[i] = chip
+        chip.index = i
+        chip.text:SetText(ns.Upper(tag))
+        chip:SetWidth(math.ceil(chip.text:GetStringWidth()) + TAG_PAD * 2)
+        chip:ClearAllPoints()
+        if after then
+            chip:SetPoint("LEFT", after, "RIGHT", TAG_GAP, 0)
+        else
+            chip:SetPoint("TOPLEFT", v.tagsAt, "BOTTOMLEFT", 0, -LINE_GAP)
+        end
+        chip:Show()
+        after = chip
+    end
+    for i = #draft.tags + 1, #v.tagChips do v.tagChips[i]:Hide() end
+    v.addTag:ClearAllPoints()
+    if after then
+        v.addTag:SetPoint("LEFT", after, "RIGHT", TAG_GAP, 0)
+    else
+        v.addTag:SetPoint("TOPLEFT", v.tagsAt, "BOTTOMLEFT", 0, -LINE_GAP)
+    end
+    v.addTag:SetShown(#draft.tags < MAX_TAGS)
 end
 
 local function Summary(actions, keys, kept)
@@ -416,6 +579,7 @@ local function Draw(v)
     v.keysSwitch._refreshValue()
     v.macrosSwitch._refreshValue()
     v.summary:SetText(Summary(ActionCount(), keys, kept))
+    PaintIdentity(v)
 end
 
 local function Order()
@@ -437,8 +601,10 @@ end
 function Builder.NewDraft(key)
     local set = key and Sets.Get(key)
     local choices = set and set.choices or {}
+    local tags = {}
+    for i, tag in ipairs(set and set.tags or {}) do tags[i] = tag end
     draft = {
-        key = set and key or nil, name = set and key or "",
+        key = set and key or nil, name = set and key or "", icon = set and set.icon, tags = tags,
         choices = { skip = Copy(choices.skip), macroOff = Copy(choices.macroOff),
             keys = choices.keys ~= false, macros = choices.macros ~= false, petOff = choices.petOff or nil },
     }
@@ -453,15 +619,17 @@ function Builder.Build(window)
     local v = { cards = {} }
     v.frame = CreateFrame("Frame", nil, W.frame)
     v.frame:SetAllPoints()
-    BuildScene(v, VIEW_TOP)
-    BuildKeep(v, NAME_BAR + GAP)
-    BuildName(v)
+    BuildIdentity(v)
+    BuildScene(v, VIEW_TOP + IDENT_H + GAP)
+    BuildKeep(v, SUMMARY_BAR + GAP)
+    BuildSummary(v)
     v.title = TEXT_TITLE
     function v.Open()
         Order()
         viewPage, formPage = MAIN_VIEW, MAIN_PAGE
         v.box:SetText(draft.name)
         draft.box = v.box
+        v.iconGrid:Hide()
         v.title = draft.key and (TEXT_EDIT .. draft.key) or TEXT_TITLE
         v.subtitle = TEXT_SUBTITLE:format(UnitClass("player"))
     end
