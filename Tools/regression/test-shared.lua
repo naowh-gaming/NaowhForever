@@ -745,6 +745,39 @@ otherListeners[1]()
 check("and a change there draws the cogPage again", watchParent.settingsView.settingsQueued == true)
 RunTimers()
 
+-- A folding group starts shut, opens on a click, on a search hit inside it and on a jump to one of its rows.
+do
+    local foldCard = Settings.Page("Test/Folds", store):Card({ id = "folds", name = "Folds", open = true, rows = {
+        Settings.Group("Always"),
+        { key = "shown", label = "Shown", toggle = true },
+        Settings.Group("Picks", true),
+        { key = "size", label = "Size", slider = { 8, 32, 1 } },
+        { key = "alpha", label = "Opacity", slider = { 0, 100, 5 } },
+    } })
+    local parent = Frame()
+    Settings.Render(parent, "Test/Folds", NOTHING)
+    local view = parent.settingsView
+    local fold = view.pools.group[2]
+    check("a folding group starts shut: both titles, only the rows above it",
+        view.pools.group.used == 2 and view.pools.setting.used == 1)
+    check("only the folding group takes clicks and shows a chevron",
+        fold.hit.shown and fold.chevron.shown and not view.pools.group[1].hit.shown)
+    fold.hit.scripts.OnClick(fold.hit)
+    RunTimers()
+    check("a click opens it", view.pools.setting.used == 3)
+    fold.hit.scripts.OnClick(fold.hit)
+    RunTimers()
+    check("and a second click shuts it", view.pools.setting.used == 1)
+    Settings.Render(parent, "Test/Folds", NOTHING, { all = {}, cards = { [foldCard.uid] = { Opacity = true } } })
+    check("a search hit inside it shows the row", view.pools.setting.used == 1
+        and view.pools.setting[1].setting.label == "Opacity")
+    Settings.Render(parent, "Test/Folds", NOTHING)
+    check("the search gone, it is shut again", view.pools.setting.used == 1)
+    Settings.Reveal(foldCard.uid, "Size")
+    Settings.Render(parent, "Test/Folds", NOTHING)
+    check("a jump to one of its rows opens it", view.pools.setting.used == 3)
+end
+
 -- The stubs that remember their calls make tables of their own: measure the cogPage alone.
 METHODS.SetPoint, METHODS.SetVertexColor = NOTHING, NOTHING
 Settings.Render(cogParent, "Test/Cogs", NOTHING)
