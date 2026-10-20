@@ -123,6 +123,35 @@ class Creatures(unittest.TestCase):
         self.assertFalse(scout.attackable({"type": 7}))
 
 
+class Zones(unittest.TestCase):
+    def read(self, refresh):
+        cache = {"zones": {"12": [{"id": 1, "name": "Old"}]}, "npcs": {}}
+        with mock.patch.object(scout, "zones", return_value=[12]), \
+                mock.patch.object(scout, "instances", return_value=set()), \
+                mock.patch.object(scout, "instance_npcs", return_value={}), \
+                mock.patch.object(scout, "save"), \
+                mock.patch.object(scout, "fetch_zone", return_value=[{"id": 2, "name": "New"}]):
+            return scout.creatures(cache, refresh)[0]
+
+    def test_keeps_a_zone_page_already_read(self):
+        self.assertEqual(self.read(False), {1: "Old"})
+
+    def test_reads_every_zone_page_again_when_refreshing(self):
+        self.assertEqual(self.read(True), {2: "New"})
+
+    def test_failed_refresh_keeps_the_current_and_later_cached_zones(self):
+        cache = {"zones": {"1": [{"id": 448, "name": "Hogger"}],
+                           "2": [{"id": 2850, "name": "Broken Tooth"}]}, "npcs": {}}
+        with mock.patch.object(scout, "zones", return_value=[1, 2]), \
+                mock.patch.object(scout, "instances", return_value=set()), \
+                mock.patch.object(scout, "instance_npcs", return_value={}), \
+                mock.patch.object(scout, "save"), \
+                mock.patch.object(scout, "fetch_zone", side_effect=TimeoutError("unavailable")) as fetch:
+            names, _ = scout.creatures(cache, refresh=True)
+        self.assertEqual(names, {448: "Hogger", 2850: "Broken Tooth"})
+        fetch.assert_called_once_with(1)
+
+
 class Database(unittest.TestCase):
     def setUp(self):
         self.stats, self.casts, self.scripted = scout.database(DUMP)

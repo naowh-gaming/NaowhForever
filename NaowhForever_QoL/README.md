@@ -40,6 +40,7 @@ NaowhForever_QoL/
     GlobalCopy.lua      /copy, and tooltip IDs with their copy shortcut (the card is Shared/UI/CopyCard.lua)
     HideClutter.lua     UI Clutter
     UnitNames.lua       Names Over Heads: guild names, guild titles and player titles with player names
+    HDR.lua             HDR: the game's HDR and Peak Brightness
     ChatZones.lua       Chat Zones
     TownMailboxes.lua   mailboxes by map (ns.TownMailboxes), generated
     TownSpiritHealers.lua  spirit healers by map (ns.TownSpiritHealers), generated
@@ -80,6 +81,7 @@ NaowhForever_QoL/
     PetTracker.lua      the Pet Tracker
     ScoutData.lua       Scout's creature abilities and tameable beasts (packed) and armor by level, generated
     Scout.lua           Scout: abilities, armor and pet family on a creature's tooltip
+    SpellQueue.lua      Spell Queue: the game's Spell Queue Window
   Questing/
     BuffThanks.lua      Buff Thank You Message and its line editor
     Invites.lua         the people you keep an invite button for and their editor (ns.InvitePerson,
@@ -124,7 +126,9 @@ NaowhForever_QoL/
     Flight.lua          the Flight Timer, Flight Games and flight times on the flight map
     FlightPoint.lua     zone-entry and nearby-town flight point reminders
     TransportData.lua   each boat and zeppelin stop with its period and dwell, generated from Journeys data
-    TransportTimes.lua  saved per-realm server-clock sightings and estimates (ns.TransportTimes)
+    TransportRoutes.lua the ships NauticusClassic timed: cycle, docks and trigger points (ns.TransportRoutes), generated
+    TransportTimes.lua  saved per-realm server-clock sightings and ride timings (ns.TransportTimes)
+    TransportRide.lua   times a ship as the player rides past one of its trigger points (ns.TransportRide)
     Transport.lua       Boat and Zeppelin Timers: its minimap pins, their tooltips and Travel settings
     AimTrainer.lua      the Aim Trainer (/nfaim, ns.AimRules, ns.AimPlay, ns.AimOffer)
     AimBoard.lua        the Aim Trainer's leaderboard (ns.AimBoard)
@@ -132,9 +136,6 @@ NaowhForever_QoL/
     Quiz.lua            the Quiz (ns.ToggleQuiz, ns.QuizOffer, ns.QuizDismiss)
     DailyWordData.lua   the Daily Word's answers and accepted words, generated
     DailyWord.lua       the Daily Word (/nf word, ns.DailyWordPlay, ns.DailyWordOffer, ns.DailyWordDismiss)
-  System/
-    SlashCommands.lua   Custom Slash Commands and their editor (ns.SlashCommandList, ns.RefreshSlashCommands)
-    Performance.lua     QoL > System > Performance: recommended game settings and their backups
   Media/
     crosshair_ring.tga  the Crosshair's ring
     MouseRing/          the Mouse Ring's rings, glows and trail
@@ -600,6 +601,9 @@ NaowhForever_QoL/
 - Flight Games (`flightGame`) is the one choice of what opens by itself when a flight starts: the
   buttons only, the Quiz, the Aim Trainer or the Daily Word (Off hides the game buttons). It was
   migrated once from the old `quizFlight` and `aimAutoFlight`.
+- Daily Word First (`flightWordFirst`) opens the Daily Word ahead of the Quiz or Aim Trainer while
+  today's word is not done. Only its close button hands over to the chosen game (`ns.FlightWordClosed`):
+  a game button or landing also hides it, and that must not open a second game.
 - The Flight Timer has one icon button per game (the Quiz, each Aim Trainer mode and the Daily
   Word), so a game opens in one click. A game whose feature is off keeps its button, greyed out,
   with a tooltip saying where to turn it on, as the old Games menu did for the Aim Trainer.
@@ -842,10 +846,8 @@ NaowhForever_QoL/
 - A spell whose description is empty is asked of the client once (Spell:ContinueOnSpellLoad); some
   creature spells have none, so asking again would never end.
 
-### Performance
-- The game keeps its settings per computer, so the values the recommended ones replaced live in the account store (`cvarBackups`), not the profile.
-- `SAME_WITHIN` compares numeric CVars loosely, as the game writes some back with float noise.
-- HDR and Peak Brightness set the game's own `HDRFactor` and `HDRPeakBrightness`, which have no place in the game's options. Peak Brightness also turns on `useHDRPeakBrightness`, without which the game ignores it. They are the player's own values, not recommended ones, so they are not backed up, and they show only where the client has `HDRFactor`. HDR Settings (`hdr`, off by default) is the opt-in: until it is on, the page leaves both alone.
+### HDR
+- HDR and Peak Brightness set the game's own `HDRFactor` and `HDRPeakBrightness`, which have no place in the game's options. Peak Brightness also turns on `useHDRPeakBrightness`, without which the game ignores it. The card shows only where the client has `HDRFactor`. HDR Settings (`hdr`, off by default) is the opt-in: until it is on, the card leaves both alone.
 
 ### Stealth Reminder
 - The form IDs are `GetShapeshiftFormID` values, the same ones the Threat Meter reads.
@@ -921,6 +923,33 @@ NaowhForever_QoL/
   detectable; only a new sighting fixes that phase. Enabling prunes only once `IsLoggedIn`; at
   login, PLAYER_ENTERING_WORLD prunes.
 - A backwards server clock suspends an estimate until a fresh sighting.
+- Seven ships are timed from a ride instead: The Thundercaller, The Iron Eagle, The Purple Princess,
+  The Maiden's Fancy, The Lady Mehley, The Moonspray and the Feathermoon Ferry. `TransportRoutes.lua`
+  holds each one's round trip, when in it the ship reaches and leaves each dock, and two trigger
+  segments on the way, from NauticusClassic's measurements (MIT, psynct; the notice is in LICENSE.md).
+  It is generated by `python Tools/build/transport_routes.py` from NauticusClassic's `data.lua`.
+- NauticusClassic keeps places on the whole-world map, so the generator fits world yards per continent
+  on the docks both share and stops if one is 20 yards or more from ours; all fourteen are within 13.
+  The Bravery is left out: on Forever it calls at Southshore between Menethil Harbor and Auberdine,
+  so its path no longer fits.
+- Their round trips replace Journeys' estimate for those ships, and the wiki's 3:59 for Undercity-
+  Orgrimmar: a player's tooltip from the game had the Thundercaller about 2:10 in the air, as a
+  356 second cycle gives and a 239 second one cannot.
+- No event says where the player is, so while the feature is on in a zone one of those ships docks
+  in, or out at sea, `TransportRide.lua` reads `UnitPosition` every `POLL` (0.8 s) and stops in any
+  other zone. A ride counts when the player is within `TRIGGER_RADIUS` (20 yards) of a trigger
+  point, moved within `SPEED_BAND` (35%) of the ship's speed on that segment and heading its way
+  (`HEADING_MATCH`), and is not on a flight path or swimming: walking, flying or swimming past the
+  point times nothing. Where along the segment the player is gives the moment in the ship's cycle.
+  A ship is timed at most once every `LOCKOUT` (30 s).
+- Rides are kept per realm in the account settings (`transportRides`), as one cycle start. A ride
+  within `RIDE_MISS` (3 s) of a whole number of cycles from the first one keeps it and measures the
+  cycle from all of them, when that lands within `RIDE_BAND` (2%) of the data's; one that does not fit
+  starts over. A click at either dock times the whole ship the same way.
+- Rides are not dropped at the weekly reset: NauticusClassic found the ships keep the realm's clock
+  through maintenance. If Forever's restart does move them, the next ride starts over.
+- A timed ship's tooltip is its name, then each dock with its departure (yellow, red under
+  `LEAVING_SOON`, 30 s) or arrival (green), the colors at the top of `Transport.lua`.
 - Each stop's map position is worked out once, with `C_Map.GetMapPosFromWorldPos`, the first time
   its map is shown. Disable unregisters the events and hides the pins; nothing is built until the
   feature is first on in a zone with a stop.
@@ -960,16 +989,6 @@ NaowhForever_QoL/
 - `MAP_CONTINENT` is the `Enum.UIMapType` of a continent: on it or anything larger the pins are drawn smaller.
 - The map calls `CheckMouseButtonPassthrough` on every acquired pin, and its SetPassThroughButtons is protected: from our refresh it is blocked in combat. These pins want their clicks, so the method is left empty, and a redraw asked for in combat waits for combat to end. A resize only changes sizes, so it is safe in combat.
 - The world map may load after this file, so switching on waits for Blizzard_WorldMap. The pin mixin is a global so the XML template can name it, made the first time it is switched on.
-
-### Custom Slash Commands
-- The default commands are copied into the profile on first use, so `DEFAULTS` is never written into.
-- Whenever chat text is parsed, the game moves SlashCmdList's entries into `hash_SlashCmdList` and a table behind SlashCmdList's metatable, so a command is looked for in all three.
-- A command's handler is called directly. Sending it through the chat box ran the game's chat code from the addon, and the player's next chat message was blocked.
-- /cast, /use, /target and the other secure commands run only from the chat box or a macro, so a custom command refuses them. The game blocks ReloadUI from addon code, so /reload is refused too.
-- The chat box caches handlers in `hash_SlashCmdList` the first time any slash command is typed, so a refresh drops our own cached entries there; the taint scan allows that one write.
-- A window command shows or hides the frame from addon code, so its OnShow / OnHide run tainted;
-  while `ns.GamepadOwnsPanels()` their gamepad handling is forbidden, so the command refuses.
-- Only the windows this client has are offered: `FRAMES` names each one's load-on-demand addon where it is not loaded up front.
 
 ### Town Map
 - The service NPCs (`Shared/Game/Towns.lua`, which the Training Planner and Professions read too) come from Classic Era data: `[uiMapID] = { { x, y, category, name, title, class token (class trainers), factions ("A", "H" or "AH"), optional NPC ID } }`, x and y in map percent. NPCs Forever added sit last in each map's list. Forever redrew Stormwind, Mulgore, Redridge and the Eastern Plaguelands, so Classic positions there went through world coordinates.

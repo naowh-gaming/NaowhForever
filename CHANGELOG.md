@@ -2,6 +2,49 @@
 
 ## Unreleased
 
+## 1.1.35
+
+### Changed
+- Daily Word #5 is out (QoL > Travel, or /nf word).
+
+## 1.1.34
+
+### Added
+- Dungeon Journal: Lyn the Ignored in the City of Dalaran has a map pin and a tip on how to summon
+  him.
+- Dungeon Journal: the City of Dalaran's bosses show their abilities.
+- Dungeon Journal: bosses list the recipes they drop, such as Plans: Arcanite Reaper from Bannok
+  Grimaxe and Forever's new blueprints. With My Professions Only on, only your professions' recipes
+  show.
+- Boat and Zeppelin Timers: seven boats and zeppelins time themselves when you ride them, and their
+  minimap pin shows both docks' departure and arrival.
+- Badges: supporter badges are live. Patreon supporters get their Epic or Legendary badge, and
+  Badges has its own settings card.
+
+### Changed
+- Action Bars: spells from a website layout you haven't learned yet go on your bars when you learn
+  them, and the import tells you which.
+- Scout: shows the abilities of more creatures, Forever's new ones and dungeon bosses among them.
+- Action Bars: the chat lines after an import are shorter, with the set name colored and the levels
+  grayed out.
+
+### Fixed
+- Action Bars: importing a website layout clears the slots it leaves empty, so your bars match what
+  you built.
+- Action Bars: a website layout's keybinds replace the action's old key, so the button shows the new
+  one.
+- Bags: the upgrade arrow shows on items again for Baganator users.
+- Professions: Mass Disenchant no longer triggers a protected-action error or gets stuck after
+  immediate or repeated cast failures.
+
+## 1.1.33
+
+### Added
+- Flight Games: Daily Word First opens the Daily Word on a flight until today's is done, then your
+  chosen game (QoL > Travel).
+- Discovery > Quest List: hundreds more class, dungeon and battleground quests show on the world map
+  at their quest givers.
+
 ## 1.1.32
 
 ### Added

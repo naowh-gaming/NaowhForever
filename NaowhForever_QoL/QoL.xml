@@ -29,9 +29,9 @@
     <Script file="Interface\SpellEfficiency.lua"/>
     <Script file="Interface\SpellEfficiencyReport.lua"/>
     <Script file="Interface\GlobalCopy.lua"/>
-    <Script file="System\SlashCommands.lua"/>
     <Script file="Interface\HideClutter.lua"/>
     <Script file="Interface\UnitNames.lua"/>
+    <Script file="Interface\HDR.lua"/>
     <Script file="Cursor\Crosshair.lua"/>
     <Script file="Cursor\MouseRing.lua"/>
     <Script file="Combat\PetTracker.lua"/>
@@ -43,7 +43,7 @@
     <Script file="Combat\DamageMeterSkin.lua"/>
     <Script file="Combat\ScoutData.lua"/>
     <Script file="Combat\Scout.lua"/>
-    <Script file="System\Performance.lua"/>
+    <Script file="Combat\SpellQueue.lua"/>
     <Script file="Loot\LootFeed.lua"/>
     <Script file="Loot\AuctionPrices.lua"/>
     <Script file="XP\XPTicker.lua"/>
@@ -79,7 +79,9 @@
     <Script file="Travel\Flight.lua"/>
     <Script file="Travel\FlightPoint.lua"/>
     <Script file="Travel\TransportData.lua"/>
+    <Script file="Travel\TransportRoutes.lua"/>
     <Script file="Travel\TransportTimes.lua"/>
+    <Script file="Travel\TransportRide.lua"/>
     <Script file="Travel\Transport.lua"/>
     <Script file="Interface\Waypoints.lua"/>
     <Script file="Travel\QuizData.lua"/>

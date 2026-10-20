@@ -13,12 +13,13 @@ and ship the result as plain Lua data. The scripts keep that repeatable.
 | Folder | What it holds |
 | --- | --- |
 | `build/` | Every data generator: each writes one part of the addon's data (`python Tools/build/journal.py`). |
-| `sources/` | The readers the builders share: the game's tables (`wago.py`), Wowhead (`wowhead.py`), wowsrc.com (`wowsrc.py`) and a client's own item cache (`items_in_game.py`). |
+| `sources/` | The readers the builders share: the game's tables (`wago.py`), Wowhead (`wowhead.py`), wowsrc.com (`wowsrc.py`), the recipes bosses drop (`recipe_drops.py`) and a client's own item cache (`items_in_game.py`). |
 | `data/` | Every JSON input and cache the tools read and write, wowsrc's pages (`data/wowsrc_pages/`, not committed) and the two preset profiles (`preset_*.lua`). |
 | `media/` | The scripts that draw the addon's textures and record its voice clips. |
 | `release/` | Release, the daily build watch and the daily badge sync, run by the workflows. |
 | `hooks/` | The checks pre-commit and the workflows run. |
 | `regression/` | Offline Lua tests against stubs. |
+| `dev/` | Development addons loaded into the game by hand, never shipped (`dev/QuestPositions/`, see its README). |
 | `nav/` | The walking maps Journeys plans walks on, baked from the client's terrain (Node; see `nav/README.md`). |
 | `tests/` | Python tests for the tools. |
 | `paths.py` | Where the tools, their data and the addon are. |
@@ -213,8 +214,7 @@ that the zone has no quests. Self-referential prerequisite records are withheld 
 in the conversion report. Reviewed auxiliary quest prerequisites remain authoritative.
 
 The coverage report distinguishes absent page caches from `quest_metadata_missing` and
-counts `entity_catalog_records`. The import receipt in `data/quest_entity_import.json`
-records the source hash, mapping build and offline full-catalog accounting checks.
+counts `entity_catalog_records`. Keep import receipts and permission records outside the repository.
 
 ### Scout's scripted Classic baseline
 
@@ -308,6 +308,7 @@ are not included. Classic baseline values remain unverified for Forever.
 | Tool | What it does | Why |
 | --- | --- | --- |
 | `completo_quests.py` | Builds `NaowhForever_DiscoveryData/Quests.lua`: every quest of every zone, its chain and where its quest giver stands, from Wowhead Forever's zone and quest pages. Cached in `data/completo_zones.json`, `data/completo_quests.json`, `data/completo_requires.json` and `data/completo_items.json`; `--offline` writes from the caches only. | A zone's quests and what to do first. |
+| `elsewhere_quests.py` | Builds `data/completo_elsewhere.json`, which `completo_quests.py` reads: the class, dungeon and battleground quests no zone page lists, from CMaNGOS's quests that Forever's client has, placed from Wowhead's quest pages or, failing those, where the game client puts the giver's spawn (`dev/QuestPositions/`, kept in `data/completo_positions.json`). `--offline` fetches nothing; `--positions` writes the spawns for the dev addon to resolve; `--resolved <file>` reads its answers. | The quests Wowhead files under a class or an instance, on the map too. |
 | `completo_rares.py` | Builds `NaowhForever_DiscoveryData/Rares.lua`: every rare of every zone, where it spawns and its special drops. Cached in `data/completo_rares.json`; `--offline` writes from the caches only. | The rares worth hunting, on the map. |
 
 ## build/: World and town map
@@ -319,6 +320,7 @@ are not included. Classic baseline values remain unverified for Forever.
 | `spirit_healers.py` | Builds `NaowhForever_QoL/Interface/TownSpiritHealers.lua` from the Spirit Healer's Wowhead page. | The game won't list graveyards while you are alive. |
 | `travel.py` | Builds `NaowhForever_QoL/Interface/TownTravel.lua`: the boats' and zeppelins' docks, from the game's taxi paths (wago.tools). | The town map's boat and zeppelin pins. |
 | `journeys.py` | Builds `NaowhForever_Utilities/Journeys/Data/Network.lua`: every flight point with who can use it, every direct flight's flown length, each boat's and zeppelin's docks with its stop and sailing distance, and the tram and the Darnassus portal, from the game's tables (wago.tools). Run it again when `wago.BUILD` moves on. Lifts are not in the client's tables: they go in `LIFTS` by hand, from what `/nf lifts` prints in game. | The Journeys planner's network. |
+| `transport_routes.py` | Builds `NaowhForever_QoL/Travel/TransportRoutes.lua` from NauticusClassic's `data.lua` (MIT, github.com/psynct/NauticusClassic at 504bc4c): `python Tools/build/transport_routes.py path/to/data.lua`. It fits their whole-world map to world yards on the docks shared with `TransportData.lua` and stops if a dock is 20 yards out. | The seven ships timed from a ride in QoL, with their measured round trips. |
 | `transport.lua` | Builds `NaowhForever_QoL/Travel/TransportData.lua` from Journeys' generated network and speed constants, with the published cycle times it lists: `lua5.1 Tools/build/transport.lua`. Rebuild after changing that network or its speeds. | Single-sighting boat and zeppelin estimates in QoL, without loading Journeys. |
 | `journeys_quests.py` | Builds `NaowhForever_JourneysData/QuestSpots.lua`: where each Quest List quest is handed in, and the camps of its objectives, from the map on its Wowhead Forever page. Cached in `data/journeys_quest_spots.json`; `--offline` writes from the cache only. | A tracked quest the game marks nowhere still has somewhere to go. |
 | `same_maps.py` | Builds `Shared/Data/SameMaps.lua`: the maps the game has under two IDs (the same name, continent and bounds), each to the one with a parent map, whose data it reads, from the game's tables (wago.tools). Run it again when `wago.BUILD` moves on. | Zephras Isle is 2521 and 2665; the addon's data is keyed by 2521. |
@@ -328,7 +330,7 @@ are not included. Classic baseline values remain unverified for Forever.
 
 | Tool | What it does | Why |
 | --- | --- | --- |
-| `scout.py` | Builds `NaowhForever_QoL/Combat/ScoutData.lua`: each attackable creature's abilities, armor, immunities, resistances and tameable beasts, for every open-world zone's and Dungeon Journal instance's creatures (Wowhead Forever's zone pages, cached in `data/scout.json`), from the CMaNGOS classic database (downloaded each run, or `--dump FILE`), the game's SpellName and ExpectedStat (wago.tools); `--fetch-gaps` reads Wowhead's creature pages for the creatures the database has no spells for, slowly, into the same cache. | Scout's tooltips: the game lists no creature's spells or stats. |
+| `scout.py` | Builds `NaowhForever_QoL/Combat/ScoutData.lua`: each attackable creature's abilities, armor, immunities, resistances and tameable beasts, for every open-world zone's and Dungeon Journal instance's creatures (Wowhead Forever's zone pages, cached in `data/scout.json` until `--refresh-zones`), and the tameable beasts those pages leave out or the database calls untameable (`data/scout_beasts.json`, whose pages are always read), from the CMaNGOS classic database (downloaded each run, or `--dump FILE`), the game's SpellName and ExpectedStat (wago.tools); `--fetch-gaps` reads Wowhead's creature pages for the creatures the database has no spells for, slowly, into the same cache. | Scout's tooltips: the game lists no creature's spells or stats. |
 | `daily_word.py` | Builds `NaowhForever_QoL/Travel/DailyWordData.lua`: the Daily Word's answers, shuffled once with a fixed seed, and every word it accepts, from 12dicts and ENABLE (both public domain, downloaded each run). Rebuilding changes past days' words if the sources or its choices change. | One word a day for everyone without a server. |
 | `forever_new.py` | Builds `Shared/Data/Forever.lua`: the items, quests and NPCs Wowhead marks as new in Forever, the ones our data mentions. Cached in `data/forever_new.json` (`--refresh` asks again). | The addon's Forever mark. |
 | `spell_efficiency.py` | Builds `NaowhForever_QoL/Interface/SpellEfficiencyData.lua`: every class spell rank that costs mana and heals or deals damage, its amounts (base, per level, bonus coefficient, ticks), level and school, from the game's spell tables (wago.tools). Also each spell's talent mods (percent talents by rank, Illumination, Elemental Focus), read through the talent nodes in `NaowhForever_Training/Data/TrainingBuilds.lua`. Spells whose amount is elsewhere (weapon, proc, script) are left out; area triggers (Blizzard, Consecration) and Holy Shock are read from the spell their description names. Run it again when `wago.BUILD` moves on. | QoL's Mana Efficiency, without reading tooltip text. |
@@ -345,6 +347,7 @@ are not included. Classic baseline values remain unverified for Forever.
 | `wago.py` | Reads the game's own tables (DB2) for a Forever build from wago.tools, hotfixes included. `BUILD` is the build our data comes from. | The one source that is the game itself. |
 | `wowhead.py` | Not a build: reading Wowhead's Forever pages (a polite `fetch`, listviews, a dungeon guide's loot) and writing Lua strings, for the tools that do. | Shared by the builders, `release/watch_build.py` and `wowsrc.py`. |
 | `wowsrc.py` | Reads wowsrc.com's Forever loot pages into `data/wowsrc_loot.json`. `--resolve` maps their item names to IDs in `data/item_names.json` (`--offline`: without Wowhead). `--check` says what changed on their pages since (daily in CI). | Wowhead hasn't tied Forever's new items to bosses yet; wowsrc has. They gave us permission. |
+| `recipe_drops.py` | Writes `data/journal_recipes.json`: the recipes each Journal boss drops, by each recipe's Wowhead item XML (its `sourcemore`), one item at a time; answers kept in `data/recipe_drops_cache.json`, `--refresh` asks again. | Wowhead's CDN refuses boss pages to scripts at times while the item XML still answers; the Journal build places these like an "add" list. |
 | `items_in_game.py` | Writes `data/items_in_game.json`: the items a Forever client was sent, and refused, from its hotfix cache (`--cache`) and the Journal's `/nf itemprobe` (`--probe`, its SavedVariables). With neither, both are read from a Windows install. | wago.tools lacks some items the server sends; the build lists those as in the game. Run on a machine with the client, then commit the JSON. |
 
 ## data/

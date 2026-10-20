@@ -3,7 +3,10 @@ hunter can tame, for the creatures of every open-world zone and Dungeon Journal 
 
 The creatures come from the zone pages of Wowhead Forever (Tools/data/scout.json, "zones"): the ones
 some faction can attack, other than critters, and the bosses the Journal names by NPC ID (an
-instance Wowhead has no zone page for has only those). Their stats come from the CMaNGOS classic database
+instance Wowhead has no zone page for has only those), with the tameable beasts players have found that
+the zone pages leave out or the database calls untameable (Tools/data/scout_beasts.json). A zone's page is
+read once and kept; --refresh-zones reads every zone's page again, for the creatures Wowhead has added
+since. Their stats come from the CMaNGOS classic database
 (github.com/cmangos/classic-db, GPL-3.0), downloaded each run (or --dump FILE):
   - what a creature casts: the spells its EventAI scripts cast (action 11), leaving out the events
     that are not a fight (it spawns, is out of combat, evades, reaches home, a quest or an emote), and
@@ -32,7 +35,7 @@ Writes NaowhForever_QoL/Combat/ScoutData.lua: abilities, tameable beasts and sta
 glimmer_nodes.pack does (CBOR deflated in Base64, decoded by the client when Scout first needs
 them), and the armor by level as a plain list.
 
-Usage: python Tools/build/scout.py [--dump FILE] [--fetch-gaps] [--offline] [--report FILE]
+Usage: python Tools/build/scout.py [--dump FILE] [--fetch-gaps] [--refresh-zones] [--offline] [--report FILE]
 --offline skips Wowhead only; the database dump and wago.tools tables are still needed.
 """
 import argparse
@@ -60,6 +63,7 @@ CACHE = paths.DATA / "scout.json"
 SCRIPT_SPELLS = paths.DATA / "scout_script_spells.json"
 SUPPLEMENT = paths.DATA / "scout_ability_supplement.json"
 DUNGEONS = paths.DATA / "journal_bosses.json"
+BEASTS = paths.DATA / "scout_beasts.json"
 JOURNAL_LOOKUP = paths.DATA / "journal_cache.json"
 JOURNAL_ABILITIES = paths.DATA / "abilities_cache.json"
 INSTANCE_RECORDS = paths.DATA / "scout_instance_records.json"
@@ -90,7 +94,7 @@ def load():
 
 
 def save(cache):
-    CACHE.write_text(json.dumps(cache, indent=1, sort_keys=True), encoding="utf-8")
+    CACHE.write_text(json.dumps(cache, indent=1, sort_keys=True), encoding="utf-8", newline="\r\n")
 
 
 def instances():
@@ -118,6 +122,11 @@ def instance_npcs(dungeons=None, lookup=None):
 
 def zones():
     return sorted(set(ZONE_MAP) | instances())
+
+
+def beasts():
+    """{ npcID: name } of the beasts read from Wowhead whatever the zone pages and the database say."""
+    return {int(npc): name for npc, name in json.loads(BEASTS.read_text(encoding="utf-8")).items()}
 
 
 def attackable(row):
@@ -279,11 +288,11 @@ def armor():
     return [int(round(float(rows_[level]["CreatureArmor"]))) for level in range(1, MAX_LEVEL + 1)]
 
 
-def creatures(cache, offline=False, extra=None):
+def creatures(cache, refresh=False, offline=False, extra=None):
     names, first = {}, set()
     for area in zones():
         key = str(area)
-        if key not in cache["zones"]:
+        if refresh and not offline or key not in cache["zones"]:
             if offline:
                 print(f"  zone {area}: no cached NPC list", file=sys.stderr)
                 continue
@@ -293,7 +302,8 @@ def creatures(cache, offline=False, extra=None):
                 save(cache)
                 print(f"  zone {area}: {error}; using cached zones for the rest of this run", file=sys.stderr)
                 offline = True
-                continue
+                if key not in cache["zones"]:
+                    continue
             save(cache)
         for row in cache["zones"][key]:
             names[row["id"]] = row["name"]
@@ -321,12 +331,17 @@ def main():
                         help="read Wowhead's page of each creature the database leaves without spells")
     parser.add_argument("--offline", action="store_true", help="use cached Wowhead data only (other sources still needed)")
     parser.add_argument("--report", type=Path, help="write remaining ability-source gaps and baseline coverage as JSON")
+    parser.add_argument("--refresh-zones", action="store_true",
+                        help="read every zone page again instead of keeping the cached one")
     args = parser.parse_args()
-    if args.offline and args.fetch_gaps:
-        parser.error("--offline cannot be combined with --fetch-gaps")
+    if args.offline and (args.fetch_gaps or args.refresh_zones):
+        parser.error("--offline cannot be combined with --fetch-gaps or --refresh-zones")
     cache = load()
     instance_records = json.loads(INSTANCE_RECORDS.read_text(encoding="utf-8"))["creatures"]
-    names, first = creatures(cache, args.offline, instance_records)
+    names, first = creatures(cache, refresh=args.refresh_zones, offline=args.offline, extra=instance_records)
+    found = beasts()
+    for npc, name in found.items():
+        names.setdefault(npc, name)
     sql = dump_text(args.dump)
     stats, casts, scripted = database(sql)
     registry = json.loads(SCRIPT_SPELLS.read_text(encoding="utf-8"))
@@ -337,9 +352,10 @@ def main():
     journal_pages = json.loads(JOURNAL_ABILITIES.read_text(encoding="utf-8"))
     spell_names = {int(r["ID"]): r["Name_lang"] for r in wago.table("SpellName")}
 
-    gaps = sorted((npc for npc in names if not casts.get(npc) and (npc not in stats or npc in scripted)),
-                  key=lambda npc: (npc not in first, npc))
-    todo = [npc for npc in gaps if str(npc) not in cache["npcs"] and not baseline.get(npc)]
+    gaps = sorted((npc for npc in names
+                   if npc in found or not casts.get(npc) and (npc not in stats or npc in scripted)),
+                  key=lambda npc: (npc not in found, npc not in first, npc))
+    todo = [npc for npc in gaps if str(npc) not in cache["npcs"] and (npc in found or not baseline.get(npc))]
     print(f"{len(names)} creatures; {len(gaps)} with no spells in the database ({len(todo)} not read from "
           f"Wowhead yet)", file=sys.stderr)
     if args.fetch_gaps:
@@ -362,7 +378,7 @@ def main():
         if listed:
             abilities[npc] = listed
             common.update(listed)
-        if stats.get(npc, {}).get("tameable") or (npc not in stats and page and page["tameable"]):
+        if stats.get(npc, {}).get("tameable") or (page and page["tameable"]):
             tameable.add(npc)
         if npc in stats and stat_row(stats[npc]):
             creature_stats[npc] = stat_row(stats[npc])
