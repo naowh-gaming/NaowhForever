@@ -588,7 +588,7 @@ local function PaintGames(f)
 end
 
 local function Layout()
-    local land = S.Get("flightEarlyLanding") and not flight.sample
+    local land = S.Get("flightEarlyLanding") and not ns.GamepadStandDown() and not flight.sample
     local games = S.Get("enabled") and S.Get("flightGame") ~= "off" and not flight.sample
     Look.Layout(bar, flight, land and true or false, games and true or false)
     PaintGames(bar)
@@ -799,7 +799,8 @@ events:RegisterEvent("PLAYER_ENTERING_WORLD")
 events:SetScript("OnEvent", OnEvent)
 
 function FadeBlizzardStop()
-    local fade = (On() and S.Get("flightEarlyLanding") and flight and not flight.sample) == true
+    local fade = (On() and S.Get("flightEarlyLanding") and not ns.GamepadStandDown() and flight
+        and not flight.sample) == true
     if fade == stopFaded then return end
     if InCombatLockdown() then events:RegisterEvent("PLAYER_REGEN_ENABLED") return end
     stopFaded = fade
@@ -931,6 +932,7 @@ Settings.Page("QoL/Travel", S):Card({
     studio = { height = STAGE_H, states = STATES, new = NewPreview, paint = PaintPreview },
     rows = {
         { key = "flightEarlyLanding", label = "Land Early Button", toggle = true,
+          needs = ns.GamepadFree, why = ns.GamepadWhy,
           help = "Adds a Land button to come down at the next stop on the way." },
         { key = "flightTimerMapTime", label = "Flight Time on Map", toggle = true,
           help = "The flight time to each destination when you hover it on the flight master's map." },

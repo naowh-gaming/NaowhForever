@@ -45,7 +45,8 @@ local function Summary(store)
 end
 
 Settings.Page(PAGE, S):Card({
-    id = "zoneInfo", name = "Zone Info", order = ORDER, switch = "zoneInfo", summary = Summary,
+    id = "zoneInfo", name = "Zone Info", order = ORDER, switch = "zoneInfo", switchWhy = ns.GamepadWhy,
+    summary = Summary,
     help = "Shows zone summaries, pinned details and an optional current-zone panel.",
     studio = { height = PREVIEW_H, states = STATES, new = Preview, paint = PaintPreview },
     rows = {
