@@ -51,8 +51,10 @@ Settings.Page(PAGE, S):Card({
     studio = { height = PREVIEW_H, states = STATES, new = Preview, paint = PaintPreview },
     rows = {
         { label = "Recommended Details", buttonText = "Apply", button = Recommended, always = true,
+          needs = ns.GamepadFree, why = ns.GamepadWhy,
           help = "Shows dungeon, fishing and travel details with your profession filters." },
         { label = "Map Text Only", buttonText = "Apply", button = MapOnly, always = true,
+          needs = ns.GamepadFree, why = ns.GamepadWhy,
           help = "Shows the zone summary on the map and turns off the panels." },
         Settings.Group("Display"),
         { key = "zoneInfoOnMap", label = "On-map Summary", toggle = true,

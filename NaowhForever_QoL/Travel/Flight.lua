@@ -904,7 +904,8 @@ local function PaintPreview(preview)
     local f = preview.bar
     local games = S.Get("enabled") and S.Get("flightGame") ~= "off"
     Look.Style(f)
-    Look.Layout(f, PREVIEW, S.Get("flightEarlyLanding") and true or false, games and true or false)
+    local land = S.Get("flightEarlyLanding") and not ns.GamepadStandDown()
+    Look.Layout(f, PREVIEW, land and true or false, games and true or false)
     Look.Progress(f, PREVIEW, PREVIEW_ELAPSED)
     PaintGames(f)
     local w, h = f:GetWidth(), f:GetHeight()
@@ -922,7 +923,7 @@ local function Summary(store)
     local alpha = store.Get("flightTimerAlpha")
     return SUMMARY:format(math.floor(store.Get("flightTimerScale") * PERCENT + ROUND),
         alpha < 1 and SUMMARY_BACKGROUND:format(math.floor(alpha * PERCENT + ROUND)) or "",
-        store.Get("flightEarlyLanding") and SUMMARY_LAND or "")
+        store.Get("flightEarlyLanding") and not ns.GamepadStandDown() and SUMMARY_LAND or "")
 end
 
 Settings.Page("QoL/Travel", S):Card({

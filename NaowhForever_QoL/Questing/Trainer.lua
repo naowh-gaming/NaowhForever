@@ -427,7 +427,7 @@ end
 local function Learned(spellID)
     if C_Spell.IsSpellPassive(spellID) or IsRecipe(spellID) then return end
     learned[#learned + 1] = spellID
-    if S.Get("trainerGlow") then
+    if S.Get("trainerGlow") and not ns.GamepadStandDown() then
         NewSpells()[spellID] = true
         WatchGlow()
         QueueGlow()
