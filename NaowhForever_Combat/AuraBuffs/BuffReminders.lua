@@ -51,6 +51,7 @@ local carried
 local wellFedName
 local wakeAt
 local lastImbue
+local leveledTo
 local hidden = {}
 
 local function Secret(v)
@@ -108,9 +109,9 @@ end
 
 local function ShowsHere(kind, zone)
     local keys = WHERE[kind]
-    local key = keys[zone] or keys.none
-    if key == keys.none and S.Get(keys.atMax) and UnitLevel("player") >= MAX_LEVEL then return false end
-    return S.Get(key)
+    local level = math.max(UnitLevel("player"), leveledTo or 0)
+    if zone == "none" and S.Get(keys.atMax) and level >= MAX_LEVEL then return false end
+    return S.Get(keys[zone] or keys.none)
 end
 
 local function Wake(seconds)
@@ -469,7 +470,12 @@ Reminders.Secret = Secret
 Reminders.ShowsHere = ShowsHere
 
 function Reminders.WatchesLevel()
-    return S.Get("consumablesMaxHide") or S.Get("raidBuffsMaxHide") or S.Get("personalBuffsMaxHide")
+    return (S.Get("consumablesMaxHide") or S.Get("raidBuffsMaxHide") or S.Get("personalBuffsMaxHide"))
+        and UnitLevel("player") < MAX_LEVEL
+end
+
+function Reminders.NoteLevel(level)
+    leveledTo = level
 end
 
 function Reminders.InRange(entry)

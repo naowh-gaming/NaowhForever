@@ -220,6 +220,7 @@ end
 local function OnEvent(_, event, unit, arg2, spellID)
     if event == "UNIT_AURA" and (InCombatLockdown() or Secret(unit)
         or not (GROUP_UNIT[unit] or unit == "target" and R.WatchesTarget())) then return end
+    if event == "PLAYER_LEVEL_UP" then R.NoteLevel(unit) end
     if event == "PLAYER_REGEN_DISABLED" then
         StopRange()
         Menu.Hide()
