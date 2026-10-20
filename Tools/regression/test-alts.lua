@@ -57,6 +57,7 @@ local env = setmetatable({
     GetRealmName = function() return "Realm" end,
     UnitFactionGroup = function() return "Alliance" end,
     UnitName = function() return "You" end,
+    GetUnitName = function() return "You Surname" end,
     UnitClass = function() return "Paladin", "PALADIN" end,
     UnitLevel = function() return 20 end,
     GetMoney = function() return 1234 end,
@@ -80,7 +81,9 @@ end
 boot.scripts.OnEvent(boot, "PLAYER_LOGIN")
 check("bag scan listens once Alt Item Counts is on", events.events.BAG_UPDATE_DELAYED == true)
 
-local you = account.alts["Realm-Alliance"].You
+local realm = account.alts["Realm-Alliance"]
+local you = realm["You Surname"]
+check("you are kept by your whole name, moved from your first name", you and you.bank[10] == 3 and realm.You == nil)
 check("your bags counted, stacks added up", you.bags[10] == 6 and you.bags[30] == 7)
 local kept = you.bags
 BAGS[0][2] = false
@@ -103,12 +106,17 @@ local function Lines(id)
 end
 
 check("held by you and an alt, most first", Lines(10) == "Total owned = 12"
-    .. " |   |cfff58cbaYou|r = 6 bags, 3 bank |   |cff69ccf0Alt|r = 2 bags, 1 mail")
+    .. " |   |cfff58cbaYou Surname|r = 6 bags, 3 bank |   |cff69ccf0Alt|r = 2 bags, 1 mail")
 check("held only by an alt", Lines(20) == "Total owned = 4 |   |cfffff569Third|r = 4 bags")
 BAGS[0][2] = { itemID = 30, stackCount = 7 }
 events.scripts.OnEvent(events, "BAG_UPDATE_DELAYED")
 check("only in the bags you look at: no lines", Lines(30) == "")
 check("nobody has it: no lines", Lines(40) == "")
+
+local listed = {}
+for _, alt in ipairs(ns.AltList()) do listed[#listed + 1] = alt.name end
+table.sort(listed)
+check("the Alts list leaves you out by your whole name", table.concat(listed, ",") == "Alt,Third")
 
 Measure("an item tooltip refresh", 0.05, function() tip.n, data.id = 0, 10; post(tip, data) end)
 Measure("a bag scan", 0.05, function() events.scripts.OnEvent(events, "BAG_UPDATE_DELAYED") end)

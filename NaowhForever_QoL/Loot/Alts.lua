@@ -38,13 +38,15 @@ function ns.AltRealm()
 end
 
 function ns.AltName()
-    me = me or (UnitName("player")):match("^[^-]+")
+    me = me or (GetUnitName("player", true)):match("^[^-]+")
     return me
 end
 
 local function Me()
     local realm = ns.AltRealm()
     local name = ns.AltName()
+    local first = UnitName("player")
+    if not realm[name] and first ~= name then realm[name], realm[first] = realm[first], nil end
     realm[name] = realm[name] or {}
     return realm[name]
 end
