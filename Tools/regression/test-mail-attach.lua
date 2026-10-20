@@ -307,14 +307,18 @@ Case("no garbage per attach step", function()
 end)
 
 Case("the Alts menu fills the whole name, and says when one still lacks its last name", function()
-    alts[1] = { name = "Kre Stonehand", class = "WARRIOR", level = 30, money = 0 }
+    alts[1] = { name = "Kre Stonehand", class = "WARRIOR", level = 30, money = 0, full = true }
     alts[2] = nil
     buttons.Alts()
     local hint = menu[#menu].title
     assert(not (hint and hint:find("last name", 1, true)), "no hint while every name is whole")
     menu[2].fn()
     assert(toBox.text == "Kre Stonehand", "the To box gets " .. tostring(toBox.text))
-    alts[2] = { name = "Kreyn", class = "MAGE", level = 8, money = 0 }
+    alts[2] = { name = "Kreyn", class = "MAGE", level = 8, money = 0, full = true }
+    buttons.Alts()
+    hint = menu[#menu].title
+    assert(not (hint and hint:find("last name", 1, true)), "a name saved since the fix has no hint, surname or not")
+    alts[2].full = nil
     buttons.Alts()
     assert(menu[#menu].title and menu[#menu].title:find("last name", 1, true), "a first name alone gets the hint")
 end)
