@@ -78,7 +78,7 @@ local function DrawSets(v)
 end
 
 local function BuildSets()
-    local v = { cards = window.backdrop:Card(CARD, HEADER + CARD, CARD, FOOTER + CARD) }
+    local v = { cards = {} }
     v.frame = CreateFrame("Frame", nil, window)
     v.frame:SetAllPoints()
     local left, top = CARD + INSET, HEADER + CARD + PAD

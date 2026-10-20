@@ -1,9 +1,13 @@
--- Run with Lua 5.1 from the repository root: the Action Bars window's three views (saved
--- sets, the set builder and the import preview) built and drawn from the real files against
--- stubs. Checks that each draws, that the builder's clicks become the saved set's choices,
--- that the builder lists the bars each class uses (forms, the pet bar's keys) and hides empty
--- ones, and that the preview's Import imports.
+-- Run with Lua 5.1 from the repository root: the Action Bars window's three views (home, the
+-- set builder and the import preview) built and drawn from the real files against stubs.
+-- Checks the home's cards and set rows, the paste and export popups, the scene's strip for each
+-- class (Bar 3 | Bar 2 over Bar 1 | Bar 4, form chips, the pet bar's keys), toggling a bar by its
+-- label, skipping a slot, the summary, saving, and the preview's strip and Import.
 rawset(_G, "C_AddOns", { DoesAddOnExist = function() return false end, GetAddOnEnableState = function() return 0 end })
+strmatch = string.match
+dofile("Libs/LibStub/LibStub.lua")
+dofile("Libs/LibDeflate/LibDeflate.lua")
+dofile("Libs/LibSerialize/LibSerialize.lua")
 local Load = dofile("Tools/regression/load_files.lua")
 
 local checks = 0
@@ -55,11 +59,6 @@ function Frame(parent)
     return setmetatable({ scripts = {}, hooks = {}, events = {}, parent = parent }, META)
 end
 
-local function Click(frame)
-    local fn = frame.scripts.OnClick
-    if fn then fn(frame) elseif rawget(frame, "onClick") then frame.onClick() end
-end
-
 -------------------------------------------------------------------------------
 --  The game: a priest who knows Smite, with bars, macros and keys
 -------------------------------------------------------------------------------
@@ -108,12 +107,23 @@ ns = {
             el:Show()
             return el
         end,
-        KeepFont = function(parent) return Frame(parent) end,
+        KeepFont = function(parent, key)
+            local fs = Frame(parent)
+            state.keptFonts[key] = fs
+            return fs
+        end,
         KeepButton = function(parent, key, text, _, _, onClick)
             local button = Frame(parent)
             button.label, button.onClick, button.key = text, onClick, key
             state.rowButtons[text] = button
             return button
+        end,
+        BuildDropdownControl = function(parent, _, _, values, order, get, set)
+            local picker = Frame(parent)
+            picker.values, picker.order, picker.get, picker.set = values, order, get, set
+            picker._refreshValue = NOTHING
+            state.pickers[#state.pickers + 1] = picker
+            return picker
         end,
         BuildToggleControl = function(parent, _, get, set)
             local toggle = Frame(parent)
@@ -157,7 +167,8 @@ ns = {
     end,
     Button = function(parent, text, _, _, onClick)
         local button = Frame(parent)
-        button.label, button.onClick = text, onClick
+        button.label, button._onClick = text, onClick
+        button.onClick = function() if button._onClick then button._onClick() end end
         state.buttons[text] = button
         return button
     end,
@@ -172,8 +183,17 @@ ns = {
     Apply = NOTHING,
     Confirm = function(text, yes) state.confirmed = text; yes() end,
     PromptText = NOTHING,
+    Upper = string.upper,
+    PrimaryButton = function(button) button.primary = true; return button end,
+    MakeModal = function()
+        local dimmer, panel = Frame(), Frame()
+        ns.UI.BeginReusableRows(panel)
+        state.modal = { dimmer = dimmer, panel = panel }
+        return dimmer, panel
+    end,
 }
 state.buttons, state.rowButtons, state.toggles, state.fonts = {}, {}, {}, {}
+state.keptFonts, state.pickers = {}, {}
 state.class, state.className = "PRIEST", "Priest"
 
 local function ActionInfo(slot)
@@ -266,7 +286,7 @@ local env = setmetatable({
 }, { __index = _G })
 env._G.NaowhForever = ns
 
-Load({ "Shared/Shared.lua", "Shared/Style.lua", "Shared/Game/ActionKeys.lua", "Shared/UI/Parts.lua", "Shared/UI/Marks.lua", "Shared/UI/Text.lua", "Shared/UI/Hud.lua", "Shared/UI/Timer.lua", "Shared/UI/Share.lua", "Shared/UI/Panels.lua", "Shared/UI/Window.lua", "Shared/UI/Tabs.lua", "Shared/UI/SettingsCard.lua",
+Load({ "Shared/Shared.lua", "Shared/Style.lua", "Shared/Decode.lua", "Shared/Encode.lua", "Shared/Game/ActionKeys.lua", "Shared/UI/Parts.lua", "Shared/UI/Marks.lua", "Shared/UI/Text.lua", "Shared/UI/Hud.lua", "Shared/UI/Timer.lua", "Shared/UI/Share.lua", "Shared/UI/CodeModal.lua", "Shared/UI/Panels.lua", "Shared/UI/Window.lua", "Shared/UI/Tabs.lua", "Shared/UI/SettingsCard.lua",
     }, env)
 local MODULE = { "Core/Features.lua" }
 for _, path in ipairs(dofile("Tools/regression/toc_files.lua")("^NaowhForever_Utilities/ActionBars/.*%.lua$")) do
@@ -288,79 +308,36 @@ local function Visible(frame)
     return true
 end
 
--- Every tile on screen: tiles are the frames with a key font and a badge.
-local function Tiles()
-    local tiles = {}
-    for _, frame in ipairs(state.frames) do
-        if rawget(frame, "key") and rawget(frame, "badge") and Visible(frame) then tiles[#tiles + 1] = frame end
-    end
-    return tiles
-end
-
 -------------------------------------------------------------------------------
---  The checks
+--  Finding things on screen
 -------------------------------------------------------------------------------
-state.bars = { [1] = { kind = "spell", id = 585 }, [2] = { kind = "spell", id = 2054 },
-    [3] = { kind = "macro", id = 0, name = "Pull" } }
-state.macros = { { name = "Pull", icon = 1, body = "/say pull" }, { name = "Dance", icon = 2, body = "/dance" } }
-state.binds = { { "ACTIONBUTTON1", "1" }, { "ACTIONBUTTON2", "2" } }
-known[2054] = true
-
-ns.OpenActionBarsWindow()
-check("the saved sets view draws its Save Current Bars button", state.rowButtons["Save Current Bars"])
-
-state.rowButtons["Save Current Bars"].onClick()
-local tiles = Tiles()
-check("the builder draws a bar of twelve tiles", #tiles == 12)
-check("a slot with an action shows its key", tiles[1].key.text == "1")
-Click(tiles[2])
-check("a click leaves a slot out, and it greys", Tiles()[2].icon.desaturated == true)
-
-local editBox = state.editBox
-check("the builder has a name box", editBox and editBox.scripts.OnEnterPressed)
-editBox:SetText("Raid")
-state.buttons["Save Set"].onClick()
-local set = state.account.barSets.PRIEST.Raid
-check("Save Set saves under the typed name", set)
-check("with the slot left out", set.slots[1] and not set.slots[2] and set.choices.skip[2])
-check("and every macro, keys too", #set.macros == 2 and set.bindings and set.bindings["1"] == "ACTIONBUTTON1")
-
--- The same set on an alt that knows only Smite, has no macros and other things on its bars.
-known[2054] = nil
-state.macros = {}
-state.bars = { [2] = { kind = "item", id = 6948 }, [7] = { kind = "spell", id = 585 } }
-ns.OpenActionBarsImport("Raid")
-tiles = Tiles()
-check("the preview draws the bar", #tiles == 12)
-check("a macro the import makes is marked NEW", tiles[3].badge.text.text == "NEW")
-check("a slot left out shows the alt's own action", tiles[2].icon.texture == 135924 and tiles[2].icon.desaturated)
-check("nothing changed yet", state.bars[2].kind == "item" and #state.macros == 0)
-state.buttons.Import.onClick()
-check("Import imports", state.bars[1].id == 585 and state.bars[3].kind == "macro" and #state.macros == 2)
-check("and leaves the left-out slot alone", state.bars[2].kind == "item")
-check("and clears a slot the set keeps empty", state.bars[7] == nil)
-RunTimers()
-check("and goes back to the saved sets, the new set listed", state.rowButtons.Import)
-
--- More > Edit and Save Again opens the builder on the set, its picks in place.
-ns.OpenActionBarsBuilder("Raid")
-check("editing a set keeps its name", editBox.text == "Raid")
-check("and its left-out slot", Tiles()[2].icon.desaturated == true)
-
--- The builder's bars for each class: the rows on screen, top to bottom, with their names.
 local DOT = ns.Shared.Style.PLACE_DOT
-local function Rows()
-    local rows = {}
+
+local function Scene()
     for _, frame in ipairs(state.frames) do
-        if rawget(frame, "tiles") and rawget(frame, "box") and Visible(frame) then rows[#rows + 1] = frame end
+        if rawget(frame, "grid") and rawget(frame, "labels") and Visible(frame) then return frame end
     end
-    table.sort(rows, function(a, b) return (a.y or 0) > (b.y or 0) end)
-    return rows
 end
-local function Names()
-    local names = {}
-    for i, row in ipairs(Rows()) do names[i] = row.name.text end
-    return table.concat(names, ", ")
+local function Tile(region, i) return Scene().tiles[region][i] end
+local function Label(region)
+    local label = Scene().labels[region]
+    return Visible(label) and label.text.text or nil
+end
+local function Click(frame)
+    local fn = frame.scripts.OnClick
+    if fn then fn(frame) elseif rawget(frame, "onClick") then frame.onClick() end
+end
+local function Chips()
+    local texts = {}
+    for _, chip in ipairs(Scene().chips) do
+        if Visible(chip) then texts[#texts + 1] = chip.text.text end
+    end
+    return table.concat(texts, ", ")
+end
+local function Chip(text)
+    for _, chip in ipairs(Scene().chips) do
+        if Visible(chip) and chip.text.text:find(text, 1, true) == 1 then return chip end
+    end
 end
 local function Summary()
     for _, fs in ipairs(state.fonts) do
@@ -369,9 +346,6 @@ local function Summary()
             return text
         end
     end
-end
-local function Row(name)
-    for _, row in ipairs(Rows()) do if row.name.text == name then return row end end
 end
 local function Steps()
     local on = {}
@@ -385,80 +359,233 @@ local function BackLink()
         if rawget(frame, "underline") and Visible(frame) then return frame end
     end
 end
-local SHOW_EMPTY, KEYS = state.toggles[1], state.toggles[2]
-local MAIN, STEALTH = "Action Bar 1" .. DOT .. "Main", "Action Bar 1" .. DOT .. "Stealth"
+local function Card(title)
+    for _, frame in ipairs(state.frames) do
+        if rawget(frame, "button") and rawget(frame, "title") and frame.title.text == title and Visible(frame) then
+            return frame
+        end
+    end
+end
+local function SetRow(name)
+    for _, frame in ipairs(state.frames) do
+        if rawget(frame, "extras") and frame.key == name and Visible(frame) then return frame end
+    end
+end
+local function Picker()
+    for _, picker in ipairs(state.pickers) do
+        if Visible(picker) then return picker end
+    end
+end
+local function Panel(title)
+    for _, frame in ipairs(state.frames) do
+        if rawget(frame, "title") and rawget(frame, "line") and frame.title.text == title and Visible(frame) then
+            return frame
+        end
+    end
+end
+
+-------------------------------------------------------------------------------
+--  Home, the builder and the preview for a priest
+-------------------------------------------------------------------------------
+state.bars = { [1] = { kind = "spell", id = 585 }, [2] = { kind = "spell", id = 2054 },
+    [3] = { kind = "macro", id = 0, name = "Pull" } }
+state.macros = { { name = "Pull", icon = 1, body = "/say pull" }, { name = "Dance", icon = 2, body = "/dance" } }
+state.binds = { { "ACTIONBUTTON1", "1" }, { "ACTIONBUTTON2", "2" } }
+known[2054] = true
+
+ns.OpenActionBarsWindow()
+local previewImport = state.buttons.Import
+local editBox = state.editBox
+local save = Card("Save Current Bars")
+check("home shows Save Current Bars as the primary card", save and save.button.primary and save.button.label == "Save")
+check("and Import Website Code and Export to Website beside it, each button a verb", Card("Import Website Code")
+    and not rawget(Card("Import Website Code").button, "primary") and Card("Import Website Code").button.label == "Paste code"
+    and Card("Export to Website").button.label == "Get code")
+
+Click(Card("Import Website Code").button)
+check("Import Website Code opens the paste popup", state.keptFonts.title.text == "Paste a code from naowh.gg"
+    and state.rowButtons.Import.primary and state.rowButtons.Cancel)
+
+Click(save.button)
+check("the builder draws the strip: Bar 3 | Bar 2 over Bar 1 | Bar 4", Label("left") == "ACTION BAR 3"
+    and Label("top") == "ACTION BAR 2" and Label("right") == "ACTION BAR 4"
+    and Label("bottom") == "ACTION BAR 1" .. DOT .. "MAIN")
+check("a priest has no form chips and no pet bar", Chips() == "" and not Visible(Scene().pet))
+check("a slot with an action shows its icon and key", Tile("bottom", 1).icon.texture == 135924
+    and Tile("bottom", 1).key.text == "1")
+check("an empty button is shown empty", Visible(Tile("left", 1)) and Tile("left", 1).icon.shown == false)
+check("the summary counts actions, keybinds and macros", Summary() == "3 actions" .. DOT .. "2 keybinds" .. DOT .. "2 macros")
+check("keybinds and macros head the macro list", Panel("Keybinds") and Panel("Macros")
+    and Panel("Keybinds").line.text == "All 2 come along: 2 on your bars, 0 for other commands.")
+check("there is no step strip", not Steps()[1] and not Steps()[2] and not Steps()[3])
+Click(Tile("bottom", 2))
+check("a click on a button skips just that slot: dimmed, with its mark", Tile("bottom", 2).icon.desaturated == true
+    and Tile("bottom", 2).mark.shown and Tile("bottom", 1).icon.desaturated == false and Summary():find("^2 actions"))
+
+check("the builder has a name box", editBox and editBox.scripts.OnEnterPressed)
+editBox:SetText("Raid")
+check("Save Set is the primary button", state.buttons["Save Set"].primary)
+state.buttons["Save Set"].onClick()
+local set = state.account.barSets.PRIEST.Raid
+check("Save Set saves under the typed name", set)
+check("with the slot left out", set.slots[1] and not set.slots[2] and set.choices.skip[2])
+check("and every macro, keys too", #set.macros == 2 and set.bindings and set.bindings["1"] == "ACTIONBUTTON1")
+
+local row = SetRow("Raid")
+check("home lists the set as a row", row and row.name.text == "Raid" and row.has.text == "2 actions, 2 macros, 2 keybinds")
+check("with a small strip of the saved set", row.strip.cells.bottom[1].texture == 135924
+    and row.strip.cells.bottom[3].texture == 1 and row.strip.cells.bottom[2].empty and row.strip.cells.left[1].empty)
+check("and nothing more to tag for a priest", row.extras.text == "")
+check("Import is primary, More is not", row.import.primary and not rawget(row.more, "primary"))
+Click(row.more)
+check("More has Export to Website", state.menu["Export to Website"] and state.menu["Edit and Save Again"])
+state.menu["Export to Website"]()
+check("which shows the set's code to copy", state.keptFonts.title.text == "Export to Website"
+    and state.editBox.text:find("^!NFA1!") and state.editBox.scripts.OnTextChanged)
+check("and what went in and was left out", state.keptFonts.summary.text:find("In the code: 1 action", 1, true)
+    and state.keptFonts.summary.text:find("Training Planner", 1, true))
+state.editBox.scripts.OnTextChanged(state.editBox, true)
+check("the code box cannot be typed over", state.editBox.text:find("^!NFA1!"))
+ns.TrainingData = { [5] = { { 1, 585, 10 }, { 16, 2054, 100 } } }
+Click(Card("Export to Website").button)
+local exported = select(2, ns.ActionBars.Sharing.Decode(state.editBox.text))
+check("Export to Website exports the bars as they are", exported and exported.slots[1].id == 585
+    and exported.slots[2].id == 2054 and exported.slots[3].name == "Pull")
+
+-- The same set on an alt that knows only Smite, has no macros and other things on its bars.
+known[2054] = nil
+state.macros = {}
+state.bars = { [2] = { kind = "item", id = 6948 }, [7] = { kind = "spell", id = 585 } }
+Click(row.import)
+check("the row's Import opens the preview on the same strip", Label("bottom") == "ACTION BAR 1" .. DOT .. "MAIN")
+check("a macro the import makes is marked NEW", Tile("bottom", 3).badge.text.text == "NEW")
+check("a slot left out shows the alt's own action", Tile("bottom", 2).icon.texture == 135924
+    and Tile("bottom", 2).icon.desaturated)
+check("what comes across sits in its own panels", Panel("2 of 2 actions")
+    and Panel("2 macros: 2 new, 0 already here") and Panel("2 keybinds"))
+check("Import is primary", previewImport.primary)
+check("nothing changed yet", state.bars[2].kind == "item" and #state.macros == 0)
+previewImport.onClick()
+check("Import imports", state.bars[1].id == 585 and state.bars[3].kind == "macro" and #state.macros == 2)
+check("and leaves the left-out slot alone", state.bars[2].kind == "item")
+check("and clears a slot the set keeps empty", state.bars[7] == nil)
+RunTimers()
+check("and goes back home, the set listed", SetRow("Raid"))
+
+-- More > Edit and Save Again opens the builder on the set, its picks in place.
+ns.OpenActionBarsBuilder("Raid")
+check("editing a set keeps its name", editBox.text == "Raid")
+check("and its left-out slot", Tile("bottom", 2).icon.desaturated == true)
+
+-------------------------------------------------------------------------------
+--  Each class's strip
+-------------------------------------------------------------------------------
+local KEYS = state.toggles[1]
 
 state.class, state.className = "ROGUE", "Rogue"
 state.bars = { [1] = { kind = "spell", id = 585 }, [2] = { kind = "spell", id = 2054 },
-    [73] = { kind = "spell", id = 585 }, [61] = { kind = "spell", id = 2054 } }
+    [73] = { kind = "spell", id = 585 }, [61] = { kind = "spell", id = 2054 }, [40] = { kind = "spell", id = 585 } }
 state.macros = { { name = "Pull", icon = 1, body = "/say pull" }, { name = "Dance", icon = 2, body = "/dance" } }
 state.binds = { { "ACTIONBUTTON1", "1" }, { "ACTIONBUTTON2", "2" } }
 ns.OpenActionBarsBuilder()
-check("a rogue sees the main bar, its Stealth page and Action Bar 2, empty bars hidden",
-    Names() == MAIN .. ", " .. STEALTH .. ", Action Bar 2")
-check("each bar counts its actions", Row(STEALTH).count.text == "1 action" and Row(MAIN).count.text == "2 actions")
-check("the summary counts actions, keybinds and macros", Summary() == "4 actions" .. DOT .. "2 keybinds" .. DOT .. "2 macros")
-Click(SHOW_EMPTY)
-check("Show empty bars lists every bar", #Rows() == 15)
-Click(SHOW_EMPTY)
-check("and off hides them again", #Rows() == 3)
-Click(Row(STEALTH).tiles[1])
-check("a click on one button leaves just that slot out", Row(STEALTH).tiles[1].icon.desaturated == true
-    and Row(STEALTH).tiles[2].icon.desaturated == false and Summary():find("^3 actions"))
-Click(Row("Action Bar 2").box)
-check("a bar's box leaves the whole bar out, and dims it", Row("Action Bar 2").alpha < 1 and Summary():find("^2 actions"))
+check("a rogue has Main and Stealth chips with their counts", Chips() == "MAIN 2, STEALTH 1")
+check("Bar 1's row shows the main page", Tile("bottom", 1).slot == 1 and Label("bottom") == "ACTION BAR 1" .. DOT .. "MAIN")
+check("Bar 2 is the top row of the middle", Tile("top", 1).slot == 61 and Tile("top", 1).icon.texture == 135924)
+check("the summary counts every page", Summary() == "5 actions" .. DOT .. "2 keybinds" .. DOT .. "2 macros")
+Click(Chip("STEALTH"))
+check("the Stealth chip swaps Bar 1's row to the Stealth page", Tile("bottom", 1).slot == 73
+    and Label("bottom") == "ACTION BAR 1" .. DOT .. "STEALTH")
+check("with Bar 1's keys", Tile("bottom", 1).key.text == "1")
+Click(Tile("bottom", 1))
+check("a click there skips the Stealth slot only", Tile("bottom", 1).icon.desaturated == true
+    and Chips() == "MAIN 2, STEALTH 0" and Summary():find("^4 actions"))
+Click(Scene().labels.top)
+check("a click on Bar 2's label leaves the whole bar out, and dims it", Label("top") == "ACTION BAR 2" .. DOT .. "LEFT OUT"
+    and Tile("top", 1).alpha < 1 and Summary():find("^3 actions"))
+Click(Scene().labels.top)
+check("and a second click puts it back", Label("top") == "ACTION BAR 2" and Summary():find("^4 actions"))
+Click(Scene().labels.top)
+local picker = Picker()
+check("other bars are picked from the list, with their counts", picker.values[0] == "Main bars"
+    and picker.values[4] == "Action Bar 5 (1)" and not picker.values[7])
+picker.set(4)
+check("picking one shows that bar on its own", Label("top") == "ACTION BAR 5" and Tile("top", 4).slot == 40
+    and not Visible(Tile("left", 1)) and Chips() == "")
+picker.set(0)
 editBox:SetText("Rogue")
 state.buttons["Save Set"].onClick()
 set = state.account.barSets.ROGUE.Rogue
 check("the saved set leaves those slots out", set.slots[1] and set.slots[73] == nil and set.choices.skip[73]
-    and set.slots[61] == nil and set.choices.skip[72])
+    and set.slots[61] == nil and set.choices.skip[72] and set.slots[40])
+row = SetRow("Rogue")
+check("its home row draws the strip from the saved set, and tags the bar off the strip", row
+    and row.strip.cells.bottom[1].texture == 135924 and row.strip.cells.top[1].empty and row.extras.text == "+ 1 more bar")
+ns.OpenActionBarsBuilder()
+editBox:SetText("Stealthy")
+state.buttons["Save Set"].onClick()
+check("a set with a Stealth page is tagged with it", SetRow("Stealthy").extras.text == "+ Stealth" .. DOT .. "+ 1 more bar")
 
 state.class, state.className = "DRUID", "Druid"
 state.bars = { [1] = { kind = "spell", id = 585 }, [73] = { kind = "spell", id = 585 },
     [85] = { kind = "spell", id = 585 }, [97] = { kind = "spell", id = 585 }, [109] = { kind = "spell", id = 585 } }
 ns.OpenActionBarsBuilder()
-check("a druid sees its forms after the main bar", Names() == MAIN .. ", Action Bar 1" .. DOT .. "Cat, Action Bar 1" .. DOT
-    .. "Prowl, Action Bar 1" .. DOT .. "Bear, Action Bar 1" .. DOT .. "Moonkin")
-check("a form page shows the main bar's keys", Row("Action Bar 1" .. DOT .. "Bear").tiles[1].key.text == "1")
+check("a druid has a chip for each form", Chips() == "MAIN 1, CAT 1, PROWL 1, BEAR 1, MOONKIN 1")
+Click(Chip("BEAR"))
+check("the Bear chip shows the Bear page with the main bar's keys", Tile("bottom", 1).slot == 97
+    and Tile("bottom", 1).key.text == "1" and Label("bottom") == "ACTION BAR 1" .. DOT .. "BEAR")
+editBox:SetText("Druid")
+state.buttons["Save Set"].onClick()
+check("a druid's row counts its forms", SetRow("Druid").extras.text == "+ 4 forms")
 
 state.class, state.className = "HUNTER", "Hunter"
 state.bars = { [1] = { kind = "spell", id = 585 } }
 state.binds = { { "ACTIONBUTTON1", "1" }, { "BONUSACTIONBUTTON1", "CTRL-1" }, { "BONUSACTIONBUTTON2", "CTRL-2" } }
 state.pet = { { "Attack", "PET_ATTACK_TEXTURE", true } }
 ns.OpenActionBarsBuilder()
-local petBar = Row("Pet Bar")
-check("a hunter sees the pet bar last, keys only", Names() == MAIN .. ", Pet Bar" and petBar.tag.text.text == "keys only")
-check("with its ten buttons and their keys", petBar.tiles[10]:IsShown() and not petBar.tiles[11]:IsShown()
-    and petBar.tiles[1].key.text == "CTRL-1" and petBar.count.text == "2 keybinds")
+local pet = Scene().pet
+check("a hunter sees the pet bar's row above the strip", Visible(pet) and pet.label.text.text == "PET BAR" and Chips() == "")
+check("its ten buttons show keys only", #pet.tiles == 10 and pet.tiles[1].key.text == "CTRL-1"
+    and pet.tiles[10].key.text == "" and pet.tiles[1].icon.shown == false)
 check("its keys count in the summary", Summary() == "1 action" .. DOT .. "3 keybinds" .. DOT .. "2 macros")
-Click(petBar.tiles[1])
-check("a pet button is not a slot to leave out", not petBar.tiles[1].icon.desaturated)
-Click(petBar.box)
-check("its box leaves the pet bar's keys out", Row("Pet Bar").alpha < 1 and Summary():find(DOT .. "1 keybind" .. DOT, 1, true))
+check("as keys for other commands", Panel("Keybinds").line.text == "All 3 come along: 3 on your bars, 0 for other commands.")
+editBox:SetText("Pets")
+state.buttons["Save Set"].onClick()
+check("a hunter's row tags the pet bar's keys", SetRow("Pets").extras.text == "+ pet keys")
+ns.OpenActionBarsBuilder()
+pet = Scene().pet
+Click(pet.tiles[1])
+check("a pet button is not a slot to skip", not pet.tiles[1].mark.shown)
+Click(pet.label)
+check("its label leaves the pet bar's keys out", pet.label.text.text == "PET BAR" .. DOT .. "LEFT OUT"
+    and Summary():find(DOT .. "1 keybind" .. DOT, 1, true))
 editBox:SetText("Hunter")
 state.buttons["Save Set"].onClick()
 set = state.account.barSets.HUNTER.Hunter
 check("so the set keeps the bar keys only", set.bindings["1"] == "ACTIONBUTTON1" and set.bindings["CTRL-1"] == nil
     and set.choices.petOff == true)
 ns.OpenActionBarsBuilder("Hunter")
-Click(Row("Pet Bar").box)
+Click(Scene().pet.label)
 Click(KEYS)
-check("keybinds off dims the pet bar and drops keys from the summary", Row("Pet Bar").alpha < 1
-    and Summary() == "1 action" .. DOT .. "2 macros")
-check("the step strip marks Keybinds & macros", Steps()[2] and not Steps()[1] and not Steps()[3])
-Click(Row("Pet Bar").box)
-check("and its box cannot be ticked then", Row("Pet Bar").alpha < 1)
+check("keybinds off leaves the pet bar out and drops keys from the summary",
+    Scene().pet.label.text.text:find("LEFT OUT") and Summary() == "1 action" .. DOT .. "2 macros")
+Click(Scene().pet.label)
+check("and its label cannot put it back then", Scene().pet.label.text.text:find("LEFT OUT"))
+Click(KEYS)
+ns.OpenActionBarsImport("Hunter")
+check("the preview shows the pet bar's row too, left out as saved", Visible(Scene().pet)
+    and Scene().pet.label.text.text == "PET BAR" .. DOT .. "LEFT OUT" and Scene().pet.tiles[1].key.text == "CTRL-1")
+check("and counts one of each in the singular", Panel("1 of 1 action") and Panel("1 keybind"))
 
 state.class, state.className = "MAGE", "Mage"
 state.bars = {}
 state.binds = {}
 ns.OpenActionBarsBuilder()
-check("a character with nothing on its bars sees no rows until Show empty bars", #Rows() == 0)
-check("the step strip starts on Bars", Steps()[1] and not Steps()[2])
+check("a mage has no chips and no pet bar, and empty bars show empty buttons", Chips() == ""
+    and not Visible(Scene().pet) and Visible(Tile("bottom", 12)) and Tile("bottom", 12).icon.shown == false)
 local back = BackLink()
 check("the builder links back to the saved sets", back and back.text.text == "Saved Sets")
 Click(back)
-check("which it opens", state.rowButtons["Save Current Bars"] and not BackLink())
+check("which it opens", Card("Save Current Bars") and not BackLink())
 local settings = Frame()
 ns.Shared.Parts.OpenWithBack(ns.OpenActionBarsWindow, settings, function() state.settings = true end, "Back to Settings")
 back = BackLink()

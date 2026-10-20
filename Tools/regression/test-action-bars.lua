@@ -1,10 +1,11 @@
 -- Bar sets against a small fake of the action bars, spellbook, macros and cursor, driven
 -- through the /nf bars command the way a player would.
--- The module's rules as ActionBars.xml lists them, and the saved sets page; not its window.
+-- The module's rules as ActionBars.xml lists them, and the saved sets' menu; not its window
+-- (test-action-bars-window.lua draws that).
 rawset(_G, "C_AddOns", { DoesAddOnExist = function() return false end, GetAddOnEnableState = function() return 0 end })
-local FILES = { "Core/Features.lua" }
+local FILES = { "Core/Features.lua", "Shared/Style.lua" }
 for _, path in ipairs(dofile("Tools/regression/toc_files.lua")("^NaowhForever_Utilities/ActionBars/.*%.lua$")) do
-    if not path:find("/View/") and (not path:find("/UI/") or path:find("/UI/SetsPage%.lua$")) then
+    if not path:find("/UI/") or path:find("/UI/SetsPage%.lua$") then
         FILES[#FILES + 1] = path
     end
 end
@@ -233,13 +234,9 @@ local function Bars(w)
     return table.concat(out, " ")
 end
 
--- The page's rows, then the More menu of the named set.
+-- The More menu of the named set, as its row's More button opens it.
 local function More(w, name)
-    w.rows, w.buttons = {}, {}
-    w.ns.BuildActionBarsPage(nil, 0)
-    for _, row in ipairs(w.rows) do
-        if row.name == name then row.more() end
-    end
+    w.ns.ActionBars.SetMenu(name)
     return w.menu
 end
 
@@ -460,8 +457,8 @@ Case("the set row says what it holds", function()
     w.binds = { { "ACTIONBUTTON1", "1", "F1" } }
     w.bars = { [2] = Spell(598), [3] = Macro("Pull") }
     w.run("save Raid")
-    More(w, "Raid")
-    assert(w.lastHas == "2 actions, 1 macro, 2 keybinds", w.lastHas)
+    local has = w.ns.ActionBars.SetContents(w.account.barSets.PRIEST.Raid)
+    assert(has == "2 actions, 1 macro, 2 keybinds", has)
 end)
 Case("set names match whatever the case", function()
     local w = World({ 598 })
@@ -582,23 +579,12 @@ Case("a rename moves Save on Logout only for characters of this class", function
     assert(w.account.barSetLast["Preview-Realm"].name == "Main")
     assert(w.account.barSetLast["Warrior-Realm"].name == "Raid", "the warrior keeps its own set")
 end)
-Case("Save Current Bars opens the builder, and More can edit a set there", function()
+Case("More can edit a set in the builder", function()
     local w = World({ 598 })
     w.bars = { [2] = Spell(598) }
     w.run("save Raid")
     More(w, "Raid")["Edit and Save Again"]()
     assert(w.opened == "builder Raid", w.opened)
-    w.buttons["Save Current Bars"]()
-    assert(w.opened == "builder nil", w.opened)
-end)
-Case("the row's Import opens the preview", function()
-    local w = World({ 598 })
-    w.bars = { [2] = Spell(598) }
-    w.run("save Raid")
-    w.rows, w.buttons = {}, {}
-    w.ns.BuildActionBarsPage(nil, 0)
-    w.buttons.Import()
-    assert(w.opened == "import Raid", w.opened)
 end)
 Case("slots no set can restore are left as they are", function()
     local w = World({ 598 })

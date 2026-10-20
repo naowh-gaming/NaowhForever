@@ -23,6 +23,9 @@ Shared/
                      (Shared.SameMaps), from Tools/build/same_maps.py
   Decode.lua       a pasted import string read back as plain data, with size, depth and bomb caps, and
                    outside text cleaned for display (Decode.String, Decode.Text)
+  Encode.lua       plain data written as a code the Naowh website reads: LibSerialize's version 1 form
+                   without its short forms, deflated and printable (Encode.String): Action Bars' Export
+                   to Website
   Game/Items.lua   item helpers: an ID from a link or URL, its name and quality color, In Bag and In Bank,
                    your loot lines, waiting on item data, the items the server would not send, and the
                    Cozy Sleeping Bag's item ID (Items.SLEEPING_BAG)
@@ -67,6 +70,9 @@ Shared/
                    its pin link (Parts.SharePlace)
   UI/CopyCard.lua  the copy cards: an ID with its Wowhead links (ns.ShowCopyCard), or any line
                    (ns.ShowCopyLine)
+  UI/CodeModal.lua a code to paste in or copy out, laid out like the website's popups: a title, a line,
+                   a full-width code box (read-only and selected when copying), a summary, Cancel and a
+                   primary button (Parts.CodeModal): Action Bars' Import Website Code and Export to Website
   UI/Panels.lua    a window's backdrop and its cards (Parts.Backdrop), the panel a view sits in, and the
                    side panel that opens beside a window
   UI/Window.lua    a window: the frame, its size grip, the title bar with its logo and icons, the link
