@@ -2,7 +2,8 @@
 -- (Shared/UI/Toast.lua) under it and under Training's Level-Up Toast. A Mining skill-up that reaches new veins
 -- names them, with one icon per ore, and the toast goes by itself after 20 seconds unless dragged; logging in,
 -- learning a profession, the same skill again or a bonus coming and going shows nothing. The Level-Up Toast
--- keeps its frame name, buttons, saved place and timer on the shared part.
+-- keeps its frame name, buttons, saved place and timer on the shared part. Both are drawn like the game's level-up
+-- banner in the accent: no window frame, a fill and two lines fading to both sides, the line small over a large title.
 local Load = dofile("Tools/regression/load_files.lua")
 
 local checks = 0
@@ -22,7 +23,13 @@ local regionMethods = {
     Hide = function(r) r.shown = false end,
     SetHeight = function(r, h) r.height = h end,
     SetWidth = function(r, w) r.width = w end,
-    SetPoint = function(r, point, rel, relPoint, x, y) r.point = { point, rel, relPoint, x, y } end,
+    SetPoint = function(r, point, rel, relPoint, x, y)
+        r.point = { point, rel, relPoint, x, y }
+        r.points = r.points or {}
+        r.points[#r.points + 1] = r.point
+    end,
+    ClearAllPoints = function(r) r.points = {} end,
+    SetGradient = function(r, dir, from, to) r.gradient = { dir = dir, from = from, to = to } end,
     SetScript = function(r, name, fn) r[name] = fn end,
     RegisterEvent = function(r, event)
         r.events = r.events or {}
@@ -61,15 +68,21 @@ local trainingS = Store({ enabled = true, levelUpToast = true, toastPos = { poin
 local setHook
 local buttons = {}
 local accented = {}
+local framed = 0
+local ACCENT, BG = { r = 0, g = 0.57, b = 0.93 }, { r = 0.05, g = 0.05, b = 0.08 }
 local ns = {
     L = dofile("Tools/regression/locale_stub.lua").L,
-    THEME = { bg = {}, accent = {} },
+    THEME = { bg = BG, accent = ACCENT },
     MEDIA = "Interface\\AddOns\\NaowhForever\\Core\\Media\\",
     Apply = Noop,
     UI = { CenterPosition = function() return { point = "CENTER", relPoint = "CENTER", x = 1, y = 2 } end },
-    Solid = function() return Region() end,
-    Border = Noop,
-    Font = function() return Region() end,
+    Solid = function() framed = framed + 1 return Region() end,
+    Border = function() framed = framed + 1 end,
+    Font = function(_, size, _, color, heading)
+        local r = Region()
+        r.size, r.color, r.heading = size, color, heading
+        return r
+    end,
     Button = function(_, text, _, _, click)
         local b = Region()
         b.label, b.click = text, click
@@ -94,6 +107,7 @@ local env = setmetatable({
     NaowhForever = ns,
     UIParent = Region(),
     CreateFrame = CreateFrame,
+    CreateColor = function(r, g, b, a) return { r = r, g = g, b = b, a = a } end,
     wipe = function(t) for k in pairs(t) do t[k] = nil end return t end,
     GetMoney = function() return 1000 end,
     C_Timer = { After = function(seconds, fn) timers[#timers + 1] = { seconds = seconds, fn = fn } end },
@@ -141,6 +155,30 @@ check("Tin Ore's among them", (function()
     for _, t in ipairs(shownIcons) do if t == "item:2771" then return true end end
 end)())
 check("with a Dismiss button", buttons[1].label == "Dismiss")
+
+local function Faded(halves, color, alpha)
+    local left, right = halves[1].gradient, halves[2].gradient
+    return left.dir == "HORIZONTAL" and right.dir == "HORIZONTAL" and left.from.a == 0 and left.to.a == alpha
+        and right.from.a == alpha and right.to.a == 0 and left.to.r == color.r and left.to.b == color.b
+end
+
+local function Halved(halves)
+    local left, right = halves[1].points, halves[2].points
+    return #left == 2 and left[2][3] == "TOP" and #right == 2 and right[1][3] == "TOP"
+end
+
+check("no window frame: no backdrop, no border", framed == 0)
+check("a fill fading from the background to both sides", Faded(toast.fill, BG, 0.6) and Halved(toast.fill))
+check("an accent line above and below, fading at the ends", Faded(toast.top, ACCENT, 1)
+    and Faded(toast.bottom, ACCENT, 1) and Halved(toast.top) and Halved(toast.bottom))
+check("the fill reaches the bottom line", toast.fill[1].points[2][5] == toast.bottom[1].points[2][5])
+check("the title large in the accent, under the small line", toast.title.color == ACCENT and toast.title.heading
+    and toast.title.size > toast.line.size and toast.title.point[2] == toast.line and toast.title.point[3] == "BOTTOM")
+check("its icons centred under the band", shownIcons[1] and toast.icons[1].point[3] == "TOP"
+    and toast.icons[1].point[4] == -(4 * 26 + 3 * 6) / 2 and toast.icons[1].point[5] < toast.bottom[1].points[2][5])
+check("its button centred under the icons", toast.buttons[1].point[3] == "TOP" and toast.buttons[1].point[4] == -45
+    and toast.buttons[1].point[5] < toast.icons[1].point[5])
+check("it sits under the game's level-up banner until moved", toast.point[1] == "TOP" and toast.point[5] == -240)
 check("it goes by itself after 20 seconds", timers[#timers].seconds == 20)
 timers[#timers].fn()
 check("and is gone then", toast.shown == false)

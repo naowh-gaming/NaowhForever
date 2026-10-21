@@ -1,19 +1,20 @@
--- Toast.lua: a toast (Parts.Toast): a box you can drag, with the logo, a title, a line, a row of icons and buttons, gone by itself after a while.
+-- Toast.lua: a toast (Parts.Toast): a banner like the game's level-up one you can drag, a line over a title, icons and buttons under it, gone by itself after a while.
 local ns = _G.NaowhForever
 local T = ns.THEME
 local UI = ns.UI
 local Parts = ns.Shared.Parts
 local St = ns.Shared.Style
 
-local PAD = 18
-local ICON, ICON_GAP = 30, 6
-local LOGO = 26
-local LOGO_FILE = "LogoAddon.tga"
-local TITLE_GAP, LINE_GAP = 10, 12
-local ICONS_GAP, BUTTONS_GAP = 12, 14
-local BUTTON_H, BUTTON_GAP = 28, 8
-local FONT_TITLE, FONT_LINE = 22, 14
-local HOME_DROP = -140
+local BANNER_W = 640
+local BAND_PAD, TEXT_GAP = 8, 2
+local LINE_H = 2
+local FILL_ALPHA = 0.6
+local SHADOW = 1
+local ICON, ICON_GAP = 26, 6
+local ICONS_GAP, BUTTONS_GAP = 10, 10
+local BUTTON_H, BUTTON_GAP = 26, 8
+local FONT_TITLE, FONT_LINE = 26, 14
+local HOME_DROP = -240
 
 local function Place(toast)
     local pos = toast.store.Get(toast.posKey)
@@ -41,12 +42,44 @@ local function AddButton(toast, spec, i)
     local button = ns.Button(toast, spec.text, spec.width, BUTTON_H, function() spec.click(toast) end)
     if spec.accent then ns.AccentBorder(button) end
     toast.buttons[i] = button
+    toast.buttonsW = toast.buttonsW + spec.width + (i > 1 and BUTTON_GAP or 0)
+end
+
+local function Fade(toast, layer, color, alpha)
+    local edge = CreateColor(color.r, color.g, color.b, 0)
+    local middle = CreateColor(color.r, color.g, color.b, alpha)
+    local halves = {}
+    for i = 1, 2 do
+        local half = toast:CreateTexture(nil, layer)
+        half:SetColorTexture(1, 1, 1, 1)
+        halves[i] = half
+    end
+    halves[1]:SetGradient("HORIZONTAL", edge, middle)
+    halves[2]:SetGradient("HORIZONTAL", middle, edge)
+    return halves
+end
+
+local function Span(toast, halves, top, bottom)
+    halves[1]:ClearAllPoints()
+    halves[1]:SetPoint("TOPLEFT", toast, "TOPLEFT", 0, top)
+    halves[1]:SetPoint("BOTTOMRIGHT", toast, "TOP", 0, bottom)
+    halves[2]:ClearAllPoints()
+    halves[2]:SetPoint("TOPLEFT", toast, "TOP", 0, top)
+    halves[2]:SetPoint("BOTTOMRIGHT", toast, "TOPRIGHT", 0, bottom)
+end
+
+local function Shadowed(fs, width)
+    fs:SetShadowColor(0, 0, 0, 1)
+    fs:SetShadowOffset(SHADOW, -SHADOW)
+    fs:SetJustifyH("CENTER")
+    fs:SetWidth(width)
+    return fs
 end
 
 function Parts.Toast(spec)
     local toast = CreateFrame("Frame", spec.name, UIParent)
     toast.store, toast.posKey, toast.width = spec.store, spec.posKey, spec.width
-    toast:SetWidth(spec.width)
+    toast:SetWidth(BANNER_W)
     toast:SetFrameStrata("DIALOG")
     toast:SetClampedToScreen(true)
     toast:SetMovable(true)
@@ -54,19 +87,16 @@ function Parts.Toast(spec)
     toast:RegisterForDrag("LeftButton")
     toast:SetScript("OnDragStart", DragStart)
     toast:SetScript("OnDragStop", DragStop)
-    ns.Solid(toast, "BACKGROUND", T.bg, St.BACKDROP_ALPHA):SetAllPoints()
-    ns.Border(toast, T.accent)
-    local logo = toast:CreateTexture(nil, "ARTWORK")
-    logo:SetTexture(ns.MEDIA .. LOGO_FILE, nil, nil, "TRILINEAR")
-    logo:SetSize(LOGO, LOGO)
-    logo:SetPoint("TOPLEFT", PAD, -PAD)
-    toast.title = ns.Font(toast, FONT_TITLE, nil)
-    toast.title:SetPoint("LEFT", logo, "RIGHT", TITLE_GAP, 0)
-    toast.line = ns.Font(toast, FONT_LINE, nil)
-    toast.line:SetPoint("TOPLEFT", logo, "BOTTOMLEFT", 0, -LINE_GAP)
-    toast.line:SetWidth(spec.width - 2 * PAD)
-    toast.line:SetJustifyH("LEFT")
+    toast.fill = Fade(toast, "BACKGROUND", T.bg, FILL_ALPHA)
+    toast.top = Fade(toast, "ARTWORK", T.accent, 1)
+    toast.bottom = Fade(toast, "ARTWORK", T.accent, 1)
+    Span(toast, toast.top, 0, -LINE_H)
+    toast.line = Shadowed(ns.Font(toast, FONT_LINE, nil), spec.width)
+    toast.line:SetPoint("TOP", 0, -(LINE_H + BAND_PAD))
     toast.line:SetWordWrap(true)
+    toast.title = Shadowed(ns.Font(toast, FONT_TITLE, nil, T.accent, true), BANNER_W)
+    toast.title:SetPoint("TOP", toast.line, "BOTTOM", 0, -TEXT_GAP)
+    toast.title:SetWordWrap(false)
     toast.icons = {}
     for i = 1, spec.icons do
         local icon = toast:CreateTexture(nil, "ARTWORK")
@@ -74,7 +104,7 @@ function Parts.Toast(spec)
         icon:SetSize(ICON, ICON)
         toast.icons[i] = icon
     end
-    toast.buttons = {}
+    toast.buttons, toast.buttonsW = {}, 0
     for i, button in ipairs(spec.buttons) do AddButton(toast, button, i) end
     toast.generation = 0
     Place(toast)
@@ -82,29 +112,42 @@ function Parts.Toast(spec)
     return toast
 end
 
-function Parts.FillToast(toast, title, line, textures)
-    toast.title:SetText(title)
-    toast.line:SetText(line)
-    local y = -(PAD + LOGO + LINE_GAP + math.ceil(toast.line:GetStringHeight()) + ICONS_GAP)
+local function PlaceIcons(toast, textures, y)
+    local shown = math.min(#textures, #toast.icons)
+    local x = -(shown * ICON + (shown - 1) * ICON_GAP) / 2
     for i, icon in ipairs(toast.icons) do
         local texture = textures[i]
         icon:SetShown(texture ~= nil)
         if texture then
             icon:SetTexture(texture)
             icon:ClearAllPoints()
-            icon:SetPoint("TOPLEFT", PAD + (i - 1) * (ICON + ICON_GAP), y)
+            icon:SetPoint("TOPLEFT", toast, "TOP", x + (i - 1) * (ICON + ICON_GAP), y)
         end
     end
-    y = y - ICON - BUTTONS_GAP
+    return shown > 0 and y - ICON - BUTTONS_GAP or y
+end
+
+local function PlaceButtons(toast, y)
     for i, button in ipairs(toast.buttons) do
         button:ClearAllPoints()
         if i == 1 then
-            button:SetPoint("TOPLEFT", PAD, y)
+            button:SetPoint("TOPLEFT", toast, "TOP", -toast.buttonsW / 2, y)
         else
             button:SetPoint("LEFT", toast.buttons[i - 1], "RIGHT", BUTTON_GAP, 0)
         end
     end
-    toast:SetHeight(-y + BUTTON_H + PAD)
+end
+
+function Parts.FillToast(toast, title, line, textures)
+    toast.title:SetText(title)
+    toast.line:SetText(line)
+    local band = LINE_H + BAND_PAD + math.ceil(toast.line:GetStringHeight()) + TEXT_GAP
+        + math.ceil(toast.title:GetStringHeight()) + BAND_PAD
+    Span(toast, toast.fill, 0, -(band + LINE_H))
+    Span(toast, toast.bottom, -band, -(band + LINE_H))
+    local y = PlaceIcons(toast, textures, -(band + LINE_H + ICONS_GAP))
+    PlaceButtons(toast, y)
+    toast:SetHeight(-y + BUTTON_H)
 end
 
 function Parts.ShowToast(toast, seconds)

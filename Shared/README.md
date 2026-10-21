@@ -87,8 +87,9 @@ Shared/
                    button that opens its window
   UI/Tracker.lua   a tracker's small window (Parts.TrackerPanel), and a list row's bands
                    (Parts.RowBands: stripe, hover, the line under it)
-  UI/Toast.lua     a toast (Parts.Toast): a box you can drag, with the logo, a title, a line, a row of icons
-                   and buttons, filled by Parts.FillToast and gone by itself after Parts.ShowToast's seconds:
+  UI/Toast.lua     a toast (Parts.Toast): a banner like the game's level-up one that you can drag, a line over
+                   a title, icons and buttons under it, filled by Parts.FillToast and gone by itself after
+                   Parts.ShowToast's seconds:
                    Training's Level-Up Toast, Professions' New Herbs and Ores
   UI/ItemBar.lua   an item bar (Shared.ItemBar): secure item buttons in a grid, their count and key texts,
                    the bar's mover, its place or anchor, the count and keybind rows with their cogs, and the
@@ -301,6 +302,9 @@ Colors and sizes come from `ns.THEME` and `Style.lua`, never written as numbers 
 
 ## Why
 
+- A toast is drawn like the game's own level-up banner, in the accent: no window, a band whose fill and lines
+  fade to both sides, the line small over the title. The game's banner shows near the top of the screen, at the same
+  moment as the Level-Up Toast, so a toast's home is lower, under it.
 - `ConsumableLevelAllowed` checks the fifth `C_Item.GetItemInfo` return (minimum level), not item level. Unknown or secret requirements are skipped until item data is available. Food and drink keep their existing ranking among eligible items.
 
 
