@@ -20,4 +20,6 @@ ns.Professions.C = {
     PERCENT = 100,
     SKILL_LINE_INDEX = 7,
     QUEUE_DELAY = 0.2,
+    NODE_ICON_MIN = 10,
+    NODE_ICON_MAX = 24,
 }

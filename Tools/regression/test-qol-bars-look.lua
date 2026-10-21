@@ -106,7 +106,8 @@ end
 do -- Total Craft Timer, drawn on its card's preview
     local S = Store({ enabled = true, craftTimer = true, craftTimerFont = "", craftTimerFontSize = 14,
         craftTimerOutline = "OUTLINE", craftTimerTexture = "", craftTimerBgAlpha = 0.9 })
-    local _, cards = Load({ "NaowhForever_Professions/View/Style.lua", "NaowhForever_Professions/View/Widgets.lua",
+    local _, cards = Load({ "NaowhForever_Professions/Constants.lua", "NaowhForever_Professions/View/Style.lua",
+        "NaowhForever_Professions/View/Widgets.lua",
         "NaowhForever_Professions/UI/CraftTimer.lua", "NaowhForever_Professions/UI/SettingsPage.lua" },
         { Professions = { Settings = S } }, { CreateColor = function() return {} end })
     local card

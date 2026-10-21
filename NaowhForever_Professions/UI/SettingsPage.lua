@@ -14,6 +14,8 @@ local TIP_RANGE, ICON_RANGE, TEXT_RANGE = { 0, 50, 1 }, { 24, 80, 1 }, ns.Shared
 local ROI_RANGE = { 0, 100, 1 }
 local ORDER_RECIPES, ORDER_ORDERS, ORDER_CRAFT_TIMER, ORDER_BUYING, ORDER_GATHER = 10, 20, 30, 40, 50
 local ORDER_DISENCHANT, ORDER_DISENCHANT_DEALS = 60, 70
+local ORDER_NODE_ICONS = 55
+local NODE_ICON_RANGE = { P.C.NODE_ICON_MIN, P.C.NODE_ICON_MAX, 1 }
 local SAMPLE_ICON = "Interface\\Icons\\INV_Ingot_02"
 local SAMPLE_NAME, SAMPLE_DONE, SAMPLE_COUNT = ns.L("Smelt Copper"), 4, 10
 local SAMPLE_SHARE, SAMPLE_LEFT = 0.4, 15
@@ -304,6 +306,20 @@ page:Card({
         { key = "gatherIconSize", label = "Icon Size", slider = ICON_RANGE, needs = On, why = TEXT_OFF,
           help = "How big the reminder icon is." },
         Settings.Look("gather", { text = true, size = TEXT_RANGE, needs = On, why = TEXT_OFF }),
+    },
+})
+
+page:Card({
+    id = "nodeIcons", name = "Minimap Node Icons", order = ORDER_NODE_ICONS, switch = "nodeIcons",
+    help = "While Find Herbs or Find Minerals is on, each herb and vein on the minimap shows a round picture "
+        .. "of what it gives, ringed red when your Herbalism or Mining is too low to gather it. Hover a node "
+        .. "on the minimap to see the skill it needs. Reads the English node names, and pauses in combat "
+        .. "and while the mouse is over the minimap.",
+    search = "herb ore vein mining herbalism minimap tracking dot gather",
+    rows = {
+        { key = "nodeIconSize", label = "Icon Size", slider = NODE_ICON_RANGE, needs = On, why = TEXT_OFF,
+          help = "How big each node's picture is on the minimap. The game's own dot cannot be hidden, so "
+              .. "below about 18 its edge can show around the picture." },
     },
 })
 
