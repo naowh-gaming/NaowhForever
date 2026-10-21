@@ -32,7 +32,7 @@ local DOCK_Y = LABEL_H + LABEL_GAP + GRID_H + LABEL_GAP + LABEL_H + DOCK_GAP
 local SCENE_H = SCENE_PAD + DOCK_Y + DOCK_H + CAPTION_GAP + CAPTION_H + SCENE_PAD
 local FORM_TILE, FORM_PILL_H, FORM_PILL_PAD, FORM_GAP, FORM_BOX_PAD, FORM_HEAD_PAD = 30, 22, 10, 4, 3, 8
 local FORM_BOX_H = FORM_TILE + FORM_BOX_PAD * 2
-local FORM_BLOCK = LABEL_H + LABEL_GAP + FORM_BOX_H + PET_AFTER
+local FORM_BLOCK = FORM_BOX_H + PET_AFTER
 local OUTLINE_OUT, OUTLINE_PIXELS, OUTLINE_LEVEL = 2, 2, 6
 local GLASS_TITLE_GAP = 2
 local MAX_CHIPS = 6
@@ -252,11 +252,10 @@ local function StanceIndex()
     return index
 end
 
-local function FormKey(form, stances)
+local function FormCommand(form, stances)
     for _, id in ipairs(form.spells or NO_FORMS) do
-        if stances[id] then return P.KeyText(A.STANCE_BAR.button .. stances[id]) end
+        if stances[id] then return A.STANCE_BAR.button .. stances[id] end
     end
-    return ""
 end
 
 function P.PageUsed(entry, slots)
@@ -276,7 +275,7 @@ function P.FormPages(pages, mainUsed)
         if entry then
             entry.form = ns.L(form.name)
             entry.formIcon = form.spells and C_Spell.GetSpellTexture(form.spells[1]) or nil
-            entry.formKey = FormKey(form, stances)
+            entry.formCommand = FormCommand(form, stances)
             list[#list + 1] = form.page
         end
     end
@@ -473,16 +472,16 @@ end
 
 local function NewForms(scene)
     local forms = CreateFrame("Frame", nil, scene)
-    forms:SetSize(MAIN_W, FORM_BLOCK - PET_AFTER)
+    forms:SetHeight(FORM_BOX_H)
     forms.head = CreateFrame("Frame", nil, forms)
     forms.head:SetHeight(LABEL_H)
-    forms.head:SetPoint("TOP")
+    forms.head:SetPoint("LEFT")
     ns.Solid(forms.head, "BACKGROUND", BLACK, St.CHIP_FILL_ALPHA):SetAllPoints()
     forms.head.text = P.Mono(forms.head, MONO_SIZE, GOLD)
     forms.head.text:SetPoint("CENTER")
     forms.box = CreateFrame("Frame", nil, forms)
     forms.box:SetHeight(FORM_BOX_H)
-    forms.box:SetPoint("TOP", forms.head, "BOTTOM", 0, -LABEL_GAP)
+    forms.box:SetPoint("LEFT", forms.head, "RIGHT", LABEL_GAP * 2, 0)
     ns.Solid(forms.box, "BACKGROUND", BLACK, St.STRIP_ALPHA):SetAllPoints()
     ns.Border(forms.box, BLACK)
     return forms
@@ -513,6 +512,7 @@ local function PaintChips(scene, chips, title)
         end
     end
     forms.box:SetWidth(x - FORM_GAP + FORM_BOX_PAD)
+    forms:SetWidth(forms.head:GetWidth() + LABEL_GAP * 2 + forms.box:GetWidth())
 end
 
 function P.ShowOutline(scene, region)
@@ -602,7 +602,7 @@ end
 function P.DrawScene(scene, model)
     scene.look = scene.look or {}
     local single = model.single ~= nil
-    local forms = not single and model.chips ~= nil and #model.chips > 0
+    local forms = model.chips ~= nil and #model.chips > 0
     PlaceScene(scene, model.pet ~= nil, forms)
     if scene.single ~= single then
         scene.single = single
@@ -623,7 +623,7 @@ function P.DrawScene(scene, model)
         if look then PaintLabel(label, look) end
     end
     PaintPet(scene, model.pet)
-    PaintChips(scene, forms and model.chips or nil, model.formBar)
+    PaintChips(scene, forms and not single and model.chips or nil, model.formBar)
     scene.caption:SetText(model.caption or "")
     if scene.picker then scene.picker._refreshValue() end
 end

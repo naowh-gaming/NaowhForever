@@ -451,6 +451,7 @@ check("a slot with an action shows its icon and key", Tile("bottom", 1).icon.tex
     and Tile("bottom", 1).key.text == "1")
 check("an empty button is shown empty", Visible(Tile("left", 1)) and Tile("left", 1).icon.shown == false)
 check("the summary counts actions, keybinds and macros", Summary() == "3 actions" .. DOT .. "2 keybinds" .. DOT .. "2 macros")
+check("What Goes In sits in a scroll sized to its rows, so a short tab scrolls it instead of cutting it", Panel("Keybinds"):GetParent().h == 4 * 52)
 check("keybinds and macros head the macro list", Panel("Keybinds") and Panel("Macros")
     and Panel("Keybinds").line.text == "All 2 come along: 2 on your bars, 0 for other commands.")
 check("there is no step strip", not Steps()[1] and not Steps()[2] and not Steps()[3])
@@ -564,7 +565,7 @@ check("the keys that change are listed with what they did and will do",
     keyLines[1] == "1 Item  ->  Smite" and keyLines[2] == "2 nothing  ->  Item")
 Click(Bring("Keybinds"))
 check("leaving keybinds out of this import says the keys stay", Note("Off: your keys stay as they are.")
-    and not With("box", "count")[1].parent.rows[3].box.tick.shown)
+    and not Bring("Keybinds").box.tick.shown)
 Click(Bring("Keybinds"))
 local modes = With("buttons", "onPick")[1]
 for _, button in ipairs(modes.buttons) do if button.key == "now" then Click(button) end end
@@ -701,9 +702,12 @@ Click(Scene().labels.top)
 local picker = Picker()
 check("other bars are picked from the list, with their counts", picker.values[0] == "Main bars"
     and picker.values[4] == "Action Bar 5 (1)" and not picker.values[7])
+local mainHeight = Scene().h
 picker.set(4)
 check("picking one shows that bar on its own", Label("top") == "ACTION BAR 5" and Tile("top", 4).slot == 40
     and not Visible(Tile("left", 1)) and Chips() == "")
+check("and the scene keeps the stance bar's height, so nothing under it moves", Scene().h == mainHeight
+    and not Visible(Scene().forms))
 picker.set(0)
 editBox:SetText("Rogue")
 state.buttons["Save Set"].onClick()
@@ -734,6 +738,9 @@ check("the Bear chip shows the Bear page with the main bar's keys", Tile("bottom
 editBox:SetText("Druid")
 state.buttons["Save Set"].onClick()
 check("a druid's row counts its forms", SetRow("Druid").extras.text == "+ 4 forms")
+state.binds = { { "ACTIONBUTTON1", "1" }, { "SHAPESHIFTBUTTON3", "F5" } }
+ns.OpenActionBarsImport("Druid")
+check("the preview's form chips show the keys the set binds, not the ones bound now", Chip("CAT").key.text == "F3")
 
 state.class, state.className = "WARRIOR", "Warrior"
 state.stances = { 2457, 71 }
@@ -757,6 +764,7 @@ state.binds = { { "ACTIONBUTTON1", "1" }, { "BONUSACTIONBUTTON1", "CTRL-1" }, { 
 state.pet = { { "Attack", "PET_ATTACK_TEXTURE", true } }
 ns.OpenActionBarsBuilder()
 local pet = Scene().pet
+check("a hunter's What Goes In has room for the pet bar's row", Panel("Keybinds"):GetParent().h == 5 * 52)
 check("a hunter sees the pet bar's row above the strip", Visible(pet) and pet.label.text.text == "PET BAR" and Chips() == "")
 check("its ten buttons show keys only", #pet.tiles == 10 and pet.tiles[1].key.text == "CTRL-1"
     and pet.tiles[10].key.text == "" and pet.tiles[1].icon.shown == false)
@@ -792,7 +800,7 @@ check("bars that already match change nothing", Tiles():find("^0 slots change") 
 local tile = With("number", "label")[1]
 local view = tile:GetParent()
 view.scripts.OnSizeChanged(view, 1100)
-check("its five tiles and three panels share the tab's width", tile.w == 212 and Bring("Actions"):GetParent().w == 360)
+check("its five tiles and three panels share the tab's width", tile.w == 212 and With("note", "rows")[1].w == 360)
 
 state.class, state.className = "MAGE", "Mage"
 state.bars = {}

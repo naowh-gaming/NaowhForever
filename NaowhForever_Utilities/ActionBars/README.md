@@ -148,7 +148,11 @@ table (the frame, `Show` and `Redraw`) when it builds them.
   button of its own, as a word. A chip picks which page Action Bar 1's row shows (its label then reads, say,
   ACTION BAR 1 - STEALTH), dims when that page is left out, and its tooltip counts the page's actions. The
   forms are matched to the stance bar by spell ID (`spells`, every rank), so it works in any language, and a
-  form not learned yet still shows its icon, with no key. A Druid's are in stance bar order (Bear, Cat, Prowl,
+  form not learned yet still shows its icon, with no key. The preview shows the key the set binds there, as
+  the rest of its strip does. The bar's height stays reserved while a single bar is picked from the list, so
+  the panels under the scene never move. Its title sits beside its box, so it costs one row of height. The
+  builder's What Goes In and the preview's three panels scroll their rows when the tab is too short for them,
+  so a Druid, Rogue or Warrior on a small window loses no row to the taller scene. A Druid's are in stance bar order (Bear, Cat, Prowl,
   Moonkin). A Warrior is always in a stance, so MAIN shows only when page 1 holds something (`A.NO_MAIN`) and
   Battle Stance opens first, as on the site. The other bars (Action Bar 5 to 8, Page 2, the stance and extra
   pages a class has no form for) are picked from the scene's list, as on the site, and shown on their own.
