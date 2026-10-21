@@ -2,6 +2,7 @@
 local ns = _G.NaowhForever
 
 local ARRIVAL, DEPARTURE = "arrival", "departure"
+local EMPTY = {}
 local SECONDS_PER_WEEK = 7 * ns.QoLConstants.SECONDS_PER_DAY
 local STALE_CYCLES = 6
 local REFINE_BAND = 0.15
@@ -101,7 +102,7 @@ end
 
 function Times.Dock(name, index, now)
     local route = ns.TransportRoutes[name]
-    local row = route and Rides()[name]
+    local row = route and (Rides()[name] or (ns.TransportSchedule or EMPTY)[name])
     if not row then return nil, "new" end
     if now < row.at then return nil, "stale" end
     local dock = route.docks[index]

@@ -293,9 +293,29 @@ provider:RefreshAllData()
 Check(#acquired == 0 and not ticking.shown, "the town map off stops the clock too")
 settings.townMap = true
 
+-- The built-in schedule: a ship nobody here has timed still counts down, and a timing of your own replaces it.
+dofile("NaowhForever_QoL/Travel/TransportSchedule.lua")
+for name, row in pairs(ns.TransportSchedule) do
+    Check(ns.TransportRoutes[name], "a scheduled ship is one of the timed ships: " .. name)
+    Check(row.at > 1.7e9 and row.at < now + 1e8 and row.period == nil, name .. " has a cycle start on the server clock")
+end
+local PRINCESS = "The Purple Princess"
+local princess = ns.TransportRoutes[PRINCESS]
+account.transportRides.Realm[PRINCESS] = nil
+local start = ns.TransportSchedule[PRINCESS].at
+local at = start + 10 * princess.period + princess.docks[1].leave - 5
+local left, kind = Times.Dock(PRINCESS, 1, at)
+Check(kind == "departure" and math.abs(left - 5) < 1e-6, "the schedule times a ship you never rode: " .. tostring(left))
+Check(Times.Latest(PRINCESS) == nil, "the schedule is not sent on as your own timing")
+Check(Times.Ride(PRINCESS, start + 20.5) and math.abs(Times.Dock(PRINCESS, 1, start + 21) - (princess.docks[1].leave - 0.5)) < 1e-6,
+    "a ride of your own replaces the schedule")
+Check(ns.TransportTimer(princess.docks[2].stop, start + 21), "the world map shows the scheduled ship's other dock")
+
 local town = Read("NaowhForever_QoL/Interface/TownMap.lua")
 Check(town:find('key == "transportTimers"', 1, true), "switching the timers redraws the open map")
 Check(Read("Core/Features.lua"):find("transportTimers = false", 1, true), "Boat and Zeppelin Timers stays off by default")
+Check(Read("NaowhForever_QoL/QoL.xml"):find('TransportRoutes.lua"/>\n    <Script file="Travel\\TransportSchedule.lua"/>\n'
+    .. '    <Script file="Travel\\TransportTimes.lua"/>', 1, true), "the schedule loads before the times that read it")
 Check(Read("NaowhForever_QoL/QoL.xml"):find('TransportRide.lua"/>\n    <Script file="Travel\\TransportShare.lua"/>\n'
     .. '    <Script file="Travel\\Transport.lua"/>', 1, true), "the sharing loads between the ride watch and the timers")
 

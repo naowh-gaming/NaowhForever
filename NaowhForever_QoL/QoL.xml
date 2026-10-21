@@ -78,6 +78,7 @@
     <Script file="Travel\FlightPoint.lua"/>
     <Script file="Travel\TransportData.lua"/>
     <Script file="Travel\TransportRoutes.lua"/>
+    <Script file="Travel\TransportSchedule.lua"/>
     <Script file="Travel\TransportTimes.lua"/>
     <Script file="Travel\TransportRide.lua"/>
     <Script file="Travel\TransportShare.lua"/>
