@@ -39,7 +39,6 @@ local TEXT = {
     MAIN_BARS = ns.L("Main bars"),
     PET_BAR = ns.L("Pet Bar"),
     PICKED_BAR = "%s (%d)",
-    CHIP = "%s %d",
     KEYBINDS = ns.L("Keybinds"),
     MACROS = ns.L("Macros"),
     SET_NAME = ns.L("Set name"),
@@ -220,7 +219,8 @@ local function DrawChips()
         local used, out = Counts(entry.list, skip)
         local chip = chipPool[i] or {}
         chipPool[i] = chip
-        chip.text = TEXT.CHIP:format(page == MAIN_PAGE and TEXT.MAIN or entry.form, used)
+        chip.text, chip.icon, chip.key, chip.count = page == MAIN_PAGE and TEXT.MAIN or entry.form, entry.formIcon,
+            entry.formKey, used
         chip.picked, chip.out, chip.page = page == formPage, out == SLOTS_PER_BAR, page
         chip.onClick = Builder.PickForm
         model.chips[i] = chip
@@ -256,7 +256,7 @@ end
 
 local function DrawScene(v)
     local regions = model.regions
-    if not forms then formPage = MAIN_PAGE end
+    formPage = P.FormPage(forms, formPage)
     local bottom = pages[formPage]
     local formName = formPage == MAIN_PAGE and TEXT.MAIN or bottom.form
     Region(regions.left, pages[LEFT_PAGE])
@@ -267,7 +267,7 @@ local function DrawScene(v)
     DrawChips()
     DrawPet()
     DrawPicker()
-    model.caption = TEXT.PICK_HINT
+    model.caption, model.formBar = TEXT.PICK_HINT, P.FormBarName()
     model.Paint = PaintSlot
     P.DrawScene(v.scene, model)
 end
@@ -837,7 +837,7 @@ end
 
 local function Order()
     pages, petCommands = P.Pages()
-    forms = P.FormPages(pages)
+    forms = P.FormPages(pages, P.PageUsed(pages[MAIN_PAGE]))
     order = {}
     wipe(slotOf)
     for _, bar in ipairs(Sets.BARS) do

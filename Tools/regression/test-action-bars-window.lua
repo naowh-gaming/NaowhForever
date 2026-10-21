@@ -280,6 +280,8 @@ local env = setmetatable({
     end,
     UnitName = function() return "Alt" end,
     UnitGUID = function() return "Player-1" end,
+    GetNumShapeshiftForms = function() return #(state.stances or {}) end,
+    GetShapeshiftFormInfo = function(i) return 136000 + i, false, true, state.stances[i] end,
     RAID_CLASS_COLORS = { PRIEST = { r = 1, g = 1, b = 1 } },
     UnitLevel = function() return 20 end,
     GetRealmName = function() return "Realm" end,
@@ -345,7 +347,7 @@ end
 local function Chips()
     local texts = {}
     for _, chip in ipairs(Scene().chips) do
-        if Visible(chip) then texts[#texts + 1] = chip.text.text end
+        if Visible(chip) then texts[#texts + 1] = chip.text.text .. " " .. chip.count end
     end
     return table.concat(texts, ", ")
 end
@@ -673,8 +675,13 @@ state.bars = { [1] = { kind = "spell", id = 585 }, [2] = { kind = "spell", id = 
     [73] = { kind = "spell", id = 585 }, [61] = { kind = "spell", id = 2054 }, [40] = { kind = "spell", id = 585 } }
 state.macros = { { name = "Pull", icon = 1, body = "/say pull" }, { name = "Dance", icon = 2, body = "/dance" } }
 state.binds = { { "ACTIONBUTTON1", "1" }, { "ACTIONBUTTON2", "2" } }
+state.stances = { 1784 }
 ns.OpenActionBarsBuilder()
 check("a rogue has Main and Stealth chips with their counts", Chips() == "MAIN 2, STEALTH 1")
+check("over the strip, under STANCE BAR, as on the website", Visible(Scene().forms)
+    and Scene().forms.head.text.text == "STANCE BAR")
+check("Main is a word, Stealth is its spell's icon", Chip("MAIN").text.shown ~= false and Chip("MAIN").icon.shown == false
+    and Chip("STEALTH").icon.shown ~= false and Chip("STEALTH").icon.texture == 135924 and Chip("STEALTH").text.shown == false)
 check("Bar 1's row shows the main page", Tile("bottom", 1).slot == 1 and Label("bottom") == "ACTION BAR 1" .. DOT .. "MAIN")
 check("Bar 2 is the top row of the middle", Tile("top", 1).slot == 61 and Tile("top", 1).icon.texture == 135924)
 check("the summary counts every page", Summary() == "5 actions" .. DOT .. "2 keybinds" .. DOT .. "2 macros")
@@ -714,14 +721,31 @@ check("a set with a Stealth page is tagged with it", SetRow("Stealthy").extras.t
 state.class, state.className = "DRUID", "Druid"
 state.bars = { [1] = { kind = "spell", id = 585 }, [73] = { kind = "spell", id = 585 },
     [85] = { kind = "spell", id = 585 }, [97] = { kind = "spell", id = 585 }, [109] = { kind = "spell", id = 585 } }
+state.stances = { 5487, 1066, 768, 783, 24858 }
+state.binds = { { "ACTIONBUTTON1", "1" }, { "SHAPESHIFTBUTTON3", "F3" } }
 ns.OpenActionBarsBuilder()
-check("a druid has a chip for each form", Chips() == "MAIN 1, CAT 1, PROWL 1, BEAR 1, MOONKIN 1")
+check("a druid has a chip for each form, in stance bar order", Chips() == "MAIN 1, BEAR 1, CAT 1, PROWL 1, MOONKIN 1")
+check("under FORMS", Scene().forms.head.text.text == "FORMS")
+check("each form chip shows its stance bar key, Prowl is a word", Chip("CAT").key.text == "F3"
+    and Chip("BEAR").key.text == "" and Chip("PROWL").icon.shown == false)
 Click(Chip("BEAR"))
 check("the Bear chip shows the Bear page with the main bar's keys", Tile("bottom", 1).slot == 97
     and Tile("bottom", 1).key.text == "1" and Label("bottom") == "ACTION BAR 1" .. DOT .. "BEAR")
 editBox:SetText("Druid")
 state.buttons["Save Set"].onClick()
 check("a druid's row counts its forms", SetRow("Druid").extras.text == "+ 4 forms")
+
+state.class, state.className = "WARRIOR", "Warrior"
+state.stances = { 2457, 71 }
+state.bars = { [73] = { kind = "spell", id = 585 }, [85] = { kind = "spell", id = 585 } }
+ns.OpenActionBarsBuilder()
+check("a warrior is always in a stance: no Main, Battle Stance first", Chips()
+    == "BATTLE STANCE 1, DEFENSIVE STANCE 1, BERSERKER STANCE 0"
+    and Label("bottom") == "ACTION BAR 1" .. DOT .. "BATTLE STANCE" and Tile("bottom", 1).slot == 73)
+state.bars[1] = { kind = "spell", id = 585 }
+ns.OpenActionBarsBuilder()
+check("but Main comes back when its page has actions", Chips():find("^MAIN 1, ") ~= nil)
+state.class, state.className = "DRUID", "Druid"
 state.binds = { { "ACTIONBUTTON1", "1" }, { "SHAPESHIFTBUTTON1", "F1" } }
 ns.OpenActionBarsBuilder()
 check("a druid's form keys count as keys on the bars",

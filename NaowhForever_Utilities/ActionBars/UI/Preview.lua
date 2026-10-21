@@ -80,7 +80,6 @@ local TEXT = {
     MAIN_BARS = ns.L("Main bars"),
     PET_BAR = ns.L("Pet Bar"),
     PICKED_BAR = "%s (%d)",
-    CHIP = "%s %d",
     EMPTY_SLOT = ns.L("Empty slot"),
     NOT_IN_SET = ns.L("Not in the set: stays as it is."),
     PET_KEYS = ns.L("Only this button's keys come across."),
@@ -249,7 +248,8 @@ local function DrawChips()
         local entry = pages[page]
         local chip = chipPool[i] or {}
         chipPool[i] = chip
-        chip.text = TEXT.CHIP:format(page == MAIN_PAGE and TEXT.MAIN or entry.form, Placed(entry.list))
+        chip.text, chip.icon, chip.key, chip.count = page == MAIN_PAGE and TEXT.MAIN or entry.form, entry.formIcon,
+            entry.formKey, Placed(entry.list)
         chip.picked, chip.page, chip.onClick = page == formPage, page, Preview.PickForm
         model.chips[i] = chip
     end
@@ -284,7 +284,7 @@ end
 local function DrawScene(v, set)
     keyFor = PreviewKeys(set)
     local regions = model.regions
-    if not forms then formPage = MAIN_PAGE end
+    formPage = P.FormPage(forms, formPage)
     local formName = formPage == MAIN_PAGE and TEXT.MAIN or pages[formPage].form
     Region(regions.left, pages[LEFT_PAGE])
     Region(regions.top, pages[TOP_PAGE])
@@ -294,7 +294,7 @@ local function DrawScene(v, set)
     DrawChips()
     DrawPet(set)
     DrawPicker()
-    model.caption, model.Paint = TEXT.CAPTION, PaintSlot
+    model.caption, model.Paint, model.formBar = TEXT.CAPTION, PaintSlot, P.FormBarName()
     P.DrawScene(v.scene, model)
 end
 
@@ -680,7 +680,7 @@ local function Open(v)
     opts = Import.Options()
     preview = Sets.Preview(importKey, opts)
     pages, petCommands = P.Pages()
-    forms = P.FormPages(pages)
+    forms = P.FormPages(pages, P.PageUsed(pages[MAIN_PAGE], set.slots))
     wipe(slotOf)
     for _, bar in ipairs(A.BARS) do
         local entry = pages[bar.page]
