@@ -9,6 +9,7 @@ local P = ns.Professions
 local S = P.Settings
 local D = P.Disenchant
 local R = P.Recipes
+local TitleButtons = P.TitleButtons
 
 local PAGE = "Professions/Settings"
 local COLUMNS, ICON, GAP = 8, 36, 4
@@ -27,7 +28,7 @@ local KEPT_ALPHA = 0.35
 local HIGHLIGHT_ALPHA = 0.15
 local WAIT_TIMEOUT = 8
 local DISENCHANT_MACRO = "/stopspelltarget\n/cast %s"
-local OPEN_W, OPEN_H, OPEN_RIGHT, OPEN_DROP = 90, 22, 36, 7
+local OPEN_W, OPEN_H, OPEN_ORDER = 90, 22, 1
 local EVENTS = { "BAG_UPDATE_DELAYED", "ITEM_LOCK_CHANGED", "PLAYER_REGEN_ENABLED", "PLAYER_REGEN_DISABLED" }
 
 local TEXT_TITLE = ns.L("Disenchant")
@@ -334,7 +335,8 @@ local function PlaceOpener()
     if not win then return end
     if not opener then
         opener = ns.Button(win, TEXT_OPEN, OPEN_W, OPEN_H, ns.ToggleDisenchant)
-        opener:SetPoint("TOPRIGHT", -OPEN_RIGHT, -OPEN_DROP)
+        opener:Hide()
+        TitleButtons.Add(opener, OPEN_ORDER)
     end
     local prof = R.Profession()
     opener:SetShown(On() and R.Own() and prof ~= nil and prof.id == D.ENCHANTING and D.Known())
