@@ -10,6 +10,7 @@ local ITEM = 300
 local SKILL_ERROR = "Your enchanting skill is too low to disenchant this item."
 local bag = {}
 local outcome = {}
+local boundKey
 
 local function Fill(kinds)
     for slot = 1, #kinds do
@@ -91,6 +92,7 @@ _G.NaowhForever.Shared = {
         WINDOW_HEADER = 1, WINDOW_PAD = 1, WINDOW_FOOTER = 1, SCROLLBAR = 1, CONTENT_INSET = 1,
         RED_RGB = color,
     },
+    ActionKeys = { Bound = function(command) return boundKey and boundKey[command] end },
 }
 _G.NaowhForever.UI = { SlimScroll = function() return Widget() end }
 _G.NaowhForever.Professions.Settings = { Get = function() return true end }
@@ -124,7 +126,13 @@ end
 _G.C_Spell = { GetSpellName = function() return "Disenchant" end }
 _G.C_Timer = { After = function(_, fn) timers[#timers + 1] = fn end }
 _G.ITEM_QUALITY_COLORS = { [2] = color }
-_G.GameTooltip = { IsOwned = function() return false end }
+local tipLines = {}
+_G.GameTooltip = {
+    IsOwned = function() return false end,
+    SetOwner = function() for i = #tipLines, 1, -1 do tipLines[i] = nil end end,
+    AddLine = function(_, text) tipLines[#tipLines + 1] = text end,
+    Show = Noop,
+}
 _G.GameTooltip_Hide = Noop
 _G.InCombatLockdown = function() return false end
 _G.SpellIsTargeting = function() return targeting end
@@ -236,5 +244,22 @@ bag[1].isLocked = nil
 assert(secureButton:GetAttribute("type") == nil, "the button rearmed before the disenchant resolved")
 for _, timer in ipairs(timers) do timer() end
 assert(secureButton:GetAttribute("type") == "macro", "a cast with no result event left the button dead")
+
+local function TipSays(text)
+    secureButton.hooks.OnEnter(secureButton)
+    for _, line in ipairs(tipLines) do
+        if line:find(text, 1, true) then return true end
+    end
+    return false
+end
+assert(TipSays("Key Bindings"), "the tooltip did not say a key can be set")
+boundKey = { ["CLICK NaowhForeverDisenchantAll:LeftButton"] = "F" }
+assert(TipSays("Or press F"), "the tooltip did not name the bound key")
+assert(not TipSays("Key Bindings"), "the tooltip still asked for a key that is set")
+
+assert(secureButton:GetAttribute("type") == "macro", "the button was not armed before the window closed")
+_G.NaowhForever.ToggleDisenchant()
+assert(secureButton:GetAttribute("type") == nil and secureButton:GetAttribute("target-slot") == nil,
+    "the key binding could still disenchant a stale bag slot with the window closed")
 
 print("Profession disenchant all regression test: PASS")

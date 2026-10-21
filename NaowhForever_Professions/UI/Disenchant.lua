@@ -27,6 +27,8 @@ local KEPT_ALPHA = 0.35
 local HIGHLIGHT_ALPHA = 0.15
 local WAIT_TIMEOUT = 8
 local DISENCHANT_MACRO = "/stopspelltarget\n/cast %s"
+local ALL_NAME = "NaowhForeverDisenchantAll"
+local ALL_BINDING = "CLICK " .. ALL_NAME .. ":LeftButton"
 local OPEN_W, OPEN_H, OPEN_RIGHT, OPEN_DROP = 90, 22, 36, 7
 local EVENTS = { "BAG_UPDATE_DELAYED", "ITEM_LOCK_CHANGED", "PLAYER_REGEN_ENABLED", "PLAYER_REGEN_DISABLED",
     "UI_ERROR_MESSAGE" }
@@ -42,6 +44,8 @@ local TEXT_EMPTY = ns.L("Nothing in your bags to disenchant.")
 local TEXT_KEEP_MARK = ns.L("Keep")
 local TEXT_NEXT_TIP = ns.L("Disenchants %s.")
 local TEXT_ONE_CLICK = ns.L("One item per click: the game needs a click for every disenchant.")
+local TEXT_KEY_BOUND = ns.L("Or press %s for the next item.")
+local TEXT_KEY_HINT = ns.L("Set a key for this in Key Bindings, under Naowh Forever, or in the Disenchant Window settings.")
 local TEXT_NOTHING_LEFT = ns.L("Nothing left to disenchant.")
 local TEXT_KEEP_HINT = ns.L("Right-click: keep this one")
 local TEXT_KEEP_ALL_HINT = ns.L("Shift-right-click: keep every copy")
@@ -139,14 +143,18 @@ local function NewSlot(i)
     return b
 end
 
+local function Point(r)
+    all:SetAttribute("target-bag", r and r.bag or nil)
+    all:SetAttribute("target-slot", r and r.slot or nil)
+    all:SetAttribute("type", r and "macro" or nil)
+    all:SetAttribute("macrotext", r and DISENCHANT_MACRO:format(C_Spell.GetSpellName(D.SPELL)) or nil)
+    all:SetAlpha(r and 1 or KEPT_ALPHA)
+end
+
 local function Arm()
     if InCombatLockdown() then return end
     armed = not waiting and D.Next() or nil
-    all:SetAttribute("target-bag", armed and armed.bag or nil)
-    all:SetAttribute("target-slot", armed and armed.slot or nil)
-    all:SetAttribute("type", armed and "macro" or nil)
-    all:SetAttribute("macrotext", armed and DISENCHANT_MACRO:format(C_Spell.GetSpellName(D.SPELL)) or nil)
-    all:SetAlpha(armed and 1 or KEPT_ALPHA)
+    Point(armed)
 end
 
 local function StillThere(list, n)
@@ -179,6 +187,12 @@ local function OnAllEnter(self)
     GameTooltip:SetOwner(self, "ANCHOR_TOP")
     GameTooltip:AddLine(armed and TEXT_NEXT_TIP:format(armed.link or TEXT_ALL) or TEXT_NOTHING_LEFT, 1, 1, 1)
     GameTooltip:AddLine(TEXT_ONE_CLICK, T.muted.r, T.muted.g, T.muted.b, true)
+    local key = Shared.ActionKeys.Bound(ALL_BINDING)
+    if key then
+        GameTooltip:AddLine(TEXT_KEY_BOUND:format(key), T.accent.r, T.accent.g, T.accent.b, true)
+    else
+        GameTooltip:AddLine(TEXT_KEY_HINT, T.muted.r, T.muted.g, T.muted.b, true)
+    end
     GameTooltip:Show()
 end
 
@@ -273,7 +287,7 @@ local function OnEvent(_, event, unit, message, spellID)
 end
 
 local function BuildAll()
-    all = ns.Button(window, TEXT_ALL, ALL_W, ALL_H, nil, "SecureActionButtonTemplate")
+    all = ns.Button(window, TEXT_ALL, ALL_W, ALL_H, nil, "SecureActionButtonTemplate", ALL_NAME)
     all:SetPoint("BOTTOMRIGHT", -INSET, FOOTER + PAD)
     all:RegisterForClicks("LeftButtonUp", "LeftButtonDown")
     all:SetAttribute("useOnKeyDown", false)
@@ -316,6 +330,9 @@ local function OnHide()
     trying.open = false
     waitGen = waitGen + 1
     events:UnregisterAllEvents()
+    if InCombatLockdown() then return end
+    armed = nil
+    Point(nil)
 end
 
 local function OnKeyDown(keys, key)
