@@ -143,10 +143,11 @@ local MODULES = {
       } },
     { name = "Action Bars", group = "UTILITIES", navIcon = "grid", settings = "ActionBarSettings",
       addon = "NaowhForever_ActionBars", host = "NaowhForever_Utilities",
-      open = "ToggleActionBarsWindow",
+      open = "OpenActionBarsWindow", menu = "ActionBarsMenu",
       command = "bars", short = "Bars", icon = "Interface\\Icons\\INV_Misc_Gear_01",
       subtitle = "Your action bars saved by name and put back whenever you want them.",
       tabs = {
+          { name = "Bar Sets", build = "BuildActionBarsTab", terms = "ActionBarsSearchTerms", reuse = true },
           { name = "Settings", reuse = true },
       } },
     { name = "AuraBuffs", group = "COMBAT", navIcon = "aura", settings = "AuraBuffSettings",
@@ -175,6 +176,12 @@ local MODULES = {
     { name = "Swing Timer", group = "COMBAT", navIcon = "infinity", settings = "SwingTimerSettings",
       addon = "NaowhForever_SwingTimer", host = "NaowhForever_Combat",
       subtitle = "Your swings from the game's own swing timer, with marks for timing around them.",
+      tabs = {
+          { name = "Settings", reuse = true },
+      } },
+    { name = "Racial and Class Tracking", group = "UTILITIES", navIcon = "search", settings = "TrackingReminderSettings",
+      addon = "NaowhForever_TrackingReminder", host = "NaowhForever_Utilities",
+      subtitle = "Shows an icon for each racial or class tracking you have not turned on.",
       tabs = {
           { name = "Settings", reuse = true },
       } },
