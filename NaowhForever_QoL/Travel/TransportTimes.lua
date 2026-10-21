@@ -55,9 +55,11 @@ function Times.RouteAt(key)
     if dock then return dock.name, dock.index end
 end
 
-function Times.Ride(name, since)
-    local route = ns.TransportRoutes[name]
-    if not route then return false end
+local function InBand(period, route)
+    return math.abs(period - route.period) <= RIDE_BAND * route.period
+end
+
+local function Store(name, route, since, period)
     local rides = Rides()
     local row = rides[name]
     if row and since == row.at then return false end
@@ -65,15 +67,36 @@ function Times.Ride(name, since)
         local cycles = math.floor((since - row.base) / (row.period or route.period) + 0.5)
         local measured = cycles >= 1 and (since - row.base) / cycles
         if cycles >= 0 and math.abs(since - row.base - cycles * (row.period or route.period)) <= RIDE_MISS then
-            if measured and math.abs(measured - route.period) <= RIDE_BAND * route.period then
+            if measured and InBand(measured, route) then
                 row.period = measured
             end
             row.at = since
             return true
         end
     end
-    rides[name] = { base = since, at = since }
+    rides[name] = { base = since, at = since, period = period }
     return true
+end
+
+function Times.Ride(name, since)
+    local route = ns.TransportRoutes[name]
+    if not route or not Store(name, route, since) then return false end
+    if Times.OnTimed then Times.OnTimed(name) end
+    return true
+end
+
+function Times.Shared(name, at, period, now)
+    local route = ns.TransportRoutes[name]
+    if not route or at > now + RIDE_MISS then return false end
+    if period and not InBand(period, route) then return false end
+    local row = Rides()[name]
+    if row and row.at >= at then return false end
+    return Store(name, route, at, period)
+end
+
+function Times.Latest(name)
+    local row = Rides()[name]
+    if row then return row.at, row.period end
 end
 
 function Times.Dock(name, index, now)

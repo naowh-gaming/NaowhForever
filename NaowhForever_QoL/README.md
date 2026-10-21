@@ -126,7 +126,8 @@ NaowhForever_QoL/
     TransportRoutes.lua the ships NauticusClassic timed: cycle, docks and trigger points (ns.TransportRoutes), generated
     TransportTimes.lua  saved per-realm server-clock sightings and ride timings (ns.TransportTimes)
     TransportRide.lua   times a ship as the player rides past one of its trigger points (ns.TransportRide)
-    Transport.lua       Boat and Zeppelin Timers: its minimap pins, their tooltips and Travel settings
+    TransportShare.lua  ride timings sent to and kept from your group and guild
+    Transport.lua       Boat and Zeppelin Timers: its minimap pins, their tooltips, the world map's dock times and Travel settings
     AimTrainer.lua      the Aim Trainer (/nfaim, ns.AimRules, ns.AimPlay, ns.AimOffer)
     AimBoard.lua        the Aim Trainer's leaderboard (ns.AimBoard)
     QuizData.lua        the quiz questions (ns.QUIZ_QUESTIONS)
@@ -952,6 +953,31 @@ NaowhForever_QoL/
 - Each stop's map position is worked out once, with `C_Map.GetMapPosFromWorldPos`, the first time
   its map is shown. Disable unregisters the events and hides the pins; nothing is built until the
   feature is first on in a zone with a stop.
+- The world map's dock pins are the town map's Boats & Zeppelins (`TownMap.lua`), so the times show
+  there only with both switched on and need no switch of their own. Each pin finds its stops by its
+  map and labels (`<map>:<label>`, the key `TransportData.lua` uses); a label with no stop of its own
+  (the Southshore boat's second destination) is skipped, so that pin shows its one ship.
+- `ns.TransportTimer` and `ns.TransportTimerTip` are how the town map reads the times: it loads
+  before the transport files, so it looks them up at draw time. They return nothing while the
+  timers are off, which leaves the pin as it was.
+- A dock pin's countdown under it is the same countdown its tooltip shows, in the same colors; a
+  tower's two zeppelins are left click's then right click's, split by ` / `, and one nobody has
+  timed is `-:--`. A pin with no timed ship has no countdown.
+- The countdowns and an open dock tooltip are redrawn every `TIME_EVERY` (1 s) by one frame made
+  on the map the first time a dock is timed. It is a child of the map, so it runs only while the
+  map is open, and it is hidden when the map shows no timed dock.
+- Each ride timing (from a ride or a click at a dock) goes to your group and guild on the
+  `NaowhShips` prefix as its cycle start and measured cycle, and one heard there is kept the same
+  way a ride is (`TransportTimes.Shared`): only when it is newer than yours, never from the future,
+  and only with a cycle within `RIDE_BAND` of the ship's. A shared timing is never sent on, so a
+  bad one cannot spread past its first hop.
+- The message carries the sender's GUID, checked with `ns.SenderIs` (Core/Senders.lua) as Naowh
+  Score does, and is kept only when the GUID's server number is yours: the ships run on each
+  realm's own clock, and a group can hold players from other realms.
+- Joining a group, and the first login in a guild, asks for the others' timings. An ask is
+  answered after a random wait of up to `ANSWER_SPREAD` (3 s), leaving out each ship someone else
+  answered with as fresh a timing in the meantime, and the guild at most once every
+  `GUILD_ANSWER_GAP` (30 s), so a big guild does not all answer at once.
 
 ### Mail
 - Quick Attach puts in one stack at a time, from a scan made at the click: each is checked in its bag slot and on the cursor before it goes in, and the next goes only once the last has landed (MAIL_SEND_INFO_UPDATE).
