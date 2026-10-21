@@ -10,7 +10,6 @@ local PREFIX = "NaowhShips"
 local ASK = "Q"
 local TIMING_FORMAT = "T %s %.3f %.3f %s"
 local TIMING_PATTERN = "^T (Player%-%d+%-%x+) (%d+%.?%d*) (%d+%.?%d*) (.+)$"
-local SERVER_PATTERN = "^Player%-(%d+)%-"
 local ANSWER_SPREAD = 30
 local TENTHS = 10
 local GUILD_ANSWER_GAP = 30
@@ -19,7 +18,7 @@ local PLAYER = "player"
 local CHANNELS = { PARTY = true, RAID = true, INSTANCE_CHAT = true, GUILD = true }
 local EVENTS = { "CHAT_MSG_ADDON", "PLAYER_ENTERING_WORLD", "GROUP_ROSTER_UPDATE" }
 
-local events, own, server
+local events, own
 local inGroup, guildAsked = false, false
 local lastGuildAnswer
 local pending, answers = {}, {}
@@ -88,7 +87,6 @@ end
 
 local function Identify()
     own = own or UnitGUID(PLAYER)
-    server = own and own:match(SERVER_PATTERN)
 end
 
 local function Joined()
@@ -115,8 +113,8 @@ local function Received(message, channel, sender)
     if message == ASK then return AnswerSoon(channel) end
     local guid, at, period, name = message:match(TIMING_PATTERN)
     at, period = tonumber(at), tonumber(period)
-    if not guid or not server or guid == own or not at or not Routes[name] then return end
-    if guid:match(SERVER_PATTERN) ~= server or not ns.SenderIs(sender, channel, guid) then return end
+    if not guid or not own or guid == own or not at or not Routes[name] then return end
+    if not ns.SenderIs(sender, channel, guid) then return end
     Times.Shared(name, at, period ~= 0 and period or nil, GetServerTime())
     Heard(name, at)
 end

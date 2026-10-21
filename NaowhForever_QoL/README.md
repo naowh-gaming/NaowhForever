@@ -972,8 +972,9 @@ NaowhForever_QoL/
   and only with a cycle within `RIDE_BAND` of the ship's. A shared timing is never sent on, so a
   bad one cannot spread past its first hop.
 - The message carries the sender's GUID, checked with `ns.SenderIs` (Core/Senders.lua) as Naowh
-  Score does, and is kept only when the GUID's server number is yours: the ships run on each
-  realm's own clock, and a group can hold players from other realms.
+  Score does. Forever is one world: the ships stand at the same place on every shard, so a timing
+  from any shard is good, and the GUID's server number (which can differ between shards) is not
+  compared.
 - Joining a group, and the first login in a guild, asks for the others' timings. An ask is
   answered after a random wait of up to `ANSWER_SPREAD` (3 s), leaving out each ship someone else
   answered with as fresh a timing in the meantime, and the guild at most once every

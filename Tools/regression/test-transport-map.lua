@@ -85,7 +85,7 @@ _G.C_Timer = { After = function(_, fn) timers[#timers + 1] = fn end, NewTicker =
     return { Cancel = function() end }
 end }
 _G.math.random = function(low) return low end
-local OWN, MATE, STRANGER = "Player-1234-0000AAAA", "Player-1234-0000BBBB", "Player-9999-0000CCCC"
+local OWN, MATE, OTHER_SHARD = "Player-1234-0000AAAA", "Player-1234-0000BBBB", "Player-9999-0000CCCC"
 local loggedIn, guild, group = true, true, false
 _G.UnitGUID = function() return OWN end
 _G.IsLoggedIn = function() return loggedIn end
@@ -94,7 +94,7 @@ _G.IsInGroup = function(category) return group and category == nil end
 _G.IsInRaid = function() return false end
 _G.LE_PARTY_CATEGORY_INSTANCE = 2
 _G.issecretvalue = function() return false end
-local trusted = { [MATE] = true, [STRANGER] = true }
+local trusted = { [MATE] = true, [OTHER_SHARD] = true }
 ns.SenderIs = function(_, _, guid) return trusted[guid] == true end
 _G.hooksecurefunc = function(target, key, fn)
     local original = target[key]
@@ -162,8 +162,8 @@ local function Timing(guid, at, period, name) return ("T %s %.3f %.3f %s"):forma
 Hear(Timing(MATE, now - 20, ns.TransportRoutes[OTHER].period, OTHER), "GUILD")
 Check(Times.Latest(OTHER) and math.abs(Times.Latest(OTHER) - (now - 20)) < 1e-3,
     "a guild mate's timing of a ship you never timed is kept")
-Hear(Timing(STRANGER, now - 10, 0, "The Purple Princess"), "PARTY")
-Check(Times.Latest("The Purple Princess") == nil, "a timing from another realm's player is not kept")
+Hear(Timing(OTHER_SHARD, now - 10, ns.TransportRoutes["The Purple Princess"].period, "The Purple Princess"), "PARTY")
+Check(Times.Latest("The Purple Princess"), "a timing from a player on another shard is kept: the ships are the same")
 trusted[MATE] = false
 Hear(Timing(MATE, now - 10, 0, "The Moonspray"), "GUILD")
 Check(Times.Latest("The Moonspray") == nil, "a sender who is not who the message says is not believed")
@@ -181,7 +181,9 @@ Hear("Q", "PARTY")
 Check(#timers == 1 and #sent == 0, "an ask is answered once, after a short random wait")
 Hear(Timing(MATE, now, ns.TransportRoutes[OTHER].period, OTHER), "PARTY")
 timers[1]()
-Check(#sent == 1 and sent[1][2]:find(SHIP, 1, true) and sent[1][3] == "PARTY",
+local answered = {}
+for _, message in ipairs(sent) do answered[message[2]:match(" %d+%.%d+ %d+%.%d+ (.+)$")] = message[3] end
+Check(#sent == 2 and answered[SHIP] == "PARTY" and answered["The Purple Princess"] == "PARTY" and not answered[OTHER],
     "the answer leaves out a ship someone else already answered as fresh")
 sent, timers = {}, {}
 clock = 100
