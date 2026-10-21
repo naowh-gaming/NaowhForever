@@ -2030,6 +2030,10 @@ do
     J.DrawDungeonMap()
     check("boxed in: no label", door.side == nil and rawget(door.text, "shown") == false)
     check("but the entrance still shows", rawget(door, "shown") ~= false)
+    state.account.journalMapPins.RagefireChasm[11517] = { 2, 0.44, 0.5 }
+    J.DrawDungeonMap()
+    check("a placing on a floor the map no longer has: the data's spot", PinFor("Oggleflint") ~= nil
+        and PinFor("Oggleflint").atX == J.Maps.RagefireChasm.pins[11517][2] * J.C.MAP_W)
     state.account.journalMapPins = placedPins
     rawset(door.text, "GetStringWidth", nil)
     _G.SetPortraitTextureFromCreatureDisplayID = portraits
@@ -2303,13 +2307,13 @@ do
         local dalView = ShownView("Atrexis the Grave Knight")
         check("opens in the sewers, its first imported picture", dalView ~= nil and dalView.floor == 1
             and FloorsOf(dalView) == "1,2"
-            and dalView.picture.texture == "Interface\\AddOns\\NaowhForever_DungeonJournal\\Media\\Maps\\ForeverInstanceMaps\\CityOfDalaran_1"
+            and dalView.picture.texture == "Interface\\AddOns\\NaowhForever_DungeonJournal\\Media\\Maps\\CityOfDalaran_1"
             and rawget(dalView.floorName, "text") == "Sewers")
         check("Atrexis alone there", PinFor("Arcane Anomaly") == nil)
         local shade = RowFor("Shade of the Archmage")
         shade.scripts.OnClick(shade)
         check("a mapRow on the city's floor goes up to it", dalView.floor == 2
-            and dalView.picture.texture == "Interface\\AddOns\\NaowhForever_DungeonJournal\\Media\\Maps\\ForeverInstanceMaps\\CityOfDalaran_2"
+            and dalView.picture.texture == "Interface\\AddOns\\NaowhForever_DungeonJournal\\Media\\Maps\\CityOfDalaran_2"
             and rawget(dalView.floorName, "text") == "Streets")
         check("its pin ringed there, Atrexis's gone", rawget(PinFor("Shade of the Archmage").gold, "shown") == true
             and PinFor("Atrexis the Grave Knight") == nil)
@@ -2381,7 +2385,7 @@ do
         do
             local stockadeView = ShownView("Bazil Thredd")
             check("Stockade uses its shipped local picture", stockadeView.picture.texture
-                == "Interface\\AddOns\\NaowhForever_DungeonJournal\\Media\\Maps\\ForeverInstanceMaps\\Stockade"
+                == "Interface\\AddOns\\NaowhForever_DungeonJournal\\Media\\Maps\\Stockade"
                 and rawget(stockadeView.picture, "shown") == true and stockadeView.picture.texCoord[4] == 1)
             for i, tile in ipairs(stockadeView.tiles) do
                 check("Stockade hides the client tile: " .. i, rawget(tile, "shown") == false)

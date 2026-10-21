@@ -54,7 +54,7 @@ ns.Journal.Maps = {
             [643] = { 1, 0.503, 0.861 },
             [644] = { 1, 0.363, 0.609 },
             [645] = { 2, 0.668, 0.397 },
-            [646] = { 2, 0.5, 0.17 },
+            [646] = { 2, 0.605, 0.369 },
             [647] = { 2, 0.605, 0.369 },
             [1763] = { 2, 0.123, 0.753 },
             [3586] = { 1, 0.529, 0.503 },
@@ -73,7 +73,7 @@ ns.Journal.Maps = {
             [256097] = { 1, 0.407, 0.425 },
         },
     },
-    ShadowfangKeep = { image = "Interface\\AddOns\\NaowhForever_DungeonJournal\\Media\\Maps\\ShadowfangKeep_1", floors = 7,
+    ShadowfangKeep = { image = "Interface\\AddOns\\NaowhForever_DungeonJournal\\Media\\Maps\\ShadowfangKeep_1", floors = 7, order = { 1, 2, 4, 3, 5, 6, 7 },
         imageBottom = 1,
         images = {
             [1] = "Interface\\AddOns\\NaowhForever_DungeonJournal\\Media\\Maps\\ShadowfangKeep_1",

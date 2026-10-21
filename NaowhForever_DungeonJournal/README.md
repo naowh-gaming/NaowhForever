@@ -335,7 +335,9 @@ the game's own tables, and what they can't settle is listed in the pull request 
   original dungeon map artwork; downloaded tiles and generated images are recorded in
   `Tools/media/dungeon_maps/sources.json`.
 - Imported pictures use `imageBottom = 1` to show the entire image without the older square
-  TGA crop. Switching back to an older picture resets that crop on the reused texture.
+  TGA crop.
+- A spot saved by `/nf mappins` on a floor its map no longer has is ignored for the data's spot:
+  placings made before the pictures changed used the old floor numbers.
 - Boss positions imported with those pictures use one marker per NPC: grouped bosses share
   a position, and multi-spawn rares use their first spot. Some positions are estimates;
   Journal-only positions are retained where the source has no matching boss.

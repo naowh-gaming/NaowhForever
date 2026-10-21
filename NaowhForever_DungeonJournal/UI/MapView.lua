@@ -69,11 +69,11 @@ local function Placed(dungeon)
 end
 
 local function Spot(dungeon, key)
+    local map = J.Maps[dungeon.key]
     local placed = Placed(dungeon)
     local spot = placed and placed[key]
-    if type(spot) == "table" then return spot end
+    if type(spot) == "table" and spot[1] <= map.floors then return spot end
     if spot == false then return nil end
-    local map = J.Maps[dungeon.key]
     if key == ENTRANCE_KEY then return map.entrance end
     return map.pins[key]
 end
