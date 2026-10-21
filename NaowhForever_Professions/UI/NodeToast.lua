@@ -39,7 +39,7 @@ local function Dismiss()
 end
 
 local function Build()
-    toast = Parts.Toast({ name = FRAME_NAME, width = TOAST_W, icons = TOAST_ICONS, store = S, posKey = "nodeToastPos",
+    toast = Parts.Toast({ name = FRAME_NAME, width = TOAST_W, icons = TOAST_ICONS, store = S, posKey = "nodeToastPos", on = On,
         buttons = { { text = TEXT_DISMISS, width = DISMISS_W, click = Dismiss } } })
 end
 

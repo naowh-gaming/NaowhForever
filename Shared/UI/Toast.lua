@@ -1,4 +1,4 @@
--- Toast.lua: a toast (Parts.Toast): a banner like the game's level-up one you can drag, a line over a title, icons and buttons under it, gone by itself after a while.
+-- Toast.lua: a toast (Parts.Toast): a banner like the game's level-up one you can drag, a line over a title, icons and buttons under it, shown after the game's banner and gone by itself after a while.
 local ns = _G.NaowhForever
 local T = ns.THEME
 local UI = ns.UI
@@ -14,7 +14,12 @@ local ICON, ICON_GAP = 26, 6
 local ICONS_GAP, BUTTONS_GAP = 10, 10
 local BUTTON_H, BUTTON_GAP = 26, 8
 local FONT_TITLE, FONT_LINE = 26, 14
-local HOME_DROP = -240
+local HOME_DROP = -140
+local NEXT_DELAY = 0
+
+local waiting = {}
+local toasts = {}
+local gameHooked = false
 
 local function Place(toast)
     local pos = toast.store.Get(toast.posKey)
@@ -78,7 +83,7 @@ end
 
 function Parts.Toast(spec)
     local toast = CreateFrame("Frame", spec.name, UIParent)
-    toast.store, toast.posKey, toast.width = spec.store, spec.posKey, spec.width
+    toast.store, toast.posKey, toast.width, toast.on = spec.store, spec.posKey, spec.width, spec.on
     toast:SetWidth(BANNER_W)
     toast:SetFrameStrata("DIALOG")
     toast:SetClampedToScreen(true)
@@ -150,7 +155,8 @@ function Parts.FillToast(toast, title, line, textures)
     toast:SetHeight(-y + BUTTON_H)
 end
 
-function Parts.ShowToast(toast, seconds)
+local function Start(toast, seconds)
+    if toast.on and not toast.on() then return end
     toast:Show()
     toast.expired = false
     toast.generation = toast.generation + 1
@@ -160,4 +166,47 @@ function Parts.ShowToast(toast, seconds)
         toast.expired = true
         if not toast.dragging then toast:Hide() end
     end)
+end
+
+local function Busy()
+    local banner = EventToastManagerFrame
+    if banner and banner:IsShown() then return true end
+    for toast in pairs(toasts) do
+        if toast:IsShown() then return true end
+    end
+    return false
+end
+
+local function Next()
+    if Busy() then return end
+    local turn = table.remove(waiting, 1)
+    if turn then Start(turn.toast, turn.seconds) end
+end
+
+local function SoonNext()
+    C_Timer.After(NEXT_DELAY, Next)
+end
+
+local function Wait(toast, seconds)
+    for _, turn in ipairs(waiting) do
+        if turn.toast == toast then
+            turn.seconds = seconds
+            return
+        end
+    end
+    waiting[#waiting + 1] = { toast = toast, seconds = seconds }
+    if not toasts[toast] then
+        toasts[toast] = true
+        toast:HookScript("OnHide", SoonNext)
+    end
+    if not gameHooked and EventToastManagerFrame then
+        gameHooked = true
+        EventToastManagerFrame:HookScript("OnHide", SoonNext)
+    end
+end
+
+function Parts.ShowToast(toast, seconds)
+    if toast:IsShown() then return Start(toast, seconds) end
+    Wait(toast, seconds)
+    Next()
 end

@@ -4,6 +4,7 @@
 -- learning a profession, the same skill again or a bonus coming and going shows nothing. The Level-Up Toast
 -- keeps its frame name, buttons, saved place and timer on the shared part. Both are drawn like the game's level-up
 -- banner in the accent: no window frame, a fill and two lines fading to both sides, the line small over a large title.
+-- A toast waits while the game's own banner or another toast shows, then takes its place.
 local Load = dofile("Tools/regression/load_files.lua")
 
 local checks = 0
@@ -20,7 +21,15 @@ local regionMethods = {
     SetTexture = function(r, texture) r.texture = texture end,
     SetShown = function(r, on) r.shown = on and true or false end,
     Show = function(r) r.shown = true end,
-    Hide = function(r) r.shown = false end,
+    Hide = function(r)
+        local was = r.shown
+        r.shown = false
+        if was then for _, fn in ipairs(r.onHide or {}) do fn(r) end end
+    end,
+    IsShown = function(r) return r.shown == true end,
+    HookScript = function(r, name, fn)
+        if name == "OnHide" then r.onHide = r.onHide or {}; r.onHide[#r.onHide + 1] = fn end
+    end,
     SetHeight = function(r, h) r.height = h end,
     SetWidth = function(r, w) r.width = w end,
     SetPoint = function(r, point, rel, relPoint, x, y)
@@ -178,7 +187,7 @@ check("its icons centred under the band", shownIcons[1] and toast.icons[1].point
     and toast.icons[1].point[4] == -(4 * 26 + 3 * 6) / 2 and toast.icons[1].point[5] < toast.bottom[1].points[2][5])
 check("its button centred under the icons", toast.buttons[1].point[3] == "TOP" and toast.buttons[1].point[4] == -45
     and toast.buttons[1].point[5] < toast.icons[1].point[5])
-check("it sits under the game's level-up banner until moved", toast.point[1] == "TOP" and toast.point[5] == -240)
+check("it sits where the game's level-up banner shows until moved", toast.point[1] == "TOP" and toast.point[5] == -140)
 check("it goes by itself after 20 seconds", timers[#timers].seconds == 20)
 timers[#timers].fn()
 check("and is gone then", toast.shown == false)
@@ -235,6 +244,49 @@ level.buttons[1].click()
 check("Open Planner still opens the planner and hides the toast", store.planner and level.shown == false)
 level.buttons[2].click()
 check("Waypoint still sets the waypoint", store.waypoint)
-check("and it still goes after 20 seconds", timers[#timers].seconds == 20)
+local function LastTimer()
+    for i = #timers, 1, -1 do
+        if timers[i].seconds ~= 0 then return timers[i] end
+    end
+end
+check("and it still goes after 20 seconds", LastTimer().seconds == 20)
+
+local function RunNext()
+    for i = #timers, 1, -1 do
+        if timers[i].seconds == 0 then table.remove(timers, i).fn() end
+    end
+end
+
+level:Hide()
+RunNext()
+local banner = Region()
+banner.shown = true
+env.EventToastManagerFrame = banner
+levelEvents.OnEvent(levelEvents, "PLAYER_LEVEL_UP", 13)
+timers[#timers].fn()
+check("while the game's level-up banner shows, the Level-Up Toast waits", level.shown ~= true)
+banner:Hide()
+RunNext()
+check("and takes its place once the banner closes", level.shown == true and level.title.text == "Level 13")
+check("its 20 seconds start then", timers[#timers].seconds == 20)
+
+S.values.nodeToast = true
+setHook("nodeToast")
+skills.herb = 75
+SkillUp()
+check("a new herb while the Level-Up Toast shows waits its turn", toast.shown ~= true and level.shown == true)
+level.buttons[3].click()
+RunNext()
+check("and shows once it is dismissed", toast.shown == true and toast.title.text == "Herbalism 75")
+toast:Hide()
+RunNext()
+
+banner:Show()
+levelEvents.OnEvent(levelEvents, "PLAYER_LEVEL_UP", 14)
+timers[#timers].fn()
+trainingS.values.levelUpToast = false
+banner:Hide()
+RunNext()
+check("a toast turned off while it waits is not shown", level.shown ~= true)
 
 print(("test-node-toast: %d checks passed"):format(checks))

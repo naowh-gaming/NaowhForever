@@ -303,8 +303,9 @@ Colors and sizes come from `ns.THEME` and `Style.lua`, never written as numbers 
 ## Why
 
 - A toast is drawn like the game's own level-up banner, in the accent: no window, a band whose fill and lines
-  fade to both sides, the line small over the title. The game's banner shows near the top of the screen, at the same
-  moment as the Level-Up Toast, so a toast's home is lower, under it.
+  fade to both sides, the line small over the title. The game's banner (EventToastManagerFrame) shows at the same
+  moment as the Level-Up Toast and in the same place, so a toast waits for it to close, and for any other toast shown,
+  then takes its place; a toast turned off while it waits is not shown.
 - `ConsumableLevelAllowed` checks the fifth `C_Item.GetItemInfo` return (minimum level), not item level. Unknown or secret requirements are skipped until item data is available. Food and drink keep their existing ranking among eligible items.
 
 

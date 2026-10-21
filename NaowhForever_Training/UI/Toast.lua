@@ -40,7 +40,7 @@ local function Dismiss()
 end
 
 local function Build()
-    toast = Parts.Toast({ name = FRAME_NAME, width = TOAST_W, icons = TOAST_ICONS, store = S, posKey = "toastPos",
+    toast = Parts.Toast({ name = FRAME_NAME, width = TOAST_W, icons = TOAST_ICONS, store = S, posKey = "toastPos", on = On,
         buttons = {
             { text = TEXT_OPEN, width = OPEN_W, click = OpenPlanner, accent = true },
             { text = TEXT_WAYPOINT, width = WAYPOINT_W, click = Waypoint },
