@@ -14,7 +14,7 @@ local TIP_RANGE, ICON_RANGE, TEXT_RANGE = { 0, 50, 1 }, { 24, 80, 1 }, ns.Shared
 local ROI_RANGE = { 0, 100, 1 }
 local ORDER_RECIPES, ORDER_ORDERS, ORDER_CRAFT_TIMER, ORDER_BUYING, ORDER_GATHER = 10, 20, 30, 40, 50
 local ORDER_DISENCHANT, ORDER_DISENCHANT_DEALS = 60, 70
-local ORDER_NODE_ICONS = 55
+local ORDER_NODE_ICONS, ORDER_NODE_TOAST = 55, 56
 local NODE_ICON_RANGE = { P.C.NODE_ICON_MIN, P.C.NODE_ICON_MAX, 1 }
 local SAMPLE_ICON = "Interface\\Icons\\INV_Ingot_02"
 local SAMPLE_NAME, SAMPLE_DONE, SAMPLE_COUNT = ns.L("Smelt Copper"), 4, 10
@@ -321,6 +321,13 @@ page:Card({
           help = "How big each node's picture is on the minimap. The game's own dot cannot be hidden, so "
               .. "below about 18 its edge can show around the picture." },
     },
+})
+
+page:Card({
+    id = "nodeToast", name = "New Herbs and Ores", order = ORDER_NODE_TOAST, switch = "nodeToast",
+    help = "When your Herbalism or Mining grows enough to gather a new herb or vein, a toast names them for 20 "
+        .. "seconds. Drag it to move it.",
+    search = "herb ore vein mining herbalism skill toast popup gather new",
 })
 
 page:Card({

@@ -7353,3 +7353,7 @@ L["Extra Bar 2"] = true
 L["Capture Other Addons' Scans"] = true
 L["Also keeps the prices from full auction house scans that other addons start, such as Auctionator or TSM."] = true
 L["With the Gamepad interface style, the game's own recipe window is used."] = true
+L["New Herbs and Ores"] = true
+L["When your Herbalism or Mining grows enough to gather a new herb or vein, a toast names them for 20 seconds. Drag it to move it."] = true
+L["You can now gather %s."] = true
+L["You can now mine %s."] = true

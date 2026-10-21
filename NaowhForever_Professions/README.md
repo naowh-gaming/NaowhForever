@@ -79,6 +79,7 @@ NaowhForever_Professions/
     CraftTimer.lua     Total Craft Timer
     GatherTracking.lua the Tracking Reminder
     NodeIcons.lua      Minimap Node Icons: an item picture on each tracked herb and vein, the skill on its tooltip
+    NodeToast.lua      New Herbs and Ores: a toast naming the herbs or veins a skill-up has just reached
     Disenchant.lua     the Disenchant window and its button on the Enchanting window (ns.ToggleDisenchant)
     DisenchantDeals.lua Disenchant Deals beside the auction house, with click-confirmed purchases
     SettingsPage.lua   its settings page (Professions/Settings), declared as cards
@@ -112,6 +113,12 @@ Each layer uses only the ones above it, or reads a later one's table at call tim
   the icon covers the dot instead, as far as its size allows: Icon Size goes from 10 to 24 (12 by
   default), and below about 18 a sliver of the dot can show round it (at 14 it did, at 10 more). The
   small white arrow the game draws beside a node higher or lower than the player can also peek out.
+- New Herbs and Ores compares Herbalism and Mining (rank plus bonus, as gathering checks them) with the
+  highest each has been since login, on `SKILL_LINES_CHANGED`, and names every node of
+  `Data/GatherNodes.lua` whose skill lies between the two (`NodeScan.Unlocked`). Nothing shows at login
+  or when a profession is learned (from 0), and a bonus taken off and put on again does not show the
+  same nodes twice. One icon per item, so Silver Vein and its Ooze Covered twin share Silver Ore's. It
+  is the shared toast (`Parts.Toast`) Training's Level-Up Toast uses, and goes after 20 seconds as that one does.
 - It does not scan in combat; the icons it has keep following. Node names are matched in English:
   the minimap gives only the name, so `Data/GatherNodes.lua` is keyed by it. Each node's skill is
   Glimmer's (`Tools/build/glimmer_nodes.py`, from Wowhead Forever); each item ID is the game's own

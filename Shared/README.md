@@ -87,6 +87,9 @@ Shared/
                    button that opens its window
   UI/Tracker.lua   a tracker's small window (Parts.TrackerPanel), and a list row's bands
                    (Parts.RowBands: stripe, hover, the line under it)
+  UI/Toast.lua     a toast (Parts.Toast): a box you can drag, with the logo, a title, a line, a row of icons
+                   and buttons, filled by Parts.FillToast and gone by itself after Parts.ShowToast's seconds:
+                   Training's Level-Up Toast, Professions' New Herbs and Ores
   UI/ItemBar.lua   an item bar (Shared.ItemBar): secure item buttons in a grid, their count and key texts,
                    the bar's mover, its place or anchor, the count and keybind rows with their cogs, and the
                    Growth Direction choice and placing (ItemBar.GrowChoice, Place): the Consumable Bar,
