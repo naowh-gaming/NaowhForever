@@ -55,6 +55,10 @@ local function AddIcons(kind)
 end
 
 local function Collect(kind, skill)
+    if skill <= 0 then
+        best[kind] = nil
+        return
+    end
     local from = best[kind]
     if not from or skill > from then best[kind] = skill end
     if not from or from <= 0 or skill <= from then return end

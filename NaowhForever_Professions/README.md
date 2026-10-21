@@ -117,7 +117,8 @@ Each layer uses only the ones above it, or reads a later one's table at call tim
   highest each has been since login, on `SKILL_LINES_CHANGED`, and names every node of
   `Data/GatherNodes.lua` whose skill lies between the two (`NodeScan.Unlocked`). Nothing shows at login
   or when a profession is learned (from 0), and a bonus taken off and put on again does not show the
-  same nodes twice. One icon per item, so Silver Vein and its Ooze Covered twin share Silver Ore's. It
+  same nodes twice. Unlearning a profession forgets its highest, so learning it again shows its nodes anew
+  as it climbs. One icon per item, so Silver Vein and its Ooze Covered twin share Silver Ore's. It
   is the shared toast (`Parts.Toast`) Training's Level-Up Toast uses, and goes after 20 seconds as that one does.
 - It does not scan in combat; the icons it has keep following. Node names are matched in English:
   the minimap gives only the name, so `Data/GatherNodes.lua` is keyed by it. Each node's skill is

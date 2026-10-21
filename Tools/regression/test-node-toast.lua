@@ -224,6 +224,17 @@ toast.OnDragStop(toast)
 check("then it goes", toast.shown == false)
 check("and its place is kept", S.values.nodeToastPos and S.values.nodeToastPos.x == 1)
 
+skills.herb = 0
+SkillUp()
+skills.herb = 1
+SkillUp()
+check("unlearning Herbalism and learning it again shows nothing", toast.shown ~= true)
+skills.herb = 15
+SkillUp()
+check("but climbing back to 15 names Earthroot again", toast.shown == true and toast.title.text == "Herbalism 15"
+    and toast.line.text == "You can now gather Earthroot.")
+toast:Hide()
+
 local out = {}
 ns.Professions.NodeScan.Unlocked("ore", 0, 1, out)
 check("Mining 1 unlocks the copper and amber veins", #out == 4 and out[1] == "Chunk of Amber")
