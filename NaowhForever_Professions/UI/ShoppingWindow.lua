@@ -85,6 +85,7 @@ local TEXT_CLOSE = "X"
 local TEXT_DETACH, TEXT_ATTACH = ns.L("Detach"), ns.L("Dock")
 local TIP_DETACH_HELP = ns.L("Lifts the Shopping List off the profession window, to drag it anywhere.")
 local TIP_ATTACH_HELP = ns.L("Puts the Shopping List back beside the profession window.")
+local TEXT_DOCK_RELOAD = ns.L("Reload UI to dock or undock the Shopping List.")
 
 local window, side, scroll, input, qty, empty, total, clear, picker, pickerFullWidth, events
 local profession, docked, detach, grip, closingWithProfession
@@ -434,7 +435,7 @@ local function FitPicker()
 end
 
 local function ProfessionOpen()
-    return profession ~= nil and profession:IsVisible() and profession:GetAlpha() > 0
+    return profession ~= nil and detach ~= nil and profession:IsVisible() and profession:GetAlpha() > 0
 end
 
 local function Remember(on)
@@ -578,21 +579,29 @@ local function OnConsumables()
     Shopping.ToggleConsumables(window)
 end
 
-local function BuildBar(close)
-    detach = ns.Button(window, TEXT_DETACH, DETACH_W, CLOSE, OnDetach)
-    detach:SetPoint("RIGHT", close, "LEFT", -St.BAR_GAP, 0)
-    detach:Hide()
+local function BuildBar(close, dock)
+    local right = close
+    if dock then
+        detach = ns.Button(window, TEXT_DETACH, DETACH_W, CLOSE, OnDetach)
+        detach:SetPoint("RIGHT", close, "LEFT", -St.BAR_GAP, 0)
+        detach:Hide()
+        right = detach
+    end
     picker = Parts.BarButton(window, St.BAG, TEXT_CONSUMABLES, TIP_CONSUMABLES_HELP, OnConsumables,
         TEXT_CONSUMABLES)
     pickerFullWidth = picker:GetWidth()
-    picker:SetPoint("RIGHT", detach, "LEFT", -St.BAR_GAP, 0)
+    picker:SetPoint("RIGHT", right, "LEFT", -St.BAR_GAP, 0)
     window.subtitle:SetPoint("RIGHT", picker, "LEFT", -St.BAR_GAP, 0)
 end
 
 local function Build()
     window = Parts.Window(WIDTH, HEIGHT, "shoppingListWindow")
     window.backdrop:Card(CARD_INSET, HEADER + CARD_INSET, CARD_INSET, FOOTER + CARD_INSET)
-    BuildBar(Parts.TitleBar(window, TEXT_TITLE, TEXT_SUBTITLE, PAGE, CLOSE, TEXT_CLOSE))
+    if S.Get("shoppingListDock") then
+        BuildBar(Parts.TitleBar(window, TEXT_TITLE, TEXT_SUBTITLE, PAGE, CLOSE, TEXT_CLOSE), true)
+    else
+        BuildBar(Parts.TitleBar(window, TEXT_TITLE, TEXT_SUBTITLE, PAGE))
+    end
     Parts.FooterBrand(window, PAGE)
     BuildBody(BuildInput())
     BuildFooter()
@@ -637,3 +646,7 @@ ns.RegisterMinimapFeature({
 })
 
 Shopping.RenderWindow = RenderWindow
+
+S.OnChange(function(key)
+    if key == "shoppingListDock" then ns.ConfirmReload(TEXT_DOCK_RELOAD) end
+end)

@@ -42,12 +42,13 @@ local EMPTY = {}
 local waiting = R.waiting
 local win, hooked, lastMode
 local queued = false
-local savedTabPoints
+local savedTabPoints, tabsLeft
 local mirrored = {}
 local flippedArt = setmetatable({}, { __mode = "k" })
 local hookedArt = setmetatable({}, { __mode = "k" })
 local placing = false
 local docked = {}
+local outlines = setmetatable({}, { __mode = "k" })
 local bookDocked, bookPending = false, nil
 local events = CreateFrame("Frame")
 
@@ -60,6 +61,11 @@ local function NextStrata(strata)
         if s == strata then return STRATA[math.min(i + 1, #STRATA)] end
     end
     return FALLBACK_STRATA
+end
+
+local function OutlineTab(tab, on)
+    if on and not outlines[tab] then outlines[tab] = ns.Border(tab, ns.THEME.accent) end
+    if outlines[tab] then outlines[tab]._frame:SetShown(on) end
 end
 
 local function ShowUnlearn(button)
@@ -146,20 +152,27 @@ local function DockTabs(on)
     if on then
         if not savedTabPoints then
             savedTabPoints = Points(head)
-            MirrorTab(head)
-            for _, tab in ipairs(tabs) do MirrorTab(tab) end
+            if tabsLeft then
+                MirrorTab(head)
+                for _, tab in ipairs(tabs) do MirrorTab(tab) end
+            end
         end
+        local point, relPoint = "TOPLEFT", "TOPRIGHT"
+        if tabsLeft then point, relPoint = "TOPRIGHT", "TOPLEFT" end
         head:ClearAllPoints()
-        head:SetPoint("TOPRIGHT", win, "TOPLEFT", 0, TABS_DROP)
+        head:SetPoint(point, win, relPoint, 0, TABS_DROP)
     elseif savedTabPoints then
         head:ClearAllPoints()
         for _, pt in ipairs(savedTabPoints) do head:SetPoint(unpack(pt)) end
         savedTabPoints = nil
         Unmirror()
     end
+    local outline = on and not tabsLeft
     if head.SetIgnoreParentAlpha then head:SetIgnoreParentAlpha(on) end
+    OutlineTab(head, outline)
     for _, tab in ipairs(tabs) do
         if tab.SetIgnoreParentAlpha then tab:SetIgnoreParentAlpha(on) end
+        OutlineTab(tab, outline)
     end
 end
 
@@ -300,6 +313,7 @@ function Drag.Save()
 end
 
 function Drag.Fit()
+    if not tabsLeft then return end
     local head = ProfessionsFrame.ProfessionsOverviewTab
     local left = win:GetLeft()
     if not (head and left) then return end
@@ -325,6 +339,7 @@ local function OnDragStop(self)
 end
 
 local function FirstBuild(strata)
+    tabsLeft = S.Get("shoppingListDock")
     win = P.Window.Build()
     if ns.ShoppingListAttach then ns.ShoppingListAttach(win) end
     win:SetFrameStrata(NextStrata(strata))

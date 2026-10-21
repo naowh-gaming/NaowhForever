@@ -1,6 +1,7 @@
 -- Run with Lua 5.1 from the repository root: the Shopping List docks beside the profession window,
 -- Detach floats it where it is and Dock puts it back, and it comes back with the profession window
--- only if it was docked and open when that window closed.
+-- only if it was docked and open when that window closed. All of it only with Dock Shopping List on:
+-- off, the window builds no Detach button, never docks and the profession window is not hooked.
 local checks = 0
 local function check(label, value) assert(value, label); checks = checks + 1 end
 
@@ -24,7 +25,7 @@ local function Frame()
 end
 
 local account, opened, moved
-local function Setup()
+local function Setup(off)
     account, opened, moved = { windowSizes = { shoppingList = { 380, 400 } } }, 0, 0
     local window = Frame()
     window.positionKey = "shoppingListWindow"
@@ -65,6 +66,7 @@ local function Setup()
     OnHide = Hidden
     local events = { UnregisterAllEvents = function() end }
     local grip = Frame()
+    if off then detach = nil end
     set(window, events, profession, detach, grip)
     return { window = window, profession = profession, detach = detach, grip = grip, Docked = Docked,
         Dock = Dock, OnDetach = OnDetach, OnDragStart = OnDragStart, OnProfessionShow = OnProfessionShow,
@@ -121,5 +123,29 @@ t.profession.shown = false
 t.OnProfessionHide()
 check("a floating window stays open when the profession window closes", t.window.shown)
 check("with nothing to dock to, the Dock button hides", not t.detach.shown)
+
+t = Setup(true)
+t.window.shown = true
+t.OnDetach()
+check("off: a window built without Detach never docks", not t.Docked() and #t.window.points == 0)
+t.window:Hide()
+check("off: closing it leaves its place and size alone", #t.window.points == 0 and t.window.height == 520)
+
+local function Read(path)
+    local file = assert(io.open(path, "rb"))
+    local text = file:read("*a"):gsub("\r\n", "\n"); file:close()
+    return text
+end
+local bar = source:sub(assert(source:find("local function BuildBar(", 1, true)),
+    assert(source:find("\nlocal function Build()", 1, true)))
+check("off: the title bar builds no Detach button", bar:find("if dock then\n        detach = ns.Button(", 1, true))
+check("off: the title bar keeps the shared close button",
+    source:find("BuildBar(Parts.TitleBar(window, TEXT_TITLE, TEXT_SUBTITLE, PAGE))", 1, true))
+local add = Read("NaowhForever_Professions/UI/ShoppingAdd.lua")
+check("off: the profession window is not hooked", add:find("if dock then ns.ShoppingListDockTo(win) end", 1, true))
+check("off: the Shopping List button keeps its place",
+    add:find("opener:SetPoint(\"TOPRIGHT\", -OPEN_RIGHT, -OPEN_DROP)", 1, true))
+check("Dock Shopping List is off by default",
+    Read("Core/Features.lua"):find("\n        shoppingListDock = false,\n", 1, true))
 
 print("shopping list dock: " .. checks .. " checks passed")
