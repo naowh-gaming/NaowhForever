@@ -1,10 +1,10 @@
 -- Run with Lua 5.1 from the repository root: New Herbs and Ores (UI/NodeToast.lua) and the shared toast
--- (Shared/UI/Toast.lua) under it and under Training's Level-Up Toast. A Mining skill-up that reaches new veins
--- names them, with one icon per ore, and the toast goes by itself after 20 seconds unless dragged; logging in,
--- learning a profession, the same skill again or a bonus coming and going shows nothing. The Level-Up Toast
--- keeps its frame name, buttons, saved place and timer on the shared part. Both are drawn like the game's level-up
--- banner in the accent: no window frame, a fill and two lines fading to both sides, the line small over a large title.
--- A toast waits while the game's own banner or another toast shows, then takes its place.
+-- (Shared/UI/Toast.lua) under it. A Mining skill-up that reaches new veins names them, with one icon per ore, and
+-- the toast goes by itself after 20 seconds unless dragged; logging in, learning a profession, the same skill
+-- again or a bonus coming and going shows nothing. It is drawn like the game's level-up banner in the accent: no
+-- window frame, a fill and two lines fading to both sides, the line small over a large title. A toast waits while
+-- the game's own banner or another toast shows, then takes its place, and one turned off while it waits is
+-- skipped for the next. On a client whose node names are not English it stays off.
 local Load = dofile("Tools/regression/load_files.lua")
 
 local checks = 0
@@ -13,7 +13,8 @@ local function check(label, value) assert(value, label); checks = checks + 1 end
 local function Noop() end
 local timers = {}
 local frames = {}
-local boot, skillEvents, levelEvents
+local boot, skillEvents
+local locale = "enUS"
 
 local regionMethods = {
     SetText = function(r, text) r.text = text end,
@@ -45,7 +46,6 @@ local regionMethods = {
         r.events[event] = true
         if event == "PLAYER_LOGIN" then boot = boot or {}; boot[#boot + 1] = r end
         if event == "SKILL_LINES_CHANGED" then skillEvents = r end
-        if event == "PLAYER_LEVEL_UP" then levelEvents = r end
     end,
     UnregisterAllEvents = function(r) r.events = {} end,
 }
@@ -62,7 +62,6 @@ local function CreateFrame(_, name)
     return f
 end
 
-local store = {}
 local function Store(values)
     local S = { values = values }
     function S.Get(k) return S.values[k] end
@@ -73,10 +72,8 @@ end
 
 local skills = { ore = 50, herb = 0 }
 local S = Store({ enabled = true, nodeToast = true })
-local trainingS = Store({ enabled = true, levelUpToast = true, toastPos = { point = "CENTER", relPoint = "CENTER", x = 5, y = 6 } })
 local setHook
 local buttons = {}
-local accented = {}
 local framed = 0
 local ACCENT, BG = { r = 0, g = 0.57, b = 0.93 }, { r = 0.05, g = 0.05, b = 0.08 }
 local ns = {
@@ -98,18 +95,9 @@ local ns = {
         buttons[#buttons + 1] = b
         return b
     end,
-    AccentBorder = function(b) accented[b] = true return b end,
+    AccentBorder = function(b) return b end,
     Shared = { Parts = {}, Style = { BACKDROP_ALPHA = 0.97, ICON_CROP = 0.08, ICON_CROP_HIGH = 0.92 } },
     Professions = { Settings = S },
-    Training = {
-        Settings = trainingS, C = { ENTRY_SPELL = 2 },
-        On = function() return true end,
-        Plan = function() return { now = { { 1, 133 }, { 1, 168 } } } end,
-        Total = function() return 300 end,
-        Price = function() return 150 end,
-        Coins = function(c) return c .. "c" end,
-        WaypointToTrainer = function() store.waypoint = true end,
-    },
 }
 
 local env = setmetatable({
@@ -118,7 +106,8 @@ local env = setmetatable({
     CreateFrame = CreateFrame,
     CreateColor = function(r, g, b, a) return { r = r, g = g, b = b, a = a } end,
     wipe = function(t) for k in pairs(t) do t[k] = nil end return t end,
-    GetMoney = function() return 1000 end,
+    GetLocale = function() return locale end,
+    C_TooltipInfo = {},
     C_Timer = { After = function(seconds, fn) timers[#timers + 1] = { seconds = seconds, fn = fn } end },
     C_Item = { GetItemIconByID = function(id) return "item:" .. id end },
     C_Spell = { GetSpellTexture = function(id) return "spell:" .. id end },
@@ -132,14 +121,13 @@ local env = setmetatable({
     end,
 }, { __index = _G })
 env._G = env
-ns.OpenTrainingWindow = function() store.planner = true end
 
 Load({
     "Shared/UI/Toast.lua",
+    "NaowhForever_Professions/Constants.lua",
     "NaowhForever_Professions/Data/GatherNodes.lua",
     "NaowhForever_Professions/NodeScan.lua",
     "NaowhForever_Professions/UI/NodeToast.lua",
-    "NaowhForever_Training/UI/Toast.lua",
 }, env)
 
 for _, f in ipairs(boot) do f.OnEvent(f, "PLAYER_LOGIN") end
@@ -243,61 +231,46 @@ S.values.nodeToast = false
 setHook("nodeToast")
 check("turning it off stops listening", next(skillEvents.events) == nil)
 
-levelEvents.OnEvent(levelEvents, "PLAYER_LEVEL_UP", 12)
-timers[#timers].fn()
-local level = frames.NaowhForeverTrainingToast
-check("the Level-Up Toast keeps its frame name", level and level.shown)
-check("and its text", level.title.text == "Level 12" and level.line.text:find("2 spells to train", 1, true))
-check("and its three buttons, Open Planner outlined", #level.buttons == 3 and accented[level.buttons[1]]
-    and level.buttons[2].label == "Waypoint" and level.buttons[3].label == "Dismiss")
-check("and its saved place", level.point[1] == "CENTER" and level.point[4] == 5 and level.point[5] == 6)
-level.buttons[1].click()
-check("Open Planner still opens the planner and hides the toast", store.planner and level.shown == false)
-level.buttons[2].click()
-check("Waypoint still sets the waypoint", store.waypoint)
-local function LastTimer()
-    for i = #timers, 1, -1 do
-        if timers[i].seconds ~= 0 then return timers[i] end
-    end
-end
-check("and it still goes after 20 seconds", LastTimer().seconds == 20)
-
 local function RunNext()
     for i = #timers, 1, -1 do
         if timers[i].seconds == 0 then table.remove(timers, i).fn() end
     end
 end
 
-level:Hide()
-RunNext()
+S.values.nodeToast = true
+setHook("nodeToast")
 local banner = Region()
 banner.shown = true
 env.EventToastManagerFrame = banner
-levelEvents.OnEvent(levelEvents, "PLAYER_LEVEL_UP", 13)
-timers[#timers].fn()
-check("while the game's level-up banner shows, the Level-Up Toast waits", level.shown ~= true)
-banner:Hide()
-RunNext()
-check("and takes its place once the banner closes", level.shown == true and level.title.text == "Level 13")
-check("its 20 seconds start then", timers[#timers].seconds == 20)
-
-S.values.nodeToast = true
-setHook("nodeToast")
 skills.herb = 75
 SkillUp()
-check("a new herb while the Level-Up Toast shows waits its turn", toast.shown ~= true and level.shown == true)
-level.buttons[3].click()
+check("while the game's level-up banner shows, a new herb waits", toast.shown ~= true)
+banner:Hide()
 RunNext()
-check("and shows once it is dismissed", toast.shown == true and toast.title.text == "Herbalism 75")
+check("and takes its place once the banner closes", toast.shown == true and toast.title.text == "Herbalism 75")
+check("its 20 seconds start then", timers[#timers].seconds == 20)
 toast:Hide()
 RunNext()
 
+local other = ns.Shared.Parts.Toast({ name = "OtherToast", width = 300, icons = 0, store = Store({}), posKey = "pos",
+    buttons = {} })
+ns.Shared.Parts.FillToast(other, "Other", "Another toast.", {})
 banner:Show()
-levelEvents.OnEvent(levelEvents, "PLAYER_LEVEL_UP", 14)
-timers[#timers].fn()
-trainingS.values.levelUpToast = false
+skills.herb = 100
+SkillUp()
+ns.Shared.Parts.ShowToast(other, 20)
+check("two toasts wait for the banner", toast.shown ~= true and other.shown ~= true)
+S.values.nodeToast = false
 banner:Hide()
 RunNext()
-check("a toast turned off while it waits is not shown", level.shown ~= true)
+check("the first, turned off while it waits, is skipped", toast.shown ~= true)
+check("and the next one shows", other.shown == true)
+other:Hide()
+RunNext()
+
+locale = "deDE"
+S.values.nodeToast = true
+setHook("nodeToast")
+check("a client whose node names are not English does not listen", next(skillEvents.events) == nil)
 
 print(("test-node-toast: %d checks passed"):format(checks))

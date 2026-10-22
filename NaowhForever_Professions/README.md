@@ -145,7 +145,8 @@ Each layer uses only the ones above it, or reads a later one's table at call tim
   or when a profession is learned (from 0), and a bonus taken off and put on again does not show the
   same nodes twice. Unlearning a profession forgets its highest, so learning it again shows its nodes anew
   as it climbs. One icon per item, so Silver Vein and its Ooze Covered twin share Silver Ore's. It
-  is the shared toast (`Parts.Toast`) Training's Level-Up Toast uses, and goes after 20 seconds as that one does.
+  is the shared toast (`Parts.Toast`) and goes after 20 seconds, as the Level-Up Toast does. It names nodes
+  as Minimap Node Icons reads them, in English, so it too is offered only on an English client.
 - Skill-up Thresholds is off by default. It creates its line only when an enabled recipe pane first
   needs it. Selection and skill updates use the existing redraw path; this feature adds no events,
   hooks, timers, route planning or polling.

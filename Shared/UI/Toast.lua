@@ -156,7 +156,7 @@ function Parts.FillToast(toast, title, line, textures)
 end
 
 local function Start(toast, seconds)
-    if toast.on and not toast.on() then return end
+    if toast.on and not toast.on() then return false end
     toast:Show()
     toast.expired = false
     toast.generation = toast.generation + 1
@@ -166,6 +166,7 @@ local function Start(toast, seconds)
         toast.expired = true
         if not toast.dragging then toast:Hide() end
     end)
+    return true
 end
 
 local function Busy()
@@ -179,8 +180,10 @@ end
 
 local function Next()
     if Busy() then return end
-    local turn = table.remove(waiting, 1)
-    if turn then Start(turn.toast, turn.seconds) end
+    while waiting[1] do
+        local turn = table.remove(waiting, 1)
+        if Start(turn.toast, turn.seconds) then return end
+    end
 end
 
 local function SoonNext()

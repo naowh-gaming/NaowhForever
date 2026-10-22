@@ -6,6 +6,7 @@ local GetItemIconByID = C_Item.GetItemIconByID
 local P = ns.Professions
 local S = P.Settings
 local Scan = P.NodeScan
+local C = P.C
 local Parts = ns.Shared.Parts
 
 local FRAME_NAME = "NaowhForeverNodeToast"
@@ -13,7 +14,6 @@ local TOAST_W, TOAST_ICONS = 440, 10
 local DISMISS_W = 90
 local TOAST_SECONDS = 20
 local KINDS = { "herb", "ore" }
-local FIND_SPELL = { herb = 2383, ore = 2580 }
 local TEXT_TITLE = "%s %d"
 local TEXT_PROFESSION = { herb = ns.L("Herbalism"), ore = ns.L("Mining") }
 local TEXT_CAN = { herb = ns.L("You can now gather %s."), ore = ns.L("You can now mine %s.") }
@@ -49,7 +49,7 @@ local function AddIcons(kind)
         local key = item or kind
         if not shownItems[key] and #textures < TOAST_ICONS then
             shownItems[key] = true
-            textures[#textures + 1] = item and GetItemIconByID(item) or C_Spell.GetSpellTexture(FIND_SPELL[kind])
+            textures[#textures + 1] = item and GetItemIconByID(item) or C_Spell.GetSpellTexture(C.FIND_SPELL[kind])
         end
     end
 end
@@ -91,7 +91,7 @@ local function Remember()
 end
 
 local function Apply()
-    if not On() then
+    if not On() or not Scan.Usable() then
         if events then events:UnregisterAllEvents() end
         if toast then toast:Hide() end
         return

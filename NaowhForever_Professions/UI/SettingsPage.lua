@@ -319,14 +319,13 @@ if P.NodeScan.Usable() then
               help = "How big each node's picture is on the minimap." },
         },
     })
-end
 
-page:Card({
-    id = "nodeToast", name = "New Herbs and Ores", order = ORDER_NODE_TOAST, switch = "nodeToast",
-    help = "When your Herbalism or Mining grows enough to gather a new herb or vein, a toast names them for 20 "
-        .. "seconds. Drag it to move it.",
-    search = "herb ore vein mining herbalism skill toast popup gather new",
-})
+    page:Card({
+        id = "nodeToast", name = "New Herbs and Ores", order = ORDER_NODE_TOAST, switch = "nodeToast",
+        help = "Names the herbs and veins a Herbalism or Mining skill-up lets you gather.",
+        search = "herb ore vein mining herbalism skill toast popup gather new",
+    })
+end
 
 page:Card({
     id = "craftTimer", name = "Total Craft Timer", order = ORDER_CRAFT_TIMER, switch = "craftTimer",
