@@ -29,7 +29,7 @@ local SHOWN_EVENTS = { "UNIT_POWER_UPDATE", "UNIT_MAXPOWER" }
 local TEXT_VALUES, TEXT_CURRENT, TEXT_PERCENT = "%d / %d", "%d", "%.0f%%"
 local TEXT_SHIFTS, TEXT_SHIFT = ns.L("%d shifts left"), ns.L("1 shift left")
 
-local holder, bar, costSeg, tick, spark, left, right, line, countdown, info, border, bg
+local holder, bar, costSeg, tick, missClip, missSeg, missTick, spark, left, right, line, countdown, info, bg
 local unlocked, inCombat, inFive, pendingPlace, pendingApply, fiveTimer, cost, curve
 local events = CreateFrame("Frame")
 
@@ -77,9 +77,16 @@ local function Build()
     tick = clip:CreateTexture(nil, "OVERLAY")
     tick:SetColorTexture(St.TICK_RGB.r, St.TICK_RGB.g, St.TICK_RGB.b, 1)
     tick:SetPoint("CENTER", costSeg, "LEFT")
+    missClip = CreateFrame("Frame", nil, bar)
+    missClip:SetClipsChildren(true)
+    missSeg = missClip:CreateTexture(nil, "ARTWORK")
+    missSeg:SetPoint("TOPLEFT", bar, "TOPLEFT")
+    missSeg:SetPoint("BOTTOMLEFT", bar, "BOTTOMLEFT")
+    missTick = missClip:CreateTexture(nil, "OVERLAY")
+    missTick:SetPoint("CENTER", missSeg, "RIGHT")
     local over = CreateFrame("Frame", nil, bar)
     over:SetAllPoints()
-    over:SetFrameLevel(clip:GetFrameLevel() + 1)
+    over:SetFrameLevel(math.max(clip:GetFrameLevel(), missClip:GetFrameLevel()) + 1)
     spark = over:CreateTexture(nil, "OVERLAY")
     spark:SetTexture(SPARK_TEX)
     spark:SetBlendMode("ADD")
@@ -94,7 +101,7 @@ local function Build()
     left:SetPoint("LEFT", St.TEXT_INSET, 0)
     right = ns.Font(over, St.TEXT_SIZE, St.OUTLINE)
     right:SetPoint("RIGHT", -St.TEXT_INSET, 0)
-    border = ns.Border(holder, St.EDGE_RGB)
+    ns.Border(holder, St.EDGE_RGB)
     countdown = ns.Font(holder, St.TEXT_SIZE, St.OUTLINE)
     countdown:SetPoint("TOPRIGHT", holder, "BOTTOMRIGHT", 0, -(St.LINE_GAP + St.LINE_H + St.INFO_GAP))
     info = ns.Font(holder, St.TEXT_SIZE, St.OUTLINE)
@@ -110,7 +117,7 @@ local function Style()
     local width, height = S.Get("width"), S.Get("height")
     holder:SetSize(width, height)
     local texture = UI.TexturePath(S.Get("texture"), St.FLAT_TEX)
-    local mana, warn = S.Get("manaColor"), S.Get("warnColor")
+    local mana, warn, missing = S.Get("manaColor"), S.Get("warnColor"), S.Get("missingColor")
     bar:SetStatusBarTexture(texture)
     bar:SetStatusBarColor(mana.r, mana.g, mana.b)
     local fill = bar:GetStatusBarTexture()
@@ -119,6 +126,12 @@ local function Style()
     costSeg:ClearAllPoints()
     costSeg:SetPoint("TOPRIGHT", fill, "TOPRIGHT")
     costSeg:SetPoint("BOTTOMRIGHT", fill, "BOTTOMRIGHT")
+    missClip:ClearAllPoints()
+    missClip:SetPoint("TOPLEFT", fill, "TOPRIGHT")
+    missClip:SetPoint("BOTTOMRIGHT", bar, "BOTTOMRIGHT")
+    missSeg:SetTexture(texture)
+    missSeg:SetVertexColor(missing.r, missing.g, missing.b)
+    missTick:SetColorTexture(missing.r, missing.g, missing.b, 1)
     spark:ClearAllPoints()
     spark:SetPoint("CENTER", fill, "RIGHT")
     bg:SetColorTexture(T.bg.r, T.bg.g, T.bg.b, S.Get("bgAlpha"))
@@ -130,6 +143,7 @@ local function Style()
     Parts.HudFont(countdown, S.Get("font"), small, S.Get("outline"))
     countdown:SetTextColor(St.COUNTDOWN_RGB.r, St.COUNTDOWN_RGB.g, St.COUNTDOWN_RGB.b)
     tick:SetSize(St.TICK_W, height)
+    missTick:SetSize(St.TICK_W, height)
     spark:SetSize(St.SPARK_W, height * 2)
     line:Paint(mana)
 end
@@ -166,10 +180,17 @@ end
 
 local function PlaceCost()
     local max = UnitPowerMax(PLAYER, MANA)
-    local shown = S.Get("powershift") and S.Get("shiftMark") and cost and Readable(max) and max > 0
-    if shown then costSeg:SetWidth(Inner() * math.min(cost / max, 1)) end
+    local known = S.Get("powershift") and cost and Readable(max) and max > 0
+    local width = known and Inner() * math.min(cost / max, 1)
+    local shown, missing = known and S.Get("shiftMark"), known and S.Get("warnLow")
+    if known then
+        costSeg:SetWidth(width)
+        missSeg:SetWidth(width)
+    end
     costSeg:SetShown(shown and true or false)
     tick:SetShown(shown and true or false)
+    missSeg:SetShown(missing and true or false)
+    missTick:SetShown(missing and true or false)
 end
 
 local function Text(cur, max)
@@ -195,10 +216,6 @@ local function Values()
     Text(cur, max)
     local readable = Readable(cur) and Readable(max)
     local shifting = S.Get("powershift") and cost ~= nil
-    local low = readable and shifting and cur < cost
-    local edge = St.EDGE_RGB
-    if low and S.Get("warnLow") then edge = S.Get("warnColor") end
-    border:SetColor(edge.r, edge.g, edge.b, 1)
     if shifting and S.Get("shiftsLeft") and readable then
         local n = math.floor(cur / cost)
         if n == 1 then info:SetText(TEXT_SHIFT) else info:SetFormattedText(TEXT_SHIFTS, n) end

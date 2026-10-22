@@ -13,6 +13,7 @@ local S = ns.UI.ModuleSettings("druidMana", {
     powershift = F.powershift, shiftMark = true, shiftsLeft = true, warnLow = true,
     manaColor = { r = 0.18, g = 0.44, b = 0.88 },
     warnColor = { r = 0.94, g = 0.54, b = 0.14 },
+    missingColor = { r = 0.9, g = 0.15, b = 0.15 },
     druidManaPos = nil,
     druidManaAnchor = "PlayerFrame", druidManaAnchorPoint = "TOP", druidManaAnchorRelPoint = "BOTTOM",
     druidManaX = 0, druidManaY = -2,

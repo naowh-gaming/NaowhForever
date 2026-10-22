@@ -3,7 +3,8 @@
 -- mana on the bar and in its text, marks the cost of shifting back and counts the shifts left,
 -- warns below a shift, and runs the five second rule after a spell that costs mana. The shift cost
 -- hangs off the end of the fill whether the mana is secret or not, and stays through a move or a
--- new texture. With the mana secret it never compares it: shifts left and the warning edge go.
+-- new texture, and the mana still missing for a shift shows in red up to the cost. With the mana
+-- secret it never compares it: only shifts left goes.
 
 local Load = dofile("Tools/regression/load_files.lua")
 local TocFiles = dofile("Tools/regression/toc_files.lua")
@@ -210,15 +211,23 @@ local function Point(w, name)
     return w.points[1] ~= nil and w.points[1][1] == name
 end
 
+local function All(kind, parent)
+    local out = {}
+    for _, w in ipairs(registry) do
+        if w.kind == kind and w.parent == parent then out[#out + 1] = w end
+    end
+    return out
+end
+
 local function Bar(env)
     local holder = env.Named("NaowhForeverDruidMana")
     local bar = Find("StatusBar", holder, function(w) return w.frameName == nil end)
-    local clip = Find("Frame", bar)
-    local over = Find("Frame", bar, function(w) return w ~= clip end)
-    local cost = Find("Texture", clip)
+    local frames = All("Frame", bar)
+    local clip, miss, over = frames[1], frames[2], frames[3]
+    local costs, misses = All("Texture", clip), All("Texture", miss)
     return {
-        holder = holder, bar = bar, cost = cost,
-        tick = Find("Texture", clip, function(w) return w ~= cost end), spark = Find("Texture", over),
+        holder = holder, bar = bar, cost = costs[1], tick = costs[2],
+        missClip = miss, missing = misses[1], missTick = misses[2], spark = Find("Texture", over),
         left = Find("FontString", over, function(w) return Point(w, "LEFT") end),
         right = Find("FontString", over, function(w) return Point(w, "RIGHT") end),
         info = Find("FontString", holder, function(w) return Point(w, "TOPLEFT") end),
@@ -251,13 +260,18 @@ do
         "hanging off the end of the fill")
     Check(b.tick.points[1][2] == b.cost and b.tick.points[1][3] == "LEFT", "with the line where your mana would land")
     Check(b.info.text == "2 shifts left", "and the shifts left are counted")
-    Check(b.holder.border.color[1] == 0, "with mana for a shift, no warning")
+    Check(b.missClip.points[1][2] == b.bar.fill and b.missClip.points[1][3] == "TOPRIGHT"
+        and b.missClip.points[2][2] == b.bar and b.missClip.points[2][3] == "BOTTOMRIGHT",
+        "the missing mana is clipped from the end of the fill to the end of the bar")
+    Check(b.missing.shown and math.abs(b.missing.w - 218 * 340 / 1639) < 0.01 and b.missing.points[1][2] == b.bar,
+        "inside it, red from the start of the bar to the cost")
+    Check(b.missTick.points[1][2] == b.missing and b.missTick.points[1][3] == "RIGHT", "with its line at the cost")
     Check(b.spark.shown, "the regen spark shows outside the five second rule")
 
     env.game.mana = 230
     env.Fire("UNIT_POWER_UPDATE", "player", "MANA")
     Check(b.info.text == "0 shifts left", "below a shift, none left")
-    Check(b.holder.border.color[1] > 0.9, "and the edge warns")
+    Check(b.missing.shown and b.cost.shown, "the missing mana and the cost both stay up for the clip to cut")
 
     env.game.mana = 400
     env.Fire("UNIT_POWER_UPDATE", "player", "ENERGY")
@@ -277,7 +291,7 @@ do
     Check(b.left.secretText and b.right.secretText, "and into the text, unread")
     Check(b.info.text == "", "shifts left needs a readable mana")
     Check(b.cost.shown and math.abs(b.cost.w - 218 * 340 / 1639) < 0.01, "the shift cost shows all the same")
-    Check(b.holder.border.color[1] == 0, "but no warning edge, which would need a comparison")
+    Check(b.missing.shown and math.abs(b.missing.w - 218 * 340 / 1639) < 0.01, "and so does the missing mana")
     Check(b.spark.shown, "the spark still shows")
 end
 
@@ -302,7 +316,8 @@ do
     Check(not b.holder.shown, "caster form is off by default")
     env.NaowhForever.DruidManaSettings.Set("showCaster", true)
     env.Flush()
-    Check(b.holder.shown and not b.cost.shown and not b.tick.shown, "on, it shows with no shift cost")
+    Check(b.holder.shown and not b.cost.shown and not b.tick.shown and not b.missing.shown,
+        "on, it shows with no shift cost")
     env.game.combat = false
     env.Fire("PLAYER_REGEN_ENABLED")
     env.NaowhForever.DruidManaSettings.Set("combatOnly", false)
@@ -323,8 +338,11 @@ do
     Check(b.cost.shown, "and after an anchor change")
     ns.DruidManaSettings.Set("texture", "Smooth")
     env.Flush()
-    Check(b.cost.points[1][2] == b.bar.fill and b.spark.points[1][2] == b.bar.fill,
-        "a new texture moves the segment and the spark onto the new fill")
+    Check(b.cost.points[1][2] == b.bar.fill and b.spark.points[1][2] == b.bar.fill
+        and b.missClip.points[1][2] == b.bar.fill, "a new texture moves the segments and the spark onto the new fill")
+    ns.DruidManaSettings.Set("warnLow", false)
+    env.Flush()
+    Check(not b.missing.shown and not b.missTick.shown and b.cost.shown, "Show Missing Mana off hides only the red")
 end
 
 -- The five second rule.

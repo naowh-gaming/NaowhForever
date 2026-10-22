@@ -4,8 +4,8 @@ A druid's mana while shapeshifted, as a bar under the player frame or wherever i
 the bar a thin line runs down the five second rule after a spell that costs mana, with its
 countdown, and a soft spark pulses at the end of the fill while mana is coming back. The end of
 the fill shows what shifting back into the current form would take, with a line where the mana
-would land, a line under the bar how many shifts are left, and the bar's edge takes the shift
-cost color when there is not enough mana for one. Its settings page
+would land, and a line under the bar how many shifts are left. Below one shift, the mana still
+needed shows in red after the fill, up to a red line where a shift becomes affordable. Its settings page
 is Druid Mana/Settings. Off by default (`enabled` in the `druidMana` store, from
 `ns.FEATURES.druidMana`), and inert for every other class.
 
@@ -36,9 +36,11 @@ NaowhForever_Combat/DruidMana/
   whole fill and the line falls outside the bar. The cost is the current form's spell cost
   (`GetShapeshiftFormInfo`'s spell ID through `C_Spell.GetSpellPowerCost`), so talents that lower
   it are counted.
-- What needs a comparison (shifts left, the edge turning to the shift cost color) shows only while
-  the mana is readable.
-- The segment and the spark are anchored to the fill each time the bar is styled, after its
+- The missing mana is drawn the same way: a red segment from the start of the bar to the cost,
+  with its line at the cost, inside a frame clipped from the end of the fill to the end of the
+  bar. Only the part between the mana and the cost shows, and nothing once the mana reaches it.
+- Shifts left needs a comparison, so it shows only while the mana is readable.
+- The segments and the spark are anchored to the fill each time the bar is styled, after its
   texture is set.
 - The game has no call for the five second rule or the regen tick. The rule starts on
   `UNIT_SPELLCAST_SUCCEEDED` for a spell that costs mana (shifting itself does), and the line is a

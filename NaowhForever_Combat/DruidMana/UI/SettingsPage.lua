@@ -57,7 +57,9 @@ page:Card({
         Group("Colors"),
         { key = "manaColor", label = "Mana Color", colour = true, needs = Enabled, why = OFF },
         { key = "warnColor", label = "Shift Cost Color", colour = true, needs = Enabled, why = OFF,
-          help = "The end of the bar a shift would take, and the edge when you can't afford one." },
+          help = "The end of the bar a shift would take." },
+        { key = "missingColor", label = "Missing Mana Color", colour = true, needs = Enabled, why = OFF,
+          help = "The mana you still need for a shift." },
     },
 })
 
@@ -86,7 +88,7 @@ page:Card({
         { key = "shiftMark", label = "Shift Cost on the Bar", toggle = true, needs = Needs("powershift"),
           why = NEEDS_SHIFTING, help = "Shows what shifting back would take off the end of your mana." },
         { key = "shiftsLeft", label = "Shifts Left", toggle = true, needs = Needs("powershift"), why = NEEDS_SHIFTING },
-        { key = "warnLow", label = "Warn Below a Shift", toggle = true, needs = Needs("powershift"), why = NEEDS_SHIFTING,
-          help = "The bar's edge turns to the shift cost color when you can't afford to shift back." },
+        { key = "warnLow", label = "Show Missing Mana", toggle = true, needs = Needs("powershift"),
+          why = NEEDS_SHIFTING, help = "Below a shift, the mana you still need shows in red after your mana." },
     },
 })
