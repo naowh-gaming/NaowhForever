@@ -42,11 +42,13 @@ Demoralizing Shout and Thunder Clap start on.
 - The container has no way to take a slot away, so every debuff gets its slot when the bar is
   built and a debuff switched off has its slot disabled.
 - A slot's frame denies addon code while auras are secret, so the bar is built, laid out and
-  restyled only out of combat with auras readable; a change made in combat waits for
-  `PLAYER_REGEN_ENABLED`.
+  restyled only out of combat with auras readable; a change made meanwhile waits for
+  `PLAYER_REGEN_ENABLED` or `ADDON_RESTRICTION_STATE_CHANGED`, since auras can stay secret out of
+  combat (an encounter, a battleground).
 - Without an enemy target (or outside a raid or group, by Show) the bar fades out by alpha, which
   is safe in combat. Where the game will not say whether the target is hostile (a secret value),
-  it stays.
+  it stays. A target turning hostile or friendly (`UNIT_FACTION`, `UNIT_FLAGS`) fades it too.
+- The slot buttons take no mouse, so a faded bar never catches a click or shows a tooltip.
 
 ## Checking
 

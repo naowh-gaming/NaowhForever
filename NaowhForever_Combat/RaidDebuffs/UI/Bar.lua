@@ -14,6 +14,7 @@ local UNIT = "target"
 local FRAME_NAME = "NaowhForeverRaidDebuffs"
 local MOVER_LABEL = "Raid Debuffs"
 local CARD = RD.PAGE .. ":bar"
+local FADES = { GROUP_ROSTER_UPDATE = true, UNIT_FACTION = true, UNIT_FLAGS = true }
 
 local Icon = ns.Shared.AuraIcon(S, St)
 RD.Icon = Icon
@@ -28,6 +29,7 @@ local function InitButton(button)
     button:SetIcon(button.icon)
     button:SetDurationCooldown(button.swipe)
     button:SetApplicationCount(button.countText)
+    button:EnableMouse(false)
 end
 
 local function NewCell(entry)
@@ -130,6 +132,7 @@ local function Apply()
     end
     if InCombatLockdown() or C_Secrets.ShouldAurasBeSecret() then
         events:RegisterEvent("PLAYER_REGEN_ENABLED")
+        events:RegisterEvent("ADDON_RESTRICTION_STATE_CHANGED")
         return
     end
     events:UnregisterAllEvents()
@@ -142,6 +145,8 @@ local function Apply()
     holder.mover:SetShown(unlocked == true)
     events:RegisterEvent("PLAYER_TARGET_CHANGED")
     events:RegisterEvent("GROUP_ROSTER_UPDATE")
+    events:RegisterUnitEvent("UNIT_FACTION", UNIT)
+    events:RegisterUnitEvent("UNIT_FLAGS", UNIT)
     Fade()
 end
 
@@ -150,7 +155,7 @@ local function OnEvent(_, event)
         container:UpdateAllAuras()
         return Fade()
     end
-    if event == "GROUP_ROSTER_UPDATE" then return Fade() end
+    if FADES[event] then return Fade() end
     Apply()
 end
 

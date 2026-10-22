@@ -22,6 +22,8 @@ local function Frame(kind)
     function f:SetAllPoints(other) self.over = other end
     function f:SetScript(k, fn) self[k] = fn end
     function f:RegisterEvent(e) self.events[e] = true end
+    function f:RegisterUnitEvent(e, unit) self.events[e] = unit end
+    function f:EnableMouse(on) self.mouse = on end
     function f:UnregisterEvent(e) self.events[e] = nil end
     function f:UnregisterAllEvents() self.events = {} end
     function f:SetAlpha(a) self.alpha = a end
@@ -172,6 +174,7 @@ do
     local sunder = container.slots.sunderArmor
     Check(sunder.filter == "HARMFUL" and sunder.ids[11597], "a slot matches the debuff's spell IDs")
     Check(sunder.frame.aura and sunder.frame.icon and sunder.frame.over, "its button is styled and laid over its cell")
+    Check(sunder.frame.mouse == false, "its button lets the mouse through, faded or not")
     Check(sunder.enabled and not container.slots.huntersMark.enabled, "picked debuffs are on, the rest off")
     local cell = sunder.frame.over
     Check(cell.shown and cell.x == 0, "the first picked debuff sits at the start")
@@ -203,6 +206,12 @@ do
     env.hostile = "secret"
     env.Fire("PLAYER_TARGET_CHANGED")
     Check(holder.alpha == 1, "a target the game will not say about keeps it")
+    env.hostile = false
+    env.Fire("UNIT_FACTION", "target")
+    Check(holder.alpha == 0, "a target turning friendly fades it without a new target")
+    env.hostile = true
+    env.Fire("UNIT_FLAGS", "target")
+    Check(holder.alpha == 1, "and turning hostile brings it back")
     env.hostile, env.inRaid = true, false
     env.Fire("GROUP_ROSTER_UPDATE")
     Check(holder.alpha == 0, "outside a raid it fades")
@@ -216,9 +225,11 @@ do
     env.secret = true
     ns.RaidDebuffSettings.Set("enabled", true)
     Check(env.Find("AuraContainer") == nil, "while auras are secret the bar is not built")
-    env.secret = false
     env.Fire("PLAYER_REGEN_ENABLED")
-    Check(env.Find("AuraContainer") ~= nil, "it is built once they are readable")
+    Check(env.Find("AuraContainer") == nil, "a fight ending with auras still secret builds nothing")
+    env.secret = false
+    env.Fire("ADDON_RESTRICTION_STATE_CHANGED")
+    Check(env.Find("AuraContainer") ~= nil, "it is built once the restriction lifts")
 
     env.combat = true
     ns.RaidDebuffSettings.Set("debuff_huntersMark", true)
