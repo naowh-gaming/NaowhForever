@@ -42,15 +42,18 @@ NaowhForever_Combat/DruidMana/
 - Shifts left needs a comparison, so it shows only while the mana is readable.
 - The segments and the spark are anchored to the fill each time the bar is styled, after its
   texture is set.
-- The game has no call for the five second rule or the regen tick. The rule starts on
-  `UNIT_SPELLCAST_SUCCEEDED` for a spell that costs mana (shifting itself does), and the line is a
+- The game has no call for the five second rule or the regen tick. The rule starts when your
+  mana goes down (shifting itself spends it), so a free Clearcasting cast does not start it.
+  With the mana secret it cannot be compared, and the rule starts instead on
+  `UNIT_SPELLCAST_SUCCEEDED` for a spell that costs mana. The line is a
   `Parts.TimerLine` the client runs down by itself. The spark pulses every `TICK_SECONDS` (2) by an
   animation; it marks that mana is coming back, not the exact tick.
 - The form decides whether the bar shows (`GetShapeshiftFormID`): Cat 1, Bear 5 and Dire Bear 8,
-  Travel 3, Aquatic 4; any other form, Moonkin among them, counts as caster form.
+  Travel 3, Aquatic 4, Moonkin 31; any other form counts as caster form.
 - It pins to a unit frame through `Shared.Anchor`, under `PlayerFrame` by default, and moves only
   out of combat. Dragging it in the HUD Editor puts it back on the screen.
-- Power events are registered only while the bar is shown; a non-druid registers nothing.
+- `UNIT_POWER_UPDATE` is registered while the module is on, for the five second rule;
+  `UNIT_MAXPOWER` only while the bar is shown. A non-druid registers nothing.
 
 ## Checking
 

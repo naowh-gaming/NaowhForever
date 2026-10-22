@@ -56,8 +56,9 @@ local function Widget(kind, parent)
     function f:CreateFontString() return Widget("FontString", self) end
     function f:CreateAnimationGroup()
         local group = Widget("AnimationGroup", self)
-        function group.Play(g) g.playing = true end
+        function group.Play(g) g.playing = true; g.plays = (g.plays or 0) + 1 end
         function group.Stop(g) g.playing = false end
+        function group.IsPlaying(g) return g.playing == true end
         function group.CreateAnimation(g) return Widget("Animation", g) end
         return group
     end
@@ -134,6 +135,7 @@ local function Fixture(saved, game)
         ShowUnlockMode = none, HideUnlockMode = none, THEME = { bg = { r = 0, g = 0, b = 0 } } }
     ns.Solid = function(parent) return parent:CreateTexture() end
     ns.PixelInset = none
+    ns.OnePixel = function() return game.px or 1 end
     ns.Font = function(parent) return parent:CreateFontString() end
     ns.Border = function(frame)
         local b = {}
@@ -267,6 +269,10 @@ do
         "inside it, red from the start of the bar to the cost")
     Check(b.missTick.points[1][2] == b.missing and b.missTick.points[1][3] == "RIGHT", "with its line at the cost")
     Check(b.spark.shown, "the regen spark shows outside the five second rule")
+    local pulse = b.spark.pulse
+    local plays = pulse.plays
+    env.Fire("UNIT_POWER_UPDATE", "player", "MANA")
+    Check(pulse.plays == plays, "a mana update leaves a running pulse alone")
 
     env.game.mana = 230
     env.Fire("UNIT_POWER_UPDATE", "player", "MANA")
@@ -299,7 +305,8 @@ end
 do
     local env = Fixture({ enabled = true }, Game({ combat = false }))
     local b = Bar(env)
-    Check(not b.holder.shown and not env.Listening("UNIT_POWER_UPDATE"), "out of combat it waits, unlistened")
+    Check(not b.holder.shown and not env.Listening("UNIT_MAXPOWER"), "out of combat it waits, unlistened")
+    Check(env.Listening("UNIT_POWER_UPDATE"), "but follows your mana for the five second rule")
     Check(env.placed == 1, "out of combat it is placed at once")
     env.game.combat = true
     env.Fire("PLAYER_REGEN_DISABLED")
@@ -307,6 +314,15 @@ do
     env.game.form, env.game.formIndex, env.game.formSpell = 3, 4, 783
     env.Fire("UPDATE_SHAPESHIFT_FORM")
     Check(not b.holder.shown, "Travel Form is off by default")
+    env.game.form, env.game.formIndex, env.game.formSpell = 31, 5, nil
+    env.Fire("UPDATE_SHAPESHIFT_FORM")
+    env.NaowhForever.DruidManaSettings.Set("showCaster", true)
+    env.Flush()
+    Check(not b.holder.shown, "Moonkin Form has its own toggle, off by default, apart from caster form")
+    env.NaowhForever.DruidManaSettings.Set("showCaster", false)
+    env.NaowhForever.DruidManaSettings.Set("showMoonkin", true)
+    env.Flush()
+    Check(b.holder.shown, "and shows when it is on")
     env.game.form, env.game.formIndex, env.game.formSpell = 8, 1, BEAR_SPELL
     env.Fire("UPDATE_SHAPESHIFT_FORM")
     Check(b.holder.shown and math.abs(b.cost.w - 218 * 380 / 1639) < 0.01,
@@ -349,19 +365,62 @@ end
 do
     local env = Fixture({ enabled = true }, Game())
     local b = Bar(env)
-    env.Fire("UNIT_SPELLCAST_SUCCEEDED", "player", "guid", CLAW)
-    Check(b.line.running == nil, "an energy ability does not start it")
     env.Fire("UNIT_SPELLCAST_SUCCEEDED", "player", "guid", REJUV)
-    Check(b.line.running and b.line.running[2] == 5, "a spell that costs mana runs it for five seconds")
+    env.Fire("UNIT_POWER_UPDATE", "player", "MANA")
+    Check(b.line.running == nil, "a spell that spent no mana, like a Clearcasting one, does not start it")
+    env.game.mana = 1100
+    env.Fire("UNIT_POWER_UPDATE", "player", "MANA")
+    Check(b.line.running == nil, "mana coming back does not start it")
+    env.game.mana = 980
+    env.Fire("UNIT_POWER_UPDATE", "player", "MANA")
+    Check(b.line.running and b.line.running[2] == 5, "spending mana runs it for five seconds")
     Check(not b.spark.shown, "the spark waits")
-    env.Fire("UNIT_SPELLCAST_SUCCEEDED", "player", "guid", SECRET)
-    Check(b.line.running ~= nil, "a secret spell is passed over")
     env.Expire()
     Check(b.line.running == nil and b.spark.shown, "when it ends the line stops and the spark is back")
     env.NaowhForever.DruidManaSettings.Set("fiveSecond", false)
     env.Flush()
-    env.Fire("UNIT_SPELLCAST_SUCCEEDED", "player", "guid", REJUV)
+    env.game.mana = 900
+    env.Fire("UNIT_POWER_UPDATE", "player", "MANA")
     Check(b.line.running == nil and not b.line.shown and not b.spark.shown, "switched off, none of it")
+end
+
+-- The five second rule with secret mana: it goes by the spell instead.
+do
+    local env = Fixture({ enabled = true }, Game({ mana = SECRET, pct = SECRET }))
+    local b = Bar(env)
+    env.Fire("UNIT_POWER_UPDATE", "player", "MANA")
+    Check(b.line.running == nil, "a secret mana is never compared")
+    env.Fire("UNIT_SPELLCAST_SUCCEEDED", "player", "guid", CLAW)
+    Check(b.line.running == nil, "an energy ability does not start it")
+    env.Fire("UNIT_SPELLCAST_SUCCEEDED", "player", "guid", REJUV)
+    Check(b.line.running and b.line.running[2] == 5, "a spell that costs mana runs it")
+    env.Expire()
+    env.Fire("UNIT_SPELLCAST_SUCCEEDED", "player", "guid", SECRET)
+    Check(b.line.running == nil, "a secret spell is passed over")
+end
+
+-- Turning it off in the HUD Editor.
+do
+    local env, ns = Fixture({ enabled = true }, Game())
+    local b = Bar(env)
+    ns.ShowUnlockMode()
+    Check(b.holder.shown and b.holder.mover.shown, "the HUD Editor shows the bar and its mover")
+    ns.DruidManaSettings.Set("enabled", false)
+    env.Flush()
+    Check(not b.holder.shown and not b.holder.mover.shown and not env.Listening(),
+        "turned off with the editor open, it goes")
+    ns.DruidManaSettings.Set("enabled", true)
+    env.Flush()
+    Check(b.holder.mover.shown, "back on with the editor still open, the mover returns")
+    ns.HideUnlockMode()
+    Check(not b.holder.mover.shown, "and closing the editor hides it")
+end
+
+-- The shift cost sits inside the one-pixel border at any scale.
+do
+    local env = Fixture({ enabled = true }, Game({ px = 0.75 }))
+    local b = Bar(env)
+    Check(math.abs(b.cost.w - (220 - 1.5) * 340 / 1639) < 0.01, "the inner width is the bar less one pixel a side")
 end
 
 -- Turning it off.

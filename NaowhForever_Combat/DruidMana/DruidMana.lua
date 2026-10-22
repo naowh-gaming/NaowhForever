@@ -5,7 +5,8 @@ local F = ns.FEATURES.druidMana
 
 local S = ns.UI.ModuleSettings("druidMana", {
     enabled = F.enabled,
-    showCat = true, showBear = true, showTravel = false, showAquatic = false, showCaster = false,
+    showCat = true, showBear = true, showTravel = false, showAquatic = false, showMoonkin = false,
+    showCaster = false,
     combatOnly = true,
     width = 220, height = 16, text = "both",
     font = "", textSize = 12, outline = "OUTLINE", texture = "Naowh Gradient", bgAlpha = 0.6,

@@ -19,18 +19,18 @@ local FRAME_NAME = "NaowhForeverDruidMana"
 local MOVER_LABEL = "Druid Mana"
 local CARD = DM.PAGE .. ":bar"
 local SPARK_TEX = "Interface\\CastingBar\\UI-CastingBar-Spark"
-local CAT_FORM, TRAVEL_FORM, AQUATIC_FORM, BEAR_FORM, DIRE_BEAR_FORM = 1, 3, 4, 5, 8
+local CAT_FORM, TRAVEL_FORM, AQUATIC_FORM, BEAR_FORM, DIRE_BEAR_FORM, MOONKIN_FORM = 1, 3, 4, 5, 8, 31
 local FORMS = { [CAT_FORM] = "showCat", [BEAR_FORM] = "showBear", [DIRE_BEAR_FORM] = "showBear",
-    [TRAVEL_FORM] = "showTravel", [AQUATIC_FORM] = "showAquatic" }
+    [TRAVEL_FORM] = "showTravel", [AQUATIC_FORM] = "showAquatic", [MOONKIN_FORM] = "showMoonkin" }
 local BASE_EVENTS = { "UPDATE_SHAPESHIFT_FORM", "PLAYER_REGEN_DISABLED", "PLAYER_REGEN_ENABLED", "SPELLS_CHANGED",
-    "UNIT_DISPLAYPOWER", "UNIT_SPELLCAST_SUCCEEDED" }
-local SHOWN_EVENTS = { "UNIT_POWER_UPDATE", "UNIT_MAXPOWER" }
+    "UNIT_DISPLAYPOWER", "UNIT_SPELLCAST_SUCCEEDED", "UNIT_POWER_UPDATE" }
+local SHOWN_EVENTS = { "UNIT_MAXPOWER" }
 
 local TEXT_VALUES, TEXT_CURRENT, TEXT_PERCENT = "%d / %d", "%d", "%.0f%%"
 local TEXT_SHIFTS, TEXT_SHIFT = ns.L("%d shifts left"), ns.L("1 shift left")
 
 local holder, bar, costSeg, tick, missClip, missSeg, missTick, spark, left, right, line, countdown, info, bg
-local unlocked, inCombat, inFive, pendingPlace, pendingApply, fiveTimer, cost, curve
+local unlockActive, unlocked, inCombat, inFive, pendingPlace, pendingApply, fiveTimer, cost, curve, lastMana
 local events = CreateFrame("Frame")
 
 local Readable = DM.Readable
@@ -175,7 +175,7 @@ local function FormCost()
 end
 
 local function Inner()
-    return S.Get("width") - 2
+    return S.Get("width") - 2 * ns.OnePixel(bar)
 end
 
 local function PlaceCost()
@@ -224,7 +224,11 @@ local function Values()
     end
     local sparking = S.Get("fiveSecond") and S.Get("regenSpark") and not inFive and not (readable and cur >= max)
     spark:SetShown(sparking and true or false)
-    if sparking then spark.pulse:Play() else spark.pulse:Stop() end
+    if not sparking then
+        spark.pulse:Stop()
+    elseif not spark.pulse:IsPlaying() then
+        spark.pulse:Play()
+    end
 end
 
 local function SetEvents(list, on)
@@ -265,14 +269,25 @@ local function StartFive()
     if holder:IsShown() then Values() end
 end
 
+local function OnMana()
+    local cur = UnitPower(PLAYER, MANA)
+    local spent = Readable(cur) and lastMana and cur < lastMana
+    lastMana = Readable(cur) and cur or nil
+    if spent and S.Get("fiveSecond") then
+        StartFive()
+    elseif holder:IsShown() then
+        Values()
+    end
+end
+
 local function OnSpellcast(spellID)
-    if S.Get("fiveSecond") and ManaCost(spellID) then StartFive() end
+    if S.Get("fiveSecond") and not Readable(UnitPower(PLAYER, MANA)) and ManaCost(spellID) then StartFive() end
 end
 
 local function Stop()
     events:UnregisterAllEvents()
     if fiveTimer then fiveTimer:Cancel() end
-    fiveTimer, inFive = nil, false
+    fiveTimer, inFive, lastMana = nil, false, nil
     if not holder then return end
     line:Stop()
     holder:Hide()
@@ -280,9 +295,12 @@ local function Stop()
 end
 
 local function Apply()
-    if not (DM.On() or unlocked) then return Stop() end
+    unlocked = unlockActive and DM.On()
+    if not DM.On() then return Stop() end
     if not holder then Build() end
     SetEvents(BASE_EVENTS, true)
+    local mana = UnitPower(PLAYER, MANA)
+    lastMana = Readable(mana) and mana or nil
     inCombat = UnitAffectingCombat(PLAYER) == true
     Style()
     Place()
@@ -293,7 +311,7 @@ end
 local function OnEvent(_, event, ...)
     if event == "UNIT_POWER_UPDATE" then
         local kind = select(2, ...)
-        if Readable(kind) and kind == MANA_TOKEN then Values() end
+        if Readable(kind) and kind == MANA_TOKEN then OnMana() end
     elseif event == "UNIT_MAXPOWER" then
         PlaceCost()
         Values()
@@ -323,12 +341,12 @@ local function OnSet(key)
 end
 
 local function OnUnlock()
-    unlocked = DM.On()
+    unlockActive = true
     Apply()
 end
 
 local function OnLock()
-    unlocked = false
+    unlockActive = false
     Apply()
 end
 

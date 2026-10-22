@@ -44,6 +44,7 @@ page:Card({
         { key = "showBear", label = "Bear Form", toggle = true, needs = Enabled, why = OFF },
         { key = "showTravel", label = "Travel Form", toggle = true, needs = Enabled, why = OFF },
         { key = "showAquatic", label = "Aquatic Form", toggle = true, needs = Enabled, why = OFF },
+        { key = "showMoonkin", label = "Moonkin Form", toggle = true, needs = Enabled, why = OFF },
         { key = "showCaster", label = "Caster Form", toggle = true, needs = Enabled, why = OFF,
           help = "Also shows it when you are not shapeshifted." },
         { key = "combatOnly", label = "Only in Combat", toggle = true, needs = Enabled, why = OFF },
