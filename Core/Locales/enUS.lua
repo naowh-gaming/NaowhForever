@@ -7353,3 +7353,6 @@ L["Extra Bar 2"] = true
 L["Capture Other Addons' Scans"] = true
 L["Also keeps the prices from full auction house scans that other addons start, such as Auctionator or TSM."] = true
 L["With the Gamepad interface style, the game's own recipe window is used."] = true
+L["Minimap Node Icons"] = true
+L["Shows what each tracked herb and vein gives on the minimap, ringed red if you can't gather it."] = true
+L["How big each node's picture is on the minimap."] = true

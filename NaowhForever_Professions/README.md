@@ -16,7 +16,8 @@ NaowhForever_Professions/
   Professions.xml      every file, in load order
   Professions.lua      settings (ns.ProfessionSettings), the module table (ns.Professions, P) and
                        the window's shared state (P.State)
-  Constants.lua        the numbers several files share: AH timeouts, the craft cap, coins, NPC rows (P.C)
+  Constants.lua        the numbers several files share: AH timeouts, the craft cap, coins, NPC rows,
+                       the Find spells and gathering skill-up steps (P.C)
   Data/
     RecipeData.lua     where each recipe, rank and trainer is (ns.RecipeData), by hand from Wowhead Forever;
                        each recipe's yellow and grey skill from Tools/build/skill_thresholds.py
@@ -95,31 +96,48 @@ Each layer uses only the ones above it, or reads a later one's table at call tim
   Points that hit the same name and touch become one node at their middle. The soft cursor is on
   only while probing, and a scan waits while the real mouse is over the minimap, so the game's
   own tooltip there is never moved.
+- A scan is about 350 probes, more on a bigger minimap, and each one builds a tooltip table, so it
+  does not run all the time: once Find Herbs or Find Minerals is tracked, then again after
+  `RESCAN_SECONDS` (5) or as soon as the player is `RESCAN_YARDS` (20) from where the last one ran.
+  Its OnUpdate is set only while a Find is tracked (`MINIMAP_UPDATE_TRACKING`), so the feature costs
+  nothing while off, or while on with nothing tracked.
 - The grid is 7 minimap units apart, small enough that every dot is hit at least once. Two nodes
   of the same name close enough for their dots to touch show as one icon between them.
 - A grid scan alone puts a node only near its dot: which grid points land on the dot changes as the
   player moves, so an icon placed fresh at every scan jumped a few pixels each half second. Each node
   is kept instead: a later scan's find of the same name within 12 units is the same node, and leaves
   its icon where it is. A new node gets a fine probe, one unit apart across its dot and then down it,
-  and its icon goes on the middle of that; every fourth scan probes it again.
-- Between scans each icon follows the player: a node is kept in yards on the current map
-  (`C_Map.GetPlayerMapPosition` and the map's size), and turned with the player's facing when Rotate
-  Minimap is on. A new map or zone clears the icons and scans again. The icons are not snapped to
-  the pixel grid, so they glide with the minimap instead of stepping a pixel at a time.
+  and its icon goes on the middle of that; a node found again is not probed again.
+- A node is kept in yards on the current map (`C_Map.GetPlayerMapPosition` and `GetMapWorldSize`), and
+  `Parts.MinimapLayer` (Shared/UI/MinimapPins.lua) places the icons, as it does Glimmer's: they move
+  only while the player moves or a rotating minimap turns. A new map or zone clears the icons and scans
+  again. With no map position, as in an instance, nothing is scanned and no icons show. The icons are
+  not snapped to the pixel grid, so they glide with the minimap instead of stepping a pixel at a time.
 - The game's own dot cannot be hidden: Forever's minimap has no `SetBlipTexture` or any other way to
   change one kind of blip (its `MinimapFrameAPI` documentation, build 1.60.1.70450, lists only
   `SetIconScale`, which sizes every blip), and the client does not read local copies of its art. So
   the icon covers the dot instead, as far as its size allows: Icon Size goes from 10 to 24 (12 by
   default), and below about 18 a sliver of the dot can show round it (at 14 it did, at 10 more). The
   small white arrow the game draws beside a node higher or lower than the player can also peek out.
-- It does not scan in combat; the icons it has keep following. Node names are matched in English:
-  the minimap gives only the name, so `Data/GatherNodes.lua` is keyed by it. Each node's skill is
-  Glimmer's (`Tools/build/glimmer_nodes.py`, from Wowhead Forever); each item ID is the game's own
-  `ItemSparse` row of that name (Copper Ore for Copper Vein). Chunk of Amber has no item there, so
-  it shows the Find Minerals icon.
-- The skill compared is the profession's rank plus its `skillModifier`, as gathering checks it.
-  The tooltip line is red below the node's skill, then orange, yellow, green and grey at 25, 50 and
-  100 over it, as Glimmer colours it.
+- With Glimmer's Minimap Icons on as well, a live node is drawn only by Node Icons: Glimmer leaves out
+  its icon for a spot within `COVER_YARDS` (8) of one (`ns.NodeIconAt`, and `ns.NodeIconsChanged` when
+  the live nodes change), so one node never shows both. Spots with nothing up keep Glimmer's ring.
+  Node Icons wins because it shows what is up now, over the dot Glimmer leaves open for it.
+- It does not scan in combat; the icons it has stay. The minimap tooltip names a node in the client's
+  language and the locale files have no node names, so `Data/GatherNodes.lua` is keyed by the English
+  name and Minimap Node Icons works only on an English client (`enUS`, `enGB`). On any other its card is
+  not shown and it stays off, even with a profile that has it on, so it never looks on while doing nothing.
+- `Data/GatherNodes.lua` repeats Glimmer's herb and vein names and skills (`Tools/build/glimmer_nodes.py`,
+  from Wowhead Forever) instead of reading `ns.Glimmer.NODES`: Glimmer is in Quality of Life, which
+  Professions does not depend on, and its table is keyed by object ID while the minimap gives only a
+  name. `test-node-icons.lua` checks the two match. Each item ID is the game's own `ItemSparse` row of
+  that name (Copper Ore for Copper Vein). Chunk of Amber has no item there, so it shows the Find
+  Minerals icon.
+- The skill compared is the profession's rank plus its `skillModifier`: gear, enchant and racial bonuses
+  count toward a node's requirement, and the game's own rank bar shows them as part of the skill.
+  Glimmer compares the same. The tooltip line is red below the node's skill, then orange, yellow, green
+  and grey at `SKILL_ORANGE`, `SKILL_YELLOW` and `SKILL_GREEN` (25, 50 and 100) over it, as Glimmer
+  colours it. These and `FIND_SPELL` are in `Constants.lua`; Glimmer's own are in QoL, out of reach.
 - Skill-up Thresholds is off by default. It creates its line only when an enabled recipe pane first
   needs it. Selection and skill updates use the existing redraw path; this feature adds no events,
   hooks, timers, route planning or polling.

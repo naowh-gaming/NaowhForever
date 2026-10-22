@@ -1,7 +1,7 @@
 -- NodeScan.lua: the herbs and veins the minimap's tracking dots show, read from its tooltip over a grid of points, and the skill each needs (P.NodeScan).
 local ns = _G.NaowhForever
 
-local GetMinimapMouseover = C_TooltipInfo and C_TooltipInfo.GetMinimapMouseover
+local GetMinimapMouseover = C_TooltipInfo.GetMinimapMouseover
 local GetProfessions, GetProfessionInfo = GetProfessions, GetProfessionInfo
 local floor = math.floor
 
@@ -19,6 +19,7 @@ local CODES = { "|c%x%x%x%x%x%x%x%x", "|r", "|T.-|t", "|A.-|a" }
 local LINE_PART = "[^\n]+"
 local TRIM = "^%s*(.-)%s*$"
 local CACHE_MAX = 200
+local ENGLISH_CLIENTS = { enUS = true, enGB = true }
 
 local grid = {}
 local gridWidth, gridSquare
@@ -163,8 +164,7 @@ local Scan = {}
 P.NodeScan = Scan
 
 function Scan.Usable()
-    return GetMinimapMouseover ~= nil and Minimap ~= nil and Minimap.UpdateMouseoverAtPoint ~= nil
-        and Minimap.SetUsingSoftCursor ~= nil
+    return ENGLISH_CLIENTS[GetLocale()] == true
 end
 
 function Scan.Known(text)
