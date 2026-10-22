@@ -963,6 +963,10 @@ NaowhForever_QoL/
   timed on 2026-10-21; a ship is added once it has been ridden on Forever. Whether a server restart
   moves the ships is not known yet: if it does, the schedule is off until the next ride corrects it.
   A cycle 0.1 s off adds about 25 s a day, so a ride a day or more after its timing checks it.
+- A schedule row is used for `SCHEDULE_CYCLES` (300) cycles after its timing, about a day, and then
+  shows as out of date: past that, a cycle 0.1 s off has drifted by 30 s, the yellow-to-red warning
+  window. A row can carry its own measured `period`, used in place of the route's. A ride or shared
+  timing has no such limit, because each new one corrects it.
 - The world map's dock pins are the town map's Boats & Zeppelins (`TownMap.lua`), so the times show
   there only with both switched on and need no switch of their own. Each pin finds its stops by its
   map and labels (`<map>:<label>`, the key `TransportData.lua` uses); a label with no stop of its own
@@ -980,7 +984,12 @@ NaowhForever_QoL/
   `NaowhShips` prefix as its cycle start and measured cycle, and one heard there is kept the same
   way a ride is (`TransportTimes.Shared`): only when it is newer than yours, never from the future,
   and only with a cycle within `RIDE_BAND` of the ship's. A shared timing is never sent on, so a
-  bad one cannot spread past its first hop.
+  bad one cannot spread past its first hop: it is saved in the same ride row, marked `shared`, which
+  the countdown reads but `TransportTimes.Latest` (what is sent and answered) skips, and your own
+  next ride of that ship clears the mark.
+- Share Timings (`transportShare`) is on by default under the timers, as Share My Score is under the
+  Naowh Score. Off, nothing is sent or answered, and the `NaowhShips` prefix and its events are not
+  registered, so others' timings are not received either: hearing them needs the prefix.
 - The message carries the sender's GUID, checked with `ns.SenderIs` (Core/Senders.lua) as Naowh
   Score does. Forever is one world: the ships stand at the same place on every shard, so a timing
   from any shard is good, and the GUID's server number (which can differ between shards) is not

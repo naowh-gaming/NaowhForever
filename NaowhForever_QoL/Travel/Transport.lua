@@ -245,5 +245,9 @@ ns.TransportTimerTip = TimerTip
 
 ns.Shared.Settings.Page("QoL/Travel", S):Card({
     id = "transportTimers", name = "Boat and Zeppelin Timers", order = 13, switch = "transportTimers",
-    help = "Shows when boats and zeppelins come and go on the minimap and the world map's docks, timed as you, your group or your guild ride them.",
+    help = "Shows when boats and zeppelins come and go on the minimap and world map.",
+    rows = {
+        { key = "transportShare", label = "Share Timings", toggle = true,
+          help = "Sends the ships you time to your group and guild." },
+    },
 })

@@ -45,8 +45,12 @@ Check(not Times.Shared(SHIP, now - 100, nil, now), "the same timing twice is not
 local later = now - 100 + 3 * (ship.period + 0.4)
 Check(Times.Shared(SHIP, later, nil, now + 3 * ship.period) and Row(SHIP).base == now - 100 and Row(SHIP).at == later,
     "a fresher timing that fits the cycle keeps the first one to measure from")
-Check(Times.Latest(SHIP) == later and Times.Latest(OTHER) == nil, "the latest timing of each ship")
+Check(Times.Latest(SHIP) == nil and Row(SHIP).shared, "a shared timing is not yours to send")
+Check(Times.Dock(SHIP, 1, now + 3 * ship.period), "a shared timing still counts down")
 Check(Times.Ride(OTHER, now - 30) and timedNames[1] == OTHER, "your own ride is announced")
+Check(Times.Latest(OTHER) == now - 30 and not Row(OTHER).shared, "your own ride is yours to send")
+Check(Times.Ride(SHIP, later + ship.period + 1) and not Row(SHIP).shared and Times.Latest(SHIP) == later + ship.period + 1,
+    "your own ride over a shared timing makes it yours to send")
 account.transportRides = nil
 Times.OnTimed = nil
 
@@ -102,7 +106,7 @@ _G.hooksecurefunc = function(target, key, fn)
 end
 ns.Apply = function() end
 local listeners = {}
-local settings = { enabled = true, transportTimers = false, townMap = true, townTravel = true, townPinSize = 20 }
+local settings = { enabled = true, transportTimers = false, transportShare = false, townMap = true, townTravel = true, townPinSize = 20 }
 ns.QoLSettings = {
     Get = function(key) return settings[key] end,
     OnChange = function(fn) listeners[#listeners + 1] = fn end,
@@ -129,8 +133,16 @@ Check(#frames == 1 and #prefixes == 0 and #sent == 0, "default off: no event fra
 Check(Times.OnTimed == nil, "default off: rides are not announced")
 Check(ns.TransportTimer("1411:Zeppelin to Grom'gol", now) == nil, "default off: the map gets no times")
 Check(card.help:find("world map", 1, true), "the settings card says the times show on the world map too")
+Check(#card.help < 100, "the settings card's help is one short sentence")
+Check(card.rows and card.rows[1].key == "transportShare" and card.rows[1].toggle, "the card has a Share Timings toggle")
+Check(Read("Core/Settings.lua"):find("transportShare = true", 1, true), "sharing is on once the timers are")
 
 S.Set("transportTimers", true)
+Check(#prefixes == 0 and #sent == 0 and Times.OnTimed == nil, "sharing off: no prefix, no asks, rides are not announced")
+Times.Ride(SHIP, now - 60)
+Check(#sent == 0, "sharing off: a ride is not sent")
+account.transportRides = nil
+S.Set("transportShare", true)
 local share
 for _, f in ipairs(frames) do if f.events.CHAT_MSG_ADDON then share = f end end
 Check(share and prefixes[1] == "NaowhShips", "on: the sharing frame listens on its own prefix")
@@ -159,23 +171,36 @@ local function Hear(message, channel, guid)
     Event("CHAT_MSG_ADDON", "NaowhShips", message, channel, "Someone-Realm", guid)
 end
 local function Timing(guid, at, period, name) return ("T %s %.3f %.3f %s"):format(guid, at, period, name) end
+local Rides = account.transportRides.Realm
 Hear(Timing(MATE, now - 20, ns.TransportRoutes[OTHER].period, OTHER), "GUILD")
-Check(Times.Latest(OTHER) and math.abs(Times.Latest(OTHER) - (now - 20)) < 1e-3,
+Check(Rides[OTHER] and math.abs(Rides[OTHER].at - (now - 20)) < 1e-3,
     "a guild mate's timing of a ship you never timed is kept")
 Hear(Timing(OTHER_SHARD, now - 10, ns.TransportRoutes["The Purple Princess"].period, "The Purple Princess"), "PARTY")
-Check(Times.Latest("The Purple Princess"), "a timing from a player on another shard is kept: the ships are the same")
+Check(Rides["The Purple Princess"], "a timing from a player on another shard is kept: the ships are the same")
 trusted[MATE] = false
 Hear(Timing(MATE, now - 10, 0, "The Moonspray"), "GUILD")
-Check(Times.Latest("The Moonspray") == nil, "a sender who is not who the message says is not believed")
+Check(Rides["The Moonspray"] == nil, "a sender who is not who the message says is not believed")
 trusted[MATE] = true
 Hear(Timing(OWN, now - 10, 0, "The Moonspray"), "GUILD")
-Check(Times.Latest("The Moonspray") == nil, "your own message coming back is ignored")
+Check(Rides["The Moonspray"] == nil, "your own message coming back is ignored")
 Hear(Timing(MATE, now - 10, 0, "Nobody's Boat"), "GUILD")
 Event("CHAT_MSG_ADDON", "OtherAddon", Timing(MATE, now - 10, 0, "The Moonspray"), "GUILD", "Someone-Realm")
 Event("CHAT_MSG_ADDON", "NaowhShips", Timing(MATE, now - 10, 0, "The Moonspray"), "WHISPER", "Someone-Realm")
-Check(Times.Latest("The Moonspray") == nil, "other prefixes and whispers are ignored")
+Check(Rides["The Moonspray"] == nil, "other prefixes and whispers are ignored")
 
+sent = {}
+Times.Ride(OTHER, now - 5)
 sent, timers = {}, {}
+group = false
+Event("GROUP_ROSTER_UPDATE")
+group = true
+Event("GROUP_ROSTER_UPDATE")
+local rejoined = {}
+for _, message in ipairs(sent) do rejoined[#rejoined + 1] = message[2] end
+local joined = table.concat(rejoined, " ")
+Check(joined:find(SHIP, 1, true) and not joined:find("The Purple Princess", 1, true),
+    "joining a group sends your timings, not one you received")
+sent = {}
 Hear("Q", "PARTY")
 Hear("Q", "PARTY")
 Check(#timers == 1 and #sent == 0, "an ask is answered once, after a short random wait")
@@ -183,8 +208,9 @@ Hear(Timing(MATE, now, ns.TransportRoutes[OTHER].period, OTHER), "PARTY")
 timers[1]()
 local answered = {}
 for _, message in ipairs(sent) do answered[message[2]:match(" %d+%.%d+ %d+%.%d+ (.+)$")] = message[3] end
-Check(#sent == 2 and answered[SHIP] == "PARTY" and answered["The Purple Princess"] == "PARTY" and not answered[OTHER],
+Check(#sent == 1 and answered[SHIP] == "PARTY" and not answered[OTHER],
     "the answer leaves out a ship someone else already answered as fresh")
+Check(not answered["The Purple Princess"], "a received timing is not in the answer")
 sent, timers = {}, {}
 clock = 100
 Hear("Q", "GUILD")
@@ -307,6 +333,8 @@ local at = start + 10 * princess.period + princess.docks[1].leave - 5
 local left, kind = Times.Dock(PRINCESS, 1, at)
 Check(kind == "departure" and math.abs(left - 5) < 1e-6, "the schedule times a ship you never rode: " .. tostring(left))
 Check(Times.Latest(PRINCESS) == nil, "the schedule is not sent on as your own timing")
+left, kind = Times.Dock(PRINCESS, 1, start + 30 * 86400)
+Check(left == nil and kind == "expired", "a schedule too many cycles old is no longer used")
 Check(Times.Ride(PRINCESS, start + 20.5) and math.abs(Times.Dock(PRINCESS, 1, start + 21) - (princess.docks[1].leave - 0.5)) < 1e-6,
     "a ride of your own replaces the schedule")
 Check(ns.TransportTimer(princess.docks[2].stop, start + 21), "the world map shows the scheduled ship's other dock")

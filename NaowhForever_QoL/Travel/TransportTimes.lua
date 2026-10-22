@@ -5,6 +5,7 @@ local ARRIVAL, DEPARTURE = "arrival", "departure"
 local EMPTY = {}
 local SECONDS_PER_WEEK = 7 * ns.QoLConstants.SECONDS_PER_DAY
 local STALE_CYCLES = 6
+local SCHEDULE_CYCLES = 300
 local REFINE_BAND = 0.15
 local RIDE_MISS = 3
 local RIDE_BAND = 0.02
@@ -60,7 +61,7 @@ local function InBand(period, route)
     return math.abs(period - route.period) <= RIDE_BAND * route.period
 end
 
-local function Store(name, route, since, period)
+local function Store(name, route, since, period, shared)
     local rides = Rides()
     local row = rides[name]
     if row and since == row.at then return false end
@@ -72,10 +73,11 @@ local function Store(name, route, since, period)
                 row.period = measured
             end
             row.at = since
+            row.shared = shared
             return true
         end
     end
-    rides[name] = { base = since, at = since, period = period }
+    rides[name] = { base = since, at = since, period = period, shared = shared }
     return true
 end
 
@@ -92,21 +94,23 @@ function Times.Shared(name, at, period, now)
     if period and not InBand(period, route) then return false end
     local row = Rides()[name]
     if row and row.at >= at then return false end
-    return Store(name, route, at, period)
+    return Store(name, route, at, period, true)
 end
 
 function Times.Latest(name)
     local row = Rides()[name]
-    if row then return row.at, row.period end
+    if row and not row.shared then return row.at, row.period end
 end
 
 function Times.Dock(name, index, now)
     local route = ns.TransportRoutes[name]
-    local row = route and (Rides()[name] or (ns.TransportSchedule or EMPTY)[name])
+    local ride = route and Rides()[name]
+    local row = ride or route and (ns.TransportSchedule or EMPTY)[name]
     if not row then return nil, "new" end
     if now < row.at then return nil, "stale" end
     local dock = route.docks[index]
     local period = row.period or route.period
+    if not ride and now - row.at > SCHEDULE_CYCLES * period then return nil, "expired" end
     local phase = (now - row.at) % period
     if phase >= dock.arrive and phase < dock.leave then return dock.leave - phase, DEPARTURE end
     return (dock.arrive - phase) % period, ARRIVAL

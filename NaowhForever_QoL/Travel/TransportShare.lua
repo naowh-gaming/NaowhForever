@@ -24,7 +24,7 @@ local lastGuildAnswer
 local pending, answers = {}, {}
 
 local function On()
-    return S.Get("enabled") == true and S.Get("transportTimers") == true
+    return S.Get("enabled") == true and S.Get("transportTimers") == true and S.Get("transportShare") == true
 end
 
 local function GroupChannel()
@@ -151,7 +151,7 @@ local function Apply()
 end
 
 local function OnSetting(key)
-    if key == "enabled" or key == "transportTimers" then Apply() end
+    if key == "enabled" or key == "transportTimers" or key == "transportShare" then Apply() end
 end
 
 S.OnChange(OnSetting)

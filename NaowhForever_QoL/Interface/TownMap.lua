@@ -80,7 +80,7 @@ local PIN_ROWS = {
       tip = ns.L("Every graveyard's spirit healer, in towns and out in the world.") },
     { key = "townZoneLinks", text = ns.L("Zone Exits"), tip = ns.L("Click an exit to open the adjoining zone map.") },
     { key = "townTravel", text = ns.L("Boats & Zeppelins"),
-      tip = ns.L("Every dock and zeppelin tower; click one to open where it goes. With Boat and Zeppelin Timers on, each shows when its ship comes and goes.") },
+      tip = ns.L("Every dock and zeppelin tower; click one to open where it goes.") },
     { key = "townClass", text = ns.L("Class Trainers"), tip = ns.L("Your class's trainers only.") },
     { key = "townProfession", text = ns.L("Profession Trainers") },
     { key = "townBank", text = ns.L("Bank & Auction House") },
