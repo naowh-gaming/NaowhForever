@@ -56,8 +56,8 @@ page:Card({
             keys = { FontSize = "textSize" }, needs = Enabled, why = OFF }),
         Group("Colors"),
         { key = "manaColor", label = "Mana Color", colour = true, needs = Enabled, why = OFF },
-        { key = "warnColor", label = "Warning Color", colour = true, needs = Enabled, why = OFF,
-          help = "The bar's color while you have too little mana to shift back." },
+        { key = "warnColor", label = "Shift Cost Color", colour = true, needs = Enabled, why = OFF,
+          help = "The end of the bar a shift would take, and the edge when you can't afford one." },
     },
 })
 
@@ -83,10 +83,10 @@ page:Card({
     id = "shifting", name = "Powershifting", order = ORDER_SHIFTING, switch = "powershift",
     help = "What shifting back into your form costs, and how many times you can.",
     rows = {
-        { key = "shiftMark", label = "Shift Cost Mark", toggle = true, needs = Needs("powershift"), why = NEEDS_SHIFTING,
-          help = "A mark on the bar at what shifting back into your form costs." },
+        { key = "shiftMark", label = "Shift Cost on the Bar", toggle = true, needs = Needs("powershift"),
+          why = NEEDS_SHIFTING, help = "Shows what shifting back would take off the end of your mana." },
         { key = "shiftsLeft", label = "Shifts Left", toggle = true, needs = Needs("powershift"), why = NEEDS_SHIFTING },
         { key = "warnLow", label = "Warn Below a Shift", toggle = true, needs = Needs("powershift"), why = NEEDS_SHIFTING,
-          help = "The bar turns to the warning color when you can't afford to shift back." },
+          help = "The bar's edge turns to the shift cost color when you can't afford to shift back." },
     },
 })

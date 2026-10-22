@@ -12,7 +12,6 @@ DM.Style = setmetatable({
     INFO_GAP = 2,
     INFO_SIZE = 0.8,
     TICK_W = 2,
-    TICK_REACH = 3,
     SPARK_W = 6,
     SPARK_ALPHA = 0.8,
     SPARK_LOW = 0.2,

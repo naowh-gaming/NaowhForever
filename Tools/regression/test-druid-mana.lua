@@ -1,8 +1,9 @@
 -- Run with Lua 5.1 from the repository root: Druid Mana. Off, or for any class but druid, it builds
 -- nothing and listens to nothing. On, it shows in the forms picked (in combat by default), puts the
 -- mana on the bar and in its text, marks the cost of shifting back and counts the shifts left,
--- warns below a shift, and runs the five second rule after a spell that costs mana. With the mana
--- secret it never compares it: shifts left goes and the warning sits under the shift cost mark.
+-- warns below a shift, and runs the five second rule after a spell that costs mana. The shift cost
+-- hangs off the end of the fill whether the mana is secret or not, and stays through a move or a
+-- new texture. With the mana secret it never compares it: shifts left and the warning edge go.
 
 local Load = dofile("Tools/regression/load_files.lua")
 local TocFiles = dofile("Tools/regression/toc_files.lua")
@@ -37,6 +38,11 @@ local function Widget(kind, parent)
         self.fill = self.fill or Widget("Fill", self)
         return self.fill
     end
+    function f:SetStatusBarTexture(path)
+        self.fill = Widget("Fill", self)
+        self.fill.texture = path
+    end
+    function f:SetTexture(path) self.texture = path end
     function f:SetText(t) self.text = t end
     function f:SetFormattedText(fmt, ...)
         for i = 1, select("#", ...) do
@@ -209,10 +215,10 @@ local function Bar(env)
     local bar = Find("StatusBar", holder, function(w) return w.frameName == nil end)
     local clip = Find("Frame", bar)
     local over = Find("Frame", bar, function(w) return w ~= clip end)
-    local tick = Find("Texture", over)
+    local cost = Find("Texture", clip)
     return {
-        holder = holder, bar = bar, clip = clip, warn = Find("StatusBar", clip),
-        tick = tick, spark = Find("Texture", over, function(w) return w ~= tick end),
+        holder = holder, bar = bar, cost = cost,
+        tick = Find("Texture", clip, function(w) return w ~= cost end), spark = Find("Texture", over),
         left = Find("FontString", over, function(w) return Point(w, "LEFT") end),
         right = Find("FontString", over, function(w) return Point(w, "RIGHT") end),
         info = Find("FontString", holder, function(w) return Point(w, "TOPLEFT") end),
@@ -239,16 +245,19 @@ do
     Check(env.Listening("UNIT_POWER_UPDATE"), "while shown it follows your mana")
     Check(b.bar.value == 1016 and b.bar.max == 1639, "the bar holds your mana")
     Check(b.left.text == "1016 / 1639" and b.right.text == "62%", "the text says current / max and percent")
-    Check(b.tick.shown, "the shift cost is marked")
-    Check(math.abs(b.tick.points[1][4] - (220 - 2) * 340 / 1639) < 0.01, "at its share of your mana")
+    Check(b.cost.shown and b.tick.shown, "the shift cost is shown")
+    Check(math.abs(b.cost.w - (220 - 2) * 340 / 1639) < 0.01, "as wide as its share of your mana")
+    Check(b.cost.points[1][2] == b.bar.fill and b.cost.points[1][3] == "TOPRIGHT",
+        "hanging off the end of the fill")
+    Check(b.tick.points[1][2] == b.cost and b.tick.points[1][3] == "LEFT", "with the line where your mana would land")
     Check(b.info.text == "2 shifts left", "and the shifts left are counted")
-    Check(b.clip.w == 0 and b.holder.border.color[1] == 0, "with mana for a shift, no warning")
+    Check(b.holder.border.color[1] == 0, "with mana for a shift, no warning")
     Check(b.spark.shown, "the regen spark shows outside the five second rule")
 
     env.game.mana = 230
     env.Fire("UNIT_POWER_UPDATE", "player", "MANA")
     Check(b.info.text == "0 shifts left", "below a shift, none left")
-    Check(b.clip.w == 218 and b.holder.border.color[1] > 0.9, "and the whole bar warns")
+    Check(b.holder.border.color[1] > 0.9, "and the edge warns")
 
     env.game.mana = 400
     env.Fire("UNIT_POWER_UPDATE", "player", "ENERGY")
@@ -267,7 +276,8 @@ do
     Check(b.bar.value == SECRET, "a secret mana still goes on the bar")
     Check(b.left.secretText and b.right.secretText, "and into the text, unread")
     Check(b.info.text == "", "shifts left needs a readable mana")
-    Check(math.abs(b.clip.w - b.tick.points[1][4]) < 0.01, "the warning sits under the shift cost mark")
+    Check(b.cost.shown and math.abs(b.cost.w - 218 * 340 / 1639) < 0.01, "the shift cost shows all the same")
+    Check(b.holder.border.color[1] == 0, "but no warning edge, which would need a comparison")
     Check(b.spark.shown, "the spark still shows")
 end
 
@@ -285,19 +295,36 @@ do
     Check(not b.holder.shown, "Travel Form is off by default")
     env.game.form, env.game.formIndex, env.game.formSpell = 8, 1, BEAR_SPELL
     env.Fire("UPDATE_SHAPESHIFT_FORM")
-    Check(b.holder.shown and math.abs(b.tick.points[1][4] - 218 * 380 / 1639) < 0.01,
+    Check(b.holder.shown and math.abs(b.cost.w - 218 * 380 / 1639) < 0.01,
         "Dire Bear shows, with its own shift cost")
     env.game.form, env.game.formIndex = nil, 0
     env.Fire("UPDATE_SHAPESHIFT_FORM")
     Check(not b.holder.shown, "caster form is off by default")
     env.NaowhForever.DruidManaSettings.Set("showCaster", true)
     env.Flush()
-    Check(b.holder.shown and not b.tick.shown, "on, it shows with no shift to mark")
+    Check(b.holder.shown and not b.cost.shown and not b.tick.shown, "on, it shows with no shift cost")
     env.game.combat = false
     env.Fire("PLAYER_REGEN_ENABLED")
     env.NaowhForever.DruidManaSettings.Set("combatOnly", false)
     env.Flush()
     Check(b.holder.shown, "Only in Combat off keeps it out of combat")
+end
+
+-- Moving it, or a new texture, keeps the shift cost on the end of the fill.
+do
+    local env, ns = Fixture({ enabled = true, combatOnly = false }, Game({ combat = false }))
+    local b = Bar(env)
+    Check(b.cost.shown, "out of combat, with readable mana, the shift cost shows")
+    ns.ShowUnlockMode()
+    ns.HideUnlockMode()
+    Check(b.cost.shown and math.abs(b.cost.w - 218 * 340 / 1639) < 0.01, "after the HUD Editor it is still there")
+    ns.DruidManaSettings.Set("druidManaAnchor", "UIParent")
+    env.Flush()
+    Check(b.cost.shown, "and after an anchor change")
+    ns.DruidManaSettings.Set("texture", "Smooth")
+    env.Flush()
+    Check(b.cost.points[1][2] == b.bar.fill and b.spark.points[1][2] == b.bar.fill,
+        "a new texture moves the segment and the spark onto the new fill")
 end
 
 -- The five second rule.

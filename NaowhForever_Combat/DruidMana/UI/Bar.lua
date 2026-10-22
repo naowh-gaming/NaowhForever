@@ -29,9 +29,8 @@ local SHOWN_EVENTS = { "UNIT_POWER_UPDATE", "UNIT_MAXPOWER" }
 local TEXT_VALUES, TEXT_CURRENT, TEXT_PERCENT = "%d / %d", "%d", "%.0f%%"
 local TEXT_SHIFTS, TEXT_SHIFT = ns.L("%d shifts left"), ns.L("1 shift left")
 
-local holder, bar, warnClip, warnBar, tick, spark, left, right, line, countdown, info, border, bg
+local holder, bar, costSeg, tick, spark, left, right, line, countdown, info, border, bg
 local unlocked, inCombat, inFive, pendingPlace, pendingApply, fiveTimer, cost, curve
-local tickX = 0
 local events = CreateFrame("Frame")
 
 local Readable = DM.Readable
@@ -71,24 +70,19 @@ local function Build()
     ns.PixelInset(bar, 1)
     bar:SetMinMaxValues(0, 1)
     bar:SetValue(0)
-    warnClip = CreateFrame("Frame", nil, bar)
-    warnClip:SetPoint("TOPLEFT")
-    warnClip:SetPoint("BOTTOMLEFT")
-    warnClip:SetWidth(0)
-    warnClip:SetClipsChildren(true)
-    warnBar = CreateFrame("StatusBar", nil, warnClip)
-    warnBar:SetAllPoints(bar)
-    warnBar:SetMinMaxValues(0, 1)
-    warnBar:SetValue(0)
+    local clip = CreateFrame("Frame", nil, bar)
+    clip:SetAllPoints()
+    clip:SetClipsChildren(true)
+    costSeg = clip:CreateTexture(nil, "ARTWORK")
+    tick = clip:CreateTexture(nil, "OVERLAY")
+    tick:SetColorTexture(St.TICK_RGB.r, St.TICK_RGB.g, St.TICK_RGB.b, 1)
+    tick:SetPoint("CENTER", costSeg, "LEFT")
     local over = CreateFrame("Frame", nil, bar)
     over:SetAllPoints()
-    over:SetFrameLevel(warnBar:GetFrameLevel() + 1)
-    tick = over:CreateTexture(nil, "OVERLAY")
-    tick:SetColorTexture(St.TICK_RGB.r, St.TICK_RGB.g, St.TICK_RGB.b, 1)
+    over:SetFrameLevel(clip:GetFrameLevel() + 1)
     spark = over:CreateTexture(nil, "OVERLAY")
     spark:SetTexture(SPARK_TEX)
     spark:SetBlendMode("ADD")
-    spark:SetPoint("CENTER", bar:GetStatusBarTexture(), "RIGHT")
     local pulse = spark:CreateAnimationGroup()
     pulse:SetLooping("BOUNCE")
     local fade = pulse:CreateAnimation("Alpha")
@@ -119,8 +113,14 @@ local function Style()
     local mana, warn = S.Get("manaColor"), S.Get("warnColor")
     bar:SetStatusBarTexture(texture)
     bar:SetStatusBarColor(mana.r, mana.g, mana.b)
-    warnBar:SetStatusBarTexture(texture)
-    warnBar:SetStatusBarColor(warn.r, warn.g, warn.b)
+    local fill = bar:GetStatusBarTexture()
+    costSeg:SetTexture(texture)
+    costSeg:SetVertexColor(warn.r, warn.g, warn.b)
+    costSeg:ClearAllPoints()
+    costSeg:SetPoint("TOPRIGHT", fill, "TOPRIGHT")
+    costSeg:SetPoint("BOTTOMRIGHT", fill, "BOTTOMRIGHT")
+    spark:ClearAllPoints()
+    spark:SetPoint("CENTER", fill, "RIGHT")
     bg:SetColorTexture(T.bg.r, T.bg.g, T.bg.b, S.Get("bgAlpha"))
     local size = S.Get("textSize")
     local small = math.max(1, math.floor(size * St.INFO_SIZE))
@@ -129,7 +129,7 @@ local function Style()
     Parts.HudFont(info, S.Get("font"), small, S.Get("outline"))
     Parts.HudFont(countdown, S.Get("font"), small, S.Get("outline"))
     countdown:SetTextColor(St.COUNTDOWN_RGB.r, St.COUNTDOWN_RGB.g, St.COUNTDOWN_RGB.b)
-    tick:SetSize(St.TICK_W, height + St.TICK_REACH * 2)
+    tick:SetSize(St.TICK_W, height)
     spark:SetSize(St.SPARK_W, height * 2)
     line:Paint(mana)
 end
@@ -164,17 +164,12 @@ local function Inner()
     return S.Get("width") - 2
 end
 
-local function PlaceTick()
+local function PlaceCost()
     local max = UnitPowerMax(PLAYER, MANA)
-    tickX = 0
-    if S.Get("powershift") and S.Get("shiftMark") and cost and Readable(max) and max > 0 then
-        tickX = Inner() * math.min(cost / max, 1)
-        tick:ClearAllPoints()
-        tick:SetPoint("CENTER", bar, "LEFT", tickX, 0)
-        tick:Show()
-    else
-        tick:Hide()
-    end
+    local shown = S.Get("powershift") and S.Get("shiftMark") and cost and Readable(max) and max > 0
+    if shown then costSeg:SetWidth(Inner() * math.min(cost / max, 1)) end
+    costSeg:SetShown(shown and true or false)
+    tick:SetShown(shown and true or false)
 end
 
 local function Text(cur, max)
@@ -197,23 +192,12 @@ local function Values()
     local cur, max = UnitPower(PLAYER, MANA), UnitPowerMax(PLAYER, MANA)
     bar:SetMinMaxValues(0, max)
     bar:SetValue(cur)
-    warnBar:SetMinMaxValues(0, max)
-    warnBar:SetValue(cur)
     Text(cur, max)
     local readable = Readable(cur) and Readable(max)
     local shifting = S.Get("powershift") and cost ~= nil
     local low = readable and shifting and cur < cost
     local edge = St.EDGE_RGB
-    if shifting and S.Get("warnLow") then
-        if readable then
-            warnClip:SetWidth(low and Inner() or 0)
-            if low then edge = S.Get("warnColor") end
-        else
-            warnClip:SetWidth(tickX)
-        end
-    else
-        warnClip:SetWidth(0)
-    end
+    if low and S.Get("warnLow") then edge = S.Get("warnColor") end
     border:SetColor(edge.r, edge.g, edge.b, 1)
     if shifting and S.Get("shiftsLeft") and readable then
         local n = math.floor(cur / cost)
@@ -244,7 +228,7 @@ local function Refresh()
     SetEvents(SHOWN_EVENTS, show)
     if not show then return end
     cost = FormCost()
-    PlaceTick()
+    PlaceCost()
     line:SetShown(S.Get("fiveSecond") and S.Get("fiveLine") and true or false)
     countdown:SetShown(S.Get("fiveSecond") and S.Get("fiveCountdown") and true or false)
     Values()
@@ -294,7 +278,7 @@ local function OnEvent(_, event, ...)
         local kind = select(2, ...)
         if Readable(kind) and kind == MANA_TOKEN then Values() end
     elseif event == "UNIT_MAXPOWER" then
-        PlaceTick()
+        PlaceCost()
         Values()
     elseif event == "UNIT_SPELLCAST_SUCCEEDED" then
         OnSpellcast(select(3, ...))
