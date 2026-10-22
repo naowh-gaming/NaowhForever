@@ -309,19 +309,17 @@ page:Card({
     },
 })
 
-page:Card({
-    id = "nodeIcons", name = "Minimap Node Icons", order = ORDER_NODE_ICONS, switch = "nodeIcons",
-    help = "While Find Herbs or Find Minerals is on, each herb and vein on the minimap shows a round picture "
-        .. "of what it gives, ringed red when your Herbalism or Mining is too low to gather it. Hover a node "
-        .. "on the minimap to see the skill it needs. Reads the English node names, and pauses in combat "
-        .. "and while the mouse is over the minimap.",
-    search = "herb ore vein mining herbalism minimap tracking dot gather",
-    rows = {
-        { key = "nodeIconSize", label = "Icon Size", slider = NODE_ICON_RANGE, needs = On, why = TEXT_OFF,
-          help = "How big each node's picture is on the minimap. The game's own dot cannot be hidden, so "
-              .. "below about 18 its edge can show around the picture." },
-    },
-})
+if P.NodeScan.Usable() then
+    page:Card({
+        id = "nodeIcons", name = "Minimap Node Icons", order = ORDER_NODE_ICONS, switch = "nodeIcons",
+        help = "Shows what each tracked herb and vein gives on the minimap, ringed red if you can't gather it.",
+        search = "herb ore vein mining herbalism minimap tracking dot gather",
+        rows = {
+            { key = "nodeIconSize", label = "Icon Size", slider = NODE_ICON_RANGE, needs = On, why = TEXT_OFF,
+              help = "How big each node's picture is on the minimap." },
+        },
+    })
+end
 
 page:Card({
     id = "nodeToast", name = "New Herbs and Ores", order = ORDER_NODE_TOAST, switch = "nodeToast",
