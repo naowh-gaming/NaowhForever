@@ -249,6 +249,9 @@ ns.FEATURES = {
         castClip = false,
         targetSwing = false,
     },
+    raidDebuffs = {
+        enabled = false,
+    },
     trackingReminder = {
         enabled = false,
         trackRacial = true,
