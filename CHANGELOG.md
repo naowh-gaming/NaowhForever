@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+### Changed
+- Dungeon Journal: its data is updated to WoW Forever build 1.60.1.70532.
+- Naowh Score: refitted to the latest Forever items.
+
+## 1.1.40
+
+### Fixed
+- Buffs & Consumables: a personal buff such as Lightning Shield cast during combat takes its
+  reminder off screen right away instead of when combat ends.
+- Dungeon Journal: use bundled dungeon maps to avoid missing or green map backgrounds on the Russian
+  client.
+- Dungeon Journal: boss pins and entrances sit on their markers in the dungeon maps.
+
 ## 1.1.39
 
 ### Added

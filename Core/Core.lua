@@ -141,7 +141,7 @@ function ns.Lower(text)
     return (text:lower():gsub(LATIN_CAPITAL, LatinLower))
 end
 
-ns.CODE_BUILD = "1.1.39"
+ns.CODE_BUILD = "1.1.40"
 
 ns.THEME = {
     bg     = { r = 0x19 / 255, g = 0x1b / 255, b = 0x1d / 255 },
@@ -734,9 +734,9 @@ function ns.AllowOffscreen(frame)
     frame:HookScript("OnSizeChanged", ClampOffscreen)
 end
 
-function ns.Button(parent, text, w, h, onClick, template)
+function ns.Button(parent, text, w, h, onClick, template, name)
     local T = ns.THEME
-    local btn = CreateFrame("Button", nil, parent, template)
+    local btn = CreateFrame("Button", name, parent, template)
     btn:SetSize(w, h)
     local bg = ns.Solid(btn, "BACKGROUND", T.panel, BUTTON_REST_ALPHA)
     bg:SetAllPoints()
