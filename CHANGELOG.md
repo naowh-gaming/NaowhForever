@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Added
+- Waypoint Pin: a Background Opacity slider for the name and distance card; at 0% only the text
+  shows.
+
 ## 1.1.43
 
 ### Added
