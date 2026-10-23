@@ -213,9 +213,8 @@ function Look.PaintPin(pin, o)
     end
     card:SetShown(o.card)
     if not o.card then return end
-    local alpha = o.cardAlpha or St.HUD_CARD_ALPHA
-    card.backdrop.fill:SetColorTexture(T.bg.r, T.bg.g, T.bg.b, alpha)
-    card.backdrop.border._frame:SetShown(alpha > 0)
+    card.backdrop.fill:SetColorTexture(T.bg.r, T.bg.g, T.bg.b, o.cardAlpha)
+    card.backdrop.border._frame:SetShown(o.cardAlpha > 0)
     card.icon:SetShown(o.icon ~= nil)
     if o.icon then card.icon:SetTexture(o.icon) end
     card.name:ClearAllPoints()
