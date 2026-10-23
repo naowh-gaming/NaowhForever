@@ -823,7 +823,7 @@ Settings.Page("QoL/Interface", S):Card({
           help = "A card over the pin with what it is and how far." },
         { key = "waypointCardAlpha", label = "Background Opacity", slider = ALPHA_RANGE, unit = "%",
           scale = PERCENT_SCALE, needs = "waypointCard",
-          help = "How solid the card behind the name and distance is. At 0% only the text shows." },
+          help = "How solid the card behind the name and distance is; at 0% only the text shows." },
         { key = "waypointTime", label = "Walking Time", toggle = true, needs = "waypointCard",
           help = "How long it takes to get there at your speed." },
         { key = "waypointBeam", label = "Line to the Ground", toggle = true,
