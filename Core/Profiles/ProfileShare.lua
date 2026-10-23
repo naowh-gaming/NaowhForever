@@ -463,6 +463,10 @@ local function SellsScrap(values)
     return (values.scrapMarkerVendor or "sell") == "sell"
 end
 
+local function AskBeforeSelling(values)
+    values.scrapMarkerVendor = "ask"
+end
+
 local ACTING = {
     { module = "qol", key = "questAccept", label = "Accept Quests" },
     { module = "qol", key = "questTurnIn", label = "Hand In Quests" },
@@ -471,7 +475,8 @@ local ACTING = {
     { module = "qol", key = "sellJunk", label = "Auto Sell Junk" },
     { module = "qol", key = "restockBuy", label = "Buy at Vendors" },
     { module = "qol", key = "lootConfirm", label = "Skip Loot Confirmations" },
-    { module = "qol", key = "scrapMarker", label = "Junk Marker, which sells what it marks", when = SellsScrap },
+    { module = "qol", key = "scrapMarker", label = "Junk Marker, which sells what it marks", when = SellsScrap,
+        calm = AskBeforeSelling },
     { module = "journal", key = "acceptShared", label = "Accept Shared Dungeon Quests" },
 }
 
@@ -810,7 +815,7 @@ local function ImportSettings(root, settings, wanted)
     for _, item in ipairs(ACTING) do
         local values = root[item.module]
         if type(values) == "table" and ActingOn(settings, item) then
-            values[item.key] = nil
+            if item.calm then item.calm(values) else values[item.key] = nil end
         end
     end
 end
