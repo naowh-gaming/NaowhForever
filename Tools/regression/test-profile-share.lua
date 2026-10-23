@@ -856,7 +856,7 @@ Case("a Junk Marker that sells comes along asking first, unless Also Import is t
     local w = World()
     w.db.profiles.Default.qol.scrapMarker = true
     local payload = assert(w.ns.DecodeProfile((w.ns.ExportProfile())))
-    assert(w.ns.ProfileActing(payload)[1] == "Junk Marker, which sells what it marks")
+    assert(w.ns.ProfileActing(payload)[1] == "Junk Marker selling without asking")
     w.ns.ImportProfile(payload, ALL)
     local landed = w.db.profiles[w.switched].qol
     assert(landed.scrapMarker == true and landed.scrapMarkerVendor == "ask", "the marker stays on and asks")
@@ -870,6 +870,12 @@ Case("a Junk Marker that sells comes along asking first, unless Also Import is t
     w.db.profiles.Default.qol.scrapMarker, w.db.profiles.Default.qol.scrapMarkerVendor = true, "ask"
     payload = assert(w.ns.DecodeProfile((w.ns.ExportProfile())))
     assert(#w.ns.ProfileActing(payload) == 0, "a marker that asks acts for nobody")
+    w = World()
+    w.db.profiles.Default.qol.scrapMarker, w.db.profiles.Default.qol.scrapMarkerVendor = true, true
+    payload = assert(w.ns.DecodeProfile((w.ns.ExportProfile())))
+    assert(#w.ns.ProfileActing(payload) == 1, "a vendor mode that is not a mode sells, so it is named")
+    w.ns.ImportProfile(payload, ALL)
+    assert(w.db.profiles[w.switched].qol.scrapMarkerVendor == "ask", "and it lands asking")
 end)
 
 -- The Profiles page on stub frames and a small stand-in for the row engine.
