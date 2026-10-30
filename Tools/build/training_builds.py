@@ -15,7 +15,6 @@ Writes NaowhForever_Training/Data/TrainingBuilds.lua: per class, its trees' name
 Usage: python Tools/build/training_builds.py
 """
 import argparse
-import json
 import sys
 from pathlib import Path
 
@@ -23,11 +22,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import paths  # noqa: E402,F401
 from journal import ROOT, header, write  # noqa: E402
 from training import CLASSES  # noqa: E402
-from wowhead import fetch  # noqa: E402
+from wowhead import talent_calculator  # noqa: E402
 
 OUT = ROOT / "NaowhForever_Training" / "Data" / "TrainingBuilds.lua"
-CALCULATOR = "https://nether.wowhead.com/forever/data/talents-classic"
-PAGE_DATA = 'WH.setPageData("wow.talentCalcClassic.classicplus.data",'
 # Each class's three trees left to right (Wowhead's tree IDs), and the names the addon shows for them:
 # saved builds carry the name of the tree they spend most in, so these stay as players have seen them.
 TREES = {
@@ -41,13 +38,6 @@ TREES = {
     9: ((302, 303, 301), ("Affliction", "Demonology", "Destruction")),
     11: ((283, 281, 282), ("Balance", "Feral Combat", "Restoration")),
 }
-
-
-def calculator():
-    """Wowhead's talents by tree: tree ID -> talent ID -> {row, col, ranks, requires, ...}."""
-    page = fetch(CALCULATOR)
-    start = page.index("{", page.index(PAGE_DATA))
-    return json.JSONDecoder().raw_decode(page, start)[0]["talents"]
 
 
 def class_trees(talents):
@@ -77,7 +67,7 @@ def class_trees(talents):
 
 
 def build():
-    trees = class_trees(calculator())
+    trees = class_trees(talent_calculator()["talents"])
     out = header("TrainingBuilds.lua", "each class's talent tree, from Wowhead Forever's talent calculator")
     out.append("ns.TrainingBuilds = {")
     counts = []
