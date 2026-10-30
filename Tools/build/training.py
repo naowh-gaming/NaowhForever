@@ -3,7 +3,8 @@
 Each class's list (wowhead.com/forever/spells/abilities/<class>) gives every spell with its
 level, rank, where it comes from (source 6 is a trainer, 4 a quest) and the trainer's base
 price in copper. Kept: the spells a trainer sells, and the ones a quest teaches above level 1, with
-the few a class quest teaches beside its reward, which Wowhead lists with no source (QUEST_TAUGHT).
+the few a class quest teaches beside its reward, which Wowhead lists with no source (QUEST_TAUGHT),
+and the few new class abilities it lists with no source or price (TRAINER_TAUGHT).
 Left out: talents (no trainer), runes and engravings, the level 60 book ranks, and the hunter's
 pet training (rows with no skill line: the pet learns those, not the hunter).
 
@@ -47,6 +48,10 @@ TRAINER, QUEST = 6, 4    # Wowhead's sources
 # Armor (Defensive Stance), Intercept (Berserker Stance), Growl and Maul (Bear Form), and Call,
 # Dismiss, Feed and Revive Pet (Tame Beast).
 QUEST_TAUGHT = {355, 7386, 20252, 6795, 6807, 883, 2641, 6991, 982}
+# Class abilities in Wowhead's talent calculator, at the levels wowforevertalents gives, that its class
+# lists have no source or price for: Teleport: Moonglade, Teleport: Dalaran, Revoke and the hunter's
+# Lacerate. Kept as trainer spells; the trainer window gives their price.
+TRAINER_TAUGHT = {18960, 1297659, 1325499, 24118, 24119, 24120, 1299332}
 KEEP = ("id", "name", "rank", "level", "source", "trainingcost", "reqrace", "skill")
 ROGUE = 4
 POISONS = 40              # the game's Poisons skill line
@@ -126,7 +131,7 @@ def entries(rows, talents):
         level = row.get("level") or 0
         if not row.get("skill"):
             continue
-        if TRAINER in source and (row.get("trainingcost") or row["skill"] == [POISONS]):
+        if TRAINER in source and (row.get("trainingcost") or row["skill"] == [POISONS]) or row["id"] in TRAINER_TAUGHT:
             kept.append({"quest": False, "cost": row.get("trainingcost") or 0})
         elif (QUEST in source and level > 1) or row["id"] in QUEST_TAUGHT:
             kept.append({"quest": True, "cost": 0})
