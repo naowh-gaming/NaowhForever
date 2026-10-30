@@ -5312,6 +5312,15 @@
       "quality": "rare",
       "slot": "off hand",
       "type": "shield"
+     },
+     {
+      "chance": null,
+      "level": 34,
+      "name": "Skullduggery Belt",
+      "new": true,
+      "quality": "rare",
+      "slot": "waist",
+      "type": "leather"
      }
     ],
     "name": "Grubbis"
@@ -6265,10 +6274,10 @@
      },
      {
       "chance": 32.0,
-      "level": null,
+      "level": 41,
       "name": "Deathmage Sash",
       "new": false,
-      "quality": null,
+      "quality": "rare",
       "slot": "waist",
       "type": "cloth"
      }
@@ -6288,10 +6297,10 @@
      },
      {
       "chance": 48.0,
-      "level": null,
+      "level": 42,
       "name": "Fleshhide Shoulders",
       "new": false,
-      "quality": null,
+      "quality": "rare",
       "slot": "shoulder",
       "type": "leather"
      }
@@ -6366,19 +6375,19 @@
      },
      {
       "chance": 39.2,
-      "level": null,
+      "level": 43,
       "name": "Robes of the Lich",
       "new": false,
-      "quality": null,
+      "quality": "rare",
       "slot": "chest",
       "type": "cloth"
      },
      {
       "chance": 36.9,
-      "level": null,
+      "level": 43,
       "name": "Icemetal Barbute",
       "new": false,
-      "quality": null,
+      "quality": "rare",
       "slot": "head",
       "type": "plate"
      },
@@ -7108,10 +7117,10 @@
      },
      {
       "chance": 32.9,
-      "level": null,
+      "level": 42,
       "name": "Herod's Shoulder",
       "new": false,
-      "quality": null,
+      "quality": "rare",
       "slot": "shoulder",
       "type": "mail"
      },
@@ -7394,19 +7403,19 @@
     "items": [
      {
       "chance": 34.1,
-      "level": null,
+      "level": 42,
       "name": "Inquisitor's Shawl",
       "new": false,
-      "quality": null,
+      "quality": "rare",
       "slot": "shoulder",
       "type": "cloth"
      },
      {
       "chance": 32.2,
-      "level": null,
+      "level": 42,
       "name": "Branded Leather Bracers",
       "new": false,
-      "quality": null,
+      "quality": "rare",
       "slot": "wrist",
       "type": "leather"
      },
@@ -7444,10 +7453,10 @@
      },
      {
       "chance": 19.9,
-      "level": null,
+      "level": 44,
       "name": "Gauntlets of Divinity",
       "new": false,
-      "quality": null,
+      "quality": "rare",
       "slot": "hands",
       "type": "mail"
      }
@@ -7458,28 +7467,28 @@
     "items": [
      {
       "chance": 37.0,
-      "level": null,
+      "level": 44,
       "name": "Whitemane's Chapeau",
       "new": false,
-      "quality": null,
+      "quality": "rare",
       "slot": "head",
       "type": "cloth"
      },
      {
       "chance": 18.8,
-      "level": null,
+      "level": 44,
       "name": "Hand of Righteousness",
       "new": false,
-      "quality": null,
+      "quality": "rare",
       "slot": "main hand",
       "type": "mace"
      },
      {
       "chance": 37.4,
-      "level": null,
+      "level": 44,
       "name": "Triune Amulet",
       "new": false,
-      "quality": null,
+      "quality": "rare",
       "slot": "neck",
       "type": null
      }
@@ -9737,7 +9746,7 @@
       "new": true,
       "quality": "rare",
       "slot": "head",
-      "type": null
+      "type": "cloth"
      }
     ],
     "name": "Odo the Blindwatcher"
@@ -12383,12 +12392,21 @@
     "items": [
      {
       "chance": 9.4,
-      "level": null,
+      "level": 43,
       "name": "Nordic Longshank",
       "new": false,
-      "quality": null,
+      "quality": "rare",
       "slot": "one-hand",
       "type": "sword"
+     },
+     {
+      "chance": 44.4,
+      "level": 43,
+      "name": "Baelog's Shortbow",
+      "new": false,
+      "quality": "rare",
+      "slot": "ranged",
+      "type": "bow"
      }
     ],
     "name": "Baelog"
@@ -12397,19 +12415,19 @@
     "items": [
      {
       "chance": 8.0,
-      "level": null,
+      "level": 42,
       "name": "Horned Viking Helmet",
       "new": false,
-      "quality": null,
+      "quality": "rare",
       "slot": "head",
       "type": "plate"
      },
      {
       "chance": 80.5,
-      "level": null,
+      "level": 42,
       "name": "Worn Running Boots",
       "new": false,
-      "quality": null,
+      "quality": "rare",
       "slot": "feet",
       "type": "leather"
      }
@@ -12420,10 +12438,19 @@
     "items": [
      {
       "chance": 12.3,
-      "level": null,
+      "level": 42,
       "name": "Olaf's All Purpose Shield",
       "new": false,
-      "quality": null,
+      "quality": "rare",
+      "slot": "off hand",
+      "type": "shield"
+     },
+     {
+      "chance": 79.1,
+      "level": 42,
+      "name": "Battered Viking Shield",
+      "new": false,
+      "quality": "rare",
       "slot": "off hand",
       "type": "shield"
      }
@@ -12443,10 +12470,10 @@
      },
      {
       "chance": 20.4,
-      "level": null,
+      "level": 42,
       "name": "Ironshod Bludgeon",
       "new": false,
-      "quality": null,
+      "quality": "rare",
       "slot": "two-hand",
       "type": "staff"
      },
@@ -12466,19 +12493,19 @@
     "items": [
      {
       "chance": 47.7,
-      "level": null,
+      "level": 46,
       "name": "Cragfists",
       "new": false,
-      "quality": null,
+      "quality": "rare",
       "slot": "hands",
       "type": "plate"
      },
      {
       "chance": 47.3,
-      "level": null,
+      "level": 46,
       "name": "Rockshard Pauldrons",
       "new": false,
-      "quality": null,
+      "quality": "rare",
       "slot": "shoulder",
       "type": "mail"
      }
@@ -12489,37 +12516,37 @@
     "items": [
      {
       "chance": 17.5,
-      "level": null,
+      "level": 47,
       "name": "Galgann's Fireblaster",
       "new": false,
-      "quality": null,
+      "quality": "rare",
       "slot": "ranged",
       "type": "gun"
      },
      {
       "chance": 19.9,
-      "level": null,
+      "level": 47,
       "name": "Galgann's Firehammer",
       "new": false,
-      "quality": null,
+      "quality": "rare",
       "slot": "main hand",
       "type": "mace"
      },
      {
       "chance": 19.6,
-      "level": null,
+      "level": 47,
       "name": "Flameseer Mantle",
       "new": false,
-      "quality": null,
+      "quality": "rare",
       "slot": "shoulder",
       "type": "cloth"
      },
      {
       "chance": 38.4,
-      "level": null,
+      "level": 47,
       "name": "Emberscale Cape",
       "new": false,
-      "quality": null,
+      "quality": "rare",
       "slot": "back",
       "type": "cloth"
      }
@@ -12530,28 +12557,28 @@
     "items": [
      {
       "chance": 29.6,
-      "level": null,
+      "level": 47,
       "name": "Oilskin Leggings",
       "new": false,
-      "quality": null,
+      "quality": "rare",
       "slot": "legs",
       "type": "leather"
      },
      {
       "chance": 39.8,
-      "level": null,
+      "level": 47,
       "name": "Grimlok's Tribal Vestments",
       "new": false,
-      "quality": null,
+      "quality": "rare",
       "slot": "chest",
       "type": "cloth"
      },
      {
       "chance": 19.0,
-      "level": null,
+      "level": 47,
       "name": "Grimlok's Charge",
       "new": false,
-      "quality": null,
+      "quality": "rare",
       "slot": "two-hand",
       "type": "polearm"
      }
@@ -12580,10 +12607,10 @@
      },
      {
       "chance": 62.3,
-      "level": null,
+      "level": 47,
       "name": "Archaedic Stone",
       "new": false,
-      "quality": null,
+      "quality": "rare",
       "slot": "finger",
       "type": null
      }
@@ -12603,10 +12630,10 @@
      },
      {
       "chance": null,
-      "level": null,
+      "level": 40,
       "name": "Annealed Blade",
       "new": false,
-      "quality": null,
+      "quality": "rare",
       "slot": "one-hand",
       "type": "sword"
      },
@@ -12684,10 +12711,10 @@
      },
      {
       "chance": null,
-      "level": null,
+      "level": 43,
       "name": "Papal Fez",
       "new": false,
-      "quality": null,
+      "quality": "rare",
       "slot": "head",
       "type": "cloth"
      },
