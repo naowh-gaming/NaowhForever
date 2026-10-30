@@ -6275,7 +6275,7 @@
    "source": [
     6
    ],
-   "trainingcost": 36000
+   "trainingcost": 31578
   },
   {
    "id": 1299447,
@@ -6288,7 +6288,7 @@
    "source": [
     6
    ],
-   "trainingcost": 48000
+   "trainingcost": 41052
   },
   {
    "id": 1310725,
@@ -6309,7 +6309,7 @@
    "source": [
     6
    ],
-   "trainingcost": 14000
+   "trainingcost": 30526
   },
   {
    "id": 1310786,
@@ -6322,7 +6322,7 @@
    "source": [
     6
    ],
-   "trainingcost": 24000
+   "trainingcost": 41052
   }
  ],
  "mage": [
