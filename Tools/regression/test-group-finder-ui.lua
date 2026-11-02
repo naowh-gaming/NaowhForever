@@ -517,7 +517,8 @@ GF.Fire("received")
 Flush()
 check("and when the leader's game has it", Listing(11).status.text == "Received")
 applied.Korvath.declined = true
-view:Redraw()
+GF.Fire("declined")
+Flush()
 check("and when declined", Listing(11).status.text == "Declined")
 
 -------------------------------------------------------------------------------

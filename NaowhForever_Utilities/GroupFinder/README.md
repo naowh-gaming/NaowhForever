@@ -119,7 +119,7 @@ Addon whispers by name, prefix `NaowhLFG`. Every message is one plain line, vers
 | `1 A <id> <card> [note]` | applies: your card with the roles you apply as, and a note | `K` |
 | `1 K <id>` | the leader's game received it | |
 | `1 X <id>` | you withdraw it | |
-| `1 D <id>` | the leader declined: kept silent, the application just expires | |
+| `1 D <id>` | the leader declined: no message, the row says Declined until the application expires | |
 
 The card is nine fields, `-` for one not shared or not known:
 
@@ -165,7 +165,7 @@ kills.
 - **Your group** (`GF.Group`): the form's `activity`, `style`, `min` (tenths), `tanks`, `healers`,
   `damage` and `note`; `ours` while its listing is the one Create made, from `listedAt`.
 - Events (`GF.Listen(what, fn)`): `listings` (true when the search failed), `listing`, `search`, `card`,
-  `noreply`, `offline`, `applicant`, `received`, `withdrawn`, `expired`, `applicantExpired`.
+  `noreply`, `offline`, `applicant`, `received`, `declined`, `withdrawn`, `expired`, `applicantExpired`.
 
 ## Why
 

@@ -399,6 +399,7 @@ function Handle.D(sender, id)
     local record = Find(sent, id, sender)
     if not record then return Drop("unasked") end
     record.declined = true
+    GF.Fire("declined", record)
 end
 
 local function Allowed(key, now)

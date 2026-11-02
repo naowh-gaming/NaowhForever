@@ -517,7 +517,7 @@ do
     local GF = state.GF
     local Comms, Card = GF.Comms, GF.Card
     local fired = {}
-    for _, what in ipairs({ "card", "noreply", "offline", "applicant", "received", "withdrawn", "expired",
+    for _, what in ipairs({ "card", "noreply", "offline", "applicant", "received", "declined", "withdrawn", "expired",
         "applicantExpired" }) do
         GF.Listen(what, function(a) fired[#fired + 1] = what; fired[what] = a end)
     end
@@ -625,7 +625,8 @@ do
     Comms.OnMessage("1 K " .. id, "Dave")
     check("the leader's K marks it received", fired.received ~= nil and Comms.sent[1].acked == true)
     Comms.OnMessage("1 D " .. id, "Dave")
-    check("a decline is silent: no event, it just expires", Comms.sent[1].declined == true and fired.expired == nil)
+    check("a decline marks it and says so, and it still just expires", Comms.sent[1].declined == true
+        and fired.declined == Comms.sent[1] and fired.expired == nil)
 
     state.listed = false
     Comms.OnMessage("1 A 12 3 25 D - 201 - Deadmines 2,2 / Hi there", "Erin")

@@ -14,8 +14,8 @@ local SCROLL_GAP, BAR_GAP = St.SCROLL_GAP, St.BAR_GAP
 local WINDOW_KEY = "groupFinderWindow"
 local NO_EVENTS = {}
 local BROWSE, YOUR_GROUP, CREATE = "browse", "group", "create"
-local REDRAWN_BY = { "listings", "listing", "search", "card", "noreply", "offline", "applied", "received", "expired",
-    "group", "applicant", "withdrawn", "applicantExpired" }
+local REDRAWN_BY = { "listings", "listing", "search", "card", "noreply", "offline", "applied", "received", "declined",
+    "expired", "group", "applicant", "withdrawn", "applicantExpired" }
 
 local TEXT_TITLE = ns.L("Looking For Group")
 local TEXT_GROUPS = ns.L("%d groups")
