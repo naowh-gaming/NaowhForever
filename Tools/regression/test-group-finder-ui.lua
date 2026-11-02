@@ -44,6 +44,7 @@ local METHODS = {
     SetAlpha = function(f, alpha) f.alpha = alpha end,
     SetScale = function(f, scale) f.scale = scale end,
     SetColorTexture = function(f, r, g, b) f.red, f.green, f.blue = r, g, b end,
+    SetEnabled = function(f, on) f.enabled = on end,
     Show = function(f)
         local was = rawget(f, "shown") ~= false
         f.shown = true
@@ -75,6 +76,7 @@ function Frame(parent)
 end
 
 local WHITE = { r = 1, g = 1, b = 1 }
+local ACCENT = { r = 0, g = 0.57, b = 0.93 }
 local MAGE = { r = 0.25, g = 0.78, b = 0.92 }
 local timers, printed = {}, {}
 local function Flush()
@@ -123,8 +125,14 @@ local ENTRIES = {
 }
 local cards = {
     Korvath = { score = 239, level = 25, dungeon = "ShadowfangKeep", hasKills = true, nKills = 3, kills = { 2, 0, 1 },
-        hasQuests = true, nHave = 2 },
+        hasQuests = true, nHave = 2,
+        group = { min = 120, tanks = 0, healers = 1, damage = 1, note = "Bring food" } },
 }
+local applied, applies = {}, {}
+local function Applicant(name, class, score, at)
+    return { name = name, at = at, note = "Hi", card = { class = class, level = 25, roles = DAMAGE + HEALER, score = score,
+        hasKills = true, nKills = 2, kills = { 3, 4 }, bisHave = 9, bisTotal = 14, hasQuests = true, nHave = 1 } }
+end
 local mine = { score = 189, level = 20, dungeon = "Deadmines", hasKills = true, nKills = 2, kills = { 0, 0 },
     hasQuests = false, nHave = 0 }
 local waitingFor = { Nessa = true }
@@ -138,8 +146,29 @@ end
 function GF.Fire(what, a)
     for _, fn in ipairs(GF.fns[what] or {}) do fn(a) end
 end
-GF.Card = { TANK = TANK, HEALER = HEALER, DAMAGE = DAMAGE, Mine = function() return mine end }
-GF.Comms = { IsMe = function(name) return name == "Die Man" end }
+GF.Card = { TANK = TANK, HEALER = HEALER, DAMAGE = DAMAGE, NEED_MAX = 9, NOTE_MAX = 60, Mine = function() return mine end,
+    CleanNote = function(text) return text end }
+GF.Comms = { IsMe = function(name) return name == "Die Man" end, applicants = {},
+    SentTo = function(name) return applied[name] end }
+local Group = { tanks = 1, healers = 1, damage = 3, min = 0, note = "", listed = false, leader = true, lists = 0,
+    invites = {}, declines = {} }
+GF.Group = Group
+function Group.Listed() return Group.listed end
+function Group.CanEdit() return Group.leader end
+function Group.Ready() return Group.activity ~= nil and Group.style ~= nil end
+function Group.List()
+    Group.lists = Group.lists + 1
+    if not Group.Ready() then return false end
+    Group.listed, Group.ours, Group.listedAt = true, true, 0
+    return true
+end
+function Group.Delist() Group.listed, Group.ours, Group.listedAt = false, false, nil end
+function Group.Info() if Group.ours and Group.listed then return Group end end
+function Group.Invite(record)
+    Group.invites[#Group.invites + 1] = record.name
+    record.invited = true
+end
+function Group.Decline(record) Group.declines[#Group.declines + 1] = record.name end
 GF.Listings = { entries = {}, n = 0, state = "none", searched = false }
 function GF.Listings.Read()
     local L = GF.Listings
@@ -151,11 +180,13 @@ function GF.Listings.Read()
     return L.n
 end
 function GF.Listings.Activity(id) return ACTIVITY[id] end
+function GF.Listings.DungeonOf(id) return id == 1 and "Deadmines" or nil end
 GF.Browse = {
     Ask = function() GF.asks = GF.asks + 1 end,
     CardOf = function(leader) return cards[leader], waitingFor[leader] == true end,
+    Apply = function(leader) applies[#applies + 1] = leader end,
 }
-GF.Search = { state = "idle", Run = function()
+GF.Search = { state = "idle", Category = function() return 2 end, Run = function()
     GF.runs = GF.runs + 1
     GF.Search.state = "searching"
     return true
@@ -166,7 +197,15 @@ tooltip.SetOwner, tooltip.SetText, tooltip.AddLine = NOTHING, NOTHING, NOTHING
 local ns
 ns = { L = dofile("Tools/regression/locale_stub.lua").L, Upper = string.upper, Lower = string.lower,
     MEDIA = dofile("Tools/regression/core_media.lua"),
-    THEME = setmetatable({}, { __index = function() return WHITE end }),
+    THEME = setmetatable({ accent = ACCENT }, { __index = function() return WHITE end }),
+    Journal = {
+        Get = function(key)
+            if key ~= "Deadmines" then return nil end
+            return { wings = { { bosses = { { encounters = { 1 } }, { encounters = { 2 } },
+                { with = "Sneed", encounters = { 2 } }, {} } } } }
+        end,
+        Kills = { Counted = function(boss) return boss.encounters ~= nil end },
+    },
     GroupFinder = GF,
     Color = function(_, text) return tostring(text) end,
     Font = function(parent) return Frame(parent) end,
@@ -182,11 +221,20 @@ ns = { L = dofile("Tools/regression/locale_stub.lua").L, Upper = string.upper, L
     end,
     Button = function(parent, text, _, _, onClick)
         local button = Frame(parent)
-        button.label, button.onClick = text, onClick
+        button.label = Frame(button)
+        button.label.text = text
+        button._border = { SetColor = function(self, r, g, b) self.r, self.g, self.b = r, g, b end }
+        button._rest, button._onClick = WHITE, onClick
+        button.Click = function(self) if self._onClick then self._onClick() end end
         return button
     end,
     AccentBorder = function(frame) return frame end,
-    SetButtonText = NOTHING,
+    PrimaryButton = function(button)
+        button.primary = true
+        return button
+    end,
+    SetButtonText = function(button, text) button.label.text = text end,
+    NewEditBox = function(parent) return Frame(parent) end,
     UIFontPath = function() return "font" end,
     UIScale = function() return 1 end,
     AccountSettings = function() return {} end,
@@ -196,6 +244,12 @@ ns = { L = dofile("Tools/regression/locale_stub.lua").L, Upper = string.upper, L
         SlimScroll = function(parent) return Frame(parent) end,
         CloseOnEscape = NOTHING,
         CONTENT_PAD = 20,
+        BuildSliderCore = function(parent, _, _, _, _, _, _, _, low, high, step, get, set)
+            local track = Frame(parent)
+            track.low, track.high, track.step, track._get, track._set = low, high, step, get, set
+            track._refreshValue = function() track.value = get() end
+            return track, Frame(parent)
+        end,
     },
     NaowhScore = { Colored = function(score, level) return ("score %.1f at %d"):format(score, level) end },
 }
@@ -240,6 +294,20 @@ local env = setmetatable({
     InCombatLockdown = function() return false end,
     CreateColor = function(r, g, b, a) return { r = r, g = g, b = b, a = a, SetRGBA = NOTHING } end,
     UIParent = Frame(),
+    GetTime = function() return 600 end,
+    GetQuestDifficultyColor = function() return { r = 0.25, g = 0.75, b = 0.25 } end,
+    GetClassInfo = function(id) return "Class", id == 8 and "MAGE" or "PRIEST", id end,
+    UnitName = function(unit) return unit == "player" and "Die Man" or nil end,
+    UnitClass = function() return "Mage", "MAGE" end,
+    UnitLevel = function() return 20 end,
+    C_LFGList = {
+        GetActiveEntryInfo = function()
+            if Group.listed then return { activityIDs = { 2 }, generalPlaystyle = 3 } end
+        end,
+        GetAvailableActivities = function() return { 2, 1, 3 } end,
+    },
+    GROUP_FINDER_GENERAL_PLAYSTYLE1 = "Learning", GROUP_FINDER_GENERAL_PLAYSTYLE2 = "Relaxed",
+    GROUP_FINDER_GENERAL_PLAYSTYLE3 = "Competitive", GROUP_FINDER_GENERAL_PLAYSTYLE4 = "Carry Offered",
 }, { __index = _G })
 env._G = env
 
@@ -354,6 +422,135 @@ view:Redraw()
 check("chat lockdown says listings cannot be read", Note():find("encounter", 1, true) and Listing(11) == nil)
 GF.Listings.state = "ready"
 view:Redraw()
+
+-------------------------------------------------------------------------------
+--  Browse: the leader's group, and applying
+-------------------------------------------------------------------------------
+cards.Nessa, waitingFor.Nessa = nil, true
+view:Redraw()
+group = Listing(11)
+check("a listed leader's minimum score beside their score", group.min.text == "12.0+")
+check("their note and the roles they need, on hover", group.note == "Bring food"
+    and group.needs == "Needs 0 tank, 1 healer, 1 damage")
+check("Apply on a leader who runs Naowh Forever", group.apply:IsShown())
+check("not on a leader waited on, your own or a delisted listing", not Listing(12).apply:IsShown()
+    and not Listing(13).apply:IsShown() and not Listing(14).apply:IsShown())
+check("no group, no minimum", Listing(13).min.text == "" and Listing(13).needs == nil)
+group.apply:Click()
+check("Apply applies to the leader", applies[1] == "Korvath")
+applied.Korvath = { acked = false }
+GF.Fire("applied")
+Flush()
+check("then says it is sent, with no Apply", Listing(11).status.text == "Applied" and not Listing(11).apply:IsShown())
+applied.Korvath.acked = true
+GF.Fire("received")
+Flush()
+check("and when the leader's game has it", Listing(11).status.text == "Received")
+applied.Korvath.declined = true
+view:Redraw()
+check("and when declined", Listing(11).status.text == "Declined")
+
+-------------------------------------------------------------------------------
+--  Tabs and Create
+-------------------------------------------------------------------------------
+local pages = window.pages
+local function Tab(key)
+    for _, button in ipairs(window.tabs.buttons) do
+        if button.key == key and button:IsShown() then return button end
+    end
+end
+check("three tabs: Browse, Your Group and Create", Tab("browse") and Tab("group") and Tab("create")
+    and Tab("group").label == "Your Group")
+window.tabs.onPick("create")
+local create = pages.create
+check("Create shows its page, without the Browse list or Search", create:IsShown() and not window.scroll:IsShown()
+    and not window.search:IsShown() and not pages.group:IsShown())
+local tiles = create.tiles
+check("a tile per dungeon, by level", #tiles == 3 and tiles[1].label.text == "MC" and tiles[2].label.text == "DM"
+    and tiles[3].label.text == "SFK")
+check("each with its levels, in their difficulty's color", tiles[2].range.text == "17-26" and tiles[2].range.g == 0.75
+    and tiles[1].range.text == "")
+check("and its bosses from the Journal", tiles[2].bosses.text == "2 bosses" and tiles[3].bosses.text == "")
+check("nothing to list yet: why, and List Group off", create.list.label.text == "List Group"
+    and create.list.enabled == false and create.why.text:find("Pick a dungeon", 1, true))
+tiles[2]:Click()
+check("a tile picks its dungeon, marked in the accent", Group.activity == 1 and tiles[2]._rest == ACCENT
+    and tiles[3]._rest == WHITE)
+create.styles[3]:Click()
+check("a style picks the game's playstyle", Group.style == 3 and create.styles[3]._rest == ACCENT
+    and create.styles[3].label.text == "Competitive")
+check("then List Group is on", create.list.enabled == true and create.why.text == "" and create.list.primary)
+create.roles[3].plus:Click()
+create.roles[1].minus:Click()
+create.roles[1].minus:Click()
+check("roles needed go up and down, never below none", Group.damage == 4 and Group.tanks == 0
+    and create.roles[3].value.text == "4" and create.roles[1].value.text == "0")
+check("the minimum score slider runs from 0 to 30 in halves", create.slider.low == 0 and create.slider.high == 30
+    and create.slider.step == 0.5)
+create.slider._set(12.5)
+check("and sets it in tenths", Group.min == 125)
+create.note:SetText("Quests welcome")
+create.note.scripts.OnTextChanged(create.note)
+check("the note, with its count", Group.note == "Quests welcome" and create.count.text == "14/60")
+Group.leader = false
+create.Paint()
+check("not the leader: why, and List Group off", create.list.enabled == false
+    and create.why.text:find("leader", 1, true))
+Group.leader = true
+create.list:Click()
+check("List Group lists it and shows Your Group", Group.lists == 1 and Group.listed and pages.group:IsShown()
+    and not create:IsShown())
+
+-------------------------------------------------------------------------------
+--  Your Group
+-------------------------------------------------------------------------------
+local yours = pages.group
+check("your listing's dungeon and levels", yours.title.text == "Shadowfang Keep" and yours.range.text == "22-30")
+check("its playstyle, minimum score, how long it is listed and who applied",
+    yours.info.text == "Competitive   Minimum score 12.5   Listed 10m ago   0 applied")
+check("your party", yours.party[1].text == "Die Man 20" and yours.party[1].r == MAGE.r and yours.party[2].text == "")
+check("the leader can delist", yours.delist:IsShown())
+local function Applicants()
+    return yours.view:Find("note", function() return true end), yours.view
+end
+local note = Applicants()
+check("nobody applied yet says so", note and note.text.text:find("No one has applied", 1, true))
+GF.Comms.applicants[1] = Applicant("Erin", 5, 211, 1)
+GF.Comms.applicants[2] = Applicant("Magus", 8, 239, 2)
+GF.Fire("applicant")
+Flush()
+local function Row(name)
+    return yours.view:Find("applicant", function(row) return row.record.name == name end)
+end
+check("the applicants, best score first", Row("Magus").index == 1 and Row("Erin").index == 2)
+check("and the count on the tab", Tab("group").label == "Your Group (2)")
+local magus = Row("Magus")
+check("an applicant's name in their class color, their score, kills, BiS and quests", magus.name.text == "Magus"
+    and magus.name.r == MAGE.r and magus.score.text == "score 23.9 at 25" and magus.kills.text == "7 boss kills"
+    and magus.bis.text == "BiS 9/14" and magus.quests.text == "1 quests")
+check("the roles they apply as", magus.roles[1].atlas == UI.Style.ROLE_ATLAS.HEALER
+    and magus.roles[2].atlas == UI.Style.ROLE_ATLAS.DAMAGER and not magus.roles[3]:IsShown())
+check("and their note on hover", magus.note == "Hi")
+magus.invite:Click()
+check("Invite invites them", Group.invites[1] == "Magus")
+GF.Fire("applicant")
+Flush()
+check("then says so instead of Invite", not Row("Magus").invite:IsShown() and Row("Magus").invited.text == "Invited")
+Row("Erin").decline:Click()
+check("Decline declines them", Group.declines[1] == "Erin")
+yours.delist:Click()
+GF.Fire("group")
+Flush()
+note = Applicants()
+check("delisted: no listing, a note to make one", note and note.text.text:find("no listing", 1, true)
+    and not yours.delist:IsShown() and yours.title.text == "")
+window.tabs.onPick("create")
+check("Create after delisting lists again", create.list.label.text == "List Group")
+create.reset:Click()
+check("Reset clears the form", Group.activity == nil and Group.style == nil and Group.min == 0 and Group.note == ""
+    and Group.tanks == 1 and Group.damage == 3 and create.slider.value == 0)
+window.tabs.onPick("browse")
+check("Browse again shows the list and Search", window.scroll:IsShown() and window.search:IsShown())
 
 S.Set("enabled", false)
 check("turning it off closes the window", not window:IsShown())

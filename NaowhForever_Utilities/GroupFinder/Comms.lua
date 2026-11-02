@@ -50,6 +50,7 @@ local cards, nCards = {}, 0
 local nextId = 0
 local sweepGen, sweepAt = 0, nil
 local incoming = Card.New()
+local incomingGroup = { min = 0, tanks = 0, healers = 0, damage = 0, note = "" }
 local notFound
 
 local function Key(name)
@@ -262,6 +263,10 @@ function Comms.Withdraw(id)
     return false
 end
 
+function Comms.SentTo(name)
+    return (Find(sent, nil, name))
+end
+
 function Comms.Decline(name)
     local record, i = Find(applicants, nil, name)
     if not record then return false end
@@ -326,16 +331,37 @@ local Handle = {}
 function Handle.Q(sender, id, dungeonKey, now)
     if not C_LFGList.HasActiveEntryInfo() then return Drop("unlisted") end
     if not MayAnswer(Key(sender), now) then return Drop("answered") end
-    Send(sender, Card.Reply(id, Card.Mine(dungeonKey)))
+    Send(sender, Card.Reply(id, Card.Mine(dungeonKey), GF.Group.Info()))
 end
 
-function Handle.C(sender, id, _, now)
+local function KeepGroup(card, group)
+    if not group then
+        card.group = nil
+        return
+    end
+    local kept = card.group or {}
+    kept.min, kept.tanks, kept.healers, kept.damage = group.min, group.tanks, group.healers, group.damage
+    kept.note = group.note
+    card.group = kept
+end
+
+local function Answered(sender, id, now, group)
     local ping, i = Find(pings, id, sender)
     if not ping then return Drop("unasked") end
     local card = Keep(sender, incoming)
+    KeepGroup(card, group)
     GF.Fire("card", sender, card, ping, now - ping.sentAt)
     Release(pings, i, sparePings)
     ScheduleSweep()
+end
+
+function Handle.C(sender, id, _, now)
+    Answered(sender, id, now, nil)
+end
+
+function Handle.L(sender, id, note, now)
+    incomingGroup.note = note or ""
+    Answered(sender, id, now, incomingGroup)
 end
 
 function Handle.A(sender, id, note, now)
@@ -400,7 +426,7 @@ local function OnMessage(text, sender)
     if C_FriendList.IsIgnored(Ambiguate(sender, "none")) then return Drop("ignored") end
     local now = GetTime()
     if not Allowed(key, now) then return Drop("flood") end
-    local kind, id, extra = Card.Decode(text, incoming)
+    local kind, id, extra = Card.Decode(text, incoming, incomingGroup)
     if not kind then return Drop("malformed") end
     Handle[kind](sender, id, extra, now)
 end

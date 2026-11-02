@@ -3,7 +3,7 @@ local ns = _G.NaowhForever
 
 local GF = ns.GroupFinder
 if not GF then return end
-local Comms, Listings = GF.Comms, GF.Listings
+local Card, Comms, Listings = GF.Card, GF.Comms, GF.Listings
 local S = GF.Settings
 
 local ASK_AGAIN = 300
@@ -41,6 +41,12 @@ function Browse.Ask()
             end
         end
     end
+end
+
+function Browse.Apply(leader, dungeonKey)
+    local id = Comms.Apply(leader, dungeonKey, Card.SavedRoles(), "")
+    GF.Fire("applied")
+    return id
 end
 
 function Browse.CardOf(leader)

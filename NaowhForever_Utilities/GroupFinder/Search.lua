@@ -47,6 +47,8 @@ local function Category()
     end
 end
 
+Search.Category = Category
+
 local function Settle(state)
     generation = generation + 1
     Search.state = state

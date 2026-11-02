@@ -1,11 +1,11 @@
--- Window.lua: the Group Finder's window (/nflfg): Forever's listings, newest first, with each leader's card when they run Naowh Forever.
+-- Window.lua: the Group Finder's window (/nflfg): Browse, Your Group and Create, under one title bar.
 local ns = _G.NaowhForever
 
 local GF = ns.GroupFinder
 if not GF then return end
 local UI = GF.UI
 local S = GF.Settings
-local Listings, Search, Browse = GF.Listings, GF.Search, GF.Browse
+local Comms, Listings, Search, Browse = GF.Comms, GF.Listings, GF.Search, GF.Browse
 local Parts, View = ns.Shared.Parts, ns.Shared.View
 
 local St = UI.Style
@@ -13,12 +13,17 @@ local HEADER, INSET, CARD_EDGE = St.WINDOW_HEADER, St.CONTENT_INSET, 6
 local SCROLL_GAP, BAR_GAP = St.SCROLL_GAP, St.BAR_GAP
 local WINDOW_KEY = "groupFinderWindow"
 local NO_EVENTS = {}
-local REDRAWN_BY = { "listings", "listing", "search", "card", "noreply", "offline" }
+local BROWSE, YOUR_GROUP, CREATE = "browse", "group", "create"
+local REDRAWN_BY = { "listings", "listing", "search", "card", "noreply", "offline", "applied", "received", "expired",
+    "group", "applicant", "withdrawn", "applicantExpired" }
 
 local TEXT_TITLE = ns.L("Looking For Group")
 local TEXT_GROUPS = ns.L("%d groups")
 local TEXT_SEARCH = ns.L("Search")
 local TEXT_SEARCH_TIP = ns.L("Search Forever's group finder for groups at your level.")
+local TEXT_BROWSE, TEXT_CREATE = "Browse", "Create"
+local TEXT_YOUR_GROUP = ns.L("Your Group")
+local TEXT_YOUR_GROUP_COUNT = ns.L("Your Group (%d)")
 local TEXT_FIRST = ns.L("Search to see the groups listed in Forever's group finder.")
 local TEXT_SEARCHING = ns.L("Searching...")
 local TEXT_FAILED = ns.L("The search failed. Wait a moment and search again.")
@@ -27,8 +32,13 @@ local TEXT_LOCKED = ns.L("Listings cannot be read during an encounter.")
 local TEXT_NONE = ns.L("No groups found.")
 local TURNED_ON = ns.L("Group Finder turned on. Turn it off on its settings page.")
 
+local TABS = { { key = BROWSE, label = TEXT_BROWSE }, { key = YOUR_GROUP, label = TEXT_YOUR_GROUP },
+    { key = CREATE, label = TEXT_CREATE } }
+
 local window, view
+local pages = {}
 local listening = false
+local shown = BROWSE
 
 local function Newest(a, b)
     if a.mine ~= b.mine then return a.mine end
@@ -62,19 +72,49 @@ local function DrawRows(v)
     window.subtitle:SetText(Listings.searched and TEXT_GROUPS:format(n) or "")
 end
 
-local function Redraw()
-    if window and window:IsShown() then view:QueueRedraw() end
+local function PaintTabs()
+    local count = #Comms.applicants
+    TABS[2].label = count > 0 and TEXT_YOUR_GROUP_COUNT:format(count) or TEXT_YOUR_GROUP
+    Parts.SetTabs(window.tabs, TABS)
+    Parts.PaintTabs(window.tabs, shown)
+end
+
+local function PaintPage(queued)
+    if shown == BROWSE then
+        if queued then view:QueueRedraw() else view:Redraw() end
+    elseif shown == YOUR_GROUP then
+        pages[YOUR_GROUP].Paint(queued)
+    else
+        pages[CREATE].Paint()
+    end
+end
+
+local function ShowPage(key)
+    shown = key
+    window.scroll:SetShown(key == BROWSE)
+    window.search:SetShown(key == BROWSE)
+    pages[YOUR_GROUP]:SetShown(key == YOUR_GROUP)
+    pages[CREATE]:SetShown(key == CREATE)
+    if key ~= BROWSE then window.subtitle:SetText("") end
+    PaintTabs()
+    PaintPage(false)
+end
+
+local function Refresh()
+    if not (window and window:IsShown()) then return end
+    PaintTabs()
+    PaintPage(true)
 end
 
 local function OnSearch()
     Search.Run()
-    Redraw()
+    Refresh()
 end
 
 local function Listen()
     if listening then return end
     listening = true
-    for _, what in ipairs(REDRAWN_BY) do GF.Listen(what, Redraw) end
+    for _, what in ipairs(REDRAWN_BY) do GF.Listen(what, Refresh) end
 end
 
 local function Build()
@@ -87,6 +127,10 @@ local function Build()
     window.search = search
     Parts.FooterBrand(window, GF.PAGE)
 
+    window.tabs = Parts.Tabs(window, UI.CONTENT_W, TABS, ShowPage)
+    window.tabs:SetPoint("TOPLEFT", INSET, -UI.TABS_TOP)
+    Parts.FitTabs(window.tabs, TABS, St.TAB_PAD, UI.CONTENT_W)
+
     local scroll = ns.UI.SlimScroll(window)
     scroll:SetPoint("TOPLEFT", INSET, -UI.CONTENT_TOP)
     scroll:SetPoint("BOTTOMRIGHT", -St.SCROLLBAR - SCROLL_GAP, UI.FOOTER_ROOM)
@@ -95,6 +139,10 @@ local function Build()
     view.order = {}
     scroll:SetScrollChild(view)
     window.scroll, window.view = scroll, view
+
+    pages[YOUR_GROUP] = UI.YourGroup(window)
+    pages[CREATE] = UI.Create(window, function() ShowPage(YOUR_GROUP) end)
+    window.pages = pages
     Listen()
 end
 
@@ -107,7 +155,7 @@ function ns.OpenGroupFinder()
     window:SetScale(ns.UIScale())
     window:Show()
     window.backdrop:Paint(1)
-    view:Redraw()
+    ShowPage(shown)
 end
 
 function ns.ToggleGroupFinder()
@@ -124,6 +172,6 @@ end)
 hooksecurefunc(ns, "Apply", function()
     if window and window:IsShown() then
         window.backdrop:Paint(1)
-        view:Redraw()
+        PaintPage(false)
     end
 end)

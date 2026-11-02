@@ -34,10 +34,12 @@ check("the Recommended setup leaves it off", Read("Core/Profiles/Presets.lua"):f
     and Read("Tools/build/presets.lua"):find('"NaowhForever_GroupFinder" } }', 1, true) ~= nil)
 
 local files = TocFiles("^NaowhForever_Utilities/GroupFinder/.*%.lua$")
-check("the module loads its files through its XML", #files == 11 and files[1]:find("GroupFinder.lua$") ~= nil)
+check("the module loads its files through its XML", #files == 15 and files[1]:find("GroupFinder.lua$") ~= nil)
 local rules = {}
 for _, path in ipairs(files) do
-    if not (path:find("/View/") or path:find("/UI/Window%.lua$")) then rules[#rules + 1] = path end
+    if not (path:find("/View/") or path:find("/UI/") and not path:find("/UI/SettingsPage%.lua$")) then
+        rules[#rules + 1] = path
+    end
 end
 
 local SECRET = setmetatable({}, { __tostring = function() return "secret" end })
@@ -256,7 +258,21 @@ local function Fixture(values)
                 return list
             end,
             Search = function(...) state.searches[#state.searches + 1] = { ... } end,
+            CreateListing = function(data)
+                state.created = { activity = data.activityIDs[1], style = data.generalPlaystyle }
+                state.listed = state.listOk
+                return state.listOk
+            end,
+            UpdateListing = function(data)
+                state.updated = { activity = data.activityIDs[1], style = data.generalPlaystyle }
+                return true
+            end,
+            RemoveListing = function() state.removed, state.listed = true, false end,
         },
+        C_PartyInfo = { InviteUnit = function(name) state.invited = name end },
+        IsInGroup = function() return state.inGroup == true end,
+        UnitIsGroupLeader = function() return state.leader ~= false end,
+        LE_PARTY_CATEGORY_HOME = 1,
         C_AddOns = { IsAddOnLoaded = function() return true end },
         UnitClass = function() return "Warrior", "WARRIOR", 1 end,
         UnitLevel = function() return state.level end,
@@ -910,6 +926,99 @@ do
     check("off: nobody is waited on", select(2, Browse.CardOf("Leader2")) == false)
 end
 
+do
+    local state = Fixture({ enabled = true })
+    local Card = state.GF.Card
+    local mine = Card.Mine("Deadmines")
+    local group = { min = 120, tanks = 1, healers = 0, damage = 2, note = "Full clear, quests welcome" }
+    local text = Card.Reply(7, mine, group)
+    SIZES.listed = #text
+    check("a listed leader's answer carries the group after the card", text:find("^1 L 7 1 20 TD fury%-warrior ") ~= nil
+        and text:find(" 120 102 Full clear, quests welcome$") ~= nil)
+    local back, got = Card.New(), {}
+    local kind, id, note = Card.Decode(text, back, got)
+    check("and reads back: card, minimum, needs and note", kind == "L" and id == 7 and note == "Full clear, quests welcome"
+        and back.score == 189 and got.min == 120 and got.tanks == 1 and got.healers == 0 and got.damage == 2)
+    group.min, group.note = 0, ""
+    text = Card.Reply(7, mine, group)
+    kind, id, note = Card.Decode(text, back, got)
+    check("no minimum and no note", id == 7 and text:find(" %- 102$") ~= nil and kind == "L" and note == nil and got.min == 0)
+    local big = Card.New()
+    big.class, big.level, big.roles, big.spec, big.score = 11, 60, 7, "beast-mastery-hunter", 612
+    big.bisHave, big.bisTotal, big.dungeon = 40, 40, "DireMaul"
+    big.hasKills, big.nKills, big.hasQuests, big.nHave, big.nNeed = true, 19, true, Card.MAX_QUESTS, Card.MAX_QUESTS
+    for i = 1, 19 do big.kills[i] = Card.KILL_CAP end
+    for i = 1, Card.MAX_QUESTS do big.have[i], big.need[i] = 98800 + i, 98900 + i end
+    group.min, group.note = 300, Card.CleanNote(string.rep("x", 80))
+    text = Card.Reply(Card.ID_MAX, big, group)
+    check("the biggest listed answer fits, its quests cut first", #text <= Card.MAX_BYTES
+        and Card.Decode(text, back, got) == "L" and back.nKills == 19 and got.min == 300)
+    local GOOD = "1 L 42 1 20 TD - - - Deadmines - - 120 112"
+    check("a well-formed listed answer passes", Card.Decode(GOOD, back, got) == "L")
+    for i, bad in ipairs({ "1 L 42 1 20 TD - - - Deadmines - -", GOOD:gsub(" 112$", " 11"), GOOD:gsub(" 112$", " 1a2"),
+        GOOD:gsub(" 120 ", " 0 "), GOOD .. " ", GOOD .. " |cffnote" }) do
+        check("malformed listed answer " .. i .. " is rejected", Card.Decode(bad, back, got) == nil)
+    end
+    check("a listed answer needs a group to fill", Card.Decode(GOOD, back, nil) == nil)
+end
+
+do
+    local state = Fixture({ enabled = true })
+    local GF = state.GF
+    local Comms, Group = GF.Comms, GF.Group
+    local heard = 0
+    GF.Listen("group", function() heard = heard + 1 end)
+    state.listed, state.listOk = false, true
+    check("nothing to list until a dungeon and a style are picked", Group.List() == false and state.created == nil)
+    Group.activity, Group.style, Group.min, Group.damage, Group.note = 2, 3, 120, 2, "Quests welcome"
+    check("a group is listed with its dungeon and playstyle", Group.List() == true and state.created.activity == 2
+        and state.created.style == 3 and heard > 0)
+    check("it is ours, and told to Naowh Forever players", Group.Info() == Group and Group.listedAt ~= nil)
+    Group.activity = 1
+    Group.List()
+    check("listed again, it is updated", state.updated.activity == 1 and state.updated.style == 3)
+    Comms.OnMessage("1 Q 5 Deadmines", "Browser")
+    local answer = state.sent[#state.sent]
+    check("a card request is answered with the group", answer.target == "Browser"
+        and answer.text:find("^1 L 5 ") ~= nil and answer.text:find(" 120 112 Quests welcome$") ~= nil)
+
+    local nonce = Comms.Ping("Leader", "Deadmines")
+    Comms.OnMessage("1 L " .. nonce .. " 1 30 T - 211 - Deadmines - - 80 011 Bring food", "Leader")
+    local card = Comms.CardOf("Leader")
+    check("a leader's group is kept with their card", card.group and card.group.min == 80 and card.group.tanks == 0
+        and card.group.healers == 1 and card.group.damage == 1 and card.group.note == "Bring food")
+    nonce = Comms.Ping("Leader", "Deadmines")
+    Comms.OnMessage("1 C " .. nonce .. " 1 30 T - 211 - Deadmines - -", "Leader")
+    check("and dropped when they answer without one", Comms.CardOf("Leader").group == nil)
+
+    Comms.OnMessage("1 A 31 3 25 D - 201 - Deadmines - - Hi", "Erin")
+    local record = Comms.applicants[1]
+    Group.Invite(record)
+    check("Invite invites the applicant by name", state.invited == "Erin" and record.invited == true)
+    Group.Decline(record)
+    check("Decline whispers D and takes them off", #Comms.applicants == 0 and state.sent[#state.sent].text == "1 D 31")
+
+    state.inGroup, state.leader = true, false
+    check("in a group, only its leader lists", Group.CanEdit() == false and Group.List() == false)
+    check("or delists", Group.Delist() == false and state.removed == nil)
+    state.leader = true
+    check("the leader delists", Group.Delist() == true and state.removed == true)
+    state.Frame("LFG_LIST_ACTIVE_ENTRY_UPDATE"):onEvent("LFG_LIST_ACTIVE_ENTRY_UPDATE")
+    check("once delisted it is no longer ours", Group.Info() == nil and Group.listedAt == nil and Group.ours == false)
+    state.listed = true
+    check("a listing made in the game's own finder is not told about", Group.Info() == nil)
+    state.listed = false
+    state.inGroup = false
+
+    local sentBefore = #Comms.sent
+    local id = GF.Browse.Apply("Leader", "Deadmines")
+    check("Apply applies with your saved roles and no note", id and #Comms.sent == sentBefore + 1
+        and Comms.SentTo("leader") ~= nil and state.sent[#state.sent].text:find("^1 A " .. id .. " 1 20 TD ") ~= nil)
+    state.S.Set("enabled", false)
+    check("off: nothing listened to", next(state.events) == nil)
+end
+
+print(("Listed answer: %d bytes."):format(SIZES.listed))
 print(("Message sizes: Q %d, C %d, A %d (with a note), K %d, the biggest A %d bytes of %d."):format(
     SIZES.ask, SIZES.reply, SIZES.apply, SIZES.K, SIZES.biggest, 255))
 print(("test-group-finder: %d checks passed"):format(checks))

@@ -22,7 +22,8 @@ GF.Card = Card
 local VERSION, MAX_BYTES, NOTE_MAX = Card.VERSION, Card.MAX_BYTES, Card.NOTE_MAX
 local MAX_KILLS, KILL_CAP, MAX_QUESTS, ID_MAX = Card.MAX_KILLS, Card.KILL_CAP, Card.MAX_QUESTS, Card.ID_MAX
 local CLASS_MAX, LEVEL_MAX, SCORE_MAX, BIS_MAX, QUEST_ID_MAX = 20, 100, 99999, 40, 999999
-local KEY_MAX, SPEC_MAX, ROLES_MAX, DIGITS_MAX = 40, 32, 3, 6
+local KEY_MAX, SPEC_MAX, ROLES_MAX, DIGITS_MAX, NEEDS_DIGITS = 40, 32, 3, 6, 3
+local NEED_MAX = 9
 local DECIMAL, TENTHS, ROUND = 10, 10, 0.5
 local KEY_PATTERN = "^%u%w*$"
 local SPEC_PATTERN = "^[%l%-]+$"
@@ -32,7 +33,8 @@ local NONE, SPACE = "-", " "
 local VERSION_BYTE, NONE_BYTE, SPACE_BYTE = byte(VERSION), byte(NONE), byte(SPACE)
 local ZERO, NINE = byte("0"), byte("9")
 local KINDS = {}
-for _, kind in ipairs({ "Q", "C", "A", "K", "X", "D" }) do KINDS[byte(kind)] = kind end
+for _, kind in ipairs({ "Q", "C", "A", "K", "X", "D", "L" }) do KINDS[byte(kind)] = kind end
+Card.NEED_MAX = NEED_MAX
 
 local TANK, HEALER, DAMAGE = 4, 2, 1
 Card.TANK, Card.HEALER, Card.DAMAGE = TANK, HEALER, DAMAGE
@@ -184,11 +186,16 @@ local function Body(card, n, questCap, kills)
     return n + 9
 end
 
-local function WithCard(kind, id, card, note)
+local function WithCard(kind, id, card, note, group)
     local cap, kills = MAX_QUESTS, true
     while true do
         out[1], out[2], out[3] = VERSION, kind, id
         local n = Body(card, 3, cap, kills)
+        if group then
+            out[n + 1] = group.min > 0 and group.min or NONE
+            out[n + 2] = group.tanks .. group.healers .. group.damage
+            n = n + 2
+        end
         if note then
             n = n + 1
             out[n] = note
@@ -205,8 +212,9 @@ local function WithCard(kind, id, card, note)
     end
 end
 
-function Card.Reply(nonce, card)
-    return WithCard("C", nonce, card)
+function Card.Reply(nonce, card, group)
+    if not group then return WithCard("C", nonce, card) end
+    return WithCard("L", nonce, card, group.note ~= "" and group.note or nil, group)
 end
 
 function Card.Application(id, card, note)
@@ -376,7 +384,37 @@ local function ParseBody(s, pos, len, card)
     return pos, j
 end
 
-function Card.Decode(text, card)
+local function Note(text, pos, len)
+    if pos > len or byte(text, pos) == SPACE_BYTE then return nil end
+    local note = sub(text, pos)
+    if #note > NOTE_MAX or find(note, NOTE_BAD) or byte(note, #note) == SPACE_BYTE then return nil end
+    return note
+end
+
+local function Digit(s, k)
+    local b = byte(s, k)
+    if b < ZERO or b > NINE then return nil end
+    return b - ZERO
+end
+
+local function ParseGroup(s, pos, len, group)
+    local i, j
+    i, j, pos = Field(s, pos, len)
+    if not i then return nil end
+    if IsNone(s, i, j) then
+        group.min = 0
+    else
+        group.min = Int(s, i, j, SCORE_MAX)
+        if not group.min or group.min < 1 then return nil end
+    end
+    i, j, pos = Field(s, pos, len)
+    if not i or j - i + 1 ~= NEEDS_DIGITS then return nil end
+    group.tanks, group.healers, group.damage = Digit(s, i), Digit(s, i + 1), Digit(s, i + 2)
+    if not (group.tanks and group.healers and group.damage) then return nil end
+    return pos, j
+end
+
+function Card.Decode(text, card, group)
     if type(text) ~= "string" then return nil end
     local len = #text
     if len > MAX_BYTES then return nil end
@@ -396,14 +434,19 @@ function Card.Decode(text, card)
         if not key then return nil end
         return kind, id, key
     end
-    if kind == "C" or kind == "A" then
+    if kind == "C" or kind == "A" or kind == "L" then
         if not card then return nil end
         pos, j = ParseBody(text, pos, len, card)
         if not pos then return nil end
+        if kind == "L" then
+            if not group or j == len then return nil end
+            pos, j = ParseGroup(text, pos, len, group)
+            if not pos then return nil end
+        end
         if j == len then return kind, id, nil end
-        if kind == "C" or pos > len or byte(text, pos) == SPACE_BYTE then return nil end
-        local note = sub(text, pos)
-        if #note > NOTE_MAX or find(note, NOTE_BAD) or byte(note, #note) == SPACE_BYTE then return nil end
+        if kind == "C" then return nil end
+        local note = Note(text, pos, len)
+        if not note then return nil end
         return kind, id, note
     end
     if j ~= len then return nil end

@@ -29,9 +29,26 @@ local TEXT_QUESTS = ns.L("%d quests")
 local TEXT_JUST_NOW = ns.L("just now")
 local TEXT_MINUTES = ns.L("%dm ago")
 local TEXT_HOURS = ns.L("%dh ago")
+local TEXT_MIN = ns.L("%.1f+")
+local TEXT_NEEDS = ns.L("Needs %d tank, %d healer, %d damage")
+local TEXT_APPLY = "Apply"
+local TEXT_APPLIED = ns.L("Applied")
+local TEXT_RECEIVED = ns.L("Received")
+local TEXT_DECLINED = ns.L("Declined")
 
-local function RowEnter(row) row.hover:Show() end
-local function RowLeave(row) row.hover:Hide() end
+local function RowEnter(row)
+    row.hover:Show()
+    if row.needs then Parts.TipLines(row, "ANCHOR_RIGHT", row.note or row.needs, row.note and row.needs) end
+end
+
+local function RowLeave(row)
+    row.hover:Hide()
+    GameTooltip_Hide()
+end
+
+local function Apply(row)
+    if row.leaderName then Browse.Apply(row.leaderName, row.dungeon) end
+end
 
 local function NewRow(view)
     local row = CreateFrame("Frame", nil, view)
@@ -69,8 +86,14 @@ local function NewRow(view)
     row.quests:SetPoint("LEFT", row.kills, "RIGHT", DETAIL_GAP, 0)
     row.score = ns.Font(row, St.SCORE_SIZE, nil, T.fg)
     row.score:SetPoint("TOPRIGHT", -PAD, -LINE_1)
+    row.min = ns.Font(row, St.SUB_SIZE, nil, T.muted)
+    row.min:SetPoint("RIGHT", row.score, "LEFT", -TEXT_GAP, 0)
     row.age = ns.Font(row, St.SUB_SIZE, nil, T.muted)
     row.age:SetPoint("TOPRIGHT", -PAD, -LINE_3)
+    row.apply = ns.Button(row, TEXT_APPLY, St.APPLY_W, St.BUTTON_H, function() Apply(row) end)
+    row.apply:SetPoint("RIGHT", row, "TOPRIGHT", -PAD, -(LINE_2 + St.CLASS_ICON / 2))
+    row.status = ns.Font(row, St.SUB_SIZE, nil, T.muted)
+    row.status:SetPoint("RIGHT", row, "TOPRIGHT", -PAD, -(LINE_2 + St.CLASS_ICON / 2))
     return row
 end
 
@@ -80,12 +103,6 @@ local function Leader(entry)
         if members[i].leader then return members[i] end
     end
     return members[1]
-end
-
-local function PaintClass(icon, class)
-    local coords = class and CLASS_ICON_TCOORDS[class]
-    icon.texture:SetShown(coords ~= nil)
-    if coords then Parts.ClassCrop(icon.texture, coords) end
 end
 
 local function Slot(row, i, atlas)
@@ -133,14 +150,36 @@ local function Kills(card)
     return total
 end
 
+local function PaintApply(row, entry, card, mine)
+    local applied = entry.leader and Comms.SentTo(entry.leader)
+    row.apply:SetShown(GF.On() and card ~= nil and not mine and not entry.delisted and not applied)
+    if not applied then
+        row.status:SetText("")
+    elseif applied.declined then
+        row.status:SetText(TEXT_DECLINED)
+    else
+        row.status:SetText(applied.acked and TEXT_RECEIVED or TEXT_APPLIED)
+    end
+end
+
+local function PaintGroup(row, group)
+    row.min:SetText(group and group.min > 0 and TEXT_MIN:format(group.min / SCORE_TENTHS) or "")
+    row.note = group and group.note ~= "" and group.note or nil
+    row.needs = group and TEXT_NEEDS:format(group.tanks, group.healers, group.damage) or nil
+end
+
 local function PaintCard(row, entry)
     local leader = entry.leader
+    local mine = entry.mine or (leader ~= nil and Comms.IsMe(leader))
     local card, waiting
-    if leader and Comms.IsMe(leader) then
+    if mine then
         card = Card.Mine(entry.dungeon)
     elseif leader then
         card, waiting = Browse.CardOf(leader)
     end
+    row.leaderName, row.dungeon = leader, entry.dungeon
+    PaintApply(row, entry, card, mine)
+    PaintGroup(row, not mine and card and card.group)
     if card and card.score then
         row.score:SetText(ns.NaowhScore.Colored(card.score / SCORE_TENTHS, card.level))
     else
@@ -172,7 +211,7 @@ local function SetRow(row, entry, index)
     local class = leader and leader.class
     local color = class and RAID_CLASS_COLORS[class] or T.fg
     row.band:SetColorTexture(color.r, color.g, color.b, 1)
-    PaintClass(row.class, class)
+    UI.PaintClass(row.class, class)
     row.leader:SetText(entry.leader or WAITING)
     row.leader:SetTextColor(color.r, color.g, color.b)
     row.level:SetText(leader and leader.level and tostring(leader.level) or "")

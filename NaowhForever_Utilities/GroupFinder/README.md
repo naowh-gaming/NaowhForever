@@ -8,8 +8,8 @@ in the options window), needing `NaowhForever_BiS` for the Naowh Score and the B
 Journal is optional and read for kills, quests and dungeon keys when it is loaded.
 
 Off by default (`groupFinder.enabled`; its switch under Settings > Modules). Its window (`/nflfg`, its
-Top Bar launcher, or Open Group Finder on its settings page) has the Browse screen: Forever's listings
-with each leader's card. Opening it turns the module on. The Your Group and Create screens come next.
+Top Bar launcher, or Open Group Finder on its settings page) has three tabs: Browse, Your Group and
+Create. Opening it turns the module on.
 
 ## Browse
 
@@ -18,8 +18,8 @@ with each leader's card. Opening it turns the module on. The Your Group and Crea
 | [logo] Looking For Group                     [Search]          [x] |
 |        4 groups                                                    |
 |--------------------------------------------------------------------|
-| Shadowfang Keep 22-30                                         23.9 |  the leader's Naowh Score
-| [class] Korvath 25                                                 |  in its grade's color
+| Shadowfang Keep 22-30                                  12.0+  23.9 |  their minimum, the leader's
+| [class] Korvath 25                                         [Apply] |  Naowh Score in its grade's color
 | [T][D][D][ ][ ]   3 boss kills   2 quests                   10m ago |
 |--------------------------------------------------------------------|
 | The Deadmines 17-26                                            ... |  waiting for their card
@@ -35,6 +35,36 @@ with each leader's card. Opening it turns the module on. The Your Group and Crea
   the dungeon's quests in their log.
 - A note says when nothing has been searched yet, while searching, when a search failed, when there is
   nothing to search at your level, and during an encounter.
+- A leader who listed through Create shows their minimum score, and their note and the roles they need
+  on hover. Apply sends your card with your saved roles; the row then says Applied, Received (their game
+  has it) or Declined.
+
+## Your Group
+
+```
+| Shadowfang Keep 22-30                                     [Delist] |
+| Competitive   Minimum score 12.5   Listed 10m ago   2 applied      |
+| Die Man 20   Pal 20                                                |  your party, in class colors
+|--------------------------------------------------------------------|
+| [class] Magus            23.9  7 boss kills  BiS 9/14  1 quests  [Invite] [Decline] |
+| [H][D] 25                                                          |  the roles they apply as
+```
+
+- The applicants, best Naowh Score first, their note on hover. Invite invites them by name, and the
+  row then says Invited; Decline tells them, and they leave the list.
+- Without a listing it says so, and points to Create. Only your group's leader sees Delist.
+
+## Create
+
+- **Dungeon:** a tile for each activity in the category the search uses, by level: its short name, its
+  levels in the color of their difficulty for you, and its bosses from the Journal.
+- **Roles needed:** how many tanks, healers and damage you still want, 0 to 9 each.
+- **Minimum score:** 0 to 30, in halves.
+- **Style:** the game's own four playstyles, under the game's names.
+- **Note:** 60 characters.
+- **List Group**, or **Update Group** while listed: lists the dungeon and playstyle in Forever's finder
+  and shows Your Group. It says why when it cannot: nothing picked yet, or you are not the leader.
+  **Reset** clears the form.
 
 ## Layout
 
@@ -47,13 +77,18 @@ NaowhForever_Utilities/GroupFinder/
   Comms.lua            the whispers: send queue, card requests, applications, expiry, guards (GF.Comms)
   Listings.lua         Forever's search results in pooled entries, activities to Journal keys (GF.Listings)
   Search.lua           a search from the Browse screen, for the activities at your level (GF.Search)
-  Browse.lua           each listing's leader asked once for their card, and what is known of them (GF.Browse)
+  Group.lua            your group: listing, updating and delisting it, inviting or declining applicants,
+                       and what Naowh Forever players are told about it (GF.Group)
+  Browse.lua           each listing's leader asked once for their card, applying to them (GF.Browse)
   Probe.lua            /nf groupfinder probe and /nf groupfinder ping <name>
   View/
-    Style.lua          its look, its window's sizes and shared words (GF.UI, GF.UI.Style)
+    Style.lua          its look, its window's sizes and shared words and parts (GF.UI, GF.UI.Style)
     Row.lua            a listing's row on the shared row engine (GF.UI.Kinds)
+    Applicant.lua      an applicant's row on the shared row engine (GF.UI.ApplicantKinds)
   UI/
-    Window.lua         the window and its Browse list (ns.OpenGroupFinder, ns.ToggleGroupFinder)
+    YourGroup.lua      the Your Group page (GF.UI.YourGroup)
+    Create.lua         the Create page (GF.UI.Create)
+    Window.lua         the window, its tabs and the Browse list (ns.OpenGroupFinder, ns.ToggleGroupFinder)
     SettingsPage.lua   its settings page (Group Finder/Settings): Open Group Finder, what your card shares
   README.md            this file
 ```
@@ -65,8 +100,9 @@ Addon whispers by name, prefix `NaowhLFG`. Every message is one plain line, vers
 
 | Message | Sent | Answer |
 | --- | --- | --- |
-| `1 Q <nonce> <dungeon or ->` | asks a listed player for their card | `C` with the same nonce |
+| `1 Q <nonce> <dungeon or ->` | asks a listed player for their card | `C` or `L` with the same nonce |
 | `1 C <nonce> <card>` | your card | |
+| `1 L <nonce> <card> <minimum or -> <needs> [note]` | your card and the group you listed through Create | |
 | `1 A <id> <card> [note]` | applies: your card with the roles you apply as, and a note | `K` |
 | `1 K <id>` | the leader's game received it | |
 | `1 X <id>` | you withdraw it | |
@@ -86,9 +122,11 @@ The card is nine fields, `-` for one not shared or not known:
 - quests: the quests in your log, a slash, then those you still need, by quest ID (the reader names
   them in its own language).
 - the note: printable ASCII, no `|` escapes, 60 bytes at most, always last.
+- `L`'s minimum: the Naowh Score in tenths. needs: three digits, the tanks, healers and damage you want.
 
-Sizes: Q 15 bytes, C 86, A with a note 106; the biggest real application (Dire Maul's 19 bosses, a
-full note) 248. When a card would not fit, its quest lists are cut first, then its kills.
+Sizes: Q 15 bytes, C 86, L with a note 129, A with a note 106; the biggest real application (Dire
+Maul's 19 bosses, a full note) 248. When a card would not fit, its quest lists are cut first, then its
+kills.
 
 ## The data the screens use
 
@@ -103,9 +141,13 @@ full note) 248. When a card would not fit, its quest lists are cut first, then i
   still awaited.
 - **A card** (`GF.Card.New()`): `class`, `level`, `roles` (bits: `Card.TANK`, `HEALER`, `DAMAGE`),
   `spec`, `score`, `bisHave`, `bisTotal`, `dungeon`, `hasKills`, `kills[1..nKills]`, `hasQuests`,
-  `have[1..nHave]`, `need[1..nNeed]`. Received ones by name: `GF.Comms.CardOf(name)`.
-- **An applicant** (`GF.Comms.applicants`): `id`, `name`, `card`, `note`, `at`, `deadline`.
-- **Your application** (`GF.Comms.sent`): `id`, `name`, `dungeon`, `deadline`, `acked`, `declined`.
+  `have[1..nHave]`, `need[1..nNeed]`. Received ones by name: `GF.Comms.CardOf(name)`, with `group`
+  (`min`, `tanks`, `healers`, `damage`, `note`) when they answered with `L`.
+- **An applicant** (`GF.Comms.applicants`): `id`, `name`, `card`, `note`, `at`, `deadline`, `invited`.
+- **Your application** (`GF.Comms.sent`, one by leader: `GF.Comms.SentTo(name)`): `id`, `name`,
+  `dungeon`, `deadline`, `acked`, `declined`.
+- **Your group** (`GF.Group`): the form's `activity`, `style`, `min` (tenths), `tanks`, `healers`,
+  `damage` and `note`; `ours` while its listing is the one Create made, from `listedAt`.
 - Events (`GF.Listen(what, fn)`): `listings` (true when the search failed), `listing`, `search`, `card`,
   `noreply`, `offline`, `applicant`, `received`, `withdrawn`, `expired`, `applicantExpired`.
 
@@ -162,6 +204,19 @@ full note) 248. When a card would not fit, its quest lists are cut first, then i
   one who does not run Naowh Forever is not waited on again.
 - The kills on a row are the leader's own boss kills in that dungeon, not how far the group has got:
   a card carries no run progress yet.
+- `C_LFGList.CreateListing`, `UpdateListing` and `RemoveListing` need a hardware event, so List Group,
+  Update Group and Delist run only from their clicks. They list as the game's own Listing tab does
+  (`Blizzard_LFGVanilla_Listing.lua`): the activity and a playstyle, which Forever requires and shows
+  every player, so Style offers the game's four (`GROUP_FINDER_GENERAL_PLAYSTYLE1` to `4`). Only a group's
+  leader, or a player on their own, can list or delist, as there.
+- The game's listing comment is a text field addon code cannot fill, so the note, the minimum score
+  and the roles needed reach Naowh Forever players only, in the leader's answer.
+- A listed leader answers with one `L`, the card and the group together, not two whispers: answers are
+  capped to keep the send rate free, and an answer cut there looks like a leader without Naowh Forever.
+- What Create listed is told only while that listing stands (`ours`): a listing made in the game's own
+  finder, or one gone (`LFG_LIST_ACTIVE_ENTRY_UPDATE` with no active entry), has no group to tell.
+- Invite is `C_PartyInfo.InviteUnit` by the applicant's name; the game asks for confirmation itself when
+  inviting would turn the party into a raid.
 
 ## Settings
 
@@ -177,11 +232,13 @@ full note) 248. When a card would not fit, its quest lists are cut first, then i
 
 - `lua Tools/regression/test-group-finder.lua`: loads its rules against stubs and checks it is free
   while off, the card and its messages, the whispers' guards and expiry, answering only while listed,
-  names across realms, the listings, the search, asking leaders for cards, the probe, and the budgets:
-  a card built and written under 0.1 ms, read under 0.05 ms, fifty listings read under 0.5 ms, none of
-  them making garbage.
-- `lua Tools/regression/test-group-finder-ui.lua`: the window and its rows on the real shared parts,
-  against stubbed rules: nothing built until opened, the notes, the order, a row's dungeon, leader,
-  spots and card, a card's arrival on the same rows, and turning it off.
+  names across realms, the listings, the search, asking leaders for cards, a listed leader's `L`, listing,
+  updating and delisting a group, invites and declines, applying, the probe, and the budgets: a card
+  built and written under 0.1 ms, read under 0.05 ms, fifty listings read under 0.5 ms, none of them
+  making garbage.
+- `lua Tools/regression/test-group-finder-ui.lua`: the window, its tabs and its pages on the real shared
+  parts, against stubbed rules: nothing built until opened; Browse's notes, order, rows, a leader's group
+  and Apply; Create's tiles, roles, slider, styles, note, List Group and Reset, and why it cannot list;
+  Your Group's header, party, applicants best first, Invite, Decline and Delist; and turning it off.
 - In game: `/nf groupfinder probe`, and `/nf groupfinder ping <name>` between two players with the
   Group Finder on; the one pinged needs a listing up in the game's Group Finder.
