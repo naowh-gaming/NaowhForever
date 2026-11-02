@@ -142,7 +142,7 @@ local function Build()
 
     local scroll = ns.UI.SlimScroll(window)
     scroll:SetPoint("TOPLEFT", window.bar, "BOTTOMLEFT", 0, -St.TAB_GAP)
-    scroll:SetPoint("BOTTOMRIGHT", -St.SCROLLBAR - SCROLL_GAP, UI.FOOTER_ROOM)
+    scroll:SetPoint("BOTTOMRIGHT", -INSET - St.SCROLLBAR - SCROLL_GAP, UI.FOOTER_ROOM)
     view = View.New(scroll, UI.Kinds, { Redraw = DrawRows })
     view:SetWidth(UI.LIST_W)
     view.order = {}

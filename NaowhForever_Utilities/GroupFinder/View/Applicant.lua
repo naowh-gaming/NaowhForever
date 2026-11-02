@@ -20,10 +20,10 @@ local ROLE_ORDER = { "TANK", "HEALER", "DAMAGER" }
 local ROLE_BIT = { TANK = Card.TANK, HEALER = Card.HEALER, DAMAGER = Card.DAMAGE }
 local WAITING = UI.WAITING
 
-local TEXT_KILLS = ns.L("%d boss kills")
+local TEXT_KILL, TEXT_KILLS = ns.L("1 boss kill"), ns.L("%d boss kills")
 local TEXT_FIRST = ns.L("First time")
 local TEXT_BIS = ns.L("BiS %d/%d")
-local TEXT_QUESTS = ns.L("%d quests")
+local TEXT_QUEST, TEXT_QUESTS = ns.L("1 quest"), ns.L("%d quests")
 local TEXT_INVITE = "Invite"
 local TEXT_DECLINE = "Decline"
 local TEXT_INVITED = ns.L("Invited")
@@ -119,12 +119,13 @@ local function SetRow(row, record, index)
     row.score:SetText(card.score and ns.NaowhScore.Colored(card.score / SCORE_TENTHS, card.level) or WAITING)
     if card.hasKills then
         local total = Kills(card)
-        row.kills:SetText(total > 0 and TEXT_KILLS:format(total) or TEXT_FIRST)
+        row.kills:SetText(total == 0 and TEXT_FIRST or total == 1 and TEXT_KILL or TEXT_KILLS:format(total))
     else
         row.kills:SetText("")
     end
     row.bis:SetText(card.bisTotal and TEXT_BIS:format(card.bisHave, card.bisTotal) or "")
-    row.quests:SetText(card.hasQuests and card.nHave > 0 and TEXT_QUESTS:format(card.nHave) or "")
+    local quests = card.hasQuests and card.nHave or 0
+    row.quests:SetText(quests == 0 and "" or quests == 1 and TEXT_QUEST or TEXT_QUESTS:format(quests))
     row.note = record.note
     row.invite:SetShown(not record.invited)
     row.invited:SetText(record.invited and TEXT_INVITED or "")

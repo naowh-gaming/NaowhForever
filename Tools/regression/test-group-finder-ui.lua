@@ -181,7 +181,7 @@ function GF.Listings.Read()
     return L.n
 end
 function GF.Listings.Activity(id) return ACTIVITY[id] end
-function GF.Listings.DungeonOf(id) return id == 1 and "Deadmines" or nil end
+function GF.Listings.DungeonOf(id) return id == 1 and "Deadmines" or id == 2 and "ShadowfangKeep" or nil end
 local function Newest(a, b)
     if a.mine ~= b.mine then return a.mine end
     return a.age < b.age
@@ -217,6 +217,7 @@ ns = { L = dofile("Tools/regression/locale_stub.lua").L, Upper = string.upper, L
     THEME = setmetatable({ accent = ACCENT, muted = MUTED }, { __index = function() return WHITE end }),
     Journal = {
         Get = function(key)
+            if key == "ShadowfangKeep" then return { wings = { { bosses = { { encounters = { 3 } } } } } } end
             if key ~= "Deadmines" then return nil end
             return { wings = { { bosses = { { encounters = { 1 } }, { encounters = { 2 } },
                 { with = "Sneed", encounters = { 2 } }, {} } } } }
@@ -542,7 +543,8 @@ check("a tile per dungeon, by level", #tiles == 3 and tiles[1].label.text == "MC
     and tiles[3].label.text == "SFK")
 check("each with its levels, in their difficulty's color", tiles[2].range.text == "17-26" and tiles[2].range.g == 0.75
     and tiles[1].range.text == "")
-check("and its bosses from the Journal", tiles[2].bosses.text == "2 bosses" and tiles[3].bosses.text == "")
+check("and its bosses from the Journal", tiles[2].bosses.text == "2 bosses" and tiles[3].bosses.text == "1 boss"
+    and tiles[1].bosses.text == "")
 check("nothing to list yet: why, and List Group off", create.list.label.text == "List Group"
     and create.list.enabled == false and create.why.text:find("Pick a dungeon", 1, true))
 tiles[2]:Click()
@@ -588,6 +590,7 @@ end
 local note = Applicants()
 check("nobody applied yet says so", note and note.text.text:find("No one has applied", 1, true))
 GF.Comms.applicants[1] = Applicant("Erin", 5, 211, 1)
+GF.Comms.applicants[1].card.kills = { 1, 0 }
 GF.Comms.applicants[2] = Applicant("Magus", 8, 239, 2)
 GF.Fire("applicant")
 Flush()
@@ -599,7 +602,8 @@ check("and the count on the tab", Tab("group").label == "Your Group (2)")
 local magus = Row("Magus")
 check("an applicant's name in their class color, their score, kills, BiS and quests", magus.name.text == "Magus"
     and magus.name.r == MAGE.r and magus.score.text == "score 23.9 at 25" and magus.kills.text == "7 boss kills"
-    and magus.bis.text == "BiS 9/14" and magus.quests.text == "1 quests")
+    and magus.bis.text == "BiS 9/14" and magus.quests.text == "1 quest")
+check("one boss kill reads as one", Row("Erin").kills.text == "1 boss kill")
 check("the roles they apply as", magus.roles[1].atlas == UI.Style.ROLE_ATLAS.HEALER
     and magus.roles[2].atlas == UI.Style.ROLE_ATLAS.DAMAGER and not magus.roles[3]:IsShown())
 check("and their note on hover", magus.note == "Hi")

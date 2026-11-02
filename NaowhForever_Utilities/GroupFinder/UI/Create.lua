@@ -26,7 +26,7 @@ local ROLES = {
 }
 
 local TEXT_RANGE = "%d-%d"
-local TEXT_BOSSES = ns.L("%d bosses")
+local TEXT_BOSS, TEXT_BOSSES = ns.L("1 boss"), ns.L("%d bosses")
 local TEXT_COUNT = "%d/%d"
 local TEXT_DUNGEON, TEXT_ROLES, TEXT_MIN, TEXT_STYLE, TEXT_NOTE = "DUNGEON", "ROLES NEEDED", "MINIMUM SCORE", "STYLE", "NOTE"
 local TEXT_NO_DUNGEONS = ns.L("Forever's group finder has no dungeons for your level yet.")
@@ -83,7 +83,7 @@ local function PaintTile(tile, id, x, y)
     tile.range:SetText(activity.max > 0 and TEXT_RANGE:format(activity.min, activity.max) or "")
     tile.range:SetTextColor(color.r, color.g, color.b)
     local bosses = Bosses(id)
-    tile.bosses:SetText(bosses and TEXT_BOSSES:format(bosses) or "")
+    tile.bosses:SetText(not bosses and "" or bosses == 1 and TEXT_BOSS or TEXT_BOSSES:format(bosses))
     Pick(tile, Group.activity == id)
     tile:Show()
 end

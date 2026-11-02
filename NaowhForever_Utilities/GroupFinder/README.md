@@ -56,7 +56,7 @@ Create. Opening it turns the module on.
 | Competitive   Minimum score 12.5   Listed 10m ago   2 applied      |
 | Die Man 20   Pal 20                                                |  your party, in class colors
 |--------------------------------------------------------------------|
-| [class] Magus            23.9  7 boss kills  BiS 9/14  1 quests  [Invite] [Decline] |
+| [class] Magus            23.9  7 boss kills  BiS 9/14  1 quest   [Invite] [Decline] |
 | [H][D] 25                                                          |  the roles they apply as
 ```
 

@@ -23,9 +23,9 @@ local WAITING = UI.WAITING
 
 local TEXT_RANGE = "%d-%d"
 local TEXT_SIZE = "%d/%d"
-local TEXT_KILLS = ns.L("%d boss kills")
+local TEXT_KILL, TEXT_KILLS = ns.L("1 boss kill"), ns.L("%d boss kills")
 local TEXT_FIRST = ns.L("First time")
-local TEXT_QUESTS = ns.L("%d quests")
+local TEXT_QUEST, TEXT_QUESTS = ns.L("1 quest"), ns.L("%d quests")
 local TEXT_JUST_NOW = ns.L("just now")
 local TEXT_MINUTES = ns.L("%dm ago")
 local TEXT_HOURS = ns.L("%dh ago")
@@ -188,11 +188,12 @@ local function PaintCard(row, entry)
     local here = card and card.dungeon ~= nil and card.dungeon == entry.dungeon
     if here and card.hasKills then
         local total = Kills(card)
-        row.kills:SetText(total > 0 and TEXT_KILLS:format(total) or TEXT_FIRST)
+        row.kills:SetText(total == 0 and TEXT_FIRST or total == 1 and TEXT_KILL or TEXT_KILLS:format(total))
     else
         row.kills:SetText("")
     end
-    row.quests:SetText(here and card.hasQuests and card.nHave > 0 and TEXT_QUESTS:format(card.nHave) or "")
+    local quests = here and card.hasQuests and card.nHave or 0
+    row.quests:SetText(quests == 0 and "" or quests == 1 and TEXT_QUEST or TEXT_QUESTS:format(quests))
 end
 
 local function Age(seconds)
