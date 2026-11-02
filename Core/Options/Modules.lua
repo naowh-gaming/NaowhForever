@@ -150,6 +150,13 @@ local MODULES = {
           { name = "Bar Sets", build = "BuildActionBarsTab", terms = "ActionBarsSearchTerms", reuse = true },
           { name = "Settings", reuse = true },
       } },
+    { name = "Group Finder", group = "UTILITIES", navIcon = "search", settings = "GroupFinderSettings",
+      addon = "NaowhForever_GroupFinder", host = "NaowhForever_Utilities",
+      needs = { "NaowhForever_BiS" },
+      subtitle = "Naowh Forever cards and applications on top of Forever's own group finder.",
+      tabs = {
+          { name = "Settings", reuse = true },
+      } },
     { name = "AuraBuffs", group = "COMBAT", navIcon = "aura", settings = "AuraBuffSettings",
       addon = "NaowhForever_AuraBuffs", host = "NaowhForever_Combat",
       command = "buffs", short = "Buffs", icon = "Interface\\Icons\\Spell_Holy_WordFortitude",
