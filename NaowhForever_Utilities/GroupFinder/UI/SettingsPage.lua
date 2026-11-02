@@ -26,6 +26,13 @@ end
 
 local page = Settings.Page(GF.PAGE, S)
 
+page:Window({
+    text = "Open Group Finder",
+    open = function() ns.OpenGroupFinder() end,
+    headline = "Forever's groups, with their leaders' cards",
+    detail = "Search, and see the Naowh Score of every leader who runs Naowh Forever.",
+})
+
 page:Card({
     id = "card", name = "Your Card", order = 10,
     help = "What Naowh Forever players see about you when you list or apply.",

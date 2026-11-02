@@ -7,9 +7,34 @@ addon whispers between the two players. A module of `NaowhForever_Utilities` (Ut
 in the options window), needing `NaowhForever_BiS` for the Naowh Score and the BiS list; the Dungeon
 Journal is optional and read for kills, quests and dungeon keys when it is loaded.
 
-Off by default (`groupFinder.enabled`; its switch under Settings > Modules). This is the foundation:
-the card, the whispers, the listings reader, the settings page and a probe command. The Browse, Your
-Group and Create screens come next, on this data.
+Off by default (`groupFinder.enabled`; its switch under Settings > Modules). Its window (`/nflfg`, its
+Top Bar launcher, or Open Group Finder on its settings page) has the Browse screen: Forever's listings
+with each leader's card. Opening it turns the module on. The Your Group and Create screens come next.
+
+## Browse
+
+```
++--------------------------------------------------------------------+
+| [logo] Looking For Group                     [Search]          [x] |
+|        4 groups                                                    |
+|--------------------------------------------------------------------|
+| Shadowfang Keep 22-30                                         23.9 |  the leader's Naowh Score
+| [class] Korvath 25                                                 |  in its grade's color
+| [T][D][D][ ][ ]   3 boss kills   2 quests                   10m ago |
+|--------------------------------------------------------------------|
+| The Deadmines 17-26                                            ... |  waiting for their card
+| [class] Nessa 19                                                   |
+| [H][D]                                                   just now |  a solo player's roles
++--------------------------------------------------------------------+
+```
+
+- Your own listing first, then newest first. A delisted listing stays, faded.
+- A group's spots are its tanks, healers and damage, then empty spots up to the activity's size; a solo
+  player shows the roles they signed up as; a raid shows its count.
+- The kills and quests are the leader's for that dungeon: their boss kills there, or First time, and
+  the dungeon's quests in their log.
+- A note says when nothing has been searched yet, while searching, when a search failed, when there is
+  nothing to search at your level, and during an encounter.
 
 ## Layout
 
@@ -21,9 +46,15 @@ NaowhForever_Utilities/GroupFinder/
   Card.lua             your card for one dungeon, and every message written and read (GF.Card)
   Comms.lua            the whispers: send queue, card requests, applications, expiry, guards (GF.Comms)
   Listings.lua         Forever's search results in pooled entries, activities to Journal keys (GF.Listings)
+  Search.lua           a search from the Browse screen, for the activities at your level (GF.Search)
+  Browse.lua           each listing's leader asked once for their card, and what is known of them (GF.Browse)
   Probe.lua            /nf groupfinder probe and /nf groupfinder ping <name>
+  View/
+    Style.lua          its look, its window's sizes and shared words (GF.UI, GF.UI.Style)
+    Row.lua            a listing's row on the shared row engine (GF.UI.Kinds)
   UI/
-    SettingsPage.lua   its settings page (Group Finder/Settings): what your card shares
+    Window.lua         the window and its Browse list (ns.OpenGroupFinder, ns.ToggleGroupFinder)
+    SettingsPage.lua   its settings page (Group Finder/Settings): Open Group Finder, what your card shares
   README.md            this file
 ```
 
@@ -63,15 +94,20 @@ full note) 248. When a card would not fit, its quest lists are cut first, then i
 
 - **A listing** (`GF.Listings.entries[1..n]`, after `GF.Listings.Read()`): `id`, `leader` (nil until
   the game names them), `activity`, `dungeon` (Journal key), `numMembers`, `members[1..nMembers]`
-  (`name`, `level`, `class`, `roles` as card role bits, `leader`, up to 5), `age` in seconds,
-  `delisted`, `party` (its party GUID). `GF.Listings.state` is `ready`, `locked`, `failed` or `none`.
+  (`name`, `level`, `class`, `roles` as card role bits, `leader`, up to 5), `tanks`, `healers`,
+  `damage`, `age` in seconds, `delisted`, `mine` (your own), `party` (its party GUID).
+  `GF.Listings.state` is `ready`, `locked`, `failed` or `none`. An activity
+  (`GF.Listings.Activity(id)`, read once): `name`, `short`, `min` and `max` levels, `size`.
+- **A search** (`GF.Search.Run()`, from a click): `GF.Search.state` is `idle`, `searching`, `done`,
+  `failed` or `unavailable`. A leader's card (`GF.Browse.CardOf(name)`): the card, and whether one is
+  still awaited.
 - **A card** (`GF.Card.New()`): `class`, `level`, `roles` (bits: `Card.TANK`, `HEALER`, `DAMAGE`),
   `spec`, `score`, `bisHave`, `bisTotal`, `dungeon`, `hasKills`, `kills[1..nKills]`, `hasQuests`,
   `have[1..nHave]`, `need[1..nNeed]`. Received ones by name: `GF.Comms.CardOf(name)`.
 - **An applicant** (`GF.Comms.applicants`): `id`, `name`, `card`, `note`, `at`, `deadline`.
 - **Your application** (`GF.Comms.sent`): `id`, `name`, `dungeon`, `deadline`, `acked`, `declined`.
-- Events (`GF.Listen(what, fn)`): `listings`, `listing`, `card`, `noreply`, `offline`, `applicant`,
-  `received`, `withdrawn`, `expired`, `applicantExpired`.
+- Events (`GF.Listen(what, fn)`): `listings` (true when the search failed), `listing`, `search`, `card`,
+  `noreply`, `offline`, `applicant`, `received`, `withdrawn`, `expired`, `applicantExpired`.
 
 ## Why
 
@@ -110,7 +146,22 @@ full note) 248. When a card would not fit, its quest lists are cut first, then i
   it, never guessing between Scarlet Monastery's wings or the Blackrock Spires. Activity names come in
   the client's language, so outside English only the map match works for now.
 - Every table that grows with other players is bounded: the queue, pings, applications, applicants,
-  kept cards, senders, askers and names whispered.
+  kept cards, senders, askers, names whispered and leaders asked.
+- A search runs only from the Search button's click, as the game's own finder runs it. It takes the
+  first category with an activity that suits your level and searches those activities, plus your own
+  listing's, the way the game's finder filters by suggested levels (`Blizzard_LFGVanilla_ParentFrame.lua`).
+  A search that gets no answer in `SEARCH_WAIT` seconds has failed: not every failure sends an event.
+- `C_LFGList.GetAvailableCategories`, `GetAvailableActivities` and `GetSearchResultMemberCounts` are not
+  in the generated API docs, but the game's own Forever finder calls them
+  (`Blizzard_LFGVanilla_Browse.lua`, `Blizzard_LFGVanilla_ParentFrame.lua`), and Group Finder Roles reads
+  the member counts too.
+- A group's spots follow the game's own finder: tanks, healers, then damage, from the member counts, and
+  `groupfinder-icon-emptyslot` for the rest.
+- Browse asks each leader for their card once, at most every `ASK_AGAIN` seconds, through the pings
+  the whispers keep (`MAX_PINGS`), never your own listing or a delisted one. A listed leader answers;
+  one who does not run Naowh Forever is not waited on again.
+- The kills on a row are the leader's own boss kills in that dungeon, not how far the group has got:
+  a card carries no run progress yet.
 
 ## Settings
 
@@ -124,10 +175,13 @@ full note) 248. When a card would not fit, its quest lists are cut first, then i
 
 ## Checking
 
-- `lua Tools/regression/test-group-finder.lua`: loads every file `GroupFinder.xml` lists against
-  stubs and checks it is free while off, the card and its messages, the whispers' guards and expiry,
-  answering only while listed, names across realms, the listings, the probe, and the budgets: a card
-  built and written under 0.1 ms, read under 0.05 ms, fifty listings read under 0.5 ms, none of them
-  making garbage.
+- `lua Tools/regression/test-group-finder.lua`: loads its rules against stubs and checks it is free
+  while off, the card and its messages, the whispers' guards and expiry, answering only while listed,
+  names across realms, the listings, the search, asking leaders for cards, the probe, and the budgets:
+  a card built and written under 0.1 ms, read under 0.05 ms, fifty listings read under 0.5 ms, none of
+  them making garbage.
+- `lua Tools/regression/test-group-finder-ui.lua`: the window and its rows on the real shared parts,
+  against stubbed rules: nothing built until opened, the notes, the order, a row's dungeon, leader,
+  spots and card, a card's arrival on the same rows, and turning it off.
 - In game: `/nf groupfinder probe`, and `/nf groupfinder ping <name>` between two players with the
   Group Finder on; the one pinged needs a listing up in the game's Group Finder.

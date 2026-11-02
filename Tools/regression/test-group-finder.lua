@@ -34,7 +34,11 @@ check("the Recommended setup leaves it off", Read("Core/Profiles/Presets.lua"):f
     and Read("Tools/build/presets.lua"):find('"NaowhForever_GroupFinder" } }', 1, true) ~= nil)
 
 local files = TocFiles("^NaowhForever_Utilities/GroupFinder/.*%.lua$")
-check("the module loads its files through its XML", #files == 6 and files[1]:find("GroupFinder.lua$") ~= nil)
+check("the module loads its files through its XML", #files == 11 and files[1]:find("GroupFinder.lua$") ~= nil)
+local rules = {}
+for _, path in ipairs(files) do
+    if not (path:find("/View/") or path:find("/UI/Window%.lua$")) then rules[#rules + 1] = path end
+end
 
 local SECRET = setmetatable({}, { __tostring = function() return "secret" end })
 local OWN_REALM = "-Home"
@@ -82,12 +86,19 @@ local ACTIVITIES = {
     [7] = { fullName = "Stormwind Stockade", mapID = 34 },
     [8] = { fullName = "Scarlet Monastery", mapID = 189 },
 }
+for id, activity in pairs(ACTIVITIES) do
+    activity.shortName, activity.maxNumPlayers = "", 5
+    activity.minLevelSuggestion, activity.maxLevelSuggestion = 15 + id, 22 + id
+end
+ACTIVITIES[1].shortName = "DM"
+local CATEGORY_ACTIVITIES = { [1] = { 6, 7 }, [2] = { 1, 2, 3, 4, 5, 6, 7, 8 } }
 
-local RESULTS, INFOS, PLAYERS = {}, {}, {}
+local RESULTS, INFOS, PLAYERS, COUNTS = {}, {}, {}, {}
 for id = 1, 50 do
     RESULTS[id] = id
     INFOS[id] = { searchResultID = id, leaderName = "Leader" .. id, numMembers = id % 5 + 1, age = id * 30,
-        isDelisted = false, activityIDs = { (id - 1) % 5 + 1 }, partyGUID = "Party-" .. id }
+        isDelisted = false, activityIDs = { (id - 1) % 5 + 1 }, partyGUID = "Party-" .. id, hasSelf = id == 7 }
+    COUNTS[id] = { TANK = 1, HEALER = 0, DAMAGER = id % 5, NOROLE = 0 }
     PLAYERS[id] = {}
     for m = 1, 5 do
         PLAYERS[id][m] = { name = "Member" .. id .. "-" .. m, level = 20 + m, classFilename = "WARRIOR",
@@ -99,7 +110,7 @@ end
 local function Fixture(values)
     local state = {
         now = 1000, frames = 0, events = {}, prefixes = {}, sent = {}, timers = {}, printed = {},
-        filters = {}, ignored = {}, locked = false, listed = true, result = 0, infoCalls = 0,
+        filters = {}, ignored = {}, locked = false, listed = true, result = 0, infoCalls = 0, searches = {},
         onQuest = {}, complete = {}, done = {}, minLevel = {}, level = 20, score = 18.9, scoreComplete = true,
         kills = { [2741] = { n = 3 }, [2742] = { n = 2 }, [2743] = { n = 0 }, [2746] = { n = 120 }, [2747] = { n = 1 } },
         bis = true, roles = { tank = true, healer = false, dps = true },
@@ -176,6 +187,7 @@ local function Fixture(values)
             Page = function(key, store)
                 local page = { key = key, store = store }
                 function page.Card(_, spec) cards[#cards + 1] = spec end
+                function page.Window(_, spec) page.window = spec end
                 pages[key] = page
                 return page
             end,
@@ -235,6 +247,15 @@ local function Fixture(values)
             GetSearchResultPlayerInfo = function(id, m) return PLAYERS[id] and PLAYERS[id][m] end,
             GetActivityInfoTable = function(id) return ACTIVITIES[id] end,
             HasActiveEntryInfo = function() return state.listed end,
+            GetActiveEntryInfo = function() return state.entry end,
+            GetSearchResultMemberCounts = function(id) return COUNTS[id] end,
+            GetAvailableCategories = function() return { 1, 2 } end,
+            GetAvailableActivities = function(category)
+                local list = {}
+                for i, id in ipairs(CATEGORY_ACTIVITIES[category]) do list[i] = id end
+                return list
+            end,
+            Search = function(...) state.searches[#state.searches + 1] = { ... } end,
         },
         C_AddOns = { IsAddOnLoaded = function() return true end },
         UnitClass = function() return "Warrior", "WARRIOR", 1 end,
@@ -245,7 +266,7 @@ local function Fixture(values)
     env._G = env
     state.env = env
     Load({ "Core/Features.lua" }, env)
-    Load(files, env)
+    Load(rules, env)
     ns.Apply()
     state.GF = ns.GroupFinder
     state.S = ns.GroupFinderSettings
@@ -704,6 +725,18 @@ do
     check("its members, up to five, with the roles they signed up as", entry.nMembers == 5
         and entry.members[1].roles == Card.TANK and entry.members[2].roles == Card.DAMAGE
         and entry.members[1].leader and entry.members[2].level == 22 and entry.members[1].class == "WARRIOR")
+    check("its role counts", entry.tanks == 1 and entry.healers == 0 and entry.damage == 4)
+    check("your own listing is marked", Listings.entries[7].mine == true and entry.mine == false)
+    local activity = Listings.Activity(1)
+    check("an activity's name, short name, levels and size", activity.name == "The Deadmines" and activity.short == "DM"
+        and activity.min == 16 and activity.max == 23 and activity.size == 5)
+    check("its short name is its full name when the game has none",
+        Listings.Activity(2).short == "Scarlet Monastery - Graveyard")
+    check("each activity is read once", Listings.Activity(1) == activity and Listings.Activity(99) == nil)
+    COUNTS[4].TANK = SECRET
+    Listings.Read(true)
+    check("secret role counts count nothing", entry.tanks == 0 and entry.damage == 0)
+    COUNTS[4].TANK = 1
     local calls = state.infoCalls
     check("a second read without a new search reads nothing", Listings.Read() == 50 and state.infoCalls == calls)
 
@@ -791,6 +824,90 @@ do
     local card = Card.New()
     Measure("a card read", 0.05, function() Card.Decode(reply, card) end)
     Measure("fifty listings read", 0.5, function() Listings.Read(true) end)
+end
+
+do
+    local state = Fixture({ enabled = true })
+    local GF = state.GF
+    local Search = GF.Search
+    local heard
+    GF.Listen("search", function(searchState) heard = searchState end)
+    local frame = state.Frame("LFG_LIST_SEARCH_RESULTS_RECEIVED")
+    check("nothing is searched until asked", Search.state == "idle" and #state.searches == 0)
+    check("a search runs", Search.Run() == true and Search.state == "searching" and heard == "searching")
+    local args = state.searches[1]
+    check("in the first category with something at your level, with no other filter",
+        args[1] == 2 and args[2] == 0 and args[3] == 0 and args[4] == nil and args[5] == false and args[6] == nil)
+    check("for the activities that suit your level", table.concat(args[7], ",") == "1,2,3,4,5")
+    check("a second search waits for the first", Search.Run() == false and #state.searches == 1)
+    frame:onEvent("LFG_LIST_SEARCH_RESULTS_RECEIVED")
+    check("its results end it", Search.state == "done" and heard == "done")
+    state.Advance(Search.SEARCH_WAIT)
+    check("and its wait is forgotten", Search.state == "done")
+    Search.Run()
+    frame:onEvent("LFG_LIST_SEARCH_FAILED")
+    check("a failed search says so", Search.state == "failed" and heard == "failed")
+    Search.Run()
+    state.Advance(Search.SEARCH_WAIT)
+    check("a search with no answer in time has failed", Search.state == "failed")
+    state.entry = { activityIDs = { 7 } }
+    Search.Run()
+    check("your own listing's activity is searched at any level",
+        table.concat(state.searches[#state.searches][7], ",") == "1,2,3,4,5,7")
+    frame:onEvent("LFG_LIST_SEARCH_RESULTS_RECEIVED")
+    state.entry, state.level = nil, 1
+    check("nothing at your level: no search", Search.Run() == false and Search.state == "unavailable"
+        and heard == "unavailable")
+    state.level = 20
+    Search.Run()
+    state.S.Set("enabled", false)
+    check("off: idle, and a pending wait is forgotten", Search.state == "idle")
+    state.Advance(Search.SEARCH_WAIT)
+    check("it stays idle", Search.state == "idle")
+    check("off: no search", Search.Run() == false)
+end
+
+do
+    local state = Fixture({ enabled = true })
+    local GF = state.GF
+    local Browse, Comms, Listings = GF.Browse, GF.Comms, GF.Listings
+    local function Times(name)
+        local n = 0
+        for _, sent in ipairs(state.sent) do
+            if sent.target == name and sent.text:find("^1 Q ") then n = n + 1 end
+        end
+        return n
+    end
+    local function Asked(name) return Times(name) > 0 end
+    INFOS[3].isDelisted = true
+    INFOS[5].leaderName = "Die Man"
+    Listings.Read(true)
+    Browse.Ask()
+    check("listing leaders are asked for their cards, as many as it keeps waiting", #Comms.pings == 20)
+    check("for their dungeon", state.sent[1].text:find(" Deadmines$") ~= nil)
+    check("not a delisted listing's leader, and not you", not Asked("Leader3") and not Asked("Die Man"))
+    local card, waiting = Browse.CardOf("Leader1")
+    check("a leader asked is waited on", card == nil and waiting == true)
+    local ping = Comms.pings[1]
+    Comms.OnMessage("1 C " .. ping.id .. " 1 30 T - 211 - Deadmines - -", "Leader1")
+    card, waiting = Browse.CardOf("Leader1")
+    check("then has their card", card ~= nil and card.score == 211 and waiting == false)
+    Browse.Ask()
+    check("the spot freed asks the next leader", select(2, Browse.CardOf("Leader23")) == true and #Comms.pings == 20)
+    check("and nobody is asked twice while waited on", Times("Leader2") == 1)
+    state.Advance(Comms.PING_WAIT)
+    card, waiting = Browse.CardOf("Leader2")
+    check("a leader with no answer has no card and is not waited on", card == nil and waiting == false)
+    Browse.Ask()
+    check("the rest are asked as room frees", select(2, Browse.CardOf("Leader25")) == true and Times("Leader2") == 1
+        and #Comms.pings == 20)
+    state.Advance(Browse.ASK_AGAIN + 1)
+    Browse.Ask()
+    check("a leader with no answer is asked again after a while", select(2, Browse.CardOf("Leader2")) == true)
+    INFOS[3].isDelisted = false
+    INFOS[5].leaderName = "Leader5"
+    state.S.Set("enabled", false)
+    check("off: nobody is waited on", select(2, Browse.CardOf("Leader2")) == false)
 end
 
 print(("Message sizes: Q %d, C %d, A %d (with a note), K %d, the biggest A %d bytes of %d."):format(

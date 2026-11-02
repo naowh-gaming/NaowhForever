@@ -55,6 +55,11 @@ local notFound
 local function Key(name)
     return lower(Ambiguate(name, "none"))
 end
+Comms.Key = Key
+
+function Comms.IsMe(name)
+    return Key(name) == ownKey
+end
 
 local function NamePart(key)
     local dash = find(key, "-", 1, true)

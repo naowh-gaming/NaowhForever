@@ -4,6 +4,11 @@
     <Script file="Card.lua"/>
     <Script file="Comms.lua"/>
     <Script file="Listings.lua"/>
+    <Script file="Search.lua"/>
+    <Script file="Browse.lua"/>
     <Script file="Probe.lua"/>
+    <Script file="View\Style.lua"/>
+    <Script file="View\Row.lua"/>
+    <Script file="UI\Window.lua"/>
     <Script file="UI\SettingsPage.lua"/>
 </Ui>

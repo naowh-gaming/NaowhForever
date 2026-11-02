@@ -153,6 +153,8 @@ local MODULES = {
     { name = "Group Finder", group = "UTILITIES", navIcon = "search", settings = "GroupFinderSettings",
       addon = "NaowhForever_GroupFinder", host = "NaowhForever_Utilities",
       needs = { "NaowhForever_BiS" },
+      open = "ToggleGroupFinder",
+      command = "lfg", short = "LFG", icon = "Interface\\Icons\\Ability_Warrior_BattleShout",
       subtitle = "Naowh Forever cards and applications on top of Forever's own group finder.",
       tabs = {
           { name = "Settings", reuse = true },

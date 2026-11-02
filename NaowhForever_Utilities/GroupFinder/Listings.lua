@@ -21,7 +21,7 @@ GF.Listings = Listings
 local entries = Listings.entries
 local stale = true
 local frame, on = nil, false
-local activityKey = {}
+local activityKey, activityInfo = {}, {}
 local byName, byMap, names
 
 local function Secret(v)
@@ -83,6 +83,24 @@ function Listings.DungeonOf(activityID)
     return key or nil
 end
 
+function Listings.Activity(activityID)
+    local activity = activityInfo[activityID]
+    if activity then return activity end
+    local info = C_LFGList.GetActivityInfoTable(activityID)
+    if not info or Secret(info.fullName) or Secret(info.shortName) then return nil end
+    activity = { name = info.fullName, short = info.shortName ~= "" and info.shortName or info.fullName,
+        min = info.minLevelSuggestion, max = info.maxLevelSuggestion, size = info.maxNumPlayers }
+    activityInfo[activityID] = activity
+    return activity
+end
+
+local function Counts(entry, id)
+    local counts = C_LFGList.GetSearchResultMemberCounts(id)
+    local tanks, healers, damage = counts and counts.TANK, counts and counts.HEALER, counts and counts.DAMAGER
+    if Secret(tanks) or Secret(healers) or Secret(damage) then tanks, healers, damage = nil, nil, nil end
+    entry.tanks, entry.healers, entry.damage = tanks or 0, healers or 0, damage or 0
+end
+
 local function Fill(entry, id)
     local info = C_LFGList.GetSearchResultInfo(id)
     if not info then return false end
@@ -94,8 +112,10 @@ local function Fill(entry, id)
     if Secret(activity) then return false end
     entry.id, entry.leader, entry.numMembers = id, type(leader) == "string" and leader or nil, count
     entry.age, entry.delisted, entry.party = type(age) == "number" and age or 0, delisted == true, info.partyGUID
+    entry.mine = not Secret(info.hasSelf) and info.hasSelf == true
     entry.activity, entry.nActivities = activity, #activities
     entry.dungeon = activity and Listings.DungeonOf(activity) or nil
+    Counts(entry, id)
     local members, n = entry.members, 0
     for m = 1, min(count, MEMBERS_READ) do
         local player = C_LFGList.GetSearchResultPlayerInfo(id, m)
@@ -139,12 +159,12 @@ end
 local function OnEvent(_, event, id)
     if event == RECEIVED then
         stale, Listings.searched = true, true
-        GF.Fire("listings")
+        GF.Fire("listings", false)
         return
     end
     if event == FAILED then
         Listings.n, Listings.state, Listings.searched, stale = 0, "failed", true, false
-        GF.Fire("listings")
+        GF.Fire("listings", true)
         return
     end
     if stale or Secret(id) then return end
