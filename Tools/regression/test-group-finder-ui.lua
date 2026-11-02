@@ -4,8 +4,8 @@
 -- opening turns it on; the note before a search, while searching, after a failure and in chat lockdown; the
 -- rows, your own listing first then newest first, with the dungeon, its levels, the leader in their class color,
 -- the role slots of a group, a solo player's roles and a raid's count; the leader's card (score, kills, quests)
--- and the wait for it; a delisted listing faded; a card's arrival redrawing on pooled rows; Search; turning it
--- off closing the window; and the settings page's window card.
+-- and the wait for it; a delisted listing faded; a card's arrival redrawing on pooled rows; Search; the bar's
+-- dungeon chips, text filter and sort; turning it off closing the window; and the settings page's window card.
 local Load = dofile("Tools/regression/load_files.lua")
 local TocFiles = dofile("Tools/regression/toc_files.lua")
 
@@ -77,8 +77,9 @@ end
 
 local WHITE = { r = 1, g = 1, b = 1 }
 local ACCENT = { r = 0, g = 0.57, b = 0.93 }
+local MUTED = { r = 0.5, g = 0.5, b = 0.5 }
 local MAGE = { r = 0.25, g = 0.78, b = 0.92 }
-local timers, printed = {}, {}
+local timers, printed, menus = {}, {}, {}
 local function Flush()
     local n = #timers
     for i = 1, n do timers[i]() end
@@ -181,23 +182,39 @@ function GF.Listings.Read()
 end
 function GF.Listings.Activity(id) return ACTIVITY[id] end
 function GF.Listings.DungeonOf(id) return id == 1 and "Deadmines" or nil end
+local function Newest(a, b)
+    if a.mine ~= b.mine then return a.mine end
+    return a.age < b.age
+end
 GF.Browse = {
     Ask = function() GF.asks = GF.asks + 1 end,
     CardOf = function(leader) return cards[leader], waitingFor[leader] == true end,
     Apply = function(leader) applies[#applies + 1] = leader end,
+    Matches = function(entry, needle) return entry.leader:lower():find(needle, 1, true) ~= nil end,
+    Sort = function(order, how)
+        GF.sortedBy = how
+        table.sort(order, Newest)
+    end,
 }
-GF.Search = { state = "idle", Category = function() return 2 end, Run = function()
+GF.Search = { state = "idle", pick = "level", LEVEL = "level", ALL = "all", Category = function() return 2 end }
+function GF.Search.Run(pick)
     GF.runs = GF.runs + 1
+    GF.Search.pick = pick or GF.Search.pick
     GF.Search.state = "searching"
     return true
-end }
+end
+function GF.Search.Activities(list)
+    list[1], list[2], list[3] = 3, 1, 2
+    return 3
+end
+function GF.Search.Suits(id) return id ~= 2 end
 
 local tooltip = Frame()
 tooltip.SetOwner, tooltip.SetText, tooltip.AddLine = NOTHING, NOTHING, NOTHING
 local ns
 ns = { L = dofile("Tools/regression/locale_stub.lua").L, Upper = string.upper, Lower = string.lower,
     MEDIA = dofile("Tools/regression/core_media.lua"),
-    THEME = setmetatable({ accent = ACCENT }, { __index = function() return WHITE end }),
+    THEME = setmetatable({ accent = ACCENT, muted = MUTED }, { __index = function() return WHITE end }),
     Journal = {
         Get = function(key)
             if key ~= "Deadmines" then return nil end
@@ -235,6 +252,13 @@ ns = { L = dofile("Tools/regression/locale_stub.lua").L, Upper = string.upper, L
     end,
     SetButtonText = function(button, text) button.label.text = text end,
     NewEditBox = function(parent) return Frame(parent) end,
+    NewSearchBox = function(parent, hint, onChange)
+        local box = Frame(parent)
+        box.hint, box.onChange = Frame(box), onChange
+        box.border = { SetColor = NOTHING }
+        box.hint.text = hint
+        return box
+    end,
     UIFontPath = function() return "font" end,
     UIScale = function() return 1 end,
     AccountSettings = function() return {} end,
@@ -280,7 +304,7 @@ local env = setmetatable({
     },
     ITEM_QUALITY_COLORS = { [3] = { r = 0, g = 0.44, b = 0.87 }, [4] = { r = 0.64, g = 0.21, b = 0.93 } },
     Menu = { GetManager = function() return { IsAnyMenuOpen = function() return false end } end },
-    MenuUtil = { CreateContextMenu = NOTHING },
+    MenuUtil = { CreateContextMenu = function(owner, generator) menus[#menus + 1] = { owner = owner, fill = generator } end },
     IsMouseButtonDown = function() return false end,
     C_CurrencyInfo = { GetCoinTextureString = function(copper) return tostring(copper) end },
     C_PaperDollInfo = { GetInventorySlotInfoForInvSlot = function(slot) return slot, "empty:" .. slot, false end },
@@ -396,6 +420,52 @@ check("your own card on your own listing", mage.score.text == "score 18.9 at 20"
     and mage.quests.text == "")
 check("how long ago each was listed", solo.age.text == "just now" and group.age.text == "10m ago")
 
+-------------------------------------------------------------------------------
+--  The bar: dungeon chips, the text filter and the sort
+-------------------------------------------------------------------------------
+local bar = window.bar
+local chips = bar.chips
+check("chips for your level, all, then each dungeon by level", bar:IsShown() and chips[1].label.text == "For your level"
+    and chips[2].label.text == "All" and chips[3].label.text == "MC" and chips[4].label.text == "DM 17-26"
+    and chips[5].label.text == "SFK 22-30")
+check("your level picked to start, in the accent", chips[1]._rest == ACCENT and chips[4]._rest == WHITE)
+check("a dungeon outside your level is muted", chips[5].label.r == MUTED.r and chips[4].label.r == WHITE.r)
+local runs = GF.runs
+chips[4]:Click()
+check("a chip searches for its dungeon and is picked", GF.runs == runs + 1 and GF.Search.pick == 1
+    and chips[4]._rest == ACCENT and chips[1]._rest == WHITE)
+chips[2]:Click()
+check("All searches every dungeon", GF.Search.pick == "all" and chips[2]._rest == ACCENT and chips[4]._rest == WHITE)
+chips[1]:Click()
+GF.Search.state = "done"
+view:Redraw()
+check("the filter box says what it finds", bar.search.hint.text == "Filter by dungeon, leader or note")
+bar.search.onChange("KOR")
+Flush()
+check("typing filters the rows, and the count says so", Listing(11) and not Listing(12) and not Listing(13)
+    and window.subtitle.text == "1 of 4 groups")
+bar.search.onChange("onyxia")
+Flush()
+check("nothing matching says so", Note() == "No groups match your filter." and not Listing(11))
+bar.search.onChange("")
+Flush()
+check("clearing it shows them all again", Listing(11) and Listing(12) and Listing(13) and Listing(14)
+    and window.subtitle.text == "4 groups")
+check("the sort, newest to start", bar.sort.text.text == "Sort: Newest" and GF.sortedBy == nil)
+bar.sort.scripts.OnClick(bar.sort)
+local radios = {}
+menus[#menus].fill(nil, { CreateTitle = NOTHING, CreateRadio = function(_, label, _, set, key)
+    radios[#radios + 1] = { label = label, set = set, key = key }
+end })
+check("its menu: Newest, Naowh Score and Level", menus[#menus].owner == bar.sort and #radios == 3
+    and radios[1].label == "Newest" and radios[2].label == "Naowh Score" and radios[3].label == "Level")
+radios[2].set(radios[2].key)
+Flush()
+check("picking one saves it, says so and sorts by it", values.sort == "score" and bar.sort.text.text == "Sort: Naowh Score"
+    and GF.sortedBy == "score")
+values.sort = nil
+view:Redraw()
+
 local before = made
 cards.Nessa = { score = 211, level = 19, dungeon = "Deadmines", hasKills = false, nKills = 0, kills = {},
     hasQuests = true, nHave = 0 }
@@ -463,8 +533,9 @@ check("three tabs: Browse, Your Group and Create", Tab("browse") and Tab("group"
     and Tab("group").label == "Your Group")
 window.tabs.onPick("create")
 local create = pages.create
-check("Create shows its page, without the Browse list or Search", create:IsShown() and not window.scroll:IsShown()
-    and not window.search:IsShown() and not pages.group:IsShown())
+check("Create shows its page, without the Browse list, its bar or Search", create:IsShown()
+    and not window.scroll:IsShown() and not window.bar:IsShown() and not window.search:IsShown()
+    and not pages.group:IsShown())
 local tiles = create.tiles
 check("a tile per dungeon, by level", #tiles == 3 and tiles[1].label.text == "MC" and tiles[2].label.text == "DM"
     and tiles[3].label.text == "SFK")
@@ -550,7 +621,8 @@ create.reset:Click()
 check("Reset clears the form", Group.activity == nil and Group.style == nil and Group.min == 0 and Group.note == ""
     and Group.tanks == 1 and Group.damage == 3 and create.slider.value == 0)
 window.tabs.onPick("browse")
-check("Browse again shows the list and Search", window.scroll:IsShown() and window.search:IsShown())
+check("Browse again shows the list, its bar and Search", window.scroll:IsShown() and window.bar:IsShown()
+    and window.search:IsShown())
 
 S.Set("enabled", false)
 check("turning it off closes the window", not window:IsShown())

@@ -20,7 +20,7 @@ local REDRAWN_BY = { "listings", "listing", "search", "card", "noreply", "offlin
 local TEXT_TITLE = ns.L("Looking For Group")
 local TEXT_GROUPS = ns.L("%d groups")
 local TEXT_SEARCH = ns.L("Search")
-local TEXT_SEARCH_TIP = ns.L("Search Forever's group finder for groups at your level.")
+local TEXT_SEARCH_TIP = ns.L("Search Forever's group finder again for the chip picked below.")
 local TEXT_BROWSE, TEXT_CREATE = "Browse", "Create"
 local TEXT_YOUR_GROUP = ns.L("Your Group")
 local TEXT_YOUR_GROUP_COUNT = ns.L("Your Group (%d)")
@@ -30,6 +30,8 @@ local TEXT_FAILED = ns.L("The search failed. Wait a moment and search again.")
 local TEXT_UNAVAILABLE = ns.L("Forever's group finder has nothing to search for your level yet.")
 local TEXT_LOCKED = ns.L("Listings cannot be read during an encounter.")
 local TEXT_NONE = ns.L("No groups found.")
+local TEXT_NO_MATCH = ns.L("No groups match your filter.")
+local TEXT_SOME = ns.L("%d of %d groups")
 local TURNED_ON = ns.L("Group Finder turned on. Turn it off on its settings page.")
 
 local TABS = { { key = BROWSE, label = TEXT_BROWSE }, { key = YOUR_GROUP, label = TEXT_YOUR_GROUP },
@@ -39,11 +41,6 @@ local window, view
 local pages = {}
 local listening = false
 local shown = BROWSE
-
-local function Newest(a, b)
-    if a.mine ~= b.mine then return a.mine end
-    return a.age < b.age
-end
 
 local function Status()
     local state = Search.state
@@ -57,19 +54,26 @@ end
 local function DrawRows(v)
     local n = Listings.Read()
     Browse.Ask()
-    local order = v.order
-    for i = 1, n do order[i] = Listings.entries[i] end
-    for i = #order, n + 1, -1 do order[i] = nil end
-    table.sort(order, Newest)
+    local order, needle, matched = v.order, window.bar.needle, 0
+    for i = 1, n do
+        local entry = Listings.entries[i]
+        if Browse.Matches(entry, needle) then
+            matched = matched + 1
+            order[matched] = entry
+        end
+    end
+    for i = #order, matched + 1, -1 do order[i] = nil end
+    Browse.Sort(order, S.Get("sort"))
     v:Clear()
     local status = Status()
     if status then v:Note(status) end
     if Search.state ~= "failed" then
-        for i = 1, n do v:Add("listing", order[i], i) end
-        if n == 0 and not status then v:Note(TEXT_NONE) end
+        for i = 1, matched do v:Add("listing", order[i], i) end
+        if matched == 0 and not status then v:Note(n > 0 and TEXT_NO_MATCH or TEXT_NONE) end
     end
     v:Fit(NO_EVENTS)
-    window.subtitle:SetText(Listings.searched and TEXT_GROUPS:format(n) or "")
+    local count = matched < n and TEXT_SOME:format(matched, n) or TEXT_GROUPS:format(n)
+    window.subtitle:SetText(Listings.searched and count or "")
 end
 
 local function PaintTabs()
@@ -93,6 +97,8 @@ local function ShowPage(key)
     shown = key
     window.scroll:SetShown(key == BROWSE)
     window.search:SetShown(key == BROWSE)
+    window.bar:SetShown(key == BROWSE)
+    if key == BROWSE then window.bar.Paint() end
     pages[YOUR_GROUP]:SetShown(key == YOUR_GROUP)
     pages[CREATE]:SetShown(key == CREATE)
     if key ~= BROWSE then window.subtitle:SetText("") end
@@ -131,8 +137,11 @@ local function Build()
     window.tabs:SetPoint("TOPLEFT", INSET, -UI.TABS_TOP)
     Parts.FitTabs(window.tabs, TABS, St.TAB_PAD, UI.CONTENT_W)
 
+    window.bar = UI.BrowseBar(window, function() view:QueueRedraw() end)
+    window.bar:SetPoint("TOPLEFT", INSET, -UI.CONTENT_TOP)
+
     local scroll = ns.UI.SlimScroll(window)
-    scroll:SetPoint("TOPLEFT", INSET, -UI.CONTENT_TOP)
+    scroll:SetPoint("TOPLEFT", window.bar, "BOTTOMLEFT", 0, -St.TAB_GAP)
     scroll:SetPoint("BOTTOMRIGHT", -St.SCROLLBAR - SCROLL_GAP, UI.FOOTER_ROOM)
     view = View.New(scroll, UI.Kinds, { Redraw = DrawRows })
     view:SetWidth(UI.LIST_W)

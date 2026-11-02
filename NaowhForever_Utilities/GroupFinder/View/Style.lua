@@ -32,6 +32,10 @@ local St = setmetatable({
     GROUP_HEAD_H = 76,
     GROUP_PARTY_Y = 44,
     GROUP_PARTY_W = 119,
+    CHIP_H = 20,
+    CHIP_GAP = 4,
+    CHIP_PAD = 8,
+    FILTER_GAP = 8,
     TILE_COLS = 4,
     TILE_H = 44,
     TILE_GAP = 6,
@@ -76,6 +80,14 @@ function UI.Kicker(parent, text)
     local kicker = ns.Font(parent, St.KICKER_SIZE, nil, ns.THEME.accentSoft)
     kicker:SetText(ns.L(text))
     return kicker
+end
+
+function UI.Pick(button, on, color)
+    local T = ns.THEME
+    button._rest = on and T.accent or button.idle
+    button._border:SetColor(button._rest.r, button._rest.g, button._rest.b, 1)
+    color = on and T.accent or color or T.fg
+    button.label:SetTextColor(color.r, color.g, color.b)
 end
 
 function UI.PaintClass(icon, class)

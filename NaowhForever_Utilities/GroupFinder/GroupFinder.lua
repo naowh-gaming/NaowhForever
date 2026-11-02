@@ -11,6 +11,7 @@ local S = ns.UI.ModuleSettings("groupFinder", {
     shareKills = true,
     shareQuests = true,
     shareBis = true,
+    sort = "newest",
 })
 ns.GroupFinderSettings = S
 

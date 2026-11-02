@@ -3,8 +3,8 @@
 -- that nothing is made or registered while it is off, the card and its messages (round trip, size,
 -- malformed input, opt-outs), the whispers (rate limit, self, ignored and flooding senders, answering
 -- only while listed, names across realms, expiry with stale timers, the "No player named" filter), the
--- listings (activity to dungeon, roles, a failed search, chat lockdown), the probe, and what the hot
--- paths cost.
+-- listings (activity to dungeon, roles, a failed search, chat lockdown), the search for your level, every
+-- dungeon or one, Browse's filter and sorts, the probe, and what the hot paths cost.
 local Load = dofile("Tools/regression/load_files.lua")
 local TocFiles = dofile("Tools/regression/toc_files.lua")
 local Locale = dofile("Tools/regression/locale_stub.lua")
@@ -34,7 +34,7 @@ check("the Recommended setup leaves it off", Read("Core/Profiles/Presets.lua"):f
     and Read("Tools/build/presets.lua"):find('"NaowhForever_GroupFinder" } }', 1, true) ~= nil)
 
 local files = TocFiles("^NaowhForever_Utilities/GroupFinder/.*%.lua$")
-check("the module loads its files through its XML", #files == 15 and files[1]:find("GroupFinder.lua$") ~= nil)
+check("the module loads its files through its XML", #files == 16 and files[1]:find("GroupFinder.lua$") ~= nil)
 local rules = {}
 for _, path in ipairs(files) do
     if not (path:find("/View/") or path:find("/UI/") and not path:find("/UI/SettingsPage%.lua$")) then
@@ -871,13 +871,33 @@ do
     check("your own listing's activity is searched at any level",
         table.concat(state.searches[#state.searches][7], ",") == "1,2,3,4,5,7")
     frame:onEvent("LFG_LIST_SEARCH_RESULTS_RECEIVED")
+    check("every dungeon when asked for all", Search.Run(Search.ALL) == true and Search.pick == Search.ALL
+        and table.concat(state.searches[#state.searches][7], ",") == "1,2,3,4,5,6,7,8")
+    frame:onEvent("LFG_LIST_SEARCH_RESULTS_RECEIVED")
+    check("one dungeon when asked for it, without your own listing's", Search.Run(8) == true
+        and table.concat(state.searches[#state.searches][7], ",") == "8")
+    check("asking while a search runs changes nothing", Search.Run(Search.LEVEL) == false and Search.pick == 8)
+    frame:onEvent("LFG_LIST_SEARCH_RESULTS_RECEIVED")
+    check("searching again searches the same", Search.Run() == true
+        and table.concat(state.searches[#state.searches][7], ",") == "8")
+    frame:onEvent("LFG_LIST_SEARCH_RESULTS_RECEIVED")
+    local listed = CATEGORY_ACTIVITIES[2]
+    CATEGORY_ACTIVITIES[2] = { 8, 3, 1, 5, 2, 7, 4, 6 }
+    local list = {}
+    check("the dungeons to pick from, lowest level first", Search.Activities(list) == 8
+        and table.concat(list, ",") == "1,2,3,4,5,6,7,8")
+    CATEGORY_ACTIVITIES[2] = listed
+    check("and whether each suits your level", Search.Suits(5) and not Search.Suits(6))
+    Search.Run(Search.LEVEL)
+    frame:onEvent("LFG_LIST_SEARCH_RESULTS_RECEIVED")
     state.entry, state.level = nil, 1
     check("nothing at your level: no search", Search.Run() == false and Search.state == "unavailable"
         and heard == "unavailable")
     state.level = 20
-    Search.Run()
+    Search.Run(Search.ALL)
     state.S.Set("enabled", false)
     check("off: idle, and a pending wait is forgotten", Search.state == "idle")
+    check("and the search is for your level again", Search.pick == Search.LEVEL)
     state.Advance(Search.SEARCH_WAIT)
     check("it stays idle", Search.state == "idle")
     check("off: no search", Search.Run() == false)
@@ -924,6 +944,54 @@ do
     INFOS[5].leaderName = "Leader5"
     state.S.Set("enabled", false)
     check("off: nobody is waited on", select(2, Browse.CardOf("Leader2")) == false)
+end
+
+do
+    local state = Fixture({ enabled = true })
+    local GF = state.GF
+    local Browse, Card, Comms, Listings = GF.Browse, GF.Card, GF.Comms, GF.Listings
+    local n = Listings.Read(true)
+    Browse.Ask()
+    local function Answer(name, score, note)
+        for _, ping in ipairs(Comms.pings) do
+            if ping.name == name then
+                local card = Card.Mine("Deadmines")
+                card.score = score
+                local group = note and { min = 0, tanks = 0, healers = 1, damage = 0, note = note } or nil
+                Comms.OnMessage(Card.Reply(ping.id, card, group), name)
+                return
+            end
+        end
+    end
+    Answer("Leader4", 150)
+    Answer("Leader9", 263, "Quests welcome")
+    local function Shown(needle)
+        local list = {}
+        for i = 1, n do
+            if Browse.Matches(Listings.entries[i], needle) then list[#list + 1] = Listings.entries[i].leader end
+        end
+        return list
+    end
+    check("an empty filter shows every listing", #Shown("") == n)
+    check("the filter finds a leader", table.concat(Shown("leader12"), ",") == "Leader12")
+    check("a dungeon, by its name or short name", #Shown("deadmines") == 10 and #Shown("dm") == 10)
+    check("and a leader's note", table.concat(Shown("quests"), ",") == "Leader9")
+    check("nothing that matches shows nothing", #Shown("onyxia") == 0)
+    local order = {}
+    for i = 1, 10 do order[i] = Listings.entries[i] end
+    local function Leaders()
+        local names = {}
+        for i = 1, 4 do names[i] = order[i].leader end
+        return table.concat(names, ",")
+    end
+    Browse.Sort(order, "newest")
+    check("newest first, your own listing before them all", Leaders() == "Leader7,Leader1,Leader2,Leader3")
+    Browse.Sort(order, "score")
+    check("best leader's score first, the rest newest first", Leaders() == "Leader7,Leader9,Leader4,Leader1")
+    Browse.Sort(order, "level")
+    check("lowest dungeon first, newest first within it", Leaders() == "Leader7,Leader1,Leader6,Leader2")
+    Browse.Sort(order, "unknown")
+    check("an unknown sort is newest first", Leaders() == "Leader7,Leader1,Leader2,Leader3")
 end
 
 do

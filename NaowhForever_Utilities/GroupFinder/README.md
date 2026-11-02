@@ -18,6 +18,10 @@ Create. Opening it turns the module on.
 | [logo] Looking For Group                     [Search]          [x] |
 |        4 groups                                                    |
 |--------------------------------------------------------------------|
+| [For your level] [All] [RFC 13-18] [WC 17-24] [DM 17-26]           |  a chip is a search; dungeons
+| [SFK 22-30] [BFD 24-32] [Stocks 24-32] ...                         |  outside your level muted
+| [Filter by dungeon, leader or note        ]         Sort: Newest v |
+|--------------------------------------------------------------------|
 | Shadowfang Keep 22-30                                  12.0+  23.9 |  their minimum, the leader's
 | [class] Korvath 25                                         [Apply] |  Naowh Score in its grade's color
 | [T][D][D][ ][ ]   3 boss kills   2 quests                   10m ago |
@@ -28,7 +32,13 @@ Create. Opening it turns the module on.
 +--------------------------------------------------------------------+
 ```
 
-- Your own listing first, then newest first. A delisted listing stays, faded.
+- The chips pick what is searched: the dungeons for your level (to start), every dungeon, or one. A
+  chip clicked while a search runs does nothing; Search searches the picked chip again.
+- The filter box keeps the listings whose dungeon, leader or note has what you type; the count says
+  how many of them show.
+- Your own listing first, then by the sort: newest first (to start), the leader's Naowh Score best first,
+  or the dungeon's level lowest first, newest first within each. The sort is kept. A delisted listing
+  stays, faded.
 - A group's spots are its tanks, healers and damage, then empty spots up to the activity's size; a solo
   player shows the roles they signed up as; a raid shows its count.
 - The kills and quests are the leader's for that dungeon: their boss kills there, or First time, and
@@ -76,10 +86,12 @@ NaowhForever_Utilities/GroupFinder/
   Card.lua             your card for one dungeon, and every message written and read (GF.Card)
   Comms.lua            the whispers: send queue, card requests, applications, expiry, guards (GF.Comms)
   Listings.lua         Forever's search results in pooled entries, activities to Journal keys (GF.Listings)
-  Search.lua           a search from the Browse screen, for the activities at your level (GF.Search)
+  Search.lua           a search from the Browse screen, for the activities at your level, all of them or
+                       one, and the category's activities by level (GF.Search)
   Group.lua            your group: listing, updating and delisting it, inviting or declining applicants,
                        and what Naowh Forever players are told about it (GF.Group)
-  Browse.lua           each listing's leader asked once for their card, applying to them (GF.Browse)
+  Browse.lua           each listing's leader asked once for their card, applying to them, and the
+                       filter and sorts (GF.Browse)
   Probe.lua            /nf groupfinder probe and /nf groupfinder ping <name>
   View/
     Style.lua          its look, its window's sizes and shared words and parts (GF.UI, GF.UI.Style)
@@ -88,6 +100,7 @@ NaowhForever_Utilities/GroupFinder/
   UI/
     YourGroup.lua      the Your Group page (GF.UI.YourGroup)
     Create.lua         the Create page (GF.UI.Create)
+    BrowseBar.lua      Browse's chips, filter box and sort (GF.UI.BrowseBar)
     Window.lua         the window, its tabs and the Browse list (ns.OpenGroupFinder, ns.ToggleGroupFinder)
     SettingsPage.lua   its settings page (Group Finder/Settings): Open Group Finder, what your card shares
   README.md            this file
@@ -136,9 +149,12 @@ kills.
   `damage`, `age` in seconds, `delisted`, `mine` (your own), `party` (its party GUID).
   `GF.Listings.state` is `ready`, `locked`, `failed` or `none`. An activity
   (`GF.Listings.Activity(id)`, read once): `name`, `short`, `min` and `max` levels, `size`.
-- **A search** (`GF.Search.Run()`, from a click): `GF.Search.state` is `idle`, `searching`, `done`,
-  `failed` or `unavailable`. A leader's card (`GF.Browse.CardOf(name)`): the card, and whether one is
-  still awaited.
+- **A search** (`GF.Search.Run(pick)`, from a click): `GF.Search.state` is `idle`, `searching`, `done`,
+  `failed` or `unavailable`; `GF.Search.pick` is `Search.LEVEL`, `Search.ALL` or an activity ID, kept
+  for the next search. The category's activities by level: `GF.Search.Activities(list)`, and whether
+  one suits your level: `GF.Search.Suits(id)`. A leader's card (`GF.Browse.CardOf(name)`): the card, and
+  whether one is still awaited. Browse's rules: `GF.Browse.Matches(entry, needle)` and
+  `GF.Browse.Sort(order, how)`.
 - **A card** (`GF.Card.New()`): `class`, `level`, `roles` (bits: `Card.TANK`, `HEALER`, `DAMAGE`),
   `spec`, `score`, `bisHave`, `bisTotal`, `dungeon`, `hasKills`, `kills[1..nKills]`, `hasQuests`,
   `have[1..nHave]`, `need[1..nNeed]`. Received ones by name: `GF.Comms.CardOf(name)`, with `group`
@@ -189,10 +205,14 @@ kills.
   the client's language, so outside English only the map match works for now.
 - Every table that grows with other players is bounded: the queue, pings, applications, applicants,
   kept cards, senders, askers, names whispered and leaders asked.
-- A search runs only from the Search button's click, as the game's own finder runs it. It takes the
-  first category with an activity that suits your level and searches those activities, plus your own
-  listing's, the way the game's finder filters by suggested levels (`Blizzard_LFGVanilla_ParentFrame.lua`).
-  A search that gets no answer in `SEARCH_WAIT` seconds has failed: not every failure sends an event.
+- A search runs only from a click, the Search button's or a chip's, as the game's own finder runs it, so
+  there is no timed refresh. It takes the first category with an activity that suits your level and
+  searches those activities, plus your own listing's, the way the game's finder filters by suggested
+  levels (`Blizzard_LFGVanilla_ParentFrame.lua`); All searches every activity in it, and a dungeon's
+  chip that one alone. A search that gets no answer in `SEARCH_WAIT` seconds has failed: not every
+  failure sends an event.
+- The chips are searches rather than a filter on the last results, so a dungeon outside your level is
+  found too, and the list always matches the chip picked. The filter box only narrows what is shown.
 - `C_LFGList.GetAvailableCategories`, `GetAvailableActivities` and `GetSearchResultMemberCounts` are not
   in the generated API docs, but the game's own Forever finder calls them
   (`Blizzard_LFGVanilla_Browse.lua`, `Blizzard_LFGVanilla_ParentFrame.lua`), and Group Finder Roles reads
@@ -227,18 +247,20 @@ kills.
 | `shareKills` | `true` | your boss kills for the dungeon |
 | `shareQuests` | `true` | the dungeon's quests you have or need |
 | `shareBis` | `true` | how many of your BiS items you have |
+| `sort` | `"newest"` | Browse's order: `newest`, `score` or `level` |
 
 ## Checking
 
 - `lua Tools/regression/test-group-finder.lua`: loads its rules against stubs and checks it is free
   while off, the card and its messages, the whispers' guards and expiry, answering only while listed,
-  names across realms, the listings, the search, asking leaders for cards, a listed leader's `L`, listing,
+  names across realms, the listings, the search for your level, every dungeon or one, Browse's filter
+  and sorts, asking leaders for cards, a listed leader's `L`, listing,
   updating and delisting a group, invites and declines, applying, the probe, and the budgets: a card
   built and written under 0.1 ms, read under 0.05 ms, fifty listings read under 0.5 ms, none of them
   making garbage.
 - `lua Tools/regression/test-group-finder-ui.lua`: the window, its tabs and its pages on the real shared
   parts, against stubbed rules: nothing built until opened; Browse's notes, order, rows, a leader's group
-  and Apply; Create's tiles, roles, slider, styles, note, List Group and Reset, and why it cannot list;
+  and Apply; the chips, the filter box and the sort; Create's tiles, roles, slider, styles, note, List Group and Reset, and why it cannot list;
   Your Group's header, party, applicants best first, Invite, Decline and Delist; and turning it off.
 - In game: `/nf groupfinder probe`, and `/nf groupfinder ping <name>` between two players with the
   Group Finder on; the one pinged needs a listing up in the game's Group Finder.

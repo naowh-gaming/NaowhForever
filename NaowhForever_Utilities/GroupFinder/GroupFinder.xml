@@ -13,6 +13,7 @@
     <Script file="View\Applicant.lua"/>
     <Script file="UI\YourGroup.lua"/>
     <Script file="UI\Create.lua"/>
+    <Script file="UI\BrowseBar.lua"/>
     <Script file="UI\Window.lua"/>
     <Script file="UI\SettingsPage.lua"/>
 </Ui>

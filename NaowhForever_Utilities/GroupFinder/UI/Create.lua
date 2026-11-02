@@ -6,6 +6,7 @@ local GF = ns.GroupFinder
 if not GF then return end
 local UI = GF.UI
 local Card, Listings, Search, Group = GF.Card, GF.Listings, GF.Search, GF.Group
+local Pick = UI.Pick
 
 local St = UI.Style
 local GAP, PAD = St.TEXT_GAP, St.ROW_PAD
@@ -36,19 +37,6 @@ local TEXT_LEADER_ONLY = ns.L("Only your group's leader can change its listing."
 local activities = {}
 local page, content
 local onListed
-
-local function ByLevel(a, b)
-    local x, y = Listings.Activity(a), Listings.Activity(b)
-    if x.min ~= y.min then return x.min < y.min end
-    return x.name < y.name
-end
-
-local function Pick(button, on)
-    button._rest = on and T.accent or button.idle
-    button._border:SetColor(button._rest.r, button._rest.g, button._rest.b, 1)
-    local color = on and T.accent or T.fg
-    button.label:SetTextColor(color.r, color.g, color.b)
-end
 
 local function Bosses(activityID)
     local J = ns.Journal
@@ -100,19 +88,8 @@ local function PaintTile(tile, id, x, y)
     tile:Show()
 end
 
-local function Activities()
-    wipe(activities)
-    local category = Search.Category()
-    if not category then return 0 end
-    for _, id in ipairs(C_LFGList.GetAvailableActivities(category)) do
-        if Listings.Activity(id) then activities[#activities + 1] = id end
-    end
-    table.sort(activities, ByLevel)
-    return #activities
-end
-
 local function PaintTiles(y)
-    local n = Activities()
+    local n = Search.Activities(activities)
     page.empty:SetShown(n == 0)
     page.empty:SetPoint("TOPLEFT", 0, -y)
     for i = 1, n do
