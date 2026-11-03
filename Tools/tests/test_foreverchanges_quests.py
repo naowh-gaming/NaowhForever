@@ -3,7 +3,8 @@ completo_quests.py does with the list: a quest it does not list is left out, one
 added to its zone, or to Unsorted Quests without a giver, one filed under no category is not, a
 quest goes in the zone it is filed under, and
 its giver's spot, the one on the quest's zone map first, comes before Wowhead's, on Ironforge's map
-too for one ForeverChanges puts on Dun Morogh's inside the city. Offline. From the
+too for one ForeverChanges puts on Dun Morogh's inside the city, and never on a map Forever redrew.
+Offline. From the
 repo root:
 
     python -m unittest discover -s Tools/tests
@@ -63,6 +64,12 @@ class ListedMaps(unittest.TestCase):
         starts = [[1426, 52.5, 36.9, "Jordan Stilwell"]]
         self.assertEqual(completo_quests.listed_spot(starts, 1426), (1426, 52.5, 36.9, "Jordan Stilwell"))
         self.assertEqual(completo_quests.listed_spot(starts, 1432)[0], 1455)
+
+    def test_no_giver_from_a_redrawn_map(self):
+        # High Sorcerer Andromath at Classic's 37.6, 81.6 on Forever's redrawn Stormwind.
+        andromath = [1453, 37.6, 81.6, "High Sorcerer Andromath"]
+        self.assertIsNone(completo_quests.listed_spot([andromath], 1453))
+        self.assertEqual(completo_quests.listed_spot([andromath, [1429, 42.1, 65.9, "Marshal Dughan"]], 1453)[0], 1429)
 
 
 class Write(unittest.TestCase):

@@ -71,6 +71,9 @@ quest and creature pages. Do not edit them by hand: change the tool and run it a
   ForeverChanges has no Ironforge map, so a giver it puts on Dun Morogh's inside the city's
   rectangle is on Ironforge's too (`listed_maps`). That rectangle takes in the city's gates, which
   are Dun Morogh's, so the quest's zone picks: a Dun Morogh quest keeps Dun Morogh's map.
+  On the maps Forever redrew (Stormwind, Mulgore, Redridge, the Eastern Plaguelands) many of
+  its spots are Classic's positions unconverted (Bolvar Fordragon at 78, 18), so a giver there
+  is never taken from it: those quests keep Wowhead's spot.
 - `D.Repeatable[questID] = true`: quests you can do again and again (Wowhead's repeatable flag).
 - `D.Dungeon[questID] = true`: dungeon, raid and battleground quests, listed in the zone their quest
   giver stands in. Wowhead files them under the instance, so no zone page has them: they come from

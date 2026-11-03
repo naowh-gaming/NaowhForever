@@ -427,8 +427,11 @@ def listed_maps(map_id, x, y):
 
 def listed_spot(starts, zone_map):
     """(uiMapID, x, y, giver): the listed giver on the quest's zone map, else its first, or None.
-    A giver at Ironforge's gates is on both maps, so a Dun Morogh quest keeps it on Dun Morogh's."""
-    spots = [(*s, giver) for m, x, y, giver in starts or [] if m in ZONE_MAP.values() for s in listed_maps(m, x, y)]
+    A giver at Ironforge's gates is on both maps, so a Dun Morogh quest keeps it on Dun Morogh's.
+    On the maps Forever redrew ForeverChanges often gives Classic's position unconverted (High
+    Sorcerer Andromath, Bolvar Fordragon), so a giver there is not taken from it."""
+    spots = [(*s, giver) for m, x, y, giver in starts or []
+             if m in ZONE_MAP.values() and m not in REDRAWN_BOUNDS for s in listed_maps(m, x, y)]
     return min(spots, key=lambda s: s[0] != zone_map) if spots else None
 
 
