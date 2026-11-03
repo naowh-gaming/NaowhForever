@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+## 1.1.56
+
+### Changed
+- Daily Word #19 is out (QoL > Travel, or /nf word).
+
+## 1.1.55
+
+### Changed
+- Onboarding: it no longer opens by itself when NaowhUI is installed, since NaowhUI's installer sets
+  Naowh Forever up. /nf setup still opens it.
+
 ## 1.1.54
 
 ### Fixed

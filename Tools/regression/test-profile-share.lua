@@ -94,7 +94,7 @@ local function World()
     local env = setmetatable({ _G = { NaowhForever = ns }, UnitName = function() return "Glyadin" end,
         date = os.date, CopyTable = Copy }, { __index = _G })
     ns.Shared = { Decode = dofile("Tools/regression/load_decode.lua")(env), Settings = settingsShared.Settings }
-    for _, path in ipairs({ "Core/Profiles/Positions.lua", "Core/Profiles/ProfileShare.lua", "Core/Profiles/ProfileDialogs.lua",
+    for _, path in ipairs({ "Core/Profiles/ProfileShare.lua", "Core/Profiles/ProfileDialogs.lua",
         "Core/Options/ProfilesPage.lua" }) do
         local chunk = assert(loadfile(path))
         setfenv(chunk, env)
@@ -346,26 +346,14 @@ Case("a Consumables tick leaves the reminders' store as it was", function()
         "a list already saved is left in place, not replaced by the string's")
 end)
 
-Case("import: Keep My Positions keeps where your frames sit, and only that", function()
+Case("import: the string's positions come in with its settings", function()
     local w = World()
-    local mine = w.db.profiles.Default
-    mine.unlockMode = { layouts = { Mine = { spots = {} } }, hidden = { ["XP Bar"] = true } }
     local payload = assert(w.ns.DecodeProfile((w.ns.ExportProfile())))
     local theirs = payload.parts.settings.qol
-    theirs.lootFeedPos, theirs.alertsPos, theirs.fastLoot = { "BOTTOM", 1, 2 }, { "TOP", 3, 4 }, true
-    w.ns.ImportProfile(payload, { settings = true, keepPositions = true }, "Kept")
-    local p = w.db.profiles.Kept
-    assert(p.qol.fastLoot == true, "their settings come in")
-    assert(p.qol.lootFeedPos[1] == "TOP" and p.qol.lootFeedPos[2] == 10, "your frame stays where it was")
-    assert(p.qol.alertsPos == nil, "a frame you never moved keeps its default, not theirs")
-    assert(p.qol.lootFeedPos ~= mine.qol.lootFeedPos, "copied, so the two profiles never share a table")
-    assert(p.unlockMode.layouts.Mine and p.unlockMode.hidden["XP Bar"] == true, "your HUD Editor layouts and hidden elements")
+    theirs.lootFeedPos, theirs.fastLoot = { "BOTTOM", 1, 2 }, true
     w.ns.ImportProfile(payload, { settings = true }, "Theirs")
-    assert(w.db.profiles.Theirs.qol.lootFeedPos[1] == "BOTTOM", "unticked, their positions come in")
-    w.db.profiles.Main, w.active = Copy(mine), "Main"
-    w.ns.ImportProfile(payload, { settings = true, keepPositions = true }, "Main", true)
-    assert(w.db.profiles.Main.qol.lootFeedPos[2] == 10 and w.db.profiles.Main.unlockMode.layouts.Mine,
-        "an overwrite of the profile you are on keeps them through the wipe")
+    local p = w.db.profiles.Theirs
+    assert(p.qol.fastLoot == true and p.qol.lootFeedPos[1] == "BOTTOM", "their settings and positions come in")
 end)
 
 Case("overwrite: a rerun empties the named profile and lands there", function()
@@ -777,7 +765,7 @@ Case("the dialogs: export shows the string, import ticks parts and lands what is
     assert(import.shown == false, "nothing to import yet")
     paste.text = text
     paste.scripts.OnTextChanged(paste, true)
-    assert(import.shown and import.label == "Import" and #toggles == 8, #toggles)
+    assert(import.shown and import.label == "Import" and #toggles == 7, #toggles)
     for _, t in ipairs(toggles) do assert(t._get() == true, "every part ticked to start") end
     toggles[7]._set(false)   -- Look
     paste.scripts.OnTextChanged(paste, true)
@@ -817,8 +805,7 @@ Case("the dialogs: export shows the string, import ticks parts and lands what is
     ns.ShowProfileImport()
     paste.text = ns.ExportProfile()
     paste.scripts.OnTextChanged(paste, true)
-    assert(#toggles == 9 and toggles[8]._get() == true and toggles[9]._get() == false,
-        "Keep My Positions starts ticked; Also Import is a row of its own, left unticked")
+    assert(#toggles == 8 and toggles[8]._get() == false, "Also Import is a row of its own, left unticked")
     assert(fonts.preview.text:find("act for you: Auto Sell Junk;", 1, true), fonts.preview.text)
     import.click()
     assert(w.db.profiles[w.switched].qol.sellJunk == nil, "left unticked, Auto Sell Junk stays off")
@@ -826,7 +813,7 @@ Case("the dialogs: export shows the string, import ticks parts and lands what is
     ns.ShowProfileImport()
     paste.text = ns.ExportProfile()
     paste.scripts.OnTextChanged(paste, true)
-    toggles[9]._set(true)
+    toggles[8]._set(true)
     import.click()
     assert(w.db.profiles[w.switched].qol.sellJunk == true, "ticked, it comes along")
 end)
@@ -850,6 +837,32 @@ Case("settings that act for you are named, and stay off unless asked for", funct
     assert(landed.lootConfirm == true and landed.sellJunk == true, "taken when asked for")
     assert(#w.ns.ProfileActing(assert(World().ns.DecodeProfile((World().ns.ExportProfile())))) == 0,
         "a profile that acts for nobody names nothing")
+end)
+
+Case("a Junk Marker that sells comes along asking first, unless Also Import is ticked", function()
+    local w = World()
+    w.db.profiles.Default.qol.scrapMarker = true
+    local payload = assert(w.ns.DecodeProfile((w.ns.ExportProfile())))
+    assert(w.ns.ProfileActing(payload)[1] == "Junk Marker selling without asking")
+    w.ns.ImportProfile(payload, ALL)
+    local landed = w.db.profiles[w.switched].qol
+    assert(landed.scrapMarker == true and landed.scrapMarkerVendor == "ask", "the marker stays on and asks")
+    local all = { acting = true }
+    for k, v in pairs(ALL) do all[k] = v end
+    w.active = "Default"
+    w.ns.ImportProfile(payload, all)
+    landed = w.db.profiles[w.switched].qol
+    assert(landed.scrapMarker == true and landed.scrapMarkerVendor == nil, "ticked, it sells as it did")
+    w = World()
+    w.db.profiles.Default.qol.scrapMarker, w.db.profiles.Default.qol.scrapMarkerVendor = true, "ask"
+    payload = assert(w.ns.DecodeProfile((w.ns.ExportProfile())))
+    assert(#w.ns.ProfileActing(payload) == 0, "a marker that asks acts for nobody")
+    w = World()
+    w.db.profiles.Default.qol.scrapMarker, w.db.profiles.Default.qol.scrapMarkerVendor = true, true
+    payload = assert(w.ns.DecodeProfile((w.ns.ExportProfile())))
+    assert(#w.ns.ProfileActing(payload) == 1, "a vendor mode that is not a mode sells, so it is named")
+    w.ns.ImportProfile(payload, ALL)
+    assert(w.db.profiles[w.switched].qol.scrapMarkerVendor == "ask", "and it lands asking")
 end)
 
 -- The Profiles page on stub frames and a small stand-in for the row engine.
