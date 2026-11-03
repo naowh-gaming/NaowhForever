@@ -2,6 +2,97 @@
 
 ## Unreleased
 
+## 1.1.56
+
+### Changed
+- Daily Word #19 is out (QoL > Travel, or /nf word).
+
+## 1.1.55
+
+### Changed
+- Onboarding: it no longer opens by itself when NaowhUI is installed, since NaowhUI's installer sets
+  Naowh Forever up. /nf setup still opens it.
+
+## 1.1.54
+
+### Fixed
+- Training Planner: the Paladin and Druid talent trees, Holy Binding, Arcane Resilience and the
+  Hunter talents match the 30 October hotfix.
+- Training Planner: a saved build from before the hotfix drops the talents Blizzard moved or
+  replaced instead of buying the wrong ones.
+- Training Planner: the trainer list follows the hotfix: Holy Shield and Primal Bite ranks moved,
+  new Ferocious Bite and Lacerate ranks, and Blessing of Light, Salvation, Revoke, Binding Heal,
+  Frost Blast and Primal Bite rank 4 are gone.
+- Buff Reminders: no Salvation reminder, as the hotfix removed it.
+- Blessings: the assignments grid only shows the Salvation column when a paladin can give it.
+
+## 1.1.53
+
+### Changed
+- Daily Word #17 is out (QoL > Travel, or /nf word).
+
+## 1.1.52
+
+### Fixed
+- Training Planner: talent trees match Forever's current trees. Mage no longer shows Piercing Ice
+  and Arcane Focus, and its talent ranks and places are current.
+- Training Planner: spell levels, ranks and trainer prices match Forever's trainers, among them
+  Berserker Rage at 30, Righteous Fury at 10, Shred at 20, and the Lava Burst and Mana Tide Totem
+  ranks.
+- Training Planner: lists Frost Blast, Arcane Wrath, Primal Bite, and rank 4 of Lava Burst and Mana
+  Tide Totem.
+- Training Planner: lists the spells a class quest teaches alongside it: Taunt, Sunder Armor,
+  Intercept, Growl, Maul, and the hunter's pet spells.
+- Training Planner: a talent's later ranks (Lava Burst, Penance, Mutilate and more) wait for the
+  talent instead of showing for everyone.
+- Training Planner: Sense Undead is gone, as it is from Forever.
+- Training Planner: lists Teleport: Moonglade, Teleport: Dalaran, Revoke, Lightwell rank 1 and the
+  hunter's Lacerate. Their price shows once you open your trainer.
+- Training Planner: Penance and Mutilate ranks 2-4 can be trained once you have the talent.
+- Training Planner: Lightwell ranks 2 and 3 no longer wait for a talent Forever removed.
+
+## 1.1.51
+
+### Fixed
+- Action Bars: the bar check no longer lists spells you have on your bars through a macro.
+
+## 1.1.50
+
+### Changed
+- Daily Word #14 is out (QoL > Travel, or /nf word).
+
+## 1.1.49
+
+### Changed
+- Daily Word #13 is out (QoL > Travel, or /nf word).
+
+## 1.1.48
+
+### Added
+- Supporter Badges: Basic patrons on Patreon now wear a rare blue badge in chat, on tooltips and in
+  the group banner.
+
+## 1.1.47
+
+### Changed
+- Daily Word #12 is out (QoL > Travel, or /nf word).
+
+## 1.1.46
+
+### Fixed
+- Macros: a Smart Macro the game can't find after making it is no longer made again and again until
+  General macros are full.
+
+## 1.1.45
+
+### Changed
+- Naowh Score: refitted to the latest Forever items.
+
+## 1.1.44
+
+### Changed
+- Daily Word #9 is out (QoL > Travel, or /nf word).
+
 ## 1.1.43
 
 ### Added
