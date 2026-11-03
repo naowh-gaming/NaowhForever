@@ -62,9 +62,10 @@ TRAINER_TAUGHT = {18960, 1297659, 24118, 24119, 24120, 1299332, 724}
 # wago applies a hotfix's new and changed rows, not the ones it removes. The 30 October 2026 hotfix
 # removed Blessing of Light, Greater Blessing of Light, Salvation, Mass Salvation and Revoke (their Spell
 # rows) and Primal Bite's fourth rank (its SkillLineAbility row), and replaced the talent that was Binding
-# Heal's first rank with Holy Binding, which leaves its later ranks out of reach.
+# Heal's first rank with Holy Binding, which leaves its later ranks out of reach. The 3 November 2026
+# hotfix made the Mutilate talent the rank the trainer sold at 40, which it now gives.
 UNTRAINABLE = {19977, 19978, 19979, 25890, 1038, 25895, 1325499, 1238073,
-               1240770, 1240771, 1240772, 1240773, 1240774}
+               1240770, 1240771, 1240772, 1240773, 1240774, 399956}
 KEEP = ("id", "name", "rank", "level", "source", "trainingcost", "reqrace", "skill")
 ROGUE = 4
 POISONS = 40              # the game's Poisons skill line
