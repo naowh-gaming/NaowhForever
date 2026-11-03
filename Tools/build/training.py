@@ -23,10 +23,10 @@ rune poisons are not). Their price comes from the trainer window. Pick Lock, Par
 Wield and the armor skills are left out: Wowhead gives them level 1 for every class, which
 the trainers do not.
 
-From the build's talent trees (training_builds.py): each later rank's talent, when its first rank is a
-talent (the talent's first rank, by class and spell name), so the addon can list those ranks once the talent is
-known; such a rank needs nothing else. On Forever some talents are sold by the trainer too (Aimed
-Shot, Holy Shock); then nothing waits on the talent.
+From the build's talent trees (training_builds.py): each later rank's talent, when its first rank
+is a talent (the talent's first rank, by class and spell name), so the addon can list those ranks
+once the talent is known; such a rank needs nothing else. On Forever some talents are sold by the
+trainer too (Aimed Shot, Holy Shock); then nothing waits on the talent.
 
 Wowhead's answers are kept in Tools/data/training_cache.json; delete a class's entry to ask again.
 
