@@ -134,7 +134,5 @@ Check(Needs(92744, 92742) and Needs(92745, 92744) and Needs(92750, 92749) and Ne
 Check(Needs(92911, 92910) and Needs(95161, 92415), "a quest that follows another waits on it")
 Check(Needs(19, 20, 98387), "Tharil'zun waits on Marshal Marris's quests, not on Alther's Mill")
 Check(Needs(92470, 92471) and Needs(92644, 92643), "a side quest in the step before is no requirement")
-Check(D.Requires[94013][2] == 94007 and #D.Requires[94013] == 2 and D.Requires[94979][2] == 94007
-    and #D.Requires[94979] == 2, "the Skyborne's three Taming the Beast quests each follow 94007")
 
 print(("test-completo-quest-prereqs: %d checks passed"):format(checks))

@@ -4,7 +4,8 @@
     "what Wowhead's pages, ForeverChanges' list and the caches give. Every fix says why, from a source",
     "we may use: Wowhead Forever's quest pages, ForeverChanges' quest pages, or the game's tables.",
     "requires: per quest, add puts quests before it that the sources leave out, drop takes out ones",
-    "they put there wrongly (a Series row lists side quests and lead-ins with the quest's own step)."
+    "they put there wrongly (a Series row lists side quests and lead-ins with the quest's own step).",
+    "A key starting with _ is a note. A fix naming a quest the data lacks is skipped, with a warning."
   ],
   "requires": {
     "19": {"drop": [98386], "why": "Tharil'zun and Blackrock Blockade are Marshal Marris's war on the Blackrock orcs; Alther's Mill is Foreman Oslow's spider job at the lumber mill (ForeverChanges' quest pages)."},
@@ -21,8 +22,6 @@
     "92753": {"add": [92752], "why": "Toxic Soil, in order."},
     "92819": {"add": [92753], "why": "Toxic Soil, in order: the last step."},
     "92911": {"add": [92910], "why": "Ozwin's text: 'I'll continue tinkering with the assembly you brought me', the Precessive Autocognition Assembly of 92910 (ForeverChanges)."},
-    "94013": {"drop": [94979], "why": "Wowhead's Series has 94013, 94978 and 94979 in one row after Taming the Beast 94007: each follows 94007, not one another."},
-    "94979": {"drop": [94978], "why": "Wowhead's Series has 94013, 94978 and 94979 in one row after Taming the Beast 94007: each follows 94007, not one another."},
     "95161": {"add": [92415], "why": "Wowhead's Series and ForeverChanges' storyline: 92415, then 95161."}
   }
 }

@@ -94,7 +94,8 @@ quest and creature pages. Do not edit them by hand: change the tool and run it a
   version) and the quests the zones lack, which cannot be told apart. From Forever's Series box and
   Wowhead Classic's Requires box, so a Forever-only quest (id 10000 and up) has only its Series.
   `Tools/data/completo_fixes.json` adds what those leave out (Toxic Soil, a Storyline and no Series)
-  and drops what they get wrong, each fix with what shows it.
+  and drops what they get wrong, each fix with what shows it. A fix naming a quest the data lacks is
+  skipped with a warning, so the build still runs.
 - `D.Chains`: each chain's steps in order. A step with more than one quest has parallel quests,
   all of which finish it, or with `any = true` the faction or class versions of one quest.
 - `D.Rares[npcID]`: name, lowest and highest level (0 when not known, -1 for a boss level, "??"),

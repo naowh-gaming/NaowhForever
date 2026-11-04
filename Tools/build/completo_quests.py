@@ -232,16 +232,32 @@ def prerequisites(quests, requires, known):
     return {q: sorted(p) for q, p in before.items() if p}
 
 
+def warn(message):
+    print(f"completo_fixes.json: {message}", file=sys.stderr)
+
+
 def corrected(before, requires, fixes, known):
     """before and requires with completo_fixes.json's "requires" applied: a quest's add joins the
-    quests before it, its drop leaves them and its explicit groups."""
+    quests before it, its drop leaves them and its explicit groups. A fix naming a quest the data
+    lacks is skipped with a warning rather than stopping the build, which the daily watch runs
+    unattended; an add it needs already or a drop it does not need is warned of too. Keys starting
+    with _ are notes."""
     before = {q: set(p) for q, p in before.items()}
     requires = dict(requires)
     for key, fix in fixes.items():
-        qid, drop = int(key), set(fix.get("drop", []))
-        if qid not in known:
-            sys.exit(f"completo_fixes.json: requires names quest {qid}, which the data does not have")
-        before[qid] = (before.get(qid, set()) | set(fix.get("add", []))) - drop
+        if key.startswith("_"):
+            continue
+        qid, add, drop = int(key), set(fix.get("add", [])), set(fix.get("drop", []))
+        unknown = sorted(i for i in add | drop | {qid} if i not in known)
+        if unknown:
+            warn(f"requires {key} names quest {', '.join(map(str, unknown))}, which the data does not have; skipped")
+            continue
+        had = before.get(qid, set())
+        if add & had:
+            warn(f"requires {key} adds {', '.join(map(str, sorted(add & had)))}, which it needs already")
+        if drop - had:
+            warn(f"requires {key} drops {', '.join(map(str, sorted(drop - had)))}, which it does not need")
+        before[qid] = (had | add) - drop
         groups = (requires.get(key) or {}).get("groups")
         if groups and drop:
             kept = []
