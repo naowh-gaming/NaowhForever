@@ -17,9 +17,10 @@ local RUN_NEXT_MAX = 3
 local SOURCE_SEP = " \194\183 "
 local PLACE_PATTERN = "^(.*)" .. SOURCE_SEP .. "(.+)$"
 local TEXT_TRASH = ns.L("Trash drop")
+local WORLD_DROP = "World drop"
 local DUAL_WIELD = { WARRIOR = true, ROGUE = true, HUNTER = true }
 local NOT_A_PLACE = { Crafted = true, Quest = true, ["Quest (Horde)"] = true, ["Quest (Alliance)"] = true,
-    ["Quest Reward"] = true, ["World drop"] = true, Reputation = true }
+    ["Quest Reward"] = true, [WORLD_DROP] = true, Reputation = true }
 local VIA_DETAIL = { quest = true, recipe = true }
 local EMPTY = {}
 
@@ -78,6 +79,10 @@ local function Drops()
         for _, wing in ipairs(dungeon.wings) do
             for _, boss in ipairs(wing.bosses) do AddBossLoot(dungeon, boss, best, notYet) end
         end
+    end
+    local sources = ns.BiSData.sources
+    for id, chance in pairs(best) do
+        if chance <= 0 and sources[id] == WORLD_DROP then drops[id], dropDungeon[id] = nil, nil end
     end
     return drops
 end

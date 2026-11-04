@@ -1262,9 +1262,11 @@ do
     for _, name in ipairs({ "Saltspine", "Shadetooth", "Relic Guardian" }) do
         local b = findBoss("ExcavationSite", name)
         local known = b.loot and #b.loot >= 3 and b.chance and #b.chance == #b.loot
-        for _, c in ipairs(known and b.chance or {}) do known = known and c > 0 end
-        check("Excavation Site: " .. name .. "'s loot, each with its chance", known)
+        for i, c in ipairs(known and b.chance or {}) do known = known and (c > 0 or Has({ 273106, 273097 }, b.loot[i])) end
+        check("Excavation Site: " .. name .. "'s loot, each with its chance but a blueprint", known)
     end
+    check("Shadetooth's and the Relic Guardian's blueprints", Has(findBoss("ExcavationSite", "Shadetooth").loot, 273106)
+        and Has(findBoss("ExcavationSite", "Relic Guardian").loot, 273097))
     for _, key in ipairs({ "ScarletMonasteryGraveyard", "ScarletMonasteryLibrary", "ScarletMonasteryArmory",
         "ScarletMonasteryCathedral", "ExcavationSite", "HallOfThanes", "RuinsOfLordaeron", "Deadmines", "Dalaran" }) do
         check("open on Forever: " .. key, not DJ.Get(key).closed)

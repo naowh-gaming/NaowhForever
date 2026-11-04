@@ -40,6 +40,24 @@ class DroppedBy(unittest.TestCase):
         self.assertEqual(recipe_drops.dropped_by("<wowhead><error>Item not found!</error></wowhead>"), [])
 
 
+class RecipeIds(unittest.TestCase):
+    TEXT = """
+            { spell = 1263032, item = 279943, skill = 140, recipe = 273099, source = "unknown" },
+            { spell = 1, item = 2, skill = 1, recipe = 273112, source = "vendor" },
+            { spell = 3, item = 4, skill = 1, recipe = 4410, source = "drop" },
+    """
+
+    def test_the_professions_data_says_drop_or_unknown(self):
+        self.assertEqual(recipe_drops.recipe_ids(self.TEXT, []), [4410, 273099])
+
+    def test_a_blueprint_it_does_not_list_is_asked_about(self):
+        sparse = [{"ID": "273106", "Display_lang": "Blueprint: Greenhouse"},
+                  {"ID": "273112", "Display_lang": "Blueprint: Alchemy Laboratory"},
+                  {"ID": "286983", "Display_lang": "Ancient Cleaver"}]
+        self.assertEqual(recipe_drops.recipe_ids(self.TEXT, sparse), [4410, 273099, 273106],
+                         "a vendor's blueprint it lists stays out, and other items are no blueprint")
+
+
 class Placed(unittest.TestCase):
     def test_a_recipe_goes_on_its_journal_boss(self):
         out = recipe_drops.placed({"273099": [246017, 277945]}, BOSSES)

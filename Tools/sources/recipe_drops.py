@@ -6,7 +6,8 @@ A boss's own page lists its drops, but Wowhead's CDN refuses those pages to scri
 round: for every recipe the Professions data says drops or does not know the source of, its
 item XML's "sourcemore" names the NPCs it drops from (beside "source" 2: one beside 5 sells it), and a Journal boss among them gets the
 recipe. One dropped by SHARED_DROP or more Journal bosses is a shared random drop, not any one
-boss's: left out, as Tools/build/journal.py leaves out such gear.
+boss's: left out, as Tools/build/journal.py leaves out such gear. The game's "Blueprint:" items
+the Professions data does not list (most are books, no one profession's) are asked about too.
 
 Each answer is kept in Tools/data/recipe_drops_cache.json, so a run stopped part way resumes;
 --refresh asks again for every recipe. Tools/build/journal.py places what this writes on its
@@ -22,6 +23,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import paths  # noqa: E402
+import wago  # noqa: E402
 import wowhead  # noqa: E402
 
 RECIPES = paths.ROOT / "NaowhForever_Professions" / "Data" / "RecipeData.lua"
@@ -32,15 +34,18 @@ SOURCES = ("drop", "unknown")   # a vendor's, trainer's or quest's recipe drops 
 NPC = 1                         # a "sourcemore" entry's type ("t") for an NPC
 DROP = 2                        # its "source" beside it: dropped (5 is sold, by a vendor)
 SHARED_DROP = 3
+BLUEPRINT = "Blueprint:"
 RECIPE = re.compile(r'recipe = (\d+), source = "(\w+)"')
 BOSS = re.compile(r'\{ npc = (\d+), name = "((?:[^"\\]|\\.)*)"')
 JSON = re.compile(r"<json><!\[CDATA\[(.*?)\]\]></json>", re.S)
 
 
-def recipe_ids():
-    """The recipes the Professions data says drop, or does not know the source of."""
-    text = RECIPES.read_text(encoding="utf-8")
-    return sorted({int(item) for item, source in RECIPE.findall(text) if source in SOURCES})
+def recipe_ids(text, sparse):
+    """The recipes the Professions data (its text) says drop, or does not know the source of, and
+    the blueprints in the game's ItemSparse rows it does not list at all."""
+    listed = {int(item): source for item, source in RECIPE.findall(text)}
+    blueprints = {int(row["ID"]) for row in sparse if row["Display_lang"].startswith(BLUEPRINT)}
+    return sorted({item for item, source in listed.items() if source in SOURCES} | (blueprints - listed.keys()))
 
 
 def journal_bosses():
@@ -81,7 +86,8 @@ def main():
     cache = {}
     if CACHE.exists() and "--refresh" not in sys.argv:
         cache = json.loads(CACHE.read_text(encoding="utf-8"))
-    wanted = [i for i in recipe_ids() if str(i) not in cache]
+    sparse = [row for build in (wago.CARRY_FROM, wago.BUILD) if build for row in wago.table("ItemSparse", build)]
+    wanted = [i for i in recipe_ids(RECIPES.read_text(encoding="utf-8"), sparse) if str(i) not in cache]
     print(f"{len(wanted)} recipes to ask Wowhead about", file=sys.stderr)
     for n, item in enumerate(wanted, 1):
         try:

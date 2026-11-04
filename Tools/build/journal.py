@@ -14,9 +14,10 @@ its chances are real; under 10 kills none is shown.
 
 Then wowsrc.com's Forever loot pages (Tools/sources/wowsrc.py, its own data file) say what each
 boss drops in Forever: their items are added, their chances win, and an old item they no
-longer list on that boss is dropped (moved, like Springvale's lantern, now trash's). Each
-wing's trash comes from them too. Last, the items placed by hand ("add") and the BiS
-sources in NaowhForever_BiS/BiS/Data/BiS.lua; those have no chance.
+longer list on that boss is dropped. Each wing's trash comes from them too. Last, the items
+placed by hand ("add", which also puts back an old item the merge took off a boss where
+Wowhead's counts still give it a real chance: Herod's Scarlet Leggings) and the BiS sources
+in NaowhForever_BiS/BiS/Data/BiS.lua; those have no chance.
 
 Every item is listed, the ones not in Forever yet too, so the Journal is whole the day they
 come. An item is in the game (known) when the game's tables have it (wago.tools' ItemSparse,
@@ -446,9 +447,8 @@ def wowsrc_loot(dungeon, report):
 
 def merge_wowsrc(loot, listed):
     """A boss's loot with wowsrc's Forever list for it: its chances where it gives one (the
-    game's own), its items added, and an old item it does not list left out (moved in Forever:
-    Springvale's Eerie Stable Lantern is trash's now) when the list is complete. An item new
-    in Forever that Wowhead ties to the boss stays either way."""
+    game's own), its items added, and an old item it does not list left out when the list is
+    complete. An item new in Forever that Wowhead ties to the boss stays either way."""
     if not listed:
         return loot
     on_list = {i["id"]: i for i in listed["items"]}
