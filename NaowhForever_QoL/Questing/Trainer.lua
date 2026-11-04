@@ -75,9 +75,14 @@ end
 
 local function NewSpells()
     local all = Account("trainerNew")
-    charKey = charKey or UnitName("player") .. "-" .. GetRealmName()
-    all[charKey] = all[charKey] or {}
-    return all[charKey]
+    local key = charKey
+    if not key then
+        local name = UnitName("player")
+        key = name .. "-" .. GetRealmName()
+        if name ~= UNKNOWNOBJECT then charKey = key end
+    end
+    all[key] = all[key] or {}
+    return all[key]
 end
 
 local function Kept()

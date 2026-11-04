@@ -245,5 +245,24 @@ Case("disabling the feature cancels a combat-deferred rank check", function()
     t.Event("PLAYER_REGEN_ENABLED")
     assert(not t.Shown() and not t.env.showQueued and not t.env.rankTrainer)
 end)
+Case("new abilities wait for the character's name: Unknown early in loading is never kept as its key", function()
+    local account, name = {}, "Unknown"
+    local env = setmetatable({ UNKNOWNOBJECT = "Unknown", UnitName = function() return name end,
+        GetRealmName = function() return "Realm" end,
+        Account = function(key)
+            account[key] = account[key] or {}
+            return account[key]
+        end }, { __index = _G })
+    local chunk = assert(loadstring(Slice("local function NewSpells()", "\nlocal function Kept(") .. "\nreturn NewSpells"))
+    setfenv(chunk, env)
+    local NewSpells = chunk()
+    NewSpells()
+    assert(env.charKey == nil, "not kept while the name is Unknown")
+    name = "Me"
+    NewSpells()[591] = true
+    assert(env.charKey == "Me-Realm" and account.trainerNew["Me-Realm"][591], "kept once the name is known")
+    name = "Unknown"
+    assert(NewSpells()[591], "and used from then on")
+end)
 
 print(count .. " trainer rank regressions passed")

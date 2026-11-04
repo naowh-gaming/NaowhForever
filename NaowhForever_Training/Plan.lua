@@ -32,8 +32,10 @@ end
 local function Known(mine, after)
     local known = {}
     for i = #mine, 1, -1 do
-        local spell = mine[i][SPELL]
-        known[spell] = C_SpellBook.IsSpellKnown(spell) or known[after[spell]] or false
+        local entry = mine[i]
+        local spell = entry[SPELL]
+        known[spell] = C_SpellBook.IsSpellKnown(spell) or known[after[spell]]
+            or entry.replacedBy and C_SpellBook.IsSpellKnown(entry.replacedBy) or false
     end
     return known
 end

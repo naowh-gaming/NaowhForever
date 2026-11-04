@@ -2,6 +2,7 @@
 local ns = _G.NaowhForever
 
 local UI = ns.UI
+local CharacterData = ns.Shared.CharacterData
 
 local F = ns.FEATURES.training
 
@@ -14,6 +15,7 @@ local Training = { Settings = S }
 ns.Training = Training
 
 local SPELL, COST = 2, 3
+local PRICES = "trainingCharPrices"
 
 local charKey
 local listeners = {}
@@ -29,12 +31,15 @@ local function Account(key)
 end
 
 local function CharKey()
-    charKey = charKey or UnitName("player") .. "-" .. GetRealmName()
-    return charKey
+    if charKey then return charKey end
+    local name = UnitName("player")
+    local key = name .. "-" .. GetRealmName()
+    if name ~= UNKNOWNOBJECT then charKey = key end
+    return key
 end
 
 local function Prices()
-    return Account("trainingPrices")
+    return CharacterData(PRICES, true)
 end
 
 local function Ignored()
@@ -50,7 +55,9 @@ local function ClassSpells()
 end
 
 local function Price(entry)
-    return Prices()[entry[SPELL]] or entry[COST]
+    local spell = entry[SPELL]
+    local mine, old = CharacterData(PRICES), ns.AccountSettings().trainingPrices
+    return mine and mine[spell] or old and old[spell] or entry[COST]
 end
 
 local function Changed()
