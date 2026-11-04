@@ -1,7 +1,9 @@
 """Tests for Tools/build/completo_quests.py's hand-kept corrections (Tools/data/completo_fixes.json):
 a quest's add joins the quests before it, its drop leaves them and its explicit groups, a fix naming
 a quest the data lacks is skipped with a warning, an add or drop that changes nothing is warned of,
-and a key starting with _ is a note. Offline. From the repo root:
+and a key starting with _ is a note; and for how it mends the race masks: a side's every race but
+one is the whole side, and the Windshaper Skyborne get Zephras Isle's shared and Tauren quests.
+Offline. From the repo root:
 
     python -m unittest discover -s Tools/tests
 """
@@ -71,6 +73,35 @@ class Corrected(unittest.TestCase):
         (after, _), warnings = self.corrected({19: [20, 98386]}, {}, {"_note": "x", "19": {"drop": [98386]}})
         self.assertEqual(after, {19: [20]})
         self.assertEqual(warnings, "")
+
+
+class Races(unittest.TestCase):
+    ALLIANCE, HORDE = 4294967373, 8589934770
+    MULGORE = 1412
+
+    def races(self, mask, side, map_id=None):
+        return completo_quests.races(mask, side, map_id)
+
+    def test_every_race_but_one_is_the_whole_side(self):
+        self.assertEqual(self.races(4294967372, 1), self.ALLIANCE)
+        self.assertEqual(self.races(self.HORDE & ~2, 2), self.HORDE)
+        self.assertEqual(self.races(self.ALLIANCE, 1), self.ALLIANCE)
+        self.assertEqual(self.races(0, 1), 0)
+
+    def test_fewer_races_stay_as_they_are(self):
+        self.assertEqual(self.races(76, 1), 76)
+        self.assertEqual(self.races(1, 1), 1)
+        self.assertEqual(self.races(690, 2), 690)
+
+    def test_both_skyborne(self):
+        both = completo_quests.HIGH_ORDER | completo_quests.WINDSHAPER
+        self.assertEqual(self.races(completo_quests.HIGH_ORDER, 3, completo_quests.ZEPHRAS), both)
+        self.assertEqual(self.races(completo_quests.HIGH_ORDER, 1, completo_quests.ZEPHRAS), completo_quests.HIGH_ORDER)
+
+    def test_tauren_on_zephras_take_the_windshapers(self):
+        tauren = completo_quests.TAUREN
+        self.assertEqual(self.races(tauren, 2, completo_quests.ZEPHRAS), tauren | completo_quests.WINDSHAPER)
+        self.assertEqual(self.races(tauren, 2, self.MULGORE), tauren)
 
 
 class FixesFile(unittest.TestCase):

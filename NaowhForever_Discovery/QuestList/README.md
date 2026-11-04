@@ -112,7 +112,8 @@ quest and creature pages. Do not edit them by hand: change the tool and run it a
   so Zephras Isle's second map (2665) finds 2521's quests and rares (Shared/README.md, Why).
 - Nothing runs until one of its tabs is open: it reads what you have done when it draws, and listens
   for quest events only while it is shown. Which quests are yours (faction, race, class) is worked
-  out once, the first time it is asked; none of it changes while you play.
+  out once, the first time it is asked, and again only when a giver offers you one the data says is
+  not yours.
 - The quests and rares (close to two megabytes once loaded) ship in `NaowhForever_DiscoveryData`, a
   load-on-demand addon. `ns.CompletoQuestData` and `ns.CompletoRareData` start empty with a hook
   that loads it on the first read of any field, so the files here keep the tables they took as they
@@ -121,6 +122,15 @@ quest and creature pages. Do not edit them by hand: change the tool and run it a
   nothing instead of erroring, and the load is not tried again.
 - `RACE_BITS` maps the client's race IDs to their bit in Wowhead's race masks, Forever's own two
   races (95 and 96) too.
+- The data's race masks have slips, which the build mends (`races` in `Tools/build/completo_quests.py`).
+  A mask with every race of a side but one is the whole side: 64 Alliance quests left Humans out,
+  Goldshire's Delicate Instruments and Northshire's Rascally Rodents among them. A quest for both sides
+  that names only the High Order Skyborne, and a Zephras Isle quest that names Tauren, take the
+  Windshaper Skyborne too: both Skyborne start on Zephras, Wowhead calls the first kind both sides',
+  and the Horde's versions of the island's quests name Tauren where the Alliance's name the High Order.
+- A quest the data says is not yours (its race or class) that a giver offers you is yours from then on
+  (`completoMine`, per character), so a mask the data still has wrong corrects itself the first time
+  you speak to the giver.
 - A chain keeps only the steps you can do; one left with a single step is no chain for you.
 - `MAX_UNDER` is 10: Wowhead's required level is wrong for some quests (Mending Old Wounds says
   level 15 for a level 60 quest, and the game does not offer it at 15), so no quest is taken as
@@ -235,6 +245,8 @@ quest and creature pages. Do not edit them by hand: change the tool and run it a
   an error, so no rare path may set a raid mark; Skull on Click only adds `/tm` to the button's macro.
 - `lua Tools/regression/test-completo-quest-prereqs.lua`: requirements, what a row says is missing, and a quest
   its giver offers.
+- `lua Tools/regression/test-completo-quest-givers.lua`: a quest the data says is not yours becomes yours
+  once a giver offers it.
 - `lua Tools/regression/test-completo-quest-pins.lua`: the quest pins are Pin Size and keep one
   size on screen as the map zooms.
 - `lua Tools/regression/test-discovery-data-load.lua`: the quests and rares load once on the first

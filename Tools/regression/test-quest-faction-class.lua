@@ -14,6 +14,8 @@ local function Check(ok, label) assert(ok, label); checks = checks + 1 end
 local ALLIANCE_HUNTER = { faction = "Alliance", race = "Dwarf", raceID = 3, class = "HUNTER", classID = 3 }
 local HORDE_HUNTER = { faction = "Horde", race = "Orc", raceID = 2, class = "HUNTER", classID = 3 }
 local HUMAN_WARLOCK = { faction = "Alliance", race = "Human", raceID = 1, class = "WARLOCK", classID = 9 }
+local WINDSHAPER_MAGE = { faction = "Horde", race = "WindshaperSkyborne", raceID = 96, class = "MAGE", classID = 8 }
+local HIGH_ORDER_MAGE = { faction = "Alliance", race = "HighOrderSkyborne", raceID = 95, class = "MAGE", classID = 8 }
 
 local function Env(ns, who)
     return setmetatable({
@@ -63,6 +65,14 @@ Check(not Q.Mine(397) and not Q.Mine(8906) and not Q.Mine(8911), "a Horde hunter
 Q = QuestList(HUMAN_WARLOCK)
 Check(Q.Mine(397) and Q.Mine(8911), "a Human warlock has the warlock quests")
 Check(not Q.Mine(8906), "a Human warlock does not have the hunter version")
+Check(Q.Mine(91723) and Q.Mine(91743) and Q.Mine(92742), "a Human has the Alliance quests the data left Humans out of")
+
+-- Zephras Isle: Coming of Age (92460) is both sides' first quest, The Windshapers (92595) the Horde's
+-- answer to The High Order (92596).
+Q = QuestList(WINDSHAPER_MAGE)
+Check(Q.Mine(92460) and Q.Mine(92595) and not Q.Mine(92596), "a Windshaper Skyborne has the island's quests")
+Q = QuestList(HIGH_ORDER_MAGE)
+Check(Q.Mine(92460) and Q.Mine(92596) and not Q.Mine(92595), "a High Order Skyborne has its own")
 
 -- The Dungeon Quest Tracker: Serpentbloom (962) is Horde-only, Important Heirlooms (96403)
 -- Alliance-only, and The Orb of Soran'ruk (1740) is for warlocks of either faction.
