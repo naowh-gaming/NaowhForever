@@ -46,11 +46,12 @@ ns.UI.SlimScroll=function() return Frame() end
 ns.UI.KeepButton=function(parent,key,text,w,h,fn) local f=Frame();f.label=Frame();f.label:SetText(text);f.click=fn;parent.cache[key]=f;return f end
 local tooltip=Frame();local title=Frame();title:SetText('Test name')
 local env={_G={NaowhForever=ns},GameTooltip=tooltip,ItemRefTooltip=Frame(),ShoppingTooltip1=Frame(),ShoppingTooltip2=Frame(),GameTooltipTextLeft1=title,
-    CreateFrame=Frame,Enum={TooltipDataType={Spell=1,Item=2,Unit=3}},SlashCmdList={},
+    CreateFrame=Frame,Enum={TooltipDataType={Spell=1,Item=2,Unit=3,Quest=23}},SlashCmdList={},
     issecretvalue=function(v) return rawequal(v,secret) end,canaccessvalue=function(v) return not rawequal(v,secret) end,
     issecrettable=function(v) return rawequal(v,secret) end,
     TooltipDataProcessor={AddTooltipPostCall=function(k,v) callbacks[k]=v end},
-    EventRegistry={RegisterCallback=function(_,e,fn,o) registry[e]={fn=fn,owner=o} end,UnregisterCallback=function(_,e) registry[e]=nil end},
+    EventRegistry={RegisterCallback=function(_,e,fn,o) registry[e]={fn=fn,owner=o} end,
+        UnregisterCallback=function(_,e,o) if registry[e] and registry[e].owner==o then registry[e]=nil end end},
     C_Spell={GetSpellTexture=function() return 135812 end},C_Item={GetItemIconByID=function() return 134400 end},
     InCombatLockdown=function() return combat end,GetCurrentKeyBoardFocus=function() return focus end,
     IsControlKeyDown=function() return ctrl end,IsShiftKeyDown=function() return shift end,IsAltKeyDown=function() return alt end,
@@ -144,6 +145,17 @@ k.scripts.OnKeyDown(k,'C');check('the shortcut copies the hovered quest',lastPan
  and lastPanel.cache.name.text=='The Defias Brotherhood');lastDimmer:Hide()
 tooltip.owner={};show({type=1,id=133});k.scripts.OnKeyDown(k,'C')
 check('another owner copies its own ID',lastPanel.cache.value.text=='https://www.wowhead.com/forever/spell=133');lastDimmer:Hide()
+tooltip.owner=button;show({type=1,id=133});k.scripts.OnKeyDown(k,'C')
+check('another tooltip on the same quest button copies its own ID',lastPanel.cache.value.text=='https://www.wowhead.com/forever/spell=133');lastDimmer:Hide()
+tooltip.lines={{'The Defias Brotherhood'}};quest.fn(quest.owner,button,155);quest.fn(quest.owner,button,155)
+check('the quest line is added once',#tooltip.lines==4 and tooltip.lines[3][1]=='Quest ID')
+env.ItemRefTooltip.lines={};callbacks[23](env.ItemRefTooltip,{type=23,id=155})
+check('a quest link gets its ID from the tooltip data',env.ItemRefTooltip.lines[2][1]=='Quest ID' and env.ItemRefTooltip.lines[2][2]=='155')
+tooltip.shown=false;env.ItemRefTooltip.shown=true;env.ItemRefTooltip.data={type=23,id=155};k.scripts.OnKeyDown(k,'C')
+check('and the shortcut copies it',lastPanel.cache.value.text=='https://www.wowhead.com/forever/quest=155');lastDimmer:Hide()
+env.ItemRefTooltip.shown=false;tooltip.shown=true;tooltip.owner={};show({type=1,id=133})
+ns.QoLSettings.Set('tooltipQuestID',false);env.ItemRefTooltip.lines={};callbacks[23](env.ItemRefTooltip,{type=23,id=155})
+check('Show Quest ID off leaves quest links alone',#env.ItemRefTooltip.lines==0)
 ns.QoLSettings.Set('tooltipQuestID',false);check('off stops watching the quest log',registry['QuestMapLogTitleButton.OnEnter']==nil)
 tooltip.owner=button;k.scripts.OnKeyDown(k,'C');check('a quest from before it went off is not copied',lastPanel.cache.value.text:find('spell=133',1,true)~=nil);lastDimmer:Hide()
 ns.QoLSettings.Set('tooltipQuestID',true);ns.QoLSettings.Set('tooltipDisplay',false)

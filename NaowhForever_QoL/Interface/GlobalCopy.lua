@@ -113,15 +113,16 @@ local function Accessible(value)
     return not Secret(value) and CanAccess(value)
 end
 
+local QUEST = { kind = "quest", label = ns.L("Quest ID"), setting = "tooltipQuestID" }
 local TYPES = {
     [Enum.TooltipDataType.Spell] = { kind = "spell", label = ns.L("Spell ID"), setting = "tooltipSpellID" },
     [Enum.TooltipDataType.Item] = { kind = "item", label = ns.L("Item ID"), setting = "tooltipItemID" },
     [Enum.TooltipDataType.Unit] = { kind = "npc", label = ns.L("NPC ID"), setting = "tooltipNPCID" },
+    [Enum.TooltipDataType.Quest] = QUEST,
 }
-local QUEST = { kind = "quest", label = ns.L("Quest ID"), setting = "tooltipQuestID" }
 local QUEST_ENTER = "QuestMapLogTitleButton.OnEnter"
 
-local questOn, questButton, questShown
+local questOn, questButton, questShown = false, nil, nil
 
 local function DisplayOn()
     return S.Get("enabled") and S.Get("tooltipDisplay")
@@ -193,6 +194,15 @@ local function AlreadyDecorated(tooltip, info)
     return text and not Secret(text) and text == info.label
 end
 
+local function AddID(tooltip, label, value, hint)
+    tooltip:AddLine(" ")
+    tooltip:AddDoubleLine(label, value, T.accent.r, T.accent.g, T.accent.b, VALUE_RGB.r, VALUE_RGB.g, VALUE_RGB.b)
+    decorated[tooltip] = tooltip:NumLines()
+    if hint and S.Get("tooltipCopy") and S.Get("tooltipCopyHint") then
+        tooltip:AddLine(CopyHint(S.Get("tooltipModifier"), S.Get("tooltipKey")), T.muted.r, T.muted.g, T.muted.b)
+    end
+end
+
 local function Decorate(tooltip, data)
     if not DisplayOn() or tooltip:IsForbidden() then return end
     if not Decorates(tooltip) then return end
@@ -200,31 +210,25 @@ local function Decorate(tooltip, data)
     if not info or not S.Get(info.setting) then return end
     if hidden and S.Get("tooltipRestricted") ~= "hidden" then return end
     if AlreadyDecorated(tooltip, info) then return end
-    tooltip:AddLine(" ")
-    tooltip:AddDoubleLine(info.label, hidden and TEXT_HIDDEN or tostring(id), T.accent.r, T.accent.g, T.accent.b,
-        VALUE_RGB.r, VALUE_RGB.g, VALUE_RGB.b)
-    decorated[tooltip] = tooltip:NumLines()
-    if not hidden and S.Get("tooltipCopy") and S.Get("tooltipCopyHint")
-        and (tooltip == GameTooltip or tooltip == ItemRefTooltip) then
-        tooltip:AddLine(CopyHint(S.Get("tooltipModifier"), S.Get("tooltipKey")), T.muted.r, T.muted.g, T.muted.b)
-    end
+    AddID(tooltip, info.label, hidden and TEXT_HIDDEN or tostring(id),
+        not hidden and (tooltip == GameTooltip or tooltip == ItemRefTooltip))
 end
 
 local function OnQuestEnter(_, button, questID)
-    if GameTooltip:IsForbidden() then return end
-    GameTooltip:AddLine(" ")
-    GameTooltip:AddDoubleLine(QUEST.label, tostring(questID), T.accent.r, T.accent.g, T.accent.b,
-        VALUE_RGB.r, VALUE_RGB.g, VALUE_RGB.b)
-    if S.Get("tooltipCopy") and S.Get("tooltipCopyHint") then
-        GameTooltip:AddLine(CopyHint(S.Get("tooltipModifier"), S.Get("tooltipKey")), T.muted.r, T.muted.g, T.muted.b)
-    end
+    if GameTooltip:IsForbidden() or AlreadyDecorated(GameTooltip, QUEST) then return end
+    AddID(GameTooltip, QUEST.label, tostring(questID), true)
     GameTooltip:Show()
     questButton, questShown = button, questID
 end
 
+local function QuestLogTooltip(tooltip)
+    return questButton and tooltip == GameTooltip and tooltip:GetOwner() == questButton
+        and AlreadyDecorated(tooltip, QUEST)
+end
+
 local function WatchQuestLog()
-    local wanted = (DisplayOn() and S.Get("tooltipQuestID")) == true
-    if wanted == (questOn or false) then return end
+    local wanted = DisplayOn() and S.Get("tooltipQuestID") or false
+    if wanted == questOn then return end
     questOn = wanted
     if wanted then
         EventRegistry:RegisterCallback(QUEST_ENTER, OnQuestEnter, QUEST)
@@ -261,7 +265,7 @@ local function OnKeyDown(self, key)
     local tooltip, titleLine = ShownTooltip()
     if not tooltip then return end
     local info, id
-    if questButton and tooltip == GameTooltip and tooltip:GetOwner() == questButton then
+    if QuestLogTooltip(tooltip) then
         info, id = QUEST, questShown
     else
         info, id = Resolve(tooltip:GetPrimaryTooltipData())
