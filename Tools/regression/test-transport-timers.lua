@@ -522,6 +522,18 @@ Check(zone.times.text == drawn, "it redraws once a second, not every frame")
 zone.scripts.OnUpdate(zone, 0.5)
 seconds, kind = Times.Dock(SHIP, 1, now)
 Check(Lines(zone.times.text)[2]:find(ShipTime(seconds, kind), 1, true), "a second on, the countdown has moved")
+function zone:GetWidth() return self.size end
+zone.size = 1000
+zone.scripts.OnUpdate(zone, 1)
+Check(zone.size == 1000, "a tick never narrows it, so it does not twitch as the digits change")
+Event("ZONE_CHANGED_NEW_AREA")
+Check(zone.size < 1000, "a zone change fits it again")
+drawn = zone.times.text
+settings.transportTimers = false
+now = now + 5
+zone.scripts.OnUpdate(zone, 1)
+Check(zone.times.text == drawn, "in the frame before a profile switch reapplies, a tick with the timers off draws nothing")
+settings.transportTimers = true
 playerMap = 1458
 Event("ZONE_CHANGED_NEW_AREA")
 Check(zone.names.text == "Zeppelin to Grom'gol\nZeppelin to Orgrimmar", "in Undercity, Tirisfal Glades' zeppelins")
@@ -534,6 +546,10 @@ Check(zone.shown and zone.names.text == "Zeppelin to Grom'gol\nZeppelin to Under
 faction, playerMap = "Alliance", 1454
 Event("ZONE_CHANGED_NEW_AREA")
 Check(not zone.shown, "the other side's ships are not listed")
+playerMap = 1437
+Event("ZONE_CHANGED_NEW_AREA")
+Check(zone.names.text == "Boat to Southshore / Boat to Auberdine\nBoat to Theramore",
+    "a boat that sails on names every place it goes: " .. zone.names.text)
 faction, playerMap = "Horde", 1429
 Event("ZONE_CHANGED_NEW_AREA")
 Check(not zone.shown, "hidden in a zone without a stop")
@@ -555,8 +571,11 @@ ns.QoLSettings.Set("transportZone", false)
 Check(not zone.shown, "off hides it")
 ns.QoLSettings.Set("transportZone", true)
 Check(zone.shown and #zoneTimers == 1, "on again shows the same one")
+ns.ShowUnlockMode()
+Check(zone.shown and zone.mover.shown, "in Unlock Mode at a dock, the real list with its mover")
 ns.QoLSettings.Set("transportTimers", false)
-Check(not zone.shown, "turning the timers off hides it too")
+Check(not zone.shown and not zone.mover.shown, "turning the timers off hides it and its mover, so Unlock Mode drops it")
+ns.HideUnlockMode()
 ns.ShowUnlockMode()
 Check(not zone.shown, "and Unlock Mode does not show it while they are off")
 ns.HideUnlockMode()

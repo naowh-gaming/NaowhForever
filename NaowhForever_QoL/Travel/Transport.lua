@@ -31,6 +31,7 @@ local EVENTS = { "PLAYER_ENTERING_WORLD", "ZONE_CHANGED_NEW_AREA", "ZONE_CHANGED
 local CITY_ZONES = { [1454] = 1411, [1456] = 1412, [1457] = 1438, [1458] = 1420 }
 local COLUMN_GAP = 12
 local LINE_BREAK = "\n"
+local ROUTE_SEPARATOR = " / "
 local TIME_COLOR = "|cff%02x%02x%02x%s|r"
 local COLOR_STEPS = 255
 local ROUND = ns.QoLConstants.ROUND
@@ -170,42 +171,52 @@ local function Tinted(text, color)
         math.floor(color.b * COLOR_STEPS + ROUND), text)
 end
 
-local function DrawZone()
-    wipe(names)
+local function Label(key)
+    local routes = Data[key].routes
+    local label = ns.L(routes[1])
+    for i = 2, #routes do label = label .. ROUTE_SEPARATOR .. ns.L(routes[i]) end
+    return label
+end
+
+local function DrawTimes(fit)
     wipe(times)
     if zoneSpots[1] then
         local now = GetServerTime()
         for i, key in ipairs(zoneSpots) do
             local text, color = TimeText(key, now)
-            names[i] = ns.L(Data[key].routes[1])
             times[i] = Tinted(text, color)
         end
     else
-        names[1] = ns.L(SAMPLE_ROUTE)
         times[1] = Tinted(Countdown(SAMPLE_WAIT, DEPARTURE, true), DOCKED_RGB)
     end
-    hud.names:SetText(table.concat(names, LINE_BREAK))
     hud.times:SetText(table.concat(times, LINE_BREAK))
-    hud:SetSize(hud.names:GetStringWidth() + COLUMN_GAP + hud.times:GetStringWidth() + 2 * St.CARD_PAD,
-        hud.names:GetStringHeight() + 2 * St.CARD_PAD)
+    local width = hud.names:GetStringWidth() + COLUMN_GAP + hud.times:GetStringWidth() + 2 * St.CARD_PAD
+    if fit or width > hud:GetWidth() then
+        hud:SetSize(width, hud.names:GetStringHeight() + 2 * St.CARD_PAD)
+    end
 end
 
 local function OnZoneTick(_, delta)
     hudElapsed = hudElapsed + delta
     if hudElapsed < UPDATE_EVERY then return end
     hudElapsed = 0
-    DrawZone()
+    if ZoneOn() then DrawTimes() end
 end
 
 local function ShowZone()
     if not hud then return end
-    if not (ZoneOn() and (zoneSpots[1] or unlocked)) then
+    local shown = ZoneOn() and (zoneSpots[1] ~= nil or unlocked == true)
+    hud.mover:SetShown(shown and unlocked == true)
+    if not shown then
         hud:Hide()
         return
     end
-    hud.mover:SetShown(unlocked == true)
+    wipe(names)
+    for i, key in ipairs(zoneSpots) do names[i] = Label(key) end
+    names[1] = names[1] or ns.L(SAMPLE_ROUTE)
+    hud.names:SetText(table.concat(names, LINE_BREAK))
     hudElapsed = 0
-    DrawZone()
+    DrawTimes(true)
     hud:Show()
 end
 
@@ -334,8 +345,11 @@ local function Apply()
 end
 
 local function OnSetting(key)
-    if key == "enabled" or key == "transportTimers" or (key:find("^transportZone") and key ~= "transportZonePos") then
+    if key == "enabled" or key == "transportTimers" or key == "transportZone" then
         Apply()
+    elseif hud and key:find("^transportZone") and key ~= "transportZonePos" then
+        RestyleZone()
+        ShowZone()
     end
 end
 

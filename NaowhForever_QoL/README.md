@@ -1004,9 +1004,15 @@ NaowhForever_QoL/
   timer window was replaced by the minimap pins, so the list on screen is for players who want it.
 - Orgrimmar, Thunder Bluff, Darnassus and Undercity have no stop of their own, so they list the
   zone their docks are in (`CITY_ZONES`): Durotar, Mulgore, Teldrassil and Tirisfal Glades.
+- A stop the three-stop Southshore boat calls at names every place it sails on to, split by ` / `.
 - Its stops are listed on the zone events the pins already use. Its times are redrawn every
   `UPDATE_EVERY` (1 s) by its own OnUpdate, which runs only while it is shown: in a zone with a
   stop, or in Unlock Mode, where a zone without one shows a sample line so it can be placed.
+- The redraw only ever widens the card: the digits are not all one width, and resizing it each
+  second would twitch it and queue an Unlock Mode size update every time. A zone change or a Look
+  change fits it again.
+- A profile switch reapplies one frame later (`ns.QueueReapply`), so a redraw that lands in that
+  frame with the timers off in the new profile draws nothing.
 - It is built the first time the Zone Timer is on, so its mover is there when Unlock Mode opens.
   Its default place, `transportZonePos`, is where the old timer window sat.
 
