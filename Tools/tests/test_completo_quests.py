@@ -1,9 +1,9 @@
 """Tests for Tools/build/completo_quests.py's hand-kept corrections (Tools/data/completo_fixes.json):
 a quest's add joins the quests before it, its drop leaves them and its explicit groups, a fix naming
 a quest the data lacks is skipped with a warning, an add or drop that changes nothing is warned of,
-and a key starting with _ is a note; and for how it mends the race masks: a side's every race but
-one is the whole side, and the Windshaper Skyborne get Zephras Isle's shared and Tauren quests.
-Offline. From the repo root:
+and a key starting with _ is a note; and for how it mends the race masks: a quest for both sides
+that names only the High Order Skyborne is both Skyborne's, and other masks stay as given. Offline.
+From the repo root:
 
     python -m unittest discover -s Tools/tests
 """

@@ -1,6 +1,7 @@
 -- Run with Lua 5.1 from the repository root: a quest the Quest List's data says is not yours (its
 -- race or class mask) becomes yours, for good, once a quest giver offers it to you; a player
--- sharing a quest, or a quest the data lacks, teaches nothing.
+-- sharing a quest, a giver outside the Quest List's zones, or a quest the data lacks, teaches nothing,
+-- and one giver's quests are learned in one pass.
 local function Read(path)
     local f = assert(io.open(path, "rb"))
     local s = f:read("*a"):gsub("\r\n", "\n"); f:close()
@@ -15,6 +16,7 @@ local SHAMAN = 64
 
 local account = {}
 local offers, player = {}, false
+local bestMap, builds, refreshes = 1429, 0, 0
 local handlers = {}
 
 local function Frame()
@@ -58,7 +60,10 @@ local function Load()
         CreateFrame = Frame,
         issecretvalue = function() return false end,
         UnitFactionGroup = function() return "Alliance" end,
-        UnitRace = function() return "Human", "Human", 1 end,
+        UnitRace = function()
+            builds = builds + 1
+            return "Human", "Human", 1
+        end,
         UnitClass = function() return "Warrior", "WARRIOR", 1 end,
         UnitLevel = function() return 5 end,
         UnitExists = function() return true end,
@@ -68,9 +73,12 @@ local function Load()
         C_GossipInfo = { GetAvailableQuests = function() return offers end },
         C_Minimap = { IsFilteredOut = function() return true end },
         Enum = { MinimapTrackingFilter = { TrivialQuests = 1 } },
-        C_Map = { GetBestMapForUnit = function() return 1429 end, GetMapInfo = function() return nil end },
+        C_Map = { GetBestMapForUnit = function() return bestMap end, GetMapInfo = function() return nil end },
         C_QuestLog = {
-            GetAllCompletedQuestIDs = function() return {} end,
+            GetAllCompletedQuestIDs = function()
+                refreshes = refreshes + 1
+                return {}
+            end,
             GetLogIndexForQuestID = function() return nil end,
         },
     }, { __index = _G })
@@ -93,9 +101,15 @@ player = true
 Fire("GOSSIP_SHOW")
 Check(not Q.Mine(1) and not Q.Mine(2), "a player sharing a quest teaches nothing")
 
-player = false
+player, bestMap = false, nil
+local before = refreshes
+Fire("GOSSIP_SHOW")
+Check(refreshes == before and not Q.Mine(1), "a giver outside the Quest List's zones reads nothing and teaches nothing")
+
+bestMap, before = 1429, builds
 Fire("GOSSIP_SHOW")
 Check(Q.Mine(1) and Q.Mine(2), "a quest a giver offers you is yours whatever its mask says")
+Check(builds == before + 1, "the quests one giver offers are learned in one pass")
 local pinned = false
 for _, id in ipairs(Q.Givers(1429, true, false)[1].quests) do pinned = pinned or id == 1 end
 Check(Q.State(1) == "open" and pinned, "it is open and its giver gets a ! for it")

@@ -212,9 +212,16 @@ function Q.Mine(id) return mine[id] == true end
 function Q.Name(id) return D.Quests[id][NAME] end
 function Q.Level(id) return QuestLevel(id) end
 
-function Q.SetMine(id)
-    if mine[id] or not D.Quests[id] then return end
-    CharStore(MINE_STORE)[id] = true
+function Q.SetMine(ids)
+    Prepare()
+    local store
+    for id in pairs(ids) do
+        if not mine[id] and D.Quests[id] then
+            store = store or CharStore(MINE_STORE)
+            store[id] = true
+        end
+    end
+    if not store then return end
     mine, byMap = nil, nil
     Prepare()
 end

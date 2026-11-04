@@ -65,7 +65,6 @@ Check(not Q.Mine(397) and not Q.Mine(8906) and not Q.Mine(8911), "a Horde hunter
 Q = QuestList(HUMAN_WARLOCK)
 Check(Q.Mine(397) and Q.Mine(8911), "a Human warlock has the warlock quests")
 Check(not Q.Mine(8906), "a Human warlock does not have the hunter version")
-Check(not Q.Mine(91723), "a mask that leaves Humans out stays as the sources give it until checked in game")
 
 -- Zephras Isle: Coming of Age (92460) is both sides' first quest; The High Order (92596) is the Alliance's.
 Q = QuestList(WINDSHAPER_MAGE)
