@@ -118,6 +118,10 @@ local TYPES = {
     [Enum.TooltipDataType.Item] = { kind = "item", label = ns.L("Item ID"), setting = "tooltipItemID" },
     [Enum.TooltipDataType.Unit] = { kind = "npc", label = ns.L("NPC ID"), setting = "tooltipNPCID" },
 }
+local QUEST = { kind = "quest", label = ns.L("Quest ID"), setting = "tooltipQuestID" }
+local QUEST_ENTER = "QuestMapLogTitleButton.OnEnter"
+
+local questOn, questButton, questShown
 
 local function DisplayOn()
     return S.Get("enabled") and S.Get("tooltipDisplay")
@@ -206,6 +210,30 @@ local function Decorate(tooltip, data)
     end
 end
 
+local function OnQuestEnter(_, button, questID)
+    if GameTooltip:IsForbidden() then return end
+    GameTooltip:AddLine(" ")
+    GameTooltip:AddDoubleLine(QUEST.label, tostring(questID), T.accent.r, T.accent.g, T.accent.b,
+        VALUE_RGB.r, VALUE_RGB.g, VALUE_RGB.b)
+    if S.Get("tooltipCopy") and S.Get("tooltipCopyHint") then
+        GameTooltip:AddLine(CopyHint(S.Get("tooltipModifier"), S.Get("tooltipKey")), T.muted.r, T.muted.g, T.muted.b)
+    end
+    GameTooltip:Show()
+    questButton, questShown = button, questID
+end
+
+local function WatchQuestLog()
+    local wanted = (DisplayOn() and S.Get("tooltipQuestID")) == true
+    if wanted == (questOn or false) then return end
+    questOn = wanted
+    if wanted then
+        EventRegistry:RegisterCallback(QUEST_ENTER, OnQuestEnter, QUEST)
+    else
+        EventRegistry:UnregisterCallback(QUEST_ENTER, QUEST)
+        questButton, questShown = nil, nil
+    end
+end
+
 local function Matches(modifier)
     local ctrl = modifier:find("CTRL", 1, true) ~= nil
     local shift = modifier:find("SHIFT", 1, true) ~= nil
@@ -232,7 +260,12 @@ local function OnKeyDown(self, key)
     if not modern and not legacy then return end
     local tooltip, titleLine = ShownTooltip()
     if not tooltip then return end
-    local info, id = Resolve(tooltip:GetPrimaryTooltipData())
+    local info, id
+    if questButton and tooltip == GameTooltip and tooltip:GetOwner() == questButton then
+        info, id = QUEST, questShown
+    else
+        info, id = Resolve(tooltip:GetPrimaryTooltipData())
+    end
     if not info or not id or (modern and not S.Get(info.setting)) then return end
     local title = titleLine and titleLine:GetText()
     if not Accessible(title) or type(title) ~= "string" then title = info.label end
@@ -248,6 +281,7 @@ local function OnKeyUp(self)
 end
 
 function Apply()
+    WatchQuestLog()
     if InCombatLockdown() then return end
     local enabled = (DisplayOn() and S.Get("tooltipCopy")) or (On() and S.Get("copyTooltipIds"))
     if not keyboard and enabled then
@@ -296,7 +330,7 @@ end
 local KEYS = { KEY_VALUES, KEY_ORDER }
 local RESTRICTED = { { hide = "Hide Line", hidden = "Show Hidden" }, { "hide", "hidden" } }
 local COPY_FORMAT = { { id = "ID", url = "Wowhead Link" }, { "id", "url" } }
-local ID_KEYS = { "tooltipSpellID", "tooltipItemID", "tooltipNPCID" }
+local ID_KEYS = { "tooltipSpellID", "tooltipItemID", "tooltipNPCID", "tooltipQuestID" }
 local PAIRED = { tooltipCopy = "copyTooltipIds", tooltipModifier = "copyModifier", tooltipKey = "copyKey" }
 local EFFICIENCY_STYLES = { { long = "Long", short = "Short" }, { "long", "short" } }
 local EFFICIENCY_SHOW = { { all = "All Mana Spells", heal = "Heals Only", damage = "Damage Only" },
@@ -344,6 +378,8 @@ Settings.Page("QoL/Interface", S):Card({
         { key = "tooltipItemID", label = "Show Item ID", toggle = true },
         { key = "tooltipNPCID", label = "Show NPC ID", toggle = true,
           help = "Creature and vehicle IDs only; never player GUIDs." },
+        { key = "tooltipQuestID", label = "Show Quest ID", toggle = true,
+          help = "Shows a quest's ID when you hover it in the quest log." },
         { key = "tooltipRestricted", label = "Restricted IDs", choice = RESTRICTED,
           help = "An ID the game keeps hidden: Hide Line leaves it off the tooltip, Show Hidden "
               .. "shows the line with Hidden in place of the number." },
