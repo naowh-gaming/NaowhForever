@@ -21,7 +21,9 @@ Answers are cached, so a run that dies on Wowhead's rate limit resumes where it 
 completo_zones.json (each zone's quest rows) and completo_quests.json (each quest's
 { chain, start }). Delete an entry to fetch it again. --offline writes from the caches only.
 
-completo_fixes.json, kept by hand, corrects what the sources get wrong, each fix with what shows it.
+completo_fixes.json, kept by hand, corrects what the sources get wrong and adds what they lack (the
+breadcrumbs, the quests of which you take one, the profession a quest needs and the camp recipe it
+teaches), each with what shows it.
 
 Usage: python Tools/build/completo_quests.py [--offline]
 """
@@ -280,6 +282,30 @@ def corrected(before, requires, fixes, known):
                     kept.append(g if len(g) > 1 else g[0])
             requires[key] = dict(requires[key], groups=kept)
     return {q: sorted(p) for q, p in before.items() if p}, requires
+
+
+def known_quests(qids, known, where):
+    for qid in qids:
+        if int(qid) not in known:
+            sys.exit(f"completo_fixes.json: {where} names quest {qid}, which the data does not have")
+
+
+# ForeverChanges files the camping quests under the game's Camping quest sort (QuestSort 666).
+CAMPING = ["sort", 666]
+
+
+def exclusive_groups(rows, listed, fixes):
+    """Groups of quests of which you take one: the camping quests of one name, each starting area's
+    version of The Great Outdoors, The Adventurer and each Camping 101, and completo_fixes.json's."""
+    named = {}
+    for qid, (_, q) in rows.items():
+        if ((listed.get("quests") or {}).get(str(qid)) or {}).get("category") == CAMPING:
+            named.setdefault(q["name"], []).append(qid)
+    groups = [sorted(g) for g in named.values() if len(g) > 1]
+    for group in fixes:
+        known_quests(group["quests"], rows, "exclusive")
+        groups.append(sorted(group["quests"]))
+    return sorted(groups)
 
 
 def requirements(before, known, requires=None):
@@ -638,6 +664,43 @@ def write(zones, quests, requires, items, dungeon, elsewhere, catalog=None, list
         for ids, any_of in steps:
             parts.append("{ " + ", ".join(map(str, ids)) + (", any = true" if any_of else "") + " }")
         lines.append("    { " + ", ".join(parts) + " },")
+    lines += [
+        "}",
+        "",
+        "D.Exclusive = {",
+    ]
+    for group in exclusive_groups(rows, listed, fixes.get("exclusive", [])):
+        lines.append("    { " + ", ".join(map(str, group)) + " },")
+    lines += [
+        "}",
+        "",
+        "D.Breadcrumb = {",
+    ]
+    breadcrumbs = {int(k): b["to"] for k, b in fixes.get("breadcrumbs", {}).items()}
+    known_quests(list(breadcrumbs) + list(breadcrumbs.values()), rows, "breadcrumbs")
+    for qid in sorted(breadcrumbs):
+        lines.append(f"    [{qid}] = {breadcrumbs[qid]},")
+    skills, recipes = {}, {}
+    for entry in fixes.get("professions", []):
+        known_quests(entry["quests"], rows, "professions")
+        for qid in entry["quests"]:
+            skills[qid] = entry["skill"]
+            if entry.get("recipe"):
+                recipes[qid] = entry["recipe"]
+    lines += [
+        "}",
+        "",
+        "D.Profession = {",
+    ]
+    for qid in sorted(skills):
+        lines.append(f"    [{qid}] = {skills[qid]},")
+    lines += [
+        "}",
+        "",
+        "D.Recipe = {",
+    ]
+    for qid in sorted(recipes):
+        lines.append(f"    [{qid}] = {recipes[qid]},")
     lines.append("}")
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_bytes(("\r\n".join(lines) + "\r\n").encode("ascii", "replace"))
