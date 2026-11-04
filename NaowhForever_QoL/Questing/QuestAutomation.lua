@@ -244,7 +244,7 @@ function HANDLERS.QUEST_ACCEPT_CONFIRM()
 end
 
 function HANDLERS.QUEST_PROGRESS()
-    if On("questTurnIn") and IsQuestCompletable() then CompleteQuest() end
+    if On("questTurnIn") and IsQuestCompletable() and GetQuestMoneyToGet() == 0 then CompleteQuest() end
 end
 
 function HANDLERS.QUEST_COMPLETE()

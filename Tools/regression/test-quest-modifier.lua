@@ -12,6 +12,7 @@ local ICON_IDS = { VendorGossipIcon = 101, TaxiGossipIcon = 102, TrainerGossipIc
     AuctioneerGossipIcon = 105, StableMasterGossipIcon = 0, BinderGossipIcon = 107, GossipGossipIcon = 108 }
 local VENDOR, BINDER, GENERIC, UNRESOLVED = 101, 107, 108, 0
 local activeQuests, availableQuests, options = {}, {}, {}
+local questCost = 0
 
 local frames = {}
 local function Frame()
@@ -51,6 +52,7 @@ local env = setmetatable({
     ConfirmAcceptQuest = Log("ConfirmAcceptQuest"),
     StaticPopup_Hide = function() end,
     IsQuestCompletable = function() return true end,
+    GetQuestMoneyToGet = function() return questCost end,
     CompleteQuest = Log("CompleteQuest"),
     GetNumQuestChoices = function() return 0 end,
     GetQuestReward = Log("GetQuestReward"),
@@ -121,6 +123,14 @@ Steps("triggers, wrong key held", false)
 settings.questSkipModifier, settings.questModifierMode = "ALT", "SKIP"
 down = {}
 availableQuests = {}
+
+-- A quest that asks for gold waits for the player to hand it over; the reward after that is still picked.
+questCost = 10000
+Fire("QUEST_PROGRESS")
+check("a quest that costs gold is not handed in for you", Count("CompleteQuest") == 0)
+Fire("QUEST_COMPLETE")
+check("once you continue it yourself, the reward is still taken", Count("GetQuestReward") == 1)
+questCost = 0
 
 -- Auto Gossip listening for the window must not bring the quest picking back when accepting and handing in are off.
 settings.questAccept, settings.questTurnIn = false, false
