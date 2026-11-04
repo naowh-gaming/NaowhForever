@@ -6,6 +6,7 @@ Offline: the rows are made up here. From the repo root:
 import sys
 import unittest
 from pathlib import Path
+from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import paths  # noqa: E402,F401
@@ -164,6 +165,13 @@ class LaterRanks(unittest.TestCase):
         spells = tr.entries(rows, {}, {11551, 25289})
         self.assertEqual([e["spell"] for e in spells], [11551])
         self.assertEqual(tr.replaced_by(spells, rows, self.GAME), {11551: 25289})
+
+    def test_no_book_link_to_a_rank_a_hotfix_took_away(self):
+        rows = [row(11551, "Battle Shout", "Rank 6", 52, [tr.TRAINER], 54000),
+                row(25289, "Battle Shout", "Rank 7", 60, [2])]
+        spells = tr.entries(rows, {}, {11551, 25289})
+        with mock.patch.object(tr, "UNTRAINABLE", tr.UNTRAINABLE | {25289}):
+            self.assertEqual(tr.replaced_by(spells, rows, self.GAME), {})
 
     def test_no_book_link_when_a_trainer_rank_follows(self):
         rows = [row(9754, "Swipe", "Rank 4", 44, [tr.TRAINER], 18000),

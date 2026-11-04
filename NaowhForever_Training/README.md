@@ -56,8 +56,9 @@ view files and the window share.
   (the talent it needs), `races` (the races that learn it), `replacedBy` (the level 60 book's rank that
   replaces it). The trainer window updates a price to what it actually asked.
 - Prices are kept per character, by GUID (`Shared.CharacterData`): a trainer's price carries that
-  character's reputation discount. Prices kept account-wide before are read for a spell the character
-  has no price of its own for yet.
+  character's reputation discount. The account-wide prices kept before (`trainingPrices`) carried
+  another character's discount, so they are cleared at login; they were only a copy of what trainers
+  asked.
 - Weapon skills are not in TrainingData: Wowhead lists them at level 0 with no price and no trainer, and
   the class trainer does not teach them. The weapon masters of the capitals do, so TrainingWeapons rows
   are `{ level, spellID, 0, masters = { names } }`, the names being the Weapon Master NPCs of
@@ -82,8 +83,9 @@ view files and the window share.
   replaces names it (`replacedBy`). A rank before that no trainer sells (granted at level 1) is not in
   the data, so the game is asked. PLAYER_LEVEL_UP says the new level before UnitLevel does, so the
   toast plans for the level it was given.
-- Forever reports "Unknown" for the player's name early in loading, so the character's key (skipped
-  spells, the followed build) is not kept until the name is known.
+- Forever reports "Unknown" for the player's name early in loading. Until the name is known, the
+  character's skipped spells and followed build are kept in a table that is never saved: an
+  `Unknown-<realm>` entry in the account store would be shared by every character.
 - The trainer's list has names and required levels but no spell IDs, so a service is the class spell
   of that name and level; a header has no level and matches nothing. A pet trainer shares the class
   trainer's window but none of its services is a class spell. Forever's service kind can be missing

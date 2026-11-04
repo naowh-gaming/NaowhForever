@@ -1,4 +1,4 @@
--- Training.lua: the Training Planner's settings, its module table (ns.Training) and what it keeps account-wide.
+-- Training.lua: the Training Planner's settings, its module table (ns.Training) and each character's prices and skipped spells.
 local ns = _G.NaowhForever
 
 local UI = ns.UI
@@ -18,6 +18,7 @@ local SPELL, COST = 2, 3
 local PRICES = "trainingCharPrices"
 
 local charKey
+local unnamed = {}
 local listeners = {}
 
 local function On()
@@ -38,12 +39,18 @@ local function CharKey()
     return key
 end
 
-local function Prices()
-    return CharacterData(PRICES, true)
+local function Characters(key)
+    if charKey or UnitName("player") ~= UNKNOWNOBJECT then return Account(key) end
+    unnamed[key] = unnamed[key] or {}
+    return unnamed[key]
+end
+
+local function Prices(create)
+    return CharacterData(PRICES, create)
 end
 
 local function Ignored()
-    local all = Account("trainingIgnored")
+    local all = Characters("trainingIgnored")
     local key = CharKey()
     all[key] = all[key] or {}
     return all[key]
@@ -54,10 +61,8 @@ local function ClassSpells()
     return ns.TrainingData[classID] or {}
 end
 
-local function Price(entry)
-    local spell = entry[SPELL]
-    local mine, old = CharacterData(PRICES), ns.AccountSettings().trainingPrices
-    return mine and mine[spell] or old and old[spell] or entry[COST]
+local function Price(entry, prices)
+    return prices and prices[entry[SPELL]] or entry[COST]
 end
 
 local function Changed()
@@ -72,6 +77,7 @@ end
 Training.On = On
 Training.Account = Account
 Training.CharKey = CharKey
+Training.Characters = Characters
 Training.Prices = Prices
 Training.Ignored = Ignored
 Training.ClassSpells = ClassSpells

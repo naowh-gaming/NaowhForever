@@ -68,6 +68,7 @@ local function Fixture(o)
         DIR .. "/Builds.lua", DIR .. "/Trainer.lua" }, setmetatable(env, { __index = _G }))
     local Training = ns.Training
     local plan = Training.Plan
+    local boot = frames[#frames]
     Training.Apply()
     local trainerEvents = frames[#frames]
     local function scan() trainerEvents.scripts.OnEvent(trainerEvents, "TRAINER_SHOW") end
@@ -90,12 +91,15 @@ local function Fixture(o)
         Prices = function() return account.trainingCharPrices and account.trainingCharPrices[guid] or {} end,
         Price = function(id)
             for _, e in ipairs(DATA[8]) do
-                if e[2] == id then return Training.Price(e) end
+                if e[2] == id then return Training.Price(e, Training.Prices()) end
             end
         end,
         ToSixty = function() return Training.ToSixty(plan()) end,
         CharKey = function() return Training.CharKey() end,
         Rename = function(to) name = to end,
+        Login = function() boot.scripts.OnEvent(boot, "PLAYER_LOGIN") end,
+        Ignore = function(id) Training.SetIgnored(id, false, true) end,
+        Follow = function() Training.Follow(8, Training.Builds(8)[1]) end,
         Refreshes = function() return refreshes end,
     }
 end
@@ -227,16 +231,20 @@ Case("a rank a book's rank replaces counts as learned once the book is read, and
     assert(plans[2] == "now: 1953 3561; later: 10151 25306; talent: 12505", plans[2])
     assert(sixty[1] - sixty[2] == 200 + 1500, "left out of the totals")
 end)
-Case("trainer prices are kept per character; the account-wide ones saved before are read until then", function()
+Case("trainer prices are kept per character; the account-wide ones saved before are cleared at login", function()
     local account = { trainingIgnored = {}, trainingPrices = { [143] = 90, [145] = 560 } }
     local me = Fixture({ account = account, services = { { "Fireball", 6, 95 } } })
+    assert(me.Price(143) == 100 and me.Price(145) == 600, "the account-wide prices are not read")
+    me.Login()
+    assert(account.trainingPrices == nil, "cleared at login")
+    local sixty = me.ToSixty()
     me.Scan()
-    assert(me.Price(143) == 95 and me.Price(145) == 560 and me.Price(1953) == 2000, "own, then saved before, then base")
+    assert(me.Price(143) == 95 and me.Price(145) == 600, "its own price, else the data's")
+    assert(me.ToSixty() == sixty - 5, "the totals use it")
     local alt = Fixture({ account = account, name = "Alt" })
-    assert(alt.Price(143) == 90 and alt.Price(145) == 560, "another character does not see them")
-    assert(account.trainingPrices[143] == 90, "the prices saved before are left as they were")
+    assert(alt.Price(143) == 100, "another character does not see it")
     local early = Fixture({ account = account, guid = false })
-    assert(early.Price(143) == 90 and early.Price(1953) == 2000, "before the game knows who you are")
+    assert(early.Price(143) == 100, "nor does anyone before the game knows who they are")
 end)
 Case("the character's key waits for its name: Unknown early in loading is never kept", function()
     local account = { trainingIgnored = {}, trainingFollow = { ["Me-Realm"] = { class = 8, key = 1 } } }
@@ -246,6 +254,21 @@ Case("the character's key waits for its name: Unknown early in loading is never 
     assert(t.CharKey() == "Me-Realm" and t.Skipped(1953), "the followed build once the name is known")
     t.Rename("Unknown")
     assert(t.CharKey() == "Me-Realm", "kept from then on")
+end)
+Case("while the name is Unknown, skips and the followed build are not saved under an Unknown key, nor read from one", function()
+    local old = { class = 8, key = 1 }
+    local account = { trainingIgnored = {}, trainingFollow = { ["Unknown-Realm"] = old } }
+    local t = Fixture({ name = "Unknown", account = account, skip = { [1953] = true } })
+    assert(not t.Skipped(1953), "an Unknown entry an older version saved is not read")
+    t.Ignore(3561)
+    t.Follow()
+    assert(t.Skipped(3561) and t.Skipped(1953), "kept while the name is Unknown")
+    assert(next(account.trainingIgnored) == nil and account.trainingFollow["Unknown-Realm"] == old, "but nothing saved")
+    t.Rename("Me")
+    assert(not t.Skipped(3561) and not t.Skipped(1953), "nor carried over to the character")
+    t.Ignore(3561)
+    assert(account.trainingIgnored["Me-Realm"][3561] and account.trainingIgnored["Unknown-Realm"] == nil,
+        "saved under the character once the name is known")
 end)
 
 -- What a rank adds, from two ranks' descriptions as the client writes them.

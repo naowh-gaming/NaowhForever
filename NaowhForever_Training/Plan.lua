@@ -5,6 +5,7 @@ local Training = ns.Training
 local Ignored = Training.Ignored
 local ClassSpells = Training.ClassSpells
 local Price = Training.Price
+local Prices = Training.Prices
 local Changed = Training.Changed
 
 local SOON = Training.SOON
@@ -104,8 +105,8 @@ function Training.Weapons()
 end
 
 function Training.Total(entries)
-    local total = 0
-    for _, entry in ipairs(entries) do total = total + Price(entry) end
+    local prices, total = Prices(), 0
+    for _, entry in ipairs(entries) do total = total + Price(entry, prices) end
     return total
 end
 

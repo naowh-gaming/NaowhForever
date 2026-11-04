@@ -14,12 +14,14 @@ still have (UNTRAINABLE).
 Wowhead's lists can lag a hotfix, so each spell's rank and level are the build's own (Spell,
 SpellLevels: BaseLevel, else SpellLevel, the only level Forever's new spells have), and a rank before
 a listed one (SkillLineAbility's SupercedesSpell) that Wowhead lacks is added at the game's level,
-unless it is the talent. So are the ranks after a kept spell or a talent, which the lists can lack
-entirely (Death Mark's), and the few new spells no listed rank leads to (UNLISTED). An added rank
-has no price: the trainer window gives it.
+unless it is the talent. So are the few new spells no listed rank leads to (UNLISTED), and the ranks
+after a talent or an UNLISTED spell, which the lists can lack entirely (Death Mark's, Shank's). Only
+those are followed forward: after any other spell, a later rank Wowhead lacks could be a level 60
+book's, which no trainer sells. An added rank has no price: the trainer window gives it.
 
 A kept rank that a rank Wowhead lists but no trainer sells replaces (the level 60 book ranks) names
-it as replacedBy, so the addon counts the kept rank as learned once the book is read.
+it as replacedBy, so the addon counts the kept rank as learned once the book is read; not when a
+hotfix took that rank away (UNTRAINABLE).
 
 Rogue poisons are not in the rogue's list: they are the game's Poisons skill line
 (SkillLineAbility), each with its level from its own Wowhead page, kept when that page lists
@@ -176,10 +178,10 @@ def caught_up(rows, talents, game):
 
 
 def later_ranks(rows, starts, game):
-    """The ranks after the start spells (kept spells and talents), followed on through SupercedesSpell,
-    that rows lack and the game gives a level, added like caught_up's ranks. Each carries the rank it
-    replaces as before, which entries takes as what it needs when there is no rank text to match
-    (Shank's)."""
+    """The ranks after the start spells (the class's talents and UNLISTED spells), followed on through
+    SupercedesSpell, that rows lack and the game gives a level, added like caught_up's ranks. Each carries
+    the rank it replaces as before, which entries takes as what it needs when there is no rank text to
+    match (Shank's)."""
     by_id = {row["id"]: row for row in rows}
     out, todo = [], sorted(starts)
     while todo:
@@ -199,14 +201,15 @@ def later_ranks(rows, starts, game):
 
 def replaced_by(spells, rows, game):
     """Kept spell -> the rank the class's list has that replaces it but no trainer sells, when no kept
-    rank replaces it: the level 60 book ranks (Battle Shout 25289 replaces 11551). Swipe's fourth rank is
-    also replaced by Swipe (Cat), another spell, but the trainer's fifth rank follows it."""
+    rank replaces it: the level 60 book ranks (Battle Shout 25289 replaces 11551). A rank a hotfix took
+    away (UNTRAINABLE) is not one. Swipe's fourth rank is also replaced by Swipe (Cat), another spell,
+    but the trainer's fifth rank follows it."""
     kept = {e["spell"] for e in spells}
     listed = {row["id"] for row in rows}
     out = {}
     for spell in kept:
         later = game.get(spell, {}).get("after", [])
-        books = [s for s in later if s in listed]
+        books = [s for s in later if s in listed and s not in UNTRAINABLE]
         if books and not kept.intersection(later):
             out[spell] = books[0]
     return out
@@ -287,8 +290,7 @@ def build(build_id):
         mine = talents.get(class_id, {})
         listed = cache[slug] + [game_row(spell, game) for spell in UNLISTED.get(slug, ())]
         rows = caught_up(listed, mine, game) + (poisons if class_id == ROGUE else [])
-        starts = {e["spell"] for e in entries(rows, mine, learnable)} | set(mine.values())
-        rows += later_ranks(rows, starts, game)
+        rows += later_ranks(rows, set(mine.values()) | set(UNLISTED.get(slug, ())), game)
         spells = entries(rows, mine, learnable)
         books = replaced_by(spells, rows, game)
         counts.append(f"{slug} {len(spells)}")
