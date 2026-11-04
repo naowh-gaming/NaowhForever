@@ -17,7 +17,8 @@ boss drops in Forever: their items are added, their chances win, and an old item
 longer list on that boss is dropped. Each wing's trash comes from them too. Last, the items
 placed by hand ("add", which also puts back an old item the merge took off a boss where
 Wowhead's counts still give it a real chance: Herod's Scarlet Leggings) and the BiS sources
-in NaowhForever_BiS/BiS/Data/BiS.lua; those have no chance.
+in NaowhForever_BiS/BiS/Data/BiS.lua; those have no chance, but an item put back keeps the
+chance Wowhead counts for it on that boss.
 
 Every item is listed, the ones not in Forever yet too, so the Journal is whole the day they
 come. An item is in the game (known) when the game's tables have it (wago.tools' ItemSparse,
@@ -522,12 +523,16 @@ def boss_entry(name, rare, pinned, extra, items, report, listed=None, kind=None,
             report.append(f"no loot: {name} (object {chest})")
         return {"npc": None, "name": name, "rare": False, "chest": chest, "loot": loot}
     npc = pinned.get(name) or find_npc(name)
-    loot = merge_wowsrc(npc_drops(npc) if npc else [], listed)
+    counted = npc_drops(npc) if npc else []
+    loot = merge_wowsrc(counted, listed)
     have = {i["id"] for i in loot}
+    # An item put back by hand after the merge took it off keeps Wowhead's chance for this boss.
+    chances = {i["id"]: i["chance"] for i in counted}
     for item in extra.get(name.lower(), []):
         if item["id"] not in have and keeps(item):
-            loot.append(dict(item, chance=None))
+            loot.append(dict(item, chance=chances.get(item["id"])))
             have.add(item["id"])
+    loot.sort(key=lambda i: (i["chance"] is None, -(i["chance"] or 0)))
     if not npc:
         report.append(f"no NPC found: {name}")
     elif not loot:

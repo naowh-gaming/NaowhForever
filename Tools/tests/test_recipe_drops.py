@@ -3,6 +3,8 @@ Offline: the XML is made up here, in the shape Wowhead Forever sends. From the r
 
     python -m unittest discover -s Tools/tests
 """
+import contextlib
+import io
 import json
 import sys
 import unittest
@@ -51,11 +53,38 @@ class RecipeIds(unittest.TestCase):
         self.assertEqual(recipe_drops.recipe_ids(self.TEXT, []), [4410, 273099])
 
     def test_a_blueprint_it_does_not_list_is_asked_about(self):
-        sparse = [{"ID": "273106", "Display_lang": "Blueprint: Greenhouse"},
-                  {"ID": "273112", "Display_lang": "Blueprint: Alchemy Laboratory"},
-                  {"ID": "286983", "Display_lang": "Ancient Cleaver"}]
-        self.assertEqual(recipe_drops.recipe_ids(self.TEXT, sparse), [4410, 273099, 273106],
-                         "a vendor's blueprint it lists stays out, and other items are no blueprint")
+        self.assertEqual(recipe_drops.recipe_ids(self.TEXT, [273106, 273112]), [4410, 273099, 273106],
+                         "a vendor's blueprint it lists stays out")
+
+
+class BuildBlueprints(unittest.TestCase):
+    """build_blueprints: a build's "Blueprint:" items, from its ItemSparse once."""
+
+    def setUp(self):
+        self.table = recipe_drops.wago.table
+
+    def tearDown(self):
+        recipe_drops.wago.table = self.table
+
+    def sparse(self, *rows):
+        recipe_drops.wago.table = lambda name, build: [dict({c: "0" for c in recipe_drops.wago.COLUMNS[name]},
+                                                            ID=i, Display_lang=n) for i, n in rows]
+
+    def test_its_blueprints_are_read_once_and_kept(self):
+        self.sparse(("273106", "Blueprint: Greenhouse"), ("286983", "Ancient Cleaver"))
+        cache = {}
+        self.assertEqual(recipe_drops.build_blueprints(cache, "1.60.1.1"), [273106], "other items are no blueprint")
+        self.assertEqual(cache, {"blueprints:1.60.1.1": [273106]})
+        recipe_drops.wago.table = None
+        self.assertEqual(recipe_drops.build_blueprints(cache, "1.60.1.1"), [273106], "not read again")
+
+    def test_a_layout_wago_cannot_read_yet_waits(self):
+        recipe_drops.wago.table = lambda name, build: [{"ID": "273106", "Field_1_60_1_99999_000": "Blueprint: Greenhouse"}]
+        cache = {}
+        with contextlib.redirect_stderr(io.StringIO()) as note:
+            self.assertEqual(recipe_drops.build_blueprints(cache, "1.60.1.99999"), [])
+        self.assertEqual(cache, {}, "asked again next run")
+        self.assertIn("cannot read ItemSparse for 1.60.1.99999", note.getvalue())
 
 
 class Placed(unittest.TestCase):

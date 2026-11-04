@@ -80,10 +80,15 @@ local function Drops()
             for _, boss in ipairs(wing.bosses) do AddBossLoot(dungeon, boss, best, notYet) end
         end
     end
-    local sources = ns.BiSData.sources
-    for id, chance in pairs(best) do
-        if chance <= 0 and sources[id] == WORLD_DROP then drops[id], dropDungeon[id] = nil, nil end
+    local sources, kept = ns.BiSData.sources, {}
+    for _, id in ipairs(dropIDs) do
+        if best[id] == 0 and sources[id] == WORLD_DROP then
+            drops[id], dropDungeon[id] = nil, nil
+        else
+            kept[#kept + 1] = id
+        end
     end
+    dropIDs = kept
     return drops
 end
 

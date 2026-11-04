@@ -1259,14 +1259,18 @@ do
     check("and his Classic loot, in Forever since build 1.60.1.70338", Has(herod.loot, 7718)
         and not DJ.IsNotYet(7718) and DJ.Items[7718] ~= nil)
     check("each with its chance", herod.chance and #herod.chance == #herod.loot)
-    for _, name in ipairs({ "Saltspine", "Shadetooth", "Relic Guardian" }) do
-        local b = findBoss("ExcavationSite", name)
-        local known = b.loot and #b.loot >= 3 and b.chance and #b.chance == #b.loot
-        for i, c in ipairs(known and b.chance or {}) do known = known and (c > 0 or Has({ 273106, 273097 }, b.loot[i])) end
-        check("Excavation Site: " .. name .. "'s loot, each with its chance but a blueprint", known)
+    do
+        local blueprints = { Shadetooth = 273106, ["Relic Guardian"] = 273097 }
+        for _, name in ipairs({ "Saltspine", "Shadetooth", "Relic Guardian" }) do
+            local b = findBoss("ExcavationSite", name)
+            local known = b.loot and #b.loot >= 3 and b.chance and #b.chance == #b.loot
+            for i, c in ipairs(known and b.chance or {}) do known = known and (c > 0 or b.loot[i] == blueprints[name]) end
+            check("Excavation Site: " .. name .. "'s loot, each with its chance but a blueprint", known)
+        end
+        for name, id in pairs(blueprints) do
+            check(name .. "'s blueprint", Has(findBoss("ExcavationSite", name).loot, id))
+        end
     end
-    check("Shadetooth's and the Relic Guardian's blueprints", Has(findBoss("ExcavationSite", "Shadetooth").loot, 273106)
-        and Has(findBoss("ExcavationSite", "Relic Guardian").loot, 273097))
     for _, key in ipairs({ "ScarletMonasteryGraveyard", "ScarletMonasteryLibrary", "ScarletMonasteryArmory",
         "ScarletMonasteryCathedral", "ExcavationSite", "HallOfThanes", "RuinsOfLordaeron", "Deadmines", "Dalaran" }) do
         check("open on Forever: " .. key, not DJ.Get(key).closed)
