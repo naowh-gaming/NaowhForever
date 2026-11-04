@@ -290,6 +290,11 @@ do
     check("25 over, yellow", Tier(90, 65) == "yellow" and Tier(114, 65) == "yellow")
     check("50 over, green", Tier(115, 65) == "green" and Tier(164, 65) == "green")
     check("100 over, grey", Tier(165, 65) == "grey")
+    local s = Session({})
+    s.game.herbalism = 120
+    s.env.GetProfessions = function() return nil, 2 end
+    check("a gap before Herbalism in the professions list still finds its skill",
+        s.ns.Glimmer.Target.Skill("herb") == 120 and s.ns.Glimmer.Target.Skill("ore") == 0)
 end
 
 -- Turned on: the soft target settings are saved, then set.
@@ -375,6 +380,14 @@ check("a quest giver with a quest to hand in lights up, though the game only giv
 log.game.cursor = "Interface\\Cursor\\Quest"
 log.Fire("PLAYER_SOFT_INTERACT_CHANGED", "y", "z")
 check("and one with a quest to pick up", Lit(log) ~= nil)
+for _, cursor in ipairs({ "Cursor Crosshair_Recurring_64", "Cursor Crosshair_ImportantTurnIn_64",
+        "Cursor Crosshair_Wrapper_64" }) do
+    log.game.cursor = cursor
+    log.Fire("PLAYER_SOFT_INTERACT_CHANGED", "z", "y")
+    check("Forever's " .. cursor .. " quest cursor lights the giver too", Lit(log) ~= nil)
+    log.Fire("PLAYER_SOFT_INTERACT_CHANGED", "y", "z")
+end
+log.game.cursor = "Interface\\Cursor\\Quest"
 local unitFrame = { HealthBarsContainer = Widget(log), LevelFrame = Widget(log), PlayerLevelDiffFrame = Widget(log) }
 log.game.plate.UnitFrame = unitFrame
 log.Fire("PLAYER_SOFT_INTERACT_CHANGED", "z", "y")
@@ -482,6 +495,14 @@ log.Fire("CVAR_UPDATE", "graphicsOutlineMode", "1")
 log.RunTimers()
 check("an outline change is the player's own", cv.graphicsOutlineMode == "1")
 cv.graphicsOutlineMode = "2"
+cv.SoftTargetIconGameObject = "0"
+log.Fire("CVAR_UPDATE", "SoftTargetIconGameObject", "0")
+check("the game's Interact Key Icons option turning the object icon off is undone while Glimmer is on",
+    cv.SoftTargetIconGameObject == "1")
+cv.SoftTargetInteract = "1"
+log.Fire("CVAR_UPDATE", "SoftTargetInteract", "1")
+check("Enable Interact Key turned off by the player stays off", cv.SoftTargetInteract == "1")
+cv.SoftTargetInteract = "3"
 log.Set("questSparkle", false)
 check("sparkle off: the old value comes back", cv.outlineModeShowLootEffectWhenDisabled == "0"
     and log.account.glimmerSparkleCVars == nil)

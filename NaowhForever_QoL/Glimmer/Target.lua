@@ -77,13 +77,16 @@ local function QuestLine(unit)
     end
 end
 
-function Target.Skill(category)
-    local line = C.PROFESSION_OF[category]
-    for _, index in pairs({ GetProfessions() }) do
+local function SkillAt(line, index, ...)
+    if index then
         local _, _, rank, _, _, _, skillLine, modifier = GetProfessionInfo(index)
         if skillLine == line then return rank + modifier end
     end
-    return 0
+    if select("#", ...) > 0 then return SkillAt(line, ...) end
+end
+
+function Target.Skill(category)
+    return SkillAt(C.PROFESSION_OF[category], GetProfessions()) or 0
 end
 
 function Target.Tier(skill, need)
