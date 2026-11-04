@@ -127,9 +127,13 @@ availableQuests = {}
 -- A quest that asks for gold waits for the player to hand it over; the reward after that is still picked.
 questCost = 10000
 Fire("QUEST_PROGRESS")
-check("a quest that costs gold is not handed in for you", Count("CompleteQuest") == 0)
+check("a quest that costs gold still goes on to its reward step", Count("CompleteQuest") == 1)
 Fire("QUEST_COMPLETE")
-check("once you continue it yourself, the reward is still taken", Count("GetQuestReward") == 1)
+check("where it waits for the player to confirm paying, as Blizzard's Complete button asks",
+    Count("GetQuestReward") == 0)
+questCost = nil
+Fire("QUEST_COMPLETE")
+check("no cost reported is no cost", Count("GetQuestReward") == 1)
 questCost = 0
 
 -- Auto Gossip listening for the window must not bring the quest picking back when accepting and handing in are off.

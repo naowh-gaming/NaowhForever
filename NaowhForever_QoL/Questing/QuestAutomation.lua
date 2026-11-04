@@ -244,11 +244,11 @@ function HANDLERS.QUEST_ACCEPT_CONFIRM()
 end
 
 function HANDLERS.QUEST_PROGRESS()
-    if On("questTurnIn") and IsQuestCompletable() and GetQuestMoneyToGet() == 0 then CompleteQuest() end
+    if On("questTurnIn") and IsQuestCompletable() then CompleteQuest() end
 end
 
 function HANDLERS.QUEST_COMPLETE()
-    if not On("questTurnIn") then return end
+    if not On("questTurnIn") or (GetQuestMoneyToGet() or 0) > 0 then return end
     local choices = GetNumQuestChoices()
     local pick = choices > 1 and PickedChoice()
     if choices <= 1 or pick then GetQuestReward(pick or choices) end
