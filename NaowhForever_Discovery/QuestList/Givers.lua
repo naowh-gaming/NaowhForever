@@ -7,7 +7,7 @@ local Q = Completo.Quests
 
 local QUEST_ID_ANSWER = 5
 local EVENTS = { "GOSSIP_SHOW", "QUEST_GREETING", "QUEST_DETAIL", "QUEST_TURNED_IN" }
-local HELD_BACK = { later = true, closed = true, skill = true }
+local CLOSED = { closed = true, skill = true }
 local NONE = {}
 
 local offered = {}
@@ -28,7 +28,8 @@ local function Learn(unit)
     Q.SetMine(offered)
     local trivial = not C_Minimap.IsFilteredOut(Enum.MinimapTrackingFilter.TrivialQuests)
     for _, id in ipairs(Q.GiverQuests(UnitName(unit), zone.map)) do
-        if offered[id] and HELD_BACK[Q.Expected(id)] then Q.SetOpened(id) end
+        if offered[id] and CLOSED[Q.Expected(id)] then Q.SetReopened(id) end
+        if offered[id] and Q.Expected(id) == "later" then Q.SetOpened(id) end
         if Q.Expected(id) == "open" and (trivial or not Q.Trivial(id)) then
             Q.SetOffered(id, offered[id] == true)
         end

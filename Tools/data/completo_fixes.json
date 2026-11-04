@@ -8,7 +8,8 @@
     "exclusive: quests of which you take one; the camping quests of one name are such groups already.",
     "breadcrumbs: a quest that only sends you to another's giver, and the quest it leads to.",
     "professions: the skill line a quest needs (SkillLine), and for a Camping 101 quest the camp recipe",
-    "it teaches (the spell in that skill line's SkillLineAbility), which closes it once known.",
+    "it teaches (the spell in that skill line's SkillLineAbility), which closes it once known. Only a",
+    "quest whose task needs the skill: one that introduces the profession is for those who lack it.",
     "A key starting with _ is a note. A fix naming a quest the data lacks is skipped, with a warning."
   ],
   "requires": {
@@ -61,8 +62,6 @@
     {"skill": 197, "recipe": 1263425, "quests": [96057, 97925, 97950, 97973], "why": "Camping 101: its objective is 'Raise your tailoring skill to 20' (Wowhead and ForeverChanges); 1263425 is the Faction Banner recipe it teaches (Wowhead's 'You will learn', in Tailoring's SkillLineAbility). The Alliance's versions; its race masks are the Alliance's."},
     {"skill": 197, "recipe": 1229504, "quests": [96102, 97937, 97961, 97972], "why": "Camping 101: its objective is 'Raise your tailoring skill to 20' (Wowhead and ForeverChanges); 1229504 is the Faction Banner recipe it teaches (Wowhead's 'You will learn', in Tailoring's SkillLineAbility). The Horde's versions; its race masks are the Horde's."},
     {"skill": 393, "quests": [91751], "why": "Rough Wolf Pelts: 'Skin wolves around Elwynn Forest', 'Are you looking for an opportunity to practice skinning?' (ForeverChanges)."},
-    {"skill": 333, "quests": [91753, 96873], "why": "An Enchanting Lesson and A Pain in the Neck: the Luminous Residue comes from disenchanting, 'Practice your enchanting skills' (ForeverChanges)."},
-    {"skill": 164, "quests": [95217, 96874], "why": "The Quarry's Smith: 'So you're looking to learn the blacksmith's trade?'; This Is Spinal Axe: 'As part of your smithing lessons' (ForeverChanges)."},
-    {"skill": 171, "quests": [92109, 92110], "why": "My First Alchemy Set: the child asks 'Are you an alchemist?' on seeing your vials; My First Real Potion follows it (ForeverChanges)."}
+    {"skill": 333, "quests": [91753, 96873], "why": "An Enchanting Lesson and A Pain in the Neck: the Luminous Residue comes from disenchanting, 'Practice your enchanting skills' (ForeverChanges)."}
   ]
 }

@@ -100,7 +100,8 @@ quest and creature pages. Do not edit them by hand: change the tool and run it a
   all of which finish it, or with `any = true` the faction or class versions of one quest.
 - `D.Exclusive`: groups of quests of which you take one. The camping quests of one name (each starting
   area's The Great Outdoors, The Adventurer and Camping 101 for each profession; ForeverChanges files
-  them under the game's Camping quest sort, 666), and the pairs in `completo_fixes.json`.
+  them under the game's Camping quest sort, 666), and the pairs in `completo_fixes.json`. A quest is in
+  one group at most: the build skips, with a warning, a hand-kept group naming a quest already in one.
 - `D.Breadcrumb[questID]`: the quest a breadcrumb sends you to (it ends at that quest's giver).
 - `D.Profession[questID]`: the skill line (SkillLine) a quest needs, and `D.Recipe[questID]` the camp
   recipe a Camping 101 quest teaches, from `completo_fixes.json`.
@@ -144,14 +145,19 @@ quest and creature pages. Do not edit them by hand: change the tool and run it a
 - A repeatable quest is never done for good, so zone counts leave it out.
 - A quest you can no longer take is "Not offered any more": one of its exclusive group, its breadcrumb's
   target (or one of the target's group), or a quest that needs it is done or in your log, or you know the
-  camp recipe it teaches. One needing a profession you lack is "Needs a profession". Neither gets a ! or
-  counts toward its zone, so a zone can reach all of its quests. Such a quest its giver does offer is
-  taken as open for good (`completoOpened`), as a requirement is; a side quest the data lists as needed
-  by a later one closes with that later one too, so `completo_fixes.json` drops such requirements.
-- Your professions (`GetProfessions`), the camp recipes you know (`C_SpellBook.IsSpellKnown`) and the
-  quests in your log are read on each refresh, with what you have done. The window also redraws on
-  `SKILL_LINES_CHANGED` and `LEARNED_SPELL_IN_SKILL_LINE` while it is shown; the map reads them when
-  it opens. Camping 101: Cooking teaches cooking, so it needs no profession and teaches no recipe.
+  camp recipe it teaches. One needing a profession you lack is "Needs a profession"; a quest that
+  introduces a profession (The Quarry's Smith, This Is Spinal Axe, My First Alchemy Set and My First Real
+  Potion) needs none, as it is for players who lack it. Neither gets a ! or counts toward its zone unless
+  it is done or in your log, so a zone can reach all of its quests and its count matches its rows. Such
+  a quest its giver does offer is open for good (`completoReopened`, per character). That is apart from
+  `completoOpened`, which a quest offered past a requirement gets, so such a quest still closes once it
+  can no longer be taken. A side quest the data lists as needed by a later one closes with that later one
+  too, so `completo_fixes.json` drops such requirements.
+- Your professions (`GetProfessions`), the camp recipes you know (`C_SpellBook.IsSpellKnown`), the
+  quests in your log, `completoOpened` and `completoReopened` are read on each refresh with what you
+  have done, not on each check: a zone count checks every quest of every zone. The window and the map's
+  quest pins also redraw on `SKILL_LINES_CHANGED` and `LEARNED_SPELL_IN_SKILL_LINE` while shown.
+  Camping 101: Cooking teaches cooking, so it needs no profession and teaches no recipe.
 - A quest with an unmet requirement is "Needs an earlier quest", with no ! on the map, and its row
   says "Requires: <quest>" (up to three, all of them in its tooltip). The data cannot know every
   prerequisite (a reputation, a skill, a Forever-only quest's quests). A quest it says you could take,
@@ -262,9 +268,11 @@ quest and creature pages. Do not edit them by hand: change the tool and run it a
 - `lua Tools/regression/test-completo-quest-prereqs.lua`: requirements, what a row says is missing, and a quest
   its giver offers.
 - `lua Tools/regression/test-completo-quest-givers.lua`: a quest the data says is not yours becomes yours
-  once a giver offers it.
+  once a giver offers it, and a closed quest it offers opens, while one opened past a requirement still
+  closes.
 - `lua Tools/regression/test-completo-quest-gating.lua`: exclusive groups, breadcrumbs, a quest that needs
-  it taken, professions and camp recipes close a quest, and every zone's count stays cheap.
+  it taken, professions and camp recipes close a quest, a quest in your log counts toward its zone, and
+  every zone's count stays cheap.
 - `lua Tools/regression/test-completo-quest-pins.lua`: the quest pins are Pin Size and keep one
   size on screen as the map zooms.
 - `lua Tools/regression/test-discovery-data-load.lua`: the quests and rares load once on the first

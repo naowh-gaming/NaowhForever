@@ -91,6 +91,9 @@ Check(Q.State(1) == "open" and Q.State(2) == "open" and Q.State(3) == "open", "n
 Check(Q.State(7) == "skill" and Q.State(8) == "skill", "a profession you lack keeps its quests closed")
 local _, total = Q.ZoneProgress(zone)
 Check(total == 7, "quests needing a profession you lack are out of the zone's count")
+Fresh(nil, { 7 })
+_, total = Q.ZoneProgress(zone)
+Check(Q.State(7) == "log" and total == 8, "a quest in your log counts as its row shows it, closed or not")
 
 Fresh({ 1 })
 Check(Q.State(2) == "closed" and Q.State(4) == "closed", "one of an exclusive group done closes the rest")
@@ -108,7 +111,7 @@ Check(Q.State(5) == "closed", "a quest whose next quest is in your log is closed
 Fresh({ 6 })
 Check(Q.State(5) == "closed", "and once that one is done")
 
-professions = { ALCHEMY_INDEX }
+professions = { nil, ALCHEMY_INDEX }
 Fresh()
 Check(Q.State(8) == "open" and Q.State(7) == "skill", "your profession's quest opens, another's stays closed")
 spells[MANA_WELL] = true
@@ -117,6 +120,8 @@ Check(Q.State(8) == "closed", "a Camping 101 quest closes once you know its camp
 
 Fresh({ 1 })
 Q.SetOpened(2)
+Check(Q.State(2) == "closed", "opening a quest past a requirement does not reopen it")
+Q.SetReopened(2)
 Check(Q.State(2) == "open", "a closed quest its giver offered is open for good")
 
 local real = setmetatable({ _G = { NaowhForever = { CompletoQuestData = {} } } }, { __index = _G })
@@ -140,6 +145,8 @@ Check(D.Profession[97915] == ALCHEMY and D.Recipe[97915] == MANA_WELL and D.Prof
     "Camping 101 needs its profession and closes on its recipe")
 Check(D.Recipe[97925] ~= D.Recipe[96102] and D.Profession[96626] == nil,
     "each faction's Faction Banner; Camping 101: Cooking teaches cooking, so needs none")
+Check(D.Profession[95217] == nil and D.Profession[96874] == nil and D.Profession[92109] == nil
+    and D.Profession[92110] == nil, "a quest that introduces a profession needs none")
 
 ns.CompletoQuestData = D
 chunk = assert(loadstring(Read("NaowhForever_Discovery/QuestList/Quests.lua")))

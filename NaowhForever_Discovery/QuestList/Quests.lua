@@ -13,10 +13,11 @@ local SKILL_LINE = 7
 local MAX_UNDER = 10
 local CLASSIC_GREEN_RANGE = 8
 local NOT_OFFERED_STORE, TURN_INS_STORE = "completoNotOffered", "completoTurnIns"
-local OPENED_STORE, MINE_STORE = "completoOpened", "completoMine"
+local OPENED_STORE, MINE_STORE, REOPENED_STORE = "completoOpened", "completoMine", "completoReopened"
 local NONE = {}
 
 local mine, zoneOf, chains, chainOf, closers, recipes, needs, teaches
+local opened, reopened = {}, {}
 local done, logged, skills, known = {}, {}, {}, {}
 local byMap
 local zoneChains, zoneSingles, seenChain = {}, {}, {}
@@ -133,22 +134,19 @@ local function Prepare()
     IndexClosers()
 end
 
-local function AddSkill(index)
-    if not index then return end
-    local line = select(SKILL_LINE, GetProfessionInfo(index))
-    if line then skills[line] = true end
+local function AddSkills(...)
+    for i = 1, select("#", ...) do
+        local index = select(i, ...)
+        if index then
+            local line = select(SKILL_LINE, GetProfessionInfo(index))
+            if line then skills[line] = true end
+        end
+    end
 end
 
 local function ReadKnown()
     wipe(skills)
-    local a, b, c, d, e, f, g = GetProfessions()
-    AddSkill(a)
-    AddSkill(b)
-    AddSkill(c)
-    AddSkill(d)
-    AddSkill(e)
-    AddSkill(f)
-    AddSkill(g)
+    AddSkills(GetProfessions())
     wipe(known)
     for spell in pairs(recipes) do known[spell] = C_SpellBook.IsSpellKnown(spell) end
     wipe(logged)
@@ -174,7 +172,7 @@ local function Closed(id)
             end
         end
     end
-    if state and not CharStore(OPENED_STORE)[id] then return state end
+    if state and not reopened[id] then return state end
 end
 
 local function ZoneTurnIns(id)
@@ -277,6 +275,7 @@ end
 
 function Q.Refresh()
     Prepare()
+    opened, reopened = CharStore(OPENED_STORE), CharStore(REOPENED_STORE)
     ReadKnown()
     wipe(done)
     local all = C_QuestLog.GetAllCompletedQuestIDs and C_QuestLog.GetAllCompletedQuestIDs()
@@ -394,13 +393,17 @@ end
 
 function Q.Opened(id)
     for _, element in ipairs(D.Requires[id] or NONE) do
-        if not Met(element) then return CharStore(OPENED_STORE)[id] == true end
+        if not Met(element) then return opened[id] == true end
     end
     return true
 end
 
 function Q.SetOpened(id)
     CharStore(OPENED_STORE)[id] = true
+end
+
+function Q.SetReopened(id)
+    CharStore(REOPENED_STORE)[id] = true
 end
 
 function Q.Blocking(id)
@@ -441,7 +444,7 @@ function Q.ZoneProgress(zone)
     local n, total, low, high = 0, 0, nil, nil
     for _, id in ipairs(zone.quests) do
         if mine[id] and not Q.Repeatable(id) and not Q.Dungeon(id) and not Q.Elsewhere(id)
-            and (done[id] or not Closed(id)) then
+            and (done[id] or not Closed(id) or Q.InLog(id)) then
             total = total + 1
             if done[id] then n = n + 1 end
             local level = QuestLevel(id)
