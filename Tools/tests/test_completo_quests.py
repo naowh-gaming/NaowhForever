@@ -76,32 +76,17 @@ class Corrected(unittest.TestCase):
 
 
 class Races(unittest.TestCase):
-    ALLIANCE, HORDE = 4294967373, 8589934770
-    MULGORE = 1412
-
-    def races(self, mask, side, map_id=None):
-        return completo_quests.races(mask, side, map_id)
-
-    def test_every_race_but_one_is_the_whole_side(self):
-        self.assertEqual(self.races(4294967372, 1), self.ALLIANCE)
-        self.assertEqual(self.races(self.HORDE & ~2, 2), self.HORDE)
-        self.assertEqual(self.races(self.ALLIANCE, 1), self.ALLIANCE)
-        self.assertEqual(self.races(0, 1), 0)
-
-    def test_fewer_races_stay_as_they_are(self):
-        self.assertEqual(self.races(76, 1), 76)
-        self.assertEqual(self.races(1, 1), 1)
-        self.assertEqual(self.races(690, 2), 690)
+    ALLIANCE_BUT_HUMAN, TAUREN = 4294967372, 1 << 5
 
     def test_both_skyborne(self):
         both = completo_quests.HIGH_ORDER | completo_quests.WINDSHAPER
-        self.assertEqual(self.races(completo_quests.HIGH_ORDER, 3, completo_quests.ZEPHRAS), both)
-        self.assertEqual(self.races(completo_quests.HIGH_ORDER, 1, completo_quests.ZEPHRAS), completo_quests.HIGH_ORDER)
+        self.assertEqual(completo_quests.races(completo_quests.HIGH_ORDER, 3), both)
+        self.assertEqual(completo_quests.races(completo_quests.HIGH_ORDER, 1), completo_quests.HIGH_ORDER)
 
-    def test_tauren_on_zephras_take_the_windshapers(self):
-        tauren = completo_quests.TAUREN
-        self.assertEqual(self.races(tauren, 2, completo_quests.ZEPHRAS), tauren | completo_quests.WINDSHAPER)
-        self.assertEqual(self.races(tauren, 2, self.MULGORE), tauren)
+    def test_other_masks_stay_as_the_sources_give_them(self):
+        self.assertEqual(completo_quests.races(self.ALLIANCE_BUT_HUMAN, 1), self.ALLIANCE_BUT_HUMAN)
+        self.assertEqual(completo_quests.races(self.TAUREN, 2), self.TAUREN)
+        self.assertEqual(completo_quests.races(0, 1), 0)
 
 
 class FixesFile(unittest.TestCase):

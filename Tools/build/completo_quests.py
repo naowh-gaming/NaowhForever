@@ -207,23 +207,14 @@ def forever_spot(map_id, x, y):
 
 # Wowhead's race masks use the game's bits (ChrRaces' PlayableRaceBit): Human 0, Orc 1, Dwarf 2,
 # Night Elf 3, Undead 4, Tauren 5, Gnome 6, Troll 7, High Order Skyborne 32, Windshaper Skyborne 33.
-TAUREN, HIGH_ORDER, WINDSHAPER = 1 << 5, 1 << 32, 1 << 33
-SIDE_RACES = {1: 1 << 0 | 1 << 2 | 1 << 3 | 1 << 6 | HIGH_ORDER, 2: 1 << 1 | 1 << 4 | TAUREN | 1 << 7 | WINDSHAPER}
-ZEPHRAS = 2521
+HIGH_ORDER, WINDSHAPER = 1 << 32, 1 << 33
 
 
-def races(mask, side, map_id):
-    """The quest's race mask with the export's slips mended. A side's every race but one is the
-    whole side: 64 Alliance quests leave out Humans, Goldshire's and Northshire's among them. A quest
-    for both sides that names only the High Order Skyborne is both Skyborne's, and Tauren on Zephras
-    Isle, the Skyborne's own island, take the Windshaper Skyborne too."""
-    full = SIDE_RACES.get(side)
-    if full and mask and not mask & ~full and bin(full & ~mask).count("1") == 1:
-        return full
+def races(mask, side):
+    """The quest's race mask with the export's slip mended: a quest for both sides that names only
+    the High Order Skyborne is both Skyborne's, as Wowhead and ForeverChanges both call it."""
     if side == 3 and mask == HIGH_ORDER:
         return HIGH_ORDER | WINDSHAPER
-    if map_id == ZEPHRAS and mask & TAUREN and not mask & WINDSHAPER:
-        return mask | WINDSHAPER
     return mask
 
 
@@ -596,7 +587,7 @@ def write(zones, quests, requires, items, dungeon, elsewhere, catalog=None, list
                 spot = f"{m}, {x:.1f}, {y:.1f}, {lua_string(mob)}, {item}"
         lines.append(f"    [{qid}] = {{ {lua_string(q['name'])}, {q.get('level') or 0}, "
                      f"{q.get('reqlevel') or 0}, {q.get('side') or 3}, "
-                     f"{races(q.get('reqrace') or 0, q.get('side') or 3, ZONE_MAP.get(area))}, "
+                     f"{races(q.get('reqrace') or 0, q.get('side') or 3)}, "
                      f"{q.get('reqclass') or 0}, {spot} }},")
     repeatable = sorted((set((items or {}).get("repeatable", [])) |
                          {int(k) for k, v in catalog.items() if v["repeatable"]}) & set(rows))

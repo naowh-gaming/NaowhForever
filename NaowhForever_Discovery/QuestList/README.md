@@ -122,12 +122,12 @@ quest and creature pages. Do not edit them by hand: change the tool and run it a
   nothing instead of erroring, and the load is not tried again.
 - `RACE_BITS` maps the client's race IDs to their bit in Wowhead's race masks, Forever's own two
   races (95 and 96) too.
-- The data's race masks have slips, which the build mends (`races` in `Tools/build/completo_quests.py`).
-  A mask with every race of a side but one is the whole side: 64 Alliance quests left Humans out,
-  Goldshire's Delicate Instruments and Northshire's Rascally Rodents among them. A quest for both sides
-  that names only the High Order Skyborne, and a Zephras Isle quest that names Tauren, take the
-  Windshaper Skyborne too: both Skyborne start on Zephras, Wowhead calls the first kind both sides',
-  and the Horde's versions of the island's quests name Tauren where the Alliance's name the High Order.
+- A quest for both sides whose race mask names only the High Order Skyborne is both Skyborne's: Wowhead
+  and ForeverChanges both call those both sides' (`races` in `Tools/build/completo_quests.py`). Other
+  masks stay as the sources give them, even where they look like slips: 64 Forever-new Alliance quests
+  leave Humans out (Goldshire's Delicate Instruments and Northshire's Rascally Rodents among them), and
+  some Zephras Isle quests name Tauren but not the Windshaper Skyborne. Wowhead's pages show the same,
+  so they wait for a check in game; a giver's offer makes such a quest yours meanwhile.
 - A quest the data says is not yours (its race or class) that a giver offers you is yours from then on
   (`completoMine`, per character), so a mask the data still has wrong corrects itself the first time
   you speak to the giver.
