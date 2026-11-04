@@ -237,6 +237,15 @@ kills.
   finder, or one gone (`LFG_LIST_ACTIVE_ENTRY_UPDATE` with no active entry), has no group to tell.
 - Invite is `C_PartyInfo.InviteUnit` by the applicant's name; the game asks for confirmation itself when
   inviting would turn the party into a raid.
+- Only the current leader (or a solo player) answers card requests and takes applications, even when
+  the game also gives party members the active listing. Losing leadership or delisting clears the
+  applicants, and Invite and Decline check that the clicked record is still current.
+- A repeated application keeps its invitation state only when its ID is unchanged. A new application
+  and a recycled applicant record start uninvited. Withdrawals and expiry remove the record before
+  notifying the window, so its count and rows describe the updated list.
+- Withdrawing an unsent application removes it from the send queue. Expired applications and card
+  requests leave the queue too, so ending chat lockdown cannot send an already cancelled request.
+  A full queue keeps a sent application or applicant until its withdrawal or decline can be queued.
 
 ## Settings
 

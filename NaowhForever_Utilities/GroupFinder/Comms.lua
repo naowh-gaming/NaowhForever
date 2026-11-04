@@ -101,6 +101,19 @@ local function Find(list, id, name)
     end
 end
 
+local function CancelQueued(record, kind)
+    local prefix = Card.Short(kind, record.id) .. " "
+    local cancelled = false
+    for i = #qText, 1, -1 do
+        if SameName(qTarget[i], record.name) and sub(qText[i], 1, #prefix) == prefix then
+            remove(qTarget, i)
+            remove(qText, i)
+            cancelled = true
+        end
+    end
+    return cancelled
+end
+
 local Sweep
 
 local function Earliest()
@@ -133,8 +146,11 @@ local function Expire(list, spare, now, what)
     for i = #list, 1, -1 do
         local record = list[i]
         if record.deadline <= now then
+            if list == sent then CancelQueued(record, "A") end
+            if list == pings then CancelQueued(record, "Q") end
+            remove(list, i)
             GF.Fire(what, record)
-            Release(list, i, spare)
+            spare[#spare + 1] = record
         end
     end
 end
@@ -254,7 +270,7 @@ function Comms.Withdraw(id)
     for i = 1, #sent do
         local record = sent[i]
         if record.id == id then
-            Send(record.name, Card.Short("X", id))
+            if not CancelQueued(record, "A") and not Send(record.name, Card.Short("X", id)) then return false end
             Release(sent, i, spareSent)
             ScheduleSweep()
             return true
@@ -270,10 +286,22 @@ end
 function Comms.Decline(name)
     local record, i = Find(applicants, nil, name)
     if not record then return false end
-    Send(record.name, Card.Short("D", record.id))
+    if not Send(record.name, Card.Short("D", record.id)) then return false end
     Release(applicants, i, spareApplicants)
     ScheduleSweep()
     return true
+end
+
+function Comms.HasApplicant(record)
+    for i = 1, #applicants do
+        if applicants[i] == record then return true end
+    end
+    return false
+end
+
+function Comms.ClearApplicants()
+    for i = #applicants, 1, -1 do Release(applicants, i, spareApplicants) end
+    ScheduleSweep()
 end
 
 local function Copy(from, to)
@@ -329,7 +357,7 @@ end
 local Handle = {}
 
 function Handle.Q(sender, id, dungeonKey, now)
-    if not C_LFGList.HasActiveEntryInfo() then return Drop("unlisted") end
+    if not (C_LFGList.HasActiveEntryInfo() and GF.Group.CanEdit()) then return Drop("unlisted") end
     if not MayAnswer(Key(sender), now) then return Drop("answered") end
     Send(sender, Card.Reply(id, Card.Mine(dungeonKey), GF.Group.Info()))
 end
@@ -365,8 +393,9 @@ function Handle.L(sender, id, note, now)
 end
 
 function Handle.A(sender, id, note, now)
-    if not C_LFGList.HasActiveEntryInfo() then return Drop("unlisted") end
+    if not (C_LFGList.HasActiveEntryInfo() and GF.Group.CanEdit()) then return Drop("unlisted") end
     local record = Find(applicants, nil, sender)
+    local invited = record and record.id == id and record.invited or false
     if not record then
         if #applicants >= MAX_APPLICANTS then return Drop("full") end
         record = Take(applicants, spareApplicants)
@@ -374,6 +403,7 @@ function Handle.A(sender, id, note, now)
     end
     Copy(incoming, record.card)
     record.id, record.name, record.note = id, sender, note
+    record.invited = invited
     record.at, record.deadline = now, now + APP_TTL
     Send(sender, Card.Short("K", id))
     ScheduleSweep()
@@ -390,8 +420,9 @@ end
 function Handle.X(sender, id)
     local record, i = Find(applicants, id, sender)
     if not record then return Drop("unasked") end
+    remove(applicants, i)
     GF.Fire("withdrawn", record)
-    Release(applicants, i, spareApplicants)
+    spareApplicants[#spareApplicants + 1] = record
     ScheduleSweep()
 end
 

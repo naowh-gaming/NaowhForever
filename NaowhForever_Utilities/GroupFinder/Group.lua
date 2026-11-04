@@ -6,7 +6,7 @@ if not GF then return end
 local Comms = GF.Comms
 local S = GF.Settings
 
-local EVENTS = { "LFG_LIST_ACTIVE_ENTRY_UPDATE", "GROUP_ROSTER_UPDATE" }
+local EVENTS = { "LFG_LIST_ACTIVE_ENTRY_UPDATE", "GROUP_ROSTER_UPDATE", "PARTY_LEADER_CHANGED" }
 
 local Group = {
     activity = nil, style = nil, min = 0, tanks = 1, healers = 1, damage = 3, note = "",
@@ -54,22 +54,30 @@ function Group.Delist()
 end
 
 function Group.Info()
-    if Group.ours and Group.Listed() then return Group end
+    if Group.ours and Group.Listed() and Group.CanEdit() then return Group end
 end
 
 function Group.Invite(record)
+    if not (GF.On() and Group.Listed() and Group.CanEdit() and Comms.HasApplicant(record)) then return false end
+    if record.invited then return false end
     C_PartyInfo.InviteUnit(record.name)
     record.invited = true
     GF.Fire("applicant", record)
+    return true
 end
 
 function Group.Decline(record)
-    Comms.Decline(record.name)
+    if not (GF.On() and Group.Listed() and Group.CanEdit() and Comms.HasApplicant(record)) then return false end
+    if not Comms.Decline(record.name) then return false end
     GF.Fire("applicant")
+    return true
 end
 
 local function OnEvent()
-    if not Group.Listed() then Group.ours, Group.listedAt = false, nil end
+    if not Group.Listed() or not Group.CanEdit() then
+        Group.ours, Group.listedAt = false, nil
+        Comms.ClearApplicants()
+    end
     GF.Fire("group")
 end
 
