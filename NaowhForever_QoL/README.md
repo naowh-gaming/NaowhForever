@@ -1313,8 +1313,9 @@ NaowhForever_QoL/
   into the old values the first time it is written, so turning Glimmer off puts it back as well.
 - The game's own Interact Key Icons option (Accessibility) writes `SoftTargetIconGameObject` 0 for
   both Default and None, which would stop Glimmer with no word why. So while Glimmer is on,
-  `CVAR_UPDATE` on `SoftTargetIconGameObject` or `SoftTargetInteractOnlyInRange` puts Glimmer's value
-  back; Enable Interact Key is never forced back, and turning Glimmer off still restores them all.
+  `CVAR_UPDATE` on `SoftTargetIconGameObject` or `SoftTargetInteractOnlyInRange` keeps the player's
+  new value as the one to put back and writes Glimmer's again (after combat, if in it). Turning
+  Glimmer off then puts back the player's last choice; Enable Interact Key is never forced back.
 - The nameplate is only opened for an object Glimmer lights (`onlyHighlighted`), so NPCs, mailboxes
   and doors do not grow a nameplate. Whether to open it does not need the nameplate: the object is
   read from the unit token, then the nameplate arrives with `NAME_PLATE_UNIT_ADDED`.

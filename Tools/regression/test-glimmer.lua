@@ -539,6 +539,31 @@ do
     check("old save: and put back", o.cvars.SoftTargetIconGameObject == "0" and o.account.glimmerSoftCVars == nil)
 end
 
+-- The player changes Glimmer's own settings while it is on: Glimmer keeps its value and remembers theirs.
+do
+    local o = Session({ enabled = true })
+    o.cvars.SoftTargetIconGameObject = "1"
+    o.Login()
+    o.cvars.SoftTargetIconGameObject = "0"
+    o.Fire("CVAR_UPDATE", "SoftTargetIconGameObject", "0")
+    check("a player's None while Glimmer is on: the object icon comes back",
+        o.cvars.SoftTargetIconGameObject == "1" and o.account.glimmerSoftCVars.SoftTargetIconGameObject == "0")
+    o.cvars.SoftTargetInteractOnlyInRange = "1"
+    o.Fire("CVAR_UPDATE", "softtargetinteractonlyinrange", "1")
+    check("the range setting comes back too, whatever case the event names it in",
+        o.cvars.SoftTargetInteractOnlyInRange == "0")
+    o.game.combat = true
+    o.cvars.SoftTargetIconGameObject = "0"
+    o.Fire("CVAR_UPDATE", "SoftTargetIconGameObject", "0")
+    check("in combat nothing is written", o.cvars.SoftTargetIconGameObject == "0")
+    o.game.combat = false
+    o.Fire("PLAYER_REGEN_ENABLED")
+    check("after combat it comes back", o.cvars.SoftTargetIconGameObject == "1")
+    o.Set("enabled", false)
+    check("off: the player's last choice is what comes back", o.cvars.SoftTargetIconGameObject == "0"
+        and o.cvars.SoftTargetInteractOnlyInRange == "1")
+end
+
 -- Other addons on the same settings: asked once, then the reload prompt.
 do
     local loaded = {}
