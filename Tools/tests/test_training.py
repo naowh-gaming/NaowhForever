@@ -58,6 +58,20 @@ class Entries(unittest.TestCase):
         self.assertTrue(kept[355]["quest"])
         self.assertNotIn(9999, kept)
 
+    def test_the_trainer_windows_prices_replace_wowheads(self):
+        rows = [row(1062, "Entangling Roots", "Rank 2", 18, [tr.TRAINER], 1900),
+                row(768, "Cat Form", "Shapeshift", 20, [tr.QUEST, tr.TRAINER], 2000),
+                row(1082, "Claw", "Rank 1", 20, [tr.TRAINER], 2000)]
+        kept = tr.entries(rows, {}, {r["id"] for r in rows}, prices={1062: 1500})
+        kept = {e["spell"]: (e["quest"], e["cost"]) for e in kept}
+        self.assertEqual(kept, {1062: (False, 1500), 768: (True, 0), 1082: (True, 0)})
+
+    def test_a_trainer_spell_the_trainer_window_lacks_stops_the_build(self):
+        rows = [row(1062, "Entangling Roots", "Rank 2", 18, [tr.TRAINER], 1900),
+                row(9999, "Other", "Rank 1", 24, [tr.TRAINER], 4000)]
+        with self.assertRaisesRegex(ValueError, r"Other \(9999\)"):
+            tr.entries(rows, {}, {1062, 9999}, prices={1062: 1500})
+
 
 class CaughtUp(unittest.TestCase):
     # Lacerate after the 30 October 2026 hotfix: a talent first rank, a new second, and Wowhead's
