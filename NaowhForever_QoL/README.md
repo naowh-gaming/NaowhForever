@@ -1178,7 +1178,7 @@ NaowhForever_QoL/
 - A quest turn-in also sends its experience as a combat XP message with no source named. The quest line already shows it, so that one is skipped while quest lines are on. A kill's message names the kill, and its first number is the total gained, rested bonus included.
 - Chat payloads can be secret; nothing in one is worth recovering, so a secret one is dropped.
 - Hide Blizzard Loot Window takes every slot on LOOT_READY, one every `LOOT_STEP` (0.05 s). The window still opens and closes as normal, as hiding it would close the loot: it is shrunk to `SHRUNK` scale instead. Its open and close animations both drive alpha, so alpha cannot hide it, and it is clamped to the screen, so it cannot be moved off it. The taint scan allows its two `LootFrame:SetScale` calls.
-- The window stays full size whenever something would be left for the player: a group roll, a locked item, or bags too full. Still open `LOOT_GRACE` (1 s) after the last slot, something could not be taken, so the window comes back. Only a full-bags error during a loot matters, so errors are listened to only while one is open.
+- The window stays full size whenever something would be left for the player: a group roll, a locked item, or bags too full. An item that tops up a stack already in the bags needs no free slot, so full bags alone do not bring the window back. Still open `LOOT_GRACE` (1 s) after the last slot, something could not be taken, so the window comes back. Only a full-bags error during a loot matters, so errors are listened to only while one is open.
 - The window gets its size back after its close animation finishes, so it never flashes on the way out.
 - A Spacing of -1 lets neighbouring lines share one border.
 
