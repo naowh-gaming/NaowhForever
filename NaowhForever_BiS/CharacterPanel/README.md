@@ -93,6 +93,9 @@ the game's art comes back and ours hides.
 - Our backdrop sits at the panel's own frame level, under the game's frames, so the game's slots,
   model and stats draw over it. Each faded or tinted piece of the game's art is remembered so turning
   it off brings it all back.
+- The game's `PaperDollFrame_OnShow` sets the model's backdrop again on every show
+  (`SetPaperDollBackground`), its black `BackgroundOverlay` back to your race's alpha, so the
+  model's art is faded again from a post-hook of the paper doll's OnShow, which runs after it.
 - A model's buttons are faded texture by texture: the game sets their frame's alpha itself on hover,
   never their art's. A frame covers their strip so they take no clicks; dragging the model turns it
   and the wheel zooms it.
