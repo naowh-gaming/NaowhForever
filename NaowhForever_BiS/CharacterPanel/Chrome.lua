@@ -63,7 +63,7 @@ local function FadeModel()
     end
 end
 
-local function ModelShown()
+local function PaperDollShown()
     if CP.On() then FadeModel() end
 end
 
@@ -127,7 +127,7 @@ end
 local function Install()
     installed = true
     Build()
-    if PaperDollFrame then PaperDollFrame:HookScript("OnShow", ModelShown) end
+    if PaperDollFrame then PaperDollFrame:HookScript("OnShow", PaperDollShown) end
     local list = StatsList()
     if list and ScrollUtil and ScrollUtil.AddInitializedFrameCallback then
         ScrollUtil.AddInitializedFrameCallback(list, StatsLook.Style, chrome, true)

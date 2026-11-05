@@ -383,7 +383,7 @@ check("its title and level in our font", title.size == 12 and levelText.size == 
 check("the model's black overlay faded", modelScene.BackgroundOverlay.alpha == 0)
 modelScene.BackgroundOverlay:SetAlpha(0.85)
 Fire(paperDoll, "OnShow")
-check("faded again after the game's OnShow sets it back for your race", modelScene.BackgroundOverlay.alpha == 0)
+check("faded again after the paper doll's OnShow", modelScene.BackgroundOverlay.alpha == 0)
 local statRow = Frame()
 statRow.Label, statRow.Value, statRow.Background, statRow.Title = Frame(statRow), Frame(statRow), false, false
 local statLabel = statRow.Label
