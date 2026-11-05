@@ -72,6 +72,11 @@ class Entries(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, r"Other \(9999\)"):
             tr.entries(rows, {}, {1062, 9999}, prices={1062: 1500})
 
+    def test_an_unsourced_spell_stays_at_the_trainer_without_a_price(self):
+        rows = [row(724, "Lightwell", "Rank 1", 40)]
+        kept = tr.entries(rows, {}, {724}, prices={1062: 1500})
+        self.assertEqual([(e["spell"], e["quest"], e["cost"]) for e in kept], [(724, False, 0)])
+
 
 class CaughtUp(unittest.TestCase):
     # Lacerate after the 30 October 2026 hotfix: a talent first rank, a new second, and Wowhead's

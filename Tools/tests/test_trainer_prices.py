@@ -48,6 +48,13 @@ class ReadSaved(unittest.TestCase):
         self.assertEqual(tp.read_saved('NaowhForeverDB = {\n["lastFoodIcon"] = 1,\n}\n'), {})
 
 
+class ReadClassList(unittest.TestCase):
+    def test_spells_by_level(self):
+        text = ("local swipe = {779, 780}\nclass.spellsByLevel = {\n\t[1] = {{id = 1126, cost = 10}},\n"
+                "\t[6] = {{id = 5177, cost = 100, requiredIds = {5176}}, {id = 467, cost = 100}},\n}\n")
+        self.assertEqual(tp.read_class_list(text), {1126: 10, 5177: 100, 467: 100})
+
+
 class ByClass(unittest.TestCase):
     SPELLS = tp.class_spells(DATA)
 

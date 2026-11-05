@@ -12,10 +12,10 @@ build's skill lines (SkillLineAbility) no longer have, which Wowhead can still l
 takes it away (Frost Blast, 30 October 2026), or have as never learned (AcquireMethod 3: Tiger's
 Fury), and what a hotfix took away that the build's tables still have (UNTRAINABLE).
 
-Wowhead's prices are older than Forever's launch, which changed them. A class's prices read from the
-trainer window (Tools/data/trainer_prices.json, by Tools/build/trainer_prices.py) replace them. The
-trainer lists every spell it sells, so for such a class a trainer spell it lacks stops the build, until
-the spell is put in QUEST_TAUGHT or UNTRAINABLE.
+Wowhead's prices are older than Forever's launch, which changed them. A class's prices read from its
+trainer (Tools/data/trainer_prices.json: the trainer window's, or What's Training's lists, by
+Tools/build/trainer_prices.py) replace them. A trainer lists every spell it sells, so for such a class a
+trainer spell the prices lack stops the build, until the spell is put in QUEST_TAUGHT or UNTRAINABLE.
 
 Wowhead's lists can lag a hotfix, so each spell's rank and level are the build's own (Spell,
 SpellLevels: BaseLevel, else SpellLevel, the only level Forever's new spells have), and a rank before
@@ -69,12 +69,13 @@ NEVER_LEARNED = "3"      # SkillLineAbility's AcquireMethod for a spell no one l
 # Armor (Defensive Stance), Intercept (Berserker Stance), Growl and Maul (Bear Form), and Call,
 # Dismiss, Feed and Revive Pet (Tame Beast). Forever's Cat Form quest teaches Cat Form, Prowl, Claw and
 # Rip (spell 1309050), which Wowhead lists as the trainer's, and the trainer window has neither them nor
-# Teleport: Moonglade.
-QUEST_TAUGHT = {355, 7386, 20252, 6795, 6807, 883, 2641, 6991, 982, 768, 5215, 1082, 1079, 18960}
+# Teleport: Moonglade. Poisons comes from the rogue's level 20 quest (Klaven's Tower, Hinott's Assistance).
+QUEST_TAUGHT = {355, 7386, 20252, 6795, 6807, 883, 2641, 6991, 982, 768, 5215, 1082, 1079, 18960, 2842}
 # Class abilities in Wowhead's talent calculator that its class lists have no source or price for:
-# Teleport: Dalaran, the hunter's Lacerate, and Lightwell's first rank, which Forever took out of the
-# talent tree. Kept as trainer spells; the trainer window gives their price.
-TRAINER_TAUGHT = {1297659, 24118, 24119, 24120, 1299332, 724}
+# Teleport: Dalaran, the hunter's Lacerate, and Lightwell, which Forever took out of the talent tree
+# (Wowhead prices its later ranks as a talent's). Kept as trainer spells without a price, though What's
+# Training's trainer lists lack them too: where they come from wants a look in game.
+TRAINER_TAUGHT = {1297659, 24118, 24119, 24120, 1299332, 724, 27870, 27871}
 # What no trainer teaches any more though Wowhead and the build's tables on wago.tools still have it:
 # wago applies a hotfix's new and changed rows, not the ones it removes. The 30 October 2026 hotfix
 # removed Blessing of Light, Greater Blessing of Light, Salvation, Mass Salvation and Revoke (their Spell
@@ -233,8 +234,9 @@ def races(mask):
 def entries(rows, talents, learnable, prices=None):
     """The class's kept spells in level order, each {spell, level, name, rank, cost, quest,
     talent, races, needs}: needs is the rank before it, which the trainer asks for first. Only the
-    spells in learnable (the build's skill lines) are kept. prices, when the trainer window's were
-    read for the class, replace Wowhead's; a trainer spell they lack raises ValueError."""
+    spells in learnable (the build's skill lines) are kept. prices, when the class's trainer prices
+    were read, replace Wowhead's; a trainer spell they lack, other than TRAINER_TAUGHT's,
+    raises ValueError."""
     kept, unsold = [], []
     for row in rows:
         source = row.get("source") or []
@@ -244,8 +246,8 @@ def entries(rows, talents, learnable, prices=None):
         trainer = row["id"] not in QUEST_TAUGHT and (
             TRAINER in source and (row.get("trainingcost") or row["skill"] == [POISONS] or row.get("added"))
             or row["id"] in TRAINER_TAUGHT)
-        if trainer and (prices is None or row["id"] in prices):
-            cost = (row.get("trainingcost") or 0) if prices is None else prices[row["id"]]
+        if trainer and (prices is None or row["id"] in prices or row["id"] in TRAINER_TAUGHT):
+            cost = (row.get("trainingcost") or 0) if prices is None else prices.get(row["id"], 0)
             kept.append({"quest": False, "cost": cost})
         elif (QUEST in source and level > 1) or row["id"] in QUEST_TAUGHT:
             kept.append({"quest": True, "cost": 0})
@@ -257,7 +259,7 @@ def entries(rows, talents, learnable, prices=None):
                         races=races(row["reqrace"]) if row.get("reqrace") else [],
                         talent=talents.get(row["name"]), before=row.get("before"))
     if unsold:
-        raise ValueError("the trainer window does not list " + ", ".join(unsold)
+        raise ValueError("no trainer price for " + ", ".join(unsold)
                          + ": put each in QUEST_TAUGHT or UNTRAINABLE")
     sold = {e["spell"] for e in kept}
     for e in kept:
@@ -301,8 +303,10 @@ def build(build_id):
                  if r["AcquireMethod"] != NEVER_LEARNED}
     game = game_spells(build_id)
     captured = json.loads(PRICES.read_text(encoding="ascii")) if PRICES.exists() else {}
+    credit = (" and What's Training's prices (MIT, Sveng)"
+              if any(c["source"].startswith("What's Training") for c in captured.values()) else "")
 
-    out = [f"-- TrainingData.lua: every spell each class learns as it levels, built from game build {build_id}.",
+    out = [f"-- TrainingData.lua: every spell each class learns as it levels, built from game build {build_id}{credit}.",
            "local ns = _G.NaowhForever",
            "",
            "ns.TrainingData = {"]

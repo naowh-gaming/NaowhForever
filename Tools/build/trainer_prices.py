@@ -1,17 +1,19 @@
-"""The prices class trainers ask, read from the trainer window: Tools/data/trainer_prices.json.
+"""The prices class trainers ask: Tools/data/trainer_prices.json, for Tools/build/training.py, which
+prefers them to Wowhead's.
 
-The Training Planner keeps what a class trainer asked each character for every spell it lists, at the
-trainer window (NaowhForeverDB.trainingCharPrices, written at /reload or logout). A trainer lists all
-of its class's spells, the ones above your level too, so one visit with the Training module on gives a
-whole class. This reads those prices from a Forever client's SavedVariables and keeps each class's
-under its slug, for Tools/build/training.py, which prefers them to Wowhead's.
+Two sources, each class's prices kept under its slug with where they came from; a newer read of a
+class replaces its older one:
+  - the trainer window: the Training Planner keeps what a class trainer asked each character for every
+    spell it lists (NaowhForeverDB.trainingCharPrices, written at /reload or logout). A trainer lists
+    all of its class's spells, the ones above your level too, so one visit with the Training module on
+    gives a whole class. The class is the one whose spells (NaowhForever_Training/Data/TrainingData.lua)
+    the character's prices are for. Read from a character below Honored with the trainer's city:
+    Honored and above pay 10% less.
+  - What's Training (MIT, Sveng, CurseForge project 324944), whose Forever class lists
+    (Classes/Camelot/<Class>.lua) are read from the game's trainers: --whatstraining <its folder>.
 
-The class is the one whose spells (NaowhForever_Training/Data/TrainingData.lua) the character's
-prices are for. A newer read of a class replaces its older one. Read from a character below Honored
-with the trainer's city: Honored and above pay 10% less.
-
-Usage: python Tools/build/trainer_prices.py [--saved NaowhForever.lua]
-Without --saved, the live Forever client's SavedVariables are read.
+Usage: python Tools/build/trainer_prices.py [--saved NaowhForever.lua] [--whatstraining WhatsTraining]
+With neither, the live Forever client's SavedVariables are read.
 """
 import datetime
 import glob
@@ -74,15 +76,37 @@ def by_class(characters, spells):
     return out
 
 
-def write(found, day):
+def read_class_list(text):
+    """{spell ID: copper} from a What's Training class list's spellsByLevel."""
+    return {int(s): int(c) for s, c in re.findall(r"\{id = (\d+), cost = (\d+)", text[text.index("spellsByLevel"):])}
+
+
+def read_whatstraining(folder):
+    """Class slug -> {spell ID: copper} from What's Training's Forever class lists, and its version."""
+    version = re.search(r"^## Version: (\S+)", (folder / "WhatsTraining.toc").read_text(encoding="utf-8"), re.M)
+    lists = folder / "Classes" / "Camelot"
+    found = {slug: read_class_list((lists / f"{slug.capitalize()}.lua").read_text(encoding="utf-8"))
+             for slug in CLASSES.values()}
+    return found, version.group(1)
+
+
+def write(found, day, source):
     old = json.loads(OUT.read_text(encoding="ascii")) if OUT.exists() else {}
     for slug, prices in found.items():
-        old[slug] = {"read": day, "prices": {str(s): prices[s] for s in sorted(prices)}}
+        old[slug] = {"read": day, "source": source, "prices": {str(s): prices[s] for s in sorted(prices)}}
     OUT.write_text(json.dumps({slug: old[slug] for slug in sorted(old)}, indent=1) + "\n",
                    encoding="ascii", newline="\n")
+    print(f"Wrote {OUT.relative_to(paths.ROOT)} from {source}: "
+          + ", ".join(f"{s} {len(p)}" for s, p in sorted(found.items())))
 
 
 def main(args):
+    day = datetime.date.today().isoformat()
+    if "--whatstraining" in args:
+        found, version = read_whatstraining(Path(args[args.index("--whatstraining") + 1]))
+        write(found, day, f"What's Training {version}")
+        if "--saved" not in args:
+            return
     files = [Path(args[args.index("--saved") + 1])] if "--saved" in args else [Path(p) for p in glob.glob(SAVED)]
     if not files:
         sys.exit("No SavedVariables found: pass --saved")
@@ -92,8 +116,7 @@ def main(args):
     found = by_class(characters, class_spells(DATA.read_text(encoding="utf-8")))
     if not found:
         sys.exit("No trainer prices in the SavedVariables: open a class trainer with the Training module on")
-    write(found, datetime.date.today().isoformat())
-    print(f"Wrote {OUT.relative_to(paths.ROOT)}: " + ", ".join(f"{s} {len(p)}" for s, p in sorted(found.items())))
+    write(found, day, "the trainer window")
 
 
 if __name__ == "__main__":
