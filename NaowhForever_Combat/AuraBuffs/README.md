@@ -292,10 +292,15 @@ NaowhForever_Combat/AuraBuffs/
   font are applied on the next refresh out of combat after a setting change.
 - Moved in the HUD Editor, the bag keeps its own spot (`campBagPos`) and no longer follows the fire.
   With none it is placed beside the fire again on each of the fire's `SetPoint`, so dragging the
-  Campfire in the HUD Editor carries it along. Like the Campfire it cannot be anchored there
-  (`ownAnchor`): an anchor and the follow would both move it. Its element is the Campfire Bag: the
-  HUD Editor keys elements by name, and Discovery's tracker is already the Sleeping Bag. The HUD
-  Editor shows it whenever it is carried, with or without a campfire in range.
+  Campfire in the HUD Editor carries it along. While it follows, it tells the HUD Editor so
+  (`UI.SetMoverFollows`): a Campfire drag would otherwise snap to the bag, which sits on the fire's
+  bottom edge. Like the Campfire it cannot be anchored there (`ownAnchor`): an anchor and the
+  follow would both move it. Its element is the Campfire Bag: the HUD Editor keys elements by name,
+  and Discovery's tracker is already the Sleeping Bag. The HUD Editor shows it whenever it is
+  carried, with or without a campfire in range; leaving it hides the bag's plate at once, even in
+  combat, as the plate is not a protected frame.
+- Undo, Revert and layouts never put the bag back beside the fire: they keep only elements placed
+  on the screen centre, and a following bag is placed from the fire. Sleeping Bag Position does.
 - `CAMP_BAG_SCALE` makes the bag about half the fire, as in Jason's mockup; `CAMP_BAG_FALLBACK_ICON`
   is the question mark, shown until the client has the bag's icon.
 - Well-Rested (429959, read in game 2026-10-20) is the bag's stacking buff: three stacks, two

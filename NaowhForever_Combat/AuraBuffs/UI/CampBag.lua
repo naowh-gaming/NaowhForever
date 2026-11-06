@@ -1,4 +1,4 @@
--- CampBag.lua: the Sleeping Bag beside the Round campfire icon, or where it was moved, while you carry it near a campfire, a secure button that uses it.
+-- CampBag.lua: the Sleeping Bag beside the Round campfire icon, or where it was moved, while you carry it near a campfire or in the HUD Editor, a secure button that uses it.
 local ns = _G.NaowhForever
 
 local A = ns.AuraBuffs
@@ -16,6 +16,7 @@ local NEARBY, SITTING, SITTING_CRAFT = D.CAMPFIRE_NEARBY, D.WELCOMING_CAMPFIRE, 
 local WELL_RESTED = D.WELL_RESTED
 local TEXT_USE = ns.L("Click to use your Sleeping Bag.")
 local TEXT_MOVER = "Campfire Bag"
+local FIRE_MOVER = "Campfire"
 local CARD = A.PAGE .. ":campfire"
 
 local bag, dirty
@@ -75,6 +76,10 @@ local function SavePos(pos)
     bag.pos, bag.x, bag.y = pos, nil, nil
 end
 
+local function Following()
+    if not S.Get("campBagPos") then return FIRE_MOVER end
+end
+
 local function Build()
     bag = CreateFrame("Button", nil, UIParent, "SecureActionButtonTemplate")
     bag:SetMovable(true)
@@ -86,6 +91,7 @@ local function Build()
     bag:SetScript("OnEnter", OnEnter)
     bag:SetScript("OnLeave", OnLeave)
     bag.mover = ns.UI.AttachMover(bag, TEXT_MOVER, SavePos, A.PAGE, CARD, true)
+    ns.UI.SetMoverFollows(bag.mover, Following)
     bag:Hide()
     dirty = true
 end
@@ -140,7 +146,7 @@ local function Place(icon)
 end
 
 local function Follow(icon)
-    if bag:IsShown() and not S.Get("campBagPos") and not InCombatLockdown() then Place(icon) end
+    if bag:IsShown() and not InCombatLockdown() then Place(icon) end
 end
 
 function CampBag.Layout()
@@ -149,6 +155,7 @@ function CampBag.Layout()
 end
 
 function CampBag.Sync(icon, round, preview)
+    if bag and not preview then bag.mover:Hide() end
     if InCombatLockdown() then
         if bag and bag:IsShown() then WaitForCombat() end
         return

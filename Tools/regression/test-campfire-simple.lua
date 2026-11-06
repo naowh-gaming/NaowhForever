@@ -132,7 +132,9 @@ local function Fixture(settings)
         end,
         GetWidth = function(f) return rawget(f, "w") or 600 end,
         GetHeight = function(f) return rawget(f, "h") or 230 end,
-        SetPoint = function(f, a, rel, _, d, e) f.pt[a], f.pty[a], f.rel[a] = d or 0, e or 0, rel end,
+        SetPoint = function(f, a, rel, relPoint, d, e)
+            f.pt[a], f.pty[a], f.rel[a], f.relPt[a] = d or 0, e or 0, rel, relPoint
+        end,
         ClearAllPoints = function() end,
         SetAllPoints = function(f, rel) f.all = rel or true end,
         SetTexCoord = function(f, l, r, t, b) f.coords = { l, r, t, b } end,
@@ -213,7 +215,8 @@ local function Fixture(settings)
     end })
     local META = { __index = METHODS }
     function Frame(parent, name)
-        local f = setmetatable({ scripts = {}, events = {}, parent = parent, pt = {}, pty = {}, rel = {} }, META)
+        local f = setmetatable({ scripts = {}, events = {}, parent = parent, pt = {}, pty = {}, rel = {}, relPt = {} },
+            META)
         state.frames[#state.frames + 1] = f
         if name then state.named[name] = f end
         return f
@@ -275,6 +278,7 @@ local function Fixture(settings)
                 mover.ownAnchor = ownAnchor
                 return mover
             end,
+            SetMoverFollows = function(mover, follows) mover.follows = follows end,
             ModuleSettings = function(_, given)
                 for key, value in pairs(given) do
                     defaults[key] = value
@@ -1650,7 +1654,9 @@ do
     check("bag mover: its Settings opens the Campfire card", bag.mover.page == "AuraBuffs/Settings"
         and bag.mover.feature == "AuraBuffs/Settings:campfire")
     check("bag mover: never anchored by the HUD Editor, which would fight the follow", bag.mover.ownAnchor == true)
-    check("bag mover: never moved, beside the fire", bag.pt.CENTER == 500 + Reach(64) and bag.pty.CENTER == 300 - 32)
+    check("bag mover: never moved, beside the fire", bag.pt.CENTER == 500 + Reach(64) and bag.pty.CENTER == 300 - 32
+        and bag.relPt.CENTER == "BOTTOMLEFT")
+    check("bag mover: the HUD Editor knows it follows the Campfire", bag.mover.follows() == "Campfire")
     icon.cx = 620
     icon:SetPoint("CENTER", nil, "BOTTOMLEFT", 620, 300)
     check("bag mover: dragging the fire carries it along", bag.pt.CENTER == 620 + Reach(64))
@@ -1658,7 +1664,8 @@ do
     local reads = s.reads[CAMP] or 0
     bag:SetPoint("CENTER", nil, "CENTER", 40, -20)
     bag.mover.onMoved(spot)
-    check("bag mover: dragged, its spot is saved", s.values.campBagPos == spot)
+    check("bag mover: dragged, its spot is saved and it no longer follows", s.values.campBagPos == spot
+        and bag.mover.follows() == nil)
     check("bag mover: saving the spot refreshes nothing else", (s.reads[CAMP] or 0) == reads)
     icon.cx = 700
     icon:SetPoint("CENTER", nil, "BOTTOMLEFT", 700, 300)
@@ -1670,13 +1677,14 @@ do
     s.auras[NEARBY] = {}
     s.fire("UNIT_AURA")
     check("bag mover: near a campfire, at its own spot", bag.shown and not bag.mover.shown
-        and bag.pt.CENTER == 40 and bag.pty.CENTER == -20)
+        and bag.pt.CENTER == 40 and bag.pty.CENTER == -20 and bag.relPt.CENTER == "CENTER")
     s.S.Set("campIconSize", 80)
     check("bag mover: a Campfire setting resizes it and leaves the spot", bag.w == 80 * St.CAMP_BAG_SCALE
         and bag.pt.CENTER == 40 and bag.pty.CENTER == -20)
     s.ns.AuraBuffs.CampBag.ResetPosition()
     check("bag mover: Sleeping Bag Position puts it back beside the fire", s.values.campBagPos == nil
-        and bag.pt.CENTER == 700 + Reach(80) and bag.pty.CENTER == 300 - 40)
+        and bag.pt.CENTER == 700 + Reach(80) and bag.pty.CENTER == 300 - 40 and bag.relPt.CENTER == "BOTTOMLEFT"
+        and bag.mover.follows() == "Campfire")
     check("bag mover: the reset is a Round row on the Campfire card",
         Read("NaowhForever_Combat/AuraBuffs/UI/CampfireCards.lua"):find(
             'label = "Sleeping Bag Position", buttonText = "Reset", button = A.CampBag.ResetPosition', 1, true))
@@ -1688,6 +1696,13 @@ do
     s.combat = false
     s.fire("PLAYER_REGEN_ENABLED")
     check("bag mover: then goes back beside the fire", bag.pt.CENTER == 700 + Reach(80))
+    s.ns.ShowUnlockMode()
+    s.combat = true
+    s.ns.HideUnlockMode()
+    check("bag mover: leaving the HUD Editor in combat takes its plate off the secure button at once",
+        bag.shown and not bag.mover.shown)
+    s.combat = false
+    s.fire("PLAYER_REGEN_ENABLED")
     s.carried[BAG] = 0
     s.ns.ShowUnlockMode()
     check("bag mover: not carried, the HUD Editor leaves it out", not bag.shown and not bag.mover.shown)
