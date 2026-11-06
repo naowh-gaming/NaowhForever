@@ -207,7 +207,7 @@ local function Fixture(opts)
         UnitClass = function(unit) return "x", state.units[unit] end,
         UnitLevel = function() return state.level end,
         UnitIsConnected = function() return true end,
-        UnitIsDeadOrGhost = function() return false end,
+        UnitIsDeadOrGhost = function(unit) return unit == "player" and state.dead == true end,
         UnitGroupRolesAssigned = function(unit) return state.roles[unit] or "NONE" end,
         GetPartyAssignment = function(_, unit) return state.mainTanks[unit] end,
         UnitIsVisible = function() return true end,
@@ -1653,13 +1653,13 @@ end
 -- The Sleeping Bag: out in the world, below 60, while you carry it, it is ready and Well-Rested is missing or
 -- under 15 minutes. Off by default; never while resting, in an instance, or with the bag on its cooldown.
 do
-    local BAG, RESTED, UNROLL = 211527, 429959, 429961
+    local BAG, RESTED = 211527, 429959
     local ICON = "item:" .. BAG
     local t = Fixture({ units = { player = "WARRIOR" }, bags = { BAG }, settings = { personalBuffs = false } })
     t.state.level = 30
     t.Login()
     Check("off by default: no bag", t.Shown(), "")
-    Check("off: not listening for casts", t.Listening("UNIT_SPELLCAST_SUCCEEDED"), false)
+    Check("off: not listening for the bag's cooldown", t.Listening("BAG_UPDATE_COOLDOWN"), false)
     t.Set("sleepingBag", true)
     Check("on: the bag, ready and no Well-Rested", t.Shown(), ICON)
     local cell
@@ -1667,12 +1667,23 @@ do
         if rawget(f, "icon") and f.shown and f.icon.texture == ICON then cell = f end
     end
     Check("a click uses the bag", cell and cell.attributes.type1 .. " " .. cell.attributes.item1, "item item:" .. BAG)
-    Check("and it listens for the bag being used", t.Listening("UNIT_SPELLCAST_SUCCEEDED"), true)
+    Check("and it listens for the bag's cooldown", t.Listening("BAG_UPDATE_COOLDOWN"), true)
+    Check("and for reaching level 60", t.Listening("PLAYER_LEVEL_UP"), true)
+    Check("and for dying and coming back", t.Listening("PLAYER_DEAD") and t.Listening("PLAYER_ALIVE")
+        and t.Listening("PLAYER_UNGHOST"), true)
 
+    local reads = t.state.reads
+    t.Fire("BAG_UPDATE_COOLDOWN")
+    t.Advance(0.5)
+    Check("a global cooldown with the bag ready does not refresh the row", t.state.reads, reads)
     t.state.cooldowns[BAG] = { t.state.now, 3600 }
-    t.Fire("UNIT_SPELLCAST_SUCCEEDED", "player", "cast1", UNROLL)
+    t.Fire("BAG_UPDATE_COOLDOWN")
     t.Advance(0.5)
     Check("used: gone while it cools down", t.Shown(), "")
+    reads = t.state.reads
+    t.Fire("BAG_UPDATE_COOLDOWN")
+    t.Advance(0.5)
+    Check("with the bag hidden, cooldown events do nothing", t.state.reads, reads)
     t.Advance(3600)
     Check("back once the cooldown ends, with no event", t.Shown(), ICON)
 
@@ -1709,11 +1720,21 @@ do
     Check("in a dungeon: no bag", t.Shown(), "")
     t.state.instance = "none"
 
-    t.state.level = 60
+    t.state.dead = true
+    t.Fire("PLAYER_DEAD")
+    t.Advance(0.5)
+    Check("dead: no bag", t.Shown(), "")
+    t.state.dead = false
+    t.Fire("PLAYER_ALIVE")
+    t.Advance(0.5)
+    Check("alive again: the bag", t.Shown(), ICON)
+
+    t.Fire("PLAYER_LEVEL_UP", 60)
+    t.Advance(0.5)
+    Check("reaching level 60: gone at once", t.Shown(), "")
+    t.ns.AuraBuffs.Buffs.NoteLevel(nil)
     t.Fire("PLAYER_ENTERING_WORLD")
     t.Advance(0.5)
-    Check("at level 60: no bag", t.Shown(), "")
-    t.state.level = 30
 
     t.state.bags = {}
     t.Fire("BAG_UPDATE_DELAYED")

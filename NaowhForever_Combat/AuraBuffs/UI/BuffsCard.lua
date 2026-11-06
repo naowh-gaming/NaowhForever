@@ -110,10 +110,10 @@ local function PaintPreview(shot, state)
         if consumables then Put(shot.cells[i], p.item and C_Item.GetItemIconByID(p.item) or C_Spell.GetSpellTexture(p.spell), p.count) end
         shot.cells[i]:SetShown(consumables)
     end
-    if personal then Put(shot.personal, C_Spell.GetSpellTexture(personal)) end
-    shot.personal:SetShown(personal and true or false)
     if bag then Put(shot.bag, C_Item.GetItemIconByID(SLEEPING_BAG)) end
     shot.bag:SetShown(bag and true or false)
+    if personal then Put(shot.personal, C_Spell.GetSpellTexture(personal)) end
+    shot.personal:SetShown(personal and true or false)
     local raidCell = shot.cells[RAID_SAMPLE]
     if raid then
         local count = PREVIEW[RAID_SAMPLE].count

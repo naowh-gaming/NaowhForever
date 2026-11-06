@@ -111,9 +111,13 @@ local function Left(aura)
     return expiry - GetTime()
 end
 
+local function Level()
+    return math.max(UnitLevel("player"), leveledTo or 0)
+end
+
 local function ShowsHere(kind, zone)
     local keys = WHERE[kind]
-    local level = math.max(UnitLevel("player"), leveledTo or 0)
+    local level = Level()
     if zone == "none" and S.Get(keys.atMax) and level >= MAX_LEVEL then return false end
     return S.Get(keys[zone] or keys.none)
 end
@@ -263,29 +267,6 @@ local function Consumables(list, buffs)
     end
 end
 
-local function BagCooldown()
-    local start, duration, enable = C_Container.GetItemCooldown(SLEEPING_BAG)
-    if Secret(start) or Secret(duration) or Secret(enable) then return nil end
-    if enable ~= 1 or not duration or duration <= GCD then return 0 end
-    return math.max(start + duration - GetTime(), 0)
-end
-
-local function SleepingBag(list, buffs, zone)
-    if zone ~= "none" or IsResting() or UnitIsDeadOrGhost("player") then return end
-    if math.max(UnitLevel("player"), leveledTo or 0) >= MAX_LEVEL or C_Item.GetItemCount(SLEEPING_BAG) == 0 then return end
-    local cooldown = BagCooldown()
-    if not cooldown then return end
-    if cooldown > 0 then return Wake(cooldown) end
-    local aura = buffs[Camp.WELL_RESTED]
-    local left = aura and Left(aura)
-    local warn = BAG_WARN_MINUTES * SECONDS
-    if aura and not (left and left <= warn) then
-        if left then Wake(left - warn) end
-        return
-    end
-    list[#list + 1] = { icon = ItemIcon(SLEEPING_BAG), aura = aura, item = SLEEPING_BAG, key = "sleepingBag" }
-end
-
 local function Picked(family)
     local on = S.Get("raidBuffPicks")[family.key]
     if on == nil then return family.class ~= "PALADIN" end
@@ -383,6 +364,24 @@ local function Lasts(left, warn, duration)
     if left <= warn then return false end
     Wake(left - warn)
     return true
+end
+
+local function BagCooldown()
+    local start, duration, enable = C_Container.GetItemCooldown(SLEEPING_BAG)
+    if Secret(start) or Secret(duration) or Secret(enable) then return nil end
+    if enable ~= 1 or not duration or duration <= GCD then return 0 end
+    return math.max(start + duration - GetTime(), 0)
+end
+
+local function SleepingBag(list, buffs, zone)
+    if zone ~= "none" or IsResting() or UnitIsDeadOrGhost("player") then return end
+    if Level() >= MAX_LEVEL or C_Item.GetItemCount(SLEEPING_BAG) == 0 then return end
+    local cooldown = BagCooldown()
+    if not cooldown then return end
+    if cooldown > 0 then return Wake(cooldown) end
+    local aura = buffs[Camp.WELL_RESTED]
+    if aura and Lasts(Left(aura), BAG_WARN_MINUTES * SECONDS) then return end
+    list[#list + 1] = { icon = ItemIcon(SLEEPING_BAG), aura = aura, item = SLEEPING_BAG, key = "sleepingBag" }
 end
 
 local function SlotEnchanted(weaponSlot, warn)
@@ -497,7 +496,8 @@ Reminders.Secret = Secret
 Reminders.ShowsHere = ShowsHere
 
 function Reminders.WatchesLevel()
-    return (S.Get("consumablesMaxHide") or S.Get("raidBuffsMaxHide") or S.Get("personalBuffsMaxHide"))
+    return (S.Get("consumablesMaxHide") or S.Get("raidBuffsMaxHide") or S.Get("personalBuffsMaxHide")
+        or S.Get("sleepingBag"))
         and UnitLevel("player") < MAX_LEVEL
 end
 
@@ -577,8 +577,8 @@ function Reminders.NoteImbueCast(spellID)
     return false
 end
 
-function Reminders.IsBagCast(spellID)
-    return spellID == Camp.UNROLL_BAG
+function Reminders.BagBusy()
+    return BagCooldown() ~= 0
 end
 
 function Reminders.NoteFoodCast(spellID)

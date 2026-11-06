@@ -34,7 +34,7 @@ local PREVIEW = {
     { item = D.SCROLLS[4].items[4], count = 2 }, { raid = true, count = 3 },
 }
 
-local frame, unlocked, pending, held
+local frame, unlocked, pending, held, bagShown
 local wakeTimer, wakeDue
 local rangeTicker, rangeList
 local cells = {}
@@ -135,7 +135,7 @@ end
 
 local function Show(list)
     local size = S.Get("iconSize")
-    local moving, shown = false, 0
+    local moving, shown, bag = false, 0, false
     for _, entry in ipairs(list) do
         local inRange = entry.rangeUnits and R.InRange(entry)
         if not Hides(entry, inRange) then
@@ -150,6 +150,7 @@ local function Show(list)
             cell:Show()
             PaintRange(cell, entry, inRange)
             entry.cell = cell
+            if entry.key == "sleepingBag" then bag = true end
         end
         if RangeMoves(entry) then moving = true end
     end
@@ -157,6 +158,7 @@ local function Show(list)
         Glow.Set(cells[i], false)
         cells[i]:Hide()
     end
+    bagShown = bag
     Cell.Fit(frame, shown, size)
     if moving then
         rangeList = list
@@ -225,6 +227,10 @@ local function FadeCast(spellID)
 end
 
 local function OnEvent(_, event, unit, arg2, spellID)
+    if event == "BAG_UPDATE_COOLDOWN" then
+        if bagShown and R.BagBusy() then Queue() end
+        return
+    end
     if event == "UNIT_AURA" and (InCombatLockdown() or Secret(unit)
         or not (GROUP_UNIT[unit] or unit == "target" and R.WatchesTarget())) then return end
     if event == "PLAYER_LEVEL_UP" then R.NoteLevel(unit) end
@@ -238,7 +244,7 @@ local function OnEvent(_, event, unit, arg2, spellID)
     if event == "ITEM_DATA_LOAD_RESULT" and not R.Requested(unit) then return end
     if event == "UNIT_SPELLCAST_SUCCEEDED" and not Secret(spellID) then FadeCast(spellID) end
     if event == "UNIT_SPELLCAST_SUCCEEDED" and (Secret(spellID)
-        or not (R.NoteImbueCast(spellID) or R.NoteFoodCast(spellID) or R.NoteUseCast(spellID) or R.IsBagCast(spellID))) then return end
+        or not (R.NoteImbueCast(spellID) or R.NoteFoodCast(spellID) or R.NoteUseCast(spellID))) then return end
     Queue()
 end
 
@@ -277,8 +283,7 @@ local function Listen()
     if S.Get("personalBuffs") or S.Get("weaponEnhancements") then
         events:RegisterUnitEvent("UNIT_INVENTORY_CHANGED", "player")
     end
-    if S.Get("personalBuffs") or R.WatchesImbue() or not R.Carried("food") or S.Get("buffIconMode") == "last"
-        or S.Get("sleepingBag") then
+    if S.Get("personalBuffs") or R.WatchesImbue() or not R.Carried("food") or S.Get("buffIconMode") == "last" then
         events:RegisterUnitEvent("UNIT_SPELLCAST_SUCCEEDED", "player")
     end
     events:RegisterEvent("PLAYER_ENTERING_WORLD")
@@ -288,6 +293,12 @@ local function Listen()
     events:RegisterEvent("BAG_UPDATE_DELAYED")
     events:RegisterEvent("PLAYER_REGEN_DISABLED")
     events:RegisterEvent("ITEM_DATA_LOAD_RESULT")
+    if S.Get("sleepingBag") then
+        events:RegisterEvent("BAG_UPDATE_COOLDOWN")
+        events:RegisterEvent("PLAYER_DEAD")
+        events:RegisterEvent("PLAYER_ALIVE")
+        events:RegisterEvent("PLAYER_UNGHOST")
+    end
 end
 
 function Apply()

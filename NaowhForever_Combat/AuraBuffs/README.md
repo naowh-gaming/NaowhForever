@@ -196,8 +196,10 @@ NaowhForever_Combat/AuraBuffs/
   stays as it is.
 - No event fires when the bag's hour-long cooldown ends or Well-Rested drops under 15 minutes, so both are a
   wake (`Wake`). One of `GCD` (1.5 s) or less is the global cooldown, not the bag's; a secret cooldown shows
-  nothing. Using the bag is the Unroll Bag cast (`UNROLL_BAG`, 429961), so its `UNIT_SPELLCAST_SUCCEEDED`
-  refreshes the row and the icon goes as the cooldown starts.
+  nothing. Using the bag starts its cooldown: `BAG_UPDATE_COOLDOWN` fires on every global cooldown, so it
+  refreshes the row only while the bag shows and is now on cooldown (`R.BagBusy`). Level 60
+  (`PLAYER_LEVEL_UP`, through `WatchesLevel`) and dying or coming back (`PLAYER_DEAD`, `PLAYER_ALIVE`,
+  `PLAYER_UNGHOST`) refresh it too, registered only while it is on.
 - With Only If I Carry One on (the default), Robin asked for reminders only while you have the item. So a kind
   shows when an item of its `D.DEFAULT_GROUPS` list is carried (buff food is any bag item whose use spell is in
   `D.FOOD_SPELLS`), with that list's auras counting as up. The item offered is the highest required level you can
