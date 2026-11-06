@@ -90,7 +90,10 @@ NaowhForever_QoL/
     GroupButtons.lua    On-Screen Buttons (Invite, your invite buttons, Invite All, Disband)
     FreeForAll.lua      Always Free for All, the party loot method while you lead
     LayerSwap.lua       Auto-Accept Layer Swap, confirming the game's layer swap prompt on joining a group
-    LayerTracker.lua    Layer Tracker, the layer you are on, read from the NPCs around you
+    LayerTracker.lua    Layer Tracker, the layer you are on, read from the NPCs around you, and the layers seen
+                        in your zone (ns.Layers)
+    LayerRequests.lua   Layer Tracker's swaps: asking the layer channel for an invite, other players'
+                        requests with an Invite button, leaving a swap that did not move you
     QuestProgress.lua   Announce Quest Progress, your quest objective updates said in party chat
     FinderRoles.lua     Group Finder Roles, the role buttons on the Group Finder
     TalentPoints.lua    the unspent talent points reminder
@@ -1276,15 +1279,48 @@ NaowhForever_QoL/
   Journal's quest sharing guards the same event.
 
 ### Layer Tracker
-- The layer is the fifth part of an NPC's GUID, `Creature-0-server-map-zoneUID-id-spawn`: the copy of the
-  zone the NPC is in. It is shown as the game's own number, so players on the same layer read the same one.
-  Every zone has its own numbers, so the reading starts over on a zone change.
+- A layer is the server and zone copy parts of an NPC's GUID, `Creature-0-server-map-zoneUID-id-spawn`
+  (`Shared.LayerOf`): the same copy number on another server is another layer. The line shows the copy number,
+  so players on the same layer read the same one. Every zone has its own numbers, so the reading starts over
+  on a zone change, and the layers seen are listed per zone (`ZoneMap`: the zone a smaller map is in).
 - Your target and mouseover always take over; a new nameplate only fills an empty reading, since a
   nameplate can belong to the zone across a border.
 - `SHARD_TRANSFER` is the game moving you to another layer, the world refresh its own toast counts down
   to, so the reading starts over there and on every loading screen. Instances have no layers: it hides inside.
+- The countdown is `GetEvictionTimeRemaining()` at `SHARD_TRANSFER_IMMINENT`, the same time the game's toast
+  counts from; its one-second ticker runs only until `SHARD_TRANSFER` or `SHARD_TRANSFER_CANCELLED`.
+- "You moved" is said only for the first reading after a `SHARD_TRANSFER` that differs from the one before it,
+  so mousing over NPCs never says it.
 - Only creature and vehicle GUIDs are read; a player's GUID has no zone copy in it. A GUID or nameplate unit
   the game keeps secret is left unread (`issecretvalue`): `UnitGUID` refuses a secret unit from addon code.
+- The layers seen are this session's only, at most `SEEN_MAX` (12) per zone, the oldest dropped first. A layer
+  named in someone's swap request is listed as heard until you read it yourself.
+- `ns.Layers` is what the swaps (`LayerRequests.lua`) and Discovery's rare tooltips read: the current layer,
+  the zone, and noting a heard layer. The swaps fill in its `Click` and `AddTip`.
+
+### Layer Tracker swaps
+- Forever has no way to move you to a layer: you join the group of someone on it, and the game moves you
+  there (its own prompt, which Auto-Accept Layer Swap confirms). You keep that layer only while you stay in
+  the group.
+- A request is one visible line in the public `layer` channel, the line other layer addons on Forever already
+  answer: `inv layer <LS map not server-zoneUID>`, your zone and the layer you want to leave. A line in a
+  channel can only be sent from a click, so it is sent by the click on the line and never repeated; asking
+  again waits `ASK_GAP` (30 seconds). Hidden addon messages over a channel are not used: they are documented
+  as disabled on Classic, and their delivery between Forever clients is unverified.
+- The channel is joined `JOIN_DELAY` (10 seconds) after login or switching swaps on, never at login itself:
+  joined before the game's General and Trade it would take their channel numbers. It is joined with
+  `JoinTemporaryChannel` (left at logout) and in no chat window, so its lines are never shown. Switching swaps
+  off leaves it only if this session joined it.
+- An ask ends after `ASK_TIME` (60 seconds) without an invite. A group joined while asking is the answer: if no
+  move starts within `CHECK_AFTER` (15 seconds), or the move is cancelled, the swap failed and Leave Failed
+  Swaps leaves the group (a host in another zone, or on your layer, cannot move you).
+- Another player's request shows a prompt with an Invite button (`Parts.Toast`), never an invite by itself:
+  only for your zone and a layer that is not yours, one at a time, at most once a minute per player
+  (`PROMPT_AGAIN`, a list of `ASKERS_MAX` names), and never in combat, an instance, a raid, while you ask, or
+  in a group you do not lead or that is full. Friends and guildmates are named as such.
+- `CHAT_MSG_CHANNEL` is read only while swaps are on, and only the `layer` channel's lines; a secret line,
+  name, GUID or channel name is left unread. Every request's layer is noted, even with Show Requests From
+  Others off.
 
 ### Invite Buttons
 - The list is in `ns.PROFILE_OWN`: a shared profile never carries your friends' BattleTags.

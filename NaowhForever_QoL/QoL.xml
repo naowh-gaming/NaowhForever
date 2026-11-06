@@ -19,6 +19,7 @@
     <Script file="Questing\FreeForAll.lua"/>
     <Script file="Questing\LayerSwap.lua"/>
     <Script file="Questing\LayerTracker.lua"/>
+    <Script file="Questing\LayerRequests.lua"/>
     <Script file="Questing\QuestProgress.lua"/>
     <Script file="Questing\FinderRoles.lua"/>
     <Script file="Loot\LootConfirm.lua"/>
