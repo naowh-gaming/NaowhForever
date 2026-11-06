@@ -19,7 +19,7 @@ local EVENTS = {
 local ZONE_TYPE = Enum.UIMapType.Zone
 local TICK = 1
 local SEEN_MAX = 12
-local PAD_X, ROOM = 8, 8
+local PAD_W, ROOM = 16, 8
 local DEFAULT_POS = { point = "TOP", relPoint = "TOP", x = -274, y = -77 }
 local TEXT_RANGE = { 10, 40, 1 }
 local SECONDS_PER_MINUTE = ns.QoLConstants.SECONDS_PER_MINUTE
@@ -117,7 +117,7 @@ local function Update()
         return
     end
     frame.text:SetText(Text())
-    frame:SetWidth(frame.text:GetStringWidth() + PAD_X * 2)
+    frame:SetWidth(frame.text:GetStringWidth() + PAD_W)
     frame:Show()
 end
 
