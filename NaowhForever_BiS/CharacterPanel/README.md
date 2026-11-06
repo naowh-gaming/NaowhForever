@@ -93,6 +93,10 @@ the game's art comes back and ours hides.
 - Our backdrop sits at the panel's own frame level, under the game's frames, so the game's slots,
   model and stats draw over it. Each faded or tinted piece of the game's art is remembered so turning
   it off brings it all back.
+- The model's dark `BackgroundOverlay` shows again on the first open after a login or reload,
+  though it was faded at login, so the model's art is faded again from a post-hook of the paper
+  doll's OnShow, which runs after the game's. What brings it back is not in Forever's exported UI
+  (1.60.1.70009): its `SetPaperDollBackground` only sets the four backdrop textures.
 - A model's buttons are faded texture by texture: the game sets their frame's alpha itself on hover,
   never their art's. A frame covers their strip so they take no clicks; dragging the model turns it
   and the wheel zooms it.
@@ -109,6 +113,9 @@ the game's art comes back and ours hides.
   panel round it.
 - The score card is a child of the game's stats list (its fade ignored), so the game hides it with
   the list whenever its gear sets, titles or pet take that room, and it never sits over their rows.
+- Your spec's stats and their switch are children of the game's stats list too (its fade ignored),
+  so they show only while it does. As the panel's children, shown and hidden from the list's OnShow
+  and OnHide, they were left over the PvP tab.
 - `ROOM` is what the game leaves between your level and its list's top (the list's first title sits
   low in its own row): only what the score needs beyond it moves the list down.
 - The stats can go secret under the game's addon restrictions (combat, an encounter, some maps):

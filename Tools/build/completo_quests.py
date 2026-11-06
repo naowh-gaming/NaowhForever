@@ -15,11 +15,17 @@ and the battleground ones among those in D.Battleground too.
 Which quests Forever gives, and where their givers stand, come from foreverchanges_quests.json
 (Tools/build/foreverchanges_quests.py): a quest it does not list is left out, one it lists that
 nothing above has is added, a quest goes in the zone it files it under, and its giver's spot comes
-before any other.
+before any other. Its class, levels and side replace a quest's where quest_entity_catalog.json has
+the same: Wowhead's zone pages give some class quests no class (Anthion's Parting Words) and old
+levels. Neither alone is taken, since each has its own slips.
 
 Answers are cached, so a run that dies on Wowhead's rate limit resumes where it stopped:
 completo_zones.json (each zone's quest rows) and completo_quests.json (each quest's
 { chain, start }). Delete an entry to fetch it again. --offline writes from the caches only.
+
+completo_fixes.json, kept by hand, corrects what the sources get wrong and adds what they lack (the
+breadcrumbs, the quests of which you take one, the profession a quest needs and the camp recipe it
+teaches), each with what shows it.
 
 Usage: python Tools/build/completo_quests.py [--offline]
 """
@@ -46,6 +52,7 @@ DUNGEON = paths.DATA / "completo_dungeon.json"
 ELSEWHERE = paths.DATA / "completo_elsewhere.json"
 CATALOG = paths.DATA / "quest_entity_catalog.json"
 LISTED = paths.DATA / "foreverchanges_quests.json"
+FIXES = paths.DATA / "completo_fixes.json"
 # Wowhead answers 403 after ~125 pages at 1.5s apart; 5s ran clean.
 GAP = 4
 
@@ -202,6 +209,19 @@ def forever_spot(map_id, x, y):
     return (fy1 - world_y) / (fy1 - fy0) * 100, (fx1 - world_x) / (fx1 - fx0) * 100
 
 
+# Wowhead's race masks use the game's bits (ChrRaces' PlayableRaceBit): Human 0, Orc 1, Dwarf 2,
+# Night Elf 3, Undead 4, Tauren 5, Gnome 6, Troll 7, High Order Skyborne 32, Windshaper Skyborne 33.
+HIGH_ORDER, WINDSHAPER = 1 << 32, 1 << 33
+
+
+def races(mask, side):
+    """The quest's race mask with the export's slip mended: a quest for both sides that names only
+    the High Order Skyborne is both Skyborne's, as Wowhead and ForeverChanges both call it."""
+    if side == 3 and mask == HIGH_ORDER:
+        return HIGH_ORDER | WINDSHAPER
+    return mask
+
+
 def lua_string(s):
     # ASCII only, as the addon files must be: an accented letter keeps its base letter.
     s = unicodedata.normalize("NFKD", s).encode("ascii", "ignore").decode()
@@ -227,6 +247,77 @@ def prerequisites(quests, requires, known):
     for qid in before:
         before[qid].discard(qid)
     return {q: sorted(p) for q, p in before.items() if p}
+
+
+def warn(message):
+    print(f"completo_fixes.json: {message}", file=sys.stderr)
+
+
+def corrected(before, requires, fixes, known):
+    """before and requires with completo_fixes.json's "requires" applied: a quest's add joins the
+    quests before it, its drop leaves them and its explicit groups. A fix naming a quest the data
+    lacks is skipped with a warning rather than stopping the build, which the daily watch runs
+    unattended; an add it needs already or a drop it does not need is warned of too. Keys starting
+    with _ are notes."""
+    before = {q: set(p) for q, p in before.items()}
+    requires = dict(requires)
+    for key, fix in fixes.items():
+        if key.startswith("_"):
+            continue
+        qid, add, drop = int(key), set(fix.get("add", [])), set(fix.get("drop", []))
+        if not known_quests(sorted(add | drop | {qid}), known, f"requires {key}"):
+            continue
+        had = before.get(qid, set())
+        if add & had:
+            warn(f"requires {key} adds {', '.join(map(str, sorted(add & had)))}, which it needs already")
+        if drop - had:
+            warn(f"requires {key} drops {', '.join(map(str, sorted(drop - had)))}, which it does not need")
+        before[qid] = (had | add) - drop
+        groups = (requires.get(key) or {}).get("groups")
+        if groups and drop:
+            kept = []
+            for g in groups:
+                g = [i for i in g if i not in drop] if isinstance(g, list) else ([] if g in drop else [g])
+                if g:
+                    kept.append(g if len(g) > 1 else g[0])
+            requires[key] = dict(requires[key], groups=kept)
+    return {q: sorted(p) for q, p in before.items() if p}, requires
+
+
+def known_quests(qids, known, where):
+    """Whether the data has every quest qids names; if not, a warning that the entry is skipped."""
+    unknown = [q for q in qids if int(q) not in known]
+    if unknown:
+        warn(f"{where} names quest {', '.join(map(str, unknown))}, which the data does not have; skipped")
+    return not unknown
+
+
+# ForeverChanges files the camping quests under the game's Camping quest sort (QuestSort 666).
+CAMPING = ["sort", 666]
+
+
+def exclusive_groups(rows, listed, fixes):
+    """Groups of quests of which you take one: the camping quests of one name, each starting area's
+    version of The Great Outdoors, The Adventurer and each Camping 101, and completo_fixes.json's. The
+    addon keeps one group per quest, so a hand-kept group naming a quest already in one is skipped with
+    a warning."""
+    named = {}
+    for qid, (_, q) in rows.items():
+        if ((listed.get("quests") or {}).get(str(qid)) or {}).get("category") == CAMPING:
+            named.setdefault(q["name"], []).append(qid)
+    groups = [sorted(g) for g in named.values() if len(g) > 1]
+    grouped = {q for g in groups for q in g}
+    for group in fixes:
+        quests = sorted(group["quests"])
+        if not known_quests(quests, rows, f"exclusive {quests}"):
+            continue
+        twice = sorted(grouped.intersection(quests))
+        if twice:
+            warn(f"exclusive {quests} names quest {', '.join(map(str, twice))}, which is in a group already; skipped")
+            continue
+        grouped.update(quests)
+        groups.append(quests)
+    return sorted(groups)
 
 
 def requirements(before, known, requires=None):
@@ -395,7 +486,7 @@ def main():
             time.sleep(GAP)
 
     write(zones, quests, requires, items, load(DUNGEON).get("quests", {}), load(ELSEWHERE).get("quests", {}), load(CATALOG),
-          load(LISTED))
+          load(LISTED), load(FIXES))
     for line in failed:
         print("FAILED", line, file=sys.stderr)
 
@@ -435,9 +526,22 @@ def listed_spot(starts, zone_map):
     return min(spots, key=lambda s: s[0] != zone_map) if spots else None
 
 
-def write(zones, quests, requires, items, dungeon, elsewhere, catalog=None, listed=None):
+AGREED = ("reqclass", "reqlevel", "level", "side")
+
+
+def agreed(q, listed, catalog):
+    """The quest with ForeverChanges' class, levels and side wherever the catalog says the same."""
+    theirs, other = listed.get(str(q["id"])), catalog.get(str(q["id"]))
+    if not theirs or not other:
+        return q
+    changed = {k: theirs[k] for k in AGREED if theirs.get(k) is not None and theirs[k] == other.get(k) != q.get(k)}
+    return dict(q, **changed) if changed else q
+
+
+def write(zones, quests, requires, items, dungeon, elsewhere, catalog=None, listed=None, fixes=None):
     catalog = catalog or {}
     listed = listed or {}
+    fixes = fixes or {}
     zones = {k: {**z, "quests": list(z["quests"])} for k, z in zones.items()}
     for z in zones.values():
         z["quests"] = [q for q in z["quests"] if not PLACEHOLDER.search(q["name"])]
@@ -482,8 +586,11 @@ def write(zones, quests, requires, items, dungeon, elsewhere, catalog=None, list
             zone["quests"].append({k: v for k, v in quest.items() if k != "category"} | {"id": qid})
             existing.add(qid)
         spots = {q: d for q, d in spots.items() if str(q) in listed["quests"]}
+        for z in zones.values():
+            z["quests"] = [agreed(q, listed["quests"], catalog) for q in z["quests"]]
     rows = {q["id"]: (int(area), q) for area, z in zones.items() for q in z["quests"]}
     before = prerequisites(quests, requires, rows)
+    before, requires = corrected(before, requires, fixes.get("requires", {}), rows)
     chains = chains_of(quests, before, rows)
     lines = [
         "-- Quests.lua: every quest of every zone and its chain, generated by Tools/build/completo_quests.py.",
@@ -531,7 +638,8 @@ def write(zones, quests, requires, items, dungeon, elsewhere, catalog=None, list
                 x, y = forever_spot(m, x, y)
                 spot = f"{m}, {x:.1f}, {y:.1f}, {lua_string(mob)}, {item}"
         lines.append(f"    [{qid}] = {{ {lua_string(q['name'])}, {q.get('level') or 0}, "
-                     f"{q.get('reqlevel') or 0}, {q.get('side') or 3}, {q.get('reqrace') or 0}, "
+                     f"{q.get('reqlevel') or 0}, {q.get('side') or 3}, "
+                     f"{races(q.get('reqrace') or 0, q.get('side') or 3)}, "
                      f"{q.get('reqclass') or 0}, {spot} }},")
     repeatable = sorted((set((items or {}).get("repeatable", [])) |
                          {int(k) for k, v in catalog.items() if v["repeatable"]}) & set(rows))
@@ -582,6 +690,44 @@ def write(zones, quests, requires, items, dungeon, elsewhere, catalog=None, list
         for ids, any_of in steps:
             parts.append("{ " + ", ".join(map(str, ids)) + (", any = true" if any_of else "") + " }")
         lines.append("    { " + ", ".join(parts) + " },")
+    lines += [
+        "}",
+        "",
+        "D.Exclusive = {",
+    ]
+    for group in exclusive_groups(rows, listed, fixes.get("exclusive", [])):
+        lines.append("    { " + ", ".join(map(str, group)) + " },")
+    lines += [
+        "}",
+        "",
+        "D.Breadcrumb = {",
+    ]
+    breadcrumbs = {int(k): b["to"] for k, b in fixes.get("breadcrumbs", {}).items()
+                   if not k.startswith("_") and known_quests([int(k), b["to"]], rows, f"breadcrumbs {k}")}
+    for qid in sorted(breadcrumbs):
+        lines.append(f"    [{qid}] = {breadcrumbs[qid]},")
+    skills, recipes = {}, {}
+    for entry in fixes.get("professions", []):
+        if not known_quests(entry["quests"], rows, f"professions {entry['skill']}"):
+            continue
+        for qid in entry["quests"]:
+            skills[qid] = entry["skill"]
+            if entry.get("recipe"):
+                recipes[qid] = entry["recipe"]
+    lines += [
+        "}",
+        "",
+        "D.Profession = {",
+    ]
+    for qid in sorted(skills):
+        lines.append(f"    [{qid}] = {skills[qid]},")
+    lines += [
+        "}",
+        "",
+        "D.Recipe = {",
+    ]
+    for qid in sorted(recipes):
+        lines.append(f"    [{qid}] = {recipes[qid]},")
     lines.append("}")
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_bytes(("\r\n".join(lines) + "\r\n").encode("ascii", "replace"))

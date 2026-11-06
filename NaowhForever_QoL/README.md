@@ -27,7 +27,8 @@ NaowhForever_QoL/
     View/Style.lua                 its look: skill colors, effect sizes and timings (G.Style)
     View/Effects.lua               the five effects on a frame, over the world and on the previews (G.Effects)
     UI/Conflict.lua                the question when another addon changes the same game settings (G.CheckOthers)
-    UI/Highlight.lua               the effect and its line on the target's nameplate, and its events
+    UI/Highlight.lua               the effect and its line on the target's nameplate, the game's cog there
+                                   at one size, and its events
     UI/Minimap.lua                 where herbs and veins grow, as icons on the minimap
     UI/MapPins.xml                 the Gathered pin's template, and the file that fills it
     UI/MapPins.lua                 the herbs and veins you gathered on the world map, noted as you loot them
@@ -436,6 +437,8 @@ NaowhForever_QoL/
 - Forget a character exists because deleted or transferred characters otherwise stay in the
   counts and the Alts list for good.
 - The Forever bank is the character bank tabs; a tab not bought has no slots.
+- The bank is scanned while Alt Item Counts or the Loot Feed's Count Bank Items is on, the bags only for
+  Alt Item Counts: the Loot Feed counts the bags itself.
 - The mail scan (attachments, letters waiting, the soonest expiry) waits a second for a burst of
   `MAIL_INBOX_UPDATE` to end, as Open All fires one per letter.
 - Alt Item Counts are added to a tooltip only when some of the item is somewhere other than the
@@ -783,7 +786,9 @@ NaowhForever_QoL/
 - Paging and slot events arrive before the buttons pick up their new action, so the glow waits a frame, and a burst of events costs one pass.
 - An uncached spell has no subtext yet; read as rank 0 it would pass for a downrank, so it is skipped.
 - A lower rank beside the highest one on your bars stays, for downranking (a healer's Rank 1 heal next to the main one); only the highest copy is swapped. Kept spells are still listed, flagged.
-- New abilities stay lit per character in the account store, so a reload does not drop the glow.
+- New abilities stay lit per character in the account store, so a reload does not drop the glow. Forever
+  reports "Unknown" for the player's name early in loading; until the name is known, new abilities are
+  kept in a table that is never saved, since an `Unknown-<realm>` entry would be shared by every character.
 - The popup never opens in combat (rank swaps cannot happen there); it waits for combat to end and keeps the list it had.
 - Away from a trainer (a tome, a quest reward) the popup opens `SHOW_DELAY` (2 s) after the last new ability, instead of waiting for TRAINER_CLOSED.
 - Casts and bar changes are listened to only while a new ability is waiting to be used or still lit.
@@ -799,6 +804,7 @@ NaowhForever_QoL/
 - Every layout of the rewards ends by clearing the choice (the reward panel's OnShow, then QUEST_ITEM_UPDATE as uncached items arrive), so the saved pick is selected after QuestInfo_ShowRewards.
 - A quest a player shared with you is not shared again when you accept it: the group already has it.
 - Sharing makes the same call as Blizzard's Share button (QuestLogPushQuest). It is blocked in combat, so a quest accepted mid-fight is not shared.
+- A quest that asks for gold to hand in (`GetQuestMoneyToGet`) is left on its reward step for the player: the gold is taken by `GetQuestReward`, and Blizzard's Complete button asks to confirm the payment first (`CONFIRM_COMPLETE_EXPENSIVE_QUEST`), which handing it in for them would skip. The progress step before it still continues.
 - An NPC with several quests: the first finished one is handed in, else the first on offer is opened. A choice of rewards waits for the player unless this class has a pick for it.
 - The quest Modifier key keeps its saved key `questSkipModifier`; `questModifierMode` says whether holding it skips the quest steps (the default) or is what triggers them.
 - Auto Gossip picks a lone option only when its icon is one of `GOSSIP_ICON_PATHS` (vendor, trainer, banker, auctioneer, stable master), resolved with GetFileIDFromPath on first use. The binder (hearthstone), the generic gossip icon and the rest are never picked, so nothing that costs money or moves you. The taxi icon is left out too: some lone flight options fly you straight off. Without GetFileIDFromPath it does nothing.
@@ -1173,8 +1179,9 @@ NaowhForever_QoL/
 - CHAT_MSG_MONEY carries your own looted coins and a group share, and only those, so vendor sales and mail never reach the feed.
 - A quest turn-in also sends its experience as a combat XP message with no source named. The quest line already shows it, so that one is skipped while quest lines are on. A kill's message names the kill, and its first number is the total gained, rested bonus included.
 - Chat payloads can be secret; nothing in one is worth recovering, so a secret one is dropped.
+- Count Bank Items adds the bank Alts.lua saved (`ns.BankCount`) to the bags: on Forever, `C_Item.GetItemCount`'s bank flag left the bank out (reported in game). The bank is saved when it opens, so a character's bank counts from its first visit to the bank.
 - Hide Blizzard Loot Window takes every slot on LOOT_READY, one every `LOOT_STEP` (0.05 s). The window still opens and closes as normal, as hiding it would close the loot: it is shrunk to `SHRUNK` scale instead. Its open and close animations both drive alpha, so alpha cannot hide it, and it is clamped to the screen, so it cannot be moved off it. The taint scan allows its two `LootFrame:SetScale` calls.
-- The window stays full size whenever something would be left for the player: a group roll, a locked item, or bags too full. Still open `LOOT_GRACE` (1 s) after the last slot, something could not be taken, so the window comes back. Only a full-bags error during a loot matters, so errors are listened to only while one is open.
+- The window stays full size whenever something would be left for the player: a group roll, a locked item, or bags too full. An item that tops up a stack already in the bags needs no free slot, so full bags alone do not bring the window back. Still open `LOOT_GRACE` (1 s) after the last slot, something could not be taken, so the window comes back. Only a full-bags error during a loot matters, so errors are listened to only while one is open.
 - The window gets its size back after its close animation finishes, so it never flashes on the way out.
 - A Spacing of -1 lets neighbouring lines share one border.
 
@@ -1281,8 +1288,8 @@ NaowhForever_QoL/
   `ns.QoLSettings`: it was a module addon of its own (NaowhForever_Glimmer) before it moved into QoL,
   and the same table means every setting carried over with no migration.
 - Herbs and ore take the color of your chance of a skill-up and get a line under their name saying so; a
-  node your skill is too low for shows red with the skill it needs; a character without Herbalism or
-  Mining at all sees no herbs or ore lit, since they are not theirs to gather. Quest objects are
+  node your skill is too low for, or of a gathering profession you do not have, lights grey and dim
+  with the skill it needs, and On Nodes Your Skill Is Too Low For hides both. Quest objects are
   found three ways: the game marking them quest related, a quest objective in their tooltip, or the
   quest pick-up or turn-in cursor the game shows on them; that cursor is also what lights an NPC with a
   quest to pick up or hand in, the only NPCs Glimmer lights. Quest objects get the line of the
@@ -1311,6 +1318,17 @@ NaowhForever_QoL/
 - `SoftTargetIconGameObject` 1 is needed too: with it at 0 the game picks the object as the soft
   target but never makes its nameplate, so nothing lights up. A setting Glimmer adds later is saved
   into the old values the first time it is written, so turning Glimmer off puts it back as well.
+- The game's own Interact Key Icons option (Accessibility) writes `SoftTargetIconGameObject` 0 for
+  both Default and None, which would stop Glimmer with no word why. So while Glimmer is on,
+  `CVAR_UPDATE` on `SoftTargetIconGameObject` or `SoftTargetInteractOnlyInRange` keeps the player's
+  new value as the one to put back and writes Glimmer's again (after combat, if in it). Turning
+  Glimmer off then puts back the player's last choice; Enable Interact Key is never forced back.
+- With those settings the game puts its interact icon, the cog, on the soft target's nameplate
+  (`UnitFrame.SoftTargetFrame`, 24 wide in the nameplate's space), so its size follows each player's
+  nameplate scale: huge for some, small for others. On Forever `SoftTargetNameplateSize` only turns
+  it on or off. While Glimmer is on, the cog ignores its nameplate's scale and is drawn `COG_SIZE`
+  wide at the UI's scale, and is given back when the soft target or its nameplate changes or Glimmer
+  is turned off. A scale on an unprotected frame is allowed in combat, so it holds there too.
 - The nameplate is only opened for an object Glimmer lights (`onlyHighlighted`), so NPCs, mailboxes
   and doors do not grow a nameplate. Whether to open it does not need the nameplate: the object is
   read from the unit token, then the nameplate arrives with `NAME_PLATE_UNIT_ADDED`.
@@ -1325,7 +1343,8 @@ NaowhForever_QoL/
 - The game gives an NPC's quest cursor only as a low priority one: `SetUnitCursorTexture` answers false for a
   quest giver unless its fourth argument, `includeLowPriority`, is true, so the giver check passes it and the
   object check does not. The texture comes back as a name (`Cursor Crosshair_QuestTurnIn_64`), matched by its
-  words like the other cursors.
+  words like the other cursors. Forever's quest cursors also come as Important, Recurring and Wrapper (each with
+  a turn-in and an Unable version, in its UiTextureAtlasMember table), so those words count as quest too.
 - Quest objects come from `C_QuestLog.UnitIsRelatedToActiveQuest`, and their line is the quest
   objective line of the object's own tooltip, as the game words it.
 - Gathering gives a point every time up to 25 skill over the node's (orange), usually up to 50

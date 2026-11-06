@@ -171,6 +171,7 @@ local env = setmetatable({
     CreateVector2D = function() end,
     C_Map = { GetBestMapForUnit = function() end, GetWorldPosFromMapPos = function() end },
     UnitName = function() return "Me" end,
+    UnitGUID = function() return "Player-1-Me" end,
     GetRealmName = function() return "Realm" end,
     GetMoney = function() return 12345 end,
     GetClassInfo = function(id) return "Class " .. id, "MAGE" end,
@@ -364,7 +365,10 @@ check("a rank's row skips only that rank", skip and skip[second] and not skip[fi
 env.C_Spell.GetSpellName = spellName
 env.C_Spell.GetSpellSubtext = function() return "Rank 1" end
 Click(window.save)
+local pasteMax
+ns.PromptText = function(_, _, max, accept) pasteMax = max; accept("Mine") end
 Click(window.import)
+check("the import box caps a paste (0 is no cap) with room for any build code", pasteMax and pasteMax >= 1000)
 for _ = 1, 2 do
     for _, f in ipairs(Clickables()) do Click(f) end
 end

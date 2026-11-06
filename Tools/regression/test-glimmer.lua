@@ -39,12 +39,20 @@ local function Widget(log)
     function w:SetVertexColor(r, g, b) self.color = { r, g, b } end
     function w:GetWidth() return 140 end
     function w:GetEffectiveScale() return 1 end
+    function w:SetScale(s) self.scale = s end
+    function w:SetIgnoreParentScale(on) self.ignoreScale = on end
     function w:CreateMaskTexture() return Widget(log) end
     function w:AddMaskTexture(m) self.mask = m end
     function w:RemoveMaskTexture(m) if self.mask == m then self.mask = nil end end
     function w:GetHeight() return 140 end
     log.frames[#log.frames + 1] = w
     return w
+end
+
+local function Plate(log)
+    local base = Widget(log)
+    base.UnitFrame = { SoftTargetFrame = Widget(log) }
+    return base
 end
 
 local function Session(settings, opts)
@@ -290,6 +298,11 @@ do
     check("25 over, yellow", Tier(90, 65) == "yellow" and Tier(114, 65) == "yellow")
     check("50 over, green", Tier(115, 65) == "green" and Tier(164, 65) == "green")
     check("100 over, grey", Tier(165, 65) == "grey")
+    local s = Session({})
+    s.game.herbalism = 120
+    s.env.GetProfessions = function() return nil, 2 end
+    check("a gap before Herbalism in the professions list still finds its skill",
+        s.ns.Glimmer.Target.Skill("herb") == 120 and s.ns.Glimmer.Target.Skill("ore") == 0)
 end
 
 -- Turned on: the soft target settings are saved, then set.
@@ -310,7 +323,7 @@ log.game.guid = GUID(COPPER)
 log.Fire("PLAYER_SOFT_INTERACT_CHANGED", "", "x")
 check("a vein opens the nameplate", cv.SoftTargetNameplateInteract == "1")
 check("nothing lit before the nameplate comes", Lit(log) == nil)
-log.game.plate = Widget(log)
+log.game.plate = Plate(log)
 log.Fire("NAME_PLATE_UNIT_ADDED", "nameplate1")
 local fx = Lit(log)
 check("lit on the nameplate once it comes", fx ~= nil and fx.style == "sparkles")
@@ -375,7 +388,16 @@ check("a quest giver with a quest to hand in lights up, though the game only giv
 log.game.cursor = "Interface\\Cursor\\Quest"
 log.Fire("PLAYER_SOFT_INTERACT_CHANGED", "y", "z")
 check("and one with a quest to pick up", Lit(log) ~= nil)
-local unitFrame = { HealthBarsContainer = Widget(log), LevelFrame = Widget(log), PlayerLevelDiffFrame = Widget(log) }
+for _, cursor in ipairs({ "Cursor Crosshair_Recurring_64", "Cursor Crosshair_ImportantTurnIn_64",
+        "Cursor Crosshair_Wrapper_64" }) do
+    log.game.cursor = cursor
+    log.Fire("PLAYER_SOFT_INTERACT_CHANGED", "z", "y")
+    check("Forever's " .. cursor .. " quest cursor lights the giver too", Lit(log) ~= nil)
+    log.Fire("PLAYER_SOFT_INTERACT_CHANGED", "y", "z")
+end
+log.game.cursor = "Interface\\Cursor\\Quest"
+local unitFrame = { HealthBarsContainer = Widget(log), LevelFrame = Widget(log), PlayerLevelDiffFrame = Widget(log),
+    SoftTargetFrame = Widget(log) }
 log.game.plate.UnitFrame = unitFrame
 log.Fire("PLAYER_SOFT_INTERACT_CHANGED", "z", "y")
 check("a quest giver's plate keeps its bar and level by default",
@@ -482,6 +504,14 @@ log.Fire("CVAR_UPDATE", "graphicsOutlineMode", "1")
 log.RunTimers()
 check("an outline change is the player's own", cv.graphicsOutlineMode == "1")
 cv.graphicsOutlineMode = "2"
+cv.SoftTargetIconGameObject = "0"
+log.Fire("CVAR_UPDATE", "SoftTargetIconGameObject", "0")
+check("the game's Interact Key Icons option turning the object icon off is undone while Glimmer is on",
+    cv.SoftTargetIconGameObject == "1")
+cv.SoftTargetInteract = "1"
+log.Fire("CVAR_UPDATE", "SoftTargetInteract", "1")
+check("Enable Interact Key turned off by the player stays off", cv.SoftTargetInteract == "1")
+cv.SoftTargetInteract = "3"
 log.Set("questSparkle", false)
 check("sparkle off: the old value comes back", cv.outlineModeShowLootEffectWhenDisabled == "0"
     and log.account.glimmerSparkleCVars == nil)
@@ -516,6 +546,59 @@ do
         and o.account.glimmerSoftCVars.SoftTargetInteract == "1" and o.cvars.SoftTargetIconGameObject == "1")
     o.Set("enabled", false)
     check("old save: and put back", o.cvars.SoftTargetIconGameObject == "0" and o.account.glimmerSoftCVars == nil)
+end
+
+-- The player changes Glimmer's own settings while it is on: Glimmer keeps its value and remembers theirs.
+do
+    local o = Session({ enabled = true })
+    o.cvars.SoftTargetIconGameObject = "1"
+    o.Login()
+    o.cvars.SoftTargetIconGameObject = "0"
+    o.Fire("CVAR_UPDATE", "SoftTargetIconGameObject", "0")
+    check("a player's None while Glimmer is on: the object icon comes back",
+        o.cvars.SoftTargetIconGameObject == "1" and o.account.glimmerSoftCVars.SoftTargetIconGameObject == "0")
+    o.cvars.SoftTargetInteractOnlyInRange = "1"
+    o.Fire("CVAR_UPDATE", "softtargetinteractonlyinrange", "1")
+    check("the range setting comes back too, whatever case the event names it in",
+        o.cvars.SoftTargetInteractOnlyInRange == "0")
+    o.game.combat = true
+    o.cvars.SoftTargetIconGameObject = "0"
+    o.Fire("CVAR_UPDATE", "SoftTargetIconGameObject", "0")
+    check("in combat nothing is written", o.cvars.SoftTargetIconGameObject == "0")
+    o.game.combat = false
+    o.Fire("PLAYER_REGEN_ENABLED")
+    check("after combat it comes back", o.cvars.SoftTargetIconGameObject == "1")
+    o.Set("enabled", false)
+    check("off: the player's last choice is what comes back", o.cvars.SoftTargetIconGameObject == "0"
+        and o.cvars.SoftTargetInteractOnlyInRange == "1")
+end
+
+-- The game's interact cog on the soft target's nameplate: one size at the UI's scale while Glimmer is on,
+-- whatever the nameplate's own scale, and given back after.
+do
+    local c = Session({ enabled = true })
+    c.Login()
+    c.env.UIParent.GetEffectiveScale = function() return 0.5 end
+    local base = Plate(c)
+    local cog = base.UnitFrame.SoftTargetFrame
+    local size = 0.5 * c.ns.Glimmer.Style.COG_SIZE / cog:GetWidth()
+    c.game.guid, c.game.plate = GUID(999999), base
+    c.Fire("PLAYER_SOFT_INTERACT_CHANGED", "", "x")
+    check("an object's cog leaves the nameplate's scale for the UI's", cog.ignoreScale == true and cog.scale == size)
+    c.Fire("NAME_PLATE_UNIT_REMOVED", "nameplate1")
+    check("given back with its nameplate", cog.ignoreScale == false and cog.scale == 1)
+    c.Fire("NAME_PLATE_UNIT_ADDED", "nameplate1")
+    check("sized again when the nameplate comes back", cog.ignoreScale == true and cog.scale == size)
+    c.game.guid, c.game.object, c.game.plate = nil, true, nil
+    c.Fire("PLAYER_SOFT_INTERACT_CHANGED", "x", "")
+    check("given back when nothing is the soft target", cog.ignoreScale == false and cog.scale == 1)
+    c.game.guid, c.game.object, c.game.plate = "Creature-0-1-2-3-4-5", false, base
+    c.game.combat = true
+    c.Fire("PLAYER_SOFT_INTERACT_CHANGED", "", "y")
+    check("an NPC's too, in a fight as well", cog.ignoreScale == true and cog.scale == size)
+    c.game.combat = false
+    c.Set("enabled", false)
+    check("given back when Glimmer is turned off", cog.ignoreScale == false and cog.scale == 1)
 end
 
 -- Other addons on the same settings: asked once, then the reload prompt.
@@ -640,7 +723,7 @@ end
 do
     local r = Session({ enabled = true })
     r.Login()
-    r.game.guid, r.game.plate = GUID(COPPER), Widget(r)
+    r.game.guid, r.game.plate = GUID(COPPER), Plate(r)
     r.Fire("PLAYER_SOFT_INTERACT_CHANGED", "", "x")
     local lit = Lit(r)
     for _ = 1, 20 do lit.OnUpdate(lit, 0.05) end

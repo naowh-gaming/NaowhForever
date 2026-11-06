@@ -116,6 +116,8 @@ end
 local stoneArt = Frame(character)
 local paperDoll = Frame(character)
 paperDoll.TopBackgroundStripHost = false
+local modelScene = Frame(character)
+modelScene.BackgroundOverlay, modelScene.ControlFrame = Frame(modelScene), false
 local gearSets, titles = Frame(paperDoll), Frame(paperDoll)
 gearSets.shown, titles.shown = false, false
 
@@ -296,6 +298,7 @@ local env = setmetatable({
     CharacterStatsPaneScrollBox = statsList,
     CharacterFrameRightPaneHostStoneBg = stoneArt,
     PaperDollFrame = paperDoll,
+    CharacterModelScene = modelScene,
     UnitArmor = function()
         if state.statsSecret then return { value = 250 }, { value = 250 } end
         return 250, 250
@@ -377,6 +380,10 @@ check("the frame: its border, portrait, panes' art, divider and close button's l
     character.NineSlice.alpha == 0 and character.PortraitContainer.alpha == 0 and leftArt.alpha == 0
     and rightArt.alpha == 0 and divider.alpha == 0 and closeArt.alpha == 0)
 check("its title and level in our font", title.size == 12 and levelText.size == 14)
+check("the model's black overlay faded", modelScene.BackgroundOverlay.alpha == 0)
+modelScene.BackgroundOverlay:SetAlpha(0.85)
+Fire(paperDoll, "OnShow")
+check("faded again after the paper doll's OnShow", modelScene.BackgroundOverlay.alpha == 0)
 local statRow = Frame()
 statRow.Label, statRow.Value, statRow.Background, statRow.Title = Frame(statRow), Frame(statRow), false, false
 local statLabel = statRow.Label
@@ -520,7 +527,7 @@ end
 -- The stats: your spec's first (the default), the game's list under it; the switch at the
 -- pane's bottom.
 local switch, spec
-for _, child in ipairs(character.children or {}) do
+for _, child in ipairs(statsList.children or {}) do
     if rawget(child, "buttons") then switch = child elseif rawget(child, "rows") then spec = child end
 end
 -- The switch keeps its picked side in .shown (the shared tabs' own field), so its showing is
@@ -656,6 +663,14 @@ statsList.shown = false
 statsList.hooks.OnHide(statsList)
 check("the game's titles or gear sets in its place: the switch and ours go", switch.visible == false
     and spec.shown == false)
+-- The game's list hidden without a hide of its own that we see (its OnHide came while it still
+-- said shown): ours goes with it all the same, not left over the PvP tab or any other.
+statsList.shown = true
+statsList.hooks.OnShow(statsList)
+statsList.hooks.OnHide(statsList)
+statsList.shown = false
+check("ours and the switch are the game's list's own, so never on screen without it", not OnScreen(spec)
+    and switch.parent == statsList and spec.ignoreParentAlpha and switch.ignoreParentAlpha)
 statsList.shown = true
 statsList.hooks.OnShow(statsList)
 S.Set("characterPanelStats", "all")
@@ -706,6 +721,10 @@ check("the frame's art back, its title and level in the game's font again", char
     and levelText.object == "GameFontNormal")
 Update(head)
 check("and the game's updates paint nothing of ours", h.shown == false)
+modelScene.BackgroundOverlay:SetAlpha(0.85)
+Fire(paperDoll, "OnShow")
+check("and the paper doll's OnShow leaves the model's overlay as the game set it",
+    modelScene.BackgroundOverlay.alpha == 0.85)
 
 -------------------------------------------------------------------------------
 --  Slot Marks alone: the game's own panel as it looks (no EllesmereUI, ours off), with the
