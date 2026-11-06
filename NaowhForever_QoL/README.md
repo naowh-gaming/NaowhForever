@@ -529,6 +529,11 @@ NaowhForever_QoL/
   wide (155, 2 in). Forever's rows differ from Classic Era's, so the zone takes the activity
   line's font and stops short of the role icons, measured on screen (the icons are scaled).
   The game sends only the leader's zone; other members show one if it is known elsewhere.
+- Chat Zones' sources can come back secret in an instance: a chat author, a search result's
+  fields, its players' names and zones, and the measurements of a row or the member tooltip once
+  the game has drawn secret text or icons in it, which can outlast the data's own secrecy. Each
+  is checked with `issecretvalue` before it is compared, used as a key or measured; a secret one
+  is skipped, and a row or tooltip whose zone or size is secret shows none.
 - Group Finder Roles never writes the Group Finder's results or calls its refresh: its list, totals,
   selection and right-click menu stay Blizzard's own, untainted. It hooks
   `LFGBrowseSearchEntry_Update` (after `Blizzard_GroupFinder_VanillaStyle` loads) and fades a row
@@ -685,9 +690,12 @@ NaowhForever_QoL/
   changes and restyling do not restart it. Combat and flying defer the alert until they end.
   Leaving the zone or disabling the reminder cancels its timer. Returning to the zone allows
   another entry alert. Nearby-town reminders still stay up until the node is learned or you leave.
-- Node world positions are projected into the current zone with `C_Map.GetMapPosFromWorldPos`.
-  Only coordinates inside that zone's map count for the entry alert, including when the taxi API
-  falls back to the continent. A flight point in another zone cannot trigger that alert.
+- The entry alert counts a node only when the continent's map puts it in the current zone: its
+  world position goes onto the continent with `C_Map.GetMapPosFromWorldPos`, and
+  `C_Map.GetMapInfoAtPosition` names the zone under it, the lookup the continent map's zone
+  highlight uses. A zone's map is a rectangle that takes in its neighbours' edges: The Barrens' holds
+  Brackenwall Village, Thunder Bluff, Sun Rock Retreat and Camp Mojache, so entering The Barrens
+  named Brackenwall Village. Zephras Isle, under no continent, still counts the inside of its own map.
 - Existing `TownMap.lua` flight-master pins add the learn reminder to their tooltip when the
   closest friendly taxi node within `TOWN_RANGE` is unlearned. Known nodes get no reminder,
   even if another unlearned node is nearby. The Town Pins and Flight Masters switches still
