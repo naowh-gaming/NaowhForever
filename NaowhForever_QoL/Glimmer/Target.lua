@@ -112,6 +112,7 @@ function Target.Reach(unit)
 end
 
 local function Corpse(unit, info)
+    if not S.Get("corpse") then return end
     local dead = UnitIsDead(unit)
     if not (Plain(dead) and dead) then return end
     local guid = UnitGUID(unit)

@@ -2,7 +2,7 @@
 local ns = _G.NaowhForever
 
 local GetNamePlateForUnit = C_NamePlate.GetNamePlateForUnit
-local UnitIsUnit = UnitIsUnit
+local UnitIsUnit, UnitGUID = UnitIsUnit, UnitGUID
 
 local G = ns.Glimmer
 local S = G.Settings
@@ -15,16 +15,17 @@ local UNIT = C.UNIT
 local EVENTS = {
     "PLAYER_SOFT_INTERACT_CHANGED", "NAME_PLATE_UNIT_ADDED", "NAME_PLATE_UNIT_REMOVED",
     "PLAYER_REGEN_DISABLED", "PLAYER_REGEN_ENABLED", "PLAYER_ENTERING_WORLD", "QUEST_LOG_UPDATE",
-    "SKILL_LINES_CHANGED", "LOOT_CLOSED",
+    "SKILL_LINES_CHANGED",
 }
+local LOOT_EVENT = "UNIT_LOOT"
 
 local events, watch, fx, line
-local plate, shown, barOwner
+local plate, shown, shownCategory, barOwner
 local cog, cogPlate
 local wantReady, wantSince
 local read = {}
 local queued, fullQueued, cvarsQueued = false, false, false
-local FULL_KEYS = { enabled = true, questSparkle = true, giverHideBar = true, giverOffset = true }
+local FULL_KEYS = { enabled = true, questSparkle = true, giverHideBar = true, giverOffset = true, corpse = true }
 local BAR_PARTS = { "HealthBarsContainer", "LevelFrame", "PlayerLevelDiffFrame" }
 local CVAR_KEYS = { range = true, arc = true }
 
@@ -53,7 +54,7 @@ local function Release()
     fx:ClearAllPoints()
     fx:SetParent(nil)
     watch:Hide()
-    plate, shown = nil, nil
+    plate, shown, shownCategory = nil, nil, nil
 end
 
 local function FreeCog()
@@ -117,7 +118,7 @@ local function Attach(to, info)
     if info.category == "corpse" or (giver and S.Get("giverHideBar")) then HideBar(to) end
     line:ClearAllPoints()
     line:SetPoint("TOP", to, "BOTTOM", 0, St.LINE_Y)
-    plate, shown = to, info
+    plate, shown, shownCategory = to, info, info.category
     wantReady, wantSince = info.ready, nil
     Paint(info)
     Effects.Start(fx)
@@ -140,7 +141,7 @@ local function Evaluate()
     CVars.SetPlate(true)
     local to = GetNamePlateForUnit(UNIT)
     if not (to and Plain(to)) then return Release() end
-    if to ~= plate then Release() end
+    if to ~= plate or info.category ~= shownCategory then Release() end
     if plate then
         shown = info
         Paint(info)
@@ -183,8 +184,11 @@ local function OnEvent(_, event, unit)
         SizeCog()
         Release()
         Evaluate()
-    elseif event == "QUEST_LOG_UPDATE" or event == "SKILL_LINES_CHANGED" or event == "LOOT_CLOSED" then
+    elseif event == "QUEST_LOG_UPDATE" or event == "SKILL_LINES_CHANGED" then
         if plate then Evaluate() end
+    elseif event == LOOT_EVENT then
+        local soft = UnitGUID(UNIT)
+        if Plain(unit) and Plain(soft) and unit == soft then Evaluate() end
     else
         Evaluate()
     end
@@ -205,6 +209,11 @@ local function Apply()
         watch:SetScript("OnUpdate", Watch)
     end
     for _, event in ipairs(EVENTS) do events:RegisterEvent(event) end
+    if S.Get("corpse") then
+        events:RegisterEvent(LOOT_EVENT)
+    else
+        events:UnregisterEvent(LOOT_EVENT)
+    end
     SizeCog()
     Release()
     Evaluate()

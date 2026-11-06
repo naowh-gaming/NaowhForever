@@ -234,6 +234,13 @@ local function Registered(log)
     return n
 end
 
+local function Listening(log, event)
+    for _, f in ipairs(log.frames) do
+        if f.events[event] then return true end
+    end
+    return false
+end
+
 local function Lit(log)
     for _, f in ipairs(log.frames) do
         if f.glints and f.shown and f.parent == log.game.plate and log.game.plate then return f end
@@ -578,8 +585,9 @@ do
         and o.cvars.SoftTargetInteractOnlyInRange == "1")
 end
 
--- A corpse with loot for you: dark until Corpses with Loot is on, then lit with only its name on the plate,
--- and dark again once it is looted, when the loot is not yours, or when its GUID is secret.
+-- A corpse with loot for you: dark until Corpses with Loot is on, then lit with only its name on the plate.
+-- UNIT_LOOT for the soft target reads it again, so loot arriving late lights it and loot gone, whoever took
+-- it, darkens it. Dark too when the loot is not yours or its GUID is secret.
 do
     local c = Session({ enabled = true })
     c.Login()
@@ -587,18 +595,26 @@ do
         SoftTargetFrame = Widget(c) }
     c.game.plate = Plate(c)
     c.game.plate.UnitFrame = parts
-    c.game.guid, c.game.object, c.game.dead, c.game.loot, c.game.canLoot = "Creature-0-1-2-3-4-5", false, true, true, true
+    local guid = "Creature-0-1-2-3-4-5"
+    c.game.guid, c.game.object, c.game.dead, c.game.loot, c.game.canLoot = guid, false, true, true, true
     c.Fire("PLAYER_SOFT_INTERACT_CHANGED", "", "x")
     check("corpses: off by default", Lit(c) == nil and c.cvars.SoftTargetNameplateInteract == "0")
+    check("off: no loot asked about, no UNIT_LOOT", c.lootAsked == nil and not Listening(c, "UNIT_LOOT"))
     c.Set("corpse", true)
-    check("corpses on: one with loot for you lights up", Lit(c) ~= nil and c.cvars.SoftTargetNameplateInteract == "1")
+    check("corpses on: UNIT_LOOT is listened to", Listening(c, "UNIT_LOOT"))
+    check("one with loot for you lights up", Lit(c) ~= nil and c.cvars.SoftTargetNameplateInteract == "1")
     check("with only its name on the plate", parts.HealthBarsContainer.alpha == 0
         and parts.LevelFrame.alpha == 0 and parts.PlayerLevelDiffFrame.alpha == 0)
     check("in the corpse color", Lit(c).r == 0.74 and Lit(c).b == 1 and LineText(c) == nil)
     c.game.loot = false
-    c.Fire("LOOT_CLOSED")
-    check("looted empty: dark, and the plate gets its bar back", Lit(c) == nil
+    c.Fire("UNIT_LOOT", "Creature-0-1-2-3-4-6", false)
+    check("another unit's loot changing leaves it as it was", Lit(c) ~= nil)
+    c.Fire("UNIT_LOOT", guid, false)
+    check("its loot gone, whoever took it: dark, and the plate gets its bar back", Lit(c) == nil
         and parts.HealthBarsContainer.alpha == 1 and parts.PlayerLevelDiffFrame.alpha == 1)
+    c.game.loot = true
+    c.Fire("UNIT_LOOT", guid, true)
+    check("loot arriving after it was read: lit", Lit(c) ~= nil)
     c.game.loot, c.game.canLoot = true, false
     c.Fire("PLAYER_SOFT_INTERACT_CHANGED", "x", "y")
     check("loot that is someone else's: dark", Lit(c) == nil)
@@ -612,6 +628,27 @@ do
     c.env.issecretvalue = nil
     c.Fire("PLAYER_SOFT_INTERACT_CHANGED", "y", "x")
     check("a plain one is", Lit(c) ~= nil and c.lootAsked == c.game.guid)
+    c.Set("corpse", false)
+    check("corpses off again: dark, and UNIT_LOOT dropped", Lit(c) == nil and not Listening(c, "UNIT_LOOT"))
+end
+
+-- A lit quest giver that dies with loot for you while it stays the soft target: on the same nameplate it is
+-- attached again as a corpse, so its bar goes.
+do
+    local g = Session({ enabled = true, corpse = true })
+    g.Login()
+    local parts = { HealthBarsContainer = Widget(g), LevelFrame = Widget(g), PlayerLevelDiffFrame = Widget(g),
+        SoftTargetFrame = Widget(g) }
+    g.game.plate = Plate(g)
+    g.game.plate.UnitFrame = parts
+    local guid = "Creature-0-1-2-3-7-8"
+    g.game.guid, g.game.object, g.game.cursor = guid, false, "Interface\\Cursor\\Quest"
+    g.Fire("PLAYER_SOFT_INTERACT_CHANGED", "", "x")
+    check("a quest giver lit with its bar", Lit(g) ~= nil and parts.HealthBarsContainer.alpha == nil)
+    g.game.cursor, g.game.dead, g.game.loot, g.game.canLoot = nil, true, true, true
+    g.Fire("UNIT_LOOT", guid, true)
+    check("dead with loot for you: a corpse on the same plate, its bar gone", Lit(g) ~= nil
+        and parts.HealthBarsContainer.alpha == 0 and parts.PlayerLevelDiffFrame.alpha == 0)
 end
 
 -- The game's interact cog on the soft target's nameplate: one size at the UI's scale while Glimmer is on,

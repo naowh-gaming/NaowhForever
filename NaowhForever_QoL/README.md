@@ -1297,7 +1297,7 @@ NaowhForever_QoL/
   with the skill it needs, and On Nodes Your Skill Is Too Low For hides both. Quest objects are
   found three ways: the game marking them quest related, a quest objective in their tooltip, or the
   quest pick-up or turn-in cursor the game shows on them; that cursor is also what lights an NPC with a
-  quest to pick up or hand in, the only NPCs Glimmer lights. Quest objects get the line of the
+  quest to pick up or hand in, the only living NPCs Glimmer lights. Quest objects get the line of the
   quest objective they count for. Quest Item Sparkle keeps the game's loot sparkle on quest items
   through graphics presets. Minimap Icons shows every spot herbs and ore grow near you, ringed in their
   skill-up color, and Gathered on the Map every herb and vein you gather.
@@ -1369,13 +1369,17 @@ NaowhForever_QoL/
   object. Both apply on the next frame, like the other settings.
 - Corpses with Loot (`corpse`, off by default) lights a corpse that still has loot for you: the soft target is
   dead (`UnitIsDead`) and `CanLootUnit` on its GUID says it has loot and that you may take it. Loot that is
-  someone else's leaves it dark.
+  someone else's leaves it dark. With the option off, no unit is read as a corpse.
 - `CanLootUnit` takes a secret GUID only from untainted code, so a GUID that is not plain is passed over.
   Glimmer rests in combat, so a corpse lights once the fight is over.
 - A dead creature's plate shows a 0% health bar and its level, which say nothing about the loot, so a corpse's
   plate keeps only its name: the same three parts Hide Health Bar and Level fades on a quest giver.
-- Looting does not always change the soft target, so `LOOT_CLOSED` reads the target again while something is
-  lit, and a corpse looted empty goes dark.
+- A corpse's loot can arrive after Glimmer reads it and go before the soft target moves (someone else loots it,
+  or you do and it stays the soft target). `UNIT_LOOT` names the unit whose loot changed; when it is the soft
+  target, Glimmer reads it again. It is registered only while Corpses with Loot is on. The game's own loot
+  tutorial uses the same event with `CanLootUnit`.
+- When the lit target turns into another category on the same nameplate (a quest giver that dies with loot
+  for you), the effect is attached again, so the bar and the effect height follow the new category.
 - The effect is parented to the nameplate, one frame level under it so the game's name stays on
   top, and ignores the nameplate's alpha so it does not fade with it.
 - The game settings Glimmer changes are saved in the account settings before the first change and
