@@ -7,6 +7,7 @@ local D = {
     WELCOMING_CAMPFIRE = 1229739,
     WELCOMING_CAMPFIRE_CRAFT = 1289723,
     WELL_RESTED = 429959,
+    UNROLL_BAG = 429961,
 }
 ns.AuraBuffs.CampData = D
 

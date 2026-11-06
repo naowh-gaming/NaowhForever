@@ -24,7 +24,7 @@ local KEYS = {
     consumablesMaxHide = true, raidBuffsMaxHide = true, personalBuffsMaxHide = true,
     onlyIfCarried = true, carriedPicks = true, hideResting = true, raidBuffs = true, raidBuffsOwn = true, raidBuffPicks = true, iconSize = true,
     buffIconMode = true, raidBuffRange = true, raidBuffRangeHide = true, hideBlessingsOnPaladin = true,
-    personalBuffs = true, personalBuffPicks = true, weaponEnhancements = true,
+    personalBuffs = true, personalBuffPicks = true, weaponEnhancements = true, sleepingBag = true,
     buffsFont = true, buffsFontSize = true, buffsOutline = true, buffsBorderColor = true,
     buffGlow = true, buffGlowType = true, buffGlowColor = true, buffGlowLines = true, buffGlowThickness = true,
     buffGlowSpeed = true,
@@ -238,7 +238,7 @@ local function OnEvent(_, event, unit, arg2, spellID)
     if event == "ITEM_DATA_LOAD_RESULT" and not R.Requested(unit) then return end
     if event == "UNIT_SPELLCAST_SUCCEEDED" and not Secret(spellID) then FadeCast(spellID) end
     if event == "UNIT_SPELLCAST_SUCCEEDED" and (Secret(spellID)
-        or not (R.NoteImbueCast(spellID) or R.NoteFoodCast(spellID) or R.NoteUseCast(spellID))) then return end
+        or not (R.NoteImbueCast(spellID) or R.NoteFoodCast(spellID) or R.NoteUseCast(spellID) or R.IsBagCast(spellID))) then return end
     Queue()
 end
 
@@ -277,7 +277,8 @@ local function Listen()
     if S.Get("personalBuffs") or S.Get("weaponEnhancements") then
         events:RegisterUnitEvent("UNIT_INVENTORY_CHANGED", "player")
     end
-    if S.Get("personalBuffs") or R.WatchesImbue() or not R.Carried("food") or S.Get("buffIconMode") == "last" then
+    if S.Get("personalBuffs") or R.WatchesImbue() or not R.Carried("food") or S.Get("buffIconMode") == "last"
+        or S.Get("sleepingBag") then
         events:RegisterUnitEvent("UNIT_SPELLCAST_SUCCEEDED", "player")
     end
     events:RegisterEvent("PLAYER_ENTERING_WORLD")
