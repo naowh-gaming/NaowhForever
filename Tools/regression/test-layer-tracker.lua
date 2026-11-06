@@ -1,7 +1,7 @@
 -- Run with Lua 5.1 from the repository root: Layer Tracker.
--- Off it builds nothing and listens to nothing. On, the layer is the server and zone copy in an NPC's GUID: the
--- target and mouseover always take over, a nameplate only fills an empty reading, and players and secret GUIDs or
--- units are never read. A zone change, a layer move and a loading screen start it over; inside an instance it
+-- Off it builds nothing and listens to nothing. On, the layer is the server and zone copy in an NPC's GUID, taken
+-- once two different NPCs agree: the target and mouseover can replace it, a nameplate only fills an empty reading,
+-- and players, pets and secret GUIDs or units are never read. Two layers sharing a copy number show their server. A zone change, a layer move and a loading screen start it over; inside an instance it
 -- hides, except in Unlock Mode. The game's layer change counts down on the line, a move is said in chat once, and
 -- the hover lists the layers seen in the zone, newest first.
 local NOTHING = function() end
@@ -125,6 +125,8 @@ local Layers = ns.Layers
 local clicks, tipped = 0, 0
 Layers.Click = function() clicks = clicks + 1 end
 Layers.AddTip = function() tipped = tipped + 1 end
+local asking = false
+Layers.Asking = function() return asking end
 local boot = frames[1]
 local readout, events
 
@@ -142,8 +144,20 @@ local function Shown()
     return readout.text.text
 end
 
+local spawn = 0
 local function NPC(zone, server, id)
-    return ("Creature-0-%d-1-%d-%d-0000ABCDEF"):format(server or 5250, zone, id or 3100)
+    spawn = spawn + 1
+    return ("Creature-0-%d-1-%d-%d-%010X"):format(server or 5250, zone, id or 3100, spawn)
+end
+
+local function Target(guid)
+    guids.target = guid
+    Fire("PLAYER_TARGET_CHANGED")
+end
+
+local function Agree(zone, server)
+    Target(NPC(zone, server))
+    Target(NPC(zone, server))
 end
 
 local function Ticker()
@@ -154,6 +168,12 @@ end
 local function Hover()
     readout.scripts.OnEnter(readout)
     return tip.lines
+end
+
+local function Row(label)
+    for _, line in ipairs(Hover()) do
+        if line[1] == label then return line[2] end
+    end
 end
 
 local count = 0
@@ -177,66 +197,87 @@ Case("switched on: the readout shows, waiting for an NPC", function()
     assert(Layers.Map() == 1411 and Layers.Current() == nil)
 end)
 
-Case("a nameplate fills the reading with its zone copy, sized to the text", function()
-    guids.nameplate1 = NPC(18853)
+Case("one NPC is not enough, the same NPC twice neither", function()
+    local one = NPC(18853)
+    guids.nameplate1 = one
     Fire("NAME_PLATE_UNIT_ADDED", "nameplate1")
+    assert(Shown() == "Layer ?", Shown())
+    Target(one)
+    guids.mouseover = one
+    Fire("UPDATE_MOUSEOVER_UNIT")
+    assert(Shown() == "Layer ?" and Layers.Current() == nil, Shown())
+end)
+
+Case("a second NPC on the same copy confirms it, sized to the text", function()
+    guids.nameplate2 = NPC(18853)
+    Fire("NAME_PLATE_UNIT_ADDED", "nameplate2")
     assert(Shown() == "Layer 18853", Shown())
     assert(readout.width == #"Layer 18853" * 7 + 16)
     local key, zone = Layers.Current()
     assert(key == "5250-18853" and zone == 18853, key)
 end)
 
-Case("a later nameplate does not take over", function()
-    guids.nameplate2 = NPC(16)
-    Fire("NAME_PLATE_UNIT_ADDED", "nameplate2")
+Case("a nameplate does not take over a reading", function()
+    guids.nameplate3, guids.nameplate4 = NPC(16), NPC(16)
+    Fire("NAME_PLATE_UNIT_ADDED", "nameplate3")
+    Fire("NAME_PLATE_UNIT_ADDED", "nameplate4")
     assert(Shown() == "Layer 18853", Shown())
 end)
 
-Case("the target and the mouseover do", function()
+Case("one NPC across a border does not take over either", function()
+    Target(NPC(31))
+    assert(Shown() == "Layer 18853", Shown())
+    Target(NPC(18853))
+    Target(NPC(31))
+    assert(Shown() == "Layer 18853", "an NPC of your layer in between starts the count over")
+end)
+
+Case("two NPCs you target or mouse over do", function()
     now = now + 60
-    guids.target = NPC(16)
-    Fire("PLAYER_TARGET_CHANGED")
+    Agree(16)
     assert(Shown() == "Layer 16", Shown())
     now = now + 60
     guids.mouseover = NPC(4410, 5250, 3296)
+    Fire("UPDATE_MOUSEOVER_UNIT")
+    guids.mouseover = NPC(4410, 5250, 3297)
     Fire("UPDATE_MOUSEOVER_UNIT")
     assert(Shown() == "Layer 4410", Shown())
     assert(#printed == 0, "a reading that is not a move says nothing")
 end)
 
-Case("a vehicle counts as an NPC", function()
-    guids.mouseover = "Vehicle-0-5250-1-77-2961-0000ABCDEF"
+Case("vehicles count as NPCs", function()
+    guids.mouseover = "Vehicle-0-5250-1-77-2961-0000000A01"
     Fire("UPDATE_MOUSEOVER_UNIT")
+    Target(NPC(77))
     assert(Shown() == "Layer 77", Shown())
 end)
 
 Case("players, pets, no unit and a zero server or copy are not read", function()
-    guids.target = "Player-5250-0A1B2C3D"
-    Fire("PLAYER_TARGET_CHANGED")
-    guids.target = "Pet-0-5250-1-99-416-0100ABCDEF"
-    Fire("PLAYER_TARGET_CHANGED")
-    guids.target = nil
-    Fire("PLAYER_TARGET_CHANGED")
-    guids.target = NPC(0)
-    Fire("PLAYER_TARGET_CHANGED")
-    guids.target = NPC(55, 0)
-    Fire("PLAYER_TARGET_CHANGED")
+    Target("Player-5250-0A1B2C3D")
+    Target("Pet-0-5250-1-99-416-0100ABCDEF")
+    Target("Pet-0-5250-1-99-416-0100ABCDEE")
+    Target(nil)
+    Target(NPC(0))
+    Target(NPC(0))
+    Target(NPC(55, 0))
+    Target(NPC(55, 0))
     assert(Shown() == "Layer 77", Shown())
 end)
 
-Case("the same copy number on another server is another layer", function()
-    guids.target = NPC(77, 5251)
-    Fire("PLAYER_TARGET_CHANGED")
+Case("the same copy number on another server is another layer, shown with its server", function()
+    Agree(77, 5251)
     assert(Layers.Current() == "5251-77")
+    assert(Shown() == "Layer 5251-77", Shown())
+    assert(Row("5251-77") == "You are here" and Row("5250-77") ~= nil, "both listed by server")
 end)
 
 Case("the hover lists the zone's layers, newest first, yours marked", function()
     local lines = Hover()
     assert(tip.title == "Layers in Durotar", tip.title)
-    assert(lines[1][1] == "77" and lines[1][2] == "You are here", lines[1][2])
+    assert(lines[1][1] == "5251-77" and lines[1][2] == "You are here", lines[1][2])
     assert(#lines == 5, #lines)
     assert(lines[#lines][1] == "18853" and lines[#lines][2] == "2 min ago", lines[#lines][2])
-    assert(tipped == 1, "the swap hint is asked for")
+    assert(tipped > 0, "the swap hint is asked for")
 end)
 
 Case("a layer heard from a swap request is listed as one", function()
@@ -249,22 +290,14 @@ end)
 
 Case("a request naming a layer you saw does not mark it as heard", function()
     Layers.Note(1411, "5250-16", 16)
-    for _, line in ipairs(Hover()) do
-        if line[1] == "16" then assert(line[2] == "0 min ago", line[2]) end
-    end
+    assert(Row("16") == "0 min ago", Row("16"))
 end)
 
 Case("a heard layer you then see yourself is no longer marked as heard", function()
     Layers.Note(1411, "5250-30000", 30000)
-    guids.target = NPC(30000)
-    Fire("PLAYER_TARGET_CHANGED")
-    guids.target = NPC(16)
-    Fire("PLAYER_TARGET_CHANGED")
-    local found
-    for _, line in ipairs(Hover()) do
-        if line[1] == "30000" then found = line[2] end
-    end
-    assert(found == "0 min ago", found)
+    Agree(30000)
+    Agree(16)
+    assert(Row("30000") == "0 min ago", Row("30000"))
 end)
 
 Case("a click goes to the swaps", function()
@@ -273,16 +306,15 @@ Case("a click goes to the swaps", function()
 end)
 
 Case("a secret GUID or nameplate unit is never read", function()
-    guids.target = SECRET
-    Fire("PLAYER_TARGET_CHANGED")
+    Target(SECRET)
+    Target(SECRET)
     Fire("SHARD_TRANSFER")
     Fire("NAME_PLATE_UNIT_ADDED", SECRET)
     assert(Shown() == "Layer ?", Shown())
 end)
 
 Case("the game's layer change counts down on the line", function()
-    guids.target = NPC(612)
-    Fire("PLAYER_TARGET_CHANGED")
+    Agree(612)
     Fire("SHARD_TRANSFER_IMMINENT")
     assert(Shown() == "Layer 612 - changes in 2:41", Shown())
     local ticker = assert(Ticker(), "a ticker runs while counting")
@@ -307,29 +339,35 @@ Case("Countdown off: no ticker and no countdown", function()
     assert(Ticker() and Shown():find("changes in"), "turning it back on mid-change counts down")
 end)
 
-Case("a move starts over and the next reading says the move once", function()
+Case("a move starts over and the confirmed reading after it says the move once", function()
     Fire("SHARD_TRANSFER")
     assert(Shown() == "Layer ?" and not Ticker(), Shown())
-    guids.nameplate4 = NPC(20113)
-    Fire("NAME_PLATE_UNIT_ADDED", "nameplate4")
+    guids.nameplate5, guids.nameplate6 = NPC(20113), NPC(20113)
+    Fire("NAME_PLATE_UNIT_ADDED", "nameplate5")
+    assert(#printed == 0, "one NPC is not a move yet")
+    Fire("NAME_PLATE_UNIT_ADDED", "nameplate6")
     assert(Shown() == "Layer 20113", Shown())
     assert(#printed == 1 and printed[1] == "You moved to layer 20113 (it was 612).", printed[1])
-    guids.target = NPC(612)
-    Fire("PLAYER_TARGET_CHANGED")
+    Agree(612)
     assert(#printed == 1, "a later reading is not a move")
+end)
+
+Case("a move between layers sharing a copy number names their servers", function()
+    Fire("SHARD_TRANSFER")
+    Agree(612, 5251)
+    assert(printed[1] == "You moved to layer 5251-612 (it was 5250-612).", printed[1])
 end)
 
 Case("a move back to the same layer says nothing", function()
     Fire("SHARD_TRANSFER")
-    Fire("PLAYER_TARGET_CHANGED")
-    assert(Shown() == "Layer 612" and #printed == 0)
+    Agree(612, 5251)
+    assert(Shown() == "Layer 5251-612" and #printed == 0, Shown())
 end)
 
 Case("Say When You Move off: a move says nothing", function()
     Set("layerTrackerChat", false)
     Fire("SHARD_TRANSFER")
-    guids.target = NPC(700)
-    Fire("PLAYER_TARGET_CHANGED")
+    Agree(700)
     assert(Shown() == "Layer 700" and #printed == 0)
     Set("layerTrackerChat", true)
 end)
@@ -339,11 +377,20 @@ Case("a new zone starts over, and a move is not carried across it", function()
     mapNow = 1454
     Fire("ZONE_CHANGED_NEW_AREA")
     assert(Shown() == "Layer ?" and Layers.Map() == 1454, Shown())
-    guids.target = NPC(900)
-    Fire("PLAYER_TARGET_CHANGED")
+    Agree(900)
     assert(#printed == 0)
     Hover()
     assert(tip.title == "Layers in Orgrimmar" and #tip.lines == 1, #tip.lines)
+end)
+
+Case("a half-read layer does not carry across a zone change", function()
+    mapNow = 1411
+    Fire("ZONE_CHANGED_NEW_AREA")
+    Target(NPC(41))
+    mapNow = 1454
+    Fire("ZONE_CHANGED_NEW_AREA")
+    Target(NPC(41))
+    assert(Shown() == "Layer ?", Shown())
 end)
 
 Case("a smaller map inside a zone counts as the zone", function()
@@ -375,16 +422,19 @@ Case("a loading screen starts over and reads the target there", function()
     mapNow = 1411
     guids.target = NPC(5120)
     Fire("PLAYER_ENTERING_WORLD", false, true)
+    assert(Shown() == "Layer ?", "one NPC")
+    Target(NPC(5120))
     assert(Shown() == "Layer 5120", Shown())
 end)
 
 Case("inside an instance it hides and reads nothing", function()
     inInstance = true
-    guids.target = NPC(36)
     Fire("PLAYER_ENTERING_WORLD", false, false)
     assert(Shown() == nil, "hidden")
-    Fire("PLAYER_TARGET_CHANGED")
+    Agree(36)
+    guids.nameplate1, guids.nameplate2 = NPC(36), NPC(36)
     Fire("NAME_PLATE_UNIT_ADDED", "nameplate1")
+    Fire("NAME_PLATE_UNIT_ADDED", "nameplate2")
     assert(Shown() == nil and Layers.Current() == nil, "still hidden, nothing read")
 end)
 
@@ -403,17 +453,16 @@ Case("back outside it shows again", function()
 end)
 
 Case("a look change keeps the reading", function()
-    guids.target = NPC(612)
-    Fire("PLAYER_TARGET_CHANGED")
+    Agree(613)
     Set("layerTrackerFontSize", 20)
-    assert(Shown() == "Layer 612", Shown())
+    assert(Shown() == "Layer 613", Shown())
 end)
 
 Case("the line shows when swaps are asking", function()
-    Layers.asking = true
+    asking = true
     Layers.Refresh()
-    assert(Shown() == "Layer 612 - asking", Shown())
-    Layers.asking = nil
+    assert(Shown() == "Layer 613 - asking", Shown())
+    asking = false
     Layers.Refresh()
 end)
 

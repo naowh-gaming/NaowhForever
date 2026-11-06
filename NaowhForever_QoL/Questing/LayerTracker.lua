@@ -40,7 +40,7 @@ local TEXT_WHY_SWAPS = "Swap Layers With Others is off"
 local NONE = {}
 
 local events, frame, ticker
-local layer, shown, map, inside, unlocked, refreshAt, wasKey, wasZone
+local layer, shown, map, inside, unlocked, refreshAt, wasKey, wasZone, pendingKey, pendingGuid
 local seen = {}
 local order = {}
 
@@ -90,15 +90,24 @@ local function Note(where, key, zone, asked)
     entry.at = time()
 end
 
+local function Label(key, zone)
+    local list = map and seen[map]
+    if not list then return zone end
+    for other, entry in pairs(list.entries) do
+        if other ~= key and entry.zone == zone then return key end
+    end
+    return zone
+end
+
 local function Text()
-    local text = TEXT_LAYER:format(shown or TEXT_UNKNOWN)
+    local text = TEXT_LAYER:format(layer and Label(layer, shown) or TEXT_UNKNOWN)
     if refreshAt and S.Get("layerTrackerCountdown") then
         local left = refreshAt - GetTime()
         if left <= 0 then return TEXT_CHANGING:format(text) end
         local clock = CLOCK:format(math.floor(left / SECONDS_PER_MINUTE), math.floor(left % SECONDS_PER_MINUTE))
         return TEXT_CHANGES:format(text, clock)
     end
-    if Layers.asking then return TEXT_ASKING:format(text) end
+    if Layers.Asking() then return TEXT_ASKING:format(text) end
     return text
 end
 
@@ -122,19 +131,34 @@ local function Clock()
     end
 end
 
-local function Read(unit, replace)
-    if inside or (layer and not replace) then return end
-    local key, zone = LayerOf(UnitGUID(unit))
-    if not key or key == layer then return end
-    if wasKey and wasKey ~= key and S.Get("layerTrackerChat") then ns.Print(TEXT_MOVED:format(zone, wasZone)) end
-    wasKey, wasZone = nil, nil
+local function Seen(key, zone, guid)
+    if key == layer then
+        pendingKey, pendingGuid = nil, nil
+        return
+    end
+    if key ~= pendingKey or guid == pendingGuid then
+        pendingKey, pendingGuid = key, guid
+        return
+    end
+    pendingKey, pendingGuid = nil, nil
     layer, shown = key, zone
     Note(map, key, zone, false)
+    if wasKey and wasKey ~= key and S.Get("layerTrackerChat") then
+        ns.Print(TEXT_MOVED:format(Label(key, zone), Label(wasKey, wasZone)))
+    end
+    wasKey, wasZone = nil, nil
     Update()
 end
 
+local function Read(unit, replace)
+    if inside or (layer and not replace) then return end
+    local guid = UnitGUID(unit)
+    local key, zone = LayerOf(guid)
+    if key then Seen(key, zone, guid) end
+end
+
 local function Forget()
-    layer, shown = nil, nil
+    layer, shown, pendingKey, pendingGuid = nil, nil, nil, nil
     Update()
 end
 
@@ -181,11 +205,12 @@ local function ShowTip(self)
     local m, a = T.muted, T.accentSoft
     if #order == 0 then GameTooltip:AddLine(TEXT_NONE, m.r, m.g, m.b, true) end
     for _, entry in ipairs(order) do
+        local label = Label(entry.key, entry.zone)
         if entry.key == layer then
-            GameTooltip:AddDoubleLine(entry.zone, TEXT_HERE, 1, 1, 1, a.r, a.g, a.b)
+            GameTooltip:AddDoubleLine(label, TEXT_HERE, 1, 1, 1, a.r, a.g, a.b)
         else
             local when = Ago(entry.at)
-            GameTooltip:AddDoubleLine(entry.zone, entry.asked and TEXT_ASKED:format(when) or when, 1, 1, 1, m.r, m.g, m.b)
+            GameTooltip:AddDoubleLine(label, entry.asked and TEXT_ASKED:format(when) or when, 1, 1, 1, m.r, m.g, m.b)
         end
     end
     Layers.AddTip(GameTooltip)
@@ -236,7 +261,7 @@ end
 
 local function Apply()
     if not On() then
-        layer, shown, wasKey, wasZone, refreshAt = nil, nil, nil, nil, nil
+        layer, shown, wasKey, wasZone, refreshAt, pendingKey, pendingGuid = nil, nil, nil, nil, nil, nil, nil
         if frame then
             Clock()
             events:UnregisterAllEvents()

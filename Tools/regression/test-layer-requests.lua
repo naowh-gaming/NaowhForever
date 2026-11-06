@@ -5,7 +5,10 @@
 -- move within 15 seconds, or whose move is cancelled, is left (or only named, with Leave Failed Swaps off). Other
 -- players' requests for your zone from another layer show one prompt at a time with an Invite button, never in
 -- combat, an instance, a raid or a group you cannot invite to, and never twice in a minute for one player. Every
--- request's layer is noted; secret or malformed lines and other channels are never read.
+-- request's layer is noted; secret or malformed lines and other channels are never read. A click during the
+-- delayed join waits for it; a zone change or loading screen ends an ask not yet answered; a group a friend or
+-- guildmate invited you into is never left; turning requests off drops the prompt, and a queued one that shows
+-- after that hides itself; the channel is left after a /reload when this character joined it.
 local NOTHING = function() end
 local SECRET = "inv layer <LS 1411 not 5250-99>"
 local queued = false
@@ -50,6 +53,7 @@ local settings = { enabled = true, layerTracker = true, layerRequests = false, l
 local setHooks = {}
 local S = { Get = function(k) return settings[k] end, Set = function(k, v) settings[k] = v end }
 local toast, toastSpec, refreshed = nil, nil, 0
+local own = {}
 local noted = {}
 local current, currentZone, map = nil, nil, 1411
 local Layers = {
@@ -61,13 +65,18 @@ local Layers = {
 
 local function Toast(spec)
     toastSpec = spec
-    toast = { shown = false, hooks = {} }
+    toast = { shown = false, hooks = { OnShow = {}, OnHide = {} } }
     function toast:Hide()
         if not self.shown then return end
         self.shown = false
-        for _, fn in ipairs(self.hooks) do fn(self) end
+        for _, fn in ipairs(self.hooks.OnHide) do fn(self) end
     end
-    function toast:HookScript(_, fn) self.hooks[#self.hooks + 1] = fn end
+    function toast:Show()
+        if self.shown then return end
+        self.shown = true
+        for _, fn in ipairs(self.hooks.OnShow) do fn(self) end
+    end
+    function toast:HookScript(script, fn) table.insert(self.hooks[script], fn) end
     return toast
 end
 
@@ -79,12 +88,21 @@ local ns = {
     Print = function(text) printed[#printed + 1] = text end,
     L = dofile("Tools/regression/locale_stub.lua").L,
     Shared = {
+        CharacterData = function(key)
+            assert(key == "layerRequestsChannel")
+            return own
+        end,
         Parts = {
             Toast = Toast,
             FillToast = function(t, title, line) t.title, t.line = title, line end,
             ShowToast = function(t, seconds)
-                if queued or (t.on and not t.on()) then return end
-                t.shown, t.seconds = true, seconds
+                if queued then
+                    t.waiting = seconds
+                    return
+                end
+                if t.on and not t.on() then return end
+                t.seconds = seconds
+                t:Show()
             end,
         },
     },
@@ -155,6 +173,15 @@ end
 
 local function Last() return printed[#printed] end
 
+local function Release()
+    local seconds = toast.waiting
+    toast.waiting = nil
+    if seconds and not (toast.on and not toast.on()) then
+        toast.seconds = seconds
+        toast:Show()
+    end
+end
+
 local count = 0
 local function Case(name, fn)
     printed, sent, invited, noted = {}, {}, {}, {}
@@ -178,7 +205,7 @@ Case("switched on: its events, and the channel joined only after a delay", funct
     Fire("PLAYER_ENTERING_WORLD", true, false)
     assert(#timers == 1, "one join, however many times it is asked for")
     Run(10)
-    assert(#joined == 1 and joined[1] == "layer")
+    assert(#joined == 1 and joined[1] == "layer" and own.joined == true, "joined, and kept for this character")
 end)
 
 Case("a click with your layer unread asks nothing", function()
@@ -208,7 +235,7 @@ Case("a click asks the layer channel once, with your zone and your layer to leav
     assert(#sent == 1, #sent)
     local m = sent[1]
     assert(m.text == "inv layer <LS 1411 not 5250-18853>" and m.kind == "CHANNEL" and m.target == 6, m.text)
-    assert(Layers.asking == true and Last() == "Asked the layer channel for an invite to another layer.")
+    assert(Layers.Asking() and Last() == "Asked the layer channel for an invite to another layer.")
     local tip = { lines = {} }
     function tip:AddLine(text) self.lines[#self.lines + 1] = text end
     Layers.AddTip(tip)
@@ -217,7 +244,7 @@ end)
 
 Case("a click again stops asking", function()
     Layers.Click()
-    assert(Layers.asking == nil and Last() == "Stopped asking for another layer." and #sent == 0)
+    assert(not Layers.Asking() and Last() == "Stopped asking for another layer." and #sent == 0)
     assert(Live(60) == nil, "the ask's timer is cancelled")
     local tip = { lines = {} }
     function tip:AddLine(text) self.lines[#self.lines + 1] = text end
@@ -236,7 +263,7 @@ Case("no invite in a minute: the ask ends and says so", function()
     Layers.Click()
     assert(#sent == 1)
     Run(60)
-    assert(Layers.asking == nil and Last() == "No one invited you to another layer. Click the layer line to ask again.")
+    assert(not Layers.Asking() and Last() == "No one invited you to another layer. Click the layer line to ask again.")
 end)
 
 Case("a group that does not start a move in 15 seconds is left", function()
@@ -247,7 +274,7 @@ Case("a group that does not start a move in 15 seconds is left", function()
     assert(Live(60) == nil, "the ask's minute stops once grouped")
     Run(15)
     assert(leaves == 1 and Last() == "Joining that group did not move you, so you left it.", Last())
-    assert(Layers.asking == nil)
+    assert(not Layers.Asking())
     state.grouped = false
 end)
 
@@ -259,7 +286,7 @@ Case("a move that starts and finishes keeps the group, and says why", function()
     Fire("SHARD_TRANSFER_IMMINENT")
     assert(Live(15) == nil, "a coming move stops the check")
     Fire("SHARD_TRANSFER")
-    assert(leaves == 1 and Layers.asking == nil)
+    assert(leaves == 1 and not Layers.Asking())
     assert(Last() == "You keep this layer while you stay in the group.", Last())
     state.grouped = false
 end)
@@ -292,7 +319,7 @@ Case("leaving the group while asking ends the ask", function()
     Layers.Click()
     Fire("GROUP_JOINED", 1, "Party-1")
     Fire("GROUP_LEFT", 1, "Party-1")
-    assert(Layers.asking == nil and Live(15) == nil)
+    assert(not Layers.Asking() and Live(15) == nil)
 end)
 
 Case("a joined group while not asking is left alone", function()
@@ -442,6 +469,123 @@ Case("a channel you were already in is not left", function()
     assert(Live(10) == nil, "already in it: nothing to join")
     Set("layerRequests", false)
     assert(#left == before, "a channel it did not join stays")
+end)
+
+Case("a click while the channel is still being joined waits for the join", function()
+    Set("layerRequests", false)
+    channelId = 0
+    Set("layerRequests", true)
+    local before = #joined
+    clock = clock + 61
+    Layers.Click()
+    assert(#joined == before and #sent == 0 and Last() == "Joining the layer channel. Click again in a moment.", Last())
+    Run(10)
+    assert(#joined == before + 1, "the delayed join still happens")
+    Layers.Click()
+    assert(#sent == 1 and Layers.Asking())
+    Layers.Click()
+end)
+
+Case("a zone change or loading screen ends an ask not yet answered", function()
+    clock = clock + 31
+    Layers.Click()
+    Fire("ZONE_CHANGED_NEW_AREA")
+    assert(not Layers.Asking() and Last() == "Stopped asking for another layer.", Last())
+    clock = clock + 31
+    Layers.Click()
+    Fire("PLAYER_ENTERING_WORLD", false, false)
+    assert(not Layers.Asking())
+end)
+
+Case("once grouped, a zone change or loading screen does not end the swap", function()
+    clock = clock + 31
+    Layers.Click()
+    state.grouped = true
+    Fire("GROUP_JOINED", 1, "Party-1")
+    Fire("ZONE_CHANGED_NEW_AREA")
+    Fire("PLAYER_ENTERING_WORLD", false, false)
+    assert(Layers.Asking() and Live(15), "still waiting for the move")
+    Fire("SHARD_TRANSFER")
+    assert(Last() == "You keep this layer while you stay in the group.", Last())
+    state.grouped = false
+end)
+
+Case("a group a friend or guildmate invited you into is never left", function()
+    local before = leaves
+    clock = clock + 31
+    Layers.Click()
+    state.friend = true
+    Fire("PARTY_INVITE_REQUEST", "Baine Bloodhoof", false, false, false, true, false, "Player-5250-00000042", false)
+    state.friend = false
+    state.grouped = true
+    Fire("GROUP_JOINED", 1, "Party-1")
+    Run(15)
+    assert(leaves == before and Last() == "Joining that group did not move you to another layer.", Last())
+    state.grouped = false
+    clock = clock + 31
+    Layers.Click()
+    state.guild, state.guildmates["Cairne Bloodhoof"] = true, true
+    Fire("PARTY_INVITE_REQUEST", "Cairne Bloodhoof", false, false, false, true, false, "Player-5250-00000043", false)
+    state.guild = false
+    state.grouped = true
+    Fire("GROUP_JOINED", 1, "Party-1")
+    Run(15)
+    assert(leaves == before, "a guildmate's group stays too")
+    state.grouped = false
+end)
+
+Case("a stranger's invite, or a secret one, is still left when it does not move you", function()
+    local before = leaves
+    clock = clock + 31
+    Layers.Click()
+    state.friend = true
+    Fire("PARTY_INVITE_REQUEST", SECRET, false, false, false, true, false, "Player-5250-00000044", false)
+    state.friend = false
+    Fire("PARTY_INVITE_REQUEST", "Garrosh Hellscream", false, false, false, true, false, "Player-5250-00000045", false)
+    state.grouped = true
+    Fire("GROUP_JOINED", 1, "Party-1")
+    Run(15)
+    assert(leaves == before + 1, "left")
+    state.grouped = false
+end)
+
+Case("turning Show Requests From Others off takes a shown prompt away, Invite and all", function()
+    clock = clock + 61
+    Say("inv layer <LS 1411 not 5250-16>", "H One")
+    assert(toast.shown)
+    Set("layerRequestsHost", false)
+    assert(not toast.shown, "the prompt goes")
+    toastSpec.buttons[1].click(toast)
+    assert(#invited == 0, "and inviting from it does nothing")
+    Set("layerRequestsHost", true)
+end)
+
+Case("a queued prompt that shows after its request was dropped hides itself", function()
+    queued = true
+    clock = clock + 61
+    Say("inv layer <LS 1411 not 5250-16>", "I One")
+    assert(not toast.shown and toast.waiting)
+    Set("layerRequestsHost", false)
+    Set("layerRequestsHost", true)
+    queued = false
+    Release()
+    assert(not toast.shown, "nothing to invite: it hides at once")
+    clock = clock + 61
+    Say("inv layer <LS 1411 not 5250-16>", "I Two")
+    assert(toast.shown and toast.line:find("^I Two"), "and a new request can show")
+    toast:Hide()
+end)
+
+Case("after a /reload, the channel this character joined is still left when swaps go off", function()
+    Set("layerRequests", false)
+    channelId, own.joined = 6, true
+    Set("layerRequests", true)
+    assert(Live(10) == nil, "already in it: nothing to join")
+    local before = #left
+    Set("layerRequests", false)
+    assert(#left == before + 1 and own.joined == nil, "left, as the saved flag says this character joined it")
+    Set("layerRequests", true)
+    Run(10)
 end)
 
 Case("Layer Tracker off takes its swaps with it", function()
