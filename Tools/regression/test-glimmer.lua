@@ -611,7 +611,8 @@ do
     check("another unit's loot changing leaves it as it was", Lit(c) ~= nil)
     c.Fire("UNIT_LOOT", guid, false)
     check("its loot gone, whoever took it: dark, and the plate gets its bar back", Lit(c) == nil
-        and parts.HealthBarsContainer.alpha == 1 and parts.PlayerLevelDiffFrame.alpha == 1)
+        and parts.HealthBarsContainer.alpha == 1 and parts.LevelFrame.alpha == 1
+        and parts.PlayerLevelDiffFrame.alpha == 1)
     c.game.loot = true
     c.Fire("UNIT_LOOT", guid, true)
     check("loot arriving after it was read: lit", Lit(c) ~= nil)
@@ -628,8 +629,35 @@ do
     c.env.issecretvalue = nil
     c.Fire("PLAYER_SOFT_INTERACT_CHANGED", "y", "x")
     check("a plain one is", Lit(c) ~= nil and c.lootAsked == c.game.guid)
+    c.Fire("PLAYER_REGEN_DISABLED")
+    c.game.combat = true
+    c.Fire("UNIT_LOOT", guid, true)
+    check("UNIT_LOOT in combat: Glimmer rests, nothing lit or written", Lit(c) == nil
+        and c.cvars.SoftTargetNameplateInteract == "0")
+    c.game.combat, c.game.instance = false, true
+    c.Fire("UNIT_LOOT", guid, true)
+    check("and in a dungeon", Lit(c) == nil)
+    c.game.instance = false
+    c.Fire("PLAYER_REGEN_ENABLED")
+    check("out of both: lit again", Lit(c) ~= nil)
     c.Set("corpse", false)
     check("corpses off again: dark, and UNIT_LOOT dropped", Lit(c) == nil and not Listening(c, "UNIT_LOOT"))
+end
+
+-- A lit chest that counts for a quest, once the quest is done: on the same nameplate it is only repainted as a
+-- chest, not started over.
+do
+    local q = Session({ enabled = true })
+    q.Login()
+    q.game.guid, q.game.plate, q.game.related = GUID(CHEST), Plate(q), true
+    q.Fire("PLAYER_SOFT_INTERACT_CHANGED", "", "x")
+    local lit = Lit(q)
+    for _ = 1, 20 do lit.OnUpdate(lit, 0.05) end
+    check("a chest for a quest lights as a quest object and fades in", lit.r == 1 and lit.appear == 1)
+    q.game.related = false
+    q.Fire("QUEST_LOG_UPDATE")
+    check("its quest done: the same effect in the chest color, not started over", Lit(q) == lit
+        and lit.r == 0.30 and lit.appear == 1)
 end
 
 -- A lit quest giver that dies with loot for you while it stays the soft target: on the same nameplate it is

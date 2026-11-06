@@ -1372,14 +1372,17 @@ NaowhForever_QoL/
   someone else's leaves it dark. With the option off, no unit is read as a corpse.
 - `CanLootUnit` takes a secret GUID only from untainted code, so a GUID that is not plain is passed over.
   Glimmer rests in combat, so a corpse lights once the fight is over.
-- A dead creature's plate shows a 0% health bar and its level, which say nothing about the loot, so a corpse's
-  plate keeps only its name: the same three parts Hide Health Bar and Level fades on a quest giver.
+- A dead creature's plate shows a 0% health bar and its level, which say nothing about the loot, so on a corpse
+  they are faded: the same three parts Hide Health Bar and Level fades on a quest giver. Glimmer leaves the
+  name, the game's elite or rare mark (`ClassificationFrame`) and any raid mark as the game shows them.
 - A corpse's loot can arrive after Glimmer reads it and go before the soft target moves (someone else loots it,
   or you do and it stays the soft target). `UNIT_LOOT` names the unit whose loot changed; when it is the soft
   target, Glimmer reads it again. It is registered only while Corpses with Loot is on. The game's own loot
   tutorial uses the same event with `CanLootUnit`.
-- When the lit target turns into another category on the same nameplate (a quest giver that dies with loot
-  for you), the effect is attached again, so the bar and the effect height follow the new category.
+- An object, a quest giver and a corpse each place the effect and the plate's bar their own way (`Placement`).
+  When the lit target changes between them on the same nameplate (a quest giver that dies with loot for you),
+  the effect is attached again so both follow. Any other change of category on the plate, such as a quest
+  object that is a plain chest once its quest is done, only repaints it, so the effect does not start over.
 - The effect is parented to the nameplate, one frame level under it so the game's name stays on
   top, and ignores the nameplate's alpha so it does not fade with it.
 - The game settings Glimmer changes are saved in the account settings before the first change and

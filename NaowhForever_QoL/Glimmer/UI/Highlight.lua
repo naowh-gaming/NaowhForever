@@ -17,10 +17,9 @@ local EVENTS = {
     "PLAYER_REGEN_DISABLED", "PLAYER_REGEN_ENABLED", "PLAYER_ENTERING_WORLD", "QUEST_LOG_UPDATE",
     "SKILL_LINES_CHANGED",
 }
-local LOOT_EVENT = "UNIT_LOOT"
 
 local events, watch, fx, line
-local plate, shown, shownCategory, barOwner
+local plate, shown, shownPlacement, barOwner
 local cog, cogPlate
 local wantReady, wantSince
 local read = {}
@@ -32,6 +31,11 @@ local CVAR_KEYS = { range = true, arc = true }
 local function Paused()
     if InCombatLockdown() then return true end
     return S.Get("hideInstance") and IsInInstance() and true or false
+end
+
+local function Placement(category)
+    if category == "giver" or category == "corpse" then return category end
+    return "object"
 end
 
 local function ShowBar()
@@ -54,7 +58,7 @@ local function Release()
     fx:ClearAllPoints()
     fx:SetParent(nil)
     watch:Hide()
-    plate, shown, shownCategory = nil, nil, nil
+    plate, shown, shownPlacement = nil, nil, nil
 end
 
 local function FreeCog()
@@ -118,7 +122,7 @@ local function Attach(to, info)
     if info.category == "corpse" or (giver and S.Get("giverHideBar")) then HideBar(to) end
     line:ClearAllPoints()
     line:SetPoint("TOP", to, "BOTTOM", 0, St.LINE_Y)
-    plate, shown, shownCategory = to, info, info.category
+    plate, shown, shownPlacement = to, info, Placement(info.category)
     wantReady, wantSince = info.ready, nil
     Paint(info)
     Effects.Start(fx)
@@ -141,7 +145,7 @@ local function Evaluate()
     CVars.SetPlate(true)
     local to = GetNamePlateForUnit(UNIT)
     if not (to and Plain(to)) then return Release() end
-    if to ~= plate or info.category ~= shownCategory then Release() end
+    if to ~= plate or Placement(info.category) ~= shownPlacement then Release() end
     if plate then
         shown = info
         Paint(info)
@@ -186,7 +190,7 @@ local function OnEvent(_, event, unit)
         Evaluate()
     elseif event == "QUEST_LOG_UPDATE" or event == "SKILL_LINES_CHANGED" then
         if plate then Evaluate() end
-    elseif event == LOOT_EVENT then
+    elseif event == "UNIT_LOOT" then
         local soft = UnitGUID(UNIT)
         if Plain(unit) and Plain(soft) and unit == soft then Evaluate() end
     else
@@ -210,9 +214,9 @@ local function Apply()
     end
     for _, event in ipairs(EVENTS) do events:RegisterEvent(event) end
     if S.Get("corpse") then
-        events:RegisterEvent(LOOT_EVENT)
+        events:RegisterEvent("UNIT_LOOT")
     else
-        events:UnregisterEvent(LOOT_EVENT)
+        events:UnregisterEvent("UNIT_LOOT")
     end
     SizeCog()
     Release()
