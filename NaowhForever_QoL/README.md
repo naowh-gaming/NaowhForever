@@ -1286,7 +1286,7 @@ NaowhForever_QoL/
   removing one moves the bar, which waits for the fight to end, as the bar's other changes do.
 
 ### Glimmer
-- Herbs, ore, quest objects, chests and your fishing bobber light up as you walk up to them, in one of
+- Herbs, ore, quest objects, chests, your fishing bobber and corpses with loot light up as you walk up to them, in one of
   five effects: dim while out of reach, a flash and full brightness once you can use them. Its tab is
   QoL > Glimmer, its on/off the Glimmer card's switch there. It keeps its own settings store,
   `ns.GlimmerSettings` (the profile's `glimmer` table, defaults from `ns.FEATURES.glimmer`), not
@@ -1367,6 +1367,15 @@ NaowhForever_QoL/
   when the effect is released. Effect Height (`giverOffset`, pixels, 0 by default) moves a giver's effect from the
   same anchor an object's uses, since a plate over a creature's head sits at a different height than one over an
   object. Both apply on the next frame, like the other settings.
+- Corpses with Loot (`corpse`, off by default) lights a corpse that still has loot for you: the soft target is
+  dead (`UnitIsDead`) and `CanLootUnit` on its GUID says it has loot and that you may take it. Loot that is
+  someone else's leaves it dark.
+- `CanLootUnit` takes a secret GUID only from untainted code, so a GUID that is not plain is passed over.
+  Glimmer rests in combat, so a corpse lights once the fight is over.
+- A dead creature's plate shows a 0% health bar and its level, which say nothing about the loot, so a corpse's
+  plate keeps only its name: the same three parts Hide Health Bar and Level fades on a quest giver.
+- Looting does not always change the soft target, so `LOOT_CLOSED` reads the target again while something is
+  lit, and a corpse looted empty goes dark.
 - The effect is parented to the nameplate, one frame level under it so the game's name stays on
   top, and ignores the nameplate's alpha so it does not fade with it.
 - The game settings Glimmer changes are saved in the account settings before the first change and

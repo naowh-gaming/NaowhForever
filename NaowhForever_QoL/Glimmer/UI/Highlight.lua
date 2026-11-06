@@ -15,7 +15,7 @@ local UNIT = C.UNIT
 local EVENTS = {
     "PLAYER_SOFT_INTERACT_CHANGED", "NAME_PLATE_UNIT_ADDED", "NAME_PLATE_UNIT_REMOVED",
     "PLAYER_REGEN_DISABLED", "PLAYER_REGEN_ENABLED", "PLAYER_ENTERING_WORLD", "QUEST_LOG_UPDATE",
-    "SKILL_LINES_CHANGED",
+    "SKILL_LINES_CHANGED", "LOOT_CLOSED",
 }
 
 local events, watch, fx, line
@@ -114,7 +114,7 @@ local function Attach(to, info)
     fx:ClearAllPoints()
     local giver = info.category == "giver"
     fx:SetPoint("CENTER", to, "CENTER", 0, giver and St.PLATE_Y + S.Get("giverOffset") or St.PLATE_Y)
-    if giver and S.Get("giverHideBar") then HideBar(to) end
+    if info.category == "corpse" or (giver and S.Get("giverHideBar")) then HideBar(to) end
     line:ClearAllPoints()
     line:SetPoint("TOP", to, "BOTTOM", 0, St.LINE_Y)
     plate, shown = to, info
@@ -183,7 +183,7 @@ local function OnEvent(_, event, unit)
         SizeCog()
         Release()
         Evaluate()
-    elseif event == "QUEST_LOG_UPDATE" or event == "SKILL_LINES_CHANGED" then
+    elseif event == "QUEST_LOG_UPDATE" or event == "SKILL_LINES_CHANGED" or event == "LOOT_CLOSED" then
         if plate then Evaluate() end
     else
         Evaluate()
