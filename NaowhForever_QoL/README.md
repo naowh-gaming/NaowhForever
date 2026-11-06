@@ -90,6 +90,7 @@ NaowhForever_QoL/
     GroupButtons.lua    On-Screen Buttons (Invite, your invite buttons, Invite All, Disband)
     FreeForAll.lua      Always Free for All, the party loot method while you lead
     LayerSwap.lua       Auto-Accept Layer Swap, confirming the game's layer swap prompt on joining a group
+    LayerTracker.lua    Layer Tracker, the layer you are on, read from the NPCs around you
     QuestProgress.lua   Announce Quest Progress, your quest objective updates said in party chat
     FinderRoles.lua     Group Finder Roles, the role buttons on the Group Finder
     TalentPoints.lua    the unspent talent points reminder
@@ -1273,6 +1274,17 @@ NaowhForever_QoL/
 - The type and the line are checked with `issecretvalue` before anything reads them: `GetGameMessageInfo`
   and `SendChatMessage` refuse a secret from addon code. The API docs do not mark the event secret, but the
   Journal's quest sharing guards the same event.
+
+### Layer Tracker
+- The layer is the fifth part of an NPC's GUID, `Creature-0-server-map-zoneUID-id-spawn`: the copy of the
+  zone the NPC is in. It is shown as the game's own number, so players on the same layer read the same one.
+  Every zone has its own numbers, so the reading starts over on a zone change.
+- Your target and mouseover always take over; a new nameplate only fills an empty reading, since a
+  nameplate can belong to the zone across a border.
+- `SHARD_TRANSFER` is the game moving you to another layer, the world refresh its own toast counts down
+  to, so the reading starts over there and on every loading screen. Instances have no layers: it hides inside.
+- Only creature and vehicle GUIDs are read; a player's GUID has no zone copy in it. A GUID or nameplate unit
+  the game keeps secret is left unread (`issecretvalue`): `UnitGUID` refuses a secret unit from addon code.
 
 ### Invite Buttons
 - The list is in `ns.PROFILE_OWN`: a shared profile never carries your friends' BattleTags.
