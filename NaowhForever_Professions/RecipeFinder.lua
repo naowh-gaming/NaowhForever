@@ -469,6 +469,7 @@ ns.RecipeFinder = {
     Describe = Describe,
     Tag = Tag,
     Skill = Skill,
+    Cost = Cost,
     Current = ReadProfession,
     Nearest = Nearest,
     Rows = Rows,
