@@ -598,7 +598,17 @@ check("opening the flight map there marks the island seen and its point known",
 check("so the island stops asking on either of its maps", At(ZEPHRAS, { zephrasNode }) == nil)
 check("an unknown point on the island is named, not asked about",
     At(ZEPHRAS, { Node("Skyreach, Zephras Isle", NEUTRAL, 50, true, 3002) }) == "Learn the Skyreach flight point")
+check("an island with no points of its own never reads Azeroth's, from other continents",
+    At(ZEPHRAS, { [AZEROTH] = { Node("Zoram'gar Outpost, Ashenvale", NEUTRAL, 50, false, 58) } }) == nil)
 env.C_Map.GetMapInfo = mapInfo
+
+state.subzone, state.faction = "Nighthaven", "Alliance"
+check("the druids' Nighthaven flight, which no one discovers, is never a reminder",
+    At(DARKSHORE, { Node("Nighthaven, Moonglade", ALLIANCE, 50, false, 62) }) == nil)
+check("so the Moonglade flight master's own point still is",
+    At(DARKSHORE, { Node("Nighthaven, Moonglade", ALLIANCE, 50, false, 62),
+        Node("Moonglade", ALLIANCE, 60, false, 49) }) == "Learn the Moonglade flight point")
+state.subzone = ""
 state.taxiMap = DARKSHORE
 
 state.subzone, state.pos, state.faction = "The Sepulcher", nil, "Horde"

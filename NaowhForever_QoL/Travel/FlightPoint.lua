@@ -27,6 +27,8 @@ local LEARN, ASK = "learn", "ask"
 local TEXT_ALERT = "Flight Point Reminder"
 local SAMPLE_PLACE = "Ratchet"
 local RETIRED = { "zzOLD", "Quest Path", "[DNT]", "DEPRECATED" }
+local NO_DISCOVERY = { [59] = true, [60] = true, [62] = true, [63] = true, [84] = true, [85] = true, [86] = true,
+    [87] = true }
 local TAXI_ICON = "Interface\\GossipFrame\\TaxiGossipIcon"
 
 local TEXT = ns.L("Learn the %s flight point")
@@ -176,10 +178,12 @@ end
 
 local function Prepare(map, nodes, zone)
     local ready = {}
-    for i, node in ipairs(nodes) do
-        local world, blocked, continent = WorldOf(map, node.position)
-        if blocked then return nil, true end
-        ready[i] = { node = node, world = world, inZone = InZone(zone, world, continent) }
+    for _, node in ipairs(nodes) do
+        if not NO_DISCOVERY[node.nodeID] then
+            local world, blocked, continent = WorldOf(map, node.position)
+            if blocked then return nil, true end
+            ready[#ready + 1] = { node = node, world = world, inZone = InZone(zone, world, continent) }
+        end
     end
     return ready
 end
@@ -194,12 +198,13 @@ local function NodesFor(zone)
         while info and info.parentMapID and info.parentMapID > 0 do
             local parent = info.parentMapID
             info = C_Map.GetMapInfo(parent)
+            if not info or info.mapType < CONTINENT then break end
             local list = C_TaxiMap.GetTaxiNodesForMap(parent)
             if list[1] then
                 map, nodes = parent, list
                 break
             end
-            if not info or info.mapType <= CONTINENT then break end
+            if info.mapType == CONTINENT then break end
         end
     end
     if not nodes then

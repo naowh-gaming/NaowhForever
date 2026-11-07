@@ -657,9 +657,14 @@ NaowhForever_QoL/
 - The Flight Timer's mover reports offsets in the timer's own scaled units; they are saved in
   screen units so the Scale slider resizes it in place.
 - Flight Point reads `C_TaxiMap.GetTaxiNodesForMap` for the zone, and the parent maps up through
-  the continent when that list is empty. That list keeps nodes the game has retired ("zzOLDPowderfuse
+  the continent when that list is empty, never past it: Zephras Isle sits straight under Azeroth, and
+  the 400-yard check compares world yards without a continent, so another continent's point could
+  remind you on the island. That list keeps nodes the game has retired ("zzOLDPowderfuse
   Port"), so a name with one of the markers `Tools/build/journeys.py` drops (`RETIRED`) is never a
-  reminder, nor the nearest node to a flight master's pin. `isUndiscovered` is not set for a classic
+  reminder, nor the nearest node to a flight master's pin. It also keeps the flights no character
+  discovers (`NO_DISCOVERY`, the TaxiNodes rows with CharacterBitNumber 0): the Alterac Valley
+  flights, the Eastern Plaguelands towers and the druids' "Nighthaven, Moonglade", which named the
+  Nighthaven subzone for everyone. `isUndiscovered` is not set for a classic
   flight path you have not spoken to. Until this character opens a flight master's map on that continent
   (`GetAllTaxiNodes` only lists the open map's continent), a friendly point in range
   asks you to open one to save the points you know, and only a node the map marks undiscovered is
