@@ -152,21 +152,19 @@ local function Described(spell)
     end
 end
 
-local function OnLeft()
-    local x = GameTooltip:GetCenter()
-    return x and x > UIParent:GetWidth() * HALF
-end
-
-local function OnLow()
-    local _, y = GameTooltip:GetCenter()
-    return y and y < UIParent:GetHeight() * HALF
+local function Room()
+    local x, y = GameTooltip:GetCenter()
+    if not x or Secret(x) or Secret(y) then return false, false end
+    local scale = GameTooltip:GetEffectiveScale() / UIParent:GetEffectiveScale()
+    return x * scale > UIParent:GetWidth() * HALF, y * scale < UIParent:GetHeight() * HALF
 end
 
 local function ShowInline(list)
     details = details or NewTip(DETAILS_TIP)
     details:SetOwner(UIParent, "ANCHOR_NONE")
     details:ClearAllPoints()
-    if OnLow() then details:SetPoint("BOTTOMLEFT", GameTooltip, "TOPLEFT", 0, TIP_GAP)
+    local _, up = Room()
+    if up then details:SetPoint("BOTTOMLEFT", GameTooltip, "TOPLEFT", 0, TIP_GAP)
     else details:SetPoint("TOPLEFT", GameTooltip, "BOTTOMLEFT", 0, -TIP_GAP) end
     for _, spell in ipairs(list) do
         local name, icon = C_Spell.GetSpellName(spell), C_Spell.GetSpellTexture(spell)
@@ -178,22 +176,21 @@ local function ShowInline(list)
 end
 
 local function ShowBeside(list)
-    local left, low = OnLeft(), OnLow()
-    local near, far = low and "BOTTOM" or "TOP", low and "TOP" or "BOTTOM"
-    local side = left and "RIGHT" or "LEFT"
+    local left, up = Room()
+    local near, far = up and "BOTTOM" or "TOP", up and "TOP" or "BOTTOM"
+    local side, other = left and "RIGHT" or "LEFT", left and "LEFT" or "RIGHT"
     local anchor = GameTooltip
-    for i, spell in ipairs(list) do
+    for i = 1, #list do
         spellTips[i] = spellTips[i] or NewTip(SPELL_TIP .. i)
         local tip = spellTips[i]
         tip:SetOwner(UIParent, "ANCHOR_NONE")
         tip:ClearAllPoints()
         if i == 1 then
-            if left then tip:SetPoint(near .. "RIGHT", anchor, near .. "LEFT", -TIP_GAP, 0)
-            else tip:SetPoint(near .. "LEFT", anchor, near .. "RIGHT", TIP_GAP, 0) end
+            tip:SetPoint(near .. side, anchor, near .. other, left and -TIP_GAP or TIP_GAP, 0)
         else
-            tip:SetPoint(near .. side, anchor, far .. side, 0, low and TIP_GAP or -TIP_GAP)
+            tip:SetPoint(near .. side, anchor, far .. side, 0, up and TIP_GAP or -TIP_GAP)
         end
-        tip:SetSpellByID(spell)
+        tip:SetSpellByID(list[up and #list - i + 1 or i])
         tip:Show()
         anchor = tip
     end
