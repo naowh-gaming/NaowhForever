@@ -375,6 +375,12 @@ do
     units.party2 = { "Lux", "Lux", "PALADIN", "Aeterna" }
     ns.Blessings.AskPallyPower()
     check("a paladin with no plan is asked for PallyPower's", sent[#sent] == "PLPWR REQ")
+    local requests = #sent
+    ns.Blessings.AskPallyPower()
+    check("a paladin who does not answer is asked only once", #sent == requests)
+    ns.Blessings.AskPallyPowerAgain()
+    ns.Blessings.AskPallyPower()
+    check("Refresh asks them again", #sent == requests + 1 and sent[#sent] == "PLPWR REQ")
     PallyPower("SELF 607010nnnnnn@2213n4113", "Lux Aeterna", "WHISPER")
     local lux = ns.Blessings.Others()["Lux-Aeterna"]
     check("a PallyPower paladin's blessings are read, whispered too", lux ~= nil and lux.pallyPower
@@ -396,6 +402,38 @@ do
     PallyPower("SELF 607010nnnnnn@111111111", "Holy Man")
     check("a paladin running Naowh Forever keeps that plan", not ns.Blessings.Others()["Holy-Man"].pallyPower
         and ns.Blessings.Others()["Holy-Man"].classes.WARRIOR == "might")
+
+    -- Later changes come as PallyPower's assignment messages, taken by the rules its own clients use.
+    PallyPower("ASSIGN Lux Aeterna 1 3", "Lux Aeterna")
+    check("a PallyPower paladin's own change is read", lux.classes.WARRIOR == "kings")
+    PallyPower("ASSIGN Lux Aeterna 3 2", "Holy Man")
+    check("someone else's is not, without the lead or Free Assignment", lux.classes.PRIEST == "wisdom")
+    PallyPower("FREEASSIGN YES | SYMCOUNT 12 | COOLDOWNS:n:n:n:n", "Lux Aeterna")
+    PallyPower("ASSIGN Lux Aeterna 3 2", "Holy Man")
+    check("with their Free Assignment on it is", lux.free and lux.classes.PRIEST == "might")
+    PallyPower("MASSIGN Lux Aeterna 1", "Lux Aeterna")
+    check("MASSIGN sets every class", lux.classes.WARRIOR == "wisdom" and lux.classes.SHAMAN == "wisdom")
+    PallyPower("PASSIGN Lux Aeterna@2n3nnnnnn", "Lux Aeterna")
+    check("PASSIGN sets each class", lux.classes.WARRIOR == "might" and lux.classes.PRIEST == "kings"
+        and lux.classes.ROGUE == nil)
+    PallyPower("AASSIGN Lux Aeterna 2", "Lux Aeterna")
+    check("an aura they have not learned is none", lux.aura == nil)
+    PallyPower("AASSIGN Lux Aeterna 1", "Lux Aeterna")
+    check("AASSIGN sets their aura", lux.aura == "devotion")
+    PallyPower("ASSIGN Holy Man 1 3", "Lux Aeterna")
+    check("a change for a paladin running Naowh Forever is left alone",
+        ns.Blessings.Others()["Holy-Man"].classes.WARRIOR == "might")
+    PallyPower("CLEAR SKIP", "Holy Man")
+    check("CLEAR SKIP clears a Free Assignment paladin's classes and keeps the aura", next(lux.classes) == nil
+        and lux.aura == "devotion")
+    PallyPower("FREEASSIGN NO | SYMCOUNT 12 | COOLDOWNS:n:n:n:n", "Lux Aeterna")
+    PallyPower("PASSIGN Lux Aeterna@2n3nnnnnn", "Lux Aeterna")
+    PallyPower("CLEAR", "Holy Man")
+    check("CLEAR from someone without the lead leaves the rest alone", lux.classes.WARRIOR == "might")
+    env.UnitIsGroupLeader = function(u) return u == "party1" end
+    PallyPower("CLEAR", "Holy Man")
+    check("CLEAR from the leader clears classes and aura", next(lux.classes) == nil and lux.aura == nil)
+    env.UnitIsGroupLeader = function() return false end
     local asked = #sent
     ns.Blessings.AskPallyPower()
     check("once every paladin has a plan nobody is asked", #sent == asked)

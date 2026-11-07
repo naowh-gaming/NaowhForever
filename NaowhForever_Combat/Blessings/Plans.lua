@@ -245,4 +245,5 @@ function B.AfterCombat()
         pending[key] = nil
         Send(msg)
     end
+    if IsPaladin() or CanAssign("player") then B.AskPallyPower() end
 end

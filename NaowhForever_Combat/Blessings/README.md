@@ -145,9 +145,19 @@ NaowhForever_Combat/Blessings/
   Its class order is Warrior, Rogue, Priest, Druid, Paladin, Hunter, Mage, Warlock, Shaman; its blessings are
   Wisdom, Might, Kings and three Forever no longer has, read as none; its auras are in our `AURAS` order. A rank
   of `n` is a spell they have not learned. Their plan is shown, reported and planned around but never set from
-  here, and a paladin who also runs Naowh Forever keeps that plan. While a paladin in the group has given no
-  plan, a sync also sends `REQ`, which PallyPower answers, often by whisper, so whispers on its prefix are read
-  too, from group members only. Their per-player choices (`NASSIGN`) are not read.
+  here, and a paladin who also runs Naowh Forever keeps that plan; only `SELF` makes a PallyPower plan.
+- PallyPower sends `SELF` on joining and when asked, and every change after it as `ASSIGN <name> <class>
+  <blessing>`, `PASSIGN <name>@<a digit per class>`, `MASSIGN <name> <blessing>` (every class), `AASSIGN <name>
+  <aura>` or `CLEAR`, never a new `SELF`, so the plan would go stale without them. They are taken as its own
+  clients take them: from that paladin, the leader or an assistant, or anyone while the paladin's Free Assignment
+  is on (`FREEASSIGN YES` on their status line). `CLEAR` from the leader or an assistant clears every PallyPower
+  paladin, from anyone else only those with Free Assignment on, and `CLEAR SKIP` keeps the auras. A change naming
+  a paladin who runs Naowh Forever is left alone, as their client ignores it. Their per-player choices
+  (`NASSIGN`) are not read.
+- `REQ` asks for every PallyPower plan, and PallyPower answers it with all of its own messages, to the whole raid
+  in a raid instance and by whisper elsewhere, so whispers on its prefix are read too, from group members only.
+  A paladin in the group who has given no plan is asked once (by GUID), not on every sync: a paladin with
+  Blessings off or no addon never answers. Refresh asks again, and a sync skipped in combat asks once it ends.
 - Free Assignment is a flag on your plan (`X` in the known list, `free`): with it on, any paladin in the group
   may set your plan, not only the leader or an assistant (`MayPlan`); without it nothing changes. A paladin
   with it on shows as editable in everyone's Blessings window.
@@ -229,5 +239,6 @@ NaowhForever_Combat/Blessings/
 - `lua Tools/regression/test-blessing-preview.lua`: the settings preview and its edits.
 - `lua Tools/regression/test-import-safety.lua`: another paladin's per-player choices are capped, they
   are heard however their sender spells their name, and a plan set for them names their GUID. A PallyPower
-  paladin's plan, aura and status are read, bad input changes nothing, and Auto-Assign never sends them one.
+  paladin's plan, aura, status and later changes are read by PallyPower's own rules, bad input changes nothing,
+  an unanswered paladin is asked once, and Auto-Assign never sends them a plan.
 - `lua Tools/regression/test-combat-perf.lua`: a bar refresh reads each member's buffs once.

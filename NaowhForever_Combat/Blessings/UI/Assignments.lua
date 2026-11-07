@@ -109,6 +109,7 @@ local function ClearAll()
 end
 
 local function AskPlans()
+    B.AskPallyPowerAgain()
     B.SyncSoon()
     ns.Print(TEXT_ASKED)
 end
