@@ -870,7 +870,10 @@ NaowhForever_QoL/
   client has no data for is left out.
 - The details are Scout's own tooltips (GameTooltip copies), shown while the details key is held
   (MODIFIER_STATE_CHANGED, that key only) and hidden with the creature's tooltip: under it for In
-  the Tooltip, or the game's own spell tooltips beside it, on the side with more screen. The
+  the Tooltip, or the game's own spell tooltips beside it, on the side with more screen. A tooltip
+  in the lower half of the screen (the game's default spot, bottom right) gets them above it, or
+  stacked upward from its bottom: grown down, the screen clamp pushed them up over the tooltip and
+  each other. The
   creature's tooltip is never redrawn: refreshing Blizzard's tooltip from addon code would re-run
   its unit code under taint, where combat's secret values break it.
 - A spell whose description is empty is asked of the client once (Spell:ContinueOnSpellLoad); some

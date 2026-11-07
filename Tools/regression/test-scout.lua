@@ -51,7 +51,7 @@ local function Fixture(settings)
     function tooltip:IsForbidden() return false end
     function tooltip:IsShown() return self.shown end
     function tooltip:GetUnit() return "Name", s.unit end
-    function tooltip:GetCenter() return s.tooltipX or 1500 end
+    function tooltip:GetCenter() return s.tooltipX or 1500, s.tooltipY or 800 end
     function tooltip:HookScript(k, fn) self.scripts[k] = fn end
     function tooltip:AddLine(text, r, g, b, wrap) s.lines[#s.lines + 1] = { text = text, r = r, wrap = wrap } end
     function tooltip:AddDoubleLine(l, r, lr, lg, lb, rr)
@@ -81,7 +81,7 @@ local function Fixture(settings)
     local function Unit(unit) return s.units[unit] or {} end
     local env = setmetatable({
         _G = { NaowhForever = ns },
-        GameTooltip = tooltip, UIParent = { GetWidth = function() return 1920 end },
+        GameTooltip = tooltip, UIParent = { GetWidth = function() return 1920 end, GetHeight = function() return 1080 end },
         CreateFrame = function(kind, name) return Frame(kind, name) end,
         hooksecurefunc = function(t, k, fn) local old = t[k]; t[k] = function(...) old(...); fn(...) end end,
         TooltipDataProcessor = { AddTooltipPostCall = function(_, fn) s.hooks = s.hooks + 1; s.onUnit = fn end },
@@ -218,6 +218,11 @@ do
     local details = s.Details()
     check("Ctrl pressed: Scout's details box under the tooltip", details and details.point[1] == "TOPLEFT"
         and details.point[3] == "BOTTOMLEFT")
+    s.tooltipY = 100
+    s.Fire("MODIFIER_STATE_CHANGED", "LCTRL", 1)
+    check("a tooltip low on the screen: the box opens above it instead", s.Details().point[1] == "BOTTOMLEFT"
+        and s.Details().point[3] == "TOPLEFT")
+    s.tooltipY = nil
     check("each ability with its description, wrapped", Has(details, "Head Butt")
         and Has(details, "Stuns for 2 sec.").wrap)
     check("the creature's tooltip is never redrawn", not s.redrawn)
@@ -239,6 +244,12 @@ do
         and tips[1] == 6016 and tips[3] == 6730 and s.Details() == nil)
     check("on the left of a tooltip on the right of the screen",
         s.Named("NaowhForeverScoutSpell1").point[1] == "TOPRIGHT")
+    s.tooltipY = 100
+    s.Fire("MODIFIER_STATE_CHANGED", "RCTRL", 1)
+    local first, second = s.Named("NaowhForeverScoutSpell1").point, s.Named("NaowhForeverScoutSpell2").point
+    check("a tooltip low on the screen: they start at its bottom and stack upward", first[1] == "BOTTOMRIGHT"
+        and first[3] == "BOTTOMLEFT" and second[1] == "BOTTOMRIGHT" and second[3] == "TOPRIGHT")
+    s.tooltipY = nil
     s.tooltip.scripts.OnHide(s.tooltip)
     check("and they go with the creature's tooltip", #s.Tips() == 0)
     s.Fire("MODIFIER_STATE_CHANGED", "RCTRL", 1)

@@ -157,11 +157,17 @@ local function OnLeft()
     return x and x > UIParent:GetWidth() * HALF
 end
 
+local function OnLow()
+    local _, y = GameTooltip:GetCenter()
+    return y and y < UIParent:GetHeight() * HALF
+end
+
 local function ShowInline(list)
     details = details or NewTip(DETAILS_TIP)
     details:SetOwner(UIParent, "ANCHOR_NONE")
     details:ClearAllPoints()
-    details:SetPoint("TOPLEFT", GameTooltip, "BOTTOMLEFT", 0, -TIP_GAP)
+    if OnLow() then details:SetPoint("BOTTOMLEFT", GameTooltip, "TOPLEFT", 0, TIP_GAP)
+    else details:SetPoint("TOPLEFT", GameTooltip, "BOTTOMLEFT", 0, -TIP_GAP) end
     for _, spell in ipairs(list) do
         local name, icon = C_Spell.GetSpellName(spell), C_Spell.GetSpellTexture(spell)
         details:AddLine(icon and ICON:format(icon, name) or name, WHITE.r, WHITE.g, WHITE.b)
@@ -172,7 +178,9 @@ local function ShowInline(list)
 end
 
 local function ShowBeside(list)
-    local left = OnLeft()
+    local left, low = OnLeft(), OnLow()
+    local near, far = low and "BOTTOM" or "TOP", low and "TOP" or "BOTTOM"
+    local side = left and "RIGHT" or "LEFT"
     local anchor = GameTooltip
     for i, spell in ipairs(list) do
         spellTips[i] = spellTips[i] or NewTip(SPELL_TIP .. i)
@@ -180,10 +188,10 @@ local function ShowBeside(list)
         tip:SetOwner(UIParent, "ANCHOR_NONE")
         tip:ClearAllPoints()
         if i == 1 then
-            if left then tip:SetPoint("TOPRIGHT", anchor, "TOPLEFT", -TIP_GAP, 0)
-            else tip:SetPoint("TOPLEFT", anchor, "TOPRIGHT", TIP_GAP, 0) end
+            if left then tip:SetPoint(near .. "RIGHT", anchor, near .. "LEFT", -TIP_GAP, 0)
+            else tip:SetPoint(near .. "LEFT", anchor, near .. "RIGHT", TIP_GAP, 0) end
         else
-            tip:SetPoint(left and "TOPRIGHT" or "TOPLEFT", anchor, left and "BOTTOMRIGHT" or "BOTTOMLEFT", 0, -TIP_GAP)
+            tip:SetPoint(near .. side, anchor, far .. side, 0, low and TIP_GAP or -TIP_GAP)
         end
         tip:SetSpellByID(spell)
         tip:Show()
