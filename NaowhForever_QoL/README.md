@@ -1087,62 +1087,159 @@ NaowhForever_QoL/
 - The switch is off until turned on. While it is off, nothing is registered and the popup is not
   built. While it is on, the only standing event is `UI_ERROR_MESSAGE`. Bag, loot and item-data
   events are registered only while the popup is open or a delete is waiting on the game.
-- A full-bag error opens the popup while the loot window is open and every plain bag has no free
-  slot. Bank, mail, trade, vendor and quest-reward transfers do the same only when Bank and Other
-  Transfers is on, so loot detection stays on by itself. A full profession bag does not open it,
-  and neither does a loot that still fits. It does not hook looting, so auto-loot is left alone.
-- The offer is the cheapest stack by vendor price times count, from plain bags. Market Prices,
-  off until turned on, also shows the auction house price from the last scan or the release's
-  prices. No price leaves that line off. Rank by Market Value, also off, sorts by auction price
-  times the stack, cheapest first. A missing auction price stays on the vendor total, and that
-  total orders the list, picks the item, and decides the not-worth warning. Ignore Old Scans
-  starts off. While it is on, a price older than Older Than is shown muted and left out of that
-  order, and Older Than starts at seven days. With it off, an old price is still used. Turning
-  the rank or the age on or off rebuilds the list at once.
-  Destroy Anyway, off until turned on, adds a smaller button
-  next to the not-worth warning. It still takes a click, and the same second click and delete
-  window as Destroy. A bag that reports
-  no family is treated as plain, which is how the backpack is counted when that return is missing.
+  Bag updates and item-load callbacks that arrive together share one scan.
+- A full-bag error opens the popup while a loot is in progress and every plain bag has no free
+  slot. The open shows and paints before any refresh that the open itself caused, so that refresh
+  cannot dismiss it. A refresh queued by an older open cannot dismiss the new one or open a closed
+  one. The loot window can be shrunk by Hide Loot Window, or already closing from fast loot:
+  the popup paints during that open, then closes once the loot window is already gone. It does not
+  stay up after the loot window closes. A shrunk
+  loot window is not used as the anchor, so the popup sits in the middle of the screen. An error
+  string the client will not let an addon read still counts while that loot is in progress and
+  plain bags are full. A full-bag error is recognized by its message type name
+  (`ERR_INV_FULL` or `ERR_BAG_FULL` from `GetGameMessageInfo`) as well as by the
+  error text. Bank, mail, trade, vendor and quest-reward transfers do the same only when
+  Bank and Other Transfers is on, so loot detection stays on by itself. A full profession bag does
+  not open it, and neither does a loot that still fits. The dedicated reagent bag is bag 5 on this
+  client (`Enum.BagIndex.ReagentBag` when that index is a number). Its free slots are not ordinary
+  room, even when the client reports family 0. Its items are not offered for ordinary loot.
+  Reagent Bag When Full starts off. While it is on, and the incoming item is a reagent, and that
+  bag has no free slot, and ordinary bags are already full, a reagent already in that bag can be
+  offered beside ordinary items. The cheaper one wins. Trade goods (class 7) are the reagent
+  class when `C_Item.IsReagent` is not available. Paging the Incoming card rebuilds the list while
+  this is on, and the click checks the bag again, so a reagent is never destroyed for other loot. A bag that reports no family still counts as
+  ordinary room. It does not hook looting, so auto-loot is left alone.
+- The offer is the cheapest eligible stack from plain bags. The default rank is the vendor price
+  times the stack count. Rank Quantity can switch that to one item. The cards always show one
+  item, and the stack as well when the quantity is above one. That layout does not choose which
+  item is destroyed. The saved Price Display value is left in place and is not a settings row.
+  The price is the sell value of that bag slot's own item link.
+  A different bonus or suffix on the same item id keeps its own price. If that link's sell value
+  cannot be read, the stack is left out. The base item id is not shown as its price. Unknown is
+  not treated as zero, and an item with no vendor price and no fresh auction estimate sorts after
+  every known price.
+  Market Prices, off until turned on, shows the auction house price from the last scan or
+  the release's prices beside the vendor price. Rank by Market Value, also off, shows that
+  column too, because the rank uses it. With both off, the auction row is omitted and no auction
+  lookup is added. With only Market Prices on, a bag slot's auction price is read when that item is
+  shown or compared, not for every slot during the scan. A missing, zero, or stale auction estimate is shown as unavailable. It is not
+  replaced on screen by the vendor price. Ranking may still fall back to that item's vendor price,
+  and the status then says the auction estimate is unavailable. Unknown is not stored as zero.
+  A known vendor price of zero stays zero. Ignore Old Scans starts off. While it is on, a price
+  older than Older Than is left out of the auction rank, and Older Than starts at seven days.
+  The comparison under the cards is incoming minus destroyed, for one item and for the full
+  quantity when those totals differ. Vendor and auction are colored separately. Green is a
+  profit, red is a deficit, and an equal or unknown result stays neutral. The button and the
+  one status line follow Rank Quantity and Rank by Market Value. An auction estimate is not a
+  guaranteed sale. The incoming loot uses the same rank. One item is not given a second column
+  when the stack total would be the same number. When the destroyed quantity differs, that
+  column is labeled Total.
+  Estimate Worn Vendor Price starts off. It is not a confirmed merchant rule. While it is off,
+  damaged weapons and armor keep the full template price. While it is on, only weapons and armor
+  use floor(full price * current durability / max durability), and the card says Vendor est.
+  Destroy Anyway starts off. The normal button says Destroy, Destroy & Loot, or Make Room for Quest.
+  Make Room for Quest is only for incoming loot the client marks as a quest item, including one
+  with no sell value. A zero vendor price that is not a quest item does not get that button.
+  The normal button stays hidden when the comparison is unknown, when that loot's vendor value is
+  zero and no auction rank applies, when the loot is worth less, or when the stack is a consumable
+  a vendor will not buy and a positive auction estimate is known. Destroy Anyway is the smaller
+  button for a lower value. Value Unknown, No Vendor Value, and Auction Only are that same second
+  click with a different label. With no auction estimate, a zero-vendor consumable is offered as
+  before while Consumables is on. A bag that reports no family is treated as plain.
   Each quality has its own switch: Poor through Rare start on, and Epic, Legendary, Artifact and
-  Heirloom start off. Several can be on at once. Left out, whatever the quality: quest items and
-  keys, recipes, quivers and ammo, soulbound armor and weapons, item-set pieces,
-  equipment-set items, BiS items, library books (item ids Discovery copies onto ns.LibraryBookItems), profession tools and
-  the hearthstone, anything with no vendor price other than a consumable while Consumables is
-  on, and anything on this feature's ignore list. Bags, consumables, reagents, trade goods,
-  miscellaneous items and unbound gear are offered when their quality is on and they have a
-  vendor price. Consumables
-  starts on and also offers ones a vendor will not buy. All Items starts off. While it is on,
-  every item in your bags is offered except ones on this ignore list. An item whose price is not
-  loaded yet is asked for once and added when it arrives. Bag Space does not have to be on.
-  Nothing is destroyed on its own.
+  Heirloom start off. Several can be on at once. Left out, whatever the quality and even with
+  All Items on: quest items (a quest id of 0 is not one) and keys, recipes, quivers and ammo,
+  soulbound or bind-on-acquire armor and weapons unless Include Bound Armor and Weapons is on,
+  item-set pieces, equipment-set items, BiS items, library books, profession tools and the
+  hearthstone, anything whose vendor price is still unknown, and anything on this ignore list.
+  Include Zero-Vendor-Value Items starts off. All Items starts off and skips only the quality
+  switches, the zero-vendor rule and the plain-bag limit. An item whose link is not loaded yet
+  is asked for a limited number of times and added only when that link's price arrives. A failed
+  or missing load is not offered. Bag Space does not have to be on. Nothing is destroyed on its own.
+- Trace Bags prints the skip reason, vendor source, raw slot quality, bound flag and item link.
+  It is a button, not a standing trace. Lines stop at 100. Nothing is deleted. The original poor
+  chest this was written for was never identified by item id, so this does not claim that one item is fixed.
 - Every quality, including poor and common, asks for a second click on that same button. The
   first click prepares the delete and the button names that item ("Click again to destroy"
-  plus its link). A different item, or moving to another one, clears that confirmation. The
+  plus its link). That confirmation is for that slot, item, stack size and link, against that
+  incoming item, on that button. Moving to another item, paging the Incoming card, a stack that
+  grew or changed, or the other button (Destroy Anyway after Destroy & Loot, or the reverse)
+  clears it, and the next click prepares again. The
   second click is the one the game accepts: on this
   client `DeleteCursorItem` only runs from that hardware click, and a later confirm button cannot
   run it. If the game still opens its own delete window, it is left for the player and never
   accepted or typed for here. If the delete does not take and no window is open, the item is put
   back in its slot, so it is not left on the cursor. The addon says it was destroyed only after a
   bag update shows that stack gone and the count dropped by that stack. The slot is read again at
-  the click. If it changed, nothing is deleted.
+  the click, with live settings: its link, stack, protections, filters, and whether its bag may
+  still be offered. If it changed, nothing is deleted.
 - After the stack is gone, the loot is taken only when its window is still open, the slot still
   has the item, and the player is out of combat. Otherwise the message says to loot it again. A
   bank, mail, trade, vendor or quest window says "Loot it again after making room." on the
   popup, because that item has to be clicked again. A loot window that closed before the delete
   finished has nothing left to loot; the message says room was made. A bag change while the
   popup is open rebuilds the list.
-- Closing the loot window closes the popup and drops the loot it was holding, unless a delete is
-  still waiting on the game or a transfer window is still open. The You get card is drawn only
-  when an item is waiting in that window, so it is never an empty section. Closing the bank,
-  mail, trade, vendor or quest window closes the popup when loot is not open and no delete is
-  waiting. Those closes are the frames' own hide events, not a timer.
+- Closing the loot window closes this popup and drops the incoming item it was holding. A queued
+  refresh from that open cannot show it again. The next full-bag error can open it again. Fast
+  loot that has already closed the window does not leave the popup up. Its X closes it, and a
+  plain slot becoming free closes it too. It stays while a delete is waiting on the game or a
+  transfer window is still open. The Incoming card sits beside Destroy while that loot window is
+  open and an item is waiting in it. Closing the bank, mail, trade, vendor or quest window closes
+  the popup when loot is not open and no delete is waiting. Those closes are the frames' own hide
+  events, not a timer.
 - Ignore Item is the red pass icon in the corner of the Destroy card. It stores that item id
-  on this feature's own list and refreshes the candidates. The list is viewed, searched and
-  cleared on the same card. The popup anchors to the
+  on this feature's own list and refreshes the candidates. That list is the only one. Open it
+  from the Destroy Cheapest card with Ignore List. The first run adds the built-in tool ids
+  (hearthstone 6948, mining pick 2901, skinning knife 7005, fishing pole 6256, and the other
+  profession tools) when they are missing, and does not add them again after that. A stored 0
+  is one of those seeded ids. A later time is an item you ignored. Removing a row, or Clear All,
+  takes it off the list and does not put it back on the next reload. Quest items, tools, fishing
+  poles, keys, recipes, sets, BiS and bound gear stay protected by their own checks even after
+  they are removed from the list. The popup anchors to the
   chosen side of the loot window (Top, Right, Bottom or Left) with a gap, and moves when that
   window moves. Dragging is off until Movable is on. A dragged place is kept with the profile
   until Reset Position, and it wins over the side until then. While a transfer or a delete keeps
   an undragged popup up with no loot window, it sits in the middle of the screen.
+- How the code holds this together:
+  - A candidate keeps `vendorUnit` and `marketUnit` as copper for one item, and `vendorTotal`,
+    `marketTotal` and `value` for that stack. `value` stays the vendor stack total, so the delete
+    message and older readers keep working. Rank Quantity only chooses which one ranks.
+  - The sell price is the eleventh `C_Item.GetItemInfo` return (`ns.QoLConstants.SELL_PRICE`), the
+    same place Bag Space, the Loot Feed and Scrap Marker read. A link is never priced from its base
+    item id: an unloaded link gets a few load attempts, and a link that still has no price is not offered.
+  - Lua treats 0 as true, so a quest id of 0 is not a quest and quality 0 (poor) is kept with a
+    numeric test. The slot's own quality wins over the item record, so a poor slot stays poor.
+  - This client reports the reagent bag as family 0, like a plain bag, so it is found by its index
+    (5, as EllesmereUI bags also treat it). A bag that reports no family is ordinary room.
+    `C_Item.IsReagent` decides what a reagent is when the client has it; trade goods otherwise.
+  - `UI_ERROR_MESSAGE` arrives as a message type plus text. `GetGameMessageInfo` names the type
+    (`ERR_INV_FULL`, `ERR_BAG_FULL`), because the text can differ from the global or be secret. A
+    secret error during a loot with every plain bag full is the error that blocked that loot.
+  - Loot slots are classified with `Enum.LootSlotType`; the old `LOOT_SLOT_ITEM` global can be nil
+    and would reject every slot. The loot is read at `LOOT_OPENED` and `LOOT_READY`, before the
+    bags-full error, because neither fires again after it. Hide Loot Window leaves `LootFrame`
+    shown at scale 0.001, which is not used as an anchor.
+  - The open paints before any refresh it raises, so a load or bag event from that same open
+    cannot hide the popup before it is seen. Bag events and item-load callbacks that arrive
+    together share one refresh on the next frame; with no `C_Timer` (the offline tests) it runs at once.
+  - A scan or a paint reads each setting once and forgets it when it ends, error or not. Every
+    click-time check reads live settings. The item, class and auction lookups of one scan are kept
+    in field tables keyed by the link or id, so a hit makes no garbage, and they are emptied when
+    the scan ends.
+  - With Market Prices on and Rank by Market off, a bag candidate's auction price is read the first
+    time the card, the comparison, the paint check or the zero-vendor consumable guard looks at it.
+    Paint prices the shown item before it decides whether anything changed, and the guard prices it
+    itself, so a refresh can never hide an auction estimate from it.
+  - The first click arms that slot, item, stack size and link, against that incoming row, on that
+    button (`D.ArmedStill`). The second click re-reads the slot with live settings, including
+    whether its bag may still be offered for the shown loot, before the game's own delete runs.
+  - Event registration depends only on three facts: the feature is on, the popup is open or a
+    delete is waiting, and a cursor item is held through combat. It is rebuilt only when one of them
+    changes, because every refresh asks for it.
+  - The reagent-bag check reads one loot slot into a reused table, which is filled completely each
+    time, so a scan with that option on makes no garbage. The sort compares `rank` (or `value`) inline.
+  - The tool ids are seeded onto the ignore list once. A removed id is not put back, and clearing the
+    list does not turn off the tool, fishing, quest or bind checks.
 
 ### Trainer
 - Closing a non-profession trainer checks the current spellbook for lower ranks even without a learned-ability notification. The trainer type is captured while its window is open. A fresh visit drops the previous popup list; kept-only rank offers stay silent automatically but remain available through Check Bars. Combat deferral is unchanged.

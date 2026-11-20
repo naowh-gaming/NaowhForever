@@ -8,18 +8,22 @@ local UI = ns.UI
 local T = ns.THEME
 local S = ns.QoLSettings
 local Parts, St = ns.Shared.Parts, ns.Shared.Style
-local Coins = Parts.Coins
 local TEXT = D.TEXT
 
 local PAD, GAP, HEADER, CARD_H, ICON = 10, 8, 36, 124, 36
 local QTY_IN, QTY_SIZE, QTY_LEVEL = 2, 12, 4
 local CARD_ALPHA = 0.45
-local POPUP_W = St.PANEL_W
+local POPUP_W = 580
 local CARD_W = (POPUP_W - PAD * 2 - GAP) / 2
 local BUTTON_H, NOTE_H, ANYWAY_H = 24, 40, 18
 local PAGER_W, PAGER_H = 22, 18
 local FONT_CAPTION, FONT_NOTE, FONT_NAME = 10, 11, 12
 local CARD_INSET, PAGER_PAD, NAME_DROP, NAME_NUDGE, LINE_GAP = 2, 4, 4, 2, 1
+local FONT_PRICE, LABEL_W, COL_W, PRICE_ROW = 10, 84, 88, 14
+local COMPARE_H, CMP_LABEL, CMP_COL, CMP_TOP, CMP_BOTTOM = 46, 156, 160, 4, 6
+local IGNORE_LEVEL, MAX_PASSES, PAGE_MIN = 2, 2, 2
+local SETTING_PREFIX = "destroyCheapest"
+local GOOD, BAD = St.HAVE_RGB, St.RED_RGB
 local PASS_ICON = "Interface\\Buttons\\UI-GroupLoot-Pass-Up"
 local PASS_GLOW = "Interface\\Buttons\\UI-GroupLoot-Pass-Highlight"
 local HOME_Y, OVER_LOOT = 140, 20
@@ -32,10 +36,10 @@ local ANCHOR = {
 local LIST = {
     w = 440, h = 480, row = 30, icon = 24, inset = 2, remove = 22, gap = 8,
     text = 12, head = 14, side = 16, top = 72, right = 36, bottom = 52,
-    searchY = 40, searchH = 24, buttonW = 110, buttonH = 24, buttonY = 16,
+    searchY = 40, searchH = 24, buttonW = 110, buttonH = 24, buttonY = 16, emptyRows = 2,
 }
 
-local popup, destroyCard, lootCard, note, action, anywayBtn, ignorePanel, placing
+local popup, destroyCard, lootCard, note, compare, action, anywayBtn, ignorePanel, placing
 
 local function SavedPos()
     local pos = S.Get("destroyCheapestPos")
@@ -53,7 +57,7 @@ local function Place(center)
         placing = false
         return
     end
-    if not center and D.LootShown() then
+    if not center and D.LootVisible() then
         popup:SetFrameLevel(LootFrame:GetFrameLevel() + OVER_LOOT)
         local side = ANCHOR[S.Get("destroyCheapestSide")] or ANCHOR.top
         popup:SetPoint(side[1], LootFrame, side[2], side[3] * GAP, side[4] * GAP)
@@ -64,14 +68,24 @@ local function Place(center)
 end
 
 local function ClearLoot()
-    for i = #D.loots, 1, -1 do D.loots[i] = nil end
-    D.lootUsed = 0
-    D.lootIndex = 1
+    if D.EndLoot then
+        D.EndLoot("loot-ended")
+    else
+        for i = #D.loots, 1, -1 do D.loots[i] = nil end
+        D.lootUsed = 0
+        D.lootIndex = 1
+        D.lootGap = nil
+    end
     if lootCard then
         lootCard.entry = nil
         lootCard:Hide()
     end
     if D.pending then D.pending.lootSlot = nil end
+end
+
+local function HidePopup(reason)
+    D.hideReason = reason or "hide"
+    if popup then popup:Hide() end
 end
 
 local function Settle(lootEnded)
@@ -82,13 +96,21 @@ local function Settle(lootEnded)
     if lootEnded or not D.LootShown() then ClearLoot() end
     if not D.Opened() then return end
     local lootOpen = not lootEnded and D.LootShown()
+    if D.opening then
+        if (lootEnded or not D.LootShown()) and not D.TransferShown() then
+            D.closeAfterOpen = true
+        end
+        return
+    end
     if D.pending or lootOpen or D.TransferShown() then
         if not lootOpen and not SavedPos() and not D.dragging then Place(true) end
         if lootOpen and not D.pending then D.ReadLoot() end
         D.Paint()
         return
     end
-    popup:Hide()
+    D.holdFull = nil
+    D.closeAfterOpen = nil
+    HidePopup("settle-no-context")
 end
 
 local function FollowLoot()
@@ -117,7 +139,7 @@ function D.HookTransfers()
 end
 
 local function StepDestroy(delta)
-    if D.pending or #D.picks < 2 then return end
+    if D.pending or #D.picks < PAGE_MIN then return end
     D.armed = false
     D.index = D.index + delta
     if D.index < 1 then D.index = #D.picks end
@@ -126,10 +148,15 @@ local function StepDestroy(delta)
 end
 
 local function StepLoot(delta)
-    if D.pending or #D.loots < 2 then return end
+    if D.pending or #D.loots < PAGE_MIN then return end
     D.lootIndex = D.lootIndex + delta
     if D.lootIndex < 1 then D.lootIndex = #D.loots end
     if D.lootIndex > #D.loots then D.lootIndex = 1 end
+    D.armed = false
+    if S.Get("destroyCheapestReagentBag") == true then
+        D.Refresh()
+        return
+    end
     D.Paint()
 end
 
@@ -155,10 +182,28 @@ local function NewCard(parent, caption, step)
     card.name:SetJustifyH("LEFT")
     card.value = ns.Font(card, FONT_NAME, nil, T.fg)
     card.value:SetJustifyH("LEFT")
+    card.value:SetWordWrap(true)
     card.market = ns.Font(card, FONT_NOTE, nil, T.muted)
     card.market:SetJustifyH("LEFT")
-    card.market:SetWordWrap(false)
+    card.market:SetWordWrap(true)
     card.market:Hide()
+    card.prices = CreateFrame("Frame", nil, card)
+    card.prices:Hide()
+    local function cell(justify)
+        local fs = ns.Font(card.prices, FONT_PRICE, nil, T.fg)
+        fs:SetJustifyH(justify)
+        fs:SetWordWrap(false)
+        fs:Hide()
+        return fs
+    end
+    card.headEach = cell("RIGHT")
+    card.headStack = cell("RIGHT")
+    card.vendorTag = cell("LEFT")
+    card.vendorEach = cell("RIGHT")
+    card.vendorStack = cell("RIGHT")
+    card.ahTag = cell("LEFT")
+    card.ahEach = cell("RIGHT")
+    card.ahStack = cell("RIGHT")
     card.prev = ns.Button(card, "<", PAGER_W, PAGER_H, function() step(-1) end)
     card.next = ns.Button(card, ">", PAGER_W, PAGER_H, function() step(1) end)
     card.count = ns.Font(card, FONT_NOTE, nil, T.muted)
@@ -180,6 +225,84 @@ local function NewCard(parent, caption, step)
     return card
 end
 
+local function ToneColor(tone)
+    if tone == "good" then return GOOD end
+    if tone == "bad" then return BAD end
+    if tone == "fg" then return T.fg end
+    return T.muted
+end
+
+local function PaintTone(fs, tone)
+    if not fs then return end
+    local c = ToneColor(tone)
+    fs:SetTextColor(c.r, c.g, c.b)
+end
+
+function D.ShowMarket()
+    if D.UseMarket and D.UseMarket() then return true end
+    return D.Opt("destroyCheapestMarketRank") == true
+end
+
+local function PlaceRow(parent, tag, each, stack, y, showStack, wide)
+    local labelW = wide and CMP_LABEL or LABEL_W
+    local colW = wide and CMP_COL or COL_W
+    tag:ClearAllPoints()
+    tag:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, -y)
+    tag:SetSize(labelW, PRICE_ROW)
+    each:ClearAllPoints()
+    each:SetPoint("TOPLEFT", parent, "TOPLEFT", labelW, -y)
+    if showStack then
+        each:SetSize(colW, PRICE_ROW)
+        stack:ClearAllPoints()
+        stack:SetPoint("TOPLEFT", parent, "TOPLEFT", labelW + colW, -y)
+        stack:SetSize(colW, PRICE_ROW)
+        stack:Show()
+    else
+        each:SetPoint("TOPRIGHT", parent, "TOPRIGHT", 0, -y)
+        each:SetHeight(PRICE_ROW)
+        if stack then stack:Hide() end
+    end
+    tag:Show()
+    each:Show()
+end
+
+local function MeasureCard(card)
+    local nameH = FONT_NAME
+    if card.name and card.name.GetStringHeight then
+        local h = card.name:GetStringHeight()
+        if type(h) == "number" and h > 1 then nameH = h end
+    end
+    local nameBottom = BUTTON_H - NAME_NUDGE + nameH
+    local iconBottom = BUTTON_H + ICON
+    local blockTop = nameBottom
+    if iconBottom > blockTop then blockTop = iconBottom end
+    local priceH = 0
+    if card.prices and card.prices:IsShown() then priceH = card.priceH or 0 end
+    local grown = blockTop + LINE_GAP + priceH + PAGER_H + GAP * 2
+    card.needH = CARD_H
+    if grown > card.needH then card.needH = grown end
+end
+
+local function MatchCards()
+    local h = destroyCard.needH or CARD_H
+    if lootCard:IsShown() and lootCard.needH and lootCard.needH > h then h = lootCard.needH end
+    destroyCard:SetHeight(h)
+    lootCard:SetHeight(h)
+end
+
+local function HidePrices(card)
+    if card.prices then card.prices:Hide() end
+    card.priceH = 0
+    if card.value then
+        card.value:SetText("")
+        card.value:Hide()
+    end
+    if card.market then
+        card.market:SetText("")
+        card.market:Hide()
+    end
+end
+
 local function FillCard(card, e, blank, at, total)
     card.entry = e
     local many = e and total > 1
@@ -188,9 +311,7 @@ local function FillCard(card, e, blank, at, total)
     card.count:SetShown(many == true)
     if many then card.count:SetText(TEXT.COUNT:format(at, total)) end
     card.name:ClearAllPoints()
-    card.value:ClearAllPoints()
-    card.market:ClearAllPoints()
-    card.market:Hide()
+    HidePrices(card)
     if not e then
         card.icon:Hide()
         card.qty:Hide()
@@ -199,8 +320,8 @@ local function FillCard(card, e, blank, at, total)
         card.name:SetWordWrap(true)
         card.name:SetText(blank)
         card.name:SetTextColor(T.muted.r, T.muted.g, T.muted.b)
-        card.value:Hide()
         if card.ignore then card.ignore:Hide() end
+        MeasureCard(card)
         return
     end
     card.icon:Show()
@@ -210,7 +331,7 @@ local function FillCard(card, e, blank, at, total)
     if count > 1 then card.qty:SetText(count) end
     card.name:SetPoint("TOPLEFT", card.icon, "TOPRIGHT", GAP - CARD_INSET, NAME_NUDGE)
     card.name:SetPoint("RIGHT", card, "RIGHT", -(PAD - CARD_INSET), 0)
-    card.name:SetWordWrap(false)
+    card.name:SetWordWrap(true)
     card.name:SetText(e.name or "")
     local c = ITEM_QUALITY_COLORS[e.quality]
     if c then
@@ -220,34 +341,73 @@ local function FillCard(card, e, blank, at, total)
         c = St.BORDER_RGB
     end
     card.icon.edge:SetColor(c.r, c.g, c.b, 1)
-    local anchor = card.name
-    if e.value and e.value > 0 then
-        card.value:SetPoint("TOPLEFT", anchor, "BOTTOMLEFT", 0, -LINE_GAP)
-        card.value:SetPoint("RIGHT", card, "RIGHT", -(PAD - CARD_INSET), 0)
-        card.value:SetText(Coins(e.value))
-        card.value:Show()
-        anchor = card.value
+    if D.ShowMarket() and e.itemID and not e.marketChecked and D.ApplyMarket then
+        D.ApplyMarket(e, e.itemID, e.count or 1)
+    end
+    local cells = D.PriceCells(e)
+    local showAH = D.ShowMarket() == true
+    local showStack = cells.showStack == true
+    local y = 0
+    if showStack then
+        card.headEach:SetText(TEXT.COL_EACH)
+        card.headStack:SetText(TEXT.COL_STACK)
+        card.headEach:ClearAllPoints()
+        card.headEach:SetPoint("TOPLEFT", card.prices, "TOPLEFT", LABEL_W, 0)
+        card.headEach:SetSize(COL_W, PRICE_ROW)
+        card.headStack:ClearAllPoints()
+        card.headStack:SetPoint("TOPLEFT", card.prices, "TOPLEFT", LABEL_W + COL_W, 0)
+        card.headStack:SetSize(COL_W, PRICE_ROW)
+        PaintTone(card.headEach, "neutral")
+        PaintTone(card.headStack, "neutral")
+        card.headEach:Show()
+        card.headStack:Show()
+        y = PRICE_ROW
     else
-        card.value:Hide()
+        card.headEach:Hide()
+        card.headStack:Hide()
     end
-    if D.UseMarket() and e.itemID and not e.marketChecked then
-        e.marketChecked = true
-        local price, age, fresh = D.Quote(e.itemID)
-        if price then
-            e.market = price * (e.count or 1)
-            e.marketAge, e.marketFresh = age, fresh
+    card.vendorTag:SetText(cells.vendorLabel)
+    card.vendorEach:SetText(cells.vendorEach)
+    PaintTone(card.vendorTag, "neutral")
+    PaintTone(card.vendorEach, cells.vendorTone)
+    if showStack then
+        card.vendorStack:SetText(cells.vendorStack or TEXT.UNAVAILABLE)
+        PaintTone(card.vendorStack, cells.vendorStack and cells.vendorTone or "muted")
+    end
+    PlaceRow(card.prices, card.vendorTag, card.vendorEach, card.vendorStack, y, showStack, false)
+    y = y + PRICE_ROW
+    if showAH then
+        card.ahTag:SetText(cells.ahLabel)
+        card.ahEach:SetText(cells.ahEach)
+        PaintTone(card.ahTag, "neutral")
+        PaintTone(card.ahEach, cells.ahTone)
+        if showStack then
+            card.ahStack:SetText(cells.ahStack or TEXT.UNAVAILABLE)
+            PaintTone(card.ahStack, cells.ahStack and cells.ahTone or "muted")
         end
+        PlaceRow(card.prices, card.ahTag, card.ahEach, card.ahStack, y, showStack, false)
+        y = y + PRICE_ROW
+    else
+        card.ahTag:Hide()
+        card.ahEach:Hide()
+        card.ahStack:Hide()
     end
-    if D.UseMarket() and e.market then
-        local age = type(e.marketAge) == "number" and ns.AuctionAge and ns.AuctionAge(e.marketAge)
-        local coins = Coins(e.market)
-        card.market:SetPoint("TOPLEFT", anchor, "BOTTOMLEFT", 0, -LINE_GAP)
-        card.market:SetPoint("RIGHT", card, "RIGHT", -(PAD - CARD_INSET), 0)
-        card.market:SetText(age and TEXT.MARKET_OLD:format(coins, age) or TEXT.MARKET:format(coins))
-        local tint = e.marketFresh and T.fg or T.muted
-        card.market:SetTextColor(tint.r, tint.g, tint.b)
-        card.market:Show()
+    card.priceH = y
+    local nameH = FONT_NAME
+    if card.name.GetStringHeight then
+        local h = card.name:GetStringHeight()
+        if type(h) == "number" and h > 1 then nameH = h end
     end
+    local nameBottom = BUTTON_H - NAME_NUDGE + nameH
+    local iconBottom = BUTTON_H + ICON
+    local blockTop = nameBottom
+    if iconBottom > blockTop then blockTop = iconBottom end
+    card.prices:ClearAllPoints()
+    card.prices:SetPoint("TOPLEFT", card, "TOPLEFT", PAD - CARD_INSET, -(blockTop + LINE_GAP))
+    card.prices:SetPoint("TOPRIGHT", card, "TOPRIGHT", -(PAD - CARD_INSET), -(blockTop + LINE_GAP))
+    card.prices:SetHeight(y)
+    card.prices:Show()
+    MeasureCard(card)
     if not card.ignore then return end
     local show = total ~= 0
     card.ignore:SetShown(show)
@@ -266,13 +426,112 @@ local function ConfirmLabel(pick)
 end
 
 local function ButtonLabel(loot, pick)
-    if D.armed then return ConfirmLabel(pick) end
+    if D.armed and not D.armedForced then return ConfirmLabel(pick) end
+    if loot and loot.quest == true then return TEXT.QUEST_ROOM end
     if loot then return TEXT.DESTROY_LOOT end
     return TEXT.DESTROY_ONLY
 end
 
-local function Layout(noteText, showButton, showAnyway)
-    local y = HEADER + CARD_H + GAP
+local function AnywayLabel(block, pick)
+    if D.armed and D.armedForced then return ConfirmLabel(pick) end
+    if block == "unknown" then return TEXT.ANYWAY_UNKNOWN end
+    if block == "zero" then return TEXT.ANYWAY_ZERO end
+    if block == "risky" then return TEXT.ANYWAY_RISKY end
+    return TEXT.ANYWAY
+end
+
+local function GapWord(delta)
+    if type(delta) ~= "number" or delta == 0 then return nil end
+    if delta > 0 then return TEXT.WORD_PROFIT end
+    return TEXT.WORD_DEFICIT
+end
+
+local function GapLabel(kind, eachDelta, stackDelta, columns)
+    local left = GapWord(eachDelta)
+    local right = columns == D.STACK_COLUMNS and GapWord(stackDelta) or left
+    if left and left == right then return kind .. " " .. left end
+    return kind
+end
+
+local function FillMetric(tag, eachFs, stackFs, kind, eachDelta, stackDelta, columns, y)
+    local showStack = columns == D.STACK_COLUMNS
+    PlaceRow(compare, tag, eachFs, stackFs, y, showStack, true)
+    tag:SetText(GapLabel(kind, eachDelta, stackDelta, columns))
+    PaintTone(tag, "neutral")
+    if type(eachDelta) == "number" then
+        eachFs:SetText(D.SignedCoin(eachDelta))
+        PaintTone(eachFs, D.GapTone(eachDelta))
+    else
+        eachFs:SetText(TEXT.UNAVAILABLE)
+        PaintTone(eachFs, "neutral")
+    end
+    if showStack then
+        if type(stackDelta) == "number" then
+            stackFs:SetText(D.SignedCoin(stackDelta))
+            PaintTone(stackFs, D.GapTone(stackDelta))
+        else
+            stackFs:SetText(TEXT.UNAVAILABLE)
+            PaintTone(stackFs, "neutral")
+        end
+    end
+end
+
+local function FillCompare(pick, loot)
+    if not compare or type(pick) ~= "table" or type(loot) ~= "table" or type(D.CompareGaps) ~= "function" then
+        if compare then compare:Hide() end
+        return false
+    end
+    local gaps = D.CompareGaps(pick, loot)
+    local columns = gaps.columns or 1
+    local y = CMP_TOP
+    if columns == D.STACK_COLUMNS then
+        compare.headEach:SetText(TEXT.COL_EACH)
+        compare.headStack:SetText(gaps.stackLabel or TEXT.COL_STACK)
+        compare.headEach:ClearAllPoints()
+        compare.headEach:SetPoint("TOPLEFT", compare, "TOPLEFT", CMP_LABEL, -y)
+        compare.headEach:SetSize(CMP_COL, PRICE_ROW)
+        compare.headStack:ClearAllPoints()
+        compare.headStack:SetPoint("TOPLEFT", compare, "TOPLEFT", CMP_LABEL + CMP_COL, -y)
+        compare.headStack:SetSize(CMP_COL, PRICE_ROW)
+        PaintTone(compare.headEach, "neutral")
+        PaintTone(compare.headStack, "neutral")
+        compare.headEach:Show()
+        compare.headStack:Show()
+        y = y + PRICE_ROW
+    else
+        compare.headEach:Hide()
+        compare.headStack:Hide()
+    end
+    FillMetric(compare.vendorTag, compare.vendorEach, compare.vendorStack,
+        TEXT.CMP_VENDOR, gaps.vendorEach, gaps.vendorStack, columns, y)
+    y = y + PRICE_ROW
+    if D.ShowMarket() then
+        FillMetric(compare.ahTag, compare.ahEach, compare.ahStack,
+            TEXT.CMP_AH, gaps.ahEach, gaps.ahStack, columns, y)
+        y = y + PRICE_ROW
+    else
+        compare.ahTag:Hide()
+        compare.ahEach:Hide()
+        compare.ahStack:Hide()
+    end
+    compare.needH = y + CMP_BOTTOM
+    if compare.needH < COMPARE_H then compare.needH = COMPARE_H end
+    return true
+end
+
+local function Layout(noteText, showButton, showAnyway, showCompare)
+    local y = HEADER + (destroyCard:GetHeight() or CARD_H) + GAP
+    if showCompare and compare then
+        compare:ClearAllPoints()
+        compare:SetPoint("TOPLEFT", popup, "TOPLEFT", PAD, -y)
+        compare:SetPoint("TOPRIGHT", popup, "TOPRIGHT", -PAD, -y)
+        local h = compare.needH or COMPARE_H
+        compare:SetHeight(h)
+        compare:Show()
+        y = y + h + GAP
+    elseif compare then
+        compare:Hide()
+    end
     if noteText then
         note:ClearAllPoints()
         note:SetPoint("TOPLEFT", PAD, -y)
@@ -300,6 +559,7 @@ local function Layout(noteText, showButton, showAnyway)
         anywayBtn:Show()
         y = y + ANYWAY_H + GAP
     end
+    popup:SetWidth(POPUP_W)
     popup:SetHeight(y + PAD)
 end
 
@@ -317,28 +577,64 @@ local function FitCards(showLoot)
     destroyCard:SetWidth(POPUP_W - PAD * 2)
 end
 
-local function RememberArmed(pick)
-    if not (pick and pick.bag == D.armedBag and pick.slot == D.armedSlot and pick.itemID == D.armedID) then
-        D.armed = false
-    end
-    if D.armed and pick then
-        D.armedBag, D.armedSlot, D.armedID = pick.bag, pick.slot, pick.itemID
-    else
-        D.armedBag, D.armedSlot, D.armedID = nil, nil, nil
-    end
+local function RememberArmed(pick, loot)
+    if D.armed and D.ArmedStill and D.ArmedStill(pick, loot) then return end
+    if D.Disarm then D.Disarm() else D.armed = false end
 end
 
-function D.Paint()
-    if not popup then return end
+local function SigPart(e)
+    if not e then return "-" end
+    return tostring(e.itemID) .. "\1" .. tostring(e.link) .. "\1" .. tostring(e.count)
+        .. "\1" .. tostring(e.name) .. "\1" .. tostring(e.quality) .. "\1" .. tostring(e.icon)
+        .. "\1" .. tostring(e.vendorUnit) .. "\1" .. tostring(e.vendorTotal)
+        .. "\1" .. tostring(e.vendorKnown) .. "\1" .. tostring(e.vendorEstimated)
+        .. "\1" .. tostring(e.vendorSource) .. "\1" .. tostring(e.marketUnit)
+        .. "\1" .. tostring(e.marketTotal) .. "\1" .. tostring(e.marketKnown)
+        .. "\1" .. tostring(e.marketFresh) .. "\1" .. tostring(e.marketAge)
+        .. "\1" .. tostring(e.quest) .. "\1" .. tostring(e.classID)
+end
+
+local function PaintSig(pick, loot)
+    local pend = ""
+    if D.pending then pend = D.pending.mode or "wait" end
+    return SigPart(pick) .. "\2" .. tostring(D.index) .. "\2" .. tostring(D.pending and 0 or #D.picks)
+        .. "\2" .. SigPart(loot) .. "\2" .. tostring(D.lootIndex) .. "\2" .. tostring(D.pending and 0 or #D.loots)
+        .. "\2" .. D.PriceMode() .. "\2" .. (D.armed and (D.armedForced and "2" or "1") or "0") .. "\2" .. pend
+        .. "\2" .. (D.UseMarket() and "1" or "0")
+        .. "\2" .. (D.Opt("destroyCheapestAnyway") and "1" or "0")
+        .. "\2" .. (D.TransferShown() and "1" or "0")
+        .. "\2" .. D.RankQty()
+        .. "\2" .. (D.Opt("destroyCheapestMarketRank") and "1" or "0")
+        .. "\2" .. (D.Opt("destroyCheapestReagentBag") and "1" or "0")
+        .. "\2" .. tostring(D.lootGap)
+end
+
+local function PaintNow()
     local pick, loot = D.picks[D.index], D.loots[D.lootIndex]
-    RememberArmed(pick)
-    local showLoot = loot ~= nil
+    RememberArmed(pick, loot)
+    if D.EnsureMarket then
+        D.EnsureMarket(pick)
+        D.EnsureMarket(loot)
+    end
+    local sig = PaintSig(pick, loot)
+    if sig == D.paintSig then
+        D.PerfAdd("paintSkips")
+        return
+    end
+    D.paintSig = sig
+    D.PerfAdd("paints")
+    local gap = (not loot) and D.LootShown() and D.lootGap or nil
+    local showLoot = loot ~= nil or gap ~= nil
     FitCards(showLoot)
     FillCard(destroyCard, pick, TEXT.BLANK_DESTROY, D.index, D.pending and 0 or #D.picks)
-    if showLoot then
+    if loot then
         FillCard(lootCard, loot, nil, D.lootIndex, D.pending and 0 or #D.loots)
+    elseif gap and D.LootGapText then
+        FillCard(lootCard, nil, D.LootGapText(), 1, 0)
     end
-    local noteText, showButton, showAnyway
+    MatchCards()
+    local noteText, showButton, showAnyway, showCompare
+    local tint = T.muted
     if D.pending then
         if D.pending.mode == "dialog" then noteText = TEXT.DIALOG
         elseif D.pending.mode == "cursor" then noteText = TEXT.STUCK
@@ -347,19 +643,38 @@ function D.Paint()
     elseif not pick then
         noteText = TEXT.NONE
     else
-        if loot and not D.WorthIt(pick, loot) then
-            noteText = TEXT.NOT_WORTH
-            if S.Get("destroyCheapestAnyway") then
+        local worth, reason
+        if D.Compare then worth, reason = D.Compare(pick, loot) else worth = D.WorthIt(pick, loot) end
+        local block = (not worth) and (D.BlockReason(pick, loot) or reason) or nil
+        local status, tone = nil, "neutral"
+        if D.StatusLine then status, tone = D.StatusLine(pick, loot) end
+        noteText = status
+        tint = ToneColor(tone)
+        if not noteText and not loot and D.TransferShown() then noteText = TEXT.AGAIN end
+        if block then
+            if D.Opt("destroyCheapestAnyway") then
                 showAnyway = true
-                ns.SetButtonText(anywayBtn, D.armed and ConfirmLabel(pick) or TEXT.ANYWAY)
+                ns.SetButtonText(anywayBtn, AnywayLabel(block, pick))
             end
         else
             showButton = true
             ns.SetButtonText(action, ButtonLabel(loot, pick))
-            if not loot and D.TransferShown() then noteText = TEXT.AGAIN end
         end
+        if pick and loot then showCompare = FillCompare(pick, loot) end
     end
-    Layout(noteText, showButton, showAnyway)
+    if note then note:SetTextColor(tint.r, tint.g, tint.b) end
+    Layout(noteText, showButton, showAnyway, showCompare)
+end
+
+function D.Paint()
+    if not popup then return end
+    if D.painting or D.scanning then return PaintNow() end
+    D.ForgetOpts()
+    D.painting = true
+    local ok, err = pcall(PaintNow)
+    D.painting = false
+    D.ForgetOpts()
+    if not ok then error(err) end
 end
 
 local function TintAnyway(btn)
@@ -399,6 +714,7 @@ function D.Build()
     popup = Parts.Panel("Bags Are Full", true)
     D.popup = popup
     popup:Hide()
+    popup:SetWidth(POPUP_W)
     popup:SetFrameStrata("DIALOG")
     popup:SetMovable(true)
     popup:RegisterForDrag("LeftButton")
@@ -416,20 +732,39 @@ function D.Build()
     end)
     popup.backdrop:Paint(1)
     destroyCard = NewCard(popup, TEXT.DESTROY, StepDestroy)
-    lootCard = NewCard(popup, TEXT.LOOT, StepLoot)
+    lootCard = NewCard(popup, TEXT.INCOMING or TEXT.LOOT, StepLoot)
     lootCard:Hide()
     destroyCard:SetPoint("TOPLEFT", PAD, -HEADER)
     destroyCard:SetWidth(POPUP_W - PAD * 2)
     note = ns.Font(popup, FONT_NOTE, nil, T.muted)
     note:SetJustifyH("CENTER")
     note:SetWordWrap(true)
+    compare = CreateFrame("Frame", nil, popup)
+    compare:SetHeight(COMPARE_H)
+    compare:Hide()
+    ns.Solid(compare, "BACKGROUND", T.bg, CARD_ALPHA):SetAllPoints()
+    ns.Border(compare, St.BORDER_RGB)
+    local function cell(justify)
+        local fs = ns.Font(compare, FONT_PRICE, nil, T.muted)
+        fs:SetJustifyH(justify)
+        fs:SetWordWrap(false)
+        return fs
+    end
+    compare.headEach = cell("RIGHT")
+    compare.headStack = cell("RIGHT")
+    compare.vendorTag = cell("LEFT")
+    compare.vendorEach = cell("RIGHT")
+    compare.vendorStack = cell("RIGHT")
+    compare.ahTag = cell("LEFT")
+    compare.ahEach = cell("RIGHT")
+    compare.ahStack = cell("RIGHT")
     action = ns.Button(popup, TEXT.DESTROY_LOOT, POPUP_W - PAD * 2, BUTTON_H, D.OnDestroy)
     ns.PrimaryButton(action)
     anywayBtn = ns.Button(popup, TEXT.ANYWAY, POPUP_W - PAD * 2, ANYWAY_H, D.OnAnyway)
     destroyCard.ignore = CreateFrame("Button", nil, destroyCard)
     destroyCard.ignore:SetSize(St.ACTION, St.ACTION)
     destroyCard.ignore:SetPoint("BOTTOMRIGHT", -(GAP - CARD_INSET), GAP - PAGER_PAD)
-    destroyCard.ignore:SetFrameLevel(destroyCard:GetFrameLevel() + 2)
+    destroyCard.ignore:SetFrameLevel(destroyCard:GetFrameLevel() + IGNORE_LEVEL)
     destroyCard.ignore:SetNormalTexture(PASS_ICON)
     destroyCard.ignore:SetHighlightTexture(PASS_GLOW, "ADD")
     destroyCard.ignore:SetScript("OnClick", OnIgnore)
@@ -457,64 +792,122 @@ function D.Build()
         if not D.LootShown() then ClearLoot() end
         if not D.pending then
             D.armed = false
-            wipe(D.requested)
-            wipe(D.waitingInfo)
+            D.holdFull = nil
+            D.openGen = (D.openGen or 0) + 1
+            D.ResetLoads()
+            D.ClearTrace()
             D.Listen(false)
         end
+        D.hideReason = nil
+        D.paintSig = nil
     end)
 end
 
 function D.Refresh()
-    if D.pending or D.scanning then
-        if D.scanning then D.scanAgain = true end
+    if D.pending or D.scanning or D.refreshing then
+        if D.scanning or D.refreshing then D.scanAgain = true end
         return
     end
     if not D.Opened() then return end
-    if D.PlainFree() > 0 or not (D.LootShown() or D.TransferShown()) then
-        popup:Hide()
+    if not D.opening and not D.KeepOpen() then
+        D.holdFull = nil
+        HidePopup("refresh-not-kept")
         return
     end
+    if not SavedPos() and not D.dragging and not D.LootVisible() then Place(true) end
+    D.refreshing = true
     D.Listen(true)
-    D.Scan()
-    D.ReadLoot()
-    D.FlushLoads()
-    D.Paint()
+    D.PerfAdd("refreshes")
+    local ok, err = pcall(function()
+        local pass = 0
+        while pass < MAX_PASSES do
+            pass = pass + 1
+            D.scanAgain = false
+            D.keepSets = pass > 1
+            D.Scan()
+            D.ReadLoot()
+            D.FlushLoads()
+            if not D.scanAgain or D.pending then break end
+        end
+        D.keepSets = false
+        D.scanAgain = false
+        D.Paint()
+    end)
+    D.keepSets = false
+    D.refreshing = false
+    if not ok then error(err) end
 end
 
-local function Show()
-    if not D.On() or ns.GamepadStandDown() then return end
-    if D.PlainFree() > 0 then
-        if D.Opened() then popup:Hide() end
+local function Show(fromFull)
+    local why
+    if not D.On() then why = "feature-off"
+    elseif ns.GamepadStandDown and ns.GamepadStandDown() then why = "gamepad"
+    elseif D.PlainFree() > 0 then why = "plain-free"
+    end
+    if why then
+        if why == "plain-free" then
+            D.holdFull = nil
+            if D.Opened() then HidePopup("show-plain-free") end
+        end
         return
     end
     D.HookTransfers()
     if not popup then D.Build() end
     local was = D.Opened()
-    if not was then wipe(D.requested) end
+    if not was then
+        D.ResetLoads()
+        D.ClearTrace()
+    end
     D.Listen(true)
+    if fromFull then D.holdFull = true end
+    D.openGen = (D.openGen or 0) + 1
     if not was then Place() end
+    if not SavedPos() and not D.dragging and not D.LootVisible() then Place(true) end
     popup:Show()
-    D.Scan()
-    D.ReadLoot()
-    D.FlushLoads()
-    D.Paint()
+    D.opening = true
+    local ok, err = pcall(function()
+        local pass = 0
+        while pass < MAX_PASSES do
+            pass = pass + 1
+            D.scanAgain = false
+            D.Scan()
+            D.ReadLoot()
+            D.FlushLoads()
+            if not D.scanAgain or D.pending then break end
+        end
+        D.scanAgain = false
+        D.Paint()
+    end)
+    D.opening = false
+    if not ok then error(err) end
+    if not D.pending and not D.LootShown() and not D.TransferShown() then
+        D.closeAfterOpen = nil
+        D.holdFull = nil
+        HidePopup("loot-closed")
+    end
 end
 
 function D.Listen(open)
-    D.watch:UnregisterAllEvents()
-    if not D.On() then
-        if D.held then D.watch:RegisterEvent("PLAYER_REGEN_ENABLED") end
+    local on, wide, held = D.On() and true or false, (open or D.pending) and true or false, D.held and true or false
+    if D.listenSet and on == D.listenOn and wide == D.listenWide and held == D.listenHeld then return end
+    D.listenSet, D.listenOn, D.listenWide, D.listenHeld = true, on, wide, held
+    local watch = D.watch
+    watch:UnregisterAllEvents()
+    if not on then
+        if held then watch:RegisterEvent("PLAYER_REGEN_ENABLED") end
         return
     end
-    D.watch:RegisterEvent("UI_ERROR_MESSAGE")
-    if open or D.pending then
-        D.watch:RegisterEvent("BAG_UPDATE_DELAYED")
-        D.watch:RegisterEvent("GET_ITEM_INFO_RECEIVED")
-        D.watch:RegisterEvent("LOOT_OPENED")
-        D.watch:RegisterEvent("LOOT_CLOSED")
-        D.watch:RegisterEvent("LOOT_SLOT_CLEARED")
+    watch:RegisterEvent("UI_ERROR_MESSAGE")
+    watch:RegisterEvent("LOOT_OPENED")
+    pcall(watch.RegisterEvent, watch, "LOOT_READY")
+    if wide then
+        watch:RegisterEvent("BAG_UPDATE_DELAYED")
+        watch:RegisterEvent("GET_ITEM_INFO_RECEIVED")
+        pcall(watch.RegisterEvent, watch, "ITEM_DATA_LOAD_RESULT")
+        watch:RegisterEvent("LOOT_CLOSED")
+        watch:RegisterEvent("LOOT_SLOT_CLEARED")
     end
-    if D.held then D.watch:RegisterEvent("PLAYER_REGEN_ENABLED") end
+    if held then watch:RegisterEvent("PLAYER_REGEN_ENABLED") end
 end
 
 local function OnEvent(_, event, a, b)
@@ -526,20 +919,24 @@ local function OnEvent(_, event, a, b)
         return
     end
     if event == "UI_ERROR_MESSAGE" then
-        if not D.BagsFull(a, b) or D.pending then return end
-        if not (D.LootShown() or D.TransferShown()) then return end
-        return Show()
+        if not D.WantOpen(a, b) then return end
+        return Show(true)
+    end
+    if event == "LOOT_OPENED" or event == "LOOT_READY" then
+        D.NoteLoot()
+        if D.pending or not D.Opened() then
+            if not D.pending then D.ReadLoot() end
+            return
+        end
     end
     if event == "BAG_UPDATE_DELAYED" then
+        D.PerfAdd("bagEvents")
         if D.pending then return D.Resolve() end
-        if D.Opened() then D.Refresh() end
+        if D.Opened() then D.ScheduleRefresh() end
         return
     end
-    if event == "GET_ITEM_INFO_RECEIVED" then
-        if not D.waitingInfo[a] then return end
-        D.waitingInfo[a] = nil
-        if D.pending or not D.Opened() then return end
-        return D.Refresh()
+    if event == "GET_ITEM_INFO_RECEIVED" or event == "ITEM_DATA_LOAD_RESULT" then
+        return D.OnItemData(a, b)
     end
     if event == "LOOT_CLOSED" then return Settle(not D.LootShown()) end
     if D.pending or not D.Opened() then return end
@@ -550,6 +947,7 @@ end
 D.watch:SetScript("OnEvent", OnEvent)
 
 local function Apply()
+    if D.SeedIgnore then D.SeedIgnore() end
     if not D.On() then
         local p = D.pending
         if p and D.CursorHolds(p.itemID) and InCombatLockdown() then
@@ -561,7 +959,7 @@ local function Apply()
         D.pending = nil
         D.armed = false
         D.Listen(false)
-        if popup then popup:Hide() end
+        if popup then HidePopup("feature-off") end
         return
     end
     D.HookLoot()
@@ -583,7 +981,7 @@ local function SettingChanged(key)
         Place()
         return
     end
-    if type(key) == "string" and key:find("^destroyCheapest", 1, true) and not D.pending then
+    if type(key) == "string" and key:sub(1, #SETTING_PREFIX) == SETTING_PREFIX and not D.pending then
         if key == "destroyCheapestTransfers" then D.HookTransfers() end
         D.Refresh()
     end
@@ -707,7 +1105,7 @@ function D.FillIgnore()
         empty:SetWidth(LIST.w - LIST.top)
         empty:SetJustifyH("LEFT")
         empty:SetText(#items == 0 and TEXT.LIST_EMPTY or TEXT.LIST_NONE)
-        y = y - LIST.row * 2
+        y = y - LIST.row * LIST.emptyRows
     end
     content:SetHeight(math.max(1, -y))
 end
@@ -765,7 +1163,6 @@ local SIDES = {
     { top = "Top", right = "Right", bottom = "Bottom", left = "Left" },
     { "top", "right", "bottom", "left" },
 }
-
 Settings.Page("QoL/Loot & Items", S):Card({
     id = "destroyCheapest", name = "Destroy Cheapest Item", order = 62, switch = "destroyCheapest",
     help = "When loot does not fit in your bags, offers the cheapest safe item to destroy so you can make room.",
@@ -788,33 +1185,48 @@ Settings.Page("QoL/Loot & Items", S):Card({
         { key = "destroyCheapestHeirloom", label = "Heirloom", toggle = true,
           help = "Offers heirloom items." },
         { key = "destroyCheapestConsumable", label = "Consumables", toggle = true,
-          help = "Also offers consumables a vendor will not buy. Ones with a vendor price are offered anyway." },
+          help = "Also offers consumables a vendor will not buy." },
+        { key = "destroyCheapestZeroVendor", label = "Include Zero-Vendor-Value Items", toggle = true,
+          help = "Also offers other items a vendor pays nothing for." },
+        { key = "destroyCheapestBoundGear", label = "Include Bound Armor and Weapons", toggle = true,
+          help = "Also offers soulbound armor and weapons." },
         { key = "destroyCheapestAll", label = "All Items", toggle = true,
-          help = "Offers every item in your bags except ones on the ignore list." },
+          help = "Offers any quality from any bag, but keeps protected and ignored items." },
         Settings.Group("Popup"),
         { key = "destroyCheapestSide", label = "Beside the Loot Window", choice = SIDES,
           help = "Where the popup sits beside the loot window, until you drag it." },
         { key = "destroyCheapestMovable", label = "Movable", toggle = true,
           help = "Drag the popup, and keep that place until you reset it." },
         { key = "destroyCheapestAnyway", label = "Destroy Anyway", toggle = true,
-          help = "When the loot is worth less, a smaller button can still destroy the item." },
+          help = "Adds a smaller button that destroys even when the loot is worth less or unknown." },
         { label = "Reset Position", button = ResetPosition, buttonText = "Reset", always = true,
           help = "Clears a dragged place and uses Beside the Loot Window again." },
         Settings.Group("Prices"),
+        { key = "destroyCheapestDurability", label = "Estimate Worn Vendor Price", toggle = true,
+          help = "Lowers the vendor price of damaged weapons and armor by their durability." },
         { key = "destroyCheapestMarket", label = "Market Prices", toggle = true,
           help = "Shows the auction house price next to the vendor price when one is known." },
         { key = "destroyCheapestMarketRank", label = "Rank by Market Value", toggle = true,
-          help = "Sorts by auction price times stack, cheapest first, and uses the vendor price when no auction price is known." },
+          help = "Ranks items by their auction price instead of their vendor price." },
+        { key = "destroyCheapestRankQty", label = "Rank Quantity", choice = {
+            { batch = "Batch (stack)", unit = "Individual (unit)" },
+            { "batch", "unit" },
+          },
+          help = "Ranks by the whole stack or by one item." },
+        { key = "destroyCheapestReagentBag", label = "Reagent Bag When Full", toggle = true,
+          help = "Can offer a reagent from a full reagent bag when the loot is a reagent." },
         { key = "destroyCheapestMarketStale", label = "Ignore Old Scans", toggle = true,
           help = "An auction price older than Older Than is left out, and the vendor price is used." },
         { key = "destroyCheapestMarketDays", label = "Older Than (days)", slider = D.STALE_RANGE,
           needs = "destroyCheapestMarketStale",
           help = "How many days an auction price can be before it is left out." },
+        { label = "Trace Bags", button = D.TraceBags, buttonText = "Trace", always = true,
+          help = "Prints every bag slot and why it is or is not offered, without destroying anything." },
         Settings.Group("Full Bags"),
         { key = "destroyCheapestTransfers", label = "Bank and Other Transfers", toggle = true,
           help = "Also opens when the bank, mail, a trade, a vendor or a quest reward will not fit." },
         Settings.Group("Ignore List"),
         { label = "Ignored Items", button = ShowIgnoreList, buttonText = "Ignore List", always = true,
-          help = "Items this popup never offers. Ignore Item on the popup adds the one you are looking at." },
+          help = "Shows the items you told the popup never to offer." },
     },
 })
