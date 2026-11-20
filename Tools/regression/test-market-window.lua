@@ -103,6 +103,7 @@ local ns = {
             bars[tip] = button
             return button
         end,
+        LabelBar = function(button, text) button.fitted = text end,
         FooterBrand = function() end,
         Place = function(window) placed = placed + 1; window:SetPoint("CENTER", "saved") end,
     } },
@@ -245,6 +246,10 @@ check("with every page as a tab: Buy, Sell, My Auctions, Shopping List, Farm, Pr
 check("on Buy", Pages.buy.shown and fullBar.painted == "buy")
 check("with Scan Prices and Blizzard's window in its title bar", bars["Scan Prices"].shown
     and bars["Blizzard's Auction House"].shown)
+bars["Scan Prices"].fitted = nil
+Window.Refresh()
+check("each scan line fits Scan Prices to its label again",
+    bars["Scan Prices"].fitted == "Scan Prices")
 check("Professions' panels sit beside it", Window.Docked() == window)
 fullBar.pick("sell")
 check("Sell is the panel's page, moved here and not built again", Pages.sell.shown and not Pages.buy.shown

@@ -64,6 +64,7 @@ local function ScanLine()
     window.dot:SetVertexColor(dot.r, dot.g, dot.b)
     window.dot:SetShown(summary ~= nil)
     window.status:SetText(summary or "")
+    Parts.LabelBar(window.scan, TEXT_SCAN)
 end
 
 function Window.ShowPageIn(parent, key)
