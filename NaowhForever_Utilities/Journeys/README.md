@@ -118,6 +118,9 @@ NaowhForever_Utilities/Journeys/
   footer take a third of the height a three-step journey needs, and it is shared by other modules. A line
   a step (icon, name, time), the total time, the cog and the close button in one header, and one thin
   segment a step in place of a bar. The close button clears the waypoint, which ends the journey.
+- The HUD Editor saves the card's centre, so it grew both ways as steps came and went. Growth Direction
+  Down or Up holds the top or bottom edge where it was at the height saved with the position; a position
+  saved before that height was kept counts the header alone.
 - The route on the world map is one pin the size of the canvas with dots in it, so the dots move and
   zoom with the map; it ignores the global pin scale and keeps its dots the same size on screen as the map
   zooms in. On both maps the dots are spaced from the first corner ahead, so they hold still as you walk.

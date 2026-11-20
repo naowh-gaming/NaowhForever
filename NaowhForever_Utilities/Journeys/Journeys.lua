@@ -8,6 +8,7 @@ local S = ns.UI.ModuleSettings("journeys", {
     card = F.card,
     cardScale = 1,
     cardAlpha = 1,
+    cardGrow = "center",
     hearth = true,
     hearthSaving = 120,
     teleports = true,

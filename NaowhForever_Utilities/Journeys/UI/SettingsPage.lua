@@ -11,6 +11,7 @@ local ORDER_ROUTES, ORDER_CARD = 10, 20
 local SAVING_RANGE = { 0, 10, 1 }
 local SCALE_RANGE = { 0.5, 2, 0.05 }
 local OPACITY_RANGE, PERCENT_SCALE = Style.ALPHA_RANGE, Style.PERCENT_SCALE
+local GROW = { { center = "Centred", down = "Down", up = "Up" }, { "center", "down", "up" } }
 local TEXT_OFF = ns.L("Turn on Journeys")
 local TEXT_MINUTES = " min"
 local TEXT_HEADLINE = ns.L("Following: %s")
@@ -93,5 +94,6 @@ page:Card({
         { key = "cardScale", label = "Scale", slider = SCALE_RANGE, needs = Needs("card"), why = "Needs Journey Card" },
         { key = "cardAlpha", label = "Opacity", slider = OPACITY_RANGE, unit = "%", scale = PERCENT_SCALE,
           needs = Needs("card"), why = "Needs Journey Card" },
+        { key = "cardGrow", label = "Growth Direction", choice = GROW, needs = Needs("card"), why = "Needs Journey Card" },
     },
 })
