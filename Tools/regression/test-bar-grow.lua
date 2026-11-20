@@ -88,7 +88,7 @@ check("gear bar, up: the + above the sets", add.point[1] == "BOTTOMLEFT" and add
     and frame.w == 32 and frame.h == 108)
 
 local slots = { Button(frame), Button(frame) }
-for _, slot in ipairs(slots) do slot.icon = { SetTexture = function() end } end
+for _, slot in ipairs(slots) do slot.icon = { SetTexture = function() end, SetTexCoord = function() end } end
 Look.Trinkets(frame, slots, 36, 4, "RIGHT")
 check("trinkets, right: today's row", frame.w == 76 and frame.h == 36 and slots[2].point[1] == "TOPLEFT"
     and slots[2].point[4] == 40)

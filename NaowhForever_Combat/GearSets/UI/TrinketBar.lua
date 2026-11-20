@@ -13,7 +13,7 @@ local PICKER_ROOM, PICKER_EDGE, PICKER_GAP = 34, 8, 5
 local CLOSE_W, CLOSE_H, CLOSE_Y = 80, 22, 5
 local HOME_Y = -160
 local GCD = 1.5
-local ICON_INSET, BLACK = St.ICON_INSET, St.BLACK
+local BLACK = St.BLACK
 local TRINKET = "INVTYPE_TRINKET"
 local CARD = C.PAGE .. ":trinketBar"
 local WATCHED = { "PLAYER_REGEN_ENABLED", "PLAYER_REGEN_DISABLED", "PLAYER_EQUIPMENT_CHANGED" }
@@ -144,9 +144,7 @@ local function NewSlot(i)
     button:RegisterForClicks("AnyUp", "AnyDown")
     Parts.Press(button)
     button:SetAttribute("item1", tostring(slot))
-    button.icon = button:CreateTexture(nil, "ARTWORK")
-    ns.PixelInset(button.icon, ICON_INSET)
-    ns.Border(button, BLACK)
+    button.icon = Look.Dress(button)
     button.cooldown = CreateFrame("Cooldown", nil, button, "CooldownFrameTemplate")
     button.cooldown:SetAllPoints(button.icon)
     button.cooldown:SetDrawEdge(false)
@@ -218,7 +216,8 @@ local function ApplyTrinkets()
     end
     if not trinkets then BuildTrinkets() end
     Place()
-    Look.Trinkets(trinkets, trinkets.buttons, S.Get("trinketSize"), S.Get("trinketSpacing"), S.Get("trinketGrow"))
+    Look.Trinkets(trinkets, trinkets.buttons, S.Get("trinketSize"), S.Get("trinketSpacing"), S.Get("trinketGrow"),
+        S.Get("trinketSquare"))
     for i, button in ipairs(trinkets.buttons) do
         button:SetAttribute("type1", GetInventoryItemID("player", TRINKET_SLOTS[i]) and "item" or nil)
         button.cooldown:SetHideCountdownNumbers(not S.Get("trinketCountdown"))

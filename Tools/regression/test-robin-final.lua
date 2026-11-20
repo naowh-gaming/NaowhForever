@@ -32,6 +32,7 @@ local function fixture(kind)
         end
         function f:SetPoint(...) self.point = { ... } end
         function f:SetTexture(v) self.texture = v end
+        function f:SetTexCoord(l) self.crop = l end
         function f:SetColorTexture(...) self.color = { ... } end
         function f:SetVertexColor(...) self.color = { ... } end
         function f:SetText(v) self.text = v end
@@ -58,7 +59,7 @@ local function fixture(kind)
         Border = function() return frame() end, Solid = function() return frame() end,
         PixelInset = function(region) return region end,
         ThemeTint = function(_, literal) return literal end,
-        Shared = { Style = { TIME_OK_RGB = {}, TIME_LOW_RGB = {}, TIME_OUT_RGB = {} }, Items = { SLEEPING_BAG = 211527 },
+        Shared = { Style = { TIME_OK_RGB = {}, TIME_LOW_RGB = {}, TIME_OUT_RGB = {}, ICON_CROP = 0.08 }, Items = { SLEEPING_BAG = 211527 },
             Parts = { Smooth = function(t) return t end, HudText = function(t) return t end,
                 Pill = function() return frame() end, SetPill = function() return 0 end, ColorPill = function() end,
                 Press = function(button) button.pressed = true end,
@@ -211,6 +212,12 @@ do
     local listening = false
     for _, f in ipairs(s.frames) do if f.events.BAG_UPDATE_COOLDOWN then listening = true end end
     check('cooldowns off: no sweeps and no cooldown events', not top.shown and not bottom.shown and not listening)
+    local icon = bar.buttons[1].icon
+    check('trinket icons keep their rounded edges by default', icon.crop == 0)
+    s.S.Set('trinketSquare', true)
+    check('square icons trims the edges', icon.crop > 0)
+    s.S.Set('trinketSquare', false)
+    check('square icons off restores the edges', icon.crop == 0)
 end
 
 do

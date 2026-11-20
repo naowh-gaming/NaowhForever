@@ -8984,5 +8984,7 @@ L["Needs Show Cooldowns"] = true
 L["The trinket's cooldown sweeps over its icon."] = true
 L["Cooldown Numbers"] = true
 L["Counts down the time left on the icon."] = true
+L["Square Icons"] = true
+L["Trims the rounded edges off the trinket icons, like the Gear Set Bar's."] = true
 L["    Shift-click: link"] = true
 L["Only quests in your quest log can be linked."] = true

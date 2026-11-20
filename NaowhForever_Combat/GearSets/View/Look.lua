@@ -40,11 +40,13 @@ function Look.Fit(frame, add, count, size, gap, grow)
     end
 end
 
-function Look.Trinkets(frame, slots, size, gap, grow)
+function Look.Trinkets(frame, slots, size, gap, grow, square)
+    local crop = square and ICON_CROP or 0
     frame:SetSize(ItemBar.Size(#TRINKET_SLOTS, size, gap, grow, ItemBar.ONE_LINE))
     for i, button in ipairs(slots) do
         button:SetSize(size, size)
         ItemBar.Place(button, frame, i, size, gap, grow, ItemBar.ONE_LINE)
         button.icon:SetTexture(GetInventoryItemTexture("player", TRINKET_SLOTS[i]) or EMPTY_ICON)
+        button.icon:SetTexCoord(crop, 1 - crop, crop, 1 - crop)
     end
 end

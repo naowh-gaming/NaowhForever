@@ -10584,5 +10584,7 @@ L["Needs Show Cooldowns"] = "Нужно «Показывать восстано�
 L["The trinket's cooldown sweeps over its icon."] = "Восстановление аксессуара развертывается поверх его значка."
 L["Cooldown Numbers"] = "Цифры восстановления"
 L["Counts down the time left on the icon."] = "Показывает обратный отсчет оставшегося времени на значке."
+L["Square Icons"] = "Квадратные значки"
+L["Trims the rounded edges off the trinket icons, like the Gear Set Bar's."] = "Обрезает скругленные края значков аксессуаров, как на панели комплектов экипировки."
 L["    Shift-click: link"] = "    Shift-щелчок: ссылка"
 L["Only quests in your quest log can be linked."] = "Ссылкой можно поделиться только на задания из вашего журнала."

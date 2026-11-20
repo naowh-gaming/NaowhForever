@@ -184,7 +184,7 @@ local S = UI.ModuleSettings("qol", {
     mapSkyborne = F.mapSkyborne, mapSkyborneSize = 20,
     mapQuestTint = F.mapQuestTint, mapQuestTintColor = "blue", mapQuestTintFill = 0.4,
     mapSizePercent = 100, mapSizePos = false,
-    gearSets = F.gearSets, gearBarVisible = F.gearBarVisible, trinketBar = F.trinketBar, trinketSize = 36, trinketSpacing = 4, trinketGrow = "RIGHT", trinketCooldown = true, trinketCountdown = true, gearBarSize = 32, gearBarGrow = "RIGHT", gearMounted = "", gearResting = "",
+    gearSets = F.gearSets, gearBarVisible = F.gearBarVisible, trinketBar = F.trinketBar, trinketSize = 36, trinketSpacing = 4, trinketGrow = "RIGHT", trinketCooldown = true, trinketCountdown = true, trinketSquare = false, gearBarSize = 32, gearBarGrow = "RIGHT", gearMounted = "", gearResting = "",
     gearBarSpacing = 4, gearBarShow = "always",
     gearPos = { point = "CENTER", relPoint = "CENTER", x = -403, y = -379 },
     bis = F.bis, bisTooltip = true, bisBagMarks = true, bisLootAlert = F.bisLootAlert, bisAutoAhead = 5,

@@ -78,7 +78,8 @@ local function NewTrinketPreview(stage)
 end
 
 local function PaintTrinketPreview(preview)
-    Look.Trinkets(preview.row, preview.slots, S.Get("trinketSize"), S.Get("trinketSpacing"), S.Get("trinketGrow"))
+    Look.Trinkets(preview.row, preview.slots, S.Get("trinketSize"), S.Get("trinketSpacing"), S.Get("trinketGrow"),
+        S.Get("trinketSquare"))
 end
 
 local function SetChoices()
@@ -186,5 +187,7 @@ page:Card({
           help = "The trinket's cooldown sweeps over its icon." },
         { key = "trinketCountdown", label = "Cooldown Numbers", toggle = true, needs = CooldownsOn, why = COOLDOWNS_OFF,
           help = "Counts down the time left on the icon." },
+        { key = "trinketSquare", label = "Square Icons", toggle = true, needs = GearOn, why = GEAR_OFF,
+          help = "Trims the rounded edges off the trinket icons, like the Gear Set Bar's." },
     },
 })
