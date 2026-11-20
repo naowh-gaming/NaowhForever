@@ -108,10 +108,15 @@ function Items.IsTwoHand(itemID)
     return equipLoc == TWO_HAND
 end
 
+local function Worn(slot, itemID)
+    local worn = GetInventoryItemID("player", slot)
+    return worn ~= nil and (worn == itemID or worn == Items.Classic(itemID))
+end
+
 function Items.Wearing(slot, itemID)
-    if GetInventoryItemID("player", slot) == itemID then return true end
+    if Worn(slot, itemID) then return true end
     local pair = PAIR[slot]
-    return pair ~= nil and GetInventoryItemID("player", pair) == itemID
+    return pair ~= nil and Worn(pair, itemID)
 end
 
 function Items.WeaponName(subclass, equipLoc)

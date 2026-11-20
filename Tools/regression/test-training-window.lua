@@ -206,7 +206,7 @@ local env = setmetatable({
 env._G = env
 
 Load({
-    "Shared/Shared.lua", "Shared/Data/Forever.lua", "Shared/Style.lua", "Shared/Game/Items.lua", "Shared/Game/Gear.lua", "Shared/Game/Places.lua",
+    "Shared/Shared.lua", "Shared/Data/Replaced.lua", "Shared/Data/Forever.lua", "Shared/Style.lua", "Shared/Game/Items.lua", "Shared/Game/Gear.lua", "Shared/Game/Places.lua",
     "Shared/UI/Parts.lua", "Shared/UI/GamepadNav.lua", "Shared/UI/Marks.lua", "Shared/UI/Text.lua", "Shared/UI/Hud.lua", "Shared/UI/Timer.lua", "Shared/UI/Share.lua", "Shared/UI/Panels.lua", "Shared/UI/Window.lua", "Shared/UI/Tabs.lua", "Shared/UI/SettingsCard.lua", "Shared/View/View.lua", "Shared/View/Kinds.lua",
     "Shared/Settings/Settings.lua",
     "Core/Features.lua",

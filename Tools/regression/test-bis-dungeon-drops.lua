@@ -4,7 +4,7 @@
 -- item's source is the Journal's boss and dungeon, and wowsrc's wording only for the rest.
 local Load = dofile("Tools/regression/load_files.lua")
 local TocFiles = dofile("Tools/regression/toc_files.lua")
-local RULES = { "Shared/Shared.lua", "Shared/Style.lua", "Shared/Game/Items.lua", "Shared/Game/Gear.lua", "NaowhForever_BiS/BiS/BiS.lua", "NaowhForever_BiS/BiS/Constants.lua", "NaowhForever_BiS/BiS/Rankings.lua",
+local RULES = { "Shared/Shared.lua", "Shared/Data/Replaced.lua", "Shared/Style.lua", "Shared/Game/Items.lua", "Shared/Game/Gear.lua", "NaowhForever_BiS/BiS/BiS.lua", "NaowhForever_BiS/BiS/Constants.lua", "NaowhForever_BiS/BiS/Rankings.lua",
     "NaowhForever_BiS/BiS/Sources.lua" }
 local SEP = " \194\183 "
 

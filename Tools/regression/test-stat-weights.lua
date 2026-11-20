@@ -137,7 +137,7 @@ local function Fixture(class)
             GetItemCount = function() return 0 end,
         },
     }, { __index = _G })
-    local files = { "Core/Features.lua", "Shared/Shared.lua", "Shared/Data/Forever.lua", "Shared/Style.lua", "Shared/Game/Items.lua", "Shared/Game/Gear.lua",
+    local files = { "Core/Features.lua", "Shared/Shared.lua", "Shared/Data/Replaced.lua", "Shared/Data/Forever.lua", "Shared/Style.lua", "Shared/Game/Items.lua", "Shared/Game/Gear.lua",
         "Shared/UI/Parts.lua", "Shared/UI/Menus.lua", "Shared/UI/Marks.lua", "Shared/UI/Text.lua", "Shared/UI/Hud.lua", "Shared/UI/Timer.lua", "Shared/UI/Share.lua", "Shared/UI/Panels.lua" }
     for _, path in ipairs(TocFiles("^NaowhForever_BiS/StatWeights/.*%.lua$")) do files[#files + 1] = path end
     Load(files, env)

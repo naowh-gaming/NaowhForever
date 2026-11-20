@@ -25,6 +25,8 @@ local KEPT_CODE = ("|cff%02x%02x%02x"):format(St.HAVE_RGB.r * KEPT_SHADE, St.HAV
 local IN_BAG, IN_BANK = KEPT_CODE .. TEXT_IN_BAG .. "|r", KEPT_CODE .. TEXT_IN_BANK .. "|r"
 
 local refused = {}
+local classic = {}
+for old, new in pairs(ns.Shared.Replaced) do classic[new] = old end
 
 local function LineStart(format)
     local start = type(format) == "string" and format:match(LINE_START)
@@ -76,8 +78,17 @@ function Items.Kept(itemID)
     return ""
 end
 
-function Items.Owned(itemID)
+function Items.Classic(itemID)
+    return classic[itemID]
+end
+
+local function Have(itemID)
     return GetItemCount(itemID, true) > 0 or C_Item.IsEquippedItem(itemID)
+end
+
+function Items.Owned(itemID)
+    local old = classic[itemID]
+    return Have(itemID) or old ~= nil and Have(old)
 end
 
 function Items.YourLoot(text, handed)

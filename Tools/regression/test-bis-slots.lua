@@ -5,7 +5,7 @@
 local Load = dofile("Tools/regression/load_files.lua")
 
 -- The BiS List's rules, on what they share.
-local FILES = { "Shared/Shared.lua", "Shared/Style.lua", "Shared/Game/Items.lua", "Shared/Game/Gear.lua", "NaowhForever_BiS/BiS/BiS.lua", "NaowhForever_BiS/BiS/Constants.lua", "NaowhForever_BiS/BiS/Rankings.lua",
+local FILES = { "Shared/Shared.lua", "Shared/Data/Replaced.lua", "Shared/Style.lua", "Shared/Game/Items.lua", "Shared/Game/Gear.lua", "NaowhForever_BiS/BiS/BiS.lua", "NaowhForever_BiS/BiS/Constants.lua", "NaowhForever_BiS/BiS/Rankings.lua",
     "NaowhForever_BiS/BiS/Lists.lua", "NaowhForever_BiS/BiS/Sharing.lua", "NaowhForever_BiS/BiS/Sources.lua" }
 
 -- itemID -> equip location, standing in for C_Item.GetItemInfoInstant.
@@ -16,6 +16,7 @@ local EQUIP = {
     [301] = "INVTYPE_2HWEAPON", [302] = "INVTYPE_WEAPON", [303] = "INVTYPE_HOLDABLE",
     [304] = "INVTYPE_SHIELD",
     [401] = "INVTYPE_WAND",
+    [22063] = "INVTYPE_WRIST", [226929] = "INVTYPE_WRIST",
 }
 
 local SPECS = {
@@ -56,6 +57,12 @@ local function Fixture(saved, char, worn, carried)
             end,
             GetItemNameByID = function(id) return "Item" .. id end,
             GetItemCount = function(id, bank) return bank and carried and carried[id] or 0 end,
+            IsEquippedItem = function(id)
+                for _, w in pairs(worn or {}) do
+                    if w == id then return true end
+                end
+                return false
+            end,
         },
         TooltipDataProcessor = { AddTooltipPostCall = function() end },
         Enum = { TooltipDataType = { Item = 0 } },
@@ -635,6 +642,22 @@ Case("starting from a list that is gone, or a spec with nothing, makes an empty 
     table.insert(e.account.bisLists.MAGE.lists, { id = 50, name = "Unread", items = { 101 } })
     assert(e.ns.NewBisList("From Old", false, { id = 50, spec = "fire-mage", slots = { [1] = true } }))
     assert(next(Saved(e).slots) == nil, "an old list not read yet has nothing to copy")
+end)
+
+Case("a classic item Forever replaced becomes Forever's on the list, once", function()
+    local e = Fixture({ ["Tester-Realm"] = { name = "Imported", slots = { [9] = 22063, [1] = 101 },
+        extra = { [9] = { 104, 226929 } } } })
+    assert(Picks(e, 9) == "226929,104", "replaced in its place, the later copy dropped")
+    assert(Picks(e, 1) == "101", "others left alone")
+    assert(e.ns.IsBisItem(226929) == 1 and not e.ns.IsBisItem(22063))
+end)
+
+Case("wearing or keeping the classic copy of a replaced item counts as Forever's", function()
+    local Items = Fixture(nil, nil, { [9] = 22063 }).ns.Shared.Items
+    assert(Items.Wearing(9, 226929) and Items.Owned(226929), "worn")
+    assert(Items.Wearing(9, 22063) and not Items.Owned(101))
+    Items = Fixture(nil, nil, nil, { [22063] = 1 }).ns.Shared.Items
+    assert(Items.Owned(226929) and not Items.Wearing(9, 226929), "in the bank")
 end)
 
 Case("the cloak slot still reads Back on enUS, through its own key", function()

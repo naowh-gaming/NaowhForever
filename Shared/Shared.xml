@@ -6,6 +6,7 @@
     <Script file="Data\ItemFacts.lua"/>
     <Script file="Data\FactionItems.lua"/>
     <Script file="Data\SameMaps.lua"/>
+    <Script file="Data\Replaced.lua"/>
     <Script file="Decode.lua"/>
     <Script file="Encode.lua"/>
     <Script file="Game\Items.lua"/>

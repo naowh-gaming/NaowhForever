@@ -111,7 +111,7 @@ local function Near(item, level, near)
 end
 
 local function Owned(slot, id)
-    return Wearing(slot, id) or C_Item.GetItemCount(id, true) > 0
+    return Wearing(slot, id) or Items.Owned(id)
 end
 
 local function Counted(slot, idle)

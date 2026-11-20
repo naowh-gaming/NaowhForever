@@ -21,6 +21,8 @@ Shared/
     FactionItems.lua the same for the factions' rewards, added to it, from Tools/build/factions.py
     SameMaps.lua     the maps the game has under two IDs, each to the one whose data it reads
                      (Shared.SameMaps), from Tools/build/same_maps.py
+    Replaced.lua     the classic items Forever replaced with its own, classic ID -> Forever's
+                     (Shared.Replaced), from Tools/build/forever_replaced.py: the BiS List names and counts them as Forever's
   Decode.lua       a pasted import string read back as plain data, with size, depth and bomb caps, and
                    outside text cleaned for display (Decode.String, Decode.Text)
   Encode.lua       plain data written as a code the Naowh website reads: LibSerialize's version 1 form

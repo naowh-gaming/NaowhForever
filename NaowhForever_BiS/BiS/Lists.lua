@@ -7,6 +7,7 @@ local R = B.Rankings
 local Items = ns.Shared.Items
 local SLOT_NAME = Items.SLOT_NAME
 local Picks, Store = B.Picks, B.Store
+local REPLACED = ns.Shared.Replaced
 
 local NAME_MAX = C.NAME_MAX
 local TEXT_DEFAULT_NAME = "My BiS"
@@ -23,6 +24,7 @@ local NONE = {}
 
 local lookup
 local before = {}
+local forever = setmetatable({}, { __mode = "k" })
 
 local function ClassLists()
     local account = ns.AccountSettings()
@@ -142,6 +144,24 @@ local function RankOldPicks(list)
     end
 end
 
+local function UseForeverItems(list)
+    if forever[list] then return end
+    forever[list] = true
+    for _, gear in ipairs(Items.GEAR_SLOTS) do
+        local out, seen, changed = {}, {}, false
+        for _, id in ipairs(Picks(list, gear[1])) do
+            local new = REPLACED[id]
+            changed = changed or new ~= nil
+            id = new or id
+            if not seen[id] then
+                seen[id] = true
+                out[#out + 1] = id
+            end
+        end
+        if changed then Store(list, gear[1], out) end
+    end
+end
+
 local function List()
     local store, account = ClassLists()
     local key = CharKey()
@@ -151,6 +171,7 @@ local function List()
     list.extra = list.extra or {}
     if not list.slots then SlotItems(list) end
     RankOldPicks(list)
+    UseForeverItems(list)
     return list
 end
 
