@@ -422,7 +422,7 @@ local function FillRecipe(row, info)
     SetColor(row.text, Style.DIFFICULTY_RGB[info.relativeDifficulty] or T.fg)
     row.count:SetText(W.orders and Orders.Count(info.recipeID) or FormatCraftCount(info))
     local shoppingCount, bags, bank, queued, auctions = 0, 0, 0, 0, 0
-    local output = R.OutputItem(info.recipeID)
+    local output, made = R.OutputItem(info.recipeID)
     if S.Get("recipeAvailability") and not W.linked then
         local shopping = P.Shopping.List()[info.recipeID]
         shoppingCount = type(shopping) == "table" and math.max(0, tonumber(shopping.count) or 0) or 0
@@ -432,7 +432,7 @@ local function FillRecipe(row, info)
     if S.Get("craftQueue") and not W.linked then queued = Queue.Count(info.recipeID) end
     if not W.linked and Auctions.On() then auctions = Auctions.Count(output) end
     TextBeforeStatus(row, not W.linked and Favorites.Is(info), shoppingCount, bags, bank, queued, auctions)
-    local profit, color = ListProfit(info.recipeID, output)
+    local profit, color = ListProfit(info.recipeID, output, made)
     row.profit:SetText(profit)
     SetColor(row.profit, color)
     local chance, band

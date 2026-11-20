@@ -7,6 +7,7 @@ local S = P.Settings
 local W = P.State
 local Filters = P.Filters
 local SkillUps = P.SkillUps
+local Prices = P.Prices
 
 local OTHER_ORDER = 999
 local TEXT_OTHER = OTHER or ns.L("Other")
@@ -14,6 +15,7 @@ local TEXT_OTHER = OTHER or ns.L("Other")
 local LEARNED = { name = ns.L("Learned"), key = "profLearnedCollapsed", closed = false }
 local UNLEARNED = { name = ns.L("Unlearned"), key = "profUnlearnedCollapsed", closed = false }
 local BEST = { name = ns.L("Best for Skill-ups"), key = LEARNED.key, closed = false }
+local PROFIT = { name = ns.L("Highest Profit"), key = LEARNED.key, closed = false }
 local UNLEARNED_GROUPS = {
     { status = "ready", name = ns.L("Learnable now"), key = "profUnlearnedReadyCollapsed", closed = false, sub = true },
     { status = "later", name = ns.L("Needs more skill"), key = "profUnlearnedLaterCollapsed", closed = true, sub = true },
@@ -25,7 +27,8 @@ local categories, entries, unlearned = {}, {}, EMPTY
 local collapsed = {}
 local catPool, byID, learned, entryPool = {}, {}, {}, {}
 local shown, shownUnlearned, inGroup, status = {}, {}, {}, {}
-local chanceOf, costOf = {}, {}
+local chanceOf, costOf, profitOf = {}, {}, {}
+local skillNow
 local recipeCount = 0
 
 local function ByOrder(a, b)
@@ -42,6 +45,18 @@ local function BySkillUp(a, b)
     end
     local pa, pb = chanceOf[a] or -1, chanceOf[b] or -1
     if pa ~= pb then return pa > pb end
+    return a.recipeID < b.recipeID
+end
+
+local function ByProfit(a, b)
+    local pa, pb = profitOf[a], profitOf[b]
+    if pa and pb then
+        if pa ~= pb then return pa > pb end
+    elseif pa or pb then
+        return pa ~= false
+    end
+    local na, nb = a.name or "", b.name or ""
+    if na ~= nb then return na < nb end
     return a.recipeID < b.recipeID
 end
 
@@ -161,26 +176,35 @@ local function SortSkillUps()
     return S.Get("skillUpChances") and Filters.Get("sortSkillUps") and not W.linked
 end
 
-local function AddBest()
+local function SortProfit()
+    return S.Get("craftProfit") and not W.linked and Filters.Get("sortProfit") and Prices.ProfitShown()
+end
+
+local function KeepSkillUp(info)
+    local chance = SkillUps.ForRecipe(info, skillNow)
+    if chance == 0 then return false end
+    chanceOf[info] = chance
+    costOf[info] = SkillUps.CostPerPoint(info.recipeID, chance)
+    return true
+end
+
+local function KeepProfit(info)
+    profitOf[info] = Prices.RecipeProfit(info.recipeID, R.OutputItem(info.recipeID)) or false
+    return true
+end
+
+local function AddSorted(head, Keep, By)
     local at = #entries + 1
-    Add("cat", BEST)
+    Add("cat", head)
     wipe(shown)
-    wipe(chanceOf)
-    wipe(costOf)
-    local skill = SkillUps.Skill()
     for _, cat in ipairs(categories) do
         for _, info in ipairs(cat.recipes) do
-            local chance = SkillUps.ForRecipe(info, skill)
-            if chance ~= 0 and Matches(info) and Filters.Passes(info) then
-                shown[#shown + 1] = info
-                chanceOf[info] = chance
-                costOf[info] = SkillUps.CostPerPoint(info.recipeID, chance)
-            end
+            if Matches(info) and Filters.Passes(info) and Keep(info) then shown[#shown + 1] = info end
         end
     end
-    table.sort(shown, BySkillUp)
-    BEST.count = #shown
-    local open = not IsCollapsed(BEST)
+    table.sort(shown, By)
+    head.count = #shown
+    local open = not IsCollapsed(head)
     local first, found
     for _, info in ipairs(shown) do
         first = first or info.recipeID
@@ -189,6 +213,18 @@ local function AddBest()
     end
     if #shown == 0 then entries[at] = nil end
     return first, found
+end
+
+local function AddBest()
+    wipe(chanceOf)
+    wipe(costOf)
+    skillNow = SkillUps.Skill()
+    return AddSorted(BEST, KeepSkillUp, BySkillUp)
+end
+
+local function AddByProfit()
+    wipe(profitOf)
+    return AddSorted(PROFIT, KeepProfit, ByProfit)
 end
 
 local function AddGroup(group, open)
@@ -229,7 +265,9 @@ end
 local function Build()
     wipe(entries)
     local first, found
-    if SortSkillUps() then
+    if SortProfit() then
+        first, found = AddByProfit()
+    elseif SortSkillUps() then
         first, found = AddBest()
     else
         first, found = AddLearned()

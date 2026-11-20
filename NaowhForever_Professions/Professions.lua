@@ -5,7 +5,7 @@ local F = ns.FEATURES.professions
 
 local S = ns.UI.ModuleSettings("professions", {
     enabled = F.enabled,
-    skillThresholds = F.skillThresholds, skillUpChances = F.skillUpChances, sortSkillUps = false,
+    skillThresholds = F.skillThresholds, skillUpChances = F.skillUpChances, sortSkillUps = false, sortProfit = false,
     skillUpPlan = F.skillUpPlan, skillUpPlanLater = false, skillUpPlanBest = false,
     learnedRecipeVendors = F.learnedRecipeVendors,
     recipeFinder = F.recipeFinder, rankAlert = F.rankAlert, bagReagents = F.bagReagents,

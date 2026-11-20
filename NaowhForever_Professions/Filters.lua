@@ -13,7 +13,7 @@ local TRIVIAL = 3
 local BIND_INDEX = 14
 local BIND_NEVER = 0
 local STORE = "professionFilters"
-local SORT = "sortSkillUps"
+local SORTS = { "sortSkillUps", "sortProfit" }
 
 local FILTERS = {
     { key = "filterFavorite", text = ns.L("Favorites") },
@@ -38,7 +38,8 @@ local function Saved()
     if type(db[STORE]) ~= "table" then db[STORE] = {} end
     local saved = db[STORE][id]
     if not saved then
-        saved = { [SORT] = S.Get(SORT) == true }
+        saved = {}
+        for _, key in ipairs(SORTS) do saved[key] = S.Get(key) == true end
         for _, f in ipairs(FILTERS) do saved[f.key] = S.Get(f.key) == true end
         db[STORE][id] = saved
     end

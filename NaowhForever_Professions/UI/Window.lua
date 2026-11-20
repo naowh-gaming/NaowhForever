@@ -50,6 +50,8 @@ local TEXT_ROI_SETTINGS = ns.L("ROI Color Thresholds...")
 local TEXT_SORT = ns.L("Sort")
 local TEXT_SORT_CATEGORIES = ns.L("By Category")
 local TEXT_SORT_SKILL_UPS = ns.L("Best for Skill-ups")
+local TEXT_SORT_PROFIT = ns.L("Highest Profit")
+local SORT_CATEGORIES, SORT_SKILL_UPS, SORT_PROFIT = "categories", "skillUps", "profit"
 local TEXT_SEARCH = SEARCH or ns.L("Search")
 local TEXT_NO_MATCH = ns.L("No recipes match.")
 
@@ -158,13 +160,39 @@ local function AddFilter(root, f)
     end)
 end
 
-local function SortIs(skillUps)
-    return Filters.Get("sortSkillUps") == skillUps
+local function Sort()
+    if Filters.Get("sortProfit") and Prices.ProfitShown() then return SORT_PROFIT end
+    if Filters.Get("sortSkillUps") and S.Get("skillUpChances") then return SORT_SKILL_UPS end
+    return SORT_CATEGORIES
 end
 
-local function SortBy(skillUps)
-    Filters.Set("sortSkillUps", skillUps)
+local function SortIs(sort)
+    return Sort() == sort
+end
+
+local function SortBy(sort)
+    Filters.Set("sortSkillUps", sort == SORT_SKILL_UPS)
+    Filters.Set("sortProfit", sort == SORT_PROFIT)
     Refilter()
+end
+
+local function SortMenu(root)
+    local skillUps, profit = S.Get("skillUpChances"), S.Get("craftProfit")
+    if W.linked or not (skillUps or profit) then return end
+    root:CreateTitle(TEXT_SORT)
+    root:CreateRadio(TEXT_SORT_CATEGORIES, SortIs, SortBy, SORT_CATEGORIES)
+    if skillUps then root:CreateRadio(TEXT_SORT_SKILL_UPS, SortIs, SortBy, SORT_SKILL_UPS) end
+    if profit then
+        local radio = root:CreateRadio(TEXT_SORT_PROFIT, SortIs, SortBy, SORT_PROFIT)
+        if not Prices.ProfitShown() then
+            radio:SetEnabled(false)
+            radio:SetTooltip(function(tooltip)
+                GameTooltip_SetTitle(tooltip, TEXT_SORT_PROFIT)
+                GameTooltip_AddNormalLine(tooltip, TEXT_SCAN_FIRST)
+            end)
+        end
+    end
+    root:CreateDivider()
 end
 
 local function OpenROISettings()
@@ -185,12 +213,7 @@ local function FilterMenu(_, root)
         end
         root:CreateDivider()
     end
-    if S.Get("skillUpChances") and not W.linked then
-        root:CreateTitle(TEXT_SORT)
-        root:CreateRadio(TEXT_SORT_CATEGORIES, SortIs, SortBy, false)
-        root:CreateRadio(TEXT_SORT_SKILL_UPS, SortIs, SortBy, true)
-        root:CreateDivider()
-    end
+    SortMenu(root)
     if S.Get("craftProfit") then
         root:CreateCheckbox(TEXT_SHOW_ROI, function() return S.Get("craftROI") == true end,
             function() ToggleSetting("craftROI") end)
