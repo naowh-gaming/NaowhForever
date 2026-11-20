@@ -576,6 +576,13 @@ Onboarding
   removed when its `charGuid` is this character's, so a second character with that first name keeps
   the profile too. `ns.CharKey(store)` moves a module's first-name entry instead, so a cleared entry
   does not come back.
+- Since Forever build 71037 `GetRealmName()` returns "" to addons. `ns.RealmName()` is the realm every
+  saved key and per-realm store uses instead: the game's while it gives one, else the realm saved in
+  `charGuid` for a character on the same server (the number in `Player-<server>-<id>`), else that
+  server number. Every character seen before the change keeps its keys, alts, prices and lists. A
+  profile entry saved with no realm (`Name-`, by older builds on 71037) moves to the realm, or is
+  dropped when the character already had one; `ns.CharKey(store)` moves a module's when the store has none
+  under the realm.
 - The page waits for an answer across reloads and relogs: a new character is saved in the account's
   `charAsk` (by name-realm, as `charActive` and `charSeen`). `ns.MarkAsked` clears it when the page is
   answered, when the window is closed (X or Escape), or when the full onboarding is closed on that

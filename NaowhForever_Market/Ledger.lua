@@ -340,7 +340,7 @@ end
 
 local function Start()
     local data = Data(true)
-    data.name, data.realm = UnitName("player"), GetRealmName()
+    data.name, data.realm = UnitName("player"), ns.RealmName()
     data.class = select(2, UnitClass("player"))
     Trim(data)
     last = GetMoney()

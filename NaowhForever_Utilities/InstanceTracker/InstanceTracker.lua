@@ -95,7 +95,7 @@ local function OpenRun()
 end
 
 local function RealmKey()
-    local realm = GetRealmName()
+    local realm = ns.RealmName()
     if not realm or Secret(realm) then realm = "" end
     local faction = UnitFactionGroup("player")
     if not faction or Secret(faction) then faction = "" end
@@ -566,7 +566,7 @@ local function MemberName(unit)
     if Secret(name) or Secret(realm) or type(name) ~= "string" then return end
     name = name:match("^[^-]+") or name
     if name == "" or name == UNKNOWNOBJECT then return end
-    local mine = (GetNormalizedRealmName and GetNormalizedRealmName()) or GetRealmName()
+    local mine = (GetNormalizedRealmName and GetNormalizedRealmName()) or ns.RealmName()
     if Secret(mine) then mine = nil end
     if type(realm) == "string" and realm ~= "" and realm ~= mine then
         name = name .. "-" .. realm
@@ -1163,7 +1163,7 @@ local function OnResetMessage(text)
 end
 
 local function OurRealm()
-    local realm = GetRealmName()
+    local realm = ns.RealmName()
     if Secret(realm) or type(realm) ~= "string" then realm = "" end
     local normalized = (GetNormalizedRealmName and GetNormalizedRealmName()) or realm
     if Secret(normalized) or type(normalized) ~= "string" then normalized = realm end

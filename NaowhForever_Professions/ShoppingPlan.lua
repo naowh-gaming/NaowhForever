@@ -432,7 +432,7 @@ local function Stored(store, guid, legacy)
 end
 
 local function HasList(guid, name)
-    local legacy = name .. LEGACY_JOIN .. GetRealmName()
+    local legacy = name .. LEGACY_JOIN .. ns.RealmName()
     return Stored("profShopping", guid, legacy) or Stored("profShopItems", guid, legacy)
 end
 
@@ -443,7 +443,7 @@ local function Restore(ok, ...)
 end
 
 local function As(guid, name, fn, ...)
-    owner, ownerLegacy = guid, name .. LEGACY_JOIN .. GetRealmName()
+    owner, ownerLegacy = guid, name .. LEGACY_JOIN .. ns.RealmName()
     return Restore(pcall(fn, ...))
 end
 

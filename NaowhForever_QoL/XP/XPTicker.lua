@@ -604,7 +604,7 @@ function Look.Paint(f, rate, ding, elapsed, isPaused, keys, levels, trend, xp, r
 end
 
 local function NameEntry()
-    local name, realm = UnitName("player"), GetRealmName()
+    local name, realm = UnitName("player"), ns.RealmName()
     if not (name and realm) then return end
     local all = ns.AccountSettings()[SPLITS_KEY]
     local old = type(all) == "table" and all[name .. "-" .. realm]

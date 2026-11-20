@@ -102,7 +102,7 @@ local function Key(other)
     local side = Side(other)
     local key = side and houseKeys[side]
     if not key then
-        key = GetRealmName() .. REALM_JOIN .. (side or "")
+        key = ns.RealmName() .. REALM_JOIN .. (side or "")
         if side then houseKeys[side] = key end
     end
     return key

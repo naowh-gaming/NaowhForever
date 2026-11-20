@@ -48,6 +48,7 @@ local env = {
         GetBaseProfessionInfo = function() return { professionID = openProf } end,
     },
     NaowhForever = { L = dofile("Tools/regression/locale_stub.lua").L, Upper = string.upper, Lower = string.lower,
+        RealmName = function() return "Realm" end,
         Professions = { CharacterData = CharacterData,
             Settings = { Get = function(key) return profSettings[key] end } },
         AccountSettings = function() return account end,

@@ -264,7 +264,7 @@ function M.Export()
     return "{" .. table.concat({
         Field("version", String(ns.CODE_BUILD)),
         Field("name", String(name)),
-        Field("realm", String(realm or GetRealmName())),
+        Field("realm", String(realm or ns.RealmName())),
         Field("race", String(RACE_NAMES[raceToken] or raceToken)),
         Field("class", String(class:lower())),
         Field("level", UnitLevel("player")),

@@ -38,7 +38,7 @@ end
 function ns.AltRealm()
     local account = ns.AccountSettings()
     account.alts = account.alts or {}
-    realmKey = realmKey or GetRealmName() .. REALM_JOIN .. (UnitFactionGroup("player") or "")
+    realmKey = realmKey or ns.RealmName() .. REALM_JOIN .. (UnitFactionGroup("player") or "")
     account.alts[realmKey] = account.alts[realmKey] or {}
     return account.alts[realmKey]
 end

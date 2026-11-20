@@ -10,7 +10,7 @@ _G.NaowhForever = ns
 ns.L = function(text) return text end
 local account, realm, untilReset = {}, "Realm", 3 * 86400
 ns.AccountSettings = function() return account end
-_G.GetRealmName = function() return realm end
+ns.RealmName = function() return realm end
 _G.C_DateAndTime = { GetSecondsUntilWeeklyReset = function() return untilReset end }
 
 ns.TransportData = { boat = { period = 120, dwell = 20 }, other = { period = 150, dwell = 30 } }

@@ -37,10 +37,11 @@ end
 
 local function ForeverAccount(friendIndex)
     local faction = not C_PartyInfo.CanFormCrossFactionParties() and UnitFactionGroup("player")
+    local realmsHidden = GetRealmID() == 0
     for i = 1, C_BattleNet.GetFriendNumGameAccounts(friendIndex) do
         local game = C_BattleNet.GetFriendGameAccountInfo(friendIndex, i)
-        if game and game.isOnline and game.wowProjectID == WOW_PROJECT_ID and game.playerGuid and game.realmID ~= 0
-            and (not faction or game.factionName == faction) then
+        if game and game.isOnline and game.wowProjectID == WOW_PROJECT_ID and game.playerGuid
+            and (game.realmID ~= 0 or realmsHidden) and (not faction or game.factionName == faction) then
             return game
         end
     end

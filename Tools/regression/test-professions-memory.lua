@@ -374,6 +374,7 @@ ns = { L = dofile("Tools/regression/locale_stub.lua").L, Upper = string.upper, L
     AuctionAge = function() return "1h" end,
     AuctionScanSummary = function() return "Last scan" end,
 }
+ns.RealmName = function() return "Realm" end
 function ns.OnApply(fn) local was = ns.Apply ns.Apply = function(...) was(...) fn(...) end end
 
 env = {

@@ -21,7 +21,7 @@ end
 local function Saved(slot)
     local account = ns.AccountSettings()
     account[slot] = account[slot] or {}
-    local realm = GetRealmName()
+    local realm = ns.RealmName()
     account[slot][realm] = account[slot][realm] or {}
     return account[slot][realm]
 end

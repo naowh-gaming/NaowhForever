@@ -2,10 +2,12 @@
 -- A Battle.net friend is found by BattleTag and invited on their Forever game account; one not on
 -- Forever is named in chat; a character is invited by name; Invite All stops at a full party and
 -- skips people already in it. Like the friends list, an account with no realm, or on the other
--- faction while cross-faction parties are off, cannot be invited.
+-- faction while cross-faction parties are off, cannot be invited. When the game hides realm IDs (0 for
+-- every account, the player's own too), no realm no longer means a friend is still loading.
 local printed, bnInvites, nameInvites = {}, {}, {}
 local subgroup, raid, members = 0, false, {}
 local crossFaction = false
+local ownRealm = 5
 
 local friends = {
     { battleTag = "Robin#1234", games = { { isOnline = true, wowProjectID = 99, playerGuid = "g1", realmID = 5,
@@ -41,6 +43,7 @@ local env = setmetatable({
         CanFormCrossFactionParties = function() return crossFaction end,
     },
     UnitFactionGroup = function() return "Alliance", "Alliance" end,
+    GetRealmID = function() return ownRealm end,
     IsInRaid = function() return raid end,
     GetNumGroupMembers = function() return subgroup + 1 end,
     GetNumSubgroupMembers = function() return subgroup end,
@@ -96,6 +99,13 @@ Case("with cross-faction parties the other faction is invited", function()
     ns.InvitePerson({ name = "Alt", tag = "Alt#4242" })
     assert(bnInvites[1] == 42, "the realm-less account is still passed over")
     crossFaction = false
+end)
+
+Case("when the game hides realm IDs a friend with none is invited", function()
+    ownRealm = 0
+    ns.InvitePerson({ name = "Alt", tag = "Alt#4242" })
+    assert(bnInvites[1] == 41 and #printed == 0)
+    ownRealm = 5
 end)
 
 Case("Invite All invites everyone while there is room", function()

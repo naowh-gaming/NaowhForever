@@ -44,6 +44,7 @@ local ns = {
     Print = function(text) printed[#printed + 1] = text end,
     AccountSettings = function() return account end,
     GamepadStandDown = function() return false end,
+    RealmName = function() return me.realm end,
     Shared = { CharacterData = function(key) return Child(Child(account, key), me.guid) end },
     Apply = function() end,
     ProfWindowRefresh = function() refreshed = refreshed + 1 end,

@@ -43,6 +43,7 @@ local ns = { L = dofile("Tools/regression/locale_stub.lua").L, Upper = string.up
     AccountSettings = function() return account end,
     Color = function() return "|cff0091edNaowh|r" end,
 }
+ns.RealmName = function() return "Realm" end
 function ns.OnApply(fn) local was = ns.Apply ns.Apply = function(...) was(...) fn(...) end end
 local COLORS = {}
 for class, hex in pairs({ PALADIN = "|cfff58cba", MAGE = "|cff69ccf0", ROGUE = "|cfffff569" }) do

@@ -49,6 +49,7 @@ local function Setup(buttonOn, captureOn, withFrame, cratesOn, tooltipOn, feed, 
             return { Card = function(_, spec) card = spec end }
         end }, Items = { Name = function(id) return "item" .. id end } },
     }
+    ns.RealmName = function() return "Realm" end
     function ns.OnApply(fn) local was = ns.Apply ns.Apply = function(...) was(...) fn(...) end end
     local env = setmetatable({
         NaowhForever = ns,

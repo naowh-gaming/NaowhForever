@@ -17,7 +17,7 @@ local ns = { Shared = { Parts = {}, Settings = {}, Places = dofile("Tools/regres
 _G.NaowhForever = ns
 local account = {}
 ns.AccountSettings = function() return account end
-_G.GetRealmName = function() return "Realm" end
+ns.RealmName = function() return "Realm" end
 _G.C_DateAndTime = { GetSecondsUntilWeeklyReset = function() return 3 * 86400 end }
 _G.GetServerTime = function() return now end
 _G.GetTime = function() return clock end

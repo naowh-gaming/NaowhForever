@@ -151,6 +151,7 @@ local ns = { L = dofile("Tools/regression/locale_stub.lua").L, Upper = string.up
     OpenOptionsWindow = NOTHING,
     Apply = NOTHING,
 }
+ns.RealmName = function() return "Realm" end
 function ns.OnApply(fn) local was = ns.Apply ns.Apply = function(...) was(...) fn(...) end end
 local env = setmetatable({
     NaowhForever = ns,

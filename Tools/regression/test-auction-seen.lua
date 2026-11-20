@@ -49,6 +49,7 @@ local function Setup(opts)
             for i = 1, count do seen[i] = ids[i] end
         end,
     }
+    ns.RealmName = function() return "Realm" end
     function ns.OnApply(fn) local was = ns.Apply ns.Apply = function(...) was(...) fn(...) end end
     if opts.market ~= nil then
         ns.Market = { On = function() return marketOn end, ShowsPrice = function() return false end }

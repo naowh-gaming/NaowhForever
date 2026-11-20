@@ -67,6 +67,7 @@ local function Setup(opts)
     t.dialog = dialog
     local values = {}
     local ns = {
+        RealmName = function() return "Realm" end,
         FEATURES = { market = { enabled = false } },
         UI = { ModuleSettings = function(_, defaults)
             return { Get = function(k) if values[k] == nil then return defaults[k] end return values[k] end,

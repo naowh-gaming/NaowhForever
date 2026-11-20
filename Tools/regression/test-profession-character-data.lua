@@ -30,6 +30,7 @@ local ns = {
         }
     end },
 }
+ns.RealmName = function() return "Realm" end
 function ns.OnApply(fn) local was = ns.Apply ns.Apply = function(...) was(...) fn(...) end end
 local env = setmetatable({
     NaowhForever = ns,

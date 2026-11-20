@@ -28,7 +28,7 @@ local function Fixture(o)
     local frames = {}
     local S = { Get = function() return true end, OnChange = function() end }
     local ns = { L = dofile("Tools/regression/locale_stub.lua").L, Upper = string.upper, Lower = string.lower, TrainingData = DATA, TrainingBuilds = { [8] = { rev = 1, replaced = {}, talents = {} } }, AccountSettings = function() return account end,
-        CharKey = function() return name .. "-Realm" end,
+        CharKey = function() return name .. "-Realm" end, RealmName = function() return "Realm" end,
         UI ={ ModuleSettings = function() return S end, RefreshPage = function() refreshes = refreshes + 1 end } }
     function ns.OnApply() end
     local env = {

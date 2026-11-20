@@ -23,7 +23,7 @@ local NODES = {
 
 local function Fixture(o)
     o = o or {}
-    local ns = { BiS = {}, CODE_BUILD = "1.2.34" }
+    local ns = { BiS = {}, CODE_BUILD = "1.2.34", RealmName = function() return "Forever" end }
     local nodes = {}
     for _, node in ipairs(NODES) do nodes[node.ID] = node end
     local links = { [1] = "|cffa335ee|Hitem:12345:1900:0:0:0:0:0:0:60|h[Helm]|h|r",

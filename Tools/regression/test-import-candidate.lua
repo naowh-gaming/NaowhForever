@@ -17,9 +17,9 @@ local code = assert(src:match("\n(local MODULE_KEY = .-\n)\nlocal ns = {}\n"), "
     .. Slice("local function CharKey()", "function ns.DB()")
     .. Slice("function ns.MarkSeen()", "function ns.ListProfiles()")
 
-local function Login(sv, name, clock, guid, surname)
+local function Login(sv, name, clock, guid, surname, realm)
     local env = { ns = { L = dofile("Tools/regression/locale_stub.lua").L, Upper = string.upper, Lower = string.lower, STARTER = { profile = {}, account = {} } }, UNKNOWNOBJECT = "Unknown",
-        UnitName = function() return name end, GetRealmName = function() return "Forever" end,
+        UnitName = function() return name end, GetRealmName = function() return realm or "Forever" end,
         UnitFullName = function() return name, surname end,
         UnitGUID = function() return guid end, time = function() return clock or 0 end }
     function env.CopyTable(t)
@@ -284,6 +284,68 @@ do
     ns.CharKey(store)
     check("and a cleared entry stays cleared", store[key] == nil)
     check("without a store it is just the key", ns.CharKey() == "Zyro Taps-Forever")
+end
+
+local HIDDEN = ""
+
+do
+    local sv = { profiles = { Default = {}, Raid = {} }, charActive = { ["Die Man-Forever"] = "Raid" },
+        charGuid = { ["Die Man-Forever"] = MAIN_GUID } }
+    local ns = Login(sv, "Die Man", 100, MAIN_GUID, nil, HIDDEN)
+    check("with the realm hidden, a character seen before keeps its realm and profile",
+        ns.RealmName() == "Forever" and sv.charActive["Die Man-Forever"] == "Raid" and sv.charActive["Die Man-"] == nil)
+    Login(sv, "Die Dudu", 200, DUDU_GUID, nil, HIDDEN)
+    check("and a new character on that server takes the same realm", sv.charActive["Die Dudu-Forever"] == "Default"
+        and sv.charActive["Die Dudu-"] == nil)
+end
+
+do
+    local sv = { profiles = { Default = {}, Raid = {} },
+        charActive = { ["Die Man-Forever"] = "Raid", ["Die Man-"] = "Default", ["Die Dudu-"] = "Raid" },
+        charGuid = { ["Die Man-Forever"] = MAIN_GUID, ["Die Man-"] = MAIN_GUID, ["Die Dudu-"] = DUDU_GUID },
+        charSeen = { ["Die Man-"] = 50 } }
+    Login(sv, "Die Man", 100, MAIN_GUID, nil, HIDDEN)
+    check("an entry saved with no realm is dropped when the character has its own",
+        sv.charActive["Die Man-Forever"] == "Raid" and sv.charActive["Die Man-"] == nil
+        and sv.charGuid["Die Man-"] == nil and sv.charSeen["Die Man-"] == nil)
+    Login(sv, "Die Dudu", 200, DUDU_GUID, nil, HIDDEN)
+    check("and moved to the realm when it is the character's only one", sv.charActive["Die Dudu-Forever"] == "Raid"
+        and sv.charActive["Die Dudu-"] == nil)
+end
+
+do
+    local sv = { profiles = { Default = {} }, charActive = {} }
+    local ns = Login(sv, "Die Man", 100, "Player-77-00000001", nil, HIDDEN)
+    check("a server never seen with its realm is keyed by its ID", ns.RealmName() == "77"
+        and sv.charActive["Die Man-77"] == "Default")
+    check("and with no GUID yet there is no realm", Login({ profiles = {}, charActive = {} }, "Die Man", 100, nil, nil,
+        HIDDEN).RealmName() == "")
+end
+
+do
+    local sv = { profiles = { Default = {} }, charActive = { ["Die Man-Forever"] = "Default" },
+        charGuid = { ["Die Man-Forever"] = MAIN_GUID } }
+    local ns = Login(sv, "Die Man", 100, MAIN_GUID, nil, HIDDEN)
+    local store = { ["Die Man-"] = { seen = true } }
+    check("a module's entry saved with no realm moves to the realm", ns.CharKey(store) == "Die Man-Forever"
+        and store["Die Man-Forever"].seen and store["Die Man-"] == nil)
+end
+
+do
+    local sv = { profiles = { Default = {}, Raid = {} }, charActive = { ["Die Man-"] = "Raid" },
+        charGuid = { ["Die Man-"] = "Player-88-00000001" } }
+    Login(sv, "Die Man", 100, "Player-77-00000001", nil, HIDDEN)
+    check("another server's character's entry with no realm is not taken", sv.charActive["Die Man-77"] == "Default"
+        and sv.charActive["Die Man-"] == "Raid")
+end
+
+do
+    local sv = { profiles = { Default = {} }, charActive = {},
+        charGuid = { ["Die Dudu-4613"] = DUDU_GUID, ["Die Pri-Forever"] = PRI_GUID } }
+    for _ = 1, 20 do
+        check("a saved realm name wins over a server number", Login(sv, "Die Man", 100, MAIN_GUID, nil, HIDDEN)
+            .RealmName() == "Forever")
+    end
 end
 
 print(("test-import-candidate: %d checks passed"):format(checks))

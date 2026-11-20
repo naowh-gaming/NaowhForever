@@ -34,7 +34,7 @@ end
 local function CharKey()
     if charKey then return charKey end
     local name = UnitName("player")
-    local key = name .. "-" .. GetRealmName()
+    local key = name .. "-" .. ns.RealmName()
     if name ~= UNKNOWNOBJECT then charKey = key end
     return key
 end

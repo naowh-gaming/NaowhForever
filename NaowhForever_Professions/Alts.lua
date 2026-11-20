@@ -55,7 +55,7 @@ local function Save()
     local mine = link and ns.Shared.CharacterData(STORE, true)
     if not mine then return end
     mine.name, mine.class = GetUnitName("player", true):match(NAME), select(2, UnitClass("player"))
-    mine.realm, mine.faction = GetRealmName(), UnitFactionGroup("player")
+    mine.realm, mine.faction = ns.RealmName(), UnitFactionGroup("player")
     mine.links = mine.links or {}
     local saved = mine.links[id]
     if saved and saved.link == link then return end
@@ -103,7 +103,7 @@ end
 function Alts.Any()
     local all = All()
     if not all then return false end
-    local me, realm, faction = UnitGUID("player"), GetRealmName(), UnitFactionGroup("player")
+    local me, realm, faction = UnitGUID("player"), ns.RealmName(), UnitFactionGroup("player")
     for guid, alt in pairs(all) do
         if Theirs(guid, alt, me, realm, faction) and next(alt.links) then return true end
     end
@@ -114,7 +114,7 @@ function Alts.List()
     wipe(list)
     local all = All()
     if not all then return list end
-    local me, realm, faction = UnitGUID("player"), GetRealmName(), UnitFactionGroup("player")
+    local me, realm, faction = UnitGUID("player"), ns.RealmName(), UnitFactionGroup("player")
     for guid, alt in pairs(all) do
         if Theirs(guid, alt, me, realm, faction) then
             for _, saved in pairs(alt.links) do

@@ -105,6 +105,7 @@ Load({ "Core/Features.lua", "NaowhForever_Professions/Professions.lua" }, env)
 local P, S = ns.Professions, ns.ProfessionSettings
 P.C = { QUEUE_DELAY = 0.2 }
 P.AH = { Open = function() return false end }
+ns.RealmName = function() return "Realm" end
 ns.ProfWindowRefresh = function() refreshes = refreshes + 1 end
 Load({ "NaowhForever_Professions/Auctions.lua" }, env)
 

@@ -248,7 +248,7 @@ end)
 Case("new abilities wait for the character's name: nothing is saved under an Unknown key", function()
     local account, name = {}, "Unknown"
     local env = setmetatable({ UNKNOWNOBJECT = "Unknown", UnitName = function() return name end,
-        GetRealmName = function() return "Realm" end, unnamed = {},
+        ns = { RealmName = function() return "Realm" end }, unnamed = {},
         Account = function(key)
             account[key] = account[key] or {}
             return account[key]

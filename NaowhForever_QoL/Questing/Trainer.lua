@@ -78,7 +78,7 @@ local function NewSpells()
     if not charKey then
         local name = UnitName("player")
         if name == UNKNOWNOBJECT then return unnamed end
-        charKey = name .. "-" .. GetRealmName()
+        charKey = name .. "-" .. ns.RealmName()
     end
     local all = Account("trainerNew")
     all[charKey] = all[charKey] or {}

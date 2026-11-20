@@ -1923,6 +1923,9 @@ NaowhForever_QoL/
   is looked up on each click, the first of their game accounts online on Forever.
 - Battle.net friends are invited with `C_BattleNet.InviteFriend`, as the game's Friends list does: the
   legacy friend list is off on Forever, so a name invite only reaches characters the game can find.
+- A game account with realm ID 0 is skipped, as the Friends list does: it is still at character
+  select. Since build 71037 Forever gives addons 0 for every realm ID, so while `GetRealmID()` is 0 too
+  that test is dropped.
 - Invite All stops at a full party (`MAX_PARTY_MEMBERS`) and does not turn the party into a raid;
   people already in the group are skipped.
 - The invite buttons are plain buttons: invites are not protected, so they work in combat. Adding or

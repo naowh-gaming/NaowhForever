@@ -31,7 +31,7 @@ function Market.AfterCut(price)
 end
 
 function Market.HouseKey()
-    return GetRealmName() .. REALM_JOIN .. (UnitFactionGroup("player") or "")
+    return ns.RealmName() .. REALM_JOIN .. (UnitFactionGroup("player") or "")
 end
 
 function Market.HouseData(store, create)

@@ -1113,13 +1113,15 @@ local activeRoot, provisional
 local function CharKey()
     local name, surname = UnitFullName("player")
     if surname and surname ~= "" then name = name .. " " .. surname end
-    return name .. "-" .. GetRealmName()
+    return name .. "-" .. ns.RealmName()
 end
 
 function ns.CharKey(store)
     local key = CharKey()
     if store and store[key] == nil then
-        local old = UnitName("player") .. "-" .. GetRealmName()
+        local first = UnitName("player") .. "-"
+        local old = first .. ns.RealmName()
+        if store[old] == nil then old = first end
         if old ~= key then store[key], store[old] = store[old], nil end
     end
     return key
@@ -1141,6 +1143,36 @@ local function DB()
     return sv
 end
 
+do
+    local REALM_IN_KEY = "^[^-]+%-(.+)$"
+    local realm
+
+    local function SavedRealm(server)
+        local guids = DB().charGuid
+        if type(guids) ~= "table" then return nil end
+        for char, guid in pairs(guids) do
+            if type(guid) == "string" and guid:match(GUID_PATTERN) == server then
+                local name = char:match(REALM_IN_KEY)
+                if name and name ~= server then return name end
+            end
+        end
+    end
+
+    function ns.RealmName()
+        if realm then return realm end
+        local name = GetRealmName()
+        if name ~= "" then
+            realm = name
+            return realm
+        end
+        local guid = UnitGUID("player")
+        local server = type(guid) == "string" and guid:match(GUID_PATTERN)
+        if not server then return "" end
+        realm = SavedRealm(server) or server
+        return realm
+    end
+end
+
 local function ProvisionalRoot(sv)
     local default = sv.defaultProfile or DEFAULT_PROFILE
     if type(sv.profiles[default]) ~= "table" then sv.profiles[default] = {} end
@@ -1149,14 +1181,19 @@ local function ProvisionalRoot(sv)
 end
 
 local function AssignedProfile(sv)
-    local key, old = CharKey(), UnitName("player") .. "-" .. GetRealmName()
-    if key ~= old and sv.charActive[key] == nil and sv.charActive[old] ~= nil then
-        sv.charActive[key] = sv.charActive[old]
-        if type(sv.charAsk) == "table" then sv.charAsk[key] = sv.charAsk[old] end
-        if type(sv.charGuid) == "table" and sv.charGuid[old] == UnitGUID("player") then
-            sv.charActive[old], sv.charGuid[old] = nil, nil
-            if type(sv.charSeen) == "table" then sv.charSeen[old] = nil end
-            if type(sv.charAsk) == "table" then sv.charAsk[old] = nil end
+    local key, first = CharKey(), UnitName("player") .. "-"
+    for _, old in ipairs({ first .. ns.RealmName(), first }) do
+        local mine = type(sv.charGuid) == "table" and sv.charGuid[old] == UnitGUID("player")
+        if key ~= old and sv.charActive[old] ~= nil and (mine or old ~= first) then
+            if sv.charActive[key] == nil then
+                sv.charActive[key] = sv.charActive[old]
+                if type(sv.charAsk) == "table" then sv.charAsk[key] = sv.charAsk[old] end
+            end
+            if mine then
+                sv.charActive[old], sv.charGuid[old] = nil, nil
+                if type(sv.charSeen) == "table" then sv.charSeen[old] = nil end
+                if type(sv.charAsk) == "table" then sv.charAsk[old] = nil end
+            end
         end
     end
     local name = sv.charActive[key]
