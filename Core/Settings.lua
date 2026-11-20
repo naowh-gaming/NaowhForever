@@ -179,7 +179,7 @@ local S = UI.ModuleSettings("qol", {
     zoneInfo = F.zoneInfo, zoneInfoOnMap = F.zoneInfoOnMap, zoneInfoCurrent = F.zoneInfoCurrent, zoneInfoDungeons = F.zoneInfoDungeons,
     zoneInfoFishing = F.zoneInfoFishing, zoneInfoTravel = F.zoneInfoTravel, zoneInfoGathering = F.zoneInfoGathering,
     zoneInfoHideCombat = F.zoneInfoHideCombat, zoneInfoOnlyProfessions = F.zoneInfoOnlyProfessions,
-    zoneInfoPinned = 0, zoneInfoScale = 1,
+    zoneInfoPinned = 0, zoneInfoScale = 1, zoneInfoMapScale = 1,
     zoneInfoPos = { point = "TOPRIGHT", relPoint = "TOPRIGHT", x = -24, y = -220 },
     mapSkyborne = F.mapSkyborne, mapSkyborneSize = 20,
     mapQuestTint = F.mapQuestTint, mapQuestTintColor = "blue", mapQuestTintFill = 0.4,

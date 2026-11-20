@@ -91,7 +91,7 @@ local page = ns.Shared.Settings.pages["QoL/Map & Pins"]
 local card = page.items[1]
 ns.Shared.Settings.SetOpen(card, true)
 parent.settingsView:Redraw()
-Check(parent.settingsView.pools.setting.used == 12, "real options page renders every setting")
+Check(parent.settingsView.pools.setting.used == 13, "real options page renders every setting")
 local found
 for i = 1, parent.settingsView.pools.setting.used do
     local row = parent.settingsView.pools.setting[i]
@@ -132,6 +132,12 @@ local function TextIncludes(value)
 end
 Check(TextIncludes("The Deadmines") and TextIncludes("Fishing 1 minimum"), "summary includes enabled dungeon and fishing data")
 Check(TextIncludes("Herbs: Silverleaf") and TextIncludes("Mining: Copper Vein"), "summary separates herbs and mining")
+function summaryText:SetScale(value) self.scale = value end
+S.Set("zoneInfoMapScale", 1.5)
+Z.MapText(1436)
+Check(summaryText.scale == 1.5 and summaryText.w == (230 - 48) / 1.5 and summaryText.points[1][5] == -12,
+    "Map Text Size scales the summary while it keeps filling the map width")
+S.Set("zoneInfoMapScale", 1)
 S.Set("zoneInfoGathering", false)
 Z.MapText(1436)
 Check(not TextIncludes("Silverleaf") and not TextIncludes("Copper Vein"), "disabled gathering clears old summary lines")

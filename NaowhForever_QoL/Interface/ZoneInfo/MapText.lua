@@ -70,11 +70,12 @@ function Z.MapText(mapID)
             end
         end
     end
-    local canvas = WorldMapFrame:GetCanvasContainer()
+    local canvas, scale = WorldMapFrame:GetCanvasContainer(), S.Get("zoneInfoMapScale")
+    frame:SetScale(scale)
     frame:ClearAllPoints()
-    frame:SetPoint("TOP", canvas, "TOP", 0, -TOP)
-    frame:SetWidth(math.max(1, canvas:GetWidth() - INSET * 2))
-    frame:SetHeight(math.max(1, canvas:GetHeight() - TOP))
+    frame:SetPoint("TOP", canvas, "TOP", 0, -TOP / scale)
+    frame:SetWidth(math.max(1, (canvas:GetWidth() - INSET * 2) / scale))
+    frame:SetHeight(math.max(1, (canvas:GetHeight() - TOP) / scale))
     frame:SetFrameStrata("DIALOG")
     frame:SetFrameLevel(WorldMapFrame:GetCanvas():GetFrameLevel() + LEVEL)
     count = 0

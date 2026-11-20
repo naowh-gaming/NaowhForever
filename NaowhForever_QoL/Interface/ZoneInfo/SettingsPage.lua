@@ -77,6 +77,8 @@ Settings.Page(PAGE, S):Card({
         { key = "zoneInfoOnlyProfessions", label = "Only My Professions", toggle = true, needs = "zoneInfoGathering",
           help = "Lists only nodes for gathering professions you have learned." },
         Settings.Group("Appearance"),
+        { key = "zoneInfoMapScale", label = "Map Text Size", slider = SCALE_RANGE, unit = "x", needs = "zoneInfoOnMap",
+          help = "Scales the on-map summary text." },
         { key = "zoneInfoScale", label = "Panel Scale", slider = SCALE_RANGE, unit = "x", needs = "zoneInfoCurrent" },
     },
 })
