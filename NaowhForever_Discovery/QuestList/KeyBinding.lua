@@ -12,7 +12,7 @@ local TEXT_TAKEN = ns.L("Shift-L is already %s, so the Quest List has no key. Pi
 local function FirstTime()
     local account = ns.AccountSettings()
     account[KEY_SET_STORE] = account[KEY_SET_STORE] or {}
-    local char = Completo.CharKey()
+    local char = Completo.CharKey(account[KEY_SET_STORE])
     if account[KEY_SET_STORE][char] then return false end
     account[KEY_SET_STORE][char] = true
     return true

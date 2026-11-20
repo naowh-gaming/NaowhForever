@@ -69,6 +69,7 @@ local ns = {
     Print = function(msg) printed[#printed + 1] = msg end,
     WaypointPinOn = function() return true end,
     AccountSettings = function() return account end,
+    CharKey = function() return "Glyadin-Forever" end,
     FEATURES = { journeys = { enabled = false, card = true } },
     Apply = function() end,
 }

@@ -31,14 +31,10 @@ function Jy.On()
     return S.Get("enabled") == true and not OLD_COPY
 end
 
-function Jy.CharKey()
-    return UnitName("player") .. "-" .. GetRealmName()
-end
-
 function Jy.CharStore(key)
     local account = ns.AccountSettings()
     if type(account[key]) ~= "table" then account[key] = {} end
-    local mine = Jy.CharKey()
+    local mine = ns.CharKey(account[key])
     if type(account[key][mine]) ~= "table" then account[key][mine] = {} end
     return account[key][mine]
 end

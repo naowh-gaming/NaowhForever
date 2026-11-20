@@ -121,7 +121,7 @@ local function UseNamed(name)
 end
 
 local function Characters()
-    local me = UnitName("player") .. "-" .. GetRealmName()
+    local me = ns.CharKey()
     local by = {}
     for _, known in ipairs(ns.KnownCharacters()) do
         if known.char ~= me then

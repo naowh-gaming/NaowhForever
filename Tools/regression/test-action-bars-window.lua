@@ -157,6 +157,7 @@ ns = {
         },
     },
     AccountSettings = function() return state.account end,
+    CharKey = function() return "Alt-Realm" end,
     Print = function(text) state.printed[#state.printed + 1] = text end,
     Color = function(_, text) return text end,
     L = function(text) return text end,

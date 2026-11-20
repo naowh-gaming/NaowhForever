@@ -30,6 +30,7 @@ local function Fixture(saved, char, worn, carried)
     local ns = { L = dofile("Tools/regression/locale_stub.lua").L, Upper = string.upper, Lower = string.lower,}
     ns.Print = function(m) e.printed[#e.printed + 1] = m end
     ns.AccountSettings = function() return e.account end
+    ns.CharKey = function() return (char or "Tester") .. "-Realm" end
     ns.QoLSettings = { Get = function() return true end }
     ns.THEME = { accent = {}, muted = {}, panel = {}, line = {} }
     ns.UI = { RefreshPage = function() end }

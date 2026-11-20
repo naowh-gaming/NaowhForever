@@ -1111,7 +1111,18 @@ end
 local activeRoot, provisional
 
 local function CharKey()
-    return UnitName("player") .. "-" .. GetRealmName()
+    local name, surname = UnitFullName("player")
+    if surname and surname ~= "" then name = name .. " " .. surname end
+    return name .. "-" .. GetRealmName()
+end
+
+function ns.CharKey(store)
+    local key = CharKey()
+    if store and store[key] == nil then
+        local old = UnitName("player") .. "-" .. GetRealmName()
+        if old ~= key then store[key], store[old] = store[old], nil end
+    end
+    return key
 end
 
 local function NewInstall()
@@ -1138,17 +1149,27 @@ local function ProvisionalRoot(sv)
 end
 
 local function AssignedProfile(sv)
-    local name = sv.charActive[CharKey()]
+    local key, old = CharKey(), UnitName("player") .. "-" .. GetRealmName()
+    if key ~= old and sv.charActive[key] == nil and sv.charActive[old] ~= nil then
+        sv.charActive[key] = sv.charActive[old]
+        if type(sv.charAsk) == "table" then sv.charAsk[key] = sv.charAsk[old] end
+        if type(sv.charGuid) == "table" and sv.charGuid[old] == UnitGUID("player") then
+            sv.charActive[old], sv.charGuid[old] = nil, nil
+            if type(sv.charSeen) == "table" then sv.charSeen[old] = nil end
+            if type(sv.charAsk) == "table" then sv.charAsk[old] = nil end
+        end
+    end
+    local name = sv.charActive[key]
     if type(name) == "string" and type(sv.profiles[name]) == "table" then return name end
     if name == nil and next(sv.charActive) ~= nil then
         if type(sv.charAsk) ~= "table" then sv.charAsk = {} end
-        sv.charAsk[CharKey()] = true
+        sv.charAsk[key] = true
     end
     name = type(name) == "string" and name or sv.defaultProfile or DEFAULT_PROFILE
     if type(sv.profiles[name]) ~= "table" and type(sv.defaultProfile) == "string" then
         name = sv.defaultProfile
     end
-    sv.charActive[CharKey()] = name
+    sv.charActive[key] = name
     return name
 end
 

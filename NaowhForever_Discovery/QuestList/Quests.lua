@@ -70,7 +70,7 @@ end
 local function CharStore(key)
     local account = ns.AccountSettings()
     account[key] = account[key] or {}
-    local char = Completo.CharKey()
+    local char = Completo.CharKey(account[key])
     account[key][char] = account[key][char] or {}
     return account[key][char]
 end

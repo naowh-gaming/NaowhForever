@@ -51,7 +51,7 @@ end
 
 local function Ignored()
     local all = Characters("trainingIgnored")
-    local key = CharKey()
+    local key = ns.CharKey(all)
     all[key] = all[key] or {}
     return all[key]
 end

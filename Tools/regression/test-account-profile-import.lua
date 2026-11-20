@@ -17,7 +17,8 @@ local function Fixture(char)
             STARTER = { profile = {}, account = {} } },
         activeRoot = nil,
         CharKey = function() return e.char end,
-        UnitName = function() return e.char:match("^[^-]+") end, UNKNOWNOBJECT = "Unknown" }
+        UnitName = function() return e.char:match("^[^-]+") end, UNKNOWNOBJECT = "Unknown",
+        GetRealmName = function() return e.char:match("-(.*)$") end }
     function env.CopyTable(t)
         local out = {}
         for k, v in pairs(t) do out[k] = type(v) == "table" and env.CopyTable(v) or v end

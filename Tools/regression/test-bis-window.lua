@@ -146,6 +146,7 @@ local function Fixture()
             ShowWidgetTooltip = function(_, text) state.tip = text end,
             HideWidgetTooltip = NOTHING },
         AccountSettings = function() return state.account end,
+        CharKey = function() return "Die Man-Realm" end,
         Print = function(text) state.printed[#state.printed + 1] = text end,
         GamepadStandDown = function() return false end,
         GamepadOwnsPanels = function() return false end,

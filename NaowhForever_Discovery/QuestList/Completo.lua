@@ -80,6 +80,6 @@ local boot = CreateFrame("Frame")
 boot:RegisterEvent("PLAYER_LOGIN")
 boot:SetScript("OnEvent", OnLogin)
 
-function Completo.CharKey()
-    return (UnitName("player") or "?") .. "-" .. (GetRealmName() or "?")
+function Completo.CharKey(store)
+    return ns.CharKey(store)
 end

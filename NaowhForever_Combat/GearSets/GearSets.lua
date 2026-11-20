@@ -51,7 +51,7 @@ end
 local function Saved()
     local account = ns.AccountSettings()
     account.gearReturn = account.gearReturn or {}
-    return account.gearReturn, UnitName("player") .. "-" .. GetRealmName()
+    return account.gearReturn, ns.CharKey(account.gearReturn)
 end
 
 local function WantedAuto()

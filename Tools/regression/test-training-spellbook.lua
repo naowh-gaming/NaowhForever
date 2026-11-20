@@ -91,6 +91,7 @@ local ns = { L = dofile("Tools/regression/locale_stub.lua").L, Upper = string.up
     end,
     SetButtonText = function(b, text) b.text = text end,
     AccountSettings = function() return account end,
+    CharKey = function() return "Me-Realm" end,
     TownNPCs = { [1453] = { { 38.4, 79.4, "class", "Elsharin", "Mage Trainer", "MAGE", "A" } } },
     TownCapitals = { [1453] = true },
     PlaceWaypointRoute = function(_, stops) waypoint = stops[1][1] end,

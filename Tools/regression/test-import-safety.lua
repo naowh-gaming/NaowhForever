@@ -231,6 +231,7 @@ do
     local sent = {}
     local ns = { L = dofile("Tools/regression/locale_stub.lua").L, Upper = string.upper, Lower = string.lower, QoLSettings = { Get = function() return true end, Set = function() end },
         THEME = { fg = {}, muted = {}, accent = {}, bg = {} }, AccountSettings = function() return account end,
+        CharKey = function() return "Me-Forever" end,
         Print = function() end,
         Apply = function() end, UI = { RefreshPage = function() end },
         Shared = { Style = dofile("Tools/regression/shared_style.lua"), Parts = { HudFont = function() end } },

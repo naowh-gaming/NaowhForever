@@ -81,6 +81,7 @@ local ns = { L = dofile("Tools/regression/locale_stub.lua").L, Upper = string.up
     QoLSettings = S, THEME = THEME,
     Apply = function() end, ShowUnlockMode = function() end, HideUnlockMode = function() end,
     AccountSettings = function() return account end,
+    CharKey = function() return "Glyadin-Forever" end,
     OpenBlessingsWindow = function() end,
     PixelInset = function() end, UIFontPath = function() return "font" end,
     Border = function(f)

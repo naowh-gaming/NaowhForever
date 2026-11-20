@@ -570,6 +570,12 @@ Onboarding
   recently, then the one whose profile most other characters use, then by name. A provisional
   `Unknown-` key (written before the game knew the name) is never offered. Deleted characters stay in
   the saved lists: addons cannot see the account's character list.
+- A character's key (`ns.CharKey`) is its whole name with the surname, then the realm: `UnitName`
+  gives only the first name on Forever, and two characters sharing one switched each other's
+  profile. An entry saved under the first name is copied to the whole name on first login and
+  removed when its `charGuid` is this character's, so a second character with that first name keeps
+  the profile too. `ns.CharKey(store)` moves a module's first-name entry instead, so a cleared entry
+  does not come back.
 - The page waits for an answer across reloads and relogs: a new character is saved in the account's
   `charAsk` (by name-realm, as `charActive` and `charSeen`). `ns.MarkAsked` clears it when the page is
   answered, when the window is closed (X or Escape), or when the full onboarding is closed on that

@@ -38,7 +38,8 @@ local function Restore(index)
     Take(TEXT_BEFORE_RESTORE)
     local result = Import.Run(backup.set, false, RESTORE)
     Pending.Forget()
-    A.Account("barSetLast")[A.CharKey()] = backup.last
+    local last = A.Account("barSetLast")
+    last[ns.CharKey(last)] = backup.last
     return result
 end
 

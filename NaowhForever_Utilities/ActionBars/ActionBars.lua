@@ -41,19 +41,17 @@ function A.Sets()
     return all[A.Class()]
 end
 
-function A.CharKey()
-    return UnitName("player") .. "-" .. GetRealmName()
-end
-
 function A.SetLast(name, saved)
-    local store, key = A.Account("barSetLast"), A.CharKey()
+    local store = A.Account("barSetLast")
+    local key = ns.CharKey(store)
     local last = store[key]
     if last and last.class == A.Class() and last.name == name and last.saved ~= false then saved = true end
     store[key] = { class = A.Class(), name = name, saved = saved }
 end
 
 function A.Last()
-    return A.Account("barSetLast")[A.CharKey()]
+    local store = A.Account("barSetLast")
+    return store[ns.CharKey(store)]
 end
 
 function A.Find(name)

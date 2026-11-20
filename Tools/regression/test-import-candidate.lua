@@ -17,9 +17,10 @@ local code = assert(src:match("\n(local MODULE_KEY = .-\n)\nlocal ns = {}\n"), "
     .. Slice("local function CharKey()", "function ns.DB()")
     .. Slice("function ns.MarkSeen()", "function ns.ListProfiles()")
 
-local function Login(sv, name, clock, guid)
+local function Login(sv, name, clock, guid, surname)
     local env = { ns = { L = dofile("Tools/regression/locale_stub.lua").L, Upper = string.upper, Lower = string.lower, STARTER = { profile = {}, account = {} } }, UNKNOWNOBJECT = "Unknown",
         UnitName = function() return name end, GetRealmName = function() return "Forever" end,
+        UnitFullName = function() return name, surname end,
         UnitGUID = function() return guid end, time = function() return clock or 0 end }
     function env.CopyTable(t)
         local out = {}
@@ -227,6 +228,62 @@ do
         (Login(sv, "Die Dudu", 1000, DUDU_GUID).ImportCandidate()) == "Die Man-Forever")
     sv.charAsk = nil
     check("and only while it waits for an answer", Login(sv, "Die Dudu", 1000, DUDU_GUID).ImportCandidate() == nil)
+end
+
+local TAPS_GUID, SLAMS_GUID = "Player-4613-00000010", "Player-4613-00000020"
+
+local function Zyros()
+    return { profiles = { Default = {}, Caster = {}, Melee = {} }, defaultProfile = "Default",
+        charActive = { ["Zyro-Forever"] = "Caster" }, charSeen = { ["Zyro-Forever"] = 100 },
+        charGuid = { ["Zyro-Forever"] = TAPS_GUID } }
+end
+
+do
+    local sv = Zyros()
+    local ns = Login(sv, "Zyro", 200, TAPS_GUID, "Taps")
+    check("a surname is part of the character's key", sv.charActive["Zyro Taps-Forever"] == "Caster")
+    check("its first-name entry is taken over when its GUID matches", sv.charActive["Zyro-Forever"] == nil
+        and sv.charGuid["Zyro-Forever"] == nil and sv.charSeen["Zyro-Forever"] == nil)
+    check("and it is not asked about a main", ns.ImportCandidate() == nil)
+    ns.MarkSeen()
+    check("its login is noted under the whole name", sv.charSeen["Zyro Taps-Forever"] == 200
+        and sv.charGuid["Zyro Taps-Forever"] == TAPS_GUID)
+end
+
+do
+    local sv = Zyros()
+    sv.charGuid["Zyro-Forever"] = SLAMS_GUID
+    Login(sv, "Zyro", 200, TAPS_GUID, "Taps")
+    check("another character's first-name entry is copied, not taken", sv.charActive["Zyro Taps-Forever"] == "Caster"
+        and sv.charActive["Zyro-Forever"] == "Caster")
+    Login(sv, "Zyro", 300, SLAMS_GUID, "Slams")
+    check("so the other character keeps its profile too", sv.charActive["Zyro Slams-Forever"] == "Caster"
+        and sv.charActive["Zyro-Forever"] == nil)
+    sv.charActive["Zyro Slams-Forever"] = "Melee"
+    Login(sv, "Zyro", 400, TAPS_GUID, "Taps")
+    check("two characters with one first name keep their own profile", sv.charActive["Zyro Taps-Forever"] == "Caster"
+        and sv.charActive["Zyro Slams-Forever"] == "Melee")
+end
+
+do
+    local sv = { profiles = { Default = {}, Raid = {} }, charActive = { ["Die Man-Forever"] = "Raid" },
+        charGuid = { ["Die Man-Forever"] = MAIN_GUID } }
+    Login(sv, "Die Man", 100, MAIN_GUID)
+    check("a character with no surname keeps its key", sv.charActive["Die Man-Forever"] == "Raid"
+        and sv.charGuid["Die Man-Forever"] == MAIN_GUID)
+end
+
+do
+    local sv = Zyros()
+    local ns = Login(sv, "Zyro", 200, TAPS_GUID, "Taps")
+    local store = { ["Zyro-Forever"] = { seen = true }, ["Other-Forever"] = {} }
+    local key = ns.CharKey(store)
+    check("a module's first-name entry moves to the whole name", key == "Zyro Taps-Forever"
+        and store[key].seen and store["Zyro-Forever"] == nil and store["Other-Forever"])
+    store[key] = nil
+    ns.CharKey(store)
+    check("and a cleared entry stays cleared", store[key] == nil)
+    check("without a store it is just the key", ns.CharKey() == "Zyro Taps-Forever")
 end
 
 print(("test-import-candidate: %d checks passed"):format(checks))

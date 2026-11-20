@@ -72,6 +72,7 @@ local function World(known)
         Solid = function() return Fake("solid") end,
         AccentBorder = function(f) return f end,
         AccountSettings = function() return w.account end,
+        CharKey = function() return (w.name or "Preview") .. "-Realm" end,
         Shared = { CharacterData = function(key)
             w.account[key] = w.account[key] or {}
             w.account[key][w.guid] = w.account[key][w.guid] or {}

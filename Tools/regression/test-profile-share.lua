@@ -78,6 +78,7 @@ local function World()
         },
         SettingsRoot = function() return w.db.profiles[w.active] end,
         AccountSettings = function() return w.db.account end,
+        CharKey = function() return "Glyadin-Realm" end,
         ModuleDefaults = function(key) return DEFAULTS[key] end,
         ActiveProfileName = function() return w.active end,
         ProfileExists = function(name) return w.db.profiles[name] ~= nil end,

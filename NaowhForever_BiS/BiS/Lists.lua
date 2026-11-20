@@ -84,7 +84,11 @@ local function FreeName(store, name)
 end
 
 local function CharKey()
-    return UnitName("player") .. "-" .. GetRealmName()
+    local account = ns.AccountSettings()
+    ns.CharKey(account.bis)
+    ns.CharKey(account.bisActive)
+    ns.CharKey(account.bisClassActive)
+    return ns.CharKey(account.bisSpecActive)
 end
 
 local function Use(list)

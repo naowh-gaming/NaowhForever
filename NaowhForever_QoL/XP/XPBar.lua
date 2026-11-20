@@ -371,7 +371,7 @@ end
 local function SessionStore()
     local account = ns.AccountSettings()
     account.xpBarSessions = account.xpBarSessions or {}
-    return account.xpBarSessions, UnitName("player") .. "-" .. GetRealmName()
+    return account.xpBarSessions, ns.CharKey(account.xpBarSessions)
 end
 
 local function SaveSession()

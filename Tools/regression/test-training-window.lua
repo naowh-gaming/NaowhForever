@@ -136,6 +136,7 @@ local ns = { L = dofile("Tools/regression/locale_stub.lua").L, Upper = string.up
     UIFontPath = function() return "font" end,
     UIScale = function() return 1 end,
     AccountSettings = function() return account end,
+    CharKey = function() return "Me-Realm" end,
     Print = function(m) printed[#printed + 1] = m end,
     TownNPCs = { [1453] = { { 38.4, 79.4, "class", "Elsharin", "Mage Trainer", "MAGE", "A" } } },
     TownCapitals = { [1453] = true },

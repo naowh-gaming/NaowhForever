@@ -27,7 +27,7 @@ end
 local function Store()
     local account = ns.AccountSettings()
     account[STORE] = account[STORE] or {}
-    local char = Completo.CharKey()
+    local char = Completo.CharKey(account[STORE])
     account[STORE][char] = account[STORE][char] or {}
     return account[STORE][char]
 end

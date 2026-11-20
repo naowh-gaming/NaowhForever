@@ -11,11 +11,18 @@ local TEXT_PLACED = ns.L("%s is on your bars where %s keeps it.")
 local events = CreateFrame("Frame")
 
 local function Store()
-    return A.Account("barSetPending")
+    local store = A.Account("barSetPending")
+    return store, ns.CharKey(store)
+end
+
+local function Save(pending)
+    local store, key = Store()
+    store[key] = pending
 end
 
 local function Pending()
-    local pending = Store()[A.CharKey()]
+    local store, key = Store()
+    local pending = store[key]
     if pending and pending.class == A.Class() then return pending end
 end
 
@@ -36,7 +43,7 @@ local function Remember(key, result, always)
         pending = { class = A.Class(), set = key, slots = {}, always = always or nil }
         for _, later in ipairs(result.later) do pending.slots[later.slot] = later.entry end
     end
-    Store()[A.CharKey()] = pending
+    Save(pending)
     Watch()
     return pending
 end
@@ -78,7 +85,7 @@ local function FillPending()
         if set then ClearCopies(set, skip, pending, spell) end
         ns.Print(TEXT_PLACED:format(spell.name, pending.set))
     end
-    if next(pending.slots) == nil then Store()[A.CharKey()] = nil end
+    if next(pending.slots) == nil then Save(nil) end
     Watch()
 end
 
@@ -92,7 +99,7 @@ local function SpellsReady(event)
 end
 
 local function Forget()
-    Store()[A.CharKey()] = nil
+    Save(nil)
     Watch()
 end
 

@@ -64,7 +64,7 @@ end
 function B.Store()
     local account = ns.AccountSettings()
     account.blessings = account.blessings or {}
-    local key = UnitName("player") .. "-" .. GetRealmName()
+    local key = ns.CharKey(account.blessings)
     local store = account.blessings[key]
     if not (store and store.classes) then
         local classes = {}
