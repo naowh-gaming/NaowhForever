@@ -151,6 +151,7 @@ NaowhForever_QoL/
     FishingLoot.lua     Auto Loot While Fishing
     ScrapMarker.lua     the Junk Marker (ns.ScrapMarker), read by Bag Space and the Junk List
     BankMarker.lua      bank marks, selective grey selling and character bank deposits (ns.BankMarker)
+    BagCleanup.lua      Bag Clean-up, the everyday Bags & Junk settings on one card, and the value cap Bag Space and Destroy Cheapest read
     ScrapList.lua       the Junk List window (ns.OpenScrapList, /nf junk)
     Mail.lua            Alts and Attach buttons at the mailbox, the expiring mail warning
   Travel/

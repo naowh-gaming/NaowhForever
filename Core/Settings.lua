@@ -164,7 +164,7 @@ local S = UI.ModuleSettings("qol", {
     bagSpaceTipVendor = true, bagSpaceTipAuction = true, bagSpaceTipDelete = true, bagSpaceTipIgnore = true,
     bagSpacePrices = true, bagSpaceBackground = "card",
     bagSpaceShowFilled = false, bagSpaceFreeRight = false, bagSpaceBigCheapest = false,
-    bagSpaceFont = "", bagSpaceFontSize = 12, bagSpaceOutline = "",
+    bagSpaceFont = "", bagSpaceFontSize = 12, bagSpaceOutline = "", bagCleanupMaxValue = 0,
     scrapMarker = F.scrapMarker, scrapMarkerVendor = "sell", scrapMarkerScope = "account", scrapMarkerShow = true,
     scrapMarkerModifier = "alt", scrapMarkerProtect = true, scrapMarkerSave = false,
     bankMarker = F.bankMarker, bankMarkerMode = "ask", bankMarkerScope = "account", bankMarkerSave = false,

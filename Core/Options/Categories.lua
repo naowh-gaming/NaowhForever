@@ -106,8 +106,8 @@ local CATEGORIES = {
       pages = {
           { name = "Loot", cards = { "QoL/Loot & Items:lootFeed", "QoL/Loot & Items:lootTrade",
               "QoL/Interface:undermineReal" } },
-          { name = "Bags & Junk", cards = { "QoL/Loot & Items:bagSpace", "QoL/Loot & Items:destroyCheapest",
-              "QoL/Loot & Items:scrapMarker",
+          { name = "Bags & Junk", cards = { "QoL/Loot & Items:bagCleanup", "QoL/Loot & Items:bagSpace",
+              "QoL/Loot & Items:destroyCheapest", "QoL/Loot & Items:scrapMarker",
               "QoL/Loot & Items:Open Junk List", "QoL/Loot & Items:bankMarker" } },
           { name = "Restock", cards = { "QoL/Loot & Items:restock" } },
       } },

@@ -583,7 +583,8 @@ local function SettingChanged(key)
         Place()
         return
     end
-    if type(key) == "string" and key:find("^destroyCheapest") and not D.pending then
+    if type(key) == "string" and (key:find("^destroyCheapest") or key == "bagCleanupMaxValue")
+        and not D.pending then
         if key == "destroyCheapestTransfers" then D.HookTransfers() end
         D.Refresh()
     end

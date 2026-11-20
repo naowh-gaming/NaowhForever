@@ -42,7 +42,7 @@ local function Fixture(opts)
         bagSpaceHideCombat = true, bagSpaceOnFull = true, bagSpaceShowFree = true,
         bagSpaceStack = true, bagSpaceOldFirst = false, bagSpacePrices = true,
         bagSpaceTipVendor = true, bagSpaceTipAuction = true, bagSpaceTipDelete = true, bagSpaceTipIgnore = true,
-        bagSpaceBackground = "card", bagSpaceFont = "", bagSpaceFontSize = 12, bagSpaceOutline = "",
+        bagSpaceBackground = "card", bagSpaceFont = "", bagSpaceFontSize = 12, bagSpaceOutline = "", bagCleanupMaxValue = 0,
     }
     local db, printed, buttons = {}, {}, {}
     local made = 0                         -- frames made, all told
@@ -426,6 +426,22 @@ do
     Check("enchanting protected", t.Row(), "Small Egg")
     t = Fixture({ settings = { bagSpaceProtect = false }, bags = { [0] = Bag(16, { { 10940, 1 }, { 1, 3 } }) } })
     Check("enchanting offered unprotected", t.Row(), "Strange Dust, Small Egg")
+end
+
+-- Keep Items Worth More Than leaves a stack that sells for more off the row.
+do
+    local t = Fixture({ settings = { bagCleanupMaxValue = 50 },
+        bags = { [0] = Bag(16, { { 3, 2 }, { 1, 3 }, { 2, 11 }, { 4, 2 } }) } })
+    Check("stacks worth more than the cap are kept", t.Row(), "Small Egg, Coyote Meat")
+    t.Set("bagCleanupMaxValue", 0)
+    Check("no cap offers them again", t.Row(), "Small Egg, Coyote Meat, Chipped Boar Tusk, Light Feather")
+end
+
+-- The cap reads the stack at the price the row shows, its auction price when that is higher.
+do
+    local t = Fixture({ ah = { [1] = 500 }, settings = { bagCleanupMaxValue = 1000 },
+        bags = { [0] = Bag(16, { { 1, 3 }, { 2, 11 } }) } })
+    Check("an auction value over the cap is kept", t.Row(), "Coyote Meat")
 end
 
 -- Ctrl-click deletes; middle-click ignores with the time it happened.

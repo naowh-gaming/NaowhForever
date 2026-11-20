@@ -149,7 +149,7 @@ local function RebuildSets()
     end
 end
 
-local scanIgnored, scanProtect, scanAuction, scanMaxQuality, scanScrap
+local scanIgnored, scanProtect, scanAuction, scanMaxQuality, scanMaxValue, scanScrap
 
 local function Protected(itemID, classID, subclassID)
     if scanIgnored[itemID] then return true end
@@ -262,13 +262,16 @@ end
 local anyLocked, scanLevel
 
 local function Offer(n, bag, slot, info, quality, classID, name, minLevel, vendor)
+    local count = info.stackCount or 1
+    local value = StackValue(info.itemID, info.hyperlink, vendor, count)
+    if scanMaxValue > 0 and value > scanMaxValue then return n end
     n = n + 1
     local e = pool[n] or {}
     pool[n] = e
     e.bag, e.slot, e.itemID, e.link = bag, slot, info.itemID, info.hyperlink
-    e.icon, e.count, e.quality = info.iconFileID, info.stackCount or 1, quality
+    e.icon, e.count, e.quality = info.iconFileID, count, quality
     e.vendor = vendor
-    e.value = StackValue(info.itemID, info.hyperlink, vendor, e.count)
+    e.value = value
     e.old = classID == ITEM_CLASS.CONSUMABLE and (minLevel or 0) > 0 and scanLevel - minLevel >= OUTLEVEL
     e.quest = questNeeds[name]
     picks[n] = e
@@ -311,6 +314,7 @@ local function StartScan()
     if questDirty then RebuildQuestNeeds() end
     scanIgnored, scanProtect = Ignored(), S.Get("bagSpaceProtect")
     scanAuction, scanMaxQuality = S.Get("bagSpaceAuction"), S.Get("bagSpaceMaxQuality")
+    scanMaxValue = S.Get("bagCleanupMaxValue")
     local scrapper = ns.ScrapMarker
     scanScrap = scrapper and scrapper.On() and scrapper.IsScrap or nil
     scanLevel = UnitLevel("player")
@@ -952,7 +956,9 @@ local function Apply()
 end
 
 local function OnSettingChanged(key)
-    if key == "enabled" or (key:find("^bagSpace") and key ~= "bagSpacePos") then Apply() end
+    if key == "enabled" or key == "bagCleanupMaxValue" or (key:find("^bagSpace") and key ~= "bagSpacePos") then
+        Apply()
+    end
 end
 
 hooksecurefunc(S, "Set", OnSettingChanged)

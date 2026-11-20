@@ -30,6 +30,8 @@ local TOOLS = {
     [11128] = true, [11130] = true, [11144] = true, [11145] = true, [16206] = true, [16207] = true,
 }
 
+local maxValue = 0
+
 local function QualityOn(quality)
     local key = QUALITY_KEY[quality]
     if not key then return false end
@@ -239,6 +241,10 @@ local function ScanSlot(bag, slot)
     e.count, e.quality, e.value = count, quality, vendor * count
     ApplyMarket(e, info.itemID, count)
     e.rank = RankValue(e)
+    if maxValue > 0 and e.rank > maxValue then
+        D.used = D.used - 1
+        return
+    end
     D.picks[#D.picks + 1] = e
 end
 
@@ -257,6 +263,7 @@ function D.Scan()
     ReadSets()
     local last = NUM_TOTAL_EQUIPPED_BAG_SLOTS or NUM_BAG_SLOTS
     local everyBag = ShowAll()
+    maxValue = not everyBag and S.Get("bagCleanupMaxValue") or 0
     for bag = BACKPACK_CONTAINER, last do
         if everyBag or D.IsPlain(bag) then
             for slot = 1, GetContainerNumSlots(bag) or 0 do ScanSlot(bag, slot) end
