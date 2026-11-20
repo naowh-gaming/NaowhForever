@@ -8980,3 +8980,6 @@ L["Cooldown Numbers"] = true
 L["Counts down the time left on the icon."] = true
 L["    Shift-click: link"] = true
 L["Only quests in your quest log can be linked."] = true
+L["Buy Vendor Items Automatically"] = true
+L["Needs Vendor Items on Shopping List"] = true
+L["Buys your Shopping List's vendor materials as soon as you open a merchant."] = true

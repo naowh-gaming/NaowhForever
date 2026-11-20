@@ -598,9 +598,19 @@ Each layer uses only the ones above it, or reads a later one's table at call tim
   Prices and Buy All at the auction house. A vendor item with no price, built-in or seen, stays on
   the vendor side.
 - When an open merchant sells a vendor-routed Shopping List material, a compact window appears beside it.
-  It is built only while the setting is on and a matching merchant is open. Buying remains click-driven;
-  merchant stack sizes and limited stock are respected, and the close button dismisses it until another
-  merchant opens.
+  It is built only while the setting is on and a matching merchant is open. Buying is click-driven unless
+  Buy Vendor Items Automatically is on; merchant stack sizes and limited stock are respected, and the
+  close button dismisses it until another merchant opens.
+- Buy Vendor Items Automatically (`shoppingVendorAuto`) is off by default and needs Vendor Items on
+  Shopping List. A real `MERCHANT_SHOW` arms it; the first time that merchant sells something on Buy from
+  Vendor it runs the same Buy All, and the visit is spent whatever the result. Like Restock, it does not
+  ask whether `MerchantFrame` is shown: `MERCHANT_SHOW` can reach this frame before the game's, so that
+  check skipped the buy in game whenever no `MERCHANT_UPDATE` followed. So a refusal (not enough
+  gold for all of it, full bags) is printed once, not on every `MERCHANT_UPDATE`, and buying the rest by
+  hand never sets off another round. A merchant that sells nothing on the list stays armed until it
+  closes, as its item data can arrive with a later update. Apply replaying `MERCHANT_SHOW` for a merchant
+  already open never arms it, so changing a setting beside a merchant buys nothing; turning Vendor Items
+  on Shopping List off spends the visit.
 - A vendor material's pin uses the shared waypoint system. Its built-in seller index is generated from
   Wowhead Classic's unlimited-stock inventories and matched to the Forever-adjusted NPC positions already
   in `Shared/Game/Towns.lua`; it has no runtime addon dependency. Merchant visits add to that
