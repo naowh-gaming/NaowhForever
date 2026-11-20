@@ -17,6 +17,7 @@ local COIN_ATLAS = "coin-gold-20x20"
 local GAIN_TEXT = "+%d%%"
 local ROUND = 0.5
 local MIN_CHOICES = 2
+local ROW_TEXT_SIZE, ROW_TEXT_GAP, ROW_UP = 10, 2, 8
 
 local sets = {}
 local weights, power, weighedAt
@@ -44,27 +45,36 @@ local function Gain(item)
     return SW.BestGain(id, type(item) == "string" and item or nil, Weights())
 end
 
-local function NewSet(owner, anchor)
+local function FitRow(set, anchor)
+    set.row = true
+    set.level:ClearAllPoints()
+    set.level:SetPoint("RIGHT", anchor, "LEFT", -ROW_TEXT_GAP, 0)
+    set.level:SetFont(ns.UIFontPath(), ROW_TEXT_SIZE, "OUTLINE")
+    set.up:SetSize(ROW_UP, ROW_UP)
+end
+
+local function NewSet(owner, anchor, row)
     local set = Parts.ItemMarks(owner, anchor:GetHeight())
     set:ClearAllPoints()
     set:SetAllPoints(anchor)
     set.level:SetTextColor(St.UPGRADE_RGB.r, St.UPGRADE_RGB.g, St.UPGRADE_RGB.b)
     set.coin = Parts.ItemBadge(set, "TOPLEFT", COIN_ATLAS)
+    if row then FitRow(set, anchor) end
     sets[owner] = set
     return set
 end
 
-local function Paint(owner, anchor, item, coin)
+local function Paint(owner, anchor, item, coin, row)
     local gain = item and On() and Gain(item) or nil
     local set = sets[owner]
     if not (gain or coin) then
         if set then set:Hide() end
         return
     end
-    set = set or NewSet(owner, anchor)
+    set = set or NewSet(owner, anchor, row)
     Parts.PaintItemMarks(set, nil, nil, false, gain ~= nil)
     set.level:SetText(gain and GAIN_TEXT:format(math.floor(gain + ROUND)) or "")
-    set.shade:SetShown(gain ~= nil)
+    set.shade:SetShown(gain ~= nil and not set.row)
     set.coin:SetShown(coin == true)
     set:Show()
 end
@@ -127,7 +137,7 @@ end
 
 local function OnAuctionCell(cell, itemKey)
     if not (cell.Icon and (On() or sets[cell])) then return end
-    Paint(cell, cell.Icon, itemKey and itemKey.itemID or nil)
+    Paint(cell, cell.Icon, itemKey and itemKey.itemID or nil, nil, true)
 end
 
 local function HookAuction()

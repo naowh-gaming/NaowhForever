@@ -150,6 +150,9 @@ StatWeights/
   the mixin when it is made, so one made before the hook (Upgrade Marks turned on with the auction
   house already opened) is marked only after a reload. An auction row has only its item's ID, so a
   random-stat item there is weighed without its suffix.
+- An auction row's icon is 14px, too small for the percent: it sits left of the icon in 10pt
+  (`ROW_TEXT_SIZE`), where the price column leaves room, with an 8px arrow (`ROW_UP`) and no shade.
+  The name starts 4px right of the icon, so nothing fits on that side.
 
 ## Checking
 
