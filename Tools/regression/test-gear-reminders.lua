@@ -1,7 +1,8 @@
 -- Run with Lua 5.1 from the repository root: QoL's Gear Reminders (NaowhForever_QoL/Loot/GearReminders.lua).
 -- Off by default and silent while off; Cloak of Hermitic Bliss in Wailing Caverns and a fishing pole each
 -- show an icon on their own switch; Ctrl-click hides one until it comes off; Unlock Mode shows samples; and
--- a profile's old AuraBuffs settings move over once, false kept as false.
+-- a profile's old AuraBuffs settings move over once, false kept as false; Argent Dawn Commission shows to put
+-- on in the Plaguelands and to take off elsewhere, and a click swaps it out of combat.
 local checks = 0
 local function Check(label, got, want)
     if got ~= want then error(("%s: got %s, want %s"):format(label, tostring(got), tostring(want)), 2) end
@@ -31,12 +32,15 @@ local function Frame(_, name)
     return f
 end
 
-local state = { worn = {}, instance = "none", instanceID = nil, ctrl = false,
+local state = { worn = {}, instance = "none", instanceID = nil, ctrl = false, map = nil, bags = {}, combat = false,
+    equipped = {},
     classes = { [6256] = 2, [2901] = 2 }, subclasses = { [6256] = 20, [2901] = 14 } }
 local root = { auraBuffs = {} }
+local account = {}
 local tooltip = { lines = {} }
 function tooltip:SetOwner() self.lines = {} end
 function tooltip:SetInventoryItem(_, slot) self.slot = slot end
+function tooltip:SetItemByID(id) self.item = id end
 function tooltip:AddLine(text) self.lines[#self.lines + 1] = text end
 tooltip.Show, tooltip.Hide = NOTHING, NOTHING
 
@@ -45,6 +49,7 @@ local ns = {
     L = dofile("Tools/regression/locale_stub.lua").L,
     THEME = { accent = { r = 0, g = 0.57, b = 0.93 }, accentSoft = { r = 1, g = 1, b = 1 }, muted = { r = 1, g = 1, b = 1 } },
     SettingsRoot = function() return root end,
+    AccountSettings = function() return account end,
     Apply = NOTHING, ShowUnlockMode = NOTHING, HideUnlockMode = NOTHING,
     Shared = {
         Parts = { ItemIcon = function()
@@ -88,7 +93,12 @@ local env = setmetatable({
     GetInstanceInfo = function() return "x", state.instance, nil, nil, nil, nil, nil, state.instanceID end,
     IsInInstance = function() return state.instance ~= "none", state.instance end,
     IsControlKeyDown = function() return state.ctrl end,
+    InCombatLockdown = function() return state.combat end,
+    UnitGUID = function() return "Player-1" end,
+    C_Map = { GetBestMapForUnit = function() return state.map end },
     C_Item = {
+        GetItemCount = function(id) return state.bags[id] or 0 end,
+        EquipItemByName = function(id, slot) state.equipped[#state.equipped + 1] = id .. "@" .. slot end,
         GetItemIconByID = function(id) return "item:" .. id end,
         GetItemInfoInstant = function(id) return id, nil, nil, nil, nil, state.classes[id] or 4, state.subclasses[id] end,
     },
@@ -252,5 +262,78 @@ S.Set("gearReminderSize", 32)
 state.worn[15], state.instance, state.instanceID = 273084, "party", 43
 Fire("PLAYER_ENTERING_WORLD")
 Check("Icon Size sizes the icons", IconFor(15).w, 32)
+
+-- Argent Dawn Commission: put it on in the Plaguelands, take it off elsewhere.
+S.Set("wornReminders", false)
+S.Set("fishingPoleReminder", false)
+state.worn[15], state.instance, state.instanceID = nil, "none", nil
+state.worn[13], state.worn[14], state.bags[12846] = 11810, 13209, 1
+S.Set("commissionReminder", true)
+Check("its switch listens for bag changes", events.events.BAG_UPDATE_DELAYED, true)
+Check("in bags, out of the Plaguelands", Shown(), "")
+Check("the trinkets you wear are kept", account.commissionReturn["Player-1"][14], 13209)
+state.map = 1423
+Fire("ZONE_CHANGED_NEW_AREA")
+Check("in bags, in Eastern Plaguelands", Shown(), "item:12846")
+local wear = IconFor(nil)
+wear.scripts.OnEnter(wear)
+Check("its tooltip is the item's", tooltip.item, 12846)
+Check("saying what it is for", tooltip.lines[1], "Wear this here to collect Scourgestones.")
+state.combat = true
+wear.scripts.OnMouseUp(wear)
+Check("in combat a click does nothing", #state.equipped, 0)
+state.combat = false
+wear.scripts.OnMouseUp(wear)
+Check("a click puts it on the second trinket slot", state.equipped[1], "12846@14")
+state.worn[13] = nil
+wear.scripts.OnMouseUp(wear)
+Check("or an empty one", state.equipped[2], "12846@13")
+state.worn[13], state.worn[14], state.bags[12846], state.bags[13209] = 11810, 12846, 0, 1
+Fire("PLAYER_EQUIPMENT_CHANGED", 14, true)
+Check("worn in the Plaguelands", Shown(), "")
+Check("what it replaced is still kept", account.commissionReturn["Player-1"][14], 13209)
+state.map, state.instance, state.instanceID = nil, "party", 329
+Fire("PLAYER_ENTERING_WORLD")
+Check("worn in Stratholme", Shown(), "")
+state.instanceID = 36
+Fire("PLAYER_ENTERING_WORLD")
+Check("worn in another dungeon", Shown(), "item:12846")
+local off = IconFor(14)
+off.scripts.OnEnter(off)
+Check("its tooltip offers the swap back", tooltip.lines[2], "Click to put your other trinket back.")
+off.scripts.OnMouseUp(off)
+Check("a click puts the old trinket back", state.equipped[3], "13209@14")
+state.bags[13209] = 0
+off.scripts.OnEnter(off)
+Check("with the old trinket gone, no swap is offered", tooltip.lines[2], "Ctrl-click to hide it until you take it off.")
+off.scripts.OnMouseUp(off)
+Check("and a click does nothing", #state.equipped, 3)
+state.ctrl = true
+off.scripts.OnMouseUp(off)
+state.ctrl = false
+Check("Ctrl-click hides it while worn", Shown(), "")
+state.worn[14], state.bags[12846] = 13209, 1
+Fire("PLAYER_EQUIPMENT_CHANGED", 14, true)
+state.instance, state.instanceID = "party", 289
+Fire("PLAYER_ENTERING_WORLD")
+Check("back in bags, in Scholomance", Shown(), "item:12846")
+state.ctrl = true
+IconFor(nil).scripts.OnMouseUp(IconFor(nil))
+state.ctrl = false
+Check("Ctrl-click hides it here", Shown(), "")
+state.instance, state.instanceID, state.map = "none", nil, 1422
+Fire("ZONE_CHANGED_NEW_AREA")
+Check("still hidden in Western Plaguelands", Shown(), "")
+state.map = 1429
+Fire("ZONE_CHANGED_NEW_AREA")
+state.map = 1422
+Fire("ZONE_CHANGED_NEW_AREA")
+Check("leaving and coming back shows it again", Shown(), "item:12846")
+ns.ShowUnlockMode()
+Check("Unlock Mode shows its sample", Shown(), "item:12846")
+ns.HideUnlockMode()
+S.Set("commissionReminder", false)
+Check("switched off", Shown(), "")
+Check("switched off: events dropped", next(events.events), nil)
 
 print(("test-gear-reminders: %d checks passed"):format(checks))

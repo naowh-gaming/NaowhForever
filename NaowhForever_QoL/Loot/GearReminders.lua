@@ -12,6 +12,12 @@ local WORN = {
     { weapon = "Fishingpole", sample = 6256, slot = 16, where = "fishingPoleWhere", setting = "fishingPoleReminder" },
 }
 
+local COMMISSION = 12846
+local TRINKET_SLOTS = { 13, 14 }
+local SWAP_SLOT = 14
+local PLAGUE_MAPS = { [1422] = true, [1423] = true }
+local PLAGUE_INSTANCES = { [289] = true, [329] = true }
+local SAVED = "commissionReturn"
 local INSTANCE_ID = 8
 local GAP = 4
 local SIZE_RANGE = { 20, 96, 1 }
@@ -21,17 +27,22 @@ local CARD = PAGE .. ":gearReminders"
 local POLE_WHERE = { { always = "Everywhere", instance = "Dungeons & Raids" }, { "always", "instance" } }
 local MOVED = { "wornReminders", "fishingPoleReminder", "fishingPoleWhere" }
 local KEYS = { enabled = true, wornReminders = true, fishingPoleReminder = true, fishingPoleWhere = true,
-    gearReminderSize = true }
+    commissionReminder = true, gearReminderSize = true }
 local TEXT_MOVER = "Gear Reminders"
 local TEXT_WORN = ns.L("You are wearing this.")
 local TEXT_HIDE = ns.L("Ctrl-click to hide it until you take it off.")
+local TEXT_WEAR_HERE = ns.L("Wear this here to collect Scourgestones.")
+local TEXT_PUT_ON = ns.L("Click to put it on.")
+local TEXT_PUT_BACK = ns.L("Click to put your other trinket back.")
+local TEXT_HIDE_HERE = ns.L("Ctrl-click to hide it until you leave.")
 
-local frame, unlocked
+local frame, unlocked, skipped
 local icons, dismissed = {}, {}
 local events = CreateFrame("Frame")
 
 local function On()
-    return S.Get("enabled") and (S.Get("wornReminders") or S.Get("fishingPoleReminder"))
+    return S.Get("enabled") and (S.Get("wornReminders") or S.Get("fishingPoleReminder")
+        or S.Get("commissionReminder"))
 end
 
 local function Migrate()
@@ -58,14 +69,48 @@ local function WornHere(worn, here)
     return true
 end
 
+local function InPlaguelands(here)
+    return PLAGUE_INSTANCES[here] or PLAGUE_MAPS[C_Map.GetBestMapForUnit("player")] or false
+end
+
+local function Kept()
+    local account = ns.AccountSettings()
+    if not account[SAVED] then account[SAVED] = {} end
+    local key = UnitGUID("player")
+    if not account[SAVED][key] then account[SAVED][key] = {} end
+    return account[SAVED][key]
+end
+
+local function Spare(slot)
+    local id = Kept()[slot]
+    if id and C_Item.GetItemCount(id) > 0 then return id end
+end
+
+local function FreeTrinketSlot()
+    for _, slot in ipairs(TRINKET_SLOTS) do
+        if not GetInventoryItemID("player", slot) then return slot end
+    end
+    return SWAP_SLOT
+end
+
 local Update
 
 local function OnIconEnter(icon)
-    if not icon.slot then return end
     local tip, muted = T.accentSoft, T.muted
+    if icon.commission == "wear" then
+        GameTooltip:SetOwner(icon, "ANCHOR_RIGHT")
+        GameTooltip:SetItemByID(COMMISSION)
+        GameTooltip:AddLine(TEXT_WEAR_HERE, tip.r, tip.g, tip.b)
+        GameTooltip:AddLine(TEXT_PUT_ON, tip.r, tip.g, tip.b)
+        GameTooltip:AddLine(TEXT_HIDE_HERE, muted.r, muted.g, muted.b)
+        GameTooltip:Show()
+        return
+    end
+    if not icon.slot then return end
     GameTooltip:SetOwner(icon, "ANCHOR_RIGHT")
     GameTooltip:SetInventoryItem("player", icon.slot)
     GameTooltip:AddLine(TEXT_WORN, tip.r, tip.g, tip.b)
+    if icon.commission == "remove" and Spare(icon.slot) then GameTooltip:AddLine(TEXT_PUT_BACK, tip.r, tip.g, tip.b) end
     GameTooltip:AddLine(TEXT_HIDE, muted.r, muted.g, muted.b)
     GameTooltip:Show()
 end
@@ -74,13 +119,27 @@ local function OnIconLeave()
     GameTooltip:Hide()
 end
 
+local function Swap(icon)
+    if InCombatLockdown() then return end
+    if icon.commission == "wear" then
+        C_Item.EquipItemByName(COMMISSION, FreeTrinketSlot())
+    elseif icon.commission == "remove" then
+        local id = Spare(icon.slot)
+        if id then C_Item.EquipItemByName(id, icon.slot) end
+    end
+end
+
 local function OnIconClick(icon)
-    if not (icon.slot and IsControlKeyDown()) then return end
-    dismissed[icon.slot] = GetInventoryItemID("player", icon.slot)
+    if not IsControlKeyDown() then return Swap(icon) end
+    if icon.commission == "wear" then
+        skipped = true
+    elseif icon.slot then
+        dismissed[icon.slot] = GetInventoryItemID("player", icon.slot)
+    end
     Update()
 end
 
-local function ShowIcon(i, texture, slot, size)
+local function ShowIcon(i, texture, slot, size, commission)
     local icon = icons[i]
     if not icon then
         icon = Parts.ItemIcon(frame, size)
@@ -95,7 +154,37 @@ local function ShowIcon(i, texture, slot, size)
     icon:SetPoint("LEFT", frame, "LEFT", (i - 1) * (size + GAP), 0)
     icon.texture:SetTexture(texture)
     icon.slot = slot
+    icon.commission = commission
     icon:Show()
+end
+
+local function ShowCommission(shown, here, size)
+    if unlocked then
+        ShowIcon(shown + 1, C_Item.GetItemIconByID(COMMISSION), nil, size)
+        return shown + 1
+    end
+    local kept, worn = Kept(), nil
+    for _, slot in ipairs(TRINKET_SLOTS) do
+        local id = GetInventoryItemID("player", slot)
+        if dismissed[slot] ~= id then dismissed[slot] = nil end
+        if id == COMMISSION then
+            worn = slot
+        elseif id then
+            kept[slot] = id
+        end
+    end
+    local inZone = InPlaguelands(here)
+    if not inZone then skipped = false end
+    if worn then
+        if inZone or dismissed[worn] then return shown end
+        ShowIcon(shown + 1, C_Item.GetItemIconByID(COMMISSION), worn, size, "remove")
+        return shown + 1
+    end
+    if inZone and not skipped and C_Item.GetItemCount(COMMISSION) > 0 then
+        ShowIcon(shown + 1, C_Item.GetItemIconByID(COMMISSION), nil, size, "wear")
+        return shown + 1
+    end
+    return shown
 end
 
 function Update()
@@ -116,6 +205,7 @@ function Update()
             ShowIcon(shown, C_Item.GetItemIconByID(id), slot, size)
         end
     end
+    if S.Get("commissionReminder") then shown = ShowCommission(shown, here, size) end
     for i = shown + 1, #icons do icons[i]:Hide() end
     frame:SetSize(math.max(shown, 1) * (size + GAP) - GAP, size)
 end
@@ -158,6 +248,7 @@ local function Apply()
     events:RegisterEvent("PLAYER_EQUIPMENT_CHANGED")
     events:RegisterEvent("ZONE_CHANGED_NEW_AREA")
     events:RegisterEvent("PLAYER_ENTERING_WORLD")
+    if S.Get("commissionReminder") then events:RegisterEvent("BAG_UPDATE_DELAYED") end
     Update()
 end
 
@@ -190,6 +281,8 @@ Settings.Page(PAGE, S):Card({
           help = "An icon while you have a fishing pole equipped, so you remember to swap it." },
         { key = "fishingPoleWhere", label = "Fishing Pole Shows In", choice = POLE_WHERE, needs = "fishingPoleReminder",
           why = "Needs Fishing Pole Reminder" },
+        { key = "commissionReminder", label = "Argent Dawn Commission Reminder", toggle = true,
+          help = "An icon to put on Argent Dawn Commission in the Plaguelands, and to take it off when you leave." },
         { key = "gearReminderSize", label = "Icon Size", slider = SIZE_RANGE },
     },
 })

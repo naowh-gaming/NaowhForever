@@ -143,7 +143,7 @@ NaowhForever_QoL/
     Alts.lua            your characters per realm and faction (ns.AltRealm, ns.AltList, ns.OpenForgetAltMenu)
     LootFeed.lua        the Loot Feed, gold per hour and quick loot (ns.ResetLootFeedSession)
     Restock.lua         the Restock Reminder, Auto Repair and Auto Sell Junk
-    GearReminders.lua   Gear Reminders: an icon while you wear Cloak of Hermitic Bliss in Wailing Caverns or a fishing pole
+    GearReminders.lua   Gear Reminders: an icon while you wear Cloak of Hermitic Bliss in Wailing Caverns or a fishing pole, and the Argent Dawn Commission swap
     FishingData.lua     the Fishing spells by rank and the lures by the skill they add (ns.FishingData)
     FishingGear.lua     the fishing gear One-Key Fishing puts on first, and putting back what it replaced (ns.FishingGear)
     Fishing.lua         One-Key Fishing: the key, double right-click, the lure and gear steps
@@ -1684,6 +1684,16 @@ NaowhForever_QoL/
 - It reads on `PLAYER_EQUIPMENT_CHANGED`, `ZONE_CHANGED_NEW_AREA` and `PLAYER_ENTERING_WORLD`, registered only
   while a switch is on. Unlock Mode shows a sample of each reminder that is on (the cloak, and a Fishing Pole,
   6256).
+- Argent Dawn Commission (12846, Robin asked for it) gathers Scourgestones only in Western and Eastern
+  Plaguelands (maps 1422, 1423, from `C_Map.GetBestMapForUnit`) and Scholomance and Stratholme (instances 289,
+  329). There it shows while the trinket is in your bags, elsewhere while you wear it. Its switch also adds
+  `BAG_UPDATE_DELAYED`, so buying or looting one there shows it.
+- Clicking it swaps the trinket, out of combat only (`InCombatLockdown`), with `C_Item.EquipItemByName`. It goes
+  into an empty trinket slot, else the second one (14). Taking it off puts back the trinket last seen in that
+  slot: every update stores each trinket slot's item, unless it is the Commission, in
+  `account.commissionReturn[guid]`, so it survives a logout in the Plaguelands. Without one in your bags the
+  click does nothing.
+- Ctrl-click hides the bags icon until you leave the Plaguelands (`skipped`), and the worn icon like the others.
 
 ### Waypoint Pin
 - Quest Objectives and Downward Arrows are independent switches, initially off. Objectives come from the tracked quest or guide context and refresh on quest-log changes, which do not bring back a pin that went inside the quest's area. The three chevrons use the existing shared arrow art and disappear in off-screen and arrival modes.

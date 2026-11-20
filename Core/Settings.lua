@@ -123,6 +123,7 @@ local S = UI.ModuleSettings("qol", {
     restockBuy = false, restockHunterAmmo = F.restockHunterAmmo, restockHunterAmmoBelow = 500,
     restockFont = "", restockFontSize = 16, restockOutline = "OUTLINE", restockBackground = "none",
     wornReminders = F.wornReminders, fishingPoleReminder = F.fishingPoleReminder, fishingPoleWhere = "always",
+    commissionReminder = F.commissionReminder,
     gearReminderSize = 48, gearReminderPos = { point = "TOP", relPoint = "TOP", x = 0, y = -290 },
     fishingKey = F.fishingKey, fishingDoubleClick = false, fishingLure = false, fishingGear = false,
     fishingGearSet = "", fishingSounds = F.fishingSounds, fishingAutoLoot = F.fishingAutoLoot,

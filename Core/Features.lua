@@ -83,6 +83,7 @@ ns.FEATURES = {
         restockHunterAmmo = false,
         wornReminders = false,
         fishingPoleReminder = false,
+        commissionReminder = false,
         fishingKey = false,
         fishingSounds = false,
         fishingAutoLoot = false,
