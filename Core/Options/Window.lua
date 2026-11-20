@@ -53,6 +53,7 @@ local FIRST_PAGE = O.HOME
 local LINKS = {
     { "Discord", "discord", function() return "https://discord.gg/jdDKHPMvxf" end },
     { "Website", "website", function() return "https://naowh.gg" end },
+    { "GitHub", "github", function() return "https://github.com/naowh-gaming/NaowhForever" end },
 }
 local SYSTEM_NAV = { { "Settings", "settings" }, { UI.PROFILES_PAGE, "person" }, { "Patch Notes", "notes" }, { "Credits", "heart" } }
 local TEXT_VERSION, TEXT_UNKNOWN = "v", ns.L("unknown")

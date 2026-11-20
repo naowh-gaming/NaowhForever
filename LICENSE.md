@@ -1,5 +1,7 @@
 ## NaowhForever
 
+**Source**: [https://github.com/naowh-gaming/NaowhForever](https://github.com/naowh-gaming/NaowhForever)
+
 ```
 Copyright © 2026 The contents of this addon, excluding externals listed below, are
 copyrighted to their authors with all rights reserved.
