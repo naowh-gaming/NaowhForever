@@ -8,7 +8,7 @@ local function check(label, value) assert(value, label); checks = checks + 1 end
 local settings, applyHooks = {}, {}
 local merchantShown = false
 local purchases, messages, drops = {}, {}, {}
-local bags, freeSlots = {}, 10
+local bags, freeSlots, money = {}, 10, 10000
 local redraws, viewEvents = 0, 0
 local vendorName, vendorMap, vendorX, vendorY = "Far Supplies", 10, 0.8, 0.8
 local playerMap, playerX, playerY = 10, 0.1, 0.1
@@ -121,7 +121,7 @@ local env = setmetatable({
     GetMerchantNumItems = function() return #merchantItems end,
     GetMerchantItemID = function(index) return merchantItems[index] and merchantItems[index].item end,
     GetMerchantItemMaxStack = function(index) return merchantItems[index].stack end,
-    GetMoney = function() return 10000 end,
+    GetMoney = function() return money end,
     BuyMerchantItem = function(index, count)
         purchases[#purchases + 1] = { index = index, count = count }
     end,
@@ -259,6 +259,101 @@ freeSlots = 10
 V.BuyShoppingItem(111)
 P.Settings.Set("shoppingVendor", false)
 check("turning the setting off drops a pending purchase", not V.Waiting() and registry.BAG_UPDATE_DELAYED == nil)
+
+-- Buy Vendor Items Automatically: one Buy All when a merchant opens, once per visit.
+local function Visit()
+    merchantShown = true
+    Fire("MERCHANT_SHOW")
+end
+local function Leave()
+    merchantShown = false
+    Fire("MERCHANT_CLOSED")
+end
+local function Land()
+    bags[111], bags[222] = (bags[111] or 0) + 10, (bags[222] or 0) + 5
+    Fire("BAG_UPDATE_DELAYED")
+end
+
+merchantShown = false
+P.Settings.Set("shoppingVendor", true)
+bought, messages = #purchases, {}
+Visit()
+check("with it off, opening a merchant buys nothing", #purchases == bought and #messages == 0)
+P.Settings.Set("shoppingVendorAuto", true)
+check("turning it on beside an open merchant buys nothing until the next visit", #purchases == bought)
+Leave()
+
+Visit()
+check("on, opening a merchant buys every listed material it sells, in merchant-sized chunks",
+    #purchases == bought + 3 and purchases[bought + 1].count == 5 and purchases[bought + 3].count == 5)
+check("and says what it bought, as Buy All does", #messages == 1 and messages[1]:find("Bought", 1, true) ~= nil)
+check("and counts it on the Shopping List only once it lands", V.Waiting())
+drops[111], drops[222] = nil, nil
+Land()
+check("where it lands like a Buy All", drops[111] == 10 and drops[222] == 5 and not V.Waiting())
+Fire("MERCHANT_UPDATE")
+check("a merchant update in the same visit never buys again", #purchases == bought + 3)
+Leave()
+Land()
+Visit()
+check("the next visit buys again", #purchases == bought + 6)
+Land()
+Leave()
+Fire("MERCHANT_SHOW")
+check("it buys even when MERCHANT_SHOW reaches it before the game shows MerchantFrame",
+    #purchases == bought + 9)
+Land()
+Leave()
+
+bought = #purchases
+merchantShown = true
+P.Settings.Set("vendorMaterials", true)
+check("a setting change beside an open merchant, which re-reads it, never buys", #purchases == bought)
+P.Settings.Set("vendorMaterials", false)
+Leave()
+
+money, messages = 100, {}
+Visit()
+check("short of gold for all of it, it buys nothing", #purchases == bought)
+check("and says so once", #messages == 1 and messages[1]:find("more than you have", 1, true) ~= nil)
+Fire("MERCHANT_UPDATE")
+check("not again on every merchant update", #messages == 1 and #purchases == bought)
+Leave()
+money = 10000
+
+freeSlots, messages = 0, {}
+Visit()
+check("with full bags it buys nothing and shows the game's message once",
+    #purchases == bought and #messages == 1 and messages[1] == env.ERR_INV_FULL)
+Fire("MERCHANT_UPDATE")
+check("and does not repeat it", #messages == 1)
+Leave()
+freeSlots = 10
+
+local listed = materials
+materials = {}
+Visit()
+check("a merchant that sells nothing on the list buys nothing", #purchases == bought)
+materials = listed
+Fire("MERCHANT_UPDATE")
+check("but once it does in the same visit, it buys then", #purchases == bought + 3)
+Land()
+Leave()
+
+bought = #purchases
+materials = {}
+Visit()
+P.Settings.Set("shoppingVendor", false)
+materials = listed
+P.Settings.Set("shoppingVendor", true)
+check("turning Vendor Items on Shopping List off spends the visit", #purchases == bought)
+Fire("MERCHANT_UPDATE")
+check("even when it is turned back on", #purchases == bought)
+Leave()
+P.Settings.Set("shoppingVendorAuto", false)
+Visit()
+check("turned off again, a merchant visit buys nothing", #purchases == bought)
+Leave()
 
 local file = assert(io.open("NaowhForever_Professions/UI/ShoppingWindow.lua", "rb"))
 local source = file:read("*a")

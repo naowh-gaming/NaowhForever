@@ -26,6 +26,8 @@ local shoppingList, shoppingPool, buyList, buyPool, buyParts = {}, {}, {}, {}, {
 local expected, counted = {}, {}
 local townSpots
 local waiting = false
+local autoArmed = false
+local AutoBuy
 
 local function LearnedVendorItems()
     local account = ns.AccountSettings()
@@ -165,6 +167,10 @@ local function ShoppingOn()
     return S.Get("shoppingList") and S.Get("shoppingVendor")
 end
 
+local function AutoOn()
+    return ShoppingOn() and S.Get("shoppingVendorAuto")
+end
+
 local function ScanMerchant()
     local shopping = ShoppingOn()
     local learn, price = S.Get("vendorMaterials") or shopping, S.Get("craftProfit") or shopping
@@ -212,7 +218,7 @@ local function Settle()
     if next(expected) == nil then StopWaiting() end
 end
 
-local function OnMerchantEvent(_, event)
+local function OnMerchantEvent(_, event, replay)
     if event == "BAG_UPDATE_DELAYED" then
         Settle()
         return P.Shopping.Redraw()
@@ -225,11 +231,14 @@ local function OnMerchantEvent(_, event)
     if event == "MERCHANT_CLOSED" then
         Settle()
         StopWaiting()
+        autoArmed = false
     else
         ScanMerchant()
+        if event == "MERCHANT_SHOW" and not replay then autoArmed = AutoOn() and true or false end
     end
     if event ~= "MERCHANT_UPDATE" and S.Get("buyVendor") and ns.ProfWindowRefresh then ns.ProfWindowRefresh() end
     if not ShoppingOn() then return end
+    AutoBuy()
     P.Shopping.Redraw()
     P.ShoppingVendorView.OnMerchantEvent(event)
 end
@@ -362,6 +371,14 @@ local function Waiting()
     return waiting
 end
 
+AutoBuy = function()
+    if not (autoArmed and AutoOn()) or waiting then return end
+    local list, total = ShoppingNeeds()
+    if #list == 0 then return end
+    autoArmed = false
+    BuyEntries(list, total, true)
+end
+
 P.Vendors = {
     IsVendorItem = IsVendorItem,
     MerchantInfo = MerchantInfo,
@@ -388,6 +405,7 @@ end
 local function Apply()
     if not (P.On() and ShoppingOn()) then
         StopWaiting()
+        autoArmed = false
         if P.ShoppingVendorView then P.ShoppingVendorView.Hide() end
     end
     if not MerchantWanted() then
@@ -399,7 +417,7 @@ local function Apply()
         merchant:SetScript("OnEvent", OnMerchantEvent)
     end
     for _, event in ipairs(MERCHANT_EVENTS) do merchant:RegisterEvent(event) end
-    if Open() then OnMerchantEvent(merchant, "MERCHANT_SHOW") end
+    if Open() then OnMerchantEvent(merchant, "MERCHANT_SHOW", true) end
 end
 
 local function OnSettingChanged(key)

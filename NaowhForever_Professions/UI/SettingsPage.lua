@@ -92,6 +92,10 @@ local function ShoppingOn()
     return On() and S.Get("shoppingList") == true
 end
 
+local function ShoppingVendorOn()
+    return ShoppingOn() and S.Get("shoppingVendor") == true
+end
+
 local function DisenchantDealsOn()
     return On() and S.Get("disenchantDeals") == true
 end
@@ -329,6 +333,9 @@ page:Card({
         { key = "shoppingVendor", label = "Vendor Items on Shopping List", toggle = true, needs = ShoppingOn,
           why = "Needs Shopping List",
           help = "Lists materials vendors sell under Buy from Vendor, with Buy buttons beside the merchant." },
+        { key = "shoppingVendorAuto", label = "Buy Vendor Items Automatically", toggle = true,
+          needs = ShoppingVendorOn, why = "Needs Vendor Items on Shopping List",
+          help = "Buys your Shopping List's vendor materials as soon as you open a merchant." },
         { key = "makeReagents", label = "Make Your Own Reagents", toggle = true, needs = ShoppingOn,
           why = "Needs Shopping List",
           help = "Plans and prices every reagent you can craft as made from its parts, unless that costs over twice as much as buying it." },
