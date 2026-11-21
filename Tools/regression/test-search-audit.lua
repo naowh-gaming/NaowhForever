@@ -34,6 +34,7 @@ local env = setmetatable({}, { __index = function(t, k)
 end })
 env._G = env
 env.GetLocale = function() return "enUS" end
+env.GetNumShapeshiftForms = function() return 0 end
 env.C_AddOns = { IsAddOnLoaded = function(name) return not off[name] end,
     DoesAddOnExist = function(name) return io.open(name .. "/" .. name .. ".toc") ~= nil end,
     GetAddOnMetadata = function() return "" end, GetAddOnEnableState = function() return 2 end,

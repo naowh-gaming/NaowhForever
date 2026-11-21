@@ -110,12 +110,63 @@ local function Detail()
     return TEXT_DETAIL
 end
 
+local TEXT_SWAP, TEXT_SWAPS = ns.L("%d swap"), ns.L("%d swaps")
+local TEXT_WEAR_IN = ns.L("Wear in %s")
+
 local function SwapSummary(store)
-    local mounted, resting = store.Get("gearMounted"), store.Get("gearResting")
-    if mounted ~= "" and resting ~= "" then return mounted .. ns.L(" mounted, ") .. resting .. ns.L(" resting") end
-    if mounted ~= "" then return mounted .. ns.L(" while mounted") end
-    if resting ~= "" then return resting .. ns.L(" while resting") end
-    return TEXT_NONE
+    local n = 0
+    for _, key in ipairs(G.SWAP_KEYS) do
+        if key ~= "fishingGearSet" and store.Get(key) ~= "" then n = n + 1 end
+    end
+    for _ in pairs(store.Get("gearForms")) do n = n + 1 end
+    if n == 0 then return TEXT_NONE end
+    return (n == 1 and TEXT_SWAP or TEXT_SWAPS):format(n)
+end
+
+local function SwapRow(key, label, help)
+    return { key = key, label = label, choice = SetChoices, needs = GearOn, why = GEAR_OFF, help = help }
+end
+
+local SWAP_ROWS = {
+    SwapRow("gearMounted", "Wear While Mounted",
+        "Put on while you ride, and the set you had on goes back when you dismount."),
+    SwapRow("gearDrinking", "Wear While Drinking", "Put on while you drink, and taken off when you stand up."),
+    SwapRow("gearDungeon", "Wear in Dungeons", "Put on in a dungeon, and taken off when you leave it."),
+    SwapRow("gearRaid", "Wear in Raids", "Put on in a raid, and taken off when you leave it."),
+    SwapRow("gearBattleground", "Wear in Battlegrounds", "Put on in a battleground, and taken off when you leave it."),
+    SwapRow("gearResting", "Wear While Resting", "Put on in cities and inns, and taken off again when you leave."),
+}
+local FORMS_GROUP = Settings.Group("Forms and Stances")
+local formRows = {}
+
+local function SetForm(spellID, name)
+    local forms = CopyTable(S.Get("gearForms"))
+    forms[spellID] = name ~= "" and name or nil
+    S.Set("gearForms", forms)
+end
+
+local function FormRow(spellID)
+    local row = formRows[spellID]
+    if row then return row end
+    row = { key = "gearForms", field = spellID, label = TEXT_WEAR_IN:format(C_Spell.GetSpellName(spellID)),
+        choice = SetChoices, needs = GearOn, why = GEAR_OFF,
+        help = "Put on in this form or stance, and taken off when you leave it.",
+        get = function() return S.Get("gearForms")[spellID] or "" end,
+        set = function(name) SetForm(spellID, name) end }
+    formRows[spellID] = row
+    return row
+end
+
+local function SwapRows()
+    local rows = { SWAP_ROWS }
+    for i = 1, GetNumShapeshiftForms() do
+        local spellID = G.FormSpell(i)
+        if spellID then
+            if #rows == 1 then rows[2] = FORMS_GROUP end
+            rows[#rows + 1] = FormRow(spellID)
+        end
+    end
+    return rows
 end
 
 local function SizeSummary(key)
@@ -160,14 +211,9 @@ page:Card({
 
 page:Card({
     id = "autoSwap", name = "Automatic Swaps", order = ORDER_SWAPS,
-    help = "A set that goes on by itself while you ride or rest, and the set you had on goes back afterwards.",
+    help = "A set that goes on by itself, and what you had on goes back afterwards.",
     summary = SwapSummary,
-    rows = {
-        { key = "gearMounted", label = "Wear While Mounted", choice = SetChoices, needs = GearOn, why = GEAR_OFF,
-          help = "Put on while you ride, and the set you had on goes back when you dismount." },
-        { key = "gearResting", label = "Wear While Resting", choice = SetChoices, needs = GearOn, why = GEAR_OFF,
-          help = "Put on in cities and inns, and taken off again when you leave." },
-    },
+    rowsFn = SwapRows,
 })
 
 page:Card({

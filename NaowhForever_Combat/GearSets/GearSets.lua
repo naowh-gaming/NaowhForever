@@ -1,15 +1,25 @@
--- GearSets.lua: the gear sets' rules and API (ns.GearSets): your sets, equipping them, automatic swaps.
+-- GearSets.lua: the gear sets' rules and API (ns.GearSets): your sets, equipping them, putting back what you wore, automatic swaps.
 local ns = _G.NaowhForever
 
 local S = ns.QoLSettings
 
+local FIRST_SLOT, LAST_SLOT = 1, 19
+local MAIN_HAND, OFF_HAND = 16, 17
+local FORM_SPELL = 4
+local RETURN = "gearReturn"
 local TEXT_AFTER_COMBAT = ns.L("Gear set equips when combat ends.")
-local SWAP_KEYS = { "gearMounted", "gearResting", "fishingGearSet" }
+local TEXT_MISSING = ns.L("%s is not in your bags, so it was not put back.")
+local TEXT_NO_ROOM = ns.L("No room in your bags to take off %s.")
+local SWAP_KEYS = { "gearMounted", "gearDrinking", "gearDungeon", "gearRaid", "gearBattleground", "gearResting",
+    "fishingGearSet" }
+local INSTANCE_KEYS = { party = "gearDungeon", raid = "gearRaid", pvp = "gearBattleground" }
 local OLD_ADDON = "NaowhForever_GearSets"
 local OLD_COPY = C_AddOns.DoesAddOnExist(OLD_ADDON) and C_AddOns.GetAddOnEnableState(OLD_ADDON) > 0
 
 local pending
 local autoSet
+local drinking = false
+local free = {}
 
 local function ByName(a, b) return a.name < b.name end
 
@@ -37,61 +47,141 @@ local function SetByName(name)
     return C_EquipmentSet.GetEquipmentSetID(name)
 end
 
-local function Equip(setID)
-    if not setID then return end
+local function Wearing()
+    local set = EquippedSet()
+    if set then return set end
+    local items = {}
+    for slot = FIRST_SLOT, LAST_SLOT do items[slot] = GetInventoryItemLink("player", slot) or false end
+    return items
+end
+
+local function CountFree()
+    for bag = BACKPACK_CONTAINER, NUM_BAG_SLOTS do
+        local count, family = C_Container.GetContainerNumFreeSlots(bag)
+        free[bag] = family == 0 and count or 0
+    end
+end
+
+local function TakeOff(slot)
+    for bag = BACKPACK_CONTAINER, NUM_BAG_SLOTS do
+        if free[bag] > 0 then
+            free[bag] = free[bag] - 1
+            PickupInventoryItem(slot)
+            if bag == BACKPACK_CONTAINER then
+                PutItemInBackpack()
+            else
+                PutItemInBag(C_Container.ContainerIDToInventoryID(bag))
+            end
+            return
+        end
+    end
+    ns.Print(TEXT_NO_ROOM:format(GetInventoryItemLink("player", slot)))
+end
+
+local function PutBack(items)
+    CountFree()
+    local twoHand = items[MAIN_HAND] and ns.Shared.Items.IsTwoHand(items[MAIN_HAND])
+    for slot = FIRST_SLOT, LAST_SLOT do
+        local link, worn = items[slot], GetInventoryItemLink("player", slot)
+        if link == false then
+            if worn and not (slot == OFF_HAND and twoHand) then TakeOff(slot) end
+        elseif link and link ~= worn then
+            if C_Item.GetItemCount(link) > 0 then
+                C_Item.EquipItemByName(link, slot)
+            else
+                ns.Print(TEXT_MISSING:format(link))
+            end
+        end
+    end
+end
+
+local function Equip(target, quiet)
+    if not target then return end
+    if type(target) == "number" and not C_EquipmentSet.GetEquipmentSetInfo(target) then return end
     if InCombatLockdown() then
-        pending = setID
-        ns.Print(TEXT_AFTER_COMBAT)
+        pending = target
+        if not quiet then ns.Print(TEXT_AFTER_COMBAT) end
         return
     end
     pending = nil
-    C_EquipmentSet.UseEquipmentSet(setID)
+    if type(target) == "table" then
+        PutBack(target)
+    else
+        C_EquipmentSet.UseEquipmentSet(target)
+    end
 end
 
-local function Saved()
+local function Store(name)
     local account = ns.AccountSettings()
-    account.gearReturn = account.gearReturn or {}
-    return account.gearReturn, ns.CharKey(account.gearReturn)
+    account[name] = account[name] or {}
+    return account[name], ns.CharKey(account[name])
+end
+
+local function Wanted(key)
+    return SetByName(S.Get(key))
+end
+
+local function Drinking()
+    if not (InCombatLockdown() or C_Secrets.ShouldAurasBeSecret()) then drinking = ns.IsDrinking() end
+    return drinking
+end
+
+local function FormSpell(index)
+    return (select(FORM_SPELL, GetShapeshiftFormInfo(index)))
+end
+
+local function FormSet()
+    local forms = S.Get("gearForms")
+    if not next(forms) then return end
+    local index = GetShapeshiftForm()
+    if index == 0 then return end
+    local spellID = FormSpell(index)
+    return spellID and SetByName(forms[spellID])
+end
+
+local function InstanceSet()
+    local key = INSTANCE_KEYS[select(2, IsInInstance())]
+    return key and Wanted(key)
 end
 
 local function WantedAuto()
-    if IsMounted() then
-        local id = SetByName(S.Get("gearMounted"))
-        if id then return id end
-    end
-    if IsResting() then return SetByName(S.Get("gearResting")) end
+    local drink = Wanted("gearDrinking")
+    return IsMounted() and Wanted("gearMounted") or drink and Drinking() and drink or FormSet() or InstanceSet()
+        or IsResting() and Wanted("gearResting") or nil
 end
 
 local G = { SWAP_KEYS = SWAP_KEYS, OLD_COPY = OLD_COPY }
 ns.GearSets = G
 
 G.Sets = Sets
+G.FormSpell = FormSpell
 
 function G.On()
     return S.Get("gearSets") and not OLD_COPY
 end
 
 function G.EquipByHand(setID)
-    local saved, key = Saved()
+    local saved, key = Store(RETURN)
     saved[key] = nil
     Equip(setID)
 end
 
 function G.EquipPending()
-    if pending then Equip(pending) end
+    if pending then Equip(pending, true) end
 end
 
 function G.AutoSwap()
     local want = WantedAuto()
     if want == autoSet then return end
-    local saved, key = Saved()
+    local saved, key = Store(RETURN)
+    if pending == autoSet then pending = nil end
     if want then
-        if not autoSet and EquippedSet() ~= want then saved[key] = EquippedSet() end
+        if not autoSet and EquippedSet() ~= want then saved[key] = Wearing() end
         autoSet = want
-        Equip(want)
+        Equip(want, true)
     else
         autoSet = nil
-        Equip(saved[key])
+        Equip(saved[key], true)
         saved[key] = nil
     end
 end

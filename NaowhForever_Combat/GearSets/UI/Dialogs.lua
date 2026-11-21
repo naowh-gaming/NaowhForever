@@ -168,6 +168,11 @@ function ns.RenameGearSet(setID, name)
         for _, key in ipairs(G.SWAP_KEYS) do
             if S.Get(key) == name then S.Set(key, newName) end
         end
+        local forms = CopyTable(S.Get("gearForms"))
+        for spellID, setName in pairs(forms) do
+            if setName == name then forms[spellID] = newName end
+        end
+        S.Set("gearForms", forms)
     end)
 end
 

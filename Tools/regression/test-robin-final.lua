@@ -6,7 +6,9 @@ local function check(label, value) assert(value, label); checks = checks + 1 end
 local function fixture(kind)
     local state = { combat = false, secret = false, now = 1000, bags = { 101, 202, 101, 303 },
         settings = { gearSets = true, gearBarVisible = false, trinketBar = true,
-            trinketSize = 36, trinketSpacing = 4, gearBarSize = 32, gearBarSpacing = 4, gearBarShow = 'always' },
+            trinketSize = 36, trinketSpacing = 4, gearBarSize = 32, gearBarSpacing = 4, gearBarShow = 'always',
+            gearMounted = '', gearResting = '', gearDrinking = '', gearDungeon = '', gearRaid = '', gearBattleground = '',
+            gearForms = {} },
         frames = {}, named = {}, timers = {}, equips = {} }
     local function frame(name, parent, template)
         local f = { scripts = {}, events = {}, shown = true, parent = parent, attributes = {},

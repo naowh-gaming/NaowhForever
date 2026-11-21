@@ -1,4 +1,4 @@
--- Consumables.lua: your best food and drink (ns.BestFoodAndDrink), the food and drink buttons' names and what an empty one shows, healthstones, healing and mana potions, best first, the food spells and Well Fed buffs, and whether you use mana.
+-- Consumables.lua: your best food and drink (ns.BestFoodAndDrink), the food and drink buttons' names and what an empty one shows, healthstones, healing and mana potions, best first, the food spells and Well Fed buffs, whether you use mana and whether you are drinking.
 local ns = _G.NaowhForever
 
 local CONJURED = {
@@ -38,6 +38,15 @@ function ns.IsDrink(itemID)
     local spell = C_Item.GetItemSpell(itemID)
     return spell ~= nil
         and (spell == C_Spell.GetSpellName(DRINK_SPELL) or spell == C_Spell.GetSpellName(NUTRITIOUS_DRINK))
+end
+
+local function HasAura(spellID)
+    local name = C_Spell.GetSpellName(spellID)
+    return name ~= nil and C_UnitAuras.GetAuraDataBySpellName("player", name, "HELPFUL") ~= nil
+end
+
+function ns.IsDrinking()
+    return HasAura(DRINK_SPELL) or HasAura(NUTRITIOUS_DRINK)
 end
 
 function ns.IsFoodAndDrink(itemID)

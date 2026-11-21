@@ -10,8 +10,11 @@ local HOME_Y = 180
 local NAME_RGB, EQUIPPED_RGB, MISSING_RGB, HINT_RGB = St.NAME_RGB, St.EQUIPPED_RGB, St.MISSING_RGB, St.HINT_RGB
 local CARD = C.PAGE .. ":gearBar"
 local EVENTS = { "EQUIPMENT_SETS_CHANGED", "EQUIPMENT_SWAP_FINISHED", "PLAYER_EQUIPMENT_CHANGED",
-    "PLAYER_REGEN_ENABLED", "PLAYER_MOUNT_DISPLAY_CHANGED", "PLAYER_UPDATE_RESTING", "PLAYER_ENTERING_WORLD" }
-local SWAP_EVENTS = { PLAYER_MOUNT_DISPLAY_CHANGED = true, PLAYER_UPDATE_RESTING = true, PLAYER_ENTERING_WORLD = true }
+    "PLAYER_REGEN_ENABLED", "PLAYER_MOUNT_DISPLAY_CHANGED", "PLAYER_UPDATE_RESTING", "PLAYER_ENTERING_WORLD",
+    "ZONE_CHANGED_NEW_AREA" }
+local SWAP_EVENTS = { PLAYER_MOUNT_DISPLAY_CHANGED = true, PLAYER_UPDATE_RESTING = true, PLAYER_ENTERING_WORLD = true,
+    ZONE_CHANGED_NEW_AREA = true }
+local QUIET_SWAP_EVENTS = { UNIT_AURA = true, UPDATE_SHAPESHIFT_FORM = true }
 local QUIET_KEYS = { gearPos = true }
 
 local TEXT_EQUIPPED = ns.L("Equipped")
@@ -122,9 +125,10 @@ local function OnEvent(_, event)
         bar:SetShown(BarShown())
     end
     if event == "PLAYER_REGEN_DISABLED" then return end
+    if QUIET_SWAP_EVENTS[event] then return G.AutoSwap() end
     if event == "PLAYER_REGEN_ENABLED" then
-        G.EquipPending()
         G.AutoSwap()
+        G.EquipPending()
     elseif SWAP_EVENTS[event] then
         G.AutoSwap()
     elseif event == "EQUIPMENT_SETS_CHANGED" and ns.UI.RefreshPage then
@@ -142,6 +146,8 @@ local function Apply()
     if not bar then BuildBar() end
     for _, e in ipairs(EVENTS) do events:RegisterEvent(e) end
     if S.Get("gearBarShow") ~= "always" then events:RegisterEvent("PLAYER_REGEN_DISABLED") end
+    if S.Get("gearDrinking") ~= "" then events:RegisterUnitEvent("UNIT_AURA", "player") end
+    if next(S.Get("gearForms")) then events:RegisterEvent("UPDATE_SHAPESHIFT_FORM") end
     Layout()
     inCombat = InCombatLockdown()
     bar:SetShown(BarShown())

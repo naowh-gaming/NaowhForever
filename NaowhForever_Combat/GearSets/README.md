@@ -1,7 +1,8 @@
 # Gear & Trinkets
 
 A bar of your equipment sets to swap with a click, saving new ones from what you wear, and
-automatic swaps to a set while mounted or resting that put your previous set back afterwards.
+automatic swaps to a set while mounted, drinking, in a form or stance, in a dungeon, raid or
+battleground, or resting, that put back what you wore afterwards.
 Built on the client's own equipment manager, so the sets are the ones the character sheet
 shows. Also a movable bar of your two trinket slots. Its settings are in the QoL store
 (`gearSets`, `gearBarVisible`, `trinketBar` and the `gear*`/`trinket*` keys), on the
@@ -14,7 +15,7 @@ minimap and Top Bar button, Open Gear Sets on its settings page).
 NaowhForever_Combat/GearSets/
   GearSets.xml                every file, in load order, included by Combat.xml
   GearSets.lua                the rules and API (ns.GearSets, G): your sets, equipping one,
-                              equipping after combat, the automatic swaps
+                              equipping after combat, putting back what you wore, the automatic swaps
   Constants.lua               what its files share (G.C): the settings page, the trinket slots
   View/
     Style.lua                 its look (G.Style), on top of Shared/Style.lua
@@ -36,7 +37,20 @@ NaowhForever_Combat/GearSets/
   (`G.EquipPending` on `PLAYER_REGEN_ENABLED`).
 - The set an automatic swap replaced is kept per character in the account settings
   (`gearReturn`), so logging out in town or mounted still puts it back after the next login.
-- A set picked by hand is kept when the automatic swap ends. Mounted beats resting.
+- A set picked by hand is kept when the automatic swap ends. Mounted beats drinking, then a form, then a
+  dungeon, raid or battleground, then resting.
+- When no set is worn as an automatic swap starts, every slot's item is kept instead (its link, or false
+  for an empty slot) and put back slot by slot; an item in a slot that was empty goes into the bags.
+- Free bag slots are counted once per putting back and used up as items go in, since the bags' counts
+  change only when the server answers.
+- Putting back a two-hander leaves the off hand alone: equipping a two-hander moves the off hand into
+  the bags by itself.
+- A form or stance is kept by its spell ID (`gearForms`), since a druid's form numbers shift as forms
+  are learned. Its rows are the forms you have, so a class without any shows none.
+- Drinking is the Drink buff on you by the Drink spell's own name (`ns.IsDrinking`), as `ns.IsDrink`
+  reads drinks. In combat or while auras are secret the last answer holds.
+- `UNIT_AURA` and `UPDATE_SHAPESHIFT_FORM` are listened to only while a set is picked for drinking or
+  a form, and they redraw nothing.
 - The automatic swap choices hold the set's name, so renaming a set updates them, and One-Key Fishing's
   Fishing Gear (`fishingGearSet`, QoL) with them.
 - A set swap fires `PLAYER_EQUIPMENT_CHANGED` once per slot; one redraw on the next frame covers

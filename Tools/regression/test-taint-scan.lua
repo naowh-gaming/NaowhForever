@@ -76,6 +76,9 @@ local UNGUARDED_ALLOWED = {
         calls = { PickupAction = 1, PlaceAction = 1 } },
     ["NaowhForever_Utilities/Macros/Smart.lua"] = { why = "Update() and the Pickup entry points refuse in combat",
         calls = { EditMacro = 1, CreateMacro = 1 } },
+    ["NaowhForever_Combat/GearSets/GearSets.lua"] = {
+        why = "PutBack is reached only through Equip, which holds the swap while in combat",
+        calls = { ["C_Item.EquipItemByName"] = 1 } },
     ["Core/Options/GameMenu.lua"] = { why = "our game menu button's own click",
         calls = { HideUIPanel = 1 } },
     ["NaowhForever_Professions/UI/Window.lua"] = { why = "the close button's click",

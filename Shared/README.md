@@ -39,7 +39,8 @@ Shared/
   Game/Consumables.lua your best food and drink in your bags (ns.BestFoodAndDrink), the healthstones,
                    healing and mana potions, best first (ns.HEALTHSTONES, ns.HEALING_POTIONS,
                    ns.MANA_POTIONS), the food spells and Well Fed buffs (ns.FOOD_SPELLS, ns.WELL_FED),
-                   whether you use mana (ns.UsesMana) and whether an item is a drink (ns.IsDrink): QoL's
+                   whether you use mana (ns.UsesMana), whether an item is a drink (ns.IsDrink) and whether
+                   you are drinking (ns.IsDrinking: Gear & Trinkets' Wear While Drinking): QoL's
                    Food & Drink Bar, the Macros' Smart Macros, Aura Buffs' reminders and the Consumable Bar
   Game/ActionKeys.lua the keys on action buttons: the game's bars, LibActionButton bars and EllesmereUI's
                    (Shared.ActionKeys): the Consumable Bar's and the Food & Drink Bar's Show Keybinds
