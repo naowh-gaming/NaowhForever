@@ -13,6 +13,8 @@ local checks = 0
 local function check(label, value) assert(value, label); checks = checks + 1 end
 
 local function Width(text, size) return #text * size * 0.5 end
+local SECRET = setmetatable({}, { __lt = function() error("compared a secret") end,
+    __le = function() error("compared a secret") end })
 
 local function Fixture(saved)
     local state = { frames = {}, named = {}, movers = {}, tickers = {}, legacyConfigReads = 0, legacyCurrencyReads = 0 }
@@ -144,6 +146,7 @@ local function Fixture(saved)
         RAID_CLASS_COLORS = { WARRIOR = { r = 0.78, g = 0.61, b = 0.43 } },
         UnitClass = function() return "Warrior", state.class or "WARRIOR" end,
         IsStealthed = function() return state.stealthed == true end,
+        issecretvalue = function(v) return v == SECRET end,
         UnitAffectingCombat = function() return state.inCombat == true end,
         UnitIsDeadOrGhost = function() return false end,
         UnitOnTaxi = function() return false end,
@@ -527,6 +530,10 @@ do
     s.S.Set("stealthCooldown", true)
     check("Stealth Reminder: Show Cooldown on counts down again", frame.text.text == warning .. " 10"
         and #s.tickers == 2)
+    s.cooldowns[1785] = { startTime = SECRET, duration = SECRET }
+    s.fire("SPELL_UPDATE_COOLDOWN")
+    check("Stealth Reminder: a secret cooldown on a boss pull shows the plain warning",
+        frame.text.text == warning and s.tickers[2].cancelled)
     s.fire("PLAYER_REGEN_DISABLED")
     check("Stealth Reminder: combat hides it and stops the ticker", not frame:IsShown() and s.tickers[2].cancelled)
     check("Stealth Reminder: its card has the Show Cooldown row",

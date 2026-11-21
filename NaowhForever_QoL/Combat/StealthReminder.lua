@@ -93,7 +93,7 @@ local function CooldownLeft()
     for i = #ranks, 1, -1 do
         if C_SpellBook.IsSpellKnown(ranks[i]) then
             local info = C_Spell.GetSpellCooldown(ranks[i])
-            if not info or info.duration <= GLOBAL_COOLDOWN then return 0 end
+            if not info or issecretvalue(info.duration) or info.duration <= GLOBAL_COOLDOWN then return 0 end
             return info.startTime + info.duration - GetTime()
         end
     end

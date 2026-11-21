@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+### Fixed
+- Stealth Reminder: no more Lua errors on boss pulls when Show Cooldown is on.
+
 ## 1.4.4
 
 ### Added
