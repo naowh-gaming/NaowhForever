@@ -671,6 +671,12 @@ end
 copied = nil
 B.Sources.Go(lookup)
 check("nothing better known: its Wowhead link to copy", lookup and copied and copied:find("item=" .. lookup, 1, true))
+local worldDrop
+for id in pairs(ns.BiSWorldDrops) do
+    if ns.BiSSource(id) == "World drop" then worldDrop = id break end
+end
+check("an item no data knows says so, not World drop", B.View.Cells.Meta(999001, 60) == "Source unknown"
+    and B.View.Cells.Meta(worldDrop, 60):find("World drop", 1, true) ~= nil)
 view:Toggle(1)
 check("and folds away", view.pools.backup.used == 0)
 
