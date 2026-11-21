@@ -181,7 +181,7 @@ local S = UI.ModuleSettings("qol", {
     mapSkyborne = F.mapSkyborne, mapSkyborneSize = 20,
     mapQuestTint = F.mapQuestTint, mapQuestTintColor = "blue", mapQuestTintFill = 0.4,
     mapSizePercent = 100, mapSizePos = false,
-    gearSets = F.gearSets, gearBarVisible = F.gearBarVisible, trinketBar = F.trinketBar, trinketSize = 36, trinketSpacing = 4, trinketGrow = "RIGHT", trinketCooldown = true, trinketCountdown = true, trinketSquare = false, gearBarSize = 32, gearBarGrow = "RIGHT", gearMounted = "", gearResting = "",
+    gearSets = F.gearSets, gearBarVisible = F.gearBarVisible, trinketBar = F.trinketBar, trinketSize = 36, trinketSpacing = 4, trinketGrow = "RIGHT", trinketCooldown = true, trinketCountdown = true, trinketSquare = false, trinketSlots = "trinkets", gearBarSize = 32, gearBarGrow = "RIGHT", gearMounted = "", gearResting = "",
     gearDrinking = "", gearDungeon = "", gearRaid = "", gearBattleground = "", gearForms = {},
     gearCombatWeapons = F.gearCombatWeapons, gearClickOff = F.gearClickOff,
     trinketQueue = F.trinketQueue, trinketReady = F.trinketReady, trinketReadySound = "none",

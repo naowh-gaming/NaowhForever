@@ -4,7 +4,7 @@ A bar of your equipment sets to swap with a click, saving new ones from what you
 automatic swaps to a set while mounted, drinking, in a form or stance, in a dungeon, raid or
 battleground, or resting, that put back what you wore afterwards.
 Built on the client's own equipment manager, so the sets are the ones the character sheet
-shows. Also a movable bar of your two trinket slots. Its settings are in the QoL store
+shows. Also a movable bar of your two trinket slots, or your trinkets and weapons, or all your gear. Its settings are in the QoL store
 (`gearSets`, `gearBarVisible`, `trinketBar` and the `gear*`/`trinket*` keys), on the
 Gear & Trinkets/Settings page; the sets themselves are in the Gear Sets window (`/nfgear`, its
 minimap and Top Bar button, Open Gear Sets on its settings page).
@@ -24,7 +24,7 @@ NaowhForever_Combat/GearSets/
   UI/
     Dialogs.lua               new, rename, save and delete a set, and the icon picker
     Bar.lua                   the Gear Set Bar, and the events behind it and the swaps
-    TrinketBar.lua            the Trinket Bar and its picker of trinkets in your bags
+    TrinketBar.lua            the Trinket Bar and its picker of what fits a slot from your bags
     Window.lua                the Gear Sets window
     SettingsPage.lua          its settings page, declared as cards, with the bars' previews
   README.md                   this file
@@ -79,6 +79,12 @@ NaowhForever_Combat/GearSets/
 - The trinket slots are secure item buttons: a change to them waits for combat to end, and a
   right-click to pick a trinket works only outside combat. The bags are checked again on the
   click, since they may have changed since the picker opened.
+- The bar's Slots (`trinketSlots`) are lists in `C.BAR_SLOTS`. The trinkets keep their names
+  (`NaowhForeverTrinket1`, `2`) for their key bindings; the other slots are `NaowhForeverGearSlot<slot>`.
+  A slot's button is made the first time it is shown and only hidden after.
+- A weapon slot's picker opens and swaps in combat too: the game's `INVSLOTS_EQUIPABLE_IN_COMBAT` is
+  what may change then. Its icon is redrawn at once, since the rest of the bar's layout waits for the
+  fight to end.
 - The secure item action errors on an empty slot (a nil link into `C_Item.IsEquippableItem`), so
   an empty slot gets no `type1`.
 - The window listens only while it is open.

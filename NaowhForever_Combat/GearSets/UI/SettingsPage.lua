@@ -17,6 +17,8 @@ local ORDER_GEAR_BAR, ORDER_EQUIPPING, ORDER_SWAPS, ORDER_TRINKETS, ORDER_TRINKE
 local SHOW = { { always = "Always", combat = "In Combat", nocombat = "Out of Combat" },
     { "always", "combat", "nocombat" } }
 local GROW = ns.Shared.ItemBar.GrowChoice()
+local BAR_SLOTS = { { trinkets = "Trinkets", weapons = "Trinkets and Weapons", all = "All Gear" },
+    { "trinkets", "weapons", "all" } }
 local PREVIEW_STATE = { { key = "bar", label = "Bar" } }
 
 local GEAR_OFF = ns.L("Turn on Gear & Trinkets")
@@ -74,12 +76,20 @@ local function NewTrinketPreview(stage)
     preview:SetAllPoints()
     preview.row = CreateFrame("Frame", nil, preview)
     preview.row:SetPoint("CENTER")
-    preview.slots = {}
-    for i = 1, #C.TRINKET_SLOTS do preview.slots[i] = PreviewButton(preview.row) end
+    preview.slots, preview.pool = {}, {}
     return preview
 end
 
 local function PaintTrinketPreview(preview)
+    local slots = C.BAR_SLOTS[S.Get("trinketSlots")] or C.TRINKET_SLOTS
+    wipe(preview.slots)
+    for i, slot in ipairs(slots) do
+        local button = preview.pool[i] or PreviewButton(preview.row)
+        preview.pool[i], preview.slots[i] = button, button
+        button.inventorySlot = slot
+        button:Show()
+    end
+    for i = #slots + 1, #preview.pool do preview.pool[i]:Hide() end
     Look.Trinkets(preview.row, preview.slots, S.Get("trinketSize"), S.Get("trinketSpacing"), S.Get("trinketGrow"),
         S.Get("trinketSquare"))
 end
@@ -231,11 +241,13 @@ page:Card({
 
 page:Card({
     id = "trinketBar", name = "Trinket Bar", order = ORDER_TRINKETS, switch = "trinketBar",
-    help = "Your two trinket slots, movable: left-click to use one, right-click to equip a trinket from your "
-        .. "bags outside combat. Move it in the HUD Editor.",
+    help = "Your trinket slots, movable: left-click to use one, right-click to put on something else from your "
+        .. "bags. Move it in the HUD Editor.",
     summary = SizeSummary("trinketSize"),
     studio = { height = TRINKET_STAGE_H, states = PREVIEW_STATE, new = NewTrinketPreview, paint = PaintTrinketPreview },
     rows = {
+        { key = "trinketSlots", label = "Slots", choice = BAR_SLOTS, needs = GearOn, why = GEAR_OFF,
+          help = "Which of your gear slots the bar shows." },
         { key = "trinketSize", label = "Icon Size", slider = TRINKET_SIZE_RANGE, unit = " px", needs = GearOn,
           why = GEAR_OFF, help = "How big each trinket is." },
         { key = "trinketSpacing", label = "Spacing", slider = SPACING_RANGE, unit = " px", needs = GearOn,

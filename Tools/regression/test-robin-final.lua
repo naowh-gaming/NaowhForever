@@ -61,7 +61,11 @@ local function fixture(kind)
         Border = function() return frame() end, Solid = function() return frame() end,
         PixelInset = function(region) return region end,
         ThemeTint = function(_, literal) return literal end,
-        Shared = { Style = { TIME_OK_RGB = {}, TIME_LOW_RGB = {}, TIME_OUT_RGB = {}, ICON_CROP = 0.08 }, Items = { SLEEPING_BAG = 211527 },
+        Shared = { Style = { TIME_OK_RGB = {}, TIME_LOW_RGB = {}, TIME_OUT_RGB = {}, ICON_CROP = 0.08 }, Items = { SLEEPING_BAG = 211527,
+            Fits = function(id, slot)
+                if slot >= 16 then return id == 404 end
+                return id ~= 303 and id ~= 404 and (slot == 13 or slot == 14)
+            end },
             Parts = { Smooth = function(t) return t end, HudText = function(t) return t end,
                 Pill = function() return frame() end, SetPill = function() return 0 end, ColorPill = function() end,
                 Press = function(button) button.pressed = true end,
@@ -80,6 +84,7 @@ local function fixture(kind)
     }
     function ns.OnApply(fn) local was = ns.Apply ns.Apply = function(...) was(...) fn(...) end end
     local env = { _G = { NaowhForever = ns }, UIParent = {}, BACKPACK_CONTAINER = 0, NUM_BAG_SLOTS = 0,
+        INVSLOTS_EQUIPABLE_IN_COMBAT = { [16] = true, [17] = true, [18] = true },
         wipe = function(t) for k in pairs(t) do t[k] = nil end return t end,
         CreateFrame = function(_, name, parent, template) return frame(name, parent, template) end,
         InCombatLockdown = function() return state.combat end,
@@ -114,7 +119,7 @@ local function fixture(kind)
             GetItemIconByID = function(id) return id end,
             GetItemCount = function() return 0 end,
             EquipItemByName = function(id, slot)
-                assert(not state.combat); state.equips[#state.equips + 1] = { id, slot }
+                assert(not state.combat or slot >= 16); state.equips[#state.equips + 1] = { id, slot }
             end,
         },
         hooksecurefunc = function(t, key, callback)
@@ -166,6 +171,39 @@ do
     check('combat blocks equips and layout', #s.equips == 1 and bar.buttons[1].width == 36)
     s.combat = false; s.fire('PLAYER_REGEN_ENABLED')
     check('deferred settings apply', bar.buttons[1].width == 50)
+end
+
+do
+    local s = fixture('gear')
+    s.settings.trinketSlots = 'weapons'
+    s.bags = { 101, 404 }
+    s.loadModule('NaowhForever_Combat/GearSets'); s.fire('PLAYER_LOGIN')
+    local bar = s.named.NaowhForeverTrinkets
+    check('Trinkets and Weapons: five slots', #bar.buttons == 5)
+    check('the trinkets keep their names for their keys', bar.buttons[1] == s.named.NaowhForeverTrinket1
+        and bar.buttons[2] == s.named.NaowhForeverTrinket2)
+    local main = s.named.NaowhForeverGearSlot16
+    check('a weapon slot is a secure use of its slot', bar.buttons[3] == main and main.attributes.item1 == '16')
+    check('the bar is as wide as its slots', bar.width == 5 * 36 + 4 * 4)
+    s.fire('PLAYER_REGEN_DISABLED'); s.combat = true
+    main.scripts.PostClick(main, 'RightButton', false)
+    local picker
+    for _, f in ipairs(s.frames) do if type(rawget(f, 'buttons')) == 'table' and rawget(f, 'close') then picker = f end end
+    check('in combat a weapon slot still opens its picker, with only what fits it', picker and picker.shown
+        and picker.buttons[1].itemID == 404 and #picker.buttons == 1)
+    picker.buttons[1].scripts.OnClick(picker.buttons[1])
+    check('and swaps the weapon at once', s.equips[1][1] == 404 and s.equips[1][2] == 16)
+    picker:Hide()
+    bar.buttons[1].scripts.PostClick(bar.buttons[1], 'RightButton', false)
+    check('a trinket slot does not open in combat', not picker.shown)
+    local watcher
+    for _, f in ipairs(s.frames) do if f.events.PLAYER_EQUIPMENT_CHANGED and f.events.PLAYER_REGEN_DISABLED then watcher = f end end
+    main.icon.texture = nil
+    watcher.scripts.OnEvent(watcher, 'PLAYER_EQUIPMENT_CHANGED', 16)
+    check('a weapon swapped in combat shows on its slot at once', main.icon.texture == 1016)
+    s.combat = false; s.fire('PLAYER_REGEN_ENABLED')
+    s.S.Set('trinketSlots', 'trinkets')
+    check('back to Trinkets: two slots, the weapons hidden', #bar.buttons == 2 and not main.shown)
 end
 
 do
