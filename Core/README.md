@@ -562,12 +562,10 @@ Onboarding
   been seen: two tiles, Same as its main or Set Up on its own, with the welcome's bottom row and no
   Back or Next. A new character starts on the account's profile, usually the main's, so the main no
   longer has to be on a different profile.
-- The main is the first character made on this character's server. Every login saves the character's
-  GUID (`charGuid`); a player GUID is `Player-<server>-<counter>`, and the counter is handed out per
-  realm and grows with each character made, so the lowest counter on the same server is the oldest.
-  Nothing else records creation order (`charSeen` is the last login, /played is not kept per
-  character). With no other GUID known on the server, it falls back to the character played most
-  recently, then the one whose profile most other characters use, then by name. A provisional
+- The main is the character played most recently (`charSeen`), then the one whose profile most other
+  characters use, then by name. It used to be the first character made on the server (the lowest
+  GUID counter), but beta and stress test characters are older than every live one and stay in the
+  saved lists, so they were offered to every new character (2026-11-21). A provisional
   `Unknown-` key (written before the game knew the name) is never offered. Deleted characters stay in
   the saved lists: addons cannot see the account's character list.
 - A character's key (`ns.CharKey`) is its whole name with the surname, then the realm: `UnitName`

@@ -50,7 +50,7 @@ local CONFIRM_H, CONFIRM_ROOM = 110, 74
 local CONFIRM_PANEL_W, CONFIRM_TEXT_W, CONFIRM_TEXT_SIZE, CONFIRM_TEXT_Y, CONFIRM_BUTTON_GAP = 340, 310, 13, 18, 4
 local DEFAULT_PROFILE = "Default"
 local DB_VERSION = 1
-local GUID_PATTERN, HEX = "^Player%-(%d+)%-(%x+)$", 16
+local GUID_PATTERN = "^Player%-(%d+)%-(%x+)$"
 local SCALE_DEFAULT, SCALE_MIN, SCALE_MAX, PERCENT = 100, 50, 200, 100
 local LOGIN_APPLY_DELAY = 1
 local DAMAGE_METER_ADDON, GAME_METER_CVAR, GAME_METER_SAVED = "NaowhForever_DamageMeter", "damageMeterEnabled",
@@ -1414,39 +1414,15 @@ local function Better(char, when, count, best, bestSeen, bestUses)
     return count > bestUses or (count == bestUses and char < best)
 end
 
-local function GuidOrder(guid)
-    if type(guid) ~= "string" then return nil end
-    local server, counter = guid:match(GUID_PATTERN)
-    counter = counter and tonumber(counter, HEX)
-    if not counter then return nil end
-    return server, counter
-end
-
 local function Offerable(sv, char, me, profile)
     return char ~= me and char:sub(1, #UNKNOWNOBJECT + 1) ~= UNKNOWNOBJECT .. "-"
         and type(sv.profiles[profile]) == "table"
-end
-
-local function FirstMade(sv, me)
-    local server = GuidOrder(UnitGUID("player"))
-    if not server or type(sv.charGuid) ~= "table" then return nil end
-    local best, bestProfile, bestCounter
-    for char, profile in pairs(sv.charActive) do
-        local theirs, counter = GuidOrder(sv.charGuid[char])
-        if theirs == server and Offerable(sv, char, me, profile)
-            and (not best or counter < bestCounter or (counter == bestCounter and char < best)) then
-            best, bestProfile, bestCounter = char, profile, counter
-        end
-    end
-    return best, bestProfile
 end
 
 function ns.ImportCandidate()
     local sv = DB()
     local me = CharKey()
     if type(sv.charAsk) ~= "table" or not sv.charAsk[me] then return nil end
-    local first, firstProfile = FirstMade(sv, me)
-    if first then return first, firstProfile end
     local seen = type(sv.charSeen) == "table" and sv.charSeen or {}
     local uses = ProfileUses(sv, me)
     local best, bestProfile, bestSeen, bestUses

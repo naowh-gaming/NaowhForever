@@ -160,72 +160,27 @@ end
 
 do
     local sv = Account()
+    sv.charActive["Beta-Forever"], sv.charGuid["Beta-Forever"] = "Default", "Player-4613-00000001"
+    sv.charSeen["Beta-Forever"] = 10
     local char, profile = Login(sv, "Die Dudu", 1000, DUDU_GUID).ImportCandidate()
-    check("the first character made wins over the one played most recently", char == "Die Man-Forever"
-        and profile == "Raid")
+    check("a beta character made first on the server loses to the one played most recently",
+        char == "Die Pri-Forever" and profile == "Alts")
 end
 
 do
     local sv = Account()
-    sv.charGuid["Die Man-Forever"], sv.charGuid["Die Pri-Forever"] = "Player-4613-100", "Player-4613-FF"
-    check("the counter is read as a number, not as text", (Login(sv, "Die Dudu", 1000, DUDU_GUID).ImportCandidate())
-        == "Die Pri-Forever")
-end
-
-do
-    local sv = Account()
-    sv.charActive["Far Away-Forever"], sv.charGuid["Far Away-Forever"] = "Default", "Player-4614-00000001"
-    sv.charSeen["Far Away-Forever"] = 2000
-    check("another server's characters are left out of the first-made rule",
-        (Login(sv, "Die Dudu", 1000, DUDU_GUID).ImportCandidate()) == "Die Man-Forever")
-    sv = Account()
-    sv.charGuid = { ["Far Away-Forever"] = "Player-4614-00000001" }
-    sv.charActive["Far Away-Forever"], sv.charSeen["Far Away-Forever"] = "Default", 50
-    check("none known on this server: the one played most recently, as before",
+    sv.charActive["Unknown-Forever"], sv.charSeen["Unknown-Forever"] = "Default", 5000
+    check("a provisional Unknown- key is never picked, however recent",
         (Login(sv, "Die Dudu", 1000, DUDU_GUID).ImportCandidate()) == "Die Pri-Forever")
-end
-
-do
-    local sv = Account()
-    sv.charGuid = nil
-    check("no GUIDs known: the one played most recently",
-        (Login(sv, "Die Dudu", 1000, DUDU_GUID).ImportCandidate()) == "Die Pri-Forever")
-    sv = Account()
-    check("this character's own GUID not known yet: the one played most recently",
-        (Login(sv, "Die Dudu", 1000).ImportCandidate()) == "Die Pri-Forever")
-end
-
-do
-    local sv = Account()
-    sv.charGuid["Die Man-Forever"] = "Player-4613-zz"
-    sv.charGuid["Die Pri-Forever"] = 42
-    sv.charActive["Odd-Forever"], sv.charGuid["Odd-Forever"] = "Default", "Creature-0-4613-0-1-1-0000000001"
-    sv.charActive["Odder-Forever"], sv.charGuid["Odder-Forever"] = "Default", "Player-4613-"
-    check("malformed GUIDs are left out: the one played most recently",
-        (Login(sv, "Die Dudu", 1000, DUDU_GUID).ImportCandidate()) == "Die Pri-Forever")
-    sv.charGuid["Die Man-Forever"] = MAIN_GUID
-    check("while a sound one still wins", (Login(sv, "Die Dudu", 1000, DUDU_GUID).ImportCandidate())
-        == "Die Man-Forever")
-end
-
-do
-    local sv = Account()
-    sv.charActive["Unknown-Forever"], sv.charGuid["Unknown-Forever"] = "Default", "Player-4613-00000001"
-    sv.charSeen["Unknown-Forever"] = 5000
-    check("a provisional Unknown- key is never picked by GUID",
-        (Login(sv, "Die Dudu", 1000, DUDU_GUID).ImportCandidate()) == "Die Man-Forever")
-    sv.charGuid = nil
-    check("nor by when it was played", (Login(sv, "Die Dudu", 1000, DUDU_GUID).ImportCandidate()) == "Die Pri-Forever")
-    sv = { profiles = { Default = {} }, charActive = { ["Unknown-Forever"] = "Default" },
-        charGuid = { ["Unknown-Forever"] = "Player-4613-00000001" } }
+    sv = { profiles = { Default = {} }, charActive = { ["Unknown-Forever"] = "Default" } }
     check("an Unknown- key alone: nothing offered", Login(sv, "Die Dudu", 1000, DUDU_GUID).ImportCandidate() == nil)
 end
 
 do
     local sv = Account()
-    sv.charGuid["Die Dudu-Forever"] = "Player-4613-00000001"
-    check("never this character itself, even with the lowest counter",
-        (Login(sv, "Die Dudu", 1000, DUDU_GUID).ImportCandidate()) == "Die Man-Forever")
+    sv.charSeen["Die Dudu-Forever"] = 5000
+    check("never this character itself, even played last",
+        (Login(sv, "Die Dudu", 1000, DUDU_GUID).ImportCandidate()) == "Die Pri-Forever")
     sv.charAsk = nil
     check("and only while it waits for an answer", Login(sv, "Die Dudu", 1000, DUDU_GUID).ImportCandidate() == nil)
 end
