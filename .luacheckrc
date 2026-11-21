@@ -129,7 +129,7 @@ read_globals = {
     "MerchantFrame", "MERCHANT_ITEMS_PER_PAGE", "Mixin", "MovieFrame", "NumTaxiNodes",
     "NUM_BAG_SLOTS", "NUM_CHAT_WINDOWS", "NUM_PET_ACTION_SLOTS",
     "NUM_TOTAL_EQUIPPED_BAG_SLOTS", "OTHER", "PetHasActionBar", "PickupAction", "PickupInventoryItem", "PickupMacro", "PlaceAction",
-    "PutItemInBackpack", "PutItemInBag",
+    "PutItemInBackpack", "PutItemInBag", "ShowCloak", "ShowHelm",
     "PixelUtil", "PlaySound", "PlaySoundFile", "ProfessionsFrame", "PROFESSIONS_COOKING",
     "PROFESSIONS_FIRST_AID", "PROFESSIONS_FIRST_PROFESSION", "PROFESSIONS_FISHING",
     "PROFESSIONS_MISSING_PROFESSION", "QuestDifficultyColors", "QuestFrameRewardPanel",

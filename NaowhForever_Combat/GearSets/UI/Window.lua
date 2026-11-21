@@ -1,4 +1,4 @@
--- Window.lua: the Gear Sets window (/nfgear), every set with Equip, Save, Rename, Icon and Delete.
+-- Window.lua: the Gear Sets window (/nfgear), every set with Equip, Save, Rename, Icon, Delete and More (helm, cloak, bank).
 local ns = _G.NaowhForever
 
 local T = ns.THEME
@@ -27,7 +27,36 @@ local TEXT_NEW_TIP = ns.L("Saves what you are wearing now as a new set.")
 local TEXT_NO_SETS = ns.L("No gear sets yet. New Gear Set saves what you wear now as one.")
 local TEXT_EQUIPPED = ns.L("Equipped")
 
+local TEXT_HELM, TEXT_CLOAK = ns.L("Helm"), ns.L("Cloak")
+local TEXT_LEAVE, TEXT_SHOW, TEXT_HIDE = ns.L("Leave As It Is"), ns.L("Show"), ns.L("Hide")
+local TEXT_FROM_BANK = ns.L("Get From Bank")
+local LOOK_PARTS = { { "helm", TEXT_HELM }, { "cloak", TEXT_CLOAK } }
+local LOOK_CHOICES = { { "leave", TEXT_LEAVE }, { "show", TEXT_SHOW }, { "hide", TEXT_HIDE } }
+local LOOK_VALUE = { show = true, hide = false }
+
 local window, scroll, view, kinds
+
+local function LookChoice(name, part)
+    local show = G.Look(name, part)
+    if show == nil then return "leave" end
+    return show and "show" or "hide"
+end
+
+local function MoreMenu(set, owner)
+    ns.ContextMenu(owner, function(_, root)
+        for _, part in ipairs(LOOK_PARTS) do
+            root:CreateTitle(part[2])
+            for _, choice in ipairs(LOOK_CHOICES) do
+                root:CreateRadio(choice[2], function() return LookChoice(set.name, part[1]) == choice[1] end, function()
+                    G.SetLook(set.name, part[1], LOOK_VALUE[choice[1]])
+                    if set.equipped then G.ShowLooks(set.id) end
+                end)
+            end
+        end
+        root:CreateDivider()
+        root:CreateButton(TEXT_FROM_BANK, function() G.FromBank(set.id) end)
+    end)
+end
 
 local ACTIONS = {
     { "Equip", function(set) G.Wear(set.id) end },
@@ -35,6 +64,7 @@ local ACTIONS = {
     { "Rename", function(set) ns.RenameGearSet(set.id, set.name) end },
     { "Icon", function(set) ns.ChangeGearSetIcon(set.id, set.name) end },
     { "Delete", function(set) ns.DeleteGearSet(set.id, set.name) end },
+    { "More", MoreMenu },
 }
 local ACTION_TIPS = {
     Equip = ns.L("Puts this set on. In combat, it goes on when the fight ends."),
@@ -42,6 +72,7 @@ local ACTION_TIPS = {
     Rename = ns.L("Renames the set; Wear While Mounted and Resting follow it."),
     Icon = ns.L("Picks a new icon for the set."),
     Delete = ns.L("Deletes the set. Asks first."),
+    More = ns.L("Shows or hides your helm and cloak with this set, or takes its items out of the bank."),
 }
 
 local TEXT_ITEM, TEXT_ITEMS = ns.L("%d item"), ns.L("%d items")
@@ -57,7 +88,8 @@ local function NewActions(row)
     local right = nil
     for i = #ACTIONS, 1, -1 do
         local action = ACTIONS[i]
-        local button = ns.Button(row, action[1], ACTION_W, ACTION_H, function() action[2](row.set) end)
+        local button
+        button = ns.Button(row, action[1], ACTION_W, ACTION_H, function() action[2](row.set, button) end)
         ns.Tooltip(button, action[1], ACTION_TIPS[action[1]])
         if right then
             button:SetPoint("RIGHT", right, "LEFT", -ACTION_GAP, 0)

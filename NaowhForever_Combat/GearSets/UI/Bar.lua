@@ -121,13 +121,14 @@ local function LayoutSoon()
     C_Timer.After(0, LayoutNow)
 end
 
-local function OnEvent(_, event)
+local function OnEvent(_, event, result, setID)
     if event == "PLAYER_REGEN_DISABLED" or event == "PLAYER_REGEN_ENABLED" then
         inCombat = event == "PLAYER_REGEN_DISABLED"
         bar:SetShown(BarShown())
     end
     if event == "PLAYER_REGEN_DISABLED" then return end
     if QUIET_SWAP_EVENTS[event] then return G.AutoSwap() end
+    if event == "EQUIPMENT_SWAP_FINISHED" and result and setID then G.ShowLooks(setID) end
     if event == "PLAYER_REGEN_ENABLED" or event == "PLAYER_ALIVE" or event == "PLAYER_UNGHOST" then
         G.AutoSwap()
         G.EquipPending()

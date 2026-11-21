@@ -182,7 +182,7 @@ local S = UI.ModuleSettings("qol", {
     mapQuestTint = F.mapQuestTint, mapQuestTintColor = "blue", mapQuestTintFill = 0.4,
     mapSizePercent = 100, mapSizePos = false,
     gearSets = F.gearSets, gearBarVisible = F.gearBarVisible, trinketBar = F.trinketBar, trinketSize = 36, trinketSpacing = 4, trinketGrow = "RIGHT", trinketCooldown = true, trinketCountdown = true, trinketSquare = false, trinketSlots = "trinkets", gearBarSize = 32, gearBarGrow = "RIGHT", gearMounted = "", gearResting = "",
-    gearDrinking = "", gearDungeon = "", gearRaid = "", gearBattleground = "", gearForms = {},
+    gearDrinking = "", gearDungeon = "", gearRaid = "", gearBattleground = "", gearForms = {}, gearLooks = {},
     gearCombatWeapons = F.gearCombatWeapons, gearClickOff = F.gearClickOff,
     trinketQueue = F.trinketQueue, trinketReady = F.trinketReady, trinketReadySound = "none",
     gearBarSpacing = 4, gearBarShow = "always",

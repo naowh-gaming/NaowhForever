@@ -21,6 +21,9 @@ local TEXT_MODULE = ns.L("Gear & Trinkets")
 local SWAP_KEYS = { "gearMounted", "gearDrinking", "gearDungeon", "gearRaid", "gearBattleground", "gearResting",
     "fishingGearSet" }
 local INSTANCE_KEYS = { party = "gearDungeon", raid = "gearRaid", pvp = "gearBattleground" }
+local TEXT_OPEN_BANK = ns.L("Open your bank first.")
+local TEXT_NOT_IN_BANK = ns.L("Nothing of %s is waiting in your bank.")
+local TEXT_FROM_BANK = ns.L("Took %d of %s's items out of your bank.")
 local OLD_ADDON = "NaowhForever_GearSets"
 local OLD_COPY = C_AddOns.DoesAddOnExist(OLD_ADDON) and C_AddOns.GetAddOnEnableState(OLD_ADDON) > 0
 
@@ -28,6 +31,7 @@ local pending
 local autoSet
 local drinking = false
 local free = {}
+local wanted = {}
 
 local function ByName(a, b) return a.name < b.name end
 
@@ -214,6 +218,52 @@ function G.TakeOff()
     if not target then return ns.Print(TEXT_NOTHING) end
     before[key] = nil
     Equip(target)
+end
+
+function G.FromBank(setID)
+    local name = C_EquipmentSet.GetEquipmentSetInfo(setID)
+    if InCombatLockdown() or not C_Bank.CanUseBank(Enum.BankType.Character) then return ns.Print(TEXT_OPEN_BANK) end
+    wipe(wanted)
+    local ignored = C_EquipmentSet.GetIgnoredSlots(setID)
+    for slot, id in pairs(C_EquipmentSet.GetItemIDs(setID)) do
+        if id > 0 and not ignored[slot] and GetInventoryItemID("player", slot) ~= id then
+            wanted[id] = (wanted[id] or 0) + 1
+        end
+    end
+    for id, count in pairs(wanted) do wanted[id] = count - C_Item.GetItemCount(id) end
+    local moved = 0
+    for bag = Enum.BagIndex.CharacterBankTab_1, Enum.BagIndex.CharacterBankTab_9 do
+        for slot = 1, C_Container.GetContainerNumSlots(bag) do
+            local id = C_Container.GetContainerItemID(bag, slot)
+            if id and (wanted[id] or 0) > 0 then
+                wanted[id] = wanted[id] - 1
+                moved = moved + 1
+                C_Container.UseContainerItem(bag, slot)
+            end
+        end
+    end
+    if moved == 0 then return ns.Print(TEXT_NOT_IN_BANK:format(name)) end
+    ns.Print(TEXT_FROM_BANK:format(moved, name))
+end
+
+function G.Look(name, part)
+    local look = S.Get("gearLooks")[name]
+    return look and look[part]
+end
+
+function G.SetLook(name, part, show)
+    local looks = CopyTable(S.Get("gearLooks"))
+    local look = looks[name] or {}
+    look[part] = show
+    looks[name] = next(look) and look or nil
+    S.Set("gearLooks", looks)
+end
+
+function G.ShowLooks(setID)
+    local look = S.Get("gearLooks")[C_EquipmentSet.GetEquipmentSetInfo(setID)]
+    if not look then return end
+    if look.helm ~= nil then ShowHelm(look.helm) end
+    if look.cloak ~= nil then ShowCloak(look.cloak) end
 end
 
 function G.EquipByHand(setID)

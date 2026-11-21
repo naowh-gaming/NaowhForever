@@ -173,6 +173,9 @@ function ns.RenameGearSet(setID, name)
             if setName == name then forms[spellID] = newName end
         end
         S.Set("gearForms", forms)
+        local looks = CopyTable(S.Get("gearLooks"))
+        looks[newName], looks[name] = looks[name], nil
+        S.Set("gearLooks", looks)
     end)
 end
 
@@ -185,5 +188,9 @@ end
 function ns.DeleteGearSet(setID, name)
     ns.Confirm(TEXT_DELETE:format(name), function()
         C_EquipmentSet.DeleteEquipmentSet(setID)
+        if G.Look(name, "helm") ~= nil or G.Look(name, "cloak") ~= nil then
+            G.SetLook(name, "helm", nil)
+            G.SetLook(name, "cloak", nil)
+        end
     end)
 end

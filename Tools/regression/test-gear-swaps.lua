@@ -13,7 +13,8 @@ local function Fixture()
         combat = false, secret = false, mounted = false, resting = false, drinking = false, dead = false,
         feign = false, instance = "none", form = 0, worn = {}, bags = {}, equipped = nil, used = {}, equips = {},
         takenOff = {}, printed = {}, account = {},
-        settings = { gearSets = true, gearMounted = "", gearResting = "", gearDrinking = "", gearDungeon = "",
+        bank = {}, bankOpen = false, used_bank = {}, helm = nil, cloak = nil,
+        settings = { gearLooks = {}, gearSets = true, gearMounted = "", gearResting = "", gearDrinking = "", gearDungeon = "",
             gearRaid = "", gearBattleground = "", gearForms = {}, gearCombatWeapons = false, gearClickOff = false },
         setItems = {},
     }
@@ -51,7 +52,27 @@ local function Fixture()
             GetItemIDs = function(id) return g.setItems[id] or {} end,
             GetIgnoredSlots = function() return {} end,
         },
+        Enum = { BagIndex = { CharacterBankTab_1 = 6, CharacterBankTab_9 = 6 }, BankType = { Character = 0 } },
+        C_Bank = { CanUseBank = function() return g.bankOpen end },
+        ShowHelm = function(v) g.helm = v end,
+        ShowCloak = function(v) g.cloak = v end,
+        CopyTable = function(t)
+            local function Copy(v)
+                if type(v) ~= "table" then return v end
+                local out = {}
+                for k, inner in pairs(v) do out[k] = Copy(inner) end
+                return out
+            end
+            return Copy(t)
+        end,
+        wipe = function(t) for k in pairs(t) do t[k] = nil end return t end,
         C_Container = {
+            GetContainerNumSlots = function() return #g.bank end,
+            GetContainerItemID = function(_, slot) return g.bank[slot] end,
+            UseContainerItem = function(_, slot)
+                assert(not g.combat and g.bankOpen, "a bank item moved away from the bank")
+                g.used_bank[#g.used_bank + 1] = slot
+            end,
             GetContainerNumFreeSlots = function(bag) return bag == 0 and 1 or 0, 0 end,
             ContainerIDToInventoryID = function(bag) return bag + 30 end,
         },
@@ -260,6 +281,35 @@ do
     g.settings.gearSets = false
     Run("equip Town")
     check("switched off: nothing happens", #g.used == 5)
+end
+
+do
+    local g = Fixture()
+    g.setItems[SETS.Raid] = { [1] = 101, [11] = 201, [12] = 201, [16] = 102 }
+    g.worn = { [16] = 102 }
+    g.bags = { [201] = true }
+    g.bank = { 300, 101, 201, 201 }
+    g.G.FromBank(SETS.Raid)
+    check("bank closed: it says to open it", #g.used_bank == 0 and g.printed[1] == "Open your bank first.")
+    g.bankOpen = true
+    g.G.FromBank(SETS.Raid)
+    check("open: only what the set still needs comes out", #g.used_bank == 2 and g.used_bank[1] == 2
+        and g.used_bank[2] == 3)
+    check("and it says how many", g.printed[2] == "Took 2 of Raid's items out of your bank.")
+end
+
+do
+    local g = Fixture()
+    g.G.ShowLooks(SETS.Raid)
+    check("no look picked: helm and cloak are left alone", g.helm == nil and g.cloak == nil)
+    g.G.SetLook("Raid", "helm", false)
+    g.G.ShowLooks(SETS.Raid)
+    check("Hide on the helm hides it, the cloak still left alone", g.helm == false and g.cloak == nil)
+    g.G.SetLook("Raid", "cloak", true)
+    g.G.SetLook("Raid", "helm", nil)
+    check("Leave As It Is clears just that part", g.G.Look("Raid", "helm") == nil and g.G.Look("Raid", "cloak") == true)
+    g.G.SetLook("Raid", "cloak", nil)
+    check("and the set's entry goes once both are left", g.settings.gearLooks.Raid == nil)
 end
 
 print(("PASS gear swaps: %d checks"):format(checks))

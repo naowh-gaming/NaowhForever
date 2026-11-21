@@ -25,7 +25,7 @@ NaowhForever_Combat/GearSets/
     Dialogs.lua               new, rename, save and delete a set, and the icon picker
     Bar.lua                   the Gear Set Bar, and the events behind it and the swaps
     TrinketBar.lua            the Trinket Bar and its picker of what fits a slot from your bags
-    Window.lua                the Gear Sets window
+    Window.lua                the Gear Sets window, and each set's More menu (helm, cloak, bank)
     SettingsPage.lua          its settings page, declared as cards, with the bars' previews
   README.md                   this file
 ```
@@ -88,6 +88,11 @@ NaowhForever_Combat/GearSets/
 - The secure item action errors on an empty slot (a nil link into `C_Item.IsEquippableItem`), so
   an empty slot gets no `type1`.
 - The window listens only while it is open.
+- A set's helm and cloak (`gearLooks`, by set name like the swaps: Leave As It Is, Show or Hide) are
+  shown or hidden on `EQUIPMENT_SWAP_FINISHED`, so a set put on from the character sheet gets them too.
+- Get From Bank takes out only what the set still needs: one of each item for each slot it is not worn
+  in, less what is already in the bags. It needs the bank open and usable (`C_Bank.CanUseBank`), as the
+  Bank Marker does, and moves each item with a use on it, the game's own right-click.
 - The Trinket Queue (`trinketQueue`) keeps each slot's trinkets per character in the account settings
   (`gearTrinketQueue`), best first. The first one that is ready and in your bags, or already in the slot,
   goes on; a trinket in the slot that is not in its queue is left on.
