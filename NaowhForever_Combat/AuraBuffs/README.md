@@ -5,7 +5,7 @@ AuraBuffs/Settings (`/nfbuffs`, its minimap and Top Bar button). Its on/off swit
 defaults come from `ns.FEATURES.auraBuffs`.
 
 - **Buffs & Consumables:** a row of icons for missing food, flask, elixir and scroll buffs, the Dire Maul
-  drinks, Jujus, Zanza and Blasted Lands items you carry (Other Buffs Reminder, off by default),
+  drinks, Jujus, Zanza, Blasted Lands items and Dragonbreath Chili you carry (Other Buffs Reminder, off by default),
   class buffs missing in your group, and your own class buff (armor, Inner
   Fire, Battle Shout, poisons, a weapon imbue, a hunter's aspect) when it is missing, and the Cozy Sleeping Bag
   out in the world when it is ready and Well-Rested is missing (Sleeping Bag Reminder, off by default), and the
@@ -291,6 +291,8 @@ NaowhForever_Combat/AuraBuffs/
   classic; Forever's stacking is unconfirmed. Juju Ember and Chill (ten minutes of resistance for one fight) and
   the Permanent Zanzas (no known source) are left out. It is outside `CATEGORY_ORDER`, so it has no Only If I
   Carry One pick and no Last Used icon: it always needs one carried, and its families mix.
+- Dragonbreath Chili (item 12217, buff 15852, reonla's ask) is in Other Buffs, not food: its buff is not Well
+  Fed, so the food reminder cannot count it.
 - Only If I Carry One is set per kind (`carriedPicks`: food, flask, battle, weapon): Drjay
   wanted buff food to remind him with none in his bags, without flasks and elixirs showing all the time too. A kind
   with no pick follows the old single switch (`onlyIfCarried`), so profiles from before keep what they did.

@@ -854,6 +854,7 @@ end
 -- family at a time, a buff a family does not stack with counts as its own, and it follows the consumables' places.
 do
     local KREEG, GROG, BLACK_LABEL, JUJU_POWER, SPIRIT, SWIFTNESS = 18284, 18269, 21151, 12451, 20079, 20081
+    local CHILI = 12217
     local t = Fixture({ settings = { personalBuffs = false }, instance = "raid", bags = { KREEG } })
     t.Login()
     Check("off by default", t.Shown(), "")
@@ -884,6 +885,16 @@ do
     local cell
     for _, f in ipairs(t.frames) do if rawget(f, "items") and f.shown then cell = f end end
     Check("its menu holds both Zanzas", table.concat(cell.items, " "), SPIRIT .. " " .. SWIFTNESS)
+    t.state.bags = { CHILI }
+    t.Fire("BAG_UPDATE_DELAYED"); t.Advance(0.5)
+    Check("a carried Dragonbreath Chili reminds, not as food", t.Shown(), "item:" .. CHILI)
+    t.state.auras.player = { { 15852, 500, 600 } }
+    t.Fire("UNIT_AURA", "player"); t.Advance(0.5)
+    Check("its buff up: nothing", t.Shown(), "")
+    t.state.auras.player = {}
+    t.state.bags = { SPIRIT, SWIFTNESS }
+    t.Fire("UNIT_AURA", "player")
+    t.Fire("BAG_UPDATE_DELAYED"); t.Advance(0.5)
     t.Set("consumablesRaid", false)
     Check("follows the consumables' place switches", t.Shown(), "")
 end

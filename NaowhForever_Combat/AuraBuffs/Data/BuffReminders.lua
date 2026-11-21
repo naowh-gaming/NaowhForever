@@ -153,6 +153,7 @@ D.OTHER = {
     { name = "Ground Scorpok Assay", items = { 8412 }, auras = { 10669 } },
     { name = "Cerebral Cortex Compound", items = { 8423 }, auras = { 10692 } },
     { name = "Gizzard Gum", items = { 8424 }, auras = { 10693 } },
+    { name = "Dragonbreath Chili", items = { 12217 }, auras = { 15852 } },
 }
 
 D.DEFAULT_GROUPS.other = { items = {}, auras = {}, carried = true }
