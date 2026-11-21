@@ -149,6 +149,12 @@ Case("a two-hander wins only when it beats a one-hander and the best off hand to
     assert(m.Auto.Build(m.spec)[16][1] == 21)
 end)
 
+Case("a two-hander as the main hand's pick leaves the off hand empty", function()
+    local m = Fixture({ ranked = { [16] = { 20, 21 }, [17] = { 22 } }, worth = { [20] = 3, [21] = 7, [22] = 3 } })
+    local picks = m.Auto.Build(m.spec)
+    assert(picks[16][1] == 21 and #picks[17] == 0, Join(picks[17]))
+end)
+
 Case("an item not loaded yet is asked for and waited on, not picked", function()
     local m = Fixture({ ranked = { [1] = { 1, 2 } }, worth = { [1] = 1, [2] = 9 }, loading = { [2] = true } })
     local picks, waiting = m.Auto.Build(m.spec)

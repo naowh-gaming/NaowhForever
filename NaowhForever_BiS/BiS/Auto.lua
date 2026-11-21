@@ -170,6 +170,8 @@ function Auto.Build(spec)
         local before = AFTER[slot] and chosen[AFTER[slot]][1]
         chosen[slot] = Take(ranked[slot], before, chosen[slot] or {})
     end
+    local main = chosen[MAIN_HAND][1]
+    if main and Items.IsTwoHand(main) then wipe(chosen[OFF_HAND]) end
     Listen()
     return chosen, waiting
 end

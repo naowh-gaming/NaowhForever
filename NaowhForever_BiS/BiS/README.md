@@ -153,6 +153,7 @@ Other modules call in through `ns`: `ns.IsBisItem` (the Journal, Bag Space, the 
   Bear") is only known once you have the item, and what you wear is read by its link.
 - A one-hander's worth in the main hand counts the best off hand beside it, so a two-hander wins
   only when it beats the pair. Ring 2 and Trinket 2 skip what Ring 1 and Trinket 1 took.
+- When a two-hander is the main hand's top pick, the Auto list leaves the off hand empty.
 - An item of a level's list that neither the Journal nor wowsrc and ForeverChanges place takes the
   leveling data's source, so its row still says where it comes from.
 - A list's name shows in chat and tooltips, so its escape codes are neutralised (`|` doubled) and it
