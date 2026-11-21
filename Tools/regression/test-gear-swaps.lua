@@ -177,4 +177,41 @@ do
     check("and goes on when it ends", g.used[1] == SETS.Main and #g.used == 1)
 end
 
+do
+    local g = Fixture()
+    g.setItems[SETS.Main] = { [1] = 101, [16] = 102, [17] = 0, [18] = 103 }
+    g.bags = { [101] = true, [102] = true, [103] = true }
+    g.worn = { [16] = 104, [18] = 103 }
+    g.combat = true
+    g.G.EquipByHand(SETS.Main)
+    check("Swap Weapons in Combat off: nothing changes in combat", #g.equips == 0)
+    g.settings.gearCombatWeapons = true
+    g.G.EquipByHand(SETS.Main)
+    check("on: the set's weapons go on at once", #g.equips == 1 and g.equips[1][1] == 102 and g.equips[1][2] == 16)
+    check("and the rest waits for the fight to end", #g.used == 0)
+    g.combat = false
+    g.G.EquipPending()
+    check("which puts the whole set on", g.used[1] == SETS.Main)
+end
+
+do
+    local g = Fixture()
+    g.settings.gearCombatWeapons = true
+    g.setItems[SETS.Main] = { [16] = 102 }
+    g.bags = { [102] = true }
+    g.dead, g.combat = true, true
+    g.G.EquipByHand(SETS.Main)
+    check("dead: nothing goes on, not even weapons", #g.equips == 0 and #g.used == 0
+        and g.printed[1] == "Gear set equips when you are alive again.")
+    g.combat = false
+    g.G.EquipPending()
+    check("still dead after combat: it keeps waiting", #g.used == 0)
+    g.dead = false
+    g.G.EquipPending()
+    check("alive again: it goes on", g.used[1] == SETS.Main)
+    g.dead, g.feign = true, true
+    g.G.EquipByHand(SETS.Town)
+    check("Feign Death is not death", g.used[2] == SETS.Town)
+end
+
 print(("PASS gear swaps: %d checks"):format(checks))

@@ -149,7 +149,7 @@ read_globals = {
     "UnitClass", "UnitCreatureFamily", "UnitDetailedThreatSituation", "UnitExists", "UnitFactionGroup",
     "UnitFullName", "UnitGetTotalAbsorbs", "UnitGroupRolesAssigned", "UnitGUID", "UnitHealth", "UnitHealthMax",
     "UnitHealthPercent", "UnitInParty", "UnitInRaid", "UnitIsAFK", "UnitIsConnected", "UnitIsDead", "UnitIsTapDenied", "UnitClassification",
-    "FlashClientIcon", "C_VignetteInfo", "UnitIsDeadOrGhost",
+    "FlashClientIcon", "C_VignetteInfo", "UnitIsDeadOrGhost", "UnitIsFeignDeath",
     "UnitIsFriend", "UnitIsGroupAssistant", "UnitIsGroupLeader", "UnitIsInMyGuild", "UnitIsPlayer", "UnitIsPVP", "GetPVPDesired", "BagsBar",
     "UnitIsUnit", "UnitIsVisible", "UnitIsGameObject", "UnitIsInInteractRange", "SetUnitCursorTexture",
     "UnitLevel", "UnitName", "UnitPower", "UnitPowerMax", "UnitPowerPercent", "UnitNameFromGUID", "UnitOnTaxi", "UnitPosition", "UnitRace", "UnitStat",

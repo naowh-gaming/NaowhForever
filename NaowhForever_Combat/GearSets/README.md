@@ -34,7 +34,14 @@ NaowhForever_Combat/GearSets/
 - Both bars' Growth Direction (`gearBarGrow`, `trinketGrow`) places buttons with `ItemBar.Place` in one
   line (`ItemBar.ONE_LINE`); Right is the way they always grew.
 - Armor cannot change in combat, so a set asked for then waits for the fight to end
-  (`G.EquipPending` on `PLAYER_REGEN_ENABLED`).
+  (`G.EquipPending` on `PLAYER_REGEN_ENABLED`). Only the last set asked for waits.
+- Swap Weapons in Combat (`gearCombatWeapons`) puts a set's main hand, off hand and ranged on at once,
+  the slots the game's own `INVSLOTS_EQUIPABLE_IN_COMBAT` lets change in combat; the whole set still
+  goes on when the fight ends.
+- Nothing goes on while you are dead (Feign Death is not); the set waits for `PLAYER_ALIVE` or
+  `PLAYER_UNGHOST`.
+- After a fight the automatic swaps are worked out before the set that waited goes on, so a set picked by
+  hand in combat wins, and a form shifted in and out of during the fight does not swap twice.
 - The set an automatic swap replaced is kept per character in the account settings
   (`gearReturn`), so logging out in town or mounted still puts it back after the next login.
 - A set picked by hand is kept when the automatic swap ends. Mounted beats drinking, then a form, then a

@@ -5,9 +5,11 @@ local S = ns.QoLSettings
 
 local FIRST_SLOT, LAST_SLOT = 1, 19
 local MAIN_HAND, OFF_HAND = 16, 17
+local COMBAT_SLOTS = { 16, 17, 18 }
 local FORM_SPELL = 4
 local RETURN = "gearReturn"
 local TEXT_AFTER_COMBAT = ns.L("Gear set equips when combat ends.")
+local TEXT_AFTER_DEATH = ns.L("Gear set equips when you are alive again.")
 local TEXT_MISSING = ns.L("%s is not in your bags, so it was not put back.")
 local TEXT_NO_ROOM = ns.L("No room in your bags to take off %s.")
 local SWAP_KEYS = { "gearMounted", "gearDrinking", "gearDungeon", "gearRaid", "gearBattleground", "gearResting",
@@ -95,12 +97,38 @@ local function PutBack(items)
     end
 end
 
+local function WeaponsNow(target)
+    local ids, ignored
+    if type(target) == "number" then
+        ids, ignored = C_EquipmentSet.GetItemIDs(target), C_EquipmentSet.GetIgnoredSlots(target)
+    end
+    for _, slot in ipairs(COMBAT_SLOTS) do
+        if ids then
+            local id = not ignored[slot] and ids[slot]
+            if id and id > 0 and GetInventoryItemID("player", slot) ~= id and C_Item.GetItemCount(id) > 0 then
+                C_Item.EquipItemByName(id, slot)
+            end
+        else
+            local link = target[slot]
+            if link and GetInventoryItemLink("player", slot) ~= link and C_Item.GetItemCount(link) > 0 then
+                C_Item.EquipItemByName(link, slot)
+            end
+        end
+    end
+end
+
+local function Dead()
+    return UnitIsDeadOrGhost("player") and not UnitIsFeignDeath("player")
+end
+
 local function Equip(target, quiet)
     if not target then return end
     if type(target) == "number" and not C_EquipmentSet.GetEquipmentSetInfo(target) then return end
-    if InCombatLockdown() then
+    local combat, dead = InCombatLockdown(), Dead()
+    if combat or dead then
+        if combat and not dead and S.Get("gearCombatWeapons") then WeaponsNow(target) end
         pending = target
-        if not quiet then ns.Print(TEXT_AFTER_COMBAT) end
+        if not quiet then ns.Print(dead and TEXT_AFTER_DEATH or TEXT_AFTER_COMBAT) end
         return
     end
     pending = nil

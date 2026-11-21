@@ -13,7 +13,7 @@ local PREVIEW_NOTE_GAP = 10
 local ADD_TEXT_SIZE, NOTE_SIZE = 14, 12
 local BAR_STAGE_H, TRINKET_STAGE_H = 100, 110
 local BAR_SIZE_RANGE, TRINKET_SIZE_RANGE, SPACING_RANGE = { 20, 48, 1 }, { 20, 70, 1 }, { 0, 30, 1 }
-local ORDER_GEAR_BAR, ORDER_SWAPS, ORDER_TRINKETS = 10, 20, 30
+local ORDER_GEAR_BAR, ORDER_EQUIPPING, ORDER_SWAPS, ORDER_TRINKETS = 10, 15, 20, 30
 local SHOW = { { always = "Always", combat = "In Combat", nocombat = "Out of Combat" },
     { "always", "combat", "nocombat" } }
 local GROW = ns.Shared.ItemBar.GrowChoice()
@@ -206,6 +206,15 @@ page:Card({
         Settings.Group("Visibility"),
         { key = "gearBarShow", label = "Show", choice = SHOW, needs = GearOn, why = GEAR_OFF,
           help = "Always, only in combat, or only out of combat." },
+    },
+})
+
+page:Card({
+    id = "equipping", name = "Equipping", order = ORDER_EQUIPPING,
+    help = "How a set goes on when you pick one.",
+    rows = {
+        { key = "gearCombatWeapons", label = "Swap Weapons in Combat", toggle = true, needs = GearOn, why = GEAR_OFF,
+          help = "A set's weapons go on at once in combat, and the rest when the fight ends." },
     },
 })
 

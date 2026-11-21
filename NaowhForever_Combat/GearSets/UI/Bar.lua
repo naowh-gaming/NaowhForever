@@ -11,7 +11,7 @@ local NAME_RGB, EQUIPPED_RGB, MISSING_RGB, HINT_RGB = St.NAME_RGB, St.EQUIPPED_R
 local CARD = C.PAGE .. ":gearBar"
 local EVENTS = { "EQUIPMENT_SETS_CHANGED", "EQUIPMENT_SWAP_FINISHED", "PLAYER_EQUIPMENT_CHANGED",
     "PLAYER_REGEN_ENABLED", "PLAYER_MOUNT_DISPLAY_CHANGED", "PLAYER_UPDATE_RESTING", "PLAYER_ENTERING_WORLD",
-    "ZONE_CHANGED_NEW_AREA" }
+    "ZONE_CHANGED_NEW_AREA", "PLAYER_ALIVE", "PLAYER_UNGHOST" }
 local SWAP_EVENTS = { PLAYER_MOUNT_DISPLAY_CHANGED = true, PLAYER_UPDATE_RESTING = true, PLAYER_ENTERING_WORLD = true,
     ZONE_CHANGED_NEW_AREA = true }
 local QUIET_SWAP_EVENTS = { UNIT_AURA = true, UPDATE_SHAPESHIFT_FORM = true }
@@ -126,7 +126,7 @@ local function OnEvent(_, event)
     end
     if event == "PLAYER_REGEN_DISABLED" then return end
     if QUIET_SWAP_EVENTS[event] then return G.AutoSwap() end
-    if event == "PLAYER_REGEN_ENABLED" then
+    if event == "PLAYER_REGEN_ENABLED" or event == "PLAYER_ALIVE" or event == "PLAYER_UNGHOST" then
         G.AutoSwap()
         G.EquipPending()
     elseif SWAP_EVENTS[event] then

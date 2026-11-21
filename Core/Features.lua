@@ -101,6 +101,7 @@ ns.FEATURES = {
         mapQuestTint = false,
         gearSets = true,
         gearBarVisible = true,
+        gearCombatWeapons = false,
         trinketBar = false,
         bis = true,
         bisLootAlert = true,
