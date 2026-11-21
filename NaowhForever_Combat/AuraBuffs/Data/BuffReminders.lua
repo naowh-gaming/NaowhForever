@@ -165,6 +165,13 @@ for _, family in ipairs(D.OTHER) do
     end
 end
 
+D.PROFESSION_COOLDOWNS = {
+    { key = "arcanite", spell = 17187, skill = 171 },
+    { key = "saltShaker", spell = 19566, item = 15846, skill = 165 },
+    { key = "mooncloth", spell = 18560, skill = 197 },
+    { key = "dedicatedStudy", spell = 1225469, cast = true },
+}
+
 D.POISON_ITEMS = {
     8928, 8927, 8926, 6950, 6949, 6947,
     20844, 8985, 8984, 2893, 2892,

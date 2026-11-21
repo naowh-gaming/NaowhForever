@@ -28,6 +28,7 @@ local KEYS = {
     personalBuffs = true, personalBuffPicks = true, personalBuffExtra = true, thornsTankOnly = true, weaponEnhancements = true, leftClickMainHand = true, sleepingBag = true,
     elementalAttractor = true,
     otherBuffs = true,
+    professionCooldowns = true, professionCooldownHours = true, professionCooldownAlts = true,
     buffsFont = true, buffsFontSize = true, buffsOutline = true, buffsBorderColor = true,
     buffGlow = true, buffGlowType = true, buffGlowColor = true, buffGlowLines = true, buffGlowThickness = true,
     buffGlowSpeed = true,
@@ -52,10 +53,16 @@ local function OnCellHide(cell)
 end
 
 local function OnCellEnter(cell)
+    if cell.tip then
+        GameTooltip:SetOwner(cell, "ANCHOR_BOTTOM")
+        GameTooltip:SetText(cell.tip)
+        GameTooltip:Show()
+    end
     Menu.Open(cell)
 end
 
-local function OnCellLeave()
+local function OnCellLeave(cell)
+    if cell.tip then GameTooltip:Hide() end
     Menu.Leave()
 end
 
@@ -155,7 +162,7 @@ local function Show(list)
             local cell = GetCell(shown)
             Cell.Place(cell, frame, shown, size, entry.icon, entry.count)
             cell.rangeIn, cell.rangeMissing = nil, nil
-            cell.items, cell.key = entry.items, entry.key
+            cell.items, cell.key, cell.tip = entry.items, entry.key, entry.tip
             cell.spell, cell.single, cell.solo = entry.spell, entry.single, entry.solo
             SetAction(cell, entry)
             ShowTimer(cell, entry.aura)
@@ -293,7 +300,8 @@ local function OnEvent(_, event, unit, arg2, arg3, arg4)
         FadeCast(not Secret(arg2) and arg2 or nil, spellID)
     end
     if event == "UNIT_SPELLCAST_SUCCEEDED" and (Secret(spellID)
-        or not (R.NoteImbueCast(spellID) or R.NoteFoodCast(spellID) or R.NoteUseCast(spellID))) then return end
+        or not (R.NoteImbueCast(spellID) or R.NoteFoodCast(spellID) or R.NoteUseCast(spellID)
+            or R.NoteProfessionCast(spellID))) then return end
     Queue()
 end
 
@@ -338,9 +346,10 @@ local function Listen()
     if S.Get("personalBuffs") or S.Get("raidBuffs") then events:RegisterUnitEvent("UNIT_SPELLCAST_SENT", "player") end
     if S.Get("personalBuffs") or S.Get("raidBuffs") or R.WatchesImbue()
         or not R.Carried("food") and R.ConsumablePicked("food")
-        or S.Get("buffIconMode") == "last" then
+        or S.Get("buffIconMode") == "last" or S.Get("professionCooldowns") then
         events:RegisterUnitEvent("UNIT_SPELLCAST_SUCCEEDED", "player")
     end
+    if S.Get("professionCooldowns") then events:RegisterEvent("SKILL_LINES_CHANGED") end
     events:RegisterEvent("PLAYER_ENTERING_WORLD")
     events:RegisterEvent("PLAYER_REGEN_ENABLED")
     events:RegisterEvent("PLAYER_UPDATE_RESTING")

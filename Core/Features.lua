@@ -285,6 +285,7 @@ ns.FEATURES = {
         sleepingBag = false,
         elementalAttractor = true,
         otherBuffs = false,
+        professionCooldowns = false,
         campfire = true,
         campNearbyAlert = true,
         lowHealth = true,

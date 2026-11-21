@@ -14,6 +14,7 @@ local Group = Settings.Group
 local STAGE_H, NOTE_Y, NOTE_SIZE, STAGE_MARGIN = 120, A.Style.STAGE_NOTE_Y, A.Style.STAGE_NOTE_SIZE, A.Style.STAGE_MARGIN
 local MINUTES_RANGE, ICON_RANGE, TEXT_RANGE = { 0, 10, 1 }, { 20, 96, 1 }, ns.Shared.Style.HUD_TEXT_RANGE
 local SECONDS_RANGE = { 0, MINUTES_RANGE[2] * A.C.SECONDS, 5 }
+local HOURS_RANGE = { 0, 24, 1 }
 local ICON_MODES = { { default = "Default", last = "Last Used" }, { "default", "last" } }
 local ORDER_BUFFS = 10
 local PREVIEW = A.BuffPreview
@@ -32,6 +33,7 @@ local NEEDS_PERSONAL = ns.L("Needs Personal Buff Reminders")
 local NEEDS_WEAPON = ns.L("Needs Weapon Enhancement Reminder")
 local NEEDS_RANGE = ns.L("Needs Show Buff Range")
 local NEEDS_THORNS = ns.L("Needs Thorns")
+local NEEDS_PROFESSIONS = ns.L("Needs Profession Cooldown Reminders")
 local TEXT_WEAPON = "Weapon Enhancement"
 local TEXT_AT_60 = "Hide in the World at Level 60"
 local TEXT_CARRIED = "Off: a reminder even with none in your bags, so you know to buy some."
@@ -61,6 +63,7 @@ local Enabled = A.Enabled
 local RaidBuffsOn = A.Needs("raidBuffs")
 local PersonalBuffsOn = A.Needs("personalBuffs")
 local WeaponOn = A.Needs("weaponEnhancements")
+local ProfessionsOn = A.Needs("professionCooldowns")
 
 local function RangeOn()
     return RaidBuffsOn() and S.Get("raidBuffRange") and true or false
@@ -315,6 +318,16 @@ rows[#rows + 1] = { key = "personalBuffExtra", label = "Spell IDs", text = true,
     needs = PersonalBuffsOn, why = NEEDS_PERSONAL,
     help = "Your own buffs to remind you of, by the ID of the spell you cast, separated by spaces or commas." }
 for i = 1, MAX_TYPED do rows[#rows + 1] = TypedRow(i) end
+rows[#rows + 1] = Group("Profession Cooldowns", true)
+rows[#rows + 1] = { key = "professionCooldowns", label = "Profession Cooldown Reminders", toggle = true,
+    needs = Enabled, why = OFF,
+    help = "Transmute: Arcanite, Salt Shaker, Mooncloth and Dedicated Study, out in the world when ready." }
+rows[#rows + 1] = { key = "professionCooldownHours", label = "Remind With Hours Left", slider = HOURS_RANGE,
+    unit = " h", needs = ProfessionsOn, why = NEEDS_PROFESSIONS,
+    help = "Shows a cooldown this many hours before it is ready; 0 waits until it is." }
+rows[#rows + 1] = { key = "professionCooldownAlts", label = "Other Characters", toggle = true,
+    needs = ProfessionsOn, why = NEEDS_PROFESSIONS,
+    help = "Also reminds you of your other characters' cooldowns, as they were when last played." }
 rows[#rows + 1] = Group("Glow")
 rows[#rows + 1] = { key = "buffGlow", label = "Glow", toggle = true, needs = Enabled, why = OFF,
     help = "A glow around each reminder icon, since each is a buff that is missing or running out." }

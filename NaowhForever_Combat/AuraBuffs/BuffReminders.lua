@@ -25,6 +25,13 @@ local MAX_LEVEL = 60
 local SLEEPING_BAG = ns.Shared.Items.SLEEPING_BAG
 local BAG_WARN_MINUTES = 15
 local ATTRACTOR_ZONES = { none = true, party = true }
+local HOUR = 3600
+local STORE_SLOP = 60
+local SKILL_LINE = 7
+local TEXT_HOURS = "%dh"
+local TEXT_MINUTES = "%dm"
+local TEXT_READY = ns.L("%s is ready on %s.")
+local TEXT_READY_IN = ns.L("%s is ready on %s in %s.")
 local WHERE = {
     consumables = { none = "consumablesWorld", party = "consumablesDungeon", raid = "consumablesRaid",
         atMax = "consumablesMaxHide" },
@@ -64,6 +71,7 @@ local lastImbue
 local leveledTo
 local hidden = {}
 local custom, customText = {}, ""
+local skillLines, otherChars, ownLeft = {}, {}, {}
 
 local function Secret(v)
     return issecretvalue and issecretvalue(v)
@@ -445,12 +453,29 @@ local function Lasts(left, warn, duration)
     return true
 end
 
-local function BagCooldown()
-    local start, duration, enable = C_Container.GetItemCooldown(SLEEPING_BAG)
-    if Secret(start) or Secret(duration) or Secret(enable) then return nil end
-    if enable ~= 1 or not duration or duration <= GCD then return 0 end
+local function Remaining(start, duration)
+    if not duration or duration <= GCD then return 0 end
     if start > GetTime() then start = start - TIME_WRAP end
     return math.max(start + duration - GetTime(), 0)
+end
+
+local function ItemCooldown(item)
+    local start, duration, enable = C_Container.GetItemCooldown(item)
+    if Secret(start) or Secret(duration) or Secret(enable) then return nil end
+    if enable ~= 1 then return 0 end
+    return Remaining(start, duration)
+end
+
+local function SpellCooldown(spell)
+    local info = C_Spell.GetSpellCooldown(spell)
+    if not info then return 0 end
+    if Secret(info.startTime) or Secret(info.duration) or Secret(info.isEnabled) then return nil end
+    if not info.isEnabled then return 0 end
+    return Remaining(info.startTime, info.duration)
+end
+
+local function BagCooldown()
+    return ItemCooldown(SLEEPING_BAG)
 end
 
 local function SleepingBag(list, buffs, zone)
@@ -471,6 +496,111 @@ local function Attractor(list, buffs, zone)
     local before = #list
     Consumable(list, buffs, D.ATTRACTOR, item, nil, nil, true)
     if #list > before then list[#list].items, list[#list].key = D.ATTRACTOR.items, "attractor" end
+end
+
+local function AddSkill(index)
+    local line = index and select(SKILL_LINE, GetProfessionInfo(index))
+    if line then skillLines[line] = true end
+end
+
+local function ReadSkills()
+    wipe(skillLines)
+    local first, second, archaeology, fishing, cooking, firstAid = GetProfessions()
+    AddSkill(first)
+    AddSkill(second)
+    AddSkill(archaeology)
+    AddSkill(fishing)
+    AddSkill(cooking)
+    AddSkill(firstAid)
+end
+
+local function CooldownRecords()
+    local account = ns.AccountSettings()
+    if type(account.professionCooldowns) ~= "table" then account.professionCooldowns = {} end
+    return account.professionCooldowns
+end
+
+local function OwnCooldown(cooldown, saved)
+    if cooldown.skill and not skillLines[cooldown.skill] then return nil end
+    if cooldown.item then
+        if C_Item.GetItemCount(cooldown.item) == 0 then return nil end
+        return ItemCooldown(cooldown.item)
+    end
+    local left = SpellCooldown(cooldown.spell)
+    if C_SpellBook.IsSpellKnown(cooldown.spell) or left and left > 0 or saved[cooldown.key] then return left end
+end
+
+local function Countdown(left)
+    if left <= 0 then return nil end
+    if left >= HOUR then return TEXT_HOURS:format(math.ceil(left / HOUR)) end
+    return TEXT_MINUTES:format(math.ceil(left / SECONDS))
+end
+
+local function CooldownName(cooldown)
+    return cooldown.item and C_Item.GetItemNameByID(cooldown.item) or C_Spell.GetSpellName(cooldown.spell) or ""
+end
+
+local function CooldownEntry(list, cooldown, left, warn, who, key)
+    if left > warn then return Wake(left - warn) end
+    if left > 0 then Wake(left) end
+    local tip = left > 0 and TEXT_READY_IN:format(CooldownName(cooldown), who, Countdown(left))
+        or TEXT_READY:format(CooldownName(cooldown), who)
+    list[#list + 1] = { icon = cooldown.item and ItemIcon(cooldown.item) or C_Spell.GetSpellTexture(cooldown.spell),
+        key = key, count = Countdown(left), tip = tip }
+    return list[#list]
+end
+
+local function SaveOwn(records, me)
+    local now = time()
+    local saved = records[me] or { ready = {} }
+    saved.name = UnitName("player")
+    local any = false
+    wipe(ownLeft)
+    for _, cooldown in ipairs(D.PROFESSION_COOLDOWNS) do
+        local left = OwnCooldown(cooldown, saved.ready)
+        ownLeft[cooldown.key] = left
+        local ready = left and now + math.ceil(left)
+        local old = saved.ready[cooldown.key]
+        if not ready or not old or math.abs(old - ready) > STORE_SLOP then saved.ready[cooldown.key] = ready end
+        if ready then any = true end
+    end
+    records[me] = any and saved or nil
+    return saved
+end
+
+local function ProfessionCooldowns(list, zone)
+    if zone ~= "none" or UnitIsDeadOrGhost("player") then return end
+    ReadSkills()
+    local records = CooldownRecords()
+    local me = ns.CharKey(records)
+    local mine = SaveOwn(records, me)
+    local warn = S.Get("professionCooldownHours") * HOUR
+    for _, cooldown in ipairs(D.PROFESSION_COOLDOWNS) do
+        local left = ownLeft[cooldown.key]
+        local entry = left and CooldownEntry(list, cooldown, left, warn, mine.name, "profession:" .. cooldown.key)
+        if entry then
+            entry.item = cooldown.item
+            entry.spell = cooldown.cast and cooldown.spell or nil
+            entry.unit = entry.spell and "player" or nil
+        end
+    end
+    if not S.Get("professionCooldownAlts") then return end
+    wipe(otherChars)
+    for key in pairs(records) do
+        if key ~= me then otherChars[#otherChars + 1] = key end
+    end
+    table.sort(otherChars)
+    local now = time()
+    for _, key in ipairs(otherChars) do
+        local other = records[key]
+        for _, cooldown in ipairs(D.PROFESSION_COOLDOWNS) do
+            local ready = other.ready[cooldown.key]
+            if ready then
+                CooldownEntry(list, cooldown, math.max(ready - now, 0), warn, other.name or key,
+                    "profession:" .. key .. ":" .. cooldown.key)
+            end
+        end
+    end
 end
 
 local function SlotEnchanted(weaponSlot, warn, kind)
@@ -742,6 +872,14 @@ function Reminders.NoteImbueCast(spellID)
     return false
 end
 
+function Reminders.NoteProfessionCast(spellID)
+    if not S.Get("professionCooldowns") then return false end
+    for _, cooldown in ipairs(D.PROFESSION_COOLDOWNS) do
+        if cooldown.spell == spellID then return true end
+    end
+    return false
+end
+
 function Reminders.BagBusy()
     return BagCooldown() ~= 0
 end
@@ -825,6 +963,7 @@ function Reminders.Collect()
     end
     if S.Get("sleepingBag") then SleepingBag(list, buffs, zone) end
     if S.Get("elementalAttractor") then Attractor(list, buffs, zone) end
+    if S.Get("professionCooldowns") then ProfessionCooldowns(list, zone) end
     if S.Get("personalBuffs") and ShowsHere("personalBuffs", zone) then PersonalBuffs(list, buffs) end
     if S.Get("raidBuffs") and ShowsHere("raidBuffs", zone) then RaidBuffs(list, buffs) end
     for i = #list, 1, -1 do

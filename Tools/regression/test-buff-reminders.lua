@@ -66,6 +66,9 @@ local function Fixture(opts)
         reads = 0,
         ranges = opts.ranges or {}, rangeReads = 0, tickers = {}, rangePaints = 0,
         cooldowns = {},                             -- itemID -> { start, duration }, or SECRET
+        spellCooldowns = {},                        -- spellID -> { start, duration }
+        professions = opts.professions or {},       -- skill line IDs of the professions you have
+        epoch = 100000,                             -- time()'s clock
     }
     local timers, frames = {}, {}
 
@@ -117,6 +120,7 @@ local function Fixture(opts)
         personalBuffs = true, personalBuffPicks = {}, personalBuffExtra = "", weaponEnhancements = false, sleepingBag = false,
         elementalAttractor = true,
         otherBuffs = false,
+        professionCooldowns = false, professionCooldownHours = 0, professionCooldownAlts = true,
         leftClickMainHand = false,
         buffGlow = false, buffGlowType = "standard", buffGlowColor = { r = 1, g = 0.82, b = 0.2 },
         buffGlowLines = 8, buffGlowThickness = 2, buffGlowSpeed = 5,
@@ -132,7 +136,7 @@ local function Fixture(opts)
     function S.Default(k) return defaults[k] end
 
     local account = {}
-    local ns = { AccountSettings = function() return account end, L = dofile("Tools/regression/locale_stub.lua").L, Upper = string.upper, Lower = string.lower, MEDIA = dofile("Tools/regression/core_media.lua"),
+    local ns = { AccountSettings = function() return account end, CharKey = function() return "Tester-Realm" end, L = dofile("Tools/regression/locale_stub.lua").L, Upper = string.upper, Lower = string.lower, MEDIA = dofile("Tools/regression/core_media.lua"),
         AuraBuffSettings = S,
         OnePixel = function() return opts.pixel or 1 end,
         Apply = function() end,
@@ -205,6 +209,9 @@ local function Fixture(opts)
         LOCALIZED_CLASS_NAMES_MALE = setmetatable({}, { __index = function(_, class) return class:lower() end }),
         Enum = { ItemClass = { Weapon = 2 }, ItemEnchantType = { Temporary = 2, Imbue = 3 } },
         GetTime = function() return state.now end,
+        time = function() return state.epoch + math.floor(state.now - 1000) end,
+        GetProfessions = function() return state.professions[1] and 1, state.professions[2] and 2 end,
+        GetProfessionInfo = function(index) return "x", nil, 1, 300, 0, 0, state.professions[index] end,
         InCombatLockdown = function() return state.combat end,
         IsResting = function() return state.resting end,
         IsInInstance = function() return state.instance ~= "none", state.instance end,
@@ -255,6 +262,7 @@ local function Fixture(opts)
         C_Item = {
             GetItemCount = Count,
             GetItemIconByID = function(id) return "item:" .. id end,
+            GetItemNameByID = function(id) return "item " .. id end,
             GetItemSpell = function(id)
                 local spell = state.itemSpells[id] or ITEM_SPELLS[id]
                 if spell then return "spell", spell end
@@ -277,6 +285,10 @@ local function Fixture(opts)
         C_Spell = {
             GetSpellTexture = function(id) return "spell:" .. id end,
             GetSpellName = function(id) return SPELL_NAMES[id] end,
+            GetSpellCooldown = function(id)
+                local cd = state.spellCooldowns[id] or { 0, 0 }
+                return { startTime = cd[1], duration = cd[2], isEnabled = true, modRate = 1 }
+            end,
             IsSpellInRange = function(id, unit)
                 state.rangeReads = state.rangeReads + 1
                 state.rangeSpell = id
@@ -2397,6 +2409,67 @@ do
     local m = Fixture({ settings = { personalBuffExtra = "19028" }, units = { player = "MAGE" } })
     m.Login()
     Check("another class that does not know it: nothing", m.Shown(), "")
+end
+
+-- Profession Cooldowns: off by default. While on, a cooldown you know reminds when it is ready, or the hours before
+-- that you pick; it is saved per character, so another character's shows too, and only out in the world.
+do
+    local MOONCLOTH, ARCANITE, STUDY, SHAKER = 18560, 17187, 1225469, 15846
+    local TAILORING, LEATHERWORKING, HOUR = 197, 165, 3600
+    local t = Fixture({ settings = { personalBuffs = false, elementalAttractor = false },
+        professions = { TAILORING }, known = { [MOONCLOTH] = true } })
+    t.Login()
+    Check("off by default", t.Shown(), "")
+    Check("off: no record kept", t.ns.AccountSettings().professionCooldowns, nil)
+    t.Set("professionCooldowns", true)
+    Check("on: Mooncloth ready", t.Shown(), "spell:" .. MOONCLOTH)
+    t.state.spellCooldowns[MOONCLOTH] = { 1000, 4 * HOUR }
+    t.Fire("UNIT_SPELLCAST_SUCCEEDED", "player", "cast", MOONCLOTH); t.Advance(0.5)
+    Check("used: gone", t.Shown(), "")
+    t.Set("professionCooldownHours", 5)
+    Check("within the hours picked: shown with the time left", t.Shown(), "spell:" .. MOONCLOTH .. "x4h")
+    t.Set("professionCooldownHours", 0)
+    t.Advance(4 * HOUR)
+    Check("ready again when its wake comes", t.Shown(), "spell:" .. MOONCLOTH)
+    t.state.known[MOONCLOTH] = nil
+    t.Fire("BAG_UPDATE_DELAYED"); t.Advance(0.5)
+    Check("a recipe seen once is remembered", t.Shown(), "spell:" .. MOONCLOTH)
+    t.state.professions = {}
+    t.Fire("SKILL_LINES_CHANGED"); t.Advance(0.5)
+    Check("profession dropped: no reminder", t.Shown(), "")
+    Check("and no record", t.ns.AccountSettings().professionCooldowns["Tester-Realm"], nil)
+
+    t.ns.AccountSettings().professionCooldowns["Alt-Realm"] = { name = "Alt",
+        ready = { arcanite = t.env.time() + 2 * HOUR } }
+    t.Fire("BAG_UPDATE_DELAYED"); t.Advance(0.5)
+    Check("another character's transmute, not ready yet", t.Shown(), "")
+    t.Set("professionCooldownHours", 3)
+    Check("another character's within the hours", t.Shown(), "spell:" .. ARCANITE .. "x2h")
+    local tip
+    for _, f in ipairs(t.frames) do if rawget(f, "tip") and f.shown then tip = f.tip end end
+    Check("its tooltip names the character", tip and tip:find("Alt", 1, true) ~= nil, true)
+    t.Set("professionCooldownAlts", false)
+    Check("Other Characters off", t.Shown(), "")
+    t.Set("professionCooldownAlts", true)
+    t.Set("professionCooldownHours", 0)
+
+    t.state.professions = { LEATHERWORKING }
+    t.state.bags = { SHAKER }
+    t.Fire("SKILL_LINES_CHANGED"); t.Advance(0.5)
+    Check("a carried Salt Shaker with Leatherworking", t.Shown(), "item:" .. SHAKER)
+    t.state.cooldowns[SHAKER] = { t.state.now, 71 * HOUR }
+    t.Fire("UNIT_SPELLCAST_SUCCEEDED", "player", "cast", 19566); t.Advance(0.5)
+    Check("used: gone", t.Shown(), "")
+
+    t.state.known[STUDY] = true
+    t.Fire("SPELLS_CHANGED"); t.Advance(0.5)
+    Check("Dedicated Study needs no profession", t.Shown(), "spell:" .. STUDY)
+    local cell
+    for _, f in ipairs(t.frames) do if rawget(f, "tip") and f.shown then cell = f end end
+    Check("and a click casts it", cell and cell.attributes.spell1, STUDY)
+    t.state.instance = "party"
+    t.Fire("PLAYER_ENTERING_WORLD"); t.Advance(0.5)
+    Check("not in a dungeon", t.Shown(), "")
 end
 
 if failures > 0 then

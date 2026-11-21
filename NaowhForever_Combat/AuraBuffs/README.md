@@ -10,7 +10,8 @@ defaults come from `ns.FEATURES.auraBuffs`.
   Fire, Battle Shout, poisons, a weapon imbue, a hunter's aspect) when it is missing, and the Cozy Sleeping Bag
   out in the world when it is ready and Well-Rested is missing (Sleeping Bag Reminder, off by default), and the
   Elemental Attractor in the world and dungeons while Magical Awareness is missing (Elemental Attractor Reminder,
-  on by default). Click one to use the item it
+  on by default), and your profession cooldowns out in the world when they are ready (Profession Cooldown
+  Reminders, off by default). Click one to use the item it
   shows or cast the buff, or hover it to pick another carried item. Middle-click one to hide it until you
   reload. The worn gear and fishing pole reminders moved to QoL > Loot & Items > Gear Reminders
   (`NaowhForever_QoL/Loot/GearReminders.lua`).
@@ -293,6 +294,23 @@ NaowhForever_Combat/AuraBuffs/
   Carry One pick and no Last Used icon: it always needs one carried, and its families mix.
 - Dragonbreath Chili (item 12217, buff 15852, reonla's ask) is in Other Buffs, not food: its buff is not Well
   Fed, so the food reminder cannot count it.
+- Profession Cooldown Reminders (`professionCooldowns`, off by default) is Robin's ask: Transmute: Arcanite
+  (17187), the Salt Shaker (item 15846, its use 19566), Mooncloth (18560) and the Dedicated Study legacy talent
+  (1225469, the ability; the other spells of that name are its passive ranks), in `D.PROFESSION_COOLDOWNS`. The
+  IDs and cooldowns are the client's (build 1.60.1.71037): 47, 71, 95 and 23 hours. Arcanite's cooldown is the
+  one every transmute shares, so any transmute starts it. A recipe needs its profession (`skill`, the skill
+  line from `GetProfessions`); the Salt Shaker needs Leatherworking and to be carried.
+- Whether `C_SpellBook.IsSpellKnown` is true for a recipe on Forever is unconfirmed, so a recipe also counts as
+  known once its cooldown has been seen running or it was saved for this character before; dropping the
+  profession forgets it.
+- Each character saves when its cooldowns are ready as `time()` (`professionCooldowns` in the account
+  settings, by `ns.CharKey`), so another character's show with Other Characters on, as they were when that one
+  was last played. The current character's come from its live cooldowns; a saved time moves only when it is off
+  by more than `STORE_SLOP` (60 s), so a refresh does not rewrite it. They show in the open world only, cities
+  included, so Hide While Resting does not hide them. Remind With Hours Left shows one that many hours early,
+  with the hours (or minutes) left on the icon; hovering one says whose it is. Only Dedicated Study casts on a
+  click and the Salt Shaker uses itself; a recipe's icon does nothing, as each needs its reagents or a moonwell.
+  A wake (`Wake`) brings each back when it is due, and a cast of one of them refreshes the row.
 - Only If I Carry One is set per kind (`carriedPicks`: food, flask, battle, weapon): Drjay
   wanted buff food to remind him with none in his bags, without flasks and elixirs showing all the time too. A kind
   with no pick follows the old single switch (`onlyIfCarried`), so profiles from before keep what they did.
