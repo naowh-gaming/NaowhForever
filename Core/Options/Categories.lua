@@ -139,7 +139,7 @@ local CATEGORIES = {
               and { "@Group Finder", "Group Finder/Settings", "QoL/Questing & Group:finderRoles", "QoL/Interface:chatZones" }
               or { "QoL/Questing & Group:finderRoles", "QoL/Interface:chatZones" } },
           { name = "Group Tools", cards = { "@Group Inspect", "Group Inspect/Settings", "QoL/Questing & Group:groupButtons",
-              "QoL/Questing & Group:freeForAll", "QoL/Questing & Group:layerSwap", "QoL/Questing & Group:layerTracker",
+              "QoL/Questing & Group:freeForAll", "QoL/Questing & Group:layerSwap",
               "QoL/Questing & Group:playerHistory" } },
       } },
     { name = "PvP", band = "COMBAT & GROUPS", navIcon = "trophy",
