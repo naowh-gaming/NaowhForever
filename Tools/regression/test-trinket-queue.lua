@@ -36,6 +36,7 @@ local function Fixture()
     local function Frame()
         local f = { events = {} }
         function f:RegisterEvent(e) self.events[e] = true end
+        function f:UnregisterEvent(e) self.events[e] = nil end
         function f:UnregisterAllEvents() self.events = {} end
         function f:SetScript(_, fn) self.onEvent = fn end
         g.frames[#g.frames + 1] = f
@@ -54,6 +55,8 @@ local function Fixture()
         GetTime = function() return g.now end,
         InCombatLockdown = function() return g.combat end,
         UnitIsDeadOrGhost = function() return g.dead end,
+        UnitIsFeignDeath = function() return g.feign end,
+        INVSLOT_FIRST_EQUIPPED = 1, INVSLOT_LAST_EQUIPPED = 19,
         UnitCastingInfo = function() return g.casting or nil end,
         UnitChannelInfo = function() return nil end,
         GetCursorInfo = function() return nil end,
@@ -220,6 +223,62 @@ do
     g.secret = true
     g.fire("PLAYER_LOGIN")
     check("auras secret: no aura read and no swap", #g.equips == 0)
+end
+
+do
+    local g = Fixture()
+    g.worn[TOP], g.bags[BADGE] = EARTHSTRIKE, true
+    g.combat = true
+    g.Q.Pick(TOP, BADGE)
+    check("a pick in combat listens for the fight to end", g.listening() and g.Q.Picked(TOP) == BADGE)
+    g.fire("PLAYER_REGEN_ENABLED")
+    check("nothing moves while still in combat", #g.equips == 0)
+    g.combat, g.dead = false, true
+    g.fire("PLAYER_REGEN_ENABLED")
+    check("nor while dead", #g.equips == 0)
+    g.dead = false
+    g.fire("PLAYER_ALIVE")
+    check("alive again: the pick goes on", #g.equips == 1 and g.equips[1][1] == BADGE and g.equips[1][2] == TOP)
+    check("queue off: it stops listening once done", not g.listening() and g.Q.Picked(TOP) == nil)
+end
+
+do
+    local g = Fixture()
+    g.bags[BADGE] = true
+    g.combat = true
+    g.Q.Pick(TOP, BADGE)
+    g.combat, g.dead, g.feign = false, true, true
+    g.fire("PLAYER_REGEN_ENABLED")
+    check("Feign Death out of combat: the pick goes on", #g.equips == 1 and g.equips[1][1] == BADGE)
+    g.dead, g.feign = false, false
+    g.bags[CARROT] = true
+    g.combat = true
+    g.Q.Pick(BOTTOM, CARROT)
+    g.Set("gearSets", false)
+    g.combat = false
+    g.fire("PLAYER_REGEN_ENABLED")
+    check("Gear Sets switched off: the pick is dropped", #g.equips == 1 and g.Q.Picked(BOTTOM) == nil
+        and not g.listening())
+end
+
+do
+    local g = Fixture()
+    g.settings.trinketQueue = true
+    g.worn[TOP], g.bags[BADGE], g.bags[CARROT] = EARTHSTRIKE, true, true
+    g.Q.Toggle(TOP, EARTHSTRIKE)
+    g.Q.Toggle(TOP, BADGE)
+    g.fire("PLAYER_LOGIN")
+    g.combat = true
+    g.Q.Pick(TOP, CARROT)
+    g.Q.Pick(BOTTOM, CARROT)
+    check("one trinket is picked for one slot", g.Q.Picked(TOP) == nil and g.Q.Picked(BOTTOM) == CARROT)
+    g.cooldowns[EARTHSTRIKE] = { g.now, 120 }
+    g.combat = false
+    g.fire("PLAYER_REGEN_ENABLED")
+    check("the pick goes on before the queue runs", #g.equips == 1 and g.equips[1][1] == CARROT
+        and g.equips[1][2] == BOTTOM)
+    g.advance(1)
+    check("then the queue carries on", #g.equips == 2 and g.equips[2][1] == BADGE and g.equips[2][2] == TOP)
 end
 
 do

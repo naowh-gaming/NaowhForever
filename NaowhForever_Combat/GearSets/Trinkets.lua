@@ -1,4 +1,5 @@
--- Trinkets.lua: the trinket rules (G.Trinkets): each slot's queue, best first, and the trinket-ready alert.
+-- Trinkets.lua: the trinket rules (G.Trinkets): each slot's queue, best first, the trinket-ready alert, and what a
+-- slot picked in combat takes when the fight ends.
 local ns = _G.NaowhForever
 
 local S = ns.QoLSettings
@@ -13,10 +14,14 @@ local QUEUES = "gearTrinketQueue"
 local QUEUE_EVENTS = { "BAG_UPDATE_COOLDOWN", "BAG_UPDATE_DELAYED", "PLAYER_EQUIPMENT_CHANGED", "PLAYER_REGEN_ENABLED",
     "PLAYER_ALIVE", "PLAYER_UNGHOST" }
 local READY_EVENTS = { "BAG_UPDATE_COOLDOWN", "PLAYER_EQUIPMENT_CHANGED" }
+local PICK_EVENTS = { "PLAYER_REGEN_ENABLED", "PLAYER_ALIVE", "PLAYER_UNGHOST" }
 local TEXT_READY = ns.L("%s is ready.")
 
 local events, queueTimer, readyTimer
-local chosen, readyAt, readyItem = {}, {}, {}
+local chosen, readyAt, readyItem, picks = {}, {}, {}, {}
+
+local Trinkets = {}
+G.Trinkets = Trinkets
 
 local function Secret(...)
     if not issecretvalue then return false end
@@ -108,15 +113,34 @@ local function RunSlot(slot)
     return Soonest(list)
 end
 
+local function QueueOn()
+    return G.On() and S.Get("trinketQueue")
+end
+
+local function ReadyOn()
+    return G.On() and S.Get("trinketReady")
+end
+
 local function RunQueue()
     if queueTimer then
         queueTimer:Cancel()
         queueTimer = nil
     end
-    if InCombatLockdown() or UnitIsDeadOrGhost("player") then return end
+    if InCombatLockdown() or UnitIsDeadOrGhost("player") and not UnitIsFeignDeath("player") then return end
     local soonest
     if UnitCastingInfo("player") or UnitChannelInfo("player") or GetCursorInfo() then
         soonest = RETRY
+    elseif next(picks) then
+        for slot = INVSLOT_FIRST_EQUIPPED, INVSLOT_LAST_EQUIPPED do
+            local id = picks[slot]
+            if id and GetInventoryItemID("player", slot) ~= id and InBags(id) then C_Item.EquipItemByName(id, slot) end
+        end
+        Trinkets.Clear()
+        if QueueOn() then
+            soonest = RETRY
+        else
+            for _, event in ipairs(PICK_EVENTS) do events:UnregisterEvent(event) end
+        end
     else
         wipe(chosen)
         for _, slot in ipairs(TRINKET_SLOTS) do
@@ -161,22 +185,15 @@ local function WatchReady()
     Alert()
 end
 
-local function QueueOn()
-    return G.On() and S.Get("trinketQueue")
-end
-
-local function ReadyOn()
-    return G.On() and S.Get("trinketReady")
-end
-
 local function OnEvent(_, event, slot)
     if event == "PLAYER_EQUIPMENT_CHANGED" and not PAIR[slot] then return end
     if ReadyOn() and (event == "BAG_UPDATE_COOLDOWN" or event == "PLAYER_EQUIPMENT_CHANGED") then WatchReady() end
-    if QueueOn() and not InCombatLockdown() then RunQueue() end
+    if (QueueOn() or next(picks)) and not InCombatLockdown() then RunQueue() end
 end
 
 local function Apply()
-    local queue, ready = QueueOn(), ReadyOn()
+    if not G.On() and next(picks) then Trinkets.Clear() end
+    local queue, ready, picked = QueueOn(), ReadyOn(), next(picks) ~= nil
     if events then events:UnregisterAllEvents() end
     if queueTimer and not queue then
         queueTimer:Cancel()
@@ -186,18 +203,20 @@ local function Apply()
         readyTimer:Cancel()
         readyTimer = nil
     end
-    if not (queue or ready) then return end
+    if not (queue or ready or picked) then return end
     if not events then
         events = CreateFrame("Frame")
         events:SetScript("OnEvent", OnEvent)
     end
-    for _, event in ipairs(queue and QUEUE_EVENTS or READY_EVENTS) do events:RegisterEvent(event) end
+    if queue or ready then
+        for _, event in ipairs(queue and QUEUE_EVENTS or READY_EVENTS) do events:RegisterEvent(event) end
+    end
+    if picked and not queue then
+        for _, event in ipairs(PICK_EVENTS) do events:RegisterEvent(event) end
+    end
     if ready then WatchReady() end
     if queue then RunQueue() end
 end
-
-local Trinkets = {}
-G.Trinkets = Trinkets
 
 Trinkets.InBags = InBags
 
@@ -214,6 +233,22 @@ function Trinkets.Toggle(slot, id)
         list[#list + 1] = id
     end
     if QueueOn() then RunQueue() end
+end
+
+function Trinkets.Clear()
+    wipe(picks)
+end
+
+function Trinkets.Picked(slot)
+    return picks[slot]
+end
+
+function Trinkets.Pick(slot, id)
+    for other, picked in pairs(picks) do
+        if picked == id then picks[other] = nil end
+    end
+    picks[slot] = id
+    Apply()
 end
 
 local function OnSet(key)

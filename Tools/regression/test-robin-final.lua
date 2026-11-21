@@ -40,6 +40,7 @@ local function fixture(kind)
             self.width, self.height = w, h
         end
         function f:SetPoint(...) self.point = { ... } end
+        function f:GetFrameLevel() return 1 end
         function f:SetTexture(v) self.texture = v end
         function f:SetTexCoord(l) self.crop = l end
         function f:SetColorTexture(...) self.color = { ... } end
@@ -94,6 +95,9 @@ local function fixture(kind)
         wipe = function(t) for k in pairs(t) do t[k] = nil end return t end,
         CreateFrame = function(_, name, parent, template) return frame(name, parent, template) end,
         InCombatLockdown = function() return state.combat end,
+        UnitIsDeadOrGhost = function() return false end,
+        UnitIsFeignDeath = function() return false end, INVSLOT_FIRST_EQUIPPED = 1, INVSLOT_LAST_EQUIPPED = 19,
+        UnitCastingInfo = function() end, UnitChannelInfo = function() end, GetCursorInfo = function() end,
         GetTime = function() return state.now end,
         IsInInstance = function() return false end,
         IsMounted = function() return false end, IsResting = function() return false end,
@@ -128,7 +132,7 @@ local function fixture(kind)
         C_Item = {
             GetItemInfoInstant = function(id) return id, nil, nil, id == 303 and 'INVTYPE_HEAD' or 'INVTYPE_TRINKET' end,
             GetItemIconByID = function(id) return id end,
-            GetItemInfo = function(id) return 'Weapon' .. id end,
+            GetItemInfo = function(id) return 'Weapon' .. id, '[Weapon' .. id .. ']' end,
             GetItemCount = function() return 0 end,
             EquipItemByName = function(id, slot)
                 assert(not state.combat); state.equips[#state.equips + 1] = { id, slot }
@@ -178,11 +182,22 @@ do
     s.bags = { 101 }; bar.buttons[1].scripts.PostClick(bar.buttons[1], 'RightButton', false)
     s.fire('PLAYER_REGEN_DISABLED'); s.combat = true
     check('combat closes picker', not picker.shown)
+    bar.buttons[1].scripts.PostClick(bar.buttons[1], 'RightButton', false)
+    check('and a right-click opens it again in combat', picker.shown)
+    picker.buttons[1].scripts.OnClick(picker.buttons[1])
+    check('a pick in combat waits, its icon on the slot', #s.equips == 1 and not picker.shown
+        and bar.buttons[1].next.shown and bar.buttons[1].next.icon.texture == 101)
+    bar.buttons[1].scripts.PostClick(bar.buttons[1], 'RightButton', false)
+    picker.buttons[1].scripts.OnClick(picker.buttons[1])
+    check('picking it again calls it off', not bar.buttons[1].next.shown)
+    bar.buttons[1].scripts.PostClick(bar.buttons[1], 'RightButton', false)
     picker.buttons[1].scripts.OnClick(picker.buttons[1])
     s.S.Set('trinketSize', 50); s.ns.Apply()
     check('combat blocks equips and layout', #s.equips == 1 and bar.buttons[1].width == 36)
     s.combat = false; s.fire('PLAYER_REGEN_ENABLED')
     check('deferred settings apply', bar.buttons[1].width == 50)
+    check('the pick goes on as combat ends', #s.equips == 2 and s.equips[2][1] == 101 and s.equips[2][2] == 13)
+    check('and its mark clears', not bar.buttons[1].next.shown)
 end
 
 do
@@ -206,7 +221,9 @@ do
     check('and swaps the weapon', s.equips[1][1] == 404 and s.equips[1][2] == 16)
     s.fire('PLAYER_REGEN_DISABLED'); s.combat = true
     main.scripts.PostClick(main, 'RightButton', false)
-    check('in combat no picker opens, not even for a weapon', not picker.shown)
+    check('in combat a weapon slot opens its picker too', picker.shown)
+    picker.buttons[1].scripts.OnClick(picker.buttons[1])
+    check('and its pick waits for the fight to end', #s.equips == 1 and main.next.shown)
     local watcher
     for _, f in ipairs(s.frames) do if f.events.PLAYER_EQUIPMENT_CHANGED and f.events.PLAYER_REGEN_DISABLED then watcher = f end end
     main.icon.texture = nil

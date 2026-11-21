@@ -17,7 +17,8 @@ NaowhForever_Combat/GearSets/
   GearSets.lua                the rules and API (ns.GearSets, G): your sets, equipping one,
                               equipping after combat, putting back what you wore, the automatic swaps
   Constants.lua               what its files share (G.C): the settings page, the trinket slots
-  Trinkets.lua                the trinket rules (G.Trinkets): each slot's queue and the trinket-ready alert
+  Trinkets.lua                the trinket rules (G.Trinkets): each slot's queue, the trinket-ready alert
+                              and what a slot takes when combat ends
   View/
     Style.lua                 its look (G.Style), on top of Shared/Style.lua
     Look.lua                  a set or trinket button's look, on the bars and previews (G.Look)
@@ -83,14 +84,16 @@ NaowhForever_Combat/GearSets/
   per open (the icon list, the action) is kept on it.
 - `EMPTY_ICON` (134400) is the game's question mark, for an empty trinket slot.
 - The trinket slots are secure item buttons: a change to them waits for combat to end, and a
-  right-click to pick a trinket works only outside combat. The bags are checked again on the
-  click, since they may have changed since the picker opened.
+  right-click opens the picker of what fits the slot. The bags are checked again on the click,
+  since they may have changed since the picker opened.
 - The bar's Slots (`trinketSlots`) are lists in `C.BAR_SLOTS`. The trinkets keep their names
   (`NaowhForeverTrinket1`, `2`) for their key bindings; the other slots are `NaowhForeverGearSlot<slot>`.
   A slot's button is made the first time it is shown and only hidden after.
-- The picker opens only outside combat, weapons included, since addon code cannot equip in combat. A
-  weapon swapped in combat by the Gear Set Bar shows on its slot at once; the rest of the bar's layout
-  waits for the fight to end.
+- Addon code cannot equip in combat, so a pick in combat (weapons included) waits in `G.Trinkets`
+  and shows its icon in the slot's corner; it goes on once the fight ends and you are alive, before the
+  Trinket Queue's own pass. Picking it again, or what the slot wears, calls it off. A weapon swapped
+  in combat by the Gear Set Bar shows on its slot at once; the rest of the bar's layout waits for the
+  fight to end.
 - The secure item action errors on an empty slot (a nil link into `C_Item.IsEquippableItem`), so
   an empty slot gets no `type1`.
 - The window listens only while it is open.
@@ -118,6 +121,7 @@ NaowhForever_Combat/GearSets/
 
 - `lua Tools/regression/test-gear-swaps.lua`: the automatic swaps, putting back what you wore, combat
   and death, Click Again to Take Off and `/nfgear`.
-- `lua Tools/regression/test-trinket-queue.lua`: the Trinket Queue and the Trinket Ready Alert.
+- `lua Tools/regression/test-trinket-queue.lua`: the Trinket Queue, the Trinket Ready Alert and picks
+  made in combat.
 - `lua Tools/regression/test-robin-final.lua`: the trinket bar (secure buttons, the picker, combat
   deferral, its events only while on) and the gear bar's Show choices.
