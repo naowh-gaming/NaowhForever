@@ -30,6 +30,9 @@ local NAMES_LINE = "        names = { %s },"
 local IMAGES_LINE = "        images = { %s },"
 local IMAGE_BOTTOM_LINE = "        imageBottom = %s,"
 local ENTRANCE_LINE = "        entrance = %s,"
+local STAIRS_LINE = "        stairs = { %s },"
+local STAIRS_SPOT = "{ %d, %s, %s, to = %d%s }"
+local ITEM_FIELD = ", item = %d"
 local PINS_OPEN = "        pins = {"
 local PIN_LINE = "            [%d] = %s,   -- %s"
 local PINS_CLOSE = "        },"
@@ -164,6 +167,13 @@ function Map.Copy(dungeon)
     if map.images then lines[#lines + 1] = Named(map.floors, map.images, IMAGES_LINE) end
     local door = Map.Spot(dungeon, ENTRANCE_KEY)
     if door then lines[#lines + 1] = ENTRANCE_LINE:format(SpotText(door)) end
+    if map.stairs then
+        wipe(ids)
+        for i, s in ipairs(map.stairs) do
+            ids[i] = STAIRS_SPOT:format(s[1], Number(s[2]), Number(s[3]), s.to, s.item and ITEM_FIELD:format(s.item) or "")
+        end
+        lines[#lines + 1] = STAIRS_LINE:format(table.concat(ids, LIST))
+    end
     lines[#lines + 1] = PINS_OPEN
     copying = dungeon
     Map.EachBoss(dungeon, PinLine)

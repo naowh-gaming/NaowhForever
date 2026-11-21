@@ -3058,6 +3058,15 @@ do
             == "Interface\\AddOns\\NaowhForever_DungeonJournal\\Media\\Maps\\BlackmawHold_2"
             and rawget(blackmawView.floorName, "text") == "Festering Grotto")
 
+        J.OpenDungeonMap(J.Get("AlcazPrison"))
+        local alcazView = J.DungeonMap.windowView
+        local stairs = alcazView.stairs[1]
+        check("Alcaz Prison: the stairs down show on the Main Unit", alcazView.floor == 1
+            and rawget(stairs, "shown") ~= false and stairs.stairs.to == 2)
+        stairs.scripts.OnClick(stairs)
+        check("and a click goes down to the Maximum Security Unit", alcazView.floor == 2
+            and rawget(alcazView.floorName, "text") == "Maximum Security Unit" and rawget(stairs, "shown") == false)
+
         local drowned = J.Get("DrownedCity")
         J.OpenDungeonMap(drowned)
         local drownedView = J.DungeonMap.windowView

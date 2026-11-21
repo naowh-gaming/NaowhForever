@@ -121,7 +121,7 @@ NaowhForever_DungeonJournal/
     QuestTracker.lua   a dungeon's quests in a small window, one row each
     GameTrackerFade.lua Hide the Game's Quest Tracker
     TrackerAuto.lua    Open Tracker in Dungeons (Skip at Max Level) and Show Outside Dungeons
-    MapView.lua        a dungeon's map drawn into a frame: art, boss and quest pins, entrance, floor switch (J.DungeonMap)
+    MapView.lua        a dungeon's map drawn into a frame: art, boss and quest pins, entrance, stairs, floor switch (J.DungeonMap)
     MapList.lua        the bosses beside the map window, in kill order
     MapWindow.lua      the map's own window: the map, the list, the picked boss's page
     DungeonPane.lua    New Layout's dungeon page: header, then map, quests or keys and the picked boss beside every boss's loot
@@ -444,7 +444,7 @@ in the pull request it opens.
   the redrawn maps and, for a quest an item begins, is where the mob that drops it spawns
   (Underground Map: Captain Beld). Build the Quest List first.
 - `Data/Maps.lua`: `[dungeon key] = { art, floors, names, order, image, images, imageBottom, floor, entrance,
-  pins }`. `art` is the folder of `Interface\WorldMap\<art>\<art><floor>_<tile>`: twelve 256px
+  stairs, pins }`. `art` is the folder of `Interface\WorldMap\<art>\<art><floor>_<tile>`: twelve 256px
   tiles four across, of which the map shows the top left 1002 by 668. `order` lists the art's
   floors in the order you walk them where the art's own numbers are not that order, or it holds
   another dungeon's floors (the switch offers only these; pins keep the art's number). `image`
@@ -453,7 +453,9 @@ in the pull request it opens.
   replace individual tiled floors. `imageBottom` is the bottom texture coordinate: `1`
   shows a complete image; the default `683 / 1024` crops older square TGAs to their map area.
   `floor` restricts a dungeon to one floor of shared art. Scarlet Monastery's wings now each
-  use a separate one-floor picture. `entrance = { floor, x, y }` and
+  use a separate one-floor picture. `entrance = { floor, x, y }`,
+  `stairs = { { floor, x, y, to = floor, item = key's item ID } }` (an arrow that shows the floor it
+  leads to, down when `to` is the higher number, naming the key if one opens it) and
   `pins = { [NPC ID] = { floor, x, y } }` (a chest by minus its object ID), x and y from 0 to
   1 across and down. Pins and floor numbers follow the chosen picture. `quests = { { npc or
   object = ID, name, start, finish, use } }` are the quest givers, hand-ins and quest objects that

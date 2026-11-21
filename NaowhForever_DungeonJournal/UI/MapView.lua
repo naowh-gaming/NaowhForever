@@ -1,4 +1,4 @@
--- MapView.lua: a dungeon's map drawn into a frame: its art, its bosses' and quest pins, the entrance and the floor switch (J.DungeonMap).
+-- MapView.lua: a dungeon's map drawn into a frame: its art, its bosses' and quest pins, the entrance, the stairs and the floor switch (J.DungeonMap).
 local ns = _G.NaowhForever
 
 local T = ns.THEME
@@ -22,6 +22,8 @@ local BIG_SIZE = 18
 local DOOR_SIZE = 16
 local LIT_RING, LIT_ALPHA = 12, 0.9
 local ENTRANCE = 28
+local STAIRS = 24
+local STAIRS_DOWN, STAIRS_UP = "housing-stair-arrow-down-default", "housing-stair-arrow-up-default"
 local MAP_EDGE = 8
 local TRAY_STEP = PIN + 10
 local TRAY_ROW = math.floor((MAP_W - MAP_EDGE * 2) / TRAY_STEP)
@@ -40,6 +42,7 @@ local UNPLACED_ALPHA = 0.7
 local QUEST_INSET = 5
 local QUEST_EVENTS = { "QUEST_LOG_UPDATE", "QUEST_DATA_LOAD_RESULT", "PLAYER_LEVEL_UP" }
 local NOTHING = { kind = "none" }
+local NONE = {}
 local PICKED_RING = 8
 local PICKED_GLOW = 24
 local GLOW_LOW, GLOW_HIGH, GLOW_PULSE = 0.15, 0.55, 0.9
@@ -53,6 +56,9 @@ local MASK = ns.MEDIA .. "circle_mask.tga"
 local MASK_WRAP = "CLAMPTOBLACKADDITIVE"
 
 local TEXT_ENTRANCE = ns.L("Entrance")
+local TEXT_STAIRS = ns.L("Stairs to %s")
+local TEXT_OPENS_WITH = ns.L("Opens with %s.")
+local TEXT_SEE_FLOOR = ns.L("Click to see that floor.")
 local TEXT_CLICK_LOOT = ns.L("Click for its loot.")
 local TEXT_ELSEWHERE = ns.L("On %s: drag it here to move it.")
 local TEXT_MOVE = ns.L("Drag to move it, right-click to take it off.")
@@ -508,6 +514,35 @@ local function NewSwitch(view, holder)
     view.up:SetPoint("LEFT", view.floorName, "RIGHT", FLOOR_GAP, 0)
 end
 
+local function StairsEnter(button)
+    local stairs = button.stairs
+    GameTooltip:SetOwner(button, "ANCHOR_RIGHT")
+    GameTooltip:SetText(TEXT_STAIRS:format(FloorName(J.Maps[button.view.dungeon.key], stairs.to)), 1, 1, 1)
+    if stairs.item then
+        GameTooltip:AddLine(TEXT_OPENS_WITH:format(ns.Shared.Items.Name(stairs.item)), T.muted.r, T.muted.g, T.muted.b)
+    end
+    GameTooltip:AddLine(TEXT_SEE_FLOOR, T.accentSoft.r, T.accentSoft.g, T.accentSoft.b)
+    GameTooltip:Show()
+end
+
+local function StairsClicked(button)
+    local view = button.view
+    view.floor = button.stairs.to
+    view:Draw()
+end
+
+local function NewStairs(view)
+    local button = CreateFrame("Button", nil, view.canvas)
+    button:SetSize(STAIRS, STAIRS)
+    button.icon = button:CreateTexture(nil, "ARTWORK")
+    button.icon:SetAllPoints()
+    button.view = view
+    button:SetScript("OnEnter", StairsEnter)
+    button:SetScript("OnLeave", GameTooltip_Hide)
+    button:SetScript("OnClick", StairsClicked)
+    return button
+end
+
 function View:NewPin()
     local pin = CreateFrame("Button", nil, self.canvas)
     pin.view = self
@@ -705,6 +740,22 @@ function View:DrawDoor(dungeon)
     end
 end
 
+function View:DrawStairs(map)
+    local shown = 0
+    for _, stairs in ipairs(map.stairs or NONE) do
+        if stairs[1] == self.floor then
+            shown = shown + 1
+            local button = self.stairs[shown] or NewStairs(self)
+            self.stairs[shown] = button
+            button.stairs = stairs
+            button.icon:SetAtlas(stairs.to > self.floor and STAIRS_DOWN or STAIRS_UP)
+            self:At(button, stairs[2], stairs[3])
+            button:Show()
+        end
+    end
+    for i = shown + 1, #self.stairs do self.stairs[i]:Hide() end
+end
+
 function View:Draw()
     local dungeon = self.dungeon
     if not dungeon then return end
@@ -720,6 +771,7 @@ function View:Draw()
     EachBoss(dungeon, self.drawPin)
     self:DrawQuestPins(map)
     self:DrawDoor(dungeon)
+    self:DrawStairs(map)
     local several = #self.floors > 1
     self.floorName:SetShown(several)
     self.down:SetShown(several)
@@ -740,7 +792,7 @@ function Map.ViewHidden(view)
 end
 
 function Map.NewView(parent, holder, editable)
-    local view = setmetatable({ pins = {}, used = 0, tray = 0, floors = {}, editable = editable }, View)
+    local view = setmetatable({ pins = {}, stairs = {}, used = 0, tray = 0, floors = {}, editable = editable }, View)
     local canvas = CreateFrame("Frame", nil, parent)
     canvas:SetSize(MAP_W, MAP_H)
     canvas:SetClipsChildren(true)
