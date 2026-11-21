@@ -4,8 +4,8 @@ Every spell your class still has to learn: what you can train now, what each lev
 it costs, with the trainer's own prices once you have visited one. A road to 60 with a dot for every
 level that brings spells, a Builds tab with talent builds level by level (Naowh's, saved, imported,
 edited, followed as you level), a mini bar, a level-up toast, a panel beside your class trainer, a
-Trainable tab under the spellbook, and a warlock's demon books, in the planner and at the demon trainer.
-Laid out like the [Dungeon Journal](../NaowhForever_DungeonJournal/README.md), on
+Trainable tab under the spellbook, a warlock's demon books, in the planner and at the demon trainer, and
+Next Talent, a glow on the next talent of a build on the talent window. Laid out like the [Dungeon Journal](../NaowhForever_DungeonJournal/README.md), on
 [`Shared/`](../Shared/README.md).
 
 ## Layout
@@ -31,6 +31,8 @@ NaowhForever_Training/
   Grimoires.lua      Demon Books: the ranks each demon knows, read while it is out (Training.Grimoires)
   Weapons.lua        your weapon skills: their level, the weapons you carry, a weapon master's price
                      after your reputation discount (Training.WeaponSkills, Training.WeaponPrice)
+  NextTalent.lua     Next Talent: the next points to take from a build, and each character's pick of
+                     build for the talent window (Training.Next)
   View/
     Style.lua        the planner's own look, over Shared/Style.lua (Training.Style)
     Rows.lua         pooled cards, rows and section titles, a spell's tooltip and menu (Training.Rows)
@@ -45,6 +47,10 @@ NaowhForever_Training/
     TrainerPanel.lua the Panel at the Trainer
     DemonTrainer.lua Demon Books' marks at the merchant and the line in a book's tooltip
     Spellbook.lua    the Trainable tab under the spellbook and its panel
+    TalentWindows.lua the open talent window (Blizzard's or EllesmereUI's), and a talent's button
+    TalentMark.lua   the glow on the next talent
+    TalentDrawer.lua the side panel beside the talent window, and the button that opens it
+    NextTalent.lua   turns Next Talent on and off, and redraws it while a talent window is open
     SettingsPage.lua its settings page (Training Planner/Settings), declared as cards
 ```
 
@@ -186,6 +192,34 @@ view files and the window share.
   navigates the merchant from secure code. The tooltip line stays.
 - The books are not in the road's totals or the next visit: they come from another trainer, and a book for a
   demon never summoned may be known already.
+- Next Talent is off by default, and nothing of it is made while it is off: no frame, event or hook until it
+  is first turned on. Turning it off again unregisters its events and hides what it drew.
+- While it is on, the talent events are registered only while a talent window is open, and
+  SPELL_DATA_LOAD_RESULT only while a talent's name is still loading. A burst of events draws once, a frame
+  later. The model tables and their rows are reused, so a redraw makes no new tables.
+- A talent's rank is the larger of its `currentRank` and `activeRank`: `currentRank` changes as you click a
+  point in, before you apply, so the glow moves with your clicks.
+- Picking a build in the panel only lights it. It does not follow it, so nothing is bought for you. The pick
+  is kept per character, by GUID (`trainingNextPick`), with the class it was made on. With no pick, the panel
+  lights the build you follow and says that following spends its points for you.
+- A talent's button is found with the game's own lookups (GetTalentButtonByNodeID, then
+  EnumerateAllTalentButtons). EllesmereUI's Classic Talents has neither, so its shown children are searched,
+  at most 6 deep. A button not drawn yet is looked for again on the next frames, at most 10 times
+  (`MAX_RETRIES`).
+- The glow is a frame of its own on the talent's button, in the button's own border shape, tinted with the
+  theme's accent. Nothing of the button's is changed or hidden. The windows' OnShow and OnHide are
+  post-hooked (HookScript), and EllesmereUI's window, made the first time it opens, is found through a
+  hooksecurefunc on `EllesmereUI.RegisterEscapeClose`.
+- The panel is a `Parts.SidePanel` on UIParent beside the window, so its build menu draws over the talent
+  tree and not under it.
+- The panel's button copies the Town Pins button on the world map: 32 square, the logo 4 in, on a 0.9 dark
+  fill, so it stands out on the talent window. Its border stays lit while the panel is open. Like the Town
+  Pins button in the map's corner, it sits in the corner of the talent trees, under the Unspent Talents
+  count: 64 below the search box's bottom right corner (`UNDER_SEARCH`).
+- In the panel, the next talent's name and its cost sit `BIG_TEXT_DROP` (1px) inside the top and bottom of
+  its icon, where the Naowh font's letters line up with the icon's edges.
+- Under the Gamepad interface style Next Talent stays off, as the Spellbook Tab does: that style moves
+  through the game's windows from secure code, and hooks on them would taint it.
 
 ## Checking
 

@@ -6,9 +6,11 @@ local S = Training.Settings
 local Settings = ns.Shared.Settings
 
 local ORDER_ON_THE_WAY, ORDER_KEYS, ORDER_WINDOW, ORDER_BUILDS, ORDER_SKILLS = 10, 15, 20, 30, 40
+local ORDER_NEXT_TALENT = 35
 local BUILDS_TAB = "builds"
 local TEXT_OFF = ns.L("Turn on the Training Planner")
 local TEXT_BUILDS_SEARCH = ns.L("talents talent points follow import export share auto spend")
+local TEXT_NEXT_SEARCH = ns.L("talents talent window next talent glow highlight build ellesmere")
 local TEXT_OPEN = "Open Training Planner"
 local TEXT_TRAIN_NOW = ns.L("%d %s to train now, %s")
 local TEXT_SPELL, TEXT_SPELLS = ns.L("spell"), ns.L("spells")
@@ -27,6 +29,11 @@ end
 
 local function PadWhy()
     return ns.GamepadWhy() or TEXT_OFF
+end
+
+local function NextTalentWhy()
+    if not Training.On() then return TEXT_OFF end
+    return ns.GamepadWhy()
 end
 
 local function NotWarlock()
@@ -177,5 +184,18 @@ page:Card({
           help = "Opens the planner on its Builds tab." },
         { label = "Followed Build", buttonText = "Stop", button = StopFollowing, hidden = NotFollowing,
           help = "Stops spending your talent points on the build you follow." },
+    },
+})
+
+page:Card({
+    id = "nextTalent", name = "Next Talent", order = ORDER_NEXT_TALENT, switch = "nextTalent",
+    switchWhy = NextTalentWhy,
+    help = "Lights the next talent of a build on your talent window, with a panel to pick the build.",
+    search = TEXT_NEXT_SEARCH,
+    rows = {
+        { key = "nextTalentGlow", label = "Glow on the Next Talent", toggle = true,
+          help = "A glow around the next talent's button that pulses while you have a point to spend." },
+        { key = "nextTalentDrawer", label = "Talent Window Panel", toggle = true,
+          help = "A panel beside the talent window to pick a build and see its next talents." },
     },
 })

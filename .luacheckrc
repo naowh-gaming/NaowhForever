@@ -80,6 +80,7 @@ read_globals = {
     "EditMacro", "ERR_NOT_ENOUGH_MONEY",
     "COMBATLOG_XPGAIN_FIRSTPERSON_UNNAMED", "CommunitiesFrame", "FRIENDS_BUTTON_TYPE_BNET", "FRIENDS_BUTTON_TYPE_WOW", "FriendsFrame_UpdateFriendButton", "FriendsTooltip", "InspectUnit", "PlayerSpellsFrame", "GameTooltipText", "WOW_PROJECT_ID", "EllesmereUI", "EncounterJournal", "Enum", "EnumerateFrames", "ERR_BAG_FULL", "ERR_INV_FULL", "ERR_CHAT_PLAYER_NOT_FOUND_S", "GROUP_FINDER_GENERAL_PLAYSTYLE1", "LFGBrowseFrame", "LFGListingFrame", "LFGParentFrame", "UnitSetRole", "GROUP_FINDER_GENERAL_PLAYSTYLE2", "GROUP_FINDER_GENERAL_PLAYSTYLE3", "GROUP_FINDER_GENERAL_PLAYSTYLE4", "LE_PARTY_CATEGORY_HOME","ERR_QUEST_PUSH_BUSY_S", "ERR_QUEST_PUSH_SUCCESS_S", "ERR_QUEST_PUSH_ALREADY_DONE_S",
     "EventRegistry", "EventToastManagerFrame", "EventUtil", "ScrollBoxListMixin",
+    "EUI_ClassicTalents",
     "FACTION_ALLIANCE", "FACTION_HORDE", "FACTION_STANDING_INCREASED", "GameFontHighlight", "GameFontNormal", "GameTooltip",
     "GameTooltipTextLeft1", "GameTooltip_Hide", "GameTooltip_OnTooltipAddMoney", "GetActionInfo", "GetActionText", "GetActiveTitle",
     "GetActionTexture", "GetAddOnMemoryUsage", "GetBinding", "GetBindingAction", "GetBindingKey", "GetBindingName", "GetBuildInfo",

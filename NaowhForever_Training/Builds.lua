@@ -370,6 +370,7 @@ local function BuildKey(classID, build)
         if b == build then return NAOWH_KEY .. i end
     end
 end
+Training.BuildKey = BuildKey
 
 local function FollowSlot()
     local guid = UnitGUID("player")

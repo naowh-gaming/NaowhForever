@@ -18,6 +18,7 @@
     <Script file="View\Rows.lua"/>
     <Script file="View\Spells.lua"/>
     <Script file="View\Builds.lua"/>
+    <Script file="NextTalent.lua"/>
     <Script file="UI\Place.lua"/>
     <Script file="UI\Window.lua"/>
     <Script file="UI\MiniBar.lua"/>
@@ -26,5 +27,9 @@
     <Script file="UI\TrainerPanel.lua"/>
     <Script file="UI\DemonTrainer.lua"/>
     <Script file="UI\Spellbook.lua"/>
+    <Script file="UI\TalentWindows.lua"/>
+    <Script file="UI\TalentMark.lua"/>
+    <Script file="UI\TalentDrawer.lua"/>
+    <Script file="UI\NextTalent.lua"/>
     <Script file="UI\SettingsPage.lua"/>
 </Ui>

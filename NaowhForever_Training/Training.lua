@@ -8,7 +8,8 @@ local F = ns.FEATURES.training
 
 local S = UI.ModuleSettings("training", { enabled = F.enabled, levelUpToast = F.levelUpToast,
     trainerPanel = F.trainerPanel, spellbook = F.spellbook, demonBooks = F.demonBooks, spellbookOpen = true,
-    showLearned = true, miniShown = false, weaponsShown = F.weaponsShown, weaponsAll = false, weaponsUnlearned = true })
+    showLearned = true, miniShown = false, weaponsShown = F.weaponsShown, weaponsAll = false, weaponsUnlearned = true,
+    nextTalent = F.nextTalent, nextTalentGlow = true, nextTalentDrawer = true })
 ns.TrainingSettings = S
 
 local Training = { Settings = S }
