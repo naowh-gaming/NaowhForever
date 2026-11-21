@@ -62,7 +62,7 @@ local function OnCellEnter(cell)
 end
 
 local function OnCellLeave(cell)
-    if cell.tip then GameTooltip:Hide() end
+    if GameTooltip:IsOwned(cell) then GameTooltip:Hide() end
     Menu.Leave()
 end
 
@@ -274,6 +274,7 @@ end
 
 local function OnEvent(_, event, unit, arg2, arg3, arg4)
     if event == "UNIT_SPELLCAST_SENT" then return Sent(arg2, arg3, arg4) end
+    if event == "SKILL_LINES_CHANGED" and InCombatLockdown() then return end
     local spellID = arg3
     if event == "BAG_UPDATE_COOLDOWN" then
         if bagShown and R.BagBusy() then Queue() end

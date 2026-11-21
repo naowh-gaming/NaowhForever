@@ -2435,6 +2435,13 @@ do
     t.Fire("BAG_UPDATE_DELAYED"); t.Advance(0.5)
     Check("a recipe seen once is remembered", t.Shown(), "spell:" .. MOONCLOTH)
     t.state.professions = {}
+    t.Fire("BAG_UPDATE_DELAYED"); t.Advance(0.5)
+    Check("professions not read yet: the record is kept", t.ns.AccountSettings().professionCooldowns["Tester-Realm"]
+        and t.ns.AccountSettings().professionCooldowns["Tester-Realm"].ready.mooncloth ~= nil, true)
+    t.state.professions = { TAILORING }
+    t.Fire("BAG_UPDATE_DELAYED"); t.Advance(0.5)
+    Check("and shows again once they read", t.Shown(), "spell:" .. MOONCLOTH)
+    t.state.professions = { LEATHERWORKING }
     t.Fire("SKILL_LINES_CHANGED"); t.Advance(0.5)
     Check("profession dropped: no reminder", t.Shown(), "")
     Check("and no record", t.ns.AccountSettings().professionCooldowns["Tester-Realm"], nil)
@@ -2451,6 +2458,11 @@ do
     t.Set("professionCooldownAlts", false)
     Check("Other Characters off", t.Shown(), "")
     t.Set("professionCooldownAlts", true)
+    local altCell
+    for _, f in ipairs(t.frames) do if rawget(f, "tip") and f.shown then altCell = f end end
+    altCell.scripts.PostClick(altCell, "MiddleButton", false); t.Advance(0.5)
+    Check("middle-click forgets another character's cooldown", t.Shown(), "")
+    Check("and its record", t.ns.AccountSettings().professionCooldowns["Alt-Realm"], nil)
     t.Set("professionCooldownHours", 0)
 
     t.state.professions = { LEATHERWORKING }
@@ -2460,6 +2472,13 @@ do
     t.state.cooldowns[SHAKER] = { t.state.now, 71 * HOUR }
     t.Fire("UNIT_SPELLCAST_SUCCEEDED", "player", "cast", 19566); t.Advance(0.5)
     Check("used: gone", t.Shown(), "")
+    t.state.professions = { 171 }
+    t.state.known[ARCANITE] = true
+    t.Fire("SKILL_LINES_CHANGED"); t.Advance(0.5)
+    Check("Alchemy: Arcanite ready", t.Shown(), "spell:" .. ARCANITE)
+    t.state.spellCooldowns[ARCANITE] = { t.state.now, 47 * HOUR }
+    t.Fire("UNIT_SPELLCAST_SUCCEEDED", "player", "cast", 17559); t.Advance(0.5)
+    Check("another transmute starts the shared cooldown", t.Shown(), "")
 
     t.state.known[STUDY] = true
     t.Fire("SPELLS_CHANGED"); t.Advance(0.5)

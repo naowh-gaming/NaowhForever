@@ -10582,5 +10582,5 @@ L["Shows a cooldown this many hours before it is ready; 0 waits until it is."] =
 L["Other Characters"] = "Altri personaggi"
 L["Also reminds you of your other characters' cooldowns, as they were when last played."] = "Ti ricorda anche i recuperi degli altri personaggi, com'erano l'ultima volta che li hai giocati."
 L["Needs Profession Cooldown Reminders"] = "Richiede Promemoria dei recuperi delle professioni"
-L["%s is ready on %s."] = "%s è pronto su %s."
-L["%s is ready on %s in %s."] = "%s sarà pronto su %s tra %s."
+L["%s is ready on %s."] = "%s di %s è disponibile."
+L["%s is ready on %s in %s."] = "%s di %s sarà disponibile tra %s."

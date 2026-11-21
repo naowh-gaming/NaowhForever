@@ -57,6 +57,12 @@ for category, group in pairs(D.DEFAULT_GROUPS) do
     for _, id in ipairs(group.items) do BUILT_IN[id] = category end
 end
 
+local PROFESSION_CASTS = {}
+for _, cooldown in ipairs(D.PROFESSION_COOLDOWNS) do
+    PROFESSION_CASTS[cooldown.spell] = true
+    for _, id in ipairs(cooldown.shares or {}) do PROFESSION_CASTS[id] = true end
+end
+
 local CLASSIC_WEAPON_ICON = {}
 for _, icon in pairs(D.WEAPON_ICONS) do CLASSIC_WEAPON_ICON[icon] = true end
 
@@ -72,6 +78,7 @@ local leveledTo
 local hidden = {}
 local custom, customText = {}, ""
 local skillLines, otherChars, ownLeft = {}, {}, {}
+local forgetChar, forgetCooldown = {}, {}
 
 local function Secret(v)
     return issecretvalue and issecretvalue(v)
@@ -521,13 +528,16 @@ local function CooldownRecords()
 end
 
 local function OwnCooldown(cooldown, saved)
-    if cooldown.skill and not skillLines[cooldown.skill] then return nil end
+    if cooldown.skill and not next(skillLines) then return nil end
+    if cooldown.skill and not skillLines[cooldown.skill] then return false end
     if cooldown.item then
-        if C_Item.GetItemCount(cooldown.item) == 0 then return nil end
+        if C_Item.GetItemCount(cooldown.item, true) == 0 then return false end
         return ItemCooldown(cooldown.item)
     end
     local left = SpellCooldown(cooldown.spell)
-    if C_SpellBook.IsSpellKnown(cooldown.spell) or left and left > 0 or saved[cooldown.key] then return left end
+    if left == nil then return nil end
+    if C_SpellBook.IsSpellKnown(cooldown.spell) or left > 0 or saved[cooldown.key] then return left end
+    return false
 end
 
 local function Countdown(left)
@@ -542,7 +552,10 @@ end
 
 local function CooldownEntry(list, cooldown, left, warn, who, key)
     if left > warn then return Wake(left - warn) end
-    if left > 0 then Wake(left) end
+    if left > 0 then
+        local step = left >= HOUR and HOUR or SECONDS
+        Wake(left - (math.ceil(left / step) - 1) * step)
+    end
     local tip = left > 0 and TEXT_READY_IN:format(CooldownName(cooldown), who, Countdown(left))
         or TEXT_READY:format(CooldownName(cooldown), who)
     list[#list + 1] = { icon = cooldown.item and ItemIcon(cooldown.item) or C_Spell.GetSpellTexture(cooldown.spell),
@@ -558,11 +571,15 @@ local function SaveOwn(records, me)
     wipe(ownLeft)
     for _, cooldown in ipairs(D.PROFESSION_COOLDOWNS) do
         local left = OwnCooldown(cooldown, saved.ready)
-        ownLeft[cooldown.key] = left
+        ownLeft[cooldown.key] = left or nil
         local ready = left and now + math.ceil(left)
         local old = saved.ready[cooldown.key]
-        if not ready or not old or math.abs(old - ready) > STORE_SLOP then saved.ready[cooldown.key] = ready end
-        if ready then any = true end
+        if left == false then
+            saved.ready[cooldown.key] = nil
+        elseif ready and (not old or math.abs(old - ready) > STORE_SLOP) then
+            saved.ready[cooldown.key] = ready
+        end
+        if saved.ready[cooldown.key] then any = true end
     end
     records[me] = any and saved or nil
     return saved
@@ -595,9 +612,9 @@ local function ProfessionCooldowns(list, zone)
         local other = records[key]
         for _, cooldown in ipairs(D.PROFESSION_COOLDOWNS) do
             local ready = other.ready[cooldown.key]
-            if ready then
-                CooldownEntry(list, cooldown, math.max(ready - now, 0), warn, other.name or key,
-                    "profession:" .. key .. ":" .. cooldown.key)
+            local id = ready and "profession:" .. key .. ":" .. cooldown.key
+            if id and CooldownEntry(list, cooldown, math.max(ready - now, 0), warn, other.name or key, id) then
+                forgetChar[id], forgetCooldown[id] = key, cooldown.key
             end
         end
     end
@@ -874,10 +891,7 @@ end
 
 function Reminders.NoteProfessionCast(spellID)
     if not S.Get("professionCooldowns") then return false end
-    for _, cooldown in ipairs(D.PROFESSION_COOLDOWNS) do
-        if cooldown.spell == spellID then return true end
-    end
-    return false
+    return PROFESSION_CASTS[spellID] == true
 end
 
 function Reminders.BagBusy()
@@ -946,7 +960,16 @@ function Reminders.WakeAt()
 end
 
 function Reminders.Hide(key)
-    hidden[key] = true
+    local char = forgetChar[key]
+    if not char then
+        hidden[key] = true
+        return
+    end
+    local records = CooldownRecords()
+    local other = records[char]
+    if not other then return end
+    other.ready[forgetCooldown[key]] = nil
+    if not next(other.ready) then records[char] = nil end
 end
 
 function Reminders.Collect()
