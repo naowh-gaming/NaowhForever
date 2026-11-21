@@ -188,9 +188,10 @@ end
 function ns.DeleteGearSet(setID, name)
     ns.Confirm(TEXT_DELETE:format(name), function()
         C_EquipmentSet.DeleteEquipmentSet(setID)
-        if G.Look(name, "helm") ~= nil or G.Look(name, "cloak") ~= nil then
-            G.SetLook(name, "helm", nil)
-            G.SetLook(name, "cloak", nil)
+        if S.Get("gearLooks")[name] then
+            local looks = CopyTable(S.Get("gearLooks"))
+            looks[name] = nil
+            S.Set("gearLooks", looks)
         end
     end)
 end
