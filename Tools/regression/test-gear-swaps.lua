@@ -77,6 +77,7 @@ local function Fixture()
             ContainerIDToInventoryID = function(bag) return bag + 30 end,
         },
         C_Item = {
+            GetItemInfo = function(id) return g.names and g.names[id] end,
             GetItemCount = function(item) return g.bags[item] and 1 or 0 end,
             EquipItemByName = function(item, slot)
                 assert(not g.combat or slot >= 16, "armor equipped in combat")
@@ -87,6 +88,7 @@ local function Fixture()
         InCombatLockdown = function() return g.combat end,
         UnitIsDeadOrGhost = function() return g.dead end,
         UnitIsFeignDeath = function() return g.feign end,
+        UnitOnTaxi = function() return g.taxi end,
         IsMounted = function() return g.mounted end,
         IsResting = function() return g.resting end,
         IsInInstance = function() return g.instance ~= "none", g.instance end,
@@ -121,6 +123,9 @@ do
     g.mounted, g.resting = false, false
     g.G.AutoSwap()
     check("leaving both puts the first set back", g.equipped == SETS.Main and Saved(g) == nil)
+    g.mounted, g.taxi = true, true
+    g.G.AutoSwap()
+    check("a flight path is not riding", g.equipped == SETS.Main)
 end
 
 do
@@ -201,18 +206,18 @@ end
 do
     local g = Fixture()
     g.setItems[SETS.Main] = { [1] = 101, [16] = 102, [17] = 0, [18] = 103 }
-    g.bags = { [101] = true, [102] = true, [103] = true }
-    g.worn = { [16] = 104, [18] = 103 }
+    g.names = { [101] = "Helm", [102] = "Axe of Doom", [103] = "Bow" }
+    check("the combat macro equips only the set's weapon slots, by name, in combat only",
+        g.G.CombatMacro(SETS.Main) == "/equipslot [combat]16 Axe of Doom\n/equipslot [combat]18 Bow")
+    g.names[102], g.names[103] = nil, nil
+    check("a weapon not yet known to the client is left out", g.G.CombatMacro(SETS.Main) == nil)
+    check("a set with no weapons has no macro", g.G.CombatMacro(SETS.Town) == nil)
     g.combat = true
-    g.G.EquipByHand(SETS.Main)
-    check("Swap Weapons in Combat off: nothing changes in combat", #g.equips == 0)
+    g.names = { [102] = "Axe of Doom" }
+    g.bags = { [102] = true }
     g.settings.gearCombatWeapons = true
     g.G.EquipByHand(SETS.Main)
-    check("on: the set's weapons go on at once", #g.equips == 1 and g.equips[1][1] == 102 and g.equips[1][2] == 16)
-    check("and the rest waits for the fight to end", #g.used == 0)
-    g.combat = false
-    g.G.EquipPending()
-    check("which puts the whole set on", g.used[1] == SETS.Main)
+    check("in combat the addon itself equips nothing, the set waits", #g.equips == 0 and #g.used == 0)
 end
 
 do

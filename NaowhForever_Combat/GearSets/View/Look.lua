@@ -18,13 +18,17 @@ function Look.Dress(frame)
     return icon, ns.Border(frame, BLACK)
 end
 
-function Look.SetButton(btn, set, i, size, gap, grow)
-    btn:SetSize(size, size)
-    ItemBar.Place(btn, btn:GetParent(), i, size, gap, grow, ItemBar.ONE_LINE)
+function Look.Edge(btn, set)
     btn.icon:SetTexture(set.icon)
     btn.icon:SetDesaturated(set.lost > 0)
     local edge = set.equipped and T.accent or BLACK
     btn.border:SetColor(edge.r, edge.g, edge.b, 1)
+end
+
+function Look.SetButton(btn, set, i, size, gap, grow)
+    btn:SetSize(size, size)
+    ItemBar.Place(btn, btn:GetParent(), i, size, gap, grow, ItemBar.ONE_LINE)
+    Look.Edge(btn, set)
     btn:Show()
 end
 

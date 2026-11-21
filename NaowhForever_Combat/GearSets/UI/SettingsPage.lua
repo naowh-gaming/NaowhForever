@@ -226,7 +226,7 @@ page:Card({
     help = "How a set goes on when you pick one.",
     rows = {
         { key = "gearCombatWeapons", label = "Swap Weapons in Combat", toggle = true, needs = GearOn, why = GEAR_OFF,
-          help = "A set's weapons go on at once in combat, and the rest when the fight ends." },
+          help = "Clicking a set on the Gear Set Bar in combat puts its weapons on at once." },
         { key = "gearClickOff", label = "Click Again to Take Off", toggle = true, needs = GearOn, why = GEAR_OFF,
           help = "Clicking the set you wear puts back what you had on before it." },
     },

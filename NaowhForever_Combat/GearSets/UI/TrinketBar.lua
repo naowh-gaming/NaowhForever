@@ -8,7 +8,6 @@ local Items = ns.Shared.Items
 local G = ns.GearSets
 local C, St, Look = G.C, G.Style, G.Look
 local TRINKET_SLOTS, BAR_SLOTS = C.TRINKET_SLOTS, C.BAR_SLOTS
-local COMBAT_SLOTS = INVSLOTS_EQUIPABLE_IN_COMBAT
 local Trinkets = G.Trinkets
 
 local PICKER_COLS, PICKER_CELL, PICKER_STEP, PICKER_PAD = 6, 36, 40, 6
@@ -72,7 +71,7 @@ local function OnPickClick(self)
         for _, button in ipairs(picker.buttons) do ShowRank(button) end
         return
     end
-    if InCombatLockdown() and not COMBAT_SLOTS[self.inventorySlot] then return end
+    if InCombatLockdown() then return end
     if Trinkets.InBags(self.itemID) then C_Item.EquipItemByName(self.itemID, self.inventorySlot) end
     ClosePicker()
 end
@@ -120,7 +119,7 @@ local function PickButton(i)
 end
 
 local function Choose(anchor, inventorySlot)
-    if InCombatLockdown() and not COMBAT_SLOTS[inventorySlot] then return end
+    if InCombatLockdown() then return end
     ClosePicker()
     if not picker then NewPicker() end
     local spare = Fitting(inventorySlot)

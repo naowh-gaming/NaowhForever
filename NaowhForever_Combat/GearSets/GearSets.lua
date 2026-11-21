@@ -9,6 +9,7 @@ local COMBAT_SLOTS = { 16, 17, 18 }
 local FORM_SPELL = 4
 local RETURN, BEFORE = "gearReturn", "gearBefore"
 local SET_EQUIPPED = 4
+local EQUIP_SLOT = "/equipslot [combat]%d %s"
 local TEXT_AFTER_COMBAT = ns.L("Gear set equips when combat ends.")
 local TEXT_AFTER_DEATH = ns.L("Gear set equips when you are alive again.")
 local TEXT_MISSING = ns.L("%s is not in your bags, so it was not put back.")
@@ -31,6 +32,7 @@ local pending
 local autoSet
 local drinking = false
 local free = {}
+local macroLines = {}
 local wanted = {}
 
 local function ByName(a, b) return a.name < b.name end
@@ -111,26 +113,6 @@ local function PutBack(items)
     end
 end
 
-local function WeaponsNow(target)
-    local ids, ignored
-    if type(target) == "number" then
-        ids, ignored = C_EquipmentSet.GetItemIDs(target), C_EquipmentSet.GetIgnoredSlots(target)
-    end
-    for _, slot in ipairs(COMBAT_SLOTS) do
-        if ids then
-            local id = not ignored[slot] and ids[slot]
-            if id and id > 0 and GetInventoryItemID("player", slot) ~= id and C_Item.GetItemCount(id) > 0 then
-                C_Item.EquipItemByName(id, slot)
-            end
-        else
-            local link = target[slot]
-            if link and GetInventoryItemLink("player", slot) ~= link and C_Item.GetItemCount(link) > 0 then
-                C_Item.EquipItemByName(link, slot)
-            end
-        end
-    end
-end
-
 local function Dead()
     return UnitIsDeadOrGhost("player") and not UnitIsFeignDeath("player")
 end
@@ -140,7 +122,6 @@ local function Equip(target, quiet)
     if type(target) == "number" and not C_EquipmentSet.GetEquipmentSetInfo(target) then return end
     local combat, dead = InCombatLockdown(), Dead()
     if combat or dead then
-        if combat and not dead and S.Get("gearCombatWeapons") then WeaponsNow(target) end
         pending = target
         if not quiet then ns.Print(dead and TEXT_AFTER_DEATH or TEXT_AFTER_COMBAT) end
         return
@@ -188,7 +169,7 @@ end
 
 local function WantedAuto()
     local drink = Wanted("gearDrinking")
-    return IsMounted() and Wanted("gearMounted") or drink and Drinking() and drink or FormSet() or InstanceSet()
+    return IsMounted() and not UnitOnTaxi("player") and Wanted("gearMounted") or drink and Drinking() and drink or FormSet() or InstanceSet()
         or IsResting() and Wanted("gearResting") or nil
 end
 
@@ -264,6 +245,18 @@ function G.ShowLooks(setID)
     if not look then return end
     if look.helm ~= nil then ShowHelm(look.helm) end
     if look.cloak ~= nil then ShowCloak(look.cloak) end
+end
+
+function G.CombatMacro(setID)
+    wipe(macroLines)
+    local ids, ignored = C_EquipmentSet.GetItemIDs(setID), C_EquipmentSet.GetIgnoredSlots(setID)
+    for _, slot in ipairs(COMBAT_SLOTS) do
+        local id = not ignored[slot] and ids[slot]
+        local name = id and id > 0 and C_Item.GetItemInfo(id)
+        if name then macroLines[#macroLines + 1] = EQUIP_SLOT:format(slot, name) end
+    end
+    if #macroLines == 0 then return nil end
+    return table.concat(macroLines, "\n")
 end
 
 function G.EquipByHand(setID)

@@ -67,12 +67,13 @@ local function Fixture()
         end,
         C_Timer = { NewTimer = Timer },
         C_Secrets = { ShouldAurasBeSecret = function() return g.secret end },
-        C_UnitAuras = { GetPlayerAuraBySpellID = function(id)
+        C_UnitAuras = { GetAuraDataBySpellName = function(unit, name, filter)
             assert(not g.secret, "an aura read while auras are secret")
-            return g.auras[id]
+            assert(unit == "player" and filter == "HELPFUL")
+            return g.auras[name]
         end },
         C_Item = {
-            GetItemSpell = function(id) return "use", id + 1 end,
+            GetItemSpell = function(id) return "Use " .. id, id + 1 end,
             EquipItemByName = function(id, slot)
                 assert(not g.combat, "a trinket swapped in combat")
                 g.equips[#g.equips + 1] = { id, slot }
@@ -152,10 +153,10 @@ do
     g.Q.Toggle(TOP, EARTHSTRIKE)
     g.Q.Toggle(TOP, BADGE)
     g.cooldowns[EARTHSTRIKE] = { g.now, 120 }
-    g.auras[EARTHSTRIKE + 1] = { expirationTime = g.now + 20 }
+    g.auras["Use " .. EARTHSTRIKE] = { expirationTime = g.now + 20 }
     g.fire("PLAYER_LOGIN")
     check("its buff still up: it waits", #g.equips == 0)
-    g.auras[EARTHSTRIKE + 1] = nil
+    g.auras["Use " .. EARTHSTRIKE] = nil
     g.advance(20)
     check("buff gone and on cooldown: the next ready one goes on", g.equips[1][1] == BADGE and g.equips[1][2] == TOP)
     g.bags[EARTHSTRIKE] = true

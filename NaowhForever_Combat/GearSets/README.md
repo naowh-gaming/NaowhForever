@@ -36,15 +36,21 @@ NaowhForever_Combat/GearSets/
   line (`ItemBar.ONE_LINE`); Right is the way they always grew.
 - Armor cannot change in combat, so a set asked for then waits for the fight to end
   (`G.EquipPending` on `PLAYER_REGEN_ENABLED`). Only the last set asked for waits.
-- Swap Weapons in Combat (`gearCombatWeapons`) puts a set's main hand, off hand and ranged on at once,
-  the slots the game's own `INVSLOTS_EQUIPABLE_IN_COMBAT` lets change in combat; the whole set still
-  goes on when the fight ends.
+- Swap Weapons in Combat (`gearCombatWeapons`) makes the Gear Set Bar's buttons secure: a plain left-click
+  runs `/equipslot [combat]<slot> <name>` for the set's main hand, off hand and ranged (`G.CombatMacro`),
+  the slots the game's own `INVSLOTS_EQUIPABLE_IN_COMBAT` lets change in combat. Addon code cannot
+  equip in combat; only the secure slash command, from the player's own click, can. The whole set still
+  goes on when the fight ends. A weapon the client has no name for yet is left out of the macro.
+- With secure buttons the bar is protected, so in combat its layout, its showing and hiding and any
+  settings change wait for `PLAYER_REGEN_ENABLED`; only the set outlines are redrawn (`Look.Edge`). The
+  plain and secure buttons are separate pools, so the bar is only protected once the setting is on.
 - Nothing goes on while you are dead (Feign Death is not); the set waits for `PLAYER_ALIVE` or
   `PLAYER_UNGHOST`.
 - After a fight the automatic swaps are worked out before the set that waited goes on, so a set picked by
   hand in combat wins, and a form shifted in and out of during the fight does not swap twice.
 - The set an automatic swap replaced is kept per character in the account settings
   (`gearReturn`), so logging out in town or mounted still puts it back after the next login.
+- Riding a flight path is not mounted for Wear While Mounted (`UnitOnTaxi`).
 - A set picked by hand is kept when the automatic swap ends. Mounted beats drinking, then a form, then a
   dungeon, raid or battleground, then resting.
 - When no set is worn as an automatic swap starts, every slot's item is kept instead (its link, or false
@@ -82,9 +88,9 @@ NaowhForever_Combat/GearSets/
 - The bar's Slots (`trinketSlots`) are lists in `C.BAR_SLOTS`. The trinkets keep their names
   (`NaowhForeverTrinket1`, `2`) for their key bindings; the other slots are `NaowhForeverGearSlot<slot>`.
   A slot's button is made the first time it is shown and only hidden after.
-- A weapon slot's picker opens and swaps in combat too: the game's `INVSLOTS_EQUIPABLE_IN_COMBAT` is
-  what may change then. Its icon is redrawn at once, since the rest of the bar's layout waits for the
-  fight to end.
+- The picker opens only outside combat, weapons included, since addon code cannot equip in combat. A
+  weapon swapped in combat by the Gear Set Bar shows on its slot at once; the rest of the bar's layout
+  waits for the fight to end.
 - The secure item action errors on an empty slot (a nil link into `C_Item.IsEquippableItem`), so
   an empty slot gets no `type1`.
 - The window listens only while it is open.
@@ -99,6 +105,7 @@ NaowhForever_Combat/GearSets/
 - "Ready" is 30 seconds or less to go (`READY_WITHIN`): a trinket just put on cannot be used for 30
   seconds, so one that is nearly ready loses nothing by going on now.
 - A trinket whose buff is still on you stays on until the buff ends, in case taking it off ends the buff.
+  The buff is found by its use spell's name, since a trinket's buff can have a different spell ID.
   While auras are secret the queue waits.
 - The queue swaps only out of combat and while alive, and waits a second (`RETRY`) while you cast or
   hold an item on the cursor, since an equip cancels a cast. It runs on events, and a timer only for

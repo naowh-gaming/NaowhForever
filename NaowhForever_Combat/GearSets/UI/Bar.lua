@@ -26,7 +26,8 @@ local TEXT_ADD = ns.L("New Gear Set")
 local TEXT_ADD_TIP = ns.L("Saves what you are wearing now as a new set.")
 local TEXT_MOVER = "Gear Sets"
 
-local bar, buttons, addButton, unlocked, inCombat, layoutQueued
+local bar, addButton, unlocked, inCombat, layoutQueued, applyAfterCombat
+local plain, secure = {}, {}
 local events = CreateFrame("Frame")
 
 local function SetTooltip(btn)
@@ -47,7 +48,8 @@ local function HideTooltip()
     GameTooltip:Hide()
 end
 
-local function OnButtonClick(self, button)
+local function OnButtonClick(self, button, down)
+    if down then return end
     if button == "RightButton" then
         ns.ChangeGearSetIcon(self.set.id, self.set.name)
     elseif IsShiftKeyDown() then
@@ -59,28 +61,53 @@ local function OnButtonClick(self, button)
     end
 end
 
-local function NewButton()
-    local btn = CreateFrame("Button", nil, bar)
+local function NewButton(isSecure)
+    local btn
+    if isSecure then
+        btn = CreateFrame("Button", nil, bar, "SecureActionButtonTemplate")
+        btn:RegisterForClicks("AnyUp", "AnyDown")
+        btn:SetScript("PostClick", OnButtonClick)
+    else
+        btn = CreateFrame("Button", nil, bar)
+        btn:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+        btn:SetScript("OnClick", OnButtonClick)
+    end
     btn.icon, btn.border = Look.Dress(btn)
-    btn:RegisterForClicks("LeftButtonUp", "RightButtonUp")
-    btn:SetScript("OnClick", OnButtonClick)
     ns.Shared.Parts.Press(btn)
     btn:SetScript("OnEnter", SetTooltip)
     btn:SetScript("OnLeave", HideTooltip)
     return btn
 end
 
+local function Held()
+    return bar ~= nil and InCombatLockdown() and bar:IsProtected()
+end
+
 local function Layout()
     if not bar then return end
-    local size, gap, grow = S.Get("gearBarSize"), S.Get("gearBarSpacing"), S.Get("gearBarGrow")
+    local isSecure = S.Get("gearCombatWeapons") == true
+    local buttons, other = isSecure and secure or plain, isSecure and plain or secure
     local sets = G.Sets()
+    if Held() then
+        for i, set in ipairs(sets) do
+            if buttons[i] then Look.Edge(buttons[i], set) end
+        end
+        return
+    end
+    local size, gap, grow = S.Get("gearBarSize"), S.Get("gearBarSpacing"), S.Get("gearBarGrow")
     for i, set in ipairs(sets) do
-        local btn = buttons[i] or NewButton()
+        local btn = buttons[i] or NewButton(isSecure)
         buttons[i] = btn
         btn.set = set
         Look.SetButton(btn, set, i, size, gap, grow)
+        if isSecure then
+            local macro = G.CombatMacro(set.id)
+            btn:SetAttribute("type1", macro and "macro" or nil)
+            btn:SetAttribute("macrotext1", macro)
+        end
     end
     for i = #sets + 1, #buttons do buttons[i]:Hide() end
+    for _, btn in ipairs(other) do btn:Hide() end
     Look.Fit(bar, addButton, #sets, size, gap, grow)
 end
 
@@ -98,7 +125,6 @@ local function BuildBar()
     bar = CreateFrame("Frame", "NaowhForeverGearBar", UIParent)
     bar:SetMovable(true)
     bar:SetClampedToScreen(true)
-    buttons = {}
     addButton = ns.Button(bar, "+", ADD_SIZE, ADD_SIZE, ns.NewGearSet)
     ns.Tooltip(addButton, TEXT_ADD, TEXT_ADD_TIP)
     bar.mover = ns.UI.AttachMover(bar, TEXT_MOVER, SavePosition, C.PAGE, CARD)
@@ -121,12 +147,18 @@ local function LayoutSoon()
     C_Timer.After(0, LayoutNow)
 end
 
+local Apply
+
 local function OnEvent(_, event, result, setID)
     if event == "PLAYER_REGEN_DISABLED" or event == "PLAYER_REGEN_ENABLED" then
         inCombat = event == "PLAYER_REGEN_DISABLED"
         bar:SetShown(BarShown())
     end
     if event == "PLAYER_REGEN_DISABLED" then return end
+    if event == "PLAYER_REGEN_ENABLED" and applyAfterCombat then
+        applyAfterCombat = false
+        return Apply()
+    end
     if QUIET_SWAP_EVENTS[event] then return G.AutoSwap() end
     if event == "EQUIPMENT_SWAP_FINISHED" and result and setID then G.ShowLooks(setID) end
     if event == "PLAYER_REGEN_ENABLED" or event == "PLAYER_ALIVE" or event == "PLAYER_UNGHOST" then
@@ -140,7 +172,11 @@ local function OnEvent(_, event, result, setID)
     LayoutSoon()
 end
 
-local function Apply()
+function Apply()
+    if Held() then
+        applyAfterCombat = true
+        return
+    end
     events:UnregisterAllEvents()
     if not G.On() then
         if bar and not unlocked then bar:Hide() end
@@ -170,6 +206,10 @@ end
 local function OnLock()
     unlocked = false
     if not bar then return end
+    if Held() then
+        applyAfterCombat = true
+        return
+    end
     bar.mover:Hide()
     bar:SetShown(G.On() and BarShown())
 end

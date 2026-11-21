@@ -65,8 +65,8 @@ end
 
 local function BuffLeft(id)
     if C_Secrets.ShouldAurasBeSecret() then return nil end
-    local _, spellID = C_Item.GetItemSpell(id)
-    local aura = spellID and C_UnitAuras.GetPlayerAuraBySpellID(spellID)
+    local spell = C_Item.GetItemSpell(id)
+    local aura = spell and C_UnitAuras.GetAuraDataBySpellName("player", spell, "HELPFUL")
     return aura and aura.expirationTime > 0 and aura.expirationTime - GetTime() or 0
 end
 

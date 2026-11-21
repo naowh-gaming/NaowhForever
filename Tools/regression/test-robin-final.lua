@@ -28,6 +28,13 @@ local function fixture(kind)
         function f:Hide() self.shown = false; if self.scripts.OnHide then self.scripts.OnHide(self) end end
         function f:SetShown(v) if v then self:Show() else self:Hide() end end
         function f:IsShown() return self.shown end
+        function f:IsProtected()
+            if self.secure then return true end
+            for _, other in ipairs(state.frames) do
+                if other.parent == self and other.secure then return true end
+            end
+            return false
+        end
         function f:SetSize(w, h)
             assert(not (self.secure and state.combat), 'layout changed in combat')
             self.width, self.height = w, h
@@ -84,7 +91,6 @@ local function fixture(kind)
     }
     function ns.OnApply(fn) local was = ns.Apply ns.Apply = function(...) was(...) fn(...) end end
     local env = { _G = { NaowhForever = ns }, UIParent = {}, BACKPACK_CONTAINER = 0, NUM_BAG_SLOTS = 0,
-        INVSLOTS_EQUIPABLE_IN_COMBAT = { [16] = true, [17] = true, [18] = true },
         wipe = function(t) for k in pairs(t) do t[k] = nil end return t end,
         CreateFrame = function(_, name, parent, template) return frame(name, parent, template) end,
         InCombatLockdown = function() return state.combat end,
@@ -109,7 +115,12 @@ local function fixture(kind)
             { leftText = 'Spell ID: 1229741' }, { leftText = '20 |4minute:minutes;' },
         } } end },
         C_Timer = { After = function(_, fn) state.timers[#state.timers + 1] = fn end },
-        C_EquipmentSet = { GetEquipmentSetIDs = function() return {} end },
+        C_EquipmentSet = {
+            GetEquipmentSetIDs = function() return state.setIDs or {} end,
+            GetEquipmentSetInfo = function(id) return 'Set' .. id, 500 + id, id, false, 1, 1, 0, 0 end,
+            GetItemIDs = function(id) return { [16] = 4000 + id } end,
+            GetIgnoredSlots = function() return {} end,
+        },
         C_Container = {
             GetContainerNumSlots = function() return #state.bags end,
             GetContainerItemID = function(_, slot) return state.bags[slot] end,
@@ -117,9 +128,10 @@ local function fixture(kind)
         C_Item = {
             GetItemInfoInstant = function(id) return id, nil, nil, id == 303 and 'INVTYPE_HEAD' or 'INVTYPE_TRINKET' end,
             GetItemIconByID = function(id) return id end,
+            GetItemInfo = function(id) return 'Weapon' .. id end,
             GetItemCount = function() return 0 end,
             EquipItemByName = function(id, slot)
-                assert(not state.combat or slot >= 16); state.equips[#state.equips + 1] = { id, slot }
+                assert(not state.combat); state.equips[#state.equips + 1] = { id, slot }
             end,
         },
         hooksecurefunc = function(t, key, callback)
@@ -185,17 +197,16 @@ do
     local main = s.named.NaowhForeverGearSlot16
     check('a weapon slot is a secure use of its slot', bar.buttons[3] == main and main.attributes.item1 == '16')
     check('the bar is as wide as its slots', bar.width == 5 * 36 + 4 * 4)
-    s.fire('PLAYER_REGEN_DISABLED'); s.combat = true
     main.scripts.PostClick(main, 'RightButton', false)
     local picker
     for _, f in ipairs(s.frames) do if type(rawget(f, 'buttons')) == 'table' and rawget(f, 'close') then picker = f end end
-    check('in combat a weapon slot still opens its picker, with only what fits it', picker and picker.shown
+    check('a weapon slot opens its picker, with only what fits it', picker and picker.shown
         and picker.buttons[1].itemID == 404 and #picker.buttons == 1)
     picker.buttons[1].scripts.OnClick(picker.buttons[1])
-    check('and swaps the weapon at once', s.equips[1][1] == 404 and s.equips[1][2] == 16)
-    picker:Hide()
-    bar.buttons[1].scripts.PostClick(bar.buttons[1], 'RightButton', false)
-    check('a trinket slot does not open in combat', not picker.shown)
+    check('and swaps the weapon', s.equips[1][1] == 404 and s.equips[1][2] == 16)
+    s.fire('PLAYER_REGEN_DISABLED'); s.combat = true
+    main.scripts.PostClick(main, 'RightButton', false)
+    check('in combat no picker opens, not even for a weapon', not picker.shown)
     local watcher
     for _, f in ipairs(s.frames) do if f.events.PLAYER_EQUIPMENT_CHANGED and f.events.PLAYER_REGEN_DISABLED then watcher = f end end
     main.icon.texture = nil
@@ -204,6 +215,36 @@ do
     s.combat = false; s.fire('PLAYER_REGEN_ENABLED')
     s.S.Set('trinketSlots', 'trinkets')
     check('back to Trinkets: two slots, the weapons hidden', #bar.buttons == 2 and not main.shown)
+end
+
+do
+    local s = fixture('gear')
+    s.settings.gearBarVisible, s.settings.trinketBar = true, false
+    s.setIDs = { 1, 2 }
+    s.loadModule('NaowhForever_Combat/GearSets'); s.fire('PLAYER_LOGIN')
+    for _, t in ipairs(s.timers) do t() end
+    local bar = s.named.NaowhForeverGearBar
+    local function Buttons(secure)
+        local found = {}
+        for _, f in ipairs(s.frames) do
+            if f.parent == bar and f.secure == secure and f.shown and rawget(f, 'set') then found[#found + 1] = f end
+        end
+        return found
+    end
+    check('Swap Weapons in Combat off: plain buttons, the bar is not protected', #Buttons(false) == 2
+        and not bar:IsProtected())
+    s.S.Set('gearCombatWeapons', true)
+    local secure = Buttons(true)
+    check('on: secure buttons instead', #secure == 2 and #Buttons(false) == 0)
+    check('a plain click runs its weapons through /equipslot in combat', secure[1].attributes.type1 == 'macro'
+        and secure[1].attributes.macrotext1 == '/equipslot [combat]16 Weapon4001')
+    s.fire('PLAYER_REGEN_DISABLED'); s.combat = true
+    s.S.Set('gearBarSize', 40)
+    for _, t in ipairs(s.timers) do t() end
+    check('in combat a change waits, nothing protected is touched', secure[1].width == 32)
+    s.combat = false; s.fire('PLAYER_REGEN_ENABLED')
+    for _, t in ipairs(s.timers) do t() end
+    check('and goes through once the fight ends', secure[1].width == 40)
 end
 
 do

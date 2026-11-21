@@ -77,8 +77,8 @@ local UNGUARDED_ALLOWED = {
     ["NaowhForever_Utilities/Macros/Smart.lua"] = { why = "Update() and the Pickup entry points refuse in combat",
         calls = { EditMacro = 1, CreateMacro = 1 } },
     ["NaowhForever_Combat/GearSets/GearSets.lua"] = {
-        why = "PutBack is reached only through Equip, which holds the swap while in combat; WeaponsNow runs in combat on purpose, only for the main hand, off hand and ranged slots the game's INVSLOTS_EQUIPABLE_IN_COMBAT allows",
-        calls = { ["C_Item.EquipItemByName"] = 3 } },
+        why = "PutBack is reached only through Equip, which holds the swap while in combat",
+        calls = { ["C_Item.EquipItemByName"] = 1 } },
     ["NaowhForever_Combat/GearSets/Trinkets.lua"] = {
         why = "RunSlot is reached only through RunQueue, which returns in combat and while dead",
         calls = { ["C_Item.EquipItemByName"] = 1 } },
