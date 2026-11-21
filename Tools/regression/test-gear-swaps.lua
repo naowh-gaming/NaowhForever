@@ -105,6 +105,7 @@ local function Fixture()
     chunk()
     g.G = ns.GearSets
     g.ns = ns
+    g.env = env
     return g
 end
 
@@ -170,6 +171,38 @@ do
     g.G.AutoSwap()
     check("bear form wears the bear set", g.equipped == SETS.Bear)
     check("the form's spell ID is what picks it", g.G.FormSpell(1) == BEAR_FORM)
+end
+
+do
+    local g = Fixture()
+    g.settings.gearForms = { [BEAR_FORM] = "Bear" }
+    g.equipped = SETS.Main
+    g.form = 1
+    g.G.AutoSwap()
+    g.combat = true
+    g.form = 0
+    g.G.AutoSwap()
+    g.form = 1
+    g.G.AutoSwap()
+    g.combat = false
+    g.G.EquipPending()
+    check("out of form and back in combat keeps the set to go back to",
+        g.equipped == SETS.Bear and Saved(g) == SETS.Main)
+    g.form = 0
+    g.G.AutoSwap()
+    check("and leaving the form later puts it back", g.equipped == SETS.Main and Saved(g) == nil)
+end
+
+do
+    local g = Fixture()
+    g.settings.gearResting = "Town"
+    g.equipped = SETS.Mount
+    g.worn = { [1] = "hat", [13] = "carrot" }
+    g.env.C_EquipmentSet.GetIgnoredSlots = function(id) return { [1] = id == SETS.Mount } end
+    g.resting = true
+    g.G.AutoSwap()
+    local saved = Saved(g)
+    check("a set that ignores slots is kept as the items themselves", type(saved) == "table" and saved[1] == "hat")
 end
 
 do
@@ -315,6 +348,21 @@ do
     check("Leave As It Is clears just that part", g.G.Look("Raid", "helm") == nil and g.G.Look("Raid", "cloak") == true)
     g.G.SetLook("Raid", "cloak", nil)
     check("and the set's entry goes once both are left", g.settings.gearLooks.Raid == nil)
+end
+
+do
+    local g = Fixture()
+    g.settings.gearResting = "Town"
+    g.equipped = SETS.Main
+    g.resting = true
+    g.G.AutoSwap()
+    g.combat, g.resting = true, false
+    g.G.AutoSwap()
+    check("leaving in combat keeps what goes back until it can", Saved(g) == SETS.Main)
+    g.combat = false
+    g.G.AutoSwap()
+    g.G.EquipPending()
+    check("once it is back on nothing is left to put back", g.equipped == SETS.Main and Saved(g) == nil)
 end
 
 print(("PASS gear swaps: %d checks"):format(checks))

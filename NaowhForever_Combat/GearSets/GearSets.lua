@@ -65,9 +65,16 @@ local function IsWorn(setID)
     return select(SET_EQUIPPED, C_EquipmentSet.GetEquipmentSetInfo(setID)) == true
 end
 
+local function Whole(setID)
+    for _, ignored in pairs(C_EquipmentSet.GetIgnoredSlots(setID)) do
+        if ignored then return false end
+    end
+    return true
+end
+
 local function Wearing()
     local set = EquippedSet()
-    if set then return set end
+    if set and Whole(set) then return set end
     local items = {}
     for slot = FIRST_SLOT, LAST_SLOT do items[slot] = GetInventoryItemLink("player", slot) or false end
     return items
@@ -265,22 +272,28 @@ function G.EquipByHand(setID)
 end
 
 function G.EquipPending()
-    if pending then Equip(pending, true) end
+    local target = pending
+    if not target then return end
+    Equip(target, true)
+    if pending then return end
+    local saved, key = Store(RETURN)
+    if saved[key] == target then saved[key] = nil end
 end
 
 function G.AutoSwap()
     local want = WantedAuto()
     if want == autoSet then return end
     local saved, key = Store(RETURN)
+    local returning = pending ~= nil and pending == saved[key]
     if pending == autoSet then pending = nil end
     if want then
-        if not autoSet and EquippedSet() ~= want then saved[key] = Wearing() end
+        if not autoSet and not returning and EquippedSet() ~= want then saved[key] = Wearing() end
         autoSet = want
         Equip(want, true)
     else
         autoSet = nil
         Equip(saved[key], true)
-        saved[key] = nil
+        if pending ~= saved[key] then saved[key] = nil end
     end
 end
 

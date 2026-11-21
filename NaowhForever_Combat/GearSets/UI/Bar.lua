@@ -15,7 +15,7 @@ local EVENTS = { "EQUIPMENT_SETS_CHANGED", "EQUIPMENT_SWAP_FINISHED", "PLAYER_EQ
 local SWAP_EVENTS = { PLAYER_MOUNT_DISPLAY_CHANGED = true, PLAYER_UPDATE_RESTING = true, PLAYER_ENTERING_WORLD = true,
     ZONE_CHANGED_NEW_AREA = true }
 local QUIET_SWAP_EVENTS = { UNIT_AURA = true, UPDATE_SHAPESHIFT_FORM = true }
-local QUIET_KEYS = { gearPos = true }
+local QUIET_KEYS = { gearPos = true, gearLooks = true }
 
 local TEXT_EQUIPPED = ns.L("Equipped")
 local TEXT_MISSING_ONE, TEXT_MISSING = ns.L("%d item missing"), ns.L("%d items missing")
@@ -80,7 +80,7 @@ local function NewButton(isSecure)
 end
 
 local function Held()
-    return bar ~= nil and InCombatLockdown() and bar:IsProtected()
+    return bar ~= nil and InCombatLockdown() and (bar:IsProtected() or S.Get("gearCombatWeapons") == true)
 end
 
 local function Layout()
@@ -90,7 +90,10 @@ local function Layout()
     local sets = G.Sets()
     if Held() then
         for i, set in ipairs(sets) do
-            if buttons[i] then Look.Edge(buttons[i], set) end
+            if buttons[i] then
+                buttons[i].set = set
+                Look.Edge(buttons[i], set)
+            end
         end
         return
     end
@@ -157,8 +160,11 @@ local function OnEvent(_, event, result, setID)
     if event == "PLAYER_REGEN_DISABLED" then return end
     if event == "PLAYER_REGEN_ENABLED" and applyAfterCombat then
         applyAfterCombat = false
-        return Apply()
+        Apply()
+        if G.On() then G.EquipPending() end
+        return
     end
+    if event == "UNIT_AURA" and InCombatLockdown() then return end
     if QUIET_SWAP_EVENTS[event] then return G.AutoSwap() end
     if event == "EQUIPMENT_SWAP_FINISHED" and result and setID then G.ShowLooks(setID) end
     if event == "PLAYER_REGEN_ENABLED" or event == "PLAYER_ALIVE" or event == "PLAYER_UNGHOST" then
