@@ -71,7 +71,8 @@ NaowhForever_Combat/Blessings/
   skip them.
 - A Greater Blessing reaches the whole class, so it is only cast when everyone in the class is down
   for the same blessing; otherwise the single one, so nobody's own choice is replaced. It uses a
-  Symbol of Kings (`SYMBOL_OF_KINGS`), and covers the whole class, so it is cast once.
+  Symbol of Kings (`SYMBOL_OF_KINGS`) unless you have the Reagent Economy Legacy talent (`REAGENT_ECONOMY`,
+  `CanCastGreater`), and covers the whole class, so it is cast once.
 - In a battleground or arena (`IsInInstance` says `pvp` or `arena`) the game hides other players' auras, so
   the bar would show nobody blessed or nothing at all. There the bar remembers what you cast instead
   (`Memory.lua`): a click that sent a cast (`UNIT_SPELLCAST_SENT`, in the same frame) notes who it was aimed

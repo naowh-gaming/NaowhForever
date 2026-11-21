@@ -3,8 +3,8 @@ local ns = _G.NaowhForever
 
 local B = ns.Blessings
 local CLASSES, BY_KEY = B.CLASSES, B.BY_KEY
-local SYMBOL_OF_KINGS = B.SYMBOL_OF_KINGS
 local Store, Assigned, HighestKnown, Due, ByUrgency = B.Store, B.Assigned, B.HighestKnown, B.Due, B.ByUrgency
+local CanCastGreater = B.CanCastGreater
 
 local NEXT, NEXT_GREATER = "NaowhForeverBlessNext", "NaowhForeverBlessNextGreater"
 
@@ -92,7 +92,7 @@ end
 
 function Keys.Fill(byClass)
     local single, greater = {}, {}
-    local symbols = C_Item.GetItemCount(SYMBOL_OF_KINGS) > 0
+    local symbols = CanCastGreater()
     for _, class in ipairs(CLASSES) do
         local members = byClass[class]
         if members then

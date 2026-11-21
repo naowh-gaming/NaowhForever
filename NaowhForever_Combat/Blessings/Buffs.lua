@@ -2,16 +2,15 @@
 local ns = _G.NaowhForever
 
 local B = ns.Blessings
-local Secret, Store, Assigned, HighestKnown = B.Secret, B.Store, B.Assigned, B.HighestKnown
+local Secret, Store, Assigned, HighestKnown, CanCastGreater = B.Secret, B.Store, B.Assigned, B.HighestKnown, B.CanCastGreater
 local BY_KEY, FAMILY, GREATER = B.BY_KEY, B.FAMILY, B.GREATER
-local SYMBOL_OF_KINGS = B.SYMBOL_OF_KINGS
 
 local EXPIRING = 300
 local MAX_AURAS = 40
 
 local function CastSpell(key, members)
     local entry = BY_KEY[key]
-    local greater = C_Item.GetItemCount(SYMBOL_OF_KINGS) > 0 and HighestKnown(entry.greater)
+    local greater = CanCastGreater() and HighestKnown(entry.greater)
     if greater then
         for _, member in ipairs(members) do
             if Assigned(member) ~= key then greater = nil break end

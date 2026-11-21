@@ -36,6 +36,10 @@ function B.HighestKnown(ids)
     end
 end
 
+function B.CanCastGreater()
+    return C_Item.GetItemCount(B.SYMBOL_OF_KINGS) > 0 or C_SpellBook.IsSpellKnown(B.REAGENT_ECONOMY)
+end
+
 function B.Learned(entry)
     return B.HighestKnown(entry.ranks) or (entry.greater and B.HighestKnown(entry.greater))
 end
