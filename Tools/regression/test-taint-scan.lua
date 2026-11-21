@@ -79,6 +79,9 @@ local UNGUARDED_ALLOWED = {
     ["NaowhForever_Combat/GearSets/GearSets.lua"] = {
         why = "PutBack is reached only through Equip, which holds the swap while in combat; WeaponsNow runs in combat on purpose, only for the main hand, off hand and ranged slots the game's INVSLOTS_EQUIPABLE_IN_COMBAT allows",
         calls = { ["C_Item.EquipItemByName"] = 3 } },
+    ["NaowhForever_Combat/GearSets/Trinkets.lua"] = {
+        why = "RunSlot is reached only through RunQueue, which returns in combat and while dead",
+        calls = { ["C_Item.EquipItemByName"] = 1 } },
     ["Core/Options/GameMenu.lua"] = { why = "our game menu button's own click",
         calls = { HideUIPanel = 1 } },
     ["NaowhForever_Professions/UI/Window.lua"] = { why = "the close button's click",

@@ -7,10 +7,12 @@ local Parts = ns.Shared.Parts
 local G = ns.GearSets
 local C, St, Look = G.C, G.Style, G.Look
 local TRINKET_SLOTS = C.TRINKET_SLOTS
+local Trinkets = G.Trinkets
 
 local PICKER_COLS, PICKER_CELL, PICKER_STEP, PICKER_PAD = 6, 36, 40, 6
 local PICKER_ROOM, PICKER_EDGE, PICKER_GAP = 34, 8, 5
 local CLOSE_W, CLOSE_H, CLOSE_Y = 80, 22, 5
+local RANK_SIZE, RANK_INSET = 12, 2
 local HOME_Y = -160
 local GCD = 1.5
 local BLACK = St.BLACK
@@ -21,6 +23,7 @@ local WATCHED = { "PLAYER_REGEN_ENABLED", "PLAYER_REGEN_DISABLED", "PLAYER_EQUIP
 local TEXT_NONE = ns.L("No spare trinkets in your bags.")
 local TEXT_CLOSE = ns.L("Close")
 local TEXT_EMPTY = ns.L("Trinket %d - Empty")
+local TEXT_QUEUE_HINT = ns.L("Shift-click to add it to this slot's queue, or take it out.")
 local TEXT_MOVER = "Trinkets"
 
 local trinkets, picker, moving
@@ -31,18 +34,18 @@ local function ClosePicker()
     if picker then picker:Hide() end
 end
 
-local function InBags(itemID)
-    for bag = 0, NUM_BAG_SLOTS do
-        for slot = 1, C_Container.GetContainerNumSlots(bag) do
-            if C_Container.GetContainerItemID(bag, slot) == itemID then return true end
-        end
-    end
-    return false
+local function QueueOn()
+    return S.Get("trinketQueue") == true
 end
 
-local function SpareTrinkets()
+local function SpareTrinkets(inventorySlot)
     wipe(items)
     wipe(seen)
+    local worn = QueueOn() and GetInventoryItemID("player", inventorySlot)
+    if worn then
+        seen[worn] = true
+        items[1] = worn
+    end
     for bag = 0, NUM_BAG_SLOTS do
         for slot = 1, C_Container.GetContainerNumSlots(bag) do
             local id = C_Container.GetContainerItemID(bag, slot)
@@ -58,15 +61,26 @@ local function SpareTrinkets()
     return items
 end
 
+local function ShowRank(button)
+    local rank = QueueOn() and Trinkets.Rank(button.inventorySlot, button.itemID)
+    button.rank:SetText(rank or "")
+end
+
 local function OnPickClick(self)
+    if QueueOn() and IsShiftKeyDown() then
+        Trinkets.Toggle(self.inventorySlot, self.itemID)
+        for _, button in ipairs(picker.buttons) do ShowRank(button) end
+        return
+    end
     if InCombatLockdown() then return end
-    if InBags(self.itemID) then C_Item.EquipItemByName(self.itemID, self.inventorySlot) end
+    if Trinkets.InBags(self.itemID) then C_Item.EquipItemByName(self.itemID, self.inventorySlot) end
     ClosePicker()
 end
 
 local function OnPickEnter(self)
     GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
     GameTooltip:SetItemByID(self.itemID)
+    if QueueOn() then GameTooltip:AddLine(TEXT_QUEUE_HINT, St.HINT_RGB.r, St.HINT_RGB.g, St.HINT_RGB.b, true) end
     GameTooltip:Show()
 end
 
@@ -93,6 +107,8 @@ local function PickButton(i)
     button.icon = button:CreateTexture(nil, "ARTWORK")
     button.icon:SetAllPoints()
     ns.Border(button, BLACK)
+    button.rank = ns.Font(button, RANK_SIZE, "OUTLINE", T.fg)
+    button.rank:SetPoint("TOPLEFT", RANK_INSET, -RANK_INSET)
     button:SetScript("OnClick", OnPickClick)
     Parts.Press(button)
     button:SetScript("OnEnter", OnPickEnter)
@@ -105,12 +121,13 @@ local function Choose(anchor, inventorySlot)
     if InCombatLockdown() then return end
     ClosePicker()
     if not picker then NewPicker() end
-    local spare = SpareTrinkets()
+    local spare = SpareTrinkets(inventorySlot)
     if #spare == 0 then ns.Print(TEXT_NONE) return end
     for i, id in ipairs(spare) do
         local button = PickButton(i)
         button.itemID, button.inventorySlot = id, inventorySlot
         button.icon:SetTexture(C_Item.GetItemIconByID(id))
+        ShowRank(button)
         button:ClearAllPoints()
         button:SetPoint("TOPLEFT", PICKER_PAD + ((i - 1) % PICKER_COLS) * PICKER_STEP,
             -PICKER_PAD - math.floor((i - 1) / PICKER_COLS) * PICKER_STEP)

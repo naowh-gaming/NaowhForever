@@ -2,6 +2,7 @@
     <!-- GearSets.xml: the Gear & Trinkets module's files, in load order. -->
     <Script file="GearSets.lua"/>
     <Script file="Constants.lua"/>
+    <Script file="Trinkets.lua"/>
     <Script file="View\Style.lua"/>
     <Script file="View\Look.lua"/>
     <Script file="UI\Dialogs.lua"/>

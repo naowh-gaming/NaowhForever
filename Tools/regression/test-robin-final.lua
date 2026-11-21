@@ -79,7 +79,7 @@ local function fixture(kind)
             end },
     }
     function ns.OnApply(fn) local was = ns.Apply ns.Apply = function(...) was(...) fn(...) end end
-    local env = { _G = { NaowhForever = ns }, UIParent = {}, NUM_BAG_SLOTS = 0,
+    local env = { _G = { NaowhForever = ns }, UIParent = {}, BACKPACK_CONTAINER = 0, NUM_BAG_SLOTS = 0,
         wipe = function(t) for k in pairs(t) do t[k] = nil end return t end,
         CreateFrame = function(_, name, parent, template) return frame(name, parent, template) end,
         InCombatLockdown = function() return state.combat end,

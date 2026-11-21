@@ -17,6 +17,7 @@ NaowhForever_Combat/GearSets/
   GearSets.lua                the rules and API (ns.GearSets, G): your sets, equipping one,
                               equipping after combat, putting back what you wore, the automatic swaps
   Constants.lua               what its files share (G.C): the settings page, the trinket slots
+  Trinkets.lua                the trinket rules (G.Trinkets): each slot's queue and the trinket-ready alert
   View/
     Style.lua                 its look (G.Style), on top of Shared/Style.lua
     Look.lua                  a set or trinket button's look, on the bars and previews (G.Look)
@@ -81,8 +82,24 @@ NaowhForever_Combat/GearSets/
 - The secure item action errors on an empty slot (a nil link into `C_Item.IsEquippableItem`), so
   an empty slot gets no `type1`.
 - The window listens only while it is open.
+- The Trinket Queue (`trinketQueue`) keeps each slot's trinkets per character in the account settings
+  (`gearTrinketQueue`), best first. The first one that is ready and in your bags, or already in the slot,
+  goes on; a trinket in the slot that is not in its queue is left on.
+- "Ready" is 30 seconds or less to go (`READY_WITHIN`): a trinket just put on cannot be used for 30
+  seconds, so one that is nearly ready loses nothing by going on now.
+- A trinket whose buff is still on you stays on until the buff ends, in case taking it off ends the buff.
+  While auras are secret the queue waits.
+- The queue swaps only out of combat and while alive, and waits a second (`RETRY`) while you cast or
+  hold an item on the cursor, since an equip cancels a cast. It runs on events, and a timer only for
+  the next trinket due to be ready; one trinket goes into one slot per pass.
+- The Trinket Ready Alert (`trinketReady`) arms a timer for a worn trinket's cooldown, longer than the
+  global cooldown, and says so when it ends if the same trinket is still on. A cooldown the game keeps
+  secret arms nothing.
 
 ## Checking
 
+- `lua Tools/regression/test-gear-swaps.lua`: the automatic swaps, putting back what you wore, combat
+  and death, Click Again to Take Off and `/nfgear`.
+- `lua Tools/regression/test-trinket-queue.lua`: the Trinket Queue and the Trinket Ready Alert.
 - `lua Tools/regression/test-robin-final.lua`: the trinket bar (secure buttons, the picker, combat
   deferral, its events only while on) and the gear bar's Show choices.

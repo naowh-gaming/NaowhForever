@@ -13,7 +13,7 @@ local PREVIEW_NOTE_GAP = 10
 local ADD_TEXT_SIZE, NOTE_SIZE = 14, 12
 local BAR_STAGE_H, TRINKET_STAGE_H = 100, 110
 local BAR_SIZE_RANGE, TRINKET_SIZE_RANGE, SPACING_RANGE = { 20, 48, 1 }, { 20, 70, 1 }, { 0, 30, 1 }
-local ORDER_GEAR_BAR, ORDER_EQUIPPING, ORDER_SWAPS, ORDER_TRINKETS = 10, 15, 20, 30
+local ORDER_GEAR_BAR, ORDER_EQUIPPING, ORDER_SWAPS, ORDER_TRINKETS, ORDER_TRINKET_SWAPS = 10, 15, 20, 30, 40
 local SHOW = { { always = "Always", combat = "In Combat", nocombat = "Out of Combat" },
     { "always", "combat", "nocombat" } }
 local GROW = ns.Shared.ItemBar.GrowChoice()
@@ -21,12 +21,14 @@ local PREVIEW_STATE = { { key = "bar", label = "Bar" } }
 
 local GEAR_OFF = ns.L("Turn on Gear & Trinkets")
 local COOLDOWNS_OFF = ns.L("Needs Show Cooldowns")
+local READY_OFF = ns.L("Needs Trinket Ready Alert")
 local TEXT_NO_SETS = ns.L("No gear sets yet: + saves what you wear as one.")
 local TEXT_NONE = ns.L("None")
 local TEXT_NO_SETS_HEAD = ns.L("No gear sets yet")
 local TEXT_DETAIL = ns.L("The same sets as the character sheet's: equip, save, rename or delete them in the Gear Sets window.")
 
 local function GearOn() return S.Get("gearSets") == true end
+local function ReadyOn() return GearOn() and S.Get("trinketReady") == true end
 local function CooldownsOn() return GearOn() and S.Get("trinketCooldown") == true end
 
 local function PreviewButton(parent)
@@ -246,5 +248,17 @@ page:Card({
           help = "Counts down the time left on the icon." },
         { key = "trinketSquare", label = "Square Icons", toggle = true, needs = GearOn, why = GEAR_OFF,
           help = "Trims the rounded edges off the trinket icons, like the Gear Set Bar's." },
+    },
+})
+
+page:Card({
+    id = "trinketSwaps", name = "Trinket Queue", order = ORDER_TRINKET_SWAPS,
+    help = "Trinkets that take turns on their own, and a word when one is ready.",
+    rows = {
+        { key = "trinketQueue", label = "Trinket Queue", toggle = true, needs = GearOn, why = GEAR_OFF,
+          help = "Shift-click trinkets in the Trinket Bar's picker to queue them; the next ready one goes on." },
+        { key = "trinketReady", label = "Trinket Ready Alert", toggle = true, needs = GearOn, why = GEAR_OFF,
+          help = "Says in chat when a trinket you wear is ready to use again." },
+        { key = "trinketReadySound", label = "Sound", sound = true, needs = ReadyOn, why = READY_OFF },
     },
 })
