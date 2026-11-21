@@ -106,6 +106,7 @@ ns.FEATURES = {
         trinketBar = false,
         bis = true,
         bisLootAlert = true,
+        bisRoute = false,
         blessings = true,
         durability = false,
         talentPoints = false,

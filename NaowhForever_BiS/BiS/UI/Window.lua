@@ -17,7 +17,7 @@ local CONTENT_LEFT = SIDE_W + PAD + 14
 local CARD_IN = 6
 local CONTENT_RIGHT = 4
 local DOLL_GAP = 12
-local PAGES_W = 240
+local PAGES_W, PAGES_ROUTE_W = 240, 360
 local GENERATE_W, GENERATE_GAP = 120, 8
 local PAGES_TOP = 4
 local PAGES_GAP = 8
@@ -45,6 +45,8 @@ local PAGES = {
     { key = "list", label = "Your List", tip = "Your picks for every slot, and where to run next." },
     { key = "quests", label = "Quests", tip = "The quests that reward a pick you do not have yet." },
 }
+local PAGES_ROUTE = { PAGES[1], PAGES[2],
+    { key = "route", label = "Route", tip = "Where your picks come from, in the order you go." } }
 
 local window, view, doll, specTabs
 local scroll, questsView
@@ -114,7 +116,9 @@ end
 local function PaintPages(list)
     local count = Q.Available() and Q.Count(list) or 0
     PAGES[2].label = QuestsLabel(count)
-    Parts.SetTabs(window.pages, PAGES)
+    local route = S.Get("bisRoute")
+    window.pages:SetWidth(route and PAGES_ROUTE_W or PAGES_W)
+    Parts.SetTabs(window.pages, route and PAGES_ROUTE or PAGES)
     Parts.PaintTabs(window.pages, page)
 end
 
@@ -131,6 +135,10 @@ end
 local function DrawPage()
     if page == "list" then
         view:DrawList()
+        return
+    end
+    if page == "route" then
+        view:DrawRoute()
         return
     end
     PaintSide()
@@ -156,7 +164,7 @@ local function ShowPage(key)
     local hidden = shown == view and questsView or view
     if hidden then hidden:Hide() end
     shown:Show()
-    local summary = shown == view
+    local summary = shown == view and key ~= "route"
     view.summary:SetShown(summary)
     scroll:SetPoint("TOPLEFT", scrollLeft, -(scrollTop + (summary and B.View.SUMMARY_H or 0)))
     scroll:SetScrollChild(shown)
@@ -257,6 +265,12 @@ end
 
 local function OnSetting(key)
     if key == "bis" and window and not B.On() then window:Hide() end
+    if key ~= "bisRoute" or not window then return end
+    if page == "route" and not S.Get(key) then
+        ShowPage("list")
+    elseif window:IsShown() then
+        PaintSide()
+    end
 end
 
 local function ListChanged()

@@ -37,6 +37,8 @@ local craftIDs, questIDs, worldIDs
 local dropDungeon = {}
 local places, details = {}, {}
 local nextPlaces, byName, placePool = {}, {}, {}
+local routePlaces, routeByName, routePool, routeAt, routePicks, routeTaken = {}, {}, {}, {}, {}, {}
+local R = {}
 
 local function ByRank(a, b)
     local pa, pb = rankPos[a] or math.huge, rankPos[b] or math.huge
@@ -140,26 +142,39 @@ local function PlaceOf(id)
     return nil
 end
 
-local function NewPlace(found, name, kind, id)
-    local place = placePool[#found + 1] or { slots = {} }
-    placePool[#found + 1] = place
-    place.name, place.bis, place.gain, place.mask, place.key = name, 0, 0, 0, 0
+local function NewPlace(found, names, pool, name, kind, id)
+    local place = pool[#found + 1] or { slots = {}, ids = {}, ranks = {} }
+    pool[#found + 1] = place
+    place.name, place.bis, place.items, place.gain, place.mask, place.key = name, 0, 0, 0, 0, 0
+    place.level = math.huge
     place.kind, place.via = kind, kind and id or nil
     wipe(place.slots)
-    byName[name] = place
+    wipe(place.ids)
+    wipe(place.ranks)
+    names[name] = place
     found[#found + 1] = place
     return place
 end
 
-local function AddToPlace(place, slot, id, gains)
-    place.bis = place.bis + 1
-    place.gain = place.gain + (gains and gains[slot] or 0)
-    place.slots[place.bis] = slot
+local function AddToPlace(place, slot, id, rank, gains)
+    local n = place.items + 1
+    place.items = n
+    place.slots[n], place.ids[n], place.ranks[n] = slot, id, rank
+    if rank == 1 then
+        place.bis = place.bis + 1
+        place.gain = place.gain + (gains and gains[slot] or 0)
+    end
     place.mask = place.mask + 2 ^ slot
-    place.key = place.key + id * slot
+    place.key = place.key + id * slot * rank
 end
 
-local R = {}
+local function ByRoute(a, b)
+    local ra, rb = routeAt[a.name] or math.huge, routeAt[b.name] or math.huge
+    if ra ~= rb then return ra < rb end
+    if a.level ~= b.level then return a.level < b.level end
+    return a.name < b.name
+end
+
 B.Rankings = R
 R.Usable = Items.ClassCanUse
 
@@ -326,10 +341,36 @@ function R.RunNext(list, gains)
         local id = Counted(slot, idle) and list.slots[slot]
         local name, kind = PlaceOf(id)
         if name and not Owned(slot, id) then
-            AddToPlace(byName[name] or NewPlace(found, name, kind, id), slot, id, gains)
+            AddToPlace(byName[name] or NewPlace(found, byName, placePool, name, kind, id), slot, id, 1, gains)
         end
     end
     table.sort(found, ByGain)
     for i = #found, RUN_NEXT_MAX + 1, -1 do found[i] = nil end
+    return found
+end
+
+function R.Route(list)
+    local found = wipe(routePlaces)
+    wipe(routeByName)
+    local idle = B.OffHandIdle(list)
+    for _, gear in ipairs(Items.GEAR_SLOTS) do
+        local slot = gear[1]
+        local picks = Counted(slot, idle) and B.Picks(list, slot, routePicks) or EMPTY
+        local taken = wipe(routeTaken)
+        for rank = 1, #picks do
+            local id = picks[rank]
+            if Owned(slot, id) then break end
+            local name, kind = PlaceOf(id)
+            if name and not taken[name] then
+                taken[name] = true
+                local place = routeByName[name] or NewPlace(found, routeByName, routePool, name, kind, id)
+                AddToPlace(place, slot, id, rank)
+                place.level = math.min(place.level, R.ReqLevel(id) or math.huge)
+            end
+        end
+    end
+    wipe(routeAt)
+    for i, name in ipairs(list.route or EMPTY) do routeAt[name] = routeAt[name] or i end
+    table.sort(found, ByRoute)
     return found
 end

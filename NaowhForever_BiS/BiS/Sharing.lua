@@ -13,6 +13,7 @@ local VERSION = ORDERED
 local LIMITS = { maxChars = 100000, maxBytes = 1048576, maxDepth = 8, maxValues = 20000 }
 local MAX_ID = 2 ^ 31
 local NAME_MAX = C.NAME_MAX
+local ROUTE_MAX, PLACE_MAX = 64, 80
 local BODY_PATTERN = "^%s*" .. PREFIX:gsub("!", "%%!") .. "(%S+)%s*$"
 local TEXT_IMPORTED_NAME = ns.L("Imported BiS")
 local TEXT_NOT_A_LIST = ns.L("That is not a Naowh BiS list.")
@@ -68,6 +69,18 @@ local function ReadSlots(data, list, spec)
     end
 end
 
+local function ReadRoute(route)
+    if type(route) ~= "table" then return nil end
+    local out, seen = {}, {}
+    for i = 1, math.min(#route, ROUTE_MAX) do
+        local name = ns.Shared.Decode.Text(route[i], PLACE_MAX)
+        if name and name ~= "" and not seen[name] then
+            out[#out + 1], seen[name] = name, true
+        end
+    end
+    return out[1] and out or nil
+end
+
 local function Slotted(version)
     return version == BIS_ONLY or version == UNORDERED or version == ORDERED
 end
@@ -87,7 +100,7 @@ local function Decode(text)
     else
         return
     end
-    return name, list.slots, list.extra, spec, data.only == true
+    return name, list.slots, list.extra, spec, data.only == true, ReadRoute(data.route)
 end
 
 local function Count(slots, extra)
@@ -102,19 +115,19 @@ function ns.ExportBisList()
     local list = L.List()
     return PREFIX .. LD:EncodeForPrint(LD:CompressDeflate(LS:Serialize({
         v = VERSION, name = list.name, spec = list.spec, slots = list.slots, extra = list.extra,
-        only = list.specOnly,
+        only = list.specOnly, route = list.route,
     })))
 end
 
 function ns.ImportBisList(text, quiet)
-    local name, slots, extra, spec, only = Decode(text)
+    local name, slots, extra, spec, only, route = Decode(text)
     if not name then
         ns.Print(TEXT_NOT_A_LIST)
         return false
     end
     local count = Count(slots, extra)
     local function Apply()
-        local list = L.AddList(name, spec, slots, extra, only)
+        local list = L.AddList(name, spec, slots, extra, only, route)
         ns.Print(TEXT_IMPORTED:format(list.name, count))
     end
     if quiet then

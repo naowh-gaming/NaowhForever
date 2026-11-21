@@ -201,6 +201,9 @@ page:Card({
         { key = "bisAutoAhead", label = "Levels Ahead", slider = AHEAD_RANGE, needs = "bis", why = BIS_OFF,
           help = "How far over your level the picker and a generated list look for gear.",
           search = "generate auto level range gap" },
+        { key = "bisRoute", label = "Route Page", toggle = true, needs = "bis", why = BIS_OFF,
+          help = "A page that puts the places your picks come from in the order you go.",
+          search = "progression order steps plan dungeons" },
     },
 })
 

@@ -661,6 +661,85 @@ Case("wearing or keeping the classic copy of a replaced item counts as Forever's
     assert(Items.Owned(226929) and not Items.Wearing(9, 226929), "in the bank")
 end)
 
+-- The Route, on a head slot whose BiS drops in Scholomance, its #2 in Blackrock Depths and its #3 in Maraudon.
+local function RouteFixture(carried)
+    local e = Fixture(nil, nil, nil, carried)
+    e.ns.BiSData.sources = { [101] = "Boss A" .. DOT .. "Maraudon", [102] = "Boss B" .. DOT .. "Blackrock Depths",
+        [103] = "Boss C" .. DOT .. "Scholomance" }
+    e.ns.Shared.ItemFacts = { [101] = { 4, 0, 46, 46, 3 }, [102] = { 4, 0, 52, 52, 3 }, [103] = { 4, 0, 58, 58, 3 } }
+    e.ns.AddBisPick(1, 103); e.ns.AddBisPick(1, 102); e.ns.AddBisPick(1, 101)
+    return e, e.ns.BiS.Rankings.Route
+end
+
+local function Steps(route)
+    local names = {}
+    for i, place in ipairs(route) do names[i] = place.name end
+    return table.concat(names, ",")
+end
+
+Case("the route lists every pick still to get, by level until you order it, and drops what a better pick replaced", function()
+    local e, Route = RouteFixture({})
+    local route = Route(Saved(e))
+    assert(Steps(route) == "Maraudon,Blackrock Depths,Scholomance", Steps(route))
+    assert(route[1].bis == 0 and route[1].ranks[1] == 3 and route[1].ids[1] == 101, "a backup is a step")
+    assert(route[3].bis == 1 and route[3].ranks[1] == 1, "the BiS is counted as one")
+    e, Route = RouteFixture({ [102] = 1 })
+    assert(Steps(Route(Saved(e))) == "Scholomance", "the #3 under a #2 you have is done with")
+    e, Route = RouteFixture({})
+    e.ns.BiSData.sources[102] = e.ns.BiSData.sources[103]
+    route = Route(Saved(e))
+    assert(Steps(route) == "Maraudon,Scholomance" and route[2].items == 1 and route[2].ids[1] == 103,
+        "a backup from the place you go for the BiS is not listed again")
+end)
+
+Case("a moved step stays where you put it", function()
+    local e, Route = RouteFixture({})
+    e.ns.MoveBisRouteStep(Route(Saved(e)), 3, -1)
+    assert(table.concat(Saved(e).route, ",") == "Maraudon,Scholomance,Blackrock Depths")
+    local route = Route(Saved(e))
+    assert(Steps(route) == "Maraudon,Scholomance,Blackrock Depths", Steps(route))
+    e.ns.MoveBisRouteStep(route, 1, -1)
+    assert(table.concat(Saved(e).route, ",") == "Maraudon,Scholomance,Blackrock Depths", "nothing above the first")
+end)
+
+Case("a step you finish keeps its place in the order", function()
+    local carried = {}
+    local e, Route = RouteFixture(carried)
+    e.ns.MoveBisRouteStep(Route(Saved(e)), 2, 1)
+    carried[103] = 1
+    assert(#Route(Saved(e)) == 0, "all done")
+    e.ns.MoveBisRouteStep(Route(Saved(e)), 1, 1)
+    assert(table.concat(Saved(e).route, ",") == "Maraudon,Scholomance,Blackrock Depths", "kept")
+end)
+
+Case("each spec keeps its own route, and a copy, an export and an import carry it", function()
+    local e, Route = RouteFixture({})
+    e.ns.MoveBisRouteStep(Route(Saved(e)), 1, 1)
+    local list = Saved(e)
+    local want = "Blackrock Depths,Maraudon,Scholomance"
+    e.ns.SetBisSpec("frost-mage")
+    assert(Saved(e).route == nil, "the other spec has none")
+    e.ns.SetBisSpec("fire-mage")
+    assert(table.concat(Saved(e).route, ",") == want, "back again")
+    local text = e.ns.ExportBisList()
+    assert(e.vault[#e.vault].v == 4, "still version 4, so older versions read it")
+    assert(e.ns.ImportBisList(text, true))
+    assert(table.concat(Saved(e).route, ",") == want, "imported")
+    assert(e.ns.NewBisList("Copy", false, { id = list.id, spec = "fire-mage", slots = { [1] = true } }))
+    local copy = Saved(e)
+    assert(copy.name == "Copy" and copy.route ~= list.route and table.concat(copy.route, ",") == want, "copied")
+end)
+
+Case("an imported route keeps only names, once each", function()
+    local e = Fixture()
+    e.vault[1] = { v = 4, name = "Routed", slots = { [1] = 101 }, route = { "Maraudon", 5, "Maraudon", "Dire|Maul", "" } }
+    assert(e.ns.ImportBisList("!NBIS1!S1", true))
+    assert(table.concat(Saved(e).route, ",") == "Maraudon,DireMaul", table.concat(Saved(e).route, ","))
+    e.vault[2] = { v = 4, name = "Bad", slots = { [1] = 101 }, route = "Maraudon" }
+    assert(e.ns.ImportBisList("!NBIS1!S2", true))
+    assert(Saved(e).route == nil, "not a list, no route")
+end)
+
 Case("the cloak slot still reads Back on enUS, through its own key", function()
     assert(Fixture().ns.Shared.Items.SlotName(15) == "Back")
 end)

@@ -13,6 +13,9 @@ local JOURNAL = "NaowhForever_DungeonJournal"
 local TEXT_TURN_ON_JOURNAL = ns.L("Turn On Dungeon Journal")
 local TEXT_RUN_NEXT = ns.L("Run next")
 local TEXT_RUN_NEXT_OFF = ns.L("Turn on the Dungeon Journal for each dungeon's levels and quests here.")
+local TEXT_ROUTE = ns.L("Route")
+local TEXT_NEXT_STOP, TEXT_AFTER_THAT = ns.L("Next stop"), ns.L("After that")
+local TEXT_ROUTE_EMPTY = ns.L("Nothing left to get: every pick you can go and get is yours.")
 local TEXT_OFF_HAND_IDLE = ns.L("Unused while your main hand's BiS is a two-hander.")
 local TEXT_YOUR_PICKS = ns.L("Your picks")
 local TEXT_NO_PICKS = ns.L("Nothing picked yet. Click an item below: the first is your BiS.")
@@ -193,6 +196,28 @@ function ViewMixin:DrawList()
     if self.onDrawn then self.onDrawn() end
 end
 
+function ViewMixin:DrawRoute()
+    self.page = "route"
+    self:Begin()
+    wipe(self.rows)
+    self.list = L.List()
+    self.route = R.Route(self.list)
+    local steps = #self.route
+    if not ns.Journal then self:NeedsModule(TEXT_ROUTE, TEXT_RUN_NEXT_OFF, JOURNAL, TEXT_TURN_ON_JOURNAL) end
+    if steps == 0 then self:Note(TEXT_ROUTE_EMPTY) end
+    for i = 1, steps do
+        if i == 1 then
+            self:Section(TEXT_NEXT_STOP)
+        elseif i == 2 then
+            self:Space(SECTION_SPACE)
+            self:Section(TEXT_AFTER_THAT, steps - 1)
+        end
+        self:Add("place", self.route[i], i, steps)
+    end
+    self:Fit(EVENTS)
+    if self.onDrawn then self.onDrawn() end
+end
+
 function ViewMixin:SetFilter(key)
     self.filter = key
     self:Redraw()
@@ -329,6 +354,8 @@ function ViewMixin:Redraw()
         self:DrawPicker(self.slot)
     elseif self.page == "questsOff" then
         self:DrawQuestsOff()
+    elseif self.page == "route" then
+        self:DrawRoute()
     else
         self:DrawList()
     end

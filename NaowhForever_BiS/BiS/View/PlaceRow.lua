@@ -11,12 +11,13 @@ local Cells = B.View.Cells
 local St = B.Style
 
 local INSET, ACTION, PLACE_H, NAME_GAP = St.STATUS_W, St.ACTION, St.PLACE_H, St.NAME_GAP
-local PLACE_DOT, RED_CODE, TITLE_RGB = St.PLACE_DOT, St.RED_CODE, St.TIP_TITLE_RGB
+local PLACE_DOT, RED_CODE, TITLE_RGB, ACTION_GAP = St.PLACE_DOT, St.RED_CODE, St.TIP_TITLE_RGB, St.ACTION_GAP
 local CARD_DROP = Parts.CARD_DROP
 local PLACE_LINK_W, PLACE_COUNT_W, PLACE_GAP = 72, 34, 10
 local PIN_Y, LINK_Y, LINK_H = 4, 2, 16
 local COLUMN_GAP = 10
 local DETAIL_Y = 3
+local UP, DOWN = -1, 1
 local STAR_MARK = Parts.RankMark(1, CARD_DROP)
 local TEXT_UNKNOWN = ns.L("World drop")
 local TEXT_BACK = ns.L("Back to BiS List")
@@ -33,6 +34,7 @@ local TEXT_QUEST, TEXT_QUESTS = ns.L("quest"), ns.L("quests")
 local TEXT_OPEN, TEXT_WAYPOINT, TEXT_MAP = ns.L("Open"), ns.L("Waypoint"), ns.L("Map")
 local VIA_LINKS = { quest = ns.L("Quest"), recipe = ns.L("Recipe"), faction = ns.L("Open") }
 local VIA_WORDS = { quest = "Rewards ", recipe = "Crafts ", faction = "Sells " }
+local TEXT_EARLIER, TEXT_LATER = ns.L("Go here earlier"), ns.L("Go here later")
 
 local QuestsText = B.View.Memo("%d %s")
 local dungeonsByName
@@ -79,8 +81,7 @@ local function Count(bis)
     return text
 end
 
-local function Drop(list, slot)
-    local id = list.slots[slot]
+local function Drop(id)
     local _, who = R.Place(ns.BiSSource(id) or TEXT_UNKNOWN)
     return who and ns.L(who), C_Item.GetItemNameByID(id), ns.BiSSpots[id]
 end
@@ -93,9 +94,8 @@ local function Where(spot)
     return TEXT_WHERE:format(spot.roams and TEXT_AROUND or TEXT_AT, spot.x, spot.y)
 end
 
-local function FirstSpot(place, list)
-    for _, slot in ipairs(place.slots) do
-        local id = list.slots[slot]
+local function FirstSpot(place)
+    for _, id in ipairs(place.ids) do
         if ns.BiSSpots[id] then return id, ns.BiSSpots[id] end
     end
 end
@@ -123,23 +123,23 @@ local function Joined(place, parts, who, dungeon)
     return table.concat(parts, "; ")
 end
 
-local function Detail(place, list, dungeon)
+local function Detail(place, dungeon)
     local byKey = details[place.name]
     if not byKey then
         byKey = {}
         details[place.name] = byKey
     end
     local text = byKey[place.key]
-    if text then return text end
+    if text then return text, true end
     local parts, who, seen, loaded = {}, {}, {}, true
     for i, slot in ipairs(place.slots) do
-        local boss, name, spot = Drop(list, slot)
+        local boss, name, spot = Drop(place.ids[i])
         loaded = loaded and name ~= nil
         parts[i] = Part(place, dungeon, slot, boss, name, spot, who, seen)
     end
     text = Joined(place, parts, who, dungeon)
     if loaded then byKey[place.key] = text end
-    return text
+    return text, loaded
 end
 
 local function Levels(dungeon, playerLevel)
@@ -159,12 +159,11 @@ local function Hint(row)
     return row.map and TEXT_MAP_HINT:format(R.PlaceName(row.place.name))
 end
 
-local function AddSlot(row, list, slot)
-    local id = list.slots[slot]
+local function AddItem(row, slot, id, rank)
     local muted = T.muted
-    GameTooltip:AddDoubleLine(Parts.RankMark(1) .. " " .. Items.QualityHex(id) .. Items.Name(id) .. "|r",
+    GameTooltip:AddDoubleLine(Parts.RankMark(rank) .. " " .. Items.QualityHex(id) .. Items.Name(id) .. "|r",
         SlotName(slot), TITLE_RGB.r, TITLE_RGB.g, TITLE_RGB.b, muted.r, muted.g, muted.b)
-    local who, _, spot = Drop(list, slot)
+    local who, _, spot = Drop(id)
     if who and not (row.dungeon or row.place.via) then
         GameTooltip:AddLine(TEXT_HAS_IT:format(Has(who, spot), spot and Where(spot) or TEXT_IN .. R.PlaceName(row.place.name)),
             muted.r, muted.g, muted.b)
@@ -173,11 +172,11 @@ end
 
 local function Enter(row)
     row.hover:Show()
-    local list = row:GetParent().list
     if not Tip(row, "ANCHOR_RIGHT") then return end
     GameTooltip:SetText(R.PlaceName(row.place.name), TITLE_RGB.r, TITLE_RGB.g, TITLE_RGB.b)
     if row.dungeon and row.dungeon.new then GameTooltip:AddLine(Parts.ForeverLine()) end
-    for _, slot in ipairs(row.place.slots) do AddSlot(row, list, slot) end
+    local place = row.place
+    for i, slot in ipairs(place.slots) do AddItem(row, slot, place.ids[i], place.ranks[i]) end
     local hint = Hint(row)
     if hint then GameTooltip:AddLine(hint, T.accentSoft.r, T.accentSoft.g, T.accentSoft.b) end
     GameTooltip:Show()
@@ -187,6 +186,14 @@ local function Leave(row)
     row.hover:Hide()
     GameTooltip:Hide()
 end
+
+local function Move(button, step)
+    local row = button:GetParent()
+    ns.MoveBisRouteStep(row:GetParent().route, row.index, step)
+end
+
+local function MoveUp(button) Move(button, UP) end
+local function MoveDown(button) Move(button, DOWN) end
 
 local function QuestCount(dungeon)
     if not (dungeon and dungeon.quests) then return 0 end
@@ -213,6 +220,11 @@ local function Columns(row)
     row.count:SetPoint("RIGHT", row.gain, "LEFT", -PLACE_GAP, 0)
     row.count:SetWidth(PLACE_COUNT_W)
     row.count:SetJustifyH("LEFT")
+    row.down = Parts.IconButton(row, MoveDown, St.UP, 0, TEXT_LATER)
+    row.down.icon:SetTexCoord(0, 1, 1, 0)
+    row.down:SetPoint("RIGHT", row.count, "LEFT", -PLACE_GAP, 0)
+    row.up = Parts.IconButton(row, MoveUp, St.UP, 0, TEXT_EARLIER)
+    row.up:SetPoint("RIGHT", row.down, "LEFT", -ACTION_GAP, 0)
 end
 
 local function New(view)
@@ -243,10 +255,12 @@ local function LinkText(place, dungeon, spot)
     return VIA_LINKS[place.kind] or dungeon and TEXT_OPEN or spot and TEXT_WAYPOINT or TEXT_MAP
 end
 
-local function Set(row, place)
+local function Set(row, place, index, steps)
     local view = row:GetParent()
-    row.place = place
-    row.count:SetText(Count(place.bis))
+    row.place, row.index = place, index
+    row.count:SetText(place.bis > 0 and Count(place.bis) or "")
+    row.up:SetShown(index ~= nil and index > 1)
+    row.down:SetShown(index ~= nil and index < steps)
     Cells.PaintGain(row.gain, place.gain > 0 and place.gain or nil, view.mostPlaceGain)
     local dungeon = not place.via and JournalDungeon(place.name) or nil
     row.dungeon = dungeon
@@ -254,15 +268,21 @@ local function Set(row, place)
     row.name:SetText(dungeon and dungeon.new and name .. Parts.ForeverInline(St.SMALL_SIZE, CARD_DROP) or name)
     row.spotItem, row.spot = nil, nil
     local outdoors = not (dungeon or place.via)
-    if outdoors then row.spotItem, row.spot = FirstSpot(place, view.list) end
+    if outdoors then row.spotItem, row.spot = FirstSpot(place) end
     row.map = outdoors and (row.spot and row.spot.map or Places.Zone(place.name)) or nil
-    row.detail:SetText(Detail(place, view.list, dungeon))
+    local detail, loaded = Detail(place, dungeon)
+    row.detail:SetText(detail)
+    if not loaded then
+        for _, id in ipairs(place.ids) do
+            if not C_Item.GetItemNameByID(id) then view.waitingFor[id] = true end
+        end
+    end
     row.levels:SetText(dungeon and Levels(dungeon, view.playerLevel) or "")
     local quests = QuestCount(dungeon)
     row.quests:SetText(quests > 0 and QuestsText(quests, quests == 1 and TEXT_QUEST or TEXT_QUESTS) or "")
     row.open:SetShown(dungeon ~= nil or row.map ~= nil or place.via ~= nil)
     Parts.SetLink(row.open, LinkText(place, dungeon, row.spot))
-    return PLACE_H
+    return PLACE_H, not loaded
 end
 
 B.View.Kinds.place = { New = New, Set = Set }

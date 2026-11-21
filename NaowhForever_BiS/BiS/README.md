@@ -10,6 +10,8 @@ on the left, a card per slot with its picks on the right, where to run next (a w
 whoever has your BiS out in the world) and the best enchant for what you wear; and a Quests
 page, the quests that reward a pick you do not have yet, as the Dungeon Journal shows its own;
 and Generate BiS List, an Auto list that keeps your best gear for your level as you level.
+With Route Page on (off by default), a Route page lists every place your picks come from,
+backups included, in the order you put them in.
 Listed items say so on their tooltip, and call out when they drop. Lists are shared by every
 character of a class, and can be shared as a string. Sim on MythicSim, on the window's title bar,
 copies your character for MythicSim's Forever sim (mythicsim.com/wow-forever/sim), so you need no
@@ -59,7 +61,7 @@ BiS/
     SlotRow.lua       a slot's row: the slot, its BiS, the gain, where it drops, its picks
     PickRow.lua       a pick in the picker, and the hover, clicks and move buttons a backup shares
     BackupRow.lua     a backup pick under its slot's row, joined by a tree line
-    PlaceRow.lua      a place to run next
+    PlaceRow.lua      a place to run next, or a step of the Route with its move buttons
     ScoreCard.lua     the Gear Score card under the paperdoll
     Paperdoll.lua     your model in your BiS, turned and zoomed, the slots as the game lays them out
     Toast.lua         Drop Alert's alert on screen, drawn by your settings, live and in its preview (B.Toast)
@@ -101,9 +103,9 @@ Other modules call in through `ns`: `ns.IsBisItem` (the Journal, Bag Space, the 
 ## Why
 
 - A list is `{ id, name, spec, slots = { [slot] = itemID }, extra = { [slot] = { itemID... } },
-  bySpec = { [spec] = { slots, extra } } }`: `slots[slot]` is a slot's BiS, `extra[slot]` its next
-  picks in order. Each spec keeps its own picks on a list; switching parks the current ones under
-  `bySpec`.
+  route = { placeName... }, bySpec = { [spec] = { slots, extra, route } } }`: `slots[slot]` is a slot's
+  BiS, `extra[slot]` its next picks in order, `route` the order of the Route's steps. Each spec keeps
+  its own picks and route on a list; switching parks the current ones under `bySpec`.
 - Picking a class list keeps the spec tab you are on, even when the list has no picks there:
   the tab is the spec you are editing, and its spec-only lists are offered beside it.
 - Lists are kept per class in the account store, so every character of a class shares them and none
@@ -181,6 +183,14 @@ Other modules call in through `ns`: `ns.IsBisItem` (the Journal, Bag Space, the 
 - Run Next shows at most three places, the ones that make you strongest first (by the gains), then
   the one with the most of your BiS. A quest, a craft or a faction's reward is not a place but a
   click goes there all the same; a world drop is nowhere to go.
+- The Route is a step per place, the same places as Run Next but with every pick, not only the BiS:
+  a stopgap is usually a backup. A slot's picks stop at the first one you have, since the ones under
+  it are done with. Steps you have not ordered go after the ones you have, lowest required level
+  first, which is the order most players level through them.
+- Moving a step saves the whole order shown, and keeps the places not shown (done, or no pick there
+  now) after them, so a step you finish or take off keeps its place if it comes back.
+- The route travels in the version 4 string as an extra field: older versions import the list and
+  ignore it.
 - A quest for your own side says only "Quest": the list gives you no quest of the other's.
 - The quests are the Journal's records (its `Data/BiSQuests.lua`), so its rules (what to do first,
   the level, the chain, the waypoint, tracking) work on them. A quest's race limit is kept aside, as
@@ -262,7 +272,7 @@ Other modules call in through `ns`: `ns.IsBisItem` (the Journal, Bag Space, the 
 
 ## Checking
 
-- `lua Tools/regression/test-bis-slots.lua`: lists, picks, old formats, sharing, Run Next.
+- `lua Tools/regression/test-bis-slots.lua`: lists, picks, old formats, sharing, Run Next, the Route.
 - `lua Tools/regression/test-bis-dungeon-drops.lua`: class rules, dungeon drops, sources.
 - `lua Tools/regression/test-bis-window.lua`: the window, paperdoll and picker, a click
   changing the list, Generate BiS List, the redraw's cost (no garbage), Drop Alert only listening while on and as
