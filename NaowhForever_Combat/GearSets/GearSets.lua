@@ -7,11 +7,17 @@ local FIRST_SLOT, LAST_SLOT = 1, 19
 local MAIN_HAND, OFF_HAND = 16, 17
 local COMBAT_SLOTS = { 16, 17, 18 }
 local FORM_SPELL = 4
-local RETURN = "gearReturn"
+local RETURN, BEFORE = "gearReturn", "gearBefore"
+local SET_EQUIPPED = 4
 local TEXT_AFTER_COMBAT = ns.L("Gear set equips when combat ends.")
 local TEXT_AFTER_DEATH = ns.L("Gear set equips when you are alive again.")
 local TEXT_MISSING = ns.L("%s is not in your bags, so it was not put back.")
 local TEXT_NO_ROOM = ns.L("No room in your bags to take off %s.")
+local TEXT_NOTHING = ns.L("Nothing to put back: no set was put on since you last took one off.")
+local TEXT_NO_SET = ns.L("No gear set called %s.")
+local TEXT_USAGE = ns.L("/nfgear equip <set>, /nfgear toggle <set>[, <other set>] or /nfgear off")
+local TEXT_SWITCHED_OFF = ns.L("%s is switched off. Turn it on under Settings > Modules.")
+local TEXT_MODULE = ns.L("Gear & Trinkets")
 local SWAP_KEYS = { "gearMounted", "gearDrinking", "gearDungeon", "gearRaid", "gearBattleground", "gearResting",
     "fishingGearSet" }
 local INSTANCE_KEYS = { party = "gearDungeon", raid = "gearRaid", pvp = "gearBattleground" }
@@ -47,6 +53,10 @@ end
 local function SetByName(name)
     if not name or name == "" then return end
     return C_EquipmentSet.GetEquipmentSetID(name)
+end
+
+local function IsWorn(setID)
+    return select(SET_EQUIPPED, C_EquipmentSet.GetEquipmentSetInfo(setID)) == true
 end
 
 local function Wearing()
@@ -188,10 +198,27 @@ function G.On()
     return S.Get("gearSets") and not OLD_COPY
 end
 
-function G.EquipByHand(setID)
+function G.Wear(setID)
     local saved, key = Store(RETURN)
     saved[key] = nil
+    if not IsWorn(setID) then
+        local before, beforeKey = Store(BEFORE)
+        before[beforeKey] = Wearing()
+    end
     Equip(setID)
+end
+
+function G.TakeOff()
+    local before, key = Store(BEFORE)
+    local target = before[key]
+    if not target then return ns.Print(TEXT_NOTHING) end
+    before[key] = nil
+    Equip(target)
+end
+
+function G.EquipByHand(setID)
+    if S.Get("gearClickOff") and IsWorn(setID) then return G.TakeOff() end
+    G.Wear(setID)
 end
 
 function G.EquipPending()
@@ -212,4 +239,27 @@ function G.AutoSwap()
         Equip(saved[key], true)
         saved[key] = nil
     end
+end
+
+local function Named(name)
+    local id = SetByName(name)
+    if not id then ns.Print(TEXT_NO_SET:format(name)) end
+    return id
+end
+
+function ns.GearSetsCommand(msg)
+    if not G.On() then return ns.Print(TEXT_SWITCHED_OFF:format(TEXT_MODULE)) end
+    local verb, rest = msg:match("^(%S+)%s*(.-)%s*$")
+    verb = verb:lower()
+    local first, second = rest:match("^(.-)%s*,%s*(.+)$")
+    first = first or rest
+    if verb == "off" then return G.TakeOff() end
+    if first == "" or not (verb == "equip" or verb == "toggle") then return ns.Print(TEXT_USAGE) end
+    local id = Named(first)
+    if not id then return end
+    if verb == "equip" then return G.Wear(id) end
+    if not IsWorn(id) then return G.Wear(id) end
+    if not second then return G.TakeOff() end
+    local other = Named(second)
+    if other then G.Wear(other) end
 end

@@ -21,6 +21,7 @@ local TEXT_EQUIPPED = ns.L("Equipped")
 local TEXT_MISSING_ONE, TEXT_MISSING = ns.L("%d item missing"), ns.L("%d items missing")
 local TEXT_HINT = ns.L("Click to equip. Shift-click to save what you wear into it. Ctrl-click to "
     .. "rename it. Right-click to change its icon.")
+local TEXT_TAKE_OFF = ns.L("Click again to take it off and put back what you wore before.")
 local TEXT_ADD = ns.L("New Gear Set")
 local TEXT_ADD_TIP = ns.L("Saves what you are wearing now as a new set.")
 local TEXT_MOVER = "Gear Sets"
@@ -33,6 +34,7 @@ local function SetTooltip(btn)
     GameTooltip:SetOwner(btn, "ANCHOR_TOP")
     GameTooltip:SetText(set.name, NAME_RGB.r, NAME_RGB.g, NAME_RGB.b)
     if set.equipped then GameTooltip:AddLine(TEXT_EQUIPPED, EQUIPPED_RGB.r, EQUIPPED_RGB.g, EQUIPPED_RGB.b) end
+    if set.equipped and S.Get("gearClickOff") then GameTooltip:AddLine(TEXT_TAKE_OFF, HINT_RGB.r, HINT_RGB.g, HINT_RGB.b, true) end
     if set.lost > 0 then
         GameTooltip:AddLine((set.lost == 1 and TEXT_MISSING_ONE or TEXT_MISSING):format(set.lost),
             MISSING_RGB.r, MISSING_RGB.g, MISSING_RGB.b)

@@ -6,7 +6,7 @@ local MODULES, OpenModule, DisplayName = O.MODULES, O.OpenModule, O.DisplayName
 
 local COMMAND_PREFIX = "/nf"
 local SLASH_KEY = "NAOWHFOREVER"
-local MODULE_ARGS = { bars = "ActionBarsCommand" }
+local MODULE_ARGS = { bars = "ActionBarsCommand", gear = "GearSetsCommand" }
 local MODULE_KEYS = { instance = true, discovery = true, gear = true, bless = true, macros = true, bars = true,
     buffs = true, threat = true, pvp = true, market = true, lfg = true }
 local NAMED_KEYS = { Journeys = "JOURNEYS", Professions = "PROFESSIONS", ["Consumable Bar"] = "CONSUMABLEBAR",
@@ -34,6 +34,7 @@ local HELP_LINES = {
     ns.L("/nf move (or /nf hud): opens or closes the HUD Editor"),
     ns.L("/nf bars save, restore, test or delete <name>: your action bar sets; /nf bars list lists them"),
     ns.L("/nf ab <name>: imports a saved action bar set; /nf ab lists them"),
+    ns.L("/nfgear equip, toggle or off <set>: puts a gear set on, swaps between two, or takes it off"),
     ns.L("/nf xp start, pause or reset: the XP ticker"),
     ns.L("/nf lockouts: your raid and dungeon lockouts"),
     ns.L("/nf run: shows or hides the Run Panel in a dungeon"),

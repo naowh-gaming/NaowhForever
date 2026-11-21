@@ -30,7 +30,7 @@ local TEXT_EQUIPPED = ns.L("Equipped")
 local window, scroll, view, kinds
 
 local ACTIONS = {
-    { "Equip", function(set) G.EquipByHand(set.id) end },
+    { "Equip", function(set) G.Wear(set.id) end },
     { "Save", function(set) ns.SaveGearSet(set.id, set.name) end },
     { "Rename", function(set) ns.RenameGearSet(set.id, set.name) end },
     { "Icon", function(set) ns.ChangeGearSetIcon(set.id, set.name) end },

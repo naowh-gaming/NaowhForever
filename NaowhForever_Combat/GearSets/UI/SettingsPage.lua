@@ -215,6 +215,8 @@ page:Card({
     rows = {
         { key = "gearCombatWeapons", label = "Swap Weapons in Combat", toggle = true, needs = GearOn, why = GEAR_OFF,
           help = "A set's weapons go on at once in combat, and the rest when the fight ends." },
+        { key = "gearClickOff", label = "Click Again to Take Off", toggle = true, needs = GearOn, why = GEAR_OFF,
+          help = "Clicking the set you wear puts back what you had on before it." },
     },
 })
 

@@ -60,6 +60,11 @@ NaowhForever_Combat/GearSets/
   a form, and they redraw nothing.
 - The automatic swap choices hold the set's name, so renaming a set updates them, and One-Key Fishing's
   Fishing Gear (`fishingGearSet`, QoL) with them.
+- Putting a set on by hand (the bar, the window, `/nfgear equip`) keeps what you wore before it per
+  character (`gearBefore`: the set, or the items as above), which Click Again to Take Off (`gearClickOff`)
+  and `/nfgear off` put back. The window's Equip only puts a set on, so a click there never takes one off.
+- `/nfgear equip <set>`, `/nfgear toggle <set>[, <other set>]` and `/nfgear off` go through `ns.GearSetsCommand`
+  (Core's `MODULE_ARGS`), so a macro can bind them to a key; `/nfgear` alone still opens the window.
 - A set swap fires `PLAYER_EQUIPMENT_CHANGED` once per slot; one redraw on the next frame covers
   the burst.
 - The bar's Show (Always, In Combat, Out of Combat) is ignored in the HUD Editor, which always

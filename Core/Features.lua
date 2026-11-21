@@ -102,6 +102,7 @@ ns.FEATURES = {
         gearSets = true,
         gearBarVisible = true,
         gearCombatWeapons = false,
+        gearClickOff = false,
         trinketBar = false,
         bis = true,
         bisLootAlert = true,

@@ -214,4 +214,52 @@ do
     check("Feign Death is not death", g.used[2] == SETS.Town)
 end
 
+do
+    local g = Fixture()
+    g.equipped = SETS.Main
+    g.G.EquipByHand(SETS.Town)
+    g.G.EquipByHand(SETS.Town)
+    check("Click Again to Take Off off: a second click changes nothing", #g.used == 2 and g.equipped == SETS.Town)
+    g.settings.gearClickOff = true
+    g.G.EquipByHand(SETS.Town)
+    check("on: clicking the set you wear puts the one before it back", g.used[3] == SETS.Main)
+    g.G.EquipByHand(SETS.Main)
+    check("and with nothing left to put back it says so", #g.used == 3 and #g.printed == 1)
+    g.G.Wear(SETS.Main)
+    check("the window's Equip never takes a set off", g.used[4] == SETS.Main)
+end
+
+do
+    local g = Fixture()
+    g.worn = { [1] = "hat" }
+    g.bags = { hat = true }
+    g.G.Wear(SETS.Town)
+    g.worn[1] = "helm"
+    g.G.TakeOff()
+    check("no set before: the items themselves go back", g.worn[1] == "hat")
+end
+
+do
+    local g = Fixture()
+    local Run = g.ns.GearSetsCommand
+    g.equipped = SETS.Main
+    Run("equip Town")
+    check("/nfgear equip puts the set on", g.used[1] == SETS.Town)
+    Run("toggle Town")
+    check("/nfgear toggle on a worn set takes it off", g.used[2] == SETS.Main)
+    Run("toggle Town, Raid")
+    check("/nfgear toggle a, b puts a on when a is off", g.used[3] == SETS.Town)
+    Run("TOGGLE Town ,  Raid ")
+    check("and b when a is on, whatever the case and spaces", g.used[4] == SETS.Raid)
+    Run("off")
+    check("/nfgear off puts back what came before", g.used[5] == SETS.Town)
+    Run("equip Nope")
+    check("an unknown set is named", g.printed[#g.printed] == "No gear set called Nope.")
+    Run("dance")
+    check("an unknown word shows how to use it", g.printed[#g.printed]:find("^/nfgear") ~= nil)
+    g.settings.gearSets = false
+    Run("equip Town")
+    check("switched off: nothing happens", #g.used == 5)
+end
+
 print(("PASS gear swaps: %d checks"):format(checks))
