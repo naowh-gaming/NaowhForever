@@ -33,6 +33,7 @@ local BUTTON_GAP = 6
 local CURRENT_SEG = 0.5
 local HIGHLIGHT_ALPHA = 0.35
 local MINUTE = 60
+local PREVIEW_STEP = 0.15
 local TEXT_TIME = "%d:%02d"
 local TEXT_WAIT = ns.L("wait %s")
 local TEXT_COG = ns.L("Journey settings")
@@ -42,6 +43,7 @@ local TEXT_NAME = "Journey Card"
 local card
 local rows, segs = {}, {}
 local segH = SEG_H
+local preview, previewRows, previewTotal
 
 local function On()
     return Jy.On() and S.Get("card")
@@ -262,12 +264,13 @@ end
 local function Render(journey)
     local legs = journey.plan and journey.plan.legs or {}
     local total = journey.done + #legs
+    local shown = math.min(#legs, previewRows or #legs)
     card.title:SetText(journey.title)
     card.total:SetText(journey.plan and Clock(journey.plan.seconds) or "")
     Segments(journey.done, math.max(total, 1))
-    for i, leg in ipairs(legs) do Fill(i, leg, i == 1) end
-    for i = #legs + 1, #rows do rows[i]:Hide() end
-    card:SetHeight(HEADER_H + segH + SEG_BELOW + #legs * ROW_H + FOOT)
+    for i = 1, shown do Fill(i, legs[i], i == 1) end
+    for i = shown + 1, #rows do rows[i]:Hide() end
+    card:SetHeight(HEADER_H + segH + SEG_BELOW + shown * ROW_H + FOOT)
 end
 
 local function Refresh()
@@ -281,12 +284,30 @@ local function Refresh()
     card:Show()
 end
 
+local function PreviewStep()
+    previewRows = previewRows + 1
+    if previewRows >= previewTotal then preview, previewRows = nil, nil end
+    Refresh()
+end
+
+local function Preview()
+    if preview then preview:Cancel() end
+    preview, previewRows = nil, nil
+    local journey = Guide.Current()
+    previewTotal = journey and journey.plan and #journey.plan.legs or 0
+    if not card:IsShown() or previewTotal == 0 then return end
+    previewRows = 0
+    Refresh()
+    preview = C_Timer.NewTicker(PREVIEW_STEP, PreviewStep, previewTotal)
+end
+
 local function OnSet(key, value)
     if not card then return Refresh() end
     if key == "cardScale" then card:SetScale(value) end
     if key == "cardAlpha" then Paint() end
     if key == "cardGrow" then Place() end
     Refresh()
+    if key == "cardGrow" then Preview() end
 end
 
 local function ShowMover()

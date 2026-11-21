@@ -121,6 +121,9 @@ NaowhForever_Utilities/Journeys/
 - The HUD Editor saves the card's centre, so it grew both ways as steps came and went. Growth Direction
   Down or Up holds the top or bottom edge where it was at the height saved with the position; a position
   saved before that height was kept counts the header alone.
+- At the card's current height every Growth Direction puts it in the same place, so picking one looked like
+  it did nothing (Robin). Changing it now folds the card to its header and adds the steps back one every
+  `PREVIEW_STEP` (0.15 s), so the held edge shows.
 - The route on the world map is one pin the size of the canvas with dots in it, so the dots move and
   zoom with the map; it ignores the global pin scale and keeps its dots the same size on screen as the map
   zooms in. On both maps the dots are spaced from the first corner ahead, so they hold still as you walk.
