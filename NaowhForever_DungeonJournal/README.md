@@ -73,7 +73,8 @@ NaowhForever_DungeonJournal/
     FinderPage.lua     the Loot Finder: its picks, then the loot that fits, each with its boss and dungeon
     CraftingPage.lua   the Crafting page: its picks, then the recipes that fit, each with its slot, skill and source
     DungeonHeader.lua  the dungeon's name, entrance link, Find Group, the previous and next dungeon, zone and stats (quests to do, BiS, looks), with Dungeon Art on its loading screen behind them
-    QuestRows.lua      your quests: marks, hover card, right-click menu
+    QuestMenu.lua      a quest's right-click menu and its chain menu
+    QuestRows.lua      your quests: marks, hover card, the row
     BossTips.lua       Naowh's tips: tooltip lines, sharing one in chat, the tip row
     KillCount.lua      the skull and a boss's kill count, its tooltip and the history it opens
     BossCards.lua      a boss card's header, with its level, this run's kill or next boss inside, a rare's silver tag and ring, and, with Boss Portraits on, its face

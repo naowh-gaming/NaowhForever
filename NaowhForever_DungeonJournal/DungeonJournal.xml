@@ -120,6 +120,7 @@
     <Script file="View\FinderPage.lua"/>
     <Script file="View\CraftingPage.lua"/>
     <Script file="View\DungeonHeader.lua"/>
+    <Script file="View\QuestMenu.lua"/>
     <Script file="View\QuestRows.lua"/>
     <Script file="View\BossTips.lua"/>
     <Script file="View\KillCount.lua"/>
