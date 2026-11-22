@@ -137,7 +137,8 @@ NaowhForever_QoL/
     DestroyCheapestPopup.lua the bags-full popup, its ignore list and its settings card
     BagSpaceIgnore.lua  Bag Space's Ignore List window (ns.ShowBagSpaceIgnoreList)
     Alts.lua            your characters per realm and faction (ns.AltRealm, ns.AltList, ns.OpenForgetAltMenu)
-    LootFeed.lua        the Loot Feed, gold per hour and quick loot (ns.ResetLootFeedSession)
+    LootFeed.lua        the Loot Feed, gold per hour and quick loot (ns.ResetLootFeedSession, ns.LootFeed)
+    LootFeedSettings.lua the Loot Feed's settings card and the live preview it edits
     Restock.lua         the Restock Reminder, Auto Repair and Auto Sell Junk
     GearReminders.lua   Gear Reminders: an icon while you wear Cloak of Hermitic Bliss in Wailing Caverns or a fishing pole, and the Argent Dawn Commission swap
     FishingData.lua     the Fishing spells by rank and the lures by the skill they add (ns.FishingData)

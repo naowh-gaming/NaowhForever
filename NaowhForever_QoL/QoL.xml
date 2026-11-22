@@ -52,6 +52,7 @@
     <Script file="Interface\Scout.lua"/>
     <Script file="Combat\SpellQueue.lua"/>
     <Script file="Loot\LootFeed.lua"/>
+    <Script file="Loot\LootFeedSettings.lua"/>
     <Script file="Loot\WaylaidCratesData.lua"/>
     <Script file="Loot\WritRequestsData.lua"/>
     <Script file="Loot\VendorSoldData.lua"/>

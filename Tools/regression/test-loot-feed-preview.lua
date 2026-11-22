@@ -139,9 +139,11 @@ function ns.ContextMenu(owner, gen) menu = { owner = owner, gen = gen } end
 local settingsFile = assert(loadfile("Shared/Settings/Settings.lua"))
 setfenv(settingsFile, env)
 settingsFile()
-local chunk = assert(loadfile("NaowhForever_QoL/Loot/LootFeed.lua"))
-setfenv(chunk, env)
-chunk()
+for _, path in ipairs({ "NaowhForever_QoL/Loot/LootFeed.lua", "NaowhForever_QoL/Loot/LootFeedSettings.lua" }) do
+    local chunk = assert(loadfile(path))
+    setfenv(chunk, env)
+    chunk()
+end
 local cards = ns.Shared.Settings.pages["QoL/Loot & Items"].cards
 
 local loaded = #frames
