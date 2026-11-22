@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Fixed
+- Campfire: on the Simple style, the Camp Nearby alert now pops up in the middle of the screen when
+  your Camp Benefits is gone and a campfire is in range, as it does on Round.
+
 ## 1.4.7
 
 ### Added

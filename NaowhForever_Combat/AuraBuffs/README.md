@@ -463,8 +463,7 @@ NaowhForever_Combat/AuraBuffs/
   converted to the current style once, when placed, from the settings alone. A setting change
   refilters the last bonuses read (`FilterBar`), so the bar repaints in every state, resting too.
 - Camp Nearby shows when a campfire is in range and the camp needs a refresh: no Camp Benefits, or
-  less than Alert Under left. With Simple it shows only while Camp Benefits is still up and low:
-  once it is gone, the bar's own Camp Nearby pill says it. It fades in, breathes and fades out
+  less than Alert Under left, with either look. It fades in, breathes and fades out
   through animation groups, never OnUpdate. With no background its words keep the card's shadow.
   `UNIT_AURA` fires often, so its timer is only set again for a new expiry, and a new Alert Under
   disarms the old one.

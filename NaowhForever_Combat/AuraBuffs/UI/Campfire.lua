@@ -490,7 +490,7 @@ local function UpdateAlert(aura)
         alertDismissed = nil
         return HideAlert()
     end
-    if alertDismissed or (Simple() and not aura) then return HideAlert() end
+    if alertDismissed then return HideAlert() end
     local expiry, left, duration = AuraTime(aura)
     if aura and not left then return HideAlert() end
     local low = S.Get("campNearbyMinutes") * SECONDS

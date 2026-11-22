@@ -780,7 +780,7 @@ do
     check("Fade off: it comes back at once, no breathing", alert.shown == true and not alert.breathe.playing)
     s.S.Set("campAlertFade", true)
     s.S.Set("campStyle", "simple")
-    check("Simple: the alert hides, the bar's own pill covers it", alert.shown == false and bar.pill
+    check("Simple: the alert stays, beside the bar's own pill", alert.shown == true and bar.pill
         and Plain(bar.note.text) == "Camp Nearby" .. s.St.PLACE_DOT .. "click to sit")
     pos = s.S.Get("campPos")
     check("switching to Simple puts the bar's fire where the icon was", pos.point == "LEFT" and pos.x == 288
@@ -1321,7 +1321,7 @@ do
         and alert.shown == true and alert.bar.time.shown ~= false and not bar.pill)
     s.auras[CAMP] = nil
     s.fire("UNIT_AURA")
-    check("Simple, camp gone and a campfire in range: the bar's own pill, no alert", alert.shown == false
+    check("Simple, camp gone and a campfire in range: the alert and the bar's own pill", alert.shown == true
         and bar.pill and Plain(bar.note.text) == "Camp Nearby" .. s.St.PLACE_DOT .. "click to sit")
     s.auras[CAMP] = { duration = 3600, expirationTime = s.now + 1800, auraInstanceID = 2 }
     s.fire("UNIT_AURA")
@@ -1334,6 +1334,16 @@ do
     s.ns.ShowUnlockMode()
     check("Simple: Unlock Mode shows the alert to move", alert.shown == true)
     s.ns.HideUnlockMode()
+end
+
+do
+    local s = Fixture({ campStyle = "simple", campShowMissing = false })
+    s.fire("PLAYER_LOGIN")
+    s.auras[NEARBY] = {}
+    s.fire("UNIT_AURA")
+    local alert = s.named.NaowhForeverCampNearby
+    check("Simple, no Refresh Reminder, camp gone and a campfire in range: the Camp Nearby alert, the bar hidden",
+        alert and alert.shown == true and s.named.NaowhForeverCampfire.shown == false)
 end
 
 do
