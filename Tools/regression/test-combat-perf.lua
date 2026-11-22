@@ -277,7 +277,7 @@ do
         C_Container = { GetContainerNumSlots = function() return 2 end,
             GetContainerItemID = function(_, slot) return slot == 1 and 13931 or 13510 end },
         NUM_BAG_SLOTS = 0,
-        Enum = { ItemEnchantType = { Temporary = 2, Imbue = 3 } },
+        Enum = { ItemWeaponSubclass = { Fishingpole = 20 }, ItemEnchantType = { Temporary = 2, Imbue = 3 } },
         UnitLevel = function() return 60 end,
         C_Spell = { GetSpellTexture = function(id) return id end },
         C_SpellBook = { IsSpellKnown = function() return false end },

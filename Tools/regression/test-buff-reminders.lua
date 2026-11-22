@@ -207,7 +207,8 @@ local function Fixture(opts)
             return color
         end }),
         LOCALIZED_CLASS_NAMES_MALE = setmetatable({}, { __index = function(_, class) return class:lower() end }),
-        Enum = { ItemClass = { Weapon = 2 }, ItemEnchantType = { Temporary = 2, Imbue = 3 } },
+        Enum = { ItemClass = { Weapon = 2 }, ItemWeaponSubclass = { Fishingpole = 20 },
+            ItemEnchantType = { Temporary = 2, Imbue = 3 } },
         GetTime = function() return state.now end,
         time = function() return state.epoch + math.floor(state.now - 1000) end,
         GetProfessions = function() return state.professions[1] and 1, state.professions[2] and 2 end,
@@ -2147,6 +2148,28 @@ do
     r.state.weapons[17] = 1800
     r.Fire("UNIT_INVENTORY_CHANGED", "player")
     Check("both hands poisoned fades it", r.Faded(), poisons)
+end
+
+-- A fishing pole takes no imbue, poison or stone, so it asks for none.
+do
+    local t = Fixture({ units = { player = "SHAMAN" }, known = { [8017] = true }, weapons = { [16] = false },
+        subclasses = { [1016] = 20 } })
+    t.Login()
+    Check("no imbue asked for a fishing pole", t.Shown(), "")
+    t.state.subclasses[1016] = nil
+    t.Fire("UNIT_INVENTORY_CHANGED", "player")
+    t.Advance(0.5)
+    Check("the weapon back asks again", t.Shown(), "spell:8017")
+
+    local r = Fixture({ units = { player = "ROGUE" }, known = { [2842] = true }, weapons = { [16] = false },
+        subclasses = { [1016] = 20 } })
+    r.Login()
+    Check("no poison asked for a fishing pole", r.Shown(), "")
+
+    local m = Fixture({ instance = "raid", units = { player = "MAGE" }, weapons = { [16] = false },
+        subclasses = { [1016] = 20 }, settings = { weaponEnhancements = true, onlyIfCarried = false } })
+    m.Login()
+    Check("no stone asked for a fishing pole", m.Shown():find(ROUGH, 1, true), nil)
 end
 
 -- The Elemental Attractor or the Arcane Censer reminds while carried and Magical Awareness is missing, in the

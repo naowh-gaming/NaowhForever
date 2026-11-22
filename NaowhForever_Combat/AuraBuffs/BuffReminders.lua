@@ -17,7 +17,7 @@ local CATEGORY_ORDER = A.CATEGORY_ORDER
 local WEAPON_SLOTS = { 16, 17 }
 local IMBUE = Enum.ItemEnchantType.Imbue
 local TEMPORARY = Enum.ItemEnchantType.Temporary
-local CLASS_INDEX = 6
+local FISHING_POLE = Enum.ItemWeaponSubclass.Fishingpole
 local REQUIRED_LEVEL = 5
 local ITEM_ICON = 10
 local ELITE = { elite = true, rareelite = true, worldboss = true }
@@ -627,28 +627,23 @@ local function SlotEnchanted(weaponSlot, warn, kind)
     return false
 end
 
+local function Armed(slot)
+    local id = GetInventoryItemID("player", slot)
+    if not id then return false end
+    local _, _, _, _, _, class, subclass = C_Item.GetItemInfoInstant(id)
+    return class == Enum.ItemClass.Weapon and subclass ~= FISHING_POLE
+end
+
 local function MissingSlot(slots, warn, kind)
     for _, slot in ipairs(slots) do
-        if GetInventoryItemID("player", slot) and not SlotEnchanted(slot == 16 and 0 or 1, warn, kind) then
+        if Armed(slot) and not SlotEnchanted(slot == 16 and 0 or 1, warn, kind) then
             return slot
         end
     end
 end
 
-local function WeaponSlots()
-    local slots = {}
-    for _, slot in ipairs(WEAPON_SLOTS) do
-        local id = GetInventoryItemID("player", slot)
-        if id and select(CLASS_INDEX, C_Item.GetItemInfoInstant(id)) == Enum.ItemClass.Weapon then
-            slots[#slots + 1] = slot
-        end
-    end
-    return slots
-end
-
 local function WeaponEnhancement(list)
-    local slots = WeaponSlots()
-    local slot = #slots > 0 and MissingSlot(slots, S.Get("consumablesMinutes") * SECONDS, TEMPORARY)
+    local slot = MissingSlot(WEAPON_SLOTS, S.Get("consumablesMinutes") * SECONDS, TEMPORARY)
     if not slot then return end
     local item = FirstCarried(D.WEAPON_ITEMS)
     if not item and Carried("weapon") then return end
@@ -870,7 +865,7 @@ function Reminders.CastCovers(key, spellID, onSelf)
 end
 
 function Reminders.WeaponCovered(key)
-    if key == "weapon" then return MissingSlot(WeaponSlots(), S.Get("consumablesMinutes") * SECONDS, TEMPORARY) == nil end
+    if key == "weapon" then return MissingSlot(WEAPON_SLOTS, S.Get("consumablesMinutes") * SECONDS, TEMPORARY) == nil end
     return type(key) == "table" and key.weapons ~= nil and MissingSlot(key.weapons, PersonalWarn(), IMBUE) == nil
 end
 
