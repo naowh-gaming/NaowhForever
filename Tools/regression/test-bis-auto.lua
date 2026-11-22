@@ -55,6 +55,7 @@ local function Fixture(o)
         LevelPicks = function() return o.levelPicks end,
         Wieldable = function() return true end,
         ReqLevel = function(id) return (o.req or {})[id] or 1 end,
+        OtherSideQuest = function(id) return (o.otherSide or {})[id] == true end,
     }
     B.Lists = { CurrentSpec = function() return spec end, List = function() return o.list or list end,
         Changed = function() end }
@@ -139,6 +140,13 @@ Case("trinkets go in sim order, those the sim did not rank after them by weights
     assert(picks[14][1] == 33, "Trinket 2 skips Trinket 1's pick")
     m = Fixture({ ranked = { [13] = { 30, 31 } }, worth = { [30] = 1, [31] = 2 } })
     assert(Join(m.Auto.Build(m.spec)[13]) == "31,30", "no sim order: by weights")
+end)
+
+Case("a sim trinket from the other side's quest is never picked", function()
+    local m = Fixture({ trinkets = { 32, 31, 33 }, otherSide = { [32] = true },
+        worth = { [31] = 1, [32] = 9, [33] = 0 } })
+    local picks = m.Auto.Build(m.spec)
+    assert(Join(picks[13]) == "31,33", Join(picks[13]))
 end)
 
 Case("a two-hander wins only when it beats a one-hander and the best off hand together", function()

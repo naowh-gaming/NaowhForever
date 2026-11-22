@@ -212,11 +212,14 @@ function R.Ranked(set, order)
     return ids
 end
 
+function R.OtherSideQuest(itemID)
+    return Place(ns.BiSSource(itemID) or WORLD_DROP) == OTHER_SIDE_QUEST[UnitFactionGroup("player")]
+end
+
 function R.Candidates(slot, spec)
     local ids = {}
-    local otherQuest = OTHER_SIDE_QUEST[UnitFactionGroup("player")]
     for _, id in ipairs(spec and spec.slots[slot] or EMPTY) do
-        if C_Item.GetItemInfoInstant(id) and Place(ns.BiSSource(id) or WORLD_DROP) ~= otherQuest then
+        if C_Item.GetItemInfoInstant(id) and not R.OtherSideQuest(id) then
             ids[#ids + 1] = id
         end
     end

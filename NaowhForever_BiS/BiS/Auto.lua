@@ -51,7 +51,7 @@ local function Gather(spec)
     wipe(pool)
     wipe(simRank)
     for i, id in ipairs(spec.trinkets or NONE) do
-        pool[id], simRank[id] = true, i
+        if not R.OtherSideQuest(id) then pool[id], simRank[id] = true, i end
     end
     for _, gear in ipairs(Items.GEAR_SLOTS) do
         AddAll(R.Candidates(gear[1], spec))

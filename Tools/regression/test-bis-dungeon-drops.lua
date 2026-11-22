@@ -226,8 +226,8 @@ Case("a spec's ranking leaves out the other side's quest rewards", function()
         [3] = "Q" .. SEP .. "Quest" }, false)
     local spec = { slots = { [1] = { 1, 2, 3, 13 } } }
     assert(List(m.R.Candidates(1, spec)) == "2,3,13", List(m.R.Candidates(1, spec)))
-    setfenv(m.R.Candidates, setmetatable({ UnitFactionGroup = function() return "Horde" end },
-        { __index = getfenv(m.R.Candidates) }))
+    setfenv(m.R.OtherSideQuest, setmetatable({ UnitFactionGroup = function() return "Horde" end },
+        { __index = getfenv(m.R.OtherSideQuest) }))
     assert(List(m.R.Candidates(1, spec)) == "1,3,13", List(m.R.Candidates(1, spec)))
 end)
 
