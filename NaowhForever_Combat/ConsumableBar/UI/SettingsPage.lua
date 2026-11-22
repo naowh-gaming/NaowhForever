@@ -190,6 +190,10 @@ if ns.ConsumableMacros and M and choices then
           help = "NF Food uses only food, and NF Drink is the one for drink.",
           get = function() return M.Get("foodOnly") == true end,
           set = function(v) M.Set("foodOnly", v) end },
+        { label = "Well Fed First", toggle = true, under = FOOD,
+          help = "NF Food uses food that gives Well Fed before any other food.",
+          get = function() return M.Get("foodWellFed") == true end,
+          set = function(v) M.Set("foodWellFed", v) end },
         drink,
         MacroRow("bandage", "NF Bandage", "Your best bandage on yourself, through NF Bandage."),
     }) do addingRows[#addingRows + 1] = row end

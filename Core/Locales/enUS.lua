@@ -2749,6 +2749,7 @@ L["Food Macro"] = true
 L["Food Maximum Required Level"] = true
 L["Food Minimum Required Level"] = true
 L["Food Only"] = true
+L["Well Fed First"] = true
 L["For"] = true
 L["For "] = true
 L["for %d"] = true
@@ -3758,6 +3759,7 @@ L["NF Focus focuses your mouseover, or your target. Switch it on in Kept Current
 L["NF Focus focuses your mouseover, or your target: drag it to a bar from Smart Macros."] = true
 L["NF Food already uses your best food and drink. Add %s too?"] = true
 L["NF Food uses only food, and NF Drink is the one for drink."] = true
+L["NF Food uses food that gives Well Fed before any other food."] = true
 L["NF Food uses the best food and drink in your bags. Switch it on in Kept Current."] = true
 L["NF Health already uses your best healthstone or healing potion. Add %s too?"] = true
 L["NF Health Potion already uses your best healing potion. Add %s too?"] = true

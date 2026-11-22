@@ -56,6 +56,11 @@ Each layer uses only the ones above it. `M.Forge` holds the tabs' shared state (
   unchanged. NF Drink is the drink half of NF Food, and the Food Only setting (off) drops the
   drink from NF Food, so macros players already have do not change. When your best food is also
   your best drink (an Enriched Manna Biscuit), NF Food uses it once, not twice in one press.
+- Well Fed First (off) makes NF Food prefer food whose spell is in `ns.FOOD_SPELLS`, the same list
+  Buff Reminders counts as Well Fed food, over any higher-level food, so a player can keep cheap
+  buff food (an XP Well Fed) in use. `WELL_FED_BONUS` is above the conjured bonus, so it wins
+  against Conjured First too. It changes NF Food only: NF Drink and the Food & Drink Bar keep
+  their own pick.
 - A bag macro (health, healthstone, health potion, mana, food, drink, bandage) is made with a bare
   `#showtooltip` when nothing in the bags matches, so it can be placed on a bar before the item
   arrives. It is filled when the item shows up, and a macro that already holds an item is left

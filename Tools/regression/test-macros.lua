@@ -24,7 +24,7 @@ end)()
 for _, file in ipairs(MACRO_FILES) do sources[#sources + 1] = Read("NaowhForever_Utilities/Macros/" .. file) end
 
 local FOOD, DRINK = "Food", "Drink"
--- itemID -> { spell, required level, equippable }
+-- itemID -> { spell, required level, equippable, spell ID }
 local ITEMS = {
     [4696] = { DRINK, 54, true }, -- Lapidis Tankard of Tidesippe, an off-hand
     [8079] = { DRINK, 45 },   -- Conjured Crystal Water
@@ -35,7 +35,7 @@ local ITEMS = {
     [4599] = { FOOD, 35 },    -- Cured Ham Steak
     [13724] = { "Enriched Manna Biscuit", 45 },   -- its own spell, starting a Food and a Drink
     [238638] = { FOOD, 55 },  -- Filet o' Flank
-    [4592] = { "Nutritious Food", 5 },     -- Longjaw Mud Snapper, a Food and Well Fed
+    [4592] = { "Nutritious Food", 5, nil, 1249500 },     -- Longjaw Mud Snapper, a Food and Well Fed
     [249866] = { "Nutritious Drink", 5 },  -- Royal Tea, a Drink and Well Fed
     [4540] = { FOOD, 1 },     -- Tough Hunk of Bread
     [4541] = { FOOD, 5 },     -- Freshly Baked Bread
@@ -173,7 +173,7 @@ local function Fixture(opts)
         C_Item = {
             GetItemCount = Count,
             GetItemIconByID = function(id) return "icon" .. id end,
-            GetItemSpell = function(id) return ITEMS[id] and ITEMS[id][1] end,
+            GetItemSpell = function(id) if ITEMS[id] then return ITEMS[id][1], ITEMS[id][4] end end,
             IsEquippableItem = function(id) return ITEMS[id] ~= nil and ITEMS[id][3] == true end,
             GetItemInfo = function(id)
                 if missing[id] then return end
@@ -477,6 +477,23 @@ do
     t = Fixture({ class = "ROGUE", qol = { foodBar = true }, level = 11, bags = { 4592 } })
     t.Fire("PLAYER_ENTERING_WORLD")
     Check("rogue's bar shows the cooked fish", t.FoodBar().buttons[1].attrs.item1, "item:4592")
+end
+
+-- Well Fed First puts Well Fed food over higher-level food; drink and the Food & Drink Bar keep their own pick.
+do
+    local t = Fixture({ settings = { food = true, drink = true }, qol = { foodBar = true }, bags = { 8932, 4592, 8079 } })
+    t.Fire("PLAYER_ENTERING_WORLD")
+    Check("off: the higher-level food", t.Body("NF Food"), "#showtooltip\n/use item:8932\n/use item:8079")
+    t.Set("foodWellFed", true)
+    Check("on: the Well Fed food at once", t.Body("NF Food"), "#showtooltip\n/use item:4592\n/use item:8079")
+    Check("on: NF Drink unchanged", t.Body("NF Drink"), "#showtooltip\n/use item:8079")
+    Check("on: the bar keeps its food", t.FoodBar().buttons[1].attrs.item1, "item:8932")
+    t.Bags({ 8932, 8079 })
+    t.Fire("BAG_UPDATE_DELAYED")
+    Check("on, none carried: the best other food", t.Body("NF Food"), "#showtooltip\n/use item:8932\n/use item:8079")
+    t = Fixture({ settings = { food = true, foodWellFed = true }, level = 4, bags = { 4540, 4592 } })
+    t.Fire("PLAYER_ENTERING_WORLD")
+    Check("on: never above your level", t.Body("NF Food"), "#showtooltip\n/use item:4540")
 end
 
 -- No mana, no drink: a rogue out of food never gets water from NF Food.

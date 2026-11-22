@@ -117,7 +117,7 @@ local BODIES = {
     end,
     mana = function() return UseLines(ItemLine(FirstCarried(ns.MANA_POTIONS))) end,
     food = function()
-        local food, drink = ns.BestFoodAndDrink()
+        local food, drink = ns.BestFoodAndDrink(S.Get("foodWellFed"))
         if S.Get("foodOnly") or drink == food then drink = nil end
         return UseLines(ItemLine(food), ItemLine(drink))
     end,
@@ -272,7 +272,7 @@ end
 
 local function SettingChanged(key, value)
     for _, m in ipairs(MACROS) do
-        if key == m.key .. EXTRA_SUFFIX or (key == "foodOnly" and m.key == "food") then refresh[m.key] = true end
+        if key == m.key .. EXTRA_SUFFIX or ((key == "foodOnly" or key == "foodWellFed") and m.key == "food") then refresh[m.key] = true end
     end
     if value == false then
         for _, m in ipairs(MACROS) do

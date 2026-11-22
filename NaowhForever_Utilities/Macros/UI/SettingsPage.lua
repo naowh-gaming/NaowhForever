@@ -119,6 +119,8 @@ page:Card({
     rows = {
         { key = "foodOnly", label = "Food Only", toggle = true, needs = On, why = MACROS_OFF,
           help = "NF Food uses only food, and NF Drink is the one for drink." },
+        { key = "foodWellFed", label = "Well Fed First", toggle = true, needs = On, why = MACROS_OFF,
+          help = "NF Food uses food that gives Well Fed before any other food." },
     },
 })
 

@@ -6,7 +6,7 @@ local F = ns.FEATURES.macros
 local S = ns.UI.ModuleSettings("macros", {
     enabled = F.enabled, classMacros = {},
     health = F.health, healthOrder = "potion", healthstone = F.healthstone, healthPotion = F.healthPotion,
-    mana = F.mana, food = F.food, foodOnly = false, drink = F.drink, bandage = F.bandage,
+    mana = F.mana, food = F.food, foodOnly = false, foodWellFed = false, drink = F.drink, bandage = F.bandage,
     healthExtra = "", healthstoneExtra = "", healthPotionExtra = "", manaExtra = "", foodExtra = "",
     drinkExtra = "", bandageExtra = "",
     trinket1 = F.trinket1, trinket2 = F.trinket2,
