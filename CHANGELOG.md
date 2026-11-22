@@ -6,6 +6,10 @@
 - Dungeon Journal: boss loot updated from the latest Forever loot lists.
 - BiS List: picks updated from wowsrc.com's latest lists.
 
+### Fixed
+- Professions: a macro that clicks Create on an Enchanting recipe now enchants the item you chose
+  in the Naowh window, so one-button levelling macros work with the window on.
+
 ## 1.4.5
 
 ### Added

@@ -509,6 +509,13 @@ local function OnBlizzardCreate()
     local page = ProfessionsFrame.CraftingPage
     local shown = page.SchematicForm:GetRecipeInfo()
     if not (shown and shown.recipeID == info.recipeID) then page:SelectRecipe(info) end
+    local loc = P.EnchantSlot.Location(info.recipeID)
+    local guid = loc and C_Item.GetItemGUID(loc)
+    local transaction = page.SchematicForm:GetTransaction()
+    local held = transaction:GetEnchantAllocation()
+    if (held and held:GetItemGUID()) ~= guid then
+        transaction:SetEnchantAllocation(guid and Item:CreateFromItemGUID(guid))
+    end
 end
 
 local function HookBlizzard()
