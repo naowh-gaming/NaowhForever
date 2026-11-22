@@ -99,7 +99,8 @@ local function BestFoodAndDrink(wellFedFirst)
             local isDrink = usesMana and (both or (spell and (spell == drinkName or spell == nutritiousDrink)))
             local bonus = (both and bothBonus or 0) - (nutritious and NUTRITIOUS_PENALTY or 0)
             local s = (isFood or isDrink) and not C_Item.IsEquippableItem(id) and Score(id, bonus, conjured)
-            local fed = wellFedFirst and isFood and ns.FOOD_SPELLS[select(2, C_Item.GetItemSpell(id))]
+            local fed = wellFedFirst and isFood
+                and (spell == nutritiousFood or ns.FOOD_SPELLS[select(2, C_Item.GetItemSpell(id))])
             local f = s and fed and s + WELL_FED_BONUS or s
             if f and isFood and (not foodScore or f > foodScore) then food, foodScore = id, f end
             if s and isDrink and (not drinkScore or s > drinkScore) then drink, drinkScore = id, s end
