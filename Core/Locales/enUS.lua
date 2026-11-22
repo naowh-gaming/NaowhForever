@@ -8718,6 +8718,7 @@ L["Nearby Enemies settings"] = true
 L["Opens the Nearby Enemies settings."] = true
 L["%m/%d %H:%M"] = true
 L["Link"] = true
+L["Switch to TradeSkillMaster's crafting window."] = true
 L["Deposit"] = true
 L["Nothing safe to destroy"] = true
 L["Destroy"] = true

@@ -93,6 +93,7 @@ NaowhForever_Professions/
     ReagentsWindow.lua the Reagents window and its title bar button (ns.ToggleReagents)
     Alts.lua           the Alts title bar button and its menu of your other characters' professions
     Link.lua           the Link title bar button and its menu that posts your profession's trade link in chat
+    Tsm.lua            the TSM title bar button, shown with TradeSkillMaster loaded, that switches to TSM's crafting window
     CraftQueue.lua     the standalone Crafting Queue window (ns.ToggleCraftQueue)
     TrainFavorites.lua Train Favorites beside the trainer
     FavoriteMarks.lua  stars beside favorite unlearned recipes at trainers and merchants
@@ -262,6 +263,11 @@ Each layer uses only the ones above it, or reads a later one's table at call tim
   ours. The settings card names the ones known to do that (SkillUp Forever, AllTheThings) when they are
   loaded and says to turn Professions off to use them. Their frames are laid out for Blizzard's window,
   so they are not shown over ours.
+- TradeSkillMaster's TSM button is one of those, so our title bar has its own TSM button (Tsm.lua), which
+  runs TSM's `/tsm crafting`. Ours is hidden before that runs: TSM moves Blizzard's window off screen,
+  and our SetPoint hook on it would otherwise drag it back to our window. While
+  `TSM_API.IsUIVisible("CRAFTING")` is true ours stays out of the way, and TSM's UI callback brings ours
+  back when its Default UI button puts Blizzard's window back.
 - Blizzard's profession tabs switch profession by casting its spell, which only Blizzard's code may
   do, so the real tabs move onto our window's right edge, or its left edge with Dock Shopping List on,
   and ignore their invisible parent's alpha.
