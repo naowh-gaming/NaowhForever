@@ -64,7 +64,7 @@ local defaults = { enabled = true, lootFeed = true, lootFeedMoney = true, lootFe
     lootFeedQuest = true, lootFeedRep = false, lootFeedCount = 6, lootFeedFade = 5, lootFeedStyle = "dark",
     lootFeedGlow = false, lootFeedValue = true, lootFeedBank = true, lootFeedPrice = "vendor", lootFeedGPH = false,
     hideLootWindow = false, fastLoot = false, lootFeedWidth = 340, lootFeedHeight = 36, lootFeedSpacing = -1,
-    lootFeedGrowth = "up", lootFeedFont = "", lootFeedFontSize = 13, lootFeedOutline = "OUTLINE" }
+    lootFeedGrowth = "up", lootFeedFont = "", lootFeedFontSize = 13, lootFeedCountSize = false, lootFeedOutline = "OUTLINE" }
 local sets = 0
 local S = {}
 function S.Get(k) local v = settings[k]; if v == nil then return defaults[k] end return v end
@@ -431,6 +431,16 @@ S.Set("lootFeedFontSize", 16)
 studio.paint(preview, "looting")
 check("Font and Font Size reach every text", AllTexts(function(fs) return fs.font == "Expressway" end)
     and pants.name.size == 16 and pants.value.size == 15 and pants.bags.size == 14)
+local countSize = Row("lootFeedCountSize")
+check("Count Size shows the size the count follows", countSize.get() == 14)
+countSize.set(20)
+studio.paint(preview, "looting")
+check("Count Size sizes the count alone", pants.bags.size == 20 and pants.name.size == 16)
+S.Set("lootFeedFontSize", 12)
+studio.paint(preview, "looting")
+check("a set Count Size stays when Font Size moves", pants.bags.size == 20 and pants.name.size == 12)
+settings.lootFeedCountSize = nil
+S.Set("lootFeedFontSize", 16)
 S.Set("lootFeedOutline", "")
 studio.paint(preview, "looting")
 check("Shadow: no outline, the card's shadow", AllTexts(function(fs) return fs.flags == "" and fs.shadow == "card" end))

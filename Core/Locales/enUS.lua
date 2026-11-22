@@ -5592,6 +5592,7 @@ L["The newest line stays at the anchor; older lines stack in this direction."] =
 L["The next one frees in "] = true
 L["the next rank of %s (cap %d)"] = true
 L["The number on each icon counts your bank as well as your bags."] = true
+L["Size of the number on each icon. It follows Font Size until you change it."] = true
 L["The objective under RestedXP's arrow, as in Talk to Duokna, in place of the step number."] = true
 L["The order the points are taken in"] = true
 L["the pattern"] = true

@@ -99,6 +99,10 @@ local GPH_GAP = 10
 
 local Look = {}
 
+local function CountSize()
+    return S.Get("lootFeedCountSize") or math.max(MIN_BAGS_SIZE, S.Get("lootFeedFontSize") - BAGS_SHRINK)
+end
+
 function Look.NewRow(parent)
     local row = CreateFrame("Frame", nil, parent)
     row.bg = row:CreateTexture(nil, "BACKGROUND")
@@ -182,7 +186,7 @@ function Look.StyleRow(row)
         Parts.HudFont(pair.amount, font, size - 1, outline, shadow)
         pair.icon:SetSize(size - 1, size - 1)
     end
-    Parts.HudFont(row.bags, font, math.max(MIN_BAGS_SIZE, size - BAGS_SHRINK), outline, shadow)
+    Parts.HudFont(row.bags, font, CountSize(), outline, shadow)
 end
 
 local function CoinPair(pair, amount, anchor)
@@ -1119,6 +1123,9 @@ ns.Shared.Settings.Page("QoL/Loot & Items", S):Card({
         { key = "lootFeedSpacing", label = "Spacing", slider = SPACING_RANGE,
           help = "Space between lines. -1 lets neighbouring lines share one border instead of two side by side." },
         ns.Shared.Settings.Look("lootFeed", { text = true, size = SIZE_RANGE }),
+        { key = "lootFeedCountSize", label = "Count Size", slider = SIZE_RANGE,
+          help = "Size of the number on each icon. It follows Font Size until you change it.",
+          get = CountSize, set = function(v) S.Set("lootFeedCountSize", v) end },
         Group("Background"),
         { key = "lootFeedStyle", label = "Style", choice = STYLE,
           help = "A dark or light fill and edge behind each line, or none." },

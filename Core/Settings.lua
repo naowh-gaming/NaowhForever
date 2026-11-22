@@ -78,7 +78,7 @@ local S = UI.ModuleSettings("qol", {
     lootFeedValue = true, lootFeedBank = true, lootFeedPrice = "vendor", lootFeedGPH = false,
     hideLootWindow = F.hideLootWindow, fastLoot = F.fastLoot,
     lootFeedWidth = 340, lootFeedHeight = 36, lootFeedSpacing = -1, lootFeedGrowth = "up",
-    lootFeedFont = "", lootFeedFontSize = 11, lootFeedOutline = "OUTLINE",
+    lootFeedFont = "", lootFeedFontSize = 11, lootFeedCountSize = false, lootFeedOutline = "OUTLINE",
     lootFeedPos = { point = "CENTER", relPoint = "CENTER", x = -508, y = 322 },
     alertsPos = { point = "CENTER", relPoint = "CENTER", x = -519, y = 167 },
     ahPrices = F.ahPrices, ahCapture = F.ahCapture, ahTooltip = F.ahTooltip, ahCrates = F.ahCrates, ahWrits = F.ahWrits,
