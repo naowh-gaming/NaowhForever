@@ -251,7 +251,7 @@ local function Rxp(w, opts)
     }
     function rxp.GetGuideProgress() return 36, "id" end
     function rxp.GetGuideName(guide) return guide.name end
-    function rxp.v2:IsGuideWindowEnabled() return opts.v2 ~= false end
+    rxp.v2[opts.oldV2 and "IsGuideWindowEnabled" or "IsEnabled"] = function() return opts.v2 ~= false end
     function rxp.v2:BuildGuideStepsSnapshot()
         self.snapshots = self.snapshots + 1
         if opts.snapshotRaises then error("snapshot") end
@@ -1160,6 +1160,8 @@ do
     w = Start({ rxpWindow = true }, { v2 = false })
     Check(Window(w) == nil and w.ns.RXPWindowReady() == false and w.guide.frame.alpha == nil,
         "RestedXP's V2 interface off: no window, and RestedXP's own is left alone")
+    w = Start({ rxpWindow = true }, { oldV2 = true })
+    Check(w.ns.RXPWindowReady() == true and Window(w) ~= nil, "RestedXP before 4.11.38 (IsGuideWindowEnabled): ready")
     w = Start({ rxpWindow = true })
     w.rxp.currentGuide = { empty = true, steps = {} }
     w.rxp.v2:UpdateGuideWindow()

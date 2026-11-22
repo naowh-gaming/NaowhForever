@@ -985,7 +985,8 @@ end
 
 function ns.RXPWindowReady()
     local v2 = Dig(_G.RXP, "v2")
-    return Has(v2, "IsGuideWindowEnabled") and v2:IsGuideWindowEnabled() and true or false
+    local enabled = Has(v2, "IsEnabled") and v2.IsEnabled or Has(v2, "IsGuideWindowEnabled") and v2.IsGuideWindowEnabled
+    return enabled and enabled(v2) and true or false
 end
 
 function ns.RXPWindowStart()

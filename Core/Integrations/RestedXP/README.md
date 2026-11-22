@@ -96,8 +96,8 @@ Core/Integrations/RestedXP/
   `SetStep`, `UpdateGuideWindow`, `UpdateActiveStepsFrame`, `UpdatePlayerActiveStepItem` and the
   rows' text. The first four are RestedXP building what it shows and the last is a counter ticking:
   only the first four make the redraw read RestedXP's steps and walk its windows again (`Rebuilt`).
-  The window needs RestedXP's V2 interface (`v2:IsGuideWindowEnabled()`): the active step rows and
-  the guide's rows are built for it.
+  The window needs RestedXP's V2 interface (`v2:IsEnabled()`, `v2:IsGuideWindowEnabled()` before
+  RestedXP 4.11.38): the active step rows and the guide's rows are built for it.
 - The list under the active step is the guide's steps as `v2:BuildGuideStepsSnapshot` has them, which
   is what RestedXP's own v2 guide window lists: a step it hides is not listed, and a step done is, a
   little dimmer, so that a step can be gone back to. It starts at the first step after the active one
