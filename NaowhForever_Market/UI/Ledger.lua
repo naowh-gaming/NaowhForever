@@ -12,7 +12,7 @@ local Ledger, Columns, Chart = Market.Ledger, Market.Columns, Market.Chart
 
 local DAY = C.SECONDS_PER_DAY
 local GAP, PANE_GAP, SUB_GAP, IN = St.GAP, 12, 4, 10
-local TABS_W, SEARCH_W, CHARACTER_W, RANGE_W = 400, 260, 150, 130
+local TABS_W, SEARCH_W, CHARACTER_W, RANGE_W, KIND_W = 400, 260, 150, 130, 150
 local COMPACT_W = 1000
 local COLUMNS_H, ROW_H, ROW_ICON, ROW_IN, ICON_GAP, SCROLL_IN = 20, 24, 18, 8, 6, 4
 local CHAR_W, WHO_W, TYPE_W, QTY_W, EACH_W, TOTAL_W, WHEN_W = 110, 140, 96, 50, 100, 110, 90
@@ -44,7 +44,12 @@ local KINDS = {
     postage = ns.L("Postage"), flight = ns.L("Flight"), training = ns.L("Training"), other = ns.L("Other"),
     expired = ns.L("Expired"), cancelled = ns.L("Cancelled"),
 }
+local KIND_ORDER = { "auction", "vendor", "trade", "quest", "loot", "mail", "repair", "deposit", "postage", "flight",
+    "training", "other", "expired", "cancelled" }
+local KIND_KEYS = { sales = "ledgerKindSales", purchases = "ledgerKindPurchases", other = "ledgerKindOther",
+    failed = "ledgerKindFailed" }
 local TEXT_ALL_CHARACTERS = ns.L("All Characters")
+local TEXT_ALL_TYPES = ns.L("All Types")
 local TEXT_FILTER = ns.L("Filter by item or name")
 local TEXT_GOLD = ns.L("Gold")
 local TEXT_NO_GOLD = ns.L("Your gold shows here once the Ledger has seen it change.")
@@ -65,21 +70,23 @@ local TEXT_FAILED_FOOT = ns.L("%s items came back")
 local TEXT_EMPTY = ns.L("Nothing here for these characters in this time.")
 local TEXT_OFF = ns.L("The Ledger is off: turn it on in The Market's settings to record what you earn and spend.")
 
-local page, views, search, characterPick, rangePick, summary, listPane, chart, scroll, list, note, sorter
+local page, views, search, kindPick, characterPick, rangePick, summary, listPane, chart, scroll, list, note, sorter
 local footLeft, footRight, whoColumn, characterColumn
 local cards = {}
 local rows, shownRows, chars, all, series = {}, {}, {}, {}, {}
 local characterLabels, characterOrder = { [ALL] = TEXT_ALL_CHARACTERS }, { ALL }
 local rangeLabels = {}
+local kindLabels, kindOrder, seenKinds = { [ALL] = TEXT_ALL_TYPES }, { ALL }, {}
 local asked, ask = {}, {}
 local active, queued, compact = false, false, false
-local wanted = ""
+local wanted, kindWanted = "", ALL
 local chartFrom, chartStep = 0, 0
 
 local Page = {}
 Market.Pages.ledger = Page
 
 for key, range in pairs(RANGES) do rangeLabels[key] = range.label end
+for key, label in pairs(KINDS) do kindLabels[key] = label end
 
 local function Span()
     local range = RANGES[S.Get("ledgerRange")] or RANGES["1m"]
@@ -210,9 +217,22 @@ local function RowData(row)
 end
 
 local function Matches(data, i)
-    if wanted == "" then return true end
-    local name = ItemName(data.item[i]) or KINDS[data.kind[i]] or ""
-    return ns.Lower(name):find(wanted, 1, true) ~= nil or ns.Lower(data.who[i]):find(wanted, 1, true) ~= nil
+    local kind = data.kind[i]
+    if wanted ~= "" then
+        local name = ItemName(data.item[i]) or KINDS[kind] or ""
+        if not (ns.Lower(name):find(wanted, 1, true) or ns.Lower(data.who[i]):find(wanted, 1, true)) then return false end
+    end
+    seenKinds[kind] = true
+    return kindWanted == ALL or kind == kindWanted
+end
+
+local function ListKinds()
+    wipe(kindOrder)
+    kindOrder[1] = ALL
+    for _, kind in ipairs(KIND_ORDER) do
+        if seenKinds[kind] or kind == kindWanted then kindOrder[#kindOrder + 1] = kind end
+    end
+    kindPick._refreshLabel()
 end
 
 local function PerItem(data, i)
@@ -334,7 +354,10 @@ end
 
 local function DrawList(view)
     local from = Span()
+    kindWanted = S.Get(KIND_KEYS[view])
+    wipe(seenKinds)
     Ledger.Collect(shownRows, chars, view, from, Matches)
+    ListKinds()
     Columns.Sort(sorter, shownRows)
     list:SetHeight(math.max(1, #shownRows * ROW_H))
     DrawRows()
@@ -373,6 +396,14 @@ local function PickCharacter(key)
     Picked()
     Page.Draw()
 end
+
+local function PickKind(key)
+    S.Set(KIND_KEYS[S.Get("ledgerView")], key)
+    scroll:SetVerticalScroll(0)
+    Page.Draw()
+end
+
+local function GetKind() return kindWanted end
 
 local function PickRange(key)
     S.Set("ledgerRange", key)
@@ -468,6 +499,8 @@ local function BuildList(top)
     search = Parts.SearchBox(listPane, TEXT_FILTER, OnFilter)
     search:SetSize(SEARCH_W, St.SEARCH_H)
     search:SetPoint("TOPLEFT")
+    kindPick = ns.UI.BuildDropdownControl(listPane, KIND_W, nil, kindLabels, kindOrder, GetKind, PickKind)
+    kindPick:SetPoint("LEFT", search, "RIGHT", GAP, 0)
     local head = CreateFrame("Frame", nil, listPane)
     head:SetPoint("TOPLEFT", search, "BOTTOMLEFT", 0, -PANE_GAP)
     head:SetPoint("RIGHT", -(St.SCROLLBAR + SCROLL_IN), 0)

@@ -8959,6 +8959,7 @@ L["Training"] = true
 L["Expired"] = true
 L["Cancelled"] = true
 L["All Characters"] = true
+L["All Types"] = true
 L["Filter by item or name"] = true
 L["Your gold shows here once the Ledger has seen it change."] = true
 L["Last day %s%s"] = true

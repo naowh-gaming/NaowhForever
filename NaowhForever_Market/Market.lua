@@ -15,6 +15,7 @@ local S = ns.UI.ModuleSettings("market", { enabled = F.enabled,
     sortRun = "", sortCrafts = "", sortMine = "", sortBuy = "", undercut = "match", undercutPercent = 5, undercutAmount = 100,
     startingBid = false, watchAlerts = true, ledger = F.ledger, ledgerRange = "1m", ledgerView = "summary",
     ledgerCharacter = "", sortLedger = "",
+    ledgerKindSales = "", ledgerKindPurchases = "", ledgerKindOther = "", ledgerKindFailed = "",
     sellQuantityTrade = 0, sellQuantityConsumable = 0, sellQuantityRecipe = 0, sellQuantityOther = 0,
     sellNumberTrade = 20, sellNumberConsumable = 20, sellNumberRecipe = 20, sellNumberOther = 20 })
 ns.MarketSettings = S

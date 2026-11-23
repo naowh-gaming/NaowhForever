@@ -558,6 +558,9 @@ NaowhForever_Market/
 - A list row is one number, its character's place in the list times `LEDGER_ROW_SHIFT` plus its index, so
   filtering and sorting thousands of rows makes no tables. The list builds only the rows in view, as
   Browse does.
+- Each list tab keeps its own Type (`ledgerKindSales` and the like, "" for All Types). The pass that
+  collects the rows notes every type that passes the name filter, so the Type list offers only those,
+  plus the picked one, and needs no second pass.
 - The first Buy page, with its Favourites and saved searches, is gone: Blizzard's own Buy tab is
   what players buy in. Its saved data (`marketFavourites`, `marketSearches`, `sortBuy`) and the old Open at
   the Auctioneer setting (`openAtAuctioneer`) are left as they were, unread; the Searches view below keeps
@@ -1329,6 +1332,8 @@ The Ledger:
      match the lists, and "Last day" is today's change. Pick another character and All Characters: the line
      and the cards add up the picked ones.
 162. Sort each column both ways and filter by name: the list and its foot line follow. Scroll a long list: smooth.
+     Pick Auction in Sales' Type: only auction sales, the foot line their total; the Type list offers only types the
+     tab has. Switch to Other and back: Other is on All Types, Sales still on Auction, after a reload too.
 163. Turn Record Gold off: the Ledger keeps what it has, says it is off, and nothing more is recorded.
 164. With Auctionator loaded, run its scan and turn on Auctionator Prices: an item Auctionator has priced shows
      Auctionator's price on its tooltip as "each, Auctionator", and The Market's Sell, Bag Worth and Professions'

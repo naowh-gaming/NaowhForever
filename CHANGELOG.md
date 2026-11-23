@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+### Added
+- The Market: the Ledger's Sales, Purchases, Other and Failed lists have a Type filter beside the name
+  filter, so you can list only auction sales, only vendor sales, only repairs and so on. Each list
+  remembers its own.
+
 ### Fixed
 - Campfire: on the Simple style, the Camp Nearby alert now pops up in the middle of the screen when
   your Camp Benefits is gone and a campfire is in range, as it does on Round.
