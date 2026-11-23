@@ -618,4 +618,37 @@ do
         source:find('SetBlizzardHidden(not S.Get("xpBarKeepBlizzard"))', 1, true) ~= nil)
 end
 
+-- Rested starts after the quest XP shown, not under it.
+do
+    local source = Read("NaowhForever_QoL/XP/XPBar.lua")
+    local chunk = Consts(source) .. "local Look = {}\n"
+        .. assert(source:match("(local function Segment%(tex, from, width, total%).-\nend)\n"))
+        .. "\n" .. assert(source:match("(function Look%.Segments%(.-\nend)\n"))
+    local function Tex()
+        local t = { points = {} }
+        function t.ClearAllPoints(self) self.points = {} end
+        function t.SetPoint(self, point, x) self.points[point] = x end
+        function t.SetWidth(self, w) self.w = w end
+        function t.Show(self) self.shown = true end
+        function t.Hide(self) self.shown = false end
+        return t
+    end
+    local S = Settings({ xpBarIncomplete = false })
+    local restedEnd
+    local FX = { Segments = function(_, _, _, e) restedEnd = e end }
+    local Look = Load(chunk .. "\nreturn Look", { S = S, FX = FX })
+    local b = { fill = Tex(), done = Tex(), open = Tex(), rested = Tex() }
+    Look.Segments(b, 1000, 20, 100, 50, 150, 1000, false)
+    check("rested starts where the completed quests end", b.rested.points.TOPLEFT == 300 and b.rested.w == 150
+        and restedEnd == 450)
+    S.Set("xpBarIncomplete", true)
+    Look.Segments(b, 1000, 20, 100, 50, 150, 1000, false)
+    check("with Incomplete Quests on, after those too", b.rested.points.TOPLEFT == 350 and restedEnd == 500)
+    S.Set("xpBarIncomplete", false)
+    Look.Segments(b, 1000, 80, 100, 0, 150, 1000, false)
+    check("rested past the end of the bar is cut at the end", b.rested.w == 100 and restedEnd == 1000)
+    Look.Segments(b, 1000, 90, 100, 0, 150, 1000, false)
+    check("no room left after the quests: no rested band", not b.rested.shown and restedEnd == nil)
+end
+
 print(("test-xp-bar: %d checks passed"):format(checks))

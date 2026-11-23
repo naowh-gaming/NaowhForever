@@ -640,21 +640,21 @@ function Look.Segments(b, total, pct, done, open, rested, max, maxed)
         b.done:Hide(); b.open:Hide(); b.rested:Hide()
         return FX.Segments(b, total, x, nil, false, 0)
     end
-    local doneEnd = Segment(b.done, x, total * done / max, total)
+    local questEnd = Segment(b.done, x, total * done / max, total)
     if S.Get("xpBarIncomplete") then
-        Segment(b.open, doneEnd, total * open / max, total)
+        questEnd = Segment(b.open, questEnd, total * open / max, total)
     else
         b.open:Hide()
     end
-    local w = math.min(math.max(total * rested / max, RESTED_MIN_W), total - x)
+    local w = math.min(math.max(total * rested / max, RESTED_MIN_W), total - questEnd)
     local restedEnd
     if rested > 0 and w >= 1 then
         b.rested:ClearAllPoints()
-        b.rested:SetPoint("TOPLEFT", x, 0)
-        b.rested:SetPoint("BOTTOMLEFT", x, 0)
+        b.rested:SetPoint("TOPLEFT", questEnd, 0)
+        b.rested:SetPoint("BOTTOMLEFT", questEnd, 0)
         b.rested:SetWidth(w)
         b.rested:Show()
-        restedEnd = x + w
+        restedEnd = questEnd + w
     else
         b.rested:Hide()
     end
