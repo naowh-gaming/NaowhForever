@@ -439,7 +439,11 @@ end
 local function FitTitle()
     local title = plate.title
     title:SetText(plate.full)
-    if plate.short and title:GetStringWidth() > title:GetWidth() then title:SetText(plate.short) end
+    if not plate.short then return end
+    -- The plate is anchored across the tooltip, whose width is secret while it shows a secret unit.
+    local textWidth, width = title:GetStringWidth(), title:GetWidth()
+    if Secret(textWidth) or Secret(width) then return end
+    if textWidth > width then title:SetText(plate.short) end
 end
 
 local function BuildPlate()

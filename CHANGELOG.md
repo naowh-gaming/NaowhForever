@@ -5,6 +5,9 @@
 ### Changed
 - Dungeon Journal: boss loot updated from the latest Forever loot lists.
 
+### Fixed
+- Badges: no more Lua errors when hovering a patron's unit frame while the tooltip is restricted.
+
 ## 1.4.6
 
 ### Added
