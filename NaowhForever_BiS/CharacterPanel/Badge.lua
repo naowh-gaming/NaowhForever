@@ -26,7 +26,7 @@ local function Enter(self)
     if not tier then return GameTooltip:Hide() end
     local c = tier.color
     if self.compact then
-        GameTooltip:SetText(self.title:GetText(), c.r, c.g, c.b)
+        GameTooltip:SetText(self.title:GetText() or tier.label, c.r, c.g, c.b)
         GameTooltip:AddLine(self.line:GetText(), T.muted.r, T.muted.g, T.muted.b)
     else
         GameTooltip:SetText(tier.label or (TEXT_TIER .. tier.title), c.r, c.g, c.b)
