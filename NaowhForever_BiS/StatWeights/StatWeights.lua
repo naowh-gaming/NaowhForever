@@ -185,12 +185,32 @@ function SW.TalentSpec()
     return talentSpec
 end
 
-function SW.ActiveSpec()
-    local picked = S.Get("spec")
-    local mine = SW.ClassSpecs()
-    for _, spec in ipairs(mine) do
+local function Picks()
+    local account = ns.AccountSettings()
+    if type(account.statWeightSpec) ~= "table" then account.statWeightSpec = {} end
+    return account.statWeightSpec
+end
+
+function SW.PickedSpec()
+    local picks = Picks()
+    local picked = picks[ns.CharKey(picks)]
+    -- Picks used to be one per profile.
+    if picked == nil then picked = S.Get("spec") end
+    for _, spec in ipairs(SW.ClassSpecs()) do
         if spec.key == picked then return picked end
     end
+end
+
+function SW.PickSpec(key)
+    local picks = Picks()
+    picks[ns.CharKey(picks)] = key or false
+    Changed(nil)
+end
+
+function SW.ActiveSpec()
+    local picked = SW.PickedSpec()
+    if picked then return picked end
+    local mine = SW.ClassSpecs()
     local talents = SW.TalentSpec()
     if talents then return talents end
     local B = ns.BiS

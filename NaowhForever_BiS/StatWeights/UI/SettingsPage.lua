@@ -27,8 +27,8 @@ local function SpecChoices()
     return values, order
 end
 
-local function SpecGet() return S.Get("spec") or AUTO end
-local function SpecSet(key) S.Set("spec", key ~= AUTO and key or nil) end
+local function SpecGet() return SW.PickedSpec() or AUTO end
+local function SpecSet(key) SW.PickSpec(key ~= AUTO and key or nil) end
 
 local function LengthChoices()
     local values, order = {}, {}
@@ -50,7 +50,7 @@ local function Summary(store)
 end
 
 Settings.Page("BiS List/Settings"):Card({
-    id = "statWeights", name = "Stat Weights", order = ORDER_STAT_WEIGHTS, store = S,
+    id = "statWeights", name = "Stat Weights", order = ORDER_STAT_WEIGHTS, store = S, watch = { SW },
     help = "What each stat is worth to your spec: the BiS List's upgrade percents and enchants come from "
         .. "them. Change the weights in the Stat Weights window, from the scales on the BiS List's title bar.",
     summary = Summary,

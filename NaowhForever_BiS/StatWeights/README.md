@@ -25,7 +25,7 @@ scales on the BiS List's title bar), and only their changes are kept, for the ac
 
 Your spec is Automatic: the talent tree you spent the most points in (Forever keeps one spec
 per class, its three trees as the talent tree's groups, read as its own talent frame reads
-them), or the one you pick.
+them), or the one you pick. Each character keeps its own pick.
 
 The switch and your spec are a card on the BiS List's settings page. The window has a switch
 between your class's specs and a sample of the tooltip line; on the left only the stats the spec

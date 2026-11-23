@@ -54,6 +54,7 @@ local function Fixture(class)
         STATUS = { untested = "" },
     }
     ns.AccountSettings = function() return state.account end
+    ns.CharKey = function() return state.char or "Neo-Realm" end
     ns.Color = function(_, text) return text end
     ns.Print = function(text) state.printed[#state.printed + 1] = text end
     ns.Apply = NOTHING
@@ -170,9 +171,9 @@ do
     end
     check("a rogue's specs are a rogue's", #SW.ClassSpecs() == 3 and SW.ClassSpecs()[1].class == "ROGUE")
     check("with no talents nor pick, the first is yours", SW.ActiveSpec() == "assassination-rogue")
-    ns.StatWeightSettings.Set("spec", "combat-rogue")
+    SW.PickSpec("combat-rogue")
     check("the one picked on the page is", SW.ActiveSpec() == "combat-rogue")
-    ns.StatWeightSettings.Set("spec", "fire-mage")
+    SW.PickSpec("fire-mage")
     check("never another class's", SW.ActiveSpec() == "assassination-rogue")
 end
 
@@ -312,12 +313,34 @@ do
     check("watching the game's talent change", watcher and watcher.events.TRAIT_CONFIG_UPDATED)
     watcher.onEvent()
     check("then read again", SW.ActiveSpec() == "subtlety-rogue")
-    ns.StatWeightSettings.Set("spec", "assassination-rogue")
+    SW.PickSpec("assassination-rogue")
     check("a spec picked by hand wins", SW.ActiveSpec() == "assassination-rogue")
-    ns.StatWeightSettings.Set("spec", nil)
+    SW.PickSpec(nil)
     state.spent = { 0, 0, 0 }
     watcher.onEvent()
     check("no points yet: the first", SW.ActiveSpec() == "assassination-rogue")
+end
+
+-------------------------------------------------------------------------------
+--  Your spec is picked per character
+-------------------------------------------------------------------------------
+do
+    local ns, state = Fixture("DRUID")
+    local SW = ns.StatWeights
+    ns.StatWeightSettings.Set("spec", "feral-tank-druid")
+    check("a pick from before is kept", SW.ActiveSpec() == "feral-tank-druid")
+    SW.PickSpec(nil)
+    check("and Automatic can replace it", SW.PickedSpec() == nil and SW.ActiveSpec() == "balance-druid")
+    SW.PickSpec("feral-tank-druid")
+    state.char = "Bear-Realm"
+    SW.PickSpec("restoration-druid")
+    check("another character's pick is its own", SW.ActiveSpec() == "restoration-druid")
+    state.char = nil
+    check("and leaves yours alone", SW.ActiveSpec() == "feral-tank-druid")
+    local told = 0
+    SW.OnChange(function() told = told + 1 end)
+    SW.PickSpec("balance-druid")
+    check("a pick redraws what uses the weights", told == 1)
 end
 
 -------------------------------------------------------------------------------
@@ -835,7 +858,7 @@ do
     env.GetManaRegenFromSpirit = function() return 10, 1.5 end
     -- Every item here is leather; whether a priest can wear it is its own check.
     ns.ClassCanUse = nil
-    S.Set("spec", "holy-priest")
+    SW.PickSpec("holy-priest")
     S.Set("enabled", true)
     local OnItem = state.postCalls[1]
     local function Lines(id)
@@ -858,7 +881,7 @@ do
     local lines = table.concat(Lines(10), " ")
     check("its own line, beside the healing one", lines:find("% mana|r", 1, true) and lines:find("Holy", 1, true))
     check("nothing for an item with no mana", not table.concat(Lines(1), " "):find("mana", 1, true))
-    S.Set("spec", "shadow-priest")
+    SW.PickSpec("shadow-priest")
     check("not for a damage spec", not table.concat(Lines(10), " "):find("mana", 1, true))
 end
 
