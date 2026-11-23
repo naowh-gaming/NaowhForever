@@ -164,23 +164,29 @@ local function GatherQuests(hideDone)
     table.sort(entries, EntryOrder)
 end
 
-local function AddChain(self, chain, stripe)
+local function AddChain(self, chain, stripe, hideDone)
     for _, id in ipairs(chain.steps[1]) do self:Add("quest", id, "head", nil, nil, stripe) end
     wipe(follow)
     for s = 2, #chain.steps do
-        for _, id in ipairs(chain.steps[s]) do follow[#follow + 1] = id end
+        local step = chain.steps[s]
+        if not (hideDone and Q.StepDone(step)) then
+            for _, id in ipairs(step) do
+                if not (hideDone and Q.Done(id)) then follow[#follow + 1] = id end
+            end
+        end
     end
     for f, id in ipairs(follow) do self:Add("quest", id, "step", f == 1, f == #follow, stripe) end
 end
 
 local function DrawZone(self)
     local total = ZoneHead(self, zone, Q.ZoneProgress)
-    GatherQuests(S.Get("hideDone"))
+    local hideDone = S.Get("hideDone")
+    GatherQuests(hideDone)
     if #entries > 0 then self:Section(TEXT_QUESTS, #entries) end
     for i, entry in ipairs(entries) do
         local stripe = i % 2 == 0
         if type(entry) == "table" then
-            AddChain(self, entry, stripe)
+            AddChain(self, entry, stripe, hideDone)
         else
             self:Add("quest", entry, nil, nil, nil, stripe)
         end
