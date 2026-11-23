@@ -13,6 +13,8 @@ local WORN = {
 }
 
 local COMMISSION = 12846
+local COMMISSIONS = { 13209, 19812, COMMISSION }
+local IS_COMMISSION = { [13209] = true, [19812] = true, [COMMISSION] = true }
 local TRINKET_SLOTS = { 13, 14 }
 local SWAP_SLOT = 14
 local PLAGUE_MAPS = { [1422] = true, [1423] = true }
@@ -99,7 +101,7 @@ local function OnIconEnter(icon)
     local tip, muted = T.accentSoft, T.muted
     if icon.commission == "wear" then
         GameTooltip:SetOwner(icon, "ANCHOR_RIGHT")
-        GameTooltip:SetItemByID(COMMISSION)
+        GameTooltip:SetItemByID(icon.item)
         GameTooltip:AddLine(TEXT_WEAR_HERE, tip.r, tip.g, tip.b)
         GameTooltip:AddLine(TEXT_PUT_ON, tip.r, tip.g, tip.b)
         GameTooltip:AddLine(TEXT_HIDE_HERE, muted.r, muted.g, muted.b)
@@ -122,7 +124,7 @@ end
 local function Swap(icon)
     if InCombatLockdown() then return end
     if icon.commission == "wear" then
-        C_Item.EquipItemByName(COMMISSION, FreeTrinketSlot())
+        C_Item.EquipItemByName(icon.item, FreeTrinketSlot())
     elseif icon.commission == "remove" then
         local id = Spare(icon.slot)
         if id then C_Item.EquipItemByName(id, icon.slot) end
@@ -139,7 +141,7 @@ local function OnIconClick(icon)
     Update()
 end
 
-local function ShowIcon(i, texture, slot, size, commission)
+local function ShowIcon(i, texture, slot, size, commission, item)
     local icon = icons[i]
     if not icon then
         icon = Parts.ItemIcon(frame, size)
@@ -155,7 +157,14 @@ local function ShowIcon(i, texture, slot, size, commission)
     icon.texture:SetTexture(texture)
     icon.slot = slot
     icon.commission = commission
+    icon.item = item
     icon:Show()
+end
+
+local function OwnedCommission()
+    for _, id in ipairs(COMMISSIONS) do
+        if C_Item.GetItemCount(id) > 0 then return id end
+    end
 end
 
 local function ShowCommission(shown, here, size)
@@ -163,12 +172,12 @@ local function ShowCommission(shown, here, size)
         ShowIcon(shown + 1, C_Item.GetItemIconByID(COMMISSION), nil, size)
         return shown + 1
     end
-    local kept, worn = Kept(), nil
+    local kept, worn, wornID = Kept(), nil, nil
     for _, slot in ipairs(TRINKET_SLOTS) do
         local id = GetInventoryItemID("player", slot)
         if dismissed[slot] ~= id then dismissed[slot] = nil end
-        if id == COMMISSION then
-            worn = slot
+        if IS_COMMISSION[id] then
+            worn, wornID = slot, id
         elseif id then
             kept[slot] = id
         end
@@ -177,11 +186,12 @@ local function ShowCommission(shown, here, size)
     if not inZone then skipped = false end
     if worn then
         if inZone or dismissed[worn] then return shown end
-        ShowIcon(shown + 1, C_Item.GetItemIconByID(COMMISSION), worn, size, "remove")
+        ShowIcon(shown + 1, C_Item.GetItemIconByID(wornID), worn, size, "remove")
         return shown + 1
     end
-    if inZone and not skipped and C_Item.GetItemCount(COMMISSION) > 0 then
-        ShowIcon(shown + 1, C_Item.GetItemIconByID(COMMISSION), nil, size, "wear")
+    local owned = inZone and not skipped and OwnedCommission()
+    if owned then
+        ShowIcon(shown + 1, C_Item.GetItemIconByID(owned), nil, size, "wear", owned)
         return shown + 1
     end
     return shown

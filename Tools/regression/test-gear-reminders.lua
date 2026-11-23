@@ -267,11 +267,11 @@ Check("Icon Size sizes the icons", IconFor(15).w, 32)
 S.Set("wornReminders", false)
 S.Set("fishingPoleReminder", false)
 state.worn[15], state.instance, state.instanceID = nil, "none", nil
-state.worn[13], state.worn[14], state.bags[12846] = 11810, 13209, 1
+state.worn[13], state.worn[14], state.bags[12846] = 11810, 11815, 1
 S.Set("commissionReminder", true)
 Check("its switch listens for bag changes", events.events.BAG_UPDATE_DELAYED, true)
 Check("in bags, out of the Plaguelands", Shown(), "")
-Check("the trinkets you wear are kept", account.commissionReturn["Player-1"][14], 13209)
+Check("the trinkets you wear are kept", account.commissionReturn["Player-1"][14], 11815)
 state.map = 1423
 Fire("ZONE_CHANGED_NEW_AREA")
 Check("in bags, in Eastern Plaguelands", Shown(), "item:12846")
@@ -288,10 +288,10 @@ Check("a click puts it on the second trinket slot", state.equipped[1], "12846@14
 state.worn[13] = nil
 wear.scripts.OnMouseUp(wear)
 Check("or an empty one", state.equipped[2], "12846@13")
-state.worn[13], state.worn[14], state.bags[12846], state.bags[13209] = 11810, 12846, 0, 1
+state.worn[13], state.worn[14], state.bags[12846], state.bags[11815] = 11810, 12846, 0, 1
 Fire("PLAYER_EQUIPMENT_CHANGED", 14, true)
 Check("worn in the Plaguelands", Shown(), "")
-Check("what it replaced is still kept", account.commissionReturn["Player-1"][14], 13209)
+Check("what it replaced is still kept", account.commissionReturn["Player-1"][14], 11815)
 state.map, state.instance, state.instanceID = nil, "party", 329
 Fire("PLAYER_ENTERING_WORLD")
 Check("worn in Stratholme", Shown(), "")
@@ -302,8 +302,8 @@ local off = IconFor(14)
 off.scripts.OnEnter(off)
 Check("its tooltip offers the swap back", tooltip.lines[2], "Click to put your other trinket back.")
 off.scripts.OnMouseUp(off)
-Check("a click puts the old trinket back", state.equipped[3], "13209@14")
-state.bags[13209] = 0
+Check("a click puts the old trinket back", state.equipped[3], "11815@14")
+state.bags[11815] = 0
 off.scripts.OnEnter(off)
 Check("with the old trinket gone, no swap is offered", tooltip.lines[2], "Ctrl-click to hide it until you take it off.")
 off.scripts.OnMouseUp(off)
@@ -312,7 +312,7 @@ state.ctrl = true
 off.scripts.OnMouseUp(off)
 state.ctrl = false
 Check("Ctrl-click hides it while worn", Shown(), "")
-state.worn[14], state.bags[12846] = 13209, 1
+state.worn[14], state.bags[12846] = 11815, 1
 Fire("PLAYER_EQUIPMENT_CHANGED", 14, true)
 state.instance, state.instanceID = "party", 289
 Fire("PLAYER_ENTERING_WORLD")
@@ -329,6 +329,30 @@ Fire("ZONE_CHANGED_NEW_AREA")
 state.map = 1422
 Fire("ZONE_CHANGED_NEW_AREA")
 Check("leaving and coming back shows it again", Shown(), "item:12846")
+
+-- Seal of the Dawn and Rune of the Dawn collect Scourgestones like the Commission.
+state.bags[12846], state.bags[19812] = 0, 1
+Fire("BAG_UPDATE_DELAYED")
+Check("Rune of the Dawn in bags, in the Plaguelands", Shown(), "item:19812")
+local rune = IconFor(nil)
+rune.scripts.OnEnter(rune)
+Check("its tooltip is the Rune's", tooltip.item, 19812)
+rune.scripts.OnMouseUp(rune)
+Check("a click puts the Rune on", state.equipped[#state.equipped], "19812@14")
+state.bags[19812], state.worn[14] = 0, 19812
+Fire("PLAYER_EQUIPMENT_CHANGED", 14, true)
+Check("the Rune worn in the Plaguelands", Shown(), "")
+Check("the trinket it replaced is kept", account.commissionReturn["Player-1"][14], 11815)
+state.map = 1429
+Fire("ZONE_CHANGED_NEW_AREA")
+Check("the Rune worn elsewhere", Shown(), "item:19812")
+state.worn[14], state.bags[19812], state.bags[13209] = 11815, 0, 1
+state.map = 1422
+Fire("PLAYER_EQUIPMENT_CHANGED", 14, true)
+Check("Seal of the Dawn in bags, in the Plaguelands", Shown(), "item:13209")
+state.bags[13209], state.bags[12846] = 0, 1
+Fire("BAG_UPDATE_DELAYED")
+
 ns.ShowUnlockMode()
 Check("Unlock Mode shows its sample", Shown(), "item:12846")
 ns.HideUnlockMode()
