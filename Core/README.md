@@ -446,6 +446,18 @@ Waypoints
   journey ends at cancels the journey and clears its waypoint.
 - Only the last TomTom waypoint is kept, so clicking pin after pin does not pile up arrows. Routes
   always use the game's waypoint, since TomTom's never reports arriving.
+- A route's stop is reached by the game's `NAVIGATION_DESTINATION_REACHED`, by the Waypoint Pin's
+  own reach check (`ns.WaypointRouteReached`), or, for a route placed with an arrival distance, by
+  standing that close to it, checked every `ROUTE_TICK` second while the route runs
+  (`ns.WaypointRouteNear`, from `UnitPosition` on the stop's continent). The game's event does not
+  always come for a map waypoint, and the pin's reach is only a few yards: a herb's spot from the map
+  data is rarely where you stand to pick it, so The Market's Farm loop stayed on its first stop.
+- The game clears its waypoint as you reach it, before or after its arrival event. A clear in the
+  hold after arriving, or with the event, is reaching the stop; any other clear (by hand, from the
+  world map) ends the route a frame later, once the event has had its chance. `ns.ClearWaypoint`
+  ends it at once, so the navigator's clear works during the hold too.
+- `ns.WaypointRouteSkip` places the next stop now, for a stop you cannot reach or do not want, and
+  cuts short a hold under way; with Journeys on it moves the journey on to its next stop instead.
 - `ns.PlaceWaypoint`'s last argument, for a dungeon's entrance, clears the waypoint as you go from
   outside a dungeon or raid to inside one, so it is done wherever you walked in. Every game
   waypoint placed since, a Journeys step included, drops it, and a waypoint set since by hand is

@@ -19,7 +19,7 @@ local TEXT_POOL = ns.L("Fishing pool")
 local itemOf, skinWorth, skinItem, catchWorth, catchItems = {}, {}, {}, {}, {}
 local zones, spots, loop = {}, {}, {}
 local zonePool, spotPool = {}, {}
-local cachedZones, cachedMap
+local cachedZones, cachedMap, looping
 
 local Farm = { zones = zones, spots = spots, loop = loop }
 Market.Farm = Farm
@@ -476,6 +476,15 @@ function Farm.Stops(title)
         stops[#stops + 1] = { Farm.SpotName(spot, title), cachedMap, spot.x * PERCENT, spot.y * PERCENT }
     end
     return stops
+end
+
+function Farm.StartLoop(title)
+    looping = title
+    return ns.PlaceWaypointRoute(title, Farm.Stops(title), C.LOOP_ARRIVE)
+end
+
+function Farm.Gathered()
+    if looping and ns.WaypointRoute() == looping then ns.WaypointRouteNear(C.LOOP_GATHER_NEAR) end
 end
 
 function Farm.Changed()

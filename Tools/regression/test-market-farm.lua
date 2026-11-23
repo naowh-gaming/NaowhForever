@@ -82,6 +82,25 @@ local stops = F.Stops("Map 1 loop")
 Check("the loop's waypoints are named for their node, in percent", #stops == 2 and stops[1][2] == 1
     and math.abs(stops[1][3] - 20) < 1e-9 and stops[1][1] == "Peacebloom")
 
+local placed, route, near
+t.ns.PlaceWaypointRoute = function(title, list, arrive)
+    placed = { title = title, stops = list, arrive = arrive }
+    return true
+end
+t.ns.WaypointRoute = function() return route end
+t.ns.WaypointRouteNear = function(yards) near = yards return true end
+F.Gathered()
+Check("before Start Loop a gather tells no route", near == nil)
+Check("Start Loop places the loop's stops with the loop's arrival distance", F.StartLoop("Map 1 loop")
+    and placed.title == "Map 1 loop" and #placed.stops == 2 and placed.arrive == t.M.C.LOOP_ARRIVE)
+route = "Map 1 loop"
+F.Gathered()
+Check("while it runs, a gather counts if it is near the stop", near == t.M.C.LOOP_GATHER_NEAR)
+near, route = nil, "Training run"
+F.Gathered()
+Check("on another route a gather counts for nothing", near == nil)
+route = nil
+
 t.ns.MarketSettings.Set("farmPlan", true)
 local planned = {}
 for _, zone in ipairs(F.Zones()) do planned[zone.map] = zone end
@@ -232,10 +251,13 @@ t.ns.Apply()
 t.playerMap, t.playerAt = 1, { GetXY = function() return 0.3, 0.4 end }
 t.now, t.fishing = 20000, true
 t.loot = { { source = Object(SCHOOL, "A"), item = SMALLFISH, qty = 1 } }
+route, near = "Map 1 loop", nil
 t.Fire("LOOT_OPENED")
 local pools = t.M.Runs.Pools(1)
 Check("a catch from a school marks a pool where you stand", #pools == 1 and pools[1].id == SCHOOL
     and pools[1].x == 0.3 and pools[1].y == 0.4 and pools[1].last == 20000)
+Check("and counts as a gather on the loop", near == C.LOOP_GATHER_NEAR)
+route = nil
 t.now, t.playerAt = 20500, { GetXY = function() return 0.31, 0.405 end }
 t.Fire("LOOT_OPENED")
 Check("one fished close by is the same pool, seen again", #pools == 1 and pools[1].last == 20500 and pools[1].x == 0.3)

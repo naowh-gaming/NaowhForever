@@ -139,6 +139,7 @@ function Runs.Record(id, kind, guid, items)
         run.events[#run.events + 1] = { t = now - run.start, id = id, kind = kind, items = items, map = map, x = x, y = y }
     end
     Market.Farm.Changed()
+    Market.Farm.Gathered()
     if Runs.onChange then Runs.onChange() end
 end
 
@@ -177,7 +178,10 @@ local function OnLoot(_, event, slot)
     if event == "LOOT_OPENED" then
         Opened()
         local pool = IsFishingLoot() and FishedPool()
-        if pool then LearnPool(pool) end
+        if pool then
+            LearnPool(pool)
+            Market.Farm.Gathered()
+        end
     elseif event == "LOOT_SLOT_CLEARED" then
         Cleared(slot)
     else

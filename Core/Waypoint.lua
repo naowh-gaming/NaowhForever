@@ -16,11 +16,12 @@ local TEXT_REMOVED = ns.L("Removed the waypoint for ")
 local TEXT_REMOVED_LATER = ns.L(" (removed when you close the map)")
 local PREVIEW_TEMPLATE = "NaowhForeverWaypointPreviewPinTemplate"
 local WORLD_POS_RETURN = 2
+local ROUTE_TICK = 1
 
 ns.WAYPOINT_HOLD = 4
 
 local tomtomWaypoint, tomtomSpot
-local route
+local route, ticker
 local arrivals = 0
 local watch = CreateFrame("Frame")
 local dungeon, wasInside
@@ -180,14 +181,19 @@ function ns.TrackQuest(quest)
     if MapOpen() then Hold({ quest = quest }) else TrackNow(quest) end
 end
 
-function ns.ClearWaypoint()
-    if ns.JourneyCancel then ns.JourneyCancel() end
-    if MapOpen() then Hold(CLEAR) else ClearNow() end
-end
-
 local function EndRoute()
     route = nil
     watch:UnregisterAllEvents()
+    if ticker then
+        ticker:Cancel()
+        ticker = nil
+    end
+end
+
+function ns.ClearWaypoint()
+    if ns.JourneyCancel then ns.JourneyCancel() end
+    EndRoute()
+    if MapOpen() then Hold(CLEAR) else ClearNow() end
 end
 
 function ns.ShowJourneyStep(title, map, x, y, note, icon, details)
@@ -341,6 +347,10 @@ local function PlaceStop()
         EndRoute()
         return false
     end
+    route.reached = false
+    if route.arrive then
+        route.c, route.spot = C_Map.GetWorldPosFromMapPos(stop[2], CreateVector2D(stop[3] / PERCENT, stop[4] / PERCENT))
+    end
     local later = SetGameWaypoint(stop[1], stop[2], stop[3], stop[4], stop[5], stop[6])
     ns.Print(TEXT_ROUTE_STOP:format(route.title, route.at, #route.stops,
         ns.WaypointText(stop[1], stop[2], stop[3], stop[4], stop[5]), later and TEXT_LATER or ""))
@@ -354,25 +364,69 @@ local function NextStopAfterHold(this)
     PlaceStop()
 end
 
-function ns.WaypointRouteReached()
-    if not (route and OnStop(C_Map.GetUserWaypoint())) then return false end
+local function Arrive()
+    route.reached = true
     arrivals = arrivals + 1
     local this = arrivals
     C_Timer.After(ns.WAYPOINT_HOLD, function() NextStopAfterHold(this) end)
+end
+
+function ns.WaypointRouteReached()
+    if not (route and OnStop(C_Map.GetUserWaypoint())) then return false end
+    Arrive()
     return true
 end
 
+function ns.WaypointRouteNear(yards)
+    if not (route and route.spot) or route.reached then return false end
+    local x, y, _, c = UnitPosition("player")
+    if not x or (issecretvalue and issecretvalue(x)) or c ~= route.c then return false end
+    local dx, dy = x - route.spot.x, y - route.spot.y
+    if dx * dx + dy * dy > yards * yards then return false end
+    return ns.WaypointRouteReached()
+end
+
+local function OnRouteTick()
+    ns.WaypointRouteNear(route.arrive)
+end
+
+function ns.WaypointRouteCanSkip()
+    if ns.JourneyCanSkip and ns.JourneyCanSkip() then return true end
+    return route ~= nil and route.at < #route.stops
+end
+
+function ns.WaypointRouteSkip()
+    if ns.JourneySkip and ns.JourneySkip() then return true end
+    if not (route and route.at < #route.stops) then return false end
+    arrivals = arrivals + 1
+    route.at = route.at + 1
+    return PlaceStop()
+end
+
+local function ClearedAfterFrame()
+    if route and not route.reached and not C_Map.GetUserWaypoint() then EndRoute() end
+end
+
 local function OnRouteEvent(_, event, isWaypoint)
+    local point = C_Map.GetUserWaypoint()
     if event == "USER_WAYPOINT_UPDATED" then
-        if not OnStop(C_Map.GetUserWaypoint()) then EndRoute() end
+        if point then
+            if not OnStop(point) then EndRoute() end
+        elseif not route.reached then
+            C_Timer.After(0, ClearedAfterFrame)
+        end
     elseif not isWaypoint then
-        ns.WaypointRouteReached()
+        if point then
+            ns.WaypointRouteReached()
+        elseif not route.reached then
+            Arrive()
+        end
     end
 end
 
 watch:SetScript("OnEvent", OnRouteEvent)
 
-function ns.PlaceWaypointRoute(title, stops)
+function ns.PlaceWaypointRoute(title, stops, arrive)
     if ns.JourneyTo and ns.JourneyTo(title, stops) then
         EndRoute()
         return true
@@ -382,9 +436,10 @@ function ns.PlaceWaypointRoute(title, stops)
         return stop ~= nil and ns.PlaceWaypoint(stop[1], stop[2], stop[3], stop[4], stop[5], stop[6])
     end
     EndRoute()
-    route = { title = title, stops = stops, at = 1 }
+    route = { title = title, stops = stops, at = 1, arrive = arrive }
     watch:RegisterEvent("USER_WAYPOINT_UPDATED")
     watch:RegisterEvent("NAVIGATION_DESTINATION_REACHED")
+    if arrive then ticker = C_Timer.NewTicker(ROUTE_TICK, OnRouteTick) end
     return PlaceStop()
 end
 

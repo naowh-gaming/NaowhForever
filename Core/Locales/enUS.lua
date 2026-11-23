@@ -2174,6 +2174,7 @@ L["Clear Notes"] = true
 L["Clear the Aim Trainer leaderboard? Your own records stay."] = true
 L["Clear the history of every player? Your notes are kept."] = true
 L["Clear the waypoint"] = true
+L["Skip to the next stop"] = true
 L["Clear your Aim Trainer records?"] = true
 L["Cleared the saved reward for %s."] = true
 L["Clears your own best scores on every character."] = true

@@ -386,7 +386,7 @@ end
 local function LoopClicked()
     local info = C_Map.GetMapInfo(picked.map)
     local title = TEXT_LOOP_TITLE:format(info and info.name or "")
-    ns.PlaceWaypointRoute(title, Farm.Stops(title))
+    Farm.StartLoop(title)
 end
 
 local function SellClicked(button)

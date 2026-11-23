@@ -266,6 +266,14 @@ Check(ns.PlaceWaypoint(unpack(DESTINATION)) and not Jy.Guide.Current(), "already
 local stops = { { "A", IRONFORGE, 50, 50 }, { "B", DARNASSUS, 50, 50 } }
 Check(ns.PlaceWaypointRoute("Training run", stops) and #stops[1] == 4 and stops[1].spot == nil,
     "a route becomes one journey, and its stops are not written to")
+Jy.Guide.Cancel()
+here = { x = 0, y = 0, c = 0 }
+ns.PlaceWaypointRoute("Training run", { { "A", IRONFORGE, 50, 50 }, { "B", DARNASSUS, 50, 50 }, { "C", IRONFORGE, 50, 50 } })
+Check(ns.WaypointRouteCanSkip() and ns.WaypointRouteSkip() and Jy.Guide.Current().at == 2,
+    "a skip moves the journey on to its next stop")
+ns.WaypointRouteSkip()
+Check(not ns.WaypointRouteCanSkip() and not ns.WaypointRouteSkip() and Jy.Guide.Current().at == 3,
+    "and on its last stop there is nothing to skip to")
 
 Jy.Guide.Cancel()
 here = { x = -4821.8, y = -1155.4, c = 0 }

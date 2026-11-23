@@ -133,7 +133,29 @@ env.C_Map.SetUserWaypoint({ map = 1411, x = 0.5, y = 0.5 })
 Check(ns.WaypointRoute() == nil, "a waypoint set elsewhere ends it")
 ns.PlaceWaypointRoute("Training run", STOPS)
 env.C_Map.ClearUserWaypoint()
-Check(ns.WaypointRoute() == nil, "clearing the waypoint ends it")
+Check(ns.WaypointRoute() ~= nil, "a cleared waypoint waits a frame for the game's arrival")
+timers[#timers]()
+Check(ns.WaypointRoute() == nil, "without one, clearing the waypoint ends it")
+ns.PlaceWaypointRoute("Training run", STOPS)
+ns.ClearWaypoint()
+Check(ns.WaypointRoute() == nil, "so does clearing it from the navigator, at once")
+
+-- The game clears a waypoint as you reach it, before or after its arrival event: that is reaching the stop.
+ns.PlaceWaypointRoute("Training run", STOPS)
+env.C_Map.ClearUserWaypoint()
+Fire("NAVIGATION_DESTINATION_REACHED", false)
+local frame, hold = timers[#timers - 1], timers[#timers]
+frame()
+Check(ns.WaypointRoute() ~= nil, "cleared, then the arrival: the route stays")
+hold()
+Check(ns.placedWaypoint.title == "Hanashi", "and moves on after the hold")
+local waits = #timers
+ns.WaypointRouteReached()
+env.C_Map.ClearUserWaypoint()
+Check(#timers == waits + 1 and ns.WaypointRoute() ~= nil, "reached first, then cleared by the game: the route stays")
+timers[#timers]()
+Check(ns.placedWaypoint.title == "Kaja", "and moves on after the hold")
+ns.PlaceWaypoint("Rwag", 1411, 41.3, 68.0)
 ns.PlaceWaypointRoute("Training run", STOPS)
 pinOn = true
 ns.PlaceWaypoint("Rwag", 1411, 41.3, 68.0)
@@ -201,6 +223,55 @@ ns.ToggleWaypoint("Kaja", 1454, 50.0, 50.0)
 Check(removed == gone + 1 and #tomtom == arrows, "a second click removes it, nothing new")
 ns.ToggleWaypoint("Kaja", 1454, 50.0, 50.0)
 Check(#tomtom == arrows + 1 and removed == gone + 1, "a third places it again")
+
+-- A route with an arrival distance moves on once you are that close to its stop, checked each second,
+-- and a gather near the stop counts as reaching it. A skip places the next stop at once.
+env.TomTom = nil
+local ticks, player = {}, { 0, 0, 1 }
+env.C_Timer.NewTicker = function(_, fn)
+    local ticker = { fn = fn }
+    function ticker:Cancel() self.cancelled = true end
+    ticks[#ticks + 1] = ticker
+    return ticker
+end
+env.CreateVector2D = function(x, y) return { x = x, y = y } end
+env.C_Map.GetWorldPosFromMapPos = function(_, pos) return 1, { x = pos.x * 1000, y = pos.y * 1000 } end
+env.UnitPosition = function() return player[1], player[2], 0, player[3] end
+local LOOP = { { "Peacebloom", 1411, 40.0, 40.0 }, { "Silverleaf", 1411, 60.0, 40.0 }, { "Earthroot", 1411, 60.0, 60.0 } }
+ns.PlaceWaypointRoute("Durotar loop", LOOP, 15)
+local tick = ticks[#ticks]
+Check(tick ~= nil and not tick.cancelled and ns.placedWaypoint.title == "Peacebloom",
+    "an arrival distance checks where you are while the route runs")
+player[1], player[2] = 380, 400
+waiting = #timers
+tick.fn()
+Check(#timers == waiting, "20 yards off is not there yet")
+player[3] = 2
+player[1] = 395
+tick.fn()
+Check(#timers == waiting, "nor is the same spot on another continent")
+player[3] = 1
+tick.fn()
+Check(#timers == waiting + 1, "5 yards off is")
+tick.fn()
+Check(#timers == waiting + 1, "standing there does not start the hold again")
+timers[#timers]()
+Check(ns.placedWaypoint.title == "Silverleaf", "after the hold, the next stop")
+Check(not ns.WaypointRouteNear(30), "a gather 205 yards from the stop counts for nothing")
+player[1] = 575
+Check(ns.WaypointRouteNear(30) and #timers == waiting + 2, "one 25 yards from it counts as reaching it")
+local cutShort = timers[#timers]
+Check(ns.WaypointRouteCanSkip() and ns.WaypointRouteSkip() and ns.placedWaypoint.title == "Earthroot",
+    "a skip places the next stop at once")
+cutShort()
+Check(ns.placedWaypoint.title == "Earthroot" and select(2, ns.WaypointRoute()) == 3, "and the hold it cut short does nothing")
+Check(not ns.WaypointRouteCanSkip() and not ns.WaypointRouteSkip(), "after the last stop there is nothing to skip to")
+ns.PlaceWaypoint("Rwag", 1411, 41.3, 68.0)
+Check(tick.cancelled and ns.WaypointRoute() == nil, "ending the route stops the checks")
+local tickers = #ticks
+ns.PlaceWaypointRoute("Training run", STOPS)
+Check(#ticks == tickers and not ns.WaypointRouteNear(30), "a route without an arrival distance checks nothing")
+ns.PlaceWaypoint("Rwag", 1411, 41.3, 68.0)
 
 -- With Journeys on, the waypoint is the journey's step, not the pin: a second click on the pin
 -- the journey ends at cancels the journey and clears its waypoint.

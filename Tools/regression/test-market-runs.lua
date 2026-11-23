@@ -99,6 +99,15 @@ for i = 1, 12 do
 end
 Check("only the last ten runs are kept", #R.List() == 10)
 
+local near
+t.ns.PlaceWaypointRoute = function() return true end
+t.ns.WaypointRoute = function() return "Map 12 loop" end
+t.ns.WaypointRouteNear = function(yards) near = yards return true end
+F.Zone(12)
+F.StartLoop("Map 12 loop")
+Loot()
+Check("a gather on Farm's loop tells it how near counts", near == t.M.C.LOOP_GATHER_NEAR)
+
 t.ns.MarketSettings.Set("enabled", false)
 t.ns.Apply()
 local before = #R.List()[1].events

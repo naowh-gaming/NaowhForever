@@ -475,6 +475,11 @@ NaowhForever_Market/
 - Start Loop hands the loop to the shared waypoint route (`ns.PlaceWaypointRoute`), which places the
   next stop as you reach each, so the loop is followed by the game's own waypoint arrow. Open Map opens
   the world map on the zone (`Shared.Places.ShowMap`).
+- A stop counts as reached within `LOOP_ARRIVE` (15) yards, as a Journeys stop does: a node's spot is
+  where it spawns, and you gather it from beside it or mounted. A gather or a pool catch within
+  `LOOP_GATHER_NEAR` (30) yards of the stop counts too (`Farm.Gathered`, only on the loop Start Loop
+  placed): once the node is picked there is nothing left to wait there for. Pools are learned where
+  you stood to fish, so a pool's stop is the shore.
 - The zone map is drawn from the map's own art (`C_Map.GetMapArtLayers` and
   `GetMapArtLayerTextures`, laid out in tiles as Blizzard's map canvas does), scaled to fit and
   clipped. A spot gathered in the last `PICKED_FADE` (10) minutes is faded, its node likely gone.
@@ -953,7 +958,8 @@ Away from the auction house:
 32. Picking a zone draws its map with every herb and vein: bigger pins for more gold, a gold line for
     the loop, faded pins for nodes you gathered in the last ten minutes.
 33. Herbs, Veins and Nodes I Can't Gather Yet change the map, the loop and the list.
-34. Start Loop places a waypoint at the nearest stop and the next as you reach each.
+34. Start Loop places a waypoint at the nearest stop and the next as you reach each: within 15 yards
+    of it, or when you gather a node near it. The Waypoint Pin's navigator skips to the next stop.
 35. Clicking a pin shows its item in the strip: price, the last 14 days, what you hold. With Farm docked
     at an auctioneer, Sell picks it on the panel's Sell page.
 36. Gather a few herbs or veins: Farm's picked item shows what you hold of it.
