@@ -310,7 +310,7 @@ function Drag.Follow()
         Drag.pending = true
         return
     end
-    Drag.pending, Drag.following = nil, true
+    Drag.pending = nil
     local scale = win:GetEffectiveScale() / ProfessionsFrame:GetEffectiveScale()
     local x, y = pos.x * scale, pos.y * scale
     local eui = _G.EllesmereUIDB
@@ -319,8 +319,8 @@ function Drag.Follow()
         eui.shifterPositions.ProfessionsFrame = { point = "TOPLEFT", relPoint = "BOTTOMLEFT", x = x, y = y }
     end
     ProfessionsFrame:ClearAllPoints()
-    ProfessionsFrame:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", x, y)
-    Drag.following = false
+    -- Window movers (BlizzMove, MoveAny) put it back at their own spot from a SetPoint hook; the widget's own method runs no hooks.
+    getmetatable(ProfessionsFrame).__index.SetPoint(ProfessionsFrame, "TOPLEFT", UIParent, "BOTTOMLEFT", x, y)
     Drag.Place()
 end
 
@@ -505,7 +505,7 @@ local function OnBlizzardHide()
 end
 
 local function OnBlizzardPlaced()
-    if not Drag.following then Drag.Follow() end
+    Drag.Follow()
 end
 
 local function OnBlizzardCreate()

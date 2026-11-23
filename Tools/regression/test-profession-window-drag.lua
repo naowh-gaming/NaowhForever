@@ -32,8 +32,16 @@ local function Frame(name)
     return f
 end
 
+-- Methods on the metatable, as on a real widget, so a hook set on the frame itself can be told apart.
+local function Widget(name)
+    local f = Frame(name)
+    local methods = { SetPoint = f.SetPoint }
+    f.SetPoint = nil
+    return setmetatable(f, { __index = methods })
+end
+
 local settings, combat, docked = {}, false, nil
-local pf, ui, win = Frame("pf"), Frame("UIParent"), Frame("win")
+local pf, ui, win = Widget("pf"), Frame("UIParent"), Frame("win")
 local env = {
     S = { Get = function(k) return settings[k] end, Set = function(k, v) settings[k] = v end },
     InCombatLockdown = function() return combat end,
@@ -81,6 +89,19 @@ combat = false
 Follow()
 check("moved after combat", pf.points[1][4] == 300 and not Pending())
 check("window back on Blizzard's after combat", win.points[1][2] == pf)
+
+-- BlizzMove and MoveAny hook SetPoint on Blizzard's window and put it back at their own spot;
+-- the dragged spot is not handed to that hook.
+local moverRan = false
+pf.SetPoint = function(self, ...)
+    getmetatable(self).__index.SetPoint(self, ...)
+    moverRan = true
+    self.points = { { "CENTER", ui, "CENTER", 0, 0 } }
+end
+Follow()
+check("a window mover's SetPoint hook does not pull Blizzard's window back",
+    not moverRan and pf.points[1][2] == ui and pf.points[1][4] == 300 and pf.points[1][5] == 700)
+pf.SetPoint = nil
 
 -- EllesmereUI's Shifter re-places Blizzard's window at its saved spot on every SetPoint, so the
 -- dragged spot is written there too; with Shifter off its positions are left alone.

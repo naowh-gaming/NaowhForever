@@ -352,7 +352,8 @@ Each layer uses only the ones above it, or reads a later one's table at call tim
   buttons); anchoring it to ours instead would make ours protected. The panel manager places it
   again whenever any panel opens or closes, so its SetPoint is hooked. EllesmereUI's Shifter puts
   ProfessionsFrame back at its own saved spot on every SetPoint, so with the Shifter on that saved
-  spot is written too.
+  spot is written too. BlizzMove and MoveAny do the same from their own SetPoint hooks, with nothing
+  to write to, so ours moves it with the widget's own SetPoint from its metatable, which runs no hooks.
 - A trade link reads `trade:<crafter GUID>:<spell>:<skill line>`; only a plain click opens it. Opened
   from a closed window, a link does not always read as linked yet, so the click is remembered. A
   link clicked while Blizzard's window is loaded but closed makes Forever cast every one of your

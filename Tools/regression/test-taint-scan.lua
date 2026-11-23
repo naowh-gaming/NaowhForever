@@ -38,8 +38,8 @@ local FRAME_ALLOWED = {
     ["NaowhForever_QoL/Loot/LootFeed.lua"] = { why = "loot window shrunk and restored, never hidden",
         calls = { ["LootFrame:SetScale"] = 2 } },
     ["NaowhForever_Professions/UI/Takeover.lua"] = {
-        why = "pinned under ours out of combat; its overview tab docked beside ours, its points put back",
-        calls = { ["ProfessionsFrame:ClearAllPoints"] = 1, ["ProfessionsFrame:SetPoint"] = 1,
+        why = "pinned under ours out of combat (its SetPoint called from the metatable, past window movers' hooks); its overview tab docked beside ours, its points put back",
+        calls = { ["ProfessionsFrame:ClearAllPoints"] = 1,
             ["ProfessionsFrame.ProfessionsOverviewTab:ClearAllPoints"] = 2,
             ["ProfessionsFrame.ProfessionsOverviewTab:SetPoint"] = 2 } },
     ["NaowhForever_BiS/InspectPanel/InspectPanel.lua"] = {
