@@ -12,6 +12,12 @@ local Trinkets = G.Trinkets
 
 local PICKER_COLS, PICKER_CELL, PICKER_STEP, PICKER_PAD = 6, 36, 40, 6
 local PICKER_ROOM, PICKER_EDGE, PICKER_GAP = 34, 8, 5
+local PICKER_SIDES = {
+    above = { "BOTTOMLEFT", "TOPLEFT", 0, PICKER_GAP },
+    below = { "TOPLEFT", "BOTTOMLEFT", 0, -PICKER_GAP },
+    left = { "TOPRIGHT", "TOPLEFT", -PICKER_GAP, 0 },
+    right = { "TOPLEFT", "TOPRIGHT", PICKER_GAP, 0 },
+}
 local CLOSE_W, CLOSE_H, CLOSE_Y = 80, 22, 5
 local RANK_SIZE, RANK_INSET = 12, 2
 local HOME_Y = -160
@@ -60,6 +66,27 @@ local function Fitting(inventorySlot)
         end
     end
     return items
+end
+
+local function Sweep(cooldown, start, duration, enable)
+    if issecretvalue and (issecretvalue(start) or issecretvalue(duration) or issecretvalue(enable)) then return end
+    if enable and enable ~= 0 and duration > GCD then
+        cooldown:SetCooldown(start, duration)
+        cooldown:Show()
+    else
+        cooldown:Hide()
+    end
+end
+
+local function ShowPickCooldowns()
+    local on = S.Get("trinketCooldown")
+    for _, button in ipairs(picker.buttons) do
+        if on and button:IsShown() then
+            Sweep(button.cooldown, C_Container.GetItemCooldown(button.itemID))
+        else
+            button.cooldown:Hide()
+        end
+    end
 end
 
 local function ShowRank(button)
@@ -132,7 +159,13 @@ local function PickButton(i)
     button.icon = button:CreateTexture(nil, "ARTWORK")
     button.icon:SetAllPoints()
     ns.Border(button, BLACK)
-    button.rank = ns.Font(button, RANK_SIZE, "OUTLINE", T.fg)
+    button.cooldown = CreateFrame("Cooldown", nil, button, "CooldownFrameTemplate")
+    button.cooldown:SetAllPoints(button.icon)
+    button.cooldown:SetDrawEdge(false)
+    local over = CreateFrame("Frame", nil, button)
+    over:SetFrameLevel(button.cooldown:GetFrameLevel() + 1)
+    over:SetAllPoints()
+    button.rank = ns.Font(over, RANK_SIZE, "OUTLINE", T.fg)
     button.rank:SetPoint("TOPLEFT", RANK_INSET, -RANK_INSET)
     button:SetScript("OnClick", OnPickClick)
     Parts.Press(button)
@@ -147,11 +180,14 @@ local function Choose(anchor, inventorySlot)
     if not picker then NewPicker() end
     local spare = Fitting(inventorySlot)
     if #spare == 0 then return ns.Print(TRINKET_INDEX[inventorySlot] and TEXT_NONE or TEXT_NONE_SLOT) end
+    local countdown = S.Get("trinketCountdown")
     for i, id in ipairs(spare) do
         local button = PickButton(i)
         button.itemID, button.inventorySlot = id, inventorySlot
         button.icon:SetTexture(C_Item.GetItemIconByID(id))
         ShowRank(button)
+        button.cooldown:SetHideCountdownNumbers(not countdown)
+        button.cooldown:Hide()
         button:ClearAllPoints()
         button:SetPoint("TOPLEFT", PICKER_PAD + ((i - 1) % PICKER_COLS) * PICKER_STEP,
             -PICKER_PAD - math.floor((i - 1) / PICKER_COLS) * PICKER_STEP)
@@ -160,9 +196,11 @@ local function Choose(anchor, inventorySlot)
     for i = #spare + 1, #picker.buttons do picker.buttons[i]:Hide() end
     picker:SetSize(math.min(#spare, PICKER_COLS) * PICKER_STEP + PICKER_EDGE,
         math.ceil(#spare / PICKER_COLS) * PICKER_STEP + PICKER_ROOM)
+    local side = PICKER_SIDES[S.Get("trinketPickerSide")] or PICKER_SIDES.above
     picker:ClearAllPoints()
-    picker:SetPoint("BOTTOMLEFT", anchor, "TOPLEFT", 0, PICKER_GAP)
+    picker:SetPoint(side[1], anchor, side[2], side[3], side[4])
     picker:Show()
+    ShowPickCooldowns()
 end
 
 local function OnSlotEnter(self)
@@ -249,16 +287,10 @@ end
 local function ShowCooldowns()
     local on = S.Get("trinketCooldown")
     for _, button in ipairs(trinkets.buttons) do
-        local start, duration, enable = GetInventoryItemCooldown("player", button.inventorySlot)
-        if not on then
+        if on then
+            Sweep(button.cooldown, GetInventoryItemCooldown("player", button.inventorySlot))
+        else
             button.cooldown:Hide()
-        elseif not (issecretvalue and (issecretvalue(start) or issecretvalue(duration) or issecretvalue(enable))) then
-            if enable and enable ~= 0 and duration > GCD then
-                button.cooldown:SetCooldown(start, duration)
-                button.cooldown:Show()
-            else
-                button.cooldown:Hide()
-            end
         end
     end
 end
@@ -302,6 +334,7 @@ local function OnEvent(_, event, slot)
         ClosePicker()
     elseif event == "BAG_UPDATE_COOLDOWN" then
         ShowCooldowns()
+        if picker and picker:IsShown() then ShowPickCooldowns() end
     elseif event ~= "PLAYER_EQUIPMENT_CHANGED" then
         ApplyTrinkets()
     elseif shown[slot] then

@@ -19,6 +19,8 @@ local SHOW = { { always = "Always", combat = "In Combat", nocombat = "Out of Com
 local GROW = ns.Shared.ItemBar.GrowChoice()
 local BAR_SLOTS = { { trinkets = "Trinkets", weapons = "Trinkets and Weapons", all = "All Gear" },
     { "trinkets", "weapons", "all" } }
+local PICKER_SIDES = { { above = "Above", below = "Below", left = "Left", right = "Right" },
+    { "above", "below", "left", "right" } }
 local PREVIEW_STATE = { { key = "bar", label = "Bar" } }
 
 local GEAR_OFF = ns.L("Turn on Gear & Trinkets")
@@ -254,8 +256,10 @@ page:Card({
           why = GEAR_OFF, help = "The gap between the two." },
         { key = "trinketGrow", label = "Growth Direction", choice = GROW, needs = GearOn, why = GEAR_OFF,
           help = "Which way the second trinket sits from the first." },
+        { key = "trinketPickerSide", label = "Picker Side", choice = PICKER_SIDES, needs = GearOn, why = GEAR_OFF,
+          help = "Which side of the slot the right-click picker opens on." },
         { key = "trinketCooldown", label = "Show Cooldowns", toggle = true, needs = GearOn, why = GEAR_OFF,
-          help = "The trinket's cooldown sweeps over its icon." },
+          help = "The trinket's cooldown sweeps over its icon, and over the trinkets in its picker." },
         { key = "trinketCountdown", label = "Cooldown Numbers", toggle = true, needs = CooldownsOn, why = COOLDOWNS_OFF,
           help = "Counts down the time left on the icon." },
         { key = "trinketSquare", label = "Square Icons", toggle = true, needs = GearOn, why = GEAR_OFF,
