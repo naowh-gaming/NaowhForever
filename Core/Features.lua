@@ -48,6 +48,7 @@ ns.FEATURES = {
         tooltipDisplay = true,
         spellEfficiency = false,
         lootFeed = true,
+        lootRolls = false,
         hideLootWindow = false,
         fastLoot = true,
         ahPrices = true,

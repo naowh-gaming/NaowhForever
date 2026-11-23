@@ -139,6 +139,7 @@ NaowhForever_QoL/
     Alts.lua            your characters per realm and faction (ns.AltRealm, ns.AltList, ns.OpenForgetAltMenu)
     LootFeed.lua        the Loot Feed, gold per hour and quick loot (ns.ResetLootFeedSession, ns.LootFeed)
     LootFeedSettings.lua the Loot Feed's settings card and the live preview it edits
+    LootRolls.lua       Loot Rolls: the group's choices, rolls and winner for each drop, in a small window
     Restock.lua         the Restock Reminder, Auto Repair and Auto Sell Junk
     GearReminders.lua   Gear Reminders: an icon while you wear Cloak of Hermitic Bliss in Wailing Caverns or a fishing pole, and the Argent Dawn Commission swap
     FishingData.lua     the Fishing spells by rank and the lures by the skill they add (ns.FishingData)
@@ -1759,6 +1760,14 @@ NaowhForever_QoL/
 - The window stays full size whenever something would be left for the player: a group roll, a locked item, or bags too full. An item that tops up a stack already in the bags needs no free slot, so full bags alone do not bring the window back. Still open `LOOT_GRACE` (1 s) after the last slot, something could not be taken, so the window comes back. Only a full-bags error during a loot matters, so errors are listened to only while one is open.
 - The window gets its size back after its close animation finishes, so it never flashes on the way out.
 - A Spacing of -1 lets neighbouring lines share one border.
+
+### Loot Rolls
+- Everything comes from the game's loot history (`LOOT_HISTORY_UPDATE_DROP`, `C_LootHistory.GetSortedInfoForDrop`): it already sorts the rolls (Need, then Greed, then Pass, then those still choosing) and names the leader and the winner. The combat log is closed on Forever and chat roll lines are worded per language, so neither is read.
+- It is its own window, not a part of the game's roll frames: those close the moment you click Need, Greed or Pass, before anyone else has rolled.
+- A drop stays `KEEP_SETTLED` (60 s) after it is won or everyone passed, and at most `KEEP_OPEN` (5 min) while it never settles (you left the group). Past `MAX_DROPS` (8) the oldest settled drops go first; one still being rolled on stays until it settles or times out, so it never drops out and comes back.
+- The drop's IDs, its link and every player's name and class are checked with `issecretvalue` first, as the Dungeon Journal reads the same history; a drop or a player the game keeps secret is left out.
+- Close hides the drops on screen for good, even while they are still rolled on; the next new drop brings the window back.
+- Each shown drop sets a timer for `KEEP_OPEN` when it first shows and another for `KEEP_SETTLED` when it settles; a timer that finds nothing old enough does nothing.
 
 ### XP Bar
 - Its colors: Naowh's blue for the fill, his logo's gold for quest XP, a darker blue for rested. A color the player picked wins; an unset one follows the theme, and the shipped one while the theme leaves the accent alone. `FILL_DARK` is how dark the fill's left end is against its color, `RESTED_DARK` how dark rested is against a theme's changed accent. A theme turns quest XP to its lighter accent, which reads apart from the fill, and the black border to its line color. Incomplete quests, unpicked, are the completed quests color faded over the background (`OPEN_ALPHA`), as its swatch shows it.
