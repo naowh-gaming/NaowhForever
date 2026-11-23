@@ -1,4 +1,4 @@
--- CampBag.lua: the Sleeping Bag beside the Round campfire icon, or where it was moved, while you carry it near a campfire (or anywhere, with Always Show Sleeping Bag) or in the HUD Editor, a secure button that uses it.
+-- CampBag.lua: the Sleeping Bag beside the campfire, Round or Simple, or where it was moved, while you carry it near a campfire (or anywhere, with Always Show Sleeping Bag) or in the HUD Editor, a secure button that uses it.
 local ns = _G.NaowhForever
 
 local A = ns.AuraBuffs
@@ -6,7 +6,7 @@ local S = A.Settings
 local T = ns.THEME
 local St = A.Style
 local Parts = ns.Shared.Parts
-local D, Look, Secret = A.CampData, A.CampIcon, A.Camp.Secret
+local D, Look, Secret, Simple = A.CampData, A.CampIcon, A.Camp.Secret, A.Camp.Simple
 
 local ITEM = ns.Shared.Items.SLEEPING_BAG
 local GCD = A.C.GCD
@@ -112,8 +112,8 @@ local function Near()
         or C_UnitAuras.GetPlayerAuraBySpellID(SITTING_CRAFT)
 end
 
-local function Wanted(icon, round, preview)
-    if not (round and icon ~= nil and C_Item.GetItemCount(ITEM) > 0) then return false end
+local function Wanted(icon, allowed, preview)
+    if not (allowed and icon ~= nil and C_Item.GetItemCount(ITEM) > 0) then return false end
     return preview or S.Get("campBagAlways") or (Near() ~= nil and icon:IsShown())
 end
 
@@ -127,7 +127,7 @@ end
 
 local function Place(icon)
     if dirty then
-        Look.BagLayout(bag)
+        Look.BagLayout(bag, Simple())
         dirty = false
     end
     local pos = S.Get("campBagPos")
@@ -139,7 +139,7 @@ local function Place(icon)
         end
         return true
     end
-    local x, y = Look.BagSpot(icon, bag)
+    local x, y = Look.BagSpot(icon, bag, Simple())
     if not x then return false end
     if bag.pos or bag.x ~= x or bag.y ~= y then
         bag:ClearAllPoints()
@@ -158,14 +158,14 @@ function CampBag.Layout()
     if bag then bag.pos, bag.x, bag.y = nil, nil, nil end
 end
 
-function CampBag.Sync(icon, round, preview)
+function CampBag.Sync(icon, allowed, preview)
     if bag and not preview then bag.mover:Hide() end
     if InCombatLockdown() then
         if bag and bag:IsShown() then WaitForCombat() end
         return
     end
     if C_Secrets.ShouldAurasBeSecret() then return end
-    if not Wanted(icon, round, preview) then
+    if not Wanted(icon, allowed, preview) then
         if bag then
             bag:Hide()
             bag.mover:Hide()

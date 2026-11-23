@@ -1504,8 +1504,8 @@ do
     check("Enable Glow off stops either", s.glows[icon] == nil)
 end
 
--- The Sleeping Bag: a smaller round icon at Round's lower right, only while the bag is carried and
--- a campfire is in range (or you sit at one), a secure button that uses it, left alone in combat.
+-- The Sleeping Bag: a smaller round icon at Round's lower right or past the Simple bar's right end,
+-- only while the bag is carried and a campfire is in range (or you sit at one), a secure button that uses it, left alone in combat.
 do
     local BAG = tonumber(Read("Shared/Game/Items.lua"):match("local SLEEPING_BAG = (%d+)"))
     local s = Fixture()
@@ -1661,13 +1661,19 @@ do
     s.S.Set("campShowMissing", true)
     check("bag: the fire back, the bag with it", icon.shown and bag.shown)
     s.S.Set("campStyle", "simple")
-    check("bag: Round only, never on the Simple bar", not bag.shown)
-    check("bag: Simple listens to no bag events", not s.listener("BAG_UPDATE_DELAYED")
-        and not s.listener("BAG_UPDATE_COOLDOWN"))
-    s.S.Set("campStyle", "round")
-    check("bag: Round again, it is back", bag.shown)
-    check("bag: Round listens to bag events again", s.listener("BAG_UPDATE_DELAYED") ~= nil
+    local height = s.S.Get("campSimpleHeight")
+    check("bag: on the Simple bar too, as tall as the bar, without its label", bag.shown
+        and bag.w == height and not bag.label.shown)
+    check("bag: just past the bar's right end, level with it",
+        bag.pt.CENTER == 500 + (icon.w + height) / 2 + St.CAMP_TRACK_OUT + St.CAMP_BAG_GAP and bag.pty.CENTER == 300)
+    check("bag: Simple listens to bag events", s.listener("BAG_UPDATE_DELAYED") ~= nil
         and s.listener("BAG_UPDATE_COOLDOWN") ~= nil)
+    s.S.Set("campSimpleHeight", 40)
+    check("bag: a new bar height resizes it", bag.w == 40)
+    s.S.Set("campSimpleHeight", height)
+    s.S.Set("campStyle", "round")
+    check("bag: Round again, beside the round fire with its label", bag.shown
+        and bag.w == 80 * St.CAMP_BAG_SCALE and bag.label.shown)
     s.ns.ShowUnlockMode()
     check("bag: in Unlock Mode it shows with its own mover", bag.shown and bag.mover.shown)
     s.ns.HideUnlockMode()

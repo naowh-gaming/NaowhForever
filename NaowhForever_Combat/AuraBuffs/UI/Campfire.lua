@@ -1,4 +1,4 @@
--- Campfire.lua: the Campfire reminder on screen, Round or Simple, the Sleeping Bag beside Round, and the Camp Nearby alert.
+-- Campfire.lua: the Campfire reminder on screen, Round or Simple, the Sleeping Bag beside it, and the Camp Nearby alert.
 local ns = _G.NaowhForever
 
 local A = ns.AuraBuffs
@@ -581,7 +581,7 @@ local function ShowCamp(event)
 end
 
 local function SyncBag()
-    CampBag.Sync(icon, not BarShown() and On() and (unlocked or Camp.InOpenWorld()), unlocked)
+    CampBag.Sync(icon, On() and (unlocked or Camp.InOpenWorld()), unlocked)
 end
 
 local function Refresh(_, event)
@@ -611,13 +611,8 @@ local function Listen()
     events:RegisterEvent("PLAYER_ENTERING_WORLD")
     events:RegisterEvent("PLAYER_REGEN_ENABLED")
     events:RegisterEvent("PLAYER_REGEN_DISABLED")
-    if Simple() then
-        events:UnregisterEvent("BAG_UPDATE_DELAYED")
-        events:UnregisterEvent("BAG_UPDATE_COOLDOWN")
-    else
-        events:RegisterEvent("BAG_UPDATE_DELAYED")
-        events:RegisterEvent("BAG_UPDATE_COOLDOWN")
-    end
+    events:RegisterEvent("BAG_UPDATE_DELAYED")
+    events:RegisterEvent("BAG_UPDATE_COOLDOWN")
 end
 
 local function Apply()

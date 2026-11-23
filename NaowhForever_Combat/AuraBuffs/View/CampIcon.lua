@@ -205,15 +205,17 @@ function Look.BagRested(bag, expiry, duration, stacks)
     bag.drain:SetSwipeColor(T.accent.r, T.accent.g, T.accent.b, 1)
 end
 
-function Look.BagLayout(bag)
-    local size = S.Get("campIconSize") * BAG_SCALE
+function Look.BagLayout(bag, simple)
+    local size = simple and S.Get("campSimpleHeight") or S.Get("campIconSize") * BAG_SCALE
     bag:SetSize(size, size)
+    bag.label:SetShown(not simple)
     Parts.HudFont(bag.label, S.Get("campFont"), BAG_TEXT_SIZE, S.Get("campOutline"))
 end
 
-function Look.BagSpot(icon, bag)
+function Look.BagSpot(icon, bag, simple)
     local x, y = icon:GetCenter()
     if not x then return end
+    if simple then return x + (icon:GetWidth() + bag:GetWidth()) / 2 + TRACK_OUT + BAG_GAP, y end
     local reach = (icon:GetWidth() + bag:GetWidth()) / 2 + TRACK_OUT * 2 + BAG_GAP
     if S.Get("campBuffSide") == "right" and ns.CampBuffMode() == "always" and icon:IsShown() and icon.buffs:IsShown() then
         reach = -reach
