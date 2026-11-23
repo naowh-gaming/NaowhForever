@@ -38,7 +38,9 @@ NaowhForever_Utilities/Journeys/
 - A step is placed with `ns.ShowJourneyStep`, the game's own waypoint, so the Waypoint Pin draws it.
   `ns.WaypointRoute` reports the journey, so the pin does not clear a step on arrival and its navigator
   shows "step N of M" and the next step. `Guide.Skip` (`ns.JourneySkip`, from the navigator's skip)
-  moves a journey of several stops on to the next and plans from where you stand.
+  moves a journey of several stops on to the next: the stop itself goes on the waypoint at once, so
+  a plan that cannot be made yet (on a boat, off the continents) never leaves the skipped stop up,
+  and the plan from where you stand replaces it.
 - The game clears a user waypoint itself when you reach it, from its arrival event, so a waypoint
   cleared in the same frame as `NAVIGATION_DESTINATION_REACHED` means arrived (or off the continents,
   where the journey holds). Any other clear is you removing the pin, and ends the journey; so does a

@@ -389,6 +389,7 @@ function Guide.Skip()
     if not Guide.CanSkip() then return false end
     journey.at = journey.at + 1
     journey.plan = nil
+    StopStep()
     Replan()
     return true
 end

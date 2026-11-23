@@ -422,8 +422,11 @@ function Look.PaintNav(nav, o)
         game.arrow:SetRotation((o.angle or 0) - GAME.QUARTER)
     end
     nav.dist:SetText(o.mode == "arrived" and TEXT_ARRIVED or Yards(o.yards))
-    nav.skip:SetShown(o.canSkip == true)
-    nav.dist:SetPoint("RIGHT", o.canSkip and nav.skip or nav.clear, "LEFT", -NAV_PAD / 2, 0)
+    local skip = o.canSkip == true
+    if nav.skip:IsShown() ~= skip then
+        nav.skip:SetShown(skip)
+        nav.dist:SetPoint("RIGHT", skip and nav.skip or nav.clear, "LEFT", -NAV_PAD / 2, 0)
+    end
 end
 
 function Look.Turn(frame, angle)

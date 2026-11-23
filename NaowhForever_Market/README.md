@@ -479,7 +479,8 @@ NaowhForever_Market/
   where it spawns, and you gather it from beside it or mounted. A gather or a pool catch within
   `LOOP_GATHER_NEAR` (30) yards of the stop counts too (`Farm.Gathered`, only on the loop Start Loop
   placed): once the node is picked there is nothing left to wait there for. Pools are learned where
-  you stood to fish, so a pool's stop is the shore.
+  you stood to fish, so a pool's stop is the shore. With Journeys on the loop is a journey, which
+  moves on at its own `ARRIVED` reach; gathers and the radius are for the plain route.
 - The zone map is drawn from the map's own art (`C_Map.GetMapArtLayers` and
   `GetMapArtLayerTextures`, laid out in tiles as Blizzard's map canvas does), scaled to fit and
   clipped. A spot gathered in the last `PICKED_FADE` (10) minutes is faded, its node likely gone.
