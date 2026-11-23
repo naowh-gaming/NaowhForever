@@ -709,6 +709,12 @@ do
     Login(noArrowBoot)
     Check(#noArrow.hooked == 1 and noArrow.hooked[1][2] == "UpdateVisuals" and #noArrow.RXPG_ARROW.sets == 0,
         "the arrow turned off: only its picture is watched, and under RestedXP's own theme it is left alone")
+    local v39, _, v39Boot = Start({ rxpThemes = true }, "NaowhForever:rosenoir")
+    v39.RXPG_ARROW.UpdateVisuals = nil
+    function v39.RXPG_ARROW.UpdateSubTheme() end
+    Login(v39Boot)
+    Check(v39.hooked[1][1] == v39.RXPG_ARROW and v39.hooked[1][2] == "UpdateSubTheme",
+        "RestedXP 4.11.39 renamed UpdateVisuals: its UpdateSubTheme is hooked instead")
     local dark, darkFrames, darkBoot = Start({ rxpThemes = true, rxpArrowOn = false }, "NaowhForever:rosenoir")
     Login(darkBoot)
     local darkArrow = dark.RXPG_ARROW

@@ -1925,6 +1925,37 @@ do
     Flush(late)
     Check(Is(Fill(late.rxp.activeItemFrame), lr, lg, lb, 0.55), "and has the look of the window at the next draw")
 
+    -- RestedXP 4.11.39: both are AceGUI widgets, the frame at .frame, painted by UpdateSubTheme, and the
+    -- targets have no RenderTargetFrameBackground
+    local function Widget(world, title)
+        local f = Satellite(world, title)
+        local paint = f.UpdateVisuals
+        local widget = { frame = f, title = f.title, paints = 0 }
+        f.UpdateVisuals, f.title = nil, nil
+        function widget:UpdateSubTheme()
+            self.paints = self.paints + 1
+            self.frame.title = self.title
+            paint(self.frame)
+            self.frame.title = nil
+        end
+        return widget
+    end
+    local v39 = Begin({ rxpWindow = true }, function(world, rxp)
+        rxp.targeting = { activeTargetWindow = Widget(world, "Active Targets") }
+        function rxp.targeting:UpdateTargetFrame() end
+        rxp.activeItemWindow = Widget(world, "Active Items")
+    end)
+    local vr, vg, vb = v39.ns.RXPWindowColor("box")
+    local wt, wi = v39.rxp.targeting.activeTargetWindow, v39.rxp.activeItemWindow
+    Check(Is(Fill(wt.frame), vr, vg, vb, 0.55) and Is(Fill(wi.title), vr, vg, vb, 0.55),
+        "RestedXP 4.11.39's widgets take the look of the window")
+    wt:UpdateSubTheme()
+    Check(Is(Fill(wt.frame), vr, vg, vb, 0.55) and wt.paints == 1, "and keep it when RestedXP paints them again")
+    v39.ns.SetRXPWindow(false)
+    Flush(v39)
+    Check(Is(Fill(wi.frame), 0.1, 0.2, 0.3, 0.9) and wi.title.text.font == RXP_FONT and wi.paints == 1,
+        "turned off: RestedXP paints its own look again")
+
     -- a border the window hid is shown again when RestedXP's own look is
     ns.SetRXPWindowOption("rxpWindowBoxBorder", false)
     Flush(w)

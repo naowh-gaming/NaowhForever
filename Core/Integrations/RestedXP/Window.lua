@@ -255,8 +255,12 @@ local function SkinTitle(title)
     title:SetSize(text:GetStringWidth() + BOX_TITLE_ROOM, BOX_TITLE_HEIGHT)
 end
 
-local function SkinPlaceholders(frame)
-    for _, button in ipairs({ frame:GetChildren() }) do
+local function Painter(owner)
+    return owner.UpdateVisuals and "UpdateVisuals" or "UpdateSubTheme"
+end
+
+local function SkinPlaceholders(owner)
+    for _, button in ipairs({ (owner.frame or owner):GetChildren() }) do
         local texture = button.placeholder
         if texture then
             local id = texture:GetTexture()
@@ -277,16 +281,17 @@ local function RestorePlaceholders()
     end
 end
 
-local function SkinFrame(frame)
-    SkinBox(frame)
-    if frame.title then SkinTitle(frame.title) end
-    SkinPlaceholders(frame)
+local function SkinFrame(owner)
+    SkinBox(owner.frame or owner)
+    if owner.title then SkinTitle(owner.title) end
+    SkinPlaceholders(owner)
 end
 
 local function SkinFrames()
     local rxp = _G.RXP
     local frames = {}
-    local target, items = Dig(rxp, "targeting", "activeTargetFrame"), Dig(rxp, "activeItemFrame")
+    local target = Dig(rxp, "targeting", "activeTargetWindow") or Dig(rxp, "targeting", "activeTargetFrame")
+    local items = Dig(rxp, "activeItemWindow") or Dig(rxp, "activeItemFrame")
     if target then table.insert(frames, target) end
     if items then table.insert(frames, items) end
     return frames
@@ -296,7 +301,7 @@ local function SkinHooks(frames)
     for _, frame in ipairs(frames) do
         if not watched[frame] then
             watched[frame] = true
-            hooksecurefunc(frame, "UpdateVisuals", function(self)
+            hooksecurefunc(frame, Painter(frame), function(self)
                 if active then SkinFrame(self) end
             end)
         end
@@ -304,17 +309,20 @@ local function SkinHooks(frames)
     local targeting = Dig(_G.RXP, "targeting")
     if not targeting or targetingHooked then return end
     targetingHooked = true
-    hooksecurefunc(targeting, "RenderTargetFrameBackground", function()
-        if active and targeting.activeTargetFrame then SkinBox(targeting.activeTargetFrame) end
-    end)
+    if targeting.RenderTargetFrameBackground then
+        hooksecurefunc(targeting, "RenderTargetFrameBackground", function()
+            if active and targeting.activeTargetFrame then SkinBox(targeting.activeTargetFrame) end
+        end)
+    end
     hooksecurefunc(targeting, "UpdateTargetFrame", function()
-        if active and targeting.activeTargetFrame then SkinPlaceholders(targeting.activeTargetFrame) end
+        local target = targeting.activeTargetWindow or targeting.activeTargetFrame
+        if active and target then SkinPlaceholders(target) end
     end)
 end
 
 local function SkinRestore(frame)
-    Run("WindowSkin", frame.UpdateVisuals, frame)
-    for _, part in ipairs({ frame, frame.title }) do
+    Run("WindowSkin", frame[Painter(frame)], frame)
+    for _, part in ipairs({ frame.frame or frame, frame.title }) do
         local border, back = part.rxpBorder, part.rxpBackground
         if border then border:SetShown(not back or back:IsShown()) end
     end

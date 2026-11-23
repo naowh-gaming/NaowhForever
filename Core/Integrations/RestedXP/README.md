@@ -246,8 +246,10 @@ Core/Integrations/RestedXP/
   another tag's `id` or `qty` can mean something else.
 - The Active Targets and Active Items windows (`RXPTargetFrame`, `RXPItemFrame`) take the look of the
   active step's box: the colors of their v2 background and border textures are set in place after
-  `UpdateVisuals` (and after the targets' `RenderTargetFrameBackground`, which settings call alone), and
-  their title's text takes the window's face and color, kept at RestedXP's size so nothing is laid out
+  `UpdateVisuals` (and after the targets' `RenderTargetFrameBackground`, which settings call alone). From
+  RestedXP 4.11.39 both are AceGUI widgets (`activeTargetWindow`, `activeItemWindow`) whose frame is `.frame`,
+  painted by `UpdateSubTheme`, with no `RenderTargetFrameBackground`; the arrow's `UpdateVisuals` is
+  `UpdateSubTheme` too. In both cases their title's text takes the window's face and color, kept at RestedXP's size so nothing is laid out
   again. Each is hooked once (`watched`); a frame RestedXP makes later is taken at the next draw. The
   border follows the background, so a background RestedXP hides keeps its border hidden. Turned off
   (the window), RestedXP's own `UpdateVisuals` paints them again, and the

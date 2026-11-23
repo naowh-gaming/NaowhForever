@@ -632,7 +632,7 @@ function StartArrow()
     if not arrow then return end
     if not hookedArrow then
         hookedArrow = arrow
-        hooksecurefunc(arrow, "UpdateVisuals", OnRxpUpdate)
+        hooksecurefunc(arrow, arrow.UpdateVisuals and "UpdateVisuals" or "UpdateSubTheme", OnRxpUpdate)
         OnRxpUpdate()
     end
     if styleHooked or not ns.RXPArrowEnabled() then return end
