@@ -66,6 +66,7 @@ function World.OnLearned(fn)
 end
 
 local function Ready(start, duration)
+    if issecretvalue(start) or issecretvalue(duration) then return false end
     return duration <= GCD or start + duration <= GetTime()
 end
 

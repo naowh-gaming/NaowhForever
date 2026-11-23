@@ -31,6 +31,7 @@ QUESTS[116] = { DARNASSUS, 0.5, 0.5 }
 local here = { x = -4821.8, y = -1155.4, c = 0 }
 local current, placedAtSet
 local combat = false
+local SECRET = {}
 local now = 0
 local account = {}
 local store = {}
@@ -125,6 +126,7 @@ local env = setmetatable({
     GetServerTime = function() return 0 end,
     GetTime = function() return now end,
     InCombatLockdown = function() return combat end,
+    issecretvalue = function(v) return v == SECRET end,
     GetBindLocation = function() return "Ironforge" end,
     CreateVector2D = function(x, y) return { x = x, y = y } end,
     Enum = { UIMapType = { Continent = 2, Zone = 3 }, FlightPathState = { Unreachable = 2 } },
@@ -687,5 +689,15 @@ Check(not Jy.Guide.Current(), "turning Journeys off ends the journey")
 Check(ns.SetGuideWaypoint("Mathrengyl Bearwalker", DARNASSUS, 50, 50, guide) and not Jy.Guide.Current()
     and ns.placedWaypoint.details == guide and ns.placedWaypoint.x == 50, "with Journeys off, the plain guide waypoint")
 ns.ClearGuideWaypoint()
+
+env.C_Item = { GetItemCount = function() return 1 end, GetItemCooldown = function() return SECRET, SECRET end }
+env.C_SpellBook = { IsSpellKnown = function() return true end }
+env.C_Spell = { GetSpellCooldown = function() return { startTime = SECRET, duration = SECRET } end }
+Jy.CharStore("journeyLandings").hearth = { name = "Ironforge", c = 0, x = -4821.8, y = -1155.4 }
+Check(#Jy.World.Jumps("A") == 0, "cooldowns secret in combat: no hearth or teleport, and no error")
+env.C_Item.GetItemCooldown = function() return 0, 0 end
+env.C_Spell.GetSpellCooldown = function() return { startTime = 0, duration = 0 } end
+local jumps = Jy.World.Jumps("A")
+Check(#jumps > 1 and jumps[1].mode == "hearth" and jumps[2].mode == "teleport", "readable cooldowns: hearth and teleports again")
 
 print(("journeys guide: %d checks passed"):format(checks))
