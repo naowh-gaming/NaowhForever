@@ -8,9 +8,11 @@
 local checks = 0
 local function check(label, value) assert(value, label); checks = checks + 1 end
 
+local uiHidden = false
 local function Frame()
     local f = { shown = false, scripts = {}, points = {} }
     function f:IsShown() return self.shown end
+    function f:IsVisible() return self.shown and not uiHidden end
     function f:Show()
         if self.shown then return end
         self.shown = true
@@ -18,7 +20,7 @@ local function Frame()
     function f:Hide()
         if not self.shown then return end
         self.shown = false
-        if self.scripts.OnHide then self.scripts.OnHide(self) end
+        if self.scripts.OnHide and not uiHidden then self.scripts.OnHide(self) end
     end
     function f:SetScript(name, fn) self.scripts[name] = fn end
     function f:GetScript(name) return self.scripts[name] end
@@ -280,6 +282,35 @@ check("put away for Blizzard's window, it does not close the auction house", clo
 Window.Open()
 check("opened free afterwards, it is on one of its own pages", Pages.farm.shown and tabBars[1].painted == "farm")
 window:Hide()
+
+Window.Cover(ah, function() asides = asides + 1 end)
+uiHidden = true
+Window.Uncover()
+uiHidden = false
+check("put away while the UI is hidden, Sell still lets go", not Pages.sell.shown and not window.shown
+    and not Window.Covering() and closes == 1)
+Window.Open("farm")
+check("so Farm opens alone afterwards", Pages.farm.shown and not Pages.sell.shown)
+window:Hide()
+
+Window.DockTo(ah, "reagents", 4, OnPick, OnClose)
+local closedBefore = closed
+uiHidden = true
+Window.Undock()
+uiHidden = false
+check("undocked while the UI is hidden, it lets go of Blizzard's window", not Pages.reagents.shown
+    and not Window.Docked() and closed == closedBefore)
+Window.Open("prices")
+check("and opens free afterwards", Pages.prices.shown and window.points.CENTER)
+window:Hide()
+
+Window.DockTo(ah, "reagents", 4, OnPick, OnClose)
+closedBefore = closed
+uiHidden = true
+Window.Hide()
+uiHidden = false
+check("hidden while the UI is hidden, its tab still lets go", not Pages.reagents.shown
+    and not Window.Docked() and closed == closedBefore + 1)
 
 -- The pages at the docked window's narrowest, from the numbers their files lay out with.
 local function Read(path)

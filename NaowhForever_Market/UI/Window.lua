@@ -161,6 +161,13 @@ local function OnHidden()
     if dockClosed then dockClosed() end
 end
 
+-- Hiding a window already hidden with UIParent (Alt+Z) fires no OnHide.
+local function Close()
+    local unseen = window:IsShown() and not window:IsVisible()
+    window:Hide()
+    if unseen then OnHidden() end
+end
+
 local function OnSized(self)
     if dockedTo then self:SetClampRectInsets(0, 0, 0, 0) end
 end
@@ -292,7 +299,7 @@ end
 function Window.Undock()
     if not dockedTo then return end
     dockClosed = nil
-    window:Hide()
+    Close()
 end
 
 function Window.Docked()
@@ -329,7 +336,7 @@ end
 function Window.Uncover()
     if not covering then return end
     covering = nil
-    window:Hide()
+    Close()
     Uncovered()
 end
 
@@ -339,12 +346,12 @@ end
 
 function ns.ToggleMarketWindow()
     if not Market.On() then return ns.Print(TEXT_OFF) end
-    if Window.Shown() then return window:Hide() end
+    if Window.Shown() then return Close() end
     Window.Open()
 end
 
 function Window.Hide()
-    if window then window:Hide() end
+    if window then Close() end
 end
 
 function Window.Shown()
