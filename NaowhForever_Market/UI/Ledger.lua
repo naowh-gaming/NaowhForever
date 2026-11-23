@@ -68,6 +68,7 @@ local TEXT_BOUGHT_FOOT = ns.L("%s items bought for %s")
 local TEXT_OTHER_FOOT = ns.L("Earned %s, spent %s")
 local TEXT_FAILED_FOOT = ns.L("%s items came back")
 local TEXT_EMPTY = ns.L("Nothing here for these characters in this time.")
+local TEXT_EMPTY_KIND = ns.L("None of this type here: pick All Types to see the rest.")
 local TEXT_OFF = ns.L("The Ledger is off: turn it on in The Market's settings to record what you earn and spend.")
 
 local page, views, search, kindPick, characterPick, rangePick, summary, listPane, chart, scroll, list, note, sorter
@@ -218,6 +219,7 @@ end
 
 local function Matches(data, i)
     local kind = data.kind[i]
+    if kindWanted ~= ALL and kind ~= kindWanted and seenKinds[kind] then return false end
     if wanted ~= "" then
         local name = ItemName(data.item[i]) or KINDS[kind] or ""
         if not (ns.Lower(name):find(wanted, 1, true) or ns.Lower(data.who[i]):find(wanted, 1, true)) then return false end
@@ -362,6 +364,7 @@ local function DrawList(view)
     list:SetHeight(math.max(1, #shownRows * ROW_H))
     DrawRows()
     note:SetShown(#shownRows == 0)
+    note:SetText(kindWanted == ALL and TEXT_EMPTY or TEXT_EMPTY_KIND)
     footLeft:SetText(Foot(view))
 end
 
@@ -524,7 +527,6 @@ local function BuildList(top)
     scroll:HookScript("OnVerticalScroll", DrawRows)
     note = ns.Font(frame, St.TEXT_SIZE, nil, T.muted)
     note:SetPoint("TOP", 0, -PANE_GAP)
-    note:SetText(TEXT_EMPTY)
 end
 
 local function BuildBar()

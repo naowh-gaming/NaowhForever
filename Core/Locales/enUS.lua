@@ -8977,6 +8977,7 @@ L["%s items bought for %s"] = true
 L["Earned %s, spent %s"] = true
 L["%s items came back"] = true
 L["Nothing here for these characters in this time."] = true
+L["None of this type here: pick All Types to see the rest."] = true
 L["The Ledger is off: turn it on in The Market's settings to record what you earn and spend."] = true
 L["Ledger"] = true
 L["What you earned and spent, and your gold over time."] = true
