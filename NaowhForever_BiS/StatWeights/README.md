@@ -49,7 +49,9 @@ Healer Stat Weights measures from their own fights, or turns on Healer Mana.
 
 The percent is the item's weighted stats minus what you wear there, over what your stats are
 worth now (your five stats as the game sums them, the rest from your gear; a weapon's damage
-per second counts too, the off hand's at half, a hunter's ranged weapon's instead). An
+per second counts too, the off hand's at half, a hunter's ranged weapon's instead). Hit counts
+only up to the hit cap, your talents' and race's hit included: 8% for attacks (27% with a weapon
+in each hand), 17% for spells. The BiS List's Gear Score card shows only the hit that counts. An
 estimate: it orders upgrades, it does not promise a number on a meter.
 
 ## Layout
@@ -85,6 +87,16 @@ StatWeights/
   anchor points per 1%, and dps a point of a weapon's damage per second (14 attack power's worth).
 - `PER_PERCENT` is a rating's points per 1% at 60, as the game's tooltips read them (10 hit rating is
   "1.0%"); the weights are per 1%.
+- `HIT_CAP` is the hit that stops misses on a raid boss (level 63) at full weapon skill: 8% for
+  attacks, 17% for spells, as Forever's character sheet gives them (build 1.60.1.70938) and
+  MythicSim's sim uses; `DUAL_WIELD_HIT_CAP` (27%) is where a second weapon's white swings stop
+  missing. Your hit now is the character sheet's (`GetCombatRatingBonus` plus `GetHitModifier`,
+  `GetSpellHitModifier`, the numbers MythicSim's export reads as your talents' hit; a hunter's
+  ranged, `GetRangedHitModifier`), so set bonuses and enchants fill the cap too and gear past it is worth nothing. Above 8%
+  with two weapons hit keeps its full weight to 27%, as the weight was simmed with; a hunter's
+  melee weapons don't raise it, and a two-hander for both hands is weighed against 8%.
+- Your gear's hit and your talents' are read with your power, while your stats are not secret; a
+  gain in combat counts against the hit last read.
 - A weapon's damage per second counts whole in the main hand, half in the off hand, and a hunter's
   ranged weapon's only. `SPEED` (2.6) stands in when the game has no weapon speed to give.
 - A druid's Feral tree is weighed for damage; a bear picks Feral Tank by hand. Forever keeps one spec
@@ -157,6 +169,6 @@ StatWeights/
 ## Checking
 
 - `lua Tools/regression/test-stat-weights.lua`: the defaults (every spec, its anchor, ranges,
-  ratings), your changes and new defaults, sharing, the gain math, a pair against a two-hander
+  ratings), your changes and new defaults, sharing, the gain math, the hit cap, a pair against a two-hander
   and its one read of your bags, the tooltip line and its
   hook only once on, the window, Healer Mana, a healer's measured export and Mana Upgrades.

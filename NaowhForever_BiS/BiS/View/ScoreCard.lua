@@ -101,6 +101,10 @@ local function Shown(stats)
     local spec = B.Lists.CurrentSpec()
     local weights = spec and ns.StatWeights.For(spec.key)
     for key, value in pairs(stats) do
+        if weights then
+            value = ns.StatWeights.CountedHitRating(key, value, weights)
+            stats[key] = value
+        end
         if value ~= 0 then Offer(key, value, weights) end
     end
     table.sort(shown, weights and ByWorth or ByOrder)

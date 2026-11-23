@@ -51,7 +51,7 @@ read_globals = {
     "GameMenuFrame", "GAMEMENU_OPTIONS", "MainMenuFrameMixin", "CanAutoSetGamePadCursorControl", "InputUtil", "GamepadSharedUtility",
     "CharacterFrame", "CharacterFrameTitleText", "CharacterLevelText", "CharacterLevelTextBackground", "PaperDollFrame", "PaperDollLevelInfo", "PaperDollSidebarTabs", "CharacterHeadSlot",
     "CharacterModelScene", "CharacterStatsPaneScrollBox", "CharacterFrameRightPaneHostStoneBg", "ScrollUtil",
-    "CLASS_ICON_TCOORDS", "CR_HIT_MELEE", "CR_HIT_SPELL", "GetBlockChance", "GetCombatRatingBonus", "GetCritChance", "GetDodgeChance", "GetParryChance", "GetRangedCritChance",
+    "CLASS_ICON_TCOORDS", "CR_HIT_MELEE", "CR_HIT_RANGED", "CR_HIT_SPELL", "GetBlockChance", "GetCombatRatingBonus", "GetCritChance", "GetDodgeChance", "GetParryChance", "GetRangedCritChance", "GetRangedHitModifier",
     "GetAverageItemLevel", "GetHitModifier", "GetManaRegen", "GetMeleeHaste", "GetSpellBonusDamage", "GetSpellBonusHealing",
     "GetHealthRegenFromSpirit", "GetManaRegenFromSpirit", "LE_UNIT_STAT_INTELLECT", "LE_UNIT_STAT_SPIRIT",
     "MANA_PER_INTELLECT", "GetLootSlotType", "AuctionHouseTableCellItemDisplayMixin",

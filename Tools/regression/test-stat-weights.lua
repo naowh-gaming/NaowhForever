@@ -29,6 +29,12 @@ local ITEMS = {
     [15] = { "INVTYPE_WEAPON", { ITEM_MOD_DAMAGE_PER_SECOND_SHORT = 28 } },
     [16] = { "INVTYPE_HOLDABLE", { ITEM_MOD_AGILITY_SHORT = 100 } },
     [17] = { "INVTYPE_2HWEAPON", { ITEM_MOD_DAMAGE_PER_SECOND_SHORT = 40 } },
+    [30] = { "INVTYPE_HAND", { ITEM_MOD_HIT_RATING_SHORT = 30 } },
+    [31] = { "INVTYPE_HAND", { ITEM_MOD_HIT_RATING_SHORT = 10 } },
+    [32] = { "INVTYPE_WAIST", { ITEM_MOD_HIT_RATING_SHORT = 40 } },
+    [33] = { "INVTYPE_WAIST", {} },
+    [34] = { "INVTYPE_2HWEAPON", { ITEM_MOD_HIT_RATING_SHORT = 10 } },
+    [35] = { "INVTYPE_2HWEAPON", {} },
 }
 
 -- A secret number: any arithmetic or comparison on it fails, as in the game.
@@ -69,6 +75,22 @@ local function Fixture(class)
             return state.speed or 2, state.offSpeed
         end,
         C_Secrets = { ShouldUnitStatsBeSecret = function() return state.secret == true end },
+        -- Hit from talents and race, as the character sheet adds it to your gear's.
+        GetHitModifier = function() return state.talentHit or 0 end,
+        GetRangedHitModifier = function() return state.talentHit or 0 end,
+        GetSpellHitModifier = function() return state.talentSpellHit or 0 end,
+        -- Hit rating's percent as the character sheet reads it: your gear's, plus state.setHit
+        -- (a set bonus or enchant no item's stats carry).
+        CR_HIT_MELEE = "melee", CR_HIT_RANGED = "ranged", CR_HIT_SPELL = "spell",
+        GetCombatRatingBonus = function(rating)
+            local hit = state.setHit or 0
+            for _, id in pairs(state.worn) do
+                local stats = ITEMS[id] and ITEMS[id][2] or {}
+                hit = hit + (stats.ITEM_MOD_HIT_RATING_SHORT or 0) / 10
+                if rating == "spell" then hit = hit + (stats.ITEM_MOD_HIT_SPELL_RATING_SHORT or 0) / 10 end
+            end
+            return hit
+        end,
         -- A frame that keeps its events and its handler, for the talent watcher.
         CreateFrame = function()
             local f = { events = {} }
@@ -529,6 +551,56 @@ do
     check("secret stats after a gear change: no worth", SW.Power(weights) == nil)
     check("secret stats after a gear change: a swing at the usual speed", SW.SwingDamage(weights, 16) == w.dps / 2.6)
     state.secret = false
+end
+
+-------------------------------------------------------------------------------
+--  Hit counts only up to the cap: 8% for attacks, 27% with a weapon in each hand, 17% for
+--  spells, your talents' hit included
+-------------------------------------------------------------------------------
+do
+    local ns, state = Fixture("ROGUE")
+    local SW = ns.StatWeights
+    local w = SW.For("combat-rogue")
+    local function Gain(id, slot) return SW.Gain(id, slot, w, SW.Power(w)) end
+    local function Expect(id, slot, hit)
+        return math.abs(Gain(id, slot) - 100 * hit * w.hit / SW.Power(w)) < 1e-6
+    end
+    check("no hit yet: 3% is all worth", Expect(30, 10, 3))
+    state.talentHit = 6
+    check("6% from talents: only 2% of 3% counts", Expect(30, 10, 2))
+    state.setHit = 2
+    check("hit no item's stats carry (a set bonus) fills the cap too", Expect(30, 10, 0))
+    state.setHit = nil
+    check("the power counts your talents, not just your gear", SW.Power(w) == 50 * (w.str + w.agi + w.sta))
+    state.worn[6] = 32
+    check("at the cap already: hit is worth nothing", Expect(31, 10, 0))
+    check("over the cap: swapping hit away costs only what drops under", Expect(33, 6, -2))
+    check("your worth counts your gear's hit up to the cap", math.abs(SW.Power(w)
+        - (50 * (w.str + w.agi + w.sta) + 2 * w.hit)) < 1e-6)
+    state.worn[16], state.worn[17] = 7, 8
+    check("a weapon in each hand: white swings still miss, up to 27%", Expect(30, 10, 3))
+    local power = SW.Power(w)
+    check("a two-hander drops you back to the 8% cap: its hit past it is worth nothing",
+        math.abs(SW.Gain(34, 16, w, power, 17) - SW.Gain(35, 16, w, power, 17)) < 1e-6)
+    state.worn[17], state.talentHit, state.worn[6] = nil, 6, nil
+    local before = SW.Power(w)
+    state.secret = true
+    state.talentHit = 0
+    check("secret stats: hit as last read", math.abs(SW.Gain(30, 10, w, SW.Power(w)) - 100 * 2 * w.hit / before) < 1e-6)
+    state.secret = false
+    state.talentHit = 6
+    check("the Gear Score card's hit: only what counts", SW.CountedHitRating("ITEM_MOD_HIT_RATING_SHORT", 30, w) == 20
+        and SW.CountedHitRating("ITEM_MOD_AGILITY_SHORT", 30, w) == 30)
+    local mage = SW.For("frost-mage")
+    state.talentSpellHit = 6
+    check("a caster's hit against the 17% spell cap", SW.CountedHitRating("ITEM_MOD_HIT_RATING_SHORT", 150, mage) == 110)
+end
+do
+    local ns, state = Fixture("HUNTER")
+    local SW = ns.StatWeights
+    local w = SW.For("marksmanship-hunter")
+    state.worn[6], state.worn[16], state.worn[17], state.talentHit = 32, 7, 8, 6
+    check("a hunter's two melee weapons leave the cap at 8%", math.abs(SW.Gain(30, 10, w, SW.Power(w))) < 1e-6)
 end
 
 -------------------------------------------------------------------------------

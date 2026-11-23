@@ -29,8 +29,14 @@ local HUNTER_DPS_SHARE = { [18] = 1 }
 local PRIMARY = { "str", "agi", "sta", "int", "spi" }
 local PRIMARY_KEY = { str = true, agi = true, sta = true, int = true, spi = true }
 local GEAR_SLOTS = { 1, 2, 3, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18 }
+local HIT, SPELL_HIT = "hit", "shit"
+local HIT_KINDS = { HIT, SPELL_HIT }
+local HIT_CAP = { [HIT] = 8, [SPELL_HIT] = 17 }
+local DUAL_WIELD_HIT_CAP = 27
+local HIT_RATING, SPELL_HIT_RATING = "ITEM_MOD_HIT_RATING_SHORT", "ITEM_MOD_HIT_SPELL_RATING_SHORT"
 
 local statsOf, cached = {}, 0
+local hitGear, hitNow = { [HIT] = 0, [SPELL_HIT] = 0 }, { [HIT] = 0, [SPELL_HIT] = 0 }
 local lastMain, lastOff
 local lastPower = setmetatable({}, { __mode = "k" })
 local partners = setmetatable({}, { __mode = "k" })
@@ -121,6 +127,67 @@ local function NeedsDualWield(id, slot)
     return slot == OFF_HAND and DUAL_WIELD[equipLoc] == true
 end
 
+local function HitOf(stats, kind)
+    local hit = (stats[HIT_RATING] or 0) / PER_PERCENT[HIT_RATING]
+    if kind == SPELL_HIT then hit = hit + (stats[SPELL_HIT_RATING] or 0) / PER_PERCENT[SPELL_HIT_RATING] end
+    return hit
+end
+
+local function WornHit(slot, kind)
+    local link = slot and GetInventoryItemLink("player", slot)
+    local worn = link and Stats(link)
+    return worn and HitOf(worn, kind) or 0
+end
+
+local function HitCap(kind, off)
+    myClass = myClass or select(2, UnitClass("player"))
+    if kind == HIT and myClass ~= HUNTER and off and NeedsDualWield(off, OFF_HAND) then return DUAL_WIELD_HIT_CAP end
+    return HIT_CAP[kind]
+end
+
+local function CountedHit(from, delta, cap, capAfter)
+    return math.min(from + delta, capAfter or cap) - math.min(from, cap)
+end
+
+local function ReadHit()
+    if C_Secrets.ShouldUnitStatsBeSecret() then return end
+    hitGear[HIT], hitGear[SPELL_HIT] = 0, 0
+    for _, slot in ipairs(GEAR_SLOTS) do
+        local link = GetInventoryItemLink("player", slot)
+        local stats = link and Stats(link)
+        if stats then
+            for _, kind in ipairs(HIT_KINDS) do hitGear[kind] = hitGear[kind] + HitOf(stats, kind) end
+        end
+    end
+    myClass = myClass or select(2, UnitClass("player"))
+    if myClass == HUNTER then
+        hitNow[HIT] = GetCombatRatingBonus(CR_HIT_RANGED) + GetRangedHitModifier()
+    else
+        hitNow[HIT] = GetCombatRatingBonus(CR_HIT_MELEE) + GetHitModifier()
+    end
+    hitNow[SPELL_HIT] = GetCombatRatingBonus(CR_HIT_SPELL) + GetSpellHitModifier()
+end
+
+local function HitBeyondCap(weights, stats, item, slot, also)
+    local off = GetInventoryItemID("player", OFF_HAND)
+    local offAfter = off
+    if slot == OFF_HAND then
+        offAfter = item
+    elseif also == OFF_HAND then
+        offAfter = nil
+    end
+    local fix = 0
+    for _, kind in ipairs(HIT_KINDS) do
+        local weight = weights[kind] or 0
+        if weight ~= 0 then
+            local delta = HitOf(stats, kind) - WornHit(slot, kind) - WornHit(also, kind)
+            local counted = CountedHit(hitNow[kind], delta, HitCap(kind, off), HitCap(kind, offAfter))
+            fix = fix + weight * (counted - delta)
+        end
+    end
+    return fix
+end
+
 local function Offer(hand, id, link, worth)
     if not hand.worth or worth > hand.worth then
         if hand.id ~= id then hand.nextLink, hand.nextWorth = hand.link, hand.worth end
@@ -205,6 +272,12 @@ function SW.Power(weights)
         local stats = link and Stats(link)
         if stats then power = power + Worth(stats, weights, DpsShare(slot), true) end
     end
+    ReadHit()
+    local off = GetInventoryItemID("player", OFF_HAND)
+    for _, kind in ipairs(HIT_KINDS) do
+        local gear = hitGear[kind]
+        power = power + (weights[kind] or 0) * (CountedHit(hitNow[kind] - gear, gear, HitCap(kind, off)) - gear)
+    end
     lastPower[weights] = power
     Remembering()
     return power
@@ -217,7 +290,17 @@ function SW.Gain(item, slot, weights, power, also)
     local other = 0
     if also then other = WornWorth(also, weights) end
     if not (stats and worn and other) then return nil end
-    return PERCENT * (Worth(stats, weights, DpsShare(slot)) - worn - other) / power
+    local worth = Worth(stats, weights, DpsShare(slot)) + HitBeyondCap(weights, stats, item, slot, also)
+    return PERCENT * (worth - worn - other) / power
+end
+
+function SW.CountedHitRating(gameKey, rating, weights)
+    if gameKey ~= HIT_RATING and gameKey ~= SPELL_HIT_RATING then return rating end
+    local kind = SPELL_HIT
+    if gameKey == HIT_RATING and (weights[HIT] or 0) >= (weights[SPELL_HIT] or 0) then kind = HIT end
+    ReadHit()
+    local per = PER_PERCENT[gameKey]
+    return per * CountedHit(hitNow[kind], rating / per, HitCap(kind, GetInventoryItemID("player", OFF_HAND)))
 end
 
 function SW.BestGain(id, link, weights, power)
