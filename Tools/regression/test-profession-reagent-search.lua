@@ -1,7 +1,8 @@
 -- Run with Lua 5.1 from the repository root: the profession window's search matches a learned
--- recipe by its name or by any reagent's name, as Blizzard's search does. A reagent whose name
--- has not loaded yet is asked for once and matches once it arrives, and a recipe's reagents are
--- read from the game once, even when it needs none. Loads Recipes.lua and Entries.lua against stubs.
+-- recipe by its name or by any reagent's name, as Blizzard's search does, and an unlearned recipe
+-- the same way from the shipped reagent data. A reagent whose name has not loaded yet is asked for
+-- once and matches once it arrives, and a recipe's reagents are read from the game once, even when
+-- it needs none. Loads Recipes.lua and Entries.lua against stubs.
 local Load = dofile("Tools/regression/load_files.lua")
 
 local checks = 0
@@ -17,7 +18,9 @@ local SLOTS = {
     [2] = { { reagents = { { itemID = 2835 } }, quantityRequired = 1 } },
     [3] = {},
 }
-local names = { [2840] = "Copper Bar" }
+local names = { [2840] = "Copper Bar", [12203] = "Red Wolf Meat", [2692] = "Hot Spices" }
+local SPELLS = { [15856] = "Hot Wolf Ribs", [15853] = "Lean Wolf Steak", [818] = "Basic Campfire" }
+local UNLEARNED = { { spell = 15856 }, { spell = 15853 }, { spell = 818 } }
 local requests, schematics = {}, {}
 
 local W = { query = "", linked = true }
@@ -26,7 +29,9 @@ ns.Professions = {
     State = W,
     Settings = { Get = function() end, Set = function() end },
     Filters = { Passes = function() return true end },
+    RecipeReagents = { [15856] = { 12203, 1, 2692, 1 }, [15853] = { 12204, 1, 2692, 1 } },
 }
+ns.RecipeFinder = { Unlearned = function() return UNLEARNED end, Status = function() return "ready" end }
 
 local env = setmetatable({
     NaowhForever = ns,
@@ -44,6 +49,7 @@ local env = setmetatable({
             return { reagentSlotSchematics = SLOTS[id] }
         end,
     },
+    C_Spell = { GetSpellName = function(spell) return SPELLS[spell] end },
 }, { __index = _G })
 env._G = env
 
@@ -88,5 +94,34 @@ check("once the name loads the recipe matches", shown[2] and not shown[1])
 
 check("each recipe's reagents are read from the game once", schematics[1] == 1 and schematics[2] == 1)
 check("a recipe with no reagents is read once too", schematics[3] == 1)
+
+local function SearchUnlearned(text)
+    W.query = text:lower()
+    Entries.Build()
+    local out = {}
+    for _, e in ipairs(Entries.list) do
+        if e.unlearned then out[e.unlearned.spell] = true end
+    end
+    return out
+end
+
+W.linked = false
+Entries.Collect()
+shown = SearchUnlearned("ribs")
+check("an unlearned recipe still matches by name", shown[15856] and not shown[15853])
+
+shown = SearchUnlearned("red")
+check("an unlearned recipe matches by a reagent's name", shown[15856] and not shown[15853] and not shown[818])
+
+shown = SearchUnlearned("heavy kodo")
+check("an unlearned reagent whose name has not loaded does not match yet", not shown[15853])
+check("and its name is asked for", requests[12204] == 1)
+
+names[12204] = "Heavy Kodo Meat"
+shown = SearchUnlearned("heavy kodo")
+check("once the name loads the unlearned recipe matches", shown[15853] and not shown[15856])
+
+shown = SearchUnlearned("basic")
+check("an unlearned recipe without reagent data matches by name only", shown[818])
 
 print(("test-profession-reagent-search: %d checks passed"):format(checks))

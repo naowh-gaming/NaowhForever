@@ -5,6 +5,8 @@
 ### Fixed
 - Campfire: on the Simple style, the Camp Nearby alert now pops up in the middle of the screen when
   your Camp Benefits is gone and a campfire is in range, as it does on Round.
+- Professions: searching the recipe list by a reagent's name now finds unlearned recipes too, so
+  "red" shows Hot Wolf Ribs.
 
 ## 1.4.7
 

@@ -131,7 +131,14 @@ local function Matches(info)
 end
 
 local function MatchesUnlearned(r)
-    return W.query == "" or (C_Spell.GetSpellName(r.spell) or ""):lower():find(W.query, 1, true)
+    if W.query == "" or (C_Spell.GetSpellName(r.spell) or ""):lower():find(W.query, 1, true) then return true end
+    local mats = P.RecipeReagents[r.spell]
+    if not mats then return false end
+    for i = 1, #mats, 2 do
+        local name = R.ItemName(mats[i])
+        if name and name:lower():find(W.query, 1, true) then return true end
+    end
+    return false
 end
 
 local function Add(kind, value)
