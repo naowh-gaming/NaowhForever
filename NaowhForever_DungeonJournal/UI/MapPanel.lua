@@ -74,19 +74,14 @@ local function Paint()
     panel.backdrop:Paint(1)
 end
 
-local function Widen(wide)
-    local gap = wide and 0 or SCROLL_GAP
+local function FitWidth()
+    local barShown = panel.scroll.bar:IsShown()
+    if barShown == panel.barShown then return end
+    panel.barShown = barShown
+    local gap = barShown and SCROLL_GAP or 0
     panel.scroll:SetPoint("BOTTOMRIGHT", -PANEL_PAD - gap, PANEL_PAD)
     view:SetWidth(PANEL_W - PANEL_PAD * 2 - gap)
     if panel:IsShown() then view:Redraw() end
-end
-
-local function Narrow()
-    Widen(false)
-end
-
-local function WidenAll()
-    Widen(true)
 end
 
 local function BuildButtons()
@@ -109,9 +104,9 @@ local function Build()
     view.onWorldMap = true
     scroll:SetScrollChild(view)
     panel.scroll = scroll
-    Widen(true)
-    scroll.bar:HookScript("OnShow", Narrow)
-    scroll.bar:HookScript("OnHide", WidenAll)
+    FitWidth()
+    scroll.bar:HookScript("OnShow", FitWidth)
+    scroll.bar:HookScript("OnHide", FitWidth)
 end
 
 local function Place()
