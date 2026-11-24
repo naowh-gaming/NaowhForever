@@ -9,6 +9,7 @@ local Fits, Wearing = Items.Fits, Items.Wearing
 local OFF_HAND = C.OFF_HAND
 local FACT_CLASS, FACT_ITEM_LEVEL, FACT_REQUIRED, FACT_QUALITY = 1, 3, 4, 5
 local FACT_SOURCE, QUEST_CLASSES, QUEST_ID = 6, 7, 8
+local JOURNAL_QUEST_ID, JOURNAL_QUEST_LEVEL = 1, 3
 local INFO_MIN_LEVEL = 5
 local INFO_CLASS = 6
 local CLASS_ID = 3
@@ -33,7 +34,7 @@ local _, playerClass = UnitClass("player")
 local classSpecs
 local rankPos = {}
 local drops, dropIDs
-local craftIDs, questIDs, worldIDs
+local craftIDs, questIDs, worldIDs, questLevelOf
 local dropDungeon = {}
 local places, details = {}, {}
 local nextPlaces, byName, placePool = {}, {}, {}
@@ -277,6 +278,31 @@ end
 function R.QuestOf(itemID)
     local item = ns.BiSClassQuests[itemID]
     return item and item[QUEST_ID]
+end
+
+local function IndexQuestLevels()
+    local J = ns.Journal
+    local data, rewards = J and J.BiSQuestData, J and J.BiSQuestRewards
+    if not (data and rewards) then return end
+    questLevelOf = {}
+    for _, quest in ipairs(data.quests) do
+        local level = quest[JOURNAL_QUEST_LEVEL]
+        for _, id in ipairs(rewards[quest[JOURNAL_QUEST_ID]] or EMPTY) do
+            if not questLevelOf[id] or level < questLevelOf[id] then questLevelOf[id] = level end
+        end
+    end
+end
+
+function R.QuestLevel(itemID)
+    if not questLevelOf then IndexQuestLevels() end
+    local level = questLevelOf and questLevelOf[itemID]
+    if level and not (Drops()[itemID] or ns.BiSCrafts[itemID] or ns.BiSWorldDrops[itemID]) then return level end
+end
+
+function R.NeedLevel(itemID)
+    local required, quest = R.ReqLevel(itemID), R.QuestLevel(itemID)
+    if required and quest then return math.max(required, quest) end
+    return required or quest
 end
 
 function R.WorldDrops(slot, ranked, near)

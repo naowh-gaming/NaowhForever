@@ -324,6 +324,25 @@ Case("every ranked item has a source, from the Journal's dungeons or wowsrc", fu
     assert(#dungeons > 30, #dungeons)
 end)
 
+Case("a quest reward needs its quest's level too, unless the item drops or is crafted elsewhere", function()
+    local m = Fixture("MAGE", 16)
+    local J = m.ns.Journal
+    J.BiSQuestData = { quests = { { 500, "High Quest", 45 }, { 501, "Low Quest", 12 }, { 502, "Other Quest", 30 } } }
+    J.BiSQuestRewards = { [500] = { 100, 1 }, [501] = { 100 }, [502] = { 101 } }
+    m.ns.BiSCrafts[101] = { 4 }
+    assert(m.R.QuestLevel(100) == 12, "the lowest quest that rewards it")
+    assert(m.R.NeedLevel(100) == 12 and m.R.NeedLevel(3) == 40, "its own level when no quest rewards it")
+    assert(m.R.QuestLevel(1) == nil, "an item a dungeon drops is not held to the quest's level")
+    assert(m.R.QuestLevel(101) == nil, "nor one that is crafted")
+    J.BiSQuestRewards[501] = nil
+    local fresh = Fixture("MAGE", 16)
+    fresh.ns.Journal.BiSQuestData = J.BiSQuestData
+    fresh.ns.Journal.BiSQuestRewards = { [500] = { 100 } }
+    assert(fresh.R.NeedLevel(100) == 45, "a quest reward waits for the quest's level")
+    fresh = Fixture("MAGE", 16, nil, false)
+    assert(fresh.R.QuestLevel(100) == nil, "without the Journal there is no quest level to hold it to")
+end)
+
 Case("a click on a source: the dungeon in the Journal, on the item; a faction; a quest", function()
     local f = Fixture("MAGE", 30)
     local ns, J = f.ns, f.ns.Journal

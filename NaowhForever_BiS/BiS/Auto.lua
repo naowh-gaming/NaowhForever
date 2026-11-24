@@ -69,7 +69,7 @@ end
 
 local function Score(id, slot, weights, top)
     if not R.Wieldable(id, slot) then return nil end
-    local required = R.ReqLevel(id)
+    local required = R.NeedLevel(id)
     local usable = required and required <= top and SW.Usable(id)
     if required and (required > top or usable == false) then return nil end
     local stats = usable and SW.Stats(id)

@@ -54,7 +54,7 @@ local function Fixture(o)
         DungeonDrops = function(slot) return (o.drops or {})[slot] or {} end,
         LevelPicks = function() return o.levelPicks end,
         Wieldable = function() return true end,
-        ReqLevel = function(id) return (o.req or {})[id] or 1 end,
+        NeedLevel = function(id) return math.max((o.req or {})[id] or 1, (o.questLevel or {})[id] or 0) end,
         OtherSideQuest = function(id) return (o.otherSide or {})[id] == true end,
     }
     B.Lists = { CurrentSpec = function() return spec end, List = function() return o.list or list end,
@@ -114,6 +114,15 @@ Case("Levels Ahead sets how far over your level the picks reach, and a change re
     assert(#m.timers == 2, "the change queues a refill")
     m.timers[2]()
     assert(o.list.slots[1] == 2 and o.list.extra[1][1] == 1, "refilled to level 21")
+end)
+
+Case("a quest reward is held back until its quest's level is within Levels Ahead", function()
+    local o = { level = 16, ranked = { [1] = { 1, 2 } }, req = { [1] = 10, [2] = 10 }, questLevel = { [1] = 45 },
+        worth = { [1] = 9, [2] = 1 } }
+    local m = Fixture(o)
+    assert(Join(m.Auto.Build(m.spec)[1]) == "2", "level 16: a level 45 quest's reward waits")
+    o.level = 40
+    assert(Join(m.Auto.Build(m.spec)[1]) == "1,2", "level 40: the quest is within 5 levels")
 end)
 
 Case("what you wear competes, so the list never asks you to wear worse", function()

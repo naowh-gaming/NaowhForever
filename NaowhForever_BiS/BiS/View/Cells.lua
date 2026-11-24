@@ -125,7 +125,7 @@ function Cells.PaintGain(cell, gain, most)
 end
 
 function Cells.Meta(itemID, playerLevel, withLevel)
-    local required = R.ReqLevel(itemID)
+    local required = R.NeedLevel(itemID)
     local above = required ~= nil and required > playerLevel
     withLevel = withLevel == true
     local meta = metas[withLevel][itemID]
