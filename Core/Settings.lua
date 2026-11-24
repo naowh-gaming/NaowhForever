@@ -91,6 +91,7 @@ local S = UI.ModuleSettings("qol", {
     xpTickerSplits = true, xpTickerHistoryCount = 10, xpTickerBackground = "card",
     xpTickerPlayed = true, xpTickerPace = false, xpTickerSplitPlayed = true,
     xpTickerPos = { point = "CENTER", relPoint = "CENTER", x = -197, y = -322 },
+    watchList = F.watchList, watchListItems = {}, watchListScale = 1,
     groupXP = F.groupXP, groupXPShowSelf = true, groupXPRaid = false, groupXPWidth = 260,
     groupXPFont = "", groupXPFontSize = 12, groupXPOutline = "OUTLINE", groupXPTexture = "", groupXPBgAlpha = 0.85,
     healerMana = F.healerMana, healerManaWhere = "instance", healerManaShowSelf = true, healerManaDrinking = true,

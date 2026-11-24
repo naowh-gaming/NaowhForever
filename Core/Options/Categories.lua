@@ -39,7 +39,8 @@ local CATEGORIES = {
     { name = "Leveling & Training", band = "CHARACTER", navIcon = "spark",
       subtitle = "Experience, trainers and talents on the way to 60.",
       pages = {
-          { name = "Experience", cards = { "QoL/XP:xpBar", "QoL/XP:xpTicker", "QoL/XP:groupXP" } },
+          { name = "Experience", cards = { "QoL/XP:xpBar", "QoL/XP:xpTicker", "QoL/XP:groupXP",
+              "QoL/XP:watchList" } },
           { name = "Spells & Talents", cards = { "@Training Planner", "Training Planner/Settings", "QoL/XP:trainer",
               "QoL/XP:talentPoints", "QoL/XP:legacyPoints" } },
           { name = "Skills", cards = { "Training Planner/Settings:skills" } },

@@ -12,7 +12,7 @@ Shared/
   Shared.lua       the namespace (ns.Shared), the map pin sections that QoL and other modules add to its Map & Pins tab
                    (Shared.MapPins, in order by Shared.MapPinSections), a map pin's scale (Shared.ScalePin), what a character keeps by its
                    GUID (Shared.CharacterData), and how long ago a time was (Shared.Ago)
-  Style.lua        the house look: colors (BiS stars, worn green, looks, red and warning orange), icons, sizes
+  Style.lua        the house look: colors (BiS stars, worn green, looks, red and warning orange, reputation standings), icons, sizes
   Data/            data only, generated; never edited by hand
     Forever.lua      what is new in WoW Forever, by ID (Shared.ForeverNew), from Tools/build/forever_new.py
     ItemFacts.lua    each dungeon item's class, subclass, item level, required level and quality before the

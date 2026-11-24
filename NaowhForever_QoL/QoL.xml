@@ -64,6 +64,7 @@
     <Script file="XP\XPBarFX.lua"/>
     <Script file="XP\XPBar.lua"/>
     <Script file="XP\GroupXP.lua"/>
+    <Script file="XP\WatchList.lua"/>
     <Script file="Questing\PlayerHistory.lua"/>
     <Script file="Loot\Restock.lua"/>
     <Script file="Loot\GearReminders.lua"/>

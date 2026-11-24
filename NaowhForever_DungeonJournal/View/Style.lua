@@ -14,11 +14,6 @@ end
 
 local St = setmetatable({
     TERRITORY_CODE = { Alliance = "|cff4a9eff", Horde = "|cffff4d4d", Contested = "|cffe6cc80" },
-    STANDING_RGB = {
-        { r = 0.80, g = 0.20, b = 0.20 }, { r = 0.93, g = 0.30, b = 0.25 }, { r = 0.93, g = 0.55, b = 0.25 },
-        { r = 0.90, g = 0.78, b = 0.30 }, { r = 0.40, g = 0.80, b = 0.35 }, { r = 0.25, g = 0.80, b = 0.55 },
-        { r = 0.30, g = 0.70, b = 0.95 }, { r = 0.65, g = 0.55, b = 1.00 },
-    },
     COIN_ICON = { g = "|TInterface\\MoneyFrame\\UI-GoldIcon:0:0:2:-1|t",
                   s = "|TInterface\\MoneyFrame\\UI-SilverIcon:0:0:2:-1|t" },
     QUEST_CODE = {

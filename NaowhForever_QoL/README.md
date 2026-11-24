@@ -115,6 +115,7 @@ NaowhForever_QoL/
     XPTicker.lua        XP per Hour (ns.ResetXPTicker)
     XPBarFX.lua         the XP Bar's effects and hover breakdown (ns.XPBarFX)
     XPBar.lua           the XP Bar (ns.XPBarColor, ns.ResetXPBarSession, ns.ResetXPBarLayout)
+    WatchList.lua       Watch List: the reputations, currencies and items you pick, in a small window
   Loot/
     LootCard.lua        the one card on Loot & Items that Looting, Vendors, Auction Prices and Mail & Alts join
     DeleteConfirm.lua   Type DELETE For You, and the Looting card
@@ -1847,6 +1848,14 @@ NaowhForever_QoL/
 - The pace arrow sits a share of the text size lower (`DROP_SHARE`), level with the letters: the Naowh font leaves room above capitals.
 - The file sits close to Lua 5.1's 200-local cap for one chunk, so new constants are grouped into tables (`FORMAT`, `DEFAULT_POS`); the XP Bar folds its texts into `TEXT` for the same reason.
 
+### Watch List
+- What is watched is one list in the QoL store (`watchListItems`), each entry `f:<factionID>`, `c:<currencyID>` or `i:<itemID>`, in the order shown. It is saved with the profile. Every change saves a new copy of the list, never the stored default.
+- Reputations and currencies are picked from the game's own lists (`C_Reputation.GetFactionDataByIndex`, `C_CurrencyInfo.GetCurrencyListInfo`), which leave out what sits under a collapsed header. The picker says so on that header rather than expanding it: expanding changes the game's Reputation and Currency windows for the player.
+- Items count your bags plus the bank Alts.lua saves (`ns.BankCount`), as the Loot Feed does: `C_Item.GetItemCount`'s bank flag leaves the bank out on Forever. The Watch List turns that bank scan on while it is on, and listens to bag changes only while an item is watched.
+- `UPDATE_FACTION`, `CURRENCY_DISPLAY_UPDATE` and the bag events are folded into one redraw on the next frame. A kill can send several of them at once.
+- An item the client has not loaded shows the shared unloaded name until its data arrives (`Items.OnLoaded`), then redraws.
+- Close hides the window until the next login or reload, or until the switch is turned off and on again. Unlock Mode still shows it.
+- The standing colours are the Dungeon Journal's, moved into `Shared/Style.lua` (`STANDING_RGB`) so both read one copy.
 
 ### Always Free for All
 - Raids are left alone: a raid usually sets its own loot rules.

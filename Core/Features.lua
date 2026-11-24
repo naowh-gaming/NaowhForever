@@ -67,6 +67,7 @@ ns.FEATURES = {
         mailExpiry = false,
         xpTicker = true,
         groupXP = false,
+        watchList = false,
         healerMana = false,
         playerHistory = false,
         naowhScore = true,
