@@ -174,6 +174,23 @@ lines[2].buy.click()
 local prompt = t.prompts[#t.prompts]
 Check("Buy on a commodity asks how many first, up to that row, starting at one", #t.purchases == started
     and prompt.title == "Buy how many? Up to 25, cheapest first." and prompt.text == "1")
+local function Taking()
+    local shown = {}
+    for i, line in ipairs(t.Lines()) do shown[i] = line.taking.shown end
+    return shown
+end
+Check("as you type it names the total and the price each, cheapest first",
+    prompt.type("7") == "Total 3400, 486 each")
+local shown = Taking()
+Check("and lights the rows it buys from, passing over your own", shown[1] and shown[2] and not shown[3] and not shown[4])
+Check("more than the row offers is totalled only up to the row", prompt.type("400") == "Total 12400, 496 each")
+Check("a quantity that is not a number names nothing and lights nothing", prompt.type("nine") == ""
+    and not Taking()[1])
+t.money = 3000
+Check("a total you cannot pay says so", prompt.type("7") == "Total 3400: more than you have")
+t.money = 100000
+prompt.dimmer:Hide()
+Check("closing the prompt puts the rows back", not Taking()[1] and not Taking()[2])
 prompt.accept("nine")
 prompt.accept("0")
 Check("a quantity that is not a number, or none, asks the game for nothing", #t.purchases == started)

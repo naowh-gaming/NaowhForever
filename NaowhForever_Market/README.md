@@ -770,6 +770,9 @@ NaowhForever_Market/
 - With more than one to buy, the row's Buy asks how many first (`ns.PromptText`, filled in with them all),
   so part of a row can be bought: a number over the row's count buys the row's count, and one that costs
   more than you carry says so and asks the game nothing. The quote is then for the number typed.
+- While it asks, the line under the box gives the total for the number typed and the price each, from the
+  listings shown (`CostOf`), and the rows that number buys from are lit with the picked fill. Closing the
+  prompt puts them back. The game's quote, not this total, is what the confirm then names.
 - Cancel is My Auctions' confirm and `Auctions.Cancel`: one auction a click, never twice. The auction is the
   search result's own `auctionID` on a row that holds yours, which is what Blizzard's Auctions tab cancels
   from the same rows, offered only while `CanCancelAuction` says so.
@@ -1339,3 +1342,7 @@ The Ledger:
      Auctionator's price on its tooltip as "each, Auctionator", and The Market's Sell, Bag Worth and Professions'
      costs use it. An item Auctionator has not priced shows our price and age. Disable Auctionator and reload:
      the row is unavailable and prices are our own again.
+165. On a commodity with several listings, hover the third row and click Buy: under the box it reads the total and
+     the price each for 1, with the cheapest row lit. Type 0, a word, a number inside the second row and one past
+     the third: no line and no rows lit, then the first two lit, then all three, totalled only up to the third.
+     Type more than you can pay: it says so. Cancel: the rows go back. Buy: the confirm's total matches the line.

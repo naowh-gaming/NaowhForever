@@ -28,6 +28,8 @@ local TEXT_TIP_BUY_ITEM = ns.L("Buy takes this auction for %s.")
 local TEXT_TIP_CANCEL = ns.L("Cancel takes your auction down.")
 local TEXT_BUY_ASK = ns.L("Buy %d %s for %s?")
 local TEXT_BUY_MANY = ns.L("Buy how many? Up to %d, cheapest first.")
+local TEXT_BUY_TOTAL = ns.L("Total %s, %s each")
+local TEXT_BUY_TOTAL_SHORT = ns.L("Total %s: more than you have")
 local TEXT_QUOTING = ns.L("Getting the price")
 local TEXT_BOUGHT = ns.L("Bought %d.")
 local TEXT_BUY_FAILED = ns.L("The purchase did not go through.")
@@ -38,7 +40,7 @@ local STATUS = { searching = ns.L("Checking"), waiting = ns.L("Checking"), noans
 
 local pane, redraw, lines
 local bodyH = ROW_H
-local asking
+local asking, taking
 local note, noteKey
 
 local Listed = {}
@@ -120,6 +122,31 @@ local function CostOf(count)
     return cost
 end
 
+local function MarkTaking()
+    local left = taking or 0
+    for i = 1, math.min(Listings.count, #lines) do
+        local row = Listings.rows[i]
+        local others = row.quantity - row.own
+        lines[i].taking:SetShown(left > 0 and others > 0)
+        left = left - others
+    end
+end
+
+local function BuyTotal(most, text)
+    local count = tonumber(text)
+    taking = count and count >= 1 and math.min(most, math.floor(count)) or nil
+    MarkTaking()
+    if not taking then return "" end
+    local cost = CostOf(taking)
+    if cost > GetMoney() then return TEXT_BUY_TOTAL_SHORT:format(Coins(cost)) end
+    return TEXT_BUY_TOTAL:format(Coins(cost), Coins(math.ceil(cost / taking)))
+end
+
+local function StopTaking()
+    taking = nil
+    MarkTaking()
+end
+
 local function BuySome(itemID, most, text)
     local entry, count = pane.focus(), tonumber(text)
     if not (entry and entry.itemID == itemID and count and count >= 1) or asking or Purchase.Busy() then return end
@@ -140,8 +167,11 @@ local function Buy(index)
         if CostOf(1) > GetMoney() then return Note(entry, TEXT_NO_MONEY) end
         if count == 1 then return BuySome(entry.itemID, 1, 1) end
         local itemID = entry.itemID
-        return ns.PromptText(TEXT_BUY_MANY:format(count), "1", QUANTITY_LETTERS,
-            function(text) BuySome(itemID, count, text) end, TEXT_BUY, true)
+        local dimmer = ns.PromptText(TEXT_BUY_MANY:format(count), "1", QUANTITY_LETTERS,
+            function(text) BuySome(itemID, count, text) end, TEXT_BUY, true,
+            function(text) return BuyTotal(count, text) end)
+        dimmer.onClose = StopTaking
+        return
     end
     if cost > GetMoney() then return Note(entry, TEXT_NO_MONEY) end
     local auctionID = row.auctionID
@@ -241,6 +271,9 @@ local function NewLine()
     local line = CreateFrame("Button", nil, pane.list)
     line:SetHeight(ROW_H)
     Parts.RowBands(line, 0)
+    line.taking = ns.Solid(line, "BACKGROUND", T.accent, St.PICKED_FILL)
+    line.taking:SetAllPoints()
+    line.taking:Hide()
     line.price = ns.Font(line, St.TEXT_SIZE, nil, T.fg)
     line.price:SetPoint("LEFT", IN, 0)
     line.quantity = ns.Font(line, St.TEXT_SIZE, nil, T.muted)
@@ -298,6 +331,7 @@ local function PaintLines(price)
     if price and not marked then y = PlaceMark(y) end
     pane.mark:SetShown(price ~= nil)
     for i = Listings.count + 1, #lines do lines[i]:Hide() end
+    MarkTaking()
     pane.list:SetSize(pane.scroll:GetWidth(), y)
     return math.min(y, VIEW_H)
 end

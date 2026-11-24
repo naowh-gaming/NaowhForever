@@ -9,7 +9,7 @@
 --   t.moneys[1].Type(2500)   -- the price box; t.moneys[2] is the Starting Bid box, its parent the bid row
 --   t.Lines()   -- the listings shown under the form, top to bottom; t.Hover(line) then line.buy.click()
 --   t.Chip("All")   -- a chip over the quantity box, by its text: chip.scripts.OnMouseUp(chip, "LeftButton")
---   t.prompts[1].accept("40")   -- a house prompt: its title, text and accept
+--   t.prompts[1].accept("40")   -- a house prompt: its title, text and accept; type("7") is the line under its box
 local World = dofile("Tools/regression/market_world.lua")
 local Load = dofile("Tools/regression/load_files.lua")
 
@@ -109,8 +109,15 @@ local function Setup(opts)
         t.confirms[#t.confirms + 1] = confirm
         return Frame("Button"), dimmer
     end
-    ns.PromptText = function(title, text, _, onAccept)
-        t.prompts[#t.prompts + 1] = { title = title, text = text, accept = onAccept }
+    ns.PromptText = function(title, text, _, onAccept, _, _, onType)
+        local dimmer = Frame("Frame")
+        dimmer:SetScript("OnHide", function(self)
+            local fn = self.onClose
+            self.onClose = nil
+            if fn then fn() end
+        end)
+        t.prompts[#t.prompts + 1] = { title = title, text = text, accept = onAccept, type = onType, dimmer = dimmer }
+        return dimmer
     end
     ns.ContextMenu = function(owner, generator)
         local menu = { owner = owner, items = {} }
