@@ -93,6 +93,10 @@ NaowhForever_Combat/Blessings/
   member in range the button can reach lights it: red when someone is missing the class blessing,
   yellow when only running out, blue when only players on their own blessing need theirs. With
   Apply Theme to Status Colours they are the theme's Accent, its lighter Accent and a deeper shade.
+- Shift-click on a class button casts the normal blessing, never the Greater one, on the next member
+  due, stepping through every one of them (`singles`, its own queue and step); Shift-click on a player in
+  the list casts their Greater Blessing, which reaches their whole class. A modified click reads only
+  `shift-` attributes, so the plain left-click is unchanged.
 - A class button's left-click goes to the next member of its queue, so in combat (where the queue is
   the one from before the pull) repeated clicks go through those who needed it, round again after
   the last, as a missed click cannot be told from a cast. The button is its group header's child, and

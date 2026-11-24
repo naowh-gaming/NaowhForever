@@ -31,6 +31,7 @@ local TEXT_AURA = ns.L("Aura")
 local TEXT_FURY = "Righteous Fury"
 local TEXT_TARGET = ns.L("Left-click: bless %s.\n")
 local TEXT_NEXT = ns.L("In combat each click blesses the next who needed it.\n")
+local TEXT_SINGLE = ns.L("Shift-click: the normal blessing, never the Greater one.\n")
 local TEXT_MENU = ns.L("Right-click: choose the blessing, the player list or assignments.")
 local TEXT_AUTO = ns.L("Auto Buff")
 local TEXT_SEAL = ns.L("Seal")
@@ -38,16 +39,18 @@ local TEXT_SEAL_TIP = ns.L("Left-click: cast your seal.\nRight-click: choose it.
 local TEXT_AUTO_TIP = ns.L("Left-click: the next blessing. Right-click: the next Greater Blessing. Each goes to whoever needs it most.")
 local CLASS_STEP = [[
     if button ~= "LeftButton" then return end
-    local n = self:GetAttribute("count") or 0
-    local i = self:GetAttribute("step") or 1
+    local single = IsShiftKeyDown()
+    local list = single and "single" or "queue"
+    local n = self:GetAttribute(list .. "Count") or 0
+    local i = self:GetAttribute(list .. "Step") or 1
     local header = self:GetParent()
     if not header:IsVisible() then return false end
     for _ = 1, n do
         if i > n then i = 1 end
-        header:SetAttribute("nameList", self:GetAttribute("queueNames" .. i))
+        header:SetAttribute("nameList", self:GetAttribute(list .. "Names" .. i))
         if self:GetAttribute("unit") then
-            self:SetAttribute("spell1", self:GetAttribute("queueSpell" .. i))
-            self:SetAttribute("step", i + 1)
+            self:SetAttribute(single and "shift-spell1" or "spell1", self:GetAttribute(list .. "Spell" .. i))
+            self:SetAttribute(list .. "Step", i + 1)
             return
         end
         i = i + 1
@@ -96,25 +99,27 @@ local function Glow(cell, glow)
     end
 end
 
-local function QueueCell(cell, queue)
+local function QueueCell(cell, list, queue)
     local parts = {}
     for i, entry in ipairs(queue) do parts[i] = entry.names .. "=" .. entry.spell end
     local signature = table.concat(parts, ";")
-    if signature == cell.signature then return end
-    cell.signature = signature
+    if signature == cell[list .. "Signature"] then return end
+    cell[list .. "Signature"] = signature
     for i, entry in ipairs(queue) do
-        cell.cast:SetAttribute("queueNames" .. i, entry.names)
-        cell.cast:SetAttribute("queueSpell" .. i, entry.spell)
+        cell.cast:SetAttribute(list .. "Names" .. i, entry.names)
+        cell.cast:SetAttribute(list .. "Spell" .. i, entry.spell)
     end
-    cell.cast:SetAttribute("count", #queue)
+    cell.cast:SetAttribute(list .. "Count", #queue)
 end
 
 local function PaintCell(cell, s, key)
     local queue = s.queue
     local shown = s.spell or (key and CastSpell(key, cell.members))
     cell.icon:SetTexture(shown and C_Spell.GetSpellTexture(shown) or QUESTION)
-    QueueCell(cell, queue)
-    cell.cast:SetAttribute("step", 1)
+    QueueCell(cell, "queue", queue)
+    QueueCell(cell, "single", s.singles)
+    cell.cast:SetAttribute("queueStep", 1)
+    cell.cast:SetAttribute("singleStep", 1)
     B.SetNames(cell.header, queue[1] and queue[1].names or NOBODY)
     cell.target, cell.queued = s.target, #queue
     local color = s.classMissing > 0 and RED or s.classDue > 0 and YELLOW
@@ -131,6 +136,7 @@ local function CellTip(cell)
     local target = cell.target and Ambiguate(cell.target.who, "short")
     return (target and TEXT_TARGET:format(target) or "")
         .. ((cell.queued or 0) > 1 and TEXT_NEXT or "")
+        .. TEXT_SINGLE
         .. TEXT_MENU
 end
 
@@ -142,7 +148,9 @@ local function NewCell(class)
     cell.header, cell.cast = B.Recipient(cell, CELL_NAME .. class)
     cell.cast:RegisterForClicks("AnyUp")
     cell.cast:SetAttribute("useOnKeyDown", false)
-    cell.cast:SetAttribute("count", 0)
+    cell.cast:SetAttribute("shift-type1", "spell")
+    cell.cast:SetAttribute("queueCount", 0)
+    cell.cast:SetAttribute("singleCount", 0)
     cell.cast:SetScript("PreClick", function(_, button)
         if button == "LeftButton" and not InCombatLockdown()
             and not (C_Secrets.ShouldAurasBeSecret() and not HiddenAuras()) then
@@ -152,7 +160,9 @@ local function NewCell(class)
     SecureHandlerWrapScript(cell.cast, "OnClick", secureHandler, CLASS_STEP)
     cell.cast:SetScript("PostClick", function(self, button, down)
         if button == "RightButton" and not down then B.ClassMenu(self, class) end
-        if button == "LeftButton" then NoteCast(self:GetAttribute("unit"), self:GetAttribute("spell1")) end
+        if button == "LeftButton" then
+            NoteCast(self:GetAttribute("unit"), self:GetAttribute(IsShiftKeyDown() and "shift-spell1" or "spell1"))
+        end
     end)
     local function Tip() return CellTip(cell) end
     BarTip(cell.cast, ClassName(class), Tip)

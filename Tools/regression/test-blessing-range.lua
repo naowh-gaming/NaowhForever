@@ -31,7 +31,10 @@ local env = {
     UnitIsConnected = function() return true end,
     UnitIsDeadOrGhost = function() return false end,
     UnitIsVisible = function() return true end,
-    C_Spell = { IsSpellInRange = function(_, unit) return state[unit][3] end },
+    C_Spell = { IsSpellInRange = function(spell, unit)
+        if spell == 19740 and state[unit][4] ~= nil then return state[unit][4] end
+        return state[unit][3]
+    end },
 }
 local fn = assert(loadstring(chunk))
 setfenv(fn, setmetatable(env, { __index = _G }))
@@ -79,6 +82,14 @@ state = { party1 = { false, nil, true }, party2 = { false, nil, true }, party3 =
     party4 = { false, nil, false } }
 queue = Survey(members).queue
 check("queue: a Greater Blessing is cast once for the class", #queue == 1)
+local singles = Survey(members).singles
+check("shift-click queue: everyone due gets the normal blessing", #singles == 3 and singles[1].spell == 19740
+    and singles[3].names == "party3" and singles[3].spell == 19740)
+state.party1[4] = false
+singles = Survey(members).singles
+check("shift-click queue: in Greater range but not the normal one's, left out", #singles == 2
+    and singles[1].names == "party2" and #Survey(members).queue == 1)
+state.party1[4] = nil
 castSpell = 19740
 
 -- Colour counts: a player on their own blessing does not make the class button red.

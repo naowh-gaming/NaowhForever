@@ -95,18 +95,25 @@ local function ByUrgency(a, b)
     return a.left < b.left
 end
 
+local function CountDue(list)
+    local due = 0
+    for _, entry in ipairs(list) do if entry.rank < 2 then due = due + 1 end end
+    return due
+end
+
 local function Survey(members)
     local s = { missing = 0, reachable = false, missingNear = 0, expiringNear = 0, classDue = 0,
-        classMissing = 0, queue = {} }
+        classMissing = 0, queue = {}, singles = {} }
     local rank, left
     local queue = s.queue
     local players = Store().players
-    local spells = {}
+    local spells, singles = {}, {}
     for _, member in ipairs(members) do
         local key = Assigned(member)
         if key and spells[key] == nil then
             local cast = CastSpell(key, members)
-            if cast and GREATER[cast] and not WaitedFor(members, cast) then cast = HighestKnown(BY_KEY[key].ranks) end
+            singles[key] = HighestKnown(BY_KEY[key].ranks)
+            if cast and GREATER[cast] and not WaitedFor(members, cast) then cast = singles[key] end
             spells[key] = cast or false
         end
         local spell = key and spells[key]
@@ -119,9 +126,10 @@ local function Survey(members)
                 s.shortest = remaining
             end
             local range = UnitIsVisible(member.unit) and InRange(member, spell)
+            local r = not has and 0 or (remaining and remaining < EXPIRING and 1 or 2)
+            local l = remaining or math.huge
             if has ~= nil and range ~= false then
                 s.reachable = true
-                local r = not has and 0 or (remaining and remaining < EXPIRING and 1 or 2)
                 if range == true and r < 2 and member.targetable then
                     if r == 0 then s.missingNear = s.missingNear + 1 else s.expiringNear = s.expiringNear + 1 end
                     if not players[member.guid] then
@@ -129,7 +137,6 @@ local function Survey(members)
                         if r == 0 then s.classMissing = s.classMissing + 1 end
                     end
                 end
-                local l = remaining or math.huge
                 if member.targetable then
                     queue[#queue + 1] = { names = member.names, spell = spell, rank = r, left = l }
                     if not s.target or r < rank or (r == rank and l < left) then
@@ -137,13 +144,20 @@ local function Survey(members)
                     end
                 end
             end
+            local single = singles[key]
+            if single and has ~= nil and member.targetable then
+                local near = range
+                if single ~= spell then near = UnitIsVisible(member.unit) and InRange(member, single) end
+                if near ~= false then s.singles[#s.singles + 1] = { names = member.names, spell = single, rank = r, left = l } end
+            end
         end
     end
-    table.sort(queue, ByUrgency)
-    local due = 0
-    for _, entry in ipairs(queue) do if entry.rank < 2 then due = due + 1 end end
-    if GREATER[queue[1] and queue[1].spell] then due = math.min(due, 1) end
     local keep = B.Settings.Get("blessRespect") and 0 or 1
+    table.sort(s.singles, ByUrgency)
+    for i = #s.singles, math.max(CountDue(s.singles), keep) + 1, -1 do s.singles[i] = nil end
+    table.sort(queue, ByUrgency)
+    local due = CountDue(queue)
+    if GREATER[queue[1] and queue[1].spell] then due = math.min(due, 1) end
     for i = #queue, math.max(due, keep) + 1, -1 do queue[i] = nil end
     if due == 0 and keep == 0 then s.target = nil end
     s.rank, s.left = rank, left
