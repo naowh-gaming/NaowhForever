@@ -23,7 +23,8 @@ local LOADED = "GET_ITEM_INFO_RECEIVED"
 local NONE = {}
 
 local pool, pending = {}, {}
-local scores, ranked, chosen, current = {}, {}, {}, {}
+local base, scores, ranked, chosen, current = {}, {}, {}, {}, {}
+local scoredKey, scoredWeights, scoredTop, poolWaiting
 local simRank = {}
 local sortBy
 local waiting = false
@@ -78,12 +79,12 @@ local function Score(id, slot, weights, top)
 end
 
 local function ScorePool(weights, top)
-    for _, gear in ipairs(Items.GEAR_SLOTS) do scores[gear[1]] = wipe(scores[gear[1]] or {}) end
+    for _, gear in ipairs(Items.GEAR_SLOTS) do base[gear[1]] = wipe(base[gear[1]] or {}) end
     for id in pairs(pool) do
         local slots = Items.SlotsFor(id) or NONE
         for i = 1, #slots do
             local worth = Score(id, slots[i], weights, top)
-            if worth then scores[slots[i]][id] = worth end
+            if worth then base[slots[i]][id] = worth end
         end
     end
 end
@@ -98,7 +99,9 @@ local function AddWorn(byID, from, slot, weights)
 end
 
 local function Rank(slot, weights)
-    local byID = scores[slot]
+    local byID = wipe(scores[slot] or {})
+    scores[slot] = byID
+    for id, worth in pairs(base[slot]) do byID[id] = worth end
     AddWorn(byID, slot, slot, weights)
     if PAIR[slot] then AddWorn(byID, PAIR[slot], slot, weights) end
     local order = wipe(ranked[slot] or {})
@@ -157,12 +160,20 @@ local Auto = {}
 B.Auto = Auto
 
 function Auto.Build(spec)
-    waiting = false
-    wipe(pending)
     local weights = SW.For(spec.key)
-    if not weights then return Listen() end
-    Gather(spec)
-    ScorePool(weights, UnitLevel("player") + S.Get("bisAutoAhead"))
+    if not weights then
+        waiting = false
+        return Listen()
+    end
+    local top = UnitLevel("player") + S.Get("bisAutoAhead")
+    if spec.key ~= scoredKey or weights ~= scoredWeights or top ~= scoredTop then
+        waiting = false
+        wipe(pending)
+        Gather(spec)
+        ScorePool(weights, top)
+        scoredKey, scoredWeights, scoredTop, poolWaiting = spec.key, weights, top, waiting
+    end
+    waiting = poolWaiting
     for _, gear in ipairs(Items.GEAR_SLOTS) do Rank(gear[1], weights) end
     PairWeapons()
     for _, gear in ipairs(Items.GEAR_SLOTS) do
@@ -203,7 +214,10 @@ local function Queue()
 end
 
 function OnEvent(_, event, itemID, success)
-    if event == LOADED and not (pending[itemID] and success) then return end
+    if event == LOADED then
+        if not (pending[itemID] and success) then return end
+        scoredKey = nil
+    end
     Queue()
 end
 

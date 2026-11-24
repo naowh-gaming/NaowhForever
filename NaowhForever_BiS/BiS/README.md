@@ -144,6 +144,9 @@ Other modules call in through `ns`: `ns.IsBisItem` (the Journal, Bag Space, the 
 - The Auto list is shared by every character of a class, as every list is, and is refilled for
   the character using it. Its refill waits `REFRESH_DELAY` (0.5 s) so a gear swap's burst of
   events, and the level that `UnitLevel` returns late on `PLAYER_LEVEL_UP`, give one refill.
+- The Auto list scores its pool once per spec, weights and top level, and again when an awaited
+  item arrives. A gear change only ranks what you wear against those scores: scoring the whole pool
+  on every swap made weapon-swap macros stutter.
 - An item the client has not loaded, worn or not, is asked for, and the list is built again when it
   arrives. Only the items it waits for wake it, and only when the server sends
   them, so an item the server refuses never wakes it again. Level and gear changes are listened to only
