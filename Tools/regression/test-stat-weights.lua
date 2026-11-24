@@ -260,6 +260,12 @@ do
         and SW.KeyAmount("ITEM_MOD_DODGE_RATING_SHORT", 12) == 1 and SW.KeyAmount("ITEM_MOD_BLOCK_RATING_SHORT", 5) == 1
         and SW.KeyAmount("ITEM_MOD_AGILITY_SHORT", 7) == 7)
     check("KeyWorth reads the rating too", math.abs(SW.KeyWorth("ITEM_MOD_HIT_RATING_SHORT", 10, fury) - fury.hit) < 1e-9)
+    -- One school's damage is a stat of its own: Umbral Crystal against Skullspell Orb for a Demonology warlock.
+    local demo = { sta = 0.1, int = 0.158, shadow = 0.82 }
+    local crystal = SW.Worth({ ITEM_MOD_STAMINA_SHORT = 5, ITEM_MOD_SHADOW_DAMAGE_DONE_SHORT = 17 }, demo)
+    check("shadow damage is worth its weight", math.abs(crystal - 14.44) < 1e-9
+        and crystal > SW.Worth({ ITEM_MOD_INTELLECT_SHORT = 12 }, demo))
+    check("and KeyWorth reads it", math.abs(SW.KeyWorth("ITEM_MOD_FIRE_DAMAGE_DONE_SHORT", 10, { fire = 0.5 }) - 5) < 1e-9)
     -- Specs that play differently are weighed differently.
     local function Differ(a, b)
         local x, y = SW.Spec(a).weights, SW.Spec(b).weights

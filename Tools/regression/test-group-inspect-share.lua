@@ -31,6 +31,8 @@ local ITEM_STATS = {
         ITEM_MOD_SPELL_HEALING_DONE_SHORT = 22, ITEM_MOD_SPELL_DAMAGE_DONE_SHORT = 8 },
     ["item:103"] = { ITEM_MOD_INTELLECT_SHORT = 7, ITEM_MOD_SPIRIT_SHORT = 3, ITEM_MOD_SPELL_CRIT_RATING_SHORT = 14,
         ITEM_MOD_HIT_SPELL_RATING_SHORT = 10, ITEM_MOD_DAMAGE_PER_SECOND_SHORT = 40 },
+    ["item:104"] = { ITEM_MOD_SPELL_DAMAGE_DONE_SHORT = 8, ITEM_MOD_SHADOW_DAMAGE_DONE_SHORT = 12 },
+    ["item:105"] = { ITEM_MOD_SHADOW_DAMAGE_DONE_SHORT = 5, ITEM_MOD_FIRE_DAMAGE_DONE_SHORT = 14 },
 }
 local EMPTY_STATS = {}
 
@@ -220,6 +222,10 @@ do
     check("crit rating as a percent, spell crit with it", s.CRIT == 2)
     check("hit rating as a percent, spell hit with it", s.HIT == 2)
     check("summed from gear is not shared", record.statsShared == false)
+    local caster = { guid = "Player-1-0C", classFile = "WARLOCK", gear = {
+        [2] = { id = 104, link = "item:104" }, [11] = { id = 105, link = "item:105" } } }
+    GI.StatsFromGear(caster)
+    check("spell damage adds the best single school", caster.stats.SP == 8 + 17)
     local same = record.stats
     record.classFile = "HUNTER"
     GI.StatsFromGear(record)

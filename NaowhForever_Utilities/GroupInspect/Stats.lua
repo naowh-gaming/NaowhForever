@@ -10,7 +10,11 @@ local SW = ns.StatWeights
 local GEAR_SLOTS = ns.Shared.Items.GEAR_SLOTS
 
 local PRIMARY, AP, RAP, POWER, SPELL_DAMAGE, HEALING, CRIT, SPELL_CRIT, HIT, SPELL_HIT = 1, 2, 3, 4, 5, 6, 7, 8, 9, 10
+local FIRE, FROST, SHADOW, NATURE, ARCANE, HOLY = 11, 12, 13, 14, 15, 16
 local KIND = {
+    ITEM_MOD_FIRE_DAMAGE_DONE_SHORT = FIRE, ITEM_MOD_FROST_DAMAGE_DONE_SHORT = FROST,
+    ITEM_MOD_SHADOW_DAMAGE_DONE_SHORT = SHADOW, ITEM_MOD_NATURE_DAMAGE_DONE_SHORT = NATURE,
+    ITEM_MOD_ARCANE_DAMAGE_DONE_SHORT = ARCANE, ITEM_MOD_HOLY_DAMAGE_DONE_SHORT = HOLY,
     ITEM_MOD_STRENGTH_SHORT = PRIMARY, ITEM_MOD_AGILITY_SHORT = PRIMARY, ITEM_MOD_STAMINA_SHORT = PRIMARY,
     ITEM_MOD_INTELLECT_SHORT = PRIMARY, ITEM_MOD_SPIRIT_SHORT = PRIMARY, RESISTANCE0_NAME = PRIMARY,
     ITEM_MOD_ATTACK_POWER_SHORT = AP, ITEM_MOD_RANGED_ATTACK_POWER_SHORT = RAP,
@@ -27,7 +31,7 @@ local PRIMARY_KEY = {
 
 local TENTHS, ROUND = C.TENTHS, C.ROUND
 
-local sums = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
+local sums = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
 local primary = { STR = 0, AGI = 0, STA = 0, INT = 0, SPI = 0, ARMOR = 0 }
 
 local function Secret(value)
@@ -79,7 +83,8 @@ function GI.StatsFromGear(record)
     into.STR, into.AGI, into.STA = primary.STR, primary.AGI, primary.STA
     into.INT, into.SPI, into.ARMOR = primary.INT, primary.SPI, primary.ARMOR
     into.AP = sums[AP]
-    into.SP = sums[POWER] + math.max(sums[SPELL_DAMAGE], sums[HEALING])
+    local school = math.max(sums[FIRE], sums[FROST], sums[SHADOW], sums[NATURE], sums[ARCANE], sums[HOLY])
+    into.SP = sums[POWER] + math.max(sums[SPELL_DAMAGE] + school, sums[HEALING])
     into.CRIT = Tenth(sums[CRIT] + sums[SPELL_CRIT])
     into.HIT = Tenth(sums[HIT] + sums[SPELL_HIT])
     record.statsShared = false
