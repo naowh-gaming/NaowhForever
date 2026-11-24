@@ -1,7 +1,8 @@
 -- Run with Lua 5.1 from the repository root: the panel's Buy page with its two views. It opens on the Watch List;
 -- Searches lists Recent or a saved list, runs a search on a click, keeps the search in Blizzard's window with Save
--- Search, and saves a recent one to a list from its +. A saved search's right-click menu renames it, sets Exact Name
--- and a max price, moves and deletes it; the list button's menu makes, renames, deletes, imports and exports lists.
+-- Search, and saves a recent one to a list from its +; a recent one's right-click menu deletes it. A saved search's
+-- right-click menu renames it, sets Exact Name and a max price, moves and deletes it; the list button's menu makes,
+-- renames, deletes, imports and exports lists, and clears Recent.
 -- Nothing of the Searches view is built until it is first picked.
 strmatch = string.match
 dofile("Libs/LibStub/LibStub.lua")
@@ -268,9 +269,23 @@ row = Rows()[2]
 row.scripts.OnClick(row, "LeftButton")
 check("clicking a search runs it in Blizzard's window", ah.sent[#ah.sent] == "Copper Ore" and ah.typed == "Copper Ore"
     and Names() == "Copper Ore,Linen Cloth")
-menu = nil
+ah:SendBrowseQuery("Tin Ore")
+row = Rows()[2]
 row.scripts.OnClick(row, "RightButton")
-check("a recent search has no right-click menu", menu == nil)
+check("a recent search's right-click menu only deletes", menu.owner == row and #menu.items == 1
+    and menu.items[1].text == "Delete")
+ah:SendBrowseQuery("Iron Ore")
+menu.items[1].pick()
+check("and Delete takes that search off Recent, even after another search moved it",
+    Names() == "Iron Ore,Tin Ore,Linen Cloth" and #Searches.Recent() == 3)
+pick.click()
+check("Clear Recent is offered on Recent", MenuItem("Clear Recent").enabled)
+MenuItem("Clear Recent").pick()
+check("and empties it", Names() == "" and #Searches.Recent() == 0)
+pick.click()
+check("with nothing left to clear", not MenuItem("Clear Recent").enabled)
+ah:SendBrowseQuery("Linen Cloth")
+ah:SendBrowseQuery("Copper Ore")
 
 row = Rows()[1]
 row.act.click()
@@ -331,8 +346,9 @@ pick.click()
 check("the list button lists Recent and each list with its count", menu.owner == pick
     and menu.items[1].text == "Recent" and menu.items[2].text == "Ores (1)" and menu.items[2].on()
     and not menu.items[1].on())
-check("and can rename, delete and export the list shown", MenuItem("Rename List").enabled
-    and MenuItem("Delete List").enabled and MenuItem("Export List").enabled)
+check("and can rename, delete and export the list shown, with no Recent to clear", MenuItem("Rename List").enabled
+    and MenuItem("Delete List").enabled and MenuItem("Export List").enabled
+    and not MenuItem("Clear Recent").enabled)
 MenuItem("Export List").pick()
 check("Export List shows its string to copy", copied.title == "Search list: Ores" and copied.text:find("^!NFMS1!") ~= nil)
 MenuItem("Rename List").pick()

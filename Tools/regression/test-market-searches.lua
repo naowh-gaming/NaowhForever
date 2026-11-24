@@ -207,6 +207,13 @@ t.M.Settings.Set("enabled", false)
 ah:SendBrowseQuery("while off", 0, 0, ALL)
 Check("with The Market off nothing is noted", S.Recent()[1].text == "from a list")
 t.M.Settings.Set("enabled", true)
+S.Forget(S.Recent()[2])
+Check("Forget takes one search off Recent", #S.Recent() == 29 and S.Recent()[1].text == "from a list"
+    and S.Recent()[2].text == "many 39")
+S.ClearRecent()
+Check("Clear Recent empties it", #S.Recent() == 0)
+ah:SendBrowseQuery("after clearing", 0, 0, ALL)
+Check("and the next search is noted again", #S.Recent() == 1 and S.Recent()[1].text == "after clearing")
 
 ah.typed, ah.min, ah.max, ah.filters = "  Wand ", 10, 20, { 8, 9, 10, 11 }
 list.picked = { 1 }

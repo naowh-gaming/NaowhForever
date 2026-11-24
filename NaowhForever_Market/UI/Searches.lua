@@ -24,6 +24,7 @@ local TEXT_PICK_TIP = ns.L("Pick a list, or make, rename, delete and share one."
 local TEXT_NEW_LIST = ns.L("New List")
 local TEXT_RENAME_LIST = ns.L("Rename List")
 local TEXT_DELETE_LIST = ns.L("Delete List")
+local TEXT_CLEAR_RECENT = ns.L("Clear Recent")
 local TEXT_IMPORT = ns.L("Import List")
 local TEXT_EXPORT = ns.L("Export List")
 local TEXT_NAME_LIST = ns.L("Name the list")
@@ -38,7 +39,7 @@ local TEXT_SAVED = ns.L("Saved to %s.")
 local TEXT_NOTHING_TYPED = ns.L("Type a search or pick a category in the auction house first.")
 local TEXT_HINT = ns.L("Click a search to run it. Right-click it for more.")
 local TEXT_EMPTY = ns.L("Nothing saved here yet. Search the auction house, then press Save Search.")
-local TEXT_RECENT_HINT = ns.L("Your last searches. Click one to run it again.")
+local TEXT_RECENT_HINT = ns.L("Your last searches. Click one to run it again, or right-click it to delete it.")
 local TEXT_RECENT_EMPTY = ns.L("Search the auction house and it shows here.")
 local TEXT_SAVE_TO = ns.L("Save to a List")
 local TEXT_DELETE = ns.L("Delete")
@@ -165,6 +166,7 @@ local function ListMenu(_, root)
     root:CreateButton(TEXT_NEW_LIST, NewPlainList)
     root:CreateButton(TEXT_RENAME_LIST, RenameList):SetEnabled(onList)
     root:CreateButton(TEXT_DELETE_LIST, DeleteList):SetEnabled(onList)
+    root:CreateButton(TEXT_CLEAR_RECENT, Searches.ClearRecent):SetEnabled(not onList and #Searches.Recent() > 0)
     root:CreateDivider()
     root:CreateButton(TEXT_IMPORT, Import)
     root:CreateButton(TEXT_EXPORT, Export):SetEnabled(onList)
@@ -239,9 +241,13 @@ local function RowMenu(row, root)
     root:CreateButton(TEXT_DELETE, Remove, at)
 end
 
+local function RecentMenu(row, root)
+    root:CreateButton(TEXT_DELETE, Searches.Forget, row.search)
+end
+
 local function RowClicked(row, button)
     if button ~= "RightButton" then return Searches.Run(row.search) end
-    if shown ~= RECENT then ns.ContextMenu(row, RowMenu) end
+    ns.ContextMenu(row, shown == RECENT and RecentMenu or RowMenu)
 end
 
 local function ActClicked(row)

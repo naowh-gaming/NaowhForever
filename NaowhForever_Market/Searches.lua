@@ -197,6 +197,19 @@ function Searches.Note(search)
     Changed()
 end
 
+function Searches.Forget(search)
+    local recent = Searches.Recent()
+    local at = Find(recent, search)
+    if not at then return end
+    table.remove(recent, at)
+    Changed()
+end
+
+function Searches.ClearRecent()
+    wipe(Searches.Recent())
+    Changed()
+end
+
 function Searches.NewList(name)
     name = Text(name, MAX_NAME)
     local lists = Store(true).lists
