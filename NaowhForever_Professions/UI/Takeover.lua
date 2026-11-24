@@ -426,7 +426,6 @@ local function Activate(mode)
     lastMode = mode
     local opening = not win:IsShown() or linked ~= W.linked or orders ~= W.orders
     if opening then
-        W.selectedID, W.selectedUnlearned, W.offset = nil, nil, 0
         win:Show()
         Drag.Follow()
     end
@@ -444,6 +443,7 @@ local function Activate(mode)
         P.Book.Render()
         Redock()
     else
+        P.Window.SwapPlace(not linked and R.Profession().id, linked and opening)
         P.Window.Render()
     end
 end

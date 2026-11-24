@@ -57,6 +57,7 @@ local TEXT_NO_MATCH = ns.L("No recipes match.")
 
 local EMPTY = {}
 local sig = {}
+local places = {}
 local win
 
 local Window = {}
@@ -105,6 +106,18 @@ local function Reread(prof, who)
     W.stale = false
     sig.id, sig.skill, sig.max, sig.linked, sig.who = prof.id, prof.skill, prof.max, W.linked, who
     Entries.Collect()
+end
+
+function Window.SwapPlace(key, fresh)
+    if key == W.placeKey and not fresh then return end
+    if W.placeKey then
+        local place = places[W.placeKey] or {}
+        place.id, place.unlearned, place.offset = W.selectedID, W.selectedUnlearned, W.offset
+        places[W.placeKey] = place
+    end
+    local place = not fresh and key and places[key] or EMPTY
+    W.selectedID, W.selectedUnlearned, W.offset = place.id, place.unlearned, place.offset or 0
+    W.placeKey = key
 end
 
 function Window.Render()
