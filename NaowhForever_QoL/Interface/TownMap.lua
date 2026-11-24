@@ -112,7 +112,6 @@ local MAP_ART = {
     mail       = { "Mailbox", TRACKING .. "Mailbox" },
 }
 local ROUND_ART = { spirit = true }
--- A word of a profession NPC's title in Towns.lua, and that profession's Apprentice spell for its icon.
 local TRADE_SPELLS = { Alchemist = 2259, Blacksmith = 2018, Tailor = 3908, Clothier = 3908, Leather = 2108,
     Enchant = 7411, Engineer = 4036, Herbalis = 2366, Mining = 2575, Miner = 2575, Skinn = 8613,
     ["First Aid"] = 3273, Cook = 2550, Fish = 7620 }
