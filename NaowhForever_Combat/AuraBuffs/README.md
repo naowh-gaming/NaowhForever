@@ -125,9 +125,10 @@ NaowhForever_Combat/AuraBuffs/
   to you there. A tank offline, dead or out of sight cannot be read or reached, so it shows nothing. While it is on, the row follows every group member's `UNIT_AURA`,
   `GROUP_ROSTER_UPDATE` and `PLAYER_ROLES_ASSIGNED`, as Raid Buff Reminders do. A cast at you fades it
   only when you are the one tank missing it (`solo`).
-- Righteous Fury (`righteousFury`, Celiby's ask, off until picked) reminds a paladin only with Improved Righteous Fury learned
-  (`tankTalent`, spell 20468, trait node 105634 in TrainingBuilds, build 1.60.1.70790) or while `IsTank` says
-  you are the tank, so a healer or Retribution paladin without the talent never sees it. Talents come in on
+- Righteous Fury (`righteousFury`, Celiby's ask, off until picked) reminds a paladin only with Redoubt learned
+  (`tankTalent`, spell 20127, trait node 105626 in TrainingBuilds, build 1.60.1.70790; one point is enough) or while
+  `IsTank` says you are the tank, so a healer or Retribution paladin without the talent never sees it. Redoubt is a
+  first-tier Protection talent, so a tank has it from level 10; Improved Righteous Fury comes much later. Talents come in on
   `SPELLS_CHANGED`; while it is picked the row also listens to `PLAYER_ROLES_ASSIGNED` and
   `GROUP_ROSTER_UPDATE` (`WatchesRole`), but only to your own `UNIT_AURA`.
 - A weapon reminder fades once every weapon it covers is enchanted (`MissingSlot`), re-read on

@@ -2451,10 +2451,10 @@ do
     Check("another class: no role events", mage.Listening("PLAYER_ROLES_ASSIGNED"), false)
 end
 
--- Righteous Fury: only with Improved Righteous Fury learned, or while you are the group's tank.
+-- Righteous Fury: only with Redoubt learned, or while you are the group's tank.
 do
     local PICKED = { personalBuffPicks = { righteousFury = true } }
-    local unpicked = Fixture({ units = { player = "PALADIN" }, known = { [25780] = true, [20468] = true } })
+    local unpicked = Fixture({ units = { player = "PALADIN" }, known = { [25780] = true, [20127] = true } })
     unpicked.Login()
     Check("off until picked", unpicked.Shown(), "")
     Check("off: no role events", unpicked.Listening("PLAYER_ROLES_ASSIGNED"), false)
@@ -2487,14 +2487,14 @@ do
     Check("no longer the tank: gone", healer.Shown(), "")
 
     local talented = Fixture({ settings = PICKED, units = { player = "PALADIN" },
-        known = { [25780] = true, [20468] = true } })
+        known = { [25780] = true, [20127] = true } })
     talented.Login()
-    Check("Improved Righteous Fury learned, solo: on you", talented.Shown(), "spell:25780")
+    Check("Redoubt learned, solo: on you", talented.Shown(), "spell:25780")
     talented.Set("personalBuffPicks", { righteousFury = false })
     Check("unpicked: nothing", talented.Shown(), "")
     Check("unpicked: no role events", talented.Listening("PLAYER_ROLES_ASSIGNED"), false)
 
-    local mage = Fixture({ settings = PICKED, units = { player = "MAGE" }, known = { [25780] = true, [20468] = true } })
+    local mage = Fixture({ settings = PICKED, units = { player = "MAGE" }, known = { [25780] = true, [20127] = true } })
     mage.Login()
     Check("another class: no role events", mage.Listening("PLAYER_ROLES_ASSIGNED"), false)
 end
