@@ -340,7 +340,8 @@ local function Listen()
         events:RegisterUnitEvent("UNIT_AURA", "player")
     end
     if R.WatchesTarget() then events:RegisterEvent("PLAYER_TARGET_CHANGED") end
-    if R.WatchesTanks() then events:RegisterEvent("PLAYER_ROLES_ASSIGNED") end
+    if R.WatchesTanks() or R.WatchesRole() then events:RegisterEvent("PLAYER_ROLES_ASSIGNED") end
+    if R.WatchesRole() then events:RegisterEvent("GROUP_ROSTER_UPDATE") end
     if R.WatchesLevel() then events:RegisterEvent("PLAYER_LEVEL_UP") end
     if S.Get("personalBuffs") or S.Get("weaponEnhancements") then
         events:RegisterUnitEvent("UNIT_INVENTORY_CHANGED", "player")

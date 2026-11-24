@@ -734,6 +734,9 @@ local function PersonalBuffs(list, buffs)
     local warn = PersonalWarn()
     for _, family in ipairs(D.PERSONAL) do
         local spell = family.class == class and PersonalPicked(family) and Knows(family.spells)
+        if spell and family.tankTalent and not (C_SpellBook.IsSpellKnown(family.tankTalent) or IsTank("player")) then
+            spell = nil
+        end
         if spell and TankOnly(family) and GetNumGroupMembers() > 0 then
             OnTanks(list, family, buffs, warn, spell)
             spell = nil
@@ -830,6 +833,15 @@ function Reminders.WatchesTanks()
     local _, class = UnitClass("player")
     for _, family in ipairs(D.PERSONAL) do
         if TankOnly(family) and family.class == class and PersonalPicked(family) then return true end
+    end
+    return false
+end
+
+function Reminders.WatchesRole()
+    if not S.Get("personalBuffs") then return false end
+    local _, class = UnitClass("player")
+    for _, family in ipairs(D.PERSONAL) do
+        if family.tankTalent and family.class == class and PersonalPicked(family) then return true end
     end
     return false
 end

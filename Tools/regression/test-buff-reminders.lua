@@ -1785,7 +1785,7 @@ do
         if row.key == "personalBuffPicks" then fields[#fields + 1] = row.field end
     end
     Check("shaman picks come first, then every other class", table.concat(fields, " "),
-        "imbue shield demonArmor firestone spellstone mageArmor poisons battleShout innerFire shadowform aspect trueshot huntersMark thorns")
+        "imbue shield demonArmor firestone spellstone mageArmor poisons battleShout innerFire shadowform aspect trueshot huntersMark thorns righteousFury")
     local extra
     for _, row in ipairs(card.rows) do
         if row.key == "personalBuffExtra" then extra = row end
@@ -2447,6 +2447,54 @@ do
     Check("a click on the last tank missing it fades it", raid.Faded(), "spell:467")
 
     local mage = Fixture({ settings = { thornsTankOnly = true }, units = { player = "MAGE" } })
+    mage.Login()
+    Check("another class: no role events", mage.Listening("PLAYER_ROLES_ASSIGNED"), false)
+end
+
+-- Righteous Fury: only with Improved Righteous Fury learned, or while you are the group's tank.
+do
+    local PICKED = { personalBuffPicks = { righteousFury = true } }
+    local unpicked = Fixture({ units = { player = "PALADIN" }, known = { [25780] = true, [20468] = true } })
+    unpicked.Login()
+    Check("off until picked", unpicked.Shown(), "")
+    Check("off: no role events", unpicked.Listening("PLAYER_ROLES_ASSIGNED"), false)
+
+    local healer = Fixture({ settings = PICKED, group = "party", units = { player = "PALADIN", party1 = "WARRIOR" },
+        roles = { player = "HEALER", party1 = "TANK" }, known = { [25780] = true },
+        auras = { player = {}, party1 = {} } })
+    healer.Login()
+    Check("no talent, not the tank: nothing", healer.Shown(), "")
+    Check("listens for roles and the group", healer.Listening("PLAYER_ROLES_ASSIGNED")
+        and healer.Listening("GROUP_ROSTER_UPDATE"), true)
+    healer.state.roles = { player = "TANK" }
+    healer.Fire("PLAYER_ROLES_ASSIGNED")
+    healer.Advance(0.5)
+    Check("given the Tank role: on you", healer.Shown(), "spell:25780")
+    healer.state.auras.player = { { 25780, 1700, 1800 } }
+    healer.Fire("UNIT_AURA", "player")
+    healer.Advance(0.5)
+    Check("up: nothing", healer.Shown(), "")
+    healer.state.auras.player = {}
+    healer.state.roles = {}
+    healer.state.mainTanks = { player = true }
+    healer.Fire("UNIT_AURA", "player")
+    healer.Fire("PLAYER_ROLES_ASSIGNED")
+    healer.Advance(0.5)
+    Check("a raid main tank counts as the tank", healer.Shown(), "spell:25780")
+    healer.state.mainTanks = {}
+    healer.Fire("GROUP_ROSTER_UPDATE")
+    healer.Advance(0.5)
+    Check("no longer the tank: gone", healer.Shown(), "")
+
+    local talented = Fixture({ settings = PICKED, units = { player = "PALADIN" },
+        known = { [25780] = true, [20468] = true } })
+    talented.Login()
+    Check("Improved Righteous Fury learned, solo: on you", talented.Shown(), "spell:25780")
+    talented.Set("personalBuffPicks", { righteousFury = false })
+    Check("unpicked: nothing", talented.Shown(), "")
+    Check("unpicked: no role events", talented.Listening("PLAYER_ROLES_ASSIGNED"), false)
+
+    local mage = Fixture({ settings = PICKED, units = { player = "MAGE" }, known = { [25780] = true, [20468] = true } })
     mage.Login()
     Check("another class: no role events", mage.Listening("PLAYER_ROLES_ASSIGNED"), false)
 end
