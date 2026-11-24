@@ -6,11 +6,14 @@ local function Read(path)
 end
 local source = Read("NaowhForever_QoL/Interface/UnitNames.lua")
 
-local function Load(cvars)
-    local card
+local function Load(cvars, account)
+    local card, apply
+    account = account or {}
     local ns = { L = dofile("Tools/regression/locale_stub.lua").L, Upper = string.upper, Lower = string.lower, QoLSettings = {}, Shared = { Settings = {
         Page = function() return { Card = function(_, c) card = c end } end,
     } } }
+    ns.AccountSettings = function() return account end
+    ns.OnApply = function(fn) apply = fn end
     local env = setmetatable({
         _G = { NaowhForever = ns },
         wipe = function(t) for k in pairs(t) do t[k] = nil end return t end,
@@ -23,7 +26,13 @@ local function Load(cvars)
     local chunk = assert(loadstring(source, "UnitNames"))
     setfenv(chunk, env)
     chunk()
-    return card
+    return card, apply
+end
+
+local function Row(card, label)
+    for _, row in ipairs(card.rows()) do
+        if row.label == label then return row end
+    end
 end
 
 local count = 0
@@ -45,6 +54,33 @@ Case("a row reads and writes the game's setting", function()
     guild.set(true)
     assert(cvars.UnitNamePlayerGuild == "1")
     assert(card.rows()[2] == guild, "the same row each time the page draws")
+end)
+
+Case("a guild row keeps nothing of its own", function()
+    local account = {}
+    local card = Load({ UnitNamePlayerGuild = "1" }, account)
+    Row(card, "Guild Names").set(false)
+    assert(account.unitNames == nil)
+end)
+Case("a totem row is kept and put back after the game turns it on again", function()
+    local cvars = { UnitNameFriendlyTotemName = "1", UnitNameFriendlyGuardianName = "1", UnitNameEnemyPetName = "1" }
+    local account = {}
+    local card, apply = Load(cvars, account)
+    Row(card, "Friendly Totems").set(false)
+    Row(card, "Friendly Guardians").set(false)
+    assert(account.unitNames.UnitNameFriendlyTotemName == "0" and account.unitNames.UnitNameFriendlyGuardianName == "0")
+    cvars.UnitNameFriendlyTotemName, cvars.UnitNameFriendlyGuardianName = "1", "1"
+    apply()
+    assert(cvars.UnitNameFriendlyTotemName == "0" and cvars.UnitNameFriendlyGuardianName == "0")
+    assert(cvars.UnitNameEnemyPetName == "1", "an untouched row stays the game's")
+    assert(card.summary() == "1 of 3 shown", card.summary())
+end)
+Case("nothing changed, nothing put back", function()
+    local set = 0
+    local cvars = setmetatable({ UnitNameFriendlyTotemName = "1" }, { __newindex = function(t, k, v) set = set + 1; rawset(t, k, v) end })
+    local _, apply = Load(cvars, {})
+    apply()
+    assert(set == 0)
 end)
 
 print("test-unit-names: " .. count .. " cases passed")

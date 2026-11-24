@@ -40,7 +40,7 @@ NaowhForever_QoL/
     SpellEfficiencyReport.lua  the Mana Efficiency window (ns.OpenSpellEfficiencyReport, /nf efficiency): every rank of your mana spells
     GlobalCopy.lua      /copy, and tooltip IDs with their copy shortcut (the card is Shared/UI/CopyCard.lua)
     HideClutter.lua     UI Clutter
-    UnitNames.lua       Names Over Heads: guild names, guild titles and player titles with player names
+    UnitNames.lua       Names Over Heads: guild names, guild titles, player titles, and pet, guardian and totem names
     HDR.lua             HDR: the game's HDR and Peak Brightness
     ConsoleVariables.lua  Console Variables: every console variable with its value and default in a window
                         (ns.OpenConsoleVariables), to change, export and import (ns.ImportConsoleVariables),
@@ -400,6 +400,9 @@ NaowhForever_QoL/
 - Names Over Heads writes the game's own `UnitNamePlayerGuild`, `UnitNameGuildTitle` and
   `UnitNamePlayerPVPTitle` and keeps nothing: the game saves them. Forever's options have no box for
   them (only your own, NPC and player names), and a row shows only where the client has its setting.
+  The friendly and enemy pet, guardian and totem names (`UnitNameFriendlyPetName` and its five
+  siblings) go back on at every login (reported 11-21), so a value set from the card is kept in the account store and put
+  back on apply. Nothing is kept until a player changes one.
 - In-game cinematics carry no ID, so one is known by the zone and subzone it plays in. Skipping
   one waits a frame so CinematicFrame has taken the start before it is cancelled.
 - Finishing a movie shows UIParent again, which combat lockdown would block, so a movie is never
