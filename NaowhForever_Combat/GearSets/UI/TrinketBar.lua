@@ -5,6 +5,7 @@ local S = ns.QoLSettings
 local T = ns.THEME
 local Parts = ns.Shared.Parts
 local Items = ns.Shared.Items
+local ItemBar = ns.Shared.ItemBar
 local G = ns.GearSets
 local C, St, Look = G.C, G.Style, G.Look
 local TRINKET_SLOTS, BAR_SLOTS = C.TRINKET_SLOTS, C.BAR_SLOTS
@@ -37,7 +38,7 @@ local TEXT_UNPICKED = ns.L("Nothing will be swapped in when combat ends.")
 local TEXT_MOVER = "Trinkets"
 
 local trinkets, picker, moving
-local items, seen, bySlot, shown = {}, {}, {}, {}
+local items, seen, bySlot, shown, listed = {}, {}, {}, {}, {}
 local watcher = CreateFrame("Frame")
 
 local function ClosePicker()
@@ -263,15 +264,21 @@ end
 local function PickSlots()
     wipe(trinkets.buttons)
     wipe(shown)
-    for _, slot in ipairs(BAR_SLOTS[S.Get("trinketSlots")] or TRINKET_SLOTS) do
-        local button = bySlot[slot] or NewSlot(slot)
-        trinkets.buttons[#trinkets.buttons + 1] = button
-        shown[slot] = button
-        button:Show()
+    wipe(listed)
+    local list = BAR_SLOTS[S.Get("trinketSlots")] or TRINKET_SLOTS
+    for _, slot in ipairs(list) do
+        listed[slot] = true
+        if moving or GetInventoryItemID("player", slot) then
+            local button = bySlot[slot] or NewSlot(slot)
+            trinkets.buttons[#trinkets.buttons + 1] = button
+            shown[slot] = button
+            button:Show()
+        end
     end
     for slot, button in pairs(bySlot) do
         if not shown[slot] then button:Hide() end
     end
+    return #list
 end
 
 local function Place()
@@ -315,10 +322,11 @@ local function ApplyTrinkets()
         return
     end
     if not trinkets then BuildTrinkets() end
-    PickSlots()
+    local room = PickSlots()
     Place()
-    Look.Trinkets(trinkets, trinkets.buttons, S.Get("trinketSize"), S.Get("trinketSpacing"), S.Get("trinketGrow"),
-        S.Get("trinketSquare"))
+    local size, gap, grow = S.Get("trinketSize"), S.Get("trinketSpacing"), S.Get("trinketGrow")
+    Look.Trinkets(trinkets, trinkets.buttons, size, gap, grow, S.Get("trinketSquare"))
+    trinkets:SetSize(ItemBar.Size(room, size, gap, grow, ItemBar.ONE_LINE))
     for _, button in ipairs(trinkets.buttons) do
         button:SetAttribute("type1", GetInventoryItemID("player", button.inventorySlot) and "item" or nil)
         button.cooldown:SetHideCountdownNumbers(not S.Get("trinketCountdown"))
@@ -326,7 +334,7 @@ local function ApplyTrinkets()
     ShowCooldowns()
     ShowPicks()
     trinkets.mover:SetShown(moving == true)
-    trinkets:Show()
+    trinkets:SetShown(moving or #trinkets.buttons > 0)
 end
 
 local function OnEvent(_, event, slot)
@@ -337,8 +345,8 @@ local function OnEvent(_, event, slot)
         if picker and picker:IsShown() then ShowPickCooldowns() end
     elseif event ~= "PLAYER_EQUIPMENT_CHANGED" then
         ApplyTrinkets()
-    elseif shown[slot] then
-        if InCombatLockdown() then shown[slot].icon:SetTexture(GetInventoryItemTexture("player", slot) or EMPTY_ICON) end
+    elseif listed[slot] then
+        if shown[slot] and InCombatLockdown() then shown[slot].icon:SetTexture(GetInventoryItemTexture("player", slot) or EMPTY_ICON) end
         ApplyTrinkets()
     end
 end

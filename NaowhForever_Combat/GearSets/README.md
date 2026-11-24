@@ -82,7 +82,12 @@ NaowhForever_Combat/GearSets/
   released on close. Hiding the UI (Alt-Z, a cinematic) hides the dialog too, which releases
   the icons, so it stays closed when the UI comes back. The grid is built once; what changes
   per open (the icon list, the action) is kept on it.
-- `EMPTY_ICON` (134400) is the game's question mark, for an empty trinket slot.
+- The bar shows only the slots that wear something, and hides when none does (Robin's ask): an empty
+  slot's question mark read as broken. Unlock Mode shows every slot, so the bar can be placed with
+  nothing worn; there `EMPTY_ICON` (134400), the game's question mark, marks an empty one. The bar
+  keeps the size of all its slots, so the worn ones pack from its start edge and stay where it was
+  placed instead of shifting around its centre. Layout
+  waits for combat, so a weapon taken off in a fight keeps its slot until the fight ends.
 - The trinket slots are secure item buttons: a change to them waits for combat to end, and a
   right-click opens the picker of what fits the slot. The bags are checked again on the click,
   since they may have changed since the picker opened.

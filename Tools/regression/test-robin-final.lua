@@ -9,7 +9,7 @@ local function fixture(kind)
             trinketSize = 36, trinketSpacing = 4, gearBarSize = 32, gearBarSpacing = 4, gearBarShow = 'always',
             gearMounted = '', gearResting = '', gearDrinking = '', gearDungeon = '', gearRaid = '', gearBattleground = '',
             gearForms = {} },
-        frames = {}, named = {}, timers = {}, equips = {} }
+        frames = {}, named = {}, timers = {}, equips = {}, empty = {} }
     local function frame(name, parent, template)
         local f = { scripts = {}, events = {}, shown = true, parent = parent, attributes = {},
             secure = template == 'SecureActionButtonTemplate' or name == 'NaowhForeverTrinkets' }
@@ -101,8 +101,8 @@ local function fixture(kind)
         GetTime = function() return state.now end,
         IsInInstance = function() return false end,
         IsMounted = function() return false end, IsResting = function() return false end,
-        GetInventoryItemTexture = function(_, slot) return slot + 1000 end,
-        GetInventoryItemID = function(_, slot) return slot + 2000 end,
+        GetInventoryItemTexture = function(_, slot) if not state.empty[slot] then return slot + 1000 end end,
+        GetInventoryItemID = function(_, slot) if not state.empty[slot] then return slot + 2000 end end,
         GetInventoryItemCooldown = function(_, slot)
             local cd = state.cooldowns and state.cooldowns[slot]
             if cd then return cd[1], cd[2], 1 end
@@ -237,6 +237,30 @@ do
     s.combat = false; s.fire('PLAYER_REGEN_ENABLED')
     s.S.Set('trinketSlots', 'trinkets')
     check('back to Trinkets: two slots, the weapons hidden', #bar.buttons == 2 and not main.shown)
+end
+
+do
+    local s = fixture('gear')
+    s.empty = { [14] = true }
+    s.loadModule('NaowhForever_Combat/GearSets'); s.fire('PLAYER_LOGIN')
+    local bar = s.named.NaowhForeverTrinkets
+    check('an empty trinket slot is left off the bar', #bar.buttons == 1 and bar.buttons[1] == s.named.NaowhForeverTrinket1
+        and bar.shown)
+    check('and the bar keeps its placed size, so the slot left does not move', bar.width == 2 * 36 + 4)
+    s.empty = { [13] = true, [14] = true }
+    local watcher
+    for _, f in ipairs(s.frames) do if f.events.PLAYER_EQUIPMENT_CHANGED and f.events.PLAYER_REGEN_DISABLED then watcher = f end end
+    watcher.scripts.OnEvent(watcher, 'PLAYER_EQUIPMENT_CHANGED', 13)
+    check('no trinket worn: the bar hides', #bar.buttons == 0 and not bar.shown
+        and not s.named.NaowhForeverTrinket1.shown)
+    s.ns.ShowUnlockMode()
+    check('Unlock Mode shows every slot, to place the bar', bar.shown and #bar.buttons == 2)
+    s.ns.HideUnlockMode()
+    check('and hides them again after', not bar.shown)
+    s.empty = { [13] = true }
+    watcher.scripts.OnEvent(watcher, 'PLAYER_EQUIPMENT_CHANGED', 14)
+    check('putting one on brings the bar back with it', bar.shown and #bar.buttons == 1
+        and bar.buttons[1] == s.named.NaowhForeverTrinket2)
 end
 
 do
