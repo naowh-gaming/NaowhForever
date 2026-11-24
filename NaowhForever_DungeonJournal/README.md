@@ -963,7 +963,8 @@ in the pull request it opens.
   hears: a quest log update is checked against the quest signature, a party member's against
   their counts, a bag update against the counts the draw read (`Loot.RecordCounts`), and any
   other event, a setting, a favourite, the BiS list, stat weights or a loading screen means the
-  next open draws again.
+  next open draws again. A loading screen into a dungeon draws its page then, with the map shut,
+  and so do item names that arrive while it is shut (never in combat), so an open finds it ready.
 - The world map calls every pin's `CheckMouseButtonPassthrough`, and its
   `SetPassThroughButtons` is protected: from our refresh it is blocked in combat, and the
   entrance pins want their clicks, so theirs does nothing. Pins acquired in combat taint the map,

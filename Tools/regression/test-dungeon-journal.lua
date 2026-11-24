@@ -1360,6 +1360,27 @@ do
     Open()
     check("and the next open draws it", draws == 6)
     Close()
+    local function LoadingScreen()
+        for _, frame in ipairs(state.made) do
+            if frame.events.PLAYER_ENTERING_WORLD and frame ~= view then
+                frame.scripts.OnEvent(frame, "PLAYER_ENTERING_WORLD")
+            end
+        end
+    end
+    LoadingScreen()
+    local warmed = draws
+    check("a loading screen into a dungeon draws its page with the map shut", warmed > 6 and view:IsVisible() == false)
+    Open()
+    check("so the first open after it draws nothing", draws == warmed)
+    Close()
+    view.waitingFor[4242] = true
+    Event("GET_ITEM_INFO_RECEIVED", 4242, true)
+    for _, fn in ipairs(state.timers) do fn() end
+    check("an item's name arriving while shut draws it again, still shut", draws > warmed)
+    warmed = draws
+    Open()
+    check("and the open after that draws nothing", draws == warmed)
+    Close()
     S.Set("enabled", false)
     check("off, the kept page listens for nothing", next(view.events) == nil)
 end

@@ -290,7 +290,12 @@ end
 function ViewMixin:Flush()
     self.flushQueued = false
     if not self:IsVisible() then
-        if not self.keepHidden then self.dirty, self.questsDirty = false, false end
+        if not self.keepHidden then
+            self.dirty, self.questsDirty = false, false
+        elseif self.itemsArrived then
+            self.itemsArrived = false
+            if not self.dirty then self.redrawHidden() end
+        end
         return
     end
     local questsOnly = self.questsDirty and not self.dirty
@@ -307,6 +312,8 @@ function ViewMixin:HiddenEvent(event, arg, success)
             self.waitingFor[arg] = nil
             return
         end
+        self.itemsArrived = true
+        return self:QueueFlush()
     elseif QUEST_EVENTS[event] then
         self.questsDirty = true
         return

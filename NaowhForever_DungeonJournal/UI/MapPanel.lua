@@ -41,7 +41,7 @@ local function On()
     return S.Get("enabled") and (S.Get("mapPanel") or S.Get("mapFactions")) and not ns.GamepadStandDown()
 end
 
-local function DrawShown()
+local function DrawPage()
     local page = pages[shownIndex]
     view.lootDense = S.Get("newLayout") == true
     if pagesAreFactions then
@@ -52,7 +52,11 @@ local function DrawShown()
         view:Draw(page)
     end
     drawnPage, drawnBoss, stale = page, shownBoss, false
-    J.ShowMapOnWorldMap(not pagesAreFactions and page or nil)
+end
+
+local function DrawShown()
+    DrawPage()
+    J.ShowMapOnWorldMap(not pagesAreFactions and pages[shownIndex] or nil)
 end
 
 local function DrawIfChanged()
@@ -102,6 +106,25 @@ local function FitWidth()
     if panel:IsShown() then view:Redraw() end
 end
 
+local function DrawHidden()
+    DrawPage()
+    local room = panel.scroll:GetHeight()
+    if not (room and room > 0) then return end
+    local tall = view:GetHeight() > room
+    if tall == panel.scroll.bar:IsShown() then return end
+    panel.scroll.bar:SetShown(tall)
+    FitWidth()
+    DrawPage()
+end
+
+local function RedrawHidden()
+    if stale or InCombatLockdown() or not (pages and pages[shownIndex] == drawnPage) then
+        view.dirty = true
+        return
+    end
+    DrawHidden()
+end
+
 local function BuildButtons()
     panel.switch = ns.Button(panel, TEXT_OTHER_HALF, BUTTON_W, BUTTON_H, OtherHalf)
     panel.switch:SetPoint("RIGHT", panel.close, "LEFT", -BUTTON_GAP, 0)
@@ -121,6 +144,7 @@ local function Build()
     view = J.View.New(scroll)
     view.onWorldMap = true
     view.keepHidden = true
+    view.redrawHidden = RedrawHidden
     scroll:SetScrollChild(view)
     panel.scroll = scroll
     FitWidth()
@@ -227,9 +251,23 @@ local function FoldQuestLog()
     end
 end
 
+local function Prewarm()
+    if not S.Get("mapPanel") or InCombatLockdown() or WorldMapFrame:IsShown() then return end
+    local here = J.Current()
+    if not here then return end
+    if not panel then
+        Build()
+        panel:Hide()
+    end
+    pages, pagesAreFactions, shownIndex, shownBoss, chosen = here, false, 1, nil, nil
+    Place()
+    DrawHidden()
+end
+
 local function FolderEvent(_, event)
     if event == "PLAYER_ENTERING_WORLD" then ForgetPage() end
     FoldQuestLog()
+    if event == "PLAYER_ENTERING_WORLD" and On() then Prewarm() end
 end
 
 local function MapShown()
