@@ -4,7 +4,8 @@
 -- A learned node, an enemy node, and a friendly node past 400 yards stay quiet. A capital names
 -- its own flight point with no distance check, and stays quiet once that point is known.
 -- Combat and a taxi hide it. Talking to a flight master records that
--- town's point without opening the flight map. The switch off registers nothing. The snapshot
+-- town's point without opening the flight map, and a map that shows a learned point unreachable keeps it
+-- learned. The switch off registers nothing. The snapshot
 -- is this character's GUID. Zone alerts are expired automatically for these local-reminder checks;
 -- the zone-entry checks below drive their timer explicitly.
 
@@ -270,18 +271,24 @@ check("an empty subzone is not the town", Text() == nil)
 
 state.subzone = "Auberdine"
 state.nodes = { Node("Auberdine, Darkshore", ALLIANCE, 0, true, AUBERDINE) }
-state.openNodes = { { nodeID = AUBERDINE, state = CURRENT } }
-Fire("TAXIMAP_OPENED")
-check("a snapshot that marks the flight point known hides it", Text() == nil
-    and account.flightPoints[GUID].seenMaps[KALIMDOR] == true and account.flightPoints[GUID][AUBERDINE] == true
-    and account.flightPoints["Glyadin-Forever"] == nil)
 state.openNodes = { { nodeID = AUBERDINE, state = UNREACHABLE } }
 Fire("TAXIMAP_OPENED")
-check("an unreachable snapshot keeps the reminder", Text() == "Learn the Auberdine flight point")
+check("an unreachable snapshot keeps the reminder", Text() == "Learn the Auberdine flight point"
+    and account.flightPoints[GUID].seenMaps[KALIMDOR] == true and account.flightPoints[GUID][AUBERDINE] == false
+    and account.flightPoints["Glyadin-Forever"] == nil)
 state.options = { { icon = TAXI } }
 Fire("GOSSIP_SHOW")
 check("talking to the flight master hides it without opening the map again", Text() == nil
     and account.flightPoints[GUID][AUBERDINE] == true and account.flightPoints[GUID].seenMaps[KALIMDOR] == true)
+account.flightPoints[GUID][AUBERDINE] = nil
+state.openNodes = { { nodeID = AUBERDINE, state = CURRENT } }
+Fire("TAXIMAP_OPENED")
+check("a snapshot that marks the flight point known hides it", Text() == nil
+    and account.flightPoints[GUID][AUBERDINE] == true)
+state.openNodes = { { nodeID = AUBERDINE, state = UNREACHABLE } }
+Fire("TAXIMAP_OPENED")
+check("a learned flight point stays learned on a map with no known way to it", Text() == nil
+    and account.flightPoints[GUID][AUBERDINE] == true)
 state.subzone, state.pos = "", { x = 0, y = 0 }
 
 check("an undiscovered neutral node in range names the place",

@@ -933,8 +933,10 @@ NaowhForever_QoL/
   as known when it is within `MASTER_REACH` (50 yards) of you, or your position is unreadable: flight
   masters stand within 11 yards of their node, and the druids' in Nighthaven is 345 yards from
   Moonglade's. So the reminder hides without opening the flight map, and does not mark the snapshot
-  complete. The snapshot is this character's GUID in `flightPoints` (`TAXIMAP_OPENED`), and opening
-  the map still replaces every node from `GetAllTaxiNodes`. A name cannot tell two characters apart.
+  complete. The snapshot is this character's GUID in `flightPoints` (`TAXIMAP_OPENED`). A node the map
+  shows unreachable is saved as unknown only if it is not known already: a point you learned reads
+  unreachable from any master with no way to it through the points you know, and replacing it made
+  the point's own town remind you again. A name cannot tell two characters apart.
 - Opening a flight map saves both its taxi map ID and the player's real continent in
   `seenMaps`. Classic and Forever use separate taxi maps: 1463 for Eastern Kingdoms (1415)
   and 1464 for Kalimdor (1414). `TAXI_MAPS` lets both the screen reminder and pin hint recognize

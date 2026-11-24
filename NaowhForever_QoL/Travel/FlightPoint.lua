@@ -140,7 +140,7 @@ local function Learn()
     if taxiContinent then mine.seenMaps[taxiContinent] = true end
     if continent then mine.seenMaps[continent] = true end
     for _, node in ipairs(C_TaxiMap.GetAllTaxiNodes(taxi)) do
-        if node.nodeID then mine[node.nodeID] = node.state ~= UNREACHABLE end
+        if node.nodeID then mine[node.nodeID] = mine[node.nodeID] or node.state ~= UNREACHABLE end
     end
 end
 
