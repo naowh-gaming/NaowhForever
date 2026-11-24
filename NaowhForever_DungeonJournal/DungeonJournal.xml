@@ -94,6 +94,7 @@
     <Script file="Data\Art.lua"/>
     <Script file="Data\Paintings.lua"/>
     <Script file="Data\QuestHelp.lua"/>
+    <Script file="Data\QuestTips.lua"/>
     <Script file="Data\QuestRewards.lua"/>
     <Script file="Loot.lua"/>
     <Script file="Finder.lua"/>

@@ -12,6 +12,7 @@ local QUEST = J.C.QUEST
 local PERCENT = J.C.PERCENT
 local ID, NAME, LEVEL, SIDE, WHERE = QUEST.ID, QUEST.NAME, QUEST.LEVEL, QUEST.SIDE, QUEST.WHERE
 local MAP, X, Y = QUEST.MAP, QUEST.X, QUEST.Y
+local TIPS = J.QuestTips
 
 local RANK = { prereq = 1, prereqLog = 2, low = 3, pickup = 4, next = 5, active = 6, ready = 7, lost = 8, done = 9 }
 local PIN_RANK = { ready = 1, pickup = 2, tooHigh = 3, active = 4, low = 5, prereq = 6, none = 7 }
@@ -44,6 +45,7 @@ local TEXT_JOIN = ", "
 local TEXT_LOST_IF = ns.L("Lost if you take %s first.")
 local TEXT_LOSES = ns.L("Taking it loses %s for good.")
 local TEXT_ONE_VERSION = ns.L("Only one of its versions can be done: taking another loses it.")
+local TEXT_STEP_TIP = "%s: %s"
 
 local requested = {}
 local paths = {}
@@ -721,9 +723,20 @@ function Q.Open(kind)
 end
 local Open = Q.Open
 
-function Q.Warnings(quest, out)
-    wipe(out)
-    if not (S.Get("questHelp") and Open(Kind(quest))) then return out end
+local function AddTips(quest, out)
+    local id = quest[ID]
+    if TIPS[id] then out[#out + 1] = TIPS[id] end
+    local steps = Chain(quest)
+    for i = 1, steps and #steps or 0 do
+        local state, step = StepState(steps[i])
+        if state ~= "done" then
+            if step ~= id and TIPS[step] then out[#out + 1] = TEXT_STEP_TIP:format(StepName(step), TIPS[step]) end
+            return
+        end
+    end
+end
+
+local function LostLines(quest, out)
     local name, versions = quest[NAME], false
     for _, other in ipairs(J.QuestClosedBy[quest[ID]] or EMPTY) do
         local record = QuestByID(other)
@@ -740,5 +753,14 @@ function Q.Warnings(quest, out)
             out[#out + 1] = TEXT_LOSES:format(Q.Name(record))
         end
     end
+end
+
+function Q.Warnings(quest, out)
+    wipe(out)
+    if not S.Get("questHelp") then return out end
+    local kind = Kind(quest)
+    if kind == "done" or kind == "lost" then return out end
+    if Open(kind) then LostLines(quest, out) end
+    AddTips(quest, out)
     return out
 end

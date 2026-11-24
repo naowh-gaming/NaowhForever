@@ -61,6 +61,7 @@ NaowhForever_DungeonJournal/
     Art.lua            each dungeon's loading screen from the game's files, for Dungeon Art, by hand
     Paintings.lua      each classic dungeon's painting and each boss's face from the game's files, for New Layout, generated
     QuestHelp.lua      which quests close another for good, and the items each quest asks for, generated
+    QuestTips.lua      what to know before a dungeon quest or a step of its chain, by quest ID, by hand
     QuestRewards.lua   the items each quest rewards, to choose from and to get, generated
   View/                drawing a page on the shared row engine; used by the window, the map panel and the popups
     Style.lua          what only the Journal draws: colors, icons, sizes (J.Style, over Shared/Style.lua)
@@ -145,6 +146,7 @@ calls are on `ns`.
 | --- | --- |
 | A colour, a size, spacing, an icon | `View/Style.lua`; the house look every module shares (borders, BiS stars, cards, item rows, windows) is `Shared/Style.lua`. A number one file uses is at the top of that file; the dungeon map's are at the top of `UI/MapView.lua` and `UI/MapWindow.lua` |
 | A boss tip | `Data/Tips.lua`, keyed by the boss's NPC ID, one short sentence |
+| A quest tip (done outside, finish before the last boss, a group quest) | `Data/QuestTips.lua`, keyed by the quest's ID, one short sentence; a step's tip shows on its quest while it is the step you are on, with Quest Help on |
 | A dungeon's painting or a boss's face (New Layout) | `python Tools/build/journal_art.py`; a file it prints as not held is checked in a Forever client, then added to `Tools/data/journal_art_held.json` |
 | New Layout's pages | `UI/Window.lua` switches them (`ApplyMode`, `ShowHome`); the dungeon page is `UI/DungeonPane.lua`, the home pages `UI/Home.lua` and `UI/FactionHome.lua`, and a view draws its new look from its flags (`lootDense`, `headAside`, `finderAside`, `factionAside`, `searchTable`) |
 | The picture behind a dungeon's header (Dungeon Art) | `Data/Art.lua`: the file ID of the dungeon's loading screen, from the game's own tables (see Why) |
