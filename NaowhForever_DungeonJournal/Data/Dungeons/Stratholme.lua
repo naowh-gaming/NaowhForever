@@ -6,6 +6,10 @@ ns.Journal.AddDungeon("Stratholme", {
     instance = 329,
     zone = "Eastern Plaguelands", area = 139, territory = "Contested",
     entrance = { map = 1423, x = 26.9, y = 11.8 },
+    doors = {
+        { name = "Main Gate", map = 1423, x = 26.1, y = 10.4 },
+        { name = "Service Entrance", map = 1423, x = 41.9, y = 15.8 },
+    },
     wings = {
         { name = "Main Gate", bosses = {
             { npc = 10808, name = "Timmy the Cruel", model = 571, encounters = { 474 }, loot = { 13400, 13402, 13401, 13403, 16724 }, chance = { 20, 19, 19, 18, 14 } },

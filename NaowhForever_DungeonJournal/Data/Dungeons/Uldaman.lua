@@ -7,6 +7,10 @@ ns.Journal.AddDungeon("Uldaman", {
     closed = true,
     zone = "Badlands", area = 3, territory = "Contested",
     entrance = { map = 1418, x = 44.0, y = 12.0 },
+    doors = {
+        { name = "Front Entrance", map = 1418, x = 44.0, y = 12.0 },
+        { name = "Back Door", map = 1418, x = 67.7, y = 43.2 },
+    },
     wings = {
         { bosses = {
             { npc = 6910, name = "Revelosh", model = 5945, encounters = { 547 }, loot = { 9389, 9387, 9390, 9388 }, chance = { 23, 23, 22, 21 } },

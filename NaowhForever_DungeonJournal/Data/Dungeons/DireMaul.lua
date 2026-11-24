@@ -6,6 +6,12 @@ ns.Journal.AddDungeon("DireMaul", {
     instance = 429,
     zone = "Feralas", area = 357, territory = "Contested",
     entrance = { map = 1444, x = 61.9, y = 31.6 },
+    doors = {
+        { name = "East", map = 1444, x = 64.9, y = 29.4 },
+        { name = "East Back Door", map = 1444, x = 76.5, y = 35.9 },
+        { name = "West", map = 1444, x = 60.3, y = 30.7 },
+        { name = "North", map = 1444, x = 62.9, y = 24.9 },
+    },
     wings = {
         { name = "East", bosses = {
             { npc = 14354, name = "Pusillin", model = 7552, encounters = { 2792 }, loot = { 18316, 18320, 18303, 18304, 18267 } },

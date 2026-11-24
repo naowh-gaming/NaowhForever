@@ -27,6 +27,7 @@ local TEXT_OPEN = ns.L("Click: open its map.")
 local TEXT_OPEN_MANY = ns.L("Click: choose one and open its map.")
 local TEXT_RIGHT_WAYPOINT = ns.L("Right-click for a waypoint (again to remove it).")
 local TEXT_ENTRANCE = ns.L(" (entrance)")
+local TEXT_DOOR = ns.L("%s: %s")
 
 local provider, added, events
 local spots = {}
@@ -93,6 +94,11 @@ local function GroupName(dungeons, fallback)
     return #dungeons == 1 and dungeons[1].name or dungeons[1].zone or fallback
 end
 
+local function Title(group)
+    if group.door then return TEXT_DOOR:format(group.dungeons[1].name, group.door) end
+    return GroupName(group.dungeons, TEXT_ENTRANCE_NAME)
+end
+
 local function MapClickOn()
     return S.Get("entranceJournal") and S.Get("mapPanel") and not ns.GamepadStandDown()
 end
@@ -143,7 +149,7 @@ local function MakePinMixin()
     function Pin:OnMouseEnter()
         local dungeons = self.group.dungeons
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-        GameTooltip:SetText(GroupName(dungeons, TEXT_ENTRANCE_NAME), 1, 1, 1)
+        GameTooltip:SetText(Title(self.group), 1, 1, 1)
         for _, dungeon in ipairs(dungeons) do
             local right = KindText(dungeon)
             if #dungeons == 1 then
@@ -171,25 +177,28 @@ local function MakePinMixin()
         local mapClick = MapClickOn()
         if button == "LeftButton" and mapClick then return OpenJournal(self) end
         if button ~= (mapClick and "RightButton" or "LeftButton") then return end
-        local dungeons = self.group.dungeons
-        local entrance = dungeons[1].entrance
-        ns.ToggleWaypoint(GroupName(dungeons, dungeons[1].name), entrance.map, entrance.x, entrance.y, TEXT_ENTRANCE, nil, true)
+        local spot = self.group.spot
+        ns.ToggleWaypoint(Title(self.group), spot.map, spot.x, spot.y, TEXT_ENTRANCE, nil, true)
     end
 end
 
-local function GroupBySpot(map, mapID, groups, bySpot, dungeon)
-    local entrance = dungeon.entrance
-    if not (entrance and J.FactionShown(dungeon)) then return end
-    local x, y = SpotOn(map, mapID, entrance)
+local function GroupBySpot(map, mapID, groups, bySpot, dungeon, spot, door)
+    local x, y = SpotOn(map, mapID, spot)
     if not x then return end
-    local key = SPOT_KEY:format(entrance.map, entrance.x, entrance.y)
+    local key = SPOT_KEY:format(spot.map, spot.x, spot.y)
     local group = bySpot[key]
     if not group then
-        group = { x = x, y = y, dungeons = {} }
+        group = { x = x, y = y, spot = spot, door = door, dungeons = {} }
         bySpot[key] = group
         groups[#groups + 1] = group
     end
     group.dungeons[#group.dungeons + 1] = dungeon
+end
+
+local function AddDungeon(map, mapID, groups, bySpot, dungeon)
+    if not (dungeon.entrance and J.FactionShown(dungeon)) then return end
+    if not dungeon.doors then return GroupBySpot(map, mapID, groups, bySpot, dungeon, dungeon.entrance) end
+    for _, door in ipairs(dungeon.doors) do GroupBySpot(map, mapID, groups, bySpot, dungeon, door, door.name) end
 end
 
 local function MakeProvider()
@@ -206,7 +215,7 @@ local function MakeProvider()
         local mapID = map:GetMapID()
         if not mapID then return end
         local groups, bySpot = {}, {}
-        for _, dungeon in ipairs(J.Dungeons()) do GroupBySpot(map, mapID, groups, bySpot, dungeon) end
+        for _, dungeon in ipairs(J.Dungeons()) do AddDungeon(map, mapID, groups, bySpot, dungeon) end
         for _, group in ipairs(groups) do map:AcquirePin(TEMPLATE, group) end
     end
 end

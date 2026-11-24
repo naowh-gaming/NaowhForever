@@ -4678,12 +4678,13 @@ do
     providers[1]:RefreshAllData()
     local spots = {}
     for _, dungeon in ipairs(J.Dungeons()) do
-        local e = dungeon.entrance
-        if e and J.FactionShown(dungeon) then spots[e.map .. ":" .. e.x .. ":" .. e.y] = true end
+        if dungeon.entrance and J.FactionShown(dungeon) then
+            for _, e in ipairs(dungeon.doors or { dungeon.entrance }) do spots[e.map .. ":" .. e.x .. ":" .. e.y] = true end
+        end
     end
     local want = 0
     for _ in pairs(spots) do want = want + 1 end
-    check("a map that holds them shows every entrance, one pin per spot", #pins == want and want > 20)
+    check("a map that holds them shows every entrance and door, one pin per spot", #pins == want and want > 20)
     -- Off the map's edge: not on it.
     state.onMap = { [1415] = 3 }
     shownMap = 1415
@@ -4748,6 +4749,21 @@ do
     local waypoint = state.waypoints[#state.waypoints]
     check("a click puts a waypoint on the entrance", waypoint.map == 1445 and waypoint.x == 52.9
         and waypoint.note == " (entrance)" and waypoint.title == "Onyxia's Lair")
+    -- A dungeon with several doors: one pin each, named, its waypoint on that door.
+    shownMap = 1444   -- Feralas: Dire Maul
+    providers[1]:RefreshAllData()
+    local doors = {}
+    for _, group in ipairs(pins) do
+        if group.dungeons[1].key == "DireMaul" then doors[group.door] = group end
+    end
+    check("Dire Maul has a pin for each door, none for its courtyard", doors.East and doors["East Back Door"]
+        and doors.West and doors.North and #pins == 4)
+    pin:OnAcquired(doors.West)
+    pin:OnMouseEnter()
+    pin:OnClick("LeftButton")
+    waypoint = state.waypoints[#state.waypoints]
+    check("a door's waypoint is on that door, named for it", waypoint.map == 1444 and waypoint.x == 60.3
+        and waypoint.y == 30.7 and waypoint.title == "Dire Maul: West")
     S.Set("mapEntrances", false)
     check("off again, its pins go", #pins == 0)
 end
