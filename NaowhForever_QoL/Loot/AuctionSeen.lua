@@ -15,6 +15,12 @@ local function On()
     return S.Get("ahPrices") or S.Get("ahCapture") or market ~= nil and market.On()
 end
 
+local function SuffixName(key)
+    if key.itemSuffix == 0 then return end
+    local info = C_AuctionHouse.GetItemKeyInfo(key)
+    return info and info.itemName
+end
+
 local function SeeBrowse(results)
     for i = 1, #results do
         local result = results[i]
@@ -22,12 +28,14 @@ local function SeeBrowse(results)
         if price > 0 then
             local whole = key.itemSuffix == 0
             ns.AuctionSeen(key.itemID, price, whole and result.totalQuantity or nil, whole)
+            local name = not whole and SuffixName(key)
+            if name then ns.AuctionSeenSuffix(key.itemID, name, price, true) end
         end
     end
     ns.AuctionSeenDone()
 end
 
-local function SeeRows(itemID, count, Info, arg, field, whole, full)
+local function SeeRows(itemID, count, Info, arg, field, whole, full, name)
     local shown = math.min(count, SEEN_ROWS)
     local lowest, last, quantity, rising = nil, nil, 0, true
     for i = 1, shown do
@@ -42,7 +50,9 @@ local function SeeRows(itemID, count, Info, arg, field, whole, full)
     end
     if not lowest then return end
     local all = full and shown == count
-    ns.AuctionSeen(itemID, lowest, all and quantity or nil, whole and (all or rising and lowest < last))
+    local exact = all or rising and lowest < last
+    ns.AuctionSeen(itemID, lowest, all and quantity or nil, whole and exact)
+    if name then ns.AuctionSeenSuffix(itemID, name, lowest, exact) end
     ns.AuctionSeenDone()
 end
 
@@ -70,7 +80,7 @@ local function OnEvent(_, event, arg)
             arg, "unitPrice", true, C_AuctionHouse.HasFullCommoditySearchResults(arg))
     elseif event == "ITEM_SEARCH_RESULTS_UPDATED" then
         SeeRows(arg.itemID, C_AuctionHouse.GetNumItemSearchResults(arg), C_AuctionHouse.GetItemSearchResultInfo,
-            arg, "buyoutAmount", arg.itemSuffix == 0, C_AuctionHouse.HasFullItemSearchResults(arg))
+            arg, "buyoutAmount", arg.itemSuffix == 0, C_AuctionHouse.HasFullItemSearchResults(arg), SuffixName(arg))
     elseif postID then
         ns.AuctionSeen(postID, postPrice)
         ns.AuctionSeenDone()

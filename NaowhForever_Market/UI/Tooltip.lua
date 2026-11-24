@@ -195,7 +195,7 @@ end
 
 local function Collect(tooltip, itemID, link)
     count = 0
-    local each = ns.AuctionPrice and ns.AuctionPrice(itemID)
+    local each = ns.AuctionPrice and ns.AuctionPrice(itemID, link)
     local info = BagSlot(tooltip, itemID)
     local stack = info and info.stackCount or 1
     local disenchant, required = Disenchant(link, itemID)

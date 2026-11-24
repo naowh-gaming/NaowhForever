@@ -82,6 +82,7 @@ local function Setup(opts)
             GetNumItemSearchResults = function(key) return #(items[key.itemID] or {}) end,
             GetItemSearchResultInfo = function(key, i) return items[key.itemID][i] end,
             HasFullItemSearchResults = function() return full end,
+            GetItemKeyInfo = function(key) return key.name and { itemName = key.name } or nil end,
             PostItem = Noop,
             PostCommodity = Noop,
         },
@@ -94,7 +95,8 @@ local function Setup(opts)
             end
         end,
         TooltipDataProcessor = { AddTooltipPostCall = function(_, fn) posts[#posts + 1] = fn end },
-        Enum = { TooltipDataType = { Item = 0 }, AuctionHouseSortOrder = { Price = 0, Name = 1 },
+        TooltipUtil = { GetDisplayedItem = function(tooltip) return nil, tooltip.link end },
+        Enum = { ItemClass = { Weapon = 2, Armor = 4 }, TooltipDataType = { Item = 0 }, AuctionHouseSortOrder = { Price = 0, Name = 1 },
             AuctionHouseFilter = { PoorQuality = 2, CommonQuality = 3, UncommonQuality = 4, RareQuality = 5,
                 EpicQuality = 6, LegendaryQuality = 7 } },
     }, { __index = _G })
@@ -133,8 +135,8 @@ local function Setup(opts)
         items[key.itemID], full = rows, whole ~= false
         t.Fire("ITEM_SEARCH_RESULTS_UPDATED", key)
     end
-    function t.Tooltip(id)
-        local tooltip = { lines = {} }
+    function t.Tooltip(id, link)
+        local tooltip = { lines = {}, link = link }
         function tooltip:AddDoubleLine(left, right) self.lines[#self.lines + 1] = { left = left, right = right } end
         for _, post in ipairs(posts) do post(tooltip, { id = id }) end
         return tooltip.lines
@@ -242,6 +244,23 @@ t.Items(key, Rows("buyoutAmount", false, 400, 300))
 Check("an item's listings skip bids without a buyout", t.ns.AuctionPrice(SWORD) == 300 and t.ns.AuctionListed(SWORD) == 5)
 t.Items({ itemID = BELT, itemLevel = 30, itemSuffix = 588 }, Rows("buyoutAmount", 8000))
 Check("one variant's listings never raise the item's price", t.ns.AuctionPrice(BELT) == 7000)
+
+local BEAR = "|cff1eff00|Hitem:9775::::::588::30|h[Bandit Cinch of the Bear]|h|r"
+local OWL = "|cff1eff00|Hitem:9775::::::1183::30|h[Bandit Cinch of the Owl]|h|r"
+local bear, owl = Row(BELT, 9500, 1, 588), Row(BELT, 7100, 2, 1183)
+bear.itemKey.name, owl.itemKey.name = "Bandit Cinch of the Bear", "Bandit Cinch of the Owl"
+t.Browse({ bear, owl })
+Check("a named random-suffix row prices that variant", t.ns.AuctionPrice(BELT, BEAR) == 9500
+    and t.ns.AuctionPrice(BELT, OWL) == 7100 and t.ns.AuctionPrice(BELT) == 7000)
+Check("dated by the sighting", select(2, t.ns.AuctionPrice(BELT, BEAR)) == t.Now())
+local bearKey = { itemID = BELT, itemLevel = 30, itemSuffix = 588, name = "Bandit Cinch of the Bear" }
+t.Items(bearKey, Rows("buyoutAmount", 9900, 9950))
+Check("that variant's listings read to the end replace its price, up as well as down",
+    t.ns.AuctionPrice(BELT, BEAR) == 9900 and t.ns.AuctionPrice(BELT) == 7000)
+t.Items(bearKey, Rows("buyoutAmount", 9990, 9800), false)
+Check("listings still arriving in another order only lower it", t.ns.AuctionPrice(BELT, BEAR) == 9800)
+lines = t.Tooltip(BELT, BEAR)
+Check("the tooltip shows the hovered variant's price", lines[1].right:find("^9800c") ~= nil)
 
 local told = t.Changes()
 t.env.C_AuctionHouse.PostCommodity({ itemID = CLOTH }, 2, 20, 130)

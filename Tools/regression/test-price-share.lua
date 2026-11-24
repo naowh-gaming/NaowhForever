@@ -9,6 +9,8 @@ local NOW = 100 * DAY
 local HERB, OLD, GEAR, TRADE, DUST, NEW, TSM_PRICED = 10, 20, 30, 40, 11, 50, 60
 local ARMOR, TRADE_GOODS = 4, 7
 local GUID = "Player-1-00000001"
+local BEAR = "|Hitem:30::::::1234|h[Gear of the Bear]|h"
+local suffixes = { [BEAR] = { 4200, NOW - DAY } }
 local reported = {}
 
 local function Setup(on, opts)
@@ -21,8 +23,12 @@ local function Setup(on, opts)
     local ns = {
         QoLSettings = S,
         QoLConstants = { SECONDS_PER_DAY = DAY },
-        AuctionPrice = function(id)
-            local p = id and prices[id]
+        AuctionPrice = function(id, link)
+            local p = link and suffixes[link] or id and prices[id]
+            if p then return p[1], p[2] end
+        end,
+        AuctionSuffixPrice = function(_, link)
+            local p = suffixes[link]
             if p then return p[1], p[2] end
         end,
         AuctionPriceList = function()
@@ -104,9 +110,12 @@ Check("a price stamped a little ahead of the realm's clock is today's, not -1 da
 Check("a priced item is exact", api.IsAuctionDataExactByItemID("Test", HERB) == true
     and api.IsAuctionDataExactByItemLink("Test", "|Hitem:10|h[Herb]|h") == true)
 Check("an unpriced one is not", api.IsAuctionDataExactByItemID("Test", 999) == false)
-Check("a gear link is never exact: its price is the item's, not that link's",
-    api.IsAuctionDataExactByItemLink("Test", "|Hitem:30::::::1234|h[Gear]|h") == false
+Check("a gear link is not exact when only the item's price is known, not that link's",
+    api.IsAuctionDataExactByItemLink("Test", "|Hitem:30::::::99|h[Gear of the Owl]|h") == false
     and api.IsAuctionDataExactByItemID("Test", GEAR) == true)
+Check("but is once that suffix has its own price, which the link asks for",
+    api.IsAuctionDataExactByItemLink("Test", BEAR) == true and api.GetAuctionPriceByItemLink("Test", BEAR) == 4200
+    and api.GetAuctionAgeByItemLink("Test", BEAR) == 1)
 Check("the setting can be turned on while Auctionator is not installed", ns.PriceShareFree() == true)
 Check("vendor price is Professions' merchant price", api.GetVendorPriceByItemID("Test", TRADE) == 25
     and api.GetVendorPriceByItemLink("Test", "|Hitem:40|h[Cloth]|h") == 25)

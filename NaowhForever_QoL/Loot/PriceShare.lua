@@ -28,14 +28,14 @@ local function Owned()
     return _G.Auctionator == stand
 end
 
-local function Price(itemID)
+local function Price(itemID, link)
     if not Owned() then return end
-    return (ns.AuctionPrice(itemID))
+    return (ns.AuctionPrice(itemID, link))
 end
 
-local function Age(itemID)
+local function Age(itemID, link)
     if not Owned() then return end
-    local _, at = ns.AuctionPrice(itemID)
+    local _, at = ns.AuctionPrice(itemID, link)
     if not at then return end
     local days = math.max(0, math.floor((GetServerTime() - at) / SECONDS_PER_DAY))
     if days <= MAX_AGE_DAYS then return days end
@@ -65,7 +65,7 @@ end
 
 function api.GetAuctionPriceByItemLink(callerID, itemLink)
     Check("GetAuctionPriceByItemLink", callerID, itemLink, "itemLink", "string")
-    return Price(LinkID(itemLink))
+    return Price(LinkID(itemLink), itemLink)
 end
 
 function api.GetAuctionAgeByItemID(callerID, itemID)
@@ -75,7 +75,7 @@ end
 
 function api.GetAuctionAgeByItemLink(callerID, itemLink)
     Check("GetAuctionAgeByItemLink", callerID, itemLink, "itemLink", "string")
-    return Age(LinkID(itemLink))
+    return Age(LinkID(itemLink), itemLink)
 end
 
 function api.IsAuctionDataExactByItemID(callerID, itemID)
@@ -85,7 +85,9 @@ end
 
 function api.IsAuctionDataExactByItemLink(callerID, itemLink)
     Check("IsAuctionDataExactByItemLink", callerID, itemLink, "itemLink", "string")
-    if GEAR[select(CLASS_INDEX, C_Item.GetItemInfoInstant(itemLink))] then return false end
+    if GEAR[select(CLASS_INDEX, C_Item.GetItemInfoInstant(itemLink))] then
+        return Owned() and ns.AuctionSuffixPrice(LinkID(itemLink), itemLink) ~= nil
+    end
     return Price(LinkID(itemLink)) ~= nil
 end
 

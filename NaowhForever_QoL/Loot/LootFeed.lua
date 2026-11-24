@@ -270,7 +270,7 @@ end
 
 local function UnitPrice(link, vendor)
     if S.Get("lootFeedPrice") == "ahscan" then
-        local price = ns.AuctionPrice(C_Item.GetItemInfoInstant(link))
+        local price = ns.AuctionPrice((C_Item.GetItemInfoInstant(link)), link)
         if price then return price end
     end
     if S.Get("lootFeedPrice") == "tsm" and TSM_API and TSM_API.GetCustomPriceValue then

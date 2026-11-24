@@ -72,6 +72,11 @@ local FEED_BASE = 36
 local FEED_DIGITS = 6
 local MATCH_MIN = 20
 local MATCH_SPREAD = 0.01
+local CLASS_INDEX = 6
+local GEAR = { [Enum.ItemClass.Weapon] = true, [Enum.ItemClass.Armor] = true }
+local LINK_SUFFIX = "item:%-?%d+:%-?%d*:%-?%d*:%-?%d*:%-?%d*:%-?%d*:(%-?%d*)"
+local LINK_NAME = "|h%[(.-)%]|h"
+local NO_SUFFIX = "0"
 
 local button, scanning, scanGen = nil, nil, 0
 local ownScan, houseOpen, hooked, earlyAt
@@ -225,6 +230,29 @@ local function Lookup(itemID, other)
     if at then return own, at, house.listed and house.listed[itemID], true end
 end
 
+local function SuffixName(link)
+    local suffix = link:match(LINK_SUFFIX)
+    if suffix and suffix ~= "" and suffix ~= NO_SUFFIX then return link:match(LINK_NAME) end
+end
+
+local function SuffixLookup(itemID, name)
+    local house = House(false)
+    local names = house and house.suffixes and house.suffixes[itemID]
+    local price = names and names[name]
+    if not price then return end
+    local seen = house.suffixSeen and house.suffixSeen[itemID]
+    return price, seen and seen[name] or house.time
+end
+
+local function KeepSuffix(suffixes, itemID, name, price)
+    local names = suffixes[itemID]
+    if not names then
+        names = {}
+        suffixes[itemID] = names
+    end
+    if not names[name] or price < names[name] then names[name] = price end
+end
+
 local function TsmLoaded()
     return TSM_API ~= nil
 end
@@ -255,8 +283,15 @@ local function AuctionatorPrice(itemID)
     if ok then return value end
 end
 
-function ns.AuctionPrice(itemID)
+function ns.AuctionSuffixPrice(itemID, link)
+    local name = itemID and link and SuffixName(link)
+    if name then return SuffixLookup(itemID, name) end
+end
+
+function ns.AuctionPrice(itemID, link)
     if not itemID then return end
+    local suffixPrice, suffixAt = ns.AuctionSuffixPrice(itemID, link)
+    if suffixPrice then return suffixPrice, suffixAt end
     local addon = TsmPrice(itemID) or AuctionatorPrice(itemID)
     if addon then return addon end
     local price, at = Lookup(itemID)
@@ -311,13 +346,16 @@ function ns.AuctionPriceList()
     return merged, math.max(scanned or 0, feedTime)
 end
 
-function ns.AuctionSeen(itemID, price, listed, exact)
-    local house = seenHouse
-    if not house then
-        house = House(true)
-        house.seen = house.seen or {}
-        seenHouse, seenNow = house, GetServerTime()
+local function SeenHouse()
+    if not seenHouse then
+        seenHouse, seenNow = House(true), GetServerTime()
+        seenHouse.seen = seenHouse.seen or {}
     end
+    return seenHouse
+end
+
+function ns.AuctionSeen(itemID, price, listed, exact)
+    local house = SeenHouse()
     local old = house.prices[itemID]
     if not exact and old and old <= price then return end
     house.seen[itemID] = seenNow
@@ -336,6 +374,22 @@ function ns.AuctionSeen(itemID, price, listed, exact)
     house.prices[itemID] = price
     seenCount = seenCount + 1
     seenIDs[seenCount] = itemID
+end
+
+function ns.AuctionSeenSuffix(itemID, name, price, exact)
+    local house = SeenHouse()
+    house.suffixes, house.suffixSeen = house.suffixes or {}, house.suffixSeen or {}
+    local names, dates = house.suffixes[itemID], house.suffixSeen[itemID]
+    if not names then
+        names = {}
+        house.suffixes[itemID] = names
+    end
+    if not exact and names[name] and names[name] <= price then return end
+    if not dates then
+        dates = {}
+        house.suffixSeen[itemID] = dates
+    end
+    names[name], dates[name] = price, seenNow
 end
 
 function ns.AuctionSeenDone()
@@ -418,18 +472,23 @@ local function Stop(message)
     ownScan = nil
 end
 
-local function ReadListing(prices, listed, i)
+local function ReadListing(prices, listed, suffixes, i)
     local _, _, count, _, _, _, _, _, _, buyout, _, _, _, _, _, _, itemID =
         C_AuctionHouse.GetReplicateItemInfo(i)
     if not (itemID and buyout and buyout > 0 and count and count > 0) then return end
     local each = math.floor(buyout / count)
     if not prices[itemID] or each < prices[itemID] then prices[itemID] = each end
     listed[itemID] = (listed[itemID] or 0) + 1
+    if not GEAR[select(CLASS_INDEX, C_Item.GetItemInfoInstant(itemID))] then return end
+    local link = C_AuctionHouse.GetReplicateItemLink(i)
+    local name = link and SuffixName(link)
+    if name then KeepSuffix(suffixes, itemID, name, each) end
 end
 
-local function Finish(prices, listed)
+local function Finish(prices, listed, suffixes)
     local house = House(true)
     house.prices, house.listed, house.time, house.seen = prices, listed, GetServerTime(), nil
+    house.suffixes, house.suffixSeen = next(suffixes) and suffixes or nil, nil
     local feed = feeds[Side()]
     if feed then feed.matched = nil end
     Stop()
@@ -440,31 +499,35 @@ local function Finish(prices, listed)
     if ns.AuctionPricesChanged then ns.AuctionPricesChanged() end
 end
 
-local function ReadRow(prices, listed, i, rows)
+local function ReadRow(prices, listed, suffixes, i, rows)
     local row = rows[i + 1]
     local price = row.minPrice
     if price <= 0 then return end
-    local itemID = row.itemKey.itemID
+    local key = row.itemKey
+    local itemID = key.itemID
     if not prices[itemID] or price < prices[itemID] then prices[itemID] = price end
     listed[itemID] = (listed[itemID] or 0) + row.totalQuantity
+    if key.itemSuffix == 0 then return end
+    local info = C_AuctionHouse.GetItemKeyInfo(key)
+    if info then KeepSuffix(suffixes, itemID, info.itemName, price) end
 end
 
 local function ReadAll(total, ReadOne, rows)
     scanning = true
     scanGen = scanGen + 1
     if total == 0 then return Stop(TEXT_EMPTY) end
-    local prices, listed, index, gen = {}, {}, 0, scanGen
+    local prices, listed, suffixes, index, gen = {}, {}, {}, 0, scanGen
     local function Step()
         if gen ~= scanGen then return end
         local last = math.min(index + CHUNK, total) - 1
-        for i = index, last do ReadOne(prices, listed, i, rows) end
+        for i = index, last do ReadOne(prices, listed, suffixes, i, rows) end
         index = last + 1
         if index < total then
             Label(TEXT_PROGRESS:format(math.floor(index * PERCENT / total)))
             C_Timer.After(0, Step)
             return
         end
-        Finish(prices, listed)
+        Finish(prices, listed, suffixes)
     end
     Step()
 end
@@ -699,7 +762,9 @@ local function AddPrices(tooltip, id)
     if not (own or crates or writs) then return end
     local price, priceAt
     local market = ns.Market
-    if own and not (market and market.ShowsPrice(tooltip, id)) then price, priceAt = ns.AuctionPrice(id) end
+    if own and not (market and market.ShowsPrice(tooltip, id)) then
+        price, priceAt = ns.AuctionPrice(id, select(2, TooltipUtil.GetDisplayedItem(tooltip)))
+    end
     local at = ns.AuctionScanTime() or priceAt
     if not (at or price or S.Get("ahTsm") or S.Get("ahAuctionator")) then return end
     local bundles = crates and ns.WaylaidCrates[id]

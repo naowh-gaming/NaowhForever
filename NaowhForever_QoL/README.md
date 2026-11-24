@@ -508,6 +508,18 @@ NaowhForever_QoL/
   bags you are looking at.
 - Auction Prices keeps one price table per auction house (realm and faction), as prices differ;
   the key is worked out once because it is read on every item tooltip.
+- Random-suffix gear ("of the Bear") also keeps a price per variant: `house.suffixes`, item ID to the
+  variant's full name to its lowest buyout, with `house.suffixSeen` dating the ones seen since the last
+  scan as `house.seen` does. `ns.AuctionPrice(itemID, link)` answers a link whose suffix field is not 0
+  with its variant's price before anything else, TSM and Auctionator included, since theirs is the
+  item's; a variant never seen falls back to the item's price, the cheapest variant. Only weapons and
+  armour are checked in a fast scan, and only their rows ask for a link (`GetReplicateItemLink`).
+- The variant is keyed by its full name, as the link's brackets and `GetItemKeyInfo`'s `itemName` both
+  give it, because the link's suffix ID and the item key's `itemSuffix` are not documented to be the same
+  number. Unverified in game: that `itemName` carries the suffix on Forever; if it does not, browse and
+  search sightings simply never match a link and the fast scan's prices still do.
+- A full or page by page scan replaces the variants with its own, as it does the prices. The release's
+  prices are per item only, so they never price a variant: the feed would need a variant table of its own.
 - The house is the one you are at: your faction's, or the realm's Blackwater house (`Realm-Blackwater`)
   while the auction house is open at an auctioneer of neither faction. So a scan in Booty Bay is kept as
   Blackwater's and never overwrites your faction's prices, and closing the auction house goes back to
@@ -698,9 +710,9 @@ NaowhForever_QoL/
   window instead and keeps Blizzard's hidden or shrunk away; a scan behind it would spend the 15-minute fast
   scan its own scans want and replace its searches.
 - Age is whole days since the price's scan or the release's prices, never below 0 (the release's time can
-  run a little ahead of the realm's clock), and nil past 21 days, as Auctionator's is. A price is per item
-  ID, so a link's price ignores a random suffix ("of the Bear"); for that reason a weapon or armour link is
-  never exact, while any other priced item is.
+  run a little ahead of the realm's clock), and nil past 21 days, as Auctionator's is. A link with a
+  random suffix ("of the Bear") gets its variant's price when one is known; a weapon or armour link is exact
+  only then, since otherwise its price is the item's cheapest variant, while any other priced item is.
 - Other addons can ask for a price during their own load, before the player's faction is known, so
   `House()` remembers its key only once the faction is there; until then it uses the realm-only key, as
   before, without remembering it.

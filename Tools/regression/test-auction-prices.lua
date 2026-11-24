@@ -5,6 +5,8 @@ local checks = 0
 local function Check(label, value) assert(value, label); checks = checks + 1 end
 local function Noop() end
 
+local GEAR_FIRST = 500
+
 local function Setup(buttonOn, captureOn, withFrame, cratesOn, tooltipOn, feed, region)
     local values = { ahPrices = buttonOn, ahCapture = captureOn, ahCrates = cratesOn, ahTooltip = tooltipOn,
         ahAutoScanMinutes = 15 }
@@ -17,6 +19,7 @@ local function Setup(buttonOn, captureOn, withFrame, cratesOn, tooltipOn, feed, 
     local npc, decodes, territory = nil, 0, "contested"
     local card, button
     local ahShown = true
+    local listings, links = {}, {}
     local frame = {}
     function frame:RegisterEvent(event) registered[event] = true end
     function frame:UnregisterEvent(event) registered[event] = nil end
@@ -98,7 +101,14 @@ local function Setup(buttonOn, captureOn, withFrame, cratesOn, tooltipOn, feed, 
             HasFullBrowseResults = function() return full end,
             GetBrowseResults = function() return rows end,
             GetNumReplicateItems = function() return total end,
+            GetReplicateItemLink = function(i) return links[i] end,
+            GetItemKeyInfo = function(key) return key.name and { itemName = key.name } or nil end,
             GetReplicateItemInfo = function(i)
+                local listing = listings[i]
+                if listing then
+                    return nil, nil, listing[2], nil, nil, nil, nil, nil, nil, listing[3],
+                        nil, nil, nil, nil, nil, nil, listing[1], allInfo
+                end
                 local count, buyout, id = 2, 101, 10
                 if i == 1 then buyout = 99 end
                 if i == 2 then count = 0 end
@@ -117,7 +127,9 @@ local function Setup(buttonOn, captureOn, withFrame, cratesOn, tooltipOn, feed, 
             end
         end,
         TooltipDataProcessor = { AddTooltipPostCall = function(_, fn) posts[#posts + 1] = fn end },
-        Enum = { TooltipDataType = { Item = 0 }, AuctionHouseSortOrder = { Price = 0, Name = 1 },
+        TooltipUtil = { GetDisplayedItem = function(tooltip) return nil, tooltip.link end },
+        C_Item = { GetItemInfoInstant = function(id) return id, nil, nil, nil, nil, id >= GEAR_FIRST and 4 or 7 end },
+        Enum = { ItemClass = { Weapon = 2, Armor = 4 }, TooltipDataType = { Item = 0 }, AuctionHouseSortOrder = { Price = 0, Name = 1 },
             AuctionHouseFilter = { PoorQuality = 2, CommonQuality = 3, UncommonQuality = 4, RareQuality = 5,
                 EpicQuality = 6, LegendaryQuality = 7 } },
     }, { __index = _G })
@@ -152,6 +164,7 @@ local function Setup(buttonOn, captureOn, withFrame, cratesOn, tooltipOn, feed, 
     function t.ReplicateHooks() return replicateHooks end
     function t.Flush() for _ = 1, 20 do t.Run(0) end end
     function t.AllInfo(value) allInfo = value end
+    function t.Listing(i, id, count, buyout, link) listings[i], links[i] = { id, count, buyout }, link end
     function t.Total(value) total = value end
     function t.Advance(seconds) now = now + seconds end
     function t.PostCalls() return #posts end
@@ -172,8 +185,8 @@ local function Setup(buttonOn, captureOn, withFrame, cratesOn, tooltipOn, feed, 
     function t.Priced(prices, ago, listed)
         account.ahPrices = { ["Realm-Alliance"] = { prices = prices, listed = listed, time = now - ago } }
     end
-    function t.Tooltip(id)
-        local tooltip = { lines = {} }
+    function t.Tooltip(id, link)
+        local tooltip = { lines = {}, link = link }
         function tooltip:AddDoubleLine(left, right, r, g, b)
             self.lines[#self.lines + 1] = { left = left, right = right, r = r, g = g, b = b }
         end
@@ -959,5 +972,62 @@ Check("it sits under the item's auction price", #lines == 2 and lines[1].left ==
     and lines[1].right == "519c |cff808080each, 5m ago|r" and lines[2].right == THREAD_AT_VENDOR)
 t.settings.Set("ahVendor", false)
 Check("and goes when it is turned off", #t.Tooltip(THREAD) == 1)
+
+local BELT = 501
+local BEAR = "|cff1eff00|Hitem:501::::::7::60|h[Belt of the Bear]|h|r"
+local BEAR_TOO = "|cff1eff00|Hitem:501::::::7:12345:60|h[Belt of the Bear]|h|r"
+local MONKEY = "|cff1eff00|Hitem:501::::::8::60|h[Belt of the Monkey]|h|r"
+local EAGLE = "|cff1eff00|Hitem:501::::::9::60|h[Belt of the Eagle]|h|r"
+local PLAIN = "|cff1eff00|Hitem:501::::::::60|h[Belt]|h|r"
+t = Setup(true, false, true, false, true)
+t.Fire("AUCTION_HOUSE_SHOW")
+t.Listing(4, BELT, 1, 900, BEAR)
+t.Listing(5, BELT, 1, 400, MONKEY)
+t.Listing(6, BELT, 1, 1000, BEAR_TOO)
+t.Button().click()
+t.Fire("REPLICATE_ITEM_LIST_UPDATE")
+t.Flush()
+Check("a fast scan still prices gear at its cheapest variant", t.ns.AuctionPrice(BELT) == 400)
+Check("and each random suffix at its own lowest, by the link", t.ns.AuctionPrice(BELT, BEAR) == 900
+    and t.ns.AuctionPrice(BELT, BEAR_TOO) == 900 and t.ns.AuctionPrice(BELT, MONKEY) == 400)
+Check("a suffix price is dated by the scan", select(2, t.ns.AuctionPrice(BELT, BEAR)) == t.Now())
+Check("a suffix the scan did not see, or a link without one, takes the item's price",
+    t.ns.AuctionPrice(BELT, EAGLE) == 400 and t.ns.AuctionPrice(BELT, PLAIN) == 400)
+Check("only a suffix link has a suffix price", t.ns.AuctionSuffixPrice(BELT, BEAR) == 900
+    and t.ns.AuctionSuffixPrice(BELT, PLAIN) == nil and t.ns.AuctionSuffixPrice(BELT, EAGLE) == nil)
+Check("non-gear keeps no suffix table", t.House("Realm-Alliance").suffixes[10] == nil)
+lines = t.Tooltip(BELT, BEAR)
+Check("the tooltip shows the hovered variant's price", lines[1].right:find("^900c") ~= nil)
+lines = t.Tooltip(BELT, MONKEY)
+Check("and another variant's own", lines[1].right:find("^400c") ~= nil)
+t.ns.AuctionSeenSuffix(BELT, "Belt of the Bear", 950)
+t.ns.AuctionSeenDone()
+Check("a higher sighting of one variant does not raise it", t.ns.AuctionPrice(BELT, BEAR) == 900)
+t.Advance(60)
+t.ns.AuctionSeenSuffix(BELT, "Belt of the Bear", 950, true)
+t.ns.AuctionSeenDone()
+Check("a sighting of the whole variant replaces it, dated on its own", t.ns.AuctionPrice(BELT, BEAR) == 950
+    and select(2, t.ns.AuctionPrice(BELT, BEAR)) == t.Now() and t.ns.AuctionScanTime() == t.Now() - 60)
+t.ns.AuctionSeenSuffix(BELT, "Belt of the Eagle", 700)
+t.ns.AuctionSeenDone()
+Check("and a variant seen first is kept", t.ns.AuctionPrice(BELT, EAGLE) == 700)
+t.Listing(4, nil, 0, 0)
+t.Listing(5, nil, 0, 0)
+t.Listing(6, nil, 0, 0)
+t.Advance(901)
+t.Button().click()
+t.Fire("REPLICATE_ITEM_LIST_UPDATE")
+t.Flush()
+Check("a scan with no suffixed gear forgets the old ones", t.House("Realm-Alliance").suffixes == nil
+    and t.House("Realm-Alliance").suffixSeen == nil and t.ns.AuctionPrice(BELT, BEAR) == nil)
+
+t = Paged()
+t.Button().click()
+local bear, monkey = Row(BELT, 300, 1, 7), Row(BELT, 200, 2, 8)
+bear.itemKey.name, monkey.itemKey.name = "Belt of the Bear", "Belt of the Monkey"
+t.Page({ bear, monkey, Row(BELT, 250, 1, 9) }, true)
+t.Flush()
+Check("a page by page scan keeps each suffix it can name", t.ns.AuctionPrice(BELT, BEAR) == 300
+    and t.ns.AuctionPrice(BELT, MONKEY) == 200 and t.ns.AuctionPrice(BELT, EAGLE) == 200)
 
 print("auction prices: " .. checks .. " checks passed")
