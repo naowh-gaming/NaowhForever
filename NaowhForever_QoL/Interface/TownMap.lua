@@ -112,6 +112,10 @@ local MAP_ART = {
     mail       = { "Mailbox", TRACKING .. "Mailbox" },
 }
 local ROUND_ART = { spirit = true }
+-- A word of a profession NPC's title in Towns.lua, and that profession's Apprentice spell for its icon.
+local TRADE_SPELLS = { Alchemist = 2259, Blacksmith = 2018, Tailor = 3908, Clothier = 3908, Leather = 2108,
+    Enchant = 7411, Engineer = 4036, Herbalis = 2366, Mining = 2575, Miner = 2575, Skinn = 8613,
+    ["First Aid"] = 3273, Cook = 2550, Fish = 7620 }
 local TRAVEL_ART = {
     Boat = { "FlightMasterFerry", "Islands-AllianceBoat", "Islands-HordeBoat" },
     Zeppelin = { "TaxiNode_Continent_Neutral", "Interface\\Icons\\INV_ZeppelinMount", "Vehicle-Air-Horde" },
@@ -186,9 +190,22 @@ local function TryArt(icon, art)
     return true
 end
 
+local function TradeIcon(title)
+    for word, spell in pairs(TRADE_SPELLS) do
+        if title:find(word, 1, true) then return C_Spell.GetSpellTexture(spell) end
+    end
+end
+
 local function SetPinArt(pin, npc)
     local icon, kind = pin.Icon, npc[3]
     SetRound(pin, false)
+    local trade = kind == "profession" and TradeIcon(npc[5])
+    if trade then
+        icon:SetTexture(trade)
+        icon:SetTexCoord(ICON_CROP_LOW, ICON_CROP_HIGH, ICON_CROP_LOW, ICON_CROP_HIGH)
+        pin.Border:Show()
+        return
+    end
     for _, art in ipairs(MAP_ART[kind] or EMPTY) do
         if TryArt(icon, art) then
             icon:SetTexCoord(FULL_LOW, FULL_HIGH, FULL_LOW, FULL_HIGH)

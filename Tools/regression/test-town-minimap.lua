@@ -36,7 +36,7 @@ local function NewFrame()
     function f:SetPoint(_, _, _, x, y) self.x, self.y = x, y end
     function f:SetShown(shown) self.shown = shown end
     function f:Hide() self.shown = false end
-    f.Icon = { SetTexCoord = function() end, SetTexture = function() return true end,
+    f.Icon = { SetTexCoord = function() end, SetTexture = function(icon, art) icon.art = art return true end,
         AddMaskTexture = function() end, RemoveMaskTexture = function() end }
     f.Border = { Show = function() end, Hide = function() end }
     function f:CreateMaskTexture() return { SetTexture = function() end, SetAllPoints = function() end } end
@@ -67,6 +67,7 @@ local env = setmetatable({
     },
     CreateVector2D = Vector,
     C_Texture = { GetAtlasInfo = function() return nil end },
+    C_Spell = { GetSpellTexture = function(spell) return "spell " .. spell end },
     UnitPosition = function()
         local wx, wy = World(player[1], player[2])
         return wx, wy, 0, continent
@@ -206,6 +207,22 @@ Check(ShownNPCs() == "Warrior Trainer", "turning a kind off on the map takes it 
 settings.townMinimapNPCs, settings.townRepair, settings.townClass = false, false, false
 boot.scripts.OnEvent()
 Check(ShownNPCs() == "" and next(mini.events) == nil, "and off again clears them")
+
+ns.TownNPCs[1] = {
+    { 50, 52, "profession", "Tailor", "Journeyman Tailor", nil, "AH" },
+    { 52, 50, "profession", "Skinner", "Skinning Trainer", nil, "AH" },
+    { 48, 50, "profession", "Groom", "Horse Riding Instructor", nil, "AH" },
+}
+settings.townMinimapNPCs, settings.townProfession = true, true
+boot.scripts.OnEvent()
+local art = {}
+for _, f in ipairs(frames) do
+    if f.parent == env.Minimap and f.shown then art[f.npc[4]] = f.Icon.art end
+end
+Check(art.Tailor == "spell 3908" and art.Skinner == "spell 8613", "a profession trainer's pin is its profession's icon")
+Check(art.Groom == "Interface\\Minimap\\Tracking\\Profession", "a trainer of no profession keeps the trainer pin")
+settings.townMinimapNPCs, settings.townProfession = false, false
+boot.scripts.OnEvent()
 ns.TownNPCs[1] = nil
 
 Check(Read("Core/Settings.lua"):find("townMinimap = true", 1, true), "Minimap mailboxes start on")
