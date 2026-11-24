@@ -449,6 +449,14 @@ Case("a chain step's tip shows on the quest while that step is the next one", fu
     assert(#Q.Warnings(q[914], {}) == 0, "step done")
 end)
 
+Case("a step that can be any of several quests shows the tip of whichever has one", function()
+    local Q, q, _, J = Fixture({ help = true, extra = { { 914, "Leaders", 20, "B", true, "Here" } }, done = { 1489 } })
+    J.QuestTips[1491] = "A group quest."
+    J.QuestChainNames[1491] = "Second Step"
+    local lines = Q.Warnings(q[914], {})
+    assert(#lines == 1 and lines[1] == "Second Step: A group quest.", lines[1])
+end)
+
 -------------------------------------------------------------------------------
 --  Chains
 -------------------------------------------------------------------------------

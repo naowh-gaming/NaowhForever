@@ -723,6 +723,14 @@ function Q.Open(kind)
 end
 local Open = Q.Open
 
+local function TippedStep(step)
+    if type(step) ~= "table" then return step end
+    for i = 1, #step do
+        if TIPS[step[i]] then return step[i] end
+    end
+    return step[1]
+end
+
 local function AddTips(quest, out)
     local id = quest[ID]
     if TIPS[id] then out[#out + 1] = TIPS[id] end
@@ -730,6 +738,7 @@ local function AddTips(quest, out)
     for i = 1, steps and #steps or 0 do
         local state, step = StepState(steps[i])
         if state ~= "done" then
+            if state == "todo" then step = TippedStep(steps[i]) end
             if step ~= id and TIPS[step] then out[#out + 1] = TEXT_STEP_TIP:format(StepName(step), TIPS[step]) end
             return
         end
