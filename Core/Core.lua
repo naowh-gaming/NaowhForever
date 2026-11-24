@@ -999,7 +999,6 @@ local function DialogButton(UI, panel, key, text, w, onClick, x)
     return button
 end
 
--- onType(value), if given, returns the line shown under the box, kept up to date as the player types.
 function ns.PromptText(title, text, maxLetters, onAccept, acceptText, acceptFirst, onType)
     local UI = ns.UI
     local dimmer, panel = ns.MakeModal(PROMPT_W, PROMPT_H, "promptText")
