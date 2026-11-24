@@ -4,6 +4,7 @@ local ns = _G.NaowhForever
 local F = ns.FEATURES.market
 local REALM_JOIN = "-"
 local DURATION_CVAR = "auctionHouseDurationDropdown"
+local UPGRADES_MAX = 100000
 
 local S = ns.UI.ModuleSettings("market", { enabled = F.enabled,
     duration = tonumber(C_CVar.GetCVarDefault(DURATION_CVAR)), postKeys = false, askBadPost = true, fullWindow = false,
@@ -14,7 +15,7 @@ local S = ns.UI.ModuleSettings("market", { enabled = F.enabled,
     farmHerbs = true, farmVeins = true, farmSkins = true, farmFish = true, farmLocked = false, farmPlan = false,
     sortRun = "", sortCrafts = "", sortMine = "", sortBuy = "", undercut = "match", undercutPercent = 5, undercutAmount = 100,
     startingBid = false, watchAlerts = true, ledger = F.ledger, ledgerRange = "1m", ledgerView = "summary",
-    ledgerCharacter = "", sortLedger = "",
+    ledgerCharacter = "", sortLedger = "", cheapUpgrades = F.cheapUpgrades, upgradesMax = UPGRADES_MAX,
     ledgerKindSales = "", ledgerKindPurchases = "", ledgerKindOther = "", ledgerKindFailed = "",
     sellQuantityTrade = 0, sellQuantityConsumable = 0, sellQuantityRecipe = 0, sellQuantityOther = 0,
     sellNumberTrade = 20, sellNumberConsumable = 20, sellNumberRecipe = 20, sellNumberOther = 20 })

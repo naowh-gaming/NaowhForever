@@ -257,6 +257,7 @@ ns.FEATURES = {
     market = {
         enabled = false,
         ledger = false,
+        cheapUpgrades = false,
     },
     macros = {
         enabled = true,

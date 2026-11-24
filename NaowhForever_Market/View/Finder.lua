@@ -78,7 +78,7 @@ local function FromScans(finder, text)
         end
     end
     if cold[1] then Warm(finder, cold) end
-    table.sort(found, finder.byName)
+    table.sort(found, finder.order or finder.byName)
     local more = #found > MAX_RESULTS
     for i = #found, MAX_RESULTS + 1, -1 do found[i] = nil end
     if more then return TEXT_MORE:format(MAX_RESULTS) end
@@ -96,8 +96,8 @@ local function FromOnly(finder)
             names[id] = Items.Name(id)
         end
     end
-    table.sort(found, finder.byName)
-    return #found > 0 and TEXT_FOUND:format(#found) or TEXT_NONE
+    table.sort(found, finder.order or finder.byName)
+    return #found > 0 and TEXT_FOUND:format(#found) or finder.none or TEXT_NONE
 end
 
 local function RowClicked(row)

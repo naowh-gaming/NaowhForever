@@ -1,4 +1,4 @@
--- Buy.lua: the Buy page: your watch list with any item in your scans to add to it, or your saved searches, and in the full window the auction house's own search beside them.
+-- Buy.lua: the Buy page: your watch list with any item in your scans to add to it, your saved searches, or the gear in your scans that beats yours, and in the full window the auction house's own search beside them.
 local ns = _G.NaowhForever
 
 local T = ns.THEME
@@ -6,7 +6,7 @@ local Market = ns.Market
 local St = Market.Style
 local Parts = ns.Shared.Parts
 local Items = ns.Shared.Items
-local Finder, Watch = Market.Finder, Market.Watch
+local Finder, Watch, Upgrades = Market.Finder, Market.Watch, Market.Upgrades
 
 local HEAD_H, HEAD_ICON, NAME_SIZE, NAME_GAP, SUB_GAP, GAP = 40, 32, 15, 8, 3, 10
 local BUTTON_W, BUTTON_H = 86, 24
@@ -14,15 +14,25 @@ local TEXT_LIST = ns.L("Watch List: %d, %d at or under your price")
 local TEXT_EMPTY = ns.L("Nothing on your watch list. Search an item to watch it.")
 local TEXT_SCAN_SUB = ns.L("Your last scan: %s each")
 local TEXT_NO_SCAN_SUB = ns.L("Not in your scans yet")
+local TEXT_UP_TO = ns.L("Up to This Price")
+local TEXT_NO_UPGRADES = ns.L("No upgrades at or under your price in your scans.")
+local TEXT_NO_WEIGHTS = ns.L("Turn on the BiS List to weigh gear for upgrades.")
+local TEXT_GAIN = "+%.1f%%  %s"
+local MONEY_LABEL_H = 16
 local WIDTH = St.DOCK_W - St.DOCK_PAD * 2
 local VIEWS = {
     { key = "watch", label = "Watch List", tip = "Your watch list: the items you want, and when they are at or under your price." },
     { key = "searches", label = "Searches", tip = "Your saved searches, run in the auction house's own Buy tab." },
 }
+local UPGRADES_VIEW = { key = "upgrades", label = "Upgrades",
+    tip = "Gear in your scans that beats what you wear, at or under your price." }
+local VIEWS_UPGRADES = { VIEWS[1], VIEWS[2], UPGRADES_VIEW }
 
-local page, column, views, head, watch, finder, searches
+local page, column, views, head, watch, finder, searches, upgrades, gear
 local view = "watch"
 local watched = {}
+local stale = true
+local tabsWithUpgrades
 
 local Page = {}
 Market.Pages.buy = Page
@@ -46,10 +56,31 @@ local function DrawHead(itemID)
     head.sub:SetText(scan and TEXT_SCAN_SUB:format(Parts.Coins(scan)) or TEXT_NO_SCAN_SUB)
 end
 
+local function GainNote(i)
+    local id = upgrades.found[i]
+    local price = ns.AuctionPrice and ns.AuctionPrice(id)
+    return TEXT_GAIN:format(Upgrades.gains[id] or 0, price and Parts.Coins(price) or "")
+end
+
+local function DrawUpgrades()
+    if stale then
+        stale = false
+        upgrades.none = Upgrades.Find(Page.Stale) == "weights" and TEXT_NO_WEIGHTS or TEXT_NO_UPGRADES
+    end
+    if not upgrades.money:HasFocus() then upgrades.money:SetAmount(Market.Settings.Get("upgradesMax")) end
+    Finder.Draw(upgrades)
+end
+
 function Page.Draw()
+    if view == "upgrades" then return DrawUpgrades() end
     if view ~= "watch" then return Market.SearchView.Draw() end
     Finder.Draw(finder)
     DrawHead(finder.picked)
+end
+
+function Page.Stale()
+    stale = true
+    if view == "upgrades" and page:IsShown() then Page.Draw() end
 end
 
 local function BuildHead()
@@ -71,22 +102,72 @@ local function BuildHead()
     watch:SetPoint("RIGHT")
 end
 
+local function PickedUpgrade(itemID)
+    if Market.Window.Covering() then return Market.Browse.PickItem(itemID) end
+    local name = Items.Name(itemID)
+    if name then Market.Searches.Run({ text = name }) end
+end
+
+local function MaxChanged(_, amount)
+    if not (amount and amount > 0) then return end
+    Market.Settings.Set("upgradesMax", amount)
+    Page.Stale()
+end
+
+local function BuildUpgrades()
+    local box = CreateFrame("Frame", nil, column)
+    box:SetPoint("TOPLEFT", views, "BOTTOMLEFT", 0, -GAP)
+    box:SetPoint("RIGHT")
+    box:SetHeight(MONEY_LABEL_H + BUTTON_H)
+    local label = ns.Font(box, St.SMALL_SIZE, nil, T.muted)
+    label:SetPoint("TOPLEFT")
+    label:SetText(TEXT_UP_TO)
+    upgrades = Finder.New(column, WIDTH, nil, Page.Draw)
+    upgrades.box, upgrades.order, upgrades.side, upgrades.onPick = box, Upgrades.Order, GainNote, PickedUpgrade
+    upgrades.money = Parts.MoneyBox(box, MaxChanged)
+    upgrades.money:SetPoint("TOPLEFT", 0, -MONEY_LABEL_H)
+    upgrades.only = Upgrades.gains
+    upgrades.frame:SetPoint("TOPLEFT", box, "BOTTOMLEFT", 0, -GAP)
+    upgrades.frame:SetPoint("BOTTOMRIGHT")
+    gear = CreateFrame("Frame")
+    gear:SetScript("OnEvent", Page.Stale)
+end
+
 local function ShowView(key)
     view = key
     Parts.PaintTabs(views, key)
-    local watching = key == "watch"
+    local watching, upgrading = key == "watch", key == "upgrades"
     if not watching then
         head:Hide()
         watch:Hide()
     end
     finder.frame:SetShown(watching)
-    if not (watching or searches) then
+    if key == "searches" and not searches then
         searches = Market.SearchView.Build(column, WIDTH)
         searches:SetPoint("TOPLEFT", views, "BOTTOMLEFT", 0, -GAP)
         searches:SetPoint("BOTTOMRIGHT")
     end
-    if searches then searches:SetShown(not watching) end
+    if searches then searches:SetShown(key == "searches") end
+    if upgrading and not upgrades then BuildUpgrades() end
+    if upgrades then
+        upgrades.box:SetShown(upgrading)
+        upgrades.frame:SetShown(upgrading)
+        if upgrading then
+            stale = true
+            gear:RegisterEvent("PLAYER_EQUIPMENT_CHANGED")
+        else
+            gear:UnregisterAllEvents()
+        end
+    end
     Page.Draw()
+end
+
+local function SyncViews()
+    local on = Upgrades.On()
+    if on == tabsWithUpgrades then return end
+    tabsWithUpgrades = on
+    Parts.SetTabs(views, on and VIEWS_UPGRADES or VIEWS)
+    if not on and view == "upgrades" then ShowView("watch") end
 end
 
 local function Picked(itemID)
@@ -100,7 +181,8 @@ function Page.Build(parent)
     column:SetPoint("TOPLEFT")
     column:SetPoint("BOTTOMLEFT")
     column:SetWidth(WIDTH)
-    views = Parts.Tabs(column, WIDTH, VIEWS, ShowView, true)
+    tabsWithUpgrades = Upgrades.On()
+    views = Parts.Tabs(column, WIDTH, tabsWithUpgrades and VIEWS_UPGRADES or VIEWS, ShowView, true)
     views:SetPoint("TOPLEFT")
     Parts.PaintTabs(views, view)
     BuildHead()
@@ -113,6 +195,11 @@ end
 
 function Page.Show()
     page:Show()
+    SyncViews()
+    if view == "upgrades" then
+        stale = true
+        gear:RegisterEvent("PLAYER_EQUIPMENT_CHANGED")
+    end
     if Market.Window.Covering() then
         Market.Browse.Attach(page, column)
     else
@@ -122,6 +209,8 @@ function Page.Show()
 end
 
 function Page.Refresh()
+    SyncViews()
+    stale = true
     Page.Draw()
 end
 
@@ -133,6 +222,7 @@ end
 
 function Page.Hide()
     page:Hide()
+    if gear then gear:UnregisterAllEvents() end
     Market.Searches.Stop()
     Market.Browse.Detach()
 end

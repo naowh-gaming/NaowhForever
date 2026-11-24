@@ -15,6 +15,7 @@
     <Script file="Watch.lua"/>
     <Script file="Results.lua"/>
     <Script file="Searches.lua"/>
+    <Script file="Upgrades.lua"/>
     <Script file="Worth.lua"/>
     <Script file="Bank.lua"/>
     <Script file="Crafts.lua"/>

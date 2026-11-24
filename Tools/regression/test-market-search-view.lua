@@ -159,6 +159,7 @@ ns.Market = {
     Style = { TEXT_SIZE = 12, SMALL_SIZE = 11, SEARCH_H = 24, SCROLLBAR = 6, PANEL_FILL = 0.1, PICKED_FILL = 0.2,
         BORDER_RGB = WHITE, HAVE_RGB = WHITE, DOCK_W = 380, DOCK_PAD = 10 },
     Settings = { Get = function() return true end },
+    Upgrades = { gains = {}, On = function() return false end },
     Pages = {},
     Dock = { Refresh = function() end },
     On = function() return true end,

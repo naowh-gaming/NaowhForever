@@ -3,7 +3,9 @@
 At the auction house The Market is a panel docked to the right of Blizzard's own window, which stays
 exactly as the game draws it. The panel has four tabs, and follows Blizzard's own. Buy is your Watch List:
 search your scans for an item, give it a price, and each scan tells you in chat when it is at or under it. Its
-Searches view keeps named lists of searches and the last ones you ran; a click runs one in Blizzard's own Buy tab. Sell lists your bags most valuable first, puts the
+Searches view keeps named lists of searches and the last ones you ran; a click runs one in Blizzard's own Buy tab. With
+Cheap Upgrades on, its Upgrades view lists the gear in your scans that beats what you wear, at or under a price you set,
+biggest upgrade first; a click searches for it. Sell lists your bags most valuable first, puts the
 item in front of you at a price one step under the cheapest listing that is not yours, says how it
 compares, and posts it with the Post button, or with Space (post), S (skip) and Up and Down (the next
 price step) once Post With Keys is on. Under the form it lists the item's listings, cheapest first, with where
@@ -54,6 +56,7 @@ NaowhForever_Market/
   Watch.lua          the items you watch for a price, and the chat line when one is at or under it (Market.Watch)
   Results.lua        what the auction house's last browse search found, however it was sent bar a price scan's, and more as you scroll (Market.Results)
   Searches.lua       your searches in named lists and the last ones you ran, run in Blizzard's Buy tab, and a list as a string to share (Market.Searches)
+  Upgrades.lua       the gear in your scans that would make you stronger than what you wear, at or under your price (Market.Upgrades)
   Worth.lua          what your bags would fetch, their most valuable items, and the best way to sell an item (Market.Worth)
   Bank.lua           what your bank held when you last had it open, kept for each character, and what it would fetch (Market.Bank)
   Crafts.lua         your characters' known recipes priced at their best outlet, and what your bags make (Market.Crafts)
@@ -81,7 +84,7 @@ NaowhForever_Market/
     Prices.lua       the Price Graph page: any item in your scans by name, from your bags, a writ filter or the movers, and its price chart
     Ledger.lua       the Ledger page: gold over time and what was earned and spent, and the sales, purchases, other gold and failed auctions as lists
     Searches.lua     the Buy page's Searches view: a saved list or Recent, run with a click, kept and edited from menus (Market.SearchView)
-    Buy.lua          the Buy page: your Watch List with any item in your scans to add to it, or your saved searches, and in the full window Browse beside them
+    Buy.lua          the Buy page: your Watch List with any item in your scans to add to it, your saved searches, or Cheap Upgrades' gear, and in the full window Browse beside them
     Shopping.lua     the Shopping List page: yours and your alts' materials still to buy, counted when bought, and the picked one's listings with Buy
     Move.lua         Shift + drag moving Blizzard's auction house, and keeping it there (Market.Move)
     HouseTabs.lua    the Farm, Price Graph, Reagents and Ledger tabs under Blizzard's window, drawn as its own tabs (Market.HouseTabs)
@@ -636,6 +639,21 @@ NaowhForever_Market/
   Watch Alerts is on. A listing search on the panel tells you too, once for each price it sees. The Watch List
   never searches Blizzard's window for you: it names the item and its price, and you buy it there. A chat line cannot
   open anything, since the addon has no clickable chat links.
+- Cheap Upgrades (`cheapUpgrades`, off by default) reads your scans (`ns.AuctionPriceList`), not the auction
+  house: it sends no searches, so the query throttle never comes into it, and it works before a scan from the price
+  feed. Each piece is weighed by Stat Weights' `SW.BestGain`, the same gain as the upgrade line on tooltips, against
+  what you wear, and only for your class and your level. Without the BiS List loaded there are no weights, so the
+  view says to turn it on.
+- Cheap Upgrades lists the biggest upgrade first, not the most per gold: your price already caps what it costs, and
+  per gold a one-copper trinket of a tenth of a percent would top the list.
+- Its price, `upgradesMax`, is in copper (default 10 gold), set in the view's own box. The list is worked out again
+  only when it goes stale: the view shown, the price changed, gear changed (`PLAYER_EQUIPMENT_CHANGED`, registered
+  only while the view is shown), a scan's refresh, or item data arriving. Typing filters the last result.
+- A random-enchantment piece ("of the Bear") is priced and weighed as its base item: scans keep one price per item
+  ID, and the base item has none of the enchantment's stats, so such pieces rarely show.
+- In the panel a click runs a name search in Blizzard's Buy tab through `Searches.Run`, the Searches view's path,
+  not an exact one: a random-enchantment piece's listing name carries its suffix. In the full window it shows the
+  item's listings with Buy, as a watched item does.
 - The panel's line counts the watched items at or under your price at the last scan, and opens the Buy tab on the
   Watch List. It hides on Buy, where the list and the tab's green count already show them.
 - The panel follows Blizzard's tabs through a post-hook on `AuctionHouseFrame:SetDisplayMode`, reading

@@ -1,7 +1,8 @@
 -- Run with Lua 5.1 from the repository root: the panel's Buy page and The Market's Prices page share one search
 -- list and Watch box. Buy lists only the Watch List, under your price first; typing searches your scans; Watch,
 -- a row's x and Stop Watching change the list. Prices lists your bags and keeps the Watch box, and its filter lists
--- only the Craftsman's Writs in your scans, all of them or one profession's.
+-- only the Craftsman's Writs in your scans, all of them or one profession's. Cheap Upgrades adds an Upgrades view
+-- while on: its gear biggest gain first, each row's gain and price, its own price box, and a click to search it.
 local checks = 0
 local function check(label, value) assert(value, label); checks = checks + 1 end
 
@@ -43,6 +44,8 @@ local GREEN, WHITE = { r = 0, g = 1, b = 0 }, { r = 1, g = 1, b = 1 }
 local others, NOW = {}, 100000
 local houseKnown = true
 local tabBars, movers = {}, nil
+local upgradesOn, upgradeGains, upgradesWhy, finds, ran = false, {}, nil, 0, nil
+local stored = {}
 local RED = { r = 1, g = 0, b = 0 }
 
 local ns = {
@@ -107,8 +110,10 @@ ns.Shared = {
             return bar
         end,
         PaintTabs = function(bar, key) bar.painted = key end,
-        MoneyBox = function(parent)
+        SetTabs = function(bar, items) bar.items = items end,
+        MoneyBox = function(parent, onChange)
             local money = Frame("Frame", parent)
+            money.onChange = onChange
             money.boxes = {}
             function money.SetAmount(_, v) money.amount = v end
             function money.GetAmount() return money.amount end
@@ -125,7 +130,11 @@ ns.Market = {
     Style = { TEXT_SIZE = 12, SMALL_SIZE = 11, SEARCH_H = 24, SCROLLBAR = 6, PANEL_FILL = 0.1, PICKED_FILL = 0.2,
         BORDER_RGB = WHITE, HAVE_RGB = GREEN, RED_RGB = RED, DOCK_W = 380, DOCK_PAD = 10 },
     History = { Movers = function() return movers end },
-    Settings = { Get = function() return true end },
+    Settings = { Get = function(key) if stored[key] ~= nil then return stored[key] end return true end,
+        Set = function(key, value) stored[key] = value end },
+    Upgrades = { gains = upgradeGains, On = function() return upgradesOn end,
+        Order = function(a, b) return upgradeGains[a] > upgradeGains[b] end,
+        Find = function() finds = finds + 1 return upgradesWhy end },
     Pages = {},
     WRITS = { [ALCHEMY] = { 201, 203, 204 }, [TAILORING] = { 202, 203 } },
     Dock = { Refresh = function() refreshed = refreshed + 1 end },
@@ -135,7 +144,7 @@ ns.Market = {
         Detach = function() browse.page = nil end,
         PickItem = function(itemID, owner, who) browse.item, browse.owner, browse.who = itemID, owner, who end,
     },
-    Searches = { Watch = function() end, Stop = function() end },
+    Searches = { Watch = function() end, Stop = function() end, Run = function(search) ran = search end },
     Worth = { Read = function() return bags end },
     Chart = { New = function(parent)
         local chart = Frame("Frame", parent)
@@ -393,5 +402,56 @@ others[104] = nil
 Prices.Draw()
 check("the lines go when the price does", Line("Blackwater:") == nil and Line("After the cut") == nil
     and head.height == HEAD_H)
+
+local buyViews = tabBars[1]
+local function Labels(bar)
+    local list = {}
+    for i, item in ipairs(bar.items) do list[i] = item.label end
+    return table.concat(list, ",")
+end
+check("with Cheap Upgrades off, Buy has no Upgrades view", Labels(buyViews) == "Watch List,Searches")
+upgradesOn = true
+stored.upgradesMax = 5000
+Buy.Show()
+check("turned on, an Upgrades view joins Buy's", Labels(buyViews) == "Watch List,Searches,Upgrades")
+upgradeGains[102], upgradeGains[104] = 2.5, 6
+buyViews.onPick("upgrades")
+local upMoney = moneyBoxes[#moneyBoxes]
+local upBox = upMoney.parent
+local upList
+for i, child in ipairs(upBox.parent.children) do
+    if child == upBox then upList = upBox.parent.children[i + 1] end
+end
+local function UpRows() return RowsOf(upList) end
+rows = UpRows()
+check("Upgrades lists its gear, the biggest gain first", #rows == 2 and rows[1].itemID == 104 and rows[2].itemID == 102)
+check("each row with its gain and price", rows[1].price.text == "+6.0%  70" and rows[2].price.text == "+2.5%  2000")
+check("worked out once on showing", finds == 1)
+check("its price box shows your price", upMoney.amount == 5000)
+Buy.Draw()
+check("a plain redraw uses the last result", finds == 1)
+upMoney.onChange(upMoney, 3000)
+check("a new price is kept and works the list out again", stored.upgradesMax == 3000 and finds == 2)
+upMoney.onChange(upMoney, 0)
+check("an empty price is not kept", stored.upgradesMax == 3000 and finds == 2)
+rows[2].scripts.OnClick(rows[2])
+check("beside the auction house, a click searches Blizzard's Buy tab by its name", ran and ran.text == "Arcanite Bar"
+    and not ran.exact)
+browse.covering = true
+Buy.Show()
+rows = UpRows()
+rows[1].scripts.OnClick(rows[1])
+check("in the full window, a click shows its listings", browse.item == 104)
+browse.covering = nil
+check("showing the page again works the list out again", finds == 3)
+for id in pairs(upgradeGains) do upgradeGains[id] = nil end
+upgradesWhy = "weights"
+Buy.Refresh()
+check("with no weights the view says so", #UpRows() == 0
+    and upList.children[2].text == "Turn on the BiS List to weigh gear for upgrades.")
+upgradesOn = false
+Buy.Show()
+check("turned off, the view goes and Buy is back on the Watch List", Labels(buyViews) == "Watch List,Searches"
+    and buyViews.painted == "watch")
 
 print(("test-market-buy-watch: %d checks passed"):format(checks))
