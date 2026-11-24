@@ -2,11 +2,11 @@
 -- real Shared files and the real LibSerialize and LibDeflate. Nothing is made or read at load; the list shows the
 -- changed or every usable console variable, searched and capped; edits and imports are refused in combat; and
 -- an import string is data only: malformed, oversized and wrong-version strings are refused whole, unknown names,
--- console commands, secure, read-only or locked console variables and the ones that name this account, client or
--- computer are left out, and nothing but C_CVar.SetCVar runs, after a confirmation that lists the changes. The
--- values are read once per open: a CVAR_UPDATE re-reads only its own, and search and tabs read none. Pinned ones,
--- off by default, are kept account-wide and put back once per session from ns.Apply, after combat if need be, with
--- one chat line only when any changed. Offline: no client taint, rendering or real console.
+-- console commands, read-only or locked console variables and the ones that name this account, client or
+-- computer are left out (secure ones, which only refuse in combat, are not), and nothing but C_CVar.SetCVar runs,
+-- after a confirmation that lists the changes. The values are read once per open: a CVAR_UPDATE re-reads only its
+-- own, and search and tabs read none. Pinned ones, off by default, are kept account-wide and put back once per
+-- session from ns.Apply, after combat if need be, with one chat line only when any changed. Offline: no client taint, rendering or real console.
 rawset(_G, "C_AddOns", { DoesAddOnExist = function() return false end, GetAddOnEnableState = function() return 0 end })
 strmatch = string.match
 dofile("Libs/LibStub/LibStub.lua")
@@ -184,7 +184,7 @@ local env = setmetatable({
         SetCVar = function(name, value)
             sets[#sets + 1] = { name = name, value = value }
             local c = cvars[name]
-            if not c or c.refuse or c.secure or c.readOnly then return false end
+            if not c or c.refuse or (c.secure and combat) or c.readOnly then return false end
             c.value = value
             return true
         end,
@@ -285,7 +285,7 @@ local function Find(test)
         if test(f) then return f end
     end
 end
-local FIRST_OF = "The first 150 of 211; type more to narrow it down."
+local FIRST_OF = "The first 150 of 212; type more to narrow it down."
 local summary = Find(function(f) return rawget(f, "text") == FIRST_OF end)
 
 local shown = Rows()
@@ -294,8 +294,8 @@ check("it says how many matched", summary ~= nil)
 check("in name order, any case", shown[1].cvar == "blankThing" and shown[2].cvar == "cameraDistanceMaxZoomFactor")
 check("a value equal to its default as a number is not changed", RowOf("nameplateTopInset") == nil)
 check("an unchanged one is not listed", RowOf("autoLootDefault") == nil)
-check("secure, read-only and locked ones are left out", RowOf("secureThing") == nil and RowOf("readOnlyThing") == nil
-    and RowOf("lockedThing") == nil)
+check("read-only and locked ones are left out", RowOf("readOnlyThing") == nil and RowOf("lockedThing") == nil)
+check("secure ones are listed: they only refuse changes in combat", RowOf("secureThing") ~= nil)
 check("console commands and scripts are not console variables", RowOf("reloadui") == nil and RowOf("runThing") == nil)
 local camera = RowOf("cameraDistanceMaxZoomFactor")
 check("a row shows its value and its default", camera.valueText.text == "2.6" and camera.defaultText.text == "1.9")
@@ -320,7 +320,7 @@ allTab.scripts.OnClick(allTab)
 check("All lists the unchanged ones too", RowOf("autoLootDefault") ~= nil
     and RowOf("autoLootDefault").valueText.color[1] == THEME.fg.r and RowOf("autoLootDefault").reset.shown == false)
 search.onChange("")
-check("All still leaves out what cannot be changed", RowOf("secureThing") == nil and RowOf("reloadui") == nil)
+check("All still leaves out what cannot be changed", RowOf("lockedThing") == nil and RowOf("reloadui") == nil)
 check("searching and switching tabs read nothing again", reads == openReads)
 
 cvars.SpellQueueWindow.value = "77"
@@ -407,13 +407,14 @@ search.onChange("thing")
 exportButton.scripts.OnClick(exportButton)
 data = Payload(copies[#copies].text)
 check("not what it could not read back: a long value or one with a pipe", data.cvars.blankThing == ""
-    and data.cvars.longThing == nil and data.cvars.pipeThing == nil and data.cvars.secureThing == nil)
+    and data.cvars.longThing == nil and data.cvars.pipeThing == nil)
+check("a secure one is exported", data.cvars.secureThing == "5")
 search.onChange("")
 exportButton.scripts.OnClick(exportButton)
 local everything = copies[#copies].text
 local count = 0
 for _ in pairs(Payload(everything).cvars) do count = count + 1 end
-check("every changed one when nothing is searched", count == 204 and Payload(everything).cvars.zFiller200 == "1")
+check("every changed one when nothing is searched", count == 205 and Payload(everything).cvars.zFiller200 == "1")
 allTab.scripts.OnClick(allTab)
 search.onChange("auto")
 exportButton.scripts.OnClick(exportButton)
@@ -423,7 +424,7 @@ search.onChange("")
 local copied = #copies
 exportButton.scripts.OnClick(exportButton)
 check("past 1000 it asks for a search first", #copies == copied
-    and printed[#printed] == "The list has 1106; search until it has 1000 or fewer to export it.")
+    and printed[#printed] == "The list has 1107; search until it has 1000 or fewer to export it.")
 search.onChange("nothing like it")
 exportButton.scripts.OnClick(exportButton)
 check("an empty list exports nothing", printed[#printed] == "Nothing in the list to export.")
@@ -471,9 +472,9 @@ check("nothing was ever run", executed == 0)
 Import(Pack({ v = 1, cvars = thousand }))
 check("1000 is the most, and names this client does not have change nothing",
     printed[#printed] == "Nothing in that string changes anything here.")
-Import(Pack({ v = 1, cvars = { SpellQueueWindow = "120", nameplateTopInset = "0.080", secureThing = "9",
+Import(Pack({ v = 1, cvars = { SpellQueueWindow = "120", nameplateTopInset = "0.080",
     readOnlyThing = "9", lockedThing = "9", reloadui = "1", runThing = "1" } }))
-check("nor do the same values, secure, read-only or locked ones, or console commands",
+check("nor do the same values, read-only or locked ones, or console commands",
     printed[#printed] == "Nothing in that string changes anything here." and #confirms == 1)
 Import(Pack({ v = 1, cvars = { GxMonitor = "2", textLocale = "frFR", lastCharacterIndex = "1", portal = "US",
     Sound_OutputDriverName = "Headset" } }))
@@ -498,22 +499,23 @@ Import(Pack({ v = 1, cvars = { SpellQueueWindow = "100", cameraDistanceMaxZoomFa
     blankThing = string.rep("b", 255) } }))
 ask = confirms[#confirms]
 check("an import asks first", ask ~= nil and #sets == before)
-check("listing what changes, from what to what, in name order", ask.text == "Change 3 console variables?"
+check("listing what changes, from what to what, in name order", ask.text == "Change 4 console variables?"
     .. "|nautoLootDefault: 1 to 0"
     .. "|nblankThing: \"\" to " .. string.rep("b", 24) .. "..."
+    .. "|nsecureThing: 5 to 9"
     .. "|nSpellQueueWindow: 120 to 100"
-    .. "|n3 are left out: not ones an import can change.")
+    .. "|n2 are left out: not ones an import can change.")
 combat = true
 ask.yes()
 check("an import confirmed after combat starts is refused", #sets == before
     and printed[#printed] == "Game settings can only be changed out of combat.")
 combat = false
 ask.yes()
-check("confirmed, only the changes are set, through C_CVar.SetCVar", #sets == before + 3
+check("confirmed, only the changes are set, through C_CVar.SetCVar", #sets == before + 4
     and cvars.SpellQueueWindow.value == "100" and cvars.autoLootDefault.value == "0"
     and cvars.blankThing.value == string.rep("b", 255) and cvars.cameraDistanceMaxZoomFactor.value == "2.6"
-    and cvars.secureThing.value == "5" and cvars.reloadui.value == "0")
-check("and it says so", printed[#printed] == "Changed 3 console variables.")
+    and cvars.secureThing.value == "9" and cvars.reloadui.value == "0")
+check("and it says so", printed[#printed] == "Changed 4 console variables.")
 
 Import(Pack({ v = 1, cvars = { SpellQueueWindow = "90", graphicsQuality = "1" } }))
 confirms[#confirms].yes()
@@ -537,7 +539,7 @@ local back = 0
 for name, value in pairs(fresh) do
     if cvars[name].value == value then back = back + 1 end
 end
-check("an exported string imports back whole, but for what the game refuses", back == 204 - 1)
+check("an exported string imports back whole, but for what the game refuses", back == 205 - 1)
 
 window:Hide()
 local reopenReads = reads
@@ -602,6 +604,7 @@ search.onChange("")
 account.pinnedCVars.autoLootDefault = "1"
 account.pinnedCVars.graphicsQuality = "2"
 account.pinnedCVars.secureThing = "9"
+cvars.secureThing.value = "5"
 account.pinnedCVars.goneThing = "1"
 cvars.cameraDistanceMaxZoomFactor.value = "1.9"
 cvars.autoLootDefault.value = "1"
@@ -614,11 +617,11 @@ combat = false
 waiting.scripts.OnEvent(waiting, "PLAYER_REGEN_ENABLED")
 check("then it stops listening", waiting.events.PLAYER_REGEN_ENABLED == nil)
 check("a pinned value that drifted is put back", cvars.cameraDistanceMaxZoomFactor.value == "3.1")
-check("only what differs is set; unknown and secure ones are skipped", #sets == setsBefore + 2
-    and cvars.secureThing.value == "5")
+check("only what differs is set, secure ones too; unknown ones are skipped", #sets == setsBefore + 3
+    and cvars.secureThing.value == "9")
 check("what the game refuses is named, and one line counts what was put back", #printed == said + 2
     and printed[said + 1] == "The game did not take that value for graphicsQuality."
-    and printed[said + 2] == "Put back 1 pinned console variable.")
+    and printed[said + 2] == "Put back 2 pinned console variables.")
 cvars.cameraDistanceMaxZoomFactor.value = "1.9"
 local setsOnce = #sets
 ns.Apply()

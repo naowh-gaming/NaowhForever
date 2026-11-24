@@ -148,8 +148,8 @@ local function Same(a, b)
 end
 
 local function Usable(name)
-    local value, default, _, _, locked, secure, readOnly = GetCVarInfo(name)
-    if value == nil or locked or secure or readOnly then return nil end
+    local value, default, _, _, locked, _, readOnly = GetCVarInfo(name)
+    if value == nil or locked or readOnly then return nil end
     return value, default
 end
 
