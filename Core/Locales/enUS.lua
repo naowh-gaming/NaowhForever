@@ -627,6 +627,7 @@ L["Click to open or close it on its own."] = true
 L["Click to open or close its settings."] = true
 L["Click to open or close the Aim Trainer."] = true
 L["Click to open or close the Shopping List."] = true
+L["Click to open or close Find."] = true
 L["Click to open or close the Quiz."] = true
 L["Click to open or close the Junk List."] = true
 L["COMBAT"] = true

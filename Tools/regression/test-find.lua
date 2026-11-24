@@ -18,7 +18,7 @@ local function Stub()
     return setmetatable({}, { __index = function() return Noop end })
 end
 
-local rows, searchFn, windowSpec, shown, placed, searchText
+local rows, searchFn, windowSpec, shown, placed, searchText, launcher
 local view = {}
 function view:Clear() rows = {} end
 function view:Section(title, count) rows[#rows + 1] = { "section", title, count } end
@@ -54,6 +54,7 @@ local ns = {
     Font = Stub,
     Solid = Stub,
     PlaceWaypoint = function(...) placed = { ... } end,
+    RegisterMinimapFeature = function(feature) launcher = feature end,
     TownCategories = {
         bank = { "townBank", "Interface\\Icons\\INV_Misc_Bag_10", "Banker" },
         inn = { "townInn", "Interface\\Icons\\INV_Misc_Rune_01", "Innkeeper" },
@@ -135,6 +136,7 @@ chunk()
 
 check("the settings page offers to open it", windowSpec and windowSpec.text == "Open Find")
 check("nothing is built before it is opened", searchFn == nil)
+check("a launcher for the minimap and the Top Bar toggles it", launcher and launcher.id == "Find" and launcher.open == ns.ToggleFind)
 
 local function Names()
     local out = {}

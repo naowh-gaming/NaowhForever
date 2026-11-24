@@ -306,6 +306,11 @@ function ns.ToggleFind()
     if window and window:IsShown() then window:Hide() else ns.OpenFind() end
 end
 
+ns.RegisterMinimapFeature({
+    id = "Find", name = "Find", icon = "Interface\\Icons\\INV_Misc_Spyglass_03",
+    open = ns.ToggleFind, tooltip = "Click to open or close Find.",
+})
+
 local function OpenFromCard()
     ns.OpenFind()
 end

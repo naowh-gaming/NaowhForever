@@ -6615,6 +6615,7 @@ L["Which way the second trinket sits from the first."] = "第二個飾品位於�
 L["/nf shopping: the Professions Shopping List"] = "/nf shopping：專業技能購物清單"
 L["Click to open or close the Aim Trainer."] = "點擊以開啟或關閉瞄準訓練。"
 L["Click to open or close the Shopping List."] = "點擊以開啟或關閉購物清單。"
+L["Click to open or close Find."] = "點擊以開啟或關閉尋找。"
 L["Click to open or close the Quiz."] = "點擊以開啟或關閉問答。"
 L["Click to open or close the Junk List."] = "點擊以開啟或關閉垃圾清單。"
 L["Disabled"] = "已停用"
