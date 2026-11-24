@@ -53,8 +53,8 @@ ns.RecipeData = {
             { spell = 1259343, item = 255717, skill = 140, yellow = 160, grey = 220, recipe = 255724, source = "drop", bosses = {
                 { "Defias Enchanter", 10 },
             } },
-            { spell = 1262996, item = 279940, skill = 140, yellow = 140, grey = 140, recipe = 273105, source = "vendor", sellers = {
-                { "Happy Camper", "AH", 1, 1500 },
+            { spell = 1262996, item = 279940, skill = 140, yellow = 140, grey = 140, recipe = 273105, source = "drop", bosses = {
+                { "Commander Springvale", 209 },
             } },
             { spell = 7928, item = 6450, skill = 150, yellow = 150, grey = 210, source = "trainer", cost = 5000 },
             { spell = 1244434, item = 1710, skill = 155, yellow = 175, grey = 215, recipe = 255723, source = "drop", bosses = {
@@ -254,8 +254,8 @@ ns.RecipeData = {
                 { 248196, "Apothecary Durelle", "-", 1413, 49.8, 29.4 },
                 { 256729, "Nina Surefire", "-", 1433, 10.8, 72.4 },
             } },
-            { spell = 1263005, item = 279970, skill = 140, yellow = 140, grey = 140, recipe = 273085, source = "vendor", sellers = {
-                { "Happy Camper", "AH", 1, 1500 },
+            { spell = 1263005, item = 279970, skill = 140, yellow = 140, grey = 140, recipe = 273085, source = "drop", bosses = {
+                { "Rath'mael", 16611 },
             } },
             { spell = 1250781, item = 250332, skill = 145, yellow = 150, grey = 155, recipe = 250368, source = "drop", bosses = {
                 { "Xavian Hellcaller", 331 },
@@ -935,8 +935,8 @@ ns.RecipeData = {
             } },
             { spell = 9987, item = 7958, skill = 110, yellow = 140, grey = 170, source = "trainer", cost = 500, t = { 4, 5, 6, 7, 9, 10, 12, 13, 15, 19, 22, 24, 27 } },
             { spell = 7222, item = 6043, skill = 140, yellow = 165, grey = 190, recipe = 6045, source = "drop", world = 33 },
-            { spell = 1263041, item = 279988, skill = 140, yellow = 140, grey = 140, recipe = 273086, source = "vendor", sellers = {
-                { "Happy Camper", "AH", 1, 1500 },
+            { spell = 1263041, item = 279988, skill = 140, yellow = 140, grey = 140, recipe = 273086, source = "drop", bosses = {
+                { "Gilnid", 1581 },
             } },
             { spell = 2675, item = 2870, skill = 120, yellow = 150, grey = 180, source = "trainer", cost = 1000, t = { 4, 5, 6, 7, 9, 10, 12, 13, 15, 19, 22, 24, 27 } },
             { spell = 3495, item = 3852, skill = 145, yellow = 170, grey = 195, recipe = 3867, source = "drop", world = 34 },
@@ -1938,8 +1938,8 @@ ns.RecipeData = {
                 { 4305, "Kriggon Talsone", "A", 1436, 36.2, 90 },
                 { 4307, "Heldan Galesong", "A", 1439, 37, 56.2 },
             } },
-            { spell = 1283400, item = 279961, skill = 90, yellow = 95, grey = 95, recipe = 273087, source = "vendor", sellers = {
-                { "Happy Camper", "AH", 1, 1500 },
+            { spell = 1283400, item = 279961, skill = 90, yellow = 95, grey = 95, recipe = 273087, source = "drop", bosses = {
+                { "Lord Serpentis", 718 },
             } },
             { spell = 2547, item = 1082, skill = 100, yellow = 135, grey = 175, recipe = 2699, source = "vendor", vendors = {
                 { 340, "Kendor Kabonka", "A", 1453, 77.5, 52.7 },
@@ -2002,8 +2002,8 @@ ns.RecipeData = {
                 { 1148, "Nerrist", "H", 1434, 32.6, 29.2 },
                 { 2821, "Keena", "H", 1417, 74, 32.4 },
             } },
-            { spell = 1262978, item = 279957, skill = 140, yellow = 145, grey = 145, recipe = 273102, source = "vendor", sellers = {
-                { "Happy Camper", "AH", 1, 1500 },
+            { spell = 1262978, item = 279957, skill = 140, yellow = 145, grey = 145, recipe = 273102, source = "drop", bosses = {
+                { "Cookie", 1581 },
             } },
             { spell = 3399, item = 3728, skill = 150, yellow = 190, grey = 230, recipe = 3736, source = "quest", quests = {
                 { id = 564, name = "Costly Menace", side = "A", level = 30, npc = { 2382, "Darren Malvew", "A", 1424, 52.4, 56 } },
@@ -2952,8 +2952,8 @@ ns.RecipeData = {
             { spell = 3952, item = 4381, skill = 140, yellow = 165, grey = 190, recipe = 14639, source = "vendor", vendors = {
                 { 1032, "Black Ooze", "-", 1437, 20.2, 51.2 },
             } },
-            { spell = 1263034, item = 279949, skill = 140, yellow = 140, grey = 140, recipe = 273092, source = "vendor", sellers = {
-                { "Happy Camper", "AH", 1, 1500 },
+            { spell = 1263034, item = 279949, skill = 140, yellow = 140, grey = 140, recipe = 273092, source = "drop", bosses = {
+                { "Sneed", 1581 },
             } },
             { spell = 1286796, item = 269902, skill = 140, yellow = 150, grey = 160, recipe = 269903, source = "vendor", vendors = {
                 { 253139, "Gorhak", "-", 1443, 66.2, 79.4 },
@@ -3920,8 +3920,8 @@ ns.RecipeData = {
                 { 2816, "Androd Fadran", "A", 1417, 45, 46.8 },
             } },
             { spell = 9195, item = 7373, skill = 140, yellow = 160, grey = 180, recipe = 7449, source = "drop", world = 33 },
-            { spell = 1263031, item = 279941, skill = 140, yellow = 125, grey = 125, recipe = 273096, source = "vendor", sellers = {
-                { "Happy Camper", "AH", 1, 1500 },
+            { spell = 1263031, item = 279941, skill = 140, yellow = 125, grey = 125, recipe = 273096, source = "drop", bosses = {
+                { "Razorclaw the Butcher", 209 },
             } },
             { spell = 3764, item = 4247, skill = 120, yellow = 145, grey = 170, source = "trainer", cost = 500, t = { 2, 5, 8, 11, 12, 13, 14, 15, 16, 20, 21, 23, 25, 27 } },
             { spell = 3775, item = 4258, skill = 145, yellow = 165, grey = 185, recipe = 4298, source = "drop", world = 34 },
@@ -4980,8 +4980,8 @@ ns.RecipeData = {
             { spell = 3304, item = 3576, skill = 65, yellow = 50, grey = 75, source = "trainer", cost = 50, t = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 15, 16, 17 } },
             { spell = 2658, item = 2842, skill = 75, yellow = 100, grey = 125, source = "trainer", cost = 200, t = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 15, 16, 17 } },
             { spell = 3307, item = 3575, skill = 125, yellow = 130, grey = 140, source = "trainer", cost = 500, t = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 15, 16, 17 } },
-            { spell = 1262975, item = 279948, skill = 140, yellow = 140, grey = 140, recipe = 273097, source = "vendor", sellers = {
-                { "Happy Camper", "AH", 1, 1500 },
+            { spell = 1262975, item = 279948, skill = 140, yellow = 140, grey = 140, recipe = 273097, source = "drop", bosses = {
+                { "Relic Guardian", 16732 },
             } },
             { spell = 3569, item = 3859, skill = 165, yellow = 165, grey = 165, source = "trainer", cost = 2500, t = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 15, 16, 17 } },
             { spell = 3308, item = 3577, skill = 155, yellow = 170, grey = 185, source = "trainer", cost = 2500, t = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 15, 16, 17 } },
@@ -5505,8 +5505,8 @@ ns.RecipeData = {
             { spell = 1257425, item = 253999, skill = 140, yellow = 160, grey = 190, recipe = 254000, source = "drop", bosses = {
                 { "Gravelsnout Surveyor", 400 },
             } },
-            { spell = 1263032, item = 279943, skill = 140, yellow = 140, grey = 140, recipe = 273099, source = "vendor", sellers = {
-                { "Happy Camper", "AH", 1, 1500 },
+            { spell = 1263032, item = 279943, skill = 140, yellow = 140, grey = 140, recipe = 273099, source = "drop", bosses = {
+                { "Unstable Sentinel", 16544 },
             } },
             { spell = 3863, item = 4328, skill = 145, yellow = 165, grey = 195, recipe = 4353, source = "drop", world = 36 },
             { spell = 8760, item = 7048, skill = 120, yellow = 130, grey = 140, source = "trainer", cost = 600, t = { 2, 3, 5, 6, 8, 9, 12, 13, 15, 16, 17, 19, 22, 23, 24, 25 } },
