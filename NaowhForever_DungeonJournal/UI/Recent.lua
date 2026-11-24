@@ -61,6 +61,7 @@ local function BossName(dungeon, english)
 end
 
 local function ItemLines(item, dungeon, muted)
+    GameTooltip_SuppressAutomaticCompareItem(GameTooltip)
     GameTooltip:SetHyperlink(item.link)
     GameTooltip:AddLine(TEXT_BLANK)
     GameTooltip:AddDoubleLine(item.boss and TEXT_FROM .. BossName(dungeon, item.boss) or TEXT_LOOTED,

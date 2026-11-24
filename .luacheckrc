@@ -82,7 +82,7 @@ read_globals = {
     "EventRegistry", "EventToastManagerFrame", "EventUtil", "ScrollBoxListMixin",
     "EUI_ClassicTalents",
     "FACTION_ALLIANCE", "FACTION_HORDE", "FACTION_STANDING_INCREASED", "GameFontHighlight", "GameFontNormal", "GameTooltip",
-    "GameTooltipTextLeft1", "GameTooltip_Hide", "GameTooltip_OnTooltipAddMoney", "GetActionInfo", "GetActionText", "GetActiveTitle",
+    "GameTooltipTextLeft1", "GameTooltip_Hide", "GameTooltip_SuppressAutomaticCompareItem", "GameTooltip_OnTooltipAddMoney", "GetActionInfo", "GetActionText", "GetActiveTitle",
     "GetActionTexture", "GetAddOnMemoryUsage", "GetBinding", "GetBindingAction", "GetBindingKey", "GetBindingName", "GetBuildInfo",
     "GetBindingText", "GetBindLocation", "GetChannelList", "GetClassInfo", "GetCurrentBindingSet",
     "GetCurrentArenaSeason", "GetCurrentKeyBoardFocus", "GetCurrentRegion", "GetText", "UnitSex",

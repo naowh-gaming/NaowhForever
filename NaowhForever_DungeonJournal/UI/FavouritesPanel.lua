@@ -48,6 +48,7 @@ local function RowEnter(row)
     local muted = T.muted
     row.hover:Show()
     GameTooltip:SetOwner(row, "ANCHOR_RIGHT")
+    GameTooltip_SuppressAutomaticCompareItem(GameTooltip)
     local notYet = J.NotYet[row.itemID]
     if notYet then
         GameTooltip:SetText(Loot.Name(row.itemID), 1, 1, 1)

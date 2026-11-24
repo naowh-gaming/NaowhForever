@@ -207,6 +207,7 @@ local function ItemEnter(row)
     local muted = T.muted
     if not Tip(row, "ANCHOR_CURSOR_RIGHT", TIP_X, 0) then return end
     local notYet = J.NotYet[row.itemID]
+    GameTooltip_SuppressAutomaticCompareItem(GameTooltip)
     if notYet then NotYetTip(row.itemID, notYet) else GameTooltip:SetItemByID(row.itemID) end
     if row.forever then GameTooltip:AddLine(ForeverLine()) end
     NeedsLine(row)

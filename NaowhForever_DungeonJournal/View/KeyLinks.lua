@@ -87,6 +87,7 @@ end
 local function KeyEnter(link)
     local key = link.key
     if not Tip(link, "ANCHOR_RIGHT") then return end
+    GameTooltip_SuppressAutomaticCompareItem(GameTooltip)
     GameTooltip:SetItemByID(key.item)
     GameTooltip:AddLine(TEXT_OPENS[key.opens or "enter"], 1, 1, 1)
     local source = SourceText(key)

@@ -15,6 +15,7 @@ local TEXT_GAP, RIGHT_GAP = 8, 12
 local function LineEnter(row)
     if not row.itemID then return end
     if not Tip(row, "ANCHOR_CURSOR_RIGHT", TIP_X, 0) then return end
+    GameTooltip_SuppressAutomaticCompareItem(GameTooltip)
     GameTooltip:SetItemByID(row.itemID)
     GameTooltip:Show()
 end

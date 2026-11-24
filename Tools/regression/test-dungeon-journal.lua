@@ -378,6 +378,7 @@ local function fixture(settings, noBis, language)
         UIParent = Frame(state),
         GameTooltip = state.tooltip,
         GameTooltip_Hide = function() end,
+        GameTooltip_SuppressAutomaticCompareItem = function(tip) tip.suppressAutomaticCompareItem = true end,
         -- A home group, not an instance one (the dungeon finder's).
         IsInGroup = function(category) return state.party ~= nil and category ~= 2 end,
         IsInRaid = function() return false end,
@@ -1441,6 +1442,7 @@ do
     check("not an upgrade, no look to collect", not DJ.Loot.Upgrade(notYet) and DJ.Loot.Appearance(notYet) == nil)
     check("found by a search for its name", notYetView:Listed(notYet, notYetName:lower()))
     row.scripts.OnEnter(row)
+    check("the game's item comparison waits for Shift", rawget(state.tooltip, "suppressAutomaticCompareItem") == true)
     check("its tooltip is the Journal's own", setByID == 0 and rawget(state.tooltip, "text") == notYetName)
     check("which says it is not in Forever yet", Has(tipLines, DJ.NOT_YET))
     check("and offers the menu, not a link it cannot give", Has(tipLines, "Right-click: menu"))

@@ -53,6 +53,7 @@ local function RewardEnter(row)
     local itemID = reward.itemID or reward.transmogID and C_Transmog.GetItemIDForSource(reward.transmogID)
     local mountSpell = reward.mountID and select(MOUNT_SPELL, C_MountJournal.GetMountInfoByID(reward.mountID))
     if itemID then
+        GameTooltip_SuppressAutomaticCompareItem(GameTooltip)
         GameTooltip:SetItemByID(itemID)
     elseif mountSpell or reward.spellID then
         GameTooltip:SetSpellByID(mountSpell or reward.spellID)
