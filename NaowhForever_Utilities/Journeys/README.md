@@ -60,6 +60,9 @@ NaowhForever_Utilities/Journeys/
   game's tables give them, x north and y west.
 - `UnitPosition`'s height is a placeholder 0 (`NO_HEIGHT`), so a 0 is no height at all. Taken as a real
   one, the walk from where you stand started on the ground nearest sea level and cost its height in yards.
+- With no height, a spot over several separate levels of walking map stands on the one whose walk reaches
+  the most of the continent: the mountain over Ironforge is walking ground too, an island that walks
+  nowhere, and a journey into the city from it found no way at all.
 - Walking costs and paths come from the walking maps `Tools/nav` bakes from the client's terrain, in
   `NaowhForever_JourneysData`, a load-on-demand addon loaded on the first journey out of combat. Each
   tile is CBOR, deflated and in Base64, decoded by `C_EncodingUtil` when a walk first touches it; at

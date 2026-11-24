@@ -380,6 +380,30 @@ local function Pier(map, spot)
     end
 end
 
+local function Reach(spot, g, tile, tx, ty, poly, extra, pier, scratch)
+    local x, y, off = spot.x, spot.y, nil
+    local sx, sy = Walk.TileOf(spot.x, spot.y)
+    if pier or sx ~= tx or sy ~= ty then x, y, off = tile.cx[poly], tile.cy[poly], { spot.x, spot.y } end
+    local near, nearPrev = Walk.Spread(tile, poly, extra, scratch and scratch.near)
+    local seeds = scratch and wipe(scratch.seeds) or {}
+    for _, c in ipairs(tile.cross) do
+        local reach = near[c[2]]
+        if reach then
+            local dx, dy = g.px[c[1]] - tile.cx[c[2]], g.py[c[1]] - tile.cy[c[2]]
+            seeds[c[1]] = reach + sqrt(dx * dx + dy * dy)
+        end
+    end
+    local far, farPrev = Search(g, seeds, scratch and scratch.far)
+    return { map = spot.c, tx = tx, ty = ty, poly = poly, x = x, y = y, off = off, near = near, nearPrev = nearPrev,
+        far = far, farPrev = farPrev }
+end
+
+local function Size(t)
+    local n = 0
+    for _ in pairs(t) do n = n + 1 end
+    return n
+end
+
 function Walk.From(spot, scratch)
     if not Walk.Ready() then return nil end
     local map = spot.c
@@ -407,21 +431,21 @@ function Walk.From(spot, scratch)
         if t then tile, tx, ty, poly, extra, pier = t, x, y, p, e, true end
     end
     if not poly then return false end
-    local x, y, off = spot.x, spot.y, nil
-    local sx, sy = Walk.TileOf(spot.x, spot.y)
-    if pier or sx ~= tx or sy ~= ty then x, y, off = tile.cx[poly], tile.cy[poly], { spot.x, spot.y } end
-    local near, nearPrev = Walk.Spread(tile, poly, extra, scratch and scratch.near)
-    local seeds = scratch and wipe(scratch.seeds) or {}
-    for _, c in ipairs(tile.cross) do
-        local reach = near[c[2]]
-        if reach then
-            local dx, dy = g.px[c[1]] - tile.cx[c[2]], g.py[c[1]] - tile.cy[c[2]]
-            seeds[c[1]] = reach + sqrt(dx * dx + dy * dy)
+    local reach = Reach(spot, g, tile, tx, ty, poly, extra, pier, scratch)
+    if spot.z or extra > 0 then return reach end
+    -- With no height, the first level under the spot can be a walkable island, as the mountain over Ironforge.
+    local tried, most = { reach.near }, Size(reach.far)
+    for p = 1, #tile.polys do
+        local seen = false
+        for i = 1, #tried do seen = seen or tried[i][p] ~= nil end
+        if not seen and Inside(tile, tile.polys[p], spot.x, spot.y) and not (tile.area and tile.area[p] == OCEAN) then
+            local other = Reach(spot, g, tile, tx, ty, p, 0, false)
+            tried[#tried + 1] = other.near
+            local n = Size(other.far)
+            if n > most then reach, most = other, n end
         end
     end
-    local far, farPrev = Search(g, seeds, scratch and scratch.far)
-    return { map = map, tx = tx, ty = ty, poly = poly, x = x, y = y, off = off, near = near, nearPrev = nearPrev,
-        far = far, farPrev = farPrev }
+    return reach
 end
 
 local function ToPlace(reach, p, i)

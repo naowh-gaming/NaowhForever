@@ -113,6 +113,17 @@ local onPier = Walk.From({ c = EK, x = (DOCK.x + dock.x) / 2, y = (DOCK.y + dock
 Check(onPier and onPier.poly == dock.poly and onPier.tx == dock.tx, "halfway along the pier walks from its root too")
 Check(Walk.From({ c = EK, x = -10500, y = 2600 }) == false, "the open sea is off the walking maps: no walk, not a straight line")
 
+-- Tinkertown with no height: the mountain over Ironforge is walking ground under it too, but walks nowhere.
+-- The spot stands on the city's floor, a few yards from the tram.
+local TINKERTOWN = { c = EK, x = -4835.7, y = -1261.5 }
+local tinker = Walk.From(TINKERTOWN)
+local tram = tinker and Walk.Cost(EK, tinker, "l2.1")
+Check(tram and tram < 50, "Tinkertown with no height walks to the Deeprun Tram: " .. tostring(tram))
+local tinkerReused = Walk.From(TINKERTOWN, Walk.Scratch())
+Check(tinkerReused and tinkerReused.poly == tinker.poly, "searched into reused tables, Tinkertown stands on the same floor")
+local top = Walk.From({ c = EK, x = TINKERTOWN.x, y = TINKERTOWN.y, z = 734 })
+Check(top and Walk.Cost(EK, top, "l2.1") == false, "while the mountain top over it, given its height, still walks nowhere")
+
 -- Goldshire to Eastvale crosses tile sides through the middles of their runs; the traced corners are cut
 -- where a straight line stays on the walking map, so the walk comes out close to the line.
 local GOLDSHIRE, EASTVALE = { c = EK, x = -9460, y = 60 }, { c = EK, x = -9450, y = -1380 }
