@@ -20,7 +20,7 @@ local LINE_GAP = 3
 local UNDERCUT_SMALL = 0.03
 local PERCENT = 100
 local SECONDS_PER_HOUR, SECONDS_PER_MINUTE = 3600, 60
-local STATUS_ORDER = { undercut = 1, checking = 2, noanswer = 3, ahead = 4, lowest = 5, sold = 6 }
+local STATUS_ORDER = { undercut = 1, matched = 2, checking = 3, noanswer = 4, ahead = 5, lowest = 6, sold = 7 }
 local SCROLL_IN = 4
 local NAME_LEFT = ROW_IN + ROW_ICON + ICON_GAP
 local STATUS_RIGHT = ROW_IN + CANCEL_W + PILL_GAP
@@ -80,6 +80,7 @@ local function StatusLook(auction)
         if under / auction.price < UNDERCUT_SMALL then return STATUS_TEXT.small:format(Coins(under)), St.WARN_RGB end
         return STATUS_TEXT.large:format(math.floor(under / auction.price * PERCENT + 0.5)), St.RED_RGB
     end
+    if status == "matched" then return STATUS_TEXT.matched, St.WARN_RGB end
     if status == "ahead" then return STATUS_TEXT.ahead:format(auction.ahead), St.HAVE_RGB end
     if status == "lowest" then return STATUS_TEXT.lowest, St.HAVE_RGB end
     if status == "sold" then return STATUS_TEXT.sold, T.accent end

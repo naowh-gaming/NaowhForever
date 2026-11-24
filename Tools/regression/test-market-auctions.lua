@@ -142,4 +142,20 @@ t.Fire("OWNED_AUCTIONS_UPDATED")
 Check("opening the page again checks afresh", A.list[1].ahead == 0 and A.Status(A.list[1]) == "checking")
 A.Stop()
 
+t = World.Setup({
+    owned = { { auctionID = 1, itemKey = Key(9999, 30, 7), itemLink = "item:9999", quantity = 1, buyoutAmount = 5000,
+        status = 0 } },
+    keyInfo = { [9999] = { isCommodity = false } },
+})
+A = t.M.Auctions
+A.Start()
+t.Fire("OWNED_AUCTIONS_UPDATED")
+t.results.item[9999] = { { buyoutAmount = 5000, quantity = 1, containsOwnerItem = true },
+    { buyoutAmount = 5000, quantity = 1, containsOwnerItem = false } }
+t.Fire("ITEM_SEARCH_RESULTS_UPDATED", Key(9999, 30, 7))
+status, low = A.Status(A.list[1])
+Check("an item someone else lists at your price is matched, not the lowest", status == "matched" and low == 5000
+    and A.list[1].ahead == 0 and (A.Counts()) == 0)
+A.Stop()
+
 print("market auctions: " .. checks .. " checks passed")

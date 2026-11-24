@@ -342,7 +342,9 @@ NaowhForever_Market/
   other item by its own item key, item level and suffix included. An auction's price is
   `buyoutAmount`, read as the price for one, as Blizzard's auctions list shows it.
 - An auction is undercut when the cheapest listing that is not yours is under its price. Under
-  `UNDERCUT_SMALL` (3%) it shows the amount in warning orange, more in red as a percent.
+  `UNDERCUT_SMALL` (3%) it shows the amount in warning orange, more in red as a percent. An item
+  (not a commodity) that someone else lists at exactly your price shows as Matched in orange rather
+  than Lowest, as a buyer may take theirs first; it is not counted as undercut.
 - `CancelAuction` needs a hardware event: each Cancel and each Cancel Undercut press cancels one
   auction. A row's Cancel asks first with `ns.Confirm`, whose Yes is the click that cancels. Cancel
   Undercut does not ask: its label says what it does and it cancels one per press. An auction once

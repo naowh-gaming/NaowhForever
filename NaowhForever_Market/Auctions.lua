@@ -35,7 +35,8 @@ local function Status(auction)
     local low = lowest[auction.key]
     if not checked[auction.key] then return "checking" end
     if low == false then return "noanswer" end
-    if not (low and auction.price) or auction.ahead == 0 then return "lowest" end
+    if not (low and auction.price) then return "lowest" end
+    if auction.ahead == 0 then return low == auction.price and "matched" or "lowest" end
     return auction.ahead > S.Get("aheadAllowed") and "undercut" or "ahead"
 end
 
