@@ -4293,6 +4293,7 @@ L["Pins every book you still need on its zone's map, and your librarian while yo
 L["Pins it and opens the map"] = true
 L["Pins it only"] = true
 L["Pins the mailboxes near you on the minimap."] = true
+L["Pins the NPCs picked below near you on the minimap."] = true
 L["Pins the spirit healers near you on the minimap."] = true
 L["Pixel Glow runs lines around the icon; Standard Glow is the game's own button glow."] = true
 L["Pixel Glow"] = true
@@ -5778,6 +5779,7 @@ L["Town audit %s. %d NPCs recorded so far."] = true
 L["TOWN OPTIONS"] = true
 L["Town Pin Size"] = true
 L["Town Pins"] = true
+L["Town Pins on Minimap"] = true
 L["Town pins off"] = true
 L["Town pins: %d of %d shown%s"] = true
 L["Track "] = true

@@ -75,6 +75,8 @@ local env = setmetatable({
     C_Minimap = { GetViewRadius = function() return 100 end },
     C_CVar = { GetCVarBool = function() return rotate end },
     GetPlayerFacing = function() return facing end,
+    UnitFactionGroup = function() return "Horde" end,
+    UnitClass = function() return "Warrior", "WARRIOR" end,
     wipe = function(t) for k in pairs(t) do t[k] = nil end return t end,
 }, { __index = _G })
 local chunk = assert(loadstring(Read("NaowhForever_QoL/Interface/TownMap.lua")))
@@ -172,7 +174,42 @@ bestMap = 1
 settings.townMinimap = false
 boot.scripts.OnEvent()
 
+local function ShownNPCs()
+    local out = {}
+    for _, f in ipairs(frames) do
+        if f.parent == env.Minimap and f.shown then out[#out + 1] = f.npc[4] end
+    end
+    table.sort(out)
+    return table.concat(out, " ")
+end
+ns.TownNPCs[1] = {
+    { 45, 50, "repair", "Horde Smith", "Armorer", nil, "H" },
+    { 50, 45, "repair", "Alliance Smith", "Armorer", nil, "A" },
+    { 50, 52, "class", "Mage Trainer", "Mage Trainer", "MAGE", "AH" },
+    { 52, 50, "class", "Warrior Trainer", "Warrior Trainer", "WARRIOR", "AH" },
+    { 48, 50, "vendor", "Peddler", "General Goods", nil, "AH" },
+}
+settings.townMinimapSpirit = false
+settings.townRepair, settings.townClass, settings.townVendors, settings.townCapitalsOnly = true, true, false, true
+boot.scripts.OnEvent()
+Check(ShownNPCs() == "" and next(mini.events) == nil, "town NPCs stay off the minimap until asked for")
+settings.townMinimapNPCs = true
+boot.scripts.OnEvent()
+Check(ShownNPCs() == "Horde Smith Warrior Trainer" and mini.events.ZONE_CHANGED_NEW_AREA,
+    "the picked kinds for your faction and class, outside a capital too")
+for _, f in ipairs(frames) do
+    if f.parent == env.Minimap and f.shown then Check(f.mapID == bestMap, "a minimap pin knows its map, for the flight tooltip") end
+end
+settings.townRepair = false
+boot.scripts.OnEvent()
+Check(ShownNPCs() == "Warrior Trainer", "turning a kind off on the map takes it off the minimap")
+settings.townMinimapNPCs, settings.townRepair, settings.townClass = false, false, false
+boot.scripts.OnEvent()
+Check(ShownNPCs() == "" and next(mini.events) == nil, "and off again clears them")
+ns.TownNPCs[1] = nil
+
 Check(Read("Core/Settings.lua"):find("townMinimap = true", 1, true), "Minimap mailboxes start on")
 Check(Read("Core/Settings.lua"):find("townMinimapSpirit = true", 1, true), "Minimap spirit healers start on")
+Check(Read("Core/Settings.lua"):find("townMinimapNPCs = false", 1, true), "Minimap town NPCs start off")
 
 print(("test-town-minimap: %d checks passed"):format(checks))

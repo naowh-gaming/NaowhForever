@@ -74,6 +74,8 @@ local PIN_ROWS = {
     { key = "townMinimap", text = ns.L("Mailboxes on Minimap"), tip = ns.L("Pins the mailboxes near you on the minimap.") },
     { key = "townMinimapSpirit", text = ns.L("Spirit Healers on Minimap"),
       tip = ns.L("Pins the spirit healers near you on the minimap.") },
+    { key = "townMinimapNPCs", text = ns.L("Town Pins on Minimap"),
+      tip = ns.L("Pins the NPCs picked below near you on the minimap.") },
     { header = ns.L("SHOW IN TOWN") },
     { key = "townFlight", text = ns.L("Flight Masters") },
     { key = "townInn", text = ns.L("Innkeepers") },
@@ -420,13 +422,15 @@ local function AddPin(map, shown, npc)
     if x then map:AcquirePin(TEMPLATE, npc, x, y, shown) end
 end
 
+local function Wanted(npc, faction, class, shops)
+    local kind = npc[3]
+    return (shops or EVERYWHERE[kind]) and npc[7]:find(faction, 1, true) and S.Get(CATEGORIES[kind][1])
+        and (kind ~= "class" or npc[6] == class) and (kind ~= "stable" or class == STABLE_CLASS)
+end
+
 local function AddNPCs(map, shown, list, faction, class, shops)
     for _, npc in ipairs(list or EMPTY) do
-        local kind = npc[3]
-        if (shops or EVERYWHERE[kind]) and npc[7]:find(faction, 1, true) and S.Get(CATEGORIES[kind][1])
-            and (kind ~= "class" or npc[6] == class) and (kind ~= "stable" or class == STABLE_CLASS) then
-            AddPin(map, shown, npc)
-        end
+        if Wanted(npc, faction, class, shops) then AddPin(map, shown, npc) end
     end
 end
 
@@ -460,7 +464,7 @@ function provider:RefreshAllData()
 end
 
 local function MiniOn()
-    return On() and (S.Get("townMinimap") or S.Get("townMinimapSpirit"))
+    return On() and (S.Get("townMinimap") or S.Get("townMinimapSpirit") or S.Get("townMinimapNPCs"))
 end
 
 local function MiniFit(map)
@@ -547,6 +551,13 @@ local function MiniRefresh()
     if miniMap and MiniFit(miniMap) then
         if S.Get("townMinimap") then AddSpots(ns.TownMailboxes[SameMap(miniMap)]) end
         if S.Get("townMinimapSpirit") then AddSpots(ns.TownSpiritHealers[SameMap(miniMap)]) end
+        if S.Get("townMinimapNPCs") then
+            local faction = UnitFactionGroup("player") == "Horde" and "H" or "A"
+            local _, class = UnitClass("player")
+            for _, npc in ipairs(ns.TownNPCs[SameMap(miniMap)] or EMPTY) do
+                if Wanted(npc, faction, class, true) then miniSpots[#miniSpots + 1] = npc end
+            end
+        end
         miniWidth, miniHeight = C_Map.GetMapWorldSize(miniMap)
     end
     for i = #miniSpots + 1, #miniPins do miniPins[i]:Hide() end
@@ -554,7 +565,7 @@ local function MiniRefresh()
     for i, spot in ipairs(miniSpots) do
         local pin = MiniPin(i)
         pin:SetSize(size, size)
-        pin.npc = spot
+        pin.npc, pin.mapID = spot, miniMap
         SetPinArt(pin, spot)
     end
     WatchMoving(#miniSpots > 0)
