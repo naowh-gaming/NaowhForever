@@ -58,7 +58,7 @@ end
 
 local function GainNote(i)
     local id = upgrades.found[i]
-    local price = ns.AuctionPrice and ns.AuctionPrice(id)
+    local price = Upgrades.Price(id)
     return TEXT_GAIN:format(Upgrades.gains[id] or 0, price and Parts.Coins(price) or "")
 end
 

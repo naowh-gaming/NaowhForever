@@ -1,6 +1,6 @@
 -- Run with Lua 5.1 from the repository root: The Market's Cheap Upgrades. Only gear in your scans at or under your
 -- price is weighed, never above your level; pieces not cached yet are asked for once; no scan or no weights say so;
--- and the list orders by the biggest upgrade, then the cheapest.
+-- the list orders by the biggest upgrade, then the cheapest; and pieces arriving redraw once, not once each.
 local checks = 0
 local function check(label, value) assert(value, label); checks = checks + 1 end
 
@@ -65,7 +65,8 @@ prices = nil
 check("no scan says so", Upgrades.Find() == "scan" and next(Upgrades.gains) == nil)
 
 prices = { [1] = 500, [2] = 900, [3] = 100, [4] = 300, [5] = 200, [6] = 50, [7] = 10, [8] = 5000 }
-local onLoaded = function() end
+local redraws = 0
+local onLoaded = function() redraws = redraws + 1 end
 check("a scan with weights finds", Upgrades.Find(onLoaded) == nil)
 local list = Sorted()
 check("biggest upgrade first, the cheaper of two equal ones before the other", list[1] == 4 and list[2] == 2
@@ -74,7 +75,19 @@ check("a piece over your level is not weighed", Upgrades.gains[3] == nil)
 check("a piece that is no upgrade is left out", Upgrades.gains[5] == nil)
 check("an item that is not gear is never weighed", Upgrades.gains[7] == nil)
 for _, id in ipairs(weighed) do check("weighed only cached gear in your level: " .. id, id ~= 3 and id ~= 6 and id ~= 7) end
-check("a piece not cached yet is asked for", #loadedAsks == 1 and loadedAsks[1].ids[1] == 6 and loadedAsks[1].fn == onLoaded)
+check("a piece not cached yet is asked for", #loadedAsks == 1 and loadedAsks[1].ids[1] == 6)
+check("the scan's price is the one shown", Upgrades.Price(4) == 300 and Upgrades.Price(99) == nil)
+timers = {}
+loadedAsks[1].fn()
+loadedAsks[1].fn()
+check("pieces arriving together wait for one redraw", #timers == 1 and redraws == 0)
+timers[1]()
+check("then redraw once", redraws == 1)
+loadedAsks[1].fn()
+check("a later piece waits for another", #timers == 2)
+timers[2]()
+check("and redraws again", redraws == 2)
+timers = {}
 
 settings.upgradesMax = 400
 Upgrades.Find(onLoaded)

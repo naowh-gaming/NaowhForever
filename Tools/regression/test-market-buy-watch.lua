@@ -134,6 +134,7 @@ ns.Market = {
         Set = function(key, value) stored[key] = value end },
     Upgrades = { gains = upgradeGains, On = function() return upgradesOn end,
         Order = function(a, b) return upgradeGains[a] > upgradeGains[b] end,
+        Price = function(id) return prices[id] end,
         Find = function() finds = finds + 1 return upgradesWhy end },
     Pages = {},
     WRITS = { [ALCHEMY] = { 201, 203, 204 }, [TAILORING] = { 202, 203 } },

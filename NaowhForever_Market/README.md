@@ -649,8 +649,12 @@ NaowhForever_Market/
 - Its price, `upgradesMax`, is in copper (default 10 gold), set in the view's own box. The list is worked out again
   only when it goes stale: the view shown, the price changed, gear changed (`PLAYER_EQUIPMENT_CHANGED`, registered
   only while the view is shown), a scan's refresh, or item data arriving. Typing filters the last result.
-- A random-enchantment piece ("of the Bear") is priced and weighed as its base item: scans keep one price per item
-  ID, and the base item has none of the enchantment's stats, so such pieces rarely show.
+- Pieces arriving from the server are gathered for `LOADED_DELAY` before one redraw: each redraw weighs every
+  piece in your scans, and a cold list brings hundreds of item loads in a few seconds.
+- A row's price is the scan's (`Upgrades.Price`), the one the list was filtered by, not `ns.AuctionPrice`, which
+  can answer from another addon's prices.
+- A random-enchantment piece ("of the Bear") is listed, priced and weighed as its base item: the price list is one
+  price per item ID, and scans keep a variant's price by its name with no link to weigh, so such pieces rarely show.
 - In the panel a click runs a name search in Blizzard's Buy tab through `Searches.Run`, the Searches view's path,
   not an exact one: a random-enchantment piece's listing name carries its suffix. In the full window it shows the
   item's listings with Buy, as a watched item does.

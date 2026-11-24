@@ -9,9 +9,10 @@ local Items = ns.Shared.Items
 
 local REQUIRED_LEVEL = 5
 local WARM_CHUNK = 200
+local LOADED_DELAY = 0.5
 
 local gains, asked = {}, {}
-local listed
+local listed, notify, pending
 
 local Upgrades = { gains = gains }
 Market.Upgrades = Upgrades
@@ -28,14 +29,25 @@ local function Weights()
     return SW, weights, SW.Power(weights)
 end
 
-local function Warm(ids, onLoaded)
+local function Loaded()
+    pending = false
+    if notify then notify() end
+end
+
+local function ItemLoaded()
+    if pending then return end
+    pending = true
+    C_Timer.After(LOADED_DELAY, Loaded)
+end
+
+local function Warm(ids)
     local first = 1
     local function Batch()
         local last = math.min(first + WARM_CHUNK - 1, #ids)
         local chunk = {}
         for i = first, last do chunk[#chunk + 1] = ids[i] end
         first = last + 1
-        Items.OnLoaded(chunk, onLoaded)
+        Items.OnLoaded(chunk, ItemLoaded)
         if first <= #ids then C_Timer.After(0, Batch) end
     end
     Batch()
@@ -49,8 +61,13 @@ function Upgrades.Order(a, b)
     return a < b
 end
 
+function Upgrades.Price(id)
+    return listed and listed[id]
+end
+
 function Upgrades.Find(onLoaded)
     wipe(gains)
+    notify = onLoaded
     listed = ns.AuctionPriceList and ns.AuctionPriceList()
     if not listed then return "scan" end
     local SW, weights, power = Weights()
@@ -70,5 +87,5 @@ function Upgrades.Find(onLoaded)
             end
         end
     end
-    if cold then Warm(cold, onLoaded) end
+    if cold then Warm(cold) end
 end
