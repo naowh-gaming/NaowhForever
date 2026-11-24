@@ -68,7 +68,9 @@ end
 
 local function OnCellUsed(cell, button, down)
     if button == "LeftButton" then
-        if sentGUID and sentAt == GetTime() and sentSpell == cell.spell then claimGUID, claimCell = sentGUID, cell end
+        if sentGUID and sentAt == GetTime() and sentSpell == cell.spell and not cell.items then
+            claimGUID, claimCell = sentGUID, cell
+        end
         return
     end
     if button ~= "MiddleButton" or down or not cell.key then return end

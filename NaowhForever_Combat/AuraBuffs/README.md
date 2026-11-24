@@ -7,7 +7,8 @@ defaults come from `ns.FEATURES.auraBuffs`.
 - **Buffs & Consumables:** a row of icons for missing food, flask, elixir and scroll buffs, the Dire Maul
   drinks, Jujus, Zanza, Blasted Lands items and Dragonbreath Chili you carry (Other Buffs Reminder, off by default),
   class buffs missing in your group, and your own class buff (armor, Inner
-  Fire, Battle Shout, poisons, a weapon imbue, a hunter's aspect) when it is missing, and the Cozy Sleeping Bag
+  Fire, Battle Shout, poisons, a weapon imbue, a warlock's Firestone or Spellstone, a hunter's aspect) when it is
+  missing, and the Cozy Sleeping Bag
   out in the world when it is ready and Well-Rested is missing (Sleeping Bag Reminder, off by default), and the
   Elemental Attractor in the world and dungeons while Magical Awareness is missing (Elemental Attractor Reminder,
   on by default), and your profession cooldowns out in the world when they are ready (Profession Cooldown
@@ -223,6 +224,12 @@ NaowhForever_Combat/AuraBuffs/
   trained more than one. `UNIT_SPELLCAST_SUCCEEDED` remembers the last one actually cast
   (`lastImbue`) and the icon follows that instead, falling back to the first known spell until a
   cast is seen.
+- Firestone and Spellstone (`firestone`, `spellstone`, Locko's ask) work like Poisons: on Forever the stones are not
+  held in the off hand, but used on the weapon, a two-hour enchant (use spell effect 360 and SpellItemEnchantment
+  Firestone 1 to 4, Spellstone 1 to 3, wago.tools build 1.60.1.71037), so each asks for an `Imbue` on the main hand
+  and either stone clears both. They are off until picked (`off`). A click uses the best stone carried, and with
+  none carried casts the best Create rank known (`conjure`); that cast does not fade the icon, as the stone is still
+  in the bags. A Poisons click with none carried does nothing, since its spell opens the poison window.
 - The glow of a reminder (the buff icons, the Campfire's refresh reminder, Low Health) is Pixel Glow or
   Standard Glow, both LibCustomGlow's. Standard is its ButtonGlow, the action button spell alert: Blizzard's
   own `ActionButtonSpellAlertManager` only drives action buttons. Each feature has its own switch

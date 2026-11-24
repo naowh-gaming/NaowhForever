@@ -445,7 +445,9 @@ local function RaidBuffs(list, playerBuffs)
 end
 
 local function PersonalPicked(family)
-    return S.Get("personalBuffPicks")[family.key] ~= false
+    local on = S.Get("personalBuffPicks")[family.key]
+    if on == nil then return not family.off end
+    return on
 end
 
 local function PersonalWarn()
@@ -746,6 +748,7 @@ local function PersonalBuffs(list, buffs)
                 if family.items then
                     entry.items, entry.item = family.items, FirstCarried(family.items)
                     entry.slot = MissingSlot(family.weapons, warn, IMBUE)
+                    if family.conjure and not entry.item then entry.spell, entry.unit = spell, "player" end
                 else
                     entry.spell, entry.unit = spell, family.target and "target" or "player"
                 end

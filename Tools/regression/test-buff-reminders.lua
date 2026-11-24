@@ -1472,6 +1472,51 @@ do
     Check("woken at two minutes left", t.Shown(), "spell:2842")
 end
 
+-- Firestone and Spellstone: off until picked, on the main hand, and a click with none carried creates one.
+do
+    local function Click(t)
+        for _, f in ipairs(t.frames) do
+            if rawget(f, "count") and f.shown and rawget(f, "attributes") then
+                local a = f.attributes
+                return (a.type1 or "") .. " " .. tostring(a.macrotext1 or a.spell1 or a.item1)
+            end
+        end
+    end
+    local known = { [6366] = true, [17951] = true, [2362] = true }
+    local t = Fixture({ units = { player = "WARLOCK" }, known = known, weapons = { [16] = false } })
+    t.Login()
+    Check("warlock stones are off until picked", t.Shown(), "")
+    t = Fixture({ settings = { personalBuffPicks = { firestone = true } }, units = { player = "WARLOCK" },
+        known = known, weapons = { [16] = false } })
+    t.Login()
+    Check("firestone picked: the best known rank", t.Shown(), "spell:17951")
+    Check("none carried: a click creates one", Click(t), "spell 17951")
+    t.state.combat = true
+    local stone
+    for _, f in ipairs(t.frames) do if rawget(f, "items") and f.shown then stone = f end end
+    t.Fire("UNIT_SPELLCAST_SENT", "player", "", "cast1", 17951)
+    stone.scripts.PostClick(stone, "LeftButton", false)
+    t.Fire("UNIT_SPELLCAST_SUCCEEDED", "player", "cast1", 17951)
+    Check("creating a stone does not fade its reminder", t.Faded(), "")
+    t.state.combat = false
+    t.state.bags = { 1254, 13699 }
+    t.Fire("BAG_UPDATE_DELAYED")
+    t.Advance(0.5)
+    Check("one carried: a click puts the best on the main hand", Click(t), "macro /use item:13699\n/use 16")
+    t.state.weapons[16] = 3600
+    t.Fire("WEAPON_ENCHANT_CHANGED")
+    t.Advance(0.5)
+    Check("stone on the main hand", t.Shown(), "")
+    t = Fixture({ settings = { personalBuffPicks = { firestone = true, spellstone = true } },
+        units = { player = "WARLOCK" }, known = known, weapons = { [16] = false } })
+    t.Login()
+    Check("both picked: both offered", t.Shown(), "spell:17951 spell:2362")
+    t.state.weapons[16] = 3600
+    t.Fire("WEAPON_ENCHANT_CHANGED")
+    t.Advance(0.5)
+    Check("either stone clears both", t.Shown(), "")
+end
+
 -- Every reminder does something on a click: a poison or stone goes on the weapon that lacks one, a buff is cast.
 do
     local function Clicks(t)
@@ -1740,7 +1785,7 @@ do
         if row.key == "personalBuffPicks" then fields[#fields + 1] = row.field end
     end
     Check("shaman picks come first, then every other class", table.concat(fields, " "),
-        "imbue shield demonArmor mageArmor poisons battleShout innerFire shadowform aspect trueshot huntersMark thorns")
+        "imbue shield demonArmor firestone spellstone mageArmor poisons battleShout innerFire shadowform aspect trueshot huntersMark thorns")
     local extra
     for _, row in ipairs(card.rows) do
         if row.key == "personalBuffExtra" then extra = row end

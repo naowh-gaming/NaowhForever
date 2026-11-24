@@ -184,6 +184,12 @@ D.POISON_ITEMS = {
 D.PERSONAL = {
     { key = "demonArmor", name = "Demon Armor", class = "WARLOCK",
         spells = { 11735, 11734, 11733, 1086, 706, 696, 687, 403619 } },
+    { key = "firestone", name = "Firestone", class = "WARLOCK", weapons = { 16 }, off = true, conjure = true,
+        help = "A Firestone on your main hand. A click with none in your bags creates one.",
+        spells = { 17953, 17952, 17951, 6366 }, items = { 13701, 13700, 13699, 1254 } },
+    { key = "spellstone", name = "Spellstone", class = "WARLOCK", weapons = { 16 }, off = true, conjure = true,
+        help = "A Spellstone on your main hand. A click with none in your bags creates one.",
+        spells = { 17728, 17727, 2362 }, items = { 13603, 13602, 5522 } },
     { key = "mageArmor", name = "Mage Armor", class = "MAGE",
         spells = { 22783, 22782, 6117, 10220, 10219, 7320, 7302, 7301, 7300, 168 } },
     { key = "poisons", name = "Poisons", class = "ROGUE", weapons = { 16, 17 }, spells = { 2842 },
