@@ -961,9 +961,10 @@ in the pull request it opens.
 - The panel keeps the page it drew while the map is shut (`keepHidden`), since drawing a big
   dungeon's page on every open made the map stutter. While shut, its view only notes what it
   hears: a quest log update is checked against the quest signature, a party member's against
-  their counts, a bag update against the counts the draw read (`Loot.RecordCounts`), and any
-  other event, a setting, a favourite, the BiS list, stat weights or a loading screen means the
-  next open draws again. A loading screen into a dungeon draws its page then, with the map shut,
+  their counts, a bag update against the counts the draw read (`Loot.RecordCounts` and every
+  item row, bags and bank apart), and any other event, a setting, a favourite, the BiS list, stat
+  weights, a new run, a loading screen, the dungeon map shown or not, or a lockout older than a
+  minute means the next open draws again. A loading screen into a dungeon draws its page then, a frame later so the run is noted first, with the map shut,
   and so do item names that arrive while it is shut (never in combat), so an open finds it ready.
 - The world map calls every pin's `CheckMouseButtonPassthrough`, and its
   `SetPassThroughButtons` is protected: from our refresh it is blocked in combat, and the

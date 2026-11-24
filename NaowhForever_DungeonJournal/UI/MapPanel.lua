@@ -34,7 +34,7 @@ local chosen
 local factionsHere = {}
 local shownBoss
 local folder
-local drawnPage, drawnBoss
+local drawnPage, drawnBoss, drawnAway
 local stale = true
 
 local function On()
@@ -51,27 +51,34 @@ local function DrawPage()
     else
         view:Draw(page)
     end
-    drawnPage, drawnBoss, stale = page, shownBoss, false
+    drawnPage, drawnBoss, drawnAway, stale = page, shownBoss, J.DungeonMapAway(), false
 end
 
 local function DrawShown()
-    DrawPage()
     J.ShowMapOnWorldMap(not pagesAreFactions and pages[shownIndex] or nil)
+    DrawPage()
 end
 
 local function DrawIfChanged()
     local page = pages[shownIndex]
-    if stale or page ~= drawnPage or shownBoss ~= drawnBoss or not view:Unchanged() then return DrawShown() end
     J.ShowMapOnWorldMap(not pagesAreFactions and page or nil)
+    if stale or page ~= drawnPage or shownBoss ~= drawnBoss or J.DungeonMapAway() ~= drawnAway
+        or not view:Unchanged() then
+        DrawPage()
+    end
 end
 
 local function MarkStale()
     stale = true
 end
 
+local function RunChanged(kind)
+    if kind == "run" then stale = true end
+end
+
 local function ForgetPage()
     stale = true
-    if panel and not panel:IsShown() then view:UnregisterAllEvents() end
+    if view then view:UnregisterAllEvents() end
 end
 
 local function OtherHalf()
@@ -109,7 +116,9 @@ end
 local function DrawHidden()
     DrawPage()
     local room = panel.scroll:GetHeight()
-    if not (room and room > 0) then return end
+    if not (room and room > 0) then
+        room = UIParent:GetHeight() * UIParent:GetEffectiveScale() / panel:GetEffectiveScale()
+    end
     local tall = view:GetHeight() > room
     if tall == panel.scroll.bar:IsShown() then return end
     panel.scroll.bar:SetShown(tall)
@@ -252,7 +261,7 @@ local function FoldQuestLog()
 end
 
 local function Prewarm()
-    if not S.Get("mapPanel") or InCombatLockdown() or WorldMapFrame:IsShown() then return end
+    if not (On() and S.Get("mapPanel")) or InCombatLockdown() or WorldMapFrame:IsShown() then return end
     local here = J.Current()
     if not here then return end
     if not panel then
@@ -265,9 +274,9 @@ local function Prewarm()
 end
 
 local function FolderEvent(_, event)
-    if event == "PLAYER_ENTERING_WORLD" then ForgetPage() end
+    if event == "PLAYER_ENTERING_WORLD" and not (panel and panel:IsShown()) then ForgetPage() end
     FoldQuestLog()
-    if event == "PLAYER_ENTERING_WORLD" and On() then Prewarm() end
+    if event == "PLAYER_ENTERING_WORLD" then C_Timer.After(0, Prewarm) end
 end
 
 local function MapShown()
@@ -323,7 +332,6 @@ local function Sync()
     FoldQuestLog()
     if not On() then
         Hide()
-        ForgetPage()
         return
     end
     if WorldMapFrame then
@@ -372,5 +380,7 @@ S.OnChange(SettingChanged)
 ns.OnApply(Sync)
 hooksecurefunc(ns, "RedrawJournalWindow", MarkStale)
 hooksecurefunc(J.Favourites, "Toggle", MarkStale)
+J.Kills.OnRun(MarkStale)
+J.Runs.OnChange(RunChanged)
 if ns.BiS then ns.BiS.OnListChange(MarkStale) end
 if ns.StatWeights then ns.StatWeights.OnChange(MarkStale) end
