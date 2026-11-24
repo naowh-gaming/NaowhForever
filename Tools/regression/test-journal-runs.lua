@@ -2,7 +2,8 @@
 -- on the real Kills.lua and Team.lua). A run starts at the door and keeps each boss's split, the gold, XP,
 -- deaths, trash and Need rolls; it is finished once every numbered boss of a wing is dead; bests and
 -- averages leave out the run asked about and reset runs; leaving and coming back adds the time outside;
--- a new copy of the instance starts a new run; a run with nothing in it is not kept; and nothing is
+-- a new copy of the instance starts a new run; a boss of another dungeon on the same instance map (a
+-- Scarlet Monastery wing) starts that dungeon's run; a run with nothing in it is not kept; and nothing is
 -- listened to while the Run Panel is off.
 local count = 0
 local function Case(name, fn) fn(); count = count + 1; print("PASS " .. name) end
@@ -28,6 +29,9 @@ local function Dungeons()
         { npc = 9, name = "Miner Johnson", rare = true, encounters = { 9 } },
         { npc = 3, name = "Edwin VanCleef", encounters = { 3 } },
         { name = "Trash", trash = true },
+    } } } }, { key = "Library", name = "Library", instance = DEADMINES_MAP, wings = { { bosses = {
+        { npc = 30, name = "Houndmaster Loksey", encounters = { 30 } },
+        { npc = 31, name = "Arcanist Doan", encounters = { 31 } },
     } } } } }
 end
 
@@ -70,8 +74,8 @@ local function Fixture(opts)
             View = { Parts = { FightLength = function(s) return ("%d:%02d"):format(math.floor(s / 60), s % 60) end } },
             Looted = { OnAdd = function(fn) lootListeners[#lootListeners + 1] = fn end },
             Dungeons = function() return dungeons end,
-            Get = function(key) return key == "Deadmines" and dungeons[1] or nil end,
-            Current = function() if seen.inside then return { dungeons[1] } end end,
+            Get = function(key) return key == "Deadmines" and dungeons[1] or key == "Library" and dungeons[2] or nil end,
+            Current = function() if seen.inside then return { dungeons[seen.here or 1] } end end,
             Boss = function(npc) return byNpc[npc] end,
             NpcID = function(guid)
                 local kind, _, _, _, _, id = Split("-", guid)
@@ -320,6 +324,38 @@ Case("a reset instance seen on coming back starts a new run from the door, its b
     w.guids = { target = "Creature-0-1-36-701-501-CC" }
     w.Fire("PLAYER_TARGET_CHANGED")
     assert(w.Runs.Open() == second, "the same copy changes nothing")
+end)
+
+Case("a boss of another dungeon on the same instance map starts that dungeon's run", function()
+    local w = Fixture()
+    w.Enter()
+    w.Kill(1, 60)
+    w.Kill(2, 60)
+    w.Kill(3, 60)
+    local first = w.Runs.Open()
+    w.now = w.now + 30
+    w.Leave()
+    w.now = w.now + 120
+    w.here = 2
+    w.Enter()
+    local entered = w.now
+    w.Kill(30, 100)
+    local second = w.Runs.Open()
+    assert(second ~= first and first.ended and first.done == 180, "the first run kept, finished")
+    assert(second.dungeon == "Library" and second.start == entered and not second.partial, "from the door")
+    assert(w.Runs.Split(second, w.boss(1)) == nil and second.kills[30] == 100, "only its own boss")
+    w.Kill(31, 50)
+    assert(second.done == 150 and w.Runs.BestTime("Library") == 150, "finished, and its own best")
+    assert(w.Runs.BestTime("Deadmines") == 180, "the first dungeon's best unchanged")
+end)
+
+Case("another dungeon's boss without leaving the instance starts a run that sets no bests", function()
+    local w = Fixture()
+    w.Enter()
+    w.Kill(1, 60)
+    w.Kill(30, 60)
+    local second = w.Runs.Open()
+    assert(second.dungeon == "Library" and second.partial, "the time from the door holds the other dungeon")
 end)
 
 Case("a run with nothing in it is not kept", function()

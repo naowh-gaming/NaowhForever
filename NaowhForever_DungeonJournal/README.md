@@ -830,6 +830,10 @@ in the pull request it opens.
   the instance (`Shared.LayerOf`), read from kills, your target and nameplates. Back inside within
   `RUN_GRACE` after a reset, the first creature of a new copy ends the old run and starts a new one
   from the time you came in (`Kills.NewRun`), so its bosses show alive again before the first pull.
+- A kill of another dungeon's boss starts that dungeon's run from the time you came in. Scarlet
+  Monastery's four wings share instance map 189, and Lower and Upper Blackrock Spire share 229, so
+  hopping wings within `RUN_GRACE` keeps the same instance run. Without leaving the instance the new
+  run's time from the door holds the other dungeon too, so it is marked `partial`.
 - A run with no kill, trash, gold or loot is dropped when it closes, so a quick visit does not push
   a real run out of the `KEEP` (50) kept.
 - A run is finished once every numbered boss of one wing is dead; rares, optional bosses and a
@@ -1023,7 +1027,7 @@ in the pull request it opens.
 - `lua Tools/regression/test-journal-quests.lua`: the quest rules and the quest data.
 - `lua Tools/regression/test-journal-runs.lua`: the runs: splits, gold, XP, deaths and trash, when a
   run is finished, the trash total it teaches, Need rolls, bests and averages, reset runs, time
-  outside, and that nothing listens while the Run Panel is off.
+  outside, another dungeon's boss on the same map, and that nothing listens while the Run Panel is off.
 - `lua Tools/regression/test-journal-rare-alert.lua`: Rare Alert: what it sees, once a run, the chime, the
   Target button in and out of combat, and that nothing listens while it is off.
 - `python -m unittest discover -s Tools/tests`: the builders' rules (what a boss keeps, the

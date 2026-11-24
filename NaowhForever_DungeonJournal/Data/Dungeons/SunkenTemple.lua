@@ -16,7 +16,7 @@ ns.Journal.AddDungeon("SunkenTemple", {
             { npc = 5719, name = "Morphaz", model = 7975, encounters = { 3586, 490 }, loot = { 12466, 10796, 10795, 12463, 12464, 12243, 12465, 10797 }, chance = { 9, 5, 5, 5, 5, 4, 4, 4 } },
             { npc = 5722, name = "Hazzas", model = 9584, encounters = { 3585, 491 }, loot = { 10796, 12243, 12464, 10797, 12465, 12466, 10795, 12463 }, chance = { 8, 8, 8, 7, 7, 7, 7, 7 } },
             { npc = 5709, name = "Shade of Eranikus", model = 7806, encounters = { 3584, 493 }, loot = { 10829, 10833, 10835, 10836, 10828, 10837, 10847, 10110, 10167 }, chance = { 32, 32, 29, 27, 17, 14, 1, 0, 0 } },
-            { npc = 8443, name = "Avatar of Hakkar", model = 8053, encounters = { 3583, 492 }, loot = { 12462 }, chance = { 1 } },
+            { npc = 8443, name = "Avatar of Hakkar", model = 8053, optional = true, encounters = { 3583, 492 }, loot = { 12462 }, chance = { 1 } },
             { npc = 5708, name = "Spawn of Hakkar", model = 4065, optional = true, loot = { 10801, 10802 }, chance = { 47, 24 } },
             { npc = nil, name = "Trash", trash = true, loot = { 10846, 10842, 10843, 10845, 10838, 10844, 10788, 10795, 10797, 12463, 10796, 12466, 12465, 12243, 10786, 12464, 10787, 10785, 10783, 10784, 10623, 10624, 10625, 10626, 10627, 10628, 10629, 10630, 10631, 10632, 10633, 10634, 10780, 10781, 10782 }, chance = { 33, 33, 32, 31, 16, 16, 10, 9, 9, 9, 9, 9, 9, 9, 8, 8, 7, 6, 4, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 } },
         } },

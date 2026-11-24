@@ -137,6 +137,12 @@ local function OnKill(boss, now, dungeon)
     if not start then return end
     if not open or open.ended or open.start ~= start then Begin(dungeon, start, start == now) end
     if not open then return end
+    if next(open.kills) and dungeon.key ~= open.dungeon then
+        local entered = open.entered or start
+        local partial = entered == open.start
+        Kills.NewRun(entered)
+        Begin(dungeon, entered, partial)
+    end
     if not next(open.kills) then open.dungeon = dungeon.key end
     local id = boss.encounters[1]
     if not open.kills[id] then open.kills[id] = now - open.start end
