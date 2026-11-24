@@ -40,6 +40,7 @@ local function Fixture(saved, char, worn, carried)
     ns.BiSCrafts = {}
     ns.BiSClassQuests = {}
     ns.BiSWorldDrops = {}
+    ns.BiSQuestLevels = {}
     e.faction = "Alliance"
 
     -- A stand-in codec: what these cases care about is the payload, not how it is packed.

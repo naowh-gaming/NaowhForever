@@ -60,7 +60,7 @@ end
 -- With journal false, the Journal has not loaded.
 local function Fixture(class, level, sources, journal)
     local list = Dungeons()
-    local ns = { L = dofile("Tools/regression/locale_stub.lua").L, Upper = string.upper, Lower = string.lower, BiSData = { sources = sources or {}, specs = {} }, BiSLeveling = { specs = {}, sources = {} }, BiSCrafts = {}, BiSClassQuests = {}, BiSWorldDrops = {}, QoLSettings = {},
+    local ns = { L = dofile("Tools/regression/locale_stub.lua").L, Upper = string.upper, Lower = string.lower, BiSData = { sources = sources or {}, specs = {} }, BiSLeveling = { specs = {}, sources = {} }, BiSCrafts = {}, BiSClassQuests = {}, BiSWorldDrops = {}, BiSQuestLevels = {}, QoLSettings = {},
         Journal = journal ~= false and { Items = FACTS, Dungeons = function() return list end } or nil }
     Load(RULES, Env(ns, class, level))
     ns.Shared.ItemFacts = FACTS
@@ -193,6 +193,18 @@ Case("world drops are offered as drops are, with World drop for a source", funct
     assert(List(m.R.WorldDrops(1, {}, false)) == "", "a dungeon drop or craft is listed there only")
 end)
 
+Case("gear with no required level waits for the level of the quest that rewards it", function()
+    local m = Fixture("ROGUE", 16)
+    m.ns.BiSWorldDrops = { [20] = { 4, 2, 53, 0, 3 } }
+    m.ns.BiSQuestLevels = { [20] = 45 }
+    assert(m.R.ReqLevel(20) == 45)
+    assert(List(m.R.WorldDrops(1, {}, true)) == "", "not near a level 16")
+    m = Fixture("ROGUE", 45)
+    m.ns.BiSWorldDrops = { [20] = { 4, 2, 53, 0, 3 } }
+    m.ns.BiSQuestLevels = { [20] = 45 }
+    assert(List(m.R.WorldDrops(1, {}, true)) == "20")
+end)
+
 Case("an item's source is the Journal's boss and dungeon, a boss before trash", function()
     local m = Fixture("MAGE", 20)
     assert(m.ns.BiSSource(2) == "Boss 2" .. SEP .. "Place 2")
@@ -295,7 +307,7 @@ for _, id in ipairs({ 5821, 263435, 263436, 270039, 270046, 272996, 276727, 2772
 Case("every ranked item has a source, from the Journal's dungeons or wowsrc", function()
     local dungeons = {}
     local ns = { L = dofile("Tools/regression/locale_stub.lua").L, Upper = string.upper, Lower = string.lower, QoLSettings = {}, Shared = {},
-        BiSLeveling = { specs = {}, sources = {} }, BiSCrafts = {}, BiSClassQuests = {}, BiSWorldDrops = {}, Journal = {
+        BiSLeveling = { specs = {}, sources = {} }, BiSCrafts = {}, BiSClassQuests = {}, BiSWorldDrops = {}, BiSQuestLevels = {}, Journal = {
         AddDungeon = function(_, dungeon)
             dungeon.english = dungeon.name
             dungeons[#dungeons + 1] = dungeon

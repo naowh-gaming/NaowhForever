@@ -38,6 +38,7 @@ BiS/
     Crafts.lua        the gear professions craft, its facts and profession, for the picker (Tools/build/bis_crafts.py)
     ClassQuests.lua   the gear class quests reward, its facts, source and quest, for the picker (Tools/build/bis_class_quests.py)
     WorldDrops.lua    the rare and epic gear that drops anywhere in the world, its facts, for the picker (Tools/build/bis_world_drops.py)
+    QuestLevels.lua   the level you can first take a quest that rewards a piece of gear, where above its own (Tools/build/bis_quest_levels.py)
     Spots.lua         where the NPC with a BiS stands out in the world (Tools/build/bis_spots.py)
     Enchants.lua      every enchant, what it gives and goes on, the skill it needs (Tools/build/enchants.py)
   Rankings.lua        rankings, a level's picks, dungeon drops, crafts, class quest rewards, world drops, sources, Run Next (B.Rankings)
@@ -133,6 +134,9 @@ Other modules call in through `ns`: `ns.IsBisItem` (the Journal, Bag Space, the 
   you wear competes, so the list never asks you to wear worse. Trinkets go by MythicSim's sim order where it ranks them
   (the spec's `trinkets`), and those it does not after them by weights: weights give an on-use or
   proc trinket next to nothing. MythicSim sims no healer, so a healer's trinkets go by weights.
+- An item's level (`R.ReqLevel`) is the level you can first take a quest that rewards it when that is
+  higher than its own: many classic quest rewards need no level (Thrash Blade, from a level 45
+  Maraudon quest), so the Auto list picked them for low-level characters.
 - A slot's picker shows the ranking in two parts: what needs no more than Levels Ahead
   (`bisAutoAhead`, the Auto list's setting) levels over yours, then For later levels, each item
   keeping its rank. At the top level the second part is empty and the ranking reads as one list.

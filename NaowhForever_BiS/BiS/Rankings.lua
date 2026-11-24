@@ -108,8 +108,8 @@ local function Wieldable(itemClass, slot)
     return not (slot == OFF_HAND and itemClass == WEAPON and not DUAL_WIELD[playerClass])
 end
 
-local function Near(item, level, near)
-    return not near or math.abs(item[FACT_REQUIRED] - level) <= NEAR_LEVELS
+local function Near(id, item, level, near)
+    return not near or math.abs((ns.BiSQuestLevels[id] or item[FACT_REQUIRED]) - level) <= NEAR_LEVELS
 end
 
 local function Owned(slot, id)
@@ -234,7 +234,7 @@ local function Offered(pool, slot, ranked, near)
     for _, id in ipairs(pool) do
         local item = Facts(id)
         if item and not skip[id] and IsGear(item) and R.Usable(playerClass, item) and Fits(id, slot)
-            and Wieldable(item[FACT_CLASS], slot) and Near(item, level, near) then
+            and Wieldable(item[FACT_CLASS], slot) and Near(id, item, level, near) then
             ids[#ids + 1] = id
         end
     end
@@ -312,7 +312,8 @@ end
 
 function R.ReqLevel(itemID)
     local item = Facts(itemID)
-    return item and item[FACT_REQUIRED] or select(INFO_MIN_LEVEL, C_Item.GetItemInfo(itemID))
+    return ns.BiSQuestLevels[itemID] or item and item[FACT_REQUIRED]
+        or select(INFO_MIN_LEVEL, C_Item.GetItemInfo(itemID))
 end
 
 function R.ItemLevel(itemID)
