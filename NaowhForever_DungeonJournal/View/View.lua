@@ -20,6 +20,7 @@ local STATE_EVENTS = {
 local QUEST_EVENTS = { QUEST_LOG_UPDATE = true, QUEST_DATA_LOAD_RESULT = true }
 local GROUP_EVENTS = { GROUP_ROSTER_UPDATE = true, UNIT_QUEST_LOG_CHANGED = true }
 local RANK_EVENTS = { "MAJOR_FACTION_RENOWN_LEVEL_CHANGED", "CURRENCY_DISPLAY_UPDATE" }
+local GetItemCount = C_Item.GetItemCount
 
 local TEXT_YOUR_BIS = ns.L("Your BiS")
 local TEXT_TURN_ON_BIS = ns.L("Turn on the BiS List to see your BiS marked here.")
@@ -194,9 +195,15 @@ function ViewMixin:Begin(dungeon, boss, query, page)
     wipe(self.rankCache)
     wipe(self.upgradeCache)
     wipe(self.knownCache)
+    if self.keepHidden then
+        self.dirty, self.questsDirty, self.partyDirty, self.bagsDirty = false, false, false, false
+        wipe(self.bagCounts)
+        Loot.RecordCounts(self.bagCounts)
+    end
 end
 
 function ViewMixin:Finish()
+    Loot.RecordCounts(nil)
     self:Fit(STATE_EVENTS)
     if self.questsDrawn then
         RegisterAll(self, QUEST_EVENTS)
@@ -254,16 +261,68 @@ function ViewMixin:QuestsUnchanged()
     return signature == self.repSignature
 end
 
+function ViewMixin:PartyUnchanged()
+    local list = self.questList
+    for i = 1, #list do
+        local entry = list[i]
+        if entry.party ~= Quests.PartyCount(entry.quest, entry.loggedID) then return false end
+    end
+    return true
+end
+
+function ViewMixin:BagsUnchanged()
+    if self.page then return false end
+    for itemID, count in pairs(self.bagCounts) do
+        if GetItemCount(itemID, true) ~= count then return false end
+    end
+    return true
+end
+
+function ViewMixin:Unchanged()
+    if self.dirty then return false end
+    if self.questsDirty and not self:QuestsUnchanged() then return false end
+    if self.partyDirty and not self:PartyUnchanged() then return false end
+    if self.bagsDirty and not self:BagsUnchanged() then return false end
+    self.questsDirty, self.partyDirty, self.bagsDirty = false, false, false
+    return true
+end
+
 function ViewMixin:Flush()
     self.flushQueued = false
+    if not self:IsVisible() then
+        if not self.keepHidden then self.dirty, self.questsDirty = false, false end
+        return
+    end
     local questsOnly = self.questsDirty and not self.dirty
     self.dirty, self.questsDirty = false, false
-    if not self:IsVisible() then return end
     if questsOnly and self:QuestsUnchanged() then return end
     self:Redraw()
 end
 
+function ViewMixin:HiddenEvent(event, arg, success)
+    if event == "GET_ITEM_INFO_RECEIVED" then
+        if not self.waitingFor[arg] then return end
+        if success == false then
+            Refuse(arg)
+            self.waitingFor[arg] = nil
+            return
+        end
+    elseif QUEST_EVENTS[event] then
+        self.questsDirty = true
+        return
+    elseif event == "UNIT_QUEST_LOG_CHANGED" then
+        if arg ~= "player" then self.partyDirty = true end
+        return
+    elseif event == "BAG_UPDATE_DELAYED" then
+        self.bagsDirty = true
+        return
+    end
+    self.dirty = true
+    self:UnregisterAllEvents()
+end
+
 function ViewMixin:OnEvent(event, arg, success)
+    if self.keepHidden and not self:IsVisible() then return self:HiddenEvent(event, arg, success) end
     if event == "GET_ITEM_INFO_RECEIVED" then
         if not self.waitingFor[arg] then return end
         if success == false then
@@ -281,6 +340,7 @@ function ViewMixin:OnEvent(event, arg, success)
 end
 
 function ViewMixin:OnHide()
+    if self.keepHidden then return end
     self:UnregisterAllEvents()
     self.dirty, self.questsDirty = false, false
 end
@@ -290,6 +350,7 @@ function View.New(parent)
     view.filters = {}
     view.shownCache, view.rankCache, view.upgradeCache = {}, {}, {}
     view.knownCache = {}
+    view.bagCounts = {}
     view.rankEntries = {}
     view.kindCounts = {}
     view.repLog = {}

@@ -90,7 +90,13 @@ local METHODS = {
         frame.pointX = type(a) == "number" and a or type(b) == "number" and b or c
         frame.pointY = type(a) == "number" and b or c
     end,
-    IsVisible = function(frame) return rawget(frame, "shown") ~= false end,
+    IsVisible = function(frame)
+        repeat
+            if rawget(frame, "shown") == false then return false end
+            frame = rawget(frame, "parent")
+        until type(frame) ~= "table"
+        return true
+    end,
     Show = function(frame) frame.shown = true end,
     Hide = function(frame) frame.shown = false end,
     SetShown = function(frame, shown) frame.shown = shown and true or false end,
@@ -127,7 +133,10 @@ local METHODS = {
 Frame = function(state, parent)
     return setmetatable({ scripts = {}, events = {}, state = state, parent = parent }, { __index = function(_, key)
         if key == "HookScript" then
-            return function(_, script) state.hooks[#state.hooks + 1] = script end
+            return function(frame, script, fn)
+                state.hooks[#state.hooks + 1] = script
+                if frame == state.worldMap then state.hooked[script] = fn end
+            end
         end
         if METHODS[key] then return METHODS[key] end
         local measure = MEASURE_METHODS[key]
@@ -150,7 +159,7 @@ local function fixture(settings, noBis, language)
     local state = {
         level = 20, instance = nil, combat = false, bisList = true,
         hooks = {}, frames = 0, printed = {}, waypoints = {}, mapOpened = nil, requested = {},
-        refreshes = 0, made = {}, logged = {}, watched = {}, objectives = {}, account = {}, guid = "Player-4613-006EB819", now = 1000, clock = 50,
+        refreshes = 0, made = {}, hooked = {}, logged = {}, watched = {}, objectives = {}, account = {}, guid = "Player-4613-006EB819", now = 1000, clock = 50,
         bis = {}, worn = {}, owned = {}, names = {}, sources = {}, looks = {},
         log = {}, repQuests = {}, readyQuests = {},
         sent = {}, timers = {}, pushed = {}, fonts = {}, atlases = {}, dressable = {}, hasLook = {}, buttons = {},
@@ -1278,6 +1287,81 @@ do
     ns.Apply()
     check("and hooks the map only once", #state.hooks == 3)
     check("and makes its frames only once", state.frames == 5)
+end
+
+-------------------------------------------------------------------------------
+--  Beside the map in a dungeon: the page drawn once, and again only when something changed
+-------------------------------------------------------------------------------
+do
+    local ns, state, S = fixture({ enabled = true, favourites = true })
+    local J, map = ns.Journal, state.worldMap
+    local draws, draw = 0, J.View.Mixin.Draw
+    J.View.Mixin.Draw = function(...)
+        draws = draws + 1
+        return draw(...)
+    end
+    ns.Apply()
+    state.instance = { id = 36, name = "The Deadmines" }
+    local wanted = J.Boss(639).loot[1]
+    J.Favourites.Toggle(wanted)
+    local function Open()
+        map.shown = true
+        state.hooked.OnShow(map)
+    end
+    local function Close()
+        map.shown = false
+        state.hooked.OnHide(map)
+    end
+    Open()
+    check("the map opened in a dungeon draws its page", draws == 1)
+    local view
+    for _, frame in ipairs(state.made) do
+        if rawget(frame, "keepHidden") then view = frame end
+    end
+    check("on a view that keeps it while the map is shut", view ~= nil)
+    local function Event(event, arg)
+        view.scripts.OnEvent(view, event, arg)
+    end
+    Close()
+    Open()
+    check("opened again with nothing changed, it is not drawn again", draws == 1)
+    Close()
+    Event("QUEST_LOG_UPDATE")
+    Event("BAG_UPDATE_DELAYED")
+    Open()
+    check("quest log and bag updates that change nothing on it leave it", draws == 1)
+    Close()
+    state.owned[wanted] = 1
+    Event("BAG_UPDATE_DELAYED")
+    Open()
+    check("a favourite looted while it was shut draws it again", draws == 2)
+    Close()
+    Event("PLAYER_EQUIPMENT_CHANGED")
+    check("gear changed while shut: it stops listening until it is drawn", next(view.events) == nil)
+    Open()
+    check("and draws on the next open", draws == 3)
+    Close()
+    S.Set("showChance", false)
+    Open()
+    check("a setting changed while shut draws it again", draws == 4)
+    Close()
+    J.Favourites.Toggle(wanted)
+    Open()
+    check("so does a favourite added or removed", draws == 5)
+    Close()
+    state.instance = nil
+    for _, frame in ipairs(state.made) do
+        if frame.events.PLAYER_ENTERING_WORLD and frame ~= view then
+            frame.scripts.OnEvent(frame, "PLAYER_ENTERING_WORLD")
+        end
+    end
+    check("after a loading screen it listens for nothing", next(view.events) == nil)
+    state.instance = { id = 36, name = "The Deadmines" }
+    Open()
+    check("and the next open draws it", draws == 6)
+    Close()
+    S.Set("enabled", false)
+    check("off, the kept page listens for nothing", next(view.events) == nil)
 end
 
 -------------------------------------------------------------------------------

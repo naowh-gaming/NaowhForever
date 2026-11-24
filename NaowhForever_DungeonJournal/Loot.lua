@@ -58,12 +58,24 @@ local function Lower(itemID, name)
     return lower
 end
 
+local counted
+
+local function Count(itemID)
+    local count = GetItemCount(itemID, true)
+    if counted then counted[itemID] = count end
+    return count
+end
+
 local function Have(itemID)
-    return IsEquippedItem(itemID) or GetItemCount(itemID, true) > 0
+    return IsEquippedItem(itemID) or Count(itemID) > 0
 end
 
 local Loot = {}
 J.Loot = Loot
+
+function Loot.RecordCounts(into)
+    counted = into
+end
 Loot.Have = Have
 
 function Loot.BisOn()
@@ -169,7 +181,7 @@ function Loot.Upgrade(itemID)
 end
 
 function Loot.Missing(itemID)
-    return BisUpgrade(itemID) and GetItemCount(itemID, true) == 0
+    return BisUpgrade(itemID) and Count(itemID) == 0
 end
 
 function Loot.Recipe(itemID)

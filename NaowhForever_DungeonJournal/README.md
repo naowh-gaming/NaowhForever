@@ -958,6 +958,12 @@ in the pull request it opens.
   it is placed again when the map moves or scales: map movers (QoL's Map Window among them)
   call its `SetPoint` and `SetScale` on every frame of a drag, so that waits for the next frame,
   once. Hooked, not called back, so neither addon needs the other.
+- The panel keeps the page it drew while the map is shut (`keepHidden`), since drawing a big
+  dungeon's page on every open made the map stutter. While shut, its view only notes what it
+  hears: a quest log update is checked against the quest signature, a party member's against
+  their counts, a bag update against the counts the draw read (`Loot.RecordCounts`), and any
+  other event, a setting, a favourite, the BiS list, stat weights or a loading screen means the
+  next open draws again.
 - The world map calls every pin's `CheckMouseButtonPassthrough`, and its
   `SetPassThroughButtons` is protected: from our refresh it is blocked in combat, and the
   entrance pins want their clicks, so theirs does nothing. Pins acquired in combat taint the map,

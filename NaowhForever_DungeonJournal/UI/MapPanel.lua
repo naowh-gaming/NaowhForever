@@ -34,6 +34,8 @@ local chosen
 local factionsHere = {}
 local shownBoss
 local folder
+local drawnPage, drawnBoss
+local stale = true
 
 local function On()
     return S.Get("enabled") and (S.Get("mapPanel") or S.Get("mapFactions")) and not ns.GamepadStandDown()
@@ -49,7 +51,23 @@ local function DrawShown()
     else
         view:Draw(page)
     end
+    drawnPage, drawnBoss, stale = page, shownBoss, false
     J.ShowMapOnWorldMap(not pagesAreFactions and page or nil)
+end
+
+local function DrawIfChanged()
+    local page = pages[shownIndex]
+    if stale or page ~= drawnPage or shownBoss ~= drawnBoss or not view:Unchanged() then return DrawShown() end
+    J.ShowMapOnWorldMap(not pagesAreFactions and page or nil)
+end
+
+local function MarkStale()
+    stale = true
+end
+
+local function ForgetPage()
+    stale = true
+    if panel and not panel:IsShown() then view:UnregisterAllEvents() end
 end
 
 local function OtherHalf()
@@ -102,6 +120,7 @@ local function Build()
     scroll:SetPoint("TOPLEFT", PANEL_PAD, -PANEL_HEADER - VIEW_TOP)
     view = J.View.New(scroll)
     view.onWorldMap = true
+    view.keepHidden = true
     scroll:SetScrollChild(view)
     panel.scroll = scroll
     FitWidth()
@@ -164,7 +183,7 @@ local function Refresh()
     PaintButtons()
     Place()
     panel:Show()
-    DrawShown()
+    DrawIfChanged()
     panel.scroll:SetVerticalScroll(0)
 end
 
@@ -208,6 +227,11 @@ local function FoldQuestLog()
     end
 end
 
+local function FolderEvent(_, event)
+    if event == "PLAYER_ENTERING_WORLD" then ForgetPage() end
+    FoldQuestLog()
+end
+
 local function MapShown()
     J.WindowAwayForMap(true)
     Refresh()
@@ -223,6 +247,7 @@ local function MapChanged()
     local away = J.DungeonMapAway()
     J.WorldMapChanged()
     if J.DungeonMapAway() == away then return end
+    stale = true
     if shownBoss and J.DungeonMapAway() then
         shownBoss = nil
         PaintButtons()
@@ -236,7 +261,7 @@ local function Hook()
     if hooked then return end
     hooked = true
     folder = CreateFrame("Frame")
-    folder:SetScript("OnEvent", FoldQuestLog)
+    folder:SetScript("OnEvent", FolderEvent)
     WorldMapFrame:HookScript("OnShow", MapShown)
     WorldMapFrame:HookScript("OnHide", MapHidden)
     hooksecurefunc(WorldMapFrame, "OnMapChanged", MapChanged)
@@ -253,12 +278,14 @@ local function HookAndRefresh()
 end
 
 local function Sync()
+    ForgetPage()
     if folder then
         if On() then folder:RegisterEvent("PLAYER_ENTERING_WORLD") else folder:UnregisterAllEvents() end
     end
     FoldQuestLog()
     if not On() then
         Hide()
+        ForgetPage()
         return
     end
     if WorldMapFrame then
@@ -276,6 +303,8 @@ local function SettingChanged(key)
     elseif panel and panel:IsShown() then
         PaintButtons()
         view:Redraw()
+    else
+        stale = true
     end
 end
 
@@ -303,3 +332,7 @@ end
 
 S.OnChange(SettingChanged)
 ns.OnApply(Sync)
+hooksecurefunc(ns, "RedrawJournalWindow", MarkStale)
+hooksecurefunc(J.Favourites, "Toggle", MarkStale)
+if ns.BiS then ns.BiS.OnListChange(MarkStale) end
+if ns.StatWeights then ns.StatWeights.OnChange(MarkStale) end
