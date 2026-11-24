@@ -111,6 +111,8 @@ local function Part(place, dungeon, slot, boss, name, spot, who, seen)
             seen[boss] = true
             who[#who + 1] = boss
         end
+        if seen[slot] then return nil end
+        seen[slot] = true
         return SlotName(slot)
     end
     return (boss and Has(boss, spot) .. " " or "") .. (name or TEXT_YOUR_BIS)
@@ -135,7 +137,7 @@ local function Detail(place, dungeon)
     for i, slot in ipairs(place.slots) do
         local boss, name, spot = Drop(place.ids[i])
         loaded = loaded and name ~= nil
-        parts[i] = Part(place, dungeon, slot, boss, name, spot, who, seen)
+        parts[#parts + 1] = Part(place, dungeon, slot, boss, name, spot, who, seen)
     end
     text = Joined(place, parts, who, dungeon)
     if loaded then byKey[place.key] = text end

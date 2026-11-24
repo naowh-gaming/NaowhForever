@@ -677,7 +677,7 @@ local function Steps(route)
     return table.concat(names, ",")
 end
 
-Case("the route lists every pick still to get, by level until you order it, and drops what a better pick replaced", function()
+Case("the route lists every pick still to get, by level until you order it, and drops what a better pick replaced, with every pick a place drops", function()
     local e, Route = RouteFixture({})
     local route = Route(Saved(e))
     assert(Steps(route) == "Maraudon,Blackrock Depths,Scholomance", Steps(route))
@@ -688,8 +688,9 @@ Case("the route lists every pick still to get, by level until you order it, and 
     e, Route = RouteFixture({})
     e.ns.BiSData.sources[102] = e.ns.BiSData.sources[103]
     route = Route(Saved(e))
-    assert(Steps(route) == "Maraudon,Scholomance" and route[2].items == 1 and route[2].ids[1] == 103,
-        "a backup from the place you go for the BiS is not listed again")
+    assert(Steps(route) == "Maraudon,Scholomance" and route[2].items == 2 and route[2].bis == 1, Steps(route))
+    assert(route[2].ids[1] == 103 and route[2].ids[2] == 102 and route[2].ranks[2] == 2,
+        "a backup from the place you go for the BiS is listed with it")
 end)
 
 Case("a moved step stays where you put it", function()

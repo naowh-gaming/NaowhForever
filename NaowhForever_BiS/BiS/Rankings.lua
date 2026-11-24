@@ -37,7 +37,7 @@ local craftIDs, questIDs, worldIDs
 local dropDungeon = {}
 local places, details = {}, {}
 local nextPlaces, byName, placePool = {}, {}, {}
-local routePlaces, routeByName, routePool, routeAt, routePicks, routeTaken = {}, {}, {}, {}, {}, {}
+local routePlaces, routeByName, routePool, routeAt, routePicks = {}, {}, {}, {}, {}
 local R = {}
 
 local function ByRank(a, b)
@@ -359,13 +359,11 @@ function R.Route(list)
     for _, gear in ipairs(Items.GEAR_SLOTS) do
         local slot = gear[1]
         local picks = Counted(slot, idle) and B.Picks(list, slot, routePicks) or EMPTY
-        local taken = wipe(routeTaken)
         for rank = 1, #picks do
             local id = picks[rank]
             if Owned(slot, id) then break end
             local name, kind = PlaceOf(id)
-            if name and not taken[name] then
-                taken[name] = true
+            if name then
                 local place = routeByName[name] or NewPlace(found, routeByName, routePool, name, kind, id)
                 AddToPlace(place, slot, id, rank)
                 place.level = math.min(place.level, R.ReqLevel(id) or math.huge)
