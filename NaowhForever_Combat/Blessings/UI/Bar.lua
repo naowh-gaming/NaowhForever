@@ -290,6 +290,7 @@ local function PlaceAuras(x, shown)
             Look.Aura(btn, BuffState("player", entry.key))
             x = Look.Place(btn, bar, x)
         elseif btn then
+            B.SetWatch(btn, nil, nil)
             btn:Hide()
         end
     end
@@ -474,7 +475,7 @@ local function BuildBar()
     bar:SetClampedToScreen(true)
     cells, auraButtons = {}, {}
     bar.mover = ns.UI.AttachMover(bar, TEXT_MOVER, SavePosition, B.PAGE, CARD)
-    auraButton = NewSelfButton("NaowhForeverBlessAura")
+    auraButton = NewSelfButton(AURA_NAME)
     auraButton:SetScript("PostClick", OnAuraClick)
     BarTip(auraButton, TEXT_AURA, B.AURA_TIP)
     furyButton = NewSelfButton("NaowhForeverBlessFury")
