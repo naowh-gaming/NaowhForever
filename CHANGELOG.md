@@ -5,6 +5,9 @@
 ### Changed
 - Dungeon Journal: its data is updated to WoW Forever build 1.60.1.71091.
 - Dungeon Journal: boss loot updated from the latest Forever loot lists.
+- The Market: the Price Graph shows each day's median price instead of its lowest, so one cheap
+  listing no longer drags a whole day down. Dropped, Rose and the tooltip's change and average
+  follow it. Days already in your history keep their lowest price until they age out.
 
 ## 1.4.10
 

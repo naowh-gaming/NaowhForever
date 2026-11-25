@@ -1,6 +1,6 @@
 # Auction Data
 
-Every Forever auction house's lowest price per item and how many auctions list it, built from Blizzard's auction data by
+Every Forever auction house's lowest price per item, how many auctions list it and its median price, built from Blizzard's auction data by
 `Tools/build/auction_feed.py` when a release is packaged. Load-on-demand: Auction Prices
 (`NaowhForever_QoL/Loot/AuctionPrices.lua`) loads it the first time something asks for a price, so a
 player who never uses a price never loads it.
@@ -23,10 +23,13 @@ NaowhForever_AuctionData/
   built: Blizzard's data can lag by hours, and a player's newer scan should win.
 - `ns.AuctionFeed.regions` is keyed by `GetCurrentRegion()` (1 the Americas, 3 Europe), then by
   Blizzard's house ID. Each house has its `faction` (Alliance, Horde or Blackwater) and its prices as
-  one `id:price:listed,...` string in base 36, each ID the step from the one before: a string costs a
+  one `id:price:listed:median,...` string in base 36, each ID the step from the one before: a string costs a
   fraction of the table it decodes to, and only the player's houses are ever decoded.
 - `listed` is how many auctions had the item up with a buyout, a stack counting once. The reader also takes `id:price` with no
   count, so a release built before counts still prices; its items read as an unknown count.
+- `median` is the price of the middle one of everything the house lists with a buyout, weighted by
+  quantity, for The Market's price history. Where an item has a median but no count, `listed` is left
+  empty (`id:price::median`). A middle's median is the middle of its faction's houses' medians.
 - Blizzard lists five houses per faction and region, one of them empty. Which one is the player's is
   found in game, from the player's own scan; until then a price is the middle of that faction's houses,
   worked out at build time into `ns.AuctionFeed.middles` (region, then faction: one string like a house's)

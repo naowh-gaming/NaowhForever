@@ -83,6 +83,7 @@ local function Setup(buttonOn, captureOn, withFrame, cratesOn, tooltipOn, feed, 
             return n
         end,
         BreakUpLargeNumbers = tostring,
+        wipe = function(t) for k in pairs(t) do t[k] = nil end return t end,
         C_CurrencyInfo = { GetCoinTextureString = function(amount) return amount .. "c" end },
         C_Timer = {
             After = function(delay, fn) timers[#timers + 1] = { delay = delay, fn = fn } end,
@@ -1029,5 +1030,39 @@ t.Page({ bear, monkey, Row(BELT, 250, 1, 9) }, true)
 t.Flush()
 Check("a page by page scan keeps each suffix it can name", t.ns.AuctionPrice(BELT, BEAR) == 300
     and t.ns.AuctionPrice(BELT, MONKEY) == 200 and t.ns.AuctionPrice(BELT, EAGLE) == 200)
+
+t = Setup(true, false, true)
+t.Fire("AUCTION_HOUSE_SHOW")
+t.Total(6)
+t.Listing(0, 10, 1, 20)
+t.Listing(1, 10, 2, 100)
+t.Listing(2, 10, 3, 210)
+t.Listing(3, 10, 1, 900)
+t.Listing(4, 20, 2, 60)
+t.Listing(5, 20, 2, 80)
+t.Button().click()
+t.Fire("REPLICATE_ITEM_LIST_UPDATE")
+t.Flush()
+local medians, mediansAt = t.ns.AuctionMedianList()
+Check("a fast scan keeps each item's median, by quantity, past one cheap single", t.ns.AuctionPrice(10) == 20
+    and medians[10] == 70 and mediansAt == t.Now())
+Check("the lower of two middles", medians[20] == 30)
+t.Advance(120)
+t.Button().click()
+t.Page({ Row(10, 5, 1) }, true)
+t.Flush()
+Check("a page by page scan, which has only the lowest, leaves the medians", t.ns.AuctionPrice(10) == 5
+    and t.ns.AuctionMedianList()[10] == 70 and select(2, t.ns.AuctionMedianList()) == mediansAt)
+
+local MEDIAN_FEED = { time = FEED_TIME, regions = { [1] = { [110] = { faction = "Alliance", prices = "a:z::1e,1:7:3" } } },
+    middles = { [1] = { Alliance = "a:z::1e,1:7:3" } } }
+t = Setup(true, false, true, nil, nil, MEDIAN_FEED)
+medians, mediansAt = t.ns.AuctionMedianList()
+Check("the release's prices carry a median after an empty count", medians[10] == 50 and mediansAt == FEED_TIME
+    and t.ns.AuctionPrice(10) == 35 and t.ns.AuctionListed(10) == nil)
+Check("and a count with no median as before", medians[11] == nil and t.ns.AuctionListed(11) == 3)
+t.Priced({ [10] = 40 }, 7200)
+t.House("Realm-Alliance").medians, t.House("Realm-Alliance").medianTime = { [10] = 45 }, t.Now() - 7200
+Check("your own fast scan's medians come first, as its prices do", t.ns.AuctionMedianList()[10] == 45)
 
 print("auction prices: " .. checks .. " checks passed")

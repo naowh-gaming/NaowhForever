@@ -1,5 +1,5 @@
-"""Build the Auction Prices feed: every Forever auction house's lowest price per item and how many auctions
-list it, from Blizzard's auction data, into NaowhForever_AuctionData/Prices.lua (ns.AuctionFeed).
+"""Build the Auction Prices feed: every Forever auction house's lowest price per item, how many auctions
+list it and its median price, from Blizzard's auction data, into NaowhForever_AuctionData/Prices.lua (ns.AuctionFeed).
 
 Needs a Blizzard API client in BLIZZARD_CLIENT_ID and BLIZZARD_CLIENT_SECRET. The release
 workflow runs it before packaging, so every release carries the prices of that hour. The feed's
@@ -73,9 +73,9 @@ def seconds(last_modified):
     return int(email.utils.parsedate_to_datetime(last_modified).timestamp())
 
 
-def lowest(listings, prices, listed=None):
-    """Fold listings into item ID -> lowest price for one, in copper, and into listed, item ID -> how many
-    auctions have a price; bid-only auctions skipped."""
+def lowest(listings, prices, listed=None, amounts=None):
+    """Fold listings into item ID -> lowest price for one, in copper, into listed, item ID -> how many
+    auctions have a price, and into amounts, item ID -> {price for one: quantity}; bid-only auctions skipped."""
     for listing in listings or []:
         item, quantity = listing["item"]["id"], listing.get("quantity") or 1
         each = listing.get("unit_price")
@@ -87,7 +87,23 @@ def lowest(listings, prices, listed=None):
             prices[item] = each
         if listed is not None:
             listed[item] = listed.get(item, 0) + 1
+        if amounts is not None:
+            counts = amounts.setdefault(item, {})
+            counts[each] = counts.get(each, 0) + quantity
     return prices
+
+
+def medians(amounts):
+    """Item ID -> the price of the middle one of everything listed, weighted by quantity (the lower of two)."""
+    out = {}
+    for item, counts in amounts.items():
+        total, seen = sum(counts.values()), 0
+        for price in sorted(counts):
+            seen += counts[price]
+            if seen * 2 >= total:
+                out[item] = price
+                break
+    return out
 
 
 def base36(number):
@@ -99,36 +115,42 @@ def base36(number):
             return text
 
 
-def encode(prices, listed=None):
-    """"id:price:listed,..." in base 36, each ID as the step from the one before; ":listed" only for an item
-    listed holds."""
+def encode(prices, listed=None, middle=None):
+    """"id:price:listed:median,..." in base 36, each ID as the step from the one before; ":listed" only for an
+    item listed holds, and ":median" only for one middle holds (after an empty listed where there is none)."""
     parts, last = [], 0
     for item in sorted(prices):
         part = base36(item - last) + ":" + base36(prices[item])
-        if listed and item in listed:
-            part += ":" + base36(listed[item])
+        if listed and item in listed or middle and item in middle:
+            part += ":" + (base36(listed[item]) if listed and item in listed else "")
+        if middle and item in middle:
+            part += ":" + base36(middle[item])
         parts.append(part)
         last = item
     return ",".join(parts)
 
 
 def middles(found):
-    """Per faction, each item's middle price across that faction's houses (the lower of two middles) and the
-    most auctions any house listing it at that price had, so the game never decodes every house for it."""
+    """Per faction, each item's middle price across that faction's houses (the lower of two middles), the
+    most auctions any house listing it at that price had, and the middle of the houses' medians, so the game
+    never decodes every house for it."""
     out = {}
     for faction in sorted({house["faction"] for house in found.values() if house["prices"]}):
         mine = [house for house in found.values() if house["faction"] == faction and house["prices"]]
-        each = {}
+        each, middle = {}, {}
         for house in mine:
             for item, price in house["prices"].items():
                 each.setdefault(item, []).append(price)
+            for item, price in (house.get("medians") or {}).items():
+                middle.setdefault(item, []).append(price)
         prices = {item: sorted(found_prices)[(len(found_prices) + 1) // 2 - 1] for item, found_prices in each.items()}
+        middle = {item: sorted(values)[(len(values) + 1) // 2 - 1] for item, values in middle.items()}
         listed = {}
         for house in mine:
             for item, count in (house.get("listed") or {}).items():
                 if house["prices"].get(item) == prices[item] and count > listed.get(item, 0):
                     listed[item] = count
-        out[faction] = encode(prices, listed)
+        out[faction] = encode(prices, listed, middle)
     return out
 
 
@@ -142,10 +164,10 @@ def houses(access, region, summary=False):
         started = time.time()
         listed, size, modified = get(access, region, str(house_id))
         goods, goods_size, goods_modified = get(access, region, f"{house_id}/commodities")
-        counts = {}
-        prices = lowest(goods.get("auctions"), lowest(listed.get("auctions"), {}, counts), counts)
+        counts, amounts = {}, {}
+        prices = lowest(goods.get("auctions"), lowest(listed.get("auctions"), {}, counts, amounts), counts, amounts)
         found[house_id] = {"faction": name.split()[0] if name else "", "prices": prices, "listed": counts,
-                           "time": min(seconds(modified), seconds(goods_modified))}
+                           "medians": medians(amounts), "time": min(seconds(modified), seconds(goods_modified))}
         if summary:
             auctions, commodities = listed.get("auctions") or [], goods.get("auctions") or []
             print(f"{region} {house_id} {name!r}: {len(auctions)} auctions, {len(commodities)} commodities, "
@@ -159,13 +181,13 @@ def houses(access, region, summary=False):
 
 
 def lua(feed, at):
-    lines = ["-- Prices.lua: every Forever auction house's lowest prices, built by Tools/build/auction_feed.py.",
+    lines = ["-- Prices.lua: every Forever auction house's lowest and median prices, built by Tools/build/auction_feed.py.",
              "local ns = _G.NaowhForever", "", "ns.AuctionFeed = {", f"    time = {at},", "    regions = {"]
     for region, found in feed.items():
         lines.append(f"        [{REGIONS[region]}] = {{")
         for house_id in sorted(found):
             house = found[house_id]
-            prices = encode(house["prices"], house.get("listed"))
+            prices = encode(house["prices"], house.get("listed"), house.get("medians"))
             lines.append(f'            [{house_id}] = {{ faction = "{house["faction"]}", prices = "{prices}" }},')
         lines.append("        },")
     lines += ["    },", "    middles = {"]

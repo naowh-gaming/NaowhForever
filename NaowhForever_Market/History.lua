@@ -1,4 +1,4 @@
--- History.lua: each item's lowest price per day and how many were listed, from your scans and the listings you see, two weeks of them per realm and faction, and the Uncommon or better items whose price moved most between the last two days (Market.History).
+-- History.lua: each item's median price per day and how many were listed, from your fast scans and the release's prices, two weeks of them per realm and faction, and the Uncommon or better items whose price moved most between the last two days (Market.History).
 local ns = _G.NaowhForever
 
 local GetItemQualityByID = C_Item.GetItemQualityByID
@@ -68,7 +68,7 @@ local function Today(house, at)
 end
 
 function History.Record()
-    local list = ns.AuctionPriceList
+    local list = ns.AuctionMedianList
     if not list then return false end
     local prices, at = list()
     if not (prices and at) then return false end
@@ -79,27 +79,10 @@ function History.Record()
     local day, listed = Today(house, math.max(at, house.at or 0))
     local Listed = ns.AuctionListed
     for id, price in pairs(prices) do
-        if not day[id] or price < day[id] then day[id] = price end
+        day[id] = price
         listed[id] = Listed and Listed(id) or listed[id]
     end
     return true
-end
-
-function History.Seen(ids, count)
-    History.Record()
-    local list = ns.AuctionPriceList
-    local prices = list and list()
-    if not prices then return end
-    local house = House(true)
-    house.recorded = house.recorded or house.at or 0
-    local day, listed = Today(house, math.max(GetServerTime(), house.at or 0))
-    local Listed = ns.AuctionListed
-    for i = 1, count do
-        local id = ids[i]
-        local price = prices[id]
-        if price and (not day[id] or price < day[id]) then day[id] = price end
-        listed[id] = price and Listed and Listed(id) or listed[id]
-    end
 end
 
 local function Latest(house, itemID)

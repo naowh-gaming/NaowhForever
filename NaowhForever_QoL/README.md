@@ -559,6 +559,12 @@ NaowhForever_QoL/
   `ns.AuctionPrice` share one lookup, so the count is always from where the price came from, and a thin
   market can be told apart from a liquid one. A scan from before the counts
   has none, and reads as unknown.
+- A fast scan also keeps each item's median price (`house.medians`, dated by `house.medianTime`): the price
+  of the middle one of everything listed with a buyout, weighted by quantity, so one cheap single does not
+  move it. The release's prices carry one too, as a fourth field. A page by page scan has only each item's
+  lowest, so it leaves the last medians in place. `ns.AuctionMedianList` answers with the release's or
+  yours, whichever `ns.AuctionPriceList` would put first, for The Market's price history only; tooltips,
+  Sell and everything else still read the lowest.
 - Scans are stamped with `GetServerTime()`, as the release's prices carry Blizzard's time
   (Last-Modified), so a PC clock that is off still puts the newer one first.
 - Prices are also kept as you go (`AuctionSeen.lua`): whenever the game has already sent listings, the item's
@@ -589,7 +595,7 @@ NaowhForever_QoL/
   your own price here cannot chase itself down.
 - One event is one batch: every row is written straight into the table, and the others hear once at its end,
   only when something changed (`ns.AuctionSeenDone`): `ns.MarketPricesSeen` with the item IDs, for The
-  Market's price history, Bag Worth, Crafts and Farm, and `ns.AuctionPricesChanged` for Prices for Other
+  Market's Bag Worth, Crafts and Farm, and `ns.AuctionPricesChanged` for Prices for Other
   Addons. No window is redrawn and no Watch List line printed; those follow a full scan.
 - A post is noted from post-hooks on `C_AuctionHouse.PostItem` and `PostCommodity` (the item from its
   location, the buyout or unit price), which cover Blizzard's Sell tab and The Market's alike, and written on

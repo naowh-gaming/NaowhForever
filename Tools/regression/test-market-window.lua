@@ -355,7 +355,6 @@ check("the strip's full layout leaves its item's name room too", farm.STRIP_FULL
 local told, on = {}, false
 local M = ns.Market
 M.On = function() return on end
-M.History = { Seen = function(ids, n) told[#told + 1] = "history " .. ids[1] .. " " .. n end }
 M.BagWorth = { Changed = function() told[#told + 1] = "bags" end }
 M.Crafts = { Changed = function() told[#told + 1] = "crafts" end }
 M.Farm = { Changed = function() told[#told + 1] = "farm" end }
@@ -363,7 +362,7 @@ ns.MarketPricesSeen({ 2589 }, 1)
 check("prices seen at the auction house reach nothing with The Market off", #told == 0)
 on = true
 ns.MarketPricesSeen({ 2589 }, 1)
-check("and with it on, the price history, Bag Worth, Crafts and Farm, without a redraw",
-    table.concat(told, ", ") == "history 2589 1, bags, crafts, farm")
+check("and with it on, Bag Worth, Crafts and Farm, without a redraw or the price history, which takes medians",
+    table.concat(told, ", ") == "bags, crafts, farm")
 
 print(("test-market-window: %d checks passed"):format(checks))

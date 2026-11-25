@@ -30,6 +30,18 @@ class AuctionFeedTest(unittest.TestCase):
         self.assertEqual(prices, {2589: 24, 2770: 68, 4306: 900})
         self.assertEqual(listed, {2589: 3, 2770: 1, 4306: 1})
 
+    def test_median_by_quantity(self):
+        auctions = [{"item": {"id": 2589}, "quantity": 1, "buyout": 20},
+                    {"item": {"id": 2589}, "quantity": 2, "buyout": 100},
+                    {"item": {"id": 4306}, "quantity": 1, "buyout": 900}]
+        commodities = [{"item": {"id": 2589}, "quantity": 3, "unit_price": 70},
+                       {"item": {"id": 2589}, "quantity": 1, "unit_price": 900},
+                       {"item": {"id": 2770}, "quantity": 2, "unit_price": 30},
+                       {"item": {"id": 2770}, "quantity": 2, "unit_price": 40}]
+        amounts = {}
+        auction_feed.lowest(commodities, auction_feed.lowest(auctions, {}, None, amounts), None, amounts)
+        self.assertEqual(auction_feed.medians(amounts), {2589: 70, 2770: 30, 4306: 900})
+
     def test_no_listings(self):
         self.assertEqual(auction_feed.lowest(None, {}), {})
 
@@ -40,23 +52,27 @@ class AuctionFeedTest(unittest.TestCase):
     def test_encode_how_many_are_listed(self):
         self.assertEqual(auction_feed.encode({2589: 26, 2592: 1296}, {2589: 125}), "1zx:q:3h,3:100")
 
+    def test_encode_median(self):
+        self.assertEqual(auction_feed.encode({2589: 26, 2592: 1296, 2600: 5}, {2589: 125}, {2589: 30, 2592: 1400}),
+                         "1zx:q:3h:u,3:100::12w,8:5")
+
     def test_lua(self):
-        feed = {"us": {110: {"faction": "Alliance", "prices": {10: 35}, "listed": {10: 40}},
+        feed = {"us": {110: {"faction": "Alliance", "prices": {10: 35}, "listed": {10: 40}, "medians": {10: 50}},
                        112: {"faction": "Alliance", "prices": {}}}}
         text = auction_feed.lua(feed, 1794114010)
         self.assertIn("    time = 1794114010,\r\n", text)
-        self.assertIn('        [1] = {\r\n            [110] = { faction = "Alliance", prices = "a:z:14" },\r\n', text)
+        self.assertIn('        [1] = {\r\n            [110] = { faction = "Alliance", prices = "a:z:14:1e" },\r\n', text)
         self.assertIn('            [112] = { faction = "Alliance", prices = "" },\r\n', text)
         self.assertTrue(text.isascii())
 
     def test_middles_per_faction(self):
-        found = {110: {"faction": "Alliance", "prices": {10: 40, 11: 7}, "listed": {10: 3}},
-                 111: {"faction": "Alliance", "prices": {10: 50}, "listed": {10: 12}},
-                 119: {"faction": "Alliance", "prices": {10: 60, 11: 9}, "listed": {10: 30}},
+        found = {110: {"faction": "Alliance", "prices": {10: 40, 11: 7}, "listed": {10: 3}, "medians": {10: 45}},
+                 111: {"faction": "Alliance", "prices": {10: 50}, "listed": {10: 12}, "medians": {10: 80}},
+                 119: {"faction": "Alliance", "prices": {10: 60, 11: 9}, "listed": {10: 30}, "medians": {10: 65}},
                  112: {"faction": "Alliance", "prices": {}},
                  113: {"faction": "Horde", "prices": {10: 1}}}
         self.assertEqual(auction_feed.middles(found), {
-            "Alliance": auction_feed.encode({10: 50, 11: 7}, {10: 12}),
+            "Alliance": auction_feed.encode({10: 50, 11: 7}, {10: 12}, {10: 65}),
             "Horde": auction_feed.encode({10: 1}),
         })
 

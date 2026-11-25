@@ -77,6 +77,7 @@ local function Setup(opts)
         GamepadStandDown = function() return false end,
         AuctionPrice = function(itemID) return t.scan[itemID], 0 end,
         AuctionPriceList = function() if t.scanAt then return t.scan, t.scanAt end end,
+        AuctionMedianList = function() if t.scanAt then return t.medians or t.scan, t.scanAt end end,
         AuctionListed = function(itemID) return t.listed and t.listed[itemID] end,
         AuctionOtherPrice = function(itemID) return t.other and t.other[itemID], t.otherAt, t.otherKnown ~= false end,
         AuctionOtherHouse = function() return t.otherHouse or "Blackwater" end,

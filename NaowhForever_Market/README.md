@@ -20,7 +20,7 @@ back. Shift + drag moves the auction house with whatever is docked. Away from it
 bottom: Farm, the zones where your Herbalism and Mining gather the most, a zone's map with every herb
 and vein priced, and a loop through it you can follow by waypoint; Reagents, what each reagent in your
 bags goes into, in every profession, and whether crafting it beats selling it; Price Graph, any item in
-your scans, found by name or picked from your bags, with its lowest price each day over two weeks; and
+your scans, found by name or picked from your bags, with its median price each day over two weeks; and
 Ledger, once Record Gold is on, every character's gold over time, what it sold, bought, earned and spent,
 and its auctions that came back. What
 you gather is recorded, and what you really gather prices Farm's nodes. Bag Worth, once on, puts what your
@@ -52,7 +52,7 @@ NaowhForever_Market/
   Sales.lua          what you sold, from your sold auctions, per realm and faction (Market.Sales)
   Ledger.lua         what each character earns and spends, and its gold over time, from every change in its gold (Market.Ledger)
   Auctions.lua       your auctions, each checked against the listings, and cancelling (Market.Auctions)
-  History.lua        each item's lowest price per day and how many were listed, from your scans and the listings you see, two weeks of them, and the items whose price moved most (Market.History)
+  History.lua        each item's median price per day and how many were listed, from your fast scans and the release's prices, two weeks of them, and the items whose price moved most (Market.History)
   Watch.lua          the items you watch for a price, and the chat line when one is at or under it (Market.Watch)
   Results.lua        what the auction house's last browse search found, however it was sent bar a price scan's, and more as you scroll (Market.Results)
   Searches.lua       your searches in named lists and the last ones you ran, run in Blizzard's Buy tab, and a list as a string to share (Market.Searches)
@@ -69,7 +69,7 @@ NaowhForever_Market/
   View/
     Style.lua        The Market's own look, over Shared/Style.lua (Market.Style)
     Spark.lua        an item's last two weeks of prices as a small line, for Farm (Market.Spark)
-    Chart.lua        an item's lowest price each day as a chart you can hover for the day's price and how many were listed, for Price Graph, and in the full window Sell, Buy and Shopping List (Market.Chart)
+    Chart.lua        an item's median price each day as a chart you can hover for the day's price and how many were listed, for Price Graph, and in the full window Sell, Buy and Shopping List (Market.Chart)
     Finder.lua       an item list searched by name across your scans, and the Watch price box, for Buy, Shopping List and Price Graph (Market.Finder)
     Listed.lua       the listings of the item on Sell or the full window's Buy, where your price lands, and Buy and Cancel on a row (Market.Listed)
     Quantity.lua     the chips over Sell's quantity box: 1, a number and All, kept as the default for that type of item (Market.Quantity)
@@ -358,25 +358,27 @@ NaowhForever_Market/
   back by mail, so a cancelled auction cannot be posted again from here.
 - An owned auction's item key info (`GetItemKeyInfo`) can be missing until
   `ITEM_KEY_ITEM_INFO_RECEIVED`; until then it shows as Checking and is checked when it arrives.
-- Price history keeps each item's lowest price per day from QoL's scans (`ns.AuctionPriceList`), for
-  `HISTORY_DAYS` (14) days per realm and faction, in the account's `marketHistory`. It is written when a
-  scan finishes (`ns.MarketRefresh`) and at login, so a scan taken while The Market was off is kept the
-  next time it is on. Prices QoL keeps as you go (`ns.MarketPricesSeen`, the items of one browse or
-  listings event) lower the day's price for those items alone, on the day they were seen, which then is
-  the chart's last day; Bag Worth, Crafts and Farm are told to read again, and nothing is redrawn, since
-  the Sell page's own listings are among them. A scan or the release's prices are recorded once each
-  (`house.recorded`), into the day they are from, even when a price was seen after them that day; ones
-  from a day before the last price seen are not. A day is a UTC day. Today is a table, since each scan lowers its prices; a past
+- Price history keeps each item's median price per day from QoL's medians (`ns.AuctionMedianList`), for
+  `HISTORY_DAYS` (14) days per realm and faction, in the account's `marketHistory`. The median is weighted
+  by quantity over every buyout listed, so one cheap single listed for an hour no longer sets the day, as
+  the lowest price did. Only a fast scan and the release's prices see every listing, so only they have one;
+  a page by page scan and the prices QoL keeps as you go (`ns.MarketPricesSeen`) leave the history alone,
+  and the latter only tell Bag Worth, Crafts and Farm to read again, with nothing redrawn, since the Sell
+  page's own listings are among them. It is written when a scan finishes (`ns.MarketRefresh`) and at
+  login, so a scan taken while The Market was off is kept the next time it is on. A scan or the release's
+  prices are recorded once each (`house.recorded`), into the day they are from, and the day's last one
+  wins. History saved before this holds lowest prices, which age out with their days. A day is a UTC day.
+  Today is a table, since each scan replaces its prices; a past
   day is packed into one string (",id:price,id:price,"), read with one `match` per lookup, which
   roughly halves what thousands of items take in saved data and loads far faster than a table.
 - Each day also keeps how many of the item were listed, where QoL knows it (`ns.AuctionListed`): the count
-  that came with the day's last scan or sighting, not the lowest, since it says what was up for sale. Today's
+  QoL had when the day's last median was recorded, since it says what was up for sale. Today's
   counts are a table beside today's prices (`listed`, by day); a past day's go into its string as a third
   field (",id:price:count,"), left out where there was none. One `match` still reads a day, with or without
   the count, so history saved before the counts reads as before, with no counts, and nothing is rewritten.
   It adds about three characters an item a day to the saved data. A count is the items for sale after a page
   by page scan or a sighting, and the auctions after a fast scan or from the release's prices, as QoL keeps it.
-- A price change compares today's lowest with the oldest day within `CHANGE_DAYS` (7) that has one, and
+- A price change compares today's median with the oldest day within `CHANGE_DAYS` (7) that has one, and
   says how many days back that is: with a scan only yesterday it reads "Since yesterday", never "7 days".
 - The price chart on Price Graph draws that history: a point for each day with a price, joined across
   days without one, between the lowest and highest price of the two weeks, with the same change the
@@ -903,7 +905,7 @@ NaowhForever_Market/
   gold, so Sold works with no free slot, and says once that items stayed in the mail. An item that fails
   (`MAIL_FAILED` with its ID, such as a unique one you hold) is skipped; a failure with no item stops.
 - Its OnUpdate runs only while collecting. Clicking Stop, the Send tab or closing the mailbox ends it, as Open All stops when its button hides.
-- Average Price (`tooltipAverage`, off) adds "7-day average": the mean of the item's lowest price on each
+- Average Price (`tooltipAverage`, off) adds "7-day average": the mean of the item's median price on each
   day that has one among the last `CHANGE_DAYS` (7) days of history, the window the change line looks back
   over, counted back from the last day with prices. It needs `AVERAGE_MIN_DAYS` (3) of them: two days are
   the change line's business, and a mean of two says less than either. It is the price for one, rounded to
@@ -1047,7 +1049,7 @@ Away from the auction house:
 51. The Market's settings page has Key Binding: set a key there and it shows the same in the game's Key
     Bindings menu (Open The Market). The key opens The Market's window and a second press closes it.
 52. Price Graph lists the items in your bags that have a scan price, most valuable first, and draws the first
-    one's lowest price each day once two days have scans: its highest and lowest price on the left, the
+    one's median price each day once two days have scans: its highest and lowest price on the left, the
     change over the week top right. Hovering it names the day and its price.
 53. Typing two letters or more in Price Graph's search lists the items in your scans with that in their name;
     picking one draws its chart. Clearing the search lists your bags again.

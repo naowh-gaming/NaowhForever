@@ -1,4 +1,4 @@
--- Chart.lua: an item's lowest price each day over the past two weeks as a chart you can hover for the day's price and how many were listed, for Price Graph, and in the full window Sell, Buy and Shopping List, or any amount over time, for the Ledger's gold (Market.Chart).
+-- Chart.lua: an item's median price each day over the past two weeks as a chart you can hover for the day's price and how many were listed, for Price Graph, and in the full window Sell, Buy and Shopping List, or any amount over time, for the Ledger's gold (Market.Chart).
 local ns = _G.NaowhForever
 
 local T = ns.THEME
@@ -13,7 +13,7 @@ local PLOT_LEFT, PLOT_RIGHT, PLOT_BOTTOM = 76, 14, 20
 local LINE_THICK, GRID_ALPHA, DOT = 2, 0.35, 5
 local GRID_LINES = 2
 local GOLD = 10000
-local TEXT_TITLE = ns.L("Lowest price each day")
+local TEXT_TITLE = ns.L("Median price each day")
 local TEXT_NONE = ns.L("Its prices show here after scans on two days.")
 local TEXT_TODAY = ns.L("Today")
 local TEXT_YESTERDAY = ns.L("Yesterday")

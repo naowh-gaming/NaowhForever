@@ -378,9 +378,8 @@ function ns.MarketRefresh()
     if not covering then Market.Dock.Refresh() end
 end
 
-function ns.MarketPricesSeen(ids, count)
+function ns.MarketPricesSeen()
     if not Market.On() then return end
-    Market.History.Seen(ids, count)
     Market.BagWorth.Changed()
     Market.Crafts.Changed()
     Market.Farm.Changed()

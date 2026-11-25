@@ -15,12 +15,15 @@ Check("no scan, nothing recorded", not H.Record())
 t.scan, t.scanAt = { [2770] = 100, [2589] = 20 }, START
 Check("a scan is recorded", H.Record())
 Check("and only once", not H.Record())
-t.scan, t.scanAt = { [2770] = 90 }, START + 600
-H.Record()
-t.scan, t.scanAt = { [2770] = 120 }, START + 1200
+t.scan, t.scanAt = { [2770] = 120 }, START + 600
 H.Record()
 local house = t.account.marketHistory["Realm-Horde"]
-Check("each day keeps its lowest price", house.days[20000][2770] == 90 and house.days[20000][2589] == 20)
+Check("each day keeps its last scan's price, and what it did not list", house.days[20000][2770] == 120
+    and house.days[20000][2589] == 20)
+t.scan, t.scanAt, t.medians = { [2770] = 20 }, START + 1200, { [2770] = 90 }
+H.Record()
+Check("and that is the median, not the lowest", house.days[20000][2770] == 90)
+t.medians = nil
 Check("no change from one day alone", H.Change(2770, 7) == nil)
 
 t.scan, t.scanAt = { [2770] = 99 }, START + DAY
@@ -45,22 +48,6 @@ t.scan, t.scanAt = { [2770] = 50 }, START + 14 * DAY
 H.Record()
 Check("days older than two weeks are dropped", house.days[20000] == nil and house.days[20001] ~= nil)
 
-t.now = START + 14 * DAY + 60
-t.scan = { [2770] = 40, [2589] = 7 }
-H.Seen({ 2770, 2589, 4306 }, 2)
-Check("a price seen at the auction house lowers its day without a scan", house.days[20014][2770] == 40
-    and house.days[20014][2589] == 7 and house.days[20014][4306] == nil)
-t.scan[2770] = 60
-H.Seen({ 2770 }, 1)
-Check("and a higher one leaves the day's lowest", house.days[20014][2770] == 40)
-t.now = START + 15 * DAY
-t.scan[2770] = 70
-H.Seen({ 2770 }, 1)
-series, found, last = H.Series(2770, {})
-Check("a price seen on a later day starts that day, which is the chart's last", found == 3 and last == 20015 and series[14] == 70
-    and series[13] == 40 and type(house.days[20014]) == "string")
-t.scanAt = START + 14 * DAY + 30
-Check("a scan from before the last price seen is not recorded over it", not H.Record())
 t.scan, t.scanAt = { [2770] = 50 }, START + 14 * DAY
 
 local W = t.M.Worth
@@ -149,16 +136,15 @@ Check("a scan keeps how many were listed that day, where it is known", kept.list
     and kept.listed[20000][2589] == nil)
 q.scan, q.listed, q.scanAt = { [2770] = 120 }, { [2770] = 250 }, START + 600
 Q.Record()
-Check("a later scan the same day keeps the day's lowest price and the newer count", kept.days[20000][2770] == 100
+Check("a later scan the same day brings its price and the newer count", kept.days[20000][2770] == 120
     and kept.listed[20000][2770] == 250)
-q.now = START + 900
-q.scan, q.listed = { [2770] = 90, [2589] = 20 }, { [2770] = 240, [2589] = 8 }
-Q.Seen({ 2770, 2589 }, 2)
-Check("a price seen at the auction house brings its count", kept.days[20000][2770] == 90
+q.scan, q.listed, q.scanAt = { [2770] = 90, [2589] = 20 }, { [2770] = 240, [2589] = 8 }, START + 900
+Q.Record()
+Check("and a count for what had none", kept.days[20000][2770] == 90
     and kept.listed[20000][2770] == 240 and kept.listed[20000][2589] == 8)
-q.listed = {}
-Q.Seen({ 2770 }, 1)
-Check("and one seen without a count leaves the day's", kept.listed[20000][2770] == 240)
+q.scan, q.listed, q.scanAt = { [2770] = 90 }, {}, START + 950
+Q.Record()
+Check("a scan without a count leaves the day's", kept.listed[20000][2770] == 240)
 q.scan, q.listed, q.scanAt = { [2770] = 95, [4306] = 7 }, { [2770] = 10 }, START + DAY
 Q.Record()
 Check("a past day is packed with its counts, and without where there was none",
@@ -209,16 +195,15 @@ Check("nor from two days of prices", q.M.C.AVERAGE_MIN_DAYS == 3 and Q.Average(2
 q.scan, q.scanAt = { [2770] = 104 }, START + 2 * DAY
 Q.Record()
 local average, over = Q.Average(2770, 7)
-Check("three days give the average of each day's lowest, to the nearest copper", average == 102 and over == 3)
+Check("three days give the average of each day's price, to the nearest copper", average == 102 and over == 3)
 Check("an item priced on fewer of them has none", Q.Average(2589, 7) == nil)
 q.scan, q.scanAt = { [2770] = 110 }, START + 3 * DAY
 Q.Record()
 average, over = Q.Average(2770, 7)
 Check("a new day's price moves it", average == 104 and over == 4)
-q.now = START + 3 * DAY + 60
-q.scan[2770] = 90
-Q.Seen({ 2770 }, 1)
-Check("a lower price seen the same day moves it too", Q.Average(2770, 7) == 99)
+q.scan, q.scanAt = { [2770] = 90 }, START + 3 * DAY + 60
+Q.Record()
+Check("a later scan the same day moves it too", Q.Average(2770, 7) == 99)
 Check("a shorter window counts only its days", Q.Average(2770, 3) == 98 and Q.Average(2770, 2) == nil)
 q.scan, q.scanAt = { [2770] = 120 }, START + 10 * DAY
 Q.Record()

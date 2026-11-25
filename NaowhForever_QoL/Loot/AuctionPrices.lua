@@ -1,4 +1,4 @@
--- AuctionPrices.lua: Auction Prices, the lowest buyout per item and how many are listed, from a fast or page by page scan, the listings you see or the release's prices, per realm and faction.
+-- AuctionPrices.lua: Auction Prices, the lowest buyout per item, how many are listed and the median price, from a fast or page by page scan, the listings you see or the release's prices, per realm and faction.
 local ns = _G.NaowhForever
 
 local S = ns.QoLSettings
@@ -92,7 +92,7 @@ local ageTicker
 local feedTried, feedHouses, feedMiddles, feedTime
 local feeds = {}
 local merged, mergedFeed, mergedAt
-local decoded, decodedListed = {}, {}
+local decoded, decodedListed, decodedMedians = {}, {}, {}
 local seenIDs, seenCount = {}, 0
 local seenHouse, seenNow
 
@@ -156,15 +156,16 @@ end
 
 local function Decode(houses, id)
     if not decoded[id] then
-        local prices, listed, item = {}, {}, 0
-        for step, price, count in houses[id]:gmatch("(%w+):(%w+):?(%w*)") do
+        local prices, listed, medians, item = {}, {}, {}, 0
+        for step, price, count, median in houses[id]:gmatch("(%w+):(%w+):?(%w*):?(%w*)") do
             item = item + Number(step)
             prices[item] = Number(price)
             if count ~= "" then listed[item] = Number(count) end
+            if median ~= "" then medians[item] = Number(median) end
         end
-        decoded[id], decodedListed[id] = prices, listed
+        decoded[id], decodedListed[id], decodedMedians[id] = prices, listed, medians
     end
-    return decoded[id], decodedListed[id]
+    return decoded[id], decodedListed[id], decodedMedians[id]
 end
 
 local function Matches(own, feed)
@@ -187,7 +188,7 @@ end
 
 local function Forget(houses, keep)
     for id in pairs(houses) do
-        if id ~= keep then decoded[id], decodedListed[id] = nil, nil end
+        if id ~= keep then decoded[id], decodedListed[id], decodedMedians[id] = nil, nil, nil end
     end
 end
 
@@ -346,6 +347,14 @@ function ns.AuctionPriceList()
     return merged, math.max(scanned or 0, feedTime)
 end
 
+function ns.AuctionMedianList()
+    local house = House()
+    local _, _, feed = FeedPrices()
+    local own = house and house.medians
+    if feed and next(feed) and FeedFirst(own and house.medianTime) then return feed, feedTime end
+    if own then return own, house.medianTime end
+end
+
 local function SeenHouse()
     if not seenHouse then
         seenHouse, seenNow = House(true), GetServerTime()
@@ -472,22 +481,51 @@ local function Stop(message)
     ownScan = nil
 end
 
-local function ReadListing(prices, listed, suffixes, i)
+local function ReadListing(prices, listed, suffixes, amounts, i)
     local _, _, count, _, _, _, _, _, _, buyout, _, _, _, _, _, _, itemID =
         C_AuctionHouse.GetReplicateItemInfo(i)
     if not (itemID and buyout and buyout > 0 and count and count > 0) then return end
     local each = math.floor(buyout / count)
     if not prices[itemID] or each < prices[itemID] then prices[itemID] = each end
     listed[itemID] = (listed[itemID] or 0) + 1
+    local counts = amounts[itemID]
+    if not counts then
+        counts = {}
+        amounts[itemID] = counts
+    end
+    counts[each] = (counts[each] or 0) + count
     if not GEAR[select(CLASS_INDEX, C_Item.GetItemInfoInstant(itemID))] then return end
     local link = C_AuctionHouse.GetReplicateItemLink(i)
     local name = link and SuffixName(link)
     if name then KeepSuffix(suffixes, itemID, name, each) end
 end
 
-local function Finish(prices, listed, suffixes)
+-- Weighted by quantity: the price of the middle one of everything listed.
+local function Medians(amounts)
+    local medians, sorted = {}, {}
+    for itemID, counts in pairs(amounts) do
+        local total, seen = 0, 0
+        wipe(sorted)
+        for price, count in pairs(counts) do
+            sorted[#sorted + 1] = price
+            total = total + count
+        end
+        table.sort(sorted)
+        for i = 1, #sorted do
+            seen = seen + counts[sorted[i]]
+            if seen * 2 >= total then
+                medians[itemID] = sorted[i]
+                break
+            end
+        end
+    end
+    return medians
+end
+
+local function Finish(prices, listed, suffixes, amounts)
     local house = House(true)
     house.prices, house.listed, house.time, house.seen = prices, listed, GetServerTime(), nil
+    if next(amounts) then house.medians, house.medianTime = Medians(amounts), house.time end
     house.suffixes, house.suffixSeen = next(suffixes) and suffixes or nil, nil
     local feed = feeds[Side()]
     if feed then feed.matched = nil end
@@ -499,7 +537,7 @@ local function Finish(prices, listed, suffixes)
     if ns.AuctionPricesChanged then ns.AuctionPricesChanged() end
 end
 
-local function ReadRow(prices, listed, suffixes, i, rows)
+local function ReadRow(prices, listed, suffixes, _, i, rows)
     local row = rows[i + 1]
     local price = row.minPrice
     if price <= 0 then return end
@@ -516,18 +554,18 @@ local function ReadAll(total, ReadOne, rows)
     scanning = true
     scanGen = scanGen + 1
     if total == 0 then return Stop(TEXT_EMPTY) end
-    local prices, listed, suffixes, index, gen = {}, {}, {}, 0, scanGen
+    local prices, listed, suffixes, amounts, index, gen = {}, {}, {}, {}, 0, scanGen
     local function Step()
         if gen ~= scanGen then return end
         local last = math.min(index + CHUNK, total) - 1
-        for i = index, last do ReadOne(prices, listed, suffixes, i, rows) end
+        for i = index, last do ReadOne(prices, listed, suffixes, amounts, i, rows) end
         index = last + 1
         if index < total then
             Label(TEXT_PROGRESS:format(math.floor(index * PERCENT / total)))
             C_Timer.After(0, Step)
             return
         end
-        Finish(prices, listed, suffixes)
+        Finish(prices, listed, suffixes, amounts)
     end
     Step()
 end
