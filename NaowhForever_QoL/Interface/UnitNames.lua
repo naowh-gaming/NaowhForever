@@ -20,6 +20,7 @@ local NAMES = {
 }
 
 local rows = {}
+local restored
 
 local function Exists(name)
     return C_CVar.GetCVar(name.cvar) ~= nil
@@ -64,10 +65,13 @@ local function Summary()
 end
 
 local function PutBack()
+    if restored then return end
+    restored = true
     local kept = ns.AccountSettings()[KEPT]
     if not kept then return end
     for cvar, value in pairs(kept) do
-        if C_CVar.GetCVar(cvar) ~= value then C_CVar.SetCVar(cvar, value) end
+        local current = C_CVar.GetCVar(cvar)
+        if current ~= nil and current ~= value then C_CVar.SetCVar(cvar, value) end
     end
 end
 

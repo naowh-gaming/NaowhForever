@@ -401,8 +401,9 @@ NaowhForever_QoL/
   `UnitNamePlayerPVPTitle` and keeps nothing: the game saves them. Forever's options have no box for
   them (only your own, NPC and player names), and a row shows only where the client has its setting.
   The friendly and enemy pet, guardian and totem names (`UnitNameFriendlyPetName` and its five
-  siblings) go back on at every login (reported 11-21), so a value set from the card is kept in the account store and put
-  back on apply. Nothing is kept until a player changes one.
+  siblings) go back on at every login, so a value set from the card is kept in the account store
+  and put back once per session, at the first apply. A change made elsewhere in a session stands
+  until the next login. Nothing is kept until a player changes one.
 - In-game cinematics carry no ID, so one is known by the zone and subzone it plays in. Skipping
   one waits a frame so CinematicFrame has taken the start before it is cancelled.
 - Finishing a movie shows UIParent again, which combat lockdown would block, so a movie is never

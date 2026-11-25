@@ -77,10 +77,27 @@ Case("a totem row is kept and put back after the game turns it on again", functi
 end)
 Case("nothing changed, nothing put back", function()
     local set = 0
-    local cvars = setmetatable({ UnitNameFriendlyTotemName = "1" }, { __newindex = function(t, k, v) set = set + 1; rawset(t, k, v) end })
-    local _, apply = Load(cvars, {})
+    local game = { UnitNameFriendlyTotemName = "0" }
+    local cvars = setmetatable({}, { __index = game, __newindex = function(_, k, v) set = set + 1; game[k] = v end })
+    local _, apply = Load(cvars, { unitNames = { UnitNameFriendlyTotemName = "0" } })
     apply()
     assert(set == 0)
+end)
+
+Case("put back once a session, so a later change elsewhere stands", function()
+    local cvars = { UnitNameFriendlyTotemName = "1" }
+    local _, apply = Load(cvars, { unitNames = { UnitNameFriendlyTotemName = "0" } })
+    apply()
+    assert(cvars.UnitNameFriendlyTotemName == "0")
+    cvars.UnitNameFriendlyTotemName = "1"
+    apply()
+    assert(cvars.UnitNameFriendlyTotemName == "1")
+end)
+Case("a kept setting the client lacks is left alone", function()
+    local cvars = {}
+    local _, apply = Load(cvars, { unitNames = { UnitNameEnemyGuardianName = "0" } })
+    apply()
+    assert(cvars.UnitNameEnemyGuardianName == nil)
 end)
 
 print("test-unit-names: " .. count .. " cases passed")
