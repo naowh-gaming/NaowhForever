@@ -58,13 +58,17 @@ local function BossChip(row)
     return chip
 end
 
-local function OptionLabel(key)
+local function Option(key)
     for _, group in ipairs(J.OPTION_GROUPS) do
         for _, option in ipairs(group.options) do
-            if option.key == key then return option.label end
+            if option.key == key then return option end
         end
     end
-    return key
+end
+
+local function OptionLabel(key)
+    local option = Option(key)
+    return option and option.label or key
 end
 
 local function ClearEnter(button)
@@ -82,6 +86,12 @@ end
 
 local function ClearClicked(button)
     GameTooltip:Hide()
+    local option = Option(button.filterKey)
+    if option and option.to then
+        S.Set(option.key, 0)
+        S.Set(option.to, 0)
+        return
+    end
     S.Set(button.filterKey, false)
 end
 

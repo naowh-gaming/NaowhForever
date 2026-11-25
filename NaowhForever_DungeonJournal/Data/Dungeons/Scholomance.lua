@@ -8,7 +8,6 @@ ns.Journal.AddDungeon("Scholomance", {
     entrance = { map = 1422, x = 70.7, y = 71.0 },
     wings = {
         { bosses = {
-            { npc = 10506, name = "Kirtonos the Herald", model = 143673, encounters = { 2805 }, loot = { 13957, 13967, 13960, 13969, 16734, 13956, 14024, 13955, 13983 }, chance = { 19, 19, 19, 19, 19, 18, 18, 18, 14 } },
             { npc = 10503, name = "Jandice Barov", model = 11073, encounters = { 2804 }, loot = { 16701, 14545, 14548, 18690, 22394, 14541, 18689, 14543 }, chance = { 16, 13, 12, 12, 11, 10, 10, 1 } },
             { npc = 11622, name = "Rattlegore", model = 12073, encounters = { 2811 }, loot = { 16711, 14539, 14531, 14537, 14528, 14538, 18686 }, chance = { 18, 12, 12, 12, 12, 12, 12 } },
             { npc = 10433, name = "Marduk Blackpool", model = 10248, encounters = { 2809 }, loot = { 18692, 14576, 276069, 276071 }, chance = { 7, 7, 0, 0 } },
@@ -21,6 +20,7 @@ ns.Journal.AddDungeon("Scholomance", {
             { npc = 10504, name = "Lord Alexei Barov", model = 11072, encounters = { 2807 }, loot = { 23200, 23201, 14623, 14641, 14636, 18683, 18684, 14611, 14633, 14637, 14612, 18682, 14615, 14616, 14629, 14631, 14632, 14640, 16722, 18680, 14621, 14624, 14638, 14626 }, chance = { 13, 11, 6, 4, 4, 4, 4, 3, 3, 3, 3, 3, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1 } },
             { npc = 10502, name = "Lady Illucia Barov", model = 11835, encounters = { 2806 }, loot = { 23200, 23201, 14612, 14633, 14636, 18680 }, chance = { 5, 3, 2, 1, 1, 1 } },
             { npc = 1853, name = "Darkmaster Gandling", model = 11070, encounters = { 2801 }, loot = { 13951, 22433, 13944, 13953, 13398, 13964, 16686, 13938, 16677, 16731, 16693, 16698, 16720, 16707, 16727, 16667, 13937, 13950, 14514, 13501 }, chance = { 14, 14, 13, 13, 13, 13, 13, 13, 12, 12, 12, 11, 11, 11, 7, 6, 2, 1, 0, 0 } },
+            { npc = 10506, name = "Kirtonos the Herald", model = 143673, optional = true, encounters = { 2805 }, loot = { 13957, 13967, 13960, 13969, 16734, 13956, 14024, 13955, 13983 }, chance = { 19, 19, 19, 19, 19, 18, 18, 18, 14 } },
             { npc = 14695, name = "Lord Blackwood", model = 14699, optional = true, loot = { 23132, 23139, 23156 }, chance = { 30, 29, 26 } },
             { npc = 16118, name = "Kormok", model = 16020, optional = true, encounters = { 3055 }, loot = { 22333, 22303, 22331, 22332, 22326 }, chance = { 32, 15, 15, 14, 11 } },
             { npc = 14516, name = "Death Knight Darkreaver", model = 14591, optional = true, loot = { 18760, 18758, 18761, 18759 }, chance = { 24, 24, 24, 22 } },

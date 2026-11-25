@@ -5,6 +5,9 @@ if ns.LOCALE ~= "itIT" then return end
 
 ns.Journal.Names = {
     npcs = {
+        [247412] = "[Mopes]",
+        [261993] = "[King Op]",
+        [269151] = "[Sabella No-Eyes]",
     },
     objects = {
     },

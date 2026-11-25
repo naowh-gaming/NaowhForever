@@ -56,6 +56,9 @@ NaowhForever_Utilities/Journeys/
   then. A new route replaces the one you follow only when it is `SWITCH_GAIN` seconds and `SWITCH_SHARE`
   of the time quicker; the one you follow is timed from where you stand (the quickest way to its next
   place, then the rest as it was), so near ties do not flip the journey back and forth.
+- Walks are timed at the run speed `GetUnitSpeed` gives, which counts a mount and speed buffs even standing
+  still (`RUN_SPEED` if it gives none). When it changes, mounting or getting down, the plan is made again
+  at once, and the route you follow is not kept, since its later walks were timed at the old speed.
 - Positions are world yards on a continent, as `UnitPosition`, `C_Map.GetWorldPosFromMapPos` and the
   game's tables give them, x north and y west.
 - `UnitPosition`'s height is a placeholder 0 (`NO_HEIGHT`), so a 0 is no height at all. Taken as a real

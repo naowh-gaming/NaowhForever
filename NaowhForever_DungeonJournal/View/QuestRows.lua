@@ -105,6 +105,7 @@ local TEXT_BLANK = " "
 local CHECK_ICON = "|T" .. CHECK .. ":0|t "
 local EMPTY = {}
 local warnings = {}
+local classWords = {}
 
 local function RGB(code)
     local r, g, b = code:match(HEX_CODE)
@@ -186,9 +187,18 @@ local function ChainFact(quest)
     Fact(TEXT_CHAIN, TEXT_STEP_OF:format(own, #chain) .. rest)
 end
 
+local function ClassWord(class)
+    return ns.L((class:sub(1, 1) .. class:sub(2):lower()) .. "s")
+end
+
 local function ForWhom(quest)
     local class = quest.class
-    if class then return ns.L((class:sub(1, 1) .. class:sub(2):lower()) .. "s") end
+    if type(class) == "table" then
+        wipe(classWords)
+        for i = 1, #class do classWords[i] = ClassWord(class[i]) end
+        return table.concat(classWords, TEXT_LIST)
+    end
+    if class then return ClassWord(class) end
     return SIDE[quest[QUEST.SIDE]] or TEXT_EVERYONE
 end
 
@@ -214,7 +224,7 @@ local function MemberState(unit, entry, need)
     local quest = entry.quest
     if Quests.UnitOnQuest(unit, quest, entry.loggedID) then return TEXT_HAS_IT, HAVE_RGB end
     local _, class = UnitClass(unit)
-    if quest.class and class ~= quest.class then return TEXT_NOT_CLASS, T.muted end
+    if not Quests.ForClass(quest.class, class) then return TEXT_NOT_CLASS, T.muted end
     local level = UnitLevel(unit)
     if need and level and level > 0 and level < need then return TEXT_TOO_LOW:format(level, need), T.muted end
     return TEXT_NOT_ON_IT, T.muted
