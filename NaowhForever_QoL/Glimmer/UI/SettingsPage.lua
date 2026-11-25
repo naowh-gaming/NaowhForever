@@ -173,6 +173,8 @@ page:Card({
           help = "Color herbs and ore by your chance of a skill-up, red when your skill is too low." },
         { key = "showLine", label = "Show Skill and Quest Line", toggle = true, needs = Enabled, why = OFF,
           help = "A line under the name: the skill-up chance, or what the quest still needs." },
+        { key = "hideIcon", label = "Hide Icon Above Objects", toggle = true, needs = Enabled, why = OFF,
+          help = "No floating cog or flower over what you can interact with; the cursor still changes." },
         { key = "questSparkle", label = "Quest Item Sparkle", toggle = true, needs = Enabled, why = OFF,
           help = "The game's own sparkle on every quest item, kept on through graphics presets." },
     },

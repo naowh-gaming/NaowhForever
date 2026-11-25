@@ -11,7 +11,7 @@ local S = ns.UI.ModuleSettings("glimmer", {
     minimapIcons = F.minimapIcons, minimapSize = 14, myProfessions = true,
     gatheredPins = F.gatheredPins, gatheredPinSize = 18,
     style = "sparkles", size = 1, brightness = 1,
-    skillColors = true, showLine = true,
+    skillColors = true, showLine = true, hideIcon = false,
     hideInstance = true, hideLocked = false,
     range = 15, arc = 2, onlyHighlighted = true,
     ore = true, herb = true, quest = true, giver = true, chest = true, bobber = true, corpse = false,

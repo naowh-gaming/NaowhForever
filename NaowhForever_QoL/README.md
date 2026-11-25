@@ -1967,6 +1967,10 @@ NaowhForever_QoL/
   it on or off. While Glimmer is on, the cog ignores its nameplate's scale and is drawn `COG_SIZE`
   wide at the UI's scale, and is given back when the soft target or its nameplate changes or Glimmer
   is turned off. A scale on an unprotected frame is allowed in combat, so it holds there too.
+- Hide Icon Above Objects fades the cog's `SoftTargetFrame` to alpha 0 instead of turning
+  `SoftTargetIconGameObject` off, which would take the nameplate and the effect with it. The game
+  only shows and hides the frame's `Icon`, never the frame's alpha, so the fade holds; the alpha is
+  given back with the scale, since nameplate frames are reused.
 - The nameplate is only opened for an object Glimmer lights (`onlyHighlighted`), so NPCs, mailboxes
   and doors do not grow a nameplate. Whether to open it does not need the nameplate: the object is
   read from the unit token, then the nameplate arrives with `NAME_PLATE_UNIT_ADDED`.

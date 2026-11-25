@@ -715,6 +715,26 @@ do
     check("given back when Glimmer is turned off", cog.ignoreScale == false and cog.scale == 1)
 end
 
+-- Hide Icon Above Objects: the cog is faded, the nameplate and its setting are left alone.
+do
+    local c = Session({ enabled = true })
+    c.Login()
+    local base = Plate(c)
+    local cog = base.UnitFrame.SoftTargetFrame
+    c.game.guid, c.game.plate = GUID(999999), base
+    c.Fire("PLAYER_SOFT_INTERACT_CHANGED", "", "x")
+    check("cog left alone by default", cog.alpha == nil)
+    c.Set("hideIcon", true)
+    check("hidden: the cog is faded, the game's icon setting stays on", cog.alpha == 0
+        and c.cvars.SoftTargetIconGameObject == "1")
+    c.Fire("NAME_PLATE_UNIT_REMOVED", "nameplate1")
+    check("hidden: given back with its nameplate", cog.alpha == 1)
+    c.Fire("NAME_PLATE_UNIT_ADDED", "nameplate1")
+    check("hidden: faded again when the nameplate comes back", cog.alpha == 0)
+    c.Set("hideIcon", false)
+    check("shown again when the setting is turned off", cog.alpha == 1)
+end
+
 -- Other addons on the same settings: asked once, then the reload prompt.
 do
     local loaded = {}

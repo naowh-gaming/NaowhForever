@@ -24,7 +24,8 @@ local cog, cogPlate
 local wantReady, wantSince
 local read = {}
 local queued, fullQueued, cvarsQueued = false, false, false
-local FULL_KEYS = { enabled = true, questSparkle = true, giverHideBar = true, giverOffset = true, corpse = true }
+local FULL_KEYS = { enabled = true, questSparkle = true, giverHideBar = true, giverOffset = true, corpse = true,
+    hideIcon = true }
 local BAR_PARTS = { "HealthBarsContainer", "LevelFrame", "PlayerLevelDiffFrame" }
 local CVAR_KEYS = { range = true, arc = true }
 
@@ -65,6 +66,7 @@ local function FreeCog()
     if not cog then return end
     cog:SetIgnoreParentScale(false)
     cog:SetScale(1)
+    cog:SetAlpha(1)
     cog, cogPlate = nil, nil
 end
 
@@ -75,6 +77,7 @@ local function SizeCog()
     cog, cogPlate = to.UnitFrame.SoftTargetFrame, to
     cog:SetIgnoreParentScale(true)
     cog:SetScale(UIParent:GetEffectiveScale() * St.COG_SIZE / cog:GetWidth())
+    if S.Get("hideIcon") then cog:SetAlpha(0) end
 end
 
 local function Build()
