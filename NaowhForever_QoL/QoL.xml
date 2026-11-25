@@ -22,6 +22,7 @@
     <Script file="Questing\GroupButtons.lua"/>
     <Script file="Questing\FreeForAll.lua"/>
     <Script file="Questing\LayerSwap.lua"/>
+    <Script file="Questing\WhisperInvite.lua"/>
     <Script file="Questing\QuestProgress.lua"/>
     <Script file="Questing\QuestLinks.lua"/>
     <Script file="Questing\QuestItems.lua"/>

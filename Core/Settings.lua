@@ -34,6 +34,7 @@ local S = UI.ModuleSettings("qol", {
     groupButtonsTarget = true, groupButtonsInviteAll = false, groupInvites = {},
     freeForAll = F.freeForAll,
     layerSwap = F.layerSwap,
+    whisperInvite = F.whisperInvite, whisperInviteWords = "inv, invite", whisperInviteFriends = false,
     questProgress = F.questProgress, questProgressFinished = false,
     questLinkLevels = F.questLinkLevels,
     questItemInfo = F.questItemInfo,

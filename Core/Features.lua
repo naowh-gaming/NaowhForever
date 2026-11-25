@@ -31,6 +31,7 @@ ns.FEATURES = {
         groupButtons = false,
         freeForAll = false,
         layerSwap = false,
+        whisperInvite = false,
         questProgress = false,
         questLinkLevels = false,
         combatTimer = false,

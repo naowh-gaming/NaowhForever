@@ -98,6 +98,7 @@ NaowhForever_QoL/
     GroupButtons.lua    On-Screen Buttons (Invite, your invite buttons, Invite All, Disband)
     FreeForAll.lua      Always Free for All, the party loot method while you lead
     LayerSwap.lua       Auto-Accept Layer Swap, confirming the game's layer swap prompt on joining a group
+    WhisperInvite.lua   Whisper Invite, inviting players who whisper you one of your words
     QuestProgress.lua   Announce Quest Progress, your quest objective updates said in party chat
     QuestLinks.lua      Quest Levels in Chat, the level on quest links said in chat
     QuestItems.lua      Quest Item Info, the quests an item is for on its tooltip, learned from your quest log
