@@ -304,8 +304,10 @@ function Filters.Refresh()
     chips[#chips + 1] = view.addClass
     stack:Put(view.hasRow, UI.Flow(view.hasRow, chips, width), St.PANEL_GAP)
     stack:Put(view.leaderKicker, St.KICKER_SIZE + 2, St.GAP)
-    view.min.Refresh()
-    stack:Put(view.min, St.SMALL_BUTTON_H, St.GAP)
+    if not ns.CHINA then
+        view.min.Refresh()
+        stack:Put(view.min, St.SMALL_BUTTON_H, St.GAP)
+    end
     for i, chip in ipairs(view.styleChips) do
         UI.SetChip(chip, UI.STYLES[i], Filter.styles[i] and Filter.HAS or nil)
     end

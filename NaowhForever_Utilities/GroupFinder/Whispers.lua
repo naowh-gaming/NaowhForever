@@ -47,7 +47,7 @@ local function Spec()
 end
 
 local function Score()
-    local score = ns.NaowhScore.Unit("player")
+    local score = not ns.CHINA and ns.NaowhScore.Unit("player")
     return score and SCORE_FORMAT:format(score) or ""
 end
 

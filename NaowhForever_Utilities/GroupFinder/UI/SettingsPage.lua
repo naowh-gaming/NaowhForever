@@ -31,13 +31,13 @@ page:Card({
     help = "What Naowh Forever players see about you when you list or apply.",
     summary = Summary,
     rows = {
-        { key = "shareScore", label = "Gear Score", toggle = true, needs = On, why = OFF,
+        { key = "shareScore", label = "Gear Score", toggle = true, needs = On, why = OFF, hidden = ns.CHINA,
           help = "Shows your Gear Score on your card." },
         { key = "shareKills", label = "Boss Kills", toggle = true, needs = On, why = OFF,
           help = "Shows how often you have killed each boss of the dungeon." },
         { key = "shareQuests", label = "Dungeon Quests", toggle = true, needs = On, why = OFF,
           help = "Shows the dungeon's quests you have or still need." },
-        { key = "shareBis", label = "BiS Progress", toggle = true, needs = On, why = OFF,
+        { key = "shareBis", label = "BiS Progress", toggle = true, needs = On, why = OFF, hidden = ns.CHINA,
           help = "Shows how many of your BiS items you already have." },
     },
 })

@@ -276,8 +276,10 @@ function Listing.Refresh()
         stack:Put(stepper, St.SMALL_BUTTON_H, St.GAP / 2)
     end
     stack:Space(St.GAP)
-    view.min.Refresh()
-    stack:Put(view.min, St.SMALL_BUTTON_H, St.PANEL_GAP)
+    if not ns.CHINA then
+        view.min.Refresh()
+        stack:Put(view.min, St.SMALL_BUTTON_H, St.PANEL_GAP)
+    end
     view.counter:SetText(TEXT_COUNT:format(#Group.note, Card.NOTE_MAX))
     stack:Put(view.noteHead, St.KICKER_SIZE + 2, St.GAP)
     if view.note:GetText() ~= Group.note and not view.note:HasFocus() then

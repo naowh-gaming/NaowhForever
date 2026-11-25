@@ -53,7 +53,7 @@ local Scan
 local events = CreateFrame("Frame")
 
 local function Feature()
-    return S.Get("enabled") == true and S.Get("naowhScore") == true
+    return not ns.CHINA and S.Get("enabled") == true and S.Get("naowhScore") == true
 end
 
 local function TooltipOn() return Feature() and S.Get("naowhScoreTooltip") == true end
@@ -459,6 +459,7 @@ local function ListenNearby()
 end
 
 local function Apply()
+    if ns.CHINA then ns.AccountSettings().naowhScoreGuild = nil end
     local on = Feature()
     if on and not hooked then
         hooked = true

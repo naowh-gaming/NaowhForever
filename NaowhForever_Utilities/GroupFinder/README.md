@@ -160,6 +160,9 @@ kills.
 
 ## Why
 
+- In China (`ns.CHINA`, see the Core README) a card never carries a Gear Score or BiS progress, both
+  are dropped from a card as it is read along with a listing's minimum, the minimum score steppers, the
+  saved minimum filter and the two sharing rows are left out, and `%score%` fills in nothing.
 - Robin, 2026-11-15: players know the game's own group finder, so the module adds to it instead of being
   a window of its own.
 - Rows are decorated from a post-hook on `LFGBrowseSearchEntry_Update`, the function every row's init and

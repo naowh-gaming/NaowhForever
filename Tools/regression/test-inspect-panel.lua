@@ -787,6 +787,13 @@ check("at most ANSWERS_MAX in a window, however many ask", #sent == burst + 10)
 state.now = state.now + 20
 for _, fn in ipairs(timers) do fn() end
 check("an ask with no answer expires", pending.guid == nil)
+ns.CHINA = true
+state.now = state.now + 20
+local china = #sent
+Asked("China-One")
+AskAgain()
+check("in China: asks for you go unanswered and none go out", #sent == china and pending.guid == nil)
+ns.CHINA = false
 S.Set("inspectPanelShareBis", false)
 local off = #sent
 Asked("Late-One")

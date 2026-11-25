@@ -145,9 +145,9 @@ function Card.Mine(dungeonKey, roles)
     card.roles = roles or SavedRoles()
     local bis = ns.BiS.On()
     card.spec = bis and Spec() or nil
-    card.score = S.Get("shareScore") and Tenths() or nil
+    card.score = not ns.CHINA and S.Get("shareScore") and Tenths() or nil
     card.bisHave, card.bisTotal = nil, nil
-    if bis and S.Get("shareBis") then card.bisHave, card.bisTotal = Bis() end
+    if bis and not ns.CHINA and S.Get("shareBis") then card.bisHave, card.bisTotal = Bis() end
     local J = ns.Journal
     local dungeon = dungeonKey and J and J.Get(dungeonKey)
     card.dungeon = dungeon and dungeonKey or nil
@@ -390,6 +390,7 @@ local function ParseBody(s, pos, len, card)
         if not nn then return nil end
         card.hasQuests, card.nHave, card.nNeed = true, nh, nn
     end
+    if ns.CHINA then card.score, card.bisHave, card.bisTotal = nil, nil, nil end
     return pos, j
 end
 
@@ -420,6 +421,7 @@ local function ParseGroup(s, pos, len, group)
     if not i or j - i + 1 ~= NEEDS_DIGITS then return nil end
     group.tanks, group.healers, group.damage = Digit(s, i), Digit(s, i + 1), Digit(s, i + 2)
     if not (group.tanks and group.healers and group.damage) then return nil end
+    if ns.CHINA then group.min = 0 end
     return pos, j
 end
 

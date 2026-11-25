@@ -40,7 +40,7 @@ local function Readable(value)
 end
 
 local function ShareOn()
-    return S.Get("enabled") == true and S.Get("inspectPanelShareBis") == true
+    return not ns.CHINA and S.Get("enabled") == true and S.Get("inspectPanelShareBis") == true
 end
 
 local function Own()
@@ -91,7 +91,7 @@ local function Expire()
 end
 
 local function Ask(unit, guid)
-    if guid == Own() or not UnitIsPlayer(unit) then return end
+    if ns.CHINA or guid == Own() or not UnitIsPlayer(unit) then return end
     if UnitFactionGroup(unit) ~= UnitFactionGroup("player") then return end
     local now = GetTime()
     local last = asked[guid]

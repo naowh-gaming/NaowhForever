@@ -21,7 +21,7 @@ local function Summary(store)
         return store.Get("inspectPanel") and TEXT_THEIRS_IN_USE or TEXT_TAKES_OVER
     end
     local badge = ns.FEATURE_BADGES == BADGES_LIVE and store.Get("inspectPanelBadge")
-    local score = store.Get("inspectPanelScore")
+    local score = not ns.CHINA and store.Get("inspectPanelScore")
     if badge and score then return TEXT_BADGE_AND_SCORE end
     if badge then return TEXT_BADGE end
     if score then return TEXT_SCORE end
@@ -29,9 +29,9 @@ local function Summary(store)
 end
 
 local rows = {
-    { key = "inspectPanelScore", label = "Gear Score", toggle = true,
+    { key = "inspectPanelScore", label = "Gear Score", toggle = true, hidden = ns.CHINA,
       help = "Their Gear Score at the top of the panel, with yours under it." },
-    { key = "inspectPanelShareBis", label = "Share Your BiS", toggle = true, always = true,
+    { key = "inspectPanelShareBis", label = "Share Your BiS", toggle = true, always = true, hidden = ns.CHINA,
       help = "Shows your BiS stars to players who inspect you with Naowh Forever." },
 }
 if ns.FEATURE_BADGES == BADGES_LIVE then

@@ -136,7 +136,7 @@ function R.Average(gear)
 end
 
 function R.ScoreOf(rec)
-    if rec.scoreShared then return end
+    if rec.scoreShared or ns.CHINA then return end
     wipe(links)
     for slot, entry in pairs(rec.gear) do links[slot] = entry.link end
     rec.score = Score.Links(links)

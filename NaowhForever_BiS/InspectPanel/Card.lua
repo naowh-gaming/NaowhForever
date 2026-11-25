@@ -19,7 +19,7 @@ local card, plate
 local last = {}
 
 local function ScoreOn()
-    return IP.On() and S.Get("inspectPanelScore") == true
+    return not ns.CHINA and IP.On() and S.Get("inspectPanelScore") == true
 end
 
 local function BadgeOn()

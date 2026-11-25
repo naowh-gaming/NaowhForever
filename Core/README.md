@@ -135,6 +135,12 @@ Namespace and builds
 - `ns.MEDIA` is the core's art folder, written once in `Core.lua`; the core's files and the
   modules read it. `ns.BADGES_LIVE` (1) is the value `ns.FEATURE_BADGES` takes once supporter
   badges launch, read by every file that checks the flag.
+- `ns.CHINA` is true on the China region's realms (`CHINA_REGION` in `Features.lua`). NetEase's raid
+  rules there, enforced from 2026-12-03, ban addons that send, keep or rank other players' data without
+  their permission, and screening players on anything but the game's own data. So there no one else's
+  Gear Score is read, kept, sent or shown, Group Finder cards carry no Gear Score or BiS progress and no
+  minimum score, the Inspect Panel's BiS stars are neither asked nor answered, and Group Inspect's
+  sharing starts off. Your own Gear Score still shows on your own panels.
 - `UI.PROFILES_PAGE` is the Profiles page's key, set where the system pages are listed
   (`Options/Modules.lua`) and read by the window's sidebar and the Profiles page itself. That
   page's head, group rows and two-column width come from `Shared.Settings.Style`, so it lines

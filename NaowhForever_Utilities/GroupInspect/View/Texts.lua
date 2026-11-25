@@ -49,7 +49,7 @@ local function Keep()
 end
 
 function UI.ScoreText(score, level)
-    if not score then return UI.WAITING end
+    if not score then return ns.CHINA and "" or UI.WAITING end
     local key = math.floor(score * TENTHS + ROUND) * SCORE_LEVELS + (level or 0)
     local text = scoreTexts[key]
     if text then return text end
