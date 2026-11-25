@@ -75,7 +75,7 @@ read_globals = {
     "C_Secrets", "C_SkillInfo", "C_SpecializationInfo", "C_Spell", "C_SpellBook",
     "C_StringUtil", "C_SuperTrack", "SuperTrackedFrame", "C_SwingTimer", "C_TaxiMap", "C_Texture", "NineSliceUtil", "C_Timer",
     "C_TooltipInfo", "C_TradeSkillUI", "C_Traits", "C_TransmogCollection",
-    "C_UnitAuras", "C_VoiceChat", "date", "DEFAULT_CHAT_FRAME",
+    "C_UnitAuras", "C_VoiceChat", "date", "DEFAULT_CHAT_FRAME", "DoesAncestryInclude",
     "DeleteCursorItem", "DeleteMacro", "DELETE_GOOD_ITEM", "DELETE_ITEM_CONFIRM_STRING",
     "EditMacro", "ERR_NOT_ENOUGH_MONEY",
     "COMBATLOG_XPGAIN_FIRSTPERSON_UNNAMED", "CommunitiesFrame", "FRIENDS_BUTTON_TYPE_BNET", "FRIENDS_BUTTON_TYPE_WOW", "FriendsFrame_UpdateFriendButton", "FriendsTooltip", "InspectUnit", "PlayerSpellsFrame", "GameTooltipText", "WOW_PROJECT_ID", "EllesmereUI", "EncounterJournal", "Enum", "EnumerateFrames", "ERR_BAG_FULL", "ERR_INV_FULL", "ERR_CHAT_PLAYER_NOT_FOUND_S", "GROUP_FINDER_GENERAL_PLAYSTYLE1", "LFGBrowseFrame", "LFGListingFrame", "LFGParentFrame", "UnitSetRole", "GROUP_FINDER_GENERAL_PLAYSTYLE2", "GROUP_FINDER_GENERAL_PLAYSTYLE3", "GROUP_FINDER_GENERAL_PLAYSTYLE4", "LE_PARTY_CATEGORY_HOME","ERR_QUEST_PUSH_BUSY_S", "ERR_QUEST_PUSH_SUCCESS_S", "ERR_QUEST_PUSH_ALREADY_DONE_S",
