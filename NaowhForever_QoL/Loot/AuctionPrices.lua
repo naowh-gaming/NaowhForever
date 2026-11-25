@@ -709,8 +709,16 @@ local function OnClosed()
     end
 end
 
+local function WantsPrices()
+    return S.Get("ahTooltip") or S.Get("ahCrates") or S.Get("ahWrits") or S.Get("bagSpaceAuction")
+        or S.Get("lootFeedPrice") == "ahscan"
+end
+
 local function OnEvent(_, event, added)
-    if event == "AUCTION_HOUSE_SHOW" then
+    if event == "PLAYER_LOGIN" then
+        events:UnregisterEvent("PLAYER_LOGIN")
+        if WantsPrices() then FeedPrices() end
+    elseif event == "AUCTION_HOUSE_SHOW" then
         houseOpen = true
         Visit(UnitExists("npc") and UnitFactionGroup("npc") ~= UnitFactionGroup("player")
             and C_PvP.GetZonePVPInfo() ~= FRIENDLY)
@@ -828,6 +836,7 @@ end
 events:SetScript("OnEvent", OnEvent)
 events:RegisterEvent("AUCTION_HOUSE_SHOW")
 events:RegisterEvent("AUCTION_HOUSE_CLOSED")
+events:RegisterEvent("PLAYER_LOGIN")
 hooksecurefunc(S, "Set", OnSettingChanged)
 ns.OnApply(HookTooltip)
 HookReplicate()
