@@ -109,6 +109,34 @@ q.now = START + 60
 Q.Seen({ 1 }, 1)
 Check("nor after a sighting", Q.Record() == false)
 
+q = World.Setup({ quality = { [30] = 0, [29] = 1, [130] = 1, [25] = false } })
+Q = q.M.History
+first, second = {}, {}
+for id = 1, 30 do
+    first[id], second[id] = 10000, 10000 - id * 100
+    first[100 + id], second[100 + id] = 10000, 10000 + id * 100
+end
+q.scan, q.scanAt = first, START
+Q.Record()
+q.scan, q.scanAt = second, START + DAY
+Q.Record()
+movers = Q.Movers()
+local function Has(list, id)
+    for _, v in ipairs(list) do if v == id then return true end end
+end
+Check("poor and common items are no movers", movers.change[30] == nil and movers.change[29] == nil
+    and movers.change[130] == nil)
+Check("and the lists still fill to their top few without them", #movers.dropped == 20 and movers.dropped[20] == 9
+    and #movers.rose == 20 and movers.rose[20] == 110)
+Check("an item not loaded yet is kept", Has(movers.dropped, 25))
+q.quality[25] = 2
+movers = Q.Movers()
+Check("and stays when it loads as uncommon", Has(movers.dropped, 25) and movers.dropped[20] == 9)
+q.quality[25] = 1
+movers = Q.Movers()
+Check("until it loads as common, when the lists are found again", not Has(movers.dropped, 25)
+    and movers.dropped[20] == 8)
+
 q = World.Setup()
 Q = q.M.History
 local BIG = 10000000100

@@ -23,7 +23,8 @@ local function Setup(opts)
         searches = {}, posts = {}, confirms = {}, loads = 0, timers = {}, hooks = {},
         owned = opts.owned or {}, keyInfo = opts.keyInfo or {}, queries = 0, cancels = {}, locked = {},
         browses = {}, browse = {}, more = 0, full = true, purchases = {}, bids = {}, money = opts.money or 1000000,
-        account = {}, char = {}, scanAt = opts.scanAt, counts = opts.counts or {}, info = opts.info or {} }
+        account = {}, char = {}, scanAt = opts.scanAt, counts = opts.counts or {}, info = opts.info or {},
+        quality = opts.quality or {} }
     local registry = {}
     local copper = opts.copper ~= false
     t.ready = true
@@ -99,7 +100,8 @@ local function Setup(opts)
         AuctionCategories = opts.categories or {},
         Enum = { ItemCommodityStatus = { Unknown = UNKNOWN, Item = ITEM, Commodity = COMMODITY },
             AuctionHouseSortOrder = { Price = 0, Name = 1, Buyout = 4, Bid = 3 },
-            AuctionStatus = { Active = 0, Sold = 1 }, ItemClass = { Consumable = 0, Tradegoods = 7, Recipe = 9 },
+            AuctionStatus = { Active = 0, Sold = 1 }, ItemQuality = { Poor = 0, Common = 1, Uncommon = 2 },
+            ItemClass = { Consumable = 0, Tradegoods = 7, Recipe = 9 },
             BagIndex = { CharacterBankTab_1 = 6, CharacterBankTab_9 = 14 } },
         Constants = { AuctionConstants = { DEFAULT_AUCTION_PRICE_MULTIPLIER = 1.5 } },
         C_CVar = { GetCVarDefault = function(name) return name == "auctionHouseDurationDropdown" and "2" or nil end },
@@ -128,6 +130,9 @@ local function Setup(opts)
             end,
             GetItemClassInfo = function(class) return "Class " .. class end,
             GetItemNameByID = function(id) return "Item " .. id end,
+            GetItemQualityByID = function(id)
+                if t.quality[id] ~= false then return t.quality[id] or 2 end
+            end,
             GetItemIconByID = function(id) return id end,
         },
         C_AuctionHouse = {

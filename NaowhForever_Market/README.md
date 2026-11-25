@@ -849,9 +849,11 @@ NaowhForever_Market/
 - Thin markets are left out. An item needs `MOVERS_MIN_LISTED` (5) listed on both days where the count is
   known (an unknown count still counts, or history from before the counts would list nothing), and a price
   of at least `MOVERS_MIN_PRICE` (a silver) on both, so 1c to 2c is not +100%. Each list is its
-  `MOVERS_TOP` (20) biggest moves, biggest first.
+  `MOVERS_TOP` (20) biggest moves of Uncommon or better items, biggest first. An item whose quality is not
+  loaded yet is kept until it loads.
 - They are worked out when the list is drawn and the history has changed since (`house.at`): after a scan,
-  a sighting, or on opening the view, never per frame. Only the listed items' prices and changes are kept.
+  a sighting, or on opening the view, never per frame. They are worked out again when a kept item loads as
+  Poor or Common. Only the listed items' prices and changes are kept.
 - While Dropped or Rose shows, the writ filter is put away and the search takes its room; typing still
   searches every scan by name. The view you left is the one you come back to until a reload, as on Buy.
 - The switch's labels are `Dropped (price)` and `Rose (price)` in the catalog: Dropped already means loot

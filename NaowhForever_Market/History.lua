@@ -1,5 +1,7 @@
--- History.lua: each item's lowest price per day and how many were listed, from your scans and the listings you see, two weeks of them per realm and faction, and the items whose price moved most between the last two days (Market.History).
+-- History.lua: each item's lowest price per day and how many were listed, from your scans and the listings you see, two weeks of them per realm and faction, and the Uncommon or better items whose price moved most between the last two days (Market.History).
 local ns = _G.NaowhForever
+
+local GetItemQualityByID = C_Item.GetItemQualityByID
 
 local Market = ns.Market
 local C = Market.C
@@ -13,6 +15,7 @@ local NO_COUNTS = {}
 
 local movers = { dropped = {}, rose = {}, price = {}, change = {} }
 local moversOf, moversAt, sorting
+local cold = {}
 local averageOf, averageAt, averageItem, averageDays, average, averaged
 
 local History = {}
@@ -172,6 +175,12 @@ local function ByChange(a, b)
 end
 
 local function Keep(list, id, price, change)
+    local quality = GetItemQualityByID(id)
+    if not quality then
+        cold[#cold + 1] = id
+    elseif quality < Enum.ItemQuality.Uncommon then
+        return
+    end
     list[#list + 1] = id
     movers.price[id], movers.change[id] = price, change
 end
@@ -191,16 +200,24 @@ local function FindMovers(house, today, before)
     sorting = changes
     table.sort(ids, ByChange)
     sorting = nil
-    for i = 1, math.min(C.MOVERS_TOP, #ids) do
+    for i = 1, #ids do
         local id = ids[i]
-        if changes[id] > 0 then break end
+        if changes[id] > 0 or #movers.dropped >= C.MOVERS_TOP then break end
         Keep(movers.dropped, id, now[id], changes[id])
     end
-    for i = #ids, math.max(1, #ids - C.MOVERS_TOP + 1), -1 do
+    for i = #ids, 1, -1 do
         local id = ids[i]
-        if changes[id] < 0 then break end
+        if changes[id] < 0 or #movers.rose >= C.MOVERS_TOP then break end
         Keep(movers.rose, id, now[id], changes[id])
     end
+end
+
+local function Warmed()
+    for i = 1, #cold do
+        local quality = GetItemQualityByID(cold[i])
+        if quality and quality < Enum.ItemQuality.Uncommon then return true end
+    end
+    return false
 end
 
 function History.Movers()
@@ -209,8 +226,9 @@ function History.Movers()
     local today = Day(house.at)
     local before = DayBefore(house, today)
     if not before then return end
-    if moversOf ~= house or moversAt ~= house.at then
+    if moversOf ~= house or moversAt ~= house.at or Warmed() then
         moversOf, moversAt = house, house.at
+        wipe(cold)
         wipe(movers.dropped)
         wipe(movers.rose)
         wipe(movers.price)
