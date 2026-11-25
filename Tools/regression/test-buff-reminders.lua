@@ -1445,6 +1445,22 @@ do
     Check("shadowform talented", t.Shown(), "spell:588 spell:15473")
 end
 
+-- Demonic Sacrifice: off until picked; any demon's sacrifice buff counts, and a click casts the sacrifice.
+do
+    local known = { [687] = true, [18788] = true }
+    local t = Fixture({ units = { player = "WARLOCK" }, known = known, auras = { player = { { 687, 1700, 1800 } } } })
+    t.Login()
+    Check("demonic sacrifice is off until picked", t.Shown(), "")
+    t = Fixture({ settings = { personalBuffPicks = { demonicSacrifice = true } }, units = { player = "WARLOCK" },
+        known = known, auras = { player = { { 687, 1700, 1800 } } } })
+    t.Login()
+    Check("no sacrifice buff", t.Shown(), "spell:18788")
+    t.state.auras.player = { { 687, 1700, 1800 }, { 18790, 1700, 1800 } }
+    t.Fire("UNIT_AURA", "player")
+    t.Advance(0.5)
+    Check("voidwalker sacrificed", t.Shown(), "")
+end
+
 -- Poisons: every equipped weapon needs one; an expiring poison wakes the row.
 do
     local t = Fixture({ units = { player = "ROGUE" }, known = { [2842] = true }, weapons = { [16] = false } })
@@ -1785,7 +1801,7 @@ do
         if row.key == "personalBuffPicks" then fields[#fields + 1] = row.field end
     end
     Check("shaman picks come first, then every other class", table.concat(fields, " "),
-        "imbue shield demonArmor firestone spellstone mageArmor poisons battleShout innerFire shadowform aspect trueshot huntersMark thorns righteousFury")
+        "imbue shield demonArmor demonicSacrifice firestone spellstone mageArmor poisons battleShout innerFire shadowform aspect trueshot huntersMark thorns righteousFury")
     local extra
     for _, row in ipairs(card.rows) do
         if row.key == "personalBuffExtra" then extra = row end

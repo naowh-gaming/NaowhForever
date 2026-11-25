@@ -184,6 +184,9 @@ D.POISON_ITEMS = {
 D.PERSONAL = {
     { key = "demonArmor", name = "Demon Armor", class = "WARLOCK",
         spells = { 11735, 11734, 11733, 1086, 706, 696, 687, 403619 } },
+    { key = "demonicSacrifice", name = "Demonic Sacrifice", class = "WARLOCK", off = true,
+        help = "Your sacrificed demon's buff. A click sacrifices the demon you have out.",
+        spells = { 18788 }, auras = { 18789, 18790, 18791, 18792 } },
     { key = "firestone", name = "Firestone", class = "WARLOCK", weapons = { 16 }, off = true, conjure = true,
         help = "A Firestone on your main hand. A click with none in your bags creates one.",
         spells = { 17953, 17952, 17951, 6366 }, items = { 13701, 13700, 13699, 1254 } },
