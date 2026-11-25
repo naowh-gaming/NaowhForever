@@ -72,6 +72,7 @@ local ns = { L = dofile("Tools/regression/locale_stub.lua").L, Upper = string.up
     Color = function(_, text) return tostring(text) end,
     Font = function(parent) return Frame(parent) end,
     Solid = function(parent) return Frame(parent) end,
+    ThemeAlpha = function() return 1 end,
     ThemeTint = function(_, literal) return literal end,
     Hairline = function(region) return region end,
     PixelInset = function(region) return region end,

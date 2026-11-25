@@ -4660,6 +4660,7 @@ L["Replace the saved preset?"] = true
 L["Replace your commands with the defaults?"] = true
 L["Replace your custom colors with %s?"] = true
 L["Replace your custom colors with the colors of a theme, then adjust them below. Picking Naowh (default) is a reset."] = true
+L["The color and its opacity. Lower the opacity to see through the addon's windows."] = true
 L["Report to Chat"] = true
 L["Reputation"] = true
 L["Required skill: %d  (%s)"] = true

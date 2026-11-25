@@ -154,6 +154,39 @@ do
     Check(Is(T.grey, SHIPPED.grey), "custom: grey keeps its color while the line is unchanged")
 end
 
+-- Custom opacity: Background only, clamped, and only for the theme's own color tables.
+do
+    local ns, handler = Load({ themePreset = "custom", themeColors = {
+        bg = { r = 0.1, g = 0.2, b = 0.3, a = 0.4 }, panel = { r = 0.1, g = 0.2, b = 0.3, a = 0.5 },
+        line = { r = 0.1, g = 0.2, b = 0.3, a = 0.5 }, accent = { r = 0.9, g = 0.8, b = 0.1, a = 0.5 } } })
+    local T = ns.THEME
+    Check(ns.ThemeAlpha(T.bg) == 1, "opacity: nothing before ADDON_LOADED")
+    Fire(handler, "ADDON_LOADED", "NaowhForever")
+    Check(ns.ThemeAlpha(T.bg) == 0.4, "opacity: Background's applies")
+    Check(ns.ThemeAlpha(T.panel) == 1 and ns.ThemeAlpha(T.line) == 1 and ns.ThemeAlpha(T.accent) == 1,
+        "opacity: panels, lines and the accent stay solid")
+    Check(ns.ThemeAlpha({ r = T.bg.r, g = T.bg.g, b = T.bg.b }) == 1, "opacity: a copy of the color is solid")
+    Check(select(4, ns.ThemeSwatchColor("bg")) == 0.4 and select(4, ns.ThemeSwatchColor("line")) == 1,
+        "opacity: the swatch reads it back")
+
+    ns, handler = Load({ themePreset = "custom", themeColors = { bg = { r = 0.1, g = 0.2, b = 0.3, a = "x" } } })
+    Fire(handler, "ADDON_LOADED", "NaowhForever")
+    Check(ns.ThemeAlpha(ns.THEME.bg) == 1, "opacity: junk is solid")
+    ns, handler = Load({ themePreset = "custom", themeColors = { bg = { r = 0.1, g = 0.2, b = 0.3, a = -1 } } })
+    Fire(handler, "ADDON_LOADED", "NaowhForever")
+    Check(ns.ThemeAlpha(ns.THEME.bg) == 0, "opacity: clamped to 0")
+    for _, account in ipairs({ { themePreset = "midnight", themeColors = { bg = { r = 0, g = 0, b = 0, a = 0.4 } } },
+            { skin = "forever", themePreset = "custom", themeColors = { bg = { r = 0, g = 0, b = 0, a = 0.4 } } } }) do
+        ns, handler = Load(account)
+        Fire(handler, "ADDON_LOADED", "NaowhForever")
+        Check(ns.ThemeAlpha(ns.THEME.bg) == 1, "opacity: only the Custom theme has it")
+    end
+    ns, handler = Load({ themePreset = "custom", themeColors = { bg = { r = 0x19 / 255, g = 0x1b / 255, b = 0x1d / 255,
+        a = 0.5 } } })
+    Fire(handler, "ADDON_LOADED", "NaowhForever")
+    Check(ns.ThemeAlpha(ns.THEME.bg) == 0.5, "opacity: applies with the shipped color too")
+end
+
 -- SetThemePreset: validation, and the palette Custom starts from.
 do
     local account = {}

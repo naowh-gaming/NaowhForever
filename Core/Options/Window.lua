@@ -614,7 +614,7 @@ local function WindowFrame()
     if ns.foreverSkin then
         ns.Shared.Parts.Backdrop(window):Paint(1)
     else
-        ns.Solid(window, "BACKGROUND", T.bg, 1):SetAllPoints()
+        ns.Solid(window, "BACKGROUND", T.bg, ns.ThemeAlpha(T.bg)):SetAllPoints()
     end
     ns.Shared.Parts.Shadow(window)
     local border = ns.Border(window, ns.Shared.Style.BORDER_RGB)
@@ -627,8 +627,9 @@ local function Brand(top, border)
     local brand = CreateFrame("Frame", nil, top)
     brand:SetPoint("TOPLEFT")
     brand:SetSize(SIDEBAR_W, TOP_H)
-    ns.Solid(brand, "BACKGROUND", ns.foreverSkin and T.panel or T.bg, 1):SetAllPoints()
-    if not ns.foreverSkin then
+    if ns.foreverSkin then
+        ns.Solid(brand, "BACKGROUND", T.panel, 1):SetAllPoints()
+    else
         local St = ns.Shared.Style
         ns.Solid(brand, "BACKGROUND", St.BORDER_RGB, St.SIDEBAR_SHADE):SetAllPoints()
     end
@@ -647,7 +648,7 @@ local function TopBar(border)
     top:SetPoint("TOPLEFT"); top:SetPoint("TOPRIGHT"); top:SetHeight(TOP_H)
     DragRegion(top, window)
     local topLine = ns.Solid(top, "ARTWORK", T.line, 1)
-    topLine:SetPoint("BOTTOMLEFT"); topLine:SetPoint("BOTTOMRIGHT"); ns.Hairline(topLine, "h")
+    topLine:SetPoint("BOTTOMLEFT", SIDEBAR_W, 0); topLine:SetPoint("BOTTOMRIGHT"); ns.Hairline(topLine, "h")
     Brand(top, border)
     local close = ns.Button(top, TEXT_CLOSE, TOP.close, TOP.close, function() window:Hide() end)
     close:SetPoint("RIGHT", -TOP.gap, 0)
@@ -759,7 +760,6 @@ local function Sidebar()
     sidebar:SetWidth(SIDEBAR_W)
     if not window.forever then
         local St = ns.Shared.Style
-        ns.Solid(sidebar, "BACKGROUND", T.bg, 1):SetAllPoints()
         ns.Solid(sidebar, "BACKGROUND", St.BORDER_RGB, St.SIDEBAR_SHADE):SetAllPoints()
     end
     local edge = ns.Solid(sidebar, "ARTWORK", T.line, 1)
@@ -944,7 +944,7 @@ local function ModuleWindowFrame()
     if ns.foreverSkin then
         ns.Shared.Parts.Backdrop(win):Paint(1)
     else
-        ns.Solid(win, "BACKGROUND", T.bg, 1):SetAllPoints()
+        ns.Solid(win, "BACKGROUND", T.bg, ns.ThemeAlpha(T.bg)):SetAllPoints()
     end
     ns.Border(win, ns.Shared.Style.BORDER_RGB)
     if ns.foreverSkin then ns.Shared.Parts.ForeverFrame(win) end

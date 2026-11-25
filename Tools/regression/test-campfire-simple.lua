@@ -255,6 +255,7 @@ local function Fixture(settings)
             return fs
         end,
         Solid = function(parent, _, color) local t = Frame(parent); t.color = color; return t end,
+        ThemeAlpha = function() return 1 end,
         ThemeTint = function(_, literal) return literal end,
         Hairline = function(region) return region end,
         PixelInset = function(region) return region end,

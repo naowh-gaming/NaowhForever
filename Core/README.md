@@ -163,6 +163,11 @@ Theme
 - The lighter accent and the selection fill follow the accent and the line. A pick equal to the
   shipped color is not a change: Custom starts as a copy, and the color picker hands back what it
   opened with.
+- A Custom Background can have an opacity (`themeColors.bg.a`, nil when solid). `ns.ThemeAlpha(T.bg)`
+  returns it, and only a window's outermost background uses it: `Backdrop:Paint`, `Parts.Panel` and
+  the options window shells. `ns.Solid` stays solid, because menus, tooltips and modals use the same
+  colors and must not show the text under them, and fills stacked on a window would add up to a
+  darker patch. The options window's sidebar and brand have no base fill of their own for that reason.
 - The Forever skin (Settings > Skin) has its own colors, `ns.FOREVER_SKIN`, in force whatever the
   Theme setting says: parchment text on charcoal stone, bronze lines and the game's gold. It is read
   with the colors, once per load, so a change to it waits for a reload too. `ns.Skin()` says which

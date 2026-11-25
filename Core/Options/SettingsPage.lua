@@ -28,6 +28,7 @@ local TEXT_CUSTOM = ns.L("Custom")
 local TEXT_CHOOSE = ns.L("Choose a theme...")
 local TEXT_REPLACE = ns.L("Replace your custom colors with %s?")
 local TEXT_COLORS_RELOAD = ns.L("Reload UI to apply your color changes.")
+local TEXT_FADE_TIP = "The color and its opacity. Lower the opacity to see through the addon's windows."
 local TEXT_RXP_RELOAD = ns.L("Reload UI to apply your RestedXP changes.")
 local TEXT_RXP_PICK_RELOAD = "Reload UI to pick a theme."
 local TEXT_RXP_WINDOW_NEEDS = "Turn on RestedXP's Beta Features and V2 interface."
@@ -284,12 +285,14 @@ local function MarkColorsPending()
 end
 
 local function Swatch(key, text)
-    return { type = "colorpicker", text = text, hasAlpha = false,
+    local fades = ns.THEME_FADES[key] or false
+    return { type = "colorpicker", text = text, hasAlpha = fades,
+        tooltip = fades and TEXT_FADE_TIP or nil,
         getValue = function() return ns.ThemeSwatchColor(key) end,
-        setValue = function(r, g, b)
+        setValue = function(r, g, b, a)
             local account = ns.AccountSettings()
             if type(account.themeColors) ~= "table" then account.themeColors = {} end
-            account.themeColors[key] = { r = r, g = g, b = b }
+            account.themeColors[key] = { r = r, g = g, b = b, a = fades and a < 1 and a or nil }
             MarkColorsPending()
         end }
 end

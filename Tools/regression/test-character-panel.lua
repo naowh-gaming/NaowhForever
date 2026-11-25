@@ -184,6 +184,7 @@ local ns = { L = dofile("Tools/regression/locale_stub.lua").L, Upper = string.up
     Color = function(_, text) return tostring(text) end,
     Font = function(parent) return Frame(parent) end,
     Solid = function(parent) return Frame(parent) end,
+    ThemeAlpha = function() return 1 end,
     Border = function()
         local border = { SetColor = function(self, r, g, b) self.r, self.g, self.b = r, g, b end }
         return border

@@ -49,6 +49,7 @@ end
 function Backdrop:Paint(alpha, colors)
     local palette = colors or T
     local top, bg = palette.panel, palette.bg
+    alpha = alpha * ns.ThemeAlpha(bg)
     if self.pattern then
         self.bottom:SetRGBA((top.r + bg.r) / 2, (top.g + bg.g) / 2, (top.b + bg.b) / 2, alpha)
         self.top:SetRGBA(top.r, top.g, top.b, alpha)
@@ -144,7 +145,7 @@ function Parts.Panel(title, windowLook, opacity)
     if windowLook then
         panel.backdrop = Parts.Backdrop(panel)
     else
-        ns.Solid(panel, "BACKGROUND", T.bg, opacity or PANEL_ALPHA):SetAllPoints()
+        ns.Solid(panel, "BACKGROUND", T.bg, (opacity or PANEL_ALPHA) * ns.ThemeAlpha(T.bg)):SetAllPoints()
     end
     ns.Border(panel, BORDER_RGB)
     panel.title = ns.Font(panel, St.TEXT_SIZE, nil, T.accent)

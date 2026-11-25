@@ -175,7 +175,11 @@ do
         "the six swatches, in order")
     for i = 2, 4 do
         for _, cfg in ipairs(e.rows[i]) do
-            if cfg.text ~= "" then Check(cfg.type == "colorpicker" and cfg.hasAlpha == false, cfg.text .. " is a swatch") end
+            if cfg.text ~= "" then
+                local fades = cfg.text == "Background"
+                Check(cfg.type == "colorpicker" and cfg.hasAlpha == fades, cfg.text .. " is a swatch")
+                Check((cfg.tooltip ~= nil) == fades, cfg.text .. ": only the swatches with an opacity explain it")
+            end
         end
     end
     Check(#Page({}).notes == 0, "no hint before any change")
@@ -232,12 +236,27 @@ do
     local e = Page(a)
     local swatch = e.rows[2][1]
     Check(#e.notes == 0, "no hint before a swatch changes")
-    for i = 1, 50 do swatch.setValue(i / 50, 0, 0) end
+    for i = 1, 50 do swatch.setValue(i / 50, 0, 0, 1) end
     Check(e.refreshes == 1, "only the first tick redraws the page")
     Check(#e.confirms == 0, "dragging never opens a dialog")
     Check(a.themeColors.bg.r == 1, "the last pick is saved")
     e.build()
     Check(#e.notes == 1 and e.notes[1] == HINT, "hint shows after a swatch change")
+end
+
+-- Opacity is saved for Background only, and full opacity is saved as nothing.
+do
+    local a = { themePreset = "custom" }
+    local e = Page(a)
+    local bg, panel, line = e.rows[2][1], e.rows[2][2], e.rows[3][1]
+    bg.setValue(0.1, 0.2, 0.3, 0.4)
+    panel.setValue(0.1, 0.2, 0.3, 0.4)
+    line.setValue(0.1, 0.2, 0.3, 0.4)
+    Check(a.themeColors.bg.a == 0.4 and select(4, bg.getValue()) == 0.4, "Background keeps its opacity")
+    Check(a.themeColors.panel.a == nil and select(4, panel.getValue()) == 1, "Panels keeps only its color")
+    bg.setValue(0.1, 0.2, 0.3, 1)
+    Check(a.themeColors.bg.a == nil, "full opacity is saved as nothing")
+    Check(a.themeColors.line.a == nil and a.themeColors.line.r == 0.1, "Borders & Lines keeps only its color")
 end
 
 -- Start From: an action that always reads the placeholder, asks first, then replaces the picks.

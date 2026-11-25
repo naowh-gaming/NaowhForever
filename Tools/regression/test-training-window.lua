@@ -111,6 +111,7 @@ local ns = { L = dofile("Tools/regression/locale_stub.lua").L, Upper = string.up
     Color = function(_, text) return tostring(text) end,
     Font = function(parent) return Frame(parent) end,
     Solid = function(parent) return Frame(parent) end,
+    ThemeAlpha = function() return 1 end,
     Border = function(parent) return { SetColor = NOTHING, _frame = Frame(parent) } end,
     AllowOffscreen = NOTHING,
     AccentBorder = function(b) return b end,

@@ -71,6 +71,7 @@ local ns = { L = dofile("Tools/regression/locale_stub.lua").L, Upper = string.up
         solid.color = color
         return solid
     end,
+    ThemeAlpha = function() return 1 end,
     ThemeTint = function(_, literal) return literal end,
     -- As ns.Hairline and ns.PixelInset: whole-pixel sizing has no effect on these stubs.
     Hairline = function(region) return region end,

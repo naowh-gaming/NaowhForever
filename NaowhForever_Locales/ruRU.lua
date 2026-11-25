@@ -3760,6 +3760,7 @@ L["Replace the saved preset?"] = "Заменить сохраненный наб
 L["Replace your commands with the defaults?"] = "Заменить ваши команды стандартными?"
 L["Replace your custom colors with %s?"] = "Заменить ваши цвета на %s?"
 L["Replace your custom colors with the colors of a theme, then adjust them below. Picking Naowh (default) is a reset."] = "Замените свои цвета цветами темы, затем подстройте их ниже. Выбор Naowh (по умолчанию) сбрасывает их."
+L["The color and its opacity. Lower the opacity to see through the addon's windows."] = "Цвет и его непрозрачность. Уменьшите непрозрачность, чтобы видеть сквозь окна аддона."
 L["Report to Chat"] = "Сообщать в чат"
 L["Reputation"] = "Репутация"
 L["Required skill: %d  (%s)"] = "Требуемый навык: %d  (%s)"

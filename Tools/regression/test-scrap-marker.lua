@@ -177,6 +177,7 @@ local ns = { GamepadStandDown = function() return false end, RegisterMinimapFeat
     Color = function(_, text) return text and tostring(text) or "" end,
     Font = function(parent) return Frame(parent) end,
     Solid = function(parent) return Frame(parent) end,
+    ThemeAlpha = function() return 1 end,
     Border = function() return { SetColor = NOTHING } end,
     AllowOffscreen = NOTHING,
     AccentBorder = function(b) return b end,

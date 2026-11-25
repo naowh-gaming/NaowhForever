@@ -244,6 +244,7 @@ local function fixture(settings, noBis, language)
             return font
         end,
         Solid = function(parent) return Frame(state, parent) end,
+        ThemeAlpha = function() return 1 end,
         -- As ns.Hairline and ns.PixelInset: whole-pixel sizing has no effect on these stubs.
         Hairline = function(region) return region end,
         PixelInset = function(region) return region end,

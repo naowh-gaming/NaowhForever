@@ -155,6 +155,7 @@ ns.THEME = {
 }
 
 ns.THEME_EDITABLE = { "bg", "panel", "line", "fg", "muted", "accent" }
+ns.THEME_FADES = { bg = true }
 ns.THEME_PRESET_ORDER = { "midnight", "slate", "obsidian", "aubergine", "forest", "crimson", "rosenoir",
     "cottoncandy", "classic" }
 ns.THEME_PRESETS = {
@@ -256,6 +257,7 @@ function ns.PlainText(text, max)
 end
 
 local themeShipped = {}
+local themeAlpha = {}
 
 local function Channel(v)
     v = tonumber(v)
@@ -268,6 +270,11 @@ local function Pick(source, key)
     if type(c) ~= "table" then return nil end
     local r, g, b = Channel(c.r), Channel(c.g), Channel(c.b)
     if r and g and b then return r, g, b end
+end
+
+local function PickAlpha(source, key)
+    local c = ns.THEME_FADES[key] and type(source) == "table" and source[key]
+    return type(c) == "table" and Channel(c.a) or 1
 end
 
 local function ThemeSource()
@@ -309,6 +316,8 @@ function ns.ApplyThemeColors()
     for _, key in ipairs(ns.THEME_EDITABLE) do
         local r, g, b = Pick(source, key)
         if r and not Shipped(key, r, g, b) then Paint(key, r, g, b) end
+        local a = PickAlpha(source, key)
+        if a < 1 then themeAlpha[ns.THEME[key]] = a end
     end
     if themeShipped.accent then Paint("accentSoft", Lightened(ns.THEME.accent, ACCENT_SOFT_STEP)) end
     if themeShipped.line then Paint("grey", Lightened(ns.THEME.line, GREY_STEP)) end
@@ -380,9 +389,14 @@ function ns.ThemePalette(key)
 end
 
 function ns.ThemeSwatchColor(key)
-    local r, g, b = Pick(ns.AccountSettings().themeColors, key)
-    if r then return r, g, b end
-    return ShippedColor(key)
+    local colors = ns.AccountSettings().themeColors
+    local r, g, b = Pick(colors, key)
+    if not r then r, g, b = ShippedColor(key) end
+    return r, g, b, PickAlpha(colors, key)
+end
+
+function ns.ThemeAlpha(color)
+    return themeAlpha[color] or 1
 end
 
 function ns.ThemeTint(key, literal)

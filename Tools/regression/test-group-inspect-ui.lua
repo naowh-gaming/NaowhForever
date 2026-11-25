@@ -201,6 +201,7 @@ ns = { GamepadStandDown = function() return false end, L = dofile("Tools/regress
     Color = function(_, text) return tostring(text) end,
     Font = function(parent) return Frame(parent) end,
     Solid = function(parent) return Frame(parent) end,
+    ThemeAlpha = function() return 1 end,
     Hairline = function(region) return region end,
     PixelInset = function(region) return region end,
     AllowOffscreen = NOTHING,
