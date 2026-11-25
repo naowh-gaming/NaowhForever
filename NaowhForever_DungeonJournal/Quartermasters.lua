@@ -46,7 +46,10 @@ local function IndexRewards()
     for _, tab in ipairs(J.TABS) do
         for _, faction in ipairs(J.Factions(tab)) do
             for _, tier in ipairs(faction.tiers) do
-                for _, id in ipairs(tier.items) do sellers[id] = faction end
+                for _, id in ipairs(tier.items) do
+                    local seller = sellers[id]
+                    sellers[id] = (seller == nil or seller == faction) and faction
+                end
             end
         end
     end

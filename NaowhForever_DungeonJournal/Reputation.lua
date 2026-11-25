@@ -22,10 +22,12 @@ local TENTHS = 10
 local ROUND = J.C.ROUND_HALF
 local READY_WEIGHT, LOGGED_WEIGHT = 2, 1
 local TAKE_STRIDE = 2
+local QUEST_ID = J.C.QUEST.ID
 local ALLIANCE_RANKS, HORDE_RANKS = 1, 0
 local RANK_CITY = { Alliance = "Stormwind", Horde = "Orgrimmar" }
 local SECONDS_PER_DAY, SECONDS_PER_HOUR, SECONDS_PER_MINUTE = 86400, 3600, J.C.SECONDS_PER_MINUTE
 local BAND = { [1] = 36000, [2] = 3000, [3] = 3000, [4] = 3000, [5] = 6000, [6] = 12000, [7] = 21000 }
+local FLOOR = { -42000, -6000, -3000, 0, 3000, 9000, 21000, 42000 }
 
 local STANDING_LABEL = "FACTION_STANDING_LABEL"
 local RANK_LABEL = "PVP_RANK_%d_%d"
@@ -35,18 +37,17 @@ local TEXT_TO_GO = ns.L(" to go")
 local TEXT_DAY, TEXT_DAYS = ns.L("1 day"), ns.L(" days")
 local TEXT_HOUR, TEXT_HOURS = ns.L("1 hour"), ns.L(" hours")
 local TEXT_MINUTE, TEXT_MINUTES = ns.L("1 minute"), ns.L(" minutes")
+local TEXT_NEEDS = ns.L("Requires %s with %s")
 
 local labels = {}
 local short = {}
 
-local function IsTurnIn(faction, questID)
-    local turnins = faction.turnins
-    if not turnins then return false end
-    for i = 1, #turnins do
-        local quests = turnins[i].quests
-        for k = 1, #quests do
-            if quests[k][1] == questID then return true end
-        end
+local function IsListed(faction, questID)
+    local data = faction.questData
+    if not data then return false end
+    local quests = data.quests
+    for i = 1, #quests do
+        if quests[i][QUEST_ID] == questID then return true end
     end
     return false
 end
@@ -74,13 +75,33 @@ J.Reputation = Rep
 Rep.EXALTED = EXALTED
 Rep.HONOR, Rep.RANK_POINTS = HONOR, RANK_POINTS
 
-function Rep.Standing(faction)
-    local data = GetFactionDataByID(faction.id)
+function Rep.StandingByID(id)
+    local data = GetFactionDataByID(id)
     if not (data and data.reaction) then return nil, 0, 1 end
     local reaction = data.reaction
     if reaction >= EXALTED then return reaction, 1, 1 end
     local low = data.currentReactionThreshold or 0
     return reaction, data.currentStanding - low, math.max(1, (data.nextReactionThreshold or low + 1) - low)
+end
+
+function Rep.Standing(faction)
+    return Rep.StandingByID(faction.id)
+end
+
+function Rep.Meets(need)
+    local data = GetFactionDataByID(need[1])
+    return data ~= nil and data.reaction ~= nil and data.currentStanding >= need[2]
+end
+
+function Rep.ReactionAt(value)
+    local reaction = EXALTED
+    while reaction > 1 and value < FLOOR[reaction] do reaction = reaction - 1 end
+    return reaction
+end
+
+function Rep.NeedText(need)
+    local name = J.Names and J.Names.factions[need[1]] or need[3]
+    return TEXT_NEEDS:format(Rep.Label(Rep.ReactionAt(need[2])), name)
 end
 
 function Rep.Label(reaction)
@@ -158,8 +179,8 @@ function Rep.LogQuests(faction, out)
     local signature = 0
     for i = 1, GetNumQuestLogEntries() do
         local id = GetQuestIDForLogIndex(i)
-        if id and id > 0 and AwardsReputation(id, faction.id) and not IsTurnIn(faction, id) then
-            out[#out + 1] = id
+        if id and id > 0 and AwardsReputation(id, faction.id) then
+            if not IsListed(faction, id) then out[#out + 1] = id end
             signature = signature + id * (ReadyForTurnIn(id) and READY_WEIGHT or LOGGED_WEIGHT)
         end
     end

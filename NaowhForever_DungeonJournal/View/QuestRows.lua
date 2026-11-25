@@ -7,6 +7,7 @@ local GetItemCount, GetItemIconByID, GetItemNameByID = C_Item.GetItemCount, C_It
 local T = ns.THEME
 local J = ns.Journal
 local Quests = J.Quests
+local Rep = J.Reputation
 local View = J.View
 local Kinds, Parts = View.Kinds, View.Parts
 local IconButton, Plain, Tip = Parts.IconButton, Parts.Plain, Parts.Tip
@@ -104,13 +105,14 @@ local TEXT_BLANK = " "
 local CHECK_ICON = "|T" .. CHECK .. ":0|t "
 local EMPTY = {}
 local warnings = {}
+local classWords = {}
 
 local function RGB(code)
     local r, g, b = code:match(HEX_CODE)
     return { r = tonumber(r, HEX_BASE) / BYTE, g = tonumber(g, HEX_BASE) / BYTE, b = tonumber(b, HEX_BASE) / BYTE }
 end
 
-local GREY, RED = RGB(QUEST_CODE.low), RGB(QUEST_CODE.tooHigh)
+local GREY, RED = RGB(QUEST_CODE.done), RGB(QUEST_CODE.tooHigh)
 local YELLOW = RGB(QUEST_CODE.prereqLog)
 local MARKS = {
     pickup = { BANG }, next = { BANG },
@@ -185,9 +187,18 @@ local function ChainFact(quest)
     Fact(TEXT_CHAIN, TEXT_STEP_OF:format(own, #chain) .. rest)
 end
 
+local function ClassWord(class)
+    return ns.L((class:sub(1, 1) .. class:sub(2):lower()) .. "s")
+end
+
 local function ForWhom(quest)
     local class = quest.class
-    if class then return ns.L((class:sub(1, 1) .. class:sub(2):lower()) .. "s") end
+    if type(class) == "table" then
+        wipe(classWords)
+        for i = 1, #class do classWords[i] = ClassWord(class[i]) end
+        return table.concat(classWords, TEXT_LIST)
+    end
+    if class then return ClassWord(class) end
     return SIDE[quest[QUEST.SIDE]] or TEXT_EVERYONE
 end
 
@@ -213,7 +224,7 @@ local function MemberState(unit, entry, need)
     local quest = entry.quest
     if Quests.UnitOnQuest(unit, quest, entry.loggedID) then return TEXT_HAS_IT, HAVE_RGB end
     local _, class = UnitClass(unit)
-    if quest.class and class ~= quest.class then return TEXT_NOT_CLASS, T.muted end
+    if not Quests.ForClass(quest.class, class) then return TEXT_NOT_CLASS, T.muted end
     local level = UnitLevel(unit)
     if need and level and level > 0 and level < need then return TEXT_TOO_LOW:format(level, need), T.muted end
     return TEXT_NOT_ON_IT, T.muted
@@ -277,6 +288,13 @@ local function WarningLines(entry)
     end
 end
 
+local function RepLine(entry)
+    local need = Quests.MinRep(entry.quest)
+    if not need then return end
+    local color = Rep.Meets(need) and HAVE_RGB or RED
+    GameTooltip:AddLine(Rep.NeedText(need), color.r, color.g, color.b, true)
+end
+
 local function TurnInCard(entry)
     TurnInLines(entry)
     PartyLines(entry)
@@ -290,6 +308,7 @@ local function QuestCard(row, entry)
     end
     if not SAID_BELOW[entry.kind] then GameTooltip:AddLine(StatusText(entry)) end
     TooHighLine(entry)
+    RepLine(entry)
     WarningLines(entry)
     ProgressLines(entry)
     GameTooltip:AddLine(TEXT_BLANK)
@@ -354,7 +373,8 @@ local function QuestMouseUp(row, button)
         OpenQuestMenu(row, row.entry)
     elseif row:GetParent().questInline then
         local view, entry = row:GetParent(), row.entry
-        if not (entry.loggedID or Quests.Chain(entry.quest) or View.QuestPanel.HasRewards(entry)) then return end
+        if not (entry.loggedID or Quests.Chain(entry.quest) or View.QuestPanel.HasRewards(entry)
+            or Quests.MinRep(entry.quest)) then return end
         view.openQuest = view.openQuest ~= entry.quest and entry.quest or nil
         view:Redraw()
     elseif row.entry.loggedID then

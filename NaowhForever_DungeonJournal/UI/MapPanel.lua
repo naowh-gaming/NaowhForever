@@ -113,6 +113,10 @@ local function FitWidth()
     if panel:IsShown() then view:Redraw() end
 end
 
+local function BarHidden()
+    if panel:IsShown() then FitWidth() end
+end
+
 local function DrawHidden()
     DrawPage()
     local room = panel.scroll:GetHeight()
@@ -158,7 +162,7 @@ local function Build()
     panel.scroll = scroll
     FitWidth()
     scroll.bar:HookScript("OnShow", FitWidth)
-    scroll.bar:HookScript("OnHide", FitWidth)
+    scroll.bar:HookScript("OnHide", BarHidden)
 end
 
 local function Place()
@@ -271,6 +275,7 @@ local function Prewarm()
     pages, pagesAreFactions, shownIndex, shownBoss, chosen = here, false, 1, nil, nil
     Place()
     DrawHidden()
+    J.PrewarmMapOnWorldMap(here[1])
 end
 
 local function FolderEvent(_, event)

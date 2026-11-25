@@ -127,6 +127,17 @@ local function FactionSet(value)
     S.Set("showHorde", value ~= "Alliance")
 end
 
+local function LevelRow(key, label, help)
+    local function Get()
+        local level = S.Get(key)
+        return level > 0 and tostring(level) or ""
+    end
+    local function Set(text)
+        S.Set(key, math.max(0, math.floor(tonumber(text) or 0)))
+    end
+    return { key = key, label = label, text = true, get = Get, set = Set, help = help }
+end
+
 local function OptionRow(option)
     local row = { key = option.key, label = option.label, toggle = true, help = option.tooltip }
     if option.needsBis then
@@ -137,7 +148,14 @@ end
 
 local function ListRows()
     local rows = {}
-    for _, option in ipairs(J.OPTION_GROUPS[1].options) do rows[#rows + 1] = OptionRow(option) end
+    for _, option in ipairs(J.OPTION_GROUPS[1].options) do
+        if option.to then
+            rows[#rows + 1] = LevelRow(option.key, "Loot From Level", "Only the loot from this required level up; empty is no limit.")
+            rows[#rows + 1] = LevelRow(option.to, "Loot To Level", "Only the loot up to this required level; empty is no limit.")
+        else
+            rows[#rows + 1] = OptionRow(option)
+        end
+    end
     rows[#rows + 1] = { label = "Dungeons Listed", choice = { FACTION_VALUES, FACTION_ORDER },
         get = FactionGet, set = FactionSet,
         help = "Whose city dungeons the list shows. The other dungeons and the raids are always listed. "
@@ -148,7 +166,10 @@ end
 local function ListSummary(store)
     local hiding = 0
     for _, option in ipairs(J.OPTION_GROUPS[1].options) do
-        if option.hides ~= nil and store.Get(option.key) == option.hides then hiding = hiding + 1 end
+        if option.to and (store.Get(option.key) > 0 or store.Get(option.to) > 0)
+            or option.hides ~= nil and store.Get(option.key) == option.hides then
+            hiding = hiding + 1
+        end
     end
     return ns.L(FACTION_VALUES[FactionGet()]) .. (hiding == 1 and TEXT_ONE_FILTER or TEXT_FILTERS:format(hiding))
 end

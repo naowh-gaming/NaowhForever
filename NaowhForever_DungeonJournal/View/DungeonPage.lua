@@ -14,7 +14,7 @@ local TRASH_TOP, TRASH_GAP = 6, 16
 local EMPTY_BODY = 28
 local DETAIL_TOP = 8
 local SKIPPED_TITLE = { missingBisOnly = ns.L("Nothing you're missing"), upgradesOnly = ns.L("Nothing that beats your gear"),
-    usableOnly = ns.L("Nothing for your class") }
+    usableOnly = ns.L("Nothing for your class"), lootMinLevel = ns.L("Nothing in your level range") }
 
 local TEXT_QUESTS = ns.L("Dungeon Quests")
 local TEXT_TRACKER = ns.L("Tracker")
@@ -299,7 +299,8 @@ function ViewMixin:DrawSkipped()
     if #skipped == 0 then return end
     self:Space(BOSS_LOOT_GAP)
     local filters = self.filters
-    local key = filters.missingBis and "missingBisOnly" or filters.upgradesOnly and "upgradesOnly" or "usableOnly"
+    local key = filters.missingBis and "missingBisOnly" or filters.upgradesOnly and "upgradesOnly"
+        or (filters.minLevel > 0 or filters.maxLevel > 0) and "lootMinLevel" or "usableOnly"
     self:Add("skipped", SKIPPED_TITLE[key], key, self.skippedBoss, skipped)
     self:Space(BOSS_LOOT_GAP)
 end

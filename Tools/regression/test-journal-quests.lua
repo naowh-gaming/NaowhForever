@@ -273,6 +273,15 @@ Case("only your faction's quests and your class's class quests", function()
     assert(EntryFor(Q, J, 600))
 end)
 
+Case("a quest for two classes is listed for either", function()
+    local Q, _, _, J = Fixture({ faction = "Horde", done = DEFIAS })
+    J.QuestData[1].quests[3].class = { "WARRIOR", "PALADIN" }
+    assert(EntryFor(Q, J, 600) == nil, "not for the mage")
+    assert(Q.ForClass(J.QuestData[1].quests[3].class, "PALADIN"), "a paladin's")
+    J.QuestData[1].quests[3].class = { "WARRIOR", "MAGE" }
+    assert(EntryFor(Q, J, 600), "a mage's")
+end)
+
 Case("a quest only some races can take is listed for those races", function()
     local Q, _, _, J = Fixture({ faction = "Horde", race = 5, done = DEFIAS })
     J.QuestData[1].quests[3].races = 162

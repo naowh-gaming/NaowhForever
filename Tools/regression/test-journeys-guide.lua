@@ -31,6 +31,7 @@ QUESTS[116] = { DARNASSUS, 0.5, 0.5 }
 local here = { x = -4821.8, y = -1155.4, c = 0 }
 local current, placedAtSet
 local combat = false
+local runSpeed = 7
 local SECRET = {}
 local now = 0
 local account = {}
@@ -121,6 +122,7 @@ local env = setmetatable({
     end,
     UnitName = function() return "Glyadin" end,
     UnitOnTaxi = function() return false end,
+    GetUnitSpeed = function() return 0, runSpeed end,
     GetRealmName = function() return "Forever" end,
     UnitFactionGroup = function() return "Alliance" end,
     GetServerTime = function() return 0 end,
@@ -459,6 +461,16 @@ Check(Jy.Guide.Current().plan == planned, "standing still, it is not planned aga
 here = { x = here.x + 20, y = here.y, c = here.c }
 for _ = 1, 3 do Tick() end
 Check(Jy.Guide.Current().plan ~= planned, "every few seconds on the move it is planned again from where you stand")
+local onFoot = Jy.Guide.Current().plan
+runSpeed = 14
+Tick()
+local mounted = Jy.Guide.Current().plan
+Check(mounted ~= onFoot and mounted.speed == 14 and mounted.seconds < onFoot.seconds,
+    "mounting up, standing still, plans again at the faster speed: " .. onFoot.seconds .. " to " .. mounted.seconds)
+runSpeed = 7
+Tick()
+Check(Jy.Guide.Current().plan.speed == 7 and Jy.Guide.Current().plan.seconds > mounted.seconds,
+    "and getting down plans again at running speed")
 local kept = Jy.Guide.Current().plan
 local realPlan = Jy.Planner.Plan
 Jy.Planner.Plan = function() return nil end

@@ -5,7 +5,9 @@ card), what each drops and how often, your BiS marked, your quests there, and a 
 Naowh for each boss. Each classic dungeon has a map: the game's own art with every boss where
 it stands, in a window of its own or filling the world map inside the dungeon. Its Reputation
 tab has each faction's rewards by standing, with their prices; its PvP tab your rank this
-season, what each rank gives, and the battleground factions. Its Crafting page lists every
+season, what each rank gives, what the Marks of Honor buy, and the battleground factions:
+Warsong Gulch's, Arathi Basin's, Alterac Valley's (with its insignia and Hero quests) and the
+Darkspear Islands'. Its Crafting page lists every
 profession's recipes (gear, consumables, enchants), each with its skill and source. Its Run Panel shows the run you are
 in (time, gold, XP, trash and each boss against your best run), and its Runs tab every run you
 have done. Off by default: players turn it
@@ -47,7 +49,7 @@ NaowhForever_DungeonJournal/
     Items.lua          the loot not in Forever yet, generated (the rest is Shared's ItemFacts)
     ItemStats.lua      each item's slot and stats, for the Loot Finder, generated
     Quests.lua         every dungeon quest, from Wowhead's Forever guide, with hand additions
-    QuestChains.lua    each quest's chain, prerequisites and required level, generated
+    QuestChains.lua    each quest's chain, prerequisites, required level and reputation, and the steps done inside an instance, generated
     BiSQuests.lua      the quests that reward a BiS, for the BiS List's Quests page, generated
     RankRequirements.lua the line a rank vendor shows on an item you need a rank for, in each language, generated
     Dungeons/*.lua     one per dungeon, generated
@@ -69,7 +71,7 @@ NaowhForever_DungeonJournal/
     Parts.lua          a fight's length, a boss's level and portrait, a row's band to its card's edges, side panels
     DungeonPage.lua    a dungeon's page: header, quests, each wing's boss cards, trash, the folded bosses
     BossPage.lua       a boss's own page: stacked (Boss Loot at Cursor) or compact (the dungeon map)
-    FactionPage.lua    a faction's page and the PvP rank's
+    FactionPage.lua    a faction's page and the PvP rank's, with the Marks of Honor
     SearchPage.lua     a search over every boss, item and faction reward
     FinderPage.lua     the Loot Finder: its picks, then the loot that fits, each with its boss and dungeon
     CraftingPage.lua   the Crafting page: its picks, then the recipes that fit, each with its slot, skill and source
@@ -96,7 +98,7 @@ NaowhForever_DungeonJournal/
     IconLine.lua       a line under a faction's standing (what unlocked rewards would cost)
     RankReward.lua     a rank reward that is not an item
     ItemMenu.lua       an item's right-click menu (the BiS list, Favourites)
-    QuestDetailRows.lua the quest panel's title, objective and item rows
+    QuestDetailRows.lua the quest panel's title, reputation needed, objective and item rows
     QuestPanel.lua     a quest in your log, in the side panel
     HistoryRows.lua    a boss history's kill header and its GROUP and LOOT labels
     TeamRow.lua        your group as it stood for a kill
@@ -259,7 +261,12 @@ The rules, in plain words:
   so are the reagents, ammunition and the drops it marks as only expected or extremely rare.
   Dalaran's two blueprints take their chance from `"counts"`, the drops players counted there
   (Spinning Wheel 14 of 166 Unstable Sentinel kills, Arcane Salvager 13 of 174 of the Shade's):
-  Wowhead's answers for those bosses predate the recipes, so it counts neither.
+  Wowhead's answers for those bosses predate the recipes, so it counts neither. Its updates read
+  25 Nov 2026 add Blackmaw Hold's rares Sabella No-Eyes and Mopes and Shaper's Terrace's King Op,
+  whose drops Wowhead Forever has (King Op's two drop from Snowtalon and Vitrix too, so they are
+  placed by hand, as is Vitrix's Albinofur Grips), Blackmaw Hold's two trash drops it only expected
+  before, Shaper's Terrace's Pattern: Blue Dragonscale Helm on its trash, and the Avatar of
+  Hakkar's Pattern: Mender's Leather Gauntlets.
 - **ForeverChanges** (with their permission) marks the drops its players have seen in game on
   its dungeon pages. `Tools/build/foreverchanges_loot.py` reads them into
   `Tools/data/foreverchanges_loot.json`, and the build places them as an `"add"` list does: on
@@ -342,6 +349,20 @@ in the pull request it opens.
       { "name": "Minion's Scourgestones", "quests": [5402, 5408, 5510], "rep": 25, "takes": [[12840, 20]] }
   ]
   ```
+- **A battleground faction's rewards:** the game's tables tie its quartermaster's items to no
+  faction (both sides' quartermasters sell most of them), so they are listed by hand in its
+  `"sells"`, by the standing each needs, from the quartermaster's Wowhead Forever page; their
+  facts and prices are the tables'. Its quest chains are its `"quests"`, one quest a line, each
+  step after the one it names, with the standing it needs, the reputation it gives, the items
+  it rewards and who gives it; its page lists each step as a quest row, with its chain:
+
+  ```json
+  "sells": { "Friendly": [21565, 21566], "Honored": [19514] },
+  "quests": [
+      {"quest": 7162, "name": "Proving Grounds", "rep": 100, "get": [17691], "at": ["Lieutenant Haggerdin", "Alterac Mountains", 39.5, 81.2]},
+      {"quest": 7168, "name": "Rise and Be Recognized", "after": 7162, "standing": "Friendly", "rep": 100, "get": [17900], "at": ["Lieutenant Haggerdin", "Alterac Mountains", 39.5, 81.2]}
+  ]
+  ```
 - **A row kind:** a file in `View/` that fills `J.View.Kinds.<name>` with `New(view)`
   (makes the frame once) and `Set(row, ...)` (fills it and returns its height). List it in
   `DungeonJournal.xml` after `View/View.lua`, and draw it with `view:Add("<name>", ...)`.
@@ -359,7 +380,7 @@ in the pull request it opens.
 - Each quest record is `{ questID, name, level, side ("A", "H" or "B"), shareable (true, false, or
   "pre" for a prerequisite chain), where it starts, uiMapID, x, y }` (`J.C.QUEST` names the
   fields), the last three only when its quest giver stands outside the dungeon, `class` for a
-  class quest, and `races` for a quest only some races can take (a mask of their
+  class quest (a list for one several classes take: Nostro's Compendium's warriors and paladins), and `races` for a quest only some races can take (a mask of their
   `PlayableRaceBit`s, from the quest entity export; Compendium of the Fallen's also lets Horde
   Skyborne in, whom the export's classic mask predates). Optional, from Wowhead's Forever quest
   database (2026-09-26), for the dungeons up to level 20 so far: `alt` (the same quest's other
@@ -408,9 +429,10 @@ in the pull request it opens.
   amulet pieces in the dungeon each spirit is summoned in, The Challenge under Blackrock Depths,
   where it is fought), and a step of a listed quest's chain is in that chain (Precarious
   Predicament, A Crumpled Up Note, the Sparklematic and Platinum Discs versions, the libram and
-  Gordok repeatables). A chain in `Tools/data/quest_chains.json` with `from` is the Quest List's
-  (`NaowhForever_DiscoveryData/Quests.lua`, `D.Chains`), where Wowhead's cached Series had none
-  or only part of it. An item that starts a quest is the game's `ItemSparse.StartQuestID`. Quests
+  Gordok repeatables). A chain in `Tools/data/quest_chains.json` with `from` says where it is from:
+  the Quest List's (`NaowhForever_DiscoveryData/Quests.lua`, `D.Chains`), where Wowhead's cached
+  Series had none or only part of it, or players' reports (Blackmaw Reclamation's from Ekkal on,
+  the paladin storyline before Materials of Significance, the rogue jobs before Fool Me Twice). An item that starts a quest is the game's `ItemSparse.StartQuestID`. Quests
   no source gives a start for and the server has no data on (When Dreams Turn to Nightmares,
   Waking Naralex, the second Unfinished Gordok Business) are left out.
 - The quests ForeverChanges has since filed under Blackmaw Hold, Shaper's Terrace and Blackrock
@@ -434,7 +456,17 @@ in the pull request it opens.
   Reclamation, A Lost Memento, Digestible Research and The Broken Glaive. Left out: the other
   versions of State Secrets and Blackmaw Pouches, which have no text, the City of Dalaran's
   level 52 to 60 quests, which are the city's and not the dungeon's, and the Season of Discovery
-  quests the server also sent (Ever After, Nostro's Compendium).
+  quest the server also sent (Ever After). Nostro's Compendium is Forever's name for Foror's
+  Compendium, the guide's row.
+- The givers left at TBD (Blackmaw Hold's, Alcaz Prison's, two of Krol'dok Stronghold's, Zul'Farrak's,
+  Maraudon's and Razorfen Downs' Agamaggan's Blood) are the Quest List's spots for them, from
+  Forever's own data (2026-11-25), which the shared data set's later updates agree with; State
+  Secrets starts from the Document Box that More Valuable Than Gold rewards. From those updates
+  too, checked against Wowhead Forever's pages: Materials of Significance (Alliance paladins, in
+  Maraudon's and Blackrock Depths' lists, where two of its parts are), The Talisman of Kazdor
+  (rogues, Zul'Farrak), Dreadsteed of Xoroth (warlocks, Dire Maul, where Lord Hel'nurath is
+  summoned) and the Alliance's The Darkreaver Menace; the Horde's is 8258 on Forever, not the
+  classic 7668. The Medallion of Faith is repeatable on Forever (the Quest List's `D.Repeatable`).
 - Scarlet Monastery's four wings share one instance (189), each its own dungeon with classic's
   ranges. A quest goes under the wing it is done in: Hearts of Zeal (hearts from any wing) under
   the first, the two that kill Loksey, Herod, Mograine and Whitemane under the Cathedral.
@@ -443,12 +475,22 @@ in the pull request it opens.
   pages (2026-09-26), with Classic-era spots dropped on the redrawn maps; The Glowing Shard
   follows the in-game quest text, which Wowhead has wrong. Dungeons up to level 20 so far.
 - `Data/QuestChains.lua`: `QuestChains` (questID -> every step of its chain in order),
-  `QuestPrereqs` (the steps before it can be picked up), `QuestMinLevel`, `QuestWhere` (the
-  where text without the guide's prerequisite note), `QuestChainNames` and `QuestChainStarts`
+  `QuestPrereqs` (the steps before it can be picked up), `QuestMinLevel`, `QuestMinRep`
+  (`{ faction ID, reputation, faction name }`, the reputation as the game counts it: Neutral 0,
+  Friendly 3000), `QuestInside` (a step -> the area of the instance its objectives are in),
+  `QuestWhere` (the where text without the guide's prerequisite note), `QuestChainNames` and `QuestChainStarts`
   (`{ uiMapID, x, y, quest giver }`) for the steps not in `Data/Quests.lua`. A step with no
   usable start on its quest page takes the Quest List's spot (`D.Quests`), which is converted on
   the redrawn maps and, for a quest an item begins, is where the mob that drops it spawns
   (Underground Map: Captain Beld). Build the Quest List first.
+- A quest's reputation is the quest entity catalog's `requiredMinRep`; Forever's own quests are
+  not in the catalog, so their `Tools/data/quest_info.json` entry takes a `minrep` by hand, from
+  players' reports (Blackmaw Hold's Twin Bears, Blackmaw Reclamation and A Lost Memento: Neutral
+  with Timbermaw Hold). Its faction must have a page in `Data/Factions`, where its name is from.
+- A step is inside an instance when every objective spot its Wowhead Forever quest page has
+  (`Tools/data/quest_objective_spots.json`) is in an instance's area
+  (`Tools/data/instance_areas.json`). A step whose objectives are partly outside, or that page
+  places none of, is not marked; nor is one only handed in or started inside.
 - `Data/Maps.lua`: `[dungeon key] = { art, floors, names, order, image, images, imageBottom, floor, entrance,
   stairs, pins }`. `art` is the folder of `Interface\WorldMap\<art>\<art><floor>_<tile>`: twelve 256px
   tiles four across, of which the map shows the top left 1002 by 668. `order` lists the art's
@@ -466,14 +508,19 @@ in the pull request it opens.
   1 across and down. Pins and floor numbers follow the chosen picture. `quests = { { npc or
   object = ID, name, start, finish, use } }` are the quest givers, hand-ins and quest objects that
   stand inside the dungeon: `start` the quests it gives, `finish` those it takes, `use` those it is
-  clicked or burned for, each a quest ID or `{ A = ID, H = ID }` (one side's only). Its spot is a
+  clicked, burned or killed for, each a quest ID or `{ A = ID, H = ID }` (one side's only). Its spot is a
   `pins` entry under the same key as a boss's (an object's by minus its ID), placed with
   `/nf mappins`; one with no spot is not drawn. An NPC that is a Journal boss too (Baelog, Princess
   Moira, Stomper Kreeg, Captain Kromcrush) is left out: the key is its boss pin's.
+  `also = { [NPC ID] = { { floor, x, y }, ... } }` are the other spots a boss can spawn at, drawn
+  faded under its own pin and not placed with `/nf mappins` (Lorgus Jett's two up Blackfathom
+  Deeps' northern channel).
 - The quest pins' list is from the Journal's quest data and chains, quest_entity_catalog.json's
   givers and hand-ins, and the where text and quest text that put them inside (2026-11-13). The
   Ghostly Attendant (Hall of Thanes), Rexxie Copperclutch (City of Dalaran) and Mason Connery
-  (Alcaz Prison) are not listed: no source has their NPC IDs.
+  (Alcaz Prison) are not listed: no source has their NPC IDs. Krol'dok Stronghold's Tunk (his
+  Krol'dok Moulding starts the key quests) and Zalfan Moonshadow, and Nar'gurk's pin, are from a
+  player's marked map in the shared data set (2026-11-20), on the same art.
 - Most quest pins, and the rares and bosses that had no spot, were placed without the game (2026-11-13).
   The Journal's pictures of the classic dungeons keep the game's own map layout, so a spot on that
   layout needs no change. A floor's spots were taken from marks made on that layout only where the
@@ -743,7 +790,24 @@ in the pull request it opens.
   the copper. Forever has the money string only as `C_CurrencyInfo.GetCoinTextureString`: the
   global `GetCoinTextureString` is not loaded.
 - The game knows what a quest gives only once you have it, so a faction's page names the quests
-  in your log; its repeatable hand-ins are kept by hand.
+  in your log; its repeatable hand-ins and Alterac Valley's quest chains are kept by hand. A
+  chain's quests and rewards join the dungeon quests' chains (`J.QuestChains`) and rewards
+  (`J.QuestRewards`) when the factions are first read, so its rows show their step, chain and
+  rewards as a dungeon's do. A kept quest in your log is listed once, but still counts in the
+  page's quests changing.
+- A quartermaster's spot is learned only from an item one faction alone rewards: both sides'
+  battleground quartermasters sell the same potions, rings and weapons, and the Alterac Valley
+  ones the same tomes, so those place neither.
+- The battleground quartermasters' rewards are the ones their Wowhead Forever pages show with a
+  standing (read 25 Nov 2026). The level 25 items listed beside them with none (the Trainee's
+  Sentinel Nightsaber and Outrider Wolf, the level 25 weapons) and the item level 78 legs are
+  Season of Discovery's, and left out: players report the mount is not sold on Forever. The
+  Warsong Gulch tabards show no standing there and are listed at Exalted, as in classic.
+- The Marks of Honor and what each buys with Honor are Wowhead Forever's items they are the
+  currency for (read 25 Nov 2026): the Premier gear by slot, the rank 3 cloaks, the rank 4
+  insignia and the rank 14 weapons. The battleground's name is the game's (`GetRealZoneText`).
+- Alterac Valley's Hero chains start at The Battle of Alterac (for the Horde, The Battle for
+  Alterac): the lead-in before it only sends you to the same quest giver, and is left out.
 - A quartermaster's spot is learned where you stand when you open a vendor that sells its
   rewards, outside an instance only (the map has no position inside one). Spots once kept as
   the map's 0 to 1 are put in percent once (a vendor never stands that close to the map's
@@ -842,6 +906,9 @@ in the pull request it opens.
   boss that shares its fight (`with`) are not needed. "The last boss" cannot be used: the data
   lists bosses in kill order, but some, like Cookie after Edwin VanCleef, are killed before
   the end.
+- A boss you have to summon that many groups skip is optional, so a run without him still
+  finishes: the Avatar of Hakkar, and Kirtonos the Herald (Blood of the Innocent at the Gallery).
+  A run that ended before this, waiting on him, stays unfinished: saved runs are not looked at again.
 - A run's time is from the door to the kill that finished it, time outside included (it is shown
   on its own). Each boss's split is compared with the best split for that boss over your other
   runs of the dungeon, not with one best run, so a boss you skipped once still has a best.
@@ -912,6 +979,14 @@ in the pull request it opens.
 - The quest marks are the game's own (a yellow ! to pick up, a ? to hand in), greyed and tinted
   for the other states; its newer in-progress icon, a speech bubble with dots, did not read as
   a quest.
+- Level N to pick up is red, as Too high is: it only shows while you are under that level.
+- A quest that needs a reputation says so above its objectives, green once you have it and red
+  until then, with your standing on a bar. Your standing is `C_Reputation.GetFactionDataByID`'s
+  `currentStanding` against the need, as the Quest List reads it; a faction you have not met
+  has no data, so it reads as not met.
+- A chain step done inside an instance has the skull and the instance's name
+  (`C_Map.GetAreaInfo`) after it, in the chain menu and the chain under a quest or key, so the
+  part of a chain done in the run stands out.
 - The dungeon list's group settings keep the names they were made with: `closedGroup3` is
   Low level (once called Behind you), `closedGroup4` the raids. Low level comes first (`ORDER`),
   closed by default: the dungeons you outleveled are one click away without pushing your
@@ -936,6 +1011,11 @@ in the pull request it opens.
 - The faction switch keeps one half on: switching off the last turns the other back on.
 - The faction switch hides only the dungeons whose entrance is inside a capital (`ns.TownCapitals`).
   Both sides run the rest, such as Gnomeregan and the Scarlet Monastery, whoever's ground they are on.
+- Level Range (`lootMinLevel`, `lootMaxLevel`) is two boxes in the Filters menu, 0 (an empty box)
+  for no limit on that side, saved when you leave a box. An item counts at its required level, one
+  with none at 1 as in the Loot Finder; a quest's rewards (its side panel, its detail card and the
+  hover) at the quest's required level (`QuestMinLevel`, else its level). The settings page has the
+  same two as text rows.
 - The Loot Finder (`lootFinder`, on by default) is a bag on the title bar; its page is drawn in
   the window's page area, made the first time it opens. It reads only the shipped data, never the
   server: an item's slot and stats are `Data/ItemStats.lua`. Within a group a slot, an armor type or
@@ -966,12 +1046,19 @@ in the pull request it opens.
   once. Hooked, not called back, so neither addon needs the other.
 - The panel keeps the page it drew while the map is shut (`keepHidden`), since drawing a big
   dungeon's page on every open made the map stutter. While shut, its view only notes what it
-  hears: a quest log update is checked against the quest signature, a party member's against
-  their counts, a bag update against the counts the draw read (`Loot.RecordCounts` and every
-  item row, bags and bank apart), and any other event, a setting, a favourite, the BiS list, stat
+  hears: a quest log update is checked against the quest signature, a party member's or a roster
+  update against their counts and whether you are in a group (Share All), a bag update against
+  the counts the draw read (`Loot.RecordCounts` and every item row, bags and bank apart), an
+  encounter that ends in a wipe changes nothing, and any other event, a setting, a favourite, the BiS list, stat
   weights, a new run, a loading screen, the dungeon map shown or not, or a lockout older than a
   minute means the next open draws again. A loading screen into a dungeon draws its page then, a frame later so the run is noted first, with the map shut,
   and so do item names that arrive while it is shut (never in combat), so an open finds it ready.
+- Its scroll bar hides with the panel when the map shuts; that hide is not taken as the page
+  losing its bar, or the next open fits the width again and draws the whole page.
+- The dungeon's map over the world map keeps its pins between opens too, since each boss pin's
+  portrait is made from its model: an open draws them again only for another floor or map size,
+  a quest change, a kill, a new run, a setting, a profile or pin placing. The loading screen draws
+  them with the page, and a pin only makes its portrait again for another boss.
 - The world map calls every pin's `CheckMouseButtonPassthrough`, and its
   `SetPassThroughButtons` is protected: from our refresh it is blocked in combat, and the
   entrance pins want their clicks, so theirs does nothing. Pins acquired in combat taint the map,
