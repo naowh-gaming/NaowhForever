@@ -60,7 +60,7 @@ end
 -- With journal false, the Journal has not loaded.
 local function Fixture(class, level, sources, journal)
     local list = Dungeons()
-    local ns = { L = dofile("Tools/regression/locale_stub.lua").L, Upper = string.upper, Lower = string.lower, BiSData = { sources = sources or {}, specs = {} }, BiSLeveling = { specs = {}, sources = {} }, BiSCrafts = {}, BiSClassQuests = {}, BiSWorldDrops = {}, BiSQuestLevels = {}, QoLSettings = {},
+    local ns = { L = dofile("Tools/regression/locale_stub.lua").L, Upper = string.upper, Lower = string.lower, BiSData = { sources = sources or {}, specs = {} }, BiSLeveling = { specs = {}, sources = {} }, BiSCrafts = {}, BiSClassQuests = {}, BiSWorldDrops = {}, BiSQuestLevels = {}, BiSSpots = {}, BiSOtherSide = {}, QoLSettings = {},
         Journal = journal ~= false and { Items = FACTS, Dungeons = function() return list end } or nil }
     Load(RULES, Env(ns, class, level))
     ns.Shared.ItemFacts = FACTS
@@ -228,6 +228,18 @@ Case("the Journal's wording wins over wowsrc's; wowsrc's for what drops nowhere"
     assert(m.ns.BiSSource(100) == nil)
 end)
 
+Case("a vendor of the other side gives way to your side's vendor of the same piece", function()
+    local m = Fixture("MAGE", 20, { [30] = "Mokvar" .. SEP .. "Orgrimmar", [31] = "Mokvar" .. SEP .. "Orgrimmar" })
+    local mokvar = { npc = 230317, name = "Mokvar", map = 1454, x = 34.8, y = 38, sells = true }
+    local deliana = { source = "Deliana" .. SEP .. "Ironforge", npc = 230319, name = "Deliana", map = 1455, x = 43.2,
+        y = 52.6, sells = true }
+    m.ns.BiSSpots = { [30] = mokvar, [31] = mokvar }
+    m.ns.BiSOtherSide = { Alliance = { [30] = deliana }, Horde = {} }
+    assert(m.ns.BiSSource(30) == "Deliana" .. SEP .. "Ironforge" and m.R.Spot(30) == deliana)
+    assert(m.ns.BiSSource(31) == "Mokvar" .. SEP .. "Orgrimmar" and m.R.Spot(31) == mokvar,
+        "a piece only the other side sells keeps its vendor")
+end)
+
 Case("a leveling list's item named by nothing else takes the leveling data's source", function()
     local m = Fixture("MAGE", 20, { [99] = "Crafted" })
     m.ns.BiSLeveling.sources = { [2] = "Elsewhere", [99] = "Elsewhere", [100] = "Quest name" .. SEP .. "Quest (Horde)" }
@@ -320,7 +332,7 @@ Case("every ranked item has a source, from the Journal's dungeons or wowsrc", fu
         Dungeons = function() return dungeons end,
     } }
     local env = Env(ns, "MAGE", 60)
-    local files = { "NaowhForever_BiS/BiS/Data/BiS.lua", "Shared/Data/ItemFacts.lua", "Shared/Data/FactionItems.lua",
+    local files = { "NaowhForever_BiS/BiS/Data/BiS.lua", "NaowhForever_BiS/BiS/Data/Spots.lua", "Shared/Data/ItemFacts.lua", "Shared/Data/FactionItems.lua",
         "NaowhForever_DungeonJournal/Data/Items.lua" }
     for _, path in ipairs(TocFiles("^NaowhForever_DungeonJournal/Data/Dungeons/.*%.lua$")) do files[#files + 1] = path end
     Load(files, env)

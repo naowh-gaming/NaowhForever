@@ -54,7 +54,8 @@ local function Find(itemID)
     if factionOf[itemID] then return "faction", factionOf[itemID] end
     local quest = questOf[itemID] or R.QuestOf(itemID)
     if quest then return "quest", quest end
-    if (ns.BiSSpots or EMPTY)[itemID] then return "npc", ns.BiSSpots[itemID] end
+    local spot = R.Spot(itemID)
+    if spot then return "npc", spot end
     if recipeOf[itemID] then return "recipe", recipeOf[itemID] end
     local place = R.Place(ns.BiSSource(itemID) or "")
     target = Places and Places.Zone(place)

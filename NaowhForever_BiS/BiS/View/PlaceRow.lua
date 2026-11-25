@@ -83,7 +83,7 @@ end
 
 local function Drop(id)
     local _, who = R.Place(ns.BiSSource(id) or TEXT_UNKNOWN)
-    return who and ns.L(who), C_Item.GetItemNameByID(id), ns.BiSSpots[id]
+    return who and ns.L(who), C_Item.GetItemNameByID(id), R.Spot(id)
 end
 
 local function Has(who, spot)
@@ -96,7 +96,8 @@ end
 
 local function FirstSpot(place)
     for _, id in ipairs(place.ids) do
-        if ns.BiSSpots[id] then return id, ns.BiSSpots[id] end
+        local spot = R.Spot(id)
+        if spot then return id, spot end
     end
 end
 

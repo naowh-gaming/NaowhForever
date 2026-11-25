@@ -40,7 +40,7 @@ BiS/
     ClassQuests.lua   the gear class quests reward, its facts, source and quest, for the picker (Tools/build/bis_class_quests.py)
     WorldDrops.lua    the rare and epic gear that drops anywhere in the world, its facts, for the picker (Tools/build/bis_world_drops.py)
     QuestLevels.lua   the level you can first take a quest that rewards a piece of gear, where above its own (Tools/build/bis_quest_levels.py)
-    Spots.lua         where the NPC with a BiS stands out in the world (Tools/build/bis_spots.py)
+    Spots.lua         where the NPC with a BiS stands out in the world, and the other faction's vendor (Tools/build/bis_spots.py)
     Enchants.lua      every enchant, what it gives and goes on, the skill it needs (Tools/build/enchants.py)
   Rankings.lua        rankings, a level's picks, dungeon drops, crafts, class quest rewards, world drops, sources, Run Next (B.Rankings)
   Lists.lua           your lists, their old formats, the Auto list's, and the ns calls that change them (B.Lists)
@@ -209,6 +209,10 @@ Other modules call in through `ns`: `ns.IsBisItem` (the Journal, Bag Space, the 
 - The route travels in the version 4 string as an extra field: older versions import the list and
   ignore it.
 - A quest for your own side says only "Quest": the list gives you no quest of the other's.
+- A piece one faction's vendor sells and the other's sells too (Mokvar and Deliana, Forever's
+  Dungeon Set 2) names your side's vendor and where they stand (`ns.BiSOtherSide`, `R.Spot`).
+  Those two sell only to players on their Tier 0.5 quests, so `Data/QuestLevels.lua` gives what they
+  sell those quests' level (58).
 - The quests are the Journal's records (its `Data/BiSQuests.lua`), so its rules (what to do first,
   the level, the chain, the waypoint, tracking) work on them. A quest's race limit is kept aside, as
   the Journal's rules know none; a race the mask does not know of is let through. `RACE_BITS` is your

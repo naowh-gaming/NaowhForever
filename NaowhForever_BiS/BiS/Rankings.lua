@@ -326,10 +326,19 @@ function R.WorldDrops(slot, ranked, near)
     return Offered(worldIDs, slot, ranked, near)
 end
 
+local function OtherSide(itemID)
+    local seller = ns.BiSOtherSide[UnitFactionGroup("player")]
+    return seller and seller[itemID]
+end
+
 function ns.BiSSource(itemID)
-    local craft, quest = ns.BiSCrafts[itemID], ns.BiSClassQuests[itemID]
-    return Drops()[itemID] or ns.BiSData.sources[itemID] or ns.BiSLeveling.sources[itemID] or craft and craft[FACT_SOURCE]
-        or quest and quest[FACT_SOURCE] or ns.BiSWorldDrops[itemID] and WORLD_DROP
+    local craft, quest, other = ns.BiSCrafts[itemID], ns.BiSClassQuests[itemID], OtherSide(itemID)
+    return Drops()[itemID] or other and other.source or ns.BiSData.sources[itemID] or ns.BiSLeveling.sources[itemID]
+        or craft and craft[FACT_SOURCE] or quest and quest[FACT_SOURCE] or ns.BiSWorldDrops[itemID] and WORLD_DROP
+end
+
+function R.Spot(itemID)
+    return OtherSide(itemID) or ns.BiSSpots[itemID]
 end
 
 function R.DropDungeon(itemID)
