@@ -1,4 +1,4 @@
--- Recipe favorites are independent per character and every character starts from the former profile store.
+-- Recipe favorites are independent per character and only the first character takes the former profile store.
 local account = {}
 local profile = { craftFavorites = { [100] = true } }
 local playerName, playerGUID
@@ -44,28 +44,24 @@ end
 
 local tester = LoadAs("Tester", "Player-Tester")
 assert(tester.Store()[100] == true, "profile favorites were not copied to the current character")
-assert(profile.craftFavorites and profile.craftFavorites[100] == true,
-    "copying the profile favorites removed them for the profile's other characters")
+assert(profile.craftFavorites == nil, "the profile favorites stayed after the first character took them")
 tester.Toggle({ spell = 101 })
 assert(tester.Store()[101] == true, "the current character's favorite was not saved")
 local testerStore = tester.Store()
 
 local alt = LoadAs("Alt", "Player-Alt")
-assert(alt.Store()[100] == true and alt.Store()[101] == nil,
-    "a second character did not start from the profile favorites alone")
-alt.Toggle({ spell = 100 })
+assert(next(alt.Store()) == nil, "a second character started with another character's favorites")
 alt.Toggle({ spell = 102 })
-assert(alt.Store()[100] == false and alt.Store()[102] == true,
-    "the second character's favorites were not saved")
+assert(alt.Store()[102] == true, "the second character's favorites were not saved")
 assert(testerStore[100] and testerStore[101] and not testerStore[102],
     "the second character's favorites changed the first character's")
-assert(profile.craftFavorites[100] == true, "a character's change reached the profile favorites")
+assert(profile.craftFavorites == nil, "a character's change reached the profile favorites")
 
 local unknown = LoadAs("Unknown", nil)
 assert(next(unknown.Store()) == nil, "an unknown character identity exposed another character's favorites")
 assert(account.profFavorites["Player-Unknown"] == nil, "favorites were saved under an unknown character")
 playerName, playerGUID = "Late", "Player-Late"
-assert(unknown.Store()[100] == true and account.profFavorites["Player-Late"],
+assert(next(unknown.Store()) == nil and account.profFavorites["Player-Late"],
     "favorites did not pick up the character once its name was known")
 
 print("Profession favorites character-state regression test: PASS")
