@@ -6,6 +6,7 @@ local Quests = J.Quests
 local View = J.View
 local Parts = View.Parts
 local QUEST = J.C.QUEST
+local T = ns.THEME
 local QUEST_CODE = J.Style.QUEST_CODE
 
 local CHAIN_STATE = {
@@ -18,6 +19,8 @@ local TEXT_CHAIN_HINT = ns.L("Click a step for a waypoint.")
 local TEXT_STEP = "%d.  %s  %s"
 local TEXT_STEP_DONE = "%d.  %s|r  "
 local TEXT_DUNGEON_QUEST = ns.L("(dungeon quest)")
+local TEXT_INSIDE = "  %s %s"
+local INSIDE_MARK = Parts.Inline(J.Style.SKULL, T.muted)
 local TEXT_TRACK = ns.L("Track in Quest Log")
 local TEXT_NO_CHAT = ns.L("Join a group, or open your chat box first.")
 local TEXT_CHAT_LOCKED = ns.L("Chat is locked right now.")
@@ -28,17 +31,19 @@ local TEXT_SHOW_CHAIN = ns.L("Show Chain")
 local TEXT_COPY_WOWHEAD = ns.L("Copy Wowhead Link")
 local TEXT_QUEST_ID = ns.L("Quest ID")
 
-local function StepLine(i, state, name, own)
+local function StepLine(i, state, id, name, own)
     local text = TEXT_STEP:format(i, name, CHAIN_STATE[state])
     if state == "done" then text = QUEST_CODE.done .. TEXT_STEP_DONE:format(i, name) .. CHAIN_STATE.done end
     if i == own then text = text .. "  " .. ns.Color("accentSoft", TEXT_DUNGEON_QUEST) end
+    local inside = Quests.Inside(id)
+    if inside then text = text .. ns.Color("muted", TEXT_INSIDE:format(INSIDE_MARK, inside)) end
     return text
 end
 
 local function AddStep(root, i, step, own)
     local state, id = Quests.StepState(step)
     local name = Quests.StepName(id)
-    local text = StepLine(i, state, name, own)
+    local text = StepLine(i, state, id, name, own)
     if state ~= "done" and (state == "active" or Quests.StepHasSpot(step, id)) then
         root:CreateButton(text, function() Quests.StepWaypoint(step, state, id, name) end)
     else

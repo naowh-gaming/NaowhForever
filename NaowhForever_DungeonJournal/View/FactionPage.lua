@@ -64,8 +64,10 @@ local WHY = {
         many = ns.L("%d are not BiS you are missing (Missing BiS Only)") },
     upgrades = { one = ns.L("%d is not an upgrade over what you wear (Upgrades Only)"),
         many = ns.L("%d are not an upgrade over what you wear (Upgrades Only)") },
+    level = { one = ns.L("%d is outside your level range (Level Range)"),
+        many = ns.L("%d are outside your level range (Level Range)") },
 }
-local WHY_ORDER = { "recipes", "class", "cosmetic", "bis", "upgrades" }
+local WHY_ORDER = { "recipes", "class", "cosmetic", "level", "bis", "upgrades" }
 local TEXT_NO_REWARDS = ns.L("WoW Forever's build %s has no rewards for it yet: they show here once a build has them.")
 local TEXT_NOTHING_HERE = ns.L("Nothing here for you: of its rewards, %s. Turn %s off in Filters to see them.")
 local TEXT_THAT_FILTER, TEXT_THOSE_FILTERS = ns.L("that filter"), ns.L("those filters")
@@ -92,6 +94,8 @@ end
 local function HiddenBy(filters, id)
     if filters.usableOnly and not Loot.Usable(id) then return "class" end
     if not filters.showCosmetic and Loot.Cosmetic(id) then return "cosmetic" end
+    local facts = J.Facts(id)
+    if facts and not Loot.LevelFits(facts[J.FACT.REQUIRED], filters) then return "level" end
     if filters.myRecipes and Loot.Recipe(id) and not Loot.RecipeYours(Loot.Recipe(id), filters) then return "recipes" end
     if filters.missingBis and not Loot.Missing(id) then return "bis" end
     if filters.upgradesOnly and not Loot.Upgrade(id) then return "upgrades" end
@@ -254,7 +258,7 @@ end
 
 function ViewMixin:HiddenWhy(faction)
     local filters, hidden = self.filters, self.hiddenWhy
-    hidden.class, hidden.cosmetic, hidden.recipes, hidden.bis, hidden.upgrades = 0, 0, 0, 0, 0
+    hidden.class, hidden.cosmetic, hidden.recipes, hidden.bis, hidden.upgrades, hidden.level = 0, 0, 0, 0, 0, 0
     for _, tier in ipairs(faction.tiers) do
         for _, id in ipairs(tier.items) do
             local by = HiddenBy(filters, id)

@@ -1,4 +1,4 @@
--- KeyLinks.lua: a dungeon's keys or what calls a boss: a link to each, a mark on the ones you carry, and what each opens, where it comes from and its quest chain on hover.
+-- KeyLinks.lua: a dungeon's keys or what calls a boss: a link to each, a mark on the ones you carry, what each opens, where it comes from and its quest chain, each step done inside an instance marked.
 local ns = _G.NaowhForever
 
 local T = ns.THEME
@@ -38,6 +38,8 @@ local TEXT_CHAIN_HINT = ns.L("Click: the whole chain")
 local TEXT_HAVE = ns.L("You have it.")
 local TEXT_MISSING = ns.L("You don't have it yet.")
 local TEXT_STEP = "%d.  %s"
+local TEXT_INSIDE = "  %s %s"
+local INSIDE_MARK = SharedParts.Inline(St.SKULL, T.muted)
 local TEXT_NOT_DONE = ns.L("Not done")
 local STEP_STATE = { active = ns.L("In log"), done = ns.L("Finished") }
 local TEXT_COLOR_END = "|r"
@@ -234,7 +236,9 @@ Kinds.keyStep = {
         local state, id = Quests.StepState(step)
         local name = Quests.StepName(id)
         row.step, row.state, row.id, row.stepName = step, state, id, name
-        row.text:SetText(TEXT_STEP:format(i, name))
+        local inside = Quests.Inside(id)
+        row.text:SetText(TEXT_STEP:format(i, name)
+            .. (inside and ns.Color("muted", TEXT_INSIDE:format(INSIDE_MARK, inside)) or ""))
         row.text:SetTextColor(T.fg.r, T.fg.g, T.fg.b)
         row.text:SetAlpha(state == "done" and St.UNUSABLE or 1)
         local color = state == "done" and St.HAVE_RGB or state == "active" and T.fg or T.muted

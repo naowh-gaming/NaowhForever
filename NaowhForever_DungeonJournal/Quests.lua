@@ -118,8 +118,16 @@ local function ForRace(mask, unit)
     return not bit or math.floor(mask / 2 ^ bit) % 2 == 1
 end
 
+local function ForClass(need, class)
+    if type(need) ~= "table" then return need == nil or need == class end
+    for i = 1, #need do
+        if need[i] == class then return true end
+    end
+    return false
+end
+
 local function ForMe(quest, class, faction, unit)
-    if quest.class and quest.class ~= class then return false end
+    if not ForClass(quest.class, class) then return false end
     if quest.races and not ForRace(quest.races, unit or "player") then return false end
     return ForSide(quest[SIDE], faction)
 end
@@ -325,6 +333,11 @@ local function ByRank(a, b)
     return a.index < b.index
 end
 
+local function CountClass(class)
+    if not noneClasses[class] then noneOrder[#noneOrder + 1] = class end
+    noneClasses[class] = (noneClasses[class] or 0) + 1
+end
+
 local function CountOthers(quests, faction)
     wipe(noneClasses)
     wipe(noneOrder)
@@ -332,9 +345,10 @@ local function CountOthers(quests, faction)
     for i = 1, #quests do
         local quest = quests[i]
         local class = quest.class
-        if class then
-            if not noneClasses[class] then noneOrder[#noneOrder + 1] = class end
-            noneClasses[class] = (noneClasses[class] or 0) + 1
+        if type(class) == "table" then
+            for c = 1, #class do CountClass(class[c]) end
+        elseif class then
+            CountClass(class)
         elseif not ForSide(quest[SIDE], faction) then
             other = other + 1
         end
@@ -354,6 +368,15 @@ local LoggedID = Q.LoggedID
 
 function Q.MinLevel(quest)
     return J.QuestMinLevel[quest[ID]]
+end
+
+function Q.MinRep(quest)
+    return J.QuestMinRep[quest[ID]]
+end
+
+function Q.Inside(id)
+    local area = J.QuestInside[id]
+    return area and C_Map.GetAreaInfo(area)
 end
 
 function Q.Kind(quest)
@@ -406,6 +429,8 @@ local function Listed(quest, kind, class, faction, withDone, withLow)
     return ForMe(quest, class, faction) and (withDone or kind ~= "done")
         and (withLow or not (ToPickUp(kind) and Grey(quest) and not quest.turnin))
 end
+
+Q.ForClass = ForClass
 
 function Q.ForMe(quest)
     local _, class = UnitClass("player")

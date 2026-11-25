@@ -79,10 +79,15 @@ local function Action(legs)
     return first, first, 2
 end
 
-local function Boarding(legs)
-    local first, second = legs[1], legs[2]
+local function Speed()
+    local _, run = GetUnitSpeed("player")
+    return run > 0 and run or C.RUN_SPEED
+end
+
+local function Boarding(plan)
+    local first, second = plan.legs[1], plan.legs[2]
     if first and first.mode == "ship" then return true end
-    return second ~= nil and second.mode == "ship" and first.seconds * C.RUN_SPEED <= C.ARRIVED
+    return second ~= nil and second.mode == "ship" and first.seconds * plan.speed <= C.ARRIVED
 end
 
 local function Corner()
@@ -139,7 +144,7 @@ local function Context(from, to)
     local faction = World.Faction()
     local known, version = World.Known()
     return { faction = faction, known = known, knownVersion = version, from = from, to = to,
-        speed = C.RUN_SPEED, now = GetServerTime(), jumps = World.Jumps(faction), walk = WalkCost }
+        speed = Speed(), now = GetServerTime(), jumps = World.Jumps(faction), walk = WalkCost }
 end
 
 local function Reach(spot)
@@ -170,7 +175,7 @@ local function Planned(plan)
         journey.done = journey.done + finished
     end
     journey.plan, journey.planAt = plan, journey.at
-    journey.ride = Boarding(plan.legs)
+    journey.ride = Boarding(plan)
     journey.corners, journey.corner = plan.corners, FIRST_CORNER
     ShowStep()
 end
@@ -209,8 +214,10 @@ end
 local function Work(here, to)
     local ctx = Context(Reach(here), FixedReach(to))
     for _, jump in ipairs(ctx.jumps) do FixedReach(jump) end
-    if journey.plan and journey.planAt == journey.at then ctx.keep = journey.plan end
+    local old = journey.plan
+    if old and journey.planAt == journey.at and old.speed == ctx.speed then ctx.keep = old end
     local plan = Planner.Plan(ctx)
+    if plan then plan.speed = ctx.speed end
     local first = plan and plan.legs[1]
     if first and first.mode == "walk" and here.reach then
         local there = FixedReach({ c = first.c, x = first.x, y = first.y, z = first.z }).reach
@@ -307,7 +314,8 @@ local function Tick()
     if not here then return end
     local from = journey.from
     local moved = not from or from.c ~= here.c or (from.x - here.x) ^ 2 + (from.y - here.y) ^ 2 > C.REPLAN_MOVED ^ 2
-    if Close(here, Stop().spot) or ticks >= C.REPLAN_TICKS and moved then
+    local sped = journey.plan and journey.plan.speed ~= Speed()
+    if Close(here, Stop().spot) or sped or ticks >= C.REPLAN_TICKS and moved then
         ticks = 0
         Replan()
     end
