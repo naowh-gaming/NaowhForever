@@ -51,7 +51,9 @@ end
 function Crafts.NoteMe()
     local guid = UnitGUID("player")
     if not guid then return end
-    Roster()[guid] = { name = UnitName("player"), class = select(2, UnitClass("player")), house = Market.HouseKey() }
+    local name, surname = UnitFullName("player")
+    local full = surname and surname ~= "" and name .. " " .. surname or name
+    Roster()[guid] = { name = name, full = full, class = select(2, UnitClass("player")), house = Market.HouseKey() }
 end
 
 function Crafts.Outlet(sell, disenchant, vendor)
@@ -117,7 +119,7 @@ function Crafts.Read()
     local house = Market.HouseKey()
     for guid, alt in pairs(Roster()) do
         local makes = guid ~= me and alt.house == house and shop.MakesOf(guid)
-        if makes then AddCharacter(shop, guid, alt.name, makes, seen) end
+        if makes then AddCharacter(shop, guid, alt.full or alt.name, makes, seen) end
     end
     return true
 end

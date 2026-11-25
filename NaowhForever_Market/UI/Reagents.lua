@@ -19,7 +19,7 @@ Market.Pages.reagents = Page
 
 local function AltName(guid)
     local alt = (ns.AccountSettings()[ROSTER] or {})[guid]
-    return alt and alt.house == Market.HouseKey() and alt.name or nil
+    return alt and alt.house == Market.HouseKey() and (alt.full or alt.name) or nil
 end
 
 local function OnSearch(text)

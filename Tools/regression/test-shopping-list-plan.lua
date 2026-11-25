@@ -463,6 +463,8 @@ check("a list saved before GUIDs is found by name and realm", SL.HasList("Player
 local copied = account.profShopping["Player-Old"]
 check("it is copied under the alt's GUID and the saved one is kept", copied and copied[32].count == 1
     and copied ~= account.profShopping["Old-Realm"] and account.profShopping["Old-Realm"][32].count == 1)
+check("without a name, an alt never takes a list saved by name", not SL.HasList("Player-Shared", nil)
+    and next(Of("Player-Shared", nil)) == nil)
 SL.BoughtFor("Player-Old", "Old", ORE, 2)
 account.profShopping["Old-Realm"][32].count = 9
 check("once copied, the GUID's list is the one read and bought for", account.profShopping["Player-Old"] == copied

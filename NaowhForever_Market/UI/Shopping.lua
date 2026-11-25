@@ -44,7 +44,7 @@ local function Add(materials, owner, who)
 end
 
 local function ByAltName(a, b)
-    local x, y = roster[a].name, roster[b].name
+    local x, y = roster[a].full or roster[a].name, roster[b].full or roster[b].name
     if x ~= y then return x < y end
     return a < b
 end
@@ -57,15 +57,20 @@ function Page.Entries()
     roster = ns.AccountSettings()[ROSTER]
     if not roster then return entries end
     wipe(alts)
-    local me, myName, house = UnitGUID("player"), UnitName("player"), Market.HouseKey()
+    local me, house = UnitGUID("player"), Market.HouseKey()
+    local myName, myFull = UnitName("player"), roster[me] and roster[me].full
     for guid, alt in pairs(roster) do
-        if guid ~= me and alt.name ~= myName and alt.house == house and shopping.HasList(guid, alt.name) then
+        local other
+        if alt.full and myFull then other = alt.full ~= myFull else other = alt.name ~= myName end
+        local legacy = alt.name ~= myName and alt.name or nil
+        if guid ~= me and other and alt.house == house and shopping.HasList(guid, legacy) then
             alts[#alts + 1] = guid
         end
     end
     table.sort(alts, ByAltName)
     for _, guid in ipairs(alts) do
         local name = roster[guid].name
+        if name == myName then name = nil end
         Add((shopping.MaterialsOf(guid, name)), guid, name)
     end
     return entries
@@ -80,7 +85,9 @@ end
 local function Side(i)
     local e = entries[i]
     if not e then return end
-    return e.who and TEXT_MORE_FOR:format(e.qty, e.who) or TEXT_MORE:format(e.qty)
+    if not e.owner then return TEXT_MORE:format(e.qty) end
+    local alt = roster[e.owner]
+    return TEXT_MORE_FOR:format(e.qty, alt.full or alt.name)
 end
 
 function Page.Picked()

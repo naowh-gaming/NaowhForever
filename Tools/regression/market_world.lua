@@ -210,6 +210,7 @@ local function Setup(opts)
             GetPlayerMapPosition = function() return t.playerAt end,
         },
         UnitName = function() return "Me" end,
+        UnitFullName = function() return "Me", "Taps" end,
         UnitClass = function() return "Mage", "MAGE" end,
         CreateFrame = function() return setmetatable({}, { __index = frameMethods }) end,
         StaticPopupDialogs = { AUCTION_HOUSE_POST_WARNING = dialog },

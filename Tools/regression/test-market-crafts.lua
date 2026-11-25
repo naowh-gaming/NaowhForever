@@ -114,6 +114,8 @@ hasNeeds = true
 Cr.NoteMe()
 Check("logging in notes this character for its alts", t.account.marketCharacters["Player-1"].name == "Me"
     and t.account.marketCharacters["Player-1"].house == "Realm-Horde")
+Check("with its surname, so alts that share a first name can be told apart",
+    t.account.marketCharacters["Player-1"].full == "Me Taps")
 
 local Outlet = Cr.Outlet
 Check("a vendor wins a tie with the auction house, as on Sell", Outlet(95, nil, 95) == "vendor")

@@ -183,6 +183,18 @@ check("your list first, then your alts' by name", #entries == 3 and entries[1].o
     and entries[3].who == "Zed" and entries[3].qty == 5)
 check("an alt on another realm or faction, without a list, or with your name is left out", not entries[4])
 
+local roster = account.marketCharacters
+roster["Player-1"].full = "Me Taps"
+roster["Player-7"] = { name = "Me", full = "Me Slams", house = "Realm-Horde" }
+lists["Player-7"] = { { item = WOOL, qty = 4, name = "Wool Cloth" } }
+Page.Entries()
+check("an alt that shares only your first name is listed, sorted by its whole name, and one not seen "
+    .. "since surnames were noted is still left out on your first name",
+    #entries == 4 and entries[3].owner == "Player-7" and entries[4].owner == "Player-2")
+check("and it never reads the old lists saved by your shared first name", entries[3].who == nil)
+roster["Player-1"].full, roster["Player-7"], lists["Player-7"] = nil, nil, nil
+Page.Entries()
+
 local root = Frame("Frame")
 Page.Build(root)
 Page.Show()
