@@ -1543,8 +1543,10 @@ do
     local tipLines, setByID = {}, 0
     rawset(state.tooltip, "AddLine", function(_, text) tipLines[#tipLines + 1] = text end)
     rawset(state.tooltip, "SetItemByID", function() setByID = setByID + 1 end)
+    DJ.Get("RazorfenDowns").closed = true
     ns.OpenJournalWindow(DJ.Get("RazorfenDowns"))
-    check("a dungeon not open says so at the top of its page", DJ.Get("RazorfenDowns").closed and PageSays(DJ.CLOSED_NOTE))
+    check("a dungeon not open says so at the top of its page", PageSays(DJ.CLOSED_NOTE))
+    DJ.Get("RazorfenDowns").closed = nil
     check("its bosses list their whole loot", Has(findBoss("RazorfenDowns", "Tuten'kash").loot, 10776))
     local row = Row(notYet)
     check("an item not in Forever yet has its row", row ~= nil)
@@ -1582,11 +1584,8 @@ do
     end
     for _, key in ipairs({ "ScarletMonasteryGraveyard", "ScarletMonasteryLibrary", "ScarletMonasteryArmory",
         "ScarletMonasteryCathedral", "ExcavationSite", "HallOfThanes", "RuinsOfLordaeron", "Deadmines", "Dalaran",
-        "ShapersTerrace" }) do
+        "ShapersTerrace", "RazorfenDowns", "Uldaman" }) do
         check("open on Forever: " .. key, not DJ.Get(key).closed)
-    end
-    for _, key in ipairs({ "RazorfenDowns", "Uldaman" }) do
-        check("not open on Forever yet: " .. key, DJ.Get(key).closed)
     end
     -- An item the server will not send: no redraw for it, never waited on again.
     ns.OpenJournalWindow(ns.Journal.Get("Deadmines"))
