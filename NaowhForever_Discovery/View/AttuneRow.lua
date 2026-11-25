@@ -30,6 +30,8 @@ local function QuestEnter(row)
     local m = T.muted
     GameTooltip:SetText(Attune.Name(row.quest), 1, 1, 1)
     GameTooltip:AddLine(Attune.Where(row.quest), m.r, m.g, m.b, true)
+    local note = Attune.Note(row.quest)
+    if note then GameTooltip:AddLine(note, 1, 1, 1, true) end
     if row.pin:IsShown() then
         GameTooltip:AddLine(" ")
         GameTooltip:AddLine(TEXT_HINT, V.Soft())

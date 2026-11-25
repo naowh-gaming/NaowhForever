@@ -42,7 +42,7 @@ local PAGES = {
 local ATTUNE_PAGES = {
     { key = "raids", label = "Raids", tip = "The quest chain for each raid attunement, step by step." },
     { key = "dungeons", label = "Dungeons", tip = "The quest chain for each dungeon key, step by step." },
-    { key = "class", label = "Class", tip = "Your class's own quest chains, step by step." },
+    { key = "class", label = "Class", tip = "Your class's own quest chains and Tier 0.5, step by step." },
 }
 local RANKS = { "Apprentice", "Journeyman", "Expert", "Artisan" }
 local NO_EVENTS = {}
@@ -62,6 +62,7 @@ local TEXT_STEP_OF = ns.L("Step %d of %d")
 local TEXT_HAVE = ns.L("Done")
 local TEXT_ITEM = ns.L("Item ")
 local TEXT_OTHER_CLASS = ns.L("Other Class Quests")
+local TEXT_ONE_OF = ns.L("One of these, whichever you are given:")
 
 local window, scroll, view, questScroll
 local filter = "books"
@@ -116,6 +117,29 @@ local function KeyLine(self, entry, at, total)
     return TEXT_KEY:format(name, have and TEXT_HAVE or TEXT_STEP_OF:format(at, total))
 end
 
+local function DrawKey(self, entry)
+    local steps = Attune.Steps(entry)
+    local at = Attune.At(entry)
+    local rows = 0
+    for _, step in ipairs(steps) do rows = rows + (type(step) == "table" and #step or 1) end
+    self:Section(entry.dungeon, rows)
+    self:Note(KeyLine(self, entry, at, #steps))
+    local n = 0
+    for i, step in ipairs(steps) do
+        if type(step) == "table" then
+            self:Note(TEXT_ONE_OF)
+            for _, id in ipairs(step) do
+                n = n + 1
+                self:Add("attune", id, i, Attune.State(id, i, at), n % 2 == 0)
+            end
+        else
+            n = n + 1
+            self:Add("attune", step, i, Attune.State(step, i, at), n % 2 == 0)
+        end
+    end
+    self:Space(Style.SECTION_GAP)
+end
+
 local function DrawClassChain(self, chain)
     local at, total = ns.Completo.Quests.ChainAt(chain)
     local rows = 0
@@ -133,6 +157,9 @@ local function DrawClassChain(self, chain)
 end
 
 local function DrawClass(self)
+    for _, entry in ipairs(ns.Attunements.list) do
+        if entry.class then DrawKey(self, entry) end
+    end
     local chains, singles = Attune.ClassQuests()
     for _, chain in ipairs(chains) do DrawClassChain(self, chain) end
     if #singles > 0 then self:Section(TEXT_OTHER_CLASS, #singles) end
@@ -146,14 +173,7 @@ local function DrawAttunements(self)
     if attunePage == "class" then return DrawClass(self) end
     local raids = attunePage == "raids"
     for _, entry in ipairs(ns.Attunements.list) do
-        if (entry.raid == true) == raids then
-            local steps = Attune.Steps(entry)
-            local at = Attune.At(entry)
-            self:Section(entry.dungeon, #steps)
-            self:Note(KeyLine(self, entry, at, #steps))
-            for i, id in ipairs(steps) do self:Add("attune", id, i, Attune.State(id, i, at), i % 2 == 0) end
-            self:Space(Style.SECTION_GAP)
-        end
+        if not entry.class and (entry.raid == true) == raids then DrawKey(self, entry) end
     end
     self:Fit(EVENTS)
 end

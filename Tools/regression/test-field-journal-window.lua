@@ -142,6 +142,7 @@ local env = setmetatable({
     UnitFactionGroup = function() return "Alliance" end,
     UnitGUID = function() return "Player-1-Me" end,
     UnitLevel = function() return 20 end,
+    UnitClass = function() return "Warlock", "WARLOCK", 9 end,
     ITEM_QUALITY_COLORS = setmetatable({}, { __index = function() return WHITE end }),
     GetQuestDifficultyColor = function() return WHITE end,
     C_Item = {
@@ -301,8 +302,10 @@ check("the Attunements switch shows only on its tab", not window.attunePages:IsS
 Click(window.filters.buttons[3])
 local raids, dungeons = {}, {}
 for _, entry in ipairs(ns.Attunements.list) do
-    local list = entry.raid and raids or dungeons
-    list[#list + 1] = ns.Upper(entry.dungeon)
+    if not entry.class then
+        local list = entry.raid and raids or dungeons
+        list[#list + 1] = ns.Upper(entry.dungeon)
+    end
 end
 local function Same(a, b)
     if #a ~= #b then return false end
@@ -329,12 +332,21 @@ check("its pin is a waypoint to who gives it", waypoint[1] == "Quest 3802" and w
 
 Click(window.attunePages.buttons[3])
 local classRows = Rows(view, "attune")
-check("Class: a section for each class chain, then the other class quests",
-    Same(Sections(view), { "QUEST 7562", ns.Upper("Other Class Quests") }))
-check("a class chain's line: the step you are on", Rows(view, "note")[1].text:GetText() == "Step 1 of 2")
-check("a row for each quest of each step, the other class quest last", #classRows == 4 and classRows[4].quest == 4488)
-check("in a step of two, the one handed in is done and the other still to do", classRows[1].status:GetText() == "Done"
-    and classRows[2].status:GetText() == "Needs level 48" and classRows[3].status:GetText() == "Later")
-check("an other class quest shows its level", classRows[4].level:GetText() == 40)
+local notes = Rows(view, "note")
+check("Class: Tier 0.5 first, a section for each class chain, then the other class quests",
+    Same(Sections(view), { "TIER 0.5", "QUEST 7562", ns.Upper("Other Class Quests") }))
+check("Tier 0.5's line: its last quest and the step you are on", notes[1].text:GetText() == "Quest 9005: Step 1 of 29")
+check("each of Bodley's one-of steps says so", notes[2].text:GetText() == "One of these, whichever you are given:"
+    and notes[5].text:GetText() == "One of these, whichever you are given:")
+check("a row for each of its quests, each one-of step's four too", classRows[1].quest == 8911 and classRows[20].quest == 8962
+    and classRows[23].quest == 8965 and classRows[23].level:GetText() == 20 and classRows[41].quest == 9005)
+check("under its level, Tier 0.5's first step says the level it needs", classRows[1].status:GetText() == "Needs level 48"
+    and classRows[2].status:GetText() == "Later")
+local TIER = 41
+check("a class chain's line: the step you are on", notes[6].text:GetText() == "Step 1 of 2")
+check("a row for each quest of each step, the other class quest last", #classRows == TIER + 4 and classRows[TIER + 4].quest == 4488)
+check("in a step of two, the one handed in is done and the other still to do", classRows[TIER + 1].status:GetText() == "Done"
+    and classRows[TIER + 2].status:GetText() == "Needs level 48" and classRows[TIER + 3].status:GetText() == "Later")
+check("an other class quest shows its level", classRows[TIER + 4].level:GetText() == 40)
 
 print("test-field-journal-window: " .. checks .. " checks passed")

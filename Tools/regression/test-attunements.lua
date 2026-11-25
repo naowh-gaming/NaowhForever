@@ -29,7 +29,7 @@ _G.NaowhForever = ns
 assert(loadstring(Read("NaowhForever_DiscoveryData/Quests.lua")))()
 assert(loadstring(Read("NaowhForever_Discovery/Data/Attunements.lua")))()
 
-local side, level, zone = "A", 60, 1428
+local side, class, level, zone = "A", "WARRIOR", 60, 1428
 local completed, inLog, carried, waypoints = {}, {}, {}, {}
 local refreshes = 0
 local Q = {}
@@ -67,6 +67,7 @@ local GAME = {
         GetItemIconByID = function(item) return item end,
     },
     UnitLevel = function() return level end,
+    UnitClass = function() return class, class, 1 end,
     IsLoggedIn = function() return true end,
 }
 
@@ -91,8 +92,12 @@ end
 -------------------------------------------------------------------------------
 local list = ns.Attunements.list
 local byDungeon = {}
-for _, entry in ipairs(list) do byDungeon[entry.dungeon] = entry end
-Check(#list == 6, "six: Maraudon, Blackrock Depths, Scholomance, Molten Core, Upper Blackrock Spire, Onyxia's Lair")
+local keys = {}
+for _, entry in ipairs(list) do
+    byDungeon[entry.dungeon] = entry
+    if not entry.class then keys[#keys + 1] = entry end
+end
+Check(#list == 7, "seven: Maraudon, Blackrock Depths, Scholomance, Molten Core, Upper Blackrock Spire, Onyxia's Lair, Tier 0.5")
 Check(byDungeon["Molten Core"].item == nil and byDungeon["Molten Core"].quest == 7848,
     "Molten Core's is a quest and no key")
 Check(byDungeon["Molten Core"].raid == true and byDungeon["Onyxia's Lair"].raid == true,
@@ -107,7 +112,7 @@ for _, entry in ipairs(list) do
         Check(raid == (entry.raid == true), entry.dungeon .. ": a raid here only when the Dungeon Journal says it is one")
     end
 end
-Check(journaled == #list - 1, "every one but Molten Core is in the Dungeon Journal to check against")
+Check(journaled == #list - 2, "every one but Molten Core and Tier 0.5 is in the Dungeon Journal to check against")
 
 local STEPS = {
     A = { ["Maraudon"] = 2, ["Blackrock Depths"] = 2, ["Scholomance"] = 8, ["Molten Core"] = 1,
@@ -120,7 +125,7 @@ local LAST = { A = { ["Scholomance"] = 5505, ["Onyxia's Lair"] = 6502 }, H = { [
 for _, s in ipairs({ "A", "H" }) do
     side = s
     local Attune = Rules()
-    for _, entry in ipairs(list) do
+    for _, entry in ipairs(keys) do
         local steps = Attune.Steps(entry)
         local label = s .. " " .. entry.dungeon
         Check(#steps == STEPS[s][entry.dungeon], label .. ": " .. STEPS[s][entry.dungeon] .. " quests")
@@ -191,6 +196,71 @@ Check(waypoints[1] == "Dragonkin Menace (Helendis Riverhorn)1428", "the waypoint
 side = "H"
 Check(Rules().Steps(ony)[1] == 4903 and Rules().Steps(ony)[14] == 6602, "the Horde's runs from Warlord's Command to Rexxar")
 side = "A"
+Rules()
+
+-------------------------------------------------------------------------------
+--  Tier 0.5: its steps by hand, each class's own, for both factions
+-------------------------------------------------------------------------------
+local tier = byDungeon["Tier 0.5"]
+local CLASSES = { "DRUID", "HUNTER", "MAGE", "PALADIN", "PRIEST", "ROGUE", "SHAMAN", "WARLOCK", "WARRIOR" }
+local NAMES = { [1] = "An Earnest Proposition", [8] = "Just Compensation", [17] = "Anthion's Parting Words",
+    [29] = "Saving the Best for Last" }
+local KEYS = { [1] = "proposition", [8] = "compensation", [17] = "parting", [29] = "best" }
+local counted = {}
+Check(tier.class == true and not tier.raid, "Tier 0.5 is on the Class page")
+for _, s in ipairs({ "A", "H" }) do
+    for _, c in ipairs(CLASSES) do
+        side, class = s, c
+        local rules = Rules()
+        local tierSteps = rules.Steps(tier)
+        local label = s .. " " .. c .. " Tier 0.5"
+        Check(#tierSteps == 29, label .. ": 29 steps")
+        for i, step in ipairs(tierSteps) do
+            for _, id in ipairs(type(step) == "table" and step or { step }) do
+                local row = D.Quests[id]
+                Check(row and (row[SIDE] == BOTH or row[SIDE] == SIDES[s]), label .. ": step " .. i .. " is this faction's")
+                Check(Q.Spot(id) ~= nil or ns.Attunements.inside[id] ~= nil, label .. ": step " .. i .. " says where it starts")
+                if NAMES[i] then Check(row[NAME] == NAMES[i], label .. ": step " .. i .. " is " .. NAMES[i]) end
+            end
+        end
+        for i, key in pairs(KEYS) do
+            local own = ns.Attunements.classQuests[s][c][key][2]
+            Check(not counted[own], label .. ": Forever's own " .. key .. " quest is this class's alone")
+            counted[own] = true
+            completed[own] = true
+            Check(rules.At(tier) == i + 1, label .. ": Forever's " .. NAMES[i] .. " handed in counts for step " .. i)
+            completed[own] = nil
+        end
+        Check(rules.Title(tier) == "Saving the Best for Last", label .. ": named for its last quest")
+    end
+end
+
+side, class = "A", "SHAMAN"
+Attune = Rules()
+steps = Attune.Steps(tier)
+Check(steps[1] == 8905 and Attune.State(8905, 1, 1) == "now", "a shaman's first step is shown as the class quest at Deliana")
+inLog[97447] = true
+Check(Attune.State(8905, 1, 1) == "log", "Forever's shaman quest in the log shows it in the log")
+inLog[97447] = nil
+completed[8905] = true
+Check(Attune.At(tier) == 2, "a classic version handed in before Forever's came counts too")
+completed[8905] = nil
+Check(#steps[20] == 4 and steps[20][1] == 8962, "Bodley's relics are one step, one of four")
+completed[8963] = true
+Check(Attune.At(tier) == 21, "any one of them handed in finishes the step")
+inLog[8967] = true
+quest, at = Attune.Next(tier)
+Check(quest == 8967 and at == 21, "the next quest of a one-of step is the one in your log")
+inLog[8967] = nil
+Check(Attune.Next(tier) == 8966, "or the first of them")
+completed[8963] = nil
+level = 57
+Check(Attune.Next(tier) == nil, "not started, under level 58: not one to work on")
+level = 60
+Check(Attune.Where(9015) == "Falrin Treeshaper, inside Dire Maul", "a step given inside a dungeon names who gives it there")
+Check(Attune.Note(8961):find("Ash of Asharell", 1, true) and Attune.Note(8962) == nil,
+    "Three Kings of Flame says Forever asks for the Ash of Asharell")
+side, class = "A", "WARRIOR"
 Rules()
 
 -------------------------------------------------------------------------------
@@ -266,12 +336,14 @@ opts.onTitle()
 Check(opened == "attune", "its title opens the Attunements tab")
 
 local rows = panel.entries
-Check(#rows == 6, "a row for each key you can work on")
+Check(#rows == 7, "a row for each key you can work on")
 Check(rows[1].text == "Maraudon  0 / 2" and rows[1].sub == "Legends of Maraudon\nCavindra, map 1443 (32.1, 64.0)",
     "a row: the dungeon, how far you are, and the next quest with who gives it")
 Check(rows[6].text == "Onyxia's Lair  12 / 16" and rows[6].sub:find("Stormwind Rendezvous", 1, true),
     "a key under way counts its steps done")
-Check(bar.text.shown == "12 / 31  steps", "the bar counts every step of the keys shown")
+Check(rows[7].text == "Tier 0.5  0 / 29" and rows[7].sub == "An Earnest Proposition\nDeliana, map 1455 (43.7, 52.4)",
+    "Tier 0.5 has a row too, its first quest at Deliana")
+Check(bar.text.shown == "12 / 60  steps", "the bar counts every step of the keys shown")
 rows[1].waypoint(rows[1])
 Check(waypoints[#waypoints] == "Legends of Maraudon (Cavindra)1443", "a row's pin is a waypoint to who gives the quest")
 completed[7044] = true

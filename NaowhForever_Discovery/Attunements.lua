@@ -1,16 +1,19 @@
--- Attunements.lua: the attunement rules: each one's quests in order, the one you are on, where a quest starts, your class's own chains (Discovery.Attune).
+-- Attunements.lua: the attunement rules: each one's quests in order, the one you are on, where a quest starts, your class's own chains and Tier 0.5 (Discovery.Attune).
 local ns = _G.NaowhForever
 
 local Discovery = ns.Discovery
 local Library = Discovery.Library
 
 local INSIDE_DUNGEON, INSIDE_GIVER = 1, 2
+local SHOWN, FOREVER = 1, 2
+local UNIT_CLASS = 2
 local TEXT_WHERE = "%s, %s (%.1f, %.1f)"
 local TEXT_INSIDE = ns.L("Inside %s")
 local TEXT_GIVER_INSIDE = ns.L("%s, inside %s")
 local TEXT_NOTE = " (%s)"
 
 local steps = {}
+local forever = {}
 local classChains, classSingles, classSeen = {}, {}, {}
 
 local Attune = {}
@@ -31,6 +34,56 @@ local function Walk(Q, id, out, seen)
         if before then Walk(Q, before, out, seen) end
     end
     out[#out + 1] = id
+end
+
+local function ClassStep(key)
+    local class = select(UNIT_CLASS, UnitClass("player"))
+    local pair = ns.Attunements.classQuests[Library.Side()][class][key]
+    forever[pair[SHOWN]] = pair[FOREVER]
+    return pair[SHOWN]
+end
+
+local function Resolve(step)
+    if type(step) == "number" then return step end
+    if type(step) == "string" then return ClassStep(step) end
+    return step[Library.Side()] or step
+end
+
+local function Done(id)
+    if C_QuestLog.IsQuestFlaggedCompleted(id) then return true end
+    return forever[id] ~= nil and C_QuestLog.IsQuestFlaggedCompleted(forever[id])
+end
+
+local function InLog(id)
+    if C_QuestLog.IsOnQuest(id) then return true end
+    return forever[id] ~= nil and C_QuestLog.IsOnQuest(forever[id])
+end
+
+local function StepDone(step)
+    if type(step) == "number" then return Done(step) end
+    for _, id in ipairs(step) do
+        if Done(id) then return true end
+    end
+    return false
+end
+
+local function Current(step)
+    if type(step) == "number" then return step end
+    for _, id in ipairs(step) do
+        if InLog(id) then return id end
+    end
+    return step[1]
+end
+
+local function OnPage(Q, chain)
+    for _, entry in ipairs(ns.Attunements.list) do
+        if entry.class then
+            for _, step in ipairs(Attune.Steps(entry)) do
+                if type(step) == "number" and Q.Chain(step) == chain then return true end
+            end
+        end
+    end
+    return false
 end
 
 local function Quest(entry)
@@ -56,10 +109,14 @@ end
 function Attune.Steps(entry)
     local list = steps[entry]
     if not list then
-        local Q = ns.Completo.Quests
-        Q.Refresh()
         list = {}
-        Walk(Q, Quest(entry), list, {})
+        if entry.steps then
+            for i, step in ipairs(entry.steps) do list[i] = Resolve(step) end
+        else
+            local Q = ns.Completo.Quests
+            Q.Refresh()
+            Walk(Q, Quest(entry), list, {})
+        end
         steps[entry] = list
     end
     return list
@@ -68,7 +125,7 @@ end
 function Attune.At(entry)
     local list = Attune.Steps(entry)
     for i = #list, 1, -1 do
-        if C_QuestLog.IsQuestFlaggedCompleted(list[i]) then return i + 1 end
+        if StepDone(list[i]) then return i + 1 end
     end
     return 1
 end
@@ -82,7 +139,7 @@ function Attune.Next(entry)
     local at = Attune.At(entry)
     if at > #list or Attune.Have(entry) then return nil end
     if at == 1 and UnitLevel("player") < ns.Completo.Quests.RequiredLevel(list[1]) then return nil end
-    return list[at], at
+    return Current(list[at]), at
 end
 
 function Attune.Open()
@@ -94,7 +151,7 @@ end
 
 function Attune.State(id, i, at)
     if i < at then return "done" end
-    if C_QuestLog.IsOnQuest(id) then return "log" end
+    if InLog(id) then return "log" end
     if i > at then return "later" end
     if UnitLevel("player") < ns.Completo.Quests.RequiredLevel(id) then return "low" end
     return "now"
@@ -111,7 +168,7 @@ function Attune.ClassQuests()
         if ClassLed(Q, chain) then
             if not classSeen[chain] then
                 classSeen[chain] = true
-                classChains[#classChains + 1] = chain
+                if not OnPage(Q, chain) then classChains[#classChains + 1] = chain end
             end
         elseif Single(Q, id) then
             classSingles[#classSingles + 1] = id
@@ -134,7 +191,8 @@ end
 
 function Attune.Title(entry)
     if entry.item then return C_Item.GetItemNameByID(entry.item) end
-    return Attune.Name(Quest(entry))
+    local list = Attune.Steps(entry)
+    return Attune.Name(list[#list])
 end
 
 function Attune.Icon(entry)
@@ -150,6 +208,11 @@ function Attune.Where(id)
     local dungeon = ns.L(inside[INSIDE_DUNGEON])
     if inside[INSIDE_GIVER] then return TEXT_GIVER_INSIDE:format(inside[INSIDE_GIVER], dungeon) end
     return TEXT_INSIDE:format(dungeon)
+end
+
+function Attune.Note(id)
+    local note = ns.Attunements.notes[id]
+    return note and ns.L(note)
 end
 
 function Attune.Waypoint(id)

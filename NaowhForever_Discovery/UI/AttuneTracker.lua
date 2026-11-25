@@ -61,6 +61,8 @@ local function QuestTip(row)
     GameTooltip:SetText(ns.L(entry.key.dungeon), 1, 1, 1)
     GameTooltip:AddLine(Attune.Name(entry.quest), 1, 1, 1)
     GameTooltip:AddLine(Attune.Where(entry.quest), m.r, m.g, m.b, true)
+    local note = Attune.Note(entry.quest)
+    if note then GameTooltip:AddLine(note, 1, 1, 1, true) end
 end
 
 local function BuildPanel()

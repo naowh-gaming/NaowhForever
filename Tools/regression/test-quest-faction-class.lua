@@ -111,7 +111,8 @@ local function ClassPage(who, completed)
     env.C_QuestLog.IsOnQuest = function() return false end
     env.C_QuestLog.GetLogIndexForQuestID = function() end
     ns.L = dofile("Tools/regression/locale_stub.lua").L
-    ns.Discovery = { Library = {} }
+    ns.Discovery = { Library = { Side = function() return who.faction == "Horde" and "H" or "A" end } }
+    Run("NaowhForever_Discovery/Data/Attunements.lua", env)
     Run("NaowhForever_Discovery/Attunements.lua", env)
     return ns.Discovery.Attune, rules, ns
 end
@@ -192,8 +193,10 @@ singles = select(2, Attune.ClassQuests())
 Check(Has(singles, 5923) and not Has(singles, 5924) and not Has(singles, 5925),
     "with one handed in, the two it closes leave the page")
 
-Attune = ClassPage(ALLIANCE_HUNTER)
+Attune, Q = ClassPage(ALLIANCE_HUNTER)
 chains, singles = Attune.ClassQuests()
 Check(not ChainOf(chains, DREADSTEED_END) and not Has(singles, DREADSTEED_END), "a hunter's page has no warlock chain")
+Check(Q.Chain(8906) ~= nil and not ChainOf(chains, 8906) and not Has(singles, 8906),
+    "the Quest List's An Earnest Proposition chain is left off: the page's Tier 0.5 has it")
 
 print(("test-quest-faction-class: %d checks passed"):format(checks))
