@@ -116,14 +116,12 @@ keep their names for the rest of the addon.
   Saving the Best for Last, 29 steps. Its `steps` are kept by hand, from Wowhead Forever's quest pages
   (2026-11-25): a quest ID, `{ A = ID, H = ID }` per faction, a list of IDs of which Bodley gives you
   one, or the name of a class step (`proposition`, `compensation`, `parting`, `best`). `classQuests`
-  gives each class step for each faction and class as `{ shown, forever }`: `shown` is the Quest List's
-  quest the row shows (its name, giver and spot), `forever` the quest Forever gives now. Forever
-  replaced the classic class quests (8905 to 9022) in build 1.60.1.70862 to 71037 with its own
-  (84147 to 84210, from a new Deliana and Mokvar), and added 97411 to 97414 for the Horde paladin and
-  97447 to 97450 for the Alliance shaman, who had none; the class of each comes from its reward, the
-  class's own Dungeon Set 2 piece. Those quests are not in the Quest List's data (its quest list does
-  not carry them), so a step shows the classic quest of the same name: the class's own, or for the
-  Alliance shaman and the Horde paladin another class's of their faction. `notes`: a line for a step's
+  gives each class step for each faction and class as `{ quest, classic }`: `quest` is the one Forever
+  gives now, the row's quest in the Quest List's data (its name, giver and spot), and `classic` the
+  classic quest it replaced. Forever replaced the classic class quests (8905 to 9022) in build
+  1.60.1.70862 to 71037 with its own (84147 to 84210, from a new Deliana and Mokvar), and added 97411
+  to 97414 for the Horde paladin and 97447 to 97450 for the Alliance shaman, who had none, so theirs
+  have no `classic`. `notes`: a line for a step's
   tooltip, by quest ID: Forever's Three Kings of Flame asks for the Ash of Asharell (279415), which
   Executor Asharell (270451) drops in the Burning Steppes, not the Cinder of Cynders.
 - `ns.FieldJournal`: the Field Journal's fish, herbs and dishes, from `Tools/build/field_journal.py`
@@ -159,11 +157,11 @@ keep their names for the rest of the addon.
   the last one handed in, so a quest the game never flagged before it does not hold the chain back.
   The tab reads the Quest List's data, which loads the first time it is opened, or at login with
   its tracker or pins on.
-- Tier 0.5's steps are written down rather than walked: the Quest List's data has only the classic
-  class quests, so the walk would show quests Forever no longer gives, and none at all for a Horde
-  paladin or an Alliance shaman. A step is done once its shown quest or Forever's own is handed in, so a
-  classic quest done before Forever replaced it still counts. A step of Bodley's that is one of four is
-  done once any of them is; its next quest is the one in your log, or else the first.
+- Tier 0.5's steps are written down rather than walked: a walk of the Quest List's requirements takes
+  one of Bodley's four relic and summon quests, and knows nothing of the classic quests. A step is done
+  once its quest or the classic one it replaced is handed in, so a classic quest done before Forever
+  replaced it still counts. A step of Bodley's that is one of four is done once any of them is; its next
+  quest is the one in your log, or else the first.
 - The Class page lists Tier 0.5 first, then the Quest List's chains that start with a quest only your
   class can take, by level, then your class's other quests that are in no such chain. A class quest in a chain that
   starts with an ordinary quest is listed among the others: the chain is not a class chain. Repeatable

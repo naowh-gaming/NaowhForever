@@ -94,6 +94,14 @@ quest and creature pages. Do not edit them by hand: change the tool and run it a
   On the maps Forever redrew (Stormwind, Mulgore, Redridge, the Eastern Plaguelands) many of
   its spots are Classic's positions unconverted (Bolvar Fordragon at 78, 18), so a giver there
   is never taken from it: those quests keep Wowhead's spot.
+- Forever replaced the classic Tier 0.5 class quests (An Earnest Proposition, Just Compensation, Anthion's
+  Parting Words and Saving the Best for Last, 8905 to 9022) with its own (84147 to 84210, 97411 to 97414 for
+  the Horde paladin, 97447 to 97450 for the Alliance shaman), which share each classic version's completion
+  bit. ForeverChanges still lists the classic ones and not Forever's, so `completo_fixes.json` names
+  Forever's (`unlisted`) and the classic ones (`replaced`): the classic quests are left out, and Forever's
+  take their place in the chain. Wowhead gives most of Forever's no class, so `classes` sets each from its
+  reward, the class's Dungeon Set 2 piece or spec set box. Three have no giver on Wowhead, and it places
+  Anthion Harmon on Forever's Eastern Plaguelands already, so `givers` puts those at another version's giver.
 - Holiday quests are in, and taken only while their holiday is on: `D.Events[questID]` lists the holidays that
   give one (the game's Holidays IDs on Forever, from wago.tools), `D.Holidays` names them, and
   `D.FaireSpots[questID]` says where a Darkmoon Faire quest's giver stands for each Faire (Elwynn Forest's, 263,

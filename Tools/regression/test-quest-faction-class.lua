@@ -40,8 +40,8 @@ end
 
 -- The Quest List: Kobold Camp Cleanup (7) and Hearts of the Lost (87318) are Alliance-only,
 -- Cutting Teeth (788) and Strahnbrad Mystery (95534) Horde-only, You Have Served Us Well (397) is
--- for Human and Gnome warlocks, and An Earnest Proposition has a version per class (8906 hunter,
--- 8911 warlock).
+-- for Human and Gnome warlocks, and An Earnest Proposition has a version per class (84148 hunter,
+-- 84153 warlock).
 local function QuestList(who)
     local ns = { AccountSettings = function() return {} end,
         Completo = { Holidays = { Read = function() end, On = function() return false end },
@@ -59,16 +59,16 @@ local Q = QuestList(ALLIANCE_HUNTER)
 Check(Q.Mine(7) and Q.Mine(87318), "an Alliance hunter has the Alliance-only quests")
 Check(not Q.Mine(788) and not Q.Mine(95534), "an Alliance hunter does not have the Horde-only quests")
 Check(not Q.Mine(397), "an Alliance hunter does not have the warlock quest")
-Check(Q.Mine(8906) and not Q.Mine(8911), "an Alliance hunter has the hunter version, not the warlock one")
+Check(Q.Mine(84148) and not Q.Mine(84153), "an Alliance hunter has the hunter version, not the warlock one")
 
 Q = QuestList(HORDE_HUNTER)
 Check(Q.Mine(788) and Q.Mine(95534), "a Horde hunter has the Horde-only quests")
 Check(not Q.Mine(7) and not Q.Mine(87318), "a Horde hunter does not have the Alliance-only quests")
-Check(not Q.Mine(397) and not Q.Mine(8906) and not Q.Mine(8911), "a Horde hunter has no Alliance class quest")
+Check(not Q.Mine(397) and not Q.Mine(84148) and not Q.Mine(84153), "a Horde hunter has no Alliance class quest")
 
 Q = QuestList(HUMAN_WARLOCK)
-Check(Q.Mine(397) and Q.Mine(8911), "a Human warlock has the warlock quests")
-Check(not Q.Mine(8906), "a Human warlock does not have the hunter version")
+Check(Q.Mine(397) and Q.Mine(84153), "a Human warlock has the warlock quests")
+Check(not Q.Mine(84148), "a Human warlock does not have the hunter version")
 
 -- Zephras Isle: Coming of Age (92460) is both sides' first quest; The High Order (92596) is the Alliance's.
 Q = QuestList(WINDSHAPER_MAGE)
@@ -142,7 +142,7 @@ for i, id in ipairs(all) do
     Check(Q.Mine(id) and Q.ClassOnly(id), "every class quest listed is a class-only quest of this warlock")
     if i > 1 then Check(Q.Level(all[i - 1]) <= Q.Level(id), "the class quests are listed by level") end
 end
-Check(not Has(all, 8906), "a warlock's class quests leave out the hunter's")
+Check(not Has(all, 84148), "a warlock's class quests leave out the hunter's")
 local chains, singles = Attune.ClassQuests()
 Check(#chains > 0 and #singles > 0, "a warlock gets class chains and other class quests")
 for i, chain in ipairs(chains) do
@@ -196,7 +196,7 @@ Check(Has(singles, 5923) and not Has(singles, 5924) and not Has(singles, 5925),
 Attune, Q = ClassPage(ALLIANCE_HUNTER)
 chains, singles = Attune.ClassQuests()
 Check(not ChainOf(chains, DREADSTEED_END) and not Has(singles, DREADSTEED_END), "a hunter's page has no warlock chain")
-Check(Q.Chain(8906) ~= nil and not ChainOf(chains, 8906) and not Has(singles, 8906),
+Check(Q.Chain(84148) ~= nil and not ChainOf(chains, 84148) and not Has(singles, 84148),
     "the Quest List's An Earnest Proposition chain is left off: the page's Tier 0.5 has it")
 
 print(("test-quest-faction-class: %d checks passed"):format(checks))

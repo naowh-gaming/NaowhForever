@@ -206,6 +206,9 @@ local CLASSES = { "DRUID", "HUNTER", "MAGE", "PALADIN", "PRIEST", "ROGUE", "SHAM
 local NAMES = { [1] = "An Earnest Proposition", [8] = "Just Compensation", [17] = "Anthion's Parting Words",
     [29] = "Saving the Best for Last" }
 local KEYS = { [1] = "proposition", [8] = "compensation", [17] = "parting", [29] = "best" }
+local CLASS = 6
+local CLASS_BITS = { WARRIOR = 1, PALADIN = 2, HUNTER = 4, ROGUE = 8, PRIEST = 16, SHAMAN = 64, MAGE = 128,
+    WARLOCK = 256, DRUID = 1024 }
 local counted = {}
 Check(tier.class == true and not tier.raid, "Tier 0.5 is on the Class page")
 for _, s in ipairs({ "A", "H" }) do
@@ -224,12 +227,20 @@ for _, s in ipairs({ "A", "H" }) do
             end
         end
         for i, key in pairs(KEYS) do
-            local own = ns.Attunements.classQuests[s][c][key][2]
+            local own, classic = unpack(ns.Attunements.classQuests[s][c][key])
+            Check(tierSteps[i] == own and D.Quests[own][CLASS] == CLASS_BITS[c],
+                label .. ": step " .. i .. " is Forever's own quest, the Quest List's for this class alone")
             Check(not counted[own], label .. ": Forever's own " .. key .. " quest is this class's alone")
             counted[own] = true
             completed[own] = true
             Check(rules.At(tier) == i + 1, label .. ": Forever's " .. NAMES[i] .. " handed in counts for step " .. i)
             completed[own] = nil
+            if classic then
+                Check(D.Quests[classic] == nil, label .. ": the classic " .. key .. " quest is out of the Quest List")
+                completed[classic] = true
+                Check(rules.At(tier) == i + 1, label .. ": the classic " .. NAMES[i] .. " handed in counts too")
+                completed[classic] = nil
+            end
         end
         Check(rules.Title(tier) == "Saving the Best for Last", label .. ": named for its last quest")
     end
@@ -238,13 +249,11 @@ end
 side, class = "A", "SHAMAN"
 Attune = Rules()
 steps = Attune.Steps(tier)
-Check(steps[1] == 8905 and Attune.State(8905, 1, 1) == "now", "a shaman's first step is shown as the class quest at Deliana")
+Check(steps[1] == 97447 and Attune.State(97447, 1, 1) == "now", "a shaman's first step is Forever's shaman quest at Deliana")
+Check(Attune.Where(97447) == "Deliana, map 1455 (43.4, 51.4)", "where Forever's Deliana stands")
 inLog[97447] = true
-Check(Attune.State(8905, 1, 1) == "log", "Forever's shaman quest in the log shows it in the log")
+Check(Attune.State(97447, 1, 1) == "log", "Forever's shaman quest in the log shows it in the log")
 inLog[97447] = nil
-completed[8905] = true
-Check(Attune.At(tier) == 2, "a classic version handed in before Forever's came counts too")
-completed[8905] = nil
 Check(#steps[20] == 4 and steps[20][1] == 8962, "Bodley's relics are one step, one of four")
 completed[8963] = true
 Check(Attune.At(tier) == 21, "any one of them handed in finishes the step")
@@ -341,8 +350,8 @@ Check(rows[1].text == "Maraudon  0 / 2" and rows[1].sub == "Legends of Maraudon\
     "a row: the dungeon, how far you are, and the next quest with who gives it")
 Check(rows[6].text == "Onyxia's Lair  12 / 16" and rows[6].sub:find("Stormwind Rendezvous", 1, true),
     "a key under way counts its steps done")
-Check(rows[7].text == "Tier 0.5  0 / 29" and rows[7].sub == "An Earnest Proposition\nDeliana, map 1455 (43.7, 52.4)",
-    "Tier 0.5 has a row too, its first quest at Deliana")
+Check(rows[7].text == "Tier 0.5  0 / 29" and rows[7].sub == "An Earnest Proposition\nDeliana, map 1455 (43.4, 51.4)",
+    "Tier 0.5 has a row too, its first quest at Forever's Deliana")
 Check(bar.text.shown == "12 / 60  steps", "the bar counts every step of the keys shown")
 rows[1].waypoint(rows[1])
 Check(waypoints[#waypoints] == "Legends of Maraudon (Cavindra)1443", "a row's pin is a waypoint to who gives the quest")

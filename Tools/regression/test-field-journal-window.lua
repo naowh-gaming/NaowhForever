@@ -335,11 +335,11 @@ local classRows = Rows(view, "attune")
 local notes = Rows(view, "note")
 check("Class: Tier 0.5 first, a section for each class chain, then the other class quests",
     Same(Sections(view), { "TIER 0.5", "QUEST 7562", ns.Upper("Other Class Quests") }))
-check("Tier 0.5's line: its last quest and the step you are on", notes[1].text:GetText() == "Quest 9005: Step 1 of 29")
+check("Tier 0.5's line: its last quest and the step you are on", notes[1].text:GetText() == "Quest 84201: Step 1 of 29")
 check("each of Bodley's one-of steps says so", notes[2].text:GetText() == "One of these, whichever you are given:"
     and notes[5].text:GetText() == "One of these, whichever you are given:")
-check("a row for each of its quests, each one-of step's four too", classRows[1].quest == 8911 and classRows[20].quest == 8962
-    and classRows[23].quest == 8965 and classRows[23].level:GetText() == 20 and classRows[41].quest == 9005)
+check("a row for each of its quests, each one-of step's four too", classRows[1].quest == 84153 and classRows[20].quest == 8962
+    and classRows[23].quest == 8965 and classRows[23].level:GetText() == 20 and classRows[41].quest == 84201)
 check("under its level, Tier 0.5's first step says the level it needs", classRows[1].status:GetText() == "Needs level 48"
     and classRows[2].status:GetText() == "Later")
 local TIER = 41

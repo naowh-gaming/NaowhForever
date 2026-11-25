@@ -5,7 +5,7 @@ local Discovery = ns.Discovery
 local Library = Discovery.Library
 
 local INSIDE_DUNGEON, INSIDE_GIVER = 1, 2
-local SHOWN, FOREVER = 1, 2
+local QUEST, CLASSIC = 1, 2
 local UNIT_CLASS = 2
 local TEXT_WHERE = "%s, %s (%.1f, %.1f)"
 local TEXT_INSIDE = ns.L("Inside %s")
@@ -13,7 +13,7 @@ local TEXT_GIVER_INSIDE = ns.L("%s, inside %s")
 local TEXT_NOTE = " (%s)"
 
 local steps = {}
-local forever = {}
+local classic = {}
 local classChains, classSingles, classSeen = {}, {}, {}
 
 local Attune = {}
@@ -39,8 +39,8 @@ end
 local function ClassStep(key)
     local class = select(UNIT_CLASS, UnitClass("player"))
     local pair = ns.Attunements.classQuests[Library.Side()][class][key]
-    forever[pair[SHOWN]] = pair[FOREVER]
-    return pair[SHOWN]
+    classic[pair[QUEST]] = pair[CLASSIC]
+    return pair[QUEST]
 end
 
 local function Resolve(step)
@@ -51,12 +51,12 @@ end
 
 local function Done(id)
     if C_QuestLog.IsQuestFlaggedCompleted(id) then return true end
-    return forever[id] ~= nil and C_QuestLog.IsQuestFlaggedCompleted(forever[id])
+    return classic[id] ~= nil and C_QuestLog.IsQuestFlaggedCompleted(classic[id])
 end
 
 local function InLog(id)
     if C_QuestLog.IsOnQuest(id) then return true end
-    return forever[id] ~= nil and C_QuestLog.IsOnQuest(forever[id])
+    return classic[id] ~= nil and C_QuestLog.IsOnQuest(classic[id])
 end
 
 local function StepDone(step)
