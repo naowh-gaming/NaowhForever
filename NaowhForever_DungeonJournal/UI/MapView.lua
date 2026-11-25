@@ -326,8 +326,10 @@ local function SetFace(mark, boss, killed)
     mark.face:SetVertexColor(1, 1, 1)
     if boss.chest then
         mark.face:SetTexture(St.CHEST_ICON)
-    elseif face then
+        mark.model = nil
+    elseif face and mark.model ~= boss.model then
         SetPortraitTextureFromCreatureDisplayID(mark.face, boss.model)
+        mark.model = boss.model
     end
     local drawn = boss.chest ~= nil or face ~= nil
     mark.face:SetShown(drawn)
@@ -360,6 +362,7 @@ local function SetQuestMark(mark, lead, ring)
     mark.face:SetPoint("TOPLEFT", QUEST_INSET, -QUEST_INSET)
     mark.face:SetPoint("BOTTOMRIGHT", -QUEST_INSET, QUEST_INSET)
     Parts.QuestMark(mark.face, lead)
+    mark.model = nil
     local none = lead.kind == "none"
     if none then
         mark.face:SetDesaturated(true)

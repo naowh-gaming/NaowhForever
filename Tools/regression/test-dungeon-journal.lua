@@ -1432,6 +1432,46 @@ do
     Close()
     Open()
     check("the open after that leaves them", mapDraws == 5)
+    Close()
+    local portraits, portraitsMade = rawget(_G, "SetPortraitTextureFromCreatureDisplayID"), 0
+    _G.SetPortraitTextureFromCreatureDisplayID = function() portraitsMade = portraitsMade + 1 end
+    ns.Apply()
+    Open()
+    local firstPortraits = portraitsMade
+    Close()
+    ns.Apply()
+    Open()
+    check("drawn again, a boss pin keeps its portrait", firstPortraits > 0 and portraitsMade == firstPortraits)
+    _G.SetPortraitTextureFromCreatureDisplayID = portraits
+    Close()
+    warmed = draws
+    Event("GROUP_ROSTER_UPDATE")
+    Open()
+    check("a roster update that changes nothing on it leaves the page", draws == warmed)
+    Close()
+    state.party = {}
+    Event("GROUP_ROSTER_UPDATE")
+    Open()
+    check("joining a group while shut draws it again, for its Share All", draws == warmed + 1)
+    Close()
+    state.party = nil
+    Event("GROUP_ROSTER_UPDATE")
+    Open()
+    Close()
+    view.scripts.OnEvent(view, "ENCOUNTER_END", 1144, "VanCleef", 1, 5, 0)
+    Open()
+    check("a wipe while shut leaves it", draws == warmed + 2)
+    Close()
+    view.scripts.OnEvent(view, "ENCOUNTER_END", 1144, "VanCleef", 1, 5, 1)
+    Open()
+    check("a kill while shut draws it again", draws == warmed + 3)
+    Close()
+    local beforeLoading = mapDraws
+    LoadingScreen()
+    local afterLoading = mapDraws
+    check("a loading screen draws the dungeon's map too, with the map shut", afterLoading > beforeLoading)
+    Open()
+    check("so the first open after it draws no pins", mapDraws == afterLoading)
     S.Set("mapQuestPins", pins)
     MapView.Draw = mapDraw
     Close()

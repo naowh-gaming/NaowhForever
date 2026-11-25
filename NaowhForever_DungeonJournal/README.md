@@ -966,15 +966,19 @@ in the pull request it opens.
   once. Hooked, not called back, so neither addon needs the other.
 - The panel keeps the page it drew while the map is shut (`keepHidden`), since drawing a big
   dungeon's page on every open made the map stutter. While shut, its view only notes what it
-  hears: a quest log update is checked against the quest signature, a party member's against
-  their counts, a bag update against the counts the draw read (`Loot.RecordCounts` and every
-  item row, bags and bank apart), and any other event, a setting, a favourite, the BiS list, stat
+  hears: a quest log update is checked against the quest signature, a party member's or a roster
+  update against their counts and whether you are in a group (Share All), a bag update against
+  the counts the draw read (`Loot.RecordCounts` and every item row, bags and bank apart), an
+  encounter that ends in a wipe changes nothing, and any other event, a setting, a favourite, the BiS list, stat
   weights, a new run, a loading screen, the dungeon map shown or not, or a lockout older than a
   minute means the next open draws again. A loading screen into a dungeon draws its page then, a frame later so the run is noted first, with the map shut,
   and so do item names that arrive while it is shut (never in combat), so an open finds it ready.
+- Its scroll bar hides with the panel when the map shuts; that hide is not taken as the page
+  losing its bar, or the next open fits the width again and draws the whole page.
 - The dungeon's map over the world map keeps its pins between opens too, since each boss pin's
   portrait is made from its model: an open draws them again only for another floor or map size,
-  a quest change, a kill, a new run, a setting, a profile or pin placing.
+  a quest change, a kill, a new run, a setting, a profile or pin placing. The loading screen draws
+  them with the page, and a pin only makes its portrait again for another boss.
 - The world map calls every pin's `CheckMouseButtonPassthrough`, and its
   `SetPassThroughButtons` is protected: from our refresh it is blocked in combat, and the
   entrance pins want their clicks, so theirs does nothing. Pins acquired in combat taint the map,

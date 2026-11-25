@@ -123,6 +123,17 @@ function J.ShowMapOnWorldMap(dungeon)
     overlayView:Draw()
 end
 
+function J.PrewarmMapOnWorldMap(dungeon)
+    if not J.Maps[dungeon.key] then return end
+    if not overlay then
+        BuildOverlay()
+        overlay:Hide()
+    end
+    overlayView:Open(dungeon)
+    Fit()
+    overlayView:Draw()
+end
+
 function J.WorldMapChanged()
     if overlay and overlay:IsShown() and WorldMapFrame:GetMapID() ~= overlay.mapID then overlay:Hide() end
 end
