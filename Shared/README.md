@@ -460,7 +460,9 @@ What a comment in the code used to say, in short. The house rules behind it are 
 ### Bags, tooltips, maps and /played
 
 - Bag marks hook each bag frame's `UpdateItems` with `hooksecurefunc`, never `SetScript`, and
-  only once a module first asks. EllesmereUI's bags are painted through the
+  only once a module first asks. The game updates a bag several times in one frame while you loot,
+  and each update repainted every slot once per module, so the paint waits for the next frame and runs
+  once for however many updates came in that frame. EllesmereUI's bags are painted through the
   `RegisterItemOverlayIcon` hook it offers other addons. `Bags.Baganator` hands back Baganator's
   public `Baganator.API` when it is loaded; a module registers its own corner widget there.
 - The guild list's tooltip is GameTooltip, so our lines go on it. The Friends list's tooltip has

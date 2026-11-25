@@ -83,11 +83,13 @@ account.profCraftQueue = {
 }
 local first, created, migrated = CharacterData("profCraftQueue", true)
 assert(created and migrated and first.crafts[300], "legacy name-and-realm state was not migrated")
+assert(account.profCraftQueue["Vykorin-Realm"] == nil, "legacy name-and-realm state stayed after it was migrated")
 first.crafts[400] = { count = 1 }
 playerGUID = "Player-Blackwhisper"
-local second = CharacterData("profCraftQueue", true)
-assert(second.crafts[300] and not second.crafts[400],
-    "a change after legacy migration reached another same-name character")
+local second, _, secondMigrated = CharacterData("profCraftQueue", true)
+assert(not secondMigrated and second.crafts == nil,
+    "another same-name character took the legacy state a second time")
+second.crafts = {}
 second.crafts[500] = { count = 1 }
 playerGUID = "Player-Blackwind"
 assert(first.crafts[400] and not first.crafts[500], "migrated GUID stores were not independent")

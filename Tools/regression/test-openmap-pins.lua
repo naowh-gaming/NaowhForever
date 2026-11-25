@@ -104,7 +104,7 @@ local askedFor = {}
 local ns = { L = dofile("Tools/regression/locale_stub.lua").L, Upper = string.upper, Lower = string.lower,
     CompletoSettings = S, Apply = function() end, ThemeTint = function() end,
     Completo = { Settings = S, Style = {}, C = { PERCENT = 100 },
-        Quests = { Refresh = function() end, Givers = function(mapID)
+        Quests = { Refresh = function() end, Update = function() end, Stale = function() end, Givers = function(mapID)
             askedFor[#askedFor + 1] = mapID
             return GIVERS[mapID] or {}
         end } } }

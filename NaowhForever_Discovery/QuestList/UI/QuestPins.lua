@@ -189,6 +189,11 @@ local function Redraw()
     if added and WorldMapFrame:IsShown() then provider:RefreshAllData() end
 end
 
+local function OnQuestEvent()
+    Q.Stale()
+    Redraw()
+end
+
 local function HideButton(root, id)
     root:CreateButton(TEXT_HIDE:format(Q.Title(id) or id), function() Q.SetHidden(id, true) end)
 end
@@ -271,7 +276,7 @@ function provider:RefreshAllData()
     self:RemoveAllData()
     if not On() then return end
     local map = self:GetMap()
-    Q.Refresh()
+    Q.Update()
     for _, mapID in ipairs(OpenMap.Maps(map)) do
         for _, giver in ipairs(Q.Givers(mapID, S.Get("mapGrey"), S.Get("mapChainsOnly"))) do
             local x, y = OpenMap.Spot(map, mapID, giver.x / PERCENT, giver.y / PERCENT)
@@ -288,7 +293,7 @@ local function Apply()
         end
         if not events then
             events = CreateFrame("Frame")
-            events:SetScript("OnEvent", Redraw)
+            events:SetScript("OnEvent", OnQuestEvent)
         end
         for _, event in ipairs(EVENTS) do events:RegisterEvent(event) end
     elseif events then

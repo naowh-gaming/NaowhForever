@@ -249,7 +249,7 @@ local function DrawRares(self)
 end
 
 local function DrawQuests(self)
-    Q.Refresh()
+    Q.Update()
     local text = SearchText()
     if text ~= "" then
         local open = zone
@@ -335,7 +335,7 @@ local function Paint()
     elseif OnRares() then
         window.note.text:SetText(TEXT_RARES_PROGRESS:format(R.Progress()))
     else
-        Q.Refresh()
+        Q.Update()
         window.note.text:SetText(TEXT_QUESTS_PROGRESS:format(Q.Progress()))
     end
     window.note:SetWidth(math.max(1, math.ceil(window.note.text:GetStringWidth())))

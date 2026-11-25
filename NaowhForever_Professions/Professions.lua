@@ -80,6 +80,7 @@ function P.CharacterData(store, create)
     local migrated = type(legacy) == "table"
     if migrated then
         for key, value in pairs(CopyTable(legacy)) do mine[key] = value end
+        all[legacyKey] = nil
     end
     return mine, true, migrated
 end

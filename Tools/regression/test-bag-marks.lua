@@ -152,6 +152,7 @@ local env = setmetatable({
         return f
     end,
     securecallfunction = function(fn, ...) return fn(...) end,
+    C_Timer = { After = function(_, fn) fn() end },
     hooksecurefunc = function(a, b, c)
         local original = a[b]
         a[b] = function(...) original(...); c(...) end

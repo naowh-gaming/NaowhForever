@@ -49,7 +49,7 @@ local function SetDungeonColor(r, g, b)
 end
 
 local function Headline()
-    Q.Refresh()
+    Q.Update()
     return TEXT_PROGRESS:format(Q.Progress())
 end
 

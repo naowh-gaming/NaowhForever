@@ -6,7 +6,11 @@ local S = Completo.Settings
 local Q = Completo.Quests
 
 local QUEST_ID_ANSWER = 5
-local EVENTS = { "GOSSIP_SHOW", "QUEST_GREETING", "QUEST_DETAIL", "QUEST_TURNED_IN" }
+local EVENTS = { "GOSSIP_SHOW", "QUEST_GREETING", "QUEST_DETAIL", "QUEST_TURNED_IN", "QUEST_ACCEPTED", "QUEST_REMOVED",
+    "PLAYER_LEVEL_UP", "SKILL_LINES_CHANGED", "LEARNED_SPELL_IN_SKILL_LINE", "UPDATE_FACTION", "CALENDAR_UPDATE_EVENT_LIST" }
+local STALE = { QUEST_TURNED_IN = true, QUEST_ACCEPTED = true, QUEST_REMOVED = true, PLAYER_LEVEL_UP = true,
+    SKILL_LINES_CHANGED = true, LEARNED_SPELL_IN_SKILL_LINE = true, UPDATE_FACTION = true,
+    CALENDAR_UPDATE_EVENT_LIST = true }
 local CLOSED = { closed = true, skill = true, rep = true }
 local NONE = {}
 
@@ -24,7 +28,7 @@ local function Learn(unit)
     if not UnitExists(unit) or UnitIsPlayer(unit) then return end
     local zone = Q.CurrentZone()
     if not zone then return end
-    Q.Refresh()
+    Q.Update()
     Q.SetMine(offered)
     local trivial = not C_Minimap.IsFilteredOut(Enum.MinimapTrackingFilter.TrivialQuests)
     for _, id in ipairs(Q.GiverQuests(UnitName(unit), zone.map)) do
@@ -75,6 +79,7 @@ local function FromDetail()
 end
 
 local function OnEvent(_, event, questID)
+    if STALE[event] then Q.Stale() end
     if event == "GOSSIP_SHOW" then
         FromGossip()
     elseif event == "QUEST_GREETING" then

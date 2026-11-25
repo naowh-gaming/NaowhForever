@@ -13,13 +13,14 @@ ns.ProfFavorites = Favorites
 function Favorites.Store()
     local mine, created, migrated = P.CharacterData("profFavorites", true)
     if not mine then return unavailable end
-    if not created or migrated then return mine end
+    if not created then return mine end
     local db = S.DB()
-    if type(db.craftFavorites) == "table" then
+    if not migrated and type(db.craftFavorites) == "table" then
         for spell, on in pairs(db.craftFavorites) do
             if type(spell) == "number" and on == true then mine[spell] = true end
         end
     end
+    db.craftFavorites = nil
     return mine
 end
 

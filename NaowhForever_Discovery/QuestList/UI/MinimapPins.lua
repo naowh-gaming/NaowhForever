@@ -18,6 +18,8 @@ local MAP_EVENTS = { "ZONE_CHANGED_NEW_AREA", "ZONE_CHANGED", "ZONE_CHANGED_INDO
     "LEARNED_SPELL_IN_SKILL_LINE", "QUEST_WATCH_LIST_CHANGED", "CALENDAR_UPDATE_EVENT_LIST" }
 local LOG_EVENT = "QUEST_LOG_UPDATE"
 local PLACE_EVENTS = { ZONE_CHANGED = true, ZONE_CHANGED_INDOORS = true }
+local WHERE_EVENTS = { ZONE_CHANGED_NEW_AREA = true, ZONE_CHANGED = true, ZONE_CHANGED_INDOORS = true,
+    PLAYER_ENTERING_WORLD = true, QUEST_WATCH_LIST_CHANGED = true }
 local OWN_KEYS = { enabled = true, minimapQuests = true, minimapQuestSize = true, mapPins = true, mapGrey = true,
     mapChainsOnly = true, mapDungeon = true, mapDungeonColor = true, mapObjectives = true, mapObjectivesTracked = true }
 
@@ -63,7 +65,7 @@ local function CopyGivers(mapID)
         givers[i] = nil
     end
     if not S.Get("mapPins") then return end
-    Q.Refresh()
+    Q.Update()
     for _, giver in ipairs(Q.Givers(mapID, S.Get("mapGrey"), S.Get("mapChainsOnly"))) do
         local copy = table.remove(giverSpare) or { quests = {} }
         wipe(copy.quests)
@@ -102,6 +104,7 @@ local function Refresh()
 end
 
 local function OnEvent(_, event)
+    if not (WHERE_EVENTS[event] or event == LOG_EVENT) then Q.Stale() end
     if event == LOG_EVENT then
         if objectiveLayer then RefreshObjectives(shownMap) end
     elseif not (PLACE_EVENTS[event] and GetBestMapForUnit(PLAYER) == shownMap) then

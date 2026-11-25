@@ -378,6 +378,12 @@ local function RunTimers()
     end
 end
 local function Set(key, value) S.Set(key, value) end
+-- The bags paint on the frame after an update: run that paint, leaving every other timer queued.
+local function UpdateBags()
+    local queued = #timers
+    bagFrame:UpdateItems()
+    if #timers > queued then table.remove(timers, queued + 1)() end
+end
 
 -------------------------------------------------------------------------------
 --  Off by default: nothing hooked, registered or made.
@@ -400,7 +406,7 @@ check("on: the game's bags hooked, EllesmereUI's hook taken, the tooltip hooked 
 check("on: listens for the vendor, combat and gear sets", Registered("MERCHANT_SHOW") and Registered("MERCHANT_CLOSED")
     and Registered("PLAYER_REGEN_DISABLED") and Registered("EQUIPMENT_SETS_CHANGED"))
 check("on: no level-up listener without the Old Common Gear rule", not Registered("PLAYER_LEVEL_UP"))
-bagFrame:UpdateItems()
+UpdateBags()
 local cloth, quest, key, stone, belt, fang = bagFrame.items[1], bagFrame.items[2], bagFrame.items[3],
     bagFrame.items[4], bagFrame.items[5], bagFrame.items[6]
 check("a click hook on each bag button, post-hooked, never a script set",
@@ -469,7 +475,7 @@ check("quest items, keys and items with no sell price are refused, each with why
 
 -- Protected: your BiS and your gear sets.
 state.bags[0][9], state.bags[0][10] = 209, 210
-bagFrame:UpdateItems()
+UpdateBags()
 state.bis[209], state.setItems[1] = true, 210
 Fire("EQUIPMENT_SETS_CHANGED")
 Alt(bagFrame.items[9])
@@ -488,10 +494,10 @@ state.bags[0][9], state.bags[0][10] = nil, nil
 local late = ItemButton(0, 30)
 bagFrame.items[30] = late
 state.combat = true
-bagFrame:UpdateItems()
+UpdateBags()
 check("no hook added in combat", late.hooks.OnClick == nil)
 state.combat = false
-bagFrame:UpdateItems()
+UpdateBags()
 check("hooked on the next paint out of combat", late.hooks.OnClick ~= nil)
 bagFrame.items[30] = nil
 
@@ -623,7 +629,7 @@ Set("scrapMarkerScope", "account")
 --  Rules
 -------------------------------------------------------------------------------
 state.bags[0][11], state.bags[0][12] = 207, 208
-bagFrame:UpdateItems()
+UpdateBags()
 local wand, sword = bagFrame.items[11], bagFrame.items[12]
 check("rules off by default: a wand is not scrap for a warrior", Scrap.IsScrap(207) == false and Mark(wand) == nil)
 Set("scrapRuleWear", true)
@@ -1002,7 +1008,7 @@ state.bis[209] = nil
 -------------------------------------------------------------------------------
 local other = 0
 ns.Shared.Bags.OnGameUpdate(function() other = other + 1 end)
-bagFrame:UpdateItems()
+UpdateBags()
 check("a second painter runs on the same hook, the frame hooked once", other == 1 and hooksOnBag == 1)
 
 -------------------------------------------------------------------------------
@@ -1012,12 +1018,18 @@ state.bags[0] = {}
 for slot = 1, 29 do state.bags[0][slot] = slot % 2 == 0 and 201 or 205 end
 state.bags[1] = { 207, 208, 206 }
 Set("scrapRuleWear", true)
-bagFrame:UpdateItems()
+UpdateBags()
 local marked = bagFrame.items[2]
 Alt(marked)
 Alt(bagFrame.items[1])
 check("marked again for the cost runs", state.account.scrapItems[201] == true and Mark(marked).shown == true)
-Measure(check)("a bag of 30 painted", 1, function() bagFrame:UpdateItems() end)
+Measure(check)("a bag of 30 painted", 1, function() UpdateBags() end)
+local queuedBefore = #timers
+bagFrame:UpdateItems()
+bagFrame:UpdateItems()
+bagFrame:UpdateItems()
+check("three bag updates in one frame queue one paint", #timers == queuedBefore + 1)
+table.remove(timers, queuedBefore + 1)()
 Measure(check)("an EllesmereUI slot painted", 1, function() paint(eCloth, data) end)
 local bDetails = { itemID = 201 }
 Measure(check)("a Baganator slot painted", 1, function() widget.onUpdate(bClothMark, bDetails) end)
@@ -1068,7 +1080,7 @@ Alt(marked)
 wipe(tip.lines)
 state.tooltip(tip, { id = 201 })
 check("off: Alt-click and the tooltip do nothing", state.account.scrapItems[201] == true and #tip.lines == 0)
-bagFrame:UpdateItems()
+UpdateBags()
 check("off: a bag update paints nothing", Mark(marked).shown == false)
 Set("scrapMarker", true)
 check("on again: EllesmereUI's hook taken again, its bags repainted, the icons back",
@@ -1085,7 +1097,7 @@ ns.BankMarker = {
 Set("bankMarker", true)
 Scrap.Clear()
 state.bags[0][1] = 201
-bagFrame:UpdateItems()
+UpdateBags()
 Alt(cloth)
 check("cycle: unmarked to junk", Scrap.IsScrap(201) and not bankMarks[201])
 Alt(cloth)
@@ -1101,7 +1113,7 @@ check("cycle: a quest item explains why it skipped junk",
 Alt(cloth)
 Set("scrapRuleWear", true)
 state.bags[0][1] = 207
-bagFrame:UpdateItems()
+UpdateBags()
 Alt(cloth)
 check("cycle: rule junk to bank", bankMarks[207] and not Scrap.IsScrap(207))
 Alt(cloth)
@@ -1114,7 +1126,7 @@ check("bank-only mark toggles off", not bankMarks[207])
 Set("bankMarker", false)
 Set("scrapMarker", true)
 state.bags[0][1] = 201
-bagFrame:UpdateItems()
+UpdateBags()
 Alt(cloth)
 Alt(cloth)
 check("bank disabled preserves original junk toggle", not Scrap.IsScrap(201) and not bankMarks[201])

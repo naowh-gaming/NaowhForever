@@ -18,7 +18,7 @@ local S = { Get = function(key) return settings[key] end, Set = function() end }
 
 local giverCalls, objectiveCalls = 0, 0
 local qGivers = {}
-local Q = { Refresh = function() end, Givers = function(mapID)
+local Q = { Refresh = function() end, Update = function() end, Stale = function() end, Givers = function(mapID)
     giverCalls = giverCalls + 1
     for i = #qGivers, 1, -1 do qGivers[i] = nil end
     if mapID == WESTFALL then qGivers[1] = { x = 56, y = 30, quests = { 38, 22 }, grey = false } end

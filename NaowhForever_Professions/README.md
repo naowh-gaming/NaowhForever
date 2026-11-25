@@ -451,8 +451,8 @@ Each layer uses only the ones above it, or reads a later one's table at call tim
   bind and still sells on the auction house.
 - Favourites are kept per character GUID by spell ID, which is also a known recipe's recipeID. A known one
   is told to the game too, so Blizzard's own favourites count; an unlearned one lives in the account
-  store under that character's GUID. Each character starts from the former profile-wide
-  list the first time it loads, and that list stays in the profile for the others. Favourites and the
+  store under that character's GUID. The first character to load takes the former profile-wide list,
+  which then leaves the profile, so a new character never starts with an alt's favourites. Favourites and the
   crafting queue are empty and unsaved until the game knows the player's GUID.
 - Prices: a vendor reagent costs its merchant price when that is no more than the lowest buyout at
   the last scan, else the buyout; the auction house keeps 5% of a sale. The merchant price is the
@@ -576,9 +576,8 @@ Each layer uses only the ones above it, or reads a later one's table at call tim
   selected only when its own profession is open; otherwise the open profession keeps its selection and
   the queue waits on Open First. The `ns.OnApply` listener acts only when the queue turns on or off.
 - Character profession state uses `Shared.CharacterData`: Forever surnames let two characters share a
-  first name, so name and realm are not unique. A former name-and-realm table is copied once when each
-  GUID first uses it, then the GUID copies change independently; the legacy table stays for characters
-  that have not logged in since the migration.
+  first name, so name and realm are not unique. A former name-and-realm table moves to the first GUID
+  that uses it. It used to stay, and every later character with that first name started with a copy.
 - The Consumables picker offers the Well Fed food, flasks, elixirs and stat scrolls of Naowh's consumables
   list (the one in his profile, from Wowhead Forever), the Buff Reminders' weapon stones and oils, the
   healing and mana potions in `Shared/Game/Consumables.lua` and the Smart Macros' bandages. Plain food and
