@@ -39,6 +39,7 @@ local LABEL_ANCHOR = {
 }
 local KILLED_ALPHA = 0.45
 local UNPLACED_ALPHA = 0.7
+local ALSO_ALPHA = 0.5
 local QUEST_INSET = 5
 local QUEST_EVENTS = { "QUEST_LOG_UPDATE", "QUEST_DATA_LOAD_RESULT", "PLAYER_LEVEL_UP" }
 local NOTHING = { kind = "none" }
@@ -60,6 +61,7 @@ local TEXT_STAIRS = ns.L("Stairs to %s")
 local TEXT_OPENS_WITH = ns.L("Opens with %s.")
 local TEXT_SEE_FLOOR = ns.L("Click to see that floor.")
 local TEXT_CLICK_LOOT = ns.L("Click for its loot.")
+local TEXT_ALSO = ns.L("Can also spawn here.")
 local TEXT_ELSEWHERE = ns.L("On %s: drag it here to move it.")
 local TEXT_MOVE = ns.L("Drag to move it, right-click to take it off.")
 local TEXT_PLACE = ns.L("Drag to place it.")
@@ -174,6 +176,7 @@ local function PinEnter(pin)
     GameTooltip:SetText(boss.name, 1, 1, 1)
     local tag = J.BossTag(boss)
     if tag then GameTooltip:AddLine(TAG_WORDS[tag], T.muted.r, T.muted.g, T.muted.b) end
+    if pin.also then GameTooltip:AddLine(TEXT_ALSO, T.muted.r, T.muted.g, T.muted.b) end
     GameTooltip:AddLine(PinHint(pin), T.accentSoft.r, T.accentSoft.g, T.accentSoft.b)
     GameTooltip:Show()
     if pin.view.onPinHover then pin.view.onPinHover(pin.key, true) end
@@ -635,16 +638,34 @@ function View:NextPin()
     return pin
 end
 
+function View:DrawAlso(boss, number, key, killed)
+    local also = J.Maps[self.dungeon.key].also
+    local spots = also and also[key]
+    for i = 1, spots and #spots or 0 do
+        local spot = spots[i]
+        if spot[1] == self.floor then
+            local pin = self:NextPin()
+            pin.boss, pin.quest, pin.key, pin.also = boss, nil, key, true
+            SetMark(pin, boss, number, 1 / self.scale, killed)
+            pin:SetAlpha(ALSO_ALPHA)
+            ShowPicked(pin, self.picked ~= nil and key == self.picked)
+            self:Put(pin, spot, true)
+        end
+    end
+end
+
 function View:DrawPin(boss, number, key)
     local spot = Spot(self.dungeon, key)
     local here = type(spot) == "table" and spot[1] == self.floor
-    if not here and not self:Placing() then return end
-    local pin = self:NextPin()
-    pin.boss, pin.quest, pin.key = boss, nil, key
     local killed = self.inside and J.Kills.ThisRun(boss) or false
-    SetMark(pin, boss, number, 1 / self.scale, killed)
-    ShowPicked(pin, self.picked ~= nil and key == self.picked and not self:Placing())
-    self:Put(pin, spot, here)
+    if here or self:Placing() then
+        local pin = self:NextPin()
+        pin.boss, pin.quest, pin.key, pin.also = boss, nil, key, nil
+        SetMark(pin, boss, number, 1 / self.scale, killed)
+        ShowPicked(pin, self.picked ~= nil and key == self.picked and not self:Placing())
+        self:Put(pin, spot, here)
+    end
+    if not self:Placing() then self:DrawAlso(boss, number, key, killed) end
 end
 
 function View:DrawQuestPin(data)
@@ -653,7 +674,7 @@ function View:DrawQuestPin(data)
     local here = type(spot) == "table" and spot[1] == self.floor
     if not here and not self:Placing() then return end
     local pin = self:NextPin()
-    pin.boss, pin.quest, pin.key = nil, data, key
+    pin.boss, pin.quest, pin.key, pin.also = nil, data, key, nil
     pin.quests, pin.questPool = pin.quests or {}, pin.questPool or {}
     J.Quests.PinQuests(data, pin.quests, pin.questPool)
     SetQuestMark(pin, pin.quests[1] or NOTHING, 1 / self.scale)

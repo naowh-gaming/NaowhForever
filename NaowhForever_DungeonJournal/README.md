@@ -259,7 +259,12 @@ The rules, in plain words:
   so are the reagents, ammunition and the drops it marks as only expected or extremely rare.
   Dalaran's two blueprints take their chance from `"counts"`, the drops players counted there
   (Spinning Wheel 14 of 166 Unstable Sentinel kills, Arcane Salvager 13 of 174 of the Shade's):
-  Wowhead's answers for those bosses predate the recipes, so it counts neither.
+  Wowhead's answers for those bosses predate the recipes, so it counts neither. Its updates read
+  25 Nov 2026 add Blackmaw Hold's rares Sabella No-Eyes and Mopes and Shaper's Terrace's King Op,
+  whose drops Wowhead Forever has (King Op's two drop from Snowtalon and Vitrix too, so they are
+  placed by hand, as is Vitrix's Albinofur Grips), Blackmaw Hold's two trash drops it only expected
+  before, Shaper's Terrace's Pattern: Blue Dragonscale Helm on its trash, and the Avatar of
+  Hakkar's Pattern: Mender's Leather Gauntlets.
 - **ForeverChanges** (with their permission) marks the drops its players have seen in game on
   its dungeon pages. `Tools/build/foreverchanges_loot.py` reads them into
   `Tools/data/foreverchanges_loot.json`, and the build places them as an `"add"` list does: on
@@ -359,7 +364,7 @@ in the pull request it opens.
 - Each quest record is `{ questID, name, level, side ("A", "H" or "B"), shareable (true, false, or
   "pre" for a prerequisite chain), where it starts, uiMapID, x, y }` (`J.C.QUEST` names the
   fields), the last three only when its quest giver stands outside the dungeon, `class` for a
-  class quest, and `races` for a quest only some races can take (a mask of their
+  class quest (a list for one several classes take: Nostro's Compendium's warriors and paladins), and `races` for a quest only some races can take (a mask of their
   `PlayableRaceBit`s, from the quest entity export; Compendium of the Fallen's also lets Horde
   Skyborne in, whom the export's classic mask predates). Optional, from Wowhead's Forever quest
   database (2026-09-26), for the dungeons up to level 20 so far: `alt` (the same quest's other
@@ -408,9 +413,10 @@ in the pull request it opens.
   amulet pieces in the dungeon each spirit is summoned in, The Challenge under Blackrock Depths,
   where it is fought), and a step of a listed quest's chain is in that chain (Precarious
   Predicament, A Crumpled Up Note, the Sparklematic and Platinum Discs versions, the libram and
-  Gordok repeatables). A chain in `Tools/data/quest_chains.json` with `from` is the Quest List's
-  (`NaowhForever_DiscoveryData/Quests.lua`, `D.Chains`), where Wowhead's cached Series had none
-  or only part of it. An item that starts a quest is the game's `ItemSparse.StartQuestID`. Quests
+  Gordok repeatables). A chain in `Tools/data/quest_chains.json` with `from` says where it is from:
+  the Quest List's (`NaowhForever_DiscoveryData/Quests.lua`, `D.Chains`), where Wowhead's cached
+  Series had none or only part of it, or players' reports (Blackmaw Reclamation's from Ekkal on,
+  the paladin storyline before Materials of Significance, the rogue jobs before Fool Me Twice). An item that starts a quest is the game's `ItemSparse.StartQuestID`. Quests
   no source gives a start for and the server has no data on (When Dreams Turn to Nightmares,
   Waking Naralex, the second Unfinished Gordok Business) are left out.
 - The quests ForeverChanges has since filed under Blackmaw Hold, Shaper's Terrace and Blackrock
@@ -434,7 +440,17 @@ in the pull request it opens.
   Reclamation, A Lost Memento, Digestible Research and The Broken Glaive. Left out: the other
   versions of State Secrets and Blackmaw Pouches, which have no text, the City of Dalaran's
   level 52 to 60 quests, which are the city's and not the dungeon's, and the Season of Discovery
-  quests the server also sent (Ever After, Nostro's Compendium).
+  quest the server also sent (Ever After). Nostro's Compendium is Forever's name for Foror's
+  Compendium, the guide's row.
+- The givers left at TBD (Blackmaw Hold's, Alcaz Prison's, two of Krol'dok Stronghold's, Zul'Farrak's,
+  Maraudon's and Razorfen Downs' Agamaggan's Blood) are the Quest List's spots for them, from
+  Forever's own data (2026-11-25), which the shared data set's later updates agree with; State
+  Secrets starts from the Document Box that More Valuable Than Gold rewards. From those updates
+  too, checked against Wowhead Forever's pages: Materials of Significance (Alliance paladins, in
+  Maraudon's and Blackrock Depths' lists, where two of its parts are), The Talisman of Kazdor
+  (rogues, Zul'Farrak), Dreadsteed of Xoroth (warlocks, Dire Maul, where Lord Hel'nurath is
+  summoned) and the Alliance's The Darkreaver Menace; the Horde's is 8258 on Forever, not the
+  classic 7668. The Medallion of Faith is repeatable on Forever (the Quest List's `D.Repeatable`).
 - Scarlet Monastery's four wings share one instance (189), each its own dungeon with classic's
   ranges. A quest goes under the wing it is done in: Hearts of Zeal (hearts from any wing) under
   the first, the two that kill Loksey, Herod, Mograine and Whitemane under the Cathedral.
@@ -466,14 +482,19 @@ in the pull request it opens.
   1 across and down. Pins and floor numbers follow the chosen picture. `quests = { { npc or
   object = ID, name, start, finish, use } }` are the quest givers, hand-ins and quest objects that
   stand inside the dungeon: `start` the quests it gives, `finish` those it takes, `use` those it is
-  clicked or burned for, each a quest ID or `{ A = ID, H = ID }` (one side's only). Its spot is a
+  clicked, burned or killed for, each a quest ID or `{ A = ID, H = ID }` (one side's only). Its spot is a
   `pins` entry under the same key as a boss's (an object's by minus its ID), placed with
   `/nf mappins`; one with no spot is not drawn. An NPC that is a Journal boss too (Baelog, Princess
   Moira, Stomper Kreeg, Captain Kromcrush) is left out: the key is its boss pin's.
+  `also = { [NPC ID] = { { floor, x, y }, ... } }` are the other spots a boss can spawn at, drawn
+  faded under its own pin and not placed with `/nf mappins` (Lorgus Jett's two up Blackfathom
+  Deeps' northern channel).
 - The quest pins' list is from the Journal's quest data and chains, quest_entity_catalog.json's
   givers and hand-ins, and the where text and quest text that put them inside (2026-11-13). The
   Ghostly Attendant (Hall of Thanes), Rexxie Copperclutch (City of Dalaran) and Mason Connery
-  (Alcaz Prison) are not listed: no source has their NPC IDs.
+  (Alcaz Prison) are not listed: no source has their NPC IDs. Krol'dok Stronghold's Tunk (his
+  Krol'dok Moulding starts the key quests) and Zalfan Moonshadow, and Nar'gurk's pin, are from a
+  player's marked map in the shared data set (2026-11-20), on the same art.
 - Most quest pins, and the rares and bosses that had no spot, were placed without the game (2026-11-13).
   The Journal's pictures of the classic dungeons keep the game's own map layout, so a spot on that
   layout needs no change. A floor's spots were taken from marks made on that layout only where the

@@ -19,7 +19,9 @@ ns.Journal.AddDungeon("BlackmawHold", {
             { npc = 269104, name = "Moontouched Wanderer", model = 12235, rare = true, loot = { 280080, 280079 }, chance = { 62, 37 } },
             { npc = 269111, name = "Gortek the Apprentice", model = 145808, rare = true, loot = { 280077, 280078 }, chance = { 60, 40 } },
             { npc = 250034, name = "Tunnelweb Matriarch", model = 2424, rare = true, loot = { 280086, 280085 }, chance = { 54, 43 } },
-            { npc = nil, name = "Trash", trash = true, loot = { 287036, 287032, 287034, 287028, 287029, 287030, 287033, 251453, 252893 } },
+            { npc = 269151, name = "Sabella No-Eyes", model = 6829, rare = true, loot = { 280083, 280084 }, chance = { 52, 44 } },
+            { npc = 247412, name = "Mopes", model = 130499, rare = true, loot = { 280082, 280081 }, chance = { 61, 39 } },
+            { npc = nil, name = "Trash", trash = true, loot = { 287036, 287032, 287034, 287028, 287029, 287030, 287033, 251453, 252893, 287031, 287035 } },
         } },
     },
 })

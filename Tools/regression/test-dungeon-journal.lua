@@ -2820,7 +2820,7 @@ do
                 check("it starts, takes or is used for a quest: " .. data.name, roles > 0)
             end
         end
-        check("the quest givers and objects of every classic dungeon with one inside", entries == 54 and maps == 16)
+        check("the quest givers and objects of every classic dungeon with one inside", entries == 56 and maps == 17)
 
         local function QuestPins()
             local list = {}
@@ -2952,6 +2952,7 @@ do
         Scholomance = { [10432] = "Vectus", [10433] = "Marduk Blackpool", [10508] = "Ras Frostwhisper",
             [16118] = "Kormok" },
         Stratholme = { [11032] = "Malor the Zealous", [11058] = "Ezra Grimm" },
+        ShapersTerrace = { [261993] = "King Op" },
         UpperBlackrockSpire = { [16042] = "Lord Valthalak" },
     }
     local function MapFloorsAndGaps(key, map, dungeon)
@@ -3051,6 +3052,19 @@ do
         sfkView:Step(1)
         check("Fenrus' Room after it", sfkView.floor == 5 and rawget(sfkView.floorName, "text") == "Fenrus' Room"
             and PinFor("Odo the Blindwatcher") == nil and PinFor("Fenrus the Devourer") ~= nil)
+        J.OpenDungeonMap(J.Get("BlackfathomDeeps"))
+        local bfdView = ShownView("Ghamoo-ra")
+        while bfdView.floor ~= 2 do bfdView:Step(1) end
+        local lorgus, faded = 0, 0
+        for _, made in ipairs(state.made) do
+            local boss = rawget(made, "boss")
+            if rawget(made, "glow") and made.view == bfdView and boss and boss.name == "Lorgus Jett"
+                and rawget(made, "shown") ~= false then
+                lorgus = lorgus + 1
+                if rawget(made, "also") then faded = faded + 1 end
+            end
+        end
+        check("Lorgus Jett: his pin and the two other spots he can spawn at", lorgus == 3 and faded == 2)
         for _, key in ipairs({ "RazorfenDowns", "Uldaman", "Maraudon", "SunkenTemple", "BlackrockDepths", "DireMaul",
             "LowerBlackrockSpire", "UpperBlackrockSpire", "Scholomance", "Stratholme", "Dalaran", "ShadowfangKeep",
             "Deadmines" }) do
