@@ -1641,6 +1641,29 @@ do
     say.hideTooltip = true
     Check(Moved(10) == "10 yd", "nor one that is not for the tooltip, and with none left only the distance")
     say.hideTooltip, other.completed = nil, nil
+    -- a line with only a number or marks in it (a hidden step's +1) is no objective: the next line is
+    other.text = "1"
+    Check(Moved(10) == "10 yd\nTalk to Duokna", "a line that is only a number is passed over")
+    other.text = "|cff00ff00+1|r"
+    Check(Moved(10) == "10 yd\nTalk to Duokna", "also in a color and with a mark")
+    other.text = ICON .. " 2/5"
+    Check(Moved(10) == "10 yd\nTalk to Duokna", "and a count with no words in it")
+    other.text = "|Aquestlog:0|a 1"
+    Check(Moved(10) == "10 yd\nTalk to Duokna", "and one with a picture of an atlas and a number")
+    other.text, other.tooltipText = "1", "Kill Boars"
+    Check(Moved(10) == "10 yd\nKill Boars", "a number as the text and words as the tooltip: the words")
+    other.text, other.tooltipText, other.rawtext = " ", nil, "Kill Boars"
+    Check(Moved(10) == "10 yd\nKill Boars", "a space as the text and words as the raw text: the words")
+    other.text, other.tooltipText, other.rawtext = "Kill Boars", nil, nil
+    say.text = "1"
+    other.completed = true
+    Check(Moved(10) == "10 yd", "with nothing but numbers left only the distance")
+    say.text, other.completed = "Talk to Duokna", nil
+    say.text = "\208\147\208\190\208\178\208\190\209\128\208\184 1"
+    Check(Moved(10) == "10 yd\nKill Boars", "a text in other letters with a number is words")
+    other.completed = true
+    Check(Moved(10) == "10 yd\n\208\147\208\190\208\178\208\190\209\128\208\184 1", "and is the objective when it is the one left")
+    say.text, other.completed = "Talk to Duokna", nil
     place.text = "Run to the cave"
     step.elements = { say, place, other }
     Check(Moved(10) == "10 yd\nRun to the cave", "the waypoint's own words, before the step's")

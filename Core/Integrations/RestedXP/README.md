@@ -149,7 +149,7 @@ Core/Integrations/RestedXP/
   words (`Plain`: no texture or atlas, which RestedXP puts in a row of its own and in the text of
   some lines). A guide often writes the place first and what to do there after it, so the waypoint has no
   `element.parent` (the line above it, `addon.lastObjective`): its own words come next, then the
-  lines of its step after it, then the ones before it, leaving out one that is done or has no tooltip. A waypoint with no words says only the distance, and RestedXP's "~" on the
+  lines of its step after it, then the ones before it, leaving out one that is done or has no tooltip, or that has nothing to read in it (`Bare`: only digits, marks and spaces once the colors and pictures are gone, such as the `+1` a guide puts in a step it hides from the window, which the arrow said as "1"). A waypoint with no words says only the distance, and RestedXP's "~" on the
   wrong continent is left. It does not wait for one of the Naowh themes to be picked in RestedXP, as the
   words are not part of how the arrow is drawn. Turning it off makes RestedXP say its own text again by clearing
   `arrow.distance`, which RestedXP compares before it sets the text.
