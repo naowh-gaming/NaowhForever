@@ -217,15 +217,17 @@ Each file uses only the ones above it in `Shared.xml`. Every part sits on `ns.Sh
   | `opacity()` | its opacity, for `panel:Paint()` |
   | `load()`, `save(point, relativePoint, x, y)`, `place` | its place: read, saved on drag, and the default `{ point, relativePoint, x, y }` |
   | `mover(panel, onMoved)` | Unlock Mode's mover: return `ns.UI.AttachMover(panel, label, onMoved, page)`; it saves through `save` |
+  | `locked()` | true while dragging the window or its title must not move it; Unlock Mode's mover still does |
   | `maxHeight()` | taller than this, its body scrolls |
 
   The panel has `panel:Paint()`, `panel:Place()`, `panel:SetTrackerWidth(w)`,
   `panel:Fit(bodyHeight)` (true when it starts or stops scrolling: set its width again and
   redraw), `panel:ScrollGap()`, `panel:Top()` and `panel:SetRows(entries)`: pooled rows of
-  `{ text, sub, color, done, waypoint(entry), tip(row), click(row, button) }`, a pin column (a
-  tick once done), the text in `color` (`T.fg` when nil), returning their height. Keep the
-  entries and refill them, with shared functions that read the entry, and a redraw makes no
-  garbage. See `NaowhForever_DungeonJournal/UI/QuestTracker.lua`, and the Discovery trackers for `bar`,
+  `{ text, sub, color, done, waypoint(entry), tip(row), click(row, button), bar, barColor }`, a pin
+  column (a tick once done), the text in `color` (`T.fg` when nil), a thin bar under the lines
+  filled to `bar` (0 to 1) in `barColor` (`T.accent` when nil) when `bar` is set, returning their
+  height. Keep the entries and refill them, with shared functions that read the entry, and a
+  redraw makes no garbage. See `NaowhForever_DungeonJournal/UI/QuestTracker.lua`, and the Discovery trackers for `bar`,
   `SetRows` and `mover`.
 - **A HUD panel:** an on-screen bar or pill uses the windows' own backdrop, `Parts.Backdrop(frame)`
   painted at `Style.BACKDROP_ALPHA` (near opaque, so the world does not tint it), with the 1px black

@@ -1871,6 +1871,8 @@ NaowhForever_QoL/
 - `UPDATE_FACTION`, `CURRENCY_DISPLAY_UPDATE` and the bag events are folded into one redraw on the next frame. A kill can send several of them at once.
 - An item the client has not loaded shows the shared unloaded name until its data arrives (`Items.OnLoaded`), then redraws.
 - Close hides the window until the next login or reload, or until the switch is turned off and on again. Unlock Mode still shows it.
+- Lock Window (`watchListLock`) stops the title and body drags; Unlock Mode's mover still moves it, so a locked window can be placed without turning the lock off.
+- Progress Bars (`watchListBars`, off by default) puts a bar under each reputation (the standing's progress in its colour, full at Exalted) and under each currency with a cap. Items and uncapped currencies have no bar.
 - The standing colours are the Dungeon Journal's, moved into `Shared/Style.lua` (`STANDING_RGB`) so both read one copy.
 
 ### Always Free for All

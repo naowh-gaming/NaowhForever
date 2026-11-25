@@ -365,7 +365,7 @@ env.CreateFrame = function(kind, name, parent)
     frame.GetFrameLevel = Level
     return frame
 end
-local where
+local where, locked
 local tracker = Parts.TrackerPanel("BOOKS", {
     width = 320, titleRoom = 74, maxHeight = function() return 300 end,
     onTitle = function() titled = true end, titleTip = "Books", titleHint = "Click for its settings.",
@@ -376,6 +376,7 @@ local tracker = Parts.TrackerPanel("BOOKS", {
     save = function(point, relativePoint, x, y) saved = { point, relativePoint, x, y } end,
     place = { "RIGHT", "RIGHT", -60, 60 },
     mover = function(frame, onMoved) moved = onMoved; return Frame(frame) end,
+    locked = function() return locked end,
 })
 check("a tracker: its bar, dropdown, cog, body and mover", tracker.bar and tracker.picker and tracker.settings
     and tracker.body and tracker.mover and tracker.footer > 0)
@@ -392,6 +393,18 @@ check("its title is clicked through to the module", titled)
 tracker.GetPoint = function() return "TOP", nil, "TOP", 5, -7 end
 tracker.scripts.OnDragStop(tracker)
 check("dragged, its place is saved", saved and saved[1] == "TOP" and saved[4] == -7)
+local moving = 0
+tracker.StartMoving = function() moving = moving + 1 end
+tracker.scripts.OnDragStart(tracker)
+tracker.titleButton.scripts.OnDragStart(tracker.titleButton)
+check("dragged by its body or its title, it moves", moving == 2)
+locked = true
+tracker.scripts.OnDragStart(tracker)
+tracker.titleButton.scripts.OnDragStart(tracker.titleButton)
+saved = nil
+tracker.scripts.OnDragStop(tracker)
+check("locked, neither drag moves it or saves its place", moving == 2 and saved == nil)
+locked = nil
 moved({ point = "LEFT", relPoint = "LEFT", x = 1, y = 2 })
 check("and Unlock Mode's mover saves through the same", saved[1] == "LEFT" and saved[4] == 2)
 local placed
@@ -435,6 +448,12 @@ tracker:SetTrackerWidth(320)
 check("its body leaves the scrollbar room", tracker.body.w == 280)
 check("and stops", tracker:Fit(100) == true and tracker:ScrollGap() == 0)
 Measure(check)("a tracker's rows laid out", 1, function() tracker:SetRows(ENTRIES) end)
+local barred = { text = "Rep", sub = "Friendly", bar = 0.25, barColor = GREY }
+tracker:SetRows({ barred, ENTRIES[2] })
+check("a row with a bar: the bar under its lines, the row taller by it", rows[1].bar and rows[1].bar.shown
+    and rows[1].h == 6 + 12 + 3 + 12 + 3 + 4 + 8 and rows[2].bar == nil)
+tracker:SetRows(ENTRIES)
+check("refilled without one, its bar hides", rows[1].bar.shown == false and rows[1].h == 6 + 12 + 3 + 12 + 8)
 
 local plain = Parts.TrackerPanel("PLAIN", {})
 check("with no options: no bar, dropdown or cog, its body under the title", not plain.bar and not plain.picker

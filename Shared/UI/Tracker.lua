@@ -11,6 +11,7 @@ local SLOT_H, SLOT_GAP, SCROLL_GAP, CLOSE_ROOM = St.TRACKER_SLOT, St.TRACKER_GAP
 local ROW_LEFT, WAYPOINT_SLOT, ROW_RIGHT, TICK = St.ROW_LEFT, St.WAYPOINT_SLOT, St.ROW_RIGHT, St.ROW_TICK
 local ROW_TOP, ROW_LINE_GAP, ROW_BOTTOM = St.ROW_TOP, St.ROW_LINE_GAP, St.ROW_BOTTOM
 local HEAD_GAP = 4
+local ROW_BAR_H = 4
 local FOOTER = ACTION + 6
 local TEXT_LEFT = ROW_LEFT + WAYPOINT_SLOT + 6
 local PIN_X = ROW_LEFT + WAYPOINT_SLOT / 2
@@ -58,17 +59,44 @@ local function PinAt(region, row, line)
     region:SetPoint("CENTER", row, "TOPLEFT", PIN_X, line)
 end
 
+local function RowBar(row)
+    local bar = CreateFrame("StatusBar", nil, row)
+    bar:SetHeight(ROW_BAR_H)
+    bar:SetMinMaxValues(0, 1)
+    bar:SetStatusBarTexture(St.WHITE)
+    bar.bg = ns.Solid(bar, "BACKGROUND", T.line, 1)
+    bar.bg:SetAllPoints()
+    return bar
+end
+
+local function FillBar(row, entry, width, y)
+    if entry.bar == nil then
+        if row.bar then row.bar:Hide() end
+        return 0
+    end
+    row.bar = row.bar or RowBar(row)
+    local bar, color = row.bar, entry.barColor or T.accent
+    bar:SetStatusBarColor(color.r, color.g, color.b)
+    bar:SetValue(entry.bar)
+    bar:SetWidth(width)
+    bar:ClearAllPoints()
+    bar:SetPoint("TOPLEFT", row, "TOPLEFT", TEXT_LEFT, -(y + ROW_LINE_GAP))
+    bar:Show()
+    return ROW_LINE_GAP + ROW_BAR_H
+end
+
 local function FillRow(row, entry, width)
     local color = entry.color or T.fg
     row.text:SetTextColor(color.r, color.g, color.b)
     row.text:SetWidth(width)
     row.text:SetText(entry.text)
     local textH = math.ceil(row.text:GetStringHeight())
-    local h = ROW_TOP + textH + ROW_BOTTOM
+    local h = ROW_TOP + textH
     row.sub:SetWidth(width)
     row.sub:SetText(entry.sub or "")
     row.sub:SetShown(entry.sub ~= nil)
     if entry.sub then h = h + ROW_LINE_GAP + math.ceil(row.sub:GetStringHeight()) end
+    h = h + FillBar(row, entry, width, h) + ROW_BOTTOM
     local line = -(ROW_TOP + textH / 2)
     PinAt(row.pin, row, line)
     row.pin:SetShown(entry.waypoint ~= nil and not entry.done)
@@ -77,8 +105,13 @@ local function FillRow(row, entry, width)
     return h
 end
 
+local function Locked(panel)
+    local locked = panel.opts.locked
+    return locked ~= nil and locked()
+end
+
 local function DragStart(frame)
-    frame:StartMoving()
+    if not Locked(frame) then frame:StartMoving() end
 end
 
 local function SaveWhere(panel)
@@ -89,12 +122,13 @@ local function SaveWhere(panel)
 end
 
 local function DragStop(frame)
+    if Locked(frame) then return end
     frame:StopMovingOrSizing()
     SaveWhere(frame)
 end
 
 local function TitleDragStart(button)
-    button:GetParent():StartMoving()
+    DragStart(button:GetParent())
 end
 
 local function TitleDragStop(button)

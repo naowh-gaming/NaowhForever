@@ -109,7 +109,7 @@ local function Number(n)
     return BreakUpLargeNumbers(n)
 end
 
-local function FillFaction(entry, id)
+local function FillFaction(entry, id, bars)
     local data = GetFactionDataByID(id)
     if not (data and data.name and data.reaction) then
         entry.text, entry.sub, entry.color = TEXT_UNKNOWN:format(id), nil, T.muted
@@ -117,16 +117,20 @@ local function FillFaction(entry, id)
     end
     local reaction = data.reaction
     entry.text, entry.color = data.name, St.STANDING_RGB[reaction]
+    entry.barColor = entry.color
     if reaction >= EXALTED then
         entry.sub = StandingLabel(reaction)
+        if bars then entry.bar = 1 end
         return
     end
     local low = data.currentReactionThreshold or 0
     local span = math.max(1, (data.nextReactionThreshold or low + 1) - low)
-    entry.sub = TEXT_STANDING:format(StandingLabel(reaction), Number(data.currentStanding - low), Number(span))
+    local done = data.currentStanding - low
+    entry.sub = TEXT_STANDING:format(StandingLabel(reaction), Number(done), Number(span))
+    if bars then entry.bar = done / span end
 end
 
-local function FillCurrency(entry, id)
+local function FillCurrency(entry, id, bars)
     local info = GetCurrencyInfo(id)
     if not (info and info.name and info.name ~= "") then
         entry.text, entry.sub, entry.color = TEXT_UNKNOWN:format(id), nil, T.muted
@@ -136,6 +140,7 @@ local function FillCurrency(entry, id)
     local quantity = info.quantity or 0
     local max = info.maxQuantity or 0
     entry.sub = max > 0 and TEXT_OF_MAX:format(Number(quantity), Number(max)) or Number(quantity)
+    if bars and max > 0 then entry.bar = quantity / max end
 end
 
 local function FillItem(entry, id)
@@ -204,11 +209,13 @@ local function AddEmpty()
     entry.key, entry.kind, entry.id = nil, nil, nil
     entry.text, entry.sub, entry.color = TEXT_EMPTY, TEXT_EMPTY_SUB, T.muted
     entry.tip, entry.click = nil, EmptyClick
+    entry.bar, entry.barColor = nil, nil
     return 1
 end
 
 function Render()
     local keys, n = Keys(), 0
+    local bars = S.Get("watchListBars")
     for i = 1, #keys do
         local kind, id = keys[i]:match(KEY)
         id = tonumber(id)
@@ -217,8 +224,9 @@ function Render()
             local entry = Entry(n)
             entry.key, entry.kind, entry.id = keys[i], kind, id
             entry.tip, entry.click = WatchTip, WatchClick
-            if kind == FACTION then FillFaction(entry, id)
-            elseif kind == CURRENCY then FillCurrency(entry, id)
+            entry.bar, entry.barColor = nil, nil
+            if kind == FACTION then FillFaction(entry, id, bars)
+            elseif kind == CURRENCY then FillCurrency(entry, id, bars)
             else FillItem(entry, id) end
         end
     end
@@ -321,6 +329,10 @@ local function Mover(frame, onMoved)
     return UI.AttachMover(frame, TEXT_NAME, onMoved, SETTINGS_PAGE, SETTINGS_PAGE .. ":" .. SETTINGS_CARD)
 end
 
+local function Locked()
+    return S.Get("watchListLock")
+end
+
 local function Close()
     closed = true
     panel:Hide()
@@ -331,7 +343,7 @@ local function Build()
         onTitle = Pick, titleTip = TEXT_NAME, titleHint = TEXT_PICK_HINT,
         onClose = Close,
         load = LoadPosition, save = SavePosition, place = PLACE,
-        mover = Mover,
+        mover = Mover, locked = Locked,
         maxHeight = function() return MAX_HEIGHT end,
     })
     panel:SetScale(S.Get("watchListScale"))
@@ -387,6 +399,7 @@ end
 local function OnSettingChanged(key, value)
     if key == "watchListScale" and panel then panel:SetScale(value) end
     if key == "watchList" then closed = nil end
+    if key == "watchListBars" then Redraw() end
     if key == "enabled" or key == "watchList" or key == "watchListItems" then Apply() end
 end
 
@@ -411,5 +424,9 @@ ns.Shared.Settings.Page("QoL/XP", S):Card({
     rows = {
         { key = "watchListScale", label = "Scale", slider = St.SCALE_RANGE, unit = "%", scale = St.PERCENT_SCALE,
           help = "How big the window is." },
+        { key = "watchListLock", label = "Lock Window", toggle = true,
+          help = "The window cannot be dragged. The HUD Editor still moves it." },
+        { key = "watchListBars", label = "Progress Bars", toggle = true,
+          help = "A bar under each reputation, and under each currency that has a cap." },
     },
 })
