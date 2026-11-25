@@ -169,13 +169,33 @@ local function AuctionEach(itemID, link)
     return ah
 end
 
-local function StackValue(itemID, link, vendor, count)
-    local each = vendor
-    if scanAuction then
-        local ah = AuctionEach(itemID, link)
-        if ah and ah > each then each = ah end
+local StackValue
+do
+    local prices, pricedAt = {}, nil
+
+    local function ScanPrice(itemID, link)
+        local now = GetTime()
+        if pricedAt ~= now then
+            wipe(prices)
+            pricedAt = now
+        end
+        local key = link or itemID
+        local known = prices[key]
+        if known == nil then
+            known = AuctionEach(itemID, link) or false
+            prices[key] = known
+        end
+        return known or nil
     end
-    return each * count
+
+    function StackValue(itemID, link, vendor, count)
+        local each = vendor
+        if scanAuction then
+            local ah = ScanPrice(itemID, link)
+            if ah and ah > each then each = ah end
+        end
+        return each * count
+    end
 end
 
 local questNeeds, questDirty = {}, true

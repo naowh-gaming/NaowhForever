@@ -1042,6 +1042,10 @@ NaowhForever_QoL/
 - Bag Space reads each slot through one reused item location (`C_Item.IsLocked`, `GetStackCount`,
   `GetItemQuality`, `GetItemIcon`) into one reused table, not `C_Container.GetContainerItemInfo`, which
   builds a new table per slot: with full bags, the scan after every craft made about 50 KB of garbage.
+- Bag Space prices each item once per scan, not once per stack: a bag of one item in many stacks
+  asked Auction Prices the same question for each. The prices it keeps last the frame of the scan
+  (`GetTime()`), so they never outlive it, and live in a `do` block because the file is at Lua 5.1's
+  limit of 200 locals in one chunk.
 - Never offered, whatever they are worth: reagents (class reagents such as Flash Powder and
   candles), projectiles, quivers, quest items and keys (item classes 5, 6, 11, 12 and 13), items
   in an equipment set, BiS items, fishing poles (weapon subclass 20) and profession tools. You need

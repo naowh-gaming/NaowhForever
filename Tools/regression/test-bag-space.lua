@@ -120,7 +120,10 @@ local function Fixture(opts)
         ShowUnlockMode = function() end,
         HideUnlockMode = function() end,
         IsBisItem = function(id) return opts.bis and opts.bis[id] end,
-        AuctionPrice = function(id) return opts.ah and opts.ah[id] end,
+        AuctionPrice = function(id)
+            if opts.asked then opts.asked[id] = (opts.asked[id] or 0) + 1 end
+            return opts.ah and opts.ah[id]
+        end,
         ScrapMarker = opts.scrap,
         Font = function(_, size, flags, color)
             local w = Widget("font")
@@ -402,6 +405,14 @@ end
 do
     local t = Fixture({ ah = { [1] = 500 }, bags = { [0] = Bag(16, { { 1, 3 }, { 2, 11 } }) } })
     Check("auction value counts", t.Row(), "Coyote Meat, Small Egg")
+end
+
+-- An item in many stacks is priced once per scan, not once per stack.
+do
+    local asked = {}
+    Fixture({ ah = { [1] = 500 }, asked = asked,
+        bags = { [0] = Bag(16, { { 1, 3 }, { 1, 2 }, { 1, 4 }, { 2, 11 } }) } })
+    Check("each item priced once a scan", asked[1] ~= nil and asked[1] == asked[2], true)
 end
 
 -- BiS items are protected; outlevelled food is marked old and can go first.
