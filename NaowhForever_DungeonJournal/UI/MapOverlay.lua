@@ -19,6 +19,8 @@ local MIN_SCALE = 0.1
 local TEXT_UP = ns.L("Right-click: ")
 
 local overlay, overlayView
+local fresh = false
+local drawnFloor, drawnScale, drawnQuests
 
 local function UpToZone()
     overlay:Hide()
@@ -31,6 +33,25 @@ local function OverlayClicked(_, button)
 end
 
 local function SwallowWheel() end
+
+local function QuestsNow(dungeon)
+    if not S.Get("mapQuestPins") then return 0 end
+    return UnitLevel("player") + (dungeon.quests and J.Quests.Signature(dungeon.quests) or 0)
+end
+
+local function Drawn()
+    fresh, drawnFloor, drawnScale = true, overlayView.floor, overlayView.scale
+    drawnQuests = QuestsNow(overlayView.dungeon)
+end
+
+local function Stale()
+    fresh = false
+end
+
+local function Kept(dungeon)
+    return overlayView.floor == drawnFloor and overlayView.scale == drawnScale and not Map.placing
+        and QuestsNow(dungeon) == drawnQuests
+end
 
 local function OverlayHidden()
     Map.ViewHidden(overlayView)
@@ -70,6 +91,7 @@ local function BuildOverlay()
     bar:SetFrameLevel(overlayView.canvas:GetFrameLevel() + BAR_LEVEL)
     overlay:SetScript("OnHide", OverlayHidden)
     overlayView.onRightClick = UpToZone
+    overlayView.onDraw = Drawn
     overlayView.onWorldMap = true
     overlayView.down:SetPoint("LEFT", HINT_PAD, 0)
     overlay.hint = ns.Font(bar, TEXT_SIZE, nil, T.fg)
@@ -77,6 +99,7 @@ local function BuildOverlay()
 end
 
 local function OnSettingChanged(key)
+    Stale()
     if key == "enabled" and not S.Get("enabled") and overlay then overlay:Hide() end
 end
 
@@ -87,6 +110,7 @@ function J.ShowMapOnWorldMap(dungeon)
     end
     if not overlay then BuildOverlay() end
     local same = overlay:IsShown() and overlayView.dungeon == dungeon
+    local reopened = not same and fresh and overlayView.dungeon == dungeon
     local keep, floor = same and overlayView.picked or nil, same and overlayView.floor or nil
     overlayView:Open(dungeon)
     overlayView.picked = keep
@@ -95,6 +119,7 @@ function J.ShowMapOnWorldMap(dungeon)
     overlay:Show()
     overlay.mapID = WorldMapFrame:GetMapID()
     Fit()
+    if reopened and Kept(dungeon) then return end
     overlayView:Draw()
 end
 
@@ -133,3 +158,7 @@ function J.FitMapOnWorldMap()
 end
 
 S.OnChange(OnSettingChanged)
+ns.OnApply(Stale)
+J.Kills.OnKill(Stale)
+J.Kills.OnRun(Stale)
+hooksecurefunc(Map, "RedrawPlacing", Stale)

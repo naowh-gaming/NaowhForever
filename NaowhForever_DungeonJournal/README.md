@@ -972,6 +972,9 @@ in the pull request it opens.
   weights, a new run, a loading screen, the dungeon map shown or not, or a lockout older than a
   minute means the next open draws again. A loading screen into a dungeon draws its page then, a frame later so the run is noted first, with the map shut,
   and so do item names that arrive while it is shut (never in combat), so an open finds it ready.
+- The dungeon's map over the world map keeps its pins between opens too, since each boss pin's
+  portrait is made from its model: an open draws them again only for another floor or map size,
+  a quest change, a kill, a new run, a setting, a profile or pin placing.
 - The world map calls every pin's `CheckMouseButtonPassthrough`, and its
   `SetPassThroughButtons` is protected: from our refresh it is blocked in combat, and the
   entrance pins want their clicks, so theirs does nothing. Pins acquired in combat taint the map,

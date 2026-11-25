@@ -1392,6 +1392,48 @@ do
     Event("BAG_UPDATE_DELAYED")
     Open()
     check("any drop on the page looted while shut draws it again, for its In Bag tag", draws == warmed + 1)
+    warmed = draws
+    local mapView
+    for _, frame in ipairs(state.made) do
+        local owner = rawget(frame, "view")
+        if rawget(frame, "glow") and type(owner) == "table" and owner.onWorldMap then mapView = owner end
+    end
+    check("inside, the dungeon's map shows over the world map", mapView ~= nil)
+    local MapView = getmetatable(mapView)
+    local mapDraw, mapDraws = MapView.Draw, 0
+    MapView.Draw = function(self, ...)
+        if self == mapView then mapDraws = mapDraws + 1 end
+        return mapDraw(self, ...)
+    end
+    Close()
+    Open()
+    check("opened again, its pins are not drawn again", mapDraws == 0 and draws == warmed)
+    Close()
+    ns.Apply()
+    Open()
+    check("a profile applied while shut draws them again", mapDraws == 1)
+    Close()
+    local pins = S.Get("mapQuestPins")
+    S.Set("mapQuestPins", true)
+    Open()
+    check("so does a setting changed while shut", mapDraws == 2)
+    Close()
+    local level = state.level
+    state.level = level + 1
+    Open()
+    check("and a quest change (here a level) with quest pins on", mapDraws == 3)
+    Close()
+    state.level = level
+    Open()
+    Close()
+    J.Kills.Add((J.Boss(639)))
+    Open()
+    check("and a kill while shut", mapDraws == 5)
+    Close()
+    Open()
+    check("the open after that leaves them", mapDraws == 5)
+    S.Set("mapQuestPins", pins)
+    MapView.Draw = mapDraw
     Close()
     S.Set("enabled", false)
     check("off, the kept page listens for nothing", next(view.events) == nil)
