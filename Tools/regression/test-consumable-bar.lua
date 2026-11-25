@@ -55,6 +55,8 @@ KNOWN[249866] = { 132794, 0, 1249920, 5 } -- Royal Tea, a Drink and Well Fed
 KNOWN[286152] = { 133890, 0, 1319311, 5 } -- Plated Armorfish: Nutritious Food, then its own Well Fed
 KNOWN[13444] = { 134854, 0, 17531, 1 } -- Major Mana Potion
 
+local SETTLES = { BAG_UPDATE_COOLDOWN = true, UNIT_AURA = true, UNIT_INVENTORY_CHANGED = true }
+
 local function fixture(settings, noMacros, class)
     local s = { level = 60, levels = {}, missing = {}, frames = {}, combat = false, counts = {}, cooldowns = {}, auras = {},
         settings = settings or {}, built = 0, blocked = 0, now = 100, timers = {},
@@ -410,6 +412,8 @@ local function fixture(settings, noMacros, class)
     function s.fire(event, ...)
         local all = {}; for i, f in ipairs(s.frames) do all[i] = f end
         for _, f in ipairs(all) do if f.events[event] then f.scripts.OnEvent(f, event, ...) end end
+        -- The bar settles cooldowns and what it shows on the next frame; let that frame pass.
+        if SETTLES[event] then s.advance(0) end
     end
     -- An item used: its spell cast, then its cooldown.
     function s.use(itemID, duration)
@@ -2392,6 +2396,25 @@ do
     local warrior = fixture({ consumableBar = true, consumableBarItems = { 'smart:drink' } }, false, 'WARRIOR')
     check("a warrior's hidden drink button does not keep their Food & Drink Bar aside",
         warrior.ns.ConsumableBarUsesFood() == false and warrior.pageRow('adding', 'Food & Drink Buttons').get() == false)
+end
+
+-- A burst of buff and cooldown events in one frame settles the bar once, on the next frame.
+do
+    local s = fixture({ consumableBar = true, consumableBarItems = { 13446 },
+        consumableBarItemFlags = { [13446] = { used = true } } })
+    local before = #s.timers
+    for _, f in ipairs(s.frames) do
+        if f.events.UNIT_AURA then
+            f.scripts.OnEvent(f, 'UNIT_AURA', 'player')
+            f.scripts.OnEvent(f, 'BAG_UPDATE_COOLDOWN')
+            f.scripts.OnEvent(f, 'UNIT_AURA', 'player')
+        end
+    end
+    check('three events in one frame queue one settle', #s.timers == before + 1)
+    s.advance(0)
+    local waiting = 0
+    for _, t in ipairs(s.timers) do if t.at <= s.now then waiting = waiting + 1 end end
+    check('and it runs on the next frame', waiting == 0)
 end
 
 print(checks .. ' consumable-bar checks passed')

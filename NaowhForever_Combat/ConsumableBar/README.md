@@ -54,6 +54,9 @@ NaowhForever_Combat/ConsumableBar/
   value handed back secret keeps what was shown. Food's use spell is the eating; what it leaves is
   Well Fed, read from Shared's lists (`ns.FOOD_SPELLS`, `ns.WELL_FED`), so it works with Aura Buffs
   off.
+- Buff changes and item cooldowns arrive in bursts (eating or drinking alone sends several in one
+  frame), and each one reread every button's cooldown and auras. They now mark the bar, and it settles
+  once on the next frame: cooldowns always, what it shows out of combat only, as before.
 - A cooldown counts only when it started with the item's own cast, seen as `UNIT_SPELLCAST_SUCCEEDED`
   (within `CAST_SLOP`, 1 s): potions share one cooldown, and drinking a healing potion must not hide
   a mana potion. A cooldown from before a reload is not seen, so the item shows until its next use.

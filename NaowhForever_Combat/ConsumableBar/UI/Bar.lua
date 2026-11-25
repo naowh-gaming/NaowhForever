@@ -26,6 +26,7 @@ local SPOT = { TOPLEFT = { -1, 1 }, TOPRIGHT = { 1, 1 }, BOTTOMLEFT = { -1, -1 }
 local HELD = { RIGHT = { -1, 0 }, LEFT = { 1, 0 }, UP = { 0, -1 }, DOWN = { 0, 1 } }
 
 local frame, pending, wakeDue
+local cooldownsDue, visibilityDue
 local syncedMacros = ""
 local buttons = {}
 local pool = {}
@@ -328,6 +329,19 @@ local function AnyHideUsed()
     return false
 end
 
+local function Settle()
+    if cooldownsDue then UpdateCooldowns() end
+    cooldownsDue, visibilityDue = nil, nil
+    UpdateVisibility()
+end
+
+local function SettleSoon(cooldowns)
+    if cooldowns then cooldownsDue = true end
+    if visibilityDue then return end
+    visibilityDue = true
+    C_Timer.After(0, Settle)
+end
+
 local function OnEvent(_, event, unit, success, spellID)
     if event == "UNIT_LEVEL" or event == "GET_ITEM_INFO_RECEIVED" then
         if event == "UNIT_LEVEL" and unit ~= "player" then return end
@@ -351,10 +365,9 @@ local function OnEvent(_, event, unit, success, spellID)
     elseif event == "PLAYER_ENTERING_WORLD" then
         Apply()
     elseif event == "BAG_UPDATE_COOLDOWN" then
-        UpdateCooldowns()
-        UpdateVisibility()
+        SettleSoon(true)
     elseif event == "UNIT_AURA" or event == "UNIT_INVENTORY_CHANGED" then
-        if unit == "player" then UpdateVisibility() end
+        if unit == "player" then SettleSoon(false) end
     elseif event == "UPDATE_MACROS" then
         RefreshMacros()
     elseif event == "BAG_UPDATE_DELAYED" then
