@@ -260,6 +260,7 @@ ns.FEATURES = {
         enabled = false,
         ledger = false,
         cheapUpgrades = false,
+        mailCollect = false,
     },
     macros = {
         enabled = true,

@@ -161,7 +161,7 @@ read_globals = {
     "ClickSendMailItemButton", "GetInboxHeaderInfo", "GetInboxItem", "GetInboxNumItems",
     "GetInboxInvoiceInfo", "GetInboxItemLink", "GetBuybackItemInfo", "AUCTION_SOLD_MAIL_SUBJECT",
     "AUCTION_EXPIRED_MAIL_SUBJECT", "AUCTION_REMOVED_MAIL_SUBJECT", "AUCTION_OUTBID_MAIL_SUBJECT", "SendMail", "GetSendMailMoney",
-    "GetSendMailItem",
+    "GetSendMailItem", "TakeInboxMoney", "TakeInboxItem", "InboxFrame", "C_Mail",
     "GetLooseMacroIcons", "GetLooseMacroItemIcons", "GetMacroIcons", "GetMacroItemIcons",
     "HasSendMailItem", "MailFrame", "SendMailFrame", "SendMailNameEditBox", "SendMailSubjectEditBox",
 }

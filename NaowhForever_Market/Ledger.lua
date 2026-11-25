@@ -372,6 +372,16 @@ local function Apply()
     Start()
 end
 
+function Ledger.MailKind(index)
+    local _, _, _, subject = GetInboxHeaderInfo(index)
+    local invoice = GetInboxInvoiceInfo(index)
+    if invoice == SALE_INVOICE or Subject(subject, "sold") then return "sold" end
+    if invoice == BUY_INVOICE then return "bought" end
+    if Subject(subject, "expired") then return "expired" end
+    if Subject(subject, "cancelled") then return "cancelled" end
+    if Subject(subject, "outbid") then return "outbid" end
+end
+
 function Ledger.View(kind, amount)
     if FAILED[kind] then return "failed" end
     if SALES[kind] then return amount > 0 and "sales" or "purchases" end

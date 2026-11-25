@@ -49,5 +49,6 @@
     <Script file="UI\BagWorth.lua"/>
     <Script file="UI\Tooltip.lua"/>
     <Script file="UI\Mail.lua"/>
+    <Script file="UI\Collect.lua"/>
     <Script file="UI\SettingsPage.lua"/>
 </Ui>

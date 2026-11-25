@@ -189,6 +189,9 @@ page:Card({
         { key = "aheadAllowed", label = "Items Ahead Allowed", slider = AHEAD_RANGE, needs = On, why = Why,
           help = "An auction is undercut only when more than this many items are listed for less. Other sellers' "
               .. "stackable goods at your price count too, as the newest sells first." },
+        { key = "mailCollect", label = "Collect Mail", toggle = true, needs = On, why = Why,
+          search = "mailbox inbox open all take sold expired bought cancelled",
+          help = "A Collect button beside your inbox takes all your mail, or only sold, bought or expired auctions." },
     },
 })
 

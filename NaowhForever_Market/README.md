@@ -92,6 +92,7 @@ NaowhForever_Market/
     BagWorth.lua     the Bag Worth card on your bags, with your bank if you ask, and the numbers on their most valuable slots
     Tooltip.lua      The Market's lines on item tooltips
     Mail.lua         what a mail's attachments would fetch at auction, one line on the inbox's own tooltip
+    Collect.lua      the Collect button beside the inbox: all mail, or only sold, bought or expired auctions
     SettingsPage.lua the settings page, declared as cards
 ```
 
@@ -890,6 +891,18 @@ NaowhForever_Market/
 - The buttons' OnUpdate builds the tooltip again every frame while it is up. The total is therefore kept
   for `TOTAL_KEEP` (half a second) for the mail under the mouse: its `ATTACHMENTS_MAX_RECEIVE` (16)
   attachments are read twice a second, not sixty times, and a mail that changed is right half a second on.
+- Collect Mail (`mailCollect`, off, on My Auctions) puts a Collect button beside the inbox, where the Alts
+  button sits beside Send. Its menu takes All Mail, Sold Auctions, Bought Auctions, or Expired and Cancelled,
+  each with how many mails it would open. All Mail is what Blizzard's Open All takes; the others match a
+  mail as the Ledger does (`Ledger.MailKind`): the invoice type first, then the auction mail subjects.
+- It takes one thing at a time, gold first, then each attachment, every `TAKE_DELAY` (0.15 s) and only while
+  `C_Mail.IsCommandPending` is false, the pace Open All keeps. Each take scans the inbox from the top, as a
+  mail emptied of its last attachment is deleted and the ones under it move up. Taking goes through the
+  global `TakeInboxMoney` and `TakeInboxItem`, so the Ledger's hooks record each sale and failed auction.
+- C.O.D. and GM mail are never taken, as Open All leaves them to the player. With full bags it still takes
+  gold, so Sold works with no free slot, and says once that items stayed in the mail. An item that fails
+  (`MAIL_FAILED` with its ID, such as a unique one you hold) is skipped; a failure with no item stops.
+- Its OnUpdate runs only while collecting. Clicking Stop, the Send tab or closing the mailbox ends it, as Open All stops when its button hides.
 - Average Price (`tooltipAverage`, off) adds "7-day average": the mean of the item's lowest price on each
   day that has one among the last `CHANGE_DAYS` (7) days of history, the window the change line looks back
   over, counted back from the last day with prices. It needs `AVERAGE_MIN_DAYS` (3) of them: two days are
@@ -918,7 +931,7 @@ and their share string, and `test-market-search-view.lua` Buy's Watch List and S
 `test-market-houses.lua` covers the other auction house's price and what is kept per house,
 `test-market-movers.lua` the movers, and `test-market-buy-watch.lua` Price Graph's list, its views and its header.
 `test-market-bank.lua` covers Include Bank: what is kept of the bank, its worth and its lines on the card,
-and `test-market-mail.lua` Mailbox Total.
+`test-market-mail.lua` Mailbox Total and `test-market-collect.lua` Collect Mail.
 `test-market-sell-ask.lua` builds the Sell page on stub frames (`market_sell_page.lua`) for Ask Before a Bad Post,
 `test-market-sell-marks.lua` for favourites and hidden items, `test-market-sell-undercut.lua` for Undercut's Percent
 and Fixed Amount and the Starting Bid, `test-market-sell-past.lua` for your past posts, and
@@ -1372,3 +1385,13 @@ The Ledger:
      the price each for 1, with the cheapest row lit. Type 0, a word, a number inside the second row and one past
      the third: no line and no rows lit, then the first two lit, then all three, totalled only up to the third.
      Type more than you can pay: it says so. Cancel: the rows go back. Buy: the confirm's total matches the line.
+
+Collect Mail, at a mailbox:
+
+166. With Collect Mail off (the default), the inbox is Blizzard's own. On, a Collect button sits beside the
+     inbox. Its menu lists All Mail, Sold Auctions, Bought Auctions and Expired and Cancelled, each with a count.
+167. With sold, expired, cancelled and won auction mail and a mail from another character, pick Sold Auctions:
+     only the sold mails' gold comes out, the button reads Stop meanwhile, and the Ledger's Sales lists each once.
+     Bought Auctions and Expired and Cancelled take only theirs; All Mail takes the rest.
+168. A C.O.D. mail stays. With full bags, Sold still takes gold, and Expired says items stayed in the mail.
+169. Click Stop, the Send tab, or close the mailbox, part way: it stops. No Lua error and no blocked action, in or out of combat.
