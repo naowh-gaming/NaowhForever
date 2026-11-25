@@ -58,6 +58,9 @@ Settings.Page("BiS List/Settings"):Card({
         { key = "enabled", label = "Upgrades on Tooltips", toggle = true,
           help = "On gear that is an upgrade for your spec, a line saying by how much (\"+9% upgrade\"). The "
               .. "BiS List uses these weights either way." },
+        { key = "allSpecs", label = "All Specs on Tooltips", toggle = true,
+          help = "The upgrade line for each of your class's specs, not only yours: yours first, then the others "
+              .. "it is an upgrade for." },
         { key = "upgradeMarks", label = "Upgrade Marks", toggle = true,
           help = "An upgrade arrow and percent on quest rewards, merchants, loot and the auction house." },
         { key = "healerMana", label = "Healer Mana", toggle = true,

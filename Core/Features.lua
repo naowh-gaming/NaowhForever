@@ -172,6 +172,7 @@ ns.FEATURES = {
     },
     statWeights = {
         enabled = false,
+        allSpecs = false,
         healerMana = false,
         manaUpgrades = false,
         upgradeMarks = false,

@@ -661,6 +661,20 @@ do
     check("a cloak asked as anyone's, not as cloth", asked == "ROGUE 4 0")
     ITEMS[1][1] = "INVTYPE_HAND"
     ns.ClassCanUse = nil
+    check("only your spec's line by default", #Lines(1) == 1)
+    S.Set("allSpecs", true)
+    lines = Lines(1)
+    check("All Specs: your spec's line first, then the class's others", #lines == 3
+        and lines[1]:find("Assassination", 1, true) and lines[2]:find("Combat", 1, true)
+        and lines[3]:find("Subtlety", 1, true))
+    ns.StatWeights.PickSpec("combat-rogue")
+    lines = Lines(1)
+    check("All Specs: a later spec of yours still comes first", #lines == 3
+        and lines[1]:find("Combat", 1, true) and lines[2]:find("Assassination", 1, true)
+        and lines[3]:find("Subtlety", 1, true))
+    ns.StatWeights.PickSpec(nil)
+    check("All Specs: still nothing on what is worse", #Lines(9) == 0)
+    S.Set("allSpecs", false)
     S.Set("enabled", false)
     check("the module off, no line", #Lines(1) == 0)
 end

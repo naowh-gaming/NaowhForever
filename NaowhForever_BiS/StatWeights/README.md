@@ -12,6 +12,9 @@ scales on the BiS List's title bar), and only their changes are kept, for the ac
   you wear, a two-hander against both hands. While you hold a two-hander, a one-hander or an
   off-hand item is weighed with the best item in your bags for the other hand, and the line
   names it: "+4% upgrade (dot) Combat (dot) with Thrash Blade".
+- **On (All Specs on Tooltips):** that line for each of your class's specs, each by its own weights:
+  yours first (with its mana line), then every other spec the item is an upgrade for, in the class's
+  order. Upgrade Marks and the BiS List stay on your spec.
 - **On (Upgrade Marks):** the arrow and percent on the item itself, no hover needed: quest rewards
   (at the quest giver and in the quest log and map), merchants, the loot window, loot rolls and the
   auction house's browse list. Among two or more reward choices, a gold coin marks the one that

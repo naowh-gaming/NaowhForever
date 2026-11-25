@@ -120,7 +120,7 @@ end
 local SW = { MAX_WORTH = 1000, PERCENT = 100 }
 ns.StatWeights = SW
 
-local S = UI.ModuleSettings("statWeights", { enabled = F.enabled, healerMana = F.healerMana,
+local S = UI.ModuleSettings("statWeights", { enabled = F.enabled, allSpecs = F.allSpecs, healerMana = F.healerMana,
     manaUpgrades = F.manaUpgrades, upgradeMarks = F.upgradeMarks, fightLength = FIGHT_LENGTH })
 SW.Settings = S
 ns.StatWeightSettings = S
