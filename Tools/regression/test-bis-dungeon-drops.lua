@@ -302,7 +302,10 @@ for _, id in ipairs({ 5821, 263435, 263436, 270039, 270046, 272996, 276727, 2772
     286982, 286983, 286984, 286985, 286993, 286995, 286996, 287068, 287069,
     -- ForeverChanges' lists of 3 Nov 2026: made from another item (Coldflame Saber) or a quest
     -- chain (Wolfsbane), with no source on Wowhead.
-    267369, 276631 }) do UNSOURCED[id] = true end
+    267369, 276631,
+    -- The level-60 pre-raid lists of 24 Nov 2026: no source on them, nor on Wowhead's item pages.
+    9484, 12970, 14550, 17223, 18023, 19989, 21135, 22230, 22273, 272451, 272524, 272536, 276340, 276632,
+    280083, 280084, 282027, 282071, 284102, 284270 }) do UNSOURCED[id] = true end
 
 Case("every ranked item has a source, from the Journal's dungeons or wowsrc", function()
     local dungeons = {}

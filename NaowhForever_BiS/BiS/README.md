@@ -1,9 +1,10 @@
 # BiS List
 
 Your best-in-slot picks for every gear slot, ranked: your BiS (an orange star), your second
-pick (a silver one), then the rest. Picks come from MythicSim's simmed level-60 gear for your spec
-(its pre-raid BiS, and its best trinkets in sim order), then wowsrc.com's ranking for it, then
-ForeverChanges' picks for it that wowsrc does not rank, from every dungeon drop, every piece of
+pick (a silver one), then the rest. Picks come from what most level-60 pre-raid lists agree on for
+your spec, then MythicSim's simmed level-60 gear for it (its pre-raid BiS, and its best trinkets in
+sim order), then wowsrc.com's ranking for it, then ForeverChanges' picks for it that wowsrc does not
+rank, then every other item those pre-raid lists name, from every dungeon drop, every piece of
 crafted gear, every class quest reward and every rare or epic world drop your class can use, or from Alt+Shift-clicking any item. The list has its
 own window (`/nfbis`, a key binding, or the BiS stat in the Dungeon Journal): your paperdoll
 on the left, a card per slot with its picks on the right, where to run next (a waypoint on
@@ -33,7 +34,7 @@ BiS/
   BiS.lua             settings, a list's shape, change listeners (ns.BiS)
   Constants.lua       the numbers several files share: the hand slots, a list name's length (B.C)
   Data/               generated, no logic
-    BiS.lua           MythicSim's picks per spec, then wowsrc.com's ranking and ForeverChanges', its trinkets in sim order, and item sources (Tools/build/bis_data.py)
+    BiS.lua           the pre-raid lists' agreed picks and MythicSim's per spec, then wowsrc.com's ranking, ForeverChanges' and the lists' others, its trinkets in sim order, and item sources (Tools/build/bis_data.py)
     Leveling.lua      each spec's gear at levels 30, 40, 50 and 60 for each side, and its sources (Tools/build/leveling_bis.py)
     Crafts.lua        the gear professions craft, its facts and profession, for the picker (Tools/build/bis_crafts.py)
     ClassQuests.lua   the gear class quests reward, its facts, source and quest, for the picker (Tools/build/bis_class_quests.py)
@@ -70,7 +71,7 @@ BiS/
     Bags.lua          Bag Marks: the slot marks on your bags' items, the game's, EllesmereUI's, or Baganator's
     QuestsPage.lua    the Quests page: the Journal's quest and item rows, on a Journal view
   UI/
-    NewList.lua       the New List dialog: name, Only for, a list to start from (B.OpenNewList)
+    NewList.lua       the New List dialog: name, Only for, a list or Pre-raid BiS to start from (B.OpenNewList)
     Actions.lua       new, rename, delete, import, export, test: the window and page share them (B.Actions)
     Picker.lua        a slot's picker, in a side panel beside the window
     Window.lua        the window (ns.OpenBisWindow, /nfbis, its key binding)
@@ -90,7 +91,7 @@ Other modules call in through `ns`: `ns.IsBisItem` (the Journal, Bag Space, the 
 | --- | --- |
 | A colour, a size, a font size, an icon | `View/Style.lua`, or `Shared/Style.lua` for the house look (the stars) |
 | What a class can wear or wield | `Rankings.lua` |
-| A spec's ranking | `python Tools/build/bis_data.py` (daily in CI); MythicSim's picks before it and its trinket order, `python Tools/build/mythicsim_bis.py`, ForeverChanges' after it, `python Tools/build/foreverchanges_bis.py`, then `bis_data.py` |
+| A spec's ranking | `python Tools/build/bis_data.py` (daily in CI); MythicSim's picks before it and its trinket order, `python Tools/build/mythicsim_bis.py`, ForeverChanges' after it, `python Tools/build/foreverchanges_bis.py`, the pre-raid lists' votes, `python Tools/build/site_bis.py`, then `bis_data.py` |
 | A spec's gear at levels 30 to 60 (the Auto list's pool) | `python Tools/build/leveling_bis.py` |
 | The crafted gear the picker offers | `python Tools/build/bis_crafts.py`, after the Professions' recipe data changes |
 | The class quest rewards the picker offers | `python Tools/build/bis_class_quests.py`, after ForeverChanges' quest list or the Quest List's data changes |
@@ -122,6 +123,10 @@ Other modules call in through `ns`: `ns.IsBisItem` (the Journal, Bag Space, the 
   is picked too: the tab's spec when it has picks there, else the first that has. Each slot the
   source has picked is copied unless untoggled, its BiS and backups in order, as tables of the new
   list's own. The new list is made on the tab on show, ticked or not.
+- New List can also start from Pre-raid BiS: for the spec picked, each slot's pick the level-60 pre-raid
+  lists agree on and its next two as backups (`preRaid` in `Data/BiS.lua`, `R.PreRaid`), leaving out
+  what the client does not know, the other side's quest rewards and a second of the ring or trinket
+  already picked. Naowh Picks sits under it, greyed, until Naowh's own lists ship.
 - Older saved lists are moved when read: a character's own list from before lists were shared joins
   its class's (named for the character unless it had a name), a flat item list is put in slots, and
   the unordered next picks of the 0.5.12 test builds go in ranked order.
@@ -142,6 +147,10 @@ Other modules call in through `ns`: `ns.IsBisItem` (the Journal, Bag Space, the 
   keeping its rank. At the top level the second part is empty and the ranking reads as one list.
 - MythicSim's picks lead each slot's ranking because wowsrc's rankings stop below level 40. Its
   raid trinkets stay out until the raids open (`RAIDS_OPEN` in `Tools/build/mythicsim_bis.py`).
+- Ahead of MythicSim's pick goes one that at least `VOTES` (2) of it and five level-60 pre-raid
+  lists pick first for the slot (`Tools/build/bis_data.py`), most votes first; a ring or trinket is
+  a vote for both slots of its pair. MythicSim sims no healer, so a healer's slots are led by the
+  lists' picks with one vote too. A one-faction item (PvP gear) can lead when the lists agree on it.
 - A slot you change on the Auto list (add, remove, move) is kept in `kept` and never refilled;
   Generate BiS List again lets every slot go back to the Auto picks. To mix more freely, New List can
   start from the Auto list.

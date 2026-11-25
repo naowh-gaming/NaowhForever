@@ -226,6 +226,42 @@ function R.Candidates(slot, spec)
     return ids
 end
 
+function R.PreRaid(key)
+    local preRaid
+    for _, spec in ipairs(ns.BiSData.specs) do
+        if spec.key == key then
+            preRaid = spec.preRaid
+            break
+        end
+    end
+    if not preRaid then return nil end
+    local slots, extra = {}, {}
+    for _, gear in ipairs(Items.GEAR_SLOTS) do
+        local slot = gear[1]
+        local partner = slots[Items.PAIR[slot]]
+        for _, id in ipairs(preRaid[slot] or EMPTY) do
+            if id ~= partner and C_Item.GetItemInfoInstant(id) and not R.OtherSideQuest(id) then
+                if not slots[slot] then
+                    slots[slot] = id
+                else
+                    extra[slot] = extra[slot] or {}
+                    extra[slot][#extra[slot] + 1] = id
+                end
+            end
+        end
+    end
+    for slot, partner in pairs(Items.PAIR) do
+        local backups = extra[slot] or EMPTY
+        for i = #backups, 1, -1 do
+            if backups[i] == slots[partner] then table.remove(backups, i) end
+        end
+        if extra[slot] and #extra[slot] == 0 then extra[slot] = nil end
+    end
+    local main = slots[C.MAIN_HAND]
+    if main and Items.IsTwoHand(main) then slots[OFF_HAND], extra[OFF_HAND] = nil, nil end
+    return slots, extra
+end
+
 local function Offered(pool, slot, ranked, near)
     local level = UnitLevel("player")
     local skip = {}

@@ -205,9 +205,11 @@ end
 
 local function Copied(from)
     local slots, extra = {}, {}
-    local source = FindList((ClassLists()), from.id)
-    local picked, more, route = nil, nil, nil
-    if source then picked, more, route = PicksOn(source, from.spec) end
+    local picked, more, route = from.picks, from.extra or NONE, nil
+    if not picked then
+        local source = FindList((ClassLists()), from.id)
+        if source then picked, more, route = PicksOn(source, from.spec) end
+    end
     if not picked then return slots, extra end
     for slot in pairs(from.slots) do
         if picked[slot] then

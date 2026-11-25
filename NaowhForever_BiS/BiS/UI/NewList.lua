@@ -1,4 +1,4 @@
--- NewList.lua: the New List dialog: its name, Only for your spec, and a list to start from (B.OpenNewList).
+-- NewList.lua: the New List dialog: its name, Only for your spec, and a list or Pre-raid BiS to start from (B.OpenNewList).
 local ns = _G.NaowhForever
 
 local T = ns.THEME
@@ -25,12 +25,16 @@ local SPEC_Y = FIELDS_Y + (FIELD_H + GAP) + (TOGGLE_H + GAP) + (FIELD_H + GAP)
 local BUTTON_W, BUTTON_H, BUTTON_GAP = 120, 26, 4
 local MIN_H = SPEC_Y + BUTTON_H + PAD
 local EMPTY = 0
+local PRE_RAID, NAOWH = "preRaid", "naowh"
+local PRE_RAID_SOURCE = { id = PRE_RAID }
 local NONE = {}
 local TEXT_TITLE = ns.L("New List")
 local TEXT_NAME = ns.L("Name")
 local TEXT_ONLY_FOR = ns.L("Only for %s")
 local TEXT_FROM, TEXT_SPEC = ns.L("Start From"), ns.L("Spec's Picks")
 local TEXT_EMPTY, TEXT_CLASS_LISTS, TEXT_SPEC_ONLY = ns.L("Empty"), ns.L("Class lists"), ns.L("%s only")
+local TEXT_READY, TEXT_PRE_RAID = ns.L("Ready-made"), ns.L("Pre-raid BiS")
+local TEXT_NAOWH = ns.L("Naowh Picks (coming soon)")
 local TEXT_SLOT_COUNT, TEXT_NOTHING = ns.L("%d slots"), ns.L("nothing picked")
 local TEXT_COPY = ns.L("Copy %d of %d slots")
 local TEXT_SLOT = "%s (%s)"
@@ -46,6 +50,7 @@ local Paint
 
 local function Source()
     if chosen.from == EMPTY then return nil end
+    if chosen.from == PRE_RAID then return PRE_RAID_SOURCE end
     for _, l in ipairs(L.All()) do
         if l.id == chosen.from then return l end
     end
@@ -55,6 +60,12 @@ local function SourceSpec(source)
     return L.SpecOnly(source) and source.spec or chosen.spec
 end
 
+local function Picked(source, key)
+    if source == PRE_RAID_SOURCE then return R.PreRaid(key) end
+    local slots, extra = L.PicksOn(source.id, key)
+    return slots, extra
+end
+
 local function Count(slots)
     local n = 0
     for _ in pairs(slots or NONE) do n = n + 1 end
@@ -62,7 +73,7 @@ local function Count(slots)
 end
 
 local function SpecCount(source, key)
-    return Count((L.PicksOn(source.id, key)))
+    return Count((Picked(source, key)))
 end
 
 local function DefaultSpec(source)
@@ -85,6 +96,9 @@ end
 
 local function FromMenu(desc)
     desc:CreateRadio(TEXT_EMPTY, IsFrom, SetFrom, EMPTY)
+    desc:CreateTitle(TEXT_READY)
+    desc:CreateRadio(TEXT_PRE_RAID, IsFrom, SetFrom, PRE_RAID)
+    desc:CreateRadio(TEXT_NAOWH, IsFrom, SetFrom, NAOWH):SetEnabled(false)
     desc:CreateTitle(TEXT_CLASS_LISTS)
     for _, l in ipairs(L.All()) do
         if not L.SpecOnly(l) then desc:CreateRadio(fromNames[l.id], IsFrom, SetFrom, l.id) end
@@ -193,7 +207,7 @@ end
 
 local function PaintRows()
     local source = Source()
-    local picked = source and L.PicksOn(source.id, SourceSpec(source))
+    local picked = source and (Picked(source, SourceSpec(source)))
     wipe(loading)
     for _, row in ipairs(dialog.rows) do PaintRow(row, picked) end
     PaintCount()
@@ -246,9 +260,10 @@ local function Create()
     local source = Source()
     local from
     if source then
-        local picked = L.PicksOn(source.id, SourceSpec(source)) or NONE
+        local picked, extra = Picked(source, SourceSpec(source))
         from = { id = source.id, spec = SourceSpec(source), slots = {} }
-        for slot in pairs(picked) do
+        if source == PRE_RAID_SOURCE then from.picks, from.extra = picked, extra end
+        for slot in pairs(picked or NONE) do
             if not chosen.off[slot] then from.slots[slot] = true end
         end
     end
@@ -325,7 +340,7 @@ end
 
 local function FillFromNames()
     wipe(fromNames)
-    fromNames[EMPTY] = TEXT_EMPTY
+    fromNames[EMPTY], fromNames[PRE_RAID] = TEXT_EMPTY, TEXT_PRE_RAID
     for _, l in ipairs(L.All()) do fromNames[l.id] = l.name end
 end
 
