@@ -184,7 +184,7 @@ local function fixture(settings, noBis, language)
         showAlliance = true, showHorde = true, showKills = true, shareRequests = true,
         showAppearance = false, showTips = true, missingBisOnly = false, myRecipes = true, showCosmetic = true,
         repQuestsOpen = true, bossTipOpen = true, bossQuestsOpen = true, bossAbilitiesOpen = true,
-        showKeys = true, questHelp = false,
+        showKeys = true, questHelp = false, lootMinLevel = 0, lootMaxLevel = 0,
     }
     for k, v in pairs(settings or {}) do values[k] = v end
     -- The kit's module settings: Set tells every listener, as UI.ModuleSettings does.
@@ -265,6 +265,7 @@ local function fixture(settings, noBis, language)
         OpenBisWindow = function() state.bisOpened = true end,
         SetButtonText = function() end,
         Tooltip = function() end,
+        NewEditBox = function(parent) return Frame(state, parent) end,
         ThemeTint = function() return WHITE end,
         NewSearchBox = function(parent, _, onSearch)
             local box = Frame(state, parent)
@@ -750,6 +751,8 @@ do
     local withAbilities = 0
     for _ in pairs(J.Abilities) do withAbilities = withAbilities + 1 end
     check("hundreds of bosses have abilities", withAbilities > 150)
+    check("a summoned boss many groups skip is optional, so the run finishes without him",
+        J.Boss(10506).optional and not J.Numbered(J.Boss(10506)) and J.Boss(8443).optional)
 
     -- The Filters menu and the settings page are both built from J.OPTION_GROUPS.
     local labels, offered = {}, {}
@@ -1681,6 +1684,41 @@ do
     menu.scripts.OnHide(menu)
     check("and it stops listening", next(menu.events) == nil)
     state.mouseOver = nil
+    do
+        -- The level range: two boxes, empty for no limit, saved when one is left.
+        local levelRow
+        for _, part in ipairs(menu.parts) do
+            if rawget(part, "option") and part.option.to then levelRow = part end
+        end
+        check("the level range is two boxes, empty at first", levelRow and levelRow.low:GetText() == ""
+            and levelRow.high:GetText() == "" and S.Get("lootMinLevel") == 0 and S.Get("lootMaxLevel") == 0)
+        local filtersOn = tonumber(rawget(funnel.count, "text")) or 0
+        levelRow.low:SetText("40")
+        levelRow.low.scripts.OnEditFocusLost(levelRow.low)
+        check("a level typed is saved as the box is left", S.Get("lootMinLevel") == 40)
+        check("and counts as a filter on", tonumber(rawget(funnel.count, "text")) == filtersOn + 1)
+        levelRow.high:SetText("45")
+        levelRow.high.scripts.OnEscapePressed(levelRow.high)
+        check("Escape puts the box back", levelRow.high:GetText() == "" and S.Get("lootMaxLevel") == 0)
+        local Loot = ns.Journal.Loot
+        local filters = Loot.ReadFilters({})
+        filters.usableOnly, filters.myRecipes, filters.showCosmetic = false, false, true
+        filters.missingBis, filters.upgradesOnly = false, false
+        local below, inside
+        for id, facts in pairs(ns.Journal.Items) do
+            if facts[ns.Journal.FACT.REQUIRED] == 30 then below = id end
+            if facts[ns.Journal.FACT.REQUIRED] == 50 then inside = id end
+        end
+        check("an item under the range is not listed, one in it is", not Loot.Shown(below, filters)
+            and Loot.Shown(inside, filters))
+        check("the range takes in its ends, and no required level counts as 1",
+            Loot.LevelFits(40, filters) and not Loot.LevelFits(39, filters)
+            and Loot.LevelFits(nil, { minLevel = 0, maxLevel = 1 }) and not Loot.LevelFits(46, { minLevel = 0, maxLevel = 45 }))
+        levelRow.low:SetText("")
+        levelRow.low.scripts.OnEditFocusLost(levelRow.low)
+        check("an emptied box is no limit again", S.Get("lootMinLevel") == 0
+            and Loot.LevelFits(30, Loot.ReadFilters({})))
+    end
     -- An item's drop chance on hover reads as its marks do: a bag, the words in its bar's
     -- colour, then how often, muted.
     local item, lines = nil, {}
@@ -1843,7 +1881,7 @@ do
         for _, entry in ipairs(doneList) do allDone = allDone and entry.kind == "done" end
         check("on, they are listed as handed in", allDone)
         check("Hide Completed Dungeons starts off, in the filters", state.defaults.hideCompleted == false
-            and J.OPTION_GROUPS[1].options[6].key == "hideCompleted")
+            and J.OPTION_GROUPS[1].options[7].key == "hideCompleted")
         check("off, a dungeon all done stays listed", deadminesRow.shown ~= false)
         local before = List.Next(deadmines, -1)
         S.Set("hideCompleted", true)
@@ -1860,7 +1898,7 @@ do
         local color = env.GetQuestDifficultyColor
         env.GetQuestDifficultyColor = function() return env.QuestDifficultyColors.trivial end
         check("Show Low-Level Quests starts off, after Show Done Quests", state.defaults.showLowQuests == false
-            and J.OPTION_GROUPS[1].options[8].key == "showLowQuests")
+            and J.OPTION_GROUPS[1].options[9].key == "showLowQuests")
         local greyList = J.Quests.List(deadmines.quests, {}, {})
         local onlyTurnIns = true
         for _, entry in ipairs(greyList) do

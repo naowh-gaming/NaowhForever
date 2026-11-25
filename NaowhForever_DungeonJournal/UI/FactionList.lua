@@ -254,8 +254,9 @@ local function Unlocked(faction, reaction)
     end
     local skills = SkillsKey()
     if c.total == nil or c.reaction ~= reaction or c.usable ~= filters.usableOnly or c.mine ~= filters.myRecipes
-        or c.skills ~= skills then
+        or c.skills ~= skills or c.minLevel ~= filters.minLevel or c.maxLevel ~= filters.maxLevel then
         c.reaction, c.usable, c.mine, c.skills = reaction, filters.usableOnly, filters.myRecipes, skills
+        c.minLevel, c.maxLevel = filters.minLevel, filters.maxLevel
         c.unlocked, c.total = Rep.Unlocked(faction, reaction, filters)
     end
     return c.unlocked, c.total

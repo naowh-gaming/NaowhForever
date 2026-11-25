@@ -842,6 +842,9 @@ in the pull request it opens.
   boss that shares its fight (`with`) are not needed. "The last boss" cannot be used: the data
   lists bosses in kill order, but some, like Cookie after Edwin VanCleef, are killed before
   the end.
+- A boss you have to summon that many groups skip is optional, so a run without him still
+  finishes: the Avatar of Hakkar, and Kirtonos the Herald (Blood of the Innocent at the Gallery).
+  A run that ended before this, waiting on him, stays unfinished: saved runs are not looked at again.
 - A run's time is from the door to the kill that finished it, time outside included (it is shown
   on its own). Each boss's split is compared with the best split for that boss over your other
   runs of the dungeon, not with one best run, so a boss you skipped once still has a best.
@@ -936,6 +939,11 @@ in the pull request it opens.
 - The faction switch keeps one half on: switching off the last turns the other back on.
 - The faction switch hides only the dungeons whose entrance is inside a capital (`ns.TownCapitals`).
   Both sides run the rest, such as Gnomeregan and the Scarlet Monastery, whoever's ground they are on.
+- Level Range (`lootMinLevel`, `lootMaxLevel`) is two boxes in the Filters menu, 0 (an empty box)
+  for no limit on that side, saved when you leave a box. An item counts at its required level, one
+  with none at 1 as in the Loot Finder; a quest's rewards (its side panel, its detail card and the
+  hover) at the quest's required level (`QuestMinLevel`, else its level). The settings page has the
+  same two as text rows.
 - The Loot Finder (`lootFinder`, on by default) is a bag on the title bar; its page is drawn in
   the window's page area, made the first time it opens. It reads only the shipped data, never the
   server: an item's slot and stats are `Data/ItemStats.lua`. Within a group a slot, an armor type or

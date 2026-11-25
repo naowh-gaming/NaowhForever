@@ -25,6 +25,7 @@ local RECIPE = J.C.ITEM_RECIPE
 local ARMOR, COSMETIC = J.C.ITEM_ARMOR, 5
 local SKILL_LINE = 7
 local BIS_PICK = 1
+local LOWEST_LEVEL = 1
 local NOT_WORN = "INVTYPE_NON_EQUIP_IGNORE"
 local RECIPE_SKILL = { [1] = 165, [2] = 197, [3] = 202, [4] = 164, [5] = 185, [6] = 171, [7] = 129, [8] = 333,
     [9] = 356, [10] = 755, [11] = 773 }
@@ -90,9 +91,17 @@ function Loot.ReadFilters(out)
     out.skills = ReadSkills(out.skills or {})
     out.missingBis = out.bisOn and S.Get("missingBisOnly")
     out.upgradesOnly = S.Get("upgradesOnly")
+    out.minLevel, out.maxLevel = S.Get("lootMinLevel"), S.Get("lootMaxLevel")
     out.showAppearance = true
     return out
 end
+
+function Loot.LevelFits(level, filters)
+    level = math.max(level or 0, LOWEST_LEVEL)
+    local low, high = filters.minLevel, filters.maxLevel
+    return (low == 0 or level >= low) and (high == 0 or level <= high)
+end
+local LevelFits = Loot.LevelFits
 
 function Loot.Usable(itemID)
     local facts = J.Facts(itemID)
@@ -198,6 +207,8 @@ end
 function Loot.Shown(itemID, filters)
     if filters.usableOnly and not Loot.Usable(itemID) then return false end
     if not filters.showCosmetic and Cosmetic(itemID) then return false end
+    local facts = J.Facts(itemID)
+    if facts and not LevelFits(facts[FACT.REQUIRED], filters) then return false end
     if filters.myRecipes then
         local subclass = Recipe(itemID)
         if subclass and not Loot.RecipeYours(subclass, filters) then return false end

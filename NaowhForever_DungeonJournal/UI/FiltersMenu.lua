@@ -1,4 +1,4 @@
--- FiltersMenu.lua: the window's Filters icon and its menu of the Journal's switches, ticked while on (J.FiltersMenu).
+-- FiltersMenu.lua: the window's Filters icon and its menu of the Journal's switches, ticked while on, and its level range (J.FiltersMenu).
 local ns = _G.NaowhForever
 
 local T = ns.THEME
@@ -21,11 +21,13 @@ local MENU_DROP = 6
 local COUNT_GAP = 2
 local BUTTON_PAD = 4
 local LABEL_COUNT_GAP = 5
+local LEVEL_W, LEVEL_H, LEVEL_LETTERS, LEVEL_GAP = 32, 20, 2, 6
 
 local TEXT_ONE_ON = ns.L("Filters: 1 hiding loot or bosses")
 local TEXT_MANY_ON = ns.L("Filters: %d hiding loot or bosses")
 local TEXT_CLICK = ns.L("Click to choose what is listed and shown.")
 local TEXT_FILTERS = "Filters"
+local TEXT_LEVEL_DASH = "-"
 
 local window, button, menu
 
@@ -34,6 +36,7 @@ local function Available(option)
 end
 
 local function Hiding(option)
+    if option.to then return S.Get(option.key) > 0 or S.Get(option.to) > 0 end
     return option.hides ~= nil and S.Get(option.key) == option.hides and Available(option)
 end
 
@@ -60,6 +63,16 @@ local function PaintRow(part, option)
     part:SetHeight(MENU_ROW_H)
 end
 
+local function LevelText(level)
+    return level > 0 and tostring(level) or ""
+end
+
+local function PaintLevels(part, option)
+    if not part.low:HasFocus() then part.low:SetText(LevelText(S.Get(option.key))) end
+    if not part.high:HasFocus() then part.high:SetText(LevelText(S.Get(option.to))) end
+    part:SetHeight(MENU_ROW_H)
+end
+
 local function PaintMenu()
     local y = MENU_PAD
     for _, part in ipairs(menu.parts) do
@@ -69,7 +82,10 @@ local function PaintMenu()
         local option = part.option
         local offered = Offered(part.group)
         part:SetShown(offered)
-        if offered and option then
+        if offered and option and option.to then
+            PaintLevels(part, option)
+            y = y + MENU_ROW_H
+        elseif offered and option then
             PaintRow(part, option)
             y = y + MENU_ROW_H
         elseif offered then
@@ -138,6 +154,47 @@ local function MenuRow(option)
     return row
 end
 
+local function LevelTyped(box)
+    local level = tonumber(box:GetText()) or 0
+    box:SetText(LevelText(level))
+    if level ~= S.Get(box.key) then S.Set(box.key, level) end
+end
+
+local function LevelUndo(box)
+    box:SetText(LevelText(S.Get(box.key)))
+    box:ClearFocus()
+end
+
+local function LevelBox(row, key)
+    local box = ns.NewEditBox(row)
+    box:SetSize(LEVEL_W, LEVEL_H)
+    box:SetNumeric(true)
+    box:SetMaxLetters(LEVEL_LETTERS)
+    box:SetJustifyH("CENTER")
+    box.key = key
+    box:SetScript("OnEnterPressed", box.ClearFocus)
+    box:SetScript("OnEscapePressed", LevelUndo)
+    box:SetScript("OnEditFocusLost", LevelTyped)
+    ns.Tooltip(box, row.option.label, row.option.tooltip)
+    return box
+end
+
+local function LevelRow(option)
+    local row = CreateFrame("Frame", nil, menu)
+    row.option = option
+    row.label = ns.Font(row, HEADING_SIZE, nil, T.fg)
+    row.label:SetPoint("LEFT")
+    row.label:SetText(option.label)
+    row.high = LevelBox(row, option.to)
+    row.high:SetPoint("RIGHT")
+    local dash = ns.Font(row, HEADING_SIZE, nil, T.muted)
+    dash:SetPoint("RIGHT", row.high, "LEFT", -LEVEL_GAP, 0)
+    dash:SetText(TEXT_LEVEL_DASH)
+    row.low = LevelBox(row, option.key)
+    row.low:SetPoint("RIGHT", dash, "LEFT", -LEVEL_GAP, 0)
+    return row
+end
+
 local function MenuMouseDown()
     if not (menu:IsMouseOver() or button:IsMouseOver()) then menu:Hide() end
 end
@@ -159,7 +216,7 @@ local function AddGroup(g, group)
     title.group = group
     menu.parts[#menu.parts + 1] = title
     for _, option in ipairs(group.options) do
-        local row = MenuRow(option)
+        local row = option.to and LevelRow(option) or MenuRow(option)
         row.group = group
         menu.parts[#menu.parts + 1] = row
     end

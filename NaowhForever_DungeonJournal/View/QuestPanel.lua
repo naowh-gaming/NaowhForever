@@ -9,6 +9,7 @@ local T = ns.THEME
 local SharedItems = ns.Shared.Items
 local J = ns.Journal
 local S = J.Settings
+local Loot = J.Loot
 local Quests = J.Quests
 local View = J.View
 local Parts = View.Parts
@@ -47,6 +48,7 @@ local shownID
 local queued = false
 local choices, rewards, gains = {}, {}, {}
 local waiting, asked = {}, {}
+local tipFilters = {}
 local tipOwner
 
 local function FindQuest(id)
@@ -120,7 +122,13 @@ local function DrawDescription(description)
     view:Space(SECTION_SPACE)
 end
 
-local function DrawRewards(choose, get, xp, money)
+local function RewardsFit(quest, filters)
+    local level = quest and (Quests.MinLevel(quest) or Quests.Level(quest))
+    return not level or Loot.LevelFits(level, filters)
+end
+
+local function DrawRewards(choose, get, xp, money, quest)
+    if not RewardsFit(quest, view.filters) then choose, get = EMPTY, EMPTY end
     if #choose == 0 and #get == 0 and xp <= 0 and money <= 0 then return end
     view:Section(TEXT_REWARDS, #choose + #get)
     if #choose > 1 then view:Note(TEXT_CHOOSE) end
@@ -155,7 +163,7 @@ local function Draw()
     DrawObjectives(id)
     DrawItems(id)
     DrawDescription(description)
-    DrawRewards(choices, rewards, xp, money)
+    DrawRewards(choices, rewards, xp, money, quest)
     view:Finish()
     PaintButtons(id, panel.buttons)
 end
@@ -286,10 +294,10 @@ function QuestPanel.DrawInto(target, entry)
         DrawObjectives(id)
         DrawItems(id)
         DrawDescription(description)
-        DrawRewards(choices, rewards, xp, money)
+        DrawRewards(choices, rewards, xp, money, entry.quest)
     else
         local known = KnownRewards(entry.quest)
-        if known then DrawRewards(known.choose or EMPTY, known.get or EMPTY, 0, 0) end
+        if known then DrawRewards(known.choose or EMPTY, known.get or EMPTY, 0, 0, entry.quest) end
     end
     local chain = Quests.Chain(entry.quest)
     if chain then
@@ -331,6 +339,7 @@ local function WaitForItems(choose, get)
 end
 
 function QuestPanel.AddRewardLines(entry)
+    if not RewardsFit(entry.quest, Loot.ReadFilters(tipFilters)) then return end
     local choose, get
     if entry.loggedID then
         Read(entry.loggedID)

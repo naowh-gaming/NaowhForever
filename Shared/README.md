@@ -452,6 +452,8 @@ What a comment in the code used to say, in short. The house rules behind it are 
   language gets them; one that only goes in one hand says which ("MH Sword", "OH Dagger").
 - `Items.ClassCanUse` reads an item's facts as `ItemFacts` holds them: `{ class, subclass, item
   level, required level, quality }`, class 2 a weapon, subclass 0 no armor type, 6 a shield.
+- Rogues use one-hand axes on Forever, unlike classic: the game's SkillRaceClassInfo gives Axes
+  (skill 44) to warriors and rogues (build 1.60.1.71091), and the weapon masters teach them One-Handed Axes.
 - `Items.SlotsFor` returns shared tables: read them, never change them.
 - `Items.SlotName` names a slot in the player's language. The cloak slot's catalog key is
   "Back (slot)", because "Back" alone is also the Back button; `enUS.lua` gives it its English
