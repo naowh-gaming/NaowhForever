@@ -514,7 +514,11 @@ in the pull request it opens.
   Moira, Stomper Kreeg, Captain Kromcrush) is left out: the key is its boss pin's.
   `also = { [NPC ID] = { { floor, x, y }, ... } }` are the other spots a boss can spawn at, drawn
   faded under its own pin and not placed with `/nf mappins` (Lorgus Jett's two up Blackfathom
-  Deeps' northern channel).
+  Deeps' northern channel). The Stockade's Targorr the Dread and Bruegal Ironknuckle each have
+  four spawn points in CMaNGOS classic-db, turned into spots by the game's UiMapAssignment as
+  below (the Stockade's picture is the game's map layout, and Kam Deepfury, Hamhock and Bazil
+  Thredd land within 0.01 of their pins); a player's marked map puts Targorr in the same four
+  cells. Each pin is one of the four, the other three are its `also`.
 - The quest pins' list is from the Journal's quest data and chains, quest_entity_catalog.json's
   givers and hand-ins, and the where text and quest text that put them inside (2026-11-13). The
   Ghostly Attendant (Hall of Thanes), Rexxie Copperclutch (City of Dalaran) and Mason Connery
@@ -652,6 +656,8 @@ in the pull request it opens.
   (the instance shares Kalimdor's coordinates), drawn onto the instance's minimap tiles from the
   game files and carried onto his art through ten landmarks both show, since his art is not to
   scale. Every boss stands on the first level, so the Prismatic Talus is no longer offered.
+  King Op has no pin: Wowhead Forever gives no spawn spots for him (nor any longer for the
+  others), and no other source says where he stands (25 Nov 2026).
 - Blackmaw Hold's six levels are his sreyesmaps.com downloads of 2026-11-13, scaled the same
   way. They replace the four pictures we had drawn from the game's files. The floor names are
   the ones on his art; his first level's label misspells Blackmaw Grove.

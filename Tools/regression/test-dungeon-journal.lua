@@ -3192,6 +3192,22 @@ do
             end
         end
         check("Lorgus Jett: his pin and the two other spots he can spawn at", lorgus == 3 and faded == 2)
+        J.OpenDungeonMap(J.Get("Stockade"))
+        local stockView = ShownView("Targorr the Dread")
+        local spots = {}
+        for _, made in ipairs(state.made) do
+            local boss = rawget(made, "boss")
+            if rawget(made, "glow") and made.view == stockView and boss and rawget(made, "shown") ~= false then
+                local seen = spots[boss.name] or { 0, 0 }
+                seen[1] = seen[1] + 1
+                if rawget(made, "also") then seen[2] = seen[2] + 1 end
+                spots[boss.name] = seen
+            end
+        end
+        for _, name in ipairs({ "Targorr the Dread", "Bruegal Ironknuckle" }) do
+            check(name .. ": his pin and the three other spots he can spawn at",
+                spots[name] and spots[name][1] == 4 and spots[name][2] == 3)
+        end
         for _, key in ipairs({ "RazorfenDowns", "Uldaman", "Maraudon", "SunkenTemple", "BlackrockDepths", "DireMaul",
             "LowerBlackrockSpire", "UpperBlackrockSpire", "Scholomance", "Stratholme", "Dalaran", "ShadowfangKeep",
             "Deadmines" }) do
