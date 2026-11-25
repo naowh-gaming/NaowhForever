@@ -93,7 +93,11 @@ quest and creature pages. Do not edit them by hand: change the tool and run it a
   are Dun Morogh's, so the quest's zone picks: a Dun Morogh quest keeps Dun Morogh's map.
   On the maps Forever redrew (Stormwind, Mulgore, Redridge, the Eastern Plaguelands) many of
   its spots are Classic's positions unconverted (Bolvar Fordragon at 78, 18), so a giver there
-  is never taken from it: those quests keep Wowhead's spot.
+  is never taken from it: those quests keep Wowhead's spot. Wowhead has moved some NPCs there to
+  Forever's map and not others (Anthion Harmon and Mulgore's new givers are Forever's, Tirion Fordring
+  and Nathanos Blightcaller still Classic's), so its spot is moved onto Forever's map only for a giver
+  the catalog does not place: one the catalog has on Forever's map there (its start for this quest or
+  another) stands where the catalog says. Journeys' turn-ins and camps go by the same rule.
 - Forever replaced the classic Tier 0.5 class quests (An Earnest Proposition, Just Compensation, Anthion's
   Parting Words and Saving the Best for Last, 8905 to 9022) with its own (84147 to 84210, 97411 to 97414 for
   the Horde paladin, 97447 to 97450 for the Alliance shaman), which share each classic version's completion
