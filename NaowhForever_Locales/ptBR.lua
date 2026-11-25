@@ -10659,3 +10659,4 @@ L["Only the loot up to this required level; empty is no limit."] = "Apenas o saq
 L["%d is outside your level range (Level Range)"] = "%d está fora da sua faixa de nível (Faixa de nível)"
 L["%d are outside your level range (Level Range)"] = "%d estão fora da sua faixa de nível (Faixa de nível)"
 L["Nothing in your level range"] = "Nada na sua faixa de nível"
+L["Can also spawn here."] = "Também pode aparecer aqui."

@@ -10661,3 +10661,4 @@ L["Only the loot up to this required level; empty is no limit."] = "只顯示此
 L["%d is outside your level range (Level Range)"] = "%d 件不在你的等級範圍內（等級範圍）"
 L["%d are outside your level range (Level Range)"] = "%d 件不在你的等級範圍內（等級範圍）"
 L["Nothing in your level range"] = "你的等級範圍內沒有"
+L["Can also spawn here."] = "也可能在這裡出現。"

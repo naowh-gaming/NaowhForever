@@ -1395,6 +1395,88 @@ do
     Event("BAG_UPDATE_DELAYED")
     Open()
     check("any drop on the page looted while shut draws it again, for its In Bag tag", draws == warmed + 1)
+    warmed = draws
+    local mapView
+    for _, frame in ipairs(state.made) do
+        local owner = rawget(frame, "view")
+        if rawget(frame, "glow") and type(owner) == "table" and owner.onWorldMap then mapView = owner end
+    end
+    check("inside, the dungeon's map shows over the world map", mapView ~= nil)
+    local MapView = getmetatable(mapView)
+    local mapDraw, mapDraws = MapView.Draw, 0
+    MapView.Draw = function(self, ...)
+        if self == mapView then mapDraws = mapDraws + 1 end
+        return mapDraw(self, ...)
+    end
+    Close()
+    Open()
+    check("opened again, its pins are not drawn again", mapDraws == 0 and draws == warmed)
+    Close()
+    ns.Apply()
+    Open()
+    check("a profile applied while shut draws them again", mapDraws == 1)
+    Close()
+    local pins = S.Get("mapQuestPins")
+    S.Set("mapQuestPins", true)
+    Open()
+    check("so does a setting changed while shut", mapDraws == 2)
+    Close()
+    local level = state.level
+    state.level = level + 1
+    Open()
+    check("and a quest change (here a level) with quest pins on", mapDraws == 3)
+    Close()
+    state.level = level
+    Open()
+    Close()
+    J.Kills.Add((J.Boss(639)))
+    Open()
+    check("and a kill while shut", mapDraws == 5)
+    Close()
+    Open()
+    check("the open after that leaves them", mapDraws == 5)
+    Close()
+    local portraits, portraitsMade = rawget(_G, "SetPortraitTextureFromCreatureDisplayID"), 0
+    _G.SetPortraitTextureFromCreatureDisplayID = function() portraitsMade = portraitsMade + 1 end
+    ns.Apply()
+    Open()
+    local firstPortraits = portraitsMade
+    Close()
+    ns.Apply()
+    Open()
+    check("drawn again, a boss pin keeps its portrait", firstPortraits > 0 and portraitsMade == firstPortraits)
+    _G.SetPortraitTextureFromCreatureDisplayID = portraits
+    Close()
+    warmed = draws
+    Event("GROUP_ROSTER_UPDATE")
+    Open()
+    check("a roster update that changes nothing on it leaves the page", draws == warmed)
+    Close()
+    state.party = {}
+    Event("GROUP_ROSTER_UPDATE")
+    Open()
+    check("joining a group while shut draws it again, for its Share All", draws == warmed + 1)
+    Close()
+    state.party = nil
+    Event("GROUP_ROSTER_UPDATE")
+    Open()
+    Close()
+    view.scripts.OnEvent(view, "ENCOUNTER_END", 1144, "VanCleef", 1, 5, 0)
+    Open()
+    check("a wipe while shut leaves it", draws == warmed + 2)
+    Close()
+    view.scripts.OnEvent(view, "ENCOUNTER_END", 1144, "VanCleef", 1, 5, 1)
+    Open()
+    check("a kill while shut draws it again", draws == warmed + 3)
+    Close()
+    local beforeLoading = mapDraws
+    LoadingScreen()
+    local afterLoading = mapDraws
+    check("a loading screen draws the dungeon's map too, with the map shut", afterLoading > beforeLoading)
+    Open()
+    check("so the first open after it draws no pins", mapDraws == afterLoading)
+    S.Set("mapQuestPins", pins)
+    MapView.Draw = mapDraw
     Close()
     S.Set("enabled", false)
     check("off, the kept page listens for nothing", next(view.events) == nil)
@@ -1546,8 +1628,10 @@ do
     local tipLines, setByID = {}, 0
     rawset(state.tooltip, "AddLine", function(_, text) tipLines[#tipLines + 1] = text end)
     rawset(state.tooltip, "SetItemByID", function() setByID = setByID + 1 end)
+    DJ.Get("RazorfenDowns").closed = true
     ns.OpenJournalWindow(DJ.Get("RazorfenDowns"))
-    check("a dungeon not open says so at the top of its page", DJ.Get("RazorfenDowns").closed and PageSays(DJ.CLOSED_NOTE))
+    check("a dungeon not open says so at the top of its page", PageSays(DJ.CLOSED_NOTE))
+    DJ.Get("RazorfenDowns").closed = nil
     check("its bosses list their whole loot", Has(findBoss("RazorfenDowns", "Tuten'kash").loot, 10776))
     local row = Row(notYet)
     check("an item not in Forever yet has its row", row ~= nil)
@@ -1585,11 +1669,8 @@ do
     end
     for _, key in ipairs({ "ScarletMonasteryGraveyard", "ScarletMonasteryLibrary", "ScarletMonasteryArmory",
         "ScarletMonasteryCathedral", "ExcavationSite", "HallOfThanes", "RuinsOfLordaeron", "Deadmines", "Dalaran",
-        "ShapersTerrace" }) do
+        "ShapersTerrace", "RazorfenDowns", "Uldaman" }) do
         check("open on Forever: " .. key, not DJ.Get(key).closed)
-    end
-    for _, key in ipairs({ "RazorfenDowns", "Uldaman" }) do
-        check("not open on Forever yet: " .. key, DJ.Get(key).closed)
     end
     -- An item the server will not send: no redraw for it, never waited on again.
     ns.OpenJournalWindow(ns.Journal.Get("Deadmines"))
@@ -2858,7 +2939,7 @@ do
                 check("it starts, takes or is used for a quest: " .. data.name, roles > 0)
             end
         end
-        check("the quest givers and objects of every classic dungeon with one inside", entries == 54 and maps == 16)
+        check("the quest givers and objects of every classic dungeon with one inside", entries == 56 and maps == 17)
 
         local function QuestPins()
             local list = {}
@@ -2990,6 +3071,7 @@ do
         Scholomance = { [10432] = "Vectus", [10433] = "Marduk Blackpool", [10508] = "Ras Frostwhisper",
             [16118] = "Kormok" },
         Stratholme = { [11032] = "Malor the Zealous", [11058] = "Ezra Grimm" },
+        ShapersTerrace = { [261993] = "King Op" },
         UpperBlackrockSpire = { [16042] = "Lord Valthalak" },
     }
     local function MapFloorsAndGaps(key, map, dungeon)
@@ -3089,6 +3171,19 @@ do
         sfkView:Step(1)
         check("Fenrus' Room after it", sfkView.floor == 5 and rawget(sfkView.floorName, "text") == "Fenrus' Room"
             and PinFor("Odo the Blindwatcher") == nil and PinFor("Fenrus the Devourer") ~= nil)
+        J.OpenDungeonMap(J.Get("BlackfathomDeeps"))
+        local bfdView = ShownView("Ghamoo-ra")
+        while bfdView.floor ~= 2 do bfdView:Step(1) end
+        local lorgus, faded = 0, 0
+        for _, made in ipairs(state.made) do
+            local boss = rawget(made, "boss")
+            if rawget(made, "glow") and made.view == bfdView and boss and boss.name == "Lorgus Jett"
+                and rawget(made, "shown") ~= false then
+                lorgus = lorgus + 1
+                if rawget(made, "also") then faded = faded + 1 end
+            end
+        end
+        check("Lorgus Jett: his pin and the two other spots he can spawn at", lorgus == 3 and faded == 2)
         for _, key in ipairs({ "RazorfenDowns", "Uldaman", "Maraudon", "SunkenTemple", "BlackrockDepths", "DireMaul",
             "LowerBlackrockSpire", "UpperBlackrockSpire", "Scholomance", "Stratholme", "Dalaran", "ShadowfangKeep",
             "Deadmines" }) do

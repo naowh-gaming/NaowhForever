@@ -22,6 +22,7 @@ local GROUP_EVENTS = { GROUP_ROSTER_UPDATE = true, UNIT_QUEST_LOG_CHANGED = true
 local RANK_EVENTS = { "MAJOR_FACTION_RENOWN_LEVEL_CHANGED", "CURRENCY_DISPLAY_UPDATE" }
 local GetItemCount = C_Item.GetItemCount
 local LOCKOUT_FRESH = 60
+local KILLED = 1
 
 local TEXT_YOUR_BIS = ns.L("Your BiS")
 local TEXT_TURN_ON_BIS = ns.L("Turn on the BiS List to see your BiS marked here.")
@@ -199,6 +200,7 @@ function ViewMixin:Begin(dungeon, boss, query, page)
     if self.keepHidden then
         self.dirty, self.questsDirty, self.partyDirty, self.bagsDirty = false, false, false, false
         self.drawnAt = GetTime()
+        self.grouped = IsInGroup()
         wipe(self.bagCounts)
         wipe(self.bagOnly)
         Loot.RecordCounts(self.bagCounts)
@@ -277,6 +279,7 @@ function ViewMixin:QuestsUnchanged()
 end
 
 function ViewMixin:PartyUnchanged()
+    if IsInGroup() ~= self.grouped then return false end
     local list = self.questList
     for i = 1, #list do
         local entry = list[i]
@@ -323,7 +326,7 @@ function ViewMixin:Flush()
     self:Redraw()
 end
 
-function ViewMixin:HiddenEvent(event, arg)
+function ViewMixin:HiddenEvent(event, arg, outcome)
     if QUEST_EVENTS[event] then
         self.questsDirty = true
         return
@@ -333,12 +336,17 @@ function ViewMixin:HiddenEvent(event, arg)
     elseif event == "BAG_UPDATE_DELAYED" then
         self.bagsDirty = true
         return
+    elseif event == "GROUP_ROSTER_UPDATE" then
+        self.partyDirty = true
+        return
+    elseif event == "ENCOUNTER_END" and not issecretvalue(outcome) and outcome ~= KILLED then
+        return
     end
     self.dirty = true
     self:UnregisterAllEvents()
 end
 
-function ViewMixin:OnEvent(event, arg, success)
+function ViewMixin:OnEvent(event, arg, success, _, _, outcome)
     local hidden = self.keepHidden and not self:IsVisible()
     if event == "GET_ITEM_INFO_RECEIVED" then
         if not self.waitingFor[arg] then return end
@@ -352,7 +360,7 @@ function ViewMixin:OnEvent(event, arg, success)
             return self:QueueFlush()
         end
     elseif hidden then
-        return self:HiddenEvent(event, arg)
+        return self:HiddenEvent(event, arg, outcome)
     elseif QUEST_EVENTS[event] then
         self.questsDirty = true
         return self:QueueFlush()

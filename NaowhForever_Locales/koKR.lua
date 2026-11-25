@@ -10659,3 +10659,4 @@ L["Only the loot up to this required level; empty is no limit."] = "이 요구 �
 L["%d is outside your level range (Level Range)"] = "%d개는 레벨 범위 밖입니다 (레벨 범위)"
 L["%d are outside your level range (Level Range)"] = "%d개는 레벨 범위 밖입니다 (레벨 범위)"
 L["Nothing in your level range"] = "레벨 범위 안에 없음"
+L["Can also spawn here."] = "여기에서도 나타날 수 있습니다."

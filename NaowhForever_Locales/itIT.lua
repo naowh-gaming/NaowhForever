@@ -10659,3 +10659,4 @@ L["Only the loot up to this required level; empty is no limit."] = "Solo il bott
 L["%d is outside your level range (Level Range)"] = "%d è fuori dal tuo intervallo di livello (Intervallo di livello)"
 L["%d are outside your level range (Level Range)"] = "%d sono fuori dal tuo intervallo di livello (Intervallo di livello)"
 L["Nothing in your level range"] = "Niente nel tuo intervallo di livello"
+L["Can also spawn here."] = "Può comparire anche qui."

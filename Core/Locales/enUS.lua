@@ -9148,3 +9148,4 @@ L["Only the loot up to this required level; empty is no limit."] = true
 L["%d is outside your level range (Level Range)"] = true
 L["%d are outside your level range (Level Range)"] = true
 L["Nothing in your level range"] = true
+L["Can also spawn here."] = true

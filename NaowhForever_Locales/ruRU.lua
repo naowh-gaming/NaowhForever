@@ -10659,3 +10659,4 @@ L["Only the loot up to this required level; empty is no limit."] = "Только
 L["%d is outside your level range (Level Range)"] = "%d вне вашего диапазона уровней (Диапазон уровней)"
 L["%d are outside your level range (Level Range)"] = "%d вне вашего диапазона уровней (Диапазон уровней)"
 L["Nothing in your level range"] = "Ничего в вашем диапазоне уровней"
+L["Can also spawn here."] = "Может появиться и здесь."
