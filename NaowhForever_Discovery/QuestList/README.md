@@ -181,6 +181,11 @@ quest and creature pages. Do not edit them by hand: change the tool and run it a
   for quest events only while it is shown. Which quests are yours (faction, race, class) is worked
   out once, the first time it is asked, and again only when a giver offers you one the data says is
   not yours.
+- What you have done, your log, skills, recipes, reputations and holidays are read again (`Quests.Refresh`)
+  only when one of them changes (`Quests.Stale`, from a quest accepted, turned in or removed, a level, a
+  skill or recipe learned, a reputation or the calendar) or a minute has passed (`Quests.Update`). The
+  full read takes tens of milliseconds, and the map's pins, the minimap's, every giver you speak to and
+  each search asked for it, so opening the map or changing zone stuttered.
 - The quests and rares (close to two megabytes once loaded) ship in `NaowhForever_DiscoveryData`, a
   load-on-demand addon. `ns.CompletoQuestData` and `ns.CompletoRareData` start empty with a hook
   that loads it on the first read of any field, so the files here keep the tables they took as they

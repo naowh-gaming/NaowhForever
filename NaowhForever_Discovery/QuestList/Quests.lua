@@ -17,6 +17,7 @@ local MISSES_HELD = 2
 local NOT_OFFERED_STORE, TURN_INS_STORE = "completoNotOffered", "completoTurnIns"
 local OPENED_STORE, MINE_STORE, REOPENED_STORE = "completoOpened", "completoMine", "completoReopened"
 local HIDDEN_STORE = "completoHidden"
+local STALE_AFTER = 60
 local NONE = {}
 
 local mine, zoneOf, chains, chainOf, closers, recipes, needs, teaches, breadcrumbsTo
@@ -29,6 +30,7 @@ local found, foundIn = {}, {}
 local named = {}
 local givers, spare, giverAt = {}, {}, {}
 local blocking = {}
+local readAt
 
 local Q = {}
 Completo.Quests = Q
@@ -331,6 +333,17 @@ function Q.Refresh()
     end
 end
 
+function Q.Stale()
+    readAt = nil
+end
+
+function Q.Update()
+    local now = GetTime()
+    if readAt and now - readAt < STALE_AFTER then return end
+    Q.Refresh()
+    readAt = now
+end
+
 function Q.Done(id) return done[id] == true end
 
 function Q.InLog(id)
@@ -351,7 +364,7 @@ function Q.SetMine(ids)
         end
     end
     if not store then return end
-    mine, byMap, classQuests = nil, nil, nil
+    mine, byMap, classQuests, readAt = nil, nil, nil, nil
     Prepare()
 end
 

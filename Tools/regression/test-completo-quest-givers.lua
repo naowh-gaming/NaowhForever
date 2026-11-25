@@ -19,6 +19,7 @@ local SHAMAN = 64
 local account = {}
 local offers, player, logged = {}, false, {}
 local bestMap, builds, refreshes, level = 1429, 0, 0, 5
+local clock = 0
 local handlers = {}
 
 local function Frame()
@@ -62,6 +63,7 @@ local function Load()
         wipe = function(t) for k in pairs(t) do t[k] = nil end return t end,
         hooksecurefunc = function() end,
         CreateFrame = Frame,
+        GetTime = function() return clock end,
         issecretvalue = function() return false end,
         UnitFactionGroup = function() return "Alliance" end,
         UnitRace = function()
@@ -163,5 +165,18 @@ Check(Q.State(9) == "held", "one not offered at two levels stays held past the n
 offers = { { questID = 9 } }
 Fire("GOSSIP_SHOW")
 Check(Q.State(9) == "open" and account.completoNotOffered["Me-Realm"][9] == nil, "until its giver offers it")
+
+Q.Update()
+before = refreshes
+Q.Update()
+Fire("GOSSIP_SHOW")
+Check(refreshes == before, "a map, minimap or giver asking again reads nothing while nothing changed")
+Fire("QUEST_TURNED_IN", 5)
+Q.Update()
+Check(refreshes == before + 1, "a quest turned in reads what you have done again")
+before = refreshes
+clock = clock + 61
+Q.Update()
+Check(refreshes == before + 1, "and so does a minute passing, for holidays and anything no event marks")
 
 print(("test-completo-quest-givers: %d checks passed"):format(checks))

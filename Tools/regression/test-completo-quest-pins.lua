@@ -14,7 +14,7 @@ local settings = { enabled = true, mapPins = true, mapPinSize = 20, mapDungeon =
 local S = { Get = function(key) return settings[key] end, Set = function() end }
 local ns = { L = dofile("Tools/regression/locale_stub.lua").L, Upper = string.upper, Lower = string.lower, CompletoSettings = S, Apply = function() end, ThemeTint = function() end,
     Completo = { Settings = S, Style = {}, C = { PERCENT = 100 },
-        Quests = { Refresh = function() end, Givers = function() return {} end } } }
+        Quests = { Refresh = function() end, Update = function() end, Stale = function() end, Givers = function() return {} end } } }
 function ns.OnApply(fn) local was = ns.Apply ns.Apply = function(...) was(...) fn(...) end end
 
 local maximized, canvasScale = false, 1

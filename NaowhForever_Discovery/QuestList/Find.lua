@@ -73,7 +73,7 @@ end
 
 function ns.FindQuestsAndRares(text, add)
     if not S.Get("enabled") then return false end
-    Q.Refresh()
+    Q.Update()
     for _, entry in ipairs((Q.Search(text, ALL))) do
         for _, id in ipairs(entry.ids) do
             local map, x, y = Q.Spot(id)

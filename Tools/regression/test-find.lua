@@ -217,6 +217,7 @@ local hits = {}
 local completoOn = true
 local Q = {
     Refresh = Noop,
+    Update = Noop,
     Done = function(id) return id == 3 end,
     Search = function(text, limit)
         assert(text == "hog" and limit == math.huge)
