@@ -26,6 +26,7 @@ local NOBODY = B.NOBODY
 local HiddenAuras, NoteCast = B.HiddenAuras, B.NoteCast
 local CARD = B.PAGE .. ":bar"
 local CELL_NAME = "NaowhForeverBless"
+local AURA_NAME = "NaowhForeverBlessAura"
 local TEXT_MOVER = "Blessings"
 local TEXT_AURA = ns.L("Aura")
 local TEXT_FURY = "Righteous Fury"
@@ -68,7 +69,7 @@ local AUTO_STEP = [[
     self:SetAttribute("step" .. kind, i + 1)
 ]]
 
-local bar, cells, auraButton, furyButton, sealButton, autoButton, secureHandler
+local bar, cells, auraButtons, auraButton, furyButton, sealButton, autoButton, secureHandler
 local dirty, ticker, unlocked, buildAfterCombat, placeDue
 local refreshQueued, landing, landingQueued, sentSymbols
 local events = CreateFrame("Frame")
@@ -228,6 +229,20 @@ local function NewSelfButton(name)
     return btn
 end
 
+local function OnSelfClick(self, button)
+    if button == "LeftButton" then NoteCast(self:GetAttribute("unit1"), self:GetAttribute("spell1")) end
+end
+
+local function AuraButton(key)
+    local btn = auraButtons[key]
+    if btn then return btn end
+    btn = NewSelfButton(AURA_NAME .. key)
+    btn:SetScript("PostClick", OnSelfClick)
+    BarTip(btn, B.SpellName(key), B.FURY_TIP)
+    auraButtons[key] = btn
+    return btn
+end
+
 local function NewAutoButton(name)
     local btn = NewBarButton(name)
     btn:RegisterForClicks("AnyUp")
@@ -266,8 +281,25 @@ local function PrepareSelf(btn, key)
     Look.State(btn, key, BuffState("player", key))
 end
 
+local function PlaceAuras(x, shown)
+    for _, entry in ipairs(AURAS) do
+        local btn = auraButtons[entry.key]
+        if shown and Learned(entry) then
+            btn = AuraButton(entry.key)
+            PrepareSelf(btn, entry.key)
+            Look.Aura(btn, BuffState("player", entry.key))
+            x = Look.Place(btn, bar, x)
+        elseif btn then
+            btn:Hide()
+        end
+    end
+    return x
+end
+
 local function PlaceSelf(x)
-    local aura = S.Get("blessShowAura") and CurrentAura()
+    local all = S.Get("blessShowAura") and S.Get("blessAllAuras")
+    x = PlaceAuras(x, all)
+    local aura = not all and S.Get("blessShowAura") and CurrentAura()
     if aura then
         PrepareSelf(auraButton, aura)
         x = Look.Place(auraButton, bar, x)
@@ -430,10 +462,6 @@ local function SavePosition(pos)
     if ItemBar.Anchored(S, PREFIX) then S.Set("blessAnchor", SCREEN) end
 end
 
-local function OnSelfClick(self, button)
-    if button == "LeftButton" then NoteCast(self:GetAttribute("unit1"), self:GetAttribute("spell1")) end
-end
-
 local function OnAuraClick(self, button, down)
     OnSelfClick(self, button)
     if button ~= "RightButton" or down then return end
@@ -444,7 +472,7 @@ local function BuildBar()
     bar = CreateFrame("Frame", "NaowhForeverBlessingBar", UIParent)
     bar:SetMovable(true)
     bar:SetClampedToScreen(true)
-    cells = {}
+    cells, auraButtons = {}, {}
     bar.mover = ns.UI.AttachMover(bar, TEXT_MOVER, SavePosition, B.PAGE, CARD)
     auraButton = NewSelfButton("NaowhForeverBlessAura")
     auraButton:SetScript("PostClick", OnAuraClick)

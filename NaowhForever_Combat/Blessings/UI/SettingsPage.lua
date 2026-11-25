@@ -15,6 +15,7 @@ local Group = Settings.Group
 
 local BLESSINGS_OFF = ns.L("Turn on Blessings")
 local LABELS_OFF = ns.L("Turn on Blessings and Class Labels")
+local AURA_OFF = ns.L("Turn on Blessings and Aura Button")
 local BORDERS = { values = { black = ns.L("Black"), accent = ns.L("Accent"), status = ns.L("Status Color"),
     none = ns.L("None") }, order = { "black", "accent", "status", "none" } }
 local OPACITY_RANGE, WINDOW_RANGE = { 10, 100, 5 }, { 60, 150, 5 }
@@ -76,6 +77,7 @@ local TEXT_CLASS_SEARCH = ns.L("blessing blessings greater")
 local function On() return S.Get("blessings") == true end
 local function OpenWindow() ns.OpenBlessingsWindow() end
 local function LabelsOn() return On() and S.Get("blessShowLabels") == true end
+local function AuraOn() return On() and S.Get("blessShowAura") == true end
 local function NotPaladin() return not B.IsPaladin() end
 local function HasBar() return ANCHOR.on() and B.BarFrame() ~= nil end
 
@@ -497,6 +499,8 @@ page:Card({
         Group("Buttons"),
         { key = "blessShowAura", label = AURA_LABEL, toggle = true, needs = On, why = BLESSINGS_OFF,
           help = "Casts your aura. Right-click it to choose which." },
+        { key = "blessAllAuras", label = "All Auras", toggle = true, needs = AuraOn, why = AURA_OFF,
+          help = "A button for each aura you know, lit while it is up." },
         { key = "blessShowFury", label = FURY_LABEL, toggle = true, needs = On, why = BLESSINGS_OFF,
           help = "Casts Righteous Fury on yourself. A red ! means it is not up." },
         { key = "blessShowAuto", label = "Auto Buff Button", toggle = true, needs = On, why = BLESSINGS_OFF,

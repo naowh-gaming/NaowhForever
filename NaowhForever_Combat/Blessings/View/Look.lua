@@ -326,3 +326,8 @@ function Look.State(frame, key, has, remaining)
     local missing = key ~= nil and (frame.watch ~= nil or has == false)
     Look.Self(frame, missing, not frame.watch and remaining)
 end
+
+function Look.Aura(frame, has)
+    Look.Self(frame, false)
+    frame.icon:SetDesaturated(frame.watch ~= nil or has == false)
+end
