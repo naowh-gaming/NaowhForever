@@ -222,7 +222,7 @@ local function Matches(data, i)
     if kindWanted ~= ALL and kind ~= kindWanted and seenKinds[kind] then return false end
     if wanted ~= "" then
         local name = ItemName(data.item[i]) or KINDS[kind] or ""
-        if not (ns.Lower(name):find(wanted, 1, true) or ns.Lower(data.who[i]):find(wanted, 1, true)) then return false end
+        if not (ns.Lower(name):find(wanted, 1, true) or ns.Lower(data.who[i] or ""):find(wanted, 1, true)) then return false end
     end
     seenKinds[kind] = true
     return kindWanted == ALL or kind == kindWanted
@@ -488,7 +488,7 @@ local function BuildColumns(head)
     Columns.Add(sorter, { key = "type", text = TEXT_TYPE, right = Right(TYPE_W), width = TYPE_W, up = true,
         value = SortValue(function(data, i) return KINDS[data.kind[i]] or data.kind[i] end) })
     whoColumn = Columns.Add(sorter, { key = "who", text = TEXT_WHO, right = Right(WHO_W), width = WHO_W, up = true,
-        value = SortValue(function(data, i) return ns.Lower(data.who[i]) end) })
+        value = SortValue(function(data, i) return ns.Lower(data.who[i] or "") end) })
     characterColumn = Columns.Add(sorter, { key = "character", text = TEXT_CHARACTER, right = Right(CHAR_W), width = CHAR_W, up = true,
         value = SortValue(function(_, _, char) return char.data.name or "" end) })
     Columns.Add(sorter, { key = "item", text = TEXT_ITEM, left = ROW_IN + ROW_ICON + ICON_GAP, up = true,

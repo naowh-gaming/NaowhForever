@@ -219,6 +219,17 @@ Check("off, it says so and keeps what it has", Shown(
     "The Ledger is off: turn it on in The Market's settings to record what you earn and spend.")
     and Shown("9 items sold for 5600c"))
 
+local mine = t.account.marketLedger["Player-1"]
+local n = #mine.at + 1
+mine.at[n], mine.kind[n], mine.item[n], mine.qty[n], mine.amount[n] = NOW - 30, "vendor", 4306, 4, 400
+search.onSearch("bidder")
+Check("a saved row with no name left in it still filters", Shown("2 items sold for 3000c"))
+search.onSearch("")
+S.Set("sortLedger", "who:up")
+Page.Draw()
+Check("and sorts by who", Shown("13 items sold for 6000c"))
+S.Set("sortLedger", "when:down")
+
 range._set("1d")
 views.onPick("summary")
 Check("a day's range", range.text == "Last Day")

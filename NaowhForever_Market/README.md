@@ -532,6 +532,10 @@ NaowhForever_Market/
   columns, one list each (`at`, `kind`, `item`, `qty`, `amount`, `who`), not a table per row: a player
   who vendors everything makes thousands of rows a month. At most `LEDGER_KEEP` (25000) are kept per
   character; the oldest are dropped when it logs in.
+- A name the client hands over as a secret (a vendor's or trainer's `UnitName("npc")` on Forever) is kept
+  as "": SavedVariables writes a secret as nil, and the hole broke the name filter (Vector, 2026-11-24).
+  Rows already saved with a nil `who` are filled with "" at login before the oldest are dropped, since
+  dropping shifts each column by its own length.
 - Every change in gold (`PLAYER_MONEY`) is recorded. Hooks on the game's own calls say what it was for: a
   sale to a vendor (`C_Container.UseContainerItem` with a merchant open, `C_MerchantFrame.SellAllJunkItems`),
   a vendor purchase or buyback (`BuyMerchantItem`, `BuybackItem`), an auction house purchase

@@ -56,6 +56,7 @@ local function Drop(list, drop)
 end
 
 local function Trim(data)
+    for i = 1, #data.at do data.who[i] = data.who[i] or "" end
     local drop = #data.at - C.LEDGER_KEEP
     if drop > 0 then
         for _, column in ipairs(COLUMNS) do Drop(data[column], drop) end
@@ -71,7 +72,8 @@ local function Add(kind, item, qty, amount, who)
     local data = Data(true)
     local n = #data.at + 1
     data.at[n], data.kind[n], data.item[n] = time(), kind, item or 0
-    data.qty[n], data.amount[n], data.who[n] = qty or 0, amount, who or ""
+    data.qty[n], data.amount[n], data.who[n] = qty or 0, amount,
+        who and not (issecretvalue and issecretvalue(who)) and who or ""
     if Ledger.onChange then Ledger.onChange() end
 end
 

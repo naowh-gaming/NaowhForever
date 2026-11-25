@@ -29,7 +29,10 @@ env.AUCTION_OUTBID_MAIL_SUBJECT = "Outbid on %s"
 env.GetInboxNumItems = function() return #inbox end
 env.GetTime = function() return clock end
 env.IsLoggedIn = function() return loggedIn end
-env.UnitName = function(unit) return unit == "npc" and "Bob" or "Me" end
+local SECRET = {}
+local npcName = "Bob"
+env.issecretvalue = function(v) return v == SECRET end
+env.UnitName = function(unit) return unit == "npc" and npcName or "Me" end
 env.GetTitleText = function() return "Wanted" end
 env.C_Container.UseContainerItem = function() end
 env.C_MerchantFrame = {
@@ -146,6 +149,21 @@ Check("later, gold no window explains is Other", Last().kind == "other" and Last
 env.C_Container.UseContainerItem(0, 1)
 Gold(50)
 Check("using an item away from a merchant is not a sale", Last().kind == "other")
+
+npcName = SECRET
+t.Fire("MERCHANT_SHOW")
+Gold(-3)
+Check("a merchant whose name is secret is kept without it", Last().kind == "repair" and Last().who == "")
+npcName = "Bob"
+env.GetTitleText = function() return SECRET end
+t.Fire("QUEST_COMPLETE")
+Gold(7)
+Check("and so is a quest whose title is secret", Last().kind == "quest" and Last().who == "")
+env.GetTitleText = function() return "Wanted" end
+t.Fire("QUEST_FINISHED")
+t.Fire("MERCHANT_CLOSED")
+clock = clock + 10
+npcName = "Bob"
 
 t.Fire("AUCTION_HOUSE_SHOW")
 auctions[77] = { itemKey = { itemID = 4306 }, quantity = 1, buyoutAmount = 500 }
@@ -311,8 +329,13 @@ Gold(5)
 Check("turned off, nothing more is recorded", Rows() == before)
 t.Fire("MERCHANT_SHOW")
 env.C_Container.UseContainerItem(0, 1)
+local whoCount = #Data().at
+local kept = { Data().who[whoCount - 1], Data().who[whoCount] }
+Data().who[whoCount - 2] = nil
 S.Set("ledger", true)
 ns.Apply()
+Check("a name saved as nil in the middle is filled, and trimming keeps the names on their rows",
+    #Data().who == 5 and Data().who[3] == "" and Data().who[4] == kept[1] and Data().who[5] == kept[2])
 Check("gold samples are kept to the same limit", #Data().goldAt <= 5 and #Data().gold == #Data().goldAt)
 Check("turned back on, only the newest rows are kept", Rows() == 5 and Data().kind[1] == "postage"
     and Data().amount[5] == 1)
