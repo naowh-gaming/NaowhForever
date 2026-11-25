@@ -58,6 +58,7 @@ local function Me()
     end
     realm[name] = realm[name] or {}
     realm[name].full = true
+    realm[name].other = nil
     return realm[name]
 end
 
@@ -221,7 +222,7 @@ function ns.AltList()
     for name, c in pairs(ns.AltRealm()) do
         if name ~= mine then
             list[#list + 1] = { name = name, class = c.class, level = c.level or 0, money = c.money or 0,
-                full = c.full == true }
+                full = c.full == true, other = c.other == true }
         end
     end
     table.sort(list, ByLevelThenName)

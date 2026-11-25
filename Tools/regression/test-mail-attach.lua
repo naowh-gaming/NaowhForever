@@ -76,8 +76,9 @@ end
 local root = {}
 function root:CreateTitle(text) menu[#menu + 1] = { title = text } end
 function root:CreateButton(text, fn) menu[#menu + 1] = { text = text, fn = fn } end
+function root:CreateDivider() menu[#menu + 1] = { divider = true } end
 
-local alts, toBox = {}, {}
+local alts, toBox, realm, prompt = {}, {}, {}, {}
 
 local function Load()
     for k in pairs(frames) do frames[k] = nil end
@@ -95,6 +96,9 @@ local function Load()
         Apply = function() end,
         Shared = { Settings = { Page = function() return { Card = function() end } end } },
         AltList = function() return alts end,
+        AltRealm = function() return realm end,
+        AltName = function() return "You Surname" end,
+        PromptText = function(_, text, _, onAccept) prompt.text, prompt.accept = text, onAccept end,
         ClassColoredName = function(name) return name end,
     }
     function ns.OnApply(fn) local was = ns.Apply ns.Apply = function(...) was(...) fn(...) end end
@@ -113,8 +117,12 @@ local function Load()
     env.BACKPACK_CONTAINER, env.NUM_TOTAL_EQUIPPED_BAG_SLOTS = 0, 1
     env.WHITE_FONT_COLOR, env.GRAY_FONT_COLOR = {}, {}
     env.GetMoney = function() return 0 end
+    env.UnitName = function() return "You" end
     env.C_CurrencyInfo = { GetCoinTextureString = function(copper) return tostring(copper) end }
-    env.SendMailNameEditBox = { SetText = function(_, text) toBox.text = text end }
+    env.SendMailNameEditBox = {
+        SetText = function(_, text) toBox.text = text end,
+        GetText = function() return toBox.text or "" end,
+    }
     env.SendMailSubjectEditBox = { SetFocus = function() end }
     env.SendMailFrame, env.MailFrame = Frame(), Frame()
     env.C_Item = { GetItemInfoInstant = function(itemID)
@@ -308,21 +316,51 @@ Case("no garbage per attach step", function()
     assert(after - before <= 0, ("%.3f KB per two steps"):format(after - before))
 end)
 
+local function Row(find)
+    for _, row in ipairs(menu) do
+        local text = row.title or row.text
+        if text and text:find(find, 1, true) then return row end
+    end
+end
+
 Case("the Alts menu fills the whole name, and says when one still lacks its last name", function()
     alts[1] = { name = "Kre Stonehand", class = "WARRIOR", level = 30, money = 0, full = true }
     alts[2] = nil
     buttons.Alts()
-    local hint = menu[#menu].title
-    assert(not (hint and hint:find("last name", 1, true)), "no hint while every name is whole")
+    assert(not Row("last name"), "no hint while every name is whole")
     menu[2].fn()
     assert(toBox.text == "Kre Stonehand", "the To box gets " .. tostring(toBox.text))
     alts[2] = { name = "Kreyn", class = "MAGE", level = 8, money = 0, full = true }
     buttons.Alts()
-    hint = menu[#menu].title
-    assert(not (hint and hint:find("last name", 1, true)), "a name saved since the fix has no hint, surname or not")
+    assert(not Row("last name"), "a name saved since the fix has no hint, surname or not")
     alts[2].full = nil
     buttons.Alts()
-    assert(menu[#menu].title and menu[#menu].title:find("last name", 1, true), "a first name alone gets the hint")
+    assert(Row("last name"), "a first name alone gets the hint")
+end)
+
+Case("a character on another account can be added to the Alts menu", function()
+    for k in pairs(alts) do alts[k] = nil end
+    buttons.Alts()
+    assert(Row("Log in on your other"), "an empty list still says how characters appear")
+    toBox.text = "Bank Alt"
+    Row("Add a character").fn()
+    assert(prompt.text == "Bank Alt", "the prompt starts with the To box's name")
+    toBox.text = nil
+    prompt.accept("Bank Alt")
+    assert(realm["Bank Alt"] and realm["Bank Alt"].other and realm["Bank Alt"].full, "saved as another account's")
+    assert(toBox.text == "Bank Alt", "the To box gets the added name")
+    realm["Bank Alt"].class = "MAGE"
+    prompt.accept("Bank Alt")
+    assert(realm["Bank Alt"].class == "MAGE", "adding a known name keeps what is saved for it")
+    prompt.accept("bank alt")
+    assert(not realm["bank alt"] and toBox.text == "Bank Alt", "a known name typed in another case is not added twice")
+    prompt.accept("You Surname")
+    assert(not realm["You Surname"], "the character you are on is not added")
+    prompt.accept("you")
+    assert(not realm.you, "nor by its first name alone")
+    alts[1] = { name = "Bank Alt", level = 0, money = 0, full = true, other = true }
+    buttons.Alts()
+    assert(Row("Bank Alt  |cff808080other account|r"), "an added name shows as another account's")
 end)
 
 collectgarbage("restart")

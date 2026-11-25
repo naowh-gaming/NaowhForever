@@ -19,6 +19,11 @@ local TEXT_GOLD = ns.L("Gold on this realm: ")
 local TEXT_NO_ALTS = ns.L("Log in on your other characters once and they appear here.")
 local TEXT_NO_SURNAME = ns.L("A name without its last name gets it the next time you log in on that character.")
 local TEXT_ALT = "%s  |cff808080%d|r  %s"
+local TEXT_OTHER_ALT = "%s  |cff808080%s|r"
+local TEXT_OTHER_ACCOUNT = ns.L("other account")
+local TEXT_ADD = ns.L("Add a character")
+local TEXT_ADD_PROMPT = "Name of your character on another account, on this realm and faction:"
+local TEXT_ADD_BUTTON = "Add"
 local TEXT_FULL = ns.L("%s: %d %s didn't fit, all %d attachment slots are full. Send this one and attach again.")
 local TEXT_STACK, TEXT_STACKS = ns.L("stack"), ns.L("stacks")
 local TEXT_ALL_GOODS = ns.L("All trade goods")
@@ -63,26 +68,47 @@ local function Stacks(n)
     return n == 1 and TEXT_STACK or TEXT_STACKS
 end
 
+local function MailTo(name)
+    SendMailNameEditBox:SetText(name)
+    SendMailSubjectEditBox:SetFocus()
+end
+
+local function AddAlt(name)
+    local realm, lower = ns.AltRealm(), name:lower()
+    for known in pairs(realm) do
+        if known:lower() == lower then return MailTo(known) end
+    end
+    if lower ~= ns.AltName():lower() and lower ~= UnitName("player"):lower() then
+        realm[name] = { other = true, full = true }
+    end
+    MailTo(name)
+end
+
+local function AskAlt()
+    ns.PromptText(TEXT_ADD_PROMPT, SendMailNameEditBox:GetText(), nil, AddAlt, TEXT_ADD_BUTTON)
+end
+
 local function OpenAltsMenu(owner)
     local list = ns.AltList()
     local total = GetMoney()
     for _, alt in ipairs(list) do total = total + alt.money end
     ns.ContextMenu(owner, function(_, root)
         root:CreateTitle(TEXT_GOLD .. Coins(total))
-        if #list == 0 then
-            root:CreateTitle(TEXT_NO_ALTS, WHITE_FONT_COLOR)
-            return
-        end
+        if #list == 0 then root:CreateTitle(TEXT_NO_ALTS, WHITE_FONT_COLOR) end
         local firstOnly = false
         for _, alt in ipairs(list) do
-            local text = TEXT_ALT:format(ns.ClassColoredName(alt.name, alt.class), alt.level, Coins(alt.money))
-            root:CreateButton(text, function()
-                SendMailNameEditBox:SetText(alt.name)
-                SendMailSubjectEditBox:SetFocus()
-            end)
+            local text
+            if alt.other then
+                text = TEXT_OTHER_ALT:format(alt.name, TEXT_OTHER_ACCOUNT)
+            else
+                text = TEXT_ALT:format(ns.ClassColoredName(alt.name, alt.class), alt.level, Coins(alt.money))
+            end
+            root:CreateButton(text, function() MailTo(alt.name) end)
             if not alt.full then firstOnly = true end
         end
         if firstOnly then root:CreateTitle(TEXT_NO_SURNAME, GRAY_FONT_COLOR) end
+        root:CreateDivider()
+        root:CreateButton(TEXT_ADD, AskAlt)
     end)
 end
 

@@ -99,6 +99,9 @@ BAGS[0][2] = false
 events.scripts.OnEvent(events, "BAG_UPDATE_DELAYED")
 check("an item gone from the bags is gone from the count", you.bags[30] == nil and you.bags[10] == 6)
 check("the count is kept in the same table", you.bags == kept)
+you.other = true
+events.scripts.OnEvent(events, "BAG_UPDATE_DELAYED")
+check("a name added as another account's is yours once you log in on it", you.other == nil)
 
 local tip = { n = 0, left = {}, right = {} }
 function tip:AddDoubleLine(l, r)
@@ -125,6 +128,12 @@ check("nobody has it: no lines", Lines(40) == "")
 local listed, full = {}, {}
 for _, alt in ipairs(ns.AltList()) do full[alt.name] = alt.full end
 check("the list says which alts were saved by their whole name", full["Third Other"] == true and full.Third == false)
+
+realm["Bank Alt"] = { other = true, full = true }
+local added = {}
+for _, alt in ipairs(ns.AltList()) do added[alt.name] = alt.other end
+check("the list says which names were added from another account", added["Bank Alt"] == true and added.Alt == false)
+realm["Bank Alt"] = nil
 
 for _, alt in ipairs(ns.AltList()) do listed[#listed + 1] = alt.name end
 table.sort(listed)
