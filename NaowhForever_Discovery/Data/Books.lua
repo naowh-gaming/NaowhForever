@@ -41,7 +41,7 @@ ns.LibraryBooks = {
     { quest = 79095, item = 208185, tier = 20, side = "B", turnIn = "librarian",
       name = "The Apothecary's Metaphysical Primer",
       spots = { { 1420, 59.4, 52.3, "Brill", "In the alchemy shop, on the shelf beside the apothecary." } } },
-    { quest = 79094, item = 207972, tier = 20, side = "H", turnIn = "librarian",
+    { quest = 79094, item = 207972, tier = 20, side = "B", turnIn = "librarian",
       name = "The Lessons of Ta'zo",
       spots = { { 1454, 38.7, 78.4, "Valley of Spirits", "Trace the large mural before the Darkbriar Lodge sign." } } },
     { quest = 79096, item = 210177, tier = 20, side = "H", turnIn = "librarian",

@@ -72,7 +72,7 @@ keep their names for the rest of the addon.
   zockify.com and Wowhead Forever; the turn-in quest IDs from Wowhead Forever's quests. Ataeric's
   spot and Magma or Lava?'s are their objects' spawns on Wowhead Forever (410299, 463206), and the
   sides of Theocritus, Rumi and the Apothecary's Primer its quests' (both sides, both librarians take
-  them), 2026-11-07. Each book:
+  them), 2026-11-07, and Ta'zo's likewise, 2026-11-24. Each book:
   `quest` (its turn-in, flagged completed once handed in), `item` (the book), `tier` (its set's
   quest level), `side` ("A", "H" or "B" for both), `turnIn` ("librarian", or "trainer": the level
   60 set goes to a mage trainer), and `spots`, each `{ uiMapID, x, y, place, note }`; a book with
