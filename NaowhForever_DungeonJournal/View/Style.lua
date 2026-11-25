@@ -17,7 +17,7 @@ local St = setmetatable({
     COIN_ICON = { g = "|TInterface\\MoneyFrame\\UI-GoldIcon:0:0:2:-1|t",
                   s = "|TInterface\\MoneyFrame\\UI-SilverIcon:0:0:2:-1|t" },
     QUEST_CODE = {
-        prereq = "|cffff9933", prereqLog = "|cffffd100", low = "|cff9ca3af", pickup = "|cffd8dbe0",
+        prereq = "|cffff9933", prereqLog = "|cffffd100", low = "|cffff4d4d", pickup = "|cffd8dbe0",
         tooHigh = "|cffff4d4d", next = "|cffff9933", active = "|cffffd100", ready = "|cff19ff19",
         done = "|cff9ca3af", lost = "|cff9ca3af",
     },

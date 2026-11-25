@@ -1,8 +1,9 @@
--- QuestDetailRows.lua: the quest panel's rows: the quest's title and state, an objective with its bar, and an item it asks for.
+-- QuestDetailRows.lua: the quest panel's rows: the quest's title and state, the reputation it needs, an objective with its bar, and an item it asks for.
 local ns = _G.NaowhForever
 
 local T = ns.THEME
 local J = ns.Journal
+local Rep = J.Reputation
 local Kinds = J.View.Kinds
 local St = J.Style
 local HAVE_RGB, CHECK, QUEST_CODE, INDENT = St.HAVE_RGB, St.CHECK, St.QUEST_CODE, St.INDENT
@@ -15,10 +16,15 @@ local NAME_NUDGE = 1
 local OBJECTIVE_H, OBJECTIVE_BAR_H, OBJECTIVE_BAR_BOTTOM = 26, 3, 4
 local COUNT_TOP, COUNT_ROOM = 4, 12
 local LEADING_COUNT = "^%d+%s*/%s*%d+%s+"
+local REP_TOP, REP_LINE_GAP, REP_LINE_H, REP_BOTTOM = 2, 5, 14, 10
+local REP_BAR_W, REP_BAR_H, REP_BAR_GAP = 120, 4, 8
 
 local TEXT_COMPLETE = ns.L("Complete|r")
 local TEXT_IN_LOG = ns.L("In log|r")
 local TEXT_COUNT = "%s/%s"
+local TEXT_NOT_MET = ns.L("Not met yet")
+local TEXT_REP_VALUE = "  %s / %s"
+local TEXT_CODE_END = "|r"
 local CHECK_ICON = "|T" .. CHECK .. ":0|t "
 
 local function StateText(complete)
@@ -54,6 +60,48 @@ Kinds.questTitle = {
         row.where:SetText(where and state .. PLACE_DOT .. where or state)
         return TITLE_TOP + math.ceil(row.name:GetStringHeight()) + TITLE_GAP
             + math.ceil(row.where:GetStringHeight()) + TITLE_BOTTOM
+    end,
+}
+
+local function PaintStanding(row, id)
+    local reaction, value, max = Rep.StandingByID(id)
+    row.track:SetShown(reaction ~= nil)
+    row.fill:SetShown(reaction ~= nil and value > 0)
+    if not reaction then
+        row.standing:SetText(ns.Color("muted", TEXT_NOT_MET))
+        return
+    end
+    local color = Rep.Color(reaction)
+    local far = reaction < Rep.EXALTED and TEXT_REP_VALUE:format(BreakUpLargeNumbers(value), BreakUpLargeNumbers(max))
+    row.standing:SetText(J.Colored(color, Rep.Label(reaction)) .. (far and ns.Color("muted", far) or ""))
+    row.fill:SetVertexColor(color.r, color.g, color.b, 1)
+    row.fill:SetWidth(math.max(1, REP_BAR_W * math.min(1, value / max)))
+end
+
+Kinds.questRep = {
+    New = function(parent)
+        local row = CreateFrame("Frame", nil, parent)
+        row.need = ns.Font(row, TEXT_SIZE)
+        row.need:SetPoint("TOPLEFT", 0, -REP_TOP)
+        row.need:SetJustifyH("LEFT")
+        row.need:SetWordWrap(true)
+        row.standing = ns.Font(row, SMALL_SIZE)
+        row.standing:SetPoint("TOPLEFT", row.need, "BOTTOMLEFT", 0, -REP_LINE_GAP)
+        row.track = ns.Solid(row, "BORDER", T.line, 1)
+        row.track:SetSize(REP_BAR_W, REP_BAR_H)
+        row.track:SetPoint("LEFT", row.standing, "RIGHT", REP_BAR_GAP, 0)
+        row.fill = row:CreateTexture(nil, "ARTWORK")
+        row.fill:SetColorTexture(1, 1, 1, 1)
+        row.fill:SetPoint("TOPLEFT", row.track)
+        row.fill:SetPoint("BOTTOMLEFT", row.track)
+        return row
+    end,
+    Set = function(row, need)
+        local text = Rep.NeedText(need)
+        row.need:SetWidth(row:GetWidth())
+        row.need:SetText(Rep.Meets(need) and J.Colored(HAVE_RGB, text) or QUEST_CODE.tooHigh .. text .. TEXT_CODE_END)
+        PaintStanding(row, need[1])
+        return REP_TOP + math.ceil(row.need:GetStringHeight()) + REP_LINE_GAP + REP_LINE_H + REP_BOTTOM
     end,
 }
 

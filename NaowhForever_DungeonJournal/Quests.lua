@@ -356,6 +356,15 @@ function Q.MinLevel(quest)
     return J.QuestMinLevel[quest[ID]]
 end
 
+function Q.MinRep(quest)
+    return J.QuestMinRep[quest[ID]]
+end
+
+function Q.Inside(id)
+    local area = J.QuestInside[id]
+    return area and C_Map.GetAreaInfo(area)
+end
+
 function Q.Kind(quest)
     local id = LoggedID(quest)
     if id then return IsComplete(id) and "ready" or "active" end

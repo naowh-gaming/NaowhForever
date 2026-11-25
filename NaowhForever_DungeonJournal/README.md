@@ -47,7 +47,7 @@ NaowhForever_DungeonJournal/
     Items.lua          the loot not in Forever yet, generated (the rest is Shared's ItemFacts)
     ItemStats.lua      each item's slot and stats, for the Loot Finder, generated
     Quests.lua         every dungeon quest, from Wowhead's Forever guide, with hand additions
-    QuestChains.lua    each quest's chain, prerequisites and required level, generated
+    QuestChains.lua    each quest's chain, prerequisites, required level and reputation, and the steps done inside an instance, generated
     BiSQuests.lua      the quests that reward a BiS, for the BiS List's Quests page, generated
     RankRequirements.lua the line a rank vendor shows on an item you need a rank for, in each language, generated
     Dungeons/*.lua     one per dungeon, generated
@@ -96,7 +96,7 @@ NaowhForever_DungeonJournal/
     IconLine.lua       a line under a faction's standing (what unlocked rewards would cost)
     RankReward.lua     a rank reward that is not an item
     ItemMenu.lua       an item's right-click menu (the BiS list, Favourites)
-    QuestDetailRows.lua the quest panel's title, objective and item rows
+    QuestDetailRows.lua the quest panel's title, reputation needed, objective and item rows
     QuestPanel.lua     a quest in your log, in the side panel
     HistoryRows.lua    a boss history's kill header and its GROUP and LOOT labels
     TeamRow.lua        your group as it stood for a kill
@@ -443,12 +443,22 @@ in the pull request it opens.
   pages (2026-09-26), with Classic-era spots dropped on the redrawn maps; The Glowing Shard
   follows the in-game quest text, which Wowhead has wrong. Dungeons up to level 20 so far.
 - `Data/QuestChains.lua`: `QuestChains` (questID -> every step of its chain in order),
-  `QuestPrereqs` (the steps before it can be picked up), `QuestMinLevel`, `QuestWhere` (the
-  where text without the guide's prerequisite note), `QuestChainNames` and `QuestChainStarts`
+  `QuestPrereqs` (the steps before it can be picked up), `QuestMinLevel`, `QuestMinRep`
+  (`{ faction ID, reputation, faction name }`, the reputation as the game counts it: Neutral 0,
+  Friendly 3000), `QuestInside` (a step -> the area of the instance its objectives are in),
+  `QuestWhere` (the where text without the guide's prerequisite note), `QuestChainNames` and `QuestChainStarts`
   (`{ uiMapID, x, y, quest giver }`) for the steps not in `Data/Quests.lua`. A step with no
   usable start on its quest page takes the Quest List's spot (`D.Quests`), which is converted on
   the redrawn maps and, for a quest an item begins, is where the mob that drops it spawns
   (Underground Map: Captain Beld). Build the Quest List first.
+- A quest's reputation is the quest entity catalog's `requiredMinRep`; Forever's own quests are
+  not in the catalog, so their `Tools/data/quest_info.json` entry takes a `minrep` by hand, from
+  players' reports (Blackmaw Hold's Twin Bears, Blackmaw Reclamation and A Lost Memento: Neutral
+  with Timbermaw Hold). Its faction must have a page in `Data/Factions`, where its name is from.
+- A step is inside an instance when every objective spot its Wowhead Forever quest page has
+  (`Tools/data/quest_objective_spots.json`) is in an instance's area
+  (`Tools/data/instance_areas.json`). A step whose objectives are partly outside, or that page
+  places none of, is not marked; nor is one only handed in or started inside.
 - `Data/Maps.lua`: `[dungeon key] = { art, floors, names, order, image, images, imageBottom, floor, entrance,
   stairs, pins }`. `art` is the folder of `Interface\WorldMap\<art>\<art><floor>_<tile>`: twelve 256px
   tiles four across, of which the map shows the top left 1002 by 668. `order` lists the art's
@@ -912,6 +922,14 @@ in the pull request it opens.
 - The quest marks are the game's own (a yellow ! to pick up, a ? to hand in), greyed and tinted
   for the other states; its newer in-progress icon, a speech bubble with dots, did not read as
   a quest.
+- Level N to pick up is red, as Too high is: it only shows while you are under that level.
+- A quest that needs a reputation says so above its objectives, green once you have it and red
+  until then, with your standing on a bar. Your standing is `C_Reputation.GetFactionDataByID`'s
+  `currentStanding` against the need, as the Quest List reads it; a faction you have not met
+  has no data, so it reads as not met.
+- A chain step done inside an instance has the skull and the instance's name
+  (`C_Map.GetAreaInfo`) after it, in the chain menu and the chain under a quest or key, so the
+  part of a chain done in the run stands out.
 - The dungeon list's group settings keep the names they were made with: `closedGroup3` is
   Low level (once called Behind you), `closedGroup4` the raids. Low level comes first (`ORDER`),
   closed by default: the dungeons you outleveled are one click away without pushing your

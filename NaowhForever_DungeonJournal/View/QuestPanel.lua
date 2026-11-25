@@ -1,4 +1,4 @@
--- QuestPanel.lua: a quest in your log, in the side panel: objectives, description, rewards and its buttons.
+-- QuestPanel.lua: a quest in your log, in the side panel: the reputation it needs, objectives, description, rewards and its buttons.
 local ns = _G.NaowhForever
 
 local GetCoinTextureString = C_CurrencyInfo.GetCoinTextureString
@@ -90,6 +90,11 @@ local function Items(list)
     end
 end
 
+local function DrawRep(quest)
+    local need = quest and Quests.MinRep(quest)
+    if need then view:Add("questRep", need) end
+end
+
 local function DrawObjectives(id)
     local objectives = C_QuestLog.GetQuestObjectives(id) or EMPTY
     if #objectives == 0 then return end
@@ -152,6 +157,7 @@ local function Draw()
     view.showChance = false
     view:Add("questTitle", C_QuestLog.GetTitleForQuestID(id) or (quest and quest[QUEST.NAME]) or "",
         quest and Quests.Level(quest), C_QuestLog.IsComplete(id), HandIn(id, quest))
+    DrawRep(quest)
     DrawObjectives(id)
     DrawItems(id)
     DrawDescription(description)
@@ -283,11 +289,13 @@ function QuestPanel.DrawInto(target, entry)
     if id then
         local description, xp, money = Read(id)
         view:Add("questActions", id)
+        DrawRep(entry.quest)
         DrawObjectives(id)
         DrawItems(id)
         DrawDescription(description)
         DrawRewards(choices, rewards, xp, money)
     else
+        DrawRep(entry.quest)
         local known = KnownRewards(entry.quest)
         if known then DrawRewards(known.choose or EMPTY, known.get or EMPTY, 0, 0) end
     end

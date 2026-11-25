@@ -7,6 +7,7 @@ local GetItemCount, GetItemIconByID, GetItemNameByID = C_Item.GetItemCount, C_It
 local T = ns.THEME
 local J = ns.Journal
 local Quests = J.Quests
+local Rep = J.Reputation
 local View = J.View
 local Kinds, Parts = View.Kinds, View.Parts
 local IconButton, Plain, Tip = Parts.IconButton, Parts.Plain, Parts.Tip
@@ -110,7 +111,7 @@ local function RGB(code)
     return { r = tonumber(r, HEX_BASE) / BYTE, g = tonumber(g, HEX_BASE) / BYTE, b = tonumber(b, HEX_BASE) / BYTE }
 end
 
-local GREY, RED = RGB(QUEST_CODE.low), RGB(QUEST_CODE.tooHigh)
+local GREY, RED = RGB(QUEST_CODE.done), RGB(QUEST_CODE.tooHigh)
 local YELLOW = RGB(QUEST_CODE.prereqLog)
 local MARKS = {
     pickup = { BANG }, next = { BANG },
@@ -277,6 +278,13 @@ local function WarningLines(entry)
     end
 end
 
+local function RepLine(entry)
+    local need = Quests.MinRep(entry.quest)
+    if not need then return end
+    local color = Rep.Meets(need) and HAVE_RGB or RED
+    GameTooltip:AddLine(Rep.NeedText(need), color.r, color.g, color.b, true)
+end
+
 local function TurnInCard(entry)
     TurnInLines(entry)
     PartyLines(entry)
@@ -290,6 +298,7 @@ local function QuestCard(row, entry)
     end
     if not SAID_BELOW[entry.kind] then GameTooltip:AddLine(StatusText(entry)) end
     TooHighLine(entry)
+    RepLine(entry)
     WarningLines(entry)
     ProgressLines(entry)
     GameTooltip:AddLine(TEXT_BLANK)
@@ -354,7 +363,8 @@ local function QuestMouseUp(row, button)
         OpenQuestMenu(row, row.entry)
     elseif row:GetParent().questInline then
         local view, entry = row:GetParent(), row.entry
-        if not (entry.loggedID or Quests.Chain(entry.quest) or View.QuestPanel.HasRewards(entry)) then return end
+        if not (entry.loggedID or Quests.Chain(entry.quest) or View.QuestPanel.HasRewards(entry)
+            or Quests.MinRep(entry.quest)) then return end
         view.openQuest = view.openQuest ~= entry.quest and entry.quest or nil
         view:Redraw()
     elseif row.entry.loggedID then

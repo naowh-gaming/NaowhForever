@@ -484,7 +484,7 @@ local function fixture(settings, noBis, language)
                 return state.mapInfo and state.mapInfo[map] or map == 52 and { name = "Westfall" } or nil
             end,
             GetBestMapForUnit = function() return state.standingOn end,
-            GetAreaInfo = function(area) return language.areas[area] or ("Zona " .. area) end,
+            GetAreaInfo = function(area) return language and language.areas[area] or ("Zona " .. area) end,
             GetPlayerMapPosition = function() return state.standingOn and STANDING_AT end },
         GetMerchantNumItems = function() return #(state.merchant or NO_PROFESSIONS) end,
         GetMerchantItemID = function(i) return state.merchant[i] end,
@@ -2453,11 +2453,13 @@ do
         local keys = LinksRow("Keys")
         state.menu = nil
         keys.links[1].scripts.OnClick(keys.links[1])
-        local steps = 0
+        local steps, inside = 0, 0
         for _, entry in ipairs(state.menu or {}) do
             if entry.text:find("^%d+%.") then steps = steps + 1 end
+            if entry.text:find("Zona 1583", 1, true) then inside = inside + 1 end
         end
         check("clicking the Drakefire Amulet opens its attunement chain, a step a line", steps > 0)
+        check("its step done in Blackrock Spire is marked with it", inside == 1)
         ns.Journal.Settings.Set("questHelp", false)
         state.menu = nil
         keys.links[1].scripts.OnClick(keys.links[1])
