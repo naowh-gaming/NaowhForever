@@ -8,9 +8,22 @@ local UPDATE_METHOD = "UpdateItems"
 
 local frames = {}
 local painters = {}
+local due = {}
+local queued = false
+
+local function Paint()
+    queued = false
+    for frame in pairs(due) do
+        due[frame] = nil
+        for i = 1, #painters do painters[i](frame) end
+    end
+end
 
 local function Painted(frame)
-    for i = 1, #painters do painters[i](frame) end
+    due[frame] = true
+    if queued then return end
+    queued = true
+    C_Timer.After(0, Paint)
 end
 
 local function HookGameBags()
