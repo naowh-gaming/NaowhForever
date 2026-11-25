@@ -1,4 +1,4 @@
--- Nearby.lua: a sound and a chat line when you come within range of a library book you still need.
+-- Nearby.lua: a sound and a chat line near a library book you still need, and a waypoint to the nearest one.
 local ns = _G.NaowhForever
 
 local Discovery = ns.Discovery
@@ -14,16 +14,64 @@ local TEXT_NEARBY = ns.L("Library book nearby: %s, %d yards%s")
 local TEXT_PLACE = " - %s"
 
 local ticker, zoneEvents, bagEvents, moveEvents
-local zone, targets
+local zone, targets, guide, dismissed
 local alerted = {}
 
 local function On()
-    return S.Get("enabled") and S.Get("nearbySound")
+    return S.Get("enabled") and (S.Get("nearbySound") or S.Get("nearestBook"))
 end
 
 local function WorldPos(mapID, x, y)
     local _, pos = C_Map.GetWorldPosFromMapPos(mapID, CreateVector2D(x, y))
     return pos
+end
+
+local function PlayerPos()
+    local here = C_Map.GetPlayerMapPosition(zone, "player")
+    return here and WorldPos(zone, here:GetXY())
+end
+
+local function Unguide()
+    if guide then ns.ClearGuideWaypoint(guide) end
+    guide = nil
+end
+
+local function Guiding()
+    if not guide then return false end
+    local placed = ns.placedWaypoint
+    return ns.GuideWaypointIsCurrent() and placed ~= nil and placed.details == guide
+        or ns.JourneyDetails ~= nil and ns.JourneyDetails() == guide
+end
+
+local function Nearest(me)
+    local mx, my = me:GetXY()
+    local best, bestDist
+    for _, target in ipairs(targets) do
+        local tx, ty = target[WORLD]:GetXY()
+        local dist = (tx - mx) ^ 2 + (ty - my) ^ 2
+        if not bestDist or dist < bestDist then best, bestDist = target, dist end
+    end
+    return best
+end
+
+local function Guide()
+    if not S.Get("nearestBook") then return Unguide() end
+    if dismissed then return end
+    if Guiding() then
+        for _, target in ipairs(targets) do
+            if target[SPOT] == guide.spot then return end
+        end
+    elseif not ns.NoWaypoint() then
+        return
+    end
+    local me = PlayerPos()
+    local target = me and Nearest(me)
+    if not target then return end
+    local book, spot = target[BOOK], target[SPOT]
+    local details = { guide = true, title = book.name, spot = spot }
+    if ns.SetGuideWaypoint(book.name, spot[C.SPOT_MAP], spot[C.SPOT_X], spot[C.SPOT_Y], details) then
+        guide = details
+    end
 end
 
 local function Announce(target, dist)
@@ -34,8 +82,7 @@ local function Announce(target, dist)
 end
 
 local function Check()
-    local here = C_Map.GetPlayerMapPosition(zone, "player")
-    local me = here and WorldPos(zone, here:GetXY())
+    local me = PlayerPos()
     if not me then return end
     local range = S.Get("nearbyRange")
     local mx, my = me:GetXY()
@@ -63,6 +110,7 @@ end
 
 local function Stop()
     StopTicker()
+    Unguide()
     zone, targets = nil, nil
     if bagEvents then bagEvents:UnregisterAllEvents() end
     if moveEvents then moveEvents:UnregisterAllEvents() end
@@ -83,9 +131,15 @@ local function Refresh()
     local id = L.PlayerZone()
     local list = Targets(id)
     if #list == 0 then return Stop() end
+    if id ~= zone then dismissed = nil end
     zone, targets = id, list
     bagEvents:RegisterEvent("BAG_UPDATE_DELAYED")
     bagEvents:RegisterEvent("QUEST_TURNED_IN")
+    Guide()
+    if not S.Get("nearbySound") then
+        moveEvents:UnregisterAllEvents()
+        return StopTicker()
+    end
     moveEvents:RegisterEvent("PLAYER_STARTED_MOVING")
     moveEvents:RegisterEvent("PLAYER_STOPPED_MOVING")
     Check()
@@ -119,7 +173,11 @@ local function Apply()
 end
 
 local function OnSet(key)
-    if key == "enabled" or key == "nearbySound" then Apply() end
+    if key == "enabled" or key == "nearbySound" or key == "nearestBook" then Apply() end
+end
+
+local function OnDismiss(gone)
+    if gone ~= nil and gone == guide then dismissed = true end
 end
 
 local function OnLogin(self)
@@ -128,6 +186,7 @@ local function OnLogin(self)
 end
 
 hooksecurefunc(S, "Set", OnSet)
+hooksecurefunc(ns, "DismissGuideWaypoint", OnDismiss)
 ns.OnApply(Apply)
 
 local boot = CreateFrame("Frame")

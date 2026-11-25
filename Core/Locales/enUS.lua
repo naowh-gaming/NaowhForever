@@ -9137,3 +9137,5 @@ L["Lights this build's next talent without following it, so no points are spent 
 L["%s (followed)"] = true
 L["No build picked"] = true
 L["Show or hide this panel."] = true
+L["Nearest Book"] = true
+L["Points a waypoint at the nearest book you still need in your zone, and at the next one once you loot it. Your own waypoints are left alone."] = true

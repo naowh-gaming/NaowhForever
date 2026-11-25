@@ -115,11 +115,14 @@ page:Card({
 page:Card({
     id = "waypoints", name = "Waypoints", order = ORDER_WAYPOINTS,
     help = "What a waypoint from the Discovery window or the tracker does.",
-    search = "sleeping bag steps",
+    search = "sleeping bag steps nearest book",
     summary = WaypointSummary,
     rows = {
         { key = "openMap", label = "Open the Map", toggle = true,
           help = "Also opens the world map on the waypoint, so you see where it is. Out of combat only." },
+        { key = "nearestBook", label = "Nearest Book", toggle = true, needs = On, why = TEXT_OFF,
+          help = "Points a waypoint at the nearest book you still need in your zone, and at the next one once "
+              .. "you loot it. Your own waypoints are left alone." },
     },
 })
 

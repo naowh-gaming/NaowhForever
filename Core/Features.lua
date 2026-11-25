@@ -197,6 +197,7 @@ ns.FEATURES = {
         tracker = false,
         mapPins = false,
         nearbySound = false,
+        nearestBook = false,
         bagTracker = false,
         bagMapPins = false,
         fieldJournal = false,

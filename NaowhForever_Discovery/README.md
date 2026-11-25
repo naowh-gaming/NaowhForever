@@ -4,7 +4,8 @@ The library books and the Cozy Sleeping Bag: where to find each one, on the map 
 every quest and rare by zone (the Quest List and Rares tabs, in `QuestList/`, see its README). Its
 Library Books tab has every book for your faction by zone, where it lies, whether you carry it,
 and your road to the Friend of the Library rewards; its Sleeping Bag tab the bag's hidden quest
-chain, step by step. Each has a tracker and map pins, and the books a nearby alert. Its Attunements
+chain, step by step. Each has a tracker and map pins, and the books a nearby alert and a waypoint
+to the nearest one. Its Attunements
 tab has the quest chain for each dungeon key and attunement, the step you are on first, with a
 tracker and map pins of its own, and a Class page with your class's own quest chains. Its Field
 Journal tab is a page each for fish, herbs and dishes: every one there is, where to find it, and
@@ -32,7 +33,8 @@ NaowhForever_Discovery/
                               your class's own chains (Discovery.Attune)
   Field.lua                   the Field Journal's rules: what this character caught, picked and cooked,
                               ranks and where-lines (Discovery.Field)
-  Nearby.lua                  the nearby alert: a ping and a chat line near a book you need
+  Nearby.lua                  the nearby alert: a ping and a chat line near a book you need, and
+                              the Nearest Book waypoint
   View/
     Style.lua                 Discovery's own look, on top of Shared/Style.lua
     View.lua                  the window's row kinds, and the row a book, a step and a journal entry share
@@ -175,6 +177,11 @@ keep their names for the rest of the addon.
   your distance once a second while you move, and once more as you stop; standing still nothing
   runs, and nothing at all in a zone with no book left. `REARM` is 1.5: past one and a half times
   the range the alert rearms, so standing at its edge does not repeat it.
+- Nearest Book is a guide waypoint (`ns.SetGuideWaypoint`) on the closest book in your zone. It
+  moves only once that book is looted or handed in, not as you walk, so it never jumps between two
+  books at a similar distance. It is placed only when no waypoint is up or its own still is, and
+  cleared only through its own `details`; dismissed on the Navigator Bar it stays away until the
+  next zone. It needs no movement events: zone changes, loot and hand-ins redraw it.
 - On the road a stripe stands for each book, in the accent for those handed in, with YOU over the
   end of the last one. A reward's dot is filled grey once handed in, in the accent once ready (or
   waiting on your level), a ring while ahead; once handed in, the reward you have keeps its colour
