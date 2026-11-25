@@ -380,9 +380,9 @@ end
 local function Set(key, value) S.Set(key, value) end
 -- The bags paint on the frame after an update: run that paint, leaving every other timer queued.
 local function UpdateBags()
-    local before = #timers
+    local queued = #timers
     bagFrame:UpdateItems()
-    if #timers > before then table.remove(timers, before + 1)() end
+    if #timers > queued then table.remove(timers, queued + 1)() end
 end
 
 -------------------------------------------------------------------------------
