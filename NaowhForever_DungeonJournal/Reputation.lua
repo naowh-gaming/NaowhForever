@@ -22,6 +22,7 @@ local TENTHS = 10
 local ROUND = J.C.ROUND_HALF
 local READY_WEIGHT, LOGGED_WEIGHT = 2, 1
 local TAKE_STRIDE = 2
+local QUEST_ID = J.C.QUEST.ID
 local ALLIANCE_RANKS, HORDE_RANKS = 1, 0
 local RANK_CITY = { Alliance = "Stormwind", Horde = "Orgrimmar" }
 local SECONDS_PER_DAY, SECONDS_PER_HOUR, SECONDS_PER_MINUTE = 86400, 3600, J.C.SECONDS_PER_MINUTE
@@ -39,14 +40,12 @@ local TEXT_MINUTE, TEXT_MINUTES = ns.L("1 minute"), ns.L(" minutes")
 local labels = {}
 local short = {}
 
-local function IsTurnIn(faction, questID)
-    local turnins = faction.turnins
-    if not turnins then return false end
-    for i = 1, #turnins do
-        local quests = turnins[i].quests
-        for k = 1, #quests do
-            if quests[k][1] == questID then return true end
-        end
+local function IsListed(faction, questID)
+    local data = faction.questData
+    if not data then return false end
+    local quests = data.quests
+    for i = 1, #quests do
+        if quests[i][QUEST_ID] == questID then return true end
     end
     return false
 end
@@ -158,8 +157,8 @@ function Rep.LogQuests(faction, out)
     local signature = 0
     for i = 1, GetNumQuestLogEntries() do
         local id = GetQuestIDForLogIndex(i)
-        if id and id > 0 and AwardsReputation(id, faction.id) and not IsTurnIn(faction, id) then
-            out[#out + 1] = id
+        if id and id > 0 and AwardsReputation(id, faction.id) then
+            if not IsListed(faction, id) then out[#out + 1] = id end
             signature = signature + id * (ReadyForTurnIn(id) and READY_WEIGHT or LOGGED_WEIGHT)
         end
     end

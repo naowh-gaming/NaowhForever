@@ -332,8 +332,14 @@ local function fixture(settings, noBis, language)
             local i = state.instance or {}
             return i.name, nil, nil, nil, nil, nil, nil, i.id
         end,
-        -- Only a language other than English asks; English has none to answer with.
-        GetRealZoneText = function(id) return language.instances[id] or ("Mapa " .. id) end,
+        -- In English only the rank page asks, for its Marks of Honor's battlegrounds.
+        GetRealZoneText = function(id)
+            if not language then
+                return ({ [30] = "Alterac Valley", [489] = "Warsong Gulch", [529] = "Arathi Basin",
+                    [2997] = "Darkspear Islands" })[id]
+            end
+            return language.instances[id] or ("Mapa " .. id)
+        end,
         C_CreatureInfo = { GetCreatureTypeInfo = function(id)
             return { name = id == 7 and (language and "Humanoide" or "Humanoid") or "Type " .. id }
         end },
@@ -3464,6 +3470,19 @@ do
     for _, f in ipairs(strat.factions or {}) do linked = linked or f == dawn end
     check("Stratholme links to the Argent Dawn", linked)
     check("and the Argent Dawn back to it", dawn.linked[1] == strat)
+    for _, key in ipairs({ "SilverwingSentinels", "WarsongOutriders", "StormpikeGuard", "FrostwolfClan" }) do
+        local faction = FactionOf(J, key)
+        check(key .. " is a battleground's, with its quartermaster and a reward at each standing", faction
+            and faction.tab == "pvp" and faction.instance and faction.quartermaster and #faction.tiers == 4)
+    end
+    local sentinels = FactionOf(J, "SilverwingSentinels")
+    local bands = 0
+    for _, tier in ipairs(sentinels.tiers) do
+        for _, id in ipairs(tier.items) do
+            if id == 20439 or id == 19517 or id == 19514 then bands = bands + 1 end
+        end
+    end
+    check("each level of a reward the quartermaster sells is listed", bands == 3)
 end
 
 -------------------------------------------------------------------------------
@@ -3649,6 +3668,8 @@ do
     check("the header says where the rewards are sold, as a quartermaster's", Said("Rank vendor in ")
         and not Said("Rank rewards are sold in Stormwind"))
     check("your honor", Said("1234"))
+    check("the Marks of Honor, with what each battleground's buys", Said("MARKS OF HONOR")
+        and Said("Warsong Gulch") and Said("Legs, wrists and hands.") and Said("Darkspear Islands"))
 
     -- Back to the dungeons: the page last shown there.
     check("the first tab goes back", Click("Dungeons & Raids"))
@@ -3722,6 +3743,18 @@ do
     state.merchant = { 999999 }
     vendors.scripts.OnEvent(vendors, "MERCHANT_SHOW")
     check("another vendor changes nothing", Rep.Quartermaster(druids) == spot)
+    -- Both sides' battleground quartermasters sell the same potions: only what one alone sells places it.
+    state.merchant, state.vendor = { 17348 }, "Illiyana Moonblaze"
+    vendors.scripts.OnEvent(vendors, "MERCHANT_SHOW")
+    local learned = false
+    for _, key in ipairs({ "SilverwingSentinels", "WarsongOutriders", "StormpikeGuard", "FrostwolfClan" }) do
+        learned = learned or state.account.journalQuartermasters[key] ~= nil
+    end
+    check("an item several quartermasters sell places none of them", not learned)
+    state.merchant = { 17348, 19506 }
+    vendors.scripts.OnEvent(vendors, "MERCHANT_SHOW")
+    check("the Silverwing tabard places the Silverwing Sentinels'",
+        Rep.Quartermaster(FactionOf(J, "SilverwingSentinels")).name == "Illiyana Moonblaze")
     -- A spot learned before, kept as the map's 0 to 1: put in percent once, when read.
     state.account.journalQuartermasters.NightclawDruids = { map = 2422, x = 0.5, y = 0.25 }
     local old = Rep.Quartermaster(druids)
@@ -4021,6 +4054,29 @@ do
         end
     end
     check("the data has its hand-ins", handIns >= 20)
+
+    -- Alterac Valley's quest chains: a row a step, with the standing it needs, the reputation it
+    -- gives, its step of the chain and its rewards; the other side's are not yours.
+    ns.OpenJournalWindow(FactionOf(J, "StormpikeGuard"))
+    local rise = QuestRow("Rise and Be Recognized")
+    check("an insignia quest, with what it gives and the standing it needs", rise
+        and rise.entry.name:find("+100 rep", 1, true) and rise.entry.name:find("FACTION_STANDING_LABEL5", 1, true))
+    check("as step 2 of the insignia chain", rise.entry.step == 2 and rise.entry.steps == 6 and rise.chain:IsShown())
+    check("not a hand-in", rise.entry.turnin == nil)
+    check("with a waypoint to who gives it", rise.entry.canWaypoint and Said("Lieutenant Haggerdin (39.5, 81.2)"))
+    local hero = QuestRow("Hero of the Stormpike")
+    check("Hero of the Stormpike, after The Battle of Alterac", hero and hero.entry.step == 2 and hero.entry.steps == 2
+        and QuestRow("The Battle of Alterac"))
+    check("with the weapons to choose from", J.QuestRewards[8271].choose[1] == 19107)
+    check("the chain's steps are named before the game knows them", J.Quests.StepName(7172) == "The Eye of Command")
+    ns.OpenJournalWindow(FactionOf(J, "FrostwolfClan"))
+    check("the Horde's are not an Alliance character's", not QuestRow("Hero of the Frostwolf"))
+    local stormpike = FactionOf(J, "StormpikeGuard")
+    state.log, state.repQuests[7168] = { 7168 }, stormpike.id
+    log = {}
+    local _, empty = Rep.LogQuests(stormpike, log)
+    check("a chain quest in your log is not listed twice, but changes the page's quests", #log == 0 and empty > 0)
+    state.log, state.repQuests[7168] = {}, nil
 
     -- A dungeon's page: each faction earned there with your standing.
     state.standings[529] = { reaction = 6, currentStanding = 12000, currentReactionThreshold = 9000,

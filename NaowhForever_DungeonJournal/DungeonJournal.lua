@@ -151,6 +151,7 @@ local factions = { reputation = {}, pvp = {} }
 local byZone, byBattleground
 local inFront = {}
 local lastWing = {}
+local EMPTY = {}
 
 local function Localize(dungeon)
     local name = ns.L(dungeon.name)
@@ -176,13 +177,21 @@ local function AddTo(index, id, faction)
     index[id] = list
 end
 
-local function TurninQuests(faction)
+local function FactionQuests(faction)
     local quests = {}
-    for _, turnin in ipairs(faction.turnins) do
+    for _, turnin in ipairs(faction.turnins or EMPTY) do
         for _, q in ipairs(turnin.quests) do
             quests[#quests + 1] = { q[1], turnin.name, turnin.level, q[2], true, q[3], q[4], q[5], q[6],
                 turnin = turnin }
         end
+    end
+    for _, quest in ipairs(faction.quests or EMPTY) do
+        quests[#quests + 1] = quest
+        J.QuestRewards[quest[1]] = quest.rewards
+        J.QuestChainNames[quest[1]] = quest[2]
+    end
+    for _, chain in ipairs(faction.chains or EMPTY) do
+        for _, id in ipairs(chain) do J.QuestChains[id] = chain end
     end
     return { quests = quests }
 end
@@ -200,7 +209,7 @@ end
 
 local function JoinFaction(faction)
     faction.linked = {}
-    if faction.turnins then faction.questData = TurninQuests(faction) end
+    if faction.turnins or faction.quests then faction.questData = FactionQuests(faction) end
     if not faction.unreleased then
         for _, id in ipairs(faction.maps or {}) do AddTo(byZone, id, faction) end
         if faction.instance then AddTo(byBattleground, faction.instance, faction) end

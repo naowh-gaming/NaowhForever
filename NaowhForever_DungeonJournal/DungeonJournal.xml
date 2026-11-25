@@ -82,8 +82,12 @@
     <Script file="Data\Factions\DarkspearTrolls.lua"/>
     <Script file="Data\Factions\AzerothCommerceAuthority.lua"/>
     <Script file="Data\Factions\DurotarSupplyAndLogistics.lua"/>
+    <Script file="Data\Factions\SilverwingSentinels.lua"/>
+    <Script file="Data\Factions\WarsongOutriders.lua"/>
     <Script file="Data\Factions\LeagueOfArathor.lua"/>
     <Script file="Data\Factions\Defilers.lua"/>
+    <Script file="Data\Factions\StormpikeGuard.lua"/>
+    <Script file="Data\Factions\FrostwolfClan.lua"/>
     <Script file="Data\Factions\TheramoreExpeditionaryForce.lua"/>
     <Script file="Data\Factions\DarkspearRaiders.lua"/>
     <Script file="Data\Tips.lua"/>

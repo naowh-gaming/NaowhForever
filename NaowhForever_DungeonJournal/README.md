@@ -5,7 +5,9 @@ card), what each drops and how often, your BiS marked, your quests there, and a 
 Naowh for each boss. Each classic dungeon has a map: the game's own art with every boss where
 it stands, in a window of its own or filling the world map inside the dungeon. Its Reputation
 tab has each faction's rewards by standing, with their prices; its PvP tab your rank this
-season, what each rank gives, and the battleground factions. Its Crafting page lists every
+season, what each rank gives, what the Marks of Honor buy, and the battleground factions:
+Warsong Gulch's, Arathi Basin's, Alterac Valley's (with its insignia and Hero quests) and the
+Darkspear Islands'. Its Crafting page lists every
 profession's recipes (gear, consumables, enchants), each with its skill and source. Its Run Panel shows the run you are
 in (time, gold, XP, trash and each boss against your best run), and its Runs tab every run you
 have done. Off by default: players turn it
@@ -69,7 +71,7 @@ NaowhForever_DungeonJournal/
     Parts.lua          a fight's length, a boss's level and portrait, a row's band to its card's edges, side panels
     DungeonPage.lua    a dungeon's page: header, quests, each wing's boss cards, trash, the folded bosses
     BossPage.lua       a boss's own page: stacked (Boss Loot at Cursor) or compact (the dungeon map)
-    FactionPage.lua    a faction's page and the PvP rank's
+    FactionPage.lua    a faction's page and the PvP rank's, with the Marks of Honor
     SearchPage.lua     a search over every boss, item and faction reward
     FinderPage.lua     the Loot Finder: its picks, then the loot that fits, each with its boss and dungeon
     CraftingPage.lua   the Crafting page: its picks, then the recipes that fit, each with its slot, skill and source
@@ -340,6 +342,20 @@ in the pull request it opens.
   ```json
   "turnins": [
       { "name": "Minion's Scourgestones", "quests": [5402, 5408, 5510], "rep": 25, "takes": [[12840, 20]] }
+  ]
+  ```
+- **A battleground faction's rewards:** the game's tables tie its quartermaster's items to no
+  faction (both sides' quartermasters sell most of them), so they are listed by hand in its
+  `"sells"`, by the standing each needs, from the quartermaster's Wowhead Forever page; their
+  facts and prices are the tables'. Its quest chains are its `"quests"`, one quest a line, each
+  step after the one it names, with the standing it needs, the reputation it gives, the items
+  it rewards and who gives it; its page lists each step as a quest row, with its chain:
+
+  ```json
+  "sells": { "Friendly": [21565, 21566], "Honored": [19514] },
+  "quests": [
+      {"quest": 7162, "name": "Proving Grounds", "rep": 100, "get": [17691], "at": ["Lieutenant Haggerdin", "Alterac Mountains", 39.5, 81.2]},
+      {"quest": 7168, "name": "Rise and Be Recognized", "after": 7162, "standing": "Friendly", "rep": 100, "get": [17900], "at": ["Lieutenant Haggerdin", "Alterac Mountains", 39.5, 81.2]}
   ]
   ```
 - **A row kind:** a file in `View/` that fills `J.View.Kinds.<name>` with `New(view)`
@@ -743,7 +759,24 @@ in the pull request it opens.
   the copper. Forever has the money string only as `C_CurrencyInfo.GetCoinTextureString`: the
   global `GetCoinTextureString` is not loaded.
 - The game knows what a quest gives only once you have it, so a faction's page names the quests
-  in your log; its repeatable hand-ins are kept by hand.
+  in your log; its repeatable hand-ins and Alterac Valley's quest chains are kept by hand. A
+  chain's quests and rewards join the dungeon quests' chains (`J.QuestChains`) and rewards
+  (`J.QuestRewards`) when the factions are first read, so its rows show their step, chain and
+  rewards as a dungeon's do. A kept quest in your log is listed once, but still counts in the
+  page's quests changing.
+- A quartermaster's spot is learned only from an item one faction alone rewards: both sides'
+  battleground quartermasters sell the same potions, rings and weapons, and the Alterac Valley
+  ones the same tomes, so those place neither.
+- The battleground quartermasters' rewards are the ones their Wowhead Forever pages show with a
+  standing (read 25 Nov 2026). The level 25 items listed beside them with none (the Trainee's
+  Sentinel Nightsaber and Outrider Wolf, the level 25 weapons) and the item level 78 legs are
+  Season of Discovery's, and left out: players report the mount is not sold on Forever. The
+  Warsong Gulch tabards show no standing there and are listed at Exalted, as in classic.
+- The Marks of Honor and what each buys with Honor are Wowhead Forever's items they are the
+  currency for (read 25 Nov 2026): the Premier gear by slot, the rank 3 cloaks, the rank 4
+  insignia and the rank 14 weapons. The battleground's name is the game's (`GetRealZoneText`).
+- Alterac Valley's Hero chains start at The Battle of Alterac (for the Horde, The Battle for
+  Alterac): the lead-in before it only sends you to the same quest giver, and is left out.
 - A quartermaster's spot is learned where you stand when you open a vendor that sells its
   rewards, outside an instance only (the map has no position inside one). Spots once kept as
   the map's 0 to 1 are put in percent once (a vendor never stands that close to the map's

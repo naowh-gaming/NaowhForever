@@ -1,7 +1,7 @@
--- FactionPage.lua: a faction's page and the PvP rank's: your standing, its quests, and a card of rewards per standing or rank.
+-- FactionPage.lua: a faction's page and the PvP rank's: your standing, its quests, a card of rewards per standing or rank, and the Marks of Honor.
 local ns = _G.NaowhForever
 
-local GetItemCount = C_Item.GetItemCount
+local GetItemCount, GetItemIconByID = C_Item.GetItemCount, C_Item.GetItemIconByID
 local IsEquippedItem = C_Item.IsEquippedItem
 local GetCoinTextureString = C_CurrencyInfo.GetCoinTextureString
 local GetTitleForQuestID = C_QuestLog.GetTitleForQuestID
@@ -25,6 +25,7 @@ local BOTH = "B"
 local PRICE_COLUMN, NO_COLUMN = "price", "none"
 local SPEND_ICON = "Interface\\Icons\\INV_Misc_Coin_02"
 local ASIDE_W, ASIDE_GAP, SPLIT_COLUMNS, CARD_SPACE = 340, 18, 2, 8
+local WSG, AB, AV, DI = 489, 529, 30, 2997
 
 local TEXT_RANK = ns.L("Rank ")
 local TEXT_EARNED_IN = ns.L("Earned in")
@@ -43,6 +44,15 @@ local TEXT_YOU_HAVE = ns.L("you have ")
 local TEXT_SPEND_ONE = ns.L("Unlocked and not yours yet: %d reward, %s")
 local TEXT_SPEND = ns.L("Unlocked and not yours yet: %d rewards, %s")
 local TEXT_CODE_END = "|r"
+local TEXT_STANDING = "  %s"
+local TEXT_MARKS = ns.L("Marks of Honor")
+local TEXT_MARKS_NOTE = ns.L("Each battleground gives its own mark, which buys Premier PvP gear with Honor.")
+local MARKS = {
+    { item = 20558, battleground = WSG, buys = ns.L("Legs, wrists and hands.") },
+    { item = 20559, battleground = AB, buys = ns.L("Chest, shoulders, waist and the rank 3 cloaks.") },
+    { item = 20560, battleground = AV, buys = ns.L("Head and the two-handed rank 14 weapons.") },
+    { item = 274895, battleground = DI, buys = ns.L("Feet, the rank 4 insignia and the other rank 14 weapons.") },
+}
 local WHY = {
     recipes = { one = ns.L("%d is a recipe for professions you do not have (My Professions Only)"),
         many = ns.L("%d are recipes for professions you do not have (My Professions Only)") },
@@ -306,10 +316,18 @@ end
 local function MarkHandIns(handIns)
     for i = 1, #handIns do
         local entry = handIns[i]
-        local turnin = entry.quest.turnin
-        entry.turnin, entry.held = turnin, Rep.TurnInsHeld(turnin)
-        if entry.held > 0 and not entry.inLog then entry.kind = "ready" end
-        entry.name = entry.name .. TEXT_REP:format(REP_CODE, turnin.rep)
+        local quest = entry.quest
+        local turnin = quest.turnin
+        entry.turnin = turnin
+        if turnin then
+            entry.held = Rep.TurnInsHeld(turnin)
+            if entry.held > 0 and not entry.inLog then entry.kind = "ready" end
+        end
+        entry.name = entry.name .. TEXT_REP:format(REP_CODE, turnin and turnin.rep or quest.rep)
+        if quest.standing then
+            entry.name = entry.name .. TEXT_STANDING:format(J.Colored(Rep.Color(quest.standing),
+                Rep.Label(quest.standing)))
+        end
     end
 end
 
@@ -328,6 +346,18 @@ function ViewMixin:DrawRepQuests(faction)
         for i = 1, #handIns do self:Add("quest", handIns[i], #logged + i) end
     end
     self.questsDrawn = true
+    self:Space(SECTION_SPACE)
+end
+
+function ViewMixin:DrawMarks()
+    self:Section(TEXT_MARKS, #MARKS)
+    self:Space(SECTION_SPACE)
+    self:Note(TEXT_MARKS_NOTE)
+    for _, mark in ipairs(MARKS) do
+        self:Add("line", GetItemIconByID(mark.item), GetRealZoneText(mark.battleground), GetItemCount(mark.item, true),
+            mark.item)
+        self:Note(mark.buys)
+    end
     self:Space(SECTION_SPACE)
 end
 
@@ -369,6 +399,7 @@ function ViewMixin:DrawRankAside(x, top)
             self:Space(CARD_SPACE)
         end
     end
+    self:DrawMarks()
     return self.cursor
 end
 
@@ -403,5 +434,6 @@ function ViewMixin:DrawRank()
     self:Space(SECTION_SPACE)
     self:DrawGrid()
     if count == 0 then self:Note(TEXT_NO_RANK_REWARDS) end
+    self:DrawMarks()
     self:Finish()
 end
