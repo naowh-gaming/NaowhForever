@@ -35,10 +35,13 @@ strmatch = string.match
 dofile("Libs/LibStub/LibStub.lua")
 dofile("Libs/LibDeflate/LibDeflate.lua")
 dofile("Libs/LibSerialize/LibSerialize.lua")
-local ns = { UI = {}, PlainText = function(s) return s end }
+local ns = { UI = {}, PlainText = function(s) return s end, L = function(s) return s end }
 local env = setmetatable({ _G = { NaowhForever = ns }, date = os.date }, { __index = _G })
 ns.Shared = { Decode = dofile("Tools/regression/load_decode.lua")(env) }
-local chunk = assert(loadfile("Core/Profiles/ProfileShare.lua"))
+local chunk = assert(loadfile("Core/Features.lua"))
+setfenv(chunk, env)
+chunk()
+chunk = assert(loadfile("Core/Profiles/ProfileShare.lua"))
 setfenv(chunk, env)
 chunk()
 chunk = assert(loadfile("Core/Onboarding/Setup.lua"))
