@@ -230,8 +230,8 @@ function ViewMixin:DrawTracker(dungeon)
     self.tight = true
     local list = self:QuestList(dungeon)
     if #list == 0 then
-        local hidden = dungeon.quests and J.QuestTracker.LogOnly() and Quests.Count(dungeon.quests) > 0
-        self:Note(hidden and TEXT_LOG_ONLY or Quests.NoneWhy(dungeon.quests) or TEXT_NO_QUESTS)
+        local done, total = Quests.Progress(dungeon.quests)
+        self:Note(J.QuestTracker.LogOnly() and done < total and TEXT_LOG_ONLY or Quests.NoneWhy(dungeon.quests) or TEXT_NO_QUESTS)
     end
     for i = 1, #list do self:Add("quest", list[i], i) end
     self:Finish()

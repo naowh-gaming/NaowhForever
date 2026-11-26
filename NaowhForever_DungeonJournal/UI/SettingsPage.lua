@@ -318,6 +318,8 @@ local function DeclareTracker()
                 "Opens the quest tracker when you enter a dungeon with quests for you."),
             { key = "trackerSkipMaxLevel", label = "Hide at Max Level", toggle = true, needs = AutoOn, why = AutoWhy,
               help = "Leaves the quest tracker closed in dungeons once you are max level." },
+            Toggle("trackerLogOnlyMaxLevel", "Only My Quests at Max Level",
+                "Once you are max level, the quest tracker lists only the dungeon's quests in your log."),
             Toggle("trackerOutside", "Show Outside Dungeons",
                 "Opens the quest tracker out in the world, on the dungeon your quests are for."),
             { key = "hideGameTracker", label = "Hide the Game's Quest Tracker", toggle = true, needs = PadFree,
@@ -327,8 +329,6 @@ local function DeclareTracker()
             Toggle("acceptShared", "Accept Shared Dungeon Quests",
                 "Accepts dungeon quests your group shares with you straight away.",
                 "hold skip modifier qol accept quests"),
-            Toggle("trackerLogOnlyMaxLevel", "Only My Quests at Max Level",
-                "Once you are max level, the quest tracker lists only the dungeon's quests in your log."),
         },
     })
     tracker:Card({
