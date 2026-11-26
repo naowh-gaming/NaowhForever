@@ -2662,6 +2662,16 @@ do
             if type(text) == "string" and text:find("^%d+ to do$") then toDo = true end
         end
         check("the header counts the quests left to do", toDo)
+        local hallDone, hallTotal = J.Quests.Progress(hall.quests)
+        local doneOf = hallDone .. "/" .. hallTotal .. "|r"
+        local counted = false
+        for _, font in ipairs(state.fonts) do
+            local text = rawget(font, "text")
+            if type(text) == "string" and text:find("QUESTS", 1, true) and text:find(doneOf, 1, true) then
+                counted = true
+            end
+        end
+        check("the quests' title counts them handed in of all of them", hallTotal > 0 and counted)
         check("no Share All out of a group", LinkSaying("Share All") == nil)
         state.party = { { name = "Ally", quests = {} } }
         ns.OpenJournalWindow(hall)
@@ -2948,7 +2958,7 @@ do
                 check("it starts, takes or is used for a quest: " .. data.name, roles > 0)
             end
         end
-        check("the quest givers and objects of every classic dungeon with one inside", entries == 56 and maps == 17)
+        check("the quest givers and objects of every classic dungeon with one inside", entries == 60 and maps == 19)
 
         local function QuestPins()
             local list = {}
@@ -3073,6 +3083,36 @@ do
         state.account.journalMapPins = placedBefore
         for pinKey, spot in pairs(shippedSpots) do depthsPins[pinKey] = spot end
     end)() end
+
+    -- Spots moved or added from players' reports (2026-11-26): each on its floor and where it was put.
+    do
+        local REPORTED = {
+            BlackmawHold = { [247206] = { 1, 0.424, 0.7 }, [269104] = { 1, 0.589, 0.842 },
+                [247198] = { 1, 0.711, 0.773 }, [247195] = { 2, 0.715, 0.269 }, [247231] = { 3, 0.585, 0.35 },
+                [247209] = { 4, 0.447, 0.363 }, [-570888] = { 4, 0.431, 0.445 }, [247207] = { 5, 0.558, 0.347 },
+                [-570890] = { 5, 0.474, 0.513 }, [247234] = { 6, 0.638, 0.586 } },
+            HallOfThanes = { [265002] = { 1, 0.427, 0.647 } },
+            Gnomeregan = { [-142487] = { 1, 0.452, 0.877 }, [7850] = { 2, 0.776, 0.797 } },
+            ShadowfangKeep = { [4278] = { 1, 0.279, 0.6 }, [3864] = { 1, 0.322, 0.595 }, [3887] = { 1, 0.162, 0.807 },
+                [4627] = { 5, 0.593, 0.538 }, [-36738] = { 5, 0.451, 0.538 }, [4275] = { 7, 0.625, 0.191 } },
+        }
+        for key, spots in pairs(REPORTED) do
+            for id, want in pairs(spots) do
+                local spot = J.Maps[key].pins[id]
+                check("a reported spot: " .. key .. " " .. id, spot ~= nil and spot[1] == want[1]
+                    and spot[2] == want[2] and spot[3] == want[3])
+            end
+        end
+        local library = J.Maps.ScarletMonasteryLibrary.entrance
+        check("the Library's entrance on its swirl", library[1] == 1 and library[2] == 0.13 and library[3] == 0.245)
+        local totems = {}
+        for _, data in ipairs(J.Maps.BlackmawHold.quests) do totems[data.object] = data.use[1] end
+        check("Blackmaw Hold's two totems are The Twin Bears'", totems[570890] == 92066 and totems[570888] == 92066)
+        local ups = {}
+        for _, stairs in ipairs(J.Maps.BlackmawHold.stairs) do ups[stairs[1] .. ">" .. stairs.to] = true end
+        check("Blackmaw Hold's stairs: down from the Grove, back up out of the Grotto, then down level by level",
+            ups["1>2"] and ups["2>1"] and ups["1>3"] and ups["3>4"] and ups["4>5"] and ups["5>6"])
+    end
 
     local NOT_PLACED = {
         Dalaran = { [246931] = "Mana Wraith" },
@@ -3329,14 +3369,14 @@ do
         local blackmaw = J.Get("BlackmawHold")
         J.OpenDungeonMap(blackmaw)
         local blackmawView = J.DungeonMap.windowView
-        check("Blackmaw Hold: no pins yet, so all its pictures are offered", blackmawView.dungeon == blackmaw
-            and FloorsOf(blackmawView) == "1,2,3,4,5,6"
-            and blackmawView.picture.texture == "Interface\\AddOns\\NaowhForever_DungeonJournal\\Media\\Maps\\BlackmawHold_1"
-            and rawget(blackmawView.floorName, "text") == "Blackmaw Grove")
-        blackmawView:Step(1)
-        check("Festering Grotto next", blackmawView.picture.texture
-            == "Interface\\AddOns\\NaowhForever_DungeonJournal\\Media\\Maps\\BlackmawHold_2"
+        check("Blackmaw Hold: a pin on every level, so all its pictures are offered, opening on its first boss's",
+            blackmawView.dungeon == blackmaw and FloorsOf(blackmawView) == "1,2,3,4,5,6"
+            and blackmawView.picture.texture == "Interface\\AddOns\\NaowhForever_DungeonJournal\\Media\\Maps\\BlackmawHold_2"
             and rawget(blackmawView.floorName, "text") == "Festering Grotto")
+        blackmawView:Step(-1)
+        check("Blackmaw Grove before it", blackmawView.picture.texture
+            == "Interface\\AddOns\\NaowhForever_DungeonJournal\\Media\\Maps\\BlackmawHold_1"
+            and rawget(blackmawView.floorName, "text") == "Blackmaw Grove")
 
         J.OpenDungeonMap(J.Get("AlcazPrison"))
         local alcazView = J.DungeonMap.windowView

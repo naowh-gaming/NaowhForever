@@ -8,7 +8,7 @@ local RULES = { "Shared/Shared.lua", "Shared/Data/Replaced.lua", "Shared/Style.l
     "NaowhForever_BiS/BiS/Sources.lua" }
 local SEP = " \194\183 "
 
-local CLASS_IDS = { WARRIOR = 1, ROGUE = 4, MAGE = 8 }
+local CLASS_IDS = { WARRIOR = 1, ROGUE = 4, SHAMAN = 7, MAGE = 8 }
 
 local EQUIP = {
     [1] = "INVTYPE_HEAD", [2] = "INVTYPE_HEAD", [3] = "INVTYPE_HEAD", [4] = "INVTYPE_HEAD",
@@ -255,6 +255,15 @@ Case("a spec's ranking leaves out the other side's quest rewards", function()
     setfenv(m.R.OtherSideQuest, setmetatable({ UnitFactionGroup = function() return "Horde" end },
         { __index = getfenv(m.R.OtherSideQuest) }))
     assert(List(m.R.Candidates(1, spec)) == "1,3,13", List(m.R.Candidates(1, spec)))
+end)
+
+Case("a spec's ranking and pre-raid picks leave out quest rewards the class cannot take", function()
+    local m = Fixture("SHAMAN", 52, {}, false)
+    m.ns.BiSClassQuests = { [2] = { 4, 2, 52, 50, 3, "Druid Quest" .. SEP .. "Quest", 1024, 9053 },
+        [3] = { 4, 2, 52, 50, 3, "Shaman Quest" .. SEP .. "Quest", 64 + 1024, 500 } }
+    assert(List(m.R.Candidates(1, { slots = { [1] = { 1, 2, 3 } } })) == "1,3")
+    m.ns.BiSData.specs = { { key = "restoration-shaman", preRaid = { [1] = { 2, 3 } } } }
+    assert(m.R.PreRaid("restoration-shaman")[1] == 3)
 end)
 
 Case("a world drop the Journal places on a boss with no chance stays a world drop, and no dungeon drop", function()

@@ -291,7 +291,8 @@ quest and creature pages. Do not edit them by hand: change the tool and run it a
   reputation (`D.Gains`), the instance it is for (`D.Instances`), the breadcrumbs still
   open to you that lead to it (`Q.Breadcrumbs`, `D.Breadcrumb` turned around) and every later step of its
   chain (one version of an `any` step). The experience is Wowhead's, at the quest's level, cut as the game
-  cuts it once you are more than five levels over the quest, and left out at max level; experience buffs
+  cuts it once you are more than five levels over the quest (80% six levels over, 60% seven, then 50% however
+  far over: Forever never cuts it to Classic's 10%), and left out at max level; experience buffs
   are not counted. The tooltip listens for `MODIFIER_STATE_CHANGED` only while a pin
   with more to show is hovered, and redraws as Shift goes down or up.
 - An objective pin is matched to the game's objective by its place among the quest's objectives of its kind:
