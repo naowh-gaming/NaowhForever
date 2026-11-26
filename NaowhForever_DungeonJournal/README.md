@@ -69,7 +69,7 @@ NaowhForever_DungeonJournal/
     Style.lua          what only the Journal draws: colors, icons, sizes (J.Style, over Shared/Style.lua)
     View.lua           the view: per-draw answers, its events and redraws (J.View)
     Parts.lua          a fight's length, a boss's level and portrait, a row's band to its card's edges, side panels
-    DungeonPage.lua    a dungeon's page: header, quests, each wing's boss cards, trash, the folded bosses
+    DungeonPage.lua    a dungeon's page: header, quests (handed in of all of them), each wing's boss cards, trash, the folded bosses
     BossPage.lua       a boss's own page: stacked (Boss Loot at Cursor) or compact (the dungeon map)
     FactionPage.lua    a faction's page and the PvP rank's, with the Marks of Honor
     SearchPage.lua     a search over every boss, item and faction reward

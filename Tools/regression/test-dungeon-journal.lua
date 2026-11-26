@@ -2662,6 +2662,16 @@ do
             if type(text) == "string" and text:find("^%d+ to do$") then toDo = true end
         end
         check("the header counts the quests left to do", toDo)
+        local hallDone, hallTotal = J.Quests.Progress(hall.quests)
+        local doneOf = hallDone .. "/" .. hallTotal .. "|r"
+        local counted = false
+        for _, font in ipairs(state.fonts) do
+            local text = rawget(font, "text")
+            if type(text) == "string" and text:find("QUESTS", 1, true) and text:find(doneOf, 1, true) then
+                counted = true
+            end
+        end
+        check("the quests' title counts them handed in of all of them", hallTotal > 0 and counted)
         check("no Share All out of a group", LinkSaying("Share All") == nil)
         state.party = { { name = "Ally", quests = {} } }
         ns.OpenJournalWindow(hall)
