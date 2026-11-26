@@ -32,6 +32,7 @@ local TEXT_UPGRADES = ns.L("%d |4upgrade:upgrades; for you")
 local TEXT_HIDE_OTHERS = "Hide Other Classes' Items"
 local TEXT_SHOW_OTHERS = "Show Other Classes' Items"
 local TEXT_TRASH = "Trash"
+local TEXT_DONE_OF = "%d/%d"
 
 local EMPTY = {}
 local chipLabels = {}
@@ -46,6 +47,12 @@ end
 
 local function ShareAll(dungeon)
     J.Sharing.ShareAll(dungeon)
+end
+
+local function QuestCount(dungeon, list)
+    local done, total = Quests.Progress(dungeon.quests)
+    if total == 0 then return #list end
+    return TEXT_DONE_OF:format(done, total)
 end
 
 local function Inside(dungeon)
@@ -131,8 +138,8 @@ end
 
 function ViewMixin:DrawQuests(list)
     local open = S.Get("questsOpen")
-    self:Add("section", TEXT_QUESTS, #list, open, OpenQuests, TEXT_TRACKER, OpenTracker, self.dungeon, nil, nil,
-        IsInGroup() and TEXT_SHARE_ALL or nil, ShareAll)
+    self:Add("section", TEXT_QUESTS, QuestCount(self.dungeon, list), open, OpenQuests, TEXT_TRACKER, OpenTracker,
+        self.dungeon, nil, nil, IsInGroup() and TEXT_SHARE_ALL or nil, ShareAll)
     if open then
         for i = 1, #list do self:Add("quest", list[i], i) end
     end
@@ -182,7 +189,7 @@ end
 function ViewMixin:DrawAside(dungeon)
     self:Begin(dungeon, nil)
     local list = self:QuestList(dungeon)
-    self:Add("section", TEXT_QUESTS, #list, nil, nil, TEXT_TRACKER, OpenTracker, dungeon, nil, nil,
+    self:Add("section", TEXT_QUESTS, QuestCount(dungeon, list), nil, nil, TEXT_TRACKER, OpenTracker, dungeon, nil, nil,
         IsInGroup() and TEXT_SHARE_ALL or nil, ShareAll)
     if #list == 0 then self:Note(dungeon.quests and Quests.NoneWhy(dungeon.quests) or TEXT_NO_QUESTS) end
     for i = 1, #list do
@@ -230,7 +237,7 @@ function ViewMixin:DrawDungeonQuests(dungeon, list)
     if not dungeon.quests then return end
     local why = Quests.NoneWhy(dungeon.quests)
     if not why then return end
-    self:Section(TEXT_QUESTS, 0)
+    self:Section(TEXT_QUESTS, QuestCount(dungeon, list))
     self:Note(why)
     self:Space(SECTION_SPACE)
 end

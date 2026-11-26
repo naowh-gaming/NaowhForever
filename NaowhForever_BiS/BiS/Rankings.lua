@@ -216,10 +216,17 @@ function R.OtherSideQuest(itemID)
     return Place(ns.BiSSource(itemID) or WORLD_DROP) == OTHER_SIDE_QUEST[UnitFactionGroup("player")]
 end
 
+function R.OtherClassQuest(itemID)
+    local quest = ns.BiSClassQuests[itemID]
+    if not quest then return false end
+    local classBit = 2 ^ (select(CLASS_ID, UnitClass("player")) - 1)
+    return math.floor(quest[QUEST_CLASSES] / classBit) % 2 == 0
+end
+
 function R.Candidates(slot, spec)
     local ids = {}
     for _, id in ipairs(spec and spec.slots[slot] or EMPTY) do
-        if C_Item.GetItemInfoInstant(id) and not R.OtherSideQuest(id) then
+        if C_Item.GetItemInfoInstant(id) and not R.OtherSideQuest(id) and not R.OtherClassQuest(id) then
             ids[#ids + 1] = id
         end
     end
@@ -240,7 +247,8 @@ function R.PreRaid(key)
         local slot = gear[1]
         local partner = slots[Items.PAIR[slot]]
         for _, id in ipairs(preRaid[slot] or EMPTY) do
-            if id ~= partner and C_Item.GetItemInfoInstant(id) and not R.OtherSideQuest(id) then
+            if id ~= partner and C_Item.GetItemInfoInstant(id) and not R.OtherSideQuest(id)
+                and not R.OtherClassQuest(id) then
                 if not slots[slot] then
                     slots[slot] = id
                 else
