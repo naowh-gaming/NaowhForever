@@ -224,12 +224,18 @@ Check(Has("-500 Bloodsail") and not Has("+-"), "and a reputation it costs")
 playerLevel = 15
 shiftFrame.OnEvent(shiftFrame, "MODIFIER_STATE_CHANGED", "LSHIFT", 1)
 Check(Has("1000 XP"), "the full experience up to five levels over the quest")
+playerLevel = 16
+shiftFrame.OnEvent(shiftFrame, "MODIFIER_STATE_CHANGED", "LSHIFT", 1)
+Check(Has("800 XP"), "less after that: six levels over gives 80%")
 playerLevel = 17
 shiftFrame.OnEvent(shiftFrame, "MODIFIER_STATE_CHANGED", "LSHIFT", 1)
-Check(Has("600 XP"), "less after that: seven levels over gives 60%")
+Check(Has("600 XP"), "seven levels over gives 60%")
+playerLevel = 18
+shiftFrame.OnEvent(shiftFrame, "MODIFIER_STATE_CHANGED", "LSHIFT", 1)
+Check(Has("500 XP"), "eight levels over gives half")
 playerLevel = 30
 shiftFrame.OnEvent(shiftFrame, "MODIFIER_STATE_CHANGED", "LSHIFT", 1)
-Check(Has("100 XP"), "a tenth once it is grey")
+Check(Has("500 XP") and not Has("100 XP"), "and never less than half on Forever, however far over")
 playerLevel = 60
 shiftFrame.OnEvent(shiftFrame, "MODIFIER_STATE_CHANGED", "LSHIFT", 1)
 Check(not Has("XP") and Has("250c"), "no experience at max level, the money still")
