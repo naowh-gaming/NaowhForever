@@ -227,6 +227,7 @@ local function Fixture(opts)
         UnitIsVisible = function() return true end,
         UnitIsUnit = function(a, b) return a == b end,
         UnitName = function(unit) return unit == "player" and "Tester" or unit end,
+        UnitFullName = function(unit) return unit == "player" and "Tester" or unit, unit == "player" and "Surname" or nil end,
         UnitExists = function(unit) return unit ~= "target" or state.target ~= nil end,
         UnitCanAttack = function() return true end,
         UnitClassification = function() return state.target end,
@@ -2570,6 +2571,8 @@ do
     t.Fire("BAG_UPDATE_DELAYED"); t.Advance(0.5)
     Check("professions not read yet: the record is kept", t.ns.AccountSettings().professionCooldowns["Tester-Realm"]
         and t.ns.AccountSettings().professionCooldowns["Tester-Realm"].ready.mooncloth ~= nil, true)
+    Check("the record names the character with their surname",
+        t.ns.AccountSettings().professionCooldowns["Tester-Realm"].name, "Tester Surname")
     t.state.professions = { TAILORING }
     t.Fire("BAG_UPDATE_DELAYED"); t.Advance(0.5)
     Check("and shows again once they read", t.Shown(), "spell:" .. MOONCLOTH)

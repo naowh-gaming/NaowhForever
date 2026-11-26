@@ -568,7 +568,8 @@ end
 local function SaveOwn(records, me)
     local now = time()
     local saved = records[me] or { ready = {} }
-    saved.name = UnitName("player")
+    local name, surname = UnitFullName("player")
+    saved.name = surname and surname ~= "" and name .. " " .. surname or name
     local any = false
     wipe(ownLeft)
     for _, cooldown in ipairs(D.PROFESSION_COOLDOWNS) do
