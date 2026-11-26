@@ -1,4 +1,4 @@
--- PlayerList.lua: a class's player list above the bar, to bless one person or give them their own blessing.
+-- PlayerList.lua: a class's player list beside the bar, to bless one person or give them their own blessing.
 local ns = _G.NaowhForever
 
 local B = ns.Blessings
@@ -13,6 +13,13 @@ local NAME_SIZE, NOTE_SIZE, TITLE_SIZE = 12, 10, 12
 local NAME_X, NAME_Y, NOTE_Y = 4, -2, -1
 local SLOT, SLOT_X = 26, -2
 local LIST_W, LIST_ROOM, LIST_GAP, LIST_ALPHA = 242, 30, 18, 0.9
+local LIST_STRATA = "DIALOG"
+local SIDES = {
+    TOP = { "BOTTOMLEFT", "TOPLEFT", 0, LIST_GAP },
+    BOTTOM = { "TOPLEFT", "BOTTOMLEFT", 0, -LIST_GAP },
+    LEFT = { "TOPRIGHT", "TOPLEFT", -LIST_GAP, 0 },
+    RIGHT = { "TOPLEFT", "TOPRIGHT", LIST_GAP, 0 },
+}
 local TITLE_X, TITLE_Y = 8, -6
 local CLOSE_SIZE, CLOSE_INSET = 18, -4
 local NOBODY = B.NOBODY
@@ -25,7 +32,7 @@ local TEXT_BLESS_TIP = ns.L("Left-click: cast this player's blessing.\nShift-cli
 local TEXT_AFTER_COMBAT = ns.L("The player list opens after combat.")
 local TEXT_CLOSE = "X"
 
-local flyout, rows, flyoutClass
+local flyout, rows, flyoutClass, flyoutSide
 local members = {}
 
 local function PlayerMenu(owner, member)
@@ -104,7 +111,8 @@ end
 
 function PlayerList.Build(bar)
     flyout = CreateFrame("Frame", nil, bar)
-    flyout:SetPoint("BOTTOMLEFT", bar, "TOPLEFT", 0, LIST_GAP)
+    flyout:SetFrameStrata(LIST_STRATA)
+    flyout:SetClampedToScreen(true)
     ns.Solid(flyout, "BACKGROUND", T.bg, LIST_ALPHA):SetAllPoints()
     ns.Border(flyout)
     flyout.title = ns.Font(flyout, TITLE_SIZE, "OUTLINE", T.accent)
@@ -124,6 +132,13 @@ function PlayerList.Arrange(roster)
     if not flyoutClass then
         flyout:Hide()
         return
+    end
+    local side = B.Settings.Get("blessListSide")
+    if side ~= flyoutSide then
+        local spot = SIDES[side]
+        flyout:ClearAllPoints()
+        flyout:SetPoint(spot[1], flyout:GetParent(), spot[2], spot[3], spot[4])
+        flyoutSide = side
     end
     local store = Store()
     flyout:Show()

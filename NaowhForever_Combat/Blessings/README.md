@@ -33,7 +33,7 @@ NaowhForever_Combat/Blessings/
     Recipient.lua              a secure button that follows one named player
     Keys.lua                   the Next Blessing and Next Greater Blessing key bindings
     Menus.lua                  the right-click menus
-    PlayerList.lua             a class's player list above the bar
+    PlayerList.lua             a class's player list beside the bar
     Bar.lua                    the Blessing Bar and its events
     Assignments.lua            the window's grid of every paladin's plan
     SettingsPage.lua           its settings page, declared as cards, with the editable preview
@@ -214,6 +214,9 @@ NaowhForever_Combat/Blessings/
   `FAMILY`, so a seal cast never runs the blessing cast tracker or the aura scan. A seal that is not up leaves the button as it is, not
   red, since a seal lasts seconds and is not kept up out of combat. Class Buttons off hides every class
   button, leaving the Auto Buff button and the key bindings; Player List off removes the player list.
+  Player List Side (`blessListSide`, Above) is the bar edge the list opens from. The list is in the `DIALOG`
+  strata so unit frames near the bar cannot cover it, and it is moved only out of combat: its secure buttons
+  are anchored to it.
   Ctrl-click on a player in the list toggles their Main Tank mark (the secure `maintank` action).
 - Use in Party and Use When Solo (both on) hide the bar in a party or alone; a raid always shows it. Hide the
   Bench (off) drops the raid members past `ceil(size / 5)` groups in a raid dungeon, from `GetInstanceInfo`'s

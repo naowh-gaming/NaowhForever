@@ -16,12 +16,15 @@ local Group = Settings.Group
 local BLESSINGS_OFF = ns.L("Turn on Blessings")
 local LABELS_OFF = ns.L("Turn on Blessings and Class Labels")
 local AURA_OFF = ns.L("Turn on Blessings and Aura Button")
+local LIST_OFF = ns.L("Turn on Blessings and Player List")
 local BORDERS = { values = { black = ns.L("Black"), accent = ns.L("Accent"), status = ns.L("Status Color"),
     none = ns.L("None") }, order = { "black", "accent", "status", "none" } }
 local OPACITY_RANGE, WINDOW_RANGE = { 10, 100, 5 }, { 60, 150, 5 }
 local WHY_BACKGROUND = ns.L("Pick a background texture")
 local LABEL_STYLES = { values = { name = ns.L("Name"), icon = "Class Icon", button = "Icon on the Button" },
     order = { "name", "icon", "button" } }
+local LIST_SIDES = { values = { TOP = ns.L("Above"), BOTTOM = ns.L("Below"), LEFT = ns.L("Left"), RIGHT = ns.L("Right") },
+    order = { "TOP", "BOTTOM", "LEFT", "RIGHT" } }
 local STAGE_H, STAGE_MARGIN = 160, St.STAGE_MARGIN
 local NOTE_Y, NOTE_SIZE, NOTE_LINE = St.STAGE_NOTE_Y, St.STAGE_NOTE_SIZE, 15
 local TEXT_ROOM = NOTE_Y + NOTE_LINE * 2
@@ -78,6 +81,7 @@ local function On() return S.Get("blessings") == true end
 local function OpenWindow() ns.OpenBlessingsWindow() end
 local function LabelsOn() return On() and S.Get("blessShowLabels") == true end
 local function AuraOn() return On() and S.Get("blessShowAura") == true end
+local function ListOn() return On() and S.Get("blessPlayerList") == true end
 local function NotPaladin() return not B.IsPaladin() end
 local function HasBar() return ANCHOR.on() and B.BarFrame() ~= nil end
 
@@ -511,6 +515,8 @@ page:Card({
           help = "Swaps the Auto Buff button: left-click casts a Greater Blessing, right-click a single one." },
         { key = "blessPlayerList", label = "Player List", toggle = true, needs = On, why = BLESSINGS_OFF,
           help = "Off removes the class buttons' player list." },
+        { key = "blessListSide", label = "Player List Side", choice = LIST_SIDES, needs = ListOn, why = LIST_OFF,
+          help = "Which side of the bar the player list opens on." },
         { key = "blessTooltips", label = "Show Tooltips", toggle = true, needs = On, why = BLESSINGS_OFF,
           help = "A tooltip on each bar button." },
         { key = "blessShowClasses", label = "Class Buttons", toggle = true, needs = On, why = BLESSINGS_OFF,
