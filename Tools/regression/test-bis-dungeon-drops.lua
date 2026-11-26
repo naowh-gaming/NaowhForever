@@ -107,6 +107,8 @@ Case("weapons follow the class's weapon skills", function()
     assert(not Can("PALADIN", 9) and not Can("WARRIOR", 11) and not Can("HUNTER", 10))
     local usable = Fixture("ROGUE", 30).Usable
     assert(usable("ROGUE", { 2, 0, 25, 20, 3 }) and not usable("ROGUE", { 2, 1, 25, 20, 3 }), "rogues wield one-hand axes only")
+    assert(not usable("HUNTER", { 2, 16, 25, 20, 3 }) and usable("ROGUE", { 2, 16, 25, 20, 3 })
+        and usable("WARRIOR", { 2, 16, 25, 20, 3 }), "hunters get no thrown weapons, rogues and warriors do")
 end)
 
 local function List(t) return table.concat(t, ",") end
