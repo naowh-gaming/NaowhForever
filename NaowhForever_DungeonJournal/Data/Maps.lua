@@ -705,3 +705,30 @@ ns.Journal.Maps = {
         },
     },
 }
+
+do
+    local Maps = ns.Journal.Maps
+    local whole = Maps.DireMaul
+    Maps.DireMaul = nil
+    local FLOOR_NAMES = { "Gordok Commons", "Capital Gardens", "Court of the Highborne", "Prison of Immol'thar",
+        "Warpwood Quarter", "The Shrine of Eldretharr" }
+
+    local function Wing(order, unpinnedHere)
+        local set = {}
+        for _, n in ipairs(order) do set[n] = true end
+        local wing = { image = whole.image, floors = whole.floors, order = order, names = FLOOR_NAMES, pins = {}, quests = {} }
+        if set[whole.entrance[1]] then wing.entrance = whole.entrance end
+        for key, spot in pairs(whole.pins) do
+            if set[spot[1]] then wing.pins[key] = spot end
+        end
+        for _, giver in ipairs(whole.quests) do
+            local spot = whole.pins[giver.npc or -giver.object]
+            if spot and set[spot[1]] or not spot and unpinnedHere then wing.quests[#wing.quests + 1] = giver end
+        end
+        return wing
+    end
+
+    Maps.DireMaulNorth = Wing({ 1 }, false)
+    Maps.DireMaulWest = Wing({ 2, 3, 4 }, true)
+    Maps.DireMaulEast = Wing({ 5, 6 }, false)
+end

@@ -11,6 +11,7 @@ local lower, gsub, sub, min = string.lower, string.gsub, string.sub, math.min
 local MEMBERS_READ = 5
 local MAX_ENTRIES = 100
 local NAME_MIN = 4
+local EMPTY = {}
 local RECEIVED, UPDATED, FAILED = "LFG_LIST_SEARCH_RESULTS_RECEIVED", "LFG_LIST_SEARCH_RESULT_UPDATED",
     "LFG_LIST_SEARCH_FAILED"
 local EVENTS = { RECEIVED, UPDATED, FAILED }
@@ -42,6 +43,9 @@ local function Index()
         local plain = Plain(dungeon.name)
         byName[plain] = dungeon.key
         names[#names + 1] = plain
+        for _, alias in ipairs(dungeon.listedAs or EMPTY) do byName[Plain(alias)] = dungeon.key end
+        local zone = dungeon.listsInstance and dungeon.instance and GetRealZoneText(dungeon.instance)
+        if zone and zone ~= "" then byName[Plain(zone)] = dungeon.key end
         local map = dungeon.quests and dungeon.quests.map
         if map then byMap[map] = byMap[map] == nil and dungeon.key or false end
     end

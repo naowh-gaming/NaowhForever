@@ -53,7 +53,8 @@ end
 check("56 bosses are listed", count == 56)
 
 -- Every listed boss is the journal's boss for that encounter.
-local FILES = { "BlackrockDepths", "LowerBlackrockSpire", "UpperBlackrockSpire", "DireMaul", "Scholomance", "Stratholme" }
+local FILES = { "BlackrockDepths", "LowerBlackrockSpire", "UpperBlackrockSpire", "DireMaulEast", "DireMaulWest",
+    "DireMaulNorth", "Scholomance", "Stratholme" }
 local journal = {}
 for _, file in ipairs(FILES) do
     local text = Read("NaowhForever_DungeonJournal/Data/Dungeons/" .. file .. ".lua")

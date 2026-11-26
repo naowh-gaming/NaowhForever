@@ -742,7 +742,7 @@ do
         and tome[QUEST.X] == 66.7 and tome[QUEST.Y] == 81.0)
     check("and has a waypoint: the dungeon's entrance", glowing.canWaypoint)
     check("hundreds of bosses", bosses > 150)
-    check("the entrances with a source that matches Forever's map", entrances == 35)
+    check("the entrances with a source that matches Forever's map", entrances == 37)
     local boss, dungeon = J.Boss(639)
     check("the boss loot window finds a boss by its NPC ID", boss and boss.name == "Edwin VanCleef"
         and dungeon.key == "Deadmines")
@@ -907,7 +907,7 @@ do
     check("a boss takes its Spanish name by its NPC", names.npcs[647] and greenskin.name == names.npcs[647]
         and greenskin.name ~= "Captain Greenskin" and greenskin.english == "Captain Greenskin")
     local tribute
-    for _, wing in ipairs(J.Get("DireMaul").wings) do
+    for _, wing in ipairs(J.Get("DireMaulNorth").wings) do
         for _, boss in ipairs(wing.bosses) do
             if boss.chest == 179564 then tribute = boss end
         end
@@ -2948,7 +2948,7 @@ do
                 check("it starts, takes or is used for a quest: " .. data.name, roles > 0)
             end
         end
-        check("the quest givers and objects of every classic dungeon with one inside", entries == 56 and maps == 17)
+        check("the quest givers and objects of every classic dungeon with one inside", entries == 56 and maps == 19)
 
         local function QuestPins()
             local list = {}
@@ -3209,7 +3209,8 @@ do
             check(name .. ": his pin and the three other spots he can spawn at",
                 spots[name] and spots[name][1] == 4 and spots[name][2] == 3)
         end
-        for _, key in ipairs({ "RazorfenDowns", "Uldaman", "Maraudon", "SunkenTemple", "BlackrockDepths", "DireMaul",
+        for _, key in ipairs({ "RazorfenDowns", "Uldaman", "Maraudon", "SunkenTemple", "BlackrockDepths", "DireMaulEast",
+            "DireMaulWest", "DireMaulNorth",
             "LowerBlackrockSpire", "UpperBlackrockSpire", "Scholomance", "Stratholme", "Dalaran", "ShadowfangKeep",
             "Deadmines" }) do
             local dungeon = J.Get(key)
@@ -5080,16 +5081,17 @@ do
     providers[1]:RefreshAllData()
     local doors = {}
     for _, group in ipairs(pins) do
-        if group.dungeons[1].key == "DireMaul" then doors[group.door] = group end
+        doors[group.dungeons[1].key .. (group.door and ":" .. group.door or "")] = group
     end
-    check("Dire Maul has a pin for each door, none for its courtyard", doors.East and doors["East Back Door"]
-        and doors.West and doors.North and #pins == 4)
-    pin:OnAcquired(doors.West)
+    check("Dire Maul: a pin for each wing's door, East's two, none for its courtyard",
+        doors["DireMaulEast:Front Door"] and doors["DireMaulEast:Back Door"] and doors.DireMaulWest
+        and doors.DireMaulNorth and #pins == 4)
+    pin:OnAcquired(doors["DireMaulEast:Back Door"])
     pin:OnMouseEnter()
     pin:OnClick("LeftButton")
     waypoint = state.waypoints[#state.waypoints]
-    check("a door's waypoint is on that door, named for it", waypoint.map == 1444 and waypoint.x == 60.3
-        and waypoint.y == 30.7 and waypoint.title == "Dire Maul: West")
+    check("a door's waypoint is on that door, named for it", waypoint.map == 1444 and waypoint.x == 76.5
+        and waypoint.y == 35.9 and waypoint.title == "Dire Maul - East: Back Door")
     S.Set("mapEntrances", false)
     check("off again, its pins go", #pins == 0)
 end
@@ -5693,6 +5695,52 @@ do
     S.Set("mapSize", 1)
     _G.SetPortraitTextureFromCreatureDisplayID = portraits
     _G.RequestRaidInfo, _G.GetNumSavedInstances = nil, nil
+end
+
+-------------------------------------------------------------------------------
+--  Dire Maul split into its wings: what was saved under the old key moves, once
+-------------------------------------------------------------------------------
+do
+    local ns, state = fixture({ enabled = true })
+    local J = ns.Journal
+    local westPin = next(J.Maps.DireMaulWest.pins)
+    local north = { dungeon = "DireMaul", wing = 3, kills = { [362] = 50 }, done = 900, trash = 40 }
+    local west = { dungeon = "DireMaul", wing = 2, kills = {}, done = 700, trash = 30 }
+    local open = { dungeon = "DireMaul", wing = 1, kills = {}, trash = 55 }
+    local deadmines = { dungeon = "Deadmines", wing = 1, kills = {}, done = 500, trash = 10 }
+    local looted = { dungeon = "DireMaul", boss = "Tendris Warpwood" }
+    local account = state.account
+    account.journalRuns = { [state.guid] = { north, west, open, deadmines } }
+    account.journalLoot = { me = { looted } }
+    account.journalTrash = { DireMaul = 99, Deadmines = 10 }
+    account.journalMapPins = { DireMaul = { [westPin] = { 2, 0.5, 0.5 }, entrance = { 1, 0.1, 0.1 } } }
+    local parked = { route = { "Dire Maul" } }
+    local list = { route = { "Scholomance", "Dire Maul", "Stratholme", "Dire Maul - West" }, bySpec = { frost = parked } }
+    account.bisLists = { MAGE = { lists = { list } } }
+    ns.Apply()
+    check("a run moves to the wing of the boss it killed", north.dungeon == "DireMaulNorth" and north.wing == 1)
+    check("a run with no kills moves by its old wing", west.dungeon == "DireMaulWest" and west.wing == 1)
+    check("and one with neither to the first wing", open.dungeon == "DireMaulEast")
+    check("other dungeons' runs stay", deadmines.dungeon == "Deadmines")
+    check("a moved run counts for its wing's best time", J.Runs.BestTime("DireMaulWest", 1) == 700)
+    check("loot moves to the wing of its boss", looted.dungeon == "DireMaulWest")
+    check("trash totals come from the moved finished runs", account.journalTrash.DireMaulNorth == 40
+        and account.journalTrash.DireMaulWest == 30 and account.journalTrash.DireMaulEast == nil
+        and account.journalTrash.DireMaul == nil and account.journalTrash.Deadmines == 10)
+    local pins = account.journalMapPins
+    check("a moved map pin goes to the wing whose map has it", pins.DireMaulWest[westPin][1] == 2
+        and (pins.DireMaulNorth or {})[westPin] == nil and pins.DireMaul == nil)
+    check("the moved entrance to the wing whose map has the entrance", pins.DireMaulNorth.entrance[2] == 0.1
+        and pins.DireMaulWest.entrance == nil)
+    check("a BiS route names the three wings where Dire Maul was, once each", table.concat(list.route, ",")
+        == "Scholomance,Dire Maul - East,Dire Maul - West,Dire Maul - North,Stratholme")
+    check("and so does a route parked for another spec", table.concat(parked.route, ",")
+        == "Dire Maul - East,Dire Maul - West,Dire Maul - North")
+    check("the move is remembered", account.journalSplitDone.DireMaul == true)
+    local late = { dungeon = "DireMaul", wing = 2, kills = {} }
+    table.insert(account.journalRuns[state.guid], late)
+    ns.Apply()
+    check("and not run again", late.dungeon == "DireMaul")
 end
 
 print(("test-dungeon-journal: %d checks passed"):format(checks))

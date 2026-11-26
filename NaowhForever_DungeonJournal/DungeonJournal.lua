@@ -42,7 +42,25 @@ local SUBZONES = {
     ["The Furnace"] = "UpperBlackrockSpire",
     ["The Molten Span"] = "UpperBlackrockSpire",
     ["The Rookery"] = "UpperBlackrockSpire",
+    ["Warpwood Quarter"] = "DireMaulEast",
+    ["The Shrine of Eldretharr"] = "DireMaulEast",
+    ["The Hidden Reach"] = "DireMaulEast",
+    ["The Conservatory"] = "DireMaulEast",
+    ["Capital Gardens"] = "DireMaulWest",
+    ["Court of the Highborne"] = "DireMaulWest",
+    ["Prison of Immol'thar"] = "DireMaulWest",
+    ["Gordok Commons"] = "DireMaulNorth",
+    ["Halls of Destruction"] = "DireMaulNorth",
+    ["Gordok's Seat"] = "DireMaulNorth",
 }
+local SPLITS = { DireMaul = { english = "Dire Maul", into = { "DireMaulEast", "DireMaulWest", "DireMaulNorth" } } }
+local SPLIT_DONE_KEY = "journalSplitDone"
+local RECORD_STORES = { "journalRuns", "journalLoot" }
+local TRASH_KEY, PINS_KEY, BIS_KEY = "journalTrash", "journalMapPins", "bisLists"
+local ENTRANCE_KEY = "entrance"
+local MOVED_WING = 1
+
+local FloorHere
 
 local TEXT_TURNED_ON = ns.L("Dungeon Journal turned on. Turn it off in its settings page.")
 local TEXT_ENTRANCE = ns.L(" (entrance)")
@@ -359,6 +377,118 @@ function J.Boss(npc)
     if boss then return boss, dungeonOf[boss] end
 end
 
+function FloorHere()
+    local id = C_Map.GetBestMapForUnit("player")
+    local group = id and C_Map.GetMapGroupID and C_Map.GetMapGroupID(id)
+    local members = group and C_Map.GetMapGroupMembersInfo(group)
+    for i = 1, members and #members or 0 do
+        if members[i].mapID == id then return members[i].name end
+    end
+end
+
+local function WingOfEncounters(kills)
+    if type(kills) ~= "table" then return end
+    for _, dungeon in ipairs(ordered) do
+        for _, wing in ipairs(dungeon.wings) do
+            for _, boss in ipairs(wing.bosses) do
+                if boss.encounters and kills[boss.encounters[1]] then return dungeon.key end
+            end
+        end
+    end
+end
+
+local function WingOfBoss(english)
+    for _, dungeon in ipairs(ordered) do
+        for _, wing in ipairs(dungeon.wings) do
+            for _, boss in ipairs(wing.bosses) do
+                if boss.english == english and not boss.trash then return dungeon.key end
+            end
+        end
+    end
+end
+
+local function Tables(t)
+    return type(t) == "table" and t or EMPTY
+end
+
+local function MoveRecords(account, old, into)
+    local totals = type(account[TRASH_KEY]) == "table" and account[TRASH_KEY] or nil
+    for _, store in ipairs(RECORD_STORES) do
+        for _, list in pairs(Tables(account[store])) do
+            for _, record in pairs(Tables(list)) do
+                if type(record) == "table" and record.dungeon == old then
+                    local wing = type(record.wing) == "number" and into[record.wing]
+                    record.dungeon = WingOfEncounters(record.kills) or WingOfBoss(record.boss) or wing or into[1]
+                    if record.wing then record.wing = MOVED_WING end
+                    local trash = record.done and tonumber(record.trash)
+                    if totals and trash and trash > (totals[record.dungeon] or 0) then totals[record.dungeon] = trash end
+                end
+            end
+        end
+    end
+    if totals then totals[old] = nil end
+end
+
+local function MovePins(account, old, into)
+    local all = account[PINS_KEY]
+    local placed = type(all) == "table" and all[old]
+    if type(placed) ~= "table" then return end
+    for key, spot in pairs(placed) do
+        for _, wingKey in ipairs(into) do
+            local map = J.Maps[wingKey]
+            if map and (map.pins[key] or key == ENTRANCE_KEY and map.entrance) then
+                all[wingKey] = all[wingKey] or {}
+                if all[wingKey][key] == nil then all[wingKey][key] = spot end
+            end
+        end
+    end
+    all[old] = nil
+end
+
+local function Rerouted(route, old, names)
+    if type(route) ~= "table" then return route end
+    local out, seen = {}, {}
+    for _, name in ipairs(route) do
+        if name == old then
+            for _, wingName in ipairs(names) do
+                if not seen[wingName] then out[#out + 1], seen[wingName] = wingName, true end
+            end
+        elseif not seen[name] then
+            out[#out + 1], seen[name] = name, true
+        end
+    end
+    return out
+end
+
+local function MoveRoutes(account, old, names)
+    for _, store in pairs(Tables(account[BIS_KEY])) do
+        for _, list in pairs(Tables(type(store) == "table" and store.lists)) do
+            if type(list) == "table" then
+                list.route = Rerouted(list.route, old, names)
+                for _, parked in pairs(Tables(list.bySpec)) do
+                    if type(parked) == "table" then parked.route = Rerouted(parked.route, old, names) end
+                end
+            end
+        end
+    end
+end
+
+local function MoveSplitKeys()
+    local account = ns.AccountSettings()
+    local done = type(account[SPLIT_DONE_KEY]) == "table" and account[SPLIT_DONE_KEY] or {}
+    account[SPLIT_DONE_KEY] = done
+    for old, split in pairs(SPLITS) do
+        if not done[old] then
+            local names = {}
+            for i, key in ipairs(split.into) do names[i] = byKey[key] and byKey[key].english or key end
+            MoveRecords(account, old, split.into)
+            MovePins(account, old, split.into)
+            MoveRoutes(account, split.english, names)
+            done[old] = true
+        end
+    end
+end
+
 function J.Current()
     local inInstance, kind = IsInInstance()
     if not (inInstance and (kind == "party" or kind == "raid")) then
@@ -370,8 +500,10 @@ function J.Current()
     local list = byMap[id] or byName[name]
     if not list or not list[2] then return list end
     local subzone = GetSubZoneText()
+    local floor = FloorHere()
     local key = WING_MAPS[C_Map.GetBestMapForUnit("player")]
         or SUBZONES[J.Names and J.Names.subzones[subzone] or subzone]
+        or floor and SUBZONES[J.Names and J.Names.subzones[floor] or floor]
         or lastWing[id]
     lastWing[id] = key
     if not key or list[1].key == key then return list end
@@ -462,3 +594,4 @@ function J.TurnOn()
 end
 
 ns.OnApply(SplitOpacity)
+ns.OnApply(MoveSplitKeys)

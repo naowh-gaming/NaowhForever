@@ -396,7 +396,8 @@ in the pull request it opens.
   Forever's redrawn maps. The new dungeons' quests are by hand. Every dungeon's `levels` are
   the game's own: its Group Finder activity's `MinLevel` and `MaxLevelSuggestion` (GroupFinderActivity,
   build 1.60.1.70938, through wago.tools, read 2026-11-14), by the instance's map ID. Dire Maul's three
-  wings are one dungeon here, so it takes the lowest and the highest (East 54, all 60). The Barrow Deeps
+  wings share one activity (East 54, all 60), so each wing's levels are by hand: East 54 to 59, West 56
+  to 60, North 57 to 60. The Barrow Deeps
   and Hyjal Summit have no activity yet.
   City of Dalaran's quests are by hand too, from their Wowhead Forever pages (2026-10-05). The
   quests ForeverChanges' dungeon quest guide has that Wowhead's lacked (Destruction in Deadmines,
@@ -712,14 +713,27 @@ in the pull request it opens.
   so it is added the first time the setting is on and checks the setting on every tooltip.
 - `J.OPTION_GROUPS` is the one list the Filters menu and the settings page are built from, so
   both offer the same switches in the same words, and either changes the other.
-- Dungeons sharing one instance (Scarlet Monastery's wings, Lower and Upper Blackrock Spire) are
-  told apart by the map you stand on (`WING_MAPS`, Scarlet Monastery's 302 to 305), else by the
-  subzone (`SUBZONES`), else by the one last told apart in that instance, forgotten when you
+- Dungeons sharing one instance (Scarlet Monastery's wings, Lower and Upper Blackrock Spire, Dire
+  Maul's East, West and North) are told apart by the map you stand on (`WING_MAPS`, Scarlet
+  Monastery's 302 to 305), else by the subzone (`SUBZONES`), else by the floor's name in the
+  instance's map group (`FloorHere`, Dire Maul's floors), else by the one last told apart in that instance, forgotten when you
   leave; before any, the data's order, the first first. Many rooms have no subzone in
   WMOAreaTable, so the subzone alone put the Cathedral on the Graveyard. Blackrock Spire's halves
   share one map, so only subzones tell them apart: Hordemar City and Hall of Blackhand are left
   out, as the way into Upper runs through them. The subzone may only be known after the loading
   screen, so the quest tracker also listens for `ZONE_CHANGED` and `ZONE_CHANGED_INDOORS`.
+- Dire Maul's three wings are three dungeons (`DireMaulEast`, `DireMaulWest`, `DireMaulNorth`), as
+  the game's Group Finder and players treat them: each has its own entrance in Feralas, bosses,
+  quests and lockout line. They share one instance and one map picture, so `Data/Maps.lua` builds
+  each wing's map from the whole one (North floor 1, West 2 to 4, East 5 and 6) with the pins and
+  quest givers on its floors; givers with no pin go to West. What was saved under the old
+  `DireMaul` key moves once per account (`journalSplitDone`): runs and loot to the wing their kills
+  (by encounter) or boss belong to, else the run's old wing number, else East, and as each new
+  dungeon has one wing a moved run's `wing` becomes 1 so it counts for best times; trash totals
+  from the moved finished runs, as the old total covered every wing; map pins the player moved to
+  each wing whose map has that pin or the entrance; and a BiS route's Dire Maul step to the three
+  wings in its place, East, West, North, as each is now a place of its own.
+  The Crescent Key opens doors in West and North, so it is listed on both.
 - Factions here walk the map up to its zone: a cave's or a town's map counts as its zone's. In
   a battleground only your side's factions count.
 - A creature's NPC ID comes from its GUID (`J.NpcID`), and a GUID the game keeps secret (enemies

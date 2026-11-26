@@ -69,12 +69,16 @@ end
 local DUNGEONS = { DEADMINES,
     Dungeon("ScarletMonasteryGraveyard", "Scarlet Monastery - Graveyard", 189),
     Dungeon("ScarletMonasteryLibrary", "Scarlet Monastery - Library", 189),
-    Dungeon("DireMaul", "Dire Maul", 429),
+    Dungeon("DireMaulEast", "Dire Maul - East", 429),
+    Dungeon("DireMaulWest", "Dire Maul - West", 429),
+    Dungeon("DireMaulNorth", "Dire Maul - North", 429),
     Dungeon("ExcavationSite", "Excavation Site: Wetlands", 2998),
     Dungeon("SunkenTemple", "Sunken Temple", 109),
     Dungeon("LowerBlackrockSpire", "Lower Blackrock Spire", 229),
     Dungeon("UpperBlackrockSpire", "Upper Blackrock Spire", 229),
 }
+DUNGEONS[4].listedAs, DUNGEONS[5].listedAs = { "Dire Maul - Warpwood Quarter" }, { "Dire Maul - Capital Gardens" }
+DUNGEONS[5].instance, DUNGEONS[6].instance, DUNGEONS[6].listsInstance = 429, 429, true
 local BY_KEY = {}
 for _, dungeon in ipairs(DUNGEONS) do BY_KEY[dungeon.key] = dungeon end
 
@@ -237,6 +241,7 @@ local function Fixture(values)
             return frame
         end,
         GetTime = function() return state.now end,
+        GetRealZoneText = function(id) return id == 429 and "Dire Maul" or "" end,
         C_Timer = { After = function(delay, fn) state.timers[#state.timers + 1] = { at = state.now + delay, fn = fn } end },
         C_ChatInfo = {
             RegisterAddonMessagePrefix = function(prefix) state.prefixes[#state.prefixes + 1] = prefix end,
@@ -514,7 +519,7 @@ do
     check("it reads back with its note, its quests and then its kills left off to fit", kind == "A"
         and note == longNote and back.hasQuests and back.nHave == 0 and back.nNeed == 0 and not back.hasKills)
 
-    big.spec, big.score, big.dungeon = "beast-mastery-hunter", 612, "DireMaul"
+    big.spec, big.score, big.dungeon = "beast-mastery-hunter", 612, "DireMaulNorth"
     big.nKills = 19
     for i = 20, Card.MAX_KILLS do big.kills[i] = nil end
     for i = 1, Card.MAX_QUESTS do big.have[i], big.need[i] = 98800 + i, 98900 + i end
@@ -806,7 +811,14 @@ do
     local Card = state.GF.Card
     check("an activity named as the dungeon", Listings.DungeonOf(1) == "Deadmines")
     check("a Scarlet Monastery wing by its name", Listings.DungeonOf(2) == "ScarletMonasteryGraveyard")
-    check("a dungeon's part by its prefix", Listings.DungeonOf(3) == "DireMaul")
+    check("a Dire Maul wing by its name", Listings.DungeonOf(3) == "DireMaulEast")
+    ACTIVITIES[12] = { fullName = "Dire Maul - Capital Gardens", mapID = 429 }
+    ACTIVITIES[13] = { fullName = "Dire Maul", mapID = 429 }
+    ACTIVITIES[14] = { fullName = "Dire Maul (North)", mapID = 429 }
+    check("a Dire Maul wing by its other name", Listings.DungeonOf(12) == "DireMaulWest")
+    check("Dire Maul alone goes to the wing that lists its instance", Listings.DungeonOf(13) == "DireMaulNorth")
+    check("a wing in brackets", Listings.DungeonOf(14) == "DireMaulNorth")
+    ACTIVITIES[12], ACTIVITIES[13], ACTIVITIES[14] = nil, nil, nil
     check("a shorter name when only one dungeon fits", Listings.DungeonOf(4) == "ExcavationSite")
     check("another name by its instance", Listings.DungeonOf(5) == "SunkenTemple")
     check("an instance two dungeons share is not guessed", Listings.DungeonOf(6) == nil)
@@ -1159,7 +1171,7 @@ do
     check("no minimum and no note", id == 7 and text:find(" %- 102$") ~= nil and kind == "L" and note == nil and got.min == 0)
     local big = Card.New()
     big.class, big.level, big.roles, big.spec, big.score = 11, 60, 7, "beast-mastery-hunter", 612
-    big.bisHave, big.bisTotal, big.dungeon = 40, 40, "DireMaul"
+    big.bisHave, big.bisTotal, big.dungeon = 40, 40, "DireMaulNorth"
     big.hasKills, big.nKills, big.hasQuests, big.nHave, big.nNeed = true, 19, true, Card.MAX_QUESTS, Card.MAX_QUESTS
     for i = 1, 19 do big.kills[i] = Card.KILL_CAP end
     for i = 1, Card.MAX_QUESTS do big.have[i], big.need[i] = 98800 + i, 98900 + i end

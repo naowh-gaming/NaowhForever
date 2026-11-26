@@ -219,6 +219,12 @@ kills.
   own applications and acknowledgements go through.
 - The send queue keeps to `BURST` at once then `RATE` a second, holds during chat lockdown, and waits
   again when the game answers with its own throttle.
+- An activity finds its Journal dungeon by its name, else a dungeon's other names (`listedAs`, Dire
+  Maul's Warpwood Quarter, Capital Gardens and Gordok Commons), else the longest dungeon name it starts
+  with, else the one dungeon whose name starts with it, else the one dungeon on its instance. Dire Maul's
+  wings share one instance and one activity, so none of those can pick a wing for an activity named
+  just Dire Maul: the wing marked `listsInstance` (North, the Tribute runs most groups list) takes
+  the instance's own name, in the client's language.
 - Listings are not read in chat-messaging lockdown, when the search results are secret. A listing or
   member with a secret field is skipped. Members' roles are the ones they signed up as (`lfgRoles`),
   as Group Finder Roles reads them.

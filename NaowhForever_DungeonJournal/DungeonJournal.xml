@@ -44,7 +44,9 @@
     <Script file="Data\Dungeons\SunkenTemple.lua"/>
     <Script file="Data\Dungeons\AlcazPrison.lua"/>
     <Script file="Data\Dungeons\BlackrockDepths.lua"/>
-    <Script file="Data\Dungeons\DireMaul.lua"/>
+    <Script file="Data\Dungeons\DireMaulEast.lua"/>
+    <Script file="Data\Dungeons\DireMaulWest.lua"/>
+    <Script file="Data\Dungeons\DireMaulNorth.lua"/>
     <Script file="Data\Dungeons\LowerBlackrockSpire.lua"/>
     <Script file="Data\Dungeons\Scholomance.lua"/>
     <Script file="Data\Dungeons\Stratholme.lua"/>

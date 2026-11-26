@@ -7,7 +7,8 @@ J.Keys = {
     Scholomance = { { item = 13704, quest = { A = 5505, H = 5511 } } },
     UpperBlackrockSpire = { { item = 12344, quest = 4742 } },
     OnyxiasLair = { { item = 16309, quest = { A = 6502, H = 6602 } } },
-    DireMaul = { { item = 18249, boss = 14354, opens = "doors" } },
+    DireMaulWest = { { item = 18249, boss = 14354, opens = "doors" } },
+    DireMaulNorth = { { item = 18249, boss = 14354, opens = "doors" } },
     BlackrockDepths = {
         { item = 11000, quest = 3802, opens = "shortcut" },
         { item = 11140, boss = 9018, opens = "doors" },
