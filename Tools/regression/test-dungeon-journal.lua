@@ -759,7 +759,9 @@ do
     for _ in pairs(J.Abilities) do withAbilities = withAbilities + 1 end
     check("hundreds of bosses have abilities", withAbilities > 150)
     check("a summoned boss many groups skip is optional, so the run finishes without him",
-        J.Boss(10506).optional and not J.Numbered(J.Boss(10506)) and J.Boss(8443).optional)
+        J.Boss(10506).optional and not J.Numbered(J.Boss(10506)))
+    check("the Avatar of Hakkar is a numbered boss, so a Sunken Temple run needs him",
+        not J.Boss(8443).optional and J.Numbered(J.Boss(8443)))
 
     -- The Filters menu and the settings page are both built from J.OPTION_GROUPS.
     local labels, offered = {}, {}

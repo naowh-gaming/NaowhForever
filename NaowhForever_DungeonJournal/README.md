@@ -913,8 +913,11 @@ in the pull request it opens.
   lists bosses in kill order, but some, like Cookie after Edwin VanCleef, are killed before
   the end.
 - A boss you have to summon that many groups skip is optional, so a run without him still
-  finishes: the Avatar of Hakkar, and Kirtonos the Herald (Blood of the Innocent at the Gallery).
-  A run that ended before this, waiting on him, stays unfinished: saved runs are not looked at again.
+  finishes: Kirtonos the Herald (Blood of the Innocent at the Gallery). A run that ended before
+  this, waiting on him, stays unfinished: saved runs are not looked at again.
+- The Avatar of Hakkar is a numbered boss, though the Egg of Hakkar summons him: Forever's 25
+  November 2026 hotfix stopped him failing to spawn, so a Sunken Temple run is finished at his kill.
+  A run that skips him does not finish, and runs that finished without him stay finished.
 - A run's time is from the door to the kill that finished it, time outside included (it is shown
   on its own). Each boss's split is compared with the best split for that boss over your other
   runs of the dungeon, not with one best run, so a boss you skipped once still has a best.
