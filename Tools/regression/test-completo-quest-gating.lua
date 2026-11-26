@@ -3,7 +3,8 @@
 -- a quest that needs it done or in your log, a profession you lack or are short of its rank in, a camp
 -- recipe you know, a level or a reputation past what it is given to, a quest that closes it done or in
 -- your log, or the one it is given until done. One needing more reputation is "Needs reputation". A closed
--- quest its giver offers is open for good. Then the shipped data's gates, and the zone counts' cost.
+-- quest its giver offers is open for good. Then the shipped data's gates, with Season of Discovery's
+-- versions of classic quests left out, and the zone counts' cost.
 local function Read(path)
     local f = assert(io.open(path, "rb"))
     local s = f:read("*a"):gsub("\r\n", "\n"); f:close()
@@ -207,6 +208,8 @@ Check(D.MaxLevel[8368] == 19 and D.Breadcrumb[163] == 5 and D.Until[1462] == 152
     "Warsong Gulch's first bracket, Raven Hill to Jitters' Growling Gut, Earth Sapta until Call of Earth")
 Check(D.ClosedBy[282][1] == 287 and D.ClosedBy[805][1] == 808,
     "Senir's Observations closes with Frostmane Hold, and the breadcrumb disabledByQuest names with its quest")
+Check(D.Quests[1203] and D.Quests[8769] and D.Quests[81570] == nil and D.Quests[79637] == nil and not GroupOf(1203),
+    "Jarl Needs a Blade and A Ticking Present are the classic ones, not Season of Discovery's")
 
 ns.CompletoQuestData = D
 chunk = assert(loadstring(Read("NaowhForever_Discovery/QuestList/Quests.lua")))

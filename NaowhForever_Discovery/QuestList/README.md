@@ -106,6 +106,11 @@ quest and creature pages. Do not edit them by hand: change the tool and run it a
   take their place in the chain. Wowhead gives most of Forever's no class, so `classes` sets each from its
   reward, the class's Dungeon Set 2 piece or spec set box. Three have no giver on Wowhead, and it places
   Anthion Harmon on Forever's Eastern Plaguelands already, so `givers` puts those at another version's giver.
+- The game's data keeps some of Season of Discovery's quests, which Forever does not give, and ForeverChanges
+  lists a few: its versions of classic quests of the same name (Jarl Needs a Blade, 81570, beside the classic
+  1203 that "Swamp Eye" Jarl offers) and the Nightmare Incursion Mission dailies. `completo_fixes.json`'s
+  `ungiven` names them, and they are left out of the Quest List, its objective pins, Journeys' quest spots and
+  the BiS List's quests.
 - Holiday quests are in, and taken only while their holiday is on: `D.Events[questID]` lists the holidays that
   give one (the game's Holidays IDs on Forever, from wago.tools), `D.Holidays` names them, and
   `D.FaireSpots[questID]` says where a Darkmoon Faire quest's giver stands for each Faire (Elwynn Forest's, 263,
