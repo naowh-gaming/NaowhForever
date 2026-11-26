@@ -16,8 +16,6 @@ local WIDTH, HEIGHT = 760, 720
 local CARD = 6
 local TAB_MARGIN = 28
 local SEARCH_W = 260
-local SEARCH_MIN_W = 140
-local SEARCH_GAP = 12
 local TABS_TOP_GAP = 4
 local SCROLL_TOP_GAP = 8
 local SCROLL_GAP = 4
@@ -31,7 +29,7 @@ local FILTERS = {
     { key = "journal", label = "Field Journal", tip = "The fish you have caught, the herbs you have picked and the dishes you have cooked." },
     { key = "quests", label = "Quest List", tip = "Every quest of every zone, and where you are in each chain." },
     { key = "rares", label = "Rares", tip = "Every rare of every zone, and which of them you have killed." },
-    { key = "history", label = "Quest History", tip = "The quests you have taken, handed in and dropped, day by day." },
+    { key = "history", label = "History", tip = "The quests you have taken, handed in and dropped, day by day." },
 }
 local QUEST_TABS = { quests = true, rares = true, history = true }
 local PAGES = {
@@ -65,6 +63,7 @@ local TEXT_OTHER_CLASS = ns.L("Other Class Quests")
 local TEXT_ONE_OF = ns.L("One of these, whichever you are given:")
 
 local window, scroll, view, questScroll
+local listTop, pagedTop
 local filter = "books"
 local page = "fish"
 local attunePage = "raids"
@@ -271,11 +270,18 @@ local function PaintNote()
     window.note:SetWidth(math.max(1, math.ceil(window.note.text:GetStringWidth())))
 end
 
+local function PlaceScroll(frame, top)
+    frame:ClearAllPoints()
+    frame:SetPoint("TOPLEFT", CARD + Style.CONTENT_INSET, -top)
+    frame:SetPoint("BOTTOMRIGHT", -(CARD + Style.SCROLLBAR + SCROLL_GAP), Style.WINDOW_FOOTER + CARD + Style.WINDOW_PAD)
+end
+
 local function ShowFilter(opening)
     local quests = QUEST_TABS[filter]
     scroll:SetShown(not quests)
     window.pages:SetShown(filter == "journal")
     window.attunePages:SetShown(filter == "attune")
+    PlaceScroll(scroll, (filter == "journal" or filter == "attune") and pagedTop or listTop)
     if quests then
         ns.Completo.Tabs.Show(filter, opening)
     else
@@ -306,11 +312,6 @@ local function PickAttunePage(key)
     view:Redraw()
 end
 
-local function PlaceScroll(frame, left, top, footer)
-    frame:SetPoint("TOPLEFT", left, -top)
-    frame:SetPoint("BOTTOMRIGHT", -(CARD + Style.SCROLLBAR + SCROLL_GAP), footer + CARD + Style.WINDOW_PAD)
-end
-
 local function Build()
     local header, footer = Style.WINDOW_HEADER, Style.WINDOW_FOOTER
     window = Parts.Window(WIDTH, HEIGHT, "discoveryWindow")
@@ -320,24 +321,24 @@ local function Build()
     window.note = Parts.FooterNote(window, "")
     local left, top = CARD + Style.CONTENT_INSET, header + CARD + Style.WINDOW_PAD + TABS_TOP_GAP
     window.filters = Parts.Tabs(window, 1, FILTERS, PickFilter)
-    Parts.FitTabs(window.filters, FILTERS, TAB_MARGIN, WIDTH - 2 * left - SEARCH_MIN_W - SEARCH_GAP)
+    Parts.FitTabs(window.filters, FILTERS, TAB_MARGIN, WIDTH - 2 * left)
     window.filters:SetPoint("TOPLEFT", left, -top)
     local width = WIDTH - left - CARD - Style.SCROLLBAR - Style.CONTENT_INSET
+    local rowTop = top + Style.TAB_H + Style.TAB_GAP
+    listTop = rowTop + SCROLL_TOP_GAP
+    pagedTop = rowTop + Style.TAB_H + Style.TAB_GAP + SCROLL_TOP_GAP
     questScroll = ns.UI.SlimScroll(window)
     local search = ns.Completo.Tabs.Build(window, questScroll, width)
-    local room = WIDTH - 2 * left - window.filters:GetWidth() - SEARCH_GAP
-    search:SetSize(math.max(SEARCH_MIN_W, math.min(SEARCH_W, room)), Style.SEARCH_H)
-    search:SetPoint("RIGHT", window, "TOPRIGHT", -left, -(top + Style.TAB_H / 2))
+    search:SetSize(SEARCH_W, Style.SEARCH_H)
+    search:SetPoint("LEFT", window, "TOPLEFT", left, -(rowTop + Style.TAB_H / 2))
     window.pages = Parts.Tabs(window, 1, PAGES, PickPage)
-    Parts.FitTabs(window.pages, PAGES, TAB_MARGIN, search:GetWidth())
-    window.pages:SetPoint("RIGHT", search, "RIGHT")
+    Parts.FitTabs(window.pages, PAGES, TAB_MARGIN, WIDTH - 2 * left)
+    window.pages:SetPoint("TOPLEFT", left, -rowTop)
     window.attunePages = Parts.Tabs(window, 1, ATTUNE_PAGES, PickAttunePage)
-    Parts.FitTabs(window.attunePages, ATTUNE_PAGES, TAB_MARGIN, search:GetWidth())
-    window.attunePages:SetPoint("RIGHT", search, "RIGHT")
-    top = top + Style.TAB_H + Style.TAB_GAP + SCROLL_TOP_GAP
+    Parts.FitTabs(window.attunePages, ATTUNE_PAGES, TAB_MARGIN, WIDTH - 2 * left)
+    window.attunePages:SetPoint("TOPLEFT", left, -rowTop)
     scroll = ns.UI.SlimScroll(window)
-    PlaceScroll(scroll, left, top, footer)
-    PlaceScroll(questScroll, left, top, footer)
+    PlaceScroll(questScroll, pagedTop)
     view = Shared.View.New(scroll, V.Kinds, Draw)
     view:SetWidth(width)
     scroll:SetScrollChild(view)

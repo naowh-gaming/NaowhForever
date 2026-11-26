@@ -8932,7 +8932,6 @@ L["Nothing yet: take a quest and it shows here."] = true
 L["Nothing in your quest history holds \"%s\"."] = true
 L["The latest %d; search to find older ones."] = true
 L["%d entries"] = true
-L["Quest History"] = true
 L["The quests you have taken, handed in and dropped, day by day."] = true
 L["Keep Quest History"] = true
 L["Keeps a dated record of the quests you take, hand in and drop, in its own tab."] = true

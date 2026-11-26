@@ -323,7 +323,7 @@ quest and creature pages. Do not edit them by hand: change the tool and run it a
   `KEEP` (5000), about a character's whole levelling. A drop is the quest `C_QuestLog.SetAbandonQuest` was given
   when `C_QuestLog.AbandonQuest` runs (secure hooks on both): `QUEST_REMOVED` comes for a hand-in too, and
   which comes first is not documented. It keeps nothing from before it is turned on.
-- The Quest History tab shows the latest `HISTORY_SHOWN` (300) lines, newest first, a section per day; a
+- The History tab shows the latest `HISTORY_SHOWN` (300) lines, newest first, a section per day; a
   search reads every line's title.
 - Find's Creatures & Objects are every hand-in NPC and objective creature or object the data places, one per
   name and map at its first spot, named for the first of its quests that is yours and not done; one with none

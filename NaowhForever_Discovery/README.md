@@ -223,9 +223,10 @@ keep their names for the rest of the addon.
 - A page's sections are the profession ranks its skills need: Apprentice to 75, Journeyman to 150,
   Expert to 225, Artisan above (Forever's Plaguelands waters ask for 330). Fish only pools give have
   no skill and come last, under Schools of fish.
-- The Fish, Herbs and Cooking switch sits where the Quest List's search box does, which only the
-  Quest List and Rares tabs show. The tab bar is capped to leave it `SEARCH_MIN_W`: in longer languages
-  the six tabs' labels shorten instead of running under it.
+- The tabs have the top row to themselves. The Fish, Herbs and Cooking switch, the Raids, Dungeons and
+  Class switch, and the quest tabs' search box share a second row under them, and the list moves up into
+  that row on the tabs that show none of them. Sharing the top row cut every label short once there were
+  seven tabs, and the quest history tab is labelled History so the seven fit the row in English.
 - With the journal off the tab still lists everything and where to find it; only the counting waits
   for its switch. Its lookups by item and spell are made the first time they are needed.
 - A journal row's skill column is `LEVEL_EXTRA` (8) wider than a book's level: skills run to three
