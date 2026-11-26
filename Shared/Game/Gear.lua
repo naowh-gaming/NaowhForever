@@ -47,7 +47,7 @@ local SHIELD = { WARRIOR = true, PALADIN = true, SHAMAN = true }
 local RELIC = { [7] = "PALADIN", [8] = "DRUID", [9] = "SHAMAN" }
 local WEAPONS = {
     DRUID = { 4, 5, 10, 13, 15 },
-    HUNTER = { 0, 1, 2, 3, 6, 7, 8, 10, 13, 15, 16, 18 },
+    HUNTER = { 0, 1, 2, 3, 6, 7, 8, 10, 13, 15, 18 },
     MAGE = { 7, 10, 15, 19 },
     PALADIN = { 0, 1, 4, 5, 6, 7, 8 },
     PRIEST = { 4, 10, 15, 19 },
