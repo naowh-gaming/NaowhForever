@@ -520,9 +520,9 @@ in the pull request it opens.
   Thredd land within 0.01 of their pins); a player's marked map puts Targorr in the same four
   cells. Each pin is one of the four, the other three are its `also`.
 - The quest pins' list is from the Journal's quest data and chains, quest_entity_catalog.json's
-  givers and hand-ins, and the where text and quest text that put them inside (2026-11-13). The
-  Ghostly Attendant (Hall of Thanes), Rexxie Copperclutch (City of Dalaran) and Mason Connery
-  (Alcaz Prison) are not listed: no source has their NPC IDs. Krol'dok Stronghold's Tunk (his
+  givers and hand-ins, and the where text and quest text that put them inside (2026-11-13). Rexxie
+  Copperclutch (City of Dalaran) and Mason Connery (Alcaz Prison) are not listed: no source has
+  their NPC IDs. The Ghostly Attendant's (Hall of Thanes) is on Wowhead Forever's An Ancient Grudge. Krol'dok Stronghold's Tunk (his
   Krol'dok Moulding starts the key quests) and Zalfan Moonshadow, and Nar'gurk's pin, are from a
   player's marked map in the shared data set (2026-11-20), on the same art.
 - Most quest pins, and the rares and bosses that had no spot, were placed without the game (2026-11-13).
@@ -650,8 +650,7 @@ in the pull request it opens.
 - Shaper's Terrace's portal stands north of the Un'Goro map's edge, so its entrance is the stairs up to it on
   Un'Goro's northern rim, above Marshal's Refuge, where the world map shows it in Un'Goro. Krol'dok
   Stronghold's, Alcaz Prison's and Blackmaw Hold's entrances are from an entrance guide (Nov 2026).
-- Alcaz Prison and Blackmaw Hold have no pins yet: his maps mark no bosses and no source says
-  where they stand. With no pins, every floor is offered.
+- Alcaz Prison has no pins yet: his maps mark no bosses and no source says where they stand. With no pins, every floor is offered.
 - Shaper's Terrace's pins are Wowhead's Forever spawn spots, which it gives on the Kalimdor map
   (the instance shares Kalimdor's coordinates), drawn onto the instance's minimap tiles from the
   game files and carried onto his art through ten landmarks both show, since his art is not to
@@ -674,8 +673,19 @@ in the pull request it opens.
   `PLAYER_LEVEL_UP`, redraws once on the next frame for a burst of them, only when the quests'
   signature (as the page's, with your level) has changed, and stops listening at the first one with
   no such map shown. `/nf mappins` offers every quest pin, on or off.
-- Blackmaw Hold has no pins yet: nobody has placed its bosses with `/nf mappins`, so its map shows
-  only beside the world map, inside the dungeon.
+- Blackmaw Hold's bosses, the Moontouched Wanderer, The Twin Bears' two totems and its stairs are
+  from players' marked maps (2026-11-26), on the same art. Out of the Festering Grotto the way goes
+  back up into Blackmaw Grove, and down to the Depths of the Fallen Grove at the bear's head in
+  Bonesnout's Thicket, so the Grove has two stairs and the Grotto's leads up. The totems' object
+  IDs are Wowhead Forever's.
+- Also from players' reports (2026-11-26), on the same art: Commander Springvale on the printed
+  skull in Shadowfang Keep's Courtyard (Baron Silverlaine, who had that spot, moved to the corridor
+  south of it), the Fel Steed beside him, Arugal's Voidwalker beside Fenrus and The Book of Ur at
+  the round room's west wall, Archmage Arugal in his chamber's top corner; Gnomeregan's
+  Sparklematic 5200 left of the Dormitory's way down and Kernobee in the Dormitory below; the
+  Ghostly Attendant left of Faldrim Anvilmar; the Library's entrance on its swirl. Shadowfang
+  Keep's stairs are not drawn: its floor numbers do not run from top to bottom, so a stair's arrow
+  would point the wrong way.
 - The same folder contains 22 pictures assembled from map tiles in
   [keyboardturner/WoWMapUprez_Dungeons](https://github.com/keyboardturner/WoWMapUprez_Dungeons),
   commit `c8325d4583c9cdce52658e1a245963e623501dfa`. The project upscales Blizzard's
@@ -689,7 +699,7 @@ in the pull request it opens.
   Journal-only positions are retained where the source has no matching boss. Each boss pin
   sits on its skull where the picture has one. Captain Greenskin and Odo the Blindwatcher have
   none: Greenskin stands on the ship's deck ahead of Mr. Smite, Odo on the rampart past
-  Commander Springvale. Razorfen Kraul's skulls are not numbered, so its bosses take them in
+  the room with the printed skull. Razorfen Kraul's skulls are not numbered, so its bosses take them in
   kill order along the path from the entrance.
 - Sunken Temple, Blackrock Depths, Dire Maul, Blackrock Spire, Scholomance and Stratholme
   use bundled TGA pictures from `Media/Maps`: their client texture paths and
