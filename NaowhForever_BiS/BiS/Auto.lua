@@ -59,7 +59,9 @@ local function Gather(spec)
         AddAll(R.DungeonDrops(gear[1], NONE, true))
     end
     for _, level in ipairs(ns.BiSLeveling.levels) do
-        for _, id in pairs(R.LevelPicks(spec.key, level) or NONE) do pool[id] = true end
+        for _, id in pairs(R.LevelPicks(spec.key, level) or NONE) do
+            if not R.OtherClassQuest(id) then pool[id] = true end
+        end
     end
 end
 

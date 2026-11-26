@@ -56,6 +56,7 @@ local function Fixture(o)
         Wieldable = function() return true end,
         ReqLevel = function(id) return (o.req or {})[id] or 1 end,
         OtherSideQuest = function(id) return (o.otherSide or {})[id] == true end,
+        OtherClassQuest = function(id) return (o.otherClass or {})[id] == true end,
     }
     B.Lists = { CurrentSpec = function() return spec end, List = function() return o.list or list end,
         Changed = function() end }
@@ -124,6 +125,12 @@ end)
 Case("the pool is the ranking, the dungeon drops and the leveling lists", function()
     local m = Fixture({ drops = { [1] = { 1 } }, levelPicks = { [1] = 2 }, worth = { [1] = 1, [2] = 2 } })
     assert(Join(m.Auto.Build(m.spec)[1]) == "2,1")
+end)
+
+Case("a leveling pick from a quest your class cannot take stays out of the pool", function()
+    local m = Fixture({ levelPicks = { [1] = 2 }, otherClass = { [2] = true }, ranked = { [1] = { 1 } },
+        worth = { [1] = 1, [2] = 9 } })
+    assert(Join(m.Auto.Build(m.spec)[1]) == "1", Join(m.Auto.Build(m.spec)[1]))
 end)
 
 Case("Ring 2 skips Ring 1's pick, and a worn ring counts for either", function()
