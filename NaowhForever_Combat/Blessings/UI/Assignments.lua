@@ -65,7 +65,7 @@ local function Cell(parent, x, y, icon, lit, title, body, onClick)
     tex:SetTexture(icon)
     tex:SetDesaturated(not lit)
     tex:SetAlpha(lit and 1 or DIM_ALPHA)
-    btn:SetScript("OnClick", onClick)
+    btn:SetScript("OnClick", onClick or nil)
     ns.Tooltip(btn, title, body)
     return btn
 end
