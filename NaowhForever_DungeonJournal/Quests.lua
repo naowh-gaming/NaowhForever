@@ -607,14 +607,14 @@ local function FillEntry(entry, quest, kind, index, level)
     entry.step, entry.steps = step, chain and #chain
 end
 
-function Q.List(data, out, pool, withDone, withLow)
+function Q.List(data, out, pool, withDone, withLow, logOnly)
     wipe(out)
     local _, class = UnitClass("player")
     local faction = UnitFactionGroup("player")
     local level = UnitLevel("player")
     for index, quest in ipairs(data.quests) do
         local kind = Kind(quest)
-        if Listed(quest, kind, class, faction, withDone, withLow) then
+        if Listed(quest, kind, class, faction, withDone, withLow) and (InLog(kind) or not logOnly) then
             local n = #out + 1
             local entry = pool[n] or {}
             pool[n] = entry

@@ -20,6 +20,7 @@ local TEXT_QUESTS = ns.L("Dungeon Quests")
 local TEXT_TRACKER = ns.L("Tracker")
 local TEXT_SHARE_ALL = ns.L("Share All")
 local TEXT_NO_QUESTS = ns.L("No quests here.")
+local TEXT_LOG_ONLY = ns.L("None of your quests are for this dungeon. Only My Quests at Max Level hides the rest.")
 local TEXT_REPUTATION = ns.L("Reputation")
 local TEXT_NO_BOSSES = ns.L("No boss data for this dungeon yet. It fills in with a later version of the addon.")
 local TEXT_BOSSES = ns.L("Bosses")
@@ -149,7 +150,8 @@ end
 function ViewMixin:QuestList(dungeon)
     if not dungeon.quests then return EMPTY end
     local withDone = not (self.tracker or self.tight) and S.Get("showDoneQuests")
-    local list = Quests.List(dungeon.quests, self.questList, self.questPool, withDone, S.Get("showLowQuests"))
+    local logOnly = self.tracker and J.QuestTracker.LogOnly()
+    local list = Quests.List(dungeon.quests, self.questList, self.questPool, withDone, S.Get("showLowQuests"), logOnly)
     self.questSignature = Quests.Signature(dungeon.quests)
     self.questsDrawn = true
     return list
@@ -227,7 +229,10 @@ function ViewMixin:DrawTracker(dungeon)
     self:Begin(dungeon, nil)
     self.tight = true
     local list = self:QuestList(dungeon)
-    if #list == 0 then self:Note(Quests.NoneWhy(dungeon.quests) or TEXT_NO_QUESTS) end
+    if #list == 0 then
+        local hidden = dungeon.quests and J.QuestTracker.LogOnly() and Quests.Count(dungeon.quests) > 0
+        self:Note(hidden and TEXT_LOG_ONLY or Quests.NoneWhy(dungeon.quests) or TEXT_NO_QUESTS)
+    end
     for i = 1, #list do self:Add("quest", list[i], i) end
     self:Finish()
 end

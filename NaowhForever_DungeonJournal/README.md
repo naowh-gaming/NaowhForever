@@ -122,9 +122,9 @@ NaowhForever_DungeonJournal/
     Popup.lua          Boss Loot at Cursor (a key binding)
     RareAlert.lua      Rare Alert: a toast and a chime when a rare of your dungeon is up, and a button that targets it
     RunPanel.lua       Run Panel: the run you are in, full or compact, and its summary when it is finished
-    QuestTracker.lua   a dungeon's quests in a small window, one row each
+    QuestTracker.lua   a dungeon's quests in a small window, one row each (Only My Quests at Max Level)
     GameTrackerFade.lua Hide the Game's Quest Tracker
-    TrackerAuto.lua    Open Tracker in Dungeons (Skip at Max Level) and Show Outside Dungeons
+    TrackerAuto.lua    Open Tracker in Dungeons (Hide at Max Level) and Show Outside Dungeons
     MapView.lua        a dungeon's map drawn into a frame: art, boss and quest pins, entrance, stairs, floor switch (J.DungeonMap)
     MapList.lua        the bosses beside the map window, in kill order
     MapWindow.lua      the map's own window: the map, the list, the picked boss's page

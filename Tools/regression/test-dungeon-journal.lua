@@ -2088,8 +2088,8 @@ do
     state.instance = { id = 36, name = "The Deadmines" }
     EnterWorld()
     check("until you leave and come back", tracker:IsShown())
-    -- Skip at Max Level: off by default; on, a max-level character enters with it closed.
-    check("Skip at Max Level is off by default", state.defaults.trackerSkipMaxLevel == false)
+    -- Hide at Max Level: off by default; on, a max-level character enters with it closed.
+    check("Hide at Max Level is off by default", state.defaults.trackerSkipMaxLevel == false)
     tracker:Hide()
     tracker.scripts.OnHide(tracker)
     state.instance = nil
@@ -2111,6 +2111,37 @@ do
     EnterWorld()
     check("below max level it still opens", tracker:IsShown())
     S.Set("trackerSkipMaxLevel", false)
+    -- Only My Quests at Max Level: off by default; on, at max level the tracker lists only the
+    -- quests in your log, and does not open on a dungeon where you have none.
+    do
+        local Quests, Tracker = ns.Journal.Quests, ns.Journal.QuestTracker
+        local function Reenter()
+            tracker:Hide()
+            tracker.scripts.OnHide(tracker)
+            state.instance = nil
+            EnterWorld()
+            state.instance = { id = 36, name = "The Deadmines" }
+            EnterWorld()
+        end
+        check("Only My Quests at Max Level is off by default", state.defaults.trackerLogOnlyMaxLevel == false)
+        local mine = Quests.List(deadmines.quests, {}, {})[1]
+        S.Set("trackerLogOnlyMaxLevel", true)
+        check("on, below max level it changes nothing", not Tracker.LogOnly() and tracker:IsShown())
+        state.maxLevel = state.level
+        check("at max level, with none in your log, none are listed",
+            mine ~= nil and #Quests.List(deadmines.quests, {}, {}, false, false, true) == 0)
+        Reenter()
+        check("and entering the dungeon leaves it closed", not tracker:IsShown())
+        state.logged[mine.quest[1]] = 1
+        state.onQuest = { [mine.quest[1]] = true }
+        Reenter()
+        check("one in your log: it opens", tracker:IsShown())
+        local logOnly = Quests.List(deadmines.quests, {}, {}, false, false, true)
+        check("listing that quest alone", #logOnly == 1 and logOnly[1].quest == mine.quest)
+        S.Set("trackerLogOnlyMaxLevel", false)
+        check("off again, the rest are back", #Quests.List(deadmines.quests, {}, {}) > 1 and tracker:IsShown())
+        state.logged[mine.quest[1]], state.onQuest, state.maxLevel = nil, nil, nil
+    end
     -- A /reload inside: the settings are applied during that loading screen's own event, so
     -- applying them has to look where you are.
     tracker:Hide()

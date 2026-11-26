@@ -9,13 +9,14 @@ local autoFrame
 
 local function QuestsFor()
     local level = UnitLevel("player")
+    local logOnly = Tracker.LogOnly()
     local forLevel
     for _, dungeon in ipairs(J.Dungeons()) do
         local data = dungeon.quests
         if data then
             local toPickUp, inLog = J.Quests.Count(data)
             if inLog > 0 then return dungeon end
-            local levels = not forLevel and toPickUp > 0 and J.Levels(dungeon)
+            local levels = not (forLevel or logOnly) and toPickUp > 0 and J.Levels(dungeon)
             if levels and level >= levels[1] and level <= levels[2] then forLevel = dungeon end
         end
     end
@@ -34,6 +35,7 @@ local function OpenInside(dungeon)
     local data = dungeon.quests
     if not data then return end
     local toPickUp, inLog = J.Quests.Count(data)
+    if Tracker.LogOnly() then toPickUp = 0 end
     if toPickUp + inLog > 0 then Tracker.Show(dungeon) end
 end
 
@@ -62,7 +64,8 @@ local function SyncAuto()
 end
 
 local function OnSettingChanged(key)
-    if key == "enabled" or key == "trackerAuto" or key == "trackerOutside" or key == "trackerSkipMaxLevel" then
+    if key == "enabled" or key == "trackerAuto" or key == "trackerOutside" or key == "trackerSkipMaxLevel"
+        or key == "trackerLogOnlyMaxLevel" then
         SyncAuto()
     end
 end

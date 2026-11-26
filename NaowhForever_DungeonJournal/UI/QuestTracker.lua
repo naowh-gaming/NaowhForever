@@ -193,7 +193,13 @@ local function OnSettingChanged(key)
     elseif key == "trackerScale" then
         panel:SetScale(Scale())
         Redraw()
+    elseif key == "trackerLogOnlyMaxLevel" then
+        Redraw()
     end
+end
+
+function Tracker.LogOnly()
+    return S.Get("trackerLogOnlyMaxLevel") and UnitLevel("player") >= GetMaxLevelForPlayerExpansion()
 end
 
 function Tracker.Show(dungeon)

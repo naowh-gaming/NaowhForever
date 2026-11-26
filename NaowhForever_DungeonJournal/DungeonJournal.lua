@@ -100,6 +100,7 @@ local S = ns.UI.ModuleSettings("journal", {
     acceptShared = false,
     trackerAuto = true,
     trackerSkipMaxLevel = false,
+    trackerLogOnlyMaxLevel = false,
     hideGameTracker = false,
     trackerOutside = false,
 })
