@@ -10,6 +10,7 @@ local S = ns.UI.ModuleSettings("trackingReminder", {
     racialPicks = {},
     classPicks = {},
     inInstances = false,
+    hideText = false,
     iconSize = 40,
     trackingFont = "",
     trackingFontSize = 13,

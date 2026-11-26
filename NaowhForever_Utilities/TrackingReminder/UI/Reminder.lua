@@ -34,7 +34,7 @@ local EVENTS = { "MINIMAP_UPDATE_TRACKING", "SPELLS_CHANGED", "LEARNED_SPELL_IN_
 local RESUME = { PLAYER_ENTERING_WORLD = true, ZONE_CHANGED_NEW_AREA = true }
 local REFRESH = {
     enabled = true, trackRacial = true, trackClass = true, racialPicks = true, classPicks = true,
-    inInstances = true, iconSize = true, trackingFont = true, trackingFontSize = true, trackingOutline = true,
+    inInstances = true, hideText = true, iconSize = true, trackingFont = true, trackingFontSize = true, trackingOutline = true,
 }
 local TEXT_TRACK = ns.L("Track %s")
 local TEXT_NOT_TRACKING = ns.L("Not Tracking")
@@ -123,6 +123,7 @@ function Look.Fill(frame, size, texture, text)
     frame.icon:SetTexture(texture)
     Parts.HudFont(frame.label, S.Get("trackingFont"), S.Get("trackingFontSize"), S.Get("trackingOutline"))
     frame.label:SetText(TEXT_TRACK:format(text))
+    frame.label:SetShown(not S.Get("hideText"))
 end
 
 local function GetButton(i)

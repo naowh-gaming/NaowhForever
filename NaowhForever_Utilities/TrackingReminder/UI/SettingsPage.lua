@@ -29,6 +29,7 @@ local TEXT_PICK = "Reminds you while this tracking is off."
 local TEXT_NEEDS_RACIAL = "Needs Racial Tracking"
 local TEXT_NEEDS_CLASS = "Needs Class Tracking"
 local TEXT_INSTANCES = "Also reminds you inside instances."
+local TEXT_HIDE_TEXT = "Shows the icons without their Track text."
 local TEXT_ICON = "How big the reminder icon is."
 
 local function When(key)
@@ -126,6 +127,10 @@ local function Rows()
     rows[#rows + 1] = {
         key = "inInstances", label = "Show in Dungeons and Raids", toggle = true, needs = TR.Enabled,
         why = TEXT_OFF, help = TEXT_INSTANCES,
+    }
+    rows[#rows + 1] = {
+        key = "hideText", label = "Hide Text", toggle = true, needs = TR.Enabled, why = TEXT_OFF,
+        help = TEXT_HIDE_TEXT,
     }
     rows[#rows + 1] = Group("Size")
     rows[#rows + 1] = {

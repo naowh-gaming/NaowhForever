@@ -53,6 +53,7 @@ local function Load(opts)
             local font = {}
             function font:SetPoint() end
             function font:SetText(text) self.text = text end
+            function font:SetShown(on) self.hidden = not on end
             return font
         end,
         Apply = function() end, ShowUnlockMode = function() end, HideUnlockMode = function() end,
@@ -352,6 +353,11 @@ do
     check("the secure button takes presses and releases", beasts.clicks[1] == "AnyUp" and beasts.clicks[2] == "AnyDown")
     check("the secure button waits for the release", beasts.attrs.useOnKeyDown == false)
     check("the icon label is Track plus its name", beasts.label.text == "Track Beasts")
+    check("Hide Text starts off, the label showing", world.S.Get("hideText") == false and not beasts.label.hidden)
+    world.S.Set("hideText", true)
+    check("on, the icon has no label", Button(world, BEASTS).label.hidden == true)
+    world.S.Set("hideText", false)
+    check("off again, the label is back", Button(world, BEASTS).label.hidden == false)
     check("the tooltip title is Not Tracking", beasts._tipTitle == "Not Tracking")
     check("the tooltip is one sentence", beasts._tipBody
         == "Left-click turns it on, and right-click hides it until you change area.")
