@@ -1,7 +1,7 @@
 -- Run with Lua 5.1 from the repository root: Group Finder Roles.
--- Off it builds and hooks nothing. On, rows that do not match the picks fade out with their mouse off,
--- while the Group Finder's results, totals and refresh are never touched. Every row fading shows a
--- hint, and in chat messaging lockdown nothing is read or filtered.
+-- Off it builds and hooks nothing. On, rows that do not match the picks are hidden, even after the
+-- Group Finder redraws them, while its results, totals and refresh are never touched. Every row hidden
+-- shows a hint, and in chat messaging lockdown nothing is read or filtered.
 local NOTHING = function() end
 local frames = {}
 local lockdown = false
@@ -44,9 +44,8 @@ end
 local function Entry(resultID)
     local e = Region()
     e.resultID = resultID
-    e.alphaSets = 0
-    function e:SetAlpha(a) self.alpha = a; self.alphaSets = self.alphaSets + 1 end
-    function e:EnableMouse(on) self.mouse = on end
+    e.hides = 0
+    function e:Hide() self.shown = false; self.hides = self.hides + 1 end
     return e
 end
 
@@ -132,6 +131,7 @@ local function UntouchedList()
 end
 
 local function RowUpdate(entry)
+    entry:Show()
     for _, fn in ipairs(rowHooks) do fn(entry) end
 end
 
@@ -139,8 +139,8 @@ local function Results()
     for _, fn in ipairs(resultHooks) do fn(finder) end
 end
 
-local function Faded(i) return entries[i].alpha == 0 and entries[i].mouse == false end
-local function Kept(i) return entries[i].alpha ~= 0 and entries[i].mouse ~= false end
+local function Faded(i) return not entries[i].shown end
+local function Kept(i) return entries[i].shown end
 
 local count = 0
 local function Case(name, fn) fn(); count = count + 1; print("PASS " .. name) end
@@ -173,7 +173,7 @@ end)
 Case("nothing picked: rows are left as the game drew them", function()
     infoReads = 0
     for _, e in ipairs(entries) do if e.resultID then RowUpdate(e) end end
-    for i = 1, 5 do assert(entries[i].alphaSets == 0) end
+    for i = 1, 5 do assert(entries[i].hides == 0 and Kept(i)) end
     assert(infoReads == 0, "no search result read while nothing is picked")
 end)
 
@@ -182,6 +182,21 @@ Case("Players: Healer fades the rest, keeps your own listing, never touches the 
     assert(Kept(1) and Kept(2), "own listing and the healer stay")
     assert(Faded(3) and Faded(4) and Faded(5), "damage and groups fade")
     UntouchedList()
+end)
+
+Case("the Group Finder redrawing a row does not bring it back", function()
+    entries[3]:SetAlpha(1)
+    RowUpdate(entries[3])
+    assert(Faded(3))
+end)
+
+Case("a row the Group Finder hid for a missing result stays hidden when the picks clear", function()
+    entries[6].resultID = 6
+    RowUpdate(entries[6])
+    S.Set("finderRolesHealer", false)
+    assert(not entries[6].shown)
+    S.Set("finderRolesHealer", true)
+    entries[6].resultID = nil
 end)
 
 Case("a faded row the list reuses for a match comes back", function()

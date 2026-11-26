@@ -87,11 +87,13 @@ local function Wanted(resultID)
 end
 
 local function UpdateRow(entry)
-    local keep = not Filtering() or Wanted(entry.resultID)
-    if keep == not hidden[entry] then return end
-    hidden[entry] = not keep or nil
-    entry:SetAlpha(keep and 1 or 0)
-    entry:EnableMouse(keep)
+    if Filtering() and not Wanted(entry.resultID) then
+        hidden[entry] = C_LFGList.GetSearchResultInfo(entry.resultID) and true or nil
+        entry:Hide()
+    elseif hidden[entry] then
+        hidden[entry] = nil
+        entry:Show()
+    end
 end
 
 local function AllHidden()
@@ -190,7 +192,7 @@ local function Apply()
         events:UnregisterAllEvents()
         if row then
             row:Hide()
-            for entry in pairs(hidden) do UpdateRow(entry) end
+            Refresh()
         end
         return
     end
