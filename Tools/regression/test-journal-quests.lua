@@ -791,6 +791,13 @@ Case("the generated quest and chain data is well formed and free of loops", func
     local bandanas = J.QuestPrereqs[214]
     assert(bandanas and bandanas[1] == 65 and #bandanas == 6, "Red Silk Bandanas starts with 65, 6 steps")
     assert(J.QuestMinLevel[214] == 14)
+    -- Where Wowhead's Series falls short, Forever's own quest data fills the chain in.
+    local tome = J.QuestPrereqs[1654]
+    assert(tome and tome[1] == 1649 and tome[2] == 1650 and tome[3] == 1651,
+        "The Test of Righteousness starts with The Tome of Valor, 1649 then 1650")
+    local flame = J.QuestPrereqs[4024]
+    assert(flame and flame[1] == 3441 and flame[2] == 3442 and flame[7] == 3462 and #flame == 10,
+        "A Taste of Flame starts with Divine Retribution and its steps")
     -- Old Ironforge Incursion needs Underground Map, which an item Captain Beld drops begins.
     assert(J.QuestChainStarts[96391], "Underground Map has no start")
     assert(lists > 50, "only " .. lists .. " lists")
