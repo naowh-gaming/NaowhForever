@@ -230,6 +230,58 @@ do
     check('and it is saved without it',
         account.flightBaseTimes['Southshore|Menethil Harbor'] == 120)
 end
+-- Hyjal's paths fly faster, for the whole flight; a learned time far under the route data is junk.
+local function route(nodes, names, account)
+    local s = fixture()
+    local env = s.env
+    s.ns.AccountSettings = function() return account end
+    env.GetTaxiMapID = function() return 1414 end
+    env.C_TaxiMap = { GetAllTaxiNodes = function()
+        local all = {}
+        for i, id in ipairs(nodes) do all[i] = { slotIndex = i, nodeID = id } end
+        return all
+    end }
+    env.C_Traits = { GetConfigIDByTreeID = function() return nil end }
+    env.GetNumRoutes = function() return #nodes - 1 end
+    env.TaxiGetNodeSlot = function(_, hop, from) return from and hop or hop + 1 end
+    env.TaxiNodeName = function(slot) return names[slot] end
+    env.NumTaxiNodes = function() return #nodes end
+    env.TaxiNodeGetType = function(i) return i == 1 and 'CURRENT' or 'REACHABLE' end
+    function s.fly(at)
+        s.now = 0
+        env.TakeTaxiNode(#nodes)
+        s.taxi = true
+        for _, t in ipairs(s.tickers) do if not t.cancelled then t.fn() end end
+        s.now = at
+    end
+    return s
+end
+do
+    local s = route({ 559, 3242, 64 }, { 'Summit of Eternity', 'Tainted Foothills', 'Talrendis Point' }, {})
+    s.ns.FLIGHT_ROUTES[5593242] = 50 * 40
+    s.ns.FLIGHT_ROUTES[32420064] = 50 * 60
+    s.fly(0)
+    check('a flight that starts on a Hyjal path flies every hop at its speed', s.text('1:40') ~= nil
+        and s.text('Tainted Foothills') and s.text('0:40') ~= nil)
+end
+do
+    local s = route({ 52, 64 }, { 'Everlook', 'Talrendis Point' }, {})
+    s.ns.FLIGHT_ROUTES[520064] = 30.4 * 100
+    s.fly(0)
+    check('other paths keep the usual speed', s.text('1:40') ~= nil)
+end
+do
+    local account = { flightBaseTimes = { ['Ironforge|Southshore'] = 22 } }
+    local s = route({ 6, 14 }, { 'Ironforge', 'Southshore' }, account)
+    s.ns.FLIGHT_ROUTES[60014] = 30.4 * 240
+    s.fly(30)
+    check('a learned time under half the route data is ignored', s.text('4:00') ~= nil)
+    s.land()
+    check('and a landing that short is not learned', account.flightBaseTimes['Ironforge|Southshore'] == 22)
+    s.fly(236)
+    s.land()
+    check('a real flight replaces it', account.flightBaseTimes['Ironforge|Southshore'] == 236)
+end
 do
     local s = fixture({ flightEarlyLanding = true })
     s.ns.ShowUnlockMode()

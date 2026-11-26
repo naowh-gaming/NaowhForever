@@ -914,14 +914,18 @@ NaowhForever_QoL/
   instead of the settings. It sets Flight Games to Buttons only, so the games stay one click away.
   The Aim Trainer hides it with its other header buttons while a round runs.
 - Flight times come from the route data at 30.4 yards a second (`FLIGHT_SPEED`), fitted to
-  measured Classic flight times. Frequent Flier, node 110300 of the Adventure Legacy tree (1188),
+  measured Classic flight times. Mount Hyjal's paths (`HYJAL_ROUTES`) fly at 50 (`HYJAL_SPEED`),
+  timed on Forever, and a flight whose first hop is one of them keeps that speed for every hop:
+  Summit of Eternity to Talrendis Point flew its Everlook leg at it too. Frequent Flier, node 110300 of the Adventure Legacy tree (1188),
   makes flight path mounts 20% faster; Legacy perks are bought per character, and a character
   without the tree has no config for it.
 - A route is its stops, start first, each with the seconds to reach it. The time learned on a
   route beats the route data, whose stops are stretched to fit it; once a hop is missing from the
   route data, the time is unknown from there on and the learned time stands in for the whole
   flight. A flight shorter than 10 seconds was cut short or never left, and one landed early did
-  not fly the route, so neither is learned.
+  not fly the route, so neither is learned. Nor is one under half the route data's time, and a
+  learned time that short is ignored for the route data's: a player had Ironforge to Southshore
+  saved as 22 seconds.
 - Learned times (`flightBaseTimes`) are saved without Frequent Flier, so characters with and
   without it share them. The older `flightTimes` had it mixed in and is dropped.
 - The flight master's map shows the same time the timer starts from: the learned time, else the

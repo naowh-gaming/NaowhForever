@@ -28,13 +28,16 @@ local SPAN = WIDTH - TRACK_H
 local ZONE_TOP = PAD + HEAD_H + ROW_GAP
 local LABEL_TOP = ZONE_TOP + ZONE_H + LABEL_GAP
 local ROUTE_CAP = (WIDTH - TIME_ROOM - CHEVRON_SIZE - 2 * TEXT_GAP) / 2
-local FLIGHT_SPEED = 30.4
+local FLIGHT_SPEED, HYJAL_SPEED = 30.4, 50
+-- Mount Hyjal's paths, timed on Forever: a flight that starts on one keeps that speed for every hop.
+local HYJAL_ROUTES = { [5593242] = true, [32420559] = true, [523242] = true, [32420052] = true,
+    [533242] = true, [32420053] = true }
 local ADVENTURE_LEGACY_TREE, FREQUENT_FLIER_NODE = 1188, 110300
 local FREQUENT_FLIER_SPEED = 1.2
 local ROUTE_KEY = 10000
 local SECONDS_PER_MINUTE = ns.QoLConstants.SECONDS_PER_MINUTE
 local ROUND = ns.QoLConstants.ROUND
-local MIN_LEARNED = 10
+local MIN_LEARNED, MIN_LEARNED_SHARE = 10, 0.5
 local BOARD_WAIT = 10
 local POLL_EVERY = 0.5
 local DEFAULT_TOP = -140
@@ -118,10 +121,11 @@ local function SpeedMultiplier()
     return node and node.activeRank > 0 and FREQUENT_FLIER_SPEED or 1
 end
 
-local function Learned(from, to)
+local function Learned(from, to, estimate)
     local key = RouteKey(from, to)
     local seconds = key and Times()[key]
-    return seconds and seconds / SpeedMultiplier()
+    seconds = seconds and seconds / SpeedMultiplier()
+    if seconds and not (estimate and seconds < estimate * MIN_LEARNED_SHARE) then return seconds end
 end
 
 local function Route(slot)
@@ -129,7 +133,9 @@ local function Route(slot)
     for _, node in ipairs(C_TaxiMap.GetAllTaxiNodes(GetTaxiMapID())) do
         nodeAt[node.slotIndex] = node.nodeID
     end
-    local speed = FLIGHT_SPEED * SpeedMultiplier()
+    local from, to = nodeAt[TaxiGetNodeSlot(slot, 1, true)], nodeAt[TaxiGetNodeSlot(slot, 1, false)]
+    local hyjal = from and to and HYJAL_ROUTES[from * ROUTE_KEY + to]
+    local speed = (hyjal and HYJAL_SPEED or FLIGHT_SPEED) * SpeedMultiplier()
     local stops = { { name = TaxiNodeName(TaxiGetNodeSlot(slot, 1, true)), at = 0 } }
     local seconds = 0
     for hop = 1, GetNumRoutes(slot) do
@@ -146,7 +152,7 @@ end
 local function AddMapTime(slot)
     if not (On() and S.Get("flightTimerMapTime")) or TaxiNodeGetType(slot) ~= "REACHABLE" then return end
     local _, estimate = Route(slot)
-    local seconds = Learned(CurrentNodeName(), TaxiNodeName(slot)) or estimate
+    local seconds = Learned(CurrentNodeName(), TaxiNodeName(slot), estimate) or estimate
     if not seconds then return end
     GameTooltip:AddDoubleLine(TEXT_FLIGHT_TIME, Clock(seconds), TIP_GOLD.r, TIP_GOLD.g, TIP_GOLD.b,
         WHITE_RGB.r, WHITE_RGB.g, WHITE_RGB.b)
@@ -622,7 +628,8 @@ end
 local function Land()
     local elapsed = GetTime() - flight.start
     local key = RouteKey(flight.from, flight.to)
-    if key and elapsed > MIN_LEARNED and not flight.early then
+    local short = flight.estimate and elapsed < flight.estimate * MIN_LEARNED_SHARE
+    if key and elapsed > MIN_LEARNED and not flight.early and not short then
         Times()[key] = math.floor(elapsed * SpeedMultiplier() + ROUND)
     end
     flight = nil
@@ -705,7 +712,7 @@ end
 
 local function Board(route)
     flight = { from = route and route.from, to = route and route.to, start = GetTime(),
-        points = route and route.points, known = route and route.estimate }
+        points = route and route.points, known = route and route.known, estimate = route and route.estimate }
     pending = nil
     if On() then Show() end
     FadeBlizzardStop()
@@ -784,11 +791,12 @@ end
 local function OnTakeTaxi(index)
     local points, estimate = Route(index)
     local from, to = CurrentNodeName(), TaxiNodeName(index)
-    local learned = Learned(from, to)
+    local learned = Learned(from, to, estimate)
     if learned and estimate then
         for _, stop in ipairs(points) do stop.at = stop.at * learned / estimate end
     end
-    pending = { from = from, to = to, points = points, estimate = learned or estimate, at = GetTime() }
+    pending = { from = from, to = to, points = points, known = learned or estimate, estimate = estimate,
+        at = GetTime() }
     StartPoll()
 end
 
