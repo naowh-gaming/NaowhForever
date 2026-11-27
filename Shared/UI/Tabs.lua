@@ -149,7 +149,10 @@ local function FitSegments(bar, count, width)
     for i = count + 1, #fitOrder do fitOrder[i] = nil end
     if total <= room then
         local spare = (room - total) / count
-        for i = 1, count do bar.buttons[i].fit = math.floor(bar.buttons[i].fit + spare) end
+        for i = 1, count do
+            local button = bar.buttons[i]
+            button.fit = bar.equal and math.floor(room / count) or math.floor(button.fit + spare)
+        end
         return
     end
     table.sort(fitOrder, Widest)
@@ -168,7 +171,10 @@ local function FitForeverTabs(bar, count, width)
     if total <= room then
         if bar.asButtons then
             local spare = (room - total) / count
-            for i = 1, count do bar.buttons[i].fit = math.floor(bar.buttons[i].fit + spare) end
+            for i = 1, count do
+                local button = bar.buttons[i]
+                button.fit = bar.equal and math.floor(room / count) or math.floor(button.fit + spare)
+            end
         end
         return
     end

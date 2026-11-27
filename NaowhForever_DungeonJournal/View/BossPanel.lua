@@ -233,13 +233,6 @@ local function Draw()
     view:Finish()
 end
 
-function BossPanel.DrawInto(target, boss, dungeon)
-    local own = view
-    view = target
-    DrawHistory(boss, dungeon)
-    view = own
-end
-
 function BossPanel.Show(boss, from, dungeon)
     if not panel then
         panel = Parts.SidePanel(EMPTY)

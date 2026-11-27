@@ -174,9 +174,10 @@ function ViewMixin:DrawLootSummary(dungeon)
             end
         end
     end
-    local text = bosses .. St.PLACE_DOT .. TEXT_SUMMARY:format(items)
-    if upgrades > 0 then text = text .. St.PLACE_DOT .. St.UPGRADE_CODE .. TEXT_UPGRADES:format(upgrades) .. "|r" end
-    return text
+    local rest = TEXT_SUMMARY:format(items)
+    if upgrades > 0 then rest = rest .. St.PLACE_DOT .. St.UPGRADE_CODE .. TEXT_UPGRADES:format(upgrades) .. "|r" end
+    self.summaryBosses, self.summaryRest = bosses, rest
+    return bosses .. St.PLACE_DOT .. rest
 end
 
 function ViewMixin:DrawQuestDetail(entry)
@@ -271,9 +272,12 @@ end
 
 function ViewMixin:WingTitle(dungeon, title, first, count)
     local summary = first and self.summary
-    if summary then
-        self:Add("section", title, summary, nil, nil, S.Get("usableOnly") and TEXT_SHOW_OTHERS or TEXT_HIDE_OTHERS,
-            ToggleUsable)
+    local link = S.Get("usableOnly") and TEXT_SHOW_OTHERS or TEXT_HIDE_OTHERS
+    if summary and self:GetWidth() < St.COMPACT_W then
+        self:Add("section", title, self.summaryBosses, nil, nil, link, ToggleUsable)
+        self:Note(self.summaryRest)
+    elseif summary then
+        self:Add("section", title, summary, nil, nil, link, ToggleUsable)
     elseif first and (not self.onWorldMap or J.DungeonMapAway()) then
         if J.Maps[dungeon.key] then
             self:Add("section", title, count, nil, nil, TEXT_MAP, OpenMap, dungeon)
@@ -301,7 +305,7 @@ function ViewMixin:DrawTrashCards()
     self:Section(TEXT_TRASH, self.trashShown)
     self:Space(SECTION_SPACE)
     for k = 1, #trash do self:Gather(trash[k], nil, self:ShownCount(trash[k])) end
-    self.trashColumns = #trash == 1
+    self.trashColumns = #trash == 1 and (not self.lootDense or self:GetWidth() >= St.COMPACT_W)
     self:DrawGrid(#trash == 1 and 1 or nil)
     self.trashColumns = false
 end

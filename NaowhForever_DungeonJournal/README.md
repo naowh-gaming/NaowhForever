@@ -128,7 +128,7 @@ NaowhForever_DungeonJournal/
     MapView.lua        a dungeon's map drawn into a frame: art, boss and quest pins, entrance, stairs, floor switch (J.DungeonMap)
     MapList.lua        the bosses beside the map window, in kill order
     MapWindow.lua      the map's own window: the map, the list, the picked boss's page
-    DungeonPane.lua    New Layout's dungeon page: header, then map, quests or keys and the picked boss beside every boss's loot
+    DungeonPane.lua    New Layout's dungeon page: header, map, quests or keys on the left; boss portraits over every boss's loot or the picked boss on the right
     MapOverlay.lua     the dungeon's map over the world map's picture, inside the dungeon
     MapTools.lua       /nf mappins (place the boss and quest pins, Copy for Data/Maps.lua) and /nf mapcheck
     ItemSource.lua     Where It Drops: the bosses that drop an item, with their dungeon and chance, on its tooltip anywhere
@@ -610,11 +610,20 @@ in the pull request it opens.
 
 - New Layout is on by default (`newLayout` in `Core/Features.lua`); a player who turned it off
   keeps it off. Nothing it adds is built while it is off, and the window then draws the old lists.
-- Map Size (`mapSize`) widens the dungeon page's map column and grows the window by that width and
-  the map's extra height, so the loot columns and the boss under the map keep their room. The
-  window is the same size on every New Layout page; the old lists ignore the setting.
-  The window never grows past the screen (less a 32 px margin, at the Journal's Window Scale): a
-  smaller screen gets a smaller map, and one the base window already fills keeps the map at 100%.
+- Map Size (`mapSize`) grows the window wider by that share of the dungeon page's width, never
+  taller: the map always takes two thirds of the page (`MAP_SHARE`) and the loot column the rest,
+  and the map shrinks to the page's height when it would run past the window's bottom. The window
+  is the same size on every New Layout page; the old lists ignore the setting. It never grows past
+  the screen (less a 32 px margin, at the Journal's Window Scale): a smaller screen gets a smaller
+  map, and one the base window already fills keeps the map at 100%.
+- The dungeon page gives the map the left column: its tabs, a row of floor tabs (only when the map
+  has more than one floor, numbered past three) and the map. The right column starts with a round
+  portrait of every boss, its level coloured by how hard it is for you (`GetQuestDifficultyColor`)
+  and greyed once killed this run, wrapping onto even rows when they don't fit. Under it is every
+  boss's loot, one boss per card; picking a boss (its portrait, its pin, or its card) shows that
+  boss alone there instead (quests, loot, abilities), with "< All bosses" to go back, and picking
+  it again goes back too. A dungeon opens with no boss picked. The kill log is not on the page:
+  the skull counter opens it as the panel beside the window.
 - New Layout's paintings and boss faces are the game's Encounter Journal art. Forever has no
   Encounter Journal tables but its client holds the files, so nothing is shipped: the file IDs
   come from retail's JournalInstance and JournalEncounterCreature tables, and only files a Forever

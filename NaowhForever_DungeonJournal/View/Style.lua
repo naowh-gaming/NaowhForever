@@ -28,6 +28,7 @@ local St = setmetatable({
     FAVOURITE_RGB = { r = 1, g = 0.82, b = 0 },
     ENTRANCE_HINT_RGB = { r = 0.3, g = 0.71, b = 0.96 },
     RARE_RGB = { r = 0xc8 / 255, g = 0xd0 / 255, b = 0xdc / 255 },
+    SKULL_LEVEL_RGB = { r = 1, g = 0.1, b = 0.1 },
 
     CONTESTED = MEDIA .. "swords",
     FACTION_ATLAS = { Alliance = "UI-HUD-UnitFrame-Player-PVP-AllianceIcon",
@@ -99,6 +100,7 @@ local St = setmetatable({
     CHIP_H = 20,
     CHIP_PAD = 8,
     CHIP_GAP = 6,
+    BACK_TEXT_PAD = 4,
     CHEST_ICON = "Interface\\Icons\\INV_Box_02",
 
     MAP_PIN = 46,

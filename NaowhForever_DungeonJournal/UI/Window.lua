@@ -38,7 +38,7 @@ local FINDER_TAB = { key = FINDER, label = "Loot Finder" }
 local CRAFTING = "crafting"
 local CRAFTING_TAB = { key = CRAFTING, label = "Crafting" }
 local CRAFTING_TAB_W = 70
-local PANE_COLUMNS = 2
+local PANE_COLUMNS = 1
 local PANE_RIGHT = 10
 local SCREEN_MARGIN = 32
 local DUNGEONS = "dungeons"
@@ -383,7 +383,8 @@ local function PlaceContent(hidden)
     if wide then
         local scale = ns.UIScale()
         grownW, grownH = J.DungeonPane.Grown(UIParent:GetWidth() / scale - WIDTH - SCREEN_MARGIN,
-            UIParent:GetHeight() / scale - HEIGHT - SCREEN_MARGIN)
+            UIParent:GetHeight() / scale - HEIGHT - SCREEN_MARGIN,
+            WIDTH - CARD_EDGE - CONTENT_INSET - SCROLL_RIGHT - PAD - PANE_RIGHT)
     end
     local width = WIDTH + grownW
     window:SetSize(width, HEIGHT + grownH)
@@ -438,7 +439,7 @@ function ApplyMode()
     view.factionAside = Wide()
     view.searchTable = Wide()
     view.openBoss = paned and pane.Pick or J.View.OpenBossLoot
-    view.openHistory = paned and pane.History or nil
+    view.openHistory = nil
     if not paned then view.marked = nil end
     if pane.Built() then pane.SetShown(paned) end
     PlaceContent(S.Get("listHidden") and not Wide())

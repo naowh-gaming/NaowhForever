@@ -5728,18 +5728,22 @@ do
     check("at Map Size 100% the window keeps its size", window.w == St.WINDOW_W and window.h == St.WINDOW_H)
     state.env.UIParent:SetSize(2133, 1200)
     S.Set("mapSize", 1.5)
-    check("a bigger map grows the window by its extra width and height",
-        window.w == St.WINDOW_W + 220 and window.h == St.WINDOW_H + 147)
-    check("so the loot beside it keeps its width", loot.w == lootW)
-    state.env.UIParent:SetSize(1365, 768)
+    local wideW = window.w
+    check("a bigger map grows the window wider, never taller", wideW > St.WINDOW_W and window.h == St.WINDOW_H)
+    check("and the loot beside it grows with it: the map keeps two thirds", loot.w > lootW)
+    state.env.UIParent:SetSize(St.WINDOW_W + 32, 768)
     S.Set("mapSize", 2)
-    check("on a screen with no room to spare the map stays at its own size",
+    check("on a screen with no room to spare the window stays at its own size",
         window.w == St.WINDOW_W and window.h == St.WINDOW_H)
-    state.env.UIParent:SetSize(2133, St.WINDOW_H + 32 + 100)
+    state.env.UIParent:SetSize(St.WINDOW_W + 32 + 100, 1200)
     S.Set("mapSize", 1.9)
     check("with a little room it grows only as far as the screen allows",
-        window.h > St.WINDOW_H and window.h <= St.WINDOW_H + 101 and window.w < St.WINDOW_W + 396)
-    check("and the loot still keeps its width", loot.w == lootW)
+        window.w > St.WINDOW_W and window.w <= St.WINDOW_W + 101 and window.h == St.WINDOW_H)
+    check("and a bigger setting on a big screen grows it further", (function()
+        state.env.UIParent:SetSize(2133, 1200)
+        S.Set("mapSize", 1.9)
+        return window.w > wideW
+    end)())
     local Finder = J.Finder
     S.Set("lootFinder", true)
     Finder.Toggle(Finder.GROUPS[1].picks[1])

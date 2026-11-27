@@ -1,4 +1,4 @@
--- DungeonPane.lua: the new look's dungeon page: its header, then the map, quests or keys and the picked boss on the left, beside every boss's loot (J.DungeonPane).
+-- DungeonPane.lua: the new look's dungeon page: its header, the map, quests or keys on the left, and on the right the boss portraits over every boss's loot or the picked boss (J.DungeonPane).
 local ns = _G.NaowhForever
 
 local T = ns.THEME
@@ -13,7 +13,23 @@ local LIST_BAR, LIST_BAR_GAP = St.LIST_BAR, St.LIST_BAR_GAP
 
 local LEFT_W = 440
 local PANE_GAP, ROW_GAP, HEAD_GAP = 16, 8, 10
-local MAP_TOP = TAB_H + ROW_GAP + TAB_H + ROW_GAP
+local MAP_SHARE = 2 / 3
+local MAP_MIN_W = 240
+local BACK_H, BACK_SIZE = 22, 12
+local TEXT_ALL_BOSSES = ns.L("< All bosses")
+local FACE_MAX, FACE_GAP, FACE_RING = 44, 10, 2
+local FACE_MIN_BOX, FACE_ROW_GAP = 30, 6
+local FACE_LEVEL_GAP, FACE_LEVEL_H = 2, 12
+local STRIP_H = FACE_MAX + FACE_RING * 2 + FACE_LEVEL_GAP + FACE_LEVEL_H + ROW_GAP
+local stripH = STRIP_H
+local PlaceMain
+local FLOOR_TOP = TAB_H + ROW_GAP
+local FLOOR_ROW = TAB_H + ROW_GAP
+local CIRCLE = ns.MEDIA .. "circle_mask.tga"
+local CIRCLE_WRAP = "CLAMPTOBLACKADDITIVE"
+local SKULL_LEVEL = "??"
+local KILLED_ALPHA = 0.55
+local TEXT_LEVEL = ns.L("Level ")
 local NAMED_FLOORS, NUMBER_W, FLOOR_NAME_GAP = 3, 48, 10
 local SIDE_TOP = TAB_H + ROW_GAP
 local MAP, QUESTS, KEYS = "map", "quests", "keys"
@@ -28,33 +44,173 @@ local TEXT_NO_MAP = ns.L("No map of this dungeon yet.")
 local TEXT_COMING_SOON = ns.L("Coming soon")
 
 local frame, left, tabs, headView, mapView, infoScroll, infoView, sideScroll, sideView, noMap
-local floorTabs, floorName
+local floorTabs, floorName, strip, backButton
+local faces = {}
+local ShowBoss
 local floorItems, floorPool = {}, {}
 local mainView, mainScroll
 local dungeon, picked
 local mode = MAP
 local width, headHeight = 0, 0
 local leftW, wantW = LEFT_W, LEFT_W
+local stripW = 0
+local mapW = LEFT_W
+local floorRow = false
 local tabItems = {}
 
 local function MapHeight(w)
     return math.floor(C.MAP_H * w / C.MAP_W)
 end
 
+local function Round(owner, texture)
+    local mask = owner:CreateMaskTexture()
+    mask:SetAllPoints(texture)
+    mask:SetTexture(CIRCLE, CIRCLE_WRAP, CIRCLE_WRAP)
+    texture:AddMaskTexture(mask)
+    return texture
+end
+
+local function FaceLevel(boss)
+    local info = boss.npc and J.BossInfo[boss.npc]
+    local text = info and Parts.BossLevel(info)
+    if not text then return nil end
+    local high = info[2]
+    if text == SKULL_LEVEL or not high or high < 0 then return text, St.SKULL_LEVEL_RGB end
+    return text, GetQuestDifficultyColor(high)
+end
+
+local function PaintFace(face)
+    local lit = face.boss == picked
+    local color = lit and T.accent or face:IsMouseOver() and T.accentSoft or St.BORDER_RGB
+    face.ring:SetColorTexture(color.r, color.g, color.b, 1)
+end
+
+local function PaintStrip()
+    for _, face in ipairs(faces) do
+        if face:IsShown() then PaintFace(face) end
+    end
+end
+
+local function FaceEnter(face)
+    PaintFace(face)
+    GameTooltip:SetOwner(face, "ANCHOR_BOTTOM")
+    GameTooltip:SetText(face.boss.name, 1, 1, 1)
+    if face.levelText then
+        local c = face.levelColor
+        GameTooltip:AddLine(TEXT_LEVEL .. face.levelText, c.r, c.g, c.b)
+    end
+    GameTooltip:Show()
+end
+
+local function FaceLeave(face)
+    PaintFace(face)
+    GameTooltip:Hide()
+end
+
+local function FaceClicked(face)
+    ShowBoss(face.boss ~= picked and face.boss or nil, true)
+end
+
+local function NewFace()
+    local face = CreateFrame("Button", nil, strip)
+    face.ring = Round(face, face:CreateTexture(nil, "BORDER"))
+    face.ring:SetAllPoints()
+    face.disc = Round(face, face:CreateTexture(nil, "ARTWORK", nil, -1))
+    face.disc:SetColorTexture(T.panel.r, T.panel.g, T.panel.b, 1)
+    face.disc:SetPoint("TOPLEFT", FACE_RING, -FACE_RING)
+    face.disc:SetPoint("BOTTOMRIGHT", -FACE_RING, FACE_RING)
+    face.art = Round(face, face:CreateTexture(nil, "ARTWORK"))
+    face.art:SetAllPoints(face.disc)
+    face.number = ns.Font(face, St.SMALL_SIZE, nil, T.muted)
+    face.number:SetPoint("CENTER")
+    face.level = ns.Font(face, St.TINY_SIZE, nil, T.fg)
+    face.level:SetPoint("TOP", face, "BOTTOM", 0, -FACE_LEVEL_GAP)
+    face:SetScript("OnEnter", FaceEnter)
+    face:SetScript("OnLeave", FaceLeave)
+    face:SetScript("OnClick", FaceClicked)
+    return face
+end
+
+local function StripBosses(shown, list)
+    for _, wing in ipairs(shown.wings) do
+        for _, boss in ipairs(wing.bosses) do
+            if not (boss.trash or boss.chest) then list[#list + 1] = boss end
+        end
+    end
+    return list
+end
+
+local stripBosses = {}
+
+local function DrawStrip()
+    if not (strip and dungeon) then return end
+    wipe(stripBosses)
+    local bosses = StripBosses(dungeon, stripBosses)
+    local n = #bosses
+    local perRow = math.max(1, math.floor((stripW + FACE_GAP) / (FACE_MIN_BOX + FACE_GAP)))
+    local rows = math.max(1, math.ceil(n / perRow))
+    local cols = math.max(1, math.ceil(n / rows))
+    local box = math.max(FACE_MIN_BOX, math.min(FACE_MAX + FACE_RING * 2,
+        math.floor((stripW + FACE_GAP) / cols) - FACE_GAP))
+    local rowH = box + FACE_LEVEL_GAP + FACE_LEVEL_H + FACE_ROW_GAP
+    local inside = mapView and mapView.inside
+    for i, boss in ipairs(bosses) do
+        local face = faces[i] or NewFace()
+        faces[i] = face
+        face.boss = boss
+        face:SetSize(box, box)
+        face:ClearAllPoints()
+        local col, row = (i - 1) % cols, math.floor((i - 1) / cols)
+        face:SetPoint("TOPLEFT", col * (box + FACE_GAP), -row * rowH)
+        local hasArt = boss.model ~= nil
+        if hasArt then SetPortraitTextureFromCreatureDisplayID(face.art, boss.model) end
+        face.art:SetShown(hasArt)
+        face.number:SetText(hasArt and "" or tostring(i))
+        local killed = inside and J.Kills.ThisRun(boss) or false
+        face.art:SetDesaturated(killed == true)
+        face:SetAlpha(killed and KILLED_ALPHA or 1)
+        face.levelText, face.levelColor = FaceLevel(boss)
+        face.level:SetText(face.levelText or "")
+        if face.levelColor then
+            face.level:SetTextColor(face.levelColor.r, face.levelColor.g, face.levelColor.b)
+        end
+        face:Show()
+    end
+    for i = n + 1, #faces do faces[i]:Hide() end
+    PaintStrip()
+    local height = rows * rowH - FACE_ROW_GAP + ROW_GAP
+    strip:SetHeight(height - ROW_GAP)
+    if height ~= stripH then
+        stripH = height
+        if PlaceMain and mainScroll then PlaceMain() end
+    end
+end
+
+local function PlaceMap(drawing)
+    local top = FLOOR_TOP + (floorRow and FLOOR_ROW or 0)
+    mapW = leftW
+    local roomH = frame:GetHeight() - headHeight - HEAD_GAP
+    if roomH and roomH > 0 then
+        local fitW = math.floor((roomH - top) * C.MAP_W / C.MAP_H)
+        mapW = math.max(MAP_MIN_W, math.min(leftW, fitW))
+    end
+    local scale = mapW / C.MAP_W
+    local rescaled = scale ~= mapView.scale
+    mapView.scale = scale
+    mapView.canvas:SetScale(scale)
+    mapView.canvas:ClearAllPoints()
+    mapView.canvas:SetPoint("TOPLEFT", math.floor((leftW - mapW) / 2) / scale, -top / scale)
+    noMap:SetSize(leftW, MapHeight(mapW))
+    if rescaled and not drawing and mode == MAP and dungeon and J.Maps[dungeon.key] then mapView:Draw() end
+end
+
 local function SizeLeft()
     leftW = wantW
-    local mapScale = leftW / C.MAP_W
     local sideW = leftW - LIST_BAR - LIST_BAR_GAP
     left:SetWidth(leftW)
     tabs:SetWidth(leftW)
     Parts.SetTabs(tabs, tabItems)
-    mapView.scale = mapScale
-    mapView.canvas:SetScale(mapScale)
-    mapView.canvas:SetPoint("TOPLEFT", 0, -MAP_TOP / mapScale)
-    noMap:SetSize(leftW, TAB_H + ROW_GAP + MapHeight(leftW))
-    infoScroll:SetPoint("TOPLEFT", 0, -(MAP_TOP + MapHeight(leftW) + ROW_GAP))
-    infoScroll:SetWidth(sideW)
-    infoView:SetWidth(sideW)
+    PlaceMap()
     sideScroll:SetWidth(sideW)
     sideView:SetWidth(sideW)
 end
@@ -63,29 +219,54 @@ local function IsBoss(row, boss)
     return row.boss == boss
 end
 
-local function PlaceMain(height)
+function PlaceMain(height)
     headHeight = height or headHeight
     local top = headHeight + HEAD_GAP
     left:ClearAllPoints()
     left:SetPoint("TOPLEFT", 0, -top)
     left:SetPoint("BOTTOMLEFT")
+    local right = leftW + PANE_GAP
+    strip:ClearAllPoints()
+    strip:SetPoint("TOPLEFT", frame, "TOPLEFT", right, -top)
     mainScroll:ClearAllPoints()
-    mainScroll:SetPoint("TOPLEFT", frame, "TOPLEFT", leftW + PANE_GAP, -top)
+    mainScroll:SetPoint("TOPLEFT", frame, "TOPLEFT", right, -(top + stripH))
+    backButton:ClearAllPoints()
+    backButton:SetPoint("TOPLEFT", frame, "TOPLEFT", right, -(top + stripH))
+    infoScroll:ClearAllPoints()
+    infoScroll:SetPoint("TOPLEFT", frame, "TOPLEFT", right, -(top + stripH + BACK_H))
+    infoScroll:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", right, 0)
     mainScroll:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -SCROLLBAR, 0)
+    if mapView then PlaceMap() end
 end
 
-local function ShowBoss(boss, scrollTo)
+local function ShowSide()
+    local one = picked ~= nil and frame:IsShown()
+    mainScroll:SetShown(not one)
+    if one then mainScroll.bar:Hide() end
+    backButton:SetShown(one)
+    infoScroll:SetShown(one)
+end
+
+function ShowBoss(boss, scrollTo)
+    local was = picked
     picked = boss
     mainView.marked = boss
     mainView:ApplyPin()
-    if scrollTo and boss then
-        local row = mainView:Find("boss", IsBoss, boss)
+    PaintStrip()
+    ShowSide()
+    if boss then
+        infoScroll:SetVerticalScroll(0)
+        infoView:DrawBossInfo(boss, dungeon)
+    elseif scrollTo and was then
+        local row = mainView:Find("boss", IsBoss, was)
         if row then mainView:ScrollToRow(mainScroll, row) end
     end
-    if mode ~= MAP then return end
-    infoScroll:SetShown(boss ~= nil)
-    if not boss then return end
-    if J.Maps[dungeon.key] then
+    if mode ~= MAP or not J.Maps[dungeon.key] then return end
+    if not boss then
+        mapView:Pick(nil)
+        return
+    end
+    do
         local key = Map.KeyOf(boss)
         local spot = Map.Spot(dungeon, key)
         if type(spot) == "table" and mapView.floor ~= spot[1] and mapView:FloorAt(spot[1]) then
@@ -94,22 +275,10 @@ local function ShowBoss(boss, scrollTo)
         end
         mapView:Pick(key)
     end
-    infoScroll:SetVerticalScroll(0)
-    infoView:DrawBossInfo(boss, dungeon)
-end
-
-local ShowMode
-
-local function ShowHistory(boss)
-    picked = boss
-    mode = MAP
-    ShowMode()
-    infoScroll:SetVerticalScroll(math.min(infoView.historyTop,
-        math.max(0, infoView:GetHeight() - infoScroll:GetHeight())))
 end
 
 local function PinPicked(boss)
-    ShowBoss(boss, true)
+    ShowBoss(boss ~= picked and boss or nil, true)
 end
 
 local function HideStepper()
@@ -135,6 +304,10 @@ local function MapDrawn()
         floorItems[i] = item
     end
     floorTabs:SetShown(#floors > 1)
+    if floorRow ~= (#floors > 1) then
+        floorRow = #floors > 1
+        PlaceMap(true)
+    end
     floorTabs:SetWidth(named and leftW or math.min(leftW, #floors * NUMBER_W))
     Parts.SetTabs(floorTabs, floorItems)
     Parts.PaintTabs(floorTabs, mapView.floor)
@@ -155,16 +328,20 @@ local function ShowMap(shown)
         HideStepper()
         floorTabs:Hide()
         floorName:Hide()
+        if floorRow then
+            floorRow = false
+            PlaceMap()
+        end
     end
 end
 
-function ShowMode()
+local function ShowMode()
     Parts.PaintTabs(tabs, mode)
     ShowMap(mode == MAP)
-    infoScroll:SetShown(mode == MAP and picked ~= nil)
     sideScroll:SetShown(mode ~= MAP)
+    ShowBoss(picked)
     if mode == MAP then
-        ShowBoss(picked)
+        return
     elseif mode == QUESTS then
         sideView.part = "DrawAside"
         sideView:DrawAside(dungeon)
@@ -179,25 +356,20 @@ local function TabPicked(key)
     ShowMode()
 end
 
-local function FirstBoss(shown)
-    for _, wing in ipairs(shown.wings) do
-        for _, boss in ipairs(wing.bosses) do
-            if not boss.trash then return boss end
-        end
-    end
-end
-
 local function BuildMap()
     mapView = Map.NewView(left, left, false)
     mapView.onPick = PinPicked
     mapView.onDraw = MapDrawn
-    mapView.down:SetPoint("TOPLEFT", left, "TOPLEFT", 0, -(TAB_H + ROW_GAP))
+    mapView.down:SetPoint("TOPLEFT", left, "TOPLEFT", 0, -FLOOR_TOP)
+    strip = CreateFrame("Frame", nil, frame)
+    strip:SetSize(LEFT_W, STRIP_H - ROW_GAP)
     floorTabs = Parts.Tabs(left, LEFT_W, floorItems, FloorPicked)
-    floorTabs:SetPoint("TOPLEFT", 0, -(TAB_H + ROW_GAP))
+    floorTabs.equal = true
+    floorTabs:SetPoint("TOPLEFT", 0, -FLOOR_TOP)
     floorName = ns.Font(left, TEXT_SIZE, nil, T.fg)
     floorName:SetPoint("LEFT", floorTabs, "RIGHT", FLOOR_NAME_GAP, 0)
     noMap = CreateFrame("Frame", nil, left)
-    noMap:SetPoint("TOPLEFT", 0, -(TAB_H + ROW_GAP))
+    noMap:SetPoint("TOPLEFT", 0, -FLOOR_TOP)
     ns.Solid(noMap, "BACKGROUND", T.panel, 1):SetAllPoints()
     ns.Border(noMap, St.BORDER_RGB)
     noMap.art = noMap:CreateTexture(nil, "BORDER")
@@ -213,11 +385,21 @@ local function BuildMap()
 end
 
 local function BuildViews()
-    infoScroll = ns.UI.SlimScroll(left, LIST_BAR, LIST_BAR_GAP)
-    infoScroll:SetPoint("BOTTOMLEFT")
+    infoScroll = ns.UI.SlimScroll(frame, LIST_BAR, LIST_BAR_GAP)
+    infoScroll:Hide()
     infoView = J.View.New(infoScroll)
     infoView.part = "RedrawInfo"
-    infoView.openHistory = ShowHistory
+    infoView.withLoot = true
+    backButton = CreateFrame("Button", nil, frame)
+    backButton:SetHeight(BACK_H)
+    backButton.text = ns.Font(backButton, BACK_SIZE, nil, T.accent)
+    backButton.text:SetPoint("LEFT")
+    backButton.text:SetText(TEXT_ALL_BOSSES)
+    backButton:SetWidth(math.ceil(backButton.text:GetStringWidth()) + St.BACK_TEXT_PAD)
+    backButton:SetScript("OnEnter", function(b) b.text:SetTextColor(T.fg.r, T.fg.g, T.fg.b) end)
+    backButton:SetScript("OnLeave", function(b) b.text:SetTextColor(T.accent.r, T.accent.g, T.accent.b) end)
+    backButton:SetScript("OnClick", function() ShowBoss(nil, true) end)
+    backButton:Hide()
     infoScroll:SetScrollChild(infoView)
     sideScroll = ns.UI.SlimScroll(left, LIST_BAR, LIST_BAR_GAP)
     sideScroll:SetPoint("TOPLEFT", 0, -SIDE_TOP)
@@ -236,6 +418,12 @@ end
 
 function Pane.Build(window, view, scroll, navigate, step)
     mainView, mainScroll = view, scroll
+    scroll:HookScript("OnShow", function(self)
+        if frame and frame:IsShown() and picked then self:Hide() end
+    end)
+    scroll.bar:HookScript("OnShow", function(bar)
+        if not scroll:IsShown() then bar:Hide() end
+    end)
     frame = CreateFrame("Frame", nil, window)
     headView = J.View.New(frame)
     headView.part = "DrawHead"
@@ -244,32 +432,44 @@ function Pane.Build(window, view, scroll, navigate, step)
     headView.onResize = PlaceMain
     headView:SetPoint("TOPLEFT")
     left = CreateFrame("Frame", nil, frame)
+    left:SetScript("OnSizeChanged", function() if mapView then PlaceMap() end end)
     tabs = Parts.Tabs(left, LEFT_W, tabItems, TabPicked)
+    tabs.equal = true
     tabs:SetPoint("TOPLEFT")
     BuildMap()
     BuildViews()
     SizeLeft()
 end
 
-function Pane.Grown(roomW, roomH)
-    local most = LEFT_W + math.max(0, math.min(roomW, math.floor(roomH * C.MAP_W / C.MAP_H)))
-    wantW = math.min(math.floor(LEFT_W * (S.Get("mapSize") or 1)), most)
-    return wantW - LEFT_W, MapHeight(wantW) - MapHeight(LEFT_W)
+function Pane.Grown(roomW, roomH, baseW)
+    local paneW = math.min(math.floor(baseW * (S.Get("mapSize") or 1)), baseW + math.max(0, roomW))
+    return paneW - baseW, 0
 end
 
 function Pane.Place(x, top, right, bottom)
-    if leftW ~= wantW then SizeLeft() end
     width = frame:GetParent():GetWidth() - x - right
+    wantW = math.floor(width * MAP_SHARE)
+    if leftW ~= wantW then SizeLeft() end
     frame:ClearAllPoints()
     frame:SetPoint("TOPLEFT", x, -top)
     frame:SetPoint("BOTTOMRIGHT", -right, bottom)
     headView:SetWidth(width)
     mainView:SetWidth(width - leftW - PANE_GAP - SCROLLBAR)
+    stripW = width - leftW - PANE_GAP - SCROLLBAR
+    infoScroll:SetWidth(stripW + SCROLLBAR - LIST_BAR - LIST_BAR_GAP)
+    infoView:SetWidth(stripW + SCROLLBAR - LIST_BAR - LIST_BAR_GAP)
+    strip:SetWidth(stripW)
+    DrawStrip()
     PlaceMain()
 end
 
 function Pane.SetShown(shown)
     frame:SetShown(shown)
+    if shown then
+        ShowSide()
+    elseif not mainScroll:IsShown() then
+        mainScroll:Show()
+    end
 end
 
 function Pane.Show(shown)
@@ -282,25 +482,25 @@ function Pane.Show(shown)
     Parts.SetTabs(tabs, tabItems)
     if mode == KEYS and not tabItems[3] then mode = MAP end
     if not same then
-        picked = FirstBoss(shown)
+        picked = nil
         sideView.openQuest = nil
         if J.Maps[shown.key] then mapView:Open(shown) end
     end
+    DrawStrip()
     ShowMode()
 end
 
 function Pane.Pick(boss)
-    ShowBoss(boss, false)
+    ShowBoss(boss, true)
 end
-
-Pane.History = ShowHistory
 
 function Pane.Redraw()
     if not (frame and frame:IsShown() and dungeon) then return end
     headView:Redraw()
+    DrawStrip()
+    if picked then infoView:Redraw() end
     if mode == MAP then
         if J.Maps[dungeon.key] then mapView:Draw() end
-        infoView:Redraw()
     else
         sideView:Redraw()
     end

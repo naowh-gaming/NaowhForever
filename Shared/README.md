@@ -104,7 +104,7 @@ Shared/
                    help tip, list bars, headings, scroll chevrons, a card on the game's card art
                    (Parts.ForeverCard), and the options window's header band and metal rails
                    (Parts.ForeverPanes)
-  UI/Tabs.lua      a switch of parts side by side (Parts.Tabs), and a search box (Parts.SearchBox)
+  UI/Tabs.lua      a switch of parts side by side (Parts.Tabs; `bar.equal` gives each the same width), and a search box (Parts.SearchBox)
   UI/SettingsCard.lua a module's card at the top of its settings page: the logo, a line or two, and the
                    button that opens its window
   UI/Tracker.lua   a tracker's small window (Parts.TrackerPanel), and a list row's bands
