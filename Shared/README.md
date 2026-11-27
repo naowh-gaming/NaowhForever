@@ -815,6 +815,10 @@ What a comment in the code used to say, in short. The house rules behind it are 
   the tab's bottom edge, the label a little low on it (`FOREVER_TAB_TEXT_Y`). They replaced the
   panel tabs turned upside down, which needed a crop and offsets to sit on top. A preview's tabs
   (Normal, In Combat) sit on the preview's top edge, `FOREVER_TABS_IN` (Studio.lua) in from its right.
+- A preview stays in sight while its card scrolls: offsets are from the studio row's top, the stage
+  sits at `row.natural`, and once the card scrolls past the window's top it follows that top,
+  stopping where the card ends (`cardBottom`, set by the page after the card's rows). A jump to one
+  of that card's settings scrolls it below the pinned stage (`Settings.StudioCover`).
 - A tab is measured as its label plus its art's two end caps (`capRoom`, at least two
   `FOREVER_TAB_PAD`): measured on the label alone, a long one ("Dungeons & Raids") ran past its caps.
 - Forever tabs keep that width and sit side by side `FOREVER_TAB_GAP` apart, as the game's do, instead of

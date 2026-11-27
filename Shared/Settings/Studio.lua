@@ -1,4 +1,4 @@
--- Studio.lua: a settings card's live preview: a stage and the moments it can be seen in, painted by the module's own drawing code (Settings.kinds.studio).
+-- Studio.lua: a settings card's live preview: a stage and the moments it can be seen in, painted by the module's own drawing code (Settings.kinds.studio). The stage stays in sight while its card's settings scroll by.
 local ns = _G.NaowhForever
 local T = ns.THEME
 local Shared = ns.Shared
@@ -13,8 +13,11 @@ local TABS_GAP = 8
 local DEFAULT_H = 150
 local TABS_WIDTH = 1
 local FOREVER_TABS_IN = 12
+local STAGE_LEVEL = 50
 
 local shownState = {}
+local studios = {}
+local hooked = {}
 
 local function Shown(card, state)
     local needs = state.needs
@@ -36,11 +39,49 @@ local function TabPicked(row, key)
     row:GetParent():QueueSettingsRedraw()
 end
 
+local function ScrollOf(frame)
+    while frame and frame:GetObjectType() ~= "ScrollFrame" do frame = frame:GetParent() end
+    return frame
+end
+
+local function Pin(row)
+    local stage, scroll = row.stage, row.scroll
+    local offset = row.natural
+    local rowTop, viewTop = row:GetTop(), scroll and scroll:GetTop()
+    if rowTop and viewTop and row.cardBottom then
+        local follow = rowTop - viewTop + row.tabsAbove
+        local last = row.cardBottom - row.top - row.stageH - PAD
+        offset = math.max(row.natural, math.min(follow, last))
+    end
+    if offset == row.offset then return end
+    row.offset = offset
+    stage:ClearAllPoints()
+    stage:SetPoint("TOPLEFT", row, "TOPLEFT", PAD, -offset)
+    stage:SetPoint("TOPRIGHT", row, "TOPRIGHT", -PAD, -offset)
+end
+
+Settings.PinStudio = Pin
+
+function Settings.StudioCover(cardUid)
+    local card = Settings.CardOf(cardUid)
+    for row in pairs(studios) do
+        if row.card == card and row:IsVisible() then return row.tabsAbove + row.stageH + PAD end
+    end
+    return 0
+end
+
+local function PinAll(scroll)
+    for row in pairs(studios) do
+        if row.scroll == scroll and row:IsVisible() then Pin(row) end
+    end
+end
+
 local function NewStudio(view)
     local row = CreateFrame("Frame", nil, view)
     row.stage = CreateFrame("Frame", nil, row)
-    row.stage:SetPoint("BOTTOMLEFT", PAD, PAD)
-    row.stage:SetPoint("BOTTOMRIGHT", -PAD, PAD)
+    row.stage:SetFrameLevel(row:GetFrameLevel() + STAGE_LEVEL)
+    row.stage:EnableMouse(true)
+    studios[row] = true
     ns.Solid(row.stage, "BACKGROUND", T.bg, 1):SetAllPoints()
     if not ns.foreverSkin then
         ns.Solid(row.stage, "BACKGROUND", BORDER_RGB, SS.PREVIEW_SHADE):SetAllPoints()
@@ -83,6 +124,7 @@ local function PaintTabs(row, states, state)
     local many = #states > 1
     if many and not row.tabs then
         row.tabs = Parts.Tabs(row, TABS_WIDTH, states, function(key) TabPicked(row, key) end, true, true)
+        row.tabs:SetFrameLevel(row.stage:GetFrameLevel())
         if ns.foreverSkin then
             row.tabs:SetPoint("BOTTOMRIGHT", row.stage, "TOPRIGHT", -FOREVER_TABS_IN, 0)
         else
@@ -110,6 +152,16 @@ local function SetStudio(row, card)
     row.stage:SetHeight(height)
     row.preview, row.previewState = preview, state
     studio.paint(preview, state)
+    row.natural, row.stageH, row.offset = TOP + tabsH, height, nil
+    row.tabsAbove = ns.foreverSkin and tabsH or 0
+    row.cardBottom = nil
+    local scroll = ScrollOf(row:GetParent())
+    row.scroll = scroll
+    if scroll and not hooked[scroll] then
+        hooked[scroll] = true
+        scroll:HookScript("OnVerticalScroll", PinAll)
+    end
+    C_Timer.After(0, function() Pin(row) end)
     return TOP + tabsH + height + PAD
 end
 

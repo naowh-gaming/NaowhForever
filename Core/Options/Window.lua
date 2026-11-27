@@ -304,7 +304,7 @@ local function ScrollToSetting(key, label, card, group)
     if not top then return end
     UI.HighlightSetting(row)
     scrollFrame:UpdateScrollChildRect()
-    local y = top - scrollFrame:GetHeight() * SETTING_AT
+    local y = top - math.max(scrollFrame:GetHeight() * SETTING_AT, label and Settings.StudioCover(card) or 0)
     scrollFrame:SetVerticalScroll(math.min(scrollFrame:GetVerticalScrollRange(), math.max(0, y)))
 end
 

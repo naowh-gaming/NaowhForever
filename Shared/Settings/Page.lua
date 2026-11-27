@@ -227,11 +227,15 @@ function Draw:CardBody(card, found)
         return
     end
     local only, cogOwner = OnlyOf(card, found)
-    if card.studio and self.kinds.studio and not only then self:Add("studio", card) end
+    local studio = card.studio and self.kinds.studio and not only and self:Add("studio", card)
     self:Settings(card, only)
     if cogOwner then self:OpenCogOn(card, cogOwner) end
     local changed = Settings.ChangedCount(card)
     if (changed > 0 or Settings.CanUndoReset(card)) and not only then self:Add("cardFoot", card, changed) end
+    if studio then
+        studio.cardBottom = self.cursor
+        Settings.PinStudio(studio)
+    end
 end
 
 local function BarCard(view, card, found, isOpen)

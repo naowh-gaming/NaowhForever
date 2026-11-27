@@ -141,7 +141,8 @@ NaowhForever_QoL/
     Alts.lua            your characters per realm and faction (ns.AltRealm, ns.AltList, ns.OpenForgetAltMenu)
     LootFeed.lua        the Loot Feed, gold per hour and quick loot (ns.ResetLootFeedSession, ns.LootFeed)
     LootFeedSettings.lua the Loot Feed's settings card and the live preview it edits
-    LootRolls.lua       Loot Rolls: the group's choices, rolls and winner for each drop, in a small window
+    RollBars.lua        Roll Bars: Blizzard's Need / Greed / Pass popups restyled, with roll counts, who rolled and a BiS glow (ns.RollBars)
+    RollBarsSettings.lua the Roll Bars settings card and the preview it edits
     Restock.lua         the Restock Reminder, Auto Repair and Auto Sell Junk
     GearReminders.lua   Gear Reminders: an icon while you wear Cloak of Hermitic Bliss in Wailing Caverns or a fishing pole, and the Argent Dawn Commission swap
     FishingData.lua     the Fishing spells by rank and the lures by the skill they add (ns.FishingData)
@@ -1803,13 +1804,16 @@ NaowhForever_QoL/
 - The window gets its size back after its close animation finishes, so it never flashes on the way out.
 - A Spacing of -1 lets neighbouring lines share one border.
 
-### Loot Rolls
-- Everything comes from the game's loot history (`LOOT_HISTORY_UPDATE_DROP`, `C_LootHistory.GetSortedInfoForDrop`): it already sorts the rolls (Need, then Greed, then Pass, then those still choosing) and names the leader and the winner. The combat log is closed on Forever and chat roll lines are worded per language, so neither is read.
-- It is its own window, not a part of the game's roll frames: those close the moment you click Need, Greed or Pass, before anyone else has rolled.
-- A drop stays `KEEP_SETTLED` (60 s) after it is won or everyone passed, and at most `KEEP_OPEN` (5 min) while it never settles (you left the group). Past `MAX_DROPS` (8) the oldest settled drops go first; one still being rolled on stays until it settles or times out, so it never drops out and comes back.
-- The drop's IDs, its link and every player's name and class are checked with `issecretvalue` first, as the Dungeon Journal reads the same history; a drop or a player the game keeps secret is left out.
-- Close hides the drops on screen for good, even while they are still rolled on; the next new drop brings the window back.
-- Each shown drop sets a timer for `KEEP_OPEN` when it first shows and another for `KEEP_SETTLED` when it settles; a timer that finds nothing old enough does nothing.
+### Roll Bars
+- It restyles Blizzard's own GroupLootFrame1-4 in place (hooks on `GroupLootFrame_SetupItemDisplay` and `GroupLootContainer_Update`) rather than drawing its own, so the roll buttons stay Blizzard's. `GroupLootContainer` is a managed bottom frame and is never moved: the frames are anchored to Roll Bars' own anchor instead, which sits on the container until the player moves it. Blizzard places the container only once it first shows a roll, so until then the anchor uses `DEFAULT_Y`.
+- Everything Roll Bars changes on a frame is put back when it is turned off: the regions it moves are snapshotted the first time it styles a frame.
+- The roll counts and who rolled come from the loot history (`LOOT_HISTORY_UPDATE_DROP`, `C_LootHistory.GetSortedInfoForDrop`), matched to a popup by its link the first time it shows, as picks made before it showed are already in the history. Every ID, link and name is checked with `issecretvalue` first.
+- Blizzard hides its popup as soon as you pick, or when the roll ends. With Show Winner on, a copy of it stays in the stack until the history names a winner, then shows "Won by" for Winner Time. A popup hidden only because the whole UI was (Alt+Z, a cinematic) is still shown, so it is left alone.
+- Forever has no global `GetDetailedItemLevelInfo`, only `C_Item.GetDetailedItemLevelInfo`.
+- On the bar, Item Name is a copy of the name on the bar's own layer, as the bar covers Blizzard's.
+- The BiS Flash plays once per roll (its `rollID`). Samples have none, so the preview and Test Rolls flash again on every repaint.
+- EllesmereUI's Blizzard Skin restyles the same popups a frame later, and the two looks mix. Its switch (Blizzard Skin > Loot Roll Popups) is the saved key `EllesmereUIDB.reskinLootRoll`, read when it loads, false being off. Turn Off EllesmereUI's Popup Skin writes false and keeps the value it had in `lootRollBarsEuiWas` to put back; either change needs a reload.
+- It replaced the Loot Rolls window: Who Rolled on Hover and Show Winner now show what that window did.
 
 ### XP Bar
 - Its colors: Naowh's blue for the fill, his logo's gold for quest XP, a darker blue for rested. A color the player picked wins; an unset one follows the theme, and the shipped one while the theme leaves the accent alone. `FILL_DARK` is how dark the fill's left end is against its color, `RESTED_DARK` how dark rested is against a theme's changed accent. A theme turns quest XP to its lighter accent, which reads apart from the fill, and the black border to its line color. Incomplete quests, unpicked, are the completed quests color faded over the background (`OPEN_ALPHA`), as its swatch shows it.
