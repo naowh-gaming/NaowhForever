@@ -147,7 +147,7 @@ local toLink, fromLink = Walk.Cost(KALIMDOR, road, "l3.1"), Walk.Cost(KALIMDOR, 
 Check(toLink and fromLink, "the road walks to the link's top and its foot walks to the Drag")
 local viaLink, around = toLink + fromLink, Walk.Cost(KALIMDOR, road, drag)
 local roadLine = math.sqrt((ROAD.x - DRAG.x) ^ 2 + (ROAD.y - DRAG.y) ^ 2)
-Check(viaLink < roadLine * 2 and (not around or around > viaLink),
+Check(viaLink < roadLine * 2 and around and around > viaLink * 1.2,
     ("the west road walks to the Drag over the link: %.0f yards for %.0f, not %s round"):format(viaLink, roadLine, tostring(around)))
 
 -- Idle for a minute, the built tiles, crossings and walks are let go: a journey or estimate builds them again.
