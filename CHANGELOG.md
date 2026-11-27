@@ -2,6 +2,22 @@
 
 ## Unreleased
 
+### Roll Bars
+
+Roll Bars restyles the game's own Need, Greed and Pass popups. Turn it on on the Loot & Items page.
+- Set their size, bar texture and colours, background, borders, icon, and the size and place of
+  every text. A live preview shows each change: drag its edges, scroll over a part to change it, or
+  click a part to jump to its setting.
+- Bigger Need, Greed and Pass buttons that count who picked each, and name them when you point at
+  one.
+- Items on your BiS list get an orange border, a star by their name and a glow: a Flash when the
+  roll appears (for 1 to 10 seconds, or always on) or Pixel Lines.
+- Show Winner keeps a roll on screen once it ends, with who won it and their roll, on the left or
+  right.
+- Test Rolls shows three sample rolls where yours will appear; move them in the HUD Editor.
+- Turn Off EllesmereUI's Popup Skin, for players who use both.
+- It replaces the Loot Rolls window.
+
 ## 1.4.12
 
 ### Added
