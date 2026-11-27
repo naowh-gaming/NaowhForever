@@ -49,6 +49,7 @@ ns.FEATURES = {
         tooltipDisplay = true,
         spellEfficiency = false,
         lootFeed = true,
+        lootRolls = false,
         lootRollBars = false,
         hideLootWindow = false,
         fastLoot = true,

@@ -54,6 +54,7 @@
     <Script file="Combat\SpellQueue.lua"/>
     <Script file="Loot\LootFeed.lua"/>
     <Script file="Loot\LootFeedSettings.lua"/>
+    <Script file="Loot\LootRolls.lua"/>
     <Script file="Loot\RollBars.lua"/>
     <Script file="Loot\RollBarsSettings.lua"/>
     <Script file="Loot\WaylaidCratesData.lua"/>

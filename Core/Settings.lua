@@ -77,6 +77,7 @@ local S = UI.ModuleSettings("qol", {
     lootFeedQuest = true, lootFeedRep = false,
     lootFeedCount = 6, lootFeedFade = 5, lootFeedStyle = "dark", lootFeedGlow = false, lootFeedQualityBorder = false,
     lootFeedValue = true, lootFeedBank = true, lootFeedPrice = "vendor", lootFeedGPH = false,
+    lootRolls = F.lootRolls, lootRollsExpanded = false, lootRollsScale = 1,
     lootRollBars = F.lootRollBars, lootRollBarsWidth = 320, lootRollBarsHeight = 44, lootRollBarsSpacing = 6,
     lootRollBarsGrowth = "up", lootRollBarsButtonSize = 28, lootRollBarsFont = "", lootRollBarsFontSize = 13,
     lootRollBarsOutline = "OUTLINE", lootRollBarsTexture = "", lootRollBarsBarHeight = 8, lootRollBarsBarColor = "quality",

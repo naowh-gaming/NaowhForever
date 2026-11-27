@@ -105,7 +105,7 @@ local CATEGORIES = {
     { name = "Bags, Loot & Mail", band = "WORLD", navIcon = "checklist",
       subtitle = "Looting, junk, vendors and mail.",
       pages = {
-          { name = "Loot", cards = { "QoL/Loot & Items:lootFeed", "QoL/Loot & Items:lootRollBars", "QoL/Loot & Items:lootTrade",
+          { name = "Loot", cards = { "QoL/Loot & Items:lootFeed", "QoL/Loot & Items:lootRolls", "QoL/Loot & Items:lootRollBars", "QoL/Loot & Items:lootTrade",
               "QoL/Interface:undermineReal" } },
           { name = "Bags & Junk", cards = { "QoL/Loot & Items:bagCleanup", "QoL/Loot & Items:bagSpace",
               "QoL/Loot & Items:destroyCheapest", "QoL/Loot & Items:scrapMarker",
