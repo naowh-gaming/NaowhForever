@@ -471,6 +471,13 @@ runSpeed = 7
 Tick()
 Check(Jy.Guide.Current().plan.speed == 7 and Jy.Guide.Current().plan.seconds > mounted.seconds,
     "and getting down plans again at running speed")
+runSpeed = 14
+Tick()
+runSpeed = SECRET
+Tick()
+Check(Jy.Guide.Current().plan.speed == 7, "a secret run speed in combat plans at running speed, with no error")
+runSpeed = 7
+Tick()
 local kept = Jy.Guide.Current().plan
 local realPlan = Jy.Planner.Plan
 Jy.Planner.Plan = function() return nil end

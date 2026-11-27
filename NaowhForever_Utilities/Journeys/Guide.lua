@@ -83,7 +83,8 @@ end
 
 local function Speed()
     local _, run = GetUnitSpeed("player")
-    return run > 0 and run or C.RUN_SPEED
+    if issecretvalue(run) or run <= 0 then return C.RUN_SPEED end
+    return run
 end
 
 local function Boarding(plan)
