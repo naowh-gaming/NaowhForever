@@ -276,8 +276,11 @@ function provider:RefreshAllData()
     self:RemoveAllData()
     if not On() then return end
     local map = self:GetMap()
+    local maps, any = OpenMap.Maps(map), false
+    for _, mapID in ipairs(maps) do any = any or Q.HasGivers(mapID) end
+    if not any then return end
     Q.Update()
-    for _, mapID in ipairs(OpenMap.Maps(map)) do
+    for _, mapID in ipairs(maps) do
         for _, giver in ipairs(Q.Givers(mapID, S.Get("mapGrey"), S.Get("mapChainsOnly"))) do
             local x, y = OpenMap.Spot(map, mapID, giver.x / PERCENT, giver.y / PERCENT)
             if x then map:AcquirePin(TEMPLATE, giver, x, y) end

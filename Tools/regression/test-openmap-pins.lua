@@ -107,7 +107,7 @@ local ns = { L = dofile("Tools/regression/locale_stub.lua").L, Upper = string.up
         Quests = { Refresh = function() end, Update = function() end, Stale = function() end, Givers = function(mapID)
             askedFor[#askedFor + 1] = mapID
             return GIVERS[mapID] or {}
-        end } } }
+        end, HasGivers = function(mapID) return GIVERS[mapID] ~= nil end } } }
 function ns.OnApply(fn) local was = ns.Apply ns.Apply = function(...) was(...) fn(...) end end
 local acquired = {}
 local provider

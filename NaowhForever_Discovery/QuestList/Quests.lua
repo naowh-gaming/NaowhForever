@@ -670,6 +670,12 @@ function Q.ShowHidden()
     wipe(CharStore(HIDDEN_STORE))
 end
 
+function Q.HasGivers(mapID)
+    Prepare()
+    Index()
+    return byMap[SameMap(mapID)] ~= nil
+end
+
 function Q.Givers(mapID, grey, chainsOnly)
     Prepare()
     Index()

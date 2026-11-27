@@ -202,7 +202,9 @@ quest and creature pages. Do not edit them by hand: change the tool and run it a
   only when one of them changes (`Quests.Stale`, from a quest accepted, turned in or removed, a level, a
   skill or recipe learned, a reputation or the calendar) or a minute has passed (`Quests.Update`). The
   full read takes tens of milliseconds, and the map's pins, the minimap's, every giver you speak to and
-  each search asked for it, so opening the map or changing zone stuttered.
+  each search asked for it, so opening the map or changing zone stuttered. The map's pins skip the read
+  on a map no giver stands on (`Quests.HasGivers`): in a dungeon the map was opened over a minute apart,
+  so every open read it all for no pins.
 - The quests and rares (close to two megabytes once loaded) ship in `NaowhForever_DiscoveryData`, a
   load-on-demand addon. `ns.CompletoQuestData` and `ns.CompletoRareData` start empty with a hook
   that loads it on the first read of any field, so the files here keep the tables they took as they

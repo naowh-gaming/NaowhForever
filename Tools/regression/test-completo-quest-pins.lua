@@ -1,6 +1,7 @@
 -- Run with Lua 5.1 from the repository root: Completo's quest giver pins on the world map are
 -- Pin Size on the small map and the full screen map alike, and keep one size on screen as the
--- map zooms. While Ctrl is held they take no clicks, so a Ctrl+Click reaches the map's waypoint.
+-- map zooms. While Ctrl is held they take no clicks, so a Ctrl+Click reaches the map's waypoint. A
+-- map no giver stands on, a dungeon's, reads nothing of your quests.
 local function Read(path)
     local f = assert(io.open(path, "rb"))
     local s = f:read("*a"):gsub("\r\n", "\n"); f:close()
@@ -14,15 +15,17 @@ local settings = { enabled = true, mapPins = true, mapPinSize = 20, mapDungeon =
 local S = { Get = function(key) return settings[key] end, Set = function() end }
 local ns = { L = dofile("Tools/regression/locale_stub.lua").L, Upper = string.upper, Lower = string.lower, CompletoSettings = S, Apply = function() end, ThemeTint = function() end,
     Completo = { Settings = S, Style = {}, C = { PERCENT = 100 },
-        Quests = { Refresh = function() end, Update = function() end, Stale = function() end, Givers = function() return {} end } } }
+        Quests = { Refresh = function() end, Update = function() end, Stale = function() end, Givers = function() return {} end,
+        HasGivers = function() return true end } } }
 function ns.OnApply(fn) local was = ns.Apply ns.Apply = function(...) was(...) fn(...) end end
 
 local maximized, canvasScale = false, 1
 local pins = {}
+local provider
 local map = {
     IsShown = function() return true end,
     IsMaximized = function() return maximized end,
-    AddDataProvider = function() end,
+    AddDataProvider = function(_, p) provider = p end,
     GetCanvasScale = function() return canvasScale end,
     GetMapID = function() return 1 end,
     RemoveAllPinsByTemplate = function() end,
@@ -269,5 +272,15 @@ playerLevel = 10
 shown = false
 shiftFrame.OnEvent(shiftFrame, "MODIFIER_STATE_CHANGED", "LSHIFT", 1)
 Check(not shiftFrame.events.MODIFIER_STATE_CHANGED, "stops listening once the tooltip is gone")
+
+local reads, standing = 0, {}
+Q.Update = function() reads = reads + 1 end
+Q.HasGivers = function(mapID) return standing[mapID] == true end
+Q.Givers = function() return {} end
+provider:RefreshAllData()
+Check(reads == 0, "opening a map no giver stands on reads nothing of your quests")
+standing[1] = true
+provider:RefreshAllData()
+Check(reads == 1, "one a giver stands on reads them")
 
 print(("test-completo-quest-pins: %d checks passed"):format(checks))

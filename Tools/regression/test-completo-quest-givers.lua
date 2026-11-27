@@ -179,4 +179,6 @@ clock = clock + 61
 Q.Update()
 Check(refreshes == before + 1, "and so does a minute passing, for holidays and anything no event marks")
 
+Check(Q.HasGivers(1429) and not Q.HasGivers(1581), "a map has givers only where one of your quests starts")
+
 print(("test-completo-quest-givers: %d checks passed"):format(checks))
