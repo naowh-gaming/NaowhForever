@@ -6,7 +6,7 @@ local Market = ns.Market
 local St = Market.Style
 local Parts = ns.Shared.Parts
 local Items = ns.Shared.Items
-local Finder, Watch, Upgrades = Market.Finder, Market.Watch, Market.Upgrades
+local Finder, Watch, Upgrades, Columns = Market.Finder, Market.Watch, Market.Upgrades, Market.Columns
 
 local HEAD_H, HEAD_ICON, NAME_SIZE, NAME_GAP, SUB_GAP, GAP = 40, 32, 15, 8, 3, 10
 local BUTTON_W, BUTTON_H = 86, 24
@@ -17,8 +17,13 @@ local TEXT_NO_SCAN_SUB = ns.L("Not in your scans yet")
 local TEXT_UP_TO = ns.L("Up to This Price")
 local TEXT_NO_UPGRADES = ns.L("No upgrades at or under your price in your scans.")
 local TEXT_NO_WEIGHTS = ns.L("Turn on the BiS List to weigh gear for upgrades.")
-local TEXT_GAIN = "+%.1f%%  %s"
+local TEXT_GAIN = "%s  +%.1f%%  %s"
+local TEXT_LEVEL = ns.L("Level %d")
+local TEXT_SORT = ns.L("Sort By")
+local TEXT_SORT_LEVEL = ns.L("Level")
+local TEXT_SORT_GAIN = ns.L("Gain")
 local MONEY_LABEL_H = 16
+local SORT_W = 44
 local WIDTH = St.DOCK_W - St.DOCK_PAD * 2
 local VIEWS = {
     { key = "watch", label = "Watch List", tip = "Your watch list: the items you want, and when they are at or under your price." },
@@ -28,7 +33,7 @@ local UPGRADES_VIEW = { key = "upgrades", label = "Upgrades",
     tip = "Gear in your scans that beats what you wear, at or under your price." }
 local VIEWS_UPGRADES = { VIEWS[1], VIEWS[2], UPGRADES_VIEW }
 
-local page, column, views, head, watch, finder, searches, upgrades, gear
+local page, column, views, head, watch, finder, searches, upgrades, gear, sorter
 local view = "watch"
 local watched = {}
 local stale = true
@@ -59,7 +64,15 @@ end
 local function GainNote(i)
     local id = upgrades.found[i]
     local price = Upgrades.Price(id)
-    return TEXT_GAIN:format(Upgrades.gains[id] or 0, price and Parts.Coins(price) or "")
+    return TEXT_GAIN:format(TEXT_LEVEL:format(Upgrades.levels[id] or 0), Upgrades.gains[id] or 0,
+        price and Parts.Coins(price) or "")
+end
+
+local function UpgradeOrder()
+    local key, up = Columns.Current(sorter)
+    local order = key == "level" and Upgrades.ByLevel or Upgrades.Order
+    if not up then return order end
+    return function(a, b) return order(b, a) end
 end
 
 local function DrawUpgrades()
@@ -68,6 +81,7 @@ local function DrawUpgrades()
         upgrades.none = Upgrades.Find(Page.Stale) == "weights" and TEXT_NO_WEIGHTS or TEXT_NO_UPGRADES
     end
     if not upgrades.money:HasFocus() then upgrades.money:SetAmount(Market.Settings.Get("upgradesMax")) end
+    upgrades.order = UpgradeOrder()
     Finder.Draw(upgrades)
 end
 
@@ -123,9 +137,19 @@ local function BuildUpgrades()
     label:SetPoint("TOPLEFT")
     label:SetText(TEXT_UP_TO)
     upgrades = Finder.New(column, WIDTH, nil, Page.Draw)
-    upgrades.box, upgrades.order, upgrades.side, upgrades.onPick = box, Upgrades.Order, GainNote, PickedUpgrade
+    upgrades.box, upgrades.side, upgrades.onPick = box, GainNote, PickedUpgrade
     upgrades.money = Parts.MoneyBox(box, MaxChanged)
     upgrades.money:SetPoint("TOPLEFT", 0, -MONEY_LABEL_H)
+    local sortLabel = ns.Font(box, St.SMALL_SIZE, nil, T.muted)
+    sortLabel:SetPoint("TOPRIGHT")
+    sortLabel:SetText(TEXT_SORT)
+    local sorts = CreateFrame("Frame", nil, box)
+    sorts:SetPoint("BOTTOMLEFT")
+    sorts:SetPoint("BOTTOMRIGHT")
+    sorts:SetHeight(BUTTON_H)
+    sorter = Columns.New(sorts, Market.Settings, "sortUpgrades", "gain", Page.Draw)
+    Columns.Add(sorter, { key = "gain", text = TEXT_SORT_GAIN, right = 0, width = SORT_W })
+    Columns.Add(sorter, { key = "level", text = TEXT_SORT_LEVEL, right = SORT_W + GAP, width = SORT_W })
     upgrades.only = Upgrades.gains
     upgrades.frame:SetPoint("TOPLEFT", box, "BOTTOMLEFT", 0, -GAP)
     upgrades.frame:SetPoint("BOTTOMRIGHT")

@@ -11,10 +11,10 @@ local REQUIRED_LEVEL = 5
 local WARM_CHUNK = 200
 local LOADED_DELAY = 0.5
 
-local gains, asked = {}, {}
+local gains, levels, asked = {}, {}, {}
 local listed, notify, pending
 
-local Upgrades = { gains = gains }
+local Upgrades = { gains = gains, levels = levels }
 Market.Upgrades = Upgrades
 
 function Upgrades.On()
@@ -61,12 +61,19 @@ function Upgrades.Order(a, b)
     return a < b
 end
 
+function Upgrades.ByLevel(a, b)
+    local la, lb = levels[a], levels[b]
+    if la ~= lb then return la > lb end
+    return Upgrades.Order(a, b)
+end
+
 function Upgrades.Price(id)
     return listed and listed[id]
 end
 
 function Upgrades.Find(onLoaded)
     wipe(gains)
+    wipe(levels)
     notify = onLoaded
     listed = ns.AuctionPriceList and ns.AuctionPriceList()
     if not listed then return "scan" end
@@ -82,8 +89,12 @@ function Upgrades.Find(onLoaded)
                     cold = cold or {}
                     cold[#cold + 1] = id
                 end
-            elseif (select(REQUIRED_LEVEL, GetItemInfo(id)) or 0) <= level then
-                gains[id] = SW.BestGain(id, nil, weights, power)
+            else
+                local required = select(REQUIRED_LEVEL, GetItemInfo(id)) or 0
+                if required <= level then
+                    gains[id] = SW.BestGain(id, nil, weights, power)
+                    levels[id] = required
+                end
             end
         end
     end

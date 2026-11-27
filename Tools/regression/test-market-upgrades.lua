@@ -1,13 +1,14 @@
 -- Run with Lua 5.1 from the repository root: The Market's Cheap Upgrades. Only gear in your scans at or under your
 -- price is weighed, never above your level; pieces not cached yet are asked for once; no scan or no weights say so;
--- the list orders by the biggest upgrade, then the cheapest; and pieces arriving redraw once, not once each.
+-- the list orders by the biggest upgrade, then the cheapest, or by required level, highest first; and pieces
+-- arriving redraw once, not once each.
 local checks = 0
 local function check(label, value) assert(value, label); checks = checks + 1 end
 
 local settings = { enabled = true, cheapUpgrades = true, upgradesMax = 1000 }
 local prices
 local GEAR = { [1] = true, [2] = true, [3] = true, [4] = true, [5] = true, [6] = true }
-local required = { [1] = 10, [2] = 10, [3] = 30, [4] = 10, [5] = 10, [6] = 10 }
+local required = { [1] = 18, [2] = 10, [3] = 30, [4] = 10, [5] = 10, [6] = 10 }
 local cached = { [1] = true, [2] = true, [3] = true, [4] = true, [5] = true, [6] = false, [7] = true }
 local GAIN = { [1] = 2.5, [2] = 4, [3] = 9, [4] = 4, [6] = 1 }
 local weighed, loadedAsks, timers = {}, {}, {}
@@ -49,10 +50,10 @@ setfenv(fn, setmetatable({
 fn()
 local Upgrades = ns.Market.Upgrades
 
-local function Sorted()
+local function Sorted(order)
     local list = {}
     for id in pairs(Upgrades.gains) do list[#list + 1] = id end
-    table.sort(list, Upgrades.Order)
+    table.sort(list, order or Upgrades.Order)
     return list
 end
 
@@ -71,6 +72,9 @@ check("a scan with weights finds", Upgrades.Find(onLoaded) == nil)
 local list = Sorted()
 check("biggest upgrade first, the cheaper of two equal ones before the other", list[1] == 4 and list[2] == 2
     and list[3] == 1 and #list == 3)
+local byLevel = Sorted(Upgrades.ByLevel)
+check("by level, the highest required level first, then the biggest upgrade", byLevel[1] == 1 and byLevel[2] == 4
+    and byLevel[3] == 2 and Upgrades.levels[1] == 18 and Upgrades.levels[4] == 10)
 check("a piece over your level is not weighed", Upgrades.gains[3] == nil)
 check("a piece that is no upgrade is left out", Upgrades.gains[5] == nil)
 check("an item that is not gear is never weighed", Upgrades.gains[7] == nil)

@@ -2,7 +2,8 @@
 -- list and Watch box. Buy lists only the Watch List, under your price first; typing searches your scans; Watch,
 -- a row's x and Stop Watching change the list. Prices lists your bags and keeps the Watch box, and its filter lists
 -- only the Craftsman's Writs in your scans, all of them or one profession's. Cheap Upgrades adds an Upgrades view
--- while on: its gear biggest gain first, each row's gain and price, its own price box, and a click to search it.
+-- while on: its gear biggest gain first or by required level, each row's level, gain and price, its own price box,
+-- and a click to search it.
 local checks = 0
 local function check(label, value) assert(value, label); checks = checks + 1 end
 
@@ -45,6 +46,7 @@ local others, NOW = {}, 100000
 local houseKnown = true
 local tabBars, movers = {}, nil
 local upgradesOn, upgradeGains, upgradesWhy, finds, ran = false, {}, nil, 0, nil
+local upgradeLevels, sortPicks = {}, {}
 local stored = {}
 local RED = { r = 1, g = 0, b = 0 }
 
@@ -132,10 +134,22 @@ ns.Market = {
     History = { Movers = function() return movers end },
     Settings = { Get = function(key) if stored[key] ~= nil then return stored[key] end return true end,
         Set = function(key, value) stored[key] = value end },
-    Upgrades = { gains = upgradeGains, On = function() return upgradesOn end,
+    Upgrades = { gains = upgradeGains, levels = upgradeLevels, On = function() return upgradesOn end,
         Order = function(a, b) return upgradeGains[a] > upgradeGains[b] end,
+        ByLevel = function(a, b) return upgradeLevels[a] > upgradeLevels[b] end,
         Price = function(id) return prices[id] end,
         Find = function() finds = finds + 1 return upgradesWhy end },
+    Columns = {
+        New = function(_, settings, setting, default, onSort)
+            return { settings = settings, setting = setting, default = default, onSort = onSort, keys = {} }
+        end,
+        Add = function(header, spec) header.keys[#header.keys + 1] = spec.key; sortPicks.header = header end,
+        Current = function(header)
+            local key, way = (header.settings.Get(header.setting) or ""):match("^(%w+):(%a+)$")
+            if key then return key, way == "up" end
+            return header.default, false
+        end,
+    },
     Pages = {},
     WRITS = { [ALCHEMY] = { 201, 203, 204 }, [TAILORING] = { 202, 203 } },
     Dock = { Refresh = function() refreshed = refreshed + 1 end },
@@ -416,6 +430,8 @@ stored.upgradesMax = 5000
 Buy.Show()
 check("turned on, an Upgrades view joins Buy's", Labels(buyViews) == "Watch List,Searches,Upgrades")
 upgradeGains[102], upgradeGains[104] = 2.5, 6
+upgradeLevels[102], upgradeLevels[104] = 24, 12
+stored.sortUpgrades = ""
 buyViews.onPick("upgrades")
 local upMoney = moneyBoxes[#moneyBoxes]
 local upBox = upMoney.parent
@@ -426,7 +442,22 @@ end
 local function UpRows() return RowsOf(upList) end
 rows = UpRows()
 check("Upgrades lists its gear, the biggest gain first", #rows == 2 and rows[1].itemID == 104 and rows[2].itemID == 102)
-check("each row with its gain and price", rows[1].price.text == "+6.0%  70" and rows[2].price.text == "+2.5%  2000")
+check("each row with its level, gain and price", rows[1].price.text == "Level 12  +6.0%  70"
+    and rows[2].price.text == "Level 24  +2.5%  2000")
+local sorts = sortPicks.header
+check("sorts by Gain or Level, kept in sortUpgrades, Gain by default", sorts.setting == "sortUpgrades"
+    and sorts.default == "gain" and table.concat(sorts.keys, ",") == "gain,level")
+stored.sortUpgrades = "level:down"
+sorts.onSort()
+rows = UpRows()
+check("by level, the highest required level first", rows[1].itemID == 102 and rows[2].itemID == 104)
+stored.sortUpgrades = "level:up"
+sorts.onSort()
+rows = UpRows()
+check("turned round, the lowest first", rows[1].itemID == 104 and rows[2].itemID == 102)
+stored.sortUpgrades = ""
+sorts.onSort()
+rows = UpRows()
 check("worked out once on showing", finds == 1)
 check("its price box shows your price", upMoney.amount == 5000)
 Buy.Draw()

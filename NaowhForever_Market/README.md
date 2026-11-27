@@ -5,7 +5,7 @@ exactly as the game draws it. The panel has four tabs, and follows Blizzard's ow
 search your scans for an item, give it a price, and each scan tells you in chat when it is at or under it. Its
 Searches view keeps named lists of searches and the last ones you ran; a click runs one in Blizzard's own Buy tab. With
 Cheap Upgrades on, its Upgrades view lists the gear in your scans that beats what you wear, at or under a price you set,
-biggest upgrade first; a click searches for it. Sell lists your bags most valuable first, puts the
+biggest upgrade first or by required level; a click searches for it. Sell lists your bags most valuable first, puts the
 item in front of you at a price one step under the cheapest listing that is not yours, says how it
 compares, and posts it with the Post button, or with Space (post), S (skip) and Up and Down (the next
 price step) once Post With Keys is on. Under the form it lists the item's listings, cheapest first, with where
@@ -653,6 +653,8 @@ NaowhForever_Market/
   view says to turn it on.
 - Cheap Upgrades lists the biggest upgrade first, not the most per gold: your price already caps what it costs, and
   per gold a one-copper trinket of a tenth of a percent would top the list.
+- Its Level and Gain labels sort the list by required level (`Upgrades.ByLevel`, highest first, then the biggest
+  upgrade) or by gain; a second click turns it round. The choice is kept in `sortUpgrades`.
 - Its price, `upgradesMax`, is in copper (default 10 gold), set in the view's own box. The list is worked out again
   only when it goes stale: the view shown, the price changed, gear changed (`PLAYER_EQUIPMENT_CHANGED`, registered
   only while the view is shown), a scan's refresh, or item data arriving. Typing filters the last result.
