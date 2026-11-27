@@ -521,6 +521,14 @@ local function IconStyleRow()
         end }
 end
 
+local function FlightTimerRow()
+    if not ns.RXPFlightTimersAvailable() then return Empty() end
+    return { type = "toggle", text = "Show Flight Timers",
+        tooltip = "RestedXP's flight timer bar and map tooltip time, off to start as the Naowh Flight Timer shows them.",
+        getValue = ns.RXPFlightTimers,
+        setValue = function(v) ns.SetRXPFlightTimers(v) end }
+end
+
 local function WindowThemeRow()
     local values, order = { [""] = TEXT_WINDOW_THEME_CURRENT }, { "" }
     for _, key in ipairs(ns.THEME_PRESET_ORDER) do
@@ -610,7 +618,7 @@ local function RxpWindowRows(W, parent, y)
           getValue = ns.RXPWindowScale,
           setValue = function(v) ns.SetRXPWindowScale(v) end }
     ); y = y - h
-    _, h = W:DualRow(parent, y, IconStyleRow(), Empty()); y = y - h
+    _, h = W:DualRow(parent, y, IconStyleRow(), FlightTimerRow()); y = y - h
     y = RxpArrowRows(W, parent, y)
     y = RxpWindowStyleRows(W, parent, y)
     W:EndFold(parent)

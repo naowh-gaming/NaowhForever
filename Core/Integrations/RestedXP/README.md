@@ -412,6 +412,17 @@ Core/Integrations/RestedXP/
 - The style is the window's own setting (Step Icons, in the window's (V2) fold, beside its scale) and is
   only in force while the window is wished for (`RXPIconStyle` is RestedXP's own otherwise, the choice
   kept), so the table is left alone for a player who does not use the window.
+- Show Flight Timers (the window's (V2) fold, beside Step Icons) is RestedXP's own option, `showFlightTimers`, not a
+  Naowh one: it is read from and written to RestedXP's profile as its own settings panel does, and the bars it
+  draws while the player flies are shown or hidden at once (`ShowTimers`, `HideTimers`), so the two places are one
+  setting and nothing is kept by Naowh. The row is there only when RestedXP has the flight times it needs
+  (`RXP.FPDB`), as its panel hides the option without them. An unset value reads as on, RestedXP's default.
+- RestedXP's flight timer is turned off once for each character, at login, while the window is on and RestedXP has
+  its flight times (`RXPFlightTimersDefault`, kept by GUID in `rxpFlightOff`): the Naowh Flight Timer (QoL, Travel)
+  draws the same bar and the same time on the flight map, so the two would show twice. Only the option is written,
+  and no bar is touched, as none can be running at login. What the player sets after, here or in RestedXP's own
+  settings, is theirs and is not written again. Nothing is written while the window is off: RestedXP's own window
+  stays as RestedXP has it. It does not look whether the Naowh Flight Timer is on.
 - The two placeholders RestedXP shows on its target buttons until a unit has a portrait are not in
   `RXP.icons` either (file IDs, not escapes): the Naowh window takes them (see the Active Targets bullet) and
   `RXPIconTexture(glyph)` gives it a glyph's file in the style picked, or nothing without one.

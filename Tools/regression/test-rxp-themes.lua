@@ -1965,6 +1965,7 @@ end
 
 -- a character RestedXP has not met: what is turned on for the account is set for it once, and only if wished
 do
+    local withFlights = false
     local function Rxp(profile)
         local rxp = { activeTheme = { name = "RXP Blue" }, themes = { ["RXP Blue"] = { name = "RXP Blue" } },
             registered = {}, reloads = {}, settings = { profile = profile }, arrowFrame = { points = {} } }
@@ -1975,6 +1976,9 @@ do
             self.reloads[#self.reloads + 1] = self.settings.profile.activeTheme
             self.activeTheme = self.themes[self.settings.profile.activeTheme]
         end
+        rxp.hides = 0
+        function rxp.HideTimers() rxp.hides = rxp.hides + 1 end
+        if withFlights then rxp.FPDB = {} end
         return rxp
     end
     local function Run(account, profile, guid, window, starting)
@@ -2151,6 +2155,34 @@ do
     Logout(boot)
     Check(pickedV2.enableV2Interface == true and pickedV2.activeTheme == "NaowhForever:crimson",
         "nor with the interface to turn on")
+
+    -- RestedXP's flight timer: the Naowh Flight Timer shows the same, so it is turned off once for a character, window on
+    withFlights = true
+    local flightProfile = { activeTheme = "RXP Blue" }
+    local flightAccount = {}
+    local flightRxp = Run(flightAccount, flightProfile, "Player-F", true, true)
+    Check(flightProfile.showFlightTimers == false and flightAccount.rxpFlightOff["Player-F"] == true and flightRxp.hides == 0,
+        "the window on, RestedXP with flight times: its flight timer is turned off once, and no bar is touched")
+    flightProfile.showFlightTimers = true
+    Run(flightAccount, flightProfile, "Player-F", true, true)
+    Check(flightProfile.showFlightTimers == true, "what the player sets after is theirs: it is not written again")
+    local flightOther = { activeTheme = "RXP Blue" }
+    Run(flightAccount, flightOther, "Player-F2", true, true)
+    Check(flightOther.showFlightTimers == false and flightAccount.rxpFlightOff["Player-F2"] == true,
+        "another character is done once as well")
+    local flightOff, flightOffAccount = { activeTheme = "RXP Blue" }, {}
+    local _, flightOffNs = Run(flightOffAccount, flightOff, "Player-F3", false, true)
+    flightOffNs.RXPFlightTimersDefault()
+    Check(flightOff.showFlightTimers == nil and flightOffAccount.rxpFlightOff == nil,
+        "the window off: nothing is written, and nothing is kept, at login or when asked")
+    local flightNobody = { activeTheme = "RXP Blue" }
+    Run({}, flightNobody, nil, true, true)
+    Check(flightNobody.showFlightTimers == nil, "no character to say who it is: nothing")
+    withFlights = false
+    local flightNone, flightNoneAccount = { activeTheme = "RXP Blue" }, {}
+    Run(flightNoneAccount, flightNone, "Player-F4", true, true)
+    Check(flightNone.showFlightTimers == nil and flightNoneAccount.rxpFlightOff == nil,
+        "RestedXP without flight times: nothing is written, and it is not kept as done")
 
     -- by hand, with it off and the character seen
     local manual = { activeTheme = "RXP Blue" }
