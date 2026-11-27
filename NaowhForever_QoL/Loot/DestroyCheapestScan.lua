@@ -145,12 +145,15 @@ function D.Quote(itemID)
 end
 
 local function ApplyMarket(e, itemID, count)
-    e.market, e.marketAge, e.marketFresh, e.marketChecked = nil, nil, nil, nil
+    e.market, e.marketUnit, e.marketKnown = nil, nil, nil
+    e.marketAge, e.marketFresh, e.marketChecked = nil, nil, nil
     if not (RankMarket() and itemID) then return end
     e.marketChecked = true
     local price, age, fresh = D.Quote(itemID)
-    if not price then return end
-    e.market, e.marketAge, e.marketFresh = price * (count or 1), age, fresh
+    e.marketKnown = type(price) == "number" and price > 0
+    if not e.marketKnown then return end
+    e.market, e.marketUnit = price * (count or 1), price
+    e.marketAge, e.marketFresh = age, fresh
 end
 
 local function RankValue(e)
@@ -254,6 +257,7 @@ local function ScanSlot(bag, slot)
     e.bag, e.slot, e.itemID = bag, slot, info.itemID
     e.link, e.icon, e.name = info.hyperlink, info.iconFileID, name
     e.count, e.quality, e.value = count, quality, vendor * count
+    e.vendorUnit, e.vendorKnown, e.vendorEstimated = vendor, true, nil
     ApplyMarket(e, info.itemID, count)
     e.rank = RankValue(e)
     if OverCap(e.rank, maxValue) then
@@ -339,6 +343,7 @@ function D.ReadLoot()
                 e.count, e.quality = qty or 1, quality
                 e.quest = (isQuest or questID) and true or false
                 e.vendor = vendor
+                e.vendorUnit, e.vendorKnown, e.vendorEstimated = vendor, vendor ~= nil, nil
                 e.value = vendor and vendor > 0 and vendor * e.count or nil
                 ApplyMarket(e, e.itemID, e.count)
                 D.loots[#D.loots + 1] = e

@@ -47,7 +47,7 @@ local ITEMS = {
 local function Fixture()
     local env = setmetatable({}, { __index = _G })
     env._G = env
-    local t = { env = env, settings = {}, deleted = 0, picked = 0, printed = {} }
+    local t = { env = env, settings = {}, deleted = 0, picked = 0, printed = {}, auction = {} }
     local defaults = {
         enabled = true, destroyCheapest = true,
         destroyCheapestPoor = true, destroyCheapestCommon = true, destroyCheapestUncommon = true,
@@ -225,7 +225,10 @@ local function Fixture()
     ns.THEME = { bg = { r = 0, g = 0, b = 0 }, fg = { r = 1, g = 1, b = 1 }, muted = { r = 0.5, g = 0.5, b = 0.5 } }
     ns.IsLibraryBook = function(id) return t.books[id] == true end
     ns.IsBisItem = function(id) return t.bis[id] == true end
-    ns.AuctionPrice = function() return nil end
+    ns.AuctionPrice = function(id)
+        local quote = t.auction[id]
+        if quote then return quote[1], quote[2] end
+    end
     ns.AuctionAge = function() return "" end
     ns.GamepadStandDown = function() return false end
     ns.OnApply = noop
@@ -246,7 +249,9 @@ local function Fixture()
             Panel = function() local p = widget(); p.backdrop = widget(); return p end,
             ItemIcon = function() local i = widget(); i.texture = widget(); i.edge = widget(); return i end,
         },
-        Style = { PANEL_W = 380, ACTION = 16, BORDER_RGB = { r = 0, g = 0, b = 0 }, CLOSE_IN = 4, CLOSE_SIZE = 16,
+        Style = { PANEL_W = 380, ACTION = 16, BORDER_RGB = { r = 0, g = 0, b = 0 },
+            HAVE_RGB = { r = 0, g = 1, b = 0 }, RED_RGB = { r = 1, g = 0, b = 0 },
+            CLOSE_IN = 4, CLOSE_SIZE = 16,
             ICON_CROP = 0.07, ICON_CROP_HIGH = 0.93 },
         Items = { OnLoaded = function(_, fn) fn() end },
     }
@@ -436,6 +441,46 @@ do
     t.D.Paint()
     check(not t.D.armed, "another item to destroy cancels the arm")
     t.Close()
+end
+
+-- The cards keep unit and stack prices separate, and the comparison uses each side's count.
+do
+    local t = Fixture()
+    t.settings.destroyCheapestMarket = true
+    t.auction[10], t.auction[50] = { 40, 1000 }, { 2500, 1000 }
+    t.Fill({ { 10, 5 } })
+    t.Open({ 50 })
+    local pick, loot = t.D.picks[1], t.D.loots[1]
+    local pickCells = t.D.PriceCells(pick)
+    check(pickCells.vendorEach == "10c" and pickCells.vendorStack == "50c",
+        "the Destroy card shows vendor prices for one item and the stack")
+    check(pickCells.ahEach == "40c" and pickCells.ahStack == "200c",
+        "the Destroy card shows auction prices for one item and the stack")
+    local lootCells = t.D.PriceCells(loot)
+    check(lootCells.vendorEach == "2000c" and lootCells.vendorStack == nil,
+        "the Incoming card shows one price for a single item")
+    local gaps = t.D.CompareGaps(pick, loot)
+    check(gaps.columns == t.D.STACK_COLUMNS and gaps.stackLabel == t.D.TEXT.COL_TOTAL,
+        "the comparison adds a total column when only the Destroy side is a stack")
+    check(gaps.vendorEach == 1990 and gaps.vendorStack == 1950,
+        "the vendor comparison reports the individual and total profit")
+    check(gaps.ahEach == 2460 and gaps.ahStack == 2300,
+        "the auction comparison reports the individual and total profit")
+    check(t.D.SignedCoin(-25) == "-25c" and t.D.GapTone(-25) == "bad",
+        "a deficit has a signed price and the deficit tone")
+end
+
+-- An old market scan stays visible but muted when it is excluded from comparisons.
+do
+    local t = Fixture()
+    t.settings.destroyCheapestMarket = true
+    t.settings.destroyCheapestMarketStale = true
+    t.auction[10] = { 40, -700000 }
+    t.Fill({ { 10 } })
+    t.D.Scan()
+    local cells = t.D.PriceCells(t.D.picks[1])
+    check(cells.ahEach == "40c" and cells.ahTone == "muted",
+        "a stale auction estimate is still shown muted")
 end
 
 print(("test-destroy-cheapest: %d checks passed"):format(checks))

@@ -1133,6 +1133,9 @@ NaowhForever_QoL/
   starts off. While it is on, a price older than Older Than is shown muted and left out of that
   order, and Older Than starts at seven days. With it off, an old price is still used. Turning
   the rank or the age on or off rebuilds the list at once.
+  The Destroy and Incoming cards show the vendor price for one item and the whole stack. With
+  Market Prices on, they show the auction estimate the same way. The row below them shows the
+  vendor and auction profit or deficit for one item and for the two stacks being compared.
   Destroy Anyway, off until turned on, adds a smaller button
   next to the not-worth warning. It still takes a click, and the same second click and delete
   window as Destroy. A bag that reports
