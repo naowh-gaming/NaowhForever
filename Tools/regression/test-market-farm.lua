@@ -74,6 +74,9 @@ for _, zone in ipairs(F.Zones()) do
 end
 Check("the zone list rates a zone by the same loop", listed.perHour == F.loopPerHour
     and math.abs(listed.minutes - F.loopMinutes) < 1e-9)
+F.Zone(1, nil, 765)
+Check("a picked item loops only the spots that give it, every spot still on the map", #F.spots == 3
+    and #F.loop == 1 and F.loop[1].id == SILVERLEAF and F.loopValue == 9 * 2)
 
 skill.ore = 0
 F.Zone(1)

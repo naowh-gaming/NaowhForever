@@ -336,11 +336,11 @@ local function Here(mapID)
     return { x = x, y = y }
 end
 
-local function Tour(mapID, width, height)
+local function Tour(mapID, width, height, item)
     wipe(loop)
     local left = {}
     for _, spot in ipairs(spots) do
-        if spot.reach and spot.wanted then left[#left + 1] = spot end
+        if spot.reach and spot.wanted and (not item or spot.item == item) then left[#left + 1] = spot end
     end
     if #left == 0 then return 0 end
     table.sort(left, Richest)
@@ -432,7 +432,7 @@ local function FishZone(mapID)
     Farm.most = value
 end
 
-function Farm.Zone(mapID, kind)
+function Farm.Zone(mapID, kind, item)
     for i = #spots, 1, -1 do spotPool[#spotPool + 1] = table.remove(spots, i) end
     wipe(loop)
     cachedMap, Farm.kind = mapID, kind
@@ -442,7 +442,7 @@ function Farm.Zone(mapID, kind)
         return
     end
     local width, height = C_Map.GetMapWorldSize(mapID)
-    local yards = Tour(mapID, width, height)
+    local yards = Tour(mapID, width, height, item)
     local value, gain, work = 0, 0, 0
     for _, spot in ipairs(loop) do
         value, gain, work = value + spot.value, gain + spot.gain, work + spot.work

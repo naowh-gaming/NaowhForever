@@ -18,7 +18,7 @@ dock The Market's own window in the panel's place; the same tab again or the win
 back. Shift + drag moves the auction house with whatever is docked. Away from it, `/market` (or
 `/nfmarket`) or its key binding open that window, anywhere, with four tabs along the
 bottom: Farm, the zones where your Herbalism and Mining gather the most, a zone's map with every herb
-and vein priced, and a loop through it you can follow by waypoint; Reagents, what each reagent in your
+and vein priced, and a loop through it you can follow by waypoint (click a node to loop only its item); Reagents, what each reagent in your
 bags goes into, in every profession, and whether crafting it beats selling it; Price Graph, any item in
 your scans, found by name or picked from your bags, with its median price each day over two weeks; and
 Ledger, once Record Gold is on, every character's gold over time, what it sold, bought, earned and spent,

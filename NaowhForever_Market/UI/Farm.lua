@@ -14,7 +14,7 @@ local FILTER_H, FILTERS_H, TICK = 20, 132, 12
 local MAP_HEAD_H, STRIP_H, STRIP_ICON, SPARK_W, SPARK_H = 44, 74, 40, 200, 40
 local ROW_IN, GAP, SUB_GAP, BAR_H, SCROLL_IN = 8, 6, 4, 3, 4
 local PIN_MIN, PIN_GROW, PIN_RING = 10, 12, 2
-local LINE_THICK, LINE_ALPHA, LOCKED_ALPHA, PICKED_ALPHA = 2, 0.55, 0.35, 0.3
+local LINE_THICK, LINE_ALPHA, LOCKED_ALPHA, PICKED_ALPHA, OTHER_ALPHA = 2, 0.55, 0.35, 0.3, 0.2
 local LAYER = 1
 local OPEN_W, LOOP_W = 110, 120
 local KV_W, KV_NARROW_W = 150, 130
@@ -42,6 +42,7 @@ local TEXT_REQUIRES = { herb = ns.L("Requires Herbalism %d"), ore = ns.L("Requir
 local TEXT_CAMP = ns.L("%d here, level %d to %d")
 local TEXT_NODE = ns.L("About %s a node")
 local TEXT_PICKED = ns.L("Gathered %s")
+local TEXT_LOOP_ONLY, TEXT_LOOP_ALL = ns.L("Click to loop only this"), ns.L("Click to loop everything")
 local TEXT_SCAN_PRICE = ns.L("at your last scan")
 local TEXT_NO_PRICE = ns.L("no scan price")
 local TEXT_HAVE, TEXT_WORTH, TEXT_A_NODE = ns.L("You have"), ns.L("Worth"), ns.L("A node")
@@ -53,8 +54,9 @@ local page, zonePane, zoneScroll, zoneList, zoneNote, skillsText, main, mapHead,
 local canvas, strip, openButton, loopButton
 local filters = {}
 local zoneRows, pins, tiles, lines = {}, {}, {}, {}
-local picked = { map = nil, kind = nil, item = nil }
+local picked = { map = nil, kind = nil, item = nil, only = nil }
 local active = false
+local DrawMap
 
 local Page = { WIDTH = ZONES_W + PANE_GAP + STRIP_FULL_W + St.WINDOW_PAD * 2 }
 Market.Pages.farm = Page
@@ -93,7 +95,7 @@ local function Picked(zone)
 end
 
 local function ZoneClicked(row)
-    picked.map, picked.kind, picked.item = row.zone.map, row.zone.kind, nil
+    picked.map, picked.kind, picked.item, picked.only = row.zone.map, row.zone.kind, nil, nil
     Page.Draw()
 end
 
@@ -214,12 +216,24 @@ local function PinEnter(pin)
         local m = T.muted
         GameTooltip:AddLine(TEXT_PICKED:format(ns.Shared.Ago(spot.picked)), m.r, m.g, m.b)
     end
+    if spot.item and spot.reach and spot.kind ~= "fish" then
+        local m = T.muted
+        GameTooltip:AddLine(spot.item == picked.only and TEXT_LOOP_ALL or TEXT_LOOP_ONLY, m.r, m.g, m.b)
+    end
     GameTooltip:Show()
 end
 
 local function PinClicked(pin)
-    picked.item = pin.spot.item
-    Page.DrawStrip()
+    local spot = pin.spot
+    if not (spot.item and spot.reach) or spot.kind == "fish" then
+        picked.item = spot.item
+        Page.DrawStrip()
+        return
+    end
+    picked.only = spot.item ~= picked.only and spot.item or nil
+    picked.item = picked.only
+    DrawMap()
+    PinEnter(pin)
 end
 
 local function NewPin()
@@ -251,7 +265,8 @@ local function DrawPins(width, height)
             pin:SetSize(size, size)
             local c = spot.can and KindColor(spot.kind) or T.muted
             pin.dot:SetVertexColor(c.r, c.g, c.b, 1)
-            pin:SetAlpha(not spot.can and LOCKED_ALPHA or spot.picked and PICKED_ALPHA or 1)
+            local other = picked.only and spot.item ~= picked.only
+            pin:SetAlpha(other and OTHER_ALPHA or not spot.can and LOCKED_ALPHA or spot.picked and PICKED_ALPHA or 1)
             pin:SetFrameLevel(canvas:GetFrameLevel() + (spot.can and 2 or 1))
             pin:ClearAllPoints()
             pin:SetPoint("CENTER", canvas, "TOPLEFT", spot.x * width, -spot.y * height)
@@ -330,10 +345,10 @@ function Page.DrawStrip()
     strip.sell.item = item
 end
 
-local function DrawMap()
+function DrawMap()
     local info, scale
     if picked.map then
-        Farm.Zone(picked.map, picked.kind)
+        Farm.Zone(picked.map, picked.kind, picked.only)
         info, scale = Fit()
     end
     canvas:SetShown(info ~= nil)
@@ -367,7 +382,7 @@ local function PickZone(zones)
             break
         end
     end
-    picked.map, picked.kind = pick and pick.map, pick and pick.kind
+    picked.map, picked.kind, picked.item, picked.only = pick and pick.map, pick and pick.kind, nil, nil
 end
 
 function Page.Draw()
@@ -406,7 +421,7 @@ local function FilterClicked(filter)
     S.Set(filter.key, not S.Get(filter.key))
     PaintFilter(filter)
     Farm.Changed()
-    picked.item = nil
+    picked.item, picked.only = nil, nil
     Page.Draw()
 end
 
