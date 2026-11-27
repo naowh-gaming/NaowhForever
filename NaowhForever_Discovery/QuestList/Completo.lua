@@ -9,7 +9,7 @@ local TEXT_OLD_FOLDER = ns.L("Completo is part of Discovery now. Its old folder 
 
 local S = ns.UI.ModuleSettings("completo", {
     enabled = F.enabled, hideDone = false,
-    mapPins = F.mapPins, mapGrey = false, mapChainsOnly = false, mapPinSize = 20,
+    mapPins = F.mapPins, mapGrey = false, mapChainsOnly = false, mapPvP = true, mapPinSize = 20,
     mapDungeon = true, mapDungeonColor = false,
     mapObjectives = F.mapObjectives, mapObjectivesTracked = false, mapObjectivePinSize = 20,
     mapObjectivePaths = false,

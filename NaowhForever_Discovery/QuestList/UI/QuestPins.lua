@@ -14,8 +14,8 @@ local PERCENT = Completo.C.PERCENT
 local QUEST_PIN_SCALE = 0.5
 local EVENTS = { "QUEST_ACCEPTED", "QUEST_TURNED_IN", "QUEST_REMOVED", "PLAYER_LEVEL_UP", "SKILL_LINES_CHANGED",
     "LEARNED_SPELL_IN_SKILL_LINE", "CALENDAR_UPDATE_EVENT_LIST" }
-local OWN_KEYS = { enabled = true, mapPins = true, mapGrey = true, mapChainsOnly = true, mapPinSize = true,
-    mapDungeon = true, mapDungeonColor = true }
+local OWN_KEYS = { enabled = true, mapPins = true, mapGrey = true, mapChainsOnly = true, mapPvP = true,
+    mapPinSize = true, mapDungeon = true, mapDungeonColor = true }
 local TEXT_GIVER = ns.L("Quest giver")
 local TEXT_DROPS = ns.L("Drops %s, which begins:")
 local TEXT_LEVEL = ns.L("Level %d")
@@ -281,7 +281,7 @@ function provider:RefreshAllData()
     if not any then return end
     Q.Update()
     for _, mapID in ipairs(maps) do
-        for _, giver in ipairs(Q.Givers(mapID, S.Get("mapGrey"), S.Get("mapChainsOnly"))) do
+        for _, giver in ipairs(Q.Givers(mapID, S.Get("mapGrey"), S.Get("mapChainsOnly"), not S.Get("mapPvP"))) do
             local x, y = OpenMap.Spot(map, mapID, giver.x / PERCENT, giver.y / PERCENT)
             if x then map:AcquirePin(TEMPLATE, giver, x, y) end
         end

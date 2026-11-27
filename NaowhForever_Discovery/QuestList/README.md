@@ -289,6 +289,8 @@ quest and creature pages. Do not edit them by hand: change the tool and run it a
 - A battleground quest is in `D.Dungeon` as an instance quest (out of a zone's progress, kept with
   Chains Only), but its giver gets the plain ! and its tooltip line no "Dungeon": it is no dungeon or
   raid.
+- PvP Quests (`mapPvP`, on by default) off leaves every `D.Battleground` quest off the world map and
+  minimap, for a player who is done with a zone but not with its battleground quests.
 - Holding Shift over a giver's pin (world map or minimap) lists, under each quest, its experience, money and
   reputation (`D.Gains`), the instance it is for (`D.Instances`), the breadcrumbs still
   open to you that lead to it (`Q.Breadcrumbs`, `D.Breadcrumb` turned around) and every later step of its

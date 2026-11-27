@@ -21,7 +21,8 @@ local PLACE_EVENTS = { ZONE_CHANGED = true, ZONE_CHANGED_INDOORS = true }
 local WHERE_EVENTS = { ZONE_CHANGED_NEW_AREA = true, ZONE_CHANGED = true, ZONE_CHANGED_INDOORS = true,
     PLAYER_ENTERING_WORLD = true, QUEST_WATCH_LIST_CHANGED = true }
 local OWN_KEYS = { enabled = true, minimapQuests = true, minimapQuestSize = true, mapPins = true, mapGrey = true,
-    mapChainsOnly = true, mapDungeon = true, mapDungeonColor = true, mapObjectives = true, mapObjectivesTracked = true }
+    mapChainsOnly = true, mapPvP = true, mapDungeon = true, mapDungeonColor = true, mapObjectives = true,
+    mapObjectivesTracked = true }
 
 local list = Objectives.List()
 local givers, giverSpare, here = {}, {}, {}
@@ -66,7 +67,7 @@ local function CopyGivers(mapID)
     end
     if not S.Get("mapPins") then return end
     Q.Update()
-    for _, giver in ipairs(Q.Givers(mapID, S.Get("mapGrey"), S.Get("mapChainsOnly"))) do
+    for _, giver in ipairs(Q.Givers(mapID, S.Get("mapGrey"), S.Get("mapChainsOnly"), not S.Get("mapPvP"))) do
         local copy = table.remove(giverSpare) or { quests = {} }
         wipe(copy.quests)
         for i, id in ipairs(giver.quests) do copy.quests[i] = id end

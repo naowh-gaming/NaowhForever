@@ -93,6 +93,8 @@ Check(#givers == 1 and givers[1].quests[1] == 8 and not givers[1].dungeon,
     "a battleground quest's giver is not marked as a dungeon's")
 givers = Q.Givers(2, true, true)
 Check(#givers == 1 and givers[1].quests[1] == 8, "a battleground quest keeps its pin with Chains Only")
+Check(#Q.Givers(2, true, false, true) == 0, "a battleground quest loses its pin with PvP Quests off")
+Check(#Q.Givers(1, true, false, true) == 1, "a dungeon quest keeps its pin with PvP Quests off")
 
 local real = setmetatable({ _G = { NaowhForever = { AccountSettings = ns.AccountSettings, CompletoQuestData = {} } } },
     { __index = env })

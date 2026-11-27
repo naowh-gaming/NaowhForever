@@ -676,14 +676,14 @@ function Q.HasGivers(mapID)
     return byMap[SameMap(mapID)] ~= nil
 end
 
-function Q.Givers(mapID, grey, chainsOnly)
+function Q.Givers(mapID, grey, chainsOnly, noPvP)
     Prepare()
     Index()
     RecycleGivers()
     local hidden = CharStore(HIDDEN_STORE)
     local here = SameMap(mapID)
     for _, id in ipairs(byMap[here] or NONE) do
-        if not hidden[id] and Wanted(id, chainsOnly) then
+        if not hidden[id] and not (noPvP and Q.Battleground(id)) and Wanted(id, chainsOnly) then
             local trivial = Q.Trivial(id)
             local map, x, y = Q.Spot(id)
             if (grey or not trivial) and SameMap(map) == here then AddToGiver(id, trivial, x, y) end

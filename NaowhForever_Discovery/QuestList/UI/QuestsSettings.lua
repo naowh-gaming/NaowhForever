@@ -109,6 +109,8 @@ table.insert(ns.Shared.MapPins, {
         { key = "mapChainsOnly", label = "Chains Only", toggle = true, store = S, always = true, needs = PinsOn,
           why = TEXT_PINS_OFF,
           help = "Only quest chains: the first quest of each one, and the next step of those you are on." },
+        { key = "mapPvP", label = "PvP Quests", toggle = true, store = S, always = true, needs = PinsOn,
+          why = TEXT_PINS_OFF, help = "Quest givers with a Warsong Gulch, Arathi Basin or Alterac Valley quest." },
         { key = "mapDungeon", label = "Color Dungeon Quests", toggle = true, store = S, always = true, needs = PinsOn,
           why = TEXT_PINS_OFF, help = "A ! in its own color for quest givers with a dungeon or raid quest." },
         { key = "mapDungeonColor", label = "Dungeon Quest Color", colour = true, store = S, always = true,
