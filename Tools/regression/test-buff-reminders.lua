@@ -207,7 +207,8 @@ local function Fixture(opts)
             return color
         end }),
         LOCALIZED_CLASS_NAMES_MALE = setmetatable({}, { __index = function(_, class) return class:lower() end }),
-        Enum = { ItemClass = { Weapon = 2 }, ItemWeaponSubclass = { Fishingpole = 20 },
+        Enum = { ItemClass = { Weapon = 2 }, ItemWeaponSubclass = { Axe1H = 0, Axe2H = 1, Mace1H = 4, Mace2H = 5,
+                Polearm = 6, Sword1H = 7, Sword2H = 8, Staff = 10, Unarmed = 13, Dagger = 15, Fishingpole = 20 },
             ItemEnchantType = { Temporary = 2, Imbue = 3 } },
         GetTime = function() return state.now end,
         time = function() return state.epoch + math.floor(state.now - 1000) end,
@@ -1932,6 +1933,44 @@ do
     t.Fire("UNIT_INVENTORY_CHANGED", "player")
     t.Advance(0.5)
     Check("off hand weapon bare", t.Shown(), "spell:1248406 item:13510 item:13452 " .. ROUGH)
+end
+
+-- Sharpening stones are offered only for sharp weapons and weightstones only for blunt ones: a fist in
+-- the main hand no longer holds the reminder up with a sharpening stone it cannot take.
+do
+    local WEIGHT = ICONS .. "inv_stone_weightstone_01"
+    local t = Fixture({ instance = "raid", units = { player = "MAGE" }, bags = { 2862 },
+        weapons = { [16] = false, [17] = false }, subclasses = { [1016] = 13, [1017] = 7 },
+        settings = { weaponEnhancements = true, personalBuffs = false } })
+    t.Login()
+    local function Cell()
+        for _, f in ipairs(t.frames) do
+            if rawget(f, "items") and f.shown and f.weaponSlot then return f end
+        end
+    end
+    Check("fist and sword, a sharpening stone carried: it goes on the sword", Cell().attributes.macrotext1,
+        "/use item:2862\n/use 17")
+    t.state.stones[17] = 1800
+    t.Fire("UNIT_INVENTORY_CHANGED", "player")
+    t.Advance(0.5)
+    Check("sword stoned, nothing carried fits the fist", t.Shown(), "")
+    t.state.bags = { 2862, 3239 }
+    t.Fire("BAG_UPDATE_DELAYED")
+    t.Advance(0.5)
+    local cell = Cell()
+    Check("a weightstone carried goes on the fist", cell.attributes.macrotext1, "/use item:3239\n/use 16")
+    cell.scripts.OnEnter(cell)
+    local popup
+    for _, f in ipairs(t.frames) do if rawget(f, "owner") == cell then popup = f end end
+    local count = 0
+    for _, button in ipairs(popup.buttons) do if button.shown then count = count + 1 end end
+    Check("the fist's menu holds the weightstone only", popup.buttons[1].icon.texture .. " x" .. count, WEIGHT .. " x1")
+    t.state.bags = {}
+    t.Fire("BAG_UPDATE_DELAYED")
+    t.Advance(0.5)
+    t.Set("onlyIfCarried", false)
+    Check("none carried, switch off: a rough weightstone for the fist", t.Shown(),
+        "spell:1248406 item:13510 item:13452 " .. WEIGHT)
 end
 
 -- Icon: Last Used shows the flask, elixir or weapon item used last, and only listens while it is chosen.

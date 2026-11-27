@@ -18,6 +18,20 @@ local WEAPON_SLOTS = { 16, 17 }
 local IMBUE = Enum.ItemEnchantType.Imbue
 local TEMPORARY = Enum.ItemEnchantType.Temporary
 local FISHING_POLE = Enum.ItemWeaponSubclass.Fishingpole
+local WEAPON_KIND = {}
+for _, name in ipairs({ "Axe1H", "Axe2H", "Sword1H", "Sword2H", "Dagger", "Polearm" }) do
+    WEAPON_KIND[Enum.ItemWeaponSubclass[name]] = "sharp"
+end
+for _, name in ipairs({ "Mace1H", "Mace2H", "Staff", "Unarmed" }) do
+    WEAPON_KIND[Enum.ItemWeaponSubclass[name]] = "blunt"
+end
+local WEAPON_FITS = { sharp = {}, blunt = {} }
+for _, id in ipairs(D.WEAPON_ITEMS) do
+    local kind = D.WEAPON_ITEM_KIND[id]
+    for fit, items in pairs(WEAPON_FITS) do
+        if not kind or kind == fit then items[#items + 1] = id end
+    end
+end
 local REQUIRED_LEVEL = 5
 local ITEM_ICON = 10
 local ELITE = { elite = true, rareelite = true, worldboss = true }
@@ -646,13 +660,21 @@ local function MissingSlot(slots, warn, kind)
 end
 
 local function WeaponEnhancement(list)
-    local slot = MissingSlot(WEAPON_SLOTS, S.Get("consumablesMinutes") * SECONDS, TEMPORARY)
-    if not slot then return end
-    local item = FirstCarried(D.WEAPON_ITEMS)
-    if not item and Carried("weapon") then return end
-    local shown, used = Shown(D.WEAPON_ITEMS, LastIcon("weapon"), item)
-    list[#list + 1] = { icon = shown or D.WEAPON_ICONS[D.WEAPON_ICON_ITEM], items = D.WEAPON_ITEMS,
-        item = used, slot = slot, key = "weapon" }
+    local warn, onlyCarried = S.Get("consumablesMinutes") * SECONDS, Carried("weapon")
+    for _, slot in ipairs(WEAPON_SLOTS) do
+        if Armed(slot) and not SlotEnchanted(slot == 16 and 0 or 1, warn, TEMPORARY) then
+            local _, _, _, _, _, _, subclass = C_Item.GetItemInfoInstant(GetInventoryItemID("player", slot))
+            local kind = WEAPON_KIND[subclass]
+            local items = WEAPON_FITS[kind] or D.WEAPON_ITEMS
+            local item = FirstCarried(items)
+            if item or not onlyCarried then
+                local shown, used = Shown(items, LastIcon("weapon"), item)
+                local icon = D.WEAPON_ICONS[kind == "blunt" and D.WEAPON_ICON_BLUNT or D.WEAPON_ICON_ITEM]
+                list[#list + 1] = { icon = shown or icon, items = items, item = used, slot = slot, key = "weapon" }
+                return
+            end
+        end
+    end
 end
 
 local function TargetHas(spells)

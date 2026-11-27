@@ -50,7 +50,14 @@ D.WEAPON_ITEMS = {
     23122, 18262, 12404, 7964, 2871, 2863, 2862,
     12643, 7965, 3241, 3240, 3239,
 }
+-- Sharpening stones go only on sharp weapons and weightstones only on blunt ones; oils and the
+-- elemental and consecrated stones go on any.
+D.WEAPON_ITEM_KIND = {
+    [12404] = "sharp", [7964] = "sharp", [2871] = "sharp", [2863] = "sharp", [2862] = "sharp",
+    [12643] = "blunt", [7965] = "blunt", [3241] = "blunt", [3240] = "blunt", [3239] = "blunt",
+}
 D.WEAPON_ICON_ITEM = 2862
+D.WEAPON_ICON_BLUNT = 3239
 D.WEAPON_ICONS = {
     [20750] = "inv_potion_104", [20749] = "inv_potion_105", [20748] = "inv_potion_100",
     [20747] = "inv_potion_99", [20746] = "inv_potion_103", [20745] = "inv_potion_98",

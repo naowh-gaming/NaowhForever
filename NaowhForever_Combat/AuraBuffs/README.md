@@ -256,7 +256,11 @@ NaowhForever_Combat/AuraBuffs/
   food eaten (`lastFoodIcon` in the account settings, taken on `UNIT_SPELLCAST_SUCCEEDED` from the bag item
   with that use spell, else the spell's own texture), else Well Fed's. Weapon Enhancement Reminder (off by default) asks for a stone or
   oil (`D.WEAPON_ITEMS`) on each equipped weapon, an off hand only when it is a weapon, alongside a class's own
-  poison or imbue reminder. Its icon is the carried item's, else a Rough Sharpening Stone (`D.WEAPON_ICON_ITEM`),
+  poison or imbue reminder. Each weapon is offered only what it takes (`D.WEAPON_ITEM_KIND`): sharpening stones
+  for axes, swords, daggers and polearms, weightstones for maces, staves and fist weapons (Crustii's fist never
+  took the sharpening stone offered, so the reminder never cleared). With Only If I Carry One, a weapon with nothing
+  carried that fits is skipped. Its icon is the carried item's, else a Rough Sharpening Stone (`D.WEAPON_ICON_ITEM`,
+  or a Rough Weightstone, `D.WEAPON_ICON_BLUNT`, for a blunt weapon),
   and each stone, weightstone and oil shows its classic icon (`D.WEAPON_ICONS`, a texture path per item ID, here and in
   the hover menu) rather than the client's item icon: Naowh asked for classic-looking icons, and the first oil in the
   list has a modern one. The IDs and icon names are Wowhead Forever's (2026-10-14), which match Classic's.
