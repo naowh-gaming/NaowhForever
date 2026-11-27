@@ -374,7 +374,7 @@ function View.New(parent)
     B.OnListChange(view.redrawFn)
     ns.StatWeights.OnChange(view.redrawFn)
     B.Settings.OnChange(function(key)
-        if key == "bisAutoAhead" then view:Redraw() end
+        if key == "bisAutoAhead" or key == "bisPvP" then view:Redraw() end
     end)
     return view
 end

@@ -10684,3 +10684,5 @@ L["%d is outside your level range (Level Range)"] = "%d вне вашего ди
 L["%d are outside your level range (Level Range)"] = "%d вне вашего диапазона уровней (Диапазон уровней)"
 L["Nothing in your level range"] = "Ничего в вашем диапазоне уровней"
 L["Can also spawn here."] = "Может появиться и здесь."
+L["PvP Gear"] = "PvP-снаряжение"
+L["Offer PvP rank, battleground and PvP vendor gear in the picker and new lists."] = "Предлагает снаряжение за PvP-звания, поля боя и у PvP-торговцев в выборе и новых списках."

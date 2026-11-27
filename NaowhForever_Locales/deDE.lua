@@ -10684,3 +10684,5 @@ L["%d is outside your level range (Level Range)"] = "%d liegt außerhalb deines 
 L["%d are outside your level range (Level Range)"] = "%d liegen außerhalb deines Stufenbereichs (Stufenbereich)"
 L["Nothing in your level range"] = "Nichts in deinem Stufenbereich"
 L["Can also spawn here."] = "Kann auch hier erscheinen."
+L["PvP Gear"] = "PvP-Ausrüstung"
+L["Offer PvP rank, battleground and PvP vendor gear in the picker and new lists."] = "Bietet PvP-Rang-, Schlachtfeld- und PvP-Händlerausrüstung in der Auswahl und in neuen Listen an."

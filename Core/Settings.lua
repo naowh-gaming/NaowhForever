@@ -191,7 +191,7 @@ local S = UI.ModuleSettings("qol", {
     trinketQueue = F.trinketQueue, trinketReady = F.trinketReady, trinketReadySound = "none",
     gearBarSpacing = 4, gearBarShow = "always",
     gearPos = { point = "CENTER", relPoint = "CENTER", x = -403, y = -379 },
-    bis = F.bis, bisTooltip = true, bisBagMarks = true, bisLootAlert = F.bisLootAlert, bisRoute = F.bisRoute, bisAutoAhead = 5,
+    bis = F.bis, bisTooltip = true, bisBagMarks = true, bisLootAlert = F.bisLootAlert, bisRoute = F.bisRoute, bisPvP = F.bisPvP, bisAutoAhead = 5,
     bisAlertFor = "all", bisAlertChat = true, bisAlertBadge = true, bisToast = true,
     bisDropSound = "game:raidwarning", bisYoursSound = "game:epicloot",
     bisToastScale = 1, bisToastTime = 6, bisToastAlpha = 0.95, bisToastGlow = true, bisToastStar = "icon",

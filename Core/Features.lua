@@ -112,6 +112,7 @@ ns.FEATURES = {
         bis = true,
         bisLootAlert = true,
         bisRoute = false,
+        bisPvP = true,
         blessings = true,
         durability = false,
         talentPoints = false,

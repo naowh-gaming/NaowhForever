@@ -10686,3 +10686,5 @@ L["%d is outside your level range (Level Range)"] = "%d 件不在你的等级范
 L["%d are outside your level range (Level Range)"] = "%d 件不在你的等级范围内（等级范围）"
 L["Nothing in your level range"] = "你的等级范围内没有"
 L["Can also spawn here."] = "也可能在这里出现。"
+L["PvP Gear"] = "PvP装备"
+L["Offer PvP rank, battleground and PvP vendor gear in the picker and new lists."] = "在选择器和新列表中提供PvP军衔、战场和PvP商人装备。"

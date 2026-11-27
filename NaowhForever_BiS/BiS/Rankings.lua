@@ -25,6 +25,9 @@ local DUAL_WIELD = { WARRIOR = true, ROGUE = true, HUNTER = true }
 local NOT_A_PLACE = { Crafted = true, Quest = true, ["Quest (Horde)"] = true, ["Quest (Alliance)"] = true,
     ["Quest Reward"] = true, [WORLD_DROP] = true, Reputation = true }
 local OTHER_SIDE_QUEST = { Alliance = "Quest (Horde)", Horde = "Quest (Alliance)" }
+local PVP_PLACES = { ["PvP Rank"] = true, ["Alterac Valley"] = true }
+local PVP_VENDOR = "PvP vendor"
+local PVP_TAB = "pvp"
 local VIA_DETAIL = { quest = true, recipe = true }
 local EMPTY = {}
 
@@ -223,10 +226,22 @@ function R.OtherClassQuest(itemID)
     return math.floor(quest[QUEST_CLASSES] / classBit) % 2 == 0
 end
 
+function R.PvP(itemID)
+    local place, detail = Place(ns.BiSSource(itemID) or WORLD_DROP)
+    if PVP_PLACES[place] or detail and detail:find(PVP_VENDOR, 1, true) then return true end
+    local kind, target = B.Sources.Of(itemID)
+    return kind == "faction" and target.tab == PVP_TAB
+end
+
+function R.Hidden(itemID)
+    return not B.Settings.Get("bisPvP") and R.PvP(itemID)
+end
+
 function R.Candidates(slot, spec)
     local ids = {}
     for _, id in ipairs(spec and spec.slots[slot] or EMPTY) do
-        if C_Item.GetItemInfoInstant(id) and not R.OtherSideQuest(id) and not R.OtherClassQuest(id) then
+        if C_Item.GetItemInfoInstant(id) and not R.OtherSideQuest(id) and not R.OtherClassQuest(id)
+            and not R.Hidden(id) then
             ids[#ids + 1] = id
         end
     end
@@ -248,7 +263,7 @@ function R.PreRaid(key)
         local partner = slots[Items.PAIR[slot]]
         for _, id in ipairs(preRaid[slot] or EMPTY) do
             if id ~= partner and C_Item.GetItemInfoInstant(id) and not R.OtherSideQuest(id)
-                and not R.OtherClassQuest(id) then
+                and not R.OtherClassQuest(id) and not R.Hidden(id) then
                 if not slots[slot] then
                     slots[slot] = id
                 else
@@ -278,7 +293,7 @@ local function Offered(pool, slot, ranked, near)
     for _, id in ipairs(pool) do
         local item = Facts(id)
         if item and not skip[id] and IsGear(item) and R.Usable(playerClass, item) and Fits(id, slot)
-            and Wieldable(item[FACT_CLASS], slot) and Near(id, item, level, near) then
+            and Wieldable(item[FACT_CLASS], slot) and Near(id, item, level, near) and not R.Hidden(id) then
             ids[#ids + 1] = id
         end
     end

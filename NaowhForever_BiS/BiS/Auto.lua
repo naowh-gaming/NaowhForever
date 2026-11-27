@@ -52,7 +52,7 @@ local function Gather(spec)
     wipe(pool)
     wipe(simRank)
     for i, id in ipairs(spec.trinkets or NONE) do
-        if not R.OtherSideQuest(id) then pool[id], simRank[id] = true, i end
+        if not R.OtherSideQuest(id) and not R.Hidden(id) then pool[id], simRank[id] = true, i end
     end
     for _, gear in ipairs(Items.GEAR_SLOTS) do
         AddAll(R.Candidates(gear[1], spec))
@@ -60,7 +60,7 @@ local function Gather(spec)
     end
     for _, level in ipairs(ns.BiSLeveling.levels) do
         for _, id in pairs(R.LevelPicks(spec.key, level) or NONE) do
-            if not R.OtherClassQuest(id) then pool[id] = true end
+            if not R.OtherClassQuest(id) and not R.Hidden(id) then pool[id] = true end
         end
     end
 end
@@ -241,6 +241,9 @@ end
 local function OnSetting(key)
     if key == "bis" then
         Watch()
+    elseif key == "bisPvP" then
+        scoredKey = nil
+        if watching then Queue() end
     elseif key == "bisAutoAhead" and watching then
         Queue()
     end

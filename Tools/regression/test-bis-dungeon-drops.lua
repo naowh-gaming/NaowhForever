@@ -60,12 +60,13 @@ end
 -- With journal false, the Journal has not loaded.
 local function Fixture(class, level, sources, journal)
     local list = Dungeons()
-    local ns = { L = dofile("Tools/regression/locale_stub.lua").L, Upper = string.upper, Lower = string.lower, BiSData = { sources = sources or {}, specs = {} }, BiSLeveling = { specs = {}, sources = {} }, BiSCrafts = {}, BiSClassQuests = {}, BiSWorldDrops = {}, BiSQuestLevels = {}, BiSSpots = {}, BiSOtherSide = {}, QoLSettings = {},
+    local settings = { bisPvP = true }
+    local ns = { L = dofile("Tools/regression/locale_stub.lua").L, Upper = string.upper, Lower = string.lower, BiSData = { sources = sources or {}, specs = {} }, BiSLeveling = { specs = {}, sources = {} }, BiSCrafts = {}, BiSClassQuests = {}, BiSWorldDrops = {}, BiSQuestLevels = {}, BiSSpots = {}, BiSOtherSide = {}, QoLSettings = { Get = function(key) return settings[key] end },
         Journal = journal ~= false and { Items = FACTS, Dungeons = function() return list end } or nil }
     Load(RULES, Env(ns, class, level))
     ns.Shared.ItemFacts = FACTS
     local R = ns.BiS.Rankings
-    return { Usable = R.Usable, DungeonDrops = R.DungeonDrops, R = R, ns = ns }
+    return { Usable = R.Usable, DungeonDrops = R.DungeonDrops, R = R, ns = ns, settings = settings }
 end
 
 local count = 0
@@ -266,6 +267,24 @@ Case("a spec's ranking and pre-raid picks leave out quest rewards the class cann
     assert(List(m.R.Candidates(1, { slots = { [1] = { 1, 2, 3 } } })) == "1,3")
     m.ns.BiSData.specs = { { key = "restoration-shaman", preRaid = { [1] = { 2, 3 } } } }
     assert(m.R.PreRaid("restoration-shaman")[1] == 3)
+end)
+
+Case("PvP Gear off leaves PvP rank, PvP vendor, battleground and PvP faction gear out", function()
+    local m = Fixture("MAGE", 60, { [20] = "Rank 8" .. SEP .. "PvP Rank", [21] = "Horde PvP vendor" .. SEP .. "Vendor",
+        [22] = "Lady Palanseer" .. SEP .. "Alterac Valley", [15] = "The Defilers - Revered" .. SEP .. "Reputation",
+        [16] = "Kirin Tor - Honored" .. SEP .. "Reputation" })
+    m.ns.Journal.Factions = function(tab)
+        return { { name = tab, tab = tab, tiers = { { items = { tab == "pvp" and 15 or 16 } } } } }
+    end
+    for _, id in ipairs({ 20, 21, 22, 15 }) do assert(m.R.PvP(id), id) end
+    assert(not m.R.PvP(16) and not m.R.PvP(13), "another faction's or a dungeon's gear is not PvP gear")
+    local spec = { slots = { [1] = { 20, 21, 22, 13 } } }
+    m.ns.BiSData.specs = { { key = "frost-mage", preRaid = { [1] = { 20, 13 } } } }
+    assert(List(m.R.Candidates(1, spec)) == "20,21,22,13", "on by default, as before")
+    assert(m.R.PreRaid("frost-mage")[1] == 20)
+    m.settings.bisPvP = false
+    assert(List(m.R.Candidates(1, spec)) == "13", List(m.R.Candidates(1, spec)))
+    assert(m.R.PreRaid("frost-mage")[1] == 13)
 end)
 
 Case("a world drop the Journal places on a boss with no chance stays a world drop, and no dungeon drop", function()

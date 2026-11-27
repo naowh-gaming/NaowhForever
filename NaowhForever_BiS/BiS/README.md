@@ -151,6 +151,10 @@ Other modules call in through `ns`: `ns.IsBisItem` (the Journal, Bag Space, the 
   lists pick first for the slot (`Tools/build/bis_data.py`), most votes first; a ring or trinket is
   a vote for both slots of its pair. MythicSim sims no healer, so a healer's slots are led by the
   lists' picks with one vote too. A one-faction item (PvP gear) can lead when the lists agree on it.
+- PvP Gear (`bisPvP`, on by default) off leaves PvP gear out of the picker, Pre-raid BiS and the Auto
+  list's pool (`R.Hidden`); picks already on a list stay. PvP gear (`R.PvP`) is what its source puts at
+  PvP Rank or Alterac Valley, a PvP vendor's, or a reputation reward of a faction on the Journal's PvP
+  tab, so without the Journal the battleground factions' rewards stay in.
 - A slot you change on the Auto list (add, remove, move) is kept in `kept` and never refilled;
   Generate BiS List again lets every slot go back to the Auto picks. To mix more freely, New List can
   start from the Auto list.

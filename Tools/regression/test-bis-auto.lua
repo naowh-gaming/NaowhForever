@@ -57,6 +57,7 @@ local function Fixture(o)
         ReqLevel = function(id) return (o.req or {})[id] or 1 end,
         OtherSideQuest = function(id) return (o.otherSide or {})[id] == true end,
         OtherClassQuest = function(id) return (o.otherClass or {})[id] == true end,
+        Hidden = function(id) return (o.hidden or {})[id] == true end,
     }
     B.Lists = { CurrentSpec = function() return spec end, List = function() return o.list or list end,
         Changed = function() end }
@@ -131,6 +132,18 @@ Case("a leveling pick from a quest your class cannot take stays out of the pool"
     local m = Fixture({ levelPicks = { [1] = 2 }, otherClass = { [2] = true }, ranked = { [1] = { 1 } },
         worth = { [1] = 1, [2] = 9 } })
     assert(Join(m.Auto.Build(m.spec)[1]) == "1", Join(m.Auto.Build(m.spec)[1]))
+end)
+
+Case("PvP gear hidden by PvP Gear stays out of the pool, and turning it back on scores it again", function()
+    local o = { levelPicks = { [1] = 2 }, trinkets = { 32, 31 }, hidden = { [2] = true, [32] = true },
+        ranked = { [1] = { 1 } }, worth = { [1] = 1, [2] = 9, [31] = 1, [32] = 9 } }
+    local m = Fixture(o)
+    local picks = m.Auto.Build(m.spec)
+    assert(Join(picks[1]) == "1" and Join(picks[13]) == "31", Join(picks[1]) .. " / " .. Join(picks[13]))
+    o.hidden = {}
+    o.onSetting("bisPvP")
+    picks = m.Auto.Build(m.spec)
+    assert(Join(picks[1]) == "2,1" and picks[13][1] == 32, Join(picks[1]) .. " / " .. Join(picks[13]))
 end)
 
 Case("Ring 2 skips Ring 1's pick, and a worn ring counts for either", function()
