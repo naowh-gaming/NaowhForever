@@ -189,6 +189,18 @@ local function Skin(f)
         b:HookScript("OnEnter", ButtonEnter)
     end
     f.Timer:HookScript("OnValueChanged", TimeText)
+    if ours[f] then
+        s.nameHit = CreateFrame("Button", nil, f)
+        s.nameHit:SetScript("OnEnter", function() GroupLootFrameIconFrame_OnEnter(f.IconFrame) end)
+        s.nameHit:SetScript("OnLeave", function()
+            GameTooltip:Hide()
+            ResetCursor()
+        end)
+        s.nameHit:SetScript("OnClick", function()
+            local link = GetLootRollItemLink(f.rollID)
+            if link then HandleModifiedItemClick(link) end
+        end)
+    end
     skins[f] = s
     return s
 end
@@ -233,6 +245,7 @@ local function SetShown(f, s, on)
     s.ilvl:SetShown(on)
     s.boe:SetShown(on)
     for _, count in pairs(s.counts) do count:SetShown(on) end
+    if s.nameHit then s.nameHit:SetShown(on) end
     if not on then
         Glow(f, s, nil)
         s.star:Hide()
@@ -378,6 +391,7 @@ local function PlaceName(f, s, bis, q)
     star:ClearAllPoints()
     star:SetPoint("RIGHT", name, "LEFT", -STAR_GAP, 0)
     star:SetShown(bis)
+    if s.nameHit then s.nameHit:SetAllPoints(name) end
 end
 
 local function SetButton(b, can, reason)
