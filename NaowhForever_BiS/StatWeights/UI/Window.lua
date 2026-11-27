@@ -235,6 +235,7 @@ end
 local function UpgradeEnter(row)
     row.hover:Show()
     if not ns.Shared.Parts.Tip(row, "ANCHOR_RIGHT") then return end
+    GameTooltip_SuppressAutomaticCompareItem(GameTooltip)
     GameTooltip:SetItemByID(row.id)
     GameTooltip:Show()
 end

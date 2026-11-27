@@ -54,6 +54,7 @@ end
 
 local function ItemTipEnter(zone, row)
     if not Tip(zone, "ANCHOR_CURSOR_RIGHT", TIP_X, 0) then return end
+    GameTooltip_SuppressAutomaticCompareItem(GameTooltip)
     GameTooltip:SetItemByID(row.bis)
     Cells.ForeverTip(row.bis)
     local gains = row:GetParent().gains

@@ -102,6 +102,7 @@ end
 local function OnReagentEnter(row)
     row.hover:Show()
     GameTooltip:SetOwner(row, "ANCHOR_RIGHT")
+    GameTooltip_SuppressAutomaticCompareItem(GameTooltip)
     GameTooltip:SetItemByID(row.item)
     GameTooltip:Show()
 end
@@ -149,6 +150,7 @@ local function OnUseEnter(row)
     local e = row.use
     row.hover:Show()
     GameTooltip:SetOwner(row, "ANCHOR_RIGHT")
+    GameTooltip_SuppressAutomaticCompareItem(GameTooltip)
     if e.output then GameTooltip:SetItemByID(e.output) else GameTooltip:SetSpellByID(e.spell) end
     GameTooltip:AddLine(" ")
     if e.sale then

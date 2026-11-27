@@ -112,6 +112,7 @@ end
 
 local function PicksTip(doll, slot, picks, label)
     local soft, muted = T.accentSoft, T.muted
+    GameTooltip_SuppressAutomaticCompareItem(GameTooltip)
     GameTooltip:SetItemByID(picks[1])
     GameTooltip:AddLine(BLANK)
     GameTooltip:AddLine(TEXT_YOUR_PICKS:format(label), soft.r, soft.g, soft.b)

@@ -223,6 +223,7 @@ local function OnRowEnter(self)
     local d = self.draft
     if not d then return end
     GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+    GameTooltip_SuppressAutomaticCompareItem(GameTooltip)
     if d.output then
         GameTooltip:SetItemByID(d.output)
     else

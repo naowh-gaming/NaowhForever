@@ -57,6 +57,7 @@ P.Learn = Learn
 local function OnIconEnter(self)
     if not (self.item or self.spell) then return end
     GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+    GameTooltip_SuppressAutomaticCompareItem(GameTooltip)
     if self.item then
         GameTooltip:SetItemByID(self.item)
     else

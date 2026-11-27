@@ -118,6 +118,7 @@ end
 
 local function OnRowEnter(self)
     GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+    GameTooltip_SuppressAutomaticCompareItem(GameTooltip)
     GameTooltip:SetItemByID(self.itemID)
     if self.vendor then
         local c, price = Style.VENDOR_RGB, V.Price(self.itemID)

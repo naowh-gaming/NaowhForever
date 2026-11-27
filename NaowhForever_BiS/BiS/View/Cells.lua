@@ -157,6 +157,7 @@ end
 
 function Cells.ItemTip(owner, itemID, hint)
     if not Tip(owner, "ANCHOR_CURSOR_RIGHT", TIP_X, 0) then return end
+    GameTooltip_SuppressAutomaticCompareItem(GameTooltip)
     GameTooltip:SetItemByID(itemID)
     Cells.ForeverTip(itemID)
     if hint then GameTooltip:AddLine(hint, T.muted.r, T.muted.g, T.muted.b) end

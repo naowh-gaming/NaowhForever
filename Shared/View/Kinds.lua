@@ -125,6 +125,7 @@ end
 local function ItemEnter(row)
     row.hover:Show()
     if not Parts.Tip(row, "ANCHOR_RIGHT") then return end
+    GameTooltip_SuppressAutomaticCompareItem(GameTooltip)
     GameTooltip:SetItemByID(row.itemID)
     GameTooltip:Show()
 end

@@ -120,6 +120,7 @@ local function RowEnter(row)
     row.hover:Show()
     if not row.auction.link then return end
     GameTooltip:SetOwner(row, "ANCHOR_RIGHT")
+    GameTooltip_SuppressAutomaticCompareItem(GameTooltip)
     GameTooltip:SetHyperlink(row.auction.link)
     GameTooltip:Show()
 end

@@ -74,6 +74,7 @@ end
 
 local function OnRowEnter(self)
     GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+    GameTooltip_SuppressAutomaticCompareItem(GameTooltip)
     GameTooltip:SetItemByID(self.id)
     GameTooltip:Show()
 end

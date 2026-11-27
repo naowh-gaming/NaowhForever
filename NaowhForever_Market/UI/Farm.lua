@@ -70,6 +70,7 @@ local Enable = St.Enable
 local function ItemEnter(icon)
     if not icon.item then return end
     GameTooltip:SetOwner(icon, "ANCHOR_RIGHT")
+    GameTooltip_SuppressAutomaticCompareItem(GameTooltip)
     GameTooltip:SetItemByID(icon.item)
     GameTooltip:Show()
 end

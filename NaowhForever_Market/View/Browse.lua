@@ -64,6 +64,7 @@ end
 local function RowEnter(row)
     row.hover:Show()
     GameTooltip:SetOwner(row, "ANCHOR_RIGHT")
+    GameTooltip_SuppressAutomaticCompareItem(GameTooltip)
     local key = row.itemKey
     local link = C_AuctionHouse.GetItemKeySampleLink(key)
     if link then

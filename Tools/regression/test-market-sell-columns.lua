@@ -33,6 +33,7 @@ Check("on the narrow panel, Up Next's rows are one line", #rows == 2 and rows[1]
 local tips = Hover(rows[1])
 Check("and a row's price each moves to its tooltip, over the hint", rows[1].sub.text ~= nil
     and tips[1] == rows[1].sub.text and tips[2] == HINT)
+Check("the game's item comparison waits for Shift", t.env.GameTooltip.suppressAutomaticCompareItem == true)
 
 Resize(648)
 rows = t.Rows()

@@ -52,6 +52,7 @@ local function TipEnter(zone)
     local row = zone:GetParent()
     if row.mode ~= "add" or not row.rank then return Cells.ItemTip(zone, row.itemID, HINT[row.mode]) end
     if not Tip(zone, "ANCHOR_CURSOR_RIGHT", TIP_X, 0) then return end
+    GameTooltip_SuppressAutomaticCompareItem(GameTooltip)
     GameTooltip:SetItemByID(row.itemID)
     Cells.ForeverTip(row.itemID)
     GameTooltip:AddLine(Parts.RankLine(row.rank))

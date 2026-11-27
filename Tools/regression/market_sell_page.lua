@@ -73,6 +73,7 @@ local function Setup(opts)
     function env.GameTooltip:AddLine(text) t.tips[#t.tips + 1] = text end
     env.ERR_NOT_ENOUGH_MONEY = "You don't have enough money."
     env.GameTooltip_Hide = function() end
+    env.GameTooltip_SuppressAutomaticCompareItem = function(tip) tip.suppressAutomaticCompareItem = true end
     env.BreakUpLargeNumbers = tostring
 
     ns.THEME = { fg = WHITE, muted = WHITE, accent = WHITE, bg = WHITE }

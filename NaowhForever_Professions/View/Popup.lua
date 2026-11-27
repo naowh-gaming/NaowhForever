@@ -29,6 +29,7 @@ end
 
 local function OnRowEnter(self)
     GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+    GameTooltip_SuppressAutomaticCompareItem(GameTooltip)
     if self.item then
         GameTooltip:SetItemByID(self.item)
     elseif self.spell then

@@ -114,6 +114,7 @@ end
 local function OnRowEnter(self)
     if not (self.item or self.spell) then return end
     GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+    GameTooltip_SuppressAutomaticCompareItem(GameTooltip)
     if self.item then
         GameTooltip:SetItemByID(self.item)
     elseif not pcall(GameTooltip.SetRecipeResultItem, GameTooltip, self.spell) then

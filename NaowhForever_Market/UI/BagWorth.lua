@@ -58,6 +58,7 @@ end
 local function RowEnter(row)
     row.hover:Show()
     GameTooltip:SetOwner(row, "ANCHOR_LEFT")
+    GameTooltip_SuppressAutomaticCompareItem(GameTooltip)
     GameTooltip:SetBagItem(row.entry.bag, row.entry.slot)
     if Market.Dock.AtAuction() then
         local c = T.accentSoft

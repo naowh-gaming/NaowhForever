@@ -285,6 +285,7 @@ local function Fixture()
         GameTooltip = Frame(),
         WorldMapFrame = Frame(),
         GameTooltip_Hide = NOTHING,
+        GameTooltip_SuppressAutomaticCompareItem = function(tip) tip.suppressAutomaticCompareItem = true end,
         UIParent = Frame(),
         -- state.menuOpen: a menu is open, and hover cards keep out of its way.
         Menu = { GetManager = function()
@@ -408,6 +409,7 @@ view:GetParent():SetHeight(600)
 view:GetParent().scrolled = nil
 head.scripts.OnEnter(head)
 check("hovering a slot lights its row", view.rows[1].lit.shown == true and view.rows[2].lit.shown == false)
+check("the game's item comparison waits for Shift", getfenv(ns.OpenBisWindow).GameTooltip.suppressAutomaticCompareItem == true)
 check("without scrolling while the row shows", view:GetParent().scrolled == nil)
 view.rowTops[18] = 4000
 view:ScrollTo(18)

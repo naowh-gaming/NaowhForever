@@ -110,6 +110,7 @@ end
 local function RowEnter(row)
     row.hover:Show()
     GameTooltip:SetOwner(row, "ANCHOR_RIGHT")
+    GameTooltip_SuppressAutomaticCompareItem(GameTooltip)
     GameTooltip:SetItemByID(row.itemID)
     GameTooltip:Show()
 end

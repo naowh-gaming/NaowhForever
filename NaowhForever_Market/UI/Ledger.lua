@@ -247,6 +247,7 @@ local function RowEnter(row)
     row.hover:Show()
     if type(row.item) ~= "number" or row.item == 0 then return end
     GameTooltip:SetOwner(row, "ANCHOR_RIGHT")
+    GameTooltip_SuppressAutomaticCompareItem(GameTooltip)
     GameTooltip:SetItemByID(row.item)
     GameTooltip:Show()
 end

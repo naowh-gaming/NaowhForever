@@ -87,6 +87,7 @@ local function OnSlotEnter(self)
     local r = self.record
     if not r then return end
     GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+    GameTooltip_SuppressAutomaticCompareItem(GameTooltip)
     GameTooltip:SetBagItem(r.bag, r.slot)
     if D.Failed(r) then
         local red = St.RED_RGB

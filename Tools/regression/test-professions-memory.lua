@@ -403,6 +403,7 @@ env = {
     AuctionHouseFrame = ah,
     GameTooltip = setmetatable({}, widgetMeta),
     GameTooltip_Hide = Noop,
+    GameTooltip_SuppressAutomaticCompareItem = function(tip) tip.suppressAutomaticCompareItem = true end,
     HideUIPanel = Noop,
     InCombatLockdown = function() return false end,
     IsShiftKeyDown = function() return false end,

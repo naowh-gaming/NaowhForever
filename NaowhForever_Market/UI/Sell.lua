@@ -135,6 +135,7 @@ local function ShowTip(frame, hint)
     local link = frame.link
     if not link then return end
     GameTooltip:SetOwner(frame, "ANCHOR_RIGHT")
+    GameTooltip_SuppressAutomaticCompareItem(GameTooltip)
     GameTooltip:SetHyperlink(link)
     if hint then GameTooltip:AddLine(hint, T.muted.r, T.muted.g, T.muted.b) end
     GameTooltip:Show()
