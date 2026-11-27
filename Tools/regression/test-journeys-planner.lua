@@ -134,6 +134,19 @@ local back = Plan({ known = {}, from = { c = 0, x = 3000, y = 0 }, to = { c = 0,
 Check(back and Modes(back):find("lift", 1, true), "and is taken both ways")
 links[#links] = nil
 
+-- A Walk link joins two pieces of ground the walking maps leave apart: a walk leg of its own, drawn
+-- straight, with no transfer on top of its seconds.
+links[#links + 1] = { "Walk", "AH", 5, { 0, -3000, 0, "Road", 50 }, { 0, -3010, 0, "Floor", 25 } }
+local apart = function(a, b)
+    local road, floor = a.x > -3005, b.x > -3005
+    if road ~= floor then return 3000 end
+end
+local across = Plan({ known = {}, walk = apart, from = { c = 0, x = -2990, y = 0 }, to = { c = 0, x = -3020, y = 0, name = "Drag" } })
+local link = across and across.legs[2]
+Check(across and Modes(across) == "walk,walk,walk" and link.name == "Floor" and link.straight and link.seconds == 5,
+    "a Walk link is walked straight across, in its own seconds: " .. (across and Modes(across) or "none"))
+links[#links] = nil
+
 local ship = ns.JourneyNetwork.ships[3]
 Check(math.abs(P.Sail(nil, ship, 1, 2) + P.Sail(nil, ship, 2, 1) + ship[3][6] + ship[4][6] - P.Period(nil, ship)) < 0.01,
     "there and back again is one period")

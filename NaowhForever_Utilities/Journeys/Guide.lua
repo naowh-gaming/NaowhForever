@@ -73,10 +73,12 @@ local function PlainWaypoint(stop)
     ns.ShowJourneyStep(title, map, x, y, note, icon, details)
 end
 
-local function Action(legs)
-    local first, second = legs[1], legs[2]
-    if first and first.mode == "walk" and second then return second, first, 3 end
-    return first, first, 2
+local function Action(plan)
+    local legs, at = plan.legs, 1
+    if legs[2] and legs[2].straight and legs[1].seconds * plan.speed <= C.ARRIVED then at = 2 end
+    local first, second = legs[at], legs[at + 1]
+    if first and first.mode == "walk" and second then return second, first, at + 2 end
+    return first, first, at + 1
 end
 
 local function Speed()
@@ -111,12 +113,12 @@ end
 
 local function ShowStep()
     local stop = Stop()
-    local action, spot = Action(journey.plan.legs)
+    local action, spot = Action(journey.plan)
     local details = journey.details
     local new = { title = details and details.title or stop[1], map = stop[2], x = stop[3], y = stop[4],
         note = stop[5], icon = stop[6], details = details }
     if action and action.mode ~= "walk" then new.title, new.note = Guide.LegText(action), nil end
-    spot = not S.Get("stepEnds") and Corner() or spot
+    spot = not S.Get("stepEnds") and spot == journey.plan.legs[1] and Corner() or spot
     if spot then
         local map, x, y = World.ToMap(spot)
         if map then new.map, new.x, new.y = map, x, y end
@@ -195,7 +197,7 @@ end
 local function LaterWalks(plan, from)
     local cache = journey.paths
     for i, leg in ipairs(plan.legs) do
-        if i > 1 and leg.mode == "walk" and not leg.corners and from.c == leg.c then
+        if i > 1 and leg.mode == "walk" and not leg.straight and not leg.corners and from.c == leg.c then
             local key = ("%d:%.0f,%.0f>%.0f,%.0f"):format(leg.c, from.x, from.y, leg.x, leg.y)
             local corners = cache[key]
             if corners == nil then
@@ -219,7 +221,7 @@ local function Work(here, to)
     local plan = Planner.Plan(ctx)
     if plan then plan.speed = ctx.speed end
     local first = plan and plan.legs[1]
-    if first and first.mode == "walk" and here.reach then
+    if first and first.mode == "walk" and not first.straight and here.reach then
         local there = FixedReach({ c = first.c, x = first.x, y = first.y, z = first.z }).reach
         plan.corners = there and Thin(Walk.Path(here.reach, there))
     end
@@ -456,7 +458,7 @@ end
 function Guide.Step()
     if not journey or not journey.plan then return end
     local legs = journey.plan.legs
-    local _, _, after = Action(legs)
+    local _, _, after = Action(journey.plan)
     local nextLeg = legs[after]
     return journey.title, journey.done + 1, journey.done + math.max(#legs, 1), nextLeg and Guide.LegText(nextLeg)
 end

@@ -105,6 +105,12 @@ NaowhForever_Utilities/Journeys/
   merged within `LIFT_MERGE` yards, and `/nf lifts` prints each as a line to paste into `LIFTS` in
   `Tools/build/journeys.py`, which makes it a "Lift" link in the network like the tram. The watch only runs
   for `LIFT_WINDOW` seconds after you stop, one check a second, and ends the moment you move.
+- A "Walk" link joins ground the walking maps leave apart. Orgrimmar's west road meets the Valley of Strength
+  at a corner of four tiles, where the bake never joined the ramp down, so a walk from the Valley of Spirits
+  went out the west gate and back in through the main gate. The link is a walk leg drawn straight between its
+  ends, in its own seconds with no transfer: a searched path between them is that long way round.
+  The ramp is not on the walking map, so a player on it stands on the road above: within `ARRIVED` of the
+  link's top, the waypoint goes to its foot, not back up.
 - Water costs `SWIM` times its yards and the sea `SEA` times, the same factors the bake used.
 - `Walk.Cost` takes each end as a place key of the network ("f2", "s3.1", "l1.2") or a reach from
   `Walk.From`, and answers false when there is no walk but nil when the data cannot say, as for a

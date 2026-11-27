@@ -133,6 +133,23 @@ for i = 3, #across, 2 do walked = walked + math.sqrt((across[i] - across[i - 2])
 local line = math.sqrt((GOLDSHIRE.x - EASTVALE.x) ^ 2 + (GOLDSHIRE.y - EASTVALE.y) ^ 2)
 Check(walked >= line and walked <= line * 1.17, ("a walk across tiles is cut straight: %.0f yards for %.0f"):format(walked, line))
 
+-- Orgrimmar's west road and the Valley of Strength do not join in the walking maps; the Walk link
+-- between them brings the road's walk to the Drag close to the straight line.
+for file in Read("NaowhForever_JourneysData/JourneysData.xml"):gmatch('file="Data\\(Map1[^"]*)"') do
+    Load("NaowhForever_JourneysData/Data/" .. file)
+end
+local KALIMDOR, ORGRIMMAR_LINK = 1, 3
+local walkLink = ns.JourneyNetwork.links[ORGRIMMAR_LINK]
+Check(walkLink[1] == "Walk" and walkLink[5][4] == "Valley of Strength", "the third link is Orgrimmar's Walk link")
+local ROAD, DRAG = { c = KALIMDOR, x = 1637.8, y = -4241.6 }, { c = KALIMDOR, x = 1806.2, y = -4494.1 }
+local road, drag = Walk.From(ROAD), Walk.From(DRAG)
+local toLink, fromLink = Walk.Cost(KALIMDOR, road, "l3.1"), Walk.Cost(KALIMDOR, "l3.2", drag)
+Check(toLink and fromLink, "the road walks to the link's top and its foot walks to the Drag")
+local viaLink, around = toLink + fromLink, Walk.Cost(KALIMDOR, road, drag)
+local roadLine = math.sqrt((ROAD.x - DRAG.x) ^ 2 + (ROAD.y - DRAG.y) ^ 2)
+Check(viaLink < roadLine * 2 and around and around > viaLink * 2,
+    ("the west road walks to the Drag over the link: %.0f yards for %.0f, not %s round"):format(viaLink, roadLine, tostring(around)))
+
 -- Idle for a minute, the built tiles, crossings and walks are let go: a journey or estimate builds them again.
 local before = Walk.Tile(EK, Walk.TileOf(CITY.x, CITY.y))
 now = now + 30

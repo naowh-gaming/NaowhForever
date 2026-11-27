@@ -606,6 +606,37 @@ end
 Check(rides == 1, "and the tram as a ride")
 Jy.Guide.Cancel()
 account.journeyFlights["Glyadin-Forever"] = flights
+
+local function OverLink(onLink, toLink)
+    return function()
+        local steps = {
+            { mode = "walk", seconds = toLink or 5, kind = "link", key = "l9.1", name = "Road", c = 0, x = WALK_MID_X, y = WALK_MID_Y },
+            { mode = "walk", seconds = 5, straight = true, kind = "link", key = "l9.2", name = "Floor", c = 0, x = WALK_MID_X,
+                y = WALK_MID_Y - 20 },
+            { mode = "walk", seconds = 10, kind = "goal", key = "goal", name = "Nearby Spot", c = 0, x = WALK_END_X, y = WALK_END_Y },
+        }
+        if onLink then table.remove(steps, 1) end
+        return { seconds = 20, legs = steps }
+    end
+end
+MAPS[IRONFORGE] = { c = 0, x = WALK_END_X, y = WALK_END_Y }
+here = { x = WALK_START_X, y = WALK_START_Y, c = 0 }
+Jy.Planner.Plan = OverLink(false)
+Check(ns.PlaceWaypoint("Nearby Spot", IRONFORGE, 50, 50), "a journey over a Walk link")
+local linkPlan = Jy.Guide.Current().plan
+Check(linkPlan.corners and not linkPlan.legs[2].corners and linkPlan.legs[3].corners,
+    "the walk across a Walk link is drawn straight, the walks either side of it on their paths")
+Jy.Guide.Cancel()
+Jy.Planner.Plan = OverLink(true)
+Check(ns.PlaceWaypoint("Nearby Spot", IRONFORGE, 50, 50) and not Jy.Guide.Current().plan.corners,
+    "and starting on the link, the first walk is drawn straight too")
+Jy.Guide.Cancel()
+Jy.Planner.Plan = OverLink(false, 1)
+Check(ns.PlaceWaypoint("Nearby Spot", IRONFORGE, 50, 50) and current
+    and math.abs(current.position.y - (WALK_MID_Y - 20) / SCALE) < 1e-6,
+    "a step from the link's top, as on its ramp, puts the waypoint on its foot, not back at the top")
+Jy.Guide.Cancel()
+Jy.Planner.Plan = realPlan
 Jy.Walk.Path, Jy.Walk.Cost = realPath, realCost
 
 Check(Jy.Guide.LegText({ mode = "lift", name = "The Rise" }) == "Lift to The Rise", "a lift step reads as one")

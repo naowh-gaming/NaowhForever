@@ -386,5 +386,6 @@ ns.JourneyNetwork = {
     links = {
         { "Portal", "A", 5, { 1, 8799.4, 969.8, "Rut'theran Village", 30.2 }, { 1, 9947.5, 2630.0, "Darnassus", 1318.6 } },
         { "Tram", "A", 150, { 0, -4833.8, -1284.1, "Ironforge", 502.3 }, { 0, -8393.2, 572.2, "Stormwind", 92.4 } },
+        { "Walk", "AH", 5, { 1, 1605.0, -4280.0, "Valley of Spirits", 47.0 }, { 1, 1611.0, -4297.0, "Valley of Strength", 19.0 } },
     },
 }
