@@ -68,6 +68,9 @@ local function Fixture(opts)
         cooldowns = {},                             -- itemID -> { start, duration }, or SECRET
         spellCooldowns = {},                        -- spellID -> { start, duration }
         professions = opts.professions or {},       -- skill line IDs of the professions you have
+        -- the open profession window: { profession = skill line, learned = { [recipe] = true },
+        -- cooldowns = { [recipe] = seconds left } }, or nil while closed
+        tradeSkill = nil,
         epoch = 100000,                             -- time()'s clock
     }
     local timers, frames = {}, {}
@@ -298,6 +301,19 @@ local function Fixture(opts)
             end,
         },
         C_SpellBook = { IsSpellKnown = function(id) return state.known[id] == true end },
+        C_TradeSkillUI = {
+            IsTradeSkillReady = function() return state.tradeSkill ~= nil end,
+            IsTradeSkillLinked = function() return false end,
+            IsTradeSkillGuild = function() return false end,
+            IsNPCCrafting = function() return false end,
+            GetBaseProfessionInfo = function()
+                return state.tradeSkill and { professionID = state.tradeSkill.profession }
+            end,
+            GetRecipeInfo = function(id)
+                return state.tradeSkill and { learned = state.tradeSkill.learned[id] == true }
+            end,
+            GetRecipeCooldown = function(id) return state.tradeSkill and state.tradeSkill.cooldowns[id] end,
+        },
         C_Timer = {
             NewTicker = function(delay, fn)
                 local ticker = { at = state.now + delay, fn = fn, interval = delay }
@@ -2624,6 +2640,40 @@ do
     t.state.instance = "party"
     t.Fire("PLAYER_ENTERING_WORLD"); t.Advance(0.5)
     Check("not in a dungeon", t.Shown(), "")
+end
+
+-- A recipe's cooldown can read 0 from the spell API: the cast saves when it is ready, and the open profession
+-- window's recipe cooldown corrects it.
+do
+    local MOONCLOTH, TAILORING, HOUR = 18560, 197, 3600
+    local t = Fixture({ settings = { personalBuffs = false, elementalAttractor = false, professionCooldowns = true },
+        professions = { TAILORING }, known = { [MOONCLOTH] = true } })
+    t.Login()
+    Check("Mooncloth ready", t.Shown(), "spell:" .. MOONCLOTH)
+    local castAt = t.env.time()
+    t.Fire("UNIT_SPELLCAST_SUCCEEDED", "player", "cast", MOONCLOTH); t.Advance(0.5)
+    Check("used while the spell cooldown reads 0: gone", t.Shown(), "")
+    t.Fire("BAG_UPDATE_DELAYED"); t.Advance(0.5)
+    Check("and stays gone on the next refresh", t.Shown(), "")
+    Check("saved as ready in 95 hours", t.ns.AccountSettings().professionCooldowns["Tester-Realm"].ready.mooncloth,
+        castAt + 95 * HOUR)
+    t.Advance(95 * HOUR)
+    Check("ready again when the saved time comes", t.Shown(), "spell:" .. MOONCLOTH)
+
+    t.state.tradeSkill = { profession = TAILORING, learned = { [MOONCLOTH] = true },
+        cooldowns = { [MOONCLOTH] = 10 * HOUR } }
+    t.Fire("TRADE_SKILL_LIST_UPDATE"); t.Advance(0.5)
+    Check("the open window's recipe cooldown hides it", t.Shown(), "")
+    t.state.tradeSkill = nil
+    t.Fire("BAG_UPDATE_DELAYED"); t.Advance(0.5)
+    Check("and keeps it hidden once closed", t.Shown(), "")
+    t.state.tradeSkill = { profession = TAILORING, learned = { [MOONCLOTH] = true }, cooldowns = {} }
+    t.Fire("TRADE_SKILL_LIST_UPDATE"); t.Advance(0.5)
+    Check("the window saying it is ready shows it", t.Shown(), "spell:" .. MOONCLOTH)
+    t.state.tradeSkill = { profession = 171, learned = {}, cooldowns = {} }
+    t.ns.AccountSettings().professionCooldowns["Tester-Realm"].ready.mooncloth = t.env.time() + HOUR
+    t.Fire("TRADE_SKILL_LIST_UPDATE"); t.Advance(0.5)
+    Check("another profession's window leaves the saved time alone", t.Shown(), "")
 end
 
 if failures > 0 then

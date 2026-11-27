@@ -353,7 +353,10 @@ local function Listen()
         or S.Get("buffIconMode") == "last" or S.Get("professionCooldowns") then
         events:RegisterUnitEvent("UNIT_SPELLCAST_SUCCEEDED", "player")
     end
-    if S.Get("professionCooldowns") then events:RegisterEvent("SKILL_LINES_CHANGED") end
+    if S.Get("professionCooldowns") then
+        events:RegisterEvent("SKILL_LINES_CHANGED")
+        events:RegisterEvent("TRADE_SKILL_LIST_UPDATE")
+    end
     events:RegisterEvent("PLAYER_ENTERING_WORLD")
     events:RegisterEvent("PLAYER_REGEN_ENABLED")
     events:RegisterEvent("PLAYER_UPDATE_RESTING")

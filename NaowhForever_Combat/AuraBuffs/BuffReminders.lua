@@ -59,8 +59,8 @@ end
 
 local PROFESSION_CASTS = {}
 for _, cooldown in ipairs(D.PROFESSION_COOLDOWNS) do
-    PROFESSION_CASTS[cooldown.spell] = true
-    for _, id in ipairs(cooldown.shares or {}) do PROFESSION_CASTS[id] = true end
+    PROFESSION_CASTS[cooldown.spell] = cooldown
+    for _, id in ipairs(cooldown.shares or {}) do PROFESSION_CASTS[id] = cooldown end
 end
 
 local CLASSIC_WEAPON_ICON = {}
@@ -529,6 +529,16 @@ local function CooldownRecords()
     return account.professionCooldowns
 end
 
+local function OpenRecipeCooldown(cooldown)
+    if not C_TradeSkillUI.IsTradeSkillReady() or C_TradeSkillUI.IsTradeSkillLinked()
+        or C_TradeSkillUI.IsTradeSkillGuild() or C_TradeSkillUI.IsNPCCrafting() then return nil end
+    local base = C_TradeSkillUI.GetBaseProfessionInfo()
+    if not (base and base.professionID == cooldown.skill) then return nil end
+    local info = C_TradeSkillUI.GetRecipeInfo(cooldown.spell)
+    if not (info and info.learned) then return nil end
+    return C_TradeSkillUI.GetRecipeCooldown(cooldown.spell) or 0
+end
+
 local function OwnCooldown(cooldown, saved)
     if cooldown.skill and not next(skillLines) then return nil end
     if cooldown.skill and not skillLines[cooldown.skill] then return false end
@@ -538,6 +548,11 @@ local function OwnCooldown(cooldown, saved)
     end
     local left = SpellCooldown(cooldown.spell)
     if left == nil then return nil end
+    if cooldown.hours then
+        local open = OpenRecipeCooldown(cooldown)
+        if open then return open end
+        if left == 0 and saved[cooldown.key] then left = math.max(saved[cooldown.key] - time(), 0) end
+    end
     if C_SpellBook.IsSpellKnown(cooldown.spell) or left > 0 or saved[cooldown.key] then return left end
     return false
 end
@@ -902,7 +917,15 @@ end
 
 function Reminders.NoteProfessionCast(spellID)
     if not S.Get("professionCooldowns") then return false end
-    return PROFESSION_CASTS[spellID] == true
+    local cooldown = PROFESSION_CASTS[spellID]
+    if not cooldown then return false end
+    if cooldown.hours then
+        local records = CooldownRecords()
+        local me = ns.CharKey(records)
+        records[me] = records[me] or { ready = {} }
+        records[me].ready[cooldown.key] = time() + cooldown.hours * HOUR
+    end
+    return true
 end
 
 function Reminders.BagBusy()

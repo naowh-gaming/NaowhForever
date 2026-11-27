@@ -323,6 +323,11 @@ NaowhForever_Combat/AuraBuffs/
   known once its cooldown has been seen running or it was saved for this character before; dropping the
   profession forgets it. While `GetProfessions` returns nothing, or a cooldown reads secret, the saved time is
   kept as it was: clearing it there would lose a recipe that only the saved time says you know.
+- A recipe's cooldown is the profession's, not a spell cooldown: Blizzard's profession window reads it with
+  `C_TradeSkillUI.GetRecipeCooldown`, and a player reported Mooncloth showing ready while on cooldown, so the spell
+  read can be 0. A recipe's cast therefore saves its ready time from its `hours`, and while that recipe's own
+  profession window is open (`TRADE_SKILL_LIST_UPDATE`) its recipe cooldown replaces the saved time; a spell read
+  of 0 otherwise leaves the saved time standing.
 - Each character saves when its cooldowns are ready as `time()` (`professionCooldowns` in the account
   settings, by `ns.CharKey`), so another character's show with Other Characters on, as they were when that one
   was last played. The current character's come from its live cooldowns; a saved time moves only when it is off
