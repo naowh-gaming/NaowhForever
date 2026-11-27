@@ -385,7 +385,7 @@ local function Build()
         local button = ns.Button(window, spec[1], BUTTON_W, BUTTON_H, CB[spec[2]])
         button:SetPoint("BOTTOMLEFT", x, FOOTER + CARD + PAD)
         ns.Tooltip(button, spec[1], spec[3])
-        x = x + BUTTON_W + BUTTON_GAP
+        x = x + button:GetWidth() + BUTTON_GAP
     end
     window:Hide()
 end

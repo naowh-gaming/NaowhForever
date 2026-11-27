@@ -335,11 +335,14 @@ end
 
 local function EditButtons(classID, tree, build, y)
     local actions = EditActions(classID, tree, build)
-    for i, action in ipairs(actions) do
+    local x = V.paneX
+    for _, action in ipairs(actions) do
         local b = Take("edit", NewEditButton)
-        b:SetPoint("TOPLEFT", V.body, "TOPLEFT", V.paneX + (i - 1) * (EDIT_W + BUTTON_GAP), y)
+        b:SetPoint("TOPLEFT", V.body, "TOPLEFT", x, y)
+        b:SetWidth(EDIT_W)
         ns.SetButtonText(b, action[1])
         b._onClick = action[2]
+        x = x + b:GetWidth() + BUTTON_GAP
     end
     return y - Style.SKIP_H - BUTTON_GAP - Style.SECTION_GAP
 end
@@ -534,15 +537,19 @@ local function BuildActions(classID, build, ownClass, y)
     local actions = {}
     if ownClass then OwnActions(actions, classID, build) end
     ShareActions(actions, classID, build)
-    local x = V.paneX
+    local x, right = V.paneX, V.body:GetWidth()
     for _, action in ipairs(actions) do
         local b = Take("action", NewActionButton)
-        b:SetPoint("TOPLEFT", V.body, "TOPLEFT", x, y)
         b:SetWidth(action[2])
         ns.SetButtonText(b, action[1])
+        local w = b:GetWidth()
+        if x > V.paneX and x + w > right then
+            x, y = V.paneX, y - Style.SKIP_H - BUTTON_GAP * 2
+        end
+        b:SetPoint("TOPLEFT", V.body, "TOPLEFT", x, y)
         b._onClick = action[3]
         PaintRest(b, action[4])
-        x = x + action[2] + BUTTON_GAP
+        x = x + w + BUTTON_GAP
     end
     return y - Style.SKIP_H - BUTTON_GAP - Style.SECTION_GAP
 end

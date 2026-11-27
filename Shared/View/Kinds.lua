@@ -61,6 +61,8 @@ end
 local function NewSection(view)
     local row = CreateFrame("Frame", nil, view)
     row.text = ns.Font(row, TEXT_SIZE, nil, T.accentSoft)
+    row.text:SetJustifyH("LEFT")
+    row.text:SetWordWrap(false)
     row.arrow = Parts.Arrow(row, SECTION_ARROW, T.accentSoft)
     row.arrow:SetPoint("BOTTOMLEFT", -ARROW_OUT, TITLE_RISE)
     row.line = ns.Solid(row, "ARTWORK", T.line, 1)
@@ -94,6 +96,9 @@ local function SetSection(row, title, count, open, onToggle, linkText, onLink, l
     end
     row.first:SetShown(firstText ~= nil and linkText ~= nil)
     if firstText then PaintLink(row.first, firstText, onFirst) end
+    if linkText then
+        row.text:SetPoint("BOTTOMRIGHT", firstText and row.first or row.link, "BOTTOMLEFT", -LINK_GAP, TITLE_RISE - LINK_RISE)
+    end
     return row:GetParent().tightTitles and SECTION_TIGHT_H or SECTION_H
 end
 
