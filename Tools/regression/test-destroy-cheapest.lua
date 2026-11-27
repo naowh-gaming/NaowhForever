@@ -38,6 +38,10 @@ local ITEMS = {
     [36] = { "Library Book", 1, 5, CLASS.TRADE, 0 },
     [37] = { "Gear Set Belt", 2, 50, CLASS.ARMOR, 0 },
     [38] = { "Quest Slot Rock", 1, 5, CLASS.TRADE, 0 },
+    [40] = { "Worn Sword", 1, 100, CLASS.WEAPON, 1 },
+    [60] = { "Incoming Herb", 1, 20, CLASS.TRADE, 0, 0, nil, true },
+    [61] = { "Incoming Cloth", 1, 20, CLASS.TRADE, 0 },
+    [62] = { "Bag Herb", 1, 5, CLASS.TRADE, 0, 0, nil, true },
     [FISHING_POLE] = { "Fishing Pole", 1, 5, CLASS.WEAPON, 20 },
     [HEARTHSTONE] = { "Hearthstone", 1, 0, CLASS.TRADE, 0 },
     [MINING_PICK] = { "Mining Pick", 1, 2, CLASS.WEAPON, 14 },
@@ -47,7 +51,8 @@ local ITEMS = {
 local function Fixture()
     local env = setmetatable({}, { __index = _G })
     env._G = env
-    local t = { env = env, settings = {}, deleted = 0, picked = 0, printed = {} }
+    local t = { env = env, settings = {}, deleted = 0, picked = 0, printed = {}, auction = {},
+        linkVendor = {}, missingLinks = {} }
     local defaults = {
         enabled = true, destroyCheapest = true,
         destroyCheapestPoor = true, destroyCheapestCommon = true, destroyCheapestUncommon = true,
@@ -57,6 +62,9 @@ local function Fixture()
         destroyCheapestMarket = false, destroyCheapestMarketRank = false, destroyCheapestAnyway = false,
         destroyCheapestMarketStale = false, destroyCheapestMarketDays = 7,
         destroyCheapestConsumable = true, destroyCheapestAll = false, bagCleanupMaxValue = 0,
+        destroyCheapestRankQty = "batch", destroyCheapestZeroVendor = false,
+        destroyCheapestBoundGear = false, destroyCheapestDurability = false,
+        destroyCheapestReagentBag = false,
     }
     local db = {}
     local S = {}
@@ -70,6 +78,7 @@ local function Fixture()
 
     -- bags[bag] = { n = slots, [slot] = { id, count, link, bound } }; family[bag] = bag family.
     t.bags, t.family, t.loot, t.quests, t.sets, t.bis, t.books = {}, {}, {}, {}, {}, {}, {}
+    t.durability, t.free = {}, {}
     local cursor
 
     local noop = function() end
@@ -146,7 +155,8 @@ local function Fixture()
     env.LOOT_SLOT_ITEM = 1
     env.ITEM_QUALITY_COLORS = {}
     for q = 0, 7 do env.ITEM_QUALITY_COLORS[q] = { r = 1, g = 1, b = 1 } end
-    env.Enum = { ItemWeaponSubclass = { Fishingpole = 20 }, ItemBind = { OnAcquire = BIND_ON_ACQUIRE, Quest = BIND_QUEST } }
+    env.Enum = { BagIndex = { ReagentBag = 5 }, ItemWeaponSubclass = { Fishingpole = 20 },
+        ItemBind = { OnAcquire = BIND_ON_ACQUIRE, Quest = BIND_QUEST } }
 
     local function Slot(bag, slot)
         local b = t.bags[bag]
@@ -158,12 +168,16 @@ local function Fixture()
     env.C_Container = {
         GetContainerItemInfo = Slot,
         GetContainerNumSlots = function(bag) return t.bags[bag] and t.bags[bag].n or 0 end,
-        GetContainerNumFreeSlots = function(bag) return 0, t.family[bag] or 0 end,
+        GetContainerNumFreeSlots = function(bag) return t.free[bag] or 0, t.family[bag] or 0 end,
         GetContainerItemQuestInfo = function(bag, slot)
             local s = t.bags[bag] and t.bags[bag][slot]
             return { isQuestItem = s and t.quests[s.id] or false }
         end,
         GetContainerItemEquipmentSetInfo = function() return false end,
+        GetContainerItemDurability = function(bag, slot)
+            local value = t.durability[bag .. ":" .. slot]
+            if value then return value[1], value[2] end
+        end,
         PickupContainerItem = function(bag, slot)
             if cursor then
                 cursor = nil
@@ -175,11 +189,15 @@ local function Fixture()
         end,
     }
     local function Info(query)
+        if t.missingLinks[query] then return nil end
         local id = query
         if type(query) == "string" then id = tonumber(query:match("item:(%d+)")) end
         local row = ITEMS[id]
         if not row then return nil end
-        return row[1], "item:" .. id, row[2], 1, 1, "x", "y", 1, "", id, row[3], row[4], row[5], row[6] or 0, 0, row[7]
+        local vendor = t.linkVendor[query]
+        if vendor == nil then vendor = row[3] end
+        return row[1], "item:" .. id, row[2], 1, 1, "x", "y", 1, "", id, vendor, row[4], row[5],
+            row[6] or 0, 0, row[7], row[8]
     end
     env.C_Item = {
         GetItemInfo = Info,
@@ -225,7 +243,10 @@ local function Fixture()
     ns.THEME = { bg = { r = 0, g = 0, b = 0 }, fg = { r = 1, g = 1, b = 1 }, muted = { r = 0.5, g = 0.5, b = 0.5 } }
     ns.IsLibraryBook = function(id) return t.books[id] == true end
     ns.IsBisItem = function(id) return t.bis[id] == true end
-    ns.AuctionPrice = function() return nil end
+    ns.AuctionPrice = function(id)
+        local quote = t.auction[id]
+        if quote then return quote[1], quote[2] end
+    end
     ns.AuctionAge = function() return "" end
     ns.GamepadStandDown = function() return false end
     ns.OnApply = noop
@@ -246,7 +267,9 @@ local function Fixture()
             Panel = function() local p = widget(); p.backdrop = widget(); return p end,
             ItemIcon = function() local i = widget(); i.texture = widget(); i.edge = widget(); return i end,
         },
-        Style = { PANEL_W = 380, ACTION = 16, BORDER_RGB = { r = 0, g = 0, b = 0 }, CLOSE_IN = 4, CLOSE_SIZE = 16,
+        Style = { PANEL_W = 380, ACTION = 16, BORDER_RGB = { r = 0, g = 0, b = 0 },
+            HAVE_RGB = { r = 0, g = 1, b = 0 }, RED_RGB = { r = 1, g = 0, b = 0 },
+            CLOSE_IN = 4, CLOSE_SIZE = 16,
             ICON_CROP = 0.07, ICON_CROP_HIGH = 0.93 },
         Items = { OnLoaded = function(_, fn) fn() end },
     }
@@ -436,6 +459,187 @@ do
     t.D.Paint()
     check(not t.D.armed, "another item to destroy cancels the arm")
     t.Close()
+end
+
+-- A variant is valued from its own link and never from the base item id.
+do
+    local t = Fixture()
+    t.linkVendor["item:10:5"] = 3
+    t.Fill({ { 10, 1, "item:10:5" } })
+    t.D.Scan()
+    check(t.Offered(10).vendorUnit == 3, "a variant keeps the vendor price from its own item link")
+    t.missingLinks["item:10:6"] = true
+    t.Fill({ { 10, 1, "item:10:6" } })
+    t.D.Scan()
+    check(t.Offered(10) == nil, "an unloaded variant is not priced from its base item id")
+end
+
+-- The optional filters expose only their named exception and stay off by default.
+do
+    local t = Fixture()
+    t.Fill({ { 21, 3 }, { 32, 1, nil, true }, { 30 } })
+    t.D.Scan()
+    check(t.Offered(21) == nil, "zero-vendor trade goods stay protected by default")
+    check(t.Offered(32) == nil, "bound gear stays protected by default")
+    t.settings.destroyCheapestZeroVendor = true
+    t.settings.destroyCheapestBoundGear = true
+    t.D.Scan()
+    check(t.Offered(21) ~= nil, "Include Zero-Vendor-Value Items offers a zero-vendor trade good")
+    check(t.Offered(32) ~= nil, "Include Bound Armor and Weapons offers bound gear")
+    check(t.Offered(30) == nil, "the new filters do not lift quest-item protection")
+end
+
+-- Turning an exception off after the first click keeps the item in the bag.
+do
+    local cases = {
+        { "the zero-vendor exception", 21, "destroyCheapestZeroVendor" },
+        { "the bound-gear exception", 32, "destroyCheapestBoundGear", true },
+    }
+    for _, case in ipairs(cases) do
+        local t = Fixture()
+        t.settings[case[3]] = true
+        t.Fill({ { case[2], 1, nil, case[4] } })
+        t.Open()
+        t.D.OnDestroy()
+        t.settings[case[3]] = false
+        t.D.OnDestroy()
+        check(t.deleted == 0 and t.picked == 0, "turning off " .. case[1] .. " cancels the delete")
+    end
+end
+
+-- Worn vendor estimates use the live slot's durability and are marked as estimates.
+do
+    local t = Fixture()
+    t.settings.destroyCheapestDurability = true
+    t.durability["0:1"] = { 40, 100 }
+    t.Fill({ { 40 } })
+    t.D.Scan()
+    local pick = t.Offered(40)
+    check(pick and pick.vendorUnit == 40 and pick.value == 40,
+        "Estimate Worn Vendor Price lowers the offer by remaining durability")
+    check(pick.vendorEstimated == true and t.D.PriceCells(pick).vendorLabel == t.D.TEXT.VENDOR_EST_TAG,
+        "a worn vendor price is labelled as an estimate")
+    t.Open()
+    t.D.OnDestroy()
+    t.durability["0:1"] = { 20, 100 }
+    t.D.OnDestroy()
+    check(t.deleted == 0 and t.picked == 0, "a changed worn-value estimate cancels the delete")
+end
+
+-- Rank Quantity changes ordering, while Keep Items Worth More Than still uses the stack value.
+do
+    local t = Fixture()
+    t.Fill({ { 10, 20 }, { 11, 1 } })
+    t.D.Scan()
+    check(t.D.picks[1].itemID == 11, "Batch ranks a 30c item below a 200c stack")
+    t.settings.destroyCheapestRankQty = "unit"
+    t.D.Scan()
+    check(t.D.picks[1].itemID == 10, "Individual ranks a 10c unit below a 30c unit")
+    t.settings.bagCleanupMaxValue = 100
+    t.D.Scan()
+    check(t.Offered(10) == nil, "the value cap still compares the 200c stack under Individual ranking")
+end
+
+-- A zero-vendor offer with an auction estimate never takes the main destroy path.
+do
+    local t = Fixture()
+    t.settings.destroyCheapestMarket = true
+    t.auction[21] = { 100, 1000 }
+    t.settings.destroyCheapestZeroVendor = true
+    t.Fill({ { 21 } })
+    t.Open({ 10 })
+    check(t.D.WorthIt(t.D.picks[1], t.D.loots[1]) == false,
+        "an auction-valued zero-vendor item requires Destroy Anyway")
+end
+
+-- The reagent-bag option needs full ordinary and reagent bags plus incoming reagent loot.
+do
+    local t = Fixture()
+    t.Fill({ { 10 } })
+    t.bags[5] = { n = 2, [1] = { id = 62, count = 1 }, [2] = { id = 10, count = 1 } }
+    t.Open({ 60 })
+    check(t.Offered(62) == nil, "the reagent bag is not scanned while its option is off")
+    t.settings.destroyCheapestReagentBag = true
+    t.D.Refresh()
+    check(t.Offered(62) ~= nil, "a reagent-bag reagent is offered for incoming reagent loot")
+    check(t.Offered(10) ~= nil, "ordinary-bag candidates remain available beside the reagent offer")
+    check(t.D.picks[1].itemID == 62, "the reagent-bag candidate joins the same cheapest-first list")
+    t.free[5] = 1
+    t.D.Refresh()
+    check(t.Offered(62) == nil, "a free reagent-bag slot keeps its contents out of the list")
+    t.free[5] = 0
+    t.loot[1] = { id = 61, count = 1 }
+    t.Event("LOOT_SLOT_CLEARED")
+    check(t.Offered(62) == nil, "a class-7 non-reagent does not activate the reagent-bag offer")
+end
+
+-- The second click re-checks the reagent-bag conditions.
+do
+    local t = Fixture()
+    t.settings.destroyCheapestReagentBag = true
+    t.Fill({ { 10 } })
+    t.bags[5] = { n = 1, [1] = { id = 62, count = 1 } }
+    t.Open({ 60 })
+    check(t.D.picks[1].bag == 5, "the reagent-bag item is selected")
+    t.D.OnDestroy()
+    t.free[5] = 1
+    t.D.OnDestroy()
+    check(t.deleted == 0 and t.picked == 0, "a newly free reagent-bag slot cancels the delete")
+end
+
+-- Replacing the incoming reagent with ordinary loot cancels the arm and removes the offer.
+do
+    local t = Fixture()
+    t.settings.destroyCheapestReagentBag = true
+    t.Fill({ { 10 } })
+    t.bags[5] = { n = 1, [1] = { id = 62, count = 1 } }
+    t.Open({ 60 })
+    t.D.OnDestroy()
+    t.loot[1] = { id = 61, count = 1 }
+    t.Event("LOOT_SLOT_CLEARED")
+    check(not t.D.armed and t.Offered(62) == nil, "ordinary replacement loot cancels the reagent arm")
+    t.D.OnDestroy()
+    check(t.deleted == 0, "one click after the replacement never deletes")
+end
+
+-- The cards keep unit and stack prices separate, and the comparison uses each side's count.
+do
+    local t = Fixture()
+    t.settings.destroyCheapestMarket = true
+    t.auction[10], t.auction[50] = { 40, 1000 }, { 2500, 1000 }
+    t.Fill({ { 10, 5 } })
+    t.Open({ 50 })
+    local pick, loot = t.D.picks[1], t.D.loots[1]
+    local pickCells = t.D.PriceCells(pick)
+    check(pickCells.vendorEach == "10c" and pickCells.vendorStack == "50c",
+        "the Destroy card shows vendor prices for one item and the stack")
+    check(pickCells.ahEach == "40c" and pickCells.ahStack == "200c",
+        "the Destroy card shows auction prices for one item and the stack")
+    local lootCells = t.D.PriceCells(loot)
+    check(lootCells.vendorEach == "2000c" and lootCells.vendorStack == nil,
+        "the Incoming card shows one price for a single item")
+    local gaps = t.D.CompareGaps(pick, loot)
+    check(gaps.columns == t.D.STACK_COLUMNS and gaps.stackLabel == t.D.TEXT.COL_TOTAL,
+        "the comparison adds a total column when only the Destroy side is a stack")
+    check(gaps.vendorEach == 1990 and gaps.vendorStack == 1950,
+        "the vendor comparison reports the individual and total profit")
+    check(gaps.ahEach == 2460 and gaps.ahStack == 2300,
+        "the auction comparison reports the individual and total profit")
+    check(t.D.SignedCoin(-25) == "-25c" and t.D.GapTone(-25) == "bad",
+        "a deficit has a signed price and the deficit tone")
+end
+
+-- An old market scan stays visible but muted when it is excluded from comparisons.
+do
+    local t = Fixture()
+    t.settings.destroyCheapestMarket = true
+    t.settings.destroyCheapestMarketStale = true
+    t.auction[10] = { 40, -700000 }
+    t.Fill({ { 10 } })
+    t.D.Scan()
+    local cells = t.D.PriceCells(t.D.picks[1])
+    check(cells.ahEach == "40c" and cells.ahTone == "muted",
+        "a stale auction estimate is still shown muted")
 end
 
 print(("test-destroy-cheapest: %d checks passed"):format(checks))
