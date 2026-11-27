@@ -12,7 +12,7 @@ local Move = {}
 Market.Move = Move
 
 function Move.Place()
-    if moving or not (Market.On() and ah:IsShown()) then return end
+    if moving or not (Market.PanelsOn() and ah:IsShown()) then return end
     local saved = ns.AccountSettings()[POSITION]
     if saved then
         ah:ClearAllPoints()
@@ -23,7 +23,7 @@ function Move.Place()
 end
 
 function Move.Start()
-    if moving or not (IsShiftKeyDown() and Market.On() and ah:IsShown()) then return end
+    if moving or not (IsShiftKeyDown() and Market.PanelsOn() and ah:IsShown()) then return end
     moving = true
     ah:SetMovable(true)
     ah:StartMoving()

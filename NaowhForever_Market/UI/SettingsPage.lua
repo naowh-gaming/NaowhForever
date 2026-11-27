@@ -36,15 +36,24 @@ local function On()
 end
 
 local function Why()
-    return ns.GamepadWhy() or TEXT_OFF
+    return TEXT_OFF
+end
+
+local function PanelsOn()
+    return Market.PanelsOn()
+end
+
+local function PanelsWhy()
+    if not On() then return Why() end
+    return ns.GamepadWhy()
 end
 
 local function BagWorthOn()
-    return On() and S.Get("bagWorth")
+    return PanelsOn() and S.Get("bagWorth")
 end
 
 local function BagWorthWhy()
-    if not On() then return Why() end
+    if not PanelsOn() then return PanelsWhy() end
     return TEXT_NEEDS_BAG_WORTH
 end
 
@@ -67,20 +76,20 @@ local function BestWhy()
 end
 
 local function PercentOn()
-    return On() and S.Get("undercut") == "percent"
+    return PanelsOn() and S.Get("undercut") == "percent"
 end
 
 local function PercentWhy()
-    if not On() then return Why() end
+    if not PanelsOn() then return PanelsWhy() end
     return TEXT_NEEDS_PERCENT
 end
 
 local function AmountOn()
-    return On() and S.Get("undercut") == "amount"
+    return PanelsOn() and S.Get("undercut") == "amount"
 end
 
 local function AmountWhy()
-    if not On() then return Why() end
+    if not PanelsOn() then return PanelsWhy() end
     return TEXT_NEEDS_AMOUNT
 end
 
@@ -149,7 +158,7 @@ page:Card({
     help = "How The Market shows at the auction house.",
     search = "full window replace blizzard auction house whole takeover open",
     rows = {
-        { key = "fullWindow", label = "Full Window", toggle = true, needs = On, why = Why,
+        { key = "fullWindow", label = "Full Window", toggle = true, needs = PanelsOn, why = PanelsWhy,
           help = "The Market opens as one big window in place of Blizzard's auction house." },
     },
 })
@@ -159,11 +168,11 @@ page:Card({
     help = "How The Market posts your items at an auctioneer.",
     summary = DurationSummary,
     rows = {
-        { key = "postKeys", label = "Post With Keys", toggle = true, needs = On, why = Why,
+        { key = "postKeys", label = "Post With Keys", toggle = true, needs = PanelsOn, why = PanelsWhy,
           help = "Space posts the item in front of you, S skips it, Up and Down step its price." },
-        { key = "duration", label = "Duration", choice = DURATIONS, needs = On, why = Why,
+        { key = "duration", label = "Duration", choice = DURATIONS, needs = PanelsOn, why = PanelsWhy,
           help = "How long your auctions run." },
-        { key = "undercut", label = "Undercut", choice = UNDERCUTS, needs = On, why = Why,
+        { key = "undercut", label = "Undercut", choice = UNDERCUTS, needs = PanelsOn, why = PanelsWhy,
           help = "How far under the cheapest listing The Market prices your items." },
         { key = "undercutPercent", label = "Undercut Percent", slider = UNDERCUT_PERCENT_RANGE, unit = "%",
           needs = PercentOn, why = PercentWhy,
@@ -171,12 +180,12 @@ page:Card({
         { key = "undercutAmount", label = "Undercut Amount", slider = UNDERCUT_AMOUNT_RANGE, unit = "s",
           scale = Market.C.SILVER, needs = AmountOn, why = AmountWhy,
           help = "How much under the cheapest listing your price goes." },
-        { key = "askBadPost", label = "Ask Before a Bad Post", toggle = true, needs = On, why = Why,
+        { key = "askBadPost", label = "Ask Before a Bad Post", toggle = true, needs = PanelsOn, why = PanelsWhy,
           help = "Asks before posting for less than a vendor pays, or far under the going price." },
-        { key = "startingBid", label = "Starting Bid", toggle = true, needs = On, why = Why,
+        { key = "startingBid", label = "Starting Bid", toggle = true, needs = PanelsOn, why = PanelsWhy,
           help = "Adds a Starting Bid box to Sell for items that are not commodities." },
         { label = "Default Quantity", button = ResetQuantities, buttonText = "Reset", note = QuantityNote,
-          needs = On, why = Why, search = "stack amount how many post",
+          needs = PanelsOn, why = PanelsWhy, search = "stack amount how many post",
           help = "Puts how many Sell offers to post back to all you have, for every type of item." },
     },
 })
@@ -186,10 +195,10 @@ page:Card({
     help = "When one of your auctions counts as undercut.",
     search = "undercut cancel ahead cheaper tolerance",
     rows = {
-        { key = "aheadAllowed", label = "Items Ahead Allowed", slider = AHEAD_RANGE, needs = On, why = Why,
+        { key = "aheadAllowed", label = "Items Ahead Allowed", slider = AHEAD_RANGE, needs = PanelsOn, why = PanelsWhy,
           help = "An auction is undercut only when more than this many items are listed for less. Other sellers' "
               .. "stackable goods at your price count too, as the newest sells first." },
-        { key = "mailCollect", label = "Collect Mail", toggle = true, needs = On, why = Why,
+        { key = "mailCollect", label = "Collect Mail", toggle = true, needs = PanelsOn, why = PanelsWhy,
           search = "mailbox inbox open all take sold expired bought cancelled",
           help = "A Collect button beside your inbox takes all your mail, or only sold, bought or expired auctions." },
     },
@@ -199,7 +208,7 @@ page:Card({
     id = "bags", name = "Bags & Tooltips", order = ORDER_BAGS,
     help = "What your items are worth, away from the auction house too.",
     rows = {
-        { key = "bagWorth", label = "Bag Worth", toggle = true, needs = On, why = Why,
+        { key = "bagWorth", label = "Bag Worth", toggle = true, needs = PanelsOn, why = PanelsWhy,
           help = "A card on your bags with what they would fetch at your last scan, and their five most "
               .. "valuable items, numbered on their slots." },
         { key = "bagWorthBank", label = "Include Bank", toggle = true, needs = BagWorthOn, why = BagWorthWhy,
@@ -253,7 +262,7 @@ page:Card({
     help = "Gear on the auction house that beats what you wear, on the Buy tab beside it.",
     search = "upgrade gear cheap boe stat weights better armor weapon",
     rows = {
-        { key = "cheapUpgrades", label = "Cheap Upgrades", toggle = true, needs = On, why = Why,
+        { key = "cheapUpgrades", label = "Cheap Upgrades", toggle = true, needs = PanelsOn, why = PanelsWhy,
           help = "An Upgrades list on Buy of the gear in your scans that beats yours, under your price." },
     },
 })

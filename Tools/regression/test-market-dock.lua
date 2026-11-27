@@ -3,7 +3,8 @@
 -- List, and follows Blizzard's Buy, Sell and Auctions tabs; its X closes only the panel until the next visit, with no
 -- button left to bring it back. Farm, Price Graph and Reagents tabs follow Blizzard's last tab: each docks The Market's
 -- window in the panel's place, and the picked tab again or the window's X brings the panel back. Leaving the
--- auctioneer puts it all away. Post With Keys and Bag Worth start off. With Full Window on (off by default), Blizzard's
+-- auctioneer puts it all away. Post With Keys and Bag Worth start off. The gamepad interface style keeps The Market
+-- on but off Blizzard's windows. With Full Window on (off by default), Blizzard's
 -- window is faded out and The Market's window covers it instead; its Blizzard button steps aside to the panel for
 -- the visit, with a The Market button above Blizzard's window to go back, and Blizzard's window is always faded back in
 -- when The Market lets go of it.
@@ -27,6 +28,17 @@ Load("NaowhForever_Market/Market.lua", {
 check("Full Window starts off", defaults.fullWindow == false)
 check("Post With Keys starts off", defaults.postKeys == false)
 check("Bag Worth starts off", defaults.bagWorth == false)
+
+local padNs = {
+    FEATURES = { market = { enabled = true } },
+    UI = { ModuleSettings = function() return { Get = function(k) return k == "enabled" end } end },
+    GamepadStandDown = function() return true end,
+}
+Load("NaowhForever_Market/Market.lua", { _G = { NaowhForever = padNs }, C_CVar = { GetCVarDefault = function() return "2" end } })
+check("the gamepad interface style leaves The Market on", padNs.Market.On())
+check("the gamepad interface style takes it off Blizzard's windows", not padNs.Market.PanelsOn())
+padNs.GamepadStandDown = function() return false end
+check("without it, it is on Blizzard's windows too", padNs.Market.PanelsOn())
 
 local function Frame()
     local f = { shown = false, alpha = 1, scripts = {}, points = {} }
@@ -146,7 +158,7 @@ ns = {
     OnAuctionHouseMoved = function(fn) onMoved = fn end,
     Market = {
         Settings = { Get = function(k) return settings[k] end, OnChange = function() end },
-        On = function() return marketOn end,
+        PanelsOn = function() return marketOn end,
         Sell = { Reset = function() resets = resets + 1 end },
         Style = { BAR_GAP = 8, TEXT_SIZE = 12, HAVE_RGB = {}, DOCK_W = 380, DOCK_PAD = 10 },
         Pages = { buy = Page(), sell = Page(), mine = Page(), shop = Page() },

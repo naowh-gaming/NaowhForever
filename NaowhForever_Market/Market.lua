@@ -25,6 +25,10 @@ local Market = { Settings = S }
 ns.Market = Market
 
 function Market.On()
+    return S.Get("enabled")
+end
+
+function Market.PanelsOn()
     return S.Get("enabled") and not ns.GamepadStandDown()
 end
 

@@ -21,7 +21,7 @@ local ns = {
         OnLoaded = function(ids, fn) loadedAsks[#loadedAsks + 1] = { ids = ids, fn = fn } end,
     } },
     Market = {
-        On = function() return settings.enabled end,
+        PanelsOn = function() return settings.enabled end,
         Settings = { Get = function(key) return settings[key] end },
     },
 }

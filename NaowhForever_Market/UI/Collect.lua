@@ -24,7 +24,7 @@ local collecting, wait, full
 local failed = {}
 
 local function On()
-    return Market.On() and S.Get("mailCollect")
+    return Market.PanelsOn() and S.Get("mailCollect")
 end
 
 local function Wanted(index, kind)

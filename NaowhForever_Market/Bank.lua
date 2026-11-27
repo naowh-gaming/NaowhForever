@@ -20,7 +20,7 @@ local Bank = {}
 Market.Bank = Bank
 
 local function On()
-    return Market.On() and S.Get("bagWorth") and S.Get("bagWorthBank")
+    return Market.PanelsOn() and S.Get("bagWorth") and S.Get("bagWorthBank")
 end
 
 local function Emptied(data, key)

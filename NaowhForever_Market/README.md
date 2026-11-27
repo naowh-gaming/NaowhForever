@@ -98,6 +98,11 @@ NaowhForever_Market/
 
 ## Why
 
+- With the gamepad interface style on, Blizzard's own gamepad code drives the auction house, bags and mail
+  windows, so what The Market puts on them steps aside (`Market.PanelsOn`): the panel, Full Window, Shift + drag,
+  Bag Worth, Collect Mail and Cheap Upgrades. The rest is on its own window or on no window and still runs
+  (`Market.On`): `/market` with Farm, Reagents, Price Graph and Ledger, tooltip lines, Record Gold, sales, gathering
+  runs and watch alerts.
 - Blizzard's auction house window is left as the game draws it by default. The Market used to cover it with
   its own window, until players said they wanted the game's window and its flow, with The Market's extras
   beside it; others missed the one big window, so Full Window brings it back as a setting, off by default.
@@ -339,7 +344,6 @@ NaowhForever_Market/
   Prices button is on Blizzard's window, and a scan finishing redraws The Market (`ns.MarketRefresh`).
 - Items the client has not loaded have an unknown commodity status; they are asked for and the queue
   is read again when they arrive.
-- It steps aside when the gamepad interface style is on.
 - My Auctions asks for your auctions (`QueryOwnedAuctions`) each time it opens and after each cancel
   (`AUCTION_CANCELED`), then checks one item at a time through the same listings search as Sell, so the
   throttle is never flooded. A commodity is checked once by item ID for all your auctions of it; any

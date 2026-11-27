@@ -28,7 +28,7 @@ end
 local account, on, shift, fits, panels = {}, true, false, 0, 0
 local ns = {
     AccountSettings = function() return account end,
-    Market = { On = function() return on end, Window = { FitDock = function() fits = fits + 1 end },
+    Market = { PanelsOn = function() return on end, Window = { FitDock = function() fits = fits + 1 end },
         Dock = { Fit = function() panels = panels + 1 end } },
 }
 local env

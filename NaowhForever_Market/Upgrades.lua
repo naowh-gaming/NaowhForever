@@ -18,7 +18,7 @@ local Upgrades = { gains = gains, levels = levels }
 Market.Upgrades = Upgrades
 
 function Upgrades.On()
-    return Market.On() and S.Get("cheapUpgrades") == true
+    return Market.PanelsOn() and S.Get("cheapUpgrades") == true
 end
 
 local function Weights()

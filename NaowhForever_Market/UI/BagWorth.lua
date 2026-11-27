@@ -32,7 +32,7 @@ local dirty, pending, registered = true, false, false
 local events
 
 local function On()
-    return Market.On() and S.Get("bagWorth")
+    return Market.PanelsOn() and S.Get("bagWorth")
 end
 
 local function Read()

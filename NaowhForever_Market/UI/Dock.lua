@@ -217,7 +217,7 @@ local function ShowBack()
 end
 
 function Activate()
-    if not (Market.On() and ah and ns.AuctionHouseShown()) then return end
+    if not (Market.PanelsOn() and ah and ns.AuctionHouseShown()) then return end
     if S.Get("fullWindow") and not stepped then return Cover() end
     Uncover()
     ShowRow()
@@ -348,7 +348,7 @@ local function OnEvent(_, _, name)
 end
 
 local function Apply()
-    if not Market.On() then
+    if not Market.PanelsOn() then
         if events then events:UnregisterAllEvents() end
         closed = false
         return Deactivate()
