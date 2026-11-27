@@ -8,18 +8,20 @@ local UI = ns.UI
 local T = ns.THEME
 local S = ns.QoLSettings
 local Parts, St = ns.Shared.Parts, ns.Shared.Style
-local Coins = Parts.Coins
 local TEXT = D.TEXT
 
 local PAD, GAP, HEADER, CARD_H, ICON = 10, 8, 36, 124, 36
 local QTY_IN, QTY_SIZE, QTY_LEVEL = 2, 12, 4
 local CARD_ALPHA = 0.45
-local POPUP_W = St.PANEL_W
+local POPUP_W = 580
 local CARD_W = (POPUP_W - PAD * 2 - GAP) / 2
 local BUTTON_H, NOTE_H, ANYWAY_H = 24, 40, 18
 local PAGER_W, PAGER_H = 22, 18
 local FONT_CAPTION, FONT_NOTE, FONT_NAME = 10, 11, 12
 local CARD_INSET, PAGER_PAD, NAME_DROP, NAME_NUDGE, LINE_GAP = 2, 4, 4, 2, 1
+local FONT_PRICE, LABEL_W, COL_W, PRICE_ROW = 10, 84, 88, 14
+local COMPARE_H, CMP_LABEL, CMP_COL, CMP_TOP, CMP_BOTTOM = 46, 156, 160, 4, 6
+local GOOD, BAD = St.HAVE_RGB, St.RED_RGB
 local PASS_ICON = "Interface\\Buttons\\UI-GroupLoot-Pass-Up"
 local PASS_GLOW = "Interface\\Buttons\\UI-GroupLoot-Pass-Highlight"
 local HOME_Y, OVER_LOOT = 140, 20
@@ -35,7 +37,7 @@ local LIST = {
     searchY = 40, searchH = 24, buttonW = 110, buttonH = 24, buttonY = 16,
 }
 
-local popup, destroyCard, lootCard, note, action, anywayBtn, ignorePanel, placing
+local popup, destroyCard, lootCard, note, compare, action, anywayBtn, ignorePanel, placing
 
 local function SavedPos()
     local pos = S.Get("destroyCheapestPos")
@@ -154,12 +156,24 @@ local function NewCard(parent, caption, step)
     card.qty:Hide()
     card.name = ns.Font(card, FONT_NAME, nil, T.fg)
     card.name:SetJustifyH("LEFT")
-    card.value = ns.Font(card, FONT_NAME, nil, T.fg)
-    card.value:SetJustifyH("LEFT")
-    card.market = ns.Font(card, FONT_NOTE, nil, T.muted)
-    card.market:SetJustifyH("LEFT")
-    card.market:SetWordWrap(false)
-    card.market:Hide()
+    card.name:SetWordWrap(true)
+    card.prices = CreateFrame("Frame", nil, card)
+    card.prices:Hide()
+    local function Cell(justify)
+        local fs = ns.Font(card.prices, FONT_PRICE, nil, T.fg)
+        fs:SetJustifyH(justify)
+        fs:SetWordWrap(false)
+        fs:Hide()
+        return fs
+    end
+    card.headEach = Cell("RIGHT")
+    card.headStack = Cell("RIGHT")
+    card.vendorTag = Cell("LEFT")
+    card.vendorEach = Cell("RIGHT")
+    card.vendorStack = Cell("RIGHT")
+    card.ahTag = Cell("LEFT")
+    card.ahEach = Cell("RIGHT")
+    card.ahStack = Cell("RIGHT")
     card.prev = ns.Button(card, "<", PAGER_W, PAGER_H, function() step(-1) end)
     card.next = ns.Button(card, ">", PAGER_W, PAGER_H, function() step(1) end)
     card.count = ns.Font(card, FONT_NOTE, nil, T.muted)
@@ -181,6 +195,70 @@ local function NewCard(parent, caption, step)
     return card
 end
 
+local function ToneColor(tone)
+    if tone == "good" then return GOOD end
+    if tone == "bad" then return BAD end
+    if tone == "fg" then return T.fg end
+    return T.muted
+end
+
+local function PaintTone(fs, tone)
+    local color = ToneColor(tone)
+    fs:SetTextColor(color.r, color.g, color.b)
+end
+
+local function ShowMarket()
+    return D.UseMarket() or S.Get("destroyCheapestMarketRank") == true
+end
+
+local function PlaceRow(parent, tag, each, stack, y, showStack, wide)
+    local labelW = wide and CMP_LABEL or LABEL_W
+    local colW = wide and CMP_COL or COL_W
+    tag:ClearAllPoints()
+    tag:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, -y)
+    tag:SetSize(labelW, PRICE_ROW)
+    each:ClearAllPoints()
+    each:SetPoint("TOPLEFT", parent, "TOPLEFT", labelW, -y)
+    if showStack then
+        each:SetSize(colW, PRICE_ROW)
+        stack:ClearAllPoints()
+        stack:SetPoint("TOPLEFT", parent, "TOPLEFT", labelW + colW, -y)
+        stack:SetSize(colW, PRICE_ROW)
+        stack:Show()
+    else
+        each:SetPoint("TOPRIGHT", parent, "TOPRIGHT", 0, -y)
+        each:SetHeight(PRICE_ROW)
+        stack:Hide()
+    end
+    tag:Show()
+    each:Show()
+end
+
+local function MeasureCard(card)
+    local nameH = FONT_NAME
+    if card.name.GetStringHeight then
+        local height = card.name:GetStringHeight()
+        if type(height) == "number" and height > 1 then nameH = height end
+    end
+    local nameBottom = BUTTON_H - NAME_NUDGE + nameH
+    local iconBottom = BUTTON_H + ICON
+    local blockTop = math.max(nameBottom, iconBottom)
+    local priceH = card.prices:IsShown() and (card.priceH or 0) or 0
+    card.needH = math.max(CARD_H, blockTop + LINE_GAP + priceH + PAGER_H + GAP * 2)
+end
+
+local function MatchCards()
+    local height = destroyCard.needH or CARD_H
+    if lootCard:IsShown() and lootCard.needH and lootCard.needH > height then height = lootCard.needH end
+    destroyCard:SetHeight(height)
+    lootCard:SetHeight(height)
+end
+
+local function HidePrices(card)
+    card.prices:Hide()
+    card.priceH = 0
+end
+
 local function FillCard(card, e, blank, at, total)
     card.entry = e
     local many = e and total > 1
@@ -189,9 +267,7 @@ local function FillCard(card, e, blank, at, total)
     card.count:SetShown(many == true)
     if many then card.count:SetText(TEXT.COUNT:format(at, total)) end
     card.name:ClearAllPoints()
-    card.value:ClearAllPoints()
-    card.market:ClearAllPoints()
-    card.market:Hide()
+    HidePrices(card)
     if not e then
         card.icon:Hide()
         card.qty:Hide()
@@ -200,8 +276,8 @@ local function FillCard(card, e, blank, at, total)
         card.name:SetWordWrap(true)
         card.name:SetText(blank)
         card.name:SetTextColor(T.muted.r, T.muted.g, T.muted.b)
-        card.value:Hide()
         if card.ignore then card.ignore:Hide() end
+        MeasureCard(card)
         return
     end
     card.icon:Show()
@@ -211,7 +287,7 @@ local function FillCard(card, e, blank, at, total)
     if count > 1 then card.qty:SetText(count) end
     card.name:SetPoint("TOPLEFT", card.icon, "TOPRIGHT", GAP - CARD_INSET, NAME_NUDGE)
     card.name:SetPoint("RIGHT", card, "RIGHT", -(PAD - CARD_INSET), 0)
-    card.name:SetWordWrap(false)
+    card.name:SetWordWrap(true)
     card.name:SetText(e.name or "")
     local c = ITEM_QUALITY_COLORS[e.quality]
     if c then
@@ -221,34 +297,67 @@ local function FillCard(card, e, blank, at, total)
         c = St.BORDER_RGB
     end
     card.icon.edge:SetColor(c.r, c.g, c.b, 1)
-    local anchor = card.name
-    if e.value and e.value > 0 then
-        card.value:SetPoint("TOPLEFT", anchor, "BOTTOMLEFT", 0, -LINE_GAP)
-        card.value:SetPoint("RIGHT", card, "RIGHT", -(PAD - CARD_INSET), 0)
-        card.value:SetText(Coins(e.value))
-        card.value:Show()
-        anchor = card.value
+    local cells = D.PriceCells(e)
+    local showAH = ShowMarket()
+    local showStack = cells.showStack == true
+    local y = 0
+    if showStack then
+        card.headEach:SetText(TEXT.COL_EACH)
+        card.headStack:SetText(TEXT.COL_STACK)
+        card.headEach:ClearAllPoints()
+        card.headEach:SetPoint("TOPLEFT", card.prices, "TOPLEFT", LABEL_W, 0)
+        card.headEach:SetSize(COL_W, PRICE_ROW)
+        card.headStack:ClearAllPoints()
+        card.headStack:SetPoint("TOPLEFT", card.prices, "TOPLEFT", LABEL_W + COL_W, 0)
+        card.headStack:SetSize(COL_W, PRICE_ROW)
+        PaintTone(card.headEach, "neutral")
+        PaintTone(card.headStack, "neutral")
+        card.headEach:Show()
+        card.headStack:Show()
+        y = PRICE_ROW
     else
-        card.value:Hide()
+        card.headEach:Hide()
+        card.headStack:Hide()
     end
-    if D.UseMarket() and e.itemID and not e.marketChecked then
-        e.marketChecked = true
-        local price, age, fresh = D.Quote(e.itemID)
-        if price then
-            e.market = price * (e.count or 1)
-            e.marketAge, e.marketFresh = age, fresh
+    card.vendorTag:SetText(cells.vendorLabel)
+    card.vendorEach:SetText(cells.vendorEach)
+    PaintTone(card.vendorTag, "neutral")
+    PaintTone(card.vendorEach, cells.vendorTone)
+    if showStack then
+        card.vendorStack:SetText(cells.vendorStack or TEXT.UNAVAILABLE)
+        PaintTone(card.vendorStack, cells.vendorStack and cells.vendorTone or "muted")
+    end
+    PlaceRow(card.prices, card.vendorTag, card.vendorEach, card.vendorStack, y, showStack, false)
+    y = y + PRICE_ROW
+    if showAH then
+        card.ahTag:SetText(cells.ahLabel)
+        card.ahEach:SetText(cells.ahEach)
+        PaintTone(card.ahTag, "neutral")
+        PaintTone(card.ahEach, cells.ahTone)
+        if showStack then
+            card.ahStack:SetText(cells.ahStack or TEXT.UNAVAILABLE)
+            PaintTone(card.ahStack, cells.ahStack and cells.ahTone or "muted")
         end
+        PlaceRow(card.prices, card.ahTag, card.ahEach, card.ahStack, y, showStack, false)
+        y = y + PRICE_ROW
+    else
+        card.ahTag:Hide()
+        card.ahEach:Hide()
+        card.ahStack:Hide()
     end
-    if D.UseMarket() and e.market then
-        local age = type(e.marketAge) == "number" and ns.AuctionAge and ns.AuctionAge(e.marketAge)
-        local coins = Coins(e.market)
-        card.market:SetPoint("TOPLEFT", anchor, "BOTTOMLEFT", 0, -LINE_GAP)
-        card.market:SetPoint("RIGHT", card, "RIGHT", -(PAD - CARD_INSET), 0)
-        card.market:SetText(age and TEXT.MARKET_OLD:format(coins, age) or TEXT.MARKET:format(coins))
-        local tint = e.marketFresh and T.fg or T.muted
-        card.market:SetTextColor(tint.r, tint.g, tint.b)
-        card.market:Show()
+    card.priceH = y
+    local nameH = FONT_NAME
+    if card.name.GetStringHeight then
+        local height = card.name:GetStringHeight()
+        if type(height) == "number" and height > 1 then nameH = height end
     end
+    local blockTop = math.max(BUTTON_H - NAME_NUDGE + nameH, BUTTON_H + ICON)
+    card.prices:ClearAllPoints()
+    card.prices:SetPoint("TOPLEFT", card, "TOPLEFT", PAD - CARD_INSET, -(blockTop + LINE_GAP))
+    card.prices:SetPoint("TOPRIGHT", card, "TOPRIGHT", -(PAD - CARD_INSET), -(blockTop + LINE_GAP))
+    card.prices:SetHeight(y)
+    card.prices:Show()
+    MeasureCard(card)
     if not card.ignore then return end
     local show = total ~= 0
     card.ignore:SetShown(show)
@@ -272,8 +381,95 @@ local function ButtonLabel(loot, pick)
     return TEXT.DESTROY_ONLY
 end
 
-local function Layout(noteText, showButton, showAnyway)
-    local y = HEADER + CARD_H + GAP
+local function GapWord(delta)
+    if type(delta) ~= "number" or delta == 0 then return end
+    return delta > 0 and TEXT.WORD_PROFIT or TEXT.WORD_DEFICIT
+end
+
+local function GapLabel(kind, eachDelta, stackDelta, columns)
+    local left = GapWord(eachDelta)
+    local right = columns == D.STACK_COLUMNS and GapWord(stackDelta) or left
+    if left and left == right then return kind .. " " .. left end
+    return kind
+end
+
+local function FillMetric(tag, eachFs, stackFs, kind, eachDelta, stackDelta, columns, y)
+    local showStack = columns == D.STACK_COLUMNS
+    PlaceRow(compare, tag, eachFs, stackFs, y, showStack, true)
+    tag:SetText(GapLabel(kind, eachDelta, stackDelta, columns))
+    PaintTone(tag, "neutral")
+    if type(eachDelta) == "number" then
+        eachFs:SetText(D.SignedCoin(eachDelta))
+        PaintTone(eachFs, D.GapTone(eachDelta))
+    else
+        eachFs:SetText(TEXT.UNAVAILABLE)
+        PaintTone(eachFs, "neutral")
+    end
+    if not showStack then return end
+    if type(stackDelta) == "number" then
+        stackFs:SetText(D.SignedCoin(stackDelta))
+        PaintTone(stackFs, D.GapTone(stackDelta))
+    else
+        stackFs:SetText(TEXT.UNAVAILABLE)
+        PaintTone(stackFs, "neutral")
+    end
+end
+
+local function FillCompare(pick, loot)
+    if not (compare and pick and loot) then
+        if compare then compare:Hide() end
+        return false
+    end
+    local gaps = D.CompareGaps(pick, loot)
+    local columns = gaps.columns or 1
+    local y = CMP_TOP
+    if columns == D.STACK_COLUMNS then
+        compare.headEach:SetText(TEXT.COL_EACH)
+        compare.headStack:SetText(gaps.stackLabel or TEXT.COL_STACK)
+        compare.headEach:ClearAllPoints()
+        compare.headEach:SetPoint("TOPLEFT", compare, "TOPLEFT", CMP_LABEL, -y)
+        compare.headEach:SetSize(CMP_COL, PRICE_ROW)
+        compare.headStack:ClearAllPoints()
+        compare.headStack:SetPoint("TOPLEFT", compare, "TOPLEFT", CMP_LABEL + CMP_COL, -y)
+        compare.headStack:SetSize(CMP_COL, PRICE_ROW)
+        PaintTone(compare.headEach, "neutral")
+        PaintTone(compare.headStack, "neutral")
+        compare.headEach:Show()
+        compare.headStack:Show()
+        y = y + PRICE_ROW
+    else
+        compare.headEach:Hide()
+        compare.headStack:Hide()
+    end
+    FillMetric(compare.vendorTag, compare.vendorEach, compare.vendorStack,
+        TEXT.CMP_VENDOR, gaps.vendorEach, gaps.vendorStack, columns, y)
+    y = y + PRICE_ROW
+    if ShowMarket() then
+        FillMetric(compare.ahTag, compare.ahEach, compare.ahStack,
+            TEXT.CMP_AH, gaps.ahEach, gaps.ahStack, columns, y)
+        y = y + PRICE_ROW
+    else
+        compare.ahTag:Hide()
+        compare.ahEach:Hide()
+        compare.ahStack:Hide()
+    end
+    compare.needH = math.max(COMPARE_H, y + CMP_BOTTOM)
+    return true
+end
+
+local function Layout(noteText, showButton, showAnyway, showCompare)
+    local y = HEADER + (destroyCard:GetHeight() or CARD_H) + GAP
+    if showCompare then
+        compare:ClearAllPoints()
+        compare:SetPoint("TOPLEFT", popup, "TOPLEFT", PAD, -y)
+        compare:SetPoint("TOPRIGHT", popup, "TOPRIGHT", -PAD, -y)
+        local height = compare.needH or COMPARE_H
+        compare:SetHeight(height)
+        compare:Show()
+        y = y + height + GAP
+    else
+        compare:Hide()
+    end
     if noteText then
         note:ClearAllPoints()
         note:SetPoint("TOPLEFT", PAD, -y)
@@ -301,6 +497,7 @@ local function Layout(noteText, showButton, showAnyway)
         anywayBtn:Show()
         y = y + ANYWAY_H + GAP
     end
+    popup:SetWidth(POPUP_W)
     popup:SetHeight(y + PAD)
 end
 
@@ -333,7 +530,8 @@ function D.Paint()
     if showLoot then
         FillCard(lootCard, loot, nil, D.lootIndex, D.pending and 0 or #D.loots)
     end
-    local noteText, showButton, showAnyway
+    MatchCards()
+    local noteText, showButton, showAnyway, showCompare
     if D.pending then
         if D.pending.mode == "dialog" then noteText = TEXT.DIALOG
         elseif D.pending.mode == "cursor" then noteText = TEXT.STUCK
@@ -353,8 +551,9 @@ function D.Paint()
             ns.SetButtonText(action, ButtonLabel(loot, pick))
             if not loot and D.TransferShown() then noteText = TEXT.AGAIN end
         end
+        if pick and loot then showCompare = FillCompare(pick, loot) end
     end
-    Layout(noteText, showButton, showAnyway)
+    Layout(noteText, showButton, showAnyway, showCompare)
 end
 
 local function TintAnyway(btn)
@@ -394,6 +593,7 @@ function D.Build()
     popup = Parts.Panel("Bags Are Full", true)
     D.popup = popup
     popup:Hide()
+    popup:SetWidth(POPUP_W)
     popup:SetFrameStrata("DIALOG")
     popup:SetMovable(true)
     popup:RegisterForDrag("LeftButton")
@@ -411,13 +611,32 @@ function D.Build()
     end)
     popup.backdrop:Paint(1)
     destroyCard = NewCard(popup, TEXT.DESTROY, StepDestroy)
-    lootCard = NewCard(popup, TEXT.LOOT, StepLoot)
+    lootCard = NewCard(popup, TEXT.INCOMING, StepLoot)
     lootCard:Hide()
     destroyCard:SetPoint("TOPLEFT", PAD, -HEADER)
     destroyCard:SetWidth(POPUP_W - PAD * 2)
     note = ns.Font(popup, FONT_NOTE, nil, T.muted)
     note:SetJustifyH("CENTER")
     note:SetWordWrap(true)
+    compare = CreateFrame("Frame", nil, popup)
+    compare:SetHeight(COMPARE_H)
+    compare:Hide()
+    ns.Solid(compare, "BACKGROUND", T.bg, CARD_ALPHA):SetAllPoints()
+    ns.Border(compare, St.BORDER_RGB)
+    local function Cell(justify)
+        local fs = ns.Font(compare, FONT_PRICE, nil, T.muted)
+        fs:SetJustifyH(justify)
+        fs:SetWordWrap(false)
+        return fs
+    end
+    compare.headEach = Cell("RIGHT")
+    compare.headStack = Cell("RIGHT")
+    compare.vendorTag = Cell("LEFT")
+    compare.vendorEach = Cell("RIGHT")
+    compare.vendorStack = Cell("RIGHT")
+    compare.ahTag = Cell("LEFT")
+    compare.ahEach = Cell("RIGHT")
+    compare.ahStack = Cell("RIGHT")
     action = ns.Button(popup, TEXT.DESTROY_LOOT, POPUP_W - PAD * 2, BUTTON_H, D.OnDestroy)
     ns.PrimaryButton(action)
     anywayBtn = ns.Button(popup, TEXT.ANYWAY, POPUP_W - PAD * 2, ANYWAY_H, D.OnAnyway)
@@ -569,7 +788,7 @@ local function SettingChanged(key)
         Apply()
         return
     end
-    if not D.pending and (key == "destroyCheapestMarketRank"
+    if not D.pending and (key == "destroyCheapestMarketRank" or key == "destroyCheapestRankQty"
         or key == "destroyCheapestMarketStale" or key == "destroyCheapestMarketDays") then
         D.index = 0
     end
@@ -761,6 +980,10 @@ local SIDES = {
     { top = "Top", right = "Right", bottom = "Bottom", left = "Left" },
     { "top", "right", "bottom", "left" },
 }
+local RANK_QTY = {
+    { batch = "Batch (stack)", unit = "Individual (unit)" },
+    { "batch", "unit" },
+}
 
 Settings.Page("QoL/Loot & Items", S):Card({
     id = "destroyCheapest", name = "Destroy Cheapest Item", order = 62, switch = "destroyCheapest",
@@ -785,6 +1008,10 @@ Settings.Page("QoL/Loot & Items", S):Card({
           help = "Offers heirloom items." },
         { key = "destroyCheapestConsumable", label = "Consumables", toggle = true,
           help = "Also offers consumables a vendor will not buy. Ones with a vendor price are offered anyway." },
+        { key = "destroyCheapestZeroVendor", label = "Include Zero-Vendor-Value Items", toggle = true,
+          help = "Also offers other items a vendor pays nothing for." },
+        { key = "destroyCheapestBoundGear", label = "Include Bound Armor and Weapons", toggle = true,
+          help = "Also offers soulbound armor and weapons." },
         { key = "destroyCheapestAll", label = "All Items", toggle = true,
           help = "Offers every quality and zero-vendor item, but keeps protected and ignored items." },
         Settings.Group("Popup"),
@@ -797,10 +1024,14 @@ Settings.Page("QoL/Loot & Items", S):Card({
         { label = "Reset Position", button = ResetPosition, buttonText = "Reset", always = true,
           help = "Clears a dragged place and uses Beside the Loot Window again." },
         Settings.Group("Prices"),
+        { key = "destroyCheapestDurability", label = "Estimate Worn Vendor Price", toggle = true,
+          help = "Lowers damaged gear's vendor price by its remaining durability." },
         { key = "destroyCheapestMarket", label = "Market Prices", toggle = true,
           help = "Shows the auction house price next to the vendor price when one is known." },
         { key = "destroyCheapestMarketRank", label = "Rank by Market Value", toggle = true,
           help = "Sorts by auction price times stack, cheapest first, and uses the vendor price when no auction price is known." },
+        { key = "destroyCheapestRankQty", label = "Rank Quantity", choice = RANK_QTY,
+          help = "Ranks by the whole stack or by one item." },
         { key = "destroyCheapestMarketStale", label = "Ignore Old Scans", toggle = true,
           help = "An auction price older than Older Than is left out, and the vendor price is used." },
         { key = "destroyCheapestMarketDays", label = "Older Than (days)", slider = D.STALE_RANGE,

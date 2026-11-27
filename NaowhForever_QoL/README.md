@@ -1133,6 +1133,9 @@ NaowhForever_QoL/
   starts off. While it is on, a price older than Older Than is shown muted and left out of that
   order, and Older Than starts at seven days. With it off, an old price is still used. Turning
   the rank or the age on or off rebuilds the list at once.
+  The Destroy and Incoming cards show the vendor price for one item and the whole stack. With
+  Market Prices on, they show the auction estimate the same way. The row below them shows the
+  vendor and auction profit or deficit for one item and for the two stacks being compared.
   Destroy Anyway, off until turned on, adds a smaller button
   next to the not-worth warning. It still takes a click, and the same second click and delete
   window as Destroy. A bag that reports
@@ -1152,6 +1155,12 @@ NaowhForever_QoL/
   sorted by, is above it. All Items skips that limit too. An item whose price is not
   loaded yet is asked for once and added when it arrives. Bag Space does not have to be on.
   Nothing is destroyed on its own.
+- Include Zero-Vendor-Value Items and Include Bound Armor and Weapons start off. Each lifts only
+  its named vendor or bound-gear rule; quest items, tools, set pieces, BiS items and the other
+  protections stay. Estimate Worn Vendor Price starts off and scales damaged armor and weapons by
+  their remaining durability, with the result labelled Vendor est. Rank Quantity keeps Batch
+  (stack) as its default and can rank by one item instead. Keep Items Worth More Than always checks
+  the whole stack, even when the list ranks individual items.
 - Every quality, including poor and common, asks for a second click on that same button. The
   first click prepares the delete and the button names that item ("Click again to destroy"
   plus its link). That confirmation is for that slot, item, stack size and link, against the loot
