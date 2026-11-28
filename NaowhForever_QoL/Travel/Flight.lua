@@ -29,7 +29,6 @@ local ZONE_TOP = PAD + HEAD_H + ROW_GAP
 local LABEL_TOP = ZONE_TOP + ZONE_H + LABEL_GAP
 local ROUTE_CAP = (WIDTH - TIME_ROOM - CHEVRON_SIZE - 2 * TEXT_GAP) / 2
 local FLIGHT_SPEED, HYJAL_SPEED = 30.4, 50
--- Mount Hyjal's paths, timed on Forever: a flight that starts on one keeps that speed for every hop.
 local HYJAL_ROUTES = { [5593242] = true, [32420559] = true, [523242] = true, [32420052] = true,
     [533242] = true, [32420053] = true }
 local ADVENTURE_LEGACY_TREE, FREQUENT_FLIER_NODE = 1188, 110300
