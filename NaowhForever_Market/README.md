@@ -800,8 +800,10 @@ NaowhForever_Market/
   `StartCommoditiesPurchase` and the head reads Getting the price. The game's quote
   (`COMMODITY_PRICE_UPDATED`) opens the confirm with the total the game quoted, not The Market's sum, and
   the confirm's Buy is the second click, `ConfirmCommoditiesPurchase`. A quote that changes while the
-  confirm is up asks again with the new total. Closing the confirm, leaving Sell or `BUY_TIMEOUT` (15)
-  seconds without an answer calls `CancelCommoditiesPurchase`, as Blizzard's dialog does when it hides.
+  confirm is up asks again with the new total. Closing the confirm, leaving Sell, a refused purchase or
+  `BUY_TIMEOUT` (15) seconds without a quote calls `CancelCommoditiesPurchase`, as Blizzard's dialog does when
+  it hides. A purchase that succeeded, or one confirmed that the game has not yet answered, is never cancelled:
+  the server answers that with "Internal auction error".
 - The game sells a commodity cheapest first, so a row's Buy is for every item listed up to that row's price
   that is not yours (`Listings.Others`), and the tooltip says how many and about how much.
 - With more than one to buy, the row's Buy asks how many first (`ns.PromptText`, filled in with them all),

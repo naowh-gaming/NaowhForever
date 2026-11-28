@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Fixed
+- The Market: buying a commodity no longer shows "Internal auction error" after the purchase goes
+  through.
+
 ## 1.5.1
 
 ### Added

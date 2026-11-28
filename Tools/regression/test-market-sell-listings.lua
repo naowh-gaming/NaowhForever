@@ -151,6 +151,7 @@ searches = #t.searches
 t.Fire("COMMODITY_PURCHASE_SUCCEEDED")
 Check("bought, it says so and reads the listings again", pane.note.text == "Bought 25." and #t.searches == searches + 1
     and not t.M.Purchase.Busy())
+Check("and a purchase that went through is not cancelled after it", t.purchases[#t.purchases] == last)
 Ore(t, ORE_ROWS)
 
 lines = t.Lines()
@@ -169,6 +170,12 @@ Check("and its quote is let go, as Blizzard's dialog does", t.purchases[#t.purch
 BuyAll(lines[1])
 t.RunTimers()
 Check("nor one the game never answers", not t.M.Purchase.Busy())
+BuyAll(lines[1])
+t.Fire("COMMODITY_PRICE_UPDATED", 480, 2400)
+t.confirms[#t.confirms].yes()
+t.RunTimers()
+Check("a confirmed purchase the game is slow to answer is let go but not cancelled", not t.M.Purchase.Busy()
+    and t.purchases[#t.purchases].step == "confirm")
 local started = #t.purchases
 lines[2].buy.click()
 local prompt = t.prompts[#t.prompts]
