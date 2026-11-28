@@ -245,6 +245,13 @@ local function Fit(button)
     if need > button:GetWidth() then button:SetWidth(need) end
 end
 
+local function FitSubtitle()
+    local subtitle = window.subtitle
+    local need = math.ceil(window:GetWidth() - subtitle:GetWidth() + subtitle:GetUnboundedStringWidth())
+    window:SetResizeBounds(math.max(MIN_W, need), MIN_H)
+    if window:GetWidth() < need then window:SetWidth(need) end
+end
+
 local function LayoutFooter()
     Fit(clear)
     Fit(start)
@@ -264,6 +271,7 @@ end
 
 function View.Render()
     if not (window and window:IsShown()) then return end
+    FitSubtitle()
     local ordered = Queue.Ordered()
     local y, prerequisites = PlaceSection(true, -2, ordered)
     local crafts

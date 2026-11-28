@@ -55,6 +55,8 @@ function frameMethods:HookScript(name, fn) self.hooks[name] = fn end
 function frameMethods:GetParent() return self.parent end
 function frameMethods:GetWidth() return self.width or 0 end
 function frameMethods:SetWidth(width) self.width = width end
+function frameMethods:SetResizeBounds(width) self.minWidth = width end
+function frameMethods:GetUnboundedStringWidth() return self.unbounded or 0 end
 function frameMethods:SetPoint(point) self.points = self.points or {} self.points[point] = true end
 function frameMethods:ClearAllPoints() self.points = {} end
 function frameMethods:IsShown() return self.shown end
@@ -531,5 +533,14 @@ assert(buttons["Clear"].width == 76 and buttons["Start Queue"].width == 126,
     "the footer buttons were not widened to their translated labels")
 assert(addMissing.points.BOTTOMLEFT and addMissing.points.BOTTOMRIGHT and not addMissing.points.LEFT,
     "a translated Add Missing that no longer fits did not move above the footer row")
+
+local queueWindow = addMissing.parent
+queueWindow.subtitle.width, queueWindow.subtitle.unbounded = 200, 260
+ns.Professions.CraftQueueView.Render()
+assert(queueWindow.width == 440 and queueWindow.minWidth == 440,
+    "a subtitle cut off by the window did not widen it and its minimum")
+queueWindow.width, queueWindow.subtitle.width = 600, 420
+ns.Professions.CraftQueueView.Render()
+assert(queueWindow.width == 600 and queueWindow.minWidth == 440, "a wide window was resized to its subtitle")
 
 print("Crafting queue regression test: PASS")
