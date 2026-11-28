@@ -105,10 +105,9 @@ local function BarTooltip(bar)
     GameTooltip:SetText(TEXT_BOOKS)
     GameTooltip:AddLine(TEXT_HANDED_IN:format(done, total), 1, 1, 1)
     for _, goal in ipairs(ns.LibraryGoals) do AddGoal(goal, done) end
-    local librarian = L.Librarian()
     GameTooltip:AddLine(" ")
     local hr, hg, hb = SoftBlue(HAND_IN.r, HAND_IN.g, HAND_IN.b)
-    GameTooltip:AddLine(TEXT_HAND_IN:format(librarian.name, librarian.place), hr, hg, hb, true)
+    GameTooltip:AddLine(TEXT_HAND_IN:format(L.HandInTo()), hr, hg, hb, true)
     local bags, bank = StoredCounts()
     if bags > 0 then GameTooltip:AddLine(bags .. TEXT_IN_BAGS, GOLD.r, GOLD.g, GOLD.b) end
     if bank > 0 then GameTooltip:AddLine(bank .. TEXT_IN_BANK, GOLD.r, GOLD.g, GOLD.b) end

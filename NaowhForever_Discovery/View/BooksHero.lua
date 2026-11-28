@@ -36,6 +36,7 @@ local TEXT_COUNT = "%d / %d"
 local TEXT_TO_GO = ns.L("%d to go for %s")
 local TEXT_ALL_EARNED = ns.L("Every reward earned")
 local TEXT_HAND_TO = ns.L("Hand them to ")
+local TEXT_OR = ns.L(" or ")
 local TEXT_BOOKS = ns.L("%d books")
 local TEXT_NEEDS_LEVEL = ns.L("Needs level %d")
 local TEXT_REPORTED = ns.L("The book count is what players report; not confirmed yet.")
@@ -223,8 +224,9 @@ local function SetHeader(hero, done, total)
     local goal = Library.NextGoal()
     hero.count:SetText(TEXT_COUNT:format(done, total))
     hero.goal:SetText(goal and TEXT_TO_GO:format(math.max(0, goal.books - done), goal.name) or TEXT_ALL_EARNED)
-    local librarian = Library.Librarian()
-    hero.who:SetText(TEXT_HAND_TO .. ns.Color("fg", librarian.name) .. "\n" .. librarian.place)
+    local librarian, trainer = Library.Librarian(), Library.GoalTrainer()
+    local second = trainer and (TEXT_OR:gsub("^%s+", "")) .. ns.Color("fg", trainer.name) or librarian.place
+    hero.who:SetText(TEXT_HAND_TO .. ns.Color("fg", librarian.name) .. "\n" .. second)
 end
 
 local function SetHero(hero)

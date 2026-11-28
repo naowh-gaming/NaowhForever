@@ -10,6 +10,7 @@ local TIER_TITLE = "|cff%02x%02x%02x(%d)|r %s"
 local COLOR_MAX = 255
 local TEXT_MAP = ns.L("map ")
 local TEXT_COORDS = "(%.1f, %.1f)"
+local TEXT_OR = ns.L(" or ")
 
 local Library = {}
 ns.Library = Library
@@ -102,6 +103,17 @@ end
 
 function Library.Librarian()
     return ns.LibraryTurnIns[C.TURN_IN][Library.Side()]
+end
+
+function Library.GoalTrainer()
+    local goal = Library.NextGoal()
+    return goal and goal.turnIn and Library.TurnIn(goal)
+end
+
+function Library.HandInTo()
+    local librarian, trainer = Library.Librarian(), Library.GoalTrainer()
+    if not trainer then return librarian.name, librarian.place end
+    return librarian.name .. TEXT_OR .. trainer.name, librarian.place
 end
 
 function Library.Progress()

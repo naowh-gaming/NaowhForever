@@ -38,9 +38,8 @@ end
 
 local function Detail()
     local goal = Library.NextGoal()
-    local librarian = Library.Librarian()
-    if not goal then return TEXT_ALL_EARNED:format(librarian.name) end
-    return TEXT_NEXT:format(goal.name, goal.books, librarian.name)
+    if not goal then return TEXT_ALL_EARNED:format(Library.Librarian().name) end
+    return TEXT_NEXT:format(goal.name, goal.books, (Library.HandInTo()))
 end
 
 local function OpenBooks()
