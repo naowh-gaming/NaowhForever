@@ -148,6 +148,39 @@ end
 
 ns.RXPSafe = { Has = Has, Dig = Dig, Run = Run }
 
+function ns.RXPFlightTimersAvailable()
+    return type(Dig(_G.RXP, "FPDB")) == "table" and type(Dig(_G.RXP, "settings", "profile")) == "table"
+end
+
+function ns.RXPFlightTimers()
+    return Dig(_G.RXP, "settings", "profile", "showFlightTimers") ~= false
+end
+
+function ns.SetRXPFlightTimers(on)
+    local rxp = _G.RXP
+    local profile = Dig(rxp, "settings", "profile")
+    if type(profile) ~= "table" then return end
+    profile.showFlightTimers = on == true
+    local name = on and "ShowTimers" or "HideTimers"
+    if Has(rxp, name) then Run(name, rxp[name]) end
+end
+
+local function FlightDone()
+    local account = ns.AccountSettings()
+    if type(account.rxpFlightOff) ~= "table" then account.rxpFlightOff = {} end
+    return account.rxpFlightOff
+end
+
+function ns.RXPFlightTimersDefault()
+    if not ns.RXPWindowEnabled() or not ns.RXPFlightTimersAvailable() then return end
+    local guid = UnitGUID("player")
+    if type(guid) ~= "string" then return end
+    local done = FlightDone()
+    if done[guid] then return end
+    done[guid] = true
+    _G.RXP.settings.profile.showFlightTimers = false
+end
+
 local function Visible(region)
     return region ~= nil and region:IsVisible()
 end
@@ -892,7 +925,10 @@ local function OnBootEvent(self, event, name)
             HookRules()
             HookShown()
         end
-        if ns.RXPWindowEnabled() then ns.RXPWindowStart() end
+        if ns.RXPWindowEnabled() then
+            ns.RXPFlightTimersDefault()
+            ns.RXPWindowStart()
+        end
     end
 end
 

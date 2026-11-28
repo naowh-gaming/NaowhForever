@@ -959,4 +959,72 @@ do
         and all["Icon Colors"] == nil, "and no colors of its own: the icons follow the Accent Color")
 end
 
+do
+    -- Show Flight Timers: RestedXP's own option, in the window's fold beside Step Icons, when RestedXP has flight times
+    local function Cell(page, name)
+        for _, row in ipairs(page.rows) do
+            for _, cell in ipairs(row) do
+                if cell.text == name then return cell end
+            end
+        end
+    end
+    local function RowOf(page, name)
+        for at, row in ipairs(page.rows) do
+            for _, cell in ipairs(row) do
+                if cell.text == name then return at end
+            end
+        end
+    end
+    local function Rxp(profile, flights)
+        local rxp = { FPDB = flights, settings = { profile = profile }, calls = {} }
+        function rxp.ShowTimers() rxp.calls[#rxp.calls + 1] = "show" end
+        function rxp.HideTimers() rxp.calls[#rxp.calls + 1] = "hide" end
+        return rxp
+    end
+    local TIP = "RestedXP's flight timer bar and map tooltip time, off to start as the Naowh Flight Timer shows them."
+    local profile = {}
+    local up = Rxp(profile, {})
+    local page = Page({ rxpWindow = true }, true, up)
+    local row = Cell(page, "Show Flight Timers")
+    Check(row and row.type == "toggle" and RowOf(page, "Show Flight Timers") == RowOf(page, "Step Icons"),
+        "the window's fold has a switch for the flight timers, beside Step Icons")
+    Check(row.tooltip == TIP, "its tooltip is one short sentence")
+    Check(row.getValue() == true and profile.showFlightTimers == nil, "unset reads as on, RestedXP's default, and nothing is stored")
+    row.setValue(false)
+    Check(profile.showFlightTimers == false and row.getValue() == false and table.concat(up.calls, ",") == "hide",
+        "off: it is written to RestedXP's profile and its bars are hidden at once")
+    row.setValue(true)
+    Check(profile.showFlightTimers == true and row.getValue() == true and table.concat(up.calls, ",") == "hide,show",
+        "on again: written, and its bars shown")
+    profile.showFlightTimers = false
+    Check(row.getValue() == false, "it reads what RestedXP has, which its own panel may have changed")
+    up.settings = nil
+    Check(pcall(row.setValue, true) and row.getValue() == true and table.concat(up.calls, ",") == "hide,show",
+        "its settings gone after the page was drawn: nothing is raised, and nothing is run")
+
+    Check(Cell(Page({ rxpWindow = true }, true, Rxp({}, nil)), "Show Flight Timers") == nil,
+        "RestedXP without flight times: no row, as its own panel hides the option then")
+    Check(Cell(Page({ rxpWindow = true }, true), "Show Flight Timers") == nil, "RestedXP not started: none")
+    Check(Cell(Page({ rxpWindow = true }, true, { FPDB = {} }), "Show Flight Timers") == nil, "nor without its settings")
+    Check(Cell(Page({ rxpThemes = true }, true, Rxp({}, {})), "Show Flight Timers") == nil
+        and Cell(Page({}, true, Rxp({}, {})), "Show Flight Timers") == nil,
+        "and none in the theme's (V1) fold, or with neither on")
+
+    local bare = { FPDB = {}, settings = { profile = {} } }
+    local bareRow = Cell(Page({ rxpWindow = true }, true, bare), "Show Flight Timers")
+    Check(pcall(bareRow.setValue, false) and bare.settings.profile.showFlightTimers == false,
+        "a RestedXP without ShowTimers and HideTimers: the option is written, nothing is raised")
+
+    local caught = {}
+    _G.geterrorhandler = function() return function(message) caught[#caught + 1] = message end end
+    local broken = Rxp({}, {})
+    broken.HideTimers = function() error("boom") end
+    local brokenRow = Cell(Page({ rxpWindow = true }, true, broken), "Show Flight Timers")
+    Check(pcall(brokenRow.setValue, false) and #caught == 1 and broken.settings.profile.showFlightTimers == false,
+        "a RestedXP whose bars fail: the option is kept, the error is reported and not raised")
+    brokenRow.setValue(false)
+    Check(#caught == 1, "and reported once")
+    _G.geterrorhandler = nil
+end
+
 print("PASS custom colors page: " .. cases .. " checks")
