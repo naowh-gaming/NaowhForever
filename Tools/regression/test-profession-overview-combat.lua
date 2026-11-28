@@ -61,13 +61,21 @@ local branch = source:sub(regen, assert(source:find("\n        return\n", regen,
 check("as combat starts a docked overview stands aside", branch:find("if bookDocked then StandAside() end", 1, true))
 local steps = {}
 local cardsOf = { { name = "card 1" }, { name = "card 2" }, { name = "card 3" } }
+combat = false
 local StandAside, Pending = Load("local bookPending\n" .. Slice("local function StandAside()")
     .. "return StandAside, function() return bookPending end", {
     bookCards = { [1] = "blizz 1", [3] = "blizz 3" },
     win = { book = { cards = cardsOf } },
     P = { BookStandIn = { Show = function(card, blizz) steps[#steps + 1] = { card, blizz } end } },
     DockBook = function(on) steps[#steps + 1] = on end,
+    InCombatLockdown = function() return combat end,
+    Deactivate = function() steps[#steps + 1] = "off" end,
 })
+combat = true
+StandAside()
+check("standing aside once the lockdown has started gives the game back its overview",
+    steps[1] == "off" and #steps == 1 and Pending() == nil)
+steps, combat = {}, false
 StandAside()
 local shown = {}
 for i = 1, 2 do if type(steps[i]) == "table" then shown[steps[i][2]] = steps[i][1] end end

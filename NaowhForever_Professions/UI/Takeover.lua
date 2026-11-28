@@ -305,12 +305,6 @@ local function DockBook(on)
     P.BookStandIn.Hide()
 end
 
-local function StandAside()
-    for i, blizz in pairs(bookCards) do P.BookStandIn.Show(win.book.cards[i], blizz) end
-    DockBook(false)
-    bookPending = true
-end
-
 local function Deactivate()
     wipe(waiting)
     ns.ProfBagChanges = ns.ProfBagChanges + 1
@@ -324,6 +318,13 @@ local function Deactivate()
         DockBook(false)
         ProfessionsFrame:SetAlpha(1)
     end
+end
+
+local function StandAside()
+    if InCombatLockdown() then return Deactivate() end
+    for i, blizz in pairs(bookCards) do P.BookStandIn.Show(win.book.cards[i], blizz) end
+    DockBook(false)
+    bookPending = true
 end
 
 local Drag = {}

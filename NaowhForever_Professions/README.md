@@ -357,7 +357,8 @@ Each layer uses only the ones above it, or reads a later one's table at call tim
   look in combat (with EllesmereUI's modern skin the game's overview looked out of place), but its
   spells and the unlearn cross cannot be used until combat ends; Gly agreed to this over showing the
   game's overview. An overview first opened in combat has no pictures, so it is the game's own until
-  combat ends, with its buttons working, and ours again after.
+  combat ends, with its buttons working, and ours again after. So is one that only stands aside once
+  the lockdown has started, when the cards can no longer move.
   The pictures copy only the buttons' shown regions, never their hover highlight or the unlearn
   cross, and reuse their pieces. A recipe list holds nothing secure and stays ours in combat.
 - As a guard, the first dock makes a secure state handler of its own (`SecureHandlerStateTemplate` on
