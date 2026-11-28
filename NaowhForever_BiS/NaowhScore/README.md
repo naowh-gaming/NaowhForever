@@ -87,6 +87,9 @@ UI/SettingsPage.lua  its card on BiS List > Character
 
 ## Why
 
+- In China (`ns.CHINA`, see the Core README) only your own score is worked out: `Share.lua` returns at
+  load, `Inspect.lua` stays off whatever its settings say and wipes the saved guild scores, and their
+  rows are hidden.
 - `Data/Formula.lua` loads first and makes `ns.NaowhScore`: it is data only, rewritten by the fit,
   so the formula in `NaowhScore.lua` hangs off the table it made.
 - The gear slots are read main hand before off hand, so a two-hander is known first and takes the off

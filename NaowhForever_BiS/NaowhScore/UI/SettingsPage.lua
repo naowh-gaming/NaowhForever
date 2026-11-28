@@ -23,15 +23,15 @@ Settings.Page("BiS List/Character", S):Card({
         .. "26 epics. Your own is always on the BiS List's paperdoll.",
     summary = Summary,
     rows = {
-        { key = "naowhScoreShare", label = "Share My Score", toggle = true,
+        { key = "naowhScoreShare", label = "Share My Score", toggle = true, hidden = ns.CHINA,
           help = "Sends your score to your group and guild as it changes." },
-        { key = "naowhScoreTooltip", label = "On Player Tooltips", toggle = true,
+        { key = "naowhScoreTooltip", label = "On Player Tooltips", toggle = true, hidden = ns.CHINA,
           help = "A player's score on their tooltip. One running Naowh Forever shares theirs; anyone else's is "
               .. "read from their gear when you hover them, within inspect range and out of combat." },
-        { key = "naowhScoreScan", label = "Scan Your Group", toggle = true,
+        { key = "naowhScoreScan", label = "Scan Your Group", toggle = true, hidden = ns.CHINA,
           help = "Reads your group members' gear in the background, one at a time while they are in range and "
               .. "out of combat, so their scores are ready before you hover them." },
-        { key = "naowhScoreNearby", label = "Scan Players Nearby", toggle = true,
+        { key = "naowhScoreNearby", label = "Scan Players Nearby", toggle = true, hidden = ns.CHINA,
           help = "Reads the gear of the players around you in the background: your target, focus, mouseover "
               .. "and everyone whose nameplate shows, one at a time in inspect range and out of combat." },
         { key = "naowhScoreCompare", label = "Grade Against", choice = COMPARE,

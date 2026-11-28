@@ -109,7 +109,7 @@ for id = 1, 50 do
     end
 end
 
-local function Fixture(values)
+local function Fixture(values, region)
     local state = {
         now = 1000, frames = 0, events = {}, prefixes = {}, sent = {}, timers = {}, printed = {},
         filters = {}, ignored = {}, locked = false, listed = true, result = 0, infoCalls = 0, searches = {},
@@ -314,6 +314,7 @@ local function Fixture(values)
         end,
         ClearOverrideBindings = function() for key in pairs(state.overrides) do state.overrides[key] = nil end end,
         InCombatLockdown = function() return state.combat end,
+        GetCurrentRegion = function() return region end,
     }, { __index = _G })
     env._G = env
     state.env = env
@@ -444,6 +445,19 @@ local function Same(a, b)
         end
     end
     return true
+end
+
+do
+    local state = Fixture({ enabled = true }, 5)
+    local Card = state.GF.Card
+    local mine = Card.Mine("Deadmines")
+    check("in China, your card carries no Gear Score and no BiS progress", state.env.NaowhForever.CHINA == true
+        and mine.score == nil and mine.bisHave == nil and mine.bisTotal == nil and mine.spec == "fury-warrior")
+    local back, group = Card.New(), {}
+    check("in China, a listing's score, BiS and minimum are dropped as they are read",
+        Card.Decode("1 L 42 1 20 TD - 211 3/9 Deadmines - - 120 112", back, group) == "L"
+        and back.score == nil and back.bisHave == nil and back.bisTotal == nil and group.min == 0
+        and back.dungeon == "Deadmines" and group.damage == 2)
 end
 
 local SIZES = {}

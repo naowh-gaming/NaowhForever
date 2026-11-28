@@ -104,6 +104,7 @@ function UI.PaintPartyCard(card, rec)
     card.band:SetColorTexture(color.r, color.g, color.b, 1)
     UI.PaintClass(card.class, rec.classFile)
     PaintHeader(card, rec, color)
+    card.score:SetShown(rec.score ~= nil or not ns.CHINA)
     if rec.score then CP.PaintScoreCard(card.score, rec.score, rec.level) else CP.ScoreCardWaiting(card.score) end
     card.ilvl:SetText(rec.ilvl and tostring(math.floor(rec.ilvl + ROUND)) or WAITING)
     PaintGear(card, rec)

@@ -16,7 +16,7 @@ local NOTHING = function() end
 -------------------------------------------------------------------------------
 --  Stubs: gear by unit and slot as { level, quality, equip }, links "item:<unit>:<slot>"
 -------------------------------------------------------------------------------
-local function Fixture()
+local function Fixture(china)
     local state = { gear = {}, now = 100, combat = false, inspected = {}, cleared = 0, postCalls = {},
         frames = {}, timers = {}, sent = {}, members = 0, guild = false,
         fullNames = { player = "Me", party1 = "One", party2 = "Two", party3 = "Three" },
@@ -39,6 +39,7 @@ local function Fixture()
         AccountSettings = function() return state.account end,
         Color = function(_, text) return "<" .. text .. ">" end,
         THEME = setmetatable({}, { __index = function() return { r = 1, g = 1, b = 1 } end }) }
+    ns.CHINA = china == true
     function ns.OnApply(fn) local was = ns.Apply ns.Apply = function(...) was(...) fn(...) end end
     local function Item(link)
         local unit, slot = link:match("^item:(%w+):(%d+)$")
@@ -887,4 +888,26 @@ do
     end)
 end
 
+-------------------------------------------------------------------------------
+--  China: no one else's score is read, kept, sent or listened for
+-------------------------------------------------------------------------------
+do
+    local ns, state = Fixture(true)
+    local Score = ns.NaowhScore
+    state.account.naowhScoreGuild = { ["Player-7-00AB"] = { score = 20, level = 60, at = state.clock } }
+    state.values.naowhScore = true
+    state.members, state.guild = 3, true
+    state.gear.player, state.gear.party1 = Set(20, 4), Set(10, 4)
+    ns.Apply()
+    state.Fire("PLAYER_ENTERING_WORLD")
+    state.Fire("GROUP_ROSTER_UPDATE")
+    state.Fire("CHAT_MSG_ADDON", "NaowhScore", "S Player-1-29 250", "PARTY", "Two")
+    state.RunTimers()
+    check("in China: nothing sent, asked or listened for", #state.sent == 0 and #state.frames == 1
+        and not state.frames[1].events.CHAT_MSG_ADDON)
+    check("in China: no one is inspected and no tooltip line is hooked", #state.inspected == 0 and #state.postCalls == 0)
+    check("in China: a shared score is not kept", Score.Known("Player-1-29") == nil)
+    check("in China: the saved guild scores are gone", state.account.naowhScoreGuild == nil)
+    check("in China: your own score still reads", math.abs(Score.Unit("player") - 20) < 1e-9)
+end
 print(("test-naowh-score: %d checks passed"):format(checks))

@@ -5,6 +5,9 @@ ns.FEATURE_BADGES = 1
 ns.BADGES_LIVE = 1
 ns.FEATURE_GROUP_FINDER = true
 
+local CHINA_REGION = 5
+ns.CHINA = GetCurrentRegion and GetCurrentRegion() == CHINA_REGION or false
+
 local function Missing(_, key)
     error("NaowhForever: no feature switch named " .. tostring(key), 2)
 end
@@ -77,7 +80,7 @@ ns.FEATURES = {
         characterPanelSlotMarks = true,
         inspectPanel = true,
         groupInspect = false,
-        groupInspectShare = true,
+        groupInspectShare = not ns.CHINA,
         xpBar = true,
         autoRepair = true,
         sellJunk = true,

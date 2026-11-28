@@ -421,7 +421,7 @@ local function Load(saved)
         Filter.classes[#Filter.classes + 1] = class
     end
     Filter.partyFit = saved.partyFit == true
-    Filter.minScore = tonumber(saved.minScore) or 0
+    Filter.minScore = not ns.CHINA and tonumber(saved.minScore) or 0
     Filter.expr = type(saved.expr) == "string" and saved.expr or ""
     Filter.levelMin, Filter.levelMax = tonumber(saved.levelMin) or 0, tonumber(saved.levelMax) or 0
 end

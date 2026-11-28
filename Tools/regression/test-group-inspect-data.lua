@@ -262,6 +262,11 @@ do
         and rec.gear[5].enchanted == true and rec.gear[8].enchanted == false)
     check("their score from their gear, kept for tooltips too", rec.score and rec.score > 0 and not rec.scoreShared
         and Score.Known(guid1) ~= nil)
+    local theirs = rec.score
+    ns.CHINA, rec.score = true, nil
+    GI.Records.ScoreOf(rec)
+    check("in China: no score worked out from their gear", rec.score == nil)
+    ns.CHINA, rec.score = false, theirs
     check("their talents: 5/20/0, Fury, damage", rec.talents.spent[1] == 5 and rec.talents.tree == "Fury"
         and rec.role == "DAMAGER")
     check("then the inspect is let go", state.cleared == 1)

@@ -1,5 +1,6 @@
 -- Share.lua: your Gear Score sent to your group and guild as it changes, and theirs kept.
 local ns = _G.NaowhForever
+if ns.CHINA then return end
 
 local Score = ns.NaowhScore
 local S = ns.QoLSettings
