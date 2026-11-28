@@ -213,8 +213,6 @@ Shared.Style = {
             l = 1 / 1024, r = 361 / 1024, t = 145 / 1024, b = 629 / 1024 },
         ["profession-background-card-poisons-c60"] = { file = 8164458, w = 360, h = 484,
             l = 1 / 1024, r = 361 / 1024, t = 145 / 1024, b = 629 / 1024 },
-        ["profession-background-card-research-c60"] = { file = 8164461, w = 360, h = 484,
-            l = 1 / 1024, r = 361 / 1024, t = 145 / 1024, b = 629 / 1024 },
         ["profession-background-card-skinning-c60"] = { file = 8164463, w = 360, h = 484,
             l = 1 / 1024, r = 361 / 1024, t = 145 / 1024, b = 629 / 1024 },
         ["profession-background-card-tailoring-c60"] = { file = 8164465, w = 360, h = 484,
