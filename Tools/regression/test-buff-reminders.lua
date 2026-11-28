@@ -2621,7 +2621,7 @@ do
     Check("and no record", t.ns.AccountSettings().professionCooldowns["Tester-Realm"], nil)
 
     t.ns.AccountSettings().professionCooldowns["Alt-Realm"] = { name = "Alt",
-        ready = { arcanite = t.env.time() + 2 * HOUR } }
+        ready = { arcanite = t.env.time() + 1.5 * HOUR } }
     t.Fire("BAG_UPDATE_DELAYED"); t.Advance(0.5)
     Check("another character's transmute, not ready yet", t.Shown(), "")
     t.Set("professionCooldownHours", 3)
@@ -2629,6 +2629,10 @@ do
     local tip
     for _, f in ipairs(t.frames) do if rawget(f, "tip") and f.shown then tip = f.tip end end
     Check("its tooltip names the character", tip and tip:find("Alt", 1, true) ~= nil, true)
+    Check("its tooltip gives hours and minutes", tip and tip:find("in 1h 30m", 1, true) ~= nil, true)
+    t.Advance(60)
+    for _, f in ipairs(t.frames) do if rawget(f, "tip") and f.shown then tip = f.tip end end
+    Check("and counts down by the minute", tip and tip:find("in 1h 29m", 1, true) ~= nil, true)
     t.Set("professionCooldownAlts", false)
     Check("Other Characters off", t.Shown(), "")
     t.Set("professionCooldownAlts", true)

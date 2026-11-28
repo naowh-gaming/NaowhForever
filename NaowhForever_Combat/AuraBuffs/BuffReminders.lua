@@ -44,6 +44,7 @@ local STORE_SLOP = 60
 local SKILL_LINE = 7
 local TEXT_HOURS = "%dh"
 local TEXT_MINUTES = "%dm"
+local TEXT_HOURS_MINUTES = "%dh %dm"
 local TEXT_READY = ns.L("%s is ready on %s.")
 local TEXT_READY_IN = ns.L("%s is ready on %s in %s.")
 local WHERE = {
@@ -562,17 +563,22 @@ local function Countdown(left)
     return TEXT_MINUTES:format(math.ceil(left / SECONDS))
 end
 
+local function TipCountdown(left)
+    local rounded = math.ceil(left / SECONDS) * SECONDS
+    local hours, minutes = math.floor(rounded / HOUR), rounded % HOUR / SECONDS
+    if hours == 0 then return TEXT_MINUTES:format(minutes) end
+    if minutes == 0 then return TEXT_HOURS:format(hours) end
+    return TEXT_HOURS_MINUTES:format(hours, minutes)
+end
+
 local function CooldownName(cooldown)
     return cooldown.item and C_Item.GetItemNameByID(cooldown.item) or C_Spell.GetSpellName(cooldown.spell) or ""
 end
 
 local function CooldownEntry(list, cooldown, left, warn, who, key)
     if left > warn then return Wake(left - warn) end
-    if left > 0 then
-        local step = left >= HOUR and HOUR or SECONDS
-        Wake(left - (math.ceil(left / step) - 1) * step)
-    end
-    local tip = left > 0 and TEXT_READY_IN:format(CooldownName(cooldown), who, Countdown(left))
+    if left > 0 then Wake(left - (math.ceil(left / SECONDS) - 1) * SECONDS) end
+    local tip = left > 0 and TEXT_READY_IN:format(CooldownName(cooldown), who, TipCountdown(left))
         or TEXT_READY:format(CooldownName(cooldown), who)
     list[#list + 1] = { icon = cooldown.item and ItemIcon(cooldown.item) or C_Spell.GetSpellTexture(cooldown.spell),
         key = key, count = Countdown(left), tip = tip }
