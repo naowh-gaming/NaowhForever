@@ -9127,6 +9127,7 @@ L["Needs Profession Cooldown Reminders"] = true
 L["%s is ready on %s."] = true
 L["%s is ready on %s in %s."] = true
 L["Highest Profit"] = true
+L["Highest ROI"] = true
 L["Talent Overlay"] = true
 L["Next Talent"] = true
 L["Lights the next talent of a build on your talent window, with a panel to pick the build."] = true

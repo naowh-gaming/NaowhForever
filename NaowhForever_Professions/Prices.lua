@@ -15,7 +15,7 @@ local LISTED_ENOUGH = 10
 local TEXT_ROI = ns.L("(%.0f%% ROI)")
 
 local EMPTY = {}
-local profitCache, netCache, bestNetCache = {}, {}, {}
+local profitCache, costCache, netCache, bestNetCache = {}, {}, {}, {}
 local bestSkill
 local plan = { cost = {}, make = {}, craft = {}, busy = {} }
 
@@ -135,7 +135,10 @@ local function RecipeProfit(recipeID, output, made)
         local ok, reagents = pcall(R.Reagents, recipeID)
         if each and ok and #reagents > 0 then
             local cost, missing = ReagentCost(reagents)
-            if missing == 0 then profit = AfterCut(each, made or 1) - cost end
+            if missing == 0 then
+                profit = AfterCut(each, made or 1) - cost
+                costCache[recipeID] = cost
+            end
         end
         profitCache[recipeID] = profit
     end
@@ -173,6 +176,11 @@ local function ROI(profit, cost)
     return profit / cost * PERCENT
 end
 
+local function RecipeROI(recipeID, output, made)
+    local profit = RecipeProfit(recipeID, output, made)
+    return profit and ROI(profit, costCache[recipeID]) or nil
+end
+
 local function ROIThresholds()
     local grey = math.max(0, tonumber(S.Get("roiGreyBelow")) or DEFAULT_ROI_GREY_BELOW)
     local green = math.max(grey, tonumber(S.Get("roiGreenFrom")) or DEFAULT_ROI_GREEN_FROM)
@@ -195,6 +203,7 @@ end
 
 local function ClearCache()
     wipe(profitCache)
+    wipe(costCache)
     wipe(netCache)
     wipe(bestNetCache)
     wipe(plan.cost); wipe(plan.make); wipe(plan.craft); wipe(plan.busy)
@@ -211,6 +220,7 @@ P.Prices = {
     RecipeProfit = RecipeProfit,
     NetCost = NetCost,
     ROI = ROI,
+    RecipeROI = RecipeROI,
     ROIThresholds = ROIThresholds,
     ROIBand = ROIBand,
     ROIText = ROIText,

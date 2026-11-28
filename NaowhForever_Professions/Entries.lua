@@ -16,6 +16,7 @@ local LEARNED = { name = ns.L("Learned"), key = "profLearnedCollapsed", closed =
 local UNLEARNED = { name = ns.L("Unlearned"), key = "profUnlearnedCollapsed", closed = false }
 local BEST = { name = ns.L("Best for Skill-ups"), key = LEARNED.key, closed = false }
 local PROFIT = { name = ns.L("Highest Profit"), key = LEARNED.key, closed = false }
+local ROI = { name = ns.L("Highest ROI"), key = LEARNED.key, closed = false }
 local UNLEARNED_GROUPS = {
     { status = "ready", name = ns.L("Learnable now"), key = "profUnlearnedReadyCollapsed", closed = false, sub = true },
     { status = "later", name = ns.L("Needs more skill"), key = "profUnlearnedLaterCollapsed", closed = true, sub = true },
@@ -27,7 +28,7 @@ local categories, entries, unlearned = {}, {}, EMPTY
 local collapsed = {}
 local catPool, byID, learned, entryPool = {}, {}, {}, {}
 local shown, shownUnlearned, inGroup, status = {}, {}, {}, {}
-local chanceOf, costOf, profitOf = {}, {}, {}
+local chanceOf, costOf, profitOf, roiOf = {}, {}, {}, {}
 local skillNow
 local recipeCount = 0
 
@@ -54,6 +55,18 @@ local function ByProfit(a, b)
         if pa ~= pb then return pa > pb end
     elseif pa or pb then
         return pa ~= false
+    end
+    local na, nb = a.name or "", b.name or ""
+    if na ~= nb then return na < nb end
+    return a.recipeID < b.recipeID
+end
+
+local function ByROI(a, b)
+    local ra, rb = roiOf[a], roiOf[b]
+    if ra and rb then
+        if ra ~= rb then return ra > rb end
+    elseif ra or rb then
+        return ra ~= false
     end
     local na, nb = a.name or "", b.name or ""
     if na ~= nb then return na < nb end
@@ -187,6 +200,10 @@ local function SortProfit()
     return S.Get("craftProfit") and S.Get("craftProfitList") and not W.linked and Filters.Get("sortProfit") and Prices.ProfitShown()
 end
 
+local function SortROI()
+    return S.Get("craftProfit") and S.Get("craftProfitList") and not W.linked and Filters.Get("sortROI") and Prices.ProfitShown()
+end
+
 local function KeepSkillUp(info)
     local chance = SkillUps.ForRecipe(info, skillNow)
     if chance == 0 then return false end
@@ -197,6 +214,11 @@ end
 
 local function KeepProfit(info)
     profitOf[info] = Prices.RecipeProfit(info.recipeID, R.OutputItem(info.recipeID)) or false
+    return true
+end
+
+local function KeepROI(info)
+    roiOf[info] = Prices.RecipeROI(info.recipeID, R.OutputItem(info.recipeID)) or false
     return true
 end
 
@@ -232,6 +254,11 @@ end
 local function AddByProfit()
     wipe(profitOf)
     return AddSorted(PROFIT, KeepProfit, ByProfit)
+end
+
+local function AddByROI()
+    wipe(roiOf)
+    return AddSorted(ROI, KeepROI, ByROI)
 end
 
 local function AddGroup(group, open)
@@ -272,7 +299,9 @@ end
 local function Build()
     wipe(entries)
     local first, found
-    if SortProfit() then
+    if SortROI() then
+        first, found = AddByROI()
+    elseif SortProfit() then
         first, found = AddByProfit()
     elseif SortSkillUps() then
         first, found = AddBest()

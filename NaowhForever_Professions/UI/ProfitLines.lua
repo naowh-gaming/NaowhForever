@@ -41,6 +41,10 @@ local ROI_COLORS = {
 local Lines = {}
 P.Lines = Lines
 
+function Lines.ROIColor(roi)
+    return ROI_COLORS[Prices.ROIBand(roi)]
+end
+
 local function AddLine(block, key)
     local i = #block.lines + 1
     local line = CreateFrame("Frame", nil, block)
@@ -177,7 +181,7 @@ function Lines.RenderProfit(block, recipeID, output, made)
     if S.Get("craftROI") then
         local line = block.roi or AddLine(block, "roi")
         local roi = Prices.ROI(rawProfit, v.cost)
-        local color = roi and ROI_COLORS[Prices.ROIBand(roi)]
+        local color = roi and Lines.ROIColor(roi)
         Lines.Set(line, nil, color and (Text.Hex(color) .. Prices.ROIText(roi) .. "|r") or nil)
     elseif block.roi then
         block.roi:Hide()

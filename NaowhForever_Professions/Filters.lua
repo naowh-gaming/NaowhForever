@@ -13,7 +13,7 @@ local TRIVIAL = 3
 local BIND_INDEX = 14
 local BIND_NEVER = 0
 local STORE = "professionFilters"
-local SORTS = { "sortSkillUps", "sortProfit" }
+local SORTS = { "sortSkillUps", "sortProfit", "sortROI" }
 
 local FILTERS = {
     { key = "filterFavorite", text = ns.L("Favorites") },
