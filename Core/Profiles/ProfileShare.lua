@@ -758,7 +758,7 @@ local function NewBuild(classID, tree, b)
     local points = BuildPoints(b)
     if #points == 0 or Training.CheckBuild(tree, points) then return nil end
     return { name = Training.BuildName(b.name, IMPORTED_BUILD),
-        spec = Training.BuildName(b.spec, IMPORTED_SPEC), points = points, saved = true,
+        spec = Training.BuildName(b.spec, IMPORTED_SPEC), points = points, saved = true, rev = tree.rev,
         skip = Training.CleanSkips(classID, b.skip) }
 end
 
