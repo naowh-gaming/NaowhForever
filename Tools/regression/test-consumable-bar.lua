@@ -153,6 +153,7 @@ local function fixture(settings, noMacros, class)
         function f:SetTextColor(r, g, b) self.color = { r, g, b } end
         function f:SetFont(path, size) assert(type(path) == 'string' and type(size) == 'number'); self.fontSize = size; self.font = path end
         function f:GetStringWidth() return #tostring(self.text or '') * (self.fontSize or 10) * 0.6 end
+        function f:GetStringHeight() return self.textHeight or self.fontSize or 10 end
         function f:SetJustifyH(v) self.justify = v end
         function f:SetTexture(t) self.texture = t end
         function f:SetColorTexture() self.texture = 'color' end
@@ -2438,6 +2439,18 @@ do
     local first, second = row[1].points.BOTTOMLEFT[2], row[2].points.BOTTOMLEFT[2]
     check('a long label widens its button', row[1].w > 120)
     check('and the next button moves past it', second >= first + row[1].w)
+end
+
+-- A hint that wraps pushes the bar down instead of running over it
+do
+    local s = fixture({ consumableBar = true })
+    local preview = s.editor()
+    local top, height = preview.view.points.TOPLEFT[3], preview.h
+    preview.hint.textHeight = 40
+    s.CB.OpenEditor()
+    check('a one-line hint keeps the bar where it was', top == -30)
+    check('a wrapped hint moves the bar below it', preview.view.points.TOPLEFT[3] == -56)
+    check('and the preview grows by as much', preview.h == height + 26)
 end
 
 print(checks .. ' consumable-bar checks passed')

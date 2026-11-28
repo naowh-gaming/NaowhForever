@@ -12,7 +12,7 @@ local WIDTH = 620
 local HEADER, FOOTER, PAD, INSET = St.WINDOW_HEADER, St.WINDOW_FOOTER, St.WINDOW_PAD, St.CONTENT_INSET
 local CARD = 6
 local BUTTON_W, BUTTON_H, BUTTON_GAP, LABEL_PAD = 120, 24, 8, 8
-local HINT_FONT, HINT_TOP = 12, -8
+local HINT_FONT, HINT_TOP, HINT_GAP = 12, -8, 8
 local PLUS_FONT, PLUS_SHARE, PLUS_MIN = 24, 0.6, 10
 local PREVIEW_TOP, PREVIEW_PAD = 30, 12
 local PREVIEW_INSET = 10
@@ -182,10 +182,14 @@ local function Cell(i)
     return cell
 end
 
+local function HintRoom()
+    return math.max(PREVIEW_TOP, -HINT_TOP + math.ceil(preview.hint:GetStringHeight()) + HINT_GAP)
+end
+
 local function PreviewHeight()
     local size, gap, grow, perRow, height = CB.Grid()
     local _, h = ItemBar.Size(#CB.Items() + 1, size, gap, grow, perRow, height)
-    return PREVIEW_TOP + h + 2 * C.BG_PAD + PREVIEW_PAD
+    return HintRoom() + h + 2 * C.BG_PAD + PREVIEW_PAD
 end
 
 local function DrawItems(items, size, gap, grow, perRow, height, flip)
@@ -256,6 +260,7 @@ function Render()
     DrawPlus(#items + 1, size, gap, grow, perRow, height, flip)
     for i = #items + 2, #preview.cells do preview.cells[i]:Hide() end
     Fit(#items + 1, size, gap, grow, perRow, height)
+    preview.view:SetPoint("TOPLEFT", PREVIEW_INSET, -HintRoom())
     preview:SetHeight(PreviewHeight())
     window:SetHeight(HEADER + CARD + PAD + PreviewHeight() + PAD + BUTTON_H + PAD + FOOTER + CARD)
     window.note.text:SetText(#items == 1 and TEXT_ONE_ITEM or TEXT_ITEMS:format(#items))
@@ -276,6 +281,9 @@ local function NewPreview(parent)
     local box = CreateFrame("Frame", nil, parent)
     box.hint = ns.Font(box, HINT_FONT, nil, T.muted)
     box.hint:SetPoint("TOPLEFT", PREVIEW_INSET, HINT_TOP)
+    box.hint:SetPoint("TOPRIGHT", -PREVIEW_INSET, HINT_TOP)
+    box.hint:SetJustifyH("LEFT")
+    box.hint:SetWordWrap(true)
     box:EnableMouse(true)
     box:SetScript("OnReceiveDrag", BoxDrop)
     box:SetScript("OnMouseUp", BoxDrop)
