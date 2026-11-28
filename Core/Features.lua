@@ -170,7 +170,7 @@ ns.FEATURES = {
         mapQuestPins = true,
         lootFinder = true,
         crafting = false,
-        runPanel = false,
+        runPanel = true,
         newLayout = true,
     },
     statWeights = {
