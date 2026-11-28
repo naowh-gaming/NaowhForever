@@ -64,7 +64,7 @@ local function World()
     local ns = { L = dofile("Tools/regression/locale_stub.lua").L, Upper = string.upper, Lower = string.lower,
         UI = { PROFILES_PAGE = "Profiles" }, CODE_BUILD = "test", PlainText = PlainText,
         Macros = { C = { LIMIT = 255 } },
-        TrainingBuilds = { [2] = { talents = {} } },
+        TrainingBuilds = { [2] = { talents = {}, rev = 3 } },
         -- Points that cannot be taken start with 0 here; the real rules are Training's own test.
         Training = {
             CheckBuild = function(_, points) return points[1] == 0 and "Already at full rank." or nil end,
@@ -522,6 +522,7 @@ Case("talent builds join yours when they can be taken; a class with no tree stay
     local saved = w.db.account.trainingBuilds
     assert(added.builds == 2 and #saved[2] == 3, added.builds)
     assert(saved[2][2].points[2] == 13 and saved[2][2].saved == true and saved[2][2].skip[30] == true)
+    assert(saved[2][2].rev == 3, "checked against today's tree, so it carries today's revision")
     assert(saved[2][3].name == "Imported Build" and saved[2][3].spec == "Imported")
     assert(saved[99] == nil and w.buildsChanged == 1)
 end)
