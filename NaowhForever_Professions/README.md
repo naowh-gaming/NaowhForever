@@ -378,6 +378,14 @@ Each layer uses only the ones above it, or reads a later one's table at call tim
   cannot look these atlases up by name, so all of them are in the shared `FOREVER_ART_FILES` and drawn
   from their files. Both the overview's cards and the recipe window's card are picked by skill line
   from `P.C.ART_KEYS`; the overview adds `generic-` for the three bottom cards.
+- Each overview card has a plain line under its skill bar for the next rank (what it takes, the
+  nearest teacher, click for a waypoint), with no strip or border so it sits on the card art. The
+  recipe window's banner is not enough on its own: it only shows inside a recipe list, which a
+  gatherer seldom opens, so Skinning at 225/225 showed a full bar on the overview and no word of
+  Artisan or where to train it.
+- A rank the player is not yet level for (Artisan wants 35) still shows, as "unlocks at level N",
+  instead of nothing: a capped bar with no word why reads as a bug. The once-in-chat alert still waits
+  until the rank can be learned.
 - With the Forever skin the window wears the game's portrait frame (`Parts.ForeverFrame`) over the
   rock and Naowh's Journeys art (`Parts.ForeverWindowArt`), as the options window does. The logo
   moves into the portrait and keeps its click to the settings, the profession's name takes the

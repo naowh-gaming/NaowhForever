@@ -1,7 +1,8 @@
 -- Run with Lua 5.1 from the repository root: the overview's profession cards. With the Forever skin each
 -- card is drawn on the game's own card art for its profession (Parts.ForeverCard, the shared card part),
 -- falling back to the game's plain card and then to our flat card when this client lacks the art; with
--- the skin off they stay our flat cards. The rank-ready strip is gone from them.
+-- the skin off they stay our flat cards. The old rank-ready strip is gone; a plain next-rank line
+-- sits under each card's skill bar instead.
 local checks = 0
 local function check(label, value) assert(value, label); checks = checks + 1 end
 
@@ -167,6 +168,8 @@ end
 check("each card the overview asks for is drawn from its file, cut to its size", filed == #wanted)
 
 check("the rank-ready strip is gone", not book:find("rankStrip", 1, true) and not book:find("Strip", 1, true))
+check("a plain next-rank line sits under each card's bar", book:find("card.hint = BuildHint(card, bar)", 1, true)
+    and book:find("RenderHint(card, line, rank, maxRank, name)", 1, true))
 check("the recipe window keeps the rank lines for its banner", book:find("function Book.RankLines(a)", 1, true)
     and Read("NaowhForever_Professions/UI/Window.lua"):find("P.Book.RankLines(a)", 1, true))
 

@@ -102,9 +102,10 @@ local function For(line, skill, max, prof)
     local data = Data(line)
     local rank = data and (max or 0) > 0 and NextRank(data, max)
     if not rank or (skill or 0) < rank.skill then return end
-    if UnitLevel("player") < (rank.level or RANK_LEVEL[rank.cap] or 0) then return end
+    local need = rank.level or RANK_LEVEL[rank.cap] or 0
     local npc, how = Where(data, rank)
-    return { rankName = RankName(rank, prof or ""), how = how, npc = npc, cap = rank.cap }
+    return { rankName = RankName(rank, prof or ""), how = how, npc = npc, cap = rank.cap,
+        needLevel = UnitLevel("player") < need and need or nil }
 end
 
 local function Announce(name, line, a, announced)
@@ -119,7 +120,7 @@ local function Check(force)
     for _, index in pairs({ GetProfessions() }) do
         local name, _, skill, max, _, _, line = GetProfessionInfo(index)
         local a = For(line, skill, max, name)
-        if a and (force or announced[line] ~= a.cap) then
+        if a and not a.needLevel and (force or announced[line] ~= a.cap) then
             Announce(name, line, a, announced)
             any = true
         end

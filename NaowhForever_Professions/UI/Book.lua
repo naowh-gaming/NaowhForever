@@ -21,6 +21,7 @@ local SECONDARY_BAR_ROOM = 24
 local BAR_H = 18
 local MISSING_DROP = 8
 local MISSING_ROOM = 40
+local HINT_GAP, HINT_H = 6, 48
 local BOOK_ORDER = { "PrimaryProfession1", "PrimaryProfession2", "SecondaryProfession1",
     "SecondaryProfession2", "SecondaryProfession3" }
 local SECONDARIES = {
@@ -36,6 +37,9 @@ local TEXT_PRIMARY = PROFESSIONS_FIRST_PROFESSION or ns.L("Primary Profession")
 local TEXT_NO_PRIMARY = PROFESSIONS_MISSING_PROFESSION or ns.L("Visit a profession trainer to learn one.")
 local TEXT_NOT_LEARNED = ns.L("Not learned yet.")
 local TEXT_READY = ns.L("%s%s|r is ready to learn.")
+local TEXT_AT_LEVEL = ns.L("%s%s|r unlocks at level %d.")
+local TEXT_CARD_HINT = "%s %s\n%s%s%s|r"
+local TEXT_CLICK_WAYPOINT = ns.L(" (click for waypoint)")
 local TEXT_WHERE = "%s - %s %.1f, %.1f"
 local TEXT_NO_TEACHER = ns.L("No teacher recorded for your faction.")
 local TEXT_SKILL = "%d/%d%s"
@@ -53,6 +57,10 @@ end
 
 function Book.RankLines(a)
     local npc = a.npc
+    if a.needLevel then
+        return TEXT_AT_LEVEL:format(ns.RecipeFinder.Hex(Style.GOLD_RGB), a.rankName, a.needLevel), a.how .. ".",
+            npc and Where(npc) or TEXT_NO_TEACHER
+    end
     return TEXT_READY:format(ns.RecipeFinder.Hex(Style.GOLD_RGB), a.rankName), a.how .. ".",
         npc and Where(npc) or TEXT_NO_TEACHER
 end
@@ -93,6 +101,37 @@ local function PlainBar(card)
     return bar
 end
 
+local function OnHintClick(self)
+    if self.npc and ns.ProfessionRank then ns.ProfessionRank.Waypoint(self.npc) end
+end
+
+local function BuildHint(card, bar)
+    local hint = CreateFrame("Frame", nil, card)
+    hint:SetPoint("TOPLEFT", bar, "BOTTOMLEFT", 0, -HINT_GAP)
+    hint:SetPoint("TOPRIGHT", bar, "BOTTOMRIGHT", 0, -HINT_GAP)
+    hint:SetHeight(HINT_H)
+    hint.text = ns.Font(hint, Style.FONT, nil)
+    hint.text:SetAllPoints()
+    hint.text:SetJustifyH("LEFT")
+    hint.text:SetJustifyV("TOP")
+    hint.text:SetWordWrap(true)
+    hint:EnableMouse(true)
+    hint:SetScript("OnMouseUp", OnHintClick)
+    hint:Hide()
+    return hint
+end
+
+local function RenderHint(card, line, rank, maxRank, name)
+    local a = ns.ProfessionRank and ns.RecipeFinder and line and ns.ProfessionRank.For(line, rank, maxRank, name)
+    card.hint.npc = a and a.npc
+    if a then
+        local head, how, where = Book.RankLines(a)
+        card.hint.text:SetText(TEXT_CARD_HINT:format(head, how, ns.RecipeFinder.Hex(T.muted), where,
+            a.npc and TEXT_CLICK_WAYPOINT or ""))
+    end
+    card.hint:SetShown(a ~= nil)
+end
+
 local function BuildCard(book, i, innerW, cardW)
     local primary = i <= PRIMARIES
     local card = CreateFrame("Frame", nil, book)
@@ -112,6 +151,7 @@ local function BuildCard(book, i, innerW, cardW)
     card.missing:SetPoint("CENTER", 0, primary and -MISSING_DROP or 0)
     card.missing:SetWidth((primary and innerW or cardW) - MISSING_ROOM)
     card.missing:SetWordWrap(true)
+    card.hint = BuildHint(card, bar)
     return card
 end
 
@@ -147,6 +187,7 @@ local function RenderLearned(card, index)
         (modifier or 0) > 0 and TEXT_BONUS:format(modifier) or ""))
     card.bar:Show()
     card.missing:Hide()
+    RenderHint(card, line, rank, maxRank, name)
 end
 
 local function RenderMissing(card, i)
@@ -155,6 +196,7 @@ local function RenderMissing(card, i)
     PaintCard(card, not card.primary and secondary.card or nil)
     card.missing:SetText(card.primary and TEXT_NO_PRIMARY or TEXT_NOT_LEARNED)
     card.bar:Hide()
+    card.hint:Hide()
     card.missing:Show()
 end
 
