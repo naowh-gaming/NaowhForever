@@ -107,7 +107,7 @@ end
 function Library.Progress()
     local done, total = 0, 0
     for _, book in ipairs(ns.LibraryBooks) do
-        if book.turnIn == C.TURN_IN and Library.ForMe(book) then
+        if Library.ForMe(book) then
             total = total + 1
             if Library.Done(book) then done = done + 1 end
         end
