@@ -153,7 +153,10 @@ keep their names for the rest of the addon.
 - Caves and buildings have maps of their own under the zone, and the books are placed on the
   zone's, so the zone you stand in walks up to it.
 - The reward quests count every book handed in, to the librarian or the mage trainer, so progress
-  counts both.
+  counts both. While the next reward is one claimed from the trainer, "Hand them to" names both;
+  they stand in the same quarter of the city, so it gives the librarian's place for the two. On
+  the books card the trainer takes the place's line, since a longer first line would run into the
+  goal text beside it in French.
 - A step is done once the quest it hands in is; the first once the quest it starts is in your log
   or handed in. Two steps of one name (the Burned-Out Remains) are told apart by their zone.
 - An attunement's steps are the quests its last quest needs, each after the ones it needs, for your
