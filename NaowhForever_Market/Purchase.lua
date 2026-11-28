@@ -15,21 +15,23 @@ local gen = 0
 local Purchase = {}
 Market.Purchase = Purchase
 
-local function End()
-    if buy.itemID then C_AuctionHouse.CancelCommoditiesPurchase() end
+-- A quote still open is let go, as Blizzard's dialog does. A purchase that went through, or one confirmed and still
+-- on its way, is not: cancelling it makes the server answer "Internal auction error".
+local function End(keep)
+    if buy.itemID and not keep then C_AuctionHouse.CancelCommoditiesPurchase() end
     buy.state = nil
     gen = gen + 1
     events:UnregisterAllEvents()
 end
 
-local function Done(ok)
+local function Done(ok, keep)
     if not buy.state then return end
-    End()
+    End(ok or keep)
     if Purchase.onDone then Purchase.onDone(ok, buy.quantity) end
 end
 
 local function TimedOut(buyGen)
-    if buyGen == gen then Done(false) end
+    if buyGen == gen then Done(false, buy.state == "buying") end
 end
 
 local function Begin(state)
