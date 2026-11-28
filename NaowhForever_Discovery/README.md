@@ -87,10 +87,13 @@ keep their names for the rest of the addon.
   yards off on Forever's Stormwind). The Blackrock
   Mountain books are pinned on the mountain in Burning Steppes, since the mountain's own map is not
   the zone you stand in.
-- `ns.LibraryGoals`: handing in 10, 20 and 25 books each earns a reward quest; the books count
-  toward every one. `rewards` are the choice of items, `{ itemID, name }`, the name for before the
-  client has the item; `level` the level the quest needs. `reported`: the book count is what
-  players report (method.gg, 2026-10-04); Wowhead Forever has the quest (82208, its rewards, level 35
+- `ns.LibraryGoals`: handing in 10, 20, 25 and 35 books each earns a reward quest; the books count
+  toward every one, the level 60 set handed to the mage trainer included (Wowhead Forever's
+  comments on 84394, 2026-11-28: exactly 35 hand-ins). A Luddite's Guide is `missing`: its cage
+  key has not dropped for anyone on Forever and Wowhead Forever has no quest for it. `rewards` are
+  the choice of items, `{ itemID, name }`, the name for before the client has the item; `level` the
+  level the quest needs. `reported`: the book count is what players report (method.gg,
+  2026-10-04); Wowhead Forever has the quest (82208, its rewards, level 35
   since build 1.60.1.70170) but not how many books it takes. The 20-book quest needs level 20.
 - `ns.SleepingBag`: a hidden quest chain across Azeroth, each step a thing in the world to click,
   ending in the Cozy Sleeping Bag. From Wowhead Forever's quests (objects and spots) and its guide
@@ -149,7 +152,8 @@ keep their names for the rest of the addon.
 - The bank count is the client's copy from the last time the bank was open.
 - Caves and buildings have maps of their own under the zone, and the books are placed on the
   zone's, so the zone you stand in walks up to it.
-- The reward quests count the books handed to the librarian, so progress counts those only.
+- The reward quests count every book handed in, to the librarian or the mage trainer, so progress
+  counts both.
 - A step is done once the quest it hands in is; the first once the quest it starts is in your log
   or handed in. Two steps of one name (the Burned-Out Remains) are told apart by their zone.
 - An attunement's steps are the quests its last quest needs, each after the ones it needs, for your

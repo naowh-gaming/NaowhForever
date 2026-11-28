@@ -9,7 +9,7 @@ ns.LibraryGoals = {
     { quest = 82208, name = "Greater Friend of the Library", books = 25, level = 35, reported = true,
       rewards = { { 277254, "Truthseeker's Bow" }, { 277258, "Crest of Elucidation" },
           { 277260, "Researcher's Night Light" } } },
-    { quest = 84394, name = "Greater Friend of the Library", books = 30, level = 50, turnIn = "trainer", reported = true,
+    { quest = 84394, name = "Greater Friend of the Library", books = 35, level = 50, turnIn = "trainer", reported = true,
       rewards = { { 281637, "Antique Bulwark" }, { 281636, "Museum Keeper's Chain" },
           { 277202, "Artifact Seeker's Pendant" } } },
 }
@@ -99,9 +99,9 @@ ns.LibraryBooks = {
     { quest = 79951, item = 215820, tier = 35, side = "B", turnIn = "librarian",
       name = "Mummies: A Guide to the Unsavory Undead",
       spots = { { 1418, 56.7, 39.9, "Crypt", "In the crypt on the south side of the butte, above a small dwarven camp." } } },
-    { quest = 79953, item = 215824, tier = 35, side = "B", turnIn = "librarian",
+    { quest = 79953, item = 215824, tier = 35, side = "B", turnIn = "librarian", missing = true,
       name = "A Luddite's Guide to Caring for Your Demonic Pet",
-      spots = { { 1435, 61.4, 22.4, "Fallow Sanctuary", "Inside a cage opened by the Rusted Cage Key, a rare drop from the murlocs nearby." } } },
+      spots = {} },
 
     { quest = 81947, item = 220345, tier = 45, side = "B", turnIn = "librarian",
       name = "Sanguine Sorcery",
