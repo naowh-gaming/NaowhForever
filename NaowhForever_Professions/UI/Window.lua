@@ -51,7 +51,8 @@ local TEXT_SORT = ns.L("Sort")
 local TEXT_SORT_CATEGORIES = ns.L("By Category")
 local TEXT_SORT_SKILL_UPS = ns.L("Best for Skill-ups")
 local TEXT_SORT_PROFIT = ns.L("Highest Profit")
-local SORT_CATEGORIES, SORT_SKILL_UPS, SORT_PROFIT = "categories", "skillUps", "profit"
+local TEXT_SORT_ROI = ns.L("Highest ROI")
+local SORT_CATEGORIES, SORT_SKILL_UPS, SORT_PROFIT, SORT_ROI = "categories", "skillUps", "profit", "roi"
 local TEXT_SEARCH = SEARCH or ns.L("Search")
 local TEXT_NO_MATCH = ns.L("No recipes match.")
 
@@ -174,6 +175,7 @@ local function AddFilter(root, f)
 end
 
 local function Sort()
+    if Filters.Get("sortROI") and S.Get("craftProfitList") and Prices.ProfitShown() then return SORT_ROI end
     if Filters.Get("sortProfit") and S.Get("craftProfitList") and Prices.ProfitShown() then return SORT_PROFIT end
     if Filters.Get("sortSkillUps") and S.Get("skillUpChances") then return SORT_SKILL_UPS end
     return SORT_CATEGORIES
@@ -186,6 +188,7 @@ end
 local function SortBy(sort)
     Filters.Set("sortSkillUps", sort == SORT_SKILL_UPS)
     Filters.Set("sortProfit", sort == SORT_PROFIT)
+    Filters.Set("sortROI", sort == SORT_ROI)
     Refilter()
 end
 
@@ -201,6 +204,14 @@ local function SortMenu(root)
             radio:SetEnabled(false)
             radio:SetTooltip(function(tooltip)
                 GameTooltip_SetTitle(tooltip, TEXT_SORT_PROFIT)
+                GameTooltip_AddNormalLine(tooltip, TEXT_SCAN_FIRST)
+            end)
+        end
+        local roiRadio = root:CreateRadio(TEXT_SORT_ROI, SortIs, SortBy, SORT_ROI)
+        if not Prices.ProfitShown() then
+            roiRadio:SetEnabled(false)
+            roiRadio:SetTooltip(function(tooltip)
+                GameTooltip_SetTitle(tooltip, TEXT_SORT_ROI)
                 GameTooltip_AddNormalLine(tooltip, TEXT_SCAN_FIRST)
             end)
         end

@@ -55,6 +55,7 @@ local TEXT_SHOPPING = ns.L("Shopping List")
 local TEXT_QUEUE = ns.L("Crafting Queue")
 local TEXT_AUCTIONS = ns.L("On Auction House")
 local TEXT_PERCENT = "%d%%"
+local TEXT_LIST_ROI = "%s  %s%.0f%%|r"
 local TEXT_TIP_CHANCE = ns.L("Skill-up chance: %s")
 local TEXT_TIP_COST = ns.L("Per skill-up: %s, after selling what it makes to a vendor")
 
@@ -84,7 +85,13 @@ end
 local function ListProfit(recipeID, output, made)
     local profit = not W.linked and S.Get("craftProfitList") and Prices.RecipeProfit(recipeID, output, made)
     if not profit then return "", T.fg end
-    return Text.Money(profit, true), profit >= 0 and Style.PROFIT_RGB or Style.RED_RGB
+    local text = Text.Money(profit, true)
+    local roi = S.Get("craftROI") and Prices.RecipeROI(recipeID, output, made)
+    local color = roi and P.Lines.ROIColor(roi)
+    if color then
+        text = TEXT_LIST_ROI:format(text, Text.Hex(color), roi)
+    end
+    return text, profit >= 0 and Style.PROFIT_RGB or Style.RED_RGB
 end
 
 local function FormatCraftCount(info)
