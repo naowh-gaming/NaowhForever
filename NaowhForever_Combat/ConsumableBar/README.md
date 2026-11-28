@@ -97,6 +97,11 @@ NaowhForever_Combat/ConsumableBar/
   items and the like there, and Scan Bags would fill the bar with them.
 - Remove Empty takes off the items you have none of in your bags; Smart Macros stay, since they
   pick whatever you carry.
+- Edit Items widens Scan Bags, Remove Empty and Remove All to their labels and lines them up on every
+  render, not when they are made: a font the game has not loaded yet measures 0 wide then, so
+  translated labels ran past their buttons into the next one.
+- The hint above the bar in Edit Items wraps at the panel's edge, and the bar moves down under it, so a
+  long translation stays inside the window instead of running past its right edge.
 - Counts, keys, the grey icon, NONE and cooldowns are plain text and textures, and update in combat.
 - NONE follows the icon's size, not the count's font: as large as fits between the edges, and no
   taller than a rectangular icon's shorter side.

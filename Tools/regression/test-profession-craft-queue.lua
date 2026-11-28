@@ -36,8 +36,8 @@ local bagRoom = 999
 local function Wipe(t) for key in pairs(t) do t[key] = nil end return t end
 local function Noop() end
 local frameMethods = {}
-for _, name in ipairs({ "RegisterUnitEvent", "RegisterEvent", "UnregisterAllEvents", "SetHeight", "SetWidth",
-    "SetSize", "SetPoint", "ClearAllPoints", "EnableMouse", "RegisterForDrag", "SetText", "SetTexture",
+for _, name in ipairs({ "RegisterUnitEvent", "RegisterEvent", "UnregisterAllEvents", "SetHeight",
+    "SetSize", "EnableMouse", "RegisterForDrag", "SetText", "SetTexture",
     "SetJustifyH", "SetWordWrap", "SetScrollChild", "SetScale" }) do
     frameMethods[name] = Noop
 end
@@ -53,7 +53,12 @@ function frameMethods:SetScript(name, fn)
 end
 function frameMethods:HookScript(name, fn) self.hooks[name] = fn end
 function frameMethods:GetParent() return self.parent end
-function frameMethods:GetWidth() return 0 end
+function frameMethods:GetWidth() return self.width or 0 end
+function frameMethods:SetWidth(width) self.width = width end
+function frameMethods:SetResizeBounds(width) self.minWidth = width end
+function frameMethods:GetUnboundedStringWidth() return self.unbounded or 0 end
+function frameMethods:SetPoint(point) self.points = self.points or {} self.points[point] = true end
+function frameMethods:ClearAllPoints() self.points = {} end
 function frameMethods:IsShown() return self.shown end
 function frameMethods:Hide() self.shown = false end
 function frameMethods:SetShown(shown) self.shown = shown and true or false end
@@ -437,6 +442,7 @@ ns.Shared = {
             window.backdrop = { Card = Noop, Paint = Noop }
             window.subtitle = CreateFrame(nil, nil, window)
             window.shown = false
+            window.width = 380
             return window
         end,
         TitleBar = function(window) return CreateFrame(nil, nil, window) end,
@@ -445,7 +451,15 @@ ns.Shared = {
     },
 }
 ns.Font = function(parent) return CreateFrame(nil, nil, parent) end
-ns.Button = function(parent) return CreateFrame(nil, nil, parent) end
+local labelWidths = {}
+local buttons = {}
+ns.Button = function(parent, text, width)
+    local button = CreateFrame(nil, nil, parent)
+    button.width = width
+    button.label = { GetStringWidth = function() return labelWidths[text] or 0 end }
+    buttons[text] = button
+    return button
+end
 ns.Tooltip, ns.AccentBorder, ns.SetButtonText = Noop, Noop, Noop
 ns.UIScale = function() return 1 end
 ns.Professions.Text = {}
@@ -510,5 +524,23 @@ assert(queue.Active().started and not HintShown(101), "a started craft still off
 Drag(101, 100)
 assert(CraftOrder() == "100,101", "a row was reordered while a craft was running")
 queue.Clear()
+
+local addMissing = buttons["Add Missing to SL"]
+assert(addMissing.points.LEFT and addMissing.points.RIGHT, "Add Missing left the footer row with room to spare")
+labelWidths["Clear"], labelWidths["Start Queue"], labelWidths["Add Missing to SL"] = 60, 110, 170
+ns.Professions.CraftQueueView.Render()
+assert(buttons["Clear"].width == 76 and buttons["Start Queue"].width == 126,
+    "the footer buttons were not widened to their translated labels")
+assert(addMissing.points.BOTTOMLEFT and addMissing.points.BOTTOMRIGHT and not addMissing.points.LEFT,
+    "a translated Add Missing that no longer fits did not move above the footer row")
+
+local queueWindow = addMissing.parent
+queueWindow.subtitle.width, queueWindow.subtitle.unbounded = 200, 260
+ns.Professions.CraftQueueView.Render()
+assert(queueWindow.width == 440 and queueWindow.minWidth == 440,
+    "a subtitle cut off by the window did not widen it and its minimum")
+queueWindow.width, queueWindow.subtitle.width = 600, 420
+ns.Professions.CraftQueueView.Render()
+assert(queueWindow.width == 600 and queueWindow.minWidth == 440, "a wide window was resized to its subtitle")
 
 print("Crafting queue regression test: PASS")

@@ -607,6 +607,11 @@ Each layer uses only the ones above it, or reads a later one's table at call tim
   Shopping List. Start Queue only selects the next ready entry, and each Craft Next hardware click starts
   one batch because Blizzard does not allow automated profession opening or unattended crafting. The
   window stays open when the profession window closes.
+- The Crafting Queue footer widens Clear and Start to their labels on every render, since a font the
+  game has not loaded yet measures 0 wide when the buttons are made. When Add Missing then has no room
+  between them, as in Russian, it moves to its own row above them.
+- The Crafting Queue window is never narrower than its subtitle: the title bar keeps it to one line, and
+  most translations are longer than the English, so it widens to fit and its smallest width follows.
 - Forever keeps the classic rule that you cannot craft in a shapeshift form ("You are in shapeshift
   form", seen on a druid 2026-11-06), and only secure code may leave a form. So for a druid, Create,
   Create All and the Crafting Queue's Start each get a secure layer whose macro is `/cancelform`; its

@@ -100,6 +100,7 @@ local function fixture(settings, noMacros, class)
         function f:IsVisible() return self.shown end
         function f:SetSize(w, h) assert(type(w) == 'number' and type(h) == 'number'); self.w, self.h = w, h end
         function f:SetHeight(h) self.h = h end
+        function f:SetWidth(w) self.w = w end
         function f:GetWidth() return self.w or 0 end
         function f:GetPoint() return unpack(rawget(self, 'point') or {}) end
         function f:GetFrameLevel() return self.level end
@@ -152,6 +153,7 @@ local function fixture(settings, noMacros, class)
         function f:SetTextColor(r, g, b) self.color = { r, g, b } end
         function f:SetFont(path, size) assert(type(path) == 'string' and type(size) == 'number'); self.fontSize = size; self.font = path end
         function f:GetStringWidth() return #tostring(self.text or '') * (self.fontSize or 10) * 0.6 end
+        function f:GetStringHeight() return self.textHeight or self.fontSize or 10 end
         function f:SetJustifyH(v) self.justify = v end
         function f:SetTexture(t) self.texture = t end
         function f:SetColorTexture() self.texture = 'color' end
@@ -188,7 +190,13 @@ local function fixture(settings, noMacros, class)
         end,
         Border = function() return frame('Border') end,
         Tooltip = function() end,
-        Button = function(parent, text, _, _, fn) local b = frame('Button', nil, parent); b.label = text; b.onClick = fn; return b end,
+        Button = function(parent, text, w, _, fn)
+            local b = frame('Button', nil, parent)
+            b.text, b.w, b.onClick = text, w, fn
+            b.label = frame('FontString', nil, b)
+            b.label.text = text
+            return b
+        end,
         PromptText = function(_, _, _, accept) s.prompt = accept end,
         Confirm = function(text, yes) s.confirm, s.confirmText = yes, text end,
         PixelInset = function() end,
@@ -950,7 +958,7 @@ do
     end
     check('the potion asks', ask and ask.shown and ask.itemID == 13446)
     for _, f in ipairs(s.frames) do
-        if f.parent == ask and f.label == 'Add' then f.onClick() end
+        if f.parent == ask and f.text == 'Add' then f.onClick() end
     end
     check('a kind switched off is never asked about', not ask.shown and #s.settings.consumableBarItems == 1)
 end
@@ -1407,8 +1415,8 @@ do
     check('in the Shared kit\'s panel', s.panels[1] == ask)
     local add, no
     for _, f in ipairs(s.frames) do
-        if f.parent == ask and f.label == 'Add' then add = f end
-        if f.parent == ask and f.label == 'No' then no = f end
+        if f.parent == ask and f.text == 'Add' then add = f end
+        if f.parent == ask and f.text == 'No' then no = f end
     end
     add.onClick()
     check('Add puts it on the bar', s.settings.consumableBarItems[2] == 5512 and not ask.shown)
@@ -1457,7 +1465,7 @@ do
     s.counts[20007] = 0
     s.fire('BAG_UPDATE_DELAYED')
     for _, f in ipairs(s.frames) do
-        if f.parent == ask and f.label == 'Add' then f.onClick() end
+        if f.parent == ask and f.text == 'Add' then f.onClick() end
     end
     check('the one used up meanwhile is not asked about', not ask.shown)
     s.bags[0] = { 5512, 20007 }
@@ -1882,7 +1890,7 @@ do
     local ask = s.panels[1]
     check('declined or gone in the fight, it is not asked about after it', ask and ask.shown and ask.itemID == 5512)
     for _, f in ipairs(s.frames) do
-        if f.parent == ask and f.label == 'No' then f.onClick() end
+        if f.parent == ask and f.text == 'No' then f.onClick() end
     end
     s.fight(true)
     s.bags[1] = { 12404, 10307 }
@@ -2415,6 +2423,34 @@ do
     local waiting = 0
     for _, t in ipairs(s.timers) do if t.at <= s.now then waiting = waiting + 1 end end
     check('and it runs on the next frame', waiting == 0)
+end
+-- Edit Items' buttons fit labels longer than they were made for
+do
+    local s = fixture({ consumableBar = true })
+    s.editor()
+    local row = {}
+    for _, f in ipairs(s.frames) do
+        if f.kind == 'Button' and (f.text == 'Scan Bags' or f.text == 'Remove Empty' or f.text == 'Remove All') then
+            row[#row + 1] = f
+        end
+    end
+    row[1].label.text = string.rep('x', 30)
+    s.CB.OpenEditor()
+    local first, second = row[1].points.BOTTOMLEFT[2], row[2].points.BOTTOMLEFT[2]
+    check('a long label widens its button', row[1].w > 120)
+    check('and the next button moves past it', second >= first + row[1].w)
+end
+
+-- A hint that wraps pushes the bar down instead of running over it
+do
+    local s = fixture({ consumableBar = true })
+    local preview = s.editor()
+    local top, height = preview.view.points.TOPLEFT[3], preview.h
+    preview.hint.textHeight = 40
+    s.CB.OpenEditor()
+    check('a one-line hint keeps the bar where it was', top == -30)
+    check('a wrapped hint moves the bar below it', preview.view.points.TOPLEFT[3] == -56)
+    check('and the preview grows by as much', preview.h == height + 26)
 end
 
 print(checks .. ' consumable-bar checks passed')

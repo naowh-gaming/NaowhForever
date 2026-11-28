@@ -33,6 +33,7 @@ local STEP_GAP, MINUS_GAP = 6, 2
 local CLEAR_W, START_W, ADD_MISSING_W = 68, 94, 120
 local WARNING_GAP = 2
 local BUTTON_H = 24
+local LABEL_PAD = 8
 
 local TEXT_TITLE = ns.L("Crafting Queue")
 local TEXT_SUBTITLE = ns.L("Prerequisites first, then crafts.")
@@ -235,8 +236,42 @@ local function PlaceSection(prerequisite, y, ordered)
     return y, #entries
 end
 
+local function LabelWidth(button)
+    return math.ceil(button.label:GetStringWidth()) + LABEL_PAD * 2
+end
+
+local function Fit(button)
+    local need = LabelWidth(button)
+    if need > button:GetWidth() then button:SetWidth(need) end
+end
+
+local function FitSubtitle()
+    local subtitle = window.subtitle
+    local need = math.ceil(window:GetWidth() - subtitle:GetWidth() + subtitle:GetUnboundedStringWidth())
+    window:SetResizeBounds(math.max(MIN_W, need), MIN_H)
+    if window:GetWidth() < need then window:SetWidth(need) end
+end
+
+local function LayoutFooter()
+    Fit(clear)
+    Fit(start)
+    local room = window:GetWidth() - INSET * 2 - clear:GetWidth() - start:GetWidth() - PAD * 2
+    local wrap = LabelWidth(addMissing) > room
+    addMissing:ClearAllPoints()
+    if wrap then
+        addMissing:SetPoint("BOTTOMLEFT", clear, "TOPLEFT", 0, PAD)
+        addMissing:SetPoint("BOTTOMRIGHT", start, "TOPRIGHT", 0, PAD)
+    else
+        addMissing:SetPoint("LEFT", clear, "RIGHT", PAD, 0)
+        addMissing:SetPoint("RIGHT", start, "LEFT", -PAD, 0)
+    end
+    scroll:SetPoint("BOTTOMRIGHT", -SCROLLBAR - SCROLL_GAP,
+        FOOTER + PAD + BOTTOM_H + (wrap and BUTTON_H + PAD or 0))
+end
+
 function View.Render()
     if not (window and window:IsShown()) then return end
+    FitSubtitle()
     local ordered = Queue.Ordered()
     local y, prerequisites = PlaceSection(true, -2, ordered)
     local crafts
@@ -254,6 +289,7 @@ function View.Render()
     end
     ns.SetButtonText(start, startText)
     start._tipTitle = startText
+    LayoutFooter()
     Widgets.EnableButton(start, count > 0 and (not running or (active and not active.started)))
     Widgets.EnableButton(clear, count > 0 and not crafting)
     Widgets.EnableButton(addMissing, count > 0 and not crafting)
@@ -300,6 +336,7 @@ end
 local function OnSized(_, width)
     content:SetWidth(width - INSET - SCROLLBAR - SCROLL_GAP)
     ns.SetButtonText(addMissing, width < WIDTH and TEXT_ADD_MISSING_SHORT or TEXT_ADD_MISSING)
+    LayoutFooter()
 end
 
 local function OnShow()
